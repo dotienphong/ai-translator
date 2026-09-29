@@ -1,0 +1,37 @@
+{
+ "ggml-large-v3-turbo-q5_0.bin": {
+  "bytes": 574041195,
+  "sha256": "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2",
+  "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin"
+ },
+ "ggml-small-q5_1.bin": {
+  "bytes": 190085487,
+  "sha256": "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb",
+  "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin"
+ },
+ "Hy-MT2-1.8B-Q8_0.gguf": {
+  "bytes": 1908528192,
+  "sha256": "5c3fe0b1408a5ceb0143184ef247b11b579c525f4b02b060e6c851bb76fef1a4",
+  "url": "https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/resolve/main/Hy-MT2-1.8B-Q8_0.gguf"
+ },
+ "Hy-MT2-1.8B-Q4_K_M.gguf": {
+  "bytes": 1133080448,
+  "sha256": "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699",
+  "url": "https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/resolve/main/Hy-MT2-1.8B-Q4_K_M.gguf"
+ },
+ "Hy-MT2-LICENSE.txt": {
+  "bytes": 11639,
+  "sha256": "a1d52d448f81c584a47c583e19dfab2d3851c7c84431b07baee093c1113ed114",
+  "url": "https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/resolve/main/LICENSE.txt"
+ },
+ "silero_vad_v6.2.3.onnx": {
+  "bytes": 2327524,
+  "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+  "url": "https://raw.githubusercontent.com/snakers4/silero-vad/v6.2.3/src/silero_vad/data/silero_vad.onnx"
+ },
+ "llama-b11146-bin-macos-arm64.tar.gz": {
+  "bytes": 11189714,
+  "sha256": "1ad3f9eff80edb9dbef4259ad564d1720612ef7eea48fa4afed0e54f5f3d5711",
+  "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11146/llama-b11146-bin-macos-arm64.tar.gz"
+ }
+}
