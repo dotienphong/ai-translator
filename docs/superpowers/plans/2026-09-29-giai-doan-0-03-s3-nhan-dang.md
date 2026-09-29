@@ -1002,7 +1002,7 @@ pub mod lid;
 mod tests {
     use super::*;
 
-    // lang id của Whisper: en=0, zh=1, ja=11, ko=16, vi=46.
+    // lang id của Whisper: en=0, zh=1, ko=5, ja=7, vi=19 (ms=23).
     fn probs(pairs: &[(usize, f32)]) -> Vec<f32> {
         let mut v = vec![0.0; 100];
         for &(i, p) in pairs {
@@ -1014,38 +1014,40 @@ mod tests {
     #[test]
     fn picks_highest_inside_allowed_and_renormalizes() {
         // "ms" (id 23) cao nhất nhưng không được phép.
-        let p = probs(&[(23, 0.5), (46, 0.3), (0, 0.1)]);
-        let (id, prob) = pick_language(&p, &[0, 46], None, 0.5);
-        assert_eq!(id, 46);
+        let p = probs(&[(23, 0.5), (19, 0.3), (0, 0.1)]);
+        let (id, prob) = pick_language(&p, &[0, 19], None, 0.5);
+        assert_eq!(id, 19);
         assert!((prob - 0.75).abs() < 1e-6);
     }
 
     #[test]
     fn keeps_previous_language_when_unsure() {
-        let p = probs(&[(0, 0.2), (46, 0.25), (1, 0.2)]);
-        let (id, _) = pick_language(&p, &[0, 1, 46], Some(0), 0.5);
+        let p = probs(&[(0, 0.2), (19, 0.25), (1, 0.2)]);
+        let (id, prob) = pick_language(&p, &[0, 1, 19], Some(0), 0.5);
         assert_eq!(id, 0);
+        // Xác suất trả về là của ngôn ngữ được giữ, đã chuẩn hóa trong tập cho phép.
+        assert!((prob - 0.2 / 0.65).abs() < 1e-6);
     }
 
     #[test]
     fn ignores_previous_language_outside_allowed_set() {
-        let p = probs(&[(0, 0.2), (46, 0.25), (1, 0.2)]);
-        let (id, _) = pick_language(&p, &[0, 1, 46], Some(11), 0.5);
-        assert_eq!(id, 46);
+        let p = probs(&[(0, 0.2), (19, 0.25), (1, 0.2)]);
+        let (id, _) = pick_language(&p, &[0, 1, 19], Some(7), 0.5);
+        assert_eq!(id, 19);
     }
 
     #[test]
     fn confident_detection_overrides_previous_language() {
-        let p = probs(&[(0, 0.05), (46, 0.9)]);
-        let (id, _) = pick_language(&p, &[0, 46], Some(0), 0.5);
-        assert_eq!(id, 46);
+        let p = probs(&[(0, 0.05), (19, 0.9)]);
+        let (id, _) = pick_language(&p, &[0, 19], Some(0), 0.5);
+        assert_eq!(id, 19);
     }
 
     #[test]
     fn all_zero_falls_back_to_previous_or_first() {
         let p = probs(&[]);
-        assert_eq!(pick_language(&p, &[0, 46], Some(46), 0.5).0, 46);
-        assert_eq!(pick_language(&p, &[0, 46], None, 0.5).0, 0);
+        assert_eq!(pick_language(&p, &[0, 19], Some(19), 0.5).0, 19);
+        assert_eq!(pick_language(&p, &[0, 19], None, 0.5).0, 0);
     }
 }
 ```
@@ -1107,7 +1109,16 @@ git commit -m "feat(asr-worker): chọn ngôn ngữ trong tập cho phép, giữ
 - Create: `crates/asr-worker/src/engine.rs`
 - Create: `crates/asr-worker/src/main.rs`
 
-Phần code gắn `#[cfg(feature = "shared-encode")]` và `#[cfg(feature = "vulkan")]` chỉ được biên dịch khi bật feature đó, nên chưa cần `shared.rs` và `probe.rs`. Flash attention bật cùng GPU; đặt `ASR_FLASH_ATTN=0` để tắt khi cần so sánh (xem Task 15). stdout chỉ dùng cho khung giao thức; log của whisper.cpp đi ra stderr (`install_logging_hooks`).
+Phần code gắn `#[cfg(feature = "shared-encode")]` và `#[cfg(feature = "vulkan")]` chỉ được biên dịch khi bật feature đó, nên chưa cần `shared.rs` và `probe.rs`. stdout chỉ dùng cho khung giao thức. Log của whisper.cpp tự đi ra stderr, nên không gọi `install_logging_hooks`.
+
+Ba điểm rút ra từ review lúc thực thi:
+- **Flash attention mặc định tắt.** whisper.cpp 1.8.3 có lỗi, và v1.9.4 cùng master vẫn còn: khi bật flash attention, encoder và cross-attention đọc K/V tới `GGML_PAD(audio_ctx, 256)` mà không có mask. Với `audio_ctx` rút ngắn, kết quả sai (lặp câu, mất dấu câu) và thay đổi theo các đoạn đã chép trước đó. Reviewer đã tái hiện trên Metal. PR sửa lỗi (ggml-org/whisper.cpp#3941) chưa được merge. Chỉ đặt `ASR_FLASH_ATTN=1` để thử khi whisper.cpp đã có bản vá đó.
+- **`transcribe` kiểm đầu vào trước khi gọi whisper.cpp**, vì các đầu vào sau làm whisper.cpp crash hoặc đọc lố bộ đệm:
+  - đoạn dưới 100 ms;
+  - mã ngôn ngữ có ký tự NUL;
+  - prompt token ngoài khoảng;
+  - `audio_ctx` lớn hơn 1500 hoặc ngắn hơn đoạn.
+- **State nhận diện ngôn ngữ được đặt `audio_ctx` 3 giây ngay lúc nạp.** whisper.cpp chỉ đặt `audio_ctx` bên trong `whisper_full`, còn giao thức không bắt buộc gửi Warmup.
 
 - [ ] **Step 1: Sửa `crates/asr-worker/src/lib.rs`**
 
@@ -1124,7 +1135,8 @@ pub mod lid;
 //! Có hai chế độ giải mã:
 //! - Chế độ A (`split`): nhận diện ngôn ngữ dùng một `WhisperState` riêng, luôn mã hóa 3 giây đầu của đoạn
 //!   với `audio_ctx` cố định, rồi `whisper_full` chép lời. whisper.cpp chỉ đặt `audio_ctx` bên trong
-//!   `whisper_full`, nên state này được `whisper_full` một lần lúc làm nóng rồi không chạy `whisper_full` nữa.
+//!   `whisper_full`, nên state này được `whisper_full` một lần ngay trong `Engine::load` (không đợi `Warmup`)
+//!   rồi không chạy `whisper_full` nữa.
 //! - Chế độ B (`shared`, xem `shared.rs`): một lượt encode dùng chung cho cả hai việc. Là mặc định khi build
 //!   với feature `shared-encode`; đặt `ASR_MODE=split` để chạy chế độ A khi cần so sánh.
 
@@ -1137,12 +1149,19 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 /// Nhận diện ngôn ngữ trên tối đa 3 giây đầu của đoạn (spec §6.4).
 pub const LID_SAMPLES: usize = SAMPLE_RATE as usize * 3;
 pub(crate) const MIN_LANG_PROB: f32 = 0.5;
+/// Đoạn ngắn hơn 100 ms: `log_mel_spectrogram` đọc 200 mẫu đầu và whisper.cpp bỏ qua đoạn dưới mức này.
+const MIN_PCM_SAMPLES: usize = SAMPLE_RATE as usize / 10;
+/// Cửa sổ mã hóa tối đa của Whisper: 1500 vị trí, tức 30 giây.
+const MAX_AUDIO_CTX: i32 = 1500;
+/// Số mẫu 16 kHz mà một vị trí của `audio_ctx` phủ (20 ms).
+const SAMPLES_PER_CTX: usize = SAMPLE_RATE as usize / 50;
 
 pub struct Engine {
     ctx: WhisperContext,
     asr_state: WhisperState,
     lid_state: WhisperState,
     n_threads: usize,
+    flash_attn: bool,
     prev_lang: Option<i32>,
     /// Có giá trị khi chạy chế độ B.
     #[cfg(feature = "shared-encode")]
@@ -1151,9 +1170,11 @@ pub struct Engine {
 
 impl Engine {
     pub fn load(model_path: &str, use_gpu: bool, n_threads: u32) -> Result<Self> {
-        // Flash attention bật cùng GPU. `ASR_FLASH_ATTN=0` để tắt khi thử trên Vulkan: GPU nào thiếu phép toán này thì
-        // ggml có thể đẩy nó về CPU, làm chậm hẳn mà không báo lỗi.
-        let flash_attn = use_gpu && std::env::var("ASR_FLASH_ATTN").as_deref() != Ok("0");
+        // Flash attention mặc định TẮT: whisper.cpp 1.8.3 đọc K/V của encoder và cross-attention tới GGML_PAD(audio_ctx, 256)
+        // mà không có mask, nên với audio_ctx rút ngắn kết quả sai và phụ thuộc các đoạn trước (ggml-org/whisper.cpp#3941).
+        // Chỉ đặt `ASR_FLASH_ATTN=1` khi whisper.cpp đã có bản vá đó.
+        let flash_attn = use_gpu && std::env::var("ASR_FLASH_ATTN").as_deref() == Ok("1");
+        let n_threads = clamp_threads(n_threads);
         let params = WhisperContextParameters {
             use_gpu,
             flash_attn,
@@ -1162,14 +1183,23 @@ impl Engine {
         let ctx = WhisperContext::new_with_params(model_path, params)
             .with_context(|| format!("không nạp được model {model_path}"))?;
         let asr_state = ctx.create_state().context("tạo state chép lời")?;
-        let lid_state = ctx.create_state().context("tạo state nhận diện ngôn ngữ")?;
+        let mut lid_state = ctx.create_state().context("tạo state nhận diện ngôn ngữ")?;
+        // `lang_detect` dùng lại `audio_ctx` mà lần `whisper_full` gần nhất đã đặt cho state. Giao thức không bắt buộc
+        // gửi `Warmup`, nên đặt nó ngay ở đây, trên 3 giây im lặng. Nếu bỏ qua, đoạn đầu tiên sẽ nhận diện ngôn ngữ
+        // trên cửa sổ 30 giây đầy đủ: chậm hơn nhiều và cho xác suất khác.
+        let silence = vec![0.0f32; LID_SAMPLES];
+        let params = full_params(n_threads, "en", audio_ctx_for_samples(LID_SAMPLES));
+        lid_state
+            .full(params, &silence)
+            .context("đặt audio_ctx cho state nhận diện ngôn ngữ")?;
         #[cfg(feature = "shared-encode")]
         let shared = (std::env::var("ASR_MODE").as_deref() != Ok("split")).then(|| crate::shared::Decoder::new(&ctx));
         Ok(Self {
             ctx,
             asr_state,
             lid_state,
-            n_threads: n_threads.max(1) as usize,
+            n_threads,
+            flash_attn,
             prev_lang: None,
             #[cfg(feature = "shared-encode")]
             shared,
@@ -1185,17 +1215,17 @@ impl Engine {
         "split"
     }
 
-    /// Chạy thử trên 3 giây im lặng. Nạp sẵn kernel GPU cho cả hai state, và đặt
-    /// `audio_ctx` của state nhận diện ngôn ngữ về đúng 3 giây.
+    /// Flash attention có đang bật không. Mặc định tắt, xem `load`.
+    pub fn flash_attn(&self) -> bool {
+        self.flash_attn
+    }
+
+    /// Chạy thử trên 3 giây im lặng để nạp sẵn kernel GPU cho state chép lời. State nhận diện ngôn ngữ đã được làm
+    /// nóng và đặt `audio_ctx` ngay trong `load`.
     pub fn warmup(&mut self) -> Result<f32> {
         let silence = vec![0.0f32; LID_SAMPLES];
         let started = Instant::now();
-        let audio_ctx = audio_ctx_for_samples(silence.len());
-        let params = full_params(self.n_threads, "en", audio_ctx);
-        self.lid_state
-            .full(params, &silence)
-            .context("làm nóng state nhận diện ngôn ngữ")?;
-        let params = full_params(self.n_threads, "en", audio_ctx);
+        let params = full_params(self.n_threads, "en", audio_ctx_for_samples(silence.len()));
         self.asr_state
             .full(params, &silence)
             .context("làm nóng state chép lời")?;
@@ -1203,8 +1233,32 @@ impl Engine {
     }
 
     pub fn transcribe(&mut self, req: &TranscribeRequest) -> Result<TranscribeResult> {
+        // Kiểm đầu vào trước mọi lệnh gọi whisper, cho cả hai chế độ: đầu vào sai trả `Error` qua giao thức chứ không
+        // làm worker chết (whisper-rs panic khi mã ngôn ngữ chứa NUL, mà bản release đặt panic = abort).
         if req.languages.is_empty() {
             bail!("danh sách ngôn ngữ rỗng");
+        }
+        if let Some(l) = req.languages.iter().find(|l| l.contains('\0')) {
+            bail!("mã ngôn ngữ chứa ký tự NUL: {l:?}");
+        }
+        if req.pcm.len() < MIN_PCM_SAMPLES {
+            bail!("đoạn quá ngắn: {} mẫu (tối thiểu {MIN_PCM_SAMPLES})", req.pcm.len());
+        }
+        let eot = self.ctx.token_eot();
+        if let Some(t) = req.prompt_tokens.iter().find(|&&t| !(0..eot).contains(&t)) {
+            bail!("prompt_tokens có token {t} ngoài khoảng [0, {eot})");
+        }
+        if req.audio_ctx > MAX_AUDIO_CTX {
+            bail!("audio_ctx {} lớn hơn mức tối đa {MAX_AUDIO_CTX}", req.audio_ctx);
+        }
+        // Cửa sổ ngắn hơn đoạn thì whisper.cpp lặng lẽ bỏ phần đuôi của đoạn.
+        if req.audio_ctx > 0 && req.audio_ctx as usize * SAMPLES_PER_CTX < req.pcm.len() {
+            bail!(
+                "audio_ctx {} chỉ phủ {} mẫu, ngắn hơn đoạn ({} mẫu)",
+                req.audio_ctx,
+                req.audio_ctx as usize * SAMPLES_PER_CTX,
+                req.pcm.len()
+            );
         }
         let allowed = req
             .languages
@@ -1271,7 +1325,6 @@ impl Engine {
         self.asr_state.full(params, &pcm).context("chép lời")?;
         let asr_ms = asr_started.elapsed().as_secs_f32() * 1000.0;
 
-        let eot = self.ctx.token_eot();
         let mut text = String::new();
         let mut tokens = Vec::new();
         let mut no_speech_prob = 0.0f32;
@@ -1298,6 +1351,16 @@ impl Engine {
             lid_ms,
             asr_ms,
         })
+    }
+}
+
+/// Kẹp số luồng yêu cầu về số lõi khả dụng của máy. Yêu cầu 0 vẫn lên 1 như trước; nếu không hỏi được số lõi thì
+/// giữ nguyên giá trị yêu cầu.
+fn clamp_threads(requested: u32) -> usize {
+    let requested = requested.max(1) as usize;
+    match std::thread::available_parallelism() {
+        Ok(cores) => requested.min(cores.get()),
+        Err(_) => requested,
     }
 }
 
@@ -1334,6 +1397,8 @@ use asr_protocol::{Request, Response, read_frame, write_frame};
 use asr_worker::engine::Engine;
 use std::io::{BufReader, BufWriter};
 
+/// Vòng lặp giao thức. Mọi lỗi đọc khung (I/O, khung quá lớn, `Codec`, `TrailingBytes`) đều làm worker thoát ngay với
+/// mã 1, kể cả khi luồng vẫn còn đồng bộ (`Codec`, `TrailingBytes`). App tự khởi động lại worker, nên không cố đọc tiếp.
 fn main() -> Result<()> {
     if std::env::args().any(|a| a == "--probe") {
         return probe();
@@ -1350,8 +1415,14 @@ fn main() -> Result<()> {
                 n_threads,
             } => match Engine::load(&model_path, use_gpu, n_threads) {
                 Ok(e) => {
+                    let backend = backend_name(use_gpu);
+                    eprintln!(
+                        "asr-worker: backend={backend} flash_attn={} decode_mode={}",
+                        if e.flash_attn() { "on" } else { "off" },
+                        e.decode_mode()
+                    );
                     let ready = Response::Ready {
-                        backend: backend_name(use_gpu).to_string(),
+                        backend: backend.to_string(),
                         decode_mode: e.decode_mode().to_string(),
                         whisper_version: whisper_rs::WHISPER_CPP_VERSION.to_string(),
                         system_info: whisper_rs::print_system_info().to_string(),
@@ -2063,6 +2134,7 @@ Expected:
 - Dòng sau là `WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 |`. Không được có `MATMUL_INT8` hay `SME`; nếu có thì `.cargo/config.toml` chưa có tác dụng và bản build có thể crash trên M1.
 - Bảng có ba nhóm: `ko`, `ko-nb`, `ko-wb`.
 - Lúc lập kế hoạch, chế độ A trên 68 clip băng rộng cho CER khoảng 0,58, nhận đúng ngôn ngữ 87%; các clip dài trên 20 giây bị lặp chữ. Task 10 sẽ so với chế độ B.
+- Các số trên đo khi flash attention còn bật, tức còn lỗi của Task 4, nên số thật sẽ khác. Ghi số thật.
 
 - [ ] **Step 6: Xóa file thử rồi commit**
 
@@ -2526,7 +2598,7 @@ rm bench/phase0/results/a4_thu-ko-b.json
 ```
 Expected:
 - Dòng đầu là `asr: metal (1.8.3), chế độ giải mã shared`.
-- Lúc lập kế hoạch, nhóm `ko-wb` cho CER khoảng 0,14, nhận đúng ngôn ngữ 100%, và LID/ASR khoảng 1–2%.
+- Lúc lập kế hoạch, nhóm `ko-wb` cho CER khoảng 0,14, nhận đúng ngôn ngữ 100%, và LID/ASR khoảng 1–2%. Số này đo khi flash attention còn bật (xem Task 4), nên số thật có thể khác.
 
 - [ ] **Step 7: Commit**
 
@@ -2927,7 +2999,7 @@ Expected:
 - Lượt Vulkan in `asr: vulkan (1.8.3), chế độ giải mã shared`. Lượt CPU in `asr: cpu (1.8.3), …` và chậm hơn nhiều.
 - Dòng `system_info` có `AVX2 = 1`, `FMA = 1`, `F16C = 1` và không có `AVX512` (mức CPU cố định ở `.cargo/config.toml`).
 - WER/CER gần với lượt `m4pro-turbo-shared` trên Mac, chênh không quá vài phần trăm tương đối.
-- Nếu lượt Vulkan chậm bất thường (ASR p50 gần bằng lượt CPU), chạy lại lượt Vulkan với `$env:ASR_FLASH_ATTN = "0"` để tắt flash attention, rồi ghi cả hai kết quả vào `s3_windows.md`. GPU nào thiếu phép toán flash attention thì ggml có thể đẩy nó về CPU.
+- Flash attention mặc định tắt (xem Task 4). Không bật `ASR_FLASH_ATTN=1` trong Giai đoạn 0: lỗi thiếu mask nằm trong graph của whisper.cpp, nên Vulkan cũng sai.
 
 Đo thêm VAD đúng nhịp trên máy này (cần `bench\phase0\data\vad\en.wav`, chép từ Mac):
 

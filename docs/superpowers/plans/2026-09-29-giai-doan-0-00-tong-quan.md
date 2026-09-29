@@ -89,6 +89,10 @@ Toàn bộ code trong các kế hoạch con đã được biên dịch và chạ
   - Silero v6.2.3 chạy bằng candle-onnx khớp onnxruntime, sai khác lớn nhất 5,4e-7 (sai số làm tròn f32).
   - Đo đúng nhịp 32 ms, mỗi khung mất trung bình 1,17 ms, p99 1,8 ms (chạy liên tục chỉ 0,23 ms).
   - Review phát hiện state của LSTM phải `detach()`. Nếu không, RSS tăng khoảng 1 GB mỗi phút và tràn stack sau vài phút; đã sửa, và test chạy dài giữ cho lỗi không quay lại.
+- **Flash attention trong whisper.cpp:**
+  - whisper.cpp 1.8.3 (và cả v1.9.4, master) sai khi bật flash attention cùng `audio_ctx` rút ngắn: phần đệm tới bội 256 không có mask. Kết quả lặp câu và thay đổi theo đoạn chép trước. Review 03-T4 đã tái hiện.
+  - Giai đoạn 0 tắt flash attention.
+  - Bản vá mask (ggml-org/whisper.cpp#3941, chưa merge) cho kết quả trùng hệt bản tắt flash. Trên M4 Pro, bản vá giúp chép lời nhanh hơn 5–13% và giảm 91–149 MB bộ nhớ đệm mỗi state. Để lại cho MVP.
 - **Toàn chuỗi (gói Nhẹ, chế độ B):**
   - 6 câu Anh/Trung/Nhật: p50 705 ms, p90 760 ms, chữ đầu tiên 528 ms.
   - Session tiếng Hàn 50 giây: p50 khoảng 670 ms, p90 khoảng 830 ms, chữ đầu tiên khoảng 490 ms.
@@ -208,6 +212,12 @@ Mỗi mục là một thay đổi riêng trong spec:
     - `warmup` → `warmup_done {millis}`;
     - mọi lỗi → `error {segment_id?, message}`.
   - Quy tắc mở rộng giao thức: chỉ thêm biến thể ở cuối; khung thừa byte là lỗi.
+  - Flash attention tắt cho tới khi whisper.cpp có mask cho phần đệm (ggml-org/whisper.cpp#3941).
+    - MVP: vá, hoặc chờ upstream.
+    - Bật lại thì phải kèm test tất định: cùng một đoạn, chép sau các đoạn khác, phải ra cùng token.
+  - Quy tắc "dưới 0,5 thì giữ ngôn ngữ trước" không bao giờ chạy khi chỉ có 2 ngôn ngữ, vì xác suất sau chuẩn hóa của ngôn ngữ cao nhất luôn từ 0,5 trở lên. Chọn ngưỡng theo số ngôn ngữ, dựa trên số đo A4.
+  - Worker từ chối đoạn dưới 100 ms; pipeline không gửi các đoạn này.
+  - Công thức `audio_ctx` chốt theo Task 11 của kế hoạch 03. Review thấy turbo lặp câu ở đoạn ngắn hơn khoảng 5,7 giây, ngay cả khi tắt flash attention.
 - §6.5:
   - Ngưỡng tỉ lệ token theo từng cặp ngôn ngữ, lấy từ `results/s7_mt_decisions.md`. Quyết định cờ ngữ cảnh.
   - Truyền API key cho `llama-server` qua biến môi trường `LLAMA_API_KEY` thay vì `--api-key`, vì tham số dòng lệnh hiện ra trong `ps` (b11146 hỗ trợ cả hai).
