@@ -1528,7 +1528,7 @@ git commit -m "test(bench): S6 trên Mac M4 Pro, gói Chuẩn và gói Nhẹ"
 Mỗi máy cần các thứ sau; không cần cài Rust:
 - **Repo:** lấy bằng `git clone` hoặc `git bundle` (kế hoạch 01, Task 2, Step 4).
 - **Python:** các script chạy được với `python3` có sẵn, riêng `fetch.py` cần Python 3.12 trở lên.
-  - Mac mượn thường chỉ có `python3` 3.9 của Xcode Command Line Tools. Khi đó cài uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`) và chạy `uv run --no-project --python 3.12 python bench/phase0/fetch.py`.
+  - Mac mượn thường chỉ có `python3` 3.9 của Xcode Command Line Tools. Khi đó cài uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`), mở terminal mới (hoặc `source $HOME/.local/bin/env`) để có lệnh `uv`, rồi chạy `uv run --no-project --python 3.12 python bench/phase0/fetch.py`.
   - Windows dùng Python 3.12, cài bằng `uv python install 3.12` hoặc winget.
 - **Model và llama.cpp:** chạy `fetch.py` như trên. Script kiểm kích thước và SHA-256 của từng file, nên các máy chắc chắn dùng đúng bản với Mac.
 - **Binary đã build, chép từ máy build:** Mac lấy từ M4 Pro; Windows lấy từ laptop đã build ở kế hoạch 03, Task 14. Việc này cũng kiểm luôn mức CPU cố định, vì binary build trên máy đời mới phải chạy được trên máy đời cũ (§6.12).
