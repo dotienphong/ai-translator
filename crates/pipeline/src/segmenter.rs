@@ -40,9 +40,10 @@ pub struct Segment {
     /// Ranh giới tiếng nói, tính từ đầu phiên, không gồm phần đệm.
     pub start_ms: u64,
     pub end_ms: u64,
-    /// Âm thanh 16 kHz mono, đã gồm phần đệm: 200 ms làm tròn lên 7 khung (224 ms) mỗi phía. Đầu phiên, cuối phiên
-    /// (`flush`) và phía bị cắt cưỡng bức có ít hơn. Đệm cuối của đoạn trước có thể trùng đệm đầu của đoạn sau (đều là khung im lặng),
-    /// nên không được ghép `samples` của hai đoạn liền nhau mà coi như không chồng nhau.
+    /// Âm thanh 16 kHz mono, đã gồm phần đệm: 200 ms làm tròn lên 7 khung (224 ms) mỗi phía. Đầu phiên,
+    /// cuối phiên (`flush`) và phía bị cắt cưỡng bức có ít hơn. Đệm cuối của đoạn trước có thể trùng đệm đầu
+    /// của đoạn sau (đều là khung im lặng), nên không được ghép `samples` của hai đoạn liền nhau mà coi như
+    /// không chồng nhau.
     pub samples: Vec<f32>,
 }
 
