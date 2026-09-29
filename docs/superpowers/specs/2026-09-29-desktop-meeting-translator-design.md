@@ -50,7 +50,7 @@
 | # | Hạng mục | Đề xuất |
 |---|---|---|
 | P1 | Kiếm tiền | **Không có quảng cáo.** Free: 30 phút dịch mỗi ngày. **Pro** (thuê bao tháng hoặc năm): dịch không giới hạn, từ điển thuật ngữ, lưu lịch sử và xuất bản chép lời. Giá chốt sau. |
-| P2 | Bản quyền | **License key của Polar.sh**, dùng một tổ chức Polar mới cho thương hiệu mới. MVP không có tài khoản người dùng và không có backend riêng. |
+| P2 | Bản quyền | License key, kích hoạt tối đa 2 máy, dùng được offline (ân hạn 14 ngày). MVP không có tài khoản người dùng. **Không dùng Polar.** Nhà cung cấp thanh toán và license chốt sau (§15). |
 
 ## 3. Mục tiêu, phạm vi, tiêu chí thành công
 
@@ -296,19 +296,22 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Tự host model:** Apache 2.0 và MIT cho phép phân phối lại. File LICENSE và NOTICE được đặt cạnh file model. Không tải từ Hugging Face hay GitHub của người khác.
 - **Cập nhật model:** khi có mạng, app kiểm tra manifest lúc khởi động, tối đa một lần mỗi ngày. Có bản mới thì hỏi người dùng, không tự tải.
 
-### 6.8 Bản quyền (Polar.sh license key)
+### 6.8 Bản quyền (license key)
 
-- **Thiết lập bên Polar:**
-  - Tạo một tổ chức Polar mới cho thương hiệu này.
-  - Sản phẩm Pro gồm thuê bao tháng và thuê bao năm, kèm benefit **License Key**.
-  - License key có tiền tố theo thương hiệu, **cho kích hoạt tối đa 2 máy**, hết hạn theo thuê bao và **tự bị thu hồi khi khách hủy thuê bao**.
-- **Kích hoạt:** người dùng dán key. App gọi `POST /v1/customer-portal/license-keys/activate` với `{key, organization_id, label: <tên máy>}` và lưu lại `activation_id`.
-- **Kiểm tra định kỳ:** mỗi lần khởi động, nếu có mạng (tối đa một lần mỗi ngày), app gọi `POST /v1/customer-portal/license-keys/validate` với `{key, organization_id, activation_id}`.
-- **Ân hạn khi offline:** Pro vẫn còn hiệu lực trong **14 ngày** kể từ lần kiểm tra thành công gần nhất. Quá hạn thì về Free cho tới lần kiểm tra thành công tiếp theo.
-- **Trạng thái lưu trên máy:** file trạng thái được ký HMAC bằng khóa sinh từ ID máy, đủ để chặn việc sửa file bằng tay. MVP chấp nhận rủi ro bị crack ở mức cơ bản.
-- **Quota Free:** tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính lúc im lặng. Reset lúc 00:00 theo giờ máy. Lưu chung trong file trạng thái nói trên.
-- **Chuyển máy:** nút "Gỡ kích hoạt" trong Cài đặt gọi API gỡ kích hoạt của Polar. Kiểm tra lại endpoint lúc triển khai.
-- **Backend riêng:** MVP không cần. Nếu bị crack nhiều, Giai đoạn 2 có thể thêm một Worker nhỏ để ký token Ed25519.
+- **Không dùng Polar.** Nhà cung cấp thanh toán và license chưa chốt (§15). Lõi Rust dùng một interface chung, để sau này đổi nhà cung cấp mà không phải sửa phần còn lại:
+  `trait LicenseProvider { async fn activate(&self, key: &str, device_label: &str) -> Result<Activation>; async fn validate(&self, key: &str, activation_id: &str) -> Result<LicenseStatus>; async fn deactivate(&self, key: &str, activation_id: &str) -> Result<()>; }`
+- **Tiêu chí chọn nhà cung cấp:**
+  1. Bán được thuê bao tháng và năm, và lo được thuế khi bán ra nước ngoài (đóng vai trò merchant of record, hoặc có cách xử lý thuế tương đương).
+  2. Trả tiền về được tài khoản ở Việt Nam.
+  3. Có license key, gồm: giới hạn số máy kích hoạt; API để kích hoạt, kiểm tra và gỡ kích hoạt; key tự hết hiệu lực khi thuê bao bị hủy hoặc hết hạn. Nếu nhà cung cấp không có license key thì phải làm thêm một backend nhỏ để tự cấp và kiểm tra key.
+- **Cách app xử lý bản quyền** (giống nhau với mọi nhà cung cấp):
+  - **Kích hoạt:** người dùng dán key. App gọi `activate` với nhãn là tên máy và lưu lại mã kích hoạt. Mỗi key dùng tối đa **2 máy**.
+  - **Kiểm tra định kỳ:** mỗi lần khởi động, nếu có mạng (tối đa một lần mỗi ngày), app gọi `validate`.
+  - **Ân hạn khi offline:** Pro vẫn còn hiệu lực trong **14 ngày** kể từ lần kiểm tra thành công gần nhất. Quá hạn thì về Free cho tới lần kiểm tra thành công tiếp theo.
+  - **Trạng thái lưu trên máy:** file trạng thái được ký HMAC bằng khóa sinh từ ID máy, đủ để chặn việc sửa file bằng tay. MVP chấp nhận rủi ro bị crack ở mức cơ bản.
+  - **Quota Free:** tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính lúc im lặng. Reset lúc 00:00 theo giờ máy. Lưu chung trong file trạng thái nói trên.
+  - **Chuyển máy:** nút "Gỡ kích hoạt" trong Cài đặt gọi `deactivate`.
+- **Giai đoạn 2:** nếu bị crack nhiều, thêm một backend nhỏ để ký token bản quyền bằng Ed25519.
 
 ### 6.9 Cài đặt
 
@@ -418,10 +421,10 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
 ## 10. Quyền riêng tư, bảo mật, pháp lý
 
 - **Âm thanh** chỉ nằm trong RAM: không ghi xuống đĩa, không gửi qua mạng.
-- **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi API license của Polar. MVP **không có analytics và không gửi báo cáo crash**. Log nằm trên máy; khi cần hỗ trợ, người dùng tự gửi.
+- **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi API của nhà cung cấp license. MVP **không có analytics và không gửi báo cáo crash**. Log nằm trên máy; khi cần hỗ trợ, người dùng tự gửi.
 - **Tiến trình phụ** chỉ nghe trên `127.0.0.1`, với API key ngẫu nhiên tạo mới mỗi lần chạy.
 - **Lịch sử chép lời** mặc định tắt, chỉ lưu trên máy, xóa toàn bộ được bằng một nút.
-- **Luật Bảo vệ dữ liệu cá nhân 2025 (Việt Nam):** app không thu thập dữ liệu cá nhân, vì không có tài khoản. Email và thanh toán do Polar xử lý với vai trò merchant of record. Chính sách quyền riêng tư phải ghi rõ điều này.
+- **Luật Bảo vệ dữ liệu cá nhân 2025 (Việt Nam):** app không thu thập dữ liệu cá nhân, vì không có tài khoản. Email và thông tin thanh toán do nhà cung cấp thanh toán xử lý (§15). Chính sách quyền riêng tư phải ghi rõ đó là nhà cung cấp nào và họ nhận những dữ liệu gì.
 - **Giấy phép bên thứ ba**, liệt kê ở màn hình Giới thiệu và file `THIRD_PARTY_NOTICES`:
   - Hy-MT2: Apache 2.0, kèm LICENSE và NOTICE. Nếu tự nén lại model thì phải ghi chú là đã sửa đổi.
   - Trọng số Whisper: MIT.
@@ -474,7 +477,7 @@ meeting-translator/
 │   │   ├── pipeline/{vad,segmenter,asr,translate,prompt,postprocess,subtitle}.rs
 │   │   ├── sidecar/llama.rs      # Chạy và giám sát llama-server
 │   │   ├── models/{manifest,download,store}.rs
-│   │   ├── license/{polar,state,quota}.rs
+│   │   ├── license/{provider,state,quota}.rs
 │   │   ├── transcript/{store,export}.rs
 │   │   ├── overlay/{macos,windows}.rs  # Hành vi cửa sổ native
 │   │   └── settings.rs  tray.rs  hotkeys.rs  i18n.rs
@@ -522,12 +525,12 @@ meeting-translator/
 4. Whisper large-v3-turbo chạy kịp thời gian thực trên máy M1 16 GB và trên laptop Windows có GPU tích hợp dùng Vulkan. (S6)
 5. Độ trễ tổng thể đạt ngân sách ở §8. (S6)
 6. Bản Q4_K_M của Hy-MT2 giảm COMET không quá 0,02 so với Q8_0. (S7)
-7. API license key của Polar có endpoint gỡ kích hoạt, và trạng thái key đổi ngay khi khách hủy thuê bao. (Kiểm tra trên Polar sandbox trước khi làm §6.8.)
+7. Nhà cung cấp license được chọn có đủ API kích hoạt, kiểm tra và gỡ kích hoạt, và key hết hiệu lực ngay khi khách hủy thuê bao. (Kiểm tra trên môi trường sandbox của nhà cung cấp trước khi làm §6.8.)
 
 ## 15. Việc còn mở (không chặn phần kỹ thuật)
 
 - **Tên sản phẩm, logo, tên miền, bundle identifier.** Trong code tạm dùng `meeting-translator`, sau đổi bằng cấu hình.
 - **Chốt P1 và P2:** giá Pro theo tháng và năm, có bán gói trọn đời không, và hạn mức Free (đề xuất 30 phút/ngày).
-- **Thiết lập Polar:** tạo tổ chức mới, sản phẩm Pro và benefit license key.
+- **Chọn nhà cung cấp thanh toán và license** theo tiêu chí ở §6.8. **Không dùng Polar.** Sau đó tạo sản phẩm Pro (thuê bao tháng và năm).
 - **Giấy tờ cho phát hành:** mua chứng thư ký mã cho Windows; tài khoản Apple Developer (99 USD/năm).
 - **Website:** trang tải app, trang giá, chính sách quyền riêng tư và điều khoản sử dụng. Phần này sẽ có spec riêng.
