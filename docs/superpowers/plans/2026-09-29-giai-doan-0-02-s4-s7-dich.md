@@ -10,6 +10,7 @@
 - Lấy ngưỡng tỉ lệ token cho hậu xử lý (§6.5).
 
 **Kiến trúc:**
+- `common.py` bỏ qua proxy (chỉ gọi 127.0.0.1), dọn tiến trình `llama-server` cả khi khởi động lỗi, và coi stream thiếu `[DONE]` hoặc có chunk `error` là lỗi. Nhờ vậy bản dịch cụt không lọt vào COMET.
 - Các script Python trong `bench/phase0/mt/` chạy `llama-server` đúng như app: cùng cờ dòng lệnh, cùng tham số sinh, cùng mẫu prompt với `crates/pipeline/src/prompt.rs` (viết ở kế hoạch 06).
 - Bản dịch lưu ở `bench/phase0/data/mt/outputs/` (không commit).
 - COMET chạy trong môi trường uv riêng, vì `unbabel-comet` 2.2.7 bắt buộc numpy < 2 và transformers < 5.
@@ -43,8 +44,11 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+import http.client
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+# Chỉ gọi 127.0.0.1: bỏ qua HTTP(S)_PROXY và proxy hệ thống, nếu không /health đi qua proxy và không bao giờ tới llama-server.
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 EN_NAME = {"en": "English", "zh": "Chinese", "ja": "Japanese", "ko": "Korean", "vi": "Vietnamese"}
 CN_NAME = {"en": "英语", "zh": "中文", "ja": "日语", "ko": "韩语", "vi": "越南语"}
 
@@ -81,31 +85,47 @@ class LlamaServer:
             self.port = s.getsockname()[1]
         self.key = secrets.token_hex(16)
         self.base = f"http://127.0.0.1:{self.port}"
-        log = open(log_path or os.devnull, "w")
         cmd = [find_llama_server(), "-m", model, "--host", "127.0.0.1", "--port", str(self.port),
                "--api-key", self.key, "-c", "2048", "-np", "1", "-ngl", "auto", "--no-webui", *extra_args]
-        self.proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=log)
-        deadline = time.time() + 180
-        while time.time() < deadline:
+        self.proc = None
+        # "a": chạy lại (translate.py tiếp tục) không xóa log của lần server vừa chết.
+        self._log = open(log_path or os.devnull, "a")
+        try:
+            self.proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=self._log)
+            self._wait_ready(180)
+        except BaseException:  # kể cả KeyboardInterrupt: `with` không chạy __exit__ khi __init__ lỗi
+            self.close()
+            raise
+
+    def _wait_ready(self, timeout):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
             if self.proc.poll() is not None:
-                raise RuntimeError(f"llama-server thoát sớm (mã {self.proc.returncode}), xem log")
+                raise RuntimeError(f"llama-server thoát sớm (mã {self.proc.returncode}), xem log: {self._log.name}")
             try:
-                with urllib.request.urlopen(f"{self.base}/health", timeout=2) as r:
+                with _OPENER.open(f"{self.base}/health", timeout=2) as r:
                     if r.status == 200:
                         return
-            except (urllib.error.URLError, ConnectionError, TimeoutError):
+            except urllib.error.HTTPError as e:  # 503 khi đang nạp model
+                e.close()
+            except (OSError, http.client.HTTPException):
                 pass
             time.sleep(0.2)
-        raise RuntimeError("llama-server không sẵn sàng sau 180 giây")
+        raise RuntimeError(f"llama-server không sẵn sàng sau {timeout} giây, xem log: {self._log.name}")
 
     def _post(self, path, body):
         req = urllib.request.Request(f"{self.base}{path}", data=json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json",
                                               "Authorization": f"Bearer {self.key}"})
-        return urllib.request.urlopen(req, timeout=300)
+        try:
+            return _OPENER.open(req, timeout=300)
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", "replace")[:500]
+            e.close()
+            raise RuntimeError(f"llama-server {path} trả HTTP {e.code}: {detail}") from None
 
     def chat(self, prompt, max_tokens=512, stream=False):
-        """Tham số sinh theo §6.5. Trả (text, info) với info gồm thời gian và số token."""
+        """Tham số sinh theo §6.5. Trả (text, info); info có `finish_reason` ("stop" hoặc "length") ở cả hai chế độ."""
         body = {"messages": [{"role": "user", "content": prompt}], "temperature": 0.0, "repeat_penalty": 1.05,
                 "max_tokens": max_tokens, "cache_prompt": True, "stream": stream}
         started = time.perf_counter()
@@ -115,23 +135,33 @@ class LlamaServer:
                 t = data.get("timings", {})
                 return data["choices"][0]["message"]["content"].strip(), {
                     "total_ms": (time.perf_counter() - started) * 1000,
+                    "finish_reason": data["choices"][0]["finish_reason"],
                     "prompt_tokens": data["usage"]["prompt_tokens"],
                     "completion_tokens": data["usage"]["completion_tokens"],
                     "prompt_ms": t.get("prompt_ms"), "predicted_ms": t.get("predicted_ms")}
-            text, first = "", None
+            text, first, finish, done = "", None, None, False
             for raw in r:
                 line = raw.decode("utf-8").strip()
                 if not line.startswith("data:"):
                     continue
                 payload = line[5:].strip()
                 if payload == "[DONE]":
+                    done = True
                     break
-                delta = json.loads(payload)["choices"][0]["delta"].get("content") or ""
-                if delta and first is None:
-                    first = (time.perf_counter() - started) * 1000
-                text += delta
+                obj = json.loads(payload)
+                if "error" in obj:
+                    raise RuntimeError(f"llama-server báo lỗi giữa stream: {obj['error']}")
+                for choice in obj.get("choices") or []:
+                    delta = choice.get("delta", {}).get("content") or ""
+                    if delta and first is None:
+                        first = (time.perf_counter() - started) * 1000
+                    text += delta
+                    finish = choice.get("finish_reason") or finish
             total = (time.perf_counter() - started) * 1000
-            return text.strip(), {"total_ms": total, "first_token_ms": first if first is not None else total}
+            if not done:
+                raise RuntimeError(f"stream kết thúc mà không có [DONE] (đã nhận {len(text)} ký tự): bản dịch có thể bị cụt")
+            return text.strip(), {"total_ms": total, "first_token_ms": first if first is not None else total,
+                                  "finish_reason": finish}
 
     def completion(self, raw_prompt, max_tokens=512):
         body = {"prompt": raw_prompt, "n_predict": max_tokens, "temperature": 0.0, "repeat_penalty": 1.05,
@@ -148,11 +178,15 @@ class LlamaServer:
             return len(json.load(r)["tokens"])
 
     def close(self):
-        self.proc.terminate()
-        try:
-            self.proc.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            self.proc.kill()
+        if self.proc is not None and self.proc.poll() is None:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait()
+        if not self._log.closed:
+            self._log.close()
 
     def __enter__(self):
         return self
@@ -538,6 +572,7 @@ Script tính:
   - Có ngữ cảnh so với không, cho cờ ngữ cảnh.
 - Cột "Số câu dài gấp đôi": số câu mà bản dịch có ngữ cảnh dài hơn gấp đôi bản không có ngữ cảnh. Khi câu gốc ngắn, model đôi khi dịch luôn cả câu ngữ cảnh.
 - Ngưỡng tỉ lệ token: tỉ lệ lớn nhất đo được, cộng biên 25%, làm tròn lên 0,1. Chỉ lấy từ các lượt chạy không có ngữ cảnh.
+- Cột "Bị cắt": số bản dịch dừng vì chạm số token tối đa (`finish_reason` là `length`), tức là sinh lan man. Các bản này không được tính vào ngưỡng; chiều nào có bản bị cắt thì xem lại từng câu.
 
 - [ ] **Step 1: Tạo `bench/phase0/mt/score_mt.py`**
 
@@ -585,8 +620,12 @@ def bootstrap_ci(diffs, n_boot=2000):
 
 
 def summarize(rows, scores):
-    ratios = [r["completion_tokens"] / max(r["src_tokens"], 1) for r in rows]
-    out = {"n": len(rows), "token_ratio_max": max(ratios), "token_ratio_p99": percentile(ratios, 99),
+    # Bản dịch bị cắt ở số token tối đa (finish_reason "length") là sinh lan man: đếm riêng, không tính vào ngưỡng.
+    capped = sum(r.get("finish_reason") == "length" for r in rows)
+    kept = [r for r in rows if r.get("finish_reason") != "length"] or rows  # cả chiều đều bị cắt: vẫn tính, để thấy
+    ratios = [r["completion_tokens"] / max(r["src_tokens"], 1) for r in kept]
+    out = {"n": len(rows), "length_capped": capped,
+           "token_ratio_max": max(ratios), "token_ratio_p99": percentile(ratios, 99),
            # Ngưỡng đề xuất: tỉ lệ lớn nhất đo được, cộng biên 25%, làm tròn lên 0,1.
            "proposed_threshold": math.ceil(max(ratios) * 1.25 * 10) / 10,
            "total_ms_p50": percentile([r["total_ms"] for r in rows], 50)}
@@ -684,13 +723,14 @@ def main():
                   ensure_ascii=False, indent=1)
 
     lines = ["## Mốc theo lượt chạy", "",
-             "| Lượt chạy | Chiều | Số câu | COMET | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | p50 thời gian (ms) |",
-             "|---|---|---|---|---|---|---|---|"]
+             "| Lượt chạy | Chiều | Số câu | COMET | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | Bị cắt | p50 thời gian (ms) |",
+             "|---|---|---|---|---|---|---|---|---|"]
     for name, per_dir in report.items():
         for d, r in per_dir.items():
             comet_s = f"{r['comet']:.3f}" if "comet" in r else "—"
             lines.append(f"| {name} | {d} | {r['n']} | {comet_s} | {floor_cell(name, d, per_dir)} | "
-                         f"{r['token_ratio_max']:.2f} | {r['proposed_threshold']:.1f} | {r['total_ms_p50']:.0f} |")
+                         f"{r['token_ratio_max']:.2f} | {r['proposed_threshold']:.1f} | {r['length_capped']} | "
+                         f"{r['total_ms_p50']:.0f} |")
     lines += ["", "## So sánh theo cặp (cùng tập câu)", "",
               "| So sánh | Chiều | Số câu | Chênh COMET | 95% CI | Chênh p50 thời gian | Số câu dài gấp đôi |",
               "|---|---|---|---|---|---|---|"]

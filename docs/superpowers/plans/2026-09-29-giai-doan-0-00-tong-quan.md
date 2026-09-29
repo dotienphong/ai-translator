@@ -202,7 +202,9 @@ Mỗi mục là một thay đổi riêng trong spec:
     - `warmup` → `warmup_done {millis}`;
     - mọi lỗi → `error {segment_id?, message}`.
   - Quy tắc mở rộng giao thức: chỉ thêm biến thể ở cuối; khung thừa byte là lỗi.
-- §6.5: ngưỡng tỉ lệ token theo từng cặp ngôn ngữ, lấy từ `results/s7_mt_decisions.md`. Quyết định cờ ngữ cảnh.
+- §6.5:
+  - Ngưỡng tỉ lệ token theo từng cặp ngôn ngữ, lấy từ `results/s7_mt_decisions.md`. Quyết định cờ ngữ cảnh.
+  - Truyền API key cho `llama-server` qua biến môi trường `LLAMA_API_KEY` thay vì `--api-key`, vì tham số dòng lệnh hiện ra trong `ps` (b11146 hỗ trợ cả hai).
 - §6.11: dung lượng bộ cài đo ở `results/s3_lid.md`.
 - §6.12:
   - Khóa llama.cpp v0.5.0 (b11146).
