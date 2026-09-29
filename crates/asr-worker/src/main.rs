@@ -7,6 +7,8 @@ use asr_protocol::{Request, Response, read_frame, write_frame};
 use asr_worker::engine::Engine;
 use std::io::{BufReader, BufWriter};
 
+/// Vòng lặp giao thức. Mọi lỗi đọc khung (I/O, khung quá lớn, `Codec`, `TrailingBytes`) đều làm worker thoát ngay với
+/// mã 1, kể cả khi luồng vẫn còn đồng bộ (`Codec`, `TrailingBytes`). App tự khởi động lại worker, nên không cố đọc tiếp.
 fn main() -> Result<()> {
     if std::env::args().any(|a| a == "--probe") {
         return probe();
@@ -23,8 +25,14 @@ fn main() -> Result<()> {
                 n_threads,
             } => match Engine::load(&model_path, use_gpu, n_threads) {
                 Ok(e) => {
+                    let backend = backend_name(use_gpu);
+                    eprintln!(
+                        "asr-worker: backend={backend} flash_attn={} decode_mode={}",
+                        if e.flash_attn() { "on" } else { "off" },
+                        e.decode_mode()
+                    );
                     let ready = Response::Ready {
-                        backend: backend_name(use_gpu).to_string(),
+                        backend: backend.to_string(),
                         decode_mode: e.decode_mode().to_string(),
                         whisper_version: whisper_rs::WHISPER_CPP_VERSION.to_string(),
                         system_info: whisper_rs::print_system_info().to_string(),

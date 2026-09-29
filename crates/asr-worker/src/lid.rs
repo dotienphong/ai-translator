@@ -31,7 +31,7 @@ pub fn pick_language(probs: &[f32], allowed: &[i32], prev: Option<i32>, min_prob
 mod tests {
     use super::*;
 
-    // lang id của Whisper: en=0, zh=1, ja=11, ko=16, vi=46.
+    // lang id của Whisper: en=0, zh=1, ko=5, ja=7, vi=19 (ms=23).
     fn probs(pairs: &[(usize, f32)]) -> Vec<f32> {
         let mut v = vec![0.0; 100];
         for &(i, p) in pairs {
@@ -43,37 +43,39 @@ mod tests {
     #[test]
     fn picks_highest_inside_allowed_and_renormalizes() {
         // "ms" (id 23) cao nhất nhưng không được phép.
-        let p = probs(&[(23, 0.5), (46, 0.3), (0, 0.1)]);
-        let (id, prob) = pick_language(&p, &[0, 46], None, 0.5);
-        assert_eq!(id, 46);
+        let p = probs(&[(23, 0.5), (19, 0.3), (0, 0.1)]);
+        let (id, prob) = pick_language(&p, &[0, 19], None, 0.5);
+        assert_eq!(id, 19);
         assert!((prob - 0.75).abs() < 1e-6);
     }
 
     #[test]
     fn keeps_previous_language_when_unsure() {
-        let p = probs(&[(0, 0.2), (46, 0.25), (1, 0.2)]);
-        let (id, _) = pick_language(&p, &[0, 1, 46], Some(0), 0.5);
+        let p = probs(&[(0, 0.2), (19, 0.25), (1, 0.2)]);
+        let (id, prob) = pick_language(&p, &[0, 1, 19], Some(0), 0.5);
         assert_eq!(id, 0);
+        // Xác suất trả về là của ngôn ngữ được giữ, đã chuẩn hóa trong tập cho phép.
+        assert!((prob - 0.2 / 0.65).abs() < 1e-6);
     }
 
     #[test]
     fn ignores_previous_language_outside_allowed_set() {
-        let p = probs(&[(0, 0.2), (46, 0.25), (1, 0.2)]);
-        let (id, _) = pick_language(&p, &[0, 1, 46], Some(11), 0.5);
-        assert_eq!(id, 46);
+        let p = probs(&[(0, 0.2), (19, 0.25), (1, 0.2)]);
+        let (id, _) = pick_language(&p, &[0, 1, 19], Some(7), 0.5);
+        assert_eq!(id, 19);
     }
 
     #[test]
     fn confident_detection_overrides_previous_language() {
-        let p = probs(&[(0, 0.05), (46, 0.9)]);
-        let (id, _) = pick_language(&p, &[0, 46], Some(0), 0.5);
-        assert_eq!(id, 46);
+        let p = probs(&[(0, 0.05), (19, 0.9)]);
+        let (id, _) = pick_language(&p, &[0, 19], Some(0), 0.5);
+        assert_eq!(id, 19);
     }
 
     #[test]
     fn all_zero_falls_back_to_previous_or_first() {
         let p = probs(&[]);
-        assert_eq!(pick_language(&p, &[0, 46], Some(46), 0.5).0, 46);
-        assert_eq!(pick_language(&p, &[0, 46], None, 0.5).0, 0);
+        assert_eq!(pick_language(&p, &[0, 19], Some(19), 0.5).0, 19);
+        assert_eq!(pick_language(&p, &[0, 19], None, 0.5).0, 0);
     }
 }
