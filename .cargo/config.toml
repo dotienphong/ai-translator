@@ -1,0 +1,12 @@
+# whisper-rs-sys chuyển mọi biến môi trường GGML_* sang CMake. Khóa mức CPU cố định cho asr-worker,
+# vì whisper.cpp link tĩnh nên không tự chọn biến thể CPU lúc chạy (spec §6.12).
+# x64: AVX2, FMA, F16C, không AVX-512. arm64: mức Apple M1 (không i8mm, không SME).
+[env]
+GGML_NATIVE = "OFF"
+GGML_CPU_ARM_ARCH = "armv8.4-a+fp16"
+GGML_AVX = "ON"
+GGML_AVX2 = "ON"
+GGML_BMI2 = "ON"
+GGML_FMA = "ON"
+GGML_F16C = "ON"
+GGML_AVX512 = "OFF"

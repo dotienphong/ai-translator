@@ -1,0 +1,17 @@
+# Rust
+/target/
+
+# Frontend
+/node_modules/
+/dist/
+
+# Model, công cụ tải về và dữ liệu lớn của Giai đoạn 0 (xem bench/phase0/fetch.py)
+/models/
+/tools/
+/bench/phase0/data/
+
+# Tauri
+/src-tauri/gen/
+
+# Hệ điều hành
+.DS_Store
