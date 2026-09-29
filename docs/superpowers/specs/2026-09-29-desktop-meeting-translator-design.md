@@ -90,7 +90,7 @@
 |---|---|
 | A1 | **Tương thích:** chạy được với Teams (app), Zoom (app), Google Meet (Chrome và Edge; thêm Safari trên Mac) và Zalo PC, trên cả hai hệ điều hành. Nghe được qua loa, tai nghe có dây và tai nghe Bluetooth. |
 | A2 | **Độ trễ**, tính từ lúc người nói thực sự dừng câu đến lúc bản dịch hiện đủ. **Máy khuyến nghị: p50 ≤ 1,5 giây, p90 ≤ 2,5 giây**, và chữ dịch đầu tiên hiện trong ≤ 1,0 giây (p50). Máy tối thiểu: p50 ≤ 3,5 giây. |
-| A3 | **Chất lượng dịch**, chấm trên văn bản (không qua bước nhận dạng giọng nói), dùng bộ test của benchmark 2026-09-29, chạy qua đúng `llama-server` và prompt của app. **Mốc:** ở S7, chấm COMET Anh→Việt của Q8_0 (gói Chuẩn) và Q4_K_M (gói Nhẹ). Mốc phải đạt mức sàn: gói Chuẩn ≥ 0,82, gói Nhẹ ≥ 0,80; nếu không đạt thì xem lại D5 trước khi làm MVP. **Chống thụt lùi:** sau mỗi lần đổi model, engine hay prompt, COMET không được thấp hơn mốc quá 0,01. |
+| A3 | **Chất lượng dịch**, chấm trên văn bản (không qua bước nhận dạng giọng nói), dùng bộ test của benchmark 2026-09-29, chạy qua đúng `llama-server` và prompt của app. **Mốc:** ở S7, chấm COMET Anh→Việt của Q8_0 (gói Chuẩn) và Q4_K_M (gói Nhẹ). Mốc phải đạt mức sàn: gói Chuẩn ≥ 0,83, gói Nhẹ ≥ 0,80; nếu không đạt thì xem lại D5 trước khi làm MVP. **Chống thụt lùi:** sau mỗi lần đổi model, engine hay prompt, COMET không được thấp hơn mốc quá 0,01. |
 | A4 | **Chất lượng nhận dạng giọng nói:** đo mốc WER của gói Chuẩn trên bộ clip họp mẫu ở Giai đoạn 0. Sau mỗi lần đổi model hay engine, WER không được xấu hơn mốc quá 10%. |
 | A5 | **Ổn định:** một phiên dịch liên tục 2 giờ không crash. RAM sau giờ đầu không tăng quá 10%. |
 | A6 | **Cài đặt:** bộ cài ký số hợp lệ. Bản macOS đã notarize, mở không bị Gatekeeper chặn. Gỡ app sạch, người dùng chọn giữ hay xóa model. |
@@ -505,7 +505,7 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
 | Thiết bị phát thay đổi (cắm tai nghe, kết nối Bluetooth) | `IMMNotificationClient` trên Windows / listener của Core Audio trên macOS | Tự khởi tạo lại việc thu âm trong ≤ 2 giây |
 | Model thiếu hoặc hỏng | Kiểm tra SHA-256 lúc khởi động | Đề nghị tải lại |
 | `llama-server` không chạy hoặc bị crash | Mã thoát, hoặc `/health` báo lỗi | Tự khởi động lại theo §6.5. Quá giới hạn thì báo lỗi, chỉ hiện câu gốc. |
-| GPU khởi tạo lỗi | Log của backend | Tự chuyển sang CPU, báo "Đang chạy bằng CPU (chậm hơn)" |
+| GPU khởi tạo lỗi, hoặc máy Windows không có Vulkan | Log của backend; không nạp được `vulkan-1.dll` (§6.12) | Tự chuyển sang CPU, báo "Đang chạy bằng CPU (chậm hơn)" |
 | Thiếu RAM | RAM trống thấp, hoặc `llama-server` hết bộ nhớ | Đề xuất chuyển sang gói Nhẹ |
 | Trễ dồn lại | Độ trễ > 6 giây | Hiện chỉ báo và áp dụng chính sách ở §7 |
 | Hết quota Free | Bộ đếm phút | Dừng dịch, hiện "Đã dùng hết 30 phút hôm nay" kèm nút nâng cấp |
@@ -605,6 +605,7 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
   - App họp: Teams, Zoom, Meet (Chrome, Edge, Safari), Zalo PC.
   - Thiết bị phát: loa, tai nghe có dây, tai nghe Bluetooth.
   - Hiển thị: app họp ở chế độ toàn màn hình, và máy có nhiều màn hình.
+  - Máy Windows không có Vulkan, ví dụ máy ảo: app vẫn mở được, nhận dạng giọng nói và dịch đều chạy bằng CPU (§6.12).
 - **Soak test:** phát liên tục 2 giờ âm thanh cuộc họp, theo dõi RAM, CPU và GPU (tiêu chí A5).
 - **Cài đặt và cập nhật:** cài mới, nâng cấp từ bản trước, gỡ app; kiểm tra chữ ký qua Gatekeeper và SmartScreen.
 - **Bảo mật (§10.2):**
