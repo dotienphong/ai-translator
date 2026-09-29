@@ -585,49 +585,64 @@ git commit -m "feat(pipeline): cắt đoạn theo VAD (300 ms im lặng, tối �
 - Modify: `crates/pipeline/src/lib.rs`
 - Create: `crates/pipeline/examples/vad_probe.rs`
 - Create: `bench/phase0/vad/ref_probs.py`
+- Modify: `deny.toml`
 
 Không dùng `ort`, vì crate này chỉ có bản 2.0.0-rc.13 mà §6.12 không cho dùng bản rc. Không dùng file `silero_vad_op18_ifless.onnx`, vì candle không chạy được. Mỗi khung 512 mẫu được ghép thêm 64 mẫu cuối của khung trước, giống `OnnxWrapper` của silero-vad.
+
+Ba điểm phải có trong code:
+- State trả về phải `detach()`. candle-onnx dựng trọng số LSTM bằng `Var`, nên nếu không detach thì state kéo theo đồ thị tính của mọi khung trước. Review lúc thực thi đo được RSS tăng khoảng 1 GB mỗi phút, và tràn stack khi `reset()` hoặc drop sau vài phút.
+- Tên input/output so khớp chính xác (`input`, `state`, `sr`, `output`, `stateN`).
+- Lúc nạp model chạy thử một khung im lặng, để lỗi định dạng lộ ra ngay.
+
+Test tham chiếu mặc định bị `#[ignore]`, vì cần model và file thử. Test so từng khung nên bắt được cả NaN, chạy thêm 4.000 khung rồi `reset()` để bắt rò bộ nhớ, và kiểm kết quả sau `reset()` giống hệt lúc mới nạp.
 
 - [ ] **Step 1: Viết test so sánh trước**
 
 ```rust
-//! So xác suất VAD của candle-onnx với onnxruntime (bench/phase0/vad/ref_probs.py).
-//! Chạy khi có đủ ba biến môi trường, nếu không thì bỏ qua. Đường dẫn phải là tuyệt đối, vì cargo chạy test
-//! trong thư mục của crate:
+//! So xác suất VAD của candle-onnx với onnxruntime (bench/phase0/vad/ref_probs.py), rồi chạy dài để bắt rò bộ nhớ.
+//! Cần model và file tham chiếu nên mặc định bị bỏ qua. Đường dẫn phải là tuyệt đối, vì cargo chạy test trong thư mục
+//! của crate:
 //!   SILERO_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx VAD_TEST_WAV=$PWD/... VAD_REF_JSON=$PWD/... \
-//!     cargo test -p pipeline --test vad_reference
+//!     cargo test -p pipeline --test vad_reference -- --include-ignored
 
 use pipeline::segmenter::FRAME_SAMPLES;
 use pipeline::vad::SileroVad;
 use std::path::Path;
 
+fn env(name: &str) -> String {
+    std::env::var(name).unwrap_or_else(|_| panic!("chưa đặt {name} (xem doc đầu file)"))
+}
+
 #[test]
+#[ignore = "cần SILERO_VAD_MODEL, VAD_TEST_WAV, VAD_REF_JSON"]
 fn candle_matches_onnxruntime() {
-    let (Ok(model), Ok(wav), Ok(reference)) = (
-        std::env::var("SILERO_VAD_MODEL"),
-        std::env::var("VAD_TEST_WAV"),
-        std::env::var("VAD_REF_JSON"),
-    ) else {
-        eprintln!("bỏ qua: chưa đặt SILERO_VAD_MODEL, VAD_TEST_WAV, VAD_REF_JSON");
-        return;
-    };
-    let expected: Vec<f32> = serde_json::from_reader(std::fs::File::open(reference).unwrap()).unwrap();
-    let mut vad = SileroVad::load(Path::new(&model)).unwrap();
-    let mut reader = hound::WavReader::open(wav).unwrap();
+    let expected: Vec<f32> = serde_json::from_reader(std::fs::File::open(env("VAD_REF_JSON")).unwrap()).unwrap();
+    let mut vad = SileroVad::load(Path::new(&env("SILERO_VAD_MODEL"))).unwrap();
+    let mut reader = hound::WavReader::open(env("VAD_TEST_WAV")).unwrap();
+    let spec = reader.spec();
+    assert!(
+        spec.sample_rate == 16_000 && spec.channels == 1 && spec.bits_per_sample == 16,
+        "cần WAV 16 kHz mono 16-bit"
+    );
     let samples: Vec<f32> = reader.samples::<i16>().map(|s| s.unwrap() as f32 / 32768.0).collect();
-    let got: Vec<f32> = samples
-        .as_chunks::<FRAME_SAMPLES>()
-        .0
-        .iter()
-        .map(|f| vad.prob(f).unwrap())
-        .collect();
+    let frames = samples.as_chunks::<FRAME_SAMPLES>().0;
+    let got: Vec<f32> = frames.iter().map(|f| vad.prob(f).unwrap()).collect();
     assert_eq!(got.len(), expected.len());
-    let max_diff = got
-        .iter()
-        .zip(&expected)
-        .map(|(a, b)| (a - b).abs())
-        .fold(0.0f32, f32::max);
-    assert!(max_diff <= 1e-4, "chênh lệch lớn nhất {max_diff}");
+    // So từng khung: `NaN <= x` là false nên NaN cũng bị bắt.
+    for (i, (g, e)) in got.iter().zip(&expected).enumerate() {
+        assert!((g - e).abs() <= 1e-4, "khung {i}: candle {g}, onnxruntime {e}");
+    }
+
+    // Chạy thêm 4.000 khung (khoảng 2 phút) rồi reset: nếu state còn giữ đồ thị tính của các khung trước thì bộ nhớ
+    // phình to, và việc hủy chuỗi đó làm tràn stack của luồng test (2 MiB).
+    for f in frames.iter().cycle().take(4_000) {
+        assert!(vad.prob(f).unwrap().is_finite());
+    }
+    vad.reset().unwrap();
+
+    // Sau reset phải ra kết quả giống hệt lúc mới nạp.
+    let again: Vec<f32> = frames.iter().map(|f| vad.prob(f).unwrap()).collect();
+    assert!(again == got, "sau reset kết quả khác lúc mới nạp");
 }
 ```
 
@@ -650,21 +665,22 @@ pub mod vad;
 //! Mỗi lần gọi nhận 512 mẫu 16 kHz, ghép thêm 64 mẫu cuối của khung trước làm ngữ cảnh.
 
 use crate::segmenter::FRAME_SAMPLES;
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, ensure};
 use candle_core::{DType, Device, Tensor};
 use std::collections::HashMap;
 use std::path::Path;
 
 const CONTEXT_SAMPLES: usize = 64;
 const SAMPLE_RATE: i64 = 16_000;
+// Tên input và output của silero_vad.onnx v6.2.3.
+const INPUT: &str = "input";
+const STATE: &str = "state";
+const SR: &str = "sr";
+const OUTPUT: &str = "output";
+const STATE_OUT: &str = "stateN";
 
 pub struct SileroVad {
     model: candle_onnx::onnx::ModelProto,
-    input_name: String,
-    state_name: String,
-    sr_name: String,
-    prob_output: String,
-    state_output: String,
     state: Tensor,
     context: Vec<f32>,
     device: Device,
@@ -674,64 +690,74 @@ impl SileroVad {
     pub fn load(path: &Path) -> Result<Self> {
         let model = candle_onnx::read_file(path).with_context(|| format!("không đọc được {}", path.display()))?;
         let graph = model.graph.as_ref().context("model ONNX không có graph")?;
-        let find_input = |key: &str| {
-            graph
-                .input
-                .iter()
-                .map(|i| i.name.clone())
-                .find(|n| n == key || n.contains(key))
-                .with_context(|| format!("không thấy input {key}"))
-        };
-        let input_name = find_input("input")?;
-        let state_name = find_input("state")?;
-        let sr_name = find_input("sr")?;
-        if graph.output.len() < 2 {
-            bail!("model Silero phải có 2 output (xác suất, state)");
+        for name in [INPUT, STATE, SR] {
+            ensure!(
+                graph.input.iter().any(|i| i.name == name),
+                "model không có input `{name}`"
+            );
         }
-        let prob_output = graph.output[0].name.clone();
-        let state_output = graph.output[1].name.clone();
+        for name in [OUTPUT, STATE_OUT] {
+            ensure!(
+                graph.output.iter().any(|o| o.name == name),
+                "model không có output `{name}`"
+            );
+        }
         let device = Device::Cpu;
-        let state = Tensor::zeros((2, 1, 128), DType::F32, &device)?;
-        Ok(Self {
+        let mut vad = Self {
             model,
-            input_name,
-            state_name,
-            sr_name,
-            prob_output,
-            state_output,
-            state,
+            state: Tensor::zeros((2, 1, 128), DType::F32, &device)?,
             context: vec![0.0; CONTEXT_SAMPLES],
             device,
-        })
+        };
+        // Chạy thử một khung im lặng, để model sai định dạng hay op không được hỗ trợ lộ ra ngay lúc nạp.
+        let p = vad.prob(&[0.0; FRAME_SAMPLES])?;
+        ensure!((0.0..=1.0).contains(&p), "xác suất ngoài khoảng [0, 1]: {p}");
+        ensure!(
+            vad.state.dims() == [2, 1, 128],
+            "state có kích thước lạ: {:?}",
+            vad.state.dims()
+        );
+        vad.reset()?;
+        Ok(vad)
     }
 
+    /// Xóa state và ngữ cảnh. Gọi khi bắt đầu phiên, và khi luồng khung bị đứt (dừng rồi tiếp tục, đổi thiết bị),
+    /// cùng lúc với việc tạo `Segmenter` mới. Không cần gọi sau khoảng im lặng dài: state tự hội tụ.
     pub fn reset(&mut self) -> Result<()> {
         self.state = Tensor::zeros((2, 1, 128), DType::F32, &self.device)?;
         self.context = vec![0.0; CONTEXT_SAMPLES];
         Ok(())
     }
 
-    /// Xác suất có tiếng nói của một khung 512 mẫu.
+    /// Xác suất có tiếng nói của một khung 512 mẫu. Khung cuối thiếu mẫu thì đệm 0 cho đủ rồi mới gọi.
     pub fn prob(&mut self, frame: &[f32]) -> Result<f32> {
-        if frame.len() != FRAME_SAMPLES {
-            bail!("khung VAD phải có {FRAME_SAMPLES} mẫu, nhận {}", frame.len());
-        }
+        ensure!(
+            frame.len() == FRAME_SAMPLES,
+            "khung VAD phải có {FRAME_SAMPLES} mẫu, nhận {}",
+            frame.len()
+        );
         let mut input = Vec::with_capacity(CONTEXT_SAMPLES + FRAME_SAMPLES);
         input.extend_from_slice(&self.context);
         input.extend_from_slice(frame);
         let inputs = HashMap::from([
             (
-                self.input_name.clone(),
+                INPUT.to_string(),
                 Tensor::from_vec(input, (1, CONTEXT_SAMPLES + FRAME_SAMPLES), &self.device)?,
             ),
-            (self.state_name.clone(), self.state.clone()),
-            (self.sr_name.clone(), Tensor::new(SAMPLE_RATE, &self.device)?),
+            (STATE.to_string(), self.state.clone()),
+            (SR.to_string(), Tensor::new(SAMPLE_RATE, &self.device)?),
         ]);
         let mut outputs = candle_onnx::simple_eval(&self.model, inputs)?;
-        self.state = outputs.remove(&self.state_output).context("thiếu output state")?;
+        // candle-onnx dựng trọng số LSTM bằng `Var`, nên state trả về còn kéo theo đồ thị tính của mọi khung trước.
+        // Không `detach` thì mỗi khung giữ thêm khoảng 0,5 MB, và việc hủy chuỗi đó làm tràn stack sau vài phút.
+        self.state = outputs.remove(STATE_OUT).context("thiếu output state")?.detach();
         self.context.copy_from_slice(&frame[FRAME_SAMPLES - CONTEXT_SAMPLES..]);
-        let prob = outputs.remove(&self.prob_output).context("thiếu output xác suất")?;
-        Ok(prob.flatten_all()?.to_vec1::<f32>()?[0])
+        let prob = outputs.remove(OUTPUT).context("thiếu output xác suất")?;
+        prob.flatten_all()?
+            .to_vec1::<f32>()?
+            .first()
+            .copied()
+            .context("output xác suất rỗng")
     }
 }
 ```
@@ -806,24 +832,35 @@ Expected: dòng cuối là `219 148` (219 khung, 148 khung có tiếng nói). N�
 Run:
 ```bash
 SILERO_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx VAD_TEST_WAV=$PWD/bench/phase0/data/vad/en.wav \
-  VAD_REF_JSON=$PWD/bench/phase0/data/vad/en.ref.json cargo test -p pipeline --test vad_reference
+  VAD_REF_JSON=$PWD/bench/phase0/data/vad/en.ref.json cargo test -p pipeline --test vad_reference -- --include-ignored
 ```
-Expected: PASS, `test result: ok. 1 passed`. Lúc thực thi, sai khác lớn nhất là 5,4e-7 (sai số làm tròn f32), thấp hơn ngưỡng 1e-4 của test khoảng 200 lần.
+Expected:
+- PASS, `test result: ok. 1 passed`, khoảng 20 giây ở bản debug; phần lớn thời gian là đoạn chạy dài.
+- Lúc thực thi, sai khác lớn nhất là 5,4e-7 (sai số làm tròn f32), thấp hơn ngưỡng 1e-4 của test khoảng 200 lần.
+- Không đặt biến môi trường thì `cargo test` báo `1 ignored`.
+- Đã thử bỏ `.detach()`: test tràn stack và FAIL. Vậy test bắt được đúng lỗi rò bộ nhớ.
 
 - [ ] **Step 8: Tạo `crates/pipeline/examples/vad_probe.rs` và đo tốc độ**
 
 ```rust
-//! In xác suất VAD của từng khung 32 ms cho một file WAV 16 kHz mono, dạng JSON.
-//! Dùng: cargo run -p pipeline --example vad_probe -- <model.onnx> <audio.wav>
-use pipeline::segmenter::FRAME_SAMPLES;
+//! In xác suất VAD của từng khung 32 ms cho một file WAV 16 kHz mono, dạng JSON, và thời gian chạy mỗi khung.
+//! Dùng: cargo run --release -p pipeline --example vad_probe -- <model.onnx> <audio.wav> [--paced]
+//! `--paced`: gọi đúng nhịp 32 ms như luồng thật, ngủ giữa các khung. Chạy liên tục cho số đo thấp hơn thực tế vài lần,
+//! vì CPU luôn ở tần số cao và cache luôn nóng.
+use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES};
 use pipeline::vad::SileroVad;
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 fn main() -> anyhow::Result<()> {
-    let args: Vec<String> = std::env::args().collect();
-    let mut vad = SileroVad::load(Path::new(&args[1]))?;
-    let mut reader = hound::WavReader::open(&args[2])?;
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let paced = args.iter().any(|a| a == "--paced");
+    let files: Vec<&String> = args.iter().filter(|a| !a.starts_with("--")).collect();
+    let [model, wav] = files.as_slice() else {
+        anyhow::bail!("dùng: vad_probe <model.onnx> <audio.wav> [--paced]");
+    };
+    let mut vad = SileroVad::load(Path::new(model))?;
+    let mut reader = hound::WavReader::open(wav)?;
     anyhow::ensure!(
         reader.spec().sample_rate == 16_000 && reader.spec().channels == 1,
         "cần WAV 16 kHz mono"
@@ -832,30 +869,70 @@ fn main() -> anyhow::Result<()> {
         .samples::<i16>()
         .map(|s| s.map(|v| v as f32 / 32768.0))
         .collect::<Result<_, _>>()?;
-    let started = Instant::now();
-    let probs: Vec<f32> = samples
-        .as_chunks::<FRAME_SAMPLES>()
-        .0
-        .iter()
-        .map(|f| vad.prob(f))
-        .collect::<anyhow::Result<_>>()?;
+    let frames = samples.as_chunks::<FRAME_SAMPLES>().0;
+    let mut probs = Vec::with_capacity(frames.len());
+    let mut times_ms = Vec::with_capacity(frames.len());
+    let origin = Instant::now();
+    for (i, frame) in frames.iter().enumerate() {
+        if paced {
+            let due = origin + Duration::from_millis(i as u64 * FRAME_MS);
+            if let Some(wait) = due.checked_duration_since(Instant::now()) {
+                std::thread::sleep(wait);
+            }
+        }
+        let started = Instant::now();
+        probs.push(vad.prob(frame)?);
+        times_ms.push(started.elapsed().as_secs_f64() * 1000.0);
+    }
+    let mean = times_ms.iter().sum::<f64>() / times_ms.len() as f64;
+    times_ms.sort_by(f64::total_cmp);
+    let at = |p: f64| times_ms[((times_ms.len() - 1) as f64 * p).round() as usize];
     eprintln!(
-        "{} khung, trung bình {:.2} ms/khung",
-        probs.len(),
-        started.elapsed().as_secs_f64() * 1000.0 / probs.len() as f64
+        "{} khung{}, trung bình {mean:.2} ms, p50 {:.2}, p99 {:.2}, lớn nhất {:.2} ms/khung",
+        frames.len(),
+        if paced { " (đúng nhịp 32 ms)" } else { "" },
+        at(0.5),
+        at(0.99),
+        at(1.0)
     );
     println!("{}", serde_json::to_string(&probs)?);
     Ok(())
 }
 ```
 
-Run: `cargo run --release -p pipeline --example vad_probe -- models/silero_vad_v6.2.3.onnx bench/phase0/data/vad/en.wav > /dev/null`
-Expected: stderr in `219 khung, trung bình 0.27 ms/khung` (M4 Pro), tức dưới 1% của 32 ms thời gian thật.
+Run:
+```bash
+cargo run --release -p pipeline --example vad_probe -- models/silero_vad_v6.2.3.onnx bench/phase0/data/vad/en.wav > /dev/null
+cargo run --release -p pipeline --example vad_probe -- models/silero_vad_v6.2.3.onnx bench/phase0/data/vad/en.wav --paced > /dev/null
+```
+Expected (stderr, M4 Pro lúc thực thi):
+- Chạy liên tục: `219 khung, trung bình 0.23 ms, …`.
+- Đúng nhịp 32 ms, như luồng thật: `219 khung (đúng nhịp 32 ms), trung bình 1.17 ms, p50 1.20, p99 1.79, lớn nhất 1.86 ms/khung`, tức khoảng 4% ngân sách 32 ms.
+- Ghi số đúng nhịp vào kết luận S3, vì số chạy liên tục thấp hơn thực tế khoảng 5 lần: CPU luôn ở tần số cao và cache luôn nóng.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Kiểm tra phụ thuộc sau khi thêm candle**
+
+Run: `cargo deny check`
+Expected: FAIL, dòng cuối là `advisories FAILED, bans ok, licenses ok, sources ok`. Lỗi duy nhất là `error[unmaintained]: paste - no longer maintained` (`RUSTSEC-2024-0436`), do candle kéo vào qua `gemm`.
+
+Ghi nhận ngoại lệ trong `deny.toml`: thay khối `[advisories]` bằng
+
+```toml
+[advisories]
+yanked = "deny"
+unsound = "all"
+ignore = [
+    { id = "RUSTSEC-2024-0436", reason = "paste chỉ là macro lúc biên dịch, do candle (gemm) kéo vào; candle 0.11 chưa bỏ" },
+]
+```
+
+Run lại: `cargo deny check && cargo audit`
+Expected: `advisories ok, bans ok, licenses ok, sources ok`. `cargo audit` không báo lỗ hổng; nó vẫn in cảnh báo `paste` (unmaintained), vì `cargo audit` không đọc `deny.toml`.
+
+- [ ] **Step 10: Commit**
 
 ```bash
-git add crates/pipeline bench/phase0/vad Cargo.lock
+git add crates/pipeline bench/phase0/vad Cargo.lock deny.toml
 git commit -m "feat(pipeline): Silero VAD v6.2.3 chạy bằng candle-onnx, khớp onnxruntime"
 ```
 
@@ -1493,7 +1570,7 @@ pub mod vad;
 - [ ] **Step 3: Build và chạy lại test**
 
 Run: `cargo test -p pipeline`
-Expected: `test result: ok. 19 passed` cho unit test, và `1 passed` cho `vad_reference`: không đặt biến môi trường thì test bỏ qua phần so sánh.
+Expected: `test result: ok. 19 passed` cho unit test, và `1 ignored` cho `vad_reference` (test này cần biến môi trường, xem Task 2).
 
 - [ ] **Step 4: Commit**
 
@@ -2660,28 +2737,14 @@ git add bench/phase0/size/sidecar_size.py bench/phase0/results/s3_size_macos-arm
 git commit -m "test(bench): ước lượng dung lượng các tiến trình phụ trong bộ cài macOS"
 ```
 
-### Task 13: Kiểm tra phụ thuộc sau khi thêm thư viện
+### Task 13: Chặn link whisper.cpp ngoài asr-worker trong cargo-deny
 
 **Files:**
 - Modify: `deny.toml`
 
-- [ ] **Step 1: Chạy kiểm tra**
+Ngoại lệ `paste` đã được ghi nhận ở Task 2. Task này thêm luật "tiến trình chính không link ggml" (§5, §6.12) vào cuối khối `[bans]`, ngay dưới `wildcards = "allow"`.
 
-Run: `cargo deny check`
-Expected: FAIL ở phần advisories. Lỗi là `RUSTSEC-2024-0436`: crate `paste` không còn được bảo trì, do candle (`gemm`) kéo vào.
-
-- [ ] **Step 2: Ghi nhận ngoại lệ** trong `deny.toml`, thay khối `[advisories]` bằng:
-
-```toml
-[advisories]
-yanked = "deny"
-unsound = "all"
-ignore = [
-    { id = "RUSTSEC-2024-0436", reason = "paste chỉ là macro lúc biên dịch, do candle (gemm) kéo vào; candle 0.11 chưa bỏ" },
-]
-```
-
-Và thêm luật "tiến trình chính không link ggml" (§5, §6.12) vào cuối khối `[bans]`, ngay dưới `wildcards = "allow"`:
+- [ ] **Step 1: Thêm luật**
 
 ```toml
 # Bất biến kiến trúc (spec §5, §6.12): chỉ asr-worker được link whisper.cpp (ggml); tiến trình chính thì không.
@@ -2691,20 +2754,18 @@ deny = [
 ]
 ```
 
-Lúc lập kế hoạch đã thử: cho `pipeline` phụ thuộc `whisper-rs` thì `cargo deny check bans` báo `error[banned]: crate 'whisper-rs = 0.16.0' is explicitly banned`.
+Lúc lập kế hoạch đã thử: cho `pipeline` phụ thuộc `whisper-rs` thì `cargo deny check bans` báo `error[banned]: crate 'whisper-rs = 0.16.0' is explicitly banned`. Luật chỉ bắt phụ thuộc trực tiếp; vì vậy không crate nào được phụ thuộc thư viện `asr-worker`.
 
-- [ ] **Step 3: Chạy lại**
+- [ ] **Step 2: Kiểm tra**
 
 Run: `cargo deny check && cargo audit`
-Expected:
-- `advisories ok, bans ok, licenses ok, sources ok`.
-- `cargo audit` không báo lỗ hổng. Nó vẫn in cảnh báo `paste` (unmaintained), vì `cargo audit` không đọc `deny.toml`.
+Expected: `advisories ok, bans ok, licenses ok, sources ok`; `cargo audit` không báo lỗ hổng (vẫn có cảnh báo `paste`).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add deny.toml
-git commit -m "build: ghi nhận advisory paste (candle), cấm link whisper.cpp ngoài asr-worker"
+git commit -m "build: cấm link whisper.cpp ngoài asr-worker trong cargo-deny"
 ```
 
 ### Task 14: Windows, build hai bản `asr-worker` và `--probe`
@@ -2859,6 +2920,13 @@ Expected:
 - WER/CER gần với lượt `m4pro-turbo-shared` trên Mac, chênh không quá vài phần trăm tương đối.
 - Nếu lượt Vulkan chậm bất thường (ASR p50 gần bằng lượt CPU), chạy lại lượt Vulkan với `$env:ASR_FLASH_ATTN = "0"` để tắt flash attention, rồi ghi cả hai kết quả vào `s3_windows.md`. GPU nào thiếu phép toán flash attention thì ggml có thể đẩy nó về CPU.
 
+Đo thêm VAD đúng nhịp trên máy này (cần `bench\phase0\data\vad\en.wav`, chép từ Mac):
+
+```powershell
+cargo run --release -p pipeline --example vad_probe -- models\silero_vad_v6.2.3.onnx bench\phase0\data\vad\en.wav --paced > $null
+```
+Expected: dòng `219 khung (đúng nhịp 32 ms), trung bình … ms, p50 …, p99 …, lớn nhất … ms/khung`. Ghi vào `s3_windows.md`; p99 phải nhỏ hơn nhiều so với 32 ms.
+
 - [ ] **Step 3: Ước lượng dung lượng bộ cài Windows**
 
 ```powershell
@@ -2924,7 +2992,8 @@ git commit -m "test(bench): S3 trên máy Windows không có Vulkan"
 
 Chọn: candle-onnx 0.11 trong tiến trình chính, model `silero_vad.onnx` v6.2.3.
 - Khớp onnxruntime: sai khác lớn nhất <số> trên file thử (Task 2).
-- Tốc độ: <số> ms mỗi khung 32 ms.
+- Tốc độ, đo đúng nhịp 32 ms: Mac trung bình <số> ms, p99 <số> ms; Windows trung bình <số> ms, p99 <số> ms.
+- Đã sửa rò bộ nhớ: state của LSTM phải `detach()`.
 - Không dùng `ort` vì chỉ có bản rc. Không dùng VAD của whisper.cpp vì VAD sẽ dừng mỗi khi `asr-worker` khởi động lại.
 - Ghi chú: candle-core 0.11 kéo theo `tokenizers` và oniguruma (mã C), làm build lâu hơn.
 

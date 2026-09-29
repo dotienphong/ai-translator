@@ -1147,7 +1147,7 @@ Expected:
   - asr-protocol 6;
   - asr-worker 5 (bản không có feature);
   - audio-capture 11 (nếu đã làm kế hoạch 04);
-  - pipeline 28 và 1;
+  - pipeline 28, `vad_reference` 1 ignored;
   - latency-bench 3.
 - clippy không có cảnh báo.
 - `cargo deny check` in `advisories ok, bans ok, licenses ok, sources ok`.
