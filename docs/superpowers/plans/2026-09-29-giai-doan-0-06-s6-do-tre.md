@@ -194,7 +194,7 @@ pub fn context_prompt(text: &str, context: &str, src: Lang, tgt: Lang) -> String
 - [ ] **Step 5: Chạy lại test**
 
 Run: `cargo test -p pipeline`
-Expected: PASS, `test result: ok. 12 passed` (7 của segmenter, 5 của prompt).
+Expected: PASS, `test result: ok. 24 passed` (19 của segmenter, 5 của prompt).
 
 - [ ] **Step 6: Commit**
 
@@ -296,7 +296,7 @@ pub fn parse_sse_line(line: &str) -> Result<SseEvent> {
 - [ ] **Step 5: Chạy lại test**
 
 Run: `cargo test -p pipeline`
-Expected: PASS, `test result: ok. 16 passed`
+Expected: PASS, `test result: ok. 28 passed`
 
 - [ ] **Step 6: Commit**
 
@@ -505,7 +505,7 @@ pub mod vad;
 - [ ] **Step 4: Build, test, clippy**
 
 Run: `cargo test -p pipeline && cargo clippy -p pipeline --all-targets -- -D warnings`
-Expected: `test result: ok. 16 passed`; clippy không có cảnh báo.
+Expected: `test result: ok. 28 passed`; clippy không có cảnh báo.
 
 - [ ] **Step 5: Commit**
 
@@ -1147,7 +1147,7 @@ Expected:
   - asr-protocol 6;
   - asr-worker 5 (bản không có feature);
   - audio-capture 11 (nếu đã làm kế hoạch 04);
-  - pipeline 16 và 1;
+  - pipeline 28 và 1;
   - latency-bench 3.
 - clippy không có cảnh báo.
 - `cargo deny check` in `advisories ok, bans ok, licenses ok, sources ok`.
