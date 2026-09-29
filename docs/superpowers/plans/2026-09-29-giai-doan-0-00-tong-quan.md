@@ -196,7 +196,10 @@ git commit -m "docs(bench): báo cáo Giai đoạn 0"
 - [ ] **Step 1: Sửa các mục đã biết là phải đổi**
 
 Mỗi mục là một thay đổi riêng trong spec:
-- §6.3: chạy Silero v6.2.3 bằng candle-onnx trong tiến trình chính. `ort` chỉ có bản RC (§6.12).
+- §6.3:
+  - Chạy Silero v6.2.3 bằng candle-onnx trong tiến trình chính. `ort` chỉ có bản RC (§6.12).
+  - State của LSTM phải `detach()` sau mỗi khung.
+  - Bản debug cần khoảng 1 MiB stack cho mỗi lần suy luận, nên VAD chạy trên luồng riêng có stack từ 4 MiB.
 - §6.4:
   - Chế độ dùng chung một lượt encode là mặc định; ghi rõ bản vá trong `third_party/`. `no_speech_prob` tính từ logits sau SOT.
   - Viết lại danh sách thông điệp cho khớp `asr-protocol`:
@@ -218,6 +221,7 @@ Mỗi mục là một thay đổi riêng trong spec:
   - `llama-server` chính thức trên macOS link động: MVP chọn giữa tự build tĩnh và kèm các file `.dylib`.
   - Nếu Task 14 của kế hoạch 03 thấy phụ thuộc `VCRUNTIME140.dll` thì ghi cách xử lý: link tĩnh CRT, hoặc kèm VC++ Redistributable.
   - `cargo deny` dùng `deny.toml` ở gốc repo, kèm danh sách giấy phép được phép.
+  - Nâng candle-core hoặc candle-onnx thì chạy `vad_reference` với `--include-ignored`. Test này mặc định bị bỏ qua vì cần model.
 - §12: thêm `crates/{asr-protocol,asr-worker,audio-capture,pipeline,latency-bench}`, `third_party/` và `deny.toml`.
 - Việc cho MVP, rút ra từ review code Giai đoạn 0:
   - `asr-protocol`: `backend` và `decode_mode` thành enum. `error` có thêm `kind` (NotLoaded, ModelLoad, OutOfMemory, GpuInit, InvalidRequest, Internal) để bảng lỗi §9 phân biệt được. `ready` có `protocol_version`, để app từ chối worker lệch phiên bản.

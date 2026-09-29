@@ -590,7 +590,7 @@ git commit -m "feat(pipeline): cắt đoạn theo VAD (300 ms im lặng, tối �
 Không dùng `ort`, vì crate này chỉ có bản 2.0.0-rc.13 mà §6.12 không cho dùng bản rc. Không dùng file `silero_vad_op18_ifless.onnx`, vì candle không chạy được. Mỗi khung 512 mẫu được ghép thêm 64 mẫu cuối của khung trước, giống `OnnxWrapper` của silero-vad.
 
 Ba điểm phải có trong code:
-- State trả về phải `detach()`. candle-onnx dựng trọng số LSTM bằng `Var`, nên nếu không detach thì state kéo theo đồ thị tính của mọi khung trước. Review lúc thực thi đo được RSS tăng khoảng 1 GB mỗi phút, và tràn stack khi `reset()` hoặc drop sau vài phút.
+- State trả về phải `detach()`. candle-onnx dựng trọng số LSTM bằng `Var`, nên nếu không detach thì state kéo theo đồ thị tính của mọi khung trước. Review lúc thực thi đo được RSS tăng khoảng 1 GB mỗi phút, và tràn stack khi `reset()` hoặc drop sau vài phút. Một `debug_assert!` kiểm điều này ở mỗi khung.
 - Tên input/output so khớp chính xác (`input`, `state`, `sr`, `output`, `stateN`).
 - Lúc nạp model chạy thử một khung im lặng, để lỗi định dạng lộ ra ngay.
 
@@ -600,8 +600,8 @@ Test tham chiếu mặc định bị `#[ignore]`, vì cần model và file thử
 
 ```rust
 //! So xác suất VAD của candle-onnx với onnxruntime (bench/phase0/vad/ref_probs.py), rồi chạy dài để bắt rò bộ nhớ.
-//! Cần model và file tham chiếu nên mặc định bị bỏ qua. Đường dẫn phải là tuyệt đối, vì cargo chạy test trong thư mục
-//! của crate:
+//! Cần model và file tham chiếu nên mặc định bị bỏ qua. Chạy lại mỗi khi nâng candle-core hoặc candle-onnx.
+//! Đường dẫn phải là tuyệt đối, vì cargo chạy test trong thư mục của crate:
 //!   SILERO_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx VAD_TEST_WAV=$PWD/... VAD_REF_JSON=$PWD/... \
 //!     cargo test -p pipeline --test vad_reference -- --include-ignored
 
@@ -679,6 +679,8 @@ const SR: &str = "sr";
 const OUTPUT: &str = "output";
 const STATE_OUT: &str = "stateN";
 
+/// Bản debug cần khoảng 1 MiB stack cho mỗi lần suy luận, kể cả lần chạy thử trong `load()`, mà luồng chính của Windows
+/// chỉ có 1 MiB. Vì vậy tạo và dùng `SileroVad` trên luồng riêng, đặt `std::thread::Builder::stack_size` từ 4 MiB.
 pub struct SileroVad {
     model: candle_onnx::onnx::ModelProto,
     state: Tensor,
@@ -710,7 +712,9 @@ impl SileroVad {
             device,
         };
         // Chạy thử một khung im lặng, để model sai định dạng hay op không được hỗ trợ lộ ra ngay lúc nạp.
-        let p = vad.prob(&[0.0; FRAME_SAMPLES])?;
+        let p = vad
+            .prob(&[0.0; FRAME_SAMPLES])
+            .context("chạy thử model Silero lúc nạp thất bại")?;
         ensure!((0.0..=1.0).contains(&p), "xác suất ngoài khoảng [0, 1]: {p}");
         ensure!(
             vad.state.dims() == [2, 1, 128],
@@ -751,6 +755,7 @@ impl SileroVad {
         // candle-onnx dựng trọng số LSTM bằng `Var`, nên state trả về còn kéo theo đồ thị tính của mọi khung trước.
         // Không `detach` thì mỗi khung giữ thêm khoảng 0,5 MB, và việc hủy chuỗi đó làm tràn stack sau vài phút.
         self.state = outputs.remove(STATE_OUT).context("thiếu output state")?.detach();
+        debug_assert!(!self.state.track_op(), "state còn kéo theo đồ thị tính");
         self.context.copy_from_slice(&frame[FRAME_SAMPLES - CONTEXT_SAMPLES..]);
         let prob = outputs.remove(OUTPUT).context("thiếu output xác suất")?;
         prob.flatten_all()?
@@ -771,6 +776,9 @@ Ghép 64 mẫu cuối của khung trước làm ngữ cảnh, giống OnnxWrappe
 
 Dùng:  uv run --no-project --python 3.12 --with "onnxruntime==1.30.0" --with "numpy==2.5.3" \
          python bench/phase0/vad/ref_probs.py <model.onnx> <audio.wav> > ref.json
+
+File thử `bench/phase0/data/vad/en.wav` (không commit) tạo bằng lệnh `say` của macOS, theo Task 2 Step 6 của
+docs/superpowers/plans/2026-09-29-giai-doan-0-03-s3-nhan-dang.md. Máy Windows chép `en.wav` và `en.ref.json` từ Mac.
 """
 import json
 import sys
@@ -838,7 +846,7 @@ Expected:
 - PASS, `test result: ok. 1 passed`, khoảng 20 giây ở bản debug; phần lớn thời gian là đoạn chạy dài.
 - Lúc thực thi, sai khác lớn nhất là 5,4e-7 (sai số làm tròn f32), thấp hơn ngưỡng 1e-4 của test khoảng 200 lần.
 - Không đặt biến môi trường thì `cargo test` báo `1 ignored`.
-- Đã thử bỏ `.detach()`: test tràn stack và FAIL. Vậy test bắt được đúng lỗi rò bộ nhớ.
+- Đã thử bỏ `.detach()`: `debug_assert!` báo `state còn kéo theo đồ thị tính` ngay ở khung đầu (lúc `load` chạy thử), test FAIL. Bỏ cả `debug_assert!` thì đoạn chạy dài tràn stack, test vẫn FAIL.
 
 - [ ] **Step 8: Tạo `crates/pipeline/examples/vad_probe.rs` và đo tốc độ**
 
@@ -870,6 +878,7 @@ fn main() -> anyhow::Result<()> {
         .map(|s| s.map(|v| v as f32 / 32768.0))
         .collect::<Result<_, _>>()?;
     let frames = samples.as_chunks::<FRAME_SAMPLES>().0;
+    anyhow::ensure!(!frames.is_empty(), "file ngắn hơn một khung ({FRAME_SAMPLES} mẫu)");
     let mut probs = Vec::with_capacity(frames.len());
     let mut times_ms = Vec::with_capacity(frames.len());
     let origin = Instant::now();
@@ -2925,7 +2934,7 @@ Expected:
 ```powershell
 cargo run --release -p pipeline --example vad_probe -- models\silero_vad_v6.2.3.onnx bench\phase0\data\vad\en.wav --paced > $null
 ```
-Expected: dòng `219 khung (đúng nhịp 32 ms), trung bình … ms, p50 …, p99 …, lớn nhất … ms/khung`. Ghi vào `s3_windows.md`; p99 phải nhỏ hơn nhiều so với 32 ms.
+Expected: dòng `219 khung (đúng nhịp 32 ms), trung bình … ms, p50 …, p99 …, lớn nhất … ms/khung`. Ghi vào `s3_windows.md`. Đạt khi p99 dưới 8 ms, tức 25% chu kỳ 32 ms.
 
 - [ ] **Step 3: Ước lượng dung lượng bộ cài Windows**
 
