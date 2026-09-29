@@ -1,7 +1,7 @@
 # Meeting Translator (tên tạm): app desktop dịch phụ đề cuộc họp offline — Design
 
 **Ngày:** 2026-09-29
-**Trạng thái:** Bản nháp qua brainstorming, chờ PHONG duyệt
+**Trạng thái:** Đã duyệt ngày 2026-09-29. Kế hoạch Giai đoạn 0 nằm ở `docs/superpowers/plans/`.
 **Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS, cùng một license server nhỏ để nhận thanh toán qua PayOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
 
 ---
