@@ -1,0 +1,201 @@
+//! Chạy whisper.cpp qua whisper-rs (spec §6.4).
+//!
+//! Có hai chế độ giải mã:
+//! - Chế độ A (`split`): nhận diện ngôn ngữ dùng một `WhisperState` riêng, luôn mã hóa 3 giây đầu của đoạn
+//!   với `audio_ctx` cố định, rồi `whisper_full` chép lời. whisper.cpp chỉ đặt `audio_ctx` bên trong
+//!   `whisper_full`, nên state này được `whisper_full` một lần lúc làm nóng rồi không chạy `whisper_full` nữa.
+//! - Chế độ B (`shared`, xem `shared.rs`): một lượt encode dùng chung cho cả hai việc. Là mặc định khi build
+//!   với feature `shared-encode`; đặt `ASR_MODE=split` để chạy chế độ A khi cần so sánh.
+
+use crate::lid::pick_language;
+use anyhow::{Context, Result, bail};
+use asr_protocol::{SAMPLE_RATE, TranscribeRequest, TranscribeResult, audio_ctx_for_samples};
+use std::time::Instant;
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState};
+
+/// Nhận diện ngôn ngữ trên tối đa 3 giây đầu của đoạn (spec §6.4).
+pub const LID_SAMPLES: usize = SAMPLE_RATE as usize * 3;
+pub(crate) const MIN_LANG_PROB: f32 = 0.5;
+
+pub struct Engine {
+    ctx: WhisperContext,
+    asr_state: WhisperState,
+    lid_state: WhisperState,
+    n_threads: usize,
+    prev_lang: Option<i32>,
+    /// Có giá trị khi chạy chế độ B.
+    #[cfg(feature = "shared-encode")]
+    shared: Option<crate::shared::Decoder>,
+}
+
+impl Engine {
+    pub fn load(model_path: &str, use_gpu: bool, n_threads: u32) -> Result<Self> {
+        // Flash attention bật cùng GPU. `ASR_FLASH_ATTN=0` để tắt khi thử trên Vulkan: GPU nào thiếu phép toán này thì
+        // ggml có thể đẩy nó về CPU, làm chậm hẳn mà không báo lỗi.
+        let flash_attn = use_gpu && std::env::var("ASR_FLASH_ATTN").as_deref() != Ok("0");
+        let params = WhisperContextParameters {
+            use_gpu,
+            flash_attn,
+            ..Default::default()
+        };
+        let ctx = WhisperContext::new_with_params(model_path, params)
+            .with_context(|| format!("không nạp được model {model_path}"))?;
+        let asr_state = ctx.create_state().context("tạo state chép lời")?;
+        let lid_state = ctx.create_state().context("tạo state nhận diện ngôn ngữ")?;
+        #[cfg(feature = "shared-encode")]
+        let shared = (std::env::var("ASR_MODE").as_deref() != Ok("split")).then(|| crate::shared::Decoder::new(&ctx));
+        Ok(Self {
+            ctx,
+            asr_state,
+            lid_state,
+            n_threads: n_threads.max(1) as usize,
+            prev_lang: None,
+            #[cfg(feature = "shared-encode")]
+            shared,
+        })
+    }
+
+    /// `shared` (chế độ B) hoặc `split` (chế độ A).
+    pub fn decode_mode(&self) -> &'static str {
+        #[cfg(feature = "shared-encode")]
+        if self.shared.is_some() {
+            return "shared";
+        }
+        "split"
+    }
+
+    /// Chạy thử trên 3 giây im lặng. Nạp sẵn kernel GPU cho cả hai state, và đặt
+    /// `audio_ctx` của state nhận diện ngôn ngữ về đúng 3 giây.
+    pub fn warmup(&mut self) -> Result<f32> {
+        let silence = vec![0.0f32; LID_SAMPLES];
+        let started = Instant::now();
+        let audio_ctx = audio_ctx_for_samples(silence.len());
+        let params = full_params(self.n_threads, "en", audio_ctx);
+        self.lid_state
+            .full(params, &silence)
+            .context("làm nóng state nhận diện ngôn ngữ")?;
+        let params = full_params(self.n_threads, "en", audio_ctx);
+        self.asr_state
+            .full(params, &silence)
+            .context("làm nóng state chép lời")?;
+        Ok(started.elapsed().as_secs_f32() * 1000.0)
+    }
+
+    pub fn transcribe(&mut self, req: &TranscribeRequest) -> Result<TranscribeResult> {
+        if req.languages.is_empty() {
+            bail!("danh sách ngôn ngữ rỗng");
+        }
+        let allowed = req
+            .languages
+            .iter()
+            .map(|l| whisper_rs::get_lang_id(l).with_context(|| format!("mã ngôn ngữ không hợp lệ: {l}")))
+            .collect::<Result<Vec<i32>>>()?;
+        let pcm: Vec<f32> = req.pcm.iter().map(|&s| s as f32 / 32768.0).collect();
+
+        #[cfg(feature = "shared-encode")]
+        if let Some(decoder) = &self.shared {
+            let started = Instant::now();
+            let d = decoder.transcribe(
+                &self.ctx,
+                &mut self.asr_state,
+                &pcm,
+                req.audio_ctx,
+                &allowed,
+                self.prev_lang,
+                &req.prompt_tokens,
+                self.n_threads,
+            )?;
+            let total_ms = started.elapsed().as_secs_f32() * 1000.0;
+            self.prev_lang = Some(d.lang_id);
+            return Ok(TranscribeResult {
+                segment_id: req.segment_id,
+                lang: whisper_rs::get_lang_str(d.lang_id)
+                    .context("lang id không hợp lệ")?
+                    .to_string(),
+                lang_prob: d.lang_prob,
+                text: d.text,
+                tokens: d.tokens,
+                no_speech_prob: d.no_speech_prob,
+                lid_ms: d.lid_ms,
+                asr_ms: total_ms - d.lid_ms,
+            });
+        }
+
+        let lid_started = Instant::now();
+        let (lang_id, lang_prob) = if allowed.len() == 1 {
+            (allowed[0], 1.0)
+        } else {
+            let head = &pcm[..pcm.len().min(LID_SAMPLES)];
+            self.lid_state
+                .pcm_to_mel(head, self.n_threads)
+                .context("tính mel cho nhận diện ngôn ngữ")?;
+            let (_, probs) = self
+                .lid_state
+                .lang_detect(0, self.n_threads)
+                .context("nhận diện ngôn ngữ")?;
+            pick_language(&probs, &allowed, self.prev_lang, MIN_LANG_PROB)
+        };
+        let lid_ms = if allowed.len() == 1 {
+            0.0
+        } else {
+            lid_started.elapsed().as_secs_f32() * 1000.0
+        };
+        let lang = whisper_rs::get_lang_str(lang_id).context("lang id không hợp lệ")?;
+
+        let asr_started = Instant::now();
+        let mut params = full_params(self.n_threads, lang, req.audio_ctx);
+        if !req.prompt_tokens.is_empty() {
+            params.set_tokens(&req.prompt_tokens);
+        }
+        self.asr_state.full(params, &pcm).context("chép lời")?;
+        let asr_ms = asr_started.elapsed().as_secs_f32() * 1000.0;
+
+        let eot = self.ctx.token_eot();
+        let mut text = String::new();
+        let mut tokens = Vec::new();
+        let mut no_speech_prob = 0.0f32;
+        for segment in self.asr_state.as_iter() {
+            text.push_str(&segment.to_str_lossy()?);
+            no_speech_prob = no_speech_prob.max(segment.no_speech_probability());
+            for i in 0..segment.n_tokens() {
+                if let Some(token) = segment.get_token(i) {
+                    let id = token.token_id();
+                    if id < eot {
+                        tokens.push(id);
+                    }
+                }
+            }
+        }
+        self.prev_lang = Some(lang_id);
+        Ok(TranscribeResult {
+            segment_id: req.segment_id,
+            lang: lang.to_string(),
+            lang_prob,
+            text: text.trim().to_string(),
+            tokens,
+            no_speech_prob,
+            lid_ms,
+            asr_ms,
+        })
+    }
+}
+
+/// Tham số giải mã theo spec §6.4: greedy, không temperature fallback, chặn token không phải
+/// tiếng nói, không dùng ngữ cảnh nội bộ của whisper.cpp (prompt được truyền rõ ràng).
+fn full_params<'a, 'b>(n_threads: usize, lang: &'a str, audio_ctx: i32) -> FullParams<'a, 'b> {
+    let mut p = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+    p.set_n_threads(n_threads as i32);
+    p.set_language(Some(lang));
+    p.set_audio_ctx(audio_ctx);
+    p.set_no_context(true);
+    p.set_single_segment(true);
+    p.set_no_timestamps(true);
+    p.set_suppress_nst(true);
+    p.set_temperature(0.0);
+    p.set_temperature_inc(0.0);
+    p.set_print_special(false);
+    p.set_print_progress(false);
+    p.set_print_realtime(false);
+    p.set_print_timestamps(false);
+    p
+}
