@@ -8,7 +8,9 @@ all-features = true
 [advisories]
 yanked = "deny"
 unsound = "all"
-ignore = []
+ignore = [
+    { id = "RUSTSEC-2024-0436", reason = "paste chỉ là macro lúc biên dịch, do candle (gemm) kéo vào; candle 0.11 chưa bỏ" },
+]
 
 [licenses]
 # App đóng nguồn: chỉ nhận giấy phép dễ dãi, và MPL-2.0 (copyleft theo từng file, dùng nguyên bản không sửa).
