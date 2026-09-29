@@ -22,7 +22,7 @@
   | NLLB-600M | 0,736 | |
 
   - Tốc độ: Hy-MT2 Q8_0 chạy trên CPU 4 luồng mất **0,45 giây/câu**, RAM tối đa khoảng 4 GB.
-  - Nén 8-bit làm COMET giảm nhiều nhất 0,006.
+  - Trên 30 câu thử, bản 8-bit (Q8_0) của Hy-MT2 thấp hơn bản gốc 0,006 COMET. Q8_0 chưa được chấm trên đủ bộ test; việc này làm ở S7 (xem A3).
 - **Đối thủ:** Teams, Zoom và Meet đều có phụ đề dịch, nhưng chỉ ở các gói trả phí cao và chạy trên cloud. Công cụ bên thứ ba cũng phần lớn chạy trên cloud.
 - **Điểm khác biệt của sản phẩm:**
   - Xử lý hoàn toàn offline trên máy.
@@ -90,7 +90,7 @@
 |---|---|
 | A1 | **Tương thích:** chạy được với Teams (app), Zoom (app), Google Meet (Chrome và Edge; thêm Safari trên Mac) và Zalo PC, trên cả hai hệ điều hành. Nghe được qua loa, tai nghe có dây và tai nghe Bluetooth. |
 | A2 | **Độ trễ**, tính từ lúc người nói thực sự dừng câu đến lúc bản dịch hiện đủ. **Máy khuyến nghị: p50 ≤ 1,5 giây, p90 ≤ 2,5 giây**, và chữ dịch đầu tiên hiện trong ≤ 1,0 giây (p50). Máy tối thiểu: p50 ≤ 3,5 giây. |
-| A3 | **Chất lượng dịch**, chấm trên văn bản (không qua bước nhận dạng giọng nói), dùng bộ test của benchmark 2026-09-29. Gói Chuẩn: COMET Anh→Việt ≥ 0,83. Gói Nhẹ: ≥ 0,80. |
+| A3 | **Chất lượng dịch**, chấm trên văn bản (không qua bước nhận dạng giọng nói), dùng bộ test của benchmark 2026-09-29, chạy qua đúng `llama-server` và prompt của app. **Mốc:** ở S7, chấm COMET Anh→Việt của Q8_0 (gói Chuẩn) và Q4_K_M (gói Nhẹ). Mốc phải đạt mức sàn: gói Chuẩn ≥ 0,82, gói Nhẹ ≥ 0,80; nếu không đạt thì xem lại D5 trước khi làm MVP. **Chống thụt lùi:** sau mỗi lần đổi model, engine hay prompt, COMET không được thấp hơn mốc quá 0,01. |
 | A4 | **Chất lượng nhận dạng giọng nói:** đo mốc WER của gói Chuẩn trên bộ clip họp mẫu ở Giai đoạn 0. Sau mỗi lần đổi model hay engine, WER không được xấu hơn mốc quá 10%. |
 | A5 | **Ổn định:** một phiên dịch liên tục 2 giờ không crash. RAM sau giờ đầu không tăng quá 10%. |
 | A6 | **Cài đặt:** bộ cài ký số hợp lệ. Bản macOS đã notarize, mở không bị Gatekeeper chặn. Gỡ app sạch, người dùng chọn giữ hay xóa model. |
@@ -133,8 +133,8 @@
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
   - **Bản quyền:** nhập key, trạng thái và ngày hết hạn, gia hạn, gỡ kích hoạt.
-- **Nâng cấp Pro:** chọn gói 1 tháng hoặc 12 tháng, nhập email, quét mã VietQR hiện ngay trong app (§6.8).
   - **Quyền riêng tư:** bật/tắt lưu lịch sử, xóa toàn bộ dữ liệu.
+- **Nâng cấp Pro:** chọn gói 1 tháng hoặc 12 tháng, nhập email, quét mã VietQR hiện ngay trong app (§6.8).
 - **Giới thiệu và giấy phép mã nguồn mở.**
 
 ### 4.4 Thanh phụ đề
@@ -283,7 +283,9 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Hiển thị:** thanh phụ đề hiện N dòng gần nhất; cửa sổ chính hiện toàn bộ.
 - **Lưu trữ:**
   - Bản chép lời nằm trong bộ nhớ theo từng phiên.
-  - Khi bật "Lưu lịch sử" (Pro), bản chép lời được ghi vào SQLite **đã mã hóa** trong thư mục dữ liệu của app. Mã hóa bằng SQLCipher qua `rusqlite`, khóa lưu trong kho khóa của hệ điều hành (§10.2).
+  - App có một file SQLite **đã mã hóa** trong thư mục dữ liệu của app. Mã hóa bằng SQLCipher qua `rusqlite`, khóa lưu trong kho khóa của hệ điều hành (§10.2). File này chứa:
+    - Từ điển thuật ngữ (Pro, F5).
+    - Bản chép lời, chỉ khi bật "Lưu lịch sử" (Pro).
 - **Xuất file:**
   - TXT, theo dạng `[giờ] câu gốc` rồi `→ bản dịch`.
   - SRT, chọn xuất câu gốc hoặc bản dịch.
@@ -302,7 +304,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 - **Đề xuất gói Chuẩn khi:**
   - máy Apple Silicon có RAM từ 16 GB; hoặc
-  - máy Windows có RAM từ 16 GB và GPU hỗ trợ Vulkan với VRAM từ 4 GB.
+  - máy Windows có RAM từ 16 GB và **card đồ họa rời** hỗ trợ Vulkan, có bộ nhớ riêng (VRAM) từ 4 GB. App xác định qua Vulkan: `deviceType` là `VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU`, và heap `DEVICE_LOCAL` lớn nhất từ 4 GB. GPU tích hợp dùng chung RAM nên chưa được tính, kể cả khi Vulkan báo dung lượng lớn; S6 sẽ đo xem có nên nới điều kiện này không (§14).
 
   Các máy còn lại được đề xuất gói Nhẹ. Người dùng vẫn đổi được.
 - **Tải model:**
@@ -337,9 +339,9 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 | `POST /v1/checkout` `{plan: "pro_1m" \| "pro_12m", email, license_key?}` | Tạo đơn với `orderCode` duy nhất, gọi PayOS `POST /v2/payment-requests`, trả về `checkoutUrl`, `qrCode` và `order_token` (mã ngẫu nhiên để app hỏi trạng thái đơn). Khi gia hạn thì truyền thêm `license_key` đang có. |
 | `POST /v1/webhooks/payos` | Kiểm tra chữ ký webhook bằng checksum key. Đánh dấu đơn đã trả tiền (idempotent theo `orderCode`). Cấp license mới, hoặc gia hạn license cũ thêm 30 hay 365 ngày, tính từ max(hôm nay, ngày hết hạn). Gửi email chứa key. |
 | `GET /v1/orders/{orderCode}?token=…` | App hỏi trạng thái đơn. Khi đơn đã trả tiền thì trả về key. |
-| `POST /v1/licenses/activate` `{key, device_id_hash, device_label}` | Kích hoạt, tối đa 2 máy mỗi key. Trả về token bản quyền. |
+| `POST /v1/licenses/activate` `{key, device_id_hash, device_label}` | Kích hoạt, tối đa 2 máy mỗi key. Trả về token bản quyền. Nếu `device_id_hash` đã có activation của key này (ví dụ khi cài lại app) thì dùng lại activation đó, không tốn thêm suất. Khi đã đủ 2 máy thì trả `409`, kèm danh sách máy đã kích hoạt: `activation_id`, `device_label` và thời điểm `validate` gần nhất. |
 | `POST /v1/licenses/validate` `{key, activation_id}` | Trả về token mới nếu license còn hiệu lực |
-| `POST /v1/licenses/deactivate` `{key, activation_id}` | Gỡ kích hoạt để chuyển máy |
+| `POST /v1/licenses/deactivate` `{key, activation_id}` | Gỡ kích hoạt để chuyển máy. Gọi được từ chính máy đó, hoặc từ máy mới khi key đã đủ 2 máy (gỡ từ xa). Mỗi lần gỡ tính vào giới hạn ở §10.2. |
 
 **Chữ ký khi tạo link thanh toán:** theo tài liệu PayOS, ký HMAC-SHA256 bằng checksum key trên chuỗi các trường `amount`, `cancelUrl`, `description`, `orderCode`, `returnUrl` xếp theo thứ tự chữ cái.
 
@@ -359,8 +361,9 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 **Các quy tắc khác:**
 - **Gia hạn:** PayOS không tự trừ tiền định kỳ. App nhắc trước 7 ngày và khi đã hết hạn. Nút "Gia hạn" tạo đơn mới gắn với key hiện có.
-- **Kiểm tra định kỳ:** mỗi lần khởi động, nếu có mạng (tối đa một lần mỗi ngày), app gọi `validate` để lấy token mới.
-- **Quota Free:** tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính lúc im lặng. Reset lúc 00:00 theo giờ máy. Lưu trong kho khóa của hệ điều hành (Keychain trên macOS, DPAPI trên Windows), có chống chỉnh lùi đồng hồ (§10.2). MVP chấp nhận rủi ro bị lách ở mức cơ bản.
+- **Kiểm tra định kỳ:** lúc khởi động và sau đó mỗi giờ, app xem lần `validate` thành công gần nhất đã quá 24 giờ chưa. Nếu đã quá và có mạng thì gọi `validate` để lấy token mới. Phải kiểm tra cả khi app đang chạy, vì app thường nằm ở khay hệ thống nhiều ngày liền. Nếu chỉ kiểm tra lúc khởi động, quá `refresh_before` app sẽ tự về Free dù vẫn có mạng.
+- **Máy bị gỡ từ xa** sẽ về Free ở lần `validate` kế tiếp. Nếu máy đó đang offline thì token cũ vẫn dùng được tới `refresh_before`, tối đa 14 ngày.
+- **Quota Free:** tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính lúc im lặng. Reset lúc 00:00 theo giờ máy. Lưu trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows), có chống chỉnh lùi đồng hồ (§10.2). MVP chấp nhận rủi ro bị lách ở mức cơ bản.
 - **Trong app:** interface `LicenseProvider` (activate, validate, deactivate) được cài đặt bằng một client gọi license server.
 - **Giới hạn:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng VND, nên MVP chỉ bán được cho khách ở Việt Nam.
 
@@ -378,6 +381,8 @@ Các khóa chính:
 - `launchAtLogin`
 - `theme`
 
+Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong SQLite mã hóa (§6.6).
+
 ### 6.10 Giao diện
 
 - **Công nghệ:** React 19, TypeScript, Vite, Zustand, cùng bộ công cụ quen thuộc với AI Live Translator.
@@ -392,7 +397,7 @@ Các khóa chính:
   - macOS: `.dmg` cho arm64.
   - Mục tiêu dung lượng bộ cài ≤ 60 MB, vì model tải riêng.
 - **Ký số:**
-  - **Windows:** chứng thư ký mã (loại OV hoặc dịch vụ ký trên cloud). Lúc đầu SmartScreen vẫn có thể cảnh báo cho tới khi app tích đủ uy tín.
+  - **Windows:** chứng thư ký mã OV có khóa nằm trên HSM của một dịch vụ ký trên cloud (ví dụ SSL.com eSigner, DigiCert KeyLocker), để CI ký được (§10.2). Từ 2023, khóa của chứng thư OV bắt buộc nằm trên phần cứng; nếu là token USB thì CI không dùng được. Lúc đầu SmartScreen vẫn có thể cảnh báo cho tới khi app tích đủ uy tín.
   - **macOS:** Developer ID Application, bật hardened runtime và notarize.
 - **macOS không chạy sandbox**, vì phân phối trực tiếp. App cần process tap, và cần bật `macOSPrivateApi` để làm cửa sổ trong suốt. Vì vậy hiện chưa thể lên Mac App Store, khớp với quyết định D10.
 - **Tự cập nhật:** dùng `tauri-plugin-updater`.
@@ -411,7 +416,10 @@ Các khóa chính:
     - Mọi plugin Tauri phải cùng dòng phiên bản với Tauri core.
     - Crate Rust phải chạy được với bản Rust stable đang dùng (MSRV).
     - Node.js phải đúng phiên bản Vite yêu cầu.
-  - Không được có hai bản của cùng một thư viện gốc, và không trùng symbol (ví dụ hai bản ggml, xem §5).
+  - Trong cùng một tiến trình, không được có hai bản của cùng một thư viện gốc, và không được trùng symbol.
+    - Riêng ggml, app cố ý có hai bản nhưng ở hai tiến trình riêng (§5): whisper.cpp trong tiến trình chính, llama.cpp trong `llama-server`.
+    - whisper.cpp phải link tĩnh vào tiến trình chính và tắt nạp backend động (`GGML_BACKEND_DL`). Nếu không, tiến trình chính có thể nạp nhầm thư viện ggml của `llama-server` nằm cùng thư mục.
+    - Khi link tĩnh, file thực thi trên Windows phụ thuộc trực tiếp vào `vulkan-1.dll`, nên máy không có Vulkan sẽ không mở được app. Vì vậy phải nạp trễ (delay-load) `vulkan-1.dll`, để các máy này vẫn mở được app và nhận dạng giọng nói bằng CPU. Kiểm tra ở S3.
   - Engine mới phải chạy đúng với model:
     - llama.cpp mới phải nạp và chạy đúng GGUF của Hy-MT2.
     - `whisper-rs` phải đi kèm whisper.cpp có đủ các tính năng cần dùng (VAD, `audio_ctx`).
@@ -445,7 +453,7 @@ Các khóa chính:
 
 | Hạng máy | macOS | Windows | Gói model |
 |---|---|---|---|
-| Khuyến nghị | Apple Silicon M1 trở lên, RAM 16 GB (riêng M1 cơ bản phải xác nhận ở S6) | Windows 10/11 x64, RAM 16 GB, GPU hỗ trợ Vulkan với VRAM ≥ 4 GB (NVIDIA, AMD, Intel Arc) | Chuẩn |
+| Khuyến nghị | Apple Silicon M1 trở lên, RAM 16 GB (riêng M1 cơ bản phải xác nhận ở S6) | Windows 10/11 x64, RAM 16 GB, card đồ họa rời hỗ trợ Vulkan với VRAM riêng ≥ 4 GB (NVIDIA, AMD, Intel Arc) | Chuẩn |
 | Tối thiểu | Apple Silicon, RAM 8 GB | RAM 8 GB, CPU 4 nhân có AVX2 | Nhẹ |
 | Chưa hỗ trợ trong MVP | Mac chip Intel | ARM64, CPU không có AVX2, RAM < 8 GB | — |
 
@@ -462,6 +470,18 @@ Các khóa chính:
 Bảng trên là ước tính; riêng bước dịch đã có số đo thật (dòng dưới). **Mục tiêu p50 ≤ 1,5 giây chỉ đạt được trên máy khuyến nghị có GPU, và còn rất ít dư địa**, nên phải đo thật ở mục S6. Nếu máy M1 cơ bản không đạt thì nâng hạng máy khuyến nghị lên M1 Pro, M2 trở lên.
 
 Mốc thực tế: Hy-MT2 Q8_0 chạy trên CPU 4 luồng của M4 Pro mất 0,45 giây/câu (benchmark 2026-09-29).
+
+**Băng thông bộ nhớ có thể là nút thắt của bước dịch.** Mỗi token sinh ra phải đọc gần hết trọng số của model, nên tốc độ sinh không vượt quá băng thông bộ nhớ chia cho kích thước model. Thực tế thường chỉ đạt khoảng 70–80% mức trần này.
+
+| Máy | Băng thông bộ nhớ | Trần tốc độ với Q8_0 (1,91 GB) | Thời gian tối thiểu cho câu dịch 20 token |
+|---|---|---|---|
+| M1 cơ bản | 68 GB/s | khoảng 35 token/giây | khoảng 0,6 s |
+| M2, M3 cơ bản | 100 GB/s | khoảng 50 token/giây | khoảng 0,4 s |
+| M1 Pro | 200 GB/s | khoảng 100 token/giây | khoảng 0,2 s |
+
+Như vậy trên M1 cơ bản, bước dịch có thể vượt mức 0,2–0,5 s trong bảng ngân sách. Nếu S6 xác nhận điều này, có hai phương án:
+- Nâng hạng máy khuyến nghị như trên.
+- Trên máy băng thông thấp, dùng Q4_K_M (1,13 GB) cho bước dịch nhưng vẫn giữ whisper turbo. Đổi lại, COMET giảm tối đa 0,02 (giả định 6 ở §14).
 
 **RAM ước tính (RSS), cần kiểm chứng ở mục S6:**
 
@@ -491,6 +511,7 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
 | Hết quota Free | Bộ đếm phút | Dừng dịch, hiện "Đã dùng hết 30 phút hôm nay" kèm nút nâng cấp |
 | License không hợp lệ, hết hạn hoặc bị thu hồi | Kết quả `validate` | Về Free, báo rõ lý do |
 | Mất mạng đúng lúc cần kiểm tra license | Lỗi mạng | Giữ Pro trong 14 ngày ân hạn |
+| Key đã kích hoạt đủ 2 máy | `activate` trả `409` | Hiện danh sách máy đã kích hoạt (tên máy, lần dùng gần nhất), cho gỡ một máy rồi kích hoạt máy đang dùng. Vượt giới hạn gỡ ở §10.2 thì hướng dẫn liên hệ hỗ trợ. |
 | Khách đã chuyển khoản nhưng webhook của PayOS đến chậm hoặc bị mất | App vẫn đang chờ; server có đơn chưa xác nhận | App hỏi trạng thái đơn mỗi 3 giây. Server tự đối soát bằng `GET /v2/payment-requests/{id}` mỗi 5 phút cho các đơn chưa xác nhận. |
 | Webhook bị gửi trùng | Trùng `orderCode` | Xử lý idempotent: mỗi đơn chỉ cấp hoặc gia hạn license một lần |
 | Khách chuyển thiếu tiền, hoặc link thanh toán hết hạn | Trạng thái đơn trả về từ PayOS | Không cấp license, hiện hướng dẫn liên hệ hỗ trợ |
@@ -508,7 +529,7 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
 - **Lịch sử chép lời** mặc định tắt, chỉ lưu trên máy, xóa toàn bộ được bằng một nút.
 - **Luật Bảo vệ dữ liệu cá nhân 2025 (Việt Nam):**
   - App không có tài khoản đăng nhập.
-  - License server chỉ lưu email (để gửi và khôi phục key), thông tin đơn hàng, license và mã băm của ID máy.
+  - License server chỉ lưu email (để gửi và khôi phục key), thông tin đơn hàng, license, mã băm của ID máy, tên máy (`device_label`, để người dùng nhận ra máy khi cần gỡ) và thời điểm kiểm tra bản quyền gần nhất.
   - Việc chuyển khoản do ngân hàng và PayOS xử lý; server không nhận số tài khoản ngân hàng của khách.
   - Khi mua, người dùng tick đồng ý cho xử lý email vào đúng mục đích này.
   - Chính sách quyền riêng tư phải ghi rõ dữ liệu nào được lưu, lưu bao lâu, và cách yêu cầu xóa.
@@ -545,8 +566,8 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
 | Crack để dùng Pro miễn phí | Kiểm tra bản quyền ở nhiều chỗ trong code Rust, không dồn vào một biến đúng/sai duy nhất. Bản phát hành bật `strip`, `lto`, `codegen-units = 1`, `panic = "abort"`, và làm rối các chuỗi liên quan tới bản quyền. |
 | Sửa hoặc ký lại file của app | Lúc khởi động, app tự kiểm chữ ký số của chính nó. macOS dùng `SecStaticCodeCheckValidity` kèm yêu cầu đúng Team ID. Windows dùng `WinVerifyTrust` và so tên chủ chứng thư. Chữ ký không hợp lệ thì app chỉ chạy chế độ Free, báo "Bản cài không chính hãng" kèm link tải chính thức. Bản build dev bỏ qua bước này. |
 | Chỉnh lùi đồng hồ máy để lách quota Free hoặc hạn dùng | App lưu mốc thời gian lớn nhất từng thấy. Nếu giờ hiện tại nhỏ hơn mốc đó quá 10 phút thì: không reset quota ngày, coi token là phải kiểm tra online lại, và nhắc người dùng chỉnh giờ. |
-| Sửa trạng thái bản quyền và quota trên máy | Lưu trong kho khóa của hệ điều hành (Keychain trên macOS; DPAPI hoặc Credential Manager trên Windows), không lưu file thường. |
-| Chia sẻ hoặc bán lại key | Mỗi key tối đa 2 máy. Nếu trong 30 ngày có hơn 3 lần gỡ rồi kích hoạt lại thì khóa tạm key và yêu cầu liên hệ hỗ trợ. Key sinh ngẫu nhiên với ít nhất 128 bit, có ký tự kiểm tra để phát hiện gõ sai. |
+| Sửa trạng thái bản quyền và quota trên máy | Lưu trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows), không lưu file thường. |
+| Chia sẻ hoặc bán lại key | Mỗi key tối đa 2 máy; kích hoạt lại trên cùng một máy không tốn thêm suất. Nếu trong 30 ngày có hơn 3 lần gỡ (kể cả gỡ từ xa) rồi kích hoạt máy khác thì khóa tạm key và yêu cầu liên hệ hỗ trợ. Key sinh ngẫu nhiên với ít nhất 128 bit, có ký tự kiểm tra để phát hiện gõ sai. |
 | Dò key hoặc spam license server | Giới hạn request theo IP và theo key, ví dụ `activate` ≤ 10 lần/giờ/IP, `validate` ≤ 30 lần/giờ/key. Vượt ngưỡng thì trả `429`. |
 | Bị clone, đổi thương hiệu rồi bán lại | **Pháp lý:** đăng ký nhãn hiệu (tên và logo) tại Cục Sở hữu trí tuệ Việt Nam, mở rộng ra quốc tế sau. EULA cấm dịch ngược, cấm phân phối lại, cấm đổi thương hiệu. Có sẵn quy trình yêu cầu Microsoft Store và nhà cung cấp hosting gỡ bản nhái. **Kỹ thuật:** logic quan trọng (prompt, cắt và ghép câu, khớp thuật ngữ) nằm trong Rust đã biên dịch; JavaScript chỉ lo hiển thị và được rút gọn. Manifest model, bản cập nhật và token đều ký bằng khóa riêng, nên bản nhái không dùng được hạ tầng của sản phẩm. |
 | Bản giả có cài mã độc | Ký số và notarize mọi bản phát hành. Chỉ phát hành qua tên miền chính thức. Website công bố mã SHA-256 của từng bộ cài và cảnh báo về bản giả. |
@@ -569,11 +590,11 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
   - Hậu xử lý bản dịch.
   - Các trạng thái của phụ đề.
   - Bộ đếm quota và reset theo ngày.
-  - Trạng thái bản quyền: ân hạn, thu hồi.
+  - Trạng thái bản quyền: ân hạn, thu hồi, tự làm mới token khi app chạy liên tục quá 24 giờ.
   - Manifest và SHA-256.
 - **Test giao diện (`vitest`):** i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề; các hàm xuất file.
 - **License server:**
-  - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; tính ngày gia hạn (từ max(hôm nay, ngày hết hạn)); giới hạn 2 máy; ký và kiểm tra token Ed25519.
+  - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; tính ngày gia hạn (từ max(hôm nay, ngày hết hạn)); giới hạn 2 máy, kích hoạt lại cùng máy không tốn suất, gỡ từ xa khi đã đủ máy; ký và kiểm tra token Ed25519.
   - Test tích hợp với PayOS trên môi trường test nếu có; nếu không có thì dùng giao dịch với số tiền nhỏ.
 - **Test tích hợp:**
   - Chạy pipeline từ file WAV (không cần thu âm thật), kiểm tra phụ đề có xuất hiện, đúng thứ tự, đúng thời gian.
@@ -618,6 +639,7 @@ meeting-translator/
 │   │   ├── security/{integrity,clock,keystore}.rs  # Tự kiểm chữ ký, chống lùi giờ, kho khóa (§10.2)
 │   │   ├── transcript/{store,export}.rs
 │   │   ├── overlay/{macos,windows}.rs  # Hành vi cửa sổ native
+│   │   ├── db.rs  glossary.rs     # SQLite mã hóa: lịch sử và từ điển thuật ngữ (§6.6)
 │   │   └── settings.rs  tray.rs  hotkeys.rs  i18n.rs
 │   ├── capabilities/{main,overlay}.json  # Quyền của từng cửa sổ (§10.2)
 │   ├── binaries/                 # llama-server theo target triple
@@ -638,13 +660,13 @@ meeting-translator/
 |---|---|
 | S1 | Dùng Core Audio tap trên macOS để thu âm thanh Zoom, Meet và Teams |
 | S2 | Dùng loopback trên Windows để thu âm thanh Teams, Zoom và Meet, kể cả thiết bị Communications và tai nghe Bluetooth |
-| S3 | Chạy `whisper-rs` với VAD và cơ chế chọn ngôn ngữ; chốt cách chạy Silero |
+| S3 | Chạy `whisper-rs` với VAD và cơ chế chọn ngôn ngữ; chốt cách chạy Silero; kiểm tra whisper.cpp link tĩnh và nạp trễ Vulkan trên Windows (§6.12) |
 | S4 | Chạy `llama-server` với Hy-MT2 qua `/v1/chat/completions` ở chế độ stream; kiểm tra chat template |
 | S5 | Cho thanh phụ đề nổi trên app đang toàn màn hình, trên cả Mac và Windows |
 | S6 | Đo độ trễ tổng thể và RAM cho cả hai gói model |
-| S7 | Benchmark Q4_K_M so với Q8_0, whisper turbo so với small, đo WER khi rút ngắn `audio_ctx`, và thử cờ ngữ cảnh câu trước |
+| S7 | Chấm COMET Anh→Việt của Q8_0 và Q4_K_M qua `llama-server` để lấy mốc cho A3; benchmark whisper turbo so với small, đo WER khi rút ngắn `audio_ctx`, và thử cờ ngữ cảnh câu trước |
 
-**Tiêu chí qua spike:** S1–S5 chạy được, và S6 đạt **p50 ≤ 1,5 giây** trên máy khuyến nghị, đo cả trên máy M1 cơ bản 16 GB. Nếu M1 cơ bản không đạt thì nâng hạng máy khuyến nghị (§8). Nếu cả máy mạnh hơn cũng không đạt thì quay lại sửa spec.
+**Tiêu chí qua spike:** S1–S5 chạy được; S6 đạt **p50 ≤ 1,5 giây** trên máy khuyến nghị, đo cả trên máy M1 cơ bản 16 GB; mốc COMET ở S7 đạt mức sàn của A3. Nếu M1 cơ bản không đạt thì chọn một trong hai phương án ở §8. Nếu cả máy mạnh hơn cũng không đạt thì quay lại sửa spec.
 
 **Giai đoạn 1: MVP.** Làm F1–F10, license server và tích hợp PayOS (§6.8), đạt A1–A7.
 
@@ -663,7 +685,7 @@ meeting-translator/
 1. Core Audio process tap thu được âm thanh của Zoom, Meet và Teams trên macOS 14.2+. Quyền `NSAudioCaptureUsageDescription` hoạt động với app đã ký nhưng không chạy sandbox. (S1)
 2. Endpoint loopback thu được Teams trên Windows 10/11, kể cả khi Teams phát tiếng qua thiết bị Communications. (S2)
 3. File GGUF của Hy-MT2 có chat template dùng được với `/v1/chat/completions`. (S4)
-4. Whisper large-v3-turbo chạy kịp thời gian thực trên máy M1 16 GB và trên laptop Windows có GPU tích hợp dùng Vulkan. (S6)
+4. Whisper large-v3-turbo chạy kịp thời gian thực trên máy M1 16 GB và trên laptop Windows có card rời 4 GB dùng Vulkan. Đo thêm trên laptop chỉ có GPU tích hợp, để quyết định có nới điều kiện đề xuất gói Chuẩn ở §6.7 không. (S6)
 5. Độ trễ tổng thể đạt ngân sách ở §8. (S6)
 6. Bản Q4_K_M của Hy-MT2 giảm COMET không quá 0,02 so với Q8_0. (S7)
 7. PayOS (kiểm tra trước khi làm §6.8):
@@ -682,5 +704,5 @@ meeting-translator/
 - **Thanh toán quốc tế:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam, nên MVP chỉ bán cho khách ở Việt Nam. Muốn bán ra nước ngoài thì chọn thêm một nhà cung cấp sau MVP (có thể cân nhắc Polar).
 - **Dịch vụ gửi email** chứa license key.
 - **Tài khoản Cloudflare riêng** cho license server.
-- **Giấy tờ cho phát hành:** mua chứng thư ký mã cho Windows; tài khoản Apple Developer (99 USD/năm).
+- **Giấy tờ cho phát hành:** mua chứng thư ký mã OV cho Windows, loại ký trên cloud (§6.11); tài khoản Apple Developer (99 USD/năm).
 - **Website:** trang tải app, trang giá, chính sách quyền riêng tư và điều khoản sử dụng. Phần này sẽ có spec riêng.

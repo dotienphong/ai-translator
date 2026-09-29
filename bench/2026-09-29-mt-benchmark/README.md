@@ -1,6 +1,6 @@
 # Benchmark chọn model dịch (2026-09-29)
 
-Đây là mốc chất lượng dùng cho tiêu chí A3 trong `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Bảng kết quả đầy đủ ở `REPORT.md`.
+Đây là mốc dùng để chọn model dịch. Bộ test ở đây cũng dùng cho tiêu chí A3 trong `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`, nhưng điểm mốc của A3 sẽ được chấm lại ở S7 với Q8_0 và Q4_K_M qua `llama-server`. Bảng kết quả đầy đủ ở `REPORT.md`.
 
 ## Thiết lập
 
