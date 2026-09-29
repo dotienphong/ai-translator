@@ -142,20 +142,25 @@ max_width = 120
 - [ ] **Step 4: Tạo `.cargo/config.toml`**
 
 Các biến này khóa mức CPU cho whisper.cpp trong `asr-worker` (spec §6.12). whisper-rs-sys chuyển mọi biến `GGML_*` sang CMake.
+- `force = true` để biến môi trường có sẵn trong shell hay CI không ghi đè được các giá trị này.
+- Build script của whisper-rs-sys không tự chạy lại khi các biến đổi, nên sửa file này thì phải `cargo clean -p whisper-rs-sys`.
 
 ```toml
 # whisper-rs-sys chuyển mọi biến môi trường GGML_* sang CMake. Khóa mức CPU cố định cho asr-worker,
 # vì whisper.cpp link tĩnh nên không tự chọn biến thể CPU lúc chạy (spec §6.12).
-# x64: AVX2, FMA, F16C, không AVX-512. arm64: mức Apple M1 (không i8mm, không SME).
+# x64: AVX2, FMA, F16C, BMI2, không AVX-512. arm64: mức Apple M1 (không i8mm, không SME).
+# `force = true`: biến môi trường của shell hay CI không ghi đè được các giá trị này.
+# Build script của whisper-rs-sys không tự chạy lại khi các biến này đổi: sửa file này thì chạy
+# `cargo clean -p whisper-rs-sys` rồi mới build.
 [env]
-GGML_NATIVE = "OFF"
-GGML_CPU_ARM_ARCH = "armv8.4-a+fp16"
-GGML_AVX = "ON"
-GGML_AVX2 = "ON"
-GGML_BMI2 = "ON"
-GGML_FMA = "ON"
-GGML_F16C = "ON"
-GGML_AVX512 = "OFF"
+GGML_NATIVE = { value = "OFF", force = true }
+GGML_CPU_ARM_ARCH = { value = "armv8.4-a+fp16", force = true }
+GGML_AVX = { value = "ON", force = true }
+GGML_AVX2 = { value = "ON", force = true }
+GGML_BMI2 = { value = "ON", force = true }
+GGML_FMA = { value = "ON", force = true }
+GGML_F16C = { value = "ON", force = true }
+GGML_AVX512 = { value = "OFF", force = true }
 ```
 
 - [ ] **Step 5: Tạo `.gitignore`**
@@ -178,6 +183,9 @@ GGML_AVX512 = "OFF"
 
 # Hệ điều hành
 .DS_Store
+
+# Python
+__pycache__/
 ```
 
 - [ ] **Step 6: Tạo `deny.toml`**
@@ -193,6 +201,8 @@ targets = ["aarch64-apple-darwin", "x86_64-pc-windows-msvc"]
 all-features = true
 
 [advisories]
+yanked = "deny"
+unsound = "all"
 ignore = []
 
 [licenses]
@@ -251,6 +261,13 @@ postcard.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 ```
+
+Điểm chính của crate:
+- Khung dài tối đa 16 MiB, kiểm ở cả bên ghi lẫn bên đọc; bên đọc kiểm trước khi cấp phát bộ nhớ.
+- Khung còn byte thừa sau thông điệp thì báo lỗi `TrailingBytes`. Như vậy nếu `asr-worker` và app lệch phiên bản giao thức, lỗi hiện ra ngay thay vì giải mã sai mà không ai biết.
+- postcard mã hóa enum theo thứ tự khai báo, nên chỉ được thêm biến thể ở cuối; test `variant_indices_are_pinned` giữ quy tắc này.
+- `Debug` của `TranscribeRequest` và `TranscribeResult` chỉ in kích thước, không in âm thanh hay bản chép lời (§10.1, §10.2).
+- Không dùng `unsafe` (`#![forbid(unsafe_code)]`).
 
 - [ ] **Step 2: Viết test trước.** Tạo `crates/asr-protocol/src/lib.rs` chỉ gồm phần test sau:
 
@@ -339,6 +356,169 @@ mod tests {
         assert_eq!(audio_ctx_for_samples(16_000 * 30), 1500); // 30 giây, bị chặn ở 1500
         assert_eq!(audio_ctx_for_samples(1), 65); // làm tròn lên
     }
+
+    /// Mỗi lần `read` chỉ trả tối đa 1 byte, và cứ lần thứ hai lại báo `Interrupted` (giống pipe thật).
+    struct Trickle<R> {
+        inner: R,
+        calls: usize,
+    }
+
+    impl<R: Read> Read for Trickle<R> {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            self.calls += 1;
+            if self.calls.is_multiple_of(2) {
+                return Err(io::ErrorKind::Interrupted.into());
+            }
+            let n = buf.len().min(1);
+            self.inner.read(&mut buf[..n])
+        }
+    }
+
+    #[test]
+    fn survives_short_reads_and_interrupts() {
+        let mut buf = Vec::new();
+        write_frame(&mut buf, &sample_request()).unwrap();
+        write_frame(&mut buf, &Request::Warmup).unwrap();
+        let mut r = Trickle {
+            inner: Cursor::new(buf),
+            calls: 0,
+        };
+        assert_eq!(read_frame::<_, Request>(&mut r).unwrap().unwrap(), sample_request());
+        assert_eq!(read_frame::<_, Request>(&mut r).unwrap().unwrap(), Request::Warmup);
+        assert!(read_frame::<_, Request>(&mut r).unwrap().is_none());
+    }
+
+    /// Message có kích thước mã hóa đúng bằng `MAX_FRAME_BYTES` (1 byte biến thể + 1 byte Option + 4 byte độ dài chuỗi).
+    fn message_of_exactly_max() -> Response {
+        let msg = Response::Error {
+            segment_id: None,
+            message: "a".repeat(MAX_FRAME_BYTES as usize - 6),
+        };
+        assert_eq!(postcard::to_stdvec(&msg).unwrap().len(), MAX_FRAME_BYTES as usize);
+        msg
+    }
+
+    #[test]
+    fn frame_of_exactly_max_bytes_roundtrips() {
+        let msg = message_of_exactly_max();
+        let mut buf = Vec::new();
+        write_frame(&mut buf, &msg).unwrap();
+        let got: Response = read_frame(&mut Cursor::new(buf)).unwrap().unwrap();
+        assert_eq!(got, msg);
+    }
+
+    #[test]
+    fn write_rejects_oversized_message_and_writes_nothing() {
+        let Response::Error {
+            segment_id,
+            mut message,
+        } = message_of_exactly_max()
+        else {
+            unreachable!()
+        };
+        message.push('a'); // MAX + 1
+        let mut out = Vec::new();
+        let res = write_frame(&mut out, &Response::Error { segment_id, message });
+        assert!(matches!(res, Err(FrameError::TooLarge(n)) if n == MAX_FRAME_BYTES as u64 + 1));
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn write_frame_flushes_and_uses_le_length_prefix() {
+        let mut w = std::io::BufWriter::new(Vec::new());
+        write_frame(&mut w, &Request::Warmup).unwrap();
+        // Không gọi flush: dữ liệu phải đã xuống Vec bên dưới. 4 byte độ dài LE, rồi chỉ số biến thể 1.
+        assert_eq!(w.get_ref().as_slice(), &[1, 0, 0, 0, 1]);
+    }
+
+    /// Khóa chỉ số biến thể (postcard mã hóa enum theo thứ tự khai báo): đổi thứ tự sẽ làm test này đỏ.
+    #[test]
+    fn variant_indices_are_pinned() {
+        fn index<T: Serialize>(v: &T) -> u8 {
+            postcard::to_stdvec(v).unwrap()[0]
+        }
+        let load = Request::Load {
+            model_path: String::new(),
+            use_gpu: false,
+            n_threads: 0,
+        };
+        let requests = [
+            index(&load),
+            index(&Request::Warmup),
+            index(&sample_request()),
+            index(&Request::Shutdown),
+        ];
+        assert_eq!(requests, [0, 1, 2, 3]);
+
+        let ready = Response::Ready {
+            backend: String::new(),
+            decode_mode: String::new(),
+            whisper_version: String::new(),
+            system_info: String::new(),
+        };
+        let result = Response::Result(TranscribeResult {
+            segment_id: 0,
+            lang: String::new(),
+            lang_prob: 0.0,
+            text: String::new(),
+            tokens: vec![],
+            no_speech_prob: 0.0,
+            lid_ms: 0.0,
+            asr_ms: 0.0,
+        });
+        let error = Response::Error {
+            segment_id: None,
+            message: String::new(),
+        };
+        let warmup_done = Response::WarmupDone { millis: 0.0 };
+        let responses = [index(&ready), index(&warmup_done), index(&result), index(&error)];
+        assert_eq!(responses, [0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn trailing_bytes_in_a_frame_are_rejected() {
+        // Warmup (chỉ số 1) kèm 2 byte thừa.
+        let mut r = Cursor::new(vec![3, 0, 0, 0, 1, 0xAA, 0xBB]);
+        assert!(matches!(
+            read_frame::<_, Request>(&mut r),
+            Err(FrameError::TrailingBytes(2))
+        ));
+    }
+
+    #[test]
+    fn debug_output_never_contains_audio_or_transcript() {
+        let req = Request::Transcribe(TranscribeRequest {
+            segment_id: 1,
+            pcm: vec![12345; 1000],
+            languages: vec!["vi".into()],
+            prompt_tokens: vec![777; 3],
+            audio_ctx: 100,
+        });
+        let s = format!("{req:?}");
+        assert!(
+            s.contains("<1000 mẫu>") && !s.contains("12345") && !s.contains("777"),
+            "{s}"
+        );
+        let resp = Response::Result(TranscribeResult {
+            segment_id: 1,
+            lang: "vi".into(),
+            lang_prob: 0.9,
+            text: "bí mật cuộc họp".into(),
+            tokens: vec![4242],
+            no_speech_prob: 0.0,
+            lid_ms: 0.0,
+            asr_ms: 0.0,
+        });
+        let s = format!("{resp:?}");
+        assert!(!s.contains("bí mật") && !s.contains("4242"), "{s}");
+    }
+
+    #[test]
+    fn audio_ctx_is_total() {
+        assert_eq!(audio_ctx_for_samples(0), 64);
+        assert_eq!(audio_ctx_for_samples(1 << 40), 1500);
+        assert_eq!(audio_ctx_for_samples(usize::MAX), 1500);
+    }
 }
 ```
 
@@ -354,8 +534,11 @@ Expected: FAIL, lỗi biên dịch vì chưa có `Request`, `write_frame`, `read
 //!
 //! Mỗi khung gồm độ dài `u32` little-endian, theo sau là nội dung mã hóa bằng postcard.
 
+#![forbid(unsafe_code)]
+
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::io::{self, Read, Write};
 
 /// Âm thanh gửi cho `asr-worker` luôn là 16 kHz mono.
@@ -364,6 +547,12 @@ pub const SAMPLE_RATE: u32 = 16_000;
 /// Một đoạn 8 giây ở dạng int16 chỉ khoảng 256 KB; 16 MiB là dư nhiều.
 pub const MAX_FRAME_BYTES: u32 = 16 * 1024 * 1024;
 
+/// Yêu cầu từ app gửi cho `asr-worker`. Mỗi yêu cầu có đúng một phản hồi, trừ `Shutdown` (worker thoát, không phản hồi):
+/// `Load` → `Ready` hoặc `Error`; `Warmup` → `WarmupDone` hoặc `Error`; `Transcribe` → `Result` hoặc `Error`.
+///
+/// postcard mã hóa enum theo chỉ số biến thể (thứ tự khai báo): chỉ thêm biến thể mới ở CUỐI, không đổi thứ tự.
+/// Thêm hoặc bỏ trường cũng đổi định dạng trên dây, nên app và `asr-worker` luôn phải build cùng một lúc.
+/// Test `variant_indices_are_pinned` sẽ đỏ nếu vi phạm.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Request {
     Load {
@@ -376,7 +565,7 @@ pub enum Request {
     Shutdown,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct TranscribeRequest {
     pub segment_id: u64,
     /// Âm thanh 16 kHz mono.
@@ -388,6 +577,7 @@ pub struct TranscribeRequest {
     pub audio_ctx: i32,
 }
 
+/// Phản hồi của `asr-worker`. Cùng quy tắc chỉ-thêm-ở-cuối như [`Request`].
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Response {
     Ready {
@@ -407,7 +597,7 @@ pub enum Response {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct TranscribeResult {
     pub segment_id: u64,
     pub lang: String,
@@ -421,6 +611,34 @@ pub struct TranscribeResult {
     pub asr_ms: f32,
 }
 
+// Debug viết tay: âm thanh và nội dung chép lời không bao giờ được vào log (spec §10.1, §10.2).
+impl fmt::Debug for TranscribeRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TranscribeRequest")
+            .field("segment_id", &self.segment_id)
+            .field("pcm", &format_args!("<{} mẫu>", self.pcm.len()))
+            .field("languages", &self.languages)
+            .field("prompt_tokens", &format_args!("<{} token>", self.prompt_tokens.len()))
+            .field("audio_ctx", &self.audio_ctx)
+            .finish()
+    }
+}
+
+impl fmt::Debug for TranscribeResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TranscribeResult")
+            .field("segment_id", &self.segment_id)
+            .field("lang", &self.lang)
+            .field("lang_prob", &self.lang_prob)
+            .field("text", &format_args!("<{} ký tự>", self.text.chars().count()))
+            .field("tokens", &format_args!("<{} token>", self.tokens.len()))
+            .field("no_speech_prob", &self.no_speech_prob)
+            .field("lid_ms", &self.lid_ms)
+            .field("asr_ms", &self.asr_ms)
+            .finish()
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum FrameError {
     #[error("lỗi I/O: {0}")]
@@ -429,6 +647,8 @@ pub enum FrameError {
     TooLarge(u64),
     #[error("lỗi mã hóa: {0}")]
     Codec(#[from] postcard::Error),
+    #[error("khung còn {0} byte thừa sau thông điệp")]
+    TrailingBytes(usize),
 }
 
 pub fn write_frame<W: Write, T: Serialize>(w: &mut W, msg: &T) -> Result<(), FrameError> {
@@ -443,6 +663,9 @@ pub fn write_frame<W: Write, T: Serialize>(w: &mut W, msg: &T) -> Result<(), Fra
 }
 
 /// Đọc một khung. Trả `Ok(None)` khi luồng đóng đúng ở ranh giới giữa hai khung.
+///
+/// Sau `FrameError::Io` hoặc `FrameError::TooLarge` luồng đã mất đồng bộ: bên gọi phải bỏ luồng và khởi động lại
+/// tiến trình phụ. Sau `Codec` hoặc `TrailingBytes` cả khung đã được đọc hết, nên luồng vẫn đồng bộ.
 pub fn read_frame<R: Read, T: DeserializeOwned>(r: &mut R) -> Result<Option<T>, FrameError> {
     let mut len_buf = [0u8; 4];
     let got = read_up_to(r, &mut len_buf)?;
@@ -458,7 +681,11 @@ pub fn read_frame<R: Read, T: DeserializeOwned>(r: &mut R) -> Result<Option<T>, 
     }
     let mut buf = vec![0u8; len as usize];
     r.read_exact(&mut buf)?;
-    Ok(Some(postcard::from_bytes(&buf)?))
+    let (msg, rest) = postcard::take_from_bytes::<T>(&buf)?;
+    if !rest.is_empty() {
+        return Err(FrameError::TrailingBytes(rest.len()));
+    }
+    Ok(Some(msg))
 }
 
 fn read_up_to<R: Read>(r: &mut R, buf: &mut [u8]) -> io::Result<usize> {
@@ -476,15 +703,15 @@ fn read_up_to<R: Read>(r: &mut R, buf: &mut [u8]) -> io::Result<usize> {
 
 /// `audio_ctx = min(1500, 50 × số giây của đoạn + 64)` (spec §6.4). Làm tròn lên.
 pub fn audio_ctx_for_samples(n_samples: usize) -> i32 {
-    let frames = (n_samples as u64 * 50).div_ceil(SAMPLE_RATE as u64);
-    (frames as i32 + 64).min(1500)
+    let frames = (n_samples as u64).saturating_mul(50).div_ceil(SAMPLE_RATE as u64);
+    frames.saturating_add(64).min(1500) as i32
 }
 ```
 
 - [ ] **Step 5: Chạy lại test**
 
 Run: `cargo test -p asr-protocol`
-Expected: PASS, `test result: ok. 6 passed`
+Expected: PASS, `test result: ok. 14 passed`
 
 - [ ] **Step 6: Kiểm tra định dạng và clippy**
 

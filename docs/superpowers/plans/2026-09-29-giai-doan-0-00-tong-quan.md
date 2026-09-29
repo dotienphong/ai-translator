@@ -196,7 +196,12 @@ Mỗi mục là một thay đổi riêng trong spec:
 - §6.3: chạy Silero v6.2.3 bằng candle-onnx trong tiến trình chính. `ort` chỉ có bản RC (§6.12).
 - §6.4:
   - Chế độ dùng chung một lượt encode là mặc định; ghi rõ bản vá trong `third_party/`. `no_speech_prob` tính từ logits sau SOT.
-  - Thông điệp `ready` đổi thành `{backend, decode_mode, whisper_version, system_info}` cho khớp `asr-protocol`.
+  - Viết lại danh sách thông điệp cho khớp `asr-protocol`:
+    - `load {model_path, use_gpu, n_threads}` → `ready {backend, decode_mode, whisper_version, system_info}`;
+    - `transcribe` → `result {…, lid_ms, asr_ms}`, thay cho `timings`;
+    - `warmup` → `warmup_done {millis}`;
+    - mọi lỗi → `error {segment_id?, message}`.
+  - Quy tắc mở rộng giao thức: chỉ thêm biến thể ở cuối; khung thừa byte là lỗi.
 - §6.5: ngưỡng tỉ lệ token theo từng cặp ngôn ngữ, lấy từ `results/s7_mt_decisions.md`. Quyết định cờ ngữ cảnh.
 - §6.11: dung lượng bộ cài đo ở `results/s3_lid.md`.
 - §6.12:
@@ -206,6 +211,11 @@ Mỗi mục là một thay đổi riêng trong spec:
   - Nếu Task 14 của kế hoạch 03 thấy phụ thuộc `VCRUNTIME140.dll` thì ghi cách xử lý: link tĩnh CRT, hoặc kèm VC++ Redistributable.
   - `cargo deny` dùng `deny.toml` ở gốc repo, kèm danh sách giấy phép được phép.
 - §12: thêm `crates/{asr-protocol,asr-worker,audio-capture,pipeline,latency-bench}`, `third_party/` và `deny.toml`.
+- Việc cho MVP, rút ra từ review code Giai đoạn 0:
+  - `asr-protocol`: `backend` và `decode_mode` thành enum. `error` có thêm `kind` (NotLoaded, ModelLoad, OutOfMemory, GpuInit, InvalidRequest, Internal) để bảng lỗi §9 phân biệt được. `ready` có `protocol_version`, để app từ chối worker lệch phiên bản.
+  - `asr-worker` giữ riêng stdout cho giao thức: chuyển fd 1 sang stderr, để log lạ của thư viện không lọt vào kênh giao thức.
+  - App chính build với `panic = "abort"` nên `Drop` không chạy khi crash. Dùng Job Object (`KILL_ON_JOB_CLOSE`) trên Windows và process group trên macOS, để tiến trình phụ không bị bỏ lại.
+  - Trước khi tạo `server/`: thêm vào `.gitignore` các mẫu `.dev.vars*`, `.env*`, `*.pem`, `*.p12`, `*.pfx`, `*.key` (§10.2).
 - A3, A4: ghi mốc đo được.
 - §8, §6.7: hạng máy khuyến nghị và ngưỡng VRAM theo S6.
 

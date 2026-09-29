@@ -2442,10 +2442,24 @@ Expected: FAIL ở phần advisories. Lỗi là `RUSTSEC-2024-0436`: crate `past
 
 ```toml
 [advisories]
+yanked = "deny"
+unsound = "all"
 ignore = [
     { id = "RUSTSEC-2024-0436", reason = "paste chỉ là macro lúc biên dịch, do candle (gemm) kéo vào; candle 0.11 chưa bỏ" },
 ]
 ```
+
+Và thêm luật "tiến trình chính không link ggml" (§5, §6.12) vào cuối khối `[bans]`, ngay dưới `wildcards = "allow"`:
+
+```toml
+# Bất biến kiến trúc (spec §5, §6.12): chỉ asr-worker được link whisper.cpp (ggml); tiến trình chính thì không.
+deny = [
+    { crate = "whisper-rs-sys", wrappers = ["whisper-rs"], reason = "ggml chỉ được vào qua whisper-rs" },
+    { crate = "whisper-rs", wrappers = ["asr-worker"], reason = "chỉ asr-worker được link whisper.cpp" },
+]
+```
+
+Lúc lập kế hoạch đã thử: cho `pipeline` phụ thuộc `whisper-rs` thì `cargo deny check bans` báo `error[banned]: crate 'whisper-rs = 0.16.0' is explicitly banned`.
 
 - [ ] **Step 3: Chạy lại**
 
@@ -2458,7 +2472,7 @@ Expected:
 
 ```bash
 git add deny.toml
-git commit -m "build: ghi nhận advisory paste (candle) trong cargo-deny"
+git commit -m "build: ghi nhận advisory paste (candle), cấm link whisper.cpp ngoài asr-worker"
 ```
 
 ### Task 14: Windows, build hai bản `asr-worker` và `--probe`
@@ -2571,6 +2585,13 @@ target\asr-worker-cpu.exe --probe
 Expected:
 - Bản Vulkan in mảng JSON, mỗi GPU một phần tử `{"name": …, "device_type": "discrete"|"integrated"|…, "device_local_bytes": …, "vendor_id": …}`. Card rời có `device_local_bytes` gần đúng dung lượng VRAM, ví dụ khoảng 6,4e9 với card 6 GB.
 - Bản CPU in `[]`.
+
+Kiểm thêm: khi stdin đóng (app chết), worker phải tự thoát.
+
+```powershell
+cmd /c "target\asr-worker-cpu.exe < NUL & echo exit=%errorlevel%"
+```
+Expected: `exit=0`.
 
 - [ ] **Step 6: Commit**
 
