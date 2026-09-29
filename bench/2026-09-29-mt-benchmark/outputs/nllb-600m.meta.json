@@ -1,0 +1,10 @@
+{
+  "model": "nllb-600m",
+  "repo": "facebook/nllb-200-distilled-600M",
+  "device": "mps",
+  "dtype": "float16",
+  "load_sec": 3.9,
+  "rss_gb_after_load": 2.54,
+  "mps_driver_gb": 1.29,
+  "torch": "2.14.0"
+}

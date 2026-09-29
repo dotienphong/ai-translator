@@ -1,0 +1,224 @@
+{
+ "summary": {
+  "model": "nllb-600m",
+  "runtime": "CTranslate2 int8",
+  "threads": 4,
+  "n": 30,
+  "load_sec": 0.18,
+  "avg_sec": 0.301,
+  "out_tok_per_sec": 65.5,
+  "peak_rss_gb": 1.71
+ },
+ "rows": [
+  {
+   "id": "en-vi-424",
+   "dir": "en->vi",
+   "sec": 0.5638,
+   "n_out": 38,
+   "hyp": "@user36 cặp thứ hai đó thật đẹp! Tôi thích mua kính...Tôi không bao giờ ném chúng ra nhưng bằng cách nào đó tôi không thể tìm thấy bất kỳ người khác nào?!"
+  },
+  {
+   "id": "en-vi-635",
+   "dir": "en->vi",
+   "sec": 0.3309,
+   "n_out": 22,
+   "hyp": "Thêm quần áo mới vào đây (không phải là chúng tôi đã bắt đầu thiết kế nó 🙈)"
+  },
+  {
+   "id": "en-vi-468",
+   "dir": "en->vi",
+   "sec": 0.3939,
+   "n_out": 27,
+   "hyp": "Không có nhà thông gió và máy lọc không khí của tôi đang chạy trong bếp trong khi tôi thưởng thức một tách trong vườn!"
+  },
+  {
+   "id": "en-vi-195",
+   "dir": "en->vi",
+   "sec": 0.3881,
+   "n_out": 27,
+   "hyp": "Khi The Office vẫn còn trên truyền hình, tôi và bạn bè của tôi sẽ đặt pizza và tụ tập xem nó mỗi thứ Năm."
+  },
+  {
+   "id": "en-vi-192",
+   "dir": "en->vi",
+   "sec": 0.363,
+   "n_out": 25,
+   "hyp": "Chúng tôi phải nhảy vào những thứ mà không cần phải xem xét nguồn gốc, bởi vì nó không dễ dàng xác định."
+  },
+  {
+   "id": "en-vi-477",
+   "dir": "en->vi",
+   "sec": 0.2741,
+   "n_out": 18,
+   "hyp": "Họ nói không bắt buộc nên tôi đã đặt nó lại và \"đưa tay\" tôi"
+  },
+  {
+   "id": "en-vi-178",
+   "dir": "en->vi",
+   "sec": 0.3352,
+   "n_out": 22,
+   "hyp": "có vẻ như thậm chí iMessage trên WiFi không hoạt động, điều đó không có ý nghĩa cho tôi"
+  },
+  {
+   "id": "en-vi-418",
+   "dir": "en->vi",
+   "sec": 0.2863,
+   "n_out": 19,
+   "hyp": "Tôi đang đeo một bộ khung mới, những cái màu đỏ này tôi thực sự thích."
+  },
+  {
+   "id": "en-vi-414",
+   "dir": "en->vi",
+   "sec": 0.1888,
+   "n_out": 12,
+   "hyp": "Có một số ở đâu đó nhưng chính xác ở đâu?"
+  },
+  {
+   "id": "en-vi-988",
+   "dir": "en->vi",
+   "sec": 0.2695,
+   "n_out": 17,
+   "hyp": "Cohren nói, ông ta đã kéo tới chiếc mic của mình và nói."
+  },
+  {
+   "id": "en-vi-578",
+   "dir": "en->vi",
+   "sec": 0.2705,
+   "n_out": 18,
+   "hyp": "@user47 không       "
+  },
+  {
+   "id": "en-vi-191",
+   "dir": "en->vi",
+   "sec": 0.4729,
+   "n_out": 30,
+   "hyp": "Chúng tôi xuất hiện trong thời đại vàng của truyền thông, với một ý thức tập thể xung quanh văn hóa nhạc pop không còn tồn tại nữa."
+  },
+  {
+   "id": "vi-en-6",
+   "dir": "vi->en",
+   "sec": 0.2454,
+   "n_out": 16,
+   "hyp": "Adapting to the old, embracing the new to solve problems."
+  },
+  {
+   "id": "vi-en-983",
+   "dir": "vi->en",
+   "sec": 0.3043,
+   "n_out": 20,
+   "hyp": "\"I guess we'll find the answer\", Cohren said, laughing aloud."
+  },
+  {
+   "id": "vi-en-544",
+   "dir": "vi->en",
+   "sec": 0.3305,
+   "n_out": 22,
+   "hyp": "I've messed up my thread, so this is going to be part of the big thread here."
+  },
+  {
+   "id": "vi-en-528",
+   "dir": "vi->en",
+   "sec": 0.4078,
+   "n_out": 28,
+   "hyp": "#TeaganAir #phil_cong #left_airway #pa28 #create_phil_cong"
+  },
+  {
+   "id": "vi-en-183",
+   "dir": "vi->en",
+   "sec": 0.1272,
+   "n_out": 7,
+   "hyp": "@user10 I see that too"
+  },
+  {
+   "id": "vi-en-353",
+   "dir": "vi->en",
+   "sec": 0.288,
+   "n_out": 19,
+   "hyp": "ESP's offline now, so we'll have to wait a few more minutes."
+  },
+  {
+   "id": "vi-en-523",
+   "dir": "vi->en",
+   "sec": 0.1611,
+   "n_out": 9,
+   "hyp": "Happy Saturday, welcome to the 4,000 feet."
+  },
+  {
+   "id": "vi-en-224",
+   "dir": "vi->en",
+   "sec": 0.3395,
+   "n_out": 23,
+   "hyp": "I haven't been updated on this topic in a long time, and I finally beat Queen Gidbo."
+  },
+  {
+   "id": "vi-en-325",
+   "dir": "vi->en",
+   "sec": 0.3247,
+   "n_out": 22,
+   "hyp": "Because in the garden there is no electricity, everything uses solar panels and 2600mAh 18650."
+  },
+  {
+   "id": "vi-en-794",
+   "dir": "vi->en",
+   "sec": 0.1743,
+   "n_out": 6,
+   "hyp": "The Bible is the Bible."
+  },
+  {
+   "id": "vi-en-527",
+   "dir": "vi->en",
+   "sec": 0.1622,
+   "n_out": 10,
+   "hyp": "Tracking the data from FlightAware."
+  },
+  {
+   "id": "vi-en-458",
+   "dir": "vi->en",
+   "sec": 0.1526,
+   "n_out": 9,
+   "hyp": "And finally, chapter four is edited!"
+  },
+  {
+   "id": "vi-zh-350",
+   "dir": "vi->zh",
+   "sec": 0.126,
+   "n_out": 7,
+   "hyp": "没有什么是容易的."
+  },
+  {
+   "id": "vi-zh-908",
+   "dir": "vi->zh",
+   "sec": 0.3781,
+   "n_out": 26,
+   "hyp": "\"那么...公主要做什么?\"卡里着的眼睛,给了一张纸."
+  },
+  {
+   "id": "vi-zh-521",
+   "dir": "vi->zh",
+   "sec": 0.3877,
+   "n_out": 27,
+   "hyp": "飞行需要体力,今天,我了我的背部和腿,就像去健身房一样."
+  },
+  {
+   "id": "vi-zh-393",
+   "dir": "vi->zh",
+   "sec": 0.4964,
+   "n_out": 35,
+   "hyp": "这些高质量的贴纸每张花费大约50美分,运送成本同样高.我个人还需要把它们包装并发送."
+  },
+  {
+   "id": "vi-zh-463",
+   "dir": "vi->zh",
+   "sec": 0.2534,
+   "n_out": 16,
+   "hyp": "他出去剪东西 (有音) 所以我就偷偷看看."
+  },
+  {
+   "id": "vi-zh-156",
+   "dir": "vi->zh",
+   "sec": 0.2416,
+   "n_out": 15,
+   "hyp": "不过,即使在这些时间里,也会感到疲."
+  }
+ ]
+}

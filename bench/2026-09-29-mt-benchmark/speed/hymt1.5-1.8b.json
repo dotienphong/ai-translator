@@ -1,0 +1,224 @@
+{
+ "summary": {
+  "model": "hymt1.5-1.8b",
+  "runtime": "llama.cpp Q8_0",
+  "threads": 4,
+  "n": 30,
+  "load_sec": 4.55,
+  "avg_sec": 0.458,
+  "out_tok_per_sec": 73.5,
+  "peak_rss_gb": 3.95
+ },
+ "rows": [
+  {
+   "id": "en-vi-424",
+   "dir": "en->vi",
+   "sec": 1.486,
+   "n_out": 123,
+   "hyp": "@user36 Cặp kính thứ hai đó thật tuyệt vời! Tôi rất thích việc mua kính… Tôi không bao giờ vứt bỏ chúng cả. Nhưng có lẽ tôi không thể tìm được cặp kính nào khác nữa. Hiện tại, cặp kính của tôi có màu cầu vồng. Tôi cũng cần một cặp kính râm nữa… Nhưng nếu bạn cần kính có gọng kính, thì chúng trông thật xấu mất. 😂"
+  },
+  {
+   "id": "en-vi-635",
+   "dir": "en->vi",
+   "sec": 0.5094,
+   "n_out": 42,
+   "hyp": "Hãy đặt bộ sưu tập quần áo mới vào đây đi (dù rằng chúng tôi vẫn chưa bắt đầu quá trình thiết kế bộ sưu tập này cả 🙈)"
+  },
+  {
+   "id": "en-vi-468",
+   "dir": "en->vi",
+   "sec": 0.6676,
+   "n_out": 55,
+   "hyp": "Ngôi nhà không được thông gió đúng cách; máy làm sạch không khí của tôi vẫn đang hoạt động trong bếp. Trong lúc đó, tôi thì đang thưởng thức một tách trà trong khu vườn!"
+  },
+  {
+   "id": "en-vi-195",
+   "dir": "en->vi",
+   "sec": 0.4958,
+   "n_out": 39,
+   "hyp": "Khi chương trình The Office vẫn còn được phát sóng, tôi và các bạn thường gọi pizza để cùng nhau xem chương trình này vào mỗi thứ Năm."
+  },
+  {
+   "id": "en-vi-192",
+   "dir": "en->vi",
+   "sec": 0.6657,
+   "n_out": 55,
+   "hyp": "Chúng ta có thể bắt tay vào công việc ngay mà không cần phải xem xét nguồn gốc của thông tin đó, vì việc xác định nguồn gốc của thông tin đó không hề dễ dàng chút nào."
+  },
+  {
+   "id": "en-vi-477",
+   "dir": "en->vi",
+   "sec": 0.5518,
+   "n_out": 46,
+   "hyp": "Họ nói rằng việc này không phải là bắt buộc. Vì vậy, tôi yêu cầu họ tạm dừng quá trình này lại, và tự mình thực hiện việc “đăng nhập”."
+  },
+  {
+   "id": "en-vi-178",
+   "dir": "en->vi",
+   "sec": 0.4312,
+   "n_out": 34,
+   "hyp": "Có vẻ như ngay cả việc sử dụng iMessage qua Wi-Fi cũng không hoạt động được. Điều này thật khó hiểu."
+  },
+  {
+   "id": "en-vi-418",
+   "dir": "en->vi",
+   "sec": 0.475,
+   "n_out": 38,
+   "hyp": "Tôi đang chi tiêu một khoản tiền để mua một bộ kính mới. Những chiếc kính màu đỏ này thật sự rất đẹp với tôi."
+  },
+  {
+   "id": "en-vi-414",
+   "dir": "en->vi",
+   "sec": 0.2935,
+   "n_out": 24,
+   "hyp": "Tôi có một số thứ ở đâu đó… Nhưng chính xác là ở đâu nhỉ?"
+  },
+  {
+   "id": "en-vi-988",
+   "dir": "en->vi",
+   "sec": 0.8239,
+   "n_out": 65,
+   "hyp": "“Không thể biết được,” Cohren nói. Anh ta cầm lấy chiếc micrô và lên tiếng: “Đại đội Exodus, hãy chờ đợi cho đến khi không còn bị tấn công nữa. Hãy kéo họ ra xa ra.”"
+  },
+  {
+   "id": "en-vi-578",
+   "dir": "en->vi",
+   "sec": 0.2893,
+   "n_out": 21,
+   "hyp": "@user47 không thể chịu đựng được nữa rồi… 🤣"
+  },
+  {
+   "id": "en-vi-191",
+   "dir": "en->vi",
+   "sec": 0.599,
+   "n_out": 49,
+   "hyp": "Chúng ta sống trong một kỷ nguyên vàng son của ngành truyền thông. Lúc đó, có một ý thức chung về văn hóa đại chúng, nhưng hiện tại điều đó đã không còn nữa."
+  },
+  {
+   "id": "vi-en-6",
+   "dir": "vi->en",
+   "sec": 0.356,
+   "n_out": 26,
+   "hyp": "It’s important to adapt to the old ways of doing things, while also embracing new methods in order to solve problems."
+  },
+  {
+   "id": "vi-en-983",
+   "dir": "vi->en",
+   "sec": 0.4235,
+   "n_out": 28,
+   "hyp": "“I guess we’ll find the answer eventually,” said Cohren, laughing loudly. Orson didn’t say anything else."
+  },
+  {
+   "id": "vi-en-544",
+   "dir": "vi->en",
+   "sec": 0.3865,
+   "n_out": 26,
+   "hyp": "I’ve completely messed up the order of my articles. So, this will be part of a larger thread here."
+  },
+  {
+   "id": "vi-en-528",
+   "dir": "vi->en",
+   "sec": 0.3374,
+   "n_out": 22,
+   "hyp": "#TeaganAir #PilotTraining #FlyingAircraft #PA28 #PilotTrainingProgram"
+  },
+  {
+   "id": "vi-en-183",
+   "dir": "vi->en",
+   "sec": 0.1568,
+   "n_out": 10,
+   "hyp": "@user10 I see the same thing."
+  },
+  {
+   "id": "vi-en-353",
+   "dir": "vi->en",
+   "sec": 0.3178,
+   "n_out": 22,
+   "hyp": "The ESP wasn’t online right away. It took a few more minutes for it to become available."
+  },
+  {
+   "id": "vi-en-523",
+   "dir": "vi->en",
+   "sec": 0.3334,
+   "n_out": 22,
+   "hyp": "Wishing you a wonderful Saturday. Welcome to a height of 4,000 feet above the ground."
+  },
+  {
+   "id": "vi-en-224",
+   "dir": "vi->en",
+   "sec": 0.3663,
+   "n_out": 24,
+   "hyp": "It’s been a while since I updated this topic. Finally, I managed to defeat Queen Gidbo."
+  },
+  {
+   "id": "vi-en-325",
+   "dir": "vi->en",
+   "sec": 0.4197,
+   "n_out": 28,
+   "hyp": "Since there is no electricity in the garden, everything is powered by solar panels and a 2600mAh 18650 battery."
+  },
+  {
+   "id": "vi-en-794",
+   "dir": "vi->en",
+   "sec": 0.263,
+   "n_out": 17,
+   "hyp": "January 14th, at 10:26 PM, 2543."
+  },
+  {
+   "id": "vi-en-527",
+   "dir": "vi->en",
+   "sec": 0.1445,
+   "n_out": 8,
+   "hyp": "Monitoring the data from FlightAware."
+  },
+  {
+   "id": "vi-en-458",
+   "dir": "vi->en",
+   "sec": 0.2247,
+   "n_out": 14,
+   "hyp": "In addition, Chapter 4 has finally been edited and completed!"
+  },
+  {
+   "id": "vi-zh-350",
+   "dir": "vi->zh",
+   "sec": 0.137,
+   "n_out": 6,
+   "hyp": "没有什么是容易做到的。"
+  },
+  {
+   "id": "vi-zh-908",
+   "dir": "vi->zh",
+   "sec": 0.5721,
+   "n_out": 37,
+   "hyp": "“那么……公主打算做什么呢？”卡莉看着艾弗里，眼神中充满了兴奋。公主递给艾弗里一张纸条。当艾弗里看到纸条上的内容时……"
+  },
+  {
+   "id": "vi-zh-521",
+   "dir": "vi->zh",
+   "sec": 0.4074,
+   "n_out": 27,
+   "hyp": "驾驶飞机需要强大的体力和耐力。今天，我的背部和腿部都感到疼痛，简直就像从健身房回来后一样。"
+  },
+  {
+   "id": "vi-zh-393",
+   "dir": "vi->zh",
+   "sec": 0.6137,
+   "n_out": 37,
+   "hyp": "这些质量不错的贴纸每个的价格约为50分钱。把它们寄出去也需要花费差不多相同的费用。而且，我还需要亲手将每一个贴纸包装好再寄出。"
+  },
+  {
+   "id": "vi-zh-463",
+   "dir": "vi->zh",
+   "sec": 0.5581,
+   "n_out": 37,
+   "hyp": "他出去了，好像在切割什么东西……嗯，听到有哗啦哗啦的声音。于是我悄悄溜过去看情况如何。不过他似乎还没完成呢 :("
+  },
+  {
+   "id": "vi-zh-156",
+   "dir": "vi->zh",
+   "sec": 0.4296,
+   "n_out": 27,
+   "hyp": "并不懒惰，但确实感到疲惫，即便是在这些时期之后也是如此。时间啊……香桃木与麝香的味道……"
+  }
+ ]
+}

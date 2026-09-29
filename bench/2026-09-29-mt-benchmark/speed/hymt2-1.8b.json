@@ -1,0 +1,224 @@
+{
+ "summary": {
+  "model": "hymt2-1.8b",
+  "runtime": "llama.cpp Q8_0",
+  "threads": 4,
+  "n": 30,
+  "load_sec": 1.46,
+  "avg_sec": 0.453,
+  "out_tok_per_sec": 69.0,
+  "peak_rss_gb": 3.95
+ },
+ "rows": [
+  {
+   "id": "en-vi-424",
+   "dir": "en->vi",
+   "sec": 1.3905,
+   "n_out": 111,
+   "hyp": "@user36 Cặp kính thứ hai đó thật tuyệt vời! Tôi rất thích mua kính… Tôi không bao giờ vứt chúng đi, nhưng lại không thể tìm được cặp kính khác nào cả?! Cặp kính của tôi hiện tại có màu cầu vồng; tôi cũng cần một cặp kính râm nữa… Nhưng nếu bạn cần kính có góc nghiêng thì chúng trông rất xấu mất. 😂"
+  },
+  {
+   "id": "en-vi-635",
+   "dir": "en->vi",
+   "sec": 0.4564,
+   "n_out": 33,
+   "hyp": "Hãy đặt bộ quần áo mới vào đây đi (dù chúng ta vẫn chưa bắt đầu thiết kế nó nữa 🙈)"
+  },
+  {
+   "id": "en-vi-468",
+   "dir": "en->vi",
+   "sec": 0.6639,
+   "n_out": 51,
+   "hyp": "Căn nhà đang được thông gió, và máy lọc không khí trong bếp vẫn hoạt động liên tục. Trong lúc đó, tôi thì thưởng thức một tách trà trong khu vườn!"
+  },
+  {
+   "id": "en-vi-195",
+   "dir": "en->vi",
+   "sec": 0.5058,
+   "n_out": 37,
+   "hyp": "Khi bộ phim The Office vẫn còn được chiếu, tôi và bạn bè thường gọi pizza và cùng nhau xem phim vào mỗi thứ Năm."
+  },
+  {
+   "id": "en-vi-192",
+   "dir": "en->vi",
+   "sec": 0.6286,
+   "n_out": 49,
+   "hyp": "Chúng ta có thể bắt tay vào việc ngay mà không cần phải xem xét nguồn gốc của nó, vì việc xác định nguồn gốc đó không hề dễ dàng chút nào."
+  },
+  {
+   "id": "en-vi-477",
+   "dir": "en->vi",
+   "sec": 0.5526,
+   "n_out": 43,
+   "hyp": "Họ nói rằng việc đó không phải là bắt buộc, vì vậy tôi yêu cầu họ tạm dừng quá trình này và “đăng nhập trực tiếp” cho tôi."
+  },
+  {
+   "id": "en-vi-178",
+   "dir": "en->vi",
+   "sec": 0.456,
+   "n_out": 34,
+   "hyp": "Có vẻ như ngay cả việc sử dụng iMessage qua Wi-Fi cũng không hoạt động được. Điều này thật khó hiểu."
+  },
+  {
+   "id": "en-vi-418",
+   "dir": "en->vi",
+   "sec": 0.4124,
+   "n_out": 29,
+   "hyp": "Tôi đang chi tiêu một bộ khung mắt mới; bộ khung màu đỏ này thật sự rất đẹp với tôi."
+  },
+  {
+   "id": "en-vi-414",
+   "dir": "en->vi",
+   "sec": 0.3155,
+   "n_out": 23,
+   "hyp": "Có chút gì đó ở đâu đó, nhưng chính xác là ở đâu nhỉ?"
+  },
+  {
+   "id": "en-vi-988",
+   "dir": "en->vi",
+   "sec": 0.727,
+   "n_out": 55,
+   "hyp": "“Không thể biết được,” Cohren nói. Anh ta cầm mic lên và nói: “Đại đội Exodus, đừng bắn trừ khi bị tấn công. Hãy kéo họ ra xa khỏi chúng ta.”"
+  },
+  {
+   "id": "en-vi-578",
+   "dir": "en->vi",
+   "sec": 0.3033,
+   "n_out": 20,
+   "hyp": "@user47 Không ồOOOOOOoOoOooooo 🤣"
+  },
+  {
+   "id": "en-vi-191",
+   "dir": "en->vi",
+   "sec": 0.6828,
+   "n_out": 51,
+   "hyp": "Chúng ta sống trong một thời kỳ hoàng kim của ngành truyền thông, khi mà có một ý thức chung về văn hóa đại chúng – nhưng hiện tại, ý thức đó đã không còn tồn tại nữa."
+  },
+  {
+   "id": "vi-en-6",
+   "dir": "vi->en",
+   "sec": 0.2689,
+   "n_out": 15,
+   "hyp": "Adapt to the old ways, and embrace the new to solve problems."
+  },
+  {
+   "id": "vi-en-983",
+   "dir": "vi->en",
+   "sec": 0.4417,
+   "n_out": 28,
+   "hyp": "“I guess we’ll find the answer eventually,” said Cohren, laughing loudly. Orson didn’t say anything else."
+  },
+  {
+   "id": "vi-en-544",
+   "dir": "vi->en",
+   "sec": 0.405,
+   "n_out": 25,
+   "hyp": "I’ve messed up the structure of my blog posts, so this will be part of a larger thread here."
+  },
+  {
+   "id": "vi-en-528",
+   "dir": "vi->en",
+   "sec": 0.3388,
+   "n_out": 21,
+   "hyp": "#TeaganAir #pilot #flying_a_plane #Pa28 #PilotTraining"
+  },
+  {
+   "id": "vi-en-183",
+   "dir": "vi->en",
+   "sec": 0.1769,
+   "n_out": 10,
+   "hyp": "@user10 I see the same thing."
+  },
+  {
+   "id": "vi-en-353",
+   "dir": "vi->en",
+   "sec": 0.3002,
+   "n_out": 19,
+   "hyp": "The ESP wasn’t online right away; I had to wait a few more minutes."
+  },
+  {
+   "id": "vi-en-523",
+   "dir": "vi->en",
+   "sec": 0.3165,
+   "n_out": 19,
+   "hyp": "Happy Saturday to all of you. Welcome to a height of 4,000 feet."
+  },
+  {
+   "id": "vi-en-224",
+   "dir": "vi->en",
+   "sec": 0.3967,
+   "n_out": 25,
+   "hyp": "It’s been a long time since I last updated this topic. I finally managed to defeat Queen Gidbo."
+  },
+  {
+   "id": "vi-en-325",
+   "dir": "vi->en",
+   "sec": 0.4446,
+   "n_out": 28,
+   "hyp": "Since there is no electricity in the garden, everything uses power from solar panels and a 2600mAh 18650 battery."
+  },
+  {
+   "id": "vi-en-794",
+   "dir": "vi->en",
+   "sec": 0.281,
+   "n_out": 16,
+   "hyp": "January 14th, 10:26 PM, 2543."
+  },
+  {
+   "id": "vi-en-527",
+   "dir": "vi->en",
+   "sec": 0.1642,
+   "n_out": 8,
+   "hyp": "Monitor the data from FlightAware."
+  },
+  {
+   "id": "vi-en-458",
+   "dir": "vi->en",
+   "sec": 0.2249,
+   "n_out": 12,
+   "hyp": "In addition, Chapter 4 has finally been edited!"
+  },
+  {
+   "id": "vi-zh-350",
+   "dir": "vi->zh",
+   "sec": 0.1371,
+   "n_out": 6,
+   "hyp": "没有什么是容易的。"
+  },
+  {
+   "id": "vi-zh-908",
+   "dir": "vi->zh",
+   "sec": 0.5863,
+   "n_out": 39,
+   "hyp": "“那么……公主打算做什么呢？”卡莉看着艾弗里，她的眼神中充满了兴奋。公主递给艾弗里一张纸。当她看到那张纸上的内容时……"
+  },
+  {
+   "id": "vi-zh-521",
+   "dir": "vi->zh",
+   "sec": 0.4075,
+   "n_out": 26,
+   "hyp": "驾驶飞机需要很强的体力。今天，我的背部和腿部都疼得厉害，简直就像刚从健身房回来一样。"
+  },
+  {
+   "id": "vi-zh-393",
+   "dir": "vi->zh",
+   "sec": 0.6116,
+   "n_out": 39,
+   "hyp": "这些质量不错的贴纸，每个的价格大约为50美分。寄送它们时也需要支付相应的费用。而且，我还需要亲自把每张贴纸都包装好再寄出去。"
+  },
+  {
+   "id": "vi-zh-463",
+   "dir": "vi->zh",
+   "sec": 0.5882,
+   "n_out": 40,
+   "hyp": "他出去了，好像是在做些什么事情（听到有“咔嚓”的声音）。于是我就偷偷溜过去看看情况如何。不过，那件事似乎还没有完成呢 :("
+  },
+  {
+   "id": "vi-zh-156",
+   "dir": "vi->zh",
+   "sec": 0.4082,
+   "n_out": 26,
+   "hyp": "并不懒惰，但会感到疲惫，即使是在这些时期之后也是如此。时间啊……香桃木和麝香的味道。"
+  }
+ ]
+}

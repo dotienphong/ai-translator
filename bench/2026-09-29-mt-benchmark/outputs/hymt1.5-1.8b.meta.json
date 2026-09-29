@@ -1,0 +1,10 @@
+{
+  "model": "hymt1.5-1.8b",
+  "repo": "tencent/HY-MT1.5-1.8B",
+  "device": "mps",
+  "dtype": "bfloat16",
+  "load_sec": 6.0,
+  "rss_gb_after_load": 0.17,
+  "mps_driver_gb": 4.37,
+  "torch": "2.14.0"
+}

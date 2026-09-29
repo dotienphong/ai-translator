@@ -1,0 +1,224 @@
+{
+ "summary": {
+  "model": "madlad-3b",
+  "runtime": "CTranslate2 int8",
+  "threads": 4,
+  "n": 30,
+  "load_sec": 0.72,
+  "avg_sec": 1.285,
+  "out_tok_per_sec": 19.8,
+  "peak_rss_gb": 4.1
+ },
+ "rows": [
+  {
+   "id": "en-vi-424",
+   "dir": "en->vi",
+   "sec": 4.0908,
+   "n_out": 80,
+   "hyp": "@user36 cặp thứ hai thật tuyệt! Tôi thích mua kính... tôi không bao giờ ném chúng đi nhưng bằng cách nào đó tôi không thể tìm thấy bất kỳ cái nào khác?! Của tôi là màu cầu vồng lúc này, tôi cũng cần một cái kính râm... nhưng nếu bạn cần chỉ định thì chúng thật xấu xí 😂"
+  },
+  {
+   "id": "en-vi-635",
+   "dir": "en->vi",
+   "sec": 1.1927,
+   "n_out": 24,
+   "hyp": "Để thêm tủ đồ mới ở đây (không phải chúng tôi đã bắt đầu thiết kế nó 🙈)"
+  },
+  {
+   "id": "en-vi-468",
+   "dir": "en->vi",
+   "sec": 1.8298,
+   "n_out": 38,
+   "hyp": "Không phải nhà tôi đang thông gió và máy lọc không khí của tôi đang chạy trong bếp trong khi tôi đang thưởng thức một cốc cà phê trong vườn!"
+  },
+  {
+   "id": "en-vi-195",
+   "dir": "en->vi",
+   "sec": 1.4687,
+   "n_out": 29,
+   "hyp": "Khi The Office vẫn còn phát sóng, bạn tôi và tôi sẽ đặt pizza và tụ tập lại để xem nó mỗi thứ năm."
+  },
+  {
+   "id": "en-vi-192",
+   "dir": "en->vi",
+   "sec": 1.4145,
+   "n_out": 29,
+   "hyp": "chúng ta phải nhảy vào mọi thứ mà không cần phải xem xét nguồn gốc, bởi vì nó không dễ dàng để xác định."
+  },
+  {
+   "id": "en-vi-477",
+   "dir": "en->vi",
+   "sec": 1.2176,
+   "n_out": 25,
+   "hyp": "Họ nói không bắt buộc nên tôi đã cho họ tạm dừng và \"đặt vé\" cho tôi."
+  },
+  {
+   "id": "en-vi-178",
+   "dir": "en->vi",
+   "sec": 1.102,
+   "n_out": 22,
+   "hyp": "Có vẻ như ngay cả iMessage trên WiFi cũng không hoạt động, điều đó không hợp lý với tôi."
+  },
+  {
+   "id": "en-vi-418",
+   "dir": "en->vi",
+   "sec": 1.1253,
+   "n_out": 23,
+   "hyp": "Tôi đang chi tiêu cho một bộ khung mới, những cái màu đỏ này tôi reeeeally thích."
+  },
+  {
+   "id": "en-vi-414",
+   "dir": "en->vi",
+   "sec": 0.6198,
+   "n_out": 12,
+   "hyp": "Có chỗ nào đó, nhưng chính xác là ở đâu?"
+  },
+  {
+   "id": "en-vi-988",
+   "dir": "en->vi",
+   "sec": 2.0592,
+   "n_out": 44,
+   "hyp": "\"Không thể nói được,\" Cohren nói. Ông kéo microphone và nói. \"Đại đội Exodus, ngừng bắn trừ khi bị bắn, hãy kéo họ ra."
+  },
+  {
+   "id": "en-vi-578",
+   "dir": "en->vi",
+   "sec": 0.8202,
+   "n_out": 16,
+   "hyp": "@user47 noooooOOOOooOoOoooooooo 🤣"
+  },
+  {
+   "id": "en-vi-191",
+   "dir": "en->vi",
+   "sec": 1.722,
+   "n_out": 35,
+   "hyp": "chúng ta đã xuất hiện trong thời kỳ hoàng kim của truyền thông, với một ý thức tập thể xung quanh văn hóa pop mà không còn tồn tại nữa."
+  },
+  {
+   "id": "vi-en-6",
+   "dir": "vi->en",
+   "sec": 0.7858,
+   "n_out": 15,
+   "hyp": "Adapt to the old, embrace the new to solve the problem."
+  },
+  {
+   "id": "vi-en-983",
+   "dir": "vi->en",
+   "sec": 1.4126,
+   "n_out": 28,
+   "hyp": "\"I guess we'll find out,\" Cohren said, laughing loudly. Orson said nothing more."
+  },
+  {
+   "id": "vi-en-544",
+   "dir": "vi->en",
+   "sec": 1.1894,
+   "n_out": 23,
+   "hyp": "I've been messing up my threads, so this will be part of a larger thread here."
+  },
+  {
+   "id": "vi-en-528",
+   "dir": "vi->en",
+   "sec": 0.9706,
+   "n_out": 18,
+   "hyp": "#TeaganAir #airplane #pilot #pa28 #airplane_training"
+  },
+  {
+   "id": "vi-en-183",
+   "dir": "vi->en",
+   "sec": 0.4536,
+   "n_out": 8,
+   "hyp": "@user10 I see that too"
+  },
+  {
+   "id": "vi-en-353",
+   "dir": "vi->en",
+   "sec": 0.723,
+   "n_out": 14,
+   "hyp": "ESP is not online right now, will wait a few more minutes."
+  },
+  {
+   "id": "vi-en-523",
+   "dir": "vi->en",
+   "sec": 1.023,
+   "n_out": 20,
+   "hyp": "Have a great Saturday, and welcome to the 4,000-foot heights."
+  },
+  {
+   "id": "vi-en-224",
+   "dir": "vi->en",
+   "sec": 1.0652,
+   "n_out": 21,
+   "hyp": "I've been posting this topic for a long time, but I finally defeated Queen Gidbo."
+  },
+  {
+   "id": "vi-en-325",
+   "dir": "vi->en",
+   "sec": 1.7271,
+   "n_out": 34,
+   "hyp": "Since there is no electricity in the garden, everything is powered by solar panels and a 2600mAh 18650 battery."
+  },
+  {
+   "id": "vi-en-794",
+   "dir": "vi->en",
+   "sec": 1.1313,
+   "n_out": 22,
+   "hyp": "January 14, 10:26 a.m., 2543."
+  },
+  {
+   "id": "vi-en-527",
+   "dir": "vi->en",
+   "sec": 0.4341,
+   "n_out": 7,
+   "hyp": "Tracking FlightAware data."
+  },
+  {
+   "id": "vi-en-458",
+   "dir": "vi->en",
+   "sec": 0.5658,
+   "n_out": 10,
+   "hyp": "In addition, Chapter 4 was finally edited!"
+  },
+  {
+   "id": "vi-zh-350",
+   "dir": "vi->zh",
+   "sec": 0.4591,
+   "n_out": 8,
+   "hyp": "没有什么是容易的。"
+  },
+  {
+   "id": "vi-zh-908",
+   "dir": "vi->zh",
+   "sec": 1.7024,
+   "n_out": 34,
+   "hyp": "\"那... 公主要怎么办呢? \" 卡莉看着象牙 满脸兴奋的公主给了象牙一张纸"
+  },
+  {
+   "id": "vi-zh-521",
+   "dir": "vi->zh",
+   "sec": 1.4419,
+   "n_out": 29,
+   "hyp": "驾驶飞机需要体力 今天我背部和腿部都像是从健身房回来一样疼痛"
+  },
+  {
+   "id": "vi-zh-393",
+   "dir": "vi->zh",
+   "sec": 2.1178,
+   "n_out": 43,
+   "hyp": "这些高质量的贴纸每张大约要50美分 运费也要50美分 我个人还要自己包装 并且每张都要自己运费"
+  },
+  {
+   "id": "vi-zh-463",
+   "dir": "vi->zh",
+   "sec": 1.3464,
+   "n_out": 26,
+   "hyp": "他出去剪东西了 （ 发出尖叫声 ） 所以我偷偷看了一下 ， 还没完成"
+  },
+  {
+   "id": "vi-zh-156",
+   "dir": "vi->zh",
+   "sec": 1.3291,
+   "n_out": 25,
+   "hyp": "不是很懒，但累了，即使在这些时间之后。 时间。 香草和香"
+  }
+ ]
+}

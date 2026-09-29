@@ -1,0 +1,10 @@
+{
+  "model": "madlad-3b",
+  "repo": "google/madlad400-3b-mt",
+  "device": "mps",
+  "dtype": "bfloat16",
+  "load_sec": 17.7,
+  "rss_gb_after_load": 0.12,
+  "mps_driver_gb": 6.57,
+  "torch": "2.14.0"
+}
