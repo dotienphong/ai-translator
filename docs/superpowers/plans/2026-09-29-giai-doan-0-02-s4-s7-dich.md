@@ -190,10 +190,6 @@ class LlamaServer:
         with _OPENER.open(req, timeout=30) as r:
             return json.load(r)["build_info"]
 
-    def count_tokens(self, text):
-        with self._post("/tokenize", {"content": text}) as r:
-            return len(json.load(r)["tokens"])
-
     def close(self):
         if self.proc is not None and self.proc.poll() is None:
             self.proc.terminate()
