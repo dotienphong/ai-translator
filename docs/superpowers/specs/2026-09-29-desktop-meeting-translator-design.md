@@ -44,7 +44,7 @@
 | D8 | Ngôn ngữ giao diện | Tiếng Việt và English, đổi được trong Cài đặt |
 | D9 | Chiều dịch | MVP chỉ dịch một chiều: âm thanh máy đang phát → phụ đề ngôn ngữ của người dùng. Nếu cả hai bên cùng cài app thì mỗi bên đều thấy phụ đề của phía kia. |
 | D10 | Phân phối | Tải từ website của sản phẩm. Chưa lên Microsoft Store hay Mac App Store. |
-| D11 | Thanh toán | **PayOS**: khách chuyển khoản ngân hàng bằng mã VietQR, trả bằng VND. **Không dùng Polar.** |
+| D11 | Thanh toán | **MVP dùng PayOS**: khách chuyển khoản ngân hàng bằng mã VietQR, trả bằng VND. Khi bán ra nước ngoài thì thêm một cổng thanh toán quốc tế (§13). |
 | D12 | Độ trễ mục tiêu | Trên máy khuyến nghị, **p50 ≤ 1,5 giây** (xem A2 và §8) |
 
 **Đề xuất mặc định, PHONG xác nhận khi duyệt spec:**
@@ -580,7 +580,7 @@ meeting-translator/
 - Thu âm thanh theo từng app trên Windows.
 - Dịch hai chiều bằng giọng nói (micro ảo).
 - Tóm tắt và biên bản cuộc họp (cần thêm một LLM).
-- **Bán ra nước ngoài:** thêm một cổng thanh toán quốc tế, kiểu merchant of record để cổng đó lo thuế ở các nước (**không dùng Polar**). Có giá bằng USD và thuê bao tự gia hạn. Trong app, khách ở Việt Nam thấy mã VietQR; khách nước ngoài được mở trang thanh toán của cổng quốc tế.
+- **Bán ra nước ngoài:** thêm một cổng thanh toán quốc tế, kiểu merchant of record để cổng đó lo thuế ở các nước (có thể cân nhắc Polar). Có giá bằng USD và thuê bao tự gia hạn. Trong app, khách ở Việt Nam thấy mã VietQR; khách nước ngoài được mở trang thanh toán của cổng quốc tế.
 - Gói cho doanh nghiệp: nhiều máy, cài đặt tập trung.
 - Thêm ngôn ngữ giao diện.
 
@@ -605,7 +605,7 @@ meeting-translator/
 - **Chốt P1:** giá gói Pro 1 tháng và 12 tháng (VND), có bán gói trọn đời không, và hạn mức Free (đề xuất 30 phút/ngày).
 - **PayOS:** đăng ký tài khoản (doanh nghiệp, hộ kinh doanh hoặc cá nhân) và liên kết tài khoản ngân hàng nhận tiền.
 - **Hóa đơn điện tử và thuế** khi bán phần mềm cho khách ở Việt Nam: cần hỏi kế toán. PayOS có trường thông tin người mua và API hóa đơn để tích hợp.
-- **Thanh toán quốc tế:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam, nên MVP chỉ bán cho khách ở Việt Nam. Muốn bán ra nước ngoài thì chọn thêm một nhà cung cấp sau MVP (**không dùng Polar**).
+- **Thanh toán quốc tế:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam, nên MVP chỉ bán cho khách ở Việt Nam. Muốn bán ra nước ngoài thì chọn thêm một nhà cung cấp sau MVP (có thể cân nhắc Polar).
 - **Dịch vụ gửi email** chứa license key.
 - **Tài khoản Cloudflare riêng** cho license server.
 - **Giấy tờ cho phát hành:** mua chứng thư ký mã cho Windows; tài khoản Apple Developer (99 USD/năm).
