@@ -1039,7 +1039,8 @@ fn full_params<'a, 'b>(n_threads: usize, lang: &'a str, audio_ctx: i32) -> FullP
 
 ```rust
 //! Tiến trình phụ `asr-worker`: đọc `Request` từ stdin, ghi `Response` ra stdout (spec §6.4).
-//! stdout chỉ dùng cho khung giao thức; mọi log đều ra stderr.
+//! stdout chỉ dùng cho khung giao thức; mọi log đều ra stderr. whisper.cpp và ggml tự ghi log ra stderr, nên không
+//! gọi `whisper_rs::install_logging_hooks`: khi không bật feature `log_backend`, hàm đó nuốt mất log (kể cả lỗi GPU).
 
 use anyhow::Result;
 use asr_protocol::{Request, Response, read_frame, write_frame};
@@ -1050,8 +1051,6 @@ fn main() -> Result<()> {
     if std::env::args().any(|a| a == "--probe") {
         return probe();
     }
-    whisper_rs::install_logging_hooks();
-
     let mut input = BufReader::new(std::io::stdin().lock());
     let mut output = BufWriter::new(std::io::stdout().lock());
     let mut engine: Option<Engine> = None;
@@ -1177,6 +1176,10 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::Path;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::time::{Duration, Instant};
+
+/// Thời gian chờ `asr-worker` thoát sau `Shutdown` trước khi kill.
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub struct ReadyInfo {
     pub backend: String,
@@ -1264,6 +1267,15 @@ impl AsrWorker {
 impl Drop for AsrWorker {
     fn drop(&mut self) {
         let _ = write_frame(&mut self.stdin, &Request::Shutdown);
+        // Worker treo (ví dụ driver GPU lỗi) thì không chờ mãi: sau SHUTDOWN_TIMEOUT thì kill.
+        let deadline = Instant::now() + SHUTDOWN_TIMEOUT;
+        while Instant::now() < deadline {
+            if let Ok(Some(_)) = self.child.try_wait() {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        let _ = self.child.kill();
         let _ = self.child.wait();
     }
 }
