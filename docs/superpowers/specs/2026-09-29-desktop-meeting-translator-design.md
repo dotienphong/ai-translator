@@ -2,7 +2,7 @@
 
 **Ngày:** 2026-09-29
 **Trạng thái:** Bản nháp qua brainstorming, chờ PHONG duyệt
-**Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
+**Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS, cùng một license server nhỏ để nhận thanh toán qua PayOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
 
 ---
 
@@ -44,13 +44,15 @@
 | D8 | Ngôn ngữ giao diện | Tiếng Việt và English, đổi được trong Cài đặt |
 | D9 | Chiều dịch | MVP chỉ dịch một chiều: âm thanh máy đang phát → phụ đề ngôn ngữ của người dùng. Nếu cả hai bên cùng cài app thì mỗi bên đều thấy phụ đề của phía kia. |
 | D10 | Phân phối | Tải từ website của sản phẩm. Chưa lên Microsoft Store hay Mac App Store. |
+| D11 | Thanh toán | **PayOS**: khách chuyển khoản ngân hàng bằng mã VietQR, trả bằng VND. **Không dùng Polar.** |
+| D12 | Độ trễ mục tiêu | Trên máy khuyến nghị, **p50 ≤ 1,5 giây** (xem A2 và §8) |
 
 **Đề xuất mặc định, PHONG xác nhận khi duyệt spec:**
 
 | # | Hạng mục | Đề xuất |
 |---|---|---|
-| P1 | Kiếm tiền | **Không có quảng cáo.** Free: 30 phút dịch mỗi ngày. **Pro** (thuê bao tháng hoặc năm): dịch không giới hạn, từ điển thuật ngữ, lưu lịch sử và xuất bản chép lời. Giá chốt sau. |
-| P2 | Bản quyền | License key, kích hoạt tối đa 2 máy, dùng được offline (ân hạn 14 ngày). MVP không có tài khoản người dùng. **Không dùng Polar.** Nhà cung cấp thanh toán và license chốt sau (§15). |
+| P1 | Kiếm tiền | **Không có quảng cáo.** Free: 30 phút dịch mỗi ngày. **Pro**: dịch không giới hạn, từ điển thuật ngữ, lưu lịch sử và xuất bản chép lời. Pro bán theo gói **trả trước 1 tháng hoặc 12 tháng** bằng VND, không tự gia hạn, vì PayOS không có thanh toán định kỳ. Giá chốt sau. |
+| P2 | Bản quyền | License key do **license server riêng** của sản phẩm cấp, sau khi PayOS xác nhận đã nhận tiền. Mỗi key kích hoạt tối đa 2 máy, dùng được offline nhờ token có ký số (ân hạn 14 ngày). Không có tài khoản đăng nhập. Chi tiết ở §6.8. |
 
 ## 3. Mục tiêu, phạm vi, tiêu chí thành công
 
@@ -87,7 +89,7 @@
 | # | Tiêu chí |
 |---|---|
 | A1 | **Tương thích:** chạy được với Teams (app), Zoom (app), Google Meet (Chrome và Edge; thêm Safari trên Mac) và Zalo PC, trên cả hai hệ điều hành. Nghe được qua loa, tai nghe có dây và tai nghe Bluetooth. |
-| A2 | **Độ trễ**, tính từ lúc người nói dừng câu đến lúc bản dịch hiện đủ. Máy khuyến nghị: p50 ≤ 2,5 giây, p90 ≤ 4 giây. Máy tối thiểu: p50 ≤ 5 giây. |
+| A2 | **Độ trễ**, tính từ lúc người nói thực sự dừng câu đến lúc bản dịch hiện đủ. **Máy khuyến nghị: p50 ≤ 1,5 giây, p90 ≤ 2,5 giây**, và chữ dịch đầu tiên hiện trong ≤ 1,0 giây (p50). Máy tối thiểu: p50 ≤ 3,5 giây. |
 | A3 | **Chất lượng dịch**, chấm trên văn bản (không qua bước nhận dạng giọng nói), dùng bộ test của benchmark 2026-09-29. Gói Chuẩn: COMET Anh→Việt ≥ 0,83. Gói Nhẹ: ≥ 0,80. |
 | A4 | **Chất lượng nhận dạng giọng nói:** đo mốc WER của gói Chuẩn trên bộ clip họp mẫu ở Giai đoạn 0. Sau mỗi lần đổi model hay engine, WER không được xấu hơn mốc quá 10%. |
 | A5 | **Ổn định:** một phiên dịch liên tục 2 giờ không crash. RAM sau giờ đầu không tăng quá 10%. |
@@ -130,7 +132,8 @@
   - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
-  - **Bản quyền:** nhập key, trạng thái, gỡ kích hoạt.
+  - **Bản quyền:** nhập key, trạng thái và ngày hết hạn, gia hạn, gỡ kích hoạt.
+- **Nâng cấp Pro:** chọn gói 1 tháng hoặc 12 tháng, nhập email, quét mã VietQR hiện ngay trong app (§6.8).
   - **Quyền riêng tư:** bật/tắt lưu lịch sử, xóa toàn bộ dữ liệu.
 - **Giới thiệu và giấy phép mã nguồn mở.**
 
@@ -140,6 +143,7 @@
 - **Nội dung:**
   - Hiện 1–3 dòng bản dịch gần nhất; tùy chọn hiện câu gốc chữ nhỏ ở phía trên.
   - **Bản dịch hiện dần từng chữ** trong lúc model đang dịch.
+  - **Phụ đề tạm:** câu chưa chốt hiện màu nhạt hơn. Nếu người nói nói tiếp ngay (§6.3), phụ đề tạm được thay bằng bản dịch của cả câu đã ghép.
 - **Di chuyển và kích thước:** kéo để di chuyển, kéo cạnh để đổi kích thước. App nhớ vị trí riêng cho từng màn hình.
 - **Chế độ khóa:** cho click xuyên qua thanh phụ đề, để không cản thao tác trên cửa sổ họp. Mở khóa bằng phím tắt hoặc menu khay.
 - **Nổi trên app họp đang toàn màn hình:**
@@ -181,6 +185,14 @@
 3. Nâng phiên bản llama.cpp mà không phải build lại toàn bộ app.
 4. `llama-server` đã có sẵn chế độ stream, chat template và các backend GPU.
 
+**Thành phần nằm ngoài app:** một license server nhỏ làm việc với PayOS (chi tiết ở §6.8). App chỉ gọi server này khi mua, kích hoạt và kiểm tra bản quyền. Âm thanh và nội dung chép lời không bao giờ đi qua server.
+
+```
+App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhook── PayOS ◄── khách quét VietQR
+                      │ tạo link thanh toán ─────────────────────────► PayOS
+                      └─ gửi email chứa license key
+```
+
 ## 6. Thiết kế thành phần
 
 ### 6.1 Thu âm thanh
@@ -209,9 +221,13 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Tham số mặc định:**
   - Ngưỡng tiếng nói: 0,5.
   - Đoạn tiếng nói ngắn nhất: 250 ms.
-  - **Im lặng 500 ms thì chốt câu.** Người dùng chỉnh được trong khoảng 300–1000 ms bằng mục "Độ nhạy ngắt câu".
+  - **Im lặng 300 ms thì chốt đoạn**, để đạt mục tiêu độ trễ ở A2. Người dùng chỉnh được trong khoảng 200–800 ms bằng mục "Độ nhạy ngắt câu".
   - **Mỗi đoạn dài tối đa 8 giây.** Nếu dài hơn, cắt cưỡng bức tại khung có năng lượng thấp nhất trong 1,5 giây cuối.
   - Thêm 200 ms đệm ở đầu và cuối mỗi đoạn.
+- **Ghép câu và phụ đề tạm:** ngưỡng 300 ms dễ cắt giữa câu, ở những chỗ người nói ngừng nghỉ tự nhiên.
+  - Nếu đoạn vừa chốt không kết thúc bằng dấu câu kết thúc (`.` `?` `!` `。` `？` `！`), phụ đề được đánh dấu **tạm**.
+  - Nếu tiếng nói tiếp tục trong vòng 700 ms, đoạn sau được ghép vào: nối chữ của hai đoạn, dịch lại cả câu, rồi thay phụ đề tạm.
+  - Phụ đề được chốt khi có dấu câu kết thúc, hoặc khi im lặng quá 700 ms.
 - **Đầu ra:** `Segment { id, start_ms, end_ms, samples }`, với thời gian tính từ lúc bắt đầu phiên.
 - **Cách chạy Silero:** qua VAD API của whisper.cpp hoặc qua crate ONNX riêng. Chốt ở Giai đoạn 0, mục S3.
 
@@ -226,6 +242,8 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Nếu xác suất cao nhất dưới 0,5 thì giữ ngôn ngữ của đoạn trước, để ngôn ngữ không nhảy qua lại.
   - Nếu người dùng khóa ngôn ngữ thì bỏ bước nhận diện.
 - **Giải mã:** greedy, không dùng temperature fallback. Dùng tối đa 100 token của đoạn trước (cùng ngôn ngữ) làm prompt khởi đầu. Chặn các token không phải tiếng nói.
+- **Rút ngắn cửa sổ mã hóa (`audio_ctx`):** mặc định whisper.cpp luôn mã hóa một cửa sổ 30 giây, kể cả khi đoạn chỉ dài 3 giây. App đặt `audio_ctx = min(1500, 50 × số giây của đoạn + 64)`, vì mỗi giây tương ứng 50 khung. Cách này giảm mạnh thời gian mã hóa, nhưng có thể làm giảm độ chính xác, nên phải đo WER ở mục S7.
+- **Làm nóng:** khi bắt đầu phiên, chạy thử một lần trên một đoạn im lặng để nạp sẵn kernel GPU.
 - **Lọc lỗi "ảo giác" của Whisper:**
   - Bỏ đoạn có `no_speech_prob > 0,6`.
   - Bỏ các câu lặp n-gram.
@@ -248,6 +266,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Chữ Latin khớp theo ranh giới từ; chữ Trung, Nhật, Hàn khớp theo chuỗi con.
   - **Đưa câu trước vào làm ngữ cảnh** (mẫu "background information"): để dạng cờ thử nghiệm. Chỉ bật mặc định nếu ở mục S7 nó làm COMET tăng và độ trễ tăng không quá 20%.
 - **Tham số sinh:** temperature 0, repeat penalty 1,05 (giống benchmark). Số token tối đa = min(4 × số token câu gốc + 32, 512).
+- **Tăng tốc:** bật `cache_prompt` để dùng lại KV cache của phần hướng dẫn cố định ở đầu prompt. Khi bắt đầu phiên, gửi một request làm nóng.
 - **Hậu xử lý:**
   - Cắt khoảng trắng thừa.
   - Bỏ nhãn đầu câu như "Translation:" hay "译文：".
@@ -257,7 +276,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 ### 6.6 Phụ đề và bản chép lời
 
-- **Cấu trúc:** `Subtitle { id, start_ms, end_ms, src_lang, src_text, tgt_text, status }`, với `status` thuộc `asr_done | translating | done | failed | skipped`.
+- **Cấu trúc:** `Subtitle { id, start_ms, end_ms, src_lang, src_text, tgt_text, status }`, với `status` thuộc `asr_done | translating | done | failed | skipped`, cộng thêm cờ `provisional` cho phụ đề tạm (§6.3).
 - **Gửi sang giao diện qua sự kiện Tauri:**
   - `subtitle://upsert`: gửi cả đối tượng.
   - `subtitle://delta`: gửi từng token trong lúc đang dịch.
@@ -296,22 +315,46 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Tự host model:** Apache 2.0 và MIT cho phép phân phối lại. File LICENSE và NOTICE được đặt cạnh file model. Không tải từ Hugging Face hay GitHub của người khác.
 - **Cập nhật model:** khi có mạng, app kiểm tra manifest lúc khởi động, tối đa một lần mỗi ngày. Có bản mới thì hỏi người dùng, không tự tải.
 
-### 6.8 Bản quyền (license key)
+### 6.8 Thanh toán (PayOS) và bản quyền
 
-- **Không dùng Polar.** Nhà cung cấp thanh toán và license chưa chốt (§15). Lõi Rust dùng một interface chung, để sau này đổi nhà cung cấp mà không phải sửa phần còn lại:
-  `trait LicenseProvider { async fn activate(&self, key: &str, device_label: &str) -> Result<Activation>; async fn validate(&self, key: &str, activation_id: &str) -> Result<LicenseStatus>; async fn deactivate(&self, key: &str, activation_id: &str) -> Result<()>; }`
-- **Tiêu chí chọn nhà cung cấp:**
-  1. Bán được thuê bao tháng và năm, và lo được thuế khi bán ra nước ngoài (đóng vai trò merchant of record, hoặc có cách xử lý thuế tương đương).
-  2. Trả tiền về được tài khoản ở Việt Nam.
-  3. Có license key, gồm: giới hạn số máy kích hoạt; API để kích hoạt, kiểm tra và gỡ kích hoạt; key tự hết hiệu lực khi thuê bao bị hủy hoặc hết hạn. Nếu nhà cung cấp không có license key thì phải làm thêm một backend nhỏ để tự cấp và kiểm tra key.
-- **Cách app xử lý bản quyền** (giống nhau với mọi nhà cung cấp):
-  - **Kích hoạt:** người dùng dán key. App gọi `activate` với nhãn là tên máy và lưu lại mã kích hoạt. Mỗi key dùng tối đa **2 máy**.
-  - **Kiểm tra định kỳ:** mỗi lần khởi động, nếu có mạng (tối đa một lần mỗi ngày), app gọi `validate`.
-  - **Ân hạn khi offline:** Pro vẫn còn hiệu lực trong **14 ngày** kể từ lần kiểm tra thành công gần nhất. Quá hạn thì về Free cho tới lần kiểm tra thành công tiếp theo.
-  - **Trạng thái lưu trên máy:** file trạng thái được ký HMAC bằng khóa sinh từ ID máy, đủ để chặn việc sửa file bằng tay. MVP chấp nhận rủi ro bị crack ở mức cơ bản.
-  - **Quota Free:** tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính lúc im lặng. Reset lúc 00:00 theo giờ máy. Lưu chung trong file trạng thái nói trên.
-  - **Chuyển máy:** nút "Gỡ kích hoạt" trong Cài đặt gọi `deactivate`.
-- **Giai đoạn 2:** nếu bị crack nhiều, thêm một backend nhỏ để ký token bản quyền bằng Ed25519.
+**Vì sao cần license server riêng:**
+- PayOS chỉ lo việc nhận tiền, không cấp license key.
+- Khóa API của PayOS (client id, api key, checksum key) bắt buộc nằm trên server, không được nhúng vào app.
+- Server viết bằng TypeScript + Hono, chạy trên Cloudflare Workers, lưu dữ liệu ở D1 (SQLite), dùng **tài khoản Cloudflare riêng** của sản phẩm.
+
+**API của license server:**
+
+| Endpoint | Việc làm |
+|---|---|
+| `POST /v1/checkout` `{plan: "pro_1m" \| "pro_12m", email, license_key?}` | Tạo đơn với `orderCode` duy nhất, gọi PayOS `POST /v2/payment-requests`, trả về `checkoutUrl`, `qrCode` và `order_token` (mã ngẫu nhiên để app hỏi trạng thái đơn). Khi gia hạn thì truyền thêm `license_key` đang có. |
+| `POST /v1/webhooks/payos` | Kiểm tra chữ ký webhook bằng checksum key. Đánh dấu đơn đã trả tiền (idempotent theo `orderCode`). Cấp license mới, hoặc gia hạn license cũ thêm 30 hay 365 ngày, tính từ max(hôm nay, ngày hết hạn). Gửi email chứa key. |
+| `GET /v1/orders/{orderCode}?token=…` | App hỏi trạng thái đơn. Khi đơn đã trả tiền thì trả về key. |
+| `POST /v1/licenses/activate` `{key, device_id_hash, device_label}` | Kích hoạt, tối đa 2 máy mỗi key. Trả về token bản quyền. |
+| `POST /v1/licenses/validate` `{key, activation_id}` | Trả về token mới nếu license còn hiệu lực |
+| `POST /v1/licenses/deactivate` `{key, activation_id}` | Gỡ kích hoạt để chuyển máy |
+
+**Chữ ký khi tạo link thanh toán:** theo tài liệu PayOS, ký HMAC-SHA256 bằng checksum key trên chuỗi các trường `amount`, `cancelUrl`, `description`, `orderCode`, `returnUrl` xếp theo thứ tự chữ cái.
+
+**Token bản quyền:**
+- Ký bằng Ed25519. Khóa công khai build sẵn vào app, nên app kiểm tra được token ngay cả khi offline.
+- Token gồm: `license_id`, `plan`, `expires_at`, `activation_id`, `device_id_hash`, `issued_at`, và `refresh_before` (= `issued_at` + 14 ngày).
+- `device_id_hash` là mã băm SHA-256 của ID phần cứng: IOPlatformUUID trên macOS, MachineGuid trên Windows.
+- Quá `refresh_before` mà vẫn chưa làm mới được token (ví dụ vì offline lâu) thì app về Free.
+- Quá `expires_at` thì app về Free và nhắc gia hạn.
+
+**Mua ngay trong app:**
+1. Người dùng mở "Nâng cấp Pro", chọn gói, nhập email.
+2. App **hiện mã VietQR ngay trong app** (lấy từ `qrCode`), kèm nút mở trang thanh toán của PayOS.
+3. Người dùng quét mã bằng app ngân hàng.
+4. App hỏi trạng thái đơn mỗi 3 giây, tối đa 15 phút. Khi đơn đã trả tiền, app **tự kích hoạt trên máy đang dùng**.
+5. Key cũng được gửi qua email, để kích hoạt máy thứ hai hoặc cài lại máy.
+
+**Các quy tắc khác:**
+- **Gia hạn:** PayOS không tự trừ tiền định kỳ. App nhắc trước 7 ngày và khi đã hết hạn. Nút "Gia hạn" tạo đơn mới gắn với key hiện có.
+- **Kiểm tra định kỳ:** mỗi lần khởi động, nếu có mạng (tối đa một lần mỗi ngày), app gọi `validate` để lấy token mới.
+- **Quota Free:** tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính lúc im lặng. Reset lúc 00:00 theo giờ máy. Lưu trong file trạng thái trên máy, có ký HMAC bằng khóa sinh từ ID máy để chặn sửa bằng tay. MVP chấp nhận rủi ro bị lách ở mức cơ bản.
+- **Trong app:** interface `LicenseProvider` (activate, validate, deactivate) được cài đặt bằng một client gọi license server.
+- **Giới hạn:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng VND, nên MVP chỉ bán được cho khách ở Việt Nam.
 
 ### 6.9 Cài đặt
 
@@ -371,7 +414,7 @@ Các khóa chính:
 
 | Hạng máy | macOS | Windows | Gói model |
 |---|---|---|---|
-| Khuyến nghị | Apple Silicon M1 trở lên, RAM 16 GB | Windows 10/11 x64, RAM 16 GB, GPU hỗ trợ Vulkan với VRAM ≥ 4 GB (NVIDIA, AMD, Intel Arc) | Chuẩn |
+| Khuyến nghị | Apple Silicon M1 trở lên, RAM 16 GB (riêng M1 cơ bản phải xác nhận ở S6) | Windows 10/11 x64, RAM 16 GB, GPU hỗ trợ Vulkan với VRAM ≥ 4 GB (NVIDIA, AMD, Intel Arc) | Chuẩn |
 | Tối thiểu | Apple Silicon, RAM 8 GB | RAM 8 GB, CPU 4 nhân có AVX2 | Nhẹ |
 | Chưa hỗ trợ trong MVP | Mac chip Intel | ARM64, CPU không có AVX2, RAM < 8 GB | — |
 
@@ -379,11 +422,13 @@ Các khóa chính:
 
 | Bước | Gói Chuẩn (GPU) | Gói Nhẹ (CPU) |
 |---|---|---|
-| Im lặng để chốt câu | 0,5 s | 0,5 s |
-| Nhận dạng giọng nói | 0,4–0,8 s | 0,8–1,5 s |
-| Dịch (Hy-MT2) | 0,2–0,6 s | 0,5–1,5 s |
+| Im lặng để chốt đoạn (§6.3) | 0,3 s | 0,3 s |
+| Nhận dạng giọng nói (`audio_ctx` rút ngắn) | 0,3–0,6 s | 0,6–1,2 s |
+| Dịch (stream, có `cache_prompt`) | 0,2–0,5 s | 0,4–1,2 s |
 | Hiển thị | < 0,05 s | < 0,05 s |
-| **Tổng** | **≈ 1,2–2,0 s** | **≈ 1,8–3,5 s** |
+| **Tổng** | **≈ 0,8–1,45 s** | **≈ 1,3–2,75 s** |
+
+Bảng trên là ước tính; riêng bước dịch đã có số đo thật (dòng dưới). **Mục tiêu p50 ≤ 1,5 giây chỉ đạt được trên máy khuyến nghị có GPU, và còn rất ít dư địa**, nên phải đo thật ở mục S6. Nếu máy M1 cơ bản không đạt thì nâng hạng máy khuyến nghị lên M1 Pro, M2 trở lên.
 
 Mốc thực tế: Hy-MT2 Q8_0 chạy trên CPU 4 luồng của M4 Pro mất 0,45 giây/câu (benchmark 2026-09-29).
 
@@ -415,16 +460,25 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
 | Hết quota Free | Bộ đếm phút | Dừng dịch, hiện "Đã dùng hết 30 phút hôm nay" kèm nút nâng cấp |
 | License không hợp lệ, hết hạn hoặc bị thu hồi | Kết quả `validate` | Về Free, báo rõ lý do |
 | Mất mạng đúng lúc cần kiểm tra license | Lỗi mạng | Giữ Pro trong 14 ngày ân hạn |
+| Khách đã chuyển khoản nhưng webhook của PayOS đến chậm hoặc bị mất | App vẫn đang chờ; server có đơn chưa xác nhận | App hỏi trạng thái đơn mỗi 3 giây. Server tự đối soát bằng `GET /v2/payment-requests/{id}` mỗi 5 phút cho các đơn chưa xác nhận. |
+| Webhook bị gửi trùng | Trùng `orderCode` | Xử lý idempotent: mỗi đơn chỉ cấp hoặc gia hạn license một lần |
+| Khách chuyển thiếu tiền, hoặc link thanh toán hết hạn | Trạng thái đơn trả về từ PayOS | Không cấp license, hiện hướng dẫn liên hệ hỗ trợ |
 | Tải model thất bại | Lỗi HTTP hoặc sai SHA-256 | Thử lại 3 lần, cho phép tải tiếp sau |
 | Bản dịch lỗi (quá dài, có kèm lời giải thích) | Tỉ lệ độ dài, mẫu nhận dạng | Thử lại một lần, sau đó hiện câu gốc |
 
 ## 10. Quyền riêng tư, bảo mật, pháp lý
 
 - **Âm thanh** chỉ nằm trong RAM: không ghi xuống đĩa, không gửi qua mạng.
-- **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi API của nhà cung cấp license. MVP **không có analytics và không gửi báo cáo crash**. Log nằm trên máy; khi cần hỗ trợ, người dùng tự gửi.
+- **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi license server của sản phẩm (khi mua, kích hoạt, kiểm tra bản quyền). MVP **không có analytics và không gửi báo cáo crash**. Log nằm trên máy; khi cần hỗ trợ, người dùng tự gửi.
 - **Tiến trình phụ** chỉ nghe trên `127.0.0.1`, với API key ngẫu nhiên tạo mới mỗi lần chạy.
+- **Khóa API của PayOS** (client id, api key, checksum key) chỉ nằm trên license server, được lưu dưới dạng secret, không bao giờ có trong app.
 - **Lịch sử chép lời** mặc định tắt, chỉ lưu trên máy, xóa toàn bộ được bằng một nút.
-- **Luật Bảo vệ dữ liệu cá nhân 2025 (Việt Nam):** app không thu thập dữ liệu cá nhân, vì không có tài khoản. Email và thông tin thanh toán do nhà cung cấp thanh toán xử lý (§15). Chính sách quyền riêng tư phải ghi rõ đó là nhà cung cấp nào và họ nhận những dữ liệu gì.
+- **Luật Bảo vệ dữ liệu cá nhân 2025 (Việt Nam):**
+  - App không có tài khoản đăng nhập.
+  - License server chỉ lưu email (để gửi và khôi phục key), thông tin đơn hàng, license và mã băm của ID máy.
+  - Việc chuyển khoản do ngân hàng và PayOS xử lý; server không nhận số tài khoản ngân hàng của khách.
+  - Khi mua, người dùng tick đồng ý cho xử lý email vào đúng mục đích này.
+  - Chính sách quyền riêng tư phải ghi rõ dữ liệu nào được lưu, lưu bao lâu, và cách yêu cầu xóa.
 - **Giấy phép bên thứ ba**, liệt kê ở màn hình Giới thiệu và file `THIRD_PARTY_NOTICES`:
   - Hy-MT2: Apache 2.0, kèm LICENSE và NOTICE. Nếu tự nén lại model thì phải ghi chú là đã sửa đổi.
   - Trọng số Whisper: MIT.
@@ -449,6 +503,9 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
   - Trạng thái bản quyền: ân hạn, thu hồi.
   - Manifest và SHA-256.
 - **Test giao diện (`vitest`):** i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề; các hàm xuất file.
+- **License server:**
+  - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; tính ngày gia hạn (từ max(hôm nay, ngày hết hạn)); giới hạn 2 máy; ký và kiểm tra token Ed25519.
+  - Test tích hợp với PayOS trên môi trường test nếu có; nếu không có thì dùng giao dịch với số tiền nhỏ.
 - **Test tích hợp:**
   - Chạy pipeline từ file WAV (không cần thu âm thật), kiểm tra phụ đề có xuất hiện, đúng thứ tự, đúng thời gian.
   - Vòng đời tiến trình phụ: khởi động, giả lập crash, tự khởi động lại.
@@ -483,6 +540,8 @@ meeting-translator/
 │   │   └── settings.rs  tray.rs  hotkeys.rs  i18n.rs
 │   ├── binaries/                 # llama-server theo target triple
 │   └── tauri.conf.json
+├── server/                       # License server: Cloudflare Worker (TypeScript, Hono) + D1
+│   └── src/{checkout,webhook-payos,licenses,token,reconcile}.ts
 ├── bench/                        # Đánh giá chất lượng và độ trễ
 │   └── 2026-09-29-mt-benchmark/  # Kết quả gốc của lần chọn model
 ├── tests/fixtures/audio/         # Clip âm thanh cuộc họp mẫu
@@ -501,11 +560,11 @@ meeting-translator/
 | S4 | Chạy `llama-server` với Hy-MT2 qua `/v1/chat/completions` ở chế độ stream; kiểm tra chat template |
 | S5 | Cho thanh phụ đề nổi trên app đang toàn màn hình, trên cả Mac và Windows |
 | S6 | Đo độ trễ tổng thể và RAM cho cả hai gói model |
-| S7 | Benchmark Q4_K_M so với Q8_0, whisper turbo so với small, và thử cờ ngữ cảnh câu trước |
+| S7 | Benchmark Q4_K_M so với Q8_0, whisper turbo so với small, đo WER khi rút ngắn `audio_ctx`, và thử cờ ngữ cảnh câu trước |
 
-**Tiêu chí qua spike:** S1–S5 chạy được, và S6 đạt ngân sách ở §8 trên máy khuyến nghị. Nếu không đạt thì quay lại sửa spec trước khi làm tiếp.
+**Tiêu chí qua spike:** S1–S5 chạy được, và S6 đạt **p50 ≤ 1,5 giây** trên máy khuyến nghị, đo cả trên máy M1 cơ bản 16 GB. Nếu M1 cơ bản không đạt thì nâng hạng máy khuyến nghị (§8). Nếu cả máy mạnh hơn cũng không đạt thì quay lại sửa spec.
 
-**Giai đoạn 1: MVP.** Làm F1–F10 và đạt A1–A7.
+**Giai đoạn 1: MVP.** Làm F1–F10, license server và tích hợp PayOS (§6.8), đạt A1–A7.
 
 **Giai đoạn 2: mở rộng**, thứ tự tùy phản hồi của người dùng:
 - Phân biệt ai đang nói.
@@ -525,12 +584,21 @@ meeting-translator/
 4. Whisper large-v3-turbo chạy kịp thời gian thực trên máy M1 16 GB và trên laptop Windows có GPU tích hợp dùng Vulkan. (S6)
 5. Độ trễ tổng thể đạt ngân sách ở §8. (S6)
 6. Bản Q4_K_M của Hy-MT2 giảm COMET không quá 0,02 so với Q8_0. (S7)
-7. Nhà cung cấp license được chọn có đủ API kích hoạt, kiểm tra và gỡ kích hoạt, và key hết hiệu lực ngay khi khách hủy thuê bao. (Kiểm tra trên môi trường sandbox của nhà cung cấp trước khi làm §6.8.)
+7. PayOS (kiểm tra trước khi làm §6.8):
+   - Đăng ký được với loại hình kinh doanh của PHONG.
+   - Webhook và cách ký HMAC-SHA256 đúng như tài liệu.
+   - Có môi trường test; nếu không có thì test bằng giao dịch nhỏ.
+   - Mô tả đơn cần ngắn (với một số ngân hàng tối đa 9 ký tự), nên dùng mã dạng `MT` cộng số đơn.
+8. Rút ngắn `audio_ctx` không làm WER tăng quá 10% so với cửa sổ 30 giây đầy đủ. (S7)
 
 ## 15. Việc còn mở (không chặn phần kỹ thuật)
 
 - **Tên sản phẩm, logo, tên miền, bundle identifier.** Trong code tạm dùng `meeting-translator`, sau đổi bằng cấu hình.
-- **Chốt P1 và P2:** giá Pro theo tháng và năm, có bán gói trọn đời không, và hạn mức Free (đề xuất 30 phút/ngày).
-- **Chọn nhà cung cấp thanh toán và license** theo tiêu chí ở §6.8. **Không dùng Polar.** Sau đó tạo sản phẩm Pro (thuê bao tháng và năm).
+- **Chốt P1:** giá gói Pro 1 tháng và 12 tháng (VND), có bán gói trọn đời không, và hạn mức Free (đề xuất 30 phút/ngày).
+- **PayOS:** đăng ký tài khoản (doanh nghiệp, hộ kinh doanh hoặc cá nhân) và liên kết tài khoản ngân hàng nhận tiền.
+- **Hóa đơn điện tử và thuế** khi bán phần mềm cho khách ở Việt Nam: cần hỏi kế toán. PayOS có trường thông tin người mua và API hóa đơn để tích hợp.
+- **Thanh toán quốc tế:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam, nên MVP chỉ bán cho khách ở Việt Nam. Muốn bán ra nước ngoài thì chọn thêm một nhà cung cấp sau MVP (**không dùng Polar**).
+- **Dịch vụ gửi email** chứa license key.
+- **Tài khoản Cloudflare riêng** cho license server.
 - **Giấy tờ cho phát hành:** mua chứng thư ký mã cho Windows; tài khoản Apple Developer (99 USD/năm).
 - **Website:** trang tải app, trang giá, chính sách quyền riêng tư và điều khoản sử dụng. Phần này sẽ có spec riêng.
