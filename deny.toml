@@ -6,6 +6,8 @@ targets = ["aarch64-apple-darwin", "x86_64-pc-windows-msvc"]
 all-features = true
 
 [advisories]
+yanked = "deny"
+unsound = "all"
 ignore = []
 
 [licenses]
