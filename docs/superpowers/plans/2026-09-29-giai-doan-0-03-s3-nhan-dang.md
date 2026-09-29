@@ -1299,6 +1299,7 @@ Theo A4, mỗi ngôn ngữ nguồn có ít nhất 15 phút âm thanh, lấy từ
 - Mỗi câu chỉ lấy một bản ghi, và bỏ clip dài hơn 30 giây.
 - Cứ 4 clip thì tạo thêm một bản băng hẹp (hạ xuống 8 kHz rồi nâng lại 16 kHz), để mô phỏng tai nghe Bluetooth ở chế độ HFP.
 - Clip tự thu (nếu có) khai trong `bench/phase0/data/asr/extra_clips.jsonl`, cùng định dạng với manifest.
+- FLEURS được ghim theo commit `70bb2e8…` của dataset, kèm kích thước và SHA-256 của từng file. Script tải bằng hàm `ensure()` của `fetch.py` (tải tiếp, thử lại, kiểm băm), nên phải có `bench/phase0/fetch.py` ở kế hoạch 01.
 
 - [ ] **Step 1: Tạo `bench/phase0/asr/build_clips.py`**
 
@@ -1310,6 +1311,7 @@ Theo A4, mỗi ngôn ngữ nguồn có ít nhất 15 phút âm thanh, lấy từ
 - Cứ 4 clip lấy 1 clip làm thêm bản băng hẹp: hạ xuống 8 kHz rồi nâng lại 16 kHz,
   mô phỏng tai nghe Bluetooth ở chế độ đàm thoại (HFP).
 - Clip tự thu (nếu có) khai báo trong data/asr/extra_clips.jsonl, cùng định dạng với manifest.
+- FLEURS ghim theo commit, kích thước và SHA-256 của từng file; tải qua hàm của fetch.py (tải tiếp, thử lại, kiểm băm).
 
 Dùng:  uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "scipy==1.18.1" \
          python bench/phase0/asr/build_clips.py [--langs en_us,vi_vn]
@@ -1320,8 +1322,8 @@ import csv
 import io
 import json
 import os
+import sys
 import tarfile
-import urllib.request
 import wave
 
 import numpy as np
@@ -1329,19 +1331,35 @@ from scipy.io import wavfile
 from scipy.signal import resample_poly
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(HERE))
+from fetch import ensure  # noqa: E402  (bench/phase0/fetch.py)
+
 DATA = os.path.abspath(os.path.join(HERE, "..", "data", "asr"))
-BASE = "https://huggingface.co/datasets/google/fleurs/resolve/main/data"
+REV = "70bb2e84b976b7e960aa89f1c648e09c59f894dd"  # commit của dataset google/fleurs
+BASE = f"https://huggingface.co/datasets/google/fleurs/resolve/{REV}/data"
+# (kích thước, SHA-256) của dev.tsv và của audio/dev.tar.gz cho từng ngôn ngữ, khoảng 910 MB tất cả.
+PINNED = {
+    "en_us": ((213065, "9d57ee7e91e9d4c92edb39f6bbea668ef8dc2a3ff96eb510d5580b2ad05d17ec"),
+              (171250900, "2658fda72f199e12676ecac9415094667a4e14e149b146e568ea00b2a2f0954c")),
+    "vi_vn": ((247001, "c9bc17cede9765b1c75cb7a608f7066cb6bb6f8245cc75d721a5217a5dffb414"),
+              (214500592, "8821a394c99069409b3ce7bb5cd14b10b709f2ee2fea16f42b4701e1cc9ef673")),
+    "cmn_hans_cn": ((205248, "6b4efd804b543048feb278db06f3b58b5ea171cdd4ba072e328ad630ca25384b"),
+                    (217347747, "3bc33212d5974eef7feb04bc4792458d6cd7e14ff10a1a24772f3c45ea87a822")),
+    "ja_jp": ((142341, "92beded0999347ad5b8599fe70940e2e7b9232c67c426defb258e596ade94f48"),
+              (179387192, "2547f19203e1272aeba99c2235326fea525d6cfb9348bafbea2c3a7929e8e441")),
+    "ko_kr": ((124920, "6b236de107c6a1672233f6d710d26adfdb55570a3e6e35aca9dc4ff2be01cea4"),
+              (126162634, "496edcb5323e75b4a2830f5b5623684a0baf86d3728101853fd4fe503372157c")),
+}
 WHISPER_CODE = {"en_us": "en", "vi_vn": "vi", "cmn_hans_cn": "zh", "ja_jp": "ja", "ko_kr": "ko"}
 MIN_SECONDS = 15 * 60
 MAX_CLIP_SECONDS = 30
 
 
-def fetch(url, dest):
-    if not os.path.exists(dest):
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        print("tải", url)
-        urllib.request.urlretrieve(url, dest + ".part")
-        os.replace(dest + ".part", dest)
+def fetch(fleurs, rel, pin):
+    """Tải `data/<fleurs>/<rel>` của FLEURS nếu chưa có; file đã có thì kiểm lại kích thước và SHA-256."""
+    dest = os.path.join(DATA, "fleurs", fleurs, os.path.basename(rel))
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    ensure(f"{BASE}/{fleurs}/{rel}", dest, *pin)
     return dest
 
 
@@ -1379,8 +1397,9 @@ def main():
     rows_out = []
     for fleurs in args.langs.split(","):
         lang = WHISPER_CODE[fleurs]
-        tsv = fetch(f"{BASE}/{fleurs}/dev.tsv", os.path.join(DATA, "fleurs", fleurs, "dev.tsv"))
-        tar_path = fetch(f"{BASE}/{fleurs}/audio/dev.tar.gz", os.path.join(DATA, "fleurs", fleurs, "dev.tar.gz"))
+        tsv_pin, tar_pin = PINNED[fleurs]
+        tsv = fetch(fleurs, "dev.tsv", tsv_pin)
+        tar_path = fetch(fleurs, "audio/dev.tar.gz", tar_pin)
         wanted, seen_sentences, total = {}, set(), 0.0
         with open(tsv, encoding="utf-8") as f:
             for r in csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
@@ -1420,7 +1439,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Chạy** (tải khoảng 600 MB, mỗi ngôn ngữ một file `dev.tar.gz` khoảng 120 MB)
+- [ ] **Step 2: Chạy** (tải khoảng 910 MB, mỗi ngôn ngữ một file `dev.tar.gz` từ 126 tới 217 MB)
 
 Run:
 ```bash
