@@ -4,6 +4,9 @@ Ghép 64 mẫu cuối của khung trước làm ngữ cảnh, giống OnnxWrappe
 
 Dùng:  uv run --no-project --python 3.12 --with "onnxruntime==1.30.0" --with "numpy==2.5.3" \
          python bench/phase0/vad/ref_probs.py <model.onnx> <audio.wav> > ref.json
+
+File thử `bench/phase0/data/vad/en.wav` (không commit) tạo bằng lệnh `say` của macOS, theo Task 2 Step 6 của
+docs/superpowers/plans/2026-09-29-giai-doan-0-03-s3-nhan-dang.md. Máy Windows chép `en.wav` và `en.ref.json` từ Mac.
 """
 import json
 import sys

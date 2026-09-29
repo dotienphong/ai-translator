@@ -16,6 +16,8 @@ const SR: &str = "sr";
 const OUTPUT: &str = "output";
 const STATE_OUT: &str = "stateN";
 
+/// Bản debug cần khoảng 1 MiB stack cho mỗi lần suy luận, kể cả lần chạy thử trong `load()`, mà luồng chính của Windows
+/// chỉ có 1 MiB. Vì vậy tạo và dùng `SileroVad` trên luồng riêng, đặt `std::thread::Builder::stack_size` từ 4 MiB.
 pub struct SileroVad {
     model: candle_onnx::onnx::ModelProto,
     state: Tensor,
@@ -47,7 +49,9 @@ impl SileroVad {
             device,
         };
         // Chạy thử một khung im lặng, để model sai định dạng hay op không được hỗ trợ lộ ra ngay lúc nạp.
-        let p = vad.prob(&[0.0; FRAME_SAMPLES])?;
+        let p = vad
+            .prob(&[0.0; FRAME_SAMPLES])
+            .context("chạy thử model Silero lúc nạp thất bại")?;
         ensure!((0.0..=1.0).contains(&p), "xác suất ngoài khoảng [0, 1]: {p}");
         ensure!(
             vad.state.dims() == [2, 1, 128],
@@ -88,6 +92,7 @@ impl SileroVad {
         // candle-onnx dựng trọng số LSTM bằng `Var`, nên state trả về còn kéo theo đồ thị tính của mọi khung trước.
         // Không `detach` thì mỗi khung giữ thêm khoảng 0,5 MB, và việc hủy chuỗi đó làm tràn stack sau vài phút.
         self.state = outputs.remove(STATE_OUT).context("thiếu output state")?.detach();
+        debug_assert!(!self.state.track_op(), "state còn kéo theo đồ thị tính");
         self.context.copy_from_slice(&frame[FRAME_SAMPLES - CONTEXT_SAMPLES..]);
         let prob = outputs.remove(OUTPUT).context("thiếu output xác suất")?;
         prob.flatten_all()?

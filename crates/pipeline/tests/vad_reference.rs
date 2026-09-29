@@ -1,6 +1,6 @@
 //! So xác suất VAD của candle-onnx với onnxruntime (bench/phase0/vad/ref_probs.py), rồi chạy dài để bắt rò bộ nhớ.
-//! Cần model và file tham chiếu nên mặc định bị bỏ qua. Đường dẫn phải là tuyệt đối, vì cargo chạy test trong thư mục
-//! của crate:
+//! Cần model và file tham chiếu nên mặc định bị bỏ qua. Chạy lại mỗi khi nâng candle-core hoặc candle-onnx.
+//! Đường dẫn phải là tuyệt đối, vì cargo chạy test trong thư mục của crate:
 //!   SILERO_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx VAD_TEST_WAV=$PWD/... VAD_REF_JSON=$PWD/... \
 //!     cargo test -p pipeline --test vad_reference -- --include-ignored
 

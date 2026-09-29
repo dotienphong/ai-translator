@@ -25,6 +25,7 @@ fn main() -> anyhow::Result<()> {
         .map(|s| s.map(|v| v as f32 / 32768.0))
         .collect::<Result<_, _>>()?;
     let frames = samples.as_chunks::<FRAME_SAMPLES>().0;
+    anyhow::ensure!(!frames.is_empty(), "file ngắn hơn một khung ({FRAME_SAMPLES} mẫu)");
     let mut probs = Vec::with_capacity(frames.len());
     let mut times_ms = Vec::with_capacity(frames.len());
     let origin = Instant::now();
