@@ -653,6 +653,8 @@ Script tính:
 - Cột "Số câu dài gấp đôi": số câu mà bản dịch có ngữ cảnh dài hơn gấp đôi bản không có ngữ cảnh. Khi câu gốc ngắn, model đôi khi dịch luôn cả câu ngữ cảnh.
 - Ngưỡng tỉ lệ token: tỉ lệ lớn nhất đo được, cộng biên 25%, làm tròn lên 0,1. Chỉ lấy từ các lượt chạy không có ngữ cảnh.
 - Cột "Bị cắt": số bản dịch dừng vì chạm số token tối đa (`finish_reason` là `length`), tức là sinh lan man. Các bản này không được tính vào ngưỡng; chiều nào có bản bị cắt thì xem lại từng câu.
+- Cột "Nghi lẫn mẫu": số bản dịch có xuống dòng, hoặc mở đầu bằng `[` hay `【`, trong khi câu gốc không có. Đây là dấu hiệu model dịch luôn tiêu đề của mẫu prompt hoặc câu ngữ cảnh. Lúc thực thi, Q8_0 có ngữ cảnh bị 325/538 câu, Q4_K_M có ngữ cảnh 8/538, bản không có ngữ cảnh 0.
+- Cột thời gian chỉ để tham khảo. Nó chỉ so sánh được khi cả bốn lượt chạy lúc máy rảnh: đóng Docker Desktop và các app nặng, và swap gần như trống. Lần thực thi đầu, máy bận nên tốc độ sinh token giảm gần một nửa giữa chừng.
 
 - [ ] **Step 1: Tạo `bench/phase0/mt/score_mt.py`**
 
@@ -678,6 +680,7 @@ DATA = os.path.join(ROOT, "bench", "phase0", "data", "mt")
 RESULTS = os.path.join(ROOT, "bench", "phase0", "results")
 FLOOR = {"Q8_0": 0.83, "Q4_K_M": 0.80}  # mức sàn Anh→Việt (A3)
 CJK_GAP = 0.05  # Trung/Nhật/Hàn→Việt thấp hơn Anh→Việt quá mức này thì xem lại D5 (A3)
+MARKERS = ("[", "【")  # tiêu đề của mẫu prompt có ngữ cảnh: [Background Information], 【背景信息】
 
 
 def percentile(values, p):
@@ -699,12 +702,18 @@ def bootstrap_ci(diffs, n_boot=2000):
     return means[int(0.025 * n_boot)], means[int(0.975 * n_boot) - 1]
 
 
-def summarize(rows, scores):
+def looks_leaked(src, hyp):
+    """Bản dịch có dấu hiệu chứa cả phần mẫu prompt hoặc câu ngữ cảnh: xuống dòng hay mở đầu bằng [ 【 mà câu gốc không có."""
+    return ("\n" in hyp and "\n" not in src) or (hyp.lstrip().startswith(MARKERS) and not src.lstrip().startswith(MARKERS))
+
+
+def summarize(rows, scores, items):
     # Bản dịch bị cắt ở số token tối đa (finish_reason "length") là sinh lan man: đếm riêng, không tính vào ngưỡng.
     capped = sum(r.get("finish_reason") == "length" for r in rows)
     kept = [r for r in rows if r.get("finish_reason") != "length"] or rows  # cả chiều đều bị cắt: vẫn tính, để thấy
     ratios = [r["completion_tokens"] / max(r["src_tokens"], 1) for r in kept]
     out = {"n": len(rows), "length_capped": capped,
+           "leaked": sum(looks_leaked(items[r["id"]]["src"], r["hyp"]) for r in rows),
            "token_ratio_max": max(ratios), "token_ratio_p99": percentile(ratios, 99),
            # Ngưỡng đề xuất: tỉ lệ lớn nhất đo được, cộng biên 25%, làm tròn lên 0,1.
            "proposed_threshold": math.ceil(max(ratios) * 1.25 * 10) / 10,
@@ -779,7 +788,7 @@ def main():
         by_dir = defaultdict(list)
         for r in rows.values():
             by_dir[r["dir"]].append(r)
-        report[name] = {d: summarize(rs, scores.get(name)) for d, rs in sorted(by_dir.items())}
+        report[name] = {d: summarize(rs, scores.get(name), items) for d, rs in sorted(by_dir.items())}
 
     # Giả định 6 (§14): Q4_K_M so với Q8_0. Cờ ngữ cảnh (§6.5): có ngữ cảnh so với không.
     comparisons = {}
@@ -803,14 +812,15 @@ def main():
                   ensure_ascii=False, indent=1)
 
     lines = ["## Mốc theo lượt chạy", "",
-             "| Lượt chạy | Chiều | Số câu | COMET | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | Bị cắt | p50 thời gian (ms) |",
-             "|---|---|---|---|---|---|---|---|---|"]
+             "| Lượt chạy | Chiều | Số câu | COMET | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | Bị cắt | Nghi lẫn mẫu "
+             "| p50 thời gian (ms) |",
+             "|---|---|---|---|---|---|---|---|---|---|"]
     for name, per_dir in report.items():
         for d, r in per_dir.items():
             comet_s = f"{r['comet']:.3f}" if "comet" in r else "—"
             lines.append(f"| {name} | {d} | {r['n']} | {comet_s} | {floor_cell(name, d, per_dir)} | "
                          f"{r['token_ratio_max']:.2f} | {r['proposed_threshold']:.1f} | {r['length_capped']} | "
-                         f"{r['total_ms_p50']:.0f} |")
+                         f"{r['leaked']} | {r['total_ms_p50']:.0f} |")
     lines += ["", "## So sánh theo cặp (cùng tập câu)", "",
               "| So sánh | Chiều | Số câu | Chênh COMET | 95% CI | Chênh p50 thời gian | Số câu dài gấp đôi |",
               "|---|---|---|---|---|---|---|"]
@@ -907,13 +917,15 @@ Quy tắc: đạt nếu chênh trung bình của "Hy-MT2-1.8B-Q4_K_M-plain − Q
 
 ## Cờ ngữ cảnh câu trước (§6.5)
 
-Quy tắc: chỉ bật mặc định khi thỏa cả hai điều kiện:
+Quy tắc: chỉ bật mặc định khi thỏa cả ba điều kiện:
 - với cả Q8_0 và Q4_K_M, chênh COMET "context − plain" dương và cận dưới 95% CI > 0 ở cả bốn chiều Anh/Trung/Nhật/Hàn→Việt;
-- chênh p50 thời gian ≤ +20% ở mọi chiều.
+- chênh p50 thời gian ≤ +20% ở mọi chiều, đo lúc máy rảnh;
+- cột "Nghi lẫn mẫu" gần 0 (bản dịch không được chứa tiêu đề mẫu hay câu ngữ cảnh).
 
 Nếu không thì giữ là cờ thử nghiệm, mặc định tắt.
 - Kết quả: <bật / giữ tắt>
 - Số câu dài gấp đôi (dịch luôn câu ngữ cảnh): <tổng theo chiều>
+- Số câu nghi lẫn mẫu: <Q8_0 và Q4_K_M, theo chiều>
 
 ## Ngưỡng tỉ lệ token cho hậu xử lý (§6.5)
 
