@@ -84,7 +84,7 @@ Toàn bộ code trong các kế hoạch con đã được biên dịch và chạ
   - Mọi crate đều biên dịch được trên macOS và qua hết test.
   - `audio-capture` qua kiểm tra kiểu cho target `x86_64-pc-windows-msvc`.
   - Nhánh code Windows của app Tauri biên dịch được ở mức API.
-- **S4:** trên cả Q8_0 và Q4_K_M, token prompt do `llama-server` b11146 dựng từ template trong GGUF trùng từng token với tokenizer Hugging Face. Reviewer còn kiểm thêm 452 prompt của bộ test. Bản dịch stream qua `/v1/chat/completions` giống hệt `/completion` nạp token của Hugging Face.
+- **S4:** trên cả Q8_0 và Q4_K_M, token prompt do `llama-server` b11146 dựng từ template trong GGUF trùng từng token với tokenizer Hugging Face. Reviewer còn kiểm thêm 452 prompt của bộ test. Bản dịch stream qua `/v1/chat/completions` giống hệt `/completion` nạp token của Hugging Face. Kết luận chỉ áp cho macOS arm64 và cho lệnh chạy hiện tại (không `--jinja`, không `--chat-template`). Nếu đổi cờ, hoặc khi bắt đầu phần Windows, thì chạy lại S4.
 - **VAD:** Silero v6.2.3 chạy bằng candle-onnx cho kết quả trùng hoàn toàn với onnxruntime (sai khác lớn nhất 0,0), mất khoảng 0,27 ms cho mỗi khung 32 ms.
 - **Toàn chuỗi (gói Nhẹ, chế độ B):**
   - 6 câu Anh/Trung/Nhật: p50 705 ms, p90 760 ms, chữ đầu tiên 528 ms.
