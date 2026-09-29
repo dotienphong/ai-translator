@@ -322,6 +322,14 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - Khóa API của PayOS (client id, api key, checksum key) bắt buộc nằm trên server, không được nhúng vào app.
 - Server viết bằng TypeScript + Hono, chạy trên Cloudflare Workers, lưu dữ liệu ở D1 (SQLite), dùng **tài khoản Cloudflare riêng** của sản phẩm.
 
+**Chuẩn bị cho việc thêm cổng thanh toán quốc tế:**
+- Phần thanh toán trên server nằm sau interface `PaymentProvider`, gồm `create_checkout`, `verify_webhook` và `get_payment_status`. PayOS là cài đặt đầu tiên.
+- Thêm một cổng khác chỉ cần viết thêm một cài đặt và một endpoint webhook. License, token bản quyền và app đều không phải sửa.
+- Bảng đơn hàng lưu thêm `provider` và `currency`. Mỗi gói Pro có giá riêng theo từng loại tiền.
+- License chỉ quan tâm `expires_at`, không quan tâm tiền đến từ đâu. Vì vậy cả hai kiểu thanh toán đều dùng chung được:
+  - Gói trả trước của PayOS: mỗi lần trả tiền cộng thêm 30 hoặc 365 ngày.
+  - Thuê bao tự gia hạn của cổng quốc tế: mỗi webhook gia hạn cộng thêm một kỳ; khách hủy thì ngừng cộng.
+
 **API của license server:**
 
 | Endpoint | Việc làm |
@@ -572,7 +580,7 @@ meeting-translator/
 - Thu âm thanh theo từng app trên Windows.
 - Dịch hai chiều bằng giọng nói (micro ảo).
 - Tóm tắt và biên bản cuộc họp (cần thêm một LLM).
-- Token bản quyền ký số qua một backend nhỏ.
+- **Bán ra nước ngoài:** thêm một cổng thanh toán quốc tế, kiểu merchant of record để cổng đó lo thuế ở các nước (**không dùng Polar**). Có giá bằng USD và thuê bao tự gia hạn. Trong app, khách ở Việt Nam thấy mã VietQR; khách nước ngoài được mở trang thanh toán của cổng quốc tế.
 - Gói cho doanh nghiệp: nhiều máy, cài đặt tập trung.
 - Thêm ngôn ngữ giao diện.
 
