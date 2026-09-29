@@ -10,6 +10,7 @@ Dùng:  python3 bench/phase0/fetch.py [--only whisper,mt,vad,llama]
 - Chỉ dùng thư viện chuẩn của Python.
 """
 import argparse
+import glob
 import hashlib
 import http.client
 import json
@@ -126,17 +127,24 @@ def download(url, dest, size, sha):
             try:
                 fetch_into(url, part, have, size, name)
             except urllib.error.HTTPError as e:
-                if e.code != 416:
+                if e.code == 416:  # server không nhận Range này
+                    os.remove(part)
+                    print(f"{name}: server trả 416, tải lại từ đầu")
+                    continue
+                if e.code < 500 and e.code != 429:
                     raise
-                os.remove(part)  # server không nhận Range này
-                print(f"{name}: server trả 416, tải lại từ đầu")
+                print(f"{name}: HTTP {e.code} (lần {attempt}/{RETRIES})")
+                time.sleep(2 * attempt)
                 continue
             except (OSError, http.client.HTTPException) as e:
                 print(f"{name}: {e} (lần {attempt}/{RETRIES})")
                 time.sleep(2 * attempt)
                 continue
         got = os.path.getsize(part)
-        if got != size:  # kết nối đóng sớm: lần sau tải tiếp phần còn thiếu
+        if got > size:
+            os.remove(part)
+            raise SystemExit(f"{name}: server trả {got} byte, nhiều hơn bản đã ghim ({size}); kiểm lại URL và mã ghim")
+        if got < size:  # kết nối đóng sớm: lần sau tải tiếp phần còn thiếu
             print(f"{name}: mới nhận {got}/{size} byte (lần {attempt}/{RETRIES})")
             continue
         if sha256(part) != sha:
@@ -159,9 +167,14 @@ def ensure(url, dest, size, sha):
 
 
 def extract(archive, into):
-    """Giải nén vào thư mục tạm rồi mới đổi tên, để lần chạy bị ngắt giữa chừng không để lại thư mục thiếu file."""
-    if os.path.isdir(into):
+    """Giải nén vào thư mục tạm rồi mới đổi tên, để lần chạy bị ngắt giữa chừng không để lại thư mục thiếu file.
+
+    Thư mục đích đã có `llama-server` thì bỏ qua; có thư mục mà mất `llama-server` (ví dụ bị xóa nhầm) thì giải nén lại.
+    """
+    exe = "llama-server.exe" if archive.endswith(".zip") else "llama-server"
+    if glob.glob(os.path.join(into, "**", exe), recursive=True):
         return
+    shutil.rmtree(into, ignore_errors=True)
     tmp = into + ".tmp"
     shutil.rmtree(tmp, ignore_errors=True)
     os.makedirs(tmp)
@@ -194,7 +207,8 @@ def save_manifest(path, manifest):
 
 
 def main():
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # console Windows không phải lúc nào cũng UTF-8
+    if hasattr(sys.stdout, "reconfigure"):  # console Windows không phải lúc nào cũng UTF-8
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="whisper,mt,vad,llama")
     groups = [g.strip() for g in ap.parse_args().only.split(",") if g.strip()]
