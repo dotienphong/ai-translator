@@ -14,7 +14,8 @@ cách server ghép prompt. Cách gọi một lượt `user` với `add_generatio
 Dùng (môi trường có transformers 5.x, model card Hy-MT2 yêu cầu transformers ≥ 5.6):
   uv run --no-project --python 3.12 --with "transformers==5.17.0" --with "jinja2==3.1.6" \
     python bench/phase0/mt/check_template.py --model models/Hy-MT2-1.8B-Q8_0.gguf
-Mã thoát: 0 đạt, 1 không đạt, 2 lỗi công cụ.
+Mã thoát: 0 đạt, 1 không đạt, 2 lỗi công cụ (ví dụ thiếu `llama-server` hay model).
+Cảnh báo `special_eos_id is not in special_eog_ids` khi nạp GGUF là vô hại; `stopped_on_eos` mới là phép kiểm thật.
 Kết quả: bench/phase0/results/s4_template_<model>.json; log của llama-server ở bench/phase0/data/.
 """
 import argparse
@@ -37,7 +38,7 @@ CASES = [
     ("ko", "vi", "회의가 끝나면 보고서 최신 버전을 공유해 주시겠어요?"),
     ("vi", "en", "Chúng ta cần chốt ngân sách trước thứ Sáu tuần này."),
     ("en", "vi", "  So, um, let's get started.  "),               # Whisper hay trả câu có dấu cách đầu/cuối
-    ("zh", "vi", "好的，我们开始吧。　"),                       # dấu cách toàn khổ (U+3000) ở cuối
+    ("zh", "vi", "好的，我们开始吧。\u3000"),                       # dấu cách toàn khổ (U+3000) ở cuối
     ("ja", "vi", "お疲れ様です。\n\n次の議題に進みましょう。"),     # có xuống dòng trong câu
 ]
 

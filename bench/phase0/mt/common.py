@@ -40,7 +40,7 @@ def find_llama_server():
     variant = os.environ.get("LLAMA_VARIANT", "win-vulkan-x64" if platform.system() == "Windows" else "macos-arm64")
     hits = glob.glob(os.path.join(ROOT, "tools", "llama-b11146", variant, "**", exe), recursive=True)
     if not hits:
-        raise SystemExit(f"không thấy {exe}; chạy bench/phase0/fetch.py --only llama trước")
+        raise FileNotFoundError(f"không thấy {exe}; chạy bench/phase0/fetch.py --only llama trước")
     return hits[0]
 
 
