@@ -2589,9 +2589,10 @@ Expected:
 Kiểm thêm: khi stdin đóng (app chết), worker phải tự thoát.
 
 ```powershell
-cmd /c "target\asr-worker-cpu.exe < NUL & echo exit=%errorlevel%"
+cmd /c "exit 3"; "exit=$LASTEXITCODE"
+cmd /c "target\asr-worker-cpu.exe < NUL"; "exit=$LASTEXITCODE"
 ```
-Expected: `exit=0`.
+Expected: dòng đầu là `exit=3`, xác nhận cách đọc mã thoát này dùng được. Dòng sau là `exit=0`.
 
 - [ ] **Step 6: Commit**
 
