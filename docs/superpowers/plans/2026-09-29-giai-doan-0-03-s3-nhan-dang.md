@@ -808,7 +808,7 @@ Run:
 SILERO_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx VAD_TEST_WAV=$PWD/bench/phase0/data/vad/en.wav \
   VAD_REF_JSON=$PWD/bench/phase0/data/vad/en.ref.json cargo test -p pipeline --test vad_reference
 ```
-Expected: PASS, `test result: ok. 1 passed`. Lúc lập kế hoạch, sai khác lớn nhất là 0,0.
+Expected: PASS, `test result: ok. 1 passed`. Lúc thực thi, sai khác lớn nhất là 5,4e-7 (sai số làm tròn f32), thấp hơn ngưỡng 1e-4 của test khoảng 200 lần.
 
 - [ ] **Step 8: Tạo `crates/pipeline/examples/vad_probe.rs` và đo tốc độ**
 
@@ -1021,7 +1021,7 @@ git commit -m "feat(asr-worker): chọn ngôn ngữ trong tập cho phép, giữ
 - Create: `crates/asr-worker/src/engine.rs`
 - Create: `crates/asr-worker/src/main.rs`
 
-Phần code gắn `#[cfg(feature = "shared-encode")]` và `#[cfg(feature = "vulkan")]` chỉ được biên dịch khi bật feature đó, nên chưa cần `shared.rs` và `probe.rs`. stdout chỉ dùng cho khung giao thức; log của whisper.cpp đi ra stderr (`install_logging_hooks`).
+Phần code gắn `#[cfg(feature = "shared-encode")]` và `#[cfg(feature = "vulkan")]` chỉ được biên dịch khi bật feature đó, nên chưa cần `shared.rs` và `probe.rs`. Flash attention bật cùng GPU; đặt `ASR_FLASH_ATTN=0` để tắt khi cần so sánh (xem Task 15). stdout chỉ dùng cho khung giao thức; log của whisper.cpp đi ra stderr (`install_logging_hooks`).
 
 - [ ] **Step 1: Sửa `crates/asr-worker/src/lib.rs`**
 
@@ -1065,9 +1065,12 @@ pub struct Engine {
 
 impl Engine {
     pub fn load(model_path: &str, use_gpu: bool, n_threads: u32) -> Result<Self> {
+        // Flash attention bật cùng GPU. `ASR_FLASH_ATTN=0` để tắt khi thử trên Vulkan: GPU nào thiếu phép toán này thì
+        // ggml có thể đẩy nó về CPU, làm chậm hẳn mà không báo lỗi.
+        let flash_attn = use_gpu && std::env::var("ASR_FLASH_ATTN").as_deref() != Ok("0");
         let params = WhisperContextParameters {
             use_gpu,
-            flash_attn: use_gpu,
+            flash_attn,
             ..Default::default()
         };
         let ctx = WhisperContext::new_with_params(model_path, params)
@@ -2854,6 +2857,7 @@ Expected:
 - Lượt Vulkan in `asr: vulkan (1.8.3), chế độ giải mã shared`. Lượt CPU in `asr: cpu (1.8.3), …` và chậm hơn nhiều.
 - Dòng `system_info` có `AVX2 = 1`, `FMA = 1`, `F16C = 1` và không có `AVX512` (mức CPU cố định ở `.cargo/config.toml`).
 - WER/CER gần với lượt `m4pro-turbo-shared` trên Mac, chênh không quá vài phần trăm tương đối.
+- Nếu lượt Vulkan chậm bất thường (ASR p50 gần bằng lượt CPU), chạy lại lượt Vulkan với `$env:ASR_FLASH_ATTN = "0"` để tắt flash attention, rồi ghi cả hai kết quả vào `s3_windows.md`. GPU nào thiếu phép toán flash attention thì ggml có thể đẩy nó về CPU.
 
 - [ ] **Step 3: Ước lượng dung lượng bộ cài Windows**
 
