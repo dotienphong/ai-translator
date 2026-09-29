@@ -45,7 +45,10 @@ def find_llama_server():
 
 
 class LlamaServer:
-    """Lệnh chạy theo §6.5: -c 2048 -np 1 -ngl auto --no-webui, chỉ nghe 127.0.0.1, API key ngẫu nhiên."""
+    """Lệnh chạy theo §6.5: -c 2048 -np 1 -ngl auto --no-ui, chỉ nghe 127.0.0.1, API key ngẫu nhiên.
+
+    `--no-ui` là tên mới của `--no-webui` (b11146 vẫn nhận tên cũ nhưng đánh dấu deprecated).
+    """
 
     def __init__(self, model, extra_args=(), log_path=None):
         with socket.socket() as s:
@@ -54,7 +57,7 @@ class LlamaServer:
         self.key = secrets.token_hex(16)
         self.base = f"http://127.0.0.1:{self.port}"
         cmd = [find_llama_server(), "-m", model, "--host", "127.0.0.1", "--port", str(self.port),
-               "--api-key", self.key, "-c", "2048", "-np", "1", "-ngl", "auto", "--no-webui", *extra_args]
+               "--api-key", self.key, "-c", "2048", "-np", "1", "-ngl", "auto", "--no-ui", *extra_args]
         self.proc = None
         # "a": chạy lại (translate.py tiếp tục) không xóa log của lần server vừa chết.
         self._log = open(log_path or os.devnull, "a")
