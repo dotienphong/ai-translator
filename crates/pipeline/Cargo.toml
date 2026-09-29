@@ -1,0 +1,17 @@
+[package]
+name = "pipeline"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+asr-protocol = { path = "../asr-protocol" }
+candle-core = "0.11.0"
+candle-onnx = "0.11.0"
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+hound.workspace = true
