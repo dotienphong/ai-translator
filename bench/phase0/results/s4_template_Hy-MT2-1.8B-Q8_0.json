@@ -1,51 +1,77 @@
 {
  "model": "Hy-MT2-1.8B-Q8_0.gguf",
  "pass": true,
+ "llama_server": "b11146-7fe450e19",
+ "tokenizer": {
+  "repo": "tencent/Hy-MT2-1.8B",
+  "revision": "9a341cd1b679d3efd23b46e847b01745a71ed792"
+ },
+ "transformers": "5.17.0",
+ "jinja2": "3.1.6",
  "cases": [
   {
    "dir": "en->vi",
+   "tokens_equal": true,
    "template_equal": true,
    "stream_equals_completion": true,
-   "translation": "Bạn có thể chia sẻ phiên bản báo cáo mới nhất sau cuộc họp được không?",
-   "total_ms": 310.7396669947775,
-   "first_token_ms": 87.67216699925484,
-   "finish_reason": "stop"
+   "stopped_on_eos": true,
+   "translation": "Bạn có thể chia sẻ phiên bản báo cáo mới nhất sau cuộc họp được không?"
   },
   {
    "dir": "zh->vi",
+   "tokens_equal": true,
    "template_equal": true,
    "stream_equals_completion": true,
-   "translation": "Tuần sau, chúng ta cần hoàn thành việc kiểm thử sản phẩm mới.",
-   "total_ms": 212.00987500196788,
-   "first_token_ms": 30.948500003432855,
-   "finish_reason": "stop"
+   "stopped_on_eos": true,
+   "translation": "Tuần sau, chúng ta cần hoàn thành việc kiểm thử sản phẩm mới."
   },
   {
    "dir": "ja->vi",
+   "tokens_equal": true,
    "template_equal": true,
    "stream_equals_completion": true,
-   "translation": "Xin hãy xác nhận lại ngân sách cho tháng tới.",
-   "total_ms": 194.59320799796842,
-   "first_token_ms": 31.651124998461455,
-   "finish_reason": "stop"
+   "stopped_on_eos": true,
+   "translation": "Xin hãy xác nhận lại ngân sách cho tháng tới."
   },
   {
    "dir": "ko->vi",
+   "tokens_equal": true,
    "template_equal": true,
    "stream_equals_completion": true,
-   "translation": "Sau khi cuộc họp kết thúc, xin vui lòng chia sẻ bản báo cáo mới nhất với tôi.",
-   "total_ms": 305.8773330049007,
-   "first_token_ms": 29.956500002299435,
-   "finish_reason": "stop"
+   "stopped_on_eos": true,
+   "translation": "Sau khi cuộc họp kết thúc, xin vui lòng chia sẻ bản báo cáo mới nhất với tôi."
   },
   {
    "dir": "vi->en",
+   "tokens_equal": true,
    "template_equal": true,
    "stream_equals_completion": true,
-   "translation": "We need to finalize the budget by Friday this week.",
-   "total_ms": 162.5860409985762,
-   "first_token_ms": 46.81633300060639,
-   "finish_reason": "stop"
+   "stopped_on_eos": true,
+   "translation": "We need to finalize the budget by Friday this week."
+  },
+  {
+   "dir": "en->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Vậy thì, chúng ta hãy bắt đầu thôi."
+  },
+  {
+   "dir": "zh->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Được rồi, chúng ta bắt đầu thôi."
+  },
+  {
+   "dir": "ja->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Cảm ơn bạn đã cố gắng.\n\nChúng ta hãy chuyển sang chủ đề tiếp theo nhé."
   }
  ]
 }

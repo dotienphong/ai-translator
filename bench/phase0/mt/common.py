@@ -148,6 +148,20 @@ class LlamaServer:
         with self._post("/tokenize", {"content": text}) as r:
             return len(json.load(r)["tokens"])
 
+    def tokenize(self, text, add_special=False, parse_special=True):
+        """ID token do llama.cpp tạo ra; add_special/parse_special giống hai đường chat và /completion."""
+        with self._post("/tokenize", {"content": text, "add_special": add_special, "parse_special": parse_special}) as r:
+            return json.load(r)["tokens"]
+
+    def build_info(self):
+        req = urllib.request.Request(f"{self.base}/props", headers={"Authorization": f"Bearer {self.key}"})
+        with _OPENER.open(req, timeout=30) as r:
+            return json.load(r)["build_info"]
+
+    def count_tokens(self, text):
+        with self._post("/tokenize", {"content": text}) as r:
+            return len(json.load(r)["tokens"])
+
     def close(self):
         if self.proc is not None and self.proc.poll() is None:
             self.proc.terminate()
