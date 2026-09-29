@@ -347,6 +347,7 @@ Theo A3, bộ test gồm hai phần:
 - Ba chiều Trung/Nhật/Hàn→Việt, mỗi chiều 100 câu mới từ WMT24++ (Apache-2.0), không trùng các đoạn đã dùng.
 
 Script dựng lại đúng thứ tự xáo của `bench/2026-09-29-mt-benchmark/prep_data.py`: seed 2026, 240 đoạn đầu đã dùng, nên các đoạn mới lấy từ vị trí 240 tới 339.
+Bốn file WMT24++ được ghim theo commit `fd7405c…` của dataset, là bản benchmark cũ đã dùng, và kiểm SHA-256 trước khi dùng.
 
 - [ ] **Step 1: Tạo `bench/phase0/mt/build_testset.py`**
 
@@ -361,6 +362,7 @@ Script dựng lại đúng thứ tự xáo của `bench/2026-09-29-mt-benchmark/
 
 Dùng: python3 bench/phase0/mt/build_testset.py
 """
+import hashlib
 import json
 import os
 import random
@@ -370,16 +372,35 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 OLD = os.path.join(ROOT, "bench", "2026-09-29-mt-benchmark")
 DATA = os.path.join(ROOT, "bench", "phase0", "data", "mt")
-BASE = "https://huggingface.co/datasets/google/wmt24pp/resolve/main/"
+# Commit của dataset google/wmt24pp (2026-07-30), cùng bản mà benchmark 2026-09-29 đã dùng.
+REV = "fd7405c06494bc66a57b25f55d217a72f96e60dc"
+BASE = f"https://huggingface.co/datasets/google/wmt24pp/resolve/{REV}/"
 FILES = {"vi": "en-vi_VN", "zh": "en-zh_CN", "ja": "en-ja_JP", "ko": "en-ko_KR"}
+# SHA-256 của từng file, để bộ test dựng lại giống hệt ở mọi máy.
+SHA256 = {
+    "en-vi_VN": "9fa4c9d7fdea02ee03f3ea744b6f6ea5924d9d89337877cf8bacf148f81e3119",
+    "en-zh_CN": "984ec4da714800aae2b9ee6e2601d1cadb01a770e01ed385d5283ce7a0585287",
+    "en-ja_JP": "58bbee69aed537d21e25f04c5eaf49c2c7aef1b1dddb918f6eac424ab93c7ec8",
+    "en-ko_KR": "4520124f3769cd711aab0c939aeb849a225dce51b761eeb419f46e555b02d7e5",
+}
 N_NEW = 100
 
 
 def load(lang):
     os.makedirs(DATA, exist_ok=True)
-    path = os.path.join(DATA, FILES[lang] + ".jsonl")
+    name = FILES[lang]
+    path = os.path.join(DATA, name + ".jsonl")
     if not os.path.exists(path):
-        urllib.request.urlretrieve(BASE + FILES[lang] + ".jsonl", path)
+        req = urllib.request.Request(BASE + name + ".jsonl", headers={"User-Agent": "meeting-translator-phase0"})
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read()
+        if hashlib.sha256(raw).hexdigest() != SHA256[name]:
+            raise SystemExit(f"{name}.jsonl: SHA-256 không khớp bản đã ghim (có thể do rớt mạng); chạy lại")
+        with open(path + ".part", "wb") as f:
+            f.write(raw)
+        os.replace(path + ".part", path)
+    elif hashlib.sha256(open(path, "rb").read()).hexdigest() != SHA256[name]:
+        raise SystemExit(f"{path}: khác bản đã ghim; xóa file rồi chạy lại")
     with open(path, encoding="utf-8") as f:
         return {r["segment_id"]: r for r in map(json.loads, f)}
 
