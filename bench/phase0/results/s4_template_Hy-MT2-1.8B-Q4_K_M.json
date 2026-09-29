@@ -1,0 +1,51 @@
+{
+ "model": "Hy-MT2-1.8B-Q4_K_M.gguf",
+ "pass": true,
+ "cases": [
+  {
+   "dir": "en->vi",
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "translation": "Bạn có thể chia sẻ phiên bản mới nhất của báo cáo sau cuộc họp không?",
+   "total_ms": 213.50099999835948,
+   "first_token_ms": 49.45512500125915,
+   "finish_reason": "stop"
+  },
+  {
+   "dir": "zh->vi",
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "translation": "Chúng ta cần hoàn thành việc kiểm thử sản phẩm mới vào tuần tới.",
+   "total_ms": 175.05666700162692,
+   "first_token_ms": 30.77083400421543,
+   "finish_reason": "stop"
+  },
+  {
+   "dir": "ja->vi",
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "translation": "Xin cho phép tôi kiểm tra lại ngân sách của tháng tới.",
+   "total_ms": 171.7867080005817,
+   "first_token_ms": 35.150875002727844,
+   "finish_reason": "stop"
+  },
+  {
+   "dir": "ko->vi",
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "translation": "Sau cuộc họp, xin chia sẻ bản báo cáo mới nhất với tôi được không?",
+   "total_ms": 192.2270830036723,
+   "first_token_ms": 30.339040997205302,
+   "finish_reason": "stop"
+  },
+  {
+   "dir": "vi->en",
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "translation": "We need to finalize the budget by Friday this week.",
+   "total_ms": 133.20858400402358,
+   "first_token_ms": 48.185958999965806,
+   "finish_reason": "stop"
+  }
+ ]
+}
