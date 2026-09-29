@@ -1,0 +1,21 @@
+[package]
+name = "asr-worker"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+metal = ["whisper-rs/metal"]
+vulkan = ["whisper-rs/vulkan", "dep:ash"]
+# Cần whisper-rs và whisper-rs-sys đã vá trong third_party/ (spec §6.4).
+shared-encode = []
+
+[dependencies]
+anyhow.workspace = true
+asr-protocol = { path = "../asr-protocol" }
+ash = { version = "0.38.0", optional = true, default-features = false, features = ["loaded", "std"] }
+serde.workspace = true
+serde_json.workspace = true
+whisper-rs = "0.16.0"
