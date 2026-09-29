@@ -180,6 +180,20 @@ class LlamaServer:
         with self._post("/tokenize", {"content": text}) as r:
             return len(json.load(r)["tokens"])
 
+    def tokenize(self, text, add_special=False, parse_special=True):
+        """ID token do llama.cpp tạo ra; add_special/parse_special giống hai đường chat và /completion."""
+        with self._post("/tokenize", {"content": text, "add_special": add_special, "parse_special": parse_special}) as r:
+            return json.load(r)["tokens"]
+
+    def build_info(self):
+        req = urllib.request.Request(f"{self.base}/props", headers={"Authorization": f"Bearer {self.key}"})
+        with _OPENER.open(req, timeout=30) as r:
+            return json.load(r)["build_info"]
+
+    def count_tokens(self, text):
+        with self._post("/tokenize", {"content": text}) as r:
+            return len(json.load(r)["tokens"])
+
     def close(self):
         if self.proc is not None and self.proc.poll() is None:
             self.proc.terminate()
@@ -228,32 +242,47 @@ git commit -m "feat(bench): chạy llama-server và dựng prompt Hy-MT2 giống
 - Create: `bench/phase0/results/s4_template_Hy-MT2-1.8B-Q8_0.json` (script sinh ra)
 - Create: `bench/phase0/results/s4_template_Hy-MT2-1.8B-Q4_K_M.json` (script sinh ra)
 
-Script so sánh hai điều:
-- Prompt do `llama-server` dựng từ template trong GGUF (`/apply-template`) phải giống hệt prompt do tokenizer của Hugging Face dựng.
-- Bản dịch stream qua `/v1/chat/completions` phải giống hệt bản dịch qua `/completion` với prompt của Hugging Face.
+Với mỗi ca, cả ba điều sau phải đạt:
+- `tokens_equal`: token mà `llama-server` đưa vào model cho prompt nó dựng từ template trong GGUF trùng từng token với tokenizer Hugging Face (ghim revision `9a341cd1…`). So cả `usage.prompt_tokens` của `/v1/chat/completions`.
+- `stream_equals_completion`: bản dịch stream qua `/v1/chat/completions` giống hệt bản dịch `/completion` nạp thẳng token của Hugging Face.
+- `stopped_on_eos`: model dừng ở EOS, không chạy tới số token tối đa.
 
-Nếu cả hai đều giống thì app không cần tự render template bằng `minijinja` (§6.5).
+`template_equal` (so chuỗi prompt) chỉ để chẩn đoán, vì chuỗi có thể lệch ở BOS mà token vẫn đúng. Có 8 ca: 5 ca chính (Anh/Trung/Nhật/Hàn→Việt, Việt→Anh) và 3 ca biên (khoảng trắng đầu/cuối, dấu cách toàn khổ, xuống dòng giữa câu). Ba điều đều đạt thì app không cần tự render template bằng `minijinja` (§6.5). Mã thoát: 0 đạt, 1 không đạt, 2 lỗi công cụ. JSON kết quả ghi bản llama.cpp, revision tokenizer, phiên bản transformers và jinja2.
 
 - [ ] **Step 1: Tạo `bench/phase0/mt/check_template.py`**
 
 ```python
 """Spike S4: llama-server dùng được chat template trong GGUF của Hy-MT2 qua /v1/chat/completions (giả định 3, §14).
 
-Kiểm tra:
-1. Prompt do llama-server dựng (/apply-template) giống hệt chat template của tokenizer trên Hugging Face.
-2. Bản dịch stream qua /v1/chat/completions giống hệt bản dịch /completion với prompt dựng bằng tokenizer.
+Với mỗi ca, cả ba điều sau phải đạt:
+1. `tokens_equal`: token mà llama-server đưa vào model cho prompt tự dựng từ template trong GGUF trùng từng token với
+   tokenizer Hugging Face (`apply_chat_template`, ghim revision). Kiểm cả `usage.prompt_tokens` của /v1/chat/completions.
+2. `stream_equals_completion`: bản dịch stream qua /v1/chat/completions giống hệt bản dịch /completion nạp thẳng token
+   của Hugging Face, không qua tokenizer của llama.cpp.
+3. `stopped_on_eos`: model dừng ở EOS (`finish_reason` là `stop`), không chạy tới số token tối đa.
+`template_equal` (so chuỗi của /apply-template với Hugging Face) chỉ để chẩn đoán: chuỗi có thể lệch ở BOS mà token vẫn đúng.
+
+Template trong GGUF trùng từng byte với `chat_template.jinja` trên Hugging Face, nên S4 kiểm engine template (minja) và
+cách server ghép prompt. Cách gọi một lượt `user` với `add_generation_prompt=True` khớp model card.
 
 Dùng (môi trường có transformers 5.x, model card Hy-MT2 yêu cầu transformers ≥ 5.6):
-  uv run --python 3.12 --with "transformers==5.17.0" --with "jinja2==3.1.6" \
+  uv run --no-project --python 3.12 --with "transformers==5.17.0" --with "jinja2==3.1.6" \
     python bench/phase0/mt/check_template.py --model models/Hy-MT2-1.8B-Q8_0.gguf
+Mã thoát: 0 đạt, 1 không đạt, 2 lỗi công cụ.
 Kết quả: bench/phase0/results/s4_template_<model>.json; log của llama-server ở bench/phase0/data/.
 """
 import argparse
 import json
 import os
+import sys
 
+import jinja2
+import transformers
 from common import ROOT, LlamaServer, translation_prompt
 from transformers import AutoTokenizer
+
+TOKENIZER_REPO = "tencent/Hy-MT2-1.8B"
+TOKENIZER_REV = "9a341cd1b679d3efd23b46e847b01745a71ed792"  # main ngày 2026-09-29; template trùng từng byte với GGUF a0c709d9
 
 CASES = [
     ("en", "vi", "Could you share the latest version of the report after the meeting?"),
@@ -261,43 +290,70 @@ CASES = [
     ("ja", "vi", "来月の予算について、もう一度確認させてください。"),
     ("ko", "vi", "회의가 끝나면 보고서 최신 버전을 공유해 주시겠어요?"),
     ("vi", "en", "Chúng ta cần chốt ngân sách trước thứ Sáu tuần này."),
+    ("en", "vi", "  So, um, let's get started.  "),               # Whisper hay trả câu có dấu cách đầu/cuối
+    ("zh", "vi", "好的，我们开始吧。　"),                       # dấu cách toàn khổ (U+3000) ở cuối
+    ("ja", "vi", "お疲れ様です。\n\n次の議題に進みましょう。"),     # có xuống dòng trong câu
 ]
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # stdout chuyển hướng trên Windows mặc định là cp1252
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     args = ap.parse_args()
-    tok = AutoTokenizer.from_pretrained("tencent/Hy-MT2-1.8B")
+    tok = AutoTokenizer.from_pretrained(TOKENIZER_REPO, revision=TOKENIZER_REV)
     stem = os.path.basename(args.model).removesuffix(".gguf")
     log_dir = os.path.join(ROOT, "bench", "phase0", "data")
     os.makedirs(log_dir, exist_ok=True)
+    out = os.path.join(ROOT, "bench", "phase0", "results", f"s4_template_{stem}.json")
+    if os.path.exists(out):
+        os.remove(out)  # chạy lỗi giữa chừng thì không để lại kết quả cũ
     rows, ok = [], True
     with LlamaServer(args.model, log_path=os.path.join(log_dir, f"s4_{stem}.llama.log")) as server:
+        build = server.build_info()
         for src, tgt, text in CASES:
             prompt = translation_prompt(text, src, tgt)
-            hf_prompt = tok.apply_chat_template([{"role": "user", "content": prompt}],
-                                                add_generation_prompt=True, tokenize=False)
+            msgs = [{"role": "user", "content": prompt}]
+            hf_prompt = tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=False)
+            hf_ids = tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=True, return_dict=True)["input_ids"]
             server_prompt = server.apply_template(prompt)
+            # Token mà llama-server sẽ đưa vào model cho prompt do nó dựng (đường /v1/chat/completions), và số token
+            # thật mà /v1/chat/completions đánh giá (không phụ thuộc /apply-template).
+            server_ids = server.tokenize(server_prompt, add_special=True, parse_special=True)
+            _, probe = server.chat(prompt, max_tokens=1)
             streamed, timing = server.chat(prompt, stream=True)
-            direct = server.completion(hf_prompt)
-            row = {"dir": f"{src}->{tgt}", "template_equal": server_prompt == hf_prompt,
-                   "stream_equals_completion": streamed == direct, "translation": streamed, **timing}
-            if not row["template_equal"]:
-                row["server_prompt"], row["hf_prompt"] = server_prompt, hf_prompt
-            ok &= row["template_equal"] and row["stream_equals_completion"]
+            direct = server.completion(hf_ids)  # tham chiếu: đúng token ID của HF, không qua tokenizer của llama.cpp
+            row = {"dir": f"{src}->{tgt}",
+                   "tokens_equal": server_ids == hf_ids and probe["prompt_tokens"] == len(hf_ids),
+                   "template_equal": server_prompt == hf_prompt,  # chỉ để chẩn đoán, xem ghi chú ở docstring
+                   "stream_equals_completion": streamed == direct,
+                   "stopped_on_eos": timing["finish_reason"] == "stop",
+                   "translation": streamed}
+            if not (row["tokens_equal"] and row["template_equal"]):
+                row.update(server_prompt=server_prompt, hf_prompt=hf_prompt, server_ids=server_ids, hf_ids=hf_ids)
+            if not row["stream_equals_completion"]:
+                row["completion"] = direct
+            ok &= row["tokens_equal"] and row["stream_equals_completion"] and row["stopped_on_eos"]
             rows.append(row)
             print(json.dumps(row, ensure_ascii=False))
-    out = os.path.join(ROOT, "bench", "phase0", "results", f"s4_template_{stem}.json")
+    result = {"model": os.path.basename(args.model), "pass": ok, "llama_server": build,
+              "tokenizer": {"repo": TOKENIZER_REPO, "revision": TOKENIZER_REV},
+              "transformers": transformers.__version__, "jinja2": jinja2.__version__, "cases": rows}
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
-        json.dump({"model": os.path.basename(args.model), "pass": ok, "cases": rows}, f, ensure_ascii=False, indent=1)
+        json.dump(result, f, ensure_ascii=False, indent=1)
+        f.write("\n")
     print("S4", "ĐẠT" if ok else "KHÔNG ĐẠT", "->", out)
-    raise SystemExit(0 if ok else 1)
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        code = main()
+    except Exception as e:  # lỗi công cụ khác với "không đạt": mã 2
+        print(f"S4 LỖI CÔNG CỤ: {type(e).__name__}: {e}", file=sys.stderr)
+        code = 2
+    raise SystemExit(code)
 ```
 
 - [ ] **Step 2: Chạy với Q8_0**
@@ -309,7 +365,7 @@ uv run --no-project --python 3.12 --with "transformers==5.17.0" --with "jinja2==
 ```
 Expected:
 - Có thể có dòng cảnh báo `[transformers] Unrecognized keys in rope_parameters…`; bỏ qua được, vì script chỉ dùng tokenizer.
-- Năm dòng JSON (`en->vi`, `zh->vi`, `ja->vi`, `ko->vi`, `vi->en`), mỗi dòng có `"template_equal": true, "stream_equals_completion": true`.
+- Tám dòng JSON, mỗi dòng có `"tokens_equal": true, "template_equal": true, "stream_equals_completion": true, "stopped_on_eos": true`.
 - Dòng cuối: `S4 ĐẠT -> …/bench/phase0/results/s4_template_Hy-MT2-1.8B-Q8_0.json`.
 - Mã thoát 0.
 
@@ -324,15 +380,15 @@ uv run --no-project --python 3.12 --with "transformers==5.17.0" --with "jinja2==
 ```
 Expected: như Step 2, dòng cuối là `S4 ĐẠT -> …/s4_template_Hy-MT2-1.8B-Q4_K_M.json`.
 
-Nếu có ca `template_equal: false`:
-- File JSON có thêm `server_prompt` và `hf_prompt`. So sánh hai chuỗi này để tìm chỗ lệch.
+Nếu có ca `tokens_equal: false` hoặc `template_equal: false`:
+- File JSON có thêm `server_prompt`, `hf_prompt`, `server_ids`, `hf_ids`. So sánh để tìm chỗ lệch. Chỉ `template_equal` sai mà `tokens_equal` đúng thường là do BOS; khi đó vẫn đạt.
 - Ghi lại lỗi trong `bench/phase0/results/s4_template_notes.md`.
 - Đổi cách gọi ở §6.5 sang render bằng `minijinja` rồi gọi `/completion`. Việc này làm ở Task 2 của file tổng quan.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add bench/phase0/mt/check_template.py bench/phase0/results/s4_template_*.json
+git add bench/phase0/mt/check_template.py bench/phase0/mt/common.py bench/phase0/results/s4_template_*.json
 git commit -m "test(bench): S4 kiểm tra chat template Hy-MT2 trên llama-server b11146"
 ```
 
