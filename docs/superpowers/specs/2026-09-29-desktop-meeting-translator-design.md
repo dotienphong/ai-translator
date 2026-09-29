@@ -43,7 +43,7 @@
 | D7 | Nơi xử lý | 100% trên máy, âm thanh không rời khỏi máy |
 | D8 | Ngôn ngữ giao diện | Tiếng Việt và English, đổi được trong Cài đặt |
 | D9 | Chiều dịch | MVP chỉ dịch một chiều: âm thanh máy đang phát → phụ đề ngôn ngữ của người dùng. Nếu cả hai bên cùng cài app thì mỗi bên đều thấy phụ đề của phía kia. |
-| D10 | Phân phối | Tải từ website của sản phẩm. Chưa lên Microsoft Store hay Mac App Store. |
+| D10 | Phân phối | Tải từ website của sản phẩm: Windows dùng bộ cài **`.exe`** (NSIS, đã ký số), macOS dùng **`.dmg`** (đã ký và notarize). Chưa lên Microsoft Store hay Mac App Store. Microsoft Store có thể xem xét sau; các điều kiện của Store đã được ghi nhận ngày 2026-09-29. |
 | D11 | Thanh toán | **MVP dùng PayOS**: khách chuyển khoản ngân hàng bằng mã VietQR, trả bằng VND. Khi bán ra nước ngoài thì thêm một cổng thanh toán quốc tế (§13). |
 | D12 | Độ trễ mục tiêu | Trên máy khuyến nghị, **p50 ≤ 1,5 giây** (xem A2 và §8) |
 
@@ -549,7 +549,7 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
 | Chia sẻ hoặc bán lại key | Mỗi key tối đa 2 máy. Nếu trong 30 ngày có hơn 3 lần gỡ rồi kích hoạt lại thì khóa tạm key và yêu cầu liên hệ hỗ trợ. Key sinh ngẫu nhiên với ít nhất 128 bit, có ký tự kiểm tra để phát hiện gõ sai. |
 | Dò key hoặc spam license server | Giới hạn request theo IP và theo key, ví dụ `activate` ≤ 10 lần/giờ/IP, `validate` ≤ 30 lần/giờ/key. Vượt ngưỡng thì trả `429`. |
 | Bị clone, đổi thương hiệu rồi bán lại | **Pháp lý:** đăng ký nhãn hiệu (tên và logo) tại Cục Sở hữu trí tuệ Việt Nam, mở rộng ra quốc tế sau. EULA cấm dịch ngược, cấm phân phối lại, cấm đổi thương hiệu. Có sẵn quy trình yêu cầu Microsoft Store và nhà cung cấp hosting gỡ bản nhái. **Kỹ thuật:** logic quan trọng (prompt, cắt và ghép câu, khớp thuật ngữ) nằm trong Rust đã biên dịch; JavaScript chỉ lo hiển thị và được rút gọn. Manifest model, bản cập nhật và token đều ký bằng khóa riêng, nên bản nhái không dùng được hạ tầng của sản phẩm. |
-| Bản giả có cài mã độc | Ký số và notarize mọi bản phát hành. Chỉ phát hành qua tên miền chính thức (và Microsoft Store nếu D10 chốt như vậy). Website công bố mã SHA-256 của từng bộ cài và cảnh báo về bản giả. |
+| Bản giả có cài mã độc | Ký số và notarize mọi bản phát hành. Chỉ phát hành qua tên miền chính thức. Website công bố mã SHA-256 của từng bộ cài và cảnh báo về bản giả. |
 | Tấn công qua giao diện WebView | **Capabilities của Tauri 2:** cửa sổ `overlay` chỉ nhận sự kiện phụ đề và chỉ gọi được lệnh di chuyển và khóa của chính nó; cửa sổ `main` chỉ được cấp đúng các lệnh nó cần. **CSP chặt:** chỉ nạp tài nguyên đóng gói trong app, không `unsafe-eval`, không tải script từ bên ngoài. Link ngoài mở bằng trình duyệt của hệ thống. Tắt devtools ở bản phát hành. Mọi dữ liệu từ giao diện gửi xuống Rust đều được kiểm tra kiểu và phạm vi. |
 | Thay tiến trình dịch, hoặc chèn thư viện giả | Trước khi chạy `llama-server`, kiểm tra SHA-256 của nó và của các thư viện ggml, theo một danh sách build sẵn vào app. Windows: gọi `SetDefaultDllDirectories` để chỉ nạp DLL từ thư mục app và System32. macOS: hardened runtime có bật library validation, mọi `.dylib` ký cùng Team ID. |
 | Lộ nội dung cuộc họp | Lịch sử chép lời được mã hóa bằng SQLCipher, khóa ngẫu nhiên lưu trong kho khóa của hệ điều hành. Log không bao giờ chứa nội dung chép lời. File xuất ra do người dùng chủ động tạo và tự quản lý. |
