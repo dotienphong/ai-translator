@@ -37,7 +37,7 @@
 | D1 | Sản phẩm | App desktop hiện **phụ đề dịch trực tiếp cho mọi âm thanh máy tính đang phát**: Teams, Zoom, Meet, Zalo PC, webinar, video. Không cần bot, plugin hay tài khoản trên các nền tảng họp. |
 | D2 | Quan hệ với AI Live Translator | Sản phẩm hoàn toàn riêng |
 | D3 | Nền tảng MVP | macOS 14.2+ trên Apple Silicon; Windows 10/11 64-bit (x64) |
-| D4 | Công nghệ | **Tauri 2**: lõi Rust, giao diện React 18, TypeScript, Vite, Zustand. Engine là whisper.cpp và llama.cpp. |
+| D4 | Công nghệ | **Tauri 2**: lõi Rust, giao diện React 19, TypeScript, Vite, Zustand. Engine là whisper.cpp và llama.cpp. |
 | D5 | Model dịch | **Hy-MT2-1.8B** (Apache 2.0), định dạng GGUF |
 | D6 | Model nhận dạng giọng nói | Whisper (MIT) chạy qua whisper.cpp |
 | D7 | Nơi xử lý | 100% trên máy, âm thanh không rời khỏi máy |
@@ -283,7 +283,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Hiển thị:** thanh phụ đề hiện N dòng gần nhất; cửa sổ chính hiện toàn bộ.
 - **Lưu trữ:**
   - Bản chép lời nằm trong bộ nhớ theo từng phiên.
-  - Khi bật "Lưu lịch sử" (Pro), bản chép lời được ghi vào SQLite (`rusqlite`) trong thư mục dữ liệu của app.
+  - Khi bật "Lưu lịch sử" (Pro), bản chép lời được ghi vào SQLite **đã mã hóa** trong thư mục dữ liệu của app. Mã hóa bằng SQLCipher qua `rusqlite`, khóa lưu trong kho khóa của hệ điều hành (§10.2).
 - **Xuất file:**
   - TXT, theo dạng `[giờ] câu gốc` rồi `→ bản dịch`.
   - SRT, chọn xuất câu gốc hoặc bản dịch.
@@ -345,7 +345,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 **Token bản quyền:**
 - Ký bằng Ed25519. Khóa công khai build sẵn vào app, nên app kiểm tra được token ngay cả khi offline.
-- Token gồm: `license_id`, `plan`, `expires_at`, `activation_id`, `device_id_hash`, `issued_at`, và `refresh_before` (= `issued_at` + 14 ngày).
+- Token gồm: `kid` (mã của khóa đã ký token, để đổi được khóa khi cần, §10.2), `license_id`, `plan`, `expires_at`, `activation_id`, `device_id_hash`, `issued_at`, và `refresh_before` (= `issued_at` + 14 ngày).
 - `device_id_hash` là mã băm SHA-256 của ID phần cứng: IOPlatformUUID trên macOS, MachineGuid trên Windows.
 - Quá `refresh_before` mà vẫn chưa làm mới được token (ví dụ vì offline lâu) thì app về Free.
 - Quá `expires_at` thì app về Free và nhắc gia hạn.
@@ -360,7 +360,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 **Các quy tắc khác:**
 - **Gia hạn:** PayOS không tự trừ tiền định kỳ. App nhắc trước 7 ngày và khi đã hết hạn. Nút "Gia hạn" tạo đơn mới gắn với key hiện có.
 - **Kiểm tra định kỳ:** mỗi lần khởi động, nếu có mạng (tối đa một lần mỗi ngày), app gọi `validate` để lấy token mới.
-- **Quota Free:** tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính lúc im lặng. Reset lúc 00:00 theo giờ máy. Lưu trong file trạng thái trên máy, có ký HMAC bằng khóa sinh từ ID máy để chặn sửa bằng tay. MVP chấp nhận rủi ro bị lách ở mức cơ bản.
+- **Quota Free:** tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính lúc im lặng. Reset lúc 00:00 theo giờ máy. Lưu trong kho khóa của hệ điều hành (Keychain trên macOS, DPAPI trên Windows), có chống chỉnh lùi đồng hồ (§10.2). MVP chấp nhận rủi ro bị lách ở mức cơ bản.
 - **Trong app:** interface `LicenseProvider` (activate, validate, deactivate) được cài đặt bằng một client gọi license server.
 - **Giới hạn:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng VND, nên MVP chỉ bán được cho khách ở Việt Nam.
 
@@ -380,7 +380,7 @@ Các khóa chính:
 
 ### 6.10 Giao diện
 
-- **Công nghệ:** React 18, TypeScript, Vite, Zustand, cùng bộ công cụ quen thuộc với AI Live Translator.
+- **Công nghệ:** React 19, TypeScript, Vite, Zustand, cùng bộ công cụ quen thuộc với AI Live Translator.
 - **Hai cửa sổ `main` và `overlay`,** mỗi cửa sổ có entry HTML riêng. Giao tiếp với lõi Rust qua `invoke` (lệnh) và sự kiện Tauri; store Zustand đăng ký nhận sự kiện.
 - **Nhận diện thương hiệu mới**, không dùng lại nhận diện của AI Live Translator.
 - **Trợ năng:** chữ phóng to được, đủ tương phản cho phụ đề.
@@ -400,6 +400,29 @@ Các khóa chính:
   - Kiểm tra lúc khởi động và mỗi 24 giờ; cài bản mới ở lần thoát app kế tiếp.
   - Có hai kênh: stable và beta.
 - **File đi kèm:** các bản `llama-server` đặt ở `src-tauri/binaries/llama-server-<target-triple>`, kèm thư viện backend của ggml.
+
+### 6.12 Quy tắc chọn phiên bản thư viện
+
+- **Luôn dùng bản ổn định mới nhất** của công nghệ và thư viện bên thứ ba tại thời điểm cài. Không dùng bản beta, rc hay nightly, trừ khi bắt buộc; khi đó phải ghi rõ lý do.
+- **Trước khi chốt một phiên bản, phải kiểm tra kỹ tương thích và xung đột:**
+  - Đọc release notes và changelog, xem có thay đổi phá vỡ tương thích (breaking change) nào ảnh hưởng tới app không.
+  - Kiểm tra peer dependency và yêu cầu về phiên bản. Ví dụ:
+    - Thư viện React phải hỗ trợ React 19.
+    - Mọi plugin Tauri phải cùng dòng phiên bản với Tauri core.
+    - Crate Rust phải chạy được với bản Rust stable đang dùng (MSRV).
+    - Node.js phải đúng phiên bản Vite yêu cầu.
+  - Không được có hai bản của cùng một thư viện gốc, và không trùng symbol (ví dụ hai bản ggml, xem §5).
+  - Engine mới phải chạy đúng với model:
+    - llama.cpp mới phải nạp và chạy đúng GGUF của Hy-MT2.
+    - `whisper-rs` phải đi kèm whisper.cpp có đủ các tính năng cần dùng (VAD, `audio_ctx`).
+- **Sau mỗi lần cài hoặc nâng cấp:**
+  - Build lại toàn bộ và chạy hết test.
+  - Chạy `cargo audit`, `cargo deny` và `pnpm audit`.
+  - Nếu có đụng tới engine hoặc model thì chạy lại benchmark (§11).
+- **Khóa phiên bản:**
+  - Commit lockfile (`Cargo.lock`, `pnpm-lock.yaml`), và ghi rõ phiên bản llama.cpp, whisper.cpp đang dùng.
+  - Chỉ nâng cấp khi chủ động quyết định, không để phiên bản tự nhảy.
+- **Bài học từ benchmark 2026-09-29:** với `transformers` 5.x, MADLAD dịch ra ký tự vô nghĩa, trong khi bản 4.57 chạy đúng. Vì vậy dùng bản mới nhất vẫn phải kiểm chứng bằng test chạy thật.
 
 ## 7. Luồng xử lý, đa luồng và chống nghẽn
 
@@ -476,6 +499,8 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
 
 ## 10. Quyền riêng tư, bảo mật, pháp lý
 
+### 10.1 Quyền riêng tư và pháp lý
+
 - **Âm thanh** chỉ nằm trong RAM: không ghi xuống đĩa, không gửi qua mạng.
 - **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi license server của sản phẩm (khi mua, kích hoạt, kiểm tra bản quyền). MVP **không có analytics và không gửi báo cáo crash**. Log nằm trên máy; khi cần hỗ trợ, người dùng tự gửi.
 - **Tiến trình phụ** chỉ nghe trên `127.0.0.1`, với API key ngẫu nhiên tạo mới mỗi lần chạy.
@@ -497,6 +522,42 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
   - Font chữ.
 - **Không dùng tài sản nào của RTranslator** (NLLB, HY-MT1.5, bộ từ điển GPL…). Nếu có chép code từ RTranslator thì phải giữ thông báo Apache 2.0.
 - **Nhãn hiệu:** chỉ nhắc tên Teams, Zoom, Meet để mô tả khả năng tương thích, kèm câu miễn trừ "không liên kết với các công ty này".
+
+### 10.2 Bảo mật và chống sao chép
+
+**Giới hạn cần nói rõ:**
+- Không app desktop nào chống crack được tuyệt đối. App chạy offline thì càng dễ bị crack hơn.
+- Model và engine đều là mã nguồn mở, nên không ngăn được một team giỏi tự làm một app tương tự.
+
+**Mục tiêu:**
+1. Làm cho việc crack và clone tốn công tới mức không đáng làm.
+2. Bảo vệ người dùng khỏi các bản giả mạo.
+3. Bảo vệ thương hiệu bằng pháp lý.
+
+**Nguyên tắc:**
+- **App không chứa bí mật nào.** Trong app chỉ có khóa công khai (để kiểm tra token bản quyền, manifest model và bản cập nhật). Mọi khóa bí mật nằm trên server hoặc trong hệ thống ký của CI.
+- **Không đầu tư quá tay vào chống crack.** Biện pháp nặng có thể làm app chậm và chặn nhầm người dùng thật. Lợi thế thật của sản phẩm là chất lượng dịch tiếng Việt, tốc độ cải tiến, thương hiệu và kênh bán.
+
+**Các biện pháp trong MVP:**
+
+| Mối đe dọa | Biện pháp |
+|---|---|
+| Crack để dùng Pro miễn phí | Kiểm tra bản quyền ở nhiều chỗ trong code Rust, không dồn vào một biến đúng/sai duy nhất. Bản phát hành bật `strip`, `lto`, `codegen-units = 1`, `panic = "abort"`, và làm rối các chuỗi liên quan tới bản quyền. |
+| Sửa hoặc ký lại file của app | Lúc khởi động, app tự kiểm chữ ký số của chính nó. macOS dùng `SecStaticCodeCheckValidity` kèm yêu cầu đúng Team ID. Windows dùng `WinVerifyTrust` và so tên chủ chứng thư. Chữ ký không hợp lệ thì app chỉ chạy chế độ Free, báo "Bản cài không chính hãng" kèm link tải chính thức. Bản build dev bỏ qua bước này. |
+| Chỉnh lùi đồng hồ máy để lách quota Free hoặc hạn dùng | App lưu mốc thời gian lớn nhất từng thấy. Nếu giờ hiện tại nhỏ hơn mốc đó quá 10 phút thì: không reset quota ngày, coi token là phải kiểm tra online lại, và nhắc người dùng chỉnh giờ. |
+| Sửa trạng thái bản quyền và quota trên máy | Lưu trong kho khóa của hệ điều hành (Keychain trên macOS; DPAPI hoặc Credential Manager trên Windows), không lưu file thường. |
+| Chia sẻ hoặc bán lại key | Mỗi key tối đa 2 máy. Nếu trong 30 ngày có hơn 3 lần gỡ rồi kích hoạt lại thì khóa tạm key và yêu cầu liên hệ hỗ trợ. Key sinh ngẫu nhiên với ít nhất 128 bit, có ký tự kiểm tra để phát hiện gõ sai. |
+| Dò key hoặc spam license server | Giới hạn request theo IP và theo key, ví dụ `activate` ≤ 10 lần/giờ/IP, `validate` ≤ 30 lần/giờ/key. Vượt ngưỡng thì trả `429`. |
+| Bị clone, đổi thương hiệu rồi bán lại | **Pháp lý:** đăng ký nhãn hiệu (tên và logo) tại Cục Sở hữu trí tuệ Việt Nam, mở rộng ra quốc tế sau. EULA cấm dịch ngược, cấm phân phối lại, cấm đổi thương hiệu. Có sẵn quy trình yêu cầu Microsoft Store và nhà cung cấp hosting gỡ bản nhái. **Kỹ thuật:** logic quan trọng (prompt, cắt và ghép câu, khớp thuật ngữ) nằm trong Rust đã biên dịch; JavaScript chỉ lo hiển thị và được rút gọn. Manifest model, bản cập nhật và token đều ký bằng khóa riêng, nên bản nhái không dùng được hạ tầng của sản phẩm. |
+| Bản giả có cài mã độc | Ký số và notarize mọi bản phát hành. Chỉ phát hành qua tên miền chính thức (và Microsoft Store nếu D10 chốt như vậy). Website công bố mã SHA-256 của từng bộ cài và cảnh báo về bản giả. |
+| Tấn công qua giao diện WebView | **Capabilities của Tauri 2:** cửa sổ `overlay` chỉ nhận sự kiện phụ đề và chỉ gọi được lệnh di chuyển và khóa của chính nó; cửa sổ `main` chỉ được cấp đúng các lệnh nó cần. **CSP chặt:** chỉ nạp tài nguyên đóng gói trong app, không `unsafe-eval`, không tải script từ bên ngoài. Link ngoài mở bằng trình duyệt của hệ thống. Tắt devtools ở bản phát hành. Mọi dữ liệu từ giao diện gửi xuống Rust đều được kiểm tra kiểu và phạm vi. |
+| Thay tiến trình dịch, hoặc chèn thư viện giả | Trước khi chạy `llama-server`, kiểm tra SHA-256 của nó và của các thư viện ggml, theo một danh sách build sẵn vào app. Windows: gọi `SetDefaultDllDirectories` để chỉ nạp DLL từ thư mục app và System32. macOS: hardened runtime có bật library validation, mọi `.dylib` ký cùng Team ID. |
+| Lộ nội dung cuộc họp | Lịch sử chép lời được mã hóa bằng SQLCipher, khóa ngẫu nhiên lưu trong kho khóa của hệ điều hành. Log không bao giờ chứa nội dung chép lời. File xuất ra do người dùng chủ động tạo và tự quản lý. |
+| Tấn công license server | Chỉ dùng HTTPS. Kiểm tra chữ ký webhook và xử lý idempotent (§6.8). Dùng prepared statement của D1, kiểm tra mọi input. Secret lưu bằng Wrangler secrets. Ghi nhật ký mọi thay đổi license, cảnh báo khi có nhiều lần kiểm tra thất bại. |
+| Lộ khóa ký token | Token có trường `kid`. App build sẵn 2 khóa công khai: khóa đang dùng và khóa dự phòng. Nếu khóa bị lộ, server chuyển sang khóa dự phòng, và bản cập nhật app kế tiếp mang theo một khóa dự phòng mới. |
+| Rủi ro chuỗi cung ứng | Không khóa ký nào (ký mã, cập nhật, token, manifest) nằm trên máy dev. Bản phát hành được build và ký trong CI, từ tag đã commit, dùng secret của CI hoặc dịch vụ ký trên cloud. CI chạy `cargo audit`, `cargo deny`, `pnpm audit`, và bật Dependabot. llama.cpp và whisper.cpp được build trong CI từ tag đã khóa, có kiểm tra checksum. |
+
+**Để Giai đoạn 2**, và chỉ làm khi thấy bị crack nhiều thật: chống debug, làm rối code sâu hơn, kiểm tra toàn vẹn nhiều lớp, phát hiện gian lận phía server bằng phân tích hành vi.
 
 ## 11. Kiểm thử
 
@@ -525,6 +586,17 @@ Có thể giảm RAM bằng cách hạ context xuống 1024 và dùng mmap.
   - Hiển thị: app họp ở chế độ toàn màn hình, và máy có nhiều màn hình.
 - **Soak test:** phát liên tục 2 giờ âm thanh cuộc họp, theo dõi RAM, CPU và GPU (tiêu chí A5).
 - **Cài đặt và cập nhật:** cài mới, nâng cấp từ bản trước, gỡ app; kiểm tra chữ ký qua Gatekeeper và SmartScreen.
+- **Bảo mật (§10.2):**
+  - Sửa một byte trong file thực thi, hoặc ký lại bằng chứng thư khác: app chỉ chạy chế độ Free và báo "Bản cài không chính hãng".
+  - Các token sau đều bị từ chối: sai chữ ký, của máy khác, đã quá `refresh_before` hoặc `expires_at`, có `kid` lạ.
+  - Chỉnh lùi đồng hồ máy: app phát hiện, không reset quota, yêu cầu kiểm tra online.
+  - Gỡ rồi kích hoạt lại quá ngưỡng: key bị khóa tạm.
+  - Cửa sổ `overlay` gọi một lệnh không được cấp, ví dụ lệnh bản quyền: Tauri chặn lại.
+  - Thay `llama-server` bằng một file khác: app từ chối chạy.
+  - Mở file lịch sử bằng công cụ SQLite bên ngoài: không đọc được nếu không có khóa.
+  - Log của một phiên dịch không chứa nội dung chép lời.
+  - License server: vượt giới hạn request thì trả `429`; input độc hại (ví dụ SQL injection) bị từ chối; webhook sai chữ ký bị từ chối.
+  - CI: `cargo audit`, `cargo deny` và `pnpm audit` không còn lỗ hổng mức cao.
 
 ## 12. Cấu trúc repo
 
@@ -543,9 +615,11 @@ meeting-translator/
 │   │   ├── sidecar/llama.rs      # Chạy và giám sát llama-server
 │   │   ├── models/{manifest,download,store}.rs
 │   │   ├── license/{provider,state,quota}.rs
+│   │   ├── security/{integrity,clock,keystore}.rs  # Tự kiểm chữ ký, chống lùi giờ, kho khóa (§10.2)
 │   │   ├── transcript/{store,export}.rs
 │   │   ├── overlay/{macos,windows}.rs  # Hành vi cửa sổ native
 │   │   └── settings.rs  tray.rs  hotkeys.rs  i18n.rs
+│   ├── capabilities/{main,overlay}.json  # Quyền của từng cửa sổ (§10.2)
 │   ├── binaries/                 # llama-server theo target triple
 │   └── tauri.conf.json
 ├── server/                       # License server: Cloudflare Worker (TypeScript, Hono) + D1
