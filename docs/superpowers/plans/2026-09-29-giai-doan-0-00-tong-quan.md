@@ -205,6 +205,7 @@ Mỗi mục là một thay đổi riêng trong spec:
 - §6.5:
   - Ngưỡng tỉ lệ token theo từng cặp ngôn ngữ, lấy từ `results/s7_mt_decisions.md`. Quyết định cờ ngữ cảnh.
   - Truyền API key cho `llama-server` qua biến môi trường `LLAMA_API_KEY` thay vì `--api-key`, vì tham số dòng lệnh hiện ra trong `ps` (b11146 hỗ trợ cả hai).
+  - Đổi `--no-webui` thành `--no-ui` trong lệnh chạy: b11146 đánh dấu tên cũ là deprecated.
   - Lần đầu chạy một binary mới (sau khi cài hoặc cập nhật), macOS mất khoảng 15 giây kiểm tra trước khi `llama-server` chạy. Thời gian chờ `/health` lúc khởi động phải từ 30 giây trở lên, không tính vào bộ đếm lỗi "quá 5 lần trong 10 phút", và giao diện báo "đang chuẩn bị lần đầu". Áp dụng cho cả `asr-worker`. Đo lại với bản đã ký và notarize ở MVP.
 - §6.11: dung lượng bộ cài đo ở `results/s3_lid.md`.
 - §6.12:

@@ -77,7 +77,10 @@ def find_llama_server():
 
 
 class LlamaServer:
-    """Lệnh chạy theo §6.5: -c 2048 -np 1 -ngl auto --no-webui, chỉ nghe 127.0.0.1, API key ngẫu nhiên."""
+    """Lệnh chạy theo §6.5: -c 2048 -np 1 -ngl auto --no-ui, chỉ nghe 127.0.0.1, API key ngẫu nhiên.
+
+    `--no-ui` là tên mới của `--no-webui` (b11146 vẫn nhận tên cũ nhưng đánh dấu deprecated).
+    """
 
     def __init__(self, model, extra_args=(), log_path=None):
         with socket.socket() as s:
@@ -86,7 +89,7 @@ class LlamaServer:
         self.key = secrets.token_hex(16)
         self.base = f"http://127.0.0.1:{self.port}"
         cmd = [find_llama_server(), "-m", model, "--host", "127.0.0.1", "--port", str(self.port),
-               "--api-key", self.key, "-c", "2048", "-np", "1", "-ngl", "auto", "--no-webui", *extra_args]
+               "--api-key", self.key, "-c", "2048", "-np", "1", "-ngl", "auto", "--no-ui", *extra_args]
         self.proc = None
         # "a": chạy lại (translate.py tiếp tục) không xóa log của lần server vừa chết.
         self._log = open(log_path or os.devnull, "a")
@@ -509,6 +512,9 @@ def main():
     out_path = os.path.join(out_dir, f"{stem}-{args.variant}.jsonl")
     done = set()
     if os.path.exists(out_path):
+        with open(out_path, "rb+") as f:  # lần trước bị ngắt giữa lúc ghi: bỏ dòng cuối viết dở
+            data = f.read()
+            f.truncate(data.rfind(b"\n") + 1)
         done = {json.loads(line)["id"] for line in open(out_path, encoding="utf-8")}
 
     with LlamaServer(args.model, log_path=os.path.join(out_dir, f"{stem}.llama.log")) as server, \
@@ -662,7 +668,7 @@ def floor_cell(name, d, per_dir):
         return "—"
     if d == "en->vi":
         floor = FLOOR[quant]
-    elif d in ("zh->vi", "ja->vi", "ko->vi") and "comet" in per_dir["en->vi"]:
+    elif d in ("zh->vi", "ja->vi", "ko->vi") and "comet" in per_dir.get("en->vi", {}):
         floor = per_dir["en->vi"]["comet"] - CJK_GAP
     else:
         return "—"

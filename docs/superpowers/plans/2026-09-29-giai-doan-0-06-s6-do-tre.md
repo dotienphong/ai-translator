@@ -313,7 +313,7 @@ git commit -m "feat(pipeline): đọc stream SSE của llama-server"
 - Modify: `crates/pipeline/src/lib.rs` (bản cuối)
 
 Lệnh chạy theo §6.5:
-- `-m <gguf> --host 127.0.0.1 --port <cổng trống> --api-key <ngẫu nhiên> -c 2048 -np 1 -ngl auto --no-webui`.
+- `-m <gguf> --host 127.0.0.1 --port <cổng trống> --api-key <ngẫu nhiên> -c 2048 -np 1 -ngl auto --no-ui`.
 - Cổng được chọn bằng cách mở rồi đóng một `TcpListener` ở cổng 0.
 - API key sinh từ `RandomState` của thư viện chuẩn. Key này chỉ cần khó đoán với tiến trình khác trên máy, và không nằm trong app (§10.2).
 - Chờ `/health` trả 200, tối đa 180 giây.
@@ -392,7 +392,7 @@ impl LlamaServer {
                 "--api-key",
                 &api_key,
             ])
-            .args(["-c", "2048", "-np", "1", "-ngl", "auto", "--no-webui"])
+            .args(["-c", "2048", "-np", "1", "-ngl", "auto", "--no-ui"])
             .args(extra_args)
             .stdout(Stdio::null())
             .stderr(Stdio::from(File::create(stderr_log)?))
