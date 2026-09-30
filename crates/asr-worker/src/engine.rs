@@ -12,7 +12,8 @@
 use crate::lid::pick_language;
 use anyhow::{Context, Result, bail};
 use asr_protocol::{
-    MAX_PCM_SAMPLES, MIN_PCM_SAMPLES, SAMPLE_RATE, TranscribeRequest, TranscribeResult, audio_ctx_for_samples,
+    MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_PCM_SAMPLES, SAMPLE_RATE, TranscribeRequest, TranscribeResult,
+    audio_ctx_for_samples,
 };
 use std::time::Instant;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState};
@@ -119,6 +120,12 @@ impl Engine {
         }
         if req.pcm.len() > MAX_PCM_SAMPLES {
             bail!("đoạn quá dài: {} mẫu (tối đa {MAX_PCM_SAMPLES})", req.pcm.len());
+        }
+        if req.prompt_tokens.len() > MAX_PROMPT_TOKENS {
+            bail!(
+                "prompt quá dài: {} token (tối đa {MAX_PROMPT_TOKENS})",
+                req.prompt_tokens.len()
+            );
         }
         let eot = self.ctx.token_eot();
         if let Some(t) = req.prompt_tokens.iter().find(|&&t| !(0..eot).contains(&t)) {

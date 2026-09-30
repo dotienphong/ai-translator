@@ -32,3 +32,11 @@ git apply --directory=third_party third_party/patches/0002-whisper-rs-set-audio-
 1. Làm lại các bước trên với phiên bản mới; nếu bản vá không áp được thì sửa bản vá.
 2. Chạy lại `asr-eval` ở cả hai chế độ và so với kết quả cũ (bench/phase0).
 3. Gửi bản vá C lên upstream whisper.cpp. Khi upstream đã có API tương đương thì bỏ thư mục này.
+
+## Khi sửa bản vá hoặc nâng phiên bản
+- Đổi bất kỳ file nào trong `whisper-rs-sys/whisper.cpp/` thì chạy `cargo clean -p whisper-rs-sys` trước khi build:
+  build.rs chỉ theo dõi `wrapper.h` và chỉ chép whisper.cpp vào OUT_DIR khi chưa có, nên không clean thì binary vẫn dùng bản cũ.
+- Kiểm sha256 trước khi giải nén (Cargo.lock không còn checksum của hai crate này):
+  whisper-rs-sys-0.15.0.crate 6986c0fe081241d391f09b9a071fbcbb59720c3563628c3c829057cf69f2a56f,
+  whisper-rs-0.16.0.crate 2088172d00f936c348d6a72f488dc2660ab3f507263a195df308a3c2383229f6.
+- Commit bằng `git add -f third_party` (.gitignore của whisper-rs chặn Cargo.lock của nó).

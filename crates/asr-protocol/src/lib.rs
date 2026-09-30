@@ -20,6 +20,10 @@ pub const MIN_PCM_SAMPLES: usize = SAMPLE_RATE as usize / 10;
 /// Dài hơn thì `asr-worker` trả `Error`.
 pub const MAX_PCM_SAMPLES: usize = SAMPLE_RATE as usize * 30;
 
+/// Số token tối đa của `prompt_tokens`: 100 token của đoạn trước cùng ngôn ngữ (spec §6.4). Nhiều hơn thì `asr-worker`
+/// trả `Error`, để hai chế độ giải mã xử lý prompt giống nhau.
+pub const MAX_PROMPT_TOKENS: usize = 100;
+
 /// Một đoạn 8 giây ở dạng int16 chỉ khoảng 256 KB; 16 MiB là dư nhiều.
 pub const MAX_FRAME_BYTES: u32 = 16 * 1024 * 1024;
 
@@ -49,7 +53,8 @@ pub struct TranscribeRequest {
     pub pcm: Vec<i16>,
     /// Mã ngôn ngữ Whisper được phép, ví dụ `["en", "vi"]`. Một phần tử nghĩa là khóa ngôn ngữ.
     pub languages: Vec<String>,
-    /// Tối đa 100 token của đoạn trước cùng ngôn ngữ, dùng làm prompt khởi đầu.
+    /// Tối đa [`MAX_PROMPT_TOKENS`] token của đoạn trước cùng ngôn ngữ, dùng làm prompt khởi đầu; nhiều hơn thì worker
+    /// trả `Error`.
     pub prompt_tokens: Vec<i32>,
     /// Cửa sổ mã hóa, mỗi vị trí 20 ms, trong khoảng 0 đến 1500. 0 nghĩa là cửa sổ 30 giây; giá trị khác phải phủ hết
     /// `pcm` (`audio_ctx · 320 ≥ pcm.len()`), nếu không worker trả `Error` vì whisper.cpp sẽ lặng lẽ bỏ phần đuôi.
