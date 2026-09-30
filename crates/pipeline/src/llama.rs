@@ -116,7 +116,12 @@ impl LlamaServer {
         });
         let started = Instant::now();
         let resp = self.post("/v1/chat/completions", &body)?;
-        read_stream(BufReader::new(resp), started)
+        read_stream(BufReader::new(resp), started).with_context(|| {
+            format!(
+                "đọc bản dịch từ llama-server thất bại, xem log {}",
+                self.log_path.display()
+            )
+        })
     }
 
     /// Số token của `text` theo tokenizer của model (`POST /tokenize`, giống `count_tokens` trong `common.py`),
@@ -133,7 +138,13 @@ impl LlamaServer {
             .post(format!("{}{path}", self.base_url))
             .bearer_auth(&self.api_key)
             .json(body)
-            .send()?;
+            .send()
+            .with_context(|| {
+                format!(
+                    "không gọi được llama-server {path}, xem log {}",
+                    self.log_path.display()
+                )
+            })?;
         let status = resp.status();
         if !status.is_success() {
             let detail: String = resp.text().unwrap_or_default().chars().take(500).collect();

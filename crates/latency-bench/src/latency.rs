@@ -111,6 +111,8 @@ struct SegmentRecord {
     end_ms: u64,
     audio_ms: u64,
     closed_at_ms: f64,
+    /// Lúc luồng ASR nhận đoạn (sau thời gian chờ hàng đợi) và lúc xong chép lời.
+    asr_started_at_ms: f64,
     asr_done_at_ms: f64,
     lid_ms: f32,
     asr_ms: f32,
@@ -124,6 +126,8 @@ struct SegmentRecord {
     /// Số token của `translated_source` theo `/tokenize`, và `max_tokens` đã gửi cho bản dịch (§6.5).
     src_tokens: Option<usize>,
     max_tokens: Option<u32>,
+    /// Lúc luồng MT nhận đoạn (sau thời gian chờ hàng đợi), lúc chữ dịch đầu tiên tới và lúc dịch xong.
+    mt_started_at_ms: Option<f64>,
     mt_first_at_ms: Option<f64>,
     mt_done_at_ms: Option<f64>,
     translation: Option<String>,
@@ -168,8 +172,10 @@ struct UtteranceLatency {
 struct ProcessUsage {
     peak_rss_mb: f64,
     /// macOS: `phys_footprint` (số Activity Monitor hiển thị), tính cả bộ nhớ Metal mà RSS bỏ sót, nhưng không
-    /// tính trang của file model được mmap. Nền tảng khác để 0; VRAM trên Windows đo bằng `vram-sample.ps1`.
+    /// tính trang của file model được mmap. Là đỉnh từ lúc tiến trình khởi động, nên gồm cả lúc nạp model (`peak_rss_mb`
+    /// thì chỉ từ lúc bắt đầu lấy mẫu). Nền tảng khác để 0; VRAM trên Windows đo bằng `vram-sample.ps1`.
     peak_footprint_mb: f64,
+    /// CPU trung bình trong lúc phát lại, phần trăm của một lõi: thời gian CPU tích lũy chia thời gian thực.
     avg_cpu_percent: f64,
     samples: usize,
 }
@@ -221,6 +227,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         ready.backend, ready.whisper_version, ready.decode_mode
     );
 
+    kill_children_on_panic(vec![asr.pid(), llama.pid()]);
     let pids = HashMap::from([
         ("latency-bench".to_string(), std::process::id()),
         ("asr-worker".to_string(), asr.pid()),
@@ -248,6 +255,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
                 end_ms: segment.end_ms,
                 audio_ms: segment.samples.len() as u64 * 1000 / 16_000,
                 closed_at_ms,
+                asr_started_at_ms: now_ms(),
                 ..Default::default()
             };
             // Worker từ chối đoạn ngoài khoảng, và một lỗi làm dừng cả lượt đo: không gửi, chỉ ghi lại.
@@ -293,6 +301,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     let mt_thread = std::thread::spawn(move || -> Result<()> {
         let mut open: Option<OpenSentence> = None;
         for mut rec in asr_rx {
+            let mt_started = now_ms();
             if rec.skipped.is_none() {
                 match route(&rec, target) {
                     Err(reason) => {
@@ -303,6 +312,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
                         rec.skipped = Some(reason);
                     }
                     Ok(src) => {
+                        rec.mt_started_at_ms = Some(mt_started);
                         // Ghép câu (§6.3): đoạn bắt đầu nói trong cửa sổ ghép thì dịch lại cả câu, không chỉ đoạn này.
                         let (merged, source) = if merge {
                             plan_merge(&mut open, &rec, src, merge_window)
@@ -372,9 +382,6 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     segments.sort_by_key(|s| s.id);
     let utterances = utterance_latencies(&truth, &segments, target);
     let mut summary = build_summary(&utterances, &segments);
-    if summary["measured"] == 0.0 {
-        bail!("không đo được câu nào (không ghép được với mốc thật, hoặc đoạn đều bị bỏ); kiểm tra file truth và VAD");
-    }
     let feed_lag_max_ms = max_lag.as_secs_f64() * 1000.0;
     summary.insert("feed_lag_max_ms".into(), feed_lag_max_ms);
 
@@ -388,6 +395,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             ("asr_system_info".to_string(), ready.system_info),
             ("asr_model".to_string(), args.asr_model.display().to_string()),
             ("mt_model".to_string(), args.mt_model.display().to_string()),
+            ("llama_server".to_string(), args.llama_server.display().to_string()),
             ("languages".to_string(), args.languages.join(",")),
             ("target".to_string(), args.target.clone()),
             ("end_silence_ms".to_string(), args.end_silence_ms.to_string()),
@@ -401,8 +409,17 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         utterances,
         segments,
     };
-    serde_json::to_writer_pretty(std::fs::File::create(&args.out)?, &report)?;
+    // Ghi file trước khi kiểm: lượt đo không ra câu nào vẫn còn đoạn và lý do để xem.
+    let out = std::fs::File::create(&args.out).with_context(|| format!("không tạo được {}", args.out.display()))?;
+    serde_json::to_writer_pretty(out, &report)?;
     let s = &report.summary;
+    if s["measured"] == 0.0 {
+        bail!(
+            "không đo được câu nào (không ghép được với mốc thật, đoạn đều bị bỏ, hoặc LID nhầm sang ngôn ngữ đích); \
+             kiểm tra file truth và VAD. Chi tiết ở {}",
+            args.out.display()
+        );
+    }
     println!(
         "{}: p50 = {:.0} ms, p90 = {:.0} ms, chữ đầu p50 = {:.0} ms, ghép được {}/{} câu",
         report.label, s["shown_p50_ms"], s["shown_p90_ms"], s["first_p50_ms"], s["matched"], s["utterances"]
@@ -427,6 +444,28 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         );
     }
     Ok(())
+}
+
+/// Bản release đặt `panic = "abort"`: `Drop` không chạy khi panic, nên `asr-worker` và `llama-server` bị bỏ lại chạy mồ côi,
+/// chiếm RAM và làm lệch lượt đo sau. Hook này chạy trước khi abort để dọn chúng.
+fn kill_children_on_panic(pids: Vec<u32>) {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        for &pid in &pids {
+            kill_process(pid);
+        }
+        default_hook(info);
+    }));
+}
+
+fn kill_process(pid: u32) {
+    let pid = pid.to_string();
+    #[cfg(unix)]
+    let _ = std::process::Command::new("kill").args(["-KILL", &pid]).status();
+    #[cfg(windows)]
+    let _ = std::process::Command::new("taskkill")
+        .args(["/F", "/PID", &pid])
+        .output();
 }
 
 /// Lý do không gửi đoạn cho `asr-worker`: số mẫu ngoài khoảng worker nhận.
@@ -587,7 +626,10 @@ fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord], target: 
 
 /// Bản tóm tắt của một lượt đo:
 /// - `shown_*`, `first_*`: phân vị độ trễ trên các câu đo được (`measured`), tức câu ghép được với một đoạn không bị bỏ.
-/// - `asr_*`, `lid_*`, `mt_*`: phân vị thời gian từng bước (ms), trên các đoạn đã qua bước đó.
+/// - `asr_*`, `lid_*`, `mt_*`: phân vị thời gian phục vụ của từng bước (ms), trên các đoạn đã qua bước đó; `mt_*` tính từ
+///   lúc luồng MT nhận đoạn (gồm /tokenize) tới lúc dịch xong.
+/// - `asr_wait_*`, `mt_wait_*`: phân vị thời gian chờ hàng đợi trước luồng ASR và luồng MT (ms). Ở p50 thường là 0; đuôi
+///   (p90) mới cho thấy các đoạn xếp hàng.
 /// - `utterances`: số câu thật; `matched`: số câu ghép được với một đoạn (kể cả đoạn bị bỏ); `unmatched`: số câu còn lại.
 /// - `no_translation`: số câu ghép được với một đoạn không có bản dịch (đoạn bị bỏ, hoặc không cần dịch). Không gồm
 ///   câu không ghép được: không biết chúng ra sao, vì không có đoạn nào đại diện.
@@ -612,9 +654,18 @@ fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) ->
     let transcribed = || segments.iter().filter(|s| was_transcribed(s));
     let asr_ms: Vec<f32> = transcribed().map(|s| s.asr_ms).collect();
     let lid_ms: Vec<f32> = transcribed().map(|s| s.lid_ms).collect();
+    // Thời gian chờ hàng đợi tách khỏi thời gian phục vụ: chờ ở luồng ASR là từ lúc đoạn đóng tới lúc được nhận, chờ ở luồng
+    // MT là từ lúc chép lời xong tới lúc được nhận; thời gian dịch là từ lúc được nhận (gồm /tokenize) tới lúc dịch xong.
+    let asr_wait: Vec<f32> = transcribed()
+        .map(|s| (s.asr_started_at_ms - s.closed_at_ms) as f32)
+        .collect();
+    let mt_wait: Vec<f32> = segments
+        .iter()
+        .filter_map(|s| s.mt_started_at_ms.map(|t| (t - s.asr_done_at_ms) as f32))
+        .collect();
     let mt_ms: Vec<f32> = segments
         .iter()
-        .filter_map(|s| s.mt_done_at_ms.map(|d| (d - s.asr_done_at_ms) as f32))
+        .filter_map(|s| Some((s.mt_done_at_ms? - s.mt_started_at_ms?) as f32))
         .collect();
     let mut summary = HashMap::new();
     let mut put = |k: &str, v: Option<f32>| {
@@ -630,6 +681,10 @@ fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) ->
     put("lid_p50_ms", percentile(&lid_ms, 50.0));
     put("mt_p50_ms", percentile(&mt_ms, 50.0));
     put("mt_p90_ms", percentile(&mt_ms, 90.0));
+    put("asr_wait_p50_ms", percentile(&asr_wait, 50.0));
+    put("asr_wait_p90_ms", percentile(&asr_wait, 90.0));
+    put("mt_wait_p50_ms", percentile(&mt_wait, 50.0));
+    put("mt_wait_p90_ms", percentile(&mt_wait, 90.0));
     let offset_max = utterances.iter().filter_map(|u| u.end_offset_ms).map(i64::abs).max();
     put("end_offset_max_abs_ms", Some(offset_max.unwrap_or(0) as f32));
 
@@ -711,6 +766,23 @@ fn read_wav_16k_mono(path: &PathBuf) -> Result<Vec<f32>> {
         .collect::<Result<_, _>>()?)
 }
 
+/// CPU trung bình, tính bằng phần trăm của một lõi (nhiều lõi thì vượt 100): thời gian CPU tích lũy chia thời gian thực.
+fn cpu_percent(cpu_ms: u64, wall: Duration) -> f64 {
+    let wall_ms = wall.as_secs_f64() * 1000.0;
+    if wall_ms > 0.0 {
+        cpu_ms as f64 / wall_ms * 100.0
+    } else {
+        0.0
+    }
+}
+
+/// Một mẫu thời gian CPU của một tiến trình: lúc lấy mẫu và thời gian CPU tích lũy (ms).
+#[derive(Clone, Copy)]
+struct CpuSample {
+    at: Instant,
+    cpu_ms: u64,
+}
+
 fn spawn_sampler(
     pids: HashMap<String, u32>,
     stop: Arc<AtomicBool>,
@@ -720,35 +792,57 @@ fn spawn_sampler(
         let list: Vec<Pid> = pids.values().map(|&p| Pid::from_u32(p)).collect();
         let mut usage: HashMap<String, ProcessUsage> =
             pids.keys().map(|k| (k.clone(), ProcessUsage::default())).collect();
+        // Mẫu đầu và mẫu cuối của từng tiến trình: (lúc lấy mẫu, thời gian CPU tích lũy, ms). Không dùng `cpu_usage`: sysinfo
+        // trên macOS giữ nguyên số cũ khi tiến trình rảnh, nên trung bình các mẫu bị lệch.
+        let mut cpu: HashMap<String, (CpuSample, CpuSample)> = HashMap::new();
         while !stop.load(Ordering::Relaxed) {
             sys.refresh_processes(ProcessesToUpdate::Some(&list), true);
+            let now = Instant::now();
             for (name, &pid) in &pids {
                 if let (Some(p), Some(u)) = (sys.process(Pid::from_u32(pid)), usage.get_mut(name)) {
                     u.peak_rss_mb = u.peak_rss_mb.max(p.memory() as f64 / 1_048_576.0);
                     #[cfg(target_os = "macos")]
-                    if let Some(mb) = phys_footprint_mb(pid) {
+                    if let Some(mb) = peak_footprint_mb(pid) {
                         u.peak_footprint_mb = u.peak_footprint_mb.max(mb);
                     }
-                    u.avg_cpu_percent += p.cpu_usage() as f64;
+                    let sample = CpuSample {
+                        at: now,
+                        cpu_ms: p.accumulated_cpu_time(),
+                    };
+                    cpu.entry(name.clone())
+                        .and_modify(|e| e.1 = sample)
+                        .or_insert((sample, sample));
                     u.samples += 1;
                 }
             }
             std::thread::sleep(Duration::from_millis(500));
         }
-        for u in usage.values_mut() {
-            if u.samples > 0 {
-                u.avg_cpu_percent /= u.samples as f64;
+        for (name, u) in &mut usage {
+            if let Some(&(first, last)) = cpu.get(name) {
+                u.avg_cpu_percent = cpu_percent(
+                    last.cpu_ms.saturating_sub(first.cpu_ms),
+                    last.at.duration_since(first.at),
+                );
             }
         }
         usage
     })
 }
 
+/// macOS: `phys_footprint` đỉnh của tiến trình từ lúc khởi động (`ri_lifetime_max_phys_footprint`), nên gồm cả lúc nạp model
+/// mà bộ lấy mẫu (chạy sau khi nạp xong) không thấy.
 #[cfg(target_os = "macos")]
-fn phys_footprint_mb(pid: u32) -> Option<f64> {
-    let mut info = std::mem::MaybeUninit::<libc::rusage_info_v2>::zeroed();
-    let ret = unsafe { libc::proc_pid_rusage(pid as i32, libc::RUSAGE_INFO_V2, info.as_mut_ptr().cast()) };
-    (ret == 0).then(|| unsafe { info.assume_init() }.ri_phys_footprint as f64 / 1_048_576.0)
+fn peak_footprint_mb(pid: u32) -> Option<f64> {
+    let mut info = std::mem::MaybeUninit::<libc::rusage_info_v4>::zeroed();
+    // SAFETY: với flavor RUSAGE_INFO_V4, `proc_pid_rusage` ghi tối đa `size_of::<rusage_info_v4>()` byte vào vùng nhớ này.
+    // Struct chỉ gồm u64 và mảng u8 nên toàn số 0 cũng là giá trị hợp lệ.
+    let ret = unsafe { libc::proc_pid_rusage(pid as i32, libc::RUSAGE_INFO_V4, info.as_mut_ptr().cast()) };
+    if ret != 0 {
+        return None;
+    }
+    // SAFETY: vùng nhớ đã được khởi tạo bằng số 0, và `proc_pid_rusage` vừa ghi đè (xem trên).
+    let info = unsafe { info.assume_init() };
+    Some(info.ri_phys_footprint.max(info.ri_lifetime_max_phys_footprint) as f64 / 1_048_576.0)
 }
 
 fn machine_info() -> HashMap<String, String> {
@@ -1179,6 +1273,47 @@ mod tests {
                 "{code}"
             );
         }
+    }
+
+    #[test]
+    fn early_stop_is_flagged_beyond_200_ms() {
+        // Đoạn dừng sớm hơn mốc thật đúng 200 ms thì chưa gắn cờ, 201 ms thì gắn: độ trễ của câu đó bị đo thiếu.
+        let segments = [
+            translated(4_800, 5_400.0, 5_700.0, 6_500.0),
+            translated(9_799, 10_400.0, 10_700.0, 11_500.0),
+        ];
+        let all = utterance_latencies(&[utt("a", 5_000), utt("b", 10_000)], &segments, Lang::Vi);
+        assert_eq!((all[0].end_offset_ms, all[0].early_stop), (Some(-200), false));
+        assert_eq!((all[1].end_offset_ms, all[1].early_stop), (Some(-201), true));
+        assert_eq!(build_summary(&all, &segments)["early_stop"], 1.0);
+    }
+
+    #[test]
+    fn queue_waits_are_separated_from_service_times() {
+        // Đoạn đóng lúc 1 000, asr-worker nhận lúc 1 300 (chờ 300), xong lúc 1 500; luồng MT nhận lúc 1 900 (chờ 400),
+        // dịch xong lúc 2 400 (phục vụ 500).
+        let mut a = translated(900, 1_500.0, 1_700.0, 2_400.0);
+        (a.closed_at_ms, a.asr_started_at_ms, a.mt_started_at_ms) = (1_000.0, 1_300.0, Some(1_900.0));
+        // Đoạn không phải chờ gì.
+        let mut b = translated(5_000, 6_000.0, 6_100.0, 6_300.0);
+        (b.closed_at_ms, b.asr_started_at_ms, b.mt_started_at_ms) = (5_500.0, 5_500.0, Some(6_000.0));
+        let segments = [a, b];
+        let s = build_summary(
+            &utterance_latencies(&[utt("a", 1_000), utt("b", 5_000)], &segments, Lang::Vi),
+            &segments,
+        );
+        assert_eq!(s["asr_wait_p50_ms"], 150.0); // (300 + 0) / 2
+        assert_eq!(s["mt_wait_p50_ms"], 200.0); // (400 + 0) / 2
+        assert_eq!(s["mt_p50_ms"], 400.0); // (500 + 300) / 2: chỉ thời gian dịch, không gồm thời gian chờ
+        assert_eq!(s["mt_wait_p90_ms"], 360.0); // nội suy giữa 0 và 400 ở hạng 0,9
+    }
+
+    #[test]
+    fn cpu_percent_is_cpu_time_over_wall_time() {
+        assert_eq!(cpu_percent(500, Duration::from_secs(1)), 50.0);
+        assert_eq!(cpu_percent(3_000, Duration::from_secs(2)), 150.0); // nhiều lõi: trên 100% của một lõi
+        assert_eq!(cpu_percent(0, Duration::from_secs(10)), 0.0); // tiến trình rảnh: 0, không giữ số cũ
+        assert_eq!(cpu_percent(10, Duration::ZERO), 0.0);
     }
 
     #[test]
