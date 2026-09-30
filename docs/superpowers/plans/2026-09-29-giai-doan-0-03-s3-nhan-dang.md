@@ -2614,7 +2614,8 @@ Expected: build xong; `test result: ok. 5 passed`. `Cargo.lock` giờ trỏ whis
 - [ ] **Step 6: Commit** (khoảng 13 MB mã nguồn whisper.cpp)
 
 ```bash
-git add third_party Cargo.toml Cargo.lock
+# -f: .gitignore của whisper-rs chặn Cargo.lock của nó; giữ nguyên nội dung crate như trên crates.io (820 file)
+git add -f third_party Cargo.toml Cargo.lock
 git commit -m "build(third_party): vá whisper.cpp 1.8.3 và whisper-rs 0.16 để đặt audio_ctx trước khi encode"
 ```
 
@@ -2910,7 +2911,12 @@ rm bench/phase0/results/a4_thu-ko-b.json
 ```
 Expected:
 - Dòng đầu là `asr: metal (1.8.3), chế độ giải mã shared`.
-- Lúc lập kế hoạch, nhóm `ko-wb` cho CER khoảng 0,14, nhận đúng ngôn ngữ 100%, và LID/ASR khoảng 1–2%. Số này đo khi flash attention còn bật (xem Task 4) và trên bộ clip chưa cắt lặng, nên số thật có thể khác.
+- Lúc thực thi (flash attention tắt, clip đã cắt lặng):
+  - `ko-wb` CER 0,082 (chặn 0,082), `long_hyp` 0, nhận đúng ngôn ngữ 100%, LID/ASR 2%.
+  - Cùng bộ clip, chế độ A cho 0,235.
+  - Văn bản của B trùng A ở 102/105 clip. Ba clip khác nhau là ba clip mà LID 3 giây đầu của A chọn sai ngôn ngữ (một clip lặp tới 220 token).
+- `lang_prob` của hai chế độ cùng nghĩa: đều chuẩn hóa trong tập cho phép qua `pick_language`. B dùng encode của cả đoạn nên xác suất cao hơn: trung vị 0,996, so với 0,973 ở A.
+- `no_speech_prob` chỉ có nghĩa ở chế độ B, vì B lấy giá trị thật ngay sau SOT (trung vị 0,046 trên clip có tiếng nói). Ở chế độ A, giá trị này luôn gần 0.
 
 - [ ] **Step 7: Commit**
 
@@ -2948,6 +2954,8 @@ uv run --no-project --python 3.12 --with "jiwer==4.0.0" --with "opencc==1.4.2" p
   bench/phase0/data/asr/out-m4pro-{small,turbo}-{split,shared}.jsonl | tee bench/phase0/results/s3_ab.md
 ```
 Expected: bảng có 80 dòng (4 lượt × 20 nhóm). Cột "Chế độ" khớp với tên lượt chạy.
+
+Cột `no_speech > 0,6` chỉ có nghĩa với chế độ B (xem Task 9).
 
 Khi đọc số, lưu ý tiếng Nhật: bản ghi ja có nền nhiễu cao, nên ngưỡng cắt lặng −35 dB gần như không cắt được gì, và chế độ A vẫn hay nhận sai ngôn ngữ (small nhận đúng khoảng 76%). Reviewer đã thử ngưỡng theo nền nhiễu: nó cắt vào tiếng nói, nên không dùng. Vì vậy trong `s3_ab.md`, số ja cần đọc kèm lượt `--lock-language` ở Task 11.
 
