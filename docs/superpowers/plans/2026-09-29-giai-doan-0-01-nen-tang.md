@@ -544,6 +544,14 @@ use std::io::{self, Read, Write};
 /// Âm thanh gửi cho `asr-worker` luôn là 16 kHz mono.
 pub const SAMPLE_RATE: u32 = 16_000;
 
+/// Số mẫu tối thiểu của một đoạn: 100 ms. Ngắn hơn thì `log_mel_spectrogram` của whisper.cpp đọc 200 mẫu đầu và
+/// whisper.cpp bỏ qua đoạn, nên `asr-worker` trả `Error`.
+pub const MIN_PCM_SAMPLES: usize = SAMPLE_RATE as usize / 10;
+
+/// Số mẫu tối đa của một đoạn: 30 giây, đúng cửa sổ mã hóa tối đa của Whisper (1500 vị trí, mỗi vị trí 20 ms).
+/// Dài hơn thì `asr-worker` trả `Error`.
+pub const MAX_PCM_SAMPLES: usize = SAMPLE_RATE as usize * 30;
+
 /// Một đoạn 8 giây ở dạng int16 chỉ khoảng 256 KB; 16 MiB là dư nhiều.
 pub const MAX_FRAME_BYTES: u32 = 16 * 1024 * 1024;
 
@@ -568,7 +576,8 @@ pub enum Request {
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct TranscribeRequest {
     pub segment_id: u64,
-    /// Âm thanh 16 kHz mono, từ 1600 đến 480000 mẫu (0,1 đến 30 giây); ngoài khoảng này worker trả `Error`.
+    /// Âm thanh 16 kHz mono, từ [`MIN_PCM_SAMPLES`] đến [`MAX_PCM_SAMPLES`] mẫu (0,1 đến 30 giây); ngoài khoảng này
+    /// worker trả `Error`.
     pub pcm: Vec<i16>,
     /// Mã ngôn ngữ Whisper được phép, ví dụ `["en", "vi"]`. Một phần tử nghĩa là khóa ngôn ngữ.
     pub languages: Vec<String>,

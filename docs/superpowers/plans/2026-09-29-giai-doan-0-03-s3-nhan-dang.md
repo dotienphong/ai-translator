@@ -1143,19 +1143,21 @@ pub mod lid;
 
 use crate::lid::pick_language;
 use anyhow::{Context, Result, bail};
-use asr_protocol::{SAMPLE_RATE, TranscribeRequest, TranscribeResult, audio_ctx_for_samples};
+use asr_protocol::{
+    MAX_PCM_SAMPLES, MIN_PCM_SAMPLES, SAMPLE_RATE, TranscribeRequest, TranscribeResult, audio_ctx_for_samples,
+};
 use std::time::Instant;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState};
 
 /// Nhận diện ngôn ngữ trên tối đa 3 giây đầu của đoạn (spec §6.4).
 pub const LID_SAMPLES: usize = SAMPLE_RATE as usize * 3;
 pub(crate) const MIN_LANG_PROB: f32 = 0.5;
-/// Đoạn ngắn hơn 100 ms: `log_mel_spectrogram` đọc 200 mẫu đầu và whisper.cpp bỏ qua đoạn dưới mức này.
-const MIN_PCM_SAMPLES: usize = SAMPLE_RATE as usize / 10;
 /// Cửa sổ mã hóa tối đa của Whisper: 1500 vị trí, tức 30 giây.
 const MAX_AUDIO_CTX: i32 = 1500;
 /// Số mẫu 16 kHz mà một vị trí của `audio_ctx` phủ (20 ms).
 const SAMPLES_PER_CTX: usize = SAMPLE_RATE as usize / 50;
+// Cửa sổ tối đa phủ đúng đoạn dài nhất mà `asr-protocol` cho phép.
+const _: () = assert!(MAX_AUDIO_CTX as usize * SAMPLES_PER_CTX == MAX_PCM_SAMPLES);
 
 pub struct Engine {
     ctx: WhisperContext,
@@ -1247,6 +1249,9 @@ impl Engine {
         if req.pcm.len() < MIN_PCM_SAMPLES {
             bail!("đoạn quá ngắn: {} mẫu (tối thiểu {MIN_PCM_SAMPLES})", req.pcm.len());
         }
+        if req.pcm.len() > MAX_PCM_SAMPLES {
+            bail!("đoạn quá dài: {} mẫu (tối đa {MAX_PCM_SAMPLES})", req.pcm.len());
+        }
         let eot = self.ctx.token_eot();
         if let Some(t) = req.prompt_tokens.iter().find(|&&t| !(0..eot).contains(&t)) {
             bail!("prompt_tokens có token {t} ngoài khoảng [0, {eot})");
@@ -1255,7 +1260,8 @@ impl Engine {
             bail!("audio_ctx {} ngoài khoảng [0, {MAX_AUDIO_CTX}]", req.audio_ctx);
         }
         // 0 là cửa sổ đầy đủ 30 giây. Cửa sổ nào ngắn hơn đoạn thì whisper.cpp lặng lẽ bỏ phần đuôi (chế độ B chỉ ra
-        // phần đầu), nên đoạn dài hơn 30 giây bị từ chối, kể cả khi `audio_ctx` là 0.
+        // phần đầu), nên `audio_ctx` phải phủ hết đoạn. Đoạn dài hơn 30 giây đã bị từ chối ở trên, kể cả khi
+        // `audio_ctx` là 0.
         let window = if req.audio_ctx == 0 {
             MAX_AUDIO_CTX
         } else {
@@ -1550,9 +1556,9 @@ git commit -m "feat(asr-worker): tiến trình phụ whisper.cpp qua stdin/stdou
 
 use anyhow::{Context, Result, bail};
 use asr_protocol::{Request, Response, TranscribeRequest, TranscribeResult, read_frame, write_frame};
-use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -1571,10 +1577,13 @@ pub struct AsrWorker {
     child: Child,
     stdin: BufWriter<ChildStdin>,
     stdout: BufReader<ChildStdout>,
+    /// Đường dẫn file log của worker, để thông báo lỗi chỉ chỗ xem log.
+    log: PathBuf,
 }
 
 impl AsrWorker {
-    /// `stderr_log`: nơi ghi log của whisper.cpp, để log không lẫn vào kênh giao thức.
+    /// `stderr_log`: nơi ghi log của whisper.cpp, để log không lẫn vào kênh giao thức. File được mở ở chế độ append,
+    /// nên khởi động lại worker không làm mất log của lần chạy trước (log crash).
     pub fn spawn(
         exe: &Path,
         model: &Path,
@@ -1582,15 +1591,25 @@ impl AsrWorker {
         n_threads: u32,
         stderr_log: &Path,
     ) -> Result<(Self, ReadyInfo)> {
+        let log = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(stderr_log)
+            .with_context(|| format!("không mở được log {}", stderr_log.display()))?;
         let mut child = Command::new(exe)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::from(File::create(stderr_log)?))
+            .stderr(Stdio::from(log))
             .spawn()
             .with_context(|| format!("không chạy được {}", exe.display()))?;
         let stdin = BufWriter::new(child.stdin.take().context("thiếu stdin")?);
         let stdout = BufReader::new(child.stdout.take().context("thiếu stdout")?);
-        let mut worker = Self { child, stdin, stdout };
+        let mut worker = Self {
+            child,
+            stdin,
+            stdout,
+            log: stderr_log.to_path_buf(),
+        };
         let load = Request::Load {
             model_path: model.display().to_string(),
             use_gpu,
@@ -1629,16 +1648,31 @@ impl AsrWorker {
     }
 
     pub fn transcribe(&mut self, req: TranscribeRequest) -> Result<TranscribeResult> {
+        let id = req.segment_id;
         match self.call(&Request::Transcribe(req))? {
-            Response::Result(r) => Ok(r),
-            Response::Error { message, .. } => bail!("chép lời lỗi: {message}"),
+            Response::Result(r) if r.segment_id == id => Ok(r),
+            Response::Result(r) => bail!("asr-worker trả kết quả đoạn {} khi đang chờ đoạn {id}", r.segment_id),
+            Response::Error { message, .. } => bail!("chép lời đoạn {id} lỗi: {message}"),
             other => bail!("phản hồi không mong đợi: {other:?}"),
         }
     }
 
     fn call(&mut self, req: &Request) -> Result<Response> {
-        write_frame(&mut self.stdin, req)?;
-        read_frame(&mut self.stdout)?.context("asr-worker đã thoát")
+        let res = write_frame(&mut self.stdin, req)
+            .context("gửi yêu cầu cho asr-worker")
+            .and_then(|()| read_frame(&mut self.stdout).context("đọc phản hồi của asr-worker"))
+            .and_then(|r| r.context("asr-worker đóng stdout"));
+        if res.is_err() {
+            // Lỗi pipe thường là do worker vừa chết: chờ ngắn để lấy mã thoát (tiến trình có thể chưa kịp thành zombie).
+            let deadline = Instant::now() + Duration::from_millis(200);
+            while Instant::now() < deadline {
+                if let Ok(Some(status)) = self.child.try_wait() {
+                    return res.with_context(|| format!("asr-worker đã thoát ({status}), xem {}", self.log.display()));
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+        res
     }
 }
 
@@ -1686,9 +1720,15 @@ git commit -m "feat(pipeline): client chạy và gọi asr-worker"
 - Create: `bench/phase0/data/asr/manifest.jsonl` và `bench/phase0/data/asr/clips/` (script sinh ra, không commit)
 
 Theo A4, mỗi ngôn ngữ nguồn có ít nhất 15 phút âm thanh, lấy từ tập dev của FLEURS (CC BY 4.0).
-- Mỗi câu chỉ lấy một bản ghi. Bỏ clip có số mẫu thật ngoài khoảng [1600, 480000] (0,1 đến 30 giây), là khoảng `asr-worker` chấp nhận; không tin cột `n_samples` của TSV.
-- Cứ 4 clip thì tạo thêm một bản băng hẹp (hạ xuống 8 kHz rồi nâng lại 16 kHz), để mô phỏng tai nghe Bluetooth ở chế độ HFP.
-- Clip tự thu (nếu có) khai trong `bench/phase0/data/asr/extra_clips.jsonl`, cùng định dạng với manifest.
+- Mỗi câu chỉ lấy một bản ghi.
+- **Cắt lặng đầu và cuối** (khung 20 ms dưới −35 dB so với khung to nhất), giữ 200 ms mỗi bên, giống phần đệm của đoạn do VAD cắt.
+  - Review lúc thực thi thấy khoảng lặng dài ở đầu clip FLEURS làm chế độ A nhận sai ngôn ngữ, vì chế độ này chỉ nhìn 3 giây đầu. Với tiếng Hàn, cắt lặng đưa tỉ lệ nhận đúng từ 85% lên 98%.
+  - Clip được chọn theo độ dài sau khi cắt.
+- Bỏ clip có số mẫu thật ngoài khoảng [1600, 480000] (0,1 đến 30 giây), là khoảng `asr-worker` chấp nhận (`MIN_PCM_SAMPLES`, `MAX_PCM_SAMPLES` trong `asr-protocol`). Không tin cột `n_samples` của TSV.
+- **Băng hẹp:** cứ 4 clip thì tạo thêm một bản, để mô phỏng tai nghe Bluetooth ở chế độ HFP: hạ xuống 8 kHz, lọc dải thoại 300–3400 Hz, lượng tử µ-law 8-bit, rồi nâng lại 16 kHz.
+  - Mỗi ngôn ngữ đặt các bản nb sau mọi clip wb. Lý do: khi không chắc, worker giữ ngôn ngữ của đoạn trước, nên bản nb không được đứng ngay sau bản wb của chính nó.
+- Clip tự thu (nếu có) khai trong `bench/phase0/data/asr/extra_clips.jsonl`, cùng định dạng với manifest, và cũng được lọc theo độ dài.
+- Chạy với `--langs` thì ghi ra `manifest-<langs>.jsonl`, không ghi đè `manifest.jsonl`.
 - FLEURS được ghim theo commit `70bb2e8…` của dataset, kèm kích thước và SHA-256 của từng file. Script tải bằng hàm `ensure()` của `fetch.py` (tải tiếp, thử lại, kiểm băm), nên phải có `bench/phase0/fetch.py` ở kế hoạch 01.
 
 - [ ] **Step 1: Tạo `bench/phase0/asr/build_clips.py`**
@@ -1697,20 +1737,26 @@ Theo A4, mỗi ngôn ngữ nguồn có ít nhất 15 phút âm thanh, lấy từ
 """Dựng bộ clip cho A4 từ FLEURS (CC BY 4.0), tập dev: mỗi ngôn ngữ ít nhất 15 phút.
 
 - Mỗi câu của FLEURS có nhiều người đọc; lấy một bản ghi cho mỗi câu, theo thứ tự trong file TSV.
-- Chọn ứng viên theo cột n_samples của TSV, bỏ clip dài hơn 30 giây (cửa sổ tối đa của Whisper).
-- Sau khi có mảng mẫu 16 kHz thì kiểm lại độ dài thật: clip có số mẫu ngoài [1600, 480000] (0,1 tới 30 giây, khoảng
-  `asr-worker` nhận; ngoài khoảng đó `transcribe` trả lỗi và làm hỏng cả lượt `asr-eval`) bị bỏ.
-  Số clip bị bỏ được in ra.
-- Cứ 4 clip lấy 1 clip làm thêm bản băng hẹp: hạ xuống 8 kHz rồi nâng lại 16 kHz,
-  mô phỏng tai nghe Bluetooth ở chế độ đàm thoại (HFP).
+- Cắt lặng đầu và cuối mỗi clip (`trim_silence`: khung 20 ms, ngưỡng -35 dB so với khung to nhất, giữ 200 ms mỗi bên).
+  Đoạn do VAD cắt (§6.3) chỉ có 200 ms đệm, còn clip FLEURS có lặng đầu tới vài giây. Giữ nguyên thì chế độ A, vốn chỉ
+  nhận diện ngôn ngữ trên 3 giây đầu của đoạn, nhận sai ngôn ngữ nhiều hơn trong app thật.
+- Độ dài tính sau khi cắt: clip có số mẫu 16 kHz ngoài [1600, 480000] (0,1 tới 30 giây, khoảng `asr-worker` nhận;
+  ngoài khoảng đó `transcribe` trả lỗi và làm hỏng cả lượt `asr-eval`) bị bỏ, số clip bị bỏ được in ra. Chọn clip theo
+  thứ tự TSV cho tới khi tổng số mẫu đã giữ đủ 15 phút; cột n_samples của TSV không dùng.
+- Cứ 4 clip lấy 1 clip làm thêm bản băng hẹp, mô phỏng tai nghe Bluetooth ở chế độ đàm thoại (HFP): dải 300-3400 Hz
+  ở 8 kHz, lượng tử µ-law 8-bit, rồi nâng lại 16 kHz. Chỉ là mô phỏng: A4 vẫn cần clip thu thật qua tai nghe.
+- Mỗi ngôn ngữ đặt các dòng nb sau mọi clip wb trong manifest, vì worker giữ ngôn ngữ của đoạn trước khi không chắc
+  (asr-worker/src/lid.rs), nên bản nb không được đứng ngay sau bản wb của chính nó.
 - Clip tự thu (nếu có) khai báo trong data/asr/extra_clips.jsonl, cùng định dạng với manifest. Đường dẫn tính từ
   data/asr/. Mỗi file được đọc để đếm mẫu: không phải WAV 16 kHz mono 16-bit (như `asr-eval` đòi) hoặc có độ dài
-  ngoài khoảng trên thì bị bỏ.
+  ngoài khoảng trên thì bị bỏ. Không cắt lặng clip tự thu.
 - FLEURS ghim theo commit, kích thước và SHA-256 của từng file; tải qua hàm của fetch.py (tải tiếp, thử lại, kiểm băm).
 
 Dùng:  uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "scipy==1.18.1" \
          python bench/phase0/asr/build_clips.py [--langs en_us,vi_vn]
-Kết quả: bench/phase0/data/asr/manifest.jsonl và các file WAV 16 kHz mono trong data/asr/clips/.
+Kết quả: các file WAV 16 kHz mono trong data/asr/clips/, và manifest:
+- chạy đủ năm ngôn ngữ: bench/phase0/data/asr/manifest.jsonl;
+- chạy một phần (`--langs`): bench/phase0/data/asr/manifest-<langs>.jsonl, không ghi đè manifest.jsonl.
 """
 import argparse
 import csv
@@ -1723,7 +1769,7 @@ import wave
 
 import numpy as np
 from scipy.io import wavfile
-from scipy.signal import resample_poly
+from scipy.signal import butter, resample_poly, sosfiltfilt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -1747,10 +1793,16 @@ PINNED = {
 }
 WHISPER_CODE = {"en_us": "en", "vi_vn": "vi", "cmn_hans_cn": "zh", "ja_jp": "ja", "ko_kr": "ko"}
 MIN_SECONDS = 15 * 60
-MAX_CLIP_SECONDS = 30
-# Khoảng số mẫu 16 kHz mà asr-worker nhận (asr-protocol): 0,1 tới 30 giây. Ngoài khoảng này `transcribe` trả Error.
+# Khoảng số mẫu 16 kHz mà asr-worker nhận: khớp MIN_PCM_SAMPLES và MAX_PCM_SAMPLES trong crates/asr-protocol/src/lib.rs
+# (0,1 tới 30 giây). Ngoài khoảng này `transcribe` trả Error.
 MIN_CLIP_SAMPLES = 1600
-MAX_CLIP_SAMPLES = MAX_CLIP_SECONDS * 16000
+MAX_CLIP_SAMPLES = 480000
+TRIM_FRAME = 320  # 20 ms
+TRIM_FLOOR_DB = -35.0  # khung thấp hơn mức này so với khung to nhất là lặng
+TRIM_PAD = 3200  # 200 ms, như phần đệm của đoạn do VAD cắt
+MU = 255.0  # µ-law
+# Bộ lọc dải thoại 300-3400 Hz của HFP, ở tần số lấy mẫu 8 kHz.
+NB_SOS = butter(4, [300, 3400], btype="band", fs=8000, output="sos")
 
 
 def fetch(fleurs, rel, pin):
@@ -1783,9 +1835,26 @@ def write_wav(path, x):
         w.writeframes(x.astype(np.int16).tobytes())
 
 
+def trim_silence(x):
+    """Cắt lặng đầu và cuối: bỏ các khung 20 ms thấp hơn -35 dB so với khung to nhất, giữ 200 ms mỗi bên."""
+    n = len(x) // TRIM_FRAME
+    if n == 0:
+        return x
+    e = np.sqrt((x[: n * TRIM_FRAME].astype(np.float64).reshape(n, TRIM_FRAME) ** 2).mean(axis=1)) + 1e-9
+    active = np.nonzero(20 * np.log10(e / e.max()) > TRIM_FLOOR_DB)[0]
+    if active.size == 0:
+        return x
+    return x[max(0, active[0] * TRIM_FRAME - TRIM_PAD): min(len(x), (active[-1] + 1) * TRIM_FRAME + TRIM_PAD)]
+
+
 def narrowband(x):
-    y = resample_poly(resample_poly(x.astype(np.float32), 1, 2), 2, 1)
-    return y.clip(-32768, 32767).astype(np.int16)
+    """Mô phỏng HFP: 8 kHz, dải thoại 300-3400 Hz, lượng tử µ-law 8-bit, rồi nâng lại 16 kHz. Dài bằng bản gốc."""
+    y = resample_poly(x.astype(np.float64), 1, 2)
+    y = sosfiltfilt(NB_SOS, y)
+    u = np.clip(y / 32768.0, -1.0, 1.0)
+    c = np.round(np.sign(u) * np.log1p(MU * np.abs(u)) / np.log1p(MU) * 127) / 127
+    y = np.sign(c) * np.expm1(np.abs(c) * np.log1p(MU)) / MU * 32768.0
+    return resample_poly(y, 2, 1)[: len(x)].clip(-32768, 32767).astype(np.int16)
 
 
 def wav_samples(path):
@@ -1807,56 +1876,64 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--langs", default=",".join(WHISPER_CODE))
     args = ap.parse_args()
+    fleurs_langs = args.langs.split(",")
+    partial = set(fleurs_langs) != set(WHISPER_CODE)
     rows_out = []
-    for fleurs in args.langs.split(","):
+    for fleurs in fleurs_langs:
         lang = WHISPER_CODE[fleurs]
         tsv_pin, tar_pin = PINNED[fleurs]
         tsv = fetch(fleurs, "dev.tsv", tsv_pin)
         tar_path = fetch(fleurs, "audio/dev.tar.gz", tar_pin)
-        wanted, seen_sentences, total = {}, set(), 0.0
-        with open(tsv, encoding="utf-8") as f:
-            for r in csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
-                sentence_id, file_name, raw_text, n_samples = r[0], r[1], r[2], int(r[5])
-                seconds = n_samples / 16000
-                if sentence_id in seen_sentences or seconds > MAX_CLIP_SECONDS:
-                    continue
-                seen_sentences.add(sentence_id)
-                wanted[file_name] = raw_text
-                total += seconds
-                if total >= MIN_SECONDS:
-                    break
-        kept, kept_samples, bad_length = 0, 0, 0
-        with tarfile.open(tar_path) as tar:
+        seen_sentences, nb_rows = set(), []
+        kept, kept_samples, trimmed_samples, bad_length = 0, 0, 0, 0
+        with tarfile.open(tar_path) as tar, open(tsv, encoding="utf-8") as f:
             members = {os.path.basename(m.name): m for m in tar.getmembers() if m.isfile()}
-            for file_name, text in wanted.items():
+            for r in csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
+                sentence_id, file_name, text = r[0], r[1], r[2]
+                if sentence_id in seen_sentences:
+                    continue
                 x = read_pcm16(tar.extractfile(members[file_name]).read())
-                if not MIN_CLIP_SAMPLES <= len(x) <= MAX_CLIP_SAMPLES:  # độ dài thật, không tin cột n_samples của TSV
-                    print(f"  bỏ {file_name}: {len(x)} mẫu, ngoài [{MIN_CLIP_SAMPLES}, {MAX_CLIP_SAMPLES}]")
+                y = trim_silence(x)  # độ dài tính sau khi cắt, không tin cột n_samples của TSV
+                if not MIN_CLIP_SAMPLES <= len(y) <= MAX_CLIP_SAMPLES:
+                    print(f"  bỏ {file_name}: {len(y)} mẫu sau khi cắt lặng (gốc {len(x)}), ngoài "
+                          f"[{MIN_CLIP_SAMPLES}, {MAX_CLIP_SAMPLES}]")
                     bad_length += 1
                     continue
+                seen_sentences.add(sentence_id)
                 clip_id = f"{lang}-{os.path.splitext(file_name)[0]}"
                 rel = os.path.join("clips", lang, clip_id + ".wav")
-                write_wav(os.path.join(DATA, rel), x)
-                base = {"lang": lang, "ref": text, "duration_s": round(len(x) / 16000, 2), "source": "fleurs"}
+                write_wav(os.path.join(DATA, rel), y)
+                base = {"lang": lang, "ref": text, "duration_s": round(len(y) / 16000, 2), "source": "fleurs"}
                 rows_out.append({"id": clip_id, "path": rel, "narrowband": False, **base})
                 if kept % 4 == 0:
                     rel_nb = os.path.join("clips", lang, clip_id + "_nb.wav")
-                    write_wav(os.path.join(DATA, rel_nb), narrowband(x))
-                    rows_out.append({"id": clip_id + "_nb", "path": rel_nb, "narrowband": True, **base})
+                    write_wav(os.path.join(DATA, rel_nb), narrowband(y))
+                    nb_rows.append({"id": clip_id + "_nb", "path": rel_nb, "narrowband": True, **base})
                 kept += 1
-                kept_samples += len(x)
-        print(f"{fleurs}: {kept} clip, {kept_samples / 16000 / 60:.1f} phút, bỏ {bad_length} clip vì độ dài")
+                kept_samples += len(y)
+                trimmed_samples += len(x) - len(y)
+                if kept_samples >= MIN_SECONDS * 16000:
+                    break
+        # worker giữ ngôn ngữ của đoạn trước khi không chắc (asr-worker/src/lid.rs): đặt nb sau mọi clip wb,
+        # để bản nb không thừa hưởng kết quả nhận diện của chính bản wb.
+        rows_out.extend(nb_rows)
+        print(f"{fleurs}: {kept} clip wb + {len(nb_rows)} nb, {kept_samples / 16000 / 60:.1f} phút, "
+              f"cắt {trimmed_samples / 16000:.1f} giây lặng, bỏ {bad_length} clip vì độ dài")
         if kept_samples < MIN_SECONDS * 16000:
             print(f"CẢNH BÁO: {fleurs} chỉ còn {kept_samples / 16000 / 60:.1f} phút, thiếu so với "
                   f"{MIN_SECONDS // 60} phút của A4", file=sys.stderr)
     extra = os.path.join(DATA, "extra_clips.jsonl")
     if os.path.exists(extra):
-        kept, bad_length, bad_format = 0, 0, 0
+        run_langs = {WHISPER_CODE[k] for k in fleurs_langs}
+        kept, bad_length, bad_format, other_lang = 0, 0, 0, 0
         with open(extra, encoding="utf-8") as f:
             for line in f:
                 if not line.strip():
                     continue
                 row = json.loads(line)
+                if partial and row.get("lang") not in run_langs:  # manifest chạy một phần chỉ có ngôn ngữ của lượt này
+                    other_lang += 1
+                    continue
                 try:
                     if "path" not in row:
                         raise ValueError("thiếu trường path")
@@ -1872,11 +1949,14 @@ def main():
                     continue
                 rows_out.append(row)
                 kept += 1
-        print(f"clip tự thu: {kept} clip, bỏ {bad_length} clip vì độ dài, bỏ {bad_format} clip vì sai định dạng")
-    with open(os.path.join(DATA, "manifest.jsonl"), "w", encoding="utf-8") as f:
+        print(f"clip tự thu: {kept} clip, bỏ {bad_length} clip vì độ dài, bỏ {bad_format} clip vì sai định dạng"
+              + (f", bỏ qua {other_lang} clip của ngôn ngữ ngoài lượt này" if other_lang else ""))
+    name = "manifest-" + "-".join(fleurs_langs) + ".jsonl" if partial else "manifest.jsonl"
+    manifest = os.path.join(DATA, name)
+    with open(manifest, "w", encoding="utf-8") as f:
         for r in rows_out:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    print("manifest:", len(rows_out), "dòng ->", os.path.join(DATA, "manifest.jsonl"))
+    print("manifest:", len(rows_out), "dòng ->", manifest)
 
 
 if __name__ == "__main__":
@@ -1889,15 +1969,17 @@ Run:
 ```bash
 uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "scipy==1.18.1" python bench/phase0/asr/build_clips.py
 ```
-Expected:
-```
-en_us: 98 clip, 15.1 phút, bỏ 0 clip vì độ dài
-vi_vn: 78 clip, 15.1 phút, bỏ 0 clip vì độ dài
-cmn_hans_cn: 79 clip, 15.1 phút, bỏ 0 clip vì độ dài
-ja_jp: 68 clip, 15.2 phút, bỏ 0 clip vì độ dài
-ko_kr: 68 clip, 15.1 phút, bỏ 0 clip vì độ dài
-manifest: 490 dòng -> …/bench/phase0/data/asr/manifest.jsonl
-```
+Expected: mỗi ngôn ngữ in một dòng, dạng `en_us: 102 clip wb + 26 nb, 15.1 phút, cắt 30.9 giây lặng, bỏ 0 clip vì độ dài`. Lúc thực thi:
+
+| Ngôn ngữ | wb | nb | Lặng đã cắt | Bỏ vì độ dài |
+|---|---|---|---|---|
+| en | 102 | 26 | 30,9 giây | 0 |
+| vi | 79 | 20 | 15,3 giây | 1 (31,4 giây, không có gì để cắt) |
+| zh | 102 | 26 | 244,3 giây | 0 |
+| ja | 70 | 18 | 23,8 giây | 0 |
+| ko | 84 | 21 | 191,8 giây | 0 |
+
+Mỗi ngôn ngữ khoảng 15,0 tới 15,2 phút. Dòng cuối là `manifest: 548 dòng -> …/bench/phase0/data/asr/manifest.jsonl`.
 
 - [ ] **Step 3: Commit**
 
@@ -1921,7 +2003,21 @@ git commit -m "feat(bench): bộ clip A4 từ FLEURS, 15 phút mỗi ngôn ngữ
 - `ipc_ms`: thời gian ngoài whisper, tức mã hóa khung, truyền qua pipe và giải mã khung;
 - `decode_mode`.
 
-`score_asr.py` tính WER cho tiếng Anh và tiếng Việt, CER cho tiếng Trung, Nhật và Hàn (A4). Mỗi ngôn ngữ được tách thêm thành hai nhóm băng rộng (`wb`) và băng hẹp (`nb`).
+`score_asr.py` tính WER cho tiếng Anh và tiếng Việt, CER cho tiếng Trung, Nhật và Hàn (A4).
+- Mỗi ngôn ngữ có ba nhóm con:
+  - `wb`: băng rộng, mỗi câu một lần; mốc A4 lấy nhóm này.
+  - `nb`: băng hẹp.
+  - `wbp`: bản wb của đúng các câu có bản nb. So `nb` với `wbp`, vì nb chỉ có ở 1/4 số câu; review lúc thực thi thấy so với `wb` làm kết quả đổi dấu.
+- Chuẩn hóa tiếng Trung:
+  - Đổi chữ phồn thể về giản thể bằng `opencc`: model small ra phồn thể ở khoảng một nửa số clip, còn FLEURS là giản thể.
+  - Bỏ chú thích Latin trong ngoặc, như `(Moldova)`: người đọc không đọc phần này. Danh sách id in ra stderr.
+- Các cột thêm:
+  - `…_capped`: lỗi mỗi clip chặn ở độ dài ref.
+  - `long_hyp`: số clip lặp câu hoặc ra sai ngôn ngữ.
+  - `lid_fallback`: số clip nhận diện không chắc (xác suất dưới 0,5). Khi đó worker lấy ngôn ngữ của đoạn trước, nếu có.
+
+  Một clip lặp câu có thể xê dịch con số tới 20–30%, nên cần các cột này để đọc số cho đúng.
+- Lượt chạy thiếu clip so với manifest bị từ chối, trừ khi có `--allow-partial`.
 
 - [ ] **Step 1: Tạo `crates/latency-bench/Cargo.toml`** (bản của phần này; `sysinfo` thêm ở kế hoạch 06)
 
@@ -1971,10 +2067,10 @@ fn main() -> anyhow::Result<()> {
 //! Chép lời từng clip của bộ A4 qua `asr-worker`, ghi kết quả để `score_asr.py` tính WER/CER.
 
 use anyhow::{Context, Result, bail};
-use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
+use asr_protocol::{MAX_PCM_SAMPLES, MIN_PCM_SAMPLES, TranscribeRequest, audio_ctx_for_samples};
 use pipeline::asr_client::AsrWorker;
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -2009,8 +2105,11 @@ pub struct AsrEvalArgs {
     use_gpu: bool,
     #[arg(long, default_value_t = 4)]
     threads: u32,
+    /// File kết quả JSONL. Ghi ra `<out>.part` rồi mới đổi tên khi chạy xong, nên lượt chạy dở không ghi đè file cũ.
     #[arg(long)]
     out: PathBuf,
+    /// Thư mục log của worker. Mỗi lượt ghi vào `<tên file --out bỏ đuôi>.log`, ví dụ `out-thu-ko.jsonl` thành
+    /// `out-thu-ko.log`, nên các lượt chạy không ghi đè log của nhau.
     #[arg(long, default_value = "logs")]
     log_dir: PathBuf,
 }
@@ -2036,6 +2135,10 @@ struct Output {
     /// Thời gian ngoài whisper: mã hóa khung, truyền qua pipe, giải mã khung (giả định 10, §14).
     ipc_ms: f32,
     audio_ms: u64,
+    /// `audio_ctx` đã gửi cho worker, để phân tích lỗi lặp câu theo cửa sổ mã hóa.
+    audio_ctx: i32,
+    /// Số token worker trả về.
+    n_tokens: usize,
     decode_mode: String,
 }
 
@@ -2046,27 +2149,48 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
         .parent()
         .context("manifest không có thư mục cha")?
         .to_path_buf();
-    let (mut worker, ready) = AsrWorker::spawn(
-        &args.asr_worker,
-        &args.asr_model,
-        args.use_gpu,
-        args.threads,
-        &args.log_dir.join("asr-eval.log"),
-    )?;
+    let stem = args.out.file_stem().context("--out phải là đường dẫn tới một file")?;
+    let log = args.log_dir.join(format!("{}.log", stem.to_string_lossy()));
+    let mut part = args.out.clone().into_os_string();
+    part.push(".part");
+    let part = PathBuf::from(part);
+    let (mut worker, ready) = AsrWorker::spawn(&args.asr_worker, &args.asr_model, args.use_gpu, args.threads, &log)?;
     worker.warmup()?;
     println!(
         "asr: {} ({}), chế độ giải mã {}\n{}",
         ready.backend, ready.whisper_version, ready.decode_mode, ready.system_info
     );
-    let mut out = std::fs::File::create(&args.out)?;
-    for (i, line) in BufReader::new(std::fs::File::open(&args.manifest)?).lines().enumerate() {
-        let clip: Clip = serde_json::from_str(&line?)?;
-        let mut reader = hound::WavReader::open(base.join(&clip.path))?;
+    let manifest = std::fs::File::open(&args.manifest)
+        .with_context(|| format!("không mở được manifest {}", args.manifest.display()))?;
+    let mut out =
+        BufWriter::new(std::fs::File::create(&part).with_context(|| format!("không tạo được {}", part.display()))?);
+    for (i, line) in BufReader::new(manifest).lines().enumerate() {
+        let n = i + 1; // số dòng trong manifest
+        let line = line.with_context(|| format!("manifest dòng {n}"))?;
+        let clip: Clip = serde_json::from_str(&line).with_context(|| format!("manifest dòng {n}"))?;
+        let path = base.join(&clip.path);
+        let mut reader = hound::WavReader::open(&path)
+            .with_context(|| format!("clip {} (dòng {n}): không đọc được {}", clip.id, path.display()))?;
         let spec = reader.spec();
         if spec.sample_rate != 16_000 || spec.channels != 1 || spec.bits_per_sample != 16 {
-            bail!("{} phải là WAV 16 kHz, mono, 16-bit", clip.path);
+            bail!(
+                "clip {} (dòng {n}): {} phải là WAV 16 kHz, mono, 16-bit",
+                clip.id,
+                clip.path
+            );
         }
-        let pcm: Vec<i16> = reader.samples::<i16>().collect::<Result<_, _>>()?;
+        let pcm: Vec<i16> = reader
+            .samples::<i16>()
+            .collect::<Result<_, _>>()
+            .with_context(|| format!("clip {} (dòng {n}): lỗi đọc mẫu từ {}", clip.id, path.display()))?;
+        // Kiểm trước khi gửi: worker từ chối đoạn ngoài khoảng này, và một lỗi làm dừng cả lượt.
+        if !(MIN_PCM_SAMPLES..=MAX_PCM_SAMPLES).contains(&pcm.len()) {
+            bail!(
+                "clip {} (dòng {n}): {} mẫu, ngoài khoảng worker nhận [{MIN_PCM_SAMPLES}, {MAX_PCM_SAMPLES}]",
+                clip.id,
+                pcm.len()
+            );
+        }
         let audio_ms = pcm.len() as u64 * 1000 / 16_000;
         let audio_ctx = if args.full_ctx {
             1500
@@ -2079,13 +2203,15 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
             args.languages.clone()
         };
         let started = Instant::now();
-        let r = worker.transcribe(TranscribeRequest {
-            segment_id: i as u64,
-            pcm,
-            languages,
-            prompt_tokens: Vec::new(),
-            audio_ctx,
-        })?;
+        let r = worker
+            .transcribe(TranscribeRequest {
+                segment_id: i as u64,
+                pcm,
+                languages,
+                prompt_tokens: Vec::new(),
+                audio_ctx,
+            })
+            .with_context(|| format!("clip {} (dòng {n})", clip.id))?;
         let ipc_ms = started.elapsed().as_secs_f32() * 1000.0 - r.lid_ms - r.asr_ms;
         let row = Output {
             id: clip.id,
@@ -2098,13 +2224,19 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
             asr_ms: r.asr_ms,
             ipc_ms,
             audio_ms,
+            audio_ctx,
+            n_tokens: r.tokens.len(),
             decode_mode: ready.decode_mode.clone(),
         };
         writeln!(out, "{}", serde_json::to_string(&row)?)?;
-        if (i + 1) % 20 == 0 {
-            println!("{} clip", i + 1);
+        if n % 20 == 0 {
+            println!("{n} clip");
         }
     }
+    out.flush()?;
+    drop(out);
+    std::fs::rename(&part, &args.out)
+        .with_context(|| format!("không đổi tên {} thành {}", part.display(), args.out.display()))?;
     Ok(())
 }
 ```
@@ -2114,28 +2246,64 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
 ```python
 """A4: tính WER (Anh, Việt) và CER (Trung, Nhật, Hàn) từ kết quả `latency-bench asr-eval`.
 
-Dùng:  uv run --no-project --python 3.12 --with "jiwer==4.0.0" python bench/phase0/asr/score_asr.py \
-         bench/phase0/data/asr/out-<nhãn>.jsonl [...]
+Dùng:  uv run --no-project --python 3.12 --with "jiwer==4.0.0" --with "opencc==1.4.2" \
+         python bench/phase0/asr/score_asr.py [--allow-partial] bench/phase0/data/asr/out-<nhãn>.jsonl [...]
 In bảng Markdown và ghi bench/phase0/results/a4_<nhãn>.json.
+
+Nhóm trong bảng (mỗi ngôn ngữ có bốn nhóm):
+- `<ngôn ngữ>`: gộp cả hai băng. Một phần tư số câu có bản nb nên bị đếm hai lần: không lấy làm mốc.
+- `<ngôn ngữ>-wb`: băng rộng, mọi câu. Đây là mốc A4.
+- `<ngôn ngữ>-nb`: băng hẹp, chỉ có ở một phần tư số câu.
+- `<ngôn ngữ>-wbp`: bản băng rộng của đúng các câu có bản nb. So `-nb` với `-wbp`, không so với `-wb`,
+  vì `-nb` và `-wb` gồm các câu khác nhau.
+
+Cột thêm ngoài WER/CER thô:
+- `capped`: WER/CER khi lỗi của mỗi clip bị chặn ở độ dài ref, để một clip lặp câu không quyết định cả con số.
+- `long_hyp`: số clip có số chèn lớn hơn độ dài ref (lặp câu, hoặc ra sai ngôn ngữ).
+- `lid_fallback`: số clip có lang_prob < 0,5, tức nhận diện không chắc. Worker giữ ngôn ngữ của clip trước (nếu có)
+  cho các clip này, nên kết quả của chúng phụ thuộc thứ tự clip trong manifest.
+
+Chuẩn hóa: NFC, chữ thường, bỏ dấu câu và ký hiệu; tiếng Trung, Nhật, Hàn bỏ cả khoảng trắng. Riêng tiếng Trung:
+- small hay ra chữ phồn thể còn FLEURS cmn_hans_cn là giản thể, nên đổi cả ref và hyp về giản thể bằng OpenCC (t2s);
+- bỏ chú thích Latin trong ngoặc, ví dụ `摩尔多瓦 (Moldova)`, ở cả ref và hyp: người đọc FLEURS không đọc phần này.
+  Đây là quy tắc máy móc, chưa nghe lại từng clip. Không áp cho tiếng Nhật vì ở đó phần trong ngoặc có khi được đọc.
+  Id các clip có ref bị bỏ phần này được in ra stderr.
+
+Kiểm đầu vào: dừng nếu một clip xuất hiện hai lần, hoặc file thiếu clip của một ngôn ngữ có mặt trong file so với
+manifest (lượt chạy dở). `--allow-partial` bỏ phép kiểm thiếu clip, để cố ý chấm một tập con.
 """
+import argparse
 import json
 import math
 import os
+import re
 import sys
 import unicodedata
 from collections import defaultdict
 
 import jiwer
+import opencc
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.abspath(os.path.join(HERE, "..", "data", "asr"))
 RESULTS = os.path.abspath(os.path.join(HERE, "..", "results"))
 CER_LANGS = {"zh", "ja", "ko"}
 NO_SPEECH_MAX = 0.6  # app bỏ đoạn có no_speech_prob lớn hơn (§6.4)
+MIN_LANG_PROB = 0.5  # dưới mức này worker giữ ngôn ngữ của đoạn trước (asr-worker/src/lid.rs)
+# small hay ra chữ phồn thể, FLEURS cmn_hans_cn là giản thể: đổi về giản thể trước khi so.
+T2S = opencc.OpenCC("t2s")
+# Chú thích Latin trong ngoặc của ref tiếng Trung, ví dụ `摩尔多瓦 (Moldova)`, `(NHK)`, `(Kashiwazaki Kariwa)`.
+LATIN_GLOSS = re.compile(r"\s*[(（]\s*[A-Za-z][A-Za-z0-9 .,'&/-]*[)）]")
+
+
+def strip_latin_gloss(text):
+    return LATIN_GLOSS.sub("", text)
 
 
 def normalize(text, lang):
     text = unicodedata.normalize("NFC", text).lower()
+    if lang == "zh":
+        text = T2S.convert(strip_latin_gloss(text))
     text = "".join(" " if unicodedata.category(c).startswith(("P", "S")) else c for c in text)
     text = " ".join(text.split())
     return text.replace(" ", "") if lang in CER_LANGS else text
@@ -2147,17 +2315,52 @@ def p50(values):
     return (v[math.floor(k)] + v[math.ceil(k)]) / 2 if v else float("nan")
 
 
-def score(path, manifest):
-    rows = [json.loads(line) for line in open(path, encoding="utf-8")]
+def score(path, manifest, allow_partial):
+    with open(path, encoding="utf-8") as f:
+        rows = [json.loads(line) for line in f]
+    ids = [r["id"] for r in rows]
+    seen = set(ids)
+    if len(seen) != len(ids):
+        sys.exit(f"{path}: có clip bị ghi hai lần")
+    unknown = [i for i in ids if i not in manifest]
+    if unknown:
+        sys.exit(f"{path}: {len(unknown)} id không có trong manifest.jsonl, ví dụ {unknown[:3]}")
+    for lang in sorted({manifest[i]["lang"] for i in ids}):
+        missing = [k for k, c in manifest.items() if c["lang"] == lang and k not in seen]
+        if missing:
+            msg = f"{path}: thiếu {len(missing)} clip {lang} so với manifest (lượt chạy dở?), ví dụ {missing[:3]}"
+            if not allow_partial:
+                sys.exit(msg + "; thêm --allow-partial nếu cố ý chấm một tập con")
+            print("CẢNH BÁO: " + msg, file=sys.stderr)
+    stripped = [i for i in ids if manifest[i]["lang"] == "zh" and LATIN_GLOSS.search(manifest[i]["ref"])]
+    if stripped:
+        print(f"{path}: zh: bỏ chú thích Latin trong ngoặc ở ref của {len(stripped)} clip "
+              f"(theo quy tắc, chưa nghe lại): {', '.join(stripped)}", file=sys.stderr)
+    has_nb = {i.removesuffix("_nb") for i in ids if manifest[i]["narrowband"]}
     groups = defaultdict(lambda: {"ref": [], "hyp": [], "lid_ok": 0, "n": 0, "nospeech": 0, "lid_ms": [], "asr_ms": [],
-                                  "ipc_ms": []})
+                                  "ipc_ms": [], "fallback": 0, "long_hyp": 0, "capped_err": 0, "ref_len": 0})
     for r in rows:
         clip = manifest[r["id"]]
-        # Nhóm theo ngôn ngữ, và tách riêng băng rộng (wb) với băng hẹp (nb).
-        for key in (clip["lang"], f"{clip['lang']}-{'nb' if clip['narrowband'] else 'wb'}"):
+        lang = clip["lang"]
+        ref, hyp = normalize(clip["ref"], lang), normalize(r["hyp"], lang)
+        if not ref:
+            sys.exit(f"{path}: ref của clip {r['id']} rỗng sau khi chuẩn hóa")
+        o = (jiwer.process_characters if lang in CER_LANGS else jiwer.process_words)(ref, hyp)
+        n_ref = o.hits + o.substitutions + o.deletions
+        err = o.substitutions + o.deletions + o.insertions
+        # Nhóm theo ngôn ngữ, tách băng rộng (wb) với băng hẹp (nb). `wbp`: bản wb của đúng các câu có bản nb.
+        # nb chỉ có ở 1/4 số câu, nên so nb với wbp chứ không với wb.
+        keys = [lang, f"{lang}-{'nb' if clip['narrowband'] else 'wb'}"]
+        if not clip["narrowband"] and r["id"] in has_nb:
+            keys.append(f"{lang}-wbp")
+        for key in keys:
             g = groups[key]
-            g["ref"].append(normalize(clip["ref"], clip["lang"]))
-            g["hyp"].append(normalize(r["hyp"], clip["lang"]))
+            g["ref"].append(ref)
+            g["hyp"].append(hyp)
+            g["fallback"] += r["lang_prob"] < MIN_LANG_PROB
+            g["long_hyp"] += o.insertions > n_ref  # lặp câu hoặc ra sai ngôn ngữ
+            g["capped_err"] += min(err, n_ref)
+            g["ref_len"] += n_ref
             g["lid_ok"] += r["lang_hyp"] == clip["lang"]
             g["nospeech"] += r["no_speech_prob"] > NO_SPEECH_MAX
             g["n"] += 1
@@ -2170,7 +2373,8 @@ def score(path, manifest):
         lang = key.split("-")[0]
         metric = "cer" if lang in CER_LANGS else "wer"
         value = (jiwer.cer if metric == "cer" else jiwer.wer)(g["ref"], g["hyp"])
-        out[key] = {"n": g["n"], metric: value, "lid_accuracy": g["lid_ok"] / g["n"],
+        out[key] = {"n": g["n"], metric: value, f"{metric}_capped": g["capped_err"] / g["ref_len"],
+                    "long_hyp": g["long_hyp"], "lid_accuracy": g["lid_ok"] / g["n"], "lid_fallback": g["fallback"],
                     "lid_ms_p50": p50(g["lid_ms"]), "asr_ms_p50": p50(g["asr_ms"]),
                     "lid_overhead": p50(g["lid_ms"]) / max(p50(g["asr_ms"]), 1e-6),
                     "ipc_ms_p50": p50(g["ipc_ms"]), "ipc_ms_max": max(g["ipc_ms"]),
@@ -2179,19 +2383,29 @@ def score(path, manifest):
 
 
 def main():
-    manifest = {r["id"]: r for r in map(json.loads, open(os.path.join(DATA, "manifest.jsonl"), encoding="utf-8"))}
-    os.makedirs(RESULTS, exist_ok=True)
-    print("| Kết quả | Chế độ | Nhóm | Số clip | WER/CER | Nhận đúng ngôn ngữ | LID p50 (ms) | ASR p50 (ms) | LID/ASR "
-          "| IPC p50/max (ms) | no_speech > 0,6 |")
-    print("|---|---|---|---|---|---|---|---|---|---|---|")
-    for path in sys.argv[1:]:
+    ap = argparse.ArgumentParser(description="Chấm WER/CER cho A4 từ kết quả của `latency-bench asr-eval`.")
+    ap.add_argument("files", nargs="+", help="out-<nhãn>.jsonl")
+    ap.add_argument("--allow-partial", action="store_true",
+                    help="không đòi file có đủ mọi clip của các ngôn ngữ có mặt (chấm một tập con)")
+    args = ap.parse_args()
+    with open(os.path.join(DATA, "manifest.jsonl"), encoding="utf-8") as f:
+        manifest = {r["id"]: r for r in map(json.loads, f)}
+    # Chấm hết mọi file trước, rồi mới ghi JSON và in bảng: một file bị từ chối thì không có kết quả nửa vời.
+    scored = []
+    for path in args.files:
         label = os.path.basename(path).removesuffix(".jsonl").removeprefix("out-")
-        result = score(path, manifest)
+        scored.append((label, score(path, manifest, args.allow_partial)))
+    os.makedirs(RESULTS, exist_ok=True)
+    print("| Kết quả | Chế độ | Nhóm | Số clip | WER/CER | capped | long_hyp | Nhận đúng ngôn ngữ | lid_fallback "
+          "| LID p50 (ms) | ASR p50 (ms) | LID/ASR | IPC p50/max (ms) | no_speech > 0,6 |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    for label, result in scored:
         with open(os.path.join(RESULTS, f"a4_{label}.json"), "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=1)
         for key, r in result.items():
             metric = "cer" if "cer" in r else "wer"
-            print(f"| {label} | {r['decode_mode']} | {key} | {r['n']} | {metric.upper()} {r[metric]:.3f} | {r['lid_accuracy']:.0%} | "
+            print(f"| {label} | {r['decode_mode']} | {key} | {r['n']} | {metric.upper()} {r[metric]:.3f} | "
+                  f"{r[metric + '_capped']:.3f} | {r['long_hyp']} | {r['lid_accuracy']:.0%} | {r['lid_fallback']} | "
                   f"{r['lid_ms_p50']:.0f} | {r['asr_ms_p50']:.0f} | {r['lid_overhead']:.0%} | "
                   f"{r['ipc_ms_p50']:.1f}/{r['ipc_ms_max']:.1f} | {r['nospeech_rate']:.0%} |")
 
@@ -2210,16 +2424,21 @@ mkdir -p bench/phase0/data/asr/logs
 target/release/latency-bench asr-eval --manifest bench/phase0/data/asr/manifest-ko.jsonl \
   --asr-worker target/release/asr-worker --asr-model models/ggml-small-q5_1.bin \
   --out bench/phase0/data/asr/out-thu-ko.jsonl --log-dir bench/phase0/data/asr/logs
-uv run --no-project --python 3.12 --with "jiwer==4.0.0" python bench/phase0/asr/score_asr.py \
+uv run --no-project --python 3.12 --with "jiwer==4.0.0" --with "opencc==1.4.2" python bench/phase0/asr/score_asr.py \
   bench/phase0/data/asr/out-thu-ko.jsonl
 ```
 Expected:
 - Dòng đầu là `asr: metal (1.8.3), chế độ giải mã split`.
 - Dòng sau là `WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 |`. Không được có `MATMUL_INT8` hay `SME`; nếu có thì `.cargo/config.toml` chưa có tác dụng và bản build có thể crash trên M1.
-- Bảng có ba nhóm: `ko`, `ko-nb`, `ko-wb`.
-- Log của worker (`bench/phase0/data/asr/logs/asr-eval.log`) có dòng `asr-worker: backend=metal flash_attn=off decode_mode=split`.
-- Lúc thực thi (flash attention tắt): nhóm `ko-wb` cho CER 0,449, nhận đúng ngôn ngữ 85%; nhóm `ko-nb` cho CER 0,781. LID/ASR khoảng 11%. Task 10 sẽ so với chế độ B.
-- Phần lớn lỗi đến từ việc nhận sai ngôn ngữ: clip wb nhận đúng có CER 0,084, clip nhận sai có CER 2,477. Chế độ A chỉ nhận diện trên 3 giây đầu, nên clip có khoảng lặng đầu dài dễ bị nhận sai (trung vị 2,6 giây lặng so với 1,4 giây ở clip nhận đúng). Đoạn thật của app chỉ có 200 ms đệm, vì vậy tỉ lệ nhận đúng trên FLEURS có thể thấp hơn thực tế.
+- Bảng có bốn nhóm: `ko`, `ko-nb`, `ko-wb`, `ko-wbp`.
+- Log của lượt này là `bench/phase0/data/asr/logs/out-thu-ko.log` (tên log theo `--out`), có dòng `asr-worker: backend=metal flash_attn=off decode_mode=split`.
+- Lúc thực thi (flash attention tắt, clip đã cắt lặng):
+  - `ko-wb`: CER 0,235 (chặn 0,102), nhận đúng ngôn ngữ 98%;
+  - `ko-nb` 0,232 so với `ko-wbp` 0,186;
+  - LID/ASR khoảng 12%.
+
+  Task 10 sẽ so với chế độ B.
+- Trước khi cắt lặng, lượt này cho CER 0,449 và nhận đúng ngôn ngữ 85%. Chế độ A chỉ nhận diện trên 3 giây đầu, nên khoảng lặng dài ở đầu clip làm nó nhận sai. Đó là lý do Task 6 cắt lặng.
 
 - [ ] **Step 6: Xóa file thử rồi commit**
 
@@ -2677,13 +2896,13 @@ cargo build --release -p asr-worker --features metal,shared-encode
 target/release/latency-bench asr-eval --manifest bench/phase0/data/asr/manifest-ko.jsonl \
   --asr-worker target/release/asr-worker --asr-model models/ggml-small-q5_1.bin \
   --out bench/phase0/data/asr/out-thu-ko-b.jsonl --log-dir bench/phase0/data/asr/logs
-uv run --no-project --python 3.12 --with "jiwer==4.0.0" python bench/phase0/asr/score_asr.py \
+uv run --no-project --python 3.12 --with "jiwer==4.0.0" --with "opencc==1.4.2" python bench/phase0/asr/score_asr.py \
   bench/phase0/data/asr/out-thu-ko-b.jsonl
 rm bench/phase0/results/a4_thu-ko-b.json
 ```
 Expected:
 - Dòng đầu là `asr: metal (1.8.3), chế độ giải mã shared`.
-- Lúc lập kế hoạch, nhóm `ko-wb` cho CER khoảng 0,14, nhận đúng ngôn ngữ 100%, và LID/ASR khoảng 1–2%. Số này đo khi flash attention còn bật (xem Task 4), nên số thật có thể khác.
+- Lúc lập kế hoạch, nhóm `ko-wb` cho CER khoảng 0,14, nhận đúng ngôn ngữ 100%, và LID/ASR khoảng 1–2%. Số này đo khi flash attention còn bật (xem Task 4) và trên bộ clip chưa cắt lặng, nên số thật có thể khác.
 
 - [ ] **Step 7: Commit**
 
@@ -2717,10 +2936,10 @@ Expected: mỗi lượt in dòng `asr: metal (1.8.3), chế độ giải mã <sp
 
 Run:
 ```bash
-uv run --no-project --python 3.12 --with "jiwer==4.0.0" python bench/phase0/asr/score_asr.py \
+uv run --no-project --python 3.12 --with "jiwer==4.0.0" --with "opencc==1.4.2" python bench/phase0/asr/score_asr.py \
   bench/phase0/data/asr/out-m4pro-{small,turbo}-{split,shared}.jsonl | tee bench/phase0/results/s3_ab.md
 ```
-Expected: bảng có 60 dòng (4 lượt × 15 nhóm). Cột "Chế độ" khớp với tên lượt chạy.
+Expected: bảng có 80 dòng (4 lượt × 20 nhóm). Cột "Chế độ" khớp với tên lượt chạy.
 
 - [ ] **Step 3: Commit**
 
@@ -2755,12 +2974,12 @@ for pair in small:small-q5_1 turbo:large-v3-turbo-q5_0; do
     --asr-worker target/release/asr-worker --asr-model models/ggml-$file.bin --min-ctx 512 \
     --out bench/phase0/data/asr/out-m4pro-$name-minctx512.jsonl --log-dir bench/phase0/data/asr/logs || break
 done
-uv run --no-project --python 3.12 --with "jiwer==4.0.0" python bench/phase0/asr/score_asr.py \
+uv run --no-project --python 3.12 --with "jiwer==4.0.0" --with "opencc==1.4.2" python bench/phase0/asr/score_asr.py \
   bench/phase0/data/asr/out-m4pro-{small,turbo}-{shared,fullctx,lock,minctx512}.jsonl > bench/phase0/data/asr/a4_table.md
 cat bench/phase0/data/asr/a4_table.md
 ```
 Expected:
-- Bảng có 120 dòng (8 lượt × 15 nhóm).
+- Bảng có 160 dòng (8 lượt × 20 nhóm).
 - Các lượt `lock` có "Nhận đúng ngôn ngữ" 100% và LID p50 bằng 0.
 
 - [ ] **Step 2: Tạo `bench/phase0/results/s7_asr.md`**, dán bảng vào và điền kết luận theo mẫu
@@ -2768,9 +2987,13 @@ Expected:
 ```markdown
 # S7 phần nhận dạng (A4): mốc và quyết định
 
-Máy: <máy>, ngày <YYYY-MM-DD>. whisper.cpp 1.8.3 (có vá), chế độ B, bộ clip FLEURS dev (490 clip, 15 phút mỗi ngôn ngữ).
+Máy: <máy>, ngày <YYYY-MM-DD>. whisper.cpp 1.8.3 (có vá), chế độ B, bộ clip FLEURS dev (548 clip: 437 wb và 111 nb, khoảng 15 phút mỗi ngôn ngữ, đã cắt lặng đầu cuối).
 
 ## Mốc A4 (cấu hình mặc định của app)
+
+Số lấy từ nhóm `-wb`, tức mỗi câu một lần.
+- Quyết định theo số thô.
+- Cột `_capped` và `long_hyp` cho biết bao nhiêu lỗi đến từ clip lặp câu. Nếu số thô và số chặn cho kết luận khác nhau thì ghi rõ, kèm id các clip lặp.
 
 | Ngôn ngữ | Chỉ số | Gói Chuẩn (turbo) | Gói Nhẹ (small) |
 |---|---|---|---|
@@ -2780,7 +3003,11 @@ Máy: <máy>, ngày <YYYY-MM-DD>. whisper.cpp 1.8.3 (có vá), chế độ B, b�
 | ja | CER | | |
 | ko | CER | | |
 
-Băng hẹp (nhóm `-nb`) so với băng rộng: <nhận xét, ví dụ WER tăng bao nhiêu phần trăm>.
+Băng hẹp: so nhóm `-nb` với `-wbp` (cùng tập câu), không so với `-wb`: <WER/CER tăng bao nhiêu phần trăm, theo ngôn ngữ>.
+
+Reference:
+- zh đã bỏ chú thích Latin trong ngoặc ở <N> clip, theo quy tắc (id: <…>).
+- Việc cho người dùng: nghe lại 21 clip có chú thích Latin (zh 13, ja 3, ko 5) và sửa ref nếu cần. A4 đòi bản chép đã được người kiểm.
 
 ## Giả định 8: rút ngắn `audio_ctx` làm WER/CER tăng không quá 10% (tương đối)
 
@@ -3087,14 +3314,14 @@ target\release\latency-bench.exe asr-eval --manifest bench\phase0\data\asr\manif
 target\release\latency-bench.exe asr-eval --manifest bench\phase0\data\asr\manifest.jsonl `
   --asr-worker target\asr-worker-cpu.exe --asr-model models\ggml-large-v3-turbo-q5_0.bin --use-gpu false `
   --out bench\phase0\data\asr\out-win-turbo-cpu.jsonl --log-dir bench\phase0\data\asr\logs
-uv run --no-project --python 3.12 --with "jiwer==4.0.0" python bench\phase0\asr\score_asr.py `
+uv run --no-project --python 3.12 --with "jiwer==4.0.0" --with "opencc==1.4.2" python bench\phase0\asr\score_asr.py `
   bench\phase0\data\asr\out-win-turbo-vulkan.jsonl bench\phase0\data\asr\out-win-turbo-cpu.jsonl
 ```
 Expected:
 - Lượt Vulkan in `asr: vulkan (1.8.3), chế độ giải mã shared`. Lượt CPU in `asr: cpu (1.8.3), …` và chậm hơn nhiều.
 - Dòng `system_info` có `AVX2 = 1`, `FMA = 1`, `F16C = 1` và không có `AVX512` (mức CPU cố định ở `.cargo/config.toml`).
 - WER/CER gần với lượt `m4pro-turbo-shared` trên Mac, chênh không quá vài phần trăm tương đối.
-- `asr-eval.log` có dòng `asr-worker: backend=vulkan flash_attn=off decode_mode=shared`.
+- Log của lượt Vulkan (`bench\phase0\data\asr\logs\out-win-turbo-vulkan.log`) có dòng `asr-worker: backend=vulkan flash_attn=off decode_mode=shared`.
 - Flash attention mặc định tắt (xem Task 4). Không bật `ASR_FLASH_ATTN=1` trong Giai đoạn 0: lỗi thiếu mask nằm trong graph của whisper.cpp, nên Vulkan cũng sai.
 
 Đo thêm VAD đúng nhịp trên máy này (cần `bench\phase0\data\vad\en.wav`, chép từ Mac):
