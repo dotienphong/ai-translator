@@ -321,9 +321,10 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     let mt_result = mt_thread.join().expect("luồng MT panic");
     stop_sampler.store(true, Ordering::Relaxed);
     let usage = sampler.join().expect("luồng đo tài nguyên panic");
-    // Lỗi của luồng ASR hoặc MT đứng trước: `seg_tx.send` chỉ báo "kênh đã đóng" sau khi chúng đã dừng.
-    asr_result?;
+    // Báo lỗi của luồng ở cuối chuỗi trước: khi luồng MT chết, luồng ASR và luồng phát lại chỉ còn báo "kênh đã đóng"
+    // ở lần gửi kế tiếp, che mất nguyên nhân thật. Ngược lại, khi luồng ASR chết thì luồng MT dừng bình thường.
     mt_result?;
+    asr_result?;
     played?;
 
     let mut segments: Vec<SegmentRecord> = rec_rx.into_iter().collect();
