@@ -1,10 +1,10 @@
 //! Chép lời từng clip của bộ A4 qua `asr-worker`, ghi kết quả để `score_asr.py` tính WER/CER.
 
 use anyhow::{Context, Result, bail};
-use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
+use asr_protocol::{MAX_PCM_SAMPLES, MIN_PCM_SAMPLES, TranscribeRequest, audio_ctx_for_samples};
 use pipeline::asr_client::AsrWorker;
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -39,8 +39,11 @@ pub struct AsrEvalArgs {
     use_gpu: bool,
     #[arg(long, default_value_t = 4)]
     threads: u32,
+    /// File kết quả JSONL. Ghi ra `<out>.part` rồi mới đổi tên khi chạy xong, nên lượt chạy dở không ghi đè file cũ.
     #[arg(long)]
     out: PathBuf,
+    /// Thư mục log của worker. Mỗi lượt ghi vào `<tên file --out bỏ đuôi>.log`, ví dụ `out-thu-ko.jsonl` thành
+    /// `out-thu-ko.log`, nên các lượt chạy không ghi đè log của nhau.
     #[arg(long, default_value = "logs")]
     log_dir: PathBuf,
 }
@@ -66,6 +69,10 @@ struct Output {
     /// Thời gian ngoài whisper: mã hóa khung, truyền qua pipe, giải mã khung (giả định 10, §14).
     ipc_ms: f32,
     audio_ms: u64,
+    /// `audio_ctx` đã gửi cho worker, để phân tích lỗi lặp câu theo cửa sổ mã hóa.
+    audio_ctx: i32,
+    /// Số token worker trả về.
+    n_tokens: usize,
     decode_mode: String,
 }
 
@@ -76,27 +83,48 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
         .parent()
         .context("manifest không có thư mục cha")?
         .to_path_buf();
-    let (mut worker, ready) = AsrWorker::spawn(
-        &args.asr_worker,
-        &args.asr_model,
-        args.use_gpu,
-        args.threads,
-        &args.log_dir.join("asr-eval.log"),
-    )?;
+    let stem = args.out.file_stem().context("--out phải là đường dẫn tới một file")?;
+    let log = args.log_dir.join(format!("{}.log", stem.to_string_lossy()));
+    let mut part = args.out.clone().into_os_string();
+    part.push(".part");
+    let part = PathBuf::from(part);
+    let (mut worker, ready) = AsrWorker::spawn(&args.asr_worker, &args.asr_model, args.use_gpu, args.threads, &log)?;
     worker.warmup()?;
     println!(
         "asr: {} ({}), chế độ giải mã {}\n{}",
         ready.backend, ready.whisper_version, ready.decode_mode, ready.system_info
     );
-    let mut out = std::fs::File::create(&args.out)?;
-    for (i, line) in BufReader::new(std::fs::File::open(&args.manifest)?).lines().enumerate() {
-        let clip: Clip = serde_json::from_str(&line?)?;
-        let mut reader = hound::WavReader::open(base.join(&clip.path))?;
+    let manifest = std::fs::File::open(&args.manifest)
+        .with_context(|| format!("không mở được manifest {}", args.manifest.display()))?;
+    let mut out =
+        BufWriter::new(std::fs::File::create(&part).with_context(|| format!("không tạo được {}", part.display()))?);
+    for (i, line) in BufReader::new(manifest).lines().enumerate() {
+        let n = i + 1; // số dòng trong manifest
+        let line = line.with_context(|| format!("manifest dòng {n}"))?;
+        let clip: Clip = serde_json::from_str(&line).with_context(|| format!("manifest dòng {n}"))?;
+        let path = base.join(&clip.path);
+        let mut reader = hound::WavReader::open(&path)
+            .with_context(|| format!("clip {} (dòng {n}): không đọc được {}", clip.id, path.display()))?;
         let spec = reader.spec();
         if spec.sample_rate != 16_000 || spec.channels != 1 || spec.bits_per_sample != 16 {
-            bail!("{} phải là WAV 16 kHz, mono, 16-bit", clip.path);
+            bail!(
+                "clip {} (dòng {n}): {} phải là WAV 16 kHz, mono, 16-bit",
+                clip.id,
+                clip.path
+            );
         }
-        let pcm: Vec<i16> = reader.samples::<i16>().collect::<Result<_, _>>()?;
+        let pcm: Vec<i16> = reader
+            .samples::<i16>()
+            .collect::<Result<_, _>>()
+            .with_context(|| format!("clip {} (dòng {n}): lỗi đọc mẫu từ {}", clip.id, path.display()))?;
+        // Kiểm trước khi gửi: worker từ chối đoạn ngoài khoảng này, và một lỗi làm dừng cả lượt.
+        if !(MIN_PCM_SAMPLES..=MAX_PCM_SAMPLES).contains(&pcm.len()) {
+            bail!(
+                "clip {} (dòng {n}): {} mẫu, ngoài khoảng worker nhận [{MIN_PCM_SAMPLES}, {MAX_PCM_SAMPLES}]",
+                clip.id,
+                pcm.len()
+            );
+        }
         let audio_ms = pcm.len() as u64 * 1000 / 16_000;
         let audio_ctx = if args.full_ctx {
             1500
@@ -109,13 +137,15 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
             args.languages.clone()
         };
         let started = Instant::now();
-        let r = worker.transcribe(TranscribeRequest {
-            segment_id: i as u64,
-            pcm,
-            languages,
-            prompt_tokens: Vec::new(),
-            audio_ctx,
-        })?;
+        let r = worker
+            .transcribe(TranscribeRequest {
+                segment_id: i as u64,
+                pcm,
+                languages,
+                prompt_tokens: Vec::new(),
+                audio_ctx,
+            })
+            .with_context(|| format!("clip {} (dòng {n})", clip.id))?;
         let ipc_ms = started.elapsed().as_secs_f32() * 1000.0 - r.lid_ms - r.asr_ms;
         let row = Output {
             id: clip.id,
@@ -128,12 +158,18 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
             asr_ms: r.asr_ms,
             ipc_ms,
             audio_ms,
+            audio_ctx,
+            n_tokens: r.tokens.len(),
             decode_mode: ready.decode_mode.clone(),
         };
         writeln!(out, "{}", serde_json::to_string(&row)?)?;
-        if (i + 1) % 20 == 0 {
-            println!("{} clip", i + 1);
+        if n % 20 == 0 {
+            println!("{n} clip");
         }
     }
+    out.flush()?;
+    drop(out);
+    std::fs::rename(&part, &args.out)
+        .with_context(|| format!("không đổi tên {} thành {}", part.display(), args.out.display()))?;
     Ok(())
 }

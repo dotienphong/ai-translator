@@ -2,9 +2,9 @@
 
 use anyhow::{Context, Result, bail};
 use asr_protocol::{Request, Response, TranscribeRequest, TranscribeResult, read_frame, write_frame};
-use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -23,10 +23,13 @@ pub struct AsrWorker {
     child: Child,
     stdin: BufWriter<ChildStdin>,
     stdout: BufReader<ChildStdout>,
+    /// Đường dẫn file log của worker, để thông báo lỗi chỉ chỗ xem log.
+    log: PathBuf,
 }
 
 impl AsrWorker {
-    /// `stderr_log`: nơi ghi log của whisper.cpp, để log không lẫn vào kênh giao thức.
+    /// `stderr_log`: nơi ghi log của whisper.cpp, để log không lẫn vào kênh giao thức. File được mở ở chế độ append,
+    /// nên khởi động lại worker không làm mất log của lần chạy trước (log crash).
     pub fn spawn(
         exe: &Path,
         model: &Path,
@@ -34,15 +37,25 @@ impl AsrWorker {
         n_threads: u32,
         stderr_log: &Path,
     ) -> Result<(Self, ReadyInfo)> {
+        let log = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(stderr_log)
+            .with_context(|| format!("không mở được log {}", stderr_log.display()))?;
         let mut child = Command::new(exe)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::from(File::create(stderr_log)?))
+            .stderr(Stdio::from(log))
             .spawn()
             .with_context(|| format!("không chạy được {}", exe.display()))?;
         let stdin = BufWriter::new(child.stdin.take().context("thiếu stdin")?);
         let stdout = BufReader::new(child.stdout.take().context("thiếu stdout")?);
-        let mut worker = Self { child, stdin, stdout };
+        let mut worker = Self {
+            child,
+            stdin,
+            stdout,
+            log: stderr_log.to_path_buf(),
+        };
         let load = Request::Load {
             model_path: model.display().to_string(),
             use_gpu,
@@ -81,16 +94,31 @@ impl AsrWorker {
     }
 
     pub fn transcribe(&mut self, req: TranscribeRequest) -> Result<TranscribeResult> {
+        let id = req.segment_id;
         match self.call(&Request::Transcribe(req))? {
-            Response::Result(r) => Ok(r),
-            Response::Error { message, .. } => bail!("chép lời lỗi: {message}"),
+            Response::Result(r) if r.segment_id == id => Ok(r),
+            Response::Result(r) => bail!("asr-worker trả kết quả đoạn {} khi đang chờ đoạn {id}", r.segment_id),
+            Response::Error { message, .. } => bail!("chép lời đoạn {id} lỗi: {message}"),
             other => bail!("phản hồi không mong đợi: {other:?}"),
         }
     }
 
     fn call(&mut self, req: &Request) -> Result<Response> {
-        write_frame(&mut self.stdin, req)?;
-        read_frame(&mut self.stdout)?.context("asr-worker đã thoát")
+        let res = write_frame(&mut self.stdin, req)
+            .context("gửi yêu cầu cho asr-worker")
+            .and_then(|()| read_frame(&mut self.stdout).context("đọc phản hồi của asr-worker"))
+            .and_then(|r| r.context("asr-worker đóng stdout"));
+        if res.is_err() {
+            // Lỗi pipe thường là do worker vừa chết: chờ ngắn để lấy mã thoát (tiến trình có thể chưa kịp thành zombie).
+            let deadline = Instant::now() + Duration::from_millis(200);
+            while Instant::now() < deadline {
+                if let Ok(Some(status)) = self.child.try_wait() {
+                    return res.with_context(|| format!("asr-worker đã thoát ({status}), xem {}", self.log.display()));
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+        res
     }
 }
 

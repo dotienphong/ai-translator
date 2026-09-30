@@ -11,19 +11,21 @@
 
 use crate::lid::pick_language;
 use anyhow::{Context, Result, bail};
-use asr_protocol::{SAMPLE_RATE, TranscribeRequest, TranscribeResult, audio_ctx_for_samples};
+use asr_protocol::{
+    MAX_PCM_SAMPLES, MIN_PCM_SAMPLES, SAMPLE_RATE, TranscribeRequest, TranscribeResult, audio_ctx_for_samples,
+};
 use std::time::Instant;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState};
 
 /// Nhận diện ngôn ngữ trên tối đa 3 giây đầu của đoạn (spec §6.4).
 pub const LID_SAMPLES: usize = SAMPLE_RATE as usize * 3;
 pub(crate) const MIN_LANG_PROB: f32 = 0.5;
-/// Đoạn ngắn hơn 100 ms: `log_mel_spectrogram` đọc 200 mẫu đầu và whisper.cpp bỏ qua đoạn dưới mức này.
-const MIN_PCM_SAMPLES: usize = SAMPLE_RATE as usize / 10;
 /// Cửa sổ mã hóa tối đa của Whisper: 1500 vị trí, tức 30 giây.
 const MAX_AUDIO_CTX: i32 = 1500;
 /// Số mẫu 16 kHz mà một vị trí của `audio_ctx` phủ (20 ms).
 const SAMPLES_PER_CTX: usize = SAMPLE_RATE as usize / 50;
+// Cửa sổ tối đa phủ đúng đoạn dài nhất mà `asr-protocol` cho phép.
+const _: () = assert!(MAX_AUDIO_CTX as usize * SAMPLES_PER_CTX == MAX_PCM_SAMPLES);
 
 pub struct Engine {
     ctx: WhisperContext,
@@ -115,6 +117,9 @@ impl Engine {
         if req.pcm.len() < MIN_PCM_SAMPLES {
             bail!("đoạn quá ngắn: {} mẫu (tối thiểu {MIN_PCM_SAMPLES})", req.pcm.len());
         }
+        if req.pcm.len() > MAX_PCM_SAMPLES {
+            bail!("đoạn quá dài: {} mẫu (tối đa {MAX_PCM_SAMPLES})", req.pcm.len());
+        }
         let eot = self.ctx.token_eot();
         if let Some(t) = req.prompt_tokens.iter().find(|&&t| !(0..eot).contains(&t)) {
             bail!("prompt_tokens có token {t} ngoài khoảng [0, {eot})");
@@ -123,7 +128,8 @@ impl Engine {
             bail!("audio_ctx {} ngoài khoảng [0, {MAX_AUDIO_CTX}]", req.audio_ctx);
         }
         // 0 là cửa sổ đầy đủ 30 giây. Cửa sổ nào ngắn hơn đoạn thì whisper.cpp lặng lẽ bỏ phần đuôi (chế độ B chỉ ra
-        // phần đầu), nên đoạn dài hơn 30 giây bị từ chối, kể cả khi `audio_ctx` là 0.
+        // phần đầu), nên `audio_ctx` phải phủ hết đoạn. Đoạn dài hơn 30 giây đã bị từ chối ở trên, kể cả khi
+        // `audio_ctx` là 0.
         let window = if req.audio_ctx == 0 {
             MAX_AUDIO_CTX
         } else {
