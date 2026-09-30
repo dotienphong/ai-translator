@@ -82,13 +82,14 @@ Cloudflare:
 - https://developers.cloudflare.com/workers/testing/vitest-integration/, `…/write-your-first-test/`, `…/isolation-and-concurrency/`, và ví dụ `fixtures/vitest-plugin-examples/d1` trong repo `cloudflare/workers-sdk`.
 - https://developers.cloudflare.com/workers/configuration/cloudflare-access/ (`ctx.access`, "Protect this Worker behind Access").
 - https://developers.cloudflare.com/cloudflare-one/identity/authorization-cookie/validating-json/
-- https://developers.cloudflare.com/cloudflare-one/identity/authorization-cookie/ (cookie `CF_Authorization`: SameSite, HttpOnly).
+- https://developers.cloudflare.com/cloudflare-one/identity/authorization-cookie/ (cookie `CF_Authorization`: SameSite và cảnh báo `ERR_TOO_MANY_REDIRECTS` với `Strict`, HttpOnly, Binding Cookie).
+- https://developers.cloudflare.com/workers/observability/issues/ và `…/issues/automations/` (Workers Issues, miễn phí trong beta; automation tới webhook, chat, incident).
 - https://developers.cloudflare.com/workers/observability/logs/workers-logs/ (invocation log, `invocation_logs: false`, thời gian lưu).
 - https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
 - https://developers.cloudflare.com/workers/wrangler/configuration/ (`secrets.required`, khóa không kế thừa giữa các môi trường, tự tạo tài nguyên).
 - `wrangler <lệnh> --help` và mã nguồn của wrangler 4.145.0 và 4.143.1: `secret put`, `d1 create`, `d1 migrations apply`, `deploy --dry-run`; `config-schema.json` (`observability.logs.invocation_logs`).
 
-Kho mật khẩu (khóa dự phòng, I4):
+Kho mật khẩu (khóa dự phòng, QĐ29):
 - https://www.1password.dev/cli/reference/management-commands/item/ (`op item create --vault <vault> -` đọc mẫu JSON từ stdin; tham số dòng lệnh lộ giá trị).
 - https://www.1password.dev/cli/item-template-json/
 - https://bitwarden.com/help/cli/ (`bw encode | bw create item`, Secure Note).
@@ -205,7 +206,8 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
   - Không dùng binding Rate Limiting của Workers: binding đó chỉ có chu kỳ 10 hoặc 60 giây và đếm riêng ở từng vị trí của Cloudflare.
   - §10.2 chỉ nêu các con số "ví dụ". Ngoài 4 giới hạn của spec, kế hoạch thêm: `recover` ≤ 10 lần/giờ/IP, `deactivate` ≤ 10 lần/giờ/IP, hỏi đơn ≤ 600 lần/giờ cho mỗi cặp (IP, đơn). App hỏi mỗi 3 giây trong 15 phút là 300 lần.
   - `validate` đếm theo **key đã chuẩn hóa**, nên đổi 0↔O, 1↔I/L, chữ hoa thường hay gạch nối không tạo được bộ đếm mới.
-  - **Thất bại đếm theo IP, chung mọi endpoint** (`failure_ip`): key sai định dạng, key không tồn tại, activation lạ. Chạm 20 lần trong 1 giờ thì mọi request có key từ IP đó bị `429` tới hết giờ, server ghi dòng `many_failures` và tạo cảnh báo cho người vận hành (QĐ27).
+  - **Thất bại đếm theo IP, chung mọi endpoint** (`failure_ip`): key sai định dạng, key không tồn tại, activation lạ. Chạm 60 lần trong 1 giờ thì IP đó bị chặn tới hết giờ, server ghi dòng `many_failures` và tạo cảnh báo cho người vận hành (QĐ27).
+  - **Khi IP đang bị chặn** (nhiều người dùng chung một IP qua CGNAT): chỉ request có key hợp lệ kèm activation đang hoạt động và khớp (`validate`, `deactivate`) được cho qua; mọi request khác trả `429`, kể cả key thật mà activation sai, và mọi `activate` hay checkout gia hạn. Nếu cho qua mọi key hợp lệ thì kẻ dò vẫn phân biệt được key thật (200) với key giả (429). Đoán trúng một `activation_id` (UUID v4, 122 bit ngẫu nhiên) là không khả thi.
 - **QĐ8. Tính idempotent bằng một batch D1**, trong đó mỗi câu lệnh đều có điều kiện "đơn chưa `paid`". Webhook gửi trùng, đối soát và admin có chạy cùng lúc thì cũng chỉ một lần có tác dụng, kèm một email. Gia hạn cộng vào `MAX(expires_at, bây giờ)`. "Hôm nay" ở §6.8 được hiểu là thời điểm hiện tại, không làm tròn về đầu ngày.
 - **QĐ9. Lịch đối soát**, giãn so với chữ "mỗi 5 phút" của §9:
   - xét đơn `pending`, `processing` và `underpaid` (khách có thể chuyển bù) tạo trong 24 giờ qua;
@@ -215,11 +217,12 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
 
   Lý do: link chỉ sống 15 phút. Nếu hỏi mọi đơn bỏ dở mỗi 5 phút suốt 24 giờ thì mỗi đơn tốn 288 lần gọi PayOS, trong khi PayOS có giới hạn `429`.
 - **QĐ10. Khóa tạm (§10.2).**
-  - Đếm **số máy khác nhau** (`device_id_hash`) do người dùng gỡ (tự gỡ hoặc gỡ từ xa, không tính admin gỡ) trong 30 ngày gần nhất, bắt đầu từ lần admin mở khóa gần nhất.
-  - Khi có hơn 3 máy như vậy và có yêu cầu kích hoạt một máy **mới**, server khóa key, trả `423 license_locked` và tạo cảnh báo.
-  - Máy từng kích hoạt key này rồi bị gỡ không phải "máy khác": kích hoạt lại chính máy đó không bị kiểm khóa tạm, kể cả khi key đang bị khóa. Gỡ rồi kích hoạt lại một máy bao nhiêu lần cũng chỉ tính là một máy.
-  - Key bị khóa vẫn `validate` được trên các máy đang kích hoạt, và vẫn gỡ máy được; chỉ việc kích hoạt máy mới bị chặn.
-  - Người dùng thật vẫn làm việc bình thường, còn việc xoay vòng key giữa nhiều người thì bị chặn (P05-3).
+  - Đếm **số lần gỡ** do người dùng (tự gỡ hoặc gỡ từ xa, không tính admin gỡ) trong 30 ngày gần nhất, bắt đầu từ lần admin mở khóa gần nhất, **trừ các lần gỡ chính máy đang kích hoạt** (`device_id_hash <> ?`). Đúng chữ §10.2: "hơn 3 lần gỡ … rồi kích hoạt máy khác".
+  - Kiểm cho **mọi máy không đang kích hoạt**, kể cả máy từng dùng key này. Hơn 3 lần thì server khóa key, trả `423 license_locked` và tạo cảnh báo.
+  - Gỡ rồi kích hoạt lại cùng một máy bao nhiêu lần cũng không bị khóa, vì các lần gỡ chính máy đó không được tính.
+  - Xoay vòng 2 suất giữa nhiều máy thì bị khóa sau vài lượt: với 5 máy, lượt thứ 5 bị `423` (test ở Task 14).
+  - Key đã khóa thì chặn mọi máy không đang kích hoạt. Các máy đang kích hoạt vẫn `validate` được, và vẫn gỡ máy được.
+  - Admin mở khóa thì các lần gỡ trước lúc mở khóa không còn tính (P05-3).
 - **QĐ11. Trường `plan` trong token là hạng quyền (`"pro"`)**, không phải gói đã mua (`pro_1m`, `pro_12m`). Lý do: license chỉ quan tâm `expires_at` (§6.8).
 - **QĐ12. Gia hạn bằng key có sẵn** thì email của license giữ nguyên email lúc mua lần đầu. Email của đơn gia hạn chỉ nhận thư xác nhận.
 - **QĐ13. `returnUrl` và `cancelUrl`** lấy theo origin của request checkout: `<origin>/v1/pay/return` và `<origin>/v1/pay/cancel`. Nhờ vậy staging trên workers.dev, và production khi có tên miền, không cần cấu hình URL. Hai trang này chỉ nhắc người dùng quay lại app.
@@ -229,7 +232,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
 - **QĐ17. Giá nằm trong biến `PRICES_JSON` của từng môi trường.**
   - Staging: 2.000 đ (1 tháng) và 3.000 đ (12 tháng) để thử bằng tiền thật.
   - Production: để trống cho tới khi có Q2; khi đó checkout trả `503 pricing_not_configured`, không bao giờ bán sai giá.
-- **QĐ18. Số đơn (`orderCode`) theo môi trường (I10).** Mỗi môi trường có D1 và khóa ký riêng, và nên có kênh PayOS riêng (P05-1). Số đơn đánh bằng `AUTOINCREMENT` của D1:
+- **QĐ18. Số đơn (`orderCode`) theo môi trường.** Mỗi môi trường có D1 và khóa ký riêng, và nên có kênh PayOS riêng (P05-1). Số đơn đánh bằng `AUTOINCREMENT` của D1:
   - staging dùng số từ 1 tới 999.999;
   - production bắt đầu từ 1.000.001: ngay sau khi tạo D1 production, chèn rồi xóa một dòng giữ chỗ số 1.000.000 (Task 21, Step 4). AUTOINCREMENT nhớ số lớn nhất đã dùng, nên đơn kế tiếp là 1.000.001, kể cả khi D1 mới dùng lại kênh PayOS của staging;
   - trần là 9.999.999, để mô tả `MT<orderCode>` không quá 9 ký tự (§14 giả định 7). Vượt trần thì checkout trả `503 order_code_exhausted`, không gọi PayOS.
@@ -238,7 +241,9 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
 - **QĐ19. Email chỉ là văn bản thuần, song ngữ vi/en.**
   - Staging gửi từ `onboarding@resend.dev`, và địa chỉ này chỉ gửi tới email của chủ tài khoản Resend.
   - Lỗi gửi email không chặn việc cấp key: key vẫn lấy được qua `GET /v1/orders`, `recover` hay admin.
-  - Email mua hàng có idempotency key `<env>-order-<orderCode>`. Gửi lỗi thì cron gửi lại đơn đã `paid` mà `email_sent_at` còn trống, trong 24 giờ sau khi trả tiền, với cùng idempotency key (I9).
+  - Email mua hàng có idempotency key `<env>-order-<orderCode>`, nên gửi lại không bao giờ thành hai thư.
+  - Gửi lỗi tạm (5xx, 429, lỗi mạng) thì cron gửi lại, giãn dần: sau 5 phút, 15 phút, 1 giờ, rồi mỗi 6 giờ, trong 24 giờ sau khi trả tiền. Lỗi vĩnh viễn (4xx khác 429, ví dụ địa chỉ nhận bị từ chối) thì thôi gửi. Cảnh báo `email_failed` chỉ tạo ở lần lỗi đầu của mỗi đơn.
+  - Đơn đã cấp mà chưa thử gửi thư lần nào (Worker dừng giữa lúc cấp và gửi) thì cron gửi sau 5 phút.
 - **QĐ20. Chỉ nhận HTTPS** khi `ENVIRONMENT` khác `dev`, và kiểm ngay trong Worker (§10.2). Worker không bật CORS, vì app gọi server từ phía Rust (`LicenseProvider`, §6.8), không gọi từ WebView.
 - **QĐ21. D1 tạo với `--location apac`**: gần khách ở Việt Nam, và nơi lưu được ghi vào hồ sơ dữ liệu cá nhân.
 - **QĐ22. Chỗ lệch với §12.** `server/src` có thêm các module sau (đề xuất thêm vào Q12):
@@ -249,23 +254,29 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
   Kiểu `Env` viết tay ở `src/env.ts`, không sinh bằng `wrangler types`, vì hai Worker dùng chung mã. Kiểu runtime lấy từ `@cloudflare/workers-types`.
 - **QĐ23. Không gửi email người mua sang PayOS** (`buyerEmail`), để giữ dữ liệu ở mức tối thiểu, cho tới khi Q10 cần hóa đơn.
 - **QĐ24. `POST /v1/checkout` nhận thêm `consent: true`**, là ô đồng ý xử lý email của §10.1; thiếu thì `400`. Server lưu thời điểm đồng ý vào `orders.email_consent_at`. Đây là trường thêm so với bảng API của §6.8.
-- **QĐ25. Không để dữ liệu nhạy cảm nằm trong URL (I1).** URL có thể lọt vào log, lịch sử trình duyệt và proxy.
-  - Tắt invocation log của Workers Logs ở cả hai Worker, mọi môi trường (`observability.logs.invocation_logs: false`): invocation log lưu cả URL và query của request. Log JSON do code tự ghi vẫn giữ.
-  - `order_token` đi trong header `Authorization: Bearer <order_token>`, không đi trong query như `?token=…` của §6.8.
+- **QĐ25. Không để dữ liệu nhạy cảm nằm trong URL.** URL có thể lọt vào log, lịch sử trình duyệt và proxy.
+  - Tắt invocation log của Workers Logs ở cả hai Worker, mọi môi trường (`observability.logs.invocation_logs: false`): invocation log lưu cả URL và query của request. Thêm `redact_query_string: true` để bỏ query khỏi URL trong log và trace còn lại. Log JSON do code tự ghi vẫn giữ.
+  - `order_token` đi trong header `Authorization: Bearer <order_token>` (scheme không phân biệt hoa thường), không đi trong query như `?token=…` của §6.8.
   - Admin tra cứu bằng `POST /admin/lookup` với email trong body.
 - **QĐ26. Tên trường JSON dùng `snake_case` cho toàn bộ API của server** (`order_code`, `checkout_url`, `qr_code`, `order_token`, `license_key`, `device_id_hash`…), cả request lẫn response. Chỉ khi gọi PayOS mới dùng `camelCase` của PayOS. Khác chữ trong spec (`checkoutUrl`, `qrCode`, `orderCode`), nên được thêm vào danh sách lệch nhỏ (Q12) ở Task 22.
-- **QĐ27. Cảnh báo cho người vận hành (I8, §10.2).**
-  - Bốn loại sự kiện: `many_failures` (một IP chạm 20 lần thất bại), `webhook_bad_signature`, `email_failed`, `license_locked`. Mỗi sự kiện được đếm theo loại và theo giờ trong bảng `ops_alerts`.
+- **QĐ27. Cảnh báo cho người vận hành (§10.2).**
+  - Bốn loại sự kiện: `many_failures` (một IP chạm 60 lần thất bại), `webhook_bad_signature`, `email_failed`, `license_locked`. Mỗi sự kiện được đếm theo loại và theo giờ trong bảng `ops_alerts`.
   - Cron gửi một email mỗi loại, **tối đa một lần mỗi giờ**, tới `OPERATOR_EMAIL`, qua `EmailProvider`. Gửi lỗi thì lần cron sau thử lại.
   - `OPERATOR_EMAIL` là dữ liệu cá nhân nên là secret (`wrangler secret put`), không nằm trong repo hay `wrangler.jsonc`. Thiếu biến này thì cảnh báo chỉ ghi log.
-- **QĐ28. Cổng thanh toán chọn theo `orders.provider` (S6).** `Deps.payments` là map tên cổng → `PaymentProvider`. Webhook là một route chung `/v1/webhooks/{provider}` (PayOS là `/v1/webhooks/payos`); `fulfilOrder` và đối soát lấy cổng theo cột `provider` của đơn. Thêm cổng chỉ cần thêm một cài đặt vào map, không sửa `orders.ts` hay `reconcile.ts`. Tên cổng lạ thì `404`.
-- **QĐ29. Khóa riêng không bao giờ in ra terminal (I4).** `gen-token-key.mjs` từ chối chạy khi stdout là terminal. Khóa đang dùng pipe thẳng vào `wrangler secret put`. Khóa dự phòng pipe thẳng vào CLI của kho mật khẩu (`op` của 1Password, `bw` của Bitwarden), qua stdin, không qua tham số dòng lệnh. Không có hai CLI đó thì dùng `pbcopy`, dán vào kho mật khẩu, rồi xóa clipboard.
-- **QĐ30. Chống CSRF ở Worker admin (N1).** Mọi request không phải `GET`/`HEAD`:
+  - **Giới hạn:** cảnh báo đi cùng kênh Resend với thư chứa key, nên khi Resend sập thì chỉ còn log. Cách giảm rủi ro: bật **Workers Issues** (`observability.issues.enabled`, miễn phí trong giai đoạn beta). Issues ghi mọi `console.error` và response `5xx`, kể cả `email_failed`, rồi gửi qua automation tới webhook, chat hay công cụ incident, không qua Resend (Task 19, Step 10). Nếu Issues hết miễn phí, hoặc chủ dự án không có kênh chat hay webhook nhận automation, thì đây là rủi ro chấp nhận: người vận hành xem trang Issues và Workers Logs định kỳ.
+- **QĐ28. Cổng thanh toán chọn theo `orders.provider`.** `Deps.payments` là map tên cổng → `PaymentProvider`. Webhook là một route chung `/v1/webhooks/{provider}` (PayOS là `/v1/webhooks/payos`); `fulfilOrder` và đối soát lấy cổng theo cột `provider` của đơn. Thêm cổng chỉ cần thêm một cài đặt vào map, không sửa `orders.ts` hay `reconcile.ts`. Tên cổng lạ thì `404`.
+- **QĐ29. Khóa riêng không bao giờ in ra terminal hay ghi ra file.**
+  - Mọi script in khóa riêng (`gen-token-key.mjs`, và `test/fixtures/test-jwk.mjs` cho khóa test) chỉ ghi khi stdout là pipe hoặc socket (`fs.fstatSync(1).isFIFO()`, `isSocket()`); terminal và file đều bị từ chối, thoát mã 2, không ghi byte nào.
+  - Khóa đang dùng pipe thẳng vào `wrangler secret put`. Khóa dự phòng pipe thẳng vào CLI của kho mật khẩu (`op` của 1Password, `bw` của Bitwarden), qua stdin, không qua tham số dòng lệnh. Không có hai CLI đó thì dùng `pbcopy`, dán vào kho mật khẩu, rồi xóa clipboard.
+  - **`kid` phải là duy nhất:** quy ước `<env>-<năm>-<tháng>-<số thứ tự>`, khóa dự phòng thêm `-b` (ví dụ `stg-2026-10-1`, `stg-2026-10-1-b`). `gen-token-key.mjs` từ chối `kid` đã có trong `keys/public-keys.json`.
+- **QĐ30. Chống CSRF ở Worker admin.** Mọi request không phải `GET`/`HEAD`:
   - phải có `content-type: application/json`, không thì `415`;
   - bị từ chối (`403`) khi có `Sec-Fetch-Site` mà khác `same-origin` và `none`, hoặc có `Origin` mà khác origin của Worker admin.
 
-  Ngoài ra cookie `CF_Authorization` của ứng dụng Access đặt `SameSite=Strict` và `HttpOnly` (Task 19, Step 11). `confirm-webhook` chỉ nhận URL `…/v1/webhooks/payos` trên đúng origin `API_ORIGIN` của môi trường.
-- **QĐ31. Kiểm khóa công khai khớp khóa riêng (I5).** `scripts/verify-token.mjs` kiểm chữ ký một token thật bằng `keys/public-keys.json`, nên chứng minh khóa đang ký khớp khóa công khai app sẽ build sẵn. `scripts/jwk-public.mjs` đọc JWK khóa dự phòng từ stdin ẩn (`read -rs`) và so với khóa công khai dự phòng, nên kiểm được bản trong kho mật khẩu mà không hiện khóa riêng.
+  Cookie `CF_Authorization` của ứng dụng Access đặt `SameSite=Lax`, `HttpOnly`, và bật Binding Cookie (Task 19, Step 11b). Không dùng `Strict`: tài liệu Cloudflare cảnh báo `Strict` có thể gây `ERR_TOO_MANY_REDIRECTS`, và CSRF đã chặn trong code. Tài liệu cũng cảnh báo Binding Cookie có thể không hợp với công cụ ngoài trình duyệt; nếu `cloudflared access curl` hỏng sau khi bật thì tắt Binding Cookie, ghi lại là rủi ro chấp nhận.
+
+  `confirm-webhook` chỉ nhận URL `…/v1/webhooks/payos` trên đúng origin `API_ORIGIN` của môi trường.
+- **QĐ31. Kiểm khóa công khai khớp khóa riêng.** `scripts/verify-token.mjs` kiểm chữ ký một token thật bằng `keys/public-keys.json`, nên chứng minh khóa đang ký khớp khóa công khai app sẽ build sẵn. `scripts/jwk-public.mjs` đọc JWK khóa dự phòng từ stdin ẩn (`read -rs`) và so với khóa công khai dự phòng, nên kiểm được bản trong kho mật khẩu mà không hiện khóa riêng.
 
 ## Điểm cần chủ dự án quyết
 
@@ -275,7 +286,7 @@ Nếu tới lúc làm mà chưa có quyết định, cứ làm theo đề xuất
   - dùng một tài khoản ngân hàng khác cho staging;
   - chỉ giữ staging tới trước khi production chạy, rồi dùng lại kênh đó cho production. Số đơn không trùng, vì production bắt đầu từ 1.000.001 (QĐ18).
 - **P05-2. Giá thử trên staging.** Đề xuất 2.000 đ và 3.000 đ. Nếu PayOS có mức tối thiểu cao hơn thì sửa `PRICES_JSON` của `env.staging` (Task 20, Step 1).
-- **P05-3. Chính sách khóa tạm (QĐ10).** Đề xuất: đếm số máy khác nhau bị gỡ; key bị khóa vẫn chạy trên máy đang dùng và máy từng dùng, chỉ chặn máy mới.
+- **P05-3. Chính sách khóa tạm (QĐ10).** Đề xuất: đếm số lần gỡ trong 30 ngày, trừ các lần gỡ chính máy đang kích hoạt; hơn 3 lần thì khóa. Key bị khóa vẫn chạy trên máy đang kích hoạt, nhưng chặn mọi máy khác, kể cả máy từng dùng, tới khi hỗ trợ mở khóa.
 - **P05-4. Giao diện admin.** Kế hoạch chỉ làm JSON API: `GET /admin/whoami` xem được bằng trình duyệt; mọi thao tác khác gọi bằng `cloudflared access curl` (Phụ lục B). Có cần một trang giao diện nhỏ không?
 - **P05-5. Email nhận cảnh báo (`OPERATOR_EMAIL`).** Đề xuất: một hộp thư vận hành riêng của sản phẩm. Đặt bằng `wrangler secret put` ở Task 19 và 21; thiếu thì cảnh báo chỉ nằm trong log.
 - **P05-6. Kho mật khẩu cho khóa dự phòng.** Kế hoạch hỗ trợ 1Password CLI (`op`, đã có trên máy dev) và Bitwarden CLI (`bw`); không có thì dùng `pbcopy` (QĐ29). Chủ dự án chọn kho và vault.
@@ -298,7 +309,9 @@ Mọi body là JSON, tên trường `snake_case` (QĐ26). Lỗi có dạng `{"er
 | `POST /v1/webhooks/{provider}` | body của cổng thanh toán (PayOS: `/v1/webhooks/payos`) | `200 {ok: true, result}` | `400 invalid_signature`, `404` (cổng lạ), `503` (để cổng gửi lại) |
 
 - `status` của đơn: `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed`.
-- `429` luôn kèm header `Retry-After` (giây). Sau 20 lần thất bại trong 1 giờ, mọi request có key từ IP đó bị `429` tới hết giờ (QĐ7), nên app hiện lỗi "thử lại sau", không thử lại liên tục.
+- `429` luôn kèm header `Retry-After` (giây). App hiện lỗi "thử lại sau", không thử lại liên tục.
+- **Hợp đồng khi IP bị chặn (QĐ7, CGNAT).** Sau 60 lần thất bại trong 1 giờ từ một IP, server chỉ cho qua `validate` và `deactivate` có key hợp lệ **kèm `activation_id` đang hoạt động và khớp**; mọi request khác từ IP đó trả `429` tới hết giờ, kể cả `activate`. Vì vậy app (06) luôn gửi `activation_id` khi `validate`, và không coi `429` ở `activate` là key sai.
+- Header `Authorization` nhận scheme `Bearer` không phân biệt hoa thường.
 - Mọi route trả `403 forbidden` nếu request không qua HTTPS (ngoài môi trường dev), và `413` nếu body lớn hơn 16 KiB.
 - Token và khóa công khai: định dạng ở QĐ4, vector ở `server/test/vectors/token-v1.json`, khóa công khai của từng môi trường ở `server/keys/public-keys.json` (tạo ở Task 19).
 - Cách tính ký tự kiểm tra của key (Luhn mod 32) có trong vector (`license_key_check`), kèm các ví dụ đúng và sai (`license_keys`).
@@ -311,7 +324,7 @@ Mọi body là JSON, tên trường `snake_case` (QĐ26). Lỗi có dạng `{"er
 | Cloudflare D1, bảng `rate_limits` | HMAC-SHA256 (khóa `RATE_LIMIT_PEPPER`) của IP, key, email; không dò ngược được nếu không có pepper | như trên | Khoảng 3 giờ: cửa sổ 1 giờ, cron xóa khi đã cũ hơn 2 giờ |
 | Cloudflare D1, bảng `ops_alerts` | loại cảnh báo và số lần theo giờ; không có dữ liệu cá nhân | như trên | 7 ngày; cron dọn |
 | Cloudflare D1, bảng `audit_log` | email của **người vận hành**; mã license, mã đơn; không có email khách | như trên | Chờ Q9 |
-| Workers Logs | Chỉ log JSON do code ghi: email che bớt (`b***@example.com`), mã đơn. Invocation log (có URL và query) đã tắt (QĐ25). Không có key, token hay khóa API | Cloudflare | 3 ngày với gói Free, 7 ngày với gói Paid |
+| Workers Logs, Workers Issues | Chỉ log JSON do code ghi: email che bớt (`b***@example.com`), mã đơn. Invocation log (có URL và query) đã tắt, query bị bỏ khỏi URL (QĐ25). Không có key, token hay khóa API | Cloudflare | Logs: 3 ngày với gói Free, 7 ngày với gói Paid. Issues: theo Cloudflare (beta) |
 | Secret của Worker | `OPERATOR_EMAIL` (email người vận hành, QĐ27), cùng các khóa API | Cloudflare | Tới khi xóa secret |
 | Resend | địa chỉ người nhận và nội dung thư (có key); cả thư cảnh báo gửi người vận hành | Staging: mặc định của `resend.dev`. Production: chọn vùng khi thêm tên miền; vùng gần nhất là `ap-northeast-1` (Tokyo) | Theo chính sách của Resend |
 | PayOS | Không nhận email hay dữ liệu cá nhân nào từ server (QĐ23). Thông tin chuyển khoản do ngân hàng và PayOS xử lý | Việt Nam | Theo PayOS |
@@ -530,8 +543,9 @@ allowBuilds:
   "compatibility_date": "2026-09-26",
   "workers_dev": false,
   "preview_urls": false,
-  // Tắt invocation log: log đó lưu cả URL và query của request (QĐ25). Log JSON do code tự ghi vẫn giữ.
-  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  // Tắt invocation log (log đó lưu cả URL và query của request) và bỏ query khỏi URL trong log và trace (QĐ25).
+  // Log JSON do code tự ghi vẫn giữ. Bật Workers Issues để có cảnh báo không phụ thuộc Resend (QĐ27).
+  "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
   "vars": {
     "ENVIRONMENT": "dev",
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
@@ -639,7 +653,7 @@ devDependencies:
 + typescript 7.0.2
 + vitest 4.1.11
 + wrangler 4.143.1
-Done in 3.6s using pnpm v12.6.0
+Done in 5.4s using pnpm v12.6.0
 ```
 
 - Có thêm `server/pnpm-lock.yaml`.
@@ -890,7 +904,10 @@ CREATE TABLE orders (
   expires_at INTEGER NOT NULL,           -- hạn của link thanh toán (tạo đơn + 15 phút)
   paid_at INTEGER,
   last_checked_at INTEGER,
-  email_sent_at INTEGER
+  email_sent_at INTEGER,
+  email_attempts INTEGER NOT NULL DEFAULT 0,   -- số lần đã thử gửi thư chứa key
+  email_retry_at INTEGER,                      -- lần gửi lại kế tiếp sau lỗi tạm (5xx, 429, mạng)
+  email_gave_up_at INTEGER                     -- thôi gửi sau lỗi vĩnh viễn (4xx khác 429)
 );
 CREATE INDEX orders_pending ON orders (status, created_at);
 CREATE INDEX orders_email ON orders (email);
@@ -1786,29 +1803,45 @@ Ba script chạy bằng Node trên máy người vận hành, không chạy tron
 ```js
 #!/usr/bin/env node
 // Tạo cặp khóa Ed25519 ký token bản quyền (spec §10.2, Q11). Không ghi file nào ra đĩa, không in khóa riêng ra terminal.
-// - Khóa riêng ra stdout, và stdout phải là pipe: script từ chối chạy khi stdout là terminal.
+// - Khóa riêng ra stdout, và stdout phải là pipe (hoặc socket): terminal và file đều bị từ chối.
 //   * Khóa đang dùng: pipe thẳng vào `wrangler secret put`.
 //   * Khóa dự phòng: --vault op|bw in JSON cho CLI của kho mật khẩu (1Password `op`, Bitwarden `bw`);
 //     không có hai CLI này thì pipe vào `pbcopy`, dán vào kho mật khẩu, rồi xóa clipboard.
 // - Khóa công khai ra stderr, để ghi vào server/keys/public-keys.json (không phải bí mật).
+// - kid phải là duy nhất: script từ chối kid đã có trong public-keys.json (--keys để chỉ file khác).
+//   Quy ước: <env>-<năm>-<tháng>-<số thứ tự>, khóa dự phòng thêm "-b". Ví dụ stg-2026-10-1, stg-2026-10-1-b.
 //
-//   node scripts/gen-token-key.mjs stg-2026-10 | pnpm exec wrangler secret put TOKEN_SIGNING_JWK --env staging
-//   node scripts/gen-token-key.mjs stg-2026-10-b --vault op | op item create --vault Private -
-//   node scripts/gen-token-key.mjs stg-2026-10-b --vault bw | bw encode | bw create item
+//   node scripts/gen-token-key.mjs stg-2026-10-1 | pnpm exec wrangler secret put TOKEN_SIGNING_JWK --env staging
+//   node scripts/gen-token-key.mjs stg-2026-10-1-b --vault op | op item create --vault Private -
+//   node scripts/gen-token-key.mjs stg-2026-10-1-b --vault bw | bw encode | bw create item
+import { existsSync, fstatSync, readFileSync } from "node:fs";
 import { webcrypto } from "node:crypto";
 
-const [kid, flag, vault] = process.argv.slice(2);
+const fail = (message) => {
+  console.error(message);
+  process.exit(2);
+};
+const [kid, ...rest] = process.argv.slice(2);
+let vault;
+let keysFile = new URL("../keys/public-keys.json", import.meta.url);
+for (let i = 0; i < rest.length; i += 2) {
+  if (rest[i] === "--vault" && (rest[i + 1] === "op" || rest[i + 1] === "bw")) vault = rest[i + 1];
+  else if (rest[i] === "--keys" && rest[i + 1]) keysFile = rest[i + 1];
+  else fail("Tham số sau kid chỉ có thể là --vault op|bw và --keys <file>.");
+}
 if (!kid || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(kid) || kid.startsWith("test-")) {
-  console.error("Cần kid gồm chữ thường, số và '-', tối đa 32 ký tự, không bắt đầu bằng 'test-'. Ví dụ: stg-2026-10");
-  process.exit(2);
+  fail("Cần kid gồm chữ thường, số và '-', tối đa 32 ký tự, không bắt đầu bằng 'test-'. Ví dụ: stg-2026-10-1");
 }
-if (flag !== undefined && !(flag === "--vault" && (vault === "op" || vault === "bw"))) {
-  console.error("Tham số thứ hai chỉ có thể là --vault op hoặc --vault bw.");
-  process.exit(2);
+const out = fstatSync(1);
+if (!out.isFIFO() && !out.isSocket()) {
+  fail("stdout phải là pipe (không phải terminal, không phải file): pipe sang wrangler, op, bw hoặc pbcopy.");
 }
-if (process.stdout.isTTY) {
-  console.error("stdout đang là terminal: khóa riêng không được in ra màn hình. Pipe sang wrangler, op, bw hoặc pbcopy.");
-  process.exit(2);
+if (existsSync(keysFile)) {
+  for (const [envName, roles] of Object.entries(JSON.parse(readFileSync(keysFile, "utf8")))) {
+    for (const [role, k] of Object.entries(roles ?? {})) {
+      if (k?.kid === kid) fail(`kid ${kid} đã có trong public-keys.json (${envName}.${role}). Dùng số thứ tự mới.`);
+    }
+  }
 }
 const { privateKey } = await webcrypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
 const jwk = await webcrypto.subtle.exportKey("jwk", privateKey);
@@ -1816,10 +1849,10 @@ const secret = JSON.stringify({ kty: "OKP", crv: "Ed25519", kid, d: jwk.d, x: jw
 // Tên chỉ có chữ ASCII và dấu cách, để dùng được trong tham chiếu op://vault/item/field của 1Password.
 const title = `Meeting Translator token key ${kid}`;
 const note = "Khóa riêng Ed25519 dạng JWK, dán nguyên dòng vào `wrangler secret put TOKEN_SIGNING_JWK` khi đổi khóa (Phụ lục A).";
-let out = secret;
+let text = secret;
 if (vault === "op") {
   // Mẫu item của 1Password đọc qua stdin (`op item create -`): khóa không đi qua tham số dòng lệnh.
-  out = JSON.stringify({
+  text = JSON.stringify({
     title,
     category: "PASSWORD",
     fields: [
@@ -1829,9 +1862,9 @@ if (vault === "op") {
   });
 } else if (vault === "bw") {
   // Secure Note của Bitwarden; `bw encode | bw create item` đọc từ stdin.
-  out = JSON.stringify({ type: 2, name: title, notes: `${secret}\n\n${note}`, secureNote: { type: 0 }, favorite: false, reprompt: 1 });
+  text = JSON.stringify({ type: 2, name: title, notes: `${secret}\n\n${note}`, secureNote: { type: 0 }, favorite: false, reprompt: 1 });
 }
-process.stdout.write(out);
+process.stdout.write(text);
 console.error(`Khóa công khai (ghi vào server/keys/public-keys.json): ${JSON.stringify({ kid, x: jwk.x })}`);
 ```
 
@@ -1848,10 +1881,10 @@ OKP Ed25519 plan-check 43 43
 
 - [ ] **Step 3: Kiểm dòng khóa công khai in ra stderr**
 
-Dùng `{ …; } 2>&1`, không dùng `2>&1 >/dev/null`. Lý do: zsh bật `MULTIOS` theo mặc định, nên với cách viết thứ hai, stdout (khóa riêng) vẫn lọt vào pipe.
+stdout vẫn phải là pipe, nên khóa riêng đi vào `cat >/dev/null`; stderr (khóa công khai) đi ra ngoài. Không viết `2>&1 >/dev/null`: zsh bật `MULTIOS` theo mặc định, nên với cách viết đó stdout (khóa riêng) vẫn lọt vào pipe.
 
 ```bash
-cd server && { node scripts/gen-token-key.mjs plan-check >/dev/null; } 2>&1 | sed -E 's/"x":"[A-Za-z0-9_-]{43}"/"x":"<43 ký tự>"/'
+cd server && { node scripts/gen-token-key.mjs plan-check | cat >/dev/null; } 2>&1 | sed -E 's/"x":"[A-Za-z0-9_-]{43}"/"x":"<43 ký tự>"/'
 ```
 
 Expected:
@@ -1877,27 +1910,41 @@ Meeting Translator token key plan-check-b | PASSWORD | password:CONCEALED notesP
 - Dòng sau: Secure Note (`type` 2) của Bitwarden, `reprompt` 1 (hỏi lại master password khi mở).
 - Lệnh tạo item thật (`op item create`, `bw create item`) cần tài khoản, nên là bước của người ở Task 19.
 
-- [ ] **Step 5: Kiểm script từ chối tham số sai và từ chối in ra terminal**
+- [ ] **Step 5: Kiểm script từ chối tham số sai, terminal, file, và `kid` trùng**
 
 ```bash
 cd server && node scripts/gen-token-key.mjs test-1 >/dev/null; echo "exit=$?"; node scripts/gen-token-key.mjs plan-check --print-private >/dev/null; echo "exit=$?"
 script -q /dev/null node scripts/gen-token-key.mjs plan-check < /dev/null; echo "exit=$?"
+F=$(mktemp) && node scripts/gen-token-key.mjs plan-check > "$F"; echo "exit=$?"; wc -c < "$F" | tr -d ' '; rm -f "$F"
+K=$(mktemp) && printf '{"staging":{"active":{"kid":"stg-2026-10-1","x":"x"}}}' > "$K" && node scripts/gen-token-key.mjs stg-2026-10-1 --keys "$K" | wc -c | tr -d ' '; node scripts/gen-token-key.mjs stg-2026-10-2 --keys "$K" 2>/dev/null | wc -c | tr -d ' '; rm -f "$K"
 ```
 
 `script` (có sẵn trên macOS) tạo một terminal giả, nên stdout của script là terminal.
 
 Expected:
 ```
-Cần kid gồm chữ thường, số và '-', tối đa 32 ký tự, không bắt đầu bằng 'test-'. Ví dụ: stg-2026-10
+Cần kid gồm chữ thường, số và '-', tối đa 32 ký tự, không bắt đầu bằng 'test-'. Ví dụ: stg-2026-10-1
 exit=2
-Tham số thứ hai chỉ có thể là --vault op hoặc --vault bw.
-exit=2
-```
-```
-^Dstdout đang là terminal: khóa riêng không được in ra màn hình. Pipe sang wrangler, op, bw hoặc pbcopy.
+Tham số sau kid chỉ có thể là --vault op|bw và --keys <file>.
 exit=2
 ```
-Chữ `^D` ở đầu dòng cuối do `script` in khi stdin đóng.
+```
+^Dstdout phải là pipe (không phải terminal, không phải file): pipe sang wrangler, op, bw hoặc pbcopy.
+exit=2
+```
+Chữ `^D` ở đầu dòng do `script` in khi stdin đóng.
+```
+stdout phải là pipe (không phải terminal, không phải file): pipe sang wrangler, op, bw hoặc pbcopy.
+exit=2
+0
+```
+Chuyển hướng ra file: thoát mã 2 và file rỗng (0 byte).
+```
+kid stg-2026-10-1 đã có trong public-keys.json (staging.active). Dùng số thứ tự mới.
+0
+151
+```
+`stg-2026-10-1` đã có trong file khóa công khai nên bị từ chối (0 byte ra pipe); `stg-2026-10-2` là `kid` mới nên được tạo (151 byte JWK).
 
 - [ ] **Step 6: Tạo `server/scripts/jwk-public.mjs` và `server/scripts/verify-token.mjs`**
 
@@ -1992,6 +2039,9 @@ try {
 } catch {
   failWith("malformed");
 }
+if (typeof claims !== "object" || claims === null || Array.isArray(claims) || typeof claims.kid !== "string") {
+  failWith("malformed");
+}
 const found = Object.entries(keys).find(([, k]) => k.kid === claims.kid);
 if (!found) failWith(`unknown_kid ${claims.kid}`);
 const [role, k] = found;
@@ -2029,9 +2079,11 @@ console.log(JSON.stringify(claims));
 ```js
 #!/usr/bin/env node
 // In JWK khóa riêng của một khóa test trong vector (test-1, test-2). CHỈ dùng để thử scripts/jwk-public.mjs.
-import { readFileSync } from "node:fs";
+import { fstatSync, readFileSync } from "node:fs";
 import { webcrypto } from "node:crypto";
 
+// Như gen-token-key.mjs: chỉ ghi khóa riêng vào pipe, không ra terminal hay file.
+if (!fstatSync(1).isFIFO() && !fstatSync(1).isSocket()) process.exit(2);
 const vectors = JSON.parse(readFileSync(new URL("../vectors/token-v1.json", import.meta.url), "utf8"));
 const k = vectors.test_keys.find((t) => t.kid === process.argv[2]);
 if (!k) process.exit(2);
@@ -2077,6 +2129,24 @@ FAIL bad_signature
 FAIL bad_signature
 FAIL malformed
 FAIL unknown_kid test-9
+```
+
+Payload không phải object (`null`, số, mảng) hay thiếu `kid` thì in `FAIL malformed`, không ném `TypeError`:
+
+```bash
+cd server && for p in null 42 '[]' '{}'; do node -e 'const [h, , s] = require("./test/vectors/token-v1.json").tokens[0].token.split(".");process.stdout.write(h + "." + Buffer.from(process.argv[1]).toString("base64url") + "." + s)' "$p" | node scripts/verify-token.mjs test --keys test/fixtures/public-keys.test.json; echo "exit=$?"; done
+```
+
+Expected:
+```
+FAIL malformed
+exit=1
+FAIL malformed
+exit=1
+FAIL malformed
+exit=1
+FAIL malformed
+exit=1
 ```
 
 - [ ] **Step 10: Commit**
@@ -2573,7 +2643,7 @@ git commit -m "feat(server): PaymentProvider và PayOS (tạo link, kiểm webho
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { maskEmail } from "../src/email/provider";
+import { EmailProviderError, maskEmail } from "../src/email/provider";
 import { ResendEmailProvider } from "../src/email/resend";
 import { licenseEmail } from "../src/email/templates";
 
@@ -2609,6 +2679,14 @@ describe("Resend", () => {
     );
     const err = await p.send({ to: "buyer@mt.test", subject: "S", text: "T" }).catch((e: unknown) => e);
     expect(String(err)).toBe("EmailProviderError: Resend trả HTTP 403");
+    expect((err as EmailProviderError).permanent).toBe(true);
+  });
+
+  it("429 và 5xx là lỗi tạm, 4xx khác là lỗi vĩnh viễn", () => {
+    expect(new EmailProviderError("x", 429).permanent).toBe(false);
+    expect(new EmailProviderError("x", 503).permanent).toBe(false);
+    expect(new EmailProviderError("x").permanent).toBe(false);
+    expect(new EmailProviderError("x", 422).permanent).toBe(true);
   });
 });
 
@@ -2663,6 +2741,19 @@ export interface EmailProvider {
 
 export class EmailProviderError extends Error {
   override name = "EmailProviderError";
+
+  constructor(
+    message: string,
+    /** Mã HTTP của dịch vụ gửi thư; không có nếu lỗi mạng. */
+    readonly status?: number,
+  ) {
+    super(message);
+  }
+
+  /** Lỗi 4xx (trừ 429) là lỗi vĩnh viễn, ví dụ địa chỉ nhận bị từ chối: gửi lại cũng không được. */
+  get permanent(): boolean {
+    return this.status !== undefined && this.status >= 400 && this.status < 500 && this.status !== 429;
+  }
 }
 
 /** Che email khi ghi log (§6.5 của kế hoạch 00): giữ ký tự đầu và tên miền. */
@@ -2710,7 +2801,7 @@ export class ResendEmailProvider implements EmailProvider {
     });
     if (!res.ok) {
       // Không đưa body vào lỗi: body có thể lặp lại địa chỉ người nhận.
-      throw new EmailProviderError(`Resend trả HTTP ${res.status}`);
+      throw new EmailProviderError(`Resend trả HTTP ${res.status}`, res.status);
     }
   }
 }
@@ -2776,7 +2867,7 @@ cd server && pnpm exec vitest run test/email.test.ts
 Expected:
 ```
 Test Files  1 passed (1)
-Tests  4 passed (4)
+Tests  5 passed (5)
 ```
 
 - [ ] **Step 7: Commit**
@@ -2827,9 +2918,9 @@ describe("giới hạn tần suất", () => {
     expect(n?.n).toBe(2);
   });
 
-  it("20 lần thất bại: chặn IP tới hết giờ, ghi log và tạo đúng một cảnh báo", async () => {
+  it("60 lần thất bại: chặn IP tới hết giờ, ghi log và tạo đúng một cảnh báo", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    for (let i = 0; i < 19; i++) await noteFailure(env, "203.0.113.9", T, "activate");
+    for (let i = 0; i < 59; i++) await noteFailure(env, "203.0.113.9", T, "activate");
     expect(await failureBlock(env, "203.0.113.9", T + 10)).toBe(0);
     for (let i = 0; i < 6; i++) await noteFailure(env, "203.0.113.9", T, "activate");
     expect(await failureBlock(env, "203.0.113.9", T + 10)).toBe(3590);
@@ -2839,7 +2930,7 @@ describe("giới hạn tần suất", () => {
     expect(JSON.parse(warn.mock.calls[0]![0] as string)).toEqual({
       event: "many_failures",
       what: "activate",
-      count: 20,
+      count: 60,
       window_seconds: 3600,
     });
     const alerts = await env.DB.prepare("SELECT kind, count FROM ops_alerts").all();
@@ -2939,9 +3030,10 @@ describe("cảnh báo cho người vận hành", () => {
 cd server && pnpm exec vitest run test/ratelimit.test.ts test/alerts.test.ts
 ```
 
-Expected: FAIL:
+Expected: FAIL, một dòng `Cannot find module` cho mỗi file test:
 ```
 Error: Cannot find module '../src/alerts' imported from <repo>/server/test/alerts.test.ts
+Error: Cannot find module '../src/ratelimit' imported from <repo>/server/test/ratelimit.test.ts
 ```
 ```
 Test Files  2 failed (2)
@@ -2961,7 +3053,7 @@ import type { EmailProvider } from "./email/provider";
 export type AlertKind = "many_failures" | "webhook_bad_signature" | "email_failed" | "license_locked";
 
 const ALERT_TEXT: Record<AlertKind, string> = {
-  many_failures: "Một IP có từ 20 lần kiểm key hoặc activation thất bại trong 1 giờ (có thể đang dò key)",
+  many_failures: "Một IP có từ 60 lần kiểm key hoặc activation thất bại trong 1 giờ (có thể đang dò key)",
   webhook_bad_signature: "Webhook thanh toán sai chữ ký (có thể bị giả mạo, hoặc checksum key sai)",
   email_failed: "Gửi email chứa license key thất bại (cron sẽ gửi lại)",
   license_locked: "Key bị khóa tạm vì gỡ rồi kích hoạt máy khác quá ngưỡng",
@@ -3048,8 +3140,9 @@ export const LIMITS = {
   recover_ip: 10,
   order_poll: 600,
   // Lần thất bại (key sai định dạng hay không tồn tại, activation lạ) của một IP, tính chung mọi endpoint.
-  // Chạm ngưỡng thì mọi request có key từ IP đó bị 429 tới hết giờ, và có cảnh báo cho người vận hành.
-  failure_ip: 20,
+  // Chạm ngưỡng thì IP đó bị chặn tới hết giờ, trừ request có key hợp lệ kèm activation đang hoạt động
+  // và khớp (nhiều người dùng chung một IP qua CGNAT vẫn validate được), và có cảnh báo cho người vận hành.
+  failure_ip: 60,
 } as const;
 export type LimitName = keyof typeof LIMITS;
 export const WINDOW_SECONDS = 3600;
@@ -3289,9 +3382,15 @@ export interface SentEmail {
 
 export class FakeResend {
   readonly sent: SentEmail[] = [];
+  /** Resend trả 500 (lỗi tạm). */
   down = false;
+  /** Resend trả mã này, ví dụ 422 (lỗi vĩnh viễn) hay 429 (lỗi tạm). */
+  failStatus: number | null = null;
+  attempts = 0;
 
   readonly fetch = async (_url: string, init: RequestInit = {}): Promise<Response> => {
+    this.attempts++;
+    if (this.failStatus !== null) return json({ statusCode: this.failStatus, message: "lỗi giả", name: "error" }, this.failStatus);
     if (this.down) return json({ statusCode: 500, message: "down", name: "internal_server_error" }, 500);
     const body = JSON.parse(init.body as string) as { to: string[]; subject: string; text: string };
     const headers = init.headers as Record<string, string>;
@@ -3566,7 +3665,7 @@ export async function audit(db: D1Database, e: AuditEntry): Promise<void> {
 ```ts
 // Phụ thuộc bên ngoài của route: đồng hồ, cổng thanh toán, email, khóa ký. Test thay bằng bản giả.
 import { raiseAlert } from "./alerts";
-import { type EmailProvider, maskEmail } from "./email/provider";
+import { type EmailProvider, EmailProviderError, maskEmail } from "./email/provider";
 import { ResendEmailProvider } from "./email/resend";
 import { type LicenseEmailEntry, type LicenseEmailKind, licenseEmail } from "./email/templates";
 import type { ApiEnv } from "./env";
@@ -3615,9 +3714,15 @@ export function realDeps(env: ApiEnv): Deps {
   };
 }
 
+export interface MailResult {
+  ok: boolean;
+  /** Lỗi vĩnh viễn (4xx khác 429): không gửi lại. */
+  permanent: boolean;
+}
+
 /**
- * Gửi email chứa key. Lỗi thì ghi log và tạo cảnh báo email_failed; key vẫn lấy được qua GET /v1/orders,
- * recover hay admin, và cron gửi lại thư mua hàng chưa gửi được (orders.ts, retryUnsentEmails).
+ * Gửi email chứa key. Lỗi thì ghi log và (nếu `alert`) tạo cảnh báo email_failed; key vẫn lấy được qua
+ * GET /v1/orders, recover hay admin, và cron gửi lại thư mua hàng gặp lỗi tạm (orders.ts, retryUnsentEmails).
  */
 export async function sendLicenseMail(
   db: D1Database,
@@ -3625,16 +3730,18 @@ export async function sendLicenseMail(
   to: string,
   kind: LicenseEmailKind,
   entries: LicenseEmailEntry[],
-  idempotencyKey?: string,
-): Promise<boolean> {
+  opts: { idempotencyKey?: string; alert?: boolean } = {},
+): Promise<MailResult> {
   const { subject, text } = licenseEmail(kind, entries);
   try {
-    await deps.email.send(idempotencyKey ? { to, subject, text, idempotencyKey } : { to, subject, text });
-    return true;
+    const key = opts.idempotencyKey;
+    await deps.email.send(key ? { to, subject, text, idempotencyKey: key } : { to, subject, text });
+    return { ok: true, permanent: false };
   } catch (err) {
-    console.error(JSON.stringify({ event: "email_failed", kind, to: maskEmail(to), error: String(err) }));
-    await raiseAlert(db, "email_failed", deps.now());
-    return false;
+    const permanent = err instanceof EmailProviderError && err.permanent;
+    console.error(JSON.stringify({ event: "email_failed", kind, to: maskEmail(to), permanent, error: String(err) }));
+    if (opts.alert ?? true) await raiseAlert(db, "email_failed", deps.now());
+    return { ok: false, permanent };
   }
 }
 ```
@@ -3695,7 +3802,7 @@ cd server && pnpm exec vitest run && pnpm typecheck
 Expected:
 ```
 Test Files  10 passed (10)
-Tests  72 passed (72)
+Tests  73 passed (73)
 ```
 
 - [ ] **Step 11: Commit**
@@ -4447,6 +4554,15 @@ describe("gia hạn tính từ max(hôm nay, ngày hết hạn)", () => {
 });
 
 describe("GET /v1/orders/{order_code}", () => {
+  it("scheme Bearer không phân biệt hoa thường", async () => {
+    const w = makeWorld();
+    const { orderCode, token } = await checkout(w);
+    for (const scheme of ["Bearer", "bearer", "BEARER"]) {
+      const res = await w.call("GET", `/v1/orders/${orderCode}`, undefined, { authorization: `${scheme} ${token}` });
+      expect(res).toMatchObject({ status: 200, body: { order_code: orderCode, status: "pending" } });
+    }
+  });
+
   it("sai token, thiếu token, token trong query hay orderCode lạ đều trả 404 như nhau", async () => {
     const w = makeWorld();
     const { orderCode, token } = await checkout(w);
@@ -4473,7 +4589,7 @@ cd server && pnpm exec vitest run test/orders.test.ts
 Expected: FAIL. Test duy nhất qua là `cổng lạ ở /v1/webhooks/{provider} thì 404`, vì khi chưa có route thì mọi đường dẫn đều trả 404.
 ```
 Test Files  1 failed (1)
-Tests  17 failed | 1 passed (18)
+Tests  18 failed | 1 passed (19)
 ```
 ```
 AssertionError: expected { error: 'not_found' } to deeply equal { order_code: 1, …(5) }
@@ -4577,7 +4693,16 @@ export async function grantOrder(
   return { licenseId, licenseKey: lic.license_key, expiresAt: lic.expires_at, renewal };
 }
 
-/** Gửi email sau khi cấp; idempotency key theo đơn để Resend không gửi hai lần (kể cả khi cron gửi lại). */
+/** Giãn thời gian giữa các lần gửi lại sau lỗi tạm: 5 phút, 15 phút, 1 giờ, rồi mỗi 6 giờ (trong 24 giờ). */
+export function emailRetryDelay(attempts: number): number {
+  return [300, 900, 3600][attempts - 1] ?? 21600;
+}
+
+/**
+ * Gửi email sau khi cấp; idempotency key theo đơn để Resend không gửi hai lần (kể cả khi cron gửi lại).
+ * Lỗi tạm (5xx, 429, mạng) thì hẹn lần gửi lại; lỗi vĩnh viễn (4xx khác 429) thì thôi.
+ * Cảnh báo email_failed chỉ tạo ở lần lỗi đầu của mỗi đơn.
+ */
 export async function mailGranted(
   db: D1Database,
   deps: Pick<Deps, "now" | "email">,
@@ -4586,17 +4711,35 @@ export async function mailGranted(
   g: Granted,
 ) {
   if (!order.email) return;
-  const ok = await sendLicenseMail(
+  const prev = await db
+    .prepare("SELECT email_attempts FROM orders WHERE order_code = ?")
+    .bind(order.order_code)
+    .first<{ email_attempts: number }>();
+  const attempts = (prev?.email_attempts ?? 0) + 1;
+  const res = await sendLicenseMail(
     db,
     deps,
     order.email,
     g.renewal ? "renewal" : "purchase",
     [{ licenseKey: g.licenseKey, expiresAt: g.expiresAt }],
-    `${envName}-order-${order.order_code}`,
+    { idempotencyKey: `${envName}-order-${order.order_code}`, alert: attempts === 1 },
   );
-  if (ok) {
-    await db.prepare("UPDATE orders SET email_sent_at = ? WHERE order_code = ?").bind(deps.now(), order.order_code).run();
+  const now = deps.now();
+  let update: D1PreparedStatement;
+  if (res.ok) {
+    update = db
+      .prepare("UPDATE orders SET email_attempts = ?, email_sent_at = ?, email_retry_at = NULL WHERE order_code = ?")
+      .bind(attempts, now, order.order_code);
+  } else if (res.permanent) {
+    update = db
+      .prepare("UPDATE orders SET email_attempts = ?, email_gave_up_at = ?, email_retry_at = NULL WHERE order_code = ?")
+      .bind(attempts, now, order.order_code);
+  } else {
+    update = db
+      .prepare("UPDATE orders SET email_attempts = ?, email_retry_at = ? WHERE order_code = ?")
+      .bind(attempts, now + emailRetryDelay(attempts), order.order_code);
   }
+  await update.run();
 }
 
 export type FulfilResult = "granted" | "already_paid" | "not_paid" | "unknown_order";
@@ -4646,12 +4789,16 @@ export async function fulfilOrder(
   return "not_paid";
 }
 
-/** Cron gửi lại email mua hàng chưa gửi được, trong 24 giờ sau khi trả tiền, tối đa 20 đơn mỗi lần. */
+/** Cron gửi lại email mua hàng gặp lỗi tạm, tới hạn hẹn, trong 24 giờ sau khi trả tiền, tối đa 20 đơn mỗi lần. */
 export async function retryUnsentEmails(env: { DB: D1Database; ENVIRONMENT: string }, deps: Deps): Promise<number> {
   const { results } = await env.DB.prepare(
     `SELECT o.order_code, o.email, o.renew_license_id, l.id AS license_id, l.license_key, l.expires_at
      FROM orders o JOIN licenses l ON l.id = o.license_id
-     WHERE o.status = 'paid' AND o.email IS NOT NULL AND o.email_sent_at IS NULL AND o.paid_at >= ? - 86400
+     WHERE o.status = 'paid' AND o.email IS NOT NULL AND o.email_sent_at IS NULL AND o.email_gave_up_at IS NULL
+       AND o.paid_at >= ?1 - 86400
+       -- Đã hẹn gửi lại và tới hạn; hoặc chưa thử lần nào sau 5 phút (Worker dừng giữa lúc cấp và gửi).
+       -- Không đụng đơn vừa cấp mà thư đang được gửi, để không gửi hai lần.
+       AND ((o.email_retry_at IS NOT NULL AND o.email_retry_at <= ?1) OR (o.email_attempts = 0 AND o.paid_at <= ?1 - 300))
      ORDER BY o.paid_at LIMIT 20`,
   )
     .bind(deps.now())
@@ -4707,7 +4854,8 @@ export function registerOrders(app: Hono<AppEnv>) {
   app.get("/v1/orders/:orderCode", async (c) => {
     const deps = c.get("deps");
     const orderCode = Number(c.req.param("orderCode"));
-    const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(c.req.header("authorization") ?? "")?.[1];
+    // Scheme "Bearer" không phân biệt hoa thường (RFC 9110, mục 11.1).
+    const token = /^bearer +([A-Za-z0-9_-]{43})$/i.exec(c.req.header("authorization") ?? "")?.[1];
     if (!Number.isSafeInteger(orderCode) || orderCode <= 0 || !token) return fail(c, 404, "order_not_found");
     const rl = await hit(c.env, "order_poll", `${clientIp(c)}|${orderCode}`, deps.now());
     if (!rl.allowed) return tooMany(c, rl.retryAfter);
@@ -4794,7 +4942,7 @@ cd server && pnpm exec vitest run test/orders.test.ts && pnpm typecheck
 Expected:
 ```
 Test Files  1 passed (1)
-Tests  18 passed (18)
+Tests  19 passed (19)
 ```
 
 - [ ] **Step 7: Commit**
@@ -4922,7 +5070,7 @@ describe("activate", () => {
     expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
   });
 
-  it("gỡ rồi kích hoạt lại chính máy cũ nhiều lần không bị khóa, và không tính là chuyển máy", async () => {
+  it("gỡ rồi kích hoạt lại cùng một máy nhiều lần: không bị khóa", async () => {
     const { w, activate, deactivate } = await setup();
     for (let i = 1; i <= 6; i++) {
       w.clock.now = T0 + i * 3600;
@@ -4930,20 +5078,52 @@ describe("activate", () => {
       expect(r.status).toBe(200);
       await deactivate(r.body.activation_id as string);
     }
-    // Máy 1 bị gỡ 6 lần, nhưng chỉ là một máy: kích hoạt máy mới vẫn được.
-    expect((await activate(2)).status).toBe(200);
-    const lic = await env.DB.prepare("SELECT locked_at FROM licenses").first();
-    expect(lic).toEqual({ locked_at: null });
+    w.clock.now = T0 + 7 * 3600;
+    expect((await activate(1)).status).toBe(200);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: null });
+    // Đúng chữ §10.2: hơn 3 lần gỡ rồi kích hoạt một máy khác thì bị khóa.
+    expect((await activate(2)).status).toBe(423);
   });
 
-  it("key đang bị khóa tạm: máy mới bị 423, máy từng kích hoạt vẫn kích hoạt lại được", async () => {
+  it("xoay vòng 2 suất giữa 5 máy: bị khóa sau vài lượt, rồi mọi máy không đang kích hoạt đều bị 423", async () => {
     const { w, activate, deactivate } = await setup();
-    const r = await activate(1);
-    await deactivate(r.body.activation_id as string);
-    await env.DB.prepare("UPDATE licenses SET locked_at = ?").bind(T0).run();
-    expect(await activate(2)).toMatchObject({ status: 423, body: { error: "license_locked" } });
-    w.clock.now = T0 + 60;
+    const active: { n: number; id: string }[] = [];
+    for (const n of [1, 2]) active.push({ n, id: (await activate(n)).body.activation_id as string });
+    const order = [3, 4, 5, 1, 2, 3, 4, 5];
+    let lockedAt = -1;
+    for (let i = 0; i < order.length; i++) {
+      w.clock.now = T0 + (i + 1) * 3600;
+      const out = active.shift()!;
+      await deactivate(out.id);
+      const r = await activate(order[i]!);
+      if (r.status === 423) {
+        lockedAt = i;
+        break;
+      }
+      expect(r.status).toBe(200);
+      active.push({ n: order[i]!, id: r.body.activation_id as string });
+    }
+    // Lượt 4 (máy 1 quay lại): đã gỡ máy 1, 2, 3, 4; trừ máy 1 còn 3 lần, chưa quá 3.
+    // Lượt 5 (máy 2 quay lại): đã gỡ máy 1, 2, 3, 4, 5; trừ máy 2 còn 4 lần, nên khóa.
+    expect(lockedAt).toBe(4);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 5 * 3600 });
+    // Máy 1 đang kích hoạt vẫn dùng được; các máy khác (từng dùng hay mới) đều bị 423.
     expect((await activate(1)).status).toBe(200);
+    for (const n of [2, 3, 5, 9]) expect((await activate(n)).status).toBe(423);
+  });
+
+  it("key đang bị khóa tạm: máy mới và máy từng kích hoạt đều bị 423; máy đang kích hoạt vẫn dùng được", async () => {
+    const { w, licenseKey, activate, deactivate } = await setup();
+    const a1 = await activate(1);
+    const a2 = await activate(2);
+    await deactivate(a2.body.activation_id as string);
+    await env.DB.prepare("UPDATE licenses SET locked_at = ?").bind(T0).run();
+    w.clock.now = T0 + 60;
+    expect(await activate(3)).toMatchObject({ status: 423, body: { error: "license_locked" } });
+    expect(await activate(2)).toMatchObject({ status: 423, body: { error: "license_locked" } });
+    expect((await activate(1)).status).toBe(200);
+    const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a1.body.activation_id });
+    expect(v.status).toBe(200);
   });
 
   it("cùng một máy mới gửi hai activate cùng lúc: cả hai nhận cùng activation, không lỗi 500", async () => {
@@ -5071,29 +5251,47 @@ describe("validate", () => {
     expect(blocked.status).toBe(429);
   });
 
-  it("dò key: 20 lần thất bại từ một IP thì IP đó bị 429, key đúng cũng vậy, IP khác không sao", async () => {
+  it("dò key: 60 lần thất bại từ một IP thì IP đó bị chặn, và mọi key sai hay key thật kèm activation sai đều 429", async () => {
     const { w, activate, licenseKey } = await setup();
     const a = await activate(1);
     const ip = { "cf-connecting-ip": "203.0.113.66" };
-    const guesses = [
-      ...Array.from({ length: 8 }, (_, i) => `SAI-${i}`),
-      ...Array.from({ length: 8 }, () => UNKNOWN_KEY),
-    ];
-    for (const key of guesses) {
-      const res = await w.call("POST", "/v1/licenses/validate", { key, activation_id: a.body.activation_id }, ip);
-      expect(res.status).toBeGreaterThanOrEqual(400);
-      expect(res.status).not.toBe(429);
-    }
+    const call = (key: string, activationId: unknown) =>
+      w.call("POST", "/v1/licenses/validate", { key, activation_id: activationId }, ip);
+    for (let i = 0; i < 20; i++) expect((await call(`SAI-${i}`, a.body.activation_id)).status).toBe(400);
+    for (let i = 0; i < 20; i++) expect((await call(UNKNOWN_KEY, a.body.activation_id)).status).toBe(404);
     // Activation lạ của key đúng cũng tính là thất bại.
-    for (let i = 0; i < 4; i++) {
-      const res = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: crypto.randomUUID() }, ip);
-      expect(res).toMatchObject({ status: 404, body: { error: "activation_not_found" } });
+    for (let i = 0; i < 20; i++) {
+      expect(await call(licenseKey, crypto.randomUUID())).toMatchObject({ status: 404, body: { error: "activation_not_found" } });
     }
-    const good = { key: licenseKey, activation_id: a.body.activation_id };
-    expect((await w.call("POST", "/v1/licenses/validate", good, ip)).status).toBe(429);
-    expect((await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await device(1), device_label: "M" }, ip)).status).toBe(429);
-    expect((await w.call("POST", "/v1/licenses/validate", good)).status).toBe(200);
+    // IP đã bị chặn: key giả, key sai định dạng, key thật kèm activation sai, và activate đều 429 như nhau.
+    for (const res of [
+      await call(UNKNOWN_KEY, a.body.activation_id),
+      await call("SAI", a.body.activation_id),
+      await call(licenseKey, crypto.randomUUID()),
+      await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await device(2), device_label: "M" }, ip),
+      await w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: crypto.randomUUID() }, ip),
+    ]) {
+      expect(res).toMatchObject({ status: 429, body: { error: "rate_limited" } });
+    }
     expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "many_failures" });
+  });
+
+  it("CGNAT: IP đang bị chặn vẫn validate và deactivate được với key hợp lệ kèm activation đang hoạt động", async () => {
+    const { w, activate, licenseKey } = await setup();
+    const a = await activate(1);
+    const b = await activate(2);
+    const ip = { "cf-connecting-ip": "203.0.113.77" };
+    for (let i = 0; i < 60; i++) await w.call("POST", "/v1/licenses/validate", { key: `SAI-${i}`, activation_id: a.body.activation_id }, ip);
+    expect((await w.call("POST", "/v1/licenses/validate", { key: "SAI", activation_id: a.body.activation_id }, ip)).status).toBe(429);
+    const ok = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a.body.activation_id }, ip);
+    expect(ok.status).toBe(200);
+    expect(ok.body.token).toMatch(/^v1\./);
+    const off = await w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: b.body.activation_id }, ip);
+    expect(off).toMatchObject({ status: 200, body: { ok: true } });
+    // Activation vừa gỡ không còn hoạt động: từ IP đang bị chặn thì 429.
+    expect((await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: b.body.activation_id }, ip)).status).toBe(429);
+    // IP khác không bị ảnh hưởng.
+    expect((await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a.body.activation_id })).status).toBe(200);
   });
 });
 
@@ -5186,7 +5384,7 @@ cd server && pnpm exec vitest run test/licenses.test.ts test/recover.test.ts
 Expected: FAIL. Test duy nhất qua là `key đã hết hạn không được gửi`, vì khi chưa có route thì không email nào được gửi.
 ```
 Test Files  2 failed (2)
-Tests  24 failed | 1 passed (25)
+Tests  26 failed | 1 passed (27)
 ```
 ```
 AssertionError: expected 404 to be 200 // Object.is equality
@@ -5209,7 +5407,7 @@ import { failureBlock, hit, noteFailure } from "./ratelimit";
 import { REFRESH_WINDOW_SECONDS, signToken } from "./token";
 
 export const MAX_DEVICES = 2;
-/** Trong 30 ngày có hơn 3 máy bị gỡ (kể cả gỡ từ xa) rồi kích hoạt một máy mới thì khóa tạm key (§10.2). */
+/** Trong 30 ngày có hơn 3 lần gỡ (kể cả gỡ từ xa) rồi kích hoạt máy khác thì khóa tạm key (§10.2). */
 export const DEACTIVATION_WINDOW_SECONDS = 30 * 86400;
 export const MAX_DEACTIVATIONS_IN_WINDOW = 3;
 
@@ -5276,6 +5474,13 @@ async function activeActivations(db: D1Database, licenseId: string): Promise<Act
   return results;
 }
 
+async function activeById(db: D1Database, activationId: string, licenseId: string) {
+  return db
+    .prepare("SELECT id, device_id_hash FROM activations WHERE id = ? AND license_id = ? AND deactivated_at IS NULL")
+    .bind(activationId, licenseId)
+    .first<{ id: string; device_id_hash: string }>();
+}
+
 async function activeFor(db: D1Database, licenseId: string, deviceIdHash: string) {
   return db
     .prepare("SELECT id, device_id_hash FROM activations WHERE license_id = ? AND device_id_hash = ? AND deactivated_at IS NULL")
@@ -5325,36 +5530,32 @@ export function registerLicenses(app: Hono<AppEnv>) {
       return c.json(await issueToken(deps, lic, existing));
     }
 
-    // Máy từng kích hoạt key này (rồi bị gỡ) không phải "máy khác": không kiểm khóa tạm (QĐ10).
-    const knownDevice = await db
-      .prepare("SELECT 1 AS x FROM activations WHERE license_id = ? AND device_id_hash = ? LIMIT 1")
-      .bind(lic.id, deviceIdHash)
-      .first();
-    if (!knownDevice) {
-      if (lic.locked_at !== null) return fail(c, 423, "license_locked");
-      const since = Math.max(now - DEACTIVATION_WINDOW_SECONDS, lic.lock_cleared_at ?? 0);
-      const recent = await db
-        .prepare(
-          `SELECT COUNT(DISTINCT device_id_hash) AS n FROM activations
-           WHERE license_id = ? AND deactivated_by = 'user' AND deactivated_at > ?`,
-        )
-        .bind(lic.id, since)
-        .first<{ n: number }>();
-      if ((recent?.n ?? 0) > MAX_DEACTIVATIONS_IN_WINDOW) {
-        await db.batch([
-          db.prepare("UPDATE licenses SET locked_at = ? WHERE id = ?").bind(now, lic.id),
-          auditStatement(db, {
-            at: now,
-            actor: "api",
-            action: "license_locked",
-            licenseId: lic.id,
-            detail: { deactivated_devices: recent?.n },
-          }),
-        ]);
-        console.warn(JSON.stringify({ event: "license_locked", license_id: lic.id }));
-        await raiseAlert(db, "license_locked", now);
-        return fail(c, 423, "license_locked");
-      }
+    // Mọi máy không đang kích hoạt, kể cả máy từng dùng key này, đều qua kiểm khóa tạm (QĐ10).
+    if (lic.locked_at !== null) return fail(c, 423, "license_locked");
+    const since = Math.max(now - DEACTIVATION_WINDOW_SECONDS, lic.lock_cleared_at ?? 0);
+    // Số lần người dùng gỡ trong 30 ngày, trừ các lần gỡ chính máy đang kích hoạt:
+    // gỡ rồi kích hoạt lại cùng một máy không bị khóa, còn xoay vòng giữa nhiều máy thì bị.
+    const recent = await db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM activations
+         WHERE license_id = ? AND deactivated_by = 'user' AND deactivated_at > ? AND device_id_hash <> ?`,
+      )
+      .bind(lic.id, since, deviceIdHash)
+      .first<{ n: number }>();
+    if ((recent?.n ?? 0) > MAX_DEACTIVATIONS_IN_WINDOW) {
+      await db.batch([
+        db.prepare("UPDATE licenses SET locked_at = ? WHERE id = ?").bind(now, lic.id),
+        auditStatement(db, {
+          at: now,
+          actor: "api",
+          action: "license_locked",
+          licenseId: lic.id,
+          detail: { deactivations: recent?.n },
+        }),
+      ]);
+      console.warn(JSON.stringify({ event: "license_locked", license_id: lic.id }));
+      await raiseAlert(db, "license_locked", now);
+      return fail(c, 423, "license_locked");
     }
 
     const activationId = crypto.randomUUID();
@@ -5390,12 +5591,16 @@ export function registerLicenses(app: Hono<AppEnv>) {
     const db = c.env.DB;
     const now = deps.now();
     const ip = clientIp(c);
-    const stop = await blocked(c, now);
-    if (stop) return stop;
+    const blockedFor = await failureBlock(c.env, ip, now);
     const body = await readJson(c);
     const activationId = parseUuid(body?.activation_id);
+    const found: KeyLookup = body ? await findLicense(db, body.key) : { ok: false };
+    const lic = found.ok ? found.lic : null;
+    const act = lic && activationId ? await activeById(db, activationId, lic.id) : null;
+    // IP đang bị chặn vì thất bại nhiều (QĐ7): chỉ cho qua key hợp lệ kèm activation đang hoạt động và khớp.
+    // Mọi request khác trả 429, kể cả key thật mà activation sai, để kẻ dò không phân biệt được key thật với key giả.
+    if (blockedFor > 0 && !act) return tooMany(c, blockedFor);
     if (!body || !activationId) return fail(c, 400, "invalid_request");
-    const found = await findLicense(db, body.key);
     if (!found.ok) {
       await noteFailure(c.env, ip, now, "validate");
       return fail(c, 400, "invalid_request", { field: "key" });
@@ -5403,15 +5608,10 @@ export function registerLicenses(app: Hono<AppEnv>) {
     // Đếm theo key đã chuẩn hóa, nên đổi 0↔O hay 1↔I/L không tạo được bộ đếm mới.
     const rl = await hit(c.env, "validate_key", found.key, now);
     if (!rl.allowed) return tooMany(c, rl.retryAfter);
-    const lic = found.lic;
     if (!lic) {
       await noteFailure(c.env, ip, now, "validate");
       return fail(c, 404, "invalid_key");
     }
-    const act = await db
-      .prepare("SELECT id, device_id_hash FROM activations WHERE id = ? AND license_id = ? AND deactivated_at IS NULL")
-      .bind(activationId, lic.id)
-      .first<{ id: string; device_id_hash: string }>();
     // Máy bị gỡ từ xa về Free ở lần validate kế tiếp (§6.8).
     if (!act) {
       await noteFailure(c.env, ip, now, "validate");
@@ -5430,24 +5630,20 @@ export function registerLicenses(app: Hono<AppEnv>) {
     const ip = clientIp(c);
     const rl = await hit(c.env, "deactivate_ip", ip, now);
     if (!rl.allowed) return tooMany(c, rl.retryAfter);
-    const stop = await blocked(c, now);
-    if (stop) return stop;
+    const blockedFor = await failureBlock(c.env, ip, now);
     const body = await readJson(c);
     const activationId = parseUuid(body?.activation_id);
+    const found: KeyLookup = body ? await findLicense(db, body.key) : { ok: false };
+    const lic = found.ok ? found.lic : null;
+    const act = lic && activationId ? await activeById(db, activationId, lic.id) : null;
+    // Như validate: IP đang bị chặn chỉ gỡ được activation đang hoạt động của đúng key đó.
+    if (blockedFor > 0 && !act) return tooMany(c, blockedFor);
     if (!body || !activationId) return fail(c, 400, "invalid_request");
-    const found = await findLicense(db, body.key);
-    if (!found.ok || !found.lic) {
+    if (!found.ok || !lic) {
       await noteFailure(c.env, ip, now, "deactivate");
       return found.ok ? fail(c, 404, "invalid_key") : fail(c, 400, "invalid_request", { field: "key" });
     }
-    const lic = found.lic;
-    const res = await db
-      .prepare(
-        "UPDATE activations SET deactivated_at = ?, deactivated_by = 'user' WHERE id = ? AND license_id = ? AND deactivated_at IS NULL",
-      )
-      .bind(now, activationId, lic.id)
-      .run();
-    if (res.meta.changes !== 1) {
+    if (!act) {
       const known = await db
         .prepare("SELECT 1 AS x FROM activations WHERE id = ? AND license_id = ?")
         .bind(activationId, lic.id)
@@ -5456,7 +5652,12 @@ export function registerLicenses(app: Hono<AppEnv>) {
       await noteFailure(c.env, ip, now, "deactivate");
       return fail(c, 404, "activation_not_found");
     }
-    await audit(db, { at: now, actor: "api", action: "deactivated", licenseId: lic.id, detail: { activation_id: activationId } });
+    await db.batch([
+      db
+        .prepare("UPDATE activations SET deactivated_at = ?, deactivated_by = 'user' WHERE id = ? AND deactivated_at IS NULL")
+        .bind(now, act.id),
+      auditStatement(db, { at: now, actor: "api", action: "deactivated", licenseId: lic.id, detail: { activation_id: act.id } }),
+    ]);
     return c.json({ ok: true });
   });
 
@@ -5542,7 +5743,7 @@ cd server && pnpm exec vitest run test/licenses.test.ts test/recover.test.ts && 
 Expected:
 ```
 Test Files  2 passed (2)
-Tests  25 passed (25)
+Tests  27 passed (27)
 ```
 
 - [ ] **Step 7: Commit**
@@ -5689,23 +5890,74 @@ describe("đối soát mỗi 5 phút", () => {
     expect((await reconcile(w.env, w.deps)).granted).toBe(1);
   });
 
-  it("email mua hàng gửi lỗi: cron gửi lại với cùng idempotency key, rồi thôi", async () => {
+  it("email lỗi tạm (5xx): gửi lại sau 5 phút, 15 phút, rồi 1 giờ; cùng idempotency key; cảnh báo một lần", async () => {
     const w = makeWorld();
     const orderCode = await newOrder(w);
     w.payos.pay(orderCode);
     w.resend.down = true;
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
-    expect(w.resend.sent).toHaveLength(0);
-    w.clock.now = T0 + 300;
-    expect((await reconcile(w.env, w.deps)).emails_retried).toBe(1);
-    expect(w.resend.sent).toHaveLength(0);
+    expect(w.resend.attempts).toBe(1);
+    const retried = async (now: number) => {
+      w.clock.now = now;
+      return (await reconcile(w.env, w.deps)).emails_retried;
+    };
+    expect(await retried(T0 + 299)).toBe(0);
+    expect(await retried(T0 + 300)).toBe(1); // lần 2, lỗi: hẹn +15 phút
+    expect(await retried(T0 + 300 + 899)).toBe(0);
+    expect(await retried(T0 + 300 + 900)).toBe(1); // lần 3, lỗi: hẹn +1 giờ
+    expect(await retried(T0 + 1200 + 3599)).toBe(0);
     w.resend.down = false;
-    w.clock.now = T0 + 600;
-    expect((await reconcile(w.env, w.deps)).emails_retried).toBe(1);
+    expect(await retried(T0 + 1200 + 3600)).toBe(1); // lần 4, thành công
+    expect(w.resend.attempts).toBe(4);
     expect(w.resend.sent).toHaveLength(1);
     expect(w.resend.sent[0]!.idempotencyKey).toBe(`dev-order-${orderCode}`);
-    w.clock.now = T0 + 900;
+    expect(await retried(T0 + 6 * 3600)).toBe(0);
+    const alert = await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'email_failed'").first();
+    expect(alert).toEqual({ n: 1 });
+  });
+
+  it("sau lần thứ 3 thì gửi lại mỗi 6 giờ", async () => {
+    const w = makeWorld();
+    const orderCode = await newOrder(w);
+    w.payos.pay(orderCode);
+    w.resend.failStatus = 429;
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    for (const t of [300, 1200, 4800]) {
+      w.clock.now = T0 + t;
+      await reconcile(w.env, w.deps);
+    }
+    const row = await env.DB.prepare("SELECT email_attempts, email_retry_at FROM orders").first();
+    expect(row).toEqual({ email_attempts: 4, email_retry_at: T0 + 4800 + 6 * 3600 });
+  });
+
+  it("email lỗi vĩnh viễn (4xx khác 429): thôi gửi lại, cảnh báo một lần", async () => {
+    const w = makeWorld();
+    const orderCode = await newOrder(w);
+    w.payos.pay(orderCode);
+    w.resend.failStatus = 422;
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    const row = await env.DB.prepare("SELECT email_attempts, email_gave_up_at, email_retry_at FROM orders").first();
+    expect(row).toEqual({ email_attempts: 1, email_gave_up_at: T0, email_retry_at: null });
+    w.resend.failStatus = null;
+    w.clock.now = T0 + 3600;
     expect((await reconcile(w.env, w.deps)).emails_retried).toBe(0);
+    expect(w.resend.attempts).toBe(1);
+    const alert = await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'email_failed'").first();
+    expect(alert).toEqual({ n: 1 });
+  });
+
+  it("đơn đã cấp mà chưa thử gửi thư lần nào (Worker dừng giữa chừng): cron gửi sau 5 phút", async () => {
+    const w = makeWorld();
+    const orderCode = await newOrder(w);
+    w.payos.pay(orderCode);
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    await env.DB.prepare("UPDATE orders SET email_sent_at = NULL, email_attempts = 0").run();
+    w.resend.sent.length = 0;
+    w.clock.now = T0 + 299;
+    expect((await reconcile(w.env, w.deps)).emails_retried).toBe(0);
+    w.clock.now = T0 + 300;
+    expect((await reconcile(w.env, w.deps)).emails_retried).toBe(1);
+    expect(w.resend.sent).toHaveLength(1);
   });
 
   it("email chưa gửi được quá 24 giờ thì thôi gửi lại", async () => {
@@ -5851,7 +6103,7 @@ cd server && pnpm exec vitest run test/reconcile.test.ts && pnpm typecheck
 Expected:
 ```
 Test Files  1 passed (1)
-Tests  12 passed (12)
+Tests  15 passed (15)
 ```
 
 - [ ] **Step 6: Commit**
@@ -6415,7 +6667,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       .first<{ license_key: string; email: string | null; expires_at: number }>();
     if (!lic) return fail(c, 404, "not_found");
     if (!lic.email) return fail(c, 400, "invalid_request", { field: "email" });
-    const sent = await sendLicenseMail(c.env.DB, deps, lic.email, "resend", [
+    const { ok: sent } = await sendLicenseMail(c.env.DB, deps, lic.email, "resend", [
       { licenseKey: lic.license_key, expiresAt: lic.expires_at },
     ]);
     await audit(c.env.DB, { at: deps.now(), actor: c.get("actor"), action: "key_resent", licenseId: id, detail: { sent } });
@@ -6645,8 +6897,9 @@ git commit -m "test(server): input độc hại, không có /admin trên Worker 
   "compatibility_date": "2026-09-26",
   "workers_dev": false,
   "preview_urls": false,
-  // Tắt invocation log: log đó lưu cả URL và query của request (QĐ25). Log JSON do code tự ghi vẫn giữ.
-  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  // Tắt invocation log (log đó lưu cả URL và query của request) và bỏ query khỏi URL trong log và trace (QĐ25).
+  // Log JSON do code tự ghi vẫn giữ. Bật Workers Issues để có cảnh báo không phụ thuộc Resend (QĐ27).
+  "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
   "vars": {
     "ENVIRONMENT": "dev",
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
@@ -6664,7 +6917,7 @@ git commit -m "test(server): input độc hại, không có /admin trên Worker 
     "staging": {
       "workers_dev": true,
       "preview_urls": false,
-      "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+      "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
       "vars": {
         "ENVIRONMENT": "staging",
         "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
@@ -6685,7 +6938,7 @@ git commit -m "test(server): input độc hại, không có /admin trên Worker 
     "production": {
       "workers_dev": true,
       "preview_urls": false,
-      "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+      "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
       "vars": {
         "ENVIRONMENT": "production",
         "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
@@ -6725,8 +6978,9 @@ git commit -m "test(server): input độc hại, không có /admin trên Worker 
   "compatibility_date": "2026-09-26",
   "workers_dev": false,
   "preview_urls": false,
-  // Tắt invocation log: log đó lưu cả URL và query của request (QĐ25). Log JSON do code tự ghi vẫn giữ.
-  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  // Tắt invocation log (log đó lưu cả URL và query của request) và bỏ query khỏi URL trong log và trace (QĐ25).
+  // Log JSON do code tự ghi vẫn giữ. Bật Workers Issues để có cảnh báo không phụ thuộc Resend (QĐ27).
+  "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
   "vars": {
     "ENVIRONMENT": "dev",
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
@@ -6742,7 +6996,7 @@ git commit -m "test(server): input độc hại, không có /admin trên Worker 
     "staging": {
       "workers_dev": true,
       "preview_urls": false,
-      "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+      "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
       "vars": {
         "ENVIRONMENT": "staging",
         "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
@@ -6760,7 +7014,7 @@ git commit -m "test(server): input độc hại, không có /admin trên Worker 
     "production": {
       "workers_dev": true,
       "preview_urls": false,
-      "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+      "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
       "vars": {
         "ENVIRONMENT": "production",
         "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
@@ -6829,15 +7083,15 @@ $ tsc --noEmit
 $ node scripts/gen-token-vectors.mjs | cmp - test/vectors/token-v1.json
 $ vitest run
 Test Files  17 passed (17)
-Tests  164 passed (164)
+Tests  171 passed (171)
 $ wrangler deploy --dry-run --env staging && wrangler deploy --dry-run --env production && wrangler deploy --dry-run -c wrangler.admin.jsonc --env staging && wrangler deploy --dry-run -c wrangler.admin.jsonc --env production
-Total Upload: 105.04 KiB / gzip: 27.34 KiB
+Total Upload: 107.21 KiB / gzip: 28.08 KiB
 --dry-run: exiting now.
-Total Upload: 105.04 KiB / gzip: 27.34 KiB
+Total Upload: 107.21 KiB / gzip: 28.08 KiB
 --dry-run: exiting now.
-Total Upload: 87.31 KiB / gzip: 22.75 KiB
+Total Upload: 88.68 KiB / gzip: 23.15 KiB
 --dry-run: exiting now.
-Total Upload: 87.31 KiB / gzip: 22.75 KiB
+Total Upload: 88.68 KiB / gzip: 23.15 KiB
 --dry-run: exiting now.
 ```
 Không có dòng `WARNING` nào của wrangler: `env.production` khai báo `PRICES_JSON` rỗng một cách rõ ràng.
@@ -6960,7 +7214,18 @@ pnpm exec wrangler d1 execute mt-license-staging --env staging --remote --comman
 Expected:
 - Bảng `Migrations to be applied:` có `0001_init.sql`. Wrangler hỏi xác nhận: trả lời `y`. Bảng kết quả có ✅.
 - Lệnh thứ hai liệt kê: `activations`, `audit_log`, `d1_migrations`, `licenses`, `ops_alerts`, `orders`, `rate_limits`, và các bảng nội bộ (`sqlite_sequence`, `_cf_…`).
-- Staging dùng số đơn từ 1 (QĐ18), nên không cần bước giữ chỗ số đơn như production.
+- Staging dùng số đơn từ 1 (QĐ18), nên lần đầu không cần giữ chỗ số đơn.
+
+**Chỉ khi phải tạo lại D1 staging trên cùng kênh PayOS** (ví dụ xóa D1 để làm lại từ đầu): số đơn của D1 mới lại bắt đầu từ 1 và sẽ trùng mã đơn cũ trên PayOS (`231 Đơn thanh toán đã tồn tại`). Sau khi áp migration, giữ chỗ số đơn:
+1. Tìm số đơn staging lớn nhất đã dùng, gọi là `N`: trên my.payos.vn, mở kênh staging > danh sách link thanh toán, xem `orderCode` lớn nhất. Hoặc tìm dòng `order_created` có `order_code` lớn nhất trong Workers Logs (Logs chỉ giữ 3–7 ngày). Không chắc thì lấy một số lớn hơn hẳn, ví dụ 100000.
+2. Chạy (thay `<N>` bằng số vừa tìm):
+
+   ```bash
+   cd server && pnpm exec wrangler d1 execute mt-license-staging --env staging --remote --command "INSERT INTO orders (order_code, order_token_hash, provider, plan, amount, currency, email_consent_at, status, created_at, expires_at) VALUES (<N>, 'reserved', 'none', 'pro_1m', 0, 'VND', 0, 'failed', 0, 0); DELETE FROM orders WHERE order_code = <N>;"
+   pnpm exec wrangler d1 execute mt-license-staging --env staging --remote --command "SELECT (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS seq, (SELECT COUNT(*) FROM orders) AS orders"
+   ```
+
+   Expected: lệnh cuối in `seq` = `<N>` và `orders` = `0`; đơn staging kế tiếp là `<N>+1`. Giữ `<N>` dưới 1.000.000 để không đụng dải số của production (QĐ18).
 
 - [ ] **Step 5: Secret của Worker API**
 
@@ -6986,36 +7251,36 @@ Expected:
 Khóa đang dùng đi thẳng vào secret qua pipe:
 
 ```bash
-cd server && node scripts/gen-token-key.mjs stg-2026-10 | pnpm exec wrangler secret put TOKEN_SIGNING_JWK --env staging
+cd server && node scripts/gen-token-key.mjs stg-2026-10-1 | pnpm exec wrangler secret put TOKEN_SIGNING_JWK --env staging
 ```
 
-Expected: dòng `Khóa công khai (ghi vào server/keys/public-keys.json): {"kid":"stg-2026-10","x":"<43 ký tự>"}`, rồi `✨ Success! Uploaded secret TOKEN_SIGNING_JWK`. Chép lại giá trị `x`.
+Expected: dòng `Khóa công khai (ghi vào server/keys/public-keys.json): {"kid":"stg-2026-10-1","x":"<43 ký tự>"}`, rồi `✨ Success! Uploaded secret TOKEN_SIGNING_JWK`. Chép lại giá trị `x`.
 
 Khóa dự phòng đi thẳng vào kho mật khẩu. Chọn **một** trong ba cách:
 
 - 1Password (`op`):
 
   ```bash
-  cd server && command -v op && node scripts/gen-token-key.mjs stg-2026-10-b --vault op | op item create --vault Private - >/dev/null && echo "đã lưu vào 1Password"
+  cd server && command -v op && node scripts/gen-token-key.mjs stg-2026-10-1-b --vault op | op item create --vault Private - >/dev/null && echo "đã lưu vào 1Password"
   ```
 
 - Bitwarden (`bw`; output của `bw create item` có cả khóa nên phải bỏ đi):
 
   ```bash
-  cd server && command -v bw && node scripts/gen-token-key.mjs stg-2026-10-b --vault bw | bw encode | bw create item >/dev/null && echo "đã lưu vào Bitwarden"
+  cd server && command -v bw && node scripts/gen-token-key.mjs stg-2026-10-1-b --vault bw | bw encode | bw create item >/dev/null && echo "đã lưu vào Bitwarden"
   ```
 
 - Không có CLI của kho mật khẩu: qua clipboard.
 
   ```bash
-  cd server && node scripts/gen-token-key.mjs stg-2026-10-b | pbcopy
+  cd server && node scripts/gen-token-key.mjs stg-2026-10-1-b | pbcopy
   ```
 
-  Tạo một mục mới trong kho mật khẩu, tên "Meeting Translator token key stg-2026-10-b", dán vào trường mật khẩu (ẩn). Xóa clipboard ngay: `printf '' | pbcopy`.
+  Tạo một mục mới trong kho mật khẩu, tên "Meeting Translator token key stg-2026-10-1-b", dán vào trường mật khẩu (ẩn). Xóa clipboard ngay: `printf '' | pbcopy`.
 
   **Cảnh báo:** app quản lý clipboard (Raycast, Alfred, Maccy, Paste…) lưu lịch sử clipboard ra đĩa. Tắt các app đó, hoặc xóa mục vừa copy khỏi lịch sử. Tắt tạm Handoff (System Settings > General > AirDrop & Handoff), để Universal Clipboard không chép khóa sang iPhone hay iPad.
 
-Expected (mọi cách): dòng khóa công khai của `stg-2026-10-b` hiện ra, rồi `đã lưu vào 1Password` hoặc `đã lưu vào Bitwarden` (hai cách đầu). Chép lại giá trị `x`. Khóa riêng không hiện ra màn hình ở cách nào.
+Expected (mọi cách): dòng khóa công khai của `stg-2026-10-1-b` hiện ra, rồi `đã lưu vào 1Password` hoặc `đã lưu vào Bitwarden` (hai cách đầu). Chép lại giá trị `x`. Khóa riêng không hiện ra màn hình ở cách nào.
 
 - [ ] **Step 7: Tạo `server/keys/public-keys.json` và kiểm khóa dự phòng trong kho khớp với nó**
 
@@ -7025,8 +7290,8 @@ Dán hai giá trị `x` từ Step 6 (khóa công khai, không phải bí mật).
 {
   "_note": "Khóa công khai kiểm token bản quyền (spec §10.2). Không phải bí mật. active: khóa server đang ký; backup: khóa dự phòng, khóa riêng chỉ nằm trong kho mật khẩu ngoại tuyến.",
   "staging": {
-    "active": { "kid": "stg-2026-10", "x": "<x của stg-2026-10>" },
-    "backup": { "kid": "stg-2026-10-b", "x": "<x của stg-2026-10-b>" }
+    "active": { "kid": "stg-2026-10-1", "x": "<x của stg-2026-10-1>" },
+    "backup": { "kid": "stg-2026-10-1-b", "x": "<x của stg-2026-10-1-b>" }
   }
 }
 ```
@@ -7040,8 +7305,8 @@ cd server && node -e 'const k=require("./keys/public-keys.json");for(const [r,v]
 Expected:
 
 ```
-active stg-2026-10 32
-backup stg-2026-10-b 32
+active stg-2026-10-1 32
+backup stg-2026-10-1-b 32
 ```
 
 Kiểm khóa dự phòng trong kho khớp mục `backup`, mà không hiện khóa riêng. Chọn cách ứng với kho đã dùng ở Step 6:
@@ -7049,9 +7314,9 @@ Kiểm khóa dự phòng trong kho khớp mục `backup`, mà không hiện khó
 ```bash
 cd server
 # 1Password: op read đưa khóa thẳng vào pipe
-op read "op://Private/Meeting Translator token key stg-2026-10-b/password" | node scripts/jwk-public.mjs --check staging backup
+op read "op://Private/Meeting Translator token key stg-2026-10-1-b/password" | node scripts/jwk-public.mjs --check staging backup
 # Bitwarden: khóa ở dòng đầu của ghi chú
-bw get notes "Meeting Translator token key stg-2026-10-b" | head -1 | node scripts/jwk-public.mjs --check staging backup
+bw get notes "Meeting Translator token key stg-2026-10-1-b" | head -1 | node scripts/jwk-public.mjs --check staging backup
 # Cách clipboard: mở mục trong kho, copy khóa, rồi dán vào lệnh read (không hiện ra), Enter
 read -rs JWK && printf '%s' "$JWK" | node scripts/jwk-public.mjs --check staging backup; unset JWK; printf '' | pbcopy
 ```
@@ -7059,8 +7324,8 @@ read -rs JWK && printf '%s' "$JWK" | node scripts/jwk-public.mjs --check staging
 Expected:
 
 ```
-{"kid":"stg-2026-10-b","x":"<x của stg-2026-10-b>"}
-khớp: staging.backup = stg-2026-10-b
+{"kid":"stg-2026-10-1-b","x":"<x của stg-2026-10-1-b>"}
+khớp: staging.backup = stg-2026-10-1-b
 ```
 
 Nếu in `KHÔNG khớp`: khóa trong kho và `x` trong file khác nhau. Sửa `x` cho đúng (dòng đầu vừa in là `x` tính từ khóa trong kho), hoặc tạo lại khóa dự phòng. Khóa đang dùng được kiểm bằng chữ ký token thật ở Task 20, Step 5.
@@ -7108,6 +7373,11 @@ Expected:
 
 Webhook sai chữ ký ở lệnh thứ hai tạo một cảnh báo `webhook_bad_signature`. Trong vòng 5 phút, `OPERATOR_EMAIL` nhận thư `[license staging] Cảnh báo: webhook_bad_signature (1)` (có thể nằm trong Spam).
 
+**Kênh cảnh báo không qua Resend (QĐ27).** `wrangler.jsonc` đã bật Workers Issues (`observability.issues.enabled`). Dashboard > Workers & Pages > `mt-license-staging` > Issues:
+- Expected: trang Issues đã bật (không còn nút Enable issues).
+- Nếu chủ dự án có kênh chat, webhook hay công cụ incident nhận được thông báo: Automations > Add automation, trigger "Occurrence threshold" = 1, chọn destination đó, bật Enabled, Create. Expected: automation hiện trong danh sách với trạng thái Enabled.
+- Không có kênh nào như vậy: bỏ qua automation; đây là rủi ro chấp nhận (QĐ27), người vận hành xem trang Issues định kỳ.
+
 - [ ] **Step 11: Bật Cloudflare Access cho Worker admin, đặt cookie, `ACCESS_AUD`, `API_ORIGIN`**
 
 a. Dashboard > Workers & Pages > `mt-license-admin-staging` > tab Access > Protect this Worker behind Access > chọn **All traffic**. Ở Authentication policy, chọn "Cloudflare account" (thành viên của tài khoản), hoặc Email domain của người vận hành. Bấm Apply Access.
@@ -7115,8 +7385,9 @@ a. Dashboard > Workers & Pages > `mt-license-admin-staging` > tab Access > Prote
    Expected: mở `$ADMIN/admin/whoami` trong trình duyệt, đăng nhập Access, trang hiện `{"error":"forbidden"}`. Worker từ chối vì `ACCESS_AUD` còn trống (fail closed, QĐ6).
 
 b. Cookie: Zero Trust > Access controls > Applications > ứng dụng Access của Worker `mt-license-admin-staging` > Configure > Advanced settings > Cookie settings:
-   - **SameSite Attribute: Strict**;
-   - **HttpOnly: bật** (mặc định đã bật).
+   - **SameSite Attribute: Lax**. Không chọn Strict: tài liệu Cloudflare cảnh báo Strict có thể gây `ERR_TOO_MANY_REDIRECTS`, và CSRF đã chặn trong Worker (QĐ30);
+   - **HttpOnly: bật** (mặc định đã bật);
+   - **Binding Cookie: bật**.
 
    Bấm Save.
 
@@ -7139,7 +7410,9 @@ d. Kiểm:
    Expected:
    - `302` (chuyển tới trang đăng nhập Access) hoặc `401`/`403`, không bao giờ `200`.
    - Mở `$ADMIN/admin/whoami` trong trình duyệt (đăng nhập Access nếu được hỏi): trang hiện `{"operator":"<email của bạn>"}`.
-   - Trong DevTools của trình duyệt > Application (Storage) > Cookies > `$ADMIN`: cookie `CF_Authorization` có SameSite `Strict` và có dấu HttpOnly.
+   - Trong DevTools của trình duyệt > Application (Storage) > Cookies > `$ADMIN`: cookie `CF_Authorization` có SameSite `Lax` và có dấu HttpOnly; có thêm cookie `CF_Binding`.
+   - Trình duyệt không báo `ERR_TOO_MANY_REDIRECTS`.
+   - Binding Cookie có thể không hợp với công cụ ngoài trình duyệt. Chạy `cloudflared access login "$ADMIN" && cloudflared access curl "$ADMIN/admin/whoami"`: Expected `{"operator":"<email của bạn>"}`. Nếu lệnh này bị chuyển hướng hay trả 403: tắt Binding Cookie ở bước b, Save, chạy lại, và ghi vào kế hoạch 00 là rủi ro chấp nhận (QĐ30).
 
 - [ ] **Step 12: Đăng ký webhook với PayOS qua `confirm-webhook`**
 
@@ -7220,7 +7493,7 @@ printf '%s' "$TOKEN" | node scripts/verify-token.mjs staging
 ```
 
 Expected:
-- Dòng đầu `OK staging active stg-2026-10`: chữ ký token khớp khóa công khai `active` trong `keys/public-keys.json`, tức khóa riêng trong secret khớp khóa app sẽ build sẵn.
+- Dòng đầu `OK staging active stg-2026-10-1`: chữ ký token khớp khóa công khai `active` trong `keys/public-keys.json`, tức khóa riêng trong secret khớp khóa app sẽ build sẵn.
 - Dòng sau là claims: `"plan":"pro"`, `"device_id_hash"` bằng `$DEV`, và `refresh_before - issued_at = 1209600`.
 - Nếu in `FAIL bad_signature` hay `FAIL unknown_kid`: `x` trong `keys/public-keys.json` không ứng với khóa đã đưa vào `TOKEN_SIGNING_JWK`. Tạo lại khóa đang dùng (Task 19, Step 6) và sửa file.
 
@@ -7348,8 +7621,8 @@ Không ghi email, key hay token.
 - [ ] **Step 6: Khóa ký production.** Nếu đã có CI (Q3), tạo khóa trong một job CI chạy tay thay vì trên máy dev (Q11), rồi bỏ qua bước này. Trên máy dev:
 
    ```bash
-   cd server && node scripts/gen-token-key.mjs prod-<năm>-<tháng> | pnpm exec wrangler secret put TOKEN_SIGNING_JWK --env production
-   node scripts/gen-token-key.mjs prod-<năm>-<tháng>-b --vault op | op item create --vault Private - >/dev/null && echo "đã lưu vào 1Password"
+   cd server && node scripts/gen-token-key.mjs prod-<năm>-<tháng>-1 | pnpm exec wrangler secret put TOKEN_SIGNING_JWK --env production
+   node scripts/gen-token-key.mjs prod-<năm>-<tháng>-1-b --vault op | op item create --vault Private - >/dev/null && echo "đã lưu vào 1Password"
    ```
 
    Với Bitwarden hay clipboard, thay lệnh thứ hai bằng cách tương ứng ở Task 19, Step 6.
@@ -7360,14 +7633,14 @@ Không ghi email, key hay token.
 
    ```json
    "production": {
-     "active": { "kid": "prod-<năm>-<tháng>", "x": "<x của khóa đang dùng>" },
-     "backup": { "kid": "prod-<năm>-<tháng>-b", "x": "<x của khóa dự phòng>" }
+     "active": { "kid": "prod-<năm>-<tháng>-1", "x": "<x của khóa đang dùng>" },
+     "backup": { "kid": "prod-<năm>-<tháng>-1-b", "x": "<x của khóa dự phòng>" }
    }
    ```
 
    ```bash
    cd server && node -e 'const k=require("./keys/public-keys.json");for(const [r,v] of Object.entries(k.production))console.log(r,v.kid,Buffer.from(v.x,"base64url").length)'
-   op read "op://Private/Meeting Translator token key prod-<năm>-<tháng>-b/password" | node scripts/jwk-public.mjs --check production backup
+   op read "op://Private/Meeting Translator token key prod-<năm>-<tháng>-1-b/password" | node scripts/jwk-public.mjs --check production backup
    ```
 
    Expected: `active prod-… 32`, `backup prod-…-b 32`, rồi `khớp: production.backup = prod-…-b`. Với Bitwarden hay clipboard, dùng lệnh kiểm tương ứng ở Task 19, Step 7.
@@ -7394,6 +7667,7 @@ Không ghi email, key hay token.
    Expected:
    - Wrangler in `Uploaded mt-license-production`, `Deployed mt-license-production triggers`, dòng `<tên miền license> (custom domain)`, `schedule: */5 * * * *`.
    - `curl` in `{"ok":true}`. Tên miền riêng có thể cần vài phút để cấp chứng chỉ; nếu lỗi TLS thì chờ rồi thử lại.
+   - Workers Issues của `mt-license-production` đã bật; thêm automation như Task 19, Step 10 nếu có kênh nhận.
 
 - [ ] **Step 10: Deploy Worker admin, bật Access, cookie, `ACCESS_AUD`, `API_ORIGIN`**
 
@@ -7405,7 +7679,7 @@ Không ghi email, key hay token.
 
    Rồi:
    - Bật Access cho `mt-license-admin-production` như Task 19, Step 11a. Expected: `$PADMIN/admin/whoami` trong trình duyệt trả `{"error":"forbidden"}` (chưa có `ACCESS_AUD`).
-   - Đặt cookie như Task 19, Step 11b: **SameSite Strict**, **HttpOnly bật**.
+   - Đặt cookie như Task 19, Step 11b: **SameSite Lax**, **HttpOnly bật**, **Binding Cookie bật** (tắt nếu `cloudflared access curl` hỏng, như Task 19, Step 11d).
    - Trong `env.production.vars` của `wrangler.admin.jsonc`: `ACCESS_AUD` là AUD tag của ứng dụng Access này; `API_ORIGIN` là `https://<tên miền license>`.
 
    ```bash
@@ -7416,7 +7690,8 @@ Không ghi email, key hay token.
    Expected:
    - `302`, `401` hoặc `403`, không bao giờ `200`.
    - Trình duyệt, sau khi đăng nhập Access: `{"operator":"<email của bạn>"}`.
-   - DevTools > Cookies > `$PADMIN`: `CF_Authorization` có SameSite `Strict` và HttpOnly.
+   - DevTools > Cookies > `$PADMIN`: `CF_Authorization` có SameSite `Lax` và HttpOnly, có `CF_Binding` (nếu bật); trình duyệt không báo `ERR_TOO_MANY_REDIRECTS`.
+   - `cloudflared access login "$PADMIN" && cloudflared access curl "$PADMIN/admin/whoami"` in `{"operator":"<email của bạn>"}`.
 
 - [ ] **Step 11: Đăng ký webhook production với PayOS**
 
@@ -7449,7 +7724,7 @@ Không ghi email, key hay token.
    ```
 
    Expected:
-   - `OK production active prod-<năm>-<tháng>`, và claims có `"kid":"prod-…"` (không phải `stg-…` hay `test-…`).
+   - `OK production active prod-<năm>-<tháng>-1`, và claims có `"kid":"prod-…"` (không phải `stg-…` hay `test-…`).
    - Lệnh cuối in `{"ok":true}`: máy giả đã được gỡ.
    - Nếu không dùng key thử đó nữa: thu hồi bằng `/admin/licenses/<license_id>/revoke` (Phụ lục B).
 
@@ -7484,7 +7759,7 @@ pnpm -C server check
 pnpm -C server audit
 ```
 
-Expected: `pnpm -C server check` in `Tests  164 passed (164)` (lúc lập kế hoạch), và 4 lần `--dry-run: exiting now.`
+Expected: `pnpm -C server check` in `Tests  171 passed (171)` (lúc lập kế hoạch), và 4 lần `--dry-run: exiting now.`
 - [ ] **Step 3: Ghi vào mục 8 của kế hoạch 00**
   - P05-1 tới P05-6.
   - Thêm vào Q12 (lệch nhỏ với spec, đề xuất sửa chữ ở lần cập nhật spec kế tiếp):
@@ -7517,7 +7792,7 @@ Expected: `pnpm -C server check` in `Tests  164 passed (164)` (lúc lập kế h
 
    `secret put` tạo và triển khai version mới ngay, không cần deploy. Từ lúc này, mọi token mới mang `kid` của khóa dự phòng; app đã có sẵn khóa công khai của nó.
 2. **Kiểm server đang ký bằng khóa dự phòng:** kích hoạt một máy giả rồi kiểm token như Task 21, Step 12. Expected: `OK production backup prod-<…>-b`. Gỡ máy giả đó sau khi kiểm.
-3. **Tạo khóa dự phòng mới**, đưa thẳng vào kho mật khẩu như Task 19, Step 6 (với kid `prod-<năm>-<tháng>-b`).
+3. **Tạo khóa dự phòng mới**, đưa thẳng vào kho mật khẩu như Task 19, Step 6. `kid` mới lấy số thứ tự kế tiếp, ví dụ `prod-<năm>-<tháng>-2-b`; `gen-token-key.mjs` từ chối nếu `kid` đã có trong `keys/public-keys.json`, kể cả `kid` bị lộ (vẫn còn trong file tới bước 4).
 4. **Sửa `keys/public-keys.json`:**
    - `active` là khóa dự phòng cũ;
    - `backup` là khóa vừa tạo;
@@ -7557,11 +7832,11 @@ Expected: `pnpm -C server check` in `Tests  164 passed (164)` (lúc lập kế h
 - **Độ phủ spec.** Mỗi dòng của bảng đối chiếu có task nhận (bảng ở đầu kế hoạch). §6.8 phía server được phủ đủ: API, PayOS, token, admin, email, các quy tắc về gia hạn, máy bị gỡ từ xa, giới hạn VND. Phần quota, lịch `validate` và mua trong app là của 06.
 - **Placeholder.** Không có trong code. Chỉ còn các giá trị người làm điền từ tài khoản thật: `database_id`, `<subdomain>`, `ACCESS_AUD`, `API_ORIGIN`, khóa công khai `x`, giá production, tên miền.
 - **Kiểu nhất quán.** Replay 18 task (xem "Đã chạy thử") dựng lại đúng từng file của bản đã test, và `tsc --noEmit` xanh sau mỗi task có code.
-- **Test bắt được lỗi thật.** Lúc lập kế hoạch đã thử bỏ từng điều kiện trong code, và mỗi lần đều có test đỏ: `status = paid`, `amountPaid ≥ amount`, `amount` khớp đơn, kiểm license thu hồi hay hết hạn ở `validate`, `locked_at`, bỏ qua máy cũ khi kiểm khóa tạm, đếm theo máy khác nhau, đếm `validate` theo key đã chuẩn hóa, chặn IP thất bại nhiều ở `validate`.
+- **Test bắt được lỗi thật.** Lúc lập kế hoạch đã thử bỏ từng điều kiện trong code, và mỗi lần đều có test đỏ: `status = paid`, `amountPaid ≥ amount`, `amount` khớp đơn, kiểm license thu hồi hay hết hạn ở `validate`, đếm `validate` theo key đã chuẩn hóa; khóa tạm: trừ lần gỡ chính máy đang kích hoạt, chặn mọi máy không đang kích hoạt khi đã khóa; IP bị chặn: chỉ cho qua key hợp lệ kèm activation đang hoạt động (không chặn cả trường hợp này, và không cho qua mọi key thật); gửi lại email: giãn thời gian, không gửi lại lỗi vĩnh viễn, cảnh báo một lần mỗi đơn.
 
 ## Đã chạy thử lúc lập kế hoạch
 
 - Làm trong worktree tách riêng, rồi chạy lại Task 1–18 trong một worktree mới, đúng thứ tự và đúng lệnh của kế hoạch. Mọi bước "thấy lỗi" đều lỗi đúng lý do; mọi bước "chạy test" đều xanh.
 - Cây `server/` dựng lại giống hệt bản đã test (`diff -r`, không tính `node_modules` và `.wrangler`). `pnpm install` không ghi `minimumReleaseAgeExclude`, vì mọi bản đã chốt đều ra được ít nhất 1 ngày.
-- Kết quả cuối (`pnpm check`): `Test Files  17 passed (17)`, `Tests  164 passed (164)`; `tsc` sạch; 4 lần `wrangler deploy --dry-run` qua (Worker API 105,04 KiB, gzip 27,34 KiB; Worker admin 87,31 KiB, gzip 22,75 KiB); `pnpm audit` sạch.
+- Kết quả cuối (`pnpm check`): `Test Files  17 passed (17)`, `Tests  171 passed (171)`; `tsc` sạch; 4 lần `wrangler deploy --dry-run` qua (Worker API 107,21 KiB, gzip 28,08 KiB; Worker admin 88,68 KiB, gzip 23,15 KiB); `pnpm audit` sạch.
 - **Chưa chạy được** (cần tài khoản): Task 19–21 (`wrangler login`, D1 thật, secret, deploy, Access và cookie, `confirm-webhook`, giao dịch thật), và lệnh tạo item thật bằng `op`, `bw`.
