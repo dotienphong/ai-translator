@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Cửa sổ chính: chỉ các quyền mặc định của Tauri (spec §10.2).",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

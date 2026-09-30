@@ -1,6 +1,9 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
+members = ["crates/*", "src-tauri"]
+# `cargo build` và `cargo test` không kèm `-p` chỉ chạy các crate trong crates/. App Tauri build qua `pnpm tauri`,
+# vì nó cần thư mục dist/ của frontend.
+default-members = ["crates/*"]
 
 [workspace.package]
 edition = "2024"
