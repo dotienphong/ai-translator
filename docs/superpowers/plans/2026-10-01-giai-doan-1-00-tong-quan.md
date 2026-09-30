@@ -1,0 +1,1329 @@
+# Giai đoạn 1 · 00: Tổng quan MVP
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Mục tiêu:** Làm MVP theo spec §13 (Giai đoạn 1): đủ F1–F10, có license server nhận thanh toán PayOS (§6.8), và đạt A1–A7. Công việc chia thành tám kế hoạch con 01–08; mỗi kế hoạch cho ra một phần chạy và test được. File này giữ bảng đối chiếu từ spec sang kế hoạch con để không sót yêu cầu nào, cùng các quy ước chung, việc còn chờ, rủi ro và các điểm cần chủ dự án quyết.
+
+**Kiến trúc:** Giữ kiến trúc §5.
+- Tiến trình chính Tauri không chứa ggml. Nhận dạng và dịch chạy trong hai tiến trình phụ, `asr-worker` và `llama-server`.
+- Logic nằm trong các crate có test chạy không cần Tauri: `audio-capture`, `pipeline`, `asr-protocol`, `asr-worker`. `src-tauri` nối các crate vào app, và giữ phần gắn liền với app: cửa sổ, khay, phím tắt, cài đặt, kho khóa, model, bản quyền (§12).
+- Giao diện React có hai cửa sổ `main` và `overlay`, mỗi cửa sổ có quyền riêng.
+- License server là dự án riêng ở `server/` (Hono trên Cloudflare Workers + D1). App chỉ gọi server khi mua, kích hoạt và kiểm tra bản quyền.
+- Model tải từ R2 theo manifest ký Ed25519.
+
+**Công nghệ:**
+- Giữ từ Giai đoạn 0; chỉ nâng khi chủ động quyết (§6.12):
+  - Rust 1.98.1 (edition 2024);
+  - Tauri 2.12, tauri-plugin-global-shortcut 2.4, tauri-nspanel 2.1;
+  - React 19.3, Vite 8.3, TypeScript 7.0, Node 24.21 LTS, pnpm 12.6;
+  - whisper-rs 0.16 (whisper.cpp 1.8.3, có vá), llama.cpp v0.5.0 (b11146);
+  - candle-onnx 0.11 với Silero VAD v6.2.3;
+  - objc2-core-audio 0.3.2, windows 0.62.2;
+  - rubato 5, rtrb 0.4, postcard 1.1, reqwest 0.13.
+- Thêm ở Giai đoạn 1. Mỗi kế hoạch con chốt phiên bản lúc viết, theo §6.12:
+  - phía app: Zustand, Vitest, các plugin Tauri 2 chính thức (store, autostart, single-instance, opener, updater), rusqlite với SQLCipher, kho khóa của hệ điều hành (Keychain, Credential Manager), Ed25519 và SHA-256 phía Rust;
+  - phía server: TypeScript, Hono, Wrangler, D1, Cloudflare Access, Cron Triggers, Resend;
+  - CI và cargo-about ở kế hoạch 07.
+
+Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Đọc toàn bộ spec trước khi làm bất kỳ kế hoạch con nào.
+
+Cách gọi tên trong file này:
+- "Kế hoạch 0-0N" là kế hoạch Giai đoạn 0, `docs/superpowers/plans/2026-09-29-giai-doan-0-0N-*.md`. Khi spec viết "kế hoạch 0N", ý là các kế hoạch này.
+- "01" tới "08" là kế hoạch con của Giai đoạn 1.
+- Mã `C…` và `T…` ở mục 5; `Q…` ở mục 8; `Đ…` ở mục 9; `R…` ở mục 7.
+
+---
+
+## 1. Mục tiêu và phạm vi
+
+### 1.1 Làm trong Giai đoạn 1
+
+- F1–F10 (§3.1), với trải nghiệm ở §4 và thiết kế ở §5–§12.
+- License server và tích hợp PayOS (§6.8), triển khai thật trên tài khoản Cloudflare riêng của sản phẩm.
+- Đạt A1–A7 (§3.3), kể cả hai điều kiện A4 còn thiếu.
+- Các việc kỹ thuật rút ra từ Giai đoạn 0 (§13):
+  - mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5, §12;
+  - các phương án MVP phải chọn ở §6.12.
+- Những việc còn dở của Giai đoạn 0 mà MVP cần (mục 5). Làm xen kẽ, theo đợt có máy Windows và máy tham chiếu.
+
+### 1.2 Không làm
+
+Theo §3.2:
+- Dịch giọng của người dùng rồi phát vào cuộc họp (micro ảo); thu âm từ micro.
+- Bot tham gia cuộc họp, xử lý trên cloud.
+- Tóm tắt hoặc biên bản cuộc họp; phân biệt ai đang nói; ghi âm cuộc họp.
+- Linux, Mac chip Intel, Windows ARM64.
+- Phát hành qua kho ứng dụng.
+- App mobile; dịch chữ trên màn hình (OCR).
+
+Cũng không làm trong Giai đoạn 1:
+- Các việc của Giai đoạn 2 (§13):
+  - cổng thanh toán quốc tế và thuê bao tự gia hạn. MVP chỉ giữ interface `PaymentProvider` và hai trường `provider`, `currency` (§6.8);
+  - thu âm theo từng app trên Windows;
+  - gói doanh nghiệp;
+  - thêm ngôn ngữ giao diện.
+- Các biện pháp chống crack để Giai đoạn 2 (§10.2): chống debug, làm rối code sâu hơn, kiểm tra toàn vẹn nhiều lớp, phát hiện gian lận bằng phân tích hành vi.
+- Website: trang tải, trang giá, chính sách quyền riêng tư, điều khoản. Phần này có spec riêng (§15); kế hoạch con chỉ chừa chỗ cho link tới website.
+- Việc pháp lý và kế toán (§15): nhãn hiệu, hồ sơ chuyển dữ liệu ra nước ngoài, thông báo website bán hàng, hóa đơn điện tử. Chủ dự án lo; phần nào làm đổi yêu cầu kỹ thuật thì ghi ở mục 8.
+
+### 1.3 Hiện trạng code khi bắt đầu (2026-10-01, commit `3f085a9`)
+
+Trên Mac, ba lệnh `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings` và `cargo test --workspace` chạy xanh (144 test qua; 1 test bỏ qua là `vad_reference`). Các lệnh còn lại của kiểm tra chuẩn (mục 6.2) chưa chạy lại lúc viết kế hoạch này.
+
+Có sẵn, dùng lại được:
+- `asr-protocol`: khung `u32` little-endian cộng postcard, tối đa 16 MiB; `MIN_AUDIO_CTX` và `audio_ctx_for_samples`; test chỉ số biến thể.
+  - Chưa có: `prev_lang`, enum cho `backend` và `decode_mode`, `Error.kind`, `protocol_version`.
+- `asr-worker`: chế độ A và B (`shared-encode`); chọn ngôn ngữ (`lid.rs`, worker tự giữ ngôn ngữ của đoạn trước); luật lặp 4/3/2 bản; trần token; mồi zh/ja tắt; flash attention tắt.
+  - Chưa có: `probe.rs`. `main.rs` đã gọi `asr_worker::probe` khi bật feature `vulkan`, nên hiện build `--features vulkan` bị lỗi; code của `probe.rs` nằm ở kế hoạch 0-03, Task 14.
+  - Chưa có: chuyển fd 1 sang stderr, xoay log, `backend` là thiết bị thật.
+- `audio-capture`: `AudioSource`, `GapFiller`, `Mixer2`, `MonoResampler`, `MacTapSource` (`TapTarget::SystemExceptSelf` và `TapTarget::Process(pid)`), công cụ `capture` và `Capture.app`.
+  - Chưa có: `windows.rs` (code nằm ở kế hoạch 0-04, Task 7), listener đổi thiết bị trên macOS, danh sách app đang phát âm thanh.
+- `pipeline`: `segmenter`, `vad` (candle), `asr_client` (đồng bộ, dùng `std::process`), `llama` (chạy `llama-server`, đọc stream SSE, vẫn truyền `--api-key`), `prompt`, `sse`.
+  - Chưa có: ghép câu và luật bỏ đoạn (hai phần này đang nằm trong `crates/latency-bench/src/latency.rs`), hậu xử lý bản dịch, hàng đợi §7, giám sát tiến trình phụ, thuật ngữ.
+- `latency-bench` (lệnh `latency` cho S6, `asr-eval` cho A4) và `bench/phase0/` (công cụ Python cho A3, A4, S6, dung lượng bộ cài).
+- `src-tauri`: spike S5.
+  - Thanh phụ đề là NSPanel non-activating trên macOS, và cửa sổ topmost `focusable(false)` trên Windows.
+  - Có khóa click xuyên, ẩn/hiện, ba phím tắt cố định, lệnh `set_accessory`.
+  - Có capabilities cho `main` và `overlay`, CSP chặt.
+  - Identifier vẫn là `dev.meetingtranslator.spike`; `bundle.active = false`.
+- `src/`: hai entry React của spike (`main.tsx`, `overlay.tsx`). Chưa có Zustand, i18n, vitest.
+- `deny.toml`; `.cargo/config.toml` (mức CPU cố định); profile release (`strip`, `lto`, `codegen-units = 1`, `panic = "abort"`); `third_party/` (bản vá whisper.cpp và whisper-rs).
+
+Chưa có:
+- `server/`, CI, remote git.
+- `bench/phase0/REPORT.md`.
+- Các file kết quả `s1_capture.md`, `s2_capture.md`, `s3_windows.md`, `s3_lid.md`, `s5_overlay.md`, `s6_latency.md` (mục 5).
+
+## 2. Các kế hoạch con
+
+| File | Kế hoạch | Viết | Cần xong trước |
+|---|---|---|---|
+| `2026-10-01-giai-doan-1-01-nen-app.md` | 01 Nền app | viết ngay | — |
+| `2026-10-01-giai-doan-1-02-pipeline.md` | 02 Pipeline trong app | viết ngay | phần crate: —; phần nối vào app: 01 |
+| `2026-10-01-giai-doan-1-03-phu-de-ban-chep-loi.md` | 03 Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ | sau khi 01 và 02 xong | 01, 02 |
+| `2026-10-01-giai-doan-1-04-quan-ly-model.md` | 04 Quản lý model | sau khi 01 và 02 xong | 01, 02 |
+| `2026-10-01-giai-doan-1-05-license-server.md` | 05 License server | viết ngay | — |
+| `2026-10-01-giai-doan-1-06-ban-quyen-app.md` | 06 Bản quyền trong app | sau khi 05 xong và 03 có điểm kiểm tra Pro | 01, 02, 03, 05 |
+| `2026-10-01-giai-doan-1-07-dong-goi-cap-nhat.md` | 07 Đóng gói, ký số, cập nhật, CI | sau khi 01, 02 và 05 xong | phần CI: 01; bộ cài đủ tính năng: 01–06 |
+| `2026-10-01-giai-doan-1-08-nghiem-thu.md` | 08 Nghiệm thu | sau khi 07 có bộ cài chạy được | 07 |
+
+Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chưa phải task. Danh sách dòng của bảng đối chiếu (mục 4) mà một kế hoạch nhận thì lọc bằng lệnh ở Task 2, Step 1.
+
+### 2.1 Kế hoạch 01: Nền app
+
+- **Mục tiêu:** biến app spike S5 thành khung app thật, để các kế hoạch sau chỉ việc lắp chức năng vào. Gồm:
+  - cài đặt có schema và migrate (§6.9);
+  - i18n vi/en (§4.5);
+  - khay hệ thống; phím tắt đổi được (F10);
+  - hai cửa sổ `main` và `overlay` với quyền riêng (§10.2);
+  - khung các màn hình ở §4.3 và khung các bước lần đầu mở (§4.1).
+- **Bàn giao, chạy và test được:**
+  - `pnpm tauri dev` mở app có icon khay. Menu khay gồm: Bắt đầu/Dừng (chưa nối pipeline), Ẩn/hiện phụ đề, Khóa/mở khóa, Mở cửa sổ chính, Thoát.
+  - Cửa sổ chính điều hướng được tới mọi màn hình ở §4.3. Màn hình chưa có chức năng thì hiện trạng thái trống, có chuỗi i18n.
+  - Cài đặt lưu, đọc và migrate được từ schema cũ. Giá trị ngoài phạm vi bị phía Rust từ chối.
+  - Đổi vi/en có tác dụng ngay, cả trong menu khay.
+  - Phím tắt đổi được trong Cài đặt; báo lỗi khi không đăng ký được.
+  - Bấm X (`⌘W`, `Alt+F4`) thì cửa sổ ẩn xuống khay. Thoát ở khay thì app thoát hẳn. `⌘Q` và Quit ở Dock không thoát.
+  - Thanh phụ đề giữ nguyên hành vi của S5, thêm khóa và ẩn/hiện từ menu khay.
+  - Có wrapper cho kho khóa của hệ điều hành, kèm bản giả dùng trong test (Đ5). Log của app ghi ra file trên máy, có xoay vòng (Đ10).
+  - `cargo test` và `pnpm test` (vitest) xanh, có test i18n đủ khóa. Có test chứng minh cửa sổ `overlay` không gọi được lệnh ngoài quyền.
+- **Spec phụ trách:** F7, F10, D8; §4.1 (khung, bước 1, 5, 7, 8); §4.3 (khung, nhóm Chung, Phím tắt, đóng cửa sổ và thoát); §4.4 (kiểu cửa sổ, khóa, icon ở Dock); §4.5; §6.9; §6.10; §10.2 (WebView); log và kho khóa dùng chung.
+- **Phụ thuộc:** không. Xây trên code S5 ở `src-tauri/` và `src/`.
+- **Làm trên Mac:** gần như toàn bộ.
+- **Cần Windows:**
+  - khay và `Alt+F4`;
+  - thanh phụ đề topmost, không lấy focus;
+  - bước 8 có ảnh hướng dẫn và nút mở `ms-settings:taskbar`;
+  - không chặn tắt máy và đăng xuất;
+  - lỗi khi phím tắt bị trùng.
+- **Cần người thao tác:**
+  - thử khay, `⌘Q`, Quit ở Dock, tắt máy, đăng xuất (§11, dòng "Khay");
+  - bật "khởi động cùng hệ thống" thật;
+  - thử kho khóa thật (Keychain có thể hỏi quyền, mục 6.8);
+  - ma trận S5 và phím tắt trùng với app họp (C5).
+- **Trạng thái:** viết ngay.
+
+### 2.2 Kế hoạch 02: Pipeline trong app
+
+- **Mục tiêu:** nối `audio-capture` và `pipeline` vào app, để bấm Bắt đầu là có phụ đề dịch thật. Gồm:
+  - đủ "Việc cho MVP" của §5, §6.3, §6.4, §6.5;
+  - vòng đời và giám sát hai tiến trình phụ;
+  - hàng đợi và chống nghẽn (§7);
+  - xử lý lỗi phần pipeline (§9).
+- **Cách chia luồng:** theo §7. 02 quyết định giữ client đồng bộ trên luồng riêng hay chuyển sang async (runtime tokio của Tauri), kèm lý do.
+- **Bàn giao, chạy và test được:**
+  - Trên Mac, `pnpm tauri dev`: bấm Bắt đầu (nút, phím tắt hoặc khay) thì phụ đề dịch từ âm thanh hệ thống hiện trên thanh phụ đề. Hiển thị ở mức tối thiểu có từ S5; phần hoàn chỉnh ở 03.
+  - Sự kiện `subtitle://upsert` và `subtitle://delta` đúng §6.6, đủ các trạng thái.
+  - Test tích hợp chạy pipeline từ file WAV, không thu âm thật, kiểm phụ đề có xuất hiện, đúng thứ tự, đúng thời gian.
+  - Test vòng đời với tiến trình phụ giả: crash, khởi động lại, gửi lại đoạn, chuyển sang CPU, tắt sau 10 phút.
+  - `latency-bench mt-eval` dịch bộ test A3 bằng code Rust của app (Đ4).
+  - A3, A4 và S6 chạy lại không thụt lùi (mục 6.7).
+  - Trên Windows (khi có máy): cùng luồng đó với WASAPI loopback và hai bản `asr-worker`.
+- **Spec phụ trách:** F1 (luồng), F2 (logic ngôn ngữ), D7, D9, D12; §5; §6.1–§6.5; §6.6 (cấu trúc, trạng thái, sự kiện); §7; §9 (các dòng của pipeline); §10.1 (âm thanh, tiến trình phụ); §10.2 (thay tiến trình phụ, log); §11 (unit test và test tích hợp của pipeline); §12 (`session.rs`, `sidecar/`, các crate, `third_party/`).
+- **Phụ thuộc:**
+  - Phần crate (`asr-protocol`, `asr-worker`, `pipeline`, `latency-bench`) không cần 01, nên làm trước hoặc song song với 01.
+  - Phần nối vào app cần 01 xong cài đặt, cửa sổ, khay và phím tắt.
+- **Làm trên Mac:** phần lớn.
+- **Cần Windows:**
+  - `windows.rs` (C2), `IMMNotificationClient`, chế độ tự động Console và Communications;
+  - Job Object, `SetDefaultDllDirectories`;
+  - chọn bản `asr-worker` theo `--probe` (C3);
+  - chạy lại S4 (C4);
+  - khoảng lặng dài.
+- **Cần người thao tác:**
+  - cấp quyền "Ghi âm thanh hệ thống" cho app, rồi chạy thử với âm thanh thật (C1);
+  - dữ liệu hội thoại zh/ja có quyền dùng (Q6);
+  - clip nhạc có quyền dùng, để thử `no_speech_prob`;
+  - xác nhận đã đóng app nặng trước mỗi lượt đo S6 (mục 6.9).
+- **Trạng thái:** viết ngay.
+
+### 2.3 Kế hoạch 03: Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ
+
+- **Mục tiêu:** hoàn thiện phần hiển thị và dữ liệu của phiên. Gồm:
+  - thanh phụ đề đủ §4.4 (F3);
+  - bản chép lời (F4);
+  - lịch sử lưu trong SQLCipher, và từ điển thuật ngữ (F5);
+  - bảng debug ẩn (§7);
+  - bước "Nghe thử" (§4.1, bước 6).
+- **Bàn giao, chạy và test được:**
+  - Thanh phụ đề đủ §4.4:
+    - 1–3 dòng, câu gốc tùy chọn;
+    - bản dịch hiện dần từng chữ; phụ đề tạm màu nhạt;
+    - chỉ báo đang nghe, không có âm thanh, đang trễ;
+    - nhớ vị trí theo từng màn hình;
+    - nhóm Cài đặt "Phụ đề".
+  - Cửa sổ chính có bản chép lời: tìm, sao chép, xuất TXT, SRT, Markdown.
+  - Lịch sử bật/tắt được; xóa từng phiên hoặc xóa tất cả.
+  - Từ điển tối đa 500 cặp, nhập và xuất CSV; thuật ngữ khớp được đưa vào prompt.
+  - File DB không mở được bằng `sqlite3` thường. Nút "Xóa toàn bộ dữ liệu" xóa lịch sử và từ điển.
+- **Spec phụ trách:** F3 (nội dung), F4, F5; §4.1 bước 6; §4.2 bước 3; §4.3 (bản chép lời, lịch sử, từ điển, Phụ đề, Quyền riêng tư); §4.4; §6.5 (thuật ngữ); §6.6 (hiển thị, lưu, xuất); §7 (bảng debug); §9 (phần hiển thị); §10.2 (SQLCipher); §11 (vitest cho thanh phụ đề và xuất file, test thuật ngữ, test SQLCipher).
+- **Phụ thuộc:** 01 (cửa sổ, cài đặt, kho khóa), 02 (sự kiện phụ đề, prompt).
+- **Làm trên Mac:** phần lớn.
+- **Cần Windows:** DPI 150%, nhiều màn hình, build SQLCipher trên Windows.
+- **Cần người thao tác:** xem thanh phụ đề trên app họp đang toàn màn hình; kiểm độ tương phản; bước "Nghe thử" với tiếng thật.
+- **Trạng thái:** viết sau khi 01 và 02 xong.
+
+### 2.4 Kế hoạch 04: Quản lý model
+
+- **Mục tiêu:** F6 và §6.7. Gồm:
+  - manifest ký Ed25519 trên R2;
+  - tải tiếp được khi rớt mạng, kiểm SHA-256;
+  - đề xuất gói theo máy, với ngưỡng đọc từ manifest (Đ7);
+  - nút xóa model;
+  - bước 2–3 của lần đầu mở (§4.1).
+- **Bàn giao, chạy và test được:**
+  - Bucket R2 cho môi trường staging chứa model kèm LICENSE và NOTICE, cùng `models.json` ký bằng khóa staging (Đ8).
+  - Lần đầu mở, app đề xuất gói kèm dung lượng và ghi chú chất lượng (§8). Tải được, tạm dừng rồi tiếp tục được, rớt mạng thì tải tiếp.
+  - Sai SHA-256 thì báo lỗi; manifest bị sửa thì bị từ chối.
+  - Có nhóm Cài đặt "Model" và nút "Xóa model và dữ liệu".
+  - Mỗi ngày kiểm manifest tối đa một lần; có bản mới thì hỏi trước khi tải.
+- **Spec phụ trách:** F6, D5, D6; §4.1 bước 2–3; §4.3 (Model, "Xóa model và dữ liệu"); §6.7; §8 (hạng máy, ghi chú chất lượng, gói lai); §9 (model thiếu hoặc hỏng, tải lỗi, đổi sang gói Nhẹ); §10.1 (giấy phép model); §11 (manifest, card 4 GB và 6 GB).
+- **Phụ thuộc:**
+  - 01, và 02 (đường dẫn model cho tiến trình phụ, kết quả `--probe`).
+  - Tài khoản Cloudflare (đã có, T4).
+  - Manifest chính thức ký trong CI của 07 (T3, Đ8).
+- **Làm trên Mac:** phần lớn.
+- **Cần Windows:** `--probe` trên GPU thật; đường dẫn `%LOCALAPPDATA%\<bundle-id>\models`.
+- **Cần người thao tác:** tạo bucket, gắn tên miền và tạo API token trên dashboard Cloudflare; thử rớt mạng thật.
+- **Trạng thái:** viết sau khi 01 và 02 xong. Ngưỡng thật chờ C6, nhưng không chặn việc viết hay làm.
+
+### 2.5 Kế hoạch 05: License server
+
+- **Mục tiêu:** §6.8 phía server. Gồm:
+  - TypeScript + Hono trên Cloudflare Workers + D1;
+  - `PaymentProvider`, với PayOS là cài đặt đầu tiên;
+  - token Ed25519 có `kid`;
+  - `/admin` đặt sau Cloudflare Access;
+  - email qua Resend, sau interface `EmailProvider`;
+  - giới hạn tần suất (§10.2); đối soát đơn mỗi 5 phút.
+- **Bàn giao, chạy và test được:**
+  - `server/` có test xanh.
+  - Hai môi trường staging và production trên tài khoản Cloudflare của sản phẩm.
+  - Trên staging, một giao dịch thật với số tiền nhỏ qua PayOS cấp được key và gửi được email.
+  - `/admin` chỉ mở được qua Access.
+  - Bộ vector test dùng chung với 06 (Đ9).
+- **Spec phụ trách:** D11, P1 (giá theo cấu hình), P2; §5 (license server); §6.8 phía server; §9 (409, webhook chậm hoặc trùng, chuyển thiếu); §10.1 (khóa PayOS, dữ liệu tối thiểu, đồng ý xử lý email); §10.2 (chia sẻ key, dò key, tấn công server, lộ khóa token); §11 (test của server); §12 (`server/`, `.gitignore`); §14 giả định 7.
+- **Phụ thuộc:** không. Kế hoạch này chỉ đụng `server/` và `.gitignore`, nên chạy song song được với 01–04.
+- **Làm trên Mac:** toàn bộ code và test.
+- **Cần Windows:** không.
+- **Cần người thao tác:**
+  - `wrangler login`; nhập secret của PayOS và Resend (mục 6.5); cấu hình Cloudflare Access;
+  - đăng ký webhook với PayOS;
+  - xác thực tên miền gửi email (chờ Q1);
+  - trả tiền cho giao dịch thử.
+- **Trạng thái:** viết ngay.
+
+### 2.6 Kế hoạch 06: Bản quyền trong app
+
+- **Mục tiêu:** F8 phía app. Gồm:
+  - `LicenseProvider`; token dùng được khi offline; `device_id_hash`; lịch `validate`;
+  - quota Free;
+  - mua bằng VietQR ngay trong app;
+  - khóa tính năng Pro;
+  - chống chỉnh lùi đồng hồ, và tự kiểm chữ ký của app (§10.2).
+- **Bàn giao, chạy và test được:**
+  - Trên staging, mua gói bằng VietQR ngay trong app thì app tự kích hoạt.
+  - Tắt mạng vẫn giữ Pro tới `refresh_before`.
+  - Quota Free 30 phút đếm theo tiếng nói; nhắc khi còn 5 phút; hết thì dừng dịch.
+  - Key đã đủ 2 máy thì gỡ từ xa được một máy.
+  - Khi ở Free, tính năng Pro (lịch sử, xuất file, từ điển) bị khóa.
+  - Test token dùng vector của 05.
+- **Spec phụ trách:** F8, P1, P2; §4.2 bước 2; §4.3 (Bản quyền, Nâng cấp Pro, số phút còn lại); §6.8 phía app; §9 (quota, license, mất mạng, 409, đơn chậm); §10.1 (ô đồng ý); §10.2 (crack, ký lại, đồng hồ, kho khóa, hai khóa công khai); §11 (quota, bản quyền, bảo mật).
+- **Phụ thuộc:** 01 (kho khóa, màn hình), 02 (thời lượng tiếng nói), 03 (điểm kiểm tra Pro, Đ6), 05 (staging chạy được, vector token).
+- **Làm trên Mac:** phần lớn.
+- **Cần Windows:** MachineGuid, Credential Manager, `WinVerifyTrust`.
+- **Cần người thao tác:** giao dịch thật; hộp thoại của Keychain; thử đổi giờ máy thật.
+- **Chờ tài khoản:** kiểm Team ID và tên chủ chứng thư thật (T1, T2). Phần này làm ở 07 (Đ14).
+- **Trạng thái:** viết sau khi 05 xong và 03 có điểm kiểm tra Pro.
+
+### 2.7 Kế hoạch 07: Đóng gói, ký số, cập nhật, CI
+
+- **Mục tiêu:**
+  - F9 và §6.11;
+  - CI; build llama.cpp và whisper.cpp trong CI từ tag đã khóa (§10.2);
+  - các phương án MVP ở §6.12;
+  - gỡ cài đặt (A6); danh sách giấy phép (§10.1).
+- **Bàn giao, chạy và test được:**
+  - CI build, chạy test, `cargo deny`, `cargo audit`, `pnpm audit` trên macOS và Windows.
+  - `.dmg` cho arm64 và `.exe` NSIS cài được và chạy được.
+  - Cập nhật được từ bản trước qua `tauri-plugin-updater`, cả kênh stable lẫn beta.
+  - `THIRD_PARTY_NOTICES` sinh tự động và hiện ở màn hình Giới thiệu.
+  - Bộ gỡ Windows có ô "xóa dữ liệu app".
+  - Dung lượng bộ cài ≤ 60 MB.
+  - Ký và notarize thật khi có tài khoản. Trước đó, mọi bước đã viết sẵn và chỉ chạy khi CI có secret.
+- **Spec phụ trách:** F9, D3, D10; §4.3 (Giới thiệu; không chặn thoát khi app tự khởi động lại để cập nhật); §6.5 (đo lại thời gian chờ lần đầu với bản đã ký); §6.11; §6.12 (phương án MVP, yêu cầu build); §10.1 (giấy phép); §10.2 (chuỗi cung ứng, ký, hardened runtime, JS rút gọn, xoay khóa); §11 (cài đặt và cập nhật, CI); A6.
+- **Phụ thuộc:**
+  - Phần CI cần 01. Bộ cài đủ tính năng cần 01–06.
+  - Chờ tài khoản và quyết định: T1, T2, T3, Q1.
+  - Chờ kết quả Giai đoạn 0: C9, C10.
+- **Làm trên Mac:** bộ cài macOS, cập nhật, giấy phép, CI cho macOS.
+- **Cần Windows:** NSIS, bộ gỡ, `dumpbin`, SmartScreen. Runner Windows của CI thay được một phần (Q3).
+- **Cần người thao tác:** mua chứng thư, tạo tài khoản, nhập secret của CI; thử Gatekeeper và SmartScreen.
+- **Trạng thái:** viết sau khi 01, 02 và 05 xong. Làm xong sau 06.
+
+### 2.8 Kế hoạch 08: Nghiệm thu
+
+- **Mục tiêu:**
+  - nghiệm thu A1–A7 và ma trận thủ công ở §11;
+  - phiên dịch 2 giờ; kiểm mạng qua proxy;
+  - chống thụt lùi A3/A4 lần cuối; hoàn tất hai điều kiện A4 còn thiếu;
+  - kiểm bảng đối chiếu đủ 100% (Task 5).
+- **Bàn giao:**
+  - Báo cáo nghiệm thu, số liệu gốc commit trong `bench/`.
+  - Mọi dòng của bảng đối chiếu ở trạng thái `xong`, hoặc `hoãn` có chủ dự án duyệt.
+- **Spec phụ trách:** A1–A7; §3.3 (điều kiện A4); §8 (ngân sách độ trễ, CPU ≤ 30%, RAM); §11 (ma trận thủ công, soak test, cài đặt, bảo mật).
+- **Phụ thuộc:** 07 có bộ cài chạy được. Phần lớn chưa cần ký thật; riêng A6 cần ký thật (T1, T2).
+- **Phần việc:**
+  - Chủ yếu do người thao tác: app họp, tai nghe, máy tham chiếu, proxy. Agent chạy script đo và tổng hợp.
+  - Hai điều kiện A4 (C13) làm được ngay (Đ11).
+- **Trạng thái:** viết sau khi 07 có bộ cài chạy được.
+
+## 3. Thứ tự thực thi và phụ thuộc
+
+```
+01 Nền app ─► 02 Pipeline ─┬─► 03 Phụ đề, bản chép lời ─┐
+                           │                            ├─► 06 Bản quyền trong app ─┐
+05 License server ─────────┼────────────────────────────┘                           ├─► 07 Đóng gói ─► 08 Nghiệm thu
+                           └─► 04 Quản lý model ────────────────────────────────────┘
+```
+
+Chạy song song được:
+- 05 chạy song song với 01–04, vì chỉ đụng `server/` và `.gitignore`.
+- Phần crate của 02 chạy song song với 01.
+- 03 và 04 chạy song song với nhau.
+- Phần CI của 07 bắt đầu được ngay sau 01, nếu đã có repo từ xa (Q3).
+
+Mọi kế hoạch vẫn làm trên `main`. Chỉ chạy song song hai kế hoạch khi tập file của chúng không giao nhau (Đ18).
+
+Thứ tự đề xuất:
+1. 01, cùng lúc với phần crate của 02 và với 05.
+2. Phần nối vào app của 02.
+3. Viết và làm 03, 04 (song song). Viết phần CI của 07, và làm luôn nếu đã có repo từ xa.
+4. Viết và làm 06.
+5. Làm nốt 07: bộ cài đủ tính năng, cập nhật, ký thật khi có tài khoản.
+6. Viết và làm 08.
+7. Task 5 của file này.
+
+**Đợt Windows.** Gom các việc cần Windows vào một đợt khi có máy, theo thứ tự:
+1. Kế hoạch 0-01, Task 2: cài công cụ (C14).
+2. Kế hoạch 0-03, Task 14–16: hai bản `asr-worker`, `--probe`, máy không có Vulkan (C3, C11; cả C9, C10 nếu CI chưa làm).
+3. Kế hoạch 0-04, Task 7–8: WASAPI loopback, ma trận S2 (C2).
+4. Kế hoạch 0-05, Task 4: ma trận S5 trên Windows (C5).
+5. S4 trên Windows (C4).
+6. Phần Windows của các kế hoạch con đã xong trên Mac: 01, 02, rồi 03, 04, 06, 07.
+
+S6 trên các máy tham chiếu (C6, kế hoạch 0-06 Task 8) nên chạy càng sớm càng tốt, với bản build hiện tại. Kết quả quyết định hạng máy và ngưỡng đề xuất gói; 08 đo lại A2 bằng app thật.
+
+**Việc người làm được ngay**, không cần chờ kế hoạch nào:
+- Chạy ma trận S1 (kế hoạch 0-04, Task 6) và S5 trên Mac (kế hoạch 0-05, Task 3, kể cả dòng 13 về phím tắt trùng).
+- Thu clip thật qua tai nghe Bluetooth và nghe lại 24 clip (C13).
+- Chuẩn bị dữ liệu hội thoại zh/ja có quyền dùng (Q6).
+- Đăng ký Apple Developer (T1) và mua chứng thư OV ký trên cloud (T2); cả hai mất thời gian xét duyệt.
+- Tạo repo từ xa (Q3) và tài khoản Resend (T6).
+- Lấy khóa API của PayOS cho staging và production (T5).
+- Chốt tên, tên miền, bundle identifier (Q1) và giá (Q2).
+- Mượn máy tham chiếu cho S6 và máy Windows (C6, C14).
+
+## 4. Bảng đối chiếu spec → kế hoạch con
+
+Cách đọc:
+- Cột "Kế hoạch":
+  - `01`…`08` là kế hoạch con;
+  - `(Win)` là phần cần máy Windows;
+  - `(người)` là phần cần người thao tác;
+  - `QƯ` là quy ước chung ở mục 6, áp cho mọi kế hoạch;
+  - `CDA` là việc của chủ dự án, không phải code;
+  - `00` là file này.
+- "Có từ GĐ0" trong cột Ghi chú: code hoặc số đo đã có từ Giai đoạn 0. Kế hoạch con nối vào app, sửa theo spec, hoặc kiểm lại.
+- Cột "Trạng thái" nhận một trong năm giá trị:
+  - `chưa làm`;
+  - `đang làm`;
+  - `chờ`: phần còn lại bị chặn bởi mã ghi trong cột Ghi chú;
+  - `xong`: có test hoặc kết quả chứng minh. Khi cập nhật, ghi SHA commit vào Ghi chú;
+  - `hoãn`: chủ dự án đã duyệt để sau MVP. Ghi ngày duyệt vào Ghi chú.
+- Không đánh số lại. Dòng thêm sau lấy số lớn nhất hiện có cộng 1, đặt ở cuối nhóm tương ứng (Task 2).
+- Trong ô không dùng ký tự gạch đứng, để lệnh `awk` ở Task 2–5 tách cột đúng.
+
+### 4.1 Quyết định đã chốt (§2)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 1 | D1: phụ đề dịch cho mọi âm thanh máy đang phát; không cần bot, plugin hay tài khoản trên nền tảng họp | 02, 08 | Thu âm toàn hệ thống (§6.1); A1 ở 08 | chưa làm |
+| 2 | D2: sản phẩm tách hẳn khỏi AI Live Translator; không dùng chung code hay hạ tầng | QƯ, 01, 05 | 05 dùng tài khoản Cloudflare và merchant PayOS riêng; 01 dùng nhận diện thương hiệu mới (§6.10) | chưa làm |
+| 3 | D3: macOS 14.2+ trên Apple Silicon; Windows 10/11 64-bit (x64) | 07, 08 | 07 đặt phiên bản macOS tối thiểu 14.2, chỉ build arm64 và x64; 08 thử các bản hệ điều hành ở §11 | chưa làm |
+| 4 | D4: Tauri 2, React 19, TypeScript, Vite, Zustand; mỗi engine chạy trong một tiến trình phụ riêng | 01, 02 | Có từ GĐ0, trừ Zustand | chưa làm |
+| 5 | D5: model dịch Hy-MT2-1.8B, định dạng GGUF | 04 | Phân phối qua manifest | chưa làm |
+| 6 | D6: Whisper chạy qua whisper.cpp | 02, 04 | Có từ GĐ0 (`asr-worker`) | chưa làm |
+| 7 | D7: xử lý 100% trên máy, âm thanh không rời máy | 02, 08 | Kiểm ở A7 | chưa làm |
+| 8 | D8: giao diện tiếng Việt và English, đổi được trong Cài đặt | 01 | | chưa làm |
+| 9 | D9: MVP chỉ dịch một chiều, âm thanh máy đang phát sang phụ đề ngôn ngữ của người dùng | 02 | Không có đường phát tiếng vào cuộc họp | chưa làm |
+| 10 | D10: tải từ website; Windows dùng bộ cài NSIS `.exe` đã ký, macOS dùng `.dmg` đã ký và notarize; chưa lên kho ứng dụng | 07 | Chờ T1, T2 | chưa làm |
+| 11 | D11: MVP thanh toán bằng PayOS, chuyển khoản VietQR, VND | 05, 06 | | chưa làm |
+| 12 | D12: độ trễ p50 ≤ 2,0 giây trên máy khuyến nghị | 02, 08 | Xem dòng A2 | chưa làm |
+| 13 | P1: không quảng cáo; Free 30 phút dịch mỗi ngày; Pro dịch không giới hạn, có từ điển, lịch sử, xuất file; gói trả trước 1 hoặc 12 tháng bằng VND, không tự gia hạn | 05, 06 | Giá chờ Q2; 05 đọc giá từ cấu hình | chưa làm |
+| 14 | P2: key do license server cấp sau khi PayOS xác nhận đã nhận tiền; tối đa 2 máy mỗi key; dùng offline nhờ token ký số, ân hạn 14 ngày; không có tài khoản đăng nhập | 05, 06 | | chưa làm |
+
+### 4.2 Tính năng MVP (§3.1)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 15 | F1: phụ đề dịch trực tiếp từ âm thanh hệ thống | 02, 03 | 02 luồng xử lý; 03 hiển thị | chưa làm |
+| 16 | F2: chọn ngôn ngữ đích trong năm ngôn ngữ; ngôn ngữ nguồn tự nhận diện trong tập người dùng chọn (mặc định cả năm) hoặc khóa một ngôn ngữ; câu đã là ngôn ngữ đích thì hiện câu gốc | 01, 02 | 01 cài đặt và màn hình chính; 02 chọn ngôn ngữ, `same_lang` | chưa làm |
+| 17 | F3: thanh phụ đề nổi theo §4.4 | 01, 03 | 01 cửa sổ, khóa, ẩn/hiện; 03 nội dung và kiểu hiển thị | chưa làm |
+| 18 | F4: bản chép lời của phiên: xem, tìm, sao chép; xuất TXT, SRT, Markdown và lưu lịch sử là Pro; lưu lịch sử mặc định tắt | 03, 06 | 06 khóa phần Pro | chưa làm |
+| 19 | F5: từ điển thuật ngữ (Pro), tối đa 500 cặp; chỉ thuật ngữ có trong câu mới vào prompt | 03, 06 | | chưa làm |
+| 20 | F6: quản lý model: gói Chuẩn và gói Nhẹ, tự đề xuất gói, tải tiếp khi rớt mạng, kiểm SHA-256 | 04 | | chưa làm |
+| 21 | F7: giao diện tiếng Việt và English | 01 | | chưa làm |
+| 22 | F8: phân quyền Free và Pro bằng license key, dùng được khi offline | 05, 06 | | chưa làm |
+| 23 | F9: tự cập nhật app | 07 | | chưa làm |
+| 24 | F10: phím tắt toàn cục mặc định `Ctrl+Alt+T` / `⌃⌥T` (bắt đầu/dừng), `Ctrl+Alt+H` / `⌃⌥H` (ẩn/hiện), `Ctrl+Alt+L` / `⌃⌥L` (khóa/mở khóa), đổi được trong Cài đặt; biểu tượng ở khay hệ thống (menu bar trên Mac); kiểm trùng với Teams, Zoom, Meet | 01, 01 (người) | Có từ GĐ0 (ba phím cố định); kiểm trùng ở C5 | chưa làm |
+
+### 4.3 Tiêu chí nghiệm thu (§3.3)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 25 | A1: chạy với Teams, Zoom, Google Meet (Chrome, Edge; thêm Safari trên Mac), Zalo PC trên cả hai hệ điều hành; nghe qua loa, tai nghe có dây, tai nghe Bluetooth | 08 (người), 02, 03 | Chờ C1, C2, C5 | chưa làm |
+| 26 | A2: máy khuyến nghị p50 ≤ 2,0 giây, p90 ≤ 3,0 giây, chữ dịch đầu tiên ≤ 1,0 giây (p50); máy tối thiểu p50 ≤ 3,5 giây; không tính lần nạp model | 08 (người), 02 | M4 Pro đạt ở GĐ0; máy quyết định chờ C6 | chưa làm |
+| 27 | A3, mốc và mức sàn: COMET chấm trên văn bản qua đúng `llama-server` và prompt của app; sàn Anh→Việt 0,83 (Chuẩn) và 0,80 (Nhẹ); Trung/Nhật/Hàn→Việt không thấp hơn Anh→Việt quá 0,05 | 08, 02 | Có từ GĐ0 (`s7_mt_decisions.md`); 02 thêm `mt-eval` (Đ4) | chưa làm |
+| 28 | A3, chống thụt lùi: sau mỗi lần đổi model, engine hay prompt, COMET từng chiều không thấp hơn mốc quá 0,01 | QƯ, 08 | Mục 6.7 | chưa làm |
+| 29 | A4, chống thụt lùi: sau mỗi lần đổi model hay engine, WER/CER không xấu hơn mốc quá 10% (tương đối) | QƯ, 08 | Mốc hiện hành `a4_m4pro-{turbo,small}-final.json`; mục 6.7 | chưa làm |
+| 30 | A4, điều kiện còn thiếu: thu clip thật qua tai nghe Bluetooth | 08 (người) | C13; làm được ngay (Đ11) | chưa làm |
+| 31 | A4, điều kiện còn thiếu: người nghe lại 24 clip có chú thích Latin trong bản chép chuẩn (zh 16, ja 3, ko 5) | 08 (người) | C13; sau đó sửa `SPOKEN_GLOSS` của `score_asr.py`, chấm lại, chủ dự án duyệt mốc mới | chưa làm |
+| 32 | A5: một phiên dịch liên tục 2 giờ không crash; RAM sau giờ đầu không tăng quá 10% | 08 (người), 02 | | chưa làm |
+| 33 | A6: bộ cài ký số hợp lệ; bản macOS đã notarize; gỡ app sạch, người dùng chọn giữ hay xóa model (Windows có ô "xóa dữ liệu app"; macOS có nút "Xóa model và dữ liệu", trang hỗ trợ hướng dẫn bấm trước khi gỡ) | 07, 04, 08 | Chờ T1, T2; trang hỗ trợ thuộc website (Q8) | chưa làm |
+| 34 | A7: kiểm qua proxy mạng, trong lúc dịch không có request nào trừ việc theo lịch (bản quyền, cập nhật, manifest); không request nào chứa âm thanh hay nội dung chép lời | 08 (người), QƯ | | chưa làm |
+
+### 4.4 Trải nghiệm người dùng (§4)
+
+§4.1, lần đầu mở app:
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 35 | Bước 1: chọn ngôn ngữ giao diện, mặc định theo hệ điều hành (tiếng Việt nếu máy dùng tiếng Việt, còn lại English) | 01 | | chưa làm |
+| 36 | Bước 2: kiểm tra cấu hình (RAM, GPU, dung lượng trống), đề xuất gói Chuẩn (khoảng 2,5 GB) hoặc gói Nhẹ (khoảng 1,3 GB), ghi rõ dung lượng sẽ tải | 04 | Khung bước ở 01; ghi chú chất lượng theo §8 | chưa làm |
+| 37 | Bước 3: tải model, tạm dừng rồi tải tiếp được; tải xong dùng được ngay | 04 | | chưa làm |
+| 38 | Bước 4: trên macOS hướng dẫn bật quyền "Ghi âm thanh hệ thống", kèm nút mở System Settings; Windows không có bước này | 02, 01, 02 (người) | 02 lấy trạng thái quyền và phát hiện thiếu quyền; 01 khung bước | chưa làm |
+| 39 | Bước 5: chọn ngôn ngữ đích (mặc định theo ngôn ngữ giao diện) và tập ngôn ngữ nguồn | 01 | | chưa làm |
+| 40 | Bước 6: nghe thử, app phát một câu tiếng Anh mẫu; trên macOS tap tạm thời thu cả âm thanh của app | 03, 02 | Đ16 | chưa làm |
+| 41 | Bước 7: thông báo quyền riêng tư (âm thanh không rời máy; người dùng tự thông báo cho người cùng họp nếu cần) | 01 | | chưa làm |
+| 42 | Bước 8: báo app chạy ở khay và bấm X chỉ ẩn cửa sổ; Windows có ảnh hướng dẫn kéo icon ra taskbar và nút mở `ms-settings:taskbar` | 01, 01 (Win) | | chưa làm |
+
+§4.2, trong cuộc họp:
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 43 | Bắt đầu qua nút, phím tắt hoặc menu khay; thanh phụ đề hiện kèm chỉ báo đang nghe (mức âm lượng) và chỉ báo độ trễ; tiến trình phụ chưa chạy thì hiện "Đang nạp model…" | 01, 02, 03 | 01 điểm bắt đầu; 02 phiên và sự kiện trạng thái; 03 hiển thị | chưa làm |
+| 44 | Gói Free: nhắc khi còn 5 phút; hết 30 phút thì dừng dịch, thanh phụ đề báo và có nút nâng cấp | 06, 03 | | chưa làm |
+| 45 | Bấm Dừng để kết thúc phiên, sau đó mở được bản chép lời của phiên | 02, 03 | | chưa làm |
+
+§4.3, các màn hình:
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 46 | Màn hình chính: trạng thái (Sẵn sàng, Đang dịch, Lỗi); nút Bắt đầu/Dừng; ngôn ngữ đích và tập nguồn; nguồn âm thanh (Windows: thiết bị phát; macOS: toàn hệ thống hoặc một app); mức âm lượng vào; số phút còn lại trong ngày (Free) | 01, 02, 06 | 01 khung; 02 trạng thái, nguồn âm, mức âm; 06 số phút | chưa làm |
+| 47 | Bản chép lời: mỗi câu có giờ, câu gốc, bản dịch; tìm kiếm, sao chép, xuất file (Pro) | 03 | | chưa làm |
+| 48 | Lịch sử (Pro): danh sách phiên đã lưu, xóa từng phiên hoặc xóa tất cả | 03 | | chưa làm |
+| 49 | Từ điển thuật ngữ (Pro): thêm, sửa, xóa; nhập và xuất CSV | 03 | | chưa làm |
+| 50 | Cài đặt, nhóm Chung: ngôn ngữ giao diện, khởi động cùng hệ thống, giao diện sáng/tối, kênh cập nhật (stable hoặc beta) | 01, 07 | 07 dùng `updateChannel` | chưa làm |
+| 51 | Cài đặt, nhóm Phụ đề: cỡ chữ, số dòng, độ mờ nền, có hiện câu gốc hay không | 03 | Khóa cài đặt tạo ở 01 | chưa làm |
+| 52 | Cài đặt, nhóm Âm thanh: nguồn âm thanh, độ nhạy ngắt câu | 02 | 200–800 ms (§6.3); khóa cài đặt tạo ở 01 | chưa làm |
+| 53 | Cài đặt, nhóm Model: gói đang dùng, dung lượng, tải lại hoặc xóa | 04 | | chưa làm |
+| 54 | Cài đặt, nhóm Phím tắt | 01 | | chưa làm |
+| 55 | Cài đặt, nhóm Bản quyền: nhập key, trạng thái và ngày hết hạn, gia hạn, gỡ kích hoạt | 06 | | chưa làm |
+| 56 | Cài đặt, nhóm Quyền riêng tư: bật/tắt lưu lịch sử; nút xóa toàn bộ dữ liệu (lịch sử và từ điển) | 03 | | chưa làm |
+| 57 | Cài đặt, nhóm Quyền riêng tư: nút "Xóa model và dữ liệu" (xóa thêm model, dùng trước khi gỡ app trên macOS); cả hai nút đều giữ trạng thái bản quyền và quota | 04, 03, 06 | 06 kiểm hai nút không đụng kho khóa (Q14) | chưa làm |
+| 58 | Nâng cấp Pro: chọn gói 1 hoặc 12 tháng, nhập email, quét mã VietQR hiện ngay trong app | 06 | | chưa làm |
+| 59 | Giới thiệu và giấy phép mã nguồn mở | 01, 07 | 01 màn hình, nút mở thư mục log (Đ10), câu miễn trừ nhãn hiệu; 07 danh sách giấy phép | chưa làm |
+| 60 | Đóng cửa sổ chính: X (kể cả `Alt+F4`, `⌘W`) chỉ ẩn xuống khay; app, phím tắt và phiên đang chạy vẫn hoạt động | 01 | | chưa làm |
+| 61 | Thoát ở menu khay: dừng phiên như khi bấm Dừng, tắt hai tiến trình phụ, rồi mới thoát | 01, 02 | | chưa làm |
+| 62 | Trên Mac, `⌘Q` và mục Quit ở Dock không thoát app | 01, 01 (người) | R9 | chưa làm |
+| 63 | Không chặn thoát khi máy tắt, khởi động lại, đăng xuất, và khi app tự khởi động lại để cập nhật | 01, 01 (Win), 01 (người), 07 | R9 | chưa làm |
+
+§4.4, thanh phụ đề:
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 64 | Cửa sổ riêng, không viền, nền mờ bán trong suốt, luôn nổi trên cùng; không hiện trên taskbar Windows; không lấy focus của app họp | 01 | Có từ GĐ0 (S5); chờ C5 | chưa làm |
+| 65 | Hiện 1–3 dòng bản dịch gần nhất; tùy chọn hiện câu gốc chữ nhỏ ở phía trên | 03 | | chưa làm |
+| 66 | Bản dịch hiện dần từng chữ trong lúc model đang dịch | 02, 03 | 02 phát `subtitle://delta` | chưa làm |
+| 67 | Phụ đề tạm: câu chưa chốt màu nhạt hơn; người nói nói tiếp thì thay bằng bản dịch của cả câu đã ghép | 02, 03 | | chưa làm |
+| 68 | Kéo để di chuyển, kéo cạnh để đổi kích thước; nhớ vị trí riêng cho từng màn hình | 03, 01 | Kéo có từ GĐ0; lưu ở `overlay.positions` (§6.9) | chưa làm |
+| 69 | Chế độ khóa: click xuyên qua thanh phụ đề; mở khóa bằng phím tắt hoặc menu khay | 01 | Có từ GĐ0 qua phím tắt; thêm menu khay | chưa làm |
+| 70 | macOS: nổi trên app toàn màn hình bằng NSPanel non-activating, window level cao, `canJoinAllSpaces` và `fullScreenAuxiliary` | 01 | Có từ GĐ0; chờ C5 | chưa làm |
+| 71 | Windows: cửa sổ ở chế độ topmost | 01 (Win) | Có từ GĐ0; chờ C5 | chưa làm |
+| 72 | Icon ở Dock: activation policy `accessory` khi chỉ còn icon ở menu bar, `regular` khi mở cửa sổ chính | 01 | Có từ GĐ0 (`set_accessory`); cần tự đổi theo cửa sổ | chưa làm |
+| 73 | Chỉ báo nhỏ: đang nghe, không có âm thanh, đang trễ | 02, 03 | 02 phát tín hiệu; 03 hiển thị | chưa làm |
+
+§4.5, ngôn ngữ giao diện:
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 74 | Chuỗi giao diện nằm trong từ điển có kiểu; `en` là nguồn chuẩn của danh sách khóa; kiểu `Record` bắt `vi` có đủ mọi khóa | 01 | | chưa làm |
+| 75 | Đổi ngôn ngữ ngay, không cần khởi động lại | 01 | | chưa làm |
+| 76 | Chuỗi phía Rust (menu khay, thông báo hệ thống, khoảng 20 chuỗi) nằm trong bảng riêng, đủ vi và en | 01 | Q13 | chưa làm |
+
+### 4.5 Kiến trúc (§5)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 77 | Tiến trình chính không chứa ggml; mỗi engine chạy trong một tiến trình phụ riêng | QƯ | Có từ GĐ0; `deny.toml` chặn; giữ bằng `cargo deny` ở mọi kế hoạch | xong |
+| 78 | Engine hoặc driver GPU crash thì app vẫn chạy và tự khởi động lại engine | 02 | | chưa làm |
+| 79 | Tiến trình phụ chạy khi người dùng mở cửa sổ chính hoặc bấm Bắt đầu; tắt sau 10 phút không dịch | 02, 01 | Đ19 | chưa làm |
+| 80 | `asr-worker` chạy trước; `llama-server` chạy sau khi `asr-worker` nạp xong model | 02 | | chưa làm |
+| 81 | Lần đầu phải chờ nạp model: thanh phụ đề hiện "Đang nạp model…"; thời gian này không tính vào A2 | 02, 03 | | chưa làm |
+| 82 | Việc cho MVP §5: Job Object (`KILL_ON_JOB_CLOSE`) trên Windows và process group trên macOS, để tiến trình phụ không bị bỏ lại khi app crash (`panic = "abort"`) | 02, 02 (Win) | | chưa làm |
+| 83 | License server nằm ngoài app; app chỉ gọi khi mua, kích hoạt, kiểm tra bản quyền; âm thanh và nội dung chép lời không bao giờ qua server | 05, 06, 08 | | chưa làm |
+
+### 4.6 Thu âm thanh (§6.1)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 84 | Interface chung `AudioSource` (`start`, `stop`, `format`) | 02 | Có từ GĐ0; sink là `rtrb::Producer<f32>` | chưa làm |
+| 85 | Windows, chế độ tự động: loopback của thiết bị Console và thiết bị Communications (nếu khác), mỗi thiết bị một ring buffer, resample từng luồng về 16 kHz rồi mới trộn, bù lệch đồng hồ bằng bỏ hoặc chèn mẫu | 02 (Win) | Có từ GĐ0: `Mixer2`, `MonoResampler`; `windows.rs` ở kế hoạch 0-04 Task 7; chờ C2 | chưa làm |
+| 86 | Windows: luồng thu đọc theo timer, tự chèn im lặng theo vị trí QPC khi loopback không trả gói dữ liệu | 02 (Win) | Có từ GĐ0: `GapFiller`; chờ C2 | chưa làm |
+| 87 | Windows: người dùng chọn thủ công được một thiết bị | 02 (Win), 01 | | chưa làm |
+| 88 | Windows: lắng nghe `IMMNotificationClient` để tự khởi tạo lại khi thiết bị thay đổi | 02 (Win) | | chưa làm |
+| 89 | Windows: không dùng process loopback trong MVP; hệ quả là app thu mọi âm thanh của máy | 02 | | chưa làm |
+| 90 | macOS: Core Audio process tap đọc qua aggregate device; mặc định tap toàn hệ thống, trừ chính app | 02 | Có từ GĐ0 (`TapTarget::SystemExceptSelf`); chờ C1 | chưa làm |
+| 91 | macOS, tùy chọn: chỉ tap một app họp, chọn từ danh sách app đang phát âm thanh | 02 | Có từ GĐ0 `TapTarget::Process(pid)`; thiếu danh sách app | chưa làm |
+| 92 | macOS: khai báo `NSAudioCaptureUsageDescription` trong Info.plist của app | 02, 07 | | chưa làm |
+| 93 | macOS: gọi API qua objc2 | 02 | Có từ GĐ0 (`objc2-core-audio`, không dùng `coreaudio-sys`, Q12) | chưa làm |
+| 94 | Callback thu âm không cấp phát bộ nhớ, không lock, chỉ ghi vào ring buffer lock-free (`rtrb`) chứa được 30 giây | 02 | Callback có từ GĐ0; 02 đặt dung lượng ring 30 giây trong app | chưa làm |
+
+### 4.7 Tiền xử lý (§6.2)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 95 | Gộp về mono, resample bằng `rubato` từ tần số thiết bị xuống 16 kHz, chia khung 512 mẫu (32 ms) cho VAD | 02 | Có từ GĐ0 (`MonoResampler`) | chưa làm |
+
+### 4.8 VAD và cắt câu (§6.3)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 96 | Silero VAD: ngưỡng 0,5; tiếng nói ngắn nhất 250 ms; im lặng 300 ms thì chốt đoạn, chỉnh được 200–800 ms; đoạn dài tối đa 8 giây, cắt cưỡng bức tại khung năng lượng thấp nhất trong 1,5 giây cuối; đệm 200 ms mỗi phía (làm tròn 7 khung) | 02 | Có từ GĐ0 (`segmenter.rs`); 02 nối với `vadEndSilenceMs` | chưa làm |
+| 97 | Ghép câu và phụ đề tạm: không có dấu câu kết thúc thì phụ đề là tạm; cửa sổ ghép max(700 ms, `vadEndSilenceMs` + 400 ms); chỉ ghép khi cùng ngôn ngữ; zh, ja nối chữ không dấu cách; `same_lang` cắt chuỗi ghép, đoạn bỏ vì không có tiếng nói thì không; chốt khi có dấu câu hoặc hết cửa sổ; trần 15 giây tiếng nói hoặc 3 đoạn | 02 | Có từ GĐ0 dạng mô phỏng trong `latency-bench`; chuyển sang `pipeline` (Đ3), dịch lại cả câu và thay phụ đề tạm thật | chưa làm |
+| 98 | Đầu ra `Segment { id, start_ms, end_ms, samples }`, thời gian tính từ lúc bắt đầu phiên theo đồng hồ thật | 02 | Có từ GĐ0; 02 kiểm với luồng thu thật | chưa làm |
+| 99 | Silero VAD v6.2.3 chạy bằng `candle-onnx` trong tiến trình chính; không dùng `ort`; state LSTM `detach()` sau mỗi khung; VAD chạy trên luồng riêng có stack từ 4 MiB; VAD vẫn chạy khi `asr-worker` khởi động lại | 02 | Có từ GĐ0 (`vad.rs`); 02 tạo luồng 4 MiB trong app | chưa làm |
+| 100 | Việc cho MVP §6.3: chọn luật ghép câu tốt hơn cho zh và ja (ví dụ khoảng nghỉ đủ dài là hết câu), dựa trên dữ liệu hội thoại thật | 02, 02 (người) | Q6; chưa có dữ liệu thì giữ luật hiện tại, như spec cho phép | chưa làm |
+
+### 4.9 Nhận dạng giọng nói (§6.4)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 101 | Engine whisper.cpp qua `whisper-rs` trong tiến trình phụ `asr-worker` link tĩnh; Metal trên macOS, Vulkan trên Windows; lỗi GPU thì chuyển sang CPU | 02, 02 (Win) | Có từ GĐ0 với Metal; Vulkan chờ C3 | chưa làm |
+| 102 | Giao thức stdin/stdout: khung 4 byte độ dài (`u32` LE) cộng postcard, tối đa 16 MiB; mỗi yêu cầu một phản hồi trừ `Shutdown`; giới hạn các trường của `TranscribeRequest`; khung hỏng, bị cắt, thừa byte là lỗi, worker thoát mã 1; pipeline không gửi đoạn ngắn hơn 100 ms | 02 | Có từ GĐ0 (`asr-protocol`); luật 100 ms đang ở `latency-bench` | chưa làm |
+| 103 | Mở rộng giao thức: chỉ thêm biến thể ở cuối; app và `asr-worker` luôn build cùng nhau | QƯ, 02 | Có từ GĐ0 (test `variant_indices_are_pinned`); `protocol_version` ở dòng Việc cho MVP | chưa làm |
+| 104 | Log của thông điệp không bao giờ chứa âm thanh hay nội dung chép lời | 02 | Có từ GĐ0 (`Debug` viết tay trong `asr-protocol`) | xong |
+| 105 | Hai bản trên Windows, `asr-worker-vulkan` và `asr-worker-cpu`; mỗi lần app khởi động chạy nền `asr-worker-vulkan --probe`; dùng bản Vulkan nếu dò thấy GPU dùng được, bản Vulkan không chạy hoặc crash lúc nạp model thì dùng bản CPU | 02 (Win), 04, 07 | Chờ C3; `probe.rs` chưa có (mục 1.3) | chưa làm |
+| 106 | Tiến trình phụ lỗi: khởi động lại, chờ 1, 2, 5 giây; lần đầu chạy binary mới chờ `Ready` theo quy tắc `/health`; gửi lại đoạn đang xử lý một lần, lỗi nữa thì `dropped`; crash 2 lần liên tiếp khi dùng GPU thì chuyển CPU và báo; quá 5 lần trong 10 phút thì dừng dịch, báo lỗi | 02 | Đ2 | chưa làm |
+| 107 | Model: gói Chuẩn `large-v3-turbo` q5_0 (khoảng 550 MB), gói Nhẹ `small` q5_1 (khoảng 190 MB) | 04 | | chưa làm |
+| 108 | Chế độ giải mã B (`shared`, cần feature `shared-encode` và bản vá ở `third_party/`) là mặc định; chế độ A chỉ để so sánh hoặc dự phòng | 02 | Có từ GĐ0 | xong |
+| 109 | Chọn ngôn ngữ: chuẩn hóa xác suất trong tập cho phép; đoạn từ 1,5 giây dưới 0,5 thì giữ ngôn ngữ trước; đoạn ngắn hơn 1,5 giây chỉ đổi khi từ 0,9; chỉ giữ ngôn ngữ trước khi nó thuộc tập; khóa ngôn ngữ hoặc tập một ngôn ngữ thì bỏ nhận diện | 02 | Có từ GĐ0 (`lid.rs`); giữ nguyên khi làm `prev_lang` | xong |
+| 110 | Giải mã greedy, không temperature fallback, chặn token không phải tiếng nói; prompt là tối đa 100 token cuối của đoạn trước cùng ngôn ngữ; mồi zh/ja tắt mặc định (`ASR_PRIMER=1` để thử); dừng khi lặp (mẫu 1–8 token cần 4 bản, 9–15 cần 3, 16–112 cần 2); trần token mới min(224 − độ dài prompt, 16 + 20 × số giây) | 02 | Có từ GĐ0 trong `asr-worker`; 02 dựng prompt theo ngôn ngữ ở tiến trình chính, đoạn bị bỏ không vào prompt | chưa làm |
+| 111 | `audio_ctx = min(1500, max(512, 50 × số giây + 64))`, làm tròn lên (`MIN_AUDIO_CTX`, `audio_ctx_for_samples`) | 02 | Có từ GĐ0 | xong |
+| 112 | Flash attention tắt; `ASR_FLASH_ATTN=1` chỉ để thử | 02 | Có từ GĐ0 | xong |
+| 113 | Làm nóng: sau `Load`, app gửi `Warmup` | 02 | Worker có từ GĐ0; app gửi trong vòng đời | chưa làm |
+| 114 | Lọc ảo giác: bỏ đoạn khi `no_speech_prob > 0,6` và `avg_logprob < −1`, và đoạn có chữ rỗng; luật chạy ở tiến trình chính; đoạn bị bỏ không vào prompt, không đổi ngôn ngữ của đoạn trước | 02 | Có từ GĐ0 trong `latency-bench`; chuyển sang `pipeline` (Đ3) | chưa làm |
+| 115 | Việc cho MVP §6.4: thử `no_speech_prob` trên im lặng, nhiễu và nhạc, nhất là với turbo | 02, 02 (người) | Cần clip nhạc có quyền dùng (Đ12) | chưa làm |
+| 116 | Việc cho MVP §6.4: luật lặp khi prompt dài (trần còn khoảng 119 token, câu chép đôi dài từ khoảng 60 token không bị bắt) | 02 | | chưa làm |
+| 117 | Việc cho MVP §6.4: chọn ngưỡng giữ ngôn ngữ trước theo số ngôn ngữ trong tập, dựa trên đoạn VAD thật (S6) và dữ liệu hội thoại | 02, 02 (người) | Q6 | chưa làm |
+| 118 | Việc cho MVP §6.4: bộ lọc câu ảo giác quen thuộc ("Thank you for watching", "Hãy subscribe cho kênh", "[Music]", "ご視聴ありがとうございました", "请不吝点赞…") | 02 | | chưa làm |
+| 119 | Việc cho MVP §6.4: bật `shared-encode` mặc định cho bản phát hành; app từ chối worker có `decode_mode` khác `shared` | 02, 07 | | chưa làm |
+| 120 | Việc cho MVP §6.4: với zh, chuyển phồn thể sang giản thể ở tầng app | 02 | Thư viện phải qua `deny.toml` (R13) | chưa làm |
+| 121 | Việc cho MVP §6.4: xem lại flash attention khi upstream có mask cho phần đệm (ggml-org/whisper.cpp#3941), tự vá hoặc chờ; bật lại phải kèm test tất định | 02, 08 | Kiểm trạng thái upstream lúc viết 02 và trước phát hành; C6 nếu máy tham chiếu sát ngưỡng | chưa làm |
+| 122 | Việc cho MVP §6.4: trước khi gửi bản vá `set_audio_ctx` lên upstream, hàm C trả −1 khi giá trị ngoài `[0, n_audio_ctx]`, bản Rust trả `Result` | 02 | Sửa `third_party/patches/`, dựng lại theo `third_party/README.md` | chưa làm |
+| 123 | Việc cho MVP §6.4: đưa `prev_lang` vào `TranscribeRequest`, worker không giữ trạng thái nhận diện ngôn ngữ | 02 | | chưa làm |
+| 124 | Việc cho MVP §6.4: trong `asr-protocol`, `backend` và `decode_mode` thành enum | 02 | | chưa làm |
+| 125 | Việc cho MVP §6.4: `Error` có thêm `kind` (`NotLoaded`, `ModelLoad`, `OutOfMemory`, `GpuInit`, `InvalidRequest`, `Internal`) | 02 | | chưa làm |
+| 126 | Việc cho MVP §6.4: `Ready` có thêm `protocol_version`, app từ chối worker lệch phiên bản | 02 | | chưa làm |
+| 127 | Việc cho MVP §6.4: `asr-worker` giữ riêng stdout cho giao thức, chuyển fd 1 sang stderr | 02 | | chưa làm |
+| 128 | Việc cho MVP §6.4: log của `asr-worker` (mở chế độ append) có xoay vòng hoặc giới hạn kích thước | 02 | | chưa làm |
+| 129 | MVP cần `Ready.backend` trả thiết bị thật, không phải backend được yêu cầu, để áp quy tắc chuyển sang CPU | 02 | Ghi ở §6.4, mục thông điệp `Load` | chưa làm |
+| 130 | Chạy lại lượt fullctx với bản build chốt, để có số so sánh cùng cấu hình cho giả định 8 | 02 | C12 | chưa làm |
+
+### 4.10 Dịch (§6.5)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 131 | `llama-server` khóa một phiên bản llama.cpp; macOS dùng Metal; Windows dùng Vulkan và CPU, nạp backend lúc chạy, lỗi GPU thì chuyển CPU | 02, 02 (Win), 07 | Bản dev dùng b11146 chính thức; bản phát hành build trong CI (§10.2) | chưa làm |
+| 132 | Lệnh chạy `--host 127.0.0.1 --port <cổng trống ngẫu nhiên> -c 2048 -np 1 -ngl auto --no-ui`; app gọi `/health` để biết server sẵn sàng | 02 | Có từ GĐ0 (`llama.rs`) | chưa làm |
+| 133 | API key truyền qua biến môi trường `LLAMA_API_KEY`, chỉ đặt cho tiến trình `llama-server`; không dùng `--api-key` | 02 | Spec ghi "MVP đổi sang"; GĐ0 còn truyền `--api-key` | chưa làm |
+| 134 | Không truyền `-ngl 99`; chạy `llama-server` sau khi `asr-worker` nạp model, để `--fit` tính cả VRAM của whisper | 02 | | chưa làm |
+| 135 | Server lỗi: tự khởi động lại, chờ 1, 2, 5 giây; quá 5 lần trong 10 phút thì báo lỗi, phụ đề chỉ hiện câu gốc | 02 | | chưa làm |
+| 136 | Lần đầu chạy binary mới (sau khi cài hoặc cập nhật): chờ `/health` từ 30 giây trở lên, lần chờ này không tính vào bộ đếm lỗi, giao diện báo "Đang chuẩn bị lần đầu"; áp cả cho `asr-worker` | 02, 03 | T1 cho số đo trên bản đã notarize | chưa làm |
+| 137 | API `/v1/chat/completions` với `stream: true`, chat template lấy từ GGUF; kết luận S4 chỉ áp cho lệnh chạy hiện tại; đổi cờ hoặc chạy trên Windows thì làm lại S4 | 02, 02 (Win), 07 | Chờ C4; 07 làm lại S4 khi chuyển sang llama.cpp tự build | chưa làm |
+| 138 | Phương án dự phòng: render template bằng `minijinja` rồi gọi `/completion`, truyền mảng token hoặc bỏ BOS để không ra BOS kép | 02 | Chỉ làm nếu S4 trên Windows hoặc bản tự build không đạt | chưa làm |
+| 139 | Mẫu prompt theo model card Hy-MT2: mẫu tiếng Trung khi câu liên quan tới tiếng Trung, còn lại mẫu tiếng Anh; tên ngôn ngữ theo từng mẫu | 02 | Có từ GĐ0 (`prompt.rs`) | xong |
+| 140 | Thuật ngữ: mẫu "terminology" của Hy-MT2; chỉ lấy mục có trong câu, tối đa 20 mục; chuẩn hóa NFC, không phân biệt hoa thường; chữ Latin khớp theo ranh giới từ, chữ Trung, Nhật, Hàn khớp theo chuỗi con | 03 | | chưa làm |
+| 141 | Đưa câu trước vào làm ngữ cảnh: cờ thử nghiệm `experimental.translationContext`, mặc định tắt | 02, 01 | Có từ GĐ0 (`context_prompt`) | chưa làm |
+| 142 | Tham số sinh: temperature 0, repeat penalty 1,05, số token tối đa min(4 × số token câu gốc + 32, 512) | 02 | Có từ GĐ0 (`llama.rs`, `max_tokens_for`) | xong |
+| 143 | Bật `cache_prompt`; gửi một request làm nóng khi bắt đầu phiên | 02 | `cache_prompt` có từ GĐ0 | chưa làm |
+| 144 | Hậu xử lý trong lúc stream: cắt khoảng trắng thừa; giữ vài token đầu tới khi chắc không phải nhãn ("Translation:", "译文：") hay ngoặc kép mở; bỏ nhãn; bỏ ngoặc kép bao quanh nếu câu gốc không có | 02 | | chưa làm |
+| 145 | Bản dịch quá dài, đo bằng token theo từng cặp: Anh→Việt 4,4; Trung→Việt 6,6; Nhật→Việt 3,5; Hàn→Việt 3,5; Việt→Anh 1,6; Việt→Trung 1,2; Việt→Nhật 2,2; Việt→Hàn 2,2; vượt thì cắt stream ngay | 02 | Cách xử lý câu gốc ngắn chờ Q4 | chưa làm |
+| 146 | Thử lại một lần với repeat penalty 1,15; vẫn lỗi thì hiện câu gốc, đánh dấu "chưa dịch được" | 02 | | chưa làm |
+| 147 | Bỏ bước dịch khi ngôn ngữ câu gốc trùng ngôn ngữ đích | 02 | | chưa làm |
+| 148 | Việc cho MVP §6.5: chọn cách xử lý câu gốc ngắn trong ngưỡng tỉ lệ token (cách 1 dùng hằng số; cách 2 chỉ áp tỉ lệ khi câu gốc từ khoảng 10 token) | 02 | Q4, đề xuất cách 2 | chưa làm |
+| 149 | Việc cho MVP §6.5: đo ngưỡng cho các cặp không có tiếng Việt, và cho câu gốc dưới 3 token | 02 | Đ12; dựng thêm bộ test từ WMT24++ như S7 | chưa làm |
+| 150 | Việc cho MVP §6.5: đo lại thời gian chờ lần đầu với bản đã ký và notarize | 07 | Chờ T1 | chưa làm |
+
+### 4.11 Phụ đề và bản chép lời (§6.6)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 151 | Cấu trúc `Subtitle { id, start_ms, end_ms, src_lang, src_text, tgt_text, status }` và cờ `provisional`; `status` là `asr_done`, `translating`, `done`, `failed`, `same_lang`, `skipped` hoặc `dropped` | 02 | | chưa làm |
+| 152 | Sự kiện Tauri `subtitle://upsert` (cả đối tượng) và `subtitle://delta` (từng token lúc đang dịch) | 02, 03 | Tên `subtitle://upsert` có từ S5 | chưa làm |
+| 153 | Thanh phụ đề hiện N dòng gần nhất; cửa sổ chính hiện toàn bộ; đoạn `dropped` hiện "[bỏ qua đoạn]" | 03 | | chưa làm |
+| 154 | Bản chép lời nằm trong bộ nhớ theo từng phiên | 03 | | chưa làm |
+| 155 | File SQLite mã hóa bằng SQLCipher qua `rusqlite`, nằm trong thư mục dữ liệu của app, khóa lưu trong kho khóa; chứa từ điển (Pro) và bản chép lời khi bật "Lưu lịch sử" (Pro) | 03 | Kho khóa làm ở 01 (Đ5) | chưa làm |
+| 156 | Xuất TXT (`[giờ] câu gốc` rồi `→ bản dịch`), SRT (chọn xuất câu gốc hoặc bản dịch), Markdown | 03 | Q12 (xuất bằng TypeScript hay Rust) | chưa làm |
+
+### 4.12 Quản lý model (§6.7)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 157 | Manifest `models.json` trên Cloudflare R2 và tên miền riêng, ký Ed25519, khóa công khai build sẵn; trường `id`, `tier`, `kind`, `version`, `url`, `bytes`, `sha256`, `license_id`, `min_app_version` | 04 | Tên miền chờ Q1; bản ký chính thức chờ T3 (Đ8) | chưa làm |
+| 158 | Hai gói: Chuẩn (whisper turbo q5_0, Hy-MT2 Q8_0 1,91 GB, silero-vad; khoảng 2,5 GB) và Nhẹ (whisper small q5_1, Hy-MT2 Q4_K_M 1,13 GB, silero-vad; khoảng 1,3 GB) | 04 | | chưa làm |
+| 159 | Đề xuất gói Chuẩn khi máy Apple Silicon có RAM từ 16 GB, hoặc máy Windows có RAM từ 16 GB và card rời Vulkan VRAM từ 6 GB (`DISCRETE_GPU`, heap `DEVICE_LOCAL` lớn nhất); card rời từ 4 tới dưới 6 GB thì gói Nhẹ; GPU tích hợp chưa tính; máy còn lại gói Nhẹ; người dùng đổi được | 04 | Ngưỡng nằm trong manifest (Đ7); chờ C6, C7 | chưa làm |
+| 160 | Tải bằng HTTP Range; ghi `*.part`, kiểm SHA-256 rồi mới đổi tên; trước khi tải kiểm dung lượng trống ≥ kích thước model + 1 GB | 04 | | chưa làm |
+| 161 | Nơi lưu `app_local_data_dir`: macOS `~/Library/Application Support/<bundle-id>/models`; Windows `%LOCALAPPDATA%\<bundle-id>\models`, không đặt trong `%LOCALAPPDATA%\<tên app>` (thư mục cài của NSIS per-user); ô "xóa dữ liệu app" của bộ gỡ chỉ xóa `%APPDATA%\<bundle-id>` và `%LOCALAPPDATA%\<bundle-id>` | 04, 07 | Bundle id chờ Q1 | chưa làm |
+| 162 | Tự host model; file LICENSE và NOTICE đặt cạnh file model; không tải từ Hugging Face hay GitHub của người khác | 04 | | chưa làm |
+| 163 | Cập nhật model: khi có mạng, kiểm manifest lúc khởi động, tối đa một lần mỗi ngày; có bản mới thì hỏi người dùng, không tự tải | 04 | | chưa làm |
+
+### 4.13 Thanh toán và bản quyền (§6.8)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 164 | License server riêng: TypeScript + Hono, Cloudflare Workers, D1, tài khoản Cloudflare riêng; khóa API của PayOS chỉ nằm trên server | 05 | | chưa làm |
+| 165 | Interface `PaymentProvider` (`create_checkout`, `verify_webhook`, `get_payment_status`); PayOS là cài đặt đầu tiên; thêm cổng chỉ cần một cài đặt và một endpoint webhook | 05 | | chưa làm |
+| 166 | Bảng đơn hàng lưu thêm `provider` và `currency`; mỗi gói có giá riêng theo từng loại tiền | 05 | Giá chờ Q2 | chưa làm |
+| 167 | License chỉ dựa vào `expires_at`; mỗi lần trả tiền trả trước cộng 30 hoặc 365 ngày | 05 | Thuê bao quốc tế để Giai đoạn 2 | chưa làm |
+| 168 | `POST /v1/checkout` với `plan` là `pro_1m` hoặc `pro_12m`, `email`, `license_key` khi gia hạn: tạo đơn có `orderCode` duy nhất, gọi PayOS `POST /v2/payment-requests` với `expiredAt` bằng hiện tại + 15 phút; trả `checkoutUrl`, `qrCode`, `order_token` | 05 | | chưa làm |
+| 169 | `POST /v1/webhooks/payos`: kiểm chữ ký bằng checksum key; gọi PayOS `GET /v2/payment-requests/{orderCode}` để xác nhận; chỉ nhận `PAID` và `amountPaid` ≥ `amount`; idempotent theo `orderCode`; cấp license mới hoặc gia hạn từ max(hôm nay, ngày hết hạn); gửi email chứa key; đăng ký webhook qua `confirm-webhook` khi triển khai | 05, 05 (người) | | chưa làm |
+| 170 | `GET /v1/orders/{orderCode}?token=…`: app hỏi trạng thái đơn; đơn đã trả tiền thì trả key | 05 | | chưa làm |
+| 171 | `POST /v1/licenses/activate`: tối đa 2 máy; `device_id_hash` đã có activation thì dùng lại, không tốn suất; đủ 2 máy thì trả `409` kèm `activation_id`, `device_label`, thời điểm `validate` gần nhất | 05 | | chưa làm |
+| 172 | `POST /v1/licenses/validate`: trả token mới nếu license còn hiệu lực | 05 | | chưa làm |
+| 173 | `POST /v1/licenses/deactivate`: gọi từ chính máy đó, hoặc gỡ từ xa từ máy mới khi key đã đủ 2 máy; mỗi lần gỡ tính vào giới hạn ở §10.2 | 05 | | chưa làm |
+| 174 | `POST /v1/licenses/recover`: gửi lại mọi key còn hiệu lực vào chính email đó; luôn trả `200`; có giới hạn tần suất | 05 | | chưa làm |
+| 175 | Gửi email qua Resend (API HTTP gọi từ Worker), sau interface `EmailProvider`; khóa API của Resend là secret của Worker; tên miền gửi xác thực SPF, DKIM | 05 | Chờ T6, Q1 | chưa làm |
+| 176 | `/admin/*` sau Cloudflare Access: tra cứu theo email hoặc `orderCode`, gửi lại key; mở khóa key bị khóa tạm; cấp hoặc gia hạn tay; gỡ activation, thu hồi key; mọi thao tác ghi nhật ký | 05, 05 (người) | Thêm thao tác xóa dữ liệu theo email (Q9); R15 | chưa làm |
+| 177 | Chữ ký khi tạo link thanh toán: HMAC-SHA256 bằng checksum key trên `amount`, `cancelUrl`, `description`, `orderCode`, `returnUrl` xếp theo thứ tự chữ cái | 05 | | chưa làm |
+| 178 | Token bản quyền ký Ed25519, khóa công khai build sẵn trong app; trường `kid`, `license_id`, `plan`, `expires_at`, `activation_id`, `device_id_hash`, `issued_at`, `refresh_before` (= `issued_at` + 14 ngày) | 05, 06 | Vector test chung (Đ9) | chưa làm |
+| 179 | `device_id_hash` là SHA-256 của IOPlatformUUID (macOS) và MachineGuid (Windows) | 06, 06 (Win) | | chưa làm |
+| 180 | Quá `refresh_before` mà chưa làm mới được token thì app về Free | 06 | | chưa làm |
+| 181 | Quá `expires_at`: nếu có mạng thì gọi `validate` trước; chỉ về Free và nhắc gia hạn khi server xác nhận chưa gia hạn, hoặc khi không có mạng | 06 | | chưa làm |
+| 182 | Mua trong app: chọn gói, nhập email; hiện VietQR tự vẽ từ `qrCode`, kèm nút mở trang thanh toán PayOS; hỏi đơn mỗi 3 giây, tối đa 15 phút; đơn đã trả thì tự kích hoạt, đơn gia hạn thì gọi `validate`; lưu `orderCode` và `order_token` để hỏi lại ở lần mở sau; key cũng gửi qua email | 06 | | chưa làm |
+| 183 | Gia hạn: nhắc trước 7 ngày và khi đã hết hạn; nút "Gia hạn" tạo đơn mới gắn với key hiện có | 06 | | chưa làm |
+| 184 | Kiểm tra định kỳ: lúc khởi động và sau đó mỗi giờ; lần `validate` thành công gần nhất quá 24 giờ và có mạng thì gọi `validate`, kể cả khi app chạy liên tục nhiều ngày | 06 | | chưa làm |
+| 185 | Máy bị gỡ từ xa về Free ở lần `validate` kế tiếp; nếu máy đó offline thì token cũ dùng được tới `refresh_before` | 06 | | chưa làm |
+| 186 | Quota Free tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính im lặng; lưu trong kho khóa của hệ điều hành, có chống chỉnh lùi đồng hồ | 06, 02 | Định nghĩa chờ Q5; 02 cung cấp thời lượng | chưa làm |
+| 187 | Quota reset lúc 00:00 theo giờ máy, chỉ khi ngày đã tăng so với lần reset trước và đã qua ít nhất 20 giờ theo đồng hồ thật | 06 | | chưa làm |
+| 188 | Mất bản ghi quota trong khi app đã có dữ liệu từ trước thì coi như đã dùng hết quota của ngày đó | 06 | | chưa làm |
+| 189 | Trong app, interface `LicenseProvider` (activate, validate, deactivate) cài bằng client gọi license server | 06 | | chưa làm |
+| 190 | PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng VND, nên MVP chỉ bán cho khách ở Việt Nam | 06, 05 | Ghi rõ ở màn hình Nâng cấp Pro | chưa làm |
+
+### 4.14 Cài đặt (§6.9)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 191 | Lưu JSON bằng `tauri-plugin-store`, có số phiên bản schema và bước migrate khi schema đổi | 01 | | chưa làm |
+| 192 | Khóa: `uiLanguage`, `targetLanguage`, `sourceLanguages[]`, `sourceLock?`, `audioSource`, `vadEndSilenceMs`, `overlay.{fontSize, lines, opacity, showSource, locked, positions}`, `modelTier`, `hotkeys`, `saveHistory` (mặc định tắt), `launchAtLogin`, `theme`, `updateChannel`, `experimental.translationContext` | 01 | Kế hoạch sau thêm khóa thì kèm bước migrate | chưa làm |
+| 193 | Từ điển thuật ngữ nằm trong SQLite mã hóa, không nằm trong file cài đặt | 03 | | chưa làm |
+
+### 4.15 Giao diện (§6.10)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 194 | React 19, TypeScript, Vite, Zustand | 01 | | chưa làm |
+| 195 | Hai cửa sổ `main` và `overlay`, mỗi cửa sổ một entry HTML; giao tiếp với lõi Rust qua `invoke` và sự kiện; store Zustand đăng ký nhận sự kiện | 01 | Hai entry có từ GĐ0 | chưa làm |
+| 196 | Nhận diện thương hiệu mới, không dùng nhận diện của AI Live Translator | 01, 07 | Tên, logo chờ Q1; 01 dùng token màu và icon tạm | chưa làm |
+| 197 | Trợ năng: chữ phóng to được; phụ đề đủ tương phản | 01, 03 | | chưa làm |
+
+### 4.16 Đóng gói, ký số, cập nhật (§6.11)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 198 | Bộ cài: Windows NSIS `.exe` kèm bootstrapper WebView2; macOS `.dmg` cho arm64 | 07 | | chưa làm |
+| 199 | Dung lượng bộ cài ≤ 60 MB (macOS: phần tiến trình phụ 7,7 MB sau nén LZMA) | 07 | Windows chờ C10; R12 | chưa làm |
+| 200 | Ký Windows bằng chứng thư OV có khóa trên HSM của dịch vụ ký cloud, để CI ký được; lúc đầu SmartScreen có thể vẫn cảnh báo | 07 | Chờ T2 | chưa làm |
+| 201 | Ký macOS bằng Developer ID Application, bật hardened runtime, notarize | 07 | Chờ T1 | chưa làm |
+| 202 | macOS không chạy sandbox; bật `macOSPrivateApi` cho cửa sổ trong suốt | 07 | Có từ GĐ0 (`tauri.conf.json`) | xong |
+| 203 | Tự cập nhật bằng `tauri-plugin-updater`: manifest cập nhật trên CDN, ký bằng khóa cập nhật; kiểm lúc khởi động và mỗi 24 giờ; cài ở lần thoát kế tiếp; có bản mới và app đang rảnh thì mời khởi động lại | 07 | Q13 về cách mời | chưa làm |
+| 204 | Hai kênh cập nhật stable và beta, chọn trong Cài đặt | 07, 01 | | chưa làm |
+| 205 | Tiến trình phụ đặt ở `src-tauri/binaries/`, tên kèm target triple: `asr-worker` (macOS); `asr-worker-vulkan`, `asr-worker-cpu` (Windows); `llama-server` kèm thư viện backend ggml (Windows) và `.dylib` (macOS nếu link động) | 02, 07 | 02 có script chép binary cho bản dev | chưa làm |
+
+### 4.17 Phiên bản thư viện (§6.12)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 206 | Luôn dùng bản ổn định mới nhất lúc cài; không dùng beta, rc, nightly trừ khi bắt buộc, và khi đó ghi rõ lý do | QƯ | Mục 6.1 | chưa làm |
+| 207 | Trước khi chốt phiên bản: đọc release notes và changelog; kiểm peer dependency; thư viện React hỗ trợ React 19; plugin Tauri cùng dòng với Tauri core; crate chạy được với MSRV; Node đúng yêu cầu của Vite | QƯ | Mục 6.1 | chưa làm |
+| 208 | Trong một tiến trình không có hai bản của cùng thư viện gốc, không trùng symbol; ggml chỉ nằm ở hai tiến trình phụ; `asr-worker` link tĩnh whisper.cpp, tắt `GGML_BACKEND_DL`; `dumpbin` hai bản Windows không có DLL ggml | QƯ, 07 | Chờ C11; 07 thêm bước kiểm `dumpbin` vào CI | chưa làm |
+| 209 | Mức CPU cố định ở `.cargo/config.toml` với `force = true` (x64: AVX, AVX2, BMI2, FMA, F16C, không AVX-512; arm64: `armv8.4-a+fp16`); sửa file này thì xóa bản build cũ của `whisper-rs-sys` ở cả hai profile | 07, 08 | Có từ GĐ0; 07 kiểm `system_info` trong CI; 08 chạy trên máy M1 (C6) | chưa làm |
+| 210 | `llama-server` trên Windows build với `GGML_BACKEND_DL` và `GGML_CPU_ALL_VARIANTS` | 07 | R11 | chưa làm |
+| 211 | Phương án MVP: `llama-server` trên macOS tự build tĩnh (Metal, `GGML_NATIVE=OFF`) hay kèm các file `.dylib` ký cùng Team ID | 07 | 07 chọn; nghiêng về build tĩnh vì ít file phải ký và kiểm SHA-256 | chưa làm |
+| 212 | Engine mới phải chạy đúng model: llama.cpp nạp và chạy đúng GGUF của Hy-MT2; `whisper-rs` có `audio_ctx` và API mức thấp; bản vá ở `third_party/` áp được lên bản mới | QƯ | Mục 6.7 | chưa làm |
+| 213 | Yêu cầu build: `protoc`, CMake, bộ dịch C/C++ (Xcode, Visual Studio Build Tools), libclang (LLVM trên Windows), Vulkan SDK | 07 | Có từ GĐ0 (kế hoạch 0-01); 07 cài trên CI | chưa làm |
+| 214 | Phương án MVP: thư viện C runtime trên Windows, link tĩnh CRT (`-C target-feature=+crt-static`) hay kèm bộ cài VC++ Redistributable | 07 | Chờ C9; R12 | chưa làm |
+| 215 | Sau mỗi lần cài hoặc nâng cấp: build lại toàn bộ, chạy hết test, `cargo audit`, `cargo deny`, `pnpm audit`; nâng `candle-core` hoặc `candle-onnx` thì chạy `vad_reference` với `--include-ignored`; đụng engine hoặc model thì chạy lại benchmark | QƯ | Mục 6.1, 6.2, 6.7 | chưa làm |
+| 216 | Khóa phiên bản: commit lockfile; ghi rõ phiên bản llama.cpp và whisper.cpp đang dùng; chỉ nâng khi chủ động quyết | QƯ | | chưa làm |
+
+### 4.18 Luồng xử lý, đa luồng, chống nghẽn (§7)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 217 | Các luồng: callback thu âm (realtime); luồng tiền xử lý và VAD; runtime tokio (gửi đoạn sang `asr-worker`, dịch qua HTTP stream, sự kiện giao diện, tải model, bản quyền); hai tiến trình phụ | 02 | | chưa làm |
+| 218 | Hàng đợi từ VAD sang nhận dạng chứa tối đa 3 đoạn; đầy thì gộp hai đoạn chờ lâu nhất nếu tổng không quá 12 giây; chỉ bỏ đoạn khi độ trễ vượt 20 giây (`dropped`) | 02 | | chưa làm |
+| 219 | Độ trễ bằng thời điểm hiện tại trừ `end_ms` của đoạn đang xử lý; vượt 6 giây thì hiện chỉ báo "Đang trễ" | 02, 03 | | chưa làm |
+| 220 | Hàng đợi dịch chứa tối đa 3 câu; đầy thì gộp các câu liên tiếp cùng ngôn ngữ vào một request, và gộp phụ đề tương ứng thành một (lấy `start_ms` của câu đầu, `end_ms` của câu cuối) | 02 | | chưa làm |
+| 221 | Câu chờ dịch quá 20 giây thì bỏ bước dịch, chỉ hiện câu gốc (`skipped`) | 02 | | chưa làm |
+| 222 | Số đo từng phiên (thời gian cắt đoạn, nhận dạng, dịch, tổng thể) lưu trên máy, không gửi đi; xem được trong bảng debug ẩn và trong log | 02, 03 | Đ17 | chưa làm |
+
+### 4.19 Hiệu năng và cấu hình máy (§8)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 223 | Hạng máy: khuyến nghị (Apple Silicon RAM 16 GB; Windows RAM 16 GB và card rời Vulkan VRAM từ 6 GB); tối thiểu (Apple Silicon RAM 8 GB; Windows RAM 8 GB, CPU 4 nhân có AVX2); chưa hỗ trợ (Mac Intel, ARM64, CPU không AVX2, RAM dưới 8 GB) | 04, 07 | Chờ C8; 04 báo máy chưa được hỗ trợ (Đ13); 07 chỉ build arm64 và x64 | chưa làm |
+| 224 | Khi chọn gói, ghi chú chất lượng nhận dạng theo gói, và khuyến nghị gói Chuẩn cho người nghe chủ yếu tiếng Việt, Nhật, Hàn, Trung | 04 | | chưa làm |
+| 225 | Ngân sách độ trễ theo bước và mục tiêu p50, p90 trên máy khuyến nghị và máy tối thiểu | 02, 08 | 02 chạy lại S6 sau thay đổi lớn (mục 6.7); 08 đo trên máy tham chiếu | chưa làm |
+| 226 | Nếu S6 xác nhận M1 cơ bản không đạt: nâng hạng máy khuyến nghị, hoặc dùng Q4_K_M cho bước dịch và giữ whisper turbo trên máy băng thông thấp | 04, CDA | Chờ C8, Q15; manifest cho phép thêm tổ hợp gói (Đ7) | chưa làm |
+| 227 | RAM: thiếu RAM khi chạy `llama-server` bằng CPU thì thử `--no-repack` | 02, 08 | 02 cho phép truyền thêm tham số cho `llama-server`; 08 đo trên máy chỉ có CPU | chưa làm |
+| 228 | VRAM trên Windows: gói Chuẩn khoảng 4,2–5 GB, nên ngưỡng đề xuất 6 GB; gói Nhẹ khoảng 2,9 GB, vừa card 4 GB | 04, 08 | Chờ C7 | chưa làm |
+| 229 | Mục tiêu tải máy: CPU trung bình ≤ 30% trên máy khuyến nghị khi người trong cuộc họp nói liên tục | 08 | Mục 6.9 | chưa làm |
+
+### 4.20 Xử lý lỗi (§9)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 230 | macOS chưa cấp quyền ghi âm thanh hệ thống (tạo tap lỗi, hoặc buffer toàn im lặng kèm trạng thái quyền): hiện màn hình hướng dẫn, có nút mở System Settings | 02, 01, 02 (người) | Kết quả C1, dòng 2 | chưa làm |
+| 231 | Đang dịch mà hơn 60 giây không có âm thanh vào (theo RMS, kể cả phần im lặng được chèn): thanh phụ đề hiện "Không nghe thấy âm thanh" kèm gợi ý | 02, 03 | | chưa làm |
+| 232 | Thiết bị phát thay đổi (cắm tai nghe, kết nối Bluetooth): tự khởi tạo lại việc thu âm trong ≤ 2 giây | 02, 02 (Win) | Kết quả C1 dòng 9, C2 dòng 9 | chưa làm |
+| 233 | Model thiếu hoặc hỏng: lúc khởi động chỉ kiểm có file và đúng kích thước; SHA-256 đầy đủ kiểm sau khi tải xong và khi nạp model lỗi; đề nghị tải lại | 04, 02 | | chưa làm |
+| 234 | `asr-worker` không chạy hoặc bị crash (mã thoát, hoặc hết thời gian chờ): tự khởi động lại theo §6.4 | 02 | | chưa làm |
+| 235 | `llama-server` không chạy hoặc bị crash (mã thoát, hoặc `/health` báo lỗi): tự khởi động lại theo §6.5; quá giới hạn thì báo lỗi, chỉ hiện câu gốc | 02 | | chưa làm |
+| 236 | GPU khởi tạo lỗi, hoặc máy Windows không có Vulkan: chạy `asr-worker-cpu`, `llama-server` chạy bằng CPU, báo "Đang chạy bằng CPU (chậm hơn)" | 02 (Win), 02 | Chờ C3 | chưa làm |
+| 237 | Thiếu RAM hoặc VRAM (RAM trống thấp, hoặc tiến trình phụ báo hết bộ nhớ, kể cả bộ nhớ GPU): đề xuất chuyển sang gói Nhẹ | 02, 04 | Dùng `Error.kind` là `OutOfMemory` | chưa làm |
+| 238 | Trễ dồn lại (độ trễ > 6 giây): hiện chỉ báo và áp chính sách ở §7 | 02, 03 | | chưa làm |
+| 239 | Hết quota Free: dừng dịch, hiện "Đã dùng hết 30 phút hôm nay" kèm nút nâng cấp | 06, 03 | | chưa làm |
+| 240 | License không hợp lệ, hết hạn hoặc bị thu hồi: về Free, báo rõ lý do | 06 | | chưa làm |
+| 241 | Mất mạng đúng lúc cần kiểm tra license: giữ Pro trong 14 ngày ân hạn | 06 | | chưa làm |
+| 242 | Key đã kích hoạt đủ 2 máy (`activate` trả `409`): hiện danh sách máy (tên máy, lần dùng gần nhất), cho gỡ một máy rồi kích hoạt máy đang dùng; vượt giới hạn gỡ thì hướng dẫn liên hệ hỗ trợ | 05, 06 | | chưa làm |
+| 243 | Khách đã chuyển khoản nhưng webhook đến chậm hoặc bị mất: app hỏi trạng thái đơn mỗi 3 giây; server đối soát bằng `GET /v2/payment-requests/{id}` mỗi 5 phút cho đơn chưa xác nhận | 05, 06 | Cron Trigger | chưa làm |
+| 244 | Webhook bị gửi trùng: xử lý idempotent, mỗi đơn chỉ cấp hoặc gia hạn license một lần | 05 | | chưa làm |
+| 245 | Khách chuyển thiếu tiền, hoặc link thanh toán hết hạn: không cấp license, hiện hướng dẫn liên hệ hỗ trợ; hỗ trợ cấp tay khi khách đã chuyển bù | 05, 06 | | chưa làm |
+| 246 | Tải model thất bại (lỗi HTTP hoặc sai SHA-256): thử lại 3 lần, cho phép tải tiếp sau | 04 | | chưa làm |
+| 247 | Bản dịch lỗi (quá dài, có kèm lời giải thích): cắt stream, thử lại một lần với repeat penalty cao hơn, sau đó hiện câu gốc | 02 | | chưa làm |
+
+### 4.21 Quyền riêng tư và pháp lý (§10.1)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 248 | Âm thanh chỉ nằm trong RAM: không ghi xuống đĩa, không gửi qua mạng | 02, 08 | Công cụ `capture` của GĐ0 ghi WAV, không được vào bộ cài (07) | chưa làm |
+| 249 | App chỉ kết nối mạng để tải manifest và model, kiểm tra cập nhật, gọi license server; không analytics, không gửi báo cáo crash; log nằm trên máy, người dùng tự gửi khi cần hỗ trợ | QƯ, 01, 08 | 01 nút mở thư mục log (Đ10); 08 kiểm qua proxy | chưa làm |
+| 250 | `llama-server` chỉ nghe `127.0.0.1`, API key ngẫu nhiên tạo mỗi lần chạy, truyền qua biến môi trường; `asr-worker` không mở cổng mạng | 02 | | chưa làm |
+| 251 | Khóa API của PayOS (client id, api key, checksum key) chỉ nằm trên license server, lưu dạng secret | 05 | | chưa làm |
+| 252 | Lịch sử chép lời mặc định tắt, chỉ lưu trên máy, xóa toàn bộ được bằng một nút | 01, 03 | | chưa làm |
+| 253 | Không có tài khoản đăng nhập; server chỉ lưu email, đơn hàng, license, mã băm ID máy, `device_label`, thời điểm kiểm tra gần nhất; không nhận số tài khoản ngân hàng của khách | 05 | | chưa làm |
+| 254 | Khi mua, người dùng tick đồng ý cho xử lý email vào đúng mục đích | 06, 05 | 05 lưu thời điểm đồng ý | chưa làm |
+| 255 | Chính sách quyền riêng tư ghi rõ dữ liệu nào được lưu, lưu bao lâu, cách yêu cầu xóa | CDA, 05 | Nội dung thuộc website (Q8); 05 có thao tác xóa theo email (Q9) | chưa làm |
+| 256 | Chuyển dữ liệu cá nhân ra nước ngoài (D1, Resend): hồ sơ đánh giá tác động nếu thuộc diện | CDA, 05 | Hỏi luật sư (§15, Q10); 05 ghi rõ nơi lưu dữ liệu để làm hồ sơ | chưa làm |
+| 257 | Giấy phép bên thứ ba liệt kê ở màn hình Giới thiệu và file `THIRD_PARTY_NOTICES`; danh sách sinh tự động từ `Cargo.lock` và `pnpm-lock.yaml` (ví dụ `cargo about`), kiểm ở CI bằng `cargo deny` | 07, 01 | Gồm cả thư viện vẽ mã QR và font chữ | chưa làm |
+| 258 | Giấy phép model: Hy-MT2 Apache 2.0 kèm LICENSE và NOTICE, ghi chú đã sửa đổi nếu tự nén lại; trọng số Whisper MIT; Silero VAD MIT | 04, 07 | | chưa làm |
+| 259 | Không dùng tài sản nào của RTranslator; nếu chép code thì giữ thông báo Apache 2.0 | QƯ, 07 | 07 rà lại khi sinh danh sách giấy phép | chưa làm |
+| 260 | Nhãn hiệu: chỉ nhắc Teams, Zoom, Meet để mô tả khả năng tương thích, kèm câu miễn trừ "không liên kết với các công ty này" | 01 | | chưa làm |
+
+### 4.22 Bảo mật và chống sao chép (§10.2)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 261 | App không chứa bí mật nào, chỉ có khóa công khai (token bản quyền, manifest model, bản cập nhật); mọi khóa bí mật nằm trên server hoặc trong hệ thống ký của CI | QƯ | Mục 6.5 | chưa làm |
+| 262 | Không đầu tư quá tay vào chống crack | 06 | | chưa làm |
+| 263 | Crack để dùng Pro: kiểm tra bản quyền ở nhiều chỗ trong Rust, không dồn vào một biến đúng/sai; bản phát hành bật `strip`, `lto`, `codegen-units = 1`, `panic = "abort"`; làm rối các chuỗi liên quan tới bản quyền | 06 | Profile release có từ GĐ0 | chưa làm |
+| 264 | Sửa hoặc ký lại file của app: lúc khởi động tự kiểm chữ ký (macOS `SecStaticCodeCheckValidity` kèm Team ID; Windows `WinVerifyTrust` và tên chủ chứng thư); sai thì chỉ chạy Free, báo "Bản cài không chính hãng" kèm link tải chính thức; bản dev bỏ qua | 06, 07 | Đ14; chờ T1, T2 | chưa làm |
+| 265 | Chỉnh lùi đồng hồ hoặc đổi múi giờ: lưu mốc thời gian lớn nhất từng thấy; giờ hiện tại nhỏ hơn mốc quá 10 phút thì không reset quota, coi token là phải kiểm online lại, nhắc chỉnh giờ | 06 | | chưa làm |
+| 266 | Sửa hoặc xóa trạng thái bản quyền và quota: lưu trong kho khóa của hệ điều hành, không lưu file thường | 06, 01 | | chưa làm |
+| 267 | Chia sẻ hoặc bán lại key: tối đa 2 máy, kích hoạt lại cùng máy không tốn suất; trong 30 ngày có hơn 3 lần gỡ rồi kích hoạt máy khác thì khóa tạm key; key sinh ngẫu nhiên ít nhất 128 bit, có ký tự kiểm tra | 05, 06 | 06 kiểm ký tự kiểm tra khi người dùng gõ key | chưa làm |
+| 268 | Dò key hoặc spam: `activate` ≤ 10 lần/giờ/IP, `validate` ≤ 30 lần/giờ/key, `checkout` ≤ 10 lần/giờ/IP, `recover` ≤ 3 lần/giờ/email; vượt thì trả `429` | 05 | | chưa làm |
+| 269 | Bị clone, đổi thương hiệu: đăng ký nhãn hiệu, EULA (pháp lý); logic quan trọng nằm trong Rust, JavaScript chỉ lo hiển thị và được rút gọn; manifest, bản cập nhật, token ký bằng khóa riêng | CDA, 02, 03, 07 | EULA chờ Q8 | chưa làm |
+| 270 | Bản giả có mã độc: ký và notarize mọi bản phát hành; chỉ phát hành qua tên miền chính thức; website công bố SHA-256 của từng bộ cài | 07, CDA | 07 sinh SHA-256; trang công bố thuộc website | chưa làm |
+| 271 | Tấn công qua WebView: capabilities từng cửa sổ (`overlay` chỉ nhận sự kiện phụ đề và gọi lệnh di chuyển, khóa của chính nó); CSP chặt, không `unsafe-eval`, không script ngoài; link ngoài mở bằng trình duyệt hệ thống; tắt devtools ở bản phát hành; mọi dữ liệu từ giao diện được kiểm kiểu và phạm vi | 01, QƯ | Capabilities và CSP có từ GĐ0; mỗi lệnh mới phải khai quyền và kiểm input | chưa làm |
+| 272 | Thay tiến trình phụ, chèn thư viện giả: kiểm SHA-256 của file thực thi và thư viện ggml theo danh sách build sẵn; Windows gọi `SetDefaultDllDirectories` ở tiến trình chính và `asr-worker`; macOS bật hardened runtime có library validation, mọi file thực thi và `.dylib` ký cùng Team ID | 02, 02 (Win), 07 | Đ15 | chưa làm |
+| 273 | Lộ nội dung cuộc họp: lịch sử mã hóa bằng SQLCipher, khóa ngẫu nhiên trong kho khóa; log không bao giờ chứa nội dung chép lời; file xuất do người dùng tự quản lý | 03, 02 | | chưa làm |
+| 274 | Tấn công license server: chỉ HTTPS; kiểm chữ ký webhook, xử lý idempotent; prepared statement của D1, kiểm mọi input; secret lưu bằng Wrangler secrets; `/admin/*` sau Access; nhật ký mọi thay đổi license; cảnh báo khi nhiều lần kiểm tra thất bại | 05 | | chưa làm |
+| 275 | Lộ khóa ký token: token có `kid`; app build sẵn khóa đang dùng và khóa dự phòng; khóa bị lộ thì server chuyển sang khóa dự phòng, bản cập nhật kế tiếp mang khóa dự phòng mới | 05, 06, 07 | Q11 | chưa làm |
+| 276 | Rủi ro chuỗi cung ứng: không khóa ký nào nằm trên máy dev; bản phát hành build và ký trong CI từ tag đã commit; CI chạy `cargo audit`, `cargo deny`, `pnpm audit`, bật Dependabot; llama.cpp và whisper.cpp build trong CI từ tag đã khóa, có kiểm checksum | 07, QƯ | Chờ T3 | chưa làm |
+
+### 4.23 Kiểm thử (§11)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 277 | Unit: resample và gộp kênh; trộn hai thiết bị Windows có lệch đồng hồ | 02 | Có từ GĐ0 (`audio-capture`) | xong |
+| 278 | Unit: chèn im lặng khi luồng loopback không trả gói dữ liệu | 02, 02 (Win) | Có từ GĐ0 (`gapfill.rs`, `tests/edge.rs`); 02 thêm test cho `windows.rs` | chưa làm |
+| 279 | Unit: cắt câu với tín hiệu tổng hợp (im lặng, tiếng nói, nhạc, đoạn bị cắt ở 8 giây) | 02 | Có từ GĐ0, trừ ca nhạc | chưa làm |
+| 280 | Unit: VAD chạy dài không tăng bộ nhớ (`vad_reference` bỏ qua mặc định; `debug_assert!` trong `SileroVad::prob`) | 02 | Có từ GĐ0 | xong |
+| 281 | Unit: ghép câu tạm (cửa sổ ghép theo `vadEndSilenceMs`, trần 15 giây hoặc 3 đoạn, đoạn khác ngôn ngữ không ghép) | 02 | Chuyển test từ `latency-bench` | chưa làm |
+| 282 | Unit: chọn ngôn ngữ trong tập cho phép, giữ ngôn ngữ đoạn trước, ngưỡng 0,9 cho đoạn ngắn hơn 1,5 giây | 02 | Có từ GĐ0 (`lid.rs`); sửa theo `prev_lang` | chưa làm |
+| 283 | Unit: giao thức stdin/stdout (đóng gói, giải mã, thông điệp hỏng hoặc bị cắt, khung thừa byte, chỉ số biến thể cố định) | 02 | Có từ GĐ0; thêm ca cho trường mới | xong |
+| 284 | Unit: giải mã của `asr-worker` (công thức `audio_ctx` có sàn 512, luật lặp theo độ dài mẫu, trần số token) | 02 | Có từ GĐ0 | xong |
+| 285 | Unit: luật bỏ đoạn ở tiến trình chính theo `no_speech_prob` và `avg_logprob` | 02 | | chưa làm |
+| 286 | Unit: tạo prompt (nhánh tiếng Trung và không tiếng Trung, tên ngôn ngữ của từng mẫu); khớp thuật ngữ tiếng Việt có dấu và chữ Trung, Nhật, Hàn | 02, 03 | Prompt có từ GĐ0; thuật ngữ ở 03 | chưa làm |
+| 287 | Unit: hậu xử lý bản dịch khi đang stream (lọc nhãn và ngoặc kép, ngưỡng tỉ lệ token theo cặp, thử lại với tham số khác) | 02 | | chưa làm |
+| 288 | Unit: các trạng thái của phụ đề, kể cả `same_lang`, `skipped`, `dropped` | 02 | | chưa làm |
+| 289 | Unit: bộ đếm quota và reset theo ngày; đổi múi giờ qua lại không reset được; mất bản ghi quota thì coi như hết quota trong ngày | 06 | | chưa làm |
+| 290 | Unit: trạng thái bản quyền (ân hạn, thu hồi, tự làm mới token khi app chạy liên tục quá 24 giờ) | 06 | | chưa làm |
+| 291 | Unit: manifest và SHA-256 | 04 | | chưa làm |
+| 292 | Test giao diện (vitest): i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề; các hàm xuất file | 01, 03 | Q12 về hàm xuất file | chưa làm |
+| 293 | License server, unit: tính và kiểm HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp khi `PAID` và `amountPaid` ≥ `amount`; ngày gia hạn tính từ max(hôm nay, ngày hết hạn); giới hạn 2 máy, kích hoạt lại cùng máy, gỡ từ xa; `recover` luôn trả `200`; ký và kiểm token Ed25519 | 05 | | chưa làm |
+| 294 | License server, tích hợp: PayOS trên môi trường test nếu có, không có thì giao dịch số tiền nhỏ | 05, 05 (người) | R14 | chưa làm |
+| 295 | Tích hợp: chạy pipeline từ file WAV, kiểm phụ đề có xuất hiện, đúng thứ tự, đúng thời gian | 02 | Clip ở `tests/fixtures/audio/` (Đ20) | chưa làm |
+| 296 | Tích hợp: vòng đời hai tiến trình phụ (đúng thứ tự, giả lập crash, tự khởi động lại, gửi lại đoạn, chuyển CPU sau 2 lần crash khi dùng GPU, tắt sau 10 phút không dịch) | 02 | | chưa làm |
+| 297 | Benchmark: đo COMET, chrF++ và độ trễ từng bước cho mỗi gói; chạy trước mỗi lần đổi model hoặc engine; ngưỡng theo A2–A4 | QƯ, 08 | Mục 6.7 | chưa làm |
+| 298 | Thủ công: hệ điều hành macOS 14.2+, 15, 26, 27; Windows 10, 11 | 08 (người) | | chưa làm |
+| 299 | Thủ công: app họp Teams, Zoom, Meet (Chrome, Edge, Safari), Zalo PC | 08 (người) | | chưa làm |
+| 300 | Thủ công: thiết bị phát là loa, tai nghe có dây, tai nghe Bluetooth | 08 (người) | | chưa làm |
+| 301 | Thủ công: app họp ở chế độ toàn màn hình, và máy có nhiều màn hình | 08 (người), 03 | | chưa làm |
+| 302 | Thủ công: máy Windows không có Vulkan (ví dụ máy ảo) vẫn mở được app, dùng `asr-worker-cpu`, `llama-server` chạy bằng CPU | 02 (Win), 08 (người) | | chưa làm |
+| 303 | Thủ công: card rời 4 GB và 6 GB được đề xuất đúng gói; chọn gói Chuẩn trên card 4 GB thì `llama-server` tự chuyển bớt lớp sang CPU, không hết bộ nhớ | 04 (Win), 08 (người) | | chưa làm |
+| 304 | Thủ công: khoảng lặng dài trên Windows (tạm dừng video, không ai nói), câu cuối vẫn được chốt, thời gian phụ đề không lệch | 02 (Win), 08 (người) | | chưa làm |
+| 305 | Thủ công, khay: bấm X thì cửa sổ ẩn, phiên không dừng; Thoát ở khay thì không còn tiến trình phụ nào; `⌘Q` và Quit ở Dock không thoát; tắt máy hoặc đăng xuất không bị chặn; nút ở bước 8 mở đúng trang Taskbar | 01 (người), 02, 08 | | chưa làm |
+| 306 | Soak test: phát liên tục 2 giờ âm thanh cuộc họp, theo dõi RAM, CPU, GPU | 08 (người) | A5 | chưa làm |
+| 307 | Cài đặt và cập nhật: cài mới, nâng cấp từ bản trước, gỡ app (Windows tick "xóa dữ liệu app" thì model bị xóa; macOS dùng nút "Xóa model và dữ liệu"); kiểm chữ ký qua Gatekeeper và SmartScreen | 07, 08 | Chờ T1, T2 | chưa làm |
+| 308 | Bảo mật: sửa một byte trong file thực thi, hoặc ký lại bằng chứng thư khác, thì app chỉ chạy Free và báo "Bản cài không chính hãng" | 06, 07, 08 | Chờ T1, T2 | chưa làm |
+| 309 | Bảo mật: token bị từ chối khi sai chữ ký, của máy khác, đã quá `refresh_before` hoặc `expires_at`, có `kid` lạ | 06 | | chưa làm |
+| 310 | Bảo mật: chỉnh lùi đồng hồ máy thì app phát hiện, không reset quota, yêu cầu kiểm tra online | 06, 06 (người) | Test tự động dùng đồng hồ giả (mục 6.8) | chưa làm |
+| 311 | Bảo mật: gỡ rồi kích hoạt lại quá ngưỡng thì key bị khóa tạm | 05 | | chưa làm |
+| 312 | Bảo mật: cửa sổ `overlay` gọi một lệnh không được cấp (ví dụ lệnh bản quyền) thì Tauri chặn | 01, 06 | | chưa làm |
+| 313 | Bảo mật: thay `asr-worker` hoặc `llama-server` bằng file khác thì app từ chối chạy | 02 | | chưa làm |
+| 314 | Bảo mật: mở file lịch sử bằng công cụ SQLite bên ngoài thì không đọc được nếu không có khóa | 03 | | chưa làm |
+| 315 | Bảo mật: log của một phiên dịch không chứa nội dung chép lời | 02, 08 | | chưa làm |
+| 316 | Bảo mật, license server: vượt giới hạn request thì trả `429`; input độc hại (ví dụ SQL injection) bị từ chối; webhook sai chữ ký bị từ chối | 05 | | chưa làm |
+| 317 | Bảo mật, CI: `cargo audit`, `cargo deny`, `pnpm audit` không còn lỗ hổng mức cao | 07 | | chưa làm |
+
+### 4.24 Cấu trúc repo (§12)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 318 | Cây thư mục theo §12: `src/windows/{main,overlay}`, `components/`, `store/`, `lib/ipc.ts`, `i18n/`; `src-tauri/src/` (`session.rs`, `sidecar/`, `models/`, `license/`, `security/`, `transcript/`, `overlay/`, `db.rs`, `glossary.rs`, `settings.rs`, `tray.rs`, `hotkeys.rs`, `i18n.rs`); `capabilities/`; `binaries/`; `crates/`; `third_party/`; `server/`; `bench/`; `tests/fixtures/audio/` | 01, 02, 03, 04, 05, 06, 07 | Mỗi kế hoạch tạo phần của mình; chỗ lệch ghi ở Q12 | chưa làm |
+| 319 | `asr-protocol`, `asr-worker`, `audio-capture`, `pipeline` có từ Giai đoạn 0, phần lớn code dùng lại ở MVP | 02 | | chưa làm |
+| 320 | Việc cho MVP §12: giữ `audio-capture` và `pipeline` là crate riêng; `src-tauri` chỉ còn phần nối các crate vào app | 02 | Đã chọn ngày 2026-10-01 | xong |
+| 321 | Việc cho MVP §12: trước khi tạo `server/`, thêm vào `.gitignore` các mẫu `.dev.vars*`, `.env*`, `*.pem`, `*.p12`, `*.pfx`, `*.key` | 05 | Task đầu của 05 | chưa làm |
+
+### 4.25 Lộ trình, giả định, việc còn mở (§13–§15)
+
+| # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
+|---|---|---|---|---|
+| 322 | §13, Giai đoạn 1: làm F1–F10, license server và tích hợp PayOS, đạt A1–A7 | 00, 08 | Task 5 | chưa làm |
+| 323 | §14 giả định 7 (PayOS): webhook và HMAC-SHA256 đúng tài liệu; có môi trường test hay không (không có thì giao dịch nhỏ); mô tả đơn ngắn (một số ngân hàng tối đa 9 ký tự), dùng `MT` cộng số đơn | 05 | Đăng ký merchant đã xong (T5) | chưa làm |
+| 324 | §15, việc còn mở: tên, logo, tên miền, bundle identifier; giá P1; hóa đơn điện tử và thuế; pháp lý; chứng thư ký mã và tài khoản Apple Developer; website | CDA, 00 | Q1, Q2, Q10, T1, T2; email đã chọn Resend, tài khoản Cloudflare đã có | chưa làm |
+
+## 5. Việc chờ và cách không bị chặn
+
+### 5.1 Các dòng "Chờ …" trong spec
+
+| Chỗ trong spec | Nội dung chờ | Mã |
+|---|---|---|
+| §3.3, mốc A4 | "Chưa đủ điều kiện của A4": clip Bluetooth thật, nghe lại 24 clip | C13 |
+| §4.4, nổi trên app toàn màn hình | "Chờ kết quả S5 (kế hoạch 05, Task 3–4)" | C5 |
+| §6.1, Windows | "Chờ kết quả S2 trên Windows (kế hoạch 04, Task 7–8)" | C2 |
+| §6.1, macOS | "Chờ kết quả S1 (kế hoạch 04, Task 6)" | C1 |
+| §6.4, hai bản Windows | "Chờ kết quả S3 trên Windows (kế hoạch 03, Task 14–16)" | C3 |
+| §6.4, rút ngắn cửa sổ mã hóa | "Chờ chạy lại fullctx với bản build chốt" | C12 |
+| §6.4, flash attention | "Máy tham chiếu chưa đo" | C6 |
+| §6.5, API | "Đổi cờ, hoặc chạy trên Windows, thì làm lại S4" | C4 |
+| §6.5, lần đầu chạy binary mới | "chưa đo trên bản đã notarize" | T1 |
+| §6.7, đề xuất gói Chuẩn | "Chờ kết quả S6 trên card rời 6 GB, 4 GB và GPU tích hợp" | C7 |
+| §6.11, dung lượng bộ cài | "Windows: chờ số đo ở kế hoạch 03, Task 15, Step 3" | C10 |
+| §6.12, ggml | "Trên Windows, chờ kết quả kế hoạch 03, Task 14 và 16" | C11 |
+| §6.12, thư viện C runtime | "chờ kết quả `dumpbin /dependents` ở kế hoạch 03, Task 14" | C9 |
+| §8, bảng hạng máy | "riêng M1 cơ bản phải xác nhận ở S6" | C8 |
+| §8, sau bảng hạng máy | "Chờ kết quả S6 trên các máy tham chiếu … để chốt hạng máy khuyến nghị" | C8 |
+| §8, đo được trên M4 Pro | "Chờ kết quả S6 trên các máy tham chiếu (kế hoạch 06, Task 8–9)" | C6 |
+| §8, RAM đo được | "Chờ kết quả S6 trên các máy tham chiếu …, nhất là máy chạy bằng CPU" | C6 |
+| §8, VRAM | "Chờ kết quả S6 trên Windows để có VRAM đo thật" | C7 |
+
+### 5.2 Việc chờ Giai đoạn 0
+
+| Mã | Việc chờ | Nguồn kết quả | Kế hoạch dùng | Cách không bị chặn | Cần |
+|---|---|---|---|---|---|
+| C1 | S1: thu âm trên macOS với Zoom, Meet (Chrome, Safari, Edge), Teams, Zalo PC; tap một app; tai nghe có dây và Bluetooth; đổi thiết bị giữa chừng; từ chối quyền | Kế hoạch 0-04 Task 6, `results/s1_capture.md` | 02, 08 | `MacTapSource` đã chạy ở mức code; 02 làm tiếp mà không cần ma trận. 02 cài listener đổi thiết bị ngay từ đầu; kết quả dòng 9 chỉ chỉnh cách khởi tạo lại; kết quả dòng 2 định cách phát hiện thiếu quyền (§9) | người, Mac, tài khoản họp, máy thứ hai |
+| C2 | S2: WASAPI loopback với Teams, Zoom, Meet; thiết bị Communications; tai nghe Bluetooth; chèn im lặng; rút tai nghe | Kế hoạch 0-04 Task 7–8, `results/s2_capture.md` | 02 (Win), 08 | Code `windows.rs` đã viết sẵn ở kế hoạch 0-04 Task 7. 02 đưa vào crate và kiểm kiểu trên Mac bằng `cargo check -p audio-capture --target x86_64-pc-windows-msvc` (sau `rustup target add x86_64-pc-windows-msvc`); chạy thật khi có máy | máy Windows, người |
+| C3 | S3 trên Windows: build `asr-worker-vulkan` và `asr-worker-cpu`, `--probe`, chép lời bằng Vulkan và CPU, máy không có Vulkan | Kế hoạch 0-03 Task 14–16, `results/s3_windows.md` | 02 (Win), 04, 07 | Logic chọn bản worker và đề xuất gói test bằng kết quả `--probe` giả (JSON) và mã thoát giả (`0xC0000135` khi thiếu `vulkan-1.dll`). Code `probe.rs` có sẵn ở kế hoạch 0-03 Task 14 | máy Windows có card rời, máy ảo không có Vulkan |
+| C4 | S4 trên Windows: token prompt do `llama-server` Windows dựng và bản dịch stream khớp Hugging Face | Chạy lại `bench/phase0/mt/check_template.py` (kế hoạch 0-02 Task 2) trên Windows | 02 (Win), 07 | macOS đã xác nhận. Nếu Windows lệch thì dùng phương án `minijinja` (§6.5) | máy Windows |
+| C5 | S5: thanh phụ đề trên app họp toàn màn hình, trên macOS và Windows; phím tắt trùng (dòng 13 của mỗi ma trận) | Kế hoạch 0-05 Task 3–4, `results/s5_overlay.md` | 01, 03, 08 | Giữ cách làm của S5. Dòng nào không đạt thì sửa ở 01 (nếu đang chạy) hoặc ở 03. Phím tắt mặc định giữ như F10 cho tới khi có kết quả | người, Mac, Windows, app họp |
+| C6 | S6 trên máy tham chiếu: độ trễ, RAM, VRAM trên Mac M1 16 GB, Mac chip cơ bản đời mới, laptop card rời 6 GB và 4 GB, máy 8 GB chỉ có CPU, GPU tích hợp | Kế hoạch 0-06 Task 8–9, `results/s6_latency.md`, `results/latency/vram-*.csv` | 04, 02, 08 | Ngưỡng đề xuất gói và danh sách tổ hợp gói nằm trong manifest (Đ7); có số thật thì sửa manifest, không phát hành lại app. 08 đo lại A2 bằng app thật | máy tham chiếu, người; nhắc đóng app nặng (mục 6.9) |
+| C7 | Ngưỡng VRAM 6 GB cho gói Chuẩn; có nới cho card 4 GB hay GPU tích hợp không | Như C6 | 04 | Như C6: chỉ sửa manifest | như C6 |
+| C8 | Hạng máy khuyến nghị; nếu M1 cơ bản không đạt thì chọn một trong hai phương án ở §8 | Như C6 | 04, 08 | Như C6. Việc chọn phương án là Q15 | chủ dự án |
+| C9 | VCRUNTIME: các `.exe` có phụ thuộc `VCRUNTIME140.dll` không | Kế hoạch 0-03 Task 14 Step 4, `results/s3_windows.md` | 07 | 07 chạy `dumpbin /dependents` trên runner Windows của CI (Q3) hoặc trên máy Windows, rồi quyết định link tĩnh CRT hay kèm VC++ Redistributable | máy Windows hoặc runner CI |
+| C10 | Dung lượng bộ cài Windows | Kế hoạch 0-03 Task 15 Step 3, `results/s3_size_windows-x64.json` | 07 | 07 đo trên bộ cài thật | máy Windows hoặc runner CI |
+| C11 | `dumpbin` hai bản `asr-worker` không có DLL ggml; `asr-worker-cpu` chạy được trên máy không có Vulkan | Kế hoạch 0-03 Task 14 và 16 | 02 (Win), 07 | Như C3; 07 thêm bước kiểm vào CI | máy Windows, máy ảo |
+| C12 | Lượt fullctx với bản build chốt, để so giả định 8 trên cùng cấu hình | Bổ sung cho kế hoạch 0-03 Task 11 | Không kế hoạch nào phụ thuộc | 02 chạy trên Mac, cùng đợt chạy lại A4 đầu tiên (Đ12) | Mac, agent |
+| C13 | Hai điều kiện A4: clip thật qua tai nghe Bluetooth; người nghe lại 24 clip có chú thích Latin | Chưa có kế hoạch; giao cho 08 (Đ11) | 08; mốc A4 ở mục 6.7 | Cho tới khi xong, mốc A4 tạm là `a4_m4pro-{turbo,small}-final.json`. Có mốc mới thì chủ dự án duyệt rồi mới thay | người, tai nghe Bluetooth |
+| C14 | Cài công cụ trên Windows | Kế hoạch 0-01 Task 2 | Mọi phần (Win) | Gom việc Windows thành một đợt (mục 3) | máy Windows |
+| C15 | Báo cáo Giai đoạn 0 (`bench/phase0/REPORT.md`, kế hoạch 0-00 Task 1) và kết luận S3 (`results/s3_lid.md`, kế hoạch 0-03 Task 17) | Giai đoạn 0 | Không kế hoạch nào phụ thuộc | Viết khi đã có kết quả Windows và S6 trên máy tham chiếu | agent |
+
+### 5.3 Việc chờ tài khoản
+
+| Mã | Tài khoản | Hiện trạng | Kế hoạch dùng | Cách không bị chặn |
+|---|---|---|---|---|
+| T1 | Apple Developer ID (99 USD/năm) | Chưa có | 07 (ký, notarize, đo lại thời gian chờ lần đầu ở §6.5), 06 và 07 (Team ID cho tự kiểm chữ ký), 08 (A6, Gatekeeper) | Bản dev ký ad-hoc hoặc ký bằng chứng thư cố định (R8). 07 viết sẵn mọi bước, chạy khi CI có secret. Đăng ký tư cách tổ chức thì cần số D-U-N-S, nên đăng ký sớm |
+| T2 | Chứng thư ký mã OV cho Windows, khóa trên HSM của dịch vụ ký cloud | Chưa có | 07, 06 và 07 (tên chủ chứng thư), 08 (SmartScreen) | Bộ cài chưa ký vẫn chạy được để thử nội bộ, SmartScreen sẽ cảnh báo. Việc xác minh doanh nghiệp mất thời gian, và phụ thuộc loại hình đăng ký kinh doanh (§15) |
+| T3 | Repo từ xa và CI | Chưa có remote | 07, 04 (ký manifest chính thức), Dependabot | Kiểm tra chuẩn chạy tay trên Mac (mục 6.2); manifest staging (Đ8). Chọn nơi đặt repo là Q3 |
+| T4 | Cloudflare riêng cho sản phẩm | Đã có | 04 (R2), 05 (Workers, D1, Access, Cron Triggers) | Người chạy `wrangler login` và tạo API token phạm vi hẹp khi cần |
+| T5 | PayOS merchant | Đã có | 05 | Người lấy client id, api key, checksum key cho staging và production, rồi nhập bằng `wrangler secret put` |
+| T6 | Resend | Chưa ghi nhận là có | 05 | Test dùng `EmailProvider` giả. Trước khi có tên miền đã xác thực, chỉ gửi thử được ở mức hạn chế |
+| T7 | Tên miền | Chưa có (Q1) | 04, 05, 07 | Staging dùng `*.workers.dev` và URL công khai tạm của R2; mọi URL đọc từ cấu hình |
+
+## 6. Quy ước chung cho mọi kế hoạch Giai đoạn 1
+
+### 6.1 Phiên bản thư viện (CLAUDE.md, §6.12)
+
+- Khi cài công nghệ hay thư viện bên thứ ba, dùng bản ổn định mới nhất tại thời điểm cài. Không dùng beta, rc, nightly, trừ khi bắt buộc; khi đó ghi lý do trong kế hoạch.
+- Trước khi chốt phiên bản, kiểm kỹ tương thích và xung đột:
+  - đọc release notes và changelog, tìm thay đổi phá vỡ tương thích;
+  - peer dependency; thư viện React phải hỗ trợ React 19;
+  - mọi plugin Tauri cùng dòng 2.x với Tauri core (hiện 2.12);
+  - crate chạy được với Rust 1.98.1 (MSRV); Node 24.21 đúng yêu cầu của Vite;
+  - trong một tiến trình không có hai bản của cùng một thư viện gốc, không trùng symbol; ggml chỉ nằm trong `asr-worker` và `llama-server`.
+- Mỗi kế hoạch con có bảng "Phiên bản đã chốt" (thành phần, phiên bản, ghi chú tương thích, ngày kiểm), như kế hoạch 0-00.
+- Sau khi cài: build lại toàn bộ và chạy kiểm tra chuẩn (mục 6.2).
+  - Nâng `candle-core` hoặc `candle-onnx` thì chạy thêm `cargo test -p pipeline --test vad_reference -- --include-ignored` với các biến `SILERO_VAD_MODEL`, `VAD_TEST_WAV`, `VAD_REF_JSON`.
+  - Đụng engine hay model thì chạy lại benchmark (mục 6.7).
+- Commit lockfile (`Cargo.lock`, `pnpm-lock.yaml`, và lockfile của `server/`). Chỉ nâng phiên bản khi chủ động quyết.
+
+### 6.2 Kiểm tra chuẩn
+
+Trên Mac, từ gốc repo:
+
+```bash
+cargo fmt --all -- --check
+pnpm install --frozen-lockfile
+pnpm build
+cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy -p asr-worker --features metal,shared-encode --all-targets -- -D warnings
+cargo test --workspace
+cargo test -p asr-worker --features shared-encode
+cargo build --release -p asr-worker --features metal,shared-encode
+cargo deny check && cargo audit
+pnpm audit
+```
+
+Expected:
+- Không có lỗi, không có cảnh báo của clippy.
+- `cargo deny check` in `advisories ok, bans ok, licenses ok, sources ok`.
+- Lúc viết kế hoạch này (commit `3f085a9`), `cargo test --workspace` có 144 test qua và 1 test bỏ qua (`vad_reference`).
+
+Ghi chú:
+- `pnpm build` chạy trước `cargo` để `dist/` có sẵn cho `src-tauri`.
+- Trên Windows (PowerShell), build hai bản `asr-worker` theo kế hoạch 0-03 Task 14 Step 3.
+- Kế hoạch con thêm lệnh của phần mình vào khối này khi tạo ra: `pnpm test` (vitest, từ 01), lệnh kiểm tra của `server/` (từ 05). Khối lệnh đổi thì cập nhật mục này (Task 2).
+
+### 6.3 TDD
+
+- Theo superpowers:test-driven-development: viết test trước, chạy thấy đỏ đúng lý do, viết code tối thiểu, chạy thấy xanh, commit. Mỗi task kết thúc bằng commit.
+- Test mặc định không cần mạng, model, thiết bị âm thanh, GPU hay quyền của hệ điều hành. Phần cứng thật và dịch vụ ngoài đi qua lớp giả:
+  - `AudioSource` giả;
+  - tiến trình phụ giả (binary nhỏ trong workspace);
+  - kho khóa trong bộ nhớ, đồng hồ giả, HTTP giả.
+- Test cần model hay thiết bị thật làm theo mẫu `vad_reference`: đánh dấu `#[ignore]`, đọc đường dẫn từ biến môi trường, và ghi rõ lệnh chạy trong kế hoạch.
+- Code Windows:
+  - logic thuần có test chạy trên Mac;
+  - phần gọi API Windows có test `#[cfg(windows)]`, đánh dấu "cần Windows" trong task.
+- Server: test bằng Vitest; 05 chọn cách chạy test trong môi trường của Workers.
+- Giao diện: vitest cho logic và hiển thị.
+
+### 6.4 `cargo deny` và giấy phép
+
+- Chạy `cargo deny check` sau mỗi lần thêm hay nâng crate. `deny.toml` giữ hai bất biến:
+  - danh sách giấy phép được phép; app đóng nguồn nên không nhận GPL, LGPL, AGPL;
+  - chỉ `asr-worker` được link `whisper-rs`.
+- Giấy phép mới thì thêm vào `allow`, ghi lý do trong commit.
+- Không thêm mục `[advisories] ignore` mới nếu không ghi lý do và điều kiện gỡ bỏ, như mục `RUSTSEC-2024-0436` hiện có.
+- Gói npm: kiểm giấy phép trước khi thêm (`pnpm licenses list`). 07 tự động hóa việc này trong CI và sinh `THIRD_PARTY_NOTICES`.
+- Crate chạy trong tiến trình chính không được kéo ggml, hay bản thứ hai của thư viện C đã có (ví dụ hai bản SQLite, hai bản OpenSSL).
+
+### 6.5 Bí mật (§10.2)
+
+- App không chứa bí mật nào. Trong app chỉ có khóa công khai:
+  - hai khóa kiểm token (`kid` đang dùng và dự phòng);
+  - khóa kiểm manifest model;
+  - khóa kiểm bản cập nhật.
+- API key của `llama-server` được tạo ngẫu nhiên mỗi lần chạy và chỉ nằm trong RAM, nên không phải bí mật lưu trữ.
+- Bí mật của license server là Wrangler secret, theo từng môi trường (staging, production):
+  - client id, api key, checksum key của PayOS;
+  - khóa API của Resend;
+  - khóa riêng ký token.
+  - 05 chốt tên biến. Chạy cục bộ dùng `server/.dev.vars` với giá trị giả hoặc của staging, không bao giờ dùng giá trị production.
+- Bí mật của CI (07, khi có repo từ xa); chỉ job phát hành đọc được:
+  - chứng thư Developer ID và mật khẩu; khóa API để notarize;
+  - thông tin dịch vụ ký cloud của chứng thư OV;
+  - khóa riêng ký bản cập nhật của Tauri và mật khẩu;
+  - khóa riêng ký manifest model;
+  - API token Cloudflare phạm vi hẹp (R2, deploy Worker).
+- Kho mật khẩu ngoại tuyến của chủ dự án giữ bản sao:
+  - khóa dự phòng ký token;
+  - khóa ký bản cập nhật (mất khóa này thì không cập nhật được app đã cài);
+  - khóa ký manifest.
+- Không khóa ký nào nằm trên máy dev (§10.2). Khóa production được tạo rồi đưa thẳng vào nơi lưu, không ghi ra đĩa (Q11).
+- Khóa staging và dev tách khỏi khóa production. Bản dev của app nhận khóa staging; bản phát hành chỉ nhận khóa production.
+- `.gitignore` thêm `.dev.vars*`, `.env*`, `*.pem`, `*.p12`, `*.pfx`, `*.key` trước khi tạo `server/` (task đầu của 05).
+- Log của app, của `asr-worker` và của server không chứa âm thanh, nội dung chép lời, license key đầy đủ, token hay khóa API. Email chỉ ghi ở dạng che bớt.
+- Agent không in, không commit, không dán bí mật vào kế hoạch hay báo cáo. Nhập secret là bước của người: `wrangler secret put` đọc giá trị từ bàn phím.
+
+### 6.6 Commit và nhánh
+
+- Làm thẳng trên `main`, không tạo nhánh hay worktree. Trước mỗi task, `git status` phải sạch.
+- Mỗi task một hoặc vài commit nhỏ. Chỉ `git add` đúng file của task.
+- Thông điệp theo kiểu đang dùng (`feat(<phạm vi>): …`, `fix(…)`, `test(bench): …`, `docs(plan): …`), tiếng Việt có dấu. Dòng cuối là `Co-Authored-By`, cách phần trên một dòng trống:
+
+```bash
+git commit -m "feat(pipeline): ghép câu và phụ đề tạm theo §6.3" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+- Không sửa lịch sử đã commit (không `rebase`, không `amend` commit cũ, không `push --force`).
+- Hiện chưa có remote. Khi có (Q3), push theo chỉ dẫn của chủ dự án.
+
+### 6.7 Chống thụt lùi A3/A4
+
+- **Khi nào chạy lại:**
+  - A3: sau mỗi lần đổi model GGUF, engine (phiên bản hay cờ build của llama.cpp, cách build `llama-server`, backend), prompt, hậu xử lý bản dịch, tham số sinh.
+  - A4: sau mỗi lần đổi model ggml, engine (phiên bản hay cờ build của whisper.cpp, bản vá, backend), tham số giải mã, chọn ngôn ngữ.
+  - S6: khi thay đổi có thể làm chậm pipeline. Trước khi đo, làm theo mục 6.9.
+- **A3:**
+  - Dịch bộ test bằng `latency-bench mt-eval` sau khi 02 thêm lệnh này (Đ4); trước đó dùng `bench/phase0/mt/translate.py`.
+  - Chấm bằng `bench/phase0/mt/score_mt.py` trong môi trường COMET của kế hoạch 0-02.
+  - Đạt khi COMET từng chiều, cả Q8_0 lẫn Q4_K_M, không thấp hơn mốc ở §3.3 quá 0,01.
+  - Cẩn thận:
+    - `translate.py` chạy tiếp từ file đầu ra đã có (`bench/phase0/data/mt/outputs/<model>-<variant>.jsonl`). Đổi code mà giữ file cũ thì nó không dịch lại câu nào.
+    - `score_mt.py` luôn ghi đè `results/s7_mt.json` và `results/s7_mt.md`.
+    - Vì vậy, trước lần chạy lại đầu tiên, 02 thêm nhãn đầu ra cho cả hai, để không ghi đè mốc.
+- **A4:**
+  - `latency-bench asr-eval` trên `bench/phase0/data/asr/manifest.jsonl` (dựng bằng `build_clips.py`), chấm bằng `score_asr.py`, như kế hoạch 0-03 Task 11.
+  - Đạt khi WER/CER nhóm `-wb` của từng ngôn ngữ, ở từng gói, không xấu hơn mốc quá 10% (tương đối).
+  - Mốc hiện hành: `bench/phase0/results/a4_m4pro-{turbo,small}-final.json`, cho tới khi C13 xong.
+- **S6:** `bench/phase0/latency/run_matrix.py` như kế hoạch 0-06 Task 7; so với `results/latency/m4pro-chot-khuyennghi-*.json` và với A2.
+- **Nhãn và lưu kết quả:**
+  - Đặt nhãn có `gd1-<việc>`, ví dụ `out-m4pro-turbo-gd1-prevlang.jsonl`. Không ghi đè file mốc.
+  - Commit file kết quả nhỏ vào `bench/phase0/results/`; dữ liệu lớn giữ ở `bench/phase0/data/`.
+- **Khi thụt lùi quá ngưỡng:** không commit thay đổi gây ra nó; báo chủ dự án kèm số liệu. Chỉ chủ dự án duyệt mốc mới.
+- Công cụ `bench/phase0` phải chạy được với code mới. Đổi giao thức hay API của `pipeline` thì sửa `latency-bench` ngay trong cùng task.
+
+### 6.8 Không bật hộp thoại quyền khi agent tự làm
+
+Agent tự làm thì không chạy thứ gì bật hộp thoại xin quyền hay hộp thoại hệ thống.
+
+Trên macOS:
+- tap thu âm thật (trong app, `capture`, `Capture.app`); `tccutil reset`;
+- đọc hay ghi Keychain bằng binary vừa build lại: chữ ký ad-hoc đổi sau mỗi lần build, nên Keychain hỏi lại;
+- xin quyền thông báo; bật "khởi động cùng hệ thống" thật; quyền Accessibility hay Screen Recording;
+- mở System Settings; cài chứng chỉ gốc của proxy (A7); đổi giờ hay múi giờ của máy.
+
+Trên Windows:
+- UAC (chạy bộ cài, cài driver), SmartScreen, hộp thoại tường lửa.
+- `llama-server` chỉ nghe `127.0.0.1`; nếu hộp thoại tường lửa hiện thì đó là lỗi.
+
+Cách làm:
+- Test tự động dùng lớp giả (mục 6.3).
+- Test cần quyền thật để `#[ignore]`, và ghi vào mục "Cần người thao tác" của task, kèm lệnh chạy và kết quả mong đợi.
+- Tới bước cần quyền thì agent dừng, báo người làm, chờ kết quả rồi mới đi tiếp.
+- Người thử quyền thật trên bản ký bằng chứng thư cố định (R8), để không phải cấp quyền lại sau mỗi lần build.
+
+### 6.9 Trước khi đo thời gian
+
+Áp cho S6, A2, mục tiêu CPU ≤ 30% (§8), thời gian chờ lần đầu (§6.5), và mọi số đo tốc độ khác. Ở kế hoạch 0-02, máy bận đã làm tốc độ sinh token giảm gần một nửa giữa chừng.
+- Agent nhắc người đóng app nặng (Docker Desktop, trình duyệt nhiều tab, IDE đang index, app họp không dùng tới) và cắm sạc, rồi chờ xác nhận mới chạy. Không đo khi đang build.
+- Ghi trạng thái máy vào kết quả: trên Mac, `sysctl vm.swapusage` (swap gần trống) và `pmset -g batt` (đang cắm sạc); trên Windows, Task Manager.
+- Không dùng số đo lúc máy bận để quyết định. Nếu phải giữ lại thì ghi rõ.
+
+### 6.10 Đặt tên và cấu trúc kế hoạch con
+
+- File: `docs/superpowers/plans/2026-10-01-giai-doan-1-0N-<slug>.md`, với slug như bảng ở mục 2. Giữ tiền tố `2026-10-01` cả với kế hoạch viết sau (Đ1).
+- Tiêu đề `# Giai đoạn 1 · 0N: <tên>`, tiếp theo là header chuẩn (khối "For agentic workers", Mục tiêu, Kiến trúc, Công nghệ) và dòng dẫn tới file này.
+- Mỗi kế hoạch có:
+  - bảng "Phiên bản đã chốt";
+  - danh sách dòng của bảng đối chiếu mà kế hoạch nhận (Task 3);
+  - task theo skill writing-plans: đường dẫn file chính xác, code đầy đủ, lệnh chạy kèm kết quả mong đợi, commit;
+  - ghi rõ ở đầu task nào cần Windows hay cần người thao tác.
+- Task cuối của mỗi kế hoạch là Task 2 của file này.
+
+## 7. Rủi ro chính và cách giảm
+
+| Mã | Rủi ro | Nguồn | Cách giảm | Kế hoạch |
+|---|---|---|---|---|
+| R1 | Chưa có máy Windows, trong khi phần lớn việc chờ nằm ở Windows | Mục 5 | Gom đợt Windows (mục 3). Kiểm kiểu code Windows trên Mac bằng `cargo check --target x86_64-pc-windows-msvc`. Dùng runner Windows của CI để build, chạy `dumpbin`, đo dung lượng (Q3). Hành vi thật (loopback, Vulkan, SmartScreen) vẫn cần máy | 02, 07 |
+| R2 | M4 Pro không phải máy quyết định. Theo ngân sách §8, M1 cơ bản vượt p90 với Q8_0; máy chỉ có CPU dư ít | §8, C6 | Đo S6 trên máy tham chiếu sớm. Gói định nghĩa trong manifest (Đ7) để thêm được gói lai. Dự phòng: bản vá mask cho flash attention (nhanh hơn 5–13%, một nguồn), `--no-repack` | 04, 02, 08 |
+| R3 | Ghép câu zh/ja nối nhầm câu khác (cấu hình chốt: 6/17 lần ghép ở gói Chuẩn, 5/18 ở gói Nhẹ, theo ước lượng của review); LID đoạn ngắn sai thêm khi người nói đổi ngôn ngữ thật | §6.3, §6.4, `phase0_review_notes.md` | Thu dữ liệu hội thoại sớm (Q6); công cụ mô phỏng trong `latency-bench`; chưa có dữ liệu thì giữ luật hiện tại | 02 |
+| R4 | Gói Nhẹ chép kém rõ với vi (WER 0,225), ja, ko, zh | §8 | Ghi chú chất lượng khi chọn gói; cân nhắc gói lai (C8) | 04 |
+| R5 | Một số số liệu chỉ có một nguồn: flash attention 5–13%, 15 giây lần đầu chạy, LID 7/60 và 5/60, 6/80 cặp lặp thật | `phase0_review_notes.md` | Không dùng cho quyết định mới trước khi dựng lại phép thử có script | 02, 07 |
+| R6 | Công cụ A3 lệch với app: Python chép lại prompt và không có hậu xử lý; `translate.py` chạy tiếp từ file cũ; `score_mt.py` ghi đè `s7_mt.*`. Gói Chuẩn chỉ dư 0,012 so với sàn Anh→Việt | §3.3, `bench/phase0/mt/` | `latency-bench mt-eval` (Đ4); nhãn đầu ra (mục 6.7); chạy A3 sau mỗi lần đổi prompt hay hậu xử lý | 02, 03 |
+| R7 | Mốc A4 chưa chính thức (C13); đổi mốc giữa chừng làm lệch so sánh chống thụt lùi | §3.3 | Làm C13 sớm; khi có mốc mới, chấm lại các lượt cũ theo mốc mới | 08 |
+| R8 | Hộp thoại quyền và Keychain hỏi lại sau mỗi lần build (chữ ký ad-hoc), nên agent không tự thử đầu cuối được | Mục 6.8 | Lớp giả trong test; phiên thử của người; thử ký bản dev bằng một chứng thư cố định (ví dụ chứng thư Apple Development của một Apple ID) để quyền không mất sau mỗi lần build, làm ở 01 | 01, 02, 03, 06 |
+| R9 | `⌘Q`, Quit ở Dock và tắt máy khó phân biệt qua API của Tauri; chặn nhầm thì hệ điều hành báo app cản tắt máy | §4.3 | Làm và thử tay sớm trong 01. Nếu Tauri không đủ thì gọi API native (xử lý yêu cầu thoát và thông báo tắt máy của AppKit trên macOS, `WM_QUERYENDSESSION` trên Windows) | 01 |
+| R10 | Chưa có Apple Developer ID và chứng thư OV; xét duyệt mất thời gian | T1, T2 | Đăng ký ngay; 07 viết sẵn mọi bước, chạy khi có secret; bản chưa ký chỉ dùng thử nội bộ | 07 |
+| R11 | Tự build llama.cpp trong CI (Metal tĩnh trên macOS; Vulkan và `GGML_CPU_ALL_VARIANTS` trên Windows) tốn công; đổi binary thì phải chạy lại S4, A3, S6 | §6.12, §10.2 | Tách thành task riêng ở 07; so kết quả với bản chính thức b11146 trước khi thay | 07 |
+| R12 | Bộ cài Windows vượt 60 MB nếu kèm bộ cài VC++ Redistributable (khoảng 25 MB) | §6.11, C9 | Ưu tiên link tĩnh CRT nếu `dumpbin` cho thấy có phụ thuộc | 07 |
+| R13 | Thư viện mới vướng giấy phép hoặc kéo thêm thư viện C. SQLCipher cần thư viện mã hóa; trên Windows, OpenSSL đi kèm làm build cần thêm công cụ. Một số crate đổi phồn thể sang giản thể dùng bảng của MediaWiki (GPL), không qua được `deny.toml`; bảng của OpenCC là Apache 2.0 | §6.4, §6.6, §10.1 | Kiểm giấy phép và cách build trên cả hai nền tảng ở task đầu của 02 và 03, trước khi viết code dùng thư viện | 02, 03 |
+| R14 | PayOS có thể không có môi trường test, nên phải thử bằng tiền thật; trường của webhook và độ dài mô tả đơn phải đúng tài liệu | §14 giả định 7 | Unit test với dữ liệu mẫu từ tài liệu PayOS; giao dịch thật số tiền nhỏ trên staging; đối soát mỗi 5 phút | 05 |
+| R15 | Cloudflare Access bảo vệ theo tên miền và đường dẫn: `/admin` trên `*.workers.dev`, hay chung tên miền với API, cần cấu hình đúng; Worker vẫn phải tự kiểm JWT của Access | §6.8, §10.2 | 05 chọn giữa Worker admin riêng và đường dẫn trên tên miền riêng; test Worker từ chối request thiếu JWT hợp lệ | 05 |
+| R16 | Chưa có tên miền: email production, tên miền của R2 và Worker, `returnUrl` của PayOS chưa có đích thật | Q1, T7 | Staging dùng tên miền tạm; mọi URL đọc từ cấu hình | 04, 05, 07 |
+| R17 | Đổi bundle identifier sau khi đã có người dùng làm mất thư mục dữ liệu (model) và các mục trong kho khóa | Q1, §6.7 | Chốt trước bản beta đầu tiên; identifier đọc từ một chỗ duy nhất | 01, 07 |
+| R18 | Mất khóa ký bản cập nhật thì không cập nhật được các bản đã cài; lộ khóa thì kẻ gian phát hành được bản giả | §6.11, §10.2 | Bản sao ngoại tuyến (mục 6.5); chỉ job phát hành của CI đọc khóa | 07 |
+| R19 | Hai kế hoạch chạy song song trên `main` sửa cùng file | Đ18 | Chỉ song song khi tập file không giao nhau | 00 |
+| R20 | Với turbo, luật `no_speech` gần như không bao giờ bỏ đoạn, nên câu ảo giác khi chỉ có nhạc hay im lặng chỉ còn bộ lọc câu quen thuộc chặn | §6.4 | Thử trên im lặng, nhiễu, nhạc (Việc cho MVP); bộ lọc câu | 02 |
+| R21 | Việc pháp lý (chuyển dữ liệu ra nước ngoài, hóa đơn điện tử) có thể lùi ngày bán | §10.1, §15 | Hỏi luật sư và kế toán sớm (Q10) | CDA |
+
+## 8. Điểm cần chủ dự án quyết
+
+Mỗi điểm có đề xuất. Nếu tới lúc làm mà chưa có quyết định, kế hoạch con làm theo đề xuất và ghi rõ, trừ khi điểm đó ghi "phải quyết".
+
+- **Q1. Tên sản phẩm, logo, tên miền, bundle identifier (§15). Phải quyết.**
+  - Cần trước: 05 lên production (tên miền gửi email, tên miền Worker, `returnUrl` và `cancelUrl`); 04 bản chính thức (tên miền của R2); 07 bản beta đầu tiên.
+  - Identifier phải cố định trước khi có người dùng. Đổi sau thì `app_local_data_dir` và tên mục trong kho khóa đổi theo (R17).
+  - Trong lúc chờ: staging dùng `*.workers.dev` và URL tạm của R2; bản dev giữ identifier `dev.meetingtranslator.spike`.
+- **Q2. Giá gói Pro 1 tháng và 12 tháng (VND); có bán gói trọn đời không; hạn mức Free (P1, §15). Phải quyết** trước khi 05 lên production và trước màn hình Nâng cấp của 06.
+  - Trong lúc chờ: giá đọc từ cấu hình của server (bảng giá theo gói và loại tiền, §6.8); hạn mức Free 30 phút là một hằng số duy nhất phía app.
+- **Q3. Nơi đặt repo từ xa và CI.** §10.2 nhắc Dependabot, tức là GitHub.
+  - Đề xuất: repo GitHub riêng tư, tạo sớm (trước 04), để:
+    - ký manifest chính thức trong CI (04);
+    - có runner Windows build hai bản `asr-worker`, chạy `dumpbin` và đo dung lượng bộ cài trước khi có laptop Windows (C9, C10, C11).
+- **Q4. Câu gốc ngắn trong ngưỡng tỉ lệ token (§6.5, Việc cho MVP).**
+  - Đề xuất cách 2: chỉ áp tỉ lệ khi câu gốc từ 10 token; câu ngắn hơn chỉ chịu hạn mức sinh (tối đa 68 token).
+  - Lý do:
+    - không cần hằng số chỉ do một câu (`zh-vi-888`) quyết định;
+    - hạn mức sinh chưa cắt bản dịch nào trong 1240 bản dịch của S7 (lớn nhất 0,46 hạn mức với câu gốc dưới 10 token);
+    - mốc 10 token không nhạy (`s7_mt_decisions.md`).
+  - Cần trước: 02.
+- **Q5. Định nghĩa "phút dịch" của quota Free (§6.8).** Spec chỉ ghi "tổng độ dài các đoạn có tiếng nói". Chưa rõ có tính đoạn `same_lang` (không dịch), `dropped`, và đoạn bị bỏ vì `no_speech` hay câu ảo giác không.
+  - Đề xuất: tính phần tiếng nói (`end_ms − start_ms`, không tính đệm) của các đoạn đã chép lời mà ngôn ngữ khác ngôn ngữ đích; không tính `same_lang`, `dropped`, và đoạn bị bộ lọc bỏ.
+  - Lý do: đúng nghĩa "phút dịch", và công bằng với cuộc họp song ngữ.
+  - Cần trước: 06. 02 cung cấp số liệu.
+- **Q6. Dữ liệu hội thoại thật có quyền dùng** (zh, ja, và các ngôn ngữ khác), để chọn luật ghép câu (§6.3) và ngưỡng giữ ngôn ngữ (§6.4).
+  - Cần biết: ai thu; thu thế nào (tự thu cuộc họp có sự đồng ý của người nói, hay dùng bộ dữ liệu mở có giấy phép phù hợp).
+  - Nếu chưa có khi làm 02: giữ luật hiện tại, như spec cho phép, và làm sẵn công cụ mô phỏng.
+- **Q7. Chỉ chạy một bản của app (single instance).** Spec không nói. Mở app lần hai khi app đang ở khay sẽ tạo thêm một cặp tiến trình phụ và tranh phím tắt.
+  - Đề xuất: 01 dùng `tauri-plugin-single-instance`; lần mở thứ hai chỉ hiện cửa sổ chính của bản đang chạy.
+- **Q8. EULA, chính sách quyền riêng tư, trang hỗ trợ (§10.1, §10.2, A6).** Spec nhắc cả ba nhưng không nói hiện ở đâu, còn website có spec riêng.
+  - Đề xuất: 07 đưa EULA vào bộ cài (trang giấy phép của NSIS và của DMG) và màn hình Giới thiệu; 06 đặt link chính sách quyền riêng tư cạnh ô đồng ý; nút "Xóa model và dữ liệu" có link trang hỗ trợ.
+  - Cần nội dung từ chủ dự án hoặc luật sư trước khi 06 lên production và trước 07.
+- **Q9. Yêu cầu xóa dữ liệu cá nhân (§10.1, "cách yêu cầu xóa").** Danh sách thao tác `/admin` ở §6.8 chưa có "xóa hoặc ẩn danh dữ liệu theo email".
+  - Đề xuất: 05 thêm thao tác này; giữ bản ghi đơn hàng ở mức kế toán cần, bỏ email và `device_label`.
+  - Cần chủ dự án xác nhận thời gian lưu (và hỏi kế toán về chứng từ).
+- **Q10. Hóa đơn điện tử và hồ sơ chuyển dữ liệu ra nước ngoài (§10.1, §15).** Nếu phải phát hóa đơn điện tử khi bán, đó là việc mới cho 05 (PayOS có API hóa đơn). Phải quyết trước khi 05 lên production.
+- **Q11. Tạo và giữ khóa ký (§10.2).** Spec ghi "không khóa ký nào nằm trên máy dev", nhưng khóa phải được tạo ở đâu đó.
+  - Đề xuất:
+    - Khóa ký token production: tạo bằng một script trên máy dev, không ghi ra đĩa, đẩy thẳng vào `wrangler secret put` qua stdin. Khi đã có CI (Q3), tạo trong một job CI chạy tay.
+    - Khóa ký manifest và khóa ký bản cập nhật: tạo trong CI.
+    - Khóa dự phòng và bản sao: lưu ngoại tuyến trong kho mật khẩu của chủ dự án.
+    - Staging dùng cặp khóa riêng.
+  - Cần xác nhận trước khi 05 lên production.
+- **Q12. Vài chỗ lệch nhỏ trong spec**, không đổi yêu cầu. Đề xuất sửa chữ ở lần cập nhật spec kế tiếp:
+  - §6.1 ghi gọi API qua `objc2` và `coreaudio-sys`; code dùng `objc2-core-audio` 0.3.2, không có `coreaudio-sys`.
+  - §12, `server/src` chưa có module email (`EmailProvider`, Resend) và module giới hạn tần suất.
+  - §12 ghi `src-tauri/src/sidecar/` "chạy và giám sát"; kế hoạch này đặt logic giám sát trong `pipeline` (Đ2).
+  - §12 ghi `tests/fixtures/audio/` là "clip âm thanh mẫu cho A4". Thực tế bộ clip A4 nằm ở `bench/phase0/data/` (không commit, dựng lại bằng `build_clips.py`); `tests/fixtures/audio/` chỉ nên chứa vài clip ngắn có quyền dùng cho test tích hợp (Đ20).
+  - §11 test "các hàm xuất file" bằng vitest (phía TypeScript), còn §12 đặt `transcript/export.rs` phía Rust. 03 chọn một phía và test ở phía đó; đề xuất Rust, cho khớp §12.
+  - §10.2 đòi build llama.cpp trong CI, trong khi Giai đoạn 0 dùng bản chính thức. Xác nhận đây là ý định, vì phần này tốn công ở 07 (R11).
+- **Q13. Mời khởi động lại để cập nhật (§6.11) và "thông báo hệ thống" (§4.5).** Thông báo hệ thống trên macOS phải xin quyền.
+  - Đề xuất: MVP dùng thông báo trong app (cửa sổ chính, menu khay, thanh phụ đề); chỉ xin quyền thông báo nếu chủ dự án muốn.
+  - Cần trước: 01 (bảng chuỗi phía Rust) và 07.
+- **Q14. Kho khóa sau khi gỡ app (A6, §4.3, §6.8).** Trạng thái bản quyền và quota nằm trong kho khóa, và cố ý không bị xóa khi gỡ app hay khi bấm hai nút xóa dữ liệu. Nghĩa là gỡ "sạch" vẫn để lại vài mục trong Keychain hoặc Credential Manager.
+  - Đề xuất: giữ như vậy để chống lách quota; ghi rõ trong chính sách quyền riêng tư và trang hỗ trợ.
+- **Q15. Phương án khi M1 cơ bản không đạt A2 (§8, §13):** nâng hạng máy khuyến nghị, hay dùng gói lai turbo + Q4_K_M trên máy băng thông thấp. Quyết khi có C6. Nhờ Đ7, cả hai phương án đều không cần sửa code app.
+
+## 9. Quyết định của kế hoạch này
+
+- **Đ1.** Mọi kế hoạch Giai đoạn 1 giữ tiền tố `2026-10-01`, kể cả kế hoạch viết sau; slug cố định như bảng ở mục 2. Lý do: các file nằm cạnh nhau, tham chiếu không đổi.
+- **Đ2.** Logic giám sát tiến trình phụ đặt trong crate `pipeline`: thứ tự chạy, chờ 1/2/5 giây, bộ đếm 5 lần trong 10 phút, chuyển sang CPU, chờ lần đầu từ 30 giây, tắt sau 10 phút rảnh, Job Object và process group. `src-tauri/src/sidecar/` chỉ tìm đường dẫn binary, kiểm SHA-256 và phát sự kiện trạng thái. Lý do: test được bằng tiến trình phụ giả mà không cần Tauri, đúng quyết định ngày 2026-10-01 "`src-tauri` chỉ nối".
+- **Đ3.** Ghép câu và luật bỏ đoạn chuyển từ `latency-bench` sang `pipeline`; `latency-bench` gọi lại code của `pipeline`. Lý do: một bản logic duy nhất cho cả app và công cụ đo, nên S6 đo đúng thứ app chạy.
+- **Đ4.** 02 thêm `latency-bench mt-eval`: dịch bộ test A3 bằng code Rust của app (prompt, hậu xử lý, thử lại), ghi JSONL cùng định dạng với `translate.py` để `score_mt.py` chấm; đồng thời thêm nhãn đầu ra cho `score_mt.py`. Lý do: A3 đòi "qua đúng prompt của app", mà công cụ Python chép lại prompt và không có hậu xử lý, nên sẽ lệch khi 02 và 03 đổi code.
+- **Đ5.** Wrapper kho khóa của hệ điều hành (`src-tauri/src/security/keystore.rs`) làm ở 01. Lý do: cả 03 (khóa SQLCipher) và 06 (bản quyền, quota) cần nó, và hai kế hoạch này có thể chạy song song.
+- **Đ6.** 03 khóa tính năng Pro qua một điểm kiểm tra duy nhất phía Rust, bản dev tạm trả Pro; 06 thay bằng trạng thái bản quyền thật và thêm kiểm tra ở nhiều chỗ (§10.2). Lý do: 03 viết và chạy trước 06.
+- **Đ7.** Ngưỡng đề xuất gói (RAM, VRAM, loại GPU) và danh sách tổ hợp gói nằm trong manifest đã ký, không hard-code trong app. Lý do: C6 chưa có số; đổi ngưỡng hay thêm gói lai không cần phát hành lại app.
+- **Đ8.** 04 dùng cặp khóa staging để ký manifest; bản dev của app nhận khóa này. Manifest chính thức ký trong CI của 07. Lý do: §10.2 cấm khóa ký trên máy dev, và hiện chưa có CI.
+- **Đ9.** Hợp đồng giữa 05 và 06 là một bộ vector test commit trong `server/`: token đã ký, khóa công khai, kết quả kiểm mong đợi, key mẫu có ký tự kiểm tra. Cả test TypeScript lẫn test Rust dùng bộ này. Lý do: hai ngôn ngữ, hai kế hoạch viết ở hai thời điểm.
+- **Đ10.** Log của app (file trên máy, xoay vòng, không chứa nội dung chép lời hay key đầy đủ) làm ở 01; 02 thêm log của pipeline và xoay log của `asr-worker`. Màn hình Giới thiệu có nút "Mở thư mục log", để người dùng tự gửi khi cần hỗ trợ (§10.1).
+- **Đ11.** Hai điều kiện A4 còn thiếu giao cho 08, nhưng đây là việc của người và làm được ngay. Khi xong, mốc A4 mới thay `-final.json` sau khi chủ dự án duyệt.
+- **Đ12.** 02 nhận ba việc đo chạy được trên Mac: thử `no_speech_prob` trên im lặng, nhiễu, nhạc; đo ngưỡng tỉ lệ token cho cặp không có tiếng Việt và câu gốc dưới 3 token; chạy lại lượt fullctx (C12).
+- **Đ13.** Bước kiểm tra cấu hình của 04 phát hiện CPU không có AVX2 (§8 "chưa hỗ trợ"): app báo máy chưa được hỗ trợ, thay vì để `asr-worker` crash vì gặp lệnh CPU không có (§6.12).
+- **Đ14.** Tự kiểm chữ ký của chính app (§10.2) chia hai phần: 06 làm logic (bản dev bỏ qua; sai chữ ký thì chỉ chạy Free) và thử với chữ ký ad-hoc; 07 điền Team ID và tên chủ chứng thư thật, thử trên bộ cài đã ký.
+- **Đ15.** Kiểm SHA-256 tiến trình phụ trước khi chạy (§10.2) làm ở 02, với danh sách hash sinh lúc build từ `src-tauri/binaries/`. 07 chỉ đảm bảo CI sinh danh sách từ đúng binary phát hành.
+- **Đ16.** Bước "Nghe thử" (§4.1, bước 6) giao cho 03, vì cần thanh phụ đề hoàn chỉnh. 02 cung cấp tùy chọn cho tap tạm thời thu cả âm thanh của app.
+- **Đ17.** 02 thu số đo từng phiên và ghi log; bảng debug ẩn (§7) làm ở 03.
+- **Đ18.** Chỉ chạy song song hai kế hoạch khi tập file không giao nhau: 05 với mọi kế hoạch khác; phần crate của 02 với 01; 03 với 04 sau khi thống nhất file dùng chung (cài đặt, màn hình Quyền riêng tư). Mọi thứ vẫn trên `main`, mỗi task một commit.
+- **Đ19.** Người dùng tự mở app thì cửa sổ chính hiện, và tiến trình phụ bắt đầu chạy (§5). App khởi động cùng hệ thống thì chỉ nằm ở khay, chưa chạy tiến trình phụ. Lý do: §5 muốn app nằm ở khay không giữ vài GB RAM.
+- **Đ20.** 02 tạo `tests/fixtures/audio/` với vài clip ngắn có quyền dùng (tự thu, hoặc FLEURS CC BY 4.0 kèm ghi công) cho test tích hợp. Bộ clip A4 vẫn ở `bench/phase0/data/`, dựng lại bằng script.
+
+---
+
+## Task 1: Chốt các điểm cần chủ dự án quyết
+
+**Files:**
+- Modify: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 8)
+
+- [ ] **Step 1: Gửi chủ dự án mục 8, sắp theo lúc cần**
+  - Trước khi thực thi 01, 02, 05: Q3, Q4, Q6, Q7, Q11, Q13.
+  - Trước khi 05 lên production: Q1, Q2, Q9, Q10.
+  - Trước khi viết 06: Q5, Q14.
+  - Trước khi viết 07: Q8.
+  - Khi có kết quả C6: Q15.
+  - Ở lần sửa spec kế tiếp: Q12.
+- [ ] **Step 2: Ghi quyết định vào từng mục Q**: ngày và nội dung. Điểm nào đổi yêu cầu của spec thì ghi "cần sửa spec"; chủ dự án sửa spec, hoặc duyệt bản sửa.
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+git commit -m "docs(plan): ghi quyết định của chủ dự án vào tổng quan Giai đoạn 1" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 2: Sau mỗi kế hoạch con: cập nhật bảng đối chiếu và trạng thái
+
+**Files:**
+- Modify: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`
+
+- [ ] **Step 1: Liệt kê các dòng của kế hoạch vừa xong** (thay `02` bằng số của kế hoạch đó)
+
+```bash
+awk -F'|' '/^\| [0-9]+ \|/ && $4 ~ /02/ {print $2 "|" $3 "|" $6}' docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+```
+Expected: mỗi dòng in số thứ tự, yêu cầu và trạng thái.
+
+- [ ] **Step 2: Cập nhật trạng thái từng dòng**
+  - Có test hoặc kết quả chứng minh: đổi sang `xong`, thêm SHA commit ngắn vào Ghi chú.
+  - Còn phần bị chặn: đổi sang `chờ`, ghi mã C, T hoặc Q.
+  - Chưa làm tới: giữ `chưa làm`, ghi lý do.
+- [ ] **Step 3: Thêm dòng cho việc phát sinh mà bảng chưa có**, đặt ở cuối nhóm tương ứng. Lấy số kế tiếp:
+
+```bash
+awk -F'|' '/^\| [0-9]+ \|/ {n = $2 + 0; if (n > m) m = n} END {print m + 1}' docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+```
+Expected: in số kế tiếp (lúc viết kế hoạch này là 325).
+
+- [ ] **Step 4: Cập nhật các mục khác**: mục 2 (trạng thái viết, bàn giao thực tế nếu khác mô tả), mục 5 (việc chờ đã có kết quả), mục 6.2 (lệnh kiểm tra mới).
+- [ ] **Step 5: Kiểm định dạng bảng**
+
+```bash
+f=docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+awk -F'|' '/^\| [0-9]+ \|/ && NF != 7 {print "sai số cột:", $2}' "$f"
+awk -F'|' '/^\| [0-9]+ \|/ && $6 !~ /^ (chưa làm|đang làm|chờ|xong|hoãn) $/ {print "sai trạng thái:", $2}' "$f"
+awk -F'|' '/^\| [0-9]+ \|/ {print $2 + 0}' "$f" | sort -n | uniq -d
+```
+Expected: không in gì.
+
+- [ ] **Step 6: Commit** (thay `0N` bằng số của kế hoạch)
+
+```bash
+git add docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+git commit -m "docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 0N" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 3: Trước khi viết một kế hoạch "viết sau" (03, 04, 06, 07, 08)
+
+**Files:**
+- Create: `docs/superpowers/plans/2026-10-01-giai-doan-1-0N-<slug>.md`
+- Modify: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2)
+
+- [ ] **Step 1: Kiểm điều kiện viết ở mục 2**: các kế hoạch cần có trước đã xong, hoặc đã có đúng phần cần dùng, theo trạng thái trong bảng đối chiếu.
+- [ ] **Step 2: Đọc lại** toàn bộ spec, file này, và code thực tế của các kế hoạch trước. Mô tả ở mục 2 được viết khi chưa có code, nên có thể đã lệch.
+- [ ] **Step 3: Lấy danh sách dòng giao cho kế hoạch** bằng lệnh ở Task 2, Step 1, rồi dán vào đầu kế hoạch mới làm checklist. Mỗi dòng phải có task nhận.
+- [ ] **Step 4: Xem mục 5, 8, 9**: việc chờ nào đã có kết quả, quyết định nào đã có.
+- [ ] **Step 5: Tự rà soát theo skill writing-plans**, sửa mục 2 của file này nếu phạm vi đổi, rồi commit
+
+```bash
+git add docs/superpowers/plans/2026-10-01-giai-doan-1-0N-<slug>.md docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+git commit -m "docs(plan): kế hoạch Giai đoạn 1 · 0N" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 4: Khi một việc chờ ở mục 5 có kết quả
+
+**Files:**
+- Modify: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`
+
+- [ ] **Step 1: Đọc file kết quả**; ghi kết luận một câu và đường dẫn file vào dòng mã C hoặc T.
+- [ ] **Step 2: Nếu kết quả làm đổi yêu cầu của spec** (ví dụ ngưỡng VRAM khác 6 GB, hạng máy khác), soạn đề xuất sửa spec và gửi chủ dự án. Không tự sửa spec.
+- [ ] **Step 3: Nếu kết quả là số cấu hình** (ngưỡng đề xuất gói, tổ hợp gói), ghi vào kế hoạch 04 để cập nhật manifest. Không sửa code app.
+- [ ] **Step 4: Cập nhật các dòng của bảng đối chiếu có ghi mã này.** Ví dụ với C6:
+
+```bash
+grep -nE '(^|[^0-9A-Z])C6([^0-9]|$)' docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+```
+Expected: in các dòng có nhắc C6; cập nhật trạng thái và ghi chú của từng dòng thuộc bảng đối chiếu.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+git commit -m "docs(plan): tổng quan Giai đoạn 1 ghi kết quả của việc chờ" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 5: Trước khi phát hành: kiểm bảng đối chiếu đủ 100%
+
+**Files:**
+- Modify: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`
+
+- [ ] **Step 1: Tìm dòng chưa xong**
+
+```bash
+f=docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+grep -cE '^\| [0-9]+ \|' "$f"
+awk -F'|' '/^\| [0-9]+ \|/ && $6 !~ /xong|hoãn/ {print $2 "|" $3 "|" $6}' "$f"
+```
+Expected:
+- Lệnh đầu in tổng số dòng (lúc viết là 324, cộng số dòng thêm sau).
+- Lệnh thứ hai không in gì.
+- Mỗi dòng `hoãn` có ngày chủ dự án duyệt trong cột Ghi chú.
+
+- [ ] **Step 2: Tìm yêu cầu spec mới từ sau khi lập bảng**
+
+```bash
+git log --oneline 3f085a9..HEAD -- docs/superpowers/specs/
+git diff 3f085a9..HEAD -- docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md
+```
+Expected: mọi yêu cầu thêm hoặc đổi trong diff đã có dòng trong bảng.
+
+- [ ] **Step 3: Đọc lại spec từ đầu đến cuối**, so với bảng. Yêu cầu nào chưa có dòng thì thêm dòng, và làm xong trước khi phát hành, hoặc xin chủ dự án cho `hoãn`.
+- [ ] **Step 4: Kiểm mục 5 và mục 8**: mục 5 không còn việc chờ, hoặc chủ dự án đã chấp nhận phần còn lại; mọi điểm ở mục 8 đã được quyết.
+- [ ] **Step 5: Chạy kiểm tra chuẩn (mục 6.2)** trên Mac và trên Windows, ở đúng commit sẽ phát hành. Báo cáo nghiệm thu của 08 đã được commit.
+- [ ] **Step 6: Gửi chủ dự án xin duyệt phát hành**, rồi commit file này với trạng thái cuối
+
+```bash
+git add docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+git commit -m "docs(plan): tổng quan Giai đoạn 1 đủ 100% trước khi phát hành" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
