@@ -3,6 +3,7 @@
 //! Cần bản vá `whisper_set_audio_ctx_with_state` trong `third_party/` (feature `shared-encode`).
 //! Giải mã greedy, không timestamp, không temperature fallback, giống cấu hình của `engine.rs`.
 
+use crate::engine::mean_logprob;
 use crate::lid::pick_language;
 use anyhow::Result;
 use asr_protocol::{MAX_PROMPT_TOKENS, SAMPLE_RATE};
@@ -74,6 +75,8 @@ pub struct Decoded {
     pub tokens: Vec<WhisperTokenId>,
     pub text: String,
     pub lid_ms: f32,
+    /// Trung bình log-xác suất của các token văn bản giữ lại (xem `TranscribeResult::avg_logprob`).
+    pub avg_logprob: f32,
 }
 
 pub struct Decoder {
@@ -110,18 +113,8 @@ impl Decoder {
         Self { eot, suppressed, blank }
     }
 
-    fn pick(&self, logits: &[f32], first_step: bool) -> WhisperTokenId {
-        let mut best = (self.eot, f32::NEG_INFINITY);
-        for (id, &logit) in logits.iter().enumerate() {
-            let token = id as WhisperTokenId;
-            if self.suppressed[id] || (first_step && self.blank.contains(&token)) {
-                continue;
-            }
-            if logit > best.1 {
-                best = (token, logit);
-            }
-        }
-        best.0
+    fn pick(&self, logits: &[f32], first_step: bool) -> (WhisperTokenId, f32) {
+        pick_token(logits, &self.suppressed, &self.blank, self.eot, first_step)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -178,29 +171,30 @@ impl Decoder {
         state.decode(head, 0, n_threads)?;
         state.decode(last, head.len(), n_threads)?;
         let max_new = max_new_tokens(ctx.n_text_ctx() as usize, prompt.len(), pcm.len());
-        let mut tokens = Vec::with_capacity(max_new);
+        let mut out = Generated::with_capacity(max_new);
         for (step, n_past) in (0..max_new).zip(prompt.len()..) {
-            let next = self.pick(state.get_logits()?, step == 0);
-            if next == self.eot || cut_loop(&mut tokens, next) {
+            let (next, logprob) = self.pick(state.get_logits()?, step == 0);
+            if next == self.eot || !out.push(next, logprob) {
                 break;
             }
-            tokens.push(next);
             // Không cần logits sau token cuối cùng được phép.
-            if tokens.len() < max_new {
+            if out.tokens.len() < max_new {
                 state.decode(&[next], n_past, n_threads)?;
             }
         }
         let mut bytes = Vec::new();
-        for &t in &tokens {
+        for &t in &out.tokens {
             bytes.extend_from_slice(ctx.token_to_bytes(t)?);
         }
+        let avg_logprob = out.avg_logprob();
         Ok(Decoded {
             lang_id,
             lang_prob,
             no_speech_prob,
             text: String::from_utf8_lossy(&bytes).trim().to_string(),
-            tokens,
+            tokens: out.tokens,
             lid_ms,
+            avg_logprob,
         })
     }
 }
@@ -209,6 +203,67 @@ fn softmax_at(logits: &[f32], index: usize) -> f32 {
     let max = logits.iter().copied().fold(f32::NEG_INFINITY, f32::max);
     let sum: f32 = logits.iter().map(|&l| (l - max).exp()).sum();
     (logits[index] - max).exp() / sum
+}
+
+/// Chọn token có logit lớn nhất trong các token không bị chặn (`suppressed`, và ở bước đầu cả `blank`), kèm log-xác
+/// suất của nó. Log-xác suất là log-softmax trên đúng tập token được phép, giống `whisper_process_logits` của
+/// whisper.cpp (token bị chặn có logit −∞ nên không vào mẫu số) và giống `plog` mà chế độ A đọc từ `whisper_full`.
+fn pick_token(
+    logits: &[f32],
+    suppressed: &[bool],
+    blank: &[WhisperTokenId],
+    eot: WhisperTokenId,
+    first_step: bool,
+) -> (WhisperTokenId, f32) {
+    let allowed = |id: usize| !(suppressed[id] || (first_step && blank.contains(&(id as WhisperTokenId))));
+    let mut best = (eot, f32::NEG_INFINITY);
+    for (id, &logit) in logits.iter().enumerate() {
+        if allowed(id) && logit > best.1 {
+            best = (id as WhisperTokenId, logit);
+        }
+    }
+    // Mẫu số của softmax, trừ cực đại cho ổn định số; token bản thân nó đóng góp 1 nên tổng ≥ 1. Token thấp hơn cực đại
+    // quá 30 nat (e^-30 ≈ 1e-13) không đổi được tổng ở độ chính xác f32, nên bỏ qua để khỏi tốn `exp`: gần hết
+    // 51 865 logit của một bước rơi vào trường hợp này.
+    let sum: f32 = logits
+        .iter()
+        .enumerate()
+        .filter(|&(id, &logit)| logit - best.1 > -30.0 && allowed(id))
+        .map(|(_, &logit)| (logit - best.1).exp())
+        .sum();
+    (best.0, -sum.ln())
+}
+
+/// Các token đã sinh và log-xác suất của từng token. Hai vec luôn cùng độ dài.
+#[derive(Default)]
+struct Generated {
+    tokens: Vec<WhisperTokenId>,
+    logprobs: Vec<f32>,
+}
+
+impl Generated {
+    fn with_capacity(n: usize) -> Self {
+        Self {
+            tokens: Vec::with_capacity(n),
+            logprobs: Vec::with_capacity(n),
+        }
+    }
+
+    /// Thêm `next`. Nếu `next` làm thành vòng lặp (xem `cut_loop`) thì `tokens` được gom về một bản, log-xác suất của
+    /// phần bị bỏ cũng bỏ theo (không tính vào `avg_logprob`), `next` không được giữ, và trả `false`: phải dừng giải mã.
+    fn push(&mut self, next: WhisperTokenId, logprob: f32) -> bool {
+        if cut_loop(&mut self.tokens, next) {
+            self.logprobs.truncate(self.tokens.len());
+            return false;
+        }
+        self.tokens.push(next);
+        self.logprobs.push(logprob);
+        true
+    }
+
+    fn avg_logprob(&self) -> f32 {
+        mean_logprob(&self.logprobs)
+    }
 }
 
 /// Mẫu dài nhất (token) mà `loop_period` tìm. Câu bị lặp trong bộ clip FLEURS dài 12–48 token.
@@ -333,5 +388,91 @@ mod tests {
         assert_eq!(max_new_tokens(448, 4, 1_600), 18); // 0,1 giây
         assert_eq!(max_new_tokens(448, 105, secs(8)), 119); // prompt đủ 100 token
         assert_eq!(max_new_tokens(448, 300, secs(30)), 1);
+    }
+
+    // Từ vựng thử: 0, 1, 2 là chữ; 3 là khoảng trắng; 4 là EOT; 5 là token đặc biệt (sau EOT) luôn bị chặn.
+    const EOT: WhisperTokenId = 4;
+    const SUPPRESSED: [bool; 6] = [false, false, false, false, false, true];
+    const BLANK: [WhisperTokenId; 2] = [3, EOT];
+
+    /// log-softmax tại `at` trên các chỉ số `over`, tính bằng f64.
+    fn exact_logprob(logits: &[f32], over: impl Iterator<Item = usize>, at: usize) -> f64 {
+        let z: f64 = over.map(|i| (logits[i] as f64).exp()).sum();
+        logits[at] as f64 - z.ln()
+    }
+
+    #[test]
+    fn pick_token_normalizes_over_unsuppressed_tokens() {
+        // Token 5 (đặc biệt, logit 100) bị chặn: không được chọn, và không vào mẫu số.
+        let logits = [1.0, 2.0, 3.0, 0.0, 2.5, 100.0];
+        let (token, logprob) = pick_token(&logits, &SUPPRESSED, &BLANK, EOT, false);
+        assert_eq!(token, 2);
+        let want = exact_logprob(&logits, 0..5, 2);
+        assert!((logprob as f64 - want).abs() < 1e-5, "{logprob} so với {want}");
+    }
+
+    #[test]
+    fn pick_token_first_step_leaves_out_blank_and_eot() {
+        let logits = [0.5, 0.5, 0.25, 5.0, 9.0, 100.0];
+        // Bước đầu: khoảng trắng (3) và EOT (4) bị chặn cả khi chọn lẫn khi chuẩn hóa. Hòa thì lấy token đứng trước.
+        let (token, logprob) = pick_token(&logits, &SUPPRESSED, &BLANK, EOT, true);
+        assert_eq!(token, 0);
+        assert!((logprob as f64 - exact_logprob(&logits, 0..3, 0)).abs() < 1e-5);
+        // Các bước sau: EOT được phép, và ở đây thắng.
+        let (token, logprob) = pick_token(&logits, &SUPPRESSED, &BLANK, EOT, false);
+        assert_eq!(token, EOT);
+        assert!((logprob as f64 - exact_logprob(&logits, 0..5, 4)).abs() < 1e-5);
+    }
+
+    #[test]
+    fn pick_token_logprob_is_at_most_zero_and_ignores_far_below_logits() {
+        // Một token áp đảo: log-xác suất gần 0, không bao giờ dương.
+        let (token, logprob) = pick_token(&[50.0, 0.0, 0.0, 0.0, 0.0, 0.0], &SUPPRESSED, &BLANK, EOT, false);
+        assert_eq!(token, 0);
+        assert!((-1e-6..=0.0).contains(&logprob), "{logprob}");
+
+        // 998 token thấp hơn cực đại 40 nat, cộng −∞: kết quả vẫn khớp tổng chính xác, không ra NaN.
+        let mut logits = vec![-40.0f32; 1000];
+        logits[7] = 0.0;
+        logits[8] = -1.0;
+        logits[9] = f32::NEG_INFINITY;
+        let suppressed = vec![false; 1000];
+        let (token, logprob) = pick_token(&logits, &suppressed, &[], 999, false);
+        assert_eq!(token, 7);
+        let want = exact_logprob(&logits, 0..1000, 7);
+        assert!((logprob as f64 - want).abs() < 1e-6, "{logprob} so với {want}");
+
+        // Mọi logit bằng nhau: xác suất đều, log(1/n).
+        let (token, logprob) = pick_token(&[0.0; 6], &SUPPRESSED, &BLANK, EOT, false);
+        assert_eq!(token, 0);
+        assert!((logprob as f64 + 5f64.ln()).abs() < 1e-6, "{logprob}");
+    }
+
+    #[test]
+    fn generated_averages_logprobs_of_kept_tokens() {
+        let mut g = Generated::default();
+        assert_eq!(g.avg_logprob(), 0.0); // chưa có token nào
+        assert!(g.push(10, -0.5));
+        assert!(g.push(11, -1.5));
+        assert_eq!(g.tokens, [10, 11]);
+        assert!((g.avg_logprob() + 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn generated_drops_logprobs_of_a_cut_loop() {
+        // Tiền tố 9, rồi mẫu [5, 6] lặp 4 bản: bản đầu có log-xác suất cao, các bản sau thấp (chữ bịa ra).
+        let mut g = Generated::default();
+        assert!(g.push(9, -1.0));
+        for (token, logprob) in [(5, -0.5), (6, -0.5)] {
+            assert!(g.push(token, logprob));
+        }
+        for (token, logprob) in [(5, -10.0), (6, -10.0), (5, -10.0), (6, -10.0), (5, -10.0)] {
+            assert!(g.push(token, logprob)); // bản 2, bản 3 và token đầu của bản 4: chưa đủ 4 bản
+        }
+        assert_eq!(g.tokens.len(), 8);
+        assert!(!g.push(6, -10.0)); // token cuối của bản thứ tư: cắt và dừng
+        assert_eq!(g.tokens, [9, 5, 6]); // đúng một bản, token gây cắt không được giữ
+        assert_eq!(g.logprobs, [-1.0, -0.5, -0.5]); // log-xác suất của phần bị bỏ cũng bỏ theo
+        assert!((g.avg_logprob() as f64 + 2.0 / 3.0).abs() < 1e-6);
     }
 }

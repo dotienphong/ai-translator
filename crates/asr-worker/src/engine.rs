@@ -25,8 +25,21 @@ pub(crate) const MIN_LANG_PROB: f32 = 0.5;
 const MAX_AUDIO_CTX: i32 = 1500;
 /// Số mẫu 16 kHz mà một vị trí của `audio_ctx` phủ (20 ms).
 const SAMPLES_PER_CTX: usize = SAMPLE_RATE as usize / 50;
+/// `audio_ctx` của state nhận diện ngôn ngữ ở chế độ A: cửa sổ 3 giây theo công thức `50 × số giây + 64` (214). Cố ý
+/// không qua sàn `MIN_AUDIO_CTX` của `audio_ctx_for_samples`, để chế độ A (nay chỉ dùng để so sánh) giữ nguyên hành
+/// vi đã đo ở S3.
+const LID_AUDIO_CTX: i32 = (LID_SAMPLES / SAMPLES_PER_CTX) as i32 + 64;
 // Cửa sổ tối đa phủ đúng đoạn dài nhất mà `asr-protocol` cho phép.
 const _: () = assert!(MAX_AUDIO_CTX as usize * SAMPLES_PER_CTX == MAX_PCM_SAMPLES);
+
+/// Trung bình log-xác suất của các token văn bản; 0,0 nếu không có token nào (xem `TranscribeResult::avg_logprob`).
+/// Cộng bằng f64 để đoạn dài không mất độ chính xác.
+pub fn mean_logprob(logprobs: &[f32]) -> f32 {
+    if logprobs.is_empty() {
+        return 0.0;
+    }
+    (logprobs.iter().map(|&l| l as f64).sum::<f64>() / logprobs.len() as f64) as f32
+}
 
 pub struct Engine {
     ctx: WhisperContext,
@@ -183,6 +196,7 @@ impl Engine {
                 no_speech_prob: d.no_speech_prob,
                 lid_ms: d.lid_ms,
                 asr_ms: total_ms - d.lid_ms,
+                avg_logprob: d.avg_logprob,
             });
         }
 
@@ -215,6 +229,7 @@ impl Engine {
 
         let mut text = String::new();
         let mut tokens = Vec::new();
+        let mut logprobs = Vec::new();
         let mut no_speech_prob = 0.0f32;
         for segment in self.asr_state.as_iter() {
             text.push_str(&segment.to_str_lossy()?);
@@ -224,6 +239,8 @@ impl Engine {
                     let id = token.token_id();
                     if id < eot {
                         tokens.push(id);
+                        // whisper.cpp tính `plog` bằng log-softmax trên logit đã chặn token, giống chế độ B.
+                        logprobs.push(token.token_data().plog);
                     }
                 }
             }
@@ -238,6 +255,7 @@ impl Engine {
             no_speech_prob,
             lid_ms,
             asr_ms,
+            avg_logprob: mean_logprob(&logprobs),
         })
     }
 }
@@ -248,7 +266,7 @@ impl Engine {
 fn create_lid_state(ctx: &WhisperContext, n_threads: usize) -> Result<WhisperState> {
     let mut state = ctx.create_state().context("tạo state nhận diện ngôn ngữ")?;
     let silence = vec![0.0f32; LID_SAMPLES];
-    let params = full_params(n_threads, "en", audio_ctx_for_samples(LID_SAMPLES));
+    let params = full_params(n_threads, "en", LID_AUDIO_CTX);
     state
         .full(params, &silence)
         .context("đặt audio_ctx cho state nhận diện ngôn ngữ")?;
@@ -283,4 +301,24 @@ fn full_params<'a, 'b>(n_threads: usize, lang: &'a str, audio_ctx: i32) -> FullP
     p.set_print_realtime(false);
     p.set_print_timestamps(false);
     p
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mean_logprob_is_zero_without_tokens() {
+        assert_eq!(mean_logprob(&[]), 0.0);
+        assert!((mean_logprob(&[-1.0, -2.0, -3.0]) + 2.0).abs() < 1e-6);
+        assert_eq!(mean_logprob(&[-0.25]), -0.25);
+    }
+
+    #[test]
+    fn lid_window_of_mode_a_stays_the_three_second_formula() {
+        // Không qua sàn MIN_AUDIO_CTX: nhận diện ngôn ngữ ở chế độ A vẫn mã hóa cửa sổ 3 giây (150 khung + 64), còn
+        // `audio_ctx_for_samples` cho cùng độ dài đó ra 512.
+        assert_eq!(LID_AUDIO_CTX, 214);
+        assert_eq!(audio_ctx_for_samples(LID_SAMPLES), 512);
+    }
 }

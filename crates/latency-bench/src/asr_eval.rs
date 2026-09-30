@@ -65,6 +65,8 @@ struct Output {
     hyp: String,
     /// Đoạn có giá trị > 0,6 sẽ bị app bỏ (§6.4); trên clip có tiếng nói thì phải hiếm.
     no_speech_prob: f32,
+    /// Trung bình log-xác suất của các token văn bản (0 nếu không có token).
+    avg_logprob: f32,
     lid_ms: f32,
     asr_ms: f32,
     /// Thời gian ngoài whisper: mã hóa khung, truyền qua pipe, giải mã khung (giả định 10, §14).
@@ -157,6 +159,7 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
             lang_prob: r.lang_prob,
             hyp: r.text,
             no_speech_prob: r.no_speech_prob,
+            avg_logprob: r.avg_logprob,
             lid_ms: r.lid_ms,
             asr_ms: r.asr_ms,
             ipc_ms,
