@@ -19,9 +19,10 @@ Cột thêm ngoài WER/CER thô:
 
 Chuẩn hóa: NFC, chữ thường, bỏ dấu câu và ký hiệu; tiếng Trung, Nhật, Hàn bỏ cả khoảng trắng. Riêng tiếng Trung:
 - small hay ra chữ phồn thể còn FLEURS cmn_hans_cn là giản thể, nên đổi cả ref và hyp về giản thể bằng OpenCC (t2s);
-- bỏ chú thích Latin trong ngoặc, ví dụ `摩尔多瓦 (Moldova)`, ở cả ref và hyp: người đọc FLEURS không đọc phần này.
-  Đây là quy tắc máy móc, chưa nghe lại từng clip. Không áp cho tiếng Nhật vì ở đó phần trong ngoặc có khi được đọc.
-  Id các clip có ref bị bỏ phần này được in ra stderr.
+- bỏ chú thích Latin trong ngoặc, ví dụ `摩尔多瓦 (Moldova)`, `(Las Cañitas)`, ở cả ref và hyp: người đọc FLEURS
+  thường không đọc phần này. Ngoại lệ là các chú thích có được đọc (model chép ra) trong SPOKEN_GLOSS: `人工智能 (AI)`,
+  `委员会 (CEP)`. Đây là quy tắc máy móc, chưa nghe lại từng clip; cập nhật SPOKEN_GLOSS khi nghe lại. Không áp cho
+  tiếng Nhật vì ở đó phần trong ngoặc có khi được đọc. Id các clip có ref bị bỏ phần này được in ra stderr.
 
 Kiểm đầu vào: dừng nếu một clip xuất hiện hai lần, hoặc file thiếu clip của một ngôn ngữ có mặt trong file so với
 manifest (lượt chạy dở). `--allow-partial` bỏ phép kiểm thiếu clip, để cố ý chấm một tập con.
@@ -46,12 +47,14 @@ NO_SPEECH_MAX = 0.6  # app bỏ đoạn có no_speech_prob lớn hơn (§6.4)
 MIN_LANG_PROB = 0.5  # dưới mức này worker giữ ngôn ngữ của đoạn trước (asr-worker/src/lid.rs)
 # small hay ra chữ phồn thể, FLEURS cmn_hans_cn là giản thể: đổi về giản thể trước khi so.
 T2S = opencc.OpenCC("t2s")
-# Chú thích Latin trong ngoặc của ref tiếng Trung, ví dụ `摩尔多瓦 (Moldova)`, `(NHK)`, `(Kashiwazaki Kariwa)`.
-LATIN_GLOSS = re.compile(r"\s*[(（]\s*[A-Za-z][A-Za-z0-9 .,'&/-]*[)）]")
+# Chú thích Latin trong ngoặc của ref tiếng Trung, ví dụ `摩尔多瓦 (Moldova)`, `(NHK)`, `(Las Cañitas)`.
+LATIN_GLOSS = re.compile(r"\s*[(（]\s*([A-Za-zÀ-ɏ][A-Za-zÀ-ɏ0-9 .,'&/-]*)[)）]")
+# Chú thích có được đọc (model chép ra), nên giữ: `人工智能 (AI)`, `委员会 (CEP)`. Cập nhật khi nghe lại clip.
+SPOKEN_GLOSS = {"ai", "cep"}
 
 
 def strip_latin_gloss(text):
-    return LATIN_GLOSS.sub("", text)
+    return LATIN_GLOSS.sub(lambda m: m.group(0) if m.group(1).strip().lower() in SPOKEN_GLOSS else "", text)
 
 
 def normalize(text, lang):
@@ -86,7 +89,8 @@ def score(path, manifest, allow_partial):
             if not allow_partial:
                 sys.exit(msg + "; thêm --allow-partial nếu cố ý chấm một tập con")
             print("CẢNH BÁO: " + msg, file=sys.stderr)
-    stripped = [i for i in ids if manifest[i]["lang"] == "zh" and LATIN_GLOSS.search(manifest[i]["ref"])]
+    refs = {i: unicodedata.normalize("NFC", manifest[i]["ref"]) for i in ids if manifest[i]["lang"] == "zh"}
+    stripped = [i for i, ref in refs.items() if strip_latin_gloss(ref) != ref]
     if stripped:
         print(f"{path}: zh: bỏ chú thích Latin trong ngoặc ở ref của {len(stripped)} clip "
               f"(theo quy tắc, chưa nghe lại): {', '.join(stripped)}", file=sys.stderr)

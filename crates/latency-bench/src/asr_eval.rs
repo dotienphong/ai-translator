@@ -43,7 +43,8 @@ pub struct AsrEvalArgs {
     #[arg(long)]
     out: PathBuf,
     /// Thư mục log của worker. Mỗi lượt ghi vào `<tên file --out bỏ đuôi>.log`, ví dụ `out-thu-ko.jsonl` thành
-    /// `out-thu-ko.log`, nên các lượt chạy không ghi đè log của nhau.
+    /// `out-thu-ko.log`, nên các lượt chạy với `--out` khác nhau không ghi đè log của nhau. Chạy lại với cùng
+    /// `--out` thì log cũ bị xóa.
     #[arg(long, default_value = "logs")]
     log_dir: PathBuf,
 }
@@ -88,6 +89,8 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
     let mut part = args.out.clone().into_os_string();
     part.push(".part");
     let part = PathBuf::from(part);
+    // Log theo lượt: bắt đầu lượt mới thì xóa log cũ cùng tên. Client vẫn mở append để giữ log khi worker khởi động lại.
+    std::fs::File::create(&log).with_context(|| format!("không tạo được log {}", log.display()))?;
     let (mut worker, ready) = AsrWorker::spawn(&args.asr_worker, &args.asr_model, args.use_gpu, args.threads, &log)?;
     worker.warmup()?;
     println!(
