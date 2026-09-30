@@ -496,7 +496,7 @@ mod tests {
 - [ ] **Step 3: Chạy test để thấy lỗi**
 
 Run: `cargo test -p audio-capture resample`
-Expected: FAIL, lỗi biên dịch vì chưa có `MonoResampler` và `TARGET_RATE`.
+Expected: FAIL, lỗi biên dịch vì chưa có `MonoResampler`.
 
 - [ ] **Step 4: Viết phần code** ở đầu `crates/audio-capture/src/resample.rs`:
 
@@ -1201,7 +1201,7 @@ crates/audio-capture/macos/make-app.sh
 codesign -d --entitlements - target/Capture.app; codesign -dv target/Capture.app 2>&1 | grep -E 'flags|Signature'
 ```
 Expected:
-- `make-app.sh` in `target/Capture.app: valid on disk` và `satisfies its Designated Requirement`.
+- `make-app.sh` in `target/Capture.app: valid on disk` và `satisfies its Designated Requirement`. Trước đó có thể có dòng `replacing existing signature`: linker đã gắn sẵn chữ ký ad-hoc cho binary arm64, và `codesign --force` thay nó.
 - Lệnh xem entitlements chỉ in dòng `Executable=…/capture`, tức không có entitlement nào, kể cả `com.apple.security.app-sandbox`.
 - `flags=0x10002(adhoc,runtime)` và `Signature=adhoc`.
 
