@@ -26,6 +26,13 @@ const NO_SPEECH_MAX: f32 = 0.6;
 const MATCH_WINDOW_MS: u64 = 1_000;
 /// Khung âm thanh tới trễ hơn thời gian thực quá ngưỡng này (ms) thì kết quả lệch cùng cỡ: báo cho người chạy.
 const FEED_LAG_WARN_MS: f64 = 100.0;
+/// Đoạn có mốc dừng sớm hơn mốc thật quá ngưỡng này (ms) thì câu bị gắn cờ `early_stop`: độ trễ bị đo thiếu.
+const EARLY_STOP_MS: i64 = 200;
+/// Dấu câu kết thúc của §6.3. Đúng chữ của spec: đuôi như `."` hay `」` chưa được xử lý riêng.
+const SENTENCE_END: [char; 6] = ['.', '?', '!', '。', '？', '！'];
+/// Trần của một câu ghép (§6.3): 15 giây âm thanh hoặc 3 đoạn.
+const MERGE_MAX_SPEECH_MS: u64 = 15_000;
+const MERGE_MAX_SEGMENTS: usize = 3;
 
 // Lý do một đoạn không được dịch, ghi ở `SegmentRecord::skipped`.
 /// `no_speech_prob` quá cao, hoặc chữ rỗng: app bỏ đoạn này (§6.4).
@@ -81,6 +88,10 @@ pub struct LatencyArgs {
     min_ctx: i32,
     #[arg(long, default_value_t = 300)]
     end_silence_ms: u64,
+    /// Mô phỏng ghép câu và phụ đề tạm của §6.3 (mặc định bật): đoạn sau bắt đầu nói trong cửa sổ ghép thì nối chữ rồi
+    /// dịch lại cả câu. `--merge false` dịch từng đoạn riêng, để so ảnh hưởng của việc ghép.
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    merge: bool,
     /// Nhãn máy và gói model, ví dụ `m1-16gb-chuan`.
     #[arg(long)]
     label: String,
@@ -107,7 +118,10 @@ struct SegmentRecord {
     lang_prob: f32,
     text: String,
     no_speech_prob: f32,
-    /// Số token của câu gốc theo `/tokenize`, và `max_tokens` đã gửi cho bản dịch (§6.5).
+    /// Số đoạn trong câu đã dịch ở bước này (1 nếu không ghép; tối đa 3), và chữ nguồn của cả câu ghép (§6.3).
+    merged_segments: Option<usize>,
+    translated_source: Option<String>,
+    /// Số token của `translated_source` theo `/tokenize`, và `max_tokens` đã gửi cho bản dịch (§6.5).
     src_tokens: Option<usize>,
     max_tokens: Option<u32>,
     mt_first_at_ms: Option<f64>,
@@ -132,8 +146,18 @@ struct UtteranceLatency {
     /// (xem `build_sessions.py`), và độ trễ của câu đó lệch cùng cỡ: đoạn dừng sớm hơn mốc thật (âm) thì độ trễ bị đo
     /// thiếu, muộn hơn (dương) thì bị đo thừa.
     end_offset_ms: Option<i64>,
+    /// Đoạn dừng sớm hơn mốc thật quá `EARLY_STOP_MS`: độ trễ của câu này bị đo thiếu.
+    early_stop: bool,
     shown_latency_ms: Option<f64>,
     first_latency_ms: Option<f64>,
+    /// Ngôn ngữ LID nhận diện cho đoạn ghép được, và có khác ngôn ngữ thật của câu không.
+    lid: Option<String>,
+    lid_mismatch: bool,
+    /// LID nhầm sang ngôn ngữ đích: đoạn bị `same_lang`, app chỉ hiện chữ gốc (sai ngôn ngữ) rất nhanh, nên độ trễ là
+    /// `None` thay vì được tính là "hiện nhanh".
+    lid_to_target: bool,
+    /// Số đoạn trong câu ghép mà đoạn cuối của câu này được dịch cùng (1 nếu không ghép).
+    merged_segments: Option<usize>,
     /// Đoạn ghép được có bản dịch. `false` nếu không ghép được đoạn nào.
     translated: bool,
     /// Lý do đoạn ghép được không có bản dịch, nếu có.
@@ -213,6 +237,8 @@ pub fn run(args: LatencyArgs) -> Result<()> {
 
     let languages = args.languages.clone();
     let min_ctx = args.min_ctx;
+    let merge = args.merge;
+    let merge_window = merge_window_ms(args.end_silence_ms);
     let asr_thread = std::thread::spawn(move || -> Result<()> {
         let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
         for (segment, closed_at_ms) in seg_rx {
@@ -265,16 +291,31 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     });
 
     let mt_thread = std::thread::spawn(move || -> Result<()> {
+        let mut open: Option<OpenSentence> = None;
         for mut rec in asr_rx {
             if rec.skipped.is_none() {
                 match route(&rec, target) {
-                    Err(reason) => rec.skipped = Some(reason),
+                    Err(reason) => {
+                        // Đoạn hiện luôn chữ gốc (cùng ngôn ngữ đích, hoặc ngoài tập) cắt chuỗi ghép; đoạn bị bỏ thì không.
+                        if !is_dropped(&reason) {
+                            open = None;
+                        }
+                        rec.skipped = Some(reason);
+                    }
                     Ok(src) => {
-                        // Tính `max_tokens` theo §6.5. Lần gọi /tokenize nằm trong thời gian của bước dịch.
-                        let src_tokens = llama.count_tokens(&rec.text)?;
+                        // Ghép câu (§6.3): đoạn bắt đầu nói trong cửa sổ ghép thì dịch lại cả câu, không chỉ đoạn này.
+                        let (merged, source) = if merge {
+                            plan_merge(&mut open, &rec, src, merge_window)
+                        } else {
+                            (1, rec.text.trim().to_string())
+                        };
+                        // Tính `max_tokens` theo §6.5, trên cả câu. Lần gọi /tokenize nằm trong thời gian của bước dịch.
+                        let src_tokens = llama.count_tokens(&source)?;
                         let max_tokens = max_tokens_for(src_tokens);
-                        let t = llama.translate(&translation_prompt(&rec.text, src, target), max_tokens)?;
+                        let t = llama.translate(&translation_prompt(&source, src, target), max_tokens)?;
                         let done = now_ms();
+                        rec.merged_segments = Some(merged);
+                        rec.translated_source = Some(source);
                         rec.src_tokens = Some(src_tokens);
                         rec.max_tokens = Some(max_tokens);
                         rec.mt_first_at_ms = Some(done - (t.total_ms - t.first_token_ms) as f64);
@@ -329,7 +370,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
 
     let mut segments: Vec<SegmentRecord> = rec_rx.into_iter().collect();
     segments.sort_by_key(|s| s.id);
-    let utterances = utterance_latencies(&truth, &segments);
+    let utterances = utterance_latencies(&truth, &segments, target);
     let mut summary = build_summary(&utterances, &segments);
     if summary["measured"] == 0.0 {
         bail!("không đo được câu nào (không ghép được với mốc thật, hoặc đoạn đều bị bỏ); kiểm tra file truth và VAD");
@@ -350,6 +391,8 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             ("languages".to_string(), args.languages.join(",")),
             ("target".to_string(), args.target.clone()),
             ("end_silence_ms".to_string(), args.end_silence_ms.to_string()),
+            ("merge".to_string(), args.merge.to_string()),
+            ("merge_window_ms".to_string(), merge_window.to_string()),
             ("min_ctx".to_string(), args.min_ctx.to_string()),
             ("llama_args".to_string(), args.llama_args.clone()),
         ]),
@@ -365,13 +408,16 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         report.label, s["shown_p50_ms"], s["shown_p90_ms"], s["first_p50_ms"], s["matched"], s["utterances"]
     );
     println!(
-        "  đo được {} câu; không ghép được {}, không có bản dịch {}; đoạn bị bỏ {}, bản dịch bị cụt (length) {}; \
-         mốc dừng lệch tối đa {:.0} ms",
+        "  đo được {} câu; không ghép được {}, không có bản dịch {}, LID nhầm {} (sang ngôn ngữ đích {}); đoạn bị bỏ {}, \
+         bản dịch bị cụt (length) {}; ghép câu {} lần; mốc dừng lệch tối đa {:.0} ms",
         s["measured"],
         s["unmatched"],
         s["no_translation"],
+        s["lid_mismatch"],
+        s["lid_to_target"],
         s["segments_dropped"],
         s["finish_length"],
+        s["merges"],
         s["end_offset_max_abs_ms"]
     );
     if feed_lag_max_ms > FEED_LAG_WARN_MS {
@@ -392,6 +438,77 @@ fn pcm_skip_reason(n_samples: usize) -> Option<&'static str> {
     } else {
         None
     }
+}
+
+/// Cửa sổ ghép của §6.3: max(700 ms, `vadEndSilenceMs` + 400 ms).
+fn merge_window_ms(end_silence_ms: u64) -> u64 {
+    (end_silence_ms + 400).max(700)
+}
+
+/// Đoạn kết thúc bằng dấu câu kết thúc thì câu đã chốt: không còn là phụ đề tạm.
+fn ends_sentence(text: &str) -> bool {
+    text.trim_end().ends_with(SENTENCE_END)
+}
+
+/// Câu đang mở theo §6.3: các đoạn liên tiếp đã ghép và chưa chốt. Mọi mốc thời gian là mốc tiếng nói
+/// (`Segment::start_ms` và `end_ms`, không gồm đệm), nên cửa sổ tính từ lúc hết tiếng nói của đoạn trước tới lúc có
+/// tiếng nói của đoạn sau.
+struct OpenSentence {
+    /// Ngôn ngữ nhận diện của các đoạn. Đoạn sau khác ngôn ngữ thì không ghép.
+    lang: String,
+    /// Chỗ nối chữ: tiếng Trung và tiếng Nhật không có dấu cách giữa các từ.
+    joiner: &'static str,
+    text: String,
+    segments: usize,
+    /// Tổng thời lượng tiếng nói, không tính đệm và không tính khoảng nghỉ giữa các đoạn.
+    speech_ms: u64,
+    /// Lúc hết tiếng nói của đoạn cuối.
+    last_end_ms: u64,
+    /// Đoạn cuối kết thúc bằng dấu câu kết thúc: câu đã chốt.
+    closed: bool,
+}
+
+impl OpenSentence {
+    fn new(first: &SegmentRecord, lang: Lang) -> Self {
+        Self {
+            lang: first.lang.clone(),
+            joiner: if matches!(lang, Lang::Zh | Lang::Ja) { "" } else { " " },
+            text: first.text.trim().to_string(),
+            segments: 1,
+            speech_ms: first.end_ms.saturating_sub(first.start_ms),
+            last_end_ms: first.end_ms,
+            closed: ends_sentence(&first.text),
+        }
+    }
+
+    /// `next` ghép được vào câu này không. Đoạn cắt cưỡng bức (8 giây) bắt đầu đúng chỗ đoạn trước kết thúc, nên
+    /// khoảng cách bằng 0. Đạt trần thì chốt câu, đoạn sau mở câu mới.
+    fn accepts(&self, next: &SegmentRecord, window_ms: u64) -> bool {
+        !self.closed
+            && next.lang == self.lang
+            && next.start_ms.saturating_sub(self.last_end_ms) <= window_ms
+            && self.segments < MERGE_MAX_SEGMENTS
+            && self.speech_ms + next.end_ms.saturating_sub(next.start_ms) <= MERGE_MAX_SPEECH_MS
+    }
+
+    fn push(&mut self, next: &SegmentRecord) {
+        self.text = format!("{}{}{}", self.text.trim_end(), self.joiner, next.text.trim());
+        self.segments += 1;
+        self.speech_ms += next.end_ms.saturating_sub(next.start_ms);
+        self.last_end_ms = next.end_ms;
+        self.closed = ends_sentence(&next.text);
+    }
+}
+
+/// Đoạn vừa chép lời xong và cần dịch: ghép vào câu đang mở nếu được, không thì mở câu mới.
+/// Trả (số đoạn trong câu, chữ nguồn của cả câu để dịch).
+fn plan_merge(open: &mut Option<OpenSentence>, rec: &SegmentRecord, src: Lang, window_ms: u64) -> (usize, String) {
+    match open.as_mut().filter(|o| o.accepts(rec, window_ms)) {
+        Some(o) => o.push(rec),
+        None => *open = Some(OpenSentence::new(rec, src)),
+    }
+    let o = open.as_ref().expect("vừa ghép hoặc vừa mở câu");
+    (o.segments, o.text.clone())
 }
 
 /// Quy tắc của app cho một đoạn đã chép lời: `Ok(ngôn ngữ nguồn)` nếu phải dịch, `Err(lý do)` nếu bỏ bước dịch.
@@ -432,7 +549,8 @@ fn shown_times(rec: &SegmentRecord) -> (Option<f64>, Option<f64>) {
 }
 
 /// Ghép từng câu thật với đoạn có mốc dừng gần nhất, rồi tính độ trễ từ lúc người nói dừng câu (A2).
-fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord]) -> Vec<UtteranceLatency> {
+/// Độ trễ tính tới lúc bản dịch của đoạn đó hiện ra; đoạn là đoạn cuối của câu ghép thì bản dịch là của cả câu ghép.
+fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord], target: Lang) -> Vec<UtteranceLatency> {
     let ends: Vec<u64> = segments.iter().map(|s| s.end_ms).collect();
     let matches = match_segments(truth, &ends, MATCH_WINDOW_MS);
     truth
@@ -441,14 +559,25 @@ fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord]) -> Vec<U
         .map(|(u, m)| {
             let seg = m.map(|i| &segments[i]);
             let since_end = |t: f64| t - u.end_ms as f64;
+            let end_offset_ms = seg.map(|s| s.end_ms as i64 - u.end_ms as i64);
+            let lid = seg.map(|s| s.lang.clone()).filter(|l| !l.is_empty());
+            // LID nhầm sang ngôn ngữ đích: câu thật không phải tiếng đích mà đoạn bị `same_lang`. Không tính "hiện nhanh".
+            let lid_to_target =
+                u.lang != target.code() && seg.is_some_and(|s| s.skipped.as_deref() == Some(SKIP_SAME_LANG));
+            let visible = |t: Option<f64>| t.filter(|_| !lid_to_target).map(since_end);
             UtteranceLatency {
                 id: u.id.clone(),
                 lang: u.lang.clone(),
                 end_ms: u.end_ms,
                 segment_id: seg.map(|s| s.id),
-                end_offset_ms: seg.map(|s| s.end_ms as i64 - u.end_ms as i64),
-                shown_latency_ms: seg.and_then(|s| s.shown_at_ms).map(since_end),
-                first_latency_ms: seg.and_then(|s| s.first_shown_at_ms).map(since_end),
+                end_offset_ms,
+                early_stop: end_offset_ms.is_some_and(|o| o < -EARLY_STOP_MS),
+                shown_latency_ms: visible(seg.and_then(|s| s.shown_at_ms)),
+                first_latency_ms: visible(seg.and_then(|s| s.first_shown_at_ms)),
+                lid_mismatch: lid.as_ref().is_some_and(|l| *l != u.lang),
+                lid,
+                lid_to_target,
+                merged_segments: seg.and_then(|s| s.merged_segments),
                 translated: seg.is_some_and(|s| s.translation.is_some()),
                 skipped: seg.and_then(|s| s.skipped.clone()),
             }
@@ -462,7 +591,11 @@ fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord]) -> Vec<U
 /// - `utterances`: số câu thật; `matched`: số câu ghép được với một đoạn (kể cả đoạn bị bỏ); `unmatched`: số câu còn lại.
 /// - `no_translation`: số câu ghép được với một đoạn không có bản dịch (đoạn bị bỏ, hoặc không cần dịch). Không gồm
 ///   câu không ghép được: không biết chúng ra sao, vì không có đoạn nào đại diện.
-/// - `end_offset_max_abs_ms`: lệch lớn nhất giữa mốc dừng của đoạn và mốc thật, trên các câu ghép được.
+/// - `end_offset_max_abs_ms`: lệch lớn nhất giữa mốc dừng của đoạn và mốc thật, trên các câu ghép được;
+///   `early_stop`: số câu có đoạn dừng sớm hơn mốc thật quá `EARLY_STOP_MS` (độ trễ bị đo thiếu).
+/// - `lid_mismatch`: số câu ghép được mà LID nhận diện khác ngôn ngữ thật; `lid_to_target`: trong đó số câu bị nhận
+///   diện thành ngôn ngữ đích (đoạn `same_lang`), nên không có độ trễ.
+/// - `merges`: số đoạn đã được ghép vào một câu đang mở (§6.3), tức số lần dịch lại cả câu.
 /// - `segments`, `segments_translated`, `segments_dropped`; `skipped_<lý do>`: số đoạn theo từng lý do.
 /// - `finish_length`: số bản dịch chạm `max_tokens` (bị cụt).
 fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) -> HashMap<String, f64> {
@@ -511,6 +644,22 @@ fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) ->
             utterances.iter().filter(|u| u.segment_id.is_none()).count(),
         ),
         ("measured".into(), shown.len()),
+        (
+            "lid_mismatch".into(),
+            utterances.iter().filter(|u| u.lid_mismatch).count(),
+        ),
+        (
+            "lid_to_target".into(),
+            utterances.iter().filter(|u| u.lid_to_target).count(),
+        ),
+        ("early_stop".into(), utterances.iter().filter(|u| u.early_stop).count()),
+        (
+            "merges".into(),
+            segments
+                .iter()
+                .filter(|s| s.merged_segments.is_some_and(|n| n > 1))
+                .count(),
+        ),
         (
             "no_translation".into(),
             utterances
@@ -665,6 +814,31 @@ mod tests {
         }
     }
 
+    fn utt_in(id: &str, lang: &str, end_ms: u64) -> Utterance {
+        Utterance {
+            lang: lang.into(),
+            ..utt(id, end_ms)
+        }
+    }
+
+    /// Đoạn với ngôn ngữ mà LID nhận diện.
+    fn in_lang(mut rec: SegmentRecord, lang: &str) -> SegmentRecord {
+        rec.lang = lang.into();
+        rec
+    }
+
+    /// Một đoạn tiếng Anh chưa chép lời xong, chỉ có mốc tiếng nói (không gồm đệm) và chữ, để thử ghép câu.
+    fn piece(start_ms: u64, end_ms: u64, text: &str) -> SegmentRecord {
+        SegmentRecord {
+            start_ms,
+            end_ms,
+            audio_ms: end_ms - start_ms + 448, // gồm đệm 2 × 224 ms
+            lang: "en".into(),
+            text: text.into(),
+            ..Default::default()
+        }
+    }
+
     fn rec(lang: &str, text: &str, no_speech_prob: f32) -> SegmentRecord {
         SegmentRecord {
             lang: lang.into(),
@@ -723,7 +897,7 @@ mod tests {
     #[test]
     fn utterance_latency_is_measured_from_the_true_end() {
         let segments = [translated(5_030, 5_400.0, 5_700.0, 6_500.0)];
-        let u = &utterance_latencies(&[utt("a", 5_000)], &segments)[0];
+        let u = &utterance_latencies(&[utt("a", 5_000)], &segments, Lang::Vi)[0];
         assert_eq!(u.segment_id, Some(0));
         assert_eq!(u.shown_latency_ms, Some(1_500.0));
         assert_eq!(u.first_latency_ms, Some(700.0));
@@ -735,7 +909,7 @@ mod tests {
     #[test]
     fn dropped_or_unmatched_utterances_have_no_latency_and_no_translation() {
         let segments = [skipped(5_030, 5_400.0, "no_speech")];
-        let all = utterance_latencies(&[utt("a", 5_000), utt("b", 30_000)], &segments);
+        let all = utterance_latencies(&[utt("a", 5_000), utt("b", 30_000)], &segments, Lang::Vi);
         let (dropped, unmatched) = (&all[0], &all[1]);
         assert_eq!(dropped.segment_id, Some(0));
         assert_eq!((dropped.shown_latency_ms, dropped.first_latency_ms), (None, None));
@@ -749,11 +923,34 @@ mod tests {
     }
 
     #[test]
-    fn same_lang_utterance_is_measured_but_has_no_translation() {
-        let segments = [skipped(5_030, 5_400.0, "same_lang")];
-        let u = &utterance_latencies(&[utt("a", 5_000)], &segments)[0];
+    fn same_lang_utterance_in_the_target_language_is_measured_but_has_no_translation() {
+        // Câu thật là tiếng Việt, đích là tiếng Việt: app hiện luôn bản chép lời, độ trễ là lúc xong chép lời.
+        let segments = [in_lang(skipped(5_030, 5_400.0, "same_lang"), "vi")];
+        let u = &utterance_latencies(&[utt_in("a", "vi", 5_000)], &segments, Lang::Vi)[0];
         assert_eq!((u.shown_latency_ms, u.first_latency_ms), (Some(400.0), Some(400.0)));
         assert!(!u.translated);
+        assert!(!u.lid_mismatch && !u.lid_to_target);
+    }
+
+    #[test]
+    fn lid_error_into_the_target_language_is_not_a_fast_display() {
+        // Câu thật là tiếng Anh nhưng LID nhận diện là tiếng Việt (đích): app chỉ hiện chữ gốc, rất nhanh và sai ngôn ngữ.
+        let segments = [in_lang(skipped(5_030, 5_400.0, "same_lang"), "vi")];
+        let u = &utterance_latencies(&[utt("a", 5_000)], &segments, Lang::Vi)[0];
+        assert_eq!(u.segment_id, Some(0));
+        assert_eq!((u.shown_latency_ms, u.first_latency_ms), (None, None));
+        assert_eq!(u.lid.as_deref(), Some("vi"));
+        assert!(u.lid_mismatch && u.lid_to_target);
+        assert!(!u.translated);
+    }
+
+    #[test]
+    fn lid_error_to_another_language_keeps_the_latency_but_counts_as_mismatch() {
+        let segments = [in_lang(translated(5_030, 5_400.0, 5_700.0, 6_500.0), "ja")];
+        let u = &utterance_latencies(&[utt_in("a", "ko", 5_000)], &segments, Lang::Vi)[0];
+        assert_eq!(u.shown_latency_ms, Some(1_500.0));
+        assert!(u.lid_mismatch);
+        assert!(!u.lid_to_target);
     }
 
     #[test]
@@ -763,12 +960,13 @@ mod tests {
             s
         };
         let mut segments = vec![
-            translated(900, 1_600.0, 1_900.0, 2_500.0), // dừng sớm hơn mốc thật 100 ms
-            cut(translated(5_020, 5_500.0, 5_800.0, 8_000.0)),
-            skipped(9_010, 9_400.0, "no_speech"),
+            in_lang(translated(900, 1_600.0, 1_900.0, 2_500.0), "en"), // dừng sớm hơn mốc thật 100 ms
+            in_lang(cut(translated(5_020, 5_500.0, 5_800.0, 8_000.0)), "en"),
+            in_lang(skipped(9_010, 9_400.0, "no_speech"), "en"),
             skipped(20_000, 20_000.0, "too_short"), // không ghép với câu nào
-            skipped(30_000, 30_500.0, "same_lang"),
-            cut(translated(40_000, 40_400.0, 40_600.0, 41_000.0)), // không ghép với câu nào
+            in_lang(skipped(30_000, 30_500.0, "same_lang"), "vi"),
+            in_lang(cut(translated(40_000, 40_400.0, 40_600.0, 41_000.0)), "en"), // không ghép với câu nào
+            in_lang(skipped(50_000, 50_100.0, "same_lang"), "vi"), // câu thật là tiếng Anh: LID nhầm sang đích
         ];
         // (asr_ms, lid_ms) của từng đoạn; đoạn too_short chưa từng vào asr-worker nên là 0.
         let steps = [
@@ -778,6 +976,7 @@ mod tests {
             (0.0, 0.0),
             (50.0, 5.0),
             (250.0, 25.0),
+            (60.0, 6.0),
         ];
         for (seg, (asr, lid)) in segments.iter_mut().zip(steps) {
             seg.asr_ms = asr;
@@ -788,25 +987,30 @@ mod tests {
             utt("b", 5_000),
             utt("c", 9_000),
             utt("d", 13_000),
-            utt("e", 30_000),
+            utt_in("e", "vi", 30_000),
+            utt("f", 50_000),
         ];
-        let utterances = utterance_latencies(&truth, &segments);
+        let utterances = utterance_latencies(&truth, &segments, Lang::Vi);
         let s = build_summary(&utterances, &segments);
         let get = |k: &str| s[k];
-        assert_eq!(get("utterances"), 5.0);
-        assert_eq!(get("matched"), 4.0); // d không có đoạn nào
+        assert_eq!(get("utterances"), 6.0);
+        assert_eq!(get("matched"), 5.0); // d không có đoạn nào
         assert_eq!(get("unmatched"), 1.0);
-        assert_eq!(get("measured"), 3.0); // a, b, e; c bị bỏ
-        // Câu ghép được mà không có bản dịch: c bị bỏ, e cùng ngôn ngữ đích. Câu không ghép được (d) tính riêng.
-        assert_eq!(get("no_translation"), 2.0);
-        // Lệch giữa mốc dừng của đoạn và mốc thật: a -100, b +20, c +10, e 0.
+        assert_eq!(get("measured"), 3.0); // a, b, e; c bị bỏ, f do LID nhầm sang đích
+        // Câu ghép được mà không có bản dịch: c bị bỏ, e cùng ngôn ngữ đích, f bị LID nhầm. Câu không ghép được (d)
+        // tính riêng.
+        assert_eq!(get("no_translation"), 3.0);
+        assert_eq!(get("lid_mismatch"), 1.0); // chỉ f
+        assert_eq!(get("lid_to_target"), 1.0);
+        // Lệch giữa mốc dừng của đoạn và mốc thật: a -100, b +20, c +10, e 0, f 0.
         assert_eq!(get("end_offset_max_abs_ms"), 100.0);
-        assert_eq!(get("segments"), 6.0);
+        assert_eq!(get("early_stop"), 0.0);
+        assert_eq!(get("segments"), 7.0);
         assert_eq!(get("segments_translated"), 3.0);
         assert_eq!(get("segments_dropped"), 2.0);
         assert_eq!(get("skipped_no_speech"), 1.0);
         assert_eq!(get("skipped_too_short"), 1.0);
-        assert_eq!(get("skipped_same_lang"), 1.0);
+        assert_eq!(get("skipped_same_lang"), 2.0);
         for zero in [
             "skipped_too_long",
             "skipped_empty_translation",
@@ -819,8 +1023,162 @@ mod tests {
         assert_eq!(get("shown_p50_ms"), 1_500.0);
         assert_eq!(get("first_p50_ms"), 800.0);
         // Các bước chỉ tính đoạn đã qua asr-worker: đoạn too_short không được kéo p50 xuống.
-        assert_eq!(get("asr_p50_ms"), 200.0);
-        assert_eq!(get("lid_p50_ms"), 20.0);
+        assert_eq!(get("asr_p50_ms"), 150.0);
+        assert_eq!(get("lid_p50_ms"), 15.0);
+    }
+
+    #[test]
+    fn merge_window_is_measured_from_speech_end_to_next_speech_start() {
+        let open = OpenSentence::new(&piece(1_000, 4_000, "so we went to"), Lang::En);
+        // Hết tiếng ở 4 000 ms: bắt đầu nói lại ở 4 700 là đúng cửa sổ 700 ms, ở 4 701 là quá 1 ms.
+        assert!(open.accepts(&piece(4_700, 6_000, "the market"), 700));
+        assert!(!open.accepts(&piece(4_701, 6_000, "the market"), 700));
+    }
+
+    #[test]
+    fn padding_does_not_widen_the_window() {
+        // `audio_ms` gồm đệm 2 × 224 ms; cửa sổ chỉ tính theo mốc tiếng nói `start_ms` và `end_ms`.
+        let open = OpenSentence::new(&piece(1_000, 4_000, "so we went to"), Lang::En);
+        let next = piece(4_701, 6_000, "the market");
+        assert!(next.audio_ms > next.end_ms - next.start_ms);
+        assert!(!open.accepts(&next, 700));
+    }
+
+    #[test]
+    fn forced_cut_pieces_touch_and_merge() {
+        // Cắt cưỡng bức ở 8 giây: đoạn sau bắt đầu đúng chỗ đoạn trước kết thúc, khoảng cách bằng 0.
+        let open = OpenSentence::new(&piece(0, 8_000, "a long sentence that"), Lang::En);
+        assert!(open.accepts(&piece(8_000, 12_000, "keeps going"), 700));
+    }
+
+    #[test]
+    fn merge_window_follows_end_silence() {
+        assert_eq!(merge_window_ms(200), 700);
+        assert_eq!(merge_window_ms(300), 700);
+        assert_eq!(merge_window_ms(301), 701);
+        assert_eq!(merge_window_ms(800), 1_200);
+    }
+
+    #[test]
+    fn sentence_is_capped_at_three_segments() {
+        let mut open = OpenSentence::new(&piece(0, 2_000, "one"), Lang::En);
+        let two = piece(2_100, 4_000, "two");
+        let three = piece(4_100, 6_000, "three");
+        assert!(open.accepts(&two, 700));
+        open.push(&two);
+        assert!(open.accepts(&three, 700)); // mới 2 đoạn: còn chỗ
+        open.push(&three);
+        assert_eq!(open.segments, 3);
+        assert!(!open.accepts(&piece(6_100, 7_000, "four"), 700)); // đủ 3 đoạn: đoạn sau mở câu mới
+    }
+
+    #[test]
+    fn sentence_is_capped_at_15_seconds_of_speech() {
+        let open = OpenSentence::new(&piece(0, 8_000, "x"), Lang::En); // 8 giây tiếng nói
+        assert!(open.accepts(&piece(8_100, 15_000, "y"), 700)); // tổng 14,9 giây
+        assert!(open.accepts(&piece(8_100, 15_100, "y"), 700)); // đúng 15 giây: còn được
+        assert!(!open.accepts(&piece(8_100, 15_101, "y"), 700)); // 15,001 giây: quá trần
+    }
+
+    #[test]
+    fn speech_duration_counts_only_speech_not_the_pauses_between_pieces() {
+        let mut open = OpenSentence::new(&piece(0, 5_000, "x"), Lang::En);
+        open.push(&piece(5_600, 10_600, "y")); // hai khoảng nói 5 giây, nghỉ 0,6 giây: tiếng nói 10 giây
+        assert!(open.accepts(&piece(11_200, 16_200, "z"), 700)); // 10 + 5 = 15 giây tiếng nói, dù cả câu trải 16,2 giây
+    }
+
+    #[test]
+    fn terminal_punctuation_closes_the_sentence() {
+        for end in [".", "?", "!", "。", "？", "！", ". ", "?\n"] {
+            let open = OpenSentence::new(&piece(0, 2_000, &format!("đã xong{end}")), Lang::En);
+            assert!(!open.accepts(&piece(2_100, 3_000, "câu sau"), 700), "{end:?}");
+        }
+        for end in ["", ",", ";", ":", "，", "、", " và"] {
+            let open = OpenSentence::new(&piece(0, 2_000, &format!("còn tiếp{end}")), Lang::En);
+            assert!(open.accepts(&piece(2_100, 3_000, "câu sau"), 700), "{end:?}");
+        }
+    }
+
+    #[test]
+    fn only_the_last_piece_decides_whether_the_sentence_is_closed() {
+        let mut open = OpenSentence::new(&piece(0, 2_000, "Xong rồi."), Lang::En);
+        assert!(!open.accepts(&piece(2_100, 3_000, "tiếp"), 700));
+        // Câu mở mà đoạn đầu có dấu chấm giữa chừng (ví dụ "Mr. Smith") vẫn ghép tiếp nếu đoạn cuối không có.
+        open = OpenSentence::new(&piece(0, 2_000, "Mr. Smith said"), Lang::En);
+        open.push(&piece(2_100, 3_000, "that it was done."));
+        assert!(!open.accepts(&piece(3_100, 4_000, "next"), 700));
+    }
+
+    #[test]
+    fn different_language_does_not_merge() {
+        let open = OpenSentence::new(&piece(0, 2_000, "hello"), Lang::En);
+        let mut next = piece(2_100, 3_000, "xin chào");
+        next.lang = "vi".into();
+        assert!(!open.accepts(&next, 700));
+    }
+
+    #[test]
+    fn merged_source_is_the_whole_sentence() {
+        let mut open = None;
+        let a = piece(0, 3_000, "We walked to the");
+        let b = piece(3_400, 6_000, "market yesterday.");
+        let c = piece(6_200, 8_000, "Then we ate.");
+        assert_eq!(
+            plan_merge(&mut open, &a, Lang::En, 700),
+            (1, "We walked to the".to_string())
+        );
+        assert_eq!(
+            plan_merge(&mut open, &b, Lang::En, 700),
+            (2, "We walked to the market yesterday.".to_string())
+        );
+        // `b` kết thúc bằng dấu chấm: câu đã chốt, `c` mở câu mới.
+        assert_eq!(
+            plan_merge(&mut open, &c, Lang::En, 700),
+            (1, "Then we ate.".to_string())
+        );
+    }
+
+    #[test]
+    fn a_piece_outside_the_window_starts_a_new_sentence() {
+        let mut open = None;
+        plan_merge(&mut open, &piece(0, 3_000, "first part"), Lang::En, 700);
+        let late = piece(3_701, 5_000, "second part");
+        assert_eq!(
+            plan_merge(&mut open, &late, Lang::En, 700),
+            (1, "second part".to_string())
+        );
+    }
+
+    #[test]
+    fn chinese_and_japanese_join_without_a_space() {
+        for (lang, code) in [(Lang::Zh, "zh"), (Lang::Ja, "ja")] {
+            let mut open = None;
+            let mut a = piece(0, 3_000, "我们走到 ");
+            let mut b = piece(3_200, 5_000, " 市场");
+            (a.lang, b.lang) = (code.into(), code.into());
+            plan_merge(&mut open, &a, lang, 700);
+            assert_eq!(
+                plan_merge(&mut open, &b, lang, 700),
+                (2, "我们走到市场".to_string()),
+                "{code}"
+            );
+        }
+    }
+
+    #[test]
+    fn other_languages_join_with_one_space() {
+        for (lang, code) in [(Lang::En, "en"), (Lang::Ko, "ko"), (Lang::Vi, "vi")] {
+            let mut open = None;
+            let mut a = piece(0, 3_000, "một hai ");
+            let mut b = piece(3_200, 5_000, " ba bốn");
+            (a.lang, b.lang) = (code.into(), code.into());
+            plan_merge(&mut open, &a, lang, 700);
+            assert_eq!(
+                plan_merge(&mut open, &b, lang, 700),
+                (2, "một hai ba bốn".to_string()),
+                "{code}"
+            );
+        }
     }
 
     #[test]
@@ -829,7 +1187,7 @@ mod tests {
             skipped(1_000, 1_100.0, "lang_ngoai_tap:fr"),
             skipped(2_000, 2_100.0, "lang_ngoai_tap:de"),
         ];
-        let utterances = utterance_latencies(&[utt("a", 1_000), utt("b", 2_000)], &segments);
+        let utterances = utterance_latencies(&[utt("a", 1_000), utt("b", 2_000)], &segments, Lang::Vi);
         assert_eq!(build_summary(&utterances, &segments)["skipped_lang_ngoai_tap"], 2.0);
     }
 }
