@@ -4,6 +4,9 @@ pub mod gapfill;
 pub mod mix;
 pub mod resample;
 
+#[cfg(target_os = "macos")]
+pub mod macos;
+
 use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
