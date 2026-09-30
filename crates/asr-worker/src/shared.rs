@@ -209,9 +209,17 @@ fn softmax_at(logits: &[f32], index: usize) -> f32 {
     (logits[index] - max).exp() / sum
 }
 
+/// Token thấp hơn cực đại quá mức này (nat) không được cộng vào mẫu số của softmax trong `pick_token`. Mỗi token như vậy
+/// đóng góp dưới e^-20 ≈ 2e-9 vào một tổng ≥ 1, nên cả 51 865 token cộng lại cũng làm log-xác suất lệch dưới 1e-4. Ở
+/// logit thật, phần lớn token chữ nằm 15 đến 21 nat dưới cực đại, nên mốc này bỏ được khoảng 0 đến 75% số `exp`.
+const LOGSUMEXP_CUTOFF: f32 = 20.0;
+
 /// Chọn token có logit lớn nhất trong các token không bị chặn (`suppressed`, và ở bước đầu cả `blank`), kèm log-xác
 /// suất của nó. Log-xác suất là log-softmax trên đúng tập token được phép, giống `whisper_process_logits` của
 /// whisper.cpp (token bị chặn có logit −∞ nên không vào mẫu số) và giống `plog` mà chế độ A đọc từ `whisper_full`.
+///
+/// Hai vòng lặp viết dạng `continue` như bản chỉ chọn token: viết gộp bằng closure hay `filter` làm vòng chọn chậm gấp 6
+/// lần (181 µs so với 27 µs trên 51 865 logit) và đội thời gian chép lời thêm khoảng 7%.
 fn pick_token(
     logits: &[f32],
     suppressed: &[bool],
@@ -219,23 +227,34 @@ fn pick_token(
     eot: WhisperTokenId,
     first_step: bool,
 ) -> (WhisperTokenId, f32) {
-    let allowed = |id: usize| !(suppressed[id] || (first_step && blank.contains(&(id as WhisperTokenId))));
     let mut best = (eot, f32::NEG_INFINITY);
     for (id, &logit) in logits.iter().enumerate() {
-        if allowed(id) && logit > best.1 {
-            best = (id as WhisperTokenId, logit);
+        let token = id as WhisperTokenId;
+        if suppressed[id] || (first_step && blank.contains(&token)) {
+            continue;
+        }
+        if logit > best.1 {
+            best = (token, logit);
         }
     }
-    // Mẫu số của softmax, trừ cực đại cho ổn định số; token bản thân nó đóng góp 1 nên tổng ≥ 1. Token thấp hơn cực đại
-    // quá 30 nat (e^-30 ≈ 1e-13) không đổi được tổng ở độ chính xác f32, nên bỏ qua để khỏi tốn `exp`: gần hết
-    // 51 865 logit của một bước rơi vào trường hợp này.
-    let sum: f32 = logits
-        .iter()
-        .enumerate()
-        .filter(|&(id, &logit)| logit - best.1 > -30.0 && allowed(id))
-        .map(|(_, &logit)| (logit - best.1).exp())
-        .sum();
-    (best.0, -sum.ln())
+    if best.1 == f32::NEG_INFINITY {
+        // Không token nào được phép (không xảy ra với logit thật): không có xác suất nào để tính.
+        return (best.0, f32::NEG_INFINITY);
+    }
+    // Mẫu số của softmax, trừ cực đại cho ổn định số; token được chọn đóng góp 1 nên tổng ≥ 1. Cộng bằng f64: cộng f32
+    // nối tiếp làm mất mọi số hạng dưới 6e-8 một khi tổng đã gần 1. whisper.cpp cộng f32 nối tiếp nên `plog` của chế độ A
+    // cao hơn giá trị chính xác này khoảng 2e-4 (1e-4 đến 3e-4 trên 29 clip thử), và hai chế độ lệch nhau cỡ đó.
+    let mut sum = 0.0f64;
+    for (id, &logit) in logits.iter().enumerate() {
+        if logit - best.1 <= -LOGSUMEXP_CUTOFF
+            || suppressed[id]
+            || (first_step && blank.contains(&(id as WhisperTokenId)))
+        {
+            continue;
+        }
+        sum += (logit - best.1).exp() as f64;
+    }
+    (best.0, -sum.ln() as f32)
 }
 
 /// Các token đã sinh và log-xác suất của từng token. Hai vec luôn cùng độ dài.
@@ -492,6 +511,33 @@ mod tests {
         let (token, logprob) = pick_token(&[0.0; 6], &SUPPRESSED, &BLANK, EOT, false);
         assert_eq!(token, 0);
         assert!((logprob as f64 + 5f64.ln()).abs() < 1e-6, "{logprob}");
+    }
+
+    #[test]
+    fn pick_token_skips_only_negligible_logits() {
+        // Trường hợp xấu nhất của mốc cắt (20 nat): 59 999 token nằm ngay dưới mốc, bị bỏ khỏi mẫu số. Mỗi token đóng góp
+        // e^-20,5 ≈ 1,3e-9, cả nhóm cộng lại dưới 1e-4 nên log-xác suất lệch dưới 1e-4 so với tổng chính xác.
+        let mut logits = vec![-20.5f32; 60_000];
+        logits[42] = 0.0;
+        let (token, logprob) = pick_token(&logits, &vec![false; 60_000], &[], 59_999, false);
+        assert_eq!(token, 42);
+        let want = exact_logprob(&logits, 0..60_000, 42);
+        assert!((logprob as f64 - want).abs() < 1e-4, "{logprob} so với {want}");
+        // Ngay trong mốc (−19,5) thì được cộng vào: khớp tổng chính xác.
+        let mut logits = vec![-19.5f32; 60_000];
+        logits[42] = 0.0;
+        let (_, logprob) = pick_token(&logits, &vec![false; 60_000], &[], 59_999, false);
+        let want = exact_logprob(&logits, 0..60_000, 42);
+        assert!((logprob as f64 - want).abs() < 1e-5, "{logprob} so với {want}");
+    }
+
+    #[test]
+    fn pick_token_without_an_allowed_token_gives_eot_and_minus_infinity() {
+        // Không token nào được phép (không xảy ra với logit thật): trả EOT, không ra NaN hay dương vô cực.
+        let (token, logprob) = pick_token(&[1.0, 2.0, 3.0], &[true; 3], &[], 7, false);
+        assert_eq!((token, logprob), (7, f32::NEG_INFINITY));
+        let (token, logprob) = pick_token(&[f32::NEG_INFINITY; 3], &[false; 3], &[], 7, false);
+        assert_eq!((token, logprob), (7, f32::NEG_INFINITY));
     }
 
     #[test]
