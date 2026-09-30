@@ -1,4 +1,4 @@
-//! Chọn ngôn ngữ trong tập người dùng cho phép (spec §6.4).
+//! Chọn ngôn ngữ trong tập người dùng cho phép (spec §6.4, "Chọn ngôn ngữ").
 
 use asr_protocol::SAMPLE_RATE;
 
@@ -11,7 +11,7 @@ const _: () = assert!(SHORT_LID_SAMPLES == SAMPLE_RATE as usize * 3 / 2);
 
 /// Ngưỡng cho đoạn ngắn hơn [`SHORT_LID_SAMPLES`]. Ở S6, turbo nhận thành tiếng Anh các đoạn tiếng Việt dưới 1,3 giây
 /// (xác suất từ 0,57 đến 0,99): đoạn quá ngắn không đủ bằng chứng để đổi ngôn ngữ, nên chỉ đổi khi xác suất từ 0,9.
-/// Đề xuất cho §6.4 (xem kế hoạch 00, Task 2); spec hiện chỉ có ngưỡng 0,5.
+/// Xem spec §6.4, "Chọn ngôn ngữ" (đoạn ngắn hơn 1,5 giây), kèm đánh đổi đã đo.
 pub const MIN_LANG_PROB_SHORT: f32 = 0.9;
 
 /// Ngưỡng `min_prob` cho `pick_language` theo độ dài đoạn (số mẫu 16 kHz): [`MIN_LANG_PROB_SHORT`] nếu đoạn ngắn hơn

@@ -63,8 +63,8 @@ struct Output {
     lang_hyp: String,
     lang_prob: f32,
     hyp: String,
-    /// Đoạn có giá trị > 0,6 bị bỏ theo spec §6.4 (luật đề xuất thêm điều kiện `avg_logprob`, xem bên dưới); trên clip có
-    /// tiếng nói thì phải hiếm.
+    /// Đoạn có giá trị > 0,6 và `avg_logprob` < −1 bị app bỏ (spec §6.4, "Lọc lỗi ảo giác"); trên clip có tiếng nói thì
+    /// phải hiếm.
     no_speech_prob: f32,
     /// Trung bình log-xác suất của các token văn bản, không tính EOT (0 nếu không có token); xem
     /// `TranscribeResult::avg_logprob`.

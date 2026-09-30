@@ -17,8 +17,9 @@ Cột thêm ngoài WER/CER thô:
 - `lid_fallback`: số clip có lang_prob < 0,5, tức nhận diện không chắc. Worker giữ ngôn ngữ của clip trước (nếu có)
   cho các clip này, nên kết quả của chúng phụ thuộc thứ tự clip trong manifest.
 - Cột cuối (`nospeech_rate` trong JSON): tỉ lệ clip bị bỏ theo luật "không có tiếng nói". Dòng kết quả có `avg_logprob`
-  (worker từ af5b41a trở đi) dùng luật đề xuất cho §6.4: `no_speech_prob > 0,6` **và** `avg_logprob < −1`. Dòng cũ không
-  có trường này dùng luật của spec, chỉ `no_speech_prob > 0,6`. Số dòng theo từng luật được in ra stderr.
+  (worker từ af5b41a trở đi) dùng luật ở spec §6.4 ("Lọc lỗi ảo giác"): `no_speech_prob > 0,6` **và** `avg_logprob < −1`.
+  Dòng cũ không có trường này dùng luật trước đó, chỉ `no_speech_prob > 0,6`, để số cũ không đổi. Số dòng theo từng luật
+  được in ra stderr.
 
 Chuẩn hóa: NFC, chữ thường, bỏ dấu câu và ký hiệu; tiếng Trung, Nhật, Hàn bỏ cả khoảng trắng. Riêng tiếng Trung:
 - small hay ra chữ phồn thể còn FLEURS cmn_hans_cn là giản thể, nên đổi cả ref và hyp về giản thể bằng OpenCC (t2s);
@@ -46,8 +47,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.abspath(os.path.join(HERE, "..", "data", "asr"))
 RESULTS = os.path.abspath(os.path.join(HERE, "..", "results"))
 CER_LANGS = {"zh", "ja", "ko"}
-NO_SPEECH_MAX = 0.6  # luật của spec §6.4: bỏ đoạn có no_speech_prob lớn hơn
-AVG_LOGPROB_MIN = -1.0  # luật đề xuất cho §6.4 (kế hoạch 00, Task 2): thêm điều kiện avg_logprob nhỏ hơn, giống latency.rs
+NO_SPEECH_MAX = 0.6  # spec §6.4, "Lọc lỗi ảo giác": bỏ đoạn có no_speech_prob lớn hơn
+AVG_LOGPROB_MIN = -1.0  # cùng luật: và avg_logprob nhỏ hơn (giống latency.rs)
 MIN_LANG_PROB = 0.5  # dưới mức này worker giữ ngôn ngữ của đoạn trước (asr-worker/src/lid.rs)
 # small hay ra chữ phồn thể, FLEURS cmn_hans_cn là giản thể: đổi về giản thể trước khi so.
 T2S = opencc.OpenCC("t2s")

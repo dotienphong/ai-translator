@@ -42,8 +42,8 @@ const PRIMER_JA: &str = "以下は日本語の文です。";
 /// Prompt mồi cho zh và ja (`<|startofprev|>` rồi các token này, như prompt của client). **Mặc định TẮT**; đặt
 /// `ASR_PRIMER=1` để bật (khi đó `asr-worker` in `primer=on`).
 ///
-/// Ý định ban đầu là cho Whisper đặt dấu câu kết thúc ở zh và ja, để luật ghép câu §6.3 (câu không kết thúc bằng dấu câu
-/// thì ghép với câu sau) không nối cả những câu khác nhau. Đo ở S3 và S6 (small và turbo, 216 clip zh+ja của A4 và các
+/// Ý định ban đầu là cho Whisper đặt dấu câu kết thúc ở zh và ja, để luật ghép câu (spec §6.3) (câu không kết thúc bằng
+/// dấu câu thì ghép với câu sau) không nối cả những câu khác nhau. Đo ở S3 và S6 (small và turbo, 216 clip zh+ja của A4 và các
 /// đoạn VAD thật của S6) cho thấy mồi không đáng bật:
 /// - zh: dấu `。` hiện cả ở đoạn giữa câu (small 16/20, turbo 15/20; đoạn cuối câu 21/23 và 20/23), nên không giúp
 ///   §6.3: ghép câu chuyển từ "nối nhầm" (4 đến 5 nhóm) sang "cắt vụn" (11 đến 12 trong 23 câu bị cắt), số câu nguyên
@@ -54,7 +54,9 @@ const PRIMER_JA: &str = "以下は日本語の文です。";
 /// - CER của small tăng 2,9% tổng lỗi zh+ja (băng rộng); turbo giảm 2,2%. ASR p50 của zh, ja tăng 1% đến 9%.
 ///
 /// Lợi ích duy nhất còn lại: `small` ra chữ giản thể (clip zh có chữ phồn thể từ 66% xuống 16%, ký tự phồn thể từ 18,1%
-/// xuống 2,0%). MVP xử lý việc này bằng chuyển t2s ở tầng app.
+/// xuống 2,0%). MVP xử lý việc này bằng chuyển t2s ở tầng app (spec §6.4, "Việc cho MVP").
+///
+/// Quyết định tắt mặc định nằm ở spec §6.4 ("Giải mã", mồi dấu câu) và §6.3 ("Tiếng Trung và tiếng Nhật").
 ///
 /// Khi bật: chỉ dùng khi client không gửi prompt (đoạn đầu, hoặc sau khi đổi ngôn ngữ); prompt của client là ngữ cảnh
 /// thật nên thắng. Token hóa một lần lúc nạp model. Tắt thì các danh sách rỗng.
@@ -138,7 +140,7 @@ impl Engine {
     pub fn load(model_path: &str, use_gpu: bool, n_threads: u32) -> Result<Self> {
         // Flash attention mặc định TẮT: whisper.cpp 1.8.3 đọc K/V của encoder và cross-attention tới GGML_PAD(audio_ctx, 256)
         // mà không có mask, nên với audio_ctx rút ngắn kết quả sai và phụ thuộc các đoạn trước (ggml-org/whisper.cpp#3941).
-        // Chỉ đặt `ASR_FLASH_ATTN=1` khi whisper.cpp đã có bản vá đó.
+        // Chỉ đặt `ASR_FLASH_ATTN=1` khi whisper.cpp đã có bản vá đó (spec §6.4, "Flash attention: tắt").
         let flash_attn = use_gpu && std::env::var("ASR_FLASH_ATTN").as_deref() == Ok("1");
         let n_threads = clamp_threads(n_threads);
         let params = WhisperContextParameters {

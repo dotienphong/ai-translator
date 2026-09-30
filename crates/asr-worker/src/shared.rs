@@ -289,13 +289,13 @@ impl Generated {
     }
 }
 
-/// Mẫu dài nhất (token) mà `loop_period` tìm: nửa trần 224 token của Whisper, vì mẫu lặp hai lần dài hơn thế không thể
-/// nằm gọn trong một lượt giải mã. Câu bị lặp trong bộ clip FLEURS dài 12 đến 70 token (`ko-13932034022230918300`
+/// Mẫu dài nhất (token) mà `loop_period` tìm (spec §6.4, "Giải mã", dừng khi lặp): nửa trần 224 token của Whisper, vì
+/// mẫu lặp hai lần dài hơn thế không thể nằm gọn trong một lượt giải mã. Câu bị lặp trong bộ clip FLEURS dài 12 đến 70 token (`ko-13932034022230918300`
 /// chép cả câu 70 token hai lần, 140 token).
 const MAX_LOOP_PERIOD: usize = 112;
 
-/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper (đề xuất cho §6.4, xem kế hoạch 00,
-/// Task 2; spec chỉ có bộ lọc câu lặp n-gram ở tầng app):
+/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper (spec §6.4, "Giải mã", dừng khi
+/// lặp):
 /// - 1–8 token: 4 bản, để không cắt nhầm lời nói thật ("no, no, no");
 /// - 9–15 token: 3 bản;
 /// - 16–112 token (thường là cả câu): 2 bản, vì Whisper có khi chép cả câu hai lần rồi mới dừng (S7: 8 clip, 6 của turbo
@@ -334,7 +334,8 @@ fn cut_loop(tokens: &mut Vec<WhisperTokenId>, next: WhisperTokenId) -> bool {
     }
 }
 
-/// Trần số token mới của một đoạn: nửa ngữ cảnh văn bản của Whisper (224) trừ độ dài prompt, và không quá
+/// Trần số token mới của một đoạn (spec §6.4, "Giải mã"): nửa ngữ cảnh văn bản của Whisper (224) trừ độ dài prompt, và
+/// không quá
 /// `16 + 20 × số giây` của đoạn. Trên bộ clip FLEURS, lời nói không lặp có nhiều nhất 7,75 token/giây (p99 6,35), nên
 /// trần theo độ dài chỉ chặn vòng lặp mà `loop_period` không bắt được (các bản không giống hệt nhau), nhất là ở đoạn
 /// ngắn. Hệ số 20 khoảng 3 lần p99, để `loop_period` (cần 2 đến 4 bản) thường kịp gom vòng lặp trước khi chạm trần.
