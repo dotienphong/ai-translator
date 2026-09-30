@@ -1,0 +1,19 @@
+{
+ "files": {
+  "asr-worker": 2084624,
+  "llama-server": 49984,
+  "libllama-server-impl.dylib": 8982712,
+  "libllama-common.0.5.0.dylib": 7651240,
+  "libmtmd.0.5.0.dylib": 1378704,
+  "libllama.0.5.0.dylib": 3134000,
+  "libggml-base.0.25.1.dylib": 733208,
+  "libggml-blas.0.25.1.dylib": 58776,
+  "libggml-cpu.0.25.1.dylib": 989440,
+  "libggml-metal.0.25.1.dylib": 2183192,
+  "libggml-rpc.0.25.1.dylib": 191920,
+  "libggml.0.25.1.dylib": 60128
+ },
+ "total_bytes": 27497928,
+ "lzma_bytes": 7719228,
+ "zlib_bytes": 11286916
+}
