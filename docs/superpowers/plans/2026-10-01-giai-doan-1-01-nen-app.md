@@ -1,0 +1,7370 @@
+# Giai đoạn 1 · 01: Nền app
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Mục tiêu:** Biến app spike S5 thành khung app thật, để các kế hoạch sau chỉ việc lắp chức năng vào:
+- cài đặt có số phiên bản schema và bước migrate (§6.9), lưu bằng `tauri-plugin-store`;
+- i18n vi/en cho giao diện (en là nguồn chuẩn) và bảng chuỗi phía Rust cho khay (§4.5);
+- khay hệ thống (menu bar trên Mac), phím tắt toàn cục đổi được (F10), chỉ chạy một bản (Q7), khởi động cùng hệ thống (Đ19);
+- hai cửa sổ `main` và `overlay` với quyền riêng (§10.2); thanh phụ đề giữ hành vi của S5, thêm khóa và ẩn/hiện từ khay, nhớ vị trí theo từng màn hình;
+- đóng cửa sổ chỉ ẩn xuống khay; `⌘Q` và Quit ở Dock không thoát, nhưng không cản đăng xuất hay tắt máy (§4.3);
+- wrapper kho khóa của hệ điều hành (Đ5), log ra file có xoay vòng (Đ10);
+- khung các màn hình ở §4.3 và các bước lần đầu mở ở §4.1, store Zustand nhận sự kiện.
+
+**Kiến trúc:**
+- `src-tauri` tách thành lib `meeting_translator_lib` và `main.rs` mỏng. Logic thuần (cài đặt, migrate, phím tắt, chuỗi Rust, vị trí thanh phụ đề, chặn thoát, kho khóa) nằm trong module riêng có unit test, không cần mở cửa sổ. Phần nối với Tauri (lệnh, sự kiện, khay, cửa sổ) nằm trong `actions.rs`, `commands.rs`, `tray.rs`, `window.rs`, `overlay/`.
+- Mọi lệnh `invoke` generic theo `R: Runtime`, để test ACL chạy bằng `MockRuntime` với đúng `capabilities/` và app manifest thật.
+- Giao diện: store Zustand dựng trên một lớp `Ipc` mỏng, test bằng bản giả; i18n là từ điển có kiểu, không thêm thư viện; điều hướng bằng store.
+- Phiên dịch trong kế hoạch này là phiên tạm (`session_stub.rs`), chỉ đổi trạng thái và phát phụ đề mẫu; kế hoạch 02 thay bằng `session.rs`.
+
+**Công nghệ:** Giữ Tauri 2.12, React 19.3, Vite 8.3, TypeScript 7.0, Rust 1.98.1 của Giai đoạn 0. Thêm các plugin Tauri 2 chính thức (store, single-instance, autostart, opener, log), `keyring-core` cùng hai store gốc của hệ điều hành, `sys-locale`, `log`; Zustand 5 và Vitest 5 ở phía giao diện. Chi tiết ở bảng "Phiên bản đã chốt".
+
+Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.1, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Kế hoạch spike S5: `docs/superpowers/plans/2026-09-29-giai-doan-0-05-s5-thanh-phu-de.md`.
+
+---
+
+## Phiên bản đã chốt (kiểm ngày 2026-10-01, theo §6.12)
+
+Kiểm bằng `cargo info <crate>@2`, `cargo search`, `pnpm view <gói> version peerDependencies engines`, và API của crates.io (ngày phát hành, MSRV, giấy phép, có bị yanked không).
+
+| Thành phần | Phiên bản | Ghi chú tương thích |
+|---|---|---|
+| tauri / tauri-build | 2.12.0 / 2.7.0 (giữ) | thêm feature `tray-icon`; dev-dependency thêm feature `test` (MockRuntime). Dòng 3.0 chỉ có alpha nên không dùng |
+| tauri-plugin-store | 2.5.0 | bản 2.x mới nhất; MSRV 1.90; Apache-2.0 OR MIT |
+| tauri-plugin-single-instance | 2.5.1 | bản 2.x mới nhất; macOS dùng Unix socket, Windows dùng named mutex; phải là plugin đầu tiên |
+| tauri-plugin-autostart | 2.6.0 | macOS dùng LaunchAgent (không hỏi quyền Automation như cách AppleScript) |
+| tauri-plugin-opener | 2.7.0 | chỉ gọi từ Rust; tắt `open_js_links_on_click` |
+| tauri-plugin-log | 2.10.0 | có `RotationStrategy::KeepSome`, `max_file_size`, `TimezoneStrategy::UseLocal` |
+| tauri-plugin-global-shortcut, tauri-nspanel | 2.4.0, 2.1.0 (giữ) | như S5 |
+| keyring-core | 1.0.0 | tác giả `keyring` 4.x khuyên app dùng `keyring-core` và store của từng nền tảng thay vì crate gộp `keyring`; có store giả (`mock`) để test; MSRV 1.85 |
+| apple-native-keyring-store | 1.0.2 (feature `keychain`) | chỉ macOS; Keychain đăng nhập qua `security-framework` |
+| windows-native-keyring-store | 1.1.0 | chỉ Windows; Credential Manager; MSRV 1.88 |
+| sys-locale | 0.3.2 | đọc locale hệ điều hành cho ngôn ngữ giao diện mặc định; MSRV 1.56 |
+| log | 0.4.34 | facade mà `tauri-plugin-log` đọc |
+| objc2 | 0.6.4 (đã có trong `audio-capture`) | dùng cho `applicationShouldTerminate:`; không thêm `objc2-foundation` vì chỉ cần `msg_send!` |
+| yoke-derive (phụ thuộc gián tiếp của candle) | 0.8.3 → 0.8.4 | 0.8.3 đã bị yanked, làm `cargo deny check` trên `main` báo lỗi từ trước kế hoạch này; 0.8.4 ra 2026-09-30 13:19 UTC do chính người bảo trì ICU4X phát hành |
+| zustand | 5.0.15 | peer React ≥ 18 (tùy chọn), chạy với React 19.3; MIT |
+| vitest | 5.0.3 | peer `vite ^6.4 \|\| ^7 \|\| ^8`, Node `^22.12 \|\| ^24 \|\| ≥26`; môi trường `node`, không cần jsdom hay happy-dom. Xem ghi chú bên dưới |
+
+Ghi chú:
+- pnpm 12 có luật tuổi phát hành tối thiểu (1 ngày). Lúc lập kế hoạch, vitest 5.0.3 mới ra được 8 giờ (2026-09-30 11:30 UTC), nên `pnpm add` tự tạo `pnpm-workspace.yaml` với `minimumReleaseAgeExclude` để lách luật. Kế hoạch đã chạy thử với cả 5.0.3 và 5.0.2, cho cùng kết quả. Khi thực thi: nếu lệnh ở Task 1, Step 6 tạo ra `pnpm-workspace.yaml`, xóa file đó và cài `vitest@5.0.2`; không thêm ngoại lệ vào luật tuổi phát hành.
+- Crate mới đều không bị yanked, giấy phép nằm trong `deny.toml`, MSRV không vượt 1.98. Không crate nào kéo ggml hay thư viện C thứ hai vào tiến trình chính (`cargo deny check bans` vẫn sạch).
+- Giấy phép gói npm chạy trong app: `@tauri-apps/api` (Apache-2.0 OR MIT), `react`, `react-dom`, `scheduler`, `zustand` (MIT).
+- `cargo audit` còn 3 cảnh báo cũ, đều có từ trước: `paste` (đã có ngoại lệ trong `deny.toml`), `proc-macro-error` và `glib` (chỉ có trên Linux, qua gtk của Tauri).
+
+## Dòng của bảng đối chiếu giao cho kế hoạch này
+
+Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00. Cột cuối là task nhận phần của 01.
+
+| # | Yêu cầu (rút gọn) | Phần của 01 | Task |
+|---|---|---|---|
+| 2 | D2: nhận diện thương hiệu mới | token màu và icon tạm, không dùng gì của AI Live Translator | 12, 16 |
+| 4 | D4: Tauri 2, React 19, Zustand | thêm Zustand | 1, 13 |
+| 8, 21 | D8, F7: giao diện vi và en | từ điển vi/en, đổi trong Cài đặt | 11, 16 |
+| 16 | F2: ngôn ngữ đích, tập nguồn, khóa nguồn | khóa cài đặt, bộ chọn ở màn hình chính và bước 5 | 3, 16 |
+| 17, 64, 69, 70, 71 | F3, §4.4: kiểu cửa sổ thanh phụ đề, khóa, NSPanel, topmost | giữ cách tạo của S5, khóa và ẩn/hiện từ khay và phím tắt | 12, 19, 20 |
+| 24, 54 | F10: phím tắt đổi được, khay, kiểm trùng | đăng ký, đổi, báo lỗi; nhóm Cài đặt "Phím tắt" | 2, 12, 14, 16, 19 |
+| 35, 39, 41, 42 | §4.1 bước 1, 5, 7, 8 | các bước của 01; bước 8 trên Windows có hình và nút mở Taskbar | 16, 20 |
+| 38, 230 | §4.1 bước 4, §9 thiếu quyền macOS | khung bước (02 làm nội dung) | 16 |
+| 43, 46 | Bắt đầu qua nút, phím tắt, khay; màn hình chính | điểm bắt đầu nối vào phiên tạm; khung màn hình chính | 12, 16 |
+| 50, 204 | Cài đặt nhóm Chung; kênh cập nhật | ngôn ngữ, khởi động cùng hệ thống, sáng/tối, kênh cập nhật | 3, 12, 16 |
+| 59, 257, 260 | Giới thiệu; giấy phép; câu miễn trừ nhãn hiệu | màn hình, nút mở thư mục log, chỗ cho danh sách giấy phép (07) | 12, 16 |
+| 60, 61, 62, 63, 305 | Đóng cửa sổ, Thoát, `⌘Q`, Dock, tắt máy | ẩn xuống khay; Thoát ở khay; chặn `⌘Q` và Dock; không chặn tắt máy | 9, 12, 19, 20 |
+| 68 | Nhớ vị trí theo từng màn hình | lưu và đặt lại vị trí (03 làm kéo cạnh) | 8, 12, 19 |
+| 72 | Icon ở Dock theo cửa sổ chính | `regular` khi hiện, `accessory` khi ẩn | 12, 19 |
+| 74, 75, 76, 292 | i18n có kiểu, đổi ngay, chuỗi Rust, vitest đủ khóa | toàn bộ | 6, 11, 12 |
+| 79 | Đ19: tiến trình phụ theo cửa sổ chính | mở lúc đăng nhập thì chỉ nằm ở khay; `launchedAtLogin` cho 02 | 12 |
+| 87, 141, 252 | `audioSource` chọn thiết bị; cờ ngữ cảnh; lưu lịch sử mặc định tắt | khóa cài đặt và giá trị mặc định | 3 |
+| 191, 192 | `tauri-plugin-store`, schema, migrate, đủ khóa | toàn bộ | 3, 4, 5, 10 |
+| 194, 195 | React, Zustand; hai cửa sổ, `invoke`, sự kiện | store nhận sự kiện | 13, 15, 16 |
+| 196, 197 | Thương hiệu mới; chữ phóng to được | token màu tạm; cỡ chữ theo rem, `zoomHotkeysEnabled` | 12, 16 |
+| 249 | Không analytics; log nằm trên máy | nút mở thư mục log | 12, 16 |
+| 266 | Trạng thái bản quyền và quota trong kho khóa | wrapper kho khóa (06 dùng) | 7 |
+| 271, 312 | Quyền từng cửa sổ; overlay không gọi được lệnh ngoài quyền | app manifest, capabilities, test ACL | 12 |
+| 318 | Cây thư mục §12 | phần `src-tauri/src/` và `src/` của 01 | 12, 16 |
+
+## Quyết định của kế hoạch này
+
+Đánh số QĐ1–QĐ20, chỉ dùng trong file này.
+
+- **QĐ1. Chia module.** `src-tauri/src/` theo §12 (`settings/`, `tray.rs`, `hotkeys.rs`, `i18n.rs`, `overlay/{macos,windows}.rs`, `security/keystore.rs`), thêm:
+  - `commands.rs` (lệnh `invoke`), `actions.rs` (việc dùng chung cho lệnh, khay, phím tắt), `events.rs` (tên và cách gửi sự kiện), `state.rs` (trạng thái dùng chung);
+  - `window.rs` (cửa sổ chính, menu app trên Mac), `hotkey_registry.rs` (đăng ký với hệ điều hành), `quit_guard.rs` (chặn `⌘Q`), `logging.rs`, `session_stub.rs` (phiên tạm), `acl_tests.rs`.
+- **QĐ2. File cài đặt phẳng.** Mỗi khóa của `Settings` là một mục ở mức trên cùng của store, cộng `schemaVersion`.
+  - Đọc file: khoan dung theo từng khóa. Khóa sai kiểu hay ngoài phạm vi thì về mặc định và ghi log; không bỏ cả file vì một khóa hỏng. Nhóm con (`overlay`, `hotkeys`, `experimental`) thử cả nhóm trước, rồi mới xét từng khóa con, để giữ được thay đổi chỉ hợp lệ khi đi cùng nhau (đổi chỗ hai phím tắt).
+  - Ghi file: chỉ ghi khóa đã biết, nên khóa lạ của bản app mới hơn còn nguyên trong file; không hạ `schemaVersion`.
+  - Sửa từ giao diện: nghiêm. Khóa lạ, sai kiểu, ngoài phạm vi đều bị từ chối, trả mã lỗi và tên khóa.
+  - File không đọc được thì đổi tên thành `settings.json.corrupt` trước khi mở store, vì `tauri-plugin-store` lặng lẽ mở store rỗng và lần ghi sau sẽ đè mất file.
+- **QĐ3. Khóa và giá trị mặc định.** Theo §6.9, thêm hai khóa: `onboardingDone` (đã xong các bước lần đầu) và `overlay.lastMonitor`.
+  - `audioSource` là `{kind: "system"}`, `{kind: "device", id}` (Windows) hoặc `{kind: "app", bundleId}` (macOS); 02 dùng.
+  - `modelTier` là `null` khi chưa chọn; 04 đặt.
+  - Phím tắt lưu ở dạng chuẩn `Ctrl+Alt+T` (thứ tự Ctrl, Alt, Shift, Super).
+  - Mặc định của thanh phụ đề: cỡ chữ 22, 2 dòng, độ mờ nền 0,6, không hiện câu gốc. 03 được đổi, kèm bước migrate nếu cần.
+  - Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (§4.1 bước 5). Chọn ngôn ngữ giao diện ở bước 1 cũng đặt luôn ngôn ngữ đích; bước 5 đổi lại được.
+- **QĐ4. Khóa chỉ đổi qua lệnh riêng:** `hotkeys` (lệnh `set_hotkey`, vì phải đăng ký lại với hệ điều hành), `overlay.locked` (lệnh `set_overlay_locked`, vì phải đổi cửa sổ), `overlay.positions` và `overlay.lastMonitor` (chỉ phía Rust ghi).
+- **QĐ5. Quyền tối thiểu.**
+  - Cửa sổ `overlay` chỉ có một lệnh chỉ đọc, `get_overlay_view` (phần cài đặt của chính nó), cùng quyền nghe sự kiện và kéo cửa sổ. Khác chữ §10.2 một chút: overlay không gọi lệnh khóa, vì khi đã khóa thì click đi xuyên qua, không bấm được gì trên thanh; mở khóa bằng phím tắt hoặc menu khay như §4.4.
+  - Không cửa sổ nào được cấp lệnh của plugin (store, autostart, opener, log). Giao diện không tự đọc ghi file cài đặt, không tự bật khởi động cùng hệ thống, không tự mở URL hay đường dẫn. Thư mục log và trang Taskbar mở bằng lệnh Rust với đích cố định.
+- **QĐ6. Sự kiện không phải ranh giới quyền.** Trong Tauri 2, listener JS đăng ký với đích `Any` nhận cả sự kiện gửi riêng cho cửa sổ khác (`event/listener.rs`, `match_any_or_filter`). Vì vậy không gửi bí mật qua sự kiện. Kế hoạch 06 phải giữ điều này (không gửi token hay license key đầy đủ). `emit_to` chỉ để bớt việc thừa.
+- **QĐ7. Chặn `⌘Q` và Quit ở Dock (R9).**
+  - tao không cài `applicationShouldTerminate:`, nên mọi `terminate:` đều thoát ngay, không qua `RunEvent::ExitRequested`.
+  - App thêm phương thức này vào lớp app delegate của tao: Apple Event `quit` có thuộc tính lý do (đăng xuất, khởi động lại, tắt máy) thì cho thoát, còn lại thì hủy.
+  - Menu app trên Mac bỏ mục Quit, nên `⌘Q` không làm gì.
+  - Thoát ở khay gọi `AppHandle::exit`; tao dừng bằng `stop:`, không qua hook này. `AppHandle::restart` (cập nhật, 07) cũng vậy.
+- **QĐ8. Kho khóa:** `keyring-core` cùng store gốc của từng hệ điều hành (không dùng crate gộp `keyring`).
+  - "Service" là bundle identifier đọc từ `app.config().identifier` (R17).
+  - Tên mục chỉ gồm `[a-z0-9._-]`, dài 1–64; giá trị tối đa 2048 byte (Credential Manager giới hạn 2560).
+  - Test dùng store giả của `keyring-core`, chạy qua đúng code của bản thật.
+- **QĐ9. i18n không thêm thư viện.**
+  - Giao diện: `en.ts` là `as const`, `vi.ts` là `Record<MessageKey, string>`, cộng hàm `translate`.
+  - Rust: hằng `Strings`; thiếu trường thì không biên dịch được.
+  - Test Rust đọc `src/i18n/en.ts` để kiểm mọi mã lỗi phía Rust đều có câu báo lỗi.
+- **QĐ10.** Điều hướng bằng store, không thêm router. Màn hình chưa có chức năng hiện trạng thái trống có chuỗi i18n.
+- **QĐ11. Phiên tạm.** Bắt đầu/Dừng (nút, phím tắt, khay) đổi trạng thái và phát phụ đề mẫu mỗi 1,5 giây như S5, để thử thanh phụ đề bằng tay. 02 thay `session_stub.rs` bằng `session.rs`.
+- **QĐ12. Thông báo trong app (theo đề xuất Q13).** Lỗi của lệnh gần nhất hiện ở thanh báo của cửa sổ chính. Phím tắt không đăng ký được thì hiện ở cả thanh báo, ở nhóm Cài đặt "Phím tắt", và ở một dòng trong menu khay; bấm dòng đó thì mở đúng nhóm Cài đặt. Không xin quyền thông báo hệ thống.
+- **QĐ13. Vị trí thanh phụ đề theo màn hình.**
+  - Khóa của màn hình là tên cộng độ phân giải.
+  - Vị trí lưu bằng điểm logic so với vùng làm việc của màn hình, nên đúng cả khi các màn hình có scale khác nhau.
+  - Nhớ tối đa 16 màn hình. Vị trí nằm ngoài màn hình thì kéo vào trong.
+  - Thứ tự chọn màn hình: màn hình của lần đặt gần nhất; màn hình khác có vị trí đã nhớ; màn hình chính.
+  - Khi đang kéo thì chỉ ghi khóa `overlay`, vì sự kiện `Moved` đến dồn dập.
+- **QĐ14. Log:** `tauri-plugin-log` ghi `app.log` ở thư mục log của hệ điều hành; mỗi file 1 MB, giữ 5 file; giờ địa phương; `tao` và `wry` ở mức Warn.
+- **QĐ15.** Menu app trên Mac dùng chữ mặc định (English) của các mục có sẵn (About, Edit, Window…). Chỉ menu khay theo ngôn ngữ giao diện.
+- **QĐ16.** Khi app khởi động, `launchAtLogin` lấy theo trạng thái thật của hệ điều hành, vì người dùng có thể đã tắt mục này trong System Settings hay Task Manager.
+- **QĐ17.** Trên Windows, bấm chuột trái vào icon khay thì mở cửa sổ chính, chuột phải thì mở menu. Trên Mac, bấm vào icon luôn mở menu, như mọi icon ở menu bar.
+- **QĐ18.** Kiểm kiểu và clippy phần code Windows ngay trên Mac bằng `scripts/check-windows.sh`, với một `llvm-rc` giả, vì tauri-build cần trình biên dịch resource cho target Windows. `cargo check` và `cargo clippy` không link, nên file resource rỗng không ảnh hưởng gì.
+- **QĐ19.** Ký bản dev bằng chứng thư cố định (R8) qua `scripts/run-dev-signed.sh`, để Keychain và quyền của macOS không hỏi lại sau mỗi lần build. Đây là bước tùy chọn của người.
+- **QĐ20.** Vitest chạy môi trường `node`. Store test qua bản giả của `Ipc`, nên không cần jsdom hay happy-dom. Khi 03 cần test phần hiển thị thì thêm môi trường DOM.
+
+## Điểm cần chủ dự án xem
+
+Nếu tới lúc thực thi mà chưa có ý kiến, làm theo đề xuất.
+
+- **Identifier (Q1).** Thư mục cài đặt, thư mục log và "service" của kho khóa đều lấy từ identifier, hiện vẫn là `dev.meetingtranslator.spike`. Đổi identifier sau khi 03 và 06 đã ghi khóa SQLCipher, bản quyền, quota vào kho khóa thì dữ liệu cũ không còn đọc được (R17). Đề xuất: chốt Q1 trước khi thực thi 03 và 06, không chỉ trước bản beta.
+- **Quyền của overlay (QĐ5).** Overlay có một lệnh chỉ đọc và không gọi lệnh khóa, hơi khác chữ ở §10.2. Đề xuất: giữ như QĐ5, sửa chữ spec ở lần cập nhật sau (thêm vào Q12).
+- **Quit ở Dock bị chặn hẳn (QĐ7).** Chỉ Thoát ở menu khay mới thoát; Force Quit của macOS vẫn dùng được. Đúng như §4.3; ghi ở đây để chủ dự án biết người dùng không thoát được từ Dock.
+- **Menu app trên Mac chỉ có chữ English (QĐ15).** Đề xuất: chấp nhận cho MVP. Muốn dịch thì thêm khoảng 10 chuỗi vào `i18n.rs` và dựng lại menu khi đổi ngôn ngữ.
+- **Luật tuổi phát hành.** pnpm 12 chặn bản mới ra dưới 1 ngày, còn cargo thì không. Đề xuất ghi vào §6.12: "dùng bản ổn định mới nhất đã ra ít nhất 1 ngày; không thêm ngoại lệ vào `minimumReleaseAgeExclude`", và áp cho cả crate.
+- **`yoke-derive` 0.8.3 bị yanked** làm `cargo deny check` trên `main` hỏng từ trước kế hoạch này. Task 1 sửa. Nếu phần crate của 02 chạy trước, 02 cũng phải chạy `cargo update -p yoke-derive --precise 0.8.4`.
+- **Phím tắt `Ctrl+Alt+…` trên Windows** trùng với AltGr của một số bố cục bàn phím (Polish, German…), có thể nuốt ký tự người dùng gõ. Task 20 dòng 6 kiểm; nếu trùng thật thì cân nhắc đổi mặc định của F10.
+
+## Cấu trúc file sau kế hoạch này
+
+```
+src-tauri/
+├── Cargo.toml                  # sửa: thêm plugin, keyring-core, [lib]
+├── build.rs                    # sửa: app manifest 11 lệnh
+├── tauri.conf.json             # sửa: cửa sổ main ẩn lúc tạo, 960×640, zoomHotkeysEnabled
+├── capabilities/main.json      # sửa: 10 lệnh của cửa sổ chính
+├── capabilities/overlay.json   # sửa: get_overlay_view, nghe sự kiện, kéo cửa sổ
+├── icons/tray-template.png     # mới: icon khay tạm cho macOS (template)
+└── src/
+    ├── main.rs                 # thay: chỉ gọi meeting_translator_lib::run()
+    ├── lib.rs                  # mới (từ main.rs của S5): plugin, setup, vòng đời app
+    ├── settings/{mod,migrate,patch,persist}.rs
+    ├── hotkeys.rs  hotkey_registry.rs
+    ├── i18n.rs  tray.rs  window.rs  quit_guard.rs
+    ├── overlay/{mod,placement,macos,windows}.rs
+    ├── security/{mod,keystore}.rs
+    ├── state.rs  events.rs  commands.rs  actions.rs
+    ├── session_stub.rs  logging.rs
+    └── acl_tests.rs
+src/
+├── i18n/{en,vi,index}.ts, i18n.test.ts
+├── lib/{ipc,hotkeys,fakeIpc}.ts, hotkeys.test.ts
+├── store/{app,overlay}.ts, app.test.ts, overlay.test.ts
+├── styles/{tokens,main}.css
+├── components/EmptyState.tsx
+└── windows/
+    ├── main/{main,App,Shell,Notice,LanguagePicker}.tsx, appStore.ts
+    │   ├── screens/{Home,Placeholders,About,SettingsScreen}.tsx
+    │   ├── settings/{GeneralSettings,HotkeySettings}.tsx
+    │   └── onboarding/{Onboarding,TaskbarGuide}.tsx
+    └── overlay/overlay.tsx, overlay.css
+scripts/make_tray_icon.py, check-windows.sh, fake-llvm-rc, run-dev-signed.sh
+index.html, overlay.html, package.json, vitest.config.ts, Cargo.lock, pnpm-lock.yaml
+```
+
+## Lưu ý khi thực thi
+
+- Mọi lệnh shell bắt đầu bằng `source "$HOME/.cargo/env" && eval "$(fnm env --use-on-cd)" >/dev/null && …`, chạy từ gốc repo. Các Expected dưới đây bỏ phần tiền tố này.
+- Expected ghi số đo thật **lúc lập kế hoạch** (2026-10-01, trên M4 Pro, commit `78888a8`).
+- Kế hoạch này chạy song song được với phần crate của 02 (Đ18), nhưng hai bên cùng sửa `Cargo.lock`. Task 1 của 01 nên làm xong và commit trước khi 02 thêm crate mới. Nếu 02 đang giữ thay đổi chưa commit ở `Cargo.lock`, hai bên thống nhất trước khi chạy `cargo update` hay thêm phụ thuộc.
+- Task 19–20 cần người thao tác hoặc máy Windows; agent làm Task 1–18 và 21, rồi dừng chờ kết quả của 19–20 trước khi đánh dấu các dòng liên quan là `xong`.
+- Agent không chạy `pnpm tauri dev` hay binary của app, và không chạy test `#[ignore]` đụng Keychain (mục 6.8 của kế hoạch 00).
+
+---
+
+## Task 1: Thêm thư viện, tách `src-tauri` thành lib và binary
+
+**Files:**
+- Modify: `src-tauri/Cargo.toml`
+- Move: `src-tauri/src/main.rs` → `src-tauri/src/lib.rs` (giữ code S5, đổi `main` thành `pub fn run`)
+- Create: `src-tauri/src/main.rs`
+- Modify: `Cargo.lock`, `package.json`, `pnpm-lock.yaml`
+
+Task này chưa đổi hành vi của app; chỉ thêm thư viện và đổi chỗ code, rồi build lại toàn bộ và chạy test theo CLAUDE.md.
+
+- [ ] **Step 1: Kiểm lại phiên bản trước khi cài**
+
+Run:
+```bash
+for c in tauri tauri-plugin-store tauri-plugin-single-instance tauri-plugin-autostart tauri-plugin-opener tauri-plugin-log tauri-plugin-global-shortcut; do cargo info "$c@2" 2>/dev/null | grep -E '^version|^rust-version'; done
+cargo info keyring-core | grep -E '^version|^rust-version'
+cargo info apple-native-keyring-store | grep -E '^version'
+cargo info windows-native-keyring-store | grep -E '^version'
+pnpm view zustand version && pnpm view vitest version && pnpm view vitest peerDependencies.vite engines.node
+```
+Expected (lúc lập kế hoạch; bỏ qua các dòng `Updating crates.io index`):
+```text
+version: 2.12.0 (latest 3.0.0-alpha.3)
+rust-version: 1.90
+version: 2.5.0 (latest 3.0.0-alpha.2)
+rust-version: 1.90
+version: 2.5.1 (latest 3.0.0-alpha.2)
+rust-version: 1.90
+version: 2.6.0 (latest 3.0.0-alpha.2)
+rust-version: 1.90
+version: 2.7.0 (latest 3.0.0-alpha.2)
+rust-version: 1.90
+version: 2.10.0 (latest 3.0.0-alpha.2)
+rust-version: 1.90
+version: 2.4.0 (latest 3.0.0-alpha.2)
+rust-version: 1.90
+version: 1.0.0
+rust-version: 1.85
+version: 1.0.2
+version: 1.1.0
+5.0.15
+5.0.3
+peerDependencies.vite = '^6.4.0 || ^7.0.0 || ^8.0.0'
+engines.node = '^22.12.0 || ^24.0.0 || >=26.0.0'
+```
+Nếu có bản mới hơn bảng "Phiên bản đã chốt", dừng lại và kiểm tương thích như §6.12 trước khi đi tiếp. Dòng 3.x của Tauri chỉ có alpha, không dùng.
+
+- [ ] **Step 2: Sửa `src-tauri/Cargo.toml`** (thay toàn bộ file)
+
+```toml
+[package]
+name = "meeting-translator"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+# Tên lib khác tên binary, để file output không trùng nhau trên Windows (rust-lang/cargo#8519).
+name = "meeting_translator_lib"
+
+[build-dependencies]
+tauri-build = { version = "2.7.0", features = [] }
+
+[dependencies]
+keyring-core = "1.0.0"
+log = "0.4.34"
+serde.workspace = true
+serde_json.workspace = true
+sys-locale = "0.3.2"
+tauri = { version = "2.12.0", features = ["macos-private-api", "tray-icon"] }
+tauri-plugin-autostart = "2.6.0"
+tauri-plugin-global-shortcut = "2.4.0"
+tauri-plugin-log = "2.10.0"
+tauri-plugin-opener = "2.7.0"
+tauri-plugin-single-instance = "2.5.1"
+tauri-plugin-store = "2.5.0"
+thiserror.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
+objc2 = "0.6.4"
+tauri-nspanel = "2.1.0"
+
+[target.'cfg(windows)'.dependencies]
+windows-native-keyring-store = "1.1.0"
+
+[dev-dependencies]
+# `test`: MockRuntime để test ACL của từng cửa sổ mà không mở cửa sổ thật.
+tauri = { version = "2.12.0", features = ["macos-private-api", "tray-icon", "test"] }
+```
+
+- [ ] **Step 3: Tách lib và binary**
+
+Run:
+```bash
+git mv src-tauri/src/main.rs src-tauri/src/lib.rs
+```
+
+Trong `src-tauri/src/lib.rs`, xóa dòng `#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]` cùng dòng trống ngay sau nó, và đổi dòng
+```rust
+fn main() {
+```
+thành
+```rust
+pub fn run() {
+```
+Phần còn lại của file giữ nguyên code S5. Task 12 thay cả file này.
+
+Tạo `src-tauri/src/main.rs`:
+
+```rust
+// Bản phát hành trên Windows không mở cửa sổ console.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+fn main() {
+    meeting_translator_lib::run();
+}
+```
+
+- [ ] **Step 4: Cập nhật lockfile, bỏ bản `yoke-derive` đã bị yanked**
+
+Run: `cargo update -p yoke-derive --precise 0.8.4`
+Expected: cargo thêm các crate mới vào `Cargo.lock` (các dòng `Adding …`), và có dòng
+```text
+    Updating yoke-derive v0.8.3 -> v0.8.4
+```
+
+- [ ] **Step 5: Build lại, clippy, test, kiểm phụ thuộc**
+
+Run:
+```bash
+cargo build -p meeting-translator
+cargo clippy -p meeting-translator --all-targets -- -D warnings
+cargo test --workspace 2>&1 | grep -E 'test result' | awk '{p+=$4; f+=$6; i+=$8} END {print "passed", p, "failed", f, "ignored", i}'
+cargo deny check
+cargo audit 2>&1 | tail -1
+```
+Expected:
+- build và clippy không lỗi, không cảnh báo;
+- test (lúc lập kế hoạch): `passed 144 failed 0 ignored 1` (chưa có test mới; test bỏ qua là `vad_reference`);
+- `advisories ok, bans ok, licenses ok, sources ok`;
+- `warning: 3 allowed warnings found` (ba cảnh báo cũ ghi ở bảng "Phiên bản đã chốt").
+
+- [ ] **Step 6: Thêm Zustand và Vitest**
+
+Run:
+```bash
+pnpm add zustand@5.0.15
+pnpm add -D vitest@5.0.3
+ls pnpm-workspace.yaml
+```
+Expected: `package.json` có `"zustand": "5.0.15"` trong `dependencies` và `"vitest": "5.0.3"` trong `devDependencies`; lệnh `ls` báo `No such file or directory`.
+
+Nếu `pnpm-workspace.yaml` xuất hiện (có `minimumReleaseAgeExclude`, tức vitest 5.0.3 chưa đủ 1 ngày tuổi), chạy:
+```bash
+rm pnpm-workspace.yaml
+pnpm add -D vitest@5.0.2
+```
+
+- [ ] **Step 7: Build giao diện, kiểm lỗ hổng và giấy phép**
+
+Run:
+```bash
+pnpm build
+pnpm audit
+pnpm licenses list --prod
+```
+Expected:
+- `pnpm build` in `✓ built in …`;
+- `No known vulnerabilities found`;
+- bảng giấy phép chỉ có `@tauri-apps/api` (Apache-2.0 OR MIT), `react`, `react-dom`, `scheduler`, `zustand` (MIT).
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src-tauri/Cargo.toml src-tauri/src/lib.rs src-tauri/src/main.rs Cargo.lock package.json pnpm-lock.yaml
+git commit -m "build(app): thêm plugin Tauri, keyring-core, Zustand, Vitest; tách src-tauri thành lib" -m "yoke-derive 0.8.3 đã bị yanked nên nâng lên 0.8.4 để cargo deny sạch." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 2: Đọc và kiểm phím tắt (TDD)
+
+**Files:**
+- Create: `src-tauri/src/hotkeys.rs`
+- Modify: `src-tauri/src/lib.rs` (thêm `pub mod hotkeys;`)
+
+Ba việc có phím tắt (F10): bắt đầu/dừng, ẩn/hiện, khóa/mở khóa. Hàm `parse` đọc chuỗi từ giao diện (tối đa 64 ký tự), bắt phải có phím bổ trợ, và trả về dạng chuẩn để lưu. `check_all` kiểm trùng. Phần đăng ký với hệ điều hành ở Task 12.
+
+- [ ] **Step 1: Khai báo module.** Trong `src-tauri/src/lib.rs`, thêm dòng sau ngay trên dòng `use std::sync::Arc;`, cách một dòng trống:
+
+```rust
+pub mod hotkeys;
+```
+
+Từ Task 3 trở đi, mỗi module mới thêm một dòng `pub mod …;` vào khối này, theo thứ tự chữ cái (`cargo fmt` cũng sắp như vậy).
+
+- [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/hotkeys.rs`, tạm thời chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Phím tắt toàn cục (F10, spec §3.1): đọc, chuẩn hóa và kiểm trùng ba phím tắt.
+//! Phần đăng ký với hệ điều hành nằm ở `hotkey_registry.rs`.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn canonical_of(accelerator: &str) -> Result<String, HotkeyError> {
+        parse(accelerator).map(|(_, canonical)| canonical)
+    }
+
+    #[test]
+    fn canonicalizes_modifier_order_and_key_names() {
+        assert_eq!(canonical_of("Ctrl+Alt+T").unwrap(), "Ctrl+Alt+T");
+        assert_eq!(canonical_of("control+alt+KeyT").unwrap(), "Ctrl+Alt+T");
+        assert_eq!(canonical_of("Alt+Ctrl+t").unwrap(), "Ctrl+Alt+T");
+        assert_eq!(canonical_of("Shift+Super+Digit1").unwrap(), "Shift+Super+1");
+        assert_eq!(canonical_of("Cmd+Shift+F10").unwrap(), "Shift+Super+F10");
+        assert_eq!(canonical_of("Ctrl+Alt+Space").unwrap(), "Ctrl+Alt+Space");
+    }
+
+    #[test]
+    fn canonical_form_parses_back_to_same_shortcut() {
+        for accelerator in [
+            "Ctrl+Alt+T",
+            "Shift+Super+1",
+            "Ctrl+Alt+F10",
+            "Alt+Shift+ArrowUp",
+            "Ctrl+Backquote",
+        ] {
+            let (shortcut, canonical) = parse(accelerator).unwrap();
+            let (again, _) = parse(&canonical).unwrap();
+            assert_eq!(shortcut.id(), again.id(), "{accelerator}");
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_accelerators() {
+        assert_eq!(canonical_of(""), Err(HotkeyError::Invalid));
+        assert_eq!(canonical_of("   "), Err(HotkeyError::Invalid));
+        assert_eq!(canonical_of("Ctrl+Alt+"), Err(HotkeyError::Invalid));
+        assert_eq!(canonical_of("Ctrl+Alt+T+Y"), Err(HotkeyError::Invalid));
+        assert_eq!(canonical_of("Ctrl+Hyper+T"), Err(HotkeyError::Invalid));
+        assert_eq!(
+            canonical_of(&format!("Ctrl+{}", "A".repeat(80))),
+            Err(HotkeyError::Invalid)
+        );
+    }
+
+    #[test]
+    fn requires_a_modifier() {
+        assert_eq!(canonical_of("T"), Err(HotkeyError::NoModifier));
+        assert_eq!(canonical_of("F10"), Err(HotkeyError::NoModifier));
+    }
+
+    #[test]
+    fn check_all_reports_first_duplicate_or_invalid() {
+        let ok = [
+            (HotkeyAction::ToggleSession, "Ctrl+Alt+T"),
+            (HotkeyAction::ToggleOverlay, "Ctrl+Alt+H"),
+            (HotkeyAction::ToggleLock, "Ctrl+Alt+L"),
+        ];
+        assert_eq!(check_all(&ok), Ok(()));
+        let duplicate = [
+            (HotkeyAction::ToggleSession, "Ctrl+Alt+T"),
+            (HotkeyAction::ToggleOverlay, "control+alt+KeyT"),
+            (HotkeyAction::ToggleLock, "Ctrl+Alt+L"),
+        ];
+        assert_eq!(
+            check_all(&duplicate),
+            Err((HotkeyAction::ToggleOverlay, HotkeyError::Duplicate))
+        );
+        let invalid = [
+            (HotkeyAction::ToggleSession, "Ctrl+Alt+T"),
+            (HotkeyAction::ToggleLock, "L"),
+        ];
+        assert_eq!(
+            check_all(&invalid),
+            Err((HotkeyAction::ToggleLock, HotkeyError::NoModifier))
+        );
+    }
+
+    #[test]
+    fn action_keys_match_settings_fields() {
+        let keys: Vec<_> = HotkeyAction::ALL.iter().map(|a| a.key()).collect();
+        assert_eq!(keys, ["toggleSession", "toggleOverlay", "toggleLock"]);
+        assert_eq!(
+            serde_json::to_string(&HotkeyAction::ToggleLock).unwrap(),
+            "\"toggleLock\""
+        );
+    }
+}
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib hotkeys::`
+Expected: FAIL, biên dịch lỗi vì chưa có code (lúc lập kế hoạch: 29 lỗi):
+```text
+error[E0433]: cannot find type `HotkeyAction` in this scope
+error[E0433]: cannot find type `HotkeyError` in this scope
+error[E0425]: cannot find function `parse` in this scope
+error[E0425]: cannot find function `check_all` in this scope
+```
+
+- [ ] **Step 4: Viết code.** Chèn đoạn sau vào `src-tauri/src/hotkeys.rs`, ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+use serde::{Deserialize, Serialize};
+use tauri_plugin_global_shortcut::{Modifiers, Shortcut};
+
+/// Ba việc có phím tắt toàn cục.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum HotkeyAction {
+    /// Bắt đầu hoặc dừng phiên dịch.
+    ToggleSession,
+    /// Ẩn hoặc hiện thanh phụ đề.
+    ToggleOverlay,
+    /// Khóa hoặc mở khóa thanh phụ đề (click xuyên qua).
+    ToggleLock,
+}
+
+impl HotkeyAction {
+    pub const ALL: [HotkeyAction; 3] = [Self::ToggleSession, Self::ToggleOverlay, Self::ToggleLock];
+
+    /// Tên khóa con trong `hotkeys` của cài đặt.
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::ToggleSession => "toggleSession",
+            Self::ToggleOverlay => "toggleOverlay",
+            Self::ToggleLock => "toggleLock",
+        }
+    }
+}
+
+/// Lý do một phím tắt không dùng được.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum HotkeyError {
+    #[error("không đọc được phím tắt")]
+    Invalid,
+    #[error("phím tắt phải có ít nhất một phím bổ trợ (Ctrl, Alt, Shift, Cmd hoặc Win)")]
+    NoModifier,
+    #[error("phím tắt đang dùng cho việc khác của app")]
+    Duplicate,
+    #[error("hệ điều hành không cho đăng ký phím tắt này")]
+    RegisterFailed,
+}
+
+/// Chuỗi phím tắt dài hơn mức này thì coi là không hợp lệ (dữ liệu từ giao diện, spec §10.2).
+const MAX_LEN: usize = 64;
+
+/// Đọc chuỗi phím tắt, ví dụ `"Ctrl+Alt+T"` hoặc `"control+alt+KeyT"`.
+/// Trả về phím tắt đã đọc và dạng chuẩn để lưu vào cài đặt.
+pub fn parse(accelerator: &str) -> Result<(Shortcut, String), HotkeyError> {
+    if accelerator.trim().is_empty() || accelerator.len() > MAX_LEN {
+        return Err(HotkeyError::Invalid);
+    }
+    let shortcut: Shortcut = accelerator.parse().map_err(|_| HotkeyError::Invalid)?;
+    let modifiers = Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT | Modifiers::SUPER;
+    if (shortcut.mods & modifiers).is_empty() {
+        return Err(HotkeyError::NoModifier);
+    }
+    Ok((shortcut, canonical(&shortcut)))
+}
+
+/// Dạng chuẩn: phím bổ trợ theo thứ tự Ctrl, Alt, Shift, Super, rồi tới phím chính.
+/// `KeyT` viết là `T`, `Digit1` viết là `1`; phím khác giữ tên theo W3C (`F10`, `Space`).
+fn canonical(shortcut: &Shortcut) -> String {
+    let mut parts: Vec<String> = [
+        (Modifiers::CONTROL, "Ctrl"),
+        (Modifiers::ALT, "Alt"),
+        (Modifiers::SHIFT, "Shift"),
+        (Modifiers::SUPER, "Super"),
+    ]
+    .into_iter()
+    .filter(|(modifier, _)| shortcut.mods.contains(*modifier))
+    .map(|(_, name)| name.to_string())
+    .collect();
+    let code = shortcut.key.to_string();
+    let key = ["Key", "Digit"]
+        .iter()
+        .find_map(|prefix| code.strip_prefix(prefix).filter(|rest| rest.len() == 1))
+        .unwrap_or(&code);
+    parts.push(key.to_string());
+    parts.join("+")
+}
+
+/// Kiểm cả bộ phím tắt: mỗi phím đọc được, có phím bổ trợ, và không trùng phím của việc khác.
+/// Lỗi trả về việc gặp lỗi đầu tiên theo thứ tự của `bindings`.
+pub fn check_all(bindings: &[(HotkeyAction, &str)]) -> Result<(), (HotkeyAction, HotkeyError)> {
+    let mut seen: Vec<String> = Vec::with_capacity(bindings.len());
+    for (action, accelerator) in bindings {
+        let (_, canonical) = parse(accelerator).map_err(|e| (*action, e))?;
+        if seen.contains(&canonical) {
+            return Err((*action, HotkeyError::Duplicate));
+        }
+        seen.push(canonical);
+    }
+    Ok(())
+}
+```
+
+- [ ] **Step 5: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator --lib hotkeys::`
+Expected:
+```text
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+- [ ] **Step 6: clippy và định dạng**
+
+Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
+Expected: không lỗi, không cảnh báo, không in gì từ `cargo fmt`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src-tauri/src/hotkeys.rs src-tauri/src/lib.rs
+git commit -m "feat(app): đọc, chuẩn hóa và kiểm trùng phím tắt toàn cục (F10)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 3: Kiểu cài đặt, giá trị mặc định, kiểm phạm vi (TDD)
+
+**Files:**
+- Create: `src-tauri/src/settings/mod.rs`
+- Modify: `src-tauri/src/lib.rs` (thêm `pub mod settings;`)
+
+Mọi khóa của §6.9 cộng hai khóa ở QĐ3. `validate` là nơi phía Rust quyết định phạm vi (§10.2): giao diện gửi gì cũng qua đây. Lỗi trả về tên khóa (dạng `overlay.lines`) và mã lý do; giao diện dịch mã lý do thành câu báo lỗi.
+
+Phạm vi:
+
+| Khóa | Phạm vi |
+|---|---|
+| `vadEndSilenceMs` | 200–800 (§6.3) |
+| `sourceLanguages` | không rỗng, không trùng |
+| `audioSource.id`, `audioSource.bundleId` | 1–512 ký tự |
+| `overlay.fontSize` | 14–48 |
+| `overlay.lines` | 1–3 (§4.4) |
+| `overlay.opacity` | 0–1, không phải NaN |
+| `overlay.positions` | tối đa 16 màn hình; rộng 200–10 000, cao 40–4 000 điểm; số hữu hạn |
+| `hotkeys.*` | đọc được, có phím bổ trợ, không trùng nhau |
+
+- [ ] **Step 1: Khai báo module.** Thêm `pub mod settings;` vào khối `pub mod` ở đầu `src-tauri/src/lib.rs`.
+
+- [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/settings/mod.rs`, tạm thời chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Cài đặt của app (spec §6.9): kiểu, giá trị mặc định và luật kiểm phạm vi.
+//! - `migrate.rs`: số phiên bản schema, các bước migrate, đọc file cũ.
+//! - `patch.rs`: sửa một phần cài đặt theo yêu cầu từ giao diện.
+//! - `persist.rs`: đọc ghi file bằng `tauri-plugin-store`.
+//!
+//! Kế hoạch sau thêm khóa thì thêm trường ở đây, thêm luật vào `validate`, và thêm một bước migrate
+//! nếu khóa cũ đổi tên hay đổi nghĩa (khóa mới hoàn toàn thì chỉ cần giá trị mặc định).
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn valid() -> Settings {
+        Settings::defaults(UiLanguage::Vi)
+    }
+
+    fn rejects(settings: Settings, field: &str, reason: Reason) {
+        assert_eq!(settings.validate(), Err(Invalid::new(field, reason)));
+    }
+
+    #[test]
+    fn defaults_follow_spec() {
+        let vi = Settings::defaults(UiLanguage::Vi);
+        assert_eq!(vi.validate(), Ok(()));
+        assert_eq!(vi.target_language, Lang::Vi);
+        assert_eq!(vi.source_languages, Lang::ALL.to_vec());
+        assert_eq!(vi.vad_end_silence_ms, 300);
+        assert!(!vi.save_history, "lưu lịch sử mặc định tắt (F4)");
+        assert!(
+            !vi.experimental.translation_context,
+            "ngữ cảnh câu trước mặc định tắt (§6.5)"
+        );
+        assert_eq!(vi.update_channel, UpdateChannel::Stable);
+        assert_eq!(
+            vi.hotkeys.bindings().map(|(_, a)| a.to_string()),
+            ["Ctrl+Alt+T", "Ctrl+Alt+H", "Ctrl+Alt+L"]
+        );
+        assert_eq!(Settings::defaults(UiLanguage::En).target_language, Lang::En);
+    }
+
+    #[test]
+    fn serializes_with_camel_case_keys_of_spec() {
+        let value = serde_json::to_value(valid()).unwrap();
+        let keys: Vec<_> = value.as_object().unwrap().keys().cloned().collect();
+        for key in [
+            "uiLanguage",
+            "targetLanguage",
+            "sourceLanguages",
+            "sourceLock",
+            "audioSource",
+            "vadEndSilenceMs",
+            "overlay",
+            "modelTier",
+            "hotkeys",
+            "saveHistory",
+            "launchAtLogin",
+            "theme",
+            "updateChannel",
+            "experimental",
+            "onboardingDone",
+        ] {
+            assert!(keys.contains(&key.to_string()), "thiếu khóa {key}");
+        }
+        assert_eq!(value["overlay"]["fontSize"], json!(22));
+        assert_eq!(value["audioSource"], json!({ "kind": "system" }));
+        assert_eq!(value["experimental"], json!({ "translationContext": false }));
+        let app = AudioSource::App {
+            bundle_id: "us.zoom.xos".into(),
+        };
+        assert_eq!(
+            serde_json::to_value(app).unwrap(),
+            json!({ "kind": "app", "bundleId": "us.zoom.xos" })
+        );
+    }
+
+    #[test]
+    fn rejects_out_of_range_values() {
+        let mut s = valid();
+        s.vad_end_silence_ms = 199;
+        rejects(s, "vadEndSilenceMs", Reason::OutOfRange);
+        let mut s = valid();
+        s.vad_end_silence_ms = 801;
+        rejects(s, "vadEndSilenceMs", Reason::OutOfRange);
+        let mut s = valid();
+        s.overlay.lines = 4;
+        rejects(s, "overlay.lines", Reason::OutOfRange);
+        let mut s = valid();
+        s.overlay.font_size = 13;
+        rejects(s, "overlay.fontSize", Reason::OutOfRange);
+        let mut s = valid();
+        s.overlay.opacity = 1.5;
+        rejects(s, "overlay.opacity", Reason::OutOfRange);
+        let mut s = valid();
+        s.overlay.opacity = f64::NAN;
+        rejects(s, "overlay.opacity", Reason::OutOfRange);
+    }
+
+    #[test]
+    fn accepts_range_bounds() {
+        let mut s = valid();
+        s.vad_end_silence_ms = 200;
+        s.overlay.lines = 3;
+        s.overlay.font_size = 48;
+        s.overlay.opacity = 0.0;
+        assert_eq!(s.validate(), Ok(()));
+        s.vad_end_silence_ms = 800;
+        s.overlay.lines = 1;
+        s.overlay.opacity = 1.0;
+        assert_eq!(s.validate(), Ok(()));
+    }
+
+    #[test]
+    fn source_languages_must_be_non_empty_and_unique() {
+        let mut s = valid();
+        s.source_languages.clear();
+        rejects(s, "sourceLanguages", Reason::Empty);
+        let mut s = valid();
+        s.source_languages = vec![Lang::En, Lang::Vi, Lang::En];
+        rejects(s, "sourceLanguages", Reason::Duplicate);
+    }
+
+    #[test]
+    fn audio_source_ids_are_bounded() {
+        let mut s = valid();
+        s.audio_source = AudioSource::Device { id: String::new() };
+        rejects(s, "audioSource", Reason::Empty);
+        let mut s = valid();
+        s.audio_source = AudioSource::App {
+            bundle_id: "x".repeat(513),
+        };
+        rejects(s, "audioSource", Reason::TooLong);
+    }
+
+    #[test]
+    fn overlay_positions_are_bounded() {
+        let rect = OverlayRect {
+            x: 10.0,
+            y: 10.0,
+            width: 900.0,
+            height: 160.0,
+        };
+        let mut s = valid();
+        s.overlay.positions.insert("Built-in 3024x1964".into(), rect);
+        assert_eq!(s.validate(), Ok(()));
+        let mut s = valid();
+        s.overlay
+            .positions
+            .insert("m".into(), OverlayRect { width: 50.0, ..rect });
+        rejects(s, "overlay.positions", Reason::OutOfRange);
+        let mut s = valid();
+        s.overlay.positions.insert(
+            "m".into(),
+            OverlayRect {
+                x: f64::INFINITY,
+                ..rect
+            },
+        );
+        rejects(s, "overlay.positions", Reason::OutOfRange);
+        let mut s = valid();
+        for i in 0..=MAX_OVERLAY_POSITIONS {
+            s.overlay.positions.insert(format!("m{i}"), rect);
+        }
+        rejects(s, "overlay.positions", Reason::TooLong);
+    }
+
+    #[test]
+    fn hotkeys_must_be_valid_and_distinct() {
+        let mut s = valid();
+        s.hotkeys.toggle_lock = "L".into();
+        rejects(s, "hotkeys.toggleLock", Reason::InvalidHotkey);
+        let mut s = valid();
+        s.hotkeys.toggle_overlay = "Ctrl+Alt+T".into();
+        rejects(s, "hotkeys.toggleOverlay", Reason::Duplicate);
+    }
+}
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib settings::tests`
+Expected: FAIL, biên dịch lỗi, ví dụ:
+```text
+error[E0433]: cannot find type `Reason` in this scope
+error[E0433]: cannot find type `Lang` in this scope
+error[E0433]: cannot find type `Settings` in this scope
+error[E0422]: cannot find struct, variant or union type `OverlayRect` in this scope
+```
+
+- [ ] **Step 4: Viết code.** Chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+use std::collections::BTreeMap;
+
+use serde::{Deserialize, Serialize};
+
+use crate::hotkeys::{self, HotkeyAction, HotkeyError};
+
+/// Ngôn ngữ giao diện (§4.5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UiLanguage {
+    En,
+    Vi,
+}
+
+/// Năm ngôn ngữ của F2, dùng cho ngôn ngữ đích và tập ngôn ngữ nguồn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Lang {
+    En,
+    Zh,
+    Ja,
+    Ko,
+    Vi,
+}
+
+impl Lang {
+    pub const ALL: [Lang; 5] = [Lang::En, Lang::Zh, Lang::Ja, Lang::Ko, Lang::Vi];
+}
+
+/// Nguồn âm thanh (§4.3, §6.1). Kế hoạch 02 dùng giá trị này để chọn cách thu.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum AudioSource {
+    /// Windows: chế độ tự động (thiết bị Console và Communications). macOS: toàn hệ thống, trừ chính app.
+    System,
+    /// Windows: một thiết bị phát chọn tay, theo ID endpoint.
+    Device { id: String },
+    /// macOS: chỉ tap một app, theo bundle ID.
+    App { bundle_id: String },
+}
+
+/// Gói model (§6.7). `None` là chưa chọn; kế hoạch 04 đặt giá trị này.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ModelTier {
+    Standard,
+    Lite,
+}
+
+/// Giao diện sáng/tối (§4.3, nhóm Chung).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    System,
+    Light,
+    Dark,
+}
+
+/// Kênh cập nhật (§6.11). Kế hoạch 07 đọc giá trị này.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UpdateChannel {
+    Stable,
+    Beta,
+}
+
+/// Vị trí và kích thước thanh phụ đề trên một màn hình, tính bằng điểm logic so với góc trên
+/// bên trái vùng làm việc của màn hình đó.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct OverlayRect {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+/// Cài đặt của thanh phụ đề (§4.4). Kế hoạch 03 làm nhóm Cài đặt "Phụ đề" trên các khóa này.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OverlaySettings {
+    pub font_size: u32,
+    pub lines: u32,
+    /// Độ mờ của nền, 0 là trong suốt hẳn.
+    pub opacity: f64,
+    pub show_source: bool,
+    pub locked: bool,
+    /// Vị trí đã nhớ theo từng màn hình, khóa là `overlay::placement::monitor_key`.
+    pub positions: BTreeMap<String, OverlayRect>,
+    /// Màn hình của lần đặt thanh phụ đề gần nhất.
+    pub last_monitor: Option<String>,
+}
+
+/// Phím tắt toàn cục (F10), lưu ở dạng chuẩn của `hotkeys::parse`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Hotkeys {
+    pub toggle_session: String,
+    pub toggle_overlay: String,
+    pub toggle_lock: String,
+}
+
+impl Hotkeys {
+    pub fn get(&self, action: HotkeyAction) -> &str {
+        match action {
+            HotkeyAction::ToggleSession => &self.toggle_session,
+            HotkeyAction::ToggleOverlay => &self.toggle_overlay,
+            HotkeyAction::ToggleLock => &self.toggle_lock,
+        }
+    }
+
+    pub fn set(&mut self, action: HotkeyAction, accelerator: String) {
+        match action {
+            HotkeyAction::ToggleSession => self.toggle_session = accelerator,
+            HotkeyAction::ToggleOverlay => self.toggle_overlay = accelerator,
+            HotkeyAction::ToggleLock => self.toggle_lock = accelerator,
+        }
+    }
+
+    pub fn bindings(&self) -> [(HotkeyAction, &str); 3] {
+        HotkeyAction::ALL.map(|action| (action, self.get(action)))
+    }
+}
+
+/// Cờ thử nghiệm (§6.5).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Experimental {
+    /// Đưa câu trước vào làm ngữ cảnh khi dịch. Mặc định tắt (S7).
+    pub translation_context: bool,
+}
+
+/// Toàn bộ cài đặt. Tên khóa trong file JSON là tên trường dạng camelCase.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Settings {
+    pub ui_language: UiLanguage,
+    pub target_language: Lang,
+    pub source_languages: Vec<Lang>,
+    /// Khóa cố định một ngôn ngữ nguồn; `None` là tự nhận diện trong `source_languages`.
+    pub source_lock: Option<Lang>,
+    pub audio_source: AudioSource,
+    /// Im lặng bao lâu thì chốt đoạn (§6.3, "Độ nhạy ngắt câu").
+    pub vad_end_silence_ms: u32,
+    pub overlay: OverlaySettings,
+    pub model_tier: Option<ModelTier>,
+    pub hotkeys: Hotkeys,
+    pub save_history: bool,
+    pub launch_at_login: bool,
+    pub theme: Theme,
+    pub update_channel: UpdateChannel,
+    pub experimental: Experimental,
+    /// Đã đi hết các bước lần đầu mở app (§4.1).
+    pub onboarding_done: bool,
+}
+
+pub const VAD_END_SILENCE_MS: std::ops::RangeInclusive<u32> = 200..=800;
+pub const OVERLAY_FONT_SIZE: std::ops::RangeInclusive<u32> = 14..=48;
+pub const OVERLAY_LINES: std::ops::RangeInclusive<u32> = 1..=3;
+pub const OVERLAY_WIDTH: std::ops::RangeInclusive<f64> = 200.0..=10_000.0;
+pub const OVERLAY_HEIGHT: std::ops::RangeInclusive<f64> = 40.0..=4_000.0;
+/// Số màn hình nhớ vị trí tối đa, để file cài đặt không phình ra.
+pub const MAX_OVERLAY_POSITIONS: usize = 16;
+const MAX_ID_LEN: usize = 512;
+
+impl Settings {
+    /// Giá trị mặc định. Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (§4.1, bước 5).
+    pub fn defaults(ui_language: UiLanguage) -> Self {
+        let target_language = match ui_language {
+            UiLanguage::En => Lang::En,
+            UiLanguage::Vi => Lang::Vi,
+        };
+        Self {
+            ui_language,
+            target_language,
+            source_languages: Lang::ALL.to_vec(),
+            source_lock: None,
+            audio_source: AudioSource::System,
+            vad_end_silence_ms: 300,
+            overlay: OverlaySettings {
+                font_size: 22,
+                lines: 2,
+                opacity: 0.6,
+                show_source: false,
+                locked: false,
+                positions: BTreeMap::new(),
+                last_monitor: None,
+            },
+            model_tier: None,
+            hotkeys: Hotkeys {
+                toggle_session: "Ctrl+Alt+T".into(),
+                toggle_overlay: "Ctrl+Alt+H".into(),
+                toggle_lock: "Ctrl+Alt+L".into(),
+            },
+            save_history: false,
+            launch_at_login: false,
+            theme: Theme::System,
+            update_channel: UpdateChannel::Stable,
+            experimental: Experimental {
+                translation_context: false,
+            },
+            onboarding_done: false,
+        }
+    }
+
+    /// Kiểm phạm vi mọi khóa. Phía Rust là nơi quyết định: giao diện gửi gì cũng qua đây (§10.2).
+    pub fn validate(&self) -> Result<(), Invalid> {
+        if !VAD_END_SILENCE_MS.contains(&self.vad_end_silence_ms) {
+            return Err(Invalid::new("vadEndSilenceMs", Reason::OutOfRange));
+        }
+        if self.source_languages.is_empty() {
+            return Err(Invalid::new("sourceLanguages", Reason::Empty));
+        }
+        let mut seen = Vec::with_capacity(self.source_languages.len());
+        for lang in &self.source_languages {
+            if seen.contains(lang) {
+                return Err(Invalid::new("sourceLanguages", Reason::Duplicate));
+            }
+            seen.push(*lang);
+        }
+        match &self.audio_source {
+            AudioSource::System => {}
+            AudioSource::Device { id } => check_id("audioSource", id)?,
+            AudioSource::App { bundle_id } => check_id("audioSource", bundle_id)?,
+        }
+        let overlay = &self.overlay;
+        if !OVERLAY_FONT_SIZE.contains(&overlay.font_size) {
+            return Err(Invalid::new("overlay.fontSize", Reason::OutOfRange));
+        }
+        if !OVERLAY_LINES.contains(&overlay.lines) {
+            return Err(Invalid::new("overlay.lines", Reason::OutOfRange));
+        }
+        if !(0.0..=1.0).contains(&overlay.opacity) {
+            return Err(Invalid::new("overlay.opacity", Reason::OutOfRange));
+        }
+        if overlay.positions.len() > MAX_OVERLAY_POSITIONS {
+            return Err(Invalid::new("overlay.positions", Reason::TooLong));
+        }
+        for (key, rect) in &overlay.positions {
+            check_id("overlay.positions", key)?;
+            let finite = [rect.x, rect.y, rect.width, rect.height].iter().all(|v| v.is_finite());
+            if !finite || !OVERLAY_WIDTH.contains(&rect.width) || !OVERLAY_HEIGHT.contains(&rect.height) {
+                return Err(Invalid::new("overlay.positions", Reason::OutOfRange));
+            }
+        }
+        if let Some(key) = &overlay.last_monitor {
+            check_id("overlay.lastMonitor", key)?;
+        }
+        hotkeys::check_all(&self.hotkeys.bindings()).map_err(|(action, error)| {
+            let reason = match error {
+                HotkeyError::Duplicate => Reason::Duplicate,
+                _ => Reason::InvalidHotkey,
+            };
+            Invalid::new(format!("hotkeys.{}", action.key()), reason)
+        })?;
+        Ok(())
+    }
+}
+
+fn check_id(field: &str, value: &str) -> Result<(), Invalid> {
+    if value.is_empty() {
+        return Err(Invalid::new(field, Reason::Empty));
+    }
+    if value.len() > MAX_ID_LEN {
+        return Err(Invalid::new(field, Reason::TooLong));
+    }
+    Ok(())
+}
+
+/// Lý do một khóa cài đặt bị từ chối. Giao diện dịch mã này thành câu báo lỗi.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Reason {
+    OutOfRange,
+    Empty,
+    Duplicate,
+    TooLong,
+    InvalidHotkey,
+    WrongType,
+    UnknownKey,
+    ReadOnly,
+    NotObject,
+}
+
+/// Một khóa cài đặt không hợp lệ.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("cài đặt `{field}` không hợp lệ ({reason:?})")]
+pub struct Invalid {
+    pub field: String,
+    pub reason: Reason,
+}
+
+impl Invalid {
+    pub fn new(field: impl Into<String>, reason: Reason) -> Self {
+        Self {
+            field: field.into(),
+            reason,
+        }
+    }
+}
+```
+
+- [ ] **Step 5: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator --lib settings::tests`
+Expected:
+```text
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+```
+
+- [ ] **Step 6: clippy và định dạng**
+
+Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
+Expected: không lỗi, không cảnh báo.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src-tauri/src/settings/mod.rs src-tauri/src/lib.rs
+git commit -m "feat(app): kiểu cài đặt theo §6.9, giá trị mặc định và kiểm phạm vi" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 4: Số phiên bản schema và migrate (TDD)
+
+**Files:**
+- Create: `src-tauri/src/settings/migrate.rs`
+- Modify: `src-tauri/src/settings/mod.rs` (thêm `pub mod migrate;`)
+
+Theo QĐ2. Bản 0 là file chưa có `schemaVersion`; bản 1 là bản đầu tiên có số phiên bản, các khóa giữ tên, nên bước 0→1 không đổi gì. Test cơ chế migrate bằng một schema cũ giả (đổi tên khóa, đổi kiểu giá trị), chạy qua `load_with`.
+
+Khi một kế hoạch sau đổi tên hay đổi nghĩa một khóa: thêm một hàm `vN_to_vN1` vào cuối `MIGRATIONS` (không sửa bước cũ), thêm test đọc file bản N, và `CURRENT_SCHEMA_VERSION` tự tăng theo.
+
+- [ ] **Step 1: Khai báo module.** Trong `src-tauri/src/settings/mod.rs`, thêm dòng sau dưới các dòng `//!`, cách một dòng trống, trên `use std::collections::BTreeMap;`:
+
+```rust
+pub mod migrate;
+```
+
+- [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/settings/migrate.rs`, tạm thời chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Số phiên bản schema và bước migrate của file cài đặt (spec §6.9).
+//!
+//! File là một object JSON phẳng ở mức trên cùng (mỗi khóa của `Settings` là một mục của store),
+//! cộng khóa `schemaVersion`. Bản 0 là file chưa có `schemaVersion`.
+//!
+//! Khi đọc:
+//! 1. Chạy lần lượt các bước migrate từ phiên bản của file lên `CURRENT_SCHEMA_VERSION`.
+//! 2. Ghép từng khóa của file vào giá trị mặc định. Khóa nào sai kiểu hay ngoài phạm vi thì giữ
+//!    giá trị mặc định và ghi vào `rejected`; không bỏ cả file vì một khóa hỏng.
+//! 3. Khóa lạ (ví dụ của bản app mới hơn) bị bỏ qua khi đọc, nhưng vẫn nằm nguyên trong file, vì
+//!    `persist::save` chỉ ghi các khóa nó biết.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::{Lang, Theme, UiLanguage};
+    use serde_json::json;
+
+    fn defaults() -> Settings {
+        Settings::defaults(UiLanguage::En)
+    }
+
+    fn object(value: Value) -> Map<String, Value> {
+        value.as_object().cloned().unwrap()
+    }
+
+    #[test]
+    fn empty_file_gives_defaults_and_needs_save() {
+        let loaded = load(Map::new(), defaults());
+        assert_eq!(loaded.settings, defaults());
+        assert_eq!(loaded.file_version, 0);
+        assert!(loaded.rejected.is_empty());
+        assert!(loaded.needs_save());
+    }
+
+    #[test]
+    fn saved_entries_load_back_unchanged() {
+        let mut settings = Settings::defaults(UiLanguage::Vi);
+        settings.theme = Theme::Dark;
+        settings.vad_end_silence_ms = 450;
+        settings.overlay.lines = 3;
+        settings.source_lock = Some(Lang::Ja);
+        let raw: Map<String, Value> = to_entries(&settings, CURRENT_SCHEMA_VERSION).into_iter().collect();
+        assert_eq!(raw[SCHEMA_VERSION_KEY], json!(CURRENT_SCHEMA_VERSION));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings, settings);
+        assert!(!loaded.needs_save());
+    }
+
+    #[test]
+    fn unversioned_file_is_migrated_to_current_version() {
+        let raw = object(json!({ "uiLanguage": "vi", "theme": "light" }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.file_version, 0);
+        assert_eq!(loaded.settings.ui_language, UiLanguage::Vi);
+        assert_eq!(loaded.settings.theme, Theme::Light);
+        assert!(loaded.needs_save());
+        let entries: Map<String, Value> = to_entries(&loaded.settings, loaded.file_version).into_iter().collect();
+        assert_eq!(entries[SCHEMA_VERSION_KEY], json!(1));
+    }
+
+    #[test]
+    fn migrations_run_in_order_from_file_version() {
+        // Giả lập một schema cũ: bản 0 gọi khóa là `vadSilence`, bản 1 đổi thành `vadEndSilenceMs`,
+        // bản 2 đổi đơn vị theme từ số sang chữ.
+        fn rename_vad(raw: &mut Map<String, Value>) {
+            if let Some(v) = raw.remove("vadSilence") {
+                raw.insert("vadEndSilenceMs".into(), v);
+            }
+        }
+        fn theme_from_number(raw: &mut Map<String, Value>) {
+            if let Some(n) = raw.get("theme").and_then(Value::as_u64) {
+                raw.insert("theme".into(), json!(if n == 2 { "dark" } else { "light" }));
+            }
+        }
+        let steps: &[Migration] = &[rename_vad, theme_from_number];
+        let v0 = object(json!({ "vadSilence": 500, "theme": 2 }));
+        let loaded = load_with(v0, defaults(), steps);
+        assert_eq!(loaded.settings.vad_end_silence_ms, 500);
+        assert_eq!(loaded.settings.theme, Theme::Dark);
+        // File đã ở bản 1 thì chỉ chạy bước thứ hai.
+        let v1 = object(json!({ "schemaVersion": 1, "vadSilence": 500, "theme": 2 }));
+        let loaded = load_with(v1, defaults(), steps);
+        assert_eq!(loaded.settings.vad_end_silence_ms, 300, "bước 0→1 không chạy lại");
+        assert_eq!(loaded.settings.theme, Theme::Dark);
+    }
+
+    #[test]
+    fn invalid_keys_fall_back_to_defaults_one_by_one() {
+        let raw = object(json!({
+            "schemaVersion": 1,
+            "uiLanguage": "fr",
+            "vadEndSilenceMs": 5000,
+            "theme": "dark",
+            "overlay": { "lines": 9, "fontSize": 30, "opacity": "đậm" },
+        }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.ui_language, UiLanguage::En);
+        assert_eq!(loaded.settings.vad_end_silence_ms, 300);
+        assert_eq!(loaded.settings.theme, Theme::Dark);
+        assert_eq!(loaded.settings.overlay.font_size, 30, "khóa con hợp lệ vẫn được giữ");
+        assert_eq!(loaded.settings.overlay.lines, 2);
+        assert_eq!(loaded.settings.overlay.opacity, 0.6);
+        let mut rejected = loaded.rejected.clone();
+        rejected.sort();
+        assert_eq!(
+            rejected,
+            ["overlay.lines", "overlay.opacity", "uiLanguage", "vadEndSilenceMs"]
+        );
+        assert!(loaded.needs_save());
+    }
+
+    #[test]
+    fn swapped_hotkeys_are_kept_together() {
+        let raw = object(json!({
+            "schemaVersion": 1,
+            "hotkeys": { "toggleSession": "Ctrl+Alt+H", "toggleOverlay": "Ctrl+Alt+T" },
+        }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.hotkeys.toggle_session, "Ctrl+Alt+H");
+        assert_eq!(loaded.settings.hotkeys.toggle_overlay, "Ctrl+Alt+T");
+        assert!(loaded.rejected.is_empty());
+    }
+
+    #[test]
+    fn newer_file_keeps_its_version_and_unknown_keys_are_ignored() {
+        let raw = object(json!({ "schemaVersion": 7, "theme": "dark", "futureKey": { "a": 1 } }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.file_version, 7);
+        assert_eq!(loaded.settings.theme, Theme::Dark);
+        assert!(!loaded.needs_save());
+        let entries: Map<String, Value> = to_entries(&loaded.settings, loaded.file_version).into_iter().collect();
+        assert_eq!(entries[SCHEMA_VERSION_KEY], json!(7), "không hạ phiên bản của file");
+        assert!(
+            !entries.contains_key("futureKey"),
+            "chỉ ghi khóa đã biết; khóa lạ trong file giữ nguyên"
+        );
+    }
+}
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib settings::migrate`
+Expected: FAIL, biên dịch lỗi, ví dụ:
+```text
+error[E0425]: cannot find type `Map` in this scope
+error[E0425]: cannot find function `load` in this scope
+error[E0425]: cannot find value `SCHEMA_VERSION_KEY` in this scope
+error[E0425]: cannot find function `to_entries` in this scope
+```
+
+- [ ] **Step 4: Viết code.** Chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+use serde_json::{Map, Value};
+
+use super::Settings;
+
+pub const SCHEMA_VERSION_KEY: &str = "schemaVersion";
+
+/// Một bước migrate: sửa object thô của file từ phiên bản `i` lên `i + 1`.
+pub type Migration = fn(&mut Map<String, Value>);
+
+/// `MIGRATIONS[i]` nâng file từ phiên bản `i` lên `i + 1`.
+/// Thêm bước mới ở cuối; không sửa bước cũ, vì máy người dùng có thể còn file ở mọi phiên bản.
+pub const MIGRATIONS: &[Migration] = &[v0_to_v1];
+
+pub const CURRENT_SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;
+
+/// Bản 1 là bản đầu tiên có số phiên bản, các khóa giữ nguyên tên. Bước này chỉ để file bản 0
+/// (chưa có `schemaVersion`) đi qua cùng một đường với mọi bản sau.
+fn v0_to_v1(_raw: &mut Map<String, Value>) {}
+
+/// Khóa là object con: ghép theo từng khóa con, để một khóa con hỏng không kéo cả nhóm về mặc định.
+const NESTED: &[&str] = &["overlay", "hotkeys", "experimental"];
+
+/// Kết quả đọc file cài đặt.
+#[derive(Debug, PartialEq)]
+pub struct Loaded {
+    pub settings: Settings,
+    /// Phiên bản ghi trong file (0 nếu chưa có). Có thể lớn hơn `CURRENT_SCHEMA_VERSION` khi file do
+    /// bản app mới hơn ghi; khi đó giữ nguyên số này lúc lưu, không hạ phiên bản.
+    pub file_version: u32,
+    /// Các khóa trong file bị bỏ vì sai kiểu hoặc ngoài phạm vi, dạng `overlay.lines`.
+    pub rejected: Vec<String>,
+}
+
+impl Loaded {
+    /// Có cần ghi lại file không: file cũ hơn bản hiện tại, hoặc có khóa bị bỏ.
+    pub fn needs_save(&self) -> bool {
+        self.file_version < CURRENT_SCHEMA_VERSION || !self.rejected.is_empty()
+    }
+}
+
+/// Đọc object thô của file cài đặt.
+pub fn load(raw: Map<String, Value>, defaults: Settings) -> Loaded {
+    load_with(raw, defaults, MIGRATIONS)
+}
+
+/// Như `load`, với danh sách bước migrate tùy chọn (để test cơ chế migrate).
+pub fn load_with(mut raw: Map<String, Value>, defaults: Settings, migrations: &[Migration]) -> Loaded {
+    let file_version = raw
+        .get(SCHEMA_VERSION_KEY)
+        .and_then(Value::as_u64)
+        .map_or(0, |v| u32::try_from(v).unwrap_or(u32::MAX));
+    for migration in migrations.iter().skip(file_version as usize) {
+        migration(&mut raw);
+    }
+    let mut merged = to_object(&defaults);
+    let mut rejected = Vec::new();
+    for (key, value) in &raw {
+        let Some(current) = merged.get(key).cloned() else {
+            continue;
+        };
+        match (NESTED.contains(&key.as_str()), current, value) {
+            (true, Value::Object(mut group), Value::Object(sub)) => {
+                let known: Vec<(&String, &Value)> = sub.iter().filter(|(k, _)| group.contains_key(*k)).collect();
+                // Thử cả nhóm trước, để giữ được các thay đổi chỉ hợp lệ khi đi cùng nhau
+                // (ví dụ đổi chỗ hai phím tắt); không được thì ghép từng khóa con.
+                for (sub_key, sub_value) in &known {
+                    group.insert((*sub_key).clone(), (*sub_value).clone());
+                }
+                if !try_set(&mut merged, key, None, Value::Object(group)) {
+                    for (sub_key, sub_value) in known {
+                        if !try_set(&mut merged, key, Some(sub_key), sub_value.clone()) {
+                            rejected.push(format!("{key}.{sub_key}"));
+                        }
+                    }
+                }
+            }
+            _ => {
+                if !try_set(&mut merged, key, None, value.clone()) {
+                    rejected.push(key.clone());
+                }
+            }
+        }
+    }
+    let settings = serde_json::from_value(Value::Object(merged)).expect("giá trị đã ghép luôn đọc được");
+    Loaded {
+        settings,
+        file_version,
+        rejected,
+    }
+}
+
+/// Đặt `merged[key]` (hoặc `merged[key][sub_key]`) bằng `value` nếu kết quả vẫn là cài đặt hợp lệ.
+fn try_set(merged: &mut Map<String, Value>, key: &str, sub_key: Option<&str>, value: Value) -> bool {
+    let mut candidate = merged.clone();
+    match sub_key {
+        None => {
+            candidate.insert(key.to_string(), value);
+        }
+        Some(sub_key) => {
+            let Some(Value::Object(group)) = candidate.get_mut(key) else {
+                return false;
+            };
+            group.insert(sub_key.to_string(), value);
+        }
+    }
+    let valid = serde_json::from_value::<Settings>(Value::Object(candidate.clone()))
+        .is_ok_and(|settings| settings.validate().is_ok());
+    if valid {
+        *merged = candidate;
+    }
+    valid
+}
+
+pub(crate) fn to_object(settings: &Settings) -> Map<String, Value> {
+    match serde_json::to_value(settings).expect("Settings luôn ghi được ra JSON") {
+        Value::Object(map) => map,
+        _ => unreachable!("Settings là struct nên luôn ra object"),
+    }
+}
+
+/// Các mục cần ghi vào store: mọi khóa của `settings`, cộng `schemaVersion`.
+/// Không hạ phiên bản của file do bản app mới hơn ghi.
+pub fn to_entries(settings: &Settings, file_version: u32) -> Vec<(String, Value)> {
+    let mut entries: Vec<(String, Value)> = to_object(settings).into_iter().collect();
+    entries.push((
+        SCHEMA_VERSION_KEY.to_string(),
+        Value::from(file_version.max(CURRENT_SCHEMA_VERSION)),
+    ));
+    entries
+}
+```
+
+- [ ] **Step 5: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator --lib settings::migrate`
+Expected:
+```text
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+```
+
+- [ ] **Step 6: clippy và định dạng**
+
+Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
+Expected: không lỗi, không cảnh báo.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src-tauri/src/settings/migrate.rs src-tauri/src/settings/mod.rs
+git commit -m "feat(app): số phiên bản schema và bước migrate cho file cài đặt" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 5: Sửa một phần cài đặt từ giao diện (TDD)
+
+**Files:**
+- Create: `src-tauri/src/settings/patch.rs`
+- Modify: `src-tauri/src/settings/mod.rs` (thêm `pub mod patch;`)
+
+Lệnh `update_settings` (Task 12) gửi một object chỉ gồm các khóa cần đổi. `apply` ghép vào cài đặt hiện tại rồi kiểm lại toàn bộ. Khác lúc đọc file, mọi lỗi đều bị từ chối, và cài đặt hiện tại giữ nguyên. Các khóa ở QĐ4 không đổi được qua đây.
+
+- [ ] **Step 1: Khai báo module.** Thêm `pub mod patch;` vào khối `pub mod` ở đầu `src-tauri/src/settings/mod.rs`, sau `pub mod migrate;`.
+
+- [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/settings/patch.rs`, tạm thời chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Sửa một phần cài đặt theo yêu cầu từ giao diện (lệnh `update_settings`).
+//!
+//! Khác với lúc đọc file (`migrate::load`), ở đây mọi lỗi đều bị từ chối: khóa lạ, sai kiểu, ngoài
+//! phạm vi. Một số khóa chỉ đổi qua lệnh riêng, vì đổi chúng cần làm thêm việc khác.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::{Lang, Theme, UiLanguage};
+    use serde_json::json;
+
+    fn current() -> Settings {
+        Settings::defaults(UiLanguage::Vi)
+    }
+
+    #[test]
+    fn applies_top_level_and_nested_keys() {
+        let patch = json!({
+            "uiLanguage": "en",
+            "theme": "dark",
+            "sourceLanguages": ["en", "ja"],
+            "sourceLock": "ja",
+            "overlay": { "fontSize": 30, "showSource": true },
+            "experimental": { "translationContext": true },
+        });
+        let s = apply(&current(), &patch).unwrap();
+        assert_eq!(s.ui_language, UiLanguage::En);
+        assert_eq!(s.theme, Theme::Dark);
+        assert_eq!(s.source_languages, vec![Lang::En, Lang::Ja]);
+        assert_eq!(s.source_lock, Some(Lang::Ja));
+        assert_eq!(s.overlay.font_size, 30);
+        assert!(s.overlay.show_source);
+        assert_eq!(s.overlay.lines, 2, "khóa con không có trong bản sửa giữ nguyên");
+        assert!(s.experimental.translation_context);
+        let unlocked = apply(&s, &json!({ "sourceLock": null })).unwrap();
+        assert_eq!(unlocked.source_lock, None);
+    }
+
+    #[test]
+    fn rejects_out_of_range_values() {
+        assert_eq!(
+            apply(&current(), &json!({ "vadEndSilenceMs": 900 })),
+            Err(Invalid::new("vadEndSilenceMs", Reason::OutOfRange))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "overlay": { "lines": 0 } })),
+            Err(Invalid::new("overlay.lines", Reason::OutOfRange))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "sourceLanguages": [] })),
+            Err(Invalid::new("sourceLanguages", Reason::Empty))
+        );
+    }
+
+    #[test]
+    fn rejects_wrong_types() {
+        assert_eq!(
+            apply(&current(), &json!({ "theme": "dark", "vadEndSilenceMs": "300" })),
+            Err(Invalid::new("vadEndSilenceMs", Reason::WrongType))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "uiLanguage": "fr" })),
+            Err(Invalid::new("uiLanguage", Reason::WrongType))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "overlay": 3 })),
+            Err(Invalid::new("overlay", Reason::WrongType))
+        );
+        assert_eq!(
+            apply(&current(), &json!([1, 2])),
+            Err(Invalid::new("", Reason::NotObject))
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_and_read_only_keys() {
+        assert_eq!(
+            apply(&current(), &json!({ "licenseKey": "x" })),
+            Err(Invalid::new("licenseKey", Reason::UnknownKey))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "overlay": { "color": "red" } })),
+            Err(Invalid::new("overlay.color", Reason::UnknownKey))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "hotkeys": { "toggleLock": "Ctrl+Alt+K" } })),
+            Err(Invalid::new("hotkeys", Reason::ReadOnly))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "overlay": { "locked": true } })),
+            Err(Invalid::new("overlay.locked", Reason::ReadOnly))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "overlay": { "positions": {} } })),
+            Err(Invalid::new("overlay.positions", Reason::ReadOnly))
+        );
+    }
+
+    #[test]
+    fn failed_patch_leaves_current_untouched() {
+        let before = current();
+        let _ = apply(&before, &json!({ "theme": "dark", "vadEndSilenceMs": 5 }));
+        assert_eq!(before, current());
+    }
+}
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib settings::patch`
+Expected: FAIL, biên dịch lỗi, ví dụ:
+```text
+error[E0425]: cannot find function `apply` in this scope
+error[E0433]: cannot find type `Reason` in this scope
+error[E0433]: cannot find type `Invalid` in this scope
+```
+
+- [ ] **Step 4: Viết code.** Chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+use serde_json::{Map, Value};
+
+use super::migrate::to_object;
+use super::{Invalid, Reason, Settings};
+
+/// Khóa không đổi được qua `update_settings`, kèm lý do:
+/// - `hotkeys`: phải đăng ký lại với hệ điều hành (lệnh `set_hotkey`);
+/// - `overlay.locked`: phải đổi cửa sổ sang click xuyên qua (lệnh `set_overlay_locked`);
+/// - `overlay.positions`, `overlay.lastMonitor`: chỉ phía Rust ghi, khi thanh phụ đề di chuyển.
+const READ_ONLY: &[&str] = &["hotkeys", "overlay.locked", "overlay.positions", "overlay.lastMonitor"];
+
+/// Khóa là object con: bản sửa gửi object con thì ghép theo từng khóa con.
+const NESTED: &[&str] = &["overlay", "experimental"];
+
+/// Áp bản sửa `patch` lên `current`. Trả về cài đặt mới đã kiểm phạm vi, hoặc lỗi của khóa đầu tiên sai.
+pub fn apply(current: &Settings, patch: &Value) -> Result<Settings, Invalid> {
+    let Value::Object(patch) = patch else {
+        return Err(Invalid::new("", Reason::NotObject));
+    };
+    let mut merged = to_object(current);
+    for (key, value) in patch {
+        set(&mut merged, key, value)?;
+    }
+    let settings: Settings =
+        serde_json::from_value(Value::Object(merged)).map_err(|_| first_wrong_type(current, patch))?;
+    settings.validate()?;
+    Ok(settings)
+}
+
+fn set(merged: &mut Map<String, Value>, key: &str, value: &Value) -> Result<(), Invalid> {
+    if READ_ONLY.contains(&key) {
+        return Err(Invalid::new(key, Reason::ReadOnly));
+    }
+    let Some(slot) = merged.get_mut(key) else {
+        return Err(Invalid::new(key, Reason::UnknownKey));
+    };
+    if !NESTED.contains(&key) {
+        *slot = value.clone();
+        return Ok(());
+    }
+    let (Value::Object(group), Value::Object(sub)) = (slot, value) else {
+        return Err(Invalid::new(key, Reason::WrongType));
+    };
+    for (sub_key, sub_value) in sub {
+        let field = format!("{key}.{sub_key}");
+        if READ_ONLY.contains(&field.as_str()) {
+            return Err(Invalid::new(field, Reason::ReadOnly));
+        }
+        let Some(slot) = group.get_mut(sub_key) else {
+            return Err(Invalid::new(field, Reason::UnknownKey));
+        };
+        *slot = sub_value.clone();
+    }
+    Ok(())
+}
+
+/// Tìm khóa làm hỏng kiểu dữ liệu, bằng cách áp riêng từng khóa của bản sửa.
+fn first_wrong_type(current: &Settings, patch: &Map<String, Value>) -> Invalid {
+    for (key, value) in patch {
+        let mut merged = to_object(current);
+        if set(&mut merged, key, value).is_ok() && serde_json::from_value::<Settings>(Value::Object(merged)).is_err() {
+            return Invalid::new(key.as_str(), Reason::WrongType);
+        }
+    }
+    Invalid::new("", Reason::WrongType)
+}
+```
+
+- [ ] **Step 5: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator --lib settings::patch`
+Expected:
+```text
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+```
+
+- [ ] **Step 6: clippy và định dạng**
+
+Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
+Expected: không lỗi, không cảnh báo.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src-tauri/src/settings/patch.rs src-tauri/src/settings/mod.rs
+git commit -m "feat(app): sửa một phần cài đặt, từ chối khóa lạ, sai kiểu, ngoài phạm vi" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 6: Chuỗi phía Rust cho khay, và ngôn ngữ mặc định theo hệ điều hành (TDD)
+
+**Files:**
+- Create: `src-tauri/src/i18n.rs`
+- Modify: `src-tauri/src/lib.rs` (thêm `pub mod i18n;`)
+
+§4.5: chuỗi phía Rust nằm trong một bảng nhỏ, đủ vi và en. Theo Q13 (đề xuất của kế hoạch 00), MVP không dùng thông báo hệ thống, nên bảng chỉ gồm menu khay, chú thích icon khay và tiêu đề thanh phụ đề (13 chuỗi). Kế hoạch 07 thêm chuỗi mời khởi động lại để cập nhật. Ngôn ngữ giao diện mặc định lấy từ locale của hệ điều hành qua `sys-locale` (§4.1, bước 1).
+
+- [ ] **Step 1: Khai báo module.** Thêm `pub mod i18n;` vào khối `pub mod` ở đầu `src-tauri/src/lib.rs`.
+
+- [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/i18n.rs`, tạm thời chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Chuỗi phía Rust (spec §4.5): menu khay, chú thích icon khay, tiêu đề cửa sổ.
+//! Giao diện React có từ điển riêng ở `src/i18n/`. MVP không dùng thông báo hệ thống (Q13):
+//! lỗi và lời nhắc hiện ngay trong app (cửa sổ chính, menu khay, thanh phụ đề).
+//!
+//! Mỗi ngôn ngữ là một hằng `Strings`: thiếu trường nào thì không biên dịch được.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn placeholders(s: &str) -> Vec<&str> {
+        s.match_indices('{')
+            .filter_map(|(i, _)| s[i..].find('}').map(|j| &s[i..=i + j]))
+            .collect()
+    }
+
+    #[test]
+    fn every_string_is_filled_in_both_languages() {
+        for (name, text) in EN.all().into_iter().chain(VI.all()) {
+            assert!(!text.trim().is_empty(), "{name} rỗng");
+            assert_eq!(text, text.trim(), "{name} thừa khoảng trắng");
+        }
+    }
+
+    #[test]
+    fn placeholders_match_between_languages() {
+        for ((name, en), (_, vi)) in EN.all().into_iter().zip(VI.all()) {
+            assert_eq!(placeholders(en), placeholders(vi), "{name}");
+        }
+    }
+
+    #[test]
+    fn vietnamese_is_actually_translated() {
+        let same: Vec<_> = EN
+            .all()
+            .into_iter()
+            .zip(VI.all())
+            .filter(|((_, en), (_, vi))| en == vi)
+            .map(|((n, _), _)| n)
+            .collect();
+        assert_eq!(same, ["tray_tooltip"], "chỉ mẫu chú thích là giống nhau");
+    }
+
+    #[test]
+    fn tooltip_fills_app_name_and_status() {
+        assert_eq!(VI.tooltip("Meeting Translator", false), "Meeting Translator: Sẵn sàng");
+        assert_eq!(
+            EN.tooltip("Meeting Translator", true),
+            "Meeting Translator: Translating"
+        );
+    }
+
+    #[test]
+    fn default_ui_language_from_os_locale() {
+        assert_eq!(ui_language_from_locale(Some("vi-VN")), UiLanguage::Vi);
+        assert_eq!(ui_language_from_locale(Some("vi_VN")), UiLanguage::Vi);
+        assert_eq!(ui_language_from_locale(Some("vi")), UiLanguage::Vi);
+        assert_eq!(ui_language_from_locale(Some("VI-vn")), UiLanguage::Vi);
+        assert_eq!(ui_language_from_locale(Some("en-US")), UiLanguage::En);
+        assert_eq!(ui_language_from_locale(Some("fr-FR")), UiLanguage::En);
+        assert_eq!(ui_language_from_locale(Some("video")), UiLanguage::En);
+        assert_eq!(ui_language_from_locale(None), UiLanguage::En);
+    }
+}
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib i18n::`
+Expected: FAIL, biên dịch lỗi:
+```text
+error[E0433]: cannot find type `UiLanguage` in this scope
+error[E0425]: cannot find function `ui_language_from_locale` in this scope
+error[E0425]: cannot find value `VI` in this scope
+error[E0425]: cannot find value `EN` in this scope
+```
+
+- [ ] **Step 4: Viết code.** Chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+use crate::settings::UiLanguage;
+
+#[derive(Debug)]
+pub struct Strings {
+    pub tray_start: &'static str,
+    pub tray_stop: &'static str,
+    pub tray_show_overlay: &'static str,
+    pub tray_hide_overlay: &'static str,
+    pub tray_lock_overlay: &'static str,
+    pub tray_unlock_overlay: &'static str,
+    pub tray_open_main: &'static str,
+    pub tray_quit: &'static str,
+    /// Dòng báo trong menu khay khi có phím tắt không đăng ký được.
+    pub tray_hotkey_failed: &'static str,
+    /// Chú thích icon khay: `{app}` là tên app, `{status}` là trạng thái.
+    pub tray_tooltip: &'static str,
+    pub status_idle: &'static str,
+    pub status_running: &'static str,
+    pub overlay_title: &'static str,
+}
+
+pub const EN: Strings = Strings {
+    tray_start: "Start translating",
+    tray_stop: "Stop translating",
+    tray_show_overlay: "Show subtitles",
+    tray_hide_overlay: "Hide subtitles",
+    tray_lock_overlay: "Lock subtitles (click-through)",
+    tray_unlock_overlay: "Unlock subtitles",
+    tray_open_main: "Open main window",
+    tray_quit: "Quit",
+    tray_hotkey_failed: "Some shortcuts could not be registered",
+    tray_tooltip: "{app}: {status}",
+    status_idle: "Ready",
+    status_running: "Translating",
+    overlay_title: "Subtitles",
+};
+
+pub const VI: Strings = Strings {
+    tray_start: "Bắt đầu dịch",
+    tray_stop: "Dừng dịch",
+    tray_show_overlay: "Hiện phụ đề",
+    tray_hide_overlay: "Ẩn phụ đề",
+    tray_lock_overlay: "Khóa phụ đề (click xuyên qua)",
+    tray_unlock_overlay: "Mở khóa phụ đề",
+    tray_open_main: "Mở cửa sổ chính",
+    tray_quit: "Thoát",
+    tray_hotkey_failed: "Có phím tắt không đăng ký được",
+    tray_tooltip: "{app}: {status}",
+    status_idle: "Sẵn sàng",
+    status_running: "Đang dịch",
+    overlay_title: "Phụ đề",
+};
+
+impl Strings {
+    /// Mọi chuỗi, để test. Liệt kê đủ trường, không dùng `..`, nên thêm trường mà quên ở đây thì
+    /// không biên dịch được.
+    pub fn all(&self) -> Vec<(&'static str, &'static str)> {
+        let Strings {
+            tray_start,
+            tray_stop,
+            tray_show_overlay,
+            tray_hide_overlay,
+            tray_lock_overlay,
+            tray_unlock_overlay,
+            tray_open_main,
+            tray_quit,
+            tray_hotkey_failed,
+            tray_tooltip,
+            status_idle,
+            status_running,
+            overlay_title,
+        } = *self;
+        vec![
+            ("tray_start", tray_start),
+            ("tray_stop", tray_stop),
+            ("tray_show_overlay", tray_show_overlay),
+            ("tray_hide_overlay", tray_hide_overlay),
+            ("tray_lock_overlay", tray_lock_overlay),
+            ("tray_unlock_overlay", tray_unlock_overlay),
+            ("tray_open_main", tray_open_main),
+            ("tray_quit", tray_quit),
+            ("tray_hotkey_failed", tray_hotkey_failed),
+            ("tray_tooltip", tray_tooltip),
+            ("status_idle", status_idle),
+            ("status_running", status_running),
+            ("overlay_title", overlay_title),
+        ]
+    }
+
+    pub fn tooltip(&self, app: &str, running: bool) -> String {
+        let status = if running { self.status_running } else { self.status_idle };
+        self.tray_tooltip.replace("{app}", app).replace("{status}", status)
+    }
+}
+
+pub fn strings(lang: UiLanguage) -> &'static Strings {
+    match lang {
+        UiLanguage::En => &EN,
+        UiLanguage::Vi => &VI,
+    }
+}
+
+/// Ngôn ngữ giao diện mặc định theo locale của hệ điều hành (§4.1, bước 1):
+/// tiếng Việt nếu locale là tiếng Việt, còn lại là English.
+pub fn ui_language_from_locale(locale: Option<&str>) -> UiLanguage {
+    let primary = locale.and_then(|l| l.split(['-', '_']).next()).unwrap_or("");
+    if primary.eq_ignore_ascii_case("vi") {
+        UiLanguage::Vi
+    } else {
+        UiLanguage::En
+    }
+}
+
+pub fn system_ui_language() -> UiLanguage {
+    ui_language_from_locale(sys_locale::get_locale().as_deref())
+}
+```
+
+- [ ] **Step 5: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator --lib i18n::`
+Expected:
+```text
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 26 filtered out; finished in 0.00s
+```
+
+- [ ] **Step 6: clippy và định dạng**
+
+Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
+Expected: không lỗi, không cảnh báo.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src-tauri/src/i18n.rs src-tauri/src/lib.rs
+git commit -m "feat(app): chuỗi phía Rust vi/en cho khay, ngôn ngữ mặc định theo hệ điều hành (§4.5)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 7: Kho khóa của hệ điều hành (TDD)
+
+**Files:**
+- Create: `src-tauri/src/security/mod.rs`, `src-tauri/src/security/keystore.rs`
+- Modify: `src-tauri/src/lib.rs` (thêm `pub mod security;`)
+
+Theo Đ5 và QĐ8. Kế hoạch 03 lưu khóa SQLCipher, kế hoạch 06 lưu trạng thái bản quyền và quota; mỗi kế hoạch tự đặt tên mục. Test dùng store giả của `keyring-core`. Test với kho khóa thật để `#[ignore]`: người chạy ở Task 19, vì agent không được đụng Keychain (mục 6.8 của kế hoạch 00).
+
+- [ ] **Step 1: Khai báo module.** Thêm `pub mod security;` vào khối `pub mod` ở đầu `src-tauri/src/lib.rs`, rồi tạo `src-tauri/src/security/mod.rs`:
+
+```rust
+//! Bảo mật phía app (spec §10.2). Kế hoạch 06 thêm `integrity.rs` và `clock.rs`.
+
+pub mod keystore;
+```
+
+- [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/security/keystore.rs`, tạm thời chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Kho khóa của hệ điều hành (spec §10.2, Đ5 của kế hoạch 00): Keychain trên macOS, Credential
+//! Manager trên Windows, qua `keyring-core`.
+//!
+//! Người dùng sau: kế hoạch 03 lưu khóa SQLCipher; kế hoạch 06 lưu trạng thái bản quyền và quota.
+//! Mỗi kế hoạch tự đặt tên mục (hằng số `&str`) của mình.
+//!
+//! - Mọi mục nằm dưới cùng một "service" là bundle identifier của app (`app.config().identifier`),
+//!   để khi Q1 chốt identifier thì chỉ đổi ở một chỗ (R17).
+//! - Không ghi giá trị bí mật vào log, kể cả khi lỗi.
+//! - Test dùng `Keystore::mock`, không đụng kho khóa thật. Đọc ghi Keychain thật bằng binary vừa
+//!   build lại có thể bật hộp thoại hỏi quyền (mục 6.8 của kế hoạch 00), nên test thật để `#[ignore]`.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SERVICE: &str = "dev.meetingtranslator.test";
+
+    #[test]
+    fn set_get_delete_roundtrip() {
+        let ks = Keystore::mock(SERVICE);
+        assert_eq!(ks.get("db-key").unwrap(), None);
+        ks.set("db-key", &[1, 2, 3]).unwrap();
+        assert_eq!(ks.get("db-key").unwrap(), Some(vec![1, 2, 3]));
+        ks.set("db-key", b"moi").unwrap();
+        assert_eq!(ks.get("db-key").unwrap(), Some(b"moi".to_vec()), "ghi đè giá trị cũ");
+        assert!(ks.delete("db-key").unwrap());
+        assert_eq!(ks.get("db-key").unwrap(), None);
+        assert!(!ks.delete("db-key").unwrap(), "xóa mục chưa có không phải lỗi");
+    }
+
+    #[test]
+    fn items_are_separated_by_name_and_service() {
+        let store = keyring_core::mock::Store::new().unwrap();
+        let app = Keystore::with_store(SERVICE, store.clone());
+        let other = Keystore::with_store("other.app", store);
+        app.set("license.state", b"a").unwrap();
+        app.set("quota", b"b").unwrap();
+        assert_eq!(app.get("license.state").unwrap(), Some(b"a".to_vec()));
+        assert_eq!(app.get("quota").unwrap(), Some(b"b".to_vec()));
+        assert_eq!(other.get("quota").unwrap(), None);
+    }
+
+    #[test]
+    fn rejects_bad_names_and_large_values() {
+        let ks = Keystore::mock(SERVICE);
+        for name in ["", "Db-Key", "db key", "khóa", &"a".repeat(65)] {
+            assert!(
+                matches!(ks.set(name, b"x"), Err(KeystoreError::InvalidName(_))),
+                "{name:?}"
+            );
+        }
+        assert!(matches!(
+            ks.set("big", &[0; MAX_SECRET_BYTES + 1]),
+            Err(KeystoreError::TooLarge(2049))
+        ));
+        ks.set("big", &[0; MAX_SECRET_BYTES]).unwrap();
+    }
+
+    #[test]
+    fn platform_errors_are_reported() {
+        let ks = Keystore::mock(SERVICE);
+        let entry = ks.entry("db-key").unwrap();
+        let mock: &keyring_core::mock::Cred = entry.as_any().downcast_ref().unwrap();
+        mock.set_error(Error::NoStorageAccess("bị khóa".into()));
+        assert!(matches!(ks.get("db-key"), Err(KeystoreError::Access(_))));
+        assert_eq!(ks.get("db-key").unwrap(), None, "lỗi giả chỉ áp cho một lần gọi");
+    }
+
+    /// Chạy tay (người): `cargo test -p meeting-translator --lib os_keystore -- --ignored`.
+    /// Ghi, đọc rồi xóa một mục thật trong Keychain hoặc Credential Manager.
+    #[test]
+    #[ignore = "đụng kho khóa thật của hệ điều hành; có thể bật hộp thoại hỏi quyền"]
+    fn os_keystore_roundtrip() {
+        let ks = Keystore::os(SERVICE).unwrap();
+        let name = format!("test-{}", std::process::id());
+        ks.set(&name, b"gia-tri-thu").unwrap();
+        assert_eq!(ks.get(&name).unwrap(), Some(b"gia-tri-thu".to_vec()));
+        assert!(ks.delete(&name).unwrap());
+        assert_eq!(ks.get(&name).unwrap(), None);
+    }
+}
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib security::`
+Expected: FAIL, biên dịch lỗi:
+```text
+error[E0433]: cannot find type `Keystore` in this scope
+error[E0433]: cannot find type `KeystoreError` in this scope
+error[E0425]: cannot find value `MAX_SECRET_BYTES` in this scope
+error[E0433]: cannot find type `Error` in this scope
+```
+
+- [ ] **Step 4: Viết code.** Chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+use std::sync::Arc;
+
+use keyring_core::{CredentialStore, Error};
+
+/// Credential Manager giới hạn 2560 byte mỗi mục; giữ một giới hạn chung cho cả hai hệ điều hành.
+pub const MAX_SECRET_BYTES: usize = 2048;
+const MAX_NAME_LEN: usize = 64;
+
+#[derive(Debug, thiserror::Error)]
+pub enum KeystoreError {
+    #[error("tên mục kho khóa không hợp lệ: {0:?}")]
+    InvalidName(String),
+    #[error("giá trị quá lớn cho kho khóa ({0} byte, tối đa {MAX_SECRET_BYTES})")]
+    TooLarge(usize),
+    #[error("không truy cập được kho khóa của hệ điều hành: {0}")]
+    Access(String),
+    #[error("lỗi kho khóa của hệ điều hành: {0}")]
+    Platform(String),
+}
+
+pub struct Keystore {
+    service: String,
+    store: Arc<CredentialStore>,
+}
+
+impl Keystore {
+    /// Kho khóa thật của hệ điều hành.
+    pub fn os(service: &str) -> Result<Self, KeystoreError> {
+        Ok(Self::with_store(service, platform_store()?))
+    }
+
+    /// Kho khóa trong bộ nhớ, cho test. Dữ liệu mất khi `Keystore` bị hủy.
+    pub fn mock(service: &str) -> Self {
+        Self::with_store(
+            service,
+            keyring_core::mock::Store::new().expect("mock store luôn tạo được"),
+        )
+    }
+
+    pub fn with_store(service: &str, store: Arc<CredentialStore>) -> Self {
+        Self {
+            service: service.to_string(),
+            store,
+        }
+    }
+
+    /// Đọc một mục; `None` nếu chưa có.
+    pub fn get(&self, name: &str) -> Result<Option<Vec<u8>>, KeystoreError> {
+        match self.entry(name)?.get_secret() {
+            Ok(secret) => Ok(Some(secret)),
+            Err(Error::NoEntry) => Ok(None),
+            Err(e) => Err(map_error(e)),
+        }
+    }
+
+    /// Ghi đè một mục.
+    pub fn set(&self, name: &str, secret: &[u8]) -> Result<(), KeystoreError> {
+        if secret.len() > MAX_SECRET_BYTES {
+            return Err(KeystoreError::TooLarge(secret.len()));
+        }
+        self.entry(name)?.set_secret(secret).map_err(map_error)
+    }
+
+    /// Xóa một mục; trả `false` nếu mục chưa có.
+    pub fn delete(&self, name: &str) -> Result<bool, KeystoreError> {
+        match self.entry(name)?.delete_credential() {
+            Ok(()) => Ok(true),
+            Err(Error::NoEntry) => Ok(false),
+            Err(e) => Err(map_error(e)),
+        }
+    }
+
+    fn entry(&self, name: &str) -> Result<keyring_core::Entry, KeystoreError> {
+        let valid = !name.is_empty()
+            && name.len() <= MAX_NAME_LEN
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"._-".contains(&b));
+        if !valid {
+            return Err(KeystoreError::InvalidName(name.to_string()));
+        }
+        self.store.build(&self.service, name, None).map_err(map_error)
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn platform_store() -> Result<Arc<CredentialStore>, KeystoreError> {
+    let store: Arc<CredentialStore> = apple_native_keyring_store::keychain::Store::new().map_err(map_error)?;
+    Ok(store)
+}
+
+#[cfg(windows)]
+fn platform_store() -> Result<Arc<CredentialStore>, KeystoreError> {
+    let store: Arc<CredentialStore> = windows_native_keyring_store::Store::new().map_err(map_error)?;
+    Ok(store)
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
+fn platform_store() -> Result<Arc<CredentialStore>, KeystoreError> {
+    Err(KeystoreError::Platform("chỉ hỗ trợ macOS và Windows (spec D3)".into()))
+}
+
+/// Đổi lỗi của keyring sang lỗi của app. Chỉ giữ thông báo chữ; `BadEncoding` và `BadDataFormat`
+/// có kèm byte của giá trị, nên không dùng `Debug` của lỗi gốc.
+fn map_error(error: Error) -> KeystoreError {
+    match error {
+        Error::NoStorageAccess(e) => KeystoreError::Access(e.to_string()),
+        other => KeystoreError::Platform(other.to_string()),
+    }
+}
+```
+
+- [ ] **Step 5: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator --lib security::`
+Expected (test thật bị bỏ qua):
+```text
+test result: ok. 4 passed; 0 failed; 1 ignored; 0 measured; 31 filtered out; finished in 0.00s
+```
+
+- [ ] **Step 6: clippy và định dạng**
+
+Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
+Expected: không lỗi, không cảnh báo.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src-tauri/src/security src-tauri/src/lib.rs
+git commit -m "feat(app): wrapper kho khóa của hệ điều hành (Keychain, Credential Manager) qua keyring-core" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 8: Vị trí thanh phụ đề theo từng màn hình (TDD)
+
+**Files:**
+- Create: `src-tauri/src/overlay/mod.rs` (tạm, Task 12 thay), `src-tauri/src/overlay/placement.rs`
+- Modify: `src-tauri/src/lib.rs` (thêm `pub mod overlay;`)
+
+Theo QĐ13. File này chỉ có phép tính trên tọa độ; phần đọc màn hình của Tauri và đặt cửa sổ ở Task 12. Tọa độ Tauri trả về là pixel vật lý; vị trí lưu là điểm logic so với vùng làm việc của màn hình.
+
+- [ ] **Step 1: Khai báo module.** Thêm `pub mod overlay;` vào khối `pub mod` ở đầu `src-tauri/src/lib.rs`, rồi tạo `src-tauri/src/overlay/mod.rs`:
+
+```rust
+//! Thanh phụ đề (spec §4.4). Task 12 thêm phần tạo cửa sổ, ẩn/hiện, khóa và lưu vị trí.
+
+pub mod placement;
+```
+
+- [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/overlay/placement.rs`, tạm thời chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Nhớ vị trí thanh phụ đề theo từng màn hình (spec §4.4, khóa `overlay.positions` ở §6.9).
+//!
+//! Vị trí lưu bằng điểm logic, so với góc trên bên trái vùng làm việc (work area) của màn hình, để
+//! đúng cả khi màn hình có tỉ lệ (scale) khác nhau hay đổi vị trí trong cách sắp xếp màn hình.
+//! File này chỉ có phép tính, không gọi Tauri; phần đọc màn hình và đặt cửa sổ nằm ở `overlay/mod.rs`.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn laptop() -> Screen {
+        // MacBook Pro 14": 3024×1964 vật lý, scale 2, vùng làm việc trừ menu bar 37 px.
+        Screen {
+            key: screen_key(Some("Built-in Retina Display"), 3024, 1964),
+            x: 0,
+            y: 74,
+            width: 3024,
+            height: 1890,
+            scale: 2.0,
+        }
+    }
+
+    fn external() -> Screen {
+        Screen {
+            key: screen_key(Some("DELL U2723QE"), 2560, 1440),
+            x: 3024,
+            y: 0,
+            width: 2560,
+            height: 1400,
+            scale: 1.0,
+        }
+    }
+
+    #[test]
+    fn screen_key_uses_name_and_resolution() {
+        assert_eq!(screen_key(Some("DELL U2723QE"), 2560, 1440), "DELL U2723QE 2560x1440");
+        assert_eq!(screen_key(None, 1920, 1080), "unknown 1920x1080");
+        assert_eq!(screen_key(Some("  "), 1920, 1080), "unknown 1920x1080");
+    }
+
+    #[test]
+    fn first_launch_goes_bottom_center_of_primary() {
+        let screens = [external(), laptop()];
+        let p = place(&BTreeMap::new(), None, &screens, Some(&laptop().key)).unwrap();
+        // Màn hình logic 1512×945: rộng 900, x = (1512 − 900) / 2 = 306, y = 945 − 160 − 72 = 713.
+        assert_eq!(
+            p,
+            Placement {
+                screen_key: laptop().key,
+                x: 612,
+                y: 74 + 1426,
+                width: 1800,
+                height: 320
+            }
+        );
+    }
+
+    #[test]
+    fn saved_position_is_restored_on_its_screen() {
+        let rect = OverlayRect {
+            x: 100.0,
+            y: 50.0,
+            width: 800.0,
+            height: 120.0,
+        };
+        let positions = BTreeMap::from([(external().key, rect)]);
+        let screens = [laptop(), external()];
+        let p = place(&positions, Some(&external().key), &screens, Some(&laptop().key)).unwrap();
+        assert_eq!(
+            p,
+            Placement {
+                screen_key: external().key,
+                x: 3124,
+                y: 50,
+                width: 800,
+                height: 120
+            }
+        );
+    }
+
+    #[test]
+    fn relative_position_roundtrips_through_scale() {
+        let screen = laptop();
+        let rect = to_relative(&screen, 612, 1500, 1800, 320);
+        assert_eq!(
+            rect,
+            OverlayRect {
+                x: 306.0,
+                y: 713.0,
+                width: 900.0,
+                height: 160.0
+            }
+        );
+        let positions = BTreeMap::from([(screen.key.clone(), rect)]);
+        let p = place(&positions, Some(&screen.key), std::slice::from_ref(&screen), None).unwrap();
+        assert_eq!((p.x, p.y, p.width, p.height), (612, 1500, 1800, 320));
+    }
+
+    #[test]
+    fn unplugged_screen_falls_back_to_another_saved_screen_then_default() {
+        let on_laptop = OverlayRect {
+            x: 10.0,
+            y: 20.0,
+            width: 700.0,
+            height: 100.0,
+        };
+        let on_external = OverlayRect {
+            x: 0.0,
+            y: 0.0,
+            width: 900.0,
+            height: 160.0,
+        };
+        let positions = BTreeMap::from([(laptop().key, on_laptop), (external().key, on_external)]);
+        // Màn hình ngoài đã rút: về vị trí đã nhớ trên laptop.
+        let p = place(&positions, Some(&external().key), &[laptop()], None).unwrap();
+        assert_eq!((p.screen_key.as_str(), p.x, p.y), (laptop().key.as_str(), 20, 74 + 40));
+        // Không màn hình nào có vị trí đã nhớ: vị trí mặc định trên màn hình chính.
+        let only_external = BTreeMap::from([(external().key, on_external)]);
+        let p = place(&only_external, Some(&external().key), &[laptop()], Some(&laptop().key)).unwrap();
+        assert_eq!((p.x, p.y), (612, 74 + 1426));
+    }
+
+    #[test]
+    fn off_screen_position_is_pulled_back_inside() {
+        let far = OverlayRect {
+            x: 5000.0,
+            y: -300.0,
+            width: 3000.0,
+            height: 160.0,
+        };
+        let positions = BTreeMap::from([(external().key, far)]);
+        let p = place(&positions, Some(&external().key), &[external()], None).unwrap();
+        assert_eq!(
+            p,
+            Placement {
+                screen_key: external().key,
+                x: 3024,
+                y: 0,
+                width: 2560,
+                height: 160
+            }
+        );
+    }
+
+    #[test]
+    fn no_screen_means_no_placement() {
+        assert_eq!(place(&BTreeMap::new(), None, &[], None), None);
+    }
+
+    #[test]
+    fn narrow_screen_keeps_margins_in_default_rect() {
+        let small = Screen {
+            key: "small 800x600".into(),
+            x: 0,
+            y: 0,
+            width: 800,
+            height: 600,
+            scale: 1.0,
+        };
+        assert_eq!(
+            default_rect(&small),
+            OverlayRect {
+                x: 24.0,
+                y: 368.0,
+                width: 752.0,
+                height: 160.0
+            }
+        );
+    }
+}
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib overlay::`
+Expected: FAIL, biên dịch lỗi:
+```text
+error[E0433]: cannot find type `BTreeMap` in this scope
+error[E0425]: cannot find function `place` in this scope
+error[E0425]: cannot find function `screen_key` in this scope
+error[E0422]: cannot find struct, variant or union type `Screen` in this scope
+```
+
+- [ ] **Step 4: Viết code.** Chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+use std::collections::BTreeMap;
+
+use crate::settings::OverlayRect;
+
+/// Một màn hình đang cắm, tọa độ vật lý (pixel) như Tauri trả về.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Screen {
+    pub key: String,
+    /// Vùng làm việc: trừ menu bar, Dock, taskbar.
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub scale: f64,
+}
+
+/// Chỗ đặt thanh phụ đề, tọa độ vật lý.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Placement {
+    pub screen_key: String,
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
+
+pub const DEFAULT_WIDTH: f64 = 900.0;
+pub const DEFAULT_HEIGHT: f64 = 160.0;
+/// Khoảng cách tối thiểu tới mép trái và phải, và khoảng cách tới mép dưới khi đặt mặc định.
+const MARGIN: f64 = 24.0;
+const BOTTOM_GAP: f64 = 72.0;
+
+/// Khóa của một màn hình: tên và độ phân giải đầy đủ. Hai màn hình cùng model và cùng độ phân giải
+/// dùng chung một vị trí; chấp nhận được, vì vị trí vẫn nằm trong màn hình.
+pub fn screen_key(name: Option<&str>, width: u32, height: u32) -> String {
+    let name = name.map(str::trim).filter(|n| !n.is_empty()).unwrap_or("unknown");
+    format!("{name} {width}x{height}")
+}
+
+/// Vị trí mặc định: giữa màn hình theo chiều ngang, cách mép dưới một khoảng.
+pub fn default_rect(screen: &Screen) -> OverlayRect {
+    let (w, h) = logical_size(screen);
+    let width = DEFAULT_WIDTH.min(w - 2.0 * MARGIN).max(1.0);
+    let height = DEFAULT_HEIGHT.min(h).max(1.0);
+    OverlayRect {
+        x: ((w - width) / 2.0).max(0.0),
+        y: (h - height - BOTTOM_GAP).max(0.0),
+        width,
+        height,
+    }
+}
+
+/// Đổi vị trí vật lý của cửa sổ sang vị trí logic so với màn hình, để lưu.
+pub fn to_relative(screen: &Screen, x: i32, y: i32, width: u32, height: u32) -> OverlayRect {
+    OverlayRect {
+        x: f64::from(x - screen.x) / screen.scale,
+        y: f64::from(y - screen.y) / screen.scale,
+        width: f64::from(width) / screen.scale,
+        height: f64::from(height) / screen.scale,
+    }
+}
+
+/// Chọn màn hình và vị trí cho thanh phụ đề:
+/// 1. màn hình của lần đặt gần nhất, nếu còn cắm;
+/// 2. không thì màn hình đầu tiên có vị trí đã nhớ;
+/// 3. không thì màn hình chính (hoặc màn hình đầu tiên), ở vị trí mặc định.
+///
+/// Vị trí luôn được kéo vào trong vùng làm việc, để thanh không nằm ngoài màn hình.
+pub fn place(
+    positions: &BTreeMap<String, OverlayRect>,
+    last_screen: Option<&str>,
+    screens: &[Screen],
+    primary: Option<&str>,
+) -> Option<Placement> {
+    let saved = |key: &str| positions.get(key).copied();
+    let by_key = |key: &str| screens.iter().find(|s| s.key == key);
+    let screen = last_screen
+        .and_then(by_key)
+        .filter(|s| saved(&s.key).is_some())
+        .or_else(|| screens.iter().find(|s| saved(&s.key).is_some()))
+        .or_else(|| primary.and_then(by_key))
+        .or_else(|| screens.first())?;
+    let rect = clamp(screen, saved(&screen.key).unwrap_or_else(|| default_rect(screen)));
+    Some(Placement {
+        screen_key: screen.key.clone(),
+        x: screen.x + (rect.x * screen.scale).round() as i32,
+        y: screen.y + (rect.y * screen.scale).round() as i32,
+        width: (rect.width * screen.scale).round() as u32,
+        height: (rect.height * screen.scale).round() as u32,
+    })
+}
+
+fn logical_size(screen: &Screen) -> (f64, f64) {
+    (
+        f64::from(screen.width) / screen.scale,
+        f64::from(screen.height) / screen.scale,
+    )
+}
+
+fn clamp(screen: &Screen, rect: OverlayRect) -> OverlayRect {
+    let (w, h) = logical_size(screen);
+    let width = rect.width.min(w);
+    let height = rect.height.min(h);
+    OverlayRect {
+        x: rect.x.clamp(0.0, w - width),
+        y: rect.y.clamp(0.0, h - height),
+        width,
+        height,
+    }
+}
+```
+
+- [ ] **Step 5: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator --lib overlay::`
+Expected:
+```text
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 36 filtered out; finished in 0.00s
+```
+
+- [ ] **Step 6: clippy và định dạng**
+
+Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
+Expected: không lỗi, không cảnh báo.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src-tauri/src/overlay src-tauri/src/lib.rs
+git commit -m "feat(app): chọn chỗ đặt thanh phụ đề theo vị trí đã nhớ của từng màn hình (§4.4)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 9: Chặn `⌘Q` và Quit ở Dock, không chặn tắt máy (TDD)
+
+**Files:**
+- Create: `src-tauri/src/quit_guard.rs`
+- Modify: `src-tauri/src/lib.rs` (thêm `pub mod quit_guard;`)
+
+Theo QĐ7 (R9 của kế hoạch 00). Test tự động chỉ kiểm luật quyết định (`allow_terminate`). Phần gắn vào AppKit (`install`) chỉ thử được bằng tay, ở Task 19: `⌘Q`, Quit ở Dock, đăng xuất, khởi động lại.
+
+- [ ] **Step 1: Khai báo module.** Thêm `pub mod quit_guard;` vào khối `pub mod` ở đầu `src-tauri/src/lib.rs`.
+
+- [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/quit_guard.rs`, tạm thời chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Trên Mac, `⌘Q` và mục Quit ở Dock không thoát app (spec §4.3); chỉ Thoát ở menu khay mới thoát.
+//! Nhưng không được cản đăng xuất, khởi động lại, tắt máy (R9 của kế hoạch 00).
+//!
+//! Cách làm: tao (event loop của Tauri) không cài `applicationShouldTerminate:`, nên `⌘Q`, Quit ở
+//! Dock và yêu cầu thoát của hệ thống đều đi thẳng tới `NSApp terminate:` rồi thoát. App thêm
+//! `applicationShouldTerminate:` vào lớp app delegate của tao:
+//! - Apple Event `quit` có thuộc tính lý do (`kAEQuitReason`) là do loginwindow gửi khi đăng xuất,
+//!   khởi động lại hay tắt máy: cho thoát.
+//! - Mọi trường hợp khác (`⌘Q`, Quit ở Dock, `osascript -e 'quit app ...'`): hủy.
+//!
+//! Thoát ở menu khay gọi `AppHandle::exit`; tao dừng event loop bằng `stop:`, không qua `terminate:`,
+//! nên không bị hàm này chặn. Cập nhật app (kế hoạch 07) dùng `AppHandle::restart`, cũng không qua đây.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn quit(reason: Option<&[u8; 4]>) -> Option<QuitEvent> {
+        Some(QuitEvent {
+            event_class: K_CORE_EVENT_CLASS,
+            event_id: K_AE_QUIT_APPLICATION,
+            reason: reason.map(four_cc),
+        })
+    }
+
+    #[test]
+    fn four_cc_is_big_endian() {
+        assert_eq!(four_cc(b"quit"), 0x7175_6974);
+    }
+
+    #[test]
+    fn logout_restart_and_shutdown_are_allowed() {
+        for reason in [b"logo", b"rlgo", b"rrst", b"rsdn", b"rest", b"shut"] {
+            assert!(
+                allow_terminate(quit(Some(reason))),
+                "{}",
+                String::from_utf8_lossy(reason)
+            );
+        }
+    }
+
+    #[test]
+    fn cmd_q_and_dock_quit_are_cancelled() {
+        // ⌘Q gọi thẳng `terminate:`, không có Apple Event.
+        assert!(!allow_terminate(None));
+        // Quit ở Dock và `osascript` gửi Apple Event `quit` không có lý do.
+        assert!(!allow_terminate(quit(None)));
+        // Lý do lạ cũng không cho qua.
+        assert!(!allow_terminate(quit(Some(b"abcd"))));
+        // Apple Event khác (ví dụ mở file) đang xử lý lúc gọi `terminate:`.
+        let open = QuitEvent {
+            event_class: K_CORE_EVENT_CLASS,
+            event_id: four_cc(b"odoc"),
+            reason: Some(four_cc(b"shut")),
+        };
+        assert!(!allow_terminate(Some(open)));
+    }
+}
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib quit_guard::`
+Expected: FAIL, biên dịch lỗi:
+```text
+error[E0425]: cannot find function `allow_terminate` in this scope
+error[E0425]: cannot find function `four_cc` in this scope
+error[E0425]: cannot find value `K_CORE_EVENT_CLASS` in this scope
+error[E0422]: cannot find struct, variant or union type `QuitEvent` in this scope
+```
+
+- [ ] **Step 4: Viết code.** Chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+/// Mã bốn ký tự của Apple Event, như `'why?'`.
+pub const fn four_cc(code: &[u8; 4]) -> u32 {
+    u32::from_be_bytes(*code)
+}
+
+pub const K_CORE_EVENT_CLASS: u32 = four_cc(b"aevt");
+pub const K_AE_QUIT_APPLICATION: u32 = four_cc(b"quit");
+pub const K_AE_QUIT_REASON: u32 = four_cc(b"why?");
+
+/// Các lý do thoát do hệ thống gửi (AERegistry.h).
+const SYSTEM_QUIT_REASONS: [u32; 6] = [
+    four_cc(b"logo"), // kAELogOut
+    four_cc(b"rlgo"), // kAEReallyLogOut
+    four_cc(b"rrst"), // kAEShowRestartDialog
+    four_cc(b"rsdn"), // kAEShowShutdownDialog
+    four_cc(b"rest"), // kAERestart
+    four_cc(b"shut"), // kAEShutDown
+];
+
+/// Apple Event đang được xử lý lúc `terminate:` được gọi, nếu có.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct QuitEvent {
+    pub event_class: u32,
+    pub event_id: u32,
+    /// Giá trị của thuộc tính `kAEQuitReason`, nếu có.
+    pub reason: Option<u32>,
+}
+
+/// Có cho app thoát không.
+pub fn allow_terminate(event: Option<QuitEvent>) -> bool {
+    event.is_some_and(|e| {
+        e.event_class == K_CORE_EVENT_CLASS
+            && e.event_id == K_AE_QUIT_APPLICATION
+            && e.reason.is_some_and(|r| SYSTEM_QUIT_REASONS.contains(&r))
+    })
+}
+
+/// Cài `applicationShouldTerminate:` vào app delegate. Gọi trong `setup`, trên luồng chính.
+#[cfg(target_os = "macos")]
+pub fn install() {
+    use objc2::runtime::{AnyClass, AnyObject, Imp, Sel};
+    use objc2::{class, msg_send, sel};
+
+    const NS_TERMINATE_CANCEL: usize = 0;
+    const NS_TERMINATE_NOW: usize = 1;
+
+    extern "C-unwind" fn should_terminate(_this: *mut AnyObject, _cmd: Sel, _sender: *mut AnyObject) -> usize {
+        let event = current_quit_event();
+        if allow_terminate(event) {
+            log::info!("cho thoát theo yêu cầu của hệ thống: {event:?}");
+            NS_TERMINATE_NOW
+        } else {
+            log::info!("bỏ qua yêu cầu thoát không đến từ menu khay: {event:?}");
+            NS_TERMINATE_CANCEL
+        }
+    }
+
+    // SAFETY: gọi trên luồng chính sau khi tao đã tạo NSApplication và gắn delegate. Chữ ký của
+    // hàm khớp `- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender`,
+    // kiểu trả về là NSUInteger ("Q"); `class_addMethod` không ghi đè nếu lớp đã có phương thức này.
+    unsafe {
+        let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+        let delegate: *mut AnyObject = msg_send![app, delegate];
+        let Some(delegate) = delegate.as_ref() else {
+            log::warn!("NSApp chưa có delegate, không cài được chặn thoát");
+            return;
+        };
+        let class = delegate.class() as *const AnyClass as *mut AnyClass;
+        let imp: Imp = std::mem::transmute::<extern "C-unwind" fn(*mut AnyObject, Sel, *mut AnyObject) -> usize, Imp>(
+            should_terminate,
+        );
+        let added = objc2::ffi::class_addMethod(class, sel!(applicationShouldTerminate:), imp, c"Q@:@".as_ptr());
+        if !added.as_bool() {
+            log::warn!("app delegate đã có applicationShouldTerminate:, không cài chặn thoát");
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn current_quit_event() -> Option<QuitEvent> {
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+    // SAFETY: NSAppleEventManager dùng được trên luồng chính; `currentAppleEvent` trả nil khi không
+    // có Apple Event nào đang xử lý. AEEventClass, AEEventID, AEKeyword và OSType đều là UInt32.
+    unsafe {
+        let manager: *mut AnyObject = msg_send![class!(NSAppleEventManager), sharedAppleEventManager];
+        let event: *mut AnyObject = msg_send![manager, currentAppleEvent];
+        let event = event.as_ref()?;
+        let event_class: u32 = msg_send![event, eventClass];
+        let event_id: u32 = msg_send![event, eventID];
+        let reason: *mut AnyObject = msg_send![event, attributeDescriptorForKeyword: K_AE_QUIT_REASON];
+        let reason = reason.as_ref().map(|descriptor| {
+            let code: u32 = msg_send![descriptor, enumCodeValue];
+            code
+        });
+        Some(QuitEvent {
+            event_class,
+            event_id,
+            reason,
+        })
+    }
+}
+```
+
+- [ ] **Step 5: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator --lib quit_guard::`
+Expected:
+```text
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.00s
+```
+
+- [ ] **Step 6: clippy và định dạng**
+
+Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
+Expected: không lỗi, không cảnh báo.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src-tauri/src/quit_guard.rs src-tauri/src/lib.rs
+git commit -m "feat(app): ⌘Q và Quit ở Dock không thoát app, vẫn cho thoát khi đăng xuất hay tắt máy (§4.3)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 10: Đọc ghi file cài đặt bằng `tauri-plugin-store` (TDD)
+
+**Files:**
+- Create: `src-tauri/src/settings/persist.rs`
+- Modify: `src-tauri/src/settings/mod.rs` (thêm `pub mod persist;`)
+
+`load` và `save` cần `AppHandle` thật nên chạy ở Task 12 và thử tay ở Task 19; test tự động kiểm phần giữ lại file hỏng (QĐ2), trong thư mục tạm.
+
+- [ ] **Step 1: Khai báo module.** Thêm `pub mod persist;` vào khối `pub mod` ở đầu `src-tauri/src/settings/mod.rs`, sau `pub mod patch;`. Khối này giờ là:
+
+```rust
+pub mod migrate;
+pub mod patch;
+pub mod persist;
+```
+
+- [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/settings/persist.rs`, tạm thời chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Đọc ghi file cài đặt bằng `tauri-plugin-store` (spec §6.9).
+//!
+//! File nằm ở thư mục dữ liệu của app (`BaseDirectory::AppData`): trên macOS là
+//! `~/Library/Application Support/<bundle-id>/settings.json`, trên Windows là
+//! `%APPDATA%\<bundle-id>\settings.json`. Store tự ghi file sau 300 ms kể từ lần sửa cuối, và ghi
+//! lần cuối khi app thoát.
+//!
+//! Giao diện không gọi thẳng được lệnh của plugin (capabilities không cấp `store:*`); mọi thay đổi
+//! đi qua lệnh `update_settings`, nơi phía Rust kiểm phạm vi.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("mt-settings-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn corrupt_file_is_renamed() {
+        let dir = temp_dir("corrupt");
+        let path = dir.join(STORE_FILE);
+        std::fs::write(&path, b"{\"uiLanguage\": \"vi\",").unwrap();
+        let backup = backup_if_corrupt(&path).unwrap().unwrap();
+        assert_eq!(backup, dir.join("settings.json.corrupt"));
+        assert!(!path.exists());
+        assert_eq!(std::fs::read(&backup).unwrap(), b"{\"uiLanguage\": \"vi\",");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn valid_or_missing_file_is_left_alone() {
+        let dir = temp_dir("valid");
+        let path = dir.join(STORE_FILE);
+        assert_eq!(backup_if_corrupt(&path).unwrap(), None);
+        std::fs::write(&path, b"{\"schemaVersion\": 1}").unwrap();
+        assert_eq!(backup_if_corrupt(&path).unwrap(), None);
+        assert!(path.exists());
+        // Mảng JSON không phải object của store: coi là hỏng.
+        std::fs::write(&path, b"[1, 2]").unwrap();
+        assert!(backup_if_corrupt(&path).unwrap().is_some());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib settings::persist`
+Expected: FAIL, biên dịch lỗi:
+```text
+error[E0425]: cannot find function `backup_if_corrupt` in this scope
+error[E0425]: cannot find value `STORE_FILE` in this scope
+error[E0425]: cannot find type `PathBuf` in this scope
+```
+
+- [ ] **Step 4: Viết code.** Chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+
+use serde_json::{Map, Value};
+use tauri::{AppHandle, Runtime};
+use tauri_plugin_store::{StoreBuilder, StoreExt};
+
+use super::Settings;
+use super::migrate::{self, Loaded};
+
+pub const STORE_FILE: &str = "settings.json";
+const AUTO_SAVE: Duration = Duration::from_millis(300);
+
+/// Mở store và đọc cài đặt, kèm migrate từ schema cũ.
+pub fn load<R: Runtime>(app: &AppHandle<R>, defaults: Settings) -> Result<Loaded, tauri_plugin_store::Error> {
+    let path = tauri_plugin_store::resolve_store_path(app, STORE_FILE)?;
+    match backup_if_corrupt(&path) {
+        Ok(Some(backup)) => log::warn!("file cài đặt hỏng, đã đổi tên thành {}", backup.display()),
+        Ok(None) => {}
+        Err(e) => log::warn!("không kiểm được file cài đặt: {e}"),
+    }
+    let store = StoreBuilder::new(app, STORE_FILE).auto_save(AUTO_SAVE).build()?;
+    let raw: Map<String, Value> = store.entries().into_iter().collect();
+    Ok(migrate::load(raw, defaults))
+}
+
+/// Ghi mọi khóa của `settings` vào store. Khóa lạ đã có trong file (của bản app mới hơn) giữ nguyên.
+pub fn save<R: Runtime>(
+    app: &AppHandle<R>,
+    settings: &Settings,
+    file_version: u32,
+) -> Result<(), tauri_plugin_store::Error> {
+    let store = app.store(STORE_FILE)?;
+    for (key, value) in migrate::to_entries(settings, file_version) {
+        store.set(key, value);
+    }
+    Ok(())
+}
+
+/// Chỉ ghi khóa `overlay`. Dùng khi thanh phụ đề di chuyển: lúc kéo, sự kiện đến dồn dập, nên không
+/// ghi lại mọi khóa (mỗi lần ghi một khóa, store phát một sự kiện `store://change`).
+pub fn save_overlay<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<(), tauri_plugin_store::Error> {
+    let value = serde_json::to_value(&settings.overlay)?;
+    app.store(STORE_FILE)?.set("overlay", value);
+    Ok(())
+}
+
+/// `tauri-plugin-store` bỏ qua file không đọc được và mở store rỗng; lần ghi sau sẽ đè mất file.
+/// Vì vậy trước khi mở store, file không phải object JSON thì đổi tên thành `settings.json.corrupt`
+/// để người dùng hay bộ phận hỗ trợ còn xem lại được. Trả về đường dẫn bản đã đổi tên, nếu có.
+pub fn backup_if_corrupt(path: &Path) -> std::io::Result<Option<PathBuf>> {
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(e),
+    };
+    if serde_json::from_slice::<Map<String, Value>>(&bytes).is_ok() {
+        return Ok(None);
+    }
+    let mut backup = path.as_os_str().to_owned();
+    backup.push(".corrupt");
+    let backup = PathBuf::from(backup);
+    std::fs::rename(path, &backup)?;
+    Ok(Some(backup))
+}
+```
+
+- [ ] **Step 5: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator --lib settings::persist`
+Expected:
+```text
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 47 filtered out; finished in 0.01s
+```
+
+- [ ] **Step 6: clippy và định dạng**
+
+Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
+Expected: không lỗi, không cảnh báo.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src-tauri/src/settings/persist.rs src-tauri/src/settings/mod.rs
+git commit -m "feat(app): đọc ghi cài đặt bằng tauri-plugin-store, giữ lại file cài đặt hỏng" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 11: Từ điển giao diện vi/en và Vitest (TDD)
+
+**Files:**
+- Create: `vitest.config.ts`, `src/i18n/i18n.test.ts`, `src/i18n/en.ts`, `src/i18n/vi.ts`, `src/i18n/index.ts`
+- Modify: `package.json` (thêm lệnh `test`)
+
+§4.5 và QĐ9. `en.ts` là nguồn chuẩn của danh sách khóa; kiểu `Record<MessageKey, string>` trong `vi.ts` báo lỗi biên dịch nếu thiếu hay thừa khóa, còn test kiểm thêm lúc chạy: chuỗi rỗng, tham số lệch nhau, chuỗi quên dịch. Từ điển gồm chữ của mọi màn hình ở Task 16, và câu báo lỗi `error.<mã>` cho mọi mã lỗi phía Rust (Task 12 có test Rust đọc file này).
+
+Task này làm trước Task 12, vì test ở Task 12 đọc `src/i18n/en.ts`.
+
+- [ ] **Step 1: Cấu hình Vitest.** Tạo `vitest.config.ts`:
+
+```ts
+import { defineConfig } from "vitest/config";
+
+// Test logic của giao diện (store, i18n, phím tắt) chạy trong Node, không cần DOM hay Tauri.
+export default defineConfig({
+  test: {
+    include: ["src/**/*.test.ts"],
+    environment: "node",
+  },
+});
+```
+
+Trong `package.json`, đặt khối `scripts` thành:
+
+```json
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "tauri": "tauri"
+  },
+```
+
+- [ ] **Step 2: Viết test trước.** Tạo `src/i18n/i18n.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { detectUiLanguage, en, errorKey, placeholders, translate, vi } from "./index";
+
+describe("từ điển giao diện", () => {
+  it("vi có đúng các khóa của en, không thiếu không thừa", () => {
+    expect(Object.keys(vi).sort()).toEqual(Object.keys(en).sort());
+  });
+
+  it("không chuỗi nào rỗng hay thừa khoảng trắng", () => {
+    for (const dict of [en, vi]) {
+      for (const [key, text] of Object.entries(dict)) {
+        expect(text.trim(), key).not.toBe("");
+        expect(text, key).toBe(text.trim());
+      }
+    }
+  });
+
+  it("hai ngôn ngữ có cùng tham số ở mỗi khóa", () => {
+    for (const key of Object.keys(en) as (keyof typeof en)[]) {
+      expect(placeholders(vi[key]), key).toEqual(placeholders(en[key]));
+    }
+  });
+
+  it("chuỗi tiếng Việt đã được dịch, trừ tên riêng và tên ngôn ngữ", () => {
+    const same = (Object.keys(en) as (keyof typeof en)[]).filter((key) => en[key] === vi[key]);
+    expect(same.sort()).toEqual(
+      ["app.name", "channel.beta", "lang.en", "lang.ja", "lang.ko", "lang.vi", "lang.zh", "settings.group.model"].sort(),
+    );
+  });
+});
+
+describe("translate", () => {
+  it("chọn đúng ngôn ngữ", () => {
+    expect(translate("vi", "home.start")).toBe("Bắt đầu");
+    expect(translate("en", "home.start")).toBe("Start");
+  });
+
+  it("điền tham số, giữ nguyên chỗ không có tham số", () => {
+    expect(translate("vi", "onboarding.step", { n: 2, total: 8 })).toBe("Bước 2/8");
+    expect(translate("en", "about.version", {})).toBe("Version {version}");
+  });
+});
+
+describe("detectUiLanguage", () => {
+  it("tiếng Việt nếu locale đầu tiên là tiếng Việt, còn lại English", () => {
+    expect(detectUiLanguage(["vi-VN", "en-US"])).toBe("vi");
+    expect(detectUiLanguage(["vi"])).toBe("vi");
+    expect(detectUiLanguage(["en-US", "vi-VN"])).toBe("en");
+    expect(detectUiLanguage(["fr-FR"])).toBe("en");
+    expect(detectUiLanguage([])).toBe("en");
+  });
+});
+
+describe("errorKey", () => {
+  it("mã lỗi của Rust ra khóa error.<mã>, mã lạ ra câu chung", () => {
+    expect(errorKey("outOfRange")).toBe("error.outOfRange");
+    expect(errorKey("hotkeyDuplicate")).toBe("error.hotkeyDuplicate");
+    expect(errorKey("khongCo")).toBe("error.unknown");
+  });
+});
+```
+
+- [ ] **Step 3: Chạy test, thấy lỗi**
+
+Run: `pnpm test`
+Expected: FAIL:
+```text
+ FAIL  src/i18n/i18n.test.ts [ src/i18n/i18n.test.ts ]
+Error: Cannot find module './index' imported from …/src/i18n/i18n.test.ts
+ Test Files  1 failed (1)
+```
+
+- [ ] **Step 4: Tạo `src/i18n/en.ts`**
+
+```ts
+// Từ điển English: nguồn chuẩn của danh sách khóa (spec §4.5). Thêm khóa ở đây trước, rồi thêm ở vi.ts;
+// kiểu `Record<MessageKey, string>` trong vi.ts báo lỗi nếu thiếu hay thừa khóa.
+// `{tên}` là chỗ điền tham số; hai ngôn ngữ phải có cùng tham số (test ở i18n.test.ts).
+export const en = {
+  "app.name": "Meeting Translator",
+
+  "nav.home": "Home",
+  "nav.transcript": "Transcript",
+  "nav.history": "History",
+  "nav.glossary": "Glossary",
+  "nav.settings": "Settings",
+  "nav.upgrade": "Upgrade to Pro",
+  "nav.about": "About",
+
+  "status.idle": "Ready",
+  "status.running": "Translating",
+  "status.error": "Error",
+
+  "home.start": "Start",
+  "home.stop": "Stop",
+  "home.languages": "Languages",
+  "home.audioSource": "Audio source",
+  "home.audioSource.system.macos": "Whole system, except this app",
+  "home.audioSource.system.windows": "Default playback devices (automatic)",
+  "home.inputLevel": "Input level",
+  "home.minutesLeft": "Free minutes left today",
+  "home.overlay": "Subtitle bar",
+  "home.overlay.show": "Show",
+  "home.overlay.hide": "Hide",
+  "home.overlay.lock": "Lock (click-through)",
+  "home.overlay.unlock": "Unlock",
+
+  "languages.target": "Translate into",
+  "languages.sources": "Languages spoken in the meeting",
+  "languages.lock": "Source language",
+  "languages.lock.auto": "Detect automatically",
+
+  "lang.en": "English",
+  "lang.zh": "中文",
+  "lang.ja": "日本語",
+  "lang.ko": "한국어",
+  "lang.vi": "Tiếng Việt",
+
+  "transcript.empty": "Subtitles of the current session will appear here, with time, original text and translation.",
+  "history.empty": "Saved sessions will appear here. Saving history is a Pro feature and is off by default.",
+  "glossary.empty": "Your glossary terms will appear here. The glossary is a Pro feature.",
+  "upgrade.empty": "Pro plans and in-app payment will appear here.",
+
+  "settings.group.general": "General",
+  "settings.group.subtitles": "Subtitles",
+  "settings.group.audio": "Audio",
+  "settings.group.model": "Model",
+  "settings.group.hotkeys": "Shortcuts",
+  "settings.group.license": "License",
+  "settings.group.privacy": "Privacy",
+  "settings.subtitles.description": "Font size, number of lines, background opacity and original text.",
+  "settings.audio.description": "Audio source and how quickly a sentence is closed after a pause.",
+  "settings.model.description": "Model pack in use, disk space, download again or delete.",
+  "settings.license.description": "License key, status and expiry date, renew or deactivate.",
+  "settings.privacy.description": "Saving history, delete all data, delete models and data.",
+  "settings.general.uiLanguage": "Interface language",
+  "settings.general.launchAtLogin": "Launch at login",
+  "settings.general.launchAtLogin.hint": "The app starts in the menu bar or system tray, without opening this window.",
+  "settings.general.theme": "Appearance",
+  "settings.general.updateChannel": "Update channel",
+  "theme.system": "Same as system",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
+  "channel.stable": "Stable",
+  "channel.beta": "Beta",
+
+  "hotkeys.toggleSession": "Start or stop translating",
+  "hotkeys.toggleOverlay": "Show or hide subtitles",
+  "hotkeys.toggleLock": "Lock or unlock subtitles",
+  "hotkeys.change": "Change",
+  "hotkeys.cancel": "Cancel",
+  "hotkeys.press": "Press the new shortcut, or Esc to cancel",
+  "hotkeys.failed": "Not registered: another app may be using it.",
+  "hotkeys.hint": "Shortcuts work in every app. Use at least one of Ctrl, Alt, Shift or {super}.",
+
+  "about.version": "Version {version}",
+  "about.openLogs": "Open log folder",
+  "about.logsHint": "Logs stay on this computer and never contain what was said. Send them to support only if you want to.",
+  "about.licenses": "Open-source licenses",
+  "about.licensesPending": "The list of open-source licenses will appear here.",
+  "about.trademark": "Microsoft Teams, Zoom and Google Meet are mentioned only to describe compatibility. Meeting Translator is not affiliated with these companies.",
+
+  "onboarding.step": "Step {n} of {total}",
+  "onboarding.next": "Next",
+  "onboarding.back": "Back",
+  "onboarding.finish": "Start using Meeting Translator",
+  "onboarding.language.title": "Choose the interface language",
+  "onboarding.model.title": "Check this computer and choose a model pack",
+  "onboarding.download.title": "Download the model",
+  "onboarding.permission.title": "Allow system audio recording",
+  "onboarding.languages.title": "Choose your languages",
+  "onboarding.test.title": "Try it",
+  "onboarding.privacy.title": "Your privacy",
+  "onboarding.privacy.local": "Audio never leaves this computer: speech recognition and translation run entirely on your machine.",
+  "onboarding.privacy.notify": "If the law or your company requires it, you are responsible for telling other participants that you use a translation tool.",
+  "onboarding.tray.title": "Meeting Translator keeps running in the background",
+  "onboarding.tray.macos": "The app stays in the menu bar. Closing this window only hides it; choose Quit from the menu bar icon to exit.",
+  "onboarding.tray.windows": "The app stays in the system tray. Closing this window only hides it; choose Quit from the tray icon to exit.",
+  "onboarding.tray.windowsPin": "Windows hides new tray icons behind the ^ arrow. Drag the icon onto the taskbar, or turn it on in Taskbar settings.",
+  "onboarding.tray.openTaskbarSettings": "Open Taskbar settings",
+
+  "overlay.waiting": "Subtitles will appear here",
+
+  "notice.hotkeysFailed": "Some shortcuts could not be registered. Open Settings › Shortcuts to change them.",
+  "notice.openSettings": "Open settings",
+
+  "common.dismiss": "Dismiss",
+  "common.notYet": "Not available yet.",
+
+  "error.outOfRange": "This value is out of range.",
+  "error.empty": "Choose at least one item.",
+  "error.duplicate": "This value is used twice.",
+  "error.tooLong": "This value is too long.",
+  "error.invalidHotkey": "This shortcut is not valid.",
+  "error.wrongType": "This value is not valid.",
+  "error.unknownKey": "This setting does not exist.",
+  "error.readOnly": "This setting cannot be changed here.",
+  "error.notObject": "The change request is not valid.",
+  "error.hotkeyInvalid": "This key combination is not supported.",
+  "error.hotkeyNoModifier": "Use at least one of Ctrl, Alt, Shift or Cmd/Win.",
+  "error.hotkeyDuplicate": "This shortcut is already used for another action.",
+  "error.hotkeyRegisterFailed": "The system refused this shortcut; another app may be using it.",
+  "error.autostartFailed": "Could not change launch at login.",
+  "error.overlayFailed": "Could not change the subtitle bar.",
+  "error.openFailed": "Could not open it.",
+  "error.unsupported": "Not available on this system.",
+  "error.unknown": "Something went wrong.",
+} as const;
+
+export type MessageKey = keyof typeof en;
+```
+
+- [ ] **Step 5: Tạo `src/i18n/vi.ts`**
+
+```ts
+import type { MessageKey } from "./en";
+
+// Từ điển tiếng Việt. Kiểu `Record<MessageKey, string>` bắt đủ mọi khóa của en.ts (spec §4.5).
+export const vi: Record<MessageKey, string> = {
+  "app.name": "Meeting Translator",
+
+  "nav.home": "Màn hình chính",
+  "nav.transcript": "Bản chép lời",
+  "nav.history": "Lịch sử",
+  "nav.glossary": "Từ điển thuật ngữ",
+  "nav.settings": "Cài đặt",
+  "nav.upgrade": "Nâng cấp Pro",
+  "nav.about": "Giới thiệu",
+
+  "status.idle": "Sẵn sàng",
+  "status.running": "Đang dịch",
+  "status.error": "Lỗi",
+
+  "home.start": "Bắt đầu",
+  "home.stop": "Dừng",
+  "home.languages": "Ngôn ngữ",
+  "home.audioSource": "Nguồn âm thanh",
+  "home.audioSource.system.macos": "Toàn hệ thống, trừ app này",
+  "home.audioSource.system.windows": "Thiết bị phát mặc định (tự động)",
+  "home.inputLevel": "Mức âm lượng vào",
+  "home.minutesLeft": "Số phút miễn phí còn lại hôm nay",
+  "home.overlay": "Thanh phụ đề",
+  "home.overlay.show": "Hiện",
+  "home.overlay.hide": "Ẩn",
+  "home.overlay.lock": "Khóa (click xuyên qua)",
+  "home.overlay.unlock": "Mở khóa",
+
+  "languages.target": "Dịch sang",
+  "languages.sources": "Ngôn ngữ nói trong cuộc họp",
+  "languages.lock": "Ngôn ngữ nguồn",
+  "languages.lock.auto": "Tự nhận diện",
+
+  "lang.en": "English",
+  "lang.zh": "中文",
+  "lang.ja": "日本語",
+  "lang.ko": "한국어",
+  "lang.vi": "Tiếng Việt",
+
+  "transcript.empty": "Phụ đề của phiên đang dịch sẽ hiện ở đây, gồm giờ, câu gốc và bản dịch.",
+  "history.empty": "Các phiên đã lưu sẽ hiện ở đây. Lưu lịch sử là tính năng Pro và mặc định tắt.",
+  "glossary.empty": "Các thuật ngữ của bạn sẽ hiện ở đây. Từ điển thuật ngữ là tính năng Pro.",
+  "upgrade.empty": "Các gói Pro và thanh toán ngay trong app sẽ hiện ở đây.",
+
+  "settings.group.general": "Chung",
+  "settings.group.subtitles": "Phụ đề",
+  "settings.group.audio": "Âm thanh",
+  "settings.group.model": "Model",
+  "settings.group.hotkeys": "Phím tắt",
+  "settings.group.license": "Bản quyền",
+  "settings.group.privacy": "Quyền riêng tư",
+  "settings.subtitles.description": "Cỡ chữ, số dòng, độ mờ nền và câu gốc.",
+  "settings.audio.description": "Nguồn âm thanh và độ nhạy ngắt câu.",
+  "settings.model.description": "Gói model đang dùng, dung lượng, tải lại hoặc xóa.",
+  "settings.license.description": "Key bản quyền, trạng thái và ngày hết hạn, gia hạn hoặc gỡ kích hoạt.",
+  "settings.privacy.description": "Lưu lịch sử, xóa toàn bộ dữ liệu, xóa model và dữ liệu.",
+  "settings.general.uiLanguage": "Ngôn ngữ giao diện",
+  "settings.general.launchAtLogin": "Khởi động cùng hệ thống",
+  "settings.general.launchAtLogin.hint": "App mở sẵn ở menu bar hoặc khay hệ thống, không mở cửa sổ này.",
+  "settings.general.theme": "Giao diện",
+  "settings.general.updateChannel": "Kênh cập nhật",
+  "theme.system": "Theo hệ thống",
+  "theme.light": "Sáng",
+  "theme.dark": "Tối",
+  "channel.stable": "Ổn định",
+  "channel.beta": "Beta",
+
+  "hotkeys.toggleSession": "Bắt đầu hoặc dừng dịch",
+  "hotkeys.toggleOverlay": "Hiện hoặc ẩn phụ đề",
+  "hotkeys.toggleLock": "Khóa hoặc mở khóa phụ đề",
+  "hotkeys.change": "Đổi",
+  "hotkeys.cancel": "Hủy",
+  "hotkeys.press": "Bấm tổ hợp phím mới, hoặc Esc để hủy",
+  "hotkeys.failed": "Chưa đăng ký được: có thể app khác đang dùng.",
+  "hotkeys.hint": "Phím tắt dùng được ở mọi app. Hãy dùng ít nhất một phím Ctrl, Alt, Shift hoặc {super}.",
+
+  "about.version": "Phiên bản {version}",
+  "about.openLogs": "Mở thư mục log",
+  "about.logsHint": "Log chỉ nằm trên máy này và không bao giờ chứa nội dung cuộc họp. Bạn tự gửi cho bộ phận hỗ trợ khi cần.",
+  "about.licenses": "Giấy phép mã nguồn mở",
+  "about.licensesPending": "Danh sách giấy phép mã nguồn mở sẽ hiện ở đây.",
+  "about.trademark": "Microsoft Teams, Zoom và Google Meet chỉ được nhắc tới để mô tả khả năng tương thích. Meeting Translator không liên kết với các công ty này.",
+
+  "onboarding.step": "Bước {n}/{total}",
+  "onboarding.next": "Tiếp",
+  "onboarding.back": "Quay lại",
+  "onboarding.finish": "Bắt đầu dùng Meeting Translator",
+  "onboarding.language.title": "Chọn ngôn ngữ giao diện",
+  "onboarding.model.title": "Kiểm tra máy và chọn gói model",
+  "onboarding.download.title": "Tải model",
+  "onboarding.permission.title": "Cho phép ghi âm thanh hệ thống",
+  "onboarding.languages.title": "Chọn ngôn ngữ",
+  "onboarding.test.title": "Nghe thử",
+  "onboarding.privacy.title": "Quyền riêng tư",
+  "onboarding.privacy.local": "Âm thanh không rời khỏi máy: nhận dạng giọng nói và dịch đều chạy trên máy của bạn.",
+  "onboarding.privacy.notify": "Nếu pháp luật hoặc quy định công ty yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp là bạn dùng công cụ dịch.",
+  "onboarding.tray.title": "Meeting Translator vẫn chạy khi bạn đóng cửa sổ",
+  "onboarding.tray.macos": "App nằm ở menu bar. Đóng cửa sổ này chỉ ẩn nó đi; muốn thoát hẳn thì chọn Thoát ở icon trên menu bar.",
+  "onboarding.tray.windows": "App nằm ở khay hệ thống. Đóng cửa sổ này chỉ ẩn nó đi; muốn thoát hẳn thì chọn Thoát ở icon trong khay.",
+  "onboarding.tray.windowsPin": "Windows giấu icon mới vào mục mũi tên ^. Hãy kéo icon ra taskbar, hoặc bật icon trong cài đặt Taskbar.",
+  "onboarding.tray.openTaskbarSettings": "Mở cài đặt Taskbar",
+
+  "overlay.waiting": "Phụ đề sẽ hiện ở đây",
+
+  "notice.hotkeysFailed": "Có phím tắt không đăng ký được. Mở Cài đặt › Phím tắt để đổi.",
+  "notice.openSettings": "Mở cài đặt",
+
+  "common.dismiss": "Đóng",
+  "common.notYet": "Chưa có.",
+
+  "error.outOfRange": "Giá trị nằm ngoài phạm vi cho phép.",
+  "error.empty": "Hãy chọn ít nhất một mục.",
+  "error.duplicate": "Giá trị bị trùng.",
+  "error.tooLong": "Giá trị quá dài.",
+  "error.invalidHotkey": "Phím tắt không hợp lệ.",
+  "error.wrongType": "Giá trị không hợp lệ.",
+  "error.unknownKey": "Không có cài đặt này.",
+  "error.readOnly": "Không đổi được cài đặt này ở đây.",
+  "error.notObject": "Yêu cầu thay đổi không hợp lệ.",
+  "error.hotkeyInvalid": "Không dùng được tổ hợp phím này.",
+  "error.hotkeyNoModifier": "Hãy dùng ít nhất một phím Ctrl, Alt, Shift hoặc Cmd/Win.",
+  "error.hotkeyDuplicate": "Tổ hợp này đang dùng cho việc khác.",
+  "error.hotkeyRegisterFailed": "Hệ thống không cho dùng tổ hợp này; có thể app khác đang giữ.",
+  "error.autostartFailed": "Không đổi được chế độ khởi động cùng hệ thống.",
+  "error.overlayFailed": "Không đổi được thanh phụ đề.",
+  "error.openFailed": "Không mở được.",
+  "error.unsupported": "Không có trên hệ điều hành này.",
+  "error.unknown": "Có lỗi xảy ra.",
+};
+```
+
+- [ ] **Step 6: Tạo `src/i18n/index.ts`**
+
+```ts
+import { en, type MessageKey } from "./en";
+import { vi } from "./vi";
+
+export type { MessageKey };
+export type UiLanguage = "en" | "vi";
+export type Params = Record<string, string | number>;
+
+const dictionaries: Record<UiLanguage, Record<MessageKey, string>> = { en, vi };
+
+// Đổi ngôn ngữ có tác dụng ngay (§4.5): giao diện gọi hàm này mỗi lần vẽ, với ngôn ngữ đang chọn.
+export function translate(lang: UiLanguage, key: MessageKey, params?: Params): string {
+  const template = dictionaries[lang][key];
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match));
+}
+
+// Ngôn ngữ giao diện trước khi đọc được cài đặt: tiếng Việt nếu locale đầu tiên là tiếng Việt,
+// còn lại English (§4.1, bước 1). Sau đó phía Rust quyết định theo locale của hệ điều hành.
+export function detectUiLanguage(locales: readonly string[]): UiLanguage {
+  const primary = (locales[0] ?? "").split(/[-_]/)[0]?.toLowerCase();
+  return primary === "vi" ? "vi" : "en";
+}
+
+// Khóa câu báo lỗi cho mã lỗi của phía Rust (`CommandError.code`); mã lạ thì dùng câu chung.
+export function errorKey(code: string): MessageKey {
+  const key = `error.${code}`;
+  return key in en ? (key as MessageKey) : "error.unknown";
+}
+
+export function placeholders(template: string): string[] {
+  return [...template.matchAll(/\{(\w+)\}/g)].map((m) => m[1] ?? "").sort();
+}
+
+export { en, vi };
+```
+
+- [ ] **Step 7: Chạy test và build**
+
+Run: `pnpm test && pnpm build`
+Expected: `Test Files  1 passed (1)`, `Tests  8 passed (8)`; `tsc` không lỗi và Vite in `✓ built in …`.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add vitest.config.ts package.json src/i18n
+git commit -m "feat(ui): từ điển giao diện en/vi có kiểu, test đủ khóa bằng Vitest (§4.5)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 12: Nối vào app: trạng thái, lệnh, quyền từng cửa sổ, khay, cửa sổ, thanh phụ đề
+
+**Files:**
+- Create: `src-tauri/src/acl_tests.rs`, `state.rs`, `events.rs`, `commands.rs`, `actions.rs`, `hotkey_registry.rs`, `tray.rs`, `window.rs`, `session_stub.rs`, `logging.rs` (đều trong `src-tauri/src/`)
+- Create: `src-tauri/src/overlay/macos.rs`, `src-tauri/src/overlay/windows.rs`, `scripts/make_tray_icon.py`, `src-tauri/icons/tray-template.png` (script sinh ra)
+- Modify (thay toàn bộ): `src-tauri/src/lib.rs`, `src-tauri/src/overlay/mod.rs`, `src-tauri/build.rs`, `src-tauri/capabilities/main.json`, `src-tauri/capabilities/overlay.json`, `src-tauri/tauri.conf.json`
+
+Task này thay code spike S5 trong `lib.rs` bằng khung app thật. Cách tạo thanh phụ đề của S5 giữ nguyên, chuyển sang `overlay/macos.rs` và `overlay/windows.rs`. Các file phụ thuộc lẫn nhau (`actions.rs` gọi khay, thanh phụ đề, phím tắt; các nơi đó lại gọi `actions.rs`), nên chỉ build được khi đủ file; test viết trước ở Step 1.
+
+Lệnh và sự kiện:
+
+| Lệnh | Cửa sổ | Việc |
+|---|---|---|
+| `get_settings` | main | đọc cài đặt |
+| `update_settings { patch }` | main | sửa một phần cài đặt (Task 5); đổi `launchAtLogin` thì bật/tắt khởi động cùng hệ thống |
+| `set_hotkey { action, accelerator }` | main | đổi phím tắt, đăng ký lại với hệ điều hành |
+| `get_app_status`, `toggle_session` | main | trạng thái; bắt đầu/dừng phiên tạm |
+| `set_overlay_visible { visible }`, `set_overlay_locked { locked }` | main | ẩn/hiện, khóa thanh phụ đề |
+| `get_app_info` | main | tên, phiên bản, identifier, hệ điều hành, có mở lúc đăng nhập không |
+| `open_log_dir`, `open_taskbar_settings` | main | mở thư mục log (Đ10); mở `ms-settings:taskbar` (Windows) |
+| `get_overlay_view` | overlay | phần cài đặt của thanh phụ đề, chỉ đọc |
+
+| Sự kiện | Gửi tới | Nội dung |
+|---|---|---|
+| `settings://changed` | main | toàn bộ cài đặt |
+| `app://status` | main | `{ session, overlayVisible, hotkeyFailures }` |
+| `app://navigate` | main | màn hình cần mở (từ dòng báo lỗi ở menu khay) |
+| `overlay://view` | overlay | như `get_overlay_view` |
+| `subtitle://upsert` | cả hai | phụ đề (§6.6); ở kế hoạch này chỉ có phụ đề mẫu của phiên tạm |
+
+- [ ] **Step 1: Viết test trước.** Tạo `src-tauri/src/acl_tests.rs`:
+
+```rust
+//! Test quyền của từng cửa sổ (spec §10.2, §11 "cửa sổ overlay gọi một lệnh không được cấp thì Tauri
+//! chặn lại"). App chạy bằng `MockRuntime` với đúng `tauri.conf.json`, `capabilities/` và app manifest
+//! của `build.rs`, nên ACL trong test là ACL thật của app; không mở cửa sổ nào.
+
+use serde_json::Value;
+use tauri::ipc::{CallbackFn, InvokeBody};
+use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
+use tauri::webview::InvokeRequest;
+use tauri::{Manager, WebviewWindow, WebviewWindowBuilder};
+
+use crate::commands::{self, MAIN_COMMANDS, OVERLAY_COMMANDS};
+use crate::settings::{Settings, UiLanguage};
+use crate::state::AppState;
+
+fn app() -> tauri::App<MockRuntime> {
+    mock_builder()
+        .manage(AppState::new(Settings::defaults(UiLanguage::Vi), 1, false))
+        .invoke_handler(commands::handler())
+        .build(tauri::generate_context!(test = true))
+        .expect("dựng được app giả")
+}
+
+fn window(app: &tauri::App<MockRuntime>, label: &str) -> WebviewWindow<MockRuntime> {
+    app.get_webview_window(label).unwrap_or_else(|| {
+        WebviewWindowBuilder::new(app, label, Default::default())
+            .build()
+            .expect("tạo được cửa sổ giả")
+    })
+}
+
+fn invoke(window: &WebviewWindow<MockRuntime>, cmd: &str) -> Result<Value, String> {
+    let request = InvokeRequest {
+        cmd: cmd.into(),
+        callback: CallbackFn(0),
+        error: CallbackFn(1),
+        url: "tauri://localhost".parse().unwrap(),
+        body: InvokeBody::default(),
+        headers: Default::default(),
+        invoke_key: INVOKE_KEY.to_string(),
+    };
+    get_ipc_response(window, request)
+        .map(|body| body.deserialize::<Value>().unwrap())
+        .map_err(|e| e.to_string())
+}
+
+fn denied(result: &Result<Value, String>) -> bool {
+    matches!(result, Err(message) if message.contains("not allowed"))
+}
+
+#[test]
+fn each_window_only_reaches_its_own_commands() {
+    let app = app();
+    let main = window(&app, "main");
+    let overlay = window(&app, "overlay");
+
+    let settings = invoke(&main, "get_settings").expect("main đọc được cài đặt");
+    assert_eq!(settings["uiLanguage"], "vi");
+    let view = invoke(&overlay, "get_overlay_view").expect("overlay đọc được phần của nó");
+    assert_eq!(view["lines"], 2);
+    assert!(view.get("hotkeys").is_none(), "overlay không thấy cài đặt khác");
+
+    for cmd in MAIN_COMMANDS {
+        let result = invoke(&overlay, cmd);
+        assert!(denied(&result), "overlay không được gọi {cmd}: {result:?}");
+    }
+    for cmd in OVERLAY_COMMANDS {
+        let result = invoke(&main, cmd);
+        assert!(denied(&result), "main không cần gọi {cmd}: {result:?}");
+    }
+    // Lệnh của plugin không được cấp cho cửa sổ nào: giao diện không tự đọc ghi file cài đặt, không
+    // tự bật khởi động cùng hệ thống, không tự mở URL hay file.
+    for cmd in [
+        "plugin:store|get",
+        "plugin:autostart|enable",
+        "plugin:opener|open_url",
+        "plugin:log|log",
+    ] {
+        for window in [&main, &overlay] {
+            let result = invoke(window, cmd);
+            assert!(denied(&result), "{} không được gọi {cmd}: {result:?}", window.label());
+        }
+    }
+    // Cửa sổ lạ (ví dụ trang ngoài mở trong webview mới) không có quyền nào.
+    let stranger = window(&app, "stranger");
+    assert!(denied(&invoke(&stranger, "get_settings")));
+}
+
+#[test]
+fn command_lists_match_build_rs_and_capabilities() {
+    let build_rs = include_str!("../build.rs");
+    let main_cap: Value = serde_json::from_str(include_str!("../capabilities/main.json")).unwrap();
+    let overlay_cap: Value = serde_json::from_str(include_str!("../capabilities/overlay.json")).unwrap();
+    let permissions = |cap: &Value| -> Vec<String> {
+        cap["permissions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p.as_str().unwrap().to_string())
+            .collect()
+    };
+    let allow = |cmd: &str| format!("allow-{}", cmd.replace('_', "-"));
+    for cmd in MAIN_COMMANDS.iter().chain(OVERLAY_COMMANDS) {
+        assert!(build_rs.contains(&format!("\"{cmd}\"")), "build.rs thiếu {cmd}");
+    }
+    let app_permissions = |cap: &Value| -> Vec<String> {
+        permissions(cap)
+            .into_iter()
+            .filter(|p| p.starts_with("allow-"))
+            .collect()
+    };
+    let mut expected_main: Vec<String> = MAIN_COMMANDS.iter().map(|c| allow(c)).collect();
+    let mut actual_main = app_permissions(&main_cap);
+    expected_main.sort();
+    actual_main.sort();
+    assert_eq!(actual_main, expected_main);
+    let expected_overlay: Vec<String> = OVERLAY_COMMANDS.iter().map(|c| allow(c)).collect();
+    assert_eq!(app_permissions(&overlay_cap), expected_overlay);
+    assert_eq!(
+        permissions(&overlay_cap)
+            .into_iter()
+            .filter(|p| !p.starts_with("allow-"))
+            .collect::<Vec<_>>(),
+        [
+            "core:event:allow-listen",
+            "core:event:allow-unlisten",
+            "core:window:allow-start-dragging"
+        ],
+        "overlay chỉ nghe sự kiện và kéo cửa sổ của chính nó"
+    );
+}
+```
+
+Thêm vào đầu khối `pub mod` của `src-tauri/src/lib.rs` (vẫn là code S5), cách khối `pub mod` một dòng trống:
+
+```rust
+#[cfg(test)]
+mod acl_tests;
+```
+
+- [ ] **Step 2: Chạy test, thấy lỗi**
+
+Run: `cargo test -p meeting-translator --lib acl_tests`
+Expected: FAIL:
+```text
+error[E0432]: unresolved import `crate::state`
+error[E0432]: unresolved import `crate::commands`
+```
+
+- [ ] **Step 3: Tạo `src-tauri/src/state.rs`**
+
+```rust
+//! Trạng thái dùng chung của app, quản lý bằng `tauri::Manager::manage`.
+
+use std::sync::Mutex;
+
+use serde::Serialize;
+
+use crate::hotkeys::HotkeyAction;
+use crate::settings::{Settings, UiLanguage};
+
+/// Trạng thái phiên dịch. Kế hoạch 02 thêm trạng thái (đang nạp model, lỗi…) khi nối pipeline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SessionStatus {
+    Idle,
+    Running,
+}
+
+/// Trạng thái lúc chạy, không lưu xuống đĩa. Cửa sổ chính nhận qua sự kiện `app://status`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppStatus {
+    pub session: SessionStatus,
+    pub overlay_visible: bool,
+    /// Phím tắt không đăng ký được với hệ điều hành, theo thứ tự của `HotkeyAction::ALL`.
+    pub hotkey_failures: Vec<HotkeyAction>,
+}
+
+/// Phần cài đặt mà thanh phụ đề cần. Cửa sổ `overlay` chỉ đọc được phần này (§10.2).
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OverlayView {
+    pub ui_language: UiLanguage,
+    pub font_size: u32,
+    pub lines: u32,
+    pub opacity: f64,
+    pub show_source: bool,
+    pub locked: bool,
+}
+
+impl OverlayView {
+    pub fn from_settings(settings: &Settings) -> Self {
+        let o = &settings.overlay;
+        Self {
+            ui_language: settings.ui_language,
+            font_size: o.font_size,
+            lines: o.lines,
+            opacity: o.opacity,
+            show_source: o.show_source,
+            locked: o.locked,
+        }
+    }
+}
+
+/// Thông tin cho màn hình Giới thiệu và các bước chỉ có trên một hệ điều hành.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfo {
+    pub name: String,
+    pub version: String,
+    pub identifier: String,
+    /// `macos` hoặc `windows`.
+    pub platform: &'static str,
+    /// App được hệ điều hành mở lúc đăng nhập (Đ19): chỉ nằm ở khay, chưa chạy tiến trình phụ.
+    pub launched_at_login: bool,
+}
+
+pub struct AppState {
+    settings: Mutex<Settings>,
+    /// Phiên bản schema ghi trong file lúc đọc (`settings::migrate::Loaded::file_version`).
+    file_version: u32,
+    status: Mutex<AppStatus>,
+    launched_at_login: bool,
+}
+
+impl AppState {
+    pub fn new(settings: Settings, file_version: u32, launched_at_login: bool) -> Self {
+        Self {
+            settings: Mutex::new(settings),
+            file_version,
+            status: Mutex::new(AppStatus {
+                session: SessionStatus::Idle,
+                overlay_visible: true,
+                hotkey_failures: Vec::new(),
+            }),
+            launched_at_login,
+        }
+    }
+
+    pub fn settings(&self) -> Settings {
+        self.settings.lock().unwrap().clone()
+    }
+
+    /// Thay cài đặt, trả về bản cũ.
+    pub fn replace_settings(&self, next: Settings) -> Settings {
+        std::mem::replace(&mut *self.settings.lock().unwrap(), next)
+    }
+
+    pub fn file_version(&self) -> u32 {
+        self.file_version
+    }
+
+    pub fn status(&self) -> AppStatus {
+        self.status.lock().unwrap().clone()
+    }
+
+    pub fn update_status<T>(&self, f: impl FnOnce(&mut AppStatus) -> T) -> T {
+        f(&mut self.status.lock().unwrap())
+    }
+
+    pub fn launched_at_login(&self) -> bool {
+        self.launched_at_login
+    }
+}
+```
+
+- [ ] **Step 4: Tạo `src-tauri/src/events.rs`** (QĐ6)
+
+```rust
+//! Sự kiện gửi sang giao diện. Tên sự kiện phải khớp `src/lib/ipc.ts`.
+//!
+//! Lưu ý bảo mật: trong Tauri 2, sự kiện không phải ranh giới quyền. Một listener JS đăng ký với
+//! đích `Any` nhận cả sự kiện gửi riêng cho cửa sổ khác. Vì vậy không gửi bí mật nào qua sự kiện
+//! (kế hoạch 06: không gửi token hay license key đầy đủ); `emit_to` chỉ để giảm việc thừa.
+
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, EventTarget, Runtime};
+
+use crate::overlay;
+use crate::settings::Settings;
+use crate::state::{AppStatus, OverlayView};
+use crate::window;
+
+pub const SETTINGS_CHANGED: &str = "settings://changed";
+pub const STATUS_CHANGED: &str = "app://status";
+pub const NAVIGATE: &str = "app://navigate";
+pub const OVERLAY_VIEW: &str = "overlay://view";
+/// Phụ đề (spec §6.6). Kế hoạch 02 phát sự kiện này từ pipeline; kế hoạch 01 chỉ phát phụ đề mẫu.
+pub const SUBTITLE_UPSERT: &str = "subtitle://upsert";
+
+/// Yêu cầu cửa sổ chính mở một màn hình, ví dụ khi bấm dòng báo lỗi phím tắt ở menu khay.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Navigate {
+    pub screen: &'static str,
+    pub settings_group: Option<&'static str>,
+}
+
+pub fn settings_changed<R: Runtime>(app: &AppHandle<R>, settings: &Settings) {
+    emit(app, window::MAIN, SETTINGS_CHANGED, settings);
+}
+
+pub fn status_changed<R: Runtime>(app: &AppHandle<R>, status: &AppStatus) {
+    emit(app, window::MAIN, STATUS_CHANGED, status);
+}
+
+pub fn overlay_view<R: Runtime>(app: &AppHandle<R>, view: &OverlayView) {
+    emit(app, overlay::LABEL, OVERLAY_VIEW, view);
+}
+
+pub fn navigate<R: Runtime>(app: &AppHandle<R>, target: Navigate) {
+    emit(app, window::MAIN, NAVIGATE, target);
+}
+
+fn emit<R: Runtime, S: Serialize + Clone>(app: &AppHandle<R>, label: &str, event: &str, payload: S) {
+    if let Err(e) = app.emit_to(EventTarget::webview_window(label), event, payload) {
+        log::warn!("không gửi được sự kiện {event}: {e}");
+    }
+}
+```
+
+- [ ] **Step 5: Tạo `src-tauri/src/commands.rs`.** Test ở cuối file kiểm mọi mã lỗi phía Rust đều có câu báo lỗi trong `src/i18n/en.ts` (Task 11).
+
+```rust
+//! Lệnh `invoke` của giao diện. Mỗi lệnh phải có trong ba chỗ, test `acl::tests` giữ chúng khớp nhau:
+//! 1. `handler()` bên dưới;
+//! 2. `build.rs` (app manifest, để lệnh đi qua ACL);
+//! 3. `capabilities/main.json` hoặc `capabilities/overlay.json` (quyền `allow-<tên-lệnh>`).
+//!
+//! Lệnh generic theo `R: Runtime` để test ACL chạy được với `MockRuntime`.
+//! Dữ liệu từ giao diện luôn được kiểm kiểu (serde) và phạm vi (`Settings::validate`) trước khi dùng.
+
+use serde::Serialize;
+use serde_json::Value;
+use tauri::{AppHandle, Runtime, State};
+
+use crate::actions;
+use crate::hotkeys::{HotkeyAction, HotkeyError};
+use crate::settings::{Invalid, Settings};
+use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
+
+/// Lỗi trả về giao diện. `code` là khóa để giao diện chọn câu báo lỗi (`error.<code>` trong i18n).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandError {
+    pub code: String,
+    pub field: Option<String>,
+    /// Chi tiết cho log và cho người hỗ trợ; không hiện nguyên văn trên giao diện.
+    pub message: String,
+}
+
+/// Mã lỗi ngoài lỗi cài đặt (`settings::Reason`) và lỗi phím tắt (`CommandError::hotkey`).
+pub const AUTOSTART_FAILED: &str = "autostartFailed";
+pub const OVERLAY_FAILED: &str = "overlayFailed";
+pub const OPEN_FAILED: &str = "openFailed";
+pub const UNSUPPORTED: &str = "unsupported";
+
+impl CommandError {
+    pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
+        Self {
+            code: code.into(),
+            field: field.map(Into::into),
+            message: message.into(),
+        }
+    }
+
+    pub fn hotkey(action: HotkeyAction, error: HotkeyError) -> Self {
+        let code = match error {
+            HotkeyError::Invalid => "hotkeyInvalid",
+            HotkeyError::NoModifier => "hotkeyNoModifier",
+            HotkeyError::Duplicate => "hotkeyDuplicate",
+            HotkeyError::RegisterFailed => "hotkeyRegisterFailed",
+        };
+        Self::new(code, Some(action.key()), error.to_string())
+    }
+}
+
+impl From<Invalid> for CommandError {
+    fn from(e: Invalid) -> Self {
+        let code = serde_json::to_value(e.reason)
+            .ok()
+            .and_then(|v| v.as_str().map(String::from))
+            .unwrap_or_default();
+        Self {
+            code,
+            field: Some(e.field.clone()),
+            message: e.to_string(),
+        }
+    }
+}
+
+#[tauri::command]
+pub fn get_settings(state: State<'_, AppState>) -> Settings {
+    state.settings()
+}
+
+#[tauri::command]
+pub fn update_settings<R: Runtime>(app: AppHandle<R>, patch: Value) -> Result<Settings, CommandError> {
+    actions::update_settings(&app, &patch)
+}
+
+#[tauri::command]
+pub fn set_hotkey<R: Runtime>(
+    app: AppHandle<R>,
+    action: HotkeyAction,
+    accelerator: String,
+) -> Result<Settings, CommandError> {
+    actions::set_hotkey(&app, action, &accelerator)
+}
+
+#[tauri::command]
+pub fn get_app_status(state: State<'_, AppState>) -> AppStatus {
+    state.status()
+}
+
+#[tauri::command]
+pub fn toggle_session<R: Runtime>(app: AppHandle<R>) -> AppStatus {
+    actions::toggle_session(&app)
+}
+
+#[tauri::command]
+pub fn set_overlay_visible<R: Runtime>(app: AppHandle<R>, visible: bool) -> Result<AppStatus, CommandError> {
+    actions::set_overlay_visible(&app, visible)
+}
+
+#[tauri::command]
+pub fn set_overlay_locked<R: Runtime>(app: AppHandle<R>, locked: bool) -> Result<Settings, CommandError> {
+    actions::set_overlay_locked(&app, locked)
+}
+
+#[tauri::command]
+pub fn get_app_info<R: Runtime>(app: AppHandle<R>, state: State<'_, AppState>) -> AppInfo {
+    AppInfo {
+        name: app.package_info().name.clone(),
+        version: app.package_info().version.to_string(),
+        identifier: app.config().identifier.clone(),
+        platform: if cfg!(target_os = "macos") { "macos" } else { "windows" },
+        launched_at_login: state.launched_at_login(),
+    }
+}
+
+#[tauri::command]
+pub fn open_log_dir<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    actions::open_log_dir(&app)
+}
+
+#[tauri::command]
+pub fn open_taskbar_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    actions::open_taskbar_settings(&app)
+}
+
+/// Lệnh duy nhất cửa sổ `overlay` gọi được, chỉ đọc (§10.2).
+#[tauri::command]
+pub fn get_overlay_view(state: State<'_, AppState>) -> OverlayView {
+    OverlayView::from_settings(&state.settings())
+}
+
+/// Lệnh của cửa sổ `main`.
+pub const MAIN_COMMANDS: &[&str] = &[
+    "get_settings",
+    "update_settings",
+    "set_hotkey",
+    "get_app_status",
+    "toggle_session",
+    "set_overlay_visible",
+    "set_overlay_locked",
+    "get_app_info",
+    "open_log_dir",
+    "open_taskbar_settings",
+];
+
+/// Lệnh của cửa sổ `overlay`.
+pub const OVERLAY_COMMANDS: &[&str] = &["get_overlay_view"];
+
+pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static {
+    tauri::generate_handler![
+        get_settings,
+        update_settings,
+        set_hotkey,
+        get_app_status,
+        toggle_session,
+        set_overlay_visible,
+        set_overlay_locked,
+        get_app_info,
+        open_log_dir,
+        open_taskbar_settings,
+        get_overlay_view,
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::Reason;
+
+    /// Mọi mã lỗi phía Rust có câu báo lỗi trong từ điển chuẩn của giao diện (`src/i18n/en.ts`).
+    #[test]
+    fn every_error_code_has_ui_text() {
+        let en = include_str!("../../src/i18n/en.ts");
+        let reasons = [
+            Reason::OutOfRange,
+            Reason::Empty,
+            Reason::Duplicate,
+            Reason::TooLong,
+            Reason::InvalidHotkey,
+            Reason::WrongType,
+            Reason::UnknownKey,
+            Reason::ReadOnly,
+            Reason::NotObject,
+        ];
+        // Không dùng `_`: thêm biến thể mà quên liệt kê ở trên thì không biên dịch được.
+        for reason in reasons {
+            match reason {
+                Reason::OutOfRange
+                | Reason::Empty
+                | Reason::Duplicate
+                | Reason::TooLong
+                | Reason::InvalidHotkey
+                | Reason::WrongType
+                | Reason::UnknownKey
+                | Reason::ReadOnly
+                | Reason::NotObject => {}
+            }
+        }
+        let mut codes: Vec<String> = reasons
+            .iter()
+            .map(|r| CommandError::from(Invalid::new("x", *r)).code)
+            .collect();
+        for error in [
+            HotkeyError::Invalid,
+            HotkeyError::NoModifier,
+            HotkeyError::Duplicate,
+            HotkeyError::RegisterFailed,
+        ] {
+            match error {
+                HotkeyError::Invalid
+                | HotkeyError::NoModifier
+                | HotkeyError::Duplicate
+                | HotkeyError::RegisterFailed => {}
+            }
+            codes.push(CommandError::hotkey(HotkeyAction::ToggleLock, error).code);
+        }
+        codes.extend([AUTOSTART_FAILED, OVERLAY_FAILED, OPEN_FAILED, UNSUPPORTED].map(String::from));
+        for code in codes {
+            assert!(
+                en.contains(&format!("\"error.{code}\":")),
+                "src/i18n/en.ts thiếu error.{code}"
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_setting_maps_to_reason_code_and_field() {
+        let e = CommandError::from(Invalid::new("overlay.lines", Reason::OutOfRange));
+        assert_eq!(
+            (e.code.as_str(), e.field.as_deref()),
+            ("outOfRange", Some("overlay.lines"))
+        );
+        let e = CommandError::hotkey(HotkeyAction::ToggleOverlay, HotkeyError::Duplicate);
+        assert_eq!(
+            (e.code.as_str(), e.field.as_deref()),
+            ("hotkeyDuplicate", Some("toggleOverlay"))
+        );
+    }
+}
+```
+
+- [ ] **Step 6: Tạo `src-tauri/src/actions.rs`**
+
+```rust
+//! Các việc dùng chung cho lệnh `invoke`, menu khay và phím tắt. Mỗi việc đổi trạng thái rồi báo
+//! lại cho giao diện, menu khay và thanh phụ đề, để ba nơi luôn khớp nhau.
+
+use serde_json::Value;
+use tauri::{AppHandle, Manager, Runtime};
+use tauri_plugin_autostart::ManagerExt as _;
+use tauri_plugin_opener::OpenerExt as _;
+
+use crate::commands::{self, CommandError};
+use crate::hotkeys::HotkeyAction;
+use crate::settings::{self, Settings, persist};
+use crate::state::{AppState, AppStatus, OverlayView, SessionStatus};
+use crate::{events, hotkey_registry, overlay, session_stub, tray, window};
+
+/// Lưu cài đặt mới rồi báo mọi nơi cần biết.
+fn commit_settings<R: Runtime>(app: &AppHandle<R>, next: Settings) -> Settings {
+    let state = app.state::<AppState>();
+    let previous = state.replace_settings(next.clone());
+    if let Err(e) = persist::save(app, &next, state.file_version()) {
+        log::error!("không lưu được cài đặt: {e}");
+    }
+    events::settings_changed(app, &next);
+    let view = OverlayView::from_settings(&next);
+    if view != OverlayView::from_settings(&previous) {
+        events::overlay_view(app, &view);
+    }
+    if previous.ui_language != next.ui_language || previous.overlay.locked != next.overlay.locked {
+        tray::refresh(app);
+    }
+    next
+}
+
+fn status_changed<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
+    let status = app.state::<AppState>().status();
+    events::status_changed(app, &status);
+    tray::refresh(app);
+    status
+}
+
+pub fn update_settings<R: Runtime>(app: &AppHandle<R>, patch: &Value) -> Result<Settings, CommandError> {
+    let current = app.state::<AppState>().settings();
+    let next = settings::patch::apply(&current, patch)?;
+    if next.launch_at_login != current.launch_at_login {
+        set_launch_at_login(app, next.launch_at_login)?;
+    }
+    Ok(commit_settings(app, next))
+}
+
+pub fn set_hotkey<R: Runtime>(
+    app: &AppHandle<R>,
+    action: HotkeyAction,
+    accelerator: &str,
+) -> Result<Settings, CommandError> {
+    let state = app.state::<AppState>();
+    let mut next = state.settings();
+    next.hotkeys = hotkey_registry::rebind(app, &next.hotkeys, action, accelerator)?;
+    state.update_status(|s| s.hotkey_failures.retain(|a| *a != action));
+    status_changed(app);
+    Ok(commit_settings(app, next))
+}
+
+pub fn toggle_session<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
+    match app.state::<AppState>().status().session {
+        SessionStatus::Idle => session_stub::start(app),
+        SessionStatus::Running => session_stub::stop(app),
+    }
+    status_changed(app)
+}
+
+pub fn set_overlay_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> Result<AppStatus, CommandError> {
+    overlay::set_visible(app, visible).map_err(|e| CommandError::new(commands::OVERLAY_FAILED, None, e.to_string()))?;
+    app.state::<AppState>().update_status(|s| s.overlay_visible = visible);
+    Ok(status_changed(app))
+}
+
+pub fn set_overlay_locked<R: Runtime>(app: &AppHandle<R>, locked: bool) -> Result<Settings, CommandError> {
+    overlay::set_locked(app, locked).map_err(|e| CommandError::new(commands::OVERLAY_FAILED, None, e.to_string()))?;
+    let mut next = app.state::<AppState>().settings();
+    next.overlay.locked = locked;
+    Ok(commit_settings(app, next))
+}
+
+/// Chạy việc của một phím tắt toàn cục hoặc một mục của menu khay.
+pub fn run_hotkey<R: Runtime>(app: &AppHandle<R>, action: HotkeyAction) {
+    let state = app.state::<AppState>();
+    let result = match action {
+        HotkeyAction::ToggleSession => {
+            toggle_session(app);
+            Ok(())
+        }
+        HotkeyAction::ToggleOverlay => set_overlay_visible(app, !state.status().overlay_visible).map(drop),
+        HotkeyAction::ToggleLock => set_overlay_locked(app, !state.settings().overlay.locked).map(drop),
+    };
+    if let Err(e) = result {
+        log::warn!("phím tắt {action:?} lỗi: {e:?}");
+    }
+}
+
+fn set_launch_at_login<R: Runtime>(app: &AppHandle<R>, enabled: bool) -> Result<(), CommandError> {
+    let autolaunch = app.autolaunch();
+    let result = if enabled {
+        autolaunch.enable()
+    } else {
+        autolaunch.disable()
+    };
+    result.map_err(|e| CommandError::new(commands::AUTOSTART_FAILED, Some("launchAtLogin"), e.to_string()))
+}
+
+/// Lúc khởi động: người dùng có thể đã tắt mục khởi động cùng hệ thống trong System Settings hay
+/// Task Manager, nên trạng thái thật của hệ điều hành là đúng. Trả về `true` nếu cài đặt phải sửa.
+pub fn sync_launch_at_login<R: Runtime>(app: &AppHandle<R>, settings: &mut Settings) -> bool {
+    match app.autolaunch().is_enabled() {
+        Ok(enabled) if enabled != settings.launch_at_login => {
+            settings.launch_at_login = enabled;
+            true
+        }
+        Ok(_) => false,
+        Err(e) => {
+            log::warn!("không đọc được trạng thái khởi động cùng hệ thống: {e}");
+            false
+        }
+    }
+}
+
+/// Mở thư mục log bằng trình quản lý file của hệ điều hành (Đ10), để người dùng tự gửi log khi cần hỗ trợ.
+pub fn open_log_dir<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    let failed = |e: String| CommandError::new(commands::OPEN_FAILED, None, e);
+    let dir = app.path().app_log_dir().map_err(|e| failed(e.to_string()))?;
+    std::fs::create_dir_all(&dir).map_err(|e| failed(e.to_string()))?;
+    app.opener()
+        .open_path(dir.to_string_lossy(), None::<&str>)
+        .map_err(|e| failed(e.to_string()))
+}
+
+/// Windows: mở trang cài đặt Taskbar để người dùng bật icon của app (§4.1, bước 8).
+pub fn open_taskbar_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    if cfg!(windows) {
+        app.opener()
+            .open_url("ms-settings:taskbar", None::<&str>)
+            .map_err(|e| CommandError::new(commands::OPEN_FAILED, None, e.to_string()))
+    } else {
+        Err(CommandError::new(commands::UNSUPPORTED, None, "chỉ có trên Windows"))
+    }
+}
+
+/// Thoát hẳn, chỉ gọi từ menu khay (§4.3). Kế hoạch 02 dừng phiên và tắt hai tiến trình phụ ở đây.
+pub fn quit<R: Runtime>(app: &AppHandle<R>) {
+    session_stub::stop(app);
+    overlay::remember_position(app);
+    log::info!("thoát theo yêu cầu từ menu khay");
+    app.exit(0);
+}
+
+/// Mở cửa sổ chính ở một màn hình, dùng cho các dòng báo lỗi ở menu khay.
+pub fn open_main_at<R: Runtime>(app: &AppHandle<R>, target: events::Navigate) {
+    window::show_main(app);
+    events::navigate(app, target);
+}
+```
+
+- [ ] **Step 7: Tạo `src-tauri/src/hotkey_registry.rs`**
+
+```rust
+//! Đăng ký ba phím tắt toàn cục với hệ điều hành qua `tauri-plugin-global-shortcut`.
+//!
+//! Trên Windows, phím tắt đã bị app khác giữ thì đăng ký thất bại, và app báo lỗi. Trên macOS, đăng
+//! ký gần như luôn thành công dù app khác đang dùng cùng tổ hợp, nên chỉ thử tay mới thấy trùng
+//! (ma trận S5, dòng 13; C5 của kế hoạch 00).
+
+use std::collections::HashMap;
+use std::sync::Mutex;
+
+use tauri::plugin::TauriPlugin;
+use tauri::{AppHandle, Manager, Runtime};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
+
+use crate::actions;
+use crate::commands::CommandError;
+use crate::hotkeys::{self, HotkeyAction, HotkeyError};
+use crate::settings::Hotkeys;
+
+/// Phím tắt nào đang ứng với việc nào, theo `Shortcut::id()`.
+#[derive(Default)]
+pub struct HotkeyRegistry(Mutex<HashMap<u32, HotkeyAction>>);
+
+impl HotkeyRegistry {
+    fn action(&self, id: u32) -> Option<HotkeyAction> {
+        self.0.lock().unwrap().get(&id).copied()
+    }
+
+    fn insert(&self, shortcut: &Shortcut, action: HotkeyAction) {
+        let mut map = self.0.lock().unwrap();
+        map.retain(|_, a| *a != action);
+        map.insert(shortcut.id(), action);
+    }
+
+    fn remove(&self, action: HotkeyAction) {
+        self.0.lock().unwrap().retain(|_, a| *a != action);
+    }
+
+    fn contains(&self, action: HotkeyAction) -> bool {
+        self.0.lock().unwrap().values().any(|a| *a == action)
+    }
+}
+
+pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
+    tauri_plugin_global_shortcut::Builder::new()
+        .with_handler(|app, shortcut, event| {
+            if event.state() != ShortcutState::Pressed {
+                return;
+            }
+            if let Some(action) = app.state::<HotkeyRegistry>().action(shortcut.id()) {
+                actions::run_hotkey(app, action);
+            }
+        })
+        .build()
+}
+
+/// Đăng ký cả ba phím tắt lúc khởi động. Trả về các việc không đăng ký được.
+pub fn register_all<R: Runtime>(app: &AppHandle<R>, hotkeys: &Hotkeys) -> Vec<HotkeyAction> {
+    let registry = app.state::<HotkeyRegistry>();
+    let mut failures = Vec::new();
+    for (action, accelerator) in hotkeys.bindings() {
+        let registered = hotkeys::parse(accelerator)
+            .ok()
+            .and_then(|(shortcut, _)| app.global_shortcut().register(shortcut).ok().map(|()| shortcut));
+        match registered {
+            Some(shortcut) => registry.insert(&shortcut, action),
+            None => {
+                log::warn!("không đăng ký được phím tắt {action:?} = {accelerator}");
+                failures.push(action);
+            }
+        }
+    }
+    failures
+}
+
+/// Đổi phím tắt của một việc. Không đăng ký được thì giữ phím cũ và báo lỗi.
+pub fn rebind<R: Runtime>(
+    app: &AppHandle<R>,
+    current: &Hotkeys,
+    action: HotkeyAction,
+    accelerator: &str,
+) -> Result<Hotkeys, CommandError> {
+    let (shortcut, canonical) = hotkeys::parse(accelerator).map_err(|e| CommandError::hotkey(action, e))?;
+    let mut next = current.clone();
+    next.set(action, canonical);
+    hotkeys::check_all(&next.bindings()).map_err(|(_, e)| CommandError::hotkey(action, e))?;
+    let registry = app.state::<HotkeyRegistry>();
+    if next == *current && registry.contains(action) {
+        return Ok(next);
+    }
+    let global = app.global_shortcut();
+    let old = hotkeys::parse(current.get(action)).ok().map(|(s, _)| s);
+    if let Some(old) = old.filter(|s| global.is_registered(*s)) {
+        let _ = global.unregister(old);
+    }
+    registry.remove(action);
+    match global.register(shortcut) {
+        Ok(()) => {
+            registry.insert(&shortcut, action);
+            Ok(next)
+        }
+        Err(e) => {
+            log::warn!("không đăng ký được phím tắt {action:?} = {accelerator}: {e}");
+            if let Some(old) = old.filter(|s| global.register(*s).is_ok()) {
+                registry.insert(&old, action);
+            }
+            Err(CommandError::hotkey(action, HotkeyError::RegisterFailed))
+        }
+    }
+}
+```
+
+- [ ] **Step 8: Icon khay tạm.** Tạo `scripts/make_tray_icon.py`:
+
+```python
+"""Tạo icon khay tạm cho macOS: `src-tauri/icons/tray-template.png`, 44×44 (22 pt ở màn hình @2x).
+
+Icon dạng template: chỉ dùng kênh alpha, màu đen; macOS tự đổi màu theo menu bar sáng hay tối.
+Hình: khung phụ đề bo góc với hai dòng chữ. Logo thật chưa chốt (Q1).
+
+Dùng:  python3 scripts/make_tray_icon.py
+Chỉ dùng thư viện chuẩn của Python.
+"""
+import struct
+import zlib
+
+SIZE = 44
+SUB = 4  # lấy mẫu 4×4 mỗi pixel để khử răng cưa
+
+
+def inside_round_rect(x, y, left, top, right, bottom, radius):
+    cx = min(max(x, left + radius), right - radius)
+    cy = min(max(y, top + radius), bottom - radius)
+    return (x - cx) ** 2 + (y - cy) ** 2 <= radius**2 and left <= x <= right and top <= y <= bottom
+
+
+def covered(x, y):
+    # Viền khung: phần giữa hai hình chữ nhật bo góc.
+    outer = inside_round_rect(x, y, 3, 7, 41, 37, 7)
+    inner = inside_round_rect(x, y, 6.5, 10.5, 37.5, 33.5, 4)
+    if outer and not inner:
+        return True
+    # Hai dòng chữ.
+    return inside_round_rect(x, y, 11, 16, 33, 19.5, 1.75) or inside_round_rect(x, y, 11, 24.5, 27, 28, 1.75)
+
+
+def chunk(tag, data):
+    crc = zlib.crc32(tag + data) & 0xFFFFFFFF
+    return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", crc)
+
+
+def main():
+    rows = []
+    for py in range(SIZE):
+        row = bytearray([0])  # bộ lọc "None" cho mỗi hàng
+        for px in range(SIZE):
+            hits = sum(
+                covered(px + (i + 0.5) / SUB, py + (j + 0.5) / SUB) for i in range(SUB) for j in range(SUB)
+            )
+            row += bytes((0, 0, 0, round(255 * hits / (SUB * SUB))))
+        rows.append(bytes(row))
+    header = struct.pack(">IIBBBBB", SIZE, SIZE, 8, 6, 0, 0, 0)  # 8 bit mỗi kênh, RGBA
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(b"".join(rows), 9))
+           + chunk(b"IEND", b""))
+    with open("src-tauri/icons/tray-template.png", "wb") as f:
+        f.write(png)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Run: `python3 scripts/make_tray_icon.py && file src-tauri/icons/tray-template.png`
+Expected: `src-tauri/icons/tray-template.png: PNG image data, 44 x 44, 8-bit/color RGBA, non-interlaced`. Mở file bằng Preview: khung phụ đề bo góc màu đen với hai dòng chữ, nền trong suốt.
+
+- [ ] **Step 9: Tạo `src-tauri/src/tray.rs`** (QĐ12, QĐ17)
+
+```rust
+//! Icon ở khay hệ thống (menu bar trên Mac) và menu của nó (F10, spec §4.2, §4.3).
+//! Menu dựng lại mỗi khi trạng thái hay ngôn ngữ giao diện đổi, nên chữ luôn theo ngôn ngữ đang chọn.
+
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::TrayIconBuilder;
+use tauri::{AppHandle, Manager, Runtime};
+
+use crate::hotkeys::HotkeyAction;
+use crate::i18n::{self, Strings};
+use crate::state::{AppState, SessionStatus};
+use crate::{actions, events, window};
+
+pub const TRAY_ID: &str = "main";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TrayItem {
+    HotkeyWarning,
+    Session,
+    Overlay,
+    Lock,
+    OpenMain,
+    Quit,
+}
+
+impl TrayItem {
+    const ALL: [TrayItem; 6] = [
+        Self::HotkeyWarning,
+        Self::Session,
+        Self::Overlay,
+        Self::Lock,
+        Self::OpenMain,
+        Self::Quit,
+    ];
+
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::HotkeyWarning => "hotkey-warning",
+            Self::Session => "session",
+            Self::Overlay => "overlay-visible",
+            Self::Lock => "overlay-lock",
+            Self::OpenMain => "open-main",
+            Self::Quit => "quit",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|item| item.id() == id)
+    }
+}
+
+/// Những gì menu khay cần biết.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TrayModel {
+    pub running: bool,
+    pub overlay_visible: bool,
+    pub locked: bool,
+    pub hotkeys_failed: bool,
+}
+
+/// Các dòng của menu theo thứ tự; `None` là đường kẻ ngang.
+pub fn menu_lines(strings: &Strings, model: TrayModel) -> Vec<Option<(TrayItem, &'static str)>> {
+    let mut lines = Vec::new();
+    if model.hotkeys_failed {
+        lines.push(Some((TrayItem::HotkeyWarning, strings.tray_hotkey_failed)));
+        lines.push(None);
+    }
+    lines.push(Some((
+        TrayItem::Session,
+        if model.running {
+            strings.tray_stop
+        } else {
+            strings.tray_start
+        },
+    )));
+    let overlay = if model.overlay_visible {
+        strings.tray_hide_overlay
+    } else {
+        strings.tray_show_overlay
+    };
+    lines.push(Some((TrayItem::Overlay, overlay)));
+    let lock = if model.locked {
+        strings.tray_unlock_overlay
+    } else {
+        strings.tray_lock_overlay
+    };
+    lines.push(Some((TrayItem::Lock, lock)));
+    lines.push(None);
+    lines.push(Some((TrayItem::OpenMain, strings.tray_open_main)));
+    lines.push(None);
+    lines.push(Some((TrayItem::Quit, strings.tray_quit)));
+    lines
+}
+
+fn model<R: Runtime>(app: &AppHandle<R>) -> (TrayModel, &'static Strings) {
+    let state = app.state::<AppState>();
+    let settings = state.settings();
+    let status = state.status();
+    let model = TrayModel {
+        running: status.session == SessionStatus::Running,
+        overlay_visible: status.overlay_visible,
+        locked: settings.overlay.locked,
+        hotkeys_failed: !status.hotkey_failures.is_empty(),
+    };
+    (model, i18n::strings(settings.ui_language))
+}
+
+fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String)> {
+    let (model, strings) = model(app);
+    let menu = Menu::new(app)?;
+    for line in menu_lines(strings, model) {
+        match line {
+            Some((item, text)) => menu.append(&MenuItem::with_id(app, item.id(), text, true, None::<&str>)?)?,
+            None => menu.append(&PredefinedMenuItem::separator(app)?)?,
+        }
+    }
+    Ok((menu, strings.tooltip(&app.package_info().name, model.running)))
+}
+
+pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let (menu, tooltip) = build_menu(app)?;
+    let builder = TrayIconBuilder::with_id(TRAY_ID)
+        .menu(&menu)
+        .tooltip(tooltip)
+        .on_menu_event(|app, event| on_menu_event(app, event.id().as_ref()));
+    // macOS: icon đơn sắc dạng template, hệ thống tự đổi màu theo menu bar sáng hay tối; bấm chuột
+    // trái mở menu như mọi icon menu bar. Windows: icon màu của app; bấm chuột trái mở cửa sổ chính,
+    // chuột phải mở menu.
+    #[cfg(target_os = "macos")]
+    let builder = builder
+        .icon(tauri::include_image!("icons/tray-template.png"))
+        .icon_as_template(true);
+    #[cfg(not(target_os = "macos"))]
+    let builder = {
+        use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
+        let builder = builder
+            .show_menu_on_left_click(false)
+            .on_tray_icon_event(|tray, event| {
+                if let TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    ..
+                } = event
+                {
+                    window::show_main(tray.app_handle());
+                }
+            });
+        match app.default_window_icon() {
+            Some(icon) => builder.icon(icon.clone()),
+            None => builder,
+        }
+    };
+    builder.build(app)?;
+    Ok(())
+}
+
+/// Dựng lại menu và chú thích theo trạng thái hiện tại.
+pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
+    let Some(tray) = app.tray_by_id(TRAY_ID) else { return };
+    match build_menu(app) {
+        Ok((menu, tooltip)) => {
+            let _ = tray.set_menu(Some(menu));
+            let _ = tray.set_tooltip(Some(tooltip));
+        }
+        Err(e) => log::warn!("không dựng lại được menu khay: {e}"),
+    }
+}
+
+fn on_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
+    match TrayItem::from_id(id) {
+        Some(TrayItem::HotkeyWarning) => actions::open_main_at(
+            app,
+            events::Navigate {
+                screen: "settings",
+                settings_group: Some("hotkeys"),
+            },
+        ),
+        Some(TrayItem::Session) => actions::run_hotkey(app, HotkeyAction::ToggleSession),
+        Some(TrayItem::Overlay) => actions::run_hotkey(app, HotkeyAction::ToggleOverlay),
+        Some(TrayItem::Lock) => actions::run_hotkey(app, HotkeyAction::ToggleLock),
+        Some(TrayItem::OpenMain) => window::show_main(app),
+        Some(TrayItem::Quit) => actions::quit(app),
+        None => log::warn!("mục menu khay lạ: {id}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn texts(lines: &[Option<(TrayItem, &'static str)>]) -> Vec<&'static str> {
+        lines.iter().map(|l| l.map_or("---", |(_, text)| text)).collect()
+    }
+
+    #[test]
+    fn idle_menu_in_vietnamese() {
+        let model = TrayModel {
+            running: false,
+            overlay_visible: true,
+            locked: false,
+            hotkeys_failed: false,
+        };
+        assert_eq!(
+            texts(&menu_lines(&i18n::VI, model)),
+            [
+                "Bắt đầu dịch",
+                "Ẩn phụ đề",
+                "Khóa phụ đề (click xuyên qua)",
+                "---",
+                "Mở cửa sổ chính",
+                "---",
+                "Thoát"
+            ]
+        );
+    }
+
+    #[test]
+    fn labels_follow_state_in_english() {
+        let model = TrayModel {
+            running: true,
+            overlay_visible: false,
+            locked: true,
+            hotkeys_failed: true,
+        };
+        assert_eq!(
+            texts(&menu_lines(&i18n::EN, model)),
+            [
+                "Some shortcuts could not be registered",
+                "---",
+                "Stop translating",
+                "Show subtitles",
+                "Unlock subtitles",
+                "---",
+                "Open main window",
+                "---",
+                "Quit"
+            ]
+        );
+    }
+
+    #[test]
+    fn item_ids_roundtrip() {
+        for item in TrayItem::ALL {
+            assert_eq!(TrayItem::from_id(item.id()), Some(item));
+        }
+        assert_eq!(TrayItem::from_id("khac"), None);
+    }
+}
+```
+
+- [ ] **Step 10: Tạo `src-tauri/src/window.rs`** (QĐ7, QĐ15)
+
+```rust
+//! Cửa sổ chính: bấm X chỉ ẩn xuống khay (spec §4.3); icon ở Dock theo cửa sổ chính (§4.4).
+
+use tauri::{AppHandle, Manager, Runtime, Window, WindowEvent};
+
+use crate::overlay;
+
+pub const MAIN: &str = "main";
+
+/// Hiện cửa sổ chính. Trên Mac, app hiện icon ở Dock (activation policy `regular`).
+/// Kế hoạch 02 chạy hai tiến trình phụ khi cửa sổ chính mở (§5), từ chỗ gọi hàm này.
+pub fn show_main<R: Runtime>(app: &AppHandle<R>) {
+    #[cfg(target_os = "macos")]
+    if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
+        log::warn!("không đổi được activation policy: {e}");
+    }
+    if let Some(window) = app.get_webview_window(MAIN) {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+/// Ẩn cửa sổ chính xuống khay. Trên Mac, app bỏ icon ở Dock (activation policy `accessory`).
+pub fn hide_main<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window(MAIN) {
+        let _ = window.hide();
+    }
+    #[cfg(target_os = "macos")]
+    if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Accessory) {
+        log::warn!("không đổi được activation policy: {e}");
+    }
+}
+
+pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
+    match (window.label(), event) {
+        // X, ⌘W, Alt+F4: chỉ ẩn. App, phím tắt và phiên dịch vẫn chạy.
+        (MAIN, WindowEvent::CloseRequested { api, .. }) => {
+            api.prevent_close();
+            hide_main(window.app_handle());
+        }
+        (overlay::LABEL, WindowEvent::Moved(_) | WindowEvent::Resized(_)) => {
+            overlay::remember_position(window.app_handle());
+        }
+        _ => {}
+    }
+}
+
+/// Menu của app trên Mac: như menu mặc định của Tauri nhưng không có mục Quit, nên `⌘Q` không làm
+/// gì (§4.3). Quit ở Dock và yêu cầu thoát của hệ thống do `quit_guard` xử lý.
+#[cfg(target_os = "macos")]
+pub fn app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<tauri::menu::Menu<R>> {
+    use tauri::menu::{AboutMetadata, Menu, PredefinedMenuItem as P, Submenu};
+    let name = app.package_info().name.clone();
+    let about = AboutMetadata {
+        name: Some(name.clone()),
+        version: Some(app.package_info().version.to_string()),
+        ..Default::default()
+    };
+    Menu::with_items(
+        app,
+        &[
+            &Submenu::with_items(
+                app,
+                &name,
+                true,
+                &[
+                    &P::about(app, None, Some(about))?,
+                    &P::separator(app)?,
+                    &P::services(app, None)?,
+                    &P::separator(app)?,
+                    &P::hide(app, None)?,
+                    &P::hide_others(app, None)?,
+                    &P::show_all(app, None)?,
+                ],
+            )?,
+            &Submenu::with_items(
+                app,
+                "Edit",
+                true,
+                &[
+                    &P::undo(app, None)?,
+                    &P::redo(app, None)?,
+                    &P::separator(app)?,
+                    &P::cut(app, None)?,
+                    &P::copy(app, None)?,
+                    &P::paste(app, None)?,
+                    &P::select_all(app, None)?,
+                ],
+            )?,
+            &Submenu::with_items(
+                app,
+                "Window",
+                true,
+                &[
+                    &P::minimize(app, None)?,
+                    &P::maximize(app, None)?,
+                    &P::separator(app)?,
+                    &P::close_window(app, None)?,
+                ],
+            )?,
+        ],
+    )
+}
+```
+
+- [ ] **Step 11: Thanh phụ đề.** Thay toàn bộ `src-tauri/src/overlay/mod.rs`:
+
+```rust
+//! Thanh phụ đề (spec §4.4): cửa sổ `overlay` không viền, trong suốt, luôn nổi trên cùng, không lấy
+//! focus của app họp. Cách làm từ spike S5 (kế hoạch 0-05):
+//! - macOS (`macos.rs`): NSPanel non-activating qua `tauri-nspanel`;
+//! - Windows (`windows.rs`): cửa sổ topmost, `skip_taskbar`, `focusable(false)`.
+//!
+//! Phần chung ở đây: ẩn/hiện, khóa (click xuyên qua), nhớ vị trí theo từng màn hình.
+
+pub mod placement;
+
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(target_os = "macos")]
+use macos as platform;
+#[cfg(not(target_os = "macos"))]
+mod windows;
+#[cfg(not(target_os = "macos"))]
+use windows as platform;
+
+use tauri::{AppHandle, Manager, Monitor, PhysicalPosition, PhysicalSize, Runtime};
+
+use crate::i18n;
+use crate::settings::{MAX_OVERLAY_POSITIONS, persist};
+use crate::state::AppState;
+use placement::Screen;
+
+pub const LABEL: &str = "overlay";
+
+/// Tạo thanh phụ đề, đặt vào vị trí đã nhớ, áp chế độ khóa đã lưu, rồi hiện.
+pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let settings = app.state::<AppState>().settings();
+    platform::create(app, i18n::strings(settings.ui_language).overlay_title)?;
+    restore_position(app);
+    platform::set_ignore_mouse(app, settings.overlay.locked)?;
+    platform::set_visible(app, true)
+}
+
+pub fn set_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> tauri::Result<()> {
+    platform::set_visible(app, visible)
+}
+
+/// Chế độ khóa: cho click xuyên qua thanh phụ đề (§4.4).
+pub fn set_locked<R: Runtime>(app: &AppHandle<R>, locked: bool) -> tauri::Result<()> {
+    platform::set_ignore_mouse(app, locked)
+}
+
+fn screen_of(monitor: &Monitor) -> Screen {
+    let area = monitor.work_area();
+    Screen {
+        key: placement::screen_key(
+            monitor.name().map(String::as_str),
+            monitor.size().width,
+            monitor.size().height,
+        ),
+        x: area.position.x,
+        y: area.position.y,
+        width: area.size.width,
+        height: area.size.height,
+        scale: monitor.scale_factor(),
+    }
+}
+
+/// Đặt thanh phụ đề vào vị trí đã nhớ (hoặc vị trí mặc định) trên màn hình phù hợp.
+pub fn restore_position<R: Runtime>(app: &AppHandle<R>) {
+    let Some(window) = app.get_webview_window(LABEL) else {
+        return;
+    };
+    let screens: Vec<Screen> = app
+        .available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .map(screen_of)
+        .collect();
+    let primary = app.primary_monitor().ok().flatten().map(|m| screen_of(&m).key);
+    let settings = app.state::<AppState>().settings();
+    let Some(p) = placement::place(
+        &settings.overlay.positions,
+        settings.overlay.last_monitor.as_deref(),
+        &screens,
+        primary.as_deref(),
+    ) else {
+        log::warn!("không thấy màn hình nào để đặt thanh phụ đề");
+        return;
+    };
+    let _ = window.set_size(PhysicalSize::new(p.width, p.height));
+    let _ = window.set_position(PhysicalPosition::new(p.x, p.y));
+}
+
+/// Nhớ vị trí hiện tại của thanh phụ đề cho màn hình nó đang nằm (gọi khi cửa sổ di chuyển hay đổi
+/// kích thước, và trước khi thoát).
+pub fn remember_position<R: Runtime>(app: &AppHandle<R>) {
+    let Some(window) = app.get_webview_window(LABEL) else {
+        return;
+    };
+    let (Ok(position), Ok(size), Ok(Some(monitor))) =
+        (window.outer_position(), window.outer_size(), window.current_monitor())
+    else {
+        return;
+    };
+    let screen = screen_of(&monitor);
+    let rect = placement::to_relative(&screen, position.x, position.y, size.width, size.height);
+    let state = app.state::<AppState>();
+    let mut next = state.settings();
+    if next.overlay.positions.get(&screen.key) == Some(&rect)
+        && next.overlay.last_monitor.as_deref() == Some(&screen.key)
+    {
+        return;
+    }
+    if !next.overlay.positions.contains_key(&screen.key) && next.overlay.positions.len() >= MAX_OVERLAY_POSITIONS {
+        // Bỏ một màn hình cũ khác màn hình gần nhất, để file cài đặt không phình ra.
+        let last = next.overlay.last_monitor.clone();
+        if let Some(old) = next
+            .overlay
+            .positions
+            .keys()
+            .find(|k| Some(*k) != last.as_ref())
+            .cloned()
+        {
+            next.overlay.positions.remove(&old);
+        }
+    }
+    next.overlay.positions.insert(screen.key.clone(), rect);
+    next.overlay.last_monitor = Some(screen.key);
+    if next.validate().is_err() {
+        // Cửa sổ bị thu quá nhỏ hay nằm ngoài phạm vi: không lưu.
+        return;
+    }
+    state.replace_settings(next.clone());
+    if let Err(e) = persist::save_overlay(app, &next) {
+        log::warn!("không lưu được vị trí thanh phụ đề: {e}");
+    }
+}
+```
+
+Tạo `src-tauri/src/overlay/macos.rs` (code tạo NSPanel của S5, không đổi cờ nào):
+
+```rust
+//! Thanh phụ đề trên macOS: NSPanel non-activating, mức `Status`, có mặt ở mọi Space kể cả Space
+//! toàn màn hình của app khác (spec §4.4). Giữ nguyên cách tạo của spike S5 (kế hoạch 0-05, Task 2):
+//! - panel tạo từ cửa sổ không viền, trong suốt, không focus, `accept_first_mouse`;
+//! - bit NonactivatingPanel được cộng thêm bằng `add_style_mask`; `StyleMask::borderless()` gán đè
+//!   cả mask nên không được dùng, nếu không panel sẽ lấy focus của app họp.
+
+use tauri::{AppHandle, Runtime, WebviewUrl};
+use tauri_nspanel::{CollectionBehavior, ManagerExt, PanelBuilder, PanelLevel, StyleMask};
+
+use super::LABEL;
+
+tauri_nspanel::tauri_panel! {
+    panel!(OverlayPanel {
+        config: {
+            can_become_key_window: false,
+            is_floating_panel: true
+        }
+    })
+}
+
+pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> {
+    PanelBuilder::<_, OverlayPanel<R>>::new(app, LABEL)
+        .url(WebviewUrl::App("overlay.html".into()))
+        .title(title)
+        .size(tauri::Size::Logical(tauri::LogicalSize::new(900.0, 160.0)))
+        .with_window(|w| {
+            w.decorations(false)
+                .transparent(true)
+                .focused(false)
+                .visible(false)
+                .accept_first_mouse(true)
+        })
+        .level(PanelLevel::Status)
+        .add_style_mask(StyleMask::empty().nonactivating_panel())
+        .collection_behavior(
+            CollectionBehavior::new()
+                .can_join_all_spaces()
+                .full_screen_auxiliary()
+                .stationary(),
+        )
+        .transparent(true)
+        .has_shadow(false)
+        .hides_on_deactivate(false)
+        .no_activate(true)
+        .build()?;
+    Ok(())
+}
+
+pub fn set_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> tauri::Result<()> {
+    if let Ok(panel) = app.get_webview_panel(LABEL) {
+        if visible { panel.show() } else { panel.hide() }
+    }
+    Ok(())
+}
+
+pub fn set_ignore_mouse<R: Runtime>(app: &AppHandle<R>, ignore: bool) -> tauri::Result<()> {
+    if let Ok(panel) = app.get_webview_panel(LABEL) {
+        panel.set_ignores_mouse_events(ignore);
+    }
+    Ok(())
+}
+```
+
+Tạo `src-tauri/src/overlay/windows.rs`:
+
+```rust
+//! Thanh phụ đề trên Windows: cửa sổ không viền, trong suốt, topmost, không có nút ở taskbar, không
+//! lấy focus (`focusable(false)` đặt `WS_EX_NOACTIVATE`). Giữ nguyên cách tạo của spike S5.
+//! Cần Windows để thử (ma trận S5 trên Windows, C5 của kế hoạch 00).
+
+use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
+
+use super::LABEL;
+
+pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> {
+    WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("overlay.html".into()))
+        .title(title)
+        .inner_size(900.0, 160.0)
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .shadow(false)
+        .focused(false)
+        .focusable(false)
+        .visible(false)
+        .build()?;
+    Ok(())
+}
+
+pub fn set_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> tauri::Result<()> {
+    match app.get_webview_window(LABEL) {
+        Some(window) if visible => window.show(),
+        Some(window) => window.hide(),
+        None => Ok(()),
+    }
+}
+
+pub fn set_ignore_mouse<R: Runtime>(app: &AppHandle<R>, ignore: bool) -> tauri::Result<()> {
+    match app.get_webview_window(LABEL) {
+        Some(window) => window.set_ignore_cursor_events(ignore),
+        None => Ok(()),
+    }
+}
+```
+
+- [ ] **Step 12: Tạo `src-tauri/src/session_stub.rs`** (QĐ11)
+
+```rust
+//! Phiên dịch tạm của kế hoạch 01: Bắt đầu/Dừng chỉ đổi trạng thái, và trong lúc "đang dịch" thì
+//! phát phụ đề mẫu mỗi 1,5 giây (như spike S5) để thử thanh phụ đề bằng tay.
+//! Kế hoạch 02 thay file này bằng `session.rs`, nối `audio-capture` và `pipeline` (§12).
+
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
+
+use serde_json::json;
+use tauri::{AppHandle, Emitter, Manager, Runtime};
+
+use crate::events::SUBTITLE_UPSERT;
+use crate::state::{AppState, SessionStatus};
+
+const SAMPLES: &[(&str, &str, &str)] = &[
+    (
+        "en",
+        "Good morning everyone, thanks for joining.",
+        "Chào buổi sáng mọi người, cảm ơn đã tham gia.",
+    ),
+    (
+        "en",
+        "Let's review the quarterly numbers first.",
+        "Trước hết hãy xem lại số liệu quý.",
+    ),
+    (
+        "zh",
+        "我们下周需要完成测试。",
+        "Tuần sau chúng ta cần hoàn thành việc kiểm thử.",
+    ),
+    (
+        "ja",
+        "来月の予算を確認させてください。",
+        "Cho tôi xác nhận lại ngân sách tháng tới.",
+    ),
+];
+
+/// Tăng mỗi lần bắt đầu hay dừng; luồng phát mẫu tự dừng khi thấy số này đổi.
+static GENERATION: AtomicU64 = AtomicU64::new(0);
+
+pub fn start<R: Runtime>(app: &AppHandle<R>) {
+    app.state::<AppState>()
+        .update_status(|s| s.session = SessionStatus::Running);
+    let generation = GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+    let app = app.clone();
+    std::thread::spawn(move || {
+        for n in 0u64.. {
+            std::thread::sleep(Duration::from_millis(1500));
+            if GENERATION.load(Ordering::SeqCst) != generation {
+                break;
+            }
+            let (lang, src, tgt) = SAMPLES[n as usize % SAMPLES.len()];
+            let start_ms = n * 1500;
+            let payload = json!({
+                "id": n,
+                "start_ms": start_ms,
+                "end_ms": start_ms + 1200,
+                "src_lang": lang,
+                "src_text": src,
+                "tgt_text": tgt,
+                "status": "done",
+                "provisional": n % 4 == 3,
+            });
+            let _ = app.emit(SUBTITLE_UPSERT, payload);
+        }
+    });
+}
+
+pub fn stop<R: Runtime>(app: &AppHandle<R>) {
+    GENERATION.fetch_add(1, Ordering::SeqCst);
+    app.state::<AppState>()
+        .update_status(|s| s.session = SessionStatus::Idle);
+}
+```
+
+- [ ] **Step 13: Tạo `src-tauri/src/logging.rs`** (QĐ14)
+
+```rust
+//! Log của app (Đ10 của kế hoạch 00): ghi ra file trên máy, xoay vòng, không gửi đi đâu (§10.1).
+//!
+//! - macOS: `~/Library/Logs/<bundle-id>/app.log`; Windows: `%LOCALAPPDATA%\<bundle-id>\logs\app.log`.
+//! - Mỗi file tối đa 1 MB, giữ 5 file cũ.
+//! - Log không bao giờ chứa âm thanh, nội dung chép lời, license key đầy đủ, token hay khóa API (§10.2).
+//! - Giao diện không ghi được log (capabilities không cấp `log:*`).
+
+use tauri::Runtime;
+use tauri::plugin::TauriPlugin;
+use tauri_plugin_log::{RotationStrategy, Target, TargetKind, TimezoneStrategy};
+
+pub const MAX_FILE_BYTES: u128 = 1_000_000;
+pub const KEEP_FILES: usize = 5;
+
+pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
+    let level = if cfg!(debug_assertions) {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Info
+    };
+    tauri_plugin_log::Builder::new()
+        .clear_targets()
+        .target(Target::new(TargetKind::LogDir {
+            file_name: Some("app".into()),
+        }))
+        .target(Target::new(TargetKind::Stdout))
+        .level(level)
+        // Thư viện cửa sổ và webview ghi rất nhiều ở mức debug.
+        .level_for("tao", log::LevelFilter::Warn)
+        .level_for("wry", log::LevelFilter::Warn)
+        .max_file_size(MAX_FILE_BYTES)
+        .rotation_strategy(RotationStrategy::KeepSome(KEEP_FILES))
+        .timezone_strategy(TimezoneStrategy::UseLocal)
+        .build()
+}
+```
+
+- [ ] **Step 14: Thay toàn bộ `src-tauri/src/lib.rs`**
+
+```rust
+//! Lõi Rust của app Meeting Translator (spec §5, §12). `main.rs` chỉ gọi `run()`.
+//!
+//! Kế hoạch 01 dựng khung: cài đặt, i18n phía Rust, khay, phím tắt, hai cửa sổ, quyền, kho khóa, log.
+//! Kế hoạch 02 nối `audio-capture` và `pipeline` vào, thay `session_stub.rs` bằng `session.rs`.
+
+pub mod actions;
+pub mod commands;
+pub mod events;
+pub mod hotkey_registry;
+pub mod hotkeys;
+pub mod i18n;
+pub mod logging;
+pub mod overlay;
+pub mod quit_guard;
+pub mod security;
+pub mod session_stub;
+pub mod settings;
+pub mod state;
+pub mod tray;
+pub mod window;
+
+#[cfg(test)]
+mod acl_tests;
+
+use tauri::{App, AppHandle, Manager, RunEvent};
+
+use crate::hotkey_registry::HotkeyRegistry;
+use crate::settings::{Settings, persist};
+use crate::state::AppState;
+
+/// Tham số hệ điều hành truyền khi mở app lúc đăng nhập (tauri-plugin-autostart).
+pub const AUTOSTART_ARG: &str = "--autostart";
+
+pub fn run() {
+    // single-instance phải là plugin đầu tiên: bản thứ hai thoát ngay, bản đang chạy hiện cửa sổ chính (Q7).
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            window::show_main(app)
+        }))
+        .plugin(logging::plugin())
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_autostart::Builder::new().arg(AUTOSTART_ARG).build())
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
+        .plugin(hotkey_registry::plugin());
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init()).menu(window::app_menu);
+    builder
+        .invoke_handler(commands::handler())
+        .on_window_event(window::on_window_event)
+        .setup(setup)
+        .build(tauri::generate_context!())
+        .expect("không dựng được app")
+        .run(on_run_event);
+}
+
+fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
+    let handle = app.handle().clone();
+    let launched_at_login = std::env::args().any(|arg| arg == AUTOSTART_ARG);
+    log::info!(
+        "khởi động {} {}, lúc đăng nhập: {launched_at_login}",
+        handle.package_info().name,
+        handle.package_info().version
+    );
+
+    let loaded = persist::load(&handle, Settings::defaults(i18n::system_ui_language()))?;
+    if !loaded.rejected.is_empty() {
+        log::warn!(
+            "bỏ các khóa cài đặt không hợp lệ, dùng giá trị mặc định: {:?}",
+            loaded.rejected
+        );
+    }
+    let needs_save = loaded.needs_save();
+    let mut settings = loaded.settings;
+    let launch_changed = actions::sync_launch_at_login(&handle, &mut settings);
+    app.manage(AppState::new(settings.clone(), loaded.file_version, launched_at_login));
+    app.manage(HotkeyRegistry::default());
+    if needs_save || launch_changed {
+        persist::save(&handle, &settings, loaded.file_version)?;
+    }
+
+    #[cfg(target_os = "macos")]
+    quit_guard::install();
+
+    overlay::create(&handle)?;
+    let failures = hotkey_registry::register_all(&handle, &settings.hotkeys);
+    handle
+        .state::<AppState>()
+        .update_status(|s| s.hotkey_failures = failures);
+    tray::create(&handle)?;
+
+    // Đ19: mở lúc đăng nhập thì chỉ nằm ở khay; người dùng tự mở app thì hiện cửa sổ chính.
+    if launched_at_login {
+        window::hide_main(&handle)
+    } else {
+        window::show_main(&handle)
+    }
+    Ok(())
+}
+
+// `app` chỉ dùng trên macOS.
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
+fn on_run_event(app: &AppHandle, event: RunEvent) {
+    match event {
+        // Đóng hết cửa sổ không làm app thoát; chỉ Thoát ở menu khay mới thoát (`AppHandle::exit`,
+        // lúc đó `code` có giá trị).
+        RunEvent::ExitRequested { code: None, api, .. } => api.prevent_exit(),
+        // Bấm icon ở Dock khi cửa sổ chính đang ẩn.
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { .. } => window::show_main(app),
+        _ => {}
+    }
+}
+```
+
+- [ ] **Step 15: App manifest, quyền của từng cửa sổ, cấu hình**
+
+Thay toàn bộ `src-tauri/build.rs`:
+
+```rust
+fn main() {
+    // App manifest: lệnh của app cũng đi qua ACL (spec §10.2). Cửa sổ nào không được cấp
+    // `allow-<tên-lệnh>` trong capabilities thì không gọi được. Danh sách phải khớp
+    // `src/commands.rs` (test `acl_tests::command_lists_match_build_rs_and_capabilities`).
+    tauri_build::try_build(
+        tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&[
+            "get_settings",
+            "update_settings",
+            "set_hotkey",
+            "get_app_status",
+            "toggle_session",
+            "set_overlay_visible",
+            "set_overlay_locked",
+            "get_app_info",
+            "open_log_dir",
+            "open_taskbar_settings",
+            "get_overlay_view",
+        ])),
+    )
+    .expect("tauri-build thất bại");
+}
+```
+
+Thay toàn bộ `src-tauri/capabilities/main.json`:
+
+```json
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Cửa sổ chính: đúng các lệnh của màn hình ở §4.3 và nghe sự kiện (spec §10.2). Không cấp lệnh của plugin nào.",
+  "windows": ["main"],
+  "permissions": [
+    "allow-get-settings",
+    "allow-update-settings",
+    "allow-set-hotkey",
+    "allow-get-app-status",
+    "allow-toggle-session",
+    "allow-set-overlay-visible",
+    "allow-set-overlay-locked",
+    "allow-get-app-info",
+    "allow-open-log-dir",
+    "allow-open-taskbar-settings",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}
+```
+
+Thay toàn bộ `src-tauri/capabilities/overlay.json`:
+
+```json
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "overlay",
+  "description": "Thanh phụ đề: chỉ đọc phần cài đặt của nó, nghe sự kiện và kéo cửa sổ của chính nó (spec §10.2).",
+  "windows": ["overlay"],
+  "permissions": [
+    "allow-get-overlay-view",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:allow-start-dragging"
+  ]
+}
+```
+
+Thay toàn bộ `src-tauri/tauri.conf.json`. So với S5: cửa sổ chính tên "Meeting Translator", 960×640, ẩn lúc tạo (phía Rust hiện sau khi xử lý xong trường hợp mở lúc đăng nhập), phóng to chữ được bằng `⌘+`/`Ctrl+` (§6.10). CSP giữ nguyên; bản phát hành không có devtools vì không bật feature `devtools` của `tauri` (§10.2).
+
+```json
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Meeting Translator",
+  "version": "0.1.0",
+  "identifier": "dev.meetingtranslator.spike",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Meeting Translator",
+        "url": "index.html",
+        "width": 960,
+        "height": 640,
+        "minWidth": 720,
+        "minHeight": 480,
+        "center": true,
+        "visible": false,
+        "zoomHotkeysEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.icns", "icons/icon.ico"]
+  }
+}
+```
+
+- [ ] **Step 16: Chạy test, thấy qua**
+
+Run: `cargo test -p meeting-translator`
+Expected (lúc lập kế hoạch):
+```text
+running 56 tests
+test result: ok. 55 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.01s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+Khối đầu là test của lib (test bỏ qua là `os_keystore_roundtrip`); hai khối sau là binary `main.rs` và doc-test.
+
+- [ ] **Step 17: Kiểm chéo rằng test ACL bắt được quyền thừa.** Tạm cấp thêm `allow-update-settings` cho overlay, chạy test ACL, rồi trả file về như cũ.
+
+Run:
+```bash
+cp src-tauri/capabilities/overlay.json "${TMPDIR:-/tmp}/overlay.json.bak"
+python3 -c '
+import json; p="src-tauri/capabilities/overlay.json"; c=json.load(open(p)); c["permissions"].insert(1, "allow-update-settings"); open(p, "w").write(json.dumps(c, indent=2, ensure_ascii=False) + "\n")'
+cargo test -p meeting-translator --lib acl_tests 2>&1 | grep -E "panicked|overlay không|left:|right:|test result"
+mv "${TMPDIR:-/tmp}/overlay.json.bak" src-tauri/capabilities/overlay.json
+cargo test -p meeting-translator --lib acl_tests 2>&1 | grep -E "test result"
+```
+Expected (lúc lập kế hoạch): khi overlay có quyền thừa, cả hai test ACL đều hỏng; trả file về thì xanh lại.
+```text
+thread 'acl_tests::command_lists_match_build_rs_and_capabilities' (…) panicked at src-tauri/src/acl_tests.rs:117:5:
+  left: ["allow-get-overlay-view", "allow-update-settings"]
+ right: ["allow-get-overlay-view"]
+thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:64:9:
+overlay không được gọi update_settings: Err("\"invalid args `patch` for command `update_settings`: command update_settings missing required key patch\"")
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 54 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 54 filtered out; finished in 0.00s
+```
+Dòng thứ năm cho thấy khi được cấp quyền, lệnh đi tới được handler (lỗi chỉ còn là thiếu tham số `patch`).
+
+- [ ] **Step 18: clippy, định dạng, và build cả hai kiểu**
+
+Run:
+```bash
+cargo clippy -p meeting-translator --all-targets -- -D warnings
+cargo fmt --all -- --check
+pnpm build
+CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 cargo build --release -p meeting-translator
+```
+Expected: không lỗi, không cảnh báo. Bản release nhúng `dist/`, nên phải chạy `pnpm build` trước; tắt LTO chỉ để build nhanh hơn (lúc lập kế hoạch khoảng 1 phút 10 giây), không đổi hành vi cửa sổ. Không chạy binary vừa build.
+
+- [ ] **Step 19: Commit**
+
+```bash
+git add src-tauri scripts/make_tray_icon.py
+git commit -m "feat(app): khung app thật: lệnh và quyền từng cửa sổ, khay, phím tắt, đóng xuống khay, chặn ⌘Q, single instance, khởi động cùng hệ thống, log" -m "Thanh phụ đề giữ cách tạo của S5 (NSPanel non-activating, topmost trên Windows), thêm khóa và ẩn/hiện từ khay, nhớ vị trí theo từng màn hình. Phiên dịch còn là phiên tạm; kế hoạch 02 nối pipeline." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 13: Kiểu dữ liệu IPC và store Zustand của cửa sổ chính (TDD)
+
+**Files:**
+- Create: `src/lib/ipc.ts`, `src/lib/fakeIpc.ts`, `src/store/app.test.ts`, `src/store/app.ts`
+
+§6.10: store Zustand đăng ký nhận sự kiện. Store giữ bản sao cài đặt và trạng thái do phía Rust gửi; mọi thay đổi đi qua lệnh `invoke`, và store chỉ cập nhật theo kết quả phía Rust trả về. `ipc.ts` phải khớp kiểu ở `settings/mod.rs`, `state.rs`, `commands.rs`, `events.rs` của Task 12.
+
+- [ ] **Step 1: Tạo `src/lib/ipc.ts`**
+
+```ts
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import type { UiLanguage } from "../i18n";
+
+// Kiểu dữ liệu và tên lệnh, tên sự kiện giữa giao diện và lõi Rust (spec §6.10).
+// Phía Rust là nơi quyết định: kiểu ở đây phải khớp `src-tauri/src/settings/mod.rs`, `state.rs`,
+// `commands.rs` và `events.rs`.
+
+export type Lang = "en" | "zh" | "ja" | "ko" | "vi";
+export const LANGS: readonly Lang[] = ["en", "zh", "ja", "ko", "vi"];
+
+export type AudioSource = { kind: "system" } | { kind: "device"; id: string } | { kind: "app"; bundleId: string };
+export type Theme = "system" | "light" | "dark";
+export type UpdateChannel = "stable" | "beta";
+export type ModelTier = "standard" | "lite";
+export type HotkeyAction = "toggleSession" | "toggleOverlay" | "toggleLock";
+export const HOTKEY_ACTIONS: readonly HotkeyAction[] = ["toggleSession", "toggleOverlay", "toggleLock"];
+
+export interface OverlayRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface Settings {
+  uiLanguage: UiLanguage;
+  targetLanguage: Lang;
+  sourceLanguages: Lang[];
+  sourceLock: Lang | null;
+  audioSource: AudioSource;
+  vadEndSilenceMs: number;
+  overlay: {
+    fontSize: number;
+    lines: number;
+    opacity: number;
+    showSource: boolean;
+    locked: boolean;
+    positions: Record<string, OverlayRect>;
+    lastMonitor: string | null;
+  };
+  modelTier: ModelTier | null;
+  hotkeys: Record<HotkeyAction, string>;
+  saveHistory: boolean;
+  launchAtLogin: boolean;
+  theme: Theme;
+  updateChannel: UpdateChannel;
+  experimental: { translationContext: boolean };
+  onboardingDone: boolean;
+}
+
+// Bản sửa gửi cho `update_settings`. Không có `hotkeys` (dùng `set_hotkey`), `overlay.locked`
+// (dùng `set_overlay_locked`), `overlay.positions` và `overlay.lastMonitor` (chỉ phía Rust ghi).
+export type SettingsPatch = Partial<Omit<Settings, "hotkeys" | "overlay" | "experimental">> & {
+  overlay?: Partial<Omit<Settings["overlay"], "locked" | "positions" | "lastMonitor">>;
+  experimental?: Partial<Settings["experimental"]>;
+};
+
+export type SessionStatus = "idle" | "running";
+
+export interface AppStatus {
+  session: SessionStatus;
+  overlayVisible: boolean;
+  hotkeyFailures: HotkeyAction[];
+}
+
+export interface AppInfo {
+  name: string;
+  version: string;
+  identifier: string;
+  platform: "macos" | "windows";
+  launchedAtLogin: boolean;
+}
+
+export interface OverlayView {
+  uiLanguage: UiLanguage;
+  fontSize: number;
+  lines: number;
+  opacity: number;
+  showSource: boolean;
+  locked: boolean;
+}
+
+// Phụ đề (spec §6.6). Kế hoạch 02 phát đủ các trạng thái; kế hoạch 01 chỉ phát phụ đề mẫu.
+export interface Subtitle {
+  id: number;
+  start_ms: number;
+  end_ms: number;
+  src_lang: string;
+  src_text: string;
+  tgt_text: string;
+  status: "asr_done" | "translating" | "done" | "failed" | "same_lang" | "skipped" | "dropped";
+  provisional: boolean;
+}
+
+export type Screen = "home" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "about";
+export type SettingsGroup = "general" | "subtitles" | "audio" | "model" | "hotkeys" | "license" | "privacy";
+
+export interface Navigate {
+  screen: Screen;
+  settingsGroup: SettingsGroup | null;
+}
+
+// Lỗi phía Rust trả về (`CommandError`).
+export interface CommandError {
+  code: string;
+  field: string | null;
+  message: string;
+}
+
+export interface Commands {
+  get_settings: { args: undefined; result: Settings };
+  update_settings: { args: { patch: SettingsPatch }; result: Settings };
+  set_hotkey: { args: { action: HotkeyAction; accelerator: string }; result: Settings };
+  get_app_status: { args: undefined; result: AppStatus };
+  toggle_session: { args: undefined; result: AppStatus };
+  set_overlay_visible: { args: { visible: boolean }; result: AppStatus };
+  set_overlay_locked: { args: { locked: boolean }; result: Settings };
+  get_app_info: { args: undefined; result: AppInfo };
+  open_log_dir: { args: undefined; result: null };
+  open_taskbar_settings: { args: undefined; result: null };
+  get_overlay_view: { args: undefined; result: OverlayView };
+}
+
+export interface Events {
+  "settings://changed": Settings;
+  "app://status": AppStatus;
+  "app://navigate": Navigate;
+  "overlay://view": OverlayView;
+  "subtitle://upsert": Subtitle;
+}
+
+export type Command = keyof Commands;
+export type EventName = keyof Events;
+
+// Lớp mỏng quanh `invoke` và `listen`, để store test được với bản giả.
+export interface Ipc {
+  invoke<C extends Command>(cmd: C, args?: Commands[C]["args"]): Promise<Commands[C]["result"]>;
+  listen<E extends EventName>(event: E, handler: (payload: Events[E]) => void): Promise<() => void>;
+}
+
+export const tauriIpc: Ipc = {
+  invoke: (cmd, args) => invoke(cmd, args),
+  listen: (event, handler) => listen(event, (e) => handler(e.payload as never)),
+};
+```
+
+- [ ] **Step 2: Tạo bản giả `src/lib/fakeIpc.ts`** (chỉ dùng trong test)
+
+```ts
+import type { Command, Commands, EventName, Events, Ipc } from "./ipc";
+
+// Bản giả của `Ipc` cho test: trả kết quả theo bảng `handlers`, ghi lại các lệnh đã gọi, và cho
+// test tự phát sự kiện như phía Rust. Chỉ dùng trong file *.test.ts.
+type Handlers = { [C in Command]?: (args: Commands[C]["args"]) => Commands[C]["result"] | Promise<Commands[C]["result"]> };
+
+export function fakeIpc(handlers: Handlers) {
+  const listeners = new Map<string, Set<(payload: unknown) => void>>();
+  const calls: { cmd: Command; args: unknown }[] = [];
+  const ipc: Ipc = {
+    async invoke(cmd, args) {
+      calls.push({ cmd, args });
+      const handler = handlers[cmd] as ((a: unknown) => unknown) | undefined;
+      if (!handler) throw `Command ${cmd} not allowed by ACL`;
+      return (await handler(args)) as never;
+    },
+    async listen(event, handler) {
+      const set = listeners.get(event) ?? new Set();
+      set.add(handler as (payload: unknown) => void);
+      listeners.set(event, set);
+      return () => set.delete(handler as (payload: unknown) => void);
+    },
+  };
+  return {
+    ipc,
+    calls,
+    emit<E extends EventName>(event: E, payload: Events[E]) {
+      listeners.get(event)?.forEach((h) => h(payload));
+    },
+    listenerCount(event: EventName) {
+      return listeners.get(event)?.size ?? 0;
+    },
+  };
+}
+```
+
+- [ ] **Step 3: Viết test trước.** Tạo `src/store/app.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { fakeIpc } from "../lib/fakeIpc";
+import type { AppInfo, AppStatus, Settings } from "../lib/ipc";
+import { createAppStore, toUiError } from "./app";
+
+const settings: Settings = {
+  uiLanguage: "vi",
+  targetLanguage: "vi",
+  sourceLanguages: ["en", "zh", "ja", "ko", "vi"],
+  sourceLock: null,
+  audioSource: { kind: "system" },
+  vadEndSilenceMs: 300,
+  overlay: { fontSize: 22, lines: 2, opacity: 0.6, showSource: false, locked: false, positions: {}, lastMonitor: null },
+  modelTier: null,
+  hotkeys: { toggleSession: "Ctrl+Alt+T", toggleOverlay: "Ctrl+Alt+H", toggleLock: "Ctrl+Alt+L" },
+  saveHistory: false,
+  launchAtLogin: false,
+  theme: "system",
+  updateChannel: "stable",
+  experimental: { translationContext: false },
+  onboardingDone: false,
+};
+const status: AppStatus = { session: "idle", overlayVisible: true, hotkeyFailures: [] };
+const info: AppInfo = {
+  name: "Meeting Translator",
+  version: "0.1.0",
+  identifier: "dev.meetingtranslator.spike",
+  platform: "macos",
+  launchedAtLogin: false,
+};
+
+function setup() {
+  const fake = fakeIpc({
+    get_settings: () => settings,
+    get_app_status: () => status,
+    get_app_info: () => info,
+    update_settings: ({ patch }) => {
+      if (patch.vadEndSilenceMs === 900) throw { code: "outOfRange", field: "vadEndSilenceMs", message: "…" };
+      return { ...settings, ...patch } as Settings;
+    },
+    set_hotkey: ({ action, accelerator }) => {
+      if (accelerator === "Ctrl+Alt+KeyH") throw { code: "hotkeyDuplicate", field: action, message: "…" };
+      return { ...settings, hotkeys: { ...settings.hotkeys, [action]: accelerator.replace("Key", "") } };
+    },
+    toggle_session: () => ({ ...status, session: "running" }),
+    set_overlay_locked: ({ locked }) => ({ ...settings, overlay: { ...settings.overlay, locked } }),
+  });
+  return { fake, store: createAppStore(fake.ipc) };
+}
+
+describe("app store", () => {
+  it("init đọc cài đặt, trạng thái, thông tin app và nghe ba sự kiện", async () => {
+    const { fake, store } = setup();
+    const off = await store.getState().init();
+    expect(store.getState().settings).toEqual(settings);
+    expect(store.getState().status).toEqual(status);
+    expect(store.getState().info?.platform).toBe("macos");
+    expect(fake.listenerCount("settings://changed")).toBe(1);
+    expect(fake.listenerCount("app://status")).toBe(1);
+    expect(fake.listenerCount("app://navigate")).toBe(1);
+    off();
+    expect(fake.listenerCount("settings://changed")).toBe(0);
+  });
+
+  it("sự kiện từ phía Rust cập nhật store (khay, phím tắt đổi trạng thái)", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    fake.emit("app://status", { ...status, session: "running", hotkeyFailures: ["toggleLock"] });
+    expect(store.getState().status?.session).toBe("running");
+    expect(store.getState().status?.hotkeyFailures).toEqual(["toggleLock"]);
+    fake.emit("settings://changed", { ...settings, uiLanguage: "en" });
+    expect(store.getState().settings?.uiLanguage).toBe("en");
+    fake.emit("app://navigate", { screen: "settings", settingsGroup: "hotkeys" });
+    expect(store.getState().screen).toBe("settings");
+    expect(store.getState().settingsGroup).toBe("hotkeys");
+  });
+
+  it("updateSettings gửi bản sửa và lấy cài đặt phía Rust trả về", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    expect(await store.getState().updateSettings({ theme: "dark" })).toBe(true);
+    expect(fake.calls.at(-1)).toEqual({ cmd: "update_settings", args: { patch: { theme: "dark" } } });
+    expect(store.getState().settings?.theme).toBe("dark");
+    expect(store.getState().error).toBeNull();
+  });
+
+  it("giá trị bị phía Rust từ chối thì báo lỗi, cài đặt giữ nguyên", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    expect(await store.getState().updateSettings({ vadEndSilenceMs: 900 })).toBe(false);
+    expect(store.getState().error).toEqual({ code: "outOfRange", field: "vadEndSilenceMs" });
+    expect(store.getState().settings?.vadEndSilenceMs).toBe(300);
+    store.getState().dismissError();
+    expect(store.getState().error).toBeNull();
+  });
+
+  it("setHotkey trả lỗi cho ô đang sửa, không bật thanh báo lỗi chung", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    expect(await store.getState().setHotkey("toggleLock", "Ctrl+Alt+KeyH")).toEqual({
+      code: "hotkeyDuplicate",
+      field: "toggleLock",
+    });
+    expect(store.getState().error).toBeNull();
+    expect(await store.getState().setHotkey("toggleLock", "Ctrl+Alt+KeyK")).toBeNull();
+    expect(store.getState().settings?.hotkeys.toggleLock).toBe("Ctrl+Alt+K");
+  });
+
+  it("bắt đầu/dừng và khóa phụ đề lấy trạng thái từ kết quả", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    await store.getState().toggleSession();
+    expect(store.getState().status?.session).toBe("running");
+    await store.getState().setOverlayLocked(true);
+    expect(store.getState().settings?.overlay.locked).toBe(true);
+  });
+
+  it("lệnh bị ACL chặn hay lỗi lạ thì ra mã unknown", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    await store.getState().openLogDir();
+    expect(store.getState().error).toEqual({ code: "unknown", field: null });
+    expect(toUiError(new Error("x"))).toEqual({ code: "unknown", field: null });
+  });
+
+  it("xong các bước lần đầu thì lưu onboardingDone và về màn hình chính", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    store.getState().navigate("about");
+    await store.getState().finishOnboarding();
+    expect(fake.calls.at(-1)).toEqual({ cmd: "update_settings", args: { patch: { onboardingDone: true } } });
+    expect(store.getState().settings?.onboardingDone).toBe(true);
+    expect(store.getState().screen).toBe("home");
+  });
+});
+```
+
+- [ ] **Step 4: Chạy test, thấy lỗi**
+
+Run: `pnpm exec vitest run src/store/app.test.ts`
+Expected: FAIL:
+```text
+ FAIL  src/store/app.test.ts [ src/store/app.test.ts ]
+Error: Cannot find module './app' imported from …/src/store/app.test.ts
+ Test Files  1 failed (1)
+```
+
+- [ ] **Step 5: Tạo `src/store/app.ts`**
+
+```ts
+import { createStore } from "zustand/vanilla";
+import type {
+  AppInfo,
+  AppStatus,
+  CommandError,
+  HotkeyAction,
+  Ipc,
+  Navigate,
+  Screen,
+  Settings,
+  SettingsGroup,
+  SettingsPatch,
+} from "../lib/ipc";
+
+// Store của cửa sổ chính (spec §6.10): giữ bản sao cài đặt và trạng thái do phía Rust gửi sang,
+// nhận sự kiện để luôn khớp với menu khay và phím tắt. Mọi thay đổi đi qua lệnh `invoke`; store chỉ
+// cập nhật theo kết quả phía Rust trả về, không tự đoán.
+
+export interface UiError {
+  code: string;
+  field: string | null;
+}
+
+export interface AppStoreState {
+  settings: Settings | null;
+  status: AppStatus | null;
+  info: AppInfo | null;
+  screen: Screen;
+  settingsGroup: SettingsGroup;
+  onboardingStep: number;
+  error: UiError | null;
+  init(): Promise<() => void>;
+  navigate(screen: Screen, settingsGroup?: SettingsGroup | null): void;
+  setOnboardingStep(step: number): void;
+  updateSettings(patch: SettingsPatch): Promise<boolean>;
+  setHotkey(action: HotkeyAction, accelerator: string): Promise<UiError | null>;
+  toggleSession(): Promise<void>;
+  setOverlayVisible(visible: boolean): Promise<void>;
+  setOverlayLocked(locked: boolean): Promise<void>;
+  openLogDir(): Promise<void>;
+  openTaskbarSettings(): Promise<void>;
+  finishOnboarding(): Promise<void>;
+  dismissError(): void;
+}
+
+// Lỗi từ `invoke`: `CommandError` của app, hoặc chuỗi lỗi của Tauri (sai tham số, bị ACL chặn).
+export function toUiError(e: unknown): UiError {
+  if (typeof e === "object" && e !== null && typeof (e as CommandError).code === "string") {
+    const { code, field } = e as CommandError;
+    return { code, field: field ?? null };
+  }
+  return { code: "unknown", field: null };
+}
+
+export function createAppStore(ipc: Ipc) {
+  return createStore<AppStoreState>()((set, get) => {
+    // Chạy một lệnh; lỗi thì hiện ở thanh báo lỗi của cửa sổ chính.
+    async function run<T>(call: () => Promise<T>, apply: (result: T) => void): Promise<boolean> {
+      try {
+        apply(await call());
+        return true;
+      } catch (e) {
+        set({ error: toUiError(e) });
+        return false;
+      }
+    }
+
+    return {
+      settings: null,
+      status: null,
+      info: null,
+      screen: "home",
+      settingsGroup: "general",
+      onboardingStep: 0,
+      error: null,
+
+      async init() {
+        const offs = await Promise.all([
+          ipc.listen("settings://changed", (settings) => set({ settings })),
+          ipc.listen("app://status", (status) => set({ status })),
+          ipc.listen("app://navigate", (target: Navigate) => get().navigate(target.screen, target.settingsGroup)),
+        ]);
+        const [settings, status, info] = await Promise.all([
+          ipc.invoke("get_settings"),
+          ipc.invoke("get_app_status"),
+          ipc.invoke("get_app_info"),
+        ]);
+        set({ settings, status, info });
+        return () => offs.forEach((off) => off());
+      },
+
+      navigate(screen, settingsGroup) {
+        set(settingsGroup ? { screen, settingsGroup } : { screen });
+      },
+
+      setOnboardingStep(onboardingStep) {
+        set({ onboardingStep });
+      },
+
+      updateSettings(patch) {
+        return run(
+          () => ipc.invoke("update_settings", { patch }),
+          (settings) => set({ settings }),
+        );
+      },
+
+      async setHotkey(action, accelerator) {
+        try {
+          set({ settings: await ipc.invoke("set_hotkey", { action, accelerator }) });
+          return null;
+        } catch (e) {
+          return toUiError(e);
+        }
+      },
+
+      async toggleSession() {
+        await run(
+          () => ipc.invoke("toggle_session"),
+          (status) => set({ status }),
+        );
+      },
+
+      async setOverlayVisible(visible) {
+        await run(
+          () => ipc.invoke("set_overlay_visible", { visible }),
+          (status) => set({ status }),
+        );
+      },
+
+      async setOverlayLocked(locked) {
+        await run(
+          () => ipc.invoke("set_overlay_locked", { locked }),
+          (settings) => set({ settings }),
+        );
+      },
+
+      async openLogDir() {
+        await run(
+          () => ipc.invoke("open_log_dir"),
+          () => {},
+        );
+      },
+
+      async openTaskbarSettings() {
+        await run(
+          () => ipc.invoke("open_taskbar_settings"),
+          () => {},
+        );
+      },
+
+      async finishOnboarding() {
+        if (await get().updateSettings({ onboardingDone: true })) set({ screen: "home" });
+      },
+
+      dismissError() {
+        set({ error: null });
+      },
+    };
+  });
+}
+
+export type AppStore = ReturnType<typeof createAppStore>;
+```
+
+- [ ] **Step 6: Chạy test, thấy qua**
+
+Run: `pnpm exec vitest run src/store/app.test.ts`
+Expected: `Test Files  1 passed (1)`, `Tests  8 passed (8)`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/lib/ipc.ts src/lib/fakeIpc.ts src/store/app.ts src/store/app.test.ts
+git commit -m "feat(ui): kiểu IPC và store Zustand của cửa sổ chính nhận sự kiện từ lõi Rust" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 14: Ghi và hiển thị phím tắt ở giao diện (TDD)
+
+**Files:**
+- Create: `src/lib/hotkeys.test.ts`, `src/lib/hotkeys.ts`
+
+Ô đổi phím tắt ghi tổ hợp theo `KeyboardEvent.code` (không phụ thuộc bố cục bàn phím) và gửi cho phía Rust; phía Rust chuẩn hóa về `Ctrl+Alt+T` và kiểm (Task 2). Hiển thị theo thói quen của từng hệ điều hành: `⌃⌥T` trên Mac, `Ctrl+Alt+T` trên Windows.
+
+- [ ] **Step 1: Viết test trước.** Tạo `src/lib/hotkeys.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { acceleratorFromEvent, formatAccelerator } from "./hotkeys";
+
+const key = (code: string, mods: Partial<{ ctrl: boolean; alt: boolean; shift: boolean; meta: boolean }> = {}) => ({
+  code,
+  ctrlKey: mods.ctrl ?? false,
+  altKey: mods.alt ?? false,
+  shiftKey: mods.shift ?? false,
+  metaKey: mods.meta ?? false,
+});
+
+describe("acceleratorFromEvent", () => {
+  it("ghép phím bổ trợ theo thứ tự Ctrl, Alt, Shift, Super rồi tới mã phím", () => {
+    expect(acceleratorFromEvent(key("KeyT", { ctrl: true, alt: true }))).toBe("Ctrl+Alt+KeyT");
+    expect(acceleratorFromEvent(key("Digit1", { meta: true, shift: true }))).toBe("Shift+Super+Digit1");
+    expect(acceleratorFromEvent(key("F10", { alt: true }))).toBe("Alt+F10");
+  });
+
+  it("chờ phím chính khi mới bấm phím bổ trợ", () => {
+    expect(acceleratorFromEvent(key("ControlLeft", { ctrl: true }))).toBeNull();
+    expect(acceleratorFromEvent(key("MetaRight", { meta: true }))).toBeNull();
+    expect(acceleratorFromEvent(key(""))).toBeNull();
+  });
+
+  it("không có phím bổ trợ vẫn trả về, để phía Rust báo lỗi", () => {
+    expect(acceleratorFromEvent(key("KeyT"))).toBe("KeyT");
+  });
+});
+
+describe("formatAccelerator", () => {
+  it("macOS dùng ký hiệu", () => {
+    expect(formatAccelerator("Ctrl+Alt+T", "macos")).toBe("⌃⌥T");
+    expect(formatAccelerator("Shift+Super+1", "macos")).toBe("⇧⌘1");
+  });
+
+  it("Windows dùng tên phím", () => {
+    expect(formatAccelerator("Ctrl+Alt+T", "windows")).toBe("Ctrl+Alt+T");
+    expect(formatAccelerator("Shift+Super+F10", "windows")).toBe("Shift+Win+F10");
+  });
+});
+```
+
+- [ ] **Step 2: Chạy test, thấy lỗi**
+
+Run: `pnpm exec vitest run src/lib/hotkeys.test.ts`
+Expected: FAIL với `Error: Cannot find module './hotkeys' imported from …/src/lib/hotkeys.test.ts`.
+
+- [ ] **Step 3: Tạo `src/lib/hotkeys.ts`**
+
+```ts
+// Ghi và hiển thị phím tắt ở nhóm Cài đặt "Phím tắt" (F10). Phía Rust đọc lại, chuẩn hóa về dạng
+// "Ctrl+Alt+T" và kiểm hợp lệ, trùng, đăng ký được hay không (`src-tauri/src/hotkeys.rs`).
+
+export interface KeyInput {
+  code: string;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+  metaKey: boolean;
+}
+
+const MODIFIER_CODES = new Set([
+  "ControlLeft",
+  "ControlRight",
+  "AltLeft",
+  "AltRight",
+  "ShiftLeft",
+  "ShiftRight",
+  "MetaLeft",
+  "MetaRight",
+  "OSLeft",
+  "OSRight",
+]);
+
+// Chuỗi phím tắt từ một lần bấm phím, theo `KeyboardEvent.code` (không phụ thuộc bố cục bàn phím).
+// Trả `null` khi mới chỉ bấm phím bổ trợ.
+export function acceleratorFromEvent(e: KeyInput): string | null {
+  if (MODIFIER_CODES.has(e.code) || e.code === "") return null;
+  const parts: string[] = [];
+  if (e.ctrlKey) parts.push("Ctrl");
+  if (e.altKey) parts.push("Alt");
+  if (e.shiftKey) parts.push("Shift");
+  if (e.metaKey) parts.push("Super");
+  parts.push(e.code);
+  return parts.join("+");
+}
+
+const MAC_SYMBOLS: Record<string, string> = { Ctrl: "⌃", Alt: "⌥", Shift: "⇧", Super: "⌘" };
+const WINDOWS_NAMES: Record<string, string> = { Ctrl: "Ctrl", Alt: "Alt", Shift: "Shift", Super: "Win" };
+
+// Hiển thị phím tắt dạng chuẩn: macOS "⌃⌥T", Windows "Ctrl+Alt+T".
+export function formatAccelerator(accelerator: string, platform: "macos" | "windows"): string {
+  const parts = accelerator.split("+");
+  const key = parts.pop() ?? "";
+  if (platform === "macos") return parts.map((m) => MAC_SYMBOLS[m] ?? m).join("") + key;
+  return [...parts.map((m) => WINDOWS_NAMES[m] ?? m), key].join("+");
+}
+```
+
+- [ ] **Step 4: Chạy test, thấy qua**
+
+Run: `pnpm exec vitest run src/lib/hotkeys.test.ts`
+Expected: `Test Files  1 passed (1)`, `Tests  5 passed (5)`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/lib/hotkeys.ts src/lib/hotkeys.test.ts
+git commit -m "feat(ui): ghi phím tắt theo mã phím, hiển thị theo kiểu macOS và Windows" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 15: Store của thanh phụ đề (TDD)
+
+**Files:**
+- Create: `src/store/overlay.test.ts`, `src/store/overlay.ts`
+
+Thanh phụ đề chỉ gọi `get_overlay_view` và nghe `overlay://view`, `subtitle://upsert` (QĐ5). Luật cập nhật dòng giữ như S5: phụ đề cùng `id` (phụ đề tạm được thay, §6.3) cập nhật tại chỗ, dòng mới thêm vào cuối, chỉ giữ số dòng theo cài đặt. Kế hoạch 03 làm đủ phần hiển thị.
+
+- [ ] **Step 1: Viết test trước.** Tạo `src/store/overlay.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { fakeIpc } from "../lib/fakeIpc";
+import type { OverlayView, Subtitle } from "../lib/ipc";
+import { createOverlayStore, upsertLine } from "./overlay";
+
+const sub = (id: number, tgt: string, provisional = false): Subtitle => ({
+  id,
+  start_ms: id * 1000,
+  end_ms: id * 1000 + 800,
+  src_lang: "en",
+  src_text: `src ${id}`,
+  tgt_text: tgt,
+  status: "done",
+  provisional,
+});
+
+const view: OverlayView = { uiLanguage: "vi", fontSize: 22, lines: 2, opacity: 0.6, showSource: false, locked: false };
+
+describe("upsertLine", () => {
+  it("thêm dòng mới vào cuối, giữ tối đa max dòng", () => {
+    const lines = [sub(1, "a"), sub(2, "b")];
+    expect(upsertLine(lines, sub(3, "c"), 2).map((l) => l.id)).toEqual([2, 3]);
+  });
+
+  it("phụ đề tạm cùng id được thay tại chỗ", () => {
+    const lines = [sub(1, "a"), sub(2, "b", true)];
+    const next = upsertLine(lines, sub(2, "b đã ghép"), 3);
+    expect(next.map((l) => l.tgt_text)).toEqual(["a", "b đã ghép"]);
+    expect(next[1]?.provisional).toBe(false);
+  });
+});
+
+describe("overlay store", () => {
+  it("đọc phần cài đặt của thanh phụ đề và nhận phụ đề qua sự kiện", async () => {
+    const fake = fakeIpc({ get_overlay_view: () => view });
+    const store = createOverlayStore(fake.ipc);
+    await store.getState().init();
+    expect(store.getState().view).toEqual(view);
+    fake.emit("subtitle://upsert", sub(1, "một"));
+    fake.emit("subtitle://upsert", sub(2, "hai"));
+    fake.emit("subtitle://upsert", sub(3, "ba"));
+    expect(store.getState().lines.map((l) => l.id)).toEqual([2, 3]);
+    fake.emit("overlay://view", { ...view, lines: 1, locked: true });
+    expect(store.getState().view?.locked).toBe(true);
+    expect(store.getState().lines.map((l) => l.id)).toEqual([3]);
+    expect(fake.calls.map((c) => c.cmd)).toEqual(["get_overlay_view"]);
+  });
+});
+```
+
+- [ ] **Step 2: Chạy test, thấy lỗi**
+
+Run: `pnpm exec vitest run src/store/overlay.test.ts`
+Expected: FAIL với `Error: Cannot find module './overlay' imported from …/src/store/overlay.test.ts`.
+
+- [ ] **Step 3: Tạo `src/store/overlay.ts`**
+
+```ts
+import { createStore } from "zustand/vanilla";
+import type { Ipc, OverlayView, Subtitle } from "../lib/ipc";
+
+// Store của thanh phụ đề. Cửa sổ `overlay` chỉ đọc được phần cài đặt của nó (`get_overlay_view`)
+// và nghe sự kiện; không gọi được lệnh nào khác (spec §10.2). Kế hoạch 03 làm đủ phần hiển thị.
+
+// Giữ tối đa `max` phụ đề gần nhất. Phụ đề cùng `id` (phụ đề tạm được thay, §6.3) cập nhật tại chỗ.
+export function upsertLine(lines: readonly Subtitle[], subtitle: Subtitle, max: number): Subtitle[] {
+  const i = lines.findIndex((l) => l.id === subtitle.id);
+  const next = i >= 0 ? lines.map((l, j) => (j === i ? subtitle : l)) : [...lines, subtitle];
+  return next.slice(-Math.max(1, max));
+}
+
+export interface OverlayStoreState {
+  view: OverlayView | null;
+  lines: Subtitle[];
+  init(): Promise<() => void>;
+}
+
+export function createOverlayStore(ipc: Ipc) {
+  return createStore<OverlayStoreState>()((set, get) => ({
+    view: null,
+    lines: [],
+    async init() {
+      const offs = await Promise.all([
+        ipc.listen("overlay://view", (view) => set({ view, lines: get().lines.slice(-view.lines) })),
+        ipc.listen("subtitle://upsert", (subtitle) =>
+          set({ lines: upsertLine(get().lines, subtitle, get().view?.lines ?? 3) }),
+        ),
+      ]);
+      set({ view: await ipc.invoke("get_overlay_view") });
+      return () => offs.forEach((off) => off());
+    },
+  }));
+}
+```
+
+- [ ] **Step 4: Chạy toàn bộ test giao diện**
+
+Run: `pnpm test`
+Expected: `Test Files  4 passed (4)`, `Tests  24 passed (24)`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/store/overlay.ts src/store/overlay.test.ts
+git commit -m "feat(ui): store của thanh phụ đề, chỉ đọc phần cài đặt của nó và nhận phụ đề qua sự kiện" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 16: Khung các màn hình, các bước lần đầu mở, thanh phụ đề
+
+**Files:**
+- Create: `src/styles/tokens.css`, `src/styles/main.css`, `src/components/EmptyState.tsx`
+- Create: `src/windows/main/appStore.ts`, `Notice.tsx`, `LanguagePicker.tsx`, `Shell.tsx`, `App.tsx` (trong `src/windows/main/`)
+- Create: `src/windows/main/screens/{Home,Placeholders,About,SettingsScreen}.tsx`, `src/windows/main/settings/{GeneralSettings,HotkeySettings}.tsx`, `src/windows/main/onboarding/{Onboarding,TaskbarGuide}.tsx`, `src/windows/overlay/overlay.css`
+- Modify (thay toàn bộ): `src/windows/main/main.tsx`, `src/windows/overlay/overlay.tsx`, `index.html`, `overlay.html`
+
+Chỉ là khung (QĐ10): màn hình nào chưa có chức năng thì hiện trạng thái trống có chuỗi i18n. Phần do 01 làm có chức năng thật:
+- màn hình chính: trạng thái, Bắt đầu/Dừng (phiên tạm), ngôn ngữ đích và tập nguồn (F2), ẩn/hiện và khóa thanh phụ đề;
+- Cài đặt, nhóm Chung (ngôn ngữ giao diện, khởi động cùng hệ thống, sáng/tối, kênh cập nhật) và nhóm Phím tắt;
+- Giới thiệu: phiên bản, nút mở thư mục log, câu miễn trừ nhãn hiệu (§10.1);
+- các bước lần đầu mở 1, 5, 7, 8 (bước 8 trên Windows có hình minh họa tạm và nút mở cài đặt Taskbar). Bước 2, 3 (04), 4 (02, chỉ macOS) và 6 (03) là khung.
+
+CSP (`style-src 'self'`) chặn thẻ `<style>` và thuộc tính `style` viết trong HTML, nên mọi CSS nằm trong file `.css` do Vite đóng gói. Giá trị thay đổi theo cài đặt (cỡ chữ, độ mờ nền của thanh phụ đề) đặt qua prop `style` của React; React ghi qua CSSOM nên CSP không chặn. Cỡ chữ dùng rem để phóng to được (§6.10).
+
+- [ ] **Step 1: Token màu và CSS.** Tạo `src/styles/tokens.css`:
+
+```css
+/* Token màu và chữ tạm của thương hiệu mới (spec §6.10, D2: không dùng nhận diện của AI Live
+   Translator). Tên, logo và màu thật chờ Q1. Cỡ chữ tính bằng rem để phóng to được (⌘+ / Ctrl+). */
+:root {
+  --color-bg: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-border: #d6dbe3;
+  --color-text: #141821;
+  --color-muted: #566072;
+  --color-accent: #1d63c9;
+  --color-accent-text: #ffffff;
+  --color-danger: #a3261b;
+  --color-danger-bg: #fdecea;
+  --color-running: #127a3e;
+  --radius: 0.5rem;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #11141a;
+    --color-surface: #1a1f28;
+    --color-border: #2e3542;
+    --color-text: #e8ebf0;
+    --color-muted: #9aa4b5;
+    --color-accent: #5b9bf0;
+    --color-accent-text: #0b1220;
+    --color-danger: #ff8a7f;
+    --color-danger-bg: #3a1c1a;
+    --color-running: #4cc38a;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #11141a;
+  --color-surface: #1a1f28;
+  --color-border: #2e3542;
+  --color-text: #e8ebf0;
+  --color-muted: #9aa4b5;
+  --color-accent: #5b9bf0;
+  --color-accent-text: #0b1220;
+  --color-danger: #ff8a7f;
+  --color-danger-bg: #3a1c1a;
+  --color-running: #4cc38a;
+  color-scheme: dark;
+}
+```
+
+Tạo `src/styles/main.css`:
+
+```css
+@import "./tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+button.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+select {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 14rem 1fr;
+  min-height: 100vh;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 0.75rem;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.nav .brand {
+  font-weight: 600;
+  margin: 0 0.5rem 0.75rem;
+}
+
+.nav button {
+  text-align: left;
+  border-color: transparent;
+  background: transparent;
+}
+
+.nav button[aria-current="page"] {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  font-weight: 600;
+}
+
+.content {
+  padding: 1.5rem 2rem;
+  overflow: auto;
+}
+
+.content h1 {
+  font-size: 1.4rem;
+  margin: 0 0 1rem;
+}
+
+.card {
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.card h2 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+
+.row > label:first-child,
+.row > span:first-child {
+  min-width: 14rem;
+}
+
+.hint,
+.empty {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.error-text {
+  color: var(--color-danger);
+  font-size: 0.9rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  font-size: 0.85rem;
+}
+
+.badge.running {
+  color: var(--color-running);
+  border-color: var(--color-running);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.notice span {
+  flex: 1;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.checks {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+kbd {
+  font-family: var(--font);
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.3rem;
+  background: var(--color-bg);
+}
+
+.onboarding {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+}
+
+.onboarding .actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+}
+
+.taskbar-guide {
+  width: 100%;
+  max-width: 26rem;
+  height: auto;
+  color: var(--color-muted);
+}
+```
+
+- [ ] **Step 2: Store của cửa sổ chính và thành phần dùng chung.** Tạo `src/windows/main/appStore.ts`:
+
+```ts
+import { useStore } from "zustand";
+import { detectUiLanguage, type MessageKey, type Params, translate } from "../../i18n";
+import { tauriIpc } from "../../lib/ipc";
+import { type AppStoreState, createAppStore } from "../../store/app";
+
+// Store dùng chung của cửa sổ chính, nối với lõi Rust thật.
+export const appStore = createAppStore(tauriIpc);
+
+export function useApp<T>(selector: (state: AppStoreState) => T): T {
+  return useStore(appStore, selector);
+}
+
+const fallbackLanguage = detectUiLanguage(navigator.languages);
+
+// Hàm dịch theo ngôn ngữ giao diện đang chọn; đổi ngôn ngữ thì mọi màn hình vẽ lại ngay (§4.5).
+export function useT(): (key: MessageKey, params?: Params) => string {
+  const lang = useApp((s) => s.settings?.uiLanguage ?? fallbackLanguage);
+  return (key, params) => translate(lang, key, params);
+}
+```
+
+Tạo `src/components/EmptyState.tsx`:
+
+```tsx
+// Trạng thái trống của màn hình chưa có dữ liệu hay chưa có chức năng.
+export function EmptyState({ text }: { text: string }) {
+  return <p className="empty">{text}</p>;
+}
+```
+
+Tạo `src/windows/main/Notice.tsx` (QĐ12):
+
+```tsx
+import { errorKey } from "../../i18n";
+import { useApp, useT } from "./appStore";
+
+// Thông báo trong app (Q13 của kế hoạch 00: MVP không dùng thông báo hệ thống): lỗi của lệnh gần
+// nhất, và phím tắt không đăng ký được.
+export function Notice() {
+  const t = useT();
+  const error = useApp((s) => s.error);
+  const failures = useApp((s) => s.status?.hotkeyFailures.length ?? 0);
+  const dismiss = useApp((s) => s.dismissError);
+  const navigate = useApp((s) => s.navigate);
+  return (
+    <>
+      {error && (
+        <div className="notice" role="alert">
+          <span>{t(errorKey(error.code))}</span>
+          <button onClick={dismiss}>{t("common.dismiss")}</button>
+        </div>
+      )}
+      {failures > 0 && (
+        <div className="notice" role="status">
+          <span>{t("notice.hotkeysFailed")}</span>
+          <button onClick={() => navigate("settings", "hotkeys")}>{t("notice.openSettings")}</button>
+        </div>
+      )}
+    </>
+  );
+}
+```
+
+Tạo `src/windows/main/LanguagePicker.tsx`:
+
+```tsx
+import { LANGS, type Lang } from "../../lib/ipc";
+import { useApp, useT } from "./appStore";
+
+// Ngôn ngữ đích, tập ngôn ngữ nguồn và khóa một ngôn ngữ (F2). Dùng ở màn hình chính và bước 5 của
+// lần đầu mở. Phía Rust từ chối tập nguồn rỗng; ở đây không cho bỏ chọn ngôn ngữ cuối cùng.
+export function LanguagePicker() {
+  const t = useT();
+  const settings = useApp((s) => s.settings);
+  const update = useApp((s) => s.updateSettings);
+  if (!settings) return null;
+  const toggleSource = (lang: Lang, on: boolean) => {
+    const next = on ? LANGS.filter((l) => l === lang || settings.sourceLanguages.includes(l)) : settings.sourceLanguages.filter((l) => l !== lang);
+    void update({ sourceLanguages: next });
+  };
+  return (
+    <>
+      <div className="row">
+        <label htmlFor="target">{t("languages.target")}</label>
+        <select id="target" value={settings.targetLanguage} onChange={(e) => void update({ targetLanguage: e.target.value as Lang })}>
+          {LANGS.map((l) => (
+            <option key={l} value={l}>
+              {t(`lang.${l}`)}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="row">
+        <span>{t("languages.sources")}</span>
+        <div className="checks">
+          {LANGS.map((l) => {
+            const checked = settings.sourceLanguages.includes(l);
+            return (
+              <label key={l}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={checked && settings.sourceLanguages.length === 1}
+                  onChange={(e) => toggleSource(l, e.target.checked)}
+                />{" "}
+                {t(`lang.${l}`)}
+              </label>
+            );
+          })}
+        </div>
+      </div>
+      <div className="row">
+        <label htmlFor="lock">{t("languages.lock")}</label>
+        <select
+          id="lock"
+          value={settings.sourceLock ?? ""}
+          onChange={(e) => void update({ sourceLock: e.target.value === "" ? null : (e.target.value as Lang) })}
+        >
+          <option value="">{t("languages.lock.auto")}</option>
+          {LANGS.map((l) => (
+            <option key={l} value={l}>
+              {t(`lang.${l}`)}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
+  );
+}
+```
+
+- [ ] **Step 3: Các màn hình.** Tạo `src/windows/main/screens/Home.tsx`:
+
+```tsx
+import { useApp, useT } from "../appStore";
+import { LanguagePicker } from "../LanguagePicker";
+
+// Màn hình chính (§4.3). Kế hoạch 02 nối nút Bắt đầu với pipeline, nguồn âm thanh và mức âm lượng;
+// kế hoạch 06 điền số phút còn lại.
+export function Home() {
+  const t = useT();
+  const status = useApp((s) => s.status);
+  const settings = useApp((s) => s.settings);
+  const info = useApp((s) => s.info);
+  const toggleSession = useApp((s) => s.toggleSession);
+  const setVisible = useApp((s) => s.setOverlayVisible);
+  const setLocked = useApp((s) => s.setOverlayLocked);
+  if (!status || !settings || !info) return null;
+  const running = status.session === "running";
+  return (
+    <>
+      <div className="card">
+        <div className="row">
+          <span className={running ? "badge running" : "badge"}>{t(running ? "status.running" : "status.idle")}</span>
+          <button className="primary" onClick={() => void toggleSession()}>
+            {t(running ? "home.stop" : "home.start")}
+          </button>
+        </div>
+      </div>
+      <div className="card">
+        <h2>{t("home.languages")}</h2>
+        <LanguagePicker />
+      </div>
+      <div className="card">
+        <div className="row">
+          <span>{t("home.audioSource")}</span>
+          <span>{t(info.platform === "macos" ? "home.audioSource.system.macos" : "home.audioSource.system.windows")}</span>
+        </div>
+        <div className="row">
+          <span>{t("home.inputLevel")}</span>
+          <span className="hint">{t("common.notYet")}</span>
+        </div>
+        <div className="row">
+          <span>{t("home.minutesLeft")}</span>
+          <span className="hint">{t("common.notYet")}</span>
+        </div>
+      </div>
+      <div className="card">
+        <div className="row">
+          <span>{t("home.overlay")}</span>
+          <button onClick={() => void setVisible(!status.overlayVisible)}>
+            {t(status.overlayVisible ? "home.overlay.hide" : "home.overlay.show")}
+          </button>
+          <button onClick={() => void setLocked(!settings.overlay.locked)}>
+            {t(settings.overlay.locked ? "home.overlay.unlock" : "home.overlay.lock")}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+```
+
+Tạo `src/windows/main/screens/Placeholders.tsx`:
+
+```tsx
+import { EmptyState } from "../../../components/EmptyState";
+import { useT } from "../appStore";
+
+// Khung các màn hình mà kế hoạch sau làm nội dung: bản chép lời, lịch sử, từ điển (03), nâng cấp Pro (06).
+export function Transcript() {
+  return <EmptyState text={useT()("transcript.empty")} />;
+}
+
+export function History() {
+  return <EmptyState text={useT()("history.empty")} />;
+}
+
+export function Glossary() {
+  return <EmptyState text={useT()("glossary.empty")} />;
+}
+
+export function Upgrade() {
+  return <EmptyState text={useT()("upgrade.empty")} />;
+}
+```
+
+Tạo `src/windows/main/screens/About.tsx`:
+
+```tsx
+import { useApp, useT } from "../appStore";
+
+// Giới thiệu (§4.3): phiên bản, thư mục log (Đ10), câu miễn trừ nhãn hiệu (§10.1).
+// Kế hoạch 07 thêm danh sách giấy phép sinh từ `THIRD_PARTY_NOTICES`.
+export function About() {
+  const t = useT();
+  const info = useApp((s) => s.info);
+  const openLogDir = useApp((s) => s.openLogDir);
+  if (!info) return null;
+  return (
+    <>
+      <div className="card">
+        <h2>{info.name}</h2>
+        <p>{t("about.version", { version: info.version })}</p>
+        <div className="row">
+          <button onClick={() => void openLogDir()}>{t("about.openLogs")}</button>
+        </div>
+        <p className="hint">{t("about.logsHint")}</p>
+      </div>
+      <div className="card">
+        <h2>{t("about.licenses")}</h2>
+        <p className="hint">{t("about.licensesPending")}</p>
+      </div>
+      <p className="hint">{t("about.trademark")}</p>
+    </>
+  );
+}
+```
+
+- [ ] **Step 4: Cài đặt.** Tạo `src/windows/main/settings/GeneralSettings.tsx`:
+
+```tsx
+import type { UiLanguage } from "../../../i18n";
+import type { Theme, UpdateChannel } from "../../../lib/ipc";
+import { useApp, useT } from "../appStore";
+
+// Nhóm Cài đặt "Chung" (§4.3). Kênh cập nhật được kế hoạch 07 dùng.
+export function GeneralSettings() {
+  const t = useT();
+  const settings = useApp((s) => s.settings);
+  const update = useApp((s) => s.updateSettings);
+  if (!settings) return null;
+  return (
+    <div className="card">
+      <div className="row">
+        <label htmlFor="ui-language">{t("settings.general.uiLanguage")}</label>
+        <select
+          id="ui-language"
+          value={settings.uiLanguage}
+          onChange={(e) => void update({ uiLanguage: e.target.value as UiLanguage })}
+        >
+          <option value="en">English</option>
+          <option value="vi">Tiếng Việt</option>
+        </select>
+      </div>
+      <div className="row">
+        <label htmlFor="launch-at-login">{t("settings.general.launchAtLogin")}</label>
+        <input
+          id="launch-at-login"
+          type="checkbox"
+          checked={settings.launchAtLogin}
+          onChange={(e) => void update({ launchAtLogin: e.target.checked })}
+        />
+        <span className="hint">{t("settings.general.launchAtLogin.hint")}</span>
+      </div>
+      <div className="row">
+        <label htmlFor="theme">{t("settings.general.theme")}</label>
+        <select id="theme" value={settings.theme} onChange={(e) => void update({ theme: e.target.value as Theme })}>
+          <option value="system">{t("theme.system")}</option>
+          <option value="light">{t("theme.light")}</option>
+          <option value="dark">{t("theme.dark")}</option>
+        </select>
+      </div>
+      <div className="row">
+        <label htmlFor="channel">{t("settings.general.updateChannel")}</label>
+        <select
+          id="channel"
+          value={settings.updateChannel}
+          onChange={(e) => void update({ updateChannel: e.target.value as UpdateChannel })}
+        >
+          <option value="stable">{t("channel.stable")}</option>
+          <option value="beta">{t("channel.beta")}</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+```
+
+Tạo `src/windows/main/settings/HotkeySettings.tsx`:
+
+```tsx
+import { useEffect, useState } from "react";
+import { errorKey } from "../../../i18n";
+import { acceleratorFromEvent, formatAccelerator } from "../../../lib/hotkeys";
+import { HOTKEY_ACTIONS, type HotkeyAction } from "../../../lib/ipc";
+import type { UiError } from "../../../store/app";
+import { useApp, useT } from "../appStore";
+
+// Nhóm Cài đặt "Phím tắt" (F10). Bấm "Đổi" rồi bấm tổ hợp mới; phía Rust kiểm và đăng ký với hệ
+// điều hành, lỗi (trùng, không đăng ký được) hiện ngay dưới dòng đang sửa.
+export function HotkeySettings() {
+  const t = useT();
+  const settings = useApp((s) => s.settings);
+  const status = useApp((s) => s.status);
+  const info = useApp((s) => s.info);
+  const setHotkey = useApp((s) => s.setHotkey);
+  const [editing, setEditing] = useState<HotkeyAction | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<HotkeyAction, UiError>>>({});
+
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      if (e.code === "Escape") {
+        setEditing(null);
+        return;
+      }
+      const accelerator = acceleratorFromEvent(e);
+      if (!accelerator) return;
+      const action = editing;
+      void setHotkey(action, accelerator).then((error) => {
+        setErrors((prev) => ({ ...prev, [action]: error ?? undefined }));
+        if (!error) setEditing(null);
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editing, setHotkey]);
+
+  if (!settings || !status || !info) return null;
+  return (
+    <div className="card">
+      <p className="hint">{t("hotkeys.hint", { super: info.platform === "macos" ? "Cmd" : "Win" })}</p>
+      {HOTKEY_ACTIONS.map((action) => {
+        const error = errors[action];
+        const failed = status.hotkeyFailures.includes(action);
+        return (
+          <div key={action}>
+            <div className="row">
+              <span>{t(`hotkeys.${action}`)}</span>
+              {editing === action ? (
+                <>
+                  <span className="hint">{t("hotkeys.press")}</span>
+                  <button onClick={() => setEditing(null)}>{t("hotkeys.cancel")}</button>
+                </>
+              ) : (
+                <>
+                  <kbd>{formatAccelerator(settings.hotkeys[action], info.platform)}</kbd>
+                  <button onClick={() => setEditing(action)}>{t("hotkeys.change")}</button>
+                </>
+              )}
+            </div>
+            {error && <p className="error-text">{t(errorKey(error.code))}</p>}
+            {!error && failed && <p className="error-text">{t("hotkeys.failed")}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+```
+
+Tạo `src/windows/main/screens/SettingsScreen.tsx`:
+
+```tsx
+import type { MessageKey } from "../../../i18n";
+import type { SettingsGroup } from "../../../lib/ipc";
+import { useApp, useT } from "../appStore";
+import { GeneralSettings } from "../settings/GeneralSettings";
+import { HotkeySettings } from "../settings/HotkeySettings";
+
+const GROUPS: readonly SettingsGroup[] = ["general", "subtitles", "audio", "model", "hotkeys", "license", "privacy"];
+
+// Nhóm do kế hoạch khác làm: Phụ đề (03), Âm thanh (02), Model (04), Bản quyền (06), Quyền riêng tư (03, 04).
+const DESCRIPTIONS: Partial<Record<SettingsGroup, MessageKey>> = {
+  subtitles: "settings.subtitles.description",
+  audio: "settings.audio.description",
+  model: "settings.model.description",
+  license: "settings.license.description",
+  privacy: "settings.privacy.description",
+};
+
+export function SettingsScreen() {
+  const t = useT();
+  const group = useApp((s) => s.settingsGroup);
+  const navigate = useApp((s) => s.navigate);
+  const description = DESCRIPTIONS[group];
+  return (
+    <>
+      <div className="tabs" role="tablist">
+        {GROUPS.map((g) => (
+          <button key={g} role="tab" aria-selected={g === group} onClick={() => navigate("settings", g)}>
+            {t(`settings.group.${g}`)}
+          </button>
+        ))}
+      </div>
+      {group === "general" && <GeneralSettings />}
+      {group === "hotkeys" && <HotkeySettings />}
+      {description && (
+        <div className="card">
+          <p>{t(description)}</p>
+          <p className="hint">{t("common.notYet")}</p>
+        </div>
+      )}
+    </>
+  );
+}
+```
+
+- [ ] **Step 5: Các bước lần đầu mở.** Tạo `src/windows/main/onboarding/TaskbarGuide.tsx`:
+
+```tsx
+// Hình minh họa tạm cho bước 8 trên Windows: kéo icon từ mục icon ẩn (mũi tên ^) ra taskbar.
+// Ảnh chụp thật của Windows 10 và 11 thay hình này ở phần Windows của kế hoạch 01.
+export function TaskbarGuide({ label }: { label: string }) {
+  return (
+    <svg className="taskbar-guide" viewBox="0 0 320 120" role="img" aria-label={label}>
+      <rect x="10" y="10" width="120" height="56" rx="6" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="28" y="26" width="24" height="24" rx="4" fill="currentColor" opacity="0.35" />
+      <rect x="64" y="26" width="24" height="24" rx="4" fill="currentColor" />
+      <rect x="0" y="84" width="320" height="30" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M196 106 l8 -10 l8 10" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="226" y="89" width="20" height="20" rx="3" fill="currentColor" />
+      <path d="M88 60 C 140 110, 190 110, 222 99" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 4" />
+      <path d="M214 94 l9 5 l-8 6" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+```
+
+Tạo `src/windows/main/onboarding/Onboarding.tsx`:
+
+```tsx
+import type { MessageKey, UiLanguage } from "../../../i18n";
+import { useApp, useT } from "../appStore";
+import { LanguagePicker } from "../LanguagePicker";
+import { TaskbarGuide } from "./TaskbarGuide";
+
+// Các bước lần đầu mở app (§4.1). Kế hoạch 01 làm khung và các bước 1, 5, 7, 8; bước 2–3 do kế
+// hoạch 04 làm (kiểm tra máy, tải model), bước 4 do 02 (quyền ghi âm thanh hệ thống, chỉ macOS),
+// bước 6 do 03 (nghe thử).
+type Step = "language" | "model" | "download" | "permission" | "languages" | "test" | "privacy" | "tray";
+
+const TITLES: Record<Step, MessageKey> = {
+  language: "onboarding.language.title",
+  model: "onboarding.model.title",
+  download: "onboarding.download.title",
+  permission: "onboarding.permission.title",
+  languages: "onboarding.languages.title",
+  test: "onboarding.test.title",
+  privacy: "onboarding.privacy.title",
+  tray: "onboarding.tray.title",
+};
+
+export function stepsFor(platform: "macos" | "windows"): Step[] {
+  const steps: Step[] = ["language", "model", "download", "permission", "languages", "test", "privacy", "tray"];
+  return platform === "macos" ? steps : steps.filter((s) => s !== "permission");
+}
+
+export function Onboarding() {
+  const t = useT();
+  const info = useApp((s) => s.info);
+  const index = useApp((s) => s.onboardingStep);
+  const setStep = useApp((s) => s.setOnboardingStep);
+  const finish = useApp((s) => s.finishOnboarding);
+  if (!info) return null;
+  const steps = stepsFor(info.platform);
+  const current = Math.min(index, steps.length - 1);
+  const step = steps[current] ?? "language";
+  const last = current === steps.length - 1;
+  return (
+    <main className="onboarding">
+      <p className="hint">{t("onboarding.step", { n: current + 1, total: steps.length })}</p>
+      <h1>{t(TITLES[step])}</h1>
+      <StepBody step={step} platform={info.platform} />
+      <div className="actions">
+        <button disabled={current === 0} onClick={() => setStep(current - 1)}>
+          {t("onboarding.back")}
+        </button>
+        <button className="primary" onClick={() => (last ? void finish() : setStep(current + 1))}>
+          {t(last ? "onboarding.finish" : "onboarding.next")}
+        </button>
+      </div>
+    </main>
+  );
+}
+
+function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows" }) {
+  const t = useT();
+  const settings = useApp((s) => s.settings);
+  const update = useApp((s) => s.updateSettings);
+  const openTaskbarSettings = useApp((s) => s.openTaskbarSettings);
+  switch (step) {
+    // Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (bước 5 đổi lại được).
+    case "language":
+      return (
+        <div className="checks" role="radiogroup">
+          {(["vi", "en"] as UiLanguage[]).map((lang) => (
+            <label key={lang}>
+              <input
+                type="radio"
+                name="ui-language"
+                checked={settings?.uiLanguage === lang}
+                onChange={() => void update({ uiLanguage: lang, targetLanguage: lang })}
+              />{" "}
+              {lang === "vi" ? "Tiếng Việt" : "English"}
+            </label>
+          ))}
+        </div>
+      );
+    case "languages":
+      return <LanguagePicker />;
+    case "privacy":
+      return (
+        <>
+          <p>{t("onboarding.privacy.local")}</p>
+          <p>{t("onboarding.privacy.notify")}</p>
+        </>
+      );
+    case "tray":
+      return platform === "macos" ? (
+        <p>{t("onboarding.tray.macos")}</p>
+      ) : (
+        <>
+          <p>{t("onboarding.tray.windows")}</p>
+          <p>{t("onboarding.tray.windowsPin")}</p>
+          <TaskbarGuide label={t("onboarding.tray.windowsPin")} />
+          <div className="row">
+            <button onClick={() => void openTaskbarSettings()}>{t("onboarding.tray.openTaskbarSettings")}</button>
+          </div>
+        </>
+      );
+    default:
+      return <p className="hint">{t("common.notYet")}</p>;
+  }
+}
+```
+
+- [ ] **Step 6: Khung cửa sổ chính và entry.** Tạo `src/windows/main/Shell.tsx`:
+
+```tsx
+import type { Screen } from "../../lib/ipc";
+import { useApp, useT } from "./appStore";
+import { Notice } from "./Notice";
+import { About } from "./screens/About";
+import { Home } from "./screens/Home";
+import { Glossary, History, Transcript, Upgrade } from "./screens/Placeholders";
+import { SettingsScreen } from "./screens/SettingsScreen";
+
+const SCREENS: readonly Screen[] = ["home", "transcript", "history", "glossary", "settings", "upgrade", "about"];
+
+const BODIES: Record<Screen, () => React.JSX.Element | null> = {
+  home: Home,
+  transcript: Transcript,
+  history: History,
+  glossary: Glossary,
+  settings: SettingsScreen,
+  upgrade: Upgrade,
+  about: About,
+};
+
+// Khung cửa sổ chính: thanh điều hướng tới mọi màn hình ở §4.3.
+export function Shell() {
+  const t = useT();
+  const screen = useApp((s) => s.screen);
+  const navigate = useApp((s) => s.navigate);
+  const Body = BODIES[screen];
+  return (
+    <div className="shell">
+      <nav className="nav">
+        <div className="brand">{t("app.name")}</div>
+        {SCREENS.map((s) => (
+          <button key={s} aria-current={s === screen ? "page" : undefined} onClick={() => navigate(s)}>
+            {t(`nav.${s}`)}
+          </button>
+        ))}
+      </nav>
+      <main className="content">
+        <h1>{t(`nav.${screen}`)}</h1>
+        <Notice />
+        <Body />
+      </main>
+    </div>
+  );
+}
+```
+
+Tạo `src/windows/main/App.tsx`:
+
+```tsx
+import { useApp } from "./appStore";
+import { Onboarding } from "./onboarding/Onboarding";
+import { Shell } from "./Shell";
+
+export function App() {
+  const ready = useApp((s) => s.settings !== null && s.status !== null && s.info !== null);
+  const onboardingDone = useApp((s) => s.settings?.onboardingDone ?? false);
+  if (!ready) return null;
+  return onboardingDone ? <Shell /> : <Onboarding />;
+}
+```
+
+Thay toàn bộ `src/windows/main/main.tsx`:
+
+```tsx
+import "../../styles/main.css";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { App } from "./App";
+import { appStore } from "./appStore";
+
+// Giao diện sáng/tối và thuộc tính `lang` theo cài đặt, đổi ngay khi cài đặt đổi.
+appStore.subscribe((state) => {
+  const settings = state.settings;
+  if (!settings) return;
+  const root = document.documentElement;
+  if (settings.theme === "system") delete root.dataset.theme;
+  else root.dataset.theme = settings.theme;
+  root.lang = settings.uiLanguage;
+});
+
+void appStore.getState().init();
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+```
+
+Thay toàn bộ `index.html`:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meeting Translator</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/windows/main/main.tsx"></script>
+  </body>
+</html>
+```
+
+- [ ] **Step 7: Thanh phụ đề.** Tạo `src/windows/overlay/overlay.css`:
+
+```css
+body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.overlay {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  color: #ffffff;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.35;
+}
+
+.overlay.unlocked {
+  cursor: move;
+  outline: 1px dashed rgba(255, 255, 255, 0.4);
+  outline-offset: -1px;
+}
+
+.overlay .source {
+  font-size: 0.6em;
+  opacity: 0.75;
+}
+
+.overlay .provisional {
+  opacity: 0.6;
+}
+
+.overlay .waiting {
+  opacity: 0.6;
+  font-size: 0.7em;
+}
+```
+
+Thay toàn bộ `src/windows/overlay/overlay.tsx`:
+
+```tsx
+import "./overlay.css";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { useStore } from "zustand";
+import { translate } from "../../i18n";
+import { tauriIpc } from "../../lib/ipc";
+import { createOverlayStore } from "../../store/overlay";
+
+const store = createOverlayStore(tauriIpc);
+void store.getState().init();
+
+// Thanh phụ đề (§4.4): N dòng gần nhất, phụ đề tạm màu nhạt hơn. Khi chưa khóa thì kéo được cả thanh
+// (`data-tauri-drag-region="deep"`, như spike S5); khi khóa thì click xuyên qua, do phía Rust đặt.
+// Kế hoạch 03 làm đủ phần hiển thị (hiện dần từng chữ, chỉ báo, kéo cạnh đổi kích thước).
+function Overlay() {
+  const view = useStore(store, (s) => s.view);
+  const lines = useStore(store, (s) => s.lines);
+  if (!view) return null;
+  return (
+    <div
+      className={view.locked ? "overlay" : "overlay unlocked"}
+      data-tauri-drag-region={view.locked ? undefined : "deep"}
+      style={{ fontSize: view.fontSize, background: `rgba(0, 0, 0, ${view.opacity})` }}
+    >
+      {lines.length === 0 && <div className="waiting">{translate(view.uiLanguage, "overlay.waiting")}</div>}
+      {lines.map((l) => (
+        <div key={l.id} className={l.provisional ? "provisional" : undefined}>
+          {view.showSource && <div className="source">{l.src_text}</div>}
+          <div>{l.tgt_text}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <Overlay />
+  </StrictMode>,
+);
+```
+
+Thay toàn bộ `overlay.html`:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Subtitles</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/windows/overlay/overlay.tsx"></script>
+  </body>
+</html>
+```
+
+- [ ] **Step 8: Build và test**
+
+Run: `pnpm build && pnpm test`
+Expected (lúc lập kế hoạch):
+```text
+dist/overlay.html                      0.40 kB │ gzip:  0.25 kB
+dist/index.html                        0.48 kB │ gzip:  0.29 kB
+dist/assets/overlay-74s5WgTU.css       0.46 kB │ gzip:  0.29 kB
+dist/assets/main-Bod--Ppy.css          3.62 kB │ gzip:  1.14 kB
+dist/assets/overlay-CkG1TeQO.js        1.26 kB │ gzip:  0.70 kB
+dist/assets/main-B-np7tOj.js          14.97 kB │ gzip:  4.16 kB
+dist/assets/jsx-runtime-PPOR8R4c.js  235.03 kB │ gzip: 74.29 kB
+✓ built in 271ms
+```
+và `Tests  24 passed (24)`.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add src index.html overlay.html
+git commit -m "feat(ui): khung các màn hình §4.3, các bước lần đầu mở §4.1, thanh phụ đề đọc cài đặt của nó" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 17: Script kiểm code Windows trên Mac, và chạy bản dev đã ký
+
+**Files:**
+- Create: `scripts/fake-llvm-rc`, `scripts/check-windows.sh`, `scripts/run-dev-signed.sh`
+
+QĐ18 và QĐ19. `run-dev-signed.sh` mở app, nên agent chỉ kiểm cú pháp; người chạy ở Task 19.
+
+- [ ] **Step 1: Tạo `scripts/fake-llvm-rc`**
+
+```sh
+#!/bin/sh
+# llvm-rc giả, chỉ dùng cho scripts/check-windows.sh: tauri-build gọi trình biên dịch resource khi
+# build cho Windows, mà Mac không có sẵn llvm-rc. `cargo check` và `cargo clippy` không link, nên file
+# .lib rỗng tạo ra ở đây không bao giờ được dùng. Không dùng script này để build bản chạy thật.
+for arg in "$@"; do
+  if [ "$arg" = "/?" ]; then
+    echo "OVERVIEW: LLVM Resource Converter (giả, có /no-preprocess)"
+    exit 0
+  fi
+done
+out=""
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "/fo" ]; then out="$arg"; fi
+  prev="$arg"
+done
+if [ -n "$out" ]; then : > "$out"; fi
+```
+
+- [ ] **Step 2: Tạo `scripts/check-windows.sh`**
+
+```sh
+#!/bin/sh
+# Kiểm kiểu và clippy phần code Windows của app ngay trên Mac (R1 của kế hoạch 00), vì chưa có máy
+# Windows. Chỉ kiểm được là code biên dịch được; hành vi thật (khay, Alt+F4, thanh phụ đề topmost,
+# Credential Manager) vẫn phải thử trên Windows.
+# Cần một lần: rustup target add x86_64-pc-windows-msvc
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+RC_x86_64_pc_windows_msvc="$here/fake-llvm-rc" \
+  cargo clippy -p meeting-translator --target x86_64-pc-windows-msvc --all-targets -- -D warnings
+```
+
+- [ ] **Step 3: Tạo `scripts/run-dev-signed.sh`**
+
+```sh
+#!/bin/sh
+# Chạy bản dev đã ký bằng một chứng thư cố định (R8 của kế hoạch 00). Bản `pnpm tauri dev` chỉ có
+# chữ ký ad-hoc, đổi sau mỗi lần build, nên Keychain và các quyền của macOS hỏi lại mỗi lần. Ký bằng
+# cùng một chứng thư thì yêu cầu định danh (designated requirement) không đổi, hệ thống nhớ quyền đã cấp.
+#
+# Cần một lần: tạo chứng thư ký mã trong Keychain Access (xem Task 17 của kế hoạch 01), hoặc dùng
+# chứng thư "Apple Development" của một Apple ID. Tên chứng thư đặt qua MT_DEV_SIGN_IDENTITY.
+set -eu
+identity="${MT_DEV_SIGN_IDENTITY:-Meeting Translator Dev}"
+root=$(cd "$(dirname "$0")/.." && pwd)
+target="${CARGO_TARGET_DIR:-$root/target}"
+identifier=$(sed -n 's/^  "identifier": "\(.*\)",$/\1/p' "$root/src-tauri/tauri.conf.json")
+
+cd "$root"
+cargo build -p meeting-translator
+codesign --force --sign "$identity" --identifier "$identifier" "$target/debug/meeting-translator"
+codesign --verify --verbose=2 "$target/debug/meeting-translator"
+
+# Bản dev mở http://localhost:1420 do Vite phục vụ: chạy Vite trước, chờ nó sẵn sàng.
+pnpm dev >/dev/null 2>&1 &
+vite=$!
+trap 'kill "$vite" 2>/dev/null' EXIT INT TERM
+until curl -sf http://localhost:1420 >/dev/null; do sleep 0.2; done
+"$target/debug/meeting-translator"
+```
+
+- [ ] **Step 4: Chạy thử**
+
+Run:
+```bash
+chmod +x scripts/fake-llvm-rc scripts/check-windows.sh scripts/run-dev-signed.sh
+sh -n scripts/fake-llvm-rc && sh -n scripts/check-windows.sh && sh -n scripts/run-dev-signed.sh && echo ok
+rustup target add x86_64-pc-windows-msvc
+./scripts/check-windows.sh
+```
+Expected: `ok`; `rustup` cài thư viện chuẩn cho target Windows (một lần, khoảng 115 MB, không cần quyền admin); `check-windows.sh` kết thúc bằng dòng ``Finished `dev` profile …``, không lỗi, không cảnh báo. Lần đầu mất khoảng 30 giây và thêm khoảng 380 MB vào `target/x86_64-pc-windows-msvc/`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add scripts/fake-llvm-rc scripts/check-windows.sh scripts/run-dev-signed.sh
+git commit -m "chore(app): kiểm code Windows của app trên Mac; chạy bản dev ký bằng chứng thư cố định (R8)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 18: Kiểm tra chuẩn toàn bộ
+
+**Files:** không sửa file nào.
+
+- [ ] **Step 1: Chạy kiểm tra chuẩn (mục 6.2 của kế hoạch 00), thêm `pnpm test` và `scripts/check-windows.sh`**
+
+```bash
+cargo fmt --all -- --check
+pnpm install --frozen-lockfile
+pnpm build
+pnpm test
+cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy -p asr-worker --features metal,shared-encode --all-targets -- -D warnings
+cargo test --workspace 2>&1 | grep -E 'test result' | awk '{p+=$4; f+=$6; i+=$8} END {print "passed", p, "failed", f, "ignored", i}'
+cargo test -p asr-worker --features shared-encode
+cargo build --release -p asr-worker --features metal,shared-encode
+./scripts/check-windows.sh
+cargo deny check && cargo audit
+pnpm audit
+```
+Expected (lúc lập kế hoạch):
+- không lỗi, không cảnh báo của clippy (build script của `whisper-rs-sys` in một cảnh báo `variable does not need to be mutable` từ trước; đó là code trong `third_party/`, không phải lint của clippy);
+- `pnpm test`: `Tests  24 passed (24)`;
+- `cargo test --workspace`: `passed 199 failed 0 ignored 2` (thêm 55 test của `meeting-translator`; hai test bỏ qua là `vad_reference` và `os_keystore_roundtrip`);
+- `cargo test -p asr-worker --features shared-encode`: `28 passed`;
+- `advisories ok, bans ok, licenses ok, sources ok`; `cargo audit` kết thúc bằng `warning: 3 allowed warnings found`;
+- `No known vulnerabilities found`.
+
+- [ ] **Step 2: Kiểm ổ đĩa.** Run: `df -h /System/Volumes/Data`. Lúc lập kế hoạch, target Windows của Task 17 chiếm khoảng 380 MB (`target/x86_64-pc-windows-msvc/`), và bản release của app ở Task 12 thêm khoảng 1,2 GB vào `target/release/` (phần lớn là thư viện của Tauri, dùng lại được khi `pnpm tauri build`). Nếu còn dưới 10 GiB trống, xóa target Windows (lần chạy `scripts/check-windows.sh` sau sẽ build lại):
+
+```bash
+rm -rf target/x86_64-pc-windows-msvc
+```
+
+## Task 19 (người): Thử tay trên Mac
+
+**Files:**
+- Create: `bench/phase1/results/p01_app_shell_manual.md`
+
+Agent dừng ở đây, gửi bảng dưới cho người làm, chờ kết quả. Các dòng này bật cửa sổ, đụng Keychain, LaunchAgent, đăng xuất, nên agent không tự chạy (mục 6.8 của kế hoạch 00).
+
+Chuẩn bị:
+- Xóa cài đặt cũ (nếu có) để thấy các bước lần đầu mở: `rm -f ~/Library/Application\ Support/dev.meetingtranslator.spike/settings.json`
+- Chạy: `pnpm tauri dev`. Muốn thử cả bản release: `pnpm build && CARGO_PROFILE_RELEASE_LTO=false pnpm tauri build --no-bundle`, rồi chạy `target/release/meeting-translator`.
+- Log: `~/Library/Logs/dev.meetingtranslator.spike/app.log`.
+
+- [ ] **Step 1: Chạy từng dòng và ghi kết quả**
+
+| # | Thao tác | Đạt khi |
+|---|---|---|
+| 1 | Mở app lần đầu | Cửa sổ chính hiện các bước lần đầu mở, "Bước 1/8"; ngôn ngữ giao diện theo macOS (tiếng Việt nếu macOS dùng tiếng Việt, còn lại English). Chọn ngôn ngữ kia thì chữ đổi ngay. Đi hết 8 bước, bấm nút cuối thì về màn hình chính |
+| 2 | Nhìn menu bar | Có icon khung phụ đề đơn sắc; đổi menu bar sáng/tối (System Settings › Appearance) thì icon đổi màu theo. Bấm icon: menu có Bắt đầu dịch, Ẩn phụ đề, Khóa phụ đề (click xuyên qua), Mở cửa sổ chính, Thoát |
+| 3 | Khay › Bắt đầu dịch | Thanh phụ đề có phụ đề mẫu mỗi 1,5 giây, dòng thứ tư nhạt hơn; màn hình chính báo "Đang dịch"; mở lại menu khay thấy "Dừng dịch"; di chuột lên icon thấy chú thích dạng "Meeting Translator: Đang dịch" (theo ngôn ngữ đang chọn) |
+| 4 | Để Finder active, bấm `⌃⌥T`, `⌃⌥H`, `⌃⌥L` | Lần lượt dừng dịch, ẩn rồi hiện thanh phụ đề, khóa rồi mở khóa; màn hình chính và menu khay đổi theo |
+| 5 | Khóa (khay hoặc `⌃⌥L`), rồi click vào vùng thanh phụ đề đang nằm trên một cửa sổ khác | Click đi xuyên tới cửa sổ bên dưới; viền nét đứt biến mất. Mở khóa bằng khay được |
+| 6 | Kéo thanh phụ đề sang chỗ khác, Thoát ở khay, mở lại app | Thanh ở đúng chỗ vừa kéo. Nếu thanh luôn về giữa đáy màn hình, ghi lại: sự kiện di chuyển của NSPanel không tới Tauri, 03 phải lưu vị trí cách khác |
+| 7 | Có màn hình ngoài: kéo thanh sang màn hình ngoài, thoát, rút màn hình ngoài, mở lại; rồi cắm lại, thoát, mở lại | Khi rút: thanh ở vị trí đã nhớ trên màn hình laptop (hoặc giữa đáy nếu chưa từng nhớ). Khi cắm lại: thanh về màn hình ngoài, đúng vị trí cũ |
+| 8 | Cài đặt › Chung › Ngôn ngữ giao diện | Cửa sổ chính đổi ngay; mở lại menu khay thấy chữ mới; chữ chờ "Phụ đề sẽ hiện ở đây" trên thanh phụ đề đổi theo |
+| 9 | Cài đặt › Chung › Giao diện: Tối, Sáng, Theo hệ thống | Đổi ngay; "Theo hệ thống" đi theo macOS |
+| 10 | Cài đặt › Phím tắt: đổi "Bắt đầu hoặc dừng dịch" thành `⌃⌥K`; thử `⌃⌥K` và `⌃⌥T` | `⌃⌥K` bắt đầu/dừng được, `⌃⌥T` hết tác dụng |
+| 11 | Đổi "Hiện hoặc ẩn phụ đề" thành `⌃⌥K`; rồi bấm Đổi và gõ `T` không kèm phím bổ trợ; rồi Esc | Báo "Tổ hợp này đang dùng cho việc khác."; báo "Hãy dùng ít nhất một phím Ctrl, Alt, Shift hoặc Cmd/Win."; Esc hủy, phím cũ giữ nguyên |
+| 12 | Bấm X, rồi mở lại; bấm `⌘W` | Cửa sổ ẩn, icon ở Dock biến mất, phụ đề mẫu vẫn chạy nếu đang dịch. Khay › Mở cửa sổ chính: cửa sổ hiện, icon ở Dock hiện lại |
+| 13 | Cửa sổ chính đang active, bấm `⌘Q`; mở menu tên app ở menu bar | App không thoát; menu tên app không có mục Quit |
+| 14 | Chuột phải icon ở Dock › Quit | App không thoát; log có dòng `bỏ qua yêu cầu thoát không đến từ menu khay` |
+| 15 | Khay › Thoát | App thoát hẳn: `pgrep -fl meeting-translator` không in gì. Log có `thoát theo yêu cầu từ menu khay` |
+| 16 | App đang chạy, Apple menu › Log Out (hoặc Restart) | Đăng xuất không bị chặn, không có hộp thoại báo Meeting Translator hủy đăng xuất. Sau khi đăng nhập lại, log có `cho thoát theo yêu cầu của hệ thống` |
+| 17 | App đang chạy (`pnpm tauri dev`), mở terminal khác chạy `target/debug/meeting-translator` | Bản thứ hai thoát ngay; bản đang chạy hiện cửa sổ chính |
+| 18 | Cài đặt › Chung › bật "Khởi động cùng hệ thống"; `ls ~/Library/LaunchAgents/`; đăng xuất rồi đăng nhập | Có `Meeting Translator.plist`. Sau khi đăng nhập: app chạy, chỉ có icon ở menu bar, không có cửa sổ và icon ở Dock. Tắt lại mục này thì file plist bị xóa. Bản dev đăng ký đường dẫn của binary dev, nên nhớ tắt sau khi thử |
+| 19 | `cat ~/Library/Application\ Support/dev.meetingtranslator.spike/settings.json`; rồi ghi rác vào file (`echo '{hỏng' > …/settings.json`) và mở lại app | Có `"schemaVersion": 1` và các khóa của §6.9. Sau khi ghi rác: app mở bình thường với cài đặt mặc định (lại hiện các bước lần đầu), cạnh đó có `settings.json.corrupt` |
+| 20 | Giới thiệu › Mở thư mục log | Finder mở `~/Library/Logs/dev.meetingtranslator.spike/`, có `app.log`; log không chứa câu phụ đề mẫu nào |
+| 21 | `cargo test -p meeting-translator --lib os_keystore -- --ignored` | `1 passed`. Nếu Keychain hỏi quyền, ghi lại nội dung hộp thoại |
+| 22 | Phím tắt trùng với app họp (C5; ma trận S5, dòng 13): để Zoom, Teams, Meet (Chrome) lần lượt active, bấm ba phím tắt | Ghi lại phản ứng của cả app này và app họp |
+| 23 | Ma trận S5 trên Mac (kế hoạch 0-05, Task 3), nếu chưa chạy: ít nhất dòng 1, 7, 9, 11 với app này | Như ma trận S5 |
+| 24 | Tùy chọn (R8): tạo chứng thư trong Keychain Access › Certificate Assistant › Create a Certificate…: tên "Meeting Translator Dev", Identity Type "Self Signed Root", Certificate Type "Code Signing". Chạy `./scripts/run-dev-signed.sh` | Script in `valid on disk` và `satisfies its Designated Requirement`, rồi app mở như `pnpm tauri dev`. Kế hoạch 02, 03, 06 dùng cách này để quyền ghi âm thanh và Keychain không hỏi lại sau mỗi lần build |
+
+- [ ] **Step 2: Ghi `bench/phase1/results/p01_app_shell_manual.md`:** phiên bản macOS, máy, commit đã thử, bảng trên với cột kết quả, và ảnh chụp dòng 2 và 5 (lưu trong `bench/phase1/results/p01/`).
+
+- [ ] **Step 3: Nếu dòng nào không đạt:** ghi lỗi vào file kết quả, sửa code trong một task mới của kế hoạch này (viết test trước nếu là logic), rồi chạy lại dòng đó. Riêng dòng 6 và 7: nếu NSPanel không phát sự kiện di chuyển, ghi vào mục 2.3 của kế hoạch 00 để 03 xử lý.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add bench/phase1/results/p01_app_shell_manual.md bench/phase1/results/p01
+git commit -m "test(app): thử tay khung app trên macOS (khay, phím tắt, thoát, thanh phụ đề)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 20 (người, Win): Thử tay trên Windows
+
+**Files:**
+- Modify: `bench/phase1/results/p01_app_shell_manual.md` (thêm mục Windows)
+
+Làm trong đợt Windows (mục 3 của kế hoạch 00), trên máy đã làm kế hoạch 0-01 Task 2. Windows 11, thêm Windows 10 nếu có.
+
+- [ ] **Step 1: Build và test ngay trên Windows** (PowerShell, từ gốc repo)
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm build
+pnpm test
+cargo clippy -p meeting-translator --all-targets -- -D warnings
+cargo test -p meeting-translator
+```
+Expected: như Task 18 (phần `meeting-translator`: 55 passed, 1 ignored; vitest 24 passed).
+
+- [ ] **Step 2: Chạy `pnpm tauri dev` và làm từng dòng**
+
+| # | Thao tác | Đạt khi |
+|---|---|---|
+| 1 | Nhìn khay hệ thống (kể cả mục mũi tên `^`) | Có icon của app. Bấm chuột trái: cửa sổ chính hiện. Bấm chuột phải: menu năm mục như trên Mac |
+| 2 | Bước 8 của lần đầu mở | Có hình hướng dẫn và nút "Mở cài đặt Taskbar"; bấm nút thì mở đúng Settings › Personalization › Taskbar. Nếu hình tạm khó hiểu, chụp ảnh thật trên Windows 10 và 11 và ghi vào kết quả để thay hình |
+| 3 | `Alt+F4` và nút X ở cửa sổ chính | Cửa sổ ẩn, mất khỏi taskbar; app, phím tắt, phụ đề mẫu vẫn chạy; khay › Mở cửa sổ chính hiện lại |
+| 4 | Thanh phụ đề (ma trận S5 trên Windows, kế hoạch 0-05 Task 4, ít nhất dòng 1, 6, 7, 9, 12) | Không có nút ở taskbar; nổi trên Teams toàn màn hình; đang gõ trong ô chat của Teams thì chữ vẫn vào Teams; khóa thì click xuyên qua |
+| 5 | Để một app khác giữ `Ctrl+Alt+T` (ví dụ đặt phím tắt đó trong PowerToys), rồi mở app | Cửa sổ chính có thanh báo phím tắt không đăng ký được; nhóm Phím tắt ghi "Chưa đăng ký được"; menu khay có dòng báo, bấm vào thì mở đúng nhóm Phím tắt. Đổi sang tổ hợp khác thì hết báo |
+| 6 | Máy dùng bố cục bàn phím có AltGr (ví dụ Polish, German): gõ chữ cần AltGr+T, AltGr+L | Ghi lại: `Ctrl+Alt+…` trùng AltGr nên có thể nuốt ký tự. Nếu có, báo chủ dự án để cân nhắc đổi phím tắt mặc định (F10) |
+| 7 | App đang chạy, Start › Power › Shut down (hoặc Sign out) | Không có màn hình "This app is preventing you from shutting down" do Meeting Translator |
+| 8 | Chạy `target\debug\meeting-translator.exe` lần thứ hai khi app đang chạy | Bản thứ hai thoát ngay; bản đang chạy hiện cửa sổ chính |
+| 9 | Bật "Khởi động cùng hệ thống"; xem `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; đăng xuất rồi đăng nhập; tắt lại | Có giá trị `Meeting Translator` trỏ tới exe, kèm `--autostart`. Sau khi đăng nhập: chỉ có icon ở khay, không mở cửa sổ. Tắt lại thì giá trị bị xóa |
+| 10 | `cargo test -p meeting-translator --lib os_keystore -- --ignored` | `1 passed` (Credential Manager) |
+| 11 | Đường dẫn file | Cài đặt ở `%APPDATA%\dev.meetingtranslator.spike\settings.json`; log ở `%LOCALAPPDATA%\dev.meetingtranslator.spike\logs\app.log` |
+| 12 | Màn hình scale 150% và hai màn hình: kéo thanh phụ đề sang màn hình kia, thoát, mở lại | Thanh về đúng màn hình và vị trí; chữ nét, không bị cắt |
+
+- [ ] **Step 3: Ghi kết quả vào mục "Windows" của `bench/phase1/results/p01_app_shell_manual.md`** (phiên bản Windows, máy, ảnh chụp dòng 1, 2 và 4), rồi commit
+
+```powershell
+git add bench/phase1/results/p01_app_shell_manual.md bench/phase1/results/p01
+git commit -m "test(app): thử tay khung app trên Windows (khay, Alt+F4, thanh phụ đề, phím tắt trùng)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+## Task 21: Cập nhật tổng quan Giai đoạn 1 (Task 2 của kế hoạch 00)
+
+**Files:**
+- Modify: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`
+
+- [ ] **Step 1: Làm Task 2 của kế hoạch 00 với số `01`.** Gợi ý trạng thái khi Task 1–19 đã xong (Task 20 chưa có máy Windows):
+
+| Trạng thái | Dòng |
+|---|---|
+| `xong` (ghi SHA ngắn) | 8, 21, 35, 39, 41, 54, 62, 69, 72, 74, 75, 76, 191, 192, 194, 195, 260 |
+| `chờ` (Win), ghi "phần macOS xong" | 42, 60, 63, 71 |
+| `chờ` (C5) | 64, 70 (phần code xong; chờ ma trận S5 trên app họp toàn màn hình) |
+| `đang làm`, ghi "phần 01 xong" và kế hoạch còn lại | 2, 4, 16, 17, 24, 38, 43, 46, 50, 59, 61, 68, 79, 87, 141, 196, 197, 204, 230, 249, 252, 257, 266, 271, 292, 305, 312, 318 |
+
+Dòng 24 và 305 còn phần kiểm trùng phím tắt với app họp (C5) và phần Windows; dòng 312 còn phần của 06 (lệnh bản quyền).
+
+- [ ] **Step 2: Cập nhật các mục khác của kế hoạch 00**
+  - Mục 6.2: thêm `pnpm test` sau `pnpm build`, và `./scripts/check-windows.sh` sau `cargo build --release -p asr-worker …`; sửa số test thành "199 test qua, 2 test bỏ qua (`vad_reference`, `os_keystore_roundtrip`)".
+  - Mục 2.1: ghi các chỗ bàn giao khác mô tả: overlay có một lệnh chỉ đọc `get_overlay_view` và không gọi lệnh khóa (QĐ5); menu app trên Mac chỉ có chữ English (QĐ15); `yoke-derive` nâng 0.8.4.
+  - Mục 2.2 (02): 02 thay `session_stub.rs` bằng `session.rs`; chạy tiến trình phụ ở `window::show_main` và khi bắt đầu phiên, không chạy khi `AppState::launched_at_login()` và cửa sổ chính chưa mở (Đ19); dừng phiên và tắt tiến trình phụ trong `actions::quit`.
+  - Mục 2.3 (03): mặc định của thanh phụ đề ở QĐ3; nếu Task 19 dòng 6–7 không đạt thì ghi ở đây.
+  - Mục 2.6 (06): không gửi bí mật qua sự kiện (QĐ6); dùng `security::keystore::Keystore`.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+git commit -m "docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 01" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
