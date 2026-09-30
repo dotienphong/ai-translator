@@ -309,6 +309,7 @@ mod tests {
             no_speech_prob: 0.01,
             lid_ms: 12.5,
             asr_ms: 240.0,
+            avg_logprob: -0.31,
         });
         write_frame(&mut buf, &resp).unwrap();
 
@@ -353,10 +354,25 @@ mod tests {
 
     #[test]
     fn audio_ctx_matches_spec_formula() {
-        assert_eq!(audio_ctx_for_samples(48_000), 214); // 3 giây
-        assert_eq!(audio_ctx_for_samples(134_400), 484); // 8,4 giây (8 giây + 2 × 200 ms đệm)
-        assert_eq!(audio_ctx_for_samples(16_000 * 30), 1500); // 30 giây, bị chặn ở 1500
-        assert_eq!(audio_ctx_for_samples(1), 65); // làm tròn lên
+        // Trên sàn: 50 × số giây + 64, làm tròn lên.
+        assert_eq!(audio_ctx_for_samples(143_361), 513); // vừa quá 8,96 giây: 449 + 64
+        assert_eq!(audio_ctx_for_samples(16_000 * 12), 664); // 12 giây: 600 + 64
+        assert_eq!(audio_ctx_for_samples(16_000 * 30 - 1), 1500); // sát 30 giây, bị chặn ở 1500
+        assert_eq!(audio_ctx_for_samples(16_000 * 30), 1500); // 30 giây
+    }
+
+    #[test]
+    fn audio_ctx_has_a_floor() {
+        assert_eq!(MIN_AUDIO_CTX, 512);
+        // Công thức thuần cho 1 + 64 = 65, 214, 484: sàn nâng cả ba lên 512.
+        assert_eq!(audio_ctx_for_samples(1), 512);
+        assert_eq!(audio_ctx_for_samples(48_000), 512); // 3 giây
+        assert_eq!(audio_ctx_for_samples(134_400), 512); // 8,4 giây (8 giây + 2 × 200 ms đệm)
+        // Sàn hết tác dụng đúng ở 8,96 giây, nơi công thức cho 448 + 64 = 512.
+        assert_eq!(audio_ctx_for_samples(143_360), 512);
+        // Sàn là một cửa sổ hợp lệ, và phủ được đoạn dài nhất mà công thức còn để nguyên (8,96 giây).
+        assert!((0..=1500).contains(&MIN_AUDIO_CTX));
+        assert!(MIN_AUDIO_CTX as usize * 320 >= 143_360);
     }
 
     /// Mỗi lần `read` chỉ trả tối đa 1 byte, và cứ lần thứ hai lại báo `Interrupted` (giống pipe thật).
@@ -467,6 +483,7 @@ mod tests {
             no_speech_prob: 0.0,
             lid_ms: 0.0,
             asr_ms: 0.0,
+            avg_logprob: 0.0,
         });
         let error = Response::Error {
             segment_id: None,
@@ -510,14 +527,37 @@ mod tests {
             no_speech_prob: 0.0,
             lid_ms: 0.0,
             asr_ms: 0.0,
+            avg_logprob: -0.5,
         });
         let s = format!("{resp:?}");
         assert!(!s.contains("bí mật") && !s.contains("4242"), "{s}");
+        assert!(s.contains("avg_logprob: -0.5"), "{s}");
+    }
+
+    /// `avg_logprob` nằm cuối struct: postcard mã hóa trường theo thứ tự khai báo, nên 4 byte cuối của phản hồi
+    /// `Result` là `avg_logprob` (f32 little-endian). Thêm trường sau nó, hoặc đổi chỗ, sẽ làm test này đỏ. Test chỉ khóa
+    /// bố cục, không bảo đảm tương thích giữa hai bản build khác nhau.
+    #[test]
+    fn avg_logprob_is_the_last_field_on_the_wire() {
+        let result = TranscribeResult {
+            segment_id: 1,
+            lang: "vi".into(),
+            lang_prob: 0.9,
+            text: "xin chào".into(),
+            tokens: vec![1, 2],
+            no_speech_prob: 0.1,
+            lid_ms: 1.0,
+            asr_ms: 2.0,
+            avg_logprob: -0.8125,
+        };
+        let bytes = postcard::to_stdvec(&result).unwrap();
+        assert_eq!(bytes[bytes.len() - 4..], (-0.8125f32).to_le_bytes());
+        assert_eq!(postcard::from_bytes::<TranscribeResult>(&bytes).unwrap(), result);
     }
 
     #[test]
     fn audio_ctx_is_total() {
-        assert_eq!(audio_ctx_for_samples(0), 64);
+        assert_eq!(audio_ctx_for_samples(0), MIN_AUDIO_CTX);
         assert_eq!(audio_ctx_for_samples(1 << 40), 1500);
         assert_eq!(audio_ctx_for_samples(usize::MAX), 1500);
     }
@@ -557,6 +597,17 @@ pub const MAX_PCM_SAMPLES: usize = SAMPLE_RATE as usize * 30;
 /// Số token tối đa của `prompt_tokens`: 100 token của đoạn trước cùng ngôn ngữ (spec §6.4). Nhiều hơn thì `asr-worker`
 /// trả `Error`, để hai chế độ giải mã xử lý prompt giống nhau.
 pub const MAX_PROMPT_TOKENS: usize = 100;
+
+/// Sàn của `audio_ctx` mà [`audio_ctx_for_samples`] áp dụng: 512 khung (10,24 giây). Đoạn ngắn hơn 8,96 giây, nơi công
+/// thức `50 × số giây + 64` cho dưới 512, được nâng lên bằng mức này. Đây là đề xuất cho §6.4 (xem kế hoạch 00, Task 2);
+/// spec hiện chỉ có công thức không sàn. Lý do:
+/// - A4 (S7): với cửa sổ mã hóa ngắn, Whisper chép thừa (lặp cụm cuối câu, chép cả câu hai lần). Có sàn thì tổng lỗi
+///   trên 5 ngôn ngữ giảm 6,4% ở turbo và 1,5% ở small, không ô nào xấu đi đáng kể.
+/// - S6: không có sàn thì turbo nhận diện ngôn ngữ sai ở 22/60 đoạn tiếng Việt (đoạn dưới 1,3 giây sai hết, thành
+///   tiếng Anh); có sàn thì 53/60 đoạn đúng.
+///
+/// Chi phí: turbo chậm thêm khoảng 90 ms ở đoạn dưới 5 giây, small khoảng 15 ms; từ 9 giây trở lên không đổi.
+pub const MIN_AUDIO_CTX: i32 = 512;
 
 /// Một đoạn 8 giây ở dạng int16 chỉ khoảng 256 KB; 16 MiB là dư nhiều.
 pub const MAX_FRAME_BYTES: u32 = 16 * 1024 * 1024;
@@ -628,6 +679,19 @@ pub struct TranscribeResult {
     pub lid_ms: f32,
     /// Thời gian chép lời (encode + decode).
     pub asr_ms: f32,
+    /// Trung bình log-xác suất của các token văn bản đã sinh. Không tính token đặc biệt, kể cả EOT: cố ý khác OpenAI
+    /// (OpenAI cộng cả log-xác suất của EOT rồi chia cho số token cộng 1). Bỏ EOT thì trung bình âm hơn một chút, rõ ở
+    /// đoạn ngắn, nên luật bên dưới chặt hơn một chút. Không có token nào thì là 0,0. Chế độ B bỏ log-xác suất của phần
+    /// bị `cut_loop` gom; chế độ A không có `cut_loop` nên trung bình gồm cả token lặp.
+    ///
+    /// Cùng `no_speech_prob`, dùng để bỏ đoạn không có tiếng nói theo luật đề xuất cho §6.4 (xem kế hoạch 00, Task 2;
+    /// spec hiện chỉ có `no_speech_prob > 0,6`): bỏ khi `no_speech_prob > 0,6` **và** `avg_logprob < −1`. Trên A4
+    /// (548 clip) luật bỏ đúng 1 clip, small `en-9810650684898829002_nb`, có bản chép là ảo giác; turbo 0 clip.
+    ///
+    /// Nằm cuối struct để bố cục trên dây dễ đọc và dễ kiểm (postcard mã hóa trường theo thứ tự khai báo). Việc này
+    /// không cho lợi ích tương thích: thêm hay bỏ trường nào cũng đổi định dạng, nên app và `asr-worker` luôn phải build
+    /// cùng nhau (xem [`Request`]). Test `avg_logprob_is_the_last_field_on_the_wire` chỉ khóa bố cục.
+    pub avg_logprob: f32,
 }
 
 // Debug viết tay: âm thanh và nội dung chép lời không bao giờ được vào log (spec §10.1, §10.2).
@@ -654,6 +718,7 @@ impl fmt::Debug for TranscribeResult {
             .field("no_speech_prob", &self.no_speech_prob)
             .field("lid_ms", &self.lid_ms)
             .field("asr_ms", &self.asr_ms)
+            .field("avg_logprob", &self.avg_logprob)
             .finish()
     }
 }
@@ -720,17 +785,21 @@ fn read_up_to<R: Read>(r: &mut R, buf: &mut [u8]) -> io::Result<usize> {
     Ok(filled)
 }
 
-/// `audio_ctx = min(1500, 50 × số giây của đoạn + 64)` (spec §6.4). Làm tròn lên.
+/// `audio_ctx = min(1500, max(MIN_AUDIO_CTX, ceil(50 × số giây của đoạn) + 64))`. Làm tròn lên. Công thức của spec §6.4
+/// là `min(1500, 50 × số giây + 64)`; sàn [`MIN_AUDIO_CTX`] là đề xuất cho §6.4 (xem kế hoạch 00, Task 2), giải thích ở
+/// hằng đó.
 pub fn audio_ctx_for_samples(n_samples: usize) -> i32 {
     let frames = (n_samples as u64).saturating_mul(50).div_ceil(SAMPLE_RATE as u64);
-    frames.saturating_add(64).min(1500) as i32
+    frames.saturating_add(64).max(MIN_AUDIO_CTX as u64).min(1500) as i32
 }
 ```
 
 - [ ] **Step 5: Chạy lại test**
 
 Run: `cargo test -p asr-protocol`
-Expected: PASS, `test result: ok. 14 passed`
+Expected: PASS, `test result: ok. 16 passed`
+
+Bản cuối có thêm những thứ rút ra lúc thực thi các kế hoạch sau: `MIN_PCM_SAMPLES`, `MAX_PCM_SAMPLES`, `MAX_PROMPT_TOKENS`; mức sàn `MIN_AUDIO_CTX` (512) trong `audio_ctx_for_samples`; `avg_logprob` ở cuối `TranscribeResult`. Xem kế hoạch 03 và kế hoạch 00, Task 2.
 
 - [ ] **Step 6: Kiểm tra định dạng và clippy**
 

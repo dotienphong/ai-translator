@@ -1049,6 +1049,33 @@ mod tests {
         assert_eq!(pick_language(&p, &[0, 19], Some(19), 0.5).0, 19);
         assert_eq!(pick_language(&p, &[0, 19], None, 0.5).0, 0);
     }
+
+    #[test]
+    fn short_segments_use_a_stricter_threshold() {
+        assert_eq!(SHORT_LID_SAMPLES, 24_000); // 1,5 giây
+        assert_eq!(MIN_LANG_PROB, 0.5);
+        assert_eq!(MIN_LANG_PROB_SHORT, 0.9);
+        assert_eq!(min_prob_for(0), 0.9);
+        assert_eq!(min_prob_for(16_000), 0.9); // 1 giây
+        assert_eq!(min_prob_for(SHORT_LID_SAMPLES - 1), 0.9);
+        assert_eq!(min_prob_for(SHORT_LID_SAMPLES), 0.5); // đúng 1,5 giây đã là đoạn thường
+        assert_eq!(min_prob_for(16_000 * 30), 0.5);
+    }
+
+    #[test]
+    fn short_threshold_keeps_previous_language_unless_very_confident() {
+        // en 0,8 / vi 0,2: đoạn thường (ngưỡng 0,5) đổi sang en; đoạn ngắn (ngưỡng 0,9) giữ vi của đoạn trước.
+        let p = probs(&[(0, 0.8), (19, 0.2)]);
+        assert_eq!(pick_language(&p, &[0, 19], Some(19), min_prob_for(48_000)).0, 0);
+        let (id, prob) = pick_language(&p, &[0, 19], Some(19), min_prob_for(16_000));
+        assert_eq!(id, 19);
+        assert!((prob - 0.2).abs() < 1e-6); // xác suất trả về là của ngôn ngữ được giữ
+        // Từ 0,9 trở lên thì đoạn ngắn vẫn đổi ngôn ngữ.
+        let p = probs(&[(0, 0.95), (19, 0.05)]);
+        assert_eq!(pick_language(&p, &[0, 19], Some(19), min_prob_for(16_000)).0, 0);
+        // Chưa có ngôn ngữ trước thì không có gì để giữ, kể cả khi ngưỡng cao.
+        assert_eq!(pick_language(&probs(&[(0, 0.8), (19, 0.2)]), &[0, 19], None, 0.9).0, 0);
+    }
 }
 ```
 
@@ -1061,6 +1088,30 @@ Expected: FAIL, lỗi biên dịch vì chưa có `pick_language`. Lần đầu b
 
 ```rust
 //! Chọn ngôn ngữ trong tập người dùng cho phép (spec §6.4).
+
+use asr_protocol::SAMPLE_RATE;
+
+/// Ngưỡng thường: xác suất cao nhất (đã chuẩn hóa trong tập cho phép) dưới mức này thì giữ ngôn ngữ của đoạn trước.
+pub const MIN_LANG_PROB: f32 = 0.5;
+
+/// Đoạn ngắn hơn mức này (1,5 giây) dùng ngưỡng [`MIN_LANG_PROB_SHORT`].
+pub const SHORT_LID_SAMPLES: usize = 24_000;
+const _: () = assert!(SHORT_LID_SAMPLES == SAMPLE_RATE as usize * 3 / 2);
+
+/// Ngưỡng cho đoạn ngắn hơn [`SHORT_LID_SAMPLES`]. Ở S6, turbo nhận thành tiếng Anh các đoạn tiếng Việt dưới 1,3 giây
+/// (xác suất từ 0,57 đến 0,99): đoạn quá ngắn không đủ bằng chứng để đổi ngôn ngữ, nên chỉ đổi khi xác suất từ 0,9.
+/// Đề xuất cho §6.4 (xem kế hoạch 00, Task 2); spec hiện chỉ có ngưỡng 0,5.
+pub const MIN_LANG_PROB_SHORT: f32 = 0.9;
+
+/// Ngưỡng `min_prob` cho `pick_language` theo độ dài đoạn (số mẫu 16 kHz): [`MIN_LANG_PROB_SHORT`] nếu đoạn ngắn hơn
+/// [`SHORT_LID_SAMPLES`], còn không [`MIN_LANG_PROB`]. Cả hai chế độ giải mã dùng hàm này.
+pub fn min_prob_for(n_samples: usize) -> f32 {
+    if n_samples < SHORT_LID_SAMPLES {
+        MIN_LANG_PROB_SHORT
+    } else {
+        MIN_LANG_PROB
+    }
+}
 
 /// `probs`: xác suất của mọi ngôn ngữ Whisper, index là lang id.
 /// `allowed`: các lang id được phép, không được rỗng.
@@ -1093,7 +1144,7 @@ pub fn pick_language(probs: &[f32], allowed: &[i32], prev: Option<i32>, min_prob
 - [ ] **Step 6: Chạy lại test**
 
 Run: `cargo test -p asr-worker`
-Expected: PASS, `test result: ok. 5 passed`
+Expected: PASS, `test result: ok. 7 passed`
 
 - [ ] **Step 7: Commit**
 
@@ -1111,7 +1162,12 @@ git commit -m "feat(asr-worker): chọn ngôn ngữ trong tập cho phép, giữ
 
 Phần code gắn `#[cfg(feature = "shared-encode")]` và `#[cfg(feature = "vulkan")]` chỉ được biên dịch khi bật feature đó, nên chưa cần `shared.rs` và `probe.rs`. stdout chỉ dùng cho khung giao thức. Log của whisper.cpp tự đi ra stderr, nên không gọi `install_logging_hooks`.
 
-Ba điểm rút ra từ review lúc thực thi:
+Các điểm rút ra lúc thực thi. Ba điểm đầu từ review Task 4; các điểm sau từ đợt xử lý vấn đề mở sau S6, xem kế hoạch 00 Task 2:
+- **LID đoạn ngắn:** đoạn ngắn hơn 1,5 giây chỉ đổi ngôn ngữ khi xác suất ≥ 0,9 (`min_prob_for` trong `lid.rs`). Ở S6, turbo nhận đoạn tiếng Việt dưới 1,3 giây thành tiếng Anh.
+- **`avg_logprob`:** trung bình log-xác suất của các token văn bản, không tính EOT, trả trong `TranscribeResult`. App dùng nó cho luật bỏ đoạn: `no_speech > 0,6` và `avg_logprob < −1`.
+- **Mồi dấu câu zh/ja:** có sẵn trong code nhưng **tắt mặc định**, `ASR_PRIMER=1` mới bật.
+  - Với zh, dấu `。` hiện cả ở giữa câu, nên mồi không giúp §6.3.
+  - Trên đoạn không có tiếng nói, model chép lại chính câu mồi.
 - **Flash attention mặc định tắt.** whisper.cpp 1.8.3 có lỗi, và v1.9.4 cùng master vẫn còn: khi bật flash attention, encoder và cross-attention đọc K/V tới `GGML_PAD(audio_ctx, 256)` mà không có mask. Với `audio_ctx` rút ngắn, kết quả sai (lặp câu, mất dấu câu) và thay đổi theo các đoạn đã chép trước đó. Reviewer đã tái hiện trên Metal. PR sửa lỗi (ggml-org/whisper.cpp#3941) chưa được merge. Chỉ đặt `ASR_FLASH_ATTN=1` để thử khi whisper.cpp đã có bản vá đó.
 - **`transcribe` kiểm đầu vào trước khi gọi whisper.cpp.** Các đầu vào dưới đây làm worker chết (crash trong whisper.cpp, hoặc whisper-rs panic, mà bản release đặt `panic = "abort"`), đọc lố bộ đệm, hoặc lặng lẽ bỏ phần đuôi của đoạn:
   - đoạn dưới 100 ms;
@@ -1140,8 +1196,11 @@ pub mod lid;
 //! - Chế độ B (`shared`, xem `shared.rs`): một lượt encode dùng chung cho cả hai việc, nên chỉ có một state (state
 //!   chép lời) và không tạo state nhận diện ngôn ngữ. Là mặc định khi build với feature `shared-encode`; đặt
 //!   `ASR_MODE=split` để chạy chế độ A khi cần so sánh.
+//!
+//! Cả hai chế độ dùng chung: ngưỡng giữ ngôn ngữ trước theo độ dài đoạn (`lid::min_prob_for`), câu mồi cho zh và ja
+//! (`Primers`, mặc định tắt), và trả `avg_logprob`.
 
-use crate::lid::pick_language;
+use crate::lid::{min_prob_for, pick_language};
 use anyhow::{Context, Result, bail};
 use asr_protocol::{
     MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_PCM_SAMPLES, SAMPLE_RATE, TranscribeRequest, TranscribeResult,
@@ -1152,13 +1211,102 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 /// Nhận diện ngôn ngữ trên tối đa 3 giây đầu của đoạn (spec §6.4).
 pub const LID_SAMPLES: usize = SAMPLE_RATE as usize * 3;
-pub(crate) const MIN_LANG_PROB: f32 = 0.5;
 /// Cửa sổ mã hóa tối đa của Whisper: 1500 vị trí, tức 30 giây.
 const MAX_AUDIO_CTX: i32 = 1500;
 /// Số mẫu 16 kHz mà một vị trí của `audio_ctx` phủ (20 ms).
 const SAMPLES_PER_CTX: usize = SAMPLE_RATE as usize / 50;
+/// `audio_ctx` của state nhận diện ngôn ngữ ở chế độ A: cửa sổ 3 giây theo công thức `50 × số giây + 64` (214). Cố ý
+/// không qua sàn `MIN_AUDIO_CTX` của `audio_ctx_for_samples`, để chế độ A (nay chỉ dùng để so sánh) giữ nguyên hành
+/// vi đã đo ở S3.
+const LID_AUDIO_CTX: i32 = (LID_SAMPLES / SAMPLES_PER_CTX) as i32 + 64;
 // Cửa sổ tối đa phủ đúng đoạn dài nhất mà `asr-protocol` cho phép.
 const _: () = assert!(MAX_AUDIO_CTX as usize * SAMPLES_PER_CTX == MAX_PCM_SAMPLES);
+
+/// Câu mồi cho tiếng Trung: chữ giản thể, có dấu câu kết thúc.
+const PRIMER_ZH: &str = "以下是普通话的句子。";
+/// Câu mồi cho tiếng Nhật: có dấu câu kết thúc.
+const PRIMER_JA: &str = "以下は日本語の文です。";
+
+/// Prompt mồi cho zh và ja (`<|startofprev|>` rồi các token này, như prompt của client). **Mặc định TẮT**; đặt
+/// `ASR_PRIMER=1` để bật (khi đó `asr-worker` in `primer=on`).
+///
+/// Ý định ban đầu là cho Whisper đặt dấu câu kết thúc ở zh và ja, để luật ghép câu §6.3 (câu không kết thúc bằng dấu câu
+/// thì ghép với câu sau) không nối cả những câu khác nhau. Đo ở S3 và S6 (small và turbo, 216 clip zh+ja của A4 và các
+/// đoạn VAD thật của S6) cho thấy mồi không đáng bật:
+/// - zh: dấu `。` hiện cả ở đoạn giữa câu (small 16/20, turbo 15/20; đoạn cuối câu 21/23 và 20/23), nên không giúp
+///   §6.3: ghép câu chuyển từ "nối nhầm" (4 đến 5 nhóm) sang "cắt vụn" (11 đến 12 trong 23 câu bị cắt), số câu nguyên
+///   vẹn không hơn. Dùng prompt là token các đoạn trước thì zh vẫn `。` ở 18/20 đoạn giữa câu, kể cả turbo không mồi. ja
+///   thì dấu kết thúc hầu như chỉ ra ở cuối câu, có ích nhẹ.
+/// - Trên đoạn không có tiếng nói (im lặng, nhiễu, nhạc, click) mà ngôn ngữ là zh hoặc ja, model chép lại chính câu mồi:
+///   small ở 4/5 clip thử cho mỗi ngôn ngữ, turbo ja ở 3/5 (`日本語の文です。`).
+/// - CER của small tăng 2,9% tổng lỗi zh+ja (băng rộng); turbo giảm 2,2%. ASR p50 của zh, ja tăng 1% đến 9%.
+///
+/// Lợi ích duy nhất còn lại: `small` ra chữ giản thể (clip zh có chữ phồn thể từ 66% xuống 16%, ký tự phồn thể từ 18,1%
+/// xuống 2,0%). MVP xử lý việc này bằng chuyển t2s ở tầng app.
+///
+/// Khi bật: chỉ dùng khi client không gửi prompt (đoạn đầu, hoặc sau khi đổi ngôn ngữ); prompt của client là ngữ cảnh
+/// thật nên thắng. Token hóa một lần lúc nạp model. Tắt thì các danh sách rỗng.
+#[derive(Default)]
+pub struct Primers {
+    zh: Vec<i32>,
+    ja: Vec<i32>,
+}
+
+/// Mồi chỉ bật khi biến môi trường `ASR_PRIMER` đúng bằng "1" (giống `ASR_FLASH_ATTN`).
+fn primer_requested(value: Option<&str>) -> bool {
+    value == Some("1")
+}
+
+impl Primers {
+    fn new(ctx: &WhisperContext) -> Result<Self> {
+        if !primer_requested(std::env::var("ASR_PRIMER").ok().as_deref()) {
+            return Ok(Self::default());
+        }
+        let eot = ctx.token_eot();
+        let tokenize = |text: &str| -> Result<Vec<i32>> {
+            // Mỗi token phủ ít nhất một byte, nên `text.len()` đủ lớn để không gặp mã âm (whisper-rs 0.16 chỉ coi -1 là
+            // lỗi, còn mã âm khác bị nó đổi thành độ dài Vec khổng lồ).
+            let tokens = ctx
+                .tokenize(text, text.len())
+                .with_context(|| format!("token hóa câu mồi {text:?}"))?;
+            if tokens.is_empty() || tokens.len() > MAX_PROMPT_TOKENS || tokens.iter().any(|t| !(0..eot).contains(t)) {
+                bail!("câu mồi {text:?} token hóa ra {tokens:?}, không hợp lệ");
+            }
+            Ok(tokens)
+        };
+        Ok(Self {
+            zh: tokenize(PRIMER_ZH)?,
+            ja: tokenize(PRIMER_JA)?,
+        })
+    }
+
+    /// Có câu mồi nào đang bật không (`true` chỉ khi đặt `ASR_PRIMER=1`).
+    pub fn enabled(&self) -> bool {
+        !self.zh.is_empty() || !self.ja.is_empty()
+    }
+
+    /// Prompt dùng cho đoạn có ngôn ngữ `lang`: prompt của client nếu có, không thì câu mồi của `lang` (zh, ja), không
+    /// thì rỗng. Độ dài luôn không quá `MAX_PROMPT_TOKENS` khi `client` không quá (engine đã kiểm).
+    pub fn context_for<'a>(&'a self, lang: &str, client: &'a [i32]) -> &'a [i32] {
+        if !client.is_empty() {
+            return client;
+        }
+        match lang {
+            "zh" => &self.zh,
+            "ja" => &self.ja,
+            _ => &[],
+        }
+    }
+}
+
+/// Trung bình log-xác suất của các token văn bản; 0,0 nếu không có token nào (xem `TranscribeResult::avg_logprob`).
+/// Cộng bằng f64 để đoạn dài không mất độ chính xác.
+pub fn mean_logprob(logprobs: &[f32]) -> f32 {
+    if logprobs.is_empty() {
+        return 0.0;
+    }
+    (logprobs.iter().map(|&l| l as f64).sum::<f64>() / logprobs.len() as f64) as f32
+}
 
 pub struct Engine {
     ctx: WhisperContext,
@@ -1168,6 +1316,7 @@ pub struct Engine {
     n_threads: usize,
     flash_attn: bool,
     prev_lang: Option<i32>,
+    primers: Primers,
     /// Có giá trị khi chạy chế độ B.
     #[cfg(feature = "shared-encode")]
     shared: Option<crate::shared::Decoder>,
@@ -1188,6 +1337,7 @@ impl Engine {
         let ctx = WhisperContext::new_with_params(model_path, params)
             .with_context(|| format!("không nạp được model {model_path}"))?;
         let asr_state = ctx.create_state().context("tạo state chép lời")?;
+        let primers = Primers::new(&ctx)?;
         #[cfg(feature = "shared-encode")]
         let shared = (std::env::var("ASR_MODE").as_deref() != Ok("split")).then(|| crate::shared::Decoder::new(&ctx));
         // Chỉ chế độ A cần state nhận diện ngôn ngữ riêng: không có feature `shared-encode`, hoặc có mà `ASR_MODE=split`.
@@ -1207,6 +1357,7 @@ impl Engine {
             n_threads,
             flash_attn,
             prev_lang: None,
+            primers,
             #[cfg(feature = "shared-encode")]
             shared,
         })
@@ -1224,6 +1375,11 @@ impl Engine {
     /// Flash attention có đang bật không. Mặc định tắt, xem `load`.
     pub fn flash_attn(&self) -> bool {
         self.flash_attn
+    }
+
+    /// Câu mồi cho zh và ja có đang bật không. Mặc định tắt, xem [`Primers`].
+    pub fn primer_enabled(&self) -> bool {
+        self.primers.enabled()
     }
 
     /// Chạy thử trên 3 giây im lặng để nạp sẵn kernel GPU cho state chép lời. Ở chế độ A, state nhận diện ngôn ngữ
@@ -1300,6 +1456,7 @@ impl Engine {
                 &allowed,
                 self.prev_lang,
                 &req.prompt_tokens,
+                &self.primers,
                 self.n_threads,
             )?;
             let total_ms = started.elapsed().as_secs_f32() * 1000.0;
@@ -1315,6 +1472,7 @@ impl Engine {
                 no_speech_prob: d.no_speech_prob,
                 lid_ms: d.lid_ms,
                 asr_ms: total_ms - d.lid_ms,
+                avg_logprob: d.avg_logprob,
             });
         }
 
@@ -1328,7 +1486,7 @@ impl Engine {
                 .pcm_to_mel(head, self.n_threads)
                 .context("tính mel cho nhận diện ngôn ngữ")?;
             let (_, probs) = lid_state.lang_detect(0, self.n_threads).context("nhận diện ngôn ngữ")?;
-            pick_language(&probs, &allowed, self.prev_lang, MIN_LANG_PROB)
+            pick_language(&probs, &allowed, self.prev_lang, min_prob_for(pcm.len()))
         };
         let lid_ms = if allowed.len() == 1 {
             0.0
@@ -1339,14 +1497,16 @@ impl Engine {
 
         let asr_started = Instant::now();
         let mut params = full_params(self.n_threads, lang, req.audio_ctx);
-        if !req.prompt_tokens.is_empty() {
-            params.set_tokens(&req.prompt_tokens);
+        let context = self.primers.context_for(lang, &req.prompt_tokens);
+        if !context.is_empty() {
+            params.set_tokens(context);
         }
         self.asr_state.full(params, &pcm).context("chép lời")?;
         let asr_ms = asr_started.elapsed().as_secs_f32() * 1000.0;
 
         let mut text = String::new();
         let mut tokens = Vec::new();
+        let mut logprobs = Vec::new();
         let mut no_speech_prob = 0.0f32;
         for segment in self.asr_state.as_iter() {
             text.push_str(&segment.to_str_lossy()?);
@@ -1356,6 +1516,8 @@ impl Engine {
                     let id = token.token_id();
                     if id < eot {
                         tokens.push(id);
+                        // whisper.cpp tính `plog` bằng log-softmax trên logit đã chặn token, giống chế độ B.
+                        logprobs.push(token.token_data().plog);
                     }
                 }
             }
@@ -1370,6 +1532,7 @@ impl Engine {
             no_speech_prob,
             lid_ms,
             asr_ms,
+            avg_logprob: mean_logprob(&logprobs),
         })
     }
 }
@@ -1380,7 +1543,7 @@ impl Engine {
 fn create_lid_state(ctx: &WhisperContext, n_threads: usize) -> Result<WhisperState> {
     let mut state = ctx.create_state().context("tạo state nhận diện ngôn ngữ")?;
     let silence = vec![0.0f32; LID_SAMPLES];
-    let params = full_params(n_threads, "en", audio_ctx_for_samples(LID_SAMPLES));
+    let params = full_params(n_threads, "en", LID_AUDIO_CTX);
     state
         .full(params, &silence)
         .context("đặt audio_ctx cho state nhận diện ngôn ngữ")?;
@@ -1415,6 +1578,80 @@ fn full_params<'a, 'b>(n_threads: usize, lang: &'a str, audio_ctx: i32) -> FullP
     p.set_print_realtime(false);
     p.set_print_timestamps(false);
     p
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn primers() -> Primers {
+        Primers {
+            zh: vec![11, 12],
+            ja: vec![21],
+        }
+    }
+
+    #[test]
+    fn primer_is_used_only_for_zh_and_ja_without_a_client_prompt() {
+        let p = primers();
+        assert_eq!(p.context_for("zh", &[]), [11, 12]);
+        assert_eq!(p.context_for("ja", &[]), [21]);
+        for lang in ["en", "ko", "vi", "", "zh-TW"] {
+            assert!(p.context_for(lang, &[]).is_empty(), "{lang}");
+        }
+    }
+
+    #[test]
+    fn client_prompt_wins_over_the_primer() {
+        let p = primers();
+        assert_eq!(p.context_for("zh", &[7, 8, 9]), [7, 8, 9]);
+        assert_eq!(p.context_for("ja", &[7]), [7]);
+        assert_eq!(p.context_for("en", &[7]), [7]);
+    }
+
+    #[test]
+    fn primer_is_off_unless_asked() {
+        assert!(!primer_requested(None));
+        assert!(primer_requested(Some("1")));
+        for v in ["", "0", "true", "on", "yes", " 1"] {
+            assert!(!primer_requested(Some(v)), "{v:?}");
+        }
+    }
+
+    #[test]
+    fn disabled_primers_give_no_context() {
+        let p = Primers::default();
+        assert!(p.context_for("zh", &[]).is_empty());
+        assert!(p.context_for("ja", &[]).is_empty());
+        assert_eq!(p.context_for("zh", &[5]), [5]);
+    }
+
+    #[test]
+    fn primer_texts_fit_the_prompt_budget_and_use_simplified_zh() {
+        // Mỗi token phủ ít nhất một byte, nên số byte là cận trên của số token.
+        for text in [PRIMER_ZH, PRIMER_JA] {
+            assert!(text.len() < MAX_PROMPT_TOKENS, "{text}");
+            // Có dấu câu kết thúc, để Whisper bắt chước và luật ghép câu §6.3 thấy được câu kết thúc.
+            assert!(text.ends_with('。'), "{text}");
+        }
+        // Chữ giản thể ("话" chứ không phải "話"), để kéo `small` về giản thể.
+        assert!(PRIMER_ZH.contains('话') && !PRIMER_ZH.contains('話'));
+    }
+
+    #[test]
+    fn mean_logprob_is_zero_without_tokens() {
+        assert_eq!(mean_logprob(&[]), 0.0);
+        assert!((mean_logprob(&[-1.0, -2.0, -3.0]) + 2.0).abs() < 1e-6);
+        assert_eq!(mean_logprob(&[-0.25]), -0.25);
+    }
+
+    #[test]
+    fn lid_window_of_mode_a_stays_the_three_second_formula() {
+        // Không qua sàn MIN_AUDIO_CTX: nhận diện ngôn ngữ ở chế độ A vẫn mã hóa cửa sổ 3 giây (150 khung + 64), còn
+        // `audio_ctx_for_samples` cho cùng độ dài đó ra 512.
+        assert_eq!(LID_AUDIO_CTX, 214);
+        assert_eq!(audio_ctx_for_samples(LID_SAMPLES), 512);
+    }
 }
 ```
 
@@ -1454,6 +1691,8 @@ fn main() -> Result<()> {
                         if e.flash_attn() { "on" } else { "off" },
                         e.decode_mode()
                     );
+                    // Dòng riêng, để dòng trên giữ nguyên định dạng cũ (các phép kiểm log tìm đúng dòng đó).
+                    eprintln!("asr-worker: primer={}", if e.primer_enabled() { "on" } else { "off" });
                     let ready = Response::Ready {
                         backend: backend.to_string(),
                         decode_mode: e.decode_mode().to_string(),
@@ -2099,9 +2338,9 @@ pub struct AsrEvalArgs {
     /// Dùng cửa sổ mã hóa 30 giây đầy đủ (audio_ctx = 1500), để so với cách rút ngắn.
     #[arg(long)]
     full_ctx: bool,
-    /// Sàn cho audio_ctx, từ 0 đến 1500 (mặc định 0: không đặt sàn): audio_ctx = max(công thức, N).
-    /// Để thử đặt sàn, vì turbo lặp câu ở đoạn ngắn khi audio_ctx theo công thức 50 × số giây + 64.
-    /// Không dùng chung với `--full-ctx`.
+    /// Sàn thêm cho audio_ctx, từ 0 đến 1500: audio_ctx = max(audio_ctx_for_samples, N). Công thức đã có sàn
+    /// `MIN_AUDIO_CTX` (512), nên N ≤ 512 không có tác dụng. Muốn so với mốc không sàn thì dùng kết quả đã lưu,
+    /// hoặc build lại từ commit trước af5b41a. Không dùng chung với `--full-ctx`.
     #[arg(
         long,
         default_value_t = 0,
@@ -2137,8 +2376,12 @@ struct Output {
     lang_hyp: String,
     lang_prob: f32,
     hyp: String,
-    /// Đoạn có giá trị > 0,6 sẽ bị app bỏ (§6.4); trên clip có tiếng nói thì phải hiếm.
+    /// Đoạn có giá trị > 0,6 bị bỏ theo spec §6.4 (luật đề xuất thêm điều kiện `avg_logprob`, xem bên dưới); trên clip có
+    /// tiếng nói thì phải hiếm.
     no_speech_prob: f32,
+    /// Trung bình log-xác suất của các token văn bản, không tính EOT (0 nếu không có token); xem
+    /// `TranscribeResult::avg_logprob`.
+    avg_logprob: f32,
     lid_ms: f32,
     asr_ms: f32,
     /// Thời gian ngoài whisper: mã hóa khung, truyền qua pipe, giải mã khung (giả định 10, §14).
@@ -2231,6 +2474,7 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
             lang_prob: r.lang_prob,
             hyp: r.text,
             no_speech_prob: r.no_speech_prob,
+            avg_logprob: r.avg_logprob,
             lid_ms: r.lid_ms,
             asr_ms: r.asr_ms,
             ipc_ms,
@@ -2273,6 +2517,9 @@ Cột thêm ngoài WER/CER thô:
 - `long_hyp`: số clip có số chèn lớn hơn độ dài ref (lặp câu, hoặc ra sai ngôn ngữ).
 - `lid_fallback`: số clip có lang_prob < 0,5, tức nhận diện không chắc. Worker giữ ngôn ngữ của clip trước (nếu có)
   cho các clip này, nên kết quả của chúng phụ thuộc thứ tự clip trong manifest.
+- Cột cuối (`nospeech_rate` trong JSON): tỉ lệ clip bị bỏ theo luật "không có tiếng nói". Dòng kết quả có `avg_logprob`
+  (worker từ af5b41a trở đi) dùng luật đề xuất cho §6.4: `no_speech_prob > 0,6` **và** `avg_logprob < −1`. Dòng cũ không
+  có trường này dùng luật của spec, chỉ `no_speech_prob > 0,6`. Số dòng theo từng luật được in ra stderr.
 
 Chuẩn hóa: NFC, chữ thường, bỏ dấu câu và ký hiệu; tiếng Trung, Nhật, Hàn bỏ cả khoảng trắng. Riêng tiếng Trung:
 - small hay ra chữ phồn thể còn FLEURS cmn_hans_cn là giản thể, nên đổi cả ref và hyp về giản thể bằng OpenCC (t2s);
@@ -2300,7 +2547,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.abspath(os.path.join(HERE, "..", "data", "asr"))
 RESULTS = os.path.abspath(os.path.join(HERE, "..", "results"))
 CER_LANGS = {"zh", "ja", "ko"}
-NO_SPEECH_MAX = 0.6  # app bỏ đoạn có no_speech_prob lớn hơn (§6.4)
+NO_SPEECH_MAX = 0.6  # luật của spec §6.4: bỏ đoạn có no_speech_prob lớn hơn
+AVG_LOGPROB_MIN = -1.0  # luật đề xuất cho §6.4 (kế hoạch 00, Task 2): thêm điều kiện avg_logprob nhỏ hơn, giống latency.rs
 MIN_LANG_PROB = 0.5  # dưới mức này worker giữ ngôn ngữ của đoạn trước (asr-worker/src/lid.rs)
 # small hay ra chữ phồn thể, FLEURS cmn_hans_cn là giản thể: đổi về giản thể trước khi so.
 T2S = opencc.OpenCC("t2s")
@@ -2321,6 +2569,13 @@ def normalize(text, lang):
     text = "".join(" " if unicodedata.category(c).startswith(("P", "S")) else c for c in text)
     text = " ".join(text.split())
     return text.replace(" ", "") if lang in CER_LANGS else text
+
+
+def no_speech_dropped(row):
+    """Đoạn bị bỏ theo luật "không có tiếng nói": no_speech_prob > 0,6, và nếu dòng có avg_logprob thì thêm avg_logprob < −1."""
+    if row["no_speech_prob"] <= NO_SPEECH_MAX:
+        return False
+    return row["avg_logprob"] < AVG_LOGPROB_MIN if "avg_logprob" in row else True
 
 
 def p50(values):
@@ -2377,12 +2632,15 @@ def score(path, manifest, allow_partial):
             g["capped_err"] += min(err, n_ref)
             g["ref_len"] += n_ref
             g["lid_ok"] += r["lang_hyp"] == clip["lang"]
-            g["nospeech"] += r["no_speech_prob"] > NO_SPEECH_MAX
+            g["nospeech"] += no_speech_dropped(r)
             g["n"] += 1
             g["lid_ms"].append(r["lid_ms"])
             g["asr_ms"].append(r["asr_ms"])
             g["ipc_ms"].append(r["ipc_ms"])
     mode = ",".join(sorted({r.get("decode_mode", "?") for r in rows}))
+    n_new = sum("avg_logprob" in r for r in rows)
+    print(f"{path}: luật no_speech: {n_new} dòng có avg_logprob (no_speech_prob > {NO_SPEECH_MAX} và avg_logprob < "
+          f"{AVG_LOGPROB_MIN}), {len(rows) - n_new} dòng không có (chỉ no_speech_prob > {NO_SPEECH_MAX})", file=sys.stderr)
     out = {}
     for key, g in sorted(groups.items()):
         lang = key.split("-")[0]
@@ -2412,7 +2670,7 @@ def main():
         scored.append((label, score(path, manifest, args.allow_partial)))
     os.makedirs(RESULTS, exist_ok=True)
     print("| Kết quả | Chế độ | Nhóm | Số clip | WER/CER | capped | long_hyp | Nhận đúng ngôn ngữ | lid_fallback "
-          "| LID p50 (ms) | ASR p50 (ms) | LID/ASR | IPC p50/max (ms) | no_speech > 0,6 |")
+          "| LID p50 (ms) | ASR p50 (ms) | LID/ASR | IPC p50/max (ms) | bị bỏ (no_speech > 0,6 và avg_logprob < −1) |")
     print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for label, result in scored:
         with open(os.path.join(RESULTS, f"a4_{label}.json"), "w", encoding="utf-8") as f:
@@ -2634,7 +2892,7 @@ whisper-rs-sys = { path = "third_party/whisper-rs-sys" }
 - [ ] **Step 5: Build lại và chạy test** (chế độ A không đổi hành vi)
 
 Run: `cargo build --release -p asr-worker --features metal && cargo test -p asr-worker`
-Expected: build xong; `test result: ok. 5 passed`. `Cargo.lock` giờ trỏ whisper-rs và whisper-rs-sys về đường dẫn trong `third_party/`.
+Expected: build xong; `test result: ok. 14 passed`. `Cargo.lock` giờ trỏ whisper-rs và whisper-rs-sys về đường dẫn trong `third_party/`.
 
 - [ ] **Step 6: Commit** (khoảng 13 MB mã nguồn whisper.cpp)
 
@@ -2658,7 +2916,7 @@ Cách làm:
 3. Giải mã greedy với prompt gồm `[<|startofprev|> + tối đa 100 token trước] + SOT + ngôn ngữ + transcribe + notimestamps`.
    - Token cuối của prompt phải giải mã riêng, vì whisper.cpp ghi logits của token cuối vào hàng `n_tokens − 1`, còn `get_logits()` chỉ đọc hàng 0.
    - Chặn các token không phải tiếng nói giống whisper.cpp.
-   - Dừng khi gặp EOT, hoặc khi gặp vòng lặp: mẫu 1–8 token lặp 4 lần, hoặc mẫu 9–64 token lặp 3 lần. Khi đó gom câu lặp về đúng một bản (§6.4, "bỏ các câu lặp n-gram"), nên chế độ B khác chế độ A ở các clip lặp.
+   - Dừng khi gặp EOT, hoặc khi gặp vòng lặp: mẫu 1–8 token lặp 4 lần, 9–15 token lặp 3 lần, hoặc 16–112 token lặp 2 lần (câu bị chép hai lần; đợt xử lý vấn đề mở sau S6). Khi đó gom câu lặp về đúng một bản (§6.4, "bỏ các câu lặp n-gram"), nên chế độ B khác chế độ A ở các clip lặp.
    - Số token tối đa là min(224 − độ dài prompt, 16 + 20 × số giây của đoạn).
    - Prompt tối đa `MAX_PROMPT_TOKENS` (100) token; dài hơn thì worker trả lỗi, ở cả hai chế độ.
 
@@ -2693,6 +2951,19 @@ mod tests {
     }
 
     #[test]
+    fn loop_repeats_by_pattern_length() {
+        for n in 1..=8 {
+            assert_eq!(loop_repeats(n), 4, "n = {n}");
+        }
+        for n in 9..=15 {
+            assert_eq!(loop_repeats(n), 3, "n = {n}");
+        }
+        for n in 16..=112 {
+            assert_eq!(loop_repeats(n), 2, "n = {n}");
+        }
+    }
+
+    #[test]
     fn short_patterns_need_four_copies() {
         for n in 1..=8 {
             let (t, next) = looped(&[1, 2, 3], &pattern(n), 4);
@@ -2703,17 +2974,29 @@ mod tests {
     }
 
     #[test]
-    fn long_patterns_need_three_copies() {
-        // Ghim cận trên bằng số, không dùng lại hằng: đổi MAX_LOOP_PERIOD thì test phải đỏ.
-        for n in 9..=64 {
+    fn medium_patterns_need_three_copies() {
+        for n in 9..=15 {
             let (t, next) = looped(&[1, 2, 3], &pattern(n), 3);
             assert_eq!(loop_period(&t, next), Some(n), "n = {n}, 3 bản");
             let (t, next) = looped(&[1, 2, 3], &pattern(n), 2);
             assert_eq!(loop_period(&t, next), None, "n = {n}, 2 bản chưa là vòng lặp");
         }
-        // Dài hơn 64 token thì để trần token lo.
-        let (t, next) = looped(&[], &pattern(65), 3);
-        assert_eq!(loop_period(&t, next), None);
+    }
+
+    #[test]
+    fn long_patterns_need_two_copies() {
+        // Ghim cận trên bằng số, không dùng lại hằng: đổi MAX_LOOP_PERIOD thì test phải đỏ.
+        for n in 16..=112 {
+            let (t, next) = looped(&[1, 2, 3], &pattern(n), 2);
+            assert_eq!(loop_period(&t, next), Some(n), "n = {n}, 2 bản (cả câu chép hai lần)");
+            let (t, next) = looped(&[1, 2, 3], &pattern(n), 1);
+            assert_eq!(loop_period(&t, next), None, "n = {n}, 1 bản chưa là vòng lặp");
+        }
+        // Dài hơn 112 token (nửa trần 224 token) thì để trần token lo, dù lặp bao nhiêu bản.
+        for reps in [2, 3, 10] {
+            let (t, next) = looped(&[], &pattern(113), reps);
+            assert_eq!(loop_period(&t, next), None, "mẫu 113 token, {reps} bản");
+        }
     }
 
     #[test]
@@ -2728,17 +3011,32 @@ mod tests {
 
     #[test]
     fn cut_loop_keeps_one_copy() {
+        // Mẫu 2 token × 4 bản.
         let (mut t, next) = looped(&[1, 2], &[5, 6], 4);
         assert!(cut_loop(&mut t, next));
         assert_eq!(t, [1, 2, 5, 6]);
 
-        let p = pattern(20);
+        // Mẫu 12 token × 3 bản.
+        let p = pattern(12);
         let (mut t, next) = looped(&[1, 2], &p, 3);
         assert!(cut_loop(&mut t, next));
         assert_eq!(t, [&[1, 2][..], &p].concat());
 
-        // Không lặp thì không đụng vào `tokens`.
+        // Mẫu 20 token × 2 bản: cả câu chép hai lần.
+        let p = pattern(20);
         let (mut t, next) = looped(&[1, 2], &p, 2);
+        assert!(cut_loop(&mut t, next));
+        assert_eq!(t, [&[1, 2][..], &p].concat());
+
+        // Mẫu 70 token × 2 bản: câu tiếng Hàn dài nhất bị chép hai lần ở S7 (`ko-13932034022230918300`, 140 token).
+        let p = pattern(70);
+        let (mut t, next) = looped(&[1, 2], &p, 2);
+        assert_eq!(t.len() + 1, 142);
+        assert!(cut_loop(&mut t, next));
+        assert_eq!(t, [&[1, 2][..], &p].concat());
+
+        // Một bản thì không đụng vào `tokens`.
+        let (mut t, next) = looped(&[1, 2], &p, 1);
         let before = t.clone();
         assert!(!cut_loop(&mut t, next));
         assert_eq!(t, before);
@@ -2753,6 +3051,119 @@ mod tests {
         assert_eq!(max_new_tokens(448, 4, 1_600), 18); // 0,1 giây
         assert_eq!(max_new_tokens(448, 105, secs(8)), 119); // prompt đủ 100 token
         assert_eq!(max_new_tokens(448, 300, secs(30)), 1);
+    }
+
+    // Từ vựng thử: 0, 1, 2 là chữ; 3 là khoảng trắng; 4 là EOT; 5 là token đặc biệt (sau EOT) luôn bị chặn.
+    const EOT: WhisperTokenId = 4;
+    const SUPPRESSED: [bool; 6] = [false, false, false, false, false, true];
+    const BLANK: [WhisperTokenId; 2] = [3, EOT];
+
+    /// log-softmax tại `at` trên các chỉ số `over`, tính bằng f64.
+    fn exact_logprob(logits: &[f32], over: impl Iterator<Item = usize>, at: usize) -> f64 {
+        let z: f64 = over.map(|i| (logits[i] as f64).exp()).sum();
+        logits[at] as f64 - z.ln()
+    }
+
+    #[test]
+    fn pick_token_normalizes_over_unsuppressed_tokens() {
+        // Token 5 (đặc biệt, logit 100) bị chặn: không được chọn, và không vào mẫu số.
+        let logits = [1.0, 2.0, 3.0, 0.0, 2.5, 100.0];
+        let (token, logprob) = pick_token(&logits, &SUPPRESSED, &BLANK, EOT, false);
+        assert_eq!(token, 2);
+        let want = exact_logprob(&logits, 0..5, 2);
+        assert!((logprob as f64 - want).abs() < 1e-5, "{logprob} so với {want}");
+    }
+
+    #[test]
+    fn pick_token_first_step_leaves_out_blank_and_eot() {
+        let logits = [0.5, 0.5, 0.25, 5.0, 9.0, 100.0];
+        // Bước đầu: khoảng trắng (3) và EOT (4) bị chặn cả khi chọn lẫn khi chuẩn hóa. Hòa thì lấy token đứng trước.
+        let (token, logprob) = pick_token(&logits, &SUPPRESSED, &BLANK, EOT, true);
+        assert_eq!(token, 0);
+        assert!((logprob as f64 - exact_logprob(&logits, 0..3, 0)).abs() < 1e-5);
+        // Các bước sau: EOT được phép, và ở đây thắng.
+        let (token, logprob) = pick_token(&logits, &SUPPRESSED, &BLANK, EOT, false);
+        assert_eq!(token, EOT);
+        assert!((logprob as f64 - exact_logprob(&logits, 0..5, 4)).abs() < 1e-5);
+    }
+
+    #[test]
+    fn pick_token_logprob_is_at_most_zero_and_ignores_far_below_logits() {
+        // Một token áp đảo: log-xác suất gần 0, không bao giờ dương.
+        let (token, logprob) = pick_token(&[50.0, 0.0, 0.0, 0.0, 0.0, 0.0], &SUPPRESSED, &BLANK, EOT, false);
+        assert_eq!(token, 0);
+        assert!((-1e-6..=0.0).contains(&logprob), "{logprob}");
+
+        // 998 token thấp hơn cực đại 40 nat, cộng −∞: kết quả vẫn khớp tổng chính xác, không ra NaN.
+        let mut logits = vec![-40.0f32; 1000];
+        logits[7] = 0.0;
+        logits[8] = -1.0;
+        logits[9] = f32::NEG_INFINITY;
+        let suppressed = vec![false; 1000];
+        let (token, logprob) = pick_token(&logits, &suppressed, &[], 999, false);
+        assert_eq!(token, 7);
+        let want = exact_logprob(&logits, 0..1000, 7);
+        assert!((logprob as f64 - want).abs() < 1e-6, "{logprob} so với {want}");
+
+        // Mọi logit bằng nhau: xác suất đều, log(1/n).
+        let (token, logprob) = pick_token(&[0.0; 6], &SUPPRESSED, &BLANK, EOT, false);
+        assert_eq!(token, 0);
+        assert!((logprob as f64 + 5f64.ln()).abs() < 1e-6, "{logprob}");
+    }
+
+    #[test]
+    fn pick_token_skips_only_negligible_logits() {
+        // Trường hợp xấu nhất của mốc cắt (20 nat): 59 999 token nằm ngay dưới mốc, bị bỏ khỏi mẫu số. Mỗi token đóng góp
+        // e^-20,5 ≈ 1,3e-9, cả nhóm cộng lại dưới 1e-4 nên log-xác suất lệch dưới 1e-4 so với tổng chính xác.
+        let mut logits = vec![-20.5f32; 60_000];
+        logits[42] = 0.0;
+        let (token, logprob) = pick_token(&logits, &vec![false; 60_000], &[], 59_999, false);
+        assert_eq!(token, 42);
+        let want = exact_logprob(&logits, 0..60_000, 42);
+        assert!((logprob as f64 - want).abs() < 1e-4, "{logprob} so với {want}");
+        // Ngay trong mốc (−19,5) thì được cộng vào: khớp tổng chính xác.
+        let mut logits = vec![-19.5f32; 60_000];
+        logits[42] = 0.0;
+        let (_, logprob) = pick_token(&logits, &vec![false; 60_000], &[], 59_999, false);
+        let want = exact_logprob(&logits, 0..60_000, 42);
+        assert!((logprob as f64 - want).abs() < 1e-5, "{logprob} so với {want}");
+    }
+
+    #[test]
+    fn pick_token_without_an_allowed_token_gives_eot_and_minus_infinity() {
+        // Không token nào được phép (không xảy ra với logit thật): trả EOT, không ra NaN hay dương vô cực.
+        let (token, logprob) = pick_token(&[1.0, 2.0, 3.0], &[true; 3], &[], 7, false);
+        assert_eq!((token, logprob), (7, f32::NEG_INFINITY));
+        let (token, logprob) = pick_token(&[f32::NEG_INFINITY; 3], &[false; 3], &[], 7, false);
+        assert_eq!((token, logprob), (7, f32::NEG_INFINITY));
+    }
+
+    #[test]
+    fn generated_averages_logprobs_of_kept_tokens() {
+        let mut g = Generated::default();
+        assert_eq!(g.avg_logprob(), 0.0); // chưa có token nào
+        assert!(g.push(10, -0.5));
+        assert!(g.push(11, -1.5));
+        assert_eq!(g.tokens, [10, 11]);
+        assert!((g.avg_logprob() + 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn generated_drops_logprobs_of_a_cut_loop() {
+        // Tiền tố 9, rồi mẫu [5, 6] lặp 4 bản: bản đầu có log-xác suất cao, các bản sau thấp (chữ bịa ra).
+        let mut g = Generated::default();
+        assert!(g.push(9, -1.0));
+        for (token, logprob) in [(5, -0.5), (6, -0.5)] {
+            assert!(g.push(token, logprob));
+        }
+        for (token, logprob) in [(5, -10.0), (6, -10.0), (5, -10.0), (6, -10.0), (5, -10.0)] {
+            assert!(g.push(token, logprob)); // bản 2, bản 3 và token đầu của bản 4: chưa đủ 4 bản
+        }
+        assert_eq!(g.tokens.len(), 8);
+        assert!(!g.push(6, -10.0)); // token cuối của bản thứ tư: cắt và dừng
+        assert_eq!(g.tokens, [9, 5, 6]); // đúng một bản, token gây cắt không được giữ
+        assert_eq!(g.logprobs, [-1.0, -0.5, -0.5]); // log-xác suất của phần bị bỏ cũng bỏ theo
+        assert!((g.avg_logprob() as f64 + 2.0 / 3.0).abs() < 1e-6);
     }
 }
 ```
@@ -2779,8 +3190,9 @@ Expected: FAIL, lỗi biên dịch vì chưa có `loop_period`, `cut_loop`, `max
 //! Cần bản vá `whisper_set_audio_ctx_with_state` trong `third_party/` (feature `shared-encode`).
 //! Giải mã greedy, không timestamp, không temperature fallback, giống cấu hình của `engine.rs`.
 
-use crate::lid::pick_language;
-use anyhow::Result;
+use crate::engine::{Primers, mean_logprob};
+use crate::lid::{min_prob_for, pick_language};
+use anyhow::{Context, Result};
 use asr_protocol::{MAX_PROMPT_TOKENS, SAMPLE_RATE};
 use std::time::Instant;
 use whisper_rs::{WhisperContext, WhisperState, WhisperTokenId};
@@ -2850,6 +3262,8 @@ pub struct Decoded {
     pub tokens: Vec<WhisperTokenId>,
     pub text: String,
     pub lid_ms: f32,
+    /// Trung bình log-xác suất của các token văn bản giữ lại (xem `TranscribeResult::avg_logprob`).
+    pub avg_logprob: f32,
 }
 
 pub struct Decoder {
@@ -2886,18 +3300,8 @@ impl Decoder {
         Self { eot, suppressed, blank }
     }
 
-    fn pick(&self, logits: &[f32], first_step: bool) -> WhisperTokenId {
-        let mut best = (self.eot, f32::NEG_INFINITY);
-        for (id, &logit) in logits.iter().enumerate() {
-            let token = id as WhisperTokenId;
-            if self.suppressed[id] || (first_step && self.blank.contains(&token)) {
-                continue;
-            }
-            if logit > best.1 {
-                best = (token, logit);
-            }
-        }
-        best.0
+    fn pick(&self, logits: &[f32], first_step: bool) -> (WhisperTokenId, f32) {
+        pick_token(logits, &self.suppressed, &self.blank, self.eot, first_step)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -2910,6 +3314,7 @@ impl Decoder {
         allowed: &[i32],
         prev_lang: Option<i32>,
         prompt_tokens: &[i32],
+        primers: &Primers,
         n_threads: usize,
     ) -> Result<Decoded> {
         state.pcm_to_mel(pcm, n_threads)?;
@@ -2934,7 +3339,7 @@ impl Decoder {
             for &id in allowed {
                 probs[id as usize] = (lang_logit(id) - max).exp();
             }
-            pick_language(&probs, allowed, prev_lang, crate::engine::MIN_LANG_PROB)
+            pick_language(&probs, allowed, prev_lang, min_prob_for(pcm.len()))
         };
         let lid_ms = if allowed.len() == 1 {
             0.0
@@ -2942,10 +3347,13 @@ impl Decoder {
             lid_started.elapsed().as_secs_f32() * 1000.0
         };
 
-        let mut prompt = Vec::with_capacity(prompt_tokens.len() + 5);
-        if !prompt_tokens.is_empty() {
+        // Prompt của client nếu có, không thì câu mồi của ngôn ngữ vừa chọn (zh, ja): xem `Primers`.
+        let lang = whisper_rs::get_lang_str(lang_id).context("lang id không hợp lệ")?;
+        let context = primers.context_for(lang, prompt_tokens);
+        let mut prompt = Vec::with_capacity(context.len().min(MAX_PROMPT_TOKENS) + 5);
+        if !context.is_empty() {
             prompt.push(ctx.token_prev());
-            prompt.extend_from_slice(&prompt_tokens[prompt_tokens.len().saturating_sub(MAX_PROMPT_TOKENS)..]);
+            prompt.extend_from_slice(&context[context.len().saturating_sub(MAX_PROMPT_TOKENS)..]);
         }
         prompt.extend([sot, ctx.token_lang(lang_id), ctx.token_transcribe(), ctx.token_not()]);
         // whisper.cpp ghi logits của token cuối vào hàng `n_tokens - 1`, còn `get_logits()` chỉ đọc
@@ -2954,29 +3362,30 @@ impl Decoder {
         state.decode(head, 0, n_threads)?;
         state.decode(last, head.len(), n_threads)?;
         let max_new = max_new_tokens(ctx.n_text_ctx() as usize, prompt.len(), pcm.len());
-        let mut tokens = Vec::with_capacity(max_new);
+        let mut out = Generated::with_capacity(max_new);
         for (step, n_past) in (0..max_new).zip(prompt.len()..) {
-            let next = self.pick(state.get_logits()?, step == 0);
-            if next == self.eot || cut_loop(&mut tokens, next) {
+            let (next, logprob) = self.pick(state.get_logits()?, step == 0);
+            if next == self.eot || !out.push(next, logprob) {
                 break;
             }
-            tokens.push(next);
             // Không cần logits sau token cuối cùng được phép.
-            if tokens.len() < max_new {
+            if out.tokens.len() < max_new {
                 state.decode(&[next], n_past, n_threads)?;
             }
         }
         let mut bytes = Vec::new();
-        for &t in &tokens {
+        for &t in &out.tokens {
             bytes.extend_from_slice(ctx.token_to_bytes(t)?);
         }
+        let avg_logprob = out.avg_logprob();
         Ok(Decoded {
             lang_id,
             lang_prob,
             no_speech_prob,
             text: String::from_utf8_lossy(&bytes).trim().to_string(),
-            tokens,
+            tokens: out.tokens,
             lid_ms,
+            avg_logprob,
         })
     }
 }
@@ -2987,13 +3396,106 @@ fn softmax_at(logits: &[f32], index: usize) -> f32 {
     (logits[index] - max).exp() / sum
 }
 
-/// Mẫu dài nhất (token) mà `loop_period` tìm. Câu bị lặp trong bộ clip FLEURS dài 12–48 token.
-const MAX_LOOP_PERIOD: usize = 64;
+/// Token thấp hơn cực đại quá mức này (nat) không được cộng vào mẫu số của softmax trong `pick_token`. Mỗi token như vậy
+/// đóng góp dưới e^-20 ≈ 2e-9 vào một tổng ≥ 1, nên cả 51 865 token cộng lại cũng làm log-xác suất lệch khoảng 1e-4 (cận trên). Ở
+/// logit thật, phần lớn token chữ nằm 15 đến 21 nat dưới cực đại, nên mốc này bỏ được khoảng 0 đến 75% số `exp`.
+const LOGSUMEXP_CUTOFF: f32 = 20.0;
 
-/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper. Mẫu ngắn (1–8 token) cần 4 bản
-/// để không cắt nhầm lời nói thật ("no, no, no"); mẫu dài (9–64 token, thường là cả câu) chỉ cần 3 bản.
+/// Chọn token có logit lớn nhất trong các token không bị chặn (`suppressed`, và ở bước đầu cả `blank`), kèm log-xác
+/// suất của nó. Log-xác suất là log-softmax trên đúng tập token được phép, giống `whisper_process_logits` của
+/// whisper.cpp (token bị chặn có logit −∞ nên không vào mẫu số) và giống `plog` mà chế độ A đọc từ `whisper_full`.
+///
+/// Hai vòng lặp viết dạng `continue` như bản chỉ chọn token: viết gộp bằng closure hay `filter` làm vòng chọn chậm gấp 6
+/// lần (181 µs so với 27 µs trên 51 865 logit) và đội thời gian chép lời thêm khoảng 7%.
+fn pick_token(
+    logits: &[f32],
+    suppressed: &[bool],
+    blank: &[WhisperTokenId],
+    eot: WhisperTokenId,
+    first_step: bool,
+) -> (WhisperTokenId, f32) {
+    let mut best = (eot, f32::NEG_INFINITY);
+    for (id, &logit) in logits.iter().enumerate() {
+        let token = id as WhisperTokenId;
+        if suppressed[id] || (first_step && blank.contains(&token)) {
+            continue;
+        }
+        if logit > best.1 {
+            best = (token, logit);
+        }
+    }
+    if best.1 == f32::NEG_INFINITY {
+        // Không token nào được phép (không xảy ra với logit thật): không có xác suất nào để tính.
+        return (best.0, f32::NEG_INFINITY);
+    }
+    // Mẫu số của softmax, trừ cực đại cho ổn định số; token được chọn đóng góp 1 nên tổng ≥ 1. Cộng bằng f64: cộng f32
+    // nối tiếp làm mất mọi số hạng dưới 6e-8 một khi tổng đã gần 1. whisper.cpp cộng f32 nối tiếp nên `plog` của chế độ A
+    // cao hơn giá trị chính xác này khoảng 2e-4 (1e-4 đến 3e-4 trên 29 clip thử), và hai chế độ lệch nhau cỡ đó.
+    let mut sum = 0.0f64;
+    for (id, &logit) in logits.iter().enumerate() {
+        if logit - best.1 <= -LOGSUMEXP_CUTOFF
+            || suppressed[id]
+            || (first_step && blank.contains(&(id as WhisperTokenId)))
+        {
+            continue;
+        }
+        sum += (logit - best.1).exp() as f64;
+    }
+    (best.0, -sum.ln() as f32)
+}
+
+/// Các token đã sinh và log-xác suất của từng token. Hai vec luôn cùng độ dài.
+#[derive(Default)]
+struct Generated {
+    tokens: Vec<WhisperTokenId>,
+    logprobs: Vec<f32>,
+}
+
+impl Generated {
+    fn with_capacity(n: usize) -> Self {
+        Self {
+            tokens: Vec::with_capacity(n),
+            logprobs: Vec::with_capacity(n),
+        }
+    }
+
+    /// Thêm `next`. Nếu `next` làm thành vòng lặp (xem `cut_loop`) thì `tokens` được gom về một bản, log-xác suất của
+    /// phần bị bỏ cũng bỏ theo (không tính vào `avg_logprob`), `next` không được giữ, và trả `false`: phải dừng giải mã.
+    fn push(&mut self, next: WhisperTokenId, logprob: f32) -> bool {
+        if cut_loop(&mut self.tokens, next) {
+            self.logprobs.truncate(self.tokens.len());
+            return false;
+        }
+        self.tokens.push(next);
+        self.logprobs.push(logprob);
+        true
+    }
+
+    fn avg_logprob(&self) -> f32 {
+        mean_logprob(&self.logprobs)
+    }
+}
+
+/// Mẫu dài nhất (token) mà `loop_period` tìm: nửa trần 224 token của Whisper, vì mẫu lặp hai lần dài hơn thế không thể
+/// nằm gọn trong một lượt giải mã. Câu bị lặp trong bộ clip FLEURS dài 12 đến 70 token (`ko-13932034022230918300`
+/// chép cả câu 70 token hai lần, 140 token).
+const MAX_LOOP_PERIOD: usize = 112;
+
+/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper (đề xuất cho §6.4, xem kế hoạch 00,
+/// Task 2; spec chỉ có bộ lọc câu lặp n-gram ở tầng app):
+/// - 1–8 token: 4 bản, để không cắt nhầm lời nói thật ("no, no, no");
+/// - 9–15 token: 3 bản;
+/// - 16–112 token (thường là cả câu): 2 bản, vì Whisper có khi chép cả câu hai lần rồi mới dừng (S7: 8 clip, 6 của turbo
+///   và 2 của small), mà 3 bản thì không bắt được.
+///
+/// Đánh đổi: người nói nhắc lại nguyên một câu dài hai lần liền thì bản thứ hai cũng bị gom.
 fn loop_repeats(n: usize) -> usize {
-    if n <= 8 { 4 } else { 3 }
+    debug_assert!(n > 0, "mẫu lặp phải có ít nhất 1 token");
+    match n {
+        1..=8 => 4,
+        9..=15 => 3,
+        _ => 2,
+    }
 }
 
 /// Độ dài `n` của mẫu nếu `tokens` nối thêm `next` kết thúc bằng `loop_repeats(n)` bản liên tiếp của cùng một mẫu
@@ -3022,7 +3524,7 @@ fn cut_loop(tokens: &mut Vec<WhisperTokenId>, next: WhisperTokenId) -> bool {
 /// Trần số token mới của một đoạn: nửa ngữ cảnh văn bản của Whisper (224) trừ độ dài prompt, và không quá
 /// `16 + 20 × số giây` của đoạn. Trên bộ clip FLEURS, lời nói không lặp có nhiều nhất 7,75 token/giây (p99 6,35), nên
 /// trần theo độ dài chỉ chặn vòng lặp mà `loop_period` không bắt được (các bản không giống hệt nhau), nhất là ở đoạn
-/// ngắn. Hệ số 20 khoảng 3 lần p99, để `loop_period` (cần 3 bản) thường kịp gom vòng lặp trước khi chạm trần.
+/// ngắn. Hệ số 20 khoảng 3 lần p99, để `loop_period` (cần 2 đến 4 bản) thường kịp gom vòng lặp trước khi chạm trần.
 /// Khác `whisper_full`: whisper.cpp luôn cho 220 token, không trừ độ dài prompt.
 fn max_new_tokens(n_text_ctx: usize, prompt_len: usize, n_samples: usize) -> usize {
     let by_audio = 16 + n_samples * 20 / SAMPLE_RATE as usize;
@@ -3037,7 +3539,7 @@ Run:
 cargo test -p asr-worker --features shared-encode
 cargo clippy -p asr-worker --features metal,shared-encode --all-targets -- -D warnings
 ```
-Expected: `test result: ok. 10 passed` (5 test chọn ngôn ngữ, 5 test vòng lặp và trần token), clippy không có cảnh báo.
+Expected: `test result: ok. 28 passed` (7 test chọn ngôn ngữ, 7 test engine, 14 test của `shared.rs`), clippy không có cảnh báo.
 
 - [ ] **Step 6: Build bản dùng cho các bước sau và chạy thử**
 
@@ -3200,6 +3702,15 @@ Quy tắc: với từng ngôn ngữ và từng model, (mặc định − fullctx
 git add bench/phase0/results/s7_asr.md bench/phase0/results/a4_m4pro-*.json
 git commit -m "test(bench): mốc A4 cho turbo và small, thí nghiệm audio_ctx và khóa ngôn ngữ"
 ```
+
+**Sau Task 11:** mức sàn 512 được đưa vào công thức mặc định (`MIN_AUDIO_CTX` trong `asr-protocol`), cùng luật lặp 2 bản và LID đoạn ngắn. Mốc A4 với cấu hình chốt nằm ở `results/a4_m4pro-{small,turbo}-final.json`:
+
+| Model | Thay đổi so với lượt `--min-ctx 512` |
+|---|---|
+| turbo | tổng lỗi nhóm wb 918 → 832 (−9,4%); riêng ko 0,062 → 0,041, vì luật 2 bản bắt được câu chép hai lần |
+| small | không đổi |
+
+Chỉ 3/1096 lượt clip đổi, và cả ba đều là câu chép hai lần.
 
 ### Task 12: Ước lượng dung lượng bộ cài trên macOS
 

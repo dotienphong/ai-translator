@@ -217,8 +217,32 @@ Mỗi mục là một thay đổi riêng trong spec:
     - Bật lại thì phải kèm test tất định: cùng một đoạn, chép sau các đoạn khác, phải ra cùng token.
   - Quy tắc "dưới 0,5 thì giữ ngôn ngữ trước" không bao giờ chạy khi chỉ có 2 ngôn ngữ, vì xác suất sau chuẩn hóa của ngôn ngữ cao nhất luôn từ 0,5 trở lên. Chọn ngưỡng theo số ngôn ngữ, dựa trên số đo A4.
   - Worker từ chối đoạn dưới 100 ms; pipeline không gửi các đoạn này.
-  - Chế độ B dừng khi lặp (mẫu 1–8 token × 4, 9–64 token × 3), gom câu lặp về một bản, và giới hạn token ở min(224 − prompt, 16 + 20 × giây). Số liệu ở Task 9 của kế hoạch 03.
-  - MVP: luật bỏ đoạn "không có tiếng nói" nên theo OpenAI, tức `no_speech_prob > 0,6` và `avg_logprob < −1`. Worker khi đó cần trả thêm `avg_logprob`. Lý do: lời nói băng hẹp có `no_speech_prob` tới 0,596, còn ồn trắng chỉ 0,45–0,68.
+  - Chế độ B dừng khi lặp và gom câu lặp về một bản: mẫu 1–8 token × 4 bản, 9–15 token × 3 bản, 16–112 token × 2 bản. Token tối đa là min(224 − prompt, 16 + 20 × giây). Số liệu ở Task 9 của kế hoạch 03 và ở đợt xử lý vấn đề mở bên dưới.
+  - **Đã quyết sau S3/S6.** Chủ dự án giao controller chọn cách làm (2026-09-30). Các thay đổi đã có trong code (commit `af5b41a`..`76b0158`) và được đo lại (`results/a4_m4pro-*-final.json`, `results/latency/m4pro-chot-*`):
+    - **§6.4 `audio_ctx`:** `min(1500, max(512, 50 × giây + 64))`, với hằng `MIN_AUDIO_CTX` trong `asr-protocol`.
+      - Sàn giảm chép thừa (giả định 8), và sửa LID của turbo với đoạn tiếng Việt ngắn.
+      - LID của chế độ A vẫn dùng cửa sổ 3 giây (214).
+    - **§6.4 LID:** đoạn ngắn hơn 1,5 giây chỉ đổi ngôn ngữ khi xác suất ≥ 0,9; còn không thì giữ ngôn ngữ của đoạn trước.
+      - Với lát cắt 1 giây: nhận đúng +7/60 khi ngôn ngữ trước đúng, −5/60 khi đổi ngôn ngữ thật.
+      - Lý do chấp nhận: trong cuộc họp, việc giữ nguyên một ngôn ngữ phổ biến hơn nhiều so với đổi ngôn ngữ.
+    - **§6.4 `result`:** có thêm `avg_logprob` ở cuối.
+      - Đây là trung bình log-xác suất của các token văn bản, không tính EOT. Chế độ A không có `cut_loop`, nên trung bình của nó gồm cả token lặp.
+    - **§6.4 bỏ đoạn:** `no_speech_prob > 0,6` **và** `avg_logprob < −1`.
+      - Đây là luật của OpenAI, nhưng không tính EOT, nên chặt hơn một chút ở đoạn ngắn.
+      - Với turbo, luật này không bao giờ bỏ đoạn nào, vì `no_speech` luôn khoảng 1e-11.
+      - MVP cần thêm bộ lọc câu ảo giác quen thuộc (ví dụ "ご視聴ありがとうございました", "请不吝点赞…"), vì các câu này có `avg_logprob` cao.
+    - **§6.4 luật lặp:** như dòng trên. Trên A4, luật 2 bản bắt đúng 3 clip chép hai lần và không bắt nhầm clip nào.
+      - Đổi lại, lời nói lặp thật có 16 token trở lên sẽ chỉ hiện một lần; thử ghép đôi thì gặp ở 6/80 cặp.
+      - Khi prompt dài (một ngôn ngữ), trần token nhỏ hơn, nên câu chép đôi dài từ khoảng 60 token có thể không bị bắt. MVP xem lại.
+    - **§6.3 và §6.4, mồi dấu câu cho zh/ja:** thử rồi **tắt mặc định** (`ASR_PRIMER=1` mới bật).
+      - Với zh, dấu `。` hiện cả ở đoạn giữa câu, nên không giúp ghép câu.
+      - Trên đoạn không có tiếng nói, model chép lại chính câu mồi.
+      - Chữ phồn thể mà small ra với zh: MVP chuyển t2s ở tầng app.
+    - **§6.3 với zh:** giữ luật hiện tại. Mô phỏng trên session S6 cho thấy số câu còn nguyên vẹn như nhau dù ghép hay không.
+      - Ghép tốn thêm khoảng 60–100 ms p50 và 200 ms p90 trên M4 Pro.
+      - Cần dữ liệu hội thoại thật, không phải FLEURS đọc, để chọn luật tốt hơn (MVP).
+      - Thêm điều kiện "chỉ ghép khi cùng ngôn ngữ".
+    - **Flash attention:** giữ tắt. S6 dư địa gấp đôi, mức lợi 5–13% không đổi quyết định nào, còn bản vá upstream chưa được merge. MVP xem lại.
   - MVP, trước khi gửi bản vá `set_audio_ctx` lên upstream: hàm C trả `-1` khi ngoài `[0, n_audio_ctx]`, bản Rust trả `Result`.
   - MVP: log của `asr-worker` mở ở chế độ append để giữ log qua các lần khởi động lại, nên cần xoay vòng hoặc giới hạn kích thước.
   - MVP: đưa `prev_lang` vào `TranscribeRequest`, để worker không giữ trạng thái nhận diện ngôn ngữ. Kết quả khi đó không phụ thuộc thứ tự đoạn, và app không mất ngôn ngữ trước khi worker khởi động lại.

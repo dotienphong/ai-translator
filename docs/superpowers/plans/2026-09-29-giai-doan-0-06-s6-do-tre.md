@@ -929,7 +929,7 @@ git commit -m "feat(latency-bench): phân vị và ghép đoạn với mốc d�
 - Modify: `crates/latency-bench/src/main.rs` (bản cuối)
 
 Quy tắc giống app:
-- Bỏ đoạn có `no_speech_prob > 0,6` (§6.4).
+- Bỏ đoạn khi `no_speech_prob > 0,6` **và** `avg_logprob < −1`, theo luật của OpenAI (đề xuất cho §6.4). Luật cũ chỉ dùng `no_speech` đã bỏ nhầm một câu tiếng Hàn đúng.
 - Không dịch đoạn cùng ngôn ngữ với ngôn ngữ đích.
 - Khi chỉ cho phép một ngôn ngữ thì dùng tối đa `MAX_PROMPT_TOKENS` (100) token của đoạn trước làm prompt.
 - Không gửi cho worker đoạn có số mẫu ngoài `[MIN_PCM_SAMPLES, MAX_PCM_SAMPLES]`.
@@ -995,7 +995,9 @@ libc = "0.2.189"
 
 use crate::stats::{Utterance, match_segments, percentile};
 use anyhow::{Context, Result, bail};
-use asr_protocol::{MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_PCM_SAMPLES, TranscribeRequest, audio_ctx_for_samples};
+use asr_protocol::{
+    MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_AUDIO_CTX, MIN_PCM_SAMPLES, TranscribeRequest, audio_ctx_for_samples,
+};
 use pipeline::asr_client::AsrWorker;
 use pipeline::llama::{LlamaServer, max_tokens_for};
 use pipeline::prompt::{Lang, translation_prompt};
@@ -1010,8 +1012,19 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
-/// Bỏ đoạn có `no_speech_prob > 0,6` (spec §6.4).
+/// Luật bỏ đoạn "không có tiếng nói" theo OpenAI Whisper, là đề xuất cho §6.4 (xem kế hoạch 00, Task 2); spec hiện chỉ
+/// có `no_speech_prob > 0,6`. Bỏ khi `no_speech_prob` lớn hơn ngưỡng này **và** `avg_logprob` nhỏ hơn `AVG_LOGPROB_MIN`.
+/// `avg_logprob` của worker không tính EOT, cố ý khác OpenAI: âm hơn một chút, nên chặt hơn một chút ở đoạn ngắn. Chế độ A
+/// không có `cut_loop` nên `avg_logprob` của nó gồm cả token lặp.
+///
+/// Chỉ dùng `no_speech_prob` thì bỏ nhầm câu đúng: một câu tiếng Hàn có `no_speech_prob` 0,62 mà `avg_logprob` −0,25.
+/// Trên A4 (`out-m4pro-small-final.jsonl`, 548 clip) luật bỏ đúng 1 clip, `en-9810650684898829002_nb`, có bản chép là ảo
+/// giác; `avg_logprob` ở phân vị 1 (nội suy tuyến tính) là −0,695 với small và −0,269 với turbo. Với turbo,
+/// `no_speech_prob` luôn cỡ 1e-11 nên luật không bao giờ bỏ đoạn nào. Chỉ dùng `avg_logprob < −1` thì bỏ nhầm 1 clip ja
+/// thật (`ja-887319630625143301_nb`, −1,318).
 const NO_SPEECH_MAX: f32 = 0.6;
+/// Ngưỡng `avg_logprob` của cùng luật trên (`logprob_threshold` mặc định của OpenAI Whisper).
+const AVG_LOGPROB_MIN: f32 = -1.0;
 /// Cửa sổ (ms) ghép đoạn với mốc dừng câu thật, xem `match_segments`.
 const MATCH_WINDOW_MS: u64 = 1_000;
 /// Khung âm thanh tới trễ hơn thời gian thực quá ngưỡng này (ms) thì kết quả lệch cùng cỡ: báo cho người chạy.
@@ -1025,7 +1038,8 @@ const MERGE_MAX_SPEECH_MS: u64 = 15_000;
 const MERGE_MAX_SEGMENTS: usize = 3;
 
 // Lý do một đoạn không được dịch, ghi ở `SegmentRecord::skipped`.
-/// `no_speech_prob` quá cao, hoặc chữ rỗng: app bỏ đoạn này (§6.4).
+/// Đoạn không có tiếng nói theo luật `no_speech_prob` và `avg_logprob` (xem `NO_SPEECH_MAX`), hoặc chữ rỗng: app bỏ đoạn
+/// này (luật đề xuất cho §6.4).
 const SKIP_NO_SPEECH: &str = "no_speech";
 /// Đoạn ngắn hơn `MIN_PCM_SAMPLES`: không gửi cho `asr-worker`.
 const SKIP_TOO_SHORT: &str = "too_short";
@@ -1072,8 +1086,9 @@ pub struct LatencyArgs {
     use_gpu: bool,
     #[arg(long, default_value_t = 4)]
     asr_threads: u32,
-    /// Sàn cho audio_ctx, từ 0 đến 1500 (mặc định 0: không đặt sàn): audio_ctx = max(công thức, N), như
-    /// `asr-eval --min-ctx`. Để đo S6 với mức sàn nếu S7 khuyến nghị.
+    /// Sàn thêm cho audio_ctx, từ 0 đến 1500: audio_ctx = max(audio_ctx_for_samples, N). Công thức đã có sàn
+    /// `MIN_AUDIO_CTX` (512), nên N ≤ 512 không có tác dụng. Muốn so với mốc không sàn thì dùng kết quả đã lưu,
+    /// hoặc build lại từ commit trước af5b41a.
     #[arg(long, default_value_t = 0, value_parser = clap::value_parser!(i32).range(0..=1500))]
     min_ctx: i32,
     #[arg(long, default_value_t = 300)]
@@ -1110,6 +1125,8 @@ struct SegmentRecord {
     lang_prob: f32,
     text: String,
     no_speech_prob: f32,
+    /// Trung bình log-xác suất của các token văn bản, cùng `no_speech_prob` quyết định bỏ đoạn.
+    avg_logprob: f32,
     /// Số đoạn trong câu đã dịch ở bước này (1 nếu không ghép; tối đa 3), và chữ nguồn của cả câu ghép (§6.3).
     merged_segments: Option<usize>,
     translated_source: Option<String>,
@@ -1284,6 +1301,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             rec.lang_prob = result.lang_prob;
             rec.text = result.text;
             rec.no_speech_prob = result.no_speech_prob;
+            rec.avg_logprob = result.avg_logprob;
             asr_tx.send(rec)?;
         }
         Ok(())
@@ -1395,6 +1413,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             ("merge".to_string(), args.merge.to_string()),
             ("merge_window_ms".to_string(), merge_window.to_string()),
             ("min_ctx".to_string(), args.min_ctx.to_string()),
+            ("min_audio_ctx".to_string(), MIN_AUDIO_CTX.to_string()),
             (
                 "llama_args".to_string(),
                 public_args(repo_root().as_deref(), &args.llama_args),
@@ -1548,7 +1567,8 @@ fn plan_merge(open: &mut Option<OpenSentence>, rec: &SegmentRecord, src: Lang, w
 
 /// Quy tắc của app cho một đoạn đã chép lời: `Ok(ngôn ngữ nguồn)` nếu phải dịch, `Err(lý do)` nếu bỏ bước dịch.
 fn route(rec: &SegmentRecord, target: Lang) -> Result<Lang, String> {
-    if rec.no_speech_prob > NO_SPEECH_MAX || rec.text.trim().is_empty() {
+    let no_speech = rec.no_speech_prob > NO_SPEECH_MAX && rec.avg_logprob < AVG_LOGPROB_MIN;
+    if no_speech || rec.text.trim().is_empty() {
         return Err(SKIP_NO_SPEECH.into());
     }
     match Lang::from_code(&rec.lang) {
@@ -1993,11 +2013,12 @@ mod tests {
         }
     }
 
-    fn rec(lang: &str, text: &str, no_speech_prob: f32) -> SegmentRecord {
+    fn rec(lang: &str, text: &str, no_speech_prob: f32, avg_logprob: f32) -> SegmentRecord {
         SegmentRecord {
             lang: lang.into(),
             text: text.into(),
             no_speech_prob,
+            avg_logprob,
             ..Default::default()
         }
     }
@@ -2013,20 +2034,36 @@ mod tests {
 
     #[test]
     fn route_follows_the_app_rules() {
-        assert_eq!(route(&rec("en", "Hello", 0.0), Lang::Vi), Ok(Lang::En));
+        assert_eq!(route(&rec("en", "Hello", 0.0, -0.3), Lang::Vi), Ok(Lang::En));
+        assert_eq!(route(&rec("en", "", 0.0, 0.0), Lang::Vi), Err("no_speech".into()));
+        assert_eq!(route(&rec("en", " \n", 0.0, -0.3), Lang::Vi), Err("no_speech".into()));
         assert_eq!(
-            route(&rec("ko", "안녕", 0.6), Lang::Vi),
-            Ok(Lang::Ko),
-            "đúng ngưỡng thì chưa bỏ"
+            route(&rec("vi", "Xin chào", 0.0, -0.3), Lang::Vi),
+            Err("same_lang".into())
         );
-        assert_eq!(route(&rec("en", "Hello", 0.61), Lang::Vi), Err("no_speech".into()));
-        assert_eq!(route(&rec("en", "", 0.0), Lang::Vi), Err("no_speech".into()));
-        assert_eq!(route(&rec("en", " \n", 0.0), Lang::Vi), Err("no_speech".into()));
-        assert_eq!(route(&rec("vi", "Xin chào", 0.0), Lang::Vi), Err("same_lang".into()));
         assert_eq!(
-            route(&rec("fr", "Bonjour", 0.0), Lang::Vi),
+            route(&rec("fr", "Bonjour", 0.0, -0.3), Lang::Vi),
             Err("lang_ngoai_tap:fr".into())
         );
+    }
+
+    #[test]
+    fn no_speech_needs_both_a_high_no_speech_prob_and_a_low_avg_logprob() {
+        let drops = |no_speech: f32, logprob: f32| route(&rec("ko", "안녕", no_speech, logprob), Lang::Vi).is_err();
+        // Luật của OpenAI Whisper: bỏ khi cả hai điều kiện cùng đúng.
+        assert!(drops(0.9, -1.5));
+        // `no_speech` cao mà chữ chắc chắn (câu tiếng Hàn đúng có no_speech 0,62 và avg_logprob −0,25): giữ.
+        assert!(!drops(0.62, -0.25));
+        assert!(!drops(1.0, -0.5));
+        // `no_speech` thấp mà chữ kém chắc chắn: giữ (turbo có no_speech khoảng 1e-11 nên không bao giờ bị bỏ).
+        assert!(!drops(0.0, -3.0));
+        assert!(!drops(1e-11, -3.0));
+        // Biên: đúng 0,6 chưa quá ngưỡng, đúng −1,0 chưa dưới ngưỡng.
+        assert!(!drops(0.6, -1.5));
+        assert!(!drops(0.9, -1.0));
+        assert!(drops(0.61, -1.01));
+        // Lý do bỏ vẫn tên `no_speech`.
+        assert_eq!(route(&rec("ko", "안녕", 0.9, -1.5), Lang::Vi), Err("no_speech".into()));
     }
 
     #[test]
@@ -2541,11 +2578,11 @@ cargo deny check && cargo audit
 ```
 Expected:
 - `cargo test` chạy các crate trong `crates/` và qua hết:
-  - asr-protocol 14;
-  - asr-worker 5 (bản không có feature);
+  - asr-protocol 16;
+  - asr-worker 14 (bản không có feature);
   - audio-capture 11, cộng 16 ở `tests/edge.rs` (nếu đã làm kế hoạch 04);
   - pipeline 37, `vad_reference` 1 ignored;
-  - latency-bench 39.
+  - latency-bench 40.
 - clippy không có cảnh báo.
 - `cargo deny check` in `advisories ok, bans ok, licenses ok, sources ok`.
 
@@ -3316,6 +3353,18 @@ Expected:
 - Riêng dòng `chuan-vi` ra **KHÔNG KẾT LUẬN**. Nguyên nhân không phải độ trễ mà là nhận diện ngôn ngữ:
   - Whisper turbo nhận 22/60 đoạn tiếng Việt thành tiếng Anh. VAD cắt tiếng Việt thành nhiều đoạn ngắn, trung bình 3,3 đoạn mỗi câu, và đoạn dưới 1,3 giây thì LID sai hết.
   - Với `--min-ctx 512`, LID đúng 53/60 đoạn, và dòng này đạt.
+- **Lượt cấu hình chốt** (`m4pro-chot-khuyennghi-*`, đo sau đợt xử lý vấn đề mở, máy cắm điện):
+  - Cấu hình: sàn 512 trong công thức, LID đoạn ngắn, luật lặp 2 bản, luật `no_speech` của OpenAI.
+  - Cả 12 session đạt A2.
+
+  | Gói | p50 lớn nhất | p90 lớn nhất | chữ đầu p50 lớn nhất | RAM đỉnh |
+  |---|---|---|---|---|
+  | Chuẩn | 1028 ms | 1341 ms | 686 ms | 3,0 GB |
+  | Nhẹ | 844 ms | 1142 ms | 565 ms | 1,9 GB |
+
+  - Session `vi` của gói Chuẩn đạt: LID đúng 56/60 đoạn, đo được 17/18 câu.
+  - Chỉ 1 đoạn bị luật `no_speech` bỏ: một câu ảo giác "Thank you." dài 256 ms.
+  - Đây là số dùng cho báo cáo S6 (Task 9). Các lượt trước giữ lại để so sánh.
 - Theo §8, máy băng thông cao ở gói Chuẩn đạt A2 với dư địa lớn, nên cột A2 phải là `đạt` ở mọi dòng. Dòng nào `KHÔNG ĐẠT` thì xem chi tiết (ASR, LID, dịch) trước khi đo trên máy khác.
 
 - [ ] **Step 2: Commit**
