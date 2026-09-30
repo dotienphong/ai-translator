@@ -128,6 +128,10 @@ struct UtteranceLatency {
     lang: String,
     end_ms: u64,
     segment_id: Option<u64>,
+    /// Mốc dừng của đoạn ghép được trừ mốc dừng thật (ms). Lệch lớn nghĩa là mốc thật không khớp lúc người nói dừng
+    /// (xem `build_sessions.py`), và độ trễ của câu đó lệch cùng cỡ: đoạn dừng sớm hơn mốc thật (âm) thì độ trễ bị đo
+    /// thiếu, muộn hơn (dương) thì bị đo thừa.
+    end_offset_ms: Option<i64>,
     shown_latency_ms: Option<f64>,
     first_latency_ms: Option<f64>,
     /// Đoạn ghép được có bản dịch. `false` nếu không ghép được đoạn nào.
@@ -360,8 +364,14 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         report.label, s["shown_p50_ms"], s["shown_p90_ms"], s["first_p50_ms"], s["matched"], s["utterances"]
     );
     println!(
-        "  đo được {} câu, không có bản dịch {} câu; đoạn bị bỏ {}, bản dịch bị cụt (length) {}",
-        s["measured"], s["no_translation"], s["segments_dropped"], s["finish_length"]
+        "  đo được {} câu; không ghép được {}, không có bản dịch {}; đoạn bị bỏ {}, bản dịch bị cụt (length) {}; \
+         mốc dừng lệch tối đa {:.0} ms",
+        s["measured"],
+        s["unmatched"],
+        s["no_translation"],
+        s["segments_dropped"],
+        s["finish_length"],
+        s["end_offset_max_abs_ms"]
     );
     if feed_lag_max_ms > FEED_LAG_WARN_MS {
         println!(
@@ -435,6 +445,7 @@ fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord]) -> Vec<U
                 lang: u.lang.clone(),
                 end_ms: u.end_ms,
                 segment_id: seg.map(|s| s.id),
+                end_offset_ms: seg.map(|s| s.end_ms as i64 - u.end_ms as i64),
                 shown_latency_ms: seg.and_then(|s| s.shown_at_ms).map(since_end),
                 first_latency_ms: seg.and_then(|s| s.first_shown_at_ms).map(since_end),
                 translated: seg.is_some_and(|s| s.translation.is_some()),
@@ -447,8 +458,10 @@ fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord]) -> Vec<U
 /// Bản tóm tắt của một lượt đo:
 /// - `shown_*`, `first_*`: phân vị độ trễ trên các câu đo được (`measured`), tức câu ghép được với một đoạn không bị bỏ.
 /// - `asr_*`, `lid_*`, `mt_*`: phân vị thời gian từng bước (ms), trên các đoạn đã qua bước đó.
-/// - `utterances`: số câu thật; `matched`: số câu ghép được với một đoạn (kể cả đoạn bị bỏ);
-///   `no_translation`: số câu không có bản dịch (không ghép được, đoạn bị bỏ, hoặc không cần dịch).
+/// - `utterances`: số câu thật; `matched`: số câu ghép được với một đoạn (kể cả đoạn bị bỏ); `unmatched`: số câu còn lại.
+/// - `no_translation`: số câu ghép được với một đoạn không có bản dịch (đoạn bị bỏ, hoặc không cần dịch). Không gồm
+///   câu không ghép được: không biết chúng ra sao, vì không có đoạn nào đại diện.
+/// - `end_offset_max_abs_ms`: lệch lớn nhất giữa mốc dừng của đoạn và mốc thật, trên các câu ghép được.
 /// - `segments`, `segments_translated`, `segments_dropped`; `skipped_<lý do>`: số đoạn theo từng lý do.
 /// - `finish_length`: số bản dịch chạm `max_tokens` (bị cụt).
 fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) -> HashMap<String, f64> {
@@ -483,6 +496,8 @@ fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) ->
     put("lid_p50_ms", percentile(&lid_ms, 50.0));
     put("mt_p50_ms", percentile(&mt_ms, 50.0));
     put("mt_p90_ms", percentile(&mt_ms, 90.0));
+    let offset_max = utterances.iter().filter_map(|u| u.end_offset_ms).map(i64::abs).max();
+    put("end_offset_max_abs_ms", Some(offset_max.unwrap_or(0) as f32));
 
     let mut counts: Vec<(String, usize)> = vec![
         ("utterances".into(), utterances.len()),
@@ -490,10 +505,17 @@ fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) ->
             "matched".into(),
             utterances.iter().filter(|u| u.segment_id.is_some()).count(),
         ),
+        (
+            "unmatched".into(),
+            utterances.iter().filter(|u| u.segment_id.is_none()).count(),
+        ),
         ("measured".into(), shown.len()),
         (
             "no_translation".into(),
-            utterances.iter().filter(|u| !u.translated).count(),
+            utterances
+                .iter()
+                .filter(|u| u.segment_id.is_some() && !u.translated)
+                .count(),
         ),
         ("segments".into(), segments.len()),
         (
@@ -704,6 +726,7 @@ mod tests {
         assert_eq!(u.segment_id, Some(0));
         assert_eq!(u.shown_latency_ms, Some(1_500.0));
         assert_eq!(u.first_latency_ms, Some(700.0));
+        assert_eq!(u.end_offset_ms, Some(30)); // đoạn dừng sau mốc thật 30 ms
         assert!(u.translated);
         assert_eq!(u.skipped, None);
     }
@@ -718,6 +741,7 @@ mod tests {
         assert!(!dropped.translated);
         assert_eq!(dropped.skipped.as_deref(), Some("no_speech"));
         assert_eq!(unmatched.segment_id, None);
+        assert_eq!(unmatched.end_offset_ms, None);
         assert_eq!((unmatched.shown_latency_ms, unmatched.first_latency_ms), (None, None));
         assert!(!unmatched.translated);
         assert_eq!(unmatched.skipped, None);
@@ -738,7 +762,7 @@ mod tests {
             s
         };
         let mut segments = vec![
-            translated(1_050, 1_600.0, 1_900.0, 2_500.0),
+            translated(900, 1_600.0, 1_900.0, 2_500.0), // dừng sớm hơn mốc thật 100 ms
             cut(translated(5_020, 5_500.0, 5_800.0, 8_000.0)),
             skipped(9_010, 9_400.0, "no_speech"),
             skipped(20_000, 20_000.0, "too_short"), // không ghép với câu nào
@@ -770,8 +794,12 @@ mod tests {
         let get = |k: &str| s[k];
         assert_eq!(get("utterances"), 5.0);
         assert_eq!(get("matched"), 4.0); // d không có đoạn nào
+        assert_eq!(get("unmatched"), 1.0);
         assert_eq!(get("measured"), 3.0); // a, b, e; c bị bỏ
-        assert_eq!(get("no_translation"), 3.0); // c bị bỏ, d không ghép được, e cùng ngôn ngữ đích
+        // Câu ghép được mà không có bản dịch: c bị bỏ, e cùng ngôn ngữ đích. Câu không ghép được (d) tính riêng.
+        assert_eq!(get("no_translation"), 2.0);
+        // Lệch giữa mốc dừng của đoạn và mốc thật: a -100, b +20, c +10, e 0.
+        assert_eq!(get("end_offset_max_abs_ms"), 100.0);
         assert_eq!(get("segments"), 6.0);
         assert_eq!(get("segments_translated"), 3.0);
         assert_eq!(get("segments_dropped"), 2.0);
@@ -786,7 +814,7 @@ mod tests {
             assert_eq!(get(zero), 0.0, "{zero}");
         }
         assert_eq!(get("finish_length"), 2.0); // hai bản cụt, một bản "stop"
-        // Độ trễ đo được: a 1500, b 3000, e 500; chữ đầu: a 900, b 800, e 500.
+        // Độ trễ đo được: a 1500, b 3000, e 500; chữ đầu: a 900, b 800, e 500 (tính từ mốc thật, không từ mốc đoạn).
         assert_eq!(get("shown_p50_ms"), 1_500.0);
         assert_eq!(get("first_p50_ms"), 800.0);
         // Các bước chỉ tính đoạn đã qua asr-worker: đoạn too_short không được kéo p50 xuống.
