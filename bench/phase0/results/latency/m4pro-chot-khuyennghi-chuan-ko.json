@@ -14,6 +14,7 @@
     "merge": "true",
     "asr_system_info": "WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 | ",
     "languages": "en,zh,ja,ko,vi",
+    "min_audio_ctx": "512",
     "min_ctx": "0",
     "mt_model": "models/Hy-MT2-1.8B-Q8_0.gguf",
     "asr_decode_mode": "shared",

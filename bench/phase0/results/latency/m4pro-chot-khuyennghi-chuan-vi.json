@@ -14,6 +14,7 @@
     "llama_server": "tools/llama-b11146/macos-arm64/llama-b11146/llama-server",
     "end_silence_ms": "300",
     "merge_window_ms": "700",
+    "min_audio_ctx": "512",
     "min_ctx": "0",
     "llama_args": "",
     "asr_system_info": "WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 | ",

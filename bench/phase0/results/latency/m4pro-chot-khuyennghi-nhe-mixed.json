@@ -12,6 +12,7 @@
     "mt_model": "models/Hy-MT2-1.8B-Q4_K_M.gguf",
     "target": "vi",
     "merge": "true",
+    "min_audio_ctx": "512",
     "min_ctx": "0",
     "llama_server": "tools/llama-b11146/macos-arm64/llama-b11146/llama-server",
     "asr_system_info": "WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 | ",

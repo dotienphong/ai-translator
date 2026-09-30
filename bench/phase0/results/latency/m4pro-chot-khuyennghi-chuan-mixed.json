@@ -11,6 +11,7 @@
     "asr_model": "models/ggml-large-v3-turbo-q5_0.bin",
     "mt_model": "models/Hy-MT2-1.8B-Q8_0.gguf",
     "merge": "true",
+    "min_audio_ctx": "512",
     "min_ctx": "0",
     "llama_args": "",
     "target": "vi",

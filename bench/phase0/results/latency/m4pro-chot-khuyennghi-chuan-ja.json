@@ -15,6 +15,7 @@
     "languages": "en,zh,ja,ko,vi",
     "target": "vi",
     "end_silence_ms": "300",
+    "min_audio_ctx": "512",
     "min_ctx": "0",
     "whisper_version": "1.8.3",
     "merge_window_ms": "700",

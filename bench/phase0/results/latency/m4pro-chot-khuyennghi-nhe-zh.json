@@ -13,6 +13,7 @@
     "llama_args": "",
     "mt_model": "models/Hy-MT2-1.8B-Q4_K_M.gguf",
     "asr_decode_mode": "shared",
+    "min_audio_ctx": "512",
     "min_ctx": "0",
     "asr_model": "models/ggml-small-q5_1.bin",
     "whisper_version": "1.8.3",

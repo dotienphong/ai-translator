@@ -9,6 +9,7 @@
   },
   "config": {
     "whisper_version": "1.8.3",
+    "min_audio_ctx": "512",
     "min_ctx": "0",
     "asr_system_info": "WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 | ",
     "merge": "true",

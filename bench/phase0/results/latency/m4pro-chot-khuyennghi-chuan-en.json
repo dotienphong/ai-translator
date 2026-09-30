@@ -8,6 +8,7 @@
     "ram_gb": "24.0"
   },
   "config": {
+    "min_audio_ctx": "512",
     "min_ctx": "0",
     "asr_backend": "metal",
     "target": "vi",
