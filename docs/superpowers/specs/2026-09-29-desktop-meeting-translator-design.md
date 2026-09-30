@@ -541,6 +541,8 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 | `POST /v1/licenses/deactivate` `{key, activation_id}` | Gỡ kích hoạt để chuyển máy. Gọi được từ chính máy đó, hoặc từ máy mới khi key đã đủ 2 máy (gỡ từ xa). Mỗi lần gỡ tính vào giới hạn ở §10.2. |
 | `POST /v1/licenses/recover` `{email}` | Gửi lại mọi key còn hiệu lực của email này vào chính email đó. Luôn trả `200`, để không lộ email nào có key. Có giới hạn tần suất (§10.2). |
 
+**Gửi email:** qua Resend (API HTTP, gọi từ Worker), sau interface `EmailProvider` để đổi dịch vụ được. Khóa API của Resend là secret của Worker. Tên miền gửi phải được xác thực (SPF, DKIM).
+
 **Công cụ hỗ trợ:** vài endpoint `/admin/*` đặt sau Cloudflare Access, chỉ người vận hành dùng được. Các việc:
 - Tra cứu theo email hoặc `orderCode`, gửi lại key.
 - Mở khóa key bị khóa tạm (§10.2).
@@ -804,7 +806,7 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
   - Việc chuyển khoản do ngân hàng và PayOS xử lý; server không nhận số tài khoản ngân hàng của khách.
   - Khi mua, người dùng tick đồng ý cho xử lý email vào đúng mục đích này.
   - Chính sách quyền riêng tư phải ghi rõ dữ liệu nào được lưu, lưu bao lâu, và cách yêu cầu xóa.
-  - **Chuyển dữ liệu ra nước ngoài:** license server (Cloudflare D1) và dịch vụ gửi email đặt ngoài Việt Nam, nên có thể thuộc diện chuyển dữ liệu cá nhân xuyên biên giới. Khi đó phải lập hồ sơ đánh giá tác động và gửi cơ quan chuyên trách trong 60 ngày kể từ lần chuyển đầu tiên. Hộ kinh doanh và doanh nghiệp siêu nhỏ được miễn; doanh nghiệp nhỏ và doanh nghiệp khởi nghiệp được chọn không làm trong 5 năm đầu. Việc này phụ thuộc loại hình đăng ký kinh doanh (§15), cần hỏi luật sư.
+  - **Chuyển dữ liệu ra nước ngoài:** license server (Cloudflare D1) và dịch vụ gửi email (Resend) đặt ngoài Việt Nam, nên có thể thuộc diện chuyển dữ liệu cá nhân xuyên biên giới. Khi đó phải lập hồ sơ đánh giá tác động và gửi cơ quan chuyên trách trong 60 ngày kể từ lần chuyển đầu tiên. Hộ kinh doanh và doanh nghiệp siêu nhỏ được miễn; doanh nghiệp nhỏ và doanh nghiệp khởi nghiệp được chọn không làm trong 5 năm đầu. Việc này phụ thuộc loại hình đăng ký kinh doanh (§15), cần hỏi luật sư.
 - **Giấy phép bên thứ ba**, liệt kê ở màn hình Giới thiệu và file `THIRD_PARTY_NOTICES`:
   - Hy-MT2: Apache 2.0, kèm LICENSE và NOTICE. Nếu tự nén lại model thì phải ghi chú là đã sửa đổi.
   - Trọng số Whisper: MIT.
@@ -920,8 +922,7 @@ meeting-translator/
 ├── src-tauri/                    # Tiến trình chính, không link ggml
 │   ├── src/
 │   │   ├── main.rs
-│   │   ├── audio/{mod,windows,macos,resample}.rs
-│   │   ├── pipeline/{vad,segmenter,asr,translate,prompt,postprocess,subtitle}.rs  # asr.rs: client của asr-worker
+│   │   ├── session.rs            # Nối crate audio-capture và pipeline vào app: bắt đầu/dừng phiên, phát sự kiện phụ đề
 │   │   ├── sidecar/{asr,llama}.rs  # Chạy và giám sát asr-worker, llama-server
 │   │   ├── models/{manifest,download,store}.rs
 │   │   ├── license/{provider,state,quota}.rs
@@ -953,7 +954,7 @@ meeting-translator/
 
 - `asr-protocol`, `asr-worker`, `audio-capture` và `pipeline` có từ Giai đoạn 0, và phần lớn code dùng lại được ở MVP.
 - **Việc cho MVP:**
-  - Chọn giữ `audio-capture` và `pipeline` là crate riêng, hay chuyển vào `src-tauri/src/{audio,pipeline}/`.
+  - Đã chọn (2026-10-01): giữ `audio-capture` và `pipeline` là crate riêng, vì code và test của Giai đoạn 0 dùng lại được nguyên, và test chạy không cần Tauri. `src-tauri` chỉ còn phần nối các crate vào app.
   - Trước khi tạo `server/`: thêm vào `.gitignore` các mẫu `.dev.vars*`, `.env*`, `*.pem`, `*.p12`, `*.pfx`, `*.key` (§10.2).
 
 ## 13. Lộ trình
