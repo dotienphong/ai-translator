@@ -1,5 +1,28 @@
 //! Chọn ngôn ngữ trong tập người dùng cho phép (spec §6.4).
 
+use asr_protocol::SAMPLE_RATE;
+
+/// Ngưỡng thường: xác suất cao nhất (đã chuẩn hóa trong tập cho phép) dưới mức này thì giữ ngôn ngữ của đoạn trước.
+pub const MIN_LANG_PROB: f32 = 0.5;
+
+/// Đoạn ngắn hơn mức này (1,5 giây) dùng ngưỡng [`MIN_LANG_PROB_SHORT`].
+pub const SHORT_LID_SAMPLES: usize = 24_000;
+const _: () = assert!(SHORT_LID_SAMPLES == SAMPLE_RATE as usize * 3 / 2);
+
+/// Ngưỡng cho đoạn ngắn hơn [`SHORT_LID_SAMPLES`]. Ở S6, turbo nhận thành tiếng Anh các đoạn tiếng Việt dưới 1,3 giây
+/// (xác suất từ 0,57 đến 0,99): đoạn quá ngắn không đủ bằng chứng để đổi ngôn ngữ, nên chỉ đổi khi xác suất từ 0,9.
+pub const MIN_LANG_PROB_SHORT: f32 = 0.9;
+
+/// Ngưỡng `min_prob` cho `pick_language` theo độ dài đoạn (số mẫu 16 kHz): [`MIN_LANG_PROB_SHORT`] nếu đoạn ngắn hơn
+/// [`SHORT_LID_SAMPLES`], còn không [`MIN_LANG_PROB`]. Cả hai chế độ giải mã dùng hàm này.
+pub fn min_prob_for(n_samples: usize) -> f32 {
+    if n_samples < SHORT_LID_SAMPLES {
+        MIN_LANG_PROB_SHORT
+    } else {
+        MIN_LANG_PROB
+    }
+}
+
 /// `probs`: xác suất của mọi ngôn ngữ Whisper, index là lang id.
 /// `allowed`: các lang id được phép, không được rỗng.
 /// `prev`: ngôn ngữ của đoạn trước.
@@ -77,5 +100,32 @@ mod tests {
         let p = probs(&[]);
         assert_eq!(pick_language(&p, &[0, 19], Some(19), 0.5).0, 19);
         assert_eq!(pick_language(&p, &[0, 19], None, 0.5).0, 0);
+    }
+
+    #[test]
+    fn short_segments_use_a_stricter_threshold() {
+        assert_eq!(SHORT_LID_SAMPLES, 24_000); // 1,5 giây
+        assert_eq!(MIN_LANG_PROB, 0.5);
+        assert_eq!(MIN_LANG_PROB_SHORT, 0.9);
+        assert_eq!(min_prob_for(0), 0.9);
+        assert_eq!(min_prob_for(16_000), 0.9); // 1 giây
+        assert_eq!(min_prob_for(SHORT_LID_SAMPLES - 1), 0.9);
+        assert_eq!(min_prob_for(SHORT_LID_SAMPLES), 0.5); // đúng 1,5 giây đã là đoạn thường
+        assert_eq!(min_prob_for(16_000 * 30), 0.5);
+    }
+
+    #[test]
+    fn short_threshold_keeps_previous_language_unless_very_confident() {
+        // en 0,8 / vi 0,2: đoạn thường (ngưỡng 0,5) đổi sang en; đoạn ngắn (ngưỡng 0,9) giữ vi của đoạn trước.
+        let p = probs(&[(0, 0.8), (19, 0.2)]);
+        assert_eq!(pick_language(&p, &[0, 19], Some(19), min_prob_for(48_000)).0, 0);
+        let (id, prob) = pick_language(&p, &[0, 19], Some(19), min_prob_for(16_000));
+        assert_eq!(id, 19);
+        assert!((prob - 0.2).abs() < 1e-6); // xác suất trả về là của ngôn ngữ được giữ
+        // Từ 0,9 trở lên thì đoạn ngắn vẫn đổi ngôn ngữ.
+        let p = probs(&[(0, 0.95), (19, 0.05)]);
+        assert_eq!(pick_language(&p, &[0, 19], Some(19), min_prob_for(16_000)).0, 0);
+        // Chưa có ngôn ngữ trước thì không có gì để giữ, kể cả khi ngưỡng cao.
+        assert_eq!(pick_language(&probs(&[(0, 0.8), (19, 0.2)]), &[0, 19], None, 0.9).0, 0);
     }
 }

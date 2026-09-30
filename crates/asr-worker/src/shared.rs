@@ -3,9 +3,9 @@
 //! Cần bản vá `whisper_set_audio_ctx_with_state` trong `third_party/` (feature `shared-encode`).
 //! Giải mã greedy, không timestamp, không temperature fallback, giống cấu hình của `engine.rs`.
 
-use crate::engine::mean_logprob;
-use crate::lid::pick_language;
-use anyhow::Result;
+use crate::engine::{Primers, mean_logprob};
+use crate::lid::{min_prob_for, pick_language};
+use anyhow::{Context, Result};
 use asr_protocol::{MAX_PROMPT_TOKENS, SAMPLE_RATE};
 use std::time::Instant;
 use whisper_rs::{WhisperContext, WhisperState, WhisperTokenId};
@@ -127,6 +127,7 @@ impl Decoder {
         allowed: &[i32],
         prev_lang: Option<i32>,
         prompt_tokens: &[i32],
+        primers: &Primers,
         n_threads: usize,
     ) -> Result<Decoded> {
         state.pcm_to_mel(pcm, n_threads)?;
@@ -151,7 +152,7 @@ impl Decoder {
             for &id in allowed {
                 probs[id as usize] = (lang_logit(id) - max).exp();
             }
-            pick_language(&probs, allowed, prev_lang, crate::engine::MIN_LANG_PROB)
+            pick_language(&probs, allowed, prev_lang, min_prob_for(pcm.len()))
         };
         let lid_ms = if allowed.len() == 1 {
             0.0
@@ -159,10 +160,13 @@ impl Decoder {
             lid_started.elapsed().as_secs_f32() * 1000.0
         };
 
-        let mut prompt = Vec::with_capacity(prompt_tokens.len() + 5);
-        if !prompt_tokens.is_empty() {
+        // Prompt của client nếu có, không thì câu mồi của ngôn ngữ vừa chọn (zh, ja): xem `Primers`.
+        let lang = whisper_rs::get_lang_str(lang_id).context("lang id không hợp lệ")?;
+        let context = primers.context_for(lang, prompt_tokens);
+        let mut prompt = Vec::with_capacity(context.len().min(MAX_PROMPT_TOKENS) + 5);
+        if !context.is_empty() {
             prompt.push(ctx.token_prev());
-            prompt.extend_from_slice(&prompt_tokens[prompt_tokens.len().saturating_sub(MAX_PROMPT_TOKENS)..]);
+            prompt.extend_from_slice(&context[context.len().saturating_sub(MAX_PROMPT_TOKENS)..]);
         }
         prompt.extend([sot, ctx.token_lang(lang_id), ctx.token_transcribe(), ctx.token_not()]);
         // whisper.cpp ghi logits của token cuối vào hàng `n_tokens - 1`, còn `get_logits()` chỉ đọc
@@ -269,10 +273,19 @@ impl Generated {
 /// Mẫu dài nhất (token) mà `loop_period` tìm. Câu bị lặp trong bộ clip FLEURS dài 12–48 token.
 const MAX_LOOP_PERIOD: usize = 64;
 
-/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper. Mẫu ngắn (1–8 token) cần 4 bản
-/// để không cắt nhầm lời nói thật ("no, no, no"); mẫu dài (9–64 token, thường là cả câu) chỉ cần 3 bản.
+/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper:
+/// - 1–8 token: 4 bản, để không cắt nhầm lời nói thật ("no, no, no");
+/// - 9–15 token: 3 bản;
+/// - 16–64 token (thường là cả câu): 2 bản, vì Whisper có khi chép cả câu hai lần rồi mới dừng (S7: 8 clip, 6 của turbo
+///   và 2 của small), mà 3 bản thì không bắt được.
+///
+/// Đánh đổi: người nói nhắc lại nguyên một câu dài hai lần liền thì bản thứ hai cũng bị gom.
 fn loop_repeats(n: usize) -> usize {
-    if n <= 8 { 4 } else { 3 }
+    match n {
+        1..=8 => 4,
+        9..=15 => 3,
+        _ => 2,
+    }
 }
 
 /// Độ dài `n` của mẫu nếu `tokens` nối thêm `next` kết thúc bằng `loop_repeats(n)` bản liên tiếp của cùng một mẫu
@@ -301,7 +314,7 @@ fn cut_loop(tokens: &mut Vec<WhisperTokenId>, next: WhisperTokenId) -> bool {
 /// Trần số token mới của một đoạn: nửa ngữ cảnh văn bản của Whisper (224) trừ độ dài prompt, và không quá
 /// `16 + 20 × số giây` của đoạn. Trên bộ clip FLEURS, lời nói không lặp có nhiều nhất 7,75 token/giây (p99 6,35), nên
 /// trần theo độ dài chỉ chặn vòng lặp mà `loop_period` không bắt được (các bản không giống hệt nhau), nhất là ở đoạn
-/// ngắn. Hệ số 20 khoảng 3 lần p99, để `loop_period` (cần 3 bản) thường kịp gom vòng lặp trước khi chạm trần.
+/// ngắn. Hệ số 20 khoảng 3 lần p99, để `loop_period` (cần 2 đến 4 bản) thường kịp gom vòng lặp trước khi chạm trần.
 /// Khác `whisper_full`: whisper.cpp luôn cho 220 token, không trừ độ dài prompt.
 fn max_new_tokens(n_text_ctx: usize, prompt_len: usize, n_samples: usize) -> usize {
     let by_audio = 16 + n_samples * 20 / SAMPLE_RATE as usize;
@@ -328,6 +341,19 @@ mod tests {
     }
 
     #[test]
+    fn loop_repeats_by_pattern_length() {
+        for n in 1..=8 {
+            assert_eq!(loop_repeats(n), 4, "n = {n}");
+        }
+        for n in 9..=15 {
+            assert_eq!(loop_repeats(n), 3, "n = {n}");
+        }
+        for n in 16..=64 {
+            assert_eq!(loop_repeats(n), 2, "n = {n}");
+        }
+    }
+
+    #[test]
     fn short_patterns_need_four_copies() {
         for n in 1..=8 {
             let (t, next) = looped(&[1, 2, 3], &pattern(n), 4);
@@ -338,17 +364,29 @@ mod tests {
     }
 
     #[test]
-    fn long_patterns_need_three_copies() {
-        // Ghim cận trên bằng số, không dùng lại hằng: đổi MAX_LOOP_PERIOD thì test phải đỏ.
-        for n in 9..=64 {
+    fn medium_patterns_need_three_copies() {
+        for n in 9..=15 {
             let (t, next) = looped(&[1, 2, 3], &pattern(n), 3);
             assert_eq!(loop_period(&t, next), Some(n), "n = {n}, 3 bản");
             let (t, next) = looped(&[1, 2, 3], &pattern(n), 2);
             assert_eq!(loop_period(&t, next), None, "n = {n}, 2 bản chưa là vòng lặp");
         }
-        // Dài hơn 64 token thì để trần token lo.
-        let (t, next) = looped(&[], &pattern(65), 3);
-        assert_eq!(loop_period(&t, next), None);
+    }
+
+    #[test]
+    fn long_patterns_need_two_copies() {
+        // Ghim cận trên bằng số, không dùng lại hằng: đổi MAX_LOOP_PERIOD thì test phải đỏ.
+        for n in 16..=64 {
+            let (t, next) = looped(&[1, 2, 3], &pattern(n), 2);
+            assert_eq!(loop_period(&t, next), Some(n), "n = {n}, 2 bản (cả câu chép hai lần)");
+            let (t, next) = looped(&[1, 2, 3], &pattern(n), 1);
+            assert_eq!(loop_period(&t, next), None, "n = {n}, 1 bản chưa là vòng lặp");
+        }
+        // Dài hơn 64 token thì để trần token lo, dù lặp bao nhiêu bản.
+        for reps in [2, 3, 10] {
+            let (t, next) = looped(&[], &pattern(65), reps);
+            assert_eq!(loop_period(&t, next), None, "mẫu 65 token, {reps} bản");
+        }
     }
 
     #[test]
@@ -363,17 +401,25 @@ mod tests {
 
     #[test]
     fn cut_loop_keeps_one_copy() {
+        // Mẫu 2 token × 4 bản.
         let (mut t, next) = looped(&[1, 2], &[5, 6], 4);
         assert!(cut_loop(&mut t, next));
         assert_eq!(t, [1, 2, 5, 6]);
 
-        let p = pattern(20);
+        // Mẫu 12 token × 3 bản.
+        let p = pattern(12);
         let (mut t, next) = looped(&[1, 2], &p, 3);
         assert!(cut_loop(&mut t, next));
         assert_eq!(t, [&[1, 2][..], &p].concat());
 
-        // Không lặp thì không đụng vào `tokens`.
+        // Mẫu 20 token × 2 bản: cả câu chép hai lần.
+        let p = pattern(20);
         let (mut t, next) = looped(&[1, 2], &p, 2);
+        assert!(cut_loop(&mut t, next));
+        assert_eq!(t, [&[1, 2][..], &p].concat());
+
+        // Một bản thì không đụng vào `tokens`.
+        let (mut t, next) = looped(&[1, 2], &p, 1);
         let before = t.clone();
         assert!(!cut_loop(&mut t, next));
         assert_eq!(t, before);

@@ -31,6 +31,8 @@ fn main() -> Result<()> {
                         if e.flash_attn() { "on" } else { "off" },
                         e.decode_mode()
                     );
+                    // Dòng riêng, để dòng trên giữ nguyên định dạng cũ (các phép kiểm log tìm đúng dòng đó).
+                    eprintln!("asr-worker: primer={}", if e.primer_enabled() { "on" } else { "off" });
                     let ready = Response::Ready {
                         backend: backend.to_string(),
                         decode_mode: e.decode_mode().to_string(),

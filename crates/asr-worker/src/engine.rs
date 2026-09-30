@@ -8,8 +8,11 @@
 //! - Chế độ B (`shared`, xem `shared.rs`): một lượt encode dùng chung cho cả hai việc, nên chỉ có một state (state
 //!   chép lời) và không tạo state nhận diện ngôn ngữ. Là mặc định khi build với feature `shared-encode`; đặt
 //!   `ASR_MODE=split` để chạy chế độ A khi cần so sánh.
+//!
+//! Cả hai chế độ dùng chung: ngưỡng giữ ngôn ngữ trước theo độ dài đoạn (`lid::min_prob_for`), câu mồi cho zh và ja
+//! (`Primers`), và trả `avg_logprob`.
 
-use crate::lid::pick_language;
+use crate::lid::{min_prob_for, pick_language};
 use anyhow::{Context, Result, bail};
 use asr_protocol::{
     MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_PCM_SAMPLES, SAMPLE_RATE, TranscribeRequest, TranscribeResult,
@@ -20,7 +23,6 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 /// Nhận diện ngôn ngữ trên tối đa 3 giây đầu của đoạn (spec §6.4).
 pub const LID_SAMPLES: usize = SAMPLE_RATE as usize * 3;
-pub(crate) const MIN_LANG_PROB: f32 = 0.5;
 /// Cửa sổ mã hóa tối đa của Whisper: 1500 vị trí, tức 30 giây.
 const MAX_AUDIO_CTX: i32 = 1500;
 /// Số mẫu 16 kHz mà một vị trí của `audio_ctx` phủ (20 ms).
@@ -31,6 +33,67 @@ const SAMPLES_PER_CTX: usize = SAMPLE_RATE as usize / 50;
 const LID_AUDIO_CTX: i32 = (LID_SAMPLES / SAMPLES_PER_CTX) as i32 + 64;
 // Cửa sổ tối đa phủ đúng đoạn dài nhất mà `asr-protocol` cho phép.
 const _: () = assert!(MAX_AUDIO_CTX as usize * SAMPLES_PER_CTX == MAX_PCM_SAMPLES);
+
+/// Câu mồi cho tiếng Trung: chữ giản thể, có dấu câu kết thúc.
+const PRIMER_ZH: &str = "以下是普通话的句子。";
+/// Câu mồi cho tiếng Nhật: có dấu câu kết thúc.
+const PRIMER_JA: &str = "以下は日本語の文です。";
+
+/// Prompt mồi cho zh và ja (`<|startofprev|>` rồi các token này, như prompt của client). Lý do:
+/// - Dấu câu (spec §6.3): Whisper gần như không đặt dấu câu kết thúc cho hai tiếng này (S6: zh 1/43 đoạn, ja 3/15), nên
+///   luật ghép câu (câu không kết thúc bằng dấu câu thì ghép với câu sau) nối cả những câu khác nhau. Prompt có dấu câu
+///   làm Whisper chép theo kiểu có dấu câu.
+/// - Chữ giản thể: `small` ra chữ phồn thể ở khoảng nửa số clip zh; câu mồi zh viết bằng chữ giản thể kéo về giản thể.
+///
+/// Chỉ dùng khi client không gửi prompt (đoạn đầu, hoặc sau khi đổi ngôn ngữ): prompt của client là ngữ cảnh thật nên
+/// thắng. Token hóa một lần lúc nạp model. Đặt `ASR_NO_PRIMER=1` để tắt mồi (các danh sách rỗng), dùng khi đo so sánh.
+#[derive(Default)]
+pub struct Primers {
+    zh: Vec<i32>,
+    ja: Vec<i32>,
+}
+
+impl Primers {
+    fn new(ctx: &WhisperContext) -> Result<Self> {
+        if std::env::var("ASR_NO_PRIMER").as_deref() == Ok("1") {
+            return Ok(Self::default());
+        }
+        let eot = ctx.token_eot();
+        let tokenize = |text: &str| -> Result<Vec<i32>> {
+            // Mỗi token phủ ít nhất một byte, nên `text.len()` đủ lớn để không gặp mã âm (whisper-rs 0.16 chỉ coi -1 là
+            // lỗi, còn mã âm khác bị nó đổi thành độ dài Vec khổng lồ).
+            let tokens = ctx
+                .tokenize(text, text.len())
+                .with_context(|| format!("token hóa câu mồi {text:?}"))?;
+            if tokens.is_empty() || tokens.len() > MAX_PROMPT_TOKENS || tokens.iter().any(|t| !(0..eot).contains(t)) {
+                bail!("câu mồi {text:?} token hóa ra {tokens:?}, không hợp lệ");
+            }
+            Ok(tokens)
+        };
+        Ok(Self {
+            zh: tokenize(PRIMER_ZH)?,
+            ja: tokenize(PRIMER_JA)?,
+        })
+    }
+
+    /// Có câu mồi nào đang bật không (`false` khi `ASR_NO_PRIMER=1`).
+    pub fn enabled(&self) -> bool {
+        !self.zh.is_empty() || !self.ja.is_empty()
+    }
+
+    /// Prompt dùng cho đoạn có ngôn ngữ `lang`: prompt của client nếu có, không thì câu mồi của `lang` (zh, ja), không
+    /// thì rỗng. Độ dài luôn không quá `MAX_PROMPT_TOKENS` khi `client` không quá (engine đã kiểm).
+    pub fn context_for<'a>(&'a self, lang: &str, client: &'a [i32]) -> &'a [i32] {
+        if !client.is_empty() {
+            return client;
+        }
+        match lang {
+            "zh" => &self.zh,
+            "ja" => &self.ja,
+            _ => &[],
+        }
+    }
+}
 
 /// Trung bình log-xác suất của các token văn bản; 0,0 nếu không có token nào (xem `TranscribeResult::avg_logprob`).
 /// Cộng bằng f64 để đoạn dài không mất độ chính xác.
@@ -49,6 +112,7 @@ pub struct Engine {
     n_threads: usize,
     flash_attn: bool,
     prev_lang: Option<i32>,
+    primers: Primers,
     /// Có giá trị khi chạy chế độ B.
     #[cfg(feature = "shared-encode")]
     shared: Option<crate::shared::Decoder>,
@@ -69,6 +133,7 @@ impl Engine {
         let ctx = WhisperContext::new_with_params(model_path, params)
             .with_context(|| format!("không nạp được model {model_path}"))?;
         let asr_state = ctx.create_state().context("tạo state chép lời")?;
+        let primers = Primers::new(&ctx)?;
         #[cfg(feature = "shared-encode")]
         let shared = (std::env::var("ASR_MODE").as_deref() != Ok("split")).then(|| crate::shared::Decoder::new(&ctx));
         // Chỉ chế độ A cần state nhận diện ngôn ngữ riêng: không có feature `shared-encode`, hoặc có mà `ASR_MODE=split`.
@@ -88,6 +153,7 @@ impl Engine {
             n_threads,
             flash_attn,
             prev_lang: None,
+            primers,
             #[cfg(feature = "shared-encode")]
             shared,
         })
@@ -105,6 +171,11 @@ impl Engine {
     /// Flash attention có đang bật không. Mặc định tắt, xem `load`.
     pub fn flash_attn(&self) -> bool {
         self.flash_attn
+    }
+
+    /// Câu mồi cho zh và ja có đang bật không. Mặc định bật, xem [`Primers`].
+    pub fn primer_enabled(&self) -> bool {
+        self.primers.enabled()
     }
 
     /// Chạy thử trên 3 giây im lặng để nạp sẵn kernel GPU cho state chép lời. Ở chế độ A, state nhận diện ngôn ngữ
@@ -181,6 +252,7 @@ impl Engine {
                 &allowed,
                 self.prev_lang,
                 &req.prompt_tokens,
+                &self.primers,
                 self.n_threads,
             )?;
             let total_ms = started.elapsed().as_secs_f32() * 1000.0;
@@ -210,7 +282,7 @@ impl Engine {
                 .pcm_to_mel(head, self.n_threads)
                 .context("tính mel cho nhận diện ngôn ngữ")?;
             let (_, probs) = lid_state.lang_detect(0, self.n_threads).context("nhận diện ngôn ngữ")?;
-            pick_language(&probs, &allowed, self.prev_lang, MIN_LANG_PROB)
+            pick_language(&probs, &allowed, self.prev_lang, min_prob_for(pcm.len()))
         };
         let lid_ms = if allowed.len() == 1 {
             0.0
@@ -221,8 +293,9 @@ impl Engine {
 
         let asr_started = Instant::now();
         let mut params = full_params(self.n_threads, lang, req.audio_ctx);
-        if !req.prompt_tokens.is_empty() {
-            params.set_tokens(&req.prompt_tokens);
+        let context = self.primers.context_for(lang, &req.prompt_tokens);
+        if !context.is_empty() {
+            params.set_tokens(context);
         }
         self.asr_state.full(params, &pcm).context("chép lời")?;
         let asr_ms = asr_started.elapsed().as_secs_f32() * 1000.0;
@@ -306,6 +379,51 @@ fn full_params<'a, 'b>(n_threads: usize, lang: &'a str, audio_ctx: i32) -> FullP
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn primers() -> Primers {
+        Primers {
+            zh: vec![11, 12],
+            ja: vec![21],
+        }
+    }
+
+    #[test]
+    fn primer_is_used_only_for_zh_and_ja_without_a_client_prompt() {
+        let p = primers();
+        assert_eq!(p.context_for("zh", &[]), [11, 12]);
+        assert_eq!(p.context_for("ja", &[]), [21]);
+        for lang in ["en", "ko", "vi", "", "zh-TW"] {
+            assert!(p.context_for(lang, &[]).is_empty(), "{lang}");
+        }
+    }
+
+    #[test]
+    fn client_prompt_wins_over_the_primer() {
+        let p = primers();
+        assert_eq!(p.context_for("zh", &[7, 8, 9]), [7, 8, 9]);
+        assert_eq!(p.context_for("ja", &[7]), [7]);
+        assert_eq!(p.context_for("en", &[7]), [7]);
+    }
+
+    #[test]
+    fn disabled_primers_give_no_context() {
+        let p = Primers::default();
+        assert!(p.context_for("zh", &[]).is_empty());
+        assert!(p.context_for("ja", &[]).is_empty());
+        assert_eq!(p.context_for("zh", &[5]), [5]);
+    }
+
+    #[test]
+    fn primer_texts_fit_the_prompt_budget_and_use_simplified_zh() {
+        // Mỗi token phủ ít nhất một byte, nên số byte là cận trên của số token.
+        for text in [PRIMER_ZH, PRIMER_JA] {
+            assert!(text.len() < MAX_PROMPT_TOKENS, "{text}");
+            // Có dấu câu kết thúc, để Whisper bắt chước và luật ghép câu §6.3 thấy được câu kết thúc.
+            assert!(text.ends_with('。'), "{text}");
+        }
+        // Chữ giản thể ("话" chứ không phải "話"), để kéo `small` về giản thể.
+        assert!(PRIMER_ZH.contains('话') && !PRIMER_ZH.contains('話'));
+    }
 
     #[test]
     fn mean_logprob_is_zero_without_tokens() {
