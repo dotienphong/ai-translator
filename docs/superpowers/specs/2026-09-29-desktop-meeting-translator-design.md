@@ -142,7 +142,11 @@
     - Cả hai nút đều giữ lại trạng thái bản quyền và quota (§6.8).
 - **Nâng cấp Pro:** chọn gói 1 tháng hoặc 12 tháng, nhập email, quét mã VietQR hiện ngay trong app (§6.8).
 - **Giới thiệu và giấy phép mã nguồn mở.**
-- **Đóng cửa sổ chính:** bấm X (kể cả `Alt+F4` trên Windows, `⌘W` trên Mac) chỉ ẩn cửa sổ xuống khay. App vẫn chạy; phím tắt và phiên dịch đang chạy vẫn hoạt động. Muốn thoát hẳn thì chọn **Thoát** trong menu khay: app dừng phiên dịch nếu đang chạy (như khi bấm Dừng), tắt hai tiến trình phụ (§5), rồi mới thoát.
+- **Đóng cửa sổ chính:**
+  - Bấm X (kể cả `Alt+F4` trên Windows, `⌘W` trên Mac) chỉ ẩn cửa sổ xuống khay. App vẫn chạy; phím tắt và phiên dịch đang chạy vẫn hoạt động.
+  - Muốn thoát hẳn thì chọn **Thoát** trong menu khay: app dừng phiên dịch nếu đang chạy (như khi bấm Dừng), tắt hai tiến trình phụ (§5), rồi mới thoát.
+  - Trên Mac, `⌘Q` và mục Quit ở Dock cũng không thoát app: bỏ mục Quit khỏi menu của app, hoặc chặn lệnh thoát không đến từ menu khay.
+  - Ngoại lệ: không chặn thoát khi máy tắt, khởi động lại, đăng xuất, và khi app tự khởi động lại để cập nhật (§6.11). Nếu chặn, hệ điều hành báo app đang cản tắt máy.
 
 ### 4.4 Thanh phụ đề
 
@@ -704,7 +708,7 @@ Nếu S6 xác nhận M1 cơ bản không đạt, có hai phương án:
   - Máy Windows không có Vulkan, ví dụ máy ảo: app vẫn mở được, dùng `asr-worker-cpu`, và `llama-server` chạy bằng CPU (§6.4).
   - Card rời 4 GB và 6 GB: app đề xuất đúng gói. Chọn gói Chuẩn trên card 4 GB thì `llama-server` tự chuyển bớt lớp sang CPU, không lỗi hết bộ nhớ.
   - Khoảng lặng dài trên Windows (tạm dừng video, không ai nói): câu cuối vẫn được chốt, thời gian phụ đề không lệch.
-  - Khay (§4.3): bấm X thì cửa sổ chính ẩn, phiên dịch đang chạy không dừng. Chọn Thoát trong menu khay thì app thoát, không còn tiến trình phụ nào chạy. Lần đầu mở trên Windows, nút ở bước 8 (§4.1) mở đúng trang cài đặt Taskbar.
+  - Khay (§4.3): bấm X thì cửa sổ chính ẩn, phiên dịch đang chạy không dừng. Chọn Thoát trong menu khay thì app thoát, không còn tiến trình phụ nào chạy. Trên Mac, `⌘Q` và Quit ở Dock không thoát app. Tắt máy hoặc đăng xuất khi app đang chạy thì không bị app chặn. Lần đầu mở trên Windows, nút ở bước 8 (§4.1) mở đúng trang cài đặt Taskbar.
 - **Soak test:** phát liên tục 2 giờ âm thanh cuộc họp, theo dõi RAM, CPU và GPU (tiêu chí A5).
 - **Cài đặt và cập nhật:** cài mới, nâng cấp từ bản trước, gỡ app (Windows: tick "xóa dữ liệu app" thì model bị xóa; macOS: nút "Xóa model và dữ liệu", A6); kiểm tra chữ ký qua Gatekeeper và SmartScreen.
 - **Bảo mật (§10.2):**
