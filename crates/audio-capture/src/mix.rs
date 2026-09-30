@@ -38,11 +38,11 @@ impl Mixer2 {
         );
         if self.a.len() > self.max_skew {
             let excess = self.a.len() - self.max_skew;
-            out.extend(self.a.drain(..excess));
+            out.extend(self.a.drain(..excess).map(|x| x.clamp(-1.0, 1.0)));
         }
         if self.b.len() > self.max_skew {
             let excess = self.b.len() - self.max_skew;
-            out.extend(self.b.drain(..excess));
+            out.extend(self.b.drain(..excess).map(|x| x.clamp(-1.0, 1.0)));
         }
     }
 }

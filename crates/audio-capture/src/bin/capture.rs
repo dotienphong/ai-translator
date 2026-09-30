@@ -111,9 +111,9 @@ fn main() -> Result<()> {
     );
     let elapsed = started.elapsed().as_secs_f64();
     for (i, s) in stats.iter().enumerate() {
-        let [frames, inserted, skipped, dropped] = s.snapshot();
+        let [frames, inserted, skipped, dropped, rejected] = s.snapshot();
         println!(
-            "nguồn {i}: {frames} khung nhận (≈ {:.0} khung/giây, so với tần số ở dòng `nguồn:`), {inserted} khung im lặng chèn thêm, {skipped} khung bỏ, {dropped} mẫu rơi",
+            "nguồn {i}: {frames} khung nhận (≈ {:.0} khung/giây, so với tần số ở dòng `nguồn:`), {inserted} khung im lặng chèn thêm, {skipped} khung bỏ, {dropped} mẫu rơi, {rejected} lượt IO bị từ chối",
             frames as f64 / elapsed
         );
     }

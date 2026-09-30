@@ -33,17 +33,21 @@ pub struct CaptureStats {
     pub silence_inserted: AtomicU64,
     /// Số khung bị bỏ vì trùng với phần im lặng đã chèn.
     pub skipped: AtomicU64,
-    /// Số mẫu bị bỏ vì ring buffer đầy.
+    /// Số mẫu bị bỏ vì ring buffer đầy, hoặc vì lượt IO bị từ chối (macOS).
     pub dropped: AtomicU64,
+    /// Số lượt IO bị từ chối vì bố cục buffer không khớp tap, kể cả lượt không có buffer nào (macOS).
+    pub rejected_cycles: AtomicU64,
 }
 
 impl CaptureStats {
-    pub fn snapshot(&self) -> [u64; 4] {
+    /// Thứ tự: frames, silence_inserted, skipped, dropped, rejected_cycles.
+    pub fn snapshot(&self) -> [u64; 5] {
         [
             self.frames.load(Ordering::Relaxed),
             self.silence_inserted.load(Ordering::Relaxed),
             self.skipped.load(Ordering::Relaxed),
             self.dropped.load(Ordering::Relaxed),
+            self.rejected_cycles.load(Ordering::Relaxed),
         ]
     }
 }

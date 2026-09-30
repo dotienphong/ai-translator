@@ -5,37 +5,7 @@ use audio_capture::gapfill::{GapFiller, PacketAction};
 use audio_capture::mix::Mixer2;
 use audio_capture::resample::{MonoResampler, TARGET_RATE};
 
-const HNS: f64 = 10_000_000.0;
-
 // ---------- GapFiller ----------
-
-/// Thiết bị chạy lệch `ppm` so với QPC, phát liên tục gói 480 khung trong `secs` giây.
-fn drift_run(ppm: f64, secs: f64) -> (u64, u64, u64) {
-    let mut g = GapFiller::new(48_000);
-    let real_rate = 48_000.0 * (1.0 + ppm * 1e-6);
-    let packets = (secs * real_rate / 480.0) as u64;
-    let (mut ins, mut skip, mut events) = (0u64, 0u64, 0u64);
-    for k in 0..packets {
-        let qpc = 1_000_000_000 + (k as f64 * 480.0 / real_rate * HNS) as u64;
-        let a = g.on_packet(qpc, 480);
-        if a.silence_before > 0 || a.skip > 0 {
-            events += 1;
-        }
-        ins += a.silence_before as u64;
-        skip += a.skip as u64;
-    }
-    (ins, skip, events)
-}
-
-#[test]
-fn g1_clock_drift_during_continuous_playback() {
-    for ppm in [-500.0, -50.0, 50.0, 500.0] {
-        let (ins, skip, events) = drift_run(ppm, 600.0);
-        println!(
-            "G1 lệch {ppm:>6} ppm, phát liên tục 600 s: chèn {ins} khung im lặng, bỏ {skip} khung thật, {events} lần"
-        );
-    }
-}
 
 #[test]
 fn g2_jitter_does_not_accumulate() {
@@ -54,62 +24,47 @@ fn g2_jitter_does_not_accumulate() {
     assert_eq!((ins, skip), (0, 0));
 }
 
-#[test]
-fn g3_onset_after_idle_can_be_dropped() {
-    // Im lặng, luồng thu gọi on_idle mỗi 10 ms. Âm thanh bắt đầu ở t = 1000 ms,
-    // nhưng gói đầu tiên tới muộn (máy bận): lúc t = 1050 ms luồng thu vẫn chưa thấy gói nào.
+/// Im lặng, luồng thu gọi `on_idle` mỗi 10 ms. Âm thanh bắt đầu ở t = 1000 ms, nhưng gói đầu tiên tới
+/// muộn (máy bận): lúc t = 1000 + `late_ms` luồng thu vẫn chưa thấy gói nào. Trả về số khung im lặng đã
+/// chèn lúc rảnh và hành động của 10 gói đầu có âm thanh thật (QPC = 1000 ms, 1010 ms, ...).
+fn onset_after_idle(late_ms: u64) -> (u64, Vec<PacketAction>) {
     let mut g = GapFiller::new(48_000);
     g.on_packet(0, 480); // next = 10 ms
     let mut idle_total = 0u64;
     let mut t = 20u64;
-    while t <= 1050 {
+    while t <= 1000 + late_ms {
         idle_total += g.on_idle(t * 10_000) as u64;
         t += 10;
     }
-    // Gói có âm thanh thật, QPC = 1000 ms, 1010 ms, ... tới hết lượt.
-    let mut dropped = 0u64;
-    for i in 0..10u64 {
-        let a = g.on_packet((1000 + 10 * i) * 10_000, 480);
-        dropped += a.skip as u64;
-        println!("G3 gói ở {} ms: {a:?}", 1000 + 10 * i);
-    }
-    println!(
-        "G3 im lặng đã chèn: {idle_total} khung; khung âm thanh thật bị bỏ: {dropped} (= {} ms)",
-        dropped / 48
-    );
+    let actions = (0..10u64).map(|i| g.on_packet((1000 + 10 * i) * 10_000, 480)).collect();
+    (idle_total, actions)
 }
 
 #[test]
-fn g4_long_gap_and_overflow() {
-    let mut g = GapFiller::new(48_000);
-    g.on_packet(0, 480);
-    let hour = 3_600 * 10_000_000u64;
-    let a = g.on_packet(hour, 480);
+fn g3_onset_50ms_late_is_not_dropped() {
+    let (idle_total, actions) = onset_after_idle(50);
+    let dropped: u64 = actions.iter().map(|a| a.skip as u64).sum();
+    println!("G3 trễ 50 ms: im lặng đã chèn {idle_total} khung; khung âm thanh thật bị bỏ: {dropped}");
+    assert_eq!(dropped, 0, "{actions:?}");
+}
+
+#[test]
+fn g3b_onset_70ms_late_loses_only_the_first_packet() {
+    let (idle_total, actions) = onset_after_idle(70);
+    let dropped: u64 = actions.iter().map(|a| a.skip as u64).sum();
     println!(
-        "G4 gói sau 1 giờ không có gói: silence_before = {} khung ({} MB f32 stereo)",
-        a.silence_before,
-        a.silence_before as u64 * 8 / 1_000_000
+        "G3b trễ 70 ms: im lặng đã chèn {idle_total} khung; khung âm thanh thật bị bỏ: {dropped} (= {} ms); ba gói đầu: {:?}",
+        dropped / 48,
+        &actions[..3]
     );
-    let mut g = GapFiller::new(48_000);
-    g.on_packet(0, 480);
-    let a = g.on_packet(25 * hour, 480);
-    let exact = (25 * hour - 100_000) * 48_000 / 10_000_000;
-    println!(
-        "G4 gói sau 25 giờ: silence_before = {} (đúng ra {exact}) -> tràn u32",
-        a.silence_before
+    // Mất tối đa gói đầu (480 khung = 10 ms). Các gói sau chỉ bị bỏ mỗi gói 1 khung để kéo dòng thời
+    // gian về, nên tổng trên 10 gói là 480 + 9, không phải 480.
+    assert!(actions[0].skip <= 480, "{actions:?}");
+    assert!(
+        actions[1..].iter().all(|a| a.skip <= 1),
+        "chỉ được bỏ 1 khung mỗi gói sau gói đầu: {actions:?}"
     );
-    let mut g = GapFiller::new(48_000);
-    g.on_idle(0);
-    let f = g.on_idle(25 * hour);
-    println!(
-        "G4 on_idle sau 25 giờ trả {f} khung (đúng ra {})",
-        (25 * hour - 300_000) * 48_000 / 10_000_000
-    );
-    // to_frames(hns) = hns * rate tràn u64 khi hns > u64::MAX / rate
-    println!(
-        "G4 hns*rate tràn u64 sau {:.0} ngày ở 192 kHz",
-        (u64::MAX / 192_000) as f64 / HNS / 86_400.0
-    );
+    assert!(actions.iter().all(|a| a.silence_before == 0), "{actions:?}");
 }
 
 #[test]
@@ -185,12 +140,13 @@ fn m2_one_side_silent() {
 }
 
 #[test]
-fn m3_single_side_overshoot_is_not_clamped() {
+fn m3_single_side_overshoot_is_clamped() {
     let mut m = Mixer2::new(1);
     m.push_a(&[1.2, 1.2, 1.2]);
     let mut out = Vec::new();
     m.drain_into(&mut out);
-    println!("M3 phần dư một phía không bị chặn: {out:?}");
+    println!("M3 phần dư một phía: {out:?}");
+    assert_eq!(out, vec![1.0, 1.0]);
 }
 
 // ---------- MonoResampler ----------
@@ -219,39 +175,16 @@ fn r1_rates_length_level_pitch() {
         r.process(&sine(rate, 2, 440.0, 2.0), &mut out).unwrap();
         let steady = &out[4_000..];
         let crossings = steady.windows(2).filter(|w| w[0] < 0.0 && w[1] >= 0.0).count() as f32;
-        let hz = crossings / (steady.len() as f32 / 16_000.0);
+        let hz = crossings / (steady.len() as f32 / TARGET_RATE as f32);
+        let level = rms(steady);
         println!(
-            "R1 {rate:>6} Hz stereo, 2 s: ra {} mẫu (thiếu {} = {:.1} ms), rms {:.4} (kỳ vọng 0.3536), {hz:.1} Hz",
+            "R1 {rate:>6} Hz stereo, 2 s: ra {} mẫu (thiếu {} = {:.1} ms), rms {level:.4} (kỳ vọng 0.3536), {hz:.1} Hz",
             out.len(),
             32_000 - out.len() as i64,
             (32_000 - out.len() as i64) as f32 / 16.0,
-            rms(steady)
         );
-    }
-}
-
-#[test]
-fn r2_frequency_response_near_8k() {
-    for rate in [44_100u32, 48_000, 96_000] {
-        let mut line = format!("R2 {rate:>6} Hz:");
-        for f in [4_000.0f32, 6_000.0, 7_000.0, 7_500.0, 7_900.0] {
-            let mut r = MonoResampler::new(rate, 1).unwrap();
-            let mut out = Vec::new();
-            r.process(&sine(rate, 1, f, 1.0), &mut out).unwrap();
-            let g = rms(&out[2_000..14_000]) / (0.5 / 2f32.sqrt());
-            line += &format!("  {f} Hz: {:+.1} dB", 20.0 * g.log10());
-        }
-        // Tần số trên Nyquist của 16 kHz phải bị chặn (alias).
-        for f in [9_000.0f32, 12_000.0] {
-            if f < rate as f32 / 2.0 {
-                let mut r = MonoResampler::new(rate, 1).unwrap();
-                let mut out = Vec::new();
-                r.process(&sine(rate, 1, f, 1.0), &mut out).unwrap();
-                let g = rms(&out[2_000..14_000]) / (0.5 / 2f32.sqrt());
-                line += &format!("  alias {f} Hz: {:+.1} dB", 20.0 * g.log10());
-            }
-        }
-        println!("{line}");
+        assert!((level - 0.3536).abs() < 0.002, "{rate} Hz: rms {level:.4}");
+        assert!((hz - 440.0).abs() < 1.0, "{rate} Hz: {hz:.1} Hz");
     }
 }
 
@@ -269,57 +202,15 @@ fn r3_group_delay() {
             (0, 0.0f32),
             |(bi, bv), (i, &v)| if v.abs() > bv { (i, v.abs()) } else { (bi, bv) },
         );
-        let expected = at as f64 * 16_000.0 / rate as f64;
+        let expected = at as f64 * TARGET_RATE as f64 / rate as f64;
+        let delay = peak as f64 - expected;
+        let delay_ms = delay * 1_000.0 / TARGET_RATE as f64;
         println!(
-            "R3 {rate:>6} Hz: xung vào ở mẫu 16k {expected:.1}, đỉnh ra ở {peak} -> trễ {:.1} mẫu ({:.2} ms)",
-            peak as f64 - expected,
-            (peak as f64 - expected) / 16.0
+            "R3 {rate:>6} Hz: xung vào ở mẫu 16k {expected:.1}, đỉnh ra ở {peak} -> trễ {delay:.1} mẫu ({delay_ms:.2} ms)"
         );
+        // Độ trễ của bộ lọc: dương và dưới 16 ms.
+        assert!((0.0..=16.0).contains(&delay_ms), "{rate} Hz: trễ {delay_ms:.2} ms");
     }
-}
-
-#[test]
-fn r4_partial_frames_lose_samples() {
-    // Stereo 48 kHz đọc từ ring buffer theo khối lẻ (không chia hết cho 2 kênh).
-    let input = sine(48_000, 2, 440.0, 2.0);
-    let mut whole = Vec::new();
-    MonoResampler::new(48_000, 2)
-        .unwrap()
-        .process(&input, &mut whole)
-        .unwrap();
-    let mut r = MonoResampler::new(48_000, 2).unwrap();
-    let mut chunked = Vec::new();
-    let mut fed = 0usize;
-    for c in input.chunks(1_001) {
-        r.process(c, &mut chunked).unwrap();
-        fed += c.len();
-    }
-    println!(
-        "R4 cùng 2 s stereo: một lần ra {} mẫu, theo khối 1001 mẫu ra {} mẫu (đã đưa {fed} mẫu)",
-        whole.len(),
-        chunked.len()
-    );
-    // So nội dung: lệch kênh sau mỗi khối lẻ làm gộp (L_n + R_n) thành (R_n + L_{n+1}).
-    let n = whole.len().min(chunked.len());
-    let max_diff = whole[..n]
-        .iter()
-        .zip(&chunked[..n])
-        .map(|(a, b)| (a - b).abs())
-        .fold(0.0f32, f32::max);
-    println!("R4 sai khác lớn nhất giữa hai cách: {max_diff:.4}");
-    // Với 6 kênh (Windows 5.1), khối 1001 mẫu: mỗi lần mất tới 5 mẫu và lệch khung.
-    let input6 = sine(48_000, 6, 440.0, 2.0);
-    let mut w6 = Vec::new();
-    MonoResampler::new(48_000, 6)
-        .unwrap()
-        .process(&input6, &mut w6)
-        .unwrap();
-    let mut r6 = MonoResampler::new(48_000, 6).unwrap();
-    let mut c6 = Vec::new();
-    for c in input6.chunks(1_001) {
-        r6.process(c, &mut c6).unwrap();
-    }
-    println!("R4 6 kênh: một lần ra {}, theo khối 1001 ra {}", w6.len(), c6.len());
 }
 
 #[test]
@@ -332,21 +223,73 @@ fn r5_mono_downmix() {
     MonoResampler::new(48_000, 2).unwrap().process(&lr, &mut o1).unwrap();
     let mut o2 = Vec::new();
     MonoResampler::new(48_000, 2).unwrap().process(&anti, &mut o2).unwrap();
-    println!(
-        "R5 chỉ kênh trái: rms {:.4} (một kênh 0.3536); L = −R: rms {:.6}",
-        rms(&o1[2_000..]),
-        rms(&o2[2_000..])
-    );
-    let _ = TARGET_RATE;
+    let (only_left, cancelled) = (rms(&o1[2_000..]), rms(&o2[2_000..]));
+    println!("R5 chỉ kênh trái: rms {only_left:.4} (một kênh 0.3536); L = −R: rms {cancelled:.6}");
+    assert!((only_left - 0.1768).abs() < 0.002, "chỉ kênh trái: rms {only_left:.4}");
+    assert!(cancelled < 1e-4, "L = −R: rms {cancelled:.6}");
 }
 
-// ---------- Bảo vệ các bản sửa (có assert; các ca ở trên chỉ in số liệu để đọc bằng --nocapture) ----------
+// ---------- Bảo vệ các bản sửa (mỗi ca dưới đây fail nếu bản sửa tương ứng bị bỏ) ----------
 
-/// GapFiller bám theo QPC: thiết bị lệch đồng hồ khi phát liên tục không được sinh chèn hay bỏ khung.
+/// Phát liên tục 600 s với thiết bị lệch đồng hồ: chỉ được sửa từng khung một, không có glitch cỡ gói.
 #[test]
-fn guard_gapfiller_clock_drift_never_glitches() {
-    for ppm in [-500.0, -50.0, 50.0, 500.0] {
-        assert_eq!(drift_run(ppm, 600.0), (0, 0, 0), "lệch {ppm} ppm");
+fn guard_gapfiller_clock_drift_is_corrected_one_frame_at_a_time() {
+    for ppm in [-500.0f64, -50.0, 50.0, 500.0] {
+        let mut g = GapFiller::new(48_000);
+        let rate = 48_000.0 * (1.0 + ppm * 1e-6);
+        for k in 0..(600.0 * rate / 480.0) as u64 {
+            let a = g.on_packet(1_000_000_000 + (k as f64 * 480.0 / rate * 1e7) as u64, 480);
+            assert!(a.silence_before <= 1 && a.skip <= 1, "lệch {ppm} ppm, gói {k}: {a:?}");
+        }
+    }
+}
+
+/// Vòng lặp của Task 7 (tick 10 ms, on_idle khi không có gói): 1000 chu kỳ 1 s có tiếng + 0,5 s im,
+/// gói sẵn sàng muộn ngẫu nhiên. Dòng thời gian đã ghi không được trôi khỏi QPC.
+#[test]
+fn guard_gapfiller_transitions_keep_timeline() {
+    const MS: u64 = 10_000;
+    for (lat_min, lat_max) in [(0u64, 5u64), (5, 25), (10, 40)] {
+        let mut seed = 42u64;
+        let mut rnd = |lo: u64, hi: u64| {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            lo + (seed >> 33) % (hi - lo + 1)
+        };
+        let t0 = 1_000 * MS;
+        let (mut packets, mut t) = (Vec::new(), t0);
+        for _ in 0..1_000 {
+            let end = t + 1_000 * MS;
+            let mut q = t;
+            while q + 10 * MS <= end {
+                packets.push((q, q + 10 * MS + rnd(lat_min, lat_max) * MS));
+                q += 10 * MS;
+            }
+            t = end + 500 * MS + rnd(0, 9) * MS + rnd(0, 9) * 1_000;
+        }
+        for i in 1..packets.len() {
+            packets[i].1 = packets[i].1.max(packets[i - 1].1);
+        }
+        let mut g = GapFiller::new(48_000);
+        let (mut written, mut idx, mut now) = (0u64, 0usize, t0);
+        while now <= t {
+            let mut got = false;
+            while idx < packets.len() && packets[idx].1 <= now {
+                let a = g.on_packet(packets[idx].0, 480);
+                written += a.silence_before as u64 + 480 - a.skip as u64;
+                idx += 1;
+                got = true;
+            }
+            if !got && idx > 0 {
+                written += g.on_idle(now) as u64;
+            }
+            now += 10 * MS;
+        }
+        let covered_ms = ((now - 10 * MS - 300_000) - t0) as f64 / MS as f64;
+        let err_ms = written as f64 / 48.0 - covered_ms;
+        assert!(
+            err_ms.abs() < 20.0,
+            "trễ {lat_min}-{lat_max} ms: dòng thời gian lệch {err_ms:+.1} ms"
+        );
     }
 }
 

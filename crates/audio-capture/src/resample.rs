@@ -78,9 +78,14 @@ impl MonoResampler {
             let input =
                 InterleavedSlice::new(&self.pending[start..start + need], 1, need).map_err(|e| anyhow!("{e}"))?;
             let mut output = InterleavedSlice::new_mut(&mut self.scratch, 1, cap).map_err(|e| anyhow!("{e}"))?;
-            let (_, written) = resampler
-                .process_into_buffer(&input, &mut output, None)
-                .map_err(|e| anyhow!("resample lỗi: {e}"))?;
+            let (_, written) = match resampler.process_into_buffer(&input, &mut output, None) {
+                Ok(v) => v,
+                Err(e) => {
+                    // Bỏ các khối đã xử lý, để lần gọi sau không phát lại chúng.
+                    self.pending.drain(..start);
+                    return Err(anyhow!("resample lỗi: {e}"));
+                }
+            };
             out.extend_from_slice(&self.scratch[..written]);
             start += need;
         }
