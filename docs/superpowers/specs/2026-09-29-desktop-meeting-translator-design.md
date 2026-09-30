@@ -108,6 +108,7 @@
 5. **Chọn ngôn ngữ đích** (mặc định theo ngôn ngữ giao diện) và tập ngôn ngữ nguồn.
 6. **Nghe thử:** app phát một câu tiếng Anh mẫu để người dùng thấy phụ đề hiện lên, xác nhận app hoạt động. Trên macOS, tap mặc định loại trừ chính app (§6.1), nên riêng ở bước này tap tạm thời thu cả âm thanh của app.
 7. **Thông báo quyền riêng tư:** âm thanh không rời khỏi máy. Người dùng tự chịu trách nhiệm thông báo cho người cùng họp nếu pháp luật hoặc quy định công ty yêu cầu.
+8. **Biểu tượng khay:** báo cho người dùng biết app chạy ở khay hệ thống (menu bar trên Mac), và bấm X chỉ ẩn cửa sổ chính (§4.3). Windows 10/11 mặc định giấu icon của app mới vào mục icon ẩn (mũi tên `^`), và app không tự ghim icon ra ngoài được. Vì vậy trên Windows, bước này có ảnh hướng dẫn kéo icon ra taskbar, kèm nút mở trang cài đặt Taskbar (`ms-settings:taskbar`) để bật icon của app.
 
 ### 4.2 Trong cuộc họp
 
@@ -141,6 +142,7 @@
     - Cả hai nút đều giữ lại trạng thái bản quyền và quota (§6.8).
 - **Nâng cấp Pro:** chọn gói 1 tháng hoặc 12 tháng, nhập email, quét mã VietQR hiện ngay trong app (§6.8).
 - **Giới thiệu và giấy phép mã nguồn mở.**
+- **Đóng cửa sổ chính:** bấm X (kể cả `Alt+F4` trên Windows, `⌘W` trên Mac) chỉ ẩn cửa sổ xuống khay. App vẫn chạy; phím tắt và phiên dịch đang chạy vẫn hoạt động. Muốn thoát hẳn thì chọn **Thoát** trong menu khay: app dừng phiên dịch nếu đang chạy (như khi bấm Dừng), tắt hai tiến trình phụ (§5), rồi mới thoát.
 
 ### 4.4 Thanh phụ đề
 
@@ -702,6 +704,7 @@ Nếu S6 xác nhận M1 cơ bản không đạt, có hai phương án:
   - Máy Windows không có Vulkan, ví dụ máy ảo: app vẫn mở được, dùng `asr-worker-cpu`, và `llama-server` chạy bằng CPU (§6.4).
   - Card rời 4 GB và 6 GB: app đề xuất đúng gói. Chọn gói Chuẩn trên card 4 GB thì `llama-server` tự chuyển bớt lớp sang CPU, không lỗi hết bộ nhớ.
   - Khoảng lặng dài trên Windows (tạm dừng video, không ai nói): câu cuối vẫn được chốt, thời gian phụ đề không lệch.
+  - Khay (§4.3): bấm X thì cửa sổ chính ẩn, phiên dịch đang chạy không dừng. Chọn Thoát trong menu khay thì app thoát, không còn tiến trình phụ nào chạy. Lần đầu mở trên Windows, nút ở bước 8 (§4.1) mở đúng trang cài đặt Taskbar.
 - **Soak test:** phát liên tục 2 giờ âm thanh cuộc họp, theo dõi RAM, CPU và GPU (tiêu chí A5).
 - **Cài đặt và cập nhật:** cài mới, nâng cấp từ bản trước, gỡ app (Windows: tick "xóa dữ liệu app" thì model bị xóa; macOS: nút "Xóa model và dữ liệu", A6); kiểm tra chữ ký qua Gatekeeper và SmartScreen.
 - **Bảo mật (§10.2):**
