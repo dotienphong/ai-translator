@@ -568,12 +568,15 @@ pub enum Request {
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct TranscribeRequest {
     pub segment_id: u64,
-    /// Âm thanh 16 kHz mono.
+    /// Âm thanh 16 kHz mono, từ 1600 đến 480000 mẫu (0,1 đến 30 giây); ngoài khoảng này worker trả `Error`.
     pub pcm: Vec<i16>,
     /// Mã ngôn ngữ Whisper được phép, ví dụ `["en", "vi"]`. Một phần tử nghĩa là khóa ngôn ngữ.
     pub languages: Vec<String>,
     /// Tối đa 100 token của đoạn trước cùng ngôn ngữ, dùng làm prompt khởi đầu.
     pub prompt_tokens: Vec<i32>,
+    /// Cửa sổ mã hóa, mỗi vị trí 20 ms, trong khoảng 0 đến 1500. 0 nghĩa là cửa sổ 30 giây; giá trị khác phải phủ hết
+    /// `pcm` (`audio_ctx · 320 ≥ pcm.len()`), nếu không worker trả `Error` vì whisper.cpp sẽ lặng lẽ bỏ phần đuôi.
+    /// Công thức thường dùng: [`audio_ctx_for_samples`].
     pub audio_ctx: i32,
 }
 

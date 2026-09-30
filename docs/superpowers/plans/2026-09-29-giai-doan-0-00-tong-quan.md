@@ -217,7 +217,7 @@ Mỗi mục là một thay đổi riêng trong spec:
     - Bật lại thì phải kèm test tất định: cùng một đoạn, chép sau các đoạn khác, phải ra cùng token.
   - Quy tắc "dưới 0,5 thì giữ ngôn ngữ trước" không bao giờ chạy khi chỉ có 2 ngôn ngữ, vì xác suất sau chuẩn hóa của ngôn ngữ cao nhất luôn từ 0,5 trở lên. Chọn ngưỡng theo số ngôn ngữ, dựa trên số đo A4.
   - Worker từ chối đoạn dưới 100 ms; pipeline không gửi các đoạn này.
-  - Công thức `audio_ctx` chốt theo Task 11 của kế hoạch 03. Review thấy turbo lặp câu ở đoạn ngắn hơn khoảng 5,7 giây, ngay cả khi tắt flash attention.
+  - Công thức `audio_ctx` chốt theo Task 11 của kế hoạch 03. Review thấy turbo lặp câu ở các đoạn dài 1,7–4,4 giây, ngay cả khi tắt flash attention; từ 5,7 giây trở lên thì ổn, khoảng giữa chưa đo.
 - §6.5:
   - Ngưỡng tỉ lệ token theo từng cặp ngôn ngữ, lấy từ `results/s7_mt_decisions.md`. Quyết định cờ ngữ cảnh.
   - Truyền API key cho `llama-server` qua biến môi trường `LLAMA_API_KEY` thay vì `--api-key`, vì tham số dòng lệnh hiện ra trong `ps` (b11146 hỗ trợ cả hai).
