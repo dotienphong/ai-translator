@@ -230,6 +230,15 @@ Mỗi mục là một thay đổi riêng trong spec:
     - **Lặp đôi:** model có khi chép cả câu hai lần; `cut_loop` (cần 3 bản) không bắt được. MVP: bắt mẫu dài lặp 2 lần (phải đo tỉ lệ bắt nhầm), hoặc lọc lặp ở tầng app.
     - **`no_speech_prob` với turbo** ở chế độ B luôn khoảng 1e-11 trên clip có tiếng nói, nên bộ lọc §6.4 không bao giờ kích hoạt. MVP: thử trên im lặng, nhiễu và nhạc trước khi dựa vào nó.
     - **Gói Nhẹ (small)** kém rõ ở vi (WER gấp 2,2 lần turbo), ja (CER gấp 2,9 lần) và zh (gấp 1,8 lần). Cần ghi chú chất lượng khi chọn gói (§8).
+  - Kết quả S6 trên M4 Pro (kế hoạch 06, Task 7):
+    - Mọi session đạt A2 với dư địa khoảng gấp đôi.
+    - **Mức sàn 512 còn sửa được LID của turbo với đoạn tiếng Việt ngắn.** Không có sàn, 22/60 đoạn tiếng Việt bị nhận thành tiếng Anh (đoạn dưới 1,3 giây sai hết); có sàn, 53/60 đoạn đúng. Chi phí khoảng +22 ms p50 với turbo, gần như 0 với small. Đây thêm một lý do để đưa mức sàn vào §6.4. Cũng nên cân nhắc giữ ngôn ngữ của đoạn trước cho đoạn quá ngắn.
+    - **§6.3 với zh và ja:** Whisper gần như không đặt dấu câu kết thúc cho hai tiếng này, nên luật ghép câu nối cả những câu khác nhau (zh khoảng 7/18 lần ghép). So với tắt ghép, chi phí là +60–100 ms p50 và khoảng +200 ms p90. Cần chọn luật riêng: prompt có dấu câu, hoặc coi khoảng nghỉ đủ dài là hết câu. Nên ghi thêm điều kiện "chỉ ghép khi cùng ngôn ngữ", như công cụ đo đang làm.
+    - **§8, RAM đo được:**
+      - Gói Chuẩn khoảng 2,9 GB: `asr-worker` khoảng 0,79 GB; `llama-server` khoảng 2,2 GB RSS, trong đó có trang mmap của file model.
+      - Gói Nhẹ khoảng 1,9 GB.
+      - CPU cả máy khoảng 3% trên M4 Pro, vì GPU làm phần nặng.
+    - Máy quyết định cổng là M1/M2 cơ bản và các máy Windows (Task 8).
 - §6.5:
   - Ngưỡng tỉ lệ token theo từng cặp ngôn ngữ, lấy từ `results/s7_mt_decisions.md`. Quyết định cờ ngữ cảnh.
   - Truyền API key cho `llama-server` qua biến môi trường `LLAMA_API_KEY` thay vì `--api-key`, vì tham số dòng lệnh hiện ra trong `ps` (b11146 hỗ trợ cả hai).

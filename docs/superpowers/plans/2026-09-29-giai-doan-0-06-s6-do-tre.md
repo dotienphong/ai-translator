@@ -788,6 +788,7 @@ mod tests {
             lang: "en".into(),
             start_ms: 0,
             end_ms,
+            vad_end_ms: None,
             text: String::new(),
         }
     }
@@ -872,8 +873,12 @@ pub struct Utterance {
     pub id: String,
     pub lang: String,
     pub start_ms: u64,
-    /// Thời điểm người nói thực sự dừng câu (spec A2).
+    /// Thời điểm người nói thực sự dừng câu (spec A2). Độ trễ tính từ mốc này.
     pub end_ms: u64,
+    /// Mốc dừng theo VAD, trước khi `build_sessions.py` tinh chỉnh bằng năng lượng (`end_ms` sớm hơn hoặc bằng mốc này). Đoạn
+    /// của Segmenter cũng dừng theo VAD, nên độ lệch mốc kiểm so với mốc này. Truth cũ không có thì dùng `end_ms`.
+    #[serde(default)]
+    pub vad_end_ms: Option<u64>,
     pub text: String,
 }
 
@@ -998,7 +1003,7 @@ use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES, Segment, Segmenter, Segmenter
 use pipeline::vad::SileroVad;
 use serde::Serialize;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
@@ -1011,7 +1016,7 @@ const NO_SPEECH_MAX: f32 = 0.6;
 const MATCH_WINDOW_MS: u64 = 1_000;
 /// Khung âm thanh tới trễ hơn thời gian thực quá ngưỡng này (ms) thì kết quả lệch cùng cỡ: báo cho người chạy.
 const FEED_LAG_WARN_MS: f64 = 100.0;
-/// Đoạn có mốc dừng sớm hơn mốc thật quá ngưỡng này (ms) thì câu bị gắn cờ `early_stop`: độ trễ bị đo thiếu.
+/// Đoạn có mốc dừng sớm hơn mốc VAD của câu quá ngưỡng này (ms) thì câu bị gắn cờ `early_stop`.
 const EARLY_STOP_MS: i64 = 200;
 /// Dấu câu kết thúc của §6.3. Đúng chữ của spec: đuôi như `."` hay `」` chưa được xử lý riêng.
 const SENTENCE_END: [char; 6] = ['.', '?', '!', '。', '？', '！'];
@@ -1131,11 +1136,12 @@ struct UtteranceLatency {
     lang: String,
     end_ms: u64,
     segment_id: Option<u64>,
-    /// Mốc dừng của đoạn ghép được trừ mốc dừng thật (ms). Lệch lớn nghĩa là mốc thật không khớp lúc người nói dừng
-    /// (xem `build_sessions.py`), và độ trễ của câu đó lệch cùng cỡ: đoạn dừng sớm hơn mốc thật (âm) thì độ trễ bị đo
-    /// thiếu, muộn hơn (dương) thì bị đo thừa.
+    /// Mốc dừng của đoạn ghép được trừ mốc VAD của câu (`vad_end_ms`; truth cũ không có thì `end_ms`), tính bằng ms. Đoạn
+    /// của Segmenter dừng theo VAD nên độ lệch này kiểm việc ghép câu với đoạn; nó không gồm phần tinh chỉnh của `end_ms`
+    /// (xem `build_sessions.py`), vốn có chủ ý. Lệch lớn nghĩa là mốc của session không khớp lúc VAD trong pipeline dừng,
+    /// và độ trễ của câu đó lệch cùng cỡ.
     end_offset_ms: Option<i64>,
-    /// Đoạn dừng sớm hơn mốc thật quá `EARLY_STOP_MS`: độ trễ của câu này bị đo thiếu.
+    /// Đoạn dừng sớm hơn mốc VAD quá `EARLY_STOP_MS`: đoạn bị cắt sớm hoặc ghép nhầm, độ trễ của câu này đáng ngờ.
     early_stop: bool,
     shown_latency_ms: Option<f64>,
     first_latency_ms: Option<f64>,
@@ -1355,6 +1361,8 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     drop(seg_tx);
     let asr_result = asr_thread.join().expect("luồng ASR panic");
     let mt_result = mt_thread.join().expect("luồng MT panic");
+    // Hai tiến trình con đã thoát và được thu dọn: bỏ hook, kẻo panic về sau giết nhầm tiến trình khác vừa được cấp lại pid.
+    drop(std::panic::take_hook());
     stop_sampler.store(true, Ordering::Relaxed);
     let usage = sampler.join().expect("luồng đo tài nguyên panic");
     // Báo lỗi của luồng ở cuối chuỗi trước: khi luồng MT chết, luồng ASR và luồng phát lại chỉ còn báo "kênh đã đóng"
@@ -1378,16 +1386,19 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             ("asr_decode_mode".to_string(), ready.decode_mode),
             ("whisper_version".to_string(), ready.whisper_version),
             ("asr_system_info".to_string(), ready.system_info),
-            ("asr_model".to_string(), args.asr_model.display().to_string()),
-            ("mt_model".to_string(), args.mt_model.display().to_string()),
-            ("llama_server".to_string(), args.llama_server.display().to_string()),
+            ("asr_model".to_string(), public_path(&args.asr_model)),
+            ("mt_model".to_string(), public_path(&args.mt_model)),
+            ("llama_server".to_string(), public_path(&args.llama_server)),
             ("languages".to_string(), args.languages.join(",")),
             ("target".to_string(), args.target.clone()),
             ("end_silence_ms".to_string(), args.end_silence_ms.to_string()),
             ("merge".to_string(), args.merge.to_string()),
             ("merge_window_ms".to_string(), merge_window.to_string()),
             ("min_ctx".to_string(), args.min_ctx.to_string()),
-            ("llama_args".to_string(), args.llama_args.clone()),
+            (
+                "llama_args".to_string(),
+                public_args(repo_root().as_deref(), &args.llama_args),
+            ),
         ]),
         summary,
         usage,
@@ -1583,7 +1594,7 @@ fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord], target: 
         .map(|(u, m)| {
             let seg = m.map(|i| &segments[i]);
             let since_end = |t: f64| t - u.end_ms as f64;
-            let end_offset_ms = seg.map(|s| s.end_ms as i64 - u.end_ms as i64);
+            let end_offset_ms = seg.map(|s| s.end_ms as i64 - u.vad_end_ms.unwrap_or(u.end_ms) as i64);
             let lid = seg.map(|s| s.lang.clone()).filter(|l| !l.is_empty());
             // LID nhầm sang ngôn ngữ đích: câu thật không phải tiếng đích mà đoạn bị `same_lang`. Không tính "hiện nhanh".
             let lid_to_target =
@@ -1618,8 +1629,8 @@ fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord], target: 
 /// - `utterances`: số câu thật; `matched`: số câu ghép được với một đoạn (kể cả đoạn bị bỏ); `unmatched`: số câu còn lại.
 /// - `no_translation`: số câu ghép được với một đoạn không có bản dịch (đoạn bị bỏ, hoặc không cần dịch). Không gồm
 ///   câu không ghép được: không biết chúng ra sao, vì không có đoạn nào đại diện.
-/// - `end_offset_max_abs_ms`: lệch lớn nhất giữa mốc dừng của đoạn và mốc thật, trên các câu ghép được;
-///   `early_stop`: số câu có đoạn dừng sớm hơn mốc thật quá `EARLY_STOP_MS` (độ trễ bị đo thiếu).
+/// - `end_offset_max_abs_ms`: lệch lớn nhất giữa mốc dừng của đoạn và mốc VAD của câu (`vad_end_ms`), trên các câu ghép
+///   được; `early_stop`: số câu có đoạn dừng sớm hơn mốc VAD quá `EARLY_STOP_MS`.
 /// - `lid_mismatch`: số câu ghép được mà LID nhận diện khác ngôn ngữ thật; `lid_to_target`: trong đó số câu bị nhận
 ///   diện thành ngôn ngữ đích (đoạn `same_lang`), nên không có độ trễ.
 /// - `merges`: số đoạn đã được ghép vào một câu đang mở (§6.3), tức số lần dịch lại cả câu.
@@ -1737,6 +1748,61 @@ fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) ->
     }
     summary.extend(counts.into_iter().map(|(k, n)| (k, n as f64)));
     summary
+}
+
+/// Gốc repo, suy ra từ vị trí crate lúc build (`<repo>/crates/latency-bench`).
+fn repo_root() -> Option<PathBuf> {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)?
+        .canonicalize()
+        .ok()
+}
+
+/// Đường dẫn để ghi vào file kết quả: tương đối so với gốc repo nếu nằm trong repo, không thì chỉ tên file. Luôn dùng dấu
+/// `/`. Đường dẫn tuyệt đối chứa tên người dùng máy, mà file kết quả được commit.
+fn relative_to(root: Option<&Path>, path: &Path) -> String {
+    match root.and_then(|r| path.strip_prefix(r).ok()) {
+        Some(rel) if !rel.as_os_str().is_empty() => rel
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/"),
+        _ => path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+    }
+}
+
+fn public_path(path: &Path) -> String {
+    public_path_in(repo_root().as_deref(), path)
+}
+
+/// Đường dẫn của `path` tính từ gốc repo, kể cả khi đi qua symlink: tìm thư mục cha (hoặc chính nó) của đường dẫn nguyên
+/// dạng mà khi giải symlink trùng với `root`, rồi lấy phần còn lại, không giải symlink trong repo. Nhờ vậy `models` là
+/// symlink ra ngoài repo vẫn ghi `models/...`, và gốc repo nằm sau symlink (như `/var` trên macOS) cũng không sao. Không nằm
+/// trong repo thì chỉ ghi tên file. Các file này đã tồn tại và đã được dùng khi ghi kết quả.
+fn public_path_in(root: Option<&Path>, path: &Path) -> String {
+    let lexical = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    let inside = root.and_then(|r| {
+        let repo = lexical.ancestors().find(|a| a.canonicalize().is_ok_and(|c| c == r))?;
+        Some(r.join(lexical.strip_prefix(repo).ok()?))
+    });
+    inside.map_or_else(|| relative_to(None, path), |p| relative_to(root, &p))
+}
+
+/// Tham số thêm cho llama-server để ghi vào file kết quả: đường dẫn tuyệt đối (đứng riêng hoặc sau dấu `=`) đổi như
+/// `relative_to`, phần còn lại giữ nguyên.
+fn public_args(root: Option<&Path>, args: &str) -> String {
+    let public = |token: &str| match token.split_once('=') {
+        Some((flag, value)) if Path::new(value).is_absolute() => {
+            format!("{flag}={}", relative_to(root, Path::new(value)))
+        }
+        _ if Path::new(token).is_absolute() => relative_to(root, Path::new(token)),
+        _ => token.to_string(),
+    };
+    args.split_whitespace().map(public).collect::<Vec<_>>().join(" ")
 }
 
 fn read_wav_16k_mono(path: &PathBuf) -> Result<Vec<f32>> {
@@ -1889,7 +1955,16 @@ mod tests {
             lang: "en".into(),
             start_ms: 0,
             end_ms,
+            vad_end_ms: None,
             text: String::new(),
+        }
+    }
+
+    /// Câu có mốc dừng đã tinh chỉnh (`end_ms`) và mốc VAD (`vad_end_ms`), như file truth của `build_sessions.py`.
+    fn utt_vad(id: &str, end_ms: u64, vad_end_ms: u64) -> Utterance {
+        Utterance {
+            vad_end_ms: Some(vad_end_ms),
+            ..utt(id, end_ms)
         }
     }
 
@@ -2261,6 +2336,37 @@ mod tests {
     }
 
     #[test]
+    fn end_offset_is_measured_against_the_vad_mark_but_latency_against_the_refined_end() {
+        // Mốc thật đã tinh chỉnh sớm hơn mốc VAD 80 ms; đoạn của Segmenter dừng theo VAD nên khớp mốc VAD.
+        let segments = [translated(5_080, 5_400.0, 5_700.0, 6_500.0)];
+        let u = &utterance_latencies(&[utt_vad("a", 5_000, 5_080)], &segments, Lang::Vi)[0];
+        assert_eq!(u.end_offset_ms, Some(0));
+        assert_eq!(u.shown_latency_ms, Some(1_500.0)); // độ trễ vẫn tính từ mốc đã tinh chỉnh
+        assert_eq!(u.first_latency_ms, Some(700.0));
+        assert!(!u.early_stop);
+        // Truth cũ không có `vad_end_ms`: lệch tính so với `end_ms`.
+        let u = &utterance_latencies(&[utt("a", 5_000)], &segments, Lang::Vi)[0];
+        assert_eq!(u.end_offset_ms, Some(80));
+    }
+
+    #[test]
+    fn early_stop_and_summary_offset_use_the_vad_mark() {
+        // Mốc đã tinh chỉnh 5 000, mốc VAD 5 100. Đoạn dừng ở 4 899: sớm hơn mốc VAD 201 ms (gắn cờ), dù chỉ sớm hơn mốc
+        // tinh chỉnh 101 ms. Đoạn dừng ở 10 050 khớp mốc VAD ở câu thứ hai, dù muộn hơn mốc tinh chỉnh 50 ms.
+        let segments = [
+            translated(4_899, 5_400.0, 5_700.0, 6_500.0),
+            translated(10_050, 10_400.0, 10_700.0, 11_500.0),
+        ];
+        let truth = [utt_vad("a", 5_000, 5_100), utt_vad("b", 10_000, 10_050)];
+        let all = utterance_latencies(&truth, &segments, Lang::Vi);
+        assert_eq!((all[0].end_offset_ms, all[0].early_stop), (Some(-201), true));
+        assert_eq!((all[1].end_offset_ms, all[1].early_stop), (Some(0), false));
+        let s = build_summary(&all, &segments);
+        assert_eq!(s["end_offset_max_abs_ms"], 201.0);
+        assert_eq!(s["early_stop"], 1.0);
+    }
+
+    #[test]
     fn early_stop_is_flagged_beyond_200_ms() {
         // Đoạn dừng sớm hơn mốc thật đúng 200 ms thì chưa gắn cờ, 201 ms thì gắn: độ trễ của câu đó bị đo thiếu.
         let segments = [
@@ -2299,6 +2405,81 @@ mod tests {
         assert_eq!(cpu_percent(3_000, Duration::from_secs(2)), 150.0); // nhiều lõi: trên 100% của một lõi
         assert_eq!(cpu_percent(0, Duration::from_secs(10)), 0.0); // tiến trình rảnh: 0, không giữ số cũ
         assert_eq!(cpu_percent(10, Duration::ZERO), 0.0);
+    }
+
+    #[test]
+    fn result_paths_are_relative_to_the_repo_or_just_the_file_name() {
+        let root = Some(Path::new("/home/dev/meeting-translator"));
+        let rel = |p: &str| relative_to(root, Path::new(p));
+        assert_eq!(
+            rel("/home/dev/meeting-translator/models/ggml-small-q5_1.bin"),
+            "models/ggml-small-q5_1.bin"
+        );
+        assert_eq!(
+            rel("/home/dev/meeting-translator/tools/llama-b11146/macos-arm64/llama-b11146/llama-server"),
+            "tools/llama-b11146/macos-arm64/llama-b11146/llama-server"
+        );
+        // Ngoài repo: chỉ tên file, không lộ thư mục cha (có thể chứa tên người dùng).
+        assert_eq!(rel("/Users/somebody/models/x.gguf"), "x.gguf");
+        // Cùng tiền tố chuỗi nhưng là thư mục khác: không phải trong repo.
+        assert_eq!(rel("/home/dev/meeting-translator-old/models/x.bin"), "x.bin");
+        // Không biết gốc repo, hoặc đường dẫn không tuyệt đối: chỉ tên file.
+        assert_eq!(
+            relative_to(None, Path::new("/home/dev/meeting-translator/models/x.bin")),
+            "x.bin"
+        );
+        assert_eq!(rel("models/x.bin"), "x.bin");
+        assert_eq!(rel("/home/dev/meeting-translator"), "meeting-translator");
+    }
+
+    #[test]
+    fn public_path_keeps_the_repo_relative_name_through_symlinks() {
+        /// Xóa thư mục thử kể cả khi một assert bên dưới thất bại.
+        struct TempDir(PathBuf);
+        impl Drop for TempDir {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let tmp = TempDir(std::env::temp_dir().join(format!("latency-bench-paths-{}", std::process::id())));
+        let _ = std::fs::remove_dir_all(&tmp.0);
+        let (repo, outside) = (tmp.0.join("repo"), tmp.0.join("outside"));
+        std::fs::create_dir_all(repo.join("tools")).unwrap();
+        std::fs::create_dir_all(outside.join("models")).unwrap();
+        std::fs::write(outside.join("models/big.gguf"), b"x").unwrap();
+        std::fs::write(repo.join("tools/server"), b"x").unwrap();
+        let root = repo.canonicalize().unwrap();
+        let public = |p: &Path| public_path_in(Some(&root), p);
+        // Thư mục tmp trên macOS nằm sau symlink (/var -> /private/var): đường dẫn nguyên dạng khác đường dẫn đã giải symlink.
+        assert_eq!(public(&repo.join("tools/server")), "tools/server");
+        assert_eq!(public(&root.join("tools/server")), "tools/server");
+        // Ngoài repo: chỉ tên file.
+        assert_eq!(public(&outside.join("models/big.gguf")), "big.gguf");
+        #[cfg(unix)]
+        {
+            // `models` trong repo là symlink ra ngoài repo: vẫn ghi `models/big.gguf`, giống các máy không dùng symlink.
+            std::os::unix::fs::symlink(outside.join("models"), repo.join("models")).unwrap();
+            assert_eq!(public(&repo.join("models/big.gguf")), "models/big.gguf");
+            assert_eq!(public(&root.join("models/big.gguf")), "models/big.gguf");
+        }
+    }
+
+    #[test]
+    fn llama_args_keep_flags_but_not_absolute_paths() {
+        let root = Some(Path::new("/home/dev/meeting-translator"));
+        assert_eq!(public_args(root, "--no-repack -t 4"), "--no-repack -t 4");
+        assert_eq!(public_args(root, ""), "");
+        assert_eq!(
+            public_args(root, "--model-draft /Users/somebody/m/draft.gguf -t 4"),
+            "--model-draft draft.gguf -t 4"
+        );
+        assert_eq!(
+            public_args(
+                root,
+                "--model-draft=/home/dev/meeting-translator/models/d.gguf --no-repack"
+            ),
+            "--model-draft=models/d.gguf --no-repack"
+        );
     }
 
     #[test]
@@ -2364,7 +2545,7 @@ Expected:
   - asr-worker 5 (bản không có feature);
   - audio-capture 11, cộng 16 ở `tests/edge.rs` (nếu đã làm kế hoạch 04);
   - pipeline 37, `vad_reference` 1 ignored;
-  - latency-bench 34.
+  - latency-bench 39.
 - clippy không có cảnh báo.
 - `cargo deny check` in `advisories ok, bans ok, licenses ok, sources ok`.
 
@@ -2411,9 +2592,13 @@ Lý do đổi: review lúc thực thi thấy cách cắt theo năng lượng tro
 
 Giới hạn đã biết:
 - Mốc dừng lấy từ cùng loại model VAD mà app dùng. Nếu VAD bỏ sót một từ cuối rất nhỏ thì cả mốc lẫn pipeline cùng bỏ sót, nên độ trễ có thể bị đo thiếu một chút.
-- Mốc dừng của VAD trễ hơn lúc hết tiếng khoảng 40–100 ms, vì VAD giữ "có tiếng" thêm vài khung. Với clip có SNR ≥ 30 dB, mốc dừng được tinh chỉnh bằng năng lượng: khung 10 ms cuối trên mức tiếng nói − 30 dB, trong 320 ms cuối vùng VAD. Mốc VAD vẫn được giữ ở `vad_end_ms`.
-  - Lúc thực thi, 71/119 clip được dời sớm lại, trung vị 77 ms. Kiểm bằng chép lời thật cho thấy không cắt vào từ cuối.
-  - 43 clip SNR thấp giữ mốc VAD, nên độ trễ của chúng bị đo thiếu khoảng 40–100 ms.
+- Mốc dừng của VAD trễ hơn lúc hết tiếng khoảng 40–100 ms, vì VAD giữ "có tiếng" thêm vài khung.
+  - Với clip có SNR ≥ 30 dB, mốc dừng được tinh chỉnh bằng năng lượng: khung 10 ms cuối trên mức tiếng nói − 30 dB, trong 320 ms cuối vùng VAD. Mốc VAD vẫn được giữ ở `vad_end_ms`.
+  - Năng lượng tính trên cả dải từ 200 Hz trở lên. Chỉ lấy tới 4 kHz thì mất âm xát cuối câu (/s/, /f/, "-ます/-です"), và mốc bị dời sớm quá tay tới 249 ms.
+  - Lúc thực thi, 70/119 clip được dời sớm lại, trung vị 61 ms. Kiểm bằng chép lời thật cho thấy không cắt vào từ cuối.
+  - 44 clip SNR thấp giữ mốc VAD, nên độ trễ của chúng bị đo thiếu khoảng 40–100 ms.
+- `end_offset_ms` (lệch mốc) tính so với `vad_end_ms`. Độ trễ vẫn tính từ `end_ms` đã tinh chỉnh. Lúc thực thi, lệch mốc lớn nhất là 32–64 ms, tức VAD của pipeline khớp VAD tham chiếu trong 1–2 khung.
+- File kết quả ghi đường dẫn tương đối so với gốc repo, không ghi đường dẫn tuyệt đối có tên người dùng máy.
 - Trước khi chuẩn hóa mức âm, 3/99 clip rất nhỏ (khoảng −60 dBFS) đứng sau tiếng to không được VAD nhận ra. Ghi nhận cho MVP: cân nhắc chuẩn hóa mức âm lượng trước VAD.
 - Dấu câu kết thúc rất hiếm trong bản chép tiếng Trung (1/53 đoạn) và tiếng Nhật (3/15), nên các câu này ghép nhiều hơn (§6.3), và p90 của chúng cao nhất.
 - Kết quả có thêm `end_offset_ms` cho từng câu và `end_offset_max_abs_ms`, để kiểm mốc: lệch lớn là dấu hiệu mốc sai.
@@ -2440,7 +2625,8 @@ một tiếng click ở khung cuối, nên mốc trễ hơn lúc người nói d
   giới khung 512 mẫu của session, để VAD trong session thấy đúng các khung như lúc dựng mốc.
 - Mốc dừng: VAD trễ hơn lúc hết tiếng thật khoảng 40–100 ms (đuôi nhớ của mô hình). Với clip có SNR ≥ 30 dB, `end_ms` được
   tinh chỉnh về khung 10 ms cuối cùng còn trên ngưỡng (mức tiếng nói − 30 dB) trong 320 ms cuối của vùng VAD; `vad_end_ms` giữ
-  mốc VAD để tham khảo. Clip SNR thấp hơn thì `end_ms` = `vad_end_ms`, nên độ trễ của chúng bị đo thiếu cỡ 40–100 ms.
+  mốc VAD để tham khảo. Clip SNR thấp hơn thì `end_ms` = `vad_end_ms`, nên độ trễ của chúng bị đo thiếu cỡ 40–100 ms. Năng
+  lượng tính trên cả dải từ 200 Hz tới 8 kHz: âm xát /s/, /f/ cuối câu (ví dụ "-ます", "-です", "-s") nằm chủ yếu ở 4–8 kHz.
 - Còn vài clip quá nhỏ hoặc quá nhiễu mà VAD trong session vẫn bỏ sót: câu đó hiện là "không ghép được" khi đo.
 
 Dùng:  uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "onnxruntime==1.30.0" \
@@ -2467,7 +2653,8 @@ FRAME = 512
 TARGET_DBFS = -26.0
 PEAK_MAX = 0.89  # khoảng −1 dBFS, để khuếch đại không làm tràn int16
 HEAD_FRAMES, TAIL_FRAMES = 3, 6
-# Tinh chỉnh mốc dừng: cửa sổ Hann 25 ms, bước 10 ms, dải 200–4000 Hz (bỏ ù tần thấp).
+# Tinh chỉnh mốc dừng: cửa sổ Hann 25 ms, bước 10 ms, dải từ 200 Hz tới hết (8 kHz): bỏ ù tần thấp nhưng giữ năng lượng
+# 4–8 kHz của âm xát /s/, /f/ ở cuối câu (dải 200–4000 Hz làm mốc dời sớm 100–250 ms trên các câu kết thúc bằng âm xát).
 WIN, HOP = 400, 160
 SNR_MIN_DB = 30  # chỉ tinh chỉnh khi tiếng nói cao hơn nền nhiễu từng này dB
 REFINE_REL_DB = 30  # ngưỡng = mức tiếng nói − 30 dB
@@ -2519,14 +2706,14 @@ def speech_frames(vad, x):
 
 
 def band_db(x):
-    """Năng lượng (dB) của từng khung 10 ms (cửa sổ 25 ms) trong dải 200–4000 Hz; `x` là float trong [−1, 1]."""
+    """Năng lượng (dB) của từng khung 10 ms (cửa sổ 25 ms) trong dải từ 200 Hz tới hết (8 kHz); `x` là float trong [−1, 1]."""
     n = (len(x) - WIN) // HOP + 1
     if n <= 0:
         return np.zeros(0)
     idx = np.arange(WIN)[None, :] + HOP * np.arange(n)[:, None]
     spec = np.abs(np.fft.rfft(x[idx] * np.hanning(WIN)[None, :], axis=1)) ** 2
     freq = np.fft.rfftfreq(WIN, 1 / SR)
-    return 10 * np.log10(spec[:, (freq >= 200) & (freq <= 4000)].sum(axis=1) + 1e-12)
+    return 10 * np.log10(spec[:, freq >= 200].sum(axis=1) + 1e-12)
 
 
 def refine_end(x, bounds):
@@ -2858,7 +3045,10 @@ Không kết luận đạt hay không đạt A2 khi lượt đo không đáng ti
 - đo được dưới 85% số câu (câu không ghép được với đoạn nào, đoạn bị bỏ, hoặc LID nhầm sang ngôn ngữ đích);
 - luồng phát lại trễ hơn thời gian thực quá 100 ms (máy bận, nên độ trễ lệch cùng cỡ);
 - mốc dừng của một đoạn lệch mốc thật quá 300 ms (mốc thật không khớp lúc người nói dừng);
-- file kết quả cũ thiếu các số trên, hoặc không đo được câu nào.
+- file kết quả cũ thiếu các số trên (gồm cả số lần ghép câu), hoặc không đo được câu nào.
+
+Dòng của lượt tắt ghép câu (`config.merge` là "false", nhãn có `nomerge`) chỉ báo số, không kết luận A2: app luôn ghép câu (§6.3),
+lượt đó chỉ để so ảnh hưởng của việc ghép.
 
 Cột RAM lấy số lớn hơn giữa RSS và `phys_footprint` (chỉ có trên macOS) của từng tiến trình:
 - RSS tính cả trang của file model được mmap (llama-server), còn `phys_footprint` thì không; RSS chỉ tính từ lúc bắt đầu phát lại.
@@ -2892,7 +3082,8 @@ A2 = {"khuyennghi": {"shown_p50_ms": 2000, "shown_p90_ms": 3000, "first_p50_ms":
 MIN_MEASURED = 0.85  # tỉ lệ số câu đo được trên số câu thật
 MAX_FEED_LAG_MS = 100
 MAX_END_OFFSET_MS = 300
-NEEDED = ("utterances", "measured", "feed_lag_max_ms", "end_offset_max_abs_ms", "shown_p50_ms", "shown_p90_ms", "first_p50_ms")
+NEEDED = ("utterances", "measured", "merges", "feed_lag_max_ms", "end_offset_max_abs_ms", "shown_p50_ms", "shown_p90_ms",
+          "first_p50_ms")
 
 
 def number(s, key):
@@ -2939,6 +3130,8 @@ def main():
     for path in sys.argv[1:]:
         r = json.load(open(path, encoding="utf-8"))
         tier = next((t for t in A2 if f"-{t}-" in r["label"]), None)
+        if r.get("config", {}).get("merge") == "false":
+            tier = None  # lượt so sánh không ghép câu: không phải cấu hình của app
         s, u = r["summary"], r["usage"]
         cores = int(r["machine"].get("logical_cores") or 1)
         cpu_load = sum(p.get("avg_cpu_percent", 0) for p in u.values()) / cores
@@ -3102,8 +3295,27 @@ python3 bench/phase0/latency/run_matrix.py --machine m4pro --tier khuyennghi --p
 python3 bench/phase0/latency/run_matrix.py --machine m4pro --tier khuyennghi --package nhe --min-ctx 512
 python3 bench/phase0/latency/summarize.py bench/phase0/results/latency/m4pro-*.json
 ```
+Chạy thêm zh và ja khi tắt ghép câu, để có số cận dưới cho luật §6.3 với hai ngôn ngữ ít dấu câu:
+```bash
+python3 bench/phase0/latency/run_matrix.py --machine m4pro --tier khuyennghi --package chuan --sessions zh,ja --merge false
+python3 bench/phase0/latency/run_matrix.py --machine m4pro --tier khuyennghi --package nhe --sessions zh,ja --merge false
+```
+
 Expected:
-- Bảng 24 dòng: 2 gói × 6 session, cả có và không có mức sàn.
+- Bảng 28 dòng: 2 gói × 6 session, cả có và không có mức sàn, cộng 4 dòng `-nomerge`.
+- Lúc thực thi, mọi session đạt A2 với dư địa khoảng gấp đôi. Số lớn nhất trong 6 session (đã tính lại với mốc dừng đã sửa):
+
+  | Gói | p50 lớn nhất | p90 lớn nhất | chữ đầu p50 lớn nhất |
+  |---|---|---|---|
+  | Chuẩn | 1055 ms | 1426 ms | 667 ms |
+  | Chuẩn, sàn 512 | 1053 ms | 1358 ms | 691 ms |
+  | Nhẹ | 882 ms | 1280 ms | 579 ms |
+  | Nhẹ, sàn 512 | 856 ms | 1173 ms | 572 ms |
+
+  RAM tổng khoảng 2,9 GB (Chuẩn) và 1,9 GB (Nhẹ). CPU cả máy khoảng 3%. Máy chạy bằng pin, nên số có thể hơi bi quan so với khi cắm điện.
+- Riêng dòng `chuan-vi` ra **KHÔNG KẾT LUẬN**. Nguyên nhân không phải độ trễ mà là nhận diện ngôn ngữ:
+  - Whisper turbo nhận 22/60 đoạn tiếng Việt thành tiếng Anh. VAD cắt tiếng Việt thành nhiều đoạn ngắn, trung bình 3,3 đoạn mỗi câu, và đoạn dưới 1,3 giây thì LID sai hết.
+  - Với `--min-ctx 512`, LID đúng 53/60 đoạn, và dòng này đạt.
 - Theo §8, máy băng thông cao ở gói Chuẩn đạt A2 với dư địa lớn, nên cột A2 phải là `đạt` ở mọi dòng. Dòng nào `KHÔNG ĐẠT` thì xem chi tiết (ASR, LID, dịch) trước khi đo trên máy khác.
 
 - [ ] **Step 2: Commit**
