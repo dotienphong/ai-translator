@@ -16,6 +16,9 @@ Cột thêm ngoài WER/CER thô:
 - `long_hyp`: số clip có số chèn lớn hơn độ dài ref (lặp câu, hoặc ra sai ngôn ngữ).
 - `lid_fallback`: số clip có lang_prob < 0,5, tức nhận diện không chắc. Worker giữ ngôn ngữ của clip trước (nếu có)
   cho các clip này, nên kết quả của chúng phụ thuộc thứ tự clip trong manifest.
+- Cột cuối (`nospeech_rate` trong JSON): tỉ lệ clip bị bỏ theo luật "không có tiếng nói". Dòng kết quả có `avg_logprob`
+  (worker từ af5b41a trở đi) dùng luật đề xuất cho §6.4: `no_speech_prob > 0,6` **và** `avg_logprob < −1`. Dòng cũ không
+  có trường này dùng luật của spec, chỉ `no_speech_prob > 0,6`. Số dòng theo từng luật được in ra stderr.
 
 Chuẩn hóa: NFC, chữ thường, bỏ dấu câu và ký hiệu; tiếng Trung, Nhật, Hàn bỏ cả khoảng trắng. Riêng tiếng Trung:
 - small hay ra chữ phồn thể còn FLEURS cmn_hans_cn là giản thể, nên đổi cả ref và hyp về giản thể bằng OpenCC (t2s);
@@ -43,7 +46,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.abspath(os.path.join(HERE, "..", "data", "asr"))
 RESULTS = os.path.abspath(os.path.join(HERE, "..", "results"))
 CER_LANGS = {"zh", "ja", "ko"}
-NO_SPEECH_MAX = 0.6  # app bỏ đoạn có no_speech_prob lớn hơn (§6.4)
+NO_SPEECH_MAX = 0.6  # luật của spec §6.4: bỏ đoạn có no_speech_prob lớn hơn
+AVG_LOGPROB_MIN = -1.0  # luật đề xuất cho §6.4 (kế hoạch 00, Task 2): thêm điều kiện avg_logprob nhỏ hơn, giống latency.rs
 MIN_LANG_PROB = 0.5  # dưới mức này worker giữ ngôn ngữ của đoạn trước (asr-worker/src/lid.rs)
 # small hay ra chữ phồn thể, FLEURS cmn_hans_cn là giản thể: đổi về giản thể trước khi so.
 T2S = opencc.OpenCC("t2s")
@@ -64,6 +68,13 @@ def normalize(text, lang):
     text = "".join(" " if unicodedata.category(c).startswith(("P", "S")) else c for c in text)
     text = " ".join(text.split())
     return text.replace(" ", "") if lang in CER_LANGS else text
+
+
+def no_speech_dropped(row):
+    """Đoạn bị bỏ theo luật "không có tiếng nói": no_speech_prob > 0,6, và nếu dòng có avg_logprob thì thêm avg_logprob < −1."""
+    if row["no_speech_prob"] <= NO_SPEECH_MAX:
+        return False
+    return row["avg_logprob"] < AVG_LOGPROB_MIN if "avg_logprob" in row else True
 
 
 def p50(values):
@@ -120,12 +131,15 @@ def score(path, manifest, allow_partial):
             g["capped_err"] += min(err, n_ref)
             g["ref_len"] += n_ref
             g["lid_ok"] += r["lang_hyp"] == clip["lang"]
-            g["nospeech"] += r["no_speech_prob"] > NO_SPEECH_MAX
+            g["nospeech"] += no_speech_dropped(r)
             g["n"] += 1
             g["lid_ms"].append(r["lid_ms"])
             g["asr_ms"].append(r["asr_ms"])
             g["ipc_ms"].append(r["ipc_ms"])
     mode = ",".join(sorted({r.get("decode_mode", "?") for r in rows}))
+    n_new = sum("avg_logprob" in r for r in rows)
+    print(f"{path}: luật no_speech: {n_new} dòng có avg_logprob (no_speech_prob > {NO_SPEECH_MAX} và avg_logprob < "
+          f"{AVG_LOGPROB_MIN}), {len(rows) - n_new} dòng không có (chỉ no_speech_prob > {NO_SPEECH_MAX})", file=sys.stderr)
     out = {}
     for key, g in sorted(groups.items()):
         lang = key.split("-")[0]
@@ -155,7 +169,7 @@ def main():
         scored.append((label, score(path, manifest, args.allow_partial)))
     os.makedirs(RESULTS, exist_ok=True)
     print("| Kết quả | Chế độ | Nhóm | Số clip | WER/CER | capped | long_hyp | Nhận đúng ngôn ngữ | lid_fallback "
-          "| LID p50 (ms) | ASR p50 (ms) | LID/ASR | IPC p50/max (ms) | no_speech > 0,6 |")
+          "| LID p50 (ms) | ASR p50 (ms) | LID/ASR | IPC p50/max (ms) | bị bỏ (no_speech > 0,6 và avg_logprob < −1) |")
     print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for label, result in scored:
         with open(os.path.join(RESULTS, f"a4_{label}.json"), "w", encoding="utf-8") as f:

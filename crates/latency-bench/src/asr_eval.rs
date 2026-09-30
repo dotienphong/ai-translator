@@ -25,9 +25,9 @@ pub struct AsrEvalArgs {
     /// Dùng cửa sổ mã hóa 30 giây đầy đủ (audio_ctx = 1500), để so với cách rút ngắn.
     #[arg(long)]
     full_ctx: bool,
-    /// Sàn cho audio_ctx, từ 0 đến 1500 (mặc định 0: không đặt sàn): audio_ctx = max(công thức, N).
-    /// Để thử đặt sàn, vì turbo lặp câu ở đoạn ngắn khi audio_ctx theo công thức 50 × số giây + 64.
-    /// Không dùng chung với `--full-ctx`.
+    /// Sàn thêm cho audio_ctx, từ 0 đến 1500: audio_ctx = max(audio_ctx_for_samples, N). Công thức đã có sàn
+    /// `MIN_AUDIO_CTX` (512), nên N ≤ 512 không có tác dụng. Muốn so với mốc không sàn thì dùng kết quả đã lưu,
+    /// hoặc build lại từ commit trước af5b41a. Không dùng chung với `--full-ctx`.
     #[arg(
         long,
         default_value_t = 0,
@@ -63,9 +63,11 @@ struct Output {
     lang_hyp: String,
     lang_prob: f32,
     hyp: String,
-    /// Đoạn có giá trị > 0,6 sẽ bị app bỏ (§6.4); trên clip có tiếng nói thì phải hiếm.
+    /// Đoạn có giá trị > 0,6 bị bỏ theo spec §6.4 (luật đề xuất thêm điều kiện `avg_logprob`, xem bên dưới); trên clip có
+    /// tiếng nói thì phải hiếm.
     no_speech_prob: f32,
-    /// Trung bình log-xác suất của các token văn bản (0 nếu không có token).
+    /// Trung bình log-xác suất của các token văn bản, không tính EOT (0 nếu không có token); xem
+    /// `TranscribeResult::avg_logprob`.
     avg_logprob: f32,
     lid_ms: f32,
     asr_ms: f32,

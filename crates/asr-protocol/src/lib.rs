@@ -25,7 +25,8 @@ pub const MAX_PCM_SAMPLES: usize = SAMPLE_RATE as usize * 30;
 pub const MAX_PROMPT_TOKENS: usize = 100;
 
 /// Sàn của `audio_ctx` mà [`audio_ctx_for_samples`] áp dụng: 512 khung (10,24 giây). Đoạn ngắn hơn 8,96 giây, nơi công
-/// thức `50 × số giây + 64` cho dưới 512, được nâng lên bằng mức này. Lý do:
+/// thức `50 × số giây + 64` cho dưới 512, được nâng lên bằng mức này. Đây là đề xuất cho §6.4 (xem kế hoạch 00, Task 2);
+/// spec hiện chỉ có công thức không sàn. Lý do:
 /// - A4 (S7): với cửa sổ mã hóa ngắn, Whisper chép thừa (lặp cụm cuối câu, chép cả câu hai lần). Có sàn thì tổng lỗi
 ///   trên 5 ngôn ngữ giảm 6,4% ở turbo và 1,5% ở small, không ô nào xấu đi đáng kể.
 /// - S6: không có sàn thì turbo nhận diện ngôn ngữ sai ở 22/60 đoạn tiếng Việt (đoạn dưới 1,3 giây sai hết, thành
@@ -104,11 +105,18 @@ pub struct TranscribeResult {
     pub lid_ms: f32,
     /// Thời gian chép lời (encode + decode).
     pub asr_ms: f32,
-    /// Trung bình log-xác suất của các token văn bản đã sinh, không tính token đặc biệt (như EOT). Không có token nào
-    /// thì là 0,0. Cùng `no_speech_prob`, dùng để bỏ đoạn không có tiếng nói (spec §6.4: `no_speech_prob > 0,6` và
-    /// `avg_logprob < −1`).
+    /// Trung bình log-xác suất của các token văn bản đã sinh. Không tính token đặc biệt, kể cả EOT: cố ý khác OpenAI
+    /// (OpenAI cộng cả log-xác suất của EOT rồi chia cho số token cộng 1). Bỏ EOT thì trung bình âm hơn một chút, rõ ở
+    /// đoạn ngắn, nên luật bên dưới chặt hơn một chút. Không có token nào thì là 0,0. Chế độ B bỏ log-xác suất của phần
+    /// bị `cut_loop` gom; chế độ A không có `cut_loop` nên trung bình gồm cả token lặp.
     ///
-    /// Nằm cuối struct: thứ tự trường là thứ tự trên dây (xem [`Request`]).
+    /// Cùng `no_speech_prob`, dùng để bỏ đoạn không có tiếng nói theo luật đề xuất cho §6.4 (xem kế hoạch 00, Task 2;
+    /// spec hiện chỉ có `no_speech_prob > 0,6`): bỏ khi `no_speech_prob > 0,6` **và** `avg_logprob < −1`. Trên A4
+    /// (548 clip) luật bỏ đúng 1 clip, small `en-9810650684898829002_nb`, có bản chép là ảo giác; turbo 0 clip.
+    ///
+    /// Nằm cuối struct để bố cục trên dây dễ đọc và dễ kiểm (postcard mã hóa trường theo thứ tự khai báo). Việc này
+    /// không cho lợi ích tương thích: thêm hay bỏ trường nào cũng đổi định dạng, nên app và `asr-worker` luôn phải build
+    /// cùng nhau (xem [`Request`]). Test `avg_logprob_is_the_last_field_on_the_wire` chỉ khóa bố cục.
     pub avg_logprob: f32,
 }
 
@@ -203,8 +211,9 @@ fn read_up_to<R: Read>(r: &mut R, buf: &mut [u8]) -> io::Result<usize> {
     Ok(filled)
 }
 
-/// `audio_ctx = min(1500, max(MIN_AUDIO_CTX, ceil(50 × số giây của đoạn) + 64))` (spec §6.4). Làm tròn lên; sàn
-/// [`MIN_AUDIO_CTX`] giải thích ở hằng đó.
+/// `audio_ctx = min(1500, max(MIN_AUDIO_CTX, ceil(50 × số giây của đoạn) + 64))`. Làm tròn lên. Công thức của spec §6.4
+/// là `min(1500, 50 × số giây + 64)`; sàn [`MIN_AUDIO_CTX`] là đề xuất cho §6.4 (xem kế hoạch 00, Task 2), giải thích ở
+/// hằng đó.
 pub fn audio_ctx_for_samples(n_samples: usize) -> i32 {
     let frames = (n_samples as u64).saturating_mul(50).div_ceil(SAMPLE_RATE as u64);
     frames.saturating_add(64).max(MIN_AUDIO_CTX as u64).min(1500) as i32
@@ -471,7 +480,8 @@ mod tests {
     }
 
     /// `avg_logprob` nằm cuối struct: postcard mã hóa trường theo thứ tự khai báo, nên 4 byte cuối của phản hồi
-    /// `Result` là `avg_logprob` (f32 little-endian). Thêm trường sau nó, hoặc đổi chỗ, sẽ làm test này đỏ.
+    /// `Result` là `avg_logprob` (f32 little-endian). Thêm trường sau nó, hoặc đổi chỗ, sẽ làm test này đỏ. Test chỉ khóa
+    /// bố cục, không bảo đảm tương thích giữa hai bản build khác nhau.
     #[test]
     fn avg_logprob_is_the_last_field_on_the_wire() {
         let result = TranscribeResult {

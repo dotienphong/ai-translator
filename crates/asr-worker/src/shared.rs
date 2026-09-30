@@ -210,7 +210,7 @@ fn softmax_at(logits: &[f32], index: usize) -> f32 {
 }
 
 /// Token thấp hơn cực đại quá mức này (nat) không được cộng vào mẫu số của softmax trong `pick_token`. Mỗi token như vậy
-/// đóng góp dưới e^-20 ≈ 2e-9 vào một tổng ≥ 1, nên cả 51 865 token cộng lại cũng làm log-xác suất lệch dưới 1e-4. Ở
+/// đóng góp dưới e^-20 ≈ 2e-9 vào một tổng ≥ 1, nên cả 51 865 token cộng lại cũng làm log-xác suất lệch khoảng 1e-4 (cận trên). Ở
 /// logit thật, phần lớn token chữ nằm 15 đến 21 nat dưới cực đại, nên mốc này bỏ được khoảng 0 đến 75% số `exp`.
 const LOGSUMEXP_CUTOFF: f32 = 20.0;
 
@@ -294,7 +294,8 @@ impl Generated {
 /// chép cả câu 70 token hai lần, 140 token).
 const MAX_LOOP_PERIOD: usize = 112;
 
-/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper:
+/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper (đề xuất cho §6.4, xem kế hoạch 00,
+/// Task 2; spec chỉ có bộ lọc câu lặp n-gram ở tầng app):
 /// - 1–8 token: 4 bản, để không cắt nhầm lời nói thật ("no, no, no");
 /// - 9–15 token: 3 bản;
 /// - 16–112 token (thường là cả câu): 2 bản, vì Whisper có khi chép cả câu hai lần rồi mới dừng (S7: 8 clip, 6 của turbo
@@ -302,6 +303,7 @@ const MAX_LOOP_PERIOD: usize = 112;
 ///
 /// Đánh đổi: người nói nhắc lại nguyên một câu dài hai lần liền thì bản thứ hai cũng bị gom.
 fn loop_repeats(n: usize) -> usize {
+    debug_assert!(n > 0, "mẫu lặp phải có ít nhất 1 token");
     match n {
         1..=8 => 4,
         9..=15 => 3,

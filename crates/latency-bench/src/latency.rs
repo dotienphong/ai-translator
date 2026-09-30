@@ -5,7 +5,9 @@
 
 use crate::stats::{Utterance, match_segments, percentile};
 use anyhow::{Context, Result, bail};
-use asr_protocol::{MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_PCM_SAMPLES, TranscribeRequest, audio_ctx_for_samples};
+use asr_protocol::{
+    MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_AUDIO_CTX, MIN_PCM_SAMPLES, TranscribeRequest, audio_ctx_for_samples,
+};
 use pipeline::asr_client::AsrWorker;
 use pipeline::llama::{LlamaServer, max_tokens_for};
 use pipeline::prompt::{Lang, translation_prompt};
@@ -20,10 +22,16 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
-/// Luật bỏ đoạn "không có tiếng nói" của OpenAI Whisper (spec §6.4): bỏ khi `no_speech_prob` lớn hơn ngưỡng này **và**
-/// `avg_logprob` nhỏ hơn `AVG_LOGPROB_MIN`. Chỉ dùng `no_speech_prob` thì bỏ nhầm câu đúng: một câu tiếng Hàn có
-/// `no_speech_prob` 0,62 mà `avg_logprob` −0,25. Với whisper small trên FLEURS, `avg_logprob` ở phân vị 1 là −0,64; với
-/// turbo, `no_speech_prob` luôn cỡ 1e-11 nên luật không bao giờ bỏ đoạn nào.
+/// Luật bỏ đoạn "không có tiếng nói" theo OpenAI Whisper, là đề xuất cho §6.4 (xem kế hoạch 00, Task 2); spec hiện chỉ
+/// có `no_speech_prob > 0,6`. Bỏ khi `no_speech_prob` lớn hơn ngưỡng này **và** `avg_logprob` nhỏ hơn `AVG_LOGPROB_MIN`.
+/// `avg_logprob` của worker không tính EOT, cố ý khác OpenAI: âm hơn một chút, nên chặt hơn một chút ở đoạn ngắn. Chế độ A
+/// không có `cut_loop` nên `avg_logprob` của nó gồm cả token lặp.
+///
+/// Chỉ dùng `no_speech_prob` thì bỏ nhầm câu đúng: một câu tiếng Hàn có `no_speech_prob` 0,62 mà `avg_logprob` −0,25.
+/// Trên A4 (`out-m4pro-small-final.jsonl`, 548 clip) luật bỏ đúng 1 clip, `en-9810650684898829002_nb`, có bản chép là ảo
+/// giác; `avg_logprob` ở phân vị 1 (nội suy tuyến tính) là −0,695 với small và −0,269 với turbo. Với turbo,
+/// `no_speech_prob` luôn cỡ 1e-11 nên luật không bao giờ bỏ đoạn nào. Chỉ dùng `avg_logprob < −1` thì bỏ nhầm 1 clip ja
+/// thật (`ja-887319630625143301_nb`, −1,318).
 const NO_SPEECH_MAX: f32 = 0.6;
 /// Ngưỡng `avg_logprob` của cùng luật trên (`logprob_threshold` mặc định của OpenAI Whisper).
 const AVG_LOGPROB_MIN: f32 = -1.0;
@@ -41,7 +49,7 @@ const MERGE_MAX_SEGMENTS: usize = 3;
 
 // Lý do một đoạn không được dịch, ghi ở `SegmentRecord::skipped`.
 /// Đoạn không có tiếng nói theo luật `no_speech_prob` và `avg_logprob` (xem `NO_SPEECH_MAX`), hoặc chữ rỗng: app bỏ đoạn
-/// này (§6.4).
+/// này (luật đề xuất cho §6.4).
 const SKIP_NO_SPEECH: &str = "no_speech";
 /// Đoạn ngắn hơn `MIN_PCM_SAMPLES`: không gửi cho `asr-worker`.
 const SKIP_TOO_SHORT: &str = "too_short";
@@ -88,8 +96,9 @@ pub struct LatencyArgs {
     use_gpu: bool,
     #[arg(long, default_value_t = 4)]
     asr_threads: u32,
-    /// Sàn cho audio_ctx, từ 0 đến 1500 (mặc định 0: không đặt sàn): audio_ctx = max(công thức, N), như
-    /// `asr-eval --min-ctx`. Để đo S6 với mức sàn nếu S7 khuyến nghị.
+    /// Sàn thêm cho audio_ctx, từ 0 đến 1500: audio_ctx = max(audio_ctx_for_samples, N). Công thức đã có sàn
+    /// `MIN_AUDIO_CTX` (512), nên N ≤ 512 không có tác dụng. Muốn so với mốc không sàn thì dùng kết quả đã lưu,
+    /// hoặc build lại từ commit trước af5b41a.
     #[arg(long, default_value_t = 0, value_parser = clap::value_parser!(i32).range(0..=1500))]
     min_ctx: i32,
     #[arg(long, default_value_t = 300)]
@@ -414,6 +423,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             ("merge".to_string(), args.merge.to_string()),
             ("merge_window_ms".to_string(), merge_window.to_string()),
             ("min_ctx".to_string(), args.min_ctx.to_string()),
+            ("min_audio_ctx".to_string(), MIN_AUDIO_CTX.to_string()),
             (
                 "llama_args".to_string(),
                 public_args(repo_root().as_deref(), &args.llama_args),
