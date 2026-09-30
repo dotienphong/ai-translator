@@ -404,7 +404,8 @@ pub struct LlamaServer {
 #[derive(Debug, Clone)]
 pub struct Translation {
     pub text: String,
-    /// Từ lúc gửi request tới khi nhận chữ đầu tiên.
+    /// Từ lúc gửi request tới khi nhận chunk đầu tiên có ký tự không phải khoảng trắng. Bản dịch không có chữ nào
+    /// thì bằng `total_ms`.
     pub first_token_ms: f32,
     pub total_ms: f32,
     /// "stop", hoặc "length" khi chạm `max_tokens` (bản dịch bị cụt).
@@ -496,19 +497,48 @@ impl LlamaServer {
             "cache_prompt": true,
         });
         let started = Instant::now();
+        let resp = self.post("/v1/chat/completions", &body)?;
+        read_stream(BufReader::new(resp), started)
+    }
+
+    /// Số token của `text` theo tokenizer của model (`POST /tokenize`, giống `count_tokens` trong `common.py`),
+    /// để tính `max_tokens` theo [`max_tokens_for`].
+    pub fn count_tokens(&self, text: &str) -> Result<usize> {
+        let resp = self.post("/tokenize", &serde_json::json!({ "content": text }))?;
+        parse_token_count(&resp.text()?)
+    }
+
+    /// POST JSON kèm API key. Trả lỗi kèm 500 ký tự đầu của thân response khi HTTP không thành công.
+    fn post(&self, path: &str, body: &serde_json::Value) -> Result<reqwest::blocking::Response> {
         let resp = self
             .http
-            .post(format!("{}/v1/chat/completions", self.base_url))
+            .post(format!("{}{path}", self.base_url))
             .bearer_auth(&self.api_key)
-            .json(&body)
+            .json(body)
             .send()?;
         let status = resp.status();
         if !status.is_success() {
             let detail: String = resp.text().unwrap_or_default().chars().take(500).collect();
-            bail!("llama-server trả HTTP {status}: {detail}");
+            bail!("llama-server {path} trả HTTP {status}: {detail}");
         }
-        read_stream(BufReader::new(resp), started)
+        Ok(resp)
     }
+}
+
+/// Số token tối đa của bản dịch theo §6.5: min(4 × số token câu gốc + 32, 512).
+pub fn max_tokens_for(source_tokens: usize) -> u32 {
+    const CAP: usize = 512;
+    source_tokens.saturating_mul(4).saturating_add(32).min(CAP) as u32
+}
+
+/// Đếm phần tử của `tokens` trong phản hồi của `/tokenize`. Tách khỏi `count_tokens` để test được không cần server.
+fn parse_token_count(body: &str) -> Result<usize> {
+    let value: serde_json::Value =
+        serde_json::from_str(body).with_context(|| format!("phản hồi /tokenize không phải JSON: {body:.200}"))?;
+    let tokens = value["tokens"]
+        .as_array()
+        .with_context(|| format!("phản hồi /tokenize không có mảng `tokens`: {body:.200}"))?;
+    Ok(tokens.len())
 }
 
 /// Đọc stream tới `[DONE]`. Tách khỏi `translate` để test được bằng dữ liệu mẫu, không cần server.
@@ -523,7 +553,9 @@ fn read_stream(reader: impl BufRead, started: Instant) -> Result<Translation> {
                 content,
                 finish_reason: reason,
             } => {
-                if !content.is_empty() && first_token_ms.is_none() {
+                // Chunk chỉ có khoảng trắng hay xuống dòng (model hay mở đầu bằng "\n") chưa phải chữ dịch:
+                // hậu xử lý (§6.5) sẽ cắt chúng, nên người xem chưa thấy gì.
+                if first_token_ms.is_none() && !content.trim().is_empty() {
                     first_token_ms = Some(started.elapsed().as_secs_f32() * 1000.0);
                 }
                 text.push_str(&content);
@@ -572,6 +604,8 @@ fn random_key() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::VecDeque;
+    use std::io::Read;
 
     const ROLE: &str = "data: {\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":null}}]}\n\n";
 
@@ -599,6 +633,84 @@ mod tests {
     fn error_chunk_mid_stream_is_an_error() {
         let body = format!("{ROLE}data: {{\"error\":{{\"code\":500,\"message\":\"boom\"}}}}\n\n");
         assert!(read_stream(body.as_bytes(), Instant::now()).is_err());
+    }
+
+    /// Đọc từng đoạn byte, mỗi đoạn tới sau một khoảng chờ: giả lập stream chậm mà không cần server.
+    /// Mỗi đoạn phải gồm trọn các dòng và nhỏ hơn bộ đệm của `BufReader`.
+    struct Paced(VecDeque<(Duration, Vec<u8>)>);
+
+    impl Read for Paced {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let Some((wait, chunk)) = self.0.pop_front() else {
+                return Ok(0);
+            };
+            std::thread::sleep(wait);
+            buf[..chunk.len()].copy_from_slice(&chunk);
+            Ok(chunk.len())
+        }
+    }
+
+    fn content_event(content: &str) -> Vec<u8> {
+        let chunk = serde_json::json!({ "choices": [{ "delta": { "content": content } }] });
+        format!("data: {chunk}\n\n").into_bytes()
+    }
+
+    #[test]
+    fn first_token_skips_whitespace_only_chunks() {
+        let wait = Duration::from_millis(80);
+        let events = VecDeque::from([
+            (Duration::ZERO, ROLE.as_bytes().to_vec()),
+            (Duration::ZERO, content_event("\n")),
+            (Duration::ZERO, content_event(" \u{3000}")),
+            (wait, content_event("Xin")),
+            (Duration::ZERO, b"data: [DONE]\n\n".to_vec()),
+        ]);
+        let t = read_stream(BufReader::new(Paced(events)), Instant::now()).unwrap();
+        assert_eq!(t.text, "Xin");
+        assert!(
+            t.first_token_ms >= 80.0,
+            "chữ đầu tới sau 80 ms, nhưng first_token_ms = {}",
+            t.first_token_ms
+        );
+    }
+
+    #[test]
+    fn token_count_is_length_of_tokens_array() {
+        assert_eq!(parse_token_count(r#"{"tokens":[1,22,333]}"#).unwrap(), 3);
+        assert_eq!(parse_token_count(r#"{"tokens":[]}"#).unwrap(), 0);
+    }
+
+    #[test]
+    fn token_count_rejects_bodies_without_tokens() {
+        assert!(parse_token_count("").is_err());
+        assert!(parse_token_count("<html>502 Bad Gateway</html>").is_err());
+        assert!(parse_token_count(r#"{"error":{"code":401,"message":"Invalid API Key"}}"#).is_err());
+        assert!(parse_token_count(r#"{"tokens":"abc"}"#).is_err());
+    }
+
+    #[test]
+    fn max_tokens_follow_spec_formula() {
+        // §6.5: min(4 × số token câu gốc + 32, 512).
+        assert_eq!(max_tokens_for(0), 32);
+        assert_eq!(max_tokens_for(10), 72);
+        assert_eq!(max_tokens_for(119), 508);
+        assert_eq!(max_tokens_for(120), 512);
+        assert_eq!(max_tokens_for(121), 512);
+        assert_eq!(max_tokens_for(usize::MAX), 512);
+    }
+
+    #[test]
+    fn whitespace_only_stream_has_no_first_token() {
+        let events = VecDeque::from([
+            (Duration::ZERO, content_event("\n")),
+            (Duration::from_millis(20), content_event(" ")),
+            (Duration::ZERO, b"data: [DONE]\n\n".to_vec()),
+        ]);
+        let t = read_stream(BufReader::new(Paced(events)), Instant::now()).unwrap();
+        assert_eq!(t.text, "");
+        // Không có chữ nào: mốc "chữ đầu" rơi về lúc kết thúc, không phải lúc chunk trắng đầu tiên tới.
+        assert_eq!(t.first_token_ms, t.total_ms);
+        assert!(t.total_ms >= 20.0);
     }
 }
 ```
@@ -846,9 +958,9 @@ libc = "0.2.189"
 
 use crate::stats::{Utterance, match_segments, percentile};
 use anyhow::{Context, Result, bail};
-use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
+use asr_protocol::{MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_PCM_SAMPLES, TranscribeRequest, audio_ctx_for_samples};
 use pipeline::asr_client::AsrWorker;
-use pipeline::llama::LlamaServer;
+use pipeline::llama::{LlamaServer, max_tokens_for};
 use pipeline::prompt::{Lang, translation_prompt};
 use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES, Segment, Segmenter, SegmenterConfig};
 use pipeline::vad::SileroVad;
@@ -863,8 +975,32 @@ use sysinfo::{Pid, ProcessesToUpdate, System};
 
 /// Bỏ đoạn có `no_speech_prob > 0,6` (spec §6.4).
 const NO_SPEECH_MAX: f32 = 0.6;
-/// Tối đa 100 token của đoạn trước làm prompt (spec §6.4).
-const PROMPT_TOKENS: usize = 100;
+/// Cửa sổ (ms) ghép đoạn với mốc dừng câu thật, xem `match_segments`.
+const MATCH_WINDOW_MS: u64 = 1_000;
+/// Khung âm thanh tới trễ hơn thời gian thực quá ngưỡng này (ms) thì kết quả lệch cùng cỡ: báo cho người chạy.
+const FEED_LAG_WARN_MS: f64 = 100.0;
+
+// Lý do một đoạn không được dịch, ghi ở `SegmentRecord::skipped`.
+/// `no_speech_prob` quá cao, hoặc chữ rỗng: app bỏ đoạn này (§6.4).
+const SKIP_NO_SPEECH: &str = "no_speech";
+/// Đoạn ngắn hơn `MIN_PCM_SAMPLES`: không gửi cho `asr-worker`.
+const SKIP_TOO_SHORT: &str = "too_short";
+/// Đoạn dài hơn `MAX_PCM_SAMPLES`: không gửi cho `asr-worker`.
+const SKIP_TOO_LONG: &str = "too_long";
+/// Bản dịch rỗng: không có gì để hiện.
+const SKIP_EMPTY_TRANSLATION: &str = "empty_translation";
+/// Ngôn ngữ nguồn trùng ngôn ngữ đích: hiện luôn bản chép lời (F2).
+const SKIP_SAME_LANG: &str = "same_lang";
+/// Ngôn ngữ ngoài tập của công cụ; ghi thành `lang_ngoai_tap:<mã>`.
+const SKIP_OTHER_LANG: &str = "lang_ngoai_tap";
+const SKIP_KINDS: [&str; 6] = [
+    SKIP_NO_SPEECH,
+    SKIP_TOO_SHORT,
+    SKIP_TOO_LONG,
+    SKIP_EMPTY_TRANSLATION,
+    SKIP_SAME_LANG,
+    SKIP_OTHER_LANG,
+];
 
 #[derive(clap::Args)]
 pub struct LatencyArgs {
@@ -892,6 +1028,10 @@ pub struct LatencyArgs {
     use_gpu: bool,
     #[arg(long, default_value_t = 4)]
     asr_threads: u32,
+    /// Sàn cho audio_ctx, từ 0 đến 1500 (mặc định 0: không đặt sàn): audio_ctx = max(công thức, N), như
+    /// `asr-eval --min-ctx`. Để đo S6 với mức sàn nếu S7 khuyến nghị.
+    #[arg(long, default_value_t = 0, value_parser = clap::value_parser!(i32).range(0..=1500))]
+    min_ctx: i32,
     #[arg(long, default_value_t = 300)]
     end_silence_ms: u64,
     /// Nhãn máy và gói model, ví dụ `m1-16gb-chuan`.
@@ -920,12 +1060,18 @@ struct SegmentRecord {
     lang_prob: f32,
     text: String,
     no_speech_prob: f32,
+    /// Số token của câu gốc theo `/tokenize`, và `max_tokens` đã gửi cho bản dịch (§6.5).
+    src_tokens: Option<usize>,
+    max_tokens: Option<u32>,
     mt_first_at_ms: Option<f64>,
     mt_done_at_ms: Option<f64>,
     translation: Option<String>,
-    /// Lúc phụ đề hiện đủ: xong bản dịch, hoặc xong chép lời nếu không cần dịch.
-    shown_at_ms: f64,
-    first_shown_at_ms: f64,
+    /// "stop", hoặc "length" khi bản dịch chạm `max_tokens` (bị cụt).
+    finish_reason: Option<String>,
+    /// Lúc phụ đề hiện đủ: xong bản dịch, hoặc xong chép lời nếu không cần dịch. `None` nếu đoạn bị bỏ
+    /// (xem `is_dropped`): không có gì hiện ra nên không có độ trễ để đo.
+    shown_at_ms: Option<f64>,
+    first_shown_at_ms: Option<f64>,
     skipped: Option<String>,
 }
 
@@ -935,8 +1081,16 @@ struct UtteranceLatency {
     lang: String,
     end_ms: u64,
     segment_id: Option<u64>,
+    /// Mốc dừng của đoạn ghép được trừ mốc dừng thật (ms). Lệch lớn nghĩa là mốc thật không khớp lúc người nói dừng
+    /// (xem `build_sessions.py`), và độ trễ của câu đó lệch cùng cỡ: đoạn dừng sớm hơn mốc thật (âm) thì độ trễ bị đo
+    /// thiếu, muộn hơn (dương) thì bị đo thừa.
+    end_offset_ms: Option<i64>,
     shown_latency_ms: Option<f64>,
     first_latency_ms: Option<f64>,
+    /// Đoạn ghép được có bản dịch. `false` nếu không ghép được đoạn nào.
+    translated: bool,
+    /// Lý do đoạn ghép được không có bản dịch, nếu có.
+    skipped: Option<String>,
 }
 
 #[derive(Serialize, Default)]
@@ -963,8 +1117,17 @@ struct Report {
 pub fn run(args: LatencyArgs) -> Result<()> {
     std::fs::create_dir_all(&args.log_dir)?;
     let target = Lang::from_code(&args.target).context("--target không hợp lệ")?;
-    let truth: Vec<Utterance> = serde_json::from_reader(std::fs::File::open(&args.truth)?)?;
+    let truth: Vec<Utterance> = serde_json::from_reader(
+        std::fs::File::open(&args.truth).with_context(|| format!("không mở được {}", args.truth.display()))?,
+    )?;
     let samples = read_wav_16k_mono(&args.session)?;
+    // Nạp VAD trước khi chạy tiến trình phụ: đường dẫn sai thì báo lỗi ngay mà không để lại server chạy dở,
+    // và việc nạp không chiếm giờ của lượt phát lại.
+    let mut vad = SileroVad::load(&args.vad_model)?;
+    let mut segmenter = Segmenter::new(SegmenterConfig {
+        end_silence_ms: args.end_silence_ms,
+        ..Default::default()
+    });
 
     let (mut asr, ready) = AsrWorker::spawn(
         &args.asr_worker,
@@ -1002,9 +1165,25 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     let now_ms = move || origin.elapsed().as_secs_f64() * 1000.0;
 
     let languages = args.languages.clone();
+    let min_ctx = args.min_ctx;
     let asr_thread = std::thread::spawn(move || -> Result<()> {
         let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
         for (segment, closed_at_ms) in seg_rx {
+            let mut rec = SegmentRecord {
+                id: segment.id,
+                start_ms: segment.start_ms,
+                end_ms: segment.end_ms,
+                audio_ms: segment.samples.len() as u64 * 1000 / 16_000,
+                closed_at_ms,
+                ..Default::default()
+            };
+            // Worker từ chối đoạn ngoài khoảng, và một lỗi làm dừng cả lượt đo: không gửi, chỉ ghi lại.
+            if let Some(reason) = pcm_skip_reason(segment.samples.len()) {
+                rec.skipped = Some(reason.into());
+                rec.asr_done_at_ms = now_ms();
+                asr_tx.send(rec)?;
+                continue;
+            }
             let pcm: Vec<i16> = segment
                 .samples
                 .iter()
@@ -1017,136 +1196,99 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             };
             let result = asr.transcribe(TranscribeRequest {
                 segment_id: segment.id,
-                audio_ctx: audio_ctx_for_samples(pcm.len()),
+                audio_ctx: audio_ctx_for_samples(pcm.len()).max(min_ctx).min(1500),
                 pcm,
                 languages: languages.clone(),
                 prompt_tokens,
             })?;
+            rec.asr_done_at_ms = now_ms();
             let tokens = prompts.entry(result.lang.clone()).or_default();
             tokens.extend(&result.tokens);
-            let excess = tokens.len().saturating_sub(PROMPT_TOKENS);
+            let excess = tokens.len().saturating_sub(MAX_PROMPT_TOKENS);
             tokens.drain(..excess);
-            asr_tx.send(SegmentRecord {
-                id: segment.id,
-                start_ms: segment.start_ms,
-                end_ms: segment.end_ms,
-                audio_ms: segment.samples.len() as u64 * 1000 / 16_000,
-                closed_at_ms,
-                asr_done_at_ms: now_ms(),
-                lid_ms: result.lid_ms,
-                asr_ms: result.asr_ms,
-                lang: result.lang,
-                lang_prob: result.lang_prob,
-                text: result.text,
-                no_speech_prob: result.no_speech_prob,
-                ..Default::default()
-            })?;
+            rec.lid_ms = result.lid_ms;
+            rec.asr_ms = result.asr_ms;
+            rec.lang = result.lang;
+            rec.lang_prob = result.lang_prob;
+            rec.text = result.text;
+            rec.no_speech_prob = result.no_speech_prob;
+            asr_tx.send(rec)?;
         }
         Ok(())
     });
 
     let mt_thread = std::thread::spawn(move || -> Result<()> {
         for mut rec in asr_rx {
-            let src = Lang::from_code(&rec.lang);
-            if rec.no_speech_prob > NO_SPEECH_MAX || rec.text.is_empty() {
-                rec.skipped = Some("no_speech".into());
-            } else if src == Some(target) {
-                rec.skipped = Some("same_lang".into());
-            } else if let Some(src) = src {
-                let t = llama.translate(&translation_prompt(&rec.text, src, target), 512)?;
-                let done = now_ms();
-                rec.mt_first_at_ms = Some(done - (t.total_ms - t.first_token_ms) as f64);
-                rec.mt_done_at_ms = Some(done);
-                rec.translation = Some(t.text);
-            } else {
-                rec.skipped = Some(format!("lang_ngoai_tap:{}", rec.lang));
+            if rec.skipped.is_none() {
+                match route(&rec, target) {
+                    Err(reason) => rec.skipped = Some(reason),
+                    Ok(src) => {
+                        // Tính `max_tokens` theo §6.5. Lần gọi /tokenize nằm trong thời gian của bước dịch.
+                        let src_tokens = llama.count_tokens(&rec.text)?;
+                        let max_tokens = max_tokens_for(src_tokens);
+                        let t = llama.translate(&translation_prompt(&rec.text, src, target), max_tokens)?;
+                        let done = now_ms();
+                        rec.src_tokens = Some(src_tokens);
+                        rec.max_tokens = Some(max_tokens);
+                        rec.mt_first_at_ms = Some(done - (t.total_ms - t.first_token_ms) as f64);
+                        rec.mt_done_at_ms = Some(done);
+                        rec.finish_reason = t.finish_reason;
+                        if t.text.is_empty() {
+                            rec.skipped = Some(SKIP_EMPTY_TRANSLATION.into());
+                        } else {
+                            rec.translation = Some(t.text);
+                        }
+                    }
+                }
             }
-            rec.shown_at_ms = rec.mt_done_at_ms.unwrap_or(rec.asr_done_at_ms);
-            rec.first_shown_at_ms = rec.mt_first_at_ms.unwrap_or(rec.asr_done_at_ms);
+            (rec.shown_at_ms, rec.first_shown_at_ms) = shown_times(&rec);
             rec_tx.send(rec)?;
         }
         Ok(())
     });
 
     // Phát lại theo thời gian thực: khung i sẵn sàng ở thời điểm (i + 1) × 32 ms, như khi thu thật.
-    let mut vad = SileroVad::load(&args.vad_model)?;
-    let mut segmenter = Segmenter::new(SegmenterConfig {
-        end_silence_ms: args.end_silence_ms,
-        ..Default::default()
-    });
-    for (i, frame) in samples.as_chunks::<FRAME_SAMPLES>().0.iter().enumerate() {
-        let due = origin + Duration::from_millis((i as u64 + 1) * FRAME_MS);
-        if let Some(wait) = due.checked_duration_since(Instant::now()) {
-            std::thread::sleep(wait);
+    let mut max_lag = Duration::ZERO;
+    let mut play = || -> Result<()> {
+        for (i, frame) in samples.as_chunks::<FRAME_SAMPLES>().0.iter().enumerate() {
+            let due = origin + Duration::from_millis((i as u64 + 1) * FRAME_MS);
+            if let Some(wait) = due.checked_duration_since(Instant::now()) {
+                std::thread::sleep(wait);
+            }
+            max_lag = max_lag.max(Instant::now().saturating_duration_since(due));
+            let prob = vad.prob(frame)?;
+            for segment in segmenter.push(frame, prob) {
+                seg_tx.send((segment, now_ms()))?;
+            }
         }
-        let prob = vad.prob(frame)?;
-        for segment in segmenter.push(frame, prob) {
+        if let Some(segment) = segmenter.flush() {
             seg_tx.send((segment, now_ms()))?;
         }
-    }
-    if let Some(segment) = segmenter.flush() {
-        seg_tx.send((segment, now_ms()))?;
-    }
+        Ok(())
+    };
+    let played = play();
+    // Lỗi ở đây cũng phải đi qua bước đóng kênh và join bên dưới, để `asr-worker` và `llama-server` được dọn.
+    // Thoát sớm thì tiến trình kết thúc trước khi hai luồng kịp `Drop`, và server bị bỏ lại chạy mồ côi.
     drop(seg_tx);
-    asr_thread.join().expect("luồng ASR panic")?;
-    mt_thread.join().expect("luồng MT panic")?;
+    let asr_result = asr_thread.join().expect("luồng ASR panic");
+    let mt_result = mt_thread.join().expect("luồng MT panic");
     stop_sampler.store(true, Ordering::Relaxed);
     let usage = sampler.join().expect("luồng đo tài nguyên panic");
+    // Báo lỗi của luồng ở cuối chuỗi trước: khi luồng MT chết, luồng ASR và luồng phát lại chỉ còn báo "kênh đã đóng"
+    // ở lần gửi kế tiếp, che mất nguyên nhân thật. Ngược lại, khi luồng ASR chết thì luồng MT dừng bình thường.
+    mt_result?;
+    asr_result?;
+    played?;
 
     let mut segments: Vec<SegmentRecord> = rec_rx.into_iter().collect();
     segments.sort_by_key(|s| s.id);
-    let ends: Vec<u64> = segments.iter().map(|s| s.end_ms).collect();
-    let matches = match_segments(&truth, &ends, 1_000);
-    let utterances: Vec<UtteranceLatency> = truth
-        .iter()
-        .zip(&matches)
-        .map(|(u, m)| {
-            let seg = m.map(|i| &segments[i]);
-            UtteranceLatency {
-                id: u.id.clone(),
-                lang: u.lang.clone(),
-                end_ms: u.end_ms,
-                segment_id: seg.map(|s| s.id),
-                shown_latency_ms: seg.map(|s| s.shown_at_ms - u.end_ms as f64),
-                first_latency_ms: seg.map(|s| s.first_shown_at_ms - u.end_ms as f64),
-            }
-        })
-        .collect();
-
-    let shown: Vec<f32> = utterances
-        .iter()
-        .filter_map(|u| u.shown_latency_ms)
-        .map(|v| v as f32)
-        .collect();
-    let first: Vec<f32> = utterances
-        .iter()
-        .filter_map(|u| u.first_latency_ms)
-        .map(|v| v as f32)
-        .collect();
-    if shown.is_empty() {
-        bail!("không ghép được câu nào với mốc thật; kiểm tra file truth và VAD");
+    let utterances = utterance_latencies(&truth, &segments);
+    let mut summary = build_summary(&utterances, &segments);
+    if summary["measured"] == 0.0 {
+        bail!("không đo được câu nào (không ghép được với mốc thật, hoặc đoạn đều bị bỏ); kiểm tra file truth và VAD");
     }
-    let stage = |f: &dyn Fn(&SegmentRecord) -> Option<f32>| -> Vec<f32> { segments.iter().filter_map(f).collect() };
-    let asr_ms = stage(&|s| Some(s.asr_ms));
-    let lid_ms = stage(&|s| Some(s.lid_ms));
-    let mt_ms = stage(&|s| s.mt_done_at_ms.map(|d| (d - s.asr_done_at_ms) as f32));
-    let mut summary = HashMap::new();
-    let mut put = |k: &str, v: Option<f32>| {
-        if let Some(v) = v {
-            summary.insert(k.to_string(), v as f64);
-        }
-    };
-    put("shown_p50_ms", percentile(&shown, 50.0));
-    put("shown_p90_ms", percentile(&shown, 90.0));
-    put("first_p50_ms", percentile(&first, 50.0));
-    put("asr_p50_ms", percentile(&asr_ms, 50.0));
-    put("asr_p90_ms", percentile(&asr_ms, 90.0));
-    put("lid_p50_ms", percentile(&lid_ms, 50.0));
-    put("mt_p50_ms", percentile(&mt_ms, 50.0));
-    put("mt_p90_ms", percentile(&mt_ms, 90.0));
-    summary.insert("utterances".into(), truth.len() as f64);
-    summary.insert("matched".into(), shown.len() as f64);
-    summary.insert("segments".into(), segments.len() as f64);
+    let feed_lag_max_ms = max_lag.as_secs_f64() * 1000.0;
+    summary.insert("feed_lag_max_ms".into(), feed_lag_max_ms);
 
     let report = Report {
         label: args.label.clone(),
@@ -1161,6 +1303,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             ("languages".to_string(), args.languages.join(",")),
             ("target".to_string(), args.target.clone()),
             ("end_silence_ms".to_string(), args.end_silence_ms.to_string()),
+            ("min_ctx".to_string(), args.min_ctx.to_string()),
             ("llama_args".to_string(), args.llama_args.clone()),
         ]),
         summary,
@@ -1169,16 +1312,195 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         segments,
     };
     serde_json::to_writer_pretty(std::fs::File::create(&args.out)?, &report)?;
+    let s = &report.summary;
     println!(
         "{}: p50 = {:.0} ms, p90 = {:.0} ms, chữ đầu p50 = {:.0} ms, ghép được {}/{} câu",
-        report.label,
-        report.summary["shown_p50_ms"],
-        report.summary["shown_p90_ms"],
-        report.summary["first_p50_ms"],
-        shown.len(),
-        truth.len()
+        report.label, s["shown_p50_ms"], s["shown_p90_ms"], s["first_p50_ms"], s["matched"], s["utterances"]
     );
+    println!(
+        "  đo được {} câu; không ghép được {}, không có bản dịch {}; đoạn bị bỏ {}, bản dịch bị cụt (length) {}; \
+         mốc dừng lệch tối đa {:.0} ms",
+        s["measured"],
+        s["unmatched"],
+        s["no_translation"],
+        s["segments_dropped"],
+        s["finish_length"],
+        s["end_offset_max_abs_ms"]
+    );
+    if feed_lag_max_ms > FEED_LAG_WARN_MS {
+        println!(
+            "  CẢNH BÁO: phát lại chậm hơn thời gian thực tới {feed_lag_max_ms:.0} ms (máy đang bận?); \
+             độ trễ đo được bị lệch cùng cỡ"
+        );
+    }
     Ok(())
+}
+
+/// Lý do không gửi đoạn cho `asr-worker`: số mẫu ngoài khoảng worker nhận.
+fn pcm_skip_reason(n_samples: usize) -> Option<&'static str> {
+    if n_samples < MIN_PCM_SAMPLES {
+        Some(SKIP_TOO_SHORT)
+    } else if n_samples > MAX_PCM_SAMPLES {
+        Some(SKIP_TOO_LONG)
+    } else {
+        None
+    }
+}
+
+/// Quy tắc của app cho một đoạn đã chép lời: `Ok(ngôn ngữ nguồn)` nếu phải dịch, `Err(lý do)` nếu bỏ bước dịch.
+fn route(rec: &SegmentRecord, target: Lang) -> Result<Lang, String> {
+    if rec.no_speech_prob > NO_SPEECH_MAX || rec.text.trim().is_empty() {
+        return Err(SKIP_NO_SPEECH.into());
+    }
+    match Lang::from_code(&rec.lang) {
+        Some(src) if src == target => Err(SKIP_SAME_LANG.into()),
+        Some(src) => Ok(src),
+        None => Err(format!("{SKIP_OTHER_LANG}:{}", rec.lang)),
+    }
+}
+
+/// Đoạn bị bỏ: app không hiện gì cho đoạn này, nên không có độ trễ để đo và không được tính là "hiện nhanh".
+/// `same_lang` thì khác: app hiện luôn bản chép lời, nên có độ trễ (bằng lúc xong chép lời).
+fn is_dropped(reason: &str) -> bool {
+    matches!(
+        reason,
+        SKIP_NO_SPEECH | SKIP_TOO_SHORT | SKIP_TOO_LONG | SKIP_EMPTY_TRANSLATION
+    )
+}
+
+/// Đoạn đã qua `asr-worker`. `too_short` và `too_long` bị loại từ trước nên `asr_ms` và `lid_ms` của chúng là 0.
+fn was_transcribed(rec: &SegmentRecord) -> bool {
+    !matches!(rec.skipped.as_deref(), Some(SKIP_TOO_SHORT | SKIP_TOO_LONG))
+}
+
+/// (Lúc hiện đủ, lúc hiện chữ đầu) của một đoạn đã xử lý xong; `None` nếu đoạn bị bỏ.
+fn shown_times(rec: &SegmentRecord) -> (Option<f64>, Option<f64>) {
+    if rec.skipped.as_deref().is_some_and(is_dropped) {
+        return (None, None);
+    }
+    (
+        Some(rec.mt_done_at_ms.unwrap_or(rec.asr_done_at_ms)),
+        Some(rec.mt_first_at_ms.unwrap_or(rec.asr_done_at_ms)),
+    )
+}
+
+/// Ghép từng câu thật với đoạn có mốc dừng gần nhất, rồi tính độ trễ từ lúc người nói dừng câu (A2).
+fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord]) -> Vec<UtteranceLatency> {
+    let ends: Vec<u64> = segments.iter().map(|s| s.end_ms).collect();
+    let matches = match_segments(truth, &ends, MATCH_WINDOW_MS);
+    truth
+        .iter()
+        .zip(&matches)
+        .map(|(u, m)| {
+            let seg = m.map(|i| &segments[i]);
+            let since_end = |t: f64| t - u.end_ms as f64;
+            UtteranceLatency {
+                id: u.id.clone(),
+                lang: u.lang.clone(),
+                end_ms: u.end_ms,
+                segment_id: seg.map(|s| s.id),
+                end_offset_ms: seg.map(|s| s.end_ms as i64 - u.end_ms as i64),
+                shown_latency_ms: seg.and_then(|s| s.shown_at_ms).map(since_end),
+                first_latency_ms: seg.and_then(|s| s.first_shown_at_ms).map(since_end),
+                translated: seg.is_some_and(|s| s.translation.is_some()),
+                skipped: seg.and_then(|s| s.skipped.clone()),
+            }
+        })
+        .collect()
+}
+
+/// Bản tóm tắt của một lượt đo:
+/// - `shown_*`, `first_*`: phân vị độ trễ trên các câu đo được (`measured`), tức câu ghép được với một đoạn không bị bỏ.
+/// - `asr_*`, `lid_*`, `mt_*`: phân vị thời gian từng bước (ms), trên các đoạn đã qua bước đó.
+/// - `utterances`: số câu thật; `matched`: số câu ghép được với một đoạn (kể cả đoạn bị bỏ); `unmatched`: số câu còn lại.
+/// - `no_translation`: số câu ghép được với một đoạn không có bản dịch (đoạn bị bỏ, hoặc không cần dịch). Không gồm
+///   câu không ghép được: không biết chúng ra sao, vì không có đoạn nào đại diện.
+/// - `end_offset_max_abs_ms`: lệch lớn nhất giữa mốc dừng của đoạn và mốc thật, trên các câu ghép được.
+/// - `segments`, `segments_translated`, `segments_dropped`; `skipped_<lý do>`: số đoạn theo từng lý do.
+/// - `finish_length`: số bản dịch chạm `max_tokens` (bị cụt).
+fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) -> HashMap<String, f64> {
+    let shown: Vec<f32> = utterances
+        .iter()
+        .filter_map(|u| u.shown_latency_ms)
+        .map(|v| v as f32)
+        .collect();
+    let first: Vec<f32> = utterances
+        .iter()
+        .filter_map(|u| u.first_latency_ms)
+        .map(|v| v as f32)
+        .collect();
+    let transcribed = || segments.iter().filter(|s| was_transcribed(s));
+    let asr_ms: Vec<f32> = transcribed().map(|s| s.asr_ms).collect();
+    let lid_ms: Vec<f32> = transcribed().map(|s| s.lid_ms).collect();
+    let mt_ms: Vec<f32> = segments
+        .iter()
+        .filter_map(|s| s.mt_done_at_ms.map(|d| (d - s.asr_done_at_ms) as f32))
+        .collect();
+    let mut summary = HashMap::new();
+    let mut put = |k: &str, v: Option<f32>| {
+        if let Some(v) = v {
+            summary.insert(k.to_string(), v as f64);
+        }
+    };
+    put("shown_p50_ms", percentile(&shown, 50.0));
+    put("shown_p90_ms", percentile(&shown, 90.0));
+    put("first_p50_ms", percentile(&first, 50.0));
+    put("asr_p50_ms", percentile(&asr_ms, 50.0));
+    put("asr_p90_ms", percentile(&asr_ms, 90.0));
+    put("lid_p50_ms", percentile(&lid_ms, 50.0));
+    put("mt_p50_ms", percentile(&mt_ms, 50.0));
+    put("mt_p90_ms", percentile(&mt_ms, 90.0));
+    let offset_max = utterances.iter().filter_map(|u| u.end_offset_ms).map(i64::abs).max();
+    put("end_offset_max_abs_ms", Some(offset_max.unwrap_or(0) as f32));
+
+    let mut counts: Vec<(String, usize)> = vec![
+        ("utterances".into(), utterances.len()),
+        (
+            "matched".into(),
+            utterances.iter().filter(|u| u.segment_id.is_some()).count(),
+        ),
+        (
+            "unmatched".into(),
+            utterances.iter().filter(|u| u.segment_id.is_none()).count(),
+        ),
+        ("measured".into(), shown.len()),
+        (
+            "no_translation".into(),
+            utterances
+                .iter()
+                .filter(|u| u.segment_id.is_some() && !u.translated)
+                .count(),
+        ),
+        ("segments".into(), segments.len()),
+        (
+            "segments_translated".into(),
+            segments.iter().filter(|s| s.translation.is_some()).count(),
+        ),
+        (
+            "segments_dropped".into(),
+            segments
+                .iter()
+                .filter(|s| s.skipped.as_deref().is_some_and(is_dropped))
+                .count(),
+        ),
+        (
+            "finish_length".into(),
+            segments
+                .iter()
+                .filter(|s| s.finish_reason.as_deref() == Some("length"))
+                .count(),
+        ),
+    ];
+    for kind in SKIP_KINDS {
+        // `lang_ngoai_tap:<mã>` tính vào `lang_ngoai_tap`.
+        let n = segments
+            .iter()
+            .filter(|s| s.skipped.as_deref().and_then(|r| r.split(':').next()) == Some(kind))
+            .count();
+        counts.push((format!("skipped_{kind}"), n));
+    }
+    summary.extend(counts.into_iter().map(|(k, n)| (k, n as f64)));
+    summary
 }
 
 fn read_wav_16k_mono(path: &PathBuf) -> Result<Vec<f32>> {
@@ -1254,6 +1576,216 @@ fn machine_info() -> HashMap<String, String> {
         ("os".to_string(), System::long_os_version().unwrap_or_default()),
     ])
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Một đoạn đã xử lý xong như luồng MT làm: tính `shown_at_ms` từ các mốc và lý do bỏ.
+    fn finished(mut rec: SegmentRecord) -> SegmentRecord {
+        (rec.shown_at_ms, rec.first_shown_at_ms) = shown_times(&rec);
+        rec
+    }
+
+    fn translated(end_ms: u64, asr_done: f64, first: f64, done: f64) -> SegmentRecord {
+        finished(SegmentRecord {
+            end_ms,
+            asr_done_at_ms: asr_done,
+            mt_first_at_ms: Some(first),
+            mt_done_at_ms: Some(done),
+            translation: Some("Xin chào".into()),
+            finish_reason: Some("stop".into()),
+            ..Default::default()
+        })
+    }
+
+    fn skipped(end_ms: u64, asr_done: f64, reason: &str) -> SegmentRecord {
+        finished(SegmentRecord {
+            end_ms,
+            asr_done_at_ms: asr_done,
+            skipped: Some(reason.into()),
+            ..Default::default()
+        })
+    }
+
+    fn utt(id: &str, end_ms: u64) -> Utterance {
+        Utterance {
+            id: id.into(),
+            lang: "en".into(),
+            start_ms: 0,
+            end_ms,
+            text: String::new(),
+        }
+    }
+
+    fn rec(lang: &str, text: &str, no_speech_prob: f32) -> SegmentRecord {
+        SegmentRecord {
+            lang: lang.into(),
+            text: text.into(),
+            no_speech_prob,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn segments_outside_the_worker_range_are_not_sent() {
+        assert_eq!(pcm_skip_reason(0), Some("too_short"));
+        assert_eq!(pcm_skip_reason(MIN_PCM_SAMPLES - 1), Some("too_short"));
+        assert_eq!(pcm_skip_reason(MIN_PCM_SAMPLES), None);
+        assert_eq!(pcm_skip_reason(MAX_PCM_SAMPLES), None);
+        assert_eq!(pcm_skip_reason(MAX_PCM_SAMPLES + 1), Some("too_long"));
+    }
+
+    #[test]
+    fn route_follows_the_app_rules() {
+        assert_eq!(route(&rec("en", "Hello", 0.0), Lang::Vi), Ok(Lang::En));
+        assert_eq!(
+            route(&rec("ko", "안녕", 0.6), Lang::Vi),
+            Ok(Lang::Ko),
+            "đúng ngưỡng thì chưa bỏ"
+        );
+        assert_eq!(route(&rec("en", "Hello", 0.61), Lang::Vi), Err("no_speech".into()));
+        assert_eq!(route(&rec("en", "", 0.0), Lang::Vi), Err("no_speech".into()));
+        assert_eq!(route(&rec("en", " \n", 0.0), Lang::Vi), Err("no_speech".into()));
+        assert_eq!(route(&rec("vi", "Xin chào", 0.0), Lang::Vi), Err("same_lang".into()));
+        assert_eq!(
+            route(&rec("fr", "Bonjour", 0.0), Lang::Vi),
+            Err("lang_ngoai_tap:fr".into())
+        );
+    }
+
+    #[test]
+    fn dropped_segments_have_no_shown_time() {
+        for reason in ["no_speech", "too_short", "too_long", "empty_translation"] {
+            let s = skipped(5_000, 5_400.0, reason);
+            assert_eq!((s.shown_at_ms, s.first_shown_at_ms), (None, None), "{reason}");
+        }
+        // Cùng ngôn ngữ đích hoặc ngoài tập: app hiện luôn bản chép lời.
+        for reason in ["same_lang", "lang_ngoai_tap:fr"] {
+            let s = skipped(5_000, 5_400.0, reason);
+            assert_eq!(
+                (s.shown_at_ms, s.first_shown_at_ms),
+                (Some(5_400.0), Some(5_400.0)),
+                "{reason}"
+            );
+        }
+        let t = translated(5_000, 5_400.0, 5_700.0, 6_500.0);
+        assert_eq!((t.shown_at_ms, t.first_shown_at_ms), (Some(6_500.0), Some(5_700.0)));
+    }
+
+    #[test]
+    fn utterance_latency_is_measured_from_the_true_end() {
+        let segments = [translated(5_030, 5_400.0, 5_700.0, 6_500.0)];
+        let u = &utterance_latencies(&[utt("a", 5_000)], &segments)[0];
+        assert_eq!(u.segment_id, Some(0));
+        assert_eq!(u.shown_latency_ms, Some(1_500.0));
+        assert_eq!(u.first_latency_ms, Some(700.0));
+        assert_eq!(u.end_offset_ms, Some(30)); // đoạn dừng sau mốc thật 30 ms
+        assert!(u.translated);
+        assert_eq!(u.skipped, None);
+    }
+
+    #[test]
+    fn dropped_or_unmatched_utterances_have_no_latency_and_no_translation() {
+        let segments = [skipped(5_030, 5_400.0, "no_speech")];
+        let all = utterance_latencies(&[utt("a", 5_000), utt("b", 30_000)], &segments);
+        let (dropped, unmatched) = (&all[0], &all[1]);
+        assert_eq!(dropped.segment_id, Some(0));
+        assert_eq!((dropped.shown_latency_ms, dropped.first_latency_ms), (None, None));
+        assert!(!dropped.translated);
+        assert_eq!(dropped.skipped.as_deref(), Some("no_speech"));
+        assert_eq!(unmatched.segment_id, None);
+        assert_eq!(unmatched.end_offset_ms, None);
+        assert_eq!((unmatched.shown_latency_ms, unmatched.first_latency_ms), (None, None));
+        assert!(!unmatched.translated);
+        assert_eq!(unmatched.skipped, None);
+    }
+
+    #[test]
+    fn same_lang_utterance_is_measured_but_has_no_translation() {
+        let segments = [skipped(5_030, 5_400.0, "same_lang")];
+        let u = &utterance_latencies(&[utt("a", 5_000)], &segments)[0];
+        assert_eq!((u.shown_latency_ms, u.first_latency_ms), (Some(400.0), Some(400.0)));
+        assert!(!u.translated);
+    }
+
+    #[test]
+    fn summary_counts_dropped_skipped_and_truncated_separately() {
+        let cut = |mut s: SegmentRecord| {
+            s.finish_reason = Some("length".into());
+            s
+        };
+        let mut segments = vec![
+            translated(900, 1_600.0, 1_900.0, 2_500.0), // dừng sớm hơn mốc thật 100 ms
+            cut(translated(5_020, 5_500.0, 5_800.0, 8_000.0)),
+            skipped(9_010, 9_400.0, "no_speech"),
+            skipped(20_000, 20_000.0, "too_short"), // không ghép với câu nào
+            skipped(30_000, 30_500.0, "same_lang"),
+            cut(translated(40_000, 40_400.0, 40_600.0, 41_000.0)), // không ghép với câu nào
+        ];
+        // (asr_ms, lid_ms) của từng đoạn; đoạn too_short chưa từng vào asr-worker nên là 0.
+        let steps = [
+            (100.0, 10.0),
+            (300.0, 30.0),
+            (200.0, 20.0),
+            (0.0, 0.0),
+            (50.0, 5.0),
+            (250.0, 25.0),
+        ];
+        for (seg, (asr, lid)) in segments.iter_mut().zip(steps) {
+            seg.asr_ms = asr;
+            seg.lid_ms = lid;
+        }
+        let truth = [
+            utt("a", 1_000),
+            utt("b", 5_000),
+            utt("c", 9_000),
+            utt("d", 13_000),
+            utt("e", 30_000),
+        ];
+        let utterances = utterance_latencies(&truth, &segments);
+        let s = build_summary(&utterances, &segments);
+        let get = |k: &str| s[k];
+        assert_eq!(get("utterances"), 5.0);
+        assert_eq!(get("matched"), 4.0); // d không có đoạn nào
+        assert_eq!(get("unmatched"), 1.0);
+        assert_eq!(get("measured"), 3.0); // a, b, e; c bị bỏ
+        // Câu ghép được mà không có bản dịch: c bị bỏ, e cùng ngôn ngữ đích. Câu không ghép được (d) tính riêng.
+        assert_eq!(get("no_translation"), 2.0);
+        // Lệch giữa mốc dừng của đoạn và mốc thật: a -100, b +20, c +10, e 0.
+        assert_eq!(get("end_offset_max_abs_ms"), 100.0);
+        assert_eq!(get("segments"), 6.0);
+        assert_eq!(get("segments_translated"), 3.0);
+        assert_eq!(get("segments_dropped"), 2.0);
+        assert_eq!(get("skipped_no_speech"), 1.0);
+        assert_eq!(get("skipped_too_short"), 1.0);
+        assert_eq!(get("skipped_same_lang"), 1.0);
+        for zero in [
+            "skipped_too_long",
+            "skipped_empty_translation",
+            "skipped_lang_ngoai_tap",
+        ] {
+            assert_eq!(get(zero), 0.0, "{zero}");
+        }
+        assert_eq!(get("finish_length"), 2.0); // hai bản cụt, một bản "stop"
+        // Độ trễ đo được: a 1500, b 3000, e 500; chữ đầu: a 900, b 800, e 500 (tính từ mốc thật, không từ mốc đoạn).
+        assert_eq!(get("shown_p50_ms"), 1_500.0);
+        assert_eq!(get("first_p50_ms"), 800.0);
+        // Các bước chỉ tính đoạn đã qua asr-worker: đoạn too_short không được kéo p50 xuống.
+        assert_eq!(get("asr_p50_ms"), 200.0);
+        assert_eq!(get("lid_p50_ms"), 20.0);
+    }
+
+    #[test]
+    fn lang_outside_the_set_counts_under_one_key() {
+        let segments = [
+            skipped(1_000, 1_100.0, "lang_ngoai_tap:fr"),
+            skipped(2_000, 2_100.0, "lang_ngoai_tap:de"),
+        ];
+        let utterances = utterance_latencies(&[utt("a", 1_000), utt("b", 2_000)], &segments);
+        assert_eq!(build_summary(&utterances, &segments)["skipped_lang_ngoai_tap"], 2.0);
+    }
+}
 ```
 
 - [ ] **Step 3: Sửa `crates/latency-bench/src/main.rs`** thành bản cuối:
@@ -1296,8 +1828,8 @@ Expected:
   - asr-protocol 14;
   - asr-worker 5 (bản không có feature);
   - audio-capture 11, cộng 16 ở `tests/edge.rs` (nếu đã làm kế hoạch 04);
-  - pipeline 32, `vad_reference` 1 ignored;
-  - latency-bench 7.
+  - pipeline 37, `vad_reference` 1 ignored;
+  - latency-bench 15.
 - clippy không có cảnh báo.
 - `cargo deny check` in `advisories ok, bans ok, licenses ok, sources ok`.
 
@@ -1324,6 +1856,22 @@ Có sáu session, mỗi session khoảng 180 giây, ghép từ các clip băng r
 
 Tập ngôn ngữ cho phép luôn là mặc định của F2 (`en,zh,ja,ko,vi`), để bước nhận diện ngôn ngữ chạy giống app.
 
+**Mốc thật (truth)** của mỗi câu lấy bằng Silero VAD chạy trên onnxruntime, là bản tham chiếu độc lập với candle-onnx, giống `ref_probs.py`:
+- bắt đầu là khung 32 ms đầu tiên, và dừng là khung cuối cùng, có xác suất ≥ 0,5;
+- mỗi clip bắt đầu ở ranh giới khung 512 mẫu của session.
+
+Lý do đổi: review lúc thực thi thấy cách cắt theo năng lượng trong kế hoạch cũ (RMS < 2% mức lớn nhất) cho mốc dừng trễ hơn lúc người nói dừng thật tới 1,6–2,5 giây ở các clip có đuôi nhiễu nền.
+
+| Cách lấy mốc dừng | Số câu ghép được |
+|---|---|
+| Cắt theo năng lượng | 54/99 (tiếng Nhật 0/14) |
+| Silero VAD | 96/99 |
+
+Giới hạn đã biết:
+- Mốc dừng lấy từ cùng loại model VAD mà app dùng. Nếu VAD bỏ sót một từ cuối rất nhỏ thì cả mốc lẫn pipeline cùng bỏ sót, nên độ trễ có thể bị đo thiếu một chút.
+- 3/99 clip rất nhỏ (khoảng −60 dBFS), đứng sau tiếng to, không được VAD nhận ra. Ghi nhận cho MVP: cân nhắc chuẩn hóa mức âm lượng trước VAD.
+- Kết quả có thêm `end_offset_ms` cho từng câu và `end_offset_max_abs_ms`, để kiểm mốc: lệch lớn là dấu hiệu mốc sai.
+
 - [ ] **Step 1: Tạo `bench/phase0/latency/build_sessions.py`**
 
 ```python
@@ -1332,7 +1880,17 @@ Tập ngôn ngữ cho phép luôn là mặc định của F2 (`en,zh,ja,ko,vi`),
 Mỗi session nối các clip đã cắt bỏ im lặng hai đầu, xen giữa là khoảng lặng ngẫu nhiên 0,4–1,6 giây,
 và kèm file mốc thật: thời điểm bắt đầu và dừng của từng câu (spec A2).
 
-Dùng:  uv run --no-project --python 3.12 --with "numpy==2.5.3" python bench/phase0/latency/build_sessions.py [--seconds 180]
+Mốc bắt đầu và dừng của câu là khung 32 ms đầu và cuối mà Silero VAD cho xác suất ≥ 0,5, chạy bằng onnxruntime
+(bản tham chiếu độc lập với candle-onnx trong crate `pipeline`, xem `bench/phase0/vad/ref_probs.py`). Không lấy mốc
+theo năng lượng: nhiều clip còn đuôi nhiễu nền ổn định (có clip tiếng Nhật nhiễu chỉ thấp hơn tiếng nói 15 dB) hoặc một
+tiếng click ở khung cuối, nên mốc trễ hơn lúc người nói dừng thật tới hơn 2 giây. Khi đó câu không ghép được với đoạn
+nào, hoặc ghép được nhưng độ trễ bị đo thiếu.
+Mỗi clip bắt đầu ở ranh giới khung 512 mẫu của session, để VAD trong session thấy đúng các khung như lúc dựng mốc.
+Vài clip quá nhỏ (RMS dưới khoảng −55 dBFS) bị VAD trong session bỏ sót dù chạy riêng thì nhận ra; câu đó hiện là
+"không ghép được" khi đo.
+
+Dùng:  uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "onnxruntime==1.30.0" \
+         python bench/phase0/latency/build_sessions.py [--seconds 180]
 Kết quả: bench/phase0/data/latency/<tên>.wav và <tên>.truth.json, cùng sessions.json (ngôn ngữ đích).
 """
 import argparse
@@ -1342,9 +1900,14 @@ import random
 import wave
 
 import numpy as np
+import onnxruntime as ort
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA = os.path.abspath(os.path.join(HERE, "..", "data"))
+ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+DATA = os.path.join(ROOT, "bench", "phase0", "data")
+VAD_MODEL = os.path.join(ROOT, "models", "silero_vad_v6.2.3.onnx")
+# Khung VAD: 512 mẫu = 32 ms ở 16 kHz, giống crates/pipeline/src/segmenter.rs.
+FRAME = 512
 # Tên session -> (ngôn ngữ của các câu, ngôn ngữ đích).
 SESSIONS = {
     "en": (["en"], "vi"),
@@ -1369,10 +1932,30 @@ def trim(x, frame=320):
     return x[voiced[0] * frame:(voiced[-1] + 1) * frame] if len(voiced) else x[:0]
 
 
+def speech_frames(vad, x):
+    """Chỉ số khung (512 mẫu) đầu và cuối mà Silero VAD cho xác suất ≥ 0,5, hoặc None nếu không có khung nào.
+
+    Ghép 64 mẫu cuối của khung trước làm ngữ cảnh, giống OnnxWrapper của silero-vad và ref_probs.py.
+    """
+    audio = x.astype(np.float32) / 32768.0
+    state = np.zeros((2, 1, 128), dtype=np.float32)
+    context = np.zeros((1, 64), dtype=np.float32)
+    sr = np.array(16000, dtype=np.int64)
+    voiced = []
+    for i in range(len(audio) // FRAME):
+        chunk = audio[i * FRAME:(i + 1) * FRAME][None, :]
+        out, state = vad.run(None, {"input": np.concatenate([context, chunk], axis=1), "state": state, "sr": sr})
+        context = chunk[:, -64:]
+        if float(out.reshape(-1)[0]) >= 0.5:
+            voiced.append(i)
+    return (voiced[0], voiced[-1]) if voiced else None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seconds", type=float, default=180)
     args = ap.parse_args()
+    vad = ort.InferenceSession(VAD_MODEL, providers=["CPUExecutionProvider"])
     clips = [json.loads(line) for line in open(os.path.join(DATA, "asr", "manifest.jsonl"), encoding="utf-8")]
     clips = [c for c in clips if not c["narrowband"]]
     out_dir = os.path.join(DATA, "latency")
@@ -1389,17 +1972,20 @@ def main():
         if len(langs) > 1:  # xen kẽ ngôn ngữ để thử nhận diện ngôn ngữ
             by_lang = {lang: [c for c in pool if c["lang"] == lang] for lang in langs}
             pool = [c for group in zip(*by_lang.values()) for c in group]
-        audio, truth = [np.zeros(16000, dtype=np.int16)], []
-        cursor = 16000
+        audio, truth = [np.zeros(32 * FRAME, dtype=np.int16)], []  # 1,024 giây im lặng đầu session
+        cursor = len(audio[0])
         for c in pool:
             x = trim(read(os.path.join(DATA, "asr", c["path"])))
-            if len(x) == 0:
+            bounds = speech_frames(vad, x) if len(x) else None
+            if bounds is None:
                 continue
-            truth.append({"id": c["id"], "lang": c["lang"], "start_ms": cursor * 1000 // 16000,
-                          "end_ms": (cursor + len(x)) * 1000 // 16000, "text": c["ref"]})
-            pause = np.zeros(int(16000 * rng.uniform(0.4, 1.6)), dtype=np.int16)
-            audio += [x, pause]
-            cursor += len(x) + len(pause)
+            first, last = bounds
+            truth.append({"id": c["id"], "lang": c["lang"], "start_ms": (cursor + first * FRAME) * 1000 // 16000,
+                          "end_ms": (cursor + (last + 1) * FRAME) * 1000 // 16000, "text": c["ref"]})
+            pause = int(16000 * rng.uniform(0.4, 1.6))
+            pause += -(cursor + len(x) + pause) % FRAME  # clip sau cũng bắt đầu ở ranh giới khung
+            audio += [x, np.zeros(pause, dtype=np.int16)]
+            cursor += len(x) + pause
             if cursor / 16000 >= args.seconds:
                 break
         with wave.open(os.path.join(out_dir, f"{name}.wav"), "wb") as w:
@@ -1426,9 +2012,10 @@ if __name__ == "__main__":
 ```python
 """S6: chạy `latency-bench latency` cho mọi session của một máy với một gói model.
 
-Nhãn kết quả: <máy>-<hạng>-<gói>-<session>, ví dụ `m1-16gb-khuyennghi-chuan-en`. `summarize.py` đọc hạng từ nhãn:
+Nhãn kết quả: <máy>-<hạng>-<gói>[-ctx<N>]-<session>, ví dụ `m1-16gb-khuyennghi-chuan-en`. `summarize.py` đọc hạng từ nhãn:
 - `khuyennghi`, `toithieu`: so với A2 (§8);
 - `thu`: chỉ để tham khảo.
+`--min-ctx N` đặt sàn cho audio_ctx (0–1500) và thêm `ctx<N>` vào nhãn, để không ghi đè kết quả không sàn.
 
 Gói:
 - `chuan` = whisper turbo + Hy-MT2 Q8_0;
@@ -1439,9 +2026,15 @@ Dùng (từ gốc repo, sau khi build latency-bench và asr-worker):
   python3 bench/phase0/latency/run_matrix.py --machine m4pro --tier khuyennghi --package chuan
   python bench\\phase0\\latency\\run_matrix.py --machine rtx4050 --tier khuyennghi --package chuan
 Thêm `--use-gpu false` để chạy bằng CPU (khi đó trên Windows dùng `--asr-worker target\\asr-worker-cpu.exe`).
+
+Trước mỗi session, script dừng nếu còn llama-server hoặc asr-worker đang chạy (báo pid): profile release đặt
+`panic = "abort"` nên `Drop` không chạy khi panic, một lượt đo chết đột ngột có thể bỏ lại chúng, và chúng làm lệch
+RAM, VRAM, CPU của lượt sau.
 """
 import argparse
+import csv
 import glob
+import io
 import json
 import os
 import platform
@@ -1457,6 +2050,38 @@ PACKAGES = {
     "lai": ("ggml-large-v3-turbo-q5_0.bin", "Hy-MT2-1.8B-Q4_K_M.gguf"),
 }
 WINDOWS = platform.system() == "Windows"
+# Tiến trình con của latency-bench. Trên Windows tên có đuôi .exe, và asr-worker có hậu tố (-vulkan, -cpu).
+CHILD_PROCESSES = ("llama-server", "asr-worker")
+
+
+def parse_pgrep(out):
+    """Đầu ra của `pgrep -l`: mỗi dòng `<pid> <tên>`."""
+    found = []
+    for line in out.splitlines():
+        parts = line.split(None, 1)
+        if parts and parts[0].isdigit():
+            found.append((int(parts[0]), parts[1] if len(parts) > 1 else "?"))
+    return found
+
+
+def parse_tasklist(out):
+    """Đầu ra của `tasklist /FO CSV /NH`: mỗi dòng `"<tên>","<pid>",...`."""
+    return [(int(r[1]), r[0]) for r in csv.reader(io.StringIO(out))
+            if len(r) > 1 and r[1].isdigit() and r[0].lower().startswith(CHILD_PROCESSES)]
+
+
+def stray_processes():
+    """[(pid, tên)] của llama-server và asr-worker còn chạy. Trước mỗi session không được còn cái nào."""
+    if WINDOWS:
+        out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, encoding="utf-8",
+                             errors="replace", check=True).stdout
+        return parse_tasklist(out)
+    res = subprocess.run(["pgrep", "-l", "-x", "|".join(CHILD_PROCESSES)], capture_output=True, text=True)
+    if res.returncode == 1:  # pgrep trả 1 khi không tiến trình nào khớp
+        return []
+    if res.returncode != 0:
+        raise SystemExit(f"pgrep lỗi (mã {res.returncode}): {res.stderr.strip()}")
+    return parse_pgrep(res.stdout)
 
 
 def find_llama_server(variant):
@@ -1477,17 +2102,32 @@ def main():
     ap.add_argument("--asr-worker", default=os.path.join("target", "asr-worker-vulkan.exe") if WINDOWS
                     else os.path.join("target", "release", "asr-worker"))
     ap.add_argument("--llama-variant", default="win-vulkan-x64" if WINDOWS else "macos-arm64")
-    ap.add_argument("--llama-args", default="", help='ví dụ "--no-repack" khi thiếu RAM lúc chạy CPU (§8)')
+    ap.add_argument("--llama-args", default="",
+                    help='viết liền bằng dấu =, ví dụ --llama-args=--no-repack khi thiếu RAM lúc chạy CPU (§8); '
+                         'argparse không nhận "--llama-args --no-repack"')
+    ap.add_argument("--min-ctx", type=int, default=0,
+                    help="sàn cho audio_ctx, 0–1500 (mặc định 0: không đặt sàn); nhãn thêm ctx<N>")
     args = ap.parse_args()
+    if not 0 <= args.min_ctx <= 1500:
+        ap.error("--min-ctx phải từ 0 đến 1500")
 
     index = json.load(open(os.path.join(DATA, "sessions.json"), encoding="utf-8"))
     names = args.sessions.split(",") if args.sessions else list(index)
     asr_model, mt_model = PACKAGES[args.package]
     bench = os.path.join(ROOT, "target", "release", "latency-bench.exe" if WINDOWS else "latency-bench")
     os.makedirs(RESULTS, exist_ok=True)
+    ctx = f"-ctx{args.min_ctx}" if args.min_ctx else ""
     for name in names:
+        stray = stray_processes()
+        if stray:
+            listing = ", ".join(f"{proc} (pid {pid})" for pid, proc in stray)
+            raise SystemExit(
+                f"dừng trước session {name}: còn tiến trình sót lại: {listing}.\n"
+                "Lượt đo trước có thể đã chết mà không dọn được tiến trình con (profile release đặt panic = abort nên "
+                "Drop không chạy). Chúng chiếm RAM, VRAM và CPU, làm lệch lượt đo này.\n"
+                "Tắt chúng rồi chạy lại: macOS `kill <pid>`, Windows `taskkill /F /PID <pid>`.")
         info = index[name]
-        label = f"{args.machine}-{args.tier}-{args.package}-{name}"
+        label = f"{args.machine}-{args.tier}-{args.package}{ctx}-{name}"
         cmd = [bench, "latency",
                "--session", os.path.join(DATA, f"{name}.wav"),
                "--truth", os.path.join(DATA, f"{name}.truth.json"),
@@ -1502,6 +2142,8 @@ def main():
                "--log-dir", os.path.join(DATA, "logs")]
         if args.llama_args:
             cmd.append(f"--llama-args={args.llama_args}")
+        if args.min_ctx:
+            cmd += ["--min-ctx", str(args.min_ctx)]
         print(f"== {label} ({info['seconds']} giây, {info['utterances']} câu)", flush=True)
         subprocess.run(cmd, check=True)
 
@@ -1515,7 +2157,7 @@ if __name__ == "__main__":
 ```python
 """S6: gộp các file kết quả của `latency-bench latency` thành bảng, và so với A2.
 
-Nhãn (--label) đặt theo mẫu <máy>-<hạng>-<gói>-<session>, với hạng là `khuyennghi` hoặc `toithieu`,
+Nhãn (--label) đặt theo mẫu <máy>-<hạng>-<gói>[-ctx<N>]-<session>, với hạng là `khuyennghi` hoặc `toithieu`,
 ví dụ `m1-16gb-khuyennghi-chuan-en`.
 
 Cột RAM lấy số lớn hơn giữa RSS và `phys_footprint` (chỉ có trên macOS) của từng tiến trình:
@@ -1525,6 +2167,18 @@ VRAM trên Windows xem file vram-*.csv của vram-sample.ps1.
 Cột CPU: tổng CPU trung bình của latency-bench (đóng vai app), asr-worker và llama-server, tính theo phần trăm
 của cả máy. §8 đặt mục tiêu ≤ 30% trên máy khuyến nghị.
 
+Các cột đếm (file kết quả cũ chưa ghi thì hiện —):
+- Ghép được: số câu ghép được với một đoạn, trên số câu thật. Câu không ghép được không có độ trễ.
+- Câu không có bản dịch: trong các câu ghép được, số câu có đoạn bị bỏ hoặc không cần dịch (cùng ngôn ngữ đích).
+- Đoạn bỏ qua: số đoạn theo lý do. `no_speech`, `too_short`, `too_long` (không gửi cho worker) và `empty_translation`
+  là đoạn bị bỏ: không hiện gì nên không có độ trễ và không vào p50, p90. `same_lang` (hiện luôn bản chép lời) và
+  `lang_ngoai_tap` thì có độ trễ.
+- Cụt (length): bản dịch chạm max_tokens (§6.5), tức bị cắt cụt.
+- Lệch mốc dừng: lệch lớn nhất giữa mốc dừng của đoạn ghép được và mốc dừng thật của câu. Cỡ vài trăm ms trở lên thì
+  mốc thật không khớp lúc người nói dừng, và độ trễ của câu đó lệch cùng cỡ (xem build_sessions.py).
+- Phát lại trễ: độ trễ lớn nhất của luồng phát lại so với thời gian thực. Cỡ vài chục ms trở lên thì máy đang bận
+  và độ trễ đo được bị lệch cùng cỡ.
+
 Dùng:  python3 bench/phase0/latency/summarize.py bench/phase0/results/latency/*.json
 """
 import json
@@ -1533,6 +2187,18 @@ import sys
 
 A2 = {"khuyennghi": {"shown_p50_ms": 2000, "shown_p90_ms": 3000, "first_p50_ms": 1000},
       "toithieu": {"shown_p50_ms": 3500}}
+
+
+def count(s, key):
+    return f"{s[key]:.0f}" if key in s else "—"
+
+
+def skipped(s):
+    """Số đoạn bỏ qua theo lý do, chỉ liệt kê lý do có mặt."""
+    reasons = {k[len("skipped_"):]: v for k, v in s.items() if k.startswith("skipped_")}
+    if not reasons:
+        return "—"
+    return ", ".join(f"{r} {v:.0f}" for r, v in sorted(reasons.items()) if v) or "0"
 
 
 def main():
@@ -1547,15 +2213,18 @@ def main():
         cpu_load = sum(p.get("avg_cpu_percent", 0) for p in u.values()) / cores
         rows.append((r["label"], r["machine"].get("cpu", ""), s, u, cpu_load, verdict))
     print("| Nhãn | Máy | p50 | p90 | Chữ đầu p50 | ASR p50 | LID p50 | Dịch p50 | RAM asr / llama (MB) | CPU cả máy "
-          "| Ghép được | A2 |")
-    print("|---|---|---|---|---|---|---|---|---|---|---|---|")
+          "| Ghép được | Câu không có bản dịch | Đoạn bỏ qua | Cụt (length) | Lệch mốc dừng (ms) "
+          "| Phát lại trễ (ms) | A2 |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for label, cpu, s, u, cpu_load, verdict in sorted(rows):
         ram = " / ".join(f"{max(u.get(p, {}).get('peak_rss_mb', 0), u.get(p, {}).get('peak_footprint_mb', 0)):.0f}"
                          for p in ("asr-worker", "llama-server"))
         mark = "—" if verdict is None else ("đạt" if verdict else "**KHÔNG ĐẠT**")
         print(f"| {label} | {cpu} | {s['shown_p50_ms']:.0f} | {s['shown_p90_ms']:.0f} | {s['first_p50_ms']:.0f} | "
               f"{s['asr_p50_ms']:.0f} | {s['lid_p50_ms']:.0f} | {s.get('mt_p50_ms', 0):.0f} | {ram} | {cpu_load:.0f}% | "
-              f"{s['matched']:.0f}/{s['utterances']:.0f} | {mark} |")
+              f"{s['matched']:.0f}/{s['utterances']:.0f} | {count(s, 'no_translation')} | {skipped(s)} | "
+              f"{count(s, 'finish_length')} | {count(s, 'end_offset_max_abs_ms')} | "
+              f"{count(s, 'feed_lag_max_ms')} | {mark} |")
 
 
 if __name__ == "__main__":
@@ -1624,7 +2293,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 6: Dựng session**
 
-Run: `uv run --no-project --python 3.12 --with "numpy==2.5.3" python bench/phase0/latency/build_sessions.py --seconds 180`
+Run: `uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "onnxruntime==1.30.0" python bench/phase0/latency/build_sessions.py --seconds 180`
 Expected:
 - Sáu dòng, mỗi dòng dạng `en {'languages': 'en,zh,ja,ko,vi', 'target': 'vi', 'utterances': <khoảng 15–20>, 'seconds': <khoảng 180>}`, lần lượt cho `en`, `zh`, `ja`, `ko`, `vi`, `mixed`. Session `vi` có `'target': 'en'`.
 - Thư mục `bench/phase0/data/latency/` có `<tên>.wav`, `<tên>.truth.json` và `sessions.json`.
@@ -1635,9 +2304,19 @@ Run: `python3 bench/phase0/latency/run_matrix.py --machine m4pro --tier thu --pa
 Expected:
 - `asr: metal (1.8.3), chế độ giải mã shared, làm nóng … ms`.
 - Dòng kết quả dạng `m4pro-thu-nhe-ko: p50 = … ms, p90 = … ms, chữ đầu p50 = … ms, ghép được N/N câu`, với N là số câu trong `sessions.json`.
-- Lúc lập kế hoạch, một session tiếng Hàn 50 giây cho p50 672 ms, p90 831 ms và chữ đầu p50 494 ms.
+- Dòng phụ ghi:
+  - số câu đo được;
+  - số câu không ghép được;
+  - số câu không có bản dịch;
+  - số đoạn bị bỏ, theo lý do;
+  - số bản dịch bị cụt (`length`);
+  - độ lệch mốc dừng lớn nhất.
+- Lúc thực thi (máy bận, chỉ để tham khảo), session tiếng Hàn cho:
+  - p50 666 ms, p90 892 ms, chữ đầu p50 508 ms;
+  - ghép được 15/15 câu, mốc dừng lệch tối đa 64 ms;
+  - ASR p50 112 ms, LID p50 3 ms, dịch p50 205 ms.
 
-Nếu "ghép được" thấp hơn nhiều so với số câu, xem trường `segments` trong file kết quả: có thể VAD gộp hai câu có khoảng lặng ngắn thành một đoạn.
+Nếu "ghép được" thấp hơn nhiều so với số câu, xem `end_offset_ms` và trường `segments` trong file kết quả: mốc dừng có thể sai, hoặc VAD gộp hai câu có khoảng lặng ngắn thành một đoạn.
 
 Xóa file thử: `rm bench/phase0/results/latency/m4pro-thu-nhe-ko.json`
 
