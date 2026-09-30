@@ -1,20 +1,26 @@
 """Dựng bộ clip cho A4 từ FLEURS (CC BY 4.0), tập dev: mỗi ngôn ngữ ít nhất 15 phút.
 
 - Mỗi câu của FLEURS có nhiều người đọc; lấy một bản ghi cho mỗi câu, theo thứ tự trong file TSV.
-- Chọn ứng viên theo cột n_samples của TSV, bỏ clip dài hơn 30 giây (cửa sổ tối đa của Whisper).
-- Sau khi có mảng mẫu 16 kHz thì kiểm lại độ dài thật: clip có số mẫu ngoài [1600, 480000] (0,1 tới 30 giây, khoảng
-  `asr-worker` nhận; ngoài khoảng đó `transcribe` trả lỗi và làm hỏng cả lượt `asr-eval`) bị bỏ.
-  Số clip bị bỏ được in ra.
-- Cứ 4 clip lấy 1 clip làm thêm bản băng hẹp: hạ xuống 8 kHz rồi nâng lại 16 kHz,
-  mô phỏng tai nghe Bluetooth ở chế độ đàm thoại (HFP).
+- Cắt lặng đầu và cuối mỗi clip (`trim_silence`: khung 20 ms, ngưỡng -35 dB so với khung to nhất, giữ 200 ms mỗi bên).
+  Đoạn do VAD cắt (§6.3) chỉ có 200 ms đệm, còn clip FLEURS có lặng đầu tới vài giây. Giữ nguyên thì chế độ A, vốn chỉ
+  nhận diện ngôn ngữ trên 3 giây đầu của đoạn, nhận sai ngôn ngữ nhiều hơn trong app thật.
+- Độ dài tính sau khi cắt: clip có số mẫu 16 kHz ngoài [1600, 480000] (0,1 tới 30 giây, khoảng `asr-worker` nhận;
+  ngoài khoảng đó `transcribe` trả lỗi và làm hỏng cả lượt `asr-eval`) bị bỏ, số clip bị bỏ được in ra. Chọn clip theo
+  thứ tự TSV cho tới khi tổng số mẫu đã giữ đủ 15 phút; cột n_samples của TSV không dùng.
+- Cứ 4 clip lấy 1 clip làm thêm bản băng hẹp, mô phỏng tai nghe Bluetooth ở chế độ đàm thoại (HFP): dải 300-3400 Hz
+  ở 8 kHz, lượng tử µ-law 8-bit, rồi nâng lại 16 kHz. Chỉ là mô phỏng: A4 vẫn cần clip thu thật qua tai nghe.
+- Mỗi ngôn ngữ đặt các dòng nb sau mọi clip wb trong manifest, vì worker giữ ngôn ngữ của đoạn trước khi không chắc
+  (asr-worker/src/lid.rs), nên bản nb không được đứng ngay sau bản wb của chính nó.
 - Clip tự thu (nếu có) khai báo trong data/asr/extra_clips.jsonl, cùng định dạng với manifest. Đường dẫn tính từ
   data/asr/. Mỗi file được đọc để đếm mẫu: không phải WAV 16 kHz mono 16-bit (như `asr-eval` đòi) hoặc có độ dài
-  ngoài khoảng trên thì bị bỏ.
+  ngoài khoảng trên thì bị bỏ. Không cắt lặng clip tự thu.
 - FLEURS ghim theo commit, kích thước và SHA-256 của từng file; tải qua hàm của fetch.py (tải tiếp, thử lại, kiểm băm).
 
 Dùng:  uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "scipy==1.18.1" \
          python bench/phase0/asr/build_clips.py [--langs en_us,vi_vn]
-Kết quả: bench/phase0/data/asr/manifest.jsonl và các file WAV 16 kHz mono trong data/asr/clips/.
+Kết quả: các file WAV 16 kHz mono trong data/asr/clips/, và manifest:
+- chạy đủ năm ngôn ngữ: bench/phase0/data/asr/manifest.jsonl;
+- chạy một phần (`--langs`): bench/phase0/data/asr/manifest-<langs>.jsonl, không ghi đè manifest.jsonl.
 """
 import argparse
 import csv
@@ -27,7 +33,7 @@ import wave
 
 import numpy as np
 from scipy.io import wavfile
-from scipy.signal import resample_poly
+from scipy.signal import butter, resample_poly, sosfiltfilt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -51,10 +57,16 @@ PINNED = {
 }
 WHISPER_CODE = {"en_us": "en", "vi_vn": "vi", "cmn_hans_cn": "zh", "ja_jp": "ja", "ko_kr": "ko"}
 MIN_SECONDS = 15 * 60
-MAX_CLIP_SECONDS = 30
-# Khoảng số mẫu 16 kHz mà asr-worker nhận (asr-protocol): 0,1 tới 30 giây. Ngoài khoảng này `transcribe` trả Error.
+# Khoảng số mẫu 16 kHz mà asr-worker nhận: khớp MIN_PCM_SAMPLES và MAX_PCM_SAMPLES trong crates/asr-protocol/src/lib.rs
+# (0,1 tới 30 giây). Ngoài khoảng này `transcribe` trả Error.
 MIN_CLIP_SAMPLES = 1600
-MAX_CLIP_SAMPLES = MAX_CLIP_SECONDS * 16000
+MAX_CLIP_SAMPLES = 480000
+TRIM_FRAME = 320  # 20 ms
+TRIM_FLOOR_DB = -35.0  # khung thấp hơn mức này so với khung to nhất là lặng
+TRIM_PAD = 3200  # 200 ms, như phần đệm của đoạn do VAD cắt
+MU = 255.0  # µ-law
+# Bộ lọc dải thoại 300-3400 Hz của HFP, ở tần số lấy mẫu 8 kHz.
+NB_SOS = butter(4, [300, 3400], btype="band", fs=8000, output="sos")
 
 
 def fetch(fleurs, rel, pin):
@@ -87,9 +99,26 @@ def write_wav(path, x):
         w.writeframes(x.astype(np.int16).tobytes())
 
 
+def trim_silence(x):
+    """Cắt lặng đầu và cuối: bỏ các khung 20 ms thấp hơn -35 dB so với khung to nhất, giữ 200 ms mỗi bên."""
+    n = len(x) // TRIM_FRAME
+    if n == 0:
+        return x
+    e = np.sqrt((x[: n * TRIM_FRAME].astype(np.float64).reshape(n, TRIM_FRAME) ** 2).mean(axis=1)) + 1e-9
+    active = np.nonzero(20 * np.log10(e / e.max()) > TRIM_FLOOR_DB)[0]
+    if active.size == 0:
+        return x
+    return x[max(0, active[0] * TRIM_FRAME - TRIM_PAD): min(len(x), (active[-1] + 1) * TRIM_FRAME + TRIM_PAD)]
+
+
 def narrowband(x):
-    y = resample_poly(resample_poly(x.astype(np.float32), 1, 2), 2, 1)
-    return y.clip(-32768, 32767).astype(np.int16)
+    """Mô phỏng HFP: 8 kHz, dải thoại 300-3400 Hz, lượng tử µ-law 8-bit, rồi nâng lại 16 kHz. Dài bằng bản gốc."""
+    y = resample_poly(x.astype(np.float64), 1, 2)
+    y = sosfiltfilt(NB_SOS, y)
+    u = np.clip(y / 32768.0, -1.0, 1.0)
+    c = np.round(np.sign(u) * np.log1p(MU * np.abs(u)) / np.log1p(MU) * 127) / 127
+    y = np.sign(c) * np.expm1(np.abs(c) * np.log1p(MU)) / MU * 32768.0
+    return resample_poly(y, 2, 1)[: len(x)].clip(-32768, 32767).astype(np.int16)
 
 
 def wav_samples(path):
@@ -111,56 +140,64 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--langs", default=",".join(WHISPER_CODE))
     args = ap.parse_args()
+    fleurs_langs = args.langs.split(",")
+    partial = set(fleurs_langs) != set(WHISPER_CODE)
     rows_out = []
-    for fleurs in args.langs.split(","):
+    for fleurs in fleurs_langs:
         lang = WHISPER_CODE[fleurs]
         tsv_pin, tar_pin = PINNED[fleurs]
         tsv = fetch(fleurs, "dev.tsv", tsv_pin)
         tar_path = fetch(fleurs, "audio/dev.tar.gz", tar_pin)
-        wanted, seen_sentences, total = {}, set(), 0.0
-        with open(tsv, encoding="utf-8") as f:
-            for r in csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
-                sentence_id, file_name, raw_text, n_samples = r[0], r[1], r[2], int(r[5])
-                seconds = n_samples / 16000
-                if sentence_id in seen_sentences or seconds > MAX_CLIP_SECONDS:
-                    continue
-                seen_sentences.add(sentence_id)
-                wanted[file_name] = raw_text
-                total += seconds
-                if total >= MIN_SECONDS:
-                    break
-        kept, kept_samples, bad_length = 0, 0, 0
-        with tarfile.open(tar_path) as tar:
+        seen_sentences, nb_rows = set(), []
+        kept, kept_samples, trimmed_samples, bad_length = 0, 0, 0, 0
+        with tarfile.open(tar_path) as tar, open(tsv, encoding="utf-8") as f:
             members = {os.path.basename(m.name): m for m in tar.getmembers() if m.isfile()}
-            for file_name, text in wanted.items():
+            for r in csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
+                sentence_id, file_name, text = r[0], r[1], r[2]
+                if sentence_id in seen_sentences:
+                    continue
                 x = read_pcm16(tar.extractfile(members[file_name]).read())
-                if not MIN_CLIP_SAMPLES <= len(x) <= MAX_CLIP_SAMPLES:  # độ dài thật, không tin cột n_samples của TSV
-                    print(f"  bỏ {file_name}: {len(x)} mẫu, ngoài [{MIN_CLIP_SAMPLES}, {MAX_CLIP_SAMPLES}]")
+                y = trim_silence(x)  # độ dài tính sau khi cắt, không tin cột n_samples của TSV
+                if not MIN_CLIP_SAMPLES <= len(y) <= MAX_CLIP_SAMPLES:
+                    print(f"  bỏ {file_name}: {len(y)} mẫu sau khi cắt lặng (gốc {len(x)}), ngoài "
+                          f"[{MIN_CLIP_SAMPLES}, {MAX_CLIP_SAMPLES}]")
                     bad_length += 1
                     continue
+                seen_sentences.add(sentence_id)
                 clip_id = f"{lang}-{os.path.splitext(file_name)[0]}"
                 rel = os.path.join("clips", lang, clip_id + ".wav")
-                write_wav(os.path.join(DATA, rel), x)
-                base = {"lang": lang, "ref": text, "duration_s": round(len(x) / 16000, 2), "source": "fleurs"}
+                write_wav(os.path.join(DATA, rel), y)
+                base = {"lang": lang, "ref": text, "duration_s": round(len(y) / 16000, 2), "source": "fleurs"}
                 rows_out.append({"id": clip_id, "path": rel, "narrowband": False, **base})
                 if kept % 4 == 0:
                     rel_nb = os.path.join("clips", lang, clip_id + "_nb.wav")
-                    write_wav(os.path.join(DATA, rel_nb), narrowband(x))
-                    rows_out.append({"id": clip_id + "_nb", "path": rel_nb, "narrowband": True, **base})
+                    write_wav(os.path.join(DATA, rel_nb), narrowband(y))
+                    nb_rows.append({"id": clip_id + "_nb", "path": rel_nb, "narrowband": True, **base})
                 kept += 1
-                kept_samples += len(x)
-        print(f"{fleurs}: {kept} clip, {kept_samples / 16000 / 60:.1f} phút, bỏ {bad_length} clip vì độ dài")
+                kept_samples += len(y)
+                trimmed_samples += len(x) - len(y)
+                if kept_samples >= MIN_SECONDS * 16000:
+                    break
+        # worker giữ ngôn ngữ của đoạn trước khi không chắc (asr-worker/src/lid.rs): đặt nb sau mọi clip wb,
+        # để bản nb không thừa hưởng kết quả nhận diện của chính bản wb.
+        rows_out.extend(nb_rows)
+        print(f"{fleurs}: {kept} clip wb + {len(nb_rows)} nb, {kept_samples / 16000 / 60:.1f} phút, "
+              f"cắt {trimmed_samples / 16000:.1f} giây lặng, bỏ {bad_length} clip vì độ dài")
         if kept_samples < MIN_SECONDS * 16000:
             print(f"CẢNH BÁO: {fleurs} chỉ còn {kept_samples / 16000 / 60:.1f} phút, thiếu so với "
                   f"{MIN_SECONDS // 60} phút của A4", file=sys.stderr)
     extra = os.path.join(DATA, "extra_clips.jsonl")
     if os.path.exists(extra):
-        kept, bad_length, bad_format = 0, 0, 0
+        run_langs = {WHISPER_CODE[k] for k in fleurs_langs}
+        kept, bad_length, bad_format, other_lang = 0, 0, 0, 0
         with open(extra, encoding="utf-8") as f:
             for line in f:
                 if not line.strip():
                     continue
                 row = json.loads(line)
+                if partial and row.get("lang") not in run_langs:  # manifest chạy một phần chỉ có ngôn ngữ của lượt này
+                    other_lang += 1
+                    continue
                 try:
                     if "path" not in row:
                         raise ValueError("thiếu trường path")
@@ -176,11 +213,14 @@ def main():
                     continue
                 rows_out.append(row)
                 kept += 1
-        print(f"clip tự thu: {kept} clip, bỏ {bad_length} clip vì độ dài, bỏ {bad_format} clip vì sai định dạng")
-    with open(os.path.join(DATA, "manifest.jsonl"), "w", encoding="utf-8") as f:
+        print(f"clip tự thu: {kept} clip, bỏ {bad_length} clip vì độ dài, bỏ {bad_format} clip vì sai định dạng"
+              + (f", bỏ qua {other_lang} clip của ngôn ngữ ngoài lượt này" if other_lang else ""))
+    name = "manifest-" + "-".join(fleurs_langs) + ".jsonl" if partial else "manifest.jsonl"
+    manifest = os.path.join(DATA, name)
+    with open(manifest, "w", encoding="utf-8") as f:
         for r in rows_out:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    print("manifest:", len(rows_out), "dòng ->", os.path.join(DATA, "manifest.jsonl"))
+    print("manifest:", len(rows_out), "dòng ->", manifest)
 
 
 if __name__ == "__main__":
