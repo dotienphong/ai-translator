@@ -1,9 +1,12 @@
 """S6: chạy `latency-bench latency` cho mọi session của một máy với một gói model.
 
-Nhãn kết quả: <máy>-<hạng>-<gói>[-ctx<N>]-<session>, ví dụ `m1-16gb-khuyennghi-chuan-en`. `summarize.py` đọc hạng từ nhãn:
+Nhãn kết quả: <máy>-<hạng>-<gói>[-ctx<N>][-cpu][-<llama-args>][-nomerge]-<session>, ví dụ `m1-16gb-khuyennghi-chuan-en`.
+`summarize.py` đọc hạng từ nhãn:
 - `khuyennghi`, `toithieu`: so với A2 (§8);
 - `thu`: chỉ để tham khảo.
-`--min-ctx N` đặt sàn cho audio_ctx (0–1500) và thêm `ctx<N>` vào nhãn, để không ghi đè kết quả không sàn.
+Mỗi tuỳ chọn đổi kết quả đều vào nhãn, để lượt chạy sau không ghi đè lượt trước: `--min-ctx N` (sàn cho audio_ctx, 0–1500) thêm
+`ctx<N>`, `--use-gpu false` thêm `cpu`, `--llama-args` thêm chính các tham số đó, `--merge false` (tắt ghép câu §6.3) thêm
+`nomerge`. Ghi đè file kết quả vẫn được, nhưng có cảnh báo trước khi chạy.
 
 Gói:
 - `chuan` = whisper turbo + Hy-MT2 Q8_0;
@@ -17,7 +20,7 @@ Thêm `--use-gpu false` để chạy bằng CPU (khi đó trên Windows dùng `-
 
 Trước mỗi session, script dừng nếu còn llama-server hoặc asr-worker đang chạy (báo pid): profile release đặt
 `panic = "abort"` nên `Drop` không chạy khi panic, một lượt đo chết đột ngột có thể bỏ lại chúng, và chúng làm lệch
-RAM, VRAM, CPU của lượt sau.
+RAM, VRAM, CPU của lượt sau. Lượt đo lỗi thì script kiểm lại ngay và báo pid còn sót.
 """
 import argparse
 import csv
@@ -72,6 +75,15 @@ def stray_processes():
     return parse_pgrep(res.stdout)
 
 
+def describe(stray):
+    return ", ".join(f"{proc} (pid {pid})" for pid, proc in stray)
+
+
+def slug(text):
+    """Chuỗi tham số thành đoạn nhãn: chữ thường, chữ số và dấu gạch ngang, ví dụ `--no-repack -t 4` thành `no-repack-t-4`."""
+    return "-".join("".join(ch if ch.isalnum() else " " for ch in text.lower()).split())
+
+
 def find_llama_server(variant):
     exe = "llama-server.exe" if WINDOWS else "llama-server"
     hits = glob.glob(os.path.join(ROOT, "tools", "llama-b11146", variant, "**", exe), recursive=True)
@@ -95,27 +107,41 @@ def main():
                          'argparse không nhận "--llama-args --no-repack"')
     ap.add_argument("--min-ctx", type=int, default=0,
                     help="sàn cho audio_ctx, 0–1500 (mặc định 0: không đặt sàn); nhãn thêm ctx<N>")
+    ap.add_argument("--merge", default="true", choices=["true", "false"],
+                    help="mô phỏng ghép câu §6.3 (mặc định bật); false thì dịch từng đoạn riêng, nhãn thêm nomerge")
     args = ap.parse_args()
     if not 0 <= args.min_ctx <= 1500:
         ap.error("--min-ctx phải từ 0 đến 1500")
 
-    index = json.load(open(os.path.join(DATA, "sessions.json"), encoding="utf-8"))
-    names = args.sessions.split(",") if args.sessions else list(index)
+    index_path = os.path.join(DATA, "sessions.json")
+    if not os.path.exists(index_path):
+        raise SystemExit(f"không thấy {index_path}; chạy bench/phase0/latency/build_sessions.py trước")
+    index = json.load(open(index_path, encoding="utf-8"))
+    names = [n for n in (x.strip() for x in args.sessions.split(",")) if n] if args.sessions else list(index)
+    unknown = [n for n in names if n not in index]
+    if unknown:
+        ap.error(f"không có session {', '.join(unknown)}; các session đã dựng: {', '.join(index)}")
     asr_model, mt_model = PACKAGES[args.package]
     bench = os.path.join(ROOT, "target", "release", "latency-bench.exe" if WINDOWS else "latency-bench")
     os.makedirs(RESULTS, exist_ok=True)
-    ctx = f"-ctx{args.min_ctx}" if args.min_ctx else ""
+    suffix = "".join([f"-ctx{args.min_ctx}" if args.min_ctx else "",
+                      "-cpu" if args.use_gpu == "false" else "",
+                      f"-{slug(args.llama_args)}" if slug(args.llama_args) else "",
+                      "-nomerge" if args.merge == "false" else ""])
     for name in names:
         stray = stray_processes()
         if stray:
-            listing = ", ".join(f"{proc} (pid {pid})" for pid, proc in stray)
+            listing = describe(stray)
             raise SystemExit(
                 f"dừng trước session {name}: còn tiến trình sót lại: {listing}.\n"
                 "Lượt đo trước có thể đã chết mà không dọn được tiến trình con (profile release đặt panic = abort nên "
                 "Drop không chạy). Chúng chiếm RAM, VRAM và CPU, làm lệch lượt đo này.\n"
                 "Tắt chúng rồi chạy lại: macOS `kill <pid>`, Windows `taskkill /F /PID <pid>`.")
         info = index[name]
-        label = f"{args.machine}-{args.tier}-{args.package}{ctx}-{name}"
+        label = f"{args.machine}-{args.tier}-{args.package}{suffix}-{name}"
+        result = os.path.join(RESULTS, f"{label}.json")
+        if os.path.exists(result):
+            print(f"CẢNH BÁO: {result} đã có và sẽ bị ghi đè", flush=True)
         cmd = [bench, "latency",
                "--session", os.path.join(DATA, f"{name}.wav"),
                "--truth", os.path.join(DATA, f"{name}.truth.json"),
@@ -126,14 +152,21 @@ def main():
                "--vad-model", os.path.join(ROOT, "models", "silero_vad_v6.2.3.onnx"),
                "--languages", info["languages"], "--target", info["target"],
                "--use-gpu", args.use_gpu, "--label", label,
-               "--out", os.path.join(RESULTS, f"{label}.json"),
+               "--out", result,
                "--log-dir", os.path.join(DATA, "logs")]
         if args.llama_args:
             cmd.append(f"--llama-args={args.llama_args}")
         if args.min_ctx:
             cmd += ["--min-ctx", str(args.min_ctx)]
+        if args.merge == "false":
+            cmd += ["--merge", "false"]
         print(f"== {label} ({info['seconds']} giây, {info['utterances']} câu)", flush=True)
-        subprocess.run(cmd, check=True)
+        code = subprocess.run(cmd).returncode
+        if code != 0:
+            # Lượt đo chết đột ngột có thể bỏ lại tiến trình con (panic = abort): kiểm ngay, đừng để lượt sau lệch RAM.
+            stray = stray_processes()
+            left = f" Còn tiến trình sót lại: {describe(stray)}; tắt chúng trước khi chạy tiếp." if stray else ""
+            raise SystemExit(f"{label}: latency-bench thoát với mã {code}.{left}")
 
 
 if __name__ == "__main__":
