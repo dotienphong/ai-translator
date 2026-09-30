@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { StrictMode, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 // Cửa sổ điều khiển cho spike S5: bật phụ đề mẫu, khóa click xuyên, đổi activation policy.
@@ -7,6 +8,14 @@ function App() {
   const [ticker, setTicker] = useState(false);
   const [locked, setLocked] = useState(false);
   const [accessory, setAccessory] = useState(false);
+
+  // Phím tắt Ctrl+Alt+L cũng đổi trạng thái khóa: nghe lại để nút không bị lệch.
+  useEffect(() => {
+    const off = listen<boolean>("overlay://locked", (e) => setLocked(e.payload));
+    return () => {
+      off.then((f) => f());
+    };
+  }, []);
 
   return (
     <main style={{ fontFamily: "system-ui", padding: 16, lineHeight: 1.8 }}>

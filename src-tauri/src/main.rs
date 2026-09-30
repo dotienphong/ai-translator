@@ -78,8 +78,18 @@ fn create_overlay(app: &AppHandle) -> tauri::Result<()> {
         let panel = PanelBuilder::<_, OverlayPanel>::new(app, "overlay")
             .url(WebviewUrl::App("overlay.html".into()))
             .size(tauri::Size::Logical(tauri::LogicalSize::new(900.0, 160.0)))
+            // Tạo sẵn cửa sổ gốc không viền (Borderless|Resizable), WKWebView trong suốt,
+            // không nhận key lúc tạo, chưa hiện; click đầu tiên vào panel không-key vẫn tới webview.
+            .with_window(|w| {
+                w.decorations(false)
+                    .transparent(true)
+                    .focused(false)
+                    .visible(false)
+                    .accept_first_mouse(true)
+            })
             .level(PanelLevel::Status)
-            .style_mask(StyleMask::empty().nonactivating_panel().borderless().resizable())
+            // Chỉ OR thêm NonactivatingPanel. `StyleMask::borderless()` GÁN mask = 0 nên không được gọi sau.
+            .add_style_mask(StyleMask::empty().nonactivating_panel())
             .collection_behavior(
                 CollectionBehavior::new()
                     .can_join_all_spaces()
@@ -104,6 +114,7 @@ fn create_overlay(app: &AppHandle) -> tauri::Result<()> {
             .skip_taskbar(true)
             .shadow(false)
             .focused(false)
+            .focusable(false) // WS_EX_NOACTIVATE: click/kéo không kích hoạt thanh phụ đề
             .build()?;
     }
     Ok(())

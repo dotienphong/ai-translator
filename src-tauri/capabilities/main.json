@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Cửa sổ chính: chỉ các quyền mặc định của Tauri (spec §10.2).",
+  "description": "Cửa sổ chính: chỉ ba lệnh của spike và nghe sự kiện khóa (spec §10.2).",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["allow-toggle-ticker", "allow-set-locked", "allow-set-accessory", "core:event:allow-listen", "core:event:allow-unlisten"]
 }

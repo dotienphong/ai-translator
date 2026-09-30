@@ -1,8 +1,9 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "src-tauri"]
-# `cargo build` và `cargo test` không kèm `-p` chỉ chạy các crate trong crates/. App Tauri build qua `pnpm tauri`,
-# vì nó cần thư mục dist/ của frontend.
+# `cargo build` và `cargo test` không kèm `-p` chỉ chạy các crate trong crates/. App Tauri chạy bằng `pnpm tauri dev`
+# (binary từ `cargo build` là bản dev: không nhúng `dist/`, mà mở http://localhost:1420 do Vite phục vụ). Bản nhúng
+# frontend thì build bằng `pnpm tauri build`, lệnh này tự chạy `pnpm build` trước.
 default-members = ["crates/*"]
 
 [workspace.package]

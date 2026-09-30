@@ -11,7 +11,12 @@ function Overlay() {
 
   useEffect(() => {
     const offSubtitle = listen<Subtitle>("subtitle://upsert", (e) =>
-      setLines((prev) => [...prev.filter((l) => l.id !== e.payload.id), e.payload].slice(-3)),
+      setLines((prev) => {
+        // Cập nhật tại chỗ (phụ đề tạm được thay), giữ thứ tự; dòng mới thì thêm vào cuối.
+        const i = prev.findIndex((l) => l.id === e.payload.id);
+        if (i >= 0) return prev.map((l, j) => (j === i ? e.payload : l));
+        return [...prev, e.payload].slice(-3);
+      }),
     );
     const offLocked = listen<boolean>("overlay://locked", (e) => setLocked(e.payload));
     return () => {
@@ -22,9 +27,13 @@ function Overlay() {
 
   return (
     <div
-      data-tauri-drag-region={locked ? undefined : true}
+      data-tauri-drag-region={locked ? undefined : "deep"}
       style={{
         height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        overflow: "hidden",
         boxSizing: "border-box",
         padding: "8px 16px",
         borderRadius: 12,
