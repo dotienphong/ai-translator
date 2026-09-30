@@ -222,7 +222,14 @@ Mỗi mục là một thay đổi riêng trong spec:
   - MVP, trước khi gửi bản vá `set_audio_ctx` lên upstream: hàm C trả `-1` khi ngoài `[0, n_audio_ctx]`, bản Rust trả `Result`.
   - MVP: log của `asr-worker` mở ở chế độ append để giữ log qua các lần khởi động lại, nên cần xoay vòng hoặc giới hạn kích thước.
   - MVP: đưa `prev_lang` vào `TranscribeRequest`, để worker không giữ trạng thái nhận diện ngôn ngữ. Kết quả khi đó không phụ thuộc thứ tự đoạn, và app không mất ngôn ngữ trước khi worker khởi động lại.
-  - Công thức `audio_ctx` chốt theo Task 11 của kế hoạch 03. Review thấy turbo lặp câu ở các đoạn dài 1,7–4,4 giây, ngay cả khi tắt flash attention; từ 5,7 giây trở lên thì ổn, khoảng giữa chưa đo.
+  - Kết quả Task 10–11 của kế hoạch 03 (`results/s3_ab.md`, `results/s7_asr.md`), chờ chủ dự án duyệt:
+    - **Chế độ B làm mặc định:** B tốt hơn A ở cả 10 ô (2 model × 5 ngôn ngữ). Chênh lệch đến từ việc A nhận sai ngôn ngữ, vì chỉ nhìn 3 giây đầu, và từ vòng lặp.
+    - **Giả định 8 không đạt trên FLEURS:** 5/10 ô tăng quá 10%, chủ yếu do chép thừa.
+      - Đề xuất thêm mức sàn: `audio_ctx = max(công thức, 512)`. Với turbo, sàn giảm tổng lỗi 6,4% và tốn thêm khoảng 88 ms cho đoạn ngắn hơn 5 giây.
+      - Ba ô vẫn vượt sau khi có sàn đều nằm ở clip dài hơn 9 giây. Đoạn của app dài tối đa 8 giây.
+    - **Lặp đôi:** model có khi chép cả câu hai lần; `cut_loop` (cần 3 bản) không bắt được. MVP: bắt mẫu dài lặp 2 lần (phải đo tỉ lệ bắt nhầm), hoặc lọc lặp ở tầng app.
+    - **`no_speech_prob` với turbo** ở chế độ B luôn khoảng 1e-11 trên clip có tiếng nói, nên bộ lọc §6.4 không bao giờ kích hoạt. MVP: thử trên im lặng, nhiễu và nhạc trước khi dựa vào nó.
+    - **Gói Nhẹ (small)** kém rõ ở vi (WER gấp 2,2 lần turbo), ja (CER gấp 2,9 lần) và zh (gấp 1,8 lần). Cần ghi chú chất lượng khi chọn gói (§8).
 - §6.5:
   - Ngưỡng tỉ lệ token theo từng cặp ngôn ngữ, lấy từ `results/s7_mt_decisions.md`. Quyết định cờ ngữ cảnh.
   - Truyền API key cho `llama-server` qua biến môi trường `LLAMA_API_KEY` thay vì `--api-key`, vì tham số dòng lệnh hiện ra trong `ps` (b11146 hỗ trợ cả hai).
