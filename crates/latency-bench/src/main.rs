@@ -1,6 +1,7 @@
 //! Công cụ đo cho Giai đoạn 0. Bước này mới có `asr-eval` (A4); `latency` (S6) thêm ở kế hoạch 06.
 
 mod asr_eval;
+mod stats;
 
 use clap::Parser;
 
