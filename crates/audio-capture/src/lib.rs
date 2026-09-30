@@ -2,6 +2,7 @@
 
 pub mod gapfill;
 pub mod mix;
+pub mod resample;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
