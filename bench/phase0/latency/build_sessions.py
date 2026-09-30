@@ -17,7 +17,8 @@ một tiếng click ở khung cuối, nên mốc trễ hơn lúc người nói d
   giới khung 512 mẫu của session, để VAD trong session thấy đúng các khung như lúc dựng mốc.
 - Mốc dừng: VAD trễ hơn lúc hết tiếng thật khoảng 40–100 ms (đuôi nhớ của mô hình). Với clip có SNR ≥ 30 dB, `end_ms` được
   tinh chỉnh về khung 10 ms cuối cùng còn trên ngưỡng (mức tiếng nói − 30 dB) trong 320 ms cuối của vùng VAD; `vad_end_ms` giữ
-  mốc VAD để tham khảo. Clip SNR thấp hơn thì `end_ms` = `vad_end_ms`, nên độ trễ của chúng bị đo thiếu cỡ 40–100 ms.
+  mốc VAD để tham khảo. Clip SNR thấp hơn thì `end_ms` = `vad_end_ms`, nên độ trễ của chúng bị đo thiếu cỡ 40–100 ms. Năng
+  lượng tính trên cả dải từ 200 Hz tới 8 kHz: âm xát /s/, /f/ cuối câu (ví dụ "-ます", "-です", "-s") nằm chủ yếu ở 4–8 kHz.
 - Còn vài clip quá nhỏ hoặc quá nhiễu mà VAD trong session vẫn bỏ sót: câu đó hiện là "không ghép được" khi đo.
 
 Dùng:  uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "onnxruntime==1.30.0" \
@@ -44,7 +45,8 @@ FRAME = 512
 TARGET_DBFS = -26.0
 PEAK_MAX = 0.89  # khoảng −1 dBFS, để khuếch đại không làm tràn int16
 HEAD_FRAMES, TAIL_FRAMES = 3, 6
-# Tinh chỉnh mốc dừng: cửa sổ Hann 25 ms, bước 10 ms, dải 200–4000 Hz (bỏ ù tần thấp).
+# Tinh chỉnh mốc dừng: cửa sổ Hann 25 ms, bước 10 ms, dải từ 200 Hz tới hết (8 kHz): bỏ ù tần thấp nhưng giữ năng lượng
+# 4–8 kHz của âm xát /s/, /f/ ở cuối câu (dải 200–4000 Hz làm mốc dời sớm 100–250 ms trên các câu kết thúc bằng âm xát).
 WIN, HOP = 400, 160
 SNR_MIN_DB = 30  # chỉ tinh chỉnh khi tiếng nói cao hơn nền nhiễu từng này dB
 REFINE_REL_DB = 30  # ngưỡng = mức tiếng nói − 30 dB
@@ -96,14 +98,14 @@ def speech_frames(vad, x):
 
 
 def band_db(x):
-    """Năng lượng (dB) của từng khung 10 ms (cửa sổ 25 ms) trong dải 200–4000 Hz; `x` là float trong [−1, 1]."""
+    """Năng lượng (dB) của từng khung 10 ms (cửa sổ 25 ms) trong dải từ 200 Hz tới hết (8 kHz); `x` là float trong [−1, 1]."""
     n = (len(x) - WIN) // HOP + 1
     if n <= 0:
         return np.zeros(0)
     idx = np.arange(WIN)[None, :] + HOP * np.arange(n)[:, None]
     spec = np.abs(np.fft.rfft(x[idx] * np.hanning(WIN)[None, :], axis=1)) ** 2
     freq = np.fft.rfftfreq(WIN, 1 / SR)
-    return 10 * np.log10(spec[:, (freq >= 200) & (freq <= 4000)].sum(axis=1) + 1e-12)
+    return 10 * np.log10(spec[:, freq >= 200].sum(axis=1) + 1e-12)
 
 
 def refine_end(x, bounds):

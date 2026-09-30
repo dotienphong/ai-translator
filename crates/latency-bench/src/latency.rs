@@ -13,7 +13,7 @@ use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES, Segment, Segmenter, Segmenter
 use pipeline::vad::SileroVad;
 use serde::Serialize;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
@@ -26,7 +26,7 @@ const NO_SPEECH_MAX: f32 = 0.6;
 const MATCH_WINDOW_MS: u64 = 1_000;
 /// Khung âm thanh tới trễ hơn thời gian thực quá ngưỡng này (ms) thì kết quả lệch cùng cỡ: báo cho người chạy.
 const FEED_LAG_WARN_MS: f64 = 100.0;
-/// Đoạn có mốc dừng sớm hơn mốc thật quá ngưỡng này (ms) thì câu bị gắn cờ `early_stop`: độ trễ bị đo thiếu.
+/// Đoạn có mốc dừng sớm hơn mốc VAD của câu quá ngưỡng này (ms) thì câu bị gắn cờ `early_stop`.
 const EARLY_STOP_MS: i64 = 200;
 /// Dấu câu kết thúc của §6.3. Đúng chữ của spec: đuôi như `."` hay `」` chưa được xử lý riêng.
 const SENTENCE_END: [char; 6] = ['.', '?', '!', '。', '？', '！'];
@@ -146,11 +146,12 @@ struct UtteranceLatency {
     lang: String,
     end_ms: u64,
     segment_id: Option<u64>,
-    /// Mốc dừng của đoạn ghép được trừ mốc dừng thật (ms). Lệch lớn nghĩa là mốc thật không khớp lúc người nói dừng
-    /// (xem `build_sessions.py`), và độ trễ của câu đó lệch cùng cỡ: đoạn dừng sớm hơn mốc thật (âm) thì độ trễ bị đo
-    /// thiếu, muộn hơn (dương) thì bị đo thừa.
+    /// Mốc dừng của đoạn ghép được trừ mốc VAD của câu (`vad_end_ms`; truth cũ không có thì `end_ms`), tính bằng ms. Đoạn
+    /// của Segmenter dừng theo VAD nên độ lệch này kiểm việc ghép câu với đoạn; nó không gồm phần tinh chỉnh của `end_ms`
+    /// (xem `build_sessions.py`), vốn có chủ ý. Lệch lớn nghĩa là mốc của session không khớp lúc VAD trong pipeline dừng,
+    /// và độ trễ của câu đó lệch cùng cỡ.
     end_offset_ms: Option<i64>,
-    /// Đoạn dừng sớm hơn mốc thật quá `EARLY_STOP_MS`: độ trễ của câu này bị đo thiếu.
+    /// Đoạn dừng sớm hơn mốc VAD quá `EARLY_STOP_MS`: đoạn bị cắt sớm hoặc ghép nhầm, độ trễ của câu này đáng ngờ.
     early_stop: bool,
     shown_latency_ms: Option<f64>,
     first_latency_ms: Option<f64>,
@@ -370,6 +371,8 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     drop(seg_tx);
     let asr_result = asr_thread.join().expect("luồng ASR panic");
     let mt_result = mt_thread.join().expect("luồng MT panic");
+    // Hai tiến trình con đã thoát và được thu dọn: bỏ hook, kẻo panic về sau giết nhầm tiến trình khác vừa được cấp lại pid.
+    drop(std::panic::take_hook());
     stop_sampler.store(true, Ordering::Relaxed);
     let usage = sampler.join().expect("luồng đo tài nguyên panic");
     // Báo lỗi của luồng ở cuối chuỗi trước: khi luồng MT chết, luồng ASR và luồng phát lại chỉ còn báo "kênh đã đóng"
@@ -393,16 +396,19 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             ("asr_decode_mode".to_string(), ready.decode_mode),
             ("whisper_version".to_string(), ready.whisper_version),
             ("asr_system_info".to_string(), ready.system_info),
-            ("asr_model".to_string(), args.asr_model.display().to_string()),
-            ("mt_model".to_string(), args.mt_model.display().to_string()),
-            ("llama_server".to_string(), args.llama_server.display().to_string()),
+            ("asr_model".to_string(), public_path(&args.asr_model)),
+            ("mt_model".to_string(), public_path(&args.mt_model)),
+            ("llama_server".to_string(), public_path(&args.llama_server)),
             ("languages".to_string(), args.languages.join(",")),
             ("target".to_string(), args.target.clone()),
             ("end_silence_ms".to_string(), args.end_silence_ms.to_string()),
             ("merge".to_string(), args.merge.to_string()),
             ("merge_window_ms".to_string(), merge_window.to_string()),
             ("min_ctx".to_string(), args.min_ctx.to_string()),
-            ("llama_args".to_string(), args.llama_args.clone()),
+            (
+                "llama_args".to_string(),
+                public_args(repo_root().as_deref(), &args.llama_args),
+            ),
         ]),
         summary,
         usage,
@@ -598,7 +604,7 @@ fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord], target: 
         .map(|(u, m)| {
             let seg = m.map(|i| &segments[i]);
             let since_end = |t: f64| t - u.end_ms as f64;
-            let end_offset_ms = seg.map(|s| s.end_ms as i64 - u.end_ms as i64);
+            let end_offset_ms = seg.map(|s| s.end_ms as i64 - u.vad_end_ms.unwrap_or(u.end_ms) as i64);
             let lid = seg.map(|s| s.lang.clone()).filter(|l| !l.is_empty());
             // LID nhầm sang ngôn ngữ đích: câu thật không phải tiếng đích mà đoạn bị `same_lang`. Không tính "hiện nhanh".
             let lid_to_target =
@@ -633,8 +639,8 @@ fn utterance_latencies(truth: &[Utterance], segments: &[SegmentRecord], target: 
 /// - `utterances`: số câu thật; `matched`: số câu ghép được với một đoạn (kể cả đoạn bị bỏ); `unmatched`: số câu còn lại.
 /// - `no_translation`: số câu ghép được với một đoạn không có bản dịch (đoạn bị bỏ, hoặc không cần dịch). Không gồm
 ///   câu không ghép được: không biết chúng ra sao, vì không có đoạn nào đại diện.
-/// - `end_offset_max_abs_ms`: lệch lớn nhất giữa mốc dừng của đoạn và mốc thật, trên các câu ghép được;
-///   `early_stop`: số câu có đoạn dừng sớm hơn mốc thật quá `EARLY_STOP_MS` (độ trễ bị đo thiếu).
+/// - `end_offset_max_abs_ms`: lệch lớn nhất giữa mốc dừng của đoạn và mốc VAD của câu (`vad_end_ms`), trên các câu ghép
+///   được; `early_stop`: số câu có đoạn dừng sớm hơn mốc VAD quá `EARLY_STOP_MS`.
 /// - `lid_mismatch`: số câu ghép được mà LID nhận diện khác ngôn ngữ thật; `lid_to_target`: trong đó số câu bị nhận
 ///   diện thành ngôn ngữ đích (đoạn `same_lang`), nên không có độ trễ.
 /// - `merges`: số đoạn đã được ghép vào một câu đang mở (§6.3), tức số lần dịch lại cả câu.
@@ -752,6 +758,61 @@ fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) ->
     }
     summary.extend(counts.into_iter().map(|(k, n)| (k, n as f64)));
     summary
+}
+
+/// Gốc repo, suy ra từ vị trí crate lúc build (`<repo>/crates/latency-bench`).
+fn repo_root() -> Option<PathBuf> {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)?
+        .canonicalize()
+        .ok()
+}
+
+/// Đường dẫn để ghi vào file kết quả: tương đối so với gốc repo nếu nằm trong repo, không thì chỉ tên file. Luôn dùng dấu
+/// `/`. Đường dẫn tuyệt đối chứa tên người dùng máy, mà file kết quả được commit.
+fn relative_to(root: Option<&Path>, path: &Path) -> String {
+    match root.and_then(|r| path.strip_prefix(r).ok()) {
+        Some(rel) if !rel.as_os_str().is_empty() => rel
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/"),
+        _ => path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+    }
+}
+
+fn public_path(path: &Path) -> String {
+    public_path_in(repo_root().as_deref(), path)
+}
+
+/// Đường dẫn của `path` tính từ gốc repo, kể cả khi đi qua symlink: tìm thư mục cha (hoặc chính nó) của đường dẫn nguyên
+/// dạng mà khi giải symlink trùng với `root`, rồi lấy phần còn lại, không giải symlink trong repo. Nhờ vậy `models` là
+/// symlink ra ngoài repo vẫn ghi `models/...`, và gốc repo nằm sau symlink (như `/var` trên macOS) cũng không sao. Không nằm
+/// trong repo thì chỉ ghi tên file. Các file này đã tồn tại và đã được dùng khi ghi kết quả.
+fn public_path_in(root: Option<&Path>, path: &Path) -> String {
+    let lexical = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    let inside = root.and_then(|r| {
+        let repo = lexical.ancestors().find(|a| a.canonicalize().is_ok_and(|c| c == r))?;
+        Some(r.join(lexical.strip_prefix(repo).ok()?))
+    });
+    inside.map_or_else(|| relative_to(None, path), |p| relative_to(root, &p))
+}
+
+/// Tham số thêm cho llama-server để ghi vào file kết quả: đường dẫn tuyệt đối (đứng riêng hoặc sau dấu `=`) đổi như
+/// `relative_to`, phần còn lại giữ nguyên.
+fn public_args(root: Option<&Path>, args: &str) -> String {
+    let public = |token: &str| match token.split_once('=') {
+        Some((flag, value)) if Path::new(value).is_absolute() => {
+            format!("{flag}={}", relative_to(root, Path::new(value)))
+        }
+        _ if Path::new(token).is_absolute() => relative_to(root, Path::new(token)),
+        _ => token.to_string(),
+    };
+    args.split_whitespace().map(public).collect::<Vec<_>>().join(" ")
 }
 
 fn read_wav_16k_mono(path: &PathBuf) -> Result<Vec<f32>> {
@@ -904,7 +965,16 @@ mod tests {
             lang: "en".into(),
             start_ms: 0,
             end_ms,
+            vad_end_ms: None,
             text: String::new(),
+        }
+    }
+
+    /// Câu có mốc dừng đã tinh chỉnh (`end_ms`) và mốc VAD (`vad_end_ms`), như file truth của `build_sessions.py`.
+    fn utt_vad(id: &str, end_ms: u64, vad_end_ms: u64) -> Utterance {
+        Utterance {
+            vad_end_ms: Some(vad_end_ms),
+            ..utt(id, end_ms)
         }
     }
 
@@ -1276,6 +1346,37 @@ mod tests {
     }
 
     #[test]
+    fn end_offset_is_measured_against_the_vad_mark_but_latency_against_the_refined_end() {
+        // Mốc thật đã tinh chỉnh sớm hơn mốc VAD 80 ms; đoạn của Segmenter dừng theo VAD nên khớp mốc VAD.
+        let segments = [translated(5_080, 5_400.0, 5_700.0, 6_500.0)];
+        let u = &utterance_latencies(&[utt_vad("a", 5_000, 5_080)], &segments, Lang::Vi)[0];
+        assert_eq!(u.end_offset_ms, Some(0));
+        assert_eq!(u.shown_latency_ms, Some(1_500.0)); // độ trễ vẫn tính từ mốc đã tinh chỉnh
+        assert_eq!(u.first_latency_ms, Some(700.0));
+        assert!(!u.early_stop);
+        // Truth cũ không có `vad_end_ms`: lệch tính so với `end_ms`.
+        let u = &utterance_latencies(&[utt("a", 5_000)], &segments, Lang::Vi)[0];
+        assert_eq!(u.end_offset_ms, Some(80));
+    }
+
+    #[test]
+    fn early_stop_and_summary_offset_use_the_vad_mark() {
+        // Mốc đã tinh chỉnh 5 000, mốc VAD 5 100. Đoạn dừng ở 4 899: sớm hơn mốc VAD 201 ms (gắn cờ), dù chỉ sớm hơn mốc
+        // tinh chỉnh 101 ms. Đoạn dừng ở 10 050 khớp mốc VAD ở câu thứ hai, dù muộn hơn mốc tinh chỉnh 50 ms.
+        let segments = [
+            translated(4_899, 5_400.0, 5_700.0, 6_500.0),
+            translated(10_050, 10_400.0, 10_700.0, 11_500.0),
+        ];
+        let truth = [utt_vad("a", 5_000, 5_100), utt_vad("b", 10_000, 10_050)];
+        let all = utterance_latencies(&truth, &segments, Lang::Vi);
+        assert_eq!((all[0].end_offset_ms, all[0].early_stop), (Some(-201), true));
+        assert_eq!((all[1].end_offset_ms, all[1].early_stop), (Some(0), false));
+        let s = build_summary(&all, &segments);
+        assert_eq!(s["end_offset_max_abs_ms"], 201.0);
+        assert_eq!(s["early_stop"], 1.0);
+    }
+
+    #[test]
     fn early_stop_is_flagged_beyond_200_ms() {
         // Đoạn dừng sớm hơn mốc thật đúng 200 ms thì chưa gắn cờ, 201 ms thì gắn: độ trễ của câu đó bị đo thiếu.
         let segments = [
@@ -1314,6 +1415,81 @@ mod tests {
         assert_eq!(cpu_percent(3_000, Duration::from_secs(2)), 150.0); // nhiều lõi: trên 100% của một lõi
         assert_eq!(cpu_percent(0, Duration::from_secs(10)), 0.0); // tiến trình rảnh: 0, không giữ số cũ
         assert_eq!(cpu_percent(10, Duration::ZERO), 0.0);
+    }
+
+    #[test]
+    fn result_paths_are_relative_to_the_repo_or_just_the_file_name() {
+        let root = Some(Path::new("/home/dev/meeting-translator"));
+        let rel = |p: &str| relative_to(root, Path::new(p));
+        assert_eq!(
+            rel("/home/dev/meeting-translator/models/ggml-small-q5_1.bin"),
+            "models/ggml-small-q5_1.bin"
+        );
+        assert_eq!(
+            rel("/home/dev/meeting-translator/tools/llama-b11146/macos-arm64/llama-b11146/llama-server"),
+            "tools/llama-b11146/macos-arm64/llama-b11146/llama-server"
+        );
+        // Ngoài repo: chỉ tên file, không lộ thư mục cha (có thể chứa tên người dùng).
+        assert_eq!(rel("/Users/somebody/models/x.gguf"), "x.gguf");
+        // Cùng tiền tố chuỗi nhưng là thư mục khác: không phải trong repo.
+        assert_eq!(rel("/home/dev/meeting-translator-old/models/x.bin"), "x.bin");
+        // Không biết gốc repo, hoặc đường dẫn không tuyệt đối: chỉ tên file.
+        assert_eq!(
+            relative_to(None, Path::new("/home/dev/meeting-translator/models/x.bin")),
+            "x.bin"
+        );
+        assert_eq!(rel("models/x.bin"), "x.bin");
+        assert_eq!(rel("/home/dev/meeting-translator"), "meeting-translator");
+    }
+
+    #[test]
+    fn public_path_keeps_the_repo_relative_name_through_symlinks() {
+        /// Xóa thư mục thử kể cả khi một assert bên dưới thất bại.
+        struct TempDir(PathBuf);
+        impl Drop for TempDir {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let tmp = TempDir(std::env::temp_dir().join(format!("latency-bench-paths-{}", std::process::id())));
+        let _ = std::fs::remove_dir_all(&tmp.0);
+        let (repo, outside) = (tmp.0.join("repo"), tmp.0.join("outside"));
+        std::fs::create_dir_all(repo.join("tools")).unwrap();
+        std::fs::create_dir_all(outside.join("models")).unwrap();
+        std::fs::write(outside.join("models/big.gguf"), b"x").unwrap();
+        std::fs::write(repo.join("tools/server"), b"x").unwrap();
+        let root = repo.canonicalize().unwrap();
+        let public = |p: &Path| public_path_in(Some(&root), p);
+        // Thư mục tmp trên macOS nằm sau symlink (/var -> /private/var): đường dẫn nguyên dạng khác đường dẫn đã giải symlink.
+        assert_eq!(public(&repo.join("tools/server")), "tools/server");
+        assert_eq!(public(&root.join("tools/server")), "tools/server");
+        // Ngoài repo: chỉ tên file.
+        assert_eq!(public(&outside.join("models/big.gguf")), "big.gguf");
+        #[cfg(unix)]
+        {
+            // `models` trong repo là symlink ra ngoài repo: vẫn ghi `models/big.gguf`, giống các máy không dùng symlink.
+            std::os::unix::fs::symlink(outside.join("models"), repo.join("models")).unwrap();
+            assert_eq!(public(&repo.join("models/big.gguf")), "models/big.gguf");
+            assert_eq!(public(&root.join("models/big.gguf")), "models/big.gguf");
+        }
+    }
+
+    #[test]
+    fn llama_args_keep_flags_but_not_absolute_paths() {
+        let root = Some(Path::new("/home/dev/meeting-translator"));
+        assert_eq!(public_args(root, "--no-repack -t 4"), "--no-repack -t 4");
+        assert_eq!(public_args(root, ""), "");
+        assert_eq!(
+            public_args(root, "--model-draft /Users/somebody/m/draft.gguf -t 4"),
+            "--model-draft draft.gguf -t 4"
+        );
+        assert_eq!(
+            public_args(
+                root,
+                "--model-draft=/home/dev/meeting-translator/models/d.gguf --no-repack"
+            ),
+            "--model-draft=models/d.gguf --no-repack"
+        );
     }
 
     #[test]

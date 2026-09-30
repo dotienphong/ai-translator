@@ -7,7 +7,10 @@ Không kết luận đạt hay không đạt A2 khi lượt đo không đáng ti
 - đo được dưới 85% số câu (câu không ghép được với đoạn nào, đoạn bị bỏ, hoặc LID nhầm sang ngôn ngữ đích);
 - luồng phát lại trễ hơn thời gian thực quá 100 ms (máy bận, nên độ trễ lệch cùng cỡ);
 - mốc dừng của một đoạn lệch mốc thật quá 300 ms (mốc thật không khớp lúc người nói dừng);
-- file kết quả cũ thiếu các số trên, hoặc không đo được câu nào.
+- file kết quả cũ thiếu các số trên (gồm cả số lần ghép câu), hoặc không đo được câu nào.
+
+Dòng của lượt tắt ghép câu (`config.merge` là "false", nhãn có `nomerge`) chỉ báo số, không kết luận A2: app luôn ghép câu (§6.3),
+lượt đó chỉ để so ảnh hưởng của việc ghép.
 
 Cột RAM lấy số lớn hơn giữa RSS và `phys_footprint` (chỉ có trên macOS) của từng tiến trình:
 - RSS tính cả trang của file model được mmap (llama-server), còn `phys_footprint` thì không; RSS chỉ tính từ lúc bắt đầu phát lại.
@@ -41,7 +44,8 @@ A2 = {"khuyennghi": {"shown_p50_ms": 2000, "shown_p90_ms": 3000, "first_p50_ms":
 MIN_MEASURED = 0.85  # tỉ lệ số câu đo được trên số câu thật
 MAX_FEED_LAG_MS = 100
 MAX_END_OFFSET_MS = 300
-NEEDED = ("utterances", "measured", "feed_lag_max_ms", "end_offset_max_abs_ms", "shown_p50_ms", "shown_p90_ms", "first_p50_ms")
+NEEDED = ("utterances", "measured", "merges", "feed_lag_max_ms", "end_offset_max_abs_ms", "shown_p50_ms", "shown_p90_ms",
+          "first_p50_ms")
 
 
 def number(s, key):
@@ -88,6 +92,8 @@ def main():
     for path in sys.argv[1:]:
         r = json.load(open(path, encoding="utf-8"))
         tier = next((t for t in A2 if f"-{t}-" in r["label"]), None)
+        if r.get("config", {}).get("merge") == "false":
+            tier = None  # lượt so sánh không ghép câu: không phải cấu hình của app
         s, u = r["summary"], r["usage"]
         cores = int(r["machine"].get("logical_cores") or 1)
         cpu_load = sum(p.get("avg_cpu_percent", 0) for p in u.values()) / cores

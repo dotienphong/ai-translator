@@ -20,8 +20,12 @@ pub struct Utterance {
     pub id: String,
     pub lang: String,
     pub start_ms: u64,
-    /// Thời điểm người nói thực sự dừng câu (spec A2).
+    /// Thời điểm người nói thực sự dừng câu (spec A2). Độ trễ tính từ mốc này.
     pub end_ms: u64,
+    /// Mốc dừng theo VAD, trước khi `build_sessions.py` tinh chỉnh bằng năng lượng (`end_ms` sớm hơn hoặc bằng mốc này). Đoạn
+    /// của Segmenter cũng dừng theo VAD, nên độ lệch mốc kiểm so với mốc này. Truth cũ không có thì dùng `end_ms`.
+    #[serde(default)]
+    pub vad_end_ms: Option<u64>,
     pub text: String,
 }
 
@@ -71,6 +75,7 @@ mod tests {
             lang: "en".into(),
             start_ms: 0,
             end_ms,
+            vad_end_ms: None,
             text: String::new(),
         }
     }
