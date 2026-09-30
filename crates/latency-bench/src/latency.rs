@@ -20,8 +20,13 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
-/// Bỏ đoạn có `no_speech_prob > 0,6` (spec §6.4).
+/// Luật bỏ đoạn "không có tiếng nói" của OpenAI Whisper (spec §6.4): bỏ khi `no_speech_prob` lớn hơn ngưỡng này **và**
+/// `avg_logprob` nhỏ hơn `AVG_LOGPROB_MIN`. Chỉ dùng `no_speech_prob` thì bỏ nhầm câu đúng: một câu tiếng Hàn có
+/// `no_speech_prob` 0,62 mà `avg_logprob` −0,25. Với whisper small trên FLEURS, `avg_logprob` ở phân vị 1 là −0,64; với
+/// turbo, `no_speech_prob` luôn cỡ 1e-11 nên luật không bao giờ bỏ đoạn nào.
 const NO_SPEECH_MAX: f32 = 0.6;
+/// Ngưỡng `avg_logprob` của cùng luật trên (`logprob_threshold` mặc định của OpenAI Whisper).
+const AVG_LOGPROB_MIN: f32 = -1.0;
 /// Cửa sổ (ms) ghép đoạn với mốc dừng câu thật, xem `match_segments`.
 const MATCH_WINDOW_MS: u64 = 1_000;
 /// Khung âm thanh tới trễ hơn thời gian thực quá ngưỡng này (ms) thì kết quả lệch cùng cỡ: báo cho người chạy.
@@ -35,7 +40,8 @@ const MERGE_MAX_SPEECH_MS: u64 = 15_000;
 const MERGE_MAX_SEGMENTS: usize = 3;
 
 // Lý do một đoạn không được dịch, ghi ở `SegmentRecord::skipped`.
-/// `no_speech_prob` quá cao, hoặc chữ rỗng: app bỏ đoạn này (§6.4).
+/// Đoạn không có tiếng nói theo luật `no_speech_prob` và `avg_logprob` (xem `NO_SPEECH_MAX`), hoặc chữ rỗng: app bỏ đoạn
+/// này (§6.4).
 const SKIP_NO_SPEECH: &str = "no_speech";
 /// Đoạn ngắn hơn `MIN_PCM_SAMPLES`: không gửi cho `asr-worker`.
 const SKIP_TOO_SHORT: &str = "too_short";
@@ -120,6 +126,8 @@ struct SegmentRecord {
     lang_prob: f32,
     text: String,
     no_speech_prob: f32,
+    /// Trung bình log-xác suất của các token văn bản, cùng `no_speech_prob` quyết định bỏ đoạn.
+    avg_logprob: f32,
     /// Số đoạn trong câu đã dịch ở bước này (1 nếu không ghép; tối đa 3), và chữ nguồn của cả câu ghép (§6.3).
     merged_segments: Option<usize>,
     translated_source: Option<String>,
@@ -294,6 +302,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             rec.lang_prob = result.lang_prob;
             rec.text = result.text;
             rec.no_speech_prob = result.no_speech_prob;
+            rec.avg_logprob = result.avg_logprob;
             asr_tx.send(rec)?;
         }
         Ok(())
@@ -558,7 +567,8 @@ fn plan_merge(open: &mut Option<OpenSentence>, rec: &SegmentRecord, src: Lang, w
 
 /// Quy tắc của app cho một đoạn đã chép lời: `Ok(ngôn ngữ nguồn)` nếu phải dịch, `Err(lý do)` nếu bỏ bước dịch.
 fn route(rec: &SegmentRecord, target: Lang) -> Result<Lang, String> {
-    if rec.no_speech_prob > NO_SPEECH_MAX || rec.text.trim().is_empty() {
+    let no_speech = rec.no_speech_prob > NO_SPEECH_MAX && rec.avg_logprob < AVG_LOGPROB_MIN;
+    if no_speech || rec.text.trim().is_empty() {
         return Err(SKIP_NO_SPEECH.into());
     }
     match Lang::from_code(&rec.lang) {
@@ -1003,11 +1013,12 @@ mod tests {
         }
     }
 
-    fn rec(lang: &str, text: &str, no_speech_prob: f32) -> SegmentRecord {
+    fn rec(lang: &str, text: &str, no_speech_prob: f32, avg_logprob: f32) -> SegmentRecord {
         SegmentRecord {
             lang: lang.into(),
             text: text.into(),
             no_speech_prob,
+            avg_logprob,
             ..Default::default()
         }
     }
@@ -1023,20 +1034,36 @@ mod tests {
 
     #[test]
     fn route_follows_the_app_rules() {
-        assert_eq!(route(&rec("en", "Hello", 0.0), Lang::Vi), Ok(Lang::En));
+        assert_eq!(route(&rec("en", "Hello", 0.0, -0.3), Lang::Vi), Ok(Lang::En));
+        assert_eq!(route(&rec("en", "", 0.0, 0.0), Lang::Vi), Err("no_speech".into()));
+        assert_eq!(route(&rec("en", " \n", 0.0, -0.3), Lang::Vi), Err("no_speech".into()));
         assert_eq!(
-            route(&rec("ko", "안녕", 0.6), Lang::Vi),
-            Ok(Lang::Ko),
-            "đúng ngưỡng thì chưa bỏ"
+            route(&rec("vi", "Xin chào", 0.0, -0.3), Lang::Vi),
+            Err("same_lang".into())
         );
-        assert_eq!(route(&rec("en", "Hello", 0.61), Lang::Vi), Err("no_speech".into()));
-        assert_eq!(route(&rec("en", "", 0.0), Lang::Vi), Err("no_speech".into()));
-        assert_eq!(route(&rec("en", " \n", 0.0), Lang::Vi), Err("no_speech".into()));
-        assert_eq!(route(&rec("vi", "Xin chào", 0.0), Lang::Vi), Err("same_lang".into()));
         assert_eq!(
-            route(&rec("fr", "Bonjour", 0.0), Lang::Vi),
+            route(&rec("fr", "Bonjour", 0.0, -0.3), Lang::Vi),
             Err("lang_ngoai_tap:fr".into())
         );
+    }
+
+    #[test]
+    fn no_speech_needs_both_a_high_no_speech_prob_and_a_low_avg_logprob() {
+        let drops = |no_speech: f32, logprob: f32| route(&rec("ko", "안녕", no_speech, logprob), Lang::Vi).is_err();
+        // Luật của OpenAI Whisper: bỏ khi cả hai điều kiện cùng đúng.
+        assert!(drops(0.9, -1.5));
+        // `no_speech` cao mà chữ chắc chắn (câu tiếng Hàn đúng có no_speech 0,62 và avg_logprob −0,25): giữ.
+        assert!(!drops(0.62, -0.25));
+        assert!(!drops(1.0, -0.5));
+        // `no_speech` thấp mà chữ kém chắc chắn: giữ (turbo có no_speech khoảng 1e-11 nên không bao giờ bị bỏ).
+        assert!(!drops(0.0, -3.0));
+        assert!(!drops(1e-11, -3.0));
+        // Biên: đúng 0,6 chưa quá ngưỡng, đúng −1,0 chưa dưới ngưỡng.
+        assert!(!drops(0.6, -1.5));
+        assert!(!drops(0.9, -1.0));
+        assert!(drops(0.61, -1.01));
+        // Lý do bỏ vẫn tên `no_speech`.
+        assert_eq!(route(&rec("ko", "안녕", 0.9, -1.5), Lang::Vi), Err("no_speech".into()));
     }
 
     #[test]
