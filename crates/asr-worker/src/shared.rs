@@ -289,13 +289,15 @@ impl Generated {
     }
 }
 
-/// Mẫu dài nhất (token) mà `loop_period` tìm. Câu bị lặp trong bộ clip FLEURS dài 12–48 token.
-const MAX_LOOP_PERIOD: usize = 64;
+/// Mẫu dài nhất (token) mà `loop_period` tìm: nửa trần 224 token của Whisper, vì mẫu lặp hai lần dài hơn thế không thể
+/// nằm gọn trong một lượt giải mã. Câu bị lặp trong bộ clip FLEURS dài 12 đến 70 token (`ko-13932034022230918300`
+/// chép cả câu 70 token hai lần, 140 token).
+const MAX_LOOP_PERIOD: usize = 112;
 
 /// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper:
 /// - 1–8 token: 4 bản, để không cắt nhầm lời nói thật ("no, no, no");
 /// - 9–15 token: 3 bản;
-/// - 16–64 token (thường là cả câu): 2 bản, vì Whisper có khi chép cả câu hai lần rồi mới dừng (S7: 8 clip, 6 của turbo
+/// - 16–112 token (thường là cả câu): 2 bản, vì Whisper có khi chép cả câu hai lần rồi mới dừng (S7: 8 clip, 6 của turbo
 ///   và 2 của small), mà 3 bản thì không bắt được.
 ///
 /// Đánh đổi: người nói nhắc lại nguyên một câu dài hai lần liền thì bản thứ hai cũng bị gom.
@@ -367,7 +369,7 @@ mod tests {
         for n in 9..=15 {
             assert_eq!(loop_repeats(n), 3, "n = {n}");
         }
-        for n in 16..=64 {
+        for n in 16..=112 {
             assert_eq!(loop_repeats(n), 2, "n = {n}");
         }
     }
@@ -395,16 +397,16 @@ mod tests {
     #[test]
     fn long_patterns_need_two_copies() {
         // Ghim cận trên bằng số, không dùng lại hằng: đổi MAX_LOOP_PERIOD thì test phải đỏ.
-        for n in 16..=64 {
+        for n in 16..=112 {
             let (t, next) = looped(&[1, 2, 3], &pattern(n), 2);
             assert_eq!(loop_period(&t, next), Some(n), "n = {n}, 2 bản (cả câu chép hai lần)");
             let (t, next) = looped(&[1, 2, 3], &pattern(n), 1);
             assert_eq!(loop_period(&t, next), None, "n = {n}, 1 bản chưa là vòng lặp");
         }
-        // Dài hơn 64 token thì để trần token lo, dù lặp bao nhiêu bản.
+        // Dài hơn 112 token (nửa trần 224 token) thì để trần token lo, dù lặp bao nhiêu bản.
         for reps in [2, 3, 10] {
-            let (t, next) = looped(&[], &pattern(65), reps);
-            assert_eq!(loop_period(&t, next), None, "mẫu 65 token, {reps} bản");
+            let (t, next) = looped(&[], &pattern(113), reps);
+            assert_eq!(loop_period(&t, next), None, "mẫu 113 token, {reps} bản");
         }
     }
 
@@ -434,6 +436,13 @@ mod tests {
         // Mẫu 20 token × 2 bản: cả câu chép hai lần.
         let p = pattern(20);
         let (mut t, next) = looped(&[1, 2], &p, 2);
+        assert!(cut_loop(&mut t, next));
+        assert_eq!(t, [&[1, 2][..], &p].concat());
+
+        // Mẫu 70 token × 2 bản: câu tiếng Hàn dài nhất bị chép hai lần ở S7 (`ko-13932034022230918300`, 140 token).
+        let p = pattern(70);
+        let (mut t, next) = looped(&[1, 2], &p, 2);
+        assert_eq!(t.len() + 1, 142);
         assert!(cut_loop(&mut t, next));
         assert_eq!(t, [&[1, 2][..], &p].concat());
 

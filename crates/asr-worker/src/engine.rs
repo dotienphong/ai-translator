@@ -10,7 +10,7 @@
 //!   `ASR_MODE=split` để chạy chế độ A khi cần so sánh.
 //!
 //! Cả hai chế độ dùng chung: ngưỡng giữ ngôn ngữ trước theo độ dài đoạn (`lid::min_prob_for`), câu mồi cho zh và ja
-//! (`Primers`), và trả `avg_logprob`.
+//! (`Primers`, mặc định tắt), và trả `avg_logprob`.
 
 use crate::lid::{min_prob_for, pick_language};
 use anyhow::{Context, Result, bail};
@@ -39,23 +39,39 @@ const PRIMER_ZH: &str = "以下是普通话的句子。";
 /// Câu mồi cho tiếng Nhật: có dấu câu kết thúc.
 const PRIMER_JA: &str = "以下は日本語の文です。";
 
-/// Prompt mồi cho zh và ja (`<|startofprev|>` rồi các token này, như prompt của client). Lý do:
-/// - Dấu câu (spec §6.3): Whisper gần như không đặt dấu câu kết thúc cho hai tiếng này (S6: zh 1/43 đoạn, ja 3/15), nên
-///   luật ghép câu (câu không kết thúc bằng dấu câu thì ghép với câu sau) nối cả những câu khác nhau. Prompt có dấu câu
-///   làm Whisper chép theo kiểu có dấu câu.
-/// - Chữ giản thể: `small` ra chữ phồn thể ở khoảng nửa số clip zh; câu mồi zh viết bằng chữ giản thể kéo về giản thể.
+/// Prompt mồi cho zh và ja (`<|startofprev|>` rồi các token này, như prompt của client). **Mặc định TẮT**; đặt
+/// `ASR_PRIMER=1` để bật (khi đó `asr-worker` in `primer=on`).
 ///
-/// Chỉ dùng khi client không gửi prompt (đoạn đầu, hoặc sau khi đổi ngôn ngữ): prompt của client là ngữ cảnh thật nên
-/// thắng. Token hóa một lần lúc nạp model. Đặt `ASR_NO_PRIMER=1` để tắt mồi (các danh sách rỗng), dùng khi đo so sánh.
+/// Ý định ban đầu là cho Whisper đặt dấu câu kết thúc ở zh và ja, để luật ghép câu §6.3 (câu không kết thúc bằng dấu câu
+/// thì ghép với câu sau) không nối cả những câu khác nhau. Đo ở S3 và S6 (small và turbo, 216 clip zh+ja của A4 và các
+/// đoạn VAD thật của S6) cho thấy mồi không đáng bật:
+/// - zh: dấu `。` hiện cả ở đoạn giữa câu (small 16/20, turbo 15/20; đoạn cuối câu 21/23 và 20/23), nên không giúp
+///   §6.3: ghép câu chuyển từ "nối nhầm" (4 đến 5 nhóm) sang "cắt vụn" (11 đến 12 trong 23 câu bị cắt), số câu nguyên
+///   vẹn không hơn. Dùng prompt là token các đoạn trước thì zh vẫn `。` ở 18/20 đoạn giữa câu, kể cả turbo không mồi. ja
+///   thì dấu kết thúc hầu như chỉ ra ở cuối câu, có ích nhẹ.
+/// - Trên đoạn không có tiếng nói (im lặng, nhiễu, nhạc, click) mà ngôn ngữ là zh hoặc ja, model chép lại chính câu mồi:
+///   small ở 4/5 clip thử cho mỗi ngôn ngữ, turbo ja ở 3/5 (`日本語の文です。`).
+/// - CER của small tăng 2,9% tổng lỗi zh+ja (băng rộng); turbo giảm 2,2%. ASR p50 của zh, ja tăng 1% đến 9%.
+///
+/// Lợi ích duy nhất còn lại: `small` ra chữ giản thể (clip zh có chữ phồn thể từ 66% xuống 16%, ký tự phồn thể từ 18,1%
+/// xuống 2,0%). MVP xử lý việc này bằng chuyển t2s ở tầng app.
+///
+/// Khi bật: chỉ dùng khi client không gửi prompt (đoạn đầu, hoặc sau khi đổi ngôn ngữ); prompt của client là ngữ cảnh
+/// thật nên thắng. Token hóa một lần lúc nạp model. Tắt thì các danh sách rỗng.
 #[derive(Default)]
 pub struct Primers {
     zh: Vec<i32>,
     ja: Vec<i32>,
 }
 
+/// Mồi chỉ bật khi biến môi trường `ASR_PRIMER` đúng bằng "1" (giống `ASR_FLASH_ATTN`).
+fn primer_requested(value: Option<&str>) -> bool {
+    value == Some("1")
+}
+
 impl Primers {
     fn new(ctx: &WhisperContext) -> Result<Self> {
-        if std::env::var("ASR_NO_PRIMER").as_deref() == Ok("1") {
+        if !primer_requested(std::env::var("ASR_PRIMER").ok().as_deref()) {
             return Ok(Self::default());
         }
         let eot = ctx.token_eot();
@@ -76,7 +92,7 @@ impl Primers {
         })
     }
 
-    /// Có câu mồi nào đang bật không (`false` khi `ASR_NO_PRIMER=1`).
+    /// Có câu mồi nào đang bật không (`true` chỉ khi đặt `ASR_PRIMER=1`).
     pub fn enabled(&self) -> bool {
         !self.zh.is_empty() || !self.ja.is_empty()
     }
@@ -173,7 +189,7 @@ impl Engine {
         self.flash_attn
     }
 
-    /// Câu mồi cho zh và ja có đang bật không. Mặc định bật, xem [`Primers`].
+    /// Câu mồi cho zh và ja có đang bật không. Mặc định tắt, xem [`Primers`].
     pub fn primer_enabled(&self) -> bool {
         self.primers.enabled()
     }
@@ -403,6 +419,15 @@ mod tests {
         assert_eq!(p.context_for("zh", &[7, 8, 9]), [7, 8, 9]);
         assert_eq!(p.context_for("ja", &[7]), [7]);
         assert_eq!(p.context_for("en", &[7]), [7]);
+    }
+
+    #[test]
+    fn primer_is_off_unless_asked() {
+        assert!(!primer_requested(None));
+        assert!(primer_requested(Some("1")));
+        for v in ["", "0", "true", "on", "yes", " 1"] {
+            assert!(!primer_requested(Some(v)), "{v:?}");
+        }
     }
 
     #[test]
