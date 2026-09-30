@@ -217,6 +217,9 @@ Mỗi mục là một thay đổi riêng trong spec:
     - Bật lại thì phải kèm test tất định: cùng một đoạn, chép sau các đoạn khác, phải ra cùng token.
   - Quy tắc "dưới 0,5 thì giữ ngôn ngữ trước" không bao giờ chạy khi chỉ có 2 ngôn ngữ, vì xác suất sau chuẩn hóa của ngôn ngữ cao nhất luôn từ 0,5 trở lên. Chọn ngưỡng theo số ngôn ngữ, dựa trên số đo A4.
   - Worker từ chối đoạn dưới 100 ms; pipeline không gửi các đoạn này.
+  - Chế độ B dừng khi lặp (mẫu 1–8 token × 4, 9–64 token × 3), gom câu lặp về một bản, và giới hạn token ở min(224 − prompt, 16 + 20 × giây). Số liệu ở Task 9 của kế hoạch 03.
+  - MVP: luật bỏ đoạn "không có tiếng nói" nên theo OpenAI, tức `no_speech_prob > 0,6` và `avg_logprob < −1`. Worker khi đó cần trả thêm `avg_logprob`. Lý do: lời nói băng hẹp có `no_speech_prob` tới 0,596, còn ồn trắng chỉ 0,45–0,68.
+  - MVP, trước khi gửi bản vá `set_audio_ctx` lên upstream: hàm C trả `-1` khi ngoài `[0, n_audio_ctx]`, bản Rust trả `Result`.
   - MVP: log của `asr-worker` mở ở chế độ append để giữ log qua các lần khởi động lại, nên cần xoay vòng hoặc giới hạn kích thước.
   - MVP: đưa `prev_lang` vào `TranscribeRequest`, để worker không giữ trạng thái nhận diện ngôn ngữ. Kết quả khi đó không phụ thuộc thứ tự đoạn, và app không mất ngôn ngữ trước khi worker khởi động lại.
   - Công thức `audio_ctx` chốt theo Task 11 của kế hoạch 03. Review thấy turbo lặp câu ở các đoạn dài 1,7–4,4 giây, ngay cả khi tắt flash attention; từ 5,7 giây trở lên thì ổn, khoảng giữa chưa đo.
