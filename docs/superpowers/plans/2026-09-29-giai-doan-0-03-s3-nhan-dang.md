@@ -1722,7 +1722,7 @@ git commit -m "feat(pipeline): client chạy và gọi asr-worker"
 Theo A4, mỗi ngôn ngữ nguồn có ít nhất 15 phút âm thanh, lấy từ tập dev của FLEURS (CC BY 4.0).
 - Mỗi câu chỉ lấy một bản ghi.
 - **Cắt lặng đầu và cuối** (khung 20 ms dưới −35 dB so với khung to nhất), giữ 200 ms mỗi bên, giống phần đệm của đoạn do VAD cắt.
-  - Review lúc thực thi thấy khoảng lặng dài ở đầu clip FLEURS làm chế độ A nhận sai ngôn ngữ, vì chế độ này chỉ nhìn 3 giây đầu. Với tiếng Hàn, cắt lặng đưa tỉ lệ nhận đúng từ 85% lên 98%.
+  - Review lúc thực thi thấy khoảng lặng dài ở đầu clip FLEURS làm chế độ A nhận sai ngôn ngữ, vì chế độ này chỉ nhìn 3 giây đầu. Chế độ A với small nhận đúng tiếng Hàn 98% trên bộ clip mới (đã cắt lặng), so với 85% trên bộ cũ. Hai bộ khác nhau về số clip; thí nghiệm có đối chứng của reviewer (cùng bộ zh, chỉ khác việc cắt lặng) cho 81% lên 91%.
   - Clip được chọn theo độ dài sau khi cắt.
 - Bỏ clip có số mẫu thật ngoài khoảng [1600, 480000] (0,1 đến 30 giây), là khoảng `asr-worker` chấp nhận (`MIN_PCM_SAMPLES`, `MAX_PCM_SAMPLES` trong `asr-protocol`). Không tin cột `n_samples` của TSV.
 - **Băng hẹp:** cứ 4 clip thì tạo thêm một bản, để mô phỏng tai nghe Bluetooth ở chế độ HFP: hạ xuống 8 kHz, lọc dải thoại 300–3400 Hz, lượng tử µ-law 8-bit, rồi nâng lại 16 kHz.
@@ -2001,10 +2001,11 @@ git commit -m "feat(bench): bộ clip A4 từ FLEURS, 15 phút mỗi ngôn ngữ
 - `no_speech_prob`;
 - thời gian nhận diện ngôn ngữ và chép lời;
 - `ipc_ms`: thời gian ngoài whisper, tức mã hóa khung, truyền qua pipe và giải mã khung;
-- `decode_mode`.
+- `decode_mode`;
+- `audio_ctx` đã gửi và số token (`n_tokens`).
 
 `score_asr.py` tính WER cho tiếng Anh và tiếng Việt, CER cho tiếng Trung, Nhật và Hàn (A4).
-- Mỗi ngôn ngữ có ba nhóm con:
+- Mỗi ngôn ngữ có một nhóm gộp (ví dụ `ko`) và ba nhóm con:
   - `wb`: băng rộng, mỗi câu một lần; mốc A4 lấy nhóm này.
   - `nb`: băng hẹp.
   - `wbp`: bản wb của đúng các câu có bản nb. So `nb` với `wbp`, vì nb chỉ có ở 1/4 số câu; review lúc thực thi thấy so với `wb` làm kết quả đổi dấu.
@@ -2109,7 +2110,8 @@ pub struct AsrEvalArgs {
     #[arg(long)]
     out: PathBuf,
     /// Thư mục log của worker. Mỗi lượt ghi vào `<tên file --out bỏ đuôi>.log`, ví dụ `out-thu-ko.jsonl` thành
-    /// `out-thu-ko.log`, nên các lượt chạy không ghi đè log của nhau.
+    /// `out-thu-ko.log`, nên các lượt chạy với `--out` khác nhau không ghi đè log của nhau. Chạy lại với cùng
+    /// `--out` thì log cũ bị xóa.
     #[arg(long, default_value = "logs")]
     log_dir: PathBuf,
 }
@@ -2154,6 +2156,8 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
     let mut part = args.out.clone().into_os_string();
     part.push(".part");
     let part = PathBuf::from(part);
+    // Log theo lượt: bắt đầu lượt mới thì xóa log cũ cùng tên. Client vẫn mở append để giữ log khi worker khởi động lại.
+    std::fs::File::create(&log).with_context(|| format!("không tạo được log {}", log.display()))?;
     let (mut worker, ready) = AsrWorker::spawn(&args.asr_worker, &args.asr_model, args.use_gpu, args.threads, &log)?;
     worker.warmup()?;
     println!(
@@ -2265,9 +2269,10 @@ Cột thêm ngoài WER/CER thô:
 
 Chuẩn hóa: NFC, chữ thường, bỏ dấu câu và ký hiệu; tiếng Trung, Nhật, Hàn bỏ cả khoảng trắng. Riêng tiếng Trung:
 - small hay ra chữ phồn thể còn FLEURS cmn_hans_cn là giản thể, nên đổi cả ref và hyp về giản thể bằng OpenCC (t2s);
-- bỏ chú thích Latin trong ngoặc, ví dụ `摩尔多瓦 (Moldova)`, ở cả ref và hyp: người đọc FLEURS không đọc phần này.
-  Đây là quy tắc máy móc, chưa nghe lại từng clip. Không áp cho tiếng Nhật vì ở đó phần trong ngoặc có khi được đọc.
-  Id các clip có ref bị bỏ phần này được in ra stderr.
+- bỏ chú thích Latin trong ngoặc, ví dụ `摩尔多瓦 (Moldova)`, `(Las Cañitas)`, ở cả ref và hyp: người đọc FLEURS
+  thường không đọc phần này. Ngoại lệ là các chú thích có được đọc (model chép ra) trong SPOKEN_GLOSS: `人工智能 (AI)`,
+  `委员会 (CEP)`. Đây là quy tắc máy móc, chưa nghe lại từng clip; cập nhật SPOKEN_GLOSS khi nghe lại. Không áp cho
+  tiếng Nhật vì ở đó phần trong ngoặc có khi được đọc. Id các clip có ref bị bỏ phần này được in ra stderr.
 
 Kiểm đầu vào: dừng nếu một clip xuất hiện hai lần, hoặc file thiếu clip của một ngôn ngữ có mặt trong file so với
 manifest (lượt chạy dở). `--allow-partial` bỏ phép kiểm thiếu clip, để cố ý chấm một tập con.
@@ -2292,12 +2297,14 @@ NO_SPEECH_MAX = 0.6  # app bỏ đoạn có no_speech_prob lớn hơn (§6.4)
 MIN_LANG_PROB = 0.5  # dưới mức này worker giữ ngôn ngữ của đoạn trước (asr-worker/src/lid.rs)
 # small hay ra chữ phồn thể, FLEURS cmn_hans_cn là giản thể: đổi về giản thể trước khi so.
 T2S = opencc.OpenCC("t2s")
-# Chú thích Latin trong ngoặc của ref tiếng Trung, ví dụ `摩尔多瓦 (Moldova)`, `(NHK)`, `(Kashiwazaki Kariwa)`.
-LATIN_GLOSS = re.compile(r"\s*[(（]\s*[A-Za-z][A-Za-z0-9 .,'&/-]*[)）]")
+# Chú thích Latin trong ngoặc của ref tiếng Trung, ví dụ `摩尔多瓦 (Moldova)`, `(NHK)`, `(Las Cañitas)`.
+LATIN_GLOSS = re.compile(r"\s*[(（]\s*([A-Za-zÀ-ɏ][A-Za-zÀ-ɏ0-9 .,'&/-]*)[)）]")
+# Chú thích có được đọc (model chép ra), nên giữ: `人工智能 (AI)`, `委员会 (CEP)`. Cập nhật khi nghe lại clip.
+SPOKEN_GLOSS = {"ai", "cep"}
 
 
 def strip_latin_gloss(text):
-    return LATIN_GLOSS.sub("", text)
+    return LATIN_GLOSS.sub(lambda m: m.group(0) if m.group(1).strip().lower() in SPOKEN_GLOSS else "", text)
 
 
 def normalize(text, lang):
@@ -2332,7 +2339,8 @@ def score(path, manifest, allow_partial):
             if not allow_partial:
                 sys.exit(msg + "; thêm --allow-partial nếu cố ý chấm một tập con")
             print("CẢNH BÁO: " + msg, file=sys.stderr)
-    stripped = [i for i in ids if manifest[i]["lang"] == "zh" and LATIN_GLOSS.search(manifest[i]["ref"])]
+    refs = {i: unicodedata.normalize("NFC", manifest[i]["ref"]) for i in ids if manifest[i]["lang"] == "zh"}
+    stripped = [i for i, ref in refs.items() if strip_latin_gloss(ref) != ref]
     if stripped:
         print(f"{path}: zh: bỏ chú thích Latin trong ngoặc ở ref của {len(stripped)} clip "
               f"(theo quy tắc, chưa nghe lại): {', '.join(stripped)}", file=sys.stderr)
@@ -2438,7 +2446,7 @@ Expected:
   - LID/ASR khoảng 12%.
 
   Task 10 sẽ so với chế độ B.
-- Trước khi cắt lặng, lượt này cho CER 0,449 và nhận đúng ngôn ngữ 85%. Chế độ A chỉ nhận diện trên 3 giây đầu, nên khoảng lặng dài ở đầu clip làm nó nhận sai. Đó là lý do Task 6 cắt lặng.
+- Trên bộ clip cũ (chưa cắt lặng, 68 clip wb), lượt này cho CER 0,449 và nhận đúng ngôn ngữ 85%. Chế độ A chỉ nhận diện trên 3 giây đầu, nên khoảng lặng dài ở đầu clip làm nó nhận sai. Đó là lý do Task 6 cắt lặng.
 
 - [ ] **Step 6: Xóa file thử rồi commit**
 
@@ -2930,7 +2938,7 @@ for pair in small:small-q5_1 turbo:large-v3-turbo-q5_0; do
   done
 done
 ```
-Expected: mỗi lượt in dòng `asr: metal (1.8.3), chế độ giải mã <split|shared>` đúng với `ASR_MODE`, rồi cứ 20 clip in tiến độ một lần, tới `480 clip`.
+Expected: mỗi lượt in dòng `asr: metal (1.8.3), chế độ giải mã <split|shared>` đúng với `ASR_MODE`, rồi cứ 20 clip in tiến độ một lần, tới `540 clip` (bộ clip có 548 clip).
 
 - [ ] **Step 2: Chấm điểm và lưu bảng**
 
@@ -2940,6 +2948,8 @@ uv run --no-project --python 3.12 --with "jiwer==4.0.0" --with "opencc==1.4.2" p
   bench/phase0/data/asr/out-m4pro-{small,turbo}-{split,shared}.jsonl | tee bench/phase0/results/s3_ab.md
 ```
 Expected: bảng có 80 dòng (4 lượt × 20 nhóm). Cột "Chế độ" khớp với tên lượt chạy.
+
+Khi đọc số, lưu ý tiếng Nhật: bản ghi ja có nền nhiễu cao, nên ngưỡng cắt lặng −35 dB gần như không cắt được gì, và chế độ A vẫn hay nhận sai ngôn ngữ (small nhận đúng khoảng 76%). Reviewer đã thử ngưỡng theo nền nhiễu: nó cắt vào tiếng nói, nên không dùng. Vì vậy trong `s3_ab.md`, số ja cần đọc kèm lượt `--lock-language` ở Task 11.
 
 - [ ] **Step 3: Commit**
 
@@ -2975,7 +2985,8 @@ for pair in small:small-q5_1 turbo:large-v3-turbo-q5_0; do
     --out bench/phase0/data/asr/out-m4pro-$name-minctx512.jsonl --log-dir bench/phase0/data/asr/logs || break
 done
 uv run --no-project --python 3.12 --with "jiwer==4.0.0" --with "opencc==1.4.2" python bench/phase0/asr/score_asr.py \
-  bench/phase0/data/asr/out-m4pro-{small,turbo}-{shared,fullctx,lock,minctx512}.jsonl > bench/phase0/data/asr/a4_table.md
+  bench/phase0/data/asr/out-m4pro-{small,turbo}-{shared,fullctx,lock,minctx512}.jsonl > bench/phase0/data/asr/a4_table.md \
+  2> bench/phase0/data/asr/a4_gloss.txt
 cat bench/phase0/data/asr/a4_table.md
 ```
 Expected:
@@ -3006,8 +3017,8 @@ Số lấy từ nhóm `-wb`, tức mỗi câu một lần.
 Băng hẹp: so nhóm `-nb` với `-wbp` (cùng tập câu), không so với `-wb`: <WER/CER tăng bao nhiêu phần trăm, theo ngôn ngữ>.
 
 Reference:
-- zh đã bỏ chú thích Latin trong ngoặc ở <N> clip, theo quy tắc (id: <…>).
-- Việc cho người dùng: nghe lại 21 clip có chú thích Latin (zh 13, ja 3, ko 5) và sửa ref nếu cần. A4 đòi bản chép đã được người kiểm.
+- zh đã bỏ chú thích Latin trong ngoặc ở <N> clip, theo quy tắc. Danh sách id nằm trong `bench/phase0/data/asr/a4_gloss.txt`. Quy tắc giữ `AI` và `CEP`, vì model chép ra, tức người đọc có đọc.
+- Việc cho người dùng: nghe lại 24 clip có chú thích Latin (zh 16, ja 3, ko 5) và sửa ref nếu cần. A4 đòi bản chép đã được người kiểm.
 
 ## Giả định 8: rút ngắn `audio_ctx` làm WER/CER tăng không quá 10% (tương đối)
 
