@@ -23,6 +23,7 @@ Cách đọc: mọi WER/CER lấy nhóm `-wb` trừ khi ghi khác. Các bảng t
 
 Số lấy từ nhóm `-wb`, tức mỗi câu một lần.
 - Quyết định theo số thô. Mốc lưu ở `a4_m4pro-turbo-shared.json` và `a4_m4pro-small-shared.json`.
+  - Ghi chú 2026-10-01: mốc hiện hành là `a4_m4pro-turbo-final.json` và `a4_m4pro-small-final.json` (cấu hình chốt: sàn `audio_ctx` 512, luật lặp mới; spec §3.3). File này giữ số của cấu hình cũ để so sánh; các số bên dưới không sửa.
 - Cột `_capped` và `long_hyp` cho biết bao nhiêu lỗi đến từ clip lặp câu. Ở chế độ B, `long_hyp` bằng 0 ở cả 10 ô, `_capped` bằng số thô ở 9/10 ô (turbo vi: 0,100 so với 0,103), nên số thô và số chặn cho cùng kết luận. Nhưng hai cột này không thấy clip chép câu hai lần (số chèn không vượt độ dài ref). Quét riêng thấy các clip đó ở nhóm `-wb` (mục "Clip chép câu hai lần", có id): chúng làm cao số thô của turbo vi (0,103; bỏ bản lặp thứ hai còn 0,088), turbo ko (0,062; còn 0,044) và small zh (0,104; còn 0,098). Các ô còn lại không đổi.
 
 | Ngôn ngữ | Chỉ số | Gói Chuẩn (turbo) | Gói Nhẹ (small) |

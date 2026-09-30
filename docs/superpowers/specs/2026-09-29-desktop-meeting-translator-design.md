@@ -127,7 +127,7 @@
 
   - Cả hai model nhận đúng ngôn ngữ ở mọi clip.
   - Băng hẹp làm lỗi tăng ở hầu hết ô, rõ nhất ở en và ja (`s7_asr.md`).
-  - Còn thiếu so với A4: clip thu thật qua tai nghe Bluetooth, và người nghe lại 24 clip có chú thích Latin trong bản chép chuẩn (zh 16, ja 3, ko 5).
+  - Chưa đủ điều kiện của A4, phải làm trước khi coi mốc là chính thức: thu clip thật qua tai nghe Bluetooth, và người nghe lại 24 clip có chú thích Latin trong bản chép chuẩn (zh 16, ja 3, ko 5). Mốc trong `s7_asr.md` là cấu hình cũ, không sàn; mốc hiện hành là các file `-final.json`.
 
 ## 4. Trải nghiệm người dùng
 
@@ -190,7 +190,7 @@
 - **Di chuyển và kích thước:** kéo để di chuyển, kéo cạnh để đổi kích thước. App nhớ vị trí riêng cho từng màn hình.
 - **Chế độ khóa:** cho click xuyên qua thanh phụ đề, để không cản thao tác trên cửa sổ họp. Mở khóa bằng phím tắt hoặc menu khay.
 - **Nổi trên app họp đang toàn màn hình:**
-  - macOS: dùng NSPanel kiểu non-activating, đặt window level cao, cho tham gia mọi Space với cờ `canJoinAllSpaces` và `fullScreenAuxiliary`. Chỉ đặt các cờ này trên một NSWindow thường thì thường chưa đủ để nổi trên Space toàn màn hình của app khác. S5 xác nhận.
+  - macOS: dùng NSPanel kiểu non-activating, đặt window level cao, cho tham gia mọi Space với cờ `canJoinAllSpaces` và `fullScreenAuxiliary`. Chỉ đặt các cờ này trên một NSWindow thường thì thường chưa đủ để nổi trên Space toàn màn hình của app khác. Chờ kết quả S5 (kế hoạch 05, Task 3–4, `results/s5_overlay.md`).
   - Windows: đặt cửa sổ ở chế độ topmost.
 - **Icon ở Dock (macOS):** khi app chỉ còn biểu tượng ở menu bar, app không có icon ở Dock (activation policy `accessory`). Khi mở cửa sổ chính, app hiện icon ở Dock (`regular`).
 - **Chỉ báo nhỏ:** đang nghe, không có âm thanh, hoặc đang trễ.
@@ -234,7 +234,7 @@
 4. `llama-server` đã có sẵn chế độ stream, chat template và các backend GPU.
 
 **Vòng đời hai tiến trình phụ:**
-- Chạy khi người dùng mở cửa sổ chính hoặc bấm Bắt đầu. Tắt sau 10 phút không dịch, để app nằm ở khay không giữ 4–6 GB RAM (§8).
+- Chạy khi người dùng mở cửa sổ chính hoặc bấm Bắt đầu. Tắt sau 10 phút không dịch, để app nằm ở khay không giữ vài GB RAM (ước tính 4–6 GB; trên M4 Pro đo được khoảng 2,9 GiB cho hai tiến trình phụ của gói Chuẩn, §8).
 - `asr-worker` chạy trước. `llama-server` chạy sau khi `asr-worker` đã nạp xong model, để `llama-server` thấy đúng VRAM còn trống (§6.5).
 - Lần đầu phải chờ nạp model vài giây; thanh phụ đề hiện "Đang nạp model…". Thời gian này không tính vào độ trễ ở A2.
 - **Việc cho MVP:** app chính build với `panic = "abort"` (§10.2), nên `Drop` không chạy khi app crash. Dùng Job Object (`KILL_ON_JOB_CLOSE`) trên Windows và process group trên macOS, để tiến trình phụ không bị bỏ lại.
@@ -262,12 +262,13 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
   - Lắng nghe `IMMNotificationClient` để tự khởi tạo lại khi thiết bị thay đổi.
   - **Không dùng process loopback** trong MVP, vì đã có báo cáo cách này chỉ nhận được im lặng với Teams.
   - Hệ quả: app thu **mọi** âm thanh của máy, kể cả tiếng thông báo hay video đang mở.
-  - Chờ kết quả S2 trên Windows (Teams, Zoom, Meet, thiết bị Communications, tai nghe Bluetooth, chèn im lặng).
+  - Chờ kết quả S2 trên Windows (kế hoạch 04, Task 7–8, `results/s2_capture.md`): Teams, Zoom, Meet, thiết bị Communications, tai nghe Bluetooth, chèn im lặng.
 - **macOS:** dùng Core Audio process tap (`AudioHardwareCreateProcessTap`, macOS 14.2+), đọc qua aggregate device.
   - **Mặc định:** tap toàn hệ thống, trừ chính app.
   - **Tùy chọn:** chỉ tap một app họp được chọn từ danh sách các app đang phát âm thanh.
   - Khai báo `NSAudioCaptureUsageDescription` trong Info.plist.
   - Gọi API qua `objc2` và `coreaudio-sys`.
+  - Chờ kết quả S1 (kế hoạch 04, Task 6, `results/s1_capture.md`).
 - **Ràng buộc realtime:** callback thu âm không cấp phát bộ nhớ và không lock; chỉ ghi vào ring buffer lock-free (crate `rtrb`). Ring buffer chứa được 30 giây âm thanh.
 
 ### 6.2 Tiền xử lý
@@ -282,24 +283,24 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Đoạn tiếng nói ngắn nhất: 250 ms.
   - **Im lặng 300 ms thì chốt đoạn**, để đạt mục tiêu độ trễ ở A2. Người dùng chỉnh được trong khoảng 200–800 ms bằng mục "Độ nhạy ngắt câu".
   - **Mỗi đoạn dài tối đa 8 giây.** Nếu dài hơn, cắt cưỡng bức tại khung có năng lượng thấp nhất trong 1,5 giây cuối.
-  - Thêm 200 ms đệm ở đầu và cuối mỗi đoạn.
+  - Thêm 200 ms đệm ở đầu và cuối mỗi đoạn. Code làm tròn lên 7 khung, tức 224 ms mỗi phía; đầu phiên, cuối phiên và phía bị cắt cưỡng bức có ít hơn.
 - **Ghép câu và phụ đề tạm:** ngưỡng 300 ms dễ cắt giữa câu, ở những chỗ người nói ngừng nghỉ tự nhiên.
   - Nếu đoạn vừa chốt không kết thúc bằng dấu câu kết thúc (`.` `?` `!` `。` `？` `！`), phụ đề được đánh dấu **tạm**.
   - **Cửa sổ ghép** = max(700 ms, `vadEndSilenceMs` + 400 ms), tính từ lúc hết tiếng nói của đoạn trước. Với mặc định 300 ms, cửa sổ là 700 ms.
   - Nếu tiếng nói tiếp tục trong cửa sổ ghép **và đoạn sau cùng ngôn ngữ với câu đang mở** (ngôn ngữ do §6.4 chọn), đoạn sau được ghép vào: nối chữ của hai đoạn, dịch lại cả câu, rồi thay phụ đề tạm. Tiếng Trung và tiếng Nhật nối chữ không có dấu cách.
   - Đoạn khác ngôn ngữ thì mở một câu mới. Đoạn đã là ngôn ngữ đích (`same_lang`, §6.6) cũng cắt chuỗi ghép; đoạn bị bỏ vì không có tiếng nói (§6.4) thì không.
   - Phụ đề được chốt khi có dấu câu kết thúc, hoặc khi hết cửa sổ ghép mà không có tiếng nói mới.
-  - **Trần:** một câu ghép dài tối đa 15 giây âm thanh hoặc 3 đoạn. Đạt trần thì chốt câu, đoạn sau bắt đầu một câu mới. Nhờ vậy câu không dài mãi, và mỗi lần dịch lại không chậm dần.
-  - **Tiếng Trung và tiếng Nhật:** Whisper gần như không đặt dấu câu kết thúc cho hai tiếng này, nên luật ghép nối cả những câu khác nhau (với zh, khoảng 7/18 lần ghép trên session S6).
-    - Giữ luật hiện tại: mô phỏng trên session S6 cho thấy số câu còn nguyên vẹn như nhau dù ghép hay không.
-    - Ghép tốn thêm khoảng 60–100 ms p50 và 200 ms p90 so với tắt ghép, trên M4 Pro.
+  - **Trần:** một câu ghép dài tối đa 15 giây tiếng nói (không tính đệm và khoảng nghỉ giữa các đoạn) hoặc 3 đoạn. Đạt trần thì chốt câu, đoạn sau bắt đầu một câu mới. Nhờ vậy câu không dài mãi, và mỗi lần dịch lại không chậm dần.
+  - **Tiếng Trung và tiếng Nhật:** Whisper ít đặt dấu câu kết thúc cho hai tiếng này, nhất là gói Nhẹ (trên session S6, cấu hình chốt: zh 13/43 đoạn với turbo, 5/43 với small; ja 18/37 và 4/37; en 31–34/43). Vì vậy luật ghép nối cả những câu khác nhau, rõ nhất ở zh: khoảng 7/18 lần ghép ở gói Chuẩn, đo trước khi có sàn 512 (nguồn và ước lượng lại ở `bench/phase0/results/phase0_review_notes.md`).
+    - Giữ luật hiện tại. Với zh, mô phỏng trên session S6 cho thấy số câu còn nguyên vẹn gần như nhau dù ghép hay không; với ja, ghép giữ nguyên vẹn nhiều câu hơn (ước lượng của review, `phase0_review_notes.md`).
+    - So với tắt ghép, trên M4 Pro (4 session zh và ja, đo trước khi có sàn 512, máy chạy bằng pin): p50 tăng 36–140 ms, p90 tăng 74–356 ms (`m4pro-khuyennghi-*-nomerge-*.json`).
     - Mồi dấu câu cho zh và ja đã thử, nhưng không giúp ghép câu (§6.4).
 - **Đầu ra:** `Segment { id, start_ms, end_ms, samples }`. Thời gian tính từ lúc bắt đầu phiên theo đồng hồ thật, không theo số mẫu đã nhận (§6.1).
 - **Cách chạy Silero (chốt ở S3):** Silero VAD v6.2.3 (`silero_vad.onnx`) chạy trong tiến trình chính bằng `candle-onnx`. Crate này thuần Rust, nên không cần thư viện ONNX Runtime, và tiến trình chính vẫn không chứa ggml (§5). VAD vẫn chạy khi `asr-worker` khởi động lại.
   - Không dùng `ort`, vì crate này chỉ có bản RC (§6.12). Bản `op18_ifless` của model không chạy được trên candle.
-  - State của LSTM phải `detach()` sau mỗi khung. Nếu không, mỗi khung giữ thêm khoảng 0,5 MB: RSS tăng khoảng 1 GB mỗi phút, và việc hủy chuỗi đó làm tràn stack sau vài phút.
+  - State của LSTM phải `detach()` sau mỗi khung. Nếu không, mỗi khung giữ thêm khoảng 0,5 MB: RSS tăng khoảng 1 GB mỗi phút, và việc hủy chuỗi đó làm tràn stack sau vài phút (đo lúc review, `phase0_review_notes.md`).
   - Bản debug cần khoảng 1 MiB stack cho mỗi lần suy luận, mà luồng chính của Windows chỉ có 1 MiB. Vì vậy VAD được tạo và chạy trên luồng riêng, có stack từ 4 MiB.
-  - Test `vad_reference` so kết quả với onnxruntime (§6.12).
+  - Test `vad_reference` so kết quả với onnxruntime, rồi chạy thêm 4 000 khung để bắt rò bộ nhớ (§6.12).
 - **Việc cho MVP:** chọn luật ghép câu tốt hơn cho zh và ja, ví dụ coi khoảng nghỉ đủ dài là hết câu. Cần dữ liệu hội thoại thật, không phải câu đọc của FLEURS.
 
 ### 6.4 Nhận dạng giọng nói
@@ -309,6 +310,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - **Khung:** 4 byte độ dài (`u32` little-endian), theo sau là thông điệp mã hóa bằng postcard. Mỗi khung dài tối đa 16 MiB (`MAX_FRAME_BYTES`).
   - **Thông điệp:** app gửi `Request`, worker trả `Response`. Mỗi yêu cầu có đúng một phản hồi, trừ `Shutdown`.
     - `Load {model_path, use_gpu, n_threads}` → `Ready {backend, decode_mode, whisper_version, system_info}`. `backend` là `metal`, `vulkan` hoặc `cpu`; `decode_mode` là `shared` (chế độ B) hoặc `split` (chế độ A), xem "Chế độ giải mã" bên dưới.
+      - `backend` là backend được yêu cầu theo feature build và `use_gpu`, chưa phải thiết bị thật. MVP cần trả thiết bị thật để áp quy tắc chuyển sang CPU.
     - `Warmup` → `WarmupDone {millis}`.
     - `Transcribe(TranscribeRequest {segment_id, pcm, languages, prompt_tokens, audio_ctx})` → `Result(TranscribeResult {segment_id, lang, lang_prob, text, tokens, no_speech_prob, lid_ms, asr_ms, avg_logprob})`.
     - `Shutdown`: worker thoát, không phản hồi. Khi stdin đóng (ví dụ app chết), worker cũng thoát.
@@ -316,11 +318,11 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - **Trường của `TranscribeRequest`.** Giá trị ngoài khoảng thì worker trả `Error`.
     - `pcm`: âm thanh 16 kHz mono, int16, từ `MIN_PCM_SAMPLES` đến `MAX_PCM_SAMPLES` mẫu (0,1 đến 30 giây). Đoạn 8 giây chỉ khoảng 256 KB. Pipeline không gửi đoạn ngắn hơn 100 ms.
     - `languages`: mã ngôn ngữ Whisper được phép, ví dụ `["en", "vi"]`. Một phần tử nghĩa là khóa ngôn ngữ.
-    - `prompt_tokens`: tối đa `MAX_PROMPT_TOKENS` (100) token của đoạn trước cùng ngôn ngữ.
+    - `prompt_tokens`: tối đa `MAX_PROMPT_TOKENS` (100) token cuối của các đoạn trước cùng ngôn ngữ. Mỗi token phải là token văn bản (nhỏ hơn EOT).
     - `audio_ctx`: từ 0 đến 1500; 0 là cửa sổ 30 giây. Giá trị khác phải phủ hết `pcm` (`audio_ctx × 320 ≥ số mẫu`), vì whisper.cpp lặng lẽ bỏ phần đuôi không được phủ. Công thức ở "Rút ngắn cửa sổ mã hóa" bên dưới.
   - **Trường của `TranscribeResult`:**
     - `lid_ms`: thời gian nhận diện ngôn ngữ, bằng 0 khi ngôn ngữ bị khóa. `asr_ms`: thời gian chép lời (encode và decode).
-    - `avg_logprob`, trường cuối: trung bình log-xác suất của các token văn bản đã sinh, không tính token đặc biệt, kể cả EOT. Không có token nào thì bằng 0. Dùng cho luật bỏ đoạn ở "Lọc lỗi ảo giác".
+    - `avg_logprob`, trường cuối: trung bình log-xác suất của các token văn bản đã sinh, không tính token đặc biệt, kể cả EOT. Không có token nào thì bằng 0. Chế độ B bỏ log-xác suất của phần bị gom vì lặp; chế độ A không có luật lặp, nên trung bình gồm cả token lặp. Dùng cho luật bỏ đoạn ở "Lọc lỗi ảo giác".
   - **Mở rộng giao thức:** postcard mã hóa enum theo chỉ số biến thể, nên chỉ thêm biến thể mới ở cuối, không đổi thứ tự (test `variant_indices_are_pinned`). Thêm hay bỏ trường cũng đổi định dạng trên dây, nên app và `asr-worker` luôn build cùng nhau.
   - **Khung lỗi:** khung còn byte thừa sau thông điệp là lỗi (`TrailingBytes`), cũng như khung hỏng, bị cắt, hoặc dài quá 16 MiB. Gặp lỗi đọc khung, worker thoát với mã 1, và app khởi động lại worker như ở dưới.
   - Log của thông điệp không bao giờ chứa âm thanh hay nội dung chép lời (§10.2).
@@ -328,7 +330,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Hai bản trên Windows:** `asr-worker-vulkan` (Vulkan và CPU) và `asr-worker-cpu` (chỉ CPU). Bản Vulkan phụ thuộc trực tiếp vào `vulkan-1.dll`, nên không chạy được trên máy không có Vulkan. macOS chỉ có một bản (Metal và CPU).
   - Mỗi lần app khởi động, kể cả ở bước kiểm tra cấu hình lần đầu (§4.1), app chạy nền `asr-worker-vulkan --probe`. Tiến trình này in ra danh sách GPU (loại thiết bị, dung lượng heap `DEVICE_LOCAL`) rồi thoát; kết quả dùng để đề xuất gói model (§6.7). Mọi code đụng tới GPU đều nằm trong tiến trình phụ, nên driver lỗi lúc dò GPU cũng không làm sập app.
   - Khi cần chạy `asr-worker`, app dùng bản Vulkan nếu lần dò tìm thấy GPU dùng được. Bản Vulkan không khởi động được, hoặc crash lúc nạp model, thì app chạy bản CPU.
-  - Chờ kết quả S3 trên Windows: build hai bản, `--probe`, chép lời bằng Vulkan và CPU, máy không có Vulkan.
+  - Chờ kết quả S3 trên Windows (kế hoạch 03, Task 14–16, `results/s3_windows.md`): build hai bản, `--probe`, chép lời bằng Vulkan và CPU, máy không có Vulkan.
 - **Khi tiến trình phụ lỗi:** tự khởi động lại, chờ lần lượt 1, 2, 5 giây giữa các lần, giống `llama-server` (§6.5).
   - Lần đầu chạy một binary mới, thời gian chờ `Ready` theo cùng quy tắc với `/health` của `llama-server` (§6.5).
   - Đoạn đang xử lý được gửi lại một lần. Lỗi lần nữa thì đánh dấu "[bỏ qua đoạn]" (`dropped`, §6.6).
@@ -338,6 +340,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Gói Chuẩn: `large-v3-turbo` bản q5_0, khoảng 550 MB.
   - Gói Nhẹ: `small` bản q5_1, khoảng 190 MB.
 - **Chế độ giải mã (chốt ở S3):** mặc định là **chế độ B** (`shared`): nhận diện ngôn ngữ và chép lời dùng chung một lượt encode.
+  - Chế độ B cần build `asr-worker` với feature `shared-encode`, vì nó dùng bản vá ở `third_party/`. Thiếu feature này thì worker chỉ có chế độ A.
   - Lý do: trong whisper.cpp, chế độ tự nhận diện chạy encoder một lượt để lấy xác suất ngôn ngữ, rồi chạy thêm lượt nữa để chép lời. Lượt nhận diện còn chạy trước khi `audio_ctx` được áp dụng, nên mã hóa đủ cửa sổ 30 giây. Để nguyên thì thời gian nhận dạng gần gấp đôi, trong khi chi phí nhận diện phải dưới 20% thời gian nhận dạng của đoạn (giả định 9 ở §14).
   - Cách làm: `asr-worker` đặt `audio_ctx` rồi mới encode. Sau đó chạy một bước decoder với token SOT, lấy từ logits cả xác suất ngôn ngữ lẫn `no_speech_prob`, rồi tự giải mã greedy bằng API mức thấp của whisper.cpp.
   - **Bản vá:** whisper.cpp chỉ đặt `audio_ctx` bên trong `whisper_full`, nên phải vá. Bản vá thêm hàm C `whisper_set_audio_ctx_with_state` và `WhisperState::set_audio_ctx` phía Rust. Hai bản vá nằm ở `third_party/patches/` (`0001-whisper-cpp-set-audio-ctx.patch`, `0002-whisper-rs-set-audio-ctx.patch`), áp lên bản sao của `whisper-rs-sys` và `whisper-rs` trong `third_party/`, nối vào qua `[patch.crates-io]`. Cách dựng lại ở `third_party/README.md`.
@@ -351,46 +354,52 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Đoạn từ 1,5 giây trở lên: nếu xác suất cao nhất (sau khi chuẩn hóa) dưới 0,5 thì giữ ngôn ngữ của đoạn trước, để ngôn ngữ không nhảy qua lại.
   - **Đoạn ngắn hơn 1,5 giây:** chỉ đổi ngôn ngữ khi xác suất cao nhất từ 0,9 trở lên; còn không thì giữ ngôn ngữ của đoạn trước.
     - Lý do: ở S6, không có sàn `audio_ctx` thì turbo nhận 22/60 đoạn tiếng Việt thành tiếng Anh, và đoạn dưới 1,3 giây sai hết. Có sàn và ngưỡng này, session tiếng Việt của gói Chuẩn nhận đúng 56/60 đoạn.
-    - Đánh đổi, đo với lát cắt 1 giây: nhận đúng thêm 7/60 đoạn khi ngôn ngữ trước đúng, nhưng sai thêm 5/60 đoạn khi người nói đổi ngôn ngữ thật. Chấp nhận, vì trong cuộc họp, việc giữ nguyên một ngôn ngữ phổ biến hơn nhiều so với đổi ngôn ngữ.
+    - Đánh đổi, theo một phép thử lúc review trên đoạn dài 1 giây: nhận đúng thêm 7/60 đoạn khi ngôn ngữ trước đúng, nhưng sai thêm 5/60 đoạn khi người nói đổi ngôn ngữ thật. Cách dựng phép thử chỉ ghi vắn tắt ở kế hoạch 00 (`phase0_review_notes.md`). Chấp nhận, vì trong cuộc họp, việc giữ nguyên một ngôn ngữ phổ biến hơn nhiều so với đổi ngôn ngữ.
   - Chỉ giữ ngôn ngữ của đoạn trước khi ngôn ngữ đó thuộc tập cho phép. Chưa có đoạn trước thì lấy ngôn ngữ cao nhất.
   - Nếu người dùng khóa ngôn ngữ, hoặc tập cho phép chỉ có một ngôn ngữ, thì bỏ bước nhận diện.
   - Với tập hai ngôn ngữ, ngưỡng 0,5 không bao giờ có tác dụng, vì xác suất sau chuẩn hóa của ngôn ngữ cao nhất luôn từ 0,5 trở lên (việc cho MVP ở cuối mục).
-  - Trên 548 clip FLEURS (câu đọc, dài 3–28 giây), chế độ B nhận đúng mọi clip, nên khóa ngôn ngữ không đổi chữ nào; lợi ích duy nhất là bỏ được 1,7–2,7 ms nhận diện.
+  - Trên 548 clip FLEURS (câu đọc, dài 3–28 giây), chế độ B nhận đúng mọi clip, nên khóa ngôn ngữ không đổi chữ nào; lợi ích duy nhất là bỏ được 1,7–2,7 ms nhận diện. Trên đoạn VAD ngắn (S6), khóa ngôn ngữ còn tránh được lỗi nhận diện (4/60 đoạn tiếng Việt của gói Chuẩn).
 - **Giải mã:** greedy, không dùng temperature fallback. Chặn các token không phải tiếng nói.
-  - **Prompt khởi đầu:** tối đa 100 token (`MAX_PROMPT_TOKENS`) của đoạn trước cùng ngôn ngữ.
+  - **Prompt khởi đầu:** tối đa 100 token cuối (`MAX_PROMPT_TOKENS`) của các đoạn trước cùng ngôn ngữ.
   - **Mồi dấu câu cho zh và ja:** đã thử, và **tắt mặc định**. Chỉ bật khi đặt `ASR_PRIMER=1`, để thử nghiệm; khi đó, đoạn không có prompt của đoạn trước dùng một câu mồi có dấu câu. Lý do tắt:
     - với zh, dấu `。` hiện cả ở đoạn giữa câu, nên không giúp ghép câu (§6.3);
     - trên đoạn không có tiếng nói, model chép lại chính câu mồi.
-  - **Dừng khi lặp:** mỗi khi sinh thêm một token, nếu dãy token kết thúc bằng nhiều bản liên tiếp của cùng một mẫu thì gom về một bản rồi dừng giải mã. Số bản cần có:
+  - **Dừng khi lặp** (chỉ chế độ B; chế độ A dùng `whisper_full`, không có luật này, trần của nó là 220 token): mỗi khi sinh thêm một token, nếu dãy token kết thúc bằng nhiều bản liên tiếp của cùng một mẫu thì gom về một bản rồi dừng giải mã. Số bản cần có:
     - mẫu 1–8 token: 4 bản, để không cắt nhầm lời nói thật như "no, no, no";
     - mẫu 9–15 token: 3 bản;
     - mẫu 16–112 token (thường là cả câu): 2 bản, vì Whisper có khi chép cả câu hai lần rồi mới dừng. 112 là nửa trần 224 token của Whisper.
-    - Trên A4, luật 2 bản bắt đúng 3 clip chép hai lần và không bắt nhầm clip nào.
-    - Đánh đổi: người nói nhắc lại liền một câu từ 16 token trở lên thì câu đó chỉ hiện một lần. Thử ghép đôi các câu thì gặp trường hợp này ở 6/80 cặp.
-  - **Trần số token mới** của một đoạn: min(224 − độ dài prompt, 16 + 20 × số giây của đoạn). Trần theo độ dài chặn các vòng lặp mà luật trên không bắt được (các bản không giống hệt nhau), nhất là ở đoạn ngắn. Hệ số 20 bằng khoảng 3 lần p99 của lời nói thật trên FLEURS (6,35 token/giây).
+    - Trên A4, luật 2 bản bắt đúng 3 clip chép hai lần và không bắt nhầm clip nào (`phase0_review_notes.md`).
+    - Đánh đổi: người nói nhắc lại liền một câu từ 16 token trở lên thì câu đó chỉ hiện một lần. Một phép thử lúc review, ghép đôi các câu, gặp trường hợp này ở 6/80 cặp; cách dựng cặp chỉ ghi vắn tắt ở kế hoạch 00 (`phase0_review_notes.md`).
+  - **Trần số token mới** của một đoạn (chỉ chế độ B): min(224 − độ dài prompt, 16 + 20 × số giây của đoạn). Độ dài prompt tính cả `<|startofprev|>` và 4 token SOT, ngôn ngữ, task, notimestamps. Trần theo độ dài chặn các vòng lặp mà luật trên không bắt được (các bản không giống hệt nhau), nhất là ở đoạn ngắn. Hệ số 20 bằng khoảng 3 lần p99 của lời nói thật trên FLEURS (6,35 token/giây, `phase0_review_notes.md`).
 - **Rút ngắn cửa sổ mã hóa (`audio_ctx`):** mặc định whisper.cpp luôn mã hóa một cửa sổ 30 giây, kể cả khi đoạn chỉ dài 3 giây. App đặt **`audio_ctx = min(1500, max(512, 50 × số giây của đoạn + 64))`**, làm tròn lên; mỗi giây tương ứng 50 khung. Sàn 512 là hằng `MIN_AUDIO_CTX`, công thức là hàm `audio_ctx_for_samples`, cả hai nằm trong `asr-protocol`.
   - Sàn chỉ có tác dụng với đoạn ngắn hơn 8,96 giây. Đoạn thường của app dài tối đa 8 giây cộng đệm, nên luôn có `audio_ctx` bằng 512; chỉ đoạn được gộp ở hàng đợi (§7, tới 12 giây) mới lớn hơn.
   - Lý do có sàn (S7, A4): cửa sổ quá ngắn làm Whisper chép thừa, như lặp cụm cuối câu hay chép cả câu hai lần. Sàn giảm tổng số lỗi trên 5 ngôn ngữ 6,4% với turbo và 1,5% với small, không ô nào xấu đi đáng kể. Sàn còn sửa nhận diện ngôn ngữ của turbo với đoạn tiếng Việt ngắn (xem "Chọn ngôn ngữ").
-  - Chi phí: trên A4, turbo chậm thêm khoảng 88 ms ở đoạn dưới 5 giây, small khoảng 15 ms; từ 9 giây trở lên không đổi. Trên session S6, turbo chậm thêm khoảng 22 ms p50, small gần như không đổi.
-  - So với cửa sổ 30 giây đầy đủ (giả định 8 ở §14), mốc A4 của cấu hình chốt còn 2/10 ô tăng quá 10%: turbo zh +11,1%, small ko +15,5%. Phần chênh còn lại nằm ở các clip dài hơn 9 giây, nơi sàn không đổi gì.
+  - Chi phí: trên A4, turbo chậm thêm khoảng 88 ms ở đoạn dưới 5 giây, small khoảng 15 ms; từ 9 giây trở lên không đổi. Trên session S6 (lượt có sàn so với lượt không sàn, cùng đợt đo), bước nhận dạng p50 của turbo tăng 32–76 ms tùy session, độ trễ tổng thể p50 gộp mọi câu tăng khoảng 20 ms (965 → 984 ms); small đổi trong khoảng ±16 ms.
+  - So với cửa sổ 30 giây đầy đủ (giả định 8 ở §14), trên cùng một bản build (`s7_asr.md`, lượt sàn 512 so với lượt fullctx), còn 3/10 ô tăng quá 10%: turbo zh +11,1%, turbo ko +45,1%, small ko +15,5%. Xét từng ô thì giả định 8 không đạt.
+    - Gần hết phần chênh nằm ở clip dài hơn 9 giây, nơi sàn không đổi `audio_ctx`: turbo zh +20 lỗi ở 38 clip dài, +0 ở 64 clip ngắn; small ko +42 và +3. Đoạn thường của app ngắn hơn 8,96 giây, nên phần chênh này chỉ gặp ở đoạn gộp của hàng đợi (§7).
+    - Ô turbo ko do một clip 13,7 giây chép cả câu hai lần. Luật lặp 2 bản của cấu hình chốt bắt được clip này: `a4_m4pro-turbo-final.json` cho CER 0,041, thấp hơn fullctx (0,043).
+    - Lượt fullctx chạy bằng bản build trước luật lặp mới, nên chưa có số so sánh cùng cấu hình. Chờ chạy lại fullctx với bản build chốt (bổ sung cho kế hoạch 03, Task 11).
   - Không dùng cửa sổ 30 giây làm mặc định: turbo chậm gấp 2,6 lần (p50 334 → 884 ms), vượt ngân sách ở §8.
   - Chế độ A vẫn nhận diện ngôn ngữ trên cửa sổ 3 giây (`audio_ctx` 214), không qua sàn.
 - **Flash attention: tắt.** whisper.cpp 1.8.3, cả v1.9.4 và master, sai khi bật flash attention cùng `audio_ctx` rút ngắn: phần đệm tới bội 256 không có mask. Kết quả là lặp câu, và thay đổi theo đoạn chép trước (ggml-org/whisper.cpp#3941, bản vá chưa được merge). `ASR_FLASH_ATTN=1` chỉ dùng để thử.
-  - Bản vá mask cho kết quả trùng hệt bản tắt flash. Trên M4 Pro, nó giúp chép lời nhanh hơn 5–13% và giảm 91–149 MB bộ nhớ đệm mỗi state. Mức lợi này không đổi quyết định nào, vì S6 còn dư địa khoảng gấp đôi.
+  - Bản vá mask cho kết quả trùng hệt bản tắt flash. Trên M4 Pro, nó giúp chép lời nhanh hơn 5–13% và giảm 91–149 MB bộ nhớ đệm mỗi state (đo lúc review, `phase0_review_notes.md`). Trên M4 Pro, mức lợi này không đổi quyết định nào (p50 và p90 dư khoảng gấp đôi). Máy tham chiếu chưa đo: nếu M1 cơ bản hay máy chỉ có CPU sát ngưỡng A2 thì xem lại.
   - Chỉ bật lại khi whisper.cpp có mask cho phần đệm, và phải kèm test tất định: cùng một đoạn, chép sau các đoạn khác nhau, phải ra cùng token.
 - **Làm nóng:** sau `Load`, app gửi `Warmup`; `asr-worker` chạy thử một lần trên một đoạn im lặng để nạp sẵn kernel GPU.
 - **Lọc lỗi "ảo giác" của Whisper:**
-  - **Bỏ đoạn khi `no_speech_prob > 0,6` và `avg_logprob < −1`.** Đây là luật của OpenAI Whisper, nhưng `avg_logprob` không tính EOT nên chặt hơn một chút ở đoạn ngắn. Đoạn có chữ rỗng cũng bị bỏ.
+  - **Bỏ đoạn khi `no_speech_prob > 0,6` và `avg_logprob < −1`.** Đây là luật của OpenAI Whisper, nhưng `avg_logprob` không tính EOT nên dễ bỏ đoạn hơn một chút ở đoạn ngắn. Đoạn có chữ rỗng cũng bị bỏ.
+    - Luật này chạy ở tiến trình chính; `asr-worker` chỉ trả `no_speech_prob` và `avg_logprob`. Đoạn bị bỏ không được đưa vào prompt của đoạn sau, và không làm đổi ngôn ngữ của đoạn trước (xem việc đưa `prev_lang` vào `TranscribeRequest`). Công cụ đo của Giai đoạn 0 chưa làm hai điều này.
     - `no_speech_prob` lấy từ logits ngay sau SOT (chế độ B). Với tham số của app, `whisper_full` (chế độ A) luôn trả gần 0, nên bộ lọc chỉ có tác dụng ở chế độ B.
-    - Cần cả hai điều kiện. Chỉ dùng `no_speech_prob > 0,6` thì bỏ nhầm câu đúng, ví dụ một câu tiếng Hàn có `no_speech_prob` 0,62 và `avg_logprob` −0,25. Chỉ dùng `avg_logprob < −1` thì bỏ nhầm một clip tiếng Nhật thật trên A4.
+    - Cần cả hai điều kiện. Chỉ dùng `no_speech_prob > 0,6` thì bỏ nhầm câu đúng, ví dụ một câu tiếng Hàn có `no_speech_prob` 0,62 và `avg_logprob` −0,25 (`phase0_review_notes.md`). Chỉ dùng `avg_logprob < −1` thì bỏ nhầm một clip tiếng Nhật thật trên A4.
     - Trên A4, luật bỏ đúng 1 clip, là một bản chép ảo giác của small; với turbo, luật không bỏ clip nào. Trên S6, luật bỏ 1 đoạn: câu ảo giác "Thank you." dài 256 ms, ở gói Nhẹ.
     - Với turbo, `no_speech_prob` luôn khoảng 1e-11 trên đoạn có tiếng nói, nên luật gần như không bao giờ bỏ đoạn nào.
   - Vòng lặp token được gom ngay lúc giải mã ("Dừng khi lặp" ở trên).
   - Bỏ các câu hay bị bịa ra khi chỉ có nhạc hoặc im lặng, ví dụ "Thank you for watching", "Hãy subscribe cho kênh", "[Music]", "ご視聴ありがとうございました", "请不吝点赞…". Các câu này có `avg_logprob` cao, nên luật `no_speech` ở trên không bắt được.
 - **Việc cho MVP:**
   - Thử `no_speech_prob` trên im lặng, nhiễu và nhạc, nhất là với turbo, trước khi dựa vào bộ lọc này.
-  - Luật lặp: khi prompt dài (tập chỉ có một ngôn ngữ), trần token nhỏ hơn, nên câu chép đôi dài từ khoảng 60 token có thể không bị bắt. Xem lại.
-  - Chọn ngưỡng giữ ngôn ngữ của đoạn trước theo số ngôn ngữ trong tập, dựa trên số đo A4.
+  - Luật lặp: khi prompt dài (đoạn trước cùng ngôn ngữ, tới 100 token), trần token còn khoảng 119, nên câu chép đôi dài từ khoảng 60 token không bị bắt. Xem lại.
+  - Chọn ngưỡng giữ ngôn ngữ của đoạn trước theo số ngôn ngữ trong tập, dựa trên đoạn VAD thật (S6) và dữ liệu hội thoại. A4 không dùng được cho việc này: chế độ B nhận đúng 548/548 clip, và clip ngắn nhất dài 3,3 giây.
+  - Cài bộ lọc câu ảo giác quen thuộc ở "Lọc lỗi ảo giác" (Giai đoạn 0 chưa có).
+  - Bật `shared-encode` mặc định cho bản phát hành, và app từ chối worker có `decode_mode` khác `shared`.
   - Với zh, small hay ra chữ phồn thể: chuyển phồn thể sang giản thể ở tầng app.
   - Xem lại flash attention khi upstream có mask cho phần đệm: tự vá, hoặc chờ upstream.
   - Trước khi gửi bản vá `set_audio_ctx` lên upstream: hàm C trả `-1` khi giá trị ngoài `[0, n_audio_ctx]`, bản Rust trả `Result`.
@@ -409,13 +418,14 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Windows x64: dùng backend Vulkan và CPU, nạp backend lúc chạy, lỗi GPU thì tự chuyển CPU.
 - **Lệnh chạy:** `LLAMA_API_KEY=<ngẫu nhiên> llama-server -m <gguf> --host 127.0.0.1 --port <cổng trống ngẫu nhiên> -c 2048 -np 1 -ngl auto --no-ui`. App gọi `/health` để biết server đã sẵn sàng.
   - API key truyền qua biến môi trường `LLAMA_API_KEY`, không qua `--api-key`, vì tham số dòng lệnh hiện ra trong `ps`. b11146 hỗ trợ cả hai cách.
+  - Giai đoạn 0 (`crates/pipeline/src/llama.rs`) vẫn truyền `--api-key`. MVP đổi sang `LLAMA_API_KEY`, chỉ đặt biến này cho tiến trình `llama-server`.
   - Dùng `--no-ui`, không dùng `--no-webui`: b11146 đánh dấu tên cũ là deprecated.
   - `-ngl auto` là mặc định của llama.cpp hiện tại. Khi đó `--fit`, vốn bật sẵn, tự chọn số lớp đặt lên GPU theo VRAM còn trống, và chừa lại 1 GiB.
   - Không truyền `-ngl 99`. Đã đặt tay số lớp thì `--fit` không chỉnh nữa, nên máy ít VRAM dễ hết bộ nhớ lúc nạp model.
   - Chạy `llama-server` sau khi `asr-worker` đã nạp model (§5), để `--fit` tính cả phần VRAM mà whisper đang dùng.
 - **Khi server lỗi:** tự khởi động lại, chờ lần lượt 1, 2, 5 giây giữa các lần. Quá 5 lần trong 10 phút thì báo lỗi, phụ đề chỉ hiện câu gốc.
-- **Lần đầu chạy một binary mới** (sau khi cài hoặc cập nhật), macOS mất khoảng 15 giây kiểm tra trước khi `llama-server` chạy.
-  - Thời gian chờ `/health` lúc khởi động phải từ 30 giây trở lên, và không tính vào bộ đếm "quá 5 lần trong 10 phút".
+- **Lần đầu chạy một binary mới** (sau khi cài hoặc cập nhật), macOS mất khoảng 15 giây kiểm tra trước khi `llama-server` chạy. Số này không có file kết quả hay log, và chưa đo trên bản đã notarize (`phase0_review_notes.md`).
+  - Thời gian chờ `/health` lúc khởi động phải từ 30 giây trở lên, và lần chờ này không tính là một lần lỗi trong bộ đếm "quá 5 lần trong 10 phút".
   - Giao diện báo "Đang chuẩn bị lần đầu".
   - Áp dụng cả cho `asr-worker` (chờ `Ready`, §6.4).
 - **API:** dùng `/v1/chat/completions` với `stream: true`, chat template lấy từ GGUF.
@@ -433,7 +443,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - **Đưa câu trước vào làm ngữ cảnh** (mẫu "background information"): **giữ là cờ thử nghiệm, mặc định tắt** (S7).
     - Q8_0 dịch tệ hơn có ý nghĩa ở cả 8 chiều (COMET giảm 0,035–0,186), và 325/538 bản dịch dính tiêu đề mẫu hoặc dịch luôn câu ngữ cảnh.
     - Q4_K_M không có chiều nào tốt hơn có ý nghĩa, và vẫn có 8/538 bản dịch nghi lẫn mẫu.
-- **Tham số sinh:** temperature 0, repeat penalty 1,05 (giống benchmark). Số token tối đa = min(4 × số token câu gốc + 32, 512). Trên bộ test S7, hạn mức này không cắt bản dịch nào trong 1240 bản dịch (lớn nhất bằng 0,61 hạn mức).
+- **Tham số sinh:** temperature 0, repeat penalty 1,05 (giống benchmark). Số token tối đa = min(4 × số token câu gốc + 32, 512). Trên bộ test S7, hạn mức này không cắt bản dịch nào trong 1240 bản dịch không ngữ cảnh (lớn nhất bằng 0,61 hạn mức).
 - **Tăng tốc:** bật `cache_prompt` để dùng lại KV cache của phần hướng dẫn cố định ở đầu prompt. Khi bắt đầu phiên, gửi một request làm nóng.
 - **Hậu xử lý:** bản dịch được stream ra thanh phụ đề (§4.4), nên hậu xử lý chạy ngay trong lúc stream, không chờ bản dịch hoàn chỉnh.
   - Cắt khoảng trắng thừa.
@@ -447,7 +457,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Bỏ qua bước dịch** khi ngôn ngữ câu gốc trùng ngôn ngữ đích.
 - **Việc cho MVP:**
   - Chọn cách xử lý câu gốc ngắn trong ngưỡng tỉ lệ token, một trong hai cách:
-    1. Ngưỡng dạng `tỉ lệ × số token câu gốc + hằng số`, lấy tỉ lệ từ các câu gốc từ 10 token trở lên. Với bộ test S7, hằng số nhỏ nhất để mọi bản dịch lọt là 3,8 token (làm tròn 4, ở Trung→Việt). Hằng số này chỉ vừa đủ cho một câu, nên cần thêm biên.
+    1. Ngưỡng dạng `tỉ lệ × số token câu gốc + hằng số`, lấy tỉ lệ từ các câu gốc từ 10 token trở lên. Với bộ test S7, hằng số nhỏ nhất để mọi bản dịch lọt là 3,8 token (làm tròn 4, ở Trung→Việt). Hằng số này chỉ do một câu quyết định (`zh-vi-888`), nên cần thêm biên.
     2. Chỉ áp tỉ lệ khi câu gốc từ khoảng 10 token trở lên. Câu ngắn hơn chỉ chịu hạn mức sinh ở "Tham số sinh" (tối đa 68 token khi câu gốc dưới 10 token).
   - Đo ngưỡng cho các cặp không có tiếng Việt, và cho câu gốc dưới 3 token.
   - Đo lại thời gian chờ lần đầu với bản đã ký và notarize.
@@ -491,7 +501,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Card rời từ 4 GB tới dưới 6 GB được đề xuất gói Nhẹ. Gói Nhẹ chỉ cần khoảng 2 GB VRAM, nên vẫn chạy hoàn toàn trên GPU. Người dùng vẫn chọn được gói Chuẩn; khi đó `llama-server` tự chuyển bớt lớp sang CPU cho vừa VRAM (§6.5), nên dịch chậm hơn.
     - GPU tích hợp dùng chung RAM nên chưa được tính, kể cả khi Vulkan báo dung lượng lớn.
     - S6 đo trên card rời 4 GB và trên GPU tích hợp. Kết quả dùng để quyết định có hạ ngưỡng, hoặc thêm tổ hợp whisper turbo + Hy-MT2 Q4_K_M cho nhóm máy này không (§14).
-    - Chờ kết quả S6 trên Windows để chốt ngưỡng VRAM 6 GB.
+    - Chờ kết quả S6 trên card rời 6 GB, 4 GB và GPU tích hợp (kế hoạch 06, Task 8) để chốt ngưỡng VRAM 6 GB.
 
   Các máy còn lại được đề xuất gói Nhẹ. Người dùng vẫn đổi được.
 - **Tải model:**
@@ -598,7 +608,7 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
   - macOS: `.dmg` cho arm64.
   - Mục tiêu dung lượng bộ cài ≤ 60 MB, vì model tải riêng.
     - macOS, phần tiến trình phụ (S3, `s3_size_macos-arm64.json`): `asr-worker`, `llama-server` và các `.dylib` của nó là 27,5 MB chưa nén, 7,7 MB sau khi nén LZMA (11,3 MB với zlib).
-    - Windows: chờ kết quả S3 trên Windows. Bộ cài Windows có hai bản `asr-worker` và các backend ggml của `llama-server`.
+    - Windows: chờ số đo ở kế hoạch 03, Task 15, Step 3 (`results/s3_size_windows-x64.json`). Bộ cài Windows có hai bản `asr-worker` và các backend ggml của `llama-server`. Lúc lập kế hoạch, riêng `llama-server` và các DLL đã là 86 MB chưa nén, 13,7 MB sau khi nén LZMA.
 - **Ký số:**
   - **Windows:** chứng thư ký mã OV có khóa nằm trên HSM của một dịch vụ ký trên cloud (ví dụ SSL.com eSigner, DigiCert KeyLocker), để CI ký được (§10.2). Từ 2023, khóa của chứng thư OV bắt buộc nằm trên phần cứng; nếu là token USB thì CI không dùng được. Lúc đầu SmartScreen vẫn có thể cảnh báo cho tới khi app tích đủ uy tín.
   - **macOS:** Developer ID Application, bật hardened runtime và notarize.
@@ -623,7 +633,7 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
     - Node.js phải đúng phiên bản Vite yêu cầu.
   - Trong cùng một tiến trình, không được có hai bản của cùng một thư viện gốc, và không được trùng symbol.
     - Riêng ggml, app cố ý có hai bản nhưng ở hai tiến trình phụ riêng (§5): whisper.cpp trong `asr-worker`, llama.cpp trong `llama-server`. Tiến trình chính không link ggml.
-    - `asr-worker` link tĩnh whisper.cpp và tắt nạp backend động (`GGML_BACKEND_DL`). Nhờ vậy nó không nạp thư viện ggml nào từ đĩa, nên không nạp nhầm thư viện ggml của `llama-server` nằm cùng thư mục. Máy Windows không có Vulkan dùng bản `asr-worker-cpu` (§6.4). Trên Windows: chờ kết quả S3.
+    - `asr-worker` link tĩnh whisper.cpp và tắt nạp backend động (`GGML_BACKEND_DL`). Nhờ vậy nó không nạp thư viện ggml nào từ đĩa, nên không nạp nhầm thư viện ggml của `llama-server` nằm cùng thư mục. Máy Windows không có Vulkan dùng bản `asr-worker-cpu` (§6.4). Trên Windows, chờ kết quả kế hoạch 03, Task 14 và 16: `dumpbin /dependents` của hai bản `asr-worker` không có DLL ggml nào, và `asr-worker-cpu` chạy được trên máy không có Vulkan.
     - Vì link tĩnh, `asr-worker` không tự chọn được biến thể CPU lúc chạy. Phải build với `GGML_NATIVE=OFF` và mức CPU cố định. Nếu không, bản build trên máy CI đời mới có thể crash trên máy người dùng vì gặp lệnh CPU không hỗ trợ.
       - Mức CPU đặt ở `.cargo/config.toml`, với `force = true` để biến môi trường của shell hay CI không ghi đè được: x64 bật AVX, AVX2, BMI2, FMA, F16C, không bật AVX-512; arm64 dùng `armv8.4-a+fp16`, tức mức Apple M1 (không i8mm, không SME).
       - Bản build native trên M4 Pro bật `MATMUL_INT8` và `SME`, nên có thể crash trên M1. Với mức cố định, `system_info` của `asr-worker` chỉ còn `NEON`, `ARM_FMA`, `FP16_VA`, `DOTPROD`.
@@ -633,13 +643,13 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
   - Engine mới phải chạy đúng với model:
     - llama.cpp mới phải nạp và chạy đúng GGUF của Hy-MT2.
     - `whisper-rs` phải đi kèm whisper.cpp có đủ các tính năng cần dùng: `audio_ctx` và API mức thấp để encode và giải mã (§6.4). Bản vá ở `third_party/` phải áp được lên bản mới (§6.4).
-  - **Yêu cầu build:** `protoc` (để build `candle-onnx`), libclang (trên Windows lấy từ LLVM), Vulkan SDK (để build `asr-worker-vulkan`).
-  - **Thư viện C runtime trên Windows:** chờ kết quả S3 trên Windows. Nếu các file `.exe` phụ thuộc `VCRUNTIME140.dll`, MVP chọn giữa link tĩnh CRT (`-C target-feature=+crt-static`) và kèm bộ cài VC++ Redistributable.
+  - **Yêu cầu build:** `protoc` (để build `candle-onnx`), CMake (build whisper.cpp), bộ dịch C/C++ (Xcode trên macOS, Visual Studio Build Tools trên Windows), libclang (trên Windows lấy từ LLVM), Vulkan SDK (để build `asr-worker-vulkan`).
+  - **Thư viện C runtime trên Windows:** chờ kết quả `dumpbin /dependents` ở kế hoạch 03, Task 14 (`results/s3_windows.md`). Nếu các file `.exe` phụ thuộc `VCRUNTIME140.dll`, MVP chọn giữa link tĩnh CRT (`-C target-feature=+crt-static`) và kèm bộ cài VC++ Redistributable.
 - **Sau mỗi lần cài hoặc nâng cấp:**
   - Build lại toàn bộ và chạy hết test.
   - Chạy `cargo audit`, `cargo deny` và `pnpm audit`.
     - `cargo deny` dùng `deny.toml` ở gốc repo. File này có danh sách giấy phép được phép, và luật chỉ `asr-worker` được link `whisper-rs` (§5).
-  - Nâng `candle-core` hoặc `candle-onnx` thì chạy thêm test `vad_reference` với `--include-ignored`. Test này so Silero chạy bằng candle với onnxruntime, và mặc định bị bỏ qua vì cần file model.
+  - Nâng `candle-core` hoặc `candle-onnx` thì chạy thêm test `vad_reference` với `--include-ignored`. Test này so Silero chạy bằng candle với onnxruntime, rồi chạy dài để bắt rò bộ nhớ. Test mặc định bị bỏ qua vì cần các biến `SILERO_VAD_MODEL`, `VAD_TEST_WAV`, `VAD_REF_JSON`; file tham chiếu sinh bằng `bench/phase0/vad/ref_probs.py`.
   - Nếu có đụng tới engine hoặc model thì chạy lại benchmark (§11).
 - **Khóa phiên bản:**
   - Commit lockfile (`Cargo.lock`, `pnpm-lock.yaml`), và ghi rõ phiên bản llama.cpp, whisper.cpp đang dùng. Hiện tại:
@@ -674,9 +684,9 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
 | Tối thiểu | Apple Silicon, RAM 8 GB | RAM 8 GB, CPU 4 nhân có AVX2 | Nhẹ |
 | Chưa hỗ trợ trong MVP | Mac chip Intel | ARM64, CPU không có AVX2, RAM < 8 GB | — |
 
-Chờ kết quả S6 trên các máy tham chiếu (§13) để chốt hạng máy khuyến nghị. M4 Pro, máy đã đo, không phải máy quyết định.
+Chờ kết quả S6 trên các máy tham chiếu (§13; kế hoạch 06, Task 8–9, `results/s6_latency.md`) để chốt hạng máy khuyến nghị. M4 Pro, máy đã đo, không phải máy quyết định.
 
-**Chất lượng nhận dạng theo gói** (A4, mốc ở §3.3): gói Nhẹ chép kém rõ ở tiếng Việt (WER 0,225, so với 0,087 của gói Chuẩn), tiếng Nhật (CER 0,131 so với 0,045) và tiếng Trung (0,096 so với 0,056). Tiếng Anh gần ngang (0,066 so với 0,054). Khi chọn gói (§4.1, §6.7), app phải ghi chú điều này, và khuyến nghị gói Chuẩn cho người dùng nghe chủ yếu tiếng Việt, Nhật, Trung.
+**Chất lượng nhận dạng theo gói** (A4, mốc ở §3.3): gói Nhẹ chép kém rõ ở tiếng Việt (WER 0,225, so với 0,087 của gói Chuẩn), tiếng Nhật (CER 0,131 so với 0,045), tiếng Hàn (0,082 so với 0,041) và tiếng Trung (0,096 so với 0,056). Tiếng Anh gần ngang (0,066 so với 0,054). Khi chọn gói (§4.1, §6.7), app phải ghi chú điều này, và khuyến nghị gói Chuẩn cho người dùng nghe chủ yếu tiếng Việt, Nhật, Hàn, Trung.
 
 **Ngân sách độ trễ**, tính từ lúc người nói dừng câu đến lúc bản dịch hiện đủ. Bước dịch tính cho câu 38 token, là độ dài trung vị của bản dịch Anh→Việt trong benchmark, ở 75% trần băng thông (bảng thứ hai):
 
@@ -702,10 +712,10 @@ Mốc thực tế (benchmark 2026-09-29): Hy-MT2 Q8_0 chạy trên CPU 4 luồng
 | Chuẩn | 764–1028 ms | 940–1341 ms | 631–686 ms | 229–254 ms | 143–404 ms |
 | Nhẹ | 613–844 ms | 725–1142 ms | 517–565 ms | 90–139 ms | 119–281 ms |
 
-- Cả 12 session đạt A2, dư địa khoảng gấp đôi.
+- Cả 12 session đạt A2. p50 và p90 dư khoảng gấp đôi (lớn nhất 1028 ms và 1341 ms, so với 2,0 và 3,0 giây); chữ dịch đầu tiên dư ít hơn (lớn nhất 686 ms, so với 1,0 giây).
 - Session tiếng Việt dịch sang tiếng Anh; các session khác dịch sang tiếng Việt.
 - Trên M4 Pro, cả hai gói chạy bằng GPU (Metal), nên cột "Gói Nhẹ, chỉ CPU" của bảng ngân sách chưa được đo.
-- Chờ kết quả S6 trên các máy tham chiếu.
+- Chờ kết quả S6 trên các máy tham chiếu (kế hoạch 06, Task 8–9, `results/s6_latency.md`).
 
 **Băng thông bộ nhớ là nút thắt của bước dịch.** Mỗi token sinh ra phải đọc gần hết trọng số của model, nên tốc độ sinh không vượt quá băng thông bộ nhớ chia cho kích thước model. Thực tế thường chỉ đạt khoảng 70–80% mức trần này.
 
@@ -721,7 +731,7 @@ Nếu S6 xác nhận M1 cơ bản không đạt, có hai phương án:
 - Nâng hạng máy khuyến nghị lên M2 trở lên, hoặc M1 Pro trở lên.
 - Trên máy băng thông thấp, dùng Q4_K_M (1,13 GB) cho bước dịch nhưng vẫn giữ whisper turbo. Trên M1 cơ bản, bước dịch khi đó còn khoảng 0,85 giây. Đổi lại, COMET giảm: S7 đo được Anh→Việt gần như không đổi (−0,000), giảm nhiều nhất là 0,015 ở Nhật→Việt và Việt→Trung (giả định 6 ở §14).
 
-**RAM ước tính (RSS), cần kiểm chứng ở mục S6:**
+**RAM ước tính (RSS), cần kiểm chứng ở mục S6** (M4 Pro đã đo, xem "RAM đo được trên Mac M4 Pro" bên dưới):
 
 | Thành phần | Gói Chuẩn | Gói Nhẹ |
 |---|---|---|
@@ -736,11 +746,12 @@ Nếu S6 xác nhận M1 cơ bản không đạt, có hai phương án:
 - Trên GPU con số sẽ khác, nên S6 đo theo đúng backend.
 
 **RAM đo được trên Mac M4 Pro** (S6, cùng các lượt ở trên), đỉnh của hai tiến trình phụ, chưa tính app và WebView:
-- Gói Chuẩn khoảng 3,0 GB: `asr-worker` khoảng 0,79 GB, `llama-server` khoảng 2,2 GB.
-- Gói Nhẹ khoảng 1,9 GB: `asr-worker` khoảng 0,42 GB, `llama-server` khoảng 1,5 GB.
+- Số trong file JSON tính bằng MiB (1 MiB = 1 048 576 byte).
+- Gói Chuẩn: tổng 2909–3012 MiB (khoảng 2,9 GiB). `asr-worker` 780–788 MiB, `llama-server` 2125–2225 MiB.
+- Gói Nhẹ: tổng 1861–1917 MiB (khoảng 1,8–1,9 GiB). `asr-worker` 411–418 MiB, `llama-server` 1446–1501 MiB.
 - Mỗi tiến trình lấy số lớn hơn giữa RSS và `phys_footprint`. RSS của `llama-server` tính cả trang của file model được mmap, còn `phys_footprint` thì không. Với `asr-worker` thì ngược lại: `phys_footprint` lớn hơn RSS vì có bộ nhớ Metal.
-- CPU cả máy khoảng 2–3%, vì GPU làm phần nặng.
-- Chờ kết quả S6 trên các máy tham chiếu, nhất là máy chạy bằng CPU.
+- CPU: 1,8–3,0% của cả máy, vì GPU làm phần nặng. Số này là tổng thời gian CPU của `asr-worker`, `llama-server` và `latency-bench` (đóng vai tiến trình chính) chia cho thời gian thực và cho 12 lõi, không phải CPU đo cho toàn hệ thống. Riêng `llama-server` dùng 17–31% của một lõi.
+- Chờ kết quả S6 trên các máy tham chiếu (kế hoạch 06, Task 8–9), nhất là máy chạy bằng CPU.
 
 **VRAM ước tính trên Windows (card rời), cần kiểm chứng ở S6:**
 
@@ -751,7 +762,7 @@ Nếu S6 xác nhận M1 cơ bản không đạt, có hai phương án:
 | Phần chừa cho app họp, trình duyệt và Windows (`--fit` mặc định chừa 1 GiB) | khoảng 1 GB | khoảng 1 GB |
 | **Tổng** | **khoảng 4,2–5 GB, nên ngưỡng đề xuất là 6 GB** | **khoảng 2,9 GB, vừa card 4 GB** |
 
-Chờ kết quả S6 trên Windows để có VRAM đo thật.
+Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, Task 8, file `vram-<máy>-<gói>.csv`).
 
 **Mục tiêu tải máy:** CPU trung bình ≤ 30% trên máy khuyến nghị khi người trong cuộc họp nói liên tục, để app họp vẫn chạy mượt.
 
@@ -784,7 +795,7 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật.
 
 - **Âm thanh** chỉ nằm trong RAM: không ghi xuống đĩa, không gửi qua mạng.
 - **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi license server của sản phẩm (khi mua, kích hoạt, kiểm tra bản quyền). MVP **không có analytics và không gửi báo cáo crash**. Log nằm trên máy; khi cần hỗ trợ, người dùng tự gửi.
-- **Tiến trình phụ:** `llama-server` chỉ nghe trên `127.0.0.1`, với API key ngẫu nhiên tạo mới mỗi lần chạy, truyền qua biến môi trường (§6.5). `asr-worker` không mở cổng mạng nào, chỉ giao tiếp qua stdin/stdout.
+- **Tiến trình phụ:** `llama-server` chỉ nghe trên `127.0.0.1`, với API key ngẫu nhiên tạo mới mỗi lần chạy, truyền qua biến môi trường (§6.5; trạng thái đích cho MVP, Giai đoạn 0 còn dùng `--api-key`). `asr-worker` không mở cổng mạng nào, chỉ giao tiếp qua stdin/stdout.
 - **Khóa API của PayOS** (client id, api key, checksum key) chỉ nằm trên license server, được lưu dưới dạng secret, không bao giờ có trong app.
 - **Lịch sử chép lời** mặc định tắt, chỉ lưu trên máy, xóa toàn bộ được bằng một nút.
 - **Luật Bảo vệ dữ liệu cá nhân 2025 (Việt Nam):**
@@ -851,11 +862,12 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật.
   - Resample và gộp kênh; trộn hai thiết bị Windows có lệch đồng hồ.
   - Chèn im lặng khi luồng loopback không trả gói dữ liệu (§6.1).
   - Cắt câu với tín hiệu tổng hợp: im lặng, tiếng nói, nhạc, đoạn bị cắt ở 8 giây.
-  - VAD chạy dài không tăng bộ nhớ (state LSTM đã `detach()`, §6.3).
+  - VAD chạy dài không tăng bộ nhớ (state LSTM đã `detach()`, §6.3). Phần chạy dài nằm trong test `vad_reference`, mặc định bị bỏ qua (§6.12); `cargo test` thường chỉ có `debug_assert!` trong `SileroVad::prob` giữ lỗi này.
   - Ghép câu tạm: cửa sổ ghép theo `vadEndSilenceMs`, trần 15 giây hoặc 3 đoạn, đoạn khác ngôn ngữ không ghép.
   - Chọn ngôn ngữ trong tập cho phép, cơ chế giữ ngôn ngữ đoạn trước, và ngưỡng 0,9 cho đoạn ngắn hơn 1,5 giây.
   - Giao thức stdin/stdout với `asr-worker`: đóng gói, giải mã, thông điệp hỏng hoặc bị cắt, khung thừa byte, chỉ số biến thể cố định (§6.4).
-  - Giải mã của `asr-worker`: công thức `audio_ctx` có sàn 512, luật lặp theo độ dài mẫu, trần số token, luật bỏ đoạn theo `no_speech_prob` và `avg_logprob`.
+  - Giải mã của `asr-worker`: công thức `audio_ctx` có sàn 512, luật lặp theo độ dài mẫu, trần số token.
+  - Luật bỏ đoạn ở tiến trình chính theo `no_speech_prob` và `avg_logprob`.
   - Tạo prompt: nhánh tiếng Trung và không tiếng Trung, tên ngôn ngữ của từng mẫu; khớp thuật ngữ tiếng Việt có dấu và chữ Trung, Nhật, Hàn.
   - Hậu xử lý bản dịch khi đang stream: lọc nhãn và ngoặc kép, ngưỡng tỉ lệ token theo cặp ngôn ngữ, thử lại với tham số khác.
   - Các trạng thái của phụ đề, kể cả `same_lang`, `skipped` và `dropped`.
@@ -960,7 +972,7 @@ meeting-translator/
 
 **Tiêu chí qua spike:** S1–S5 chạy được; S6 đạt **p50 ≤ 2,0 giây** trên máy khuyến nghị (đo cả trên máy M1 cơ bản 16 GB) và p50 ≤ 3,5 giây trên máy tối thiểu; mốc COMET ở S7 đạt mức sàn của A3. Nếu M1 cơ bản không đạt thì chọn một trong hai phương án ở §8. Nếu cả máy mạnh hơn cũng không đạt thì quay lại sửa spec.
 
-**Giai đoạn 1: MVP.** Làm F1–F10, license server và tích hợp PayOS (§6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Giai đoạn 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12.
+**Giai đoạn 1: MVP.** Làm F1–F10, license server và tích hợp PayOS (§6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Giai đoạn 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
 
 **Giai đoạn 2: mở rộng**, thứ tự tùy phản hồi của người dùng:
 - Phân biệt ai đang nói.
@@ -985,7 +997,7 @@ meeting-translator/
    - Webhook và cách ký HMAC-SHA256 đúng như tài liệu.
    - Có môi trường test; nếu không có thì test bằng giao dịch nhỏ.
    - Mô tả đơn cần ngắn (với một số ngân hàng tối đa 9 ký tự), nên dùng mã dạng `MT` cộng số đơn.
-8. Rút ngắn `audio_ctx` không làm WER tăng quá 10% so với cửa sổ 30 giây đầy đủ. (S7)
+8. Rút ngắn `audio_ctx` không làm WER tăng quá 10% so với cửa sổ 30 giây đầy đủ. (S7) Kết quả S7: không đạt theo từng ô, xem §6.4 "Rút ngắn cửa sổ mã hóa".
 9. Chi phí nhận diện ngôn ngữ giữ được dưới 20% thời gian nhận dạng của đoạn (§6.4). (S3)
 10. Truyền âm thanh qua stdin/stdout sang `asr-worker` thêm không quá 10 ms mỗi đoạn. (S3)
 
