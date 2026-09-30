@@ -1,30 +1,34 @@
 //! Core Audio process tap, macOS 14.2 trở lên (spec §6.1).
 //!
-//! Tạo tap, gắn tap vào một aggregate device riêng tư, rồi đọc mẫu qua IO block.
-//! Nếu người dùng chưa cấp quyền "Ghi âm thanh hệ thống", tap vẫn chạy nhưng chỉ trả im lặng.
+//! Tạo tap, gắn tap vào một aggregate device riêng tư (chỉ chứa tap), rồi đọc mẫu qua IO block.
+//!
+//! `start` có thể chờ lâu mà chưa trả về:
+//! - lần đầu, macOS hiện hộp thoại xin quyền "Ghi âm thanh hệ thống" và chờ người dùng trả lời;
+//! - aggregate đặt `tapautostart`, nên `AudioDeviceStart` chờ tới khi có app bắt đầu phát tiếng.
+//!
+//! Nếu chưa được cấp quyền, tap chỉ trả im lặng.
 
 use crate::{AudioFormat, AudioSource, CaptureStats};
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use block2::RcBlock;
 use objc2::AllocAnyThread;
 use objc2::rc::Retained;
 use objc2_core_audio::{
     AudioDeviceCreateIOProcIDWithBlock, AudioDeviceDestroyIOProcID, AudioDeviceIOProcID, AudioDeviceStart,
     AudioDeviceStop, AudioHardwareCreateAggregateDevice, AudioHardwareCreateProcessTap,
-    AudioHardwareDestroyAggregateDevice, AudioHardwareDestroyProcessTap, AudioObjectGetPropertyData, AudioObjectID,
-    AudioObjectPropertyAddress, CATapDescription, CATapMuteBehavior, kAudioAggregateDeviceIsPrivateKey,
-    kAudioAggregateDeviceIsStackedKey, kAudioAggregateDeviceMainSubDeviceKey, kAudioAggregateDeviceNameKey,
-    kAudioAggregateDeviceSubDeviceListKey, kAudioAggregateDeviceTapAutoStartKey, kAudioAggregateDeviceTapListKey,
-    kAudioAggregateDeviceUIDKey, kAudioDevicePropertyDeviceUID, kAudioHardwarePropertyDefaultSystemOutputDevice,
-    kAudioHardwarePropertyTranslatePIDToProcessObject, kAudioObjectPropertyElementMain,
-    kAudioObjectPropertyScopeGlobal, kAudioObjectSystemObject, kAudioSubDeviceUIDKey, kAudioSubTapDriftCompensationKey,
-    kAudioSubTapUIDKey, kAudioTapPropertyFormat,
+    AudioHardwareDestroyAggregateDevice, AudioHardwareDestroyProcessTap, AudioObjectGetPropertyData,
+    AudioObjectGetPropertyDataSize, AudioObjectID, AudioObjectPropertyAddress, CATapDescription, CATapMuteBehavior,
+    kAudioAggregateDeviceIsPrivateKey, kAudioAggregateDeviceIsStackedKey, kAudioAggregateDeviceNameKey,
+    kAudioAggregateDeviceTapAutoStartKey, kAudioAggregateDeviceTapListKey, kAudioAggregateDeviceUIDKey,
+    kAudioDevicePropertyStreamConfiguration, kAudioHardwarePropertyTranslatePIDToProcessObject,
+    kAudioObjectPropertyElementMain, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyScopeInput,
+    kAudioObjectSystemObject, kAudioSubTapDriftCompensationKey, kAudioSubTapUIDKey, kAudioTapPropertyFormat,
 };
 use objc2_core_audio_types::{
-    AudioBufferList, AudioStreamBasicDescription, AudioTimeStamp, kAudioFormatFlagIsFloat,
+    AudioBuffer, AudioBufferList, AudioStreamBasicDescription, AudioTimeStamp, kAudioFormatFlagIsFloat,
     kAudioFormatFlagIsNonInterleaved,
 };
-use objc2_core_foundation::{CFArray, CFBoolean, CFDictionary, CFRetained, CFString, CFType};
+use objc2_core_foundation::{CFArray, CFBoolean, CFDictionary, CFString, CFType};
 use objc2_foundation::{NSArray, NSNumber};
 use std::cell::UnsafeCell;
 use std::ffi::{CStr, c_void};
@@ -65,6 +69,10 @@ struct IoState {
     producer: UnsafeCell<rtrb::Producer<f32>>,
     non_interleaved: bool,
     channels: usize,
+    /// Số kênh mỗi buffer: 1 nếu tách kênh, `channels` nếu xen kẽ.
+    per_buffer: u32,
+    /// Số buffer IO block phải nhận: `channels` nếu tách kênh, 1 nếu xen kẽ.
+    buffers: usize,
     stats: Arc<CaptureStats>,
 }
 
@@ -136,10 +144,25 @@ impl AudioSource for MacTapSource {
 
         self.aggregate_id = create_aggregate_device(&tap_uid)?;
 
+        let non_interleaved = asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved != 0;
+        let channels = asbd.mChannelsPerFrame as usize;
+        let (buffers, per_buffer) = if non_interleaved {
+            (channels, 1)
+        } else {
+            (1, channels as u32)
+        };
+        // IO block nhận mọi luồng vào của aggregate. Nếu có luồng nào ngoài tap thì dừng với
+        // thông báo rõ, thay vì ghi dữ liệu sai vào WAV. Rỗng: để phép kiểm trong on_io lo.
+        let layout = input_layout(self.aggregate_id)?;
+        if !layout.is_empty() && layout != vec![per_buffer; buffers] {
+            bail!("luồng vào của aggregate là {layout:?} (số kênh mỗi buffer), không khớp tap: {asbd:?}");
+        }
         let io = Arc::new(IoState {
             producer: UnsafeCell::new(sink),
-            non_interleaved: asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved != 0,
-            channels: asbd.mChannelsPerFrame as usize,
+            non_interleaved,
+            channels,
+            per_buffer,
+            buffers,
             stats: self.stats.clone(),
         });
         let block: IoBlock = RcBlock::new(
@@ -201,80 +224,122 @@ impl Drop for MacTapSource {
     }
 }
 
-/// Chạy trên luồng IO: không cấp phát, không lock.
+/// Chạy trên luồng IO: không cấp phát, không lock. Mỗi lần ghi một chunk gồm trọn các khung,
+/// nên bên đọc không bao giờ thấy nửa khung; ring buffer đầy thì bỏ cả lượt.
 unsafe fn on_io(io: &IoState, input: NonNull<AudioBufferList>) {
-    let producer = unsafe { &mut *io.producer.get() };
-    let list = unsafe { input.as_ref() };
-    let buffers = unsafe { std::slice::from_raw_parts(list.mBuffers.as_ptr(), list.mNumberBuffers as usize) };
-    let mut dropped = 0u64;
-    let frames = if io.non_interleaved {
-        let frames = buffers.first().map_or(0, |b| b.mDataByteSize as usize / 4);
-        for i in 0..frames {
-            for b in buffers {
-                let sample = if b.mData.is_null() {
-                    0.0
-                } else {
-                    unsafe { *(b.mData as *const f32).add(i) }
-                };
-                if producer.push(sample).is_err() {
-                    dropped += 1;
-                }
-            }
-        }
-        frames
-    } else {
-        let Some(b) = buffers.first().filter(|b| !b.mData.is_null()) else {
-            return;
-        };
-        let samples = unsafe { std::slice::from_raw_parts(b.mData as *const f32, b.mDataByteSize as usize / 4) };
-        for &sample in samples {
-            if producer.push(sample).is_err() {
-                dropped += 1;
-            }
-        }
-        samples.len() / io.channels.max(1)
-    };
-    io.stats.frames.fetch_add(frames as u64, Ordering::Relaxed);
-    if dropped > 0 {
-        io.stats.dropped.fetch_add(dropped, Ordering::Relaxed);
+    let list = input.as_ptr();
+    // Đọc mBuffers qua con trỏ gốc: mảng thật dài mNumberBuffers, không phải [AudioBuffer; 1].
+    let count = unsafe { (*list).mNumberBuffers } as usize;
+    let first = unsafe { &raw const (*list).mBuffers }.cast::<AudioBuffer>();
+    let buffers = unsafe { std::slice::from_raw_parts(first, count) };
+    if buffers.len() != io.buffers
+        || buffers
+            .iter()
+            .any(|b| b.mData.is_null() || b.mNumberChannels != io.per_buffer)
+    {
+        let samples: u64 = buffers.iter().map(|b| b.mDataByteSize as u64 / 4).sum();
+        io.stats.dropped.fetch_add(samples, Ordering::Relaxed);
+        return;
     }
+    let frames = buffers
+        .iter()
+        .map(|b| b.mDataByteSize as usize / 4 / io.per_buffer as usize)
+        .min()
+        .unwrap_or(0);
+    let samples = frames * io.channels;
+    let producer = unsafe { &mut *io.producer.get() };
+    match producer.write_chunk_uninit(samples) {
+        Ok(chunk) => {
+            if io.non_interleaved {
+                // SAFETY: mỗi buffer có ít nhất `frames` mẫu (min ở trên).
+                chunk.fill_from_iter(
+                    (0..frames).flat_map(|i| buffers.iter().map(move |b| unsafe { *b.mData.cast::<f32>().add(i) })),
+                );
+            } else {
+                let data = unsafe { std::slice::from_raw_parts(buffers[0].mData.cast::<f32>(), samples) };
+                chunk.fill_from_iter(data.iter().copied());
+            }
+        }
+        Err(_) => {
+            io.stats.dropped.fetch_add(samples as u64, Ordering::Relaxed);
+        }
+    }
+    io.stats.frames.fetch_add(frames as u64, Ordering::Relaxed);
+}
+
+/// Số kênh của từng buffer vào mà IO proc của `device` sẽ nhận.
+fn input_layout(device: AudioObjectID) -> Result<Vec<u32>> {
+    let mut address = AudioObjectPropertyAddress {
+        mSelector: kAudioDevicePropertyStreamConfiguration,
+        mScope: kAudioObjectPropertyScopeInput,
+        mElement: kAudioObjectPropertyElementMain,
+    };
+    let mut size = 0u32;
+    check(
+        unsafe {
+            AudioObjectGetPropertyDataSize(
+                device,
+                NonNull::from(&mut address),
+                0,
+                std::ptr::null(),
+                NonNull::from(&mut size),
+            )
+        },
+        "AudioObjectGetPropertyDataSize",
+    )?;
+    // Vec<u64> để vùng nhớ căn 8 byte như AudioBufferList.
+    let mut raw = vec![0u64; (size as usize).div_ceil(8).max(1)];
+    check(
+        unsafe {
+            AudioObjectGetPropertyData(
+                device,
+                NonNull::from(&mut address),
+                0,
+                std::ptr::null(),
+                NonNull::from(&mut size),
+                NonNull::from(raw.as_mut_slice()).cast(),
+            )
+        },
+        "AudioObjectGetPropertyData",
+    )?;
+    let list = raw.as_ptr().cast::<AudioBufferList>();
+    let count = unsafe { (*list).mNumberBuffers } as usize;
+    let fits = (raw.len() * 8).saturating_sub(8) / size_of::<AudioBuffer>();
+    let first = unsafe { &raw const (*list).mBuffers }.cast::<AudioBuffer>();
+    Ok((0..count.min(fits))
+        .map(|i| unsafe { (*first.add(i)).mNumberChannels })
+        .collect())
 }
 
 fn create_aggregate_device(tap_uid: &str) -> Result<AudioObjectID> {
     let key = |k: &CStr| CFString::from_str(k.to_str().expect("khóa ASCII"));
-    let output_uid = default_output_uid()?;
     let aggregate_uid = CFString::from_str(&format!("meeting-translator.tap.{}", std::process::id()));
     let name = CFString::from_str("Meeting Translator Tap");
     let tap_uid = CFString::from_str(tap_uid);
 
-    let sub_device_value: [&CFType; 1] = [&output_uid];
-    let sub_device = CFDictionary::<CFString, CFType>::from_slices(&[&key(kAudioSubDeviceUIDKey)], &sub_device_value);
     let sub_tap_values: [&CFType; 2] = [&tap_uid, CFBoolean::new(true)];
     let sub_tap = CFDictionary::<CFString, CFType>::from_slices(
         &[&key(kAudioSubTapUIDKey), &key(kAudioSubTapDriftCompensationKey)],
         &sub_tap_values,
     );
-    let sub_devices = CFArray::from_objects(&[sub_device.as_opaque()]);
     let taps = CFArray::from_objects(&[sub_tap.as_opaque()]);
 
+    // Chỉ có tap, không có sub-device: nếu thiết bị ra có micro (AirPods, tai nghe USB),
+    // aggregate sẽ không bật micro đó và IO block chỉ nhận luồng của tap.
     let keys = [
         key(kAudioAggregateDeviceNameKey),
         key(kAudioAggregateDeviceUIDKey),
-        key(kAudioAggregateDeviceMainSubDeviceKey),
         key(kAudioAggregateDeviceIsPrivateKey),
         key(kAudioAggregateDeviceIsStackedKey),
         key(kAudioAggregateDeviceTapAutoStartKey),
-        key(kAudioAggregateDeviceSubDeviceListKey),
         key(kAudioAggregateDeviceTapListKey),
     ];
-    let values: [&CFType; 8] = [
+    let values: [&CFType; 6] = [
         &name,
         &aggregate_uid,
-        &output_uid,
         CFBoolean::new(true),
         CFBoolean::new(false),
         CFBoolean::new(true),
-        sub_devices.as_opaque(),
         taps.as_opaque(),
     ];
     let key_refs: Vec<&CFString> = keys.iter().map(|k| &**k).collect();
@@ -286,22 +351,6 @@ fn create_aggregate_device(tap_uid: &str) -> Result<AudioObjectID> {
         "AudioHardwareCreateAggregateDevice",
     )?;
     Ok(aggregate_id)
-}
-
-fn default_output_uid() -> Result<CFRetained<CFString>> {
-    let mut device: AudioObjectID = 0;
-    get_property(
-        kAudioObjectSystemObject as AudioObjectID,
-        kAudioHardwarePropertyDefaultSystemOutputDevice,
-        std::ptr::null(),
-        0,
-        &mut device,
-    )?;
-    let mut uid: *const CFString = std::ptr::null();
-    get_property(device, kAudioDevicePropertyDeviceUID, std::ptr::null(), 0, &mut uid)?;
-    let uid = NonNull::new(uid as *mut CFString).context("thiết bị ra không có UID")?;
-    // SAFETY: Core Audio trả CFString đã retain; người gọi chịu trách nhiệm release.
-    Ok(unsafe { CFRetained::from_raw(uid) })
 }
 
 fn process_object(pid: i32) -> Result<AudioObjectID> {

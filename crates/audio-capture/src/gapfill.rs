@@ -65,8 +65,8 @@ impl GapFiller {
                 skip,
             }
         } else {
-            // Liền mạch: giữ đồng hồ của mình để jitter không cộng dồn.
-            self.next = Some(next + duration);
+            // Liền mạch: bám theo QPC để lệch đồng hồ thiết bị không cộng dồn thành glitch.
+            self.next = Some(qpc + duration);
             PacketAction {
                 silence_before: 0,
                 skip: 0,

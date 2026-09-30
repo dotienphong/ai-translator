@@ -3,7 +3,7 @@
 
 use anyhow::{Result, anyhow};
 use rubato::audioadapter_buffers::direct::InterleavedSlice;
-use rubato::{Fft, FixedSync, Resampler};
+use rubato::{Fft, FixedSync, Resampler, WindowFunction};
 
 pub const TARGET_RATE: u32 = 16_000;
 const CHUNK: usize = 1024;
@@ -11,6 +11,8 @@ const CHUNK: usize = 1024;
 pub struct MonoResampler {
     channels: usize,
     inner: Option<Fft<f32>>,
+    /// Khung dở dang (chưa đủ số kênh) từ lần gọi trước.
+    partial: Vec<f32>,
     pending: Vec<f32>,
     scratch: Vec<f32>,
 }
@@ -20,46 +22,70 @@ impl MonoResampler {
         let inner = if input_rate == TARGET_RATE {
             None
         } else {
+            // sub_chunks = 1: khối FFT đủ lớn để bộ lọc chống alias cắt gần 8 kHz.
             Some(
-                Fft::<f32>::new(input_rate as usize, TARGET_RATE as usize, CHUNK, 1, FixedSync::Input)
-                    .map_err(|e| anyhow!("không tạo được bộ resample: {e}"))?,
+                Fft::<f32>::new_custom(
+                    input_rate as usize,
+                    TARGET_RATE as usize,
+                    CHUNK,
+                    1,
+                    1,
+                    WindowFunction::BlackmanHarris2,
+                    FixedSync::Input,
+                )
+                .map_err(|e| anyhow!("không tạo được bộ resample: {e}"))?,
             )
         };
         Ok(Self {
             channels: channels.max(1) as usize,
             inner,
+            partial: Vec::new(),
             pending: Vec::new(),
             scratch: Vec::new(),
         })
     }
 
-    /// Nhận mẫu xen kẽ theo định dạng thiết bị, ghi thêm mẫu 16 kHz mono vào `out`.
+    /// Nhận mẫu xen kẽ theo định dạng thiết bị (không cần chia hết cho số kênh),
+    /// ghi thêm mẫu 16 kHz mono vào `out`.
     pub fn process(&mut self, interleaved: &[f32], out: &mut Vec<f32>) -> Result<()> {
         let scale = 1.0 / self.channels as f32;
-        self.pending.extend(
-            interleaved
-                .chunks_exact(self.channels)
-                .map(|f| f.iter().sum::<f32>() * scale),
-        );
+        let mut input = interleaved;
+        if !self.partial.is_empty() {
+            let take = (self.channels - self.partial.len()).min(input.len());
+            self.partial.extend_from_slice(&input[..take]);
+            input = &input[take..];
+            if self.partial.len() == self.channels {
+                self.pending.push(self.partial.iter().sum::<f32>() * scale);
+                self.partial.clear();
+            }
+        }
+        let frames = input.chunks_exact(self.channels);
+        let rest = frames.remainder();
+        self.pending.extend(frames.map(|f| f.iter().sum::<f32>() * scale));
+        self.partial.extend_from_slice(rest);
         let Some(resampler) = self.inner.as_mut() else {
             out.append(&mut self.pending);
             return Ok(());
         };
+        let mut start = 0;
         loop {
             let need = resampler.input_frames_next();
-            if self.pending.len() < need {
-                return Ok(());
+            if self.pending.len() - start < need {
+                break;
             }
             let cap = resampler.output_frames_max();
             self.scratch.resize(cap, 0.0);
-            let input = InterleavedSlice::new(&self.pending[..need], 1, need).map_err(|e| anyhow!("{e}"))?;
+            let input =
+                InterleavedSlice::new(&self.pending[start..start + need], 1, need).map_err(|e| anyhow!("{e}"))?;
             let mut output = InterleavedSlice::new_mut(&mut self.scratch, 1, cap).map_err(|e| anyhow!("{e}"))?;
             let (_, written) = resampler
                 .process_into_buffer(&input, &mut output, None)
                 .map_err(|e| anyhow!("resample lỗi: {e}"))?;
             out.extend_from_slice(&self.scratch[..written]);
-            self.pending.drain(..need);
+            start += need;
         }
+        self.pending.drain(..start);
+        Ok(())
     }
 }
 

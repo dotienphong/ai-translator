@@ -37,6 +37,9 @@ fn main() -> Result<()> {
     let mut resamplers = Vec::new();
     for (source, _) in sources.iter_mut() {
         let (producer, consumer) = rtrb::RingBuffer::new(RING_SAMPLES);
+        // start() có thể chờ lâu: macOS hiện hộp thoại xin quyền ở lần đầu, và với tapautostart
+        // AudioDeviceStart chờ tới khi có app phát tiếng. In trước để biết đang kẹt ở đâu.
+        println!("đang khởi động nguồn (macOS: có thể đang chờ trả lời hộp thoại quyền, hoặc chờ app phát tiếng)...");
         source.start(producer)?;
         let format = source.format();
         println!("nguồn: {} Hz, {} kênh", format.sample_rate, format.channels);
@@ -106,10 +109,12 @@ fn main() -> Result<()> {
         "xong: {seconds_done} giây, {silent_seconds} giây im lặng, file {}",
         args.out.display()
     );
+    let elapsed = started.elapsed().as_secs_f64();
     for (i, s) in stats.iter().enumerate() {
         let [frames, inserted, skipped, dropped] = s.snapshot();
         println!(
-            "nguồn {i}: {frames} khung nhận, {inserted} khung im lặng chèn thêm, {skipped} khung bỏ, {dropped} mẫu rơi"
+            "nguồn {i}: {frames} khung nhận (≈ {:.0} khung/giây, so với tần số ở dòng `nguồn:`), {inserted} khung im lặng chèn thêm, {skipped} khung bỏ, {dropped} mẫu rơi",
+            frames as f64 / elapsed
         );
     }
     Ok(())
