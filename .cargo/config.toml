@@ -3,7 +3,7 @@
 # x64: AVX2, FMA, F16C, BMI2, không AVX-512. arm64: mức Apple M1 (không i8mm, không SME).
 # `force = true`: biến môi trường của shell hay CI không ghi đè được các giá trị này.
 # Build script của whisper-rs-sys không tự chạy lại khi các biến này đổi: sửa file này thì chạy
-# `cargo clean -p whisper-rs-sys` rồi mới build.
+# `cargo clean -p whisper-rs-sys && cargo clean -p whisper-rs-sys --release` rồi mới build.
 [env]
 GGML_NATIVE = { value = "OFF", force = true }
 GGML_CPU_ARM_ARCH = { value = "armv8.4-a+fp16", force = true }
