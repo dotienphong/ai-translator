@@ -1,0 +1,15 @@
+--- a/whisper-rs/src/whisper_state/mod.rs
++++ b/whisper-rs/src/whisper_state/mod.rs
+@@ -143,6 +143,12 @@
+         } else {
+             Err(WhisperError::GenericError(ret))
+         }
++    }
++
++    /// meeting-translator patch: set `audio_ctx` for subsequent [WhisperState::encode] and
++    /// [WhisperState::lang_detect] calls (0 = model default).
++    pub fn set_audio_ctx(&mut self, audio_ctx: c_int) {
++        unsafe { whisper_rs_sys::whisper_set_audio_ctx_with_state(self.ptr, audio_ctx) }
+     }
+ 
+     /// Run the Whisper decoder to obtain the logits and probabilities for the next token.

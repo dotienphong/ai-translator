@@ -23,3 +23,8 @@ strip = true
 lto = true
 codegen-units = 1
 panic = "abort"
+
+# whisper-rs và whisper-rs-sys đã vá để dùng chung một lượt encode (spec §6.4). Xem third_party/README.md.
+[patch.crates-io]
+whisper-rs = { path = "third_party/whisper-rs" }
+whisper-rs-sys = { path = "third_party/whisper-rs-sys" }
