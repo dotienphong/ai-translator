@@ -242,7 +242,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
   - Staging gửi từ `onboarding@resend.dev`, và địa chỉ này chỉ gửi tới email của chủ tài khoản Resend.
   - Lỗi gửi email không chặn việc cấp key: key vẫn lấy được qua `GET /v1/orders`, `recover` hay admin.
   - Email mua hàng có idempotency key `<env>-order-<orderCode>`, nên gửi lại không bao giờ thành hai thư.
-  - Gửi lỗi tạm (5xx, 429, lỗi mạng) thì cron gửi lại, giãn dần: sau 5 phút, 15 phút, 1 giờ, rồi mỗi 6 giờ, trong 24 giờ sau khi trả tiền. Lỗi vĩnh viễn (4xx khác 429, ví dụ địa chỉ nhận bị từ chối) thì thôi gửi. Cảnh báo `email_failed` chỉ tạo ở lần lỗi đầu của mỗi đơn.
+  - Chỉ 400 và 422 của Resend (thư sai dạng, địa chỉ nhận không hợp lệ) là lỗi vĩnh viễn: thôi gửi. Mọi lỗi khác là lỗi tạm, gồm 401 và 403 (API key bị khóa, tên miền chưa xác thực: sửa cấu hình xong là gửi được), 409 `concurrent_idempotent_requests` (hai lượt gửi chồng nhau; tài liệu Resend ghi "Retry later"), 429, 5xx và lỗi mạng. Lỗi tạm thì cron gửi lại, giãn dần: sau 5 phút, 15 phút, 1 giờ, rồi mỗi 6 giờ, trong 24 giờ sau khi trả tiền. Cảnh báo `email_failed` chỉ tạo ở lần lỗi đầu của mỗi đơn.
   - Đơn đã cấp mà chưa thử gửi thư lần nào (Worker dừng giữa lúc cấp và gửi) thì cron gửi sau 5 phút.
 - **QĐ20. Chỉ nhận HTTPS** khi `ENVIRONMENT` khác `dev`, và kiểm ngay trong Worker (§10.2). Worker không bật CORS, vì app gọi server từ phía Rust (`LicenseProvider`, §6.8), không gọi từ WebView.
 - **QĐ21. D1 tạo với `--location apac`**: gần khách ở Việt Nam, và nơi lưu được ghi vào hồ sơ dữ liệu cá nhân.
@@ -653,7 +653,7 @@ devDependencies:
 + typescript 7.0.2
 + vitest 4.1.11
 + wrangler 4.143.1
-Done in 5.4s using pnpm v12.6.0
+Done in 3.6s using pnpm v12.6.0
 ```
 
 - Có thêm `server/pnpm-lock.yaml`.
@@ -906,8 +906,8 @@ CREATE TABLE orders (
   last_checked_at INTEGER,
   email_sent_at INTEGER,
   email_attempts INTEGER NOT NULL DEFAULT 0,   -- số lần đã thử gửi thư chứa key
-  email_retry_at INTEGER,                      -- lần gửi lại kế tiếp sau lỗi tạm (5xx, 429, mạng)
-  email_gave_up_at INTEGER                     -- thôi gửi sau lỗi vĩnh viễn (4xx khác 429)
+  email_retry_at INTEGER,                      -- lần gửi lại kế tiếp sau lỗi tạm (401, 403, 409, 429, 5xx, mạng)
+  email_gave_up_at INTEGER                     -- thôi gửi sau lỗi vĩnh viễn (400, 422)
 );
 CREATE INDEX orders_pending ON orders (status, created_at);
 CREATE INDEX orders_email ON orders (email);
@@ -2679,14 +2679,13 @@ describe("Resend", () => {
     );
     const err = await p.send({ to: "buyer@mt.test", subject: "S", text: "T" }).catch((e: unknown) => e);
     expect(String(err)).toBe("EmailProviderError: Resend trả HTTP 403");
-    expect((err as EmailProviderError).permanent).toBe(true);
+    expect((err as EmailProviderError).status).toBe(403);
   });
 
-  it("429 và 5xx là lỗi tạm, 4xx khác là lỗi vĩnh viễn", () => {
-    expect(new EmailProviderError("x", 429).permanent).toBe(false);
-    expect(new EmailProviderError("x", 503).permanent).toBe(false);
+  it("chỉ 400 và 422 là lỗi vĩnh viễn; 401, 403, 409, 429, 5xx và lỗi mạng là lỗi tạm", () => {
+    for (const status of [400, 422]) expect(new EmailProviderError("x", status).permanent).toBe(true);
+    for (const status of [401, 403, 409, 429, 500, 503]) expect(new EmailProviderError("x", status).permanent).toBe(false);
     expect(new EmailProviderError("x").permanent).toBe(false);
-    expect(new EmailProviderError("x", 422).permanent).toBe(true);
   });
 });
 
@@ -2750,9 +2749,13 @@ export class EmailProviderError extends Error {
     super(message);
   }
 
-  /** Lỗi 4xx (trừ 429) là lỗi vĩnh viễn, ví dụ địa chỉ nhận bị từ chối: gửi lại cũng không được. */
+  /**
+   * Chỉ 400 và 422 là lỗi vĩnh viễn (thư sai dạng, địa chỉ nhận không hợp lệ): gửi lại cũng không được.
+   * 401, 403 (API key bị khóa, tên miền chưa xác thực: sửa cấu hình xong thì gửi được), 409
+   * (concurrent_idempotent_requests, Resend ghi "Retry later"), 429, 5xx và lỗi mạng là lỗi tạm.
+   */
   get permanent(): boolean {
-    return this.status !== undefined && this.status >= 400 && this.status < 500 && this.status !== 429;
+    return this.status === 400 || this.status === 422;
   }
 }
 
@@ -3716,7 +3719,7 @@ export function realDeps(env: ApiEnv): Deps {
 
 export interface MailResult {
   ok: boolean;
-  /** Lỗi vĩnh viễn (4xx khác 429): không gửi lại. */
+  /** Lỗi vĩnh viễn (Resend trả 400 hoặc 422): không gửi lại. */
   permanent: boolean;
 }
 
@@ -4700,7 +4703,7 @@ export function emailRetryDelay(attempts: number): number {
 
 /**
  * Gửi email sau khi cấp; idempotency key theo đơn để Resend không gửi hai lần (kể cả khi cron gửi lại).
- * Lỗi tạm (5xx, 429, mạng) thì hẹn lần gửi lại; lỗi vĩnh viễn (4xx khác 429) thì thôi.
+ * Lỗi tạm (401, 403, 409, 429, 5xx, mạng) thì hẹn lần gửi lại; lỗi vĩnh viễn (400, 422) thì thôi.
  * Cảnh báo email_failed chỉ tạo ở lần lỗi đầu của mỗi đơn.
  */
 export async function mailGranted(
@@ -4794,6 +4797,7 @@ export async function retryUnsentEmails(env: { DB: D1Database; ENVIRONMENT: stri
   const { results } = await env.DB.prepare(
     `SELECT o.order_code, o.email, o.renew_license_id, l.id AS license_id, l.license_key, l.expires_at
      FROM orders o JOIN licenses l ON l.id = o.license_id
+     -- email_gave_up_at IS NULL là lớp phòng thủ: đơn đã thôi gửi luôn có email_retry_at NULL và email_attempts > 0.
      WHERE o.status = 'paid' AND o.email IS NOT NULL AND o.email_sent_at IS NULL AND o.email_gave_up_at IS NULL
        AND o.paid_at >= ?1 - 86400
        -- Đã hẹn gửi lại và tới hạn; hoặc chưa thử lần nào sau 5 phút (Worker dừng giữa lúc cấp và gửi).
@@ -5930,7 +5934,22 @@ describe("đối soát mỗi 5 phút", () => {
     expect(row).toEqual({ email_attempts: 4, email_retry_at: T0 + 4800 + 6 * 3600 });
   });
 
-  it("email lỗi vĩnh viễn (4xx khác 429): thôi gửi lại, cảnh báo một lần", async () => {
+  it.each([403, 409])("email lỗi %i (cấu hình sai, hay hai lượt gửi chồng nhau) là lỗi tạm: được gửi lại", async (status) => {
+    const w = makeWorld();
+    const orderCode = await newOrder(w);
+    w.payos.pay(orderCode);
+    w.resend.failStatus = status;
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    const row = await env.DB.prepare("SELECT email_attempts, email_gave_up_at, email_retry_at FROM orders").first();
+    expect(row).toEqual({ email_attempts: 1, email_gave_up_at: null, email_retry_at: T0 + 300 });
+    w.resend.failStatus = null;
+    w.clock.now = T0 + 300;
+    expect((await reconcile(w.env, w.deps)).emails_retried).toBe(1);
+    expect(w.resend.sent).toHaveLength(1);
+    expect(w.resend.sent[0]!.idempotencyKey).toBe(`dev-order-${orderCode}`);
+  });
+
+  it("email lỗi vĩnh viễn (422): thôi gửi lại, cảnh báo một lần", async () => {
     const w = makeWorld();
     const orderCode = await newOrder(w);
     w.payos.pay(orderCode);
@@ -6103,7 +6122,7 @@ cd server && pnpm exec vitest run test/reconcile.test.ts && pnpm typecheck
 Expected:
 ```
 Test Files  1 passed (1)
-Tests  15 passed (15)
+Tests  17 passed (17)
 ```
 
 - [ ] **Step 6: Commit**
@@ -7083,15 +7102,15 @@ $ tsc --noEmit
 $ node scripts/gen-token-vectors.mjs | cmp - test/vectors/token-v1.json
 $ vitest run
 Test Files  17 passed (17)
-Tests  171 passed (171)
+Tests  173 passed (173)
 $ wrangler deploy --dry-run --env staging && wrangler deploy --dry-run --env production && wrangler deploy --dry-run -c wrangler.admin.jsonc --env staging && wrangler deploy --dry-run -c wrangler.admin.jsonc --env production
-Total Upload: 107.21 KiB / gzip: 28.08 KiB
+Total Upload: 107.56 KiB / gzip: 28.24 KiB
 --dry-run: exiting now.
-Total Upload: 107.21 KiB / gzip: 28.08 KiB
+Total Upload: 107.56 KiB / gzip: 28.24 KiB
 --dry-run: exiting now.
-Total Upload: 88.68 KiB / gzip: 23.15 KiB
+Total Upload: 88.86 KiB / gzip: 23.29 KiB
 --dry-run: exiting now.
-Total Upload: 88.68 KiB / gzip: 23.15 KiB
+Total Upload: 88.86 KiB / gzip: 23.29 KiB
 --dry-run: exiting now.
 ```
 Không có dòng `WARNING` nào của wrangler: `env.production` khai báo `PRICES_JSON` rỗng một cách rõ ràng.
@@ -7759,7 +7778,7 @@ pnpm -C server check
 pnpm -C server audit
 ```
 
-Expected: `pnpm -C server check` in `Tests  171 passed (171)` (lúc lập kế hoạch), và 4 lần `--dry-run: exiting now.`
+Expected: `pnpm -C server check` in `Tests  173 passed (173)` (lúc lập kế hoạch), và 4 lần `--dry-run: exiting now.`
 - [ ] **Step 3: Ghi vào mục 8 của kế hoạch 00**
   - P05-1 tới P05-6.
   - Thêm vào Q12 (lệch nhỏ với spec, đề xuất sửa chữ ở lần cập nhật spec kế tiếp):
@@ -7832,11 +7851,11 @@ Expected: `pnpm -C server check` in `Tests  171 passed (171)` (lúc lập kế h
 - **Độ phủ spec.** Mỗi dòng của bảng đối chiếu có task nhận (bảng ở đầu kế hoạch). §6.8 phía server được phủ đủ: API, PayOS, token, admin, email, các quy tắc về gia hạn, máy bị gỡ từ xa, giới hạn VND. Phần quota, lịch `validate` và mua trong app là của 06.
 - **Placeholder.** Không có trong code. Chỉ còn các giá trị người làm điền từ tài khoản thật: `database_id`, `<subdomain>`, `ACCESS_AUD`, `API_ORIGIN`, khóa công khai `x`, giá production, tên miền.
 - **Kiểu nhất quán.** Replay 18 task (xem "Đã chạy thử") dựng lại đúng từng file của bản đã test, và `tsc --noEmit` xanh sau mỗi task có code.
-- **Test bắt được lỗi thật.** Lúc lập kế hoạch đã thử bỏ từng điều kiện trong code, và mỗi lần đều có test đỏ: `status = paid`, `amountPaid ≥ amount`, `amount` khớp đơn, kiểm license thu hồi hay hết hạn ở `validate`, đếm `validate` theo key đã chuẩn hóa; khóa tạm: trừ lần gỡ chính máy đang kích hoạt, chặn mọi máy không đang kích hoạt khi đã khóa; IP bị chặn: chỉ cho qua key hợp lệ kèm activation đang hoạt động (không chặn cả trường hợp này, và không cho qua mọi key thật); gửi lại email: giãn thời gian, không gửi lại lỗi vĩnh viễn, cảnh báo một lần mỗi đơn.
+- **Test bắt được lỗi thật.** Lúc lập kế hoạch đã thử bỏ từng điều kiện trong code, và mỗi lần đều có test đỏ: `status = paid`, `amountPaid ≥ amount`, `amount` khớp đơn, kiểm license thu hồi hay hết hạn ở `validate`, đếm `validate` theo key đã chuẩn hóa; khóa tạm: trừ lần gỡ chính máy đang kích hoạt, chặn mọi máy không đang kích hoạt khi đã khóa; IP bị chặn: chỉ cho qua key hợp lệ kèm activation đang hoạt động (không chặn cả trường hợp này, và không cho qua mọi key thật); gửi lại email: giãn thời gian, không gửi lại lỗi vĩnh viễn, chỉ 400 và 422 là lỗi vĩnh viễn, cảnh báo một lần mỗi đơn.
 
 ## Đã chạy thử lúc lập kế hoạch
 
 - Làm trong worktree tách riêng, rồi chạy lại Task 1–18 trong một worktree mới, đúng thứ tự và đúng lệnh của kế hoạch. Mọi bước "thấy lỗi" đều lỗi đúng lý do; mọi bước "chạy test" đều xanh.
 - Cây `server/` dựng lại giống hệt bản đã test (`diff -r`, không tính `node_modules` và `.wrangler`). `pnpm install` không ghi `minimumReleaseAgeExclude`, vì mọi bản đã chốt đều ra được ít nhất 1 ngày.
-- Kết quả cuối (`pnpm check`): `Test Files  17 passed (17)`, `Tests  171 passed (171)`; `tsc` sạch; 4 lần `wrangler deploy --dry-run` qua (Worker API 107,21 KiB, gzip 28,08 KiB; Worker admin 88,68 KiB, gzip 23,15 KiB); `pnpm audit` sạch.
+- Kết quả cuối (`pnpm check`): `Test Files  17 passed (17)`, `Tests  173 passed (173)`; `tsc` sạch; 4 lần `wrangler deploy --dry-run` qua (Worker API 107,56 KiB, gzip 28,24 KiB; Worker admin 88,86 KiB, gzip 23,29 KiB); `pnpm audit` sạch.
 - **Chưa chạy được** (cần tài khoản): Task 19–21 (`wrangler login`, D1 thật, secret, deploy, Access và cookie, `confirm-webhook`, giao dịch thật), và lệnh tạo item thật bằng `op`, `bw`.
