@@ -1012,8 +1012,8 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
-/// Luật bỏ đoạn "không có tiếng nói" theo OpenAI Whisper, là đề xuất cho §6.4 (xem kế hoạch 00, Task 2); spec hiện chỉ
-/// có `no_speech_prob > 0,6`. Bỏ khi `no_speech_prob` lớn hơn ngưỡng này **và** `avg_logprob` nhỏ hơn `AVG_LOGPROB_MIN`.
+/// Luật bỏ đoạn "không có tiếng nói" theo OpenAI Whisper (spec §6.4, "Lọc lỗi ảo giác"): bỏ khi `no_speech_prob` lớn hơn
+/// ngưỡng này **và** `avg_logprob` nhỏ hơn `AVG_LOGPROB_MIN`.
 /// `avg_logprob` của worker không tính EOT, cố ý khác OpenAI: âm hơn một chút, nên chặt hơn một chút ở đoạn ngắn. Chế độ A
 /// không có `cut_loop` nên `avg_logprob` của nó gồm cả token lặp.
 ///
@@ -1039,7 +1039,7 @@ const MERGE_MAX_SEGMENTS: usize = 3;
 
 // Lý do một đoạn không được dịch, ghi ở `SegmentRecord::skipped`.
 /// Đoạn không có tiếng nói theo luật `no_speech_prob` và `avg_logprob` (xem `NO_SPEECH_MAX`), hoặc chữ rỗng: app bỏ đoạn
-/// này (luật đề xuất cho §6.4).
+/// này (spec §6.4, "Lọc lỗi ảo giác").
 const SKIP_NO_SPEECH: &str = "no_speech";
 /// Đoạn ngắn hơn `MIN_PCM_SAMPLES`: không gửi cho `asr-worker`.
 const SKIP_TOO_SHORT: &str = "too_short";
@@ -1508,7 +1508,7 @@ fn ends_sentence(text: &str) -> bool {
 /// (`Segment::start_ms` và `end_ms`, không gồm đệm), nên cửa sổ tính từ lúc hết tiếng nói của đoạn trước tới lúc có
 /// tiếng nói của đoạn sau.
 struct OpenSentence {
-    /// Ngôn ngữ nhận diện của các đoạn. Đoạn sau khác ngôn ngữ thì không ghép.
+    /// Ngôn ngữ nhận diện của các đoạn. Đoạn sau khác ngôn ngữ thì không ghép (spec §6.3, "Ghép câu và phụ đề tạm").
     lang: String,
     /// Chỗ nối chữ: tiếng Trung và tiếng Nhật không có dấu cách giữa các từ.
     joiner: &'static str,

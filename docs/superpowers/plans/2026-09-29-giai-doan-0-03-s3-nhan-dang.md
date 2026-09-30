@@ -1087,7 +1087,7 @@ Expected: FAIL, lỗi biên dịch vì chưa có `pick_language`. Lần đầu b
 - [ ] **Step 5: Viết phần code** ở đầu `crates/asr-worker/src/lid.rs`:
 
 ```rust
-//! Chọn ngôn ngữ trong tập người dùng cho phép (spec §6.4).
+//! Chọn ngôn ngữ trong tập người dùng cho phép (spec §6.4, "Chọn ngôn ngữ").
 
 use asr_protocol::SAMPLE_RATE;
 
@@ -1100,7 +1100,7 @@ const _: () = assert!(SHORT_LID_SAMPLES == SAMPLE_RATE as usize * 3 / 2);
 
 /// Ngưỡng cho đoạn ngắn hơn [`SHORT_LID_SAMPLES`]. Ở S6, turbo nhận thành tiếng Anh các đoạn tiếng Việt dưới 1,3 giây
 /// (xác suất từ 0,57 đến 0,99): đoạn quá ngắn không đủ bằng chứng để đổi ngôn ngữ, nên chỉ đổi khi xác suất từ 0,9.
-/// Đề xuất cho §6.4 (xem kế hoạch 00, Task 2); spec hiện chỉ có ngưỡng 0,5.
+/// Xem spec §6.4, "Chọn ngôn ngữ" (đoạn ngắn hơn 1,5 giây), kèm đánh đổi đã đo.
 pub const MIN_LANG_PROB_SHORT: f32 = 0.9;
 
 /// Ngưỡng `min_prob` cho `pick_language` theo độ dài đoạn (số mẫu 16 kHz): [`MIN_LANG_PROB_SHORT`] nếu đoạn ngắn hơn
@@ -1230,8 +1230,8 @@ const PRIMER_JA: &str = "以下は日本語の文です。";
 /// Prompt mồi cho zh và ja (`<|startofprev|>` rồi các token này, như prompt của client). **Mặc định TẮT**; đặt
 /// `ASR_PRIMER=1` để bật (khi đó `asr-worker` in `primer=on`).
 ///
-/// Ý định ban đầu là cho Whisper đặt dấu câu kết thúc ở zh và ja, để luật ghép câu §6.3 (câu không kết thúc bằng dấu câu
-/// thì ghép với câu sau) không nối cả những câu khác nhau. Đo ở S3 và S6 (small và turbo, 216 clip zh+ja của A4 và các
+/// Ý định ban đầu là cho Whisper đặt dấu câu kết thúc ở zh và ja, để luật ghép câu (spec §6.3) (câu không kết thúc bằng
+/// dấu câu thì ghép với câu sau) không nối cả những câu khác nhau. Đo ở S3 và S6 (small và turbo, 216 clip zh+ja của A4 và các
 /// đoạn VAD thật của S6) cho thấy mồi không đáng bật:
 /// - zh: dấu `。` hiện cả ở đoạn giữa câu (small 16/20, turbo 15/20; đoạn cuối câu 21/23 và 20/23), nên không giúp
 ///   §6.3: ghép câu chuyển từ "nối nhầm" (4 đến 5 nhóm) sang "cắt vụn" (11 đến 12 trong 23 câu bị cắt), số câu nguyên
@@ -1242,7 +1242,9 @@ const PRIMER_JA: &str = "以下は日本語の文です。";
 /// - CER của small tăng 2,9% tổng lỗi zh+ja (băng rộng); turbo giảm 2,2%. ASR p50 của zh, ja tăng 1% đến 9%.
 ///
 /// Lợi ích duy nhất còn lại: `small` ra chữ giản thể (clip zh có chữ phồn thể từ 66% xuống 16%, ký tự phồn thể từ 18,1%
-/// xuống 2,0%). MVP xử lý việc này bằng chuyển t2s ở tầng app.
+/// xuống 2,0%). MVP xử lý việc này bằng chuyển t2s ở tầng app (spec §6.4, "Việc cho MVP").
+///
+/// Quyết định tắt mặc định nằm ở spec §6.4 ("Giải mã", mồi dấu câu) và §6.3 ("Tiếng Trung và tiếng Nhật").
 ///
 /// Khi bật: chỉ dùng khi client không gửi prompt (đoạn đầu, hoặc sau khi đổi ngôn ngữ); prompt của client là ngữ cảnh
 /// thật nên thắng. Token hóa một lần lúc nạp model. Tắt thì các danh sách rỗng.
@@ -1326,7 +1328,7 @@ impl Engine {
     pub fn load(model_path: &str, use_gpu: bool, n_threads: u32) -> Result<Self> {
         // Flash attention mặc định TẮT: whisper.cpp 1.8.3 đọc K/V của encoder và cross-attention tới GGML_PAD(audio_ctx, 256)
         // mà không có mask, nên với audio_ctx rút ngắn kết quả sai và phụ thuộc các đoạn trước (ggml-org/whisper.cpp#3941).
-        // Chỉ đặt `ASR_FLASH_ATTN=1` khi whisper.cpp đã có bản vá đó.
+        // Chỉ đặt `ASR_FLASH_ATTN=1` khi whisper.cpp đã có bản vá đó (spec §6.4, "Flash attention: tắt").
         let flash_attn = use_gpu && std::env::var("ASR_FLASH_ATTN").as_deref() == Ok("1");
         let n_threads = clamp_threads(n_threads);
         let params = WhisperContextParameters {
@@ -2376,8 +2378,8 @@ struct Output {
     lang_hyp: String,
     lang_prob: f32,
     hyp: String,
-    /// Đoạn có giá trị > 0,6 bị bỏ theo spec §6.4 (luật đề xuất thêm điều kiện `avg_logprob`, xem bên dưới); trên clip có
-    /// tiếng nói thì phải hiếm.
+    /// Đoạn có giá trị > 0,6 và `avg_logprob` < −1 bị app bỏ (spec §6.4, "Lọc lỗi ảo giác"); trên clip có tiếng nói thì
+    /// phải hiếm.
     no_speech_prob: f32,
     /// Trung bình log-xác suất của các token văn bản, không tính EOT (0 nếu không có token); xem
     /// `TranscribeResult::avg_logprob`.
@@ -2518,8 +2520,9 @@ Cột thêm ngoài WER/CER thô:
 - `lid_fallback`: số clip có lang_prob < 0,5, tức nhận diện không chắc. Worker giữ ngôn ngữ của clip trước (nếu có)
   cho các clip này, nên kết quả của chúng phụ thuộc thứ tự clip trong manifest.
 - Cột cuối (`nospeech_rate` trong JSON): tỉ lệ clip bị bỏ theo luật "không có tiếng nói". Dòng kết quả có `avg_logprob`
-  (worker từ af5b41a trở đi) dùng luật đề xuất cho §6.4: `no_speech_prob > 0,6` **và** `avg_logprob < −1`. Dòng cũ không
-  có trường này dùng luật của spec, chỉ `no_speech_prob > 0,6`. Số dòng theo từng luật được in ra stderr.
+  (worker từ af5b41a trở đi) dùng luật ở spec §6.4 ("Lọc lỗi ảo giác"): `no_speech_prob > 0,6` **và** `avg_logprob < −1`.
+  Dòng cũ không có trường này dùng luật trước đó, chỉ `no_speech_prob > 0,6`, để số cũ không đổi. Số dòng theo từng luật
+  được in ra stderr.
 
 Chuẩn hóa: NFC, chữ thường, bỏ dấu câu và ký hiệu; tiếng Trung, Nhật, Hàn bỏ cả khoảng trắng. Riêng tiếng Trung:
 - small hay ra chữ phồn thể còn FLEURS cmn_hans_cn là giản thể, nên đổi cả ref và hyp về giản thể bằng OpenCC (t2s);
@@ -2547,8 +2550,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.abspath(os.path.join(HERE, "..", "data", "asr"))
 RESULTS = os.path.abspath(os.path.join(HERE, "..", "results"))
 CER_LANGS = {"zh", "ja", "ko"}
-NO_SPEECH_MAX = 0.6  # luật của spec §6.4: bỏ đoạn có no_speech_prob lớn hơn
-AVG_LOGPROB_MIN = -1.0  # luật đề xuất cho §6.4 (kế hoạch 00, Task 2): thêm điều kiện avg_logprob nhỏ hơn, giống latency.rs
+NO_SPEECH_MAX = 0.6  # spec §6.4, "Lọc lỗi ảo giác": bỏ đoạn có no_speech_prob lớn hơn
+AVG_LOGPROB_MIN = -1.0  # cùng luật: và avg_logprob nhỏ hơn (giống latency.rs)
 MIN_LANG_PROB = 0.5  # dưới mức này worker giữ ngôn ngữ của đoạn trước (asr-worker/src/lid.rs)
 # small hay ra chữ phồn thể, FLEURS cmn_hans_cn là giản thể: đổi về giản thể trước khi so.
 T2S = opencc.OpenCC("t2s")
@@ -3476,13 +3479,13 @@ impl Generated {
     }
 }
 
-/// Mẫu dài nhất (token) mà `loop_period` tìm: nửa trần 224 token của Whisper, vì mẫu lặp hai lần dài hơn thế không thể
-/// nằm gọn trong một lượt giải mã. Câu bị lặp trong bộ clip FLEURS dài 12 đến 70 token (`ko-13932034022230918300`
+/// Mẫu dài nhất (token) mà `loop_period` tìm (spec §6.4, "Giải mã", dừng khi lặp): nửa trần 224 token của Whisper, vì
+/// mẫu lặp hai lần dài hơn thế không thể nằm gọn trong một lượt giải mã. Câu bị lặp trong bộ clip FLEURS dài 12 đến 70 token (`ko-13932034022230918300`
 /// chép cả câu 70 token hai lần, 140 token).
 const MAX_LOOP_PERIOD: usize = 112;
 
-/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper (đề xuất cho §6.4, xem kế hoạch 00,
-/// Task 2; spec chỉ có bộ lọc câu lặp n-gram ở tầng app):
+/// Số bản liên tiếp của một mẫu `n` token ở cuối dãy thì coi là lỗi lặp của Whisper (spec §6.4, "Giải mã", dừng khi
+/// lặp):
 /// - 1–8 token: 4 bản, để không cắt nhầm lời nói thật ("no, no, no");
 /// - 9–15 token: 3 bản;
 /// - 16–112 token (thường là cả câu): 2 bản, vì Whisper có khi chép cả câu hai lần rồi mới dừng (S7: 8 clip, 6 của turbo
@@ -3521,7 +3524,8 @@ fn cut_loop(tokens: &mut Vec<WhisperTokenId>, next: WhisperTokenId) -> bool {
     }
 }
 
-/// Trần số token mới của một đoạn: nửa ngữ cảnh văn bản của Whisper (224) trừ độ dài prompt, và không quá
+/// Trần số token mới của một đoạn (spec §6.4, "Giải mã"): nửa ngữ cảnh văn bản của Whisper (224) trừ độ dài prompt, và
+/// không quá
 /// `16 + 20 × số giây` của đoạn. Trên bộ clip FLEURS, lời nói không lặp có nhiều nhất 7,75 token/giây (p99 6,35), nên
 /// trần theo độ dài chỉ chặn vòng lặp mà `loop_period` không bắt được (các bản không giống hệt nhau), nhất là ở đoạn
 /// ngắn. Hệ số 20 khoảng 3 lần p99, để `loop_period` (cần 2 đến 4 bản) thường kịp gom vòng lặp trước khi chạm trần.
