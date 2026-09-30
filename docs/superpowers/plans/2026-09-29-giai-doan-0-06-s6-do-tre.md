@@ -210,7 +210,7 @@ git commit -m "feat(pipeline): mẫu prompt Hy-MT2 (Anh, Trung, ngữ cảnh) gi
 - Modify: `crates/pipeline/src/lib.rs`
 
 Cách đọc từng dòng stream của `/v1/chat/completions`:
-- `data: {...}` có `delta.content` thì trả phần chữ mới.
+- `data: {...}` có `delta.content` thì trả phần chữ mới, kèm `finish_reason` nếu có (`stop`, hoặc `length` khi chạm `max_tokens`).
 - `data: [DONE]` thì kết thúc.
 - Dòng trống hoặc dòng không bắt đầu bằng `data:` thì bỏ qua.
 - Chunk có `error` là lỗi.
@@ -231,13 +231,32 @@ mod tests {
     #[test]
     fn parses_delta() {
         let line = r#"data: {"choices":[{"index":0,"delta":{"content":"Xin"}}]}"#;
-        assert_eq!(parse_sse_line(line).unwrap(), SseEvent::Delta("Xin".into()));
+        let want = SseEvent::Delta {
+            content: "Xin".into(),
+            finish_reason: None,
+        };
+        assert_eq!(parse_sse_line(line).unwrap(), want);
     }
 
     #[test]
-    fn finish_chunk_has_empty_delta() {
+    fn finish_chunk_has_empty_delta_and_reason() {
         let line = r#"data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}"#;
-        assert_eq!(parse_sse_line(line).unwrap(), SseEvent::Delta(String::new()));
+        let want = SseEvent::Delta {
+            content: String::new(),
+            finish_reason: Some("stop".into()),
+        };
+        assert_eq!(parse_sse_line(line).unwrap(), want);
+    }
+
+    #[test]
+    fn data_without_space_and_null_content() {
+        let line = r#"data:{"choices":[{"delta":{"role":"assistant","content":null}}]}"#;
+        let want = SseEvent::Delta {
+            content: String::new(),
+            finish_reason: None,
+        };
+        assert_eq!(parse_sse_line(line).unwrap(), want);
+        assert_eq!(parse_sse_line("data:[DONE]\r").unwrap(), SseEvent::Done);
     }
 
     #[test]
@@ -248,9 +267,9 @@ mod tests {
     }
 
     #[test]
-    fn server_error_is_an_error() {
-        let line = r#"data: {"error":{"code":500,"message":"boom"}}"#;
-        assert!(parse_sse_line(line).is_err());
+    fn server_error_and_bad_json_are_errors() {
+        assert!(parse_sse_line(r#"data: {"error":{"code":500,"message":"boom"}}"#).is_err());
+        assert!(parse_sse_line("data: {\"choices\":[").is_err());
     }
 }
 ```
@@ -265,12 +284,15 @@ Expected: FAIL, lỗi biên dịch vì chưa có `parse_sse_line` và `SseEvent`
 ```rust
 //! Đọc từng dòng Server-Sent Events của `/v1/chat/completions` với `stream: true`.
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SseEvent {
-    /// Phần chữ mới của bản dịch (có thể rỗng, ví dụ ở gói chứa `finish_reason`).
-    Delta(String),
+    /// Phần chữ mới của bản dịch (có thể rỗng), kèm `finish_reason` nếu đây là gói cuối.
+    Delta {
+        content: String,
+        finish_reason: Option<String>,
+    },
     Done,
     /// Dòng trống, comment hoặc trường khác `data`.
     Ignore,
@@ -284,19 +306,23 @@ pub fn parse_sse_line(line: &str) -> Result<SseEvent> {
     if data == "[DONE]" {
         return Ok(SseEvent::Done);
     }
-    let value: serde_json::Value = serde_json::from_str(data)?;
+    let value: serde_json::Value =
+        serde_json::from_str(data).with_context(|| format!("dòng SSE không phải JSON: {data:.200}"))?;
     if let Some(err) = value.get("error") {
         bail!("llama-server báo lỗi: {err}");
     }
-    let content = value["choices"][0]["delta"]["content"].as_str().unwrap_or_default();
-    Ok(SseEvent::Delta(content.to_string()))
+    let choice = &value["choices"][0];
+    Ok(SseEvent::Delta {
+        content: choice["delta"]["content"].as_str().unwrap_or_default().to_string(),
+        finish_reason: choice["finish_reason"].as_str().map(String::from),
+    })
 }
 ```
 
 - [ ] **Step 5: Chạy lại test**
 
 Run: `cargo test -p pipeline`
-Expected: PASS, `test result: ok. 28 passed`
+Expected: PASS, `test result: ok. 29 passed`
 
 - [ ] **Step 6: Commit**
 
@@ -316,7 +342,13 @@ Lệnh chạy theo §6.5:
 - `-m <gguf> --host 127.0.0.1 --port <cổng trống> --api-key <ngẫu nhiên> -c 2048 -np 1 -ngl auto --no-ui`.
 - Cổng được chọn bằng cách mở rồi đóng một `TcpListener` ở cổng 0.
 - API key sinh từ `RandomState` của thư viện chuẩn. Key này chỉ cần khó đoán với tiến trình khác trên máy, và không nằm trong app (§10.2).
-- Chờ `/health` trả 200, tối đa 180 giây.
+- Chờ `/health` trả 200, tối đa 180 giây; mỗi lần hỏi timeout 2 giây.
+- Client HTTP được dựng trước khi spawn, với `.no_proxy()`.
+  - reqwest vẫn đọc `HTTP_PROXY`/`ALL_PROXY` kể cả khi tắt feature `system-proxy`. Nếu không chặn, prompt (tức bản chép lời) và API key sẽ đi qua proxy. Review lúc thực thi đã chứng minh bằng một proxy giả.
+  - Đây cũng là lỗi đã sửa cho `common.py` ở kế hoạch 02.
+- Stream kết thúc mà không có `[DONE]` là lỗi, vì bản dịch có thể bị cụt.
+- `Translation` trả thêm `finish_reason`, để Task 5 phân biệt bản dịch chạm `max_tokens`.
+- Lỗi HTTP kèm 500 ký tự đầu của thân response. Log của server mở ở chế độ append.
 
 Mỗi lần dịch:
 - gửi request stream với temperature 0, repeat penalty 1,05 và `cache_prompt`;
@@ -357,7 +389,7 @@ use std::fs::File;
 use std::hash::{BuildHasher, Hasher};
 use std::io::{BufRead, BufReader};
 use std::net::TcpListener;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -366,6 +398,7 @@ pub struct LlamaServer {
     base_url: String,
     api_key: String,
     http: reqwest::blocking::Client,
+    log_path: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -374,13 +407,28 @@ pub struct Translation {
     /// Từ lúc gửi request tới khi nhận chữ đầu tiên.
     pub first_token_ms: f32,
     pub total_ms: f32,
+    /// "stop", hoặc "length" khi chạm `max_tokens` (bản dịch bị cụt).
+    pub finish_reason: Option<String>,
 }
 
 impl LlamaServer {
     /// Lệnh chạy theo §6.5. `extra_args` dùng để thử tham số khác trong spike.
     pub fn spawn(exe: &Path, model: &Path, extra_args: &[String], stderr_log: &Path) -> Result<Self> {
+        // Chỉ gọi 127.0.0.1: reqwest vẫn đọc HTTP_PROXY/ALL_PROXY kể cả khi tắt feature `system-proxy`,
+        // nên phải tắt proxy tường minh, giống `ProxyHandler({})` trong common.py.
+        // Dựng client trước khi chạy tiến trình, để lỗi ở đây không bỏ lại server mồ côi.
+        let http = reqwest::blocking::Client::builder()
+            .no_proxy()
+            .timeout(Duration::from_secs(120))
+            .build()?;
         let port = TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
         let api_key = random_key();
+        // Ghi nối tiếp như common.py: chạy lại cùng nhãn không xóa log của lần server vừa chết.
+        let log = File::options()
+            .create(true)
+            .append(true)
+            .open(stderr_log)
+            .with_context(|| format!("không mở được {}", stderr_log.display()))?;
         let child = Command::new(exe)
             .arg("-m")
             .arg(model)
@@ -395,17 +443,15 @@ impl LlamaServer {
             .args(["-c", "2048", "-np", "1", "-ngl", "auto", "--no-ui"])
             .args(extra_args)
             .stdout(Stdio::null())
-            .stderr(Stdio::from(File::create(stderr_log)?))
+            .stderr(Stdio::from(log))
             .spawn()
             .with_context(|| format!("không chạy được {}", exe.display()))?;
-        let http = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(120))
-            .build()?;
         let mut server = Self {
             child,
             base_url: format!("http://127.0.0.1:{port}"),
             api_key,
             http,
+            log_path: stderr_log.to_path_buf(),
         };
         server.wait_healthy(Duration::from_secs(180))?;
         Ok(server)
@@ -419,16 +465,24 @@ impl LlamaServer {
         let started = Instant::now();
         while started.elapsed() < timeout {
             if let Some(status) = self.child.try_wait()? {
-                bail!("llama-server thoát sớm: {status}");
+                bail!("llama-server thoát sớm ({status}), xem log {}", self.log_path.display());
             }
-            if let Ok(resp) = self.http.get(format!("{}/health", self.base_url)).send()
+            // Mỗi lần hỏi chỉ chờ 2 giây, để tổng thời gian chờ không vượt `timeout` quá nhiều.
+            if let Ok(resp) = self
+                .http
+                .get(format!("{}/health", self.base_url))
+                .timeout(Duration::from_secs(2))
+                .send()
                 && resp.status().is_success()
             {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(200));
         }
-        bail!("llama-server không sẵn sàng sau {timeout:?}")
+        bail!(
+            "llama-server không sẵn sàng sau {timeout:?}, xem log {}",
+            self.log_path.display()
+        )
     }
 
     /// Dịch một prompt đã dựng sẵn (xem `prompt.rs`). Tham số sinh theo §6.5.
@@ -447,29 +501,54 @@ impl LlamaServer {
             .post(format!("{}/v1/chat/completions", self.base_url))
             .bearer_auth(&self.api_key)
             .json(&body)
-            .send()?
-            .error_for_status()?;
-        let mut text = String::new();
-        let mut first_token_ms = None;
-        for line in BufReader::new(resp).lines() {
-            match parse_sse_line(&line?)? {
-                SseEvent::Delta(delta) => {
-                    if !delta.is_empty() && first_token_ms.is_none() {
-                        first_token_ms = Some(started.elapsed().as_secs_f32() * 1000.0);
-                    }
-                    text.push_str(&delta);
-                }
-                SseEvent::Done => break,
-                SseEvent::Ignore => {}
-            }
+            .send()?;
+        let status = resp.status();
+        if !status.is_success() {
+            let detail: String = resp.text().unwrap_or_default().chars().take(500).collect();
+            bail!("llama-server trả HTTP {status}: {detail}");
         }
-        let total_ms = started.elapsed().as_secs_f32() * 1000.0;
-        Ok(Translation {
-            text: text.trim().to_string(),
-            first_token_ms: first_token_ms.unwrap_or(total_ms),
-            total_ms,
-        })
+        read_stream(BufReader::new(resp), started)
     }
+}
+
+/// Đọc stream tới `[DONE]`. Tách khỏi `translate` để test được bằng dữ liệu mẫu, không cần server.
+fn read_stream(reader: impl BufRead, started: Instant) -> Result<Translation> {
+    let mut text = String::new();
+    let mut first_token_ms = None;
+    let mut finish_reason = None;
+    let mut done = false;
+    for line in reader.lines() {
+        match parse_sse_line(&line?)? {
+            SseEvent::Delta {
+                content,
+                finish_reason: reason,
+            } => {
+                if !content.is_empty() && first_token_ms.is_none() {
+                    first_token_ms = Some(started.elapsed().as_secs_f32() * 1000.0);
+                }
+                text.push_str(&content);
+                finish_reason = reason.or(finish_reason);
+            }
+            SseEvent::Done => {
+                done = true;
+                break;
+            }
+            SseEvent::Ignore => {}
+        }
+    }
+    if !done {
+        bail!(
+            "stream kết thúc mà không có [DONE] (đã nhận {} ký tự): bản dịch có thể bị cụt",
+            text.chars().count()
+        );
+    }
+    let total_ms = started.elapsed().as_secs_f32() * 1000.0;
+    Ok(Translation {
+        text: text.trim().to_string(),
+        first_token_ms: first_token_ms.unwrap_or(total_ms),
+        total_ms,
+        finish_reason,
+    })
 }
 
 impl Drop for LlamaServer {
@@ -489,6 +568,39 @@ fn random_key() -> String {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ROLE: &str = "data: {\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":null}}]}\n\n";
+
+    #[test]
+    fn stream_without_done_is_an_error() {
+        let body = format!("{ROLE}data: {{\"choices\":[{{\"delta\":{{\"content\":\"Xin\"}}}}]}}\n\n");
+        let err = read_stream(body.as_bytes(), Instant::now()).unwrap_err();
+        assert!(err.to_string().contains("[DONE]"), "{err}");
+    }
+
+    #[test]
+    fn stream_keeps_text_and_finish_reason() {
+        let body = format!(
+            "{ROLE}data: {{\"choices\":[{{\"delta\":{{\"content\":\"Xin\"}}}}]}}\n\n: keep-alive\n\n\
+             data:{{\"choices\":[{{\"delta\":{{\"content\":\" chào \"}}}}]}}\r\n\r\n\
+             data: {{\"choices\":[{{\"delta\":{{}},\"finish_reason\":\"length\"}}]}}\n\ndata: [DONE]\n\n"
+        );
+        let t = read_stream(body.as_bytes(), Instant::now()).unwrap();
+        assert_eq!(t.text, "Xin chào");
+        assert_eq!(t.finish_reason.as_deref(), Some("length"));
+        assert!(t.first_token_ms <= t.total_ms);
+    }
+
+    #[test]
+    fn error_chunk_mid_stream_is_an_error() {
+        let body = format!("{ROLE}data: {{\"error\":{{\"code\":500,\"message\":\"boom\"}}}}\n\n");
+        assert!(read_stream(body.as_bytes(), Instant::now()).is_err());
+    }
+}
 ```
 
 - [ ] **Step 3: Sửa `crates/pipeline/src/lib.rs`** thành bản cuối:
@@ -505,7 +617,7 @@ pub mod vad;
 - [ ] **Step 4: Build, test, clippy**
 
 Run: `cargo test -p pipeline && cargo clippy -p pipeline --all-targets -- -D warnings`
-Expected: `test result: ok. 28 passed`; clippy không có cảnh báo.
+Expected: `test result: ok. 32 passed`; clippy không có cảnh báo.
 
 - [ ] **Step 5: Commit**
 
@@ -570,6 +682,40 @@ mod tests {
         let ends = [1_050];
         assert_eq!(match_segments(&utts, &ends, 1_000), vec![Some(0), None]);
     }
+
+    #[test]
+    fn percentile_sorts_unsorted_input() {
+        // numpy.percentile([15, 20, 35, 40, 50], [0, 40, 90, 100]) == [15, 29, 46, 50]
+        let v = [50.0, 15.0, 40.0, 20.0, 35.0];
+        assert_eq!(percentile(&v, 0.0), Some(15.0));
+        assert!((percentile(&v, 40.0).unwrap() - 29.0).abs() < 1e-4);
+        assert!((percentile(&v, 90.0).unwrap() - 46.0).abs() < 1e-4);
+        assert_eq!(percentile(&v, 100.0), Some(50.0));
+        assert_eq!(percentile(&[7.0], 90.0), Some(7.0));
+    }
+
+    #[test]
+    fn percentile_clamps_p_into_0_100() {
+        let v = [1.0, 2.0, 3.0, 4.0];
+        assert_eq!(percentile(&v, -10.0), Some(1.0));
+        assert_eq!(percentile(&v, 250.0), Some(4.0));
+    }
+
+    #[test]
+    fn match_window_is_inclusive_on_both_sides() {
+        assert_eq!(match_segments(&[utt(5_000)], &[6_000], 1_000), vec![Some(0)]);
+        assert_eq!(match_segments(&[utt(5_000)], &[4_000], 1_000), vec![Some(0)]);
+        assert_eq!(match_segments(&[utt(5_000)], &[6_001], 1_000), vec![None]);
+        assert_eq!(match_segments(&[utt(5_000)], &[3_999], 1_000), vec![None]);
+    }
+
+    #[test]
+    fn picks_nearest_end_on_either_side() {
+        // Câu dài hơn 8 s bị cắt cưỡng bức (max_segment_ms): đoạn cắt giữa câu cũng nằm trong phạm vi.
+        assert_eq!(match_segments(&[utt(9_000)], &[8_200, 9_030], 1_000), vec![Some(1)]);
+        assert_eq!(match_segments(&[utt(5_000)], &[4_900, 5_800], 1_000), vec![Some(0)]);
+        assert_eq!(match_segments(&[utt(5_000)], &[4_200, 5_100], 1_000), vec![Some(1)]);
+    }
 }
 ```
 
@@ -585,14 +731,14 @@ Expected: FAIL, lỗi biên dịch vì chưa có `percentile`, `Utterance`, `mat
 
 use serde::{Deserialize, Serialize};
 
-/// Phân vị kiểu nội suy tuyến tính (giống `numpy.percentile` mặc định). `p` trong [0, 100].
+/// Phân vị kiểu nội suy tuyến tính (giống `numpy.percentile` mặc định). `p` ngoài [0, 100] được kẹp về hai đầu.
 pub fn percentile(values: &[f32], p: f32) -> Option<f32> {
     if values.is_empty() {
         return None;
     }
     let mut v = values.to_vec();
     v.sort_by(f32::total_cmp);
-    let rank = (p / 100.0) * (v.len() - 1) as f32;
+    let rank = (p.clamp(0.0, 100.0) / 100.0) * (v.len() - 1) as f32;
     let (lo, hi) = (rank.floor() as usize, rank.ceil() as usize);
     Some(v[lo] + (v[hi] - v[lo]) * (rank - lo as f32))
 }
@@ -610,6 +756,9 @@ pub struct Utterance {
 
 /// Trả, với mỗi câu, chỉ số đoạn có `end_ms` gần mốc dừng câu nhất (trong phạm vi `max_ms`).
 /// Mỗi đoạn chỉ được ghép với một câu.
+///
+/// Giả định: ghép tham lam theo thứ tự câu; đúng khi câu dài ít nhất khoảng 3 giây và cách nhau ít nhất 0,4 giây.
+/// Câu ngắn hơn hoặc sát nhau hơn thì câu đi trước có thể lấy mất đoạn của câu sau.
 pub fn match_segments(utterances: &[Utterance], segment_ends_ms: &[u64], max_ms: u64) -> Vec<Option<usize>> {
     let mut used = vec![false; segment_ends_ms.len()];
     utterances
@@ -635,7 +784,7 @@ pub fn match_segments(utterances: &[Utterance], segment_ends_ms: &[u64], max_ms:
 - [ ] **Step 5: Chạy lại test**
 
 Run: `cargo test -p latency-bench`
-Expected: PASS, `test result: ok. 3 passed`. Lúc này `cargo build` còn cảnh báo các hàm chưa được dùng; Task 5 sẽ dùng chúng.
+Expected: PASS, `test result: ok. 7 passed`. Lúc này `cargo build` còn cảnh báo các hàm chưa được dùng; Task 5 sẽ dùng chúng.
 
 - [ ] **Step 6: Commit**
 
@@ -1144,11 +1293,11 @@ cargo deny check && cargo audit
 ```
 Expected:
 - `cargo test` chạy các crate trong `crates/` và qua hết:
-  - asr-protocol 6;
+  - asr-protocol 14;
   - asr-worker 5 (bản không có feature);
-  - audio-capture 11 (nếu đã làm kế hoạch 04);
-  - pipeline 28, `vad_reference` 1 ignored;
-  - latency-bench 3.
+  - audio-capture 11, cộng 16 ở `tests/edge.rs` (nếu đã làm kế hoạch 04);
+  - pipeline 32, `vad_reference` 1 ignored;
+  - latency-bench 7.
 - clippy không có cảnh báo.
 - `cargo deny check` in `advisories ok, bans ok, licenses ok, sources ok`.
 
