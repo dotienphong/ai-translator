@@ -41,6 +41,11 @@ ignore = true
 [bans]
 multiple-versions = "allow"
 wildcards = "allow"
+# Bất biến kiến trúc (spec §5, §6.12): chỉ asr-worker được link whisper.cpp (ggml); tiến trình chính thì không.
+deny = [
+    { crate = "whisper-rs-sys", wrappers = ["whisper-rs"], reason = "ggml chỉ được vào qua whisper-rs" },
+    { crate = "whisper-rs", wrappers = ["asr-worker"], reason = "chỉ asr-worker được link whisper.cpp" },
+]
 
 [sources]
 unknown-registry = "deny"
