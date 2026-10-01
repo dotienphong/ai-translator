@@ -183,9 +183,9 @@ pub struct PairRatio {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct MtConfig {
-    pub repeat_penalty: f32,
+    pub repeat_penalty: f64,
     /// Lần thử lại duy nhất dùng repeat penalty cao hơn: với temperature 0, giữ nguyên tham số thì ra y hệt lần trước.
-    pub retry_repeat_penalty: f32,
+    pub retry_repeat_penalty: f64,
     /// Số token tối đa = min(`max_tokens_per_source_token` × số token câu gốc + `max_tokens_extra`, `max_tokens_cap`).
     pub max_tokens_per_source_token: u32,
     pub max_tokens_extra: u32,

@@ -39,6 +39,8 @@ pub struct LlamaLaunch {
     pub ready_timeout: Duration,
     /// Timeout của một request (cả stream).
     pub request_timeout: Duration,
+    /// Biến môi trường thêm cho server (test dùng để điều khiển server giả).
+    pub env: Vec<(String, String)>,
 }
 
 impl LlamaLaunch {
@@ -51,6 +53,7 @@ impl LlamaLaunch {
             extra_args: Vec::new(),
             ready_timeout: Duration::from_secs(180),
             request_timeout: Duration::from_secs(120),
+            env: Vec::new(),
         }
     }
 }
@@ -68,6 +71,7 @@ pub fn command(launch: &LlamaLaunch, port: u16, api_key: &str) -> Command {
         .args(["-ngl", if launch.use_gpu { "auto" } else { "0" }])
         .arg("--no-ui")
         .args(&launch.extra_args)
+        .envs(launch.env.iter().map(|(k, v)| (k, v)))
         .env(API_KEY_ENV, api_key)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -84,7 +88,7 @@ pub fn command(launch: &LlamaLaunch, port: u16, api_key: &str) -> Command {
 pub struct ChatRequest<'a> {
     pub prompt: &'a str,
     pub max_tokens: u32,
-    pub repeat_penalty: f32,
+    pub repeat_penalty: f64,
 }
 
 /// Kết thúc một stream.
