@@ -748,7 +748,7 @@ Run: `cargo test -p pipeline --lib`
 Expected:
 
 ```text
-test result: ok. 124 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 127 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 ```
 
 - [ ] **Step 6: Clippy và định dạng**
@@ -775,7 +775,7 @@ git commit -m "feat(pipeline): phụ đề, hàng đợi chống nghẽn §7 và
 - Luồng nhận dạng áp `filter::verdict` với số của đoạn (`no_speech_prob`, `avg_logprob`, xác suất VAD, độ dài tiếng nói).
 - Mỗi luồng có guard: panic không làm engine treo (Q4 của review 02b); VAD lỗi giữa chừng và nguồn âm thanh hỏng đều báo lỗi (Q5).
 - `segmenter.rs` thêm `open_start_ms` (thời điểm bắt đầu của đoạn đang nói dở, để luồng phụ đề biết tiếng nói đã tiếp tục trong cửa sổ ghép câu).
-- Test đơn vị của luồng phụ đề, nạp thẳng tin nhắn, tất định (Q2 của review 02b): ngữ cảnh đúng câu trước, gộp phụ đề khi hàng đợi dịch đầy, `skipped` vì chờ lâu, `failed` và "dịch không dùng được", luồng dịch chết, câu được ghép thêm khi đang dịch (hủy, dịch lại), đếm phút mỗi đoạn một lần, "Đang trễ", dừng trong hạn và hết hạn, chạm hạn mức (từ `usage` và từ ngoài). Thêm test cả engine với nhận dạng và dịch giả trong tiến trình: VAD không nạp được, VAD lỗi giữa chừng, nguồn âm thanh hỏng, luồng VAD và luồng nhận dạng panic, `llama-server` treo lúc Dừng, lần làm nóng dừng khi Dừng.
+- Test đơn vị của luồng phụ đề, nạp thẳng tin nhắn, tất định (Q2 của review 02b): ngữ cảnh đúng câu trước, gộp phụ đề khi hàng đợi dịch đầy, `skipped` vì chờ lâu, `failed` và "dịch không dùng được", luồng dịch chết, câu được ghép thêm khi đang dịch (hủy, dịch lại; ghép thêm hai lần thì hàng chỉ giữ một mục, bản mới nhất, và câu không kẹt ở `translating`: Q-A của review 02 lần 2), đếm phút mỗi đoạn một lần, "Đang trễ", dừng trong hạn và hết hạn, chạm hạn mức (từ `usage` và từ ngoài). Thêm test cả engine với nhận dạng và dịch giả trong tiến trình: VAD không nạp được, VAD lỗi giữa chừng, nguồn âm thanh hỏng, luồng VAD và luồng nhận dạng panic, `llama-server` treo lúc Dừng, lần làm nóng dừng khi Dừng.
 - `tests/engine.rs` (dòng 295, 315): âm thanh tổng hợp có ranh giới biết trước, VAD theo năng lượng, tiến trình phụ giả qua đúng `SidecarManager`; kiểm thứ tự, thời gian, trạng thái, ghép câu, lọc, phút đã dịch (khớp tổng của `usage`), `dropped`, lỗi làm phiên dừng, dừng nhanh, và log của cả phiên không có chữ chép lời nào. Các test này phát âm thanh nhanh gấp 20 lần thời gian thực, nên đặt ngưỡng trễ rất lớn (600 000 ms) để máy bận không làm test đỏ ngẫu nhiên (Q3 của review 02b); luật trễ có test riêng ở trên.
 
 **Files:**
@@ -1160,6 +1160,28 @@ mod tests {
         h.finish(&j2, done("chúng tôi về nhà."));
         assert_eq!(h.sink.usage(), [(1, 1_700)]);
         assert_eq!((h.c.metrics.translated, h.c.metrics.merges), (1, 1));
+    }
+
+    /// Q-A của review 02 lần 2: câu (chưa chốt, không có dấu kết thúc) được ghép thêm hai lần trong lúc bản đầu còn đang
+    /// dịch. Hàng chỉ có một mục cho câu đó (bản mới nhất); bản dịch xong không bị một mục cũ đưa về `translating`.
+    #[test]
+    fn a_sentence_that_grows_twice_while_translating_ends_done() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we");
+        let j1 = h.job();
+        h.said(2, 1_300, 2_000, "en", "went");
+        h.said(3, 2_300, 3_000, "en", "home");
+        h.finish(&j1, Outcome::Cancelled);
+        let j3 = h.job();
+        assert_eq!((j3.sub_id, j3.version, j3.text.as_str()), (1, 3, "so we went home"));
+        h.finish(&j3, done("chúng tôi về nhà"));
+        h.no_job();
+        let last = h.last(1);
+        assert_eq!(
+            (last.status, last.tgt_text.as_str()),
+            (Status::Done, "chúng tôi về nhà")
+        );
+        assert_eq!(h.statuses(1).last(), Some(&Status::Done));
     }
 
     /// Câu đã dịch xong rồi mới được ghép thêm: lần dịch lại chỉ tính phần mới (§6.8: mỗi đoạn tính một lần).
@@ -3093,11 +3115,15 @@ impl Composer {
         self.sink.subtitle(&state.sub);
         let in_flight = self.in_flight.as_ref().is_some_and(|f| f.sub_id == sub_id);
         if in_flight {
-            // Bản dịch của câu cũ không còn đúng: hủy, đưa câu mới lên đầu hàng.
+            // Bản dịch của câu cũ không còn đúng: hủy, đưa câu mới lên đầu hàng. Câu đã ghép thêm một lần trong lúc bản cũ
+            // còn đang dịch thì đã có trong hàng: chỉ cập nhật mục đó, không thêm mục thứ hai.
             if let Some(f) = &self.in_flight {
                 f.cancel.store(true, Ordering::SeqCst);
             }
-            self.enqueue(sub_id, version, true);
+            let total = state.speech_ms;
+            if !self.queue.update(sub_id, text, end_ms, total, version) {
+                self.enqueue(sub_id, version, true);
+            }
         } else {
             let total = state.speech_ms;
             if !self.queue.update(sub_id, text, end_ms, total, version) {
@@ -3263,6 +3289,9 @@ impl Composer {
             let Some(state) = self.subs.get_mut(&item.sub_id) else {
                 continue;
             };
+            if state.version != item.version {
+                continue; // mục cũ của một câu đã được ghép thêm: bản mới nằm ở mục khác của hàng
+            }
             state.sub.status = Status::Translating;
             state.sub.tgt_text.clear();
             self.sink.subtitle(&state.sub);
@@ -3387,23 +3416,23 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 146 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+test result: ok. 150 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.56s
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.09s
-test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.30s
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-     Running unittests src/lib.rs (target/debug/deps/pipeline-126516eab1f92edf)
-     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-8ba1ac4e23374ebd)
-     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-e753fea9a8abc686)
-     Running tests/clients.rs (target/debug/deps/clients-41fc66e771173fce)
-     Running tests/engine.rs (target/debug/deps/engine-ea22296abc08d3d2)
-     Running tests/lifecycle.rs (target/debug/deps/lifecycle-9c9c371bd03a2b4c)
-     Running tests/shutdown.rs (target/debug/deps/shutdown-82db404fc1f11d0c)
-     Running tests/vad_reference.rs (target/debug/deps/vad_reference-85e6bf9a05f81f77)
+     Running unittests src/lib.rs (target/debug/deps/pipeline-901454d330477dd2)
+     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-b11221de58f4122f)
+     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-d5d453cb8d0fce77)
+     Running tests/clients.rs (target/debug/deps/clients-79f5008458d238c8)
+     Running tests/engine.rs (target/debug/deps/engine-75c665353de2c3db)
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-3343c457a743e8de)
+     Running tests/shutdown.rs (target/debug/deps/shutdown-8294228bcb944e13)
+     Running tests/vad_reference.rs (target/debug/deps/vad_reference-c2808b28efa7e0e7)
 ```
 
 - [ ] **Step 6: Clippy và định dạng**
@@ -3427,7 +3456,7 @@ git commit -m "feat(pipeline): engine của một phiên dịch: bốn luồng, 
 - `tests/fixtures/audio/`: một file WAV ghép ba câu FLEURS (CC BY 4.0, ghi công trong `ATTRIBUTION.txt`) với khoảng lặng, cùng mốc thời gian của từng câu. Dựng lại bằng `build_fixture.py` từ bộ clip A4 có sẵn, cho ra đúng các byte đã commit.
 - `tests/engine.rs` thêm test chạy pipeline từ file WAV đó, với VAD theo năng lượng và tiến trình phụ giả (chạy mặc định).
 - `tests/real_sidecars.rs` (bỏ qua mặc định): cùng file, qua Silero, `asr-worker` và `llama-server` thật.
-- `tests/no_speech.rs` (bỏ qua mặc định, QĐ22): tín hiệu không có tiếng nói qua `asr-worker` thật; có VAD thì in số đoạn VAD của app cắt ra và áp luật lọc với xác suất VAD của đoạn, như app.
+- `tests/no_speech.rs` (bỏ qua mặc định, QĐ22): tín hiệu không có tiếng nói qua `asr-worker` thật; có VAD thì in số đoạn VAD của app cắt ra và áp luật lọc với xác suất VAD của đoạn, như app. Worker nhận nguyên cả tín hiệu (hay đoạn 8 giây), không theo từng đoạn VAD cắt ra; doc của file ghi rõ điều này (N-4 của review 02 lần 2).
 
 **Files:**
 - Test (sửa): `crates/pipeline/tests/engine.rs`
@@ -3641,6 +3670,10 @@ Tạo `crates/pipeline/tests/no_speech.rs`:
 //! app tín hiệu đó không bao giờ tới `asr-worker`), và luật lọc dùng xác suất VAD trung bình của đoạn đầu như app. Tín hiệu
 //! tổng hợp: im lặng, nhiễu trắng, nhiễu hồng, tiếng ù điện, tiếng gõ phím, hợp âm. Thêm file WAV bất kỳ (ví dụ clip nhạc
 //! CC0) qua `NO_SPEECH_WAVS`, mỗi file 16 kHz mono 16-bit, cắt thành đoạn 8 giây như VAD (tối đa 10 đoạn mỗi file).
+//!
+//! Mỗi tín hiệu (hay đoạn 8 giây của file WAV) được gửi cho worker nguyên cả đoạn, không theo từng đoạn VAD cắt ra (N-4
+//! của review 02 lần 2): VAD chỉ dùng để đếm số đoạn và lấy xác suất VAD của đoạn đầu. Trong app, worker chỉ nhận đoạn
+//! VAD đã cắt; chữ bịa và `avg_logprob` của đoạn ngắn đó có thể khác số in ở đây.
 //!
 //! Đây là phép thử để chọn ngưỡng, không phải test hồi quy: không kiểm theo số đo, chỉ kiểm worker trả kết quả cho mọi
 //! đoạn. Cần binary và model nên bị bỏ qua mặc định. Chạy từ gốc repo, một lần cho mỗi model:
@@ -4049,27 +4082,27 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 146 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+test result: ok. 150 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.56s
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.46s
-test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.30s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.58s
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-     Running unittests src/lib.rs (target/debug/deps/pipeline-126516eab1f92edf)
-     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-8ba1ac4e23374ebd)
-     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-e753fea9a8abc686)
-     Running tests/clients.rs (target/debug/deps/clients-41fc66e771173fce)
-     Running tests/engine.rs (target/debug/deps/engine-ea22296abc08d3d2)
-     Running tests/lifecycle.rs (target/debug/deps/lifecycle-9c9c371bd03a2b4c)
-     Running tests/no_speech.rs (target/debug/deps/no_speech-4bd801d18839f4dc)
-     Running tests/real_sidecars.rs (target/debug/deps/real_sidecars-6efa409a6ac49d32)
-     Running tests/shutdown.rs (target/debug/deps/shutdown-82db404fc1f11d0c)
-     Running tests/vad_reference.rs (target/debug/deps/vad_reference-85e6bf9a05f81f77)
+     Running unittests src/lib.rs (target/debug/deps/pipeline-901454d330477dd2)
+     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-b11221de58f4122f)
+     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-d5d453cb8d0fce77)
+     Running tests/clients.rs (target/debug/deps/clients-79f5008458d238c8)
+     Running tests/engine.rs (target/debug/deps/engine-75c665353de2c3db)
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-3343c457a743e8de)
+     Running tests/no_speech.rs (target/debug/deps/no_speech-2e858ca2d0d906bc)
+     Running tests/real_sidecars.rs (target/debug/deps/real_sidecars-24319808e9f3e346)
+     Running tests/shutdown.rs (target/debug/deps/shutdown-8294228bcb944e13)
+     Running tests/vad_reference.rs (target/debug/deps/vad_reference-c2808b28efa7e0e7)
 ```
 
 - [ ] **Step 4: Chạy test với model thật**
@@ -4085,12 +4118,12 @@ MT_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx cargo test -p pipeline --test re
 Expected: mỗi câu có ít nhất một phụ đề nằm trong khoảng thời gian của câu, đúng thứ tự; hai câu tiếng Anh `Done`, câu tiếng Việt `SameLang` (có thể bị VAD cắt làm hai đoạn); trước đó một dòng tóm tắt số đo của phiên (số đoạn theo kết cục, thời gian từng bước; không dùng làm số đo hiệu năng). Chữ chép và bản dịch tùy máy. Lúc lập kế hoạch (gói Nhẹ):
 
 ```text
-4 đoạn (lọc 0, bỏ 0), 2 câu dịch, 0 lỗi, 0 bỏ bước dịch, 2 cùng ngôn ngữ, 0 lần ghép; cắt đoạn p50 320 ms, p90 320 ms; nhận dạng p50 107 ms, p90 114 ms; dịch p50 204 ms, p90 207 ms; tổng p50 496 ms, p90 509 ms; tiếng nói đã dịch 6016 ms
+4 đoạn (lọc 0, bỏ 0), 2 câu dịch, 0 lỗi, 0 bỏ bước dịch, 2 cùng ngôn ngữ, 0 lần ghép; cắt đoạn p50 320 ms, p90 320 ms; nhận dạng p50 108 ms, p90 117 ms; dịch p50 203 ms, p90 204 ms; tổng p50 496 ms, p90 509 ms; tiếng nói đã dịch 6016 ms
 0 1472–4032 Done That didn't seem to make sense to me. It certainly wasn't fair. | Điều đó dường như không hợp lý chút nào. Chắc chắn là không công bằng.
 1 7072–10528 Done The results of plotting analysis will be posted to a public website. | Kết quả phân tích đồ họa sẽ được đăng trên một trang web công cộng.
 2 13088–14336 SameLang Cái nhà khoa học cho viết | 
 3 14784–17472 SameLang vụp và trạm đã gây ra vụ nổ gắt lớn | 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.84s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.24s
 ```
 
 Run:
@@ -4131,7 +4164,7 @@ git commit -m "test(pipeline): clip FLEURS cho test tích hợp, test với mode
 ## Task 4: `latency-bench mt-eval`, nhãn cho `score_mt.py`, bộ đo tỉ lệ token
 
 Đ4, Đ12, mục 6.7 của kế hoạch 00; dòng 27, 149:
-- `mt_eval.rs`: dịch bộ test A3 bằng đúng `pipeline::translate` của app, ghi JSONL cùng định dạng với `translate.py` (thêm `status`, `attempts`). `--limit` lấy N câu đầu mỗi chiều trước khi lọc biến thể `context`, như `translate.py` (N12 của review 02b). Mỗi file kết quả có `<…>.meta.json` ghi điều kiện của lượt chạy (git HEAD và cờ có thay đổi chưa commit, tên và kích thước model, `MtConfig`, biến thể, bộ test, `--limit`); chạy lại cùng `--out-dir` thì dịch tiếp, dòng cuối viết dở bị cắt, nhưng điều kiện khác lần trước thì từ chối, trừ khi có `--resume-anyway` (Q7 của review 02b: tránh bẫy R6 của kế hoạch 00).
+- `mt_eval.rs`: dịch bộ test A3 bằng đúng `pipeline::translate` của app, ghi JSONL cùng định dạng với `translate.py` (thêm `status`, `attempts`). `--limit` lấy N câu đầu mỗi chiều trước khi lọc biến thể `context`, như `translate.py` (N12 của review 02b). Mỗi file kết quả có `<…>.meta.json` ghi điều kiện của lượt chạy (git HEAD và cờ có thay đổi chưa commit, tên và kích thước model, đường dẫn và kích thước `llama-server` (N-5 của review 02 lần 2), `MtConfig`, biến thể, bộ test, `--limit`); chạy lại cùng `--out-dir` thì dịch tiếp, dòng cuối viết dở bị cắt, nhưng điều kiện khác lần trước thì từ chối, trừ khi có `--resume-anyway` (Q7 của review 02b: tránh bẫy R6 của kế hoạch 00).
 - `score_mt.py`: `--outputs` (thư mục kết quả), `--label` (ghi `s7_mt-<nhãn>`), `--write-baseline` (chỉ cờ này mới ghi lại mốc `s7_mt.json`; không có nhãn hay cờ này thì từ chối chạy, N4), `--baseline` (bảng so từng chiều với mốc; thoát lỗi khi có chiều thấp hơn quá 0,01, và khi không so được: không lượt nào trùng tên với mốc, thiếu chiều mà mốc có, hay thiếu COMET, Q8). Dòng `failed` của `mt-eval` không tính vào tỉ lệ token và thời gian; bảng thêm cột "Lỗi". `test_score_mt.py` là test Python của phần so mốc. `translate.py` thêm `--label` cho thư mục kết quả.
 - `build_ratio_set.py`, `ratio_stats.py` (QĐ22): bộ câu và bảng tỉ lệ token cho Task 6.
 
@@ -4169,7 +4202,8 @@ Tạo `crates/latency-bench/src/mt_eval.rs`, lúc này mới có phần test (ph
 //! `score_mt.py` chấm.
 //!
 //! Kết quả: `<out-dir>/<tên model>-<plain|context>.jsonl`, cùng `<…>.meta.json` ghi điều kiện của lượt chạy: git HEAD (kèm
-//! cờ có thay đổi chưa commit), tên và kích thước model, `MtConfig`, biến thể, bộ test. Chạy lại cùng `--out-dir` thì dịch
+//! cờ có thay đổi chưa commit), tên và kích thước model, đường dẫn và kích thước `llama-server`, `MtConfig`, biến thể, bộ
+//! test. Chạy lại cùng `--out-dir` thì dịch
 //! tiếp các câu chưa có, như `translate.py`, nhưng chỉ khi điều kiện y hệt lần trước (R6 của kế hoạch 00: tránh trộn
 //! kết quả của hai phiên bản code hay hai model). Khác thì từ chối, trừ khi có `--resume-anyway`. Muốn dịch lại từ đầu
 //! thì dùng thư mục khác (nhãn khác), đừng xóa kết quả mốc.
@@ -4199,6 +4233,8 @@ mod tests {
             git_dirty: false,
             model_file: "m.gguf".into(),
             model_bytes: 10,
+            llama_server: "/tools/llama-b11146/llama-server".into(),
+            llama_server_bytes: 20,
             variant: "plain".into(),
             testset_file: "t.jsonl".into(),
             testset_lines: 620,
@@ -4226,6 +4262,12 @@ mod tests {
         };
         let err = check_meta(&path, true, &other, false).unwrap_err().to_string();
         assert!(err.contains("git_head, mt_config"), "{err}");
+        let other_server = Meta {
+            llama_server_bytes: 21,
+            ..meta()
+        };
+        let err = check_meta(&path, true, &other_server, false).unwrap_err().to_string();
+        assert!(err.contains("llama_server_bytes"), "đổi bản llama-server: {err}");
         assert_eq!(meta_diff(&meta(), &meta()), Vec::<&str>::new());
         check_meta(&path, true, &other, true).unwrap();
         let saved: Meta = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
@@ -4755,6 +4797,9 @@ struct Meta {
     git_dirty: bool,
     model_file: String,
     model_bytes: u64,
+    /// Bản `llama-server` (N-5 của review 02 lần 2): đổi bản llama.cpp thì không dịch tiếp vào file cũ.
+    llama_server: String,
+    llama_server_bytes: u64,
     variant: String,
     testset_file: String,
     testset_lines: usize,
@@ -4781,11 +4826,13 @@ fn git_state() -> (String, bool) {
 /// So điều kiện lần này với lần trước; trả các khóa khác nhau.
 fn meta_diff(old: &Meta, new: &Meta) -> Vec<&'static str> {
     let mut keys = Vec::new();
-    let pairs: [(&'static str, bool); 9] = [
+    let pairs: [(&'static str, bool); 11] = [
         ("git_head", old.git_head == new.git_head),
         ("git_dirty", old.git_dirty == new.git_dirty),
         ("model_file", old.model_file == new.model_file),
         ("model_bytes", old.model_bytes == new.model_bytes),
+        ("llama_server", old.llama_server == new.llama_server),
+        ("llama_server_bytes", old.llama_server_bytes == new.llama_server_bytes),
         ("variant", old.variant == new.variant),
         ("testset_file", old.testset_file == new.testset_file),
         ("testset_lines", old.testset_lines == new.testset_lines),
@@ -4911,6 +4958,10 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
         model_bytes: std::fs::metadata(&args.model)
             .with_context(|| format!("không đọc được {}", args.model.display()))?
             .len(),
+        llama_server: args.llama_server.display().to_string(),
+        llama_server_bytes: std::fs::metadata(&args.llama_server)
+            .with_context(|| format!("không đọc được {}", args.llama_server.display()))?
+            .len(),
         variant: args.variant.clone(),
         testset_file: args
             .testset
@@ -5006,7 +5057,7 @@ Run: `cargo test -p latency-bench`
 Expected:
 
 ```text
-test result: ok. 30 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.77s
+test result: ok. 30 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.70s
 ```
 
 Run: `python3 -m unittest discover -s bench/phase0/mt -p 'test_*.py'`
@@ -5159,7 +5210,7 @@ Phần của `audio-capture` mà app (02c) cần (dòng 84–91, 93–95, 232, 2
 - `lib.rs`: `AudioSource::failed()` (luồng thu chết), `AudioApp { pids, bundle_id, name }`, `default_output_signature()` để app biết thiết bị phát đã đổi (macOS: id kèm tần số mẫu danh định).
 - `macos.rs`:
   - `default_output_device`, `nominal_sample_rate`;
-  - `audio_apps`: app đang phát tiếng, chỉ đọc HAL, không cần quyền; gộp tiến trình theo gói `.app` ngoài cùng (`group_processes`, `outer_app`), tên từ `NSRunningApplication` (`app_identity`, đi lên tối đa 3 tiến trình cha); tiến trình vừa thoát thì bỏ qua (Q9 của review 02b);
+  - `audio_apps`: app đang phát tiếng, chỉ đọc HAL, không cần quyền; gộp tiến trình theo gói `.app` ngoài cùng (`group_processes`, `outer_app`), tên và bundle ID đọc từ `Info.plist` của gói đó (`bundle_identity`, qua `NSBundle`; Q-F của review 02 lần 2), không có gói thì từ `NSRunningApplication` (`app_identity`, đi lên tối đa 3 tiến trình cha); tiến trình vừa thoát thì bỏ qua (Q9 của review 02b); chạy trong `autoreleasepool` (N-8); test đọc gói Calculator có sẵn, và test `#[ignore]` `print_the_playing_apps` in bảng app đang phát cho 02c Task 8;
   - `TapTarget::System` cho bước nghe thử, `TapTarget::Processes(Vec<i32>)` cho nguồn một app (thay `Process(i32)`);
   - `failed()` của tap một app: mọi tiến trình của app đã thoát (N11).
 - `windows.rs` (code của kế hoạch 0-04 Task 7, đưa vào crate): `Endpoint` (mặc định theo vai trò, hoặc thiết bị chọn tay theo id), `list_render_devices`, cờ `failed` khi thiết bị bị rút, `default_endpoint_id`; `with_com` nhận luồng đã khởi tạo COM ở chế độ STA (`RPC_E_CHANGED_MODE`) mà không gọi `CoUninitialize` (N7).
@@ -5583,7 +5634,7 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
  }
  
  impl Drop for MacTapSource {
-@@ -365,6 +402,226 @@
+@@ -365,6 +402,262 @@
      Ok(aggregate_id)
  }
  
@@ -5625,7 +5676,7 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +    pub path: Option<PathBuf>,
 +}
 +
-+/// Tên và bundle ID của app chứa tiến trình `pid`, theo `NSRunningApplication`.
++/// Tên và bundle ID của một app: theo gói `.app` ngoài cùng (`Info.plist`), hoặc theo `NSRunningApplication`.
 +#[derive(Clone, Debug, PartialEq, Eq)]
 +pub struct AppIdentity {
 +    pub name: Option<String>,
@@ -5646,25 +5697,34 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +}
 +
 +/// Gộp các tiến trình đang phát tiếng theo gói `.app` ngoài cùng (không có gói thì theo bundle ID), rồi lấy tên và bundle
-+/// ID của app từ `identity` (tìm ở tiến trình đó hoặc tối đa 3 tiến trình cha). Tách riêng khỏi Core Audio để test được.
-+pub fn group_processes(processes: &[PlayingProcess], identity: impl Fn(i32) -> Option<AppIdentity>) -> Vec<AudioApp> {
-+    let mut groups: Vec<(String, Vec<&PlayingProcess>)> = Vec::new();
++/// ID của app: trước hết từ chính gói `.app` ngoài cùng (`bundle`), vì `NSRunningApplication` của một helper có thể trả
++/// về chính helper (ví dụ `com.google.Chrome.helper`), làm bundle ID đã lưu đổi giữa các lần (Q-F của review 02 lần 2);
++/// không có gói thì từ `running` (tìm ở tiến trình đó hoặc tối đa 3 tiến trình cha). Tách riêng khỏi Core Audio để test.
++pub fn group_processes(
++    processes: &[PlayingProcess],
++    bundle: impl Fn(&Path) -> Option<AppIdentity>,
++    running: impl Fn(i32) -> Option<AppIdentity>,
++) -> Vec<AudioApp> {
++    let mut groups: Vec<(String, Option<PathBuf>, Vec<&PlayingProcess>)> = Vec::new();
 +    for p in processes {
-+        let key = p
-+            .path
-+            .as_deref()
-+            .and_then(outer_app)
++        let app = p.path.as_deref().and_then(outer_app);
++        let key = app
++            .as_ref()
 +            .map(|a| a.to_string_lossy().into_owned())
 +            .unwrap_or_else(|| p.bundle_id.clone());
-+        match groups.iter_mut().find(|(k, _)| *k == key) {
-+            Some((_, members)) => members.push(p),
-+            None => groups.push((key, vec![p])),
++        match groups.iter_mut().find(|(k, _, _)| *k == key) {
++            Some((_, _, members)) => members.push(p),
++            None => groups.push((key, app, vec![p])),
 +        }
 +    }
 +    let mut apps: Vec<AudioApp> = groups
 +        .into_iter()
-+        .map(|(_, members)| {
-+            let found = members.iter().find_map(|p| identity(p.pid));
++        .map(|(_, app, members)| {
++            let found = app
++                .as_deref()
++                .and_then(&bundle)
++                .filter(|f| f.bundle_id.is_some())
++                .or_else(|| members.iter().find_map(|p| running(p.pid)));
 +            let mut pids: Vec<i32> = members.iter().map(|p| p.pid).collect();
 +            pids.sort_unstable();
 +            AudioApp {
@@ -5707,6 +5767,27 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +    (n == size && info.pbi_ppid > 1).then_some(info.pbi_ppid as i32)
 +}
 +
++/// Tên hiển thị và bundle ID đọc từ `Info.plist` của gói `app` (`NSBundle`; tên theo ngôn ngữ của máy nếu gói có bản
++/// dịch: `CFBundleDisplayName`, rồi `CFBundleName`, rồi tên gói bỏ đuôi `.app`).
++pub fn bundle_identity(app: &Path) -> Option<AppIdentity> {
++    use objc2_foundation::{NSBundle, NSString};
++    let bundle = NSBundle::bundleWithPath(&NSString::from_str(app.to_str()?))?;
++    let bundle_id = bundle.bundleIdentifier().map(|s| s.to_string());
++    let name = ["CFBundleDisplayName", "CFBundleName"]
++        .iter()
++        .find_map(|key| {
++            let value = bundle.objectForInfoDictionaryKey(&NSString::from_str(key))?;
++            let value = value.downcast::<NSString>().ok()?.to_string();
++            (!value.trim().is_empty()).then_some(value)
++        })
++        .or_else(|| {
++            app.file_stem()
++                .map(|s| s.to_string_lossy().into_owned())
++                .filter(|s| !s.is_empty())
++        });
++    Some(AppIdentity { name, bundle_id })
++}
++
 +/// Tên hiển thị (`localizedName`) và bundle ID của app chứa `pid`: thử chính `pid`, rồi đi lên tối đa 3 tiến trình cha
 +/// (helper do app chính chạy). Bỏ tên rỗng.
 +pub fn app_identity(pid: i32) -> Option<AppIdentity> {
@@ -5730,8 +5811,14 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +    None
 +}
 +
-+/// Các app đang phát âm thanh, cho tùy chọn "chỉ tap một app họp" (§6.1). Không cần quyền ghi âm thanh.
++/// Các app đang phát âm thanh, cho tùy chọn "chỉ tap một app họp" (§6.1). Không cần quyền ghi âm thanh. Chạy trong một
++/// `autoreleasepool`: hàm được gọi từ luồng nền của app (không có pool riêng), và `NSBundle`, `NSRunningApplication` trả
++/// về đối tượng autorelease.
 +pub fn audio_apps() -> Result<Vec<AudioApp>> {
++    objc2::rc::autoreleasepool(|_| audio_apps_inner())
++}
++
++fn audio_apps_inner() -> Result<Vec<AudioApp>> {
 +    let system = kAudioObjectSystemObject as AudioObjectID;
 +    let mut address = AudioObjectPropertyAddress {
 +        mSelector: kAudioHardwarePropertyProcessObjectList,
@@ -5804,13 +5891,13 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +            });
 +        }
 +    }
-+    Ok(group_processes(&playing, app_identity))
++    Ok(group_processes(&playing, bundle_identity, app_identity))
 +}
 +
  fn process_object(pid: i32) -> Result<AudioObjectID> {
      let mut id: AudioObjectID = 0;
      get_property(
-@@ -419,6 +676,119 @@
+@@ -419,6 +712,150 @@
  }
  
  #[cfg(test)]
@@ -5857,6 +5944,25 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +        }
 +    }
 +
++    /// Tên và bundle ID đọc từ `Info.plist` của một gói `.app` có sẵn trên mọi máy macOS. Chỉ đọc file, không cần quyền.
++    #[test]
++    fn a_bundle_names_its_app() {
++        let id = bundle_identity(Path::new("/System/Applications/Calculator.app")).unwrap();
++        assert_eq!(id.bundle_id.as_deref(), Some("com.apple.calculator"));
++        assert!(id.name.is_some_and(|n| !n.is_empty()));
++        assert_eq!(bundle_identity(Path::new("/khong/co.app")), None);
++    }
++
++    /// Bảng các app đang phát tiếng của máy này, để người thử ở 02c Task 8 so với app thật (tên, bundle ID, pid). Đọc
++    /// thuộc tính của Core Audio HAL, không cần quyền; bỏ qua mặc định vì kết quả tùy máy.
++    #[test]
++    #[ignore = "in bảng app đang phát tiếng của máy này"]
++    fn print_the_playing_apps() {
++        for app in audio_apps().unwrap() {
++            println!("{:?}\t{}\t{:?}", app.name, app.bundle_id, app.pids);
++        }
++    }
++
 +    #[test]
 +    fn the_outer_app_bundle_is_found() {
 +        let chrome = "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/\
@@ -5890,11 +5996,23 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +                path: None,
 +            },
 +        ];
-+        let identity = |pid: i32| match pid {
-+            // Helper không có tên riêng; app chính (cha của helper) thì có.
-+            300 | 301 => Some(AppIdentity {
++        // Gói `.app` ngoài cùng cho tên và bundle ID của app chính, kể cả khi `NSRunningApplication` của helper trả về
++        // chính helper (Q-F của review 02 lần 2).
++        let bundle = |app: &Path| match app.to_str()? {
++            "/Applications/Google Chrome.app" => Some(AppIdentity {
 +                name: Some("Google Chrome".into()),
 +                bundle_id: Some("com.google.Chrome".into()),
++            }),
++            // Gói đọc không được bundle ID: dùng `NSRunningApplication`.
++            _ => Some(AppIdentity {
++                name: None,
++                bundle_id: None,
++            }),
++        };
++        let running = |pid: i32| match pid {
++            300 | 301 => Some(AppIdentity {
++                name: Some("Google Chrome Helper".into()),
++                bundle_id: Some("com.google.Chrome.helper".into()),
 +            }),
 +            200 => Some(AppIdentity {
 +                name: Some("zoom.us".into()),
@@ -5902,7 +6020,7 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +            }),
 +            _ => None,
 +        };
-+        let apps = group_processes(&processes, identity);
++        let apps = group_processes(&processes, bundle, running);
 +        assert_eq!(
 +            apps,
 +            [
@@ -6360,7 +6478,7 @@ Run: `cargo test -p audio-capture`
 Expected:
 
 ```text
-test result: ok. 33 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.07s
+test result: ok. 34 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.07s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
@@ -6373,7 +6491,7 @@ Expected:
 
 ```text
 test macos::hal::default_device_and_audio_apps_can_be_read ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 33 filtered out; finished in 0.07s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.06s
 ```
 
 - [ ] **Step 6: Clippy cho Mac và cho target Windows** (cần một lần: `rustup target add x86_64-pc-windows-msvc`)
@@ -6389,7 +6507,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo; `cargo fmt` không in gì; dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.21s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.61s
 ```
 
 - [ ] **Step 7: Kiểm toàn bộ phần crate** (mục 6.2 của kế hoạch 00)
@@ -6423,7 +6541,7 @@ warning: 3 allowed warnings found
 Tổng số test của `cargo test --workspace` (gồm cả lib của app từ 01):
 
 ```text
-passed 400 failed 0 ignored 9
+passed 432 failed 0 ignored 10
 ```
 
 - [ ] **Step 8: Commit**
@@ -6555,7 +6673,7 @@ turbo: 548 clip, bị bỏ {}, tỉ lệ nén lớn nhất 1.54
 small: 548 clip, bị bỏ {"NoSpeech": ["en-9810650684898829002_nb"]}, tỉ lệ nén lớn nhất 1.54
 test latency::tests::phase1_rules_drop_no_a4_clip ... ok
 test latency::tests::phase1_filler_rule_drops_only_known_hallucinations_on_s6 ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.34s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.31s
 ```
 
 - [ ] **Step 5: Ghi `gd1_no_speech.md`**
@@ -6580,6 +6698,10 @@ for m in ("large-v3-turbo-q5_0", "small-q5_1"):
     verdicts = Counter(r["verdict"] for r in cut)
     out.append(f"- {m}: {len(sig)} đoạn; VAD cắt ra đoạn ở {len(cut)} đoạn ({dict(verdicts)}); "
                f"hiện thành phụ đề: {total['shown_as_subtitle']}.")
+    thanks = [r["avg_logprob"] for r in sig if r["text"].strip() == "Thank you."]
+    if thanks:
+        out.append(f"  Chữ bịa \"Thank you.\" ở {len(thanks)} đoạn, `avg_logprob` từ {min(thanks):.2f} tới {max(thanks):.2f}"
+                   " (cả đoạn 8 giây gửi nguyên cho worker): chỉ số này không đủ để nhận ra chữ bịa.")
 out += ["- Không có VAD (cột \"Luật lọc\" của các dòng VAD = 0) thì turbo bịa chữ cho hầu hết tín hiệu, vì `no_speech_prob`",
         "  của turbo luôn cỡ 1e-10; Silero VAD của app là lớp chặn chính, luật câu đệm và nhãn có ngoặc chặn phần lọt qua.", "",
         "## Điều kiện nhận luật mới (QĐ24)", "",
@@ -6595,7 +6717,9 @@ out += ["- Không có VAD (cột \"Luật lọc\" của các dòng VAD = 0) thì
         "faster-whisper 1.2.1 (CTranslate2 4.8.2, CPU, int8, `beam_size=1`, `temperature=0`, không VAD, không lọc), model",
         "`large-v3-turbo`, cùng ba tín hiệu của `no_speech.rs` (im lặng, ù điện 50 Hz −26 dBFS, gõ phím −30 dBFS; 3 và 8 giây):",
         "`no_speech_prob` từ 3,6e-11 tới 1,5e-10, chữ \"Thank you.\" hoặc \"you\", có hay không khóa ngôn ngữ. Model `small` qua",
-        "cùng công cụ: 0,68 tới 0,92. Vậy `no_speech_prob` cỡ 1e-10 là tính chất của turbo, không phải lỗi đọc của chế độ B.", "",
+        "cùng công cụ: 0,68 tới 0,92. Vậy `no_speech_prob` cỡ 1e-10 là tính chất của turbo, không phải lỗi đọc của chế độ B.",
+        "Script đối chiếu (faster-whisper trong một venv riêng) nằm ngoài repo, theo quyết định Q11(1) của controller: chỉ",
+        "commit bảng kết quả; các thông số ở trên đủ để chạy lại.", "",
         "## Bộ nhạc thử", "",
         "Wikimedia Commons, giấy phép đọc từ API của Commons (`extmetadata.LicenseShortName`) ngày 2026-10-01. Không lưu audio",
         "trong repo; tải lại bằng 02b Task 6, Step 2.", "",
@@ -6629,13 +6753,12 @@ không lời (mỗi file tối đa 10 đoạn 8 giây), qua Silero VAD của app
 ## Kết luận
 
 - large-v3-turbo-q5_0: 112 đoạn; VAD cắt ra đoạn ở 3 đoạn ({'Hallucination': 3}); hiện thành phụ đề: 0.
+  Chữ bịa "Thank you." ở 4 đoạn, `avg_logprob` từ -0.68 tới -0.48 (cả đoạn 8 giây gửi nguyên cho worker): chỉ số này không đủ để nhận ra chữ bịa.
 - small-q5_1: 112 đoạn; VAD cắt ra đoạn ở 3 đoạn ({'Filler': 2, 'NoSpeech': 1}); hiện thành phụ đề: 0.
 - Không có VAD (cột "Luật lọc" của các dòng VAD = 0) thì turbo bịa chữ cho hầu hết tín hiệu, vì `no_speech_prob`
   của turbo luôn cỡ 1e-10; Silero VAD của app là lớp chặn chính, luật câu đệm và nhãn có ngoặc chặn phần lọt qua.
 
 ## Điều kiện nhận luật mới (QĐ24)
-
-- A4 (`out-m4pro-{turbo,small}-final.jsonl`, 548 clip mỗi model): luật câu đệm và luật chuỗi lặp không bỏ clip nào;
 ```
 
 Kiểm số tỉ lệ nén lớn nhất của A4 ghi trong file khớp dòng in ra ở Step 4. Có đoạn nhạc hiện thành phụ đề thì ghi vào đầu file chữ bịa ra là gì, đề xuất thêm câu vào `DEFAULT_FILLER_PHRASES` hay ngưỡng mới để chủ dự án quyết; không tự sửa luật lọc.
@@ -6666,24 +6789,24 @@ Hy-MT2-1.8B-Q4_K_M-plain: 1440/1440
 | chiều | câu | câu gốc ≥ 10 token | tỉ lệ lớn nhất (≥ 10) | ngưỡng đề xuất | câu gốc < 3 token | token dịch lớn nhất (< 3) | hạn mức sinh (< 3) | lỗi |
 |---|---|---|---|---|---|---|---|---|
 | en->ja | 112 | 75 | 2.61 | 3.3 | 9 | 10 | 40 | 0 |
-| en->ko | 112 | 75 | 2.50 | 3.2 | 9 | 9 | 40 | 0 |
+| en->ko | 112 | 75 | 2.50 | 3.2 | 8 | 9 | 40 | 1 |
 | en->vi | 12 | 0 | — | — | 9 | 8 | 40 | 0 |
-| en->zh | 112 | 74 | 1.54 | 2.0 | 9 | 3 | 40 | 1 |
-| ja->en | 112 | 88 | 1.33 | 1.7 | 0 | — | — | 2 |
+| en->zh | 112 | 75 | 1.54 | 2.0 | 9 | 3 | 40 | 0 |
+| ja->en | 112 | 89 | 1.33 | 1.7 | 0 | — | — | 0 |
 | ja->ko | 112 | 89 | 2.17 | 2.8 | 0 | — | — | 0 |
 | ja->vi | 12 | 0 | — | — | 0 | — | — | 0 |
-| ja->zh | 112 | 89 | 1.17 | 1.5 | 0 | — | — | 0 |
+| ja->zh | 112 | 88 | 1.17 | 1.5 | 0 | — | — | 1 |
 | ko->en | 112 | 94 | 1.46 | 1.9 | 2 | 3 | 40 | 0 |
 | ko->ja | 112 | 94 | 1.60 | 2.0 | 2 | 4 | 40 | 0 |
 | ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 0 |
-| ko->zh | 112 | 94 | 1.00 | 1.3 | 2 | 3 | 40 | 0 |
+| ko->zh | 112 | 92 | 1.00 | 1.3 | 2 | 3 | 40 | 2 |
 | vi->en | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ja | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->zh | 12 | 0 | — | — | 0 | — | — | 0 |
-| zh->en | 112 | 76 | 2.15 | 2.7 | 9 | 4 | 40 | 0 |
-| zh->ja | 112 | 76 | 2.88 | 3.6 | 9 | 10 | 40 | 0 |
-| zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 0 |
+| zh->en | 112 | 75 | 2.15 | 2.7 | 9 | 4 | 40 | 1 |
+| zh->ja | 112 | 75 | 2.88 | 3.6 | 9 | 10 | 40 | 1 |
+| zh->ko | 112 | 76 | 2.92 | 3.7 | 8 | 7 | 40 | 1 |
 | zh->vi | 12 | 0 | — | — | 9 | 6 | 40 | 0 |
 
 ## Hy-MT2-1.8B-Q4_K_M-plain.jsonl
@@ -6691,23 +6814,23 @@ Hy-MT2-1.8B-Q4_K_M-plain: 1440/1440
 | chiều | câu | câu gốc ≥ 10 token | tỉ lệ lớn nhất (≥ 10) | ngưỡng đề xuất | câu gốc < 3 token | token dịch lớn nhất (< 3) | hạn mức sinh (< 3) | lỗi |
 |---|---|---|---|---|---|---|---|---|
 | en->ja | 112 | 75 | 2.22 | 2.8 | 9 | 7 | 40 | 0 |
-| en->ko | 112 | 75 | 2.31 | 2.9 | 9 | 9 | 40 | 0 |
+| en->ko | 112 | 74 | 2.31 | 2.9 | 9 | 9 | 40 | 1 |
 | en->vi | 12 | 0 | — | — | 9 | 8 | 40 | 0 |
 | en->zh | 112 | 75 | 1.46 | 1.9 | 9 | 3 | 40 | 0 |
-| ja->en | 112 | 88 | 1.33 | 1.7 | 0 | — | — | 1 |
-| ja->ko | 112 | 88 | 1.85 | 2.4 | 0 | — | — | 1 |
-| ja->vi | 12 | 0 | — | — | 0 | — | — | 1 |
-| ja->zh | 112 | 88 | 1.11 | 1.4 | 0 | — | — | 1 |
-| ko->en | 112 | 93 | 1.17 | 1.5 | 2 | 4 | 40 | 1 |
+| ja->en | 112 | 89 | 1.33 | 1.7 | 0 | — | — | 0 |
+| ja->ko | 112 | 89 | 1.85 | 2.4 | 0 | — | — | 0 |
+| ja->vi | 12 | 0 | — | — | 0 | — | — | 0 |
+| ja->zh | 112 | 89 | 1.11 | 1.4 | 0 | — | — | 0 |
+| ko->en | 112 | 94 | 1.17 | 1.5 | 2 | 4 | 40 | 0 |
 | ko->ja | 112 | 94 | 1.47 | 1.9 | 2 | 4 | 40 | 0 |
-| ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 1 |
-| ko->zh | 112 | 94 | 0.93 | 1.2 | 2 | 3 | 40 | 0 |
+| ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 0 |
+| ko->zh | 112 | 93 | 0.93 | 1.2 | 2 | 3 | 40 | 1 |
 | vi->en | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ja | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->zh | 12 | 0 | — | — | 0 | — | — | 0 |
-| zh->en | 112 | 76 | 2.08 | 2.6 | 9 | 4 | 40 | 0 |
-| zh->ja | 112 | 75 | 3.00 | 3.8 | 9 | 7 | 40 | 1 |
+| zh->en | 112 | 76 | 2.08 | 2.6 | 9 | 4 | 40 | 1 |
+| zh->ja | 112 | 76 | 3.00 | 3.8 | 9 | 7 | 40 | 0 |
 | zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 0 |
 | zh->vi | 12 | 0 | — | — | 9 | 6 | 40 | 0 |
 ```

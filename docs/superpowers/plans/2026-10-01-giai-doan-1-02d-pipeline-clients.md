@@ -19,8 +19,8 @@
 
 Chuẩn bị mọi thứ mà phần giám sát (Task 3) cần từ hai client (dòng 82, 110, 116, 126, 128, 132–134, 143, 250; QĐ3, QĐ8):
 - `prompt_history.rs`: prompt theo ngôn ngữ, tối đa 100 token, và cắt bớt để không hạ trần token của worker (QĐ3).
-- `logfile.rs`: stderr của tiến trình phụ đi qua một pipe tới luồng `pump` của app: ghi vào `RotatingLog` (append, xoay cả khi đang chạy khi quá 1 MB, giữ 3 bản cũ), che chuỗi bí mật (khóa API của `llama-server`), giữ 20 dòng cuối để phân loại lỗi khởi động.
-- `process.rs` (QĐ8): process group và hook panic trên macOS, Job Object trên Windows; `spawn` ghi nhận mọi tiến trình phụ (cả vào pidfile `sidecars-live.json` khi app đặt `set_pidfile`); `reap_orphans` kill tiến trình mà lần chạy trước bỏ lại (Force Quit) chỉ khi khớp thời điểm bắt đầu, đường dẫn binary, thư mục cho phép và process group; `begin_shutdown` và `kill_all` cho lúc app thoát. `tests/shutdown.rs` (binary riêng, vì cờ thoát là toàn cục) và `asr-worker/tests/stdin_eof.rs` (worker tự thoát khi stdin đóng).
+- `logfile.rs`: stderr của tiến trình phụ đi qua một pipe tới luồng `pump` của app: ghi vào `RotatingLog` (append, xoay cả khi đang chạy khi quá 1 MB, giữ 3 bản cũ), che chuỗi bí mật (khóa API của `llama-server`), giữ 20 dòng cuối để phân loại lỗi khởi động. Mỗi dòng giữ tối đa 64 KiB: phần sau bị bỏ, và bỏ thêm một đoạn ở cuối phần giữ lại bằng độ dài của bí mật dài nhất, để không sót nửa bí mật nằm vắt qua chỗ cắt (Nhỏ của review 02 lần 2).
+- `process.rs` (QĐ8): process group và hook panic trên macOS, Job Object trên Windows; `spawn` ghi nhận mọi tiến trình phụ (cả vào pidfile `sidecars-live.json` khi app đặt `set_pidfile`); `reap_orphans` kill tiến trình mà lần chạy trước bỏ lại (Force Quit) chỉ khi đủ bốn điều kiện: thời điểm bắt đầu, đường dẫn binary, thư mục cho phép và process group (test cho từng điều kiện, kể cả tiến trình không còn là trưởng group và binary khác nằm trong thư mục cho phép; Q4 của review 02 lần 2), và dựa vào plugin single-instance của 01 (không có bản app nào khác đang chạy); `begin_shutdown` và `kill_all` cho lúc app thoát. `tests/shutdown.rs` (binary riêng, vì cờ thoát là toàn cục) và `asr-worker/tests/stdin_eof.rs` (worker tự thoát khi stdin đóng).
 - `llama.rs` bản 2:
   - `LlamaLaunch` gom mọi tham số chạy;
   - `command()` dựng đúng lệnh của §6.5, khóa API qua `LLAMA_API_KEY`, không bao giờ có `--api-key`, thư mục làm việc là thư mục chứa binary (QĐ17); comment ghi rõ không bao giờ log `{cmd:?}` (`Debug` của `Command` in cả biến môi trường);
@@ -194,7 +194,7 @@ Sửa `crates/pipeline/src/config.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/pipeline/src/config.rs
 +++ b/crates/pipeline/src/config.rs
-@@ -488,6 +488,18 @@
+@@ -506,6 +506,18 @@
          assert!(v.first_run_ready_timeout_ms >= 30_000);
          assert_eq!(c.audio.no_audio_after_ms, 60_000);
          assert_eq!(c.validate(), Ok(()));
@@ -522,6 +522,29 @@ mod tests {
         assert_eq!(lines.len(), TAIL_LINES);
         assert_eq!(lines.first().map(String::as_str), Some("line 12"));
         assert_eq!(lines.last().map(String::as_str), Some("no newline at the end"));
+    }
+
+    /// Nhỏ của review 02 lần 2: dòng dài quá 64 KiB bị cắt, phần sau bỏ đi; bí mật vắt qua chỗ cắt không sót nửa nào.
+    #[test]
+    fn a_very_long_line_is_cut_without_leaking_half_a_secret() {
+        let dir = temp("long");
+        let path = dir.0.join("llama-server.log");
+        let secret = "k3y-s3cr3t-0123456789";
+        let mut input = "x".repeat(MAX_LINE_BYTES - 10);
+        input.push_str(secret);
+        input.push_str(&"y".repeat(3 * MAX_LINE_BYTES));
+        input.push_str("\nnext line\n");
+        let log = RotatingLog::open(&path, 10 * MAX_BYTES, KEEP).unwrap();
+        let (handle, tail) = pump(std::io::Cursor::new(input.into_bytes()), log, vec![secret.into()]);
+        handle.join().unwrap();
+        let written = std::fs::read_to_string(&path).unwrap();
+        let first = written.lines().next().unwrap();
+        assert!(first.len() <= MAX_LINE_BYTES + CUT_MARK.len(), "{}", first.len());
+        assert!(first.ends_with(CUT_MARK));
+        assert!(!written.contains("k3y"), "không sót phần nào của bí mật");
+        assert!(!written.contains('y'), "phần sau chỗ cắt bị bỏ");
+        assert!(written.ends_with("\nnext line\n"));
+        assert_eq!(tail.lines().last().map(String::as_str), Some("next line"));
     }
 }
 ```
@@ -1574,6 +1597,11 @@ pub const KEEP: usize = 3;
 pub const TAIL_LINES: usize = 20;
 /// Chuỗi thay cho bí mật trong log.
 pub const REDACTED: &str = "<ẩn>";
+/// Mỗi dòng stderr giữ tối đa chừng này byte; phần sau bị bỏ, để một tiến trình phụ in một dòng dài vô tận không làm
+/// app hết bộ nhớ.
+pub const MAX_LINE_BYTES: usize = 64 * 1024;
+/// Ghi thêm vào cuối dòng bị cắt.
+pub const CUT_MARK: &str = " …(dòng dài quá 64 KiB, phần sau đã bỏ)";
 
 fn rotated(path: &Path, n: usize) -> PathBuf {
     let mut name = path.as_os_str().to_owned();
@@ -1698,17 +1726,29 @@ pub fn pump(source: impl Read + Send + 'static, mut log: RotatingLog, secrets: V
         let mut reader = BufReader::new(source);
         let mut buf = Vec::new();
         let mut warned = false;
+        // Dòng bị cắt thì bỏ thêm chừng này byte ở cuối phần giữ lại, để không còn sót nửa đầu của một bí mật nằm vắt qua
+        // chỗ cắt (bí mật trọn vẹn trong phần giữ lại vẫn được che như thường).
+        let longest_secret = secrets.iter().map(String::len).max().unwrap_or(0);
         loop {
             buf.clear();
-            match reader.read_until(b'\n', &mut buf) {
+            match (&mut reader).take(MAX_LINE_BYTES as u64).read_until(b'\n', &mut buf) {
                 Ok(0) | Err(_) => break,
                 Ok(_) => {}
+            }
+            let cut = buf.len() == MAX_LINE_BYTES && buf.last() != Some(&b'\n');
+            if cut {
+                skip_line(&mut reader);
+                buf.truncate(MAX_LINE_BYTES.saturating_sub(longest_secret));
             }
             let mut line = String::from_utf8_lossy(&buf).into_owned();
             for secret in secrets.iter().filter(|s| !s.is_empty()) {
                 if line.contains(secret.as_str()) {
                     line = line.replace(secret.as_str(), REDACTED);
                 }
+            }
+            if cut {
+                line.push_str(CUT_MARK);
+                line.push('\n');
             }
             if let Err(e) = log.write_line(line.as_bytes())
                 && !warned
@@ -1720,6 +1760,23 @@ pub fn pump(source: impl Read + Send + 'static, mut log: RotatingLog, secrets: V
         }
     });
     (handle, tail)
+}
+
+/// Bỏ phần còn lại của dòng hiện tại (tới hết `\n`), không giữ trong RAM.
+fn skip_line(reader: &mut impl BufRead) {
+    loop {
+        let (done, used) = match reader.fill_buf() {
+            Ok([]) | Err(_) => return,
+            Ok(chunk) => match chunk.iter().position(|&b| b == b'\n') {
+                Some(i) => (true, i + 1),
+                None => (false, chunk.len()),
+            },
+        };
+        reader.consume(used);
+        if done {
+            return;
+        }
+    }
 }
 ```
 
@@ -1737,9 +1794,13 @@ Tạo `crates/pipeline/src/process.rs`:
 //!
 //! App bị `SIGKILL` (Force Quit) hay crash vì tín hiệu thì hook không chạy, và `llama-server` còn lại. Vì vậy trên macOS
 //! mỗi tiến trình phụ còn được ghi vào một pidfile (`set_pidfile`, thường là `sidecars-live.json` trong thư mục dữ liệu
-//! của app). Lần mở app sau, [`reap_orphans`] đọc file đó và kill tiến trình còn sót, chỉ khi khớp cả ba: thời điểm bắt
-//! đầu, đường dẫn binary, và tiến trình vẫn là trưởng group của nó. Pid có thể đã được cấp lại cho tiến trình khác,
-//! nên thiếu một trong ba là không kill.
+//! của app). Lần mở app sau, [`reap_orphans`] đọc file đó và kill tiến trình còn sót, chỉ khi đủ bốn điều kiện: binary
+//! ghi trong file nằm trong thư mục tiến trình phụ của app, và tiến trình đang chạy ở pid đó có cùng thời điểm bắt đầu,
+//! cùng đường dẫn binary, và vẫn là trưởng group của nó. Pid có thể đã được cấp lại cho tiến trình khác, nên thiếu một
+//! điều kiện là không kill.
+//!
+//! Pidfile là của một bản app đang chạy: plugin single-instance (kế hoạch 01) bảo đảm chỉ một bản app chạy mỗi lúc, nên
+//! khi `setup` của bản mới gọi [`reap_orphans`], mọi mục trong file là của một lần chạy đã chết.
 //!
 //! Lúc app thoát, [`begin_shutdown`] bật cờ toàn cục: từ đó [`spawn`] luôn trả lỗi, nên giám sát đang khởi động lại không
 //! thể chạy thêm tiến trình sau [`kill_all`].
@@ -2145,8 +2206,9 @@ mod tests {
             start_us: real.start_us + 1,
             ..real.clone()
         };
+        // Binary khác nhưng cũng nằm trong thư mục cho phép: chỉ phép so đường dẫn binary chặn được.
         let wrong_exe = Entry {
-            exe: PathBuf::from("/usr/bin/true"),
+            exe: std::fs::canonicalize("/bin/ls").unwrap(),
             ..real.clone()
         };
         let unknown_start = Entry {
@@ -2170,6 +2232,50 @@ mod tests {
         std::fs::write(&file, b"{oops").unwrap();
         assert!(reap_orphans(&file, &bin).is_empty());
         assert!(reap_orphans(&dir.0.join("missing.json"), &bin).is_empty());
+    }
+
+    /// PF1 của review 02 lần 2: cùng pid, thời điểm bắt đầu và binary, nhưng tiến trình không còn là trưởng group (ở đây
+    /// một tiến trình không chạy qua `configure`, nằm trong group của test): không kill.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_process_that_does_not_lead_its_group_is_not_reaped() {
+        let dir = temp("reap-group");
+        let file = dir.0.join("sidecars-live.json");
+        let mut child = Command::new("/bin/sleep").arg("30").spawn().unwrap();
+        let pid = child.id();
+        let e = Entry {
+            pid,
+            start_us: start_time_us(pid).unwrap(),
+            exe: std::fs::canonicalize("/bin/sleep").unwrap(),
+        };
+        assert_eq!(exe_path(pid).as_deref(), Some(e.exe.as_path()));
+        write_pidfile(&file, std::slice::from_ref(&e)).unwrap();
+        assert!(reap_orphans(&file, &std::fs::canonicalize("/bin").unwrap()).is_empty());
+        assert_eq!(child.try_wait().unwrap(), None, "không được kill");
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+
+    /// PF5 của review 02 lần 2: mỗi lần [`spawn`] ghi ngay pidfile (nếu đã đặt), và [`release`] bỏ mục đó.
+    #[test]
+    fn spawn_and_release_rewrite_the_pidfile() {
+        let dir = temp("pidfile");
+        let file = dir.0.join("sidecars-live.json");
+        set_pidfile(&file);
+        let read = || -> Vec<u32> {
+            let entries: Vec<Entry> = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+            entries.iter().map(|e| e.pid).collect()
+        };
+        let mut child = sleeper();
+        let pid = child.id();
+        let listed = read().contains(&pid);
+        kill_group(pid);
+        wait_killed(&mut child);
+        release(pid);
+        let after = read().contains(&pid);
+        registry().pidfile = None;
+        assert!(listed, "spawn phải ghi pid vào pidfile");
+        assert!(!after, "release phải bỏ pid khỏi pidfile");
     }
 
     #[test]
@@ -2306,18 +2412,18 @@ Run: `cargo test -p pipeline && cargo test -p asr-worker --test stdin_eof && car
 Expected (`pipeline`, rồi `stdin_eof.rs`, rồi `latency-bench`):
 
 ```text
-test result: ok. 88 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 91 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
 ```text
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
 ```
 
 ```text
-test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.28s
+test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.68s
 ```
 
 - [ ] **Step 6: Clippy (cả target Windows) và định dạng**
@@ -2333,7 +2439,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo, `cargo fmt` không in gì. Dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 35.30s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 18.35s
 ```
 
 - [ ] **Step 7: Commit**
@@ -3543,7 +3649,7 @@ Sửa `crates/pipeline/src/config.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/pipeline/src/config.rs
 +++ b/crates/pipeline/src/config.rs
-@@ -177,9 +177,9 @@
+@@ -181,9 +181,9 @@
  #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
  #[serde(default)]
  pub struct MtConfig {
@@ -4003,19 +4109,19 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 104 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 107 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.36s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.66s
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-     Running unittests src/lib.rs (target/debug/deps/pipeline-126516eab1f92edf)
-     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-8ba1ac4e23374ebd)
-     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-e753fea9a8abc686)
-     Running tests/clients.rs (target/debug/deps/clients-41fc66e771173fce)
-     Running tests/shutdown.rs (target/debug/deps/shutdown-82db404fc1f11d0c)
-     Running tests/vad_reference.rs (target/debug/deps/vad_reference-85e6bf9a05f81f77)
+     Running unittests src/lib.rs (target/debug/deps/pipeline-901454d330477dd2)
+     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-b11221de58f4122f)
+     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-d5d453cb8d0fce77)
+     Running tests/clients.rs (target/debug/deps/clients-79f5008458d238c8)
+     Running tests/shutdown.rs (target/debug/deps/shutdown-8294228bcb944e13)
+     Running tests/vad_reference.rs (target/debug/deps/vad_reference-c2808b28efa7e0e7)
 ```
 
 Run (cần `llama-server` b11146 và model của Giai đoạn 0):
@@ -4028,7 +4134,7 @@ Expected:
 
 ```text
 test real_llama_server_requires_the_api_key ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 16.38s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 1.04s
 ```
 
 - [ ] **Step 6: Clippy và định dạng**
@@ -4057,13 +4163,13 @@ git commit -m "feat(pipeline): dịch một câu theo §6.5, hậu xử lý khi 
 - `SidecarManager`:
   - chạy `asr-worker` (`Load` rồi `Warmup`) rồi mới chạy `llama-server`; đọc `Ready.backend` và `decode_mode` (bản phát hành chỉ nhận chế độ B, `require_shared`); khởi động lại và gửi lại đoạn; `llama-server` chạy `-ngl 0` khi không có GPU hay khi `asr-worker` đã sang CPU;
   - trước mỗi lần chạy hỏi app `SidecarEvents::before_spawn` (kiểm SHA-256) và `is_first_run`; bỏ cuộc có lý do `GiveUpCause`;
-  - lần đầu chạy quá giờ không tính là lỗi; `llama-server` hết bộ nhớ lúc khởi động thì phát `OutOfMemory`;
-  - `shutdown` cho lúc app thoát: không chờ khóa, ngắt lần chờ (`Wake`), kill tiến trình đang chạy qua `process::Killer`; `running()` không khóa;
+  - lần đầu chạy quá giờ không tính là lỗi; `llama-server` hết bộ nhớ lúc khởi động thì phát `OutOfMemory`; `asr-worker` báo `OutOfMemory` lúc chép lời thì phát `OutOfMemory` và tính là một lần lỗi trên GPU (Q1 của review 02 lần 2);
+  - `shutdown` cho lúc app thoát: không chờ khóa, ngắt lần chờ (`Wake`), kill tiến trình đang chạy qua `process::Killer`; tiến trình vừa chạy mà app đã bắt đầu thoát thì kill ngay; `stop` bỏ `Killer` cùng khóa với slot; `running()` không khóa;
   - phát `SidecarEvent` để app hiện trạng thái; tắt khi rảnh 10 phút (`tick`).
-- `asr_client.rs`, `llama.rs`: `spawn_with` đưa `Killer` ra ngay khi tiến trình chạy (trước khi chờ `Ready` hay `/health`); `AsrError::TimedOut` và `llama::NotReady` tách "quá thời gian chờ" khỏi "chết", cho luật lần đầu chạy. Hai tiến trình phụ giả thêm lệnh `error_on`, `load_delay_ms` và `health_delay_ms`.
+- `asr_client.rs`, `llama.rs`: `spawn_with` đưa `Killer` ra ngay khi tiến trình chạy (trước khi chờ `Ready` hay `/health`); `AsrError::TimedOut` và `llama::NotReady` tách "quá thời gian chờ" khỏi "chết", cho luật lần đầu chạy. Hai tiến trình phụ giả thêm lệnh `error_on` (kèm loại lỗi, ví dụ `error_on:1:OutOfMemory`), `load_delay_ms` và `health_delay_ms`.
 - `SupervisedAsr` và `SupervisedMt`: bọc hai client thành trait `Asr` và `Mt` cho engine (02b, Task 2).
 - `Clock`: `SystemClock` cho app (chờ ngắt được), `FakeClock` cho test.
-- `tests/lifecycle.rs` (dòng 296): đúng thứ tự, crash và khởi động lại, gửi lại đoạn, worker báo lỗi mà vẫn sống thì không khởi động lại (S8), model hỏng trên CPU thì bỏ cuộc (S12), chuyển CPU, `llama-server` theo sang CPU, bỏ cuộc, lần đầu chạy (kể cả quá giờ không tính lỗi, và binary CPU mới), kiểm binary trước mọi lần chạy, binary bị sửa thì không chạy, app thoát lúc worker treo hay đang nạp model trả về ngay, request tới muộn sau khi thoát không chạy lại gì, khóa API không lọt vào sự kiện, tắt sau 10 phút. Tiến trình phụ là bản giả, đồng hồ là đồng hồ giả.
+- `tests/lifecycle.rs` (dòng 296): đúng thứ tự, crash và khởi động lại, gửi lại đoạn, worker báo lỗi mà vẫn sống thì không khởi động lại (S8), model hỏng trên CPU thì bỏ cuộc (S12), chuyển CPU, `llama-server` theo sang CPU, không có GPU thì cả hai chạy CPU (kể cả khi dịch trước lúc `asr-worker` chạy lần nào), bỏ cuộc, lần đầu chạy (kể cả quá giờ không tính lỗi, và binary CPU mới), kiểm binary trước mọi lần chạy, binary bị sửa thì không chạy, app thoát lúc worker treo hay đang nạp model trả về ngay, request tới muộn sau khi thoát không chạy lại gì (không có cả sự kiện `Starting`), khóa API không lọt vào sự kiện, tắt sau 10 phút; hết bộ nhớ lúc chép lời và lúc `llama-server` khởi động; `shutdown` ngắt lần chờ trước khi khởi động lại; `running()` trả về ngay dù một luồng đang giữ khóa trong lúc nạp model (Q3 của review 02 lần 2). Tiến trình phụ là bản giả; đồng hồ là đồng hồ giả, trừ test ngắt lần chờ (đồng hồ thật, backoff 60 giây, test kết thúc ngay khi `shutdown`).
 
 **Files:**
 - Sửa: `crates/pipeline/src/asr_client.rs`
@@ -4258,8 +4364,8 @@ use asr_protocol::TranscribeRequest;
 use pipeline::config::{AsrConfig, MtConfig, SupervisorConfig};
 use pipeline::prompt::Lang;
 use pipeline::supervisor::{
-    AsrFailure, AsrSpec, FakeClock, GiveUpCause, LlamaSpec, SidecarEvent, SidecarEvents, SidecarManager, SidecarSpec,
-    Which,
+    AsrFailure, AsrSpec, Clock, FakeClock, GiveUpCause, LlamaSpec, SidecarEvent, SidecarEvents, SidecarManager,
+    SidecarSpec, Which,
 };
 use pipeline::translate::{Job, Outcome, translate};
 use std::ops::ControlFlow;
@@ -4381,6 +4487,18 @@ fn setup_spec(
     llama_plan: &[&str],
     edit: impl FnOnce(&mut SidecarSpec),
 ) -> Setup {
+    setup_clock(name, gpu, asr_plan, llama_plan, edit, None)
+}
+
+/// Như `setup_spec`; `clock` thay `FakeClock` (vài test cần lần chờ thật, ngắt được bằng `Wake`).
+fn setup_clock(
+    name: &str,
+    gpu: bool,
+    asr_plan: &[&str],
+    llama_plan: &[&str],
+    edit: impl FnOnce(&mut SidecarSpec),
+    clock: Option<Arc<dyn Clock>>,
+) -> Setup {
     let t = Temp::new(name);
     std::fs::write(t.path("asr-plan"), asr_plan.join("\n")).unwrap();
     std::fs::write(t.path("llama-plan"), llama_plan.join("\n")).unwrap();
@@ -4423,9 +4541,10 @@ fn setup_spec(
         mt_config: MtConfig::default(),
     };
     edit(&mut spec);
-    let clock = Arc::new(FakeClock::default());
+    let fake = Arc::new(FakeClock::default());
     let events = Arc::new(Recorder::default());
-    let manager = SidecarManager::new(spec, clock.clone(), events.clone());
+    let manager = SidecarManager::new(spec, clock.unwrap_or_else(|| fake.clone()), events.clone());
+    let clock = fake;
     Setup {
         t,
         clock,
@@ -4666,6 +4785,45 @@ fn a_worker_error_for_one_segment_drops_it_without_a_restart() {
     assert!(!s.events.names().iter().any(|n| n.starts_with("restart")));
 }
 
+/// Q1 của review 02 lần 2: worker báo `OutOfMemory` lúc chép lời (thường là hết bộ nhớ GPU). Không bỏ đoạn như lỗi
+/// thường: báo app (§9: đề xuất gói Nhẹ), tính là một lần lỗi trên GPU, khởi động lại rồi gửi lại đoạn; hai lần liên tiếp
+/// thì chuyển CPU.
+#[test]
+fn out_of_memory_while_transcribing_counts_as_a_gpu_failure() {
+    let s = setup(
+        "oom-transcribe",
+        true,
+        &["error_on:1:OutOfMemory", "error_on:1:OutOfMemory", "ok"],
+        &[],
+    );
+    let err = s.manager.transcribe(request(1)).unwrap_err();
+    assert!(
+        matches!(&err, AsrFailure::Dropped(m) if m.contains("gửi lại")),
+        "{err:?}"
+    );
+    assert_eq!(s.manager.transcribe(request(2)).unwrap().segment_id, 2);
+    let names = s.events.names();
+    assert_eq!(names.iter().filter(|n| *n == "oom Asr").count(), 2, "{names:?}");
+    assert!(names.contains(&"cpu Asr".to_string()), "{names:?}");
+    assert_eq!(names.last().unwrap(), "ready Asr gpu=false", "{names:?}");
+    let log = s.t.read("asr-events");
+    assert_eq!(log.matches("transcribe 1 ").count(), 2, "gửi lại một lần: {log}");
+}
+
+/// O1 của review 02 lần 2: `llama-server` hết bộ nhớ lúc nạp model (dòng lỗi của ggml ở stderr): báo app, rồi chạy lại.
+#[test]
+fn llama_server_out_of_memory_at_start_is_reported() {
+    let s = setup("oom-llama", true, &["ok"], &["oom_at_start", "ok"]);
+    s.manager.ensure_started().unwrap();
+    let names = s.events.names();
+    let oom = names
+        .iter()
+        .position(|n| n == "oom Llama")
+        .expect("có sự kiện hết bộ nhớ");
+    assert!(names[oom + 1].starts_with("restart Llama"), "{names:?}");
+    assert_eq!(names.last().unwrap(), "ready Llama gpu=true", "{names:?}");
+}
+
 /// S12 của review: model không nạp được khi đã chạy bằng CPU là model hỏng: bỏ cuộc ngay, không thử lại.
 #[test]
 fn a_model_that_does_not_load_on_the_cpu_gives_up_at_once() {
@@ -4703,6 +4861,11 @@ fn without_a_gpu_both_sidecars_run_on_the_cpu() {
     assert_eq!(s.t.read("asr-events").lines().next(), Some("start use_gpu=false"));
     assert_eq!(s.t.read("llama-events"), "start ngl=0 extra=\n");
     assert!(s.events.names().contains(&"ready Llama gpu=false".to_string()));
+    // Dịch trước khi `asr-worker` chạy lần nào (chỉ `llama-server` được khởi động): vẫn bằng CPU.
+    let s = setup("no-gpu-mt-first", false, &[], &[]);
+    assert!(matches!(translate_hello(&s), Outcome::Done(_)));
+    assert_eq!(s.t.read("asr-events"), "");
+    assert_eq!(s.t.read("llama-events").lines().next(), Some("start ngl=0 extra="));
 }
 
 /// `asr-worker` chuyển sang CPU vì GPU lỗi: `llama-server` chạy sau đó cũng bằng CPU (§9).
@@ -4799,6 +4962,10 @@ fn after_shutdown_a_late_request_starts_nothing() {
     assert!(matches!(translate_hello(&s), Outcome::Unavailable(_)));
     assert_eq!(s.t.read("asr-events").matches("start ").count(), 1);
     assert_eq!(s.t.read("llama-events").matches("start ").count(), 1);
+    // Không có lần khởi động nào sau khi thoát, kể cả lần bị kill ngay sau khi chạy (tiến trình giả có thể chưa kịp ghi
+    // gì): giám sát báo `Starting` trước mỗi lần chạy.
+    let names = s.events.names();
+    assert_eq!(names.iter().filter(|n| n.starts_with("start ")).count(), 2, "{names:?}");
 }
 
 /// Chờ tới khi file sự kiện của tiến trình phụ giả có `needle`, tối đa 10 giây.
@@ -4900,6 +5067,61 @@ fn a_new_cpu_binary_gets_its_own_first_run() {
     let asked = s.events.asked.lock().unwrap().clone();
     assert_eq!(asked, [PathBuf::from(FAKE_ASR), cpu, PathBuf::from(FAKE_LLAMA)]);
 }
+
+/// Q3 của review 02 lần 2: app thoát giữa lần chờ trước khi khởi động lại (backoff 60 giây, đồng hồ thật): `shutdown`
+/// ngắt lần chờ, `ensure_started` trả lỗi ngay, không chạy thêm tiến trình nào.
+#[test]
+fn shutdown_interrupts_the_backoff_before_a_restart() {
+    let s = setup_clock(
+        "wake",
+        false,
+        &["exit_at_start:1", "ok"],
+        &[],
+        |spec| spec.supervisor.backoff_ms = vec![60_000],
+        Some(Arc::new(pipeline::supervisor::SystemClock::default())),
+    );
+    let manager = s.manager.clone();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || tx.send(manager.ensure_started()).unwrap());
+    let started = Instant::now();
+    while !s.events.names().iter().any(|n| n.starts_with("restart Asr")) {
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "không thấy lần chờ: {:?}",
+            s.events.names()
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    s.manager.shutdown();
+    let err = rx
+        .recv_timeout(Duration::from_secs(5))
+        .expect("shutdown ngắt được lần chờ")
+        .unwrap_err();
+    assert_eq!(err.cause, GiveUpCause::Closing);
+    assert_eq!(s.t.read("asr-plan"), "ok", "không chạy lại worker sau khi app thoát");
+}
+
+/// Q3 của review 02 lần 2: `running()` không chờ khóa của tiến trình phụ, kể cả khi một luồng đang giữ khóa đó suốt lúc
+/// nạp model (ở đây 5 giây).
+#[test]
+fn running_does_not_wait_for_a_model_that_is_loading() {
+    let s = setup("running", false, &["load_delay_ms:5000"], &[]);
+    let manager = s.manager.clone();
+    std::thread::spawn(move || {
+        let _ = manager.ensure_started();
+    });
+    let started = Instant::now();
+    while !s.events.names().iter().any(|n| n == "start Asr") {
+        assert!(started.elapsed() < Duration::from_secs(10));
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let manager = s.manager.clone();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || tx.send(manager.running()).unwrap());
+    let running = rx.recv_timeout(Duration::from_secs(2)).expect("running() trả về ngay");
+    assert!(!running, "chưa có tiến trình nào tới Ready");
+    s.manager.shutdown();
+}
 ```
 
 - [ ] **Step 3: Chạy test, thấy đỏ**
@@ -4908,7 +5130,8 @@ Run: `cargo test -p pipeline --test lifecycle`
 Expected: biên dịch lỗi:
 
 ```text
-error[E0432]: unresolved imports `pipeline::supervisor::AsrFailure`, `pipeline::supervisor::AsrSpec`, `pipeline::supervisor::FakeClock`, `pipeline::supervisor::GiveUpCause`, `pipeline::supervisor::LlamaSpec`, `pipeline::supervisor::SidecarEvent`, `pipeline::supervisor::SidecarEvents`, `pipeline::supervisor::SidecarManager`, `pipeline::supervisor::SidecarSpec`, `pipeline::supervisor::Which`
+error[E0432]: unresolved imports `pipeline::supervisor::AsrFailure`, `pipeline::supervisor::AsrSpec`, `pipeline::supervisor::Clock`, `pipeline::supervisor::FakeClock`, `pipeline::supervisor::GiveUpCause`, `pipeline::supervisor::LlamaSpec`, `pipeline::supervisor::SidecarEvent`, `pipeline::supervisor::SidecarEvents`, `pipeline::supervisor::SidecarManager`, `pipeline::supervisor::SidecarSpec`, `pipeline::supervisor::Which`
+error[E0433]: cannot find `SystemClock` in `supervisor`
 ```
 
 - [ ] **Step 4: Viết code**
@@ -5026,39 +5249,48 @@ Sửa `crates/pipeline/src/bin/fake_asr_worker.rs` (áp bằng `git apply`):
  //!   - `wrong_id_on:<n>`: kết quả của `Transcribe` thứ `n` mang id đoạn cộng 1000;
 -//!   - `slow_ms:<ms>`: chờ chừng này trước khi trả mỗi kết quả `Transcribe` (để test hàng đợi tất định).
 +//!   - `slow_ms:<ms>`: chờ chừng này trước khi trả mỗi kết quả `Transcribe` (để test hàng đợi tất định);
-+//!   - `error_on:<n>`: trả `Error` (`Internal`) cho `Transcribe` thứ `n`, vẫn sống;
++//!   - `error_on:<n>[:<OutOfMemory|Internal>]`: trả `Error` (mặc định `Internal`) cho `Transcribe` thứ `n`, vẫn sống;
 +//!   - `load_delay_ms:<ms>`: chờ chừng này trước khi trả lời `Load` (nạp model chậm, như lần đầu chạy trên macOS).
  //! - `FAKE_ASR_LOG`: file ghi nối tiếp các sự kiện (`start use_gpu=…`, `transcribe <id> prev=<ngôn ngữ> prompt=<số token>`).
  //! - `FAKE_ASR_TEXTS`: file, mỗi dòng `<ngôn ngữ>\t<chữ>`; đoạn có id `i` trả dòng `i % số dòng`. Thêm `\t!nospeech` ở cuối
  //!   dòng thì trả `no_speech_prob` 0,9 và `avg_logprob` −1,5. Không đặt thì trả `đoạn <id>` bằng ngôn ngữ đầu tiên được phép.
-@@ -33,6 +35,8 @@
+@@ -33,6 +35,9 @@
      hang_on: Option<u32>,
      wrong_id_on: Option<u32>,
      slow_ms: u64,
 +    error_on: Option<u32>,
++    error_kind: ErrorKind,
 +    load_delay_ms: u64,
  }
  
  fn next_plan_line() -> String {
-@@ -58,6 +62,8 @@
+@@ -58,6 +63,9 @@
          hang_on: None,
          wrong_id_on: None,
          slow_ms: 0,
 +        error_on: None,
++        error_kind: ErrorKind::Internal,
 +        load_delay_ms: 0,
      };
      for word in line.split_whitespace() {
          let (key, value) = word.split_once(':').unwrap_or((word, ""));
-@@ -84,6 +90,8 @@
+@@ -84,6 +92,15 @@
              "hang_on" => plan.hang_on = value.parse().ok(),
              "wrong_id_on" => plan.wrong_id_on = value.parse().ok(),
              "slow_ms" => plan.slow_ms = value.parse().expect("số ms"),
-+            "error_on" => plan.error_on = value.parse().ok(),
++            "error_on" => {
++                let (n, kind) = value.split_once(':').unwrap_or((value, "Internal"));
++                plan.error_on = n.parse().ok();
++                plan.error_kind = match kind {
++                    "OutOfMemory" => ErrorKind::OutOfMemory,
++                    _ => ErrorKind::Internal,
++                };
++            }
 +            "load_delay_ms" => plan.load_delay_ms = value.parse().expect("số ms"),
              other => panic!("lệnh kịch bản lạ: {other}"),
          }
      }
-@@ -132,6 +140,7 @@
+@@ -132,6 +149,7 @@
          let response = match request {
              Request::Load { use_gpu, .. } => {
                  log(&format!("start use_gpu={use_gpu}"));
@@ -5066,7 +5298,7 @@ Sửa `crates/pipeline/src/bin/fake_asr_worker.rs` (áp bằng `git apply`):
                  match plan.load_error {
                      Some(kind) => Response::Error {
                          segment_id: None,
-@@ -185,6 +194,12 @@
+@@ -185,6 +203,12 @@
                          segment_id: Some(req.segment_id),
                          kind: ErrorKind::NotLoaded,
                          message: "chưa nạp model".into(),
@@ -5074,7 +5306,7 @@ Sửa `crates/pipeline/src/bin/fake_asr_worker.rs` (áp bằng `git apply`):
 +                } else if plan.error_on == Some(transcribes) {
 +                    Response::Error {
 +                        segment_id: Some(req.segment_id),
-+                        kind: ErrorKind::Internal,
++                        kind: plan.error_kind,
 +                        message: "lỗi giả khi chép lời".into(),
                      }
                  } else {
@@ -5292,7 +5524,7 @@ Sửa `crates/pipeline/src/process.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/pipeline/src/process.rs
 +++ b/crates/pipeline/src/process.rs
-@@ -224,6 +224,21 @@
+@@ -228,6 +228,21 @@
  #[cfg(not(target_os = "macos"))]
  fn exe_path(_pid: u32) -> Option<PathBuf> {
      None
@@ -5849,26 +6081,54 @@ impl SidecarManager {
         }
     }
 
+    /// Giữ cách kill tiến trình vừa chạy. App đã bắt đầu thoát ([`SidecarManager::shutdown`] đã lấy hết `killers`) thì
+    /// kill luôn, không giữ: kiểm `closing` dưới cùng khóa với `shutdown`, nên không tiến trình nào lọt ra.
+    fn remember(&self, which: Which, killer: process::Killer) {
+        let mut killers = lock(&self.killers);
+        if self.closing() {
+            drop(killers);
+            killer.kill();
+            return;
+        }
+        match which {
+            Which::Asr => killers.asr = Some(killer),
+            Which::Llama => killers.llama = Some(killer),
+        }
+    }
+
     /// Tắt cả hai: rảnh quá lâu (`idle`), hoặc app thoát. Khi app thoát, kill trước ([`SidecarManager::shutdown`]) rồi
     /// mới lấy khóa, nên không phải chờ hết lần nạp model hay request đang dở.
     pub fn stop(&self, idle: bool) {
         if !idle {
             self.shutdown();
         }
-        let server = lock(&self.llama).server.take();
+        // Bỏ `killers` cùng lúc lấy tiến trình ra khỏi slot (dưới khóa của slot), để không lần chạy mới nào xen vào giữa.
+        let server = {
+            let mut slot = lock(&self.llama);
+            let server = slot.server.take();
+            if server.is_some() {
+                self.llama_running.store(false, Ordering::SeqCst);
+                lock(&self.killers).llama = None;
+            }
+            server
+        };
         if let Some(server) = server {
-            self.llama_running.store(false, Ordering::SeqCst);
-            lock(&self.killers).llama = None;
             drop(server);
             self.emit(SidecarEvent::Stopped {
                 which: Which::Llama,
                 idle,
             });
         }
-        let worker = lock(&self.asr).worker.take();
+        let worker = {
+            let mut slot = lock(&self.asr);
+            let worker = slot.worker.take();
+            if worker.is_some() {
+                self.asr_running.store(false, Ordering::SeqCst);
+                lock(&self.killers).asr = None;
+            }
+            worker
+        };
         if let Some(worker) = worker {
-            self.asr_running.store(false, Ordering::SeqCst);
-            lock(&self.killers).asr = None;
             drop(worker);
             self.emit(SidecarEvent::Stopped {
                 which: Which::Asr,
@@ -5926,8 +6186,7 @@ impl SidecarManager {
 
     /// Một lần chạy `asr-worker`: `Load`, rồi `Warmup`.
     fn spawn_asr(&self, launch: &AsrLaunch) -> Result<(AsrWorker, ReadyInfo), AsrStartFailure> {
-        let killers = &self.killers;
-        let mut remember = |k: process::Killer| lock(killers).asr = Some(k);
+        let mut remember = |k: process::Killer| self.remember(Which::Asr, k);
         AsrWorker::spawn_with(launch, &mut remember)
             .and_then(|(mut worker, ready)| worker.warmup().map(|_| (worker, ready)))
             .map_err(|e| {
@@ -6093,7 +6352,15 @@ impl SidecarManager {
                     slot.tracker.on_success();
                     return Ok(result);
                 }
-                // Worker trả `Error` cho đoạn mà vẫn sống: bỏ đoạn, không khởi động lại.
+                // Hết bộ nhớ lúc chép lời (thường là bộ nhớ GPU): báo app (§9: đề xuất gói Nhẹ) và tính là một lần lỗi
+                // như khi worker chết, nên 2 lần liên tiếp trên GPU thì chuyển CPU; khởi động lại rồi gửi lại đoạn.
+                Err(e) if e.kind() == Some(ErrorKind::OutOfMemory) => {
+                    self.emit(SidecarEvent::OutOfMemory { which: Which::Asr });
+                    last = e.to_string();
+                    self.after_asr_failure(&mut slot, &last, false)
+                        .map_err(|e| AsrFailure::Unavailable(e.reason))?;
+                }
+                // Worker trả `Error` khác cho đoạn mà vẫn sống: bỏ đoạn, không khởi động lại.
                 Err(e) if !e.is_crash() => return Err(AsrFailure::Dropped(e.to_string())),
                 Err(e) => {
                     last = e.to_string();
@@ -6152,8 +6419,7 @@ impl SidecarManager {
                 env: spec.env.clone(),
                 ..LlamaLaunch::new(&spec.exe, &spec.model, &spec.log)
             };
-            let killers = &self.killers;
-            let mut remember = |k: process::Killer| lock(killers).llama = Some(k);
+            let mut remember = |k: process::Killer| self.remember(Which::Llama, k);
             match LlamaServer::spawn_with(&launch, &mut remember) {
                 Ok(server) => {
                     if self.closing() {
@@ -6306,21 +6572,21 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 112 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 115 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s
-test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.52s
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.27s
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-     Running unittests src/lib.rs (target/debug/deps/pipeline-126516eab1f92edf)
-     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-8ba1ac4e23374ebd)
-     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-e753fea9a8abc686)
-     Running tests/clients.rs (target/debug/deps/clients-41fc66e771173fce)
-     Running tests/lifecycle.rs (target/debug/deps/lifecycle-9c9c371bd03a2b4c)
-     Running tests/shutdown.rs (target/debug/deps/shutdown-82db404fc1f11d0c)
-     Running tests/vad_reference.rs (target/debug/deps/vad_reference-85e6bf9a05f81f77)
+     Running unittests src/lib.rs (target/debug/deps/pipeline-901454d330477dd2)
+     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-b11221de58f4122f)
+     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-d5d453cb8d0fce77)
+     Running tests/clients.rs (target/debug/deps/clients-79f5008458d238c8)
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-3343c457a743e8de)
+     Running tests/shutdown.rs (target/debug/deps/shutdown-8294228bcb944e13)
+     Running tests/vad_reference.rs (target/debug/deps/vad_reference-c2808b28efa7e0e7)
 ```
 
 - [ ] **Step 6: Clippy (cả target Windows) và định dạng**
@@ -6336,7 +6602,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo, `cargo fmt` không in gì. Dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.90s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.58s
 ```
 
 - [ ] **Step 7: Commit**
