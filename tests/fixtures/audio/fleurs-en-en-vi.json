@@ -1,0 +1,23 @@
+[
+ {
+  "id": "en-14159306883861268418",
+  "lang": "en",
+  "start_ms": 1000,
+  "end_ms": 4960,
+  "ref": "That didn't seem to make sense to me; it certainly wasn't fair."
+ },
+ {
+  "id": "en-6415341913845555034",
+  "lang": "en",
+  "start_ms": 6460,
+  "end_ms": 10840,
+  "ref": "The result of plotting analysis will be posted to a public website."
+ },
+ {
+  "id": "vi-12090846728876801190",
+  "lang": "vi",
+  "start_ms": 12340,
+  "end_ms": 17580,
+  "ref": "Các nhà khoa học cho biết vụ va chạm đã gây ra vụ nổ rất lớn."
+ }
+]

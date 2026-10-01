@@ -11,7 +11,7 @@ use pipeline::subtitle::{Delta, Status, Subtitle};
 use pipeline::supervisor::{AsrSpec, Clock, FakeClock, LlamaSpec, NoEvents, SidecarManager, SidecarSpec, SystemClock};
 use std::collections::BTreeMap;
 use std::ops::ControlFlow;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Once};
 use std::time::{Duration, Instant};
 
@@ -409,4 +409,64 @@ fn stop_ends_a_live_session_quickly() {
     assert_eq!(metrics.segments, 1);
     let (ui, _) = sink.replay();
     assert_eq!(ui.len(), 1);
+}
+
+/// File WAV ở `tests/fixtures/audio/` (clip FLEURS, Đ20 của kế hoạch 00), qua VAD theo năng lượng và tiến trình phụ giả:
+/// mỗi câu có đúng một phụ đề, đúng thứ tự, nằm trong khoảng thời gian của câu (§11, "Test tích hợp"). Bản chạy model thật
+/// ở `real_sidecars.rs`.
+#[test]
+fn the_fleurs_fixture_gives_one_subtitle_per_sentence_at_the_right_time() {
+    #[derive(serde::Deserialize)]
+    struct Truth {
+        lang: String,
+        start_ms: u64,
+        end_ms: u64,
+    }
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/audio");
+    let truth: Vec<Truth> =
+        serde_json::from_reader(std::fs::File::open(fixtures.join("fleurs-en-en-vi.json")).unwrap()).unwrap();
+    let samples: Vec<f32> = hound::WavReader::open(fixtures.join("fleurs-en-en-vi.wav"))
+        .unwrap()
+        .samples::<i16>()
+        .map(|s| s.unwrap() as f32 / 32768.0)
+        .collect();
+    let t = Temp::new("fixture");
+    let texts = ["en\tFirst sentence.", "en\tSecond sentence.", "vi\tCâu thứ ba."];
+    let manager = manager(&t, &texts, &[], Arc::new(SystemClock::default()));
+    manager.ensure_started().unwrap();
+    let mut cfg = config(&["en", "vi"]);
+    // Id đoạn bắt đầu từ 0, để đoạn thứ i lấy dòng thứ i của `texts`.
+    cfg.id_base = 0;
+    // Câu đọc của FLEURS có chỗ nghỉ giữa chừng tới 1,1 giây; 1,2 giây giữ mỗi câu là một đoạn, mà vẫn ngắn hơn khoảng
+    // lặng 1,5 giây giữa các câu. VAD theo năng lượng thay cho Silero chỉ để test không cần model.
+    cfg.pipeline.segmenter.end_silence_ms = 1_200;
+    // Hai câu tiếng Anh thu rất nhỏ (khoảng −62 dBFS); khoảng lặng giữa các câu là số 0 tuyệt đối.
+    let vad: VadFactory = Box::new(|| Ok(Box::new(EnergyVad { threshold_rms: 0.000_2 }) as _));
+    let sink = Arc::new(Recorder::default());
+    let engine = Engine::start(
+        cfg,
+        source(samples),
+        vad,
+        Box::new(manager.asr()),
+        Box::new(manager.mt()),
+        sink.clone(),
+    )
+    .unwrap();
+    engine.join();
+    let (ui, order) = sink.replay();
+    assert_eq!(order.len(), truth.len(), "{ui:?}");
+    for (id, t) in order.iter().zip(&truth) {
+        let s = &ui[id];
+        // Như `real_sidecars.rs`: phụ đề nằm trong khoảng của câu (lệch tối đa 500 ms), và dài ít nhất nửa câu.
+        assert!(
+            s.start_ms + 500 >= t.start_ms
+                && s.end_ms <= t.end_ms + 500
+                && 2 * (s.end_ms - s.start_ms) >= t.end_ms - t.start_ms,
+            "{s:?} so với câu {}–{}",
+            t.start_ms,
+            t.end_ms
+        );
+        assert_eq!(s.src_lang, t.lang);
+        assert_eq!(s.status, if t.lang == "vi" { Status::SameLang } else { Status::Done });
+    }
 }

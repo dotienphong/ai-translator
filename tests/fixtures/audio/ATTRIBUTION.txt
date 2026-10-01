@@ -1,0 +1,9 @@
+fleurs-en-en-vi.wav ghép ba câu đọc của bộ dữ liệu FLEURS (tập dev), cách nhau bằng khoảng lặng:
+- en-14159306883861268418 (tiếng Anh)
+- en-6415341913845555034 (tiếng Anh)
+- vi-12090846728876801190 (tiếng Việt)
+
+FLEURS: Conneau và cộng sự, "FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech", 2022,
+Google. Giấy phép Creative Commons Attribution 4.0 (CC BY 4.0), https://creativecommons.org/licenses/by/4.0/.
+Bản ở đây đã được sửa: cắt lặng đầu cuối (bench/phase0/asr/build_clips.py), rồi ghép và chèn khoảng lặng
+(build_fixture.py). Chỉ dùng cho test, không vào bộ cài.
