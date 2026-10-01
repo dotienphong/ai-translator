@@ -9914,3 +9914,36 @@ Ghi chú cho vài dòng:
 git add docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
 git commit -m "docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 01" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
+
+## Phụ lục: sửa sau review lúc thực thi (đợt R)
+
+Đợt R sửa các mục phía Rust trong danh sách người review ghi lại khi review 23 task code. Số mục theo danh sách đó. Mọi test mới đều được thử bằng mutation: các mutation còn sống mà danh sách nêu (M1, M2 của `hotkeys.rs`; M15 của `migrate.rs`; M1, M6 của `patch.rs`) và mutation cho từng chỗ sửa đều bị bắt. Code trong các task ở trên vẫn là bản trước đợt R; bản đúng là code trong repo.
+
+**Phiên bản thực tế lúc thực thi.** Lúc chạy Task 1, `tauri-plugin-autostart` 2.7.0 và `tauri-plugin-single-instance` 2.5.2 chưa đủ 1 ngày tuổi. Vì vậy app dùng bản dự phòng đã ghi ở mục "Phiên bản đã chốt": `tauri-plugin-autostart` 2.6.0 và `tauri-plugin-single-instance` 2.5.1, kéo theo `tauri-plugin` 2.7.0 và `tauri-utils` 2.10.0 (không phải 2.7.1 và 2.10.1). Chú thích ở `login_item.rs` vẫn ghi theo 2.7.0; sau khi nâng phải chạy lại test của Task 12 và 17.
+
+**Commit sửa trong lúc thực thi:** `4560558`. Commit này cho thoát khi hệ thống gửi `kAEQuitAll` (`quia`), và chặn URL chỉ có mật khẩu cùng URL `about:` khác `about:blank`.
+
+| Mục | Thay đổi | Commit |
+|---|---|---|
+| 1 | Test chuỗi đọc được nhưng dài hơn `MAX_LEN` (`"Ctrl+"` + 70 dấu cách + `"Alt+T"`) | `e20f3ce` |
+| 2 | Test phím mới sai cho việc chưa có phím nào: `old_active = false` | `e20f3ce` |
+| 3 | Phím tắt phải có Ctrl, Alt hoặc Super; Shift một mình không đủ. Sửa câu lỗi Rust, `hotkeys.hint` và `error.hotkeyNoModifier` (en, vi) | `e20f3ce` |
+| 5 | Test `schemaVersion` lớn hơn `u32::MAX`: coi là bản mới hơn, không ghi đè, giữ giá trị thô | `4d95f83` |
+| 7 | `check_id` đếm theo ký tự (`chars().count()`), có test với chữ có dấu | `4d95f83` |
+| 9 | Test `overlay.lastMonitor` là khóa chỉ đọc, và khóa con lạ trong `experimental` | `4d95f83` |
+| 10 | `patch::apply`: sai kiểu ở khóa con thì báo tên khóa con; số nguyên âm hay tràn cho khóa số nguyên thì báo `OutOfRange`. Chú thích ghi rõ thứ tự kiểm (khóa xét theo thứ tự chữ cái vì `Map` của `serde_json` không bật `preserve_order`) | `4d95f83` |
+| 11 (code) | `os_keystore_roundtrip` (`#[ignore]`) kiểm `persistence == "Local"` trên Windows. Bước `cmdkey /list` của Task 25 chưa thêm | `9998752` |
+| 12 | Test bước 2 của thứ tự chọn màn hình, kẹp y ở mép dưới, và `.filter(saved)` của `last_screen` | `9998752` |
+| 13 | Test tên mục kho khóa dài đúng 64 ký tự và tên có `_` | `9998752` |
+| 14 | Chú thích `OverlaySettings::positions` đổi `monitor_key` thành `screen_key` | `4d95f83` |
+| 15, 26 | `navigation::apply` nhận danh sách tên miền; tách `new_window` khỏi `new_window_handler`. Test bằng app giả: link ngoài trả `false` và đi qua `FakeSystem.open_external_url`; yêu cầu mở cửa sổ mới luôn `Deny` | `e501a61` |
+| 16 | `quit_guard::install` dừng nếu không ở luồng chính (`MainThreadMarker`); kiểm delegate và cài phương thức xong mới gán `ON_CANCEL`; trả `bool`. Logic trả lời tách thành `terminate_reply`, bọc `on_cancel` bằng `catch_unwind` | `d4a7796` |
+| 17 | `Native::open_external_url` chỉ mở URL `https` có tên máy chủ (`system::https_only`) | `e501a61` |
+| 19 | Test bảng `AgentStatus::from_raw` theo `SMAppServiceStatus` (chỉ macOS) | `d4a7796` |
+| 20 | Bản sao file cài đặt hỏng tên `settings.json.corrupt-<giây Unix>`; trùng tên thì thêm `-1`, `-2`…, tối đa 100 bản mỗi giây; không ghi đè bản cũ | `4d95f83` |
+| 22 | Test menu khay so theo cặp `(id, chữ)` | `a5cbfd4` |
+| 23 | Test `TrayItem::ALL` có `match` đầy đủ, không dùng `_` | `a5cbfd4` |
+| 24 | `errors.rs`: chú thích chung của năm mã lỗi đổi thành comment thường; mỗi hằng có doc comment riêng | `a5cbfd4` |
+| 32 (`migrate`) | `migrate::load` đưa phím tắt về dạng chuẩn (`Loaded::normalized`); file cùng phiên bản thì ghi lại, file của bản mới hơn thì không | `4d95f83` |
+
+Sau đợt R: `cargo test -p meeting-translator --lib` cho 108 test qua và 2 test bỏ qua. Clippy `-D warnings` (Mac và `check-windows.sh`), `cargo fmt --check` và `pnpm test` (28 test) đều sạch.
