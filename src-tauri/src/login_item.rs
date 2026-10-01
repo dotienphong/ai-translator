@@ -179,6 +179,22 @@ mod tests {
         }
     }
 
+    /// Bảng giá trị của `SMAppServiceStatus` trong SDK (SMAppService.h).
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn from_raw_matches_sm_app_service_status() {
+        use objc2_service_management::SMAppServiceStatus;
+        for (raw, expected) in [
+            (SMAppServiceStatus::NotRegistered, AgentStatus::NotRegistered),
+            (SMAppServiceStatus::Enabled, AgentStatus::Enabled),
+            (SMAppServiceStatus::RequiresApproval, AgentStatus::RequiresApproval),
+            (SMAppServiceStatus::NotFound, AgentStatus::NotFound),
+        ] {
+            assert_eq!(AgentStatus::from_raw(raw.0), expected, "{}", raw.0);
+        }
+        assert_eq!(AgentStatus::from_raw(-1), AgentStatus::Unknown(-1));
+    }
+
     /// Chạy tay: `cargo test -p meeting-translator --lib login_item -- --ignored --nocapture`.
     /// Chỉ đọc trạng thái, không đăng ký gì, không bật hộp thoại.
     #[test]
