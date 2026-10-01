@@ -239,7 +239,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - `PaymentProvider`, với PayOS là cài đặt đầu tiên;
   - bốn gói (P1): checkout theo gói `pro`, `pro_x2`, `pro_x5`, mỗi đơn 30 ngày; bảng gói và giá trong cấu hình; `GET /v1/plans`; mua thêm cùng gói và đổi gói có quy đổi ngày (spec §6.8, "Mua thêm và đổi gói");
   - token Ed25519 có `kid` có số thứ tự, mang `plan` (mã gói), `cycle_anchor`, `quota_minutes_per_cycle`;
-  - khóa dự phòng là secret `TOKEN_SIGNING_KEY_NEXT` của Worker, không dùng kho mật khẩu; thao tác admin ký thử bằng khóa dự phòng (spec §10.2);
+  - hai ô khóa ký là secret `TOKEN_SIGNING_KEY_A`, `TOKEN_SIGNING_KEY_B` của Worker API, biến `TOKEN_SIGNING_SLOT` chọn ô đang ký, không dùng kho mật khẩu; thao tác admin ký thử bằng ô dự phòng qua service binding (spec §10.2);
   - thao tác admin xóa hoặc ẩn danh theo email, chỉ chạy tay; không có cron tự xóa (Q9);
   - `/admin` đặt sau Cloudflare Access;
   - email qua Resend, sau interface `EmailProvider`;
@@ -263,7 +263,11 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - checkout nhận `plan` là `pro`, `pro_x2`, `pro_x5` thay cho `pro_1m`, `pro_12m`; `PRICES_JSON` thành bảng gói có cả hạn mức;
   - luật mua thêm và đổi gói, ước tính `license_expires_at` trong response của checkout; `GET /v1/plans`;
   - token: `plan` là mã gói (thay QĐ11 của 05, vốn để `"pro"`), thêm `cycle_anchor`, `quota_minutes_per_cycle`;
-  - khóa dự phòng: secret `TOKEN_SIGNING_KEY_NEXT` thay cho bản trong kho mật khẩu (QĐ29, Task 7, 19, 21, Phụ lục A); chuyển khóa bằng cấu hình của Worker vì secret không đọc lại được; lệnh admin ký thử bằng khóa dự phòng;
+  - khóa dự phòng: hai ô `TOKEN_SIGNING_KEY_A`, `_B` và biến `TOKEN_SIGNING_SLOT` thay cho bản trong kho mật khẩu (QĐ29, Task 7, 19, 21, Phụ lục A); đổi khóa bằng cách đổi `TOKEN_SIGNING_SLOT` vì secret không đọc lại được; lệnh admin ký thử bằng ô dự phòng;
+  - license đã bị thu hồi mà nhận tiền của đơn gia hạn hay đổi gói: không áp đơn, đơn sang `paid_needs_review`, cảnh báo `order_needs_review`, admin xử lý tay;
+  - admin gia hạn tay license đã hết hạn thì đặt lại `cycle_anchor` và mở cửa sổ `quota_fresh`;
+  - `503 pricing_not_configured` cho cả `GET /v1/plans`, `activate`, `validate`; không hạ hạn mức của gói đang bán;
+  - Đã làm ở commit `82a7718` (kế hoạch 05 theo 4 gói và hạn mức); spec khớp theo ở lượt sửa kế tiếp.
   - Q9: giữ dữ liệu không thời hạn; `POST /admin/erase` chỉ chạy tay; bỏ "Chờ Q9" ở bảng "Nơi lưu dữ liệu cá nhân";
   - Q10: không gửi thông tin hóa đơn (giữ QĐ23).
   - Token thêm `quota_epoch` (số nguyên của activation), `activation_created_at` và `quota_fresh`. `quota_fresh` là `true` cho mọi token cấp trong 15 phút kể từ mốc gần nhất trong ba mốc:
@@ -675,7 +679,7 @@ Cách đọc:
 | 173 | `POST /v1/licenses/deactivate`: gọi từ chính máy đó, hoặc gỡ từ xa từ máy mới khi key đã đủ 2 máy; mỗi lần gỡ tính vào giới hạn ở §10.2 | 05 | | chưa làm |
 | 174 | `POST /v1/licenses/recover`: gửi lại mọi key còn hiệu lực vào chính email đó; luôn trả `200`; tra và gửi thư sau khi đã trả lời, để thời gian phản hồi không lộ email nào có key; email không có key thì không gửi gì; có giới hạn tần suất | 05 | 05 QĐ15 | chưa làm |
 | 175 | Gửi email qua Resend (API HTTP gọi từ Worker), sau interface `EmailProvider`; khóa API của Resend là secret của Worker; tên miền gửi xác thực SPF, DKIM; văn bản thuần vi/en; lỗi email không chặn cấp key; email mua hàng có idempotency key theo đơn, gửi lại không thành hai thư; chỉ 400 và 422 là lỗi vĩnh viễn, lỗi khác gửi lại giãn dần trong 24 giờ | 05 | Chờ T6, tên miền (Q1) | chưa làm |
-| 176 | `/admin/*` ở Worker admin riêng sau Cloudflare Access: tra cứu theo email hoặc `order_code`, gửi lại key; mở khóa key bị khóa tạm; cấp hoặc gia hạn tay; gỡ activation, thu hồi key; xóa hoặc ẩn danh dữ liệu theo email, chỉ chạy tay; ký thử bằng khóa dự phòng; mọi thao tác ghi nhật ký | 05, 05 (người) | Q9: không có cron tự xóa; R15 | chưa làm |
+| 176 | `/admin/*` ở Worker admin riêng sau Cloudflare Access: tra cứu theo email hoặc `order_code`, gửi lại key; mở khóa key bị khóa tạm; cấp hoặc gia hạn tay (gia hạn license đã hết hạn thì đặt lại `cycle_anchor`, mở cửa sổ `quota_fresh`); xử lý tay đơn `paid_needs_review`; gỡ activation, thu hồi key; xóa hoặc ẩn danh dữ liệu theo email, chỉ chạy tay; ký thử bằng khóa dự phòng; mọi thao tác ghi nhật ký | 05, 05 (người) | Q9: không có cron tự xóa; R15 | chưa làm |
 | 177 | Chữ ký khi tạo link thanh toán: HMAC-SHA256 bằng checksum key trên `amount`, `cancelUrl`, `description`, `orderCode`, `returnUrl` xếp theo thứ tự chữ cái | 05 | | chưa làm |
 | 178 | Token bản quyền ký Ed25519, khóa công khai build sẵn trong app; trường `kid`, `license_id`, `activation_id`, `device_id_hash`, `activation_created_at`, `quota_epoch`, `plan` (mã gói `pro`, `pro_x2`, `pro_x5`), `expires_at`, `cycle_anchor`, `quota_minutes_per_cycle` (`null` là không giới hạn), `issued_at`, `refresh_before` (= `issued_at` + 14 ngày) | 05, 06 | Vector test chung (Đ9); 05 sửa QĐ11 (`plan` là mã gói) | chưa làm |
 | 179 | `device_id_hash` là SHA-256 của IOPlatformUUID (macOS) và MachineGuid (Windows) | 06, 06 (Win) | | chưa làm |
@@ -690,7 +694,7 @@ Cách đọc:
 | 188 | Mất bản ghi bộ đếm trong khi app đã có dữ liệu từ trước thì coi như đã dùng hết hạn mức của ngày (Free) hoặc của chu kỳ hiện tại (gói trả phí); ngày hay chu kỳ mới chưa có bộ đếm thì bắt đầu từ 0 | 06 | | chưa làm |
 | 189 | Trong app, interface `LicenseProvider` (activate, validate, deactivate) cài bằng client gọi license server | 06 | | chưa làm |
 | 190 | PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng VND, nên MVP chỉ bán cho khách ở Việt Nam | 06, 05 | Ghi rõ ở màn hình Nâng cấp | chưa làm |
-| 326 | Bảng gói trả phí trong cấu hình của server (mã gói, `quota_minutes_per_cycle`, 30 ngày mỗi đơn, giá theo loại tiền); `GET /v1/plans` trả bảng này; chưa cấu hình giá thì checkout trả `503 pricing_not_configured`; hạn mức Free là hằng số phía app | 05, 06 | Thay `PRICES_JSON` hai gói của 05 | chưa làm |
+| 326 | Bảng gói trả phí trong cấu hình của server (mã gói, `quota_minutes_per_cycle`, 30 ngày mỗi đơn, giá theo loại tiền); `GET /v1/plans` trả bảng này; bảng có cả tên hiển thị (`name`); chưa cấu hình `PLANS` thì `GET /v1/plans`, checkout, `activate` và `validate` trả `503 pricing_not_configured`; đổi hạn mức có tác dụng ở lần `validate` sau, nên không được hạ hạn mức của gói đang bán; hạn mức Free là hằng số phía app | 05, 06 | Thay `PRICES_JSON` hai gói của 05 | chưa làm |
 | 327 | Mua thêm cùng gói: `expires_at` cộng 30 ngày từ max(hiện tại, `expires_at`); `cycle_anchor` giữ nguyên, license đã hết hạn thì đặt lại bằng hiện tại; tính lúc xác nhận đã nhận tiền | 05 | | chưa làm |
 | 328 | Đổi gói khi license còn hạn: gói mới bắt đầu ngay, `cycle_anchor` = hiện tại; `ngày_quy_đổi` = floor(ngày_còn_lại × giá_cũ / giá_mới), giá theo bảng hiện hành; `expires_at` = hiện tại + 30 ngày + `ngày_quy_đổi`; không hoàn tiền; license đã hết hạn thì tính như license mới giữ key cũ; checkout trả ước tính `license_expires_at` | 05, 06 | 06 hiện số ngày quy đổi trước khi trả tiền | chưa làm |
 | 329 | `validate` trả token theo gói và hạn hiện tại; máy thứ hai của cùng key nhận gói mới ở lần `validate` kế tiếp | 05, 06 | | chưa làm |
@@ -699,7 +703,7 @@ Cách đọc:
 | 332 | Bộ đếm của gói trả phí có khóa (`license_id`, mốc đầu chu kỳ, `quota_epoch`); gỡ máy rồi kích hoạt máy khác không chuyển bộ đếm (máy mới bắt đầu từ 0); kích hoạt lại chính máy cũ thì dùng tiếp bộ đếm cũ; xoay key là rủi ro chấp nhận | 06 | Q16 | chưa làm |
 | 333 | Chạm hạn mức: hạn mức còn 0 thì không cho bắt đầu phiên; đang dịch thì bỏ hàng đợi, chỉ dịch xong câu đang dịch, dừng với `quota_exhausted`; tính năng Pro khác vẫn dùng được khi gói còn hạn | 06, 02 | Q16 | chưa làm |
 | 334 | App xử lý `423 license_locked` (báo key bị khóa tạm, hướng dẫn liên hệ hỗ trợ) và `429` kèm `Retry-After` (báo thử lại sau, không thử lại liên tục) | 06 | Spec §9 thêm hai dòng ngày 2026-10-01 | chưa làm |
-| 335 | Admin ký thử một token bằng khóa dự phòng `TOKEN_SIGNING_KEY_NEXT`, rồi kiểm bằng `keys/public-keys.json`, để chứng minh khóa công khai build sẵn trong app khớp | 05, 05 (người) | Thay `jwk-public.mjs` đọc từ kho mật khẩu (05 QĐ31) | chưa làm |
+| 335 | Admin ký thử một token bằng ô khóa dự phòng (ô không đang ký), rồi kiểm bằng `server/keys/public-keys.json`, kể cả token nằm đúng ô; token ký thử không dùng được làm bản quyền; Worker admin không giữ khóa nào, gọi Worker API qua service binding (`AdminRpc`, `admin-rpc.ts`) | 05, 05 (người) | 05 QĐ31, QĐ34 | chưa làm |
 | 340 | Token thêm `quota_epoch` (số nguyên của activation, bắt đầu từ 0), `activation_created_at` (chỉ để hiển thị và hỗ trợ) và `quota_fresh`: `true` cho mọi token cấp trong 15 phút kể từ mốc gần nhất trong ba mốc, server lưu riêng từng mốc: tạo activation; cấp token đầu tiên sau khi admin tăng `quota_epoch` (không phải lúc admin bấm); áp việc đặt lại `cycle_anchor` lúc xử lý đơn (không theo giá trị `cycle_anchor`); gỡ máy (kể cả admin gỡ) không xóa dòng activation; kích hoạt lại cùng `device_id_hash`, kể cả sau khi gỡ, dùng lại đúng activation đó và không mở cửa sổ `fresh` mới; thao tác admin "reset hạn mức của máy" tăng `quota_epoch` và ghi nhật ký, chỉ làm khi khách liên hệ | 05, 05 (người) | Spec §6.8 sửa sau review lần 4 | chưa làm |
 | 341 | "Hiện tại" của gia hạn và đổi gói là thời điểm thanh toán do PayOS báo (`transactionDateTime`), kẹp trong thời hạn của link; admin cấp tay không qua đơn dùng lúc thao tác; ước tính của checkout chênh tối đa 15 phút, `ngày_quy_đổi` có thể ít hơn 1 ngày | 05 | | chưa làm |
 | 342 | Mô tả đơn PayOS là `AT<order_code>`, `AT` cộng tối đa 7 chữ số, không quá 9 ký tự | 05 | Thay tiền tố `MT` của 05 | chưa làm |
@@ -708,7 +712,7 @@ Cách đọc:
 | 345 | Chu kỳ cuối ngắn hơn 30 ngày (`expires_at` trước mốc đầu chu kỳ kế tiếp): hạn mức `ceil(quota_minutes_per_cycle × số_ngày / 30)`, app tự tính từ `expires_at`, gia hạn thì tính lại | 06 | Q16 | chưa làm |
 | 346 | Hiển thị thời điểm reset: Free là max(00:00 hôm sau, lần reset trước + 20 giờ); gói trả phí là mốc đầu chu kỳ kế tiếp, kèm ghi chú cần có mạng; `expires_at` đến trước mốc đó thì báo ngày hết hạn | 06, 03 | Spec §4.2 | chưa làm |
 | 347 | Giờ máy qua mốc chu kỳ mới khi offline: dùng tiếp bộ đếm của chu kỳ cũ, báo cần kết nối mạng để mở hạn mức mới; có mạng thì gọi `validate` ngay | 06 | Spec §9 | chưa làm |
-| 348 | Quy ước chung của API: tên trường `snake_case`; lỗi có dạng `{"error": "<mã>", …}`; thời điểm tính bằng giây Unix; `429` kèm `Retry-After`; chỉ nhận HTTPS ngoài môi trường dev; không bật CORS (app gọi từ phía Rust); trạng thái đơn `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed` (`PAID` mà thiếu tiền là `underpaid`) | 05, 06 | Spec §6.8 sửa theo 05 QĐ20, QĐ26 và hợp đồng API | chưa làm |
+| 348 | Quy ước chung của API: tên trường `snake_case`; lỗi có dạng `{"error": "<mã>", …}`; thời điểm tính bằng giây Unix; `429` kèm `Retry-After`; chỉ nhận HTTPS ngoài môi trường dev; không bật CORS (app gọi từ phía Rust); trạng thái đơn `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed` (`PAID` mà thiếu tiền là `underpaid`), cộng `paid_needs_review` của server; checkout trả thêm `plan`, `converted_days`; `GET /v1/orders` trả thêm `license_plan`, `grant_kind`; `activate` và `validate` trả token cùng các trường của token | 05, 06 | Spec §6.8 sửa theo 05 QĐ20, QĐ26 và hợp đồng API | chưa làm |
 
 ### 4.14 Cài đặt (§6.9)
 
@@ -841,7 +845,7 @@ Cách đọc:
 | 272 | Thay tiến trình phụ, chèn thư viện giả: kiểm SHA-256 của file thực thi và thư viện ggml theo danh sách build sẵn; Windows gọi `SetDefaultDllDirectories` ở tiến trình chính và `asr-worker`; macOS bật hardened runtime có library validation, mọi file thực thi và `.dylib` ký cùng Team ID | 02, 02 (Win), 07 | Đ15 | chưa làm |
 | 273 | Lộ nội dung cuộc họp: lịch sử mã hóa bằng SQLCipher, khóa ngẫu nhiên trong kho khóa; log không bao giờ chứa nội dung chép lời; file xuất do người dùng tự quản lý | 03, 02 | | chưa làm |
 | 274 | Tấn công license server: chỉ HTTPS (kiểm trong Worker); kiểm chữ ký webhook, xử lý idempotent; prepared statement của D1, kiểm mọi input; secret lưu bằng Wrangler secrets; không để dữ liệu nhạy cảm trong URL (`order_token` trong header, tắt invocation log, bỏ query khỏi log); `/admin/*` ở Worker riêng sau Access, tự kiểm danh tính, chống CSRF; nhật ký mọi thay đổi license; cảnh báo người vận hành 4 loại (`many_failures`, `webhook_bad_signature`, `email_failed`, `license_locked`), tối đa một email mỗi giờ mỗi loại | 05 | Hộp thư nhận cảnh báo chờ P05-5 | chưa làm |
-| 275 | Lộ khóa ký token: token có `kid` có số thứ tự (`<môi trường>-<năm>-<tháng>-<số thứ tự>`, không dùng lại); khóa chính và khóa dự phòng `TOKEN_SIGNING_KEY_NEXT` đều là secret của Worker, tạo bằng pipe thẳng vào `wrangler secret put`, không lưu trên máy người vận hành, không dùng kho mật khẩu; app build sẵn cả hai khóa công khai; đổi khóa: chuyển `NEXT` thành khóa chính bằng cấu hình (secret không đọc lại được), tạo `NEXT` mới, bản cập nhật app mang khóa công khai mới | 05, 06, 07 | Q11 và P05-6 chốt 2026-10-01 | chưa làm |
+| 275 | Lộ khóa ký token: token có `kid` có số thứ tự (`<môi trường>-<năm>-<tháng>-<số thứ tự>`, không dùng lại); hai ô secret `TOKEN_SIGNING_KEY_A`, `TOKEN_SIGNING_KEY_B` của Worker API, biến thường `TOKEN_SIGNING_SLOT` chọn ô đang ký, ô kia là khóa dự phòng; tạo bằng pipe thẳng vào `wrangler secret put`, không lưu trên máy người vận hành, không dùng kho mật khẩu; app build sẵn khóa công khai của cả hai ô (`server/keys/public-keys.json`, ghi theo ô); đổi khóa: đổi `TOKEN_SIGNING_SLOT`, tạo khóa mới ở ô vừa rảnh, bản cập nhật app mang khóa công khai mới | 05, 06, 07 | Q11 và P05-6 chốt 2026-10-01; tên theo ô vì secret không đọc lại được (05 QĐ29) | chưa làm |
 | 276 | Rủi ro chuỗi cung ứng: không khóa ký nào nằm trên máy dev; bản phát hành build và ký trong CI từ tag đã commit; CI chạy `cargo audit`, `cargo deny`, `pnpm audit`, bật Dependabot; llama.cpp và whisper.cpp build trong CI từ tag đã khóa, có kiểm checksum | 07, QƯ | Chờ T3 | chưa làm |
 
 ### 4.23 Kiểm thử (§11)
@@ -1046,16 +1050,16 @@ Ghi chú:
 - Bí mật của license server là Wrangler secret, theo từng môi trường (staging, production):
   - client id, api key, checksum key của PayOS;
   - khóa API của Resend;
-  - khóa riêng ký token: khóa chính, và khóa dự phòng `TOKEN_SIGNING_KEY_NEXT` (P05-6, spec §10.2);
+  - khóa riêng ký token: hai ô `TOKEN_SIGNING_KEY_A`, `TOKEN_SIGNING_KEY_B`; ô đang ký chọn bằng biến thường `TOKEN_SIGNING_SLOT` (P05-6, spec §10.2);
   - pepper của bộ đếm giới hạn tần suất; email nhận cảnh báo (`OPERATOR_EMAIL`, không bắt buộc).
-  - 05 chốt tên biến. Bản đã duyệt của 05 gọi khóa chính là `TOKEN_SIGNING_JWK`; spec dùng `TOKEN_SIGNING_KEY` cho cặp với `TOKEN_SIGNING_KEY_NEXT`. 05 chọn một tên và sửa cho thống nhất. Chạy cục bộ dùng `server/.dev.vars` với giá trị giả hoặc của staging, không bao giờ dùng giá trị production.
+  - 05 chốt tên biến. Đã thống nhất: 05 và spec đều dùng hai ô `TOKEN_SIGNING_KEY_A`, `_B` cộng `TOKEN_SIGNING_SLOT`, đặt tên theo ô vì secret không đọc lại được. Chạy cục bộ dùng `server/.dev.vars` với giá trị giả hoặc của staging, không bao giờ dùng giá trị production.
 - Bí mật của CI (07, khi có repo từ xa); chỉ job phát hành đọc được:
   - chứng thư Developer ID và mật khẩu; khóa API để notarize;
   - thông tin dịch vụ ký cloud của chứng thư OV;
   - khóa riêng ký bản cập nhật của Tauri và mật khẩu;
   - khóa riêng ký manifest model;
   - API token Cloudflare phạm vi hẹp (R2, deploy Worker).
-- **Không dùng kho mật khẩu** (P05-6, chốt 2026-10-01). Khóa dự phòng ký token là secret `TOKEN_SIGNING_KEY_NEXT` của Worker, không có bản sao nào trên máy người vận hành. Đánh đổi: tài khoản Cloudflare bị chiếm thì mất cả hai khóa, nhưng khi đó server cũng đã bị chiếm.
+- **Không dùng kho mật khẩu** (P05-6, chốt 2026-10-01). Khóa dự phòng ký token là ô secret không đang ký (`TOKEN_SIGNING_KEY_A` hoặc `_B`) của Worker, không có bản sao nào trên máy người vận hành. Đánh đổi: tài khoản Cloudflare bị chiếm thì mất cả hai khóa, nhưng khi đó server cũng đã bị chiếm.
 - Bản sao của khóa ký bản cập nhật (mất khóa này thì không cập nhật được app đã cài) và khóa ký manifest: còn mở (Q17), vì trước đây định để trong kho mật khẩu.
 - Không khóa ký nào nằm trên máy dev (§10.2). Khóa production được tạo rồi đưa thẳng vào nơi lưu, không ghi ra đĩa (Q11).
 - Khóa staging và dev tách khỏi khóa production. Bản dev của app nhận khóa staging; bản phát hành chỉ nhận khóa production.
@@ -1207,16 +1211,16 @@ Cập nhật ngày 2026-10-01:
   - Còn phải hỏi luật sư về việc giữ không thời hạn, theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân (hiệu lực từ 1/1/2026) (spec §15).
 - **Q10. Hóa đơn điện tử. Chốt ngày 2026-10-01: chưa làm trong MVP.** 05 giữ QĐ23 (không gửi thông tin người mua sang PayOS); 06 không thêm ô nhập. Để sau MVP (spec §15). Hồ sơ chuyển dữ liệu ra nước ngoài vẫn là việc pháp lý còn mở.
 - **P05-6 (kế hoạch 05). Kho mật khẩu cho khóa dự phòng. Chốt ngày 2026-10-01: không dùng kho mật khẩu.**
-  - Khóa dự phòng là secret riêng của Worker, `TOKEN_SIGNING_KEY_NEXT`, tạo bằng cách pipe thẳng vào `wrangler secret put`, giống khóa chính. Không có bản nào trên máy người vận hành.
+  - Khóa dự phòng là một secret riêng của Worker, tạo bằng cách pipe thẳng vào `wrangler secret put`, giống khóa chính. Không có bản nào trên máy người vận hành. Tên secret theo ô: `TOKEN_SIGNING_KEY_A`, `TOKEN_SIGNING_KEY_B`; biến `TOKEN_SIGNING_SLOT` chọn ô đang ký.
   - Khóa công khai của nó build sẵn vào app. Kiểm khớp bằng một lệnh admin ký thử bằng `NEXT`, rồi kiểm bằng `keys/public-keys.json`.
-  - Đổi khóa: chuyển `NEXT` thành khóa chính, rồi tạo một `NEXT` mới. Secret của Worker không đọc lại được, nên "chuyển" phải làm bằng cấu hình của Worker (chọn secret nào đang ký), không chép giá trị khóa. 05 chọn cách làm và sửa QĐ29, QĐ31, Task 7, 19, 21, Phụ lục A.
+  - Đổi khóa: đổi `TOKEN_SIGNING_SLOT` sang ô dự phòng, rồi tạo khóa mới ở ô vừa rảnh. Secret của Worker không đọc lại được, nên không chép giá trị khóa; tên đặt theo ô để không sai vai sau lần đổi đầu (05 QĐ29).
   - Đánh đổi: tài khoản Cloudflare bị chiếm thì mất cả hai khóa; nhưng khi đó server cũng đã bị chiếm.
 
 ### 8.2 Theo đề xuất đã áp dụng
 
 - **Q11. Tạo và giữ khóa ký.** Chủ dự án chỉ quyết P05-6 (không dùng kho mật khẩu); phần còn lại làm theo đề xuất:
   - Khóa ký token production: tạo bằng script, không ghi ra đĩa, pipe thẳng vào `wrangler secret put`. Khi đã có CI (Q3), có thể tạo trong một job CI chạy tay.
-  - Khóa dự phòng ký token: secret `TOKEN_SIGNING_KEY_NEXT` của Worker (P05-6).
+  - Khóa dự phòng ký token: ô secret không đang ký (`TOKEN_SIGNING_KEY_A` hoặc `_B`) của Worker (P05-6).
   - Khóa ký manifest và khóa ký bản cập nhật: tạo trong CI. Bản sao của hai khóa này: Q17.
   - Staging dùng cặp khóa riêng.
 

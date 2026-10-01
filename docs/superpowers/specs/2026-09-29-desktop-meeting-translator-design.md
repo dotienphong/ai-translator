@@ -566,14 +566,15 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Thuê bao tự gia hạn của cổng quốc tế: mỗi webhook gia hạn cộng thêm một kỳ 30 ngày; khách hủy thì ngừng cộng.
 
 **Gói và bảng giá:**
-- Bốn gói ở §2. Server giữ bảng gói trả phí trong cấu hình của từng môi trường: mã gói, hạn mức mỗi chu kỳ (`quota_minutes_per_cycle`, `null` là không giới hạn), số ngày mỗi đơn (30), giá theo từng loại tiền. Đổi giá hay hạn mức không cần phát hành lại app.
-- Môi trường chưa cấu hình giá thì checkout trả `503 pricing_not_configured`, để không bao giờ bán sai giá. Staging dùng giá thử nhỏ (kế hoạch 05).
+- Bốn gói ở §2. Server giữ bảng gói trả phí trong biến cấu hình `PLANS` của từng môi trường: mã gói, tên hiển thị, hạn mức mỗi chu kỳ (`quota_minutes_per_cycle`, `null` là không giới hạn), số ngày mỗi đơn (30), giá theo từng loại tiền. Đổi giá hay hạn mức không cần phát hành lại app.
+- **Đổi hạn mức trong `PLANS`** có tác dụng ngay với mọi license đang dùng gói đó, ở lần `validate` sau, vì token lấy hạn mức từ bảng hiện hành. Vì vậy người vận hành **không được hạ hạn mức của một gói đang bán**: khách đã trả tiền cho hạn mức cũ. Muốn bán hạn mức thấp hơn thì thêm gói mới.
+- Môi trường chưa cấu hình `PLANS` thì `GET /v1/plans`, checkout, `activate` và `validate` đều trả `503 pricing_not_configured`, để không bao giờ bán sai giá hay cấp token thiếu hạn mức. Staging dùng giá thử nhỏ (kế hoạch 05).
 - Hạn mức Free (10 phút mỗi ngày) là hằng số phía app, vì Free không có token.
 
 **Mua thêm và đổi gói:**
 - Server tính khi xác nhận đã nhận tiền (webhook, đối soát, hoặc admin cấp tay), theo gói và hạn của license tại "hiện tại".
 - **"Hiện tại"** là thời điểm thanh toán do PayOS báo (`transactionDateTime`), kẹp trong thời hạn của link thanh toán (từ lúc tạo đơn tới `expiredAt`). Không làm tròn về đầu ngày. Vì vậy webhook đến chậm hay đối soát sau vài giờ vẫn cho cùng kết quả.
-  - `transactionDateTime` có thể là giờ Việt Nam không kèm múi giờ (dạng `2026-10-01 14:30:00`). Server luôn parse giá trị không có múi giờ theo GMT+7.
+  - `transactionDateTime` có thể là giờ Việt Nam không kèm múi giờ (dạng `2026-10-01 14:30:00`), và tài liệu PayOS không ghi múi giờ. Server parse giá trị không có múi giờ theo GMT+7, và nhận cả ISO 8601 có múi giờ. Đây là giả định cần kiểm (§14, giả định 11).
   - Admin cấp tay dùng thời điểm thao tác, kể cả với đơn `underpaid` mà khách đã chuyển bù.
 - **License mới:** `plan` là gói của đơn; `expires_at` = hiện tại + 30 ngày; `cycle_anchor` = hiện tại.
 - **Mua thêm cùng gói:** `expires_at` cộng 30 ngày, tính từ max(hiện tại, `expires_at`). `cycle_anchor` giữ nguyên; nếu license đã hết hạn thì `cycle_anchor` = hiện tại.
@@ -598,16 +599,17 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 | Endpoint | Việc làm |
 |---|---|
-| `GET /v1/plans` | Trả bảng gói trả phí đang bán: mã gói, `quota_minutes_per_cycle`, số ngày mỗi đơn, giá và loại tiền. App dùng cho màn hình Nâng cấp (§4.3). |
-| `POST /v1/checkout` `{plan: "pro" \| "pro_x2" \| "pro_x5", email, consent: true, license_key?}` | `consent` là ô đồng ý xử lý email (§10.1); thiếu thì trả `400`. Server lưu thời điểm đồng ý vào đơn. Tạo đơn với `order_code` duy nhất (dải số ở dưới), gọi PayOS `POST /v2/payment-requests` với `expiredAt` = hiện tại + 15 phút. Trả về `order_code`, `checkout_url`, `qr_code` (chuỗi VietQR thô, app tự vẽ thành mã QR), `order_token` (mã ngẫu nhiên để app hỏi trạng thái đơn), `amount`, `currency` và `expires_at` của link. Khi gia hạn hay đổi gói thì truyền thêm `license_key` đang có; response có thêm ước tính `license_expires_at`. |
+| `GET /v1/plans` | Trả bảng gói trả phí đang bán: mã gói (`code`), tên hiển thị (`name`), `quota_minutes_per_cycle`, số ngày mỗi đơn, giá theo loại tiền. App dùng cho màn hình Nâng cấp (§4.3). Chưa cấu hình thì `503 pricing_not_configured`. |
+| `POST /v1/checkout` `{plan: "pro" \| "pro_x2" \| "pro_x5", email, consent: true, license_key?}` | `consent` là ô đồng ý xử lý email (§10.1); thiếu thì trả `400`. Server lưu thời điểm đồng ý vào đơn. Tạo đơn với `order_code` duy nhất (dải số ở dưới), gọi PayOS `POST /v2/payment-requests` với `expiredAt` = hiện tại + 15 phút. Trả về `order_code`, `checkout_url`, `qr_code` (chuỗi VietQR thô, app tự vẽ thành mã QR), `order_token` (mã ngẫu nhiên để app hỏi trạng thái đơn), `plan`, `amount`, `currency` và `expires_at` của link. Khi gia hạn hay đổi gói thì truyền thêm `license_key` đang có; response có thêm ước tính `license_expires_at` và `converted_days` (số ngày quy đổi, 0 khi cùng gói). |
 | `POST /v1/webhooks/{provider}` (PayOS: `/v1/webhooks/payos`) | Kiểm tra chữ ký webhook bằng checksum key, rồi gọi PayOS `GET /v2/payment-requests/{orderCode}` để xác nhận. Chỉ coi đơn là đã trả khi `status` là `PAID`, `amountPaid` ≥ `amount`, và `amount` khớp số tiền của đơn. Đánh dấu đơn đã trả tiền (idempotent theo `order_code`). Cấp license mới, hoặc gia hạn hay đổi gói theo "Mua thêm và đổi gói". Gửi email chứa key. URL webhook được đăng ký và xác nhận qua API `confirm-webhook` của PayOS khi triển khai. Cổng lạ thì trả `404`. |
-| `GET /v1/orders/{order_code}`, header `Authorization: Bearer <order_token>` | App hỏi trạng thái đơn. Khi đơn đã trả tiền thì trả về key, gói và `expires_at` mới của license. `order_token` đi trong header, không đi trong query, vì URL có thể lọt vào log, lịch sử trình duyệt và proxy. Sai hay thiếu token thì trả `404`, như đơn không tồn tại. |
-| `POST /v1/licenses/activate` `{key, device_id_hash, device_label}` | Kích hoạt, tối đa 2 máy mỗi key. Trả về token bản quyền. Nếu `device_id_hash` đã có activation của key này, kể cả activation đã gỡ (ví dụ khi cài lại app), thì dùng lại đúng activation đó: giữ `activation_id`, `activation_created_at` và `quota_epoch`, không mở cửa sổ `quota_fresh` mới, không tốn thêm suất. Activation mới thật mở cửa sổ `quota_fresh` 15 phút (§6.8, "Hạn mức"). Khi đã đủ 2 máy thì trả `409`, kèm danh sách máy đã kích hoạt: `activation_id`, `device_label` và thời điểm `validate` gần nhất. Key đang bị khóa tạm thì trả `423 license_locked` (§10.2). |
-| `POST /v1/licenses/validate` `{key, activation_id}` | Trả về token mới nếu license còn hiệu lực. Token mang gói và hạn hiện tại của license. |
+| `GET /v1/orders/{order_code}`, header `Authorization: Bearer <order_token>` | App hỏi trạng thái đơn. Khi đơn đã trả tiền thì trả thêm `license_key`, `license_plan`, `license_expires_at` (của license lúc hỏi, có thể đã đổi tiếp bởi đơn sau) và `grant_kind` (`new`, `extend` hay `change`). `order_token` đi trong header, không đi trong query, vì URL có thể lọt vào log, lịch sử trình duyệt và proxy. Sai hay thiếu token thì trả `404`, như đơn không tồn tại. |
+| `POST /v1/licenses/activate` `{key, device_id_hash, device_label}` | Kích hoạt, tối đa 2 máy mỗi key. Trả về token bản quyền. Nếu `device_id_hash` đã có activation của key này, kể cả activation đã gỡ (ví dụ khi cài lại app), thì dùng lại đúng activation đó: giữ `activation_id`, `activation_created_at` và `quota_epoch`, không mở cửa sổ `quota_fresh` mới, không tốn thêm suất. Activation mới thật mở cửa sổ `quota_fresh` 15 phút (§6.8, "Hạn mức"). Khi đã đủ 2 máy thì trả `409`, kèm danh sách máy đã kích hoạt: `activation_id`, `device_label` và thời điểm `validate` gần nhất. Key đang bị khóa tạm thì trả `423 license_locked` (§10.2). Response gồm `token` và các trường của token mà app cần đọc: `activation_id`, `activation_created_at`, `plan`, `expires_at`, `cycle_anchor`, `quota_minutes_per_cycle`, `quota_epoch`, `quota_fresh`, `refresh_before`. Chưa cấu hình `PLANS` thì `503 pricing_not_configured`. |
+| `POST /v1/licenses/validate` `{key, activation_id}` | Trả về token mới nếu license còn hiệu lực, cùng các trường như `activate`. Token mang gói, hạn và hạn mức hiện tại của license. Chưa cấu hình `PLANS` thì `503 pricing_not_configured`. |
 | `POST /v1/licenses/deactivate` `{key, activation_id}` | Gỡ kích hoạt để chuyển máy. Gọi được từ chính máy đó, hoặc từ máy mới khi key đã đủ 2 máy (gỡ từ xa). Mỗi lần gỡ tính vào luật khóa tạm ở §10.2. **Gỡ không xóa dòng activation**, chỉ đánh dấu đã gỡ và trả lại suất, để kích hoạt lại cùng máy dùng lại đúng activation đó. |
 | `POST /v1/licenses/recover` `{email}` | Gửi lại mọi key còn hiệu lực của email này vào chính email đó. Luôn trả `200`, để không lộ email nào có key. Server tra và gửi thư sau khi đã trả lời, để thời gian phản hồi cũng không lộ. Email không có key thì không gửi gì. Có giới hạn tần suất (§10.2). |
 
-- **Trạng thái đơn:** `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed`, theo trạng thái của PayOS. `PAID` mà thiếu tiền thì coi là `underpaid`.
+- **Trạng thái đơn:** `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed`, theo trạng thái của PayOS. `PAID` mà thiếu tiền thì coi là `underpaid`. Thêm một trạng thái của server: `paid_needs_review` (dưới đây).
+- **License đã bị thu hồi mà nhận được tiền** của một đơn gia hạn hay đổi gói: server không áp đơn. Đơn chuyển sang `paid_needs_review`, server tạo cảnh báo `order_needs_review` cho người vận hành (§10.2), và admin xử lý tay (ví dụ hoàn tiền ngoài hệ thống, hoặc cấp lại).
 - **Dải số đơn theo môi trường:**
   - staging dùng `order_code` từ 1 tới 999.999; production từ 1.000.001. Hai môi trường không trùng số, kể cả khi dùng chung một kênh PayOS;
   - trần là 9.999.999, để mô tả đơn `AT<order_code>` (`AT` cộng tối đa 7 chữ số) không quá 9 ký tự (§14, giả định 7). Vượt trần thì checkout trả `503`, không gọi PayOS.
@@ -625,11 +627,12 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 **Công cụ hỗ trợ:** các endpoint `/admin/*` chạy ở một **Worker admin riêng**, cả Worker đặt sau Cloudflare Access; Worker API không có `/admin`. Worker admin tự kiểm lại danh tính do Access cấp, thiếu thì từ chối. Chỉ người vận hành dùng được. Các việc:
 - Tra cứu theo email hoặc `order_code`, gửi lại key.
 - Mở khóa key bị khóa tạm (§10.2).
-- Cấp hoặc gia hạn tay, ví dụ khi khách chuyển thiếu rồi chuyển bù.
+- Cấp hoặc gia hạn tay, ví dụ khi khách chuyển thiếu rồi chuyển bù. Gia hạn tay một license **đã hết hạn** thì đặt lại `cycle_anchor` và mở cửa sổ `quota_fresh`, như khi mua thêm cùng gói (§6.8, "Mua thêm và đổi gói").
 - Gỡ activation, thu hồi key. Admin gỡ activation cũng chỉ đánh dấu đã gỡ, không xóa dòng activation, giống người dùng tự gỡ.
 - **Reset hạn mức của máy:** tăng `quota_epoch` của một activation. Ở lần `validate` sau, máy nhận epoch mới (cửa sổ `quota_fresh` 15 phút tính từ token đầu tiên cấp sau khi tăng), nên bắt đầu bộ đếm mới (§6.8, "Hạn mức"). Chỉ làm khi khách liên hệ, ví dụ khi máy mất bản ghi bộ đếm.
 - **Xóa hoặc ẩn danh dữ liệu cá nhân theo email** (§10.1). Thao tác này chỉ chạy khi người vận hành tự gọi, ví dụ khi khách yêu cầu xóa; không bao giờ chạy tự động.
-- **Ký thử một token bằng khóa dự phòng** (`TOKEN_SIGNING_KEY_NEXT`), để kiểm khóa công khai tương ứng trong `keys/public-keys.json`, cũng là khóa build sẵn vào app, khớp khóa riêng (§10.2).
+- **Ký thử một token bằng khóa dự phòng** (ô không đang ký, §10.2), để kiểm khóa công khai tương ứng trong `server/keys/public-keys.json`, cũng là khóa build sẵn vào app, khớp khóa riêng. Token ký thử hết hạn ngay lúc ký và không gắn máy nào, nên không dùng được làm bản quyền.
+- Worker admin **không giữ khóa nào**: bảng gói và việc ký thử lấy từ Worker API qua service binding (RPC `AdminRpc`, §12).
 - Đăng ký URL webhook với PayOS (`confirm-webhook`).
 
 Mọi thao tác đều được ghi nhật ký, kể cả tra cứu.
@@ -1067,21 +1070,22 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 - Vì vậy app luôn gửi `activation_id` khi `validate`, và không coi `429` ở `activate` là key sai (§9).
 
 **Cảnh báo cho người vận hành:**
-- Bốn loại sự kiện: `many_failures` (một IP chạm 60 lần thất bại), `webhook_bad_signature`, `email_failed`, `license_locked`.
+- Năm loại sự kiện: `many_failures` (một IP chạm 60 lần thất bại), `webhook_bad_signature`, `email_failed`, `license_locked`, `order_needs_review` (license đã thu hồi nhận được tiền, §6.8).
 - Cron gửi một email cho mỗi loại, **tối đa một lần mỗi giờ**, tới hộp thư vận hành, qua `EmailProvider`. Gửi lỗi thì lần cron sau thử lại.
 - Địa chỉ nhận là dữ liệu cá nhân nên là secret của Worker (`OPERATOR_EMAIL`), không nằm trong repo. Thiếu thì cảnh báo chỉ ghi log. Chủ dự án chưa chọn hộp thư này (§15).
 - Cảnh báo đi cùng kênh Resend với thư chứa key, nên khi Resend sập thì chỉ còn log. Giảm rủi ro bằng Workers Issues của Cloudflare (ghi `console.error` và response `5xx`, gửi qua webhook hay chat, không qua Resend).
 
 **Khóa ký token:**
-- **`kid` là duy nhất, có số thứ tự:** dạng `<môi trường>-<năm>-<tháng>-<số thứ tự>`, ví dụ `prod-2026-10-1`. Không bao giờ dùng lại một `kid`, kể cả `kid` đã bị lộ. Công cụ tạo khóa từ chối `kid` đã có trong `keys/public-keys.json`.
-- **Khóa chính và khóa dự phòng đều là secret của Worker:** khóa chính là `TOKEN_SIGNING_KEY`, khóa dự phòng là `TOKEN_SIGNING_KEY_NEXT`.
-  - Cả hai được tạo bằng một script rồi pipe thẳng vào `wrangler secret put`. Khóa riêng không bao giờ in ra terminal, ghi ra file, hay lưu ở đâu trên máy người vận hành. **Không dùng kho mật khẩu.**
-  - Khóa công khai của cả hai nằm trong `keys/public-keys.json` và được build sẵn vào app.
-  - Kiểm khóa công khai khớp khóa riêng bằng thao tác admin "ký thử bằng khóa dự phòng" (§6.8), rồi kiểm token đó bằng `keys/public-keys.json`. Khóa chính được kiểm bằng một token thật.
-- **Đổi khóa** (khi khóa chính bị lộ, hoặc khi chủ động đổi):
-  1. Chuyển khóa `NEXT` thành khóa chính. Secret của Worker không đọc lại được, nên việc chuyển làm bằng cấu hình của Worker (chọn secret nào đang ký), không chép giá trị khóa qua máy người vận hành. Kế hoạch 05 chọn cách làm cụ thể.
-  2. Tạo một khóa `NEXT` mới, với `kid` có số thứ tự kế tiếp.
-  3. Sửa `keys/public-keys.json`: bỏ khóa bị lộ, thêm khóa `NEXT` mới. Phát hành bản cập nhật app mang hai khóa công khai này.
+- **`kid` là duy nhất, có số thứ tự:** dạng `<môi trường>-<năm>-<tháng>-<số thứ tự>`, ví dụ `prod-2026-10-1`. Không bao giờ dùng lại một `kid`, kể cả `kid` đã bị lộ. Công cụ tạo khóa từ chối `kid` đã có trong `server/keys/public-keys.json`. Mỗi khóa mới, kể cả khóa dự phòng, lấy số kế tiếp (ví dụ `stg-2026-10-1` ở ô A, `stg-2026-10-2` ở ô B).
+- **Hai ô khóa, đặt tên theo ô, không theo vai:** secret `TOKEN_SIGNING_KEY_A` và `TOKEN_SIGNING_KEY_B` của Worker API, mỗi ô là một JWK Ed25519 có `kid`. Biến cấu hình `TOKEN_SIGNING_SLOT` (`a` hoặc `b`, không phải secret) chọn ô đang ký; ô còn lại là khóa dự phòng.
+  - Lý do: secret của Worker không đọc lại được, nên không chép được khóa từ secret này sang secret khác. Nếu đặt tên theo vai (khóa chính, khóa dự phòng), thì sau lần đổi khóa đầu tiên tên sẽ sai với vai.
+  - Cả hai khóa được tạo bằng một script rồi pipe thẳng vào `wrangler secret put`. Khóa riêng không bao giờ in ra terminal, ghi ra file, hay lưu ở đâu trên máy người vận hành. **Không dùng kho mật khẩu.** Thiếu một trong hai ô thì deploy báo lỗi.
+  - Khóa công khai của cả hai ô nằm trong `server/keys/public-keys.json`, ghi theo môi trường và theo ô, và được build sẵn vào app.
+  - Kiểm khóa công khai khớp khóa riêng bằng thao tác admin "ký thử bằng khóa dự phòng" (§6.8), rồi kiểm token đó bằng `server/keys/public-keys.json`, kể cả việc token nằm đúng ô Worker báo. Khóa đang ký được kiểm bằng một token thật.
+- **Đổi khóa** (khi khóa đang ký bị lộ, hoặc khi chủ động đổi):
+  1. Đổi `TOKEN_SIGNING_SLOT` sang ô dự phòng, rồi deploy. Từ lúc này token mới ký bằng khóa dự phòng; app đã có sẵn khóa công khai của nó.
+  2. Tạo khóa mới, với `kid` có số thứ tự kế tiếp, ghi vào ô vừa rảnh. Ô này thành khóa dự phòng mới.
+  3. Sửa `server/keys/public-keys.json`: bỏ khóa bị lộ, ghi khóa mới vào đúng ô. Phát hành bản cập nhật app mang hai khóa công khai này.
   4. Bản app cũ vẫn nhận token ký bằng khóa bị lộ cho tới khi được cập nhật. Đây là rủi ro còn lại, chấp nhận.
 - **Đánh đổi:** tài khoản Cloudflare bị chiếm thì mất cả hai khóa. Nhưng khi đó server cũng đã bị chiếm, nên một khóa dự phòng cất ở chỗ khác cũng không cứu được.
 
@@ -1176,9 +1180,10 @@ meeting-translator/
 │   ├── pipeline/                 # VAD, cắt đoạn, client asr-worker, gọi llama-server, prompt, giám sát tiến trình phụ, PipelineConfig (§6.3–§6.5, §7)
 │   └── latency-bench/            # Công cụ đo của Giai đoạn 0 (S3, S6, A4), không vào bộ cài
 ├── third_party/                  # whisper-rs, whisper-rs-sys đã vá, nối qua [patch.crates-io] (§6.4)
-├── server/                       # License server: Cloudflare Worker (TypeScript, Hono) + D1
+├── server/                       # License server: hai Cloudflare Worker (API, admin; nối bằng service binding) + D1. D1 có bảng deactivations: mỗi lần gỡ máy một dòng, vì activation không bị xóa
 │   └── src/
 │       ├── index.ts  admin-entry.ts  # Điểm vào của Worker API và Worker admin (§6.8)
+│       ├── admin-rpc.ts          # AdminRpc: Worker admin gọi qua service binding để lấy bảng gói và ký thử khóa dự phòng; Worker admin không giữ khóa nào
 │       ├── {checkout,orders,licenses,token,plans,reconcile,admin}.ts
 │       ├── {ratelimit,alerts}.ts     # Giới hạn tần suất, chặn IP, cảnh báo cho người vận hành (§10.2)
 │       ├── payment/{provider,payos}.ts  # Interface PaymentProvider và cài đặt PayOS (§6.8)
@@ -1239,6 +1244,7 @@ meeting-translator/
 8. Rút ngắn `audio_ctx` không làm WER tăng quá 10% so với cửa sổ 30 giây đầy đủ. (S7) Kết quả S7: không đạt theo từng ô, xem §6.4 "Rút ngắn cửa sổ mã hóa".
 9. Chi phí nhận diện ngôn ngữ giữ được dưới 20% thời gian nhận dạng của đoạn (§6.4). (S3)
 10. Truyền âm thanh qua stdin/stdout sang `asr-worker` thêm không quá 10 ms mỗi đoạn. (S3)
+11. `transactionDateTime` của PayOS không ghi múi giờ, và tài liệu PayOS không nói. Spec giả định đó là giờ Việt Nam (GMT+7) và parse theo đó (§6.8). Kiểm bằng giao dịch thật trên staging (kế hoạch 05, Task 20): so `transactionDateTime` với giờ chuyển khoản trong app ngân hàng.
 
 ## 15. Việc còn mở (không chặn phần kỹ thuật)
 
