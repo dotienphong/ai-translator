@@ -1,8 +1,12 @@
-# Meeting Translator (tên tạm): app desktop dịch phụ đề cuộc họp offline — Design
+# AI Translator: app desktop dịch phụ đề cuộc họp offline — Design
 
 **Ngày:** 2026-09-29
-**Trạng thái:** Đã duyệt ngày 2026-09-29. Kế hoạch Giai đoạn 0 nằm ở `docs/superpowers/plans/`.
+**Trạng thái:** Đã duyệt ngày 2026-09-29. Sửa ngày 2026-10-01 theo quyết định của chủ dự án: chốt tên, bốn gói và hạn mức, cách lưu dữ liệu; đưa vào spec các điểm lệch nhỏ đã chốt ở kế hoạch Giai đoạn 1 · 01, 02 và 05. Kế hoạch nằm ở `docs/superpowers/plans/`.
 **Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS, cùng một license server nhỏ để nhận thanh toán qua PayOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
+**Tên và định danh** (D13):
+- Tên sản phẩm: **AI Translator**. Logo và tên miền chưa có (§15).
+- Bundle identifier: **`com.aitranslator.desktop`**, thay cho `dev.meetingtranslator.spike` của spike. Thư mục dữ liệu, thư mục log và "service" của kho khóa đều lấy theo identifier này (§6.7, §10.2), nên không đổi sau khi đã có người dùng.
+- **Giữ tên cũ ở những chỗ người dùng không thấy:** thư mục repo `meeting-translator/`, tên crate (`meeting-translator`, `meeting_translator_lib`, `asr-worker`, `asr-protocol`, `pipeline`…), tên binary do cargo build ra, và tên Worker của license server (`mt-license-<env>`). Chỉ tên hiển thị (`productName`) và bundle identifier đổi.
 
 ---
 
@@ -47,13 +51,24 @@
 | D10 | Phân phối | Tải từ website của sản phẩm: Windows dùng bộ cài **`.exe`** (NSIS, đã ký số), macOS dùng **`.dmg`** (đã ký và notarize). Chưa lên Microsoft Store hay Mac App Store. Microsoft Store có thể xem xét sau; các điều kiện của Store đã được ghi nhận ngày 2026-09-29. |
 | D11 | Thanh toán | **MVP dùng PayOS**: khách chuyển khoản ngân hàng bằng mã VietQR, trả bằng VND. Khi bán ra nước ngoài thì thêm một cổng thanh toán quốc tế (§13). |
 | D12 | Độ trễ mục tiêu | Trên máy khuyến nghị, **p50 ≤ 2,0 giây** (xem A2 và §8) |
+| D13 | Tên và định danh | **AI Translator**, bundle identifier `com.aitranslator.desktop`. Tên miền mua sau. Repo, crate và binary giữ tên `meeting-translator` (đầu spec). |
+| P1 | Kiếm tiền | **Không có quảng cáo.** Bốn gói, xem bảng dưới. Ba gói trả phí có chung các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), chỉ khác hạn mức dịch. Gói trả phí bán theo **đơn 30 ngày, trả trước** bằng VND, không tự gia hạn, vì PayOS không có thanh toán định kỳ. Không có gói 12 tháng hay gói trọn đời. Hạn mức tính riêng cho từng máy (§6.8). |
+| P2 | Bản quyền | License key do **license server riêng** của sản phẩm cấp, sau khi PayOS xác nhận đã nhận tiền. Mỗi key kích hoạt tối đa 2 máy, và mỗi máy có đủ hạn mức của gói. Dùng được offline nhờ token có ký số (ân hạn 14 ngày). Không có tài khoản đăng nhập. Chi tiết ở §6.8. |
 
-**Đề xuất mặc định, PHONG xác nhận khi duyệt spec:**
+P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-10-01. Giữ mã P1, P2 để tham chiếu trong các kế hoạch không đổi.
 
-| # | Hạng mục | Đề xuất |
-|---|---|---|
-| P1 | Kiếm tiền | **Không có quảng cáo.** Free: 30 phút dịch mỗi ngày. **Pro**: dịch không giới hạn, từ điển thuật ngữ, lưu lịch sử và xuất bản chép lời. Pro bán theo gói **trả trước 1 tháng hoặc 12 tháng** bằng VND, không tự gia hạn, vì PayOS không có thanh toán định kỳ. Giá chốt sau. |
-| P2 | Bản quyền | License key do **license server riêng** của sản phẩm cấp, sau khi PayOS xác nhận đã nhận tiền. Mỗi key kích hoạt tối đa 2 máy, dùng được offline nhờ token có ký số (ân hạn 14 ngày). Không có tài khoản đăng nhập. Chi tiết ở §6.8. |
+**Các gói (P1):**
+
+| Mã gói | Tên hiển thị | Hạn mức dịch, mỗi máy | Giá |
+|---|---|---|---|
+| `free` | Free | 10 phút mỗi ngày | 0 |
+| `pro` | Professional | 30 giờ mỗi chu kỳ 30 ngày | 50.000 đ / 30 ngày |
+| `pro_x2` | Professional X2 | 100 giờ mỗi chu kỳ 30 ngày | 150.000 đ / 30 ngày |
+| `pro_x5` | Professional X5 | không giới hạn | 500.000 đ / 30 ngày |
+
+- Server đọc giá và hạn mức của gói trả phí từ cấu hình (§6.8); app không ghi cứng giá. Hạn mức Free là một hằng số phía app.
+- **"Pro"** trong spec là tên chung của các tính năng chỉ có ở gói trả phí, và của trạng thái "đang có gói trả phí còn hạn". Đây không phải tên một gói. Mã gói `pro` là gói Professional.
+- Cách đếm phút, chu kỳ 30 ngày và khi hết hạn mức: §6.8, mục "Hạn mức".
 
 ## 3. Mục tiêu, phạm vi, tiêu chí thành công
 
@@ -64,11 +79,11 @@
 | F1 | Phụ đề dịch trực tiếp từ âm thanh hệ thống |
 | F2 | Người dùng chọn ngôn ngữ đích, là một trong năm ngôn ngữ: English, 中文, 日本語, 한국어, Tiếng Việt. Ngôn ngữ nguồn được **tự nhận diện trong tập ngôn ngữ người dùng chọn** (mặc định: cả năm ngôn ngữ trên), hoặc khóa cố định một ngôn ngữ. Câu nào đã là ngôn ngữ đích thì hiện câu gốc, không dịch. |
 | F3 | Thanh phụ đề nổi, mô tả ở §4.4 |
-| F4 | Bản chép lời của phiên: xem, tìm, sao chép. Xuất ra TXT, SRT, Markdown và lưu lịch sử là tính năng Pro; lưu lịch sử mặc định tắt. |
-| F5 | Từ điển thuật ngữ (Pro), tối đa 500 cặp. Chỉ những thuật ngữ **có xuất hiện trong câu** mới được đưa vào prompt. |
+| F4 | Bản chép lời của phiên: xem, tìm, sao chép. Xuất ra TXT, SRT, Markdown và lưu lịch sử là tính năng Pro, chỉ có ở gói trả phí (§2); lưu lịch sử mặc định tắt. |
+| F5 | Từ điển thuật ngữ (tính năng Pro, chỉ có ở gói trả phí), tối đa 500 cặp. Chỉ những thuật ngữ **có xuất hiện trong câu** mới được đưa vào prompt. |
 | F6 | Quản lý model: có gói Chuẩn và gói Nhẹ, tự đề xuất gói theo cấu hình máy, tải tiếp được khi rớt mạng, kiểm tra SHA-256 |
 | F7 | Giao diện tiếng Việt và English |
-| F8 | Phân quyền Free và Pro bằng license key, dùng được khi offline |
+| F8 | Phân quyền theo gói (Free và ba gói trả phí, §2) bằng license key, dùng được khi offline. Hạn mức dịch theo gói, đếm riêng trên từng máy (§6.8). |
 | F9 | Tự cập nhật app |
 | F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề. Ở Giai đoạn 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
 
@@ -144,9 +159,13 @@
 
 ### 4.2 Trong cuộc họp
 
-1. Người dùng bấm **Bắt đầu**, qua nút, phím tắt hoặc menu khay. Thanh phụ đề hiện ra, kèm chỉ báo "đang nghe" (mức âm lượng) và chỉ báo độ trễ. Nếu hai tiến trình phụ chưa chạy (§5), thanh phụ đề hiện "Đang nạp model…" trong vài giây đầu.
-2. Với gói Free: khi còn 5 phút thì nhắc. Hết 30 phút thì dừng dịch, thanh phụ đề hiện thông báo và nút nâng cấp.
-3. Người dùng bấm **Dừng** để kết thúc phiên, sau đó có thể mở bản chép lời của phiên.
+1. Người dùng bấm **Bắt đầu**, qua nút, phím tắt hoặc menu khay. Thanh phụ đề (ẩn lúc mở app, §4.4) hiện ra, kèm chỉ báo "đang nghe" (mức âm lượng) và chỉ báo độ trễ. Nếu hai tiến trình phụ chưa chạy (§5), thanh phụ đề hiện "Đang nạp model…" trong vài giây đầu.
+2. **Hạn mức** (§6.8), với các gói có hạn mức (Free, Professional, Professional X2):
+   - Khi còn 5 phút thì nhắc.
+   - Hết hạn mức thì dừng phiên, với lý do `quota_exhausted`. Thanh phụ đề và cửa sổ chính báo đã hết hạn mức, ghi thời điểm hạn mức được reset (0 giờ hôm sau với Free; đầu chu kỳ kế tiếp với gói trả phí), kèm nút nâng gói.
+   - App không chạy tiếp ở chế độ "chỉ chép lời".
+   - Professional X5 không giới hạn.
+3. Người dùng bấm **Dừng** để kết thúc phiên. Thanh phụ đề giữ nguyên các dòng cuối để người dùng đọc nốt. Sau đó người dùng có thể mở bản chép lời của phiên.
 
 ### 4.3 Các màn hình
 
@@ -156,7 +175,7 @@
   - Ngôn ngữ đích và tập ngôn ngữ nguồn.
   - Nguồn âm thanh: trên Windows là thiết bị phát; trên macOS là toàn hệ thống hoặc một app cụ thể.
   - Mức âm lượng vào.
-  - Số phút còn lại trong ngày (gói Free).
+  - Hạn mức còn lại: số phút còn lại hôm nay (Free) hoặc trong chu kỳ (Professional, Professional X2), kèm thời điểm reset. Professional X5 ghi "Không giới hạn".
 - **Bản chép lời:** mỗi câu gồm giờ, câu gốc và bản dịch. Có tìm kiếm, sao chép, xuất file (Pro).
 - **Lịch sử (Pro):** danh sách các phiên đã lưu, xóa từng phiên hoặc xóa tất cả.
 - **Từ điển thuật ngữ (Pro):** thêm, sửa, xóa; nhập và xuất CSV.
@@ -166,29 +185,34 @@
   - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
-  - **Bản quyền:** nhập key, trạng thái và ngày hết hạn, gia hạn, gỡ kích hoạt.
+  - **Bản quyền:** nhập key; gói đang dùng, trạng thái và ngày hết hạn; hạn mức còn lại của chu kỳ; gia hạn hoặc đổi gói (mở màn hình Nâng cấp); gỡ kích hoạt.
   - **Quyền riêng tư:**
     - Bật/tắt lưu lịch sử.
     - Nút xóa toàn bộ dữ liệu: xóa lịch sử và từ điển thuật ngữ.
     - Nút "Xóa model và dữ liệu": xóa thêm cả model, dùng trước khi gỡ app trên macOS (A6).
-    - Cả hai nút đều giữ lại trạng thái bản quyền và quota (§6.8).
-- **Nâng cấp Pro:** chọn gói 1 tháng hoặc 12 tháng, nhập email, quét mã VietQR hiện ngay trong app (§6.8).
+    - Cả hai nút đều giữ lại trạng thái bản quyền và bộ đếm hạn mức (§6.8).
+- **Nâng cấp** (mở từ nút nâng gói, từ nhóm Cài đặt "Bản quyền", hoặc khi hết hạn mức):
+  - Hiện đủ 4 gói (§2): tên, hạn mức, giá mỗi 30 ngày; đánh dấu gói đang dùng. Giá lấy từ license server (`GET /v1/plans`, §6.8); không có mạng thì báo cần mạng để mua.
+  - Người dùng chọn một gói trả phí, nhập email, tick ô đồng ý xử lý email (§10.1), rồi quét mã VietQR hiện ngay trong app (§6.8).
+  - Đang có license còn hạn: chọn cùng gói là gia hạn thêm 30 ngày; chọn gói khác là đổi gói. Khi đổi gói, app hiện trước số ngày quy đổi và ngày hết hạn mới (§6.8, "Mua thêm và đổi gói"), và ghi rõ không hoàn tiền.
+  - Ghi rõ MVP chỉ nhận chuyển khoản từ ngân hàng Việt Nam (§6.8).
 - **Giới thiệu và giấy phép mã nguồn mở.**
 - **Đóng cửa sổ chính:**
   - Bấm X (kể cả `Alt+F4` trên Windows, `⌘W` trên Mac) chỉ ẩn cửa sổ xuống khay. App vẫn chạy; phím tắt và phiên dịch đang chạy vẫn hoạt động.
   - Muốn thoát hẳn thì chọn **Thoát** trong menu khay: app dừng phiên dịch nếu đang chạy (như khi bấm Dừng), tắt hai tiến trình phụ (§5), rồi mới thoát.
-  - Trên Mac, `⌘Q` và mục Quit ở Dock cũng không thoát app: bỏ mục Quit khỏi menu của app, hoặc chặn lệnh thoát không đến từ menu khay.
+  - Trên Mac, `⌘Q`, mục Quit trong menu app và mục Quit ở Dock cũng không thoát app: lệnh thoát bị hủy, rồi app hiện cửa sổ chính kèm lời nhắc "chọn Thoát ở biểu tượng trên menu bar". Lời nhắc hiện trong app, không dùng thông báo hệ thống. Force Quit của macOS vẫn thoát được.
   - Ngoại lệ: không chặn thoát khi máy tắt, khởi động lại, đăng xuất, và khi app tự khởi động lại để cập nhật (§6.11). Nếu chặn, hệ điều hành báo app đang cản tắt máy.
 
 ### 4.4 Thanh phụ đề
 
 - **Kiểu cửa sổ:** cửa sổ riêng, không viền, nền mờ bán trong suốt, **luôn nổi trên cùng**. Không hiện trên taskbar của Windows, và không lấy focus của app họp.
+- **Ẩn lúc mở app**, kể cả khi app khởi động cùng hệ thống. Bắt đầu phiên thì hiện; dừng phiên thì giữ nguyên. Người dùng vẫn ẩn/hiện bằng tay được, qua nút, phím tắt hoặc menu khay.
 - **Nội dung:**
   - Hiện 1–3 dòng bản dịch gần nhất; tùy chọn hiện câu gốc chữ nhỏ ở phía trên.
   - **Bản dịch hiện dần từng chữ** trong lúc model đang dịch.
   - **Phụ đề tạm:** câu chưa chốt hiện màu nhạt hơn. Nếu người nói nói tiếp ngay (§6.3), phụ đề tạm được thay bằng bản dịch của cả câu đã ghép.
 - **Di chuyển và kích thước:** kéo để di chuyển, kéo cạnh để đổi kích thước. App nhớ vị trí riêng cho từng màn hình.
-- **Chế độ khóa:** cho click xuyên qua thanh phụ đề, để không cản thao tác trên cửa sổ họp. Mở khóa bằng phím tắt hoặc menu khay.
+- **Chế độ khóa:** cho click xuyên qua thanh phụ đề, để không cản thao tác trên cửa sổ họp. Mở khóa bằng phím tắt hoặc menu khay. Thanh phụ đề không có nút khóa: khi đã khóa thì click đi xuyên qua, không bấm được gì trên thanh.
 - **Nổi trên app họp đang toàn màn hình:**
   - macOS: dùng NSPanel kiểu non-activating, đặt window level cao, cho tham gia mọi Space với cờ `canJoinAllSpaces` và `fullScreenAuxiliary`. Chỉ đặt các cờ này trên một NSWindow thường thì thường chưa đủ để nổi trên Space toàn màn hình của app khác. Chờ kết quả S5 (kế hoạch 05, Task 3–4, `results/s5_overlay.md`).
   - Windows: đặt cửa sổ ở chế độ topmost.
@@ -200,6 +224,7 @@
 - **Chuỗi giao diện:** lưu trong từ điển có kiểu. `en` là nguồn chuẩn cho danh sách khóa; kiểu `Record` bắt `vi` phải có đủ mọi khóa. Đây là cách AI Live Translator đang làm, đã quen tay.
 - **Đổi ngôn ngữ ngay**, không cần khởi động lại app.
 - **Chuỗi phía Rust** (menu khay, thông báo hệ thống, khoảng 20 chuỗi) nằm trong một bảng nhỏ riêng, có đủ cả vi và en.
+- **Menu app trên Mac** (About, Edit, Window, Quit…) dùng chữ mặc định English của các mục có sẵn ở MVP. Chỉ menu khay theo ngôn ngữ giao diện.
 
 ## 5. Kiến trúc tổng thể
 
@@ -251,7 +276,7 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
 
 ### 6.1 Thu âm thanh
 
-- **Interface chung:** `trait AudioSource { fn start(&mut self, sink: RingProducer) -> Result<()>; fn stop(&mut self); fn format(&self) -> AudioFormat; }`
+- **Interface chung:** `trait AudioSource { fn start(&mut self, sink: RingProducer) -> Result<()>; fn stop(&mut self); fn format(&self) -> AudioFormat; fn failed(&self) -> bool; }`. `failed()` báo luồng thu đã chết, ví dụ khi thiết bị bị rút.
 - **Windows:** dùng WASAPI shared-mode **endpoint loopback**.
   - **Chế độ tự động:** thu loopback của thiết bị phát mặc định (vai trò *Console*) và của thiết bị mặc định cho liên lạc (vai trò *Communications*, nếu khác thiết bị trên), rồi trộn lại. App họp có thể phát tiếng qua thiết bị Communications, nhất là khi dùng tai nghe Bluetooth.
     - Mỗi thiết bị có một ring buffer riêng. Luồng tiền xử lý resample từng luồng về 16 kHz rồi mới trộn, và bù lệch đồng hồ giữa hai thiết bị bằng cách bỏ hoặc chèn mẫu.
@@ -259,7 +284,7 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
     - Luồng thu đọc theo timer, không chờ sự kiện.
     - Luồng thu tự chèn im lặng vào khoảng trống, tính theo đồng hồ thật (vị trí QPC do `GetBuffer` trả về). Nhờ vậy VAD vẫn chốt được đoạn, thời gian của phụ đề không bị lệch, và vẫn phát hiện được lỗi "không có âm thanh" (§9).
   - Người dùng có thể chọn thủ công một thiết bị.
-  - Lắng nghe `IMMNotificationClient` để tự khởi tạo lại khi thiết bị thay đổi.
+  - Tự khởi tạo lại khi thiết bị thay đổi: xem "Khi thiết bị phát đổi" bên dưới.
   - **Không dùng process loopback** trong MVP, vì đã có báo cáo cách này chỉ nhận được im lặng với Teams.
   - Hệ quả: app thu **mọi** âm thanh của máy, kể cả tiếng thông báo hay video đang mở.
   - Chờ kết quả S2 trên Windows (kế hoạch 04, Task 7–8, `results/s2_capture.md`): Teams, Zoom, Meet, thiết bị Communications, tai nghe Bluetooth, chèn im lặng.
@@ -267,8 +292,11 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
   - **Mặc định:** tap toàn hệ thống, trừ chính app.
   - **Tùy chọn:** chỉ tap một app họp được chọn từ danh sách các app đang phát âm thanh.
   - Khai báo `NSAudioCaptureUsageDescription` trong Info.plist.
-  - Gọi API qua `objc2` và `coreaudio-sys`.
+  - Gọi API qua `objc2` và `objc2-core-audio`; không dùng `coreaudio-sys`.
   - Chờ kết quả S1 (kế hoạch 04, Task 6, `results/s1_capture.md`).
+- **Khi thiết bị phát đổi** (cắm tai nghe, kết nối Bluetooth), trên cả hai hệ điều hành:
+  - App hỏi định kỳ mỗi 500 ms chữ ký của thiết bị phát mặc định (`audio_capture::default_output_signature`). Chữ ký đổi, hoặc luồng thu chết (`failed()`), thì mở lại nguồn, trong ≤ 2 giây (§9).
+  - Không dùng `IMMNotificationClient` trên Windows hay listener của Core Audio trên macOS. Cách hỏi định kỳ cho cùng kết quả, mà không có callback chạy trên luồng của hệ thống (chốt ở kế hoạch Giai đoạn 1 · 02a, QĐ16).
 - **Ràng buộc realtime:** callback thu âm không cấp phát bộ nhớ và không lock; chỉ ghi vào ring buffer lock-free (crate `rtrb`). Ring buffer chứa được 30 giây âm thanh.
 
 ### 6.2 Tiền xử lý
@@ -306,19 +334,22 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 ### 6.4 Nhận dạng giọng nói
 
 - **Engine:** whisper.cpp qua `whisper-rs`, chạy trong **tiến trình phụ `asr-worker`**. Đây là một binary Rust nhỏ trong cùng workspace, link tĩnh whisper.cpp (§6.12). Dùng Metal trên macOS và Vulkan trên Windows; lỗi GPU thì tự chuyển sang CPU.
-- **Giao tiếp với tiến trình chính:** qua stdin/stdout, không mở cổng mạng. Kiểu thông điệp nằm trong crate `asr-protocol`, dùng chung cho cả hai bên (§12).
+- **Giao tiếp với tiến trình chính:** qua stdin/stdout, không mở cổng mạng. Kiểu thông điệp nằm trong crate `asr-protocol`, dùng chung cho cả hai bên (§12). MVP dùng **giao thức bản 2** (`PROTOCOL_VERSION = 2`, chốt ở kế hoạch Giai đoạn 1 · 02a, Task 1); Giai đoạn 0 dùng bản 1, chưa có `protocol_version`, `prev_lang`, `Error.kind` và các enum.
   - **Khung:** 4 byte độ dài (`u32` little-endian), theo sau là thông điệp mã hóa bằng postcard. Mỗi khung dài tối đa 16 MiB (`MAX_FRAME_BYTES`).
   - **Thông điệp:** app gửi `Request`, worker trả `Response`. Mỗi yêu cầu có đúng một phản hồi, trừ `Shutdown`.
-    - `Load {model_path, use_gpu, n_threads}` → `Ready {backend, decode_mode, whisper_version, system_info}`. `backend` là `metal`, `vulkan` hoặc `cpu`; `decode_mode` là `shared` (chế độ B) hoặc `split` (chế độ A), xem "Chế độ giải mã" bên dưới.
-      - `backend` là backend được yêu cầu theo feature build và `use_gpu`, chưa phải thiết bị thật. MVP cần trả thiết bị thật để áp quy tắc chuyển sang CPU.
+    - `Load {model_path, use_gpu, n_threads}` → `Ready {protocol_version, backend, decode_mode, whisper_version, system_info}`.
+      - `protocol_version` là trường đầu, để app đọc được cả khi worker cũ hơn. App từ chối worker lệch phiên bản.
+      - `backend` là enum `Metal`, `Vulkan` hoặc `Cpu`, và là **thiết bị thật** (đọc bảng thiết bị của ggml), để áp quy tắc chuyển sang CPU. Bản 1 chỉ trả backend được yêu cầu theo feature build và `use_gpu`.
+      - `decode_mode` là enum `Shared` (chế độ B) hoặc `Split` (chế độ A), xem "Chế độ giải mã" bên dưới.
     - `Warmup` → `WarmupDone {millis}`.
-    - `Transcribe(TranscribeRequest {segment_id, pcm, languages, prompt_tokens, audio_ctx})` → `Result(TranscribeResult {segment_id, lang, lang_prob, text, tokens, no_speech_prob, lid_ms, asr_ms, avg_logprob})`.
+    - `Transcribe(TranscribeRequest {segment_id, pcm, languages, prompt_tokens, audio_ctx, prev_lang})` → `Result(TranscribeResult {segment_id, lang, lang_prob, text, tokens, no_speech_prob, lid_ms, asr_ms, avg_logprob})`.
     - `Shutdown`: worker thoát, không phản hồi. Khi stdin đóng (ví dụ app chết), worker cũng thoát.
-    - Mọi lỗi → `Error {segment_id?, message}`. `segment_id` có giá trị khi lỗi thuộc về một đoạn.
+    - Mọi lỗi → `Error {segment_id?, kind, message}`. `segment_id` có giá trị khi lỗi thuộc về một đoạn. `kind` là `NotLoaded`, `ModelLoad`, `OutOfMemory`, `GpuInit`, `InvalidRequest` hoặc `Internal`, để bảng lỗi ở §9 phân biệt được. Worker phân loại theo nội dung thông báo của whisper.cpp và ggml; đầu vào sai thì trả `InvalidRequest`, không panic.
   - **Trường của `TranscribeRequest`.** Giá trị ngoài khoảng thì worker trả `Error`.
     - `pcm`: âm thanh 16 kHz mono, int16, từ `MIN_PCM_SAMPLES` đến `MAX_PCM_SAMPLES` mẫu (0,1 đến 30 giây). Đoạn 8 giây chỉ khoảng 256 KB. Pipeline không gửi đoạn ngắn hơn 100 ms.
     - `languages`: mã ngôn ngữ Whisper được phép, ví dụ `["en", "vi"]`. Một phần tử nghĩa là khóa ngôn ngữ.
     - `prompt_tokens`: tối đa `MAX_PROMPT_TOKENS` (100) token cuối của các đoạn trước cùng ngôn ngữ. Mỗi token phải là token văn bản (nhỏ hơn EOT).
+    - `prev_lang`: ngôn ngữ của đoạn được giữ gần nhất (đoạn bị bỏ ở "Lọc lỗi ảo giác" không làm đổi), là trường cuối. Worker không giữ trạng thái nhận diện ngôn ngữ, nên kết quả không phụ thuộc thứ tự yêu cầu, và app không mất ngôn ngữ trước khi worker khởi động lại. Worker chỉ dùng `prompt_tokens` khi ngôn ngữ chọn cho đoạn này đúng bằng `prev_lang`.
     - `audio_ctx`: từ 0 đến 1500; 0 là cửa sổ 30 giây. Giá trị khác phải phủ hết `pcm` (`audio_ctx × 320 ≥ số mẫu`), vì whisper.cpp lặng lẽ bỏ phần đuôi không được phủ. Công thức ở "Rút ngắn cửa sổ mã hóa" bên dưới.
   - **Trường của `TranscribeResult`:**
     - `lid_ms`: thời gian nhận diện ngôn ngữ, bằng 0 khi ngôn ngữ bị khóa. `asr_ms`: thời gian chép lời (encode và decode).
@@ -381,13 +412,13 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Lượt fullctx chạy bằng bản build trước luật lặp mới, nên chưa có số so sánh cùng cấu hình. Chờ chạy lại fullctx với bản build chốt (bổ sung cho kế hoạch 03, Task 11).
   - Không dùng cửa sổ 30 giây làm mặc định: turbo chậm gấp 2,6 lần (p50 334 → 884 ms), vượt ngân sách ở §8.
   - Chế độ A vẫn nhận diện ngôn ngữ trên cửa sổ 3 giây (`audio_ctx` 214), không qua sàn.
-- **Flash attention: tắt.** whisper.cpp 1.8.3, cả v1.9.4 và master, sai khi bật flash attention cùng `audio_ctx` rút ngắn: phần đệm tới bội 256 không có mask. Kết quả là lặp câu, và thay đổi theo đoạn chép trước (ggml-org/whisper.cpp#3941, bản vá chưa được merge). `ASR_FLASH_ATTN=1` chỉ dùng để thử.
+- **Flash attention: tắt** (kiểm lại ngày 2026-10-01: ggml-org/whisper.cpp#3941 vẫn mở; giữ tắt, kế hoạch 08 kiểm lại trước khi phát hành). whisper.cpp 1.8.3, cả v1.9.4 và master, sai khi bật flash attention cùng `audio_ctx` rút ngắn: phần đệm tới bội 256 không có mask. Kết quả là lặp câu, và thay đổi theo đoạn chép trước (ggml-org/whisper.cpp#3941, bản vá chưa được merge). `ASR_FLASH_ATTN=1` chỉ dùng để thử.
   - Bản vá mask cho kết quả trùng hệt bản tắt flash. Trên M4 Pro, nó giúp chép lời nhanh hơn 5–13% và giảm 91–149 MB bộ nhớ đệm mỗi state (đo lúc review, `phase0_review_notes.md`). Trên M4 Pro, mức lợi này không đổi quyết định nào (p50 và p90 dư khoảng gấp đôi). Máy tham chiếu chưa đo: nếu M1 cơ bản hay máy chỉ có CPU sát ngưỡng A2 thì xem lại.
   - Chỉ bật lại khi whisper.cpp có mask cho phần đệm, và phải kèm test tất định: cùng một đoạn, chép sau các đoạn khác nhau, phải ra cùng token.
 - **Làm nóng:** sau `Load`, app gửi `Warmup`; `asr-worker` chạy thử một lần trên một đoạn im lặng để nạp sẵn kernel GPU.
 - **Lọc lỗi "ảo giác" của Whisper:**
   - **Bỏ đoạn khi `no_speech_prob > 0,6` và `avg_logprob < −1`.** Đây là luật của OpenAI Whisper, nhưng `avg_logprob` không tính EOT nên dễ bỏ đoạn hơn một chút ở đoạn ngắn. Đoạn có chữ rỗng cũng bị bỏ.
-    - Luật này chạy ở tiến trình chính; `asr-worker` chỉ trả `no_speech_prob` và `avg_logprob`. Đoạn bị bỏ không được đưa vào prompt của đoạn sau, và không làm đổi ngôn ngữ của đoạn trước (xem việc đưa `prev_lang` vào `TranscribeRequest`). Công cụ đo của Giai đoạn 0 chưa làm hai điều này.
+    - Luật này chạy ở tiến trình chính; `asr-worker` chỉ trả `no_speech_prob` và `avg_logprob`. Đoạn bị bỏ không được đưa vào prompt của đoạn sau, và không làm đổi ngôn ngữ của đoạn trước (`prev_lang`). Công cụ đo của Giai đoạn 0 chưa làm hai điều này.
     - `no_speech_prob` lấy từ logits ngay sau SOT (chế độ B). Với tham số của app, `whisper_full` (chế độ A) luôn trả gần 0, nên bộ lọc chỉ có tác dụng ở chế độ B.
     - Cần cả hai điều kiện. Chỉ dùng `no_speech_prob > 0,6` thì bỏ nhầm câu đúng, ví dụ một câu tiếng Hàn có `no_speech_prob` 0,62 và `avg_logprob` −0,25 (`phase0_review_notes.md`). Chỉ dùng `avg_logprob < −1` thì bỏ nhầm một clip tiếng Nhật thật trên A4.
     - Trên A4, luật bỏ đúng 1 clip, là một bản chép ảo giác của small; với turbo, luật không bỏ clip nào. Trên S6, luật bỏ 1 đoạn: câu ảo giác "Thank you." dài 256 ms, ở gói Nhẹ.
@@ -403,11 +434,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Với zh, small hay ra chữ phồn thể: chuyển phồn thể sang giản thể ở tầng app.
   - Xem lại flash attention khi upstream có mask cho phần đệm: tự vá, hoặc chờ upstream.
   - Trước khi gửi bản vá `set_audio_ctx` lên upstream: hàm C trả `-1` khi giá trị ngoài `[0, n_audio_ctx]`, bản Rust trả `Result`.
-  - Đưa `prev_lang` vào `TranscribeRequest`, để worker không giữ trạng thái nhận diện ngôn ngữ. Khi đó kết quả không phụ thuộc thứ tự đoạn, và app không mất ngôn ngữ trước khi worker khởi động lại.
-  - `asr-protocol`:
-    - `backend` và `decode_mode` thành enum.
-    - `Error` có thêm `kind` (`NotLoaded`, `ModelLoad`, `OutOfMemory`, `GpuInit`, `InvalidRequest`, `Internal`), để bảng lỗi ở §9 phân biệt được.
-    - `Ready` có thêm `protocol_version`, để app từ chối worker lệch phiên bản.
+  - Làm giao thức bản 2 như mô tả ở "Giao tiếp với tiến trình chính": `prev_lang` trong `TranscribeRequest`; `backend` và `decode_mode` thành enum; `Error.kind`; `Ready.protocol_version`.
   - `asr-worker` giữ riêng stdout cho giao thức: chuyển fd 1 sang stderr, để log lạ của thư viện không lọt vào kênh giao thức.
   - Log của `asr-worker` mở ở chế độ append để giữ log qua các lần khởi động lại, nên cần xoay vòng hoặc giới hạn kích thước.
 
@@ -425,7 +452,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Chạy `llama-server` sau khi `asr-worker` đã nạp model (§5), để `--fit` tính cả phần VRAM mà whisper đang dùng.
 - **Khi server lỗi:** tự khởi động lại, chờ lần lượt 1, 2, 5 giây giữa các lần. Quá 5 lần trong 10 phút thì báo lỗi, phụ đề chỉ hiện câu gốc.
 - **Lần đầu chạy một binary mới** (sau khi cài hoặc cập nhật), macOS mất khoảng 15 giây kiểm tra trước khi `llama-server` chạy. Số này không có file kết quả hay log, và chưa đo trên bản đã notarize (`phase0_review_notes.md`).
-  - Thời gian chờ `/health` lúc khởi động phải từ 30 giây trở lên, và lần chờ này không tính là một lần lỗi trong bộ đếm "quá 5 lần trong 10 phút".
+  - Lần đầu chạy, app chờ `/health` tới **180 giây** (lần thường 60 giây), và lần chờ này không tính là một lần lỗi trong bộ đếm "quá 5 lần trong 10 phút". 180 giây là trần an toàn (tối thiểu phải từ 30 giây), chưa dựa trên số đo của bản đã notarize.
   - Giao diện báo "Đang chuẩn bị lần đầu".
   - Áp dụng cả cho `asr-worker` (chờ `Ready`, §6.4).
 - **API:** dùng `/v1/chat/completions` với `stream: true`, chat template lấy từ GGUF.
@@ -452,23 +479,24 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Ngưỡng tỉ lệ token (token bản dịch chia token câu gốc) đặt riêng cho từng cặp ngôn ngữ. Lấy ở S7: tỉ lệ lớn nhất đo được trên bộ test, cộng biên 25%, làm tròn lên 0,1.
     - Ngưỡng: Anh→Việt 4,4; Trung→Việt 6,6; Nhật→Việt 3,5; Hàn→Việt 3,5; Việt→Anh 1,6; Việt→Trung 1,2; Việt→Nhật 2,2; Việt→Hàn 2,2.
     - Câu gốc rất ngắn làm tỉ lệ dao động mạnh. Ngưỡng Trung→Việt 6,6 chỉ do một câu gốc 4 token có bản dịch đúng dài 21 token. Chỉ tính câu gốc từ 10 token trở lên thì Trung→Việt còn 4,3 và Việt→Anh còn 1,4; sáu chiều còn lại giữ nguyên.
+    - **Chỉ áp ngưỡng tỉ lệ khi câu gốc có từ 10 token trở lên** (chốt 2026-10-01, cách 2 ở Q4 của kế hoạch Giai đoạn 1 · 00). Câu ngắn hơn chỉ chịu hạn mức sinh ở "Tham số sinh" (tối đa 68 token khi câu gốc dưới 10 token). Lý do: không cần hằng số chỉ do một câu (`zh-vi-888`) quyết định, và hạn mức sinh chưa cắt bản dịch nào trong 1240 bản dịch của S7. Ngưỡng giữ nguyên các số ở trên.
+    - Cặp chưa có ngưỡng (không có tiếng Việt) chưa bị kiểm tỉ lệ, cho tới khi đo xong (Việc cho MVP bên dưới).
     - Bộ test không có câu gốc dưới 3 token (như "Vâng", "OK"), và không có cặp nào không chứa tiếng Việt.
   - **Thử lại** một lần với repeat penalty cao hơn (1,15). Với temperature 0, giữ nguyên tham số thì kết quả sẽ y hệt lần trước. Vẫn lỗi thì hiện câu gốc, đánh dấu "chưa dịch được".
 - **Bỏ qua bước dịch** khi ngôn ngữ câu gốc trùng ngôn ngữ đích.
 - **Việc cho MVP:**
-  - Chọn cách xử lý câu gốc ngắn trong ngưỡng tỉ lệ token, một trong hai cách:
-    1. Ngưỡng dạng `tỉ lệ × số token câu gốc + hằng số`, lấy tỉ lệ từ các câu gốc từ 10 token trở lên. Với bộ test S7, hằng số nhỏ nhất để mọi bản dịch lọt là 3,8 token (làm tròn 4, ở Trung→Việt). Hằng số này chỉ do một câu quyết định (`zh-vi-888`), nên cần thêm biên.
-    2. Chỉ áp tỉ lệ khi câu gốc từ khoảng 10 token trở lên. Câu ngắn hơn chỉ chịu hạn mức sinh ở "Tham số sinh" (tối đa 68 token khi câu gốc dưới 10 token).
   - Đo ngưỡng cho các cặp không có tiếng Việt, và cho câu gốc dưới 3 token.
   - Đo lại thời gian chờ lần đầu với bản đã ký và notarize.
 
 ### 6.6 Phụ đề và bản chép lời
 
-- **Cấu trúc:** `Subtitle { id, start_ms, end_ms, src_lang, src_text, tgt_text, status }`, cộng thêm cờ `provisional` cho phụ đề tạm (§6.3). `status` nhận một trong các giá trị:
-  - `asr_done`, `translating`, `done`, `failed`.
-  - `same_lang`: câu đã là ngôn ngữ đích nên không dịch (F2).
-  - `skipped`: bỏ bước dịch vì trễ, chỉ hiện câu gốc (§7).
-  - `dropped`: đoạn âm thanh bị bỏ vì trễ hoặc vì `asr-worker` lỗi; bản chép lời hiện "[bỏ qua đoạn]" (§6.4, §7).
+- **Cấu trúc:** `Subtitle { id, start_ms, end_ms, src_lang, src_text, tgt_text, status, replaces }`, cộng thêm cờ `provisional` cho phụ đề tạm (§6.3).
+  - `replaces`: danh sách id các phụ đề đã gộp vào phụ đề này khi hàng đợi dịch đầy (§7), để giao diện xóa chúng. Thường là danh sách rỗng.
+  - `status` nhận một trong các giá trị:
+    - `asr_done`, `translating`, `done`, `failed`.
+    - `same_lang`: câu đã là ngôn ngữ đích nên không dịch (F2).
+    - `skipped`: bỏ bước dịch vì trễ, chỉ hiện câu gốc (§7).
+    - `dropped`: đoạn âm thanh bị bỏ vì trễ hoặc vì `asr-worker` lỗi; bản chép lời hiện "[bỏ qua đoạn]" (§6.4, §7).
 - **Gửi sang giao diện qua sự kiện Tauri:**
   - `subtitle://upsert`: gửi cả đối tượng.
   - `subtitle://delta`: gửi từng token trong lúc đang dịch.
@@ -509,7 +537,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Ghi ra file `*.part`, kiểm tra SHA-256, rồi mới đổi tên thành file chính thức.
   - Trước khi tải, kiểm tra dung lượng trống còn ít nhất bằng kích thước model cộng 1 GB.
 - **Nơi lưu:** thư mục dữ liệu của app theo Tauri (`app_local_data_dir`), nằm ngoài thư mục cài đặt.
-  - macOS: `~/Library/Application Support/<bundle-id>/models`
+  - macOS: `~/Library/Application Support/<bundle-id>/models`, tức `~/Library/Application Support/com.aitranslator.desktop/models`
   - Windows: `%LOCALAPPDATA%\<bundle-id>\models`. Không đặt trong `%LOCALAPPDATA%\<tên app>`, vì đó là thư mục cài đặt của bộ cài NSIS kiểu per-user. Ô "xóa dữ liệu app" của bộ gỡ cài đặt chỉ xóa `%APPDATA%\<bundle-id>` và `%LOCALAPPDATA%\<bundle-id>` (A6).
 - **Tự host model:** Apache 2.0 và MIT cho phép phân phối lại. File LICENSE và NOTICE được đặt cạnh file model. Không tải từ Hugging Face hay GitHub của người khác.
 - **Cập nhật model:** khi có mạng, app kiểm tra manifest lúc khởi động, tối đa một lần mỗi ngày. Có bản mới thì hỏi người dùng, không tự tải.
@@ -523,58 +551,127 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 **Chuẩn bị cho việc thêm cổng thanh toán quốc tế:**
 - Phần thanh toán trên server nằm sau interface `PaymentProvider`, gồm `create_checkout`, `verify_webhook` và `get_payment_status`. PayOS là cài đặt đầu tiên.
-- Thêm một cổng khác chỉ cần viết thêm một cài đặt và một endpoint webhook. License, token bản quyền và app đều không phải sửa.
-- Bảng đơn hàng lưu thêm `provider` và `currency`. Mỗi gói Pro có giá riêng theo từng loại tiền.
-- License chỉ quan tâm `expires_at`, không quan tâm tiền đến từ đâu. Vì vậy cả hai kiểu thanh toán đều dùng chung được:
-  - Gói trả trước của PayOS: mỗi lần trả tiền cộng thêm 30 hoặc 365 ngày.
-  - Thuê bao tự gia hạn của cổng quốc tế: mỗi webhook gia hạn cộng thêm một kỳ; khách hủy thì ngừng cộng.
+- Webhook là một route chung `/v1/webhooks/{provider}`; server chọn cổng theo cột `provider` của đơn. Thêm một cổng khác chỉ cần viết thêm một cài đặt. License, token bản quyền và app đều không phải sửa.
+- Bảng đơn hàng lưu thêm `provider` và `currency`. Mỗi gói trả phí có giá riêng theo từng loại tiền.
+- License chỉ quan tâm gói, `expires_at` và `cycle_anchor`, không quan tâm tiền đến từ đâu. Vì vậy cả hai kiểu thanh toán đều dùng chung được:
+  - Gói trả trước của PayOS: mỗi đơn là 30 ngày, theo luật ở "Mua thêm và đổi gói".
+  - Thuê bao tự gia hạn của cổng quốc tế: mỗi webhook gia hạn cộng thêm một kỳ 30 ngày; khách hủy thì ngừng cộng.
+
+**Gói và bảng giá:**
+- Bốn gói ở §2. Server giữ bảng gói trả phí trong cấu hình của từng môi trường: mã gói, hạn mức mỗi chu kỳ (`quota_minutes_per_cycle`, `null` là không giới hạn), số ngày mỗi đơn (30), giá theo từng loại tiền. Đổi giá hay hạn mức không cần phát hành lại app.
+- Môi trường chưa cấu hình giá thì checkout trả `503 pricing_not_configured`, để không bao giờ bán sai giá. Staging dùng giá thử nhỏ (kế hoạch 05).
+- Hạn mức Free (10 phút mỗi ngày) là hằng số phía app, vì Free không có token.
+
+**Mua thêm và đổi gói:**
+- Server tính lúc xác nhận đã nhận tiền (webhook, đối soát, hoặc admin cấp tay), theo gói và hạn của license **tại thời điểm đó**. "Hiện tại" là thời điểm xác nhận, không làm tròn về đầu ngày.
+- **License mới:** `plan` là gói của đơn; `expires_at` = hiện tại + 30 ngày; `cycle_anchor` = hiện tại.
+- **Mua thêm cùng gói:** `expires_at` cộng 30 ngày, tính từ max(hiện tại, `expires_at`). `cycle_anchor` giữ nguyên; nếu license đã hết hạn thì `cycle_anchor` = hiện tại.
+- **Đổi gói khi license còn hạn** (lên gói hay xuống gói đều làm như nhau):
+  - Gói mới bắt đầu ngay: `plan` = gói mới, `cycle_anchor` = hiện tại, hạn mức của chu kỳ mới tính đầy đủ.
+  - Số ngày còn lại của gói cũ được quy ra tiền theo giá gói cũ, rồi đổi sang ngày của gói mới, làm tròn xuống:
+    `ngày_quy_đổi = floor(ngày_còn_lại × giá_cũ / giá_mới)`.
+    - `ngày_còn_lại` = (`expires_at` − hiện tại) / 1 ngày, giữ cả phần lẻ.
+    - `giá_cũ` và `giá_mới` lấy theo bảng giá hiện hành, cùng loại tiền với đơn.
+  - `expires_at` = hiện tại + 30 ngày + `ngày_quy_đổi`.
+  - Không hoàn tiền.
+  - Ví dụ lên gói: Professional còn 20 ngày, mua X2. Ta có 20 × 50.000 / 150.000 = 6,67, làm tròn xuống 6 ngày. X2 chạy trong 36 ngày.
+  - Ví dụ xuống gói: X2 còn 10 ngày, mua Professional. Ta có 10 × 150.000 / 50.000 = 30 ngày. Professional chạy trong 60 ngày.
+- **License đã hết hạn mà mua gói khác:** tính như license mới, nhưng giữ key cũ.
+- Đơn gia hạn hay đổi gói: response của checkout có thêm ước tính `license_expires_at`, tính theo thời điểm tạo đơn, để app hiện trước cho người dùng. Số chính thức tính lúc xác nhận; vì link chỉ sống 15 phút, hai số chênh nhau nhiều nhất 1 ngày.
+- Máy thứ hai của cùng key nhận gói mới ở lần `validate` kế tiếp ("Kiểm tra định kỳ" bên dưới); trước đó máy đó vẫn dùng token cũ.
 
 **API của license server:**
+- Mọi body là JSON. Tên trường dùng `snake_case` cho cả request lẫn response (`order_code`, `checkout_url`, `qr_code`, `order_token`, `license_key`…); chỉ khi gọi PayOS mới dùng `camelCase` của PayOS.
+- Lỗi có dạng `{"error": "<mã>", …}`. Thời điểm tính bằng giây Unix. `429` luôn kèm header `Retry-After`.
+- Mọi route chỉ nhận HTTPS (ngoài môi trường dev). Server không bật CORS, vì app gọi server từ phía Rust, không gọi từ WebView.
 
 | Endpoint | Việc làm |
 |---|---|
-| `POST /v1/checkout` `{plan: "pro_1m" \| "pro_12m", email, license_key?}` | Tạo đơn với `orderCode` duy nhất, gọi PayOS `POST /v2/payment-requests` với `expiredAt` = hiện tại + 15 phút. Trả về `checkoutUrl`, `qrCode` (chuỗi VietQR thô, app tự vẽ thành mã QR) và `order_token` (mã ngẫu nhiên để app hỏi trạng thái đơn). Khi gia hạn thì truyền thêm `license_key` đang có. |
-| `POST /v1/webhooks/payos` | Kiểm tra chữ ký webhook bằng checksum key, rồi gọi PayOS `GET /v2/payment-requests/{orderCode}` để xác nhận. Chỉ coi đơn là đã trả khi `status` là `PAID` và `amountPaid` ≥ `amount`. Đánh dấu đơn đã trả tiền (idempotent theo `orderCode`). Cấp license mới, hoặc gia hạn license cũ thêm 30 hay 365 ngày, tính từ max(hôm nay, ngày hết hạn). Gửi email chứa key. URL webhook được đăng ký và xác nhận qua API `confirm-webhook` của PayOS khi triển khai. |
-| `GET /v1/orders/{orderCode}?token=…` | App hỏi trạng thái đơn. Khi đơn đã trả tiền thì trả về key. |
-| `POST /v1/licenses/activate` `{key, device_id_hash, device_label}` | Kích hoạt, tối đa 2 máy mỗi key. Trả về token bản quyền. Nếu `device_id_hash` đã có activation của key này (ví dụ khi cài lại app) thì dùng lại activation đó, không tốn thêm suất. Khi đã đủ 2 máy thì trả `409`, kèm danh sách máy đã kích hoạt: `activation_id`, `device_label` và thời điểm `validate` gần nhất. |
-| `POST /v1/licenses/validate` `{key, activation_id}` | Trả về token mới nếu license còn hiệu lực |
-| `POST /v1/licenses/deactivate` `{key, activation_id}` | Gỡ kích hoạt để chuyển máy. Gọi được từ chính máy đó, hoặc từ máy mới khi key đã đủ 2 máy (gỡ từ xa). Mỗi lần gỡ tính vào giới hạn ở §10.2. |
-| `POST /v1/licenses/recover` `{email}` | Gửi lại mọi key còn hiệu lực của email này vào chính email đó. Luôn trả `200`, để không lộ email nào có key. Có giới hạn tần suất (§10.2). |
+| `GET /v1/plans` | Trả bảng gói trả phí đang bán: mã gói, `quota_minutes_per_cycle`, số ngày mỗi đơn, giá và loại tiền. App dùng cho màn hình Nâng cấp (§4.3). |
+| `POST /v1/checkout` `{plan: "pro" \| "pro_x2" \| "pro_x5", email, consent: true, license_key?}` | `consent` là ô đồng ý xử lý email (§10.1); thiếu thì trả `400`. Server lưu thời điểm đồng ý vào đơn. Tạo đơn với `order_code` duy nhất (dải số ở dưới), gọi PayOS `POST /v2/payment-requests` với `expiredAt` = hiện tại + 15 phút. Trả về `order_code`, `checkout_url`, `qr_code` (chuỗi VietQR thô, app tự vẽ thành mã QR), `order_token` (mã ngẫu nhiên để app hỏi trạng thái đơn), `amount`, `currency` và `expires_at` của link. Khi gia hạn hay đổi gói thì truyền thêm `license_key` đang có; response có thêm ước tính `license_expires_at`. |
+| `POST /v1/webhooks/{provider}` (PayOS: `/v1/webhooks/payos`) | Kiểm tra chữ ký webhook bằng checksum key, rồi gọi PayOS `GET /v2/payment-requests/{orderCode}` để xác nhận. Chỉ coi đơn là đã trả khi `status` là `PAID`, `amountPaid` ≥ `amount`, và `amount` khớp số tiền của đơn. Đánh dấu đơn đã trả tiền (idempotent theo `order_code`). Cấp license mới, hoặc gia hạn hay đổi gói theo "Mua thêm và đổi gói". Gửi email chứa key. URL webhook được đăng ký và xác nhận qua API `confirm-webhook` của PayOS khi triển khai. Cổng lạ thì trả `404`. |
+| `GET /v1/orders/{order_code}`, header `Authorization: Bearer <order_token>` | App hỏi trạng thái đơn. Khi đơn đã trả tiền thì trả về key, gói và `expires_at` mới của license. `order_token` đi trong header, không đi trong query, vì URL có thể lọt vào log, lịch sử trình duyệt và proxy. Sai hay thiếu token thì trả `404`, như đơn không tồn tại. |
+| `POST /v1/licenses/activate` `{key, device_id_hash, device_label}` | Kích hoạt, tối đa 2 máy mỗi key. Trả về token bản quyền. Nếu `device_id_hash` đã có activation của key này (ví dụ khi cài lại app) thì dùng lại activation đó, không tốn thêm suất. Khi đã đủ 2 máy thì trả `409`, kèm danh sách máy đã kích hoạt: `activation_id`, `device_label` và thời điểm `validate` gần nhất. Key đang bị khóa tạm thì trả `423 license_locked` (§10.2). |
+| `POST /v1/licenses/validate` `{key, activation_id}` | Trả về token mới nếu license còn hiệu lực. Token mang gói và hạn hiện tại của license. |
+| `POST /v1/licenses/deactivate` `{key, activation_id}` | Gỡ kích hoạt để chuyển máy. Gọi được từ chính máy đó, hoặc từ máy mới khi key đã đủ 2 máy (gỡ từ xa). Mỗi lần gỡ tính vào luật khóa tạm ở §10.2. |
+| `POST /v1/licenses/recover` `{email}` | Gửi lại mọi key còn hiệu lực của email này vào chính email đó. Luôn trả `200`, để không lộ email nào có key. Server tra và gửi thư sau khi đã trả lời, để thời gian phản hồi cũng không lộ. Email không có key thì không gửi gì. Có giới hạn tần suất (§10.2). |
+
+- **Trạng thái đơn:** `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed`, theo trạng thái của PayOS. `PAID` mà thiếu tiền thì coi là `underpaid`.
+- **Dải số đơn theo môi trường:**
+  - staging dùng `order_code` từ 1 tới 999.999; production từ 1.000.001. Hai môi trường không trùng số, kể cả khi dùng chung một kênh PayOS;
+  - trần là 9.999.999, để mô tả đơn `MT<order_code>` không quá 9 ký tự (§14, giả định 7). Vượt trần thì checkout trả `503`, không gọi PayOS.
 
 **Gửi email:** qua Resend (API HTTP, gọi từ Worker), sau interface `EmailProvider` để đổi dịch vụ được. Khóa API của Resend là secret của Worker. Tên miền gửi phải được xác thực (SPF, DKIM).
+- Email là văn bản thuần, song ngữ vi/en.
+- Lỗi gửi email không chặn việc cấp key: key vẫn lấy được qua `GET /v1/orders`, `recover` hoặc admin.
+- Email mua hàng có idempotency key theo đơn, nên gửi lại không bao giờ thành hai thư.
+- **Phân loại lỗi của Resend:**
+  - Chỉ `400` và `422` (thư sai dạng, địa chỉ nhận không hợp lệ) là lỗi vĩnh viễn: thôi gửi.
+  - Mọi lỗi khác là lỗi tạm: `401`, `403` (khóa API bị khóa, tên miền chưa xác thực: sửa cấu hình xong là gửi được), `409` (hai lượt gửi chồng nhau), `429`, `5xx` và lỗi mạng.
+  - Lỗi tạm thì cron gửi lại, giãn dần: sau 5 phút, 15 phút, 1 giờ, rồi mỗi 6 giờ, trong 24 giờ sau khi trả tiền.
+  - Cảnh báo `email_failed` cho người vận hành chỉ tạo ở lần lỗi đầu của mỗi đơn (§10.2).
 
-**Công cụ hỗ trợ:** vài endpoint `/admin/*` đặt sau Cloudflare Access, chỉ người vận hành dùng được. Các việc:
-- Tra cứu theo email hoặc `orderCode`, gửi lại key.
+**Công cụ hỗ trợ:** các endpoint `/admin/*` chạy ở một **Worker admin riêng**, cả Worker đặt sau Cloudflare Access; Worker API không có `/admin`. Worker admin tự kiểm lại danh tính do Access cấp, thiếu thì từ chối. Chỉ người vận hành dùng được. Các việc:
+- Tra cứu theo email hoặc `order_code`, gửi lại key.
 - Mở khóa key bị khóa tạm (§10.2).
 - Cấp hoặc gia hạn tay, ví dụ khi khách chuyển thiếu rồi chuyển bù.
 - Gỡ activation, thu hồi key.
+- **Xóa hoặc ẩn danh dữ liệu cá nhân theo email** (§10.1). Thao tác này chỉ chạy khi người vận hành tự gọi, ví dụ khi khách yêu cầu xóa; không bao giờ chạy tự động.
+- **Ký thử một token bằng khóa dự phòng** (`TOKEN_SIGNING_KEY_NEXT`), để kiểm khóa công khai tương ứng trong `keys/public-keys.json`, cũng là khóa build sẵn vào app, khớp khóa riêng (§10.2).
+- Đăng ký URL webhook với PayOS (`confirm-webhook`).
 
-Mọi thao tác đều được ghi nhật ký.
+Mọi thao tác đều được ghi nhật ký, kể cả tra cứu.
 
 **Chữ ký khi tạo link thanh toán:** theo tài liệu PayOS, ký HMAC-SHA256 bằng checksum key trên chuỗi các trường `amount`, `cancelUrl`, `description`, `orderCode`, `returnUrl` xếp theo thứ tự chữ cái.
 
 **Token bản quyền:**
-- Ký bằng Ed25519. Khóa công khai build sẵn vào app, nên app kiểm tra được token ngay cả khi offline.
-- Token gồm: `kid` (mã của khóa đã ký token, để đổi được khóa khi cần, §10.2), `license_id`, `plan`, `expires_at`, `activation_id`, `device_id_hash`, `issued_at`, và `refresh_before` (= `issued_at` + 14 ngày).
+- Ký bằng Ed25519. App build sẵn hai khóa công khai, khóa đang dùng và khóa dự phòng (§10.2), nên kiểm tra được token ngay cả khi offline.
+- Token gồm:
+  - `kid`: mã của khóa đã ký token (§10.2);
+  - `license_id`, `activation_id`, `device_id_hash`;
+  - `plan`: mã gói trả phí, `pro`, `pro_x2` hoặc `pro_x5`;
+  - `expires_at`;
+  - `cycle_anchor`: mốc tính chu kỳ hạn mức 30 ngày ("Hạn mức" bên dưới);
+  - `quota_minutes_per_cycle`: hạn mức mỗi chu kỳ, tính bằng phút (Professional 1800, X2 6000); `null` là không giới hạn (X5);
+  - `issued_at`, theo giờ của server, và `refresh_before` (= `issued_at` + 14 ngày).
 - `device_id_hash` là mã băm SHA-256 của ID phần cứng: IOPlatformUUID trên macOS, MachineGuid trên Windows.
 - Quá `refresh_before` mà vẫn chưa làm mới được token (ví dụ vì offline lâu) thì app về Free.
 - Quá `expires_at` thì app gọi `validate` trước, nếu có mạng, vì key có thể đã được gia hạn từ máy khác. App chỉ về Free và nhắc gia hạn khi server xác nhận chưa gia hạn, hoặc khi không có mạng.
 
 **Mua ngay trong app:**
-1. Người dùng mở "Nâng cấp Pro", chọn gói, nhập email.
-2. App **hiện mã VietQR ngay trong app**, tự vẽ từ chuỗi `qrCode`, kèm nút mở trang thanh toán của PayOS.
+1. Người dùng mở màn hình "Nâng cấp" (§4.3), chọn gói, nhập email, tick ô đồng ý.
+2. App **hiện mã VietQR ngay trong app**, tự vẽ từ chuỗi `qr_code`, kèm nút mở trang thanh toán của PayOS.
 3. Người dùng quét mã bằng app ngân hàng.
-4. App hỏi trạng thái đơn mỗi 3 giây, tối đa 15 phút, bằng thời hạn của link thanh toán. Khi đơn đã trả tiền, app **tự kích hoạt trên máy đang dùng**. Với đơn gia hạn, app gọi `validate` để lấy token có `expires_at` mới, thay vì gọi `activate`.
-5. Nếu app bị đóng khi đơn chưa được xác nhận, lần mở tiếp theo app hỏi lại đơn đó (app lưu `orderCode` và `order_token`).
+4. App hỏi trạng thái đơn mỗi 3 giây, tối đa 15 phút, bằng thời hạn của link thanh toán. Khi đơn đã trả tiền, app **tự kích hoạt trên máy đang dùng**. Với đơn gia hạn hay đổi gói, app gọi `validate` để lấy token có gói và `expires_at` mới, thay vì gọi `activate`.
+5. Nếu app bị đóng khi đơn chưa được xác nhận, lần mở tiếp theo app hỏi lại đơn đó (app lưu `order_code` và `order_token`).
 6. Key cũng được gửi qua email, để kích hoạt máy thứ hai hoặc cài lại máy.
 
+**Hạn mức:**
+- **Đếm riêng trên từng máy.** Mỗi máy kích hoạt có đủ hạn mức của gói; hai máy của cùng một key không chia chung. Server không theo dõi số phút đã dùng.
+- **Cách đếm phút**, áp cho mọi gói:
+  - chỉ tính độ dài tiếng nói (`end_ms − start_ms` của đoạn, không tính phần đệm) của các đoạn đã chép lời và **có ngôn ngữ khác ngôn ngữ đích**, tức các đoạn thật sự được dịch;
+  - không tính đoạn cùng ngôn ngữ (`same_lang`), đoạn bị bỏ (`dropped`), đoạn bị lọc (§6.4), đoạn không được dịch (`skipped`, `failed`), hay lúc im lặng;
+  - mỗi đoạn tính một lần, kể cả khi câu được dịch lại sau khi ghép (§6.3) hay gộp (§7).
+- **Chu kỳ:**
+  - Free: theo ngày. Reset lúc 00:00 theo giờ máy, nhưng chỉ khi ngày đã tăng so với lần reset trước và đã qua ít nhất 20 giờ theo đồng hồ thật. Vì vậy đổi múi giờ qua lại không reset được hạn mức.
+  - Gói trả phí: chu kỳ 30 ngày tính từ `cycle_anchor`, không theo tháng dương lịch. App tự tính chu kỳ hiện tại `n = floor((hiện tại − cycle_anchor) / 30 ngày)`; chu kỳ này bắt đầu lúc `cycle_anchor + n × 30 ngày`.
+  - Chu kỳ mới của gói trả phí chỉ được tính khi app đã có token với `issued_at` (giờ server) từ lúc bắt đầu chu kỳ đó trở đi. Khi giờ máy qua mốc, app gọi `validate` ngay nếu có mạng; offline thì vẫn dùng bộ đếm của chu kỳ cũ tới lần `validate` kế tiếp. Nhờ vậy chỉnh giờ máy tới trước không mở được chu kỳ mới.
+- **Lưu bộ đếm:** trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows; §10.2).
+  - Free: một bộ đếm theo ngày.
+  - Gói trả phí: khóa của bộ đếm là (`license_id`, lúc bắt đầu chu kỳ). Dùng lúc bắt đầu chu kỳ thay cho số thứ tự chu kỳ, vì đổi gói đặt lại `cycle_anchor`: chu kỳ đầu của gói mới không được dùng chung bộ đếm với chu kỳ đầu của gói cũ.
+  - **Gỡ máy rồi kích hoạt máy khác không chuyển bộ đếm.** Máy mới có bộ đếm riêng, bắt đầu từ 0 ở chu kỳ hiện tại; bộ đếm của máy cũ ở lại máy cũ. Kích hoạt lại chính máy cũ thì dùng tiếp bộ đếm cũ, vì bộ đếm nằm trong kho khóa, không mất khi gỡ app (§4.3, A6). Xoay một key qua nhiều máy để có thêm hạn mức thì bị chặn bởi luật khóa tạm (§10.2).
+  - **Mất bản ghi bộ đếm** trong khi app đã có dữ liệu từ trước (ví dụ file cài đặt): coi như đã dùng hết hạn mức của ngày (Free) hoặc của chu kỳ hiện tại (gói trả phí). Sang ngày hay chu kỳ mới mà chưa có bộ đếm thì bắt đầu từ 0; đó không phải là mất bản ghi.
+- **Khi hết hạn mức:**
+  - Đang dịch thì dừng phiên, với lý do `quota_exhausted`. Câu đang dịch dở được dịch xong, nên có thể vượt hạn mức tối đa một câu (trần 15 giây tiếng nói, §6.3).
+  - App báo thời điểm hạn mức được reset, kèm nút nâng gói (§4.2). Không chạy tiếp ở chế độ "chỉ chép lời".
+  - Hết hạn mức của gói trả phí thì không dùng thêm 10 phút của Free.
+  - Các tính năng Pro khác (lịch sử, từ điển, xuất file) vẫn dùng được khi gói còn hạn.
+- MVP chấp nhận rủi ro bị lách ở mức cơ bản, nhưng chặn các cách lách dễ nhất ở trên và ở §10.2 (chỉnh lùi đồng hồ, xóa bản ghi).
+
 **Các quy tắc khác:**
-- **Gia hạn:** PayOS không tự trừ tiền định kỳ. App nhắc trước 7 ngày và khi đã hết hạn. Nút "Gia hạn" tạo đơn mới gắn với key hiện có.
+- **Gia hạn:** PayOS không tự trừ tiền định kỳ. App nhắc trước 7 ngày và khi đã hết hạn. Nút "Gia hạn" mở màn hình Nâng cấp, tạo đơn mới gắn với key hiện có, cùng gói hoặc đổi gói.
 - **Kiểm tra định kỳ:** lúc khởi động và sau đó mỗi giờ, app xem lần `validate` thành công gần nhất đã quá 24 giờ chưa. Nếu đã quá và có mạng thì gọi `validate` để lấy token mới. Phải kiểm tra cả khi app đang chạy, vì app thường nằm ở khay hệ thống nhiều ngày liền. Nếu chỉ kiểm tra lúc khởi động, quá `refresh_before` app sẽ tự về Free dù vẫn có mạng.
 - **Máy bị gỡ từ xa** sẽ về Free ở lần `validate` kế tiếp. Nếu máy đó đang offline thì token cũ vẫn dùng được tới `refresh_before`, tối đa 14 ngày.
-- **Quota Free:** tính "phút dịch" bằng tổng độ dài các đoạn có tiếng nói, không tính lúc im lặng. Lưu trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows), có chống chỉnh lùi đồng hồ (§10.2). MVP chấp nhận rủi ro bị lách ở mức cơ bản, nhưng chặn hai cách lách dễ nhất:
-  - Reset lúc 00:00 theo giờ máy, nhưng chỉ khi ngày đã tăng so với lần reset trước và đã qua ít nhất 20 giờ theo đồng hồ thật. Vì vậy đổi múi giờ qua lại không reset được quota.
-  - Nếu mất bản ghi quota trong khi app đã có dữ liệu từ trước (ví dụ file cài đặt), app coi như đã dùng hết quota của ngày hôm đó.
 - **Trong app:** interface `LicenseProvider` (activate, validate, deactivate) được cài đặt bằng một client gọi license server.
 - **Giới hạn:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng VND, nên MVP chỉ bán được cho khách ở Việt Nam.
 
@@ -626,6 +723,9 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
 ### 6.12 Quy tắc chọn phiên bản thư viện
 
 - **Luôn dùng bản ổn định mới nhất** của công nghệ và thư viện bên thứ ba tại thời điểm cài. Không dùng bản beta, rc hay nightly, trừ khi bắt buộc; khi đó phải ghi rõ lý do.
+- **Luật tuổi phát hành:** "mới nhất" là bản ổn định mới nhất **đã ra được ít nhất 1 ngày** lúc cài. Bản ra chưa đủ 1 ngày thì dùng bản ngay trước đó, và ghi lại trong kế hoạch. Luật áp cho cả gói npm lẫn crate Rust.
+  - npm: pnpm 12 tự áp luật này (`minimumReleaseAge` mặc định 1 ngày). **Không bao giờ commit `minimumReleaseAgeExclude`**; nếu `pnpm add` tự ghi mục này vào `pnpm-workspace.yaml` thì xóa đi và chọn bản cũ hơn.
+  - Crate: cargo không có luật này, và `Cargo.toml` dùng `^` nên `cargo update` có thể kéo bản vừa ra. Vì vậy phải xem ngày phát hành trên crates.io trước khi cài hay nâng, và khi bản mới nhất chưa đủ 1 ngày thì khóa bản trước đó trong `Cargo.lock` (`cargo update -p <crate> --precise <bản>`).
 - **Trước khi chốt một phiên bản, phải kiểm tra kỹ tương thích và xung đột:**
   - Đọc release notes và changelog, xem có thay đổi phá vỡ tương thích (breaking change) nào ảnh hưởng tới app không.
   - Kiểm tra peer dependency và yêu cầu về phiên bản. Ví dụ:
@@ -666,9 +766,16 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
 - **Các luồng và tiến trình:**
   1. Callback thu âm thanh (realtime), ghi vào ring buffer.
   2. Luồng tiền xử lý và VAD.
-  3. Runtime `tokio`: gửi từng đoạn sang `asr-worker` và nhận kết quả, dịch (HTTP stream), sự kiện giao diện, tải model, bản quyền.
-  4. Tiến trình phụ `asr-worker`: mỗi lần xử lý một đoạn, chạy trên GPU hoặc CPU.
-  5. Tiến trình phụ `llama-server`.
+  3. Luồng nhận dạng: gửi từng đoạn sang `asr-worker` và nhận kết quả.
+  4. Luồng dịch: gọi `llama-server` (HTTP stream).
+  5. Luồng phụ đề: nơi duy nhất phát sự kiện phụ đề, nên thứ tự `upsert` và `delta` luôn đúng.
+  6. Tiến trình phụ `asr-worker`: mỗi lần xử lý một đoạn, chạy trên GPU hoặc CPU.
+  7. Tiến trình phụ `llama-server`.
+- **Luồng riêng và client đồng bộ, không dùng runtime `tokio`** cho pipeline (chốt ở kế hoạch Giai đoạn 1 · 02a, QĐ1). Lý do:
+  - hai client đồng bộ của Giai đoạn 0 đã chạy qua S6;
+  - mỗi tiến trình phụ chỉ làm một việc một lúc (`llama-server -np 1`, `asr-worker` đọc tuần tự), nên async không thêm thông lượng;
+  - crate `pipeline` không cần runtime nào, nên test chạy không cần Tauri.
+  App chỉ dùng runtime của Tauri để đưa việc chặn (bắt đầu phiên, chạy tiến trình phụ) ra khỏi luồng chính, và cho các việc ngoài pipeline: tải model, bản quyền.
 - **Hàng đợi đoạn âm thanh (VAD → nhận dạng)** chứa tối đa 3 đoạn.
   - Khi đầy, gộp hai đoạn chờ lâu nhất nếu tổng không quá 12 giây.
   - Chỉ bỏ đoạn khi độ trễ vượt 20 giây. Đoạn bị bỏ được đánh dấu "[bỏ qua đoạn]" trong bản chép lời (`dropped`, §6.6).
@@ -676,6 +783,11 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
 - **Hàng đợi dịch** chứa tối đa 3 câu.
   - Khi đầy, gộp các câu liên tiếp cùng ngôn ngữ vào một request. Các phụ đề tương ứng cũng được gộp thành một phụ đề, lấy `start_ms` của câu đầu và `end_ms` của câu cuối.
   - Câu nào đã chờ quá 20 giây thì bỏ qua bước dịch, chỉ hiện câu gốc (`skipped`), để bắt kịp tốc độ nói.
+- **Phụ đề gộp** mang id của câu đầu, và trường `replaces` liệt kê id các phụ đề đã gộp vào nó (§6.6).
+- **Ngưỡng của pipeline:** mọi ngưỡng của §6.3–§6.5 và mục này (cắt đoạn, ghép câu, lọc, nhận dạng, dịch, hàng đợi, giám sát tiến trình phụ, âm thanh) nằm trong một cấu hình `PipelineConfig`, mặc định là số đã chốt trong spec.
+  - Kế hoạch 04 nạp phần muốn đổi từ manifest đã ký (§6.7), nên đổi ngưỡng không cần phát hành lại app.
+  - Giá trị vô lý bị từ chối, và app giữ mặc định.
+  - `vadEndSilenceMs` của người dùng (§6.9) ghi đè ngưỡng im lặng chốt đoạn.
 - **Số đo từng phiên**, lưu trên máy và không gửi đi đâu: thời gian của từng bước (cắt đoạn, nhận dạng, dịch, tổng thể). Xem được trong bảng debug ẩn và trong log để hỗ trợ khi người dùng báo lỗi.
 
 ## 8. Hiệu năng và cấu hình máy
@@ -774,22 +886,32 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 |---|---|---|
 | macOS chưa cấp quyền ghi âm thanh hệ thống | Tạo tap bị lỗi, hoặc buffer toàn im lặng kèm trạng thái quyền | Hiện màn hình hướng dẫn, có nút mở System Settings |
 | Đang dịch mà hơn 60 giây không có âm thanh vào | Mức RMS của luồng âm thanh, kể cả phần im lặng được chèn khi Windows không trả gói dữ liệu (§6.1) | Thanh phụ đề hiện "Không nghe thấy âm thanh" kèm gợi ý cách sửa |
-| Thiết bị phát thay đổi (cắm tai nghe, kết nối Bluetooth) | `IMMNotificationClient` trên Windows / listener của Core Audio trên macOS | Tự khởi tạo lại việc thu âm trong ≤ 2 giây |
+| Thiết bị phát thay đổi (cắm tai nghe, kết nối Bluetooth) | Hỏi định kỳ 500 ms chữ ký thiết bị phát mặc định; luồng thu chết (`AudioSource::failed`) (§6.1) | Tự khởi tạo lại việc thu âm trong ≤ 2 giây |
 | Model thiếu hoặc hỏng | Lúc khởi động chỉ kiểm tra có file và đúng kích thước, vì băm 2,5 GB mỗi lần khởi động tốn vài giây. SHA-256 đầy đủ chỉ kiểm sau khi tải xong (§6.7), và kiểm lại khi nạp model lỗi. | Đề nghị tải lại |
 | `asr-worker` không chạy hoặc bị crash | Mã thoát, hoặc không trả kết quả trong thời gian chờ | Tự khởi động lại theo §6.4, gửi lại đoạn đang xử lý một lần. Crash 2 lần liên tiếp khi dùng GPU thì chuyển sang CPU. Quá 5 lần trong 10 phút thì dừng dịch và báo lỗi. |
 | `llama-server` không chạy hoặc bị crash | Mã thoát, hoặc `/health` báo lỗi | Tự khởi động lại theo §6.5. Quá giới hạn thì báo lỗi, chỉ hiện câu gốc. |
 | GPU khởi tạo lỗi, hoặc máy Windows không có Vulkan | Log của backend; `asr-worker-vulkan` không khởi động được (§6.4) | Chạy `asr-worker-cpu`, và `llama-server` chạy bằng CPU. Báo "Đang chạy bằng CPU (chậm hơn)". |
 | Thiếu RAM hoặc VRAM | RAM trống thấp, hoặc tiến trình phụ báo hết bộ nhớ, kể cả bộ nhớ GPU | Đề xuất chuyển sang gói Nhẹ |
 | Trễ dồn lại | Độ trễ > 6 giây | Hiện chỉ báo và áp dụng chính sách ở §7 |
-| Hết quota Free | Bộ đếm phút | Dừng dịch, hiện "Đã dùng hết 30 phút hôm nay" kèm nút nâng cấp |
+| Hết hạn mức (Free: 10 phút hôm nay; Professional, X2: hạn mức của chu kỳ) | Bộ đếm phút (§6.8, "Hạn mức") | Dừng phiên với lý do `quota_exhausted`. Báo đã hết hạn mức và thời điểm reset, kèm nút nâng gói (§4.2) |
 | License không hợp lệ, hết hạn hoặc bị thu hồi | Kết quả `validate` | Về Free, báo rõ lý do |
-| Mất mạng đúng lúc cần kiểm tra license | Lỗi mạng | Giữ Pro trong 14 ngày ân hạn |
+| Mất mạng đúng lúc cần kiểm tra license | Lỗi mạng | Giữ gói trả phí trong 14 ngày ân hạn |
+| Key bị khóa tạm vì gỡ máy quá nhiều | `activate` trả `423 license_locked` | Báo key bị khóa tạm, hướng dẫn liên hệ hỗ trợ (§10.2). Máy đang kích hoạt vẫn dùng được |
+| Server trả `429` (giới hạn tần suất, hoặc IP bị chặn tạm) | Mã `429` kèm `Retry-After` | Báo "thử lại sau", không thử lại liên tục. `429` ở `activate` không có nghĩa là key sai (§10.2) |
 | Key đã kích hoạt đủ 2 máy | `activate` trả `409` | Hiện danh sách máy đã kích hoạt (tên máy, lần dùng gần nhất), cho gỡ một máy rồi kích hoạt máy đang dùng. Vượt giới hạn gỡ ở §10.2 thì hướng dẫn liên hệ hỗ trợ. |
-| Khách đã chuyển khoản nhưng webhook của PayOS đến chậm hoặc bị mất | App vẫn đang chờ; server có đơn chưa xác nhận | App hỏi trạng thái đơn mỗi 3 giây. Server tự đối soát bằng `GET /v2/payment-requests/{id}` mỗi 5 phút cho các đơn chưa xác nhận. |
-| Webhook bị gửi trùng | Trùng `orderCode` | Xử lý idempotent: mỗi đơn chỉ cấp hoặc gia hạn license một lần |
+| Khách đã chuyển khoản nhưng webhook của PayOS đến chậm hoặc bị mất | App vẫn đang chờ; server có đơn chưa xác nhận | App hỏi trạng thái đơn mỗi 3 giây. Server tự đối soát bằng `GET /v2/payment-requests/{id}`, theo lịch ở dưới bảng. |
+| Webhook bị gửi trùng | Trùng `order_code` | Xử lý idempotent: mỗi đơn chỉ cấp, gia hạn hoặc đổi gói license một lần |
 | Khách chuyển thiếu tiền, hoặc link thanh toán hết hạn | `amountPaid` < `amount`, hoặc trạng thái đơn trả về từ PayOS | Không cấp license, hiện hướng dẫn liên hệ hỗ trợ. Hỗ trợ cấp tay khi khách đã chuyển bù (§6.8). |
 | Tải model thất bại | Lỗi HTTP hoặc sai SHA-256 | Thử lại 3 lần, cho phép tải tiếp sau |
 | Bản dịch lỗi (quá dài, có kèm lời giải thích) | Tỉ lệ token theo từng cặp ngôn ngữ (§6.5), mẫu nhận dạng | Cắt stream, thử lại một lần với repeat penalty cao hơn, sau đó hiện câu gốc |
+
+**Lịch đối soát đơn** (Cron Trigger chạy mỗi 5 phút):
+- Xét các đơn `pending`, `processing` và `underpaid` (khách có thể chuyển bù) tạo trong 24 giờ qua.
+- Trong giờ đầu kể từ khi tạo đơn: hỏi PayOS ở mỗi lần cron chạy, hai lần hỏi cách nhau ít nhất 4 phút.
+- Sau giờ đầu: mỗi giờ một lần.
+- Quá 24 giờ: đơn `pending` hay `processing` coi là hết hạn; đơn `underpaid` giữ nguyên để hỗ trợ xử lý.
+- Mỗi lần cron hỏi tối đa 50 đơn, vì PayOS có thể trả `429`.
+- Lý do giãn lịch: link chỉ sống 15 phút. Nếu hỏi mọi đơn bỏ dở mỗi 5 phút suốt 24 giờ thì mỗi đơn tốn 288 lần gọi PayOS.
 
 ## 10. Quyền riêng tư, bảo mật, pháp lý
 
@@ -804,8 +926,15 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
   - App không có tài khoản đăng nhập.
   - License server chỉ lưu email (để gửi và khôi phục key), thông tin đơn hàng, license, mã băm của ID máy, tên máy (`device_label`, để người dùng nhận ra máy khi cần gỡ) và thời điểm kiểm tra bản quyền gần nhất.
   - Việc chuyển khoản do ngân hàng và PayOS xử lý; server không nhận số tài khoản ngân hàng của khách.
-  - Khi mua, người dùng tick đồng ý cho xử lý email vào đúng mục đích này.
-  - Chính sách quyền riêng tư phải ghi rõ dữ liệu nào được lưu, lưu bao lâu, và cách yêu cầu xóa.
+  - Khi mua, người dùng tick đồng ý cho xử lý email vào đúng mục đích này (`consent` của checkout, §6.8). Server lưu thời điểm đồng ý.
+  - Server không gửi email người mua sang PayOS.
+  - **Thời gian lưu (chốt 2026-10-01): dữ liệu cá nhân được giữ không thời hạn**, không bao giờ tự xóa:
+    - Email, `device_label`, đơn hàng và activation được giữ mãi. Không có cron tự xóa hay tự ẩn danh.
+    - Khách yêu cầu xóa thì người vận hành gọi thao tác admin "xóa hoặc ẩn danh dữ liệu theo email" (§6.8). Thao tác này bỏ email và `device_label`, và giữ lại dòng đơn hàng ở mức kế toán cần (mã đơn, ngày, số tiền). License vẫn dùng được, nhưng không khôi phục qua email được nữa. Thao tác này không bao giờ chạy tự động.
+    - Ngoài phạm vi: dữ liệu giới hạn tần suất (khoảng 3 giờ, chỉ lưu HMAC của IP, key, email; §10.2) và log của Cloudflare tự hết hạn. Đây là dữ liệu kỹ thuật, không phải hồ sơ khách hàng.
+    - Việc giữ không thời hạn cần hỏi luật sư (§15).
+  - Chính sách quyền riêng tư phải ghi rõ dữ liệu nào được lưu, **được giữ không thời hạn**, và khách có thể yêu cầu xóa theo cách nào.
+  - **Hóa đơn điện tử: chưa làm trong MVP** (chốt 2026-10-01). Server không gửi thông tin người mua (tên, mã số thuế, email) sang PayOS, và app không có ô nhập các thông tin này. Làm sau MVP (§15); nghĩa vụ thuế khi bán vẫn cần hỏi kế toán.
   - **Chuyển dữ liệu ra nước ngoài:** license server (Cloudflare D1) và dịch vụ gửi email (Resend) đặt ngoài Việt Nam, nên có thể thuộc diện chuyển dữ liệu cá nhân xuyên biên giới. Khi đó phải lập hồ sơ đánh giá tác động và gửi cơ quan chuyên trách trong 60 ngày kể từ lần chuyển đầu tiên. Hộ kinh doanh và doanh nghiệp siêu nhỏ được miễn; doanh nghiệp nhỏ và doanh nghiệp khởi nghiệp được chọn không làm trong 5 năm đầu. Việc này phụ thuộc loại hình đăng ký kinh doanh (§15), cần hỏi luật sư.
 - **Giấy phép bên thứ ba**, liệt kê ở màn hình Giới thiệu và file `THIRD_PARTY_NOTICES`:
   - Hy-MT2: Apache 2.0, kèm LICENSE và NOTICE. Nếu tự nén lại model thì phải ghi chú là đã sửa đổi.
@@ -843,18 +972,50 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 |---|---|
 | Crack để dùng Pro miễn phí | Kiểm tra bản quyền ở nhiều chỗ trong code Rust, không dồn vào một biến đúng/sai duy nhất. Bản phát hành bật `strip`, `lto`, `codegen-units = 1`, `panic = "abort"`, và làm rối các chuỗi liên quan tới bản quyền. |
 | Sửa hoặc ký lại file của app | Lúc khởi động, app tự kiểm chữ ký số của chính nó. macOS dùng `SecStaticCodeCheckValidity` kèm yêu cầu đúng Team ID. Windows dùng `WinVerifyTrust` và so tên chủ chứng thư. Chữ ký không hợp lệ thì app chỉ chạy chế độ Free, báo "Bản cài không chính hãng" kèm link tải chính thức. Bản build dev bỏ qua bước này. |
-| Chỉnh lùi đồng hồ máy, hoặc đổi múi giờ qua lại, để lách quota Free hoặc hạn dùng | App lưu mốc thời gian lớn nhất từng thấy. Nếu giờ hiện tại nhỏ hơn mốc đó quá 10 phút thì: không reset quota ngày, coi token là phải kiểm tra online lại, và nhắc người dùng chỉnh giờ. Quota chỉ reset khi đã qua ít nhất 20 giờ theo đồng hồ thật (§6.8). |
-| Sửa hoặc xóa trạng thái bản quyền và quota trên máy | Lưu trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows), không lưu file thường. Mất bản ghi quota thì coi như đã hết quota trong ngày (§6.8). |
-| Chia sẻ hoặc bán lại key | Mỗi key tối đa 2 máy; kích hoạt lại trên cùng một máy không tốn thêm suất. Nếu trong 30 ngày có hơn 3 lần gỡ (kể cả gỡ từ xa) rồi kích hoạt máy khác thì khóa tạm key và yêu cầu liên hệ hỗ trợ. Key sinh ngẫu nhiên với ít nhất 128 bit, có ký tự kiểm tra để phát hiện gõ sai. |
-| Dò key hoặc spam license server | Giới hạn request theo IP, theo key và theo email, ví dụ `activate` ≤ 10 lần/giờ/IP, `validate` ≤ 30 lần/giờ/key, `checkout` ≤ 10 lần/giờ/IP, `recover` ≤ 3 lần/giờ/email. Vượt ngưỡng thì trả `429`. |
+| Chỉnh đồng hồ máy (lùi, tới trước, hoặc đổi múi giờ qua lại) để lách hạn mức hoặc hạn dùng | App lưu mốc thời gian lớn nhất từng thấy. Nếu giờ hiện tại nhỏ hơn mốc đó quá 10 phút thì: không reset hạn mức ngày, coi token là phải kiểm tra online lại, và nhắc người dùng chỉnh giờ. Hạn mức Free chỉ reset khi đã qua ít nhất 20 giờ theo đồng hồ thật. Chu kỳ mới của gói trả phí chỉ bắt đầu khi đã có token mà `issued_at` (giờ server) qua mốc đầu chu kỳ (§6.8, "Hạn mức"). |
+| Sửa hoặc xóa trạng thái bản quyền và bộ đếm hạn mức trên máy | Lưu trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows), không lưu file thường. Trên Windows, mục lưu ở chế độ cục bộ (`persistence = Local`), không đi theo hồ sơ roaming sang máy khác, vì bản quyền và hạn mức gắn với từng máy. Mất bản ghi bộ đếm thì coi như đã hết hạn mức của ngày hoặc của chu kỳ (§6.8). |
+| Chia sẻ hoặc bán lại key | Mỗi key tối đa 2 máy; kích hoạt lại trên cùng một máy không tốn thêm suất. Key sinh ngẫu nhiên với ít nhất 128 bit, có ký tự kiểm tra để phát hiện gõ sai. **Khóa tạm:** xem luật dưới bảng. |
+| Dò key hoặc spam license server | Giới hạn request theo IP, theo key và theo email, theo cửa sổ 1 giờ: `activate` ≤ 10 lần/giờ/IP, `validate` ≤ 30 lần/giờ/key, `checkout` ≤ 10 lần/giờ/IP, `recover` ≤ 3 lần/giờ/email và ≤ 10 lần/giờ/IP, `deactivate` ≤ 10 lần/giờ/IP, hỏi đơn ≤ 600 lần/giờ cho mỗi cặp (IP, đơn). `validate` đếm theo key đã chuẩn hóa. Vượt ngưỡng thì trả `429`. Bộ đếm nằm trong D1 và chỉ lưu HMAC-SHA256 (có pepper bí mật) của IP, key, email. **Chặn IP:** xem luật dưới bảng. |
 | Bị clone, đổi thương hiệu rồi bán lại | **Pháp lý:** đăng ký nhãn hiệu (tên và logo) tại Cục Sở hữu trí tuệ Việt Nam, mở rộng ra quốc tế sau. EULA cấm dịch ngược, cấm phân phối lại, cấm đổi thương hiệu. Có sẵn quy trình yêu cầu Microsoft Store và nhà cung cấp hosting gỡ bản nhái. **Kỹ thuật:** logic quan trọng (prompt, cắt và ghép câu, khớp thuật ngữ) nằm trong Rust đã biên dịch; JavaScript chỉ lo hiển thị và được rút gọn. Manifest model, bản cập nhật và token đều ký bằng khóa riêng, nên bản nhái không dùng được hạ tầng của sản phẩm. |
 | Bản giả có cài mã độc | Ký số và notarize mọi bản phát hành. Chỉ phát hành qua tên miền chính thức. Website công bố mã SHA-256 của từng bộ cài và cảnh báo về bản giả. |
-| Tấn công qua giao diện WebView | **Capabilities của Tauri 2:** cửa sổ `overlay` chỉ nhận sự kiện phụ đề và chỉ gọi được lệnh di chuyển và khóa của chính nó; cửa sổ `main` chỉ được cấp đúng các lệnh nó cần. **CSP chặt:** chỉ nạp tài nguyên đóng gói trong app, không `unsafe-eval`, không tải script từ bên ngoài. Link ngoài mở bằng trình duyệt của hệ thống. Tắt devtools ở bản phát hành. Mọi dữ liệu từ giao diện gửi xuống Rust đều được kiểm tra kiểu và phạm vi. |
+| Tấn công qua giao diện WebView | **Capabilities của Tauri 2:** cửa sổ `overlay` chỉ nhận sự kiện phụ đề, kéo được chính nó, và gọi được đúng một lệnh chỉ đọc là `get_overlay_view` (phần cài đặt của chính nó). Overlay không gọi lệnh khóa, vì khi đã khóa thì click đi xuyên qua thanh; mở khóa bằng phím tắt hoặc menu khay (§4.4). Cửa sổ `main` chỉ được cấp đúng các lệnh nó cần. Không cửa sổ nào được gọi thẳng lệnh của plugin. **CSP chặt:** chỉ nạp tài nguyên đóng gói trong app, không `unsafe-eval`, không tải script từ bên ngoài. **Chặn điều hướng:** webview chỉ được đi tới URL của chính app; `blob:` và yêu cầu mở cửa sổ mới đều bị chặn. Link ngoài chỉ mở bằng trình duyệt của hệ thống, và chỉ khi là `https` tới tên miền nằm trong danh sách cho phép build sẵn (trang thanh toán PayOS, website của sản phẩm); còn lại thì chặn và ghi log. Tắt devtools ở bản phát hành. Mọi dữ liệu từ giao diện gửi xuống Rust đều được kiểm tra kiểu và phạm vi. |
 | Thay tiến trình phụ, hoặc chèn thư viện giả | Trước khi chạy `asr-worker` hay `llama-server`, kiểm tra SHA-256 của file thực thi và của các thư viện ggml, theo một danh sách build sẵn vào app. Windows: tiến trình chính và `asr-worker` gọi `SetDefaultDllDirectories` để chỉ nạp DLL từ thư mục app và System32. macOS: hardened runtime có bật library validation, mọi file thực thi và `.dylib` ký cùng Team ID. |
 | Lộ nội dung cuộc họp | Lịch sử chép lời được mã hóa bằng SQLCipher, khóa ngẫu nhiên lưu trong kho khóa của hệ điều hành. Log không bao giờ chứa nội dung chép lời. File xuất ra do người dùng chủ động tạo và tự quản lý. |
-| Tấn công license server | Chỉ dùng HTTPS. Kiểm tra chữ ký webhook và xử lý idempotent (§6.8). Dùng prepared statement của D1, kiểm tra mọi input. Secret lưu bằng Wrangler secrets. Các endpoint `/admin/*` đặt sau Cloudflare Access. Ghi nhật ký mọi thay đổi license, cảnh báo khi có nhiều lần kiểm tra thất bại. |
-| Lộ khóa ký token | Token có trường `kid`. App build sẵn 2 khóa công khai: khóa đang dùng và khóa dự phòng. Nếu khóa bị lộ, server chuyển sang khóa dự phòng, và bản cập nhật app kế tiếp mang theo một khóa dự phòng mới. |
+| Tấn công license server | Chỉ nhận HTTPS, kiểm ngay trong Worker. Kiểm tra chữ ký webhook và xử lý idempotent (§6.8). Dùng prepared statement của D1, kiểm tra mọi input. Secret lưu bằng Wrangler secrets. Không để dữ liệu nhạy cảm trong URL: `order_token` đi trong header, tắt invocation log của Workers Logs, bỏ query khỏi URL trong log. `/admin/*` nằm ở Worker riêng đặt sau Cloudflare Access, tự kiểm lại danh tính, và chống CSRF. Ghi nhật ký mọi thay đổi license. Cảnh báo cho người vận hành: xem dưới bảng. |
+| Lộ khóa ký token | Token có trường `kid`. App build sẵn 2 khóa công khai: khóa đang dùng và khóa dự phòng. Cách giữ và đổi khóa: xem "Khóa ký token" dưới bảng. |
 | Rủi ro chuỗi cung ứng | Không khóa ký nào (ký mã, cập nhật, token, manifest) nằm trên máy dev. Bản phát hành được build và ký trong CI, từ tag đã commit, dùng secret của CI hoặc dịch vụ ký trên cloud. CI chạy `cargo audit`, `cargo deny`, `pnpm audit`, và bật Dependabot. llama.cpp và whisper.cpp được build trong CI từ tag đã khóa, có kiểm tra checksum. |
+
+**Khóa tạm key** (chống xoay key qua nhiều máy):
+- Đếm số lần gỡ do người dùng (tự gỡ hoặc gỡ từ xa; không tính admin gỡ) trong 30 ngày gần nhất, chỉ tính từ lần admin mở khóa gần nhất, và **trừ các lần gỡ chính máy đang kích hoạt**.
+- Khi một máy không đang kích hoạt xin `activate`, kể cả máy từng dùng key này, mà số trên lớn hơn 3, server khóa key, trả `423 license_locked`, và tạo cảnh báo cho người vận hành.
+- Gỡ rồi kích hoạt lại cùng một máy bao nhiêu lần cũng không bị khóa.
+- Key đã khóa thì chặn mọi máy không đang kích hoạt. Các máy đang kích hoạt vẫn `validate` và gỡ máy được.
+- Hỗ trợ mở khóa qua admin; các lần gỡ trước lúc mở khóa không còn tính.
+
+**Chặn IP thất bại nhiều, và CGNAT:**
+- Thất bại đếm theo IP, chung mọi endpoint: key sai định dạng, key không tồn tại, activation lạ. Chạm 60 lần trong 1 giờ thì IP đó bị chặn tới hết giờ, và server tạo cảnh báo cho người vận hành.
+- Nhiều người dùng thật có thể chung một IP qua CGNAT. Vì vậy khi IP đang bị chặn, server chỉ cho qua `validate` và `deactivate` có key hợp lệ **kèm `activation_id` đang hoạt động và khớp**; mọi request khác trả `429`, kể cả `activate` và checkout gia hạn.
+- Không cho qua mọi key hợp lệ, vì khi đó kẻ dò vẫn phân biệt được key thật (`200`) với key giả (`429`). Đoán trúng một `activation_id` (UUID v4, 122 bit ngẫu nhiên) là không khả thi.
+- Vì vậy app luôn gửi `activation_id` khi `validate`, và không coi `429` ở `activate` là key sai (§9).
+
+**Cảnh báo cho người vận hành:**
+- Bốn loại sự kiện: `many_failures` (một IP chạm 60 lần thất bại), `webhook_bad_signature`, `email_failed`, `license_locked`.
+- Cron gửi một email cho mỗi loại, **tối đa một lần mỗi giờ**, tới hộp thư vận hành, qua `EmailProvider`. Gửi lỗi thì lần cron sau thử lại.
+- Địa chỉ nhận là dữ liệu cá nhân nên là secret của Worker (`OPERATOR_EMAIL`), không nằm trong repo. Thiếu thì cảnh báo chỉ ghi log. Chủ dự án chưa chọn hộp thư này (§15).
+- Cảnh báo đi cùng kênh Resend với thư chứa key, nên khi Resend sập thì chỉ còn log. Giảm rủi ro bằng Workers Issues của Cloudflare (ghi `console.error` và response `5xx`, gửi qua webhook hay chat, không qua Resend).
+
+**Khóa ký token:**
+- **`kid` là duy nhất, có số thứ tự:** dạng `<môi trường>-<năm>-<tháng>-<số thứ tự>`, ví dụ `prod-2026-10-1`. Không bao giờ dùng lại một `kid`, kể cả `kid` đã bị lộ. Công cụ tạo khóa từ chối `kid` đã có trong `keys/public-keys.json`.
+- **Khóa chính và khóa dự phòng đều là secret của Worker:** khóa chính là `TOKEN_SIGNING_KEY`, khóa dự phòng là `TOKEN_SIGNING_KEY_NEXT`.
+  - Cả hai được tạo bằng một script rồi pipe thẳng vào `wrangler secret put`. Khóa riêng không bao giờ in ra terminal, ghi ra file, hay lưu ở đâu trên máy người vận hành. **Không dùng kho mật khẩu.**
+  - Khóa công khai của cả hai nằm trong `keys/public-keys.json` và được build sẵn vào app.
+  - Kiểm khóa công khai khớp khóa riêng bằng thao tác admin "ký thử bằng khóa dự phòng" (§6.8), rồi kiểm token đó bằng `keys/public-keys.json`. Khóa chính được kiểm bằng một token thật.
+- **Đổi khóa** (khi khóa chính bị lộ, hoặc khi chủ động đổi):
+  1. Chuyển khóa `NEXT` thành khóa chính. Secret của Worker không đọc lại được, nên việc chuyển làm bằng cấu hình của Worker (chọn secret nào đang ký), không chép giá trị khóa qua máy người vận hành. Kế hoạch 05 chọn cách làm cụ thể.
+  2. Tạo một khóa `NEXT` mới, với `kid` có số thứ tự kế tiếp.
+  3. Sửa `keys/public-keys.json`: bỏ khóa bị lộ, thêm khóa `NEXT` mới. Phát hành bản cập nhật app mang hai khóa công khai này.
+  4. Bản app cũ vẫn nhận token ký bằng khóa bị lộ cho tới khi được cập nhật. Đây là rủi ro còn lại, chấp nhận.
+- **Đánh đổi:** tài khoản Cloudflare bị chiếm thì mất cả hai khóa. Nhưng khi đó server cũng đã bị chiếm, nên một khóa dự phòng cất ở chỗ khác cũng không cứu được.
 
 **Để Giai đoạn 2**, và chỉ làm khi thấy bị crack nhiều thật: chống debug, làm rối code sâu hơn, kiểm tra toàn vẹn nhiều lớp, phát hiện gian lận phía server bằng phân tích hành vi.
 
@@ -873,12 +1034,12 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
   - Tạo prompt: nhánh tiếng Trung và không tiếng Trung, tên ngôn ngữ của từng mẫu; khớp thuật ngữ tiếng Việt có dấu và chữ Trung, Nhật, Hàn.
   - Hậu xử lý bản dịch khi đang stream: lọc nhãn và ngoặc kép, ngưỡng tỉ lệ token theo cặp ngôn ngữ, thử lại với tham số khác.
   - Các trạng thái của phụ đề, kể cả `same_lang`, `skipped` và `dropped`.
-  - Bộ đếm quota và reset theo ngày; đổi múi giờ qua lại không reset được; mất bản ghi quota thì coi như hết quota trong ngày.
+  - Hạn mức (§6.8): cách đếm phút (chỉ đoạn được dịch, mỗi đoạn một lần); Free reset theo ngày, đổi múi giờ qua lại không reset được; chu kỳ 30 ngày tính từ `cycle_anchor`, chu kỳ mới cần token có `issued_at` qua mốc; đổi gói không dùng lại bộ đếm cũ; mất bản ghi bộ đếm thì coi như hết hạn mức của ngày hoặc chu kỳ; hết hạn mức thì dừng phiên với `quota_exhausted`; X5 không giới hạn.
   - Trạng thái bản quyền: ân hạn, thu hồi, tự làm mới token khi app chạy liên tục quá 24 giờ.
   - Manifest và SHA-256.
-- **Test giao diện (`vitest`):** i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề; các hàm xuất file.
+- **Test giao diện (`vitest`):** i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề. Các hàm xuất file viết và test phía Rust (`transcript/export.rs`, §12), vì webview chặn `blob:` (§10.2).
 - **License server:**
-  - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp license khi `PAID` và `amountPaid` ≥ `amount`; tính ngày gia hạn (từ max(hôm nay, ngày hết hạn)); giới hạn 2 máy, kích hoạt lại cùng máy không tốn suất, gỡ từ xa khi đã đủ máy; `recover` luôn trả `200`; ký và kiểm tra token Ed25519.
+  - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp license khi `PAID`, `amountPaid` ≥ `amount` và `amount` khớp đơn; mua thêm cùng gói (từ max(hiện tại, `expires_at`), giữ `cycle_anchor`, đặt lại khi đã hết hạn); đổi gói (công thức quy đổi, cả hai ví dụ ở §6.8, `cycle_anchor` mới); giới hạn 2 máy, kích hoạt lại cùng máy không tốn suất, gỡ từ xa khi đã đủ máy; khóa tạm (`423`); chặn IP và trường hợp CGNAT; `recover` luôn trả `200`; ký và kiểm tra token Ed25519, có `cycle_anchor` và `quota_minutes_per_cycle`; phân loại lỗi email.
   - Test tích hợp với PayOS trên môi trường test nếu có; nếu không có thì dùng giao dịch với số tiền nhỏ.
 - **Test tích hợp:**
   - Chạy pipeline từ file WAV (không cần thu âm thật), kiểm tra phụ đề có xuất hiện, đúng thứ tự, đúng thời gian.
@@ -898,7 +1059,7 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 - **Bảo mật (§10.2):**
   - Sửa một byte trong file thực thi, hoặc ký lại bằng chứng thư khác: app chỉ chạy chế độ Free và báo "Bản cài không chính hãng".
   - Các token sau đều bị từ chối: sai chữ ký, của máy khác, đã quá `refresh_before` hoặc `expires_at`, có `kid` lạ.
-  - Chỉnh lùi đồng hồ máy: app phát hiện, không reset quota, yêu cầu kiểm tra online.
+  - Chỉnh lùi đồng hồ máy: app phát hiện, không reset hạn mức, yêu cầu kiểm tra online. Chỉnh đồng hồ tới trước qua mốc chu kỳ: không mở được chu kỳ mới khi chưa có token mới.
   - Gỡ rồi kích hoạt lại quá ngưỡng: key bị khóa tạm.
   - Cửa sổ `overlay` gọi một lệnh không được cấp, ví dụ lệnh bản quyền: Tauri chặn lại.
   - Thay `asr-worker` hoặc `llama-server` bằng một file khác: app từ chối chạy.
@@ -923,7 +1084,7 @@ meeting-translator/
 │   ├── src/
 │   │   ├── main.rs
 │   │   ├── session.rs            # Nối crate audio-capture và pipeline vào app: bắt đầu/dừng phiên, phát sự kiện phụ đề
-│   │   ├── sidecar/{asr,llama}.rs  # Chạy và giám sát asr-worker, llama-server
+│   │   ├── sidecar/{asr,llama}.rs  # Tìm binary, kiểm SHA-256, phát sự kiện trạng thái; logic giám sát nằm trong crate pipeline
 │   │   ├── models/{manifest,download,store}.rs
 │   │   ├── license/{provider,state,quota}.rs
 │   │   ├── security/{integrity,clock,keystore}.rs  # Tự kiểm chữ ký, chống lùi giờ, kho khóa (§10.2)
@@ -938,17 +1099,20 @@ meeting-translator/
 │   ├── asr-worker/               # Tiến trình phụ nhận dạng giọng nói: whisper-rs, link tĩnh whisper.cpp (§6.4)
 │   ├── asr-protocol/             # Kiểu thông điệp stdin/stdout, dùng chung cho app và asr-worker
 │   ├── audio-capture/            # Thu âm thanh, chèn im lặng, trộn, resample (§6.1, §6.2)
-│   ├── pipeline/                 # VAD, cắt đoạn, client asr-worker, gọi llama-server, prompt (§6.3–§6.5)
+│   ├── pipeline/                 # VAD, cắt đoạn, client asr-worker, gọi llama-server, prompt, giám sát tiến trình phụ, PipelineConfig (§6.3–§6.5, §7)
 │   └── latency-bench/            # Công cụ đo của Giai đoạn 0 (S3, S6, A4), không vào bộ cài
 ├── third_party/                  # whisper-rs, whisper-rs-sys đã vá, nối qua [patch.crates-io] (§6.4)
 ├── server/                       # License server: Cloudflare Worker (TypeScript, Hono) + D1
 │   └── src/
-│       ├── {checkout,orders,licenses,token,reconcile,admin}.ts
-│       └── payment/{provider,payos}.ts  # Interface PaymentProvider và cài đặt PayOS (§6.8)
+│       ├── index.ts  admin-entry.ts  # Điểm vào của Worker API và Worker admin (§6.8)
+│       ├── {checkout,orders,licenses,token,plans,reconcile,admin}.ts
+│       ├── {ratelimit,alerts}.ts     # Giới hạn tần suất, chặn IP, cảnh báo cho người vận hành (§10.2)
+│       ├── payment/{provider,payos}.ts  # Interface PaymentProvider và cài đặt PayOS (§6.8)
+│       └── email/{provider,resend,templates}.ts  # Interface EmailProvider và cài đặt Resend (§6.8)
 ├── bench/                        # Đánh giá chất lượng và độ trễ
 │   ├── 2026-09-29-mt-benchmark/  # Kết quả gốc của lần chọn model
 │   └── phase0/                   # Công cụ đo Giai đoạn 0; kết quả ở results/ (§3.3, §8)
-├── tests/fixtures/audio/         # Clip âm thanh mẫu cho A4
+├── tests/fixtures/audio/         # Vài clip ngắn có quyền dùng cho test tích hợp; bộ clip A4 nằm ở bench/phase0/data/ (không commit)
 └── docs/superpowers/specs/
 ```
 
@@ -973,7 +1137,7 @@ meeting-translator/
 
 **Tiêu chí qua spike:** S1–S5 chạy được; S6 đạt **p50 ≤ 2,0 giây** trên máy khuyến nghị (đo cả trên máy M1 cơ bản 16 GB) và p50 ≤ 3,5 giây trên máy tối thiểu; mốc COMET ở S7 đạt mức sàn của A3. Nếu M1 cơ bản không đạt thì chọn một trong hai phương án ở §8. Nếu cả máy mạnh hơn cũng không đạt thì quay lại sửa spec.
 
-**Giai đoạn 1: MVP.** Làm F1–F10, license server và tích hợp PayOS (§6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Giai đoạn 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
+**Giai đoạn 1: MVP.** Làm F1–F10, license server và tích hợp PayOS, bốn gói và hạn mức (§2, §6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Giai đoạn 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
 
 **Giai đoạn 2: mở rộng**, thứ tự tùy phản hồi của người dùng:
 - Phân biệt ai đang nói.
@@ -996,21 +1160,26 @@ meeting-translator/
 7. PayOS (kiểm tra trước khi làm §6.8):
    - Đăng ký được với loại hình kinh doanh của PHONG.
    - Webhook và cách ký HMAC-SHA256 đúng như tài liệu.
-   - Có môi trường test; nếu không có thì test bằng giao dịch nhỏ.
-   - Mô tả đơn cần ngắn (với một số ngân hàng tối đa 9 ký tự), nên dùng mã dạng `MT` cộng số đơn.
+   - Có môi trường test; nếu không có thì test bằng giao dịch nhỏ. Kiểm ngày 2026-10-01: PayOS không có sandbox, nên test bằng giao dịch nhỏ trên staging.
+   - Mô tả đơn cần ngắn (với một số ngân hàng tối đa 9 ký tự), nên dùng mã dạng `MT` cộng số đơn (tối đa 7 chữ số, §6.8).
 8. Rút ngắn `audio_ctx` không làm WER tăng quá 10% so với cửa sổ 30 giây đầy đủ. (S7) Kết quả S7: không đạt theo từng ô, xem §6.4 "Rút ngắn cửa sổ mã hóa".
 9. Chi phí nhận diện ngôn ngữ giữ được dưới 20% thời gian nhận dạng của đoạn (§6.4). (S3)
 10. Truyền âm thanh qua stdin/stdout sang `asr-worker` thêm không quá 10 ms mỗi đoạn. (S3)
 
 ## 15. Việc còn mở (không chặn phần kỹ thuật)
 
-- **Tên sản phẩm, logo, tên miền, bundle identifier.** Trong code tạm dùng `meeting-translator`, sau đổi bằng cấu hình.
-- **Chốt P1:** giá gói Pro 1 tháng và 12 tháng (VND), có bán gói trọn đời không, và hạn mức Free (đề xuất 30 phút/ngày).
-- **PayOS:** đăng ký tài khoản (doanh nghiệp, hộ kinh doanh hoặc cá nhân) và liên kết tài khoản ngân hàng nhận tiền.
-- **Hóa đơn điện tử và thuế** khi bán phần mềm cho khách ở Việt Nam: cần hỏi kế toán. PayOS có trường thông tin người mua và API hóa đơn để tích hợp.
-- **Pháp lý:** hỏi luật sư về hồ sơ chuyển dữ liệu cá nhân ra nước ngoài (§10.1), và thủ tục thông báo website bán hàng với Bộ Công Thương.
+Đã quyết ngày 2026-10-01 và đã đưa vào spec: tên và bundle identifier (D13), bốn gói và giá (P1, §2), hạn mức (§6.8), cách lưu dữ liệu (§10.1), chưa làm hóa đơn điện tử (§10.1), không dùng kho mật khẩu cho khóa ký token (§10.2). Dịch vụ email (Resend) và tài khoản Cloudflare riêng đã có.
+
+Còn mở:
+- **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, staging dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Cần tên miền trước khi license server lên production (email gửi từ tên miền đã xác thực, `returnUrl`) và trước bản beta đầu tiên.
+- **Kênh PayOS cho staging** (P05-1 của kế hoạch Giai đoạn 1 · 05): mỗi kênh PayOS chỉ có một URL webhook, nên staging cần một kênh riêng. Cần có trước khi triển khai staging.
+- **Hộp thư nhận cảnh báo vận hành** (P05-5, `OPERATOR_EMAIL`, §10.2). Cần có trước khi triển khai staging.
+- **Pháp lý:** hỏi luật sư về:
+  - hồ sơ chuyển dữ liệu cá nhân ra nước ngoài (§10.1);
+  - việc **giữ dữ liệu cá nhân không thời hạn** (§10.1), xét theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân (hiệu lực từ 1/1/2026);
+  - thủ tục thông báo website bán hàng với Bộ Công Thương.
+- **PayOS:** liên kết tài khoản ngân hàng nhận tiền theo loại hình đăng ký kinh doanh (doanh nghiệp, hộ kinh doanh hoặc cá nhân).
 - **Thanh toán quốc tế:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam, nên MVP chỉ bán cho khách ở Việt Nam. Muốn bán ra nước ngoài thì chọn thêm một nhà cung cấp sau MVP (có thể cân nhắc Polar).
-- **Dịch vụ gửi email** chứa license key.
-- **Tài khoản Cloudflare riêng** cho license server.
 - **Giấy tờ cho phát hành:** mua chứng thư ký mã OV cho Windows, loại ký trên cloud (§6.11); tài khoản Apple Developer (99 USD/năm).
 - **Website:** trang tải app, trang giá, chính sách quyền riêng tư và điều khoản sử dụng. Phần này sẽ có spec riêng.
+- **Hóa đơn điện tử và thuế: để sau MVP.** Trước khi làm, hỏi kế toán về nghĩa vụ khi bán phần mềm cho khách ở Việt Nam. PayOS có trường thông tin người mua và API hóa đơn để tích hợp.
