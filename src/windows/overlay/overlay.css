@@ -1,0 +1,38 @@
+body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.overlay {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  color: #ffffff;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.35;
+}
+
+.overlay.unlocked {
+  cursor: move;
+  outline: 1px dashed rgba(255, 255, 255, 0.4);
+  outline-offset: -1px;
+}
+
+.overlay .source {
+  font-size: 0.6em;
+  opacity: 0.75;
+}
+
+.overlay .provisional {
+  opacity: 0.6;
+}
+
+.overlay .waiting {
+  opacity: 0.6;
+  font-size: 0.7em;
+}
