@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Mục tiêu:** Làm MVP theo spec §13 (Giai đoạn 1): đủ F1–F10, có license server nhận thanh toán PayOS (§6.8), và đạt A1–A7. Công việc chia thành tám kế hoạch con 01–08; mỗi kế hoạch cho ra một phần chạy và test được. File này giữ bảng đối chiếu từ spec sang kế hoạch con để không sót yêu cầu nào, cùng các quy ước chung, việc còn chờ, rủi ro và các điểm cần chủ dự án quyết.
+**Mục tiêu:** Làm MVP theo spec §13 (Giai đoạn 1): đủ F1–F10, có license server nhận thanh toán PayOS với bốn gói và hạn mức (§2, §6.8), và đạt A1–A7. Công việc chia thành tám kế hoạch con 01–08; mỗi kế hoạch cho ra một phần chạy và test được. File này giữ bảng đối chiếu từ spec sang kế hoạch con để không sót yêu cầu nào, cùng các quy ước chung, việc còn chờ, rủi ro và các điểm cần chủ dự án quyết.
 
 **Kiến trúc:** Giữ kiến trúc §5.
 - Tiến trình chính Tauri không chứa ggml. Nhận dạng và dịch chạy trong hai tiến trình phụ, `asr-worker` và `llama-server`.
@@ -178,7 +178,8 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - xác nhận đã đóng app nặng trước mỗi lượt đo S6 (mục 6.9).
 - **Phần cho hạn mức (06):** 02 cung cấp số đo `SessionMetrics::translated_speech_ms`, và cho phép dừng phiên với lý do `quota_exhausted`.
   - Cách đếm phải khớp spec §6.8 ("Hạn mức"): chỉ đoạn thật sự được dịch, mỗi đoạn một lần; không tính `same_lang`, `dropped`, đoạn bị lọc, `skipped`, `failed`.
-  - **Cần sửa ở 02b:** bản đang review cộng `translated_speech_ms` ngay khi đoạn chép lời xong và khác ngôn ngữ đích, nên vẫn tính cả đoạn về sau thành `skipped` hay `failed`. Kiểm thêm `start_ms`, `end_ms` của đoạn có gồm phần đệm 224 ms không (Q5 đề xuất không tính đệm).
+  - **Cần sửa ở 02b:** bản đang review cộng `translated_speech_ms` ngay khi đoạn chép lời xong và khác ngôn ngữ đích, nên vẫn tính cả đoạn về sau thành `skipped` hay `failed`. Spec nay cộng khi phụ đề sang `done`.
+  - **Cần thêm ở 02:** `Segment.speech_ms` (spec §6.3, dòng 349). `start_ms`, `end_ms` không gồm phần đệm; đoạn gộp ở hàng đợi cộng `speech_ms` của từng đoạn con. Chạm hạn mức thì bỏ hàng đợi, chỉ dịch xong câu đang dịch (dòng 333).
 - **Trạng thái:** đã viết thành ba file 02a, 02b, 02c; đang review. Các điểm lệch spec mà controller đã chấp nhận (luồng riêng không tokio, hỏi định kỳ 500 ms khi đổi thiết bị, trường `replaces`, chờ lần đầu tới 180 giây, Q4 cách 2, giữ flash attention tắt, `PipelineConfig`, giao thức `asr-worker` bản 2) đã vào spec ngày 2026-10-01.
 
 ### 2.3 Kế hoạch 03: Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ
@@ -265,6 +266,10 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - khóa dự phòng: secret `TOKEN_SIGNING_KEY_NEXT` thay cho bản trong kho mật khẩu (QĐ29, Task 7, 19, 21, Phụ lục A); chuyển khóa bằng cấu hình của Worker vì secret không đọc lại được; lệnh admin ký thử bằng khóa dự phòng;
   - Q9: giữ dữ liệu không thời hạn; `POST /admin/erase` chỉ chạy tay; bỏ "Chờ Q9" ở bảng "Nơi lưu dữ liệu cá nhân";
   - Q10: không gửi thông tin hóa đơn (giữ QĐ23).
+  - Token thêm `quota_epoch` (số nguyên của activation) và `activation_created_at`; bảng `activations` thêm cột `quota_epoch`.
+  - Thao tác admin "reset hạn mức của máy": tăng `quota_epoch` của một activation, ghi nhật ký.
+  - "Hiện tại" của gia hạn và đổi gói là `transactionDateTime` của PayOS, kẹp trong thời hạn của link; admin cấp tay không qua đơn dùng lúc thao tác.
+  - Mô tả đơn đổi tiền tố từ `MT` sang `AT` (`AT<order_code>`, vẫn tối đa 9 ký tự).
   - Các điểm lệch nhỏ của 05 (`snake_case`, `consent`, `order_token` trong header, lịch đối soát, khóa tạm, chặn IP và CGNAT, cảnh báo, `kid` có số thứ tự, dải số đơn, phân loại lỗi email, Worker admin riêng, webhook `/v1/webhooks/{provider}`) đã vào spec ngày 2026-10-01.
 
 ### 2.6 Kế hoạch 06: Bản quyền trong app
@@ -272,6 +277,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
 - **Mục tiêu:** F8 phía app. Gồm:
   - `LicenseProvider`; token dùng được khi offline; `device_id_hash`; lịch `validate`;
   - hạn mức cho mọi gói (spec §6.8, "Hạn mức"): đếm riêng trên từng máy; Free 10 phút mỗi ngày; chu kỳ 30 ngày tính từ `cycle_anchor` cho gói trả phí; bộ đếm trong kho khóa; dừng phiên với `quota_exhausted`;
+  - luật hạn mức sau review spec (spec §6.8, "Hạn mức"; dòng 331–333, 343–348): `n` tính theo `issued_at` của token mới nhất; khóa bộ đếm (`license_id`, mốc đầu chu kỳ, `quota_epoch`); bản ghi đánh dấu và `activation_created_at` để phát hiện mất bản ghi; "đồng hồ thật" của Free; Free cộng cả phút dịch lúc ở gói trả phí; chu kỳ cuối ngắn; không bắt đầu phiên khi hạn mức còn 0;
   - màn hình Nâng cấp hiện 4 gói, mua bằng VietQR ngay trong app, gia hạn và đổi gói;
   - khóa tính năng Pro (mọi gói trả phí);
   - chống chỉnh lùi đồng hồ, và tự kiểm chữ ký của app (§10.2).
@@ -283,7 +289,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - Key đã đủ 2 máy thì gỡ từ xa được một máy.
   - Khi ở Free, tính năng Pro (lịch sử, xuất file, từ điển) bị khóa.
   - Test token dùng vector của 05.
-- **Spec phụ trách:** F8, P1, P2; §4.2 bước 2; §4.3 (Bản quyền, Nâng cấp, hạn mức còn lại); §6.8 phía app; §9 (quota, license, mất mạng, 409, đơn chậm); §10.1 (ô đồng ý); §10.2 (crack, ký lại, đồng hồ, kho khóa, hai khóa công khai); §11 (quota, bản quyền, bảo mật).
+- **Spec phụ trách:** F8, P1, P2; §4.2 bước 2; §4.3 (Bản quyền, Nâng cấp, hạn mức còn lại); §6.8 phía app; §9 (hạn mức, license, mất mạng, 409, `423`, `429`, đơn chậm, offline qua mốc chu kỳ, mất bản ghi bộ đếm); §10.1 (ô đồng ý); §10.2 (crack, ký lại, đồng hồ, kho khóa, hai khóa công khai); §11 (quota, bản quyền, bảo mật).
 - **Phụ thuộc:** 01 (kho khóa, màn hình), 02 (thời lượng tiếng nói), 03 (điểm kiểm tra Pro, Đ6), 05 (staging chạy được, vector token).
 - **Làm trên Mac:** phần lớn.
 - **Cần Windows:** MachineGuid, Credential Manager, `WinVerifyTrust`.
@@ -487,7 +493,7 @@ Cách đọc:
 | 54 | Cài đặt, nhóm Phím tắt | 01 | | chưa làm |
 | 55 | Cài đặt, nhóm Bản quyền: nhập key; gói đang dùng, trạng thái và ngày hết hạn; hạn mức còn lại của chu kỳ; gia hạn hoặc đổi gói; gỡ kích hoạt | 06 | | chưa làm |
 | 56 | Cài đặt, nhóm Quyền riêng tư: bật/tắt lưu lịch sử; nút xóa toàn bộ dữ liệu (lịch sử và từ điển) | 03 | | chưa làm |
-| 57 | Cài đặt, nhóm Quyền riêng tư: nút "Xóa model và dữ liệu" (xóa thêm model, dùng trước khi gỡ app trên macOS); cả hai nút đều giữ trạng thái bản quyền và quota | 04, 03, 06 | 06 kiểm hai nút không đụng kho khóa (Q14) | chưa làm |
+| 57 | Cài đặt, nhóm Quyền riêng tư: nút "Xóa model và dữ liệu" (xóa thêm model, dùng trước khi gỡ app trên macOS); cả hai nút đều giữ trạng thái bản quyền và bộ đếm hạn mức | 04, 03, 06 | 06 kiểm hai nút không đụng kho khóa (Q14) | chưa làm |
 | 58 | Màn hình Nâng cấp: hiện 4 gói (tên, hạn mức, giá mỗi 30 ngày từ `GET /v1/plans`), đánh dấu gói đang dùng; nhập email, tick đồng ý; quét VietQR hiện ngay trong app; cùng gói là gia hạn 30 ngày, gói khác là đổi gói kèm số ngày quy đổi và ngày hết hạn mới, ghi không hoàn tiền | 06 | | chưa làm |
 | 59 | Giới thiệu và giấy phép mã nguồn mở | 01, 07 | 01 màn hình, nút mở thư mục log (Đ10), câu miễn trừ nhãn hiệu; 07 danh sách giấy phép | chưa làm |
 | 60 | Đóng cửa sổ chính: X (kể cả `Alt+F4`, `⌘W`) chỉ ẩn xuống khay; app, phím tắt và phiên đang chạy vẫn hoạt động | 01 | | chưa làm |
@@ -562,6 +568,7 @@ Cách đọc:
 | 98 | Đầu ra `Segment { id, start_ms, end_ms, samples }`, thời gian tính từ lúc bắt đầu phiên theo đồng hồ thật | 02 | Có từ GĐ0; 02 kiểm với luồng thu thật | chưa làm |
 | 99 | Silero VAD v6.2.3 chạy bằng `candle-onnx` trong tiến trình chính; không dùng `ort`; state LSTM `detach()` sau mỗi khung; VAD chạy trên luồng riêng có stack từ 4 MiB; VAD vẫn chạy khi `asr-worker` khởi động lại | 02 | Có từ GĐ0 (`vad.rs`); 02 tạo luồng 4 MiB trong app | chưa làm |
 | 100 | Việc cho MVP §6.3: chọn luật ghép câu tốt hơn cho zh và ja (ví dụ khoảng nghỉ đủ dài là hết câu), dựa trên dữ liệu hội thoại thật | 02, 02 (người) | Q6; chưa có dữ liệu thì giữ luật hiện tại, như spec cho phép | chưa làm |
+| 349 | `Segment` có thêm `speech_ms` (độ dài tiếng nói, không gồm đệm); `start_ms`, `end_ms` không gồm phần đệm, `samples` có cả đệm; đoạn gộp ở hàng đợi có `speech_ms` bằng tổng các đoạn con, không tính khoảng nghỉ | 02 | Spec §6.3 sửa sau review; dùng cho hạn mức (dòng 186) | chưa làm |
 
 ### 4.9 Nhận dạng giọng nói (§6.4)
 
@@ -651,7 +658,7 @@ Cách đọc:
 | # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
 |---|---|---|---|---|
 | 164 | License server riêng: TypeScript + Hono, Cloudflare Workers, D1, tài khoản Cloudflare riêng; khóa API của PayOS chỉ nằm trên server | 05 | | chưa làm |
-| 165 | Interface `PaymentProvider` (`create_checkout`, `verify_webhook`, `get_payment_status`); PayOS là cài đặt đầu tiên; thêm cổng chỉ cần một cài đặt và một endpoint webhook | 05 | | chưa làm |
+| 165 | Interface `PaymentProvider` (`create_checkout`, `verify_webhook`, `get_payment_status`); PayOS là cài đặt đầu tiên; webhook là route chung `/v1/webhooks/{provider}`, server chọn cổng theo cột `provider` của đơn; thêm cổng chỉ cần một cài đặt | 05 | Spec §6.8 sửa theo 05 QĐ28 | chưa làm |
 | 166 | Bảng đơn hàng lưu thêm `provider` và `currency`; mỗi gói trả phí có giá riêng theo từng loại tiền | 05 | Giá chốt (Q2) | chưa làm |
 | 167 | License dựa vào gói, `expires_at` và `cycle_anchor`; mỗi đơn trả trước là 30 ngày, theo luật mua thêm và đổi gói (dòng 327, 328) | 05 | Thuê bao quốc tế để Giai đoạn 2 | chưa làm |
 | 168 | `POST /v1/checkout` với `plan` là `pro`, `pro_x2` hoặc `pro_x5`, `email`, `consent: true`, `license_key` khi gia hạn hay đổi gói: tạo đơn có `order_code` duy nhất, gọi PayOS `POST /v2/payment-requests` với `expiredAt` bằng hiện tại + 15 phút; trả `order_code`, `checkout_url`, `qr_code`, `order_token`, `amount`, `currency`, `expires_at`, và ước tính `license_expires_at` khi có key; tên trường `snake_case` | 05 | 05 sửa từ `pro_1m`, `pro_12m` | chưa làm |
@@ -660,11 +667,11 @@ Cách đọc:
 | 171 | `POST /v1/licenses/activate`: tối đa 2 máy; `device_id_hash` đã có activation thì dùng lại, không tốn suất; đủ 2 máy thì trả `409` kèm `activation_id`, `device_label`, thời điểm `validate` gần nhất | 05 | | chưa làm |
 | 172 | `POST /v1/licenses/validate`: trả token mới nếu license còn hiệu lực | 05 | | chưa làm |
 | 173 | `POST /v1/licenses/deactivate`: gọi từ chính máy đó, hoặc gỡ từ xa từ máy mới khi key đã đủ 2 máy; mỗi lần gỡ tính vào giới hạn ở §10.2 | 05 | | chưa làm |
-| 174 | `POST /v1/licenses/recover`: gửi lại mọi key còn hiệu lực vào chính email đó; luôn trả `200`; có giới hạn tần suất | 05 | | chưa làm |
-| 175 | Gửi email qua Resend (API HTTP gọi từ Worker), sau interface `EmailProvider`; khóa API của Resend là secret của Worker; tên miền gửi xác thực SPF, DKIM; văn bản thuần vi/en; lỗi email không chặn cấp key; chỉ 400 và 422 là lỗi vĩnh viễn, lỗi khác gửi lại giãn dần trong 24 giờ | 05 | Chờ T6, tên miền (Q1) | chưa làm |
+| 174 | `POST /v1/licenses/recover`: gửi lại mọi key còn hiệu lực vào chính email đó; luôn trả `200`; tra và gửi thư sau khi đã trả lời, để thời gian phản hồi không lộ email nào có key; email không có key thì không gửi gì; có giới hạn tần suất | 05 | 05 QĐ15 | chưa làm |
+| 175 | Gửi email qua Resend (API HTTP gọi từ Worker), sau interface `EmailProvider`; khóa API của Resend là secret của Worker; tên miền gửi xác thực SPF, DKIM; văn bản thuần vi/en; lỗi email không chặn cấp key; email mua hàng có idempotency key theo đơn, gửi lại không thành hai thư; chỉ 400 và 422 là lỗi vĩnh viễn, lỗi khác gửi lại giãn dần trong 24 giờ | 05 | Chờ T6, tên miền (Q1) | chưa làm |
 | 176 | `/admin/*` ở Worker admin riêng sau Cloudflare Access: tra cứu theo email hoặc `order_code`, gửi lại key; mở khóa key bị khóa tạm; cấp hoặc gia hạn tay; gỡ activation, thu hồi key; xóa hoặc ẩn danh dữ liệu theo email, chỉ chạy tay; ký thử bằng khóa dự phòng; mọi thao tác ghi nhật ký | 05, 05 (người) | Q9: không có cron tự xóa; R15 | chưa làm |
 | 177 | Chữ ký khi tạo link thanh toán: HMAC-SHA256 bằng checksum key trên `amount`, `cancelUrl`, `description`, `orderCode`, `returnUrl` xếp theo thứ tự chữ cái | 05 | | chưa làm |
-| 178 | Token bản quyền ký Ed25519, khóa công khai build sẵn trong app; trường `kid`, `license_id`, `plan` (mã gói `pro`, `pro_x2`, `pro_x5`), `expires_at`, `cycle_anchor`, `quota_minutes_per_cycle` (`null` là không giới hạn), `activation_id`, `device_id_hash`, `issued_at`, `refresh_before` (= `issued_at` + 14 ngày) | 05, 06 | Vector test chung (Đ9); 05 sửa QĐ11 (`plan` là mã gói) | chưa làm |
+| 178 | Token bản quyền ký Ed25519, khóa công khai build sẵn trong app; trường `kid`, `license_id`, `activation_id`, `device_id_hash`, `activation_created_at`, `quota_epoch`, `plan` (mã gói `pro`, `pro_x2`, `pro_x5`), `expires_at`, `cycle_anchor`, `quota_minutes_per_cycle` (`null` là không giới hạn), `issued_at`, `refresh_before` (= `issued_at` + 14 ngày) | 05, 06 | Vector test chung (Đ9); 05 sửa QĐ11 (`plan` là mã gói) | chưa làm |
 | 179 | `device_id_hash` là SHA-256 của IOPlatformUUID (macOS) và MachineGuid (Windows) | 06, 06 (Win) | | chưa làm |
 | 180 | Quá `refresh_before` mà chưa làm mới được token thì app về Free | 06 | | chưa làm |
 | 181 | Quá `expires_at`: nếu có mạng thì gọi `validate` trước; chỉ về Free và nhắc gia hạn khi server xác nhận chưa gia hạn, hoặc khi không có mạng | 06 | | chưa làm |
@@ -672,7 +679,7 @@ Cách đọc:
 | 183 | Gia hạn: nhắc trước 7 ngày và khi đã hết hạn; nút "Gia hạn" mở màn hình Nâng cấp, tạo đơn mới gắn với key hiện có, cùng gói hoặc đổi gói | 06 | | chưa làm |
 | 184 | Kiểm tra định kỳ: lúc khởi động và sau đó mỗi giờ; lần `validate` thành công gần nhất quá 24 giờ và có mạng thì gọi `validate`, kể cả khi app chạy liên tục nhiều ngày | 06 | | chưa làm |
 | 185 | Máy bị gỡ từ xa về Free ở lần `validate` kế tiếp; nếu máy đó offline thì token cũ dùng được tới `refresh_before` | 06 | | chưa làm |
-| 186 | Cách đếm phút cho mọi gói: chỉ độ dài tiếng nói của đoạn đã chép lời và khác ngôn ngữ đích, thật sự được dịch; không tính `same_lang`, `dropped`, đoạn bị lọc, `skipped`, `failed`, im lặng; mỗi đoạn tính một lần kể cả khi dịch lại sau ghép hay gộp; bộ đếm trong kho khóa | 06, 02 | Q5 theo đề xuất; 02b cần sửa chỗ cộng `translated_speech_ms` (mục 2.2) | chưa làm |
+| 186 | Cách đếm phút cho mọi gói: `speech_ms` của đoạn (không gồm đệm; đoạn gộp cộng từng đoạn con) đã chép lời và khác ngôn ngữ đích, cộng khi phụ đề sang `done`; không tính `same_lang` (chép lời cùng ngôn ngữ là miễn phí, có chủ ý), `dropped`, đoạn bị lọc, `skipped`, `failed`, im lặng; mỗi đoạn tính một lần kể cả khi dịch lại sau ghép hay gộp; bộ đếm trong kho khóa | 06, 02 | Q5 theo đề xuất; 02 thêm `speech_ms` và sửa chỗ cộng `translated_speech_ms` (mục 2.2) | chưa làm |
 | 187 | Hạn mức Free reset lúc 00:00 theo giờ máy, chỉ khi ngày đã tăng so với lần reset trước và đã qua ít nhất 20 giờ theo đồng hồ thật | 06 | | chưa làm |
 | 188 | Mất bản ghi bộ đếm trong khi app đã có dữ liệu từ trước thì coi như đã dùng hết hạn mức của ngày (Free) hoặc của chu kỳ hiện tại (gói trả phí); ngày hay chu kỳ mới chưa có bộ đếm thì bắt đầu từ 0 | 06 | | chưa làm |
 | 189 | Trong app, interface `LicenseProvider` (activate, validate, deactivate) cài bằng client gọi license server | 06 | | chưa làm |
@@ -682,11 +689,20 @@ Cách đọc:
 | 328 | Đổi gói khi license còn hạn: gói mới bắt đầu ngay, `cycle_anchor` = hiện tại; `ngày_quy_đổi` = floor(ngày_còn_lại × giá_cũ / giá_mới), giá theo bảng hiện hành; `expires_at` = hiện tại + 30 ngày + `ngày_quy_đổi`; không hoàn tiền; license đã hết hạn thì tính như license mới giữ key cũ; checkout trả ước tính `license_expires_at` | 05, 06 | 06 hiện số ngày quy đổi trước khi trả tiền | chưa làm |
 | 329 | `validate` trả token theo gói và hạn hiện tại; máy thứ hai của cùng key nhận gói mới ở lần `validate` kế tiếp | 05, 06 | | chưa làm |
 | 330 | Hạn mức đếm riêng trên từng máy, hai máy không chia chung; server không theo dõi số phút | 06 | | chưa làm |
-| 331 | Chu kỳ hạn mức của gói trả phí: 30 ngày từ `cycle_anchor`, `n` = floor((hiện tại − `cycle_anchor`) / 30 ngày); chu kỳ mới chỉ bắt đầu khi đã có token với `issued_at` qua mốc đầu chu kỳ; qua mốc thì gọi `validate` ngay nếu có mạng | 06 | Luật `issued_at` là điểm controller tự thêm, chờ chủ dự án xem (Q16) | chưa làm |
-| 332 | Bộ đếm của gói trả phí có khóa (`license_id`, lúc bắt đầu chu kỳ); gỡ máy rồi kích hoạt máy khác không chuyển bộ đếm (máy mới bắt đầu từ 0); kích hoạt lại chính máy cũ thì dùng tiếp bộ đếm cũ | 06 | Khóa theo lúc bắt đầu chu kỳ thay cho số thứ tự (Q16) | chưa làm |
-| 333 | Khi hết hạn mức: câu đang dịch dở được dịch xong (vượt tối đa một câu); hết hạn mức gói trả phí thì không dùng thêm 10 phút Free; tính năng Pro khác vẫn dùng được khi gói còn hạn | 06, 02 | Q16 | chưa làm |
+| 331 | Chu kỳ hạn mức của gói trả phí: 30 ngày từ `cycle_anchor`; `n` = floor((`issued_at` của token mới nhất − `cycle_anchor`) / 30 ngày), không theo giờ máy; giờ máy qua mốc thì gọi `validate` ngay nếu có mạng; `issued_at` của token mới vẫn trước mốc thì hẹn `validate` lại sau (mốc − `issued_at`) + 1 phút | 06 | Q16 | chưa làm |
+| 332 | Bộ đếm của gói trả phí có khóa (`license_id`, mốc đầu chu kỳ, `quota_epoch`); gỡ máy rồi kích hoạt máy khác không chuyển bộ đếm (máy mới bắt đầu từ 0); kích hoạt lại chính máy cũ thì dùng tiếp bộ đếm cũ; xoay key là rủi ro chấp nhận | 06 | Q16 | chưa làm |
+| 333 | Chạm hạn mức: hạn mức còn 0 thì không cho bắt đầu phiên; đang dịch thì bỏ hàng đợi, chỉ dịch xong câu đang dịch, dừng với `quota_exhausted`; tính năng Pro khác vẫn dùng được khi gói còn hạn | 06, 02 | Q16 | chưa làm |
 | 334 | App xử lý `423 license_locked` (báo key bị khóa tạm, hướng dẫn liên hệ hỗ trợ) và `429` kèm `Retry-After` (báo thử lại sau, không thử lại liên tục) | 06 | Spec §9 thêm hai dòng ngày 2026-10-01 | chưa làm |
 | 335 | Admin ký thử một token bằng khóa dự phòng `TOKEN_SIGNING_KEY_NEXT`, rồi kiểm bằng `keys/public-keys.json`, để chứng minh khóa công khai build sẵn trong app khớp | 05, 05 (người) | Thay `jwk-public.mjs` đọc từ kho mật khẩu (05 QĐ31) | chưa làm |
+| 340 | Token thêm `quota_epoch` (số nguyên của activation, bắt đầu từ 0) và `activation_created_at`; thao tác admin "reset hạn mức của máy" tăng `quota_epoch` của một activation và ghi nhật ký, chỉ làm khi khách liên hệ | 05, 05 (người) | Spec §6.8 sửa sau review | chưa làm |
+| 341 | "Hiện tại" của gia hạn và đổi gói là thời điểm thanh toán do PayOS báo (`transactionDateTime`), kẹp trong thời hạn của link; admin cấp tay không qua đơn dùng lúc thao tác; ước tính của checkout chênh tối đa 15 phút, `ngày_quy_đổi` có thể ít hơn 1 ngày | 05 | | chưa làm |
+| 342 | Mô tả đơn PayOS là `AT<order_code>`, `AT` cộng tối đa 7 chữ số, không quá 9 ký tự | 05 | Thay tiền tố `MT` của 05 | chưa làm |
+| 343 | Free: "đồng hồ thật" là thời gian đơn điệu cộng dồn lúc app chạy, lưu trong kho khóa, cộng header `Date` của server khi có mạng (lấy giá trị lớn nhất); bộ đếm Free của ngày cộng cả phút dịch lúc ở gói trả phí; hết hạn mức gói trả phí thì Free của ngày cũng hết; lách khi offline lâu là rủi ro chấp nhận | 06 | Q16 | chưa làm |
+| 344 | Mất bản ghi bộ đếm theo luật chặt: bản ghi đánh dấu "đã từng chạy license này" trong kho khóa; ba trường hợp coi là mất (Free không còn bộ đếm ngày; bản ghi đánh dấu nói đã có bộ đếm mà không còn; không có bản ghi đánh dấu, không có bộ đếm, `activation_created_at` trước mốc đầu chu kỳ); máy kích hoạt mới thật bắt đầu từ 0; app báo rõ lý do và hướng dẫn liên hệ hỗ trợ | 06 | Q16, R22 | chưa làm |
+| 345 | Chu kỳ cuối ngắn hơn 30 ngày (`expires_at` trước mốc đầu chu kỳ kế tiếp): hạn mức `ceil(quota_minutes_per_cycle × số_ngày / 30)`, app tự tính từ `expires_at`, gia hạn thì tính lại | 06 | Q16 | chưa làm |
+| 346 | Hiển thị thời điểm reset: Free là max(00:00 hôm sau, lần reset trước + 20 giờ); gói trả phí là mốc đầu chu kỳ kế tiếp, kèm ghi chú cần có mạng; `expires_at` đến trước mốc đó thì báo ngày hết hạn | 06, 03 | Spec §4.2 | chưa làm |
+| 347 | Giờ máy qua mốc chu kỳ mới khi offline: dùng tiếp bộ đếm của chu kỳ cũ, báo cần kết nối mạng để mở hạn mức mới; có mạng thì gọi `validate` ngay | 06 | Spec §9 | chưa làm |
+| 348 | Quy ước chung của API: tên trường `snake_case`; lỗi có dạng `{"error": "<mã>", …}`; thời điểm tính bằng giây Unix; `429` kèm `Retry-After`; chỉ nhận HTTPS ngoài môi trường dev; không bật CORS (app gọi từ phía Rust); trạng thái đơn `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed` (`PAID` mà thiếu tiền là `underpaid`) | 05, 06 | Spec §6.8 sửa theo 05 QĐ20, QĐ26 và hợp đồng API | chưa làm |
 
 ### 4.14 Cài đặt (§6.9)
 
@@ -838,11 +854,11 @@ Cách đọc:
 | 286 | Unit: tạo prompt (nhánh tiếng Trung và không tiếng Trung, tên ngôn ngữ của từng mẫu); khớp thuật ngữ tiếng Việt có dấu và chữ Trung, Nhật, Hàn | 02, 03 | Prompt có từ GĐ0; thuật ngữ ở 03 | chưa làm |
 | 287 | Unit: hậu xử lý bản dịch khi đang stream (lọc nhãn và ngoặc kép, ngưỡng tỉ lệ token theo cặp, thử lại với tham số khác) | 02 | | chưa làm |
 | 288 | Unit: các trạng thái của phụ đề, kể cả `same_lang`, `skipped`, `dropped` | 02 | | chưa làm |
-| 289 | Unit: hạn mức (cách đếm phút; Free reset theo ngày, đổi múi giờ không reset được; chu kỳ 30 ngày từ `cycle_anchor`, chu kỳ mới cần `issued_at` qua mốc; đổi gói không dùng lại bộ đếm cũ; mất bản ghi thì coi như hết hạn mức; `quota_exhausted`; X5 không giới hạn) | 06 | | chưa làm |
+| 289 | Unit: hạn mức theo spec §11 (cách đếm phút theo `speech_ms`; Free reset theo ngày và "đồng hồ thật", header `Date`, Free cộng phút của gói trả phí; `n` theo `issued_at`, hẹn `validate` lại, offline qua mốc; chu kỳ cuối ngắn; khóa bộ đếm có `quota_epoch`; ba trường hợp mất bản ghi và máy kích hoạt mới thật; chạm hạn mức; X5 không giới hạn) | 06 | | chưa làm |
 | 290 | Unit: trạng thái bản quyền (ân hạn, thu hồi, tự làm mới token khi app chạy liên tục quá 24 giờ) | 06 | | chưa làm |
 | 291 | Unit: manifest và SHA-256 | 04 | | chưa làm |
-| 292 | Test giao diện (vitest): i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề; các hàm xuất file | 01, 03 | Q12 về hàm xuất file | chưa làm |
-| 293 | License server, unit: HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp khi `PAID`, `amountPaid` ≥ `amount` và `amount` khớp đơn; mua thêm cùng gói; đổi gói (công thức quy đổi, hai ví dụ của spec §6.8); giới hạn 2 máy, kích hoạt lại cùng máy, gỡ từ xa; khóa tạm `423`; chặn IP và CGNAT; `recover` luôn trả `200`; ký và kiểm token Ed25519 có `cycle_anchor`, `quota_minutes_per_cycle`; phân loại lỗi email | 05 | | chưa làm |
+| 292 | Test giao diện (vitest): i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề. Các hàm xuất file viết và test phía Rust (`transcript/export.rs`) | 01, 03 | Spec §11 sửa theo Q12 | chưa làm |
+| 293 | License server, unit: HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp khi `PAID`, `amountPaid` ≥ `amount` và `amount` khớp đơn; mua thêm cùng gói; đổi gói (công thức quy đổi, hai ví dụ của spec §6.8); "hiện tại" là `transactionDateTime` kẹp trong thời hạn link; giới hạn 2 máy, kích hoạt lại cùng máy, gỡ từ xa; khóa tạm `423`; chặn IP và CGNAT; `recover` luôn trả `200`; ký và kiểm token Ed25519 có `cycle_anchor`, `quota_minutes_per_cycle`, `quota_epoch`, `activation_created_at`; reset hạn mức của máy; phân loại lỗi email | 05 | | chưa làm |
 | 294 | License server, tích hợp: PayOS trên môi trường test nếu có, không có thì giao dịch số tiền nhỏ | 05, 05 (người) | R14 | chưa làm |
 | 295 | Tích hợp: chạy pipeline từ file WAV, kiểm phụ đề có xuất hiện, đúng thứ tự, đúng thời gian | 02 | Clip ở `tests/fixtures/audio/` (Đ20) | chưa làm |
 | 296 | Tích hợp: vòng đời hai tiến trình phụ (đúng thứ tự, giả lập crash, tự khởi động lại, gửi lại đoạn, chuyển CPU sau 2 lần crash khi dùng GPU, tắt sau 10 phút không dịch) | 02 | | chưa làm |
@@ -881,8 +897,8 @@ Cách đọc:
 
 | # | Yêu cầu | Kế hoạch | Ghi chú | Trạng thái |
 |---|---|---|---|---|
-| 322 | §13, Giai đoạn 1: làm F1–F10, license server và tích hợp PayOS, đạt A1–A7 | 00, 08 | Task 5 | chưa làm |
-| 323 | §14 giả định 7 (PayOS): webhook và HMAC-SHA256 đúng tài liệu; PayOS không có sandbox nên test bằng giao dịch nhỏ; mô tả đơn ngắn (một số ngân hàng tối đa 9 ký tự), dùng `MT` cộng số đơn tối đa 7 chữ số; dải số đơn staging 1 tới 999.999, production từ 1.000.001, trần 9.999.999 | 05 | Đăng ký merchant đã xong (T5) | chưa làm |
+| 322 | §13, Giai đoạn 1: làm F1–F10, license server và tích hợp PayOS, bốn gói và hạn mức, đạt A1–A7 | 00, 08 | Task 5 | chưa làm |
+| 323 | §14 giả định 7 (PayOS): webhook và HMAC-SHA256 đúng tài liệu; PayOS không có sandbox nên test bằng giao dịch nhỏ; mô tả đơn ngắn (một số ngân hàng tối đa 9 ký tự), dùng `AT` cộng số đơn tối đa 7 chữ số; dải số đơn staging 1 tới 999.999, production từ 1.000.001, trần 9.999.999 | 05 | Đăng ký merchant đã xong (T5); tiền tố `AT` ở dòng 342 | chưa làm |
 | 324 | §15, việc còn mở: logo và tên miền; kênh PayOS cho staging (P05-1); hộp thư nhận cảnh báo (P05-5); pháp lý (chuyển dữ liệu ra nước ngoài, giữ dữ liệu cá nhân không thời hạn, thông báo website bán hàng); thanh toán quốc tế; chứng thư ký mã và tài khoản Apple Developer; website; hóa đơn điện tử để sau MVP | CDA, 00 | Tên, bundle id, giá, thời gian lưu dữ liệu, hóa đơn điện tử đã chốt 2026-10-01 (Q1, Q2, Q9, Q10); email đã chọn Resend, tài khoản Cloudflare đã có | chưa làm |
 
 ## 5. Việc chờ và cách không bị chặn
@@ -1138,19 +1154,19 @@ Cách làm:
 | R15 | Cloudflare Access bảo vệ theo tên miền và đường dẫn: `/admin` trên `*.workers.dev`, hay chung tên miền với API, cần cấu hình đúng; Worker vẫn phải tự kiểm JWT của Access | §6.8, §10.2 | 05 chọn giữa Worker admin riêng và đường dẫn trên tên miền riêng; test Worker từ chối request thiếu JWT hợp lệ | 05 |
 | R16 | Chưa có tên miền (chủ dự án mua sau): email production, tên miền của R2 và Worker, `returnUrl` của PayOS chưa có đích thật | Q1, T7 | Staging dùng tên miền tạm; mọi URL đọc từ cấu hình | 04, 05, 07 |
 | R17 | Đổi bundle identifier sau khi đã có người dùng làm mất thư mục dữ liệu (model) và các mục trong kho khóa | Q1, §6.7 | Đã chốt `com.aitranslator.desktop` ngày 2026-10-01; 01 đổi trước khi 03 và 06 ghi vào kho khóa; identifier đọc từ một chỗ duy nhất | 01, 07 |
-| R18 | Mất khóa ký bản cập nhật thì không cập nhật được các bản đã cài; lộ khóa thì kẻ gian phát hành được bản giả | §6.11, §10.2 | Bản sao ngoại tuyến (mục 6.5); chỉ job phát hành của CI đọc khóa | 07 |
+| R18 | Mất khóa ký bản cập nhật thì không cập nhật được các bản đã cài; lộ khóa thì kẻ gian phát hành được bản giả | §6.11, §10.2 | Chờ Q17 (bản sao của khóa); chỉ job phát hành của CI đọc khóa | 07 |
 | R19 | Hai kế hoạch chạy song song trên `main` sửa cùng file | Đ18 | Chỉ song song khi tập file không giao nhau | 00 |
 | R20 | Với turbo, luật `no_speech` gần như không bao giờ bỏ đoạn, nên câu ảo giác khi chỉ có nhạc hay im lặng chỉ còn bộ lọc câu quen thuộc chặn | §6.4 | Thử trên im lặng, nhiễu, nhạc (Việc cho MVP); bộ lọc câu | 02 |
 | R21 | Việc pháp lý (chuyển dữ liệu ra nước ngoài, giữ dữ liệu cá nhân không thời hạn) có thể lùi ngày bán hoặc buộc đổi cách lưu dữ liệu | §10.1, §15 | Hỏi luật sư sớm; thao tác xóa theo email đã có, nên đổi sang lưu có thời hạn chỉ cần thêm một cron | CDA |
-| R22 | Mất bản ghi bộ đếm của gói trả phí thì người dùng mất hạn mức của cả chu kỳ (tới 30 ngày), trong khi server không có số phút để hỗ trợ khôi phục | spec §6.8, "Hạn mức" | Ghi rõ ở trang hỗ trợ; hỗ trợ cấp tay thêm ngày nếu cần. Chủ dự án xem lại (Q16) | 06 |
+| R22 | Mất bản ghi bộ đếm (kể cả xóa sạch dữ liệu rồi nhập lại key) thì app coi như đã hết hạn mức của cả chu kỳ, theo luật chặt; khách thật bị chặn tới khi liên hệ hỗ trợ | spec §6.8, "Hạn mức" | Không nới luật, vì nới (ví dụ tính theo tỉ lệ) mở ra cách reset hạn mức dễ làm. Đường cứu: người vận hành dùng thao tác "reset hạn mức của máy" (tăng `quota_epoch`); app báo rõ lý do và hướng dẫn liên hệ hỗ trợ (§9) | 05, 06 |
 
 ## 8. Điểm cần chủ dự án quyết
 
 Mỗi điểm có đề xuất. Nếu tới lúc làm mà chưa có quyết định, kế hoạch con làm theo đề xuất và ghi rõ, trừ khi điểm đó ghi "phải quyết".
 
 Cập nhật ngày 2026-10-01:
-- **Đã chốt:** Q1 (trừ tên miền và logo), Q2, Q9, Q10, Q11, P05-6. Spec đã sửa theo ở commit `6804a7c`.
-- **Theo đề xuất đã áp dụng** (kế hoạch con đã làm theo, spec đã sửa nếu cần): Q4, Q5, Q7, Q12, Q13, Q14.
+- **Đã chốt:** Q1 (trừ tên miền và logo), Q2, Q9, Q10, P05-6. Spec đã sửa theo ở commit `6804a7c`, rồi chặt hơn sau review ở commit `868dcfa`.
+- **Theo đề xuất đã áp dụng** (kế hoạch con đã làm theo, spec đã sửa nếu cần): Q4, Q5, Q7, Q11, Q12, Q13, Q14.
 - **Còn mở:** Q3, Q6, Q8, Q15, Q16, Q17; P05-1, P05-2, P05-4, P05-5 của kế hoạch 05.
 
 ### 8.1 Đã chốt
@@ -1184,10 +1200,6 @@ Cập nhật ngày 2026-10-01:
   - Ngoài phạm vi: dữ liệu giới hạn tần suất (khoảng 3 giờ) và log của Cloudflare vẫn tự hết hạn.
   - Còn phải hỏi luật sư về việc giữ không thời hạn, theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân (hiệu lực từ 1/1/2026) (spec §15).
 - **Q10. Hóa đơn điện tử. Chốt ngày 2026-10-01: chưa làm trong MVP.** 05 giữ QĐ23 (không gửi thông tin người mua sang PayOS); 06 không thêm ô nhập. Để sau MVP (spec §15). Hồ sơ chuyển dữ liệu ra nước ngoài vẫn là việc pháp lý còn mở.
-- **Q11. Tạo và giữ khóa ký. Chốt ngày 2026-10-01**, theo đề xuất, trừ phần kho mật khẩu (xem P05-6):
-  - Khóa ký token production: tạo bằng script, không ghi ra đĩa, pipe thẳng vào `wrangler secret put`. Khi đã có CI (Q3), có thể tạo trong một job CI chạy tay.
-  - Khóa ký manifest và khóa ký bản cập nhật: tạo trong CI. Bản sao của hai khóa này: Q17.
-  - Staging dùng cặp khóa riêng.
 - **P05-6 (kế hoạch 05). Kho mật khẩu cho khóa dự phòng. Chốt ngày 2026-10-01: không dùng kho mật khẩu.**
   - Khóa dự phòng là secret riêng của Worker, `TOKEN_SIGNING_KEY_NEXT`, tạo bằng cách pipe thẳng vào `wrangler secret put`, giống khóa chính. Không có bản nào trên máy người vận hành.
   - Khóa công khai của nó build sẵn vào app. Kiểm khớp bằng một lệnh admin ký thử bằng `NEXT`, rồi kiểm bằng `keys/public-keys.json`.
@@ -1196,8 +1208,14 @@ Cập nhật ngày 2026-10-01:
 
 ### 8.2 Theo đề xuất đã áp dụng
 
+- **Q11. Tạo và giữ khóa ký.** Chủ dự án chỉ quyết P05-6 (không dùng kho mật khẩu); phần còn lại làm theo đề xuất:
+  - Khóa ký token production: tạo bằng script, không ghi ra đĩa, pipe thẳng vào `wrangler secret put`. Khi đã có CI (Q3), có thể tạo trong một job CI chạy tay.
+  - Khóa dự phòng ký token: secret `TOKEN_SIGNING_KEY_NEXT` của Worker (P05-6).
+  - Khóa ký manifest và khóa ký bản cập nhật: tạo trong CI. Bản sao của hai khóa này: Q17.
+  - Staging dùng cặp khóa riêng.
+
 - **Q4. Câu gốc ngắn trong ngưỡng tỉ lệ token.** Áp dụng cách 2 (02a QĐ12): chỉ áp tỉ lệ khi câu gốc từ 10 token; câu ngắn hơn chỉ chịu hạn mức sinh (tối đa 68 token). Spec §6.5 đã sửa.
-- **Q5. Định nghĩa "phút dịch".** Áp dụng đề xuất, cho mọi gói (spec §6.8, "Hạn mức"): chỉ tính độ dài tiếng nói của các đoạn đã chép lời, khác ngôn ngữ đích, thật sự được dịch; không tính `same_lang`, `dropped`, đoạn bị lọc, `skipped`, `failed` và lúc im lặng. 02b cần sửa chỗ cộng `translated_speech_ms` cho khớp (mục 2.2).
+- **Q5. Định nghĩa "phút dịch".** Áp dụng đề xuất, cho mọi gói (spec §6.8, "Hạn mức"): phút tính bằng `speech_ms` (không gồm đệm; đoạn gộp cộng từng đoạn con) của các đoạn đã chép lời, khác ngôn ngữ đích, và cộng khi phụ đề sang `done`; không tính `same_lang`, `dropped`, đoạn bị lọc, `skipped`, `failed` và lúc im lặng. Chép lời câu cùng ngôn ngữ đích là miễn phí, có chủ ý. 02 cần thêm `speech_ms` vào `Segment` và sửa chỗ cộng `translated_speech_ms` cho khớp (mục 2.2).
 - **Q7. Chỉ chạy một bản của app.** Áp dụng: 01 dùng `tauri-plugin-single-instance`; lần mở thứ hai chỉ hiện cửa sổ chính của bản đang chạy.
 - **Q12. Các chỗ lệch nhỏ trong spec.** Đã sửa chữ trong spec ngày 2026-10-01:
   - Của file này: §6.1 dùng `objc2-core-audio`, không `coreaudio-sys`; §12 thêm module email, giới hạn tần suất, cảnh báo của `server/src`; §12 ghi logic giám sát tiến trình phụ nằm trong `pipeline` (Đ2); §12 ghi `tests/fixtures/audio/` chỉ chứa vài clip cho test tích hợp (Đ20); §11 ghi hàm xuất file viết và test phía Rust.
@@ -1223,17 +1241,25 @@ Cập nhật ngày 2026-10-01:
   - Chính sách quyền riêng tư phải ghi dữ liệu được giữ không thời hạn và cách yêu cầu xóa (Q9).
   - Cần nội dung từ chủ dự án hoặc luật sư trước khi 06 lên production và trước 07.
 - **Q15. Phương án khi M1 cơ bản không đạt A2 (§8, §13):** nâng hạng máy khuyến nghị, hay dùng gói lai turbo + Q4_K_M trên máy băng thông thấp. Quyết khi có C6. Nhờ Đ7, cả hai phương án đều không cần sửa code app.
-- **Q16. Các chi tiết hạn mức mà controller tự thêm khi sửa spec ngày 2026-10-01.** Đã ghi vào spec §6.8 và §4; chủ dự án xem lại:
-  - Khóa của bộ đếm gói trả phí là (`license_id`, lúc bắt đầu chu kỳ), không phải (`license_id`, số thứ tự chu kỳ). Lý do: đổi gói đặt lại `cycle_anchor` về chu kỳ 0, nên khóa theo số thứ tự sẽ dùng lại bộ đếm của chu kỳ 0 cũ.
-  - Chu kỳ mới chỉ bắt đầu khi đã có token với `issued_at` qua mốc đầu chu kỳ, để chỉnh giờ máy tới trước không mở được chu kỳ mới. Hệ quả: người dùng offline đúng lúc qua mốc chờ tới lần `validate` kế tiếp.
-  - Không tính đoạn `skipped`, `failed` vào phút dịch.
-  - Hết hạn mức gói trả phí thì không dùng thêm 10 phút Free; câu đang dịch dở được dịch xong.
-  - Nhắc khi còn 5 phút áp cho mọi gói có hạn mức, không riêng Free.
-  - Đổi gói: giá quy đổi lấy theo bảng giá hiện hành; số chính thức tính lúc xác nhận đã nhận tiền; checkout trả ước tính `license_expires_at`.
-  - Thêm `GET /v1/plans` để màn hình Nâng cấp lấy giá từ server.
-  - Mất bản ghi bộ đếm của gói trả phí thì mất hạn mức của cả chu kỳ (tới 30 ngày), theo đúng luật Free (R22). Có thể cần nhẹ tay hơn cho khách trả tiền.
-- **Q17. Bản sao của khóa ký bản cập nhật và khóa ký manifest.** Trước đây định giữ bản sao trong kho mật khẩu (mục 6.5); nay không dùng kho mật khẩu (P05-6). Mất khóa ký bản cập nhật thì không cập nhật được app đã cài (R18). Secret của CI không đọc lại được, nên không coi là bản sao.
-  - Cần quyết trước khi 07 tạo khóa production: giữ bản sao ở đâu, hay chấp nhận rủi ro.
+- **Q16. Các chi tiết hạn mức do controller tự quyết** khi sửa spec ngày 2026-10-01 và sau review spec (spec §6.8 "Hạn mức", §4.2, §9, §10.2). Chủ dự án xem lại:
+  - **Đề xuất: giữ như spec; 06 làm theo nếu chưa có quyết định khác.**
+  - Số thứ tự chu kỳ `n` tính theo `issued_at` của token mới nhất (giờ server), nên chỉnh đồng hồ máy tới hay lùi không có tác dụng. Giờ máy qua mốc mà `issued_at` còn trước mốc thì hẹn `validate` lại sau (mốc − `issued_at`) + 1 phút. Offline lúc qua mốc thì dùng tiếp bộ đếm cũ và báo cần có mạng.
+  - Khóa của bộ đếm gói trả phí là (`license_id`, mốc đầu chu kỳ, `quota_epoch`). Mốc đầu chu kỳ thay cho số thứ tự, vì đổi gói đặt lại `cycle_anchor`.
+  - Mất bản ghi bộ đếm theo luật chặt: coi như hết hạn mức của ngày (Free) hoặc cả chu kỳ (gói trả phí). Xóa sạch dữ liệu rồi nhập lại key trên cùng máy cũng tính là mất, nhờ bản ghi đánh dấu trong kho khóa và `activation_created_at` trong token. Đường cứu: admin "reset hạn mức của máy" tăng `quota_epoch` (R22).
+  - "Đồng hồ thật" của Free là thời gian đơn điệu cộng dồn lúc app chạy, lưu trong kho khóa, cộng header `Date` của server khi có mạng. Lách được khi offline lâu: rủi ro chấp nhận.
+  - Bộ đếm Free của ngày cộng cả phút dịch lúc ở gói trả phí; hết hạn mức gói trả phí thì Free của ngày cũng hết.
+  - Chu kỳ cuối ngắn hơn 30 ngày có hạn mức `ceil(hạn_mức × số_ngày / 30)`.
+  - Xoay key sang máy khác cho thêm hạn mức: rủi ro chấp nhận; luật khóa tạm chỉ giới hạn được phần nào.
+  - Chạm hạn mức: không bắt đầu phiên khi còn 0; bỏ hàng đợi, chỉ dịch xong câu đang dịch. Bộ đếm cộng khi phụ đề sang `done`; `same_lang`, `skipped`, `failed` không tính.
+  - Nhắc khi còn 5 phút áp cho mọi gói có hạn mức. Thời điểm reset hiển thị của Free là max(00:00 hôm sau, lần reset trước + 20 giờ).
+  - Đổi gói và gia hạn: "hiện tại" là `transactionDateTime` của PayOS, kẹp trong thời hạn của link; giá quy đổi theo bảng giá hiện hành; checkout trả ước tính `license_expires_at`. Thêm `GET /v1/plans`.
+  - Mô tả đơn PayOS là `AT<7 chữ số>`.
+  - Khi khách yêu cầu xóa dữ liệu, giữ `device_id_hash` ở dạng đã băm (spec §10.1); cần luật sư xác nhận.
+- **Q17. Bản sao của khóa ký bản cập nhật và khóa ký manifest. Phải quyết trước khi 07 tạo khóa production.**
+  - Trước đây định giữ bản sao trong kho mật khẩu (mục 6.5); nay không dùng kho mật khẩu (P05-6). Mất khóa ký bản cập nhật thì không cập nhật được app đã cài (R18). Secret của CI không đọc lại được, nên không coi là bản sao.
+  - Phương án:
+    - (a) bản sao mã hóa bằng passphrase, cất trên USB hoặc giấy, ở nơi an toàn ngoài máy dev;
+    - (b) chấp nhận rủi ro: mất khóa thì người dùng tải lại app từ website, vì bản đã cài không nhận bản cập nhật ký bằng khóa mới.
 - **P05-1 (kế hoạch 05). Kênh PayOS riêng cho staging.** Mỗi kênh chỉ có một URL webhook. Cần có trước khi triển khai staging (Task 19 của 05).
 - **P05-2. Giá thử trên staging.** Đề xuất: giá nhỏ cho từng gói (ví dụ 2.000 đ, 3.000 đ, 4.000 đ); sửa nếu PayOS có mức tối thiểu cao hơn.
 - **P05-4. Giao diện admin.** 05 chỉ làm JSON API, gọi bằng `cloudflared access curl`. Có cần một trang giao diện nhỏ không?
@@ -1246,7 +1272,7 @@ Cập nhật ngày 2026-10-01:
 - **Đ2.** Logic giám sát tiến trình phụ đặt trong crate `pipeline`: thứ tự chạy, chờ 1/2/5 giây, bộ đếm 5 lần trong 10 phút, chuyển sang CPU, chờ lần đầu từ 30 giây, tắt sau 10 phút rảnh, Job Object và process group. `src-tauri/src/sidecar/` chỉ tìm đường dẫn binary, kiểm SHA-256 và phát sự kiện trạng thái. Lý do: test được bằng tiến trình phụ giả mà không cần Tauri, đúng quyết định ngày 2026-10-01 "`src-tauri` chỉ nối".
 - **Đ3.** Ghép câu và luật bỏ đoạn chuyển từ `latency-bench` sang `pipeline`; `latency-bench` gọi lại code của `pipeline`. Lý do: một bản logic duy nhất cho cả app và công cụ đo, nên S6 đo đúng thứ app chạy.
 - **Đ4.** 02 thêm `latency-bench mt-eval`: dịch bộ test A3 bằng code Rust của app (prompt, hậu xử lý, thử lại), ghi JSONL cùng định dạng với `translate.py` để `score_mt.py` chấm; đồng thời thêm nhãn đầu ra cho `score_mt.py`. Lý do: A3 đòi "qua đúng prompt của app", mà công cụ Python chép lại prompt và không có hậu xử lý, nên sẽ lệch khi 02 và 03 đổi code.
-- **Đ5.** Wrapper kho khóa của hệ điều hành (`src-tauri/src/security/keystore.rs`) làm ở 01. Lý do: cả 03 (khóa SQLCipher) và 06 (bản quyền, quota) cần nó, và hai kế hoạch này có thể chạy song song.
+- **Đ5.** Wrapper kho khóa của hệ điều hành (`src-tauri/src/security/keystore.rs`) làm ở 01. Lý do: cả 03 (khóa SQLCipher) và 06 (bản quyền, bộ đếm hạn mức) cần nó, và hai kế hoạch này có thể chạy song song.
 - **Đ6.** 03 khóa tính năng Pro qua một điểm kiểm tra duy nhất phía Rust, bản dev tạm trả Pro; 06 thay bằng trạng thái bản quyền thật và thêm kiểm tra ở nhiều chỗ (§10.2). Lý do: 03 viết và chạy trước 06.
 - **Đ7.** Ngưỡng đề xuất gói (RAM, VRAM, loại GPU) và danh sách tổ hợp gói nằm trong manifest đã ký, không hard-code trong app. Lý do: C6 chưa có số; đổi ngưỡng hay thêm gói lai không cần phát hành lại app.
 - **Đ8.** 04 dùng cặp khóa staging để ký manifest; bản dev của app nhận khóa này. Manifest chính thức ký trong CI của 07. Lý do: §10.2 cấm khóa ký trên máy dev, và hiện chưa có CI.
@@ -1274,7 +1300,7 @@ Cập nhật ngày 2026-10-01:
   - Trước khi triển khai staging của 05: P05-1, P05-5.
   - Trước khi thực thi 02 và 04: Q3, Q6.
   - Trước khi viết 06: Q16.
-  - Trước khi viết 07: Q8, Q17.
+  - Trước khi viết 07: Q8. **Trước khi 07 tạo khóa production: Q17 (phải quyết).**
   - Trước khi 05 lên production: tên miền (phần còn mở của Q1).
   - Khi có kết quả C6: Q15.
 - [ ] **Step 2: Ghi quyết định vào từng mục Q**: ngày và nội dung. Điểm nào đổi yêu cầu của spec thì ghi "cần sửa spec"; chủ dự án sửa spec, hoặc duyệt bản sửa.
@@ -1306,7 +1332,7 @@ Expected: mỗi dòng in số thứ tự, yêu cầu và trạng thái.
 ```bash
 awk -F'|' '/^\| [0-9]+ \|/ {n = $2 + 0; if (n > m) m = n} END {print m + 1}' docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
 ```
-Expected: in số kế tiếp (lúc cập nhật ngày 2026-10-01 là 340).
+Expected: in số kế tiếp (lúc cập nhật ngày 2026-10-01 là 350).
 
 - [ ] **Step 4: Cập nhật các mục khác**: mục 2 (trạng thái viết, bàn giao thực tế nếu khác mô tả), mục 5 (việc chờ đã có kết quả), mục 6.2 (lệnh kiểm tra mới).
 - [ ] **Step 5: Kiểm định dạng bảng**
@@ -1378,7 +1404,7 @@ grep -cE '^\| [0-9]+ \|' "$f"
 awk -F'|' '/^\| [0-9]+ \|/ && $6 !~ /xong|hoãn/ {print $2 "|" $3 "|" $6}' "$f"
 ```
 Expected:
-- Lệnh đầu in tổng số dòng (lúc cập nhật ngày 2026-10-01 là 339, cộng số dòng thêm sau).
+- Lệnh đầu in tổng số dòng (lúc cập nhật ngày 2026-10-01 là 349, cộng số dòng thêm sau).
 - Lệnh thứ hai không in gì.
 - Mỗi dòng `hoãn` có ngày chủ dự án duyệt trong cột Ghi chú.
 
