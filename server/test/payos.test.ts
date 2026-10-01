@@ -198,8 +198,44 @@ describe("PayOS: trạng thái đơn", () => {
     expect(parsePayOSTime("2026-10-01 00:30:00")).toBe(1_790_812_800 - 6.5 * 3600);
     expect(parsePayOSTime("2026-10-01T07:00:00+07:00")).toBe(1_790_812_800);
     expect(parsePayOSTime("2026-10-01T00:00:00.000Z")).toBe(1_790_812_800);
+    expect(parsePayOSTime("2028-02-29T00:00:00Z")).toBe(Date.UTC(2028, 1, 29) / 1000);
     for (const bad of ["", "2026-02-30 10:00:00", "2026-10-01 24:00:00", "2026-10-01T07:00:00", "hôm nay", 1_790_812_800, null]) {
       expect(parsePayOSTime(bad)).toBeNull();
+    }
+  });
+
+  it("ISO 8601 với ngày giờ không có thật thì null, như nhánh giờ Việt Nam (Date.parse tự cộng sang ngày sau)", () => {
+    for (const bad of [
+      "2026-02-30T10:00:00Z",
+      "2026-02-29T10:00:00+07:00",
+      "2026-04-31T10:00:00Z",
+      "2026-13-01T10:00:00Z",
+      "2026-00-10T10:00:00Z",
+      "2026-10-00T10:00:00Z",
+      "2026-10-01T24:00:00Z",
+      "2026-10-01T10:60:00Z",
+      "2026-10-01T10:00:60Z",
+      "2026-10-01T10:00:00+24:00",
+      "2026-10-01T10:00:00+07:60",
+    ]) {
+      expect(parsePayOSTime(bad), bad).toBeNull();
+    }
+  });
+
+  it("đủ 7 trạng thái của PayOS: chỉ PAID thành paid", async () => {
+    const expected = {
+      PENDING: "pending",
+      PROCESSING: "processing",
+      PAID: "paid",
+      UNDERPAID: "underpaid",
+      CANCELLED: "cancelled",
+      EXPIRED: "expired",
+      FAILED: "failed",
+    };
+    for (const [payos, ours] of Object.entries(expected)) {
+      const response = await signed(info(payos, payos === "PAID" ? 2000 : 0));
+      const p = provider(async () => new Response(JSON.stringify(response)));
+      expect((await p.getPaymentStatus(42)).status, payos).toBe(ours);
     }
   });
 
@@ -215,6 +251,17 @@ describe("PayOS: trạng thái đơn", () => {
   it("HTTP 401 thì báo lỗi", async () => {
     const p = provider(async () => new Response(JSON.stringify({ code: "401", desc: "Unauthorized" }), { status: 401 }));
     await expect(p.getPaymentStatus(42)).rejects.toThrow(/401/);
+  });
+
+  it("lỗi mạng và quá thời gian chờ thành PaymentProviderError", async () => {
+    const down = await provider(async () => Promise.reject(new TypeError("fetch failed"))).getPaymentStatus(42).catch((e: unknown) => e);
+    expect(down).toBeInstanceOf(PaymentProviderError);
+    expect(String(down)).toBe("PaymentProviderError: PayOS không trả lời (TypeError: fetch failed)");
+    const slow = await provider(async () => Promise.reject(new DOMException("The operation was aborted due to timeout", "TimeoutError")))
+      .createCheckout({ orderCode: 42, amount: 2000, currency: "VND", description: "AT42", returnUrl: "https://e.test/r", cancelUrl: "https://e.test/c", expiresAt: 1 })
+      .catch((e: unknown) => e);
+    expect(slow).toBeInstanceOf(PaymentProviderError);
+    expect(String(slow)).toBe("PaymentProviderError: PayOS không trả lời sau 10 giây");
   });
 });
 

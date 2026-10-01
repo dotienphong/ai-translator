@@ -83,7 +83,13 @@ export function parsePayOSTime(value: unknown): number | null {
     if (back.getUTCDate() !== d || back.getUTCMonth() !== mo - 1 || h > 23 || mi > 59 || se > 59) return null;
     return ms / 1000;
   }
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.test(value)) {
+  const iso = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-](\d{2}):(\d{2}))$/.exec(value);
+  if (iso) {
+    const [y, mo, d, h, mi, se] = iso.slice(1, 7).map(Number) as [number, number, number, number, number, number];
+    const day = new Date(Date.UTC(y, mo - 1, d));
+    // Date.parse tự cộng ngày không có thật sang ngày sau (2026-02-30 thành 02/03, 24:00 thành 00:00 hôm sau): kiểm trước.
+    if (day.getUTCDate() !== d || day.getUTCMonth() !== mo - 1 || h > 23 || mi > 59 || se > 59) return null;
+    if (iso[8] !== "Z" && (Number(iso[9]) > 23 || Number(iso[10]) > 59)) return null;
     const ms = Date.parse(value);
     return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
   }
@@ -173,7 +179,16 @@ export class PayOSProvider implements PaymentProvider {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     };
     if (body !== undefined) init.body = JSON.stringify(body);
-    const res = await this.fetchFn(`${this.cfg.baseUrl}${path}`, init);
+    let res: Response;
+    try {
+      res = await this.fetchFn(`${this.cfg.baseUrl}${path}`, init);
+    } catch (err) {
+      // Lỗi mạng hay quá thời gian chờ: bên gọi chỉ cần biết là lỗi của cổng thanh toán.
+      if (err instanceof DOMException && err.name === "TimeoutError") {
+        throw new PaymentProviderError(`PayOS không trả lời sau ${TIMEOUT_MS / 1000} giây`);
+      }
+      throw new PaymentProviderError(`PayOS không trả lời (${String(err)})`);
+    }
     let json: PayOSEnvelope;
     try {
       json = (await res.json()) as PayOSEnvelope;
