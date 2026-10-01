@@ -11,7 +11,8 @@ export type PlanCode = (typeof PLAN_CODES)[number];
 export const REFRESH_WINDOW_SECONDS = 14 * 86400;
 const KID_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
 const encoder = new TextEncoder();
-const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+// fatal: UTF-8 hỏng là malformed. ignoreBOM: true giữ BOM lại trong chuỗi, để JSON.parse từ chối payload có BOM.
+const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 export interface TokenClaims {
   kid: string;

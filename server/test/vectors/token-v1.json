@@ -9,7 +9,7 @@
     "refresh_expired"
   ],
   "note": "Khóa test-* chỉ dùng cho test. Hết hạn khi now >= expires_at hoặc now >= refresh_before (giây Unix). Token có nhiều lỗi thì trả lỗi đứng trước trong checks_order.",
-  "claims": "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: pro | pro_x2 | pro_x5; quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Mọi số nguyên phải là số nguyên an toàn (|n| <= 2^53 - 1): 1.5 hay 2^53 + 1 là malformed. Payload phải là UTF-8 hợp lệ. Thiếu trường hay sai kiểu là malformed.",
+  "claims": "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: pro | pro_x2 | pro_x5; quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Mọi số nguyên phải là số nguyên an toàn (|n| <= 2^53 - 1): 1.5 hay 2^53 + 1 là malformed. Payload phải là UTF-8 hợp lệ, không có BOM. Thiếu trường hay sai kiểu là malformed.",
   "test_keys": [
     {
       "kid": "test-1",
@@ -256,6 +256,20 @@
       "expected": "license_expired"
     },
     {
+      "name": "order_malformed_before_unknown_kid",
+      "token": "v1.eyJraWQiOiJ0ZXN0LTkiLCJsaWNlbnNlX2lkIjoiMGI2ZjJjM2UtMWY0YS00YzFlLTlhNTMtMmQ3YzhlOWYwYTExIiwiYWN0aXZhdGlvbl9pZCI6IjVkMGU4YTQ3LTNiMmMtNGY2ZC04ZTFhLTdjOWIwZDJlNGY2MCIsImFjdGl2YXRpb25fY3JlYXRlZF9hdCI6MTc5MDU1MzYwMCwiZGV2aWNlX2lkX2hhc2giOiIxOWExYTgxNTg5NTFlY2ViZGRlZmI0NzllMDk4ZGJjODRjMDE4Yzg5N2VhNmQ0YjhjNWZjMDI0MDUxMzA2YjRmIiwicGxhbiI6ImZyZWUiLCJleHBpcmVzX2F0IjoxNzkzNDA0ODAwLCJjeWNsZV9hbmNob3IiOjE3OTAzODA4MDAsInF1b3RhX21pbnV0ZXNfcGVyX2N5Y2xlIjoxODAwLCJxdW90YV9lcG9jaCI6MCwicXVvdGFfZnJlc2giOmZhbHNlLCJpc3N1ZWRfYXQiOjE3OTA4MTI4MDAsInJlZnJlc2hfYmVmb3JlIjoxNzkyMDIyNDAwfQ.xqi_xuJ6k0sSoZC3xqPPOLVgK_zlGY5zem56eoKoolui5y9xO4Ucx97d-So4UVGOc5FyfcsGHSQ8M7qgr__DAQ",
+      "now": 1790816400,
+      "device_id_hash": "19a1a8158951ecebddefb479e098dbc84c018c897ea6d4b8c5fc024051306b4f",
+      "expected": "malformed"
+    },
+    {
+      "name": "order_malformed_before_bad_signature",
+      "token": "v1.eyJraWQiOiJ0ZXN0LTEiLCJsaWNlbnNlX2lkIjoiMGI2ZjJjM2UtMWY0YS00YzFlLTlhNTMtMmQ3YzhlOWYwYTExIiwiYWN0aXZhdGlvbl9pZCI6IjVkMGU4YTQ3LTNiMmMtNGY2ZC04ZTFhLTdjOWIwZDJlNGY2MCIsImFjdGl2YXRpb25fY3JlYXRlZF9hdCI6MTc5MDU1MzYwMCwiZGV2aWNlX2lkX2hhc2giOiIxOWExYTgxNTg5NTFlY2ViZGRlZmI0NzllMDk4ZGJjODRjMDE4Yzg5N2VhNmQ0YjhjNWZjMDI0MDUxMzA2YjRmIiwicGxhbiI6ImZyZWUiLCJleHBpcmVzX2F0IjoxNzkzNDA0ODAwLCJjeWNsZV9hbmNob3IiOjE3OTAzODA4MDAsInF1b3RhX21pbnV0ZXNfcGVyX2N5Y2xlIjoxODAwLCJxdW90YV9lcG9jaCI6MCwicXVvdGFfZnJlc2giOmZhbHNlLCJpc3N1ZWRfYXQiOjE3OTA4MTI4MDAsInJlZnJlc2hfYmVmb3JlIjoxNzkyMDIyNDAwfQ._fGGrLqjJ3qj70ZCmqoogJs0KfP1gVMmDxsSqqAeuWrYbPKYDnJs_fsY7c7Q35ovnV4RJaOvJmK38awZ9d6pBw",
+      "now": 1790816400,
+      "device_id_hash": "19a1a8158951ecebddefb479e098dbc84c018c897ea6d4b8c5fc024051306b4f",
+      "expected": "malformed"
+    },
+    {
       "name": "timestamp_not_integer",
       "token": "v1.eyJraWQiOiJ0ZXN0LTEiLCJsaWNlbnNlX2lkIjoiMGI2ZjJjM2UtMWY0YS00YzFlLTlhNTMtMmQ3YzhlOWYwYTExIiwiYWN0aXZhdGlvbl9pZCI6IjVkMGU4YTQ3LTNiMmMtNGY2ZC04ZTFhLTdjOWIwZDJlNGY2MCIsImFjdGl2YXRpb25fY3JlYXRlZF9hdCI6MTc5MDU1MzYwMCwiZGV2aWNlX2lkX2hhc2giOiIxOWExYTgxNTg5NTFlY2ViZGRlZmI0NzllMDk4ZGJjODRjMDE4Yzg5N2VhNmQ0YjhjNWZjMDI0MDUxMzA2YjRmIiwicGxhbiI6InBybyIsImV4cGlyZXNfYXQiOjEuNSwiY3ljbGVfYW5jaG9yIjoxNzkwMzgwODAwLCJxdW90YV9taW51dGVzX3Blcl9jeWNsZSI6MTgwMCwicXVvdGFfZXBvY2giOjAsInF1b3RhX2ZyZXNoIjpmYWxzZSwiaXNzdWVkX2F0IjoxNzkwODEyODAwLCJyZWZyZXNoX2JlZm9yZSI6MTc5MjAyMjQwMH0.wrN4Y3iufdNvCp4r_6UqBhLID1k6v4byd35rATtEiOw_fR915wxDdrnqS85FrB27yI_pfamR_e4ZoehTZRiXCg",
       "now": 1790816400,
@@ -272,6 +286,13 @@
     {
       "name": "payload_invalid_utf8",
       "token": "v1.eyJraWQiOiJ0ZXN0LTEiLCJsaWNlbnNlX2lkIjoiwygiLCJhY3RpdmF0aW9uX2lkIjoiNWQwZThhNDctM2IyYy00ZjZkLThlMWEtN2M5YjBkMmU0ZjYwIiwiYWN0aXZhdGlvbl9jcmVhdGVkX2F0IjoxNzkwNTUzNjAwLCJkZXZpY2VfaWRfaGFzaCI6IjE5YTFhODE1ODk1MWVjZWJkZGVmYjQ3OWUwOThkYmM4NGMwMThjODk3ZWE2ZDRiOGM1ZmMwMjQwNTEzMDZiNGYiLCJwbGFuIjoicHJvIiwiZXhwaXJlc19hdCI6MTc5MzQwNDgwMCwiY3ljbGVfYW5jaG9yIjoxNzkwMzgwODAwLCJxdW90YV9taW51dGVzX3Blcl9jeWNsZSI6MTgwMCwicXVvdGFfZXBvY2giOjAsInF1b3RhX2ZyZXNoIjpmYWxzZSwiaXNzdWVkX2F0IjoxNzkwODEyODAwLCJyZWZyZXNoX2JlZm9yZSI6MTc5MjAyMjQwMH0.t3vWEpPZ57940zTtXw8AD48aX1EVmLs8JqZgsExouuyDha1g5lBptCzhLwRfn3AolZBsbmvS-7RrpMzfbAcLDw",
+      "now": 1790816400,
+      "device_id_hash": "19a1a8158951ecebddefb479e098dbc84c018c897ea6d4b8c5fc024051306b4f",
+      "expected": "malformed"
+    },
+    {
+      "name": "payload_with_bom",
+      "token": "v1.77u_eyJraWQiOiJ0ZXN0LTEiLCJsaWNlbnNlX2lkIjoiMGI2ZjJjM2UtMWY0YS00YzFlLTlhNTMtMmQ3YzhlOWYwYTExIiwiYWN0aXZhdGlvbl9pZCI6IjVkMGU4YTQ3LTNiMmMtNGY2ZC04ZTFhLTdjOWIwZDJlNGY2MCIsImFjdGl2YXRpb25fY3JlYXRlZF9hdCI6MTc5MDU1MzYwMCwiZGV2aWNlX2lkX2hhc2giOiIxOWExYTgxNTg5NTFlY2ViZGRlZmI0NzllMDk4ZGJjODRjMDE4Yzg5N2VhNmQ0YjhjNWZjMDI0MDUxMzA2YjRmIiwicGxhbiI6InBybyIsImV4cGlyZXNfYXQiOjE3OTM0MDQ4MDAsImN5Y2xlX2FuY2hvciI6MTc5MDM4MDgwMCwicXVvdGFfbWludXRlc19wZXJfY3ljbGUiOjE4MDAsInF1b3RhX2Vwb2NoIjowLCJxdW90YV9mcmVzaCI6ZmFsc2UsImlzc3VlZF9hdCI6MTc5MDgxMjgwMCwicmVmcmVzaF9iZWZvcmUiOjE3OTIwMjI0MDB9.9g96Cv1_2VcxWXlvSOTz24c8H2BDCNLOGdvkbQBYCJfWT8Mod1AhJecjas0pIZa63V4ra_1WW5XG2_xOlNm9BQ",
       "now": 1790816400,
       "device_id_hash": "19a1a8158951ecebddefb479e098dbc84c018c897ea6d4b8c5fc024051306b4f",
       "expected": "malformed"

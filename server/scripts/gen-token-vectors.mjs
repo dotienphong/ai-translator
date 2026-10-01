@@ -67,6 +67,10 @@ const tooBigJson = baseJson.replace(`"refresh_before":${base.refresh_before}`, '
 // Payload có chuỗi UTF-8 hỏng (0xC3 rồi 0x28 không phải byte nối tiếp) trong license_id, chữ ký vẫn đúng.
 const [utf8Head, utf8Tail] = JSON.stringify({ ...base, license_id: "@" }).split('"@"');
 const invalidUtf8 = Buffer.concat([Buffer.from(utf8Head), Buffer.from([0x22, 0xc3, 0x28, 0x22]), Buffer.from(utf8Tail)]);
+// Payload bắt đầu bằng BOM UTF-8 (EF BB BF): không phải JSON hợp lệ, bên kiểm không được bỏ BOM đi.
+const withBom = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(baseJson)]);
+// Lỗi schema (plan "free") đi cùng chữ ký của payload khác: bên kiểm phải đọc đủ schema trước khi kiểm chữ ký.
+const freePlanBadSig = `v1.${b64url(JSON.stringify({ ...base, plan: "free" }))}.${validSig}`;
 
 const tokens = [
   { name: "valid", token: valid, now: issuedAt + 3600, device_id_hash: device, expected: "ok", claims: base },
@@ -217,7 +221,22 @@ const tokens = [
     device_id_hash: device,
     expected: "license_expired",
   },
-  // Dữ liệu sai dạng, chữ ký đúng: số không nguyên, số vượt 2^53 - 1, UTF-8 hỏng.
+  // Lỗi schema đứng trước kid lạ và chữ ký sai: đọc đủ schema trước khi tra kid và kiểm chữ ký.
+  {
+    name: "order_malformed_before_unknown_kid",
+    token: await sign(k1, { ...base, kid: "test-9", plan: "free" }),
+    now: issuedAt + 3600,
+    device_id_hash: device,
+    expected: "malformed",
+  },
+  {
+    name: "order_malformed_before_bad_signature",
+    token: freePlanBadSig,
+    now: issuedAt + 3600,
+    device_id_hash: device,
+    expected: "malformed",
+  },
+  // Dữ liệu sai dạng, chữ ký đúng: số không nguyên, số vượt 2^53 - 1, UTF-8 hỏng, BOM.
   {
     name: "timestamp_not_integer",
     token: await sign(k1, { ...base, expires_at: 1.5 }),
@@ -235,6 +254,13 @@ const tokens = [
   {
     name: "payload_invalid_utf8",
     token: await signBytes(k1, invalidUtf8),
+    now: issuedAt + 3600,
+    device_id_hash: device,
+    expected: "malformed",
+  },
+  {
+    name: "payload_with_bom",
+    token: await signBytes(k1, withBom),
     now: issuedAt + 3600,
     device_id_hash: device,
     expected: "malformed",
@@ -274,7 +300,7 @@ const out = {
   checks_order: ["malformed", "unknown_kid", "bad_signature", "wrong_device", "license_expired", "refresh_expired"],
   note: "Khóa test-* chỉ dùng cho test. Hết hạn khi now >= expires_at hoặc now >= refresh_before (giây Unix). Token có nhiều lỗi thì trả lỗi đứng trước trong checks_order.",
   claims:
-    "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: pro | pro_x2 | pro_x5; quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Mọi số nguyên phải là số nguyên an toàn (|n| <= 2^53 - 1): 1.5 hay 2^53 + 1 là malformed. Payload phải là UTF-8 hợp lệ. Thiếu trường hay sai kiểu là malformed.",
+    "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: pro | pro_x2 | pro_x5; quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Mọi số nguyên phải là số nguyên an toàn (|n| <= 2^53 - 1): 1.5 hay 2^53 + 1 là malformed. Payload phải là UTF-8 hợp lệ, không có BOM. Thiếu trường hay sai kiểu là malformed.",
   test_keys: [k1, k2].map(({ kid, seed_b64url, public_b64url }) => ({ kid, seed_b64url, public_b64url })),
   public_keys: { "test-1": k1.public_b64url, "test-2": k2.public_b64url },
   tokens,

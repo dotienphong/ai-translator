@@ -3,7 +3,7 @@
 // ngẫu nhiên dùng một lần. Không assert nào in nội dung stdout: chỉ in độ dài hay từng trường không bí mật.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { closeSync, existsSync, openSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
@@ -16,6 +16,20 @@ function run(...args) {
   const r = spawnSync(process.execPath, [script, ...args], { stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
+
+test("stdout vào /dev/null (thiết bị ký tự, không phải pipe): thoát mã 2", () => {
+  const devNull = openSync("/dev/null", "w");
+  try {
+    const r = spawnSync(process.execPath, [script, "stg-2026-10-1", "--keys", fixture], {
+      stdio: ["ignore", devNull, "pipe"],
+      encoding: "utf8",
+    });
+    assert.equal(r.status, 2);
+    assert.match(r.stderr, /stdout phải là pipe/);
+  } finally {
+    closeSync(devNull);
+  }
+});
 
 /** Đọc JWK từ stdout mà không để lỗi JSON.parse chép một đoạn khóa riêng vào thông báo lỗi. */
 function parseJwk(stdout) {
