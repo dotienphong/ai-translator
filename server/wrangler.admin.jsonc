@@ -1,0 +1,69 @@
+// Worker admin của license server (§6.8 "Công cụ hỗ trợ"): chỉ mở qua Cloudflare Access
+// (dashboard > Workers & Pages > mt-license-admin-<env> > Access > Protect this Worker behind Access > All traffic).
+// Ngoài dev, ACCESS_AUD bắt buộc; trống thì mọi request bị 403.
+// Dùng chung D1 với Worker API: database_id phải trùng với wrangler.jsonc của cùng môi trường.
+// Bảng gói và "ký thử bằng khóa dự phòng" lấy từ Worker API cùng môi trường qua service binding API,
+// tới entrypoint AdminRpc (QĐ34). Worker admin không giữ khóa ký nào.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mt-license-admin",
+  "main": "src/admin-entry.ts",
+  "compatibility_date": "2026-09-26",
+  "workers_dev": false,
+  "preview_urls": false,
+  // Tắt invocation log (log đó lưu cả URL và query của request) và bỏ query khỏi URL trong log và trace (QĐ25).
+  // Log JSON do code tự ghi vẫn giữ. Bật Workers Issues để có cảnh báo không phụ thuộc Resend (QĐ27).
+  "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
+  "vars": {
+    "ENVIRONMENT": "dev",
+    "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
+    "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
+    "ACCESS_AUD": "",
+    "API_ORIGIN": ""
+  },
+  "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY"] },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "mt-license-dev", "database_id": "00000000-0000-0000-0000-000000000000" }
+  ],
+  "services": [{ "binding": "API", "service": "mt-license", "entrypoint": "AdminRpc" }],
+  "env": {
+    "staging": {
+      "workers_dev": true,
+      "preview_urls": false,
+      "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
+        "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
+        // Bắt buộc (QĐ6): Audience tag của ứng dụng Access (Task 19, Step 11). Trống thì Worker trả 403 cho mọi request.
+        "ACCESS_AUD": "",
+        // Origin của Worker API staging (Task 19, Step 11); confirm-webhook chỉ nhận URL trên origin này.
+        "API_ORIGIN": ""
+      },
+      "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY"] },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "mt-license-staging", "database_id": "00000000-0000-0000-0000-000000000000" }
+      ],
+      "services": [{ "binding": "API", "service": "mt-license-staging", "entrypoint": "AdminRpc" }]
+    },
+    "production": {
+      "workers_dev": true,
+      "preview_urls": false,
+      "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
+      "vars": {
+        "ENVIRONMENT": "production",
+        "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
+        "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
+        // Bắt buộc: điền ở Task 21, Step 10.
+        "ACCESS_AUD": "",
+        // Origin của Worker API production (https://<tên miền license server>), điền ở Task 21, Step 10.
+        "API_ORIGIN": ""
+      },
+      "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY"] },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "mt-license-production", "database_id": "00000000-0000-0000-0000-000000000000" }
+      ],
+      "services": [{ "binding": "API", "service": "mt-license-production", "entrypoint": "AdminRpc" }]
+    }
+  }
+}

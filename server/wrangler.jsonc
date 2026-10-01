@@ -1,5 +1,5 @@
 // Worker API công khai của license server (spec §6.8). Worker admin cấu hình riêng ở wrangler.admin.jsonc.
-// Cấu hình gốc chỉ dùng cho test và chạy cục bộ. Môi trường staging và production thêm ở Task 18.
+// Cấu hình gốc chỉ dùng cho test và chạy cục bộ. Triển khai luôn kèm --env staging hoặc --env production.
 // Secret (PayOS, Resend, khóa ký, pepper, email người vận hành) nhập bằng `wrangler secret put`, không bao giờ ghi vào file này.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -31,5 +31,67 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "mt-license-dev", "database_id": "00000000-0000-0000-0000-000000000000" }
   ],
-  "triggers": { "crons": ["*/5 * * * *"] }
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "env": {
+    "staging": {
+      "workers_dev": true,
+      "preview_urls": false,
+      "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
+        // Chưa có tên miền đã xác thực (Q1): Resend chỉ gửi được tới email của chủ tài khoản Resend.
+        "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
+        // Giá thử nhỏ, mỗi gói một giá, để thử bằng tiền thật (PayOS không có sandbox; P05-2). Hạn mức như production.
+        // Không hạ hạn mức của một gói đang bán (spec §6.8, QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ ở đây là
+        // hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới (sửa src/plans.ts và app).
+        "PLANS": {
+          "pro": { "quota_minutes_per_cycle": 1800, "days_per_order": 30, "prices": { "VND": 2000 } },
+          "pro_x2": { "quota_minutes_per_cycle": 6000, "days_per_order": 30, "prices": { "VND": 3000 } },
+          "pro_x5": { "quota_minutes_per_cycle": null, "days_per_order": 30, "prices": { "VND": 4000 } }
+        },
+        // Ô khóa đang ký token: secret TOKEN_SIGNING_KEY_A hay _B (QĐ29). Ô kia là khóa dự phòng.
+        // Đổi khóa: đặt sang ô kia rồi deploy (Phụ lục A); giá trị khóa không đi qua máy người vận hành.
+        "TOKEN_SIGNING_SLOT": "a"
+      },
+      "secrets": {
+        "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY", "TOKEN_SIGNING_KEY_A", "TOKEN_SIGNING_KEY_B", "RATE_LIMIT_PEPPER"]
+      },
+      "d1_databases": [
+        // database_id: thay bằng ID do `wrangler d1 create mt-license-staging` in ra (Task 19).
+        { "binding": "DB", "database_name": "mt-license-staging", "database_id": "00000000-0000-0000-0000-000000000000" }
+      ],
+      "triggers": { "crons": ["*/5 * * * *"] }
+    },
+    "production": {
+      "workers_dev": true,
+      "preview_urls": false,
+      "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
+      "vars": {
+        "ENVIRONMENT": "production",
+        "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
+        // Đổi sang địa chỉ trên tên miền đã xác thực SPF, DKIM khi có Q1.
+        "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
+        // Giá chính thức (spec §2, chốt 2026-10-01).
+        // Không hạ hạn mức của một gói đang bán (spec §6.8, QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ ở đây là
+        // hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới (sửa src/plans.ts và app).
+        "PLANS": {
+          "pro": { "quota_minutes_per_cycle": 1800, "days_per_order": 30, "prices": { "VND": 50000 } },
+          "pro_x2": { "quota_minutes_per_cycle": 6000, "days_per_order": 30, "prices": { "VND": 150000 } },
+          "pro_x5": { "quota_minutes_per_cycle": null, "days_per_order": 30, "prices": { "VND": 500000 } }
+        },
+        // Ô khóa đang ký token: secret TOKEN_SIGNING_KEY_A hay _B (QĐ29). Ô kia là khóa dự phòng.
+        // Đổi khóa: đặt sang ô kia rồi deploy (Phụ lục A); giá trị khóa không đi qua máy người vận hành.
+        "TOKEN_SIGNING_SLOT": "a"
+      },
+      "secrets": {
+        "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY", "TOKEN_SIGNING_KEY_A", "TOKEN_SIGNING_KEY_B", "RATE_LIMIT_PEPPER"]
+      },
+      "d1_databases": [
+        // database_id: thay bằng ID do `wrangler d1 create mt-license-production` in ra (Task 21).
+        { "binding": "DB", "database_name": "mt-license-production", "database_id": "00000000-0000-0000-0000-000000000000" }
+      ],
+      "triggers": { "crons": ["*/5 * * * *"] }
+    }
+  }
 }
