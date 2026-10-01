@@ -1,0 +1,17 @@
+#!/bin/sh
+# llvm-rc giả, chỉ dùng cho scripts/check-windows.sh: tauri-build gọi trình biên dịch resource khi
+# build cho Windows, mà Mac không có sẵn llvm-rc. `cargo check` và `cargo clippy` không link, nên file
+# .lib rỗng tạo ra ở đây không bao giờ được dùng. Không dùng script này để build bản chạy thật.
+for arg in "$@"; do
+  if [ "$arg" = "/?" ]; then
+    echo "OVERVIEW: LLVM Resource Converter (giả, có /no-preprocess)"
+    exit 0
+  fi
+done
+out=""
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "/fo" ]; then out="$arg"; fi
+  prev="$arg"
+done
+if [ -n "$out" ]; then : > "$out"; fi
