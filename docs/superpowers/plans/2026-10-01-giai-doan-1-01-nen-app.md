@@ -46,8 +46,8 @@ Kiểm bằng `cargo info <crate>@2`, `cargo search`, `pnpm view <gói> version 
 |---|---|---|
 | tauri / tauri-build | 2.12.0 / 2.7.0 (giữ) | thêm feature `tray-icon`; dev-dependency thêm feature `test` (MockRuntime). Dòng 3.0 chỉ có alpha nên không dùng |
 | tauri-plugin-store | 2.5.0 | bản 2.x mới nhất; MSRV 1.90; Apache-2.0 OR MIT |
-| tauri-plugin-single-instance | 2.5.1 | bản 2.x mới nhất; macOS dùng Unix socket, Windows dùng named mutex; phải là plugin đầu tiên |
-| tauri-plugin-autostart | 2.6.0 (kéo theo `auto-launch` 0.5.0) | macOS dùng LaunchAgent (không hỏi quyền Automation như cách AppleScript); Windows: `is_enabled()` đọc cả `StartupApproved\Run` của Task Manager (QĐ16) |
+| tauri-plugin-single-instance | 2.5.2 | bản 2.x mới nhất (ra 2026-10-01 00:28 UTC, xem ghi chú); macOS dùng Unix socket, Windows dùng named mutex; phải là plugin đầu tiên |
+| tauri-plugin-autostart | 2.7.0 (kéo theo `auto-launch` 0.6.0) | bản 2.x mới nhất (ra 2026-10-01 00:27 UTC, xem ghi chú); macOS mặc định vẫn là LaunchAgent (không hỏi quyền Automation như cách AppleScript); Windows: `is_enabled()` đọc cả `StartupApproved\Run` của Task Manager (QĐ16) |
 | tauri-plugin-opener | 2.7.0 | chỉ gọi từ Rust; tắt `open_js_links_on_click` |
 | tauri-plugin-log | 2.10.0 | có `RotationStrategy::KeepSome`, `max_file_size`, `TimezoneStrategy::UseLocal` |
 | tauri-plugin-global-shortcut, tauri-nspanel | 2.4.0, 2.1.0 (giữ) | như S5 |
@@ -69,6 +69,7 @@ Ghi chú:
   - Lúc lập kế hoạch, vitest 5.0.3 mới ra được khoảng 9 giờ (2026-09-30 11:30 UTC); `pnpm add` tự tạo `pnpm-workspace.yaml` có `minimumReleaseAgeExclude`.
   - Vì vậy lần chạy thử cuối dùng 5.0.2; bản 5.0.3 cũng đã chạy thử lúc đầu, cho cùng kết quả.
   - Task 1, Step 6 làm đúng luật này: thử 5.0.3, và nếu `pnpm-workspace.yaml` xuất hiện thì xóa nó và cài 5.0.2.
+- `tauri-plugin-autostart` 2.7.0 và `tauri-plugin-single-instance` 2.5.2 ra chưa tới 1 giờ trước lần chạy thử cuối. Cargo không có luật tuổi phát hành như pnpm, và `Cargo.toml` dùng `^` nên lúc thực thi cũng sẽ lấy hai bản này. Vì vậy lần chạy thử cuối đã dùng đúng hai bản này (cùng `tauri-plugin` 2.7.1, `tauri-utils` 2.10.1 kéo theo): build, test, clippy, `check-windows.sh`, `cargo deny` đều sạch. Đã đọc code `auto-launch` 0.6.0: macOS vẫn là file `~/Library/LaunchAgents/<tên app>.plist`, `is_enabled()` vẫn chỉ xem file có tồn tại không, nên `login_item.rs` vẫn đúng.
 - Crate mới đều không bị yanked, giấy phép nằm trong `deny.toml`, MSRV không vượt 1.98. Không crate nào kéo ggml hay thư viện C thứ hai vào tiến trình chính (`cargo deny check bans` vẫn sạch).
 - Giấy phép gói npm chạy trong app: `@tauri-apps/api` (Apache-2.0 OR MIT), `react`, `react-dom`, `scheduler`, `zustand` (MIT).
 - `cargo audit` còn 3 cảnh báo cũ, đều có từ trước: `paste` (đã có ngoại lệ trong `deny.toml`), `proc-macro-error` và `glib` (chỉ có trên Linux, qua gtk của Tauri).
@@ -173,7 +174,8 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00. Cột cuối là t
 - **QĐ16. Trạng thái thật của "khởi động cùng hệ thống".** Lúc khởi động, `launchAtLogin` lấy theo hệ điều hành chứ không theo file cài đặt.
   - macOS: plugin chỉ xem file LaunchAgent có tồn tại không. Người dùng tắt app ở System Settings › General › Login Items thì file vẫn còn. Vì vậy app hỏi thêm `SMAppService statusForLegacyURL:` và chỉ coi là bật khi trạng thái là `Enabled`. Lúc lập kế hoạch, với một file không tồn tại, hàm này trả `NotRegistered` và không bật hộp thoại nào. Task 24 thử với Login Items thật.
   - macOS, bật trong app mà hệ thống báo `RequiresApproval` (mục đang bị tắt ở Login Items): app gửi lời nhắc `loginItemsApproval`, có nút mở System Settings › General › Login Items bằng `SMAppService openSystemSettingsLoginItems` (lệnh `open_login_items_settings`). Lệnh này đi qua `SystemOpener` (QĐ28): app giả của test dùng bản giả, nên kể cả khi ACL lỡ cấp thừa, không test nào mở System Settings thật. Phần quyết định (`login_item::needs_approval`) có test; Task 24 dòng 21 thử bằng tay.
-  - Windows: `auto-launch` 0.5.0 (plugin dùng) đọc cả giá trị trong `HKCU\...\Run` lẫn khóa `Explorer\StartupApproved\Run` của Task Manager, nên tắt ở Task Manager thì app hiện "tắt". `enable()` ghi lại cả hai, nên bật trong app là bật thật.
+  - Windows: `auto-launch` 0.6.0 (plugin dùng) đọc cả giá trị trong `...\CurrentVersion\Run` lẫn khóa `Explorer\StartupApproved\Run` của Task Manager (ở cả `HKLM` và `HKCU`), nên tắt ở Task Manager thì app hiện "tắt". `enable()` ghi lại cả hai, nên bật trong app là bật thật.
+  - Windows: `auto-launch` 0.6.0 mặc định ghi vào `HKLM` trước (mọi người dùng), chỉ khi không có quyền mới ghi `HKCU`; plugin 2.7.0 chưa cho chọn. App chạy bằng quyền người dùng thường nên thực tế ghi `HKCU` (Task 25 dòng 13 kiểm). Nếu chạy app bằng quyền admin thì mục khởi động sẽ nằm ở `HKLM`; ghi lại để 07 xem khi làm bộ cài.
 - **QĐ17.** Trên Windows, bấm chuột trái vào icon khay thì mở cửa sổ chính, chuột phải thì mở menu. Trên Mac, bấm vào icon luôn mở menu, như mọi icon ở menu bar.
 - **QĐ18.** Kiểm kiểu và clippy phần code Windows ngay trên Mac bằng `scripts/check-windows.sh`, với một `llvm-rc` giả, vì tauri-build cần trình biên dịch resource cho target Windows. `cargo check` và `cargo clippy` không link, nên file resource rỗng không ảnh hưởng gì.
 - **QĐ19.** Ký bản dev bằng chứng thư cố định (R8) qua `scripts/run-dev-signed.sh`, để Keychain và quyền của macOS không hỏi lại sau mỗi lần build. Đây là bước tùy chọn của người.
@@ -303,9 +305,9 @@ version: 2.12.0 (latest 3.0.0-alpha.3)
 rust-version: 1.90
 version: 2.5.0 (latest 3.0.0-alpha.2)
 rust-version: 1.90
-version: 2.5.1 (latest 3.0.0-alpha.2)
+version: 2.5.2 (latest 3.0.0-alpha.2)
 rust-version: 1.90
-version: 2.6.0 (latest 3.0.0-alpha.2)
+version: 2.7.0 (latest 3.0.0-alpha.2)
 rust-version: 1.90
 version: 2.7.0 (latest 3.0.0-alpha.2)
 rust-version: 1.90
@@ -354,11 +356,11 @@ serde.workspace = true
 serde_json.workspace = true
 sys-locale = "0.3.2"
 tauri = { version = "2.12.0", features = ["macos-private-api", "tray-icon"] }
-tauri-plugin-autostart = "2.6.0"
+tauri-plugin-autostart = "2.7.0"
 tauri-plugin-global-shortcut = "2.4.0"
 tauri-plugin-log = "2.10.0"
 tauri-plugin-opener = "2.7.0"
-tauri-plugin-single-instance = "2.5.1"
+tauri-plugin-single-instance = "2.5.2"
 tauri-plugin-store = "2.5.0"
 thiserror.workspace = true
 
