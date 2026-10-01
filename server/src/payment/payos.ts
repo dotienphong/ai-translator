@@ -83,13 +83,13 @@ export function parsePayOSTime(value: unknown): number | null {
     if (back.getUTCDate() !== d || back.getUTCMonth() !== mo - 1 || h > 23 || mi > 59 || se > 59) return null;
     return ms / 1000;
   }
-  const iso = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-](\d{2}):(\d{2}))$/.exec(value);
+  const iso = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(value);
   if (iso) {
     const [y, mo, d, h, mi, se] = iso.slice(1, 7).map(Number) as [number, number, number, number, number, number];
     const day = new Date(Date.UTC(y, mo - 1, d));
     // Date.parse tự cộng ngày không có thật sang ngày sau (2026-02-30 thành 02/03, 24:00 thành 00:00 hôm sau): kiểm trước.
+    // Múi giờ sai (+24:00, +07:60) thì Date.parse đã trả NaN.
     if (day.getUTCDate() !== d || day.getUTCMonth() !== mo - 1 || h > 23 || mi > 59 || se > 59) return null;
-    if (iso[8] !== "Z" && (Number(iso[9]) > 23 || Number(iso[10]) > 59)) return null;
     const ms = Date.parse(value);
     return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
   }
