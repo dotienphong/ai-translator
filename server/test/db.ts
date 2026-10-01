@@ -1,5 +1,15 @@
 import { env } from "cloudflare:workers";
 
+/** Cho một câu INSERT hỏng (trigger RAISE) trong lúc chạy `run`, để kiểm các câu ghi cùng batch có quay lui cùng nhau không. */
+export async function withFailingInsert<T>(table: string, when: string, run: () => Promise<T>): Promise<T> {
+  await env.DB.prepare(`CREATE TRIGGER test_fail BEFORE INSERT ON ${table} WHEN ${when} BEGIN SELECT RAISE(ABORT, 'ghi hỏng'); END`).run();
+  try {
+    return await run();
+  } finally {
+    await env.DB.prepare("DROP TRIGGER test_fail").run();
+  }
+}
+
 /** Storage chỉ tách theo từng file test, nên mỗi test tự xóa dữ liệu (kể cả bộ đếm AUTOINCREMENT). */
 export async function resetDb(): Promise<void> {
   await env.DB.batch(

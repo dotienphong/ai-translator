@@ -9,7 +9,7 @@ import type { AdminEnv, ApiEnv } from "../src/env";
 import { PayOSProvider } from "../src/payment/payos";
 import type { KeyCheck } from "../src/token";
 import { verifyToken } from "../src/token";
-import { resetDb } from "./db";
+import { resetDb, withFailingInsert } from "./db";
 import { TEST_CHECKSUM_KEY } from "./fakes";
 import { testSigningJwk } from "./keys";
 import vectors from "./vectors/token-v1.json";
@@ -74,6 +74,8 @@ function makeAdmin(adminEnv: Partial<AdminEnv> = {}, opts: AdminOpts = {}) {
 }
 
 const licenseRow = () => env.DB.prepare("SELECT * FROM licenses").first<Record<string, unknown>>();
+const auditCount = async (action: string) =>
+  (await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = ?").bind(action).first<{ n: number }>())?.n;
 const lastAudit = () => env.DB.prepare("SELECT actor, action, order_code, detail FROM audit_log ORDER BY id DESC LIMIT 1").first();
 
 describe("Access", () => {
@@ -187,9 +189,55 @@ describe("tra cứu, gửi lại key", () => {
     expect(await lastAudit()).toMatchObject({ action: "payment_status_viewed", order_code: 1 });
     expect((await adminCall("/admin/orders/999/payment-status")).status).toBe(404);
   });
+
+  it("xem trạng thái đơn có tác dụng phụ (nhật ký, gọi PayOS): Sec-Fetch-Site khác cùng origin thì 403", async () => {
+    const { w, adminCall } = makeAdmin();
+    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "b@example.com", consent: true });
+    const path = `/admin/orders/${co.body.order_code as number}/payment-status`;
+    const asked = () => w.payos.requests.filter((r) => r.method === "GET").length;
+    for (const site of ["cross-site", "same-site"]) {
+      expect(await adminCall(path, { headers: { "sec-fetch-site": site } })).toMatchObject({ status: 403, body: { error: "forbidden" } });
+    }
+    expect(asked()).toBe(0);
+    expect(await auditCount("payment_status_viewed")).toBe(0);
+    for (const headers of [{ "sec-fetch-site": "same-origin" }, { "sec-fetch-site": "none" }, {}]) {
+      expect((await adminCall(path, { headers })).status).toBe(200);
+    }
+    expect(asked()).toBe(3);
+  });
 });
 
 describe("thay đổi license", () => {
+  it("thu hồi lần hai: 404, không đổi revoked_at, không ghi thêm nhật ký", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy();
+    const id = (await licenseRow())!.id as string;
+    expect((await adminCall(`/admin/licenses/${id}/revoke`, { body: { note: "hoàn tiền" } })).status).toBe(200);
+    w.clock.now = T0 + DAY;
+    expect((await adminCall(`/admin/licenses/${id}/revoke`, { body: { note: "lần hai" } })).status).toBe(404);
+    expect((await licenseRow())!.revoked_at).toBe(T0);
+    expect(await auditCount("license_revoked")).toBe(1);
+  });
+
+  it("revoke, unlock, extend với license không tồn tại: 404, không ghi nhật ký", async () => {
+    const { adminCall } = makeAdmin();
+    const id = crypto.randomUUID();
+    expect((await adminCall(`/admin/licenses/${id}/revoke`, { body: { note: "x" } })).status).toBe(404);
+    expect((await adminCall(`/admin/licenses/${id}/unlock`, { body: { note: "x" } })).status).toBe(404);
+    expect((await adminCall(`/admin/licenses/${id}/extend`, { body: { days: 7, note: "x" } })).status).toBe(404);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: 0 });
+  });
+
+  it("admin gỡ cùng một máy hai lần cùng lúc: một dòng deactivations, một dòng nhật ký", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy();
+    const a = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "M1" });
+    const path = `/admin/activations/${a.body.activation_id as string}/deactivate`;
+    await Promise.all([adminCall(path, { body: { note: "a" } }), adminCall(path, { body: { note: "b" } })]);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations").first()).toEqual({ n: 1 });
+    expect(await auditCount("deactivated_by_admin")).toBe(1);
+  });
+
   it("mọi thao tác thay đổi đều cần note", async () => {
     const { w, adminCall } = makeAdmin();
     await w.buy();
@@ -344,8 +392,25 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
     const log = await lastAudit();
     expect(log).toMatchObject({ action: "personal_data_erased" });
     expect(String((log as { detail: string }).detail)).not.toContain("erase@example.com");
+    expect(JSON.parse((log as { detail: string }).detail)).toEqual({
+      activations: 1,
+      licenses: 1,
+      orders: 1,
+      note: "yêu cầu xóa qua email hỗ trợ ngày 2026-10-01",
+    });
     const again = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "M" });
     expect(again.status).toBe(200);
+  });
+
+  it("nhật ký cùng batch với lệnh xóa: ghi nhật ký lỗi thì không xóa gì", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy({ email: "erase@example.com" });
+    const res = await withFailingInsert("audit_log", "NEW.action = 'personal_data_erased'", () =>
+      adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } }),
+    );
+    expect(res.status).toBe(500);
+    expect(await env.DB.prepare("SELECT email FROM licenses").first()).toEqual({ email: "erase@example.com" });
+    expect(await env.DB.prepare("SELECT email FROM orders").first()).toEqual({ email: "erase@example.com" });
   });
 });
 
@@ -427,6 +492,14 @@ describe("đơn paid_needs_review: license đã thu hồi mà nhận được ti
     expect((await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "grant_new_license", note: "x" } })).status).toBe(409);
   });
 
+  it("hai lần ghi hoàn tiền chạy cùng lúc: một lần 200, một lần 409, một dòng nhật ký", async () => {
+    const { adminCall, orderCode } = await needsReview();
+    const body = { action: "refunded", note: "đã hoàn 150.000đ" };
+    const results = await Promise.all([1, 2, 3].map(() => adminCall(`/admin/orders/${orderCode}/resolve`, { body })));
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409, 409]);
+    expect(await auditCount("order_refunded_outside")).toBe(1);
+  });
+
   it("đơn không ở trạng thái chờ xử lý thì resolve trả 409", async () => {
     const { w, adminCall } = makeAdmin();
     const { orderCode } = await w.buy();
@@ -455,6 +528,23 @@ describe("reset hạn mức của máy (QĐ35)", () => {
     w.clock.now = T0 + 3 * DAY + 2 * 3600 + 16 * 60;
     expect((await validate()).body).toMatchObject({ quota_epoch: 1, quota_fresh: false });
     expect((await adminCall(`/admin/activations/${crypto.randomUUID()}/reset-quota`, { body: { note: "x" } })).status).toBe(404);
+  });
+
+  it("nhật ký cùng batch với lệnh reset: ghi nhật ký lỗi thì quota_epoch giữ nguyên", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy();
+    const a = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "M1" });
+    const id = a.body.activation_id as string;
+    const res = await withFailingInsert("audit_log", "NEW.action = 'quota_reset'", () =>
+      adminCall(`/admin/activations/${id}/reset-quota`, { body: { note: "x" } }),
+    );
+    expect(res.status).toBe(500);
+    expect(await env.DB.prepare("SELECT quota_epoch, epoch_pending FROM activations").first()).toEqual({ quota_epoch: 0, epoch_pending: 0 });
+    // Nhật ký ghi đủ license_id, activation_id, quota_epoch mới và note.
+    expect((await adminCall(`/admin/activations/${id}/reset-quota`, { body: { note: "khách mất bộ đếm" } })).body).toEqual({ activation_id: id, quota_epoch: 1 });
+    const log = await env.DB.prepare("SELECT license_id, detail FROM audit_log WHERE action = 'quota_reset'").first<{ license_id: string; detail: string }>();
+    expect(log!.license_id).toBe((await licenseRow())!.id);
+    expect(JSON.parse(log!.detail)).toEqual({ activation_id: id, quota_epoch: 1, note: "khách mất bộ đếm" });
   });
 
   it("chống CSRF như mọi thao tác thay đổi", async () => {
@@ -509,6 +599,8 @@ describe("đăng ký webhook với PayOS", () => {
     for (const bad of [
       "https://evil.example/v1/webhooks/payos",
       `${API_ORIGIN}/v1/webhooks/payos?x=1`,
+      "https://user:pass@mt-license-staging.example.workers.dev/v1/webhooks/payos",
+      "https://user@mt-license-staging.example.workers.dev/v1/webhooks/payos",
       `${API_ORIGIN}/khac`,
       "http://mt-license-staging.example.workers.dev/v1/webhooks/payos",
       "không phải url",

@@ -4,7 +4,7 @@ import { hmacSha256Hex } from "../src/crypto";
 import { grantOrder, loadOrder } from "../src/orders";
 import { objectSignatureData } from "../src/payment/payos";
 import { parsePlans, type PlanTable } from "../src/plans";
-import { resetDb } from "./db";
+import { resetDb, withFailingInsert } from "./db";
 import { FakeGateway, TEST_CHECKSUM_KEY } from "./fakes";
 import { DAY, makeWorld, T0 } from "./world";
 
@@ -18,15 +18,6 @@ async function checkout(w: ReturnType<typeof makeWorld>, extra: Record<string, u
   return { orderCode: res.body.order_code as number, token: res.body.order_token as string };
 }
 
-/** Cho một câu ghi hỏng (trigger RAISE), để kiểm các câu ghi cùng batch có quay lui cùng nhau không. */
-async function withFailingInsert<T>(table: string, when: string, run: () => Promise<T>): Promise<T> {
-  await env.DB.prepare(`CREATE TRIGGER test_fail BEFORE INSERT ON ${table} WHEN ${when} BEGIN SELECT RAISE(ABORT, 'ghi hỏng'); END`).run();
-  try {
-    return await run();
-  } finally {
-    await env.DB.prepare("DROP TRIGGER test_fail").run();
-  }
-}
 const auditCount = async (action: string) =>
   (await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = ?").bind(action).first<{ n: number }>())?.n;
 

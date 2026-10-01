@@ -4,7 +4,7 @@
 // Mọi thao tác, kể cả tra cứu, đều ghi audit_log với actor "admin:<email người vận hành>".
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { audit, auditStatement } from "./audit";
+import { audit, auditIfChanged, auditStatement } from "./audit";
 import { sendLicenseMail } from "./deps";
 import type { EmailProvider } from "./email/provider";
 import type { AdminEnv } from "./env";
@@ -35,6 +35,12 @@ function parseNote(v: unknown): string | null {
   return note.length > 0 && note.length <= 500 ? note : null;
 }
 
+/** Trình duyệt báo request đến từ trang khác (Sec-Fetch-Site không phải same-origin hay none). Không có header thì không chặn (cloudflared). */
+function crossSite(c: Context): boolean {
+  const site = c.req.header("sec-fetch-site");
+  return site !== undefined && site !== "same-origin" && site !== "none";
+}
+
 export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
   const app = new Hono<AdminAppEnv>();
 
@@ -45,9 +51,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       return fail(c, 403, "forbidden");
     }
     if (c.req.method !== "GET" && c.req.method !== "HEAD") {
-      const site = c.req.header("sec-fetch-site");
       const origin = c.req.header("origin");
-      if ((site && site !== "same-origin" && site !== "none") || (origin && origin !== new URL(c.req.url).origin)) {
+      if (crossSite(c) || (origin && origin !== new URL(c.req.url).origin)) {
         return fail(c, 403, "forbidden");
       }
       if (!/^application\/json\s*(;|$)/i.test(c.req.header("content-type") ?? "")) {
@@ -131,7 +136,9 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     return c.json({ licenses, orders });
   });
 
+  // GET nhưng có tác dụng phụ (ghi nhật ký, gọi PayOS): chặn request mà trình duyệt báo là từ trang khác.
   app.get("/admin/orders/:orderCode/payment-status", async (c) => {
+    if (crossSite(c)) return fail(c, 403, "forbidden");
     const deps = c.get("deps");
     const orderCode = Number(c.req.param("orderCode"));
     if (!Number.isSafeInteger(orderCode) || orderCode <= 0) return fail(c, 400, "invalid_request");
@@ -211,7 +218,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     if (action === "refunded") {
       const [res] = await db.batch([
         db.prepare("UPDATE orders SET status = 'refunded' WHERE order_code = ? AND status = 'paid_needs_review'").bind(orderCode),
-        auditStatement(db, {
+        // Hai lần thao tác chạy cùng lúc: chỉ lần đổi được trạng thái mới ghi nhật ký.
+        auditIfChanged(db, {
           at: now,
           actor: c.get("actor"),
           action: "order_refunded_outside",
@@ -299,7 +307,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
                 anchor_applied_at = CASE WHEN expires_at <= ?1 THEN ?1 ELSE anchor_applied_at END,
                 expires_at = MAX(expires_at, ?1) + ?2, version = version + 1 WHERE id = ?3`,
       ).bind(now, (days as number) * 86400, id),
-      auditStatement(c.env.DB, {
+      auditIfChanged(c.env.DB, {
         at: now,
         actor: c.get("actor"),
         action: "license_extended_manually",
@@ -314,7 +322,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     return c.json({ license_id: id, expires_at: lic?.expires_at, cycle_anchor: lic?.cycle_anchor });
   });
 
-  /** Thao tác một câu UPDATE trên license kèm nhật ký: unlock, revoke. */
+  /** Thao tác một câu UPDATE trên license kèm nhật ký: unlock, revoke. Câu UPDATE không đổi dòng nào thì không ghi nhật ký. */
   function licenseAction(path: string, action: string, sql: string) {
     app.post(`/admin/licenses/:id/${path}`, async (c) => {
       const input = await noteBody(c);
@@ -323,7 +331,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       const id = c.req.param("id");
       const [res] = await c.env.DB.batch([
         c.env.DB.prepare(sql).bind(now, id),
-        auditStatement(c.env.DB, { at: now, actor: c.get("actor"), action, licenseId: id, detail: { note: input.note } }),
+        auditIfChanged(c.env.DB, { at: now, actor: c.get("actor"), action, licenseId: id, detail: { note: input.note } }),
       ]);
       if (res?.meta.changes !== 1) return fail(c, 404, "not_found");
       return c.json({ ok: true });
@@ -358,13 +366,14 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       .first<{ license_id: string }>();
     if (!act) return fail(c, 404, "activation_not_found");
     // by = 'admin' nên không tính vào ngưỡng khóa tạm. Dòng activation giữ lại (QĐ35).
-    await c.env.DB.batch([
+    // Hai lần gỡ chạy cùng lúc: chỉ lần đổi được dòng activation mới ghi deactivations và nhật ký.
+    const [, gone] = await c.env.DB.batch([
       c.env.DB.prepare(
         `INSERT INTO deactivations (license_id, activation_id, at, by)
          SELECT ?1, ?2, ?3, 'admin' WHERE EXISTS (SELECT 1 FROM activations WHERE id = ?2 AND deactivated_at IS NULL)`,
       ).bind(act.license_id, id, now),
       c.env.DB.prepare("UPDATE activations SET deactivated_at = ?, deactivated_by = 'admin' WHERE id = ? AND deactivated_at IS NULL").bind(now, id),
-      auditStatement(c.env.DB, {
+      auditIfChanged(c.env.DB, {
         at: now,
         actor: c.get("actor"),
         action: "deactivated_by_admin",
@@ -372,6 +381,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
         detail: { activation_id: id, note: input.note },
       }),
     ]);
+    if (gone?.meta.changes !== 1) return fail(c, 404, "activation_not_found");
     return c.json({ ok: true });
   });
 
@@ -384,21 +394,24 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     const now = c.get("deps").now();
     const id = c.req.param("id");
     const db = c.env.DB;
-    const row = await db
-      .prepare(
-        `UPDATE activations SET quota_epoch = quota_epoch + 1, epoch_pending = 1, epoch_window_start = NULL
-         WHERE id = ? RETURNING license_id, quota_epoch`,
-      )
-      .bind(id)
-      .first<{ license_id: string; quota_epoch: number }>();
+    // Nhật ký cùng batch với lệnh ghi, lấy license_id và quota_epoch mới từ chính dòng vừa đổi.
+    const [updated] = await db.batch([
+      db
+        .prepare(
+          `UPDATE activations SET quota_epoch = quota_epoch + 1, epoch_pending = 1, epoch_window_start = NULL
+           WHERE id = ? RETURNING license_id, quota_epoch`,
+        )
+        .bind(id),
+      db
+        .prepare(
+          `INSERT INTO audit_log (at, actor, action, license_id, detail)
+           SELECT ?1, ?2, 'quota_reset', license_id, json_object('activation_id', id, 'quota_epoch', quota_epoch, 'note', ?3)
+           FROM activations WHERE id = ?4 AND changes() = 1`,
+        )
+        .bind(now, c.get("actor"), input.note, id),
+    ]);
+    const row = (updated?.results as { license_id: string; quota_epoch: number }[] | undefined)?.[0];
     if (!row) return fail(c, 404, "activation_not_found");
-    await audit(db, {
-      at: now,
-      actor: c.get("actor"),
-      action: "quota_reset",
-      licenseId: row.license_id,
-      detail: { activation_id: id, quota_epoch: row.quota_epoch, note: input.note },
-    });
     return c.json({ activation_id: id, quota_epoch: row.quota_epoch });
   });
 
@@ -428,15 +441,24 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     if (!input || !email) return fail(c, 400, "invalid_request");
     const now = c.get("deps").now();
     const db = c.env.DB;
-    const [acts, lics, ords] = await db.batch([
-      db.prepare(
-        "UPDATE activations SET device_label = NULL WHERE device_label IS NOT NULL AND license_id IN (SELECT id FROM licenses WHERE email = ?)",
-      ).bind(email),
+    const activationsOf = "device_label IS NOT NULL AND license_id IN (SELECT id FROM licenses WHERE email = ?3)";
+    // Nhật ký đứng đầu batch (cùng transaction), đếm đúng các dòng ba câu sau sẽ đổi; ghi nhật ký lỗi thì không xóa gì.
+    const [, acts, lics, ords] = await db.batch([
+      db
+        .prepare(
+          `INSERT INTO audit_log (at, actor, action, detail)
+           SELECT ?1, ?2, 'personal_data_erased', json_object(
+             'activations', (SELECT COUNT(*) FROM activations WHERE ${activationsOf}),
+             'licenses', (SELECT COUNT(*) FROM licenses WHERE email = ?3),
+             'orders', (SELECT COUNT(*) FROM orders WHERE email = ?3),
+             'note', ?4)`,
+        )
+        .bind(now, c.get("actor"), email, input.note),
+      db.prepare(`UPDATE activations SET device_label = NULL WHERE ${activationsOf.replaceAll("?3", "?")}`).bind(email),
       db.prepare("UPDATE licenses SET email = NULL WHERE email = ?").bind(email),
       db.prepare("UPDATE orders SET email = NULL WHERE email = ?").bind(email),
     ]);
     const counts = { activations: acts?.meta.changes ?? 0, licenses: lics?.meta.changes ?? 0, orders: ords?.meta.changes ?? 0 };
-    await audit(db, { at: now, actor: c.get("actor"), action: "personal_data_erased", detail: { ...counts, note: input.note } });
     return c.json(counts);
   });
 
@@ -451,7 +473,17 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       url = null;
     }
     const apiOrigin = c.env.API_ORIGIN ?? "";
-    if (!url || !apiOrigin || url.origin !== apiOrigin || url.pathname !== "/v1/webhooks/payos" || url.search || url.hash) {
+    // URL.origin bỏ qua phần userinfo ("user:pass@"), nên phải kiểm riêng.
+    if (
+      !url ||
+      !apiOrigin ||
+      url.origin !== apiOrigin ||
+      url.username ||
+      url.password ||
+      url.pathname !== "/v1/webhooks/payos" ||
+      url.search ||
+      url.hash
+    ) {
       return fail(c, 400, "invalid_request", { field: "webhook_url" });
     }
     try {
