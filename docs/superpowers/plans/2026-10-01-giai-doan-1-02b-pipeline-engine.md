@@ -353,7 +353,7 @@ mod tests {
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p pipeline --lib`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0422]: cannot find struct, variant or union type `SessionMetrics` in this scope
@@ -748,7 +748,7 @@ Run: `cargo test -p pipeline --lib`
 Expected:
 
 ```text
-test result: ok. 127 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 129 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 ```
 
 - [ ] **Step 6: Clippy và định dạng**
@@ -775,7 +775,7 @@ git commit -m "feat(pipeline): phụ đề, hàng đợi chống nghẽn §7 và
 - Luồng nhận dạng áp `filter::verdict` với số của đoạn (`no_speech_prob`, `avg_logprob`, xác suất VAD, độ dài tiếng nói).
 - Mỗi luồng có guard: panic không làm engine treo (Q4 của review 02b); VAD lỗi giữa chừng và nguồn âm thanh hỏng đều báo lỗi (Q5).
 - `segmenter.rs` thêm `open_start_ms` (thời điểm bắt đầu của đoạn đang nói dở, để luồng phụ đề biết tiếng nói đã tiếp tục trong cửa sổ ghép câu).
-- Test đơn vị của luồng phụ đề, nạp thẳng tin nhắn, tất định (Q2 của review 02b): ngữ cảnh đúng câu trước, gộp phụ đề khi hàng đợi dịch đầy, `skipped` vì chờ lâu, `failed` và "dịch không dùng được", luồng dịch chết, câu được ghép thêm khi đang dịch (hủy, dịch lại; ghép thêm hai lần thì hàng chỉ giữ một mục, bản mới nhất, và câu không kẹt ở `translating`: Q-A của review 02 lần 2), đếm phút mỗi đoạn một lần, "Đang trễ", dừng trong hạn và hết hạn, chạm hạn mức (từ `usage` và từ ngoài). Thêm test cả engine với nhận dạng và dịch giả trong tiến trình: VAD không nạp được, VAD lỗi giữa chừng, nguồn âm thanh hỏng, luồng VAD và luồng nhận dạng panic, `llama-server` treo lúc Dừng, lần làm nóng dừng khi Dừng.
+- Test đơn vị của luồng phụ đề, nạp thẳng tin nhắn, tất định (Q2 của review 02b): ngữ cảnh đúng câu trước, gộp phụ đề khi hàng đợi dịch đầy, `skipped` vì chờ lâu, `failed` và "dịch không dùng được", luồng dịch chết, câu được ghép thêm khi đang dịch (hủy, dịch lại; ghép thêm hai lần thì hàng chỉ giữ một mục, bản mới nhất, và câu không kẹt ở `translating`: Q-A của review 02 lần 2; câu đang chờ dịch được ghép thêm hai lần thì chỉ gửi đi dịch một lần: Nhỏ-2 của review 02 lần 3. Tối đa là hai lần ghép thêm, vì `max_segments` là 3), đếm phút mỗi đoạn một lần, "Đang trễ", dừng trong hạn và hết hạn, chạm hạn mức (từ `usage` và từ ngoài). Thêm test cả engine với nhận dạng và dịch giả trong tiến trình: VAD không nạp được, VAD lỗi giữa chừng, nguồn âm thanh hỏng, luồng VAD và luồng nhận dạng panic, `llama-server` treo lúc Dừng, lần làm nóng dừng khi Dừng.
 - `tests/engine.rs` (dòng 295, 315): âm thanh tổng hợp có ranh giới biết trước, VAD theo năng lượng, tiến trình phụ giả qua đúng `SidecarManager`; kiểm thứ tự, thời gian, trạng thái, ghép câu, lọc, phút đã dịch (khớp tổng của `usage`), `dropped`, lỗi làm phiên dừng, dừng nhanh, và log của cả phiên không có chữ chép lời nào. Các test này phát âm thanh nhanh gấp 20 lần thời gian thực, nên đặt ngưỡng trễ rất lớn (600 000 ms) để máy bận không làm test đỏ ngẫu nhiên (Q3 của review 02b); luật trễ có test riêng ở trên.
 
 **Files:**
@@ -1182,6 +1182,27 @@ mod tests {
             (Status::Done, "chúng tôi về nhà")
         );
         assert_eq!(h.statuses(1).last(), Some(&Status::Done));
+    }
+
+    /// Nhỏ-2 của review 02 lần 3: câu đang chờ dịch (chưa gửi đi) được ghép thêm hai lần (tối đa, vì `max_segments` là 3):
+    /// mục trong hàng được cập nhật tại chỗ, câu chỉ được gửi đi dịch một lần với bản mới nhất.
+    #[test]
+    fn a_waiting_sentence_that_grows_twice_is_translated_once() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        h.said(2, 1_500, 2_000, "en", "so we");
+        h.said(3, 2_300, 2_800, "en", "went");
+        h.said(4, 3_100, 3_500, "en", "home");
+        h.no_job();
+        h.finish(&j1, done("Một."));
+        let j2 = h.job();
+        assert_eq!((j2.sub_id, j2.version, j2.text.as_str()), (2, 3, "so we went home"));
+        h.finish(&j2, done("chúng tôi về nhà"));
+        h.no_job();
+        let translating = h.statuses(2).iter().filter(|s| **s == Status::Translating).count();
+        assert_eq!(translating, 1, "{:?}", h.statuses(2));
+        assert_eq!(h.sink.usage(), [(1, 1_000), (2, 1_400)]);
     }
 
     /// Câu đã dịch xong rồi mới được ghép thêm: lần dịch lại chỉ tính phần mới (§6.8: mỗi đoạn tính một lần).
@@ -2018,7 +2039,7 @@ fn stop_ends_a_live_session_quickly() {
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p pipeline --test engine`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0432]: unresolved imports `pipeline::engine::EnergyVad`, `pipeline::engine::Engine`, `pipeline::engine::EngineConfig`, `pipeline::engine::EventSink`, `pipeline::engine::Fatal`, `pipeline::engine::Indicators`, `pipeline::engine::SampleSource`, `pipeline::engine::Usage`, `pipeline::engine::VadFactory`
@@ -3416,12 +3437,12 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 150 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+test result: ok. 153 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
-test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.54s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.21s
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.60s
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
@@ -4082,12 +4103,12 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 150 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+test result: ok. 153 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.58s
-test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.54s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.65s
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
@@ -4118,12 +4139,12 @@ MT_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx cargo test -p pipeline --test re
 Expected: mỗi câu có ít nhất một phụ đề nằm trong khoảng thời gian của câu, đúng thứ tự; hai câu tiếng Anh `Done`, câu tiếng Việt `SameLang` (có thể bị VAD cắt làm hai đoạn); trước đó một dòng tóm tắt số đo của phiên (số đoạn theo kết cục, thời gian từng bước; không dùng làm số đo hiệu năng). Chữ chép và bản dịch tùy máy. Lúc lập kế hoạch (gói Nhẹ):
 
 ```text
-4 đoạn (lọc 0, bỏ 0), 2 câu dịch, 0 lỗi, 0 bỏ bước dịch, 2 cùng ngôn ngữ, 0 lần ghép; cắt đoạn p50 320 ms, p90 320 ms; nhận dạng p50 108 ms, p90 117 ms; dịch p50 203 ms, p90 204 ms; tổng p50 496 ms, p90 509 ms; tiếng nói đã dịch 6016 ms
+4 đoạn (lọc 0, bỏ 0), 2 câu dịch, 0 lỗi, 0 bỏ bước dịch, 2 cùng ngôn ngữ, 0 lần ghép; cắt đoạn p50 320 ms, p90 320 ms; nhận dạng p50 107 ms, p90 116 ms; dịch p50 199 ms, p90 200 ms; tổng p50 496 ms, p90 509 ms; tiếng nói đã dịch 6016 ms
 0 1472–4032 Done That didn't seem to make sense to me. It certainly wasn't fair. | Điều đó dường như không hợp lý chút nào. Chắc chắn là không công bằng.
 1 7072–10528 Done The results of plotting analysis will be posted to a public website. | Kết quả phân tích đồ họa sẽ được đăng trên một trang web công cộng.
 2 13088–14336 SameLang Cái nhà khoa học cho viết | 
 3 14784–17472 SameLang vụp và trạm đã gây ra vụ nổ gắt lớn | 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.24s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.79s
 ```
 
 Run:
@@ -4286,7 +4307,7 @@ mod tests {
 - [ ] **Step 2: Chạy test, thấy đỏ**
 
 Run: `cargo test -p latency-bench`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0433]: cannot find type `HashSet` in this scope
@@ -5057,7 +5078,7 @@ Run: `cargo test -p latency-bench`
 Expected:
 
 ```text
-test result: ok. 30 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.70s
+test result: ok. 30 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.67s
 ```
 
 Run: `python3 -m unittest discover -s bench/phase0/mt -p 'test_*.py'`
@@ -5095,7 +5116,7 @@ Run:
 ```bash
 rm -rf target/mteval-smoke && cargo run -q -p latency-bench -- mt-eval --testset bench/phase0/data/mt/testset_phase0.jsonl --llama-server $PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server --model $PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf --out-dir target/mteval-smoke --limit 2 && wc -l target/mteval-smoke/*.jsonl && head -c 300 target/mteval-smoke/Hy-MT2-1.8B-Q4_K_M-plain.jsonl && echo && grep -E '"(git_dirty|model_file|variant|limit)"' target/mteval-smoke/Hy-MT2-1.8B-Q4_K_M-plain.meta.json
 ```
-Expected: 2 câu mỗi chiều, 8 chiều, tiến độ, số dòng, đầu file kết quả (bản dịch tùy máy), và điều kiện của lượt chạy (`git_dirty` là `false` khi chạy trên cây đã commit):
+Expected: 2 câu mỗi chiều, 8 chiều, tiến độ, số dòng, đầu file kết quả (bản dịch tùy máy), và điều kiện của lượt chạy. `git_dirty` cho biết cây có thay đổi chưa commit: làm đúng theo thứ tự bước thì là `true`, vì code của task tới Step 7 mới commit (N8 của review 02 lần 3); Expected dưới đây lấy trên cây đã commit, nên in `false`. Các dòng khác như nhau ở cả hai cách:
 
 ```text
 Hy-MT2-1.8B-Q4_K_M-plain: 16 câu, còn 16 câu phải dịch
@@ -5469,7 +5490,7 @@ mod tests {
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p audio-capture`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0425]: cannot find function `default_output_device` in module `macos`
@@ -6480,7 +6501,7 @@ Expected:
 ```text
 test result: ok. 34 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.07s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
@@ -6507,7 +6528,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo; `cargo fmt` không in gì; dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.61s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.00s
 ```
 
 - [ ] **Step 7: Kiểm toàn bộ phần crate** (mục 6.2 của kế hoạch 00)
@@ -6541,7 +6562,7 @@ warning: 3 allowed warnings found
 Tổng số test của `cargo test --workspace` (gồm cả lib của app từ 01):
 
 ```text
-passed 432 failed 0 ignored 10
+passed 437 failed 0 ignored 10
 ```
 
 - [ ] **Step 8: Commit**
@@ -6673,7 +6694,7 @@ turbo: 548 clip, bị bỏ {}, tỉ lệ nén lớn nhất 1.54
 small: 548 clip, bị bỏ {"NoSpeech": ["en-9810650684898829002_nb"]}, tỉ lệ nén lớn nhất 1.54
 test latency::tests::phase1_rules_drop_no_a4_clip ... ok
 test latency::tests::phase1_filler_rule_drops_only_known_hallucinations_on_s6 ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.31s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.34s
 ```
 
 - [ ] **Step 5: Ghi `gd1_no_speech.md`**
@@ -6789,24 +6810,24 @@ Hy-MT2-1.8B-Q4_K_M-plain: 1440/1440
 | chiều | câu | câu gốc ≥ 10 token | tỉ lệ lớn nhất (≥ 10) | ngưỡng đề xuất | câu gốc < 3 token | token dịch lớn nhất (< 3) | hạn mức sinh (< 3) | lỗi |
 |---|---|---|---|---|---|---|---|---|
 | en->ja | 112 | 75 | 2.61 | 3.3 | 9 | 10 | 40 | 0 |
-| en->ko | 112 | 75 | 2.50 | 3.2 | 8 | 9 | 40 | 1 |
+| en->ko | 112 | 75 | 2.50 | 3.2 | 9 | 9 | 40 | 0 |
 | en->vi | 12 | 0 | — | — | 9 | 8 | 40 | 0 |
 | en->zh | 112 | 75 | 1.54 | 2.0 | 9 | 3 | 40 | 0 |
 | ja->en | 112 | 89 | 1.33 | 1.7 | 0 | — | — | 0 |
 | ja->ko | 112 | 89 | 2.17 | 2.8 | 0 | — | — | 0 |
 | ja->vi | 12 | 0 | — | — | 0 | — | — | 0 |
-| ja->zh | 112 | 88 | 1.17 | 1.5 | 0 | — | — | 1 |
+| ja->zh | 112 | 89 | 1.17 | 1.5 | 0 | — | — | 0 |
 | ko->en | 112 | 94 | 1.46 | 1.9 | 2 | 3 | 40 | 0 |
 | ko->ja | 112 | 94 | 1.60 | 2.0 | 2 | 4 | 40 | 0 |
 | ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 0 |
-| ko->zh | 112 | 92 | 1.00 | 1.3 | 2 | 3 | 40 | 2 |
+| ko->zh | 112 | 93 | 1.00 | 1.3 | 2 | 3 | 40 | 1 |
 | vi->en | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ja | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->zh | 12 | 0 | — | — | 0 | — | — | 0 |
-| zh->en | 112 | 75 | 2.15 | 2.7 | 9 | 4 | 40 | 1 |
-| zh->ja | 112 | 75 | 2.88 | 3.6 | 9 | 10 | 40 | 1 |
-| zh->ko | 112 | 76 | 2.92 | 3.7 | 8 | 7 | 40 | 1 |
+| zh->en | 112 | 76 | 2.15 | 2.7 | 9 | 4 | 40 | 0 |
+| zh->ja | 112 | 76 | 2.88 | 3.6 | 9 | 10 | 40 | 0 |
+| zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 0 |
 | zh->vi | 12 | 0 | — | — | 9 | 6 | 40 | 0 |
 
 ## Hy-MT2-1.8B-Q4_K_M-plain.jsonl
@@ -6814,22 +6835,22 @@ Hy-MT2-1.8B-Q4_K_M-plain: 1440/1440
 | chiều | câu | câu gốc ≥ 10 token | tỉ lệ lớn nhất (≥ 10) | ngưỡng đề xuất | câu gốc < 3 token | token dịch lớn nhất (< 3) | hạn mức sinh (< 3) | lỗi |
 |---|---|---|---|---|---|---|---|---|
 | en->ja | 112 | 75 | 2.22 | 2.8 | 9 | 7 | 40 | 0 |
-| en->ko | 112 | 74 | 2.31 | 2.9 | 9 | 9 | 40 | 1 |
+| en->ko | 112 | 75 | 2.31 | 2.9 | 9 | 9 | 40 | 0 |
 | en->vi | 12 | 0 | — | — | 9 | 8 | 40 | 0 |
 | en->zh | 112 | 75 | 1.46 | 1.9 | 9 | 3 | 40 | 0 |
 | ja->en | 112 | 89 | 1.33 | 1.7 | 0 | — | — | 0 |
 | ja->ko | 112 | 89 | 1.85 | 2.4 | 0 | — | — | 0 |
 | ja->vi | 12 | 0 | — | — | 0 | — | — | 0 |
 | ja->zh | 112 | 89 | 1.11 | 1.4 | 0 | — | — | 0 |
-| ko->en | 112 | 94 | 1.17 | 1.5 | 2 | 4 | 40 | 0 |
-| ko->ja | 112 | 94 | 1.47 | 1.9 | 2 | 4 | 40 | 0 |
+| ko->en | 112 | 93 | 1.17 | 1.5 | 2 | 4 | 40 | 1 |
+| ko->ja | 112 | 94 | 1.47 | 1.9 | 2 | 4 | 40 | 1 |
 | ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 0 |
-| ko->zh | 112 | 93 | 0.93 | 1.2 | 2 | 3 | 40 | 1 |
+| ko->zh | 112 | 94 | 0.93 | 1.2 | 2 | 3 | 40 | 0 |
 | vi->en | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ja | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->zh | 12 | 0 | — | — | 0 | — | — | 0 |
-| zh->en | 112 | 76 | 2.08 | 2.6 | 9 | 4 | 40 | 1 |
+| zh->en | 112 | 75 | 2.08 | 2.6 | 9 | 4 | 40 | 1 |
 | zh->ja | 112 | 76 | 3.00 | 3.8 | 9 | 7 | 40 | 0 |
 | zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 0 |
 | zh->vi | 12 | 0 | — | — | 9 | 6 | 40 | 0 |

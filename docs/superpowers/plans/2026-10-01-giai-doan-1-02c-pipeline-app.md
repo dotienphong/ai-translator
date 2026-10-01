@@ -19,7 +19,7 @@
 
 Đọc trước 02a (`docs/superpowers/plans/2026-10-01-giai-doan-1-02a-pipeline-crate.md`): các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Dòng của bảng đối chiếu", "Quyết định" và "Điểm cần chủ dự án quyết" áp cho file này. Làm file này sau khi 02a, 02d và 02b đã commit hết.
 
-Chỗ nối của 01 mà file này dùng (`main` `940c169`: 01 đã xong, kể cả các đợt sửa R và U; tên AI Translator, bundle id `com.aitranslator.desktop`): `session_stub.rs` và chỗ gọi nó trong `actions.rs`, `lib.rs`; trait `overlay::Surface` (hiện, ẩn thanh phụ đề), `SystemOpener` (mở trang ngoài app), `LoginItem` và `SettingsFile`, cùng bản giả trong `test_support.rs` (`mock_app` cài sẵn cả bốn, nên test không đụng LaunchAgent, Login Items, file cài đặt hay System Settings thật); danh sách lệnh cố định của test ACL lấy từ `commands::MAIN_COMMANDS`. Câu mới trong `src/i18n/` nhắc tên app thì dùng "AI Translator". Phần của đợt U được giữ nguyên: nút Bắt đầu/Dừng khóa khi đang gửi lệnh (`sessionPending`, `disabled={pending}` trong `Home.tsx`), test M11 và M12 của `overlay.test.ts`, `init()` gỡ listener khi lỗi và lệnh thành công thì xóa lỗi cũ (`store/app.ts`), các tab của `SettingsScreen.tsx`. `Cargo.toml` của app giữ autostart 2.6.0, single-instance 2.5.1 như `main`.
+Chỗ nối của 01 mà file này dùng (`main` `f86b1b7`, code như `940c169`: 01 đã xong, kể cả các đợt sửa R và U; tên AI Translator, bundle id `com.aitranslator.desktop`): `session_stub.rs` và chỗ gọi nó trong `actions.rs`, `lib.rs`; trait `overlay::Surface` (hiện, ẩn thanh phụ đề), `SystemOpener` (mở trang ngoài app), `LoginItem` và `SettingsFile`, cùng bản giả trong `test_support.rs` (`mock_app` cài sẵn cả bốn, nên test không đụng LaunchAgent, Login Items, file cài đặt hay System Settings thật); danh sách lệnh cố định của test ACL lấy từ `commands::MAIN_COMMANDS`. Câu mới trong `src/i18n/` nhắc tên app thì dùng "AI Translator". Phần của đợt U được giữ nguyên: nút Bắt đầu/Dừng khóa khi đang gửi lệnh (`sessionPending`, `disabled={pending}` trong `Home.tsx`), test M11 và M12 của `overlay.test.ts`, `init()` gỡ listener khi lỗi và lệnh thành công thì xóa lỗi cũ (`store/app.ts`), các tab của `SettingsScreen.tsx`. `Cargo.toml` của app giữ autostart 2.6.0, single-instance 2.5.1 như `main` lúc lập kế hoạch; nếu `main` đã nâng plugin Tauri thì giữ bản của `main` (02 không nâng plugin).
 
 **Ghi chú cho 06** (review 02 lần 2): `EventSink::usage` chạy trên luồng phụ đề của engine; bộ đếm phút của 06 không được ghi kho khóa (Keychain, Credential Manager) đồng bộ ở đó, mà đưa sang luồng khác. Chỗ nối "hạn mức còn 0 thì không bắt đầu" là `SessionDeps::check_quota` (Task 3), mặc định cho bắt đầu.
 
@@ -51,6 +51,8 @@ Dòng 136, 205, 272, 313; Đ15; QĐ17, QĐ18:
 - Tạo: `src-tauri/src/sidecar/probe.rs`
 
 - [ ] **Step 1: Khai báo phụ thuộc và module**
+
+Bước này sửa `src-tauri/Cargo.toml`. Nếu `main` đã nâng plugin Tauri (autostart, single-instance, `tauri-plugin`, `tauri-utils`) thì giữ bản của `main`: khối dưới chỉ thêm các dòng của 02; nếu `git apply --check` lệch chỉ vì dòng phiên bản plugin làm ngữ cảnh, áp bằng `git apply --3way`, không đổi phiên bản về bản cũ.
 
 Sửa `src-tauri/Cargo.toml` (áp bằng `git apply`):
 
@@ -433,7 +435,7 @@ mod tests {
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p meeting-translator --lib sidecar`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0433]: cannot find type `Path` in this scope
@@ -932,18 +934,18 @@ test sidecar::probe::tests::a_new_binary_gets_a_longer_probe ... ok
 test sidecar::paths::tests::names_follow_the_external_bin_convention ... ok
 test sidecar::paths::tests::windows_has_two_asr_workers_and_macos_one ... ok
 test sidecar::paths::tests::model_files_by_tier ... ok
-test sidecar::probe::tests::probe_output_is_capped ... ok
 test sidecar::probe::tests::discrete_or_integrated_gpus_are_usable ... ok
 test sidecar::probe::tests::no_gpu_software_renderer_or_garbage_means_cpu ... ok
-test sidecar::integrity::tests::sha256_matches_shasum ... ok
-test sidecar::integrity::tests::a_file_others_can_write_is_refused ... ok
-test sidecar::integrity::tests::unknown_or_missing_files_are_refused ... ok
+test sidecar::probe::tests::probe_output_is_capped ... ok
 test sidecar::integrity::tests::untouched_files_pass_and_return_the_executable_hashes ... ok
+test sidecar::integrity::tests::sha256_matches_shasum ... ok
+test sidecar::integrity::tests::unknown_or_missing_files_are_refused ... ok
+test sidecar::integrity::tests::a_file_others_can_write_is_refused ... ok
 test sidecar::integrity::tests::a_changed_library_or_executable_is_refused ... ok
 test sidecar::integrity::tests::an_extra_library_in_the_folder_is_refused ... ok
 test sidecar::first_run::tests::a_binary_is_new_until_it_has_run_once ... ok
 test sidecar::probe::tests::a_probe_that_fails_or_hangs_means_cpu ... ok
-test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 110 filtered out; finished in 0.34s
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 110 filtered out; finished in 0.36s
 ```
 
 - [ ] **Step 6: Chép tiến trình phụ cho bản dev** (cần bản release của `asr-worker`, 02a Task 1 Step 7)
@@ -1001,7 +1003,7 @@ git commit -m "feat(app): tiến trình phụ trong binaries/, SHA-256 build s�
 Dòng 7, 85–88, 90, 91, 94, 98, 230, 232, 248; QĐ16, QĐ20:
 - `capture.rs` (QĐ28): `LiveCapture` (trait `FrameSource` của engine).
   - Nguồn được mở và chạy trên luồng riêng; mỗi 500 ms kiểm thiết bị phát mặc định (cả nguồn toàn hệ thống lẫn nguồn một app) và luồng thu, đổi hay chết thì mở lại (Q3 của review 02c). Nguồn một app trên macOS tap mọi tiến trình của app (`TapTarget::Processes`).
-  - `StallWatch`: macOS, số khung đứng yên 3 giây trong khi app cần thu đang phát thì tap đã chết, mở lại; nguồn một app còn mở lại khi tập tiến trình đang phát của app đổi (`pids_changed`); số liệu thu ghi vào log mỗi 60 giây (Q-G của review 02 lần 2).
+  - `StallWatch`: macOS, số khung đứng yên 3 giây trong khi app cần thu đang phát thì tap đã chết, mở lại; mở lại 3 lần liên tiếp mà vẫn không có khung thì chờ lâu dần, tối đa 30 giây (`StallBackoff`, Nhỏ-5 của review 02 lần 3); nguồn một app còn mở lại khi app có tiến trình phát tiếng chưa được tap (`pids_changed`; tập chỉ thu nhỏ thì không, Nhỏ-6); số liệu thu ghi vào log mỗi 60 giây (Q-G của review 02 lần 2). Quyết định của mỗi lần kiểm và việc báo sau một lần mở thất bại là hai hàm thuần có test (`on_tick`, `failure_event`; Nhỏ-3).
   - `FailurePolicy`: lần mở đầu lỗi thì báo ngay; nguồn đã chạy rồi mà lỗi thì chỉ báo khi lỗi kéo dài 10 giây (Q2); nguồn một app đã chạy rồi mà app không phát nữa thì không dừng phiên: báo `CaptureEvent::WaitingForApp`, thử lại mỗi 2 giây (Q-C của review 02 lần 2).
   - `ZeroWatch`: macOS, mẫu toàn số 0 tuyệt đối 3 giây trong khi app cần thu đang phát (nguồn một app: chính app đó) thì báo nghi thiếu quyền, không dừng phiên (Q4); đã có một mẫu khác 0 trong phiên thì tắt hẳn (Q-B của review 02 lần 2).
   - `ClockFiller` chèn im lặng theo đồng hồ thật khi nguồn không trả mẫu. Âm thanh chỉ nằm trong RAM. Hủy `LiveCapture` thì chờ luồng thu tối đa 500 ms.
@@ -1018,6 +1020,8 @@ Dòng 7, 85–88, 90, 91, 94, 98, 230, 232, 248; QĐ16, QĐ20:
 - Sửa: `src/i18n/vi.ts`
 
 - [ ] **Step 1: Khai báo phụ thuộc và module**
+
+Bước này sửa `src-tauri/Cargo.toml`. Nếu `main` đã nâng plugin Tauri (autostart, single-instance, `tauri-plugin`, `tauri-utils`) thì giữ bản của `main`: khối dưới chỉ thêm các dòng của 02; nếu `git apply --check` lệch chỉ vì dòng phiên bản plugin làm ngữ cảnh, áp bằng `git apply --3way`, không đổi phiên bản về bản cũ.
 
 Sửa `src-tauri/Cargo.toml` (áp bằng `git apply`):
 
@@ -1070,8 +1074,9 @@ Tạo `src-tauri/src/capture.rs`, lúc này mới có phần test (phần code t
 //! - macOS, tap chết mà không báo gì (`coreaudiod` khởi động lại, aggregate mất sau khi máy ngủ; Q-G của review 02 lần 2):
 //!   số khung nhận được ([`CaptureStats::frames`]) không tăng suốt 3 giây trong khi app cần thu vẫn đang phát tiếng thì mở
 //!   lại nguồn ([`StallWatch`]). Aggregate đặt `tapautostart`, nên lúc không app nào phát thì không có khung nào là
-//!   bình thường; vì vậy chỉ xét khi có app phát. Nguồn một app: tập tiến trình đang phát tiếng của app khác tập đã tap
-//!   (helper mới, pid được cấp lại) thì cũng mở lại.
+//!   bình thường; vì vậy chỉ xét khi có app phát. Mở lại 3 lần liên tiếp mà vẫn không có khung thì chờ lâu dần, tối đa
+//!   30 giây ([`StallBackoff`]). Nguồn một app: app có tiến trình phát tiếng chưa được tap (helper mới, pid được cấp lại)
+//!   thì cũng mở lại; tập chỉ thu nhỏ thì không. Quyết định của mỗi lần kiểm là hàm thuần [`on_tick`].
 //! - Báo lỗi ([`FailurePolicy`]): lần mở đầu tiên lỗi thì báo ngay. Nguồn đã chạy được rồi mà lỗi (đang mở lại) thì chỉ báo
 //!   khi lỗi kéo dài từ 10 giây, vì §9 đòi tự khởi tạo lại, không dừng phiên. Nguồn một app đã chạy được rồi mà app đó
 //!   không phát tiếng nữa (đã đóng, Q-C của review 02 lần 2) thì không dừng phiên: thử lại mỗi 2 giây và báo
@@ -1169,6 +1174,76 @@ mod tests {
         assert!(pids_changed(&[300, 301], Some(&[300, 302])), "helper mới");
         assert!(pids_changed(&[300], Some(&[300, 301])));
         assert!(!pids_changed(&[300], None), "app đang im lặng");
+        assert!(
+            !pids_changed(&[300, 301], Some(&[300])),
+            "một helper ngừng phát: tap cũ vẫn đúng"
+        );
+    }
+
+    /// Nhỏ-5 của review 02 lần 3: mở lại 3 lần liên tiếp mà vẫn không có khung thì giãn thời gian chờ gấp đôi, tối đa 30
+    /// giây; có khung thì đếm lại từ đầu.
+    #[test]
+    fn repeated_stall_reopens_back_off_up_to_30_seconds() {
+        let mut b = StallBackoff::default();
+        let mut seen = Vec::new();
+        let mut warned = Vec::new();
+        for _ in 0..7 {
+            seen.push(b.threshold().as_secs());
+            warned.push(b.on_stall_reopen());
+        }
+        assert_eq!(seen, [3, 3, 3, 6, 12, 24, 30]);
+        assert_eq!(
+            warned,
+            [false, false, true, false, false, false, false],
+            "cảnh báo một lần"
+        );
+        assert_eq!(b.threshold(), STALL_MAX);
+        b.on_frames();
+        assert_eq!(b.threshold(), STALL_FOR);
+    }
+
+    /// Nhỏ-3 của review 02 lần 3: quyết định của một lần kiểm và việc báo sau một lần mở thất bại.
+    #[test]
+    fn the_watch_decisions() {
+        let none = Observed::default();
+        assert_eq!(on_tick(none), Tick::Continue);
+        let device = Observed {
+            device_changed: true,
+            stalled: true,
+            ..none
+        };
+        assert_eq!(on_tick(device), Tick::Reopen(Reopen::Device));
+        let failed = Observed {
+            source_failed: true,
+            ..none
+        };
+        assert_eq!(on_tick(failed), Tick::Reopen(Reopen::Device));
+        let stalled = Observed {
+            stalled: true,
+            new_process: true,
+            ..none
+        };
+        assert_eq!(on_tick(stalled), Tick::Reopen(Reopen::Stalled));
+        let new_process = Observed {
+            new_process: true,
+            ..none
+        };
+        assert_eq!(on_tick(new_process), Tick::Reopen(Reopen::NewProcess));
+        assert_eq!(
+            failure_event(OnFailure::Wait, errors::APP_NOT_PLAYING, "x".into()),
+            Some(CaptureEvent::WaitingForApp(true))
+        );
+        assert_eq!(
+            failure_event(OnFailure::Report, errors::CAPTURE_FAILED, "x".into()),
+            Some(CaptureEvent::Failed {
+                code: errors::CAPTURE_FAILED,
+                message: "x".into()
+            })
+        );
+        assert_eq!(
+            failure_event(OnFailure::Retry, errors::CAPTURE_FAILED, "x".into()),
+            None
+        );
     }
 
     /// Q4 của review 02c: mẫu toàn 0 tuyệt đối 3 giây trong khi có app phát tiếng thì nghi thiếu quyền.
@@ -1243,15 +1318,15 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p meeting-translator --lib -- capture errors`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0433]: cannot find type `AudioSource` in this scope
 error[E0433]: cannot find type `Instant` in this scope
 error[E0433]: cannot find type `Duration` in this scope
-error[E0425]: cannot find value `SIDECAR_MISSING` in this scope
-error[E0425]: cannot find value `SIDECAR_TAMPERED` in this scope
-error[E0425]: cannot find value `SIDECAR_FAILED` in this scope
+error[E0425]: cannot find value `STALL_MAX` in this scope
+error[E0425]: cannot find value `STALL_FOR` in this scope
+error[E0422]: cannot find struct, variant or union type `Observed` in this scope
 ```
 
 - [ ] **Step 4: Viết code**
@@ -1283,6 +1358,8 @@ const FAIL_AFTER: Duration = Duration::from_secs(10);
 const ZERO_FOR: Duration = Duration::from_secs(3);
 /// Không có khung mới chừng này trong khi app cần thu đang phát thì coi tap đã chết (Q-G của review 02 lần 2).
 const STALL_FOR: Duration = Duration::from_secs(3);
+/// Trần của thời gian chờ đó khi đã mở lại nhiều lần liên tiếp mà vẫn không có khung ([`StallBackoff`]).
+const STALL_MAX: Duration = Duration::from_secs(30);
 /// Nguồn một app: chu kỳ so tập tiến trình đang phát với tập đã tap.
 #[cfg(target_os = "macos")]
 const PIDS_EVERY: Duration = Duration::from_secs(2);
@@ -1354,16 +1431,25 @@ impl FailurePolicy {
     }
 }
 
-/// Phát hiện tap chết không báo gì (Q-G của review 02 lần 2): số khung không tăng suốt [`STALL_FOR`].
+/// Phát hiện tap chết không báo gì (Q-G của review 02 lần 2): số khung không tăng suốt `after` (mặc định [`STALL_FOR`]).
 #[derive(Debug)]
 pub struct StallWatch {
     frames: u64,
     since: Instant,
+    after: Duration,
 }
 
 impl StallWatch {
     pub fn new(now: Instant) -> Self {
-        Self { frames: 0, since: now }
+        Self::with_threshold(now, STALL_FOR)
+    }
+
+    pub fn with_threshold(now: Instant, after: Duration) -> Self {
+        Self {
+            frames: 0,
+            since: now,
+            after,
+        }
     }
 
     /// Số khung hiện tại lúc `now`. Trả `true` nếu đã đứng yên đủ lâu mà app cần thu vẫn đang phát (`playing` chỉ được
@@ -1374,7 +1460,7 @@ impl StallWatch {
             self.since = now;
             return false;
         }
-        if now.duration_since(self.since) < STALL_FOR {
+        if now.duration_since(self.since) < self.after {
             return false;
         }
         if playing() {
@@ -1386,9 +1472,88 @@ impl StallWatch {
     }
 }
 
-/// Nguồn một app: tập tiến trình đang phát tiếng của app (`None`: app không phát gì lúc này) khác tập đã tap.
+/// Mở lại vì tap chết mà số khung vẫn không tăng (Nhỏ-5 của review 02 lần 3): 3 lần đầu chờ [`STALL_FOR`], sau đó giãn
+/// gấp đôi mỗi lần, tối đa [`STALL_MAX`], để một cấu hình mà tiền đề của `StallWatch` sai không làm dựng lại tap mỗi 3
+/// giây suốt phiên. Các lần này không tính vào [`FailurePolicy`]: mở lại vẫn thành công.
+#[derive(Debug, Default)]
+pub struct StallBackoff {
+    reopens: u32,
+}
+
+impl StallBackoff {
+    /// Thời gian đứng yên phải chờ trước khi coi là tap chết, sau `reopens` lần mở lại liên tiếp không có khung nào.
+    pub fn threshold(&self) -> Duration {
+        match self.reopens {
+            0..=2 => STALL_FOR,
+            n => STALL_FOR.saturating_mul(1 << (n - 2).min(8)).min(STALL_MAX),
+        }
+    }
+
+    /// Vừa mở lại vì tap chết. Trả `true` đúng một lần, ở lần bắt đầu giãn (để ghi cảnh báo một lần).
+    pub fn on_stall_reopen(&mut self) -> bool {
+        self.reopens += 1;
+        self.reopens == 3
+    }
+
+    /// Nguồn đã có khung: đếm lại từ đầu.
+    pub fn on_frames(&mut self) {
+        self.reopens = 0;
+    }
+}
+
+/// Nguồn một app: trong các tiến trình đang phát tiếng của app (`None`: app không phát gì lúc này) có tiến trình chưa được
+/// tap. Tập chỉ thu nhỏ (một helper ngừng phát) thì tap cũ vẫn đúng, không mở lại (Nhỏ-6 của review 02 lần 3).
 pub fn pids_changed(tapped: &[i32], playing: Option<&[i32]>) -> bool {
-    playing.is_some_and(|p| p != tapped)
+    playing.is_some_and(|p| p.iter().any(|pid| !tapped.contains(pid)))
+}
+
+/// Việc của một lần kiểm (mỗi 500 ms) khi nguồn đang chạy.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Tick {
+    Continue,
+    /// Mở lại nguồn, kèm lý do để ghi log.
+    Reopen(Reopen),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reopen {
+    /// Thiết bị phát mặc định đã đổi, hoặc luồng thu đã dừng.
+    Device,
+    /// Tap chết: không có khung mới trong khi app cần thu vẫn đang phát.
+    Stalled,
+    /// Nguồn một app: app có tiến trình phát tiếng chưa được tap.
+    NewProcess,
+}
+
+/// Những gì một lần kiểm thấy.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Observed {
+    pub device_changed: bool,
+    pub source_failed: bool,
+    pub stalled: bool,
+    pub new_process: bool,
+}
+
+/// Quyết định của một lần kiểm (Nhỏ-3 của review 02 lần 3): hàm thuần, tách khỏi `capture_loop` để test được.
+pub fn on_tick(seen: Observed) -> Tick {
+    if seen.device_changed || seen.source_failed {
+        Tick::Reopen(Reopen::Device)
+    } else if seen.stalled {
+        Tick::Reopen(Reopen::Stalled)
+    } else if seen.new_process {
+        Tick::Reopen(Reopen::NewProcess)
+    } else {
+        Tick::Continue
+    }
+}
+
+/// Việc báo cho phiên sau một lần mở nguồn thất bại (hàm thuần, như [`on_tick`]).
+pub fn failure_event(verdict: OnFailure, code: &'static str, message: String) -> Option<CaptureEvent> {
+    match verdict {
+        OnFailure::Report => Some(CaptureEvent::Failed { code, message }),
+        OnFailure::Wait => Some(CaptureEvent::WaitingForApp(true)),
+        OnFailure::Retry => None,
+    }
 }
 
 /// Theo dõi chuỗi mẫu toàn số 0 tuyệt đối (Q4 của review 02c). Đã nhận một mẫu khác 0 trong phiên thì tắt hẳn (Q-B của
@@ -1570,6 +1735,7 @@ fn capture_loop(
     on_event: Arc<OnEvent>,
 ) {
     let mut policy = FailurePolicy::default();
+    let mut backoff = StallBackoff::default();
     // Thiết bị chọn tay (Windows) không theo thiết bị mặc định.
     let follows_default = !matches!(source, AudioSource::Device { .. });
     while !stop.load(Ordering::SeqCst) {
@@ -1585,13 +1751,9 @@ fn capture_loop(
             Err(e) => {
                 let code = error_code(&source, &e);
                 log::warn!("không mở được nguồn âm thanh: {e:#}");
-                match policy.on_failure(Instant::now(), code == errors::APP_NOT_PLAYING) {
-                    OnFailure::Report => on_event(CaptureEvent::Failed {
-                        code,
-                        message: format!("{e:#}"),
-                    }),
-                    OnFailure::Wait => on_event(CaptureEvent::WaitingForApp(true)),
-                    OnFailure::Retry => {}
+                let verdict = policy.on_failure(Instant::now(), code == errors::APP_NOT_PLAYING);
+                if let Some(event) = failure_event(verdict, code, format!("{e:#}")) {
+                    on_event(event);
                 }
                 wait_or_stop(&stop, RETRY_AFTER);
                 continue;
@@ -1599,28 +1761,46 @@ fn capture_loop(
         };
         log::info!("đang thu âm thanh ({} nguồn)", opened.sources.len());
         let frames = |o: &Opened| o.stats.iter().map(|s| s.frames.load(Ordering::Relaxed)).sum::<u64>();
-        let mut stall = StallWatch::new(Instant::now());
+        let threshold = backoff.threshold();
+        let mut stall = StallWatch::with_threshold(Instant::now(), threshold);
         #[cfg(target_os = "macos")]
         let mut pids_at = Instant::now();
         let mut stats_at = Instant::now();
         while !wait_or_stop(&stop, WATCH_EVERY) {
             let now = Instant::now();
-            let device_changed = follows_default && audio_capture::default_output_signature() != signature;
-            if device_changed || opened.sources.iter().any(|s| s.failed()) {
-                log::info!("thiết bị phát đã đổi hoặc luồng thu dừng: mở lại nguồn âm thanh");
-                break;
+            let count = frames(&opened);
+            if count > 0 {
+                backoff.on_frames();
             }
-            if cfg!(target_os = "macos") && stall.stalled(frames(&opened), now, || someone_playing(&source)) {
-                log::info!("không có khung mới {STALL_FOR:?} trong khi app đang phát: mở lại nguồn âm thanh");
-                break;
-            }
+            #[cfg_attr(not(target_os = "macos"), allow(unused_mut))]
+            let mut seen = Observed {
+                device_changed: follows_default && audio_capture::default_output_signature() != signature,
+                source_failed: opened.sources.iter().any(|s| s.failed()),
+                stalled: cfg!(target_os = "macos") && stall.stalled(count, now, || someone_playing(&source)),
+                new_process: false,
+            };
             #[cfg(target_os = "macos")]
             if let (Some(tapped), AudioSource::App { bundle_id }) = (&opened.tapped, &source)
                 && now.duration_since(pids_at) >= PIDS_EVERY
             {
                 pids_at = now;
-                if pids_changed(tapped, playing_pids(bundle_id).as_deref()) {
-                    log::info!("tiến trình đang phát của {bundle_id} đã đổi: mở lại nguồn âm thanh");
+                seen.new_process = pids_changed(tapped, playing_pids(bundle_id).as_deref());
+            }
+            match on_tick(seen) {
+                Tick::Continue => {}
+                Tick::Reopen(Reopen::Device) => {
+                    log::info!("thiết bị phát đã đổi hoặc luồng thu dừng: mở lại nguồn âm thanh");
+                    break;
+                }
+                Tick::Reopen(Reopen::Stalled) => {
+                    log::info!("không có khung mới {threshold:?} trong khi app đang phát: mở lại nguồn âm thanh");
+                    if backoff.on_stall_reopen() {
+                        log::warn!("mở lại 3 lần liên tiếp mà vẫn không có khung: từ giờ chờ lâu dần trước khi mở lại");
+                    }
+                    break;
+                }
+                Tick::Reopen(Reopen::NewProcess) => {
+                    log::info!("app đã chọn có tiến trình mới phát tiếng: mở lại nguồn âm thanh");
                     break;
                 }
             }
@@ -1816,17 +1996,19 @@ Run: `cargo test -p meeting-translator --lib -- capture errors && pnpm test`
 Expected:
 
 ```text
-test capture::tests::frames_that_stop_while_an_app_plays_mean_a_dead_tap ... ok
 test capture::tests::failures_are_reported_at_once_only_before_the_first_success ... ok
-test capture::tests::three_seconds_of_exact_zeros_while_an_app_plays_suggest_a_missing_permission ... ok
-test capture::tests::silence_after_real_audio_is_not_a_missing_permission ... ok
-test capture::tests::an_app_that_stops_playing_after_the_start_only_shows_an_indicator ... ok
 test capture::tests::a_changed_set_of_playing_processes_reopens_an_app_source ... ok
+test capture::tests::three_seconds_of_exact_zeros_while_an_app_plays_suggest_a_missing_permission ... ok
+test capture::tests::frames_that_stop_while_an_app_plays_mean_a_dead_tap ... ok
+test capture::tests::an_app_that_stops_playing_after_the_start_only_shows_an_indicator ... ok
+test capture::tests::silence_after_real_audio_is_not_a_missing_permission ... ok
+test capture::tests::repeated_stall_reopens_back_off_up_to_30_seconds ... ok
+test capture::tests::the_watch_decisions ... ok
 test capture::tests::capture_errors_map_to_ui_codes ... ok
 test errors::tests::invalid_setting_maps_to_reason_code_and_field ... ok
 test security::keystore::tests::platform_errors_are_reported ... ok
 test errors::tests::every_error_code_has_ui_text ... ok
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.00s
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 122 filtered out; finished in 0.00s
 ```
 
 ```text
@@ -1847,7 +2029,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo, `cargo fmt` không in gì. Dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 01s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 32.53s
 ```
 
 - [ ] **Step 7: Commit**
@@ -1868,17 +2050,17 @@ git commit -m "feat(app): nguồn âm thanh của phiên, mở lại khi thiết
 Thay `session_stub.rs` (dòng 15, 16, 43, 45, 61, 66, 73, 79, 81, 82, 96, 105, 141, 222, 236, 237, 305; QĐ8, QĐ17–QĐ20, QĐ29):
 - `session.rs`:
   - trait `SessionDeps` (tiến trình phụ, nguồn âm thanh, VAD) với hai bản: `LiveDeps` cho app, `FakeDeps` cho test;
-  - `start`/`start_with` (`StartOptions { include_self }` cho bước nghe thử của 03), `stop`, `toggle` (đang chuẩn bị thì bấm là Hủy: về `idle` ngay; mỗi lần bắt đầu có số riêng, Hủy tăng số đó, lần đang dở kiểm số của nó lần cuối cùng khóa với trạng thái; Q1 của review 02c. Khóa phiên không giữ trong lúc chuẩn bị tiến trình phụ, nên Hủy rồi bấm Bắt đầu lại hiện `starting` ngay: Q-E của review 02 lần 2), `check_quota` trước khi chuẩn bị (chỗ nối của 06, mặc định cho bắt đầu), `shutdown` (Thoát; không chờ khóa của tiến trình phụ, N1), `prewarm` (mở cửa sổ chính thì chạy sẵn tiến trình phụ, Đ19), `spawn_ticker` (tắt sau 10 phút rảnh);
+  - `start`/`start_with` (`StartOptions { include_self }` cho bước nghe thử của 03), `stop`, `toggle` (đang chuẩn bị thì bấm là Hủy: về `idle` ngay; mỗi lần bắt đầu có số riêng, Hủy tăng số đó, lần đang dở kiểm số của nó lần cuối cùng khóa với trạng thái; Q1 của review 02c. Khóa phiên không giữ trong lúc chuẩn bị tiến trình phụ, nên Hủy rồi bấm Bắt đầu lại hiện `starting` ngay: Q-E của review 02 lần 2), `check_quota` trước khi chuẩn bị (chỗ nối của 06, mặc định cho bắt đầu), rồi `allow_retry` cho tiến trình phụ đã bỏ cuộc thử lại (R3-1 của review 02 lần 3; `prewarm` không gọi), lần đã hủy mà chuẩn bị lỗi thì bỏ chỉ báo "Đang nạp model" còn sót (Nhỏ-7), `shutdown` (Thoát; không chờ khóa của tiến trình phụ, N1), `prewarm` (mở cửa sổ chính thì chạy sẵn tiến trình phụ, Đ19), `spawn_ticker` (tắt sau 10 phút rảnh);
   - `TauriSink` phát `subtitle://upsert`, `subtitle://delta`, `audio://level` (chỉ cửa sổ chính), cập nhật chỉ báo; lỗi làm phiên dừng (`fatal_code`: `Fatal::Vad` thành `vadFailed`, `Audio` thành `captureFailed`, `Asr` thành `sidecarFailed` hay `sidecarTampered`/`modelBroken` theo lý do bỏ cuộc, `Internal` thành `unknown`, `QuotaExhausted` thành `quotaExhausted`; `Engine::start` lỗi là `unknown`, N-1 của review 02 lần 2) chạy trên luồng riêng, và chỉ dừng đúng phiên gây lỗi; `usage` để mặc định (06 nối bộ đếm phút vào đây);
   - `StatusEvents`: sự kiện của tiến trình phụ thành trạng thái (`loading`, `cpuFallback`, `suggestLite`), kiểm SHA-256 trước mỗi lần chạy (`before_spawn`, QĐ17), báo binary nào là lần đầu chạy (`is_first_run`) và ghi `sidecars-seen.json` khi binary đó tới `Ready`;
-  - `LiveDeps`: khóa `live` chỉ giữ trong lúc clone `Arc<SidecarManager>`, không bao giờ trong lúc chờ tiến trình phụ; mỗi lần `prepare` quên lý do bỏ cuộc cũ (N-6 của review 02 lần 2);
+  - `LiveDeps`: khóa `live` chỉ giữ trong lúc clone `Arc<SidecarManager>`, không bao giờ trong lúc chờ tiến trình phụ; `allow_retry` quên lý do bỏ cuộc cũ (N-6 của review 02 lần 2, có test) và gọi `SidecarManager::allow_retry`;
   - `engine_config`: ngôn ngữ (khóa nguồn thì một ngôn ngữ, F2), ngôn ngữ đích, `vadEndSilenceMs`, cờ ngữ cảnh, `id_base` theo số phiên.
 - `sidecar/mod.rs`: `prepare` kiểm SHA-256 (mã `sidecarMissing`, `sidecarTampered`; hàm thuần `integrity_error_code`, `give_up_code` có test), dò GPU sau khi đã kiểm (dùng kết quả của luồng dò nền `GpuProbe`, `start_gpu_probe`), kiểm có file model (`modelMissing`; kích thước và SHA-256 ở 04), dựng `SidecarSpec`.
 - `state.rs`: trạng thái phiên thêm `starting` và `error`; `AppStatus` thêm `loading`, `sessionError`, `cpuFallback`, `suggestLite`, `indicators`, `permissionSuspected`, `waitingForApp` (nguồn một app đang chờ app phát lại) và `rev` (tăng mỗi lần trạng thái đổi). `tray.rs` coi `starting` như đang dịch.
 - `events.rs`: tên `subtitle://delta` và `audio://level`; trạng thái gửi cho cả hai cửa sổ (thanh phụ đề cần chỉ báo, 03).
 - `actions.rs`, `commands.rs`: `toggle_session` gọi `session::toggle`; lệnh `toggle_session` thành `async` (QĐ19; tác vụ nền dừng bất thường thì mã `unknown`); phím tắt và khay chạy trên luồng riêng; Thoát nhớ vị trí thanh phụ đề rồi tắt phiên và tiến trình phụ trên luồng riêng.
 - `lib.rs`: hook panic kill tiến trình phụ (`pipeline::process::install_panic_hook`), Windows `SetDefaultDllDirectories`; trong `setup`: kill tiến trình phụ còn sót từ lần chạy trước theo pidfile rồi bật pidfile (QĐ8, Q8(a) của review 02c; comment ghi rõ việc này dựa vào plugin single-instance, N-10), dò GPU nền, quản lý `Session`, luồng tick. `window.rs`: `show_main` gọi `prewarm`.
-- `test_support.rs`: `FakeDeps` (cổng chặn `prepare` như nạp model lâu, ghi lại việc của nguồn âm thanh từng phiên); `app_tests.rs`: phiên ra phụ đề thật qua engine, lỗi bắt đầu, lỗi sau khi bắt đầu, nghe thử thu cả âm thanh của app; và các luồng khó của Q6: Hủy lúc đang chuẩn bị về `idle` ngay, Thoát lúc `prepare` đang chặn trả về dưới 1 giây, lỗi tới muộn của phiên cũ không chạm phiên mới (kể cả chỉ báo chờ app), bấm từ ba luồng cùng lúc cho kết quả nhất quán, `rev` tăng; Hủy rồi Bắt đầu lại có phản hồi ngay (Q-E); hạn mức còn 0 thì không bắt đầu. Test `overlay_starts_hidden_and_appears_when_a_session_starts` của 01 vẫn qua.
+- `test_support.rs`: `FakeDeps` (cổng chặn `prepare` như nạp model lâu, ghi lại việc của nguồn âm thanh từng phiên); `app_tests.rs`: phiên ra phụ đề thật qua engine, lỗi bắt đầu, lỗi sau khi bắt đầu, nghe thử thu cả âm thanh của app; và các luồng khó của Q6: Hủy lúc đang chuẩn bị về `idle` ngay, Thoát lúc `prepare` đang chặn trả về dưới 1 giây, lỗi tới muộn của phiên cũ không chạm phiên mới (kể cả chỉ báo chờ app), bấm từ ba luồng cùng lúc cho kết quả nhất quán, `rev` tăng; Hủy rồi Bắt đầu lại có phản hồi ngay (Q-E; lần đã hủy không mở nguồn âm thanh, chỉ lần mới mở: Nhỏ-1 của review 02 lần 3); hạn mức còn 0 thì không bắt đầu; bấm Bắt đầu gọi `allow_retry` trước `prepare`, chạy sẵn thì không (R3-1); lần đã hủy mà nạp lỗi thì không còn "Đang nạp model" (Nhỏ-7). Test `overlay_starts_hidden_and_appears_when_a_session_starts` của 01 vẫn qua.
 
 **Files:**
 - Sửa: `Cargo.lock` (cargo tự cập nhật)
@@ -1898,6 +2080,8 @@ Thay `session_stub.rs` (dòng 15, 16, 43, 45, 61, 66, 73, 79, 81, 82, 96, 105, 1
 - Sửa: `src-tauri/src/window.rs`
 
 - [ ] **Step 1: Khai báo phụ thuộc**
+
+Bước này sửa `src-tauri/Cargo.toml`. Nếu `main` đã nâng plugin Tauri (autostart, single-instance, `tauri-plugin`, `tauri-utils`) thì giữ bản của `main`: khối dưới chỉ thêm các dòng của 02; nếu `git apply --check` lệch chỉ vì dòng phiên bản plugin làm ngữ cảnh, áp bằng `git apply --3way`, không đổi phiên bản về bản cũ.
 
 Sửa `src-tauri/Cargo.toml` (áp bằng `git apply`):
 
@@ -2279,6 +2463,8 @@ struct StartingApp {
     gate: Arc<PrepareGate>,
     /// Các lần gọi `shutdown` và `kill_all` của phần bên ngoài giả.
     shutdowns: Arc<Mutex<Vec<&'static str>>>,
+    /// Các lần mở nguồn âm thanh (`include_self` của từng lần).
+    captures: Arc<Mutex<Vec<bool>>>,
     starting: std::thread::JoinHandle<Result<crate::state::AppStatus, crate::errors::CommandError>>,
 }
 
@@ -2289,6 +2475,7 @@ fn starting_app() -> StartingApp {
         ..FakeDeps::default()
     };
     let shutdowns = deps.shutdowns.clone();
+    let captures = deps.captures.clone();
     let app = mock_app_with(deps);
     let _main = window(&app, "main");
     let handle = app.handle().clone();
@@ -2299,6 +2486,7 @@ fn starting_app() -> StartingApp {
         app,
         gate,
         shutdowns,
+        captures,
         starting,
     }
 }
@@ -2308,7 +2496,11 @@ fn starting_app() -> StartingApp {
 #[test]
 fn cancel_while_starting_returns_to_idle_at_once() {
     let StartingApp {
-        app, gate, starting, ..
+        app,
+        gate,
+        starting,
+        captures,
+        ..
     } = starting_app();
     let started = Instant::now();
     let status = session::toggle(app.handle()).unwrap();
@@ -2319,6 +2511,10 @@ fn cancel_while_starting_returns_to_idle_at_once() {
     assert_eq!(after.session, SessionStatus::Idle);
     assert!(!app.state::<session::Session>().has_engine(), "không có phiên nào chạy");
     assert_eq!(app.state::<AppState>().status().session, SessionStatus::Idle);
+    assert!(
+        captures.lock().unwrap().is_empty(),
+        "lần đã hủy không mở nguồn âm thanh"
+    );
 }
 
 /// Q-E của review 02 lần 2: Hủy rồi bấm Bắt đầu lại trong lúc lần đã hủy còn đang chờ nạp model. Lần mới hiện `starting`
@@ -2326,7 +2522,11 @@ fn cancel_while_starting_returns_to_idle_at_once() {
 #[test]
 fn start_again_after_cancel_responds_at_once() {
     let StartingApp {
-        app, gate, starting, ..
+        app,
+        gate,
+        starting,
+        captures,
+        ..
     } = starting_app();
     assert_eq!(session::toggle(app.handle()).unwrap().session, SessionStatus::Idle);
     let handle = app.handle().clone();
@@ -2340,6 +2540,47 @@ fn start_again_after_cancel_responds_at_once() {
     let status = again.join().unwrap().unwrap();
     assert_eq!(status.session, SessionStatus::Running);
     assert!(app.state::<session::Session>().has_engine());
+    assert_eq!(captures.lock().unwrap().len(), 1, "chỉ lần mới mở nguồn âm thanh");
+    session::stop(app.handle());
+}
+
+/// Nhỏ-7 của review 02 lần 3: Hủy, rồi lần đã hủy nạp lỗi. Sự kiện tới muộn của tiến trình phụ đã đặt lại "Đang nạp
+/// model"; khi lần đó kết thúc, chỉ báo được bỏ, trạng thái vẫn `idle`, không báo lỗi.
+#[test]
+fn a_cancelled_start_that_fails_clears_the_loading_note() {
+    let gate = Arc::new(PrepareGate::default());
+    let app = mock_app_with(FakeDeps {
+        prepare_gate: Some(gate.clone()),
+        prepare_error: Some(errors::MODEL_MISSING),
+        ..FakeDeps::default()
+    });
+    let _main = window(&app, "main");
+    let handle = app.handle().clone();
+    let starting = std::thread::spawn(move || session::start(&handle));
+    wait_until("đang chờ nạp model", || gate.waiting() == 1);
+    assert_eq!(session::toggle(app.handle()).unwrap().session, SessionStatus::Idle);
+    let state = app.state::<AppState>();
+    state.update_status(|s| s.loading = Some(crate::state::Loading::Model));
+    gate.open();
+    let result = starting.join().unwrap();
+    assert!(result.is_ok(), "lần đã hủy không báo lỗi: {result:?}");
+    let status = state.status();
+    assert_eq!((status.session, status.loading), (SessionStatus::Idle, None));
+}
+
+/// R3-1 của review 02 lần 3: bấm Bắt đầu thì cho tiến trình phụ đã bỏ cuộc thử lại, trước khi chuẩn bị; chạy sẵn khi mở
+/// cửa sổ chính thì không.
+#[test]
+fn a_user_start_allows_a_retry_before_preparing_and_prewarm_does_not() {
+    let deps = FakeDeps::default();
+    let calls = deps.calls.clone();
+    let app = mock_app_with(deps);
+    let _main = window(&app, "main");
+    session::prewarm(app.handle());
+    wait_until("chạy sẵn xong", || !calls.lock().unwrap().is_empty());
+    assert_eq!(*calls.lock().unwrap(), ["prepare"]);
+    session::toggle(app.handle()).unwrap();
+    assert_eq!(*calls.lock().unwrap(), ["prepare", "allow_retry", "prepare"]);
     session::stop(app.handle());
 }
 
@@ -2499,6 +2740,17 @@ Tạo `src-tauri/src/session.rs`, lúc này mới có phần test (phần code t
 mod tests {
     use super::*;
     use crate::settings::UiLanguage;
+
+    /// N-6 của review 02 lần 2: bấm Bắt đầu thì quên lý do bỏ cuộc cũ, mã lỗi giữa phiên về mặc định.
+    #[test]
+    fn a_new_start_forgets_why_the_worker_gave_up() {
+        let app = tauri::test::mock_app();
+        let deps = LiveDeps::new(app.handle().clone());
+        *deps.asr_gave_up.lock().unwrap() = Some(GiveUpCause::Tampered);
+        assert_eq!(deps.asr_failure_code(), errors::SIDECAR_TAMPERED);
+        deps.allow_retry();
+        assert_eq!(deps.asr_failure_code(), errors::SIDECAR_FAILED);
+    }
 
     #[test]
     fn the_engine_follows_the_language_and_pause_settings() {
@@ -2663,7 +2915,7 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
  use crate::state::AppState;
  use crate::system::{System, SystemOpener};
  
-@@ -112,7 +123,224 @@
+@@ -112,7 +123,231 @@
      }
  }
  
@@ -2732,6 +2984,8 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 +    pub quota_exhausted: bool,
 +    /// Số lần `prepare` được gọi.
 +    pub prepares: Arc<Mutex<usize>>,
++    /// Thứ tự gọi `allow_retry` và `prepare` (R3-1 của review 02 lần 3).
++    pub calls: Arc<Mutex<Vec<&'static str>>>,
 +    /// Nguồn âm thanh báo lỗi có mã này ngay khi mở (ví dụ chưa cấp quyền).
 +    pub capture_error: Option<&'static str>,
 +    /// `asr-worker` không dùng được nữa (bỏ cuộc sau nhiều lần lỗi).
@@ -2828,8 +3082,13 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 +        Ok(())
 +    }
 +
++    fn allow_retry(&self) {
++        self.calls.lock().unwrap().push("allow_retry");
++    }
++
 +    fn prepare(&self, _settings: &Settings) -> Result<(), CommandError> {
 +        *self.prepares.lock().unwrap() += 1;
++        self.calls.lock().unwrap().push("prepare");
 +        if let Some(gate) = &self.prepare_gate {
 +            gate.pass()?;
 +        }
@@ -2888,7 +3147,7 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
      let builder = mock_builder();
      #[cfg(target_os = "macos")]
      let builder = builder.plugin(tauri_nspanel::init());
-@@ -134,6 +362,7 @@
+@@ -134,6 +369,7 @@
          .manage(login)
          .manage(Writer(Box::new(file.clone())))
          .manage(file)
@@ -2901,20 +3160,22 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p meeting-translator --lib`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0432]: unresolved import `crate::session_stub`
 error[E0432]: unresolved import `crate::session::StartOptions`
 error[E0432]: unresolved imports `crate::session::Session`, `crate::session::SessionDeps`
 error[E0432]: unresolved imports `crate::events::AUDIO_LEVEL`, `crate::events::SUBTITLE_DELTA`
+error[E0433]: cannot find `Loading` in `state`
 error[E0433]: cannot find `GpuProbe` in `sidecar`
-error[E0433]: cannot find `Session` in `session`
 ```
 
 - [ ] **Step 4: Viết code**
 
-Phiên tạm của 01 không còn dùng: `git rm src-tauri/src/session_stub.rs`
+Phiên tạm của 01 không còn dùng:
+
+Run: `git rm src-tauri/src/session_stub.rs`
 
 Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
 
@@ -3127,6 +3388,9 @@ pub trait SessionDeps: Send + Sync {
     /// Mở nguồn âm thanh. Việc của nguồn tới sau (nguồn chạy trên luồng riêng) đi qua `on_event`. `include_self`: xem
     /// [`StartOptions`].
     fn capture(&self, source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource>;
+    /// Người dùng bấm Bắt đầu: tiến trình phụ đã bỏ cuộc được thử lại từ đầu (người dùng có thể đã sửa nguyên nhân). Gọi
+    /// trước `prepare` của lần bắt đầu; lần chạy sẵn khi mở cửa sổ chính (`prewarm`) thì không (R3-1 của review 02 lần 3).
+    fn allow_retry(&self) {}
     fn begin_session(&self) {}
     fn end_session(&self) {}
     /// Trước khi bắt đầu một phiên: hạn mức còn 0 thì từ chối (§6.8, "Khi chạm hạn mức"). Kế hoạch 06 cài bằng bộ đếm phút
@@ -3306,9 +3570,17 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     show_overlay(app);
     changed(app);
     let settings = state.settings();
+    session.deps.allow_retry();
     if let Err(e) = session.deps.prepare(&settings) {
         if !current() {
-            return Ok(state.status());
+            // Lần đã hủy: sự kiện của tiến trình phụ có thể đã đặt lại chỉ báo "Đang nạp model"; không có gì đang nạp
+            // nữa thì bỏ nó (Nhỏ-7 của review 02 lần 3).
+            state.update_status(|s| {
+                if s.session != SessionStatus::Starting {
+                    s.loading = None;
+                }
+            });
+            return Ok(changed(app));
         }
         log::error!("không bắt đầu được phiên: {} ({})", e.code, e.message);
         start_failed(app, attempt, &e.code);
@@ -3663,8 +3935,6 @@ impl<R: Runtime> LiveDeps<R> {
 
 impl<R: Runtime> SessionDeps for LiveDeps<R> {
     fn prepare(&self, settings: &Settings) -> Result<(), CommandError> {
-        // Lý do bỏ cuộc của lần trước không còn đúng: giám sát cũng quên nó khi phiên mới bắt đầu (N-6 của review 02 lần 2).
-        *self.asr_gave_up.lock().unwrap() = None;
         let running = {
             let live = self.live.lock().unwrap();
             live.as_ref()
@@ -3726,6 +3996,14 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
 
     fn capture(&self, source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource> {
         Box::new(LiveCapture::open(source.clone(), include_self, on_event))
+    }
+
+    fn allow_retry(&self) {
+        // Lý do bỏ cuộc của lần trước không còn đúng: giám sát cũng quên nó (N-6 của review 02 lần 2, R3-1 của lần 3).
+        *self.asr_gave_up.lock().unwrap() = None;
+        if let Some(manager) = self.current() {
+            manager.allow_retry();
+        }
     }
 
     fn begin_session(&self) {
@@ -4191,24 +4469,27 @@ Expected:
 ```text
 test app_tests::blocked_quit_shows_a_notice_in_the_main_window ... ok
 test app_tests::an_exhausted_quota_refuses_to_start ... ok
-test app_tests::hide_show_and_lock_reach_the_overlay_window ... ok
 test app_tests::enabling_launch_at_login_blocked_in_login_items_shows_a_notice ... ok
+test app_tests::hide_show_and_lock_reach_the_overlay_window ... ok
 test app_tests::a_failed_start_reports_its_error_code ... ok
 test app_tests::startup_follows_the_system_when_login_items_turned_it_off ... ok
 test app_tests::a_listening_test_session_also_captures_the_app_itself ... ok
 test app_tests::turning_off_launch_at_login_works_and_reports_when_it_stays_on ... ok
+test app_tests::overlay_starts_hidden_and_appears_when_a_session_starts ... ok
+test app_tests::the_status_revision_grows_with_every_change ... ok
 test session::tests::every_fatal_reason_has_an_error_code ... ok
 test session::tests::the_engine_follows_the_language_and_pause_settings ... ok
-test app_tests::the_status_revision_grows_with_every_change ... ok
-test app_tests::overlay_starts_hidden_and_appears_when_a_session_starts ... ok
-test app_tests::cancel_while_starting_returns_to_idle_at_once ... ok
+test session::tests::a_new_start_forgets_why_the_worker_gave_up ... ok
 test app_tests::shutdown_while_preparing_returns_quickly ... ok
+test app_tests::cancel_while_starting_returns_to_idle_at_once ... ok
+test app_tests::a_cancelled_start_that_fails_clears_the_loading_note ... ok
+test app_tests::a_user_start_allows_a_retry_before_preparing_and_prewarm_does_not ... ok
 test app_tests::start_again_after_cancel_responds_at_once ... ok
 test app_tests::toggling_from_three_threads_ends_in_a_consistent_state ... ok
 test app_tests::a_session_turns_speech_into_subtitle_events ... ok
 test app_tests::errors_after_the_start_stop_the_session_with_their_code ... ok
 test app_tests::a_late_error_of_an_old_session_does_not_touch_the_new_one ... ok
-test result: ok. 145 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.38s
+test result: ok. 150 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.39s
 ```
 
 - [ ] **Step 6: Clippy (cả target Windows) và định dạng**
@@ -4224,7 +4505,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo, `cargo fmt` không in gì. Dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.70s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.17s
 ```
 
 - [ ] **Step 7: Commit**
@@ -4252,7 +4533,7 @@ git commit -m "feat(app): phiên dịch thật thay session_stub: tiến trình 
 Dòng 38, 87, 91, 92, 230:
 - lệnh `list_audio_sources` (`async`, vì hỏi Core Audio hay WASAPI có thể chậm): macOS, các app đang phát tiếng (đã gộp tiến trình helper, trừ chính app), mỗi dòng có bundle ID và tên hiển thị nếu có (QĐ30); Windows, các thiết bị phát;
 - `system.rs`: test hằng `AUDIO_PERMISSION_URL` là một trang System Settings cố định (scheme `x-apple.systempreferences`), không đi qua `https_only` của 01 (chỉ dành cho link ngoài);
-- `scripts/run-dev-app.sh` (Q-D của review 02 lần 2): gói binary dev thành `target/AI Translator Dev.app` (`Info.plist` của app với bundle id, hai bản `InfoPlist.strings`), ký bằng chứng thư cố định của `run-dev-signed.sh`, chạy Vite rồi mở gói bằng `open`. macOS tính quyền ghi âm thanh hệ thống cho app mở bằng `open`; chạy thẳng binary từ Terminal thì quyền tính cho Terminal (kế hoạch 0-04, Task 5). Task 8 dùng script này;
+- `scripts/run-dev-app.sh` (Q-D của review 02 lần 2): gói binary dev thành `target/AI Translator Dev.app` (`Info.plist` của app với bundle id, hai bản `InfoPlist.strings`), ký bằng chứng thư cố định của `run-dev-signed.sh`, chạy Vite rồi mở gói bằng `open`, chuyển các biến `MT_*` và `RUST_LOG` qua `open --env` (app mở bằng `open` không thừa hưởng biến môi trường của shell; Nhỏ-9 của review 02 lần 3). macOS tính quyền ghi âm thanh hệ thống cho app mở bằng `open`; chạy thẳng binary từ Terminal thì quyền tính cho Terminal (kế hoạch 0-04, Task 5). Task 8 dùng script này;
 - lệnh `open_audio_permission_settings`: macOS, mở trang quyền ghi âm thanh hệ thống của System Settings. Như mọi việc mở ra ngoài app (QĐ28 của 01), lệnh đi qua `SystemOpener`: phương thức mới của trait, bản thật trong `system.rs` (`AUDIO_PERMISSION_URL`), bản giả trong `test_support::FakeSystem`, và tên lệnh trong `OPENER_COMMANDS` của `acl_tests.rs`. Test không mở gì thật; trên Windows lệnh trả `unsupported` trước khi tới `SystemOpener`;
 - hai lệnh có mặt ở đủ ba chỗ (`commands::handler`, `build.rs`, `capabilities/main.json`); test ACL lấy danh sách cố định từ `MAIN_COMMANDS`;
 - câu xin quyền (QĐ31): `src-tauri/Info.plist` có `NSAudioCaptureUsageDescription` bằng tiếng Anh (tên AI Translator), `CFBundleDevelopmentRegion` và `CFBundleLocalizations` (en, vi); `src-tauri/macos/{en,vi}.lproj/InfoPlist.strings` có câu tiếng Anh và tiếng Việt; `tauri.conf.json` chép hai file đó vào `Contents/Resources/` qua `bundle.macOS.files`. Tauri gộp `Info.plist` vào gói `.app` (07) và nhúng vào binary của `pnpm tauri dev`; `tauri dev` chỉ có câu tiếng Anh. Test `the_audio_permission_prompt_is_localized` đọc cả ba file bằng `include_str!`.
@@ -4313,7 +4594,7 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 ```diff
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -450,3 +450,26 @@
+@@ -507,3 +507,26 @@
          .unwrap();
      assert!(before < running && running < idle, "{before} {running} {idle}");
  }
@@ -4423,7 +4704,7 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 - [ ] **Step 2: Chạy test, thấy đỏ**
 
 Run: `cargo test -p meeting-translator --lib`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error: couldn't read `src-tauri/src/../Info.plist`: No such file or directory (os error 2)
@@ -4449,6 +4730,8 @@ Tạo `scripts/run-dev-app.sh`:
 #   scripts/run-dev-app.sh   # build, đóng gói vào target/AI Translator Dev.app, chạy Vite, mở app và chờ app thoát
 #
 # Bản dev đọc tiến trình phụ ở `src-tauri/binaries/` (chép bằng `scripts/copy-sidecars.sh`) và giao diện từ Vite.
+# App mở bằng `open` không thừa hưởng biến môi trường của shell (Nhỏ-9 của review 02 lần 3): script chuyển các biến
+# `MT_*` và `RUST_LOG` đang đặt qua `open --env` (có từ macOS 13; app cần macOS 14.2 trở lên nên luôn dùng được).
 set -eu
 identity="${MT_DEV_SIGN_IDENTITY:-AI Translator Dev}"
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -4479,7 +4762,11 @@ pnpm dev >/dev/null 2>&1 &
 vite=$!
 trap 'kill "$vite" 2>/dev/null' EXIT INT TERM
 until curl -sf http://localhost:1420 >/dev/null; do sleep 0.2; done
-open -W "$app"
+set --
+for name in $(env | sed -n 's/^\(MT_[A-Za-z0-9_]*\)=.*/\1/p; s/^\(RUST_LOG\)=.*/\1/p'); do
+  set -- "$@" --env "$name=$(printenv "$name")"
+done
+open -W "$@" "$app"
 ```
 
 Tạo `src-tauri/Info.plist`:
@@ -4760,27 +5047,29 @@ Expected:
 
 ```text
 test acl_tests::capabilities_grant_exactly_the_fixed_lists ... ok
-test app_tests::an_exhausted_quota_refuses_to_start ... ok
 test app_tests::blocked_quit_shows_a_notice_in_the_main_window ... ok
+test app_tests::an_exhausted_quota_refuses_to_start ... ok
 test acl_tests::outside_effects_only_reach_the_fake_opener ... ok
-test app_tests::cancel_while_starting_returns_to_idle_at_once ... ok
-test app_tests::hide_show_and_lock_reach_the_overlay_window ... ok
-test app_tests::the_audio_permission_prompt_is_localized ... ok
 test app_tests::enabling_launch_at_login_blocked_in_login_items_shows_a_notice ... ok
 test app_tests::a_failed_start_reports_its_error_code ... ok
+test app_tests::a_listening_test_session_also_captures_the_app_itself ... ok
+test app_tests::hide_show_and_lock_reach_the_overlay_window ... ok
+test app_tests::the_audio_permission_prompt_is_localized ... ok
 test app_tests::startup_follows_the_system_when_login_items_turned_it_off ... ok
 test acl_tests::each_window_only_reaches_its_own_commands ... ok
 test app_tests::turning_off_launch_at_login_works_and_reports_when_it_stays_on ... ok
-test app_tests::a_listening_test_session_also_captures_the_app_itself ... ok
 test app_tests::overlay_starts_hidden_and_appears_when_a_session_starts ... ok
 test app_tests::the_status_revision_grows_with_every_change ... ok
+test app_tests::a_cancelled_start_that_fails_clears_the_loading_note ... ok
+test app_tests::cancel_while_starting_returns_to_idle_at_once ... ok
 test app_tests::shutdown_while_preparing_returns_quickly ... ok
+test app_tests::a_user_start_allows_a_retry_before_preparing_and_prewarm_does_not ... ok
 test app_tests::start_again_after_cancel_responds_at_once ... ok
 test app_tests::toggling_from_three_threads_ends_in_a_consistent_state ... ok
 test app_tests::a_session_turns_speech_into_subtitle_events ... ok
 test app_tests::errors_after_the_start_stop_the_session_with_their_code ... ok
 test app_tests::a_late_error_of_an_old_session_does_not_touch_the_new_one ... ok
-test result: ok. 147 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.37s
+test result: ok. 152 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.38s
 ```
 
 ```text
@@ -4824,7 +5113,7 @@ git commit -m "feat(app): chọn nguồn âm thanh, mở trang quyền ghi âm t
 
 Dòng 43, 66, 67, 152:
 - `src/lib/ipc.ts`: kiểu khớp phía Rust (trạng thái phiên mới, `Indicators`, `permissionSuspected`, `waitingForApp`, `rev`, `Subtitle.replaces`, `SubtitleDelta`, `AudioSourceOption` có `name`, hai lệnh mới, hai sự kiện mới).
-- `src/store/app.ts`: `setStatus` bỏ trạng thái có `rev` nhỏ hơn trạng thái đang có (sự kiện cũ tới sau kết quả của lệnh không ghi đè trạng thái mới; Q6 của review 02c); mức âm lượng theo `audio://level` (về 0 khi phiên không chạy), danh sách nguồn âm thanh, mở trang quyền; bắt đầu phiên lỗi thì lấy trạng thái lỗi từ phía Rust (`sessionError`) thay vì bật thanh báo lỗi chung; `levelToMeter` (thanh đo theo dBFS).
+- `src/store/app.ts`: `setStatus` bỏ trạng thái có `rev` nhỏ hơn trạng thái đang có; lỗi bắt đầu phiên nằm trong trạng thái thì thanh báo lỗi của lệnh trước cũng mất (Nhỏ-8 của review 02 lần 3) (sự kiện cũ tới sau kết quả của lệnh không ghi đè trạng thái mới; Q6 của review 02c); mức âm lượng theo `audio://level` (về 0 khi phiên không chạy), danh sách nguồn âm thanh, mở trang quyền; bắt đầu phiên lỗi thì lấy trạng thái lỗi từ phía Rust (`sessionError`) thay vì bật thanh báo lỗi chung; `levelToMeter` (thanh đo theo dBFS).
 - `src/store/app.ts`, `init()`: cài đặt hay trạng thái đã tới qua sự kiện trong lúc chờ `get_settings`, `get_app_status` thì giữ bản đó, không để kết quả của lệnh đè lên.
 - `src/store/overlay.ts`: `appendDelta` nối chữ dịch tới dần; `upsertLine` bỏ các phụ đề đã gộp (`replaces`), xếp theo `id`: phụ đề gộp (mang id của câu đầu, nhỏ hơn câu mới đã hiện sau nó) vào đúng chỗ dòng đầu tiên bị thay (S1 của review 02 lần 2); phụ đề khác chưa có trên thanh mà cũ hơn dòng đầu (bản dịch xong sau khi câu đã trôi khỏi thanh) thì bỏ qua, còn lại chèn đúng chỗ theo `id` (id không trùng giữa các phiên nhờ `id_base`); store nghe `app://status` (bỏ trạng thái có `rev` nhỏ hơn) và xóa phụ đề khi một phiên mới bắt đầu (`starting`); `overlay://view` mới thì cắt `lines` theo số dòng mới; `init` không ghi đè cài đặt mới hơn đã tới qua sự kiện, và cắt các phụ đề đã tới trước đó theo số dòng (N-3).
 - `src/windows/overlay/overlay.tsx`: chưa có chữ dịch thì hiện câu gốc một lần (nhãn cho từng trạng thái ở 03).
@@ -4931,7 +5220,7 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
      off();
      expect(fake.listenerCount("settings://changed")).toBe(0);
    });
-@@ -132,13 +152,81 @@
+@@ -132,13 +152,92 @@
      expect(store.getState().settings?.overlay.locked).toBe(true);
    });
  
@@ -4947,6 +5236,17 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
 +    failToggle = "model";
 +    await store.getState().toggleSession();
 +    expect(store.getState().status?.session).toBe("error");
++    expect(store.getState().status?.sessionError).toBe("modelMissing");
++    expect(store.getState().error).toBeNull();
++  });
++
++  it("bắt đầu phiên lỗi thì thanh báo lỗi của lệnh trước cũng mất (chỉ còn lỗi trong trạng thái)", async () => {
++    const { store } = setup();
++    await store.getState().init();
++    await store.getState().updateSettings({ vadEndSilenceMs: 900 });
++    expect(store.getState().error?.code).toBe("outOfRange");
++    failToggle = "model";
++    await store.getState().toggleSession();
 +    expect(store.getState().status?.sessionError).toBe("modelMissing");
 +    expect(store.getState().error).toBeNull();
 +  });
@@ -5019,7 +5319,7 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
    });
  
    it("lời nhắc từ phía Rust hiện rồi đóng được", async () => {
-@@ -269,10 +357,10 @@
+@@ -269,10 +368,10 @@
    it("lệnh Bắt đầu/Dừng lỗi thì sessionPending tắt lại", async () => {
      const { store } = setup();
      await store.getState().init();
@@ -5225,9 +5525,10 @@ Expected: các test mới lỗi:
 
 ```text
  Test Files  2 failed | 2 passed (4)
-      Tests  16 failed | 44 passed (60)
+      Tests  17 failed | 44 passed (61)
  FAIL  src/store/app.test.ts > app store > init đọc cài đặt, trạng thái, thông tin app và nghe năm sự kiện
  FAIL  src/store/app.test.ts > app store > bắt đầu phiên lỗi thì trạng thái ra lỗi kèm mã, không bật thanh báo lỗi chung
+ FAIL  src/store/app.test.ts > app store > bắt đầu phiên lỗi thì thanh báo lỗi của lệnh trước cũng mất (chỉ còn lỗi trong trạng thái)
  FAIL  src/store/app.test.ts > app store > mức âm lượng theo sự kiện, về 0 khi phiên dừng
  FAIL  src/store/app.test.ts > app store > trạng thái cũ hơn trạng thái đang có (rev nhỏ hơn) bị bỏ
  FAIL  src/store/app.test.ts > app store > init không đè trạng thái và cài đặt mới hơn đã tới qua sự kiện trong lúc chờ
@@ -5440,7 +5741,7 @@ Sửa `src/store/app.ts` (áp bằng `git apply`):
          } catch (e) {
            off();
            throw e;
-@@ -152,14 +180,18 @@
+@@ -152,14 +180,21 @@
          }
        },
  
@@ -5458,12 +5759,15 @@ Sửa `src/store/app.ts` (áp bằng `git apply`):
 +          set({ error: null });
 +        } catch (e) {
 +          const status = await ipc.invoke("get_app_status").catch(() => null);
-+          if (status?.session === "error") setStatus(status);
-+          else set({ error: toUiError(e) });
++          if (status?.session === "error") {
++            // Lỗi bắt đầu nằm trong trạng thái; thanh báo lỗi của lệnh trước không còn đúng (Nhỏ-8 của review 02 lần 3).
++            setStatus(status);
++            set({ error: null });
++          } else set({ error: toUiError(e) });
          } finally {
            set({ sessionPending: false });
          }
-@@ -168,7 +200,7 @@
+@@ -168,7 +203,7 @@
        async setOverlayVisible(visible) {
          await run(
            () => ipc.invoke("set_overlay_visible", { visible }),
@@ -5472,7 +5776,7 @@ Sửa `src/store/app.ts` (áp bằng `git apply`):
          );
        },
  
-@@ -201,6 +233,20 @@
+@@ -201,6 +236,20 @@
          );
        },
  
@@ -5597,11 +5901,11 @@ Expected:
 
 ```text
  Test Files  4 passed (4)
-      Tests  60 passed (60)
+      Tests  61 passed (61)
 ```
 
 ```text
-✓ built in 381ms
+✓ built in 407ms
 ```
 
 - [ ] **Step 5: Commit**
@@ -5690,7 +5994,7 @@ Expected: `audioSource.test.ts` lỗi vì chưa có module:
 
 ```text
  Test Files  1 failed | 4 passed (5)
-      Tests  60 passed (60)
+      Tests  61 passed (61)
  FAIL  src/lib/audioSource.test.ts [ src/lib/audioSource.test.ts ]
 Error: Cannot find module './audioSource' imported from src/lib/audioSource.test.ts
 ```
@@ -6178,11 +6482,11 @@ Expected:
 
 ```text
  Test Files  5 passed (5)
-      Tests  63 passed (63)
+      Tests  64 passed (64)
 ```
 
 ```text
-✓ built in 70ms
+✓ built in 63ms
 ```
 
 - [ ] **Step 5: Commit**
@@ -6234,7 +6538,7 @@ Run: `./scripts/check-windows.sh`
 Expected: dòng cuối `Finished \`dev\` profile`, không có cảnh báo:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.85s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.61s
 ```
 
 - [ ] **Step 3: Kiểm tra chuẩn** (mục 6.2 của kế hoạch 00)
@@ -6256,14 +6560,14 @@ pnpm audit
 Expected: không lỗi, clippy không cảnh báo, `cargo deny check` in `advisories ok, bans ok, licenses ok, sources ok`, `cargo audit` chỉ còn 3 cảnh báo đã được cho phép, `pnpm audit` in `No known vulnerabilities found`. Tổng số test của `cargo test --workspace`:
 
 ```text
-passed 471 failed 0 ignored 10
+passed 481 failed 0 ignored 10
 ```
 
 Và `pnpm test`:
 
 ```text
  Test Files  5 passed (5)
-      Tests  63 passed (63)
+      Tests  64 passed (64)
 ```
 
 - [ ] **Step 4: Commit**
@@ -6339,9 +6643,18 @@ Bật lại quyền sau bước này.
 
 - [ ] **Step 8: Tiến trình phụ và model bị thay đổi**
 
-Chạy app bằng `scripts/run-dev-app.sh` như các bước trước: script build một lần rồi mới mở app, và bản dev đọc tiến trình phụ ở `src-tauri/binaries/` (còn `pnpm tauri dev` thấy file trong `src-tauri/` đổi thì build lại, và `build.rs` băm lại file đã sửa). Agent làm từng ca trong lúc app đang mở, sau mỗi ca chạy lại `./scripts/copy-sidecars.sh` hay đổi tên model về như cũ:
-- Sửa một byte trong `src-tauri/binaries/libggml.0.dylib`: `printf '\x00' | dd of=src-tauri/binaries/libggml.0.dylib bs=1 seek=4096 count=1 conv=notrunc`. Người bấm Bắt đầu. Expected: lỗi `sidecarTampered` ("Một phần của app đã bị thay đổi hoặc hỏng…"); không tiến trình phụ nào được chạy lại.
-- Đổi tên `models/Hy-MT2-1.8B-Q8_0.gguf`. Người bấm Bắt đầu. Expected: lỗi `modelMissing`.
+Tiến trình phụ đang chạy (chạy sẵn khi mở cửa sổ chính, Đ19) thì bước chuẩn bị trả về ngay mà không kiểm lại binary, nên ca sửa byte phải làm khi app đã thoát. Không chạy lại `run-dev-app.sh` sau khi sửa: script build lại, và `build.rs` băm lại file đã sửa. Cách làm:
+1. Người thoát app ở menu khay (`run-dev-app.sh` kết thúc, Vite cũng dừng).
+2. Agent làm ca dưới đây, rồi chạy Vite và mở lại đúng gói đã build, không build lại:
+   ```bash
+   pnpm dev >/dev/null 2>&1 &
+   until curl -sf http://localhost:1420 >/dev/null; do sleep 0.2; done
+   open -W "${CARGO_TARGET_DIR:-target}/AI Translator Dev.app"
+   ```
+
+- Sửa một byte trong `src-tauri/binaries/libggml.0.dylib`: `printf '\x00' | dd of=src-tauri/binaries/libggml.0.dylib bs=1 seek=4096 count=1 conv=notrunc`. Người bấm Bắt đầu ở menu khay. Expected: lỗi `sidecarTampered` ("Một phần của app đã bị thay đổi hoặc hỏng…"); không tiến trình phụ nào được chạy. Agent chạy lại `./scripts/copy-sidecars.sh`.
+- Đổi tên `models/Hy-MT2-1.8B-Q8_0.gguf`. Người bấm Bắt đầu. Expected: lỗi `modelMissing` (không còn `sidecarTampered` của ca trước). Agent đổi tên model về như cũ.
+- Người bấm Bắt đầu lần nữa, không khởi động lại app. Expected: phiên chạy bình thường: bấm Bắt đầu là thử lại tiến trình phụ đã bỏ cuộc (R3-1 của review 02 lần 3).
 
 - [ ] **Step 9: Thoát, Force Quit và tắt khi rảnh**
 - Thoát ở menu khay. Expected: `pgrep -l -f 'asr-worker|llama-server'` không in gì (dòng 61, 305).

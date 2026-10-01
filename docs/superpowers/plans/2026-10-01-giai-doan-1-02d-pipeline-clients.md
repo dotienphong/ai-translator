@@ -19,8 +19,8 @@
 
 Chuẩn bị mọi thứ mà phần giám sát (Task 3) cần từ hai client (dòng 82, 110, 116, 126, 128, 132–134, 143, 250; QĐ3, QĐ8):
 - `prompt_history.rs`: prompt theo ngôn ngữ, tối đa 100 token, và cắt bớt để không hạ trần token của worker (QĐ3).
-- `logfile.rs`: stderr của tiến trình phụ đi qua một pipe tới luồng `pump` của app: ghi vào `RotatingLog` (append, xoay cả khi đang chạy khi quá 1 MB, giữ 3 bản cũ), che chuỗi bí mật (khóa API của `llama-server`), giữ 20 dòng cuối để phân loại lỗi khởi động. Mỗi dòng giữ tối đa 64 KiB: phần sau bị bỏ, và bỏ thêm một đoạn ở cuối phần giữ lại bằng độ dài của bí mật dài nhất, để không sót nửa bí mật nằm vắt qua chỗ cắt (Nhỏ của review 02 lần 2).
-- `process.rs` (QĐ8): process group và hook panic trên macOS, Job Object trên Windows; `spawn` ghi nhận mọi tiến trình phụ (cả vào pidfile `sidecars-live.json` khi app đặt `set_pidfile`); `reap_orphans` kill tiến trình mà lần chạy trước bỏ lại (Force Quit) chỉ khi đủ bốn điều kiện: thời điểm bắt đầu, đường dẫn binary, thư mục cho phép và process group (test cho từng điều kiện, kể cả tiến trình không còn là trưởng group và binary khác nằm trong thư mục cho phép; Q4 của review 02 lần 2), và dựa vào plugin single-instance của 01 (không có bản app nào khác đang chạy); `begin_shutdown` và `kill_all` cho lúc app thoát. `tests/shutdown.rs` (binary riêng, vì cờ thoát là toàn cục) và `asr-worker/tests/stdin_eof.rs` (worker tự thoát khi stdin đóng).
+- `logfile.rs`: stderr của tiến trình phụ đi qua một pipe tới luồng `pump` của app: ghi vào `RotatingLog` (append, xoay cả khi đang chạy khi quá 1 MB, giữ 3 bản cũ), che chuỗi bí mật (khóa API của `llama-server`), giữ 20 dòng cuối để phân loại lỗi khởi động. Mỗi dòng giữ tối đa 64 KiB: phần sau bị bỏ, và bỏ thêm một đoạn ở cuối phần giữ lại bằng độ dài của bí mật dài nhất, để không sót nửa bí mật nằm vắt qua chỗ cắt (Nhỏ của review 02 lần 2); test kiểm cả bí mật trọn vẹn trong phần giữ lại vẫn được che (Q-2 của review 02 lần 3).
+- `process.rs` (QĐ8): process group và hook panic trên macOS, Job Object trên Windows; `spawn` ghi nhận mọi tiến trình phụ (cả vào pidfile `sidecars-live.json` khi app đặt `set_pidfile`); `reap_orphans` kill tiến trình mà lần chạy trước bỏ lại (Force Quit) chỉ khi đủ bốn điều kiện: thời điểm bắt đầu, đường dẫn binary, thư mục cho phép và process group (test cho từng điều kiện, kể cả tiến trình không còn là trưởng group và binary khác nằm trong thư mục cho phép; Q4 của review 02 lần 2; binary chạy qua symlink thì pidfile ghi đường dẫn thật, N5 của review 02 lần 3), và dựa vào plugin single-instance của 01 (không có bản app nào khác đang chạy); `begin_shutdown` và `kill_all` cho lúc app thoát. `tests/shutdown.rs` (binary riêng, vì cờ thoát là toàn cục) và `asr-worker/tests/stdin_eof.rs` (worker tự thoát khi stdin đóng).
 - `llama.rs` bản 2:
   - `LlamaLaunch` gom mọi tham số chạy;
   - `command()` dựng đúng lệnh của §6.5, khóa API qua `LLAMA_API_KEY`, không bao giờ có `--api-key`, thư mục làm việc là thư mục chứa binary (QĐ17); comment ghi rõ không bao giờ log `{cmd:?}` (`Debug` của `Command` in cả biến môi trường);
@@ -194,12 +194,10 @@ Sửa `crates/pipeline/src/config.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/pipeline/src/config.rs
 +++ b/crates/pipeline/src/config.rs
-@@ -506,6 +506,18 @@
-         assert!(v.first_run_ready_timeout_ms >= 30_000);
-         assert_eq!(c.audio.no_audio_after_ms, 60_000);
+@@ -508,6 +508,18 @@
          assert_eq!(c.validate(), Ok(()));
-+    }
-+
+     }
+ 
 +    #[test]
 +    fn max_tokens_follow_spec_formula() {
 +        // §6.5: min(4 × số token câu gốc + 32, 512).
@@ -210,9 +208,11 @@ Sửa `crates/pipeline/src/config.rs` (áp bằng `git apply`):
 +        assert_eq!(mt.max_tokens_for(120), 512);
 +        assert_eq!(mt.max_tokens_for(121), 512);
 +        assert_eq!(mt.max_tokens_for(usize::MAX), 512);
-     }
- 
++    }
++
      /// Manifest chỉ ghi khóa muốn đổi: khóa thiếu lấy mặc định, khóa lạ bị bỏ qua.
+     #[test]
+     fn a_partial_manifest_keeps_the_other_defaults() {
 ```
 
 Sửa `crates/pipeline/src/llama.rs` (áp bằng `git apply`):
@@ -524,13 +524,16 @@ mod tests {
         assert_eq!(lines.last().map(String::as_str), Some("no newline at the end"));
     }
 
-    /// Nhỏ của review 02 lần 2: dòng dài quá 64 KiB bị cắt, phần sau bỏ đi; bí mật vắt qua chỗ cắt không sót nửa nào.
+    /// Nhỏ của review 02 lần 2: dòng dài quá 64 KiB bị cắt, phần sau bỏ đi; bí mật nằm trọn trong phần giữ lại vẫn được
+    /// che, và bí mật vắt qua chỗ cắt (15 byte trước chỗ cắt, dài 21 byte) không sót nửa nào (Q-2 của review 02 lần 3).
     #[test]
     fn a_very_long_line_is_cut_without_leaking_half_a_secret() {
         let dir = temp("long");
         let path = dir.0.join("llama-server.log");
         let secret = "k3y-s3cr3t-0123456789";
-        let mut input = "x".repeat(MAX_LINE_BYTES - 10);
+        assert_eq!(secret.len(), 21);
+        let mut input = format!("api={secret} ");
+        input.push_str(&"x".repeat(MAX_LINE_BYTES - 15 - input.len()));
         input.push_str(secret);
         input.push_str(&"y".repeat(3 * MAX_LINE_BYTES));
         input.push_str("\nnext line\n");
@@ -540,6 +543,7 @@ mod tests {
         let written = std::fs::read_to_string(&path).unwrap();
         let first = written.lines().next().unwrap();
         assert!(first.len() <= MAX_LINE_BYTES + CUT_MARK.len(), "{}", first.len());
+        assert!(first.starts_with("api=<ẩn> "), "bí mật trọn vẹn được che");
         assert!(first.ends_with(CUT_MARK));
         assert!(!written.contains("k3y"), "không sót phần nào của bí mật");
         assert!(!written.contains('y'), "phần sau chỗ cắt bị bỏ");
@@ -685,7 +689,7 @@ fn after_begin_shutdown_nothing_starts_and_kill_all_cleans_up() {
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p pipeline --lib`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0583]: file not found for module `process`
@@ -2180,6 +2184,26 @@ mod tests {
         assert!(!live().contains(&pid));
     }
 
+    /// N5 của review 02 lần 3: binary chạy qua một symlink thì pidfile ghi đường dẫn thật, để lần sau so được với
+    /// `proc_pidpath`.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_binary_run_through_a_symlink_is_recorded_by_its_real_path() {
+        let dir = temp("symlink");
+        std::fs::create_dir_all(&dir.0).unwrap();
+        let link = dir.0.join("sleep-link");
+        std::os::unix::fs::symlink("/bin/sleep", &link).unwrap();
+        let mut cmd = Command::new(&link);
+        cmd.arg("30");
+        configure(&mut cmd);
+        let mut child = spawn(&mut cmd, &link).unwrap();
+        let e = entry(child.id()).unwrap();
+        assert_eq!(e.exe, std::fs::canonicalize("/bin/sleep").unwrap());
+        kill_group(child.id());
+        wait_killed(&mut child);
+        release(child.id());
+    }
+
     #[cfg(target_os = "macos")]
     #[test]
     fn the_pidfile_entry_names_the_start_time_and_the_real_binary() {
@@ -2412,18 +2436,18 @@ Run: `cargo test -p pipeline && cargo test -p asr-worker --test stdin_eof && car
 Expected (`pipeline`, rồi `stdin_eof.rs`, rồi `latency-bench`):
 
 ```text
-test result: ok. 91 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 93 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
 ```text
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
 ```
 
 ```text
-test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.68s
+test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.66s
 ```
 
 - [ ] **Step 6: Clippy (cả target Windows) và định dạng**
@@ -2439,7 +2463,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo, `cargo fmt` không in gì. Dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 18.35s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 16.28s
 ```
 
 - [ ] **Step 7: Commit**
@@ -3124,7 +3148,7 @@ fn a_server_that_dies_at_start_is_reported() {
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p pipeline --lib`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0425]: cannot find type `Violation` in this scope
@@ -3136,7 +3160,7 @@ error[E0425]: cannot find type `StreamEnd` in this scope
 ```
 
 Run: `cargo test -p pipeline --test clients`
-Expected: biên dịch lỗi, vì chưa có hai binary giả:
+Expected: biên dịch lỗi, vì chưa có hai binary giả (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error: environment variable `CARGO_BIN_EXE_fake_asr_worker` not defined at compile time
@@ -4109,10 +4133,10 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 107 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 109 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.66s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.14s
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
@@ -4134,7 +4158,7 @@ Expected:
 
 ```text
 test real_llama_server_requires_the_api_key ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 1.04s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 1.05s
 ```
 
 - [ ] **Step 6: Clippy và định dạng**
@@ -4162,14 +4186,14 @@ git commit -m "feat(pipeline): dịch một câu theo §6.5, hậu xử lý khi 
 - `RestartTracker`: luật thuần cho một tiến trình phụ (chờ 1, 2, 5 giây; bỏ cuộc khi quá 5 lần trong 10 phút; chuyển CPU sau 2 lần lỗi liên tiếp khi dùng GPU).
 - `SidecarManager`:
   - chạy `asr-worker` (`Load` rồi `Warmup`) rồi mới chạy `llama-server`; đọc `Ready.backend` và `decode_mode` (bản phát hành chỉ nhận chế độ B, `require_shared`); khởi động lại và gửi lại đoạn; `llama-server` chạy `-ngl 0` khi không có GPU hay khi `asr-worker` đã sang CPU;
-  - trước mỗi lần chạy hỏi app `SidecarEvents::before_spawn` (kiểm SHA-256) và `is_first_run`; bỏ cuộc có lý do `GiveUpCause`;
+  - trước mỗi lần chạy hỏi app `SidecarEvents::before_spawn` (kiểm SHA-256) và `is_first_run`; bỏ cuộc có lý do `GiveUpCause`; `allow_retry` (người dùng bấm Bắt đầu) cho lần khởi động kế tiếp quên việc bỏ cuộc, tách khỏi `begin_session` (chỉ đếm phiên; R3-1 của review 02 lần 3);
   - lần đầu chạy quá giờ không tính là lỗi; `llama-server` hết bộ nhớ lúc khởi động thì phát `OutOfMemory`; `asr-worker` báo `OutOfMemory` lúc chép lời thì phát `OutOfMemory` và tính là một lần lỗi trên GPU (Q1 của review 02 lần 2);
   - `shutdown` cho lúc app thoát: không chờ khóa, ngắt lần chờ (`Wake`), kill tiến trình đang chạy qua `process::Killer`; tiến trình vừa chạy mà app đã bắt đầu thoát thì kill ngay; `stop` bỏ `Killer` cùng khóa với slot; `running()` không khóa;
   - phát `SidecarEvent` để app hiện trạng thái; tắt khi rảnh 10 phút (`tick`).
 - `asr_client.rs`, `llama.rs`: `spawn_with` đưa `Killer` ra ngay khi tiến trình chạy (trước khi chờ `Ready` hay `/health`); `AsrError::TimedOut` và `llama::NotReady` tách "quá thời gian chờ" khỏi "chết", cho luật lần đầu chạy. Hai tiến trình phụ giả thêm lệnh `error_on` (kèm loại lỗi, ví dụ `error_on:1:OutOfMemory`), `load_delay_ms` và `health_delay_ms`.
 - `SupervisedAsr` và `SupervisedMt`: bọc hai client thành trait `Asr` và `Mt` cho engine (02b, Task 2).
 - `Clock`: `SystemClock` cho app (chờ ngắt được), `FakeClock` cho test.
-- `tests/lifecycle.rs` (dòng 296): đúng thứ tự, crash và khởi động lại, gửi lại đoạn, worker báo lỗi mà vẫn sống thì không khởi động lại (S8), model hỏng trên CPU thì bỏ cuộc (S12), chuyển CPU, `llama-server` theo sang CPU, không có GPU thì cả hai chạy CPU (kể cả khi dịch trước lúc `asr-worker` chạy lần nào), bỏ cuộc, lần đầu chạy (kể cả quá giờ không tính lỗi, và binary CPU mới), kiểm binary trước mọi lần chạy, binary bị sửa thì không chạy, app thoát lúc worker treo hay đang nạp model trả về ngay, request tới muộn sau khi thoát không chạy lại gì (không có cả sự kiện `Starting`), khóa API không lọt vào sự kiện, tắt sau 10 phút; hết bộ nhớ lúc chép lời và lúc `llama-server` khởi động; `shutdown` ngắt lần chờ trước khi khởi động lại; `running()` trả về ngay dù một luồng đang giữ khóa trong lúc nạp model (Q3 của review 02 lần 2). Tiến trình phụ là bản giả; đồng hồ là đồng hồ giả, trừ test ngắt lần chờ (đồng hồ thật, backoff 60 giây, test kết thúc ngay khi `shutdown`).
+- `tests/lifecycle.rs` (dòng 296): đúng thứ tự, crash và khởi động lại, gửi lại đoạn, worker báo lỗi mà vẫn sống thì không khởi động lại (S8), model hỏng trên CPU thì bỏ cuộc (S12), chuyển CPU, `llama-server` theo sang CPU, không có GPU thì cả hai chạy CPU (kể cả khi dịch trước lúc `asr-worker` chạy lần nào; khi đó `running()` vẫn đúng và tắt khi rảnh vẫn tắt được), bỏ cuộc rồi chỉ thử lại sau `allow_retry`, lần đầu chạy (kể cả quá giờ không tính lỗi, và binary CPU mới), kiểm binary trước mọi lần chạy, binary bị sửa thì không chạy, app thoát lúc worker treo hay đang nạp model trả về ngay, request tới muộn sau khi thoát không chạy lại gì (không có cả sự kiện `Starting`), khóa API không lọt vào sự kiện, tắt sau 10 phút; hết bộ nhớ lúc chép lời (lần đầu khởi động lại trên GPU, lần thứ hai liên tiếp mới chuyển CPU: Q-1 của review 02 lần 3) và lúc `llama-server` khởi động; `shutdown` ngắt lần chờ trước khi khởi động lại của cả hai tiến trình phụ và lần chờ sau lần đầu chạy quá giờ (Q-3); `running()` trả về ngay dù một luồng đang giữ khóa trong lúc nạp model (Q3 của review 02 lần 2). Tiến trình phụ là bản giả; đồng hồ là đồng hồ giả, trừ test ngắt lần chờ (đồng hồ thật, backoff 60 giây, test kết thúc ngay khi `shutdown`).
 
 **Files:**
 - Sửa: `crates/pipeline/src/asr_client.rs`
@@ -4695,13 +4719,17 @@ fn more_than_5_failures_in_10_minutes_stop_the_translation() {
     let err = s.manager.transcribe(request(3)).unwrap_err();
     assert!(matches!(err, AsrFailure::Unavailable(_)), "{err:?}");
     assert_eq!(s.clock.sleeps(), [1_000, 2_000, 5_000, 5_000, 5_000]);
-    // Đã bỏ cuộc thì không chạy lại nữa, cho tới khi người dùng bắt đầu phiên mới.
+    // Đã bỏ cuộc thì không chạy lại nữa, cho tới khi người dùng bấm Bắt đầu (`allow_retry`), kể cả khi nguyên nhân đã
+    // được sửa; một phiên bắt đầu (`begin_session`) không phải là thử lại (R3-1 của review 02 lần 3).
     assert!(matches!(
         s.manager.transcribe(request(4)),
         Err(AsrFailure::Unavailable(_))
     ));
-    s.manager.begin_session();
     std::fs::write(s.t.path("asr-plan"), "ok").unwrap();
+    s.manager.begin_session();
+    assert_eq!(s.manager.ensure_started().unwrap_err().cause, GiveUpCause::Failures);
+    s.manager.allow_retry();
+    s.manager.ensure_started().unwrap();
     assert!(s.manager.transcribe(request(5)).is_ok());
 }
 
@@ -4802,10 +4830,24 @@ fn out_of_memory_while_transcribing_counts_as_a_gpu_failure() {
         "{err:?}"
     );
     assert_eq!(s.manager.transcribe(request(2)).unwrap().segment_id, 2);
+    // Lần hết bộ nhớ đầu chỉ khởi động lại trên GPU; lần thứ hai liên tiếp mới chuyển CPU (§9; Q-1 của review 02 lần 3).
     let names = s.events.names();
-    assert_eq!(names.iter().filter(|n| *n == "oom Asr").count(), 2, "{names:?}");
-    assert!(names.contains(&"cpu Asr".to_string()), "{names:?}");
-    assert_eq!(names.last().unwrap(), "ready Asr gpu=false", "{names:?}");
+    assert_eq!(
+        names,
+        [
+            "start Asr",
+            "ready Asr gpu=true",
+            "oom Asr",
+            "restart Asr 1000",
+            "start Asr",
+            "ready Asr gpu=true",
+            "oom Asr",
+            "cpu Asr",
+            "restart Asr 2000",
+            "start Asr",
+            "ready Asr gpu=false",
+        ]
+    );
     let log = s.t.read("asr-events");
     assert_eq!(log.matches("transcribe 1 ").count(), 2, "gửi lại một lần: {log}");
 }
@@ -4861,11 +4903,16 @@ fn without_a_gpu_both_sidecars_run_on_the_cpu() {
     assert_eq!(s.t.read("asr-events").lines().next(), Some("start use_gpu=false"));
     assert_eq!(s.t.read("llama-events"), "start ngl=0 extra=\n");
     assert!(s.events.names().contains(&"ready Llama gpu=false".to_string()));
-    // Dịch trước khi `asr-worker` chạy lần nào (chỉ `llama-server` được khởi động): vẫn bằng CPU.
+    // Dịch trước khi `asr-worker` chạy lần nào (chỉ `llama-server` được khởi động): vẫn bằng CPU. Chỉ một tiến trình
+    // chạy thì `running()` vẫn là `true`, và tắt khi rảnh vẫn tắt được nó (N6 của review 02 lần 3).
     let s = setup("no-gpu-mt-first", false, &[], &[]);
     assert!(matches!(translate_hello(&s), Outcome::Done(_)));
     assert_eq!(s.t.read("asr-events"), "");
     assert_eq!(s.t.read("llama-events").lines().next(), Some("start ngl=0 extra="));
+    assert!(s.manager.running());
+    s.clock.advance(Duration::from_secs(10 * 60));
+    assert!(s.manager.tick());
+    assert!(!s.manager.running());
 }
 
 /// `asr-worker` chuyển sang CPU vì GPU lỗi: `llama-server` chạy sau đó cũng bằng CPU (§9).
@@ -5122,12 +5169,83 @@ fn running_does_not_wait_for_a_model_that_is_loading() {
     assert!(!running, "chưa có tiến trình nào tới Ready");
     s.manager.shutdown();
 }
+
+/// Q-3 của review 02 lần 3: như `shutdown_interrupts_the_backoff_before_a_restart`, với `llama-server`.
+#[test]
+fn shutdown_interrupts_the_backoff_of_llama_server() {
+    let s = setup_clock(
+        "wake-llama",
+        false,
+        &["ok"],
+        &["exit_at_start:1", "ok"],
+        |spec| spec.supervisor.backoff_ms = vec![60_000],
+        Some(Arc::new(pipeline::supervisor::SystemClock::default())),
+    );
+    let manager = s.manager.clone();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || tx.send(manager.ensure_started()).unwrap());
+    let started = Instant::now();
+    while !s.events.names().iter().any(|n| n.starts_with("restart Llama")) {
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "không thấy lần chờ: {:?}",
+            s.events.names()
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    s.manager.shutdown();
+    let err = rx
+        .recv_timeout(Duration::from_secs(5))
+        .expect("shutdown ngắt được lần chờ")
+        .unwrap_err();
+    assert_eq!((err.which, err.cause), (Which::Llama, GiveUpCause::Closing));
+    assert_eq!(
+        s.t.read("llama-plan"),
+        "ok",
+        "không chạy lại llama-server sau khi app thoát"
+    );
+}
+
+/// Lần đầu chạy quá giờ cũng chờ trước khi chạy lại; app thoát lúc đó thì trả về ngay (C6 của review 02 lần 3).
+#[test]
+fn shutdown_interrupts_the_wait_after_a_slow_first_start() {
+    let s = setup_clock(
+        "wake-first",
+        false,
+        &["load_delay_ms:3000", "ok"],
+        &[],
+        |spec| {
+            spec.asr.first_run = true;
+            spec.supervisor.first_run_ready_timeout_ms = 300;
+            spec.supervisor.backoff_ms = vec![60_000];
+        },
+        Some(Arc::new(pipeline::supervisor::SystemClock::default())),
+    );
+    let manager = s.manager.clone();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || tx.send(manager.ensure_started()).unwrap());
+    let started = Instant::now();
+    while !s.events.names().iter().any(|n| n.starts_with("restart Asr")) {
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "không thấy lần chờ: {:?}",
+            s.events.names()
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    s.manager.shutdown();
+    let err = rx
+        .recv_timeout(Duration::from_secs(5))
+        .expect("shutdown ngắt được lần chờ")
+        .unwrap_err();
+    assert_eq!(err.cause, GiveUpCause::Closing);
+}
 ```
 
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p pipeline --test lifecycle`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0432]: unresolved imports `pipeline::supervisor::AsrFailure`, `pipeline::supervisor::AsrSpec`, `pipeline::supervisor::Clock`, `pipeline::supervisor::FakeClock`, `pipeline::supervisor::GiveUpCause`, `pipeline::supervisor::LlamaSpec`, `pipeline::supervisor::SidecarEvent`, `pipeline::supervisor::SidecarEvents`, `pipeline::supervisor::SidecarManager`, `pipeline::supervisor::SidecarSpec`, `pipeline::supervisor::Which`
@@ -6033,16 +6151,20 @@ impl SidecarManager {
         lock(&self.activity).last_active_ms = self.clock.now_ms();
     }
 
-    /// Bắt đầu một phiên dịch. Người dùng bấm Bắt đầu là thử lại từ đầu: lần khởi động kế tiếp quên việc bỏ cuộc của lần
-    /// trước. Không chờ khóa của tiến trình phụ (có thể đang nạp model).
-    pub fn begin_session(&self) {
-        {
-            let mut a = lock(&self.activity);
-            a.sessions += 1;
-            a.last_active_ms = self.clock.now_ms();
-        }
+    /// Người dùng bấm Bắt đầu: lần khởi động kế tiếp của mỗi tiến trình phụ quên việc bỏ cuộc trước đó và thử lại từ đầu
+    /// (người dùng có thể đã sửa nguyên nhân: tải lại model, cài lại app). App gọi hàm này **trước** khi chuẩn bị tiến trình
+    /// phụ cho phiên (R3-1 của review 02 lần 3); lần chạy sẵn khi mở cửa sổ chính thì không. Không chờ khóa nào.
+    pub fn allow_retry(&self) {
         self.retry_asr.store(true, Ordering::SeqCst);
         self.retry_llama.store(true, Ordering::SeqCst);
+    }
+
+    /// Một phiên dịch bắt đầu: không tắt tiến trình phụ khi rảnh cho tới khi phiên kết thúc. Không chờ khóa của tiến trình
+    /// phụ (có thể đang nạp model).
+    pub fn begin_session(&self) {
+        let mut a = lock(&self.activity);
+        a.sessions += 1;
+        a.last_active_ms = self.clock.now_ms();
     }
 
     pub fn end_session(&self) {
@@ -6572,11 +6694,11 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 115 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 117 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.52s
-test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.27s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.34s
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
@@ -6602,7 +6724,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo, `cargo fmt` không in gì. Dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.58s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.46s
 ```
 
 - [ ] **Step 7: Commit**

@@ -10,7 +10,7 @@
 
 Client tiến trình phụ, dịch một câu và giám sát nằm ở 02d (tách khỏi file này vì quá dài).
 
-Bản này sửa theo ba review của bản `b221f3c` (ghi chú `review-02a.md`, `review-02b.md`, `review-02c.md` của controller), rồi theo hai review lần 2 của bản `4a1c310` (`review-02-r2-ad.md`, `review-02-r2-bc.md`), và dựng trên `main` `940c169`: 01 đã xong (tên AI Translator, bundle id `com.aitranslator.desktop`, LaunchAgent, trait `LoginItem` và `SettingsFile`, các đợt sửa R và U), cộng `yoke-derive` 0.8.4 và vitest 5.0.3. Mục "Đã sửa theo review" ở cuối phần đầu file liệt kê từng mục và chỗ sửa.
+Bản này sửa theo ba review của bản `b221f3c` (ghi chú `review-02a.md`, `review-02b.md`, `review-02c.md` của controller), theo hai review lần 2 của bản `4a1c310` (`review-02-r2-ad.md`, `review-02-r2-bc.md`), rồi theo hai review lần 3 của bản `f86b1b7` (`review-02-r3-ad.md`, `review-02-r3-bc.md`), và dựng trên `main` `f86b1b7` (code như `940c169`): 01 đã xong (tên AI Translator, bundle id `com.aitranslator.desktop`, LaunchAgent, trait `LoginItem` và `SettingsFile`, các đợt sửa R và U), cộng `yoke-derive` 0.8.4 và vitest 5.0.3. Mục "Đã sửa theo review" ở cuối phần đầu file liệt kê từng mục và chỗ sửa.
 
 **Kiến trúc:**
 - Không có code Tauri trong 02a, 02d và 02b. `pipeline` chạy và test được không cần app: app nối vào qua hai trait `FrameSource` (âm thanh vào) và `EventSink` (phụ đề ra), và qua `SidecarManager`.
@@ -62,7 +62,7 @@ Ghi chú:
   - "Thay toàn bộ `<file>` bằng": ghi đè cả file.
   - "Sửa `<file>` (áp bằng `git apply`)": khối `diff` là bản vá chuẩn; lưu khối vào một file tạm rồi chạy `git apply <file tạm>` từ gốc repo. `git apply --check` báo lỗi nghĩa là cây file đã lệch so với kế hoạch: dừng lại, đừng sửa tay cho khớp.
   - "Tạo `<file>`, lúc này mới có phần test": file chỉ có các dòng `//!` đầu và khối `#[cfg(test)] mod tests`; bước sau thêm phần code vào giữa hai phần đó.
-- **Khối Expected.** Mọi khối Expected là output thật, lấy từ một lần chạy lại toàn bộ các task trên một worktree sạch, với target riêng còn trống (2026-10-01). Đường dẫn đã đổi về gốc repo. Thời gian chạy (`finished in …`) và id luồng sẽ khác; số test và tên lỗi phải giống.
+- **Khối Expected.** Mọi khối Expected là output thật, lấy từ một lần chạy lại toàn bộ các task trên một worktree sạch, với target riêng còn trống (2026-10-01). Đường dẫn đã đổi về gốc repo. Thời gian chạy (`finished in …`) và id luồng sẽ khác; số test và tên lỗi phải giống. Có ba chỗ khối Expected là trích, và câu dẫn ghi rõ: bước đỏ chỉ in 6 dòng lỗi khác nhau đầu tiên (output thật có thể dài hơn; mọi dòng in ra đều có thật), bước có `grep`/`head` trong lệnh, và các bảng đo "lúc lập kế hoạch". `Cargo.lock` sinh lại có thể khác chuỗi commit của kế hoạch ở vài cạnh phụ thuộc (ví dụ `cssparser-macros` → `syn` 2 hay 3, `tempfile` → `getrandom` 0.3 hay 0.4: hai crate khai khoảng phiên bản rộng), nhưng không khác ở tập gói; không cần sửa tay.
 - **Đường dẫn trong lệnh.** Model và `llama-server` của Giai đoạn 0 nằm ở `models/` và `tools/` (có sẵn trên máy dev, bị `.gitignore` bỏ qua; xem `bench/phase0/fetch.py`). Lệnh `cargo test` chạy test với thư mục làm việc là thư mục của crate, nên biến môi trường trỏ tới model dùng đường dẫn tuyệt đối (`$PWD/models/…`, chạy từ gốc repo).
 - **Không bật hộp thoại quyền** (mục 6.8 của kế hoạch 00): không task nào trong file này chạy tap thu âm thật hay mở System Settings. Test `#[ignore]` của `audio-capture` chỉ đọc thuộc tính của Core Audio HAL, không cần quyền.
 - **Task cần máy rảnh** (mục 6.9): Task 7–9 của 02b chạy lại A3, A4, S6, lâu và nặng, S6 đo thời gian. Agent dừng ở đó, nhờ người đóng app nặng và cắm sạc, chờ xác nhận rồi mới chạy.
@@ -70,74 +70,101 @@ Ghi chú:
 
 ## Kiểm bằng mutation lúc lập kế hoạch
 
-Script đặt ngoài repo, chạy trên cây cuối của 02: mỗi mutation sửa một chỗ của code, chạy test phải bắt nó, rồi trả code về như cũ. Danh sách gồm mọi mutation của người review lần 2 (kể cả các mutation còn sống lúc đó: LG1–LG3, W1, W3, R1, PF1, PF3, PF5, O1), các mutation còn sống ở review 02a (H2, H3, S8, S12, P5, K1–K3), và một mutation cho mỗi chỗ sửa của review lần 2. Vài chỗ có hai lớp chặn cho cùng một việc; bỏ một lớp thì lớp kia vẫn giữ đúng hành vi, nên mutation của từng lớp sống, còn mutation bỏ cả hai lớp thì bị giết: kiểm `closing` ở `transcribe` (C1) và đầu vòng `start_asr` (C2); ở `with_llama` (C4) và `start_llama` (C3); `-ngl 0` theo `exe_gpu` (N2) và theo `asr_on_cpu` (N3); `grow` cập nhật mục đang chờ (QA1) và `dispatch` bỏ mục cũ (QA2). Riêng `remember` kill tiến trình vừa chạy lúc đang thoát (RM) và kiểm `closing` sau `Ready` (C5) chỉ có tác dụng khi `shutdown` xen vào đúng giữa lúc chạy tiến trình và lúc ghi `Killer`: không dựng được test tất định cho đường chạy đua này, nên RM, C5 và cặp C5+RM vẫn sống. Kết quả (`bị giết`: có test đỏ):
+Script đặt ngoài repo, chạy trên cây cuối của 02: mỗi mutation sửa một chỗ của code, chạy test phải bắt nó, rồi trả code về như cũ. Danh sách gồm mọi mutation của người review lần 2 (kể cả các mutation còn sống lúc đó: LG1–LG3, W1, W3, R1, PF1, PF3, PF5, O1), các mutation còn sống ở review 02a (H2, H3, S8, S12, P5, K1–K3), các mutation còn sống ở review lần 3 (A3, B1, B6, C3, C6, C7, D3, E1–E5, F4, F5, QA3+QA2, QC4, QG3, QE2, QE5, N6; tên có thêm `r` khi viết lại theo code mới), và một mutation cho mỗi chỗ sửa của review lần 2 và lần 3. Vài chỗ có hai lớp chặn cho cùng một việc; bỏ một lớp thì lớp kia vẫn giữ đúng hành vi, nên mutation của từng lớp sống, còn mutation bỏ cả hai lớp thì bị giết: kiểm `closing` ở `transcribe` (C1) và đầu vòng `start_asr` (C2); ở `with_llama` (C4) và `start_llama` (C3); `-ngl 0` theo `exe_gpu` (N2) và theo `asr_on_cpu` (N3); `grow` cập nhật mục đang chờ (QA1) và `dispatch` bỏ mục cũ (QA2). Riêng `remember` kill tiến trình vừa chạy lúc đang thoát (RM) và kiểm `closing` sau `Ready` (C5) chỉ có tác dụng khi `shutdown` xen vào đúng giữa lúc chạy tiến trình và lúc ghi `Killer`: không dựng được test tất định cho đường chạy đua này, nên RM, C5 và cặp C5+RM vẫn sống. B6 (lỗi chép lời gửi app không kèm log của whisper.cpp) cũng sống: không dựng được một lỗi chép lời thật của whisper.cpp trong test; đường kèm log đã có test ở lỗi `Load`. Kết quả (`bị giết`: có test đỏ):
 
 ```text
-H2 bỏ sắp cụm dài trước: bị giết ['test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.00s']
-H3 dư dưới 3 ký tự vẫn bỏ: bị giết ['test result: FAILED. 11 passed; 2 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.00s']
-L1 nhãn có ngoặc so như câu thường: bị giết ['test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.00s']
-S8 Error của worker vẫn khởi động lại: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.47s']
-S12 ModelLoad trên CPU không bỏ cuộc: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.45s']
-P5 nhận kết quả sai id: bị giết ['test result: FAILED. 10 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.87s']
-K1 Debug in khóa: bị giết ['test result: FAILED. 10 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.52s']
+H2 bỏ sắp cụm dài trước: bị giết ['test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 140 filtered out; finished in 0.00s']
+H3 dư dưới 3 ký tự vẫn bỏ: bị giết ['test result: FAILED. 11 passed; 2 failed; 0 ignored; 0 measured; 140 filtered out; finished in 0.00s']
+L1 nhãn có ngoặc so như câu thường: bị giết ['test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 140 filtered out; finished in 0.00s']
+S8 Error của worker vẫn khởi động lại: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.35s']
+S12 ModelLoad trên CPU không bỏ cuộc: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.46s']
+P5 nhận kết quả sai id: bị giết ['test result: FAILED. 10 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s']
+K1 Debug in khóa: bị giết ['test result: FAILED. 10 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s']
 K2 log {cmd:?}: bị giết ['test result: FAILED. 10 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s']
-K3 log không che khóa: bị giết ['test result: FAILED. 10 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.54s']
+K3 log không che khóa: bị giết ['test result: FAILED. 10 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s']
 C1 transcribe không kiểm closing: SỐNG 
-C2 start_asr không kiểm closing đầu vòng: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.28s']
+C2 start_asr không kiểm closing đầu vòng: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.31s']
 C3 start_llama không kiểm closing đầu vòng: SỐNG 
 C4 with_llama không kiểm closing: SỐNG 
 C5 sau Ready không kiểm closing (asr): SỐNG 
-C6 C2+C5 cùng lúc: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.41s']
-W1 shutdown không ngắt Wake: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.32s']
-W2 SystemClock bỏ qua Wake: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.42s']
-W3 backoff dùng Wake mới (không ngắt được): bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.33s']
-KL shutdown không kill: bị giết ['test result: FAILED. 28 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 120.50s']
-R1 running() khóa slot: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.34s']
-N1 llama không theo asr sang CPU: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.31s']
+C6 C2+C5 cùng lúc: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
+W1 shutdown không ngắt Wake: bị giết ['test result: FAILED. 29 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.85s']
+W2 SystemClock bỏ qua Wake: bị giết ['test result: FAILED. 29 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.80s']
+W3 backoff dùng Wake mới (không ngắt được): bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.32s']
+KL shutdown không kill: bị giết ['test result: FAILED. 30 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 120.78s']
+R1 running() khóa slot: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.31s']
+N1 llama không theo asr sang CPU: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
 N2 không GPU mà llama vẫn ngl auto: SỐNG 
 N3 asr_on_cpu khởi tạo false: SỐNG 
-B1 bỏ before_spawn của asr: bị giết ['test result: FAILED. 28 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.31s']
-B2 bỏ before_spawn của llama: bị giết ['test result: FAILED. 28 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
-F1 lần đầu quá giờ (asr) bị tính lỗi: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
-F2 lần đầu quá giờ (llama) bị tính lỗi: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.31s']
-O1 llama hết bộ nhớ không phát OutOfMemory: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.35s']
-O2 asr OutOfMemory không phát: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.31s']
-PF1 bỏ kiểm process group: bị giết ['test result: FAILED. 14 passed; 1 failed; 0 ignored; 0 measured; 135 filtered out; finished in 0.03s']
-PF2 bỏ kiểm thời điểm bắt đầu: bị giết ['test result: FAILED. 14 passed; 1 failed; 0 ignored; 0 measured; 135 filtered out; finished in 0.04s']
-PF3 bỏ kiểm đường dẫn binary: bị giết ['test result: FAILED. 14 passed; 1 failed; 0 ignored; 0 measured; 135 filtered out; finished in 0.03s']
-PF4 bỏ kiểm thư mục cho phép: bị giết ['test result: FAILED. 14 passed; 1 failed; 0 ignored; 0 measured; 135 filtered out; finished in 0.02s']
-PF5 spawn không ghi pidfile: bị giết ['test result: FAILED. 14 passed; 1 failed; 0 ignored; 0 measured; 135 filtered out; finished in 0.03s']
-V1 validate bỏ queue.asr_merge_max_ms: bị giết ['test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 145 filtered out; finished in 0.00s']
-V2 validate bỏ audio.silent_rms NaN: bị giết ['test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 145 filtered out; finished in 0.00s']
-T1 ngưỡng zh->vi 6,6: bị giết ['test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 145 filtered out; finished in 0.00s']
-T2 ngưỡng vi->en 1,6: bị giết ['test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 145 filtered out; finished in 0.00s']
-LG1 asr-worker không cài log callback: bị giết ['test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s']
+B1 bỏ before_spawn của asr: bị giết ['test result: FAILED. 30 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
+B2 bỏ before_spawn của llama: bị giết ['test result: FAILED. 30 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.33s']
+F1 lần đầu quá giờ (asr) bị tính lỗi: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
+F2 lần đầu quá giờ (llama) bị tính lỗi: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
+O1 llama hết bộ nhớ không phát OutOfMemory: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
+O2 asr OutOfMemory không phát: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.33s']
+PF1 bỏ kiểm process group: bị giết ['test result: FAILED. 15 passed; 1 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.04s']
+PF2 bỏ kiểm thời điểm bắt đầu: bị giết ['test result: FAILED. 15 passed; 1 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.03s']
+PF3 bỏ kiểm đường dẫn binary: bị giết ['test result: FAILED. 15 passed; 1 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.02s']
+PF4 bỏ kiểm thư mục cho phép: bị giết ['test result: FAILED. 15 passed; 1 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.02s']
+PF5 spawn không ghi pidfile: bị giết ['test result: FAILED. 15 passed; 1 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.04s']
+V1 validate bỏ queue.asr_merge_max_ms: bị giết ['test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+V2 validate bỏ audio.silent_rms NaN: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+T1 ngưỡng zh->vi 6,6: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+T2 ngưỡng vi->en 1,6: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+LG1 asr-worker không cài log callback: bị giết ['test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s']
 LG2 classify bỏ qua log: bị giết ['test result: FAILED. 22 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s']
 LG3 callback không ghi stderr: bị giết ['test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s']
-Q1 OutOfMemory lúc chép lời bị bỏ như lỗi thường: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
-LC1 dòng dài không bỏ phần đuôi có thể chứa nửa bí mật: bị giết ['test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 146 filtered out; finished in 0.01s']
-LC2 dòng dài không cắt: bị giết ['test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 146 filtered out; finished in 0.01s']
-V3 validate bỏ chặn dưới mt_skip_after_ms: bị giết ['test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 145 filtered out; finished in 0.00s']
-V4 validate bỏ chặn dưới window_extra_ms: bị giết ['test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 145 filtered out; finished in 0.00s']
-L2 bỏ nhãn (音楽): bị giết ['test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.00s']
+Q1 OutOfMemory lúc chép lời bị bỏ như lỗi thường: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.33s']
+LC1 dòng dài không bỏ phần đuôi có thể chứa nửa bí mật: bị giết ['test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 149 filtered out; finished in 0.01s']
+LC2 dòng dài không cắt: bị giết ['test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 149 filtered out; finished in 0.01s']
+V3 validate bỏ chặn dưới mt_skip_after_ms: bị giết ['test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+V4 validate bỏ chặn dưới window_extra_ms: bị giết ['test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+L2 bỏ nhãn (音楽): bị giết ['test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 140 filtered out; finished in 0.00s']
 QA1 ghép thêm lúc đang dịch thì thêm mục thứ hai: SỐNG 
 QA2 dispatch gửi cả mục cũ: SỐNG 
-QB ZeroWatch không tắt sau khi đã có âm thanh thật: bị giết ['test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 141 filtered out; finished in 0.02s']
-QC app đóng sau khi đã thu được vẫn dừng phiên: bị giết ['test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 141 filtered out; finished in 0.02s']
-QG1 StallWatch không đếm lại khi có khung mới: bị giết ['test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 141 filtered out; finished in 0.03s']
-QG2 tập pid đổi mà không mở lại: bị giết ['test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 141 filtered out; finished in 0.02s']
-QE giữ khóa phiên suốt lúc chuẩn bị: bị giết ['test result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 131 filtered out; finished in 10.10s']
-QT bỏ kiểm hạn mức: bị giết ['test result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 131 filtered out; finished in 0.34s']
-N2 đọc stdout của probe không giới hạn: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.71s']
+QB ZeroWatch không tắt sau khi đã có âm thanh thật: bị giết ['test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 144 filtered out; finished in 0.03s']
+QC app đóng sau khi đã thu được vẫn dừng phiên: bị giết ['test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 144 filtered out; finished in 0.04s']
+QG1 StallWatch không đếm lại khi có khung mới: bị giết ['test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 144 filtered out; finished in 0.02s']
+QG2 tập pid đổi mà không mở lại: bị giết ['test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 144 filtered out; finished in 0.04s']
+QE giữ khóa phiên suốt lúc chuẩn bị: bị giết ['test result: FAILED. 19 passed; 1 failed; 0 ignored; 0 measured; 134 filtered out; finished in 10.08s']
+QT bỏ kiểm hạn mức: bị giết ['test result: FAILED. 19 passed; 1 failed; 0 ignored; 0 measured; 134 filtered out; finished in 0.35s']
+N2 đọc stdout của probe không giới hạn: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 148 filtered out; finished in 0.66s']
 N5 meta không so llama_server_bytes: bị giết ['test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.01s']
 S1 phụ đề gộp bị bỏ khi id nhỏ hơn dòng đầu: bị giết []
 N3 init ghi đè cài đặt mới hơn: bị giết []
 N9 WebKit không có tên dễ hiểu: bị giết []
-N2+N3 không GPU mà llama vẫn ngl auto, và asr_on_cpu khởi tạo false: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.33s']
-QA1+QA2 ghép thêm thì thêm mục thứ hai, và dispatch gửi cả mục cũ: bị giết ['test result: FAILED. 21 passed; 1 failed; 0 ignored; 0 measured; 128 filtered out; finished in 0.37s']
-C3+C4 start_llama và with_llama không kiểm closing: bị giết ['test result: FAILED. 29 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.33s']
+N2+N3 không GPU mà llama vẫn ngl auto, và asr_on_cpu khởi tạo false: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
+QA1+QA2 ghép thêm thì thêm mục thứ hai, và dispatch gửi cả mục cũ: bị giết ['test result: FAILED. 22 passed; 1 failed; 0 ignored; 0 measured; 130 filtered out; finished in 0.36s']
+C3+C4 start_llama và with_llama không kiểm closing: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.33s']
 RM tiến trình vừa chạy lúc đang thoát vẫn được giữ: SỐNG 
 C5+RM sau Ready không kiểm closing, và tiến trình vừa chạy lúc đang thoát vẫn được giữ: SỐNG 
+A3 OOM lúc chép lời chuyển CPU ngay lần đầu: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.33s']
+B1 worker không xóa log giữ lại trước mỗi yêu cầu: bị giết ['test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s']
+B6 lỗi Transcribe gửi app không kèm log: SỐNG 
+C3r running() chỉ xét asr: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s']
+C6r chờ sau lần đầu quá giờ không ngắt được: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.99s']
+C7r backoff của llama không ngắt được: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.66s']
+D3r spawn ghi exe không canonicalize: bị giết ['test result: FAILED. 15 passed; 1 failed; 0 ignored; 0 measured; 137 filtered out; finished in 0.03s']
+E1r failure_window_ms chặn dưới thành 1 ms: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+E2r no_audio_after_ms chặn dưới thành > 0: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+E3r asr_merge_max_ms bỏ trần 30 s: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+E4r silent_rms cho phép số âm: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+E5r n_threads bỏ trần 64: bị giết ['test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 147 filtered out; finished in 0.00s']
+F4r cắt bớt 10 byte thay vì độ dài bí mật dài nhất: bị giết ['test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 149 filtered out; finished in 0.01s']
+F5r dòng bị cắt không che bí mật trọn vẹn: bị giết ['test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 149 filtered out; finished in 0.01s']
+G6 ngoặc toàn khổ và 【】 không đổi về ngoặc thường: bị giết ['test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 140 filtered out; finished in 0.00s']
+QA3+QA2 câu đang chờ ghép thêm thì thêm mục, và dispatch gửi cả mục cũ: bị giết ['test result: FAILED. 22 passed; 1 failed; 0 ignored; 0 measured; 130 filtered out; finished in 0.36s']
+QC4r không báo chỉ báo chờ app: bị giết ['test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 144 filtered out; finished in 0.02s']
+QG3r tap chết mà không mở lại: bị giết ['test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 144 filtered out; finished in 0.04s']
+SB StallWatch không giãn khi mở lại liên tiếp: bị giết ['test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 144 filtered out; finished in 0.04s']
+PS tập pid thu nhỏ cũng mở lại: bị giết ['test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 144 filtered out; finished in 0.04s']
+QE2r Hủy không tăng attempt: bị giết ['test result: FAILED. 18 passed; 2 failed; 0 ignored; 0 measured; 134 filtered out; finished in 0.34s']
+QE5r bỏ cả ba lần kiểm current() trên đường thành công: bị giết ['test result: FAILED. 18 passed; 2 failed; 0 ignored; 0 measured; 134 filtered out; finished in 0.36s']
+N6r allow_retry không quên lý do bỏ cuộc cũ: bị giết ['test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 151 filtered out; finished in 0.00s']
+R1 bấm Bắt đầu không gọi allow_retry: bị giết ['test result: FAILED. 19 passed; 1 failed; 0 ignored; 0 measured; 134 filtered out; finished in 0.34s']
+R2 SidecarManager::allow_retry không làm gì: bị giết ['test result: FAILED. 31 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.31s']
+R7 lần đã hủy nạp lỗi vẫn để chỉ báo nạp model: bị giết ['test result: FAILED. 19 passed; 1 failed; 0 ignored; 0 measured; 134 filtered out; finished in 0.36s']
+R8 lỗi bắt đầu trong trạng thái mà thanh báo lỗi cũ còn: bị giết []
 ```
 
 ## Dòng của bảng đối chiếu giao cho kế hoạch 02
@@ -313,7 +340,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 - **QĐ3. Prompt không làm hạ trần token** (dòng 116, "Luật lặp khi prompt dài"). App chỉ gửi `min(100, 219 − (16 + 20 × số giây))` token prompt, nên trần token mới của worker luôn là `16 + 20 × số giây`. Đoạn 3 giây vẫn có đủ 100 token prompt; đoạn 8,4 giây còn 35; đoạn gộp 12 giây (§7) không có prompt.
 - **QĐ4. Lọc câu ảo giác quen thuộc** (dòng 118). Danh sách câu nằm trong `FilterConfig::hallucination_phrases` (04 đổi được qua manifest).
   - Câu thường: so khớp sau khi chuẩn hóa (chữ thường, chỉ giữ chữ và số), bỏ cụm dài trước. Đoạn chỉ gồm các câu này, lặp lại, hoặc chỉ có dấu câu và ký hiệu thì bỏ; còn dư dù một hai ký tự thì giữ.
-  - Nhãn có ngoặc (`[music]`, `(âm nhạc)`): so khớp nguyên dạng có ngoặc, trước khi chuẩn hóa, nên câu thật "Music." hay "Âm nhạc" không bị bỏ (Nhỏ của review 02a).
+  - Nhãn có ngoặc (`[music]`, `(âm nhạc)`): so khớp nguyên dạng có ngoặc, trước khi chuẩn hóa, nên câu thật "Music." hay "Âm nhạc" không bị bỏ (Nhỏ của review 02a). Mọi kiểu ngoặc (vuông, tròn, toàn khổ `（）［］`, `【】`, `〔〕`) coi như một, nên `（音楽）`, `【음악】`, `[音乐]` khớp cùng một nhãn (N2 của review 02 lần 3).
   - "Thank you." hay "Cảm ơn." đứng riêng không nằm trong danh sách này, vì là câu thật trong cuộc họp; chúng thuộc luật câu đệm (QĐ24).
 - **QĐ5. Phồn thể sang giản thể** (dòng 120) bằng `ferrous-opencc` (bảng OpenCC `t2s`), áp lên chữ của đoạn tiếng Trung trước khi hiện, ghép câu và dịch (`text::display_text`). Trên dữ liệu S6, 44 đoạn tiếng Trung đổi chữ. Test chạy lại quyết định của S6 áp cùng hàm cho cả hai phía.
 - **QĐ6. Bản vá `set_audio_ctx` trả lỗi** (dòng 122): hàm C trả −1 khi giá trị ngoài `[0, n_audio_ctx]`, bản Rust trả `Result`. Dựng lại `third_party/` từ tarball crates.io cộng hai bản vá cho ra đúng từng byte bản commit. Dòng `index` của bản vá 0001 khớp file đã vá.
@@ -325,7 +352,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
   - `ModelLoad` khi đã chạy CPU thì bỏ cuộc luôn (model hỏng, thử lại vô ích; mã lỗi `modelBroken`);
   - `llama-server` chết lúc khởi động mà đuôi log có dấu hiệu hết bộ nhớ thì phát `OutOfMemory` (app đề xuất gói Nhẹ), như `asr-worker`;
   - lần đầu chạy binary mới: chờ `Ready` hay `/health` lâu hơn (`first_run_ready_timeout_ms` 180 giây); quá giờ lần đó thì không tính là một lần lỗi, không chuyển CPU, chạy lại với thời gian chờ thường (Nhỏ của review 02a; §6.5). App báo binary nào là lần đầu qua `SidecarEvents::is_first_run`, hỏi một lần cho mỗi binary, kể cả `asr-worker-cpu` chỉ chạy sau khi chuyển CPU;
-  - `begin_session` đánh dấu cho lần khởi động kế tiếp quên việc bỏ cuộc trước đó (người dùng bấm Bắt đầu lại thì thử lại từ đầu), không chờ khóa của tiến trình phụ;
+  - `allow_retry` đánh dấu cho lần khởi động kế tiếp quên việc bỏ cuộc trước đó (người dùng bấm Bắt đầu thì thử lại từ đầu), không chờ khóa của tiến trình phụ; app gọi nó trước khi chuẩn bị tiến trình phụ cho lần bắt đầu (lần chạy sẵn khi mở cửa sổ chính thì không), còn `begin_session` chỉ đếm phiên để không tắt khi rảnh (R3-1 của review 02 lần 3);
   - không có phiên nào trong 10 phút thì tắt cả hai (`tick`, app gọi 30 giây một lần);
   - app thoát (`SidecarManager::shutdown`, #2 của review 02a, N1 của review 02c): bật cờ `closing`, ngắt lần chờ giữa hai lần khởi động (`Wake`, chờ bằng Condvar), kill tiến trình phụ đang chạy hay đang nạp model qua `process::Killer` (lấy được ngay khi tiến trình chạy, `spawn_with`). Không chờ khóa nào; luồng đang dùng tiến trình phụ nhận lỗi rồi tự trả khóa. Sau đó mọi lần khởi động trả lỗi ngay; tiến trình vừa chạy mà app đã bắt đầu thoát thì bị kill ngay, không giữ lại (`remember` kiểm `closing` dưới cùng khóa với `shutdown`). `stop` lấy tiến trình khỏi slot và bỏ `Killer` của nó trong cùng một khóa. `running()` đọc `AtomicBool`, không khóa.
 - **QĐ8. Tiến trình phụ không bị bỏ lại khi app chết** (dòng 82). macOS: mỗi tiến trình phụ là trưởng một process group; hook panic gửi `SIGKILL` cho mọi group còn sống trước khi abort; `asr-worker` tự thoát khi stdin đóng (`tests/stdin_eof.rs`). App bị Force Quit (`SIGKILL`) thì hook không chạy, nên mỗi tiến trình phụ còn được ghi vào pidfile `app_local_data_dir/sidecars-live.json` (pid, thời điểm bắt đầu, đường dẫn binary thật; ghi file tạm rồi `rename`). Lần mở app sau, `setup` gọi `process::reap_orphans` trước khi chạy sẵn tiến trình mới: chỉ `SIGKILL` cả group khi khớp cả bốn điều kiện: thời điểm bắt đầu (`proc_pidinfo PROC_PIDTBSDINFO`), `proc_pidpath` bằng binary đã ghi, binary nằm trong thư mục tiến trình phụ của app, và tiến trình vẫn là trưởng group của nó (Q8(a) của review 02c). Đọc pidfile ở `setup` chỉ đúng vì plugin single-instance bảo đảm không có bản app nào khác đang chạy (N-10 của review 02 lần 2). Windows: một Job Object `KILL_ON_JOB_CLOSE`, tiến trình phụ chạy với `CREATE_NO_WINDOW`; không cần pidfile.
@@ -344,12 +371,12 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 - **QĐ12. Ngưỡng tỉ lệ token theo cách 2 của Q4** (§6.5, đã chốt 2026-10-01): chỉ áp tỉ lệ khi câu gốc từ 10 token; câu ngắn hơn chỉ chịu hạn mức sinh `min(4 × số token + 32, 512)`. Ngưỡng lấy cột "câu gốc ≥ 10 token" của `bench/phase0/results/s7_mt_decisions.md` (tỉ lệ lớn nhất trên các câu gốc từ 10 token, cộng biên 25%, làm tròn lên 0,1). Lúc lập kế hoạch đã tính lại cho cả tám cặp từ `bench/phase0/data/mt/outputs/*-plain.jsonl` (bỏ bản dịch bị cắt ở `max_tokens`) và ra đúng các số của bảng: en→vi 4,4; zh→vi 4,3; ja→vi 3,5; ko→vi 3,5; vi→en 1,4; vi→zh 1,2; vi→ja 2,2; vi→ko 2,2 (Nhỏ của review 02a; bản trước dùng nhầm 6,6 và 1,6 của cột "mọi câu"). Cặp chưa có ngưỡng (không có tiếng Việt) không bị kiểm tỉ lệ cho tới khi 02b Task 6 đo xong. Ngưỡng nằm trong `MtConfig::ratio_thresholds` (cùng `ratio_min_source_tokens`), đổi được qua manifest.
 - **QĐ13. `repeat_penalty` là `f64`**, để JSON gửi đi là `1.05`, không phải `1.0499999523162842`.
 - **QĐ14. Tiến trình phụ giả là binary trong `pipeline`** (`fake_asr_worker`, `fake_llama_server`), test lấy đường dẫn qua `CARGO_BIN_EXE_*`. Kịch bản lỗi đọc từ file và biến môi trường; mỗi lần tiến trình chạy lấy một dòng, nên test được chuỗi "crash rồi chạy lại". `FakeClock` cộng thẳng thời gian chờ, nên test vòng đời không ngủ thật; vài test về thời gian chờ của chính tiến trình phụ (lần đầu chạy, app thoát lúc đang nạp model) chờ thật dưới 1 giây.
-- **QĐ15. Kiểm code Windows trên Mac.** Ngoài `fake-llvm-rc` của 01, thêm `scripts/fake-pkg-config`: `candle-core` 0.11 luôn kéo `tokenizers` với `onig`, nên `onig_sys` muốn biên dịch thư viện C oniguruma cho Windows. Với `RUSTONIG_DYNAMIC_LIBONIG=1` và pkg-config giả, `cargo clippy` không phải biên dịch gì; `cargo check` và `clippy` không link nên thư viện giả không bao giờ được dùng. Clippy cho target Windows chạy ngay ở các task có code Windows (02d Task 1 và Task 3, 02b Task 5, 02c Task 2 và Task 3), không đợi tới cuối (#5 của review 02a).
+- **QĐ15. Kiểm code Windows trên Mac.** Ngoài `fake-llvm-rc` của 01, thêm `scripts/fake-pkg-config`: `candle-core` 0.11 luôn kéo `tokenizers` với `onig`, nên `onig_sys` muốn biên dịch thư viện C oniguruma cho Windows. Với `RUSTONIG_DYNAMIC_LIBONIG=1` và pkg-config giả, `cargo clippy` không phải biên dịch gì; `cargo check` và `clippy` không link nên thư viện giả không bao giờ được dùng. Clippy cho target Windows chạy ngay ở các task có code Windows (02d Task 1 và Task 3, 02b Task 5, 02c Task 2 và Task 3), không đợi tới cuối (#5 của review 02a). `asr-worker` không nằm trong phép kiểm này (build script của `whisper-rs-sys` không biên dịch chéo được): code Windows của nó biên dịch lần đầu ở 02c Task 9.
 - **QĐ16. Đổi thiết bị phát: hỏi định kỳ 500 ms** (`audio_capture::default_output_signature`) thay cho listener của Core Audio và `IMMNotificationClient` (§6.1, §9; spec đã ghi lại cách này).
   - macOS: dấu hiệu gồm id thiết bị và tần số mẫu danh định (`kAudioDevicePropertyNominalSampleRate`), vì tai nghe Bluetooth đổi tần số trên cùng thiết bị khi app họp mở micro (Q10 của review 02b).
   - Áp cho cả nguồn toàn hệ thống lẫn nguồn một app (Q3 của review 02c); thiết bị chọn tay trên Windows thì không theo thiết bị mặc định.
   - Luồng thu chết (`AudioSource::failed`) cũng làm mở lại nguồn: Windows khi thiết bị bị rút; macOS, nguồn một app, khi mọi tiến trình của app đó đã thoát (N11 của review 02b).
-  - macOS, tap chết không báo gì (`coreaudiod` khởi động lại, aggregate mất sau khi máy ngủ; Q-G của review 02 lần 2): số khung (`CaptureStats::frames`) đứng yên 3 giây **trong khi** app cần thu vẫn đang phát tiếng (nguồn một app: chính app đó) thì mở lại nguồn. Phải có điều kiện "đang phát", vì aggregate đặt `tapautostart`: không app nào phát thì IO block không được gọi dù tap vẫn sống. Nguồn một app còn mở lại khi tập tiến trình đang phát của app khác tập đã tap (helper mới, pid được cấp lại); kiểm mỗi 2 giây. Số liệu thu ghi vào log mỗi 60 giây để kiểm tiền đề ở 02c Task 8.
+  - macOS, tap chết không báo gì (`coreaudiod` khởi động lại, aggregate mất sau khi máy ngủ; Q-G của review 02 lần 2): số khung (`CaptureStats::frames`) đứng yên 3 giây **trong khi** app cần thu vẫn đang phát tiếng (nguồn một app: chính app đó) thì mở lại nguồn. Phải có điều kiện "đang phát", vì aggregate đặt `tapautostart`: không app nào phát thì IO block không được gọi dù tap vẫn sống. Mở lại 3 lần liên tiếp mà vẫn không có khung thì chờ lâu dần (gấp đôi mỗi lần, tối đa 30 giây), không tính vào chính sách báo lỗi (Nhỏ-5 của review 02 lần 3). Nguồn một app còn mở lại khi app có tiến trình phát tiếng chưa được tap (helper mới, pid được cấp lại); tập chỉ thu nhỏ thì không (Nhỏ-6); kiểm mỗi 2 giây. Quyết định của mỗi lần kiểm là hàm thuần `capture::on_tick` (Nhỏ-3). Số liệu thu ghi vào log mỗi 60 giây để kiểm tiền đề ở 02c Task 8.
 - **QĐ17. Kiểm SHA-256 tiến trình phụ** (Đ15, §10.2) theo bảng sinh lúc build từ mọi file trong `src-tauri/binaries/` (file thực thi và thư viện đi kèm). Kiểm lúc chuẩn bị và trước mọi lần chạy, kể cả mọi lần khởi động lại bên trong giám sát: giám sát gọi `SidecarEvents::before_spawn`, app cài hàm này bằng `integrity::verify`; kiểm lỗi thì bỏ cuộc ngay (`GiveUpCause::Tampered`, mã `sidecarTampered`; #4 của review 02a, N2(a) của review 02c). Ngoài ra (N2(b) của review 02c):
   - thư mục không được có file dạng thư viện lạ (`.dll`, `.dylib`, `.so`, tên bắt đầu `libggml-`, `ggml-`): `llama-server` b11146 tự nạp mọi backend ggml trong thư mục của nó và thư mục làm việc (`ggml_backend_load_all`, đã thử ở review 02c);
   - mọi tiến trình phụ (`asr-worker`, `llama-server`, `--probe`) chạy với thư mục làm việc là thư mục chứa binary;
@@ -374,7 +401,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
   - macOS: mẫu thật toàn số 0 tuyệt đối suốt 3 giây trong khi app cần thu đang phát (nguồn một app: chính app đó), và từ đầu phiên chưa có mẫu nào khác 0, thì đặt `AppStatus::permission_suspected` (không dừng phiên); giao diện hiện câu báo kèm nút mở System Settings. Đã có âm thanh thật một lần thì tắt hẳn phép kiểm này: quyền đã có, cuộc họp im lặng không bị báo nhầm (Q-B của review 02 lần 2).
   - `ClockFiller` chỉ chèn im lặng khi nguồn không trả mẫu nào; nguồn đang chạy thì kéo mốc về đồng hồ thật, nên đồng hồ thiết bị lệch vài chục ppm không chèn im lặng vào giữa câu (N2 của review 02b). Mỗi lần chèn tối đa 2 giây; thiếu nhiều hơn (máy ngủ) thì chỉ đồng bộ lại mốc.
   - `LiveCapture` bị hủy thì chờ luồng thu tối đa 500 ms, để tap cũ không chạy song song với phiên mới.
-- **QĐ29. Phiên dịch trong app** (`session.rs`, Q1, Q6, N1 của review 02c; Q-E của review 02 lần 2). Mỗi lần bắt đầu có một số (`attempt`); bấm lần nữa lúc đang chuẩn bị là Hủy: tăng số đó, trạng thái về `idle` ngay. Khóa phiên không giữ trong lúc chuẩn bị tiến trình phụ (60–180 giây), chỉ từ lúc mở nguồn âm thanh tới lúc gắn engine, nên Hủy rồi bấm Bắt đầu lại hiện `starting` ngay; lần đã hủy nạp xong thì thấy số đã đổi và thôi. Lần bắt đầu kiểm số của nó lần cuối cùng khóa với trạng thái, sau khi đã dựng engine. Trước khi chuẩn bị, `SessionDeps::check_quota` (mặc định cho bắt đầu; kế hoạch 06 cài) từ chối khi hạn mức còn 0. `Engine::start` lỗi là lỗi bên trong app (`unknown`). Thoát app: chặn lần bắt đầu mới, tăng số lần bắt đầu, chặn mọi lần chạy tiến trình phụ mới và kill tiến trình đang chạy (`process::begin_shutdown`, `SidecarManager::shutdown`), chờ khóa phiên tối đa 2 giây để dừng engine, rồi `process::kill_all`. Lỗi của một phiên cũ (tới muộn) không chạm phiên mới. `AppStatus.rev` tăng mỗi lần trạng thái đổi; giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đang có.
+- **QĐ29. Phiên dịch trong app** (`session.rs`, Q1, Q6, N1 của review 02c; Q-E của review 02 lần 2). Mỗi lần bắt đầu có một số (`attempt`); bấm lần nữa lúc đang chuẩn bị là Hủy: tăng số đó, trạng thái về `idle` ngay. Khóa phiên không giữ trong lúc chuẩn bị tiến trình phụ (60–180 giây), chỉ từ lúc mở nguồn âm thanh tới lúc gắn engine, nên Hủy rồi bấm Bắt đầu lại hiện `starting` ngay; lần đã hủy nạp xong thì thấy số đã đổi và thôi. Lần bắt đầu kiểm số của nó lần cuối cùng khóa với trạng thái, sau khi đã dựng engine. Trước khi chuẩn bị, `SessionDeps::check_quota` (mặc định cho bắt đầu; kế hoạch 06 cài) từ chối khi hạn mức còn 0, rồi `SessionDeps::allow_retry` cho tiến trình phụ đã bỏ cuộc thử lại (R3-1 của review 02 lần 3). Lần đã hủy mà chuẩn bị lỗi thì bỏ chỉ báo "Đang nạp model" còn sót (Nhỏ-7). `Engine::start` lỗi là lỗi bên trong app (`unknown`). Thoát app: chặn lần bắt đầu mới, tăng số lần bắt đầu, chặn mọi lần chạy tiến trình phụ mới và kill tiến trình đang chạy (`process::begin_shutdown`, `SidecarManager::shutdown`), chờ khóa phiên tối đa 2 giây để dừng engine, rồi `process::kill_all`. Lỗi của một phiên cũ (tới muộn) không chạm phiên mới. `AppStatus.rev` tăng mỗi lần trạng thái đổi; giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đang có.
 - **QĐ30. App trong danh sách "chỉ thu một app" (macOS)** (Q9 của review 02b, Q8(b) của review 02c). `audio_apps()` gộp các tiến trình đang phát tiếng theo gói `.app` ngoài cùng (`proc_pidpath`), nên trình duyệt và app Electron (phát tiếng từ tiến trình helper) là một dòng với mọi pid của nó. Tên hiển thị và bundle ID đọc từ `Info.plist` của gói `.app` ngoài cùng (`NSBundle`: `CFBundleDisplayName`, `CFBundleName`, theo ngôn ngữ của máy), vì `NSRunningApplication` của helper có thể trả về chính helper (`com.google.Chrome.helper`) làm bundle ID đã lưu đổi giữa các lần (Q-F của review 02 lần 2); tiến trình không nằm trong gói nào thì dùng `NSRunningApplication.localizedName` của nó hoặc tối đa 3 tiến trình cha. Hàm chạy trong `autoreleasepool`. Tiến trình của WebKit (`com.apple.WebKit.GPU`, phát tiếng cho Safari và mọi WebView) có tên riêng trên giao diện; không có tên thì giao diện hiện bundle ID. Tiến trình vừa thoát giữa lúc đọc danh sách thì bỏ qua nó, không làm hỏng cả danh sách. Nguồn đã chọn lưu theo bundle ID (cài đặt của 01 không đổi).
 - **QĐ31. Câu xin quyền ghi âm thanh hệ thống có hai ngôn ngữ** (Q8(c) của review 02c): câu gốc tiếng Anh trong `src-tauri/Info.plist` (kèm `CFBundleLocalizations` en, vi), bản dịch trong `src-tauri/macos/{en,vi}.lproj/InfoPlist.strings`, chép vào gói `.app` qua `bundle.macOS.files` của `tauri.conf.json`. `tauri dev` chỉ nhúng `Info.plist` gốc, nên câu tiếng Việt chỉ thử được trên `.app` đã đóng gói (02c Task 8).
 - **QĐ32. DLL nạp lúc khởi động trên Windows** (Nhỏ của review 02a): `harden_dll_search` (`SetDefaultDllDirectories`) chỉ áp cho DLL nạp sau khi chương trình đã chạy, nên `.cargo/config.toml` thêm cờ linker `/DEPENDENTLOADFLAG:0x800` (`LOAD_LIBRARY_SEARCH_SYSTEM32`) cho mọi binary của workspace trên `x86_64-pc-windows-msvc`: DLL import thẳng (như `vulkan-1.dll`) chỉ được tìm trong System32. Mac không link được cho Windows, nên cờ này chỉ thử được ở 02c Task 9. Hệ quả cho 07: binary Rust MSVC import `VCRUNTIME140.dll`; bộ cài phải bảo đảm bản đó có trong System32 (VC++ Redistributable), hoặc build với `+crt-static`.
@@ -396,7 +423,7 @@ Kế hoạch đã làm theo phương án ghi trong ngoặc; chủ dự án đổ
 
 ## Đã sửa theo review
 
-Mã theo ba review của bản `b221f3c`, rồi hai review lần 2 của bản `4a1c310` (mục cuối). "a·T2" là 02a Task 2, "d·T1" là 02d Task 1, "b·T2" là 02b Task 2, "c·T3" là 02c Task 3.
+Mã theo ba review của bản `b221f3c`, hai review lần 2 của bản `4a1c310`, rồi hai review lần 3 của bản `f86b1b7` (các mục cuối). "a·T2" là 02a Task 2, "d·T1" là 02d Task 1, "b·T2" là 02b Task 2, "c·T3" là 02c Task 3.
 
 **Review 02a**
 - Chỗ lệch khi chạy lại: (1) a·T3 Step 1 khai `pub mod text;` cùng lúc tạo file, Expected là output thật; (2) feature `Win32_System_Threading` và import thừa của module test chuyển về d·T1, d·T1 và d·T3 có thêm lệnh clippy cho target Windows; (3) mọi Expected là output thật của một lần chạy lại toàn bộ trong target trống (QĐ23), lệnh trong Expected đúng bằng khối Run.
@@ -487,6 +514,17 @@ Mã theo ba review của bản `b221f3c`, rồi hai review lần 2 của bản `
 - Ghi chú cho 06: c·T3 thêm `SessionDeps::check_quota` (mặc định cho bắt đầu; test hạn mức còn 0 thì không bắt đầu); ghi chú ở đầu 02c: `EventSink::usage` chạy trên luồng phụ đề, không ghi kho khóa đồng bộ ở đó.
 - Rebase lên `main` `940c169`: `Cargo.toml` của app giữ autostart 2.6.0, single-instance 2.5.1; `errors.rs` đặt khối mã lỗi của phiên dịch sau `UNSUPPORTED` dưới tiêu đề riêng, câu "Năm hằng" sửa lại; `system.rs` test hằng trang quyền là URL System Settings cố định, không đi qua `https_only`; giữ phần của đợt U (`disabled={pending}`, test M11, M12, `store/app.ts`, `app.test.ts`, `SettingsScreen.tsx`); mọi Expected lấy lại trên base mới.
 
+**Review lần 3 (bản `f86b1b7`), 02a và 02d**
+- Q-1 (OOM phải lỗi 2 lần liên tiếp mới chuyển CPU): d·T3 test kiểm đủ thứ tự sự kiện (lần đầu khởi động lại trên GPU). Giết A3.
+- Q-2 (`pump` che bí mật trên dòng bị cắt): d·T1 test thêm bí mật trọn vẹn ở đầu dòng dài, và bí mật dài 21 byte vắt qua chỗ cắt ở vị trí `MAX_LINE_BYTES − 15`. Giết F4, F5.
+- Q-3 (`Wake` của `llama-server`): d·T3 test ngắt lần chờ trước khi chạy lại `llama-server`, và lần chờ sau lần đầu chạy quá giờ. Giết C6, C7.
+- N1: a·T1 `tests/native_log.rs` gửi `Load` sai hai lần, lần hai chỉ có log của chính nó (giết B1); B6 chấp nhận, ghi ở mục mutation. N2: a·T3 mọi kiểu ngoặc (toàn khổ `（）［］`, `【】`, `〔〕`) coi như một khi so nhãn, có test. N3: a·T2 test `bounds_are_exact` (đúng ở biên được nhận, ngay ngoài biên bị từ chối; giết E1–E5). N4: c·T3 bước xóa `session_stub.rs` là `Run:`. N5: d·T1 test binary chạy qua symlink (giết D3). N6: d·T3 `running()` khi chỉ `llama-server` chạy, và tắt khi rảnh vẫn tắt được (giết C3). N7: a·T1 Step 8 và QĐ15 ghi code Windows của `asr-worker` biên dịch lần đầu ở c·T9. N8: b·T4 Step 5 giải thích `git_dirty`; câu dẫn của bước đỏ ghi "trích 6 dòng lỗi khác nhau đầu tiên"; mục "Cách đọc" ghi các khối trích và việc `Cargo.lock` có thể khác ở cạnh phụ thuộc.
+
+**Review lần 3 (bản `f86b1b7`), 02b và 02c**
+- R3-1 (bỏ cuộc rồi Bắt đầu không thử lại): d·T3 `SidecarManager::allow_retry` tách khỏi `begin_session` (chỉ còn đếm phiên); c·T3 `SessionDeps::allow_retry` gọi trong `start_with` trước `prepare`, `prewarm` không gọi; `LiveDeps::allow_retry` quên lý do bỏ cuộc cũ (N-6) rồi gọi manager. Test: d·T3 bỏ cuộc, `begin_session` không đủ, `allow_retry` thì chạy được; c·T3 thứ tự `allow_retry` trước `prepare` khi bấm Bắt đầu và không có khi chạy sẵn; unit test của `LiveDeps` cho N-6. c·T8 Step 8: ca sửa byte làm khi app đã thoát, mở lại gói đã build mà không build lại; thêm Expected khôi phục xong thì bấm Bắt đầu chạy được.
+- Nhỏ-1: c·T3 lần đã hủy không mở nguồn âm thanh, chỉ lần mới mở (giết QE2, QE5). Nhỏ-2: b·T2 test câu đang chờ dịch được ghép thêm hai lần (giết QA3+QA2); ghi rõ tối đa hai lần ghép thêm. Nhỏ-3: c·T2 hàm thuần `on_tick` và `failure_event`, có test (giết QC4, QG3). Nhỏ-4: như R3-1. Nhỏ-5: c·T2 `StallBackoff` (3 lần đầu chờ 3 giây, sau đó gấp đôi, trần 30 giây, cảnh báo một lần, không tính vào `FailurePolicy`). Nhỏ-6: c·T2 chỉ mở lại khi có pid mới. Nhỏ-7: c·T3 lần đã hủy nạp lỗi thì bỏ chỉ báo "Đang nạp model", có test. Nhỏ-8: c·T5 lỗi bắt đầu nằm trong trạng thái thì thanh báo lỗi cũ cũng mất, có test. Nhỏ-9: c·T4 `run-dev-app.sh` chuyển `MT_*`, `RUST_LOG` qua `open --env`.
+- Bước sửa `src-tauri/Cargo.toml` ở c·T1–T3 ghi: nếu `main` đã nâng plugin Tauri thì giữ bản của `main` (áp bằng `git apply --3way` nếu chỉ lệch ở dòng phiên bản).
+
 ---
 
 ## Task 1: Giao thức `asr-worker` bản 2
@@ -496,7 +534,7 @@ Các việc "Việc cho MVP" của §6.4 về giao thức và worker (dòng 102�
 - `asr-worker`:
   - không giữ ngôn ngữ của đoạn trước (`prev_lang` trong yêu cầu); kiểm `prev_lang` thuộc tập cho phép;
   - chỉ dùng prompt của app khi ngôn ngữ không đổi (`prompt_for`);
-  - phân loại lỗi (`classify`) theo cả thông báo lỗi lẫn các dòng cảnh báo, lỗi gần nhất của whisper.cpp và ggml (`native_log`: log callback vẫn ghi ra stderr, giữ 20 dòng gần nhất), vì whisper-rs chỉ trả `InitError` hay `GenericError` (#1 của review 02a); thông báo lỗi gửi cho app kèm các dòng đó (`native_log::describe`), và `tests/native_log.rs` chạy binary thật để kiểm dòng log của whisper.cpp vẫn ra stderr và có trong thông báo lỗi (Q2 của review 02 lần 2); trả `InvalidRequest` cho đầu vào sai thay vì panic;
+  - phân loại lỗi (`classify`) theo cả thông báo lỗi lẫn các dòng cảnh báo, lỗi gần nhất của whisper.cpp và ggml (`native_log`: log callback vẫn ghi ra stderr, giữ 20 dòng gần nhất), vì whisper-rs chỉ trả `InitError` hay `GenericError` (#1 của review 02a); thông báo lỗi gửi cho app kèm các dòng đó (`native_log::describe`), và `tests/native_log.rs` chạy binary thật để kiểm dòng log của whisper.cpp vẫn ra stderr và có trong thông báo lỗi (Q2 của review 02 lần 2), và các dòng giữ lại chỉ là của yêu cầu hiện tại (B1 của review 02 lần 3); trả `InvalidRequest` cho đầu vào sai thay vì panic;
   - báo thiết bị thật (`backend.rs`);
   - giữ riêng stdout cho giao thức (`platform::protocol_stdout`); trên Windows chỉ nạp DLL từ thư mục của mình và System32 (`harden_dll_search`).
 - `.cargo/config.toml`: cờ linker `/DEPENDENTLOADFLAG:0x800` cho target Windows, để cả DLL nạp lúc khởi động (import thẳng, như `vulkan-1.dll`) cũng chỉ được tìm trong System32 (QĐ32).
@@ -1051,7 +1089,8 @@ Tạo `crates/asr-worker/tests/native_log.rs`:
 ```rust
 //! Log của whisper.cpp và ggml đi qua callback của worker (`native_log`, Q2 của review 02 lần 2): chạy binary thật, nạp
 //! một model không có. whisper.cpp báo lỗi mở file qua log; dòng đó phải vẫn ra stderr (file log của tiến trình phụ) và
-//! có trong thông báo lỗi gửi cho app.
+//! có trong thông báo lỗi gửi cho app. Các dòng giữ lại chỉ là của yêu cầu hiện tại: worker xóa chúng trước mỗi yêu cầu
+//! (B1 của review 02 lần 3), nên lỗi sau không bị xếp theo log của lỗi trước.
 
 use asr_protocol::{ErrorKind, Request, Response, read_frame, write_frame};
 use std::io::{BufReader, BufWriter, Read};
@@ -1072,14 +1111,23 @@ fn whisper_log_lines_reach_stderr_and_the_error_message() {
         use_gpu: false,
         n_threads: 1,
     };
-    write_frame(&mut input, &load).unwrap();
-    let message = match read_frame::<_, Response>(&mut output).unwrap().unwrap() {
-        Response::Error { kind, message, .. } => {
-            assert_eq!(kind, ErrorKind::ModelLoad);
-            message
+    let mut load_error = || {
+        write_frame(&mut input, &load).unwrap();
+        match read_frame::<_, Response>(&mut output).unwrap().unwrap() {
+            Response::Error { kind, message, .. } => {
+                assert_eq!(kind, ErrorKind::ModelLoad);
+                message
+            }
+            other => panic!("cần Error ModelLoad, nhận {other:?}"),
         }
-        other => panic!("cần Error ModelLoad, nhận {other:?}"),
     };
+    let message = load_error();
+    let again = load_error();
+    assert_eq!(
+        again.matches("failed to open").count(),
+        1,
+        "chỉ log của yêu cầu này: {again}"
+    );
     drop(input);
     let mut stderr = String::new();
     child.stderr.take().unwrap().read_to_string(&mut stderr).unwrap();
@@ -1181,7 +1229,7 @@ fn main() {
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p asr-protocol`
-Expected: biên dịch lỗi, vì chưa có các kiểu và trường mới:
+Expected: biên dịch lỗi, vì chưa có các kiểu và trường mới (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0425]: cannot find value `PROTOCOL_VERSION` in this scope
@@ -1193,7 +1241,7 @@ error[E0433]: cannot find type `DecodeMode` in this scope
 ```
 
 Run: `cargo test -p asr-worker --features shared-encode --lib`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0432]: unresolved import `asr_protocol::ErrorKind`
@@ -2371,7 +2419,7 @@ Expected: mọi test cũ vẫn qua:
 
 ```text
 test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
@@ -2386,7 +2434,7 @@ Expected:
 
 ```text
 test out_of_range_audio_ctx_is_rejected ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
 ```
 
 - [ ] **Step 8: Clippy, định dạng, cargo deny**
@@ -2403,6 +2451,8 @@ Expected: không có cảnh báo của clippy (chỉ còn cảnh báo `unused_mu
 ```text
 bans ok, licenses ok
 ```
+
+Code Windows của `asr-worker` (`platform::harden_dll_search`, `protocol_stdout` cho Windows) không được biên dịch thử trên Mac: build script của `whisper-rs-sys` không biên dịch chéo được, nên clippy cho target Windows (QĐ15, `scripts/check-windows.sh`) chỉ gồm `meeting-translator`, `pipeline` và `audio-capture`. Lần đầu nó được biên dịch là ở 02c Task 9 trên máy Windows (N7 của review 02 lần 3).
 
 - [ ] **Step 9: Commit**
 
@@ -2422,7 +2472,7 @@ Chuyển nguyên luật của `latency-bench` sang `pipeline` (Đ3), để app v
 - `sentence.rs`: ghép câu và phụ đề tạm (§6.3): dấu câu kết thúc, cửa sổ ghép `max(700, vadEndSilenceMs + 400)` ms, chỉ ghép cùng ngôn ngữ, zh và ja nối không dấu cách, trần 15 giây hoặc 3 đoạn.
 - `filter.rs`: luật bỏ đoạn theo `no_speech_prob` và `avg_logprob`, độ dài đoạn gửi cho worker.
 - `segmenter.rs`: thêm `Serialize`/`Deserialize` cho `SegmenterConfig`, để nằm trong `PipelineConfig`; `Segment` mang thêm `speech_ms` (độ dài tiếng nói không gồm đệm, §6.3; hạn mức tính phút bằng số này, §6.8) và hai số của VAD trên các khung tiếng nói, `mean_prob` và `speech_ratio` (luật câu đệm của Task 3 dùng).
-- `config.rs` còn có: ngưỡng tỉ lệ token theo cột "câu gốc ≥ 10 token" của `s7_mt_decisions.md` (QĐ12), hạn dịch câu cuối khi Dừng `mt.stop_grace_ms` (3 giây), `validate()` kiểm mọi khóa có giới hạn, kể cả chặn dưới của các thời gian chờ, số luồng và số token (QĐ21), và nhãn có ngoặc của tiếng Việt, Nhật, Trung, Hàn (`(âm nhạc)`, `(音楽)`, `[音乐]`, `[음악]`).
+- `config.rs` còn có: ngưỡng tỉ lệ token theo cột "câu gốc ≥ 10 token" của `s7_mt_decisions.md` (QĐ12), hạn dịch câu cuối khi Dừng `mt.stop_grace_ms` (3 giây), `validate()` kiểm mọi khóa có giới hạn, kể cả chặn dưới của các thời gian chờ, số luồng và số token (QĐ21), có test đúng ở biên và ngay ngoài biên (N3 của review 02 lần 3), và nhãn có ngoặc của tiếng Việt, Nhật, Trung, Hàn (`(âm nhạc)`, `(音楽)`, `[音乐]`, `[음악]`).
 - `latency-bench` gọi các hàm trên thay cho bản chép của nó. Test `phase0_s6_decisions_replay_identically` đọc lại 12 lượt S6 đã commit (`bench/phase0/results/latency/m4pro-chot-khuyennghi-*.json`) và kiểm luật mới cho đúng từng quyết định cũ: bỏ đoạn nào, ghép bao nhiêu đoạn, dịch câu nào.
 
 **Files:**
@@ -2865,6 +2915,41 @@ mod tests {
         assert_eq!(c.validate(), Err("supervisor.backoff_ms".into()));
     }
 
+    /// Biên của các giới hạn (N3 của review 02 lần 3): giá trị ngay ngoài biên bị từ chối, giá trị đúng ở biên thì nhận.
+    #[test]
+    fn bounds_are_exact() {
+        type Set = fn(&mut PipelineConfig, bool);
+        let cases: [(&str, Set); 7] = [
+            ("supervisor.failure_window_ms", |c, ok| {
+                c.supervisor.failure_window_ms = if ok { 60_000 } else { 59_999 }
+            }),
+            ("audio.no_audio_after_ms", |c, ok| {
+                c.audio.no_audio_after_ms = if ok { 5_000 } else { 4_999 }
+            }),
+            ("queue.asr_merge_max_ms", |c, ok| {
+                c.queue.asr_merge_max_ms = if ok { 30_000 } else { 30_001 }
+            }),
+            ("audio.silent_rms", |c, ok| {
+                c.audio.silent_rms = if ok { 0.0 } else { -0.1 }
+            }),
+            ("asr.n_threads", |c, ok| c.asr.n_threads = if ok { 64 } else { 65 }),
+            ("queue.mt_skip_after_ms", |c, ok| {
+                c.queue.mt_skip_after_ms = if ok { 1_000 } else { 999 }
+            }),
+            ("merge.window_extra_ms", |c, ok| {
+                c.merge.window_extra_ms = if ok { 5_000 } else { 5_001 }
+            }),
+        ];
+        for (key, set) in cases {
+            let mut c = PipelineConfig::default();
+            set(&mut c, false);
+            assert_eq!(c.validate(), Err(key.to_string()), "{key} ngoài biên");
+            let mut c = PipelineConfig::default();
+            set(&mut c, true);
+            assert_eq!(c.validate(), Ok(()), "{key} đúng ở biên");
+        }
+    }
+
     /// Mỗi khóa có giới hạn đều báo đúng tên khi sai, kể cả các khóa thêm sau review.
     #[test]
     fn every_bounded_key_is_checked() {
@@ -3198,7 +3283,7 @@ mod tests {
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p pipeline --lib`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0425]: cannot find type `PipelineConfig` in this scope
@@ -4156,14 +4241,14 @@ Run: `cargo test -p pipeline --lib`
 Expected:
 
 ```text
-test result: ok. 60 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 61 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 ```
 
 Run: `cargo test -p latency-bench`
 Expected:
 
 ```text
-test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
 ```
 
 Run: `cargo test -p latency-bench phase0_s6 -- --nocapture`
@@ -4194,7 +4279,7 @@ git commit -m "refactor(pipeline): luật cắt câu, ghép câu và bỏ đoạ
 ## Task 3: Lọc câu ảo giác quen thuộc, đổi phồn thể sang giản thể
 
 Các việc "Việc cho MVP" của §6.4 (dòng 115, 118, 120; QĐ4, QĐ5, QĐ24):
-- `filter.rs`: `is_hallucination` (nhãn có ngoặc so khớp nguyên dạng, câu thường so khớp sau chuẩn hóa, cụm dài trước), `compression_ratio` (chuỗi lặp, zlib qua `miniz_oxide`), `is_suspect_filler` (câu đệm có thêm dấu hiệu), và `verdict(&Evidence, …)` gộp mọi luật theo thứ tự `NoSpeech`, `Hallucination`, `Repetition`, `Filler`. Danh sách và ngưỡng ở `config.rs` (`DEFAULT_HALLUCINATION_PHRASES`, `DEFAULT_FILLER_PHRASES`).
+- `filter.rs`: `is_hallucination` (nhãn có ngoặc so khớp nguyên dạng, mọi kiểu ngoặc kể cả toàn khổ và `【】` coi như một; câu thường so khớp sau chuẩn hóa, cụm dài trước), `compression_ratio` (chuỗi lặp, zlib qua `miniz_oxide`), `is_suspect_filler` (câu đệm có thêm dấu hiệu), và `verdict(&Evidence, …)` gộp mọi luật theo thứ tự `NoSpeech`, `Hallucination`, `Repetition`, `Filler`. Danh sách và ngưỡng ở `config.rs` (`DEFAULT_HALLUCINATION_PHRASES`, `DEFAULT_FILLER_PHRASES`).
 - `text.rs`: `display_text` đổi chữ của đoạn tiếng Trung sang giản thể bằng `ferrous-opencc` (bảng `t2s`, nạp một lần).
 - `latency-bench` áp mọi luật như app, ghi lý do mới `hallucination`, `repetition`, `filler`, và ghi xác suất VAD của đoạn. Test chạy lại S6 áp `display_text` cho cả hai phía và tắt riêng luật câu đệm, nên vẫn khớp từng quyết định cũ. Hai test mới là điều kiện nhận luật (Q11 của review 02b): trên 528 đoạn S6 luật câu đệm chỉ bỏ đúng 2 đoạn có chữ sai, và trên 548 clip A4 không clip nào bị bỏ thêm (test này cần `bench/phase0/data`, bị bỏ qua mặc định).
 
@@ -4514,7 +4599,7 @@ Sửa `crates/pipeline/src/config.rs` (áp bằng `git apply`):
          assert!(c.filter.simplify_chinese);
          assert_eq!((c.asr.max_prompt_tokens, c.asr.timeout_ms), (100, 30_000));
          let t = &c.mt;
-@@ -485,7 +496,12 @@
+@@ -520,7 +531,12 @@
      #[test]
      fn every_bounded_key_is_checked() {
          type Break = fn(&mut PipelineConfig);
@@ -4704,10 +4789,25 @@ mod tests {
             "(音楽)",
             "[音乐]",
             "[음악]",
+            "（音楽）",
+            "【音楽】",
+            "[音楽]",
+            "(音乐)",
+            "［音乐］",
+            "(음악)",
+            "【음악】",
         ] {
             assert!(is_hallucination(text, &cfg), "{text:?}");
         }
-        for text in ["Music.", "Âm nhạc", "Music [music]", "[Music] OK", "音楽", "음악"] {
+        for text in [
+            "Music.",
+            "Âm nhạc",
+            "Music [music]",
+            "[Music] OK",
+            "音楽",
+            "음악",
+            "（音楽）が好き",
+        ] {
             assert!(!is_hallucination(text, &cfg), "{text:?}");
         }
     }
@@ -4841,7 +4941,7 @@ mod tests {
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p pipeline --lib`
-Expected: biên dịch lỗi:
+Expected: biên dịch lỗi (trích 6 dòng lỗi khác nhau đầu tiên):
 
 ```text
 error[E0425]: cannot find type `Evidence` in this scope
@@ -5081,7 +5181,7 @@ Sửa `crates/pipeline/src/filter.rs` (áp bằng `git apply`):
  //!
  //! Đoạn bị bỏ không có phụ đề, không vào prompt của đoạn sau, và không làm đổi ngôn ngữ của đoạn trước (§6.4).
  
-@@ -33,6 +34,125 @@
+@@ -33,6 +34,132 @@
  pub fn is_no_speech(no_speech_prob: f32, avg_logprob: f32, text: &str, cfg: &FilterConfig) -> bool {
      let silent = no_speech_prob > cfg.no_speech_prob_max && avg_logprob < cfg.avg_logprob_min;
      silent || text.trim().is_empty()
@@ -5139,14 +5239,21 @@ Sửa `crates/pipeline/src/filter.rs` (áp bằng `git apply`):
 +
 +/// Nhãn là cụm có ngoặc, như `[music]` hay `(âm nhạc)`: so khớp cả ngoặc, chỉ bỏ khoảng trắng và hoa thường.
 +fn is_label(phrase: &str) -> bool {
-+    phrase.contains(['[', ']', '(', ')'])
++    phrase.contains(['[', ']', '(', ')', '（', '）', '［', '］', '【', '】', '〔', '〕'])
 +}
 +
-+/// Dạng so khớp của nhãn: chữ thường, bỏ khoảng trắng, giữ ngoặc và dấu.
++/// Dạng so khớp của nhãn: chữ thường, bỏ khoảng trắng, giữ dấu. Mọi kiểu ngoặc (ngoặc vuông, ngoặc toàn khổ `（）［］`,
++/// `【】`, `〔〕` hay gặp trong phụ đề tiếng Nhật và tiếng Trung) đổi về `()`, nên `[音乐]`, `（音楽）` và `【음악】` khớp cùng
++/// một nhãn (N2 của review 02 lần 3).
 +fn compact(text: &str) -> String {
 +    text.chars()
 +        .flat_map(char::to_lowercase)
 +        .filter(|c| !c.is_whitespace())
++        .map(|c| match c {
++            '[' | '（' | '［' | '【' | '〔' => '(',
++            ']' | '）' | '］' | '】' | '〕' => ')',
++            c => c,
++        })
 +        .collect()
 +}
 +
@@ -5250,11 +5357,11 @@ Run: `cargo test -p pipeline --lib && cargo test -p latency-bench`
 Expected:
 
 ```text
-test result: ok. 71 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 72 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 ```
 
 ```text
-test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.70s
+test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.67s
 ```
 
 Run: `cargo test -p latency-bench phase0_s6 -- --nocapture`
@@ -5262,7 +5369,7 @@ Expected: vẫn khớp đủ 12 lượt:
 
 ```text
 12 lượt, 528 đoạn, 174 lần ghép
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.30s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.31s
 ```
 
 Run: `cargo test -p latency-bench phase1_ -- --include-ignored --nocapture`
@@ -5273,7 +5380,7 @@ turbo: 548 clip, bị bỏ {}, tỉ lệ nén lớn nhất 1.54
 small: 548 clip, bị bỏ {"NoSpeech": ["en-9810650684898829002_nb"]}, tỉ lệ nén lớn nhất 1.54
 test latency::tests::phase1_rules_drop_no_a4_clip ... ok
 test latency::tests::phase1_filler_rule_drops_only_known_hallucinations_on_s6 ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 27 filtered out; finished in 0.30s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 27 filtered out; finished in 0.31s
 ```
 
 - [ ] **Step 6: Clippy, định dạng, cargo deny**
