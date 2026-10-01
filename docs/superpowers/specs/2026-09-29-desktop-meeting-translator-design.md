@@ -618,6 +618,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - server không áp đơn. Đơn chuyển sang `paid_needs_review`, server tạo cảnh báo `order_needs_review` cho người vận hành (§10.2);
   - `GET /v1/orders` trả `status: "paid_needs_review"`, không có key; app báo "đã nhận tiền, đang chờ hỗ trợ xử lý" kèm cách liên hệ;
   - admin xử lý bằng thao tác `resolve` ("Công cụ hỗ trợ" bên dưới). Sau đó đơn thành `paid` (cấp key mới) hoặc `refunded` (đã hoàn tiền).
+  - đơn `refunded` (chỉ có sau khi admin ghi đã hoàn tiền): `GET /v1/orders` trả `status: "refunded"`, không có key; app báo "Đơn đã hoàn tiền" và không cấp key.
 - **Dải số đơn theo môi trường:**
   - staging dùng `order_code` từ 1 tới 999.999; production từ 1.000.001. Hai môi trường không trùng số, kể cả khi dùng chung một kênh PayOS;
   - trần là 9.999.999, để mô tả đơn `AT<order_code>` (`AT` cộng tối đa 7 chữ số) không quá 9 ký tự (§14, giả định 7). Vượt trần thì checkout trả `503`, không gọi PayOS.
