@@ -9729,3 +9729,40 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
 - Cây `server/` dựng lại giống hệt bản đã test (`diff -r`, không tính `node_modules` và `.wrangler`). `pnpm install` không ghi `minimumReleaseAgeExclude`, vì mọi bản đã chốt đều ra được ít nhất 1 ngày.
 - Kết quả cuối (`pnpm check`): `Test Files  18 passed (18)`, `Tests  263 passed (263)`; `tsc` sạch; 4 lần `wrangler deploy --dry-run` qua (Worker API 119,64 KiB, gzip 31,32 KiB; Worker admin 101,21 KiB, gzip 26,01 KiB); `pnpm audit` sạch.
 - **Chưa chạy được** (cần tài khoản): Task 19–21 (`wrangler login`, D1 thật, secret, deploy, service binding thật giữa hai Worker, Access và cookie, `confirm-webhook`, ký thử khóa dự phòng qua Access, giao dịch thật, múi giờ thật của `transactionDateTime`).
+
+## Phụ lục C: sửa sau review lúc thực thi
+
+### Đợt A (commit `aed66f7`): token, vector, script khóa
+
+Làm các mục 8–12 trong ghi chú review của Task 6–7, trước khi viết kế hoạch 06.
+
+- **Vector chốt thứ tự kiểm** (`checks_order`): thêm ba token có hai lỗi cùng lúc; kết quả là lỗi đứng trước.
+  - `order_bad_signature_before_wrong_device`: chữ ký sai và sai máy, ra `bad_signature`.
+  - `order_wrong_device_before_license_expired`: sai máy và license đã hết hạn, ra `wrong_device`.
+  - `order_license_expired_before_refresh_expired`: `now` ≥ cả `expires_at` lẫn `refresh_before`, ra `license_expired`.
+- **Vector dữ liệu sai dạng**, chữ ký đều đúng, đều ra `malformed`:
+  - `timestamp_not_integer`: `expires_at` là `1.5`;
+  - `number_above_2_pow_53`: `refresh_before` viết thẳng trong JSON là `9007199254740993` (2^53 + 1);
+  - `payload_invalid_utf8`: `license_id` chứa byte `0xC3 0x28`.
+- `verifyToken` đã dùng `Number.isSafeInteger` và `TextDecoder` với `fatal: true`, nên không phải sửa code.
+- Trường `note` và `claims` của vector ghi thêm: token nhiều lỗi thì trả lỗi đứng trước trong `checks_order`; mọi số nguyên phải là số nguyên an toàn (|n| ≤ 2^53 − 1); payload phải là UTF-8 hợp lệ.
+- Vector giờ có 27 token (trước là 21). SHA-256 mới của `server/test/vectors/token-v1.json`, thay giá trị ở Task 6 Step 2:
+  ```
+  0c57251067140fd6283699f34d2c0ea0d75770fc085816bab7ae85057097c297  test/vectors/token-v1.json
+  ```
+- **`gen-token-key.mjs --keys <file>`:** file chỉ bằng `--keys` mà không có thì báo `--keys: không có file khóa công khai <file>.`, thoát mã 2, không sinh khóa. File mặc định `keys/public-keys.json` chưa có thì vẫn bỏ qua như trước, vì lần tạo khóa đầu tiên ở Task 19 chạy trước khi có file.
+  - Test mới: `server/test/node/gen-token-key.test.mjs`, chạy bằng `node --test` qua `pnpm test:scripts`. Lệnh `pnpm check` gọi thêm bước này.
+  - `vitest.config.ts` loại `test/node/**` khỏi Vitest, vì test này chạy tiến trình Node con, không chạy được trong workerd.
+- **Chú thích đầu `verify-token.mjs`:** ghi đúng là script chỉ kiểm định dạng, `kid` và chữ ký (cùng ô khóa với dạng JSON). Script không kiểm schema của claims, máy hay hạn.
+- **Test `crv: "X25519"`:** đổi `/Ed25519/` thành khớp cả câu `khóa ký không phải khóa riêng Ed25519`, và thêm ca `kty: "EC"`. Câu lỗi Web Crypto của workerd cũng có chữ "Ed25519", nên assert cũ không phân biệt được.
+- **Thử đột biến**, mỗi lần đều có test đỏ (với vector cũ thì cả sáu lần đều xanh):
+  - `fatal: false`: đỏ `payload_invalid_utf8`;
+  - `Number.isInteger`: đỏ `number_above_2_pow_53`;
+  - `typeof === "number"`: đỏ `timestamp_not_integer` và `number_above_2_pow_53`;
+  - kiểm máy trước chữ ký: đỏ `order_bad_signature_before_wrong_device`;
+  - kiểm hạn trước máy: đỏ `order_wrong_device_before_license_expired`;
+  - kiểm `refresh_before` trước `expires_at`: đỏ `order_license_expired_before_refresh_expired`;
+  - bỏ kiểm `crv` hoặc bỏ kiểm `kty` trong `importSigningKey`: đỏ test từ chối JWK.
+- `pnpm check`: `tsc` sạch, `vectors:check` sạch, Vitest `Test Files  18 passed (18)`, `Tests  269 passed (269)`, `node --test` 3/3, và 4 lần dry-run qua.
+
+Kế hoạch 06 dùng `server/test/vectors/token-v1.json` ở commit này làm hợp đồng.
