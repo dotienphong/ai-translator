@@ -62,5 +62,28 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
     return { status: res.status, body: parsed, headers: res.headers };
   }
 
-  return { clock, payos, resend, deps, app, env: testEnv, call };
+  /** Mua trọn một đơn: checkout, khách trả đủ tiền, PayOS gửi webhook. Trả về key đã cấp. */
+  async function buy(opts: { plan?: string; email?: string; licenseKey?: string } = {}) {
+    const req: Record<string, unknown> = {
+      plan: opts.plan ?? "pro",
+      email: opts.email ?? "buyer@example.com",
+      consent: true,
+    };
+    if (opts.licenseKey) req.license_key = opts.licenseKey;
+    const co = await call("POST", "/v1/checkout", req);
+    if (co.status !== 201) throw new Error(`checkout ${co.status} ${JSON.stringify(co.body)}`);
+    const orderCode = co.body.order_code as number;
+    payos.pay(orderCode);
+    const wh = await call("POST", "/v1/webhooks/payos", await payos.webhookBody(orderCode));
+    if (wh.status !== 200) throw new Error(`webhook ${wh.status}`);
+    const order = await getOrder(orderCode, co.body.order_token as string);
+    return { orderCode, orderToken: co.body.order_token as string, licenseKey: order.body.license_key as string };
+  }
+
+  /** App hỏi trạng thái đơn: order_token trong header Authorization. */
+  function getOrder(orderCode: number | string, token: string) {
+    return call("GET", `/v1/orders/${orderCode}`, undefined, { authorization: `Bearer ${token}` });
+  }
+
+  return { clock, payos, resend, deps, app, env: testEnv, call, buy, getOrder };
 }
