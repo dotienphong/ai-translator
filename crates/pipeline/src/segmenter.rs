@@ -188,6 +188,12 @@ impl Segmenter {
         out
     }
 
+    /// Mốc bắt đầu (ms) của đoạn đang mở, nếu có: có người đang nói. Luồng phụ đề dùng mốc này để biết tiếng nói đã tiếp
+    /// tục trong cửa sổ ghép câu chưa (§6.3), trước khi đoạn đó được chốt.
+    pub fn open_start_ms(&self) -> Option<u64> {
+        self.active.as_ref().map(|a| a.start_frame * FRAME_MS)
+    }
+
     /// Chốt đoạn đang dở khi hết luồng.
     pub fn flush(&mut self) -> Option<Segment> {
         let active = self.active.take()?;
@@ -355,6 +361,17 @@ mod tests {
         let rest = run(&mut seg, &[(0.9, 0.5, 30), (0.0, 0.0, 10)]);
         assert_eq!(rest.len(), 1);
         assert_eq!(rest[0].start_ms, 230 * FRAME_MS);
+    }
+
+    #[test]
+    fn the_open_segment_start_is_visible_before_it_closes() {
+        let mut seg = Segmenter::new(SegmenterConfig::default());
+        run(&mut seg, &[(0.0, 0.0, 10)]);
+        assert_eq!(seg.open_start_ms(), None);
+        run(&mut seg, &[(0.9, 0.5, 5)]);
+        assert_eq!(seg.open_start_ms(), Some(10 * FRAME_MS));
+        run(&mut seg, &[(0.0, 0.0, 20)]);
+        assert_eq!(seg.open_start_ms(), None, "blip 5 khung bị bỏ khi chốt");
     }
 
     #[test]
