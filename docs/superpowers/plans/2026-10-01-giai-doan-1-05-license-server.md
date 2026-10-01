@@ -260,7 +260,8 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
 - **QĐ18. Số đơn (`orderCode`) theo môi trường.** Mỗi môi trường có D1 và khóa ký riêng, và nên có kênh PayOS riêng (P05-1). Số đơn đánh bằng `AUTOINCREMENT` của D1:
   - staging dùng số từ 1 tới 999.999;
   - production bắt đầu từ 1.000.001: ngay sau khi tạo D1 production, chèn rồi xóa một dòng giữ chỗ số 1.000.000 (Task 21, Step 4). AUTOINCREMENT nhớ số lớn nhất đã dùng, nên đơn kế tiếp là 1.000.001, kể cả khi D1 mới dùng lại kênh PayOS của staging;
-  - trần là 9.999.999, để mô tả `AT<orderCode>` không quá 9 ký tự (§14 giả định 7). Vượt trần thì checkout trả `503 order_code_exhausted`, không gọi PayOS.
+  - trần là 9.999.999, để mô tả `AT<orderCode>` không quá 9 ký tự (§14 giả định 7). Vượt trần thì checkout trả `503 order_code_exhausted`, không gọi PayOS;
+  - staging (`ENVIRONMENT = "staging"`) có trần riêng 999.999, cũng trả `503 order_code_exhausted`, để không bao giờ lấn sang dải của production (Phụ lục C, đợt C).
 
   Chọn cách này thay cho biến `ORDER_CODE_OFFSET` vì không phải đổi số giữa mã trong D1 và mã gửi PayOS ở mọi chỗ (webhook, hỏi đơn, admin).
 - **QĐ19. Email chỉ là văn bản thuần, song ngữ vi/en.**
@@ -375,6 +376,14 @@ Mọi body là JSON, tên trường `snake_case` (QĐ26). Lỗi có dạng `{"er
 - Token: ngoài các trường ở response của `activate`, token có `kid`, `license_id`, `device_id_hash`, `issued_at` (QĐ4, QĐ11). `quota_fresh` chỉ đúng trong response vừa nhận (spec §6.8); app không tin cờ này ở token đọc lại từ kho khóa.
 - Kích hoạt lại cùng `device_id_hash`, kể cả sau khi gỡ, trả lại đúng `activation_id`, `activation_created_at`, `quota_epoch` cũ (QĐ35).
 - `status` của đơn: `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed` (theo PayOS), cộng hai trạng thái của server: `paid_needs_review` (license đã thu hồi nhận được tiền, chờ hỗ trợ; không có key) và `refunded` (hỗ trợ đã hoàn tiền ngoài hệ thống) (QĐ37).
+- **App hiện gì theo `status`** (06 làm theo):
+  - `pending`, `processing`: hỏi tiếp tới `expires_at` của link.
+  - `paid`: hiện key và hạn mới; thôi hỏi.
+  - `underpaid`: báo đã nhận thiếu tiền, chuyển bù cho đúng đơn trong 24 giờ hoặc liên hệ hỗ trợ kèm `order_code`.
+  - `paid_needs_review`: báo "đã nhận tiền, đang chờ hỗ trợ xử lý" kèm cách liên hệ và `order_code` (spec §6.8); thôi hỏi.
+  - `refunded`: báo "đơn đã được hoàn tiền, không có key" kèm cách liên hệ và `order_code`; thôi hỏi. Không hiện là lỗi thanh toán, không mời mua lại ngay trên đơn đó.
+  - `cancelled`, `expired`, `failed`: báo đơn không thành, cho tạo đơn mới; thôi hỏi.
+- `result` của webhook (chỉ để log, app không đọc): `granted`, `already_paid` (đơn đã cấp), `already_settled` (đơn `refunded`), `needs_review` (đơn `paid_needs_review`, kể cả lần chuyển đầu tiên), `not_paid`, `unknown_order`. Admin cấp tay đơn đã khép trả `409` với cùng nhãn ở `error`, kèm `status` (Phụ lục C, đợt C).
 - `429` luôn kèm header `Retry-After` (giây). App hiện lỗi "thử lại sau", không thử lại liên tục.
 - **Hợp đồng khi IP bị chặn (QĐ7, CGNAT).** Sau 60 lần thất bại trong 1 giờ từ một IP, server chỉ cho qua `validate` và `deactivate` có key hợp lệ **kèm `activation_id` đang hoạt động và khớp**; mọi request khác từ IP đó trả `429` tới hết giờ, kể cả `activate`. Vì vậy app (06) luôn gửi `activation_id` khi `validate`, và không coi `429` ở `activate` là key sai.
 - Header `Authorization` nhận scheme `Bearer` không phân biệt hoa thường.
@@ -1726,6 +1735,7 @@ Expected (lúc lập kế hoạch):
 ```
 e02df26ea501b1c57b705a1c291c806500423e6a58bf2dee7ac1e48979e206be  test/vectors/token-v1.json
 ```
+(SHA này là của bản trước đợt A; bản hiện hành xem Phụ lục C.)
 `cmp` không in gì. Nếu SHA-256 khác giá trị trên thì script đã bị gõ sai: so lại với Step 1. Vector gồm 21 token và 7 key mẫu (có key đảo 0↔Z vẫn qua). Trong 21 token: `valid_unlimited` (X5, `quota_minutes_per_cycle: null`, `quota_fresh: true`), `kid_signed_by_other_key`, `signature_with_padding`, `signature_trailing_bits`, và năm token sai kiểu trường (`missing_quota`, `unknown_plan`, `quota_zero`, `quota_fresh_not_boolean`, `quota_epoch_negative`) đều phải ra `malformed`.
 
 - [ ] **Step 3: Tạo `server/test/keys.ts`: dựng JWK của khóa test từ seed trong vector**
@@ -9405,11 +9415,39 @@ Expected:
 - Cứ khoảng 5 phút có một dòng `{"event":"reconcile","checked":…,"granted":…,"errors":0,"emails_retried":0,"alerts_sent":…}`.
 - Không có invocation log nào (log có URL của request), vì đã tắt ở QĐ25; tìm `order` hay `token` trong Logs không ra URL nào chứa `order_token`.
 
-- [ ] **Step 11: Ghi kết quả**
+- [ ] **Step 11: Kiểm `changes()` trên D1 thật**
+
+Nhật ký admin chỉ được ghi khi lệnh có tác dụng: câu `INSERT … SELECT … WHERE changes() = 1` đứng ngay sau lệnh ghi, trong cùng `db.batch` (Phụ lục C, đợt B). Test chạy trên D1 giả lập của Miniflare. Bước này xác nhận D1 thật cũng cho `changes()` đúng như SQLite trong một batch. Dùng một license thử riêng do admin cấp, để không đụng key của Step 1–9.
+
+```bash
+cd server
+NEW=$(cloudflared access curl "$ADMIN/admin/licenses" -X POST -H 'content-type: application/json' \
+  -d "{\"email\":\"$BUYER_EMAIL\",\"plan\":\"pro\",\"note\":\"kiểm changes() trên D1 staging\"}")
+LID=$(printf '%s' "$NEW" | node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>process.stdout.write(JSON.parse(s).license_id))')
+KEY2=$(printf '%s' "$NEW" | node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>process.stdout.write(JSON.parse(s).license_key))')
+DEV2=$(printf 'staging-changes-device' | shasum -a 256 | cut -d' ' -f1)
+ACT2=$(curl -s "$STG/v1/licenses/activate" -H 'content-type: application/json' \
+  -d "{\"key\":\"$KEY2\",\"device_id_hash\":\"$DEV2\",\"device_label\":\"Máy thử changes\"}" \
+  | node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>process.stdout.write(JSON.parse(s).activation_id))')
+cloudflared access curl "$ADMIN/admin/activations/$ACT2/reset-quota" -X POST -H 'content-type: application/json' -d '{"note":"kiểm changes()"}'; echo
+cloudflared access curl "$ADMIN/admin/licenses/$LID/revoke" -X POST -H 'content-type: application/json' -d '{"note":"kiểm changes(), lần 1"}'; echo
+cloudflared access curl "$ADMIN/admin/licenses/$LID/revoke" -X POST -H 'content-type: application/json' -d '{"note":"kiểm changes(), lần 2"}'; echo
+pnpm exec wrangler d1 execute mt-license-staging --env staging --remote \
+  --command "SELECT action, COUNT(*) AS n FROM audit_log WHERE license_id = '$LID' GROUP BY action ORDER BY action"
+```
+
+Expected:
+- `reset-quota` trả `{"activation_id":"…","quota_epoch":1}`.
+- Lần thu hồi đầu trả `{"ok":true}`, lần hai trả `{"error":"not_found"}` (404).
+- Bảng cuối có đúng bốn dòng: `activated` 1, `license_issued_manually` 1, `license_revoked` **1**, `quota_reset` **1**.
+- `license_revoked` là 2, hay `quota_reset` là 0: D1 thật không cho `changes()` như SQLite trong batch. Khi đó dừng, không lên production. Ghi vào kế hoạch 00, rồi sửa mọi chỗ dùng `auditIfChanged`, `alertIfChanged` và câu nhật ký của `reset-quota`: đọc `meta.changes` của lệnh ghi, rồi mới ghi nhật ký.
+
+- [ ] **Step 12: Ghi kết quả**
 
 Ghi vào kế hoạch 00 (Task 22 của kế hoạch này):
 - ngày thử, số tiền, `order_code`, thời gian từ lúc chuyển tiền tới khi `paid`, có email và thư cảnh báo hay không;
 - kết quả kiểm múi giờ của `transactionDateTime` (Step 8), và kết quả đổi gói (Step 9) nếu có làm;
+- kết quả kiểm `changes()` trên D1 thật (Step 11);
 - dòng 294 và §14 giả định 7: "PayOS không có sandbox; giao dịch 2.000 đ trên staging đạt".
 
 Không ghi email, key hay token.
@@ -9639,8 +9677,7 @@ pnpm -C server audit
 Expected: `pnpm -C server check` in `Tests  263 passed (263)` (lúc lập kế hoạch), và 4 lần `--dry-run: exiting now.`
 - [ ] **Step 3: Ghi vào mục 8 của kế hoạch 00**
   - P05-1 tới P05-5 (P05-6 đã chốt: không dùng kho mật khẩu).
-  - Spec đã theo kế hoạch này ở commit `7a7aa2c`: hai ô khóa `TOKEN_SIGNING_KEY_A`, `_B` và `TOKEN_SIGNING_SLOT` (QĐ29); `server/keys/public-keys.json` theo ô; các trường thêm của API; `503 pricing_not_configured` ở mọi route cần bảng gói; luật không hạ hạn mức (QĐ17); `paid_needs_review` và cảnh báo `order_needs_review` (QĐ37); `admin-rpc.ts`, service binding, bảng `deactivations`. Kiểm lại không còn chỗ lệch nào; còn thì ghi vào Q12.
-  - Chưa có trong spec, đề xuất thêm ở lần cập nhật kế tiếp (Q12): trạng thái `refunded` và thao tác `POST /admin/orders/{order_code}/resolve` (QĐ37); luật "hiện tại" không sớm hơn `cycle_anchor` đang có (QĐ32).
+  - Spec đã theo kế hoạch này ở commit `7a7aa2c` và `a641195`: hai ô khóa `TOKEN_SIGNING_KEY_A`, `_B` và `TOKEN_SIGNING_SLOT` (QĐ29); `server/keys/public-keys.json` theo ô; các trường thêm của API; `503 pricing_not_configured` ở mọi route cần bảng gói; luật không hạ hạn mức (QĐ17); `paid_needs_review` và cảnh báo `order_needs_review` (QĐ37); `admin-rpc.ts`, service binding, bảng `deactivations`; trạng thái `refunded`, thao tác `POST /admin/orders/{order_code}/resolve` (QĐ37) và luật kẹp "hiện tại" không sớm hơn `cycle_anchor` đang có (QĐ32). Các sửa sau review đã vào spec ở `97b3be3` (§6.8, Resend 409) và `f321c25` (§10.2 checkout mới, §6.8 tên gói trong code). Kiểm lại không còn chỗ lệch nào; còn thì ghi vào Q12.
   - Ghi vào mục 5.3: T5 cần kênh PayOS thứ hai cho staging (P05-1); T6 cần tạo tài khoản Resend.
   - Ghi vào mục 6.5 tên secret đã chốt: Worker API có `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `RESEND_API_KEY`, `TOKEN_SIGNING_KEY_A`, `TOKEN_SIGNING_KEY_B`, `RATE_LIMIT_PEPPER`, `OPERATOR_EMAIL` (không bắt buộc); biến `TOKEN_SIGNING_SLOT` và `PLANS`. Worker admin chỉ có bốn secret đầu, cộng service binding `API`.
   - Ghi vào mục 6.1 luật tuổi phát hành của pnpm (không commit `minimumReleaseAgeExclude`), nếu kế hoạch 01 chưa ghi.
@@ -9690,7 +9727,9 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
 
 Đặt `ADMIN=https://mt-license-admin-<env>.<subdomain>.workers.dev` (hoặc tên miền admin), rồi chạy `cloudflared access login "$ADMIN"` một lần. `GET /admin/whoami` mở được thẳng bằng trình duyệt đã đăng nhập Access.
 - Mọi request không phải `GET` phải có `-H 'content-type: application/json'` và một body JSON (có thể là `{}`), không thì Worker trả `415` (QĐ30).
-- Mọi thao tác thay đổi đều cần `note`: lý do và mã giao dịch nếu có. Không ghi email khách vào `note`.
+- Mọi thao tác thay đổi đều cần `note`: lý do và mã giao dịch nếu có.
+- **Không ghi dữ liệu cá nhân nào vào `note`:** email, tên, số điện thoại, số tài khoản hay tên chủ tài khoản của khách. `note` nằm trong `audit_log`, giữ không thời hạn, và `/admin/erase` không xóa nó. Cần chỉ tới khách thì ghi `order_code` hay `license_id`.
+- Lỗi của PayOS ở các route admin (`payment-status`, `confirm-webhook`) trả nguyên câu lỗi, kể cả `desc` của PayOS, vì người xem là người vận hành. API công khai thì không trả `desc` (checkout trả `502 payment_provider_error`, webhook trả `503 temporarily_unavailable`).
 - Kết quả trả về dạng JSON. Mỗi thao tác, kể cả tra cứu, ghi một dòng `audit_log`, với actor `admin:<email người vận hành>`.
 
 | Việc | Lệnh |
@@ -9722,7 +9761,7 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
 - **Kiểu nhất quán.** Replay 18 task (xem "Đã chạy thử") dựng lại đúng từng file của bản đã test, và `tsc --noEmit` xanh sau mỗi task có code.
 - **Test bắt được lỗi thật.** Lúc lập kế hoạch đã thử bỏ từng điều kiện trong code, và mỗi lần đều có test đỏ: `status = paid`, `amountPaid ≥ amount`, `amount` khớp đơn, kiểm license thu hồi hay hết hạn ở `validate`, đếm `validate` theo key đã chuẩn hóa; khóa tạm: trừ lần gỡ chính máy đang kích hoạt, chặn mọi máy không đang kích hoạt khi đã khóa; IP bị chặn: chỉ cho qua key hợp lệ kèm activation đang hoạt động (không chặn cả trường hợp này, và không cho qua mọi key thật); gửi lại email: giãn thời gian, không gửi lại lỗi vĩnh viễn, chỉ 400 và 422 là lỗi vĩnh viễn, cảnh báo một lần mỗi đơn.
 - Với mô hình gói mới, lúc lập kế hoạch đã thử thêm từng lỗi sau, và mỗi lần đều có test đỏ (số test đỏ trong ngoặc): bỏ điều kiện `version` khi ghi license (2); câu đánh dấu đơn không kiểm `last_order_code` và `version` (11); tính "hiện tại" của gia hạn, đổi gói theo lúc xử lý thay vì lúc trả tiền (3); lấy mốc `quota_fresh` từ `cycle_anchor` thay vì `anchor_applied_at` (1); mở cửa sổ epoch lúc admin bấm thay vì ở token đầu tiên (1); đếm luật khóa tạm trên bảng `activations` thay vì `deactivations` (3); cửa sổ `quota_fresh` tính từ lúc cấp token, tức activation dùng lại cũng `fresh` (6).
-- Sau review lần đầu của bản này, thử thêm, đều có test đỏ: chỉ đặt lại `anchor_applied_at` khi đổi gói, bỏ qua mua lại cùng gói sau khi hết hạn (O4, 1); bỏ điều kiện `d.by = 'user'` khi đếm luật khóa tạm (L1, 1); biên cửa sổ `quota_fresh` dùng `<=` thay `<` (F1, 1); bỏ phần kẹp "hiện tại" ≥ `cycle_anchor` (1); bỏ `revoked_at IS NULL` trong câu ghi license (3); coi chỉ `paid` là đã áp (3); `fulfilOrder` không chặn đơn `paid_needs_review` (1).
+- Sau review lần đầu của bản này, thử thêm, đều có test đỏ: chỉ đặt lại `anchor_applied_at` khi đổi gói, bỏ qua mua lại cùng gói sau khi hết hạn (O4, 1); bỏ điều kiện `d.by = 'user'` khi đếm luật khóa tạm (L1, 1); biên cửa sổ `quota_fresh` dùng `<=` thay `<` (F1, 1); bỏ phần kẹp "hiện tại" ≥ `cycle_anchor` (1); bỏ `revoked_at IS NULL` trong câu ghi license (ghi 3 lúc lập kế hoạch; thực tế 8 trên bản đã duyệt, 10 sau đợt C của Phụ lục C); coi chỉ `paid` là đã áp (3); `fulfilOrder` không chặn đơn `paid_needs_review` (1).
 
 ## Đã chạy thử lúc lập kế hoạch
 
@@ -9768,6 +9807,48 @@ Làm các mục 8–12 trong ghi chú review của Task 6–7, trước khi vi�
 
 Kế hoạch 06 dùng `server/test/vectors/token-v1.json` ở commit này làm hợp đồng.
 
+### Đợt A2 (commit `d7bdfdb`): sửa sau review đợt A
+
+- **Thêm hai vector chốt việc kiểm schema đứng trước `unknown_kid` và `bad_signature`.** Cả hai đều phải ra `malformed`.
+  - `order_malformed_before_unknown_kid`: `plan: "free"` cùng `kid: "test-9"`.
+  - `order_malformed_before_bad_signature`: `plan: "free"`, gắn chữ ký của một payload khác.
+- **BOM:** `verifyToken` giờ dùng `TextDecoder` với `fatal: true, ignoreBOM: true`. BOM được giữ lại trong chuỗi, nên `JSON.parse` từ chối payload có BOM.
+  - Thêm vector `payload_with_bom`: chữ ký đúng, payload bắt đầu bằng `EF BB BF`, phải ra `malformed`.
+  - Trường `claims` của vector ghi thêm: payload không có BOM.
+- **`gen-token-key.mjs`:** thêm test cho trường hợp stdout trỏ vào `/dev/null`. Đây là thiết bị ký tự, không phải pipe, nên script phải thoát mã 2.
+- **Thử đột biến**, mỗi lần đều có test đỏ:
+  - đọc `kid`, tra khóa, kiểm chữ ký rồi mới `parseClaims`: đỏ hai vector `order_malformed_before_*`;
+  - đặt lại `ignoreBOM: false`: đỏ `payload_with_bom`; vector này cũng đỏ trước khi sửa code;
+  - cho `gen-token-key.mjs` nhận thiết bị ký tự làm stdout: đỏ test `/dev/null`.
+- **Vector có 30 token.** SHA-256 mới của `server/test/vectors/token-v1.json`:
+  ```
+  f7b6b332f25cbe5ebec012a6f106b9d274175279926d07898cc196d7683c8542  test/vectors/token-v1.json
+  ```
+  Giá trị này thay cả SHA ở Task 6 Step 2 lẫn SHA của đợt A (`0c572510…`).
+- **Sửa một câu:** SHA ghi ở Task 6 Step 2 là của bản trước đợt A. Nguồn code của đợt A gồm diff của `aed66f7` cộng với diff của `d7bdfdb`.
+- **`pnpm check` qua hết:**
+  - Vitest: `Test Files 18 passed (18)`, `Tests 280 passed (280)`. Số này gồm cả các thay đổi của đợt B chưa commit, có trong cây làm việc lúc chạy.
+  - `node --test`: 4/4.
+  - 4 lần dry-run đều qua.
+- **Ca "không có `--keys` mà file mặc định chưa có"** trong `test/node/gen-token-key.test.mjs` sẽ bị skip sau Task 19, vì khi đó `server/keys/public-keys.json` đã có.
+
+#### Ghi chú cho phía Rust (kế hoạch 06)
+
+- **Giới hạn số nguyên:** app phải tự kiểm mọi số nguyên có |n| ≤ 2^53 − 1. serde đọc `9007199254740993` (2^53 + 1) vào `i64` hay `u64` vẫn thành công, nhưng vector `number_above_2_pow_53` đòi kết quả `malformed`.
+- **Trường thiếu là `malformed`, không phải `None`.** Không dùng `#[serde(default)]` hay `Option` cho trường bắt buộc. Riêng `quota_minutes_per_cycle` phải có mặt; giá trị `null` mới có nghĩa là không giới hạn (vector `missing_quota`).
+- **UTF-8 chặt:** dùng `serde_json::from_slice` trên byte đã giải base64url, để UTF-8 hỏng bị từ chối. Không đi qua `String::from_utf8_lossy`.
+- **Thứ tự kiểm:** đọc và kiểm đủ schema trước khi tra `kid` và kiểm chữ ký (vector `order_malformed_before_unknown_kid`, `order_malformed_before_bad_signature`).
+- **BOM là `malformed`:** không bỏ BOM trước khi parse. `serde_json` vốn đã từ chối BOM.
+
+#### Ngoài hợp đồng: app được phép kiểm chặt hơn
+
+Server không bao giờ sinh ra các trường hợp dưới đây, và vector không chốt kết quả cho chúng. App từ chối hay chấp nhận đều được:
+
+- `0.0` hoặc `1.8e3` ở trường số nguyên;
+- timestamp âm;
+- khóa JSON trùng nhau;
+- chuỗi chứa surrogate lẻ `"\ud800"`.
+
 ### Đợt B (commit `481e984` … `b689a5c`): đơn hàng, email, cron, admin
 
 Làm các mục 1–4, 13–15, 18–19, 25–30, 32–36, 38–43 trong ghi chú review của Task 8–16. Mỗi mục có test viết trước và thấy đỏ đúng lý do; mục chỉ thêm test (13, 25, 26, 27) thì kiểm bằng thử đột biến. Hai helper test mới trong `test/db.ts`: `withFailingInsert` (trigger `RAISE` làm hỏng một câu INSERT, để kiểm các câu cùng batch quay lui cùng nhau) và `wrapDb` (bọc D1: ghi lại SQL, cho câu chọn trước ném lỗi).
@@ -9807,4 +9888,49 @@ Làm các mục 1–4, 13–15, 18–19, 25–30, 32–36, 38–43 trong ghi ch�
 - `pnpm check`: `tsc` sạch, `vectors:check` sạch, Vitest `Test Files  18 passed (18)`, `Tests  302 passed (302)` (chạy 5 lần liền đều qua), `node --test` 4/4, 4 lần dry-run qua (Worker API 125,93 KiB, gzip 32,85 KiB; Worker admin 104,85 KiB, gzip 26,92 KiB).
 - **Còn lưu ý:**
   - Mục 3: đơn `paid_needs_review` được xử lý sau hơn 24 giờ thì thư key gửi lỗi sẽ không được cron gửi lại, vì cửa sổ gửi lại tính từ `paid_at`. Người vận hành dùng `/admin/licenses/<id>/resend`.
-  - Mục 39: lỗi mạng và quá thời gian chờ không tính vào chuỗi 5xx; mỗi đơn vẫn chờ tối đa 10 giây.
+  - Mục 39: lỗi mạng và quá thời gian chờ không tính vào chuỗi 5xx; mỗi đơn vẫn chờ tối đa 10 giây. Đã sửa ở đợt C.
+
+### Đợt C (commit `1788035` … `bdee0a6`, spec `f321c25`): sửa sau review đợt B, các mục nhỏ còn lại
+
+Làm mục quan trọng và các mục nhỏ của review đợt B, cùng các mục 5, 6, 7, 16, 17, 21–24, 31, 37, 44, 45 trong ghi chú review của Task 8–16. Mục 20 (`ENVIRONMENT`) đã được review Task 18 xác nhận đúng, nên bỏ qua. Mỗi mục có test viết trước. Mục có sửa code thì test thấy đỏ đúng lý do; mục chỉ thêm test thì kiểm bằng thử đột biến.
+
+- **Đối soát dừng sớm khi cổng không trả lời** (`1788035`, mục quan trọng của review đợt B):
+  - `PaymentProviderError` có thêm cờ `unreachable`. Cờ này chỉ đặt ở hai nhánh `catch` của `fetchFn` trong `payment/payos.ts`, tức lỗi mạng và quá thời gian chờ. Không suy ra từ việc thiếu `httpStatus`, vì lỗi chữ ký hay lỗi dữ liệu cũng không có `httpStatus`.
+  - `reconcile` tính lỗi `unreachable` chung chuỗi với 5xx: 3 lần liên tiếp thì dừng cả đợt (`reconcile_stopped_early`, `reason: "server_errors"`). Lỗi 4xx, lỗi dữ liệu, lỗi D1 không tính và đặt bộ đếm về 0, như lần trả lời bình thường.
+  - `FakePayOS.statusFailures` nhận thêm `"timeout"` (ném `DOMException` `TimeoutError`), `"network"` (ném `TypeError`) và `"bad_signature"` (trả lời đúng định dạng nhưng sai chữ ký).
+  - Test mới: chuỗi timeout liên tiếp; 5xx, lỗi mạng, 5xx thì dừng; 5xx, timeout, 401, timeout, 500 thì không dừng; 503, timeout, sai chữ ký, lỗi mạng, 500 thì không dừng; `unreachable` đúng ở lỗi mạng và timeout, sai ở HTTP 401, HTTP 502 không phải JSON, sai chữ ký, trạng thái lạ.
+- **Các mục nhỏ của review đợt B** (`77e9be1`, và `afterEach` của `reconcile.test.ts` ở `1788035`):
+  - Một nhãn cho đơn `paid_needs_review`: `needs_review`. Webhook và đối soát (`FulfilResult`) đã dùng nhãn này. Admin cấp tay giờ trả `409 {error: "needs_review", status: "paid_needs_review"}` cả ở lần làm đơn chuyển sang `paid_needs_review`, lẫn khi đơn đã ở trạng thái đó. Trước đây hai trường hợp này trả `order_needs_review` và `already_settled`. Đơn `paid` vẫn là `already_paid`, đơn `refunded` vẫn là `already_settled`.
+  - Test "đơn B ghi chen" kiểm thêm số dòng nhật ký: `license_issued` 1, `license_plan_changed` 2, `license_extended` 0.
+  - `alert_expired_unreported` ghi bằng `console.error` (cảnh báo bị mất là lỗi vận hành).
+  - `alerts.test.ts` và `reconcile.test.ts`: `vi.restoreAllMocks()` chuyển vào `afterEach`.
+- **Staging chặn trần số đơn 999.999** (`8ca26c3`, mục 24): `ENVIRONMENT = "staging"` thì số đơn vượt 999.999 trả `503 order_code_exhausted`, không gọi PayOS. Production và dev giữ trần 9.999.999. QĐ18 đã ghi thêm.
+- **Test checkout** (`8ca26c3`, mục 22): IP đã chạm ngưỡng thất bại thì checkout kèm `license_key` trả `429`, checkout mới không kèm key vẫn `201`; key sai định dạng (chuỗi, hay không phải chuỗi) và key không tồn tại đều tính một lần thất bại, checkout không kèm key thì không; có nhật ký `order_created` với đúng `detail`, không có email.
+- **Chỉ thêm test** (`bdee0a6`):
+  - 17: `failureBlock` chặn đúng ở lần thất bại thứ 60.
+  - 21: X5 còn 195 ngày đổi sang gói 3.000 đ ra đúng 32.500 ngày (tính bằng số thực ra 32.499); license đã hết hạn 10 ngày, mua cùng gói hay đổi gói; biên `cycle_anchor` khi mua thêm cùng gói (hết hạn đúng lúc này là chu kỳ mới, còn 1 giây thì giữ chu kỳ).
+  - 31: `activate` với key sai định dạng hay không tồn tại tính một lần thất bại của IP, key đúng thì không; giới hạn `deactivate_ip` và `recover_ip` (lần thứ 11 trả `429` kèm `Retry-After`, IP khác vẫn được).
+  - 37: biên 240 giây; biên 3600 giây (giây thứ 3600 vẫn là giờ đầu); đơn hỏi lỗi sau giờ đầu chỉ được hỏi lại sau 3540 giây; đơn `underpaid` quá 24 giờ thì thôi hỏi PayOS; `reconcile` dọn `rate_limits` và `ops_alerts` cũ kể cả khi không có đơn.
+  - 44: `erase` giữ `device_id_hash`, máy đó kích hoạt lại dùng lại đúng activation cũ; `confirm-webhook` từ chối URL có `#hash`, origin dạng `…workers.dev.evil.com`, đường dẫn chứa tên miền thật, cổng khác; `Origin` dạng `admin.test.evil.com`, cổng khác, `http`, `null` đều 403; content-type `application/jsonx`, `…+json`, `text/json`, `text/plain; application/json` đều 415, còn `application/json; charset=utf-8` và `Application/JSON` thì được. "Thu hồi lần hai không đổi `revoked_at`" đã có từ đợt B.
+- **Tài liệu:**
+  - Spec (`f321c25`, mục 23): §10.2 ghi checkout mới không kèm key không bị chặn theo IP thất bại, chỉ chịu giới hạn 10 lần mỗi giờ; câu "mọi request khác trả 429" nói rõ là các request tới `activate`, `validate`, `deactivate` và checkout có `license_key`. §6.8 ghi mã gói và tên hiển thị nằm trong code server, không nằm trong `PLANS` (QĐ17).
+  - Kế hoạch này:
+    - mục 5: Task 22 Step 3 ghi spec đã có `refunded`, `resolve` và luật kẹp từ `a641195`, bỏ dòng "chưa có trong spec";
+    - mục 6: số test đỏ khi bỏ `revoked_at IS NULL` ở câu ghi license là 8 trên bản đã duyệt, 10 sau đợt này;
+    - mục 7: hợp đồng API ghi app hiện gì theo từng `status`, kể cả `refunded`, và các nhãn `result`;
+    - mục 45: Phụ lục B dặn không ghi dữ liệu cá nhân vào `note`;
+    - Task 6 Step 2 ghi SHA ở đó là của bản trước đợt A;
+    - Task 20 có thêm Step 11, kiểm `changes()` trên D1 staging thật: thu hồi hai lần chỉ có một dòng `license_revoked`, `reset-quota` có dòng `quota_reset`. Bước ghi kết quả thành Step 12.
+  - Mục 16 chỉ là ghi chú, đã kiểm bằng cách đọc code. API công khai không trả `desc` của PayOS: checkout trả `502 payment_provider_error`, webhook trả `503 temporarily_unavailable`, lỗi khác trả `500 internal`. Chỉ route admin trả nguyên câu lỗi (mục 45).
+- **Thử đột biến**, mỗi lần đều có test đỏ:
+  - không tính `unreachable`; không đặt lại bộ đếm khi gặp lỗi khác (đỏ cả ca 4xx lẫn ca sai chữ ký); lỗi mạng hay timeout không đặt cờ; cờ mặc định `true`; suy cờ từ `httpStatus === undefined`. Ca này chỉ đỏ ở test sai chữ ký, nên test đó được thêm sau lần thử đầu;
+  - nhật ký cấp ghi vô điều kiện (đỏ test đơn ghi chen); admin trả `already_settled` hay `order_needs_review` cho đơn chờ xử lý; log quá hạn về `console.warn`;
+  - bỏ trần staging, trần staging cho mọi môi trường khác dev, trần lệch 1; bỏ `failureBlock` ở checkout; chặn cả checkout không kèm key; key sai định dạng hay không tồn tại không tính thất bại; đổi tên nhật ký `order_created`;
+  - `failureBlock` dùng `>`; quy đổi bằng số thực; `active` dùng `>=`; mua cùng gói khi hết hạn vẫn cộng nối hạn cũ; quy đổi cả khi đã hết hạn;
+  - `activate` không tính thất bại, hay chỉ tính key không tồn tại; bỏ `deactivate_ip`, hay đặt 11; bỏ `recover_ip`, hay đặt 11;
+  - đơn `underpaid` hỏi mãi; sau giờ đầu vẫn hỏi mỗi 240 giây; biên giờ đầu `>`; biên hỏi lại `<`; `RECHECK_LATER` 3600; bỏ bước dọn; lỗi không ghi `last_checked_at`;
+  - regex content-type bỏ `(;|$)` hay bỏ `^`; `Origin` so bằng `startsWith`; bỏ kiểm `url.hash`; so URL webhook bằng `startsWith`; `erase` đổi `device_id_hash`; `revoke` bỏ `revoked_at IS NULL`.
+- `pnpm check`: `tsc` sạch, `vectors:check` sạch, Vitest `Test Files  18 passed (18)`, `Tests  326 passed (326)`, `node --test` 4/4, 4 lần dry-run qua (Worker API 126,34 KiB, gzip 32,96 KiB; Worker admin 104,93 KiB, gzip 26,95 KiB).
+- **Còn lưu ý:**
+  - `unlock` không có điều kiện trong câu `UPDATE` (`WHERE id = ?2`). Vì vậy mở khóa một key không bị khóa vẫn ghi nhật ký `license_unlocked` và đặt lại `lock_cleared_at`, tức các lần gỡ trước không còn tính vào luật khóa tạm. Đây là thao tác người vận hành chủ ý làm, không phải ghi đôi do chạy chồng. Chưa sửa vì ngoài phạm vi đợt này.
+  - Mục 7 mới ghi ở hợp đồng API của kế hoạch này. Spec §6.8 mới chỉ có câu app hiện gì cho `paid_needs_review`; câu cho `refunded` nên thêm khi cập nhật spec lần tới.
