@@ -47,6 +47,8 @@ export class PaymentProviderError extends Error {
   constructor(
     message: string,
     readonly code?: string,
+    /** Mã HTTP cổng trả về; không có nếu lỗi mạng, quá thời gian chờ hay lỗi dữ liệu. Đối soát dùng để dừng sớm (429, 5xx). */
+    readonly httpStatus?: number,
   ) {
     super(message);
     this.name = "PaymentProviderError";

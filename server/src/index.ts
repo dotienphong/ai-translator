@@ -12,8 +12,12 @@ const app = createApp();
 export default {
   fetch: app.fetch,
   async scheduled(_controller, env, ctx) {
+    // Dựng deps trong chuỗi promise, để mọi lỗi (kể cả lúc dựng deps) đều được ghi log thay vì thành promise bị từ chối.
     ctx.waitUntil(
-      reconcile(env, realDeps(env)).then((r) => console.log(JSON.stringify({ event: "reconcile", ...r }))),
+      Promise.resolve()
+        .then(() => reconcile(env, realDeps(env)))
+        .then((r) => console.log(JSON.stringify({ event: "reconcile", ...r })))
+        .catch((err: unknown) => console.error(JSON.stringify({ event: "reconcile_crashed", error: String(err) }))),
     );
   },
 } satisfies ExportedHandler<ApiEnv>;

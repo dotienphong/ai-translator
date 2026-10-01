@@ -349,13 +349,17 @@ export async function fulfilOrder(
   return "not_paid";
 }
 
-/** Cron gửi lại email mua hàng gặp lỗi tạm, tới hạn hẹn, trong 24 giờ sau khi trả tiền, tối đa 20 đơn mỗi lần. */
+/**
+ * Cron gửi lại email mua hàng gặp lỗi tạm, tới hạn hẹn, trong 24 giờ sau khi trả tiền, tối đa 20 đơn mỗi lần.
+ * Trả về số đơn đã thử gửi.
+ */
 export async function retryUnsentEmails(env: { DB: D1Database; ENVIRONMENT: string }, deps: Deps): Promise<number> {
   const { results } = await env.DB.prepare(
     `SELECT o.order_code, o.email, o.grant_kind, l.license_key, l.plan, l.expires_at
      FROM orders o JOIN licenses l ON l.id = o.license_id
      -- email_gave_up_at IS NULL là lớp phòng thủ: đơn đã thôi gửi luôn có email_retry_at NULL và email_attempts > 0.
      WHERE o.status = 'paid' AND o.email IS NOT NULL AND o.email_sent_at IS NULL AND o.email_gave_up_at IS NULL
+       AND l.revoked_at IS NULL -- license đã thu hồi thì không gửi key nữa
        AND o.paid_at >= ?1 - 86400
        -- Đã hẹn gửi lại và tới hạn; hoặc chưa thử lần nào sau 5 phút (Worker dừng giữa lúc cấp và gửi).
        -- Không đụng đơn vừa cấp mà thư đang được gửi, để không gửi hai lần.
@@ -372,13 +376,18 @@ export async function retryUnsentEmails(env: { DB: D1Database; ENVIRONMENT: stri
       expires_at: number;
     }>();
   for (const r of results) {
-    // Thư gửi lại mang gói và hạn hiện tại của license, có thể mới hơn lúc cấp.
-    await mailGranted(env.DB, deps, env.ENVIRONMENT, r, {
-      licenseKey: r.license_key,
-      plan: r.plan,
-      expiresAt: r.expires_at,
-      kind: r.grant_kind,
-    });
+    // Lỗi ở một đơn (ví dụ D1 lỗi tạm) không chặn các đơn sau; đơn đó được thử lại ở lần cron sau.
+    try {
+      // Thư gửi lại mang gói và hạn hiện tại của license, có thể mới hơn lúc cấp.
+      await mailGranted(env.DB, deps, env.ENVIRONMENT, r, {
+        licenseKey: r.license_key,
+        plan: r.plan,
+        expiresAt: r.expires_at,
+        kind: r.grant_kind,
+      });
+    } catch (err) {
+      console.error(JSON.stringify({ event: "email_retry_failed", order_code: r.order_code, error: String(err) }));
+    }
   }
   return results.length;
 }

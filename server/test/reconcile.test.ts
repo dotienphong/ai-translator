@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { raiseAlert } from "../src/alerts";
 import worker from "../src/index";
 import { reconcile } from "../src/reconcile";
-import { resetDb } from "./db";
+import { resetDb, wrapDb } from "./db";
 import { FakeGateway } from "./fakes";
 import { DAY, makeWorld, T0 } from "./world";
 
@@ -268,6 +268,98 @@ describe("đối soát mỗi 5 phút", () => {
     expect((await reconcile(w.env, w.deps)).emails_retried).toBe(0);
   });
 
+  it("không gửi lại thư cho license đã bị thu hồi", async () => {
+    const w = makeWorld();
+    const orderCode = await newOrder(w);
+    w.payos.pay(orderCode);
+    w.resend.down = true;
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    w.resend.down = false;
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 60).run();
+    w.clock.now = T0 + 300;
+    expect((await reconcile(w.env, w.deps)).emails_retried).toBe(0);
+    expect(w.resend.sent).toHaveLength(0);
+  });
+
+  it("gửi lại thư lỗi ở một đơn thì các đơn sau vẫn được gửi, và các bước sau vẫn chạy", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const w = makeWorld({ OPERATOR_EMAIL: "ops@example.com" });
+    const a = await newOrder(w);
+    const b = await newOrder(w);
+    w.resend.down = true;
+    for (const n of [a, b]) {
+      w.payos.pay(n);
+      await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(n));
+    }
+    w.resend.down = false;
+    let first = true;
+    const { db } = wrapDb(env.DB, (sql) => {
+      if (!sql.includes("SELECT email_attempts") || !first) return false;
+      first = false;
+      return true;
+    });
+    w.clock.now = T0 + 300;
+    const res = await reconcile({ ...w.env, DB: db }, w.deps);
+    expect(res).toMatchObject({ emails_retried: 2, alerts_sent: 1 });
+    expect(w.resend.sent.filter((m) => m.to.includes("buyer@example.com"))).toHaveLength(1);
+    const logged = error.mock.calls.map((c) => JSON.parse(c[0] as string) as Record<string, unknown>);
+    expect(logged).toContainEqual(expect.objectContaining({ event: "email_retry_failed", order_code: a }));
+    vi.restoreAllMocks();
+  });
+
+  it("một bước lỗi (kể cả câu ghi trong catch) thì các bước sau vẫn chạy: cảnh báo, dọn bộ đếm", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const w = makeWorld({ OPERATOR_EMAIL: "ops@example.com" });
+    await newOrder(w);
+    await raiseAlert(env.DB, "license_locked", T0);
+    await env.DB.prepare("INSERT INTO rate_limits (bucket, window_start, count) VALUES ('cu', ?, 1)").bind(T0 - 3 * 3600).run();
+    w.payos.down = true;
+    const { db } = wrapDb(
+      env.DB,
+      (sql) => sql.includes("SET last_checked_at") || sql.includes("SET status = 'expired'") || sql.includes("FROM orders o JOIN licenses"),
+    );
+    w.clock.now = T0 + 300;
+    expect(await reconcile({ ...w.env, DB: db }, w.deps)).toMatchObject({ checked: 1, errors: 1, emails_retried: 0, alerts_sent: 1 });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = 'cu'").first()).toEqual({ n: 0 });
+    const events = error.mock.calls.map((c) => (JSON.parse(c[0] as string) as { event: string }).event);
+    expect(events).toEqual(["reconcile_failed", "reconcile_mark_failed", "reconcile_step_failed", "reconcile_step_failed"]);
+    vi.restoreAllMocks();
+  });
+
+  it("PayOS trả 429: dừng cả đợt, các bước sau vẫn chạy", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const w = makeWorld();
+    for (let i = 0; i < 4; i++) await newOrder(w);
+    w.payos.statusFailures = [429];
+    w.clock.now = T0 + 300;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 1, errors: 1 });
+    expect(w.payos.requests.filter((r) => r.method === "GET")).toHaveLength(1);
+    expect(warn.mock.calls.map((c) => JSON.parse(c[0] as string))).toContainEqual({ event: "reconcile_stopped_early", reason: "rate_limited", skipped: 3 });
+    vi.restoreAllMocks();
+  });
+
+  it("PayOS trả 5xx 3 lần liên tiếp: dừng cả đợt; 5xx xen kẽ lần trả lời bình thường thì không dừng", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const w = makeWorld();
+    for (let i = 0; i < 5; i++) await newOrder(w);
+    w.payos.statusFailures = [503, 502, 500, 503];
+    w.clock.now = T0 + 300;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 3, errors: 3 });
+    expect(w.payos.requests.filter((r) => r.method === "GET")).toHaveLength(3);
+    expect(warn.mock.calls.map((c) => JSON.parse(c[0] as string))).toContainEqual({ event: "reconcile_stopped_early", reason: "server_errors", skipped: 2 });
+    await resetDb();
+    const w2 = makeWorld();
+    for (let i = 0; i < 5; i++) await newOrder(w2);
+    w2.payos.statusFailures = [503, 503, 200, 503, 503];
+    w2.clock.now = T0 + 300;
+    expect(await reconcile(w2.env, w2.deps)).toMatchObject({ checked: 5, errors: 4 });
+    vi.restoreAllMocks();
+  });
+
   it("gửi cảnh báo cho OPERATOR_EMAIL", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const w = makeWorld({ OPERATOR_EMAIL: "ops@example.com" });
@@ -287,5 +379,20 @@ describe("đối soát mỗi 5 phút", () => {
       JSON.stringify({ event: "reconcile", checked: 0, granted: 0, errors: 0, emails_retried: 0, alerts_sent: 0 }),
     );
     log.mockRestore();
+  });
+
+  it("Cron Trigger: đối soát lỗi ngoài dự kiến (ví dụ không dựng được deps) thì ghi log, không để promise bị từ chối", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const broken = new Proxy(env, {
+      get(target, prop) {
+        if (prop === "PAYOS_BASE_URL") throw new Error("env hỏng");
+        return Reflect.get(target, prop);
+      },
+    });
+    const ctx = createExecutionContext();
+    await worker.scheduled(createScheduledController({ cron: "*/5 * * * *" }), broken, ctx);
+    await waitOnExecutionContext(ctx);
+    expect(error).toHaveBeenCalledWith(JSON.stringify({ event: "reconcile_crashed", error: "Error: env hỏng" }));
+    error.mockRestore();
   });
 });

@@ -193,12 +193,13 @@ export class PayOSProvider implements PaymentProvider {
     try {
       json = (await res.json()) as PayOSEnvelope;
     } catch {
-      throw new PaymentProviderError(`PayOS trả HTTP ${res.status} không phải JSON`);
+      throw new PaymentProviderError(`PayOS trả HTTP ${res.status} không phải JSON`, undefined, res.status);
     }
     if (!res.ok || json.code !== "00" || !isRecord(json.data)) {
       throw new PaymentProviderError(
         `PayOS lỗi HTTP ${res.status}: ${String(json.desc ?? "")}`,
         typeof json.code === "string" ? json.code : undefined,
+        res.status,
       );
     }
     // Như SDK chính thức: có chữ ký thì kiểm, sai thì từ chối.

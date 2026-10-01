@@ -38,25 +38,77 @@ export function alertIfChanged(db: D1Database, kind: AlertKind, now: number): D1
     .bind(kind, now - (now % HOUR));
 }
 
+/** Cảnh báo chỉ được gửi trong 24 giờ kể từ giờ của sự kiện. */
+const REPORT_WITHIN = 86400;
+
+interface AlertRow {
+  kind: AlertKind;
+  window_start: number;
+  count: number;
+  notified_count: number;
+}
+
+/** Gộp các dòng theo loại: số sự kiện chưa báo và giờ sớm nhất. Thứ tự theo tên loại. */
+function byKind(rows: AlertRow[]): { kind: AlertKind; count: number; since: number; rows: AlertRow[] }[] {
+  const groups = new Map<AlertKind, AlertRow[]>();
+  for (const r of rows) groups.set(r.kind, [...(groups.get(r.kind) ?? []), r]);
+  return [...groups.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([kind, rs]) => ({
+      kind,
+      count: rs.reduce((n, r) => n + r.count - r.notified_count, 0),
+      since: Math.min(...rs.map((r) => r.window_start)),
+      rows: rs,
+    }));
+}
+
+/**
+ * Sự kiện chưa báo mà đã quá 24 giờ (email lỗi suốt một ngày, cron không chạy): không gửi nữa, nhưng ghi log một lần
+ * rồi đánh dấu đã báo. Câu đánh dấu có điều kiện `notified_count` vẫn như lúc đọc, nên hai lần cron chồng nhau chỉ ghi một lần.
+ */
+async function logExpired(db: D1Database, now: number): Promise<void> {
+  const { results } = await db
+    .prepare("SELECT kind, window_start, count, notified_count FROM ops_alerts WHERE count > notified_count AND window_start < ?1 - ?2")
+    .bind(now, REPORT_WITHIN)
+    .all<AlertRow>();
+  if (results.length === 0) return;
+  const marked = await db.batch(
+    results.map((r) =>
+      db
+        .prepare("UPDATE ops_alerts SET notified_count = ?3 WHERE kind = ?1 AND window_start = ?2 AND notified_count = ?4")
+        .bind(r.kind, r.window_start, r.count, r.notified_count),
+    ),
+  );
+  for (const g of byKind(results.filter((_, i) => marked[i]?.meta.changes === 1))) {
+    console.warn(JSON.stringify({ event: "alert_expired_unreported", kind: g.kind, count: g.count, since: g.since }));
+  }
+}
+
 /**
  * Gửi các cảnh báo chưa báo, gộp theo loại. Loại nào đã báo trong 1 giờ qua thì để lần sau.
- * Gửi lỗi thì giữ nguyên để lần cron sau thử lại (không tạo cảnh báo email_failed mới, tránh vòng lặp).
+ * - Giữ chỗ trước khi gửi: một câu UPDATE đặt notified_at cho các dòng sẽ báo và trả lại chúng (RETURNING). Lần cron
+ *   chạy chồng thấy notified_at mới nên không giữ được dòng nào, không gửi trùng.
+ * - Gửi xong thì đánh dấu đúng số sự kiện đã báo (số đọc được lúc giữ chỗ). Sự kiện tới trong lúc gửi còn nguyên cho lần sau.
+ * - Gửi lỗi thì trả chỗ (notified_at về NULL) để lần cron sau thử lại (không tạo cảnh báo email_failed mới, tránh vòng lặp).
  */
 export async function sendAlerts(
   env: { DB: D1Database; ENVIRONMENT: string; OPERATOR_EMAIL?: string },
   email: EmailProvider,
   now: number,
 ): Promise<number> {
-  const { results } = await env.DB.prepare(
-    `SELECT kind, SUM(count - notified_count) AS count, MIN(window_start) AS since FROM ops_alerts
-     WHERE count > notified_count AND window_start >= ?1 - 86400
-       AND kind NOT IN (SELECT kind FROM ops_alerts WHERE notified_at > ?1 - ?2)
-     GROUP BY kind ORDER BY kind`,
-  )
-    .bind(now, HOUR)
-    .all<{ kind: AlertKind; count: number; since: number }>();
+  const db = env.DB;
+  await logExpired(db, now);
+  const { results } = await db
+    .prepare(
+      `UPDATE ops_alerts SET notified_at = ?1
+       WHERE count > notified_count AND window_start >= ?1 - ?3
+         AND kind NOT IN (SELECT kind FROM ops_alerts WHERE notified_at > ?1 - ?2)
+       RETURNING kind, window_start, count, notified_count`,
+    )
+    .bind(now, HOUR, REPORT_WITHIN)
+    .all<AlertRow>();
   let sent = 0;
-  for (const a of results) {
+  for (const a of byKind(results)) {
     console.warn(JSON.stringify({ event: "alert", kind: a.kind, count: a.count, since: a.since }));
     if (env.OPERATOR_EMAIL) {
       try {
@@ -73,15 +125,17 @@ export async function sendAlerts(
         sent++;
       } catch (err) {
         console.error(JSON.stringify({ event: "alert_email_failed", kind: a.kind, error: String(err) }));
+        await db.prepare("UPDATE ops_alerts SET notified_at = NULL WHERE kind = ? AND notified_at = ?").bind(a.kind, now).run();
         continue;
       }
     }
-    await env.DB.prepare(
-      `UPDATE ops_alerts SET notified_count = count, notified_at = ?1
-       WHERE kind = ?2 AND count > notified_count AND window_start >= ?1 - 86400`,
-    )
-      .bind(now, a.kind)
-      .run();
+    await db.batch(
+      a.rows.map((r) =>
+        db
+          .prepare("UPDATE ops_alerts SET notified_count = MAX(notified_count, ?3) WHERE kind = ?1 AND window_start = ?2")
+          .bind(r.kind, r.window_start, r.count),
+      ),
+    );
   }
   return sent;
 }
