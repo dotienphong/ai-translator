@@ -1,5 +1,7 @@
-//! Phím tắt toàn cục (F10, spec §3.1): đọc, chuẩn hóa và kiểm trùng ba phím tắt.
-//! Phần đăng ký với hệ điều hành nằm ở `hotkey_registry.rs`.
+//! Phím tắt toàn cục (F10, spec §3.1): đọc, chuẩn hóa và kiểm trùng ba phím tắt; đăng ký và đổi phím
+//! tắt qua một `Registrar`. Bản `Registrar` thật bọc `tauri-plugin-global-shortcut` (`hotkey_registry.rs`).
+
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use tauri_plugin_global_shortcut::{Modifiers, Shortcut};
@@ -95,6 +97,95 @@ pub fn check_all(bindings: &[(HotkeyAction, &str)]) -> Result<(), (HotkeyAction,
     Ok(())
 }
 
+/// Nơi đăng ký phím tắt với hệ điều hành. Test dùng bản giả.
+pub trait Registrar {
+    /// Đăng ký; `false` nếu hệ điều hành từ chối (ví dụ app khác đang giữ tổ hợp này trên Windows).
+    fn register(&self, shortcut: Shortcut) -> bool;
+    fn unregister(&self, shortcut: Shortcut);
+}
+
+/// Phím tắt đang đăng ký thành công, theo từng việc.
+#[derive(Debug, Default)]
+pub struct Bound(BTreeMap<HotkeyAction, Shortcut>);
+
+impl Bound {
+    /// Việc ứng với phím tắt vừa được bấm (`Shortcut::id()`).
+    pub fn action_for(&self, id: u32) -> Option<HotkeyAction> {
+        self.0.iter().find(|(_, s)| s.id() == id).map(|(a, _)| *a)
+    }
+
+    pub fn get(&self, action: HotkeyAction) -> Option<Shortcut> {
+        self.0.get(&action).copied()
+    }
+}
+
+/// Đăng ký cả bộ phím tắt lúc khởi động. Trả về các việc không đăng ký được.
+pub fn register_all(
+    registrar: &impl Registrar,
+    bound: &mut Bound,
+    bindings: &[(HotkeyAction, &str)],
+) -> Vec<HotkeyAction> {
+    let mut failures = Vec::new();
+    for (action, accelerator) in bindings {
+        match parse(accelerator) {
+            Ok((shortcut, _)) if registrar.register(shortcut) => {
+                bound.0.insert(*action, shortcut);
+            }
+            _ => failures.push(*action),
+        }
+    }
+    failures
+}
+
+/// Đổi phím tắt thất bại.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RebindError {
+    pub error: HotkeyError,
+    /// Phím cũ của việc này còn đăng ký với hệ điều hành. `false` thì việc này đang không có phím tắt
+    /// nào, và phải báo cho người dùng như lỗi lúc khởi động.
+    pub old_active: bool,
+}
+
+/// Đổi phím tắt của `action`. `current` là cả bộ phím tắt hiện tại (dạng chuẩn).
+/// Thành công thì trả về dạng chuẩn của phím mới. Hệ điều hành từ chối phím mới thì đăng ký lại phím cũ.
+pub fn rebind(
+    registrar: &impl Registrar,
+    bound: &mut Bound,
+    current: &[(HotkeyAction, &str)],
+    action: HotkeyAction,
+    accelerator: &str,
+) -> Result<String, RebindError> {
+    let fail = |error, bound: &Bound| RebindError {
+        error,
+        old_active: bound.get(action).is_some(),
+    };
+    let (shortcut, canonical) = parse(accelerator).map_err(|e| fail(e, bound))?;
+    let next: Vec<(HotkeyAction, &str)> = current
+        .iter()
+        .map(|&(a, s)| if a == action { (a, canonical.as_str()) } else { (a, s) })
+        .collect();
+    check_all(&next).map_err(|(_, e)| fail(e, bound))?;
+    if bound.get(action) == Some(shortcut) {
+        return Ok(canonical);
+    }
+    let old = bound.0.remove(&action);
+    if let Some(old) = old {
+        registrar.unregister(old);
+    }
+    if registrar.register(shortcut) {
+        bound.0.insert(action, shortcut);
+        return Ok(canonical);
+    }
+    let restored = old.filter(|old| registrar.register(*old));
+    if let Some(old) = restored {
+        bound.0.insert(action, old);
+    }
+    Err(RebindError {
+        error: HotkeyError::RegisterFailed,
+        old_active: restored.is_some(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,5 +273,185 @@ mod tests {
             serde_json::to_string(&HotkeyAction::ToggleLock).unwrap(),
             "\"toggleLock\""
         );
+    }
+
+    /// Bộ đăng ký giả: từ chối các tổ hợp trong `refused`, ghi lại các lần gọi.
+    #[derive(Default)]
+    struct FakeRegistrar {
+        refused: std::cell::RefCell<Vec<String>>,
+        calls: std::cell::RefCell<Vec<String>>,
+    }
+
+    impl FakeRegistrar {
+        fn refuse(&self, accelerator: &str) {
+            self.refused.borrow_mut().push(canonical_of(accelerator).unwrap());
+        }
+    }
+
+    impl Registrar for FakeRegistrar {
+        fn register(&self, shortcut: Shortcut) -> bool {
+            let name = canonical(&shortcut);
+            self.calls.borrow_mut().push(format!("+{name}"));
+            !self.refused.borrow().contains(&name)
+        }
+
+        fn unregister(&self, shortcut: Shortcut) {
+            self.calls.borrow_mut().push(format!("-{}", canonical(&shortcut)));
+        }
+    }
+
+    const DEFAULTS: [(HotkeyAction, &str); 3] = [
+        (HotkeyAction::ToggleSession, "Ctrl+Alt+T"),
+        (HotkeyAction::ToggleOverlay, "Ctrl+Alt+H"),
+        (HotkeyAction::ToggleLock, "Ctrl+Alt+L"),
+    ];
+
+    fn started(registrar: &FakeRegistrar) -> Bound {
+        let mut bound = Bound::default();
+        register_all(registrar, &mut bound, &DEFAULTS);
+        registrar.calls.borrow_mut().clear();
+        bound
+    }
+
+    #[test]
+    fn register_all_reports_refused_shortcuts() {
+        let registrar = FakeRegistrar::default();
+        registrar.refuse("Ctrl+Alt+H");
+        let mut bound = Bound::default();
+        assert_eq!(
+            register_all(&registrar, &mut bound, &DEFAULTS),
+            [HotkeyAction::ToggleOverlay]
+        );
+        let t = parse("Ctrl+Alt+T").unwrap().0;
+        assert_eq!(bound.action_for(t.id()), Some(HotkeyAction::ToggleSession));
+        assert_eq!(bound.get(HotkeyAction::ToggleOverlay), None);
+    }
+
+    #[test]
+    fn rebind_swaps_registration() {
+        let registrar = FakeRegistrar::default();
+        let mut bound = started(&registrar);
+        let result = rebind(
+            &registrar,
+            &mut bound,
+            &DEFAULTS,
+            HotkeyAction::ToggleSession,
+            "control+alt+KeyK",
+        );
+        assert_eq!(result, Ok("Ctrl+Alt+K".to_string()));
+        assert_eq!(*registrar.calls.borrow(), ["-Ctrl+Alt+T", "+Ctrl+Alt+K"]);
+        let k = parse("Ctrl+Alt+K").unwrap().0;
+        assert_eq!(bound.action_for(k.id()), Some(HotkeyAction::ToggleSession));
+    }
+
+    #[test]
+    fn refused_shortcut_keeps_the_old_one() {
+        let registrar = FakeRegistrar::default();
+        let mut bound = started(&registrar);
+        registrar.refuse("Ctrl+Alt+K");
+        let result = rebind(
+            &registrar,
+            &mut bound,
+            &DEFAULTS,
+            HotkeyAction::ToggleSession,
+            "Ctrl+Alt+K",
+        );
+        assert_eq!(
+            result,
+            Err(RebindError {
+                error: HotkeyError::RegisterFailed,
+                old_active: true
+            })
+        );
+        assert_eq!(*registrar.calls.borrow(), ["-Ctrl+Alt+T", "+Ctrl+Alt+K", "+Ctrl+Alt+T"]);
+        assert_eq!(
+            bound.get(HotkeyAction::ToggleSession),
+            Some(parse("Ctrl+Alt+T").unwrap().0)
+        );
+    }
+
+    #[test]
+    fn losing_the_old_shortcut_too_is_reported() {
+        let registrar = FakeRegistrar::default();
+        let mut bound = started(&registrar);
+        registrar.refuse("Ctrl+Alt+K");
+        registrar.refuse("Ctrl+Alt+T");
+        let result = rebind(
+            &registrar,
+            &mut bound,
+            &DEFAULTS,
+            HotkeyAction::ToggleSession,
+            "Ctrl+Alt+K",
+        );
+        assert_eq!(
+            result,
+            Err(RebindError {
+                error: HotkeyError::RegisterFailed,
+                old_active: false
+            })
+        );
+        assert_eq!(bound.get(HotkeyAction::ToggleSession), None);
+    }
+
+    #[test]
+    fn invalid_or_duplicate_shortcut_never_reaches_the_os() {
+        let registrar = FakeRegistrar::default();
+        let mut bound = started(&registrar);
+        let result = rebind(
+            &registrar,
+            &mut bound,
+            &DEFAULTS,
+            HotkeyAction::ToggleLock,
+            "Ctrl+Alt+H",
+        );
+        assert_eq!(
+            result,
+            Err(RebindError {
+                error: HotkeyError::Duplicate,
+                old_active: true
+            })
+        );
+        let result = rebind(&registrar, &mut bound, &DEFAULTS, HotkeyAction::ToggleLock, "L");
+        assert_eq!(
+            result,
+            Err(RebindError {
+                error: HotkeyError::NoModifier,
+                old_active: true
+            })
+        );
+        assert!(registrar.calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn same_shortcut_or_retry_after_startup_failure() {
+        let registrar = FakeRegistrar::default();
+        registrar.refuse("Ctrl+Alt+L");
+        let mut bound = Bound::default();
+        register_all(&registrar, &mut bound, &DEFAULTS);
+        registrar.calls.borrow_mut().clear();
+        // Đặt lại đúng phím đang có: không gọi hệ điều hành.
+        assert_eq!(
+            rebind(
+                &registrar,
+                &mut bound,
+                &DEFAULTS,
+                HotkeyAction::ToggleSession,
+                "Ctrl+Alt+T"
+            ),
+            Ok("Ctrl+Alt+T".into())
+        );
+        assert!(registrar.calls.borrow().is_empty());
+        // Việc chưa đăng ký được lúc khởi động: đổi sang phím khác thì đăng ký luôn.
+        assert_eq!(
+            rebind(
+                &registrar,
+                &mut bound,
+                &DEFAULTS,
+                HotkeyAction::ToggleLock,
+                "Ctrl+Alt+K"
+            ),
+            Ok("Ctrl+Alt+K".into())
+        );
+        assert_eq!(*registrar.calls.borrow(), ["+Ctrl+Alt+K"]);
     }
 }
