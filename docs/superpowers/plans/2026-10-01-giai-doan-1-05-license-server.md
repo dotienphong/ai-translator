@@ -16,7 +16,7 @@
 - Cron Trigger mỗi 5 phút: đối soát đơn, gửi lại email chưa gửi được, gửi cảnh báo cho người vận hành qua `EmailProvider`.
 - Test chạy trong workerd bằng `@cloudflare/vitest-plugin`, với D1 cục bộ, không gọi mạng.
 
-**Công nghệ:** TypeScript 7.0.2 (strict), Hono 4.13.11, Wrangler 4.144.0, Cloudflare Workers + D1 + Cron Triggers + Access + Service Bindings (RPC), `@cloudflare/vitest-plugin` 1.3.3 với Vitest 4.1.11, `@cloudflare/workers-types` 5.20260930.1, Web Crypto (Ed25519, HMAC-SHA256, SHA-256), PayOS API v2, Resend API.
+**Công nghệ:** TypeScript 7.0.2 (strict), Hono 4.13.12, Wrangler 4.145.0, Cloudflare Workers + D1 + Cron Triggers + Access + Service Bindings (RPC), `@cloudflare/vitest-plugin` 1.3.4 với Vitest 4.1.11, `@cloudflare/workers-types` 5.20260930.2 (bốn bản này nâng ở commit `940c169`; bản chốt lúc lập kế hoạch ghi ở "Phiên bản đã chốt"), Web Crypto (Ed25519, HMAC-SHA256, SHA-256), PayOS API v2, Resend API.
 
 Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.5). Spec: §6.8, §9, §10.1, §10.2, §11, §12 và §14 giả định 7 của `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Kế hoạch này chỉ đụng `server/` và `.gitignore` ở gốc repo, nên chạy song song được với 01–04 (Đ18).
 
@@ -40,22 +40,22 @@ Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (m�
 
 **Luật tuổi phát hành (thống nhất với kế hoạch 01).** pnpm 12 có `minimumReleaseAge` mặc định 1 ngày: gói mới phát hành chưa đủ 1 ngày thì `pnpm add` tự ghi mục `minimumReleaseAgeExclude` vào `pnpm-workspace.yaml`, còn `pnpm install --frozen-lockfile` báo `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`.
 - **Không bao giờ commit `minimumReleaseAgeExclude`.** Nếu pnpm tự ghi mục đó, xóa đi và chọn bản đã ra được ít nhất 1 ngày.
-- Vì vậy bảng dưới chốt **bản ổn định mới nhất đã ra được ít nhất 1 ngày** lúc lập kế hoạch (kiểm lại 2026-10-01 04:59 UTC, tức 11:59 giờ Việt Nam). Các bản mới hơn ra chưa tới 1 ngày nên không dùng: hono 4.13.12 (2026-09-30 09:43 UTC), wrangler 4.145.0 (2026-09-30 14:20), `@cloudflare/vitest-plugin` 1.3.4 (2026-09-30 14:30), `@cloudflare/workers-types` 5.20260930.2 (2026-09-30 10:28) và 5.20261001.1. Lúc thực thi vẫn giữ đúng các bản đã chốt; nâng bản là việc chủ động quyết (§6.12).
+- Vì vậy bảng dưới chốt **bản ổn định mới nhất đã ra được ít nhất 1 ngày** lúc lập kế hoạch (kiểm lại 2026-10-01 04:59 UTC, tức 11:59 giờ Việt Nam). Các bản mới hơn ra chưa tới 1 ngày nên không dùng: hono 4.13.12 (2026-09-30 09:43 UTC), wrangler 4.145.0 (2026-09-30 14:20), `@cloudflare/vitest-plugin` 1.3.4 (2026-09-30 14:30), `@cloudflare/workers-types` 5.20260930.2 (2026-09-30 10:28) và 5.20261001.1. Lúc thực thi, bốn bản này đã được nâng ở commit `940c169` (2026-10-01 14:34 UTC, lúc wrangler 4.145.0 và plugin 1.3.4 vừa đủ 1 ngày tuổi); bảng dưới ghi bản hiện hành, kèm bản chốt lúc lập kế hoạch. `@cloudflare/workers-types` 5.20261001.1 ra lúc 2026-10-01 01:34 UTC, nên chỉ nâng được từ 01:34 UTC ngày 2026-10-02. Nâng bản là việc chủ động quyết (§6.12).
 
 | Thành phần | Phiên bản | Ghi chú tương thích | Ngày kiểm |
 |---|---|---|---|
 | Node.js | 24.21.0 | Như app. `server/.node-version` giữ cùng bản, vì fnm chỉ đọc file này ở thư mục hiện tại. Wrangler cần Node ≥ 22 | 2026-10-01 |
 | pnpm | 12.6.0 | `packageManager`. pnpm 12 chặn script cài đặt theo mặc định; `server/pnpm-workspace.yaml` cho phép riêng `esbuild` và `workerd` (`allowBuilds`) | 2026-10-01 |
 | TypeScript | 7.0.2 | Cùng bản với app ở gốc repo | 2026-10-01 |
-| hono | 4.13.11 | Phát hành 2026-09-29. Là phụ thuộc runtime duy nhất, MIT | 2026-10-01 |
-| wrangler | 4.144.0 | Phát hành 2026-09-29 21:12 UTC. Kéo theo workerd 1.20260926.1 và miniflare 5.20260926.1-alpha (dist-tag `latest` của miniflare hiện là dòng 5.x-alpha). Peer: `@cloudflare/workers-types ^5.20260926.1` | 2026-10-01 |
-| @cloudflare/workers-types | 5.20260930.1 | Phát hành 2026-09-30 01:29 UTC. Thỏa peer của wrangler. Có `ExecutionContext.access` (dùng cho Access, QĐ6) | 2026-10-01 |
-| @cloudflare/vitest-plugin | 1.3.3 | Phát hành 2026-09-29 21:21 UTC. Tên mới của `@cloudflare/vitest-pool-workers`: gói cũ dừng ở 0.22.0 (2026-08-18), tài liệu Cloudflare hướng dẫn chuyển sang gói mới. Bản 1.3.3 ghim đúng wrangler 4.144.0 và miniflare 5.20260926.1-alpha, khớp bản wrangler ở trên | 2026-10-01 |
-| vitest | 4.1.11 | **Không dùng 5.0.3** (bản mới nhất), vì peer của `@cloudflare/vitest-plugin` là `vitest ^4.1.0`. Nâng lên 5 khi plugin nhận | 2026-10-01 |
+| hono | 4.13.12 | Nâng ở `940c169`; bản chốt lúc lập kế hoạch là 4.13.11 (phát hành 2026-09-29). 4.13.12 phát hành 2026-09-30 09:43 UTC. Là phụ thuộc runtime duy nhất, MIT | 2026-10-01 |
+| wrangler | 4.145.0 | Nâng ở `940c169`; bản chốt lúc lập kế hoạch là 4.144.0 (workerd 1.20260926.1, miniflare 5.20260926.1-alpha). 4.145.0 phát hành 2026-09-30 14:20 UTC, kéo theo workerd 1.20260930.2 và miniflare 5.20260930.0-alpha (dist-tag `latest` của miniflare hiện là dòng 5.x-alpha). Peer: `@cloudflare/workers-types ^5.20260930.2` | 2026-10-01 |
+| @cloudflare/workers-types | 5.20260930.2 | Nâng ở `940c169` (bắt buộc theo peer của wrangler 4.145.0); bản chốt lúc lập kế hoạch là 5.20260930.1. 5.20260930.2 phát hành 2026-09-30 10:28 UTC. Có `ExecutionContext.access` (dùng cho Access, QĐ6) | 2026-10-01 |
+| @cloudflare/vitest-plugin | 1.3.4 | Nâng ở `940c169`; bản chốt lúc lập kế hoạch là 1.3.3 (ghim wrangler 4.144.0). 1.3.4 phát hành 2026-09-30 14:30 UTC, ghim wrangler 4.145.0 và miniflare 5.20260930.0-alpha, khớp bản wrangler ở trên. Tên mới của `@cloudflare/vitest-pool-workers`: gói cũ dừng ở 0.22.0 (2026-08-18), tài liệu Cloudflare hướng dẫn chuyển sang gói mới | 2026-10-01 |
+| vitest | 4.1.11 | **Không dùng 5.0.3** (bản mới nhất), vì peer của `@cloudflare/vitest-plugin` 1.3.4 vẫn là `vitest ^4.1.0`. Nâng lên 5 khi plugin nhận. Commit `5b4878f` nâng vitest 5.0.3 ở `package.json` gốc repo (app, kế hoạch 01), không đụng `server/` | 2026-10-01 |
 | Ed25519 | Web Crypto | Workers và Node 24 đều có sẵn. Không cần `@noble/ed25519` | 2026-10-01 |
 | PayOS API | v2 (`/v2/payment-requests`) | Đọc tài liệu ngày 2026-10-01. SDK `@payos/node` 2.0.5 chỉ dùng để đối chiếu cách ký, không cài | 2026-10-01 |
 | Resend API | `POST /emails` | Bắt buộc có `User-Agent` | 2026-10-01 |
-| `compatibility_date` | 2026-09-26 | Bằng ngày của workerd 1.20260926.1 đi kèm wrangler 4.144.0 | 2026-10-01 |
+| `compatibility_date` | 2026-09-26 | Chọn lúc lập kế hoạch bằng ngày của workerd 1.20260926.1 đi kèm wrangler 4.144.0. Giữ nguyên sau khi nâng: workerd 1.20260930.2 nhận mọi ngày tới 2026-09-30, và đổi ngày là đổi hành vi runtime, nên chỉ đổi khi có lý do | 2026-10-01 |
 
 Lúc lập kế hoạch:
 - `pnpm audit` và `pnpm audit --prod`: `No known vulnerabilities found`.
@@ -213,7 +213,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
   Worker admin tự kiểm lại, và từ chối nếu thiếu (fail closed):
   - request không có `ctx.access` thì `403`. `ctx.access` do runtime tạo sau khi Access đã kiểm JWT (https://developers.cloudflare.com/workers/configuration/cloudflare-access/);
   - ngoài `dev`, **`ACCESS_AUD` bắt buộc** và phải khớp `ctx.access.aud`; để trống thì mọi request bị `403`;
-  - operator ghi vào nhật ký là email lấy từ `ctx.access.getIdentity()`.
+  - operator ghi vào nhật ký là email lấy từ `ctx.access.getIdentity()`. Không đọc được email (không có danh tính, thiếu email, email rỗng, `getIdentity()` ném lỗi) thì `403`, không ghi `admin:unknown` (Phụ lục C, đợt D).
 - **QĐ7. Giới hạn tần suất đếm trong D1**, theo cửa sổ cố định 1 giờ.
   - IP, key và email chỉ lưu dưới dạng HMAC-SHA256 với secret `RATE_LIMIT_PEPPER`, nên bảng `rate_limits` bị lộ cũng không dò ngược được IP hay email. Mỗi dòng sống tối đa khoảng 3 giờ.
   - Không dùng binding Rate Limiting của Workers: binding đó chỉ có chu kỳ 10 hoặc 60 giây và đếm riêng ở từng vị trí của Cloudflare.
@@ -371,7 +371,7 @@ Mọi body là JSON, tên trường `snake_case` (QĐ26). Lỗi có dạng `{"er
 | `POST /v1/licenses/validate` | `{key, activation_id}` | như `activate` | `400`, `404 invalid_key`, `404 activation_not_found` (máy đã bị gỡ), `403 license_revoked`, `403 license_expired {expires_at}`, `429`, `503 pricing_not_configured` |
 | `POST /v1/licenses/deactivate` | `{key, activation_id}` | `200 {ok: true}` (gỡ lại lần nữa vẫn `200`) | `400`, `404 invalid_key`, `404 activation_not_found`, `429` |
 | `POST /v1/licenses/recover` | `{email}` | `200 {ok: true}`, dù email có key hay không | `400 invalid_request {field: "email"}`, `429` |
-| `POST /v1/webhooks/{provider}` | body của cổng thanh toán (PayOS: `/v1/webhooks/payos`) | `200 {ok: true, result}` | `400 invalid_signature`, `404` (cổng lạ), `503` (để cổng gửi lại) |
+| `POST /v1/webhooks/{provider}` | body của cổng thanh toán (PayOS: `/v1/webhooks/payos`) | `200 {ok: true, result}` | `400 invalid_signature` (có cảnh báo `webhook_bad_signature`), `400 invalid_request` (body không phải JSON, hay đúng chữ ký mà `orderCode` sai dạng; không cảnh báo), `404` (cổng lạ), `503` (để cổng gửi lại) |
 
 - Token: ngoài các trường ở response của `activate`, token có `kid`, `license_id`, `device_id_hash`, `issued_at` (QĐ4, QĐ11). `quota_fresh` chỉ đúng trong response vừa nhận (spec §6.8); app không tin cờ này ở token đọc lại từ kho khóa.
 - Kích hoạt lại cùng `device_id_hash`, kể cả sau khi gỡ, trả lại đúng `activation_id`, `activation_created_at`, `quota_epoch` cũ (QĐ35).
@@ -8562,6 +8562,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
 }
 ```
 
+> **Bản cuối khác khối trên.** Khối trên giữ nguyên để chạy lại Task 16 đúng thứ tự; `server/src/admin.ts` hiện hành nằm trong repo. Các chỗ đã thay: `licenseAction` dùng `auditIfChanged` (Phụ lục C, đợt B mục 42); `unlock` chỉ cập nhật key đang khóa, `UPDATE licenses SET locked_at = NULL, lock_cleared_at = ?1 WHERE id = ?2 AND locked_at IS NOT NULL`, key không bị khóa thì `404` và không ghi nhật ký (đợt D, `a34944f`); middleware Access trả `403` khi không đọc được email người vận hành, và các thao tác thất bại có ý nghĩa đều ghi nhật ký (đợt D, `cdee80b`).
+
 - [ ] **Step 4: Tạo `server/src/admin-rpc.ts` và thay `server/src/index.ts`: export `AdminRpc` (QĐ34)**
 
 `server/src/admin-rpc.ts`:
@@ -9180,6 +9182,8 @@ b stg-2026-10-2 32
 
 Khóa ở ô B được kiểm bằng "ký thử" ở Step 13, sau khi Worker admin đã chạy; khóa ở ô A được kiểm bằng token thật ở Task 20, Step 5.
 
+Chưa có khóa nào bị bỏ nên file chưa cần mảng `retired`. Từ lần đổi khóa đầu tiên, khóa bỏ khỏi ô được chuyển vào `retired` ở gốc file (Phụ lục A, bước 4), để `gen-token-key.mjs` từ chối cấp lại `kid` đó.
+
 - [ ] **Step 8: Secret của Worker admin**
 
 ```bash
@@ -9285,7 +9289,7 @@ cloudflared access curl "$ADMIN/admin/payos/confirm-webhook" -X POST -H 'content
 
 Expected:
 - Lệnh thứ hai: `{"ok":true,"webhook_url":"https://mt-license-staging.<subdomain>.workers.dev/v1/webhooks/payos"}`.
-- Lệnh thứ ba: `{"error":"invalid_request","field":"webhook_url"}`, vì URL không nằm trên `API_ORIGIN` (QĐ30).
+- Lệnh thứ ba: `{"error":"invalid_request","field":"webhook_url"}`, vì URL không nằm trên `API_ORIGIN` (QĐ30). Lần từ chối này ghi một dòng nhật ký `payos_webhook_confirm_failed` với `{"reason":"invalid_webhook_url"}`, không kèm URL.
 - Trên my.payos.vn, kênh staging hiện đúng Webhook URL.
 - Nếu nhận `payment_provider_error`, xem `message`: PayOS không gọi được URL, hoặc URL trả khác 2xx.
 
@@ -9702,10 +9706,10 @@ pnpm -C server check
 pnpm -C server audit
 ```
 
-Expected: `pnpm -C server check` in `Tests  263 passed (263)` (lúc lập kế hoạch), và 4 lần `--dry-run: exiting now.`
+Expected: `pnpm -C server check` in `Tests  360 passed (360)` (sau đợt D của Phụ lục C; lúc lập kế hoạch là 263), `node --test` 6/6, và 4 lần `--dry-run: exiting now.`; `pnpm -C server audit` in `No known vulnerabilities found`.
 - [ ] **Step 3: Ghi vào mục 8 của kế hoạch 00**
   - P05-1 tới P05-5 (P05-6 đã chốt: không dùng kho mật khẩu).
-  - Spec đã theo kế hoạch này ở commit `7a7aa2c` và `a641195`: hai ô khóa `TOKEN_SIGNING_KEY_A`, `_B` và `TOKEN_SIGNING_SLOT` (QĐ29); `server/keys/public-keys.json` theo ô; các trường thêm của API; `503 pricing_not_configured` ở mọi route cần bảng gói; luật không hạ hạn mức (QĐ17); `paid_needs_review` và cảnh báo `order_needs_review` (QĐ37); `admin-rpc.ts`, service binding, bảng `deactivations`; trạng thái `refunded`, thao tác `POST /admin/orders/{order_code}/resolve` (QĐ37) và luật kẹp "hiện tại" không sớm hơn `cycle_anchor` đang có (QĐ32). Các sửa sau review đã vào spec ở `97b3be3` (§6.8, Resend 409) và `f321c25` (§10.2 checkout mới, §6.8 tên gói trong code). Kiểm lại không còn chỗ lệch nào; còn thì ghi vào Q12.
+  - Spec đã theo kế hoạch này ở commit `7a7aa2c` và `a641195`: hai ô khóa `TOKEN_SIGNING_KEY_A`, `_B` và `TOKEN_SIGNING_SLOT` (QĐ29); `server/keys/public-keys.json` theo ô; các trường thêm của API; `503 pricing_not_configured` ở mọi route cần bảng gói; luật không hạ hạn mức (QĐ17); `paid_needs_review` và cảnh báo `order_needs_review` (QĐ37); `admin-rpc.ts`, service binding, bảng `deactivations`; trạng thái `refunded`, thao tác `POST /admin/orders/{order_code}/resolve` (QĐ37) và luật kẹp "hiện tại" không sớm hơn `cycle_anchor` đang có (QĐ32). Các sửa sau review đã vào spec ở `97b3be3` (§6.8, Resend 409), `f321c25` (§10.2 checkout mới, §6.8 tên gói trong code), `42c9782` (§6.8 app hiện gì với đơn `refunded`) và `29b2602` (review cuối: "hiện tại" không muộn hơn lúc xử lý, webhook đúng chữ ký mà sai dạng, Access thiếu email thì `403`, phạm vi nhật ký admin, mảng `retired` của `public-keys.json`). Kiểm lại không còn chỗ lệch nào; còn thì ghi vào Q12.
   - Ghi vào mục 5.3: T5 cần kênh PayOS thứ hai cho staging (P05-1); T6 cần tạo tài khoản Resend.
   - Ghi vào mục 6.5 tên secret đã chốt: Worker API có `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `RESEND_API_KEY`, `TOKEN_SIGNING_KEY_A`, `TOKEN_SIGNING_KEY_B`, `RATE_LIMIT_PEPPER`, `OPERATOR_EMAIL` (không bắt buộc); biến `TOKEN_SIGNING_SLOT` và `PLANS`. Worker admin chỉ có bốn secret đầu, cộng service binding `API`.
   - Ghi vào mục 6.1 luật tuổi phát hành của pnpm (không commit `minimumReleaseAgeExclude`), nếu kế hoạch 01 chưa ghi.
@@ -9738,8 +9742,17 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
    cd server && node scripts/gen-token-key.mjs prod-<năm>-<tháng>-3 | pnpm exec wrangler secret put TOKEN_SIGNING_KEY_A --env production
    ```
 
-   `gen-token-key.mjs` từ chối nếu `kid` đã có trong `keys/public-keys.json`, kể cả `kid` bị lộ (vẫn còn trong file tới bước 4). `secret put` tạo version mới ngay; Worker vẫn ký bằng ô B.
-4. **Sửa `keys/public-keys.json`:** ô `a` là khóa vừa tạo (`prod-…-3`), ô `b` giữ nguyên; khóa bị lộ không còn trong file. Kiểm ô dự phòng mới bằng ký thử:
+   `gen-token-key.mjs` từ chối nếu `kid` đã có trong `keys/public-keys.json`: ở một ô (kể cả `kid` bị lộ, vẫn còn ở ô `a` tới bước 4), hay trong mảng `retired` (các `kid` đã bỏ ở những lần đổi khóa trước). `secret put` tạo version mới ngay; Worker vẫn ký bằng ô B.
+4. **Sửa `keys/public-keys.json`:** ô `a` là khóa vừa tạo (`prod-…-3`), ô `b` giữ nguyên. Khóa bị lộ bỏ khỏi ô `a` thì **thêm `{kid, x}` của nó vào mảng `retired`** ở gốc file (tạo mảng nếu chưa có), để từ nay `gen-token-key.mjs` không bao giờ cấp lại `kid` đó. `retired` chỉ có `kid` và khóa công khai, không có bí mật; app bỏ qua mảng này và không build khóa nào trong đó:
+
+   ```json
+   {
+     "production": { "a": { "kid": "prod-…-3", "x": "…" }, "b": { "kid": "prod-…-2", "x": "…" } },
+     "retired": [{ "kid": "prod-…-1", "x": "…" }]
+   }
+   ```
+
+   Kiểm ô dự phòng mới bằng ký thử:
 
    ```bash
    cd server && cloudflared access curl "$PADMIN/admin/keys/test-sign" -X POST -H 'content-type: application/json' -d '{}' | node scripts/verify-token.mjs production
@@ -9758,7 +9771,8 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
 - Mọi thao tác thay đổi đều cần `note`: lý do và mã giao dịch nếu có.
 - **Không ghi dữ liệu cá nhân nào vào `note`:** email, tên, số điện thoại, số tài khoản hay tên chủ tài khoản của khách. `note` nằm trong `audit_log`, giữ không thời hạn, và `/admin/erase` không xóa nó. Cần chỉ tới khách thì ghi `order_code` hay `license_id`.
 - Lỗi của PayOS ở các route admin (`payment-status`, `confirm-webhook`) trả nguyên câu lỗi, kể cả `desc` của PayOS, vì người xem là người vận hành. API công khai thì không trả `desc` (checkout trả `502 payment_provider_error`, webhook trả `503 temporarily_unavailable`).
-- Kết quả trả về dạng JSON. Mỗi thao tác, kể cả tra cứu, ghi một dòng `audit_log`, với actor `admin:<email người vận hành>`.
+- Kết quả trả về dạng JSON. Mỗi thao tác, kể cả tra cứu, ghi một dòng `audit_log`, với actor `admin:<email người vận hành>`. Access không cho đọc được email (ví dụ service token không có email) thì mọi route trả `403`.
+- Thao tác thất bại có ý nghĩa cũng ghi nhật ký, không kèm câu lỗi gốc: `order_grant_rejected` và `order_resolve_rejected` (mọi lần `409`, kèm `error`, `status`, `note`), `key_check_failed` (ký thử lỗi), `payos_webhook_confirm_failed` (URL bị từ chối: chỉ lý do; PayOS lỗi: URL, mã HTTP và mã lỗi của PayOS nếu có). `whoami` và các request sai input hay không tìm thấy khác (`400`, `404`) không ghi.
 
 | Việc | Lệnh |
 |---|---|
@@ -9770,7 +9784,7 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
 | Cấp license mới không qua đơn (`plan`: `pro`, `pro_x2`, `pro_x5`; 30 ngày từ lúc thao tác) | `… "$ADMIN/admin/licenses" -X POST … -d '{"email":"…","plan":"pro","note":"…"}'` |
 | Gia hạn tay, giữ gói (license đã hết hạn thì cộng từ bây giờ và đặt lại `cycle_anchor`) | `… "$ADMIN/admin/licenses/<license_id>/extend" -X POST … -d '{"days":30,"note":"…"}'` |
 | Gửi lại key | `… "$ADMIN/admin/licenses/<license_id>/resend" -X POST … -d '{}'` |
-| Mở khóa key bị khóa tạm | `… "$ADMIN/admin/licenses/<license_id>/unlock" -X POST … -d '{"note":"…"}'` |
+| Mở khóa key bị khóa tạm (key không bị khóa thì `404`, không đặt lại `lock_cleared_at`, không ghi nhật ký) | `… "$ADMIN/admin/licenses/<license_id>/unlock" -X POST … -d '{"note":"…"}'` |
 | Thu hồi key | `… "$ADMIN/admin/licenses/<license_id>/revoke" -X POST … -d '{"note":"…"}'` |
 | Xử lý đơn `paid_needs_review` (license đã thu hồi mà nhận được tiền, QĐ37): cấp license mới, hoặc ghi đã hoàn tiền ngoài hệ thống | `… "$ADMIN/admin/orders/<n>/resolve" -X POST … -d '{"action":"grant_new_license","note":"…"}'` hoặc `-d '{"action":"refunded","note":"đã hoàn …, mã GD …"}'` |
 | Gỡ một activation (chỉ đánh dấu, không xóa dòng; không tính vào luật khóa tạm) | `… "$ADMIN/admin/activations/<activation_id>/deactivate" -X POST … -d '{"note":"…"}'` |
@@ -9960,5 +9974,190 @@ Làm mục quan trọng và các mục nhỏ của review đợt B, cùng các m
   - regex content-type bỏ `(;|$)` hay bỏ `^`; `Origin` so bằng `startsWith`; bỏ kiểm `url.hash`; so URL webhook bằng `startsWith`; `erase` đổi `device_id_hash`; `revoke` bỏ `revoked_at IS NULL`.
 - `pnpm check`: `tsc` sạch, `vectors:check` sạch, Vitest `Test Files  18 passed (18)`, `Tests  326 passed (326)`, `node --test` 4/4, 4 lần dry-run qua (Worker API 126,34 KiB, gzip 32,96 KiB; Worker admin 104,93 KiB, gzip 26,95 KiB).
 - **Còn lưu ý:**
-  - `unlock` không có điều kiện trong câu `UPDATE` (`WHERE id = ?2`). Vì vậy mở khóa một key không bị khóa vẫn ghi nhật ký `license_unlocked` và đặt lại `lock_cleared_at`, tức các lần gỡ trước không còn tính vào luật khóa tạm. Đây là thao tác người vận hành chủ ý làm, không phải ghi đôi do chạy chồng. Chưa sửa vì ngoài phạm vi đợt này.
-  - Mục 7 mới ghi ở hợp đồng API của kế hoạch này. Spec §6.8 mới chỉ có câu app hiện gì cho `paid_needs_review`; câu cho `refunded` nên thêm khi cập nhật spec lần tới.
+  - `unlock` không có điều kiện trong câu `UPDATE`: đã sửa ở `a34944f` (đợt D).
+  - Câu app hiện gì cho đơn `refunded` đã vào spec §6.8 ở `42c9782` (đợt D).
+
+### Đợt D (commit `a34944f`, `940c169`, `42c9782`, `615bbbc`, `cdee80b`, spec `29b2602`, `d656733` và commit ghi đợt này): review cuối
+
+Review cuối của kế hoạch này (HEAD `940c169`) không thấy lỗi code ở mức nghiêm trọng hay quan trọng. Hai mục quan trọng là thiếu test hai khách (Q1) và tài liệu lệch code (Q2); các mục nhỏ N1–N9. Commit `5b4878f` (vitest 5.0.3) là của app ở gốc repo, không thuộc kế hoạch này.
+
+#### `a34944f`: `unlock` chỉ cập nhật key đang khóa
+
+Câu SQL hiện hành (thay khối Task 16):
+
+```ts
+  licenseAction(
+    "unlock",
+    "license_unlocked",
+    "UPDATE licenses SET locked_at = NULL, lock_cleared_at = ?1 WHERE id = ?2 AND locked_at IS NOT NULL",
+  );
+```
+
+Key không bị khóa thì câu `UPDATE` không đổi dòng nào: route trả `404`, không đặt lại `lock_cleared_at`, không ghi `license_unlocked`. Test: "mở khóa key không bị khóa: 404, không đặt lại lock_cleared_at, không ghi nhật ký; mở khóa lần hai cũng vậy" (`test/admin.test.ts`).
+
+#### `940c169`: nâng thư viện
+
+`server/package.json` hiện hành khác các khối ở Task 2 và Task 18 (các khối đó là bản lịch sử):
+
+```json
+  "dependencies": {
+    "hono": "4.13.12"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.3.4",
+    "@cloudflare/workers-types": "5.20260930.2",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11",
+    "wrangler": "4.145.0"
+  }
+```
+
+Lý do giữ vitest 4.1.11 và các ngày phát hành: bảng "Phiên bản đã chốt".
+
+#### `42c9782`: spec §6.8
+
+Thêm câu: đơn `refunded` (chỉ có sau khi admin ghi đã hoàn tiền) thì `GET /v1/orders` trả `status: "refunded"`, không có key; app báo "Đơn đã hoàn tiền" và không cấp key.
+
+#### `615bbbc`: Q1, test hai khách (chỉ thêm test)
+
+Fixture mới trong `test/world.ts`, trả về từ `makeWorld()`:
+
+```ts
+  async function customerB() {
+    const email = "khach-b@example.com";
+    const { licenseKey } = await buy({ email, plan: "pro_x2" });
+    const device = (n: number) => sha256Hex(`khach-b-${n}`);
+    const ip = (n: number) => ({ "cf-connecting-ip": `192.0.2.${n}` });
+    // activate(n), deactivate(id, n): gọi API thật, ném lỗi nếu khác 200.
+    …
+    for (const n of [3, 4, 5]) { const id = await activate(n); await deactivate(id, n); deactivated.push(…); }
+    const b1 = await activate(1);
+    const b2 = await activate(2);
+    await deactivate(b2, 2);           // lần tự gỡ thứ 4
+    await activate(2);                 // dùng lại activation cũ, không bị khóa
+    return { email, licenseKey, licenseId, active: [b1, b2 kèm device_id_hash, label], deactivated };
+  }
+```
+
+B có 2 máy đang kích hoạt, 3 máy đã gỡ và 4 lần tự gỡ (hơn ngưỡng 3), mọi request đi từ IP `192.0.2.x`. Test mới:
+- `test/recover.test.ts`: recover email của A chỉ gửi đúng một thư, có key của A, không có key của B.
+- `test/licenses.test.ts`, khối "hai khách":
+  - B có 2 máy đang kích hoạt: A vẫn kích hoạt được 2 máy; máy thứ 3 của A bị `409`, danh sách chỉ có hai máy của A;
+  - B có 4 lần tự gỡ: A kích hoạt máy mới không bị khóa;
+  - A kích hoạt trên `device_id_hash` mà B đang dùng hay đã gỡ: tạo activation mới của A, các dòng của B giữ nguyên;
+  - `validate` và `deactivate` key A với activation **đang hoạt động** của B: `404 activation_not_found`, mỗi lần tính một thất bại, máy của B giữ nguyên;
+  - `validate` key A với activation đã gỡ của B: `404`, vẫn tính là thất bại.
+- `test/admin.test.ts`: `lookup` email của A không trả đơn hay license của B; `erase` email của A giữ nguyên `device_label` và email của B.
+
+Chạy: `cd server && pnpm vitest run`. Expected: `Tests  335 passed (335)` (327 cộng 8 test mới; code đã đúng nên xanh ngay).
+
+Thử đột biến (script ngoài repo, mỗi lần sửa một chỗ trong `server/`, chạy `pnpm vitest run`, chép lại file gốc rồi `cmp`). Mỗi đột biến làm ít nhất một test mới đỏ:
+
+| Mã | Đột biến | Test đỏ |
+|---|---|---|
+| X1 | `recover`: `WHERE email = ?` → `WHERE ? IS NOT NULL` | recover hai khách |
+| L1 | `activeById` bỏ `license_id` | `validate` và `deactivate` với activation đang hoạt động của B |
+| X6 | `rowFor` bỏ `license_id` | A kích hoạt trên máy của B |
+| X7 | `activeActivations` bỏ `license_id` | máy thứ 3 của A bị `409` chỉ liệt kê máy của A |
+| X8 | đếm lần gỡ bỏ `d.license_id` | B có 4 lần tự gỡ (cùng 2 test khác) |
+| X9 | `slotFree` bỏ `license_id` | B có 2 máy (cùng 3 test khác) |
+| A3 | `erase`: điều kiện activation thành `?3 IS NOT NULL` | `erase` giữ `device_label` của B |
+| X4 | `lookup`: đơn bỏ `email = ?` | `lookup` không trả dữ liệu của B |
+| X10 | `lookup`: license bỏ `email = ?` | `lookup` không trả dữ liệu của B |
+| L9 | `validate`: `known` bỏ `license_id` | activation đã gỡ của B, và activation đang hoạt động của B |
+
+#### `cdee80b`: các mục nhỏ N1, N2, N4, N5, N6, N7
+
+Test viết trước. Trước khi sửa code, `pnpm vitest run` in `Tests  17 failed | 343 passed (360)`, đỏ đúng lý do (`cycle_anchor` muộn hơn giờ server; `invalid_signature` thay vì `invalid_request`; `verifyWebhook` trả `null`; whoami `200` với danh tính thiếu email, `500` khi `getIdentity` ném lỗi; không có dòng nhật ký thất bại); `node --test` in `ℹ fail 2` (câu lỗi `kid … đã có trong public-keys.json (retired.0)` thay vì câu `retired`; `retired` sai dạng vẫn sinh khóa). Các test của N7 xanh ngay (chỉ thêm test).
+
+- **N1** (`src/orders.ts`): "hiện tại" kẹp thêm ở lúc xử lý, nên `cycle_anchor` không muộn hơn `issued_at` của token đầu tiên khi đồng hồ PayOS chạy nhanh.
+
+  ```ts
+  export function paymentTime(order: Pick<OrderRow, "created_at" | "expires_at">, reported: number | null, now: number): number {
+    return Math.min(Math.max(reported ?? now, order.created_at), order.expires_at, now);
+  }
+  ```
+
+  Test (`test/orders.test.ts`): PayOS ghi `T0 + 120`, server xử lý lúc `T0 + 60`: `cycle_anchor`, `anchor_applied_at` là `T0 + 60`, `expires_at` là `T0 + 60 + 30 ngày`; unit test `paymentTime` ở các biên.
+- **N2** (`src/payment/provider.ts`, `src/payment/payos.ts`, `src/orders.ts`): `verifyWebhook` trả `WebhookEvent | "malformed" | null`. `null` là không kiểm được hay sai chữ ký (như cũ); `"malformed"` là đúng chữ ký mà `orderCode` không phải số nguyên an toàn. Route:
+
+  ```ts
+    const event = await provider.verifyWebhook(body);
+    if (event === "malformed") {
+      console.warn(JSON.stringify({ event: "webhook_malformed", provider: provider.name }));
+      return fail(c, 400, "invalid_request");
+    }
+    if (!event) { /* như cũ: webhook_bad_signature, raiseAlert, 400 invalid_signature */ }
+  ```
+
+  Mã `invalid_request` là mã route đã dùng cho body không phải JSON. Nhánh này không ghi D1. Chuỗi ký của PayOS không phân biệt `"123"` với `123`, nên chỉ đổi kiểu `orderCode` thì chữ ký vẫn đúng và kết quả là `"malformed"`, không phải `null`. Test: `test/payos.test.ts` (`"123"`, `1.5`, `null`, `-0.5`, thiếu `orderCode`), `test/orders.test.ts` (chuỗi, số lẻ, thiếu: `400 invalid_request`, không có `ops_alerts`, không gọi PayOS, log đúng một dòng `webhook_malformed`).
+- **N5** (`src/admin.ts`, middleware): không đọc được email người vận hành thì `403`, không còn `admin:unknown`. Các kiểm Access trước đó (không có `ctx.access`, `ACCESS_AUD` trống ngoài dev, `aud` không khớp) giữ nguyên và chạy trước.
+
+  ```ts
+    let email: unknown;
+    try {
+      email = (await access.getIdentity())?.email;
+    } catch {
+      email = undefined;
+    }
+    if (typeof email !== "string" || email === "") return fail(c, 403, "forbidden");
+    c.set("actor", `admin:${email}`);
+  ```
+
+  Test: `getIdentity` trả `undefined`, danh tính không có email, email rỗng, email không phải chuỗi, `getIdentity` ném lỗi: `whoami`, `lookup`, `revoke` đều `403`, không đổi gì, không có dòng nhật ký nào mới. Có email thì actor đúng `admin:<email>`. Harness test (`adminCall`) thêm tùy chọn `getIdentity`; mặc định vẫn trả `{ email: operator }`, nên các test cũ không đổi.
+- **N6** (`src/admin.ts`): ghi nhật ký các thao tác thất bại có ý nghĩa, không chép câu lỗi gốc:
+
+  | Action | Khi nào | `detail` |
+  |---|---|---|
+  | `order_grant_rejected` | cấp tay trả `409` (`already_paid`, `already_settled`, `needs_review`) | `{error, status, note}` |
+  | `order_resolve_rejected` | `resolve` trả `409`: đơn không chờ xử lý, hay lần chạy cùng lúc đã xử lý trước | `{action, error: "not_needs_review", status, note}` |
+  | `key_check_failed` | ký thử lỗi (`503`) | không có: lỗi đọc JWK của `JSON.parse` có thể trích một đoạn secret |
+  | `payos_webhook_confirm_failed` | URL bị từ chối (`400`) | `{reason: "invalid_webhook_url"}`, không ghi URL (có thể chứa `user:pass@`) |
+  | `payos_webhook_confirm_failed` | PayOS lỗi (`502`) | `{reason: "payment_provider_error", url, http_status?, provider_code?}` |
+
+  `whoami` không ghi. `409` của lần `resolve` chạy chồng giờ có thêm `status`. Test: từng dòng trên, ba lần hoàn tiền cùng lúc (một `order_refunded_outside`, hai `order_resolve_rejected`), nhật ký không chứa câu lỗi hay `pass`, `whoami` không ghi.
+- **N4** (`scripts/gen-token-key.mjs`): từ chối `kid` có trong mảng `retired` ở gốc `public-keys.json`; `retired` có mà không phải mảng thì báo lỗi.
+
+  ```js
+  if (existsSync(keysFile)) {
+    const { retired = [], ...envs } = JSON.parse(readFileSync(keysFile, "utf8"));
+    if (!Array.isArray(retired)) fail("retired trong public-keys.json phải là mảng các {kid, x}.");
+    if (retired.some((k) => k?.kid === kid)) fail(`kid ${kid} đã dùng rồi bỏ (retired trong public-keys.json). Dùng số thứ tự mới.`);
+    for (const [envName, slots] of Object.entries(envs)) { /* kiểm từng ô như cũ */ }
+  }
+  ```
+
+  `test/fixtures/public-keys.test.json` có thêm `"retired": [{"kid": "stg-2026-09-1", "x": "…"}]` (khóa công khai sinh một lần, khóa riêng đã bỏ); `test/fixtures/public-keys.bad-retired.test.json` có `retired` là object. `verify-token.mjs` không đổi: Task 7 Step 6 với fixture mới vẫn in đúng 7 dòng Expected. Phụ lục A bước 3–4 và spec §10.2 đã ghi cách dùng `retired`.
+- **N7** (chỉ thêm test): checkout với `consent: "true"` và `consent: 1` trả `400`; email 255 ký tự `400`, 254 ký tự `201`; `extend` đúng giây hết hạn đặt lại `cycle_anchor` và `anchor_applied_at`, còn 1 giây thì giữ; hai `validate` chen nhau với đồng hồ khác nhau: request mở cửa sổ sau không ghi đè mốc của request mở trước. Test cuối dùng helper mới `gateDb` (`test/db.ts`): câu SQL đầu tiên khớp regex dừng ở lúc chạy cho tới khi test gọi `release()`, để dựng đúng thứ tự chen nhau. Không test nào lộ ra lỗi code.
+
+Thử đột biến, mỗi lần đều có test đỏ: C1 (`!consent`), H2 (bỏ giới hạn 254), A5 (`extend` biên `<`), L16 (bỏ `epoch_pending = 1`); bỏ kẹp ở `now` (2 test đỏ); `"malformed"` thành `null` (4); webhook sai dạng vẫn tạo cảnh báo (3); trả `invalid_signature` (3); nhận email rỗng (1); trở lại `admin:unknown` (5); `getIdentity` ném lỗi thành `500` (1); bỏ từng dòng nhật ký `order_grant_rejected` (2), `order_resolve_rejected` ở lần chạy chồng (1) và ở lần kiểm sớm (1); chép câu lỗi vào `key_check_failed` (1); ghi URL bị từ chối (1); ghi câu lỗi PayOS (1); `whoami` ghi nhật ký (1); bỏ kiểm `retired` (node, 1); bỏ kiểm `retired` là mảng (node, 1).
+
+#### `29b2602`: spec
+
+§6.8: "hiện tại" không muộn hơn lúc server xử lý (N1); webhook sai chữ ký `400 invalid_signature` kèm cảnh báo, đúng chữ ký mà sai dạng `400 invalid_request`, không cảnh báo (N2); Worker admin từ chối khi không đọc được email (N5); phạm vi nhật ký admin (N6). §10.2: mảng `retired`, công cụ tạo khóa từ chối cả các `kid` đó, bước 3 của đổi khóa chuyển khóa bị lộ vào `retired` (N4). §11: test kẹp "hiện tại" ở lúc xử lý.
+
+#### `d656733`: N3, giới hạn tần suất cho webhook
+
+Không sửa code. Task 21 có Step 9a: luật rate limiting của Cloudflare WAF cho `/v1/webhooks/`, 5 request mỗi 10 giây mỗi IP, `Block` 10 giây (gói Free), trả `429 {"error":"rate_limited"}`, kèm lệnh thử. Task 19 ghi staging trên `workers.dev` không đặt được luật WAF (luật gắn với zone), là rủi ro chấp nhận.
+
+#### Commit ghi đợt này: tài liệu (Q2)
+
+Bảng phiên bản và dòng "Công nghệ" ghi bản hiện hành; ghi chú `compatibility_date`; ghi chú dưới khối `admin.ts` của Task 16; QĐ6 và hợp đồng API (webhook `400 invalid_request`); Task 19 Step 7, Step 12; Task 22 Step 2, Step 3; Phụ lục A bước 3–4; Phụ lục B (nhật ký thất bại, `unlock` trả `404`, `403` khi thiếu email); bỏ hai ý đã lỗi thời ở "Còn lưu ý" của đợt C.
+
+#### Kiểm tra cuối
+
+```bash
+cd server && pnpm install --frozen-lockfile && pnpm check && pnpm audit
+```
+
+Expected (đo ngày 2026-10-01):
+- `tsc` sạch, `vectors:check` sạch.
+- Vitest: `Test Files  18 passed (18)`, `Tests  360 passed (360)`.
+- `node --test`: `ℹ tests 6`, `ℹ pass 6`, `ℹ fail 0`.
+- 4 lần dry-run đều `--dry-run: exiting now.`: Worker API `Total Upload: 126.53 KiB / gzip: 33.00 KiB`, Worker admin `Total Upload: 106.44 KiB / gzip: 27.20 KiB`.
+- `pnpm audit`: `No known vulnerabilities found`.
+
+**Còn lưu ý:**
+- Service token của Access không có email, nên giờ bị `403` ở Worker admin. Kế hoạch này chỉ dùng đăng nhập bằng người (`cloudflared access login`), nên không ảnh hưởng. Muốn dùng service token thì phải thêm cách ghi `common_name` vào actor.
+- Nhánh `http_status` và `provider_code` của `payos_webhook_confirm_failed` chưa có test riêng, vì `FakePayOS` chưa giả lập được lỗi HTTP của `confirm-webhook`; test chỉ phủ lỗi mạng.
+- `verify-token.mjs <env>` đọc `public-keys.json[env]`; không ai gọi với `env` là `retired`, nhưng script không chặn tên này.
