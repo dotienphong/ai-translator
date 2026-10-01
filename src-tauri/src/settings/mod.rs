@@ -6,6 +6,8 @@
 //! Kế hoạch sau thêm khóa thì thêm trường ở đây, thêm luật vào `validate`, và thêm một bước migrate
 //! nếu khóa cũ đổi tên hay đổi nghĩa (khóa mới hoàn toàn thì chỉ cần giá trị mặc định).
 
+pub mod migrate;
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
