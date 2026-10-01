@@ -20,3 +20,15 @@
 
 # Python
 __pycache__/
+
+# Bí mật (spec §10.2, §12): không commit file chứa khóa hay biến môi trường thật
+.dev.vars*
+.env*
+*.pem
+*.p12
+*.pfx
+*.key
+
+# License server
+/server/node_modules/
+/server/.wrangler/
