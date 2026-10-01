@@ -1,6 +1,13 @@
 #!/usr/bin/env node
-// Kiểm chữ ký một token v1 bằng khóa công khai của môi trường trong server/keys/public-keys.json
-// (ô a hoặc b), như app sẽ kiểm (kế hoạch 06). Viết độc lập với src/token.ts. Đọc từ stdin một trong hai dạng:
+// Kiểm chữ ký một token v1 bằng khóa công khai của môi trường trong server/keys/public-keys.json (ô a hoặc b).
+// Viết độc lập với src/token.ts. Script CHỈ kiểm:
+// - định dạng: ba phần "v1.<payload>.<chữ ký>", base64url dạng chuẩn, chữ ký 64 byte, payload là object JSON có
+//   `kid` là chuỗi;
+// - `kid`: có trong public-keys.json của môi trường, và khớp `kid` Worker báo (dạng JSON bên dưới);
+// - chữ ký Ed25519, và ô khóa (dạng JSON bên dưới).
+// Script KHÔNG kiểm schema của claims (kiểu và giá trị các trường, `plan`, hạn mức, UTF-8 chặt), máy, hay hạn
+// (`expires_at`, `refresh_before`): "OK" chỉ có nghĩa token do đúng khóa ký ra. Kiểm đầy đủ như app (kế hoạch 06)
+// là verifyToken của src/token.ts, theo test/vectors/token-v1.json. Đọc từ stdin một trong hai dạng:
 // - token thô (ví dụ token thật từ activate):
 //     printf '%s' "$TOKEN" | node scripts/verify-token.mjs staging
 // - JSON {"slot","kid","token"} của POST /admin/keys/test-sign (QĐ31): kiểm thêm `kid` Worker báo khớp `kid` trong

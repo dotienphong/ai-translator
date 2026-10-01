@@ -6,6 +6,7 @@
 //   chỉ còn ở đó.
 // - Khóa công khai ra stderr, để ghi vào server/keys/public-keys.json (không phải bí mật).
 // - kid phải là duy nhất: script từ chối kid đã có trong public-keys.json (--keys để chỉ file khác).
+//   File mặc định chưa có thì bỏ qua (trước lần tạo khóa đầu tiên); file chỉ bằng --keys mà không có thì báo lỗi.
 //   Quy ước: <env>-<năm>-<tháng>-<số thứ tự>; mỗi khóa mới, kể cả khóa dự phòng, lấy số thứ tự kế tiếp.
 //
 //   node scripts/gen-token-key.mjs stg-2026-10-1 | pnpm exec wrangler secret put TOKEN_SIGNING_KEY_A --env staging
@@ -19,9 +20,12 @@ const fail = (message) => {
 };
 const [kid, ...rest] = process.argv.slice(2);
 let keysFile = new URL("../keys/public-keys.json", import.meta.url);
+let keysGiven = false;
 for (let i = 0; i < rest.length; i += 2) {
-  if (rest[i] === "--keys" && rest[i + 1]) keysFile = rest[i + 1];
-  else fail("Tham số sau kid chỉ có thể là --keys <file>.");
+  if (rest[i] === "--keys" && rest[i + 1]) {
+    keysFile = rest[i + 1];
+    keysGiven = true;
+  } else fail("Tham số sau kid chỉ có thể là --keys <file>.");
 }
 if (!kid || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(kid) || kid.startsWith("test-")) {
   fail("Cần kid gồm chữ thường, số và '-', tối đa 32 ký tự, không bắt đầu bằng 'test-'. Ví dụ: stg-2026-10-1");
@@ -36,6 +40,8 @@ if (existsSync(keysFile)) {
       if (k?.kid === kid) fail(`kid ${kid} đã có trong public-keys.json (${envName}.${slot}). Dùng số thứ tự mới.`);
     }
   }
+} else if (keysGiven) {
+  fail(`--keys: không có file khóa công khai ${keysFile}.`);
 }
 const { privateKey } = await webcrypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
 const jwk = await webcrypto.subtle.exportKey("jwk", privateKey);

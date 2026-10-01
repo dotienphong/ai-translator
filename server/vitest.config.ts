@@ -1,6 +1,6 @@
 import path from "node:path";
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 // Secret giả cho test. Gán cả vào process.env của tiến trình vitest để plugin không cảnh báo thiếu secret;
 // binding bên dưới ghi đè mọi secret thật có thể có trong .dev.vars hay biến môi trường của máy.
@@ -24,6 +24,7 @@ export default defineConfig(async () => {
         miniflare: { bindings: { TEST_MIGRATIONS: migrations, ...FAKE_SECRETS } },
       }),
     ],
-    test: { setupFiles: ["./test/apply-migrations.ts"] },
+    // test/node/: test script Node (scripts/*.mjs), chạy bằng `pnpm test:scripts`, không chạy trong workerd.
+    test: { setupFiles: ["./test/apply-migrations.ts"], exclude: [...configDefaults.exclude, "test/node/**"] },
   };
 });

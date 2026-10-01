@@ -30,7 +30,11 @@ describe("token Ed25519 theo vector dùng chung (Đ9)", () => {
     const jwk = JSON.parse(await testSigningJwk("test-1")) as Record<string, string>;
     await expect(importSigningKey(JSON.stringify({ ...jwk, kid: undefined }))).rejects.toThrow(/kid/);
     await expect(importSigningKey(JSON.stringify({ ...jwk, kid: "Có dấu" }))).rejects.toThrow(/kid/);
-    await expect(importSigningKey(JSON.stringify({ ...jwk, crv: "X25519" }))).rejects.toThrow(/Ed25519/);
+    // Khớp đúng cả câu: lỗi của Web Crypto khi import cũng có chữ "Ed25519", nên /Ed25519/ không phân biệt được
+    // importSigningKey tự từ chối hay để importKey ném lỗi.
+    const notEd25519 = /^khóa ký không phải khóa riêng Ed25519$/;
+    await expect(importSigningKey(JSON.stringify({ ...jwk, crv: "X25519" }))).rejects.toThrow(notEd25519);
+    await expect(importSigningKey(JSON.stringify({ ...jwk, kty: "EC" }))).rejects.toThrow(notEd25519);
     await expect(importSigningKey("không phải json")).rejects.toThrow(/JSON/);
   });
 

@@ -17,12 +17,13 @@ async function testKey(kid, label) {
   return { kid, seed_b64url: b64url(seed), public_b64url: jwk.x, privateKey, jwk };
 }
 
-async function sign(key, claims) {
-  const payload = b64url(JSON.stringify(claims));
-  const input = `v1.${payload}`;
+// Ký đúng các byte payload cho trước (dùng cho payload không dựng được bằng JSON.stringify).
+async function signBytes(key, payloadBytes) {
+  const input = `v1.${b64url(payloadBytes)}`;
   const sig = await subtle.sign({ name: "Ed25519" }, key.privateKey, Buffer.from(input));
   return `${input}.${b64url(sig)}`;
 }
+const sign = (key, claims) => signBytes(key, Buffer.from(JSON.stringify(claims)));
 
 const k1 = await testKey("test-1", "meeting-translator token test key 1");
 const k2 = await testKey("test-2", "meeting-translator token test key 2");
@@ -60,6 +61,12 @@ const [validHead, validPayload] = valid.split(".");
 const lastSig = validSig.at(-1);
 // Chữ ký 64 byte là 86 ký tự; ký tự cuối chỉ mang 2 bit dữ liệu, 4 bit còn lại phải bằng 0.
 const trailingBitsSig = validSig.slice(0, -1) + B64URL[B64URL.indexOf(lastSig) ^ 1];
+// Số lớn hơn 2^53 (2^53 + 1) viết thẳng vào JSON: JS đọc thành 2^53, không còn là số nguyên an toàn.
+const baseJson = JSON.stringify(base);
+const tooBigJson = baseJson.replace(`"refresh_before":${base.refresh_before}`, '"refresh_before":9007199254740993');
+// Payload có chuỗi UTF-8 hỏng (0xC3 rồi 0x28 không phải byte nối tiếp) trong license_id, chữ ký vẫn đúng.
+const [utf8Head, utf8Tail] = JSON.stringify({ ...base, license_id: "@" }).split('"@"');
+const invalidUtf8 = Buffer.concat([Buffer.from(utf8Head), Buffer.from([0x22, 0xc3, 0x28, 0x22]), Buffer.from(utf8Tail)]);
 
 const tokens = [
   { name: "valid", token: valid, now: issuedAt + 3600, device_id_hash: device, expected: "ok", claims: base },
@@ -188,7 +195,52 @@ const tokens = [
     device_id_hash: device,
     expected: "malformed",
   },
+  // Token có hai lỗi: kết quả là lỗi đứng trước trong checks_order.
+  {
+    name: "order_bad_signature_before_wrong_device",
+    token: tampered,
+    now: issuedAt + 3600,
+    device_id_hash: otherDevice,
+    expected: "bad_signature",
+  },
+  {
+    name: "order_wrong_device_before_license_expired",
+    token: await sign(k1, shortLicense),
+    now: shortLicense.expires_at,
+    device_id_hash: otherDevice,
+    expected: "wrong_device",
+  },
+  {
+    name: "order_license_expired_before_refresh_expired",
+    token: valid,
+    now: base.expires_at,
+    device_id_hash: device,
+    expected: "license_expired",
+  },
+  // Dữ liệu sai dạng, chữ ký đúng: số không nguyên, số vượt 2^53 - 1, UTF-8 hỏng.
+  {
+    name: "timestamp_not_integer",
+    token: await sign(k1, { ...base, expires_at: 1.5 }),
+    now: issuedAt + 3600,
+    device_id_hash: device,
+    expected: "malformed",
+  },
+  {
+    name: "number_above_2_pow_53",
+    token: await signBytes(k1, Buffer.from(tooBigJson)),
+    now: issuedAt + 3600,
+    device_id_hash: device,
+    expected: "malformed",
+  },
+  {
+    name: "payload_invalid_utf8",
+    token: await signBytes(k1, invalidUtf8),
+    now: issuedAt + 3600,
+    device_id_hash: device,
+    expected: "malformed",
+  },
 ];
+if (!tooBigJson.includes("9007199254740993")) throw new Error("không thay được refresh_before");
 
 // Ký tự kiểm tra Luhn mod 32, viết lại độc lập với src/license-key.ts.
 const KEY_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -220,9 +272,9 @@ const out = {
   format:
     "v1.<base64url(JSON claims)>.<base64url(Ed25519 signature over ASCII 'v1.' + payload segment)>; base64url không padding",
   checks_order: ["malformed", "unknown_kid", "bad_signature", "wrong_device", "license_expired", "refresh_expired"],
-  note: "Khóa test-* chỉ dùng cho test. Hết hạn khi now >= expires_at hoặc now >= refresh_before (giây Unix).",
+  note: "Khóa test-* chỉ dùng cho test. Hết hạn khi now >= expires_at hoặc now >= refresh_before (giây Unix). Token có nhiều lỗi thì trả lỗi đứng trước trong checks_order.",
   claims:
-    "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: pro | pro_x2 | pro_x5; quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Thiếu trường hay sai kiểu là malformed.",
+    "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: pro | pro_x2 | pro_x5; quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Mọi số nguyên phải là số nguyên an toàn (|n| <= 2^53 - 1): 1.5 hay 2^53 + 1 là malformed. Payload phải là UTF-8 hợp lệ. Thiếu trường hay sai kiểu là malformed.",
   test_keys: [k1, k2].map(({ kid, seed_b64url, public_b64url }) => ({ kid, seed_b64url, public_b64url })),
   public_keys: { "test-1": k1.public_b64url, "test-2": k2.public_b64url },
   tokens,
