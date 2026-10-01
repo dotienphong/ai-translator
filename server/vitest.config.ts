@@ -1,4 +1,5 @@
-import { cloudflareTest } from "@cloudflare/vitest-plugin";
+import path from "node:path";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
 // Secret giả cho test. Gán cả vào process.env của tiến trình vitest để plugin không cảnh báo thiếu secret;
@@ -14,11 +15,15 @@ const FAKE_SECRETS = {
 };
 Object.assign(process.env, FAKE_SECRETS);
 
-export default defineConfig({
-  plugins: [
-    cloudflareTest({
-      wrangler: { configPath: "./wrangler.jsonc" },
-      miniflare: { bindings: FAKE_SECRETS },
-    }),
-  ],
+export default defineConfig(async () => {
+  const migrations = await readD1Migrations(path.join(import.meta.dirname, "migrations"));
+  return {
+    plugins: [
+      cloudflareTest({
+        wrangler: { configPath: "./wrangler.jsonc" },
+        miniflare: { bindings: { TEST_MIGRATIONS: migrations, ...FAKE_SECRETS } },
+      }),
+    ],
+    test: { setupFiles: ["./test/apply-migrations.ts"] },
+  };
 });
