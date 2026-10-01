@@ -566,7 +566,8 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Thuê bao tự gia hạn của cổng quốc tế: mỗi webhook gia hạn cộng thêm một kỳ 30 ngày; khách hủy thì ngừng cộng.
 
 **Gói và bảng giá:**
-- Bốn gói ở §2. Server giữ bảng gói trả phí trong biến cấu hình `PLANS` của từng môi trường: mã gói, tên hiển thị, hạn mức mỗi chu kỳ (`quota_minutes_per_cycle`, `null` là không giới hạn), số ngày mỗi đơn (30), giá theo từng loại tiền. Đổi giá hay hạn mức không cần phát hành lại app.
+- Bốn gói ở §2. Server giữ bảng gói trả phí trong biến cấu hình `PLANS` của từng môi trường: với mỗi mã gói có hạn mức mỗi chu kỳ (`quota_minutes_per_cycle`, `null` là không giới hạn), số ngày mỗi đơn (30), giá theo từng loại tiền. Đổi giá hay hạn mức không cần phát hành lại app.
+- Mã gói và tên hiển thị (`Professional`, `Professional X2`, `Professional X5`) là hợp đồng với app, nên nằm trong code server, không nằm trong `PLANS` (kế hoạch 05, QĐ17). `GET /v1/plans` trả cả hai cùng bảng gói.
 - **Đổi hạn mức trong `PLANS`** có tác dụng ngay với mọi license đang dùng gói đó, ở lần `validate` sau, vì token lấy hạn mức từ bảng hiện hành. Vì vậy người vận hành **không được hạ hạn mức của một gói đang bán**: khách đã trả tiền cho hạn mức cũ. Muốn bán hạn mức thấp hơn thì thêm gói mới.
 - Môi trường chưa cấu hình `PLANS` thì `GET /v1/plans`, checkout, `activate` và `validate` đều trả `503 pricing_not_configured`, để không bao giờ bán sai giá hay cấp token thiếu hạn mức. Staging dùng giá thử nhỏ (kế hoạch 05).
 - Hạn mức Free (10 phút mỗi ngày) là hằng số phía app, vì Free không có token.
@@ -1076,7 +1077,8 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 
 **Chặn IP thất bại nhiều, và CGNAT:**
 - Thất bại đếm theo IP, chung mọi endpoint: key sai định dạng, key không tồn tại, activation lạ. Chạm 60 lần trong 1 giờ thì IP đó bị chặn tới hết giờ, và server tạo cảnh báo cho người vận hành.
-- Nhiều người dùng thật có thể chung một IP qua CGNAT. Vì vậy khi IP đang bị chặn, server chỉ cho qua `validate` và `deactivate` có key hợp lệ **kèm `activation_id` đang hoạt động và khớp**; mọi request khác trả `429`, kể cả `activate` và checkout gia hạn.
+- Nhiều người dùng thật có thể chung một IP qua CGNAT. Vì vậy khi IP đang bị chặn, server chỉ cho qua `validate` và `deactivate` có key hợp lệ **kèm `activation_id` đang hoạt động và khớp**; mọi request khác tới `activate`, `validate`, `deactivate` và checkout gia hạn hay đổi gói (có `license_key`) trả `429`.
+- Checkout mới (không kèm `license_key`) không bị chặn theo IP thất bại, vì không có key nào để dò; nó chỉ chịu giới hạn `checkout` ≤ 10 lần/giờ/IP ở bảng trên.
 - Không cho qua mọi key hợp lệ, vì khi đó kẻ dò vẫn phân biệt được key thật (`200`) với key giả (`429`). Đoán trúng một `activation_id` (UUID v4, 122 bit ngẫu nhiên) là không khả thi.
 - Vì vậy app luôn gửi `activation_id` khi `validate`, và không coi `429` ở `activate` là key sai (§9).
 
