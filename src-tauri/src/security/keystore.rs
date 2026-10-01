@@ -187,6 +187,16 @@ mod tests {
     }
 
     #[test]
+    fn accepts_names_at_the_bounds() {
+        let ks = Keystore::mock(SERVICE);
+        let longest = "a".repeat(MAX_NAME_LEN);
+        for name in [longest.as_str(), "license_state", "a.b-c_d9"] {
+            ks.set(name, b"x").unwrap_or_else(|e| panic!("{name:?}: {e}"));
+            assert_eq!(ks.get(name).unwrap(), Some(b"x".to_vec()), "{name:?}");
+        }
+    }
+
+    #[test]
     fn platform_errors_are_reported() {
         let ks = Keystore::mock(SERVICE);
         let entry = ks.entry("db-key").unwrap();
@@ -215,6 +225,12 @@ mod tests {
         let name = format!("test-{}", std::process::id());
         ks.set(&name, b"gia-tri-thu").unwrap();
         assert_eq!(ks.get(&name).unwrap(), Some(b"gia-tri-thu".to_vec()));
+        // Windows: mục chỉ nằm trên máy này (`CRED_PERSIST_LOCAL_MACHINE`), không đi theo hồ sơ roaming.
+        #[cfg(windows)]
+        assert_eq!(
+            ks.entry(&name).unwrap().get_attributes().unwrap()["persistence"],
+            "Local"
+        );
         assert!(ks.delete(&name).unwrap());
         assert_eq!(ks.get(&name).unwrap(), None);
     }

@@ -283,6 +283,62 @@ mod tests {
         );
     }
 
+    fn side() -> Screen {
+        Screen {
+            key: screen_key(Some("LG HDR FHD"), 1920, 1080),
+            x: -1920,
+            y: 0,
+            width: 1920,
+            height: 1040,
+            scale: 1.0,
+        }
+    }
+
+    fn rect(x: f64, y: f64) -> OverlayRect {
+        OverlayRect {
+            x,
+            y,
+            width: 800.0,
+            height: 120.0,
+            last_used: 0,
+        }
+    }
+
+    #[test]
+    fn saved_screen_is_found_anywhere_in_the_list() {
+        // Bước 2: màn hình có vị trí đã nhớ không đứng đầu danh sách và không phải màn hình chính.
+        let positions = BTreeMap::from([(side().key, rect(100.0, 200.0))]);
+        let screens = [laptop(), external(), side()];
+        let p = place(&positions, None, &screens, Some(&laptop().key)).unwrap();
+        assert_eq!(
+            p,
+            Placement {
+                screen_key: side().key,
+                x: -1820,
+                y: 200,
+                width: 800,
+                height: 120
+            }
+        );
+    }
+
+    #[test]
+    fn last_screen_without_a_saved_position_is_skipped() {
+        // Màn hình của lần đặt gần nhất vẫn cắm nhưng chưa nhớ vị trí: dùng màn hình có vị trí đã nhớ.
+        let positions = BTreeMap::from([(external().key, rect(100.0, 50.0))]);
+        let screens = [laptop(), external()];
+        let p = place(&positions, Some(&laptop().key), &screens, Some(&laptop().key)).unwrap();
+        assert_eq!((p.screen_key.as_str(), p.x, p.y), (external().key.as_str(), 3124, 50));
+    }
+
+    #[test]
+    fn position_below_the_bottom_edge_is_pulled_up() {
+        let positions = BTreeMap::from([(external().key, rect(100.0, 5000.0))]);
+        let p = place(&positions, Some(&external().key), &[external()], None).unwrap();
+        // Vùng làm việc cao 1400: y = 1400 − 120.
+        assert_eq!((p.x, p.y, p.width, p.height), (3124, 1280, 800, 120));
+    }
+
     #[test]
     fn no_screen_means_no_placement() {
         assert_eq!(place(&BTreeMap::new(), None, &[], None), None);
