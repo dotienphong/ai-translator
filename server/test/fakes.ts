@@ -162,11 +162,13 @@ export class FakeResend {
   down = false;
   /** Resend trả mã này, ví dụ 422 (lỗi vĩnh viễn) hay 429 (lỗi tạm). */
   failStatus: number | null = null;
+  /** Trường `name` trong body lỗi, ví dụ "invalid_idempotent_request" với 409. */
+  failName = "error";
   attempts = 0;
 
   readonly fetch = async (_url: string, init: RequestInit = {}): Promise<Response> => {
     this.attempts++;
-    if (this.failStatus !== null) return json({ statusCode: this.failStatus, message: "lỗi giả", name: "error" }, this.failStatus);
+    if (this.failStatus !== null) return json({ statusCode: this.failStatus, message: "lỗi giả", name: this.failName }, this.failStatus);
     if (this.down) return json({ statusCode: 500, message: "down", name: "internal_server_error" }, 500);
     const body = JSON.parse(init.body as string) as { to: string[]; subject: string; text: string };
     const headers = init.headers as Record<string, string>;

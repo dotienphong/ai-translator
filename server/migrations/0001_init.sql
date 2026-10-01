@@ -41,7 +41,7 @@ CREATE TABLE orders (
   last_checked_at INTEGER,
   email_sent_at INTEGER,
   email_attempts INTEGER NOT NULL DEFAULT 0,   -- số lần đã thử gửi thư chứa key
-  email_retry_at INTEGER,                      -- lần gửi lại kế tiếp sau lỗi tạm (401, 403, 409, 429, 5xx, mạng)
+  email_retry_at INTEGER,                      -- lần gửi lại kế tiếp sau lỗi tạm (401, 403, 409 concurrent_…, 429, 5xx, mạng)
   email_gave_up_at INTEGER                     -- thôi gửi sau lỗi vĩnh viễn (400, 422)
 );
 CREATE INDEX orders_pending ON orders (status, created_at);

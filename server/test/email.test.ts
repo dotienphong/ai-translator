@@ -38,6 +38,23 @@ describe("Resend", () => {
     expect((err as EmailProviderError).status).toBe(403);
   });
 
+  it("409 của Resend: đọc mã lỗi trong body; invalid_idempotent_request là thư đã gửi, concurrent_idempotent_requests là lỗi tạm", async () => {
+    const reply = (name: string) =>
+      new ResendEmailProvider({ apiKey: "re_test", from: "a@mt.test" }, async () =>
+        new Response(JSON.stringify({ statusCode: 409, message: "buyer@mt.test …", name }), { status: 409 }),
+      );
+    const sent = (await reply("invalid_idempotent_request").send({ to: "buyer@mt.test", subject: "S", text: "T" }).catch((e: unknown) => e)) as EmailProviderError;
+    expect(String(sent)).toBe("EmailProviderError: Resend trả HTTP 409 (invalid_idempotent_request)");
+    expect([sent.code, sent.alreadySent, sent.permanent]).toEqual(["invalid_idempotent_request", true, false]);
+    const busy = (await reply("concurrent_idempotent_requests").send({ to: "buyer@mt.test", subject: "S", text: "T" }).catch((e: unknown) => e)) as EmailProviderError;
+    expect([busy.code, busy.alreadySent, busy.permanent]).toEqual(["concurrent_idempotent_requests", false, false]);
+    // Mã lạ (có thể lặp lại dữ liệu) không được đưa vào lỗi.
+    const odd = (await reply("buyer@mt.test").send({ to: "buyer@mt.test", subject: "S", text: "T" }).catch((e: unknown) => e)) as EmailProviderError;
+    expect([String(odd), odd.code, odd.alreadySent]).toEqual(["EmailProviderError: Resend trả HTTP 409", undefined, false]);
+    // Cùng mã nhưng không phải 409 thì không coi là đã gửi.
+    expect(new EmailProviderError("x", 422, "invalid_idempotent_request").alreadySent).toBe(false);
+  });
+
   it("chỉ 400 và 422 là lỗi vĩnh viễn; 401, 403, 409, 429, 5xx và lỗi mạng là lỗi tạm", () => {
     for (const status of [400, 422]) expect(new EmailProviderError("x", status).permanent).toBe(true);
     for (const status of [401, 403, 409, 429, 500, 503]) expect(new EmailProviderError("x", status).permanent).toBe(false);

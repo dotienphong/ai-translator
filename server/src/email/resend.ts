@@ -9,6 +9,17 @@ export interface ResendConfig {
   from: string;
 }
 
+/** Trường `name` của body lỗi Resend (ví dụ "invalid_idempotent_request"); chỉ nhận chữ thường và gạch dưới. */
+async function errorCode(res: Response): Promise<string | undefined> {
+  try {
+    const body: unknown = await res.json();
+    const name = typeof body === "object" && body !== null ? (body as { name?: unknown }).name : undefined;
+    return typeof name === "string" && /^[a-z_]{1,64}$/.test(name) ? name : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export class ResendEmailProvider implements EmailProvider {
   constructor(
     private readonly cfg: ResendConfig,
@@ -29,8 +40,9 @@ export class ResendEmailProvider implements EmailProvider {
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
-      // Không đưa body vào lỗi: body có thể lặp lại địa chỉ người nhận.
-      throw new EmailProviderError(`Resend trả HTTP ${res.status}`, res.status);
+      // Không đưa body vào lỗi: body có thể lặp lại địa chỉ người nhận. Chỉ lấy mã lỗi (`name`, dạng snake_case).
+      const code = await errorCode(res);
+      throw new EmailProviderError(`Resend trả HTTP ${res.status}${code ? ` (${code})` : ""}`, res.status, code);
     }
   }
 }

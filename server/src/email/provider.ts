@@ -19,6 +19,8 @@ export class EmailProviderError extends Error {
     message: string,
     /** Mã HTTP của dịch vụ gửi thư; không có nếu lỗi mạng. */
     readonly status?: number,
+    /** Mã lỗi của dịch vụ (trường `name` trong body lỗi của Resend), nếu đọc được. */
+    readonly code?: string,
   ) {
     super(message);
   }
@@ -26,10 +28,18 @@ export class EmailProviderError extends Error {
   /**
    * Chỉ 400 và 422 là lỗi vĩnh viễn (thư sai dạng, địa chỉ nhận không hợp lệ): gửi lại cũng không được.
    * 401, 403 (API key bị khóa, tên miền chưa xác thực: sửa cấu hình xong thì gửi được), 409
-   * (concurrent_idempotent_requests, Resend ghi "Retry later"), 429, 5xx và lỗi mạng là lỗi tạm.
+   * concurrent_idempotent_requests (Resend ghi "Retry later"), 429, 5xx và lỗi mạng là lỗi tạm.
    */
   get permanent(): boolean {
     return this.status === 400 || this.status === 422;
+  }
+
+  /**
+   * 409 invalid_idempotent_request: idempotency key đã dùng trong 24 giờ qua với nội dung khác, tức là một lần gửi
+   * trước đã được nhận (thư gửi lại mang gói và hạn mới hơn nên nội dung khác). Coi là thư đã gửi, thôi gửi lại.
+   */
+  get alreadySent(): boolean {
+    return this.status === 409 && this.code === "invalid_idempotent_request";
   }
 }
 

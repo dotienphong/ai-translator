@@ -187,11 +187,15 @@ describe("đối soát mỗi 5 phút", () => {
     expect(row).toEqual({ email_attempts: 4, email_retry_at: T0 + 4800 + 6 * 3600 });
   });
 
-  it.each([403, 409])("email lỗi %i (cấu hình sai, hay hai lượt gửi chồng nhau) là lỗi tạm: được gửi lại", async (status) => {
+  it.each([
+    [403, "validation_error"],
+    [409, "concurrent_idempotent_requests"],
+  ])("email lỗi %i %s (cấu hình sai, hay hai lượt gửi chồng nhau) là lỗi tạm: được gửi lại", async (status, name) => {
     const w = makeWorld();
     const orderCode = await newOrder(w);
     w.payos.pay(orderCode);
     w.resend.failStatus = status;
+    w.resend.failName = name;
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
     const row = await env.DB.prepare("SELECT email_attempts, email_gave_up_at, email_retry_at FROM orders").first();
     expect(row).toEqual({ email_attempts: 1, email_gave_up_at: null, email_retry_at: T0 + 300 });
@@ -200,6 +204,27 @@ describe("đối soát mỗi 5 phút", () => {
     expect((await reconcile(w.env, w.deps)).emails_retried).toBe(1);
     expect(w.resend.sent).toHaveLength(1);
     expect(w.resend.sent[0]!.idempotencyKey).toBe(`dev-order-${orderCode}`);
+  });
+
+  it("Resend trả 409 invalid_idempotent_request (khóa đã dùng với nội dung khác): coi là thư đã gửi, thôi gửi lại", async () => {
+    const w = makeWorld();
+    const orderCode = await newOrder(w);
+    w.payos.pay(orderCode);
+    w.resend.down = true;
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    // Lần đầu Resend đã nhận thư nhưng trả lỗi; lần gửi lại mang hạn mới của license nên body khác.
+    w.resend.down = false;
+    w.resend.failStatus = 409;
+    w.resend.failName = "invalid_idempotent_request";
+    w.clock.now = T0 + 300;
+    expect((await reconcile(w.env, w.deps)).emails_retried).toBe(1);
+    const row = await env.DB.prepare("SELECT email_attempts, email_sent_at, email_retry_at, email_gave_up_at FROM orders").first();
+    expect(row).toEqual({ email_attempts: 2, email_sent_at: T0 + 300, email_retry_at: null, email_gave_up_at: null });
+    w.clock.now = T0 + 6 * 3600;
+    expect((await reconcile(w.env, w.deps)).emails_retried).toBe(0);
+    expect(w.resend.attempts).toBe(2);
+    const alert = await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'email_failed'").first();
+    expect(alert).toEqual({ n: 1 });
   });
 
   it("email lỗi vĩnh viễn (422): thôi gửi lại, cảnh báo một lần", async () => {

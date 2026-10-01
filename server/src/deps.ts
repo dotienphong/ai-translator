@@ -99,7 +99,8 @@ export interface MailResult {
 }
 
 /**
- * Gửi email chứa key. Lỗi thì ghi log và (nếu `alert`) tạo cảnh báo email_failed; key vẫn lấy được qua
+ * Gửi email chứa key. Resend báo idempotency key đã dùng (409 invalid_idempotent_request) thì coi là đã gửi.
+ * Lỗi thì ghi log và (nếu `alert`) tạo cảnh báo email_failed; key vẫn lấy được qua
  * GET /v1/orders, recover hay admin, và cron gửi lại thư mua hàng gặp lỗi tạm (orders.ts, retryUnsentEmails).
  */
 export async function sendLicenseMail(
@@ -116,6 +117,10 @@ export async function sendLicenseMail(
     await deps.email.send(key ? { to, subject, text, idempotencyKey: key } : { to, subject, text });
     return { ok: true, permanent: false };
   } catch (err) {
+    if (err instanceof EmailProviderError && err.alreadySent) {
+      console.warn(JSON.stringify({ event: "email_already_sent", kind, to: maskEmail(to) }));
+      return { ok: true, permanent: false };
+    }
     const permanent = err instanceof EmailProviderError && err.permanent;
     console.error(JSON.stringify({ event: "email_failed", kind, to: maskEmail(to), permanent, error: String(err) }));
     if (opts.alert ?? true) await raiseAlert(db, "email_failed", deps.now());

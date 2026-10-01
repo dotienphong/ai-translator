@@ -236,7 +236,8 @@ export function emailRetryDelay(attempts: number): number {
 
 /**
  * Gửi email sau khi cấp; idempotency key theo đơn để Resend không gửi hai lần (kể cả khi cron gửi lại).
- * Lỗi tạm (401, 403, 409, 429, 5xx, mạng) thì hẹn lần gửi lại; lỗi vĩnh viễn (400, 422) thì thôi.
+ * Lỗi tạm (401, 403, 409 concurrent_idempotent_requests, 429, 5xx, mạng) thì hẹn lần gửi lại; lỗi vĩnh viễn (400, 422)
+ * thì thôi; 409 invalid_idempotent_request (lần gửi trước đã được nhận) thì coi là đã gửi.
  * Cảnh báo email_failed chỉ tạo ở lần lỗi đầu của mỗi đơn.
  */
 export async function mailGranted(
