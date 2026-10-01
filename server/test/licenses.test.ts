@@ -631,3 +631,75 @@ describe("deactivate", () => {
     expect(failures).toEqual({ n: 1 });
   });
 });
+
+// Review cuối, Q1: mọi test khác chỉ có một license, nên lỗi bỏ điều kiện license_id trong câu SQL không lộ ra.
+describe("hai khách: không đụng license, máy hay bộ đếm của khách khác", () => {
+  const failures = () => env.DB.prepare("SELECT SUM(count) AS n FROM rate_limits WHERE bucket LIKE 'failure_ip:%'").first();
+  const rowsOf = (licenseId: string) =>
+    env.DB.prepare("SELECT id, device_id_hash, device_label, deactivated_at, last_validated_at FROM activations WHERE license_id = ? ORDER BY id")
+      .bind(licenseId)
+      .all()
+      .then((r) => r.results);
+
+  it("B có 2 máy đang kích hoạt: A vẫn kích hoạt được 2 máy; máy thứ 3 của A bị 409 chỉ liệt kê máy của A", async () => {
+    const { w, activate } = await setup();
+    const b = await w.customerB();
+    const a1 = await activate(1);
+    const a2 = await activate(2);
+    expect([a1.status, a2.status]).toEqual([200, 200]);
+    const third = await activate(3);
+    expect(third).toMatchObject({ status: 409, body: { error: "device_limit" } });
+    const listed = (third.body.activations as { activation_id: string; device_label: string }[]).map((a) => [a.activation_id, a.device_label]);
+    expect(listed).toEqual([
+      [a1.body.activation_id, "Máy 1"],
+      [a2.body.activation_id, "Máy 2"],
+    ]);
+    for (const act of [...b.active, ...b.deactivated]) expect(JSON.stringify(third.body)).not.toContain(act.id);
+  });
+
+  it("B có 4 lần tự gỡ trong 30 ngày: A kích hoạt máy mới không bị khóa", async () => {
+    const { w, activate } = await setup();
+    const b = await w.customerB();
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE license_id = ? AND by = 'user'").bind(b.licenseId).first()).toEqual({ n: 4 });
+    expect((await activate(1)).status).toBe(200);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses WHERE id <> ?").bind(b.licenseId).first()).toEqual({ locked_at: null });
+  });
+
+  it("A kích hoạt trên máy mà B đang dùng hay đã gỡ: tạo activation mới của A, dòng của B giữ nguyên", async () => {
+    const { w, licenseKey } = await setup();
+    const b = await w.customerB();
+    const before = await rowsOf(b.licenseId);
+    const ids = new Set([...b.active, ...b.deactivated].map((a) => a.id));
+    for (const hash of [b.active[0]!.deviceIdHash, b.deactivated[0]!.deviceIdHash]) {
+      const res = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: hash, device_label: "Máy của A" });
+      expect(res.status).toBe(200);
+      expect(ids.has(res.body.activation_id as string)).toBe(false);
+      const claims = await verifyToken(res.body.token as string, vectors.public_keys, { now: T0, deviceIdHash: hash });
+      expect(claims).toMatchObject({ ok: true, claims: { activation_id: res.body.activation_id } });
+    }
+    expect(await rowsOf(b.licenseId)).toEqual(before);
+    const lic = await env.DB.prepare("SELECT id FROM licenses WHERE id <> ?").bind(b.licenseId).first<{ id: string }>();
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM activations WHERE license_id = ?").bind(lic!.id).first()).toEqual({ n: 2 });
+  });
+
+  it("validate và deactivate key A với activation đang hoạt động của B: 404, mỗi lần tính một thất bại, máy của B giữ nguyên", async () => {
+    const { w, licenseKey } = await setup();
+    const b = await w.customerB();
+    const before = await rowsOf(b.licenseId);
+    w.clock.now = T0 + 60;
+    const body = { key: licenseKey, activation_id: b.active[0]!.id };
+    expect(await w.call("POST", "/v1/licenses/validate", body)).toMatchObject({ status: 404, body: { error: "activation_not_found" } });
+    expect(await failures()).toEqual({ n: 1 });
+    expect(await w.call("POST", "/v1/licenses/deactivate", body)).toMatchObject({ status: 404, body: { error: "activation_not_found" } });
+    expect(await failures()).toEqual({ n: 2 });
+    expect(await rowsOf(b.licenseId)).toEqual(before);
+  });
+
+  it("validate key A với activation đã gỡ của B: 404 và vẫn tính là thất bại (chỉ activation đã gỡ của chính key A mới không tính)", async () => {
+    const { w, licenseKey } = await setup();
+    const b = await w.customerB();
+    const res = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: b.deactivated[0]!.id });
+    expect(res).toMatchObject({ status: 404, body: { error: "activation_not_found" } });
+    expect(await failures()).toEqual({ n: 1 });
+  });
+});

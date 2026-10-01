@@ -68,3 +68,17 @@ describe("POST /v1/licenses/recover", () => {
     expect(res).toMatchObject({ status: 400, body: { error: "invalid_request", field: "email" } });
   });
 });
+
+describe("recover với hai khách (review cuối, Q1)", () => {
+  it("email của A chỉ nhận key của A: đúng một thư, không có key của B", async () => {
+    const w = makeWorld();
+    const a = await w.buy({ email: "buyer@example.com" });
+    const b = await w.customerB();
+    w.resend.sent.length = 0;
+    expect((await w.call("POST", "/v1/licenses/recover", { email: "buyer@example.com" })).status).toBe(200);
+    expect(w.resend.sent).toHaveLength(1);
+    expect(w.resend.sent[0]!.to).toEqual(["buyer@example.com"]);
+    expect(w.resend.sent[0]!.text).toContain(a.licenseKey);
+    expect(w.resend.sent[0]!.text).not.toContain(b.licenseKey);
+  });
+});

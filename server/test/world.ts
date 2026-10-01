@@ -2,6 +2,7 @@
 import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { createApp } from "../src/app";
+import { sha256Hex } from "../src/crypto";
 import type { Deps } from "../src/deps";
 import { ResendEmailProvider } from "../src/email/resend";
 import type { ApiEnv } from "../src/env";
@@ -85,5 +86,48 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
     return call("GET", `/v1/orders/${orderCode}`, undefined, { authorization: `Bearer ${token}` });
   }
 
-  return { clock, payos, resend, deps, app, env: testEnv, call, buy, getOrder };
+  /**
+   * "Khách B" (review cuối, Q1): một khách khác, để test ranh giới giữa các license và email. B mua bằng email riêng, có
+   * 2 máy đang kích hoạt, 3 máy đã gỡ, và 4 lần tự gỡ trong 30 ngày (hơn ngưỡng 3 của luật khóa tạm). B không bị khóa,
+   * vì máy cuối kích hoạt lại là máy B tự gỡ. Mọi request của B đi từ IP riêng, không đụng bộ đếm của test.
+   */
+  async function customerB() {
+    const email = "khach-b@example.com";
+    const { licenseKey } = await buy({ email, plan: "pro_x2" });
+    const device = (n: number) => sha256Hex(`khach-b-${n}`);
+    const ip = (n: number) => ({ "cf-connecting-ip": `192.0.2.${n}` });
+    const activate = async (n: number) => {
+      const r = await call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await device(n), device_label: `Máy B${n}` }, ip(n));
+      if (r.status !== 200) throw new Error(`khách B kích hoạt máy ${n}: ${r.status} ${JSON.stringify(r.body)}`);
+      return r.body.activation_id as string;
+    };
+    const deactivate = async (id: string, n: number) => {
+      const r = await call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: id }, ip(n));
+      if (r.status !== 200) throw new Error(`khách B gỡ máy ${n}: ${r.status}`);
+    };
+    const deactivated: { id: string; deviceIdHash: string }[] = [];
+    for (const n of [3, 4, 5]) {
+      const id = await activate(n);
+      await deactivate(id, n);
+      deactivated.push({ id, deviceIdHash: await device(n) });
+    }
+    const b1 = await activate(1);
+    const b2 = await activate(2);
+    // Lần gỡ thứ 4 rồi kích hoạt lại đúng máy đó: trừ chính máy này thì còn 3 lần, chưa quá ngưỡng.
+    await deactivate(b2, 2);
+    if ((await activate(2)) !== b2) throw new Error("khách B: máy 2 không dùng lại activation cũ");
+    const lic = await testEnv.DB.prepare("SELECT id FROM licenses WHERE email = ?").bind(email).first<{ id: string }>();
+    return {
+      email,
+      licenseKey,
+      licenseId: lic!.id,
+      active: [
+        { id: b1, deviceIdHash: await device(1), label: "Máy B1" },
+        { id: b2, deviceIdHash: await device(2), label: "Máy B2" },
+      ],
+      deactivated,
+    };
+  }
+
+  return { clock, payos, resend, deps, app, env: testEnv, call, buy, getOrder, customerB };
 }

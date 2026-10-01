@@ -693,3 +693,35 @@ describe("đăng ký webhook với PayOS", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("hai khách: tra cứu và xóa dữ liệu chỉ đụng đúng email (review cuối, Q1)", () => {
+  it("tra theo email của A không trả đơn hay license của B", async () => {
+    const { w, adminCall } = makeAdmin();
+    const a = await w.buy({ email: "buyer@example.com" });
+    const b = await w.customerB();
+    const res = await adminCall("/admin/lookup", { body: { email: "buyer@example.com" } });
+    expect(res.status).toBe(200);
+    expect((res.body.orders as { order_code: number }[]).map((o) => o.order_code)).toEqual([a.orderCode]);
+    expect((res.body.licenses as { license_key: string }[]).map((l) => l.license_key)).toEqual([a.licenseKey]);
+    expect(JSON.stringify(res.body)).not.toContain(b.email);
+    expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toEqual({ by: "email", licenses: 1, orders: 1 });
+  });
+
+  it("xóa dữ liệu của A giữ nguyên device_label và email của B", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy({ email: "erase@example.com" });
+    await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "MacBook của An" });
+    const b = await w.customerB();
+    const labelsOfB = () =>
+      env.DB.prepare("SELECT device_label FROM activations WHERE license_id = ? ORDER BY device_label")
+        .bind(b.licenseId)
+        .all()
+        .then((r) => r.results.map((x) => x.device_label));
+    const before = await labelsOfB();
+    expect(before).toEqual(["Máy B1", "Máy B2", "Máy B3", "Máy B4", "Máy B5"]);
+    const res = await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } });
+    expect(res.body).toEqual({ activations: 1, licenses: 1, orders: 1 });
+    expect(await labelsOfB()).toEqual(before);
+    expect(await env.DB.prepare("SELECT email FROM licenses WHERE id = ?").bind(b.licenseId).first()).toEqual({ email: b.email });
+  });
+});
