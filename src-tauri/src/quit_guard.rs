@@ -23,13 +23,14 @@ pub const K_AE_QUIT_APPLICATION: u32 = four_cc(b"quit");
 pub const K_AE_QUIT_REASON: u32 = four_cc(b"why?");
 
 /// Các lý do thoát do hệ thống gửi (AERegistry.h).
-const SYSTEM_QUIT_REASONS: [u32; 6] = [
+const SYSTEM_QUIT_REASONS: [u32; 7] = [
     four_cc(b"logo"), // kAELogOut
     four_cc(b"rlgo"), // kAEReallyLogOut
     four_cc(b"rrst"), // kAEShowRestartDialog
     four_cc(b"rsdn"), // kAEShowShutdownDialog
     four_cc(b"rest"), // kAERestart
     four_cc(b"shut"), // kAEShutDown
+    four_cc(b"quia"), // kAEQuitAll
 ];
 
 /// Apple Event đang được xử lý lúc `terminate:` được gọi, nếu có.
@@ -146,7 +147,7 @@ mod tests {
 
     #[test]
     fn logout_restart_and_shutdown_are_allowed() {
-        for reason in [b"logo", b"rlgo", b"rrst", b"rsdn", b"rest", b"shut"] {
+        for reason in [b"logo", b"rlgo", b"rrst", b"rsdn", b"rest", b"shut", b"quia"] {
             assert!(
                 allow_terminate(quit(Some(reason))),
                 "{}",

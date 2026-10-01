@@ -67,7 +67,10 @@ fn is_app_url(url: &Url, os: Os, dev_url: Option<&Url>) -> bool {
     }
     if let Some(dev) = dev_url {
         // Bản dev: giao diện chỉ đến từ dev server. So cả scheme để `blob:` của dev server không lọt.
-        return url.scheme() == dev.scheme() && url.origin() == dev.origin() && url.username().is_empty();
+        return url.scheme() == dev.scheme()
+            && url.origin() == dev.origin()
+            && url.username().is_empty()
+            && url.password().is_none();
     }
     let plain = url.port().is_none() && url.username().is_empty() && url.password().is_none();
     let host = url.host_str();
@@ -218,12 +221,17 @@ mod tests {
                 "https://evil.pay.payos.vn/",
                 "https://pay.payos.vn.evil.com/",
                 "https://user@pay.payos.vn/",
+                "https://:pw@pay.payos.vn/",
                 "https://pay.payos.vn:8443/",
                 "https://example.com/",
                 "tauri://evil/",
                 "tauri://localhost:8080/",
                 "http://tauri.localhost:8080/",
                 "http://user@tauri.localhost/",
+                "http://:pw@tauri.localhost/",
+                "http://:pw@localhost:1420/",
+                "about:srcdoc",
+                "about:blank#x",
                 "file:///etc/passwd",
                 "javascript:alert(1)",
                 "data:text/html,<b>x</b>",
