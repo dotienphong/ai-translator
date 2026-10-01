@@ -5,6 +5,7 @@ import { registerCheckout } from "./checkout";
 import { type Deps, type DepsFactory, realDeps } from "./deps";
 import type { ApiEnv } from "./env";
 import { fail } from "./http";
+import { registerLicenses } from "./licenses";
 import { registerOrders } from "./orders";
 
 export type AppEnv = { Bindings: ApiEnv; Variables: { deps: Deps } };
@@ -21,6 +22,7 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
   app.get("/v1/health", (c) => c.json({ ok: true }));
   registerCheckout(app);
   registerOrders(app);
+  registerLicenses(app);
   app.notFound((c) => fail(c, 404, "not_found"));
   app.onError((err, c) => {
     console.error(JSON.stringify({ event: "unhandled", name: err.name, message: err.message }));
