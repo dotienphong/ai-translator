@@ -10,7 +10,7 @@
 //! Kế hoạch sau thêm việc mở ra ngoài (ví dụ 02: trang quyền ghi âm thanh của System Settings) thì thêm
 //! một phương thức vào trait này, không gọi `tauri-plugin-opener` hay API hệ thống ở chỗ khác.
 
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime, Url};
 use tauri_plugin_opener::OpenerExt as _;
 
 pub trait SystemOpener: Send + Sync + 'static {
@@ -62,8 +62,22 @@ impl<R: Runtime> SystemOpener for Native<R> {
     }
 
     fn open_external_url(&self, url: &str) -> Result<(), String> {
-        self.0.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+        let url = https_only(url)?;
+        self.0
+            .opener()
+            .open_url(url.as_str(), None::<&str>)
+            .map_err(|e| e.to_string())
     }
+}
+
+/// Lớp chặn thứ hai sau `navigation`: bản thật chỉ mở URL `https` có tên máy chủ, kể cả khi một lời gọi
+/// sau này lỡ bỏ qua bước kiểm của `navigation`. Không ghi URL vào lỗi (có thể chứa tham số riêng tư).
+fn https_only(url: &str) -> Result<Url, String> {
+    let parsed = Url::parse(url).map_err(|_| "URL không hợp lệ".to_string())?;
+    if parsed.scheme() != "https" || parsed.host_str().is_none_or(str::is_empty) {
+        return Err(format!("chỉ mở URL https, không mở URL {}:", parsed.scheme()));
+    }
+    Ok(parsed)
 }
 
 /// Cài bản thật. Gọi một lần ở đầu `setup`, trước khi tạo cửa sổ.
@@ -125,6 +139,26 @@ mod tests {
         }
         fn open_external_url(&self, url: &str) -> Result<(), String> {
             self.push(&format!("open_external_url {url}"))
+        }
+    }
+
+    #[test]
+    fn native_opener_only_takes_https_urls() {
+        assert_eq!(
+            https_only("https://pay.payos.vn/web/1?x=2").unwrap().as_str(),
+            "https://pay.payos.vn/web/1?x=2"
+        );
+        for url in [
+            "http://pay.payos.vn/",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "ms-settings:taskbar",
+            "tauri://localhost/",
+            "x-apple.systempreferences:com.apple.LoginItems-Settings.extension",
+            "pay.payos.vn/web/1",
+            "",
+        ] {
+            assert!(https_only(url).is_err(), "{url}");
         }
     }
 

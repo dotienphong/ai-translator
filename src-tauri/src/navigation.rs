@@ -92,9 +92,10 @@ fn dev_url<R: Runtime>(app: &AppHandle<R>) -> Option<Url> {
     dev_url_for(tauri::is_dev(), app.config().build.dev_url.as_ref())
 }
 
-/// Áp quyết định; trả về `true` nếu webview được đi tới URL này.
-fn apply<R: Runtime>(app: &AppHandle<R>, url: &Url) -> bool {
-    match decide(url, CURRENT_OS, dev_url(app).as_ref(), EXTERNAL_HOSTS) {
+/// Áp quyết định; trả về `true` nếu webview được đi tới URL này. `external_hosts` là `EXTERNAL_HOSTS`;
+/// test truyền danh sách riêng, vì danh sách thật còn rỗng.
+fn apply<R: Runtime>(app: &AppHandle<R>, url: &Url, external_hosts: &[&str]) -> bool {
+    match decide(url, CURRENT_OS, dev_url(app).as_ref(), external_hosts) {
         Decision::Allow => true,
         Decision::OpenExternal => {
             if let Err(e) = system::open_external_url(app, url.as_str()) {
@@ -115,7 +116,7 @@ fn apply<R: Runtime>(app: &AppHandle<R>, url: &Url) -> bool {
 /// Plugin kiểm mọi lần điều hướng của mọi webview.
 pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new("navigation-guard")
-        .on_navigation(|webview, url| apply(webview.app_handle(), url))
+        .on_navigation(|webview, url| apply(webview.app_handle(), url, EXTERNAL_HOSTS))
         .build()
 }
 
@@ -124,15 +125,19 @@ pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
 pub fn new_window_handler<R: Runtime>(
     app: AppHandle<R>,
 ) -> impl Fn(Url, NewWindowFeatures) -> NewWindowResponse<R> + Send + 'static {
-    move |url, _features| {
-        apply(&app, &url);
-        NewWindowResponse::Deny
-    }
+    move |url, _features| new_window(&app, &url, EXTERNAL_HOSTS)
+}
+
+/// Một yêu cầu mở cửa sổ mới: link ngoài được phép thì mở bằng trình duyệt; luôn trả `Deny`.
+fn new_window<R: Runtime>(app: &AppHandle<R>, url: &Url, external_hosts: &[&str]) -> NewWindowResponse<R> {
+    apply(app, url, external_hosts);
+    NewWindowResponse::Deny
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::{mock_app, system_calls};
 
     fn d(url: &str, os: Os, dev: Option<&str>, hosts: &[&str]) -> Decision {
         let dev = dev.map(|u| Url::parse(u).unwrap());
@@ -245,5 +250,34 @@ mod tests {
                 "danh sách rỗng thì chặn hết"
             );
         }
+    }
+
+    fn url(s: &str) -> Url {
+        Url::parse(s).unwrap()
+    }
+
+    /// App giả dùng `FakeSystem`: không mở trình duyệt thật.
+    #[test]
+    fn external_links_go_to_the_system_opener_not_the_webview() {
+        let app = mock_app();
+        let handle = app.handle();
+        assert!(!apply(handle, &url("https://pay.payos.vn/web/abc"), PAYOS));
+        assert_eq!(system_calls(&app), ["open_external_url https://pay.payos.vn/web/abc"]);
+        assert!(!apply(handle, &url("https://example.com/"), PAYOS), "bị chặn");
+        assert!(apply(handle, &url("about:blank"), PAYOS), "trang của app");
+        assert_eq!(system_calls(&app).len(), 1, "chỉ link được phép mới mở ra ngoài");
+    }
+
+    #[test]
+    fn new_window_requests_are_always_denied() {
+        let app = mock_app();
+        let handle = app.handle();
+        for target in ["about:blank", "https://pay.payos.vn/web/abc", "https://example.com/"] {
+            assert!(
+                matches!(new_window(handle, &url(target), PAYOS), NewWindowResponse::Deny),
+                "{target}"
+            );
+        }
+        assert_eq!(system_calls(&app), ["open_external_url https://pay.payos.vn/web/abc"]);
     }
 }
