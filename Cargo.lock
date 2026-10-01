@@ -3754,11 +3754,14 @@ dependencies = [
  "candle-onnx",
  "ferrous-opencc",
  "hound",
+ "libc",
  "log",
  "miniz_oxide 0.9.1",
  "reqwest",
  "serde",
  "serde_json",
+ "thiserror 2.0.21",
+ "windows",
 ]
 
 [[package]]

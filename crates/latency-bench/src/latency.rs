@@ -6,10 +6,10 @@
 use crate::stats::{Utterance, match_segments, percentile};
 use anyhow::{Context, Result, bail};
 use asr_protocol::{MAX_PROMPT_TOKENS, MIN_AUDIO_CTX, TranscribeRequest, audio_ctx_for_samples};
-use pipeline::asr_client::AsrWorker;
+use pipeline::asr_client::{AsrLaunch, AsrWorker};
 use pipeline::config::{FilterConfig, PipelineConfig};
 use pipeline::filter::{Evidence, PcmSkip, Verdict, pcm_skip, verdict};
-use pipeline::llama::{LlamaServer, max_tokens_for};
+use pipeline::llama::{LlamaLaunch, LlamaServer};
 use pipeline::prompt::{Lang, translation_prompt};
 use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES, Segment, Segmenter, SegmenterConfig};
 use pipeline::sentence::{OpenSentence, Piece, merge_window_ms, plan_merge};
@@ -30,6 +30,8 @@ const MATCH_WINDOW_MS: u64 = 1_000;
 const FEED_LAG_WARN_MS: f64 = 100.0;
 /// Đoạn có mốc dừng sớm hơn mốc VAD của câu quá ngưỡng này (ms) thì câu bị gắn cờ `early_stop`.
 const EARLY_STOP_MS: i64 = 200;
+/// Timeout của một yêu cầu tới tiến trình phụ trong công cụ đo: rất rộng, vì đây không phải chỗ phát hiện worker treo.
+pub const TOOL_REQUEST_TIMEOUT: Duration = Duration::from_secs(600);
 
 // Lý do một đoạn không được dịch, ghi ở `SegmentRecord::skipped`.
 /// Đoạn không có tiếng nói theo luật `no_speech_prob` và `avg_logprob` (`pipeline::filter::is_no_speech`), hoặc chữ rỗng:
@@ -222,21 +224,29 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         ..config.segmenter.clone()
     });
 
-    let (mut asr, ready) = AsrWorker::spawn(
-        &args.asr_worker,
-        &args.asr_model,
-        args.use_gpu,
-        args.asr_threads,
-        &args.log_dir.join(format!("asr-worker-{}.log", args.label)),
-    )?;
+    let asr_launch = AsrLaunch {
+        use_gpu: args.use_gpu,
+        n_threads: args.asr_threads,
+        // Công cụ đo không kill worker vì chậm: máy tham chiếu chạy bằng CPU có thể mất lâu với đoạn dài.
+        request_timeout: TOOL_REQUEST_TIMEOUT,
+        ..AsrLaunch::new(
+            &args.asr_worker,
+            &args.asr_model,
+            &args.log_dir.join(format!("asr-worker-{}.log", args.label)),
+        )
+    };
+    let (mut asr, ready) = AsrWorker::spawn(&asr_launch)?;
     let asr_warmup_ms = asr.warmup()?;
-    let llama_args: Vec<String> = args.llama_args.split_whitespace().map(String::from).collect();
-    let llama = LlamaServer::spawn(
-        &args.llama_server,
-        &args.mt_model,
-        &llama_args,
-        &args.log_dir.join(format!("llama-server-{}.log", args.label)),
-    )?;
+    let llama_launch = LlamaLaunch {
+        extra_args: args.llama_args.split_whitespace().map(String::from).collect(),
+        request_timeout: TOOL_REQUEST_TIMEOUT,
+        ..LlamaLaunch::new(
+            &args.llama_server,
+            &args.mt_model,
+            &args.log_dir.join(format!("llama-server-{}.log", args.label)),
+        )
+    };
+    let llama = LlamaServer::spawn(&llama_launch)?;
     llama.translate(&translation_prompt("Hello.", Lang::En, target), 32)?; // làm nóng
     println!(
         "asr: {} ({}), chế độ giải mã {}, làm nóng {asr_warmup_ms:.0} ms",
@@ -267,6 +277,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     let merge_config = config.merge.clone();
     let filter_config = config.filter.clone();
     let asr_filter_config = config.filter.clone();
+    let mt_config = config.mt.clone();
     let asr_thread = std::thread::spawn(move || -> Result<()> {
         let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
         // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ,
@@ -352,7 +363,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
                         };
                         // Tính `max_tokens` theo §6.5, trên cả câu. Lần gọi /tokenize nằm trong thời gian của bước dịch.
                         let src_tokens = llama.count_tokens(&source)?;
-                        let max_tokens = max_tokens_for(src_tokens);
+                        let max_tokens = mt_config.max_tokens_for(src_tokens);
                         let t = llama.translate(&translation_prompt(&source, src, target), max_tokens)?;
                         let done = now_ms();
                         rec.merged_segments = Some(merged);

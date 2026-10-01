@@ -510,6 +510,18 @@ mod tests {
         assert_eq!(c.validate(), Ok(()));
     }
 
+    #[test]
+    fn max_tokens_follow_spec_formula() {
+        // §6.5: min(4 × số token câu gốc + 32, 512).
+        let mt = MtConfig::default();
+        assert_eq!(mt.max_tokens_for(0), 32);
+        assert_eq!(mt.max_tokens_for(10), 72);
+        assert_eq!(mt.max_tokens_for(119), 508);
+        assert_eq!(mt.max_tokens_for(120), 512);
+        assert_eq!(mt.max_tokens_for(121), 512);
+        assert_eq!(mt.max_tokens_for(usize::MAX), 512);
+    }
+
     /// Manifest chỉ ghi khóa muốn đổi: khóa thiếu lấy mặc định, khóa lạ bị bỏ qua.
     #[test]
     fn a_partial_manifest_keeps_the_other_defaults() {

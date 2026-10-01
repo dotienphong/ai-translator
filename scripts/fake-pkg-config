@@ -1,0 +1,16 @@
+#!/bin/sh
+# pkg-config giả, chỉ dùng cho scripts/check-windows.sh. candle-core 0.11 luôn kéo `tokenizers` với feature `onig`, nên
+# `onig_sys` biên dịch thư viện C oniguruma cho target Windows, mà Mac không có header của MSVC. Với
+# RUSTONIG_DYNAMIC_LIBONIG=1, build script của onig_sys hỏi pkg-config trước: script này trả lời như đã có oniguruma
+# (kèm một oniguruma.h rỗng), nên không có gì phải biên dịch. `cargo check` và `cargo clippy` không link, nên thư viện
+# giả không bao giờ được dùng. Không dùng script này để build bản chạy thật.
+inc="${TMPDIR:-/tmp}/meeting-translator-fake-onig"
+mkdir -p "$inc"
+: > "$inc/oniguruma.h"
+for arg in "$@"; do
+  case "$arg" in
+    --modversion) echo "6.9.10"; exit 0 ;;
+    --libs|--cflags) echo "-I$inc -lonig"; exit 0 ;;
+  esac
+done
+exit 0

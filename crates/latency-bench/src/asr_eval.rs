@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result, bail};
 use asr_protocol::{MAX_PCM_SAMPLES, MIN_PCM_SAMPLES, TranscribeRequest, audio_ctx_for_samples};
-use pipeline::asr_client::AsrWorker;
+use pipeline::asr_client::{AsrLaunch, AsrWorker};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
@@ -95,7 +95,13 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
     let part = PathBuf::from(part);
     // Log theo lượt: bắt đầu lượt mới thì xóa log cũ cùng tên. Client vẫn mở append để giữ log khi worker khởi động lại.
     std::fs::File::create(&log).with_context(|| format!("không tạo được log {}", log.display()))?;
-    let (mut worker, ready) = AsrWorker::spawn(&args.asr_worker, &args.asr_model, args.use_gpu, args.threads, &log)?;
+    let launch = AsrLaunch {
+        use_gpu: args.use_gpu,
+        n_threads: args.threads,
+        request_timeout: crate::latency::TOOL_REQUEST_TIMEOUT,
+        ..AsrLaunch::new(&args.asr_worker, &args.asr_model, &log)
+    };
+    let (mut worker, ready) = AsrWorker::spawn(&launch)?;
     worker.warmup()?;
     println!(
         "asr: {} ({}), chế độ giải mã {}\n{}",
