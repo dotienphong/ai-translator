@@ -146,6 +146,68 @@ describe("POST /v1/checkout", () => {
     expect(row).toEqual({ status: "failed" });
   });
 
+  it("staging chỉ dùng số đơn tới 999.999 (QĐ18): vượt thì 503 order_code_exhausted, không đụng dải của production", async () => {
+    await env.DB.exec(reserveSql(999_998));
+    const w = makeWorld({ ENVIRONMENT: "staging" });
+    const last = await w.call("POST", "/v1/checkout", valid);
+    expect(last).toMatchObject({ status: 201, body: { order_code: 999_999 } });
+    const over = await w.call("POST", "/v1/checkout", valid);
+    expect(over).toMatchObject({ status: 503, body: { error: "order_code_exhausted" } });
+    expect(w.payos.requests.filter((r) => r.method === "POST")).toHaveLength(1);
+    expect(await env.DB.prepare("SELECT status FROM orders WHERE order_code = 1000000").first()).toEqual({ status: "failed" });
+  });
+
+  it("production (và dev) không bị trần của staging: số 1.000.000 vẫn tạo đơn được", async () => {
+    await env.DB.exec(reserveSql(999_999));
+    for (const ENVIRONMENT of ["production", "dev"]) {
+      const w = makeWorld({ ENVIRONMENT });
+      const res = await w.call("POST", "/v1/checkout", valid);
+      expect(res.status).toBe(201);
+    }
+  });
+
+  it("tạo đơn ghi nhật ký order_created kèm gói và số tiền, không có email", async () => {
+    const w = makeWorld();
+    const res = await w.call("POST", "/v1/checkout", valid);
+    const log = await env.DB.prepare("SELECT actor, action, license_id, order_code, detail FROM audit_log").all();
+    expect(log.results).toEqual([
+      {
+        actor: "api",
+        action: "order_created",
+        license_id: null,
+        order_code: res.body.order_code,
+        detail: JSON.stringify({ plan: "pro", amount: 50000, currency: "VND" }),
+      },
+    ]);
+  });
+
+  it("key sai định dạng hay không tồn tại: tính một lần thất bại của IP; checkout không kèm key thì không tính", async () => {
+    const w = makeWorld();
+    const failures = () => env.DB.prepare("SELECT SUM(count) AS n FROM rate_limits WHERE bucket LIKE 'failure_ip:%'").first();
+    expect((await w.call("POST", "/v1/checkout", valid)).status).toBe(201);
+    expect(await failures()).toEqual({ n: null });
+    expect(await w.call("POST", "/v1/checkout", { ...valid, license_key: "abc" })).toMatchObject({ status: 400, body: { field: "license_key" } });
+    expect(await failures()).toEqual({ n: 1 });
+    expect(await w.call("POST", "/v1/checkout", { ...valid, license_key: 42 })).toMatchObject({ status: 400, body: { field: "license_key" } });
+    expect(await failures()).toEqual({ n: 2 });
+    expect(await w.call("POST", "/v1/checkout", { ...valid, license_key: vectors.license_keys[0]!.input })).toMatchObject({
+      status: 404,
+      body: { error: "invalid_key" },
+    });
+    expect(await failures()).toEqual({ n: 3 });
+  });
+
+  it("IP đã chạm ngưỡng thất bại: checkout kèm license_key thì 429; checkout mới không kèm key vẫn tạo được (spec §10.2)", async () => {
+    const w = makeWorld();
+    const ip = { "cf-connecting-ip": "203.0.113.66" };
+    for (let i = 0; i < 60; i++) await w.call("POST", "/v1/licenses/validate", { key: `SAI-${i}`, activation_id: crypto.randomUUID() }, ip);
+    const withKey = await w.call("POST", "/v1/checkout", { ...valid, license_key: vectors.license_keys[0]!.input }, ip);
+    expect(withKey).toMatchObject({ status: 429, body: { error: "rate_limited" } });
+    expect(withKey.headers.get("retry-after")).toBe("3600");
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM orders").first()).toEqual({ n: 0 });
+    expect((await w.call("POST", "/v1/checkout", valid, ip)).status).toBe(201);
+  });
+
   it("PayOS lỗi thì 502 và đơn chuyển failed", async () => {
     const w = makeWorld();
     w.payos.down = true;
