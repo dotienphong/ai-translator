@@ -147,8 +147,18 @@ impl WhisperState {
 
     /// meeting-translator patch: set `audio_ctx` for subsequent [WhisperState::encode] and
     /// [WhisperState::lang_detect] calls (0 = model default).
-    pub fn set_audio_ctx(&mut self, audio_ctx: c_int) {
-        unsafe { whisper_rs_sys::whisper_set_audio_ctx_with_state(self.ptr, audio_ctx) }
+    ///
+    /// # Errors
+    /// [WhisperError::GenericError] with code -1 if `audio_ctx` is outside `[0, n_audio_ctx]` of the model.
+    pub fn set_audio_ctx(&mut self, audio_ctx: c_int) -> Result<(), WhisperError> {
+        let ret = unsafe {
+            whisper_rs_sys::whisper_set_audio_ctx_with_state(self.ctx.ctx, self.ptr, audio_ctx)
+        };
+        if ret == 0 {
+            Ok(())
+        } else {
+            Err(WhisperError::GenericError(ret))
+        }
     }
 
     /// Run the Whisper decoder to obtain the logits and probabilities for the next token.

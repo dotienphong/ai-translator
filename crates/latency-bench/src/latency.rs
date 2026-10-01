@@ -242,7 +242,9 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     llama.translate(&translation_prompt("Hello.", Lang::En, target), 32)?; // làm nóng
     println!(
         "asr: {} ({}), chế độ giải mã {}, làm nóng {asr_warmup_ms:.0} ms",
-        ready.backend, ready.whisper_version, ready.decode_mode
+        ready.backend.as_str(),
+        ready.whisper_version,
+        ready.decode_mode.as_str()
     );
 
     kill_children_on_panic(vec![asr.pid(), llama.pid()]);
@@ -266,6 +268,9 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     let merge_window = merge_window_ms(args.end_silence_ms);
     let asr_thread = std::thread::spawn(move || -> Result<()> {
         let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
+        // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ,
+        // để số đo S6 không đổi khi `prev_lang` chuyển sang `TranscribeRequest`.
+        let mut prev_lang: Option<String> = None;
         for (segment, closed_at_ms) in seg_rx {
             let mut rec = SegmentRecord {
                 id: segment.id,
@@ -299,8 +304,10 @@ pub fn run(args: LatencyArgs) -> Result<()> {
                 pcm,
                 languages: languages.clone(),
                 prompt_tokens,
+                prev_lang: prev_lang.clone(),
             })?;
             rec.asr_done_at_ms = now_ms();
+            prev_lang = Some(result.lang.clone());
             let tokens = prompts.entry(result.lang.clone()).or_default();
             tokens.extend(&result.tokens);
             let excess = tokens.len().saturating_sub(MAX_PROMPT_TOKENS);
@@ -410,8 +417,8 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         label: args.label.clone(),
         machine: machine_info(),
         config: HashMap::from([
-            ("asr_backend".to_string(), ready.backend),
-            ("asr_decode_mode".to_string(), ready.decode_mode),
+            ("asr_backend".to_string(), ready.backend.as_str().to_string()),
+            ("asr_decode_mode".to_string(), ready.decode_mode.as_str().to_string()),
             ("whisper_version".to_string(), ready.whisper_version),
             ("asr_system_info".to_string(), ready.system_info),
             ("asr_model".to_string(), public_path(&args.asr_model)),

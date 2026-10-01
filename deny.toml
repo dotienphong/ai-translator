@@ -43,7 +43,7 @@ multiple-versions = "allow"
 wildcards = "allow"
 # Bất biến kiến trúc (spec §5, §6.12): chỉ asr-worker được link whisper.cpp (ggml); tiến trình chính thì không.
 deny = [
-    { crate = "whisper-rs-sys", wrappers = ["whisper-rs"], reason = "ggml chỉ được vào qua whisper-rs" },
+    { crate = "whisper-rs-sys", wrappers = ["whisper-rs", "asr-worker"], reason = "ggml chỉ được vào qua whisper-rs, hoặc asr-worker đọc bảng thiết bị ggml" },
     { crate = "whisper-rs", wrappers = ["asr-worker"], reason = "chỉ asr-worker được link whisper.cpp" },
 ]
 

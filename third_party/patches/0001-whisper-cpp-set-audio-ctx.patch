@@ -1,43 +1,56 @@
 diff --git a/whisper-rs-sys/src/bindings.rs b/whisper-rs-sys/src/bindings.rs
-index ecaf862..8d04c0b 100644
+index ecaf862..7ad3944 100644
 --- a/whisper-rs-sys/src/bindings.rs
 +++ b/whisper-rs-sys/src/bindings.rs
-@@ -5243,6 +5243,9 @@ unsafe extern "C" {
+@@ -5243,6 +5243,13 @@ unsafe extern "C" {
          lang_probs: *mut f32,
      ) -> ::std::os::raw::c_int;
  }
 +unsafe extern "C" {
-+    pub fn whisper_set_audio_ctx_with_state(state: *mut whisper_state, audio_ctx: ::std::os::raw::c_int);
++    pub fn whisper_set_audio_ctx_with_state(
++        ctx: *mut whisper_context,
++        state: *mut whisper_state,
++        audio_ctx: ::std::os::raw::c_int,
++    ) -> ::std::os::raw::c_int;
 +}
  unsafe extern "C" {
      pub fn whisper_lang_auto_detect_with_state(
          ctx: *mut whisper_context,
 diff --git a/whisper-rs-sys/whisper.cpp/include/whisper.h b/whisper-rs-sys/whisper.cpp/include/whisper.h
-index f4cc6bf..bb4d850 100644
+index f4cc6bf..689994b 100644
 --- a/whisper-rs-sys/whisper.cpp/include/whisper.h
 +++ b/whisper-rs-sys/whisper.cpp/include/whisper.h
-@@ -381,6 +381,11 @@ extern "C" {
+@@ -381,6 +381,15 @@ extern "C" {
                                 int   n_threads,
                               float * lang_probs);
  
 +    // meeting-translator patch: set the audio context used by subsequent
 +    // whisper_encode_with_state / whisper_lang_auto_detect_with_state calls on this state
 +    // (0 = model default). Upstream only sets it inside whisper_full_with_state.
-+    WHISPER_API void whisper_set_audio_ctx_with_state(struct whisper_state * state, int audio_ctx);
++    // Returns 0 on success, -1 if audio_ctx is outside [0, n_audio_ctx] of the model.
++    WHISPER_API int whisper_set_audio_ctx_with_state(
++            struct whisper_context * ctx,
++              struct whisper_state * state,
++                                 int   audio_ctx);
 +
      WHISPER_API int whisper_lang_auto_detect_with_state(
              struct whisper_context * ctx,
                struct whisper_state * state,
 diff --git a/whisper-rs-sys/whisper.cpp/src/whisper.cpp b/whisper-rs-sys/whisper.cpp/src/whisper.cpp
-index 5b6e4b4..cee1adc 100644
+index 5b6e4b4..6ef025f 100644
 --- a/whisper-rs-sys/whisper.cpp/src/whisper.cpp
 +++ b/whisper-rs-sys/whisper.cpp/src/whisper.cpp
-@@ -4018,6 +4018,10 @@ const char * whisper_lang_str_full(int id) {
+@@ -4018,6 +4018,15 @@ const char * whisper_lang_str_full(int id) {
      return nullptr;
  }
  
-+void whisper_set_audio_ctx_with_state(struct whisper_state * state, int audio_ctx) {
++int whisper_set_audio_ctx_with_state(struct whisper_context * ctx, struct whisper_state * state, int audio_ctx) {
++    if (audio_ctx < 0 || audio_ctx > ctx->model.hparams.n_audio_ctx) {
++        WHISPER_LOG_ERROR("%s: audio_ctx %d is outside [0, %d]\n", __func__, audio_ctx, ctx->model.hparams.n_audio_ctx);
++        return -1;
++    }
 +    state->exp_n_audio_ctx = audio_ctx;
++    return 0;
 +}
 +
  int whisper_lang_auto_detect_with_state(

@@ -15,8 +15,8 @@
 use crate::lid::{min_prob_for, pick_language};
 use anyhow::{Context, Result, bail};
 use asr_protocol::{
-    MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_PCM_SAMPLES, SAMPLE_RATE, TranscribeRequest, TranscribeResult,
-    audio_ctx_for_samples,
+    DecodeMode, ErrorKind, MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_PCM_SAMPLES, SAMPLE_RATE, TranscribeRequest,
+    TranscribeResult, audio_ctx_for_samples,
 };
 use std::time::Instant;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState};
@@ -129,7 +129,6 @@ pub struct Engine {
     lid_state: Option<WhisperState>,
     n_threads: usize,
     flash_attn: bool,
-    prev_lang: Option<i32>,
     primers: Primers,
     /// Có giá trị khi chạy chế độ B.
     #[cfg(feature = "shared-encode")]
@@ -170,20 +169,19 @@ impl Engine {
             lid_state,
             n_threads,
             flash_attn,
-            prev_lang: None,
             primers,
             #[cfg(feature = "shared-encode")]
             shared,
         })
     }
 
-    /// `shared` (chế độ B) hoặc `split` (chế độ A).
-    pub fn decode_mode(&self) -> &'static str {
+    /// Chế độ B (`Shared`) hoặc chế độ A (`Split`).
+    pub fn decode_mode(&self) -> DecodeMode {
         #[cfg(feature = "shared-encode")]
         if self.shared.is_some() {
-            return "shared";
+            return DecodeMode::Shared;
         }
-        "split"
+        DecodeMode::Split
     }
 
     /// Flash attention có đang bật không. Mặc định tắt, xem `load`.
@@ -208,55 +206,17 @@ impl Engine {
         Ok(started.elapsed().as_secs_f32() * 1000.0)
     }
 
-    pub fn transcribe(&mut self, req: &TranscribeRequest) -> Result<TranscribeResult> {
-        // Kiểm đầu vào trước mọi lệnh gọi whisper, cho cả hai chế độ: đầu vào sai trả `Error` qua giao thức chứ không
-        // làm worker chết (whisper-rs panic khi mã ngôn ngữ chứa NUL, mà bản release đặt panic = abort).
-        if req.languages.is_empty() {
-            bail!("danh sách ngôn ngữ rỗng");
-        }
-        if let Some(l) = req.languages.iter().find(|l| l.contains('\0')) {
-            bail!("mã ngôn ngữ chứa ký tự NUL: {l:?}");
-        }
-        if req.pcm.len() < MIN_PCM_SAMPLES {
-            bail!("đoạn quá ngắn: {} mẫu (tối thiểu {MIN_PCM_SAMPLES})", req.pcm.len());
-        }
-        if req.pcm.len() > MAX_PCM_SAMPLES {
-            bail!("đoạn quá dài: {} mẫu (tối đa {MAX_PCM_SAMPLES})", req.pcm.len());
-        }
-        if req.prompt_tokens.len() > MAX_PROMPT_TOKENS {
-            bail!(
-                "prompt quá dài: {} token (tối đa {MAX_PROMPT_TOKENS})",
-                req.prompt_tokens.len()
-            );
-        }
+    /// Chép lời một đoạn. Lỗi trả kèm loại (`ErrorKind`) để app xử lý theo §9: đầu vào sai là `InvalidRequest` và không
+    /// làm worker chết (whisper-rs panic khi mã ngôn ngữ chứa NUL, mà bản release đặt panic = abort).
+    pub fn transcribe(&mut self, req: &TranscribeRequest) -> Result<TranscribeResult, (ErrorKind, anyhow::Error)> {
         let eot = self.ctx.token_eot();
-        if let Some(t) = req.prompt_tokens.iter().find(|&&t| !(0..eot).contains(&t)) {
-            bail!("prompt_tokens có token {t} ngoài khoảng [0, {eot})");
-        }
-        if !(0..=MAX_AUDIO_CTX).contains(&req.audio_ctx) {
-            bail!("audio_ctx {} ngoài khoảng [0, {MAX_AUDIO_CTX}]", req.audio_ctx);
-        }
-        // 0 là cửa sổ đầy đủ 30 giây. Cửa sổ nào ngắn hơn đoạn thì whisper.cpp lặng lẽ bỏ phần đuôi (chế độ B chỉ ra
-        // phần đầu), nên `audio_ctx` phải phủ hết đoạn. Đoạn dài hơn 30 giây đã bị từ chối ở trên, kể cả khi
-        // `audio_ctx` là 0.
-        let window = if req.audio_ctx == 0 {
-            MAX_AUDIO_CTX
-        } else {
-            req.audio_ctx
-        };
-        if window as usize * SAMPLES_PER_CTX < req.pcm.len() {
-            bail!(
-                "audio_ctx {} chỉ phủ {} mẫu, ngắn hơn đoạn ({} mẫu)",
-                req.audio_ctx,
-                window as usize * SAMPLES_PER_CTX,
-                req.pcm.len()
-            );
-        }
-        let allowed = req
-            .languages
-            .iter()
-            .map(|l| whisper_rs::get_lang_id(l).with_context(|| format!("mã ngôn ngữ không hợp lệ: {l}")))
-            .collect::<Result<Vec<i32>>>()?;
+        let (allowed, prev) = validate(req, eot).map_err(|e| (ErrorKind::InvalidRequest, e))?;
+        self.run(req, &allowed, prev)
+            .map_err(|e| (classify(ErrorKind::Internal, &e), e))
+    }
+
+    fn run(&mut self, req: &TranscribeRequest, allowed: &[i32], prev_lang: Option<i32>) -> Result<TranscribeResult> {
+        let eot = self.ctx.token_eot();
         let pcm: Vec<f32> = req.pcm.iter().map(|&s| s as f32 / 32768.0).collect();
 
         #[cfg(feature = "shared-encode")]
@@ -267,14 +227,13 @@ impl Engine {
                 &mut self.asr_state,
                 &pcm,
                 req.audio_ctx,
-                &allowed,
-                self.prev_lang,
+                allowed,
+                prev_lang,
                 &req.prompt_tokens,
                 &self.primers,
                 self.n_threads,
             )?;
             let total_ms = started.elapsed().as_secs_f32() * 1000.0;
-            self.prev_lang = Some(d.lang_id);
             return Ok(TranscribeResult {
                 segment_id: req.segment_id,
                 lang: whisper_rs::get_lang_str(d.lang_id)
@@ -300,7 +259,7 @@ impl Engine {
                 .pcm_to_mel(head, self.n_threads)
                 .context("tính mel cho nhận diện ngôn ngữ")?;
             let (_, probs) = lid_state.lang_detect(0, self.n_threads).context("nhận diện ngôn ngữ")?;
-            pick_language(&probs, &allowed, self.prev_lang, min_prob_for(pcm.len()))
+            pick_language(&probs, allowed, prev_lang, min_prob_for(pcm.len()))
         };
         let lid_ms = if allowed.len() == 1 {
             0.0
@@ -311,7 +270,9 @@ impl Engine {
 
         let asr_started = Instant::now();
         let mut params = full_params(self.n_threads, lang, req.audio_ctx);
-        let context = self.primers.context_for(lang, &req.prompt_tokens);
+        let context = self
+            .primers
+            .context_for(lang, prompt_for(lang_id, prev_lang, &req.prompt_tokens));
         if !context.is_empty() {
             params.set_tokens(context);
         }
@@ -336,7 +297,6 @@ impl Engine {
                 }
             }
         }
-        self.prev_lang = Some(lang_id);
         Ok(TranscribeResult {
             segment_id: req.segment_id,
             lang: lang.to_string(),
@@ -348,6 +308,88 @@ impl Engine {
             asr_ms,
             avg_logprob: mean_logprob(&logprobs),
         })
+    }
+}
+
+/// Kiểm đầu vào trước mọi lệnh gọi whisper, cho cả hai chế độ. Trả tập ngôn ngữ cho phép (lang id) và ngôn ngữ của đoạn
+/// trước (`prev_lang`), đã đổi sang lang id.
+pub fn validate(req: &TranscribeRequest, eot: i32) -> Result<(Vec<i32>, Option<i32>)> {
+    if req.languages.is_empty() {
+        bail!("danh sách ngôn ngữ rỗng");
+    }
+    if let Some(l) = req.languages.iter().chain(&req.prev_lang).find(|l| l.contains('\0')) {
+        bail!("mã ngôn ngữ chứa ký tự NUL: {l:?}");
+    }
+    if req.pcm.len() < MIN_PCM_SAMPLES {
+        bail!("đoạn quá ngắn: {} mẫu (tối thiểu {MIN_PCM_SAMPLES})", req.pcm.len());
+    }
+    if req.pcm.len() > MAX_PCM_SAMPLES {
+        bail!("đoạn quá dài: {} mẫu (tối đa {MAX_PCM_SAMPLES})", req.pcm.len());
+    }
+    if req.prompt_tokens.len() > MAX_PROMPT_TOKENS {
+        bail!(
+            "prompt quá dài: {} token (tối đa {MAX_PROMPT_TOKENS})",
+            req.prompt_tokens.len()
+        );
+    }
+    if let Some(t) = req.prompt_tokens.iter().find(|&&t| !(0..eot).contains(&t)) {
+        bail!("prompt_tokens có token {t} ngoài khoảng [0, {eot})");
+    }
+    if !(0..=MAX_AUDIO_CTX).contains(&req.audio_ctx) {
+        bail!("audio_ctx {} ngoài khoảng [0, {MAX_AUDIO_CTX}]", req.audio_ctx);
+    }
+    // 0 là cửa sổ đầy đủ 30 giây. Cửa sổ nào ngắn hơn đoạn thì whisper.cpp lặng lẽ bỏ phần đuôi (chế độ B chỉ ra
+    // phần đầu), nên `audio_ctx` phải phủ hết đoạn. Đoạn dài hơn 30 giây đã bị từ chối ở trên, kể cả khi
+    // `audio_ctx` là 0.
+    let window = if req.audio_ctx == 0 {
+        MAX_AUDIO_CTX
+    } else {
+        req.audio_ctx
+    };
+    if window as usize * SAMPLES_PER_CTX < req.pcm.len() {
+        bail!(
+            "audio_ctx {} chỉ phủ {} mẫu, ngắn hơn đoạn ({} mẫu)",
+            req.audio_ctx,
+            window as usize * SAMPLES_PER_CTX,
+            req.pcm.len()
+        );
+    }
+    let lang_id = |l: &String| whisper_rs::get_lang_id(l).with_context(|| format!("mã ngôn ngữ không hợp lệ: {l}"));
+    let allowed = req.languages.iter().map(lang_id).collect::<Result<Vec<i32>>>()?;
+    let prev = req.prev_lang.as_ref().map(lang_id).transpose()?;
+    Ok((allowed, prev))
+}
+
+/// Prompt của app chỉ dùng khi đoạn này cùng ngôn ngữ với đoạn trước: `prompt_tokens` là token của các đoạn trước có
+/// ngôn ngữ `prev_lang` (xem `TranscribeRequest::prompt_tokens`).
+pub fn prompt_for(lang_id: i32, prev_lang: Option<i32>, prompt_tokens: &[i32]) -> &[i32] {
+    if prev_lang == Some(lang_id) { prompt_tokens } else { &[] }
+}
+
+/// Loại lỗi theo thông báo lỗi và các dòng cảnh báo, lỗi gần nhất trong log của whisper.cpp và ggml (`native_log`), vì
+/// whisper-rs chỉ trả `InitError` hay `GenericError`: hết bộ nhớ (kể cả bộ nhớ GPU) là `OutOfMemory`, lỗi khởi tạo GPU là
+/// `GpuInit`, còn lại là `default`.
+pub fn classify(default: ErrorKind, err: &anyhow::Error) -> ErrorKind {
+    classify_with(default, err, &crate::native_log::recent())
+}
+
+/// Như [`classify`], với các dòng log cho sẵn.
+pub fn classify_with(default: ErrorKind, err: &anyhow::Error, log: &[String]) -> ErrorKind {
+    let text = format!("{err:#}\n{}", log.join("\n")).to_lowercase();
+    const OOM: [&str; 5] = [
+        "out of memory",
+        "failed to allocate",
+        "cannot allocate",
+        "outofdevicememory",
+        "insufficient memory",
+    ];
+    if OOM.iter().any(|m| text.contains(m)) {
+        ErrorKind::OutOfMemory
+    } else if (text.contains("metal") || text.contains("vulkan")) && (text.contains("init") || text.contains("device"))
+    {
+        ErrorKind::GpuInit
+    } else {
+        default
     }
 }
 
@@ -457,6 +499,99 @@ mod tests {
         assert_eq!(mean_logprob(&[]), 0.0);
         assert!((mean_logprob(&[-1.0, -2.0, -3.0]) + 2.0).abs() < 1e-6);
         assert_eq!(mean_logprob(&[-0.25]), -0.25);
+    }
+
+    fn request() -> TranscribeRequest {
+        TranscribeRequest {
+            segment_id: 1,
+            pcm: vec![0; 16_000],
+            languages: vec!["en".into(), "vi".into()],
+            prompt_tokens: vec![1, 2],
+            audio_ctx: 512,
+            prev_lang: Some("vi".into()),
+        }
+    }
+
+    const EOT: i32 = 50_257;
+
+    #[test]
+    fn prev_lang_comes_from_the_request() {
+        // lang id của Whisper: en = 0, vi = 19.
+        let (allowed, prev) = validate(&request(), EOT).unwrap();
+        assert_eq!((allowed, prev), (vec![0, 19], Some(19)));
+        let none = TranscribeRequest {
+            prev_lang: None,
+            ..request()
+        };
+        assert_eq!(validate(&none, EOT).unwrap().1, None);
+        // prev_lang ngoài tập cho phép vẫn hợp lệ: `pick_language` chỉ bỏ qua nó.
+        let outside = TranscribeRequest {
+            prev_lang: Some("ja".into()),
+            ..request()
+        };
+        assert_eq!(validate(&outside, EOT).unwrap().1, Some(7));
+    }
+
+    #[test]
+    fn bad_prev_lang_is_an_invalid_request() {
+        for bad in ["xx", "v\0i"] {
+            let req = TranscribeRequest {
+                prev_lang: Some(bad.into()),
+                ..request()
+            };
+            assert!(validate(&req, EOT).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn app_prompt_is_used_only_when_the_language_stays_the_same() {
+        assert_eq!(prompt_for(19, Some(19), &[5, 6]), [5, 6]);
+        assert!(
+            prompt_for(0, Some(19), &[5, 6]).is_empty(),
+            "đổi ngôn ngữ thì bỏ prompt của ngôn ngữ cũ"
+        );
+        assert!(
+            prompt_for(19, None, &[5, 6]).is_empty(),
+            "chưa có đoạn trước thì không có ngữ cảnh"
+        );
+    }
+
+    #[test]
+    fn failures_are_classified_by_message() {
+        let e = |m: &str| anyhow::anyhow!(m.to_string());
+        let kind = |m: &str| classify_with(ErrorKind::Internal, &e(m), &[]);
+        assert_eq!(kind("ggml_metal: failed to allocate buffer"), ErrorKind::OutOfMemory);
+        assert_eq!(kind("VkResult ErrorOutOfDeviceMemory"), ErrorKind::OutOfMemory);
+        assert_eq!(kind("ggml_vulkan: failed to init device"), ErrorKind::GpuInit);
+        assert_eq!(kind("chép lời"), ErrorKind::Internal);
+        assert_eq!(
+            classify_with(ErrorKind::ModelLoad, &e("không nạp được model /x"), &[]),
+            ErrorKind::ModelLoad
+        );
+    }
+
+    /// whisper-rs chỉ trả `InitError`: lý do nằm trong log của ggml (`native_log`).
+    #[test]
+    fn failures_are_classified_by_the_native_log() {
+        let init = anyhow::anyhow!("nạp model: InitError");
+        let log = |lines: &[&str]| lines.iter().map(|l| l.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            classify_with(
+                ErrorKind::ModelLoad,
+                &init,
+                &log(&["ggml_metal_buffer_type_alloc_buffer: error: failed to allocate buffer of size 1200 MiB"])
+            ),
+            ErrorKind::OutOfMemory
+        );
+        assert_eq!(
+            classify_with(
+                ErrorKind::ModelLoad,
+                &init,
+                &log(&["whisper_backend_init_gpu: failed to initialize Vulkan backend: no device"])
+            ),
+            ErrorKind::GpuInit
+        );
+        assert_eq!(classify_with(ErrorKind::ModelLoad, &init, &[]), ErrorKind::ModelLoad);
     }
 
     #[test]

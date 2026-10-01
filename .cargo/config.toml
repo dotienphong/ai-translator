@@ -13,3 +13,9 @@ GGML_BMI2 = { value = "ON", force = true }
 GGML_FMA = { value = "ON", force = true }
 GGML_F16C = { value = "ON", force = true }
 GGML_AVX512 = { value = "OFF", force = true }
+
+# Windows: DLL mà file chạy import thẳng (nạp lúc khởi động, trước cả `SetDefaultDllDirectories`, ví dụ `vulkan-1.dll`)
+# chỉ được tìm trong System32, không tìm ở thư mục hiện hành hay PATH (spec §10.2). 0x800 là
+# `LOAD_LIBRARY_SEARCH_SYSTEM32`. Áp cho mọi binary của workspace (app, `asr-worker`); kiểm trên Windows ở 02c Task 9.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/DEPENDENTLOADFLAG:0x800"]

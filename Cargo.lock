@@ -170,9 +170,11 @@ dependencies = [
  "anyhow",
  "ash",
  "asr-protocol",
+ "libc",
  "serde",
  "serde_json",
  "whisper-rs",
+ "whisper-rs-sys",
 ]
 
 [[package]]

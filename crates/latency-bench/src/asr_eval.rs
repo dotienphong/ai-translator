@@ -99,12 +99,18 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
     worker.warmup()?;
     println!(
         "asr: {} ({}), chế độ giải mã {}\n{}",
-        ready.backend, ready.whisper_version, ready.decode_mode, ready.system_info
+        ready.backend.as_str(),
+        ready.whisper_version,
+        ready.decode_mode.as_str(),
+        ready.system_info
     );
     let manifest = std::fs::File::open(&args.manifest)
         .with_context(|| format!("không mở được manifest {}", args.manifest.display()))?;
     let mut out =
         BufWriter::new(std::fs::File::create(&part).with_context(|| format!("không tạo được {}", part.display()))?);
+    // Ngôn ngữ của clip trước: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ, để mốc A4 so được với lượt mới
+    // (chỉ có tác dụng ở clip có xác suất ngôn ngữ dưới 0,5, cột `lid_fallback` của score_asr.py).
+    let mut prev_lang: Option<String> = None;
     for (i, line) in BufReader::new(manifest).lines().enumerate() {
         let n = i + 1; // số dòng trong manifest
         let line = line.with_context(|| format!("manifest dòng {n}"))?;
@@ -151,8 +157,10 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
                 languages,
                 prompt_tokens: Vec::new(),
                 audio_ctx,
+                prev_lang: prev_lang.clone(),
             })
             .with_context(|| format!("clip {} (dòng {n})", clip.id))?;
+        prev_lang = Some(r.lang.clone());
         let ipc_ms = started.elapsed().as_secs_f32() * 1000.0 - r.lid_ms - r.asr_ms;
         let row = Output {
             id: clip.id,
@@ -168,7 +176,7 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
             audio_ms,
             audio_ctx,
             n_tokens: r.tokens.len(),
-            decode_mode: ready.decode_mode.clone(),
+            decode_mode: ready.decode_mode.as_str().to_string(),
         };
         writeln!(out, "{}", serde_json::to_string(&row)?)?;
         if n % 20 == 0 {

@@ -4018,8 +4018,13 @@ const char * whisper_lang_str_full(int id) {
     return nullptr;
 }
 
-void whisper_set_audio_ctx_with_state(struct whisper_state * state, int audio_ctx) {
+int whisper_set_audio_ctx_with_state(struct whisper_context * ctx, struct whisper_state * state, int audio_ctx) {
+    if (audio_ctx < 0 || audio_ctx > ctx->model.hparams.n_audio_ctx) {
+        WHISPER_LOG_ERROR("%s: audio_ctx %d is outside [0, %d]\n", __func__, audio_ctx, ctx->model.hparams.n_audio_ctx);
+        return -1;
+    }
     state->exp_n_audio_ctx = audio_ctx;
+    return 0;
 }
 
 int whisper_lang_auto_detect_with_state(

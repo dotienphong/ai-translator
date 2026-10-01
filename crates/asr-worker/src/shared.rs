@@ -3,7 +3,7 @@
 //! Cần bản vá `whisper_set_audio_ctx_with_state` trong `third_party/` (feature `shared-encode`).
 //! Giải mã greedy, không timestamp, không temperature fallback, giống cấu hình của `engine.rs`.
 
-use crate::engine::{Primers, mean_logprob};
+use crate::engine::{Primers, mean_logprob, prompt_for};
 use crate::lid::{min_prob_for, pick_language};
 use anyhow::{Context, Result};
 use asr_protocol::{MAX_PROMPT_TOKENS, SAMPLE_RATE};
@@ -131,7 +131,7 @@ impl Decoder {
         n_threads: usize,
     ) -> Result<Decoded> {
         state.pcm_to_mel(pcm, n_threads)?;
-        state.set_audio_ctx(audio_ctx);
+        state.set_audio_ctx(audio_ctx).context("đặt audio_ctx")?;
         state.encode(0, n_threads)?;
 
         // Một bước decoder sau [SOT] cho cả xác suất ngôn ngữ lẫn xác suất "không có tiếng nói".
@@ -160,9 +160,10 @@ impl Decoder {
             lid_started.elapsed().as_secs_f32() * 1000.0
         };
 
-        // Prompt của client nếu có, không thì câu mồi của ngôn ngữ vừa chọn (zh, ja): xem `Primers`.
+        // Prompt của client nếu đoạn này cùng ngôn ngữ với đoạn trước, không thì câu mồi của ngôn ngữ vừa chọn (zh, ja):
+        // xem `Primers` và `engine::prompt_for`.
         let lang = whisper_rs::get_lang_str(lang_id).context("lang id không hợp lệ")?;
-        let context = primers.context_for(lang, prompt_tokens);
+        let context = primers.context_for(lang, prompt_for(lang_id, prev_lang, prompt_tokens));
         let mut prompt = Vec::with_capacity(context.len().min(MAX_PROMPT_TOKENS) + 5);
         if !context.is_empty() {
             prompt.push(ctx.token_prev());

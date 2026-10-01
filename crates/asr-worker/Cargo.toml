@@ -16,6 +16,13 @@ shared-encode = []
 anyhow.workspace = true
 asr-protocol = { path = "../asr-protocol" }
 ash = { version = "0.38.0", optional = true, default-features = false, features = ["loaded", "std"] }
+libc = "0.2.189"
 serde.workspace = true
 serde_json.workspace = true
 whisper-rs = "0.16.0"
+# Chỉ để đọc bảng thiết bị ggml (`backend.rs`); cùng bản đã vá mà whisper-rs dùng (`[patch.crates-io]`).
+whisper-rs-sys = "0.15.0"
+
+[[test]]
+name = "stdout_isolation"
+harness = false

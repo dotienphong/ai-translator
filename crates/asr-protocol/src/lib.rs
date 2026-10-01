@@ -37,6 +37,68 @@ pub const MIN_AUDIO_CTX: i32 = 512;
 /// Một đoạn 8 giây ở dạng int16 chỉ khoảng 256 KB; 16 MiB là dư nhiều.
 pub const MAX_FRAME_BYTES: u32 = 16 * 1024 * 1024;
 
+/// Phiên bản giao thức, gửi trong `Response::Ready`. App từ chối worker có phiên bản khác (spec §6.4, "Việc cho MVP").
+/// Tăng số này mỗi khi đổi bất kỳ kiểu nào trong file này. Giai đoạn 0 không có trường này (coi là 1).
+pub const PROTOCOL_VERSION: u32 = 2;
+
+/// Thiết bị `asr-worker` thật sự dùng để chạy model, không phải thiết bị được yêu cầu (spec §6.4, thông điệp `Load`).
+/// App dựa vào giá trị này để áp quy tắc chuyển sang CPU.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Backend {
+    Cpu,
+    Metal,
+    Vulkan,
+}
+
+impl Backend {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cpu => "cpu",
+            Self::Metal => "metal",
+            Self::Vulkan => "vulkan",
+        }
+    }
+
+    pub fn is_gpu(self) -> bool {
+        self != Self::Cpu
+    }
+}
+
+/// Chế độ giải mã (spec §6.4, "Chế độ giải mã"). Bản phát hành chỉ nhận `Shared`.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecodeMode {
+    /// Chế độ B: nhận diện ngôn ngữ và chép lời dùng chung một lượt encode.
+    Shared,
+    /// Chế độ A: nhận diện ngôn ngữ riêng rồi `whisper_full`.
+    Split,
+}
+
+impl DecodeMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Shared => "shared",
+            Self::Split => "split",
+        }
+    }
+}
+
+/// Loại lỗi, để app xử lý theo bảng lỗi ở spec §9.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorKind {
+    /// Gửi `Warmup` hay `Transcribe` khi chưa `Load` thành công.
+    NotLoaded,
+    /// Không nạp được model (file thiếu hay hỏng).
+    ModelLoad,
+    /// Hết RAM hoặc bộ nhớ GPU: app đề xuất chuyển sang gói Nhẹ (§9).
+    OutOfMemory,
+    /// Không khởi tạo được GPU: app chuyển sang CPU (§9).
+    GpuInit,
+    /// Yêu cầu sai (ngoài khoảng, sai định dạng): lỗi của app, không phải của worker.
+    InvalidRequest,
+    /// Lỗi khác của whisper.cpp khi chạy.
+    Internal,
+}
+
 /// Yêu cầu từ app gửi cho `asr-worker`. Mỗi yêu cầu có đúng một phản hồi, trừ `Shutdown` (worker thoát, không phản hồi):
 /// `Load` → `Ready` hoặc `Error`; `Warmup` → `WarmupDone` hoặc `Error`; `Transcribe` → `Result` hoặc `Error`.
 ///
@@ -63,22 +125,29 @@ pub struct TranscribeRequest {
     pub pcm: Vec<i16>,
     /// Mã ngôn ngữ Whisper được phép, ví dụ `["en", "vi"]`. Một phần tử nghĩa là khóa ngôn ngữ.
     pub languages: Vec<String>,
-    /// Tối đa [`MAX_PROMPT_TOKENS`] token của đoạn trước cùng ngôn ngữ, dùng làm prompt khởi đầu; nhiều hơn thì worker
-    /// trả `Error`.
+    /// Tối đa [`MAX_PROMPT_TOKENS`] token của các đoạn trước có ngôn ngữ `prev_lang`, dùng làm prompt khởi đầu; nhiều
+    /// hơn thì worker trả `Error`. Worker chỉ dùng prompt khi ngôn ngữ chọn cho đoạn này đúng bằng `prev_lang`: đổi ngôn
+    /// ngữ thì prompt của ngôn ngữ cũ không còn là ngữ cảnh.
     pub prompt_tokens: Vec<i32>,
     /// Cửa sổ mã hóa, mỗi vị trí 20 ms, trong khoảng 0 đến 1500. 0 nghĩa là cửa sổ 30 giây; giá trị khác phải phủ hết
     /// `pcm` (`audio_ctx · 320 ≥ pcm.len()`), nếu không worker trả `Error` vì whisper.cpp sẽ lặng lẽ bỏ phần đuôi.
     /// Công thức thường dùng: [`audio_ctx_for_samples`].
     pub audio_ctx: i32,
+    /// Ngôn ngữ của đoạn trước, do app giữ (spec §6.4, "Việc cho MVP"): worker không giữ trạng thái nhận diện ngôn ngữ,
+    /// nên kết quả không phụ thuộc thứ tự các yêu cầu, và app không mất ngôn ngữ trước khi worker khởi động lại. Đoạn bị
+    /// app bỏ (không có tiếng nói) không làm đổi giá trị này. Phải thuộc `languages` mới được dùng để giữ ngôn ngữ.
+    pub prev_lang: Option<String>,
 }
 
 /// Phản hồi của `asr-worker`. Cùng quy tắc chỉ-thêm-ở-cuối như [`Request`].
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Response {
     Ready {
-        backend: String,
-        /// `shared` (chế độ B: nhận diện ngôn ngữ và chép lời dùng chung một lượt encode) hoặc `split` (chế độ A).
-        decode_mode: String,
+        /// Trường đầu tiên, để app đọc được số này trước mọi trường khác: worker build từ bản cũ hơn thì thường lệch ngay
+        /// ở đây (hoặc khung không giải mã được), và app báo lệch phiên bản.
+        protocol_version: u32,
+        backend: Backend,
+        decode_mode: DecodeMode,
         whisper_version: String,
         system_info: String,
     },
@@ -88,6 +157,7 @@ pub enum Response {
     Result(TranscribeResult),
     Error {
         segment_id: Option<u64>,
+        kind: ErrorKind,
         message: String,
     },
 }
@@ -129,6 +199,7 @@ impl fmt::Debug for TranscribeRequest {
             .field("languages", &self.languages)
             .field("prompt_tokens", &format_args!("<{} token>", self.prompt_tokens.len()))
             .field("audio_ctx", &self.audio_ctx)
+            .field("prev_lang", &self.prev_lang)
             .finish()
     }
 }
@@ -230,6 +301,7 @@ mod tests {
             languages: vec!["en".into(), "vi".into()],
             prompt_tokens: vec![50364, 123],
             audio_ctx: 214,
+            prev_lang: Some("vi".into()),
         })
     }
 
@@ -238,8 +310,9 @@ mod tests {
         let mut buf = Vec::new();
         write_frame(&mut buf, &sample_request()).unwrap();
         let ready = Response::Ready {
-            backend: "metal".into(),
-            decode_mode: "shared".into(),
+            protocol_version: PROTOCOL_VERSION,
+            backend: Backend::Metal,
+            decode_mode: DecodeMode::Shared,
             whisper_version: "1.8.3".into(),
             system_info: "NEON = 1".into(),
         };
@@ -350,11 +423,13 @@ mod tests {
         assert!(read_frame::<_, Request>(&mut r).unwrap().is_none());
     }
 
-    /// Message có kích thước mã hóa đúng bằng `MAX_FRAME_BYTES` (1 byte biến thể + 1 byte Option + 4 byte độ dài chuỗi).
+    /// Message có kích thước mã hóa đúng bằng `MAX_FRAME_BYTES` (1 byte biến thể + 1 byte Option + 1 byte `kind` + 4 byte
+    /// độ dài chuỗi).
     fn message_of_exactly_max() -> Response {
         let msg = Response::Error {
             segment_id: None,
-            message: "a".repeat(MAX_FRAME_BYTES as usize - 6),
+            kind: ErrorKind::Internal,
+            message: "a".repeat(MAX_FRAME_BYTES as usize - 7),
         };
         assert_eq!(postcard::to_stdvec(&msg).unwrap().len(), MAX_FRAME_BYTES as usize);
         msg
@@ -373,6 +448,7 @@ mod tests {
     fn write_rejects_oversized_message_and_writes_nothing() {
         let Response::Error {
             segment_id,
+            kind,
             mut message,
         } = message_of_exactly_max()
         else {
@@ -380,7 +456,14 @@ mod tests {
         };
         message.push('a'); // MAX + 1
         let mut out = Vec::new();
-        let res = write_frame(&mut out, &Response::Error { segment_id, message });
+        let res = write_frame(
+            &mut out,
+            &Response::Error {
+                segment_id,
+                kind,
+                message,
+            },
+        );
         assert!(matches!(res, Err(FrameError::TooLarge(n)) if n == MAX_FRAME_BYTES as u64 + 1));
         assert!(out.is_empty());
     }
@@ -413,8 +496,9 @@ mod tests {
         assert_eq!(requests, [0, 1, 2, 3]);
 
         let ready = Response::Ready {
-            backend: String::new(),
-            decode_mode: String::new(),
+            protocol_version: 0,
+            backend: Backend::Cpu,
+            decode_mode: DecodeMode::Shared,
             whisper_version: String::new(),
             system_info: String::new(),
         };
@@ -431,6 +515,7 @@ mod tests {
         });
         let error = Response::Error {
             segment_id: None,
+            kind: ErrorKind::Internal,
             message: String::new(),
         };
         let warmup_done = Response::WarmupDone { millis: 0.0 };
@@ -456,6 +541,7 @@ mod tests {
             languages: vec!["vi".into()],
             prompt_tokens: vec![777; 3],
             audio_ctx: 100,
+            prev_lang: None,
         });
         let s = format!("{req:?}");
         assert!(
@@ -504,5 +590,101 @@ mod tests {
         assert_eq!(audio_ctx_for_samples(0), MIN_AUDIO_CTX);
         assert_eq!(audio_ctx_for_samples(1 << 40), 1500);
         assert_eq!(audio_ctx_for_samples(usize::MAX), 1500);
+    }
+    /// Chỉ số của ba enum mới cũng bị khóa như `Request` và `Response`: đổi thứ tự là đổi định dạng trên dây.
+    #[test]
+    fn enum_indices_are_pinned() {
+        fn index<T: Serialize>(v: &T) -> u8 {
+            postcard::to_stdvec(v).unwrap()[0]
+        }
+        assert_eq!(
+            [Backend::Cpu, Backend::Metal, Backend::Vulkan].map(|b| index(&b)),
+            [0, 1, 2]
+        );
+        assert_eq!([DecodeMode::Shared, DecodeMode::Split].map(|m| index(&m)), [0, 1]);
+        let kinds = [
+            ErrorKind::NotLoaded,
+            ErrorKind::ModelLoad,
+            ErrorKind::OutOfMemory,
+            ErrorKind::GpuInit,
+            ErrorKind::InvalidRequest,
+            ErrorKind::Internal,
+        ];
+        assert_eq!(kinds.map(|k| index(&k)), [0, 1, 2, 3, 4, 5]);
+    }
+
+    /// `protocol_version` là trường đầu của `Ready`: ngay sau byte biến thể (0) là varint của số phiên bản.
+    #[test]
+    fn protocol_version_comes_first_in_ready() {
+        let ready = Response::Ready {
+            protocol_version: PROTOCOL_VERSION,
+            backend: Backend::Vulkan,
+            decode_mode: DecodeMode::Split,
+            whisper_version: "1.8.3".into(),
+            system_info: String::new(),
+        };
+        let bytes = postcard::to_stdvec(&ready).unwrap();
+        assert_eq!(bytes[..2], [0, PROTOCOL_VERSION as u8]);
+        assert_eq!(PROTOCOL_VERSION, 2);
+    }
+
+    /// Worker của Giai đoạn 0 gửi `Ready` với `backend` là chuỗi: app mới đọc thấy phiên bản sai (độ dài chuỗi) hoặc
+    /// không giải mã được khung, chứ không nhận nhầm là hợp lệ.
+    #[test]
+    fn a_phase0_ready_is_not_accepted_as_version_2() {
+        #[derive(Serialize)]
+        enum OldResponse {
+            Ready {
+                backend: String,
+                decode_mode: String,
+                whisper_version: String,
+                system_info: String,
+            },
+        }
+        let old = OldResponse::Ready {
+            backend: "metal".into(),
+            decode_mode: "shared".into(),
+            whisper_version: "1.8.3".into(),
+            system_info: "NEON = 1".into(),
+        };
+        let mut buf = Vec::new();
+        write_frame(&mut buf, &old).unwrap();
+        match read_frame::<_, Response>(&mut Cursor::new(buf)) {
+            Ok(Some(Response::Ready { protocol_version, .. })) => assert_ne!(protocol_version, PROTOCOL_VERSION),
+            Ok(other) => panic!("không mong đợi {other:?}"),
+            Err(_) => {} // cũng chấp nhận: khung không giải mã được
+        }
+    }
+
+    #[test]
+    fn prev_lang_roundtrips_and_is_the_last_field() {
+        let mut req = match sample_request() {
+            Request::Transcribe(r) => r,
+            _ => unreachable!(),
+        };
+        let with = postcard::to_stdvec(&req).unwrap();
+        req.prev_lang = None;
+        let without = postcard::to_stdvec(&req).unwrap();
+        // `Some("vi")` = 1 byte Some + 1 byte độ dài + 2 byte; `None` = 1 byte. Hai bản chỉ khác ở đuôi.
+        assert_eq!(with.len(), without.len() + 3);
+        assert_eq!(with[..without.len() - 1], without[..without.len() - 1]);
+        assert_eq!(with[with.len() - 4..], [1, 2, b'v', b'i']);
+        assert_eq!(
+            postcard::from_bytes::<TranscribeRequest>(&with)
+                .unwrap()
+                .prev_lang
+                .as_deref(),
+            Some("vi")
+        );
+    }
+
+    #[test]
+    fn backend_names_and_gpu_flag() {
+        assert_eq!(Backend::Metal.as_str(), "metal");
+        assert_eq!(Backend::Vulkan.as_str(), "vulkan");
+        assert_eq!(Backend::Cpu.as_str(), "cpu");
+        assert!(Backend::Metal.is_gpu() && Backend::Vulkan.is_gpu() && !Backend::Cpu.is_gpu());
+        assert_eq!(DecodeMode::Shared.as_str(), "shared");
+        assert_eq!(DecodeMode::Split.as_str(), "split");
     }
 }

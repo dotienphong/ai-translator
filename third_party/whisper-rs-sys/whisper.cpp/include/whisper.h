@@ -384,7 +384,11 @@ extern "C" {
     // meeting-translator patch: set the audio context used by subsequent
     // whisper_encode_with_state / whisper_lang_auto_detect_with_state calls on this state
     // (0 = model default). Upstream only sets it inside whisper_full_with_state.
-    WHISPER_API void whisper_set_audio_ctx_with_state(struct whisper_state * state, int audio_ctx);
+    // Returns 0 on success, -1 if audio_ctx is outside [0, n_audio_ctx] of the model.
+    WHISPER_API int whisper_set_audio_ctx_with_state(
+            struct whisper_context * ctx,
+              struct whisper_state * state,
+                                 int   audio_ctx);
 
     WHISPER_API int whisper_lang_auto_detect_with_state(
             struct whisper_context * ctx,

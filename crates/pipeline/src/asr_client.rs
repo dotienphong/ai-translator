@@ -1,7 +1,10 @@
 //! Chạy và nói chuyện với tiến trình phụ `asr-worker` qua stdin/stdout (spec §6.4).
 
 use anyhow::{Context, Result, bail};
-use asr_protocol::{Request, Response, TranscribeRequest, TranscribeResult, read_frame, write_frame};
+use asr_protocol::{
+    Backend, DecodeMode, PROTOCOL_VERSION, Request, Response, TranscribeRequest, TranscribeResult, read_frame,
+    write_frame,
+};
 use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
@@ -12,9 +15,10 @@ use std::time::{Duration, Instant};
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub struct ReadyInfo {
-    pub backend: String,
-    /// `shared` (chế độ B) hoặc `split` (chế độ A), spec §6.4.
-    pub decode_mode: String,
+    /// Thiết bị worker thật sự dùng (spec §6.4), không phải thiết bị được yêu cầu.
+    pub backend: Backend,
+    /// Chế độ B (`Shared`) hoặc chế độ A (`Split`), spec §6.4.
+    pub decode_mode: DecodeMode,
     pub whisper_version: String,
     pub system_info: String,
 }
@@ -61,12 +65,19 @@ impl AsrWorker {
             use_gpu,
             n_threads,
         };
-        match worker.call(&load)? {
+        match worker
+            .call(&load)
+            .context("asr-worker không trả lời `Load` (có thể lệch phiên bản giao thức)")?
+        {
+            Response::Ready { protocol_version, .. } if protocol_version != PROTOCOL_VERSION => bail!(
+                "asr-worker dùng giao thức phiên bản {protocol_version}, app cần {PROTOCOL_VERSION}: build lại cả hai cùng lúc"
+            ),
             Response::Ready {
                 backend,
                 decode_mode,
                 whisper_version,
                 system_info,
+                ..
             } => Ok((
                 worker,
                 ReadyInfo {

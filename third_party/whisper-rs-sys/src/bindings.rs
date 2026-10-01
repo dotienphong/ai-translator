@@ -5244,7 +5244,11 @@ unsafe extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn whisper_set_audio_ctx_with_state(state: *mut whisper_state, audio_ctx: ::std::os::raw::c_int);
+    pub fn whisper_set_audio_ctx_with_state(
+        ctx: *mut whisper_context,
+        state: *mut whisper_state,
+        audio_ctx: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
     pub fn whisper_lang_auto_detect_with_state(
