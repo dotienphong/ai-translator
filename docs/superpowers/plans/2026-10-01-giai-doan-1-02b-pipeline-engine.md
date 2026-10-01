@@ -2,28 +2,30 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Mục tiêu:** Làm phần thứ hai của kế hoạch 02 (mục 2.2 của kế hoạch 00), sau 02a:
+**Mục tiêu:** Làm phần thứ ba của kế hoạch 02 (mục 2.2 của kế hoạch 00), sau 02a và 02d:
 - phụ đề và sự kiện theo §6.6, hai hàng đợi chống nghẽn của §7, số đo của phiên;
-- engine của một phiên dịch: âm thanh 16 kHz vào, `subtitle://upsert` và `subtitle://delta` ra;
+- engine của một phiên dịch: âm thanh 16 kHz vào, `subtitle://upsert` và `subtitle://delta` ra; dừng trong hạn 3 giây và dịch nốt câu cuối; đếm phút cho hạn mức qua `EventSink::usage` và dừng khi chạm hạn mức (§6.8, kế hoạch 06 nối vào);
 - test tích hợp từ file WAV (clip FLEURS, Đ20) với tiến trình phụ giả, và bản chạy model thật;
 - `latency-bench mt-eval` (Đ4), nhãn và so mốc cho `score_mt.py`, công cụ đo `no_speech_prob` và tỉ lệ token (Đ12);
-- `audio-capture` đủ cho app: chọn thiết bị, danh sách app đang phát tiếng, tiền xử lý dùng chung, tap thu cả âm thanh của app;
+- `audio-capture` đủ cho app: chọn thiết bị, danh sách app đang phát tiếng (gộp tiến trình helper, có tên hiển thị), tiền xử lý dùng chung, tap thu cả âm thanh của app, tap nhiều tiến trình;
 - đo cho Đ12 và chạy lại A3, A4, S6 (mục 6.7 của kế hoạch 00).
 
 **Kiến trúc:** Như 02a. Engine chạy bốn luồng (VAD, nhận dạng, phụ đề, dịch); luồng phụ đề là nơi duy nhất phát sự kiện phụ đề (QĐ1). App nối vào qua `FrameSource`, `VadFactory`, trait `Asr` và `Mt` của `SidecarManager`, và `EventSink`.
 
-**Công nghệ:** Như 02a; không thêm crate nào.
+**Công nghệ:** Như 02a. Task 5 thêm `objc2-app-kit` và `libc` cho `audio-capture` (macOS), xem bảng phiên bản ở 02a.
 
-Đọc trước 02a: `docs/superpowers/plans/2026-10-01-giai-doan-1-02a-pipeline-crate.md`. Các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Dòng của bảng đối chiếu", "Quyết định" (QĐ) và "Điểm cần chủ dự án quyết" ở đó áp cho file này. Làm file này sau khi 02a đã commit hết.
+Đọc trước 02a: `docs/superpowers/plans/2026-10-01-giai-doan-1-02a-pipeline-crate.md`. Các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Dòng của bảng đối chiếu", "Quyết định" (QĐ) và "Điểm cần chủ dự án quyết" ở đó áp cho file này. Làm file này sau khi 02a và 02d đã commit hết.
 
 ---
 
 ## Task 1: Phụ đề, hàng đợi §7, số đo của phiên
 
-Ba module thuần, không luồng, không khóa, để test từng trường hợp (dòng 151, 186, 218–222, 238, 288; QĐ9):
-- `subtitle.rs`: `Subtitle` (tên trường theo `src/lib/ipc.ts`, thêm `replaces`), `Status` đủ bảy trạng thái của §6.6, `Delta`.
+Ba module thuần, không luồng, không khóa, để test từng trường hợp (dòng 151, 186, 218–222, 238, 288; QĐ9, QĐ25):
+- `subtitle.rs`: `Subtitle` (tên trường theo `src/lib/ipc.ts`, có `replaces` của §6.6), `Status` đủ bảy trạng thái của §6.6, `Delta`.
 - `queue.rs`: `AsrQueue` (VAD → nhận dạng) và `MtQueue` (câu chờ dịch) theo §7. "Hiện tại" là giờ âm thanh của phiên.
-- `metrics.rs`: `SessionMetrics` (thời gian từng bước, số đoạn theo kết cục, số lần ghép, thời lượng tiếng nói đã dịch cho quota của 06) và bản tóm tắt một dòng cho log, không có chữ chép lời.
+  - `PendingSegment` mang `speech_ms` và hai số của VAD từ `Segment`; đoạn gộp cộng `speech_ms` của các đoạn con, không tính khoảng nghỉ ở giữa (§6.3), và lấy trung bình số của VAD theo `speech_ms`.
+  - `MtItem` mang `speech_ms` (câu gộp cộng lại) và `context`, ngữ cảnh chụp lúc mở câu (Q1 của review 02b; câu gộp giữ ngữ cảnh của câu đầu).
+- `metrics.rs`: `SessionMetrics` (thời gian từng bước, số đoạn theo kết cục, số lần ghép, thời lượng tiếng nói đã dịch theo luật đếm phút của §6.8) và bản tóm tắt một dòng cho log, không có chữ chép lời.
 
 **Files:**
 - Sửa: `crates/pipeline/src/lib.rs`
@@ -101,7 +103,8 @@ Tạo `crates/pipeline/src/queue.rs`, lúc này mới có phần test (phần co
 //! Hai hàng đợi chống nghẽn của §7, ở dạng luật thuần (không luồng, không khóa), để test từng trường hợp.
 //!
 //! - [`AsrQueue`], VAD → nhận dạng: tối đa 3 đoạn chờ; đầy thì gộp hai đoạn chờ lâu nhất nếu tổng không quá 12 giây; chỉ
-//!   bỏ đoạn (`dropped`) khi độ trễ vượt 20 giây.
+//!   bỏ đoạn (`dropped`) khi độ trễ vượt 20 giây. Đoạn gộp có `speech_ms` bằng tổng của các đoạn con, không tính khoảng
+//!   nghỉ ở giữa (§6.3, hạn mức §6.8).
 //! - [`MtQueue`], câu chờ dịch: tối đa 3 câu; đầy thì gộp các câu liên tiếp cùng ngôn ngữ thành một request (phụ đề cũng gộp
 //!   thành một, lấy `start_ms` của câu đầu và `end_ms` của câu cuối); câu chờ quá 20 giây thì bỏ bước dịch (`skipped`).
 //!
@@ -118,6 +121,9 @@ mod tests {
             ids: vec![id],
             start_ms,
             end_ms,
+            speech_ms: end_ms - start_ms,
+            mean_prob: 0.9,
+            speech_ratio: 1.0,
             samples: vec![0.0; seconds * SECOND],
         }
     }
@@ -151,6 +157,8 @@ mod tests {
         };
         assert_eq!((first.ids, first.start_ms, first.end_ms), (vec![0, 1], 0, 8_000));
         assert_eq!(first.samples.len(), 6 * SECOND);
+        // 3 giây tiếng nói mỗi đoạn; khoảng nghỉ 2 giây ở giữa (3 000–5 000 ms) không tính (§6.3, §6.8).
+        assert_eq!(first.speech_ms, 6_000);
         assert_eq!(ids(&mut q), [vec![2], vec![3]]);
     }
 
@@ -187,6 +195,8 @@ mod tests {
             text: text.into(),
             start_ms: sub_id * 1_000,
             end_ms: sub_id * 1_000 + 800,
+            speech_ms: 800,
+            context: Some(format!("trước {sub_id}")),
             enqueued_ms,
             open: false,
             replaces: Vec::new(),
@@ -207,6 +217,8 @@ mod tests {
             (1, "One. Two.", 1_000, 2_800)
         );
         assert_eq!((m.replaces.clone(), m.version, m.enqueued_ms), (vec![2], 2, 0));
+        // Câu gộp: tiếng nói cộng lại, giữ ngữ cảnh của câu đầu.
+        assert_eq!((m.speech_ms, m.context.as_deref()), (1_600, Some("trước 1")));
         let order: Vec<u64> = q.iter().map(|i| i.sub_id).collect();
         assert_eq!(order, [1, 3, 4]);
     }
@@ -234,10 +246,11 @@ mod tests {
         let merged = q.push(item(4, "en", "Four.", 0));
         assert_eq!(merged[0].replaces, [2]);
         assert_eq!(q.iter().map(|i| i.sub_id).collect::<Vec<_>>(), [1, 3, 4]);
-        assert!(q.update(3, "and three more", 3_900, 2));
+        assert!(q.update(3, "and three more", 3_900, 1_700, 2));
         q.close(3);
         let merged = q.push(item(5, "en", "Five.", 0));
         assert_eq!(merged[0].text, "One. Two. and three more Four.");
+        assert_eq!(merged[0].speech_ms, 800 + 800 + 1_700 + 800);
     }
 
     #[test]
@@ -247,6 +260,30 @@ mod tests {
         q.push(item(2, "en", "Two.", 5_000));
         assert!(matches!(q.pop(21_001), Some(Ready::Skip(i)) if i.sub_id == 1));
         assert!(matches!(q.pop(21_001), Some(Ready::Translate(i)) if i.sub_id == 2));
+    }
+
+    /// Đoạn gộp lấy trung bình xác suất VAD theo độ dài tiếng nói.
+    #[test]
+    fn merged_segments_weigh_the_vad_statistics_by_speech_length() {
+        let mut q = AsrQueue::new(QueueConfig::default());
+        q.push(PendingSegment {
+            mean_prob: 0.5,
+            speech_ratio: 0.5,
+            ..seg(0, 0, 1_000, 1)
+        });
+        q.push(PendingSegment {
+            mean_prob: 0.9,
+            speech_ratio: 1.0,
+            ..seg(1, 2_000, 5_000, 3)
+        });
+        q.push(seg(2, 6_000, 7_000, 1));
+        q.push(seg(3, 8_000, 9_000, 1));
+        let Some(Popped::Segment(first)) = q.pop(0) else {
+            panic!("phải có đoạn gộp")
+        };
+        assert_eq!((first.ids, first.speech_ms), (vec![0, 1], 4_000));
+        assert!((first.mean_prob - 0.8).abs() < 1e-6, "{}", first.mean_prob);
+        assert!((first.speech_ratio - 0.875).abs() < 1e-6, "{}", first.speech_ratio);
     }
 }
 ```
@@ -355,7 +392,9 @@ pub struct SessionMetrics {
     pub mt_ms: Vec<f32>,
     /// Tổng thể: từ lúc hết tiếng nói của câu tới lúc bản dịch hiện đủ (giờ âm thanh), ms.
     pub latency_ms: Vec<f32>,
-    /// Thời lượng tiếng nói đã dịch, cho quota Free (Q5 của kế hoạch 00: không tính `same_lang`, đoạn bị bỏ, đoạn bị lọc).
+    /// Thời lượng tiếng nói đã được dịch xong, theo luật đếm phút của hạn mức (spec §6.8, "Cách đếm phút"): cộng
+    /// `speech_ms` (không gồm đệm; đoạn gộp cộng từng đoạn con) khi phụ đề sang `done`, mỗi đoạn một lần kể cả khi câu
+    /// được dịch lại sau khi ghép hay gộp. Không tính `same_lang`, `failed`, `skipped`, `dropped`, đoạn bị lọc.
     pub translated_speech_ms: u64,
 }
 
@@ -412,7 +451,41 @@ pub struct PendingSegment {
     pub ids: Vec<u64>,
     pub start_ms: u64,
     pub end_ms: u64,
+    /// Độ dài tiếng nói, không gồm đệm; đoạn gộp là tổng của các đoạn con (`Segment::speech_ms`).
+    pub speech_ms: u64,
+    /// Xác suất VAD trung bình và tỉ lệ khung tiếng nói (`Segment::mean_prob`, `Segment::speech_ratio`); đoạn gộp lấy
+    /// trung bình theo `speech_ms`. Luật câu đệm (`filter`) dùng `mean_prob`.
+    pub mean_prob: f32,
+    pub speech_ratio: f32,
     pub samples: Vec<f32>,
+}
+
+impl From<crate::segmenter::Segment> for PendingSegment {
+    fn from(s: crate::segmenter::Segment) -> Self {
+        Self {
+            ids: vec![s.id],
+            start_ms: s.start_ms,
+            end_ms: s.end_ms,
+            speech_ms: s.speech_ms,
+            mean_prob: s.mean_prob,
+            speech_ratio: s.speech_ratio,
+            samples: s.samples,
+        }
+    }
+}
+
+impl PendingSegment {
+    /// Gộp `next` vào sau đoạn này: thời gian từ đầu đoạn này tới cuối `next`, `speech_ms` cộng lại.
+    fn absorb(&mut self, next: PendingSegment) {
+        let total = (self.speech_ms + next.speech_ms).max(1) as f32;
+        let weigh = |a: f32, wa: u64, b: f32, wb: u64| (a * wa as f32 + b * wb as f32) / total;
+        self.mean_prob = weigh(self.mean_prob, self.speech_ms, next.mean_prob, next.speech_ms);
+        self.speech_ratio = weigh(self.speech_ratio, self.speech_ms, next.speech_ratio, next.speech_ms);
+        self.ids.extend(next.ids);
+        self.end_ms = next.end_ms;
+        self.speech_ms += next.speech_ms;
+        self.samples.extend(next.samples);
+    }
 }
 
 // Debug viết tay: không in âm thanh.
@@ -422,6 +495,8 @@ impl std::fmt::Debug for PendingSegment {
             .field("ids", &self.ids)
             .field("start_ms", &self.start_ms)
             .field("end_ms", &self.end_ms)
+            .field("speech_ms", &self.speech_ms)
+            .field("mean_prob", &self.mean_prob)
             .field("samples", &format_args!("<{} mẫu>", self.samples.len()))
             .finish()
     }
@@ -468,10 +543,7 @@ impl AsrQueue {
             let max_samples = self.cfg.asr_merge_max_ms as usize * SAMPLE_RATE as usize / 1000;
             if self.items[0].samples.len() + self.items[1].samples.len() <= max_samples {
                 let second = self.items.remove(1).expect("có ít nhất hai đoạn");
-                let first = &mut self.items[0];
-                first.ids.extend(second.ids);
-                first.end_ms = second.end_ms;
-                first.samples.extend(second.samples);
+                self.items[0].absorb(second);
             }
         }
         self.items.push_back(segment);
@@ -499,6 +571,11 @@ pub struct MtItem {
     pub text: String,
     pub start_ms: u64,
     pub end_ms: u64,
+    /// Độ dài tiếng nói của câu, không gồm đệm; câu gộp là tổng của các câu con.
+    pub speech_ms: u64,
+    /// Câu gốc trước đó cùng ngôn ngữ, chụp lúc câu được mở (cờ `experimental.translationContext`, §6.5). Câu gộp giữ
+    /// ngữ cảnh của câu đầu.
+    pub context: Option<String>,
     /// Lúc câu vào hàng đợi (giờ âm thanh). Câu gộp lấy mốc của câu vào sớm nhất.
     pub enqueued_ms: u64,
     /// Câu đang mở (còn có thể ghép thêm đoạn, §6.3): chưa được gộp với câu khác.
@@ -556,12 +633,14 @@ impl MtQueue {
         self.items.push_front(item);
     }
 
-    /// Câu đang chờ vừa được ghép thêm đoạn: cập nhật chữ và phiên bản. Trả `false` nếu câu không còn trong hàng.
-    pub fn update(&mut self, sub_id: u64, text: &str, end_ms: u64, version: u32) -> bool {
+    /// Câu đang chờ vừa được ghép thêm đoạn: cập nhật chữ, mốc cuối, tiếng nói và phiên bản. Trả `false` nếu câu không
+    /// còn trong hàng.
+    pub fn update(&mut self, sub_id: u64, text: &str, end_ms: u64, speech_ms: u64, version: u32) -> bool {
         match self.items.iter_mut().find(|i| i.sub_id == sub_id) {
             Some(item) => {
                 item.text = text.to_string();
                 item.end_ms = end_ms;
+                item.speech_ms = speech_ms;
                 item.version = version;
                 true
             }
@@ -594,6 +673,7 @@ impl MtQueue {
                 Some(last) if !last.open && !item.open && last.lang == item.lang => {
                     last.text = format!("{}{}{}", last.text.trim_end(), joiner(&last.lang), item.text.trim());
                     last.end_ms = item.end_ms;
+                    last.speech_ms += item.speech_ms;
                     last.enqueued_ms = last.enqueued_ms.min(item.enqueued_ms);
                     last.replaces.push(item.sub_id);
                     last.replaces.extend(item.replaces);
@@ -668,7 +748,7 @@ Run: `cargo test -p pipeline --lib`
 Expected:
 
 ```text
-test result: ok. 108 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 124 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 ```
 
 - [ ] **Step 6: Clippy và định dạng**
@@ -688,20 +768,21 @@ git commit -m "feat(pipeline): phụ đề, hàng đợi chống nghẽn §7 và
 
 ## Task 2: Engine của một phiên dịch
 
-`engine.rs` nối mọi phần trước thành một phiên (§5, §7; dòng 9, 15, 16, 45, 66, 67, 73, 95, 96, 98, 99, 141, 143, 147, 217–222, 231, 235, 238, 273, 315; QĐ1, QĐ10):
-- `Engine::start(cfg, source, vad, asr, mt, sink)` chạy bốn luồng: VAD, nhận dạng, phụ đề, dịch. `stop` dừng theo QĐ10; `join` chờ tới khi nguồn hết (test từ file).
-- Trait cho app nối vào: `FrameSource` (âm thanh 16 kHz mono vào; `SampleSource` phát mẫu có sẵn), `VadModel` (Silero, hoặc `EnergyVad` cho test không cần model), `EventSink` (phụ đề, delta, mức âm lượng, chỉ báo, lỗi làm phiên dừng kèm loại `Fatal`).
-- Luồng phụ đề: ghép câu (§6.3), `same_lang` không dịch (F2), cờ ngữ cảnh câu trước (`translation_context`, mặc định tắt), hàng đợi dịch, chỉ báo "Đang trễ", "Không nghe thấy âm thanh" (60 giây theo RMS) và "dịch không dùng được". Request dịch làm nóng gửi một lần khi bắt đầu phiên (`cache_prompt`).
-- `segmenter.rs` thêm `open_start_ms` (thời điểm bắt đầu của đoạn đang nói dở, để luồng phụ đề tính độ trễ).
-- `tests/engine.rs` (dòng 295, 315): âm thanh tổng hợp có ranh giới biết trước, VAD theo năng lượng, tiến trình phụ giả qua đúng `SidecarManager`; kiểm thứ tự, thời gian, trạng thái, ghép câu, lọc, `dropped`, lỗi làm phiên dừng, dừng nhanh, và log của cả phiên không có chữ chép lời nào.
-- `tests/lifecycle.rs`: chỉnh theo trait `Mt` của engine.
+`engine.rs` nối mọi phần trước thành một phiên (§5, §7; dòng 9, 15, 16, 45, 66, 67, 73, 95, 96, 98, 99, 141, 143, 147, 217–222, 231, 235, 238, 273, 315; QĐ1, QĐ10, QĐ25–QĐ27):
+- `Engine::start(cfg, source, vad, asr, mt, sink)` chạy bốn luồng: VAD, nhận dạng, phụ đề, dịch (luồng VAD chạy sau cùng). `stop` dừng theo QĐ10 (hạn chung 3 giây, câu cuối vẫn được dịch); `join` chờ tới khi nguồn hết (test từ file); `exhaust_quota` dừng theo QĐ26.
+- Trait cho app nối vào: `FrameSource` (âm thanh 16 kHz mono vào; `SampleSource` phát mẫu có sẵn), `VadModel` (Silero, hoặc `EnergyVad` cho test không cần model), `EventSink` (phụ đề, delta, mức âm lượng, chỉ báo, lỗi làm phiên dừng kèm loại `Fatal`, và `usage`: phút vừa dịch xong cho hạn mức, mặc định không làm gì).
+- Luồng phụ đề: ghép câu (§6.3), `same_lang` không dịch (F2), cờ ngữ cảnh câu trước (`translation_context`, mặc định tắt; ngữ cảnh chụp lúc mở câu), hàng đợi dịch, chỉ báo "Đang trễ", "Không nghe thấy âm thanh" (60 giây theo RMS) và "dịch không dùng được", đếm phút khi phụ đề sang `done`. Request dịch làm nóng gửi một lần khi bắt đầu phiên, và dừng khi bấm Dừng.
+- Luồng nhận dạng áp `filter::verdict` với số của đoạn (`no_speech_prob`, `avg_logprob`, xác suất VAD, độ dài tiếng nói).
+- Mỗi luồng có guard: panic không làm engine treo (Q4 của review 02b); VAD lỗi giữa chừng và nguồn âm thanh hỏng đều báo lỗi (Q5).
+- `segmenter.rs` thêm `open_start_ms` (thời điểm bắt đầu của đoạn đang nói dở, để luồng phụ đề biết tiếng nói đã tiếp tục trong cửa sổ ghép câu).
+- Test đơn vị của luồng phụ đề, nạp thẳng tin nhắn, tất định (Q2 của review 02b): ngữ cảnh đúng câu trước, gộp phụ đề khi hàng đợi dịch đầy, `skipped` vì chờ lâu, `failed` và "dịch không dùng được", luồng dịch chết, câu được ghép thêm khi đang dịch (hủy, dịch lại), đếm phút mỗi đoạn một lần, "Đang trễ", dừng trong hạn và hết hạn, chạm hạn mức (từ `usage` và từ ngoài). Thêm test cả engine với nhận dạng và dịch giả trong tiến trình: VAD không nạp được, VAD lỗi giữa chừng, nguồn âm thanh hỏng, luồng VAD và luồng nhận dạng panic, `llama-server` treo lúc Dừng, lần làm nóng dừng khi Dừng.
+- `tests/engine.rs` (dòng 295, 315): âm thanh tổng hợp có ranh giới biết trước, VAD theo năng lượng, tiến trình phụ giả qua đúng `SidecarManager`; kiểm thứ tự, thời gian, trạng thái, ghép câu, lọc, phút đã dịch (khớp tổng của `usage`), `dropped`, lỗi làm phiên dừng, dừng nhanh, và log của cả phiên không có chữ chép lời nào. Các test này phát âm thanh nhanh gấp 20 lần thời gian thực, nên đặt ngưỡng trễ rất lớn (600 000 ms) để máy bận không làm test đỏ ngẫu nhiên (Q3 của review 02b); luật trễ có test riêng ở trên.
 
 **Files:**
 - Tạo: `crates/pipeline/src/engine.rs`
 - Sửa: `crates/pipeline/src/lib.rs`
 - Sửa: `crates/pipeline/src/segmenter.rs`
 - Test (tạo): `crates/pipeline/tests/engine.rs`
-- Test (sửa): `crates/pipeline/tests/lifecycle.rs`
 
 - [ ] **Step 1: Khai báo module**
 
@@ -732,7 +813,7 @@ Tạo `crates/pipeline/src/engine.rs`, lúc này mới có phần test (phần c
 //!    phát hiện "không có âm thanh", chạy VAD và cắt đoạn, đưa đoạn vào hàng đợi nhận dạng.
 //! 2. Luồng nhận dạng: lấy đoạn theo luật hàng đợi §7, dựng prompt theo ngôn ngữ, gọi `asr-worker`, áp luật bỏ đoạn.
 //! 3. Luồng phụ đề: nơi duy nhất phát sự kiện phụ đề, nên thứ tự upsert và delta luôn đúng. Ghép câu (§6.3), hàng đợi dịch
-//!    (§7), chỉ báo "Đang trễ", số đo của phiên.
+//!    (§7), chỉ báo "Đang trễ", số đo của phiên, đếm phút cho hạn mức (§6.8).
 //! 4. Luồng dịch: dịch từng câu (`translate`), gửi từng phần chữ về luồng phụ đề.
 //!
 //! Chọn luồng riêng và client đồng bộ, không dùng runtime tokio (kế hoạch 02, QĐ1): hai client đồng bộ của Giai đoạn 0 đã
@@ -741,11 +822,26 @@ Tạo `crates/pipeline/src/engine.rs`, lúc này mới có phần test (phần c
 //!
 //! "Giờ" của phiên là giờ âm thanh: số mẫu đã đọc, đổi ra ms. Âm thanh thu thật chạy đúng tốc độ thời gian thực (trên
 //! Windows, khoảng lặng được chèn im lặng, §6.1), nên giờ âm thanh bằng giờ thật; test phát file WAV nhanh hơn thời gian
-//! thực mà luật vẫn như nhau.
+//! thực mà luật vẫn như nhau. Riêng hạn dịch câu cuối khi dừng (`mt.stop_grace_ms`) tính bằng giờ thật, vì lúc đó âm
+//! thanh đã ngừng.
+//!
+//! Ba cách kết thúc một phiên:
+//! - [`Engine::stop`] (bấm Dừng): luồng VAD chốt đoạn đang dở; các đoạn và câu còn lại được xử lý tiếp như thường, trong
+//!   một hạn chung `mt.stop_grace_ms` (3 giây) tính từ lúc bấm, nên câu cuối thường vẫn được dịch. Hết hạn thì câu đang
+//!   dịch và câu chờ dịch thành `skipped`, và luồng phụ đề thoát ngay. Luồng nhận dạng và luồng dịch không được chờ: nếu
+//!   tiến trình phụ đang treo, chúng tự kết thúc khi request hết thời gian chờ.
+//! - Hết hạn mức (spec §6.8, "Khi chạm hạn mức"): [`EventSink::usage`] trả `Break`, hoặc app gọi
+//!   [`Engine::exhaust_quota`]. Engine bỏ các đoạn chờ nhận dạng và các câu chờ dịch (`skipped`), chỉ dịch xong câu đang
+//!   dịch (trong cùng hạn `mt.stop_grace_ms`), rồi báo [`Fatal::QuotaExhausted`]. Kế hoạch 06 nối bộ đếm vào đây.
+//! - Lỗi không chạy tiếp được ([`Fatal`]): VAD, nguồn âm thanh, `asr-worker`, hoặc một luồng của engine dừng bất thường.
+//!   App nhận [`EventSink::fatal`] rồi gọi `stop`.
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::llama::{ChatRequest, StreamEnd};
+    use crate::translate::{MtError, Translated};
+    use asr_protocol::TranscribeResult;
 
     #[test]
     fn silence_is_reported_after_60_seconds() {
@@ -779,6 +875,679 @@ mod tests {
         while src.read(&mut out, Duration::ZERO).unwrap() {}
         assert_eq!(out.len(), 1_000);
     }
+
+    // ---- Luồng phụ đề, nạp thẳng tin nhắn (Q2 của review 02b): tất định, không luồng, không tiến trình phụ. ----
+
+    #[derive(Default)]
+    struct Sink {
+        subs: Mutex<Vec<Subtitle>>,
+        indicators: Mutex<Vec<Indicators>>,
+        fatal: Mutex<Vec<(Fatal, String)>>,
+        usage: Mutex<Vec<Usage>>,
+        /// Hạn mức (ms): tổng `usage` chạm số này thì trả `Break`.
+        limit_ms: Option<u64>,
+    }
+
+    impl EventSink for Sink {
+        fn subtitle(&self, s: &Subtitle) {
+            self.subs.lock().unwrap().push(s.clone());
+        }
+        fn delta(&self, _: &Delta) {}
+        fn level(&self, _: f32) {}
+        fn indicators(&self, i: &Indicators) {
+            self.indicators.lock().unwrap().push(i.clone());
+        }
+        fn fatal(&self, kind: Fatal, reason: &str) {
+            self.fatal.lock().unwrap().push((kind, reason.to_string()));
+        }
+        fn usage(&self, u: &Usage) -> ControlFlow<()> {
+            let mut all = self.usage.lock().unwrap();
+            all.push(*u);
+            let total: u64 = all.iter().map(|u| u.speech_ms).sum();
+            match self.limit_ms {
+                Some(limit) if total >= limit => ControlFlow::Break(()),
+                _ => ControlFlow::Continue(()),
+            }
+        }
+    }
+
+    impl Sink {
+        fn kinds(&self) -> Vec<Fatal> {
+            self.fatal.lock().unwrap().iter().map(|(k, _)| *k).collect()
+        }
+
+        fn usage(&self) -> Vec<(u64, u64)> {
+            self.usage
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|u| (u.sub_id, u.speech_ms))
+                .collect()
+        }
+    }
+
+    struct Harness {
+        c: Composer,
+        jobs: Receiver<MtJob>,
+        sink: Arc<Sink>,
+        flags: Flags,
+        asr_queue: Arc<SharedQueue>,
+    }
+
+    fn cfg() -> EngineConfig {
+        EngineConfig {
+            pipeline: PipelineConfig::default(),
+            languages: vec!["en".into(), "vi".into()],
+            target: Lang::Vi,
+            translation_context: false,
+            id_base: 0,
+        }
+    }
+
+    fn harness_with(cfg: EngineConfig, sink: Sink) -> Harness {
+        let sink = Arc::new(sink);
+        let (jobs_tx, jobs) = mpsc::channel();
+        let flags = Flags::default();
+        let asr_queue = Arc::new(SharedQueue::new(AsrQueue::new(cfg.pipeline.queue.clone())));
+        let c = Composer::new(cfg, sink.clone(), jobs_tx, flags.clone(), asr_queue.clone());
+        Harness {
+            c,
+            jobs,
+            sink,
+            flags,
+            asr_queue,
+        }
+    }
+
+    fn harness() -> Harness {
+        harness_with(cfg(), Sink::default())
+    }
+
+    fn done(text: &str) -> Outcome {
+        Outcome::Done(Translated {
+            text: text.into(),
+            attempts: 1,
+            source_tokens: 1,
+            completion_tokens: Some(1),
+            first_delta_ms: None,
+            total_ms: 1.0,
+        })
+    }
+
+    impl Harness {
+        /// Nạp một tin nhắn như vòng lặp của luồng phụ đề; trả `true` khi luồng phụ đề sẽ thoát.
+        fn feed(&mut self, msg: Msg) -> bool {
+            self.c.handle(msg);
+            self.c.step()
+        }
+
+        /// Đoạn `id` vừa chép lời xong; tiếng nói đúng bằng `start..end`.
+        fn said(&mut self, id: u64, start_ms: u64, end_ms: u64, lang: &str, text: &str) -> bool {
+            self.feed(Msg::Asr(AsrOutcome::Transcribed {
+                ids: vec![id],
+                start_ms,
+                end_ms,
+                speech_ms: end_ms - start_ms,
+                lang: lang.into(),
+                text: text.into(),
+                asr_ms: 1.0,
+            }))
+        }
+
+        fn job(&self) -> MtJob {
+            self.jobs.try_recv().expect("phải có câu được gửi đi dịch")
+        }
+
+        fn no_job(&self) {
+            assert!(self.jobs.try_recv().is_err(), "không được gửi thêm câu nào đi dịch");
+        }
+
+        fn finish(&mut self, job: &MtJob, outcome: Outcome) -> bool {
+            self.feed(Msg::MtDone {
+                sub_id: job.sub_id,
+                version: job.version,
+                outcome,
+            })
+        }
+
+        fn last(&self, id: u64) -> Subtitle {
+            self.sink
+                .subs
+                .lock()
+                .unwrap()
+                .iter()
+                .rev()
+                .find(|s| s.id == id)
+                .cloned()
+                .expect("phụ đề phải có")
+        }
+
+        fn statuses(&self, id: u64) -> Vec<Status> {
+            let subs = self.sink.subs.lock().unwrap();
+            let mut out: Vec<Status> = Vec::new();
+            for s in subs.iter().filter(|s| s.id == id) {
+                if out.last() != Some(&s.status) {
+                    out.push(s.status);
+                }
+            }
+            out
+        }
+    }
+
+    /// Q1 của review 02b: ngữ cảnh là câu chốt ngay trước câu đó, chụp lúc mở câu; không phải câu mới nhất lúc gửi dịch.
+    #[test]
+    fn the_context_is_the_sentence_before_captured_when_it_opens() {
+        let mut h = harness_with(
+            EngineConfig {
+                translation_context: true,
+                ..cfg()
+            },
+            Sink::default(),
+        );
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        assert_eq!(j1.context, None);
+        h.said(2, 2_000, 3_000, "en", "Two.");
+        h.said(3, 4_000, 5_000, "en", "Three.");
+        h.said(4, 6_000, 7_000, "vi", "Xin chào."); // ngôn ngữ khác không đổi ngữ cảnh của tiếng Anh
+        h.finish(&j1, done("Một."));
+        let j2 = h.job();
+        assert_eq!((j2.text.as_str(), j2.context.as_deref()), ("Two.", Some("One.")));
+        h.finish(&j2, done("Hai."));
+        assert_eq!(h.job().context.as_deref(), Some("Two."));
+    }
+
+    /// Hàng đợi dịch đầy: các câu chờ cùng ngôn ngữ gộp thành một phụ đề (`replaces`), tiếng nói cộng lại (§7).
+    #[test]
+    fn a_full_translation_queue_merges_the_waiting_subtitles() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        for (id, text) in [(2, "Two."), (3, "Three."), (4, "Four.")] {
+            h.said(id, id * 2_000, id * 2_000 + 1_000, "en", text);
+        }
+        h.said(5, 10_000, 11_000, "en", "Five.");
+        let merged = h.last(2);
+        assert_eq!(
+            (merged.src_text.as_str(), merged.replaces.clone(), merged.end_ms),
+            ("Two. Three. Four.", vec![3, 4], 9_000)
+        );
+        h.finish(&j1, done("Một."));
+        let j2 = h.job();
+        assert_eq!((j2.sub_id, j2.text.as_str()), (2, "Two. Three. Four."));
+        h.finish(&j2, done("Hai. Ba. Bốn."));
+        assert_eq!(h.job().sub_id, 5);
+        assert_eq!(h.sink.usage(), [(1, 1_000), (2, 3_000)]);
+        assert_eq!(h.last(2).status, Status::Done);
+    }
+
+    /// Câu chờ dịch quá 20 giây thì chỉ hiện câu gốc (`skipped`, §7), và không tính phút.
+    #[test]
+    fn a_sentence_waiting_too_long_is_skipped() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        h.said(2, 1_500, 2_000, "en", "Two.");
+        h.feed(Msg::Clock {
+            now_ms: 20_500,
+            speech_since: None,
+        });
+        h.finish(&j1, done("Một."));
+        h.no_job();
+        assert_eq!(h.statuses(2), [Status::AsrDone, Status::Skipped]);
+        assert_eq!(h.c.metrics.skipped, 1);
+        assert_eq!(h.sink.usage(), [(1, 1_000)]);
+    }
+
+    /// Dịch lỗi thì `failed`; `llama-server` không dùng được thì báo chỉ báo, và câu sau thành `failed` ngay. Không tính phút.
+    #[test]
+    fn failed_translations_and_an_unavailable_server() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        h.finish(
+            &j1,
+            Outcome::Failed {
+                reason: "x".into(),
+                attempts: 2,
+                source_tokens: 1,
+                completion_tokens: None,
+            },
+        );
+        assert_eq!(h.last(1).status, Status::Failed);
+        h.said(2, 2_000, 3_000, "en", "Two.");
+        let j2 = h.job();
+        h.finish(&j2, Outcome::Unavailable("bỏ cuộc".into()));
+        assert!(
+            h.sink
+                .indicators
+                .lock()
+                .unwrap()
+                .last()
+                .unwrap()
+                .translation_unavailable
+        );
+        h.said(3, 4_000, 5_000, "en", "Three.");
+        h.no_job();
+        assert_eq!(h.statuses(3), [Status::AsrDone, Status::Failed]);
+        assert!(h.sink.usage().is_empty());
+        assert_eq!(h.c.metrics.failed, 3);
+    }
+
+    /// Luồng dịch dừng bất thường: câu đang dịch thành `failed`, không chờ mãi.
+    #[test]
+    fn a_dead_translation_thread_fails_the_sentence() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "One.");
+        let _j1 = h.job();
+        h.feed(Msg::MtGone);
+        assert_eq!(h.last(1).status, Status::Failed);
+        assert!(h.c.in_flight.is_none());
+    }
+
+    /// Câu được ghép thêm đoạn khi đang dịch: hủy bản dịch cũ, dịch lại cả câu; phút tính đủ hai đoạn, mỗi đoạn một lần.
+    #[test]
+    fn a_sentence_that_grows_while_translating_is_retranslated() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.said(2, 1_300, 2_000, "en", "home.");
+        assert!(j1.cancel.load(Ordering::SeqCst), "bản dịch cũ bị hủy");
+        h.no_job();
+        h.finish(&j1, Outcome::Cancelled);
+        let j2 = h.job();
+        assert_eq!((j2.sub_id, j2.version, j2.text.as_str()), (1, 2, "so we went home."));
+        h.finish(&j2, done("chúng tôi về nhà."));
+        assert_eq!(h.sink.usage(), [(1, 1_700)]);
+        assert_eq!((h.c.metrics.translated, h.c.metrics.merges), (1, 1));
+    }
+
+    /// Câu đã dịch xong rồi mới được ghép thêm: lần dịch lại chỉ tính phần mới (§6.8: mỗi đoạn tính một lần).
+    #[test]
+    fn a_retranslated_sentence_counts_only_the_new_speech() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.finish(&j1, done("chúng tôi đi"));
+        h.said(2, 1_300, 2_000, "en", "home.");
+        let j2 = h.job();
+        h.finish(&j2, done("chúng tôi về nhà."));
+        assert_eq!(
+            h.statuses(1),
+            [
+                Status::AsrDone,
+                Status::Translating,
+                Status::Done,
+                Status::AsrDone,
+                Status::Translating,
+                Status::Done
+            ]
+        );
+        h.said(3, 3_000, 4_000, "vi", "Xin chào.");
+        h.no_job();
+        assert_eq!(h.sink.usage(), [(1, 1_000), (1, 700)]);
+        assert_eq!(h.c.metrics.translated_speech_ms, 1_700, "same_lang không tính");
+    }
+
+    /// "Đang trễ" khi đoạn cũ nhất còn đang xử lý trễ quá 6 giây, tắt khi bắt kịp (§7).
+    #[test]
+    fn the_lag_indicator_follows_the_oldest_unfinished_segment() {
+        let mut h = harness();
+        h.feed(Msg::Queued {
+            id: 1,
+            start_ms: 0,
+            end_ms: 1_000,
+            closed_ms: 1_300,
+        });
+        let clock = |now_ms| Msg::Clock {
+            now_ms,
+            speech_since: None,
+        };
+        h.feed(clock(7_000));
+        assert!(h.sink.indicators.lock().unwrap().is_empty(), "trễ đúng 6 giây chưa báo");
+        h.feed(clock(7_100));
+        assert!(h.sink.indicators.lock().unwrap().last().unwrap().lagging);
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        h.feed(clock(7_200));
+        assert!(
+            h.sink.indicators.lock().unwrap().last().unwrap().lagging,
+            "câu đang dịch vẫn trễ"
+        );
+        h.finish(&j1, done("Một."));
+        h.feed(clock(7_300));
+        assert!(!h.sink.indicators.lock().unwrap().last().unwrap().lagging);
+    }
+
+    /// N3 của review 02b: bấm Dừng thì câu cuối vẫn được dịch trong hạn chung; hết hạn thì câu còn lại thành `skipped`.
+    #[test]
+    fn stop_translates_the_last_sentence_within_the_grace_period() {
+        let mut config = cfg();
+        config.pipeline.mt.stop_grace_ms = 300;
+        let mut h = harness_with(config, Sink::default());
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        h.flags.hurry.store(true, Ordering::SeqCst);
+        assert!(!h.c.step());
+        assert!(!h.finish(&j1, done("Một.")), "còn trong hạn: chờ câu cuối");
+        assert_eq!(h.last(1).status, Status::Done);
+        h.said(2, 2_000, 3_000, "en", "Last.");
+        let j2 = h.job();
+        h.said(3, 4_000, 5_000, "en", "After.");
+        std::thread::sleep(Duration::from_millis(350));
+        assert!(h.c.step(), "hết hạn: luồng phụ đề thoát ngay");
+        assert!(j2.cancel.load(Ordering::SeqCst));
+        assert_eq!(h.last(2).status, Status::Skipped);
+        assert_eq!(h.last(3).status, Status::Skipped);
+        assert_eq!(h.sink.usage(), [(1, 1_000)]);
+    }
+
+    /// Chạm hạn mức (§6.8): bỏ đoạn chờ nhận dạng và câu chờ dịch, không hiện đoạn chép lời xong muộn, rồi báo
+    /// `QuotaExhausted`.
+    #[test]
+    fn reaching_the_quota_drops_the_queues_and_reports_it() {
+        let mut h = harness_with(
+            cfg(),
+            Sink {
+                limit_ms: Some(1_000),
+                ..Sink::default()
+            },
+        );
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        h.said(2, 2_000, 3_000, "en", "Two.");
+        h.said(3, 4_000, 5_000, "en", "Three.");
+        h.asr_queue.push(PendingSegment {
+            ids: vec![4],
+            start_ms: 6_000,
+            end_ms: 7_000,
+            speech_ms: 1_000,
+            mean_prob: 0.9,
+            speech_ratio: 1.0,
+            samples: vec![0.0; 16_000],
+        });
+        assert!(h.finish(&j1, done("Một.")), "câu đang dịch xong là thoát");
+        assert!(h.flags.stop.load(Ordering::SeqCst), "dừng thu âm thanh");
+        assert!(
+            h.asr_queue.pop(&AtomicU64::new(0)).is_none(),
+            "hàng đợi nhận dạng đã bỏ và đóng"
+        );
+        assert_eq!(h.last(2).status, Status::Skipped);
+        assert_eq!(h.last(3).status, Status::Skipped);
+        h.said(5, 8_000, 9_000, "en", "Late.");
+        assert!(!h.sink.subs.lock().unwrap().iter().any(|s| s.id == 5));
+        h.no_job();
+        let Harness { c, sink, .. } = h;
+        c.finish();
+        assert_eq!(sink.kinds(), [Fatal::QuotaExhausted]);
+        assert_eq!(sink.usage(), [(1, 1_000)]);
+    }
+
+    /// App báo hết hạn mức từ ngoài (`Engine::exhaust_quota`) khi đang dịch: câu đang dịch vẫn được dịch xong.
+    #[test]
+    fn an_outside_quota_stop_lets_the_sentence_being_translated_finish() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        h.said(2, 2_000, 3_000, "en", "Two.");
+        h.flags.quota.store(true, Ordering::SeqCst);
+        assert!(!h.c.step(), "chờ câu đang dịch");
+        assert_eq!(h.last(2).status, Status::Skipped);
+        assert!(h.finish(&j1, done("Một.")));
+        assert_eq!(h.last(1).status, Status::Done);
+        let Harness { c, sink, .. } = h;
+        c.finish();
+        assert_eq!(sink.kinds(), [Fatal::QuotaExhausted]);
+    }
+
+    // ---- Engine đầy đủ với nhận dạng và dịch giả trong tiến trình (không cần tiến trình phụ). ----
+
+    /// Chép lời mọi đoạn thành `<chữ>` cố định bằng tiếng Anh.
+    struct ConstAsr(&'static str);
+
+    impl Asr for ConstAsr {
+        fn transcribe(&mut self, req: TranscribeRequest) -> Result<TranscribeResult, AsrFailure> {
+            Ok(TranscribeResult {
+                segment_id: req.segment_id,
+                lang: "en".into(),
+                lang_prob: 1.0,
+                text: self.0.into(),
+                tokens: vec![1, 2],
+                no_speech_prob: 0.0,
+                lid_ms: 0.0,
+                asr_ms: 1.0,
+                avg_logprob: -0.2,
+            })
+        }
+    }
+
+    struct PanicAsr;
+
+    impl Asr for PanicAsr {
+        fn transcribe(&mut self, _: TranscribeRequest) -> Result<TranscribeResult, AsrFailure> {
+            panic!("lỗi giả trong luồng nhận dạng")
+        }
+    }
+
+    /// `llama-server` giả trong tiến trình: gửi một gói chữ mỗi `every`, tối đa `chunks` gói (`usize::MAX`: không bao giờ
+    /// xong). Ghi lại lúc bên gọi dừng stream.
+    struct SlowMt {
+        every: Duration,
+        chunks: usize,
+        broke: Arc<AtomicBool>,
+    }
+
+    impl Mt for SlowMt {
+        fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
+            Ok(text.split_whitespace().count())
+        }
+
+        fn stream(
+            &mut self,
+            _req: &ChatRequest,
+            on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
+        ) -> Result<StreamEnd, MtError> {
+            let mut cancelled = false;
+            for _ in 0..self.chunks {
+                std::thread::sleep(self.every);
+                if on_delta("x").is_break() {
+                    self.broke.store(true, Ordering::SeqCst);
+                    cancelled = true;
+                    break;
+                }
+            }
+            Ok(StreamEnd {
+                text: "x".into(),
+                first_token_ms: 1.0,
+                total_ms: 1.0,
+                finish_reason: (!cancelled).then(|| "stop".into()),
+                completion_tokens: Some(1),
+                chunks: 1,
+                cancelled,
+            })
+        }
+    }
+
+    /// `llama-server` treo hẳn: stream không trả gói nào (tới khi test kết thúc).
+    struct HungMt;
+
+    impl Mt for HungMt {
+        fn count_tokens(&mut self, _: &str) -> Result<usize, MtError> {
+            Ok(1)
+        }
+
+        fn stream(
+            &mut self,
+            _: &ChatRequest,
+            _: &mut dyn FnMut(&str) -> ControlFlow<()>,
+        ) -> Result<StreamEnd, MtError> {
+            std::thread::sleep(Duration::from_secs(3_600));
+            Err(MtError::Failed("treo".into()))
+        }
+    }
+
+    fn quick_mt() -> Box<dyn Mt> {
+        Box::new(SlowMt {
+            every: Duration::ZERO,
+            chunks: 1,
+            broke: Arc::default(),
+        })
+    }
+
+    /// 1 giây tiếng (sóng vuông biên độ 0,3) rồi `silence_ms` im lặng.
+    fn speech_then_silence(silence_ms: usize) -> Vec<f32> {
+        let mut s: Vec<f32> = (0..16_000).map(|i| if i % 40 < 20 { 0.3 } else { -0.3 }).collect();
+        s.extend(std::iter::repeat_n(0.0, silence_ms * 16));
+        s
+    }
+
+    fn energy() -> VadFactory {
+        Box::new(|| Ok(Box::new(EnergyVad { threshold_rms: 0.01 }) as _))
+    }
+
+    fn start(
+        source: Box<dyn FrameSource>,
+        vad: VadFactory,
+        asr: Box<dyn Asr>,
+        mt: Box<dyn Mt>,
+        config: EngineConfig,
+    ) -> (Engine, Arc<Sink>) {
+        let sink = Arc::new(Sink::default());
+        let engine = Engine::start(config, source, vad, asr, mt, sink.clone()).unwrap();
+        (engine, sink)
+    }
+
+    /// Nguồn phát mẫu cho sẵn rồi giữ luồng mở (như thu âm thật, chỉ dừng bằng `stop`).
+    struct Live {
+        samples: SampleSource,
+    }
+
+    impl FrameSource for Live {
+        fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> Result<bool> {
+            if !self.samples.read(out, timeout)? {
+                std::thread::sleep(Duration::from_millis(5));
+                out.extend(std::iter::repeat_n(0.0, 80));
+            }
+            Ok(true)
+        }
+    }
+
+    fn live(samples: Vec<f32>) -> Box<dyn FrameSource> {
+        Box::new(Live {
+            samples: SampleSource::new(samples, 1_600, Duration::ZERO),
+        })
+    }
+
+    /// Q5 của review 02b: VAD không nạp được thì báo lỗi, engine kết thúc.
+    #[test]
+    fn a_vad_that_does_not_load_is_fatal() {
+        let vad: VadFactory = Box::new(|| Err(anyhow::anyhow!("model VAD hỏng")));
+        let (engine, sink) = start(live(Vec::new()), vad, Box::new(ConstAsr("x")), quick_mt(), cfg());
+        engine.join();
+        assert_eq!(sink.kinds(), [Fatal::Vad]);
+    }
+
+    /// Q5: VAD lỗi giữa chừng cũng báo lỗi, không dừng lặng lẽ.
+    #[test]
+    fn a_vad_error_midway_is_fatal() {
+        struct Broken;
+        impl VadModel for Broken {
+            fn prob(&mut self, _: &[f32]) -> Result<f32> {
+                anyhow::bail!("candle lỗi")
+            }
+        }
+        let vad: VadFactory = Box::new(|| Ok(Box::new(Broken) as _));
+        let (engine, sink) = start(
+            live(speech_then_silence(100)),
+            vad,
+            Box::new(ConstAsr("x")),
+            quick_mt(),
+            cfg(),
+        );
+        engine.join();
+        assert_eq!(sink.kinds(), [Fatal::Vad]);
+    }
+
+    /// Q5: nguồn âm thanh hỏng hẳn thì báo `Audio`.
+    #[test]
+    fn a_broken_audio_source_is_fatal() {
+        struct Broken;
+        impl FrameSource for Broken {
+            fn read(&mut self, _: &mut Vec<f32>, _: Duration) -> Result<bool> {
+                anyhow::bail!("thiết bị đã rút")
+            }
+        }
+        let (engine, sink) = start(Box::new(Broken), energy(), Box::new(ConstAsr("x")), quick_mt(), cfg());
+        engine.join();
+        assert_eq!(sink.kinds(), [Fatal::Audio]);
+    }
+
+    /// Q4 của review 02b: luồng VAD panic thì engine vẫn kết thúc (không treo) và báo lỗi.
+    #[test]
+    fn a_panicking_vad_thread_does_not_hang_the_engine() {
+        struct Panics;
+        impl FrameSource for Panics {
+            fn read(&mut self, _: &mut Vec<f32>, _: Duration) -> Result<bool> {
+                panic!("lỗi giả trong luồng VAD")
+            }
+        }
+        let (engine, sink) = start(Box::new(Panics), energy(), Box::new(ConstAsr("x")), quick_mt(), cfg());
+        engine.join();
+        assert_eq!(sink.kinds(), [Fatal::Vad]);
+    }
+
+    /// Q4: luồng nhận dạng panic thì engine vẫn kết thúc và báo lỗi `Asr`.
+    #[test]
+    fn a_panicking_asr_thread_does_not_hang_the_engine() {
+        let source = Box::new(SampleSource::new(speech_then_silence(1_000), 1_600, Duration::ZERO));
+        let (engine, sink) = start(source, energy(), Box::new(PanicAsr), quick_mt(), cfg());
+        engine.join();
+        assert_eq!(sink.kinds(), [Fatal::Asr]);
+    }
+
+    /// Q6 của review 02b: `llama-server` treo giữa lúc dịch thì Dừng vẫn xong trong khoảng `stop_grace_ms`; câu đó
+    /// thành `skipped`.
+    #[test]
+    fn stop_does_not_wait_for_a_hung_translation() {
+        let mut config = cfg();
+        config.pipeline.mt.stop_grace_ms = 300;
+        let (engine, sink) = start(
+            live(speech_then_silence(1_500)),
+            energy(),
+            Box::new(ConstAsr("Hello there.")),
+            Box::new(HungMt),
+            config,
+        );
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !sink.subs.lock().unwrap().iter().any(|s| s.status == Status::AsrDone) {
+            assert!(Instant::now() < deadline, "phải có phụ đề");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let started = Instant::now();
+        engine.stop();
+        assert!(started.elapsed() < Duration::from_secs(2), "{:?}", started.elapsed());
+        let last = sink.subs.lock().unwrap().last().cloned().unwrap();
+        assert_eq!(last.status, Status::Skipped);
+    }
+
+    /// Q6: lần làm nóng `llama-server` cũng dừng khi bấm Dừng.
+    #[test]
+    fn stop_breaks_the_warmup() {
+        let broke = Arc::new(AtomicBool::new(false));
+        let mt = Box::new(SlowMt {
+            every: Duration::from_millis(10),
+            chunks: usize::MAX,
+            broke: broke.clone(),
+        });
+        let (engine, _sink) = start(live(Vec::new()), energy(), Box::new(ConstAsr("x")), mt, cfg());
+        std::thread::sleep(Duration::from_millis(50));
+        engine.stop();
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while !broke.load(Ordering::SeqCst) {
+            assert!(Instant::now() < deadline, "lần làm nóng phải dừng");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
 }
 ```
 
@@ -787,7 +1556,7 @@ Sửa `crates/pipeline/src/segmenter.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/pipeline/src/segmenter.rs
 +++ b/crates/pipeline/src/segmenter.rs
-@@ -294,6 +294,17 @@
+@@ -358,6 +358,17 @@
      }
  
      #[test]
@@ -815,11 +1584,14 @@ Tạo `crates/pipeline/tests/engine.rs`:
 //! tiến trình phụ giả chạy qua đúng `SidecarManager` của app.
 
 use pipeline::config::{AsrConfig, MtConfig, PipelineConfig, SupervisorConfig};
-use pipeline::engine::{EnergyVad, Engine, EngineConfig, EventSink, Fatal, Indicators, SampleSource, VadFactory};
+use pipeline::engine::{
+    EnergyVad, Engine, EngineConfig, EventSink, Fatal, Indicators, SampleSource, Usage, VadFactory,
+};
 use pipeline::prompt::Lang;
 use pipeline::subtitle::{Delta, Status, Subtitle};
 use pipeline::supervisor::{AsrSpec, Clock, FakeClock, LlamaSpec, NoEvents, SidecarManager, SidecarSpec, SystemClock};
 use std::collections::BTreeMap;
+use std::ops::ControlFlow;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, Once};
 use std::time::{Duration, Instant};
@@ -858,13 +1630,14 @@ enum Ev {
     Upsert(Subtitle),
     Delta(Delta),
     Indicators(Indicators),
-    Fatal(String),
+    Fatal(Fatal, String),
 }
 
 #[derive(Default)]
 struct Recorder {
     events: Mutex<Vec<Ev>>,
     levels: Mutex<Vec<f32>>,
+    usage: Mutex<Vec<Usage>>,
 }
 
 impl EventSink for Recorder {
@@ -881,8 +1654,11 @@ impl EventSink for Recorder {
         self.events.lock().unwrap().push(Ev::Indicators(i.clone()));
     }
     fn fatal(&self, kind: Fatal, reason: &str) {
-        assert_eq!(kind, Fatal::Asr, "{reason}");
-        self.events.lock().unwrap().push(Ev::Fatal(reason.to_string()));
+        self.events.lock().unwrap().push(Ev::Fatal(kind, reason.to_string()));
+    }
+    fn usage(&self, u: &Usage) -> ControlFlow<()> {
+        self.usage.lock().unwrap().push(*u);
+        ControlFlow::Continue(())
     }
 }
 
@@ -994,9 +1770,15 @@ fn energy_vad() -> VadFactory {
     Box::new(|| Ok(Box::new(EnergyVad { threshold_rms: 0.01 }) as _))
 }
 
+/// Các test này phát âm thanh nhanh gấp 20 lần thời gian thực, nên ngưỡng trễ 6 giây chỉ còn 300 ms thật: đặt các ngưỡng
+/// trễ rất lớn để máy bận không làm test đỏ. Luật trễ có test riêng, tất định, trong `engine.rs` (Q3 của review 02b).
 fn config(languages: &[&str]) -> EngineConfig {
+    let mut pipeline = PipelineConfig::default();
+    pipeline.queue.lag_warn_ms = 600_000;
+    pipeline.queue.asr_drop_after_ms = 600_000;
+    pipeline.queue.mt_skip_after_ms = 600_000;
     EngineConfig {
-        pipeline: PipelineConfig::default(),
+        pipeline,
         languages: languages.iter().map(|l| l.to_string()).collect(),
         target: Lang::Vi,
         translation_context: false,
@@ -1090,10 +1872,14 @@ fn subtitles_appear_in_order_with_the_right_times() {
         ),
         (5, 1, 1, 1, 0)
     );
+    // Phút cho hạn mức (§6.8): tiếng nói của các câu đã dịch xong, không gồm đệm; câu ghép cộng từng đoạn, không tính
+    // khoảng nghỉ 3 008–3 392 ms; câu tiếng Việt (`same_lang`) và đoạn bị lọc không tính.
     assert_eq!(
         metrics.translated_speech_ms,
-        (4_928 - 3_392) + (3_008 - 992) + (7_616 - 6_400)
+        (3_008 - 992) + (4_928 - 3_392) + (7_616 - 6_400)
     );
+    let usage: u64 = sink.usage.lock().unwrap().iter().map(|u| u.speech_ms).sum();
+    assert_eq!(usage, metrics.translated_speech_ms, "mỗi đoạn được báo đúng một lần");
     assert!(!sink.levels.lock().unwrap().is_empty(), "có mức âm lượng cho giao diện");
     assert!(
         !sink
@@ -1102,7 +1888,7 @@ fn subtitles_appear_in_order_with_the_right_times() {
             .any(|e| matches!(e, Ev::Indicators(i) if i.lagging || i.no_audio)),
         "không trễ, và 1,5 giây im lặng chưa phải \"không có âm thanh\""
     );
-    assert!(!sink.events().iter().any(|e| matches!(e, Ev::Fatal(_))));
+    assert!(!sink.events().iter().any(|e| matches!(e, Ev::Fatal(..))));
 
     // Log của cả phiên không có chữ chép lời hay bản dịch nào.
     let log = LOG.0.lock().unwrap().join("\n");
@@ -1170,7 +1956,8 @@ fn a_worker_that_keeps_crashing_stops_the_session_with_an_error() {
         .events()
         .into_iter()
         .filter_map(|e| match e {
-            Ev::Fatal(r) => Some(r),
+            Ev::Fatal(Fatal::Asr, r) => Some(r),
+            Ev::Fatal(kind, r) => panic!("{kind:?}: {r}"),
             _ => None,
         })
         .collect();
@@ -1206,31 +1993,13 @@ fn stop_ends_a_live_session_quickly() {
 }
 ```
 
-Sửa `crates/pipeline/tests/lifecycle.rs` (áp bằng `git apply`):
-
-```diff
---- a/crates/pipeline/tests/lifecycle.rs
-+++ b/crates/pipeline/tests/lifecycle.rs
-@@ -122,8 +122,9 @@
-             shutdown_grace_ms: 1_000,
-             ..SupervisorConfig::default()
-         },
-+        // Rộng, để máy bận không làm test đỏ; ca worker treo nằm ở `clients.rs`.
-         asr_config: AsrConfig {
--            timeout_ms: 1_000,
-+            timeout_ms: 10_000,
-             ..AsrConfig::default()
-         },
-         mt_config: MtConfig::default(),
-```
-
 - [ ] **Step 3: Chạy test, thấy đỏ**
 
 Run: `cargo test -p pipeline --test engine`
 Expected: biên dịch lỗi:
 
 ```text
-error[E0432]: unresolved imports `pipeline::engine::EnergyVad`, `pipeline::engine::Engine`, `pipeline::engine::EngineConfig`, `pipeline::engine::EventSink`, `pipeline::engine::Fatal`, `pipeline::engine::Indicators`, `pipeline::engine::SampleSource`, `pipeline::engine::VadFactory`
+error[E0432]: unresolved imports `pipeline::engine::EnergyVad`, `pipeline::engine::Engine`, `pipeline::engine::EngineConfig`, `pipeline::engine::EventSink`, `pipeline::engine::Fatal`, `pipeline::engine::Indicators`, `pipeline::engine::SampleSource`, `pipeline::engine::Usage`, `pipeline::engine::VadFactory`
 ```
 
 - [ ] **Step 4: Viết code**
@@ -1239,7 +2008,7 @@ Thêm vào `crates/pipeline/src/engine.rs` phần code sau, ngay dưới các d�
 
 ```rust
 use crate::config::{AudioConfig, FilterConfig, MtConfig, PipelineConfig};
-use crate::filter::{Verdict, pcm_skip, verdict};
+use crate::filter::{Evidence, Verdict, pcm_skip, verdict};
 use crate::metrics::SessionMetrics;
 use crate::prompt::{Lang, translation_prompt};
 use crate::prompt_history::PromptHistory;
@@ -1266,8 +2035,6 @@ use std::time::{Duration, Instant};
 const VAD_STACK_BYTES: usize = 8 << 20;
 /// Luồng VAD gửi giờ âm thanh cho luồng phụ đề sau mỗi chừng này khung (96 ms).
 const CLOCK_EVERY_FRAMES: u64 = 3;
-/// Khi dừng phiên: câu đang dịch được chờ thêm chừng này rồi mới hủy.
-const STOP_GRACE: Duration = Duration::from_secs(2);
 
 #[derive(Clone, Debug)]
 pub struct EngineConfig {
@@ -1283,7 +2050,8 @@ pub struct EngineConfig {
 
 /// Nguồn âm thanh 16 kHz mono.
 pub trait FrameSource: Send {
-    /// Thêm mẫu mới vào `out`, chờ tối đa `timeout` nếu chưa có. `Ok(false)`: hết luồng.
+    /// Thêm mẫu mới vào `out`, chờ tối đa `timeout` nếu chưa có. `Ok(false)`: hết luồng. `Err`: nguồn hỏng hẳn (app đã
+    /// thử mở lại mà không được, 02c); engine báo [`Fatal::Audio`].
     fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> Result<bool>;
 }
 
@@ -1362,13 +2130,28 @@ pub struct Indicators {
     pub translation_unavailable: bool,
 }
 
-/// Lỗi làm phiên phải dừng.
+/// Lý do phiên phải dừng.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Fatal {
-    /// Không nạp được VAD.
+    /// Không nạp được VAD, VAD lỗi giữa chừng, hoặc luồng VAD dừng bất thường.
     Vad,
-    /// `asr-worker` không dùng được nữa (lỗi quá 5 lần trong 10 phút, §6.4).
+    /// Nguồn âm thanh hỏng hẳn (`FrameSource::read` trả lỗi).
+    Audio,
+    /// `asr-worker` không dùng được nữa (lỗi quá 5 lần trong 10 phút, §6.4), hoặc luồng nhận dạng dừng bất thường.
     Asr,
+    /// Luồng phụ đề dừng bất thường.
+    Internal,
+    /// Chạm hạn mức (§6.8): app dừng phiên với lý do `quota_exhausted` (kế hoạch 06).
+    QuotaExhausted,
+}
+
+/// Một lần đếm phút cho hạn mức (§6.8, "Cách đếm phút"): phụ đề `sub_id` vừa sang `done`, và `speech_ms` là phần tiếng nói
+/// chưa được tính của nó (không gồm đệm, đoạn gộp cộng từng đoạn con). Câu được dịch lại sau khi ghép thêm đoạn chỉ tính
+/// phần mới. `same_lang`, `failed`, `skipped`, `dropped` và đoạn bị lọc không bao giờ có `Usage`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub struct Usage {
+    pub sub_id: u64,
+    pub speech_ms: u64,
 }
 
 /// Nơi nhận kết quả của pipeline. Gọi từ các luồng của engine.
@@ -1380,6 +2163,11 @@ pub trait EventSink: Send + Sync {
     fn indicators(&self, indicators: &Indicators);
     /// Phiên phải dừng và báo lỗi (§9). Gọi từ luồng của engine: đừng dừng engine ngay trong hàm này.
     fn fatal(&self, kind: Fatal, reason: &str);
+    /// Phút vừa dịch xong, để bộ đếm hạn mức cộng (kế hoạch 06). Trả `Break` khi đã chạm hạn mức: engine dừng theo luật
+    /// "Khi chạm hạn mức" rồi báo [`Fatal::QuotaExhausted`]. Mặc định không đếm gì.
+    fn usage(&self, _usage: &Usage) -> ControlFlow<()> {
+        ControlFlow::Continue(())
+    }
 }
 
 /// Đếm thời gian im lặng liên tục (RMS dưới ngưỡng), kể cả phần im lặng được chèn khi Windows không trả gói dữ liệu (§9).
@@ -1410,11 +2198,13 @@ enum AsrOutcome {
         ids: Vec<u64>,
         start_ms: u64,
         end_ms: u64,
+        speech_ms: u64,
         lang: String,
         text: String,
         asr_ms: f32,
     },
-    /// Luật bỏ đoạn loại (không có tiếng nói, câu ảo giác, quá ngắn): không phụ đề, không cắt chuỗi ghép câu.
+    /// Luật bỏ đoạn loại (không có tiếng nói, câu ảo giác, chuỗi lặp, câu đệm, quá ngắn): không phụ đề, không cắt chuỗi
+    /// ghép câu.
     Filtered {
         ids: Vec<u64>,
     },
@@ -1454,6 +2244,8 @@ enum Msg {
         version: u32,
         outcome: Outcome,
     },
+    /// Luồng dịch dừng bất thường.
+    MtGone,
 }
 
 struct MtJob {
@@ -1472,19 +2264,47 @@ struct SharedQueue {
 }
 
 impl SharedQueue {
+    fn new(queue: AsrQueue) -> Self {
+        Self {
+            state: Mutex::new((queue, false)),
+            ready: Condvar::new(),
+        }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, (AsrQueue, bool)> {
+        self.state.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     fn push(&self, segment: PendingSegment) {
-        self.state.lock().unwrap().0.push(segment);
+        let mut state = self.lock();
+        if !state.1 {
+            state.0.push(segment);
+        }
+        drop(state);
         self.ready.notify_one();
     }
 
     fn close(&self) {
-        self.state.lock().unwrap().1 = true;
-        self.ready.notify_one();
+        self.lock().1 = true;
+        self.ready.notify_all();
+    }
+
+    /// Bỏ mọi đoạn đang chờ và đóng hàng (hết hạn mức). Trả số đoạn bị bỏ.
+    fn clear(&self) -> usize {
+        let mut state = self.lock();
+        let mut n = 0;
+        while state.0.pop(0).is_some() {
+            n += 1;
+        }
+        state.1 = true;
+        drop(state);
+        self.ready.notify_all();
+        n
     }
 
     /// Chờ đoạn kế tiếp; `None` khi đã đóng và hết đoạn.
     fn pop(&self, now_ms: &AtomicU64) -> Option<Popped> {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.lock();
         loop {
             if let Some(p) = state.0.pop(now_ms.load(Ordering::SeqCst)) {
                 return Some(p);
@@ -1492,19 +2312,33 @@ impl SharedQueue {
             if state.1 {
                 return None;
             }
-            state = self.ready.wait(state).unwrap();
+            state = self.ready.wait(state).unwrap_or_else(|e| e.into_inner());
         }
     }
 }
 
-pub struct Engine {
+/// Cờ dùng chung giữa `Engine` và các luồng.
+#[derive(Clone, Default)]
+struct Flags {
+    /// Luồng VAD ngừng đọc âm thanh.
     stop: Arc<AtomicBool>,
+    /// Đã bấm Dừng: hạn `stop_grace_ms` bắt đầu.
     hurry: Arc<AtomicBool>,
-    threads: Vec<JoinHandle<()>>,
+    /// Hết hạn mức.
+    quota: Arc<AtomicBool>,
+}
+
+pub struct Engine {
+    flags: Flags,
+    vad: Option<JoinHandle<()>>,
+    /// Luồng nhận dạng và luồng dịch: chỉ `join` chờ chúng; `stop` thì không (xem đầu module).
+    workers: Vec<JoinHandle<()>>,
     composer: Option<JoinHandle<SessionMetrics>>,
 }
 
 impl Engine {
+    /// Chạy các luồng của một phiên. Luồng VAD (luồng duy nhất tự đọc âm thanh mãi) chạy sau cùng: nếu không tạo được
+    /// một luồng, các luồng đã chạy thấy đầu vào của chúng đóng lại và tự kết thúc.
     pub fn start(
         cfg: EngineConfig,
         source: Box<dyn FrameSource>,
@@ -1513,75 +2347,112 @@ impl Engine {
         mt: Box<dyn Mt>,
         sink: Arc<dyn EventSink>,
     ) -> Result<Self> {
-        let stop = Arc::new(AtomicBool::new(false));
-        let hurry = Arc::new(AtomicBool::new(false));
+        let flags = Flags::default();
         let now_ms = Arc::new(AtomicU64::new(0));
-        let queue = Arc::new(SharedQueue {
-            state: Mutex::new((AsrQueue::new(cfg.pipeline.queue.clone()), false)),
-            ready: Condvar::new(),
-        });
+        let queue = Arc::new(SharedQueue::new(AsrQueue::new(cfg.pipeline.queue.clone())));
         let (tx, rx) = mpsc::channel::<Msg>();
         let (jobs_tx, jobs_rx) = mpsc::channel::<MtJob>();
+        let fail = |e: std::io::Error, flags: &Flags, queue: &SharedQueue| {
+            flags.stop.store(true, Ordering::SeqCst);
+            flags.hurry.store(true, Ordering::SeqCst);
+            queue.close();
+            anyhow::Error::from(e).context("không tạo được luồng của phiên dịch")
+        };
 
-        let vad_thread = {
-            let (stop, now_ms, queue, tx, sink) =
-                (stop.clone(), now_ms.clone(), queue.clone(), tx.clone(), sink.clone());
-            let pipeline = cfg.pipeline.clone();
+        let mt_thread = {
+            let (tx, mt_cfg, target, hurry) = (tx.clone(), cfg.pipeline.mt.clone(), cfg.target, flags.hurry.clone());
             std::thread::Builder::new()
-                .name("vad".into())
-                .stack_size(VAD_STACK_BYTES)
-                .spawn(move || vad_loop(source, vad, &pipeline, &queue, &tx, &*sink, &now_ms, &stop))?
+                .name("mt".into())
+                .spawn(move || {
+                    let _guard = MtGuard(tx.clone());
+                    mt_loop(mt, jobs_rx, &tx, &mt_cfg, target, &hurry)
+                })
+                .map_err(|e| fail(e, &flags, &queue))?
         };
         let asr_thread = {
-            let (queue, tx, now_ms) = (queue.clone(), tx.clone(), now_ms.clone());
+            let (asr_queue, tx, now_ms) = (queue.clone(), tx.clone(), now_ms.clone());
             let (filter, languages) = (cfg.pipeline.filter.clone(), cfg.languages.clone());
             let max_prompt = cfg.pipeline.asr.max_prompt_tokens;
             std::thread::Builder::new()
                 .name("asr".into())
-                .spawn(move || asr_loop(asr, &queue, &tx, &now_ms, &filter, languages, max_prompt))?
+                .spawn(move || {
+                    let _guard = AsrGuard(tx.clone());
+                    asr_loop(asr, &asr_queue, &tx, &now_ms, &filter, languages, max_prompt)
+                })
+                .map_err(|e| fail(e, &flags, &queue))?
         };
-        let mt_thread = {
-            let (tx, mt_cfg, target) = (tx.clone(), cfg.pipeline.mt.clone(), cfg.target);
-            std::thread::Builder::new()
-                .name("mt".into())
-                .spawn(move || mt_loop(mt, jobs_rx, &tx, &mt_cfg, target))?
-        };
-        drop(tx);
+        let vad_pipeline = cfg.pipeline.clone();
         let composer = {
-            let hurry = hurry.clone();
+            let (composer_flags, asr_queue, sink) = (flags.clone(), queue.clone(), sink.clone());
             std::thread::Builder::new()
                 .name("subtitles".into())
-                .spawn(move || Composer::new(cfg, sink, jobs_tx, hurry).run(rx))?
+                .spawn(move || {
+                    let _guard = ComposerGuard {
+                        stop: composer_flags.stop.clone(),
+                        sink: sink.clone(),
+                    };
+                    Composer::new(cfg, sink, jobs_tx, composer_flags, asr_queue).run(rx)
+                })
+                .map_err(|e| fail(e, &flags, &queue))?
+        };
+        let vad_thread = {
+            let (stop, now_ms, queue2, sink) = (flags.stop.clone(), now_ms.clone(), queue.clone(), sink.clone());
+            std::thread::Builder::new()
+                .name("vad".into())
+                .stack_size(VAD_STACK_BYTES)
+                .spawn(move || {
+                    let _guard = VadGuard {
+                        queue: queue2.clone(),
+                        sink: sink.clone(),
+                    };
+                    vad_loop(source, vad, &vad_pipeline, &queue2, &tx, &*sink, &now_ms, &stop)
+                })
+                .map_err(|e| fail(e, &flags, &queue))?
         };
         Ok(Self {
-            stop,
-            hurry,
-            threads: vec![vad_thread, asr_thread, mt_thread],
+            flags,
+            vad: Some(vad_thread),
+            workers: vec![asr_thread, mt_thread],
             composer: Some(composer),
         })
     }
 
-    /// Dừng phiên (bấm Dừng): luồng VAD chốt đoạn đang dở, các đoạn đang chờ vẫn được chép lời; câu chờ dịch thì bỏ bước
-    /// dịch (`skipped`), câu đang dịch được chờ tối đa 2 giây. Trả số đo của phiên.
+    /// Dừng phiên (bấm Dừng), xem đầu module. Trả về sau tối đa khoảng `mt.stop_grace_ms`. Trả số đo của phiên.
     pub fn stop(mut self) -> SessionMetrics {
-        self.hurry.store(true, Ordering::SeqCst);
-        self.stop.store(true, Ordering::SeqCst);
-        self.finish()
+        self.flags.hurry.store(true, Ordering::SeqCst);
+        self.flags.stop.store(true, Ordering::SeqCst);
+        let metrics = self.join_composer();
+        self.workers.clear(); // không chờ: luồng nhận dạng và luồng dịch tự kết thúc
+        metrics
+    }
+
+    /// Hết hạn mức (§6.8): bỏ hàng đợi, dịch xong câu đang dịch, rồi báo [`Fatal::QuotaExhausted`]. Không chặn.
+    pub fn exhaust_quota(&self) {
+        self.flags.quota.store(true, Ordering::SeqCst);
     }
 
     /// Chờ tới khi nguồn âm thanh tự hết và mọi đoạn đã xử lý xong (phát file WAV).
     pub fn join(mut self) -> SessionMetrics {
-        self.finish()
+        let metrics = self.join_composer();
+        for t in self.workers.drain(..) {
+            let _ = t.join();
+        }
+        metrics
     }
 
-    fn finish(&mut self) -> SessionMetrics {
-        let metrics = self
-            .composer
-            .take()
-            .map(|c| c.join().unwrap_or_default())
-            .unwrap_or_default();
-        for t in self.threads.drain(..) {
-            let _ = t.join();
+    fn join_composer(&mut self) -> SessionMetrics {
+        let metrics = match self.composer.take().map(JoinHandle::join) {
+            Some(Ok(m)) => m,
+            Some(Err(_)) => {
+                log::error!("luồng phụ đề dừng bất thường");
+                SessionMetrics::default()
+            }
+            None => SessionMetrics::default(),
+        };
+        // Luồng phụ đề đã thoát thì luồng VAD không còn ai nhận: dừng nó.
+        self.flags.stop.store(true, Ordering::SeqCst);
+        if let Some(vad) = self.vad.take() {
+            let _ = vad.join();
         }
         metrics
     }
@@ -1590,9 +2461,64 @@ impl Engine {
 impl Drop for Engine {
     fn drop(&mut self) {
         if self.composer.is_some() {
-            self.hurry.store(true, Ordering::SeqCst);
+            self.flags.hurry.store(true, Ordering::SeqCst);
+            self.flags.stop.store(true, Ordering::SeqCst);
+            self.join_composer();
+        }
+    }
+}
+
+/// Luồng VAD kết thúc (kể cả khi panic): đóng hàng đợi nhận dạng, để luồng nhận dạng không chờ mãi.
+struct VadGuard {
+    queue: Arc<SharedQueue>,
+    sink: Arc<dyn EventSink>,
+}
+
+impl Drop for VadGuard {
+    fn drop(&mut self) {
+        self.queue.close();
+        if std::thread::panicking() {
+            self.sink.fatal(Fatal::Vad, "luồng VAD dừng bất thường");
+        }
+    }
+}
+
+/// Luồng nhận dạng kết thúc (kể cả khi panic): báo luồng phụ đề.
+struct AsrGuard(Sender<Msg>);
+
+impl Drop for AsrGuard {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            let _ = self.0.send(Msg::Asr(AsrOutcome::Unavailable(
+                "luồng nhận dạng dừng bất thường".into(),
+            )));
+        }
+        let _ = self.0.send(Msg::AsrDone);
+    }
+}
+
+/// Luồng dịch panic: báo luồng phụ đề, để câu đang dịch không chờ mãi.
+struct MtGuard(Sender<Msg>);
+
+impl Drop for MtGuard {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            let _ = self.0.send(Msg::MtGone);
+        }
+    }
+}
+
+/// Luồng phụ đề panic: dừng luồng VAD và báo app.
+struct ComposerGuard {
+    stop: Arc<AtomicBool>,
+    sink: Arc<dyn EventSink>,
+}
+
+impl Drop for ComposerGuard {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
             self.stop.store(true, Ordering::SeqCst);
-            self.finish();
+            self.sink.fatal(Fatal::Internal, "luồng phụ đề dừng bất thường");
         }
     }
 }
@@ -1613,7 +2539,6 @@ fn vad_loop(
         Err(e) => {
             log::error!("không nạp được VAD: {e:#}");
             sink.fatal(Fatal::Vad, &format!("không nạp được VAD: {e:#}"));
-            queue.close();
             return;
         }
     };
@@ -1629,19 +2554,15 @@ fn vad_loop(
             end_ms: seg.end_ms,
             closed_ms,
         });
-        queue.push(PendingSegment {
-            ids: vec![seg.id],
-            start_ms: seg.start_ms,
-            end_ms: seg.end_ms,
-            samples: seg.samples,
-        });
+        queue.push(PendingSegment::from(seg));
     };
     'outer: while !stop.load(Ordering::SeqCst) {
         match source.read(&mut buf, Duration::from_millis(20)) {
             Ok(true) => {}
             Ok(false) => break,
             Err(e) => {
-                log::warn!("nguồn âm thanh lỗi: {e:#}");
+                log::error!("nguồn âm thanh lỗi: {e:#}");
+                sink.fatal(Fatal::Audio, &format!("nguồn âm thanh lỗi: {e:#}"));
                 break;
             }
         }
@@ -1667,6 +2588,7 @@ fn vad_loop(
                 Ok(p) => p,
                 Err(e) => {
                     log::error!("VAD lỗi: {e:#}");
+                    sink.fatal(Fatal::Vad, &format!("VAD lỗi: {e:#}"));
                     break 'outer;
                 }
             };
@@ -1689,7 +2611,6 @@ fn vad_loop(
         now_ms: frames * FRAME_MS,
         speech_since: None,
     });
-    queue.close();
 }
 
 fn asr_loop(
@@ -1736,7 +2657,13 @@ fn asr_loop(
         let outcome = match asr.transcribe(req) {
             Ok(r) => {
                 let text = display_text(&r.lang, &r.text, filter);
-                match verdict(r.no_speech_prob, r.avg_logprob, &text, filter) {
+                let evidence = Evidence {
+                    no_speech_prob: r.no_speech_prob,
+                    avg_logprob: r.avg_logprob,
+                    vad_mean_prob: segment.mean_prob,
+                    speech_ms: segment.speech_ms,
+                };
+                match verdict(&evidence, &text, filter) {
                     Verdict::Speech => {
                         history.push(&r.lang, &r.tokens);
                         prev_lang = Some(r.lang.clone());
@@ -1744,12 +2671,15 @@ fn asr_loop(
                             ids: segment.ids,
                             start_ms: segment.start_ms,
                             end_ms: segment.end_ms,
+                            speech_ms: segment.speech_ms,
                             lang: r.lang,
                             text,
                             asr_ms: r.asr_ms + r.lid_ms,
                         }
                     }
-                    Verdict::NoSpeech | Verdict::Hallucination => AsrOutcome::Filtered { ids: segment.ids },
+                    Verdict::NoSpeech | Verdict::Hallucination | Verdict::Repetition | Verdict::Filler => {
+                        AsrOutcome::Filtered { ids: segment.ids }
+                    }
                 }
             }
             Err(AsrFailure::Dropped(reason)) => {
@@ -1767,18 +2697,33 @@ fn asr_loop(
         };
         let _ = tx.send(Msg::Asr(outcome));
     }
-    let _ = tx.send(Msg::AsrDone);
 }
 
-fn mt_loop(mut mt: Box<dyn Mt>, jobs: Receiver<MtJob>, tx: &Sender<Msg>, cfg: &MtConfig, target: Lang) {
-    // Làm nóng khi bắt đầu phiên (§6.5); lỗi ở đây không quan trọng, request thật sẽ báo lỗi của nó.
+fn mt_loop(
+    mut mt: Box<dyn Mt>,
+    jobs: Receiver<MtJob>,
+    tx: &Sender<Msg>,
+    cfg: &MtConfig,
+    target: Lang,
+    hurry: &AtomicBool,
+) {
+    // Làm nóng khi bắt đầu phiên (§6.5); lỗi ở đây không quan trọng, request thật sẽ báo lỗi của nó. Bấm Dừng thì bỏ
+    // ngang lần làm nóng.
     let warmup = translation_prompt("Hello.", Lang::En, target);
     let req = crate::llama::ChatRequest {
         prompt: &warmup,
         max_tokens: 32,
         repeat_penalty: cfg.repeat_penalty,
     };
-    if let Err(e) = mt.stream(&req, &mut |_| ControlFlow::Continue(())) {
+    if !hurry.load(Ordering::SeqCst)
+        && let Err(e) = mt.stream(&req, &mut |_| {
+            if hurry.load(Ordering::SeqCst) {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
+        })
+    {
         log::warn!("làm nóng llama-server lỗi: {e}");
     }
     for job in jobs {
@@ -1819,21 +2764,27 @@ struct SubState {
     version: u32,
     /// Câu đã chốt (không còn là câu đang mở).
     closed: bool,
+    /// Tiếng nói của câu (không gồm đệm), và phần đã được tính cho hạn mức.
+    speech_ms: u64,
+    counted_ms: u64,
+    /// Ngữ cảnh chụp lúc mở câu (cờ `translationContext`).
+    context: Option<String>,
 }
 
 struct InFlight {
     sub_id: u64,
     version: u32,
     cancel: Arc<AtomicBool>,
-    started: Instant,
 }
 
 struct Composer {
     cfg: EngineConfig,
     sink: Arc<dyn EventSink>,
     jobs: Option<Sender<MtJob>>,
-    hurry: Arc<AtomicBool>,
+    flags: Flags,
+    asr_queue: Arc<SharedQueue>,
     window_ms: u64,
+    stop_grace: Duration,
     now_ms: u64,
     speech_since: Option<u64>,
     /// Đoạn đã chốt ở VAD, chưa có kết quả nhận dạng: id → (start_ms, end_ms).
@@ -1848,18 +2799,32 @@ struct Composer {
     previous: HashMap<String, String>,
     metrics: SessionMetrics,
     asr_done: bool,
+    /// Lúc bấm Dừng (giờ thật), hoặc lúc chạm hạn mức.
+    hurry_since: Option<Instant>,
+    quota_hit: bool,
+    /// Hết hạn dừng: luồng phụ đề thoát ngay, không chờ luồng nhận dạng hay luồng dịch.
+    abandoned: bool,
 }
 
 impl Composer {
-    fn new(cfg: EngineConfig, sink: Arc<dyn EventSink>, jobs: Sender<MtJob>, hurry: Arc<AtomicBool>) -> Self {
+    fn new(
+        cfg: EngineConfig,
+        sink: Arc<dyn EventSink>,
+        jobs: Sender<MtJob>,
+        flags: Flags,
+        asr_queue: Arc<SharedQueue>,
+    ) -> Self {
         let window_ms = merge_window_ms(cfg.pipeline.segmenter.end_silence_ms, &cfg.pipeline.merge);
         let queue = MtQueue::new(cfg.pipeline.queue.clone());
+        let stop_grace = Duration::from_millis(cfg.pipeline.mt.stop_grace_ms);
         Self {
             cfg,
             sink,
             jobs: Some(jobs),
-            hurry,
+            flags,
+            asr_queue,
             window_ms,
+            stop_grace,
             now_ms: 0,
             speech_since: None,
             pending: BTreeMap::new(),
@@ -1872,6 +2837,9 @@ impl Composer {
             previous: HashMap::new(),
             metrics: SessionMetrics::default(),
             asr_done: false,
+            hurry_since: None,
+            quota_hit: false,
+            abandoned: false,
         }
     }
 
@@ -1882,14 +2850,28 @@ impl Composer {
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => break,
             }
-            self.check_hurry();
-            self.dispatch();
-            if self.asr_done && self.in_flight.is_none() && self.queue.is_empty() {
+            if self.step() {
                 break;
             }
         }
+        self.finish()
+    }
+
+    /// Xét cờ dừng và hạn mức, gửi câu kế tiếp đi dịch. Trả `true` khi luồng phụ đề phải thoát.
+    fn step(&mut self) -> bool {
+        self.check_flags();
+        self.dispatch();
+        self.abandoned
+            || (self.asr_done && self.in_flight.is_none() && self.queue.is_empty())
+            || (self.quota_hit && self.in_flight.is_none())
+    }
+
+    fn finish(mut self) -> SessionMetrics {
         self.finish_open();
         drop(self.jobs.take()); // luồng dịch thoát
+        if self.quota_hit {
+            self.sink.fatal(Fatal::QuotaExhausted, "đã dùng hết hạn mức");
+        }
         log::info!("phiên dịch kết thúc: {}", self.metrics.summary());
         self.metrics
     }
@@ -1942,6 +2924,14 @@ impl Composer {
                 version,
                 outcome,
             } => self.on_mt_done(sub_id, version, outcome),
+            Msg::MtGone => {
+                log::error!("luồng dịch dừng bất thường");
+                self.jobs = None;
+                self.set_mt_unavailable();
+                if let Some(f) = self.in_flight.take() {
+                    self.settle(f.sub_id, Status::Failed, String::new());
+                }
+            }
         }
     }
 
@@ -1954,11 +2944,24 @@ impl Composer {
     }
 
     fn on_asr(&mut self, outcome: AsrOutcome) {
+        if self.quota_hit {
+            // Hết hạn mức: đoạn chép lời xong muộn không còn được hiện hay dịch.
+            if let AsrOutcome::Transcribed { ids, .. }
+            | AsrOutcome::Filtered { ids }
+            | AsrOutcome::Dropped { ids, .. } = &outcome
+            {
+                for id in ids {
+                    self.pending.remove(id);
+                }
+            }
+            return;
+        }
         match outcome {
             AsrOutcome::Transcribed {
                 ids,
                 start_ms,
                 end_ms,
+                speech_ms,
                 lang,
                 text,
                 asr_ms,
@@ -1990,13 +2993,12 @@ impl Composer {
                     self.sink.subtitle(&sub);
                     return;
                 }
-                self.metrics.translated_speech_ms += end_ms.saturating_sub(start_ms);
                 let window = self.window_ms;
                 if let Some((open, sub_id)) = self.open.as_mut().filter(|(o, _)| o.accepts(&piece, window)) {
                     open.push(&piece);
                     let (sub_id, closed, joined) = (*sub_id, open.is_closed(), open.text().to_string());
                     self.metrics.merges += 1;
-                    self.grow(sub_id, &joined, end_ms, closed);
+                    self.grow(sub_id, &joined, end_ms, speech_ms, closed);
                     if closed {
                         self.finish_open();
                     }
@@ -2017,12 +3019,21 @@ impl Composer {
                         replaces: Vec::new(),
                     };
                     self.sink.subtitle(&sub);
+                    // Ngữ cảnh là câu chốt trước câu này, chụp ngay lúc mở câu (§6.5).
+                    let context = self
+                        .cfg
+                        .translation_context
+                        .then(|| self.previous.get(&lang).cloned())
+                        .flatten();
                     self.subs.insert(
                         sub_id,
                         SubState {
                             sub,
                             version: 1,
                             closed,
+                            speech_ms,
+                            counted_ms: 0,
+                            context,
                         },
                     );
                     self.enqueue(sub_id, 1, false);
@@ -2066,12 +3077,13 @@ impl Composer {
     }
 
     /// Câu đang mở vừa được ghép thêm một đoạn: gửi lại phụ đề (tạm), và dịch lại cả câu.
-    fn grow(&mut self, sub_id: u64, text: &str, end_ms: u64, closed: bool) {
+    fn grow(&mut self, sub_id: u64, text: &str, end_ms: u64, speech_ms: u64, closed: bool) {
         let Some(state) = self.subs.get_mut(&sub_id) else {
             return;
         };
         state.version += 1;
         state.closed = closed;
+        state.speech_ms += speech_ms;
         state.sub.src_text = text.to_string();
         state.sub.end_ms = end_ms;
         state.sub.tgt_text.clear();
@@ -2086,8 +3098,11 @@ impl Composer {
                 f.cancel.store(true, Ordering::SeqCst);
             }
             self.enqueue(sub_id, version, true);
-        } else if !self.queue.update(sub_id, text, end_ms, version) {
-            self.enqueue(sub_id, version, false);
+        } else {
+            let total = state.speech_ms;
+            if !self.queue.update(sub_id, text, end_ms, total, version) {
+                self.enqueue(sub_id, version, false);
+            }
         }
     }
 
@@ -2100,6 +3115,8 @@ impl Composer {
             text: state.sub.src_text.clone(),
             start_ms: state.sub.start_ms,
             end_ms: state.sub.end_ms,
+            speech_ms: state.speech_ms,
+            context: state.context.clone(),
             enqueued_ms: self.now_ms,
             open: !state.closed,
             replaces: state.sub.replaces.clone(),
@@ -2109,12 +3126,16 @@ impl Composer {
             return;
         }
         for merged in self.queue.push(item) {
-            let absorbed: Vec<u64> = merged.replaces.clone();
-            for id in &absorbed {
-                self.subs.remove(id);
+            let mut counted = 0;
+            for id in &merged.replaces {
+                if let Some(absorbed) = self.subs.remove(id) {
+                    counted += absorbed.counted_ms;
+                }
             }
             if let Some(state) = self.subs.get_mut(&merged.sub_id) {
                 state.version = merged.version;
+                state.speech_ms = merged.speech_ms;
+                state.counted_ms += counted;
                 state.sub.src_text = merged.text.clone();
                 state.sub.end_ms = merged.end_ms;
                 state.sub.replaces = merged.replaces.clone();
@@ -2176,31 +3197,66 @@ impl Composer {
         }
     }
 
-    /// Đang dừng phiên: câu chờ dịch thì bỏ bước dịch, câu đang dịch quá `STOP_GRACE` thì hủy.
-    fn check_hurry(&mut self) {
-        if !self.hurry.load(Ordering::SeqCst) {
-            return;
+    fn set_mt_unavailable(&mut self) {
+        self.mt_unavailable = true;
+        if !self.indicators.translation_unavailable {
+            self.indicators.translation_unavailable = true;
+            self.sink.indicators(&self.indicators);
         }
-        if let Some(f) = &self.in_flight
-            && f.started.elapsed() > STOP_GRACE
-        {
+    }
+
+    /// Xét cờ của `Engine`: hết hạn mức, đã bấm Dừng, đã hết hạn dừng.
+    fn check_flags(&mut self) {
+        if self.flags.quota.load(Ordering::SeqCst) && !self.quota_hit {
+            self.hit_quota();
+        }
+        if self.flags.hurry.load(Ordering::SeqCst) && self.hurry_since.is_none() {
+            self.hurry_since = Some(Instant::now());
+        }
+        if self.hurry_since.is_some_and(|t| t.elapsed() >= self.stop_grace) && !self.abandoned {
+            self.abandon();
+        }
+    }
+
+    /// Chạm hạn mức (§6.8): dừng thu, bỏ đoạn chờ nhận dạng và câu chờ dịch, chỉ dịch xong câu đang dịch.
+    fn hit_quota(&mut self) {
+        log::info!("chạm hạn mức: dừng phiên");
+        self.quota_hit = true;
+        self.flags.stop.store(true, Ordering::SeqCst);
+        self.asr_queue.clear();
+        self.pending.clear();
+        self.finish_open();
+        while let Some(Ready::Translate(item) | Ready::Skip(item)) = self.queue.pop(self.now_ms) {
+            self.settle(item.sub_id, Status::Skipped, String::new());
+        }
+        if self.hurry_since.is_none() {
+            self.hurry_since = Some(Instant::now());
+        }
+    }
+
+    /// Hết hạn dừng: câu đang dịch và câu chờ dịch thành `skipped`; luồng phụ đề thoát.
+    fn abandon(&mut self) {
+        self.abandoned = true;
+        if let Some(f) = self.in_flight.take() {
             f.cancel.store(true, Ordering::SeqCst);
+            self.settle(f.sub_id, Status::Skipped, String::new());
+        }
+        while let Some(Ready::Translate(item) | Ready::Skip(item)) = self.queue.pop(self.now_ms) {
+            self.settle(item.sub_id, Status::Skipped, String::new());
         }
     }
 
     fn dispatch(&mut self) {
-        while self.in_flight.is_none() {
-            let hurry = self.hurry.load(Ordering::SeqCst);
+        while self.in_flight.is_none() && !self.quota_hit && !self.abandoned {
             let item = match self.queue.pop(self.now_ms) {
                 None => return,
-                Some(Ready::Translate(item)) if !hurry && !self.mt_unavailable => item,
-                Some(Ready::Translate(item) | Ready::Skip(item)) => {
-                    let status = if self.mt_unavailable && !hurry {
-                        Status::Failed
-                    } else {
-                        Status::Skipped
-                    };
-                    self.settle(item.sub_id, status, String::new());
+                Some(Ready::Translate(item)) if !self.mt_unavailable => item,
+                Some(Ready::Translate(item)) => {
+                    self.settle(item.sub_id, Status::Failed, String::new());
+                    continue;
+                }
+                Some(Ready::Skip(item)) => {
+                    self.settle(item.sub_id, Status::Skipped, String::new());
                     continue;
                 }
             };
@@ -2210,30 +3266,24 @@ impl Composer {
             state.sub.status = Status::Translating;
             state.sub.tgt_text.clear();
             self.sink.subtitle(&state.sub);
-            let context = self
-                .cfg
-                .translation_context
-                .then(|| self.previous.get(&item.lang).cloned())
-                .flatten()
-                .filter(|p| *p != item.text);
             let cancel = Arc::new(AtomicBool::new(false));
             let job = MtJob {
                 sub_id: item.sub_id,
                 version: item.version,
                 src: Lang::from_code(&item.lang).unwrap_or(Lang::En),
                 text: item.text,
-                context,
+                context: item.context,
                 cancel: cancel.clone(),
             };
             self.in_flight = Some(InFlight {
                 sub_id: item.sub_id,
                 version: item.version,
                 cancel,
-                started: Instant::now(),
             });
             let sent = self.jobs.as_ref().is_some_and(|j| j.send(job).is_ok());
             if !sent {
                 self.in_flight = None;
+                self.set_mt_unavailable();
                 self.settle(item.sub_id, Status::Failed, String::new());
             }
         }
@@ -2264,26 +3314,35 @@ impl Composer {
             Outcome::Cancelled => self.settle(sub_id, Status::Skipped, String::new()),
             Outcome::Unavailable(reason) => {
                 log::error!("llama-server không dùng được: {reason}");
-                self.mt_unavailable = true;
-                self.indicators.translation_unavailable = true;
-                self.sink.indicators(&self.indicators);
+                self.set_mt_unavailable();
                 self.settle(sub_id, Status::Failed, String::new());
             }
         }
     }
 
-    /// Kết thúc phần dịch của một phụ đề.
+    /// Kết thúc phần dịch của một phụ đề. `Done` thì đếm phút cho hạn mức (§6.8).
     fn settle(&mut self, sub_id: u64, status: Status, tgt_text: String) {
         let Some(state) = self.subs.get_mut(&sub_id) else {
             return;
         };
+        let mut usage = None;
         match status {
             Status::Failed => self.metrics.failed += 1,
             Status::Skipped => self.metrics.skipped += 1,
-            Status::Done => self
-                .metrics
-                .latency_ms
-                .push(self.now_ms.saturating_sub(state.sub.end_ms) as f32),
+            Status::Done => {
+                self.metrics
+                    .latency_ms
+                    .push(self.now_ms.saturating_sub(state.sub.end_ms) as f32);
+                let new_ms = state.speech_ms.saturating_sub(state.counted_ms);
+                state.counted_ms = state.speech_ms;
+                if new_ms > 0 {
+                    self.metrics.translated_speech_ms += new_ms;
+                    usage = Some(Usage {
+                        sub_id,
+                        speech_ms: new_ms,
+                    });
+                }
+            }
             _ => {}
         }
         state.sub.status = status;
@@ -2291,6 +3350,12 @@ impl Composer {
         self.sink.subtitle(&state.sub);
         if state.closed {
             self.subs.remove(&sub_id);
+        }
+        if let Some(usage) = usage
+            && self.sink.usage(&usage).is_break()
+            && !self.quota_hit
+        {
+            self.hit_quota();
         }
     }
 }
@@ -2301,7 +3366,7 @@ Sửa `crates/pipeline/src/segmenter.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/pipeline/src/segmenter.rs
 +++ b/crates/pipeline/src/segmenter.rs
-@@ -164,6 +164,12 @@
+@@ -188,6 +188,12 @@
          out
      }
  
@@ -2322,21 +3387,23 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 112 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 146 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.11s
-test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.26s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.56s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.09s
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.30s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-     Running unittests src/lib.rs (target/debug/deps/pipeline-fc16c618e4b8f5a0)
-     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-9dfc4bfd3d3f8afa)
-     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-c38f44afa7fc4703)
-     Running tests/clients.rs (target/debug/deps/clients-429936f3fc6661e8)
-     Running tests/engine.rs (target/debug/deps/engine-edfb1de2e43120d9)
-     Running tests/lifecycle.rs (target/debug/deps/lifecycle-72cb79e575bb1e0c)
-     Running tests/vad_reference.rs (target/debug/deps/vad_reference-f0916b9001a6d4ad)
+     Running unittests src/lib.rs (target/debug/deps/pipeline-126516eab1f92edf)
+     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-8ba1ac4e23374ebd)
+     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-e753fea9a8abc686)
+     Running tests/clients.rs (target/debug/deps/clients-41fc66e771173fce)
+     Running tests/engine.rs (target/debug/deps/engine-ea22296abc08d3d2)
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-9c9c371bd03a2b4c)
+     Running tests/shutdown.rs (target/debug/deps/shutdown-82db404fc1f11d0c)
+     Running tests/vad_reference.rs (target/debug/deps/vad_reference-85e6bf9a05f81f77)
 ```
 
 - [ ] **Step 6: Clippy và định dạng**
@@ -2350,9 +3417,8 @@ Expected: không có cảnh báo, `cargo fmt` không in gì.
 git add crates/pipeline/src/engine.rs \
   crates/pipeline/src/lib.rs \
   crates/pipeline/src/segmenter.rs \
-  crates/pipeline/tests/engine.rs \
-  crates/pipeline/tests/lifecycle.rs
-git commit -m "feat(pipeline): engine của một phiên dịch: bốn luồng, phụ đề và sự kiện theo §6.6" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+  crates/pipeline/tests/engine.rs
+git commit -m "feat(pipeline): engine của một phiên dịch: bốn luồng, phụ đề và sự kiện theo §6.6, đếm phút" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ## Task 3: Clip FLEURS cho test tích hợp, test với model thật, công cụ đo `no_speech_prob`
@@ -2361,7 +3427,7 @@ git commit -m "feat(pipeline): engine của một phiên dịch: bốn luồng, 
 - `tests/fixtures/audio/`: một file WAV ghép ba câu FLEURS (CC BY 4.0, ghi công trong `ATTRIBUTION.txt`) với khoảng lặng, cùng mốc thời gian của từng câu. Dựng lại bằng `build_fixture.py` từ bộ clip A4 có sẵn, cho ra đúng các byte đã commit.
 - `tests/engine.rs` thêm test chạy pipeline từ file WAV đó, với VAD theo năng lượng và tiến trình phụ giả (chạy mặc định).
 - `tests/real_sidecars.rs` (bỏ qua mặc định): cùng file, qua Silero, `asr-worker` và `llama-server` thật.
-- `tests/no_speech.rs` (bỏ qua mặc định, QĐ22): tín hiệu không có tiếng nói qua `asr-worker` thật, cộng số đoạn VAD của app cắt ra.
+- `tests/no_speech.rs` (bỏ qua mặc định, QĐ22): tín hiệu không có tiếng nói qua `asr-worker` thật; có VAD thì in số đoạn VAD của app cắt ra và áp luật lọc với xác suất VAD của đoạn, như app.
 
 **Files:**
 - Test (sửa): `crates/pipeline/tests/engine.rs`
@@ -2447,17 +3513,16 @@ if __name__ == "__main__":
 
 Run:
 ```bash
-python3 tests/fixtures/audio/build_fixture.py
-shasum -a 256 tests/fixtures/audio/fleurs-en-en-vi.wav
-cat tests/fixtures/audio/fleurs-en-en-vi.json
+python3 tests/fixtures/audio/build_fixture.py && shasum -a 256 tests/fixtures/audio/fleurs-en-en-vi.wav && git status --short tests/fixtures
 ```
-Expected: 19,08 giây, ba câu, đúng SHA-256 này, và mốc như sau:
+Expected: 19,08 giây, ba câu, đúng SHA-256 này, và hai file mới chưa commit:
 
 ```text
-$ python3 tests/fixtures/audio/build_fixture.py && shasum -a 256 tests/fixtures/audio/fleurs-en-en-vi.wav && git status --short tests/fixtures
 19.08 giây, 3 câu
 bfd08d5c999b5ea285c5f0ddc1056eb5c4634c52ec39cec84134fb4be3e0a706  tests/fixtures/audio/fleurs-en-en-vi.wav
 ```
+
+`tests/fixtures/audio/fleurs-en-en-vi.json` phải có đúng nội dung:
 
 ```json
 [
@@ -2492,16 +3557,16 @@ Sửa `crates/pipeline/tests/engine.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/pipeline/tests/engine.rs
 +++ b/crates/pipeline/tests/engine.rs
-@@ -8,7 +8,7 @@
- use pipeline::subtitle::{Delta, Status, Subtitle};
+@@ -11,7 +11,7 @@
  use pipeline::supervisor::{AsrSpec, Clock, FakeClock, LlamaSpec, NoEvents, SidecarManager, SidecarSpec, SystemClock};
  use std::collections::BTreeMap;
+ use std::ops::ControlFlow;
 -use std::path::PathBuf;
 +use std::path::{Path, PathBuf};
  use std::sync::{Arc, Mutex, Once};
  use std::time::{Duration, Instant};
  
-@@ -392,3 +392,63 @@
+@@ -410,3 +410,63 @@
      let (ui, _) = sink.replay();
      assert_eq!(ui.len(), 1);
  }
@@ -2570,12 +3635,12 @@ Sửa `crates/pipeline/tests/engine.rs` (áp bằng `git apply`):
 Tạo `crates/pipeline/tests/no_speech.rs`:
 
 ````rust
-//! Việc cho MVP §6.4 (Đ12 của kế hoạch 00): `no_speech_prob` và `avg_logprob` của `asr-worker` thật trên âm thanh không có
-//! tiếng nói, và luật lọc của app (`filter::verdict`) có bỏ được đoạn đó không. Đặt thêm `MT_VAD_MODEL` thì in cả số đoạn
-//! mà VAD của app (Silero, luật cắt đoạn mặc định) cắt ra từ tín hiệu: 0 nghĩa là trong app tín hiệu đó không bao giờ tới
-//! `asr-worker`. Tín hiệu tổng hợp: im lặng, nhiễu trắng,
-//! nhiễu hồng, tiếng ù điện, tiếng gõ phím, hợp âm. Thêm file WAV bất kỳ (ví dụ clip nhạc có quyền dùng) qua
-//! `NO_SPEECH_WAVS`, mỗi file 16 kHz mono 16-bit, cắt thành đoạn 8 giây như VAD (tối đa 10 đoạn mỗi file).
+//! Việc cho MVP §6.4 (Đ12 của kế hoạch 00; Q11 của review 02b): `no_speech_prob` và `avg_logprob` của `asr-worker` thật
+//! trên âm thanh không có tiếng nói, và luật lọc của app (`filter::verdict`) có bỏ được đoạn đó không. Đặt thêm
+//! `MT_VAD_MODEL` thì in cả số đoạn mà VAD của app (Silero, luật cắt đoạn mặc định) cắt ra từ tín hiệu (0 nghĩa là trong
+//! app tín hiệu đó không bao giờ tới `asr-worker`), và luật lọc dùng xác suất VAD trung bình của đoạn đầu như app. Tín hiệu
+//! tổng hợp: im lặng, nhiễu trắng, nhiễu hồng, tiếng ù điện, tiếng gõ phím, hợp âm. Thêm file WAV bất kỳ (ví dụ clip nhạc
+//! CC0) qua `NO_SPEECH_WAVS`, mỗi file 16 kHz mono 16-bit, cắt thành đoạn 8 giây như VAD (tối đa 10 đoạn mỗi file).
 //!
 //! Đây là phép thử để chọn ngưỡng, không phải test hồi quy: không kiểm theo số đo, chỉ kiểm worker trả kết quả cho mọi
 //! đoạn. Cần binary và model nên bị bỏ qua mặc định. Chạy từ gốc repo, một lần cho mỗi model:
@@ -2593,8 +3658,8 @@ Tạo `crates/pipeline/tests/no_speech.rs`:
 use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
 use pipeline::asr_client::{AsrLaunch, AsrWorker};
 use pipeline::config::{FilterConfig, PipelineConfig};
-use pipeline::filter::{Verdict, verdict};
-use pipeline::segmenter::{FRAME_SAMPLES, Segmenter};
+use pipeline::filter::{Evidence, Verdict, compression_ratio, verdict};
+use pipeline::segmenter::{FRAME_SAMPLES, Segment, Segmenter};
 use pipeline::text::display_text;
 use pipeline::vad::SileroVad;
 use std::f32::consts::TAU;
@@ -2732,16 +3797,17 @@ fn signals() -> Vec<(String, Vec<f32>)> {
     out
 }
 
-/// Số đoạn mà VAD và luật cắt đoạn mặc định của app cắt ra từ tín hiệu.
-fn vad_segments(vad: &mut SileroVad, samples: &[f32]) -> usize {
+/// Các đoạn mà VAD và luật cắt đoạn mặc định của app cắt ra từ tín hiệu.
+fn vad_segments(vad: &mut SileroVad, samples: &[f32]) -> Vec<Segment> {
     vad.reset().unwrap();
     let mut segmenter = Segmenter::new(PipelineConfig::default().segmenter);
-    let mut n = 0;
+    let mut out = Vec::new();
     for frame in samples.as_chunks::<FRAME_SAMPLES>().0 {
         let prob = vad.prob(frame).unwrap();
-        n += segmenter.push(frame, prob).len();
+        out.extend(segmenter.push(frame, prob));
     }
-    n + usize::from(segmenter.flush().is_some())
+    out.extend(segmenter.flush());
+    out
 }
 
 fn env(name: &str) -> PathBuf {
@@ -2785,13 +3851,27 @@ fn run() {
             })
             .unwrap_or_else(|e| panic!("{name}: {e}"));
         let text = display_text(&r.lang, &r.text, &cfg);
-        let v = verdict(r.no_speech_prob, r.avg_logprob, &text, &cfg);
-        let segments = vad.as_mut().map(|vad| vad_segments(vad, samples));
+        let cut = vad.as_mut().map(|vad| vad_segments(vad, samples));
+        // Như app: đoạn có xác suất VAD và độ dài tiếng nói của nó. Không có VAD thì cả tín hiệu là một đoạn chắc chắn.
+        let (vad_mean_prob, speech_ms) = match cut.as_deref() {
+            Some([first, ..]) => (first.mean_prob, first.speech_ms),
+            _ => (1.0, (samples.len() * 1000 / RATE) as u64),
+        };
+        let evidence = Evidence {
+            no_speech_prob: r.no_speech_prob,
+            avg_logprob: r.avg_logprob,
+            vad_mean_prob,
+            speech_ms,
+        };
+        let v = verdict(&evidence, &text, &cfg);
+        let segments = cut.as_ref().map(Vec::len);
         println!(
             "{}",
             serde_json::json!({
                 "signal": name, "lang": r.lang, "lang_prob": r.lang_prob, "no_speech_prob": r.no_speech_prob,
-                "avg_logprob": r.avg_logprob, "verdict": format!("{v:?}"), "vad_segments": segments, "text": text,
+                "avg_logprob": r.avg_logprob, "vad_segments": segments,
+                "vad_mean_prob": cut.as_ref().and_then(|c| c.first()).map(|s| s.mean_prob),
+                "compression_ratio": compression_ratio(&text), "verdict": format!("{v:?}"), "text": text,
             })
         );
         if v == Verdict::Speech && segments != Some(0) {
@@ -2969,25 +4049,27 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 112 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 146 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.54s
-test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.25s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.56s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.46s
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.30s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-     Running unittests src/lib.rs (target/debug/deps/pipeline-fc16c618e4b8f5a0)
-     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-9dfc4bfd3d3f8afa)
-     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-c38f44afa7fc4703)
-     Running tests/clients.rs (target/debug/deps/clients-429936f3fc6661e8)
-     Running tests/engine.rs (target/debug/deps/engine-edfb1de2e43120d9)
-     Running tests/lifecycle.rs (target/debug/deps/lifecycle-72cb79e575bb1e0c)
-     Running tests/no_speech.rs (target/debug/deps/no_speech-17573c238f79b2e7)
-     Running tests/real_sidecars.rs (target/debug/deps/real_sidecars-8f6b1695169f3930)
-     Running tests/vad_reference.rs (target/debug/deps/vad_reference-f0916b9001a6d4ad)
+     Running unittests src/lib.rs (target/debug/deps/pipeline-126516eab1f92edf)
+     Running unittests src/bin/fake_asr_worker.rs (target/debug/deps/fake_asr_worker-8ba1ac4e23374ebd)
+     Running unittests src/bin/fake_llama_server.rs (target/debug/deps/fake_llama_server-e753fea9a8abc686)
+     Running tests/clients.rs (target/debug/deps/clients-41fc66e771173fce)
+     Running tests/engine.rs (target/debug/deps/engine-ea22296abc08d3d2)
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-9c9c371bd03a2b4c)
+     Running tests/no_speech.rs (target/debug/deps/no_speech-4bd801d18839f4dc)
+     Running tests/real_sidecars.rs (target/debug/deps/real_sidecars-6efa409a6ac49d32)
+     Running tests/shutdown.rs (target/debug/deps/shutdown-82db404fc1f11d0c)
+     Running tests/vad_reference.rs (target/debug/deps/vad_reference-85e6bf9a05f81f77)
 ```
 
 - [ ] **Step 4: Chạy test với model thật**
@@ -3000,24 +4082,29 @@ MT_ASR_WORKER=$PWD/target/release/asr-worker MT_ASR_MODEL=$PWD/models/ggml-small
 MT_LLAMA_SERVER=$PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server MT_MT_MODEL=$PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf \
 MT_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx cargo test -p pipeline --test real_sidecars -- --include-ignored --nocapture
 ```
-Expected: mỗi câu có ít nhất một phụ đề nằm trong khoảng thời gian của câu, đúng thứ tự; hai câu tiếng Anh `Done`, câu tiếng Việt `SameLang` (có thể bị VAD cắt làm hai đoạn); trước đó một dòng tóm tắt số đo của phiên (số đoạn theo kết cục, thời gian từng bước; không dùng làm số đo vì máy lúc lập kế hoạch đang bận). Chữ chép và bản dịch tùy máy. Lúc lập kế hoạch (gói Nhẹ):
+Expected: mỗi câu có ít nhất một phụ đề nằm trong khoảng thời gian của câu, đúng thứ tự; hai câu tiếng Anh `Done`, câu tiếng Việt `SameLang` (có thể bị VAD cắt làm hai đoạn); trước đó một dòng tóm tắt số đo của phiên (số đoạn theo kết cục, thời gian từng bước; không dùng làm số đo hiệu năng). Chữ chép và bản dịch tùy máy. Lúc lập kế hoạch (gói Nhẹ):
 
 ```text
+4 đoạn (lọc 0, bỏ 0), 2 câu dịch, 0 lỗi, 0 bỏ bước dịch, 2 cùng ngôn ngữ, 0 lần ghép; cắt đoạn p50 320 ms, p90 320 ms; nhận dạng p50 107 ms, p90 114 ms; dịch p50 204 ms, p90 207 ms; tổng p50 496 ms, p90 509 ms; tiếng nói đã dịch 6016 ms
 0 1472–4032 Done That didn't seem to make sense to me. It certainly wasn't fair. | Điều đó dường như không hợp lý chút nào. Chắc chắn là không công bằng.
 1 7072–10528 Done The results of plotting analysis will be posted to a public website. | Kết quả phân tích đồ họa sẽ được đăng trên một trang web công cộng.
 2 13088–14336 SameLang Cái nhà khoa học cho viết | 
 3 14784–17472 SameLang vụp và trạm đã gây ra vụ nổ gắt lớn | 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.31s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.84s
 ```
 
-Run (một lần cho mỗi model):
+Run:
 ```bash
 for m in large-v3-turbo-q5_0 small-q5_1; do
   MT_ASR_WORKER=$PWD/target/release/asr-worker MT_ASR_MODEL=$PWD/models/ggml-$m.bin \
   MT_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx cargo test -p pipeline --test no_speech -- --include-ignored --nocapture
 done
 ```
-Expected: 14 dòng JSON mỗi model rồi dòng tổng. Lúc lập kế hoạch, VAD của app không cắt ra đoạn nào từ cả 14 tín hiệu (`"vad_segments":0`), nên không phụ đề nào hiện (`"shown_as_subtitle":0`). Không có VAD thì khác: turbo luôn cho `no_speech_prob` cỡ 1e-10 và bịa "you", "so", "Thank you." cho im lặng, ù điện, tiếng gõ phím; small cho `no_speech_prob` 0,48–0,94 và luật lọc bỏ được 10/14. Task 6 ghi kết quả này cùng phép thử với nhạc.
+Expected: 14 dòng JSON mỗi model rồi dòng tổng. VAD của app không cắt ra đoạn nào từ cả 14 tín hiệu (`"vad_segments":0`), nên không phụ đề nào hiện (`"shown_as_subtitle":0`). Không có VAD thì khác: turbo luôn cho `no_speech_prob` cỡ 1e-10 và bịa "you", "so", "Thank you." cho im lặng, ù điện, tiếng gõ phím. Task 6 chạy lại với bộ nhạc thử và ghi kết quả. Dòng tổng lúc lập kế hoạch, turbo rồi small:
+
+```text
+{"segments":14,"shown_as_subtitle":0,"shown":[]}
+```
 
 ```text
 {"segments":14,"shown_as_subtitle":0,"shown":[]}
@@ -3044,14 +4131,15 @@ git commit -m "test(pipeline): clip FLEURS cho test tích hợp, test với mode
 ## Task 4: `latency-bench mt-eval`, nhãn cho `score_mt.py`, bộ đo tỉ lệ token
 
 Đ4, Đ12, mục 6.7 của kế hoạch 00; dòng 27, 149:
-- `mt_eval.rs`: dịch bộ test A3 bằng đúng `pipeline::translate` của app, ghi JSONL cùng định dạng với `translate.py` (thêm `status`, `attempts`); chạy lại cùng `--out-dir` thì dịch tiếp, dòng cuối viết dở bị cắt.
-- `score_mt.py`: `--outputs` (thư mục kết quả), `--label` (bắt buộc khi chấm thư mục khác `outputs/`, để không ghi đè mốc `s7_mt.json`), `--baseline` (bảng so từng chiều với mốc, thoát lỗi khi có chiều thấp hơn quá 0,01). `translate.py` thêm `--label` cho thư mục kết quả.
+- `mt_eval.rs`: dịch bộ test A3 bằng đúng `pipeline::translate` của app, ghi JSONL cùng định dạng với `translate.py` (thêm `status`, `attempts`). `--limit` lấy N câu đầu mỗi chiều trước khi lọc biến thể `context`, như `translate.py` (N12 của review 02b). Mỗi file kết quả có `<…>.meta.json` ghi điều kiện của lượt chạy (git HEAD và cờ có thay đổi chưa commit, tên và kích thước model, `MtConfig`, biến thể, bộ test, `--limit`); chạy lại cùng `--out-dir` thì dịch tiếp, dòng cuối viết dở bị cắt, nhưng điều kiện khác lần trước thì từ chối, trừ khi có `--resume-anyway` (Q7 của review 02b: tránh bẫy R6 của kế hoạch 00).
+- `score_mt.py`: `--outputs` (thư mục kết quả), `--label` (ghi `s7_mt-<nhãn>`), `--write-baseline` (chỉ cờ này mới ghi lại mốc `s7_mt.json`; không có nhãn hay cờ này thì từ chối chạy, N4), `--baseline` (bảng so từng chiều với mốc; thoát lỗi khi có chiều thấp hơn quá 0,01, và khi không so được: không lượt nào trùng tên với mốc, thiếu chiều mà mốc có, hay thiếu COMET, Q8). Dòng `failed` của `mt-eval` không tính vào tỉ lệ token và thời gian; bảng thêm cột "Lỗi". `test_score_mt.py` là test Python của phần so mốc. `translate.py` thêm `--label` cho thư mục kết quả.
 - `build_ratio_set.py`, `ratio_stats.py` (QĐ22): bộ câu và bảng tỉ lệ token cho Task 6.
 
 **Files:**
 - Tạo: `bench/phase0/mt/build_ratio_set.py`
 - Tạo: `bench/phase0/mt/ratio_stats.py`
 - Sửa: `bench/phase0/mt/score_mt.py`
+- Tạo: `bench/phase0/mt/test_score_mt.py`
 - Sửa: `bench/phase0/mt/translate.py`
 - Sửa: `crates/latency-bench/src/main.rs`
 - Tạo: `crates/latency-bench/src/mt_eval.rs`
@@ -3080,8 +4168,11 @@ Tạo `crates/latency-bench/src/mt_eval.rs`, lúc này mới có phần test (ph
 //! hậu xử lý trong lúc stream, thử lại một lần), ghi JSONL cùng định dạng với `bench/phase0/mt/translate.py` để
 //! `score_mt.py` chấm.
 //!
-//! Kết quả: `<out-dir>/<tên model>-<plain|context>.jsonl`. Chạy lại cùng `--out-dir` thì dịch tiếp các câu chưa có, như
-//! `translate.py`; muốn dịch lại từ đầu thì dùng thư mục khác (nhãn khác), đừng xóa kết quả mốc.
+//! Kết quả: `<out-dir>/<tên model>-<plain|context>.jsonl`, cùng `<…>.meta.json` ghi điều kiện của lượt chạy: git HEAD (kèm
+//! cờ có thay đổi chưa commit), tên và kích thước model, `MtConfig`, biến thể, bộ test. Chạy lại cùng `--out-dir` thì dịch
+//! tiếp các câu chưa có, như `translate.py`, nhưng chỉ khi điều kiện y hệt lần trước (R6 của kế hoạch 00: tránh trộn
+//! kết quả của hai phiên bản code hay hai model). Khác thì từ chối, trừ khi có `--resume-anyway`. Muốn dịch lại từ đầu
+//! thì dùng thư mục khác (nhãn khác), đừng xóa kết quả mốc.
 
 #[cfg(test)]
 mod tests {
@@ -3101,6 +4192,52 @@ mod tests {
         );
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    fn meta() -> Meta {
+        Meta {
+            git_head: "abc".into(),
+            git_dirty: false,
+            model_file: "m.gguf".into(),
+            model_bytes: 10,
+            variant: "plain".into(),
+            testset_file: "t.jsonl".into(),
+            testset_lines: 620,
+            limit: 0,
+            mt_config: serde_json::to_value(MtConfig::default()).unwrap(),
+        }
+    }
+
+    /// Q7 của review 02b: dịch tiếp chỉ khi điều kiện y hệt lần trước.
+    #[test]
+    fn resuming_needs_the_same_conditions() {
+        let dir = std::env::temp_dir().join(format!("mt-eval-meta-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("m-plain.meta.json");
+        check_meta(&path, false, &meta(), false).unwrap();
+        check_meta(&path, true, &meta(), false).unwrap();
+        let cfg = MtConfig {
+            repeat_penalty: 1.1,
+            ..MtConfig::default()
+        };
+        let other = Meta {
+            git_head: "def".into(),
+            mt_config: serde_json::to_value(cfg).unwrap(),
+            ..meta()
+        };
+        let err = check_meta(&path, true, &other, false).unwrap_err().to_string();
+        assert!(err.contains("git_head, mt_config"), "{err}");
+        assert_eq!(meta_diff(&meta(), &meta()), Vec::<&str>::new());
+        check_meta(&path, true, &other, true).unwrap();
+        let saved: Meta = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(saved, other, "--resume-anyway ghi điều kiện mới");
+        std::fs::remove_file(&path).unwrap();
+        let err = check_meta(&path, true, &meta(), false).unwrap_err().to_string();
+        assert!(
+            err.contains("không có hoặc hỏng"),
+            "kết quả cũ mà thiếu meta.json: {err}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
 ```
 
@@ -3111,7 +4248,11 @@ Expected: biên dịch lỗi:
 
 ```text
 error[E0433]: cannot find type `HashSet` in this scope
+error[E0425]: cannot find type `Meta` in this scope
+error[E0422]: cannot find struct, variant or union type `Meta` in this scope
+error[E0422]: cannot find struct, variant or union type `MtConfig` in this scope
 error[E0425]: cannot find function `done_ids` in this scope
+error[E0433]: cannot find type `MtConfig` in this scope
 ```
 
 - [ ] **Step 3: Viết code**
@@ -3242,9 +4383,10 @@ def main():
             top = max(long) if long else None
             cap = max((4 * r["src_tokens"] + 32 for r in short), default=None)
             lines.append(
-                f"| {d} | {len(by_dir[d])} | {len(long)} | {f'{top:.2f}' if top else '—'} "
-                f"| {f'{suggest(top):.1f}' if top else '—'} | {len(short)} "
-                f"| {max((r['completion_tokens'] for r in short), default='—')} | {cap if cap else '—'} | {failed} |")
+                f"| {d} | {len(by_dir[d])} | {len(long)} | {f'{top:.2f}' if top is not None else '—'} "
+                f"| {f'{suggest(top):.1f}' if top is not None else '—'} | {len(short)} "
+                f"| {max((r['completion_tokens'] for r in short), default='—')} | {cap if cap is not None else '—'} "
+                f"| {failed} |")
         lines.append("")
     text = "\n".join(lines)
     print(text)
@@ -3264,17 +4406,22 @@ Sửa `bench/phase0/mt/score_mt.py` (áp bằng `git apply`):
 ```diff
 --- a/bench/phase0/mt/score_mt.py
 +++ b/bench/phase0/mt/score_mt.py
-@@ -3,7 +3,12 @@
- Dùng (môi trường COMET, xem kế hoạch 02):
-   python bench/phase0/mt/score_mt.py            # COMET + tỉ lệ token
-   python bench/phase0/mt/score_mt.py --no-comet # chỉ tỉ lệ token, không cần torch
+@@ -1,9 +1,14 @@
+ """S7: chấm COMET từng chiều, so sánh theo cặp và lấy ngưỡng tỉ lệ token cho hậu xử lý (spec A3, §6.5).
+ 
+-Dùng (môi trường COMET, xem kế hoạch 02):
+-  python bench/phase0/mt/score_mt.py            # COMET + tỉ lệ token
+-  python bench/phase0/mt/score_mt.py --no-comet # chỉ tỉ lệ token, không cần torch
 -Kết quả: bench/phase0/results/s7_mt.json và s7_mt.md.
-+Kết quả: bench/phase0/results/s7_mt.json và s7_mt.md (mốc của S7).
-+
-+Chấm một lượt mới mà không ghi đè mốc (chống thụt lùi A3, kế hoạch Giai đoạn 1 · 00 mục 6.7):
++Chấm một lượt mới mà không đụng tới mốc (chống thụt lùi A3, kế hoạch Giai đoạn 1 · 00 mục 6.7):
 +  python bench/phase0/mt/score_mt.py --outputs bench/phase0/data/mt/outputs-<nhãn> --label <nhãn> \
 +    --baseline bench/phase0/results/s7_mt.json
-+Kết quả: bench/phase0/results/s7_mt-<nhãn>.json và .md; bảng cuối so từng chiều với mốc (không thấp hơn quá 0,01).
++Kết quả: bench/phase0/results/s7_mt-<nhãn>.json và .md; bảng cuối so từng chiều với mốc (không thấp hơn quá 0,01). Thêm
++`--no-comet` để chỉ tính tỉ lệ token (không cần torch); khi đó không so được với mốc.
++
++Ghi lại chính mốc S7 (bench/phase0/results/s7_mt.json và s7_mt.md, từ bench/phase0/data/mt/outputs/) phải nói rõ:
++  python bench/phase0/mt/score_mt.py --write-baseline
++Không có `--label` hay `--write-baseline` thì công cụ từ chối chạy, để không lỡ tay ghi đè mốc.
  """
  import argparse
  import glob
@@ -3286,26 +4433,86 @@ Sửa `bench/phase0/mt/score_mt.py` (áp bằng `git apply`):
  MARKERS = ("[", "【")  # tiêu đề của mẫu prompt có ngữ cảnh: [Background Information], 【背景信息】
  
  
-@@ -99,13 +105,38 @@
+@@ -46,17 +52,25 @@
+     return ("\n" in hyp and "\n" not in src) or (hyp.lstrip().startswith(MARKERS) and not src.lstrip().startswith(MARKERS))
+ 
+ 
++def is_failed(r):
++    """Dòng `failed` của `latency-bench mt-eval`: dịch lỗi cả hai lần, `hyp` là câu gốc, không có số đo thời gian."""
++    return r.get("finish_reason") == "failed"
++
++
+ def summarize(rows, scores, items):
+-    # Bản dịch bị cắt ở số token tối đa (finish_reason "length") là sinh lan man: đếm riêng, không tính vào ngưỡng.
++    # Bản dịch bị cắt ở số token tối đa (finish_reason "length", chỉ có ở translate.py) là sinh lan man: đếm riêng, không
++    # tính vào ngưỡng. Dòng `failed` (mt-eval) cũng đếm riêng: không có tỉ lệ token hay thời gian thật.
+     capped = sum(r.get("finish_reason") == "length" for r in rows)
+-    kept = [r for r in rows if r.get("finish_reason") != "length"] or rows  # cả chiều đều bị cắt: vẫn tính, để thấy
+-    ratios = [r["completion_tokens"] / max(r["src_tokens"], 1) for r in kept]
+-    out = {"n": len(rows), "length_capped": capped,
++    failed = sum(is_failed(r) for r in rows)
++    ok = [r for r in rows if not is_failed(r)]
++    kept = [r for r in ok if r.get("finish_reason") != "length"] or ok  # cả chiều đều bị cắt: vẫn tính, để thấy
++    ratios = [r["completion_tokens"] / max(r["src_tokens"], 1) for r in kept] or [0.0]
++    out = {"n": len(rows), "length_capped": capped, "failed": failed,
+            "leaked": sum(looks_leaked(items[r["id"]]["src"], r["hyp"]) for r in rows),
+            "token_ratio_max": max(ratios), "token_ratio_p99": percentile(ratios, 99),
+            # Ngưỡng đề xuất: tỉ lệ lớn nhất đo được, cộng biên 25%, làm tròn lên 0,1.
+            "proposed_threshold": math.ceil(max(ratios) * 1.25 * 10) / 10,
+-           "total_ms_p50": percentile([r["total_ms"] for r in rows], 50)}
++           "total_ms_p50": percentile([r["total_ms"] for r in ok], 50) if ok else None}
+     if scores:
+         out["comet"] = mean(scores[r["id"]] for r in rows)
+     return out
+@@ -70,9 +84,10 @@
+             by_dir[r["dir"]].append(i)
+     out = {}
+     for d, ids in sorted(by_dir.items()):
+-        ms_a = percentile([runs[a][i]["total_ms"] for i in ids], 50)
+-        ms_b = percentile([runs[b][i]["total_ms"] for i in ids], 50)
+-        row = {"n": len(ids), "ms_change": ms_a / ms_b - 1,
++        timed = [i for i in ids if not is_failed(runs[a][i]) and not is_failed(runs[b][i])] or ids
++        ms_a = percentile([runs[a][i]["total_ms"] for i in timed], 50)
++        ms_b = percentile([runs[b][i]["total_ms"] for i in timed], 50)
++        row = {"n": len(ids), "ms_change": ms_a / ms_b - 1 if ms_b else 0.0,
+                # Bản dịch dài hơn gấp đôi lượt kia: dấu hiệu dịch luôn câu ngữ cảnh hoặc sinh lan man.
+                "longer_x2": sum(runs[a][i]["completion_tokens"] > 2 * runs[b][i]["completion_tokens"] for i in ids)}
+         if scores:
+@@ -99,13 +114,57 @@
      return f"{floor:.3f} ({'đạt' if per_dir[d]['comet'] >= floor else 'KHÔNG ĐẠT'})"
  
  
 +def regression_lines(report, baseline):
-+    """So COMET từng chiều của các lượt cùng tên với mốc. Trả (các dòng Markdown, có chiều nào thụt lùi không)."""
++    """So COMET từng chiều của các lượt cùng tên với mốc.
++
++    Trả (các dòng Markdown, có chiều nào thụt lùi không, các chỗ không so được). Không so được là lỗi, vì khi đó bảng
++    trống mà lệnh vẫn "đạt": lượt này không có lượt nào cùng tên với mốc; một lượt thiếu chiều mà mốc có; hoặc thiếu
++    COMET (chấm bằng `--no-comet`) ở chiều mà mốc có. Lượt của mốc mà lượt này không chạy (ví dụ chỉ chạy Q4_K_M-plain)
++    thì không tính là thiếu.
++    """
 +    lines = ["", "## So với mốc (chống thụt lùi A3)", "",
 +             "| Lượt chạy | Chiều | Mốc | Lượt này | Chênh | Kết luận |", "|---|---|---|---|---|---|"]
-+    regressed = False
-+    for name, per_dir in report.items():
-+        base = baseline["runs"].get(name, {})
-+        for d, r in per_dir.items():
-+            if "comet" not in r or "comet" not in base.get(d, {}):
++    regressed, missing = False, []
++    matched = [name for name in report if name in baseline["runs"]]
++    if not matched:
++        missing.append(f"không lượt nào trùng tên với mốc (lượt này: {sorted(report)}, mốc: {sorted(baseline['runs'])})")
++    for name in matched:
++        per_dir, base = report[name], baseline["runs"][name]
++        for d in sorted(base):
++            if "comet" not in base[d]:
 +                continue
-+            diff = r["comet"] - base[d]["comet"]
++            if d not in per_dir:
++                missing.append(f"{name}: thiếu chiều {d}")
++                continue
++            if "comet" not in per_dir[d]:
++                missing.append(f"{name} {d}: không có COMET (chấm bằng --no-comet?)")
++                continue
++            diff = per_dir[d]["comet"] - base[d]["comet"]
 +            ok = diff >= -REGRESSION
 +            regressed |= not ok
-+            lines.append(f"| {name} | {d} | {base[d]['comet']:.3f} | {r['comet']:.3f} | {diff:+.3f} | "
++            lines.append(f"| {name} | {d} | {base[d]['comet']:.3f} | {per_dir[d]['comet']:.3f} | {diff:+.3f} | "
 +                         f"{'đạt' if ok else 'THỤT LÙI'} |")
-+    return lines, regressed
++    return lines, regressed, missing
 +
 +
  def main():
@@ -3315,10 +4522,14 @@ Sửa `bench/phase0/mt/score_mt.py` (áp bằng `git apply`):
 +                    help="thư mục JSONL của translate.py hoặc latency-bench mt-eval")
 +    ap.add_argument("--label", default="",
 +                    help="nhãn kết quả: ghi s7_mt-<nhãn>.json và .md, không ghi đè mốc s7_mt.json")
++    ap.add_argument("--write-baseline", action="store_true",
++                    help="ghi lại mốc S7 (s7_mt.json, s7_mt.md) từ bench/phase0/data/mt/outputs/")
 +    ap.add_argument("--baseline", help="file s7_mt.json làm mốc: thêm bảng so từng chiều")
      args = ap.parse_args()
-+    if os.path.abspath(args.outputs) != os.path.join(DATA, "outputs") and not args.label:
-+        ap.error("chấm thư mục khác outputs/ thì phải có --label, để không ghi đè mốc s7_mt.json")
++    if bool(args.label) == args.write_baseline:
++        ap.error("cần đúng một trong hai: --label <nhãn> (lượt mới) hoặc --write-baseline (ghi lại mốc S7)")
++    if args.write_baseline and os.path.abspath(args.outputs) != os.path.join(DATA, "outputs"):
++        ap.error("--write-baseline chỉ chấm bench/phase0/data/mt/outputs/ (kết quả mốc của S7)")
      items = {it["id"]: it for it in map(json.loads, open(os.path.join(DATA, "testset_phase0.jsonl"), encoding="utf-8"))}
      runs = {}
 -    for path in sorted(glob.glob(os.path.join(DATA, "outputs", "*.jsonl"))):
@@ -3326,7 +4537,7 @@ Sửa `bench/phase0/mt/score_mt.py` (áp bằng `git apply`):
          name = os.path.basename(path).removesuffix(".jsonl")
          runs[name] = {r["id"]: r for r in map(json.loads, open(path, encoding="utf-8"))}
      if not runs:
-@@ -146,7 +177,8 @@
+@@ -146,20 +205,22 @@
                  thresholds[d] = max(thresholds[d], r["proposed_threshold"])
  
      os.makedirs(RESULTS, exist_ok=True)
@@ -3336,23 +4547,105 @@ Sửa `bench/phase0/mt/score_mt.py` (áp bằng `git apply`):
          json.dump({"runs": report, "comparisons": comparisons, "token_ratio_thresholds": thresholds}, f,
                    ensure_ascii=False, indent=1)
  
-@@ -171,9 +203,15 @@
+     lines = ["## Mốc theo lượt chạy", "",
+-             "| Lượt chạy | Chiều | Số câu | COMET | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | Bị cắt | Nghi lẫn mẫu "
+-             "| p50 thời gian (ms) |",
+-             "|---|---|---|---|---|---|---|---|---|---|"]
++             "| Lượt chạy | Chiều | Số câu | COMET | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | Bị cắt | Lỗi "
++             "| Nghi lẫn mẫu | p50 thời gian (ms) |",
++             "|---|---|---|---|---|---|---|---|---|---|---|"]
+     for name, per_dir in report.items():
+         for d, r in per_dir.items():
+             comet_s = f"{r['comet']:.3f}" if "comet" in r else "—"
++            ms_s = f"{r['total_ms_p50']:.0f}" if r["total_ms_p50"] is not None else "—"
+             lines.append(f"| {name} | {d} | {r['n']} | {comet_s} | {floor_cell(name, d, per_dir)} | "
+                          f"{r['token_ratio_max']:.2f} | {r['proposed_threshold']:.1f} | {r['length_capped']} | "
+-                         f"{r['leaked']} | {r['total_ms_p50']:.0f} |")
++                         f"{r['failed']} | {r['leaked']} | {ms_s} |")
+     lines += ["", "## So sánh theo cặp (cùng tập câu)", "",
+               "| So sánh | Chiều | Số câu | Chênh COMET | 95% CI | Chênh p50 thời gian | Số câu dài gấp đôi |",
+               "|---|---|---|---|---|---|---|"]
+@@ -171,9 +232,17 @@
      lines += ["", "## Ngưỡng tỉ lệ token đề xuất cho §6.5 (từ các lượt chạy không có ngữ cảnh)", "",
                "| Chiều | Ngưỡng |", "|---|---|"]
      lines += [f"| {d} | {v:.1f} |" for d, v in sorted(thresholds.items())]
 -    with open(os.path.join(RESULTS, "s7_mt.md"), "w", encoding="utf-8") as f:
-+    regressed = False
++    regressed, missing = False, []
 +    if args.baseline:
-+        extra, regressed = regression_lines(report, json.load(open(args.baseline, encoding="utf-8")))
-+        lines += extra
++        extra, regressed, missing = regression_lines(report, json.load(open(args.baseline, encoding="utf-8")))
++        lines += extra + [f"- Không so được: {m}" for m in missing]
 +    with open(os.path.join(RESULTS, f"{stem}.md"), "w", encoding="utf-8") as f:
          f.write("\n".join(lines) + "\n")
      print("\n".join(lines))
++    if missing:
++        raise SystemExit("không so được với mốc: " + "; ".join(missing))
 +    if regressed:
 +        raise SystemExit("có chiều thấp hơn mốc quá 0,01: không commit thay đổi gây ra nó, báo chủ dự án (mục 6.7)")
  
  
  if __name__ == "__main__":
+```
+
+Tạo `bench/phase0/mt/test_score_mt.py`:
+
+```python
+"""Test của score_mt.py, phần so với mốc (Q8 của review 02b). Chạy từ gốc repo:
+  python3 -m unittest discover -s bench/phase0/mt -p 'test_*.py'
+"""
+import os
+import sys
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from score_mt import regression_lines, summarize  # noqa: E402
+
+BASE = {"runs": {"Q4_K_M-plain": {"en->vi": {"comet": 0.84}, "zh->vi": {"comet": 0.80}},
+                 "Q8_0-plain": {"en->vi": {"comet": 0.85}}}}
+
+
+class RegressionLines(unittest.TestCase):
+    def test_every_direction_is_compared(self):
+        report = {"Q4_K_M-plain": {"en->vi": {"comet": 0.835}, "zh->vi": {"comet": 0.81}}}
+        lines, regressed, missing = regression_lines(report, BASE)
+        self.assertEqual((regressed, missing), (False, []))
+        self.assertEqual(sum(l.startswith("| Q4_K_M-plain |") for l in lines), 2)
+
+    def test_more_than_0_01_below_the_baseline_regresses(self):
+        report = {"Q4_K_M-plain": {"en->vi": {"comet": 0.829}, "zh->vi": {"comet": 0.80}}}
+        _, regressed, missing = regression_lines(report, BASE)
+        self.assertEqual((regressed, missing), (True, []))
+
+    def test_a_missing_direction_cannot_pass(self):
+        report = {"Q4_K_M-plain": {"en->vi": {"comet": 0.84}}}
+        _, regressed, missing = regression_lines(report, BASE)
+        self.assertFalse(regressed)
+        self.assertEqual(missing, ["Q4_K_M-plain: thiếu chiều zh->vi"])
+
+    def test_scores_without_comet_cannot_pass(self):
+        report = {"Q4_K_M-plain": {"en->vi": {"n": 1}, "zh->vi": {"n": 1}}}
+        _, _, missing = regression_lines(report, BASE)
+        self.assertEqual(len(missing), 2)
+        self.assertIn("không có COMET", missing[0])
+
+    def test_no_run_with_the_baseline_name_cannot_pass(self):
+        _, _, missing = regression_lines({"Q4_K_M-gd1-plain": {"en->vi": {"comet": 0.9}}}, BASE)
+        self.assertEqual(len(missing), 1)
+        self.assertIn("không lượt nào trùng tên", missing[0])
+
+
+class Summarize(unittest.TestCase):
+    def test_failed_rows_do_not_skew_the_timings_or_ratios(self):
+        items = {"a": {"src": "x"}, "b": {"src": "y"}}
+        rows = [{"id": "a", "hyp": "X", "src_tokens": 10, "completion_tokens": 12, "total_ms": 400.0,
+                 "finish_reason": "stop"},
+                {"id": "b", "hyp": "y", "src_tokens": 10, "completion_tokens": 0, "total_ms": 0.0,
+                 "finish_reason": "failed"}]
+        r = summarize(rows, None, items)
+        self.assertEqual((r["n"], r["failed"], r["total_ms_p50"], r["token_ratio_max"]), (2, 1, 400.0, 1.2))
+
+
+if __name__ == "__main__":
+    unittest.main()
 ```
 
 Sửa `bench/phase0/mt/translate.py` (áp bằng `git apply`):
@@ -3447,9 +4740,89 @@ pub struct MtEvalArgs {
     /// `plain`: không ngữ cảnh (cấu hình mặc định của app). `context`: cờ thử nghiệm ngữ cảnh câu trước.
     #[arg(long, default_value = "plain", value_parser = ["plain", "context"])]
     variant: String,
-    /// Chỉ dịch N câu đầu của mỗi chiều (chạy thử).
+    /// Chỉ dịch N câu đầu của mỗi chiều (chạy thử). Áp trước khi lọc biến thể `context`, như `translate.py`.
     #[arg(long, default_value_t = 0)]
     limit: usize,
+    /// Dịch tiếp file kết quả cũ dù điều kiện lần trước khác lần này (`<…>.meta.json`).
+    #[arg(long)]
+    resume_anyway: bool,
+}
+
+/// Điều kiện của một lượt chạy, ghi cạnh file kết quả.
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+struct Meta {
+    git_head: String,
+    git_dirty: bool,
+    model_file: String,
+    model_bytes: u64,
+    variant: String,
+    testset_file: String,
+    testset_lines: usize,
+    limit: usize,
+    mt_config: serde_json::Value,
+}
+
+/// `git rev-parse HEAD` và `git status --porcelain` của repo chứa công cụ. Không có git thì là "không rõ".
+fn git_state() -> (String, bool) {
+    let git = |args: &[&str]| {
+        std::process::Command::new("git")
+            .args(args)
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    };
+    let head = git(&["rev-parse", "HEAD"]).unwrap_or_else(|| "không rõ".into());
+    let dirty = git(&["status", "--porcelain", "--untracked-files=no"]).is_some_and(|s| !s.is_empty());
+    (head, dirty)
+}
+
+/// So điều kiện lần này với lần trước; trả các khóa khác nhau.
+fn meta_diff(old: &Meta, new: &Meta) -> Vec<&'static str> {
+    let mut keys = Vec::new();
+    let pairs: [(&'static str, bool); 9] = [
+        ("git_head", old.git_head == new.git_head),
+        ("git_dirty", old.git_dirty == new.git_dirty),
+        ("model_file", old.model_file == new.model_file),
+        ("model_bytes", old.model_bytes == new.model_bytes),
+        ("variant", old.variant == new.variant),
+        ("testset_file", old.testset_file == new.testset_file),
+        ("testset_lines", old.testset_lines == new.testset_lines),
+        ("limit", old.limit == new.limit),
+        ("mt_config", old.mt_config == new.mt_config),
+    ];
+    for (key, same) in pairs {
+        if !same {
+            keys.push(key);
+        }
+    }
+    keys
+}
+
+/// Ghi `meta` cạnh file kết quả; file kết quả đã có thì `meta` phải khớp lần trước (hoặc `resume_anyway`).
+fn check_meta(meta_path: &Path, out_exists: bool, meta: &Meta, resume_anyway: bool) -> Result<()> {
+    if out_exists {
+        let old: Option<Meta> = std::fs::read(meta_path)
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok());
+        let diff = match &old {
+            Some(old) => meta_diff(old, meta),
+            None => vec!["meta.json (không có hoặc hỏng)"],
+        };
+        if !diff.is_empty() && !resume_anyway {
+            bail!(
+                "{} có kết quả của một lượt chạy khác ({}): dùng --out-dir khác, hoặc --resume-anyway nếu chắc chắn",
+                meta_path.display(),
+                diff.join(", ")
+            );
+        }
+        if !diff.is_empty() {
+            println!("dịch tiếp dù khác lần trước: {}", diff.join(", "));
+        }
+    }
+    std::fs::write(meta_path, serde_json::to_vec_pretty(meta)?)?;
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -3513,19 +4886,43 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
         std::fs::File::open(&args.testset).with_context(|| format!("không mở được {}", args.testset.display()))?,
     );
     let mut items = Vec::new();
+    let mut lines = 0;
     let mut per_dir = std::collections::HashMap::<String, usize>::new();
     for line in reader.lines() {
         let item: Item = serde_json::from_str(&line?)?;
-        if args.variant == "context" && item.context.as_deref().is_none_or(str::is_empty) {
-            continue;
-        }
+        lines += 1;
+        // Như `translate.py`: lấy N câu đầu của mỗi chiều trước, rồi mới lọc câu có ngữ cảnh.
         let n = per_dir.entry(item.dir.clone()).or_default();
         if args.limit > 0 && *n >= args.limit {
             continue;
         }
         *n += 1;
+        if args.variant == "context" && item.context.as_deref().is_none_or(str::is_empty) {
+            continue;
+        }
         items.push(item);
     }
+    let cfg = MtConfig::default();
+    let (git_head, git_dirty) = git_state();
+    let meta = Meta {
+        git_head,
+        git_dirty,
+        model_file: format!("{stem}.gguf"),
+        model_bytes: std::fs::metadata(&args.model)
+            .with_context(|| format!("không đọc được {}", args.model.display()))?
+            .len(),
+        variant: args.variant.clone(),
+        testset_file: args
+            .testset
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+        testset_lines: lines,
+        limit: args.limit,
+        mt_config: serde_json::to_value(&cfg)?,
+    };
+    let meta_path = args.out_dir.join(format!("{stem}-{}.meta.json", args.variant));
+    check_meta(&meta_path, out_path.exists(), &meta, args.resume_anyway)?;
     let done = done_ids(&out_path)?;
     let todo: Vec<&Item> = items.iter().filter(|i| !done.contains(&i.id)).collect();
     println!(
@@ -3546,7 +4943,6 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
         )
     };
     let mut server = LlamaServer::spawn(&launch)?;
-    let cfg = MtConfig::default();
     let mut out = std::fs::OpenOptions::new().create(true).append(true).open(&out_path)?;
     for (n, item) in todo.iter().enumerate() {
         let (Some(src), Some(tgt)) = (Lang::from_code(&item.src_lang), Lang::from_code(&item.tgt_lang)) else {
@@ -3610,57 +5006,94 @@ Run: `cargo test -p latency-bench`
 Expected:
 
 ```text
-test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+test result: ok. 30 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.77s
+```
+
+Run: `python3 -m unittest discover -s bench/phase0/mt -p 'test_*.py'`
+Expected:
+
+```text
+Ran 6 tests in 0.000s
+OK
 ```
 
 Run: `cargo run -q -p latency-bench -- mt-eval --help`
 Expected:
 
 ```text
+Dịch bộ test A3 bằng code dịch của app, để score_mt.py chấm COMET
+
 Usage: latency-bench mt-eval [OPTIONS] --testset <TESTSET> --llama-server <LLAMA_SERVER> --model <MODEL> --out-dir <OUT_DIR>
+
+Options:
       --testset <TESTSET>            JSONL của `build_testset.py`: mỗi dòng có id, dir, src_lang, tgt_lang, src, context
       --llama-server <LLAMA_SERVER>  
       --model <MODEL>                
       --out-dir <OUT_DIR>            Thư mục kết quả, ví dụ `bench/phase0/data/mt/outputs-gd1-mteval`. Không dùng `outputs/` (mốc của S7)
       --variant <VARIANT>            `plain`: không ngữ cảnh (cấu hình mặc định của app). `context`: cờ thử nghiệm ngữ cảnh câu trước [default: plain] [possible values: plain, context]
-      --limit <LIMIT>                Chỉ dịch N câu đầu của mỗi chiều (chạy thử) [default: 0]
+      --limit <LIMIT>                Chỉ dịch N câu đầu của mỗi chiều (chạy thử). Áp trước khi lọc biến thể `context`, như `translate.py` [default: 0]
+      --resume-anyway                Dịch tiếp file kết quả cũ dù điều kiện lần trước khác lần này (`<…>.meta.json`)
+  -h, --help                         Print help
 ```
 
 - [ ] **Step 5: Chạy thử với `llama-server` thật** (bộ test A3 có sẵn ở `bench/phase0/data/mt/testset_phase0.jsonl`)
 
+Kết quả chạy thử đặt trong `target/` (bị `.gitignore` bỏ qua).
+
 Run:
 ```bash
-rm -rf $TMPDIR/mteval-smoke
-cargo run -q -p latency-bench -- mt-eval --testset bench/phase0/data/mt/testset_phase0.jsonl \
-  --llama-server $PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server \
-  --model $PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf --out-dir $TMPDIR/mteval-smoke --limit 2
+rm -rf target/mteval-smoke && cargo run -q -p latency-bench -- mt-eval --testset bench/phase0/data/mt/testset_phase0.jsonl --llama-server $PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server --model $PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf --out-dir target/mteval-smoke --limit 2 && wc -l target/mteval-smoke/*.jsonl && head -c 300 target/mteval-smoke/Hy-MT2-1.8B-Q4_K_M-plain.jsonl && echo && grep -E '"(git_dirty|model_file|variant|limit)"' target/mteval-smoke/Hy-MT2-1.8B-Q4_K_M-plain.meta.json
 ```
-Expected: 2 câu mỗi chiều, 8 chiều:
+Expected: 2 câu mỗi chiều, 8 chiều, tiến độ, số dòng, đầu file kết quả (bản dịch tùy máy), và điều kiện của lượt chạy (`git_dirty` là `false` khi chạy trên cây đã commit):
 
 ```text
 Hy-MT2-1.8B-Q4_K_M-plain: 16 câu, còn 16 câu phải dịch
 Hy-MT2-1.8B-Q4_K_M-plain: 16/16
+      16 target/mteval-smoke/Hy-MT2-1.8B-Q4_K_M-plain.jsonl
+{"id":"en-vi-424","dir":"en->vi","hyp":"@user36 Cặp kính thứ hai đó thật tuyệt! Tôi rất thích mua kính… Tôi chẳng bao giờ vứt chúng đi, nhưng lại không thể tìm được những cặp kính khác nào cả?! Cặp kính của tôi hiện tại có màu cầu vồng; 
+  "git_dirty": false,
+  "model_file": "Hy-MT2-1.8B-Q4_K_M.gguf",
+  "variant": "plain",
+  "limit": 2,
 ```
 
-Chạy lại đúng lệnh trên (không `rm`). Expected: không dịch lại câu nào:
+Chạy lại đúng lệnh `mt-eval` trên (không `rm`):
+```bash
+cargo run -q -p latency-bench -- mt-eval --testset bench/phase0/data/mt/testset_phase0.jsonl --llama-server $PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server --model $PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf --out-dir target/mteval-smoke --limit 2
+```
+Expected: không dịch lại câu nào:
 
 ```text
 Hy-MT2-1.8B-Q4_K_M-plain: 16 câu, còn 0 câu phải dịch
 ```
 
+Chạy lại với điều kiện khác (`--limit 3`) vào cùng thư mục:
+```bash
+cargo run -q -p latency-bench -- mt-eval --testset bench/phase0/data/mt/testset_phase0.jsonl --llama-server $PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server --model $PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf --out-dir target/mteval-smoke --limit 3
+```
+Expected: từ chối, thoát mã 1:
+
+```text
+Error: target/mteval-smoke/Hy-MT2-1.8B-Q4_K_M-plain.meta.json có kết quả của một lượt chạy khác (limit): dùng --out-dir khác, hoặc --resume-anyway nếu chắc chắn
+exit=1
+```
+
 Run:
 ```bash
 cd bench/phase0/mt
-python3 score_mt.py --no-comet --outputs $TMPDIR/mteval-smoke
-python3 score_mt.py --no-comet --outputs $TMPDIR/mteval-smoke --label gd1-smoke
+python3 score_mt.py --no-comet --outputs ../../../target/mteval-smoke 2>&1 | tail -1
+python3 score_mt.py --no-comet --outputs ../../../target/mteval-smoke --label gd1-smoke --baseline ../results/s7_mt.json 2>&1 | tail -2
 ls ../results | grep gd1-smoke
-rm ../results/s7_mt-gd1-smoke.json ../results/s7_mt-gd1-smoke.md
+rm -f ../results/*gd1-smoke*
+git status --short ../results
 cd ../../..
 ```
-Expected: lệnh đầu báo lỗi vì thiếu nhãn; lệnh thứ hai ghi file có nhãn, không đụng `s7_mt.json`:
+Expected: lệnh đầu từ chối vì thiếu `--label` hay `--write-baseline`; lệnh thứ hai ghi file có nhãn, không đụng `s7_mt.json`, nhưng thoát lỗi vì chấm `--no-comet` thì không so được với mốc (dòng cuối liệt kê từng chiều thiếu COMET); sau khi xóa hai file có nhãn, `git status` không in gì:
 
 ```text
-score_mt.py: error: chấm thư mục khác outputs/ thì phải có --label, để không ghi đè mốc s7_mt.json
+score_mt.py: error: cần đúng một trong hai: --label <nhãn> (lượt mới) hoặc --write-baseline (ghi lại mốc S7)
+- Không so được: Hy-MT2-1.8B-Q4_K_M-plain zh->vi: không có COMET (chấm bằng --no-comet?)
+không so được với mốc: Hy-MT2-1.8B-Q4_K_M-plain en->vi: không có COMET (chấm bằng --no-comet?); Hy-MT2-1.8B-Q4_K_M-plain ja->vi: không có COMET (chấm bằng --no-comet?); Hy-MT2-1.8B-Q4_K_M-plain ko->vi: không có COMET (chấm bằng --no-comet?); Hy-MT2-1.8B-Q4_K_M-plain vi->en: không có COMET (chấm bằng --no-comet?); Hy-MT2-1.8B-Q4_K_M-plain vi->ja: không có COMET (chấm bằng --no-comet?); Hy-MT2-1.8B-Q4_K_M-plain vi->ko: không có COMET (chấm bằng --no-comet?); Hy-MT2-1.8B-Q4_K_M-plain vi->zh: không có COMET (chấm bằng --no-comet?); Hy-MT2-1.8B-Q4_K_M-plain zh->vi: không có COMET (chấm bằng --no-comet?)
 s7_mt-gd1-smoke.json
 s7_mt-gd1-smoke.md
 ```
@@ -3668,17 +5101,38 @@ s7_mt-gd1-smoke.md
 Run:
 ```bash
 python3 bench/phase0/mt/build_ratio_set.py
-rm -rf $TMPDIR/ratio-smoke
-cargo run -q -p latency-bench -- mt-eval --testset bench/phase0/data/mt/testset_ratio.jsonl \
-  --llama-server $PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server \
-  --model $PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf --out-dir $TMPDIR/ratio-smoke --limit 3
-python3 bench/phase0/mt/ratio_stats.py $TMPDIR/ratio-smoke/Hy-MT2-1.8B-Q4_K_M-plain.jsonl
 ```
-Expected: bộ câu có 1440 câu (1200 câu WMT24++ cho 12 chiều không có tiếng Việt, 240 câu ngắn); bảng có một dòng mỗi chiều (số trong bảng tùy model, chỉ là chạy thử):
+Expected: bộ câu có 1440 câu (1200 câu WMT24++ cho 12 chiều không có tiếng Việt, 240 câu ngắn):
 
 ```text
 ghi 1440 câu -> bench/phase0/data/mt/testset_ratio.jsonl
 WMT24++: 1200 câu ngắn: 240
+[('en->ja', 112), ('en->ko', 112), ('en->vi', 12), ('en->zh', 112), ('ja->en', 112), ('ja->ko', 112), ('ja->vi', 12), ('ja->zh', 112), ('ko->en', 112), ('ko->ja', 112), ('ko->vi', 12), ('ko->zh', 112), ('vi->en', 12), ('vi->ja', 12), ('vi->ko', 12), ('vi->zh', 12), ('zh->en', 112), ('zh->ja', 112), ('zh->ko', 112), ('zh->vi', 12)]
+```
+
+Run:
+```bash
+rm -rf target/ratio-smoke && cargo run -q -p latency-bench -- mt-eval --testset bench/phase0/data/mt/testset_ratio.jsonl --llama-server $PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server --model $PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf --out-dir target/ratio-smoke --limit 3 && python3 bench/phase0/mt/ratio_stats.py target/ratio-smoke/Hy-MT2-1.8B-Q4_K_M-plain.jsonl | head -12
+```
+Expected: tiến độ, rồi bảng có một dòng mỗi chiều (số trong bảng tùy model, chỉ là chạy thử):
+
+```text
+Hy-MT2-1.8B-Q4_K_M-plain: 60 câu, còn 60 câu phải dịch
+Hy-MT2-1.8B-Q4_K_M-plain: 25/60
+Hy-MT2-1.8B-Q4_K_M-plain: 50/60
+Hy-MT2-1.8B-Q4_K_M-plain: 60/60
+## Hy-MT2-1.8B-Q4_K_M-plain.jsonl
+
+| chiều | câu | câu gốc ≥ 10 token | tỉ lệ lớn nhất (≥ 10) | ngưỡng đề xuất | câu gốc < 3 token | token dịch lớn nhất (< 3) | hạn mức sinh (< 3) | lỗi |
+|---|---|---|---|---|---|---|---|---|
+| en->ja | 3 | 3 | 1.77 | 2.3 | 0 | — | — | 0 |
+| en->ko | 3 | 3 | 2.00 | 2.5 | 0 | — | — | 0 |
+| en->vi | 3 | 0 | — | — | 3 | 5 | 40 | 0 |
+| en->zh | 3 | 3 | 1.46 | 1.9 | 0 | — | — | 0 |
+| ja->en | 3 | 3 | 1.03 | 1.3 | 0 | — | — | 0 |
+| ja->ko | 3 | 3 | 1.14 | 1.5 | 0 | — | — | 0 |
+| ja->vi | 3 | 0 | — | — | 0 | — | — | 0 |
+| ja->zh | 3 | 3 | 0.79 | 1.0 | 0 | — | — | 0 |
 ```
 
 - [ ] **Step 6: Clippy và định dạng**
@@ -3692,6 +5146,7 @@ Expected: không có cảnh báo, `cargo fmt` không in gì.
 git add bench/phase0/mt/build_ratio_set.py \
   bench/phase0/mt/ratio_stats.py \
   bench/phase0/mt/score_mt.py \
+  bench/phase0/mt/test_score_mt.py \
   bench/phase0/mt/translate.py \
   crates/latency-bench/src/main.rs \
   crates/latency-bench/src/mt_eval.rs
@@ -3700,35 +5155,44 @@ git commit -m "feat(bench): latency-bench mt-eval, nhãn và so mốc cho score_
 
 ## Task 5: `audio-capture` cho app, và kiểm toàn bộ phần crate
 
-Phần của `audio-capture` mà app (02c) cần (dòng 84–91, 93–95, 232, 278; QĐ16, QĐ20):
-- `lib.rs`: `AudioSource::failed()` (luồng thu chết), `AudioApp`, `default_output_signature()` để app biết thiết bị phát đã đổi.
-- `macos.rs`: `default_output_device`, `audio_apps` (app đang phát tiếng, chỉ đọc HAL, không cần quyền), `TapTarget::System` cho bước nghe thử.
-- `windows.rs` (code của kế hoạch 0-04 Task 7, đưa vào crate): `Endpoint` (mặc định theo vai trò, hoặc thiết bị chọn tay theo id), `list_render_devices`, cờ `failed` khi thiết bị bị rút, `default_endpoint_id`.
-- `preprocess.rs`: luồng tiền xử lý dùng chung (gộp mono, resample từng nguồn về 16 kHz, trộn hai nguồn bằng `Mixer2`), `RING_SAMPLES` (30 giây ở 48 kHz stereo), và `ClockFiller` chèn im lặng theo đồng hồ thật khi nguồn chưa chạy hay đang mở lại.
-- `bin/capture.rs` dùng `Endpoint::Default`; `pipeline` thêm feature `Win32_System_Threading` cho Job Object.
-- `scripts/fake-pkg-config` (QĐ15) để kiểm code Windows trên Mac.
+Phần của `audio-capture` mà app (02c) cần (dòng 84–91, 93–95, 232, 278; QĐ16, QĐ20, QĐ28, QĐ30):
+- `lib.rs`: `AudioSource::failed()` (luồng thu chết), `AudioApp { pids, bundle_id, name }`, `default_output_signature()` để app biết thiết bị phát đã đổi (macOS: id kèm tần số mẫu danh định).
+- `macos.rs`:
+  - `default_output_device`, `nominal_sample_rate`;
+  - `audio_apps`: app đang phát tiếng, chỉ đọc HAL, không cần quyền; gộp tiến trình theo gói `.app` ngoài cùng (`group_processes`, `outer_app`), tên từ `NSRunningApplication` (`app_identity`, đi lên tối đa 3 tiến trình cha); tiến trình vừa thoát thì bỏ qua (Q9 của review 02b);
+  - `TapTarget::System` cho bước nghe thử, `TapTarget::Processes(Vec<i32>)` cho nguồn một app (thay `Process(i32)`);
+  - `failed()` của tap một app: mọi tiến trình của app đã thoát (N11).
+- `windows.rs` (code của kế hoạch 0-04 Task 7, đưa vào crate): `Endpoint` (mặc định theo vai trò, hoặc thiết bị chọn tay theo id), `list_render_devices`, cờ `failed` khi thiết bị bị rút, `default_endpoint_id`; `with_com` nhận luồng đã khởi tạo COM ở chế độ STA (`RPC_E_CHANGED_MODE`) mà không gọi `CoUninitialize` (N7).
+- `preprocess.rs`: luồng tiền xử lý dùng chung (gộp mono, resample từng nguồn về 16 kHz, trộn hai nguồn bằng `Mixer2`), `RING_SAMPLES` (30 giây ở 48 kHz stereo), và `ClockFiller` chèn im lặng theo đồng hồ thật khi nguồn không trả mẫu (không chèn khi nguồn đang chạy; mỗi lần tối đa 2 giây; N2 của review 02b, Q5 của review 02c).
+- `bin/capture.rs` dùng `Endpoint::Default` và `TapTarget::Processes`.
+- `Cargo.toml` thêm `objc2-app-kit` và `libc` cho macOS.
 
 Phần gọi API Windows chỉ kiểm được bằng clippy cho target Windows; test thật của `windows.rs` (`#[cfg(windows)]`, có một test `#[ignore]` cần thiết bị phát) chạy ở đợt Windows (02c, Task 9).
 
 **Files:**
+- Sửa: `Cargo.lock` (cargo tự cập nhật)
 - Sửa: `crates/audio-capture/Cargo.toml`
 - Sửa: `crates/audio-capture/src/bin/capture.rs`
 - Sửa: `crates/audio-capture/src/lib.rs`
 - Sửa: `crates/audio-capture/src/macos.rs`
 - Tạo: `crates/audio-capture/src/preprocess.rs`
 - Tạo: `crates/audio-capture/src/windows.rs`
-- Sửa: `crates/pipeline/Cargo.toml`
-- Sửa: `crates/pipeline/src/process.rs`
-- Tạo: `scripts/fake-pkg-config`
 
-- [ ] **Step 1: Khai báo module và feature**
+- [ ] **Step 1: Khai báo module và phụ thuộc**
 
 Sửa `crates/audio-capture/Cargo.toml` (áp bằng `git apply`):
 
 ```diff
 --- a/crates/audio-capture/Cargo.toml
 +++ b/crates/audio-capture/Cargo.toml
-@@ -22,6 +22,7 @@
+@@ -19,9 +19,14 @@
+ objc2-core-audio-types = "0.3.2"
+ objc2-core-foundation = "0.3.2"
+ objc2-foundation = "0.3.2"
++# Tên hiển thị của app đang phát tiếng (`NSRunningApplication.localizedName`). Cùng bản Tauri đang dùng.
++objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "libc", "NSRunningApplication"] }
++# `proc_pidpath`, `proc_pidinfo`: gộp tiến trình helper theo gói `.app`, biết tiến trình đã thoát.
++libc = "0.2.189"
  
  [target.'cfg(windows)'.dependencies]
  windows = { version = "0.62.2", features = [
@@ -3736,7 +5200,7 @@ Sửa `crates/audio-capture/Cargo.toml` (áp bằng `git apply`):
      "Win32_Foundation",
      "Win32_Media_Audio",
      "Win32_Media_KernelStreaming",
-@@ -30,4 +31,5 @@
+@@ -30,4 +35,5 @@
      "Win32_System_Com_StructuredStorage",
      "Win32_System_Performance",
      "Win32_System_Variant",
@@ -3763,7 +5227,7 @@ Sửa `crates/audio-capture/src/lib.rs` (áp bằng `git apply`):
  
  use std::sync::atomic::{AtomicU64, Ordering};
  
-@@ -22,6 +25,34 @@
+@@ -22,6 +25,43 @@
      fn stop(&mut self);
      /// Hợp lệ sau khi `start` thành công.
      fn format(&self) -> AudioFormat;
@@ -3776,16 +5240,25 @@ Sửa `crates/audio-capture/src/lib.rs` (áp bằng `git apply`):
 +/// Một app đang phát âm thanh (macOS: tùy chọn chỉ tap app họp, §6.1).
 +#[derive(Clone, Debug, PartialEq, Eq)]
 +pub struct AudioApp {
-+    pub pid: i32,
++    /// Mọi tiến trình đang phát tiếng của app, kể cả tiến trình helper cùng gói `.app` (trình duyệt, app Electron).
++    pub pids: Vec<i32>,
++    /// Bundle ID của app chính; không tìm được app chính thì là bundle ID mà Core Audio báo cho tiến trình.
 +    pub bundle_id: String,
++    /// Tên hiển thị (`NSRunningApplication.localizedName`); `None` nếu không có.
++    pub name: Option<String>,
 +}
 +
 +/// Dấu hiệu của thiết bị phát mặc định: đổi thì app khởi tạo lại việc thu trong ≤ 2 giây (§9). App hỏi định kỳ (mỗi 500 ms)
 +/// thay cho listener của Core Audio và `IMMNotificationClient`: cùng kết quả, không có callback chạy trên luồng của hệ
 +/// thống. `None` nếu không đọc được.
++///
++/// macOS: id của thiết bị kèm tần số mẫu danh định (`<id>@<Hz>`), vì tai nghe Bluetooth đổi tần số trên cùng thiết bị.
 +pub fn default_output_signature() -> Option<String> {
 +    #[cfg(target_os = "macos")]
-+    return macos::default_output_device().ok().map(|id| id.to_string());
++    return macos::default_output_device().ok().map(|id| {
++        let rate = macos::nominal_sample_rate(id).unwrap_or(0.0);
++        format!("{id}@{rate:.0}")
++    });
 +    #[cfg(windows)]
 +    return {
 +        use crate::windows::{Role, default_endpoint_id};
@@ -3798,27 +5271,6 @@ Sửa `crates/audio-capture/src/lib.rs` (áp bằng `git apply`):
  }
  
  /// Số liệu chẩn đoán, cập nhật từ luồng thu.
-```
-
-Sửa `crates/pipeline/Cargo.toml` (áp bằng `git apply`):
-
-```diff
---- a/crates/pipeline/Cargo.toml
-+++ b/crates/pipeline/Cargo.toml
-@@ -23,7 +23,12 @@
- 
- [target.'cfg(windows)'.dependencies]
- # Job Object để tiến trình phụ không bị bỏ lại khi app chết (spec §5). Cùng bản với `audio-capture`.
--windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects"] }
-+windows = { version = "0.62.2", features = [
-+    "Win32_Foundation",
-+    "Win32_Security",
-+    "Win32_System_JobObjects",
-+    "Win32_System_Threading",
-+] }
- 
- [dev-dependencies]
- hound.workspace = true
 ```
 
 - [ ] **Step 2: Viết test**
@@ -3886,10 +5338,48 @@ mod tests {
         // Nguồn đều: 100 ms mỗi lần, đúng giờ (và trễ 150 ms, dưới dung sai).
         assert_eq!(f.silence_before(Duration::from_millis(100), 1_600), 0);
         assert_eq!(f.silence_before(Duration::from_millis(350), 1_600), 0);
-        // Nguồn tắt 2 giây: bù đúng phần thiếu tới "bây giờ" (2,35 giây − 0,2 giây đã có − 0 mẫu mới).
-        assert_eq!(f.silence_before(Duration::from_millis(2_350), 0), 34_400);
+        // Nguồn tắt 1,5 giây: bù đúng phần thiếu tới "bây giờ" (1,85 giây − 0,2 giây đã có).
+        assert_eq!(f.silence_before(Duration::from_millis(1_850), 0), 26_400);
         // Nguồn chạy lại: không bù hai lần.
-        assert_eq!(f.silence_before(Duration::from_millis(2_450), 1_600), 0);
+        assert_eq!(f.silence_before(Duration::from_millis(1_950), 1_600), 0);
+    }
+
+    /// N2 của review 02b: đồng hồ thiết bị chậm 50 ppm suốt một giờ thì không chèn im lặng vào giữa tiếng nói.
+    #[test]
+    fn a_slow_device_clock_never_inserts_silence_while_running() {
+        use std::time::Duration;
+        let mut f = ClockFiller::new(200);
+        let mut inserted = 0;
+        // Mỗi 20 ms thật, thiết bị trả 320 mẫu trừ 50 ppm (cộng dồn bằng số thực).
+        let mut owed = 0.0f64;
+        for tick in 1..=180_000u64 {
+            owed += 320.0 * (1.0 - 50e-6);
+            let n = owed.floor() as usize;
+            owed -= n as f64;
+            inserted += f.silence_before(Duration::from_millis(tick * 20), n);
+        }
+        assert_eq!(inserted, 0);
+    }
+
+    /// Q5 của review 02c: máy ngủ một giờ thì không chèn một giờ im lặng; sau đó vẫn bù khoảng trống ngắn như thường.
+    #[test]
+    fn a_long_gap_resyncs_instead_of_inserting_silence() {
+        use std::time::Duration;
+        let mut f = ClockFiller::new(200);
+        assert_eq!(f.silence_before(Duration::from_millis(1_000), 16_000), 0);
+        assert_eq!(
+            f.silence_before(Duration::from_secs(3_601), 0),
+            0,
+            "thiếu một giờ: không chèn"
+        );
+        assert_eq!(f.silence_before(Duration::from_millis(3_601_100), 1_600), 0);
+        // Khoảng trống 2 giây ngay sau đó vẫn được bù (đúng trần 2 giây).
+        assert_eq!(f.silence_before(Duration::from_millis(3_603_100), 0), 32_000);
+        assert_eq!(
+            f.silence_before(Duration::from_millis(3_605_200), 0),
+            0,
+            "2,1 giây: quá trần, đồng bộ lại"
+        );
     }
 
     #[test]
@@ -3932,11 +5422,7 @@ Expected: biên dịch lỗi:
 
 ```text
 error[E0425]: cannot find function `default_output_device` in module `macos`
-error[E0425]: cannot find type `AudioFormat` in this scope
-error[E0422]: cannot find struct, variant or union type `AudioFormat` in this scope
-error[E0425]: cannot find value `MAX_SKEW_SAMPLES` in this scope
-error[E0433]: cannot find type `Preprocessor` in this scope
-error[E0433]: cannot find type `ClockFiller` in this scope
+error[E0425]: cannot find function `nominal_sample_rate` in module `macos`
 ```
 
 - [ ] **Step 4: Viết code**
@@ -3946,7 +5432,17 @@ Sửa `crates/audio-capture/src/bin/capture.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/audio-capture/src/bin/capture.rs
 +++ b/crates/audio-capture/src/bin/capture.rs
-@@ -132,7 +132,7 @@
+@@ -125,14 +125,16 @@
+ #[cfg(target_os = "macos")]
+ fn make_sources(args: &Args) -> Result<Vec<Source>> {
+     use audio_capture::macos::{MacTapSource, TapTarget};
+-    let target = args.pid.map_or(TapTarget::SystemExceptSelf, TapTarget::Process);
++    let target = args
++        .pid
++        .map_or(TapTarget::SystemExceptSelf, |pid| TapTarget::Processes(vec![pid]));
+     let stats = Arc::new(CaptureStats::default());
+     Ok(vec![(Box::new(MacTapSource::new(target, stats.clone())), stats)])
+ }
  
  #[cfg(windows)]
  fn make_sources(args: &Args) -> Result<Vec<Source>> {
@@ -3955,7 +5451,7 @@ Sửa `crates/audio-capture/src/bin/capture.rs` (áp bằng `git apply`):
      let roles = match args.role.as_str() {
          "console" => vec![Role::Console],
          "communications" => vec![Role::Communications],
-@@ -148,7 +148,7 @@
+@@ -148,7 +150,7 @@
          .map(|role| {
              let stats = Arc::new(CaptureStats::default());
              (
@@ -3980,17 +5476,19 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
  use anyhow::{Result, bail};
  use block2::RcBlock;
  use objc2::AllocAnyThread;
-@@ -20,15 +20,17 @@
+@@ -20,28 +20,35 @@
      AudioObjectGetPropertyDataSize, AudioObjectID, AudioObjectPropertyAddress, CATapDescription, CATapMuteBehavior,
      kAudioAggregateDeviceIsPrivateKey, kAudioAggregateDeviceIsStackedKey, kAudioAggregateDeviceNameKey,
      kAudioAggregateDeviceTapAutoStartKey, kAudioAggregateDeviceTapListKey, kAudioAggregateDeviceUIDKey,
 -    kAudioDevicePropertyStreamConfiguration, kAudioHardwarePropertyTranslatePIDToProcessObject,
-+    kAudioDevicePropertyStreamConfiguration, kAudioHardwarePropertyDefaultOutputDevice,
-+    kAudioHardwarePropertyProcessObjectList, kAudioHardwarePropertyTranslatePIDToProcessObject,
-     kAudioObjectPropertyElementMain, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyScopeInput,
+-    kAudioObjectPropertyElementMain, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyScopeInput,
 -    kAudioObjectSystemObject, kAudioSubTapDriftCompensationKey, kAudioSubTapUIDKey, kAudioTapPropertyFormat,
-+    kAudioObjectSystemObject, kAudioProcessPropertyBundleID, kAudioProcessPropertyIsRunningOutput,
-+    kAudioProcessPropertyPID, kAudioSubTapDriftCompensationKey, kAudioSubTapUIDKey, kAudioTapPropertyFormat,
++    kAudioDevicePropertyNominalSampleRate, kAudioDevicePropertyStreamConfiguration,
++    kAudioHardwarePropertyDefaultOutputDevice, kAudioHardwarePropertyProcessObjectList,
++    kAudioHardwarePropertyTranslatePIDToProcessObject, kAudioObjectPropertyElementMain,
++    kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyScopeInput, kAudioObjectSystemObject,
++    kAudioProcessPropertyBundleID, kAudioProcessPropertyIsRunningOutput, kAudioProcessPropertyPID,
++    kAudioSubTapDriftCompensationKey, kAudioSubTapUIDKey, kAudioTapPropertyFormat,
  };
  use objc2_core_audio_types::{
      AudioBuffer, AudioBufferList, AudioStreamBasicDescription, AudioTimeStamp, kAudioFormatFlagIsFloat,
@@ -4001,21 +5499,52 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
  use objc2_foundation::{NSArray, NSNumber};
  use std::cell::UnsafeCell;
  use std::ffi::{CStr, c_void};
-@@ -40,6 +42,8 @@
++use std::path::{Path, PathBuf};
+ use std::ptr::NonNull;
+ use std::sync::Arc;
+ use std::sync::atomic::Ordering;
+ 
+-#[derive(Clone, Copy, Debug)]
++#[derive(Clone, Debug, PartialEq, Eq)]
  pub enum TapTarget {
      /// Toàn hệ thống, trừ chính app (mặc định, spec §6.1).
      SystemExceptSelf,
+-    /// Chỉ một app, theo pid.
+-    Process(i32),
 +    /// Toàn hệ thống, kể cả chính app: chỉ cho bước "Nghe thử" (§4.1 bước 6, Đ16 của kế hoạch 00), khi app tự phát câu mẫu.
 +    System,
-     /// Chỉ một app, theo pid.
-     Process(i32),
++    /// Chỉ một app: mọi tiến trình đang phát tiếng của app đó (`AudioApp::pids`). Trình duyệt và app Electron phát tiếng
++    /// từ tiến trình helper, nên một app thường có nhiều pid.
++    Processes(Vec<i32>),
  }
-@@ -106,12 +110,13 @@
+ 
+ type IoBlock = RcBlock<
+@@ -99,22 +106,34 @@
+ 
+ impl AudioSource for MacTapSource {
+     fn start(&mut self, sink: rtrb::Producer<f32>) -> Result<()> {
+-        let processes: Vec<Retained<NSNumber>> = match self.target {
++        let processes: Vec<Retained<NSNumber>> = match &self.target {
+             // App chưa từng phát âm thanh thì chưa có process object; khi đó không cần loại trừ.
+             TapTarget::SystemExceptSelf => process_object(std::process::id() as i32)
+                 .ok()
                  .into_iter()
                  .map(NSNumber::new_u32)
                  .collect(),
+-            TapTarget::Process(pid) => vec![NSNumber::new_u32(process_object(pid)?)],
 +            TapTarget::System => Vec::new(),
-             TapTarget::Process(pid) => vec![NSNumber::new_u32(process_object(pid)?)],
++            // Tiến trình vừa thoát thì bỏ qua; chỉ lỗi khi không còn tiến trình nào.
++            TapTarget::Processes(pids) => {
++                let objects: Vec<_> = pids
++                    .iter()
++                    .filter_map(|&pid| process_object(pid).ok())
++                    .map(NSNumber::new_u32)
++                    .collect();
++                if objects.is_empty() {
++                    bail!("không tiến trình nào trong {pids:?} còn phát âm thanh");
++                }
++                objects
++            }
          };
          let list = NSArray::from_retained_slice(&processes);
          let description = unsafe {
@@ -4024,8 +5553,37 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +                TapTarget::SystemExceptSelf | TapTarget::System => {
                      CATapDescription::initStereoGlobalTapButExcludeProcesses(CATapDescription::alloc(), &list)
                  }
-                 TapTarget::Process(_) => {
-@@ -365,6 +370,89 @@
+-                TapTarget::Process(_) => {
++                TapTarget::Processes(_) => {
+                     CATapDescription::initStereoMixdownOfProcesses(CATapDescription::alloc(), &list)
+                 }
+             }
+@@ -216,6 +235,24 @@
+     fn format(&self) -> AudioFormat {
+         self.format
+     }
++
++    /// Chỉ tap một app mà mọi tiến trình của app đó đã thoát: tap không bao giờ có tiếng nữa, app phải mở lại nguồn (khi
++    /// app họp mở lại, nó có pid mới). Tap toàn hệ thống không có cách tự báo chết: đổi thiết bị phát được phát hiện qua
++    /// `default_output_signature`. Không dùng "không có khung mới trong 2 giây" làm dấu hiệu, vì aggregate đặt
++    /// `tapautostart`: không app nào phát tiếng thì IO block không được gọi, dù tap vẫn sống.
++    fn failed(&self) -> bool {
++        match &self.target {
++            TapTarget::Processes(pids) => self.aggregate_id != 0 && !pids.iter().any(|&pid| pid_alive(pid)),
++            _ => false,
++        }
++    }
++}
++
++/// Tiến trình `pid` còn tồn tại (kể cả khi không có quyền gửi tín hiệu cho nó).
++fn pid_alive(pid: i32) -> bool {
++    // SAFETY: tín hiệu 0 chỉ kiểm tiến trình có tồn tại không, không gửi gì.
++    let rc = unsafe { libc::kill(pid, 0) };
++    rc == 0 || std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
+ }
+ 
+ impl Drop for MacTapSource {
+@@ -365,6 +402,226 @@
      Ok(aggregate_id)
  }
  
@@ -4041,6 +5599,135 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +        &mut id,
 +    )?;
 +    Ok(id)
++}
++
++/// Tần số mẫu danh định của thiết bị. Tai nghe Bluetooth (AirPods) đổi tần số trên cùng thiết bị khi app họp mở micro
++/// (chuyển sang chế độ đàm thoại), nên tần số là một phần của dấu hiệu thiết bị (`default_output_signature`).
++pub fn nominal_sample_rate(device: AudioObjectID) -> Result<f64> {
++    let mut rate: f64 = 0.0;
++    get_property(
++        device,
++        kAudioDevicePropertyNominalSampleRate,
++        std::ptr::null(),
++        0,
++        &mut rate,
++    )?;
++    Ok(rate)
++}
++
++/// Một tiến trình đang phát tiếng, theo Core Audio.
++#[derive(Clone, Debug, PartialEq, Eq)]
++pub struct PlayingProcess {
++    pub pid: i32,
++    /// Bundle ID mà Core Audio báo cho tiến trình (helper có bundle ID riêng).
++    pub bundle_id: String,
++    /// Đường dẫn binary (`proc_pidpath`), nếu đọc được.
++    pub path: Option<PathBuf>,
++}
++
++/// Tên và bundle ID của app chứa tiến trình `pid`, theo `NSRunningApplication`.
++#[derive(Clone, Debug, PartialEq, Eq)]
++pub struct AppIdentity {
++    pub name: Option<String>,
++    pub bundle_id: Option<String>,
++}
++
++/// Gói `.app` ngoài cùng chứa `path`: helper của trình duyệt và app Electron nằm trong gói của app chính (ví dụ
++/// `/Applications/Google Chrome.app/Contents/Frameworks/…/Google Chrome Helper.app/…`).
++pub fn outer_app(path: &Path) -> Option<PathBuf> {
++    let mut out = PathBuf::new();
++    for part in path.components() {
++        out.push(part);
++        if part.as_os_str().to_string_lossy().ends_with(".app") {
++            return Some(out);
++        }
++    }
++    None
++}
++
++/// Gộp các tiến trình đang phát tiếng theo gói `.app` ngoài cùng (không có gói thì theo bundle ID), rồi lấy tên và bundle
++/// ID của app từ `identity` (tìm ở tiến trình đó hoặc tối đa 3 tiến trình cha). Tách riêng khỏi Core Audio để test được.
++pub fn group_processes(processes: &[PlayingProcess], identity: impl Fn(i32) -> Option<AppIdentity>) -> Vec<AudioApp> {
++    let mut groups: Vec<(String, Vec<&PlayingProcess>)> = Vec::new();
++    for p in processes {
++        let key = p
++            .path
++            .as_deref()
++            .and_then(outer_app)
++            .map(|a| a.to_string_lossy().into_owned())
++            .unwrap_or_else(|| p.bundle_id.clone());
++        match groups.iter_mut().find(|(k, _)| *k == key) {
++            Some((_, members)) => members.push(p),
++            None => groups.push((key, vec![p])),
++        }
++    }
++    let mut apps: Vec<AudioApp> = groups
++        .into_iter()
++        .map(|(_, members)| {
++            let found = members.iter().find_map(|p| identity(p.pid));
++            let mut pids: Vec<i32> = members.iter().map(|p| p.pid).collect();
++            pids.sort_unstable();
++            AudioApp {
++                pids,
++                bundle_id: found
++                    .as_ref()
++                    .and_then(|f| f.bundle_id.clone())
++                    .unwrap_or_else(|| members[0].bundle_id.clone()),
++                name: found.and_then(|f| f.name),
++            }
++        })
++        .collect();
++    apps.sort_by(|a, b| a.bundle_id.cmp(&b.bundle_id));
++    apps
++}
++
++/// Đường dẫn binary của tiến trình `pid`.
++fn pid_path(pid: i32) -> Option<PathBuf> {
++    use std::os::unix::ffi::OsStrExt;
++    let mut buf = vec![0u8; libc::PROC_PIDPATHINFO_MAXSIZE as usize];
++    // SAFETY: `buf` có đúng `PROC_PIDPATHINFO_MAXSIZE` byte.
++    let n = unsafe { libc::proc_pidpath(pid, buf.as_mut_ptr().cast(), buf.len() as u32) };
++    (n > 0).then(|| PathBuf::from(std::ffi::OsStr::from_bytes(&buf[..n as usize])))
++}
++
++/// Tiến trình cha của `pid`.
++fn parent_pid(pid: i32) -> Option<i32> {
++    let mut info: libc::proc_bsdinfo = unsafe { std::mem::zeroed() };
++    let size = size_of::<libc::proc_bsdinfo>() as libc::c_int;
++    // SAFETY: `info` đủ chỗ cho `PROC_PIDTBSDINFO`; hàm chỉ ghi vào đó.
++    let n = unsafe {
++        libc::proc_pidinfo(
++            pid,
++            libc::PROC_PIDTBSDINFO,
++            0,
++            (&mut info as *mut libc::proc_bsdinfo).cast(),
++            size,
++        )
++    };
++    (n == size && info.pbi_ppid > 1).then_some(info.pbi_ppid as i32)
++}
++
++/// Tên hiển thị (`localizedName`) và bundle ID của app chứa `pid`: thử chính `pid`, rồi đi lên tối đa 3 tiến trình cha
++/// (helper do app chính chạy). Bỏ tên rỗng.
++pub fn app_identity(pid: i32) -> Option<AppIdentity> {
++    let mut current = Some(pid);
++    for _ in 0..4 {
++        let p = current?;
++        if let Some(app) = objc2_app_kit::NSRunningApplication::runningApplicationWithProcessIdentifier(p) {
++            let name = app
++                .localizedName()
++                .map(|s| s.to_string())
++                .filter(|s| !s.trim().is_empty());
++            if name.is_some() {
++                return Some(AppIdentity {
++                    name,
++                    bundle_id: app.bundleIdentifier().map(|s| s.to_string()),
++                });
++            }
++        }
++        current = parent_pid(p);
++    }
++    None
 +}
 +
 +/// Các app đang phát âm thanh, cho tùy chọn "chỉ tap một app họp" (§6.1). Không cần quyền ghi âm thanh.
@@ -4081,8 +5768,9 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +        )?;
 +        ids.truncate(size as usize / size_of::<AudioObjectID>());
 +    }
-+    let mut apps = Vec::new();
++    let mut playing = Vec::new();
 +    for id in ids {
++        // Tiến trình vừa thoát giữa chừng thì bỏ qua nó, không làm hỏng cả danh sách.
 +        let mut running: u32 = 0;
 +        if get_property(
 +            id,
@@ -4097,25 +5785,32 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +            continue;
 +        }
 +        let mut pid: i32 = 0;
-+        get_property(id, kAudioProcessPropertyPID, std::ptr::null(), 0, &mut pid)?;
++        if get_property(id, kAudioProcessPropertyPID, std::ptr::null(), 0, &mut pid).is_err() {
++            continue;
++        }
 +        let mut bundle: *const CFString = std::ptr::null();
-+        get_property(id, kAudioProcessPropertyBundleID, std::ptr::null(), 0, &mut bundle)?;
++        if get_property(id, kAudioProcessPropertyBundleID, std::ptr::null(), 0, &mut bundle).is_err() {
++            continue;
++        }
 +        // SAFETY: Core Audio trả một CFString đã retain (+1); `CFRetained` nhận quyền sở hữu và release khi xong.
 +        let bundle_id = NonNull::new(bundle.cast_mut())
 +            .map(|p| unsafe { CFRetained::from_raw(p) }.to_string())
 +            .unwrap_or_default();
 +        if pid != std::process::id() as i32 && !bundle_id.is_empty() {
-+            apps.push(AudioApp { pid, bundle_id });
++            playing.push(PlayingProcess {
++                pid,
++                bundle_id,
++                path: pid_path(pid),
++            });
 +        }
 +    }
-+    apps.sort_by(|a, b| a.bundle_id.cmp(&b.bundle_id));
-+    Ok(apps)
++    Ok(group_processes(&playing, app_identity))
 +}
 +
  fn process_object(pid: i32) -> Result<AudioObjectID> {
      let mut id: AudioObjectID = 0;
      get_property(
-@@ -419,6 +507,20 @@
+@@ -419,6 +676,119 @@
  }
  
  #[cfg(test)]
@@ -4126,9 +5821,108 @@ Sửa `crates/audio-capture/src/macos.rs` (áp bằng `git apply`):
 +    #[test]
 +    #[ignore = "đọc thiết bị âm thanh của máy thật"]
 +    fn default_device_and_audio_apps_can_be_read() {
-+        assert_ne!(default_output_device().unwrap(), 0);
++        let device = default_output_device().unwrap();
++        assert_ne!(device, 0);
++        assert!(nominal_sample_rate(device).unwrap() > 0.0);
++        assert!(crate::default_output_signature().unwrap().contains('@'));
 +        let apps = audio_apps().unwrap();
-+        assert!(apps.iter().all(|a| a.pid > 0 && !a.bundle_id.is_empty()), "{apps:?}");
++        assert!(
++            apps.iter()
++                .all(|a| !a.pids.is_empty() && a.pids.iter().all(|&p| p > 0) && !a.bundle_id.is_empty()),
++            "{apps:?}"
++        );
++        println!("{apps:?}");
++    }
++
++    /// Tiến trình của chính test có `proc_pidpath`, cha của nó còn sống, và một pid không tồn tại thì không sống.
++    #[test]
++    fn process_helpers_read_the_running_process() {
++        let me = std::process::id() as i32;
++        assert!(pid_path(me).is_some_and(|p| p.is_absolute()));
++        assert!(pid_alive(me));
++        assert!(!pid_alive(i32::MAX - 7), "pid không tồn tại");
++        assert!(parent_pid(me).is_none_or(|p| p > 1));
++    }
++}
++
++#[cfg(test)]
++mod grouping {
++    use super::*;
++
++    fn proc(pid: i32, bundle_id: &str, path: &str) -> PlayingProcess {
++        PlayingProcess {
++            pid,
++            bundle_id: bundle_id.into(),
++            path: Some(PathBuf::from(path)),
++        }
++    }
++
++    #[test]
++    fn the_outer_app_bundle_is_found() {
++        let chrome = "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/\
++                      Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)";
++        assert_eq!(
++            outer_app(Path::new(chrome)),
++            Some(PathBuf::from("/Applications/Google Chrome.app"))
++        );
++        assert_eq!(outer_app(Path::new("/usr/libexec/coreaudiod")), None);
++    }
++
++    /// Q9 của review 02b: các tiến trình helper gộp vào app chính; tên lấy từ `NSRunningApplication`, đi lên tiến trình
++    /// cha khi helper không có tên.
++    #[test]
++    fn helper_processes_are_grouped_under_their_app() {
++        let processes = [
++            proc(
++                300,
++                "com.google.Chrome.helper",
++                "/Applications/Google Chrome.app/Contents/Frameworks/x.framework/Helpers/Google Chrome Helper.app/Contents/MacOS/h",
++            ),
++            proc(200, "us.zoom.xos", "/Applications/zoom.us.app/Contents/MacOS/zoom.us"),
++            proc(
++                301,
++                "com.google.Chrome.helper",
++                "/Applications/Google Chrome.app/Contents/Frameworks/x.framework/Helpers/Google Chrome Helper.app/Contents/MacOS/h",
++            ),
++            PlayingProcess {
++                pid: 400,
++                bundle_id: "com.example.tool".into(),
++                path: None,
++            },
++        ];
++        let identity = |pid: i32| match pid {
++            // Helper không có tên riêng; app chính (cha của helper) thì có.
++            300 | 301 => Some(AppIdentity {
++                name: Some("Google Chrome".into()),
++                bundle_id: Some("com.google.Chrome".into()),
++            }),
++            200 => Some(AppIdentity {
++                name: Some("zoom.us".into()),
++                bundle_id: Some("us.zoom.xos".into()),
++            }),
++            _ => None,
++        };
++        let apps = group_processes(&processes, identity);
++        assert_eq!(
++            apps,
++            [
++                AudioApp {
++                    pids: vec![400],
++                    bundle_id: "com.example.tool".into(),
++                    name: None
++                },
++                AudioApp {
++                    pids: vec![300, 301],
++                    bundle_id: "com.google.Chrome".into(),
++                    name: Some("Google Chrome".into())
++                },
++                AudioApp {
++                    pids: vec![200],
++                    bundle_id: "us.zoom.xos".into(),
++                    name: Some("zoom.us".into())
++                },
++            ]
++        );
 +    }
 +}
 +
@@ -4219,19 +6013,30 @@ impl Preprocessor {
 
 /// Giữ luồng 16 kHz đi đúng đồng hồ thật khi nguồn không trả mẫu (macOS: tap chưa chạy vì đang chờ app phát tiếng, hoặc
 /// đang khởi tạo lại sau khi đổi thiết bị): chèn im lặng bù phần thiếu, như `GapFiller` làm trên Windows (§6.1). Nhờ vậy
-/// thời gian của phụ đề không lệch, và "không có âm thanh" (§9) vẫn được phát hiện. Nguồn chạy đều thì không chèn gì.
+/// thời gian của phụ đề không lệch, và "không có âm thanh" (§9) vẫn được phát hiện.
+///
+/// - Chỉ chèn khi nguồn không trả mẫu nào (`new_samples == 0`). Khi nguồn đang chạy, phần thiếu so với đồng hồ thật chỉ là
+///   đồng hồ thiết bị lệch vài chục ppm: không chèn im lặng vào giữa tiếng nói, chỉ kéo mốc về đồng hồ thật.
+/// - Mỗi lần chèn tối đa `max_fill_ms` (2 giây). Thiếu nhiều hơn (máy ngủ, tiến trình bị treo lâu) thì chỉ đồng bộ lại
+///   mốc, không chèn: tránh đẩy hàng giờ im lặng (hàng GB mẫu) vào pipeline.
 #[derive(Debug)]
 pub struct ClockFiller {
     produced: u64,
     tolerance: u64,
+    max_fill: u64,
 }
 
 impl ClockFiller {
-    /// `tolerance_ms`: thiếu dưới mức này thì coi là trễ của bộ đệm, không chèn.
+    /// `tolerance_ms`: thiếu dưới mức này thì coi là trễ của bộ đệm, không chèn. Mỗi lần chèn tối đa 2 giây.
     pub fn new(tolerance_ms: u64) -> Self {
+        Self::with_max_fill(tolerance_ms, 2_000)
+    }
+
+    pub fn with_max_fill(tolerance_ms: u64, max_fill_ms: u64) -> Self {
         Self {
             produced: 0,
             tolerance: tolerance_ms * TARGET_RATE as u64 / 1000,
+            max_fill: max_fill_ms * TARGET_RATE as u64 / 1000,
         }
     }
 
@@ -4239,12 +6044,31 @@ impl ClockFiller {
     /// các mẫu đó.
     pub fn silence_before(&mut self, elapsed: std::time::Duration, new_samples: usize) -> usize {
         let expected = (elapsed.as_micros() as u64) * TARGET_RATE as u64 / 1_000_000;
-        let have = self.produced + new_samples as u64;
-        let deficit = expected.saturating_sub(have);
-        let fill = if deficit > self.tolerance { deficit } else { 0 };
-        self.produced = have + fill;
-        fill as usize
+        if new_samples > 0 {
+            // Nguồn đang chạy: không chèn. Đồng hồ thiết bị chậm hơn đồng hồ thật thì kéo mốc về, để phần thiếu không
+            // cộng dồn rồi bị chèn một lần vào giữa câu.
+            self.produced = (self.produced + new_samples as u64).max(expected.saturating_sub(self.tolerance));
+            return 0;
+        }
+        let deficit = expected.saturating_sub(self.produced);
+        if deficit <= self.tolerance {
+            return 0;
+        }
+        if deficit > self.max_fill {
+            log_resync(deficit);
+            self.produced = expected;
+            return 0;
+        }
+        self.produced = expected;
+        deficit as usize
     }
+}
+
+fn log_resync(deficit: u64) {
+    eprintln!(
+        "audio-capture: nguồn im {} giây (máy ngủ?), đồng bộ lại đồng hồ, không chèn im lặng",
+        deficit / TARGET_RATE as u64
+    );
 }
 ```
 
@@ -4260,6 +6084,7 @@ use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 use windows::Win32::Devices::FunctionDiscovery::PKEY_Device_FriendlyName;
+use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
 use windows::Win32::Media::Audio::{
     AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
     AUDCLNT_STREAMFLAGS_LOOPBACK, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, DEVICE_STATE_ACTIVE, ERole,
@@ -4315,11 +6140,21 @@ pub struct LoopbackSource {
     thread: Option<JoinHandle<()>>,
 }
 
-/// Chạy `f` với COM ở chế độ MTA trên luồng hiện tại.
+/// Chạy `f` với COM ở chế độ MTA trên luồng hiện tại. Luồng đã khởi tạo COM ở chế độ STA (`RPC_E_CHANGED_MODE`, ví dụ
+/// luồng giao diện) vẫn dùng được các API ở đây; khi đó không gọi `CoUninitialize`, vì lần khởi tạo đó không phải của hàm
+/// này.
 fn with_com<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {
-    unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok()? };
+    let hr = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+    let owned = if hr == RPC_E_CHANGED_MODE {
+        false
+    } else {
+        hr.ok()?;
+        true
+    };
     let result = f();
-    unsafe { CoUninitialize() };
+    if owned {
+        unsafe { CoUninitialize() };
+    }
     result
 }
 
@@ -4519,71 +6354,26 @@ fn qpc_now_hns() -> Result<u64> {
 }
 ```
 
-Sửa `crates/pipeline/src/process.rs` (áp bằng `git apply`):
-
-```diff
---- a/crates/pipeline/src/process.rs
-+++ b/crates/pipeline/src/process.rs
-@@ -139,12 +139,12 @@
-     }
- }
- 
--#[cfg(test)]
-+// Test chỉ có trên Unix: trên Windows, việc dọn tiến trình phụ là của Job Object (cần máy Windows để thử).
-+#[cfg(all(test, unix))]
- mod tests {
-     use super::*;
-     use std::time::{Duration, Instant};
- 
--    #[cfg(unix)]
-     #[test]
-     fn a_child_leads_its_own_process_group_and_is_killed_with_it() {
-         let mut cmd = Command::new("sleep");
-```
-
-Tạo `scripts/fake-pkg-config`:
-
-```bash
-#!/bin/sh
-# pkg-config giả, chỉ dùng cho scripts/check-windows.sh. candle-core 0.11 luôn kéo `tokenizers` với feature `onig`, nên
-# `onig_sys` biên dịch thư viện C oniguruma cho target Windows, mà Mac không có header của MSVC. Với
-# RUSTONIG_DYNAMIC_LIBONIG=1, build script của onig_sys hỏi pkg-config trước: script này trả lời như đã có oniguruma
-# (kèm một oniguruma.h rỗng), nên không có gì phải biên dịch. `cargo check` và `cargo clippy` không link, nên thư viện
-# giả không bao giờ được dùng. Không dùng script này để build bản chạy thật.
-inc="${TMPDIR:-/tmp}/meeting-translator-fake-onig"
-mkdir -p "$inc"
-: > "$inc/oniguruma.h"
-for arg in "$@"; do
-  case "$arg" in
-    --modversion) echo "6.9.10"; exit 0 ;;
-    --libs|--cflags) echo "-I$inc -lonig"; exit 0 ;;
-  esac
-done
-exit 0
-```
-
-Run: `chmod +x scripts/fake-pkg-config`
-
 - [ ] **Step 5: Chạy test, thấy xanh**
 
 Run: `cargo test -p audio-capture`
 Expected:
 
 ```text
-test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.07s
+test result: ok. 33 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.07s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
-Test bỏ qua của macOS chỉ đọc thuộc tính của Core Audio HAL (thiết bị phát mặc định, danh sách tiến trình phát tiếng), không tạo tap nên không bật hộp thoại quyền:
+Test bỏ qua của macOS chỉ đọc thuộc tính của Core Audio HAL (thiết bị phát mặc định, tần số mẫu, danh sách tiến trình phát tiếng) và `NSRunningApplication`, không tạo tap nên không bật hộp thoại quyền. Danh sách app in ra tùy app đang phát tiếng trên máy (lúc lập kế hoạch: không app nào):
 
-Run: `cargo test -p audio-capture --lib -- --include-ignored default_device_and_audio_apps`
+Run: `cargo test -p audio-capture --lib -- --include-ignored default_device_and_audio_apps --nocapture`
 Expected:
 
 ```text
 test macos::hal::default_device_and_audio_apps_can_be_read ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.18s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 33 filtered out; finished in 0.07s
 ```
 
 - [ ] **Step 6: Clippy cho Mac và cho target Windows** (cần một lần: `rustup target add x86_64-pc-windows-msvc`)
@@ -4596,7 +6386,11 @@ PKG_CONFIG_ALLOW_CROSS=1 RUSTONIG_DYNAMIC_LIBONIG=1 \
   cargo clippy -p audio-capture -p pipeline --target x86_64-pc-windows-msvc --all-targets -- -D warnings
 cargo fmt --all -- --check
 ```
-Expected: không có cảnh báo; lệnh thứ hai kết thúc bằng `Finished \`dev\` profile`; `cargo fmt` không in gì.
+Expected: không có cảnh báo; `cargo fmt` không in gì; dòng cuối của lệnh thứ hai:
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.21s
+```
 
 - [ ] **Step 7: Kiểm toàn bộ phần crate** (mục 6.2 của kế hoạch 00)
 
@@ -4629,72 +6423,224 @@ warning: 3 allowed warnings found
 Tổng số test của `cargo test --workspace` (gồm cả lib của app từ 01):
 
 ```text
-passed 334 failed 0 ignored 7
+passed 400 failed 0 ignored 9
 ```
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add crates/audio-capture/Cargo.toml \
+git add Cargo.lock \
+  crates/audio-capture/Cargo.toml \
   crates/audio-capture/src/bin/capture.rs \
   crates/audio-capture/src/lib.rs \
   crates/audio-capture/src/macos.rs \
   crates/audio-capture/src/preprocess.rs \
-  crates/audio-capture/src/windows.rs \
-  crates/pipeline/Cargo.toml \
-  crates/pipeline/src/process.rs \
-  scripts/fake-pkg-config
+  crates/audio-capture/src/windows.rs
 git commit -m "feat(audio-capture): nguồn âm thanh cho app: chọn thiết bị, danh sách app, tiền xử lý dùng chung" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-## Task 6: Đo `no_speech_prob` và tỉ lệ token (Đ12)
+## Task 6: Đo `no_speech_prob` với nhạc, nhận luật câu đệm, đo tỉ lệ token (Đ12)
 
-Không đổi code. Ghi kết quả đo để chủ dự án quyết (dòng 115, 149, 279; QĐ22). Không đo thời gian, nên không cần máy rảnh; `llama-server` và `asr-worker` vẫn dùng GPU, nên đừng chạy cùng lúc với Task 7–9.
+Không đổi code. Ghi kết quả đo vào `bench/phase0/results/` (dòng 115, 149, 279; QĐ22, QĐ24). Không đo thời gian, nên không cần máy rảnh; `llama-server` và `asr-worker` vẫn dùng GPU, nên đừng chạy cùng lúc với Task 7–9. Cần mạng (tải bộ nhạc thử từ Wikimedia Commons) và `uv`.
 
-**Cần người thao tác (Step 2):** clip nhạc có quyền dùng (Đ12). Chưa có thì làm các bước còn lại, ghi "chờ clip nhạc" và đi tiếp.
+Mọi file tạm (nhạc tải về, kết quả thô) nằm trong `target/q11/` (bị `.gitignore` bỏ qua). Chỉ hai bảng kết quả vào repo; không commit audio.
 
 **Files:**
-- Create: `bench/phase0/results/gd1_no_speech.md`
-- Create: `bench/phase0/results/gd1_mt_ratio.md`
+- Create: `bench/phase0/results/gd1_no_speech.md` (script sinh ra)
+- Create: `bench/phase0/results/gd1_mt_ratio.md` (script sinh ra)
 
-- [ ] **Step 1: `no_speech_prob` trên tín hiệu tổng hợp**
+- [ ] **Step 1: Bản release của `asr-worker`**
+
+Run: `cargo build --release -p asr-worker --features metal,shared-encode`
+Expected: dòng cuối `Finished \`release\` profile [optimized] target(s) in …`.
+
+- [ ] **Step 2: Tải và chuẩn bị bộ nhạc thử**
+
+Mười file nhạc không lời trên Wikimedia Commons, chỉ CC0 hoặc public domain (giấy phép đọc từ API của Commons lúc lập kế hoạch, ghi lại trong `gd1_no_speech.md`). Script kiểm SHA-1 của từng file theo Commons, đổi sang WAV 16 kHz mono 16-bit, giữ 80 giây đầu (`no_speech.rs` cắt mỗi file thành tối đa 10 đoạn 8 giây).
 
 Run:
 ```bash
-mkdir -p bench/phase0/data/asr/no_speech
-for m in large-v3-turbo-q5_0 small-q5_1; do
-  MT_ASR_WORKER=$PWD/target/release/asr-worker MT_ASR_MODEL=$PWD/models/ggml-$m.bin \
-  MT_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx \
-    cargo test -q -p pipeline --test no_speech -- --include-ignored --nocapture \
-    | grep '^{' > bench/phase0/data/asr/no_speech/$m.jsonl
-done
-python3 - <<'EOF'
-import json
-out = ["# no_speech_prob trên âm thanh không có tiếng nói (Đ12)", "",
-       "Sinh từ `crates/pipeline/tests/no_speech.rs` (kế hoạch Giai đoạn 1 · 02b, Task 6).", ""]
-for m in ("large-v3-turbo-q5_0", "small-q5_1"):
-    rows = [json.loads(l) for l in open(f"bench/phase0/data/asr/no_speech/{m}.jsonl", encoding="utf-8")]
-    out += [f"## {m} ({rows[0].get('backend', '?')})", "",
-            "| Tín hiệu | VAD cắt ra (đoạn) | no_speech_prob | avg_logprob | Luật lọc | Chữ |", "|---|---|---|---|---|---|"]
-    for r in rows:
-        if "signal" in r:
-            out.append(f"| {r['signal']} | {r['vad_segments']} | {r['no_speech_prob']:.2g} | {r['avg_logprob']:.2f} "
-                       f"| {r['verdict']} | {r['text'][:40]} |")
-    total = [r for r in rows if "shown_as_subtitle" in r][0]
-    out += ["", f"Hiện thành phụ đề trong app: {total['shown_as_subtitle']}/{total['segments']}.", ""]
-open("bench/phase0/results/gd1_no_speech.md", "w", encoding="utf-8").write("\n".join(out))
-print("\n".join(out))
+mkdir -p target/q11
+cat > target/q11/music.json <<'EOF'
+[
+ {"name": "ambient-ck61", "title": "Ambient music test, Yamaha CK61.flac", "license": "CC0", "sha1": "fbe9e5fbe4b727fac1608dec68c94a956d9cbd65", "url": "https://upload.wikimedia.org/wikipedia/commons/4/49/Ambient_music_test%2C_Yamaha_CK61.flac"},
+ {"name": "dvorak-largo", "title": "Antonin Dvorak - symphony no. 9 in e minor 'from the new world', op. 95 - ii. largo.ogg", "license": "Public domain", "sha1": "88f4ba157183fc1f1f27fcbb8ffe10c1691d9824", "url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Antonin_Dvorak_-_symphony_no._9_in_e_minor_%27from_the_new_world%27%2C_op._95_-_ii._largo.ogg"},
+ {"name": "vivaldi-rv425", "title": "Antonio Vivaldi, Mandolin Concerto in C major, RV 425.ogg", "license": "PDM-owner", "sha1": "b1f16456f9d3b4ff033ae7a03b5b18bbc5c51dcb", "url": "https://upload.wikimedia.org/wikipedia/commons/6/60/Antonio_Vivaldi%2C_Mandolin_Concerto_in_C_major%2C_RV_425.ogg"},
+ {"name": "bach-aria", "title": "Bach, Goldberg Variations, Aria (Musopen version).ogg", "license": "CC0", "sha1": "a1c48089f8b54f056ab0aa69abe7fd119e95405a", "url": "https://upload.wikimedia.org/wikipedia/commons/a/af/Bach%2C_Goldberg_Variations%2C_Aria_%28Musopen_version%29.ogg"},
+ {"name": "komiku-46", "title": "Komiku - 46 - Merfolk Music Box.ogg", "license": "CC0", "sha1": "4255a73e5f4c7a3cb2af1ce8b6a2e103a2ec5963", "url": "https://upload.wikimedia.org/wikipedia/commons/6/69/Komiku_-_46_-_Merfolk_Music_Box.ogg"},
+ {"name": "lofi-001", "title": "Lofi music 001.wav", "license": "CC0", "sha1": "d62e1a98d6cd493a2e2842ad957f86cfab5b953c", "url": "https://upload.wikimedia.org/wikipedia/commons/f/f5/Lofi_music_001.wav"},
+ {"name": "lfm-01", "title": "Loyalty Freak Music - 01 - Monster Parade.ogg", "license": "CC0", "sha1": "2aacb39b71644acbc699a8a44488d31f7625089e", "url": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Loyalty_Freak_Music_-_01_-_Monster_Parade.ogg"},
+ {"name": "lfm-08", "title": "Loyalty Freak Music - 08 - Beach.ogg", "license": "CC0", "sha1": "7d949c5d7fdc5d170dd2af9dfd1ea5df3e87549b", "url": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Loyalty_Freak_Music_-_08_-_Beach.ogg"},
+ {"name": "lfm-13", "title": "Loyalty Freak Music - 13 - Work.ogg", "license": "CC0", "sha1": "ae13e092e39d7d1f90a3404d13ecd115af085264", "url": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Loyalty_Freak_Music_-_13_-_Work.ogg"},
+ {"name": "techno-001", "title": "Techno music 001.wav", "license": "CC0", "sha1": "0eb3c9bb6323418a1657a7dedd476d795bc16673", "url": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Techno_music_001.wav"}
+]
+EOF
+uv run --no-project --python 3.12 --with av==19.0.0 --with numpy==2.5.3 python - <<'EOF'
+"""Tải bộ nhạc thử, kiểm SHA-1, đổi sang WAV 16 kHz mono 16-bit, giữ 80 giây đầu."""
+import hashlib, json, os, time, urllib.error, urllib.request, wave
+import av
+import numpy as np
+OUT = "target/q11"
+for m in json.load(open(f"{OUT}/music.json", encoding="utf-8")):
+    os.makedirs(f"{OUT}/orig", exist_ok=True)  # bản gốc để riêng: Step 3 đọc mọi *.wav trong target/q11
+    raw = f"{OUT}/orig/{m['name']}{os.path.splitext(m['url'])[1]}"
+    if not os.path.exists(raw):
+        req = urllib.request.Request(m["url"], headers={"User-Agent": "Mozilla/5.0"})
+        for attempt in range(6):
+            try:
+                data = urllib.request.urlopen(req).read()
+                break
+            except urllib.error.HTTPError as e:
+                if e.code != 429:
+                    raise
+                time.sleep(20 * (attempt + 1))  # Commons giới hạn tần suất tải
+        assert hashlib.sha1(data).hexdigest() == m["sha1"], m["title"]
+        open(raw, "wb").write(data)
+        time.sleep(5)
+    resampler = av.AudioResampler(format="s16", layout="mono", rate=16000)
+    chunks = []
+    for frame in av.open(raw).decode(audio=0):
+        chunks += [f.to_ndarray().reshape(-1) for f in resampler.resample(frame)]
+    chunks += [f.to_ndarray().reshape(-1) for f in resampler.resample(None)]
+    pcm = np.concatenate(chunks)[: 80 * 16000].astype(np.int16)
+    with wave.open(f"{OUT}/{m['name']}.wav", "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(16000)
+        w.writeframes(pcm.tobytes())
+    print(m["name"], f"{len(pcm) / 16000:.1f} giây", m["license"])
 EOF
 ```
-Expected: hai bảng 14 dòng. Lúc lập kế hoạch (Task 3, Step 4): VAD không cắt ra đoạn nào từ cả 14 tín hiệu, nên "Hiện thành phụ đề trong app: 0/14" ở cả hai model. Không có VAD thì turbo không bỏ được đoạn nào theo `no_speech_prob` (luôn cỡ 1e-10).
+Expected: mười dòng, chín file đủ 80 giây (file `komiku-46` ngắn hơn):
 
-- [ ] **Step 2: Với nhạc (cần người)**
+```text
+ambient-ck61 80.0 giây CC0
+dvorak-largo 80.0 giây Public domain
+vivaldi-rv425 80.0 giây PDM-owner
+bach-aria 80.0 giây CC0
+komiku-46 63.5 giây CC0
+lofi-001 80.0 giây CC0
+lfm-01 80.0 giây CC0
+lfm-08 80.0 giây CC0
+lfm-13 80.0 giây CC0
+techno-001 80.0 giây CC0
+```
 
-Nhờ người đưa vài clip nhạc có quyền dùng (ví dụ nhạc tự làm, hay nhạc có giấy phép CC0), mỗi clip 10–60 giây, có nhạc không lời và nhạc có lời. Đổi sang 16 kHz mono: `afconvert -f WAVE -d LEI16@16000 -c 1 <vào> <ra>.wav`. Rồi chạy lại Step 1 với `NO_SPEECH_WAVS=<clip1.wav>,<clip2.wav>` đặt trước `cargo test`, cho cả hai model.
+- [ ] **Step 3: `no_speech_prob` trên tín hiệu tổng hợp và nhạc, qua `asr-worker` thật**
 
-Expected: mỗi clip thêm tối đa 10 dòng (mỗi dòng một đoạn 8 giây). Ghi vào đầu `gd1_no_speech.md` một đoạn kết luận: bao nhiêu đoạn nhạc VAD cắt ra, bao nhiêu đoạn hiện thành phụ đề, chữ bịa ra là gì. Có đoạn nhạc hiện thành phụ đề thì ghi đề xuất luật lọc thêm (ví dụ ngưỡng `avg_logprob` riêng cho turbo) để chủ dự án quyết; không tự sửa luật lọc.
+Run:
+```bash
+WAVS=$(ls $PWD/target/q11/*.wav | tr '\n' ',' | sed 's/,$//')
+for m in large-v3-turbo-q5_0 small-q5_1; do
+  MT_ASR_WORKER=$PWD/target/release/asr-worker MT_ASR_MODEL=$PWD/models/ggml-$m.bin \
+  MT_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx NO_SPEECH_WAVS=$WAVS \
+    cargo test -q -p pipeline --test no_speech -- --include-ignored --nocapture | grep '^{' > target/q11/$m.jsonl
+  tail -1 target/q11/$m.jsonl
+done
+```
+Expected: mỗi model 112 đoạn (14 tín hiệu tổng hợp, 98 đoạn nhạc) và không đoạn nào hiện thành phụ đề:
 
-- [ ] **Step 3: Tỉ lệ token cho cặp không có tiếng Việt và câu gốc rất ngắn**
+```text
+{"segments":112,"shown_as_subtitle":0,"shown":[]}
+{"segments":112,"shown_as_subtitle":0,"shown":[]}
+```
+
+- [ ] **Step 4: Điều kiện nhận luật mới trên A4 và S6** (Q11 của review 02b; QĐ24)
+
+Run: `cargo test -p latency-bench phase1_ -- --include-ignored --nocapture`
+Expected: hai test qua. Trên A4, luật mới không bỏ thêm clip nào trong 548 clip của mỗi model (small vẫn chỉ có 1 clip `NoSpeech` của Giai đoạn 0); trên S6, test kiểm luật câu đệm chỉ bỏ đúng 2 đoạn đã biết là chữ sai (xem `phase1_filler_rule_drops_only_known_hallucinations_on_s6`):
+
+```text
+turbo: 548 clip, bị bỏ {}, tỉ lệ nén lớn nhất 1.54
+small: 548 clip, bị bỏ {"NoSpeech": ["en-9810650684898829002_nb"]}, tỉ lệ nén lớn nhất 1.54
+test latency::tests::phase1_rules_drop_no_a4_clip ... ok
+test latency::tests::phase1_filler_rule_drops_only_known_hallucinations_on_s6 ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.34s
+```
+
+- [ ] **Step 5: Ghi `gd1_no_speech.md`**
+
+Run:
+```bash
+python3 - <<'EOF'
+import json
+from collections import Counter
+music = json.load(open("target/q11/music.json", encoding="utf-8"))
+out = [
+    "# no_speech_prob và luật lọc trên âm thanh không có tiếng nói (Đ12, Q11 của review 02b)", "",
+    "Sinh từ `crates/pipeline/tests/no_speech.rs` (kế hoạch Giai đoạn 1 · 02b, Task 6): 14 tín hiệu tổng hợp và mười file nhạc",
+    "không lời (mỗi file tối đa 10 đoạn 8 giây), qua Silero VAD của app và `asr-worker` thật, rồi luật lọc của app",
+    "(`filter::verdict`). \"Hiện thành phụ đề\" nghĩa là VAD cắt ra ít nhất một đoạn và luật lọc giữ chữ.", "",
+    "## Kết luận", ""]
+for m in ("large-v3-turbo-q5_0", "small-q5_1"):
+    rows = [json.loads(l) for l in open(f"target/q11/{m}.jsonl", encoding="utf-8")]
+    sig = [r for r in rows if "signal" in r]
+    total = [r for r in rows if "shown_as_subtitle" in r][0]
+    cut = [r for r in sig if r["vad_segments"]]
+    verdicts = Counter(r["verdict"] for r in cut)
+    out.append(f"- {m}: {len(sig)} đoạn; VAD cắt ra đoạn ở {len(cut)} đoạn ({dict(verdicts)}); "
+               f"hiện thành phụ đề: {total['shown_as_subtitle']}.")
+out += ["- Không có VAD (cột \"Luật lọc\" của các dòng VAD = 0) thì turbo bịa chữ cho hầu hết tín hiệu, vì `no_speech_prob`",
+        "  của turbo luôn cỡ 1e-10; Silero VAD của app là lớp chặn chính, luật câu đệm và nhãn có ngoặc chặn phần lọt qua.", "",
+        "## Điều kiện nhận luật mới (QĐ24)", "",
+        "- A4 (`out-m4pro-{turbo,small}-final.jsonl`, 548 clip mỗi model): luật câu đệm và luật chuỗi lặp không bỏ clip nào;",
+        "  tỉ lệ nén lớn nhất của chữ thật là 1,54 ở cả hai model, dưới ngưỡng 2,4. Luật `no_speech` của Giai đoạn 0 vẫn bỏ",
+        "  đúng một clip của small (`en-9810650684898829002_nb`, chữ bịa) như trước. Test",
+        "  `phase1_rules_drop_no_a4_clip`.",
+        "- S6 (12 lượt cấu hình chốt, 528 đoạn): luật câu đệm bỏ thêm 2 đoạn của gói Chuẩn, cả hai có chữ sai: đoạn 26 của `en`",
+        "  (32 ms ngay sau một câu, chép thành \"Thank you.\") và đoạn 45 của `vi` (đuôi câu \"… ở Las Cañitas.\", chép thành",
+        "  \"Cảm ơn\"). Bản chép đúng ở hai chỗ đó không có \"Thank you\" hay \"Cảm ơn\". Test",
+        "  `phase1_filler_rule_drops_only_known_hallucinations_on_s6`.", "",
+        "## Kiểm chéo turbo bằng công cụ khác (lúc lập kế hoạch)", "",
+        "faster-whisper 1.2.1 (CTranslate2 4.8.2, CPU, int8, `beam_size=1`, `temperature=0`, không VAD, không lọc), model",
+        "`large-v3-turbo`, cùng ba tín hiệu của `no_speech.rs` (im lặng, ù điện 50 Hz −26 dBFS, gõ phím −30 dBFS; 3 và 8 giây):",
+        "`no_speech_prob` từ 3,6e-11 tới 1,5e-10, chữ \"Thank you.\" hoặc \"you\", có hay không khóa ngôn ngữ. Model `small` qua",
+        "cùng công cụ: 0,68 tới 0,92. Vậy `no_speech_prob` cỡ 1e-10 là tính chất của turbo, không phải lỗi đọc của chế độ B.", "",
+        "## Bộ nhạc thử", "",
+        "Wikimedia Commons, giấy phép đọc từ API của Commons (`extmetadata.LicenseShortName`) ngày 2026-10-01. Không lưu audio",
+        "trong repo; tải lại bằng 02b Task 6, Step 2.", "",
+        "| Tên | File trên Commons | Giấy phép |", "|---|---|---|"]
+out += [f"| {m['name']} | [{m['title']}](https://commons.wikimedia.org/wiki/File:{m['url'].rsplit('/', 1)[1]}) | {m['license']} |"
+        for m in music]
+for m in ("large-v3-turbo-q5_0", "small-q5_1"):
+    rows = [json.loads(l) for l in open(f"target/q11/{m}.jsonl", encoding="utf-8")]
+    out += ["", f"## {m} ({rows[0].get('backend', '?')})", "",
+            "| Tín hiệu | VAD cắt ra | Xác suất VAD | no_speech_prob | avg_logprob | Tỉ lệ nén | Luật lọc | Chữ |",
+            "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        if "signal" in r:
+            vp = f"{r['vad_mean_prob']:.2f}" if r["vad_mean_prob"] is not None else "—"
+            text = r["text"][:40].replace("|", "\\|").replace("\n", " ")
+            out.append(f"| {r['signal']} | {r['vad_segments']} | {vp} | {r['no_speech_prob']:.2g} | {r['avg_logprob']:.2f} "
+                       f"| {r['compression_ratio']:.2f} | {r['verdict']} | {text} |")
+open("bench/phase0/results/gd1_no_speech.md", "w", encoding="utf-8").write("\n".join(out) + "\n")
+print("\n".join(out[:16]))
+EOF
+```
+Expected: phần đầu của file (phần còn lại là hai bảng 112 dòng):
+
+```text
+# no_speech_prob và luật lọc trên âm thanh không có tiếng nói (Đ12, Q11 của review 02b)
+
+Sinh từ `crates/pipeline/tests/no_speech.rs` (kế hoạch Giai đoạn 1 · 02b, Task 6): 14 tín hiệu tổng hợp và mười file nhạc
+không lời (mỗi file tối đa 10 đoạn 8 giây), qua Silero VAD của app và `asr-worker` thật, rồi luật lọc của app
+(`filter::verdict`). "Hiện thành phụ đề" nghĩa là VAD cắt ra ít nhất một đoạn và luật lọc giữ chữ.
+
+## Kết luận
+
+- large-v3-turbo-q5_0: 112 đoạn; VAD cắt ra đoạn ở 3 đoạn ({'Hallucination': 3}); hiện thành phụ đề: 0.
+- small-q5_1: 112 đoạn; VAD cắt ra đoạn ở 3 đoạn ({'Filler': 2, 'NoSpeech': 1}); hiện thành phụ đề: 0.
+- Không có VAD (cột "Luật lọc" của các dòng VAD = 0) thì turbo bịa chữ cho hầu hết tín hiệu, vì `no_speech_prob`
+  của turbo luôn cỡ 1e-10; Silero VAD của app là lớp chặn chính, luật câu đệm và nhãn có ngoặc chặn phần lọt qua.
+
+## Điều kiện nhận luật mới (QĐ24)
+
+- A4 (`out-m4pro-{turbo,small}-final.jsonl`, 548 clip mỗi model): luật câu đệm và luật chuỗi lặp không bỏ clip nào;
+```
+
+Kiểm số tỉ lệ nén lớn nhất của A4 ghi trong file khớp dòng in ra ở Step 4. Có đoạn nhạc hiện thành phụ đề thì ghi vào đầu file chữ bịa ra là gì, đề xuất thêm câu vào `DEFAULT_FILLER_PHRASES` hay ngưỡng mới để chủ dự án quyết; không tự sửa luật lọc.
+
+- [ ] **Step 6: Tỉ lệ token cho cặp không có tiếng Việt và câu gốc rất ngắn**
 
 Run (khoảng 1440 câu mỗi model):
 ```bash
@@ -4702,31 +6648,88 @@ python3 bench/phase0/mt/build_ratio_set.py
 for m in Q8_0 Q4_K_M; do
   cargo run -q --release -p latency-bench -- mt-eval --testset bench/phase0/data/mt/testset_ratio.jsonl \
     --llama-server $PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server \
-    --model $PWD/models/Hy-MT2-1.8B-$m.gguf --out-dir bench/phase0/data/mt/outputs-gd1-ratio
+    --model $PWD/models/Hy-MT2-1.8B-$m.gguf --out-dir bench/phase0/data/mt/outputs-gd1-ratio | tail -1
 done
 python3 bench/phase0/mt/ratio_stats.py bench/phase0/data/mt/outputs-gd1-ratio/Hy-MT2-1.8B-Q8_0-plain.jsonl \
   bench/phase0/data/mt/outputs-gd1-ratio/Hy-MT2-1.8B-Q4_K_M-plain.jsonl --out bench/phase0/results/gd1_mt_ratio.md
 ```
-Expected: hai bảng, mỗi bảng 20 dòng (12 chiều không có tiếng Việt, 8 chiều có tiếng Việt chỉ gồm câu ngắn). Cột "lỗi" là số câu dịch lỗi cả hai lần (`failed`): với cặp chưa có ngưỡng thì chỉ có thể do rỗng, xuống dòng kiểu lời giải thích, hay chạm hạn mức sinh.
+Expected: hai bảng, mỗi bảng 20 dòng (12 chiều không có tiếng Việt, 8 chiều có tiếng Việt chỉ gồm câu ngắn). Cột "lỗi" là số câu dịch lỗi cả hai lần (`failed`): với cặp chưa có ngưỡng thì chỉ có thể do rỗng, xuống dòng kiểu lời giải thích, hay chạm hạn mức sinh. Lúc lập kế hoạch:
+
+```text
+ghi 1440 câu -> bench/phase0/data/mt/testset_ratio.jsonl
+WMT24++: 1200 câu ngắn: 240
+[('en->ja', 112), ('en->ko', 112), ('en->vi', 12), ('en->zh', 112), ('ja->en', 112), ('ja->ko', 112), ('ja->vi', 12), ('ja->zh', 112), ('ko->en', 112), ('ko->ja', 112), ('ko->vi', 12), ('ko->zh', 112), ('vi->en', 12), ('vi->ja', 12), ('vi->ko', 12), ('vi->zh', 12), ('zh->en', 112), ('zh->ja', 112), ('zh->ko', 112), ('zh->vi', 12)]
+Hy-MT2-1.8B-Q8_0-plain: 1440/1440
+Hy-MT2-1.8B-Q4_K_M-plain: 1440/1440
+## Hy-MT2-1.8B-Q8_0-plain.jsonl
+
+| chiều | câu | câu gốc ≥ 10 token | tỉ lệ lớn nhất (≥ 10) | ngưỡng đề xuất | câu gốc < 3 token | token dịch lớn nhất (< 3) | hạn mức sinh (< 3) | lỗi |
+|---|---|---|---|---|---|---|---|---|
+| en->ja | 112 | 75 | 2.61 | 3.3 | 9 | 10 | 40 | 0 |
+| en->ko | 112 | 75 | 2.50 | 3.2 | 9 | 9 | 40 | 0 |
+| en->vi | 12 | 0 | — | — | 9 | 8 | 40 | 0 |
+| en->zh | 112 | 74 | 1.54 | 2.0 | 9 | 3 | 40 | 1 |
+| ja->en | 112 | 88 | 1.33 | 1.7 | 0 | — | — | 2 |
+| ja->ko | 112 | 89 | 2.17 | 2.8 | 0 | — | — | 0 |
+| ja->vi | 12 | 0 | — | — | 0 | — | — | 0 |
+| ja->zh | 112 | 89 | 1.17 | 1.5 | 0 | — | — | 0 |
+| ko->en | 112 | 94 | 1.46 | 1.9 | 2 | 3 | 40 | 0 |
+| ko->ja | 112 | 94 | 1.60 | 2.0 | 2 | 4 | 40 | 0 |
+| ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 0 |
+| ko->zh | 112 | 94 | 1.00 | 1.3 | 2 | 3 | 40 | 0 |
+| vi->en | 12 | 0 | — | — | 0 | — | — | 0 |
+| vi->ja | 12 | 0 | — | — | 0 | — | — | 0 |
+| vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
+| vi->zh | 12 | 0 | — | — | 0 | — | — | 0 |
+| zh->en | 112 | 76 | 2.15 | 2.7 | 9 | 4 | 40 | 0 |
+| zh->ja | 112 | 76 | 2.88 | 3.6 | 9 | 10 | 40 | 0 |
+| zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 0 |
+| zh->vi | 12 | 0 | — | — | 9 | 6 | 40 | 0 |
+
+## Hy-MT2-1.8B-Q4_K_M-plain.jsonl
+
+| chiều | câu | câu gốc ≥ 10 token | tỉ lệ lớn nhất (≥ 10) | ngưỡng đề xuất | câu gốc < 3 token | token dịch lớn nhất (< 3) | hạn mức sinh (< 3) | lỗi |
+|---|---|---|---|---|---|---|---|---|
+| en->ja | 112 | 75 | 2.22 | 2.8 | 9 | 7 | 40 | 0 |
+| en->ko | 112 | 75 | 2.31 | 2.9 | 9 | 9 | 40 | 0 |
+| en->vi | 12 | 0 | — | — | 9 | 8 | 40 | 0 |
+| en->zh | 112 | 75 | 1.46 | 1.9 | 9 | 3 | 40 | 0 |
+| ja->en | 112 | 88 | 1.33 | 1.7 | 0 | — | — | 1 |
+| ja->ko | 112 | 88 | 1.85 | 2.4 | 0 | — | — | 1 |
+| ja->vi | 12 | 0 | — | — | 0 | — | — | 1 |
+| ja->zh | 112 | 88 | 1.11 | 1.4 | 0 | — | — | 1 |
+| ko->en | 112 | 93 | 1.17 | 1.5 | 2 | 4 | 40 | 1 |
+| ko->ja | 112 | 94 | 1.47 | 1.9 | 2 | 4 | 40 | 0 |
+| ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 1 |
+| ko->zh | 112 | 94 | 0.93 | 1.2 | 2 | 3 | 40 | 0 |
+| vi->en | 12 | 0 | — | — | 0 | — | — | 0 |
+| vi->ja | 12 | 0 | — | — | 0 | — | — | 0 |
+| vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
+| vi->zh | 12 | 0 | — | — | 0 | — | — | 0 |
+| zh->en | 112 | 76 | 2.08 | 2.6 | 9 | 4 | 40 | 0 |
+| zh->ja | 112 | 75 | 3.00 | 3.8 | 9 | 7 | 40 | 1 |
+| zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 0 |
+| zh->vi | 12 | 0 | — | — | 9 | 6 | 40 | 0 |
+```
 
 Thêm vào cuối `gd1_mt_ratio.md` một đoạn đề xuất:
 - ngưỡng cho 12 chiều mới, lấy số lớn hơn của hai model ở cột "ngưỡng đề xuất";
 - câu gốc dưới 3 token: hạn mức sinh `4 × số token + 32` có đủ không (so cột "token dịch lớn nhất" với cột "hạn mức sinh").
 
-Ngưỡng chỉ vào `DEFAULT_RATIO_THRESHOLDS` (`crates/pipeline/src/config.rs`) sau khi chủ dự án duyệt (điểm cần quyết 8).
+Ngưỡng chỉ vào `DEFAULT_RATIO_THRESHOLDS` (`crates/pipeline/src/config.rs`) sau khi chủ dự án duyệt (điểm cần quyết 4).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add bench/phase0/results/gd1_no_speech.md bench/phase0/results/gd1_mt_ratio.md
-git commit -m "test(bench): đo no_speech_prob và tỉ lệ token cho cặp không có tiếng Việt (Đ12)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "test(bench): no_speech_prob với nhạc CC0, điều kiện nhận luật câu đệm, tỉ lệ token cho cặp không có tiếng Việt (Đ12)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ## Task 7: Chạy lại A3 bằng code dịch của app (cần máy rảnh)
 
-Mục 6.7 của kế hoạch 00: 02a Task 4–6 và Task 2 của file này đổi hậu xử lý, tham số sinh và cách gọi `llama-server` (prompt không đổi), nên chạy lại A3. Lần đầu dịch bằng `mt-eval` (Đ4) thay cho `translate.py`, nên đây cũng là mốc mới đầu tiên của A3 qua đúng code của app.
+Mục 6.7 của kế hoạch 00: 02d và Task 2 của file này đổi hậu xử lý, tham số sinh và cách gọi `llama-server` (prompt không đổi), nên chạy lại A3. Lần đầu dịch bằng `mt-eval` (Đ4) thay cho `translate.py`, nên đây cũng là mốc mới đầu tiên của A3 qua đúng code của app.
 
-**Cần người thao tác (Step 1).** Lâu: dịch 4 lượt (khoảng 15 phút trên M4 Pro theo kế hoạch 0-02), chấm COMET khoảng 5 phút.
+**Cần người thao tác (Step 1).** Lâu: dịch 4 lượt (khoảng 15 phút trên M4 Pro theo kế hoạch 0-02), chấm COMET khoảng 5 phút. Chạy trên cây đã commit hết (`git status` sạch), vì `mt-eval` ghi git HEAD và cờ có thay đổi vào `<…>.meta.json`.
 
 **Files:**
 - Create: `bench/phase0/results/s7_mt-gd1-mteval.json`, `bench/phase0/results/s7_mt-gd1-mteval.md` (script sinh ra)
@@ -4740,8 +6743,9 @@ pgrep -l -f 'Docker Desktop|Google Chrome|Safari' || echo "không còn app nặn
 lsof -nP -iTCP:8000 -sTCP:LISTEN || echo "cổng 8000 trống"
 pmset -g batt | head -1
 sysctl vm.swapusage
+git status --short | wc -l
 ```
-Expected: `không còn app nặng`, `cổng 8000 trống`, `Now drawing from 'AC Power'`, swap gần trống (`used` dưới vài trăm MB). Chép bốn dòng này vào cuối file kết quả của task (Step 4). Còn app nặng hay đang chạy pin thì dừng, báo người.
+Expected: `không còn app nặng`, `cổng 8000 trống`, `Now drawing from 'AC Power'`, swap gần trống (`used` dưới vài trăm MB), và `0` (cây sạch). Chép các dòng này vào cuối file kết quả của task (Step 4). Còn app nặng hay đang chạy pin thì dừng, báo người.
 
 - [ ] **Step 2: Dịch bộ test A3 bằng `mt-eval`**
 
@@ -4754,7 +6758,7 @@ for m in Q8_0 Q4_K_M; do for v in plain context; do
     --model models/Hy-MT2-1.8B-$m.gguf --out-dir bench/phase0/data/mt/outputs-gd1-mteval --variant $v
 done; done
 ```
-Expected: mỗi lượt in `… 620 câu, còn 620 câu phải dịch` (lượt `context` ít câu hơn, chỉ câu có ngữ cảnh), tiến độ mỗi 25 câu, và kết thúc không lỗi. Bị ngắt giữa chừng thì chạy lại đúng lệnh: `mt-eval` dịch tiếp.
+Expected: lượt `plain` của mỗi model in `Hy-MT2-1.8B-<model>-plain: 620 câu, còn 620 câu phải dịch` (lượt `context` ít câu hơn, chỉ câu có ngữ cảnh), tiến độ mỗi 25 câu, và kết thúc không lỗi. Bị ngắt giữa chừng thì chạy lại đúng lệnh: `mt-eval` dịch tiếp nếu điều kiện không đổi. `mt-eval` từ chối dịch tiếp (điều kiện khác lần trước, ví dụ đã có commit mới) thì xóa `bench/phase0/data/mt/outputs-gd1-mteval` và chạy lại từ đầu; chỉ dùng `--resume-anyway` khi chắc chắn thay đổi không liên quan tới dịch.
 
 - [ ] **Step 3: Chấm COMET và so với mốc S7**
 
@@ -4765,13 +6769,13 @@ uv run --no-project --python 3.12 --with "unbabel-comet==2.2.7" --with "numpy<2"
   --outputs bench/phase0/data/mt/outputs-gd1-mteval --label gd1-mteval --baseline bench/phase0/results/s7_mt.json
 ```
 Expected:
-- Ba bảng như kế hoạch 0-02 Task 6, cột "Mức sàn (A3)" ghi `đạt`.
-- Bảng cuối "So với mốc (chống thụt lùi A3)": mọi dòng `đạt` (không chiều nào thấp hơn mốc quá 0,01), và lệnh thoát mã 0.
-- Lệnh thoát với thông báo `có chiều thấp hơn mốc quá 0,01` thì không làm tiếp phần dịch; báo chủ dự án kèm bảng (mục 6.7). Chủ dự án quyết: sửa hậu xử lý, hay duyệt mốc mới.
+- Ba bảng như kế hoạch 0-02 Task 6, cột "Mức sàn (A3)" ghi `đạt`, cột "Lỗi" là số câu `failed` của từng chiều.
+- Bảng cuối "So với mốc (chống thụt lùi A3)" có đủ 32 dòng (4 lượt × 8 chiều; lượt `context` chỉ các chiều mốc có), mọi dòng `đạt` (không chiều nào thấp hơn mốc quá 0,01), không có dòng "Không so được", và lệnh thoát mã 0.
+- Lệnh thoát với thông báo `có chiều thấp hơn mốc quá 0,01` thì không làm tiếp phần dịch; báo chủ dự án kèm bảng (mục 6.7). Chủ dự án quyết: sửa hậu xử lý, hay duyệt mốc mới. Thoát với `không so được với mốc` thì xem lượt hay chiều nào thiếu, chạy bù rồi chấm lại.
 
 - [ ] **Step 4: Ghi trạng thái máy và commit**
 
-Thêm vào cuối `bench/phase0/results/s7_mt-gd1-mteval.md` một mục "Máy lúc chạy" với bốn dòng của Step 1 và commit của code (`git rev-parse --short HEAD`).
+Thêm vào cuối `bench/phase0/results/s7_mt-gd1-mteval.md` một mục "Máy lúc chạy" với các dòng của Step 1 và commit của code (`git rev-parse --short HEAD`, khớp `git_head` trong các `meta.json`).
 
 ```bash
 git add bench/phase0/results/s7_mt-gd1-mteval.json bench/phase0/results/s7_mt-gd1-mteval.md
@@ -4782,7 +6786,7 @@ git commit -m "test(bench): A3 dịch bằng code của app (mt-eval), so với 
 
 Mục 6.7 của kế hoạch 00 và C12: 02a Task 1 đổi giao thức, cách giữ ngôn ngữ trước và bản vá whisper.cpp. Chạy lại A4 cho cả hai model, cùng lượt cửa sổ 30 giây đầy đủ (`--full-ctx`) trên cùng bản build, để kiểm giả định 8 (§14).
 
-**Cần người thao tác:** máy rảnh như Task 7, Step 1 (kiểm lại bốn lệnh nếu đã nghỉ giữa hai task). Lâu: 4 lượt × 548 clip.
+**Cần người thao tác:** máy rảnh như Task 7, Step 1 (kiểm lại các lệnh nếu đã nghỉ giữa hai task). Lâu: 4 lượt × 548 clip.
 
 **Files:**
 - Create: `bench/phase0/results/a4_m4pro-{turbo,small}-gd1-prevlang.json`, `bench/phase0/results/a4_m4pro-{turbo,small}-gd1-fullctx.json` (script sinh ra)
@@ -4824,6 +6828,11 @@ import json
 R = "bench/phase0/results"
 def load(name):
     return json.load(open(f"{R}/a4_m4pro-{name}.json", encoding="utf-8"))
+def rel(new, base):
+    # Mốc bằng 0: chỉ đạt khi lượt này cũng bằng 0 (không chia cho 0).
+    if base == 0:
+        return 0.0 if new == 0 else float("inf")
+    return (new - base) / base * 100
 lines = ["# A4 sau Giai đoạn 1 · 02 (giao thức bản 2, prev_lang trong yêu cầu)", "",
          "## So với mốc A4 (`-final`): nhóm wb không xấu hơn quá 10% (tương đối)", "",
          "| Model | Nhóm | Chỉ số | Mốc | Lượt này | Chênh | Kết luận |", "|---|---|---|---|---|---|---|"]
@@ -4835,9 +6844,10 @@ for m in ("turbo", "small"):
             continue
         metric = "cer" if "cer" in base[k] else "wer"
         b, n = base[k][metric], new[k][metric]
-        ok = n <= b * 1.10 + 1e-9
+        d = rel(n, b)
+        ok = d <= 10 + 1e-9
         bad |= not ok
-        lines.append(f"| {m} | {k} | {metric.upper()} | {b:.3f} | {n:.3f} | {(n - b) / b * 100:+.1f}% | {'đạt' if ok else 'THỤT LÙI'} |")
+        lines.append(f"| {m} | {k} | {metric.upper()} | {b:.3f} | {n:.3f} | {d:+.1f}% | {'đạt' if ok else 'THỤT LÙI'} |")
 lines += ["", "## Giả định 8: (mặc định − fullctx) / fullctx ≤ 10%, cùng bản build", "",
           "| Model | Nhóm | Mặc định | fullctx | Chênh | Kết luận |", "|---|---|---|---|---|---|"]
 for m in ("turbo", "small"):
@@ -4847,8 +6857,8 @@ for m in ("turbo", "small"):
             continue
         metric = "cer" if "cer" in d[k] else "wer"
         a, b = d[k][metric], f[k][metric]
-        rel = (a - b) / b * 100 if b else 0.0
-        lines.append(f"| {m} | {k} | {a:.3f} | {b:.3f} | {rel:+.1f}% | {'đạt' if rel <= 10 else 'quá 10%'} |")
+        r = rel(a, b)
+        lines.append(f"| {m} | {k} | {a:.3f} | {b:.3f} | {r:+.1f}% | {'đạt' if r <= 10 else 'quá 10%'} |")
 open(f"{R}/gd1_a4.md", "w", encoding="utf-8").write("\n".join(lines) + "\n")
 print("\n".join(lines))
 raise SystemExit(1 if bad else 0)
@@ -4861,7 +6871,7 @@ Expected:
 
 - [ ] **Step 4: Ghi trạng thái máy và commit**
 
-Thêm mục "Máy lúc chạy" (bốn dòng như Task 7, Step 1) và commit của code vào cuối `gd1_a4.md`.
+Thêm mục "Máy lúc chạy" (các dòng như Task 7, Step 1) và commit của code vào cuối `gd1_a4.md`.
 
 ```bash
 git add bench/phase0/results/a4_m4pro-turbo-gd1-prevlang.json bench/phase0/results/a4_m4pro-small-gd1-prevlang.json \
@@ -4872,14 +6882,15 @@ git commit -m "test(bench): A4 và lượt fullctx sau giao thức bản 2 (C12)
 
 ## Task 9: Chạy lại S6 (cần máy rảnh)
 
-Mục 6.7 của kế hoạch 00: 02a và Task 1–5 của file này đổi giao thức, lọc đoạn, phồn thể sang giản thể và hậu xử lý, có thể làm chậm pipeline. `latency-bench latency` dùng đúng luật của `pipeline` (Đ3), nên đo lại S6 như kế hoạch 0-06 Task 7.
+Mục 6.7 của kế hoạch 00: 02a, 02d và Task 1–5 của file này đổi giao thức, lọc đoạn, phồn thể sang giản thể và hậu xử lý, có thể làm chậm pipeline. `latency-bench latency` dùng đúng luật của `pipeline` (Đ3), nên đo lại S6 như kế hoạch 0-06 Task 7. Nhãn của lượt này là `m4pro-gd1-s6` (N5 của review 02b).
 
 **Cần người thao tác:** máy rảnh như Task 7, Step 1. Không chạy gì khác trong lúc đo. Lâu: 12 session, mỗi gói khoảng 20 phút (kế hoạch 0-06 Task 7).
 
 **Files:**
-- Create: `bench/phase0/results/latency/m4pro-gd1-khuyennghi-{chuan,nhe}-{en,ja,ko,mixed,vi,zh}.json` (script sinh ra)
+- Create: `bench/phase0/results/latency/m4pro-gd1-s6-khuyennghi-{chuan,nhe}-{en,ja,ko,mixed,vi,zh}.json` (script sinh ra)
+- Create: `bench/phase0/results/gd1_s6.md`
 
-- [ ] **Step 1: Kiểm máy rảnh lần nữa** (bốn lệnh của Task 7, Step 1). Expected như ở đó.
+- [ ] **Step 1: Kiểm máy rảnh lần nữa** (các lệnh của Task 7, Step 1). Expected như ở đó. Giữ output để chép vào Step 4.
 
 - [ ] **Step 2: Đo**
 
@@ -4887,24 +6898,59 @@ Run:
 ```bash
 cargo build --release -p latency-bench
 cargo build --release -p asr-worker --features metal,shared-encode
-python3 bench/phase0/latency/run_matrix.py --machine m4pro-gd1 --tier khuyennghi --package chuan
-python3 bench/phase0/latency/run_matrix.py --machine m4pro-gd1 --tier khuyennghi --package nhe
+python3 bench/phase0/latency/run_matrix.py --machine m4pro-gd1-s6 --tier khuyennghi --package chuan
+python3 bench/phase0/latency/run_matrix.py --machine m4pro-gd1-s6 --tier khuyennghi --package nhe
 ```
-Expected: 12 file `m4pro-gd1-khuyennghi-*.json`. Script dừng trước một session nếu còn `llama-server` hay `asr-worker` sót lại (báo pid): kill pid đó rồi chạy lại.
+Expected: 12 file `m4pro-gd1-s6-khuyennghi-*.json`. Script dừng trước một session nếu còn `llama-server` hay `asr-worker` sót lại (báo pid): kill pid đó rồi chạy lại.
 
-- [ ] **Step 3: So với lượt cấu hình chốt**
+- [ ] **Step 3: So với lượt cấu hình chốt, ghi `gd1_s6.md`**
 
-Run: `python3 bench/phase0/latency/summarize.py bench/phase0/results/latency/m4pro-chot-khuyennghi-*.json bench/phase0/results/latency/m4pro-gd1-khuyennghi-*.json`
+Run:
+```bash
+python3 bench/phase0/latency/summarize.py bench/phase0/results/latency/m4pro-chot-khuyennghi-*.json \
+  bench/phase0/results/latency/m4pro-gd1-s6-khuyennghi-*.json > target/gd1_s6_table.md
+python3 - <<'EOF'
+import json
+R = "bench/phase0/results/latency"
+lines = ["# S6 sau phần crate của kế hoạch 02 (nhãn `m4pro-gd1-s6`)", "",
+         "## Chênh với lượt cấu hình chốt (`m4pro-chot`)", "",
+         "| Gói | Session | p50 chốt | p50 lượt này | Chênh | p90 chốt | p90 lượt này | Chênh | Kết luận |",
+         "|---|---|---|---|---|---|---|---|---|"]
+bad = False
+for pkg in ("chuan", "nhe"):
+    for s in ("en", "ja", "ko", "mixed", "vi", "zh"):
+        old = json.load(open(f"{R}/m4pro-chot-khuyennghi-{pkg}-{s}.json"))["summary"]
+        new = json.load(open(f"{R}/m4pro-gd1-s6-khuyennghi-{pkg}-{s}.json"))["summary"]
+        cells, ok = [], True
+        for key in ("shown_p50_ms", "shown_p90_ms"):
+            a, b = old.get(key), new.get(key)
+            if not a or b is None:
+                cells += ["—", "—", "—"]
+                ok = False
+                continue
+            d = (b - a) / a * 100
+            ok &= d <= 10
+            cells += [f"{a:.0f}", f"{b:.0f}", f"{d:+.0f}%"]
+        bad |= not ok
+        lines.append(f"| {pkg} | {s} | " + " | ".join(cells) + f" | {'đạt' if ok else 'CHẬM HƠN QUÁ 10%'} |")
+lines += ["", "## Bảng của `summarize.py`", "", open("target/gd1_s6_table.md", encoding="utf-8").read().rstrip(), "",
+          "## Máy lúc chạy", "", "(chép output của Task 9, Step 1 và `git rev-parse --short HEAD` vào đây)"]
+open("bench/phase0/results/gd1_s6.md", "w", encoding="utf-8").write("\n".join(lines) + "\n")
+print("\n".join(lines[:18]))
+raise SystemExit(1 if bad else 0)
+EOF
+```
 Expected:
-- Cột A2 ghi `đạt` ở cả 24 dòng.
-- Mỗi session, p50 và p90 của lượt `gd1` không cao hơn lượt `chot` quá 10%. Lượt `chot` (kế hoạch 0-06 Task 7): p50 lớn nhất 1028 ms (Chuẩn), 844 ms (Nhẹ); p90 lớn nhất 1341 ms, 1142 ms.
-- Số đoạn bỏ qua có thể thêm lý do `hallucination` (QĐ4); ở dữ liệu S6 cũ, luật này không bỏ đoạn nào.
-- Có dòng `KHÔNG ĐẠT`, `KHÔNG KẾT LUẬN`, hay chậm hơn quá 10%: không đi tiếp; báo chủ dự án kèm bảng và trạng thái máy.
+- Bảng chênh: mọi dòng `đạt` (p50 và p90 của lượt này không cao hơn lượt `chot` quá 10%). Lượt `chot` (kế hoạch 0-06 Task 7): p50 lớn nhất 1028 ms (Chuẩn), 844 ms (Nhẹ); p90 lớn nhất 1341 ms, 1142 ms.
+- Trong bảng của `summarize.py`: cột A2 ghi `đạt` ở cả 24 dòng. Số đoạn bỏ qua có thể thêm lý do `filler` ở gói Chuẩn (QĐ24: trên dữ liệu S6 cũ, luật câu đệm bỏ 2 đoạn có chữ sai), `hallucination` và `repetition` thường là 0.
+- Có dòng `KHÔNG ĐẠT`, `KHÔNG KẾT LUẬN`, hay `CHẬM HƠN QUÁ 10%` (lệnh thoát mã 1): không đi tiếp; báo chủ dự án kèm bảng và trạng thái máy.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Ghi trạng thái máy và commit**
+
+Thay dòng giữ chỗ ở mục "Máy lúc chạy" của `gd1_s6.md` bằng output của Step 1 và commit của code.
 
 ```bash
-git add bench/phase0/results/latency/m4pro-gd1-khuyennghi-*.json
+git add bench/phase0/results/latency/m4pro-gd1-s6-khuyennghi-*.json bench/phase0/results/gd1_s6.md
 git commit -m "test(bench): S6 sau phần crate của kế hoạch 02 trên Mac M4 Pro" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 

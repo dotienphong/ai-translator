@@ -3,10 +3,10 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Mục tiêu:** Phần cuối của kế hoạch 02 (mục 2.2 của kế hoạch 00): bấm Bắt đầu (nút, phím tắt hoặc khay) là có phụ đề dịch thật từ âm thanh hệ thống. Gồm:
-- tiến trình phụ trong `src-tauri/binaries/`: script chép cho bản dev, bảng SHA-256 build sẵn và kiểm trước khi chạy (Đ15), nhận biết lần đầu chạy binary mới, dò GPU trên Windows;
-- nguồn âm thanh của phiên (`capture.rs`): mở theo cài đặt, mở lại khi thiết bị đổi, chèn im lặng theo đồng hồ thật;
-- `session.rs` thay `session_stub.rs`: bắt đầu, dừng, hủy khi đang nạp model, lỗi làm phiên dừng, sự kiện `subtitle://upsert`, `subtitle://delta`, `audio://level`, trạng thái phiên, chạy sẵn tiến trình phụ khi mở cửa sổ chính, tắt sau 10 phút rảnh, Thoát;
-- lệnh chọn nguồn âm thanh và mở trang quyền ghi âm thanh hệ thống, `NSAudioCaptureUsageDescription`;
+- tiến trình phụ trong `src-tauri/binaries/`: script chép cho bản dev, bảng SHA-256 build sẵn và kiểm trước mọi lần chạy (Đ15, QĐ17), chặn thư viện lạ, nhận biết lần đầu chạy binary mới, dò GPU trên Windows ở luồng nền;
+- nguồn âm thanh của phiên (`capture.rs`): mở theo cài đặt, mở lại khi thiết bị đổi hay app đã chọn thoát, chỉ báo lỗi kéo dài, nghi thiếu quyền khi toàn im lặng, chèn im lặng theo đồng hồ thật;
+- `session.rs` thay `session_stub.rs`: bắt đầu, dừng, hủy ngay khi đang nạp model, lỗi làm phiên dừng, sự kiện `subtitle://upsert`, `subtitle://delta`, `audio://level`, trạng thái phiên (có `rev`), chạy sẵn tiến trình phụ khi mở cửa sổ chính, tắt sau 10 phút rảnh, Thoát không chờ tiến trình phụ, dọn tiến trình phụ còn sót sau Force Quit;
+- lệnh chọn nguồn âm thanh (app có tên hiển thị) và mở trang quyền ghi âm thanh hệ thống; câu xin quyền tiếng Anh và tiếng Việt (`InfoPlist.strings`);
 - giao diện: trạng thái và lỗi của phiên, mức âm lượng, Cài đặt › Âm thanh, bước quyền ở lần đầu mở app, chữ dịch hiện dần và gộp phụ đề trên thanh phụ đề (mức tối thiểu; phần hoàn chỉnh ở 03);
 - thử tay trên Mac với âm thanh thật, đợt Windows, cập nhật kế hoạch 00.
 
@@ -15,11 +15,13 @@
 - Bắt đầu phiên chặn lâu (nạp model), nên chạy trên luồng nền: lệnh `toggle_session` là `async` và gọi `spawn_blocking`; phím tắt, khay, Thoát chạy trên luồng riêng (QĐ19).
 - Phụ đề đi thẳng từ luồng phụ đề của engine ra sự kiện Tauri; chỉ báo và trạng thái đi qua `app://status`.
 
-**Công nghệ:** Như 02a. Thêm `sha2` 0.11.0 và dùng `rtrb` của workspace (bảng "Phiên bản đã chốt" của 02a).
+**Công nghệ:** Như 02a. Thêm `sha2` 0.11.0 và dùng `rtrb` của workspace (bảng "Phiên bản đã chốt" của 02a). Không thêm gói npm.
 
-Đọc trước 02a (`docs/superpowers/plans/2026-10-01-giai-doan-1-02a-pipeline-crate.md`): các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Dòng của bảng đối chiếu", "Quyết định" và "Điểm cần chủ dự án quyết" áp cho file này. Làm file này sau khi 02a và 02b đã commit hết.
+Đọc trước 02a (`docs/superpowers/plans/2026-10-01-giai-doan-1-02a-pipeline-crate.md`): các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Dòng của bảng đối chiếu", "Quyết định" và "Điểm cần chủ dự án quyết" áp cho file này. Làm file này sau khi 02a, 02d và 02b đã commit hết.
 
-Chỗ nối của 01 mà file này dùng (Task 26 của 01): `session_stub.rs` và chỗ gọi nó trong `actions.rs`, `lib.rs`; trait `overlay::Surface` (hiện, ẩn thanh phụ đề) và `SystemOpener` (mở trang ngoài app), cùng bản giả trong `test_support.rs`; danh sách lệnh cố định của test ACL lấy từ `commands::MAIN_COMMANDS`.
+Chỗ nối của 01 mà file này dùng (Task 26 của 01, bản chốt tên AI Translator, bundle id `com.aitranslator.desktop`): `session_stub.rs` và chỗ gọi nó trong `actions.rs`, `lib.rs`; trait `overlay::Surface` (hiện, ẩn thanh phụ đề), `SystemOpener` (mở trang ngoài app), `LoginItem` và `SettingsFile`, cùng bản giả trong `test_support.rs` (`mock_app` cài sẵn cả bốn, nên test không đụng LaunchAgent, Login Items, file cài đặt hay System Settings thật); danh sách lệnh cố định của test ACL lấy từ `commands::MAIN_COMMANDS`. Câu mới trong `src/i18n/` nhắc tên app thì dùng "AI Translator".
+
+**Ghi chú cho 03** (N8 của review 02b): nguồn `SystemExceptSelf` chỉ loại các pid của chính app. Tiếng do WebView của app phát ra đi qua tiến trình `com.apple.WebKit.GPU` (macOS) nên vẫn bị thu; bước nghe thử của 03 không được phát tiếng mẫu qua WebView mà mong nó bị loại.
 
 ---
 
@@ -27,11 +29,11 @@ Chỗ nối của 01 mà file này dùng (Task 26 của 01): `session_stub.rs` v
 
 Dòng 136, 205, 272, 313; Đ15; QĐ17, QĐ18:
 - `scripts/copy-sidecars.sh`: chép `asr-worker` (build `metal,shared-encode`) và `llama-server` b11146 cùng các `.dylib` nó cần vào `src-tauri/binaries/`, tên kèm target triple như `externalBin` của Tauri. Thư mục này bị `.gitignore` bỏ qua; bản phát hành do CI của 07 build.
-- `build.rs`: băm SHA-256 mọi file trong `binaries/` vào `OUT_DIR/sidecar_hashes.rs`, và đặt `SIDECAR_TARGET` (target triple lúc build).
+- `build.rs`: băm SHA-256 mọi file trong `binaries/` vào `OUT_DIR/sidecar_hashes.rs`, và đặt `SIDECAR_TARGET` (target triple lúc build). Tạo `binaries/` rỗng nếu chưa có, vì `rerun-if-changed` với đường dẫn không tồn tại làm cargo build lại app ở mọi lần chạy.
 - `sidecar/paths.rs`: tên file và chỗ đặt tiến trình phụ, model của từng gói (bản dev theo `tauri::is_dev()`).
-- `sidecar/integrity.rs`: kiểm SHA-256 theo bảng build sẵn; file thiếu, không có trong bảng, hay khác bảng đều bị từ chối.
+- `sidecar/integrity.rs`: kiểm SHA-256 theo bảng build sẵn; file thiếu, không có trong bảng, hay khác bảng đều bị từ chối; thư viện lạ trong thư mục (`.dll`, `.dylib`, `.so`, `libggml-…`, `ggml-…`) cũng bị từ chối; Unix: file trong bảng mà người khác ghi được thì từ chối; Windows: file đã kiểm được giữ mở với share mode chỉ cho đọc (`Verified::locks`, N2(b), N2(c) của review 02c; QĐ17).
 - `sidecar/first_run.rs`: `sidecars-seen.json`, nhớ binary nào đã chạy được, để biết lần đầu chạy binary mới.
-- `sidecar/probe.rs`: Windows, chạy `asr-worker-vulkan --probe` để chọn bản GPU hay CPU (§6.4).
+- `sidecar/probe.rs`: Windows, chạy `asr-worker-vulkan --probe` để chọn bản GPU hay CPU (§6.4): thư mục làm việc là thư mục của binary, stdout đọc trên luồng riêng, chờ 10 giây (60 giây với binary chưa từng chạy, vì Defender quét lần đầu), quá giờ thì trả "chưa biết" để lần sau dò lại (Q7 của review 02c).
 
 **Files:**
 - Sửa: `.gitignore`
@@ -78,7 +80,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 ```diff
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
-@@ -18,6 +18,7 @@
+@@ -21,6 +21,7 @@
  pub mod security;
  pub mod session_stub;
  pub mod settings;
@@ -139,6 +141,15 @@ Tạo `src-tauri/src/sidecar/integrity.rs`, lúc này mới có phần test (ph�
 //! Kiểm SHA-256 của tiến trình phụ và thư viện đi kèm trước khi chạy (spec §10.2, "Thay tiến trình phụ, hoặc chèn thư
 //! viện giả"; Đ15 của kế hoạch 00). Danh sách băm sinh lúc build từ `src-tauri/binaries/` (build.rs); kế hoạch 07 bảo đảm
 //! CI sinh danh sách từ đúng các file phát hành.
+//!
+//! Ngoài các file trong bảng, thư mục không được có file dạng thư viện lạ (`.dll`, `.dylib`, `.so`, hay tên bắt đầu bằng
+//! `libggml-`, `ggml-`): `llama-server` b11146 tự nạp mọi backend ggml nó thấy trong thư mục của nó (`ggml_backend_load_all`),
+//! nên một thư viện thả thêm vào đó sẽ chạy trong tiến trình phụ (đã thử ở review 02c). Unix: file trong bảng mà nhóm hay
+//! người khác ghi được thì cũng từ chối.
+//!
+//! Khoảng hở giữa lúc kiểm và lúc chạy (TOCTOU): trên Windows, mọi file đã kiểm được mở với share mode chỉ cho đọc và giữ
+//! handle ([`Verified::locks`]), nên không ai sửa, đổi tên hay xóa được chúng khi app còn giữ. Trên macOS dựa vào chữ ký
+//! và library validation của bản phát hành (kế hoạch 07).
 
 #[cfg(test)]
 mod tests {
@@ -161,8 +172,14 @@ mod tests {
             ("llama-server", b"server"),
             ("libggml.0.dylib", b"lib"),
         ] {
-            std::fs::write(dir.join(file), bytes).unwrap();
-            table.push((file.to_string(), sha256_file(&dir.join(file)).unwrap()));
+            let path = dir.join(file);
+            std::fs::write(&path, bytes).unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+            }
+            table.push((file.to_string(), sha256_file(&path).unwrap()));
         }
         (Temp(dir), table)
     }
@@ -184,13 +201,14 @@ mod tests {
     #[test]
     fn untouched_files_pass_and_return_the_executable_hashes() {
         let (t, table) = setup("ok");
-        let hashes = verify(
+        let verified = verify(
             &t.0,
             &[&t.0.join("asr-worker"), &t.0.join("llama-server")],
             &borrowed(&table),
         )
         .unwrap();
-        assert_eq!(hashes, [table[0].1.clone(), table[1].1.clone()]);
+        assert_eq!(verified.hashes, [table[0].1.clone(), table[1].1.clone()]);
+        assert_eq!(verified.locks.len(), if cfg!(windows) { 3 } else { 0 });
     }
 
     #[test]
@@ -199,6 +217,35 @@ mod tests {
         std::fs::write(t.0.join("libggml.0.dylib"), b"LIB").unwrap();
         let err = verify(&t.0, &[&t.0.join("asr-worker")], &borrowed(&table)).unwrap_err();
         assert_eq!(err, IntegrityError::Tampered("libggml.0.dylib".into()));
+        for exe in ["asr-worker", "llama-server"] {
+            let (t, table) = setup(&format!("exe-{exe}"));
+            std::fs::write(t.0.join(exe), b"EVIL").unwrap();
+            let err = verify(&t.0, &[&t.0.join(exe)], &borrowed(&table)).unwrap_err();
+            assert_eq!(err, IntegrityError::Tampered(exe.into()), "thay chính file {exe}");
+        }
+    }
+
+    /// N2(b) của review 02c: thư viện thả thêm vào thư mục (llama-server sẽ tự nạp) bị từ chối.
+    #[test]
+    fn an_extra_library_in_the_folder_is_refused() {
+        for extra in ["libggml-cuda-x.so", "ggml-cpu-x.dll", "libfoo.dylib", "libbar.so.1"] {
+            let (t, table) = setup(&format!("extra-{extra}"));
+            std::fs::write(t.0.join(extra), b"x").unwrap();
+            let err = verify(&t.0, &[&t.0.join("asr-worker")], &borrowed(&table)).unwrap_err();
+            assert_eq!(err, IntegrityError::Unverified(extra.into()));
+        }
+        assert!(!looks_like_library("asr-worker"));
+        assert!(!looks_like_library("notes.txt"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_others_can_write_is_refused() {
+        use std::os::unix::fs::PermissionsExt;
+        let (t, table) = setup("writable");
+        std::fs::set_permissions(t.0.join("llama-server"), std::fs::Permissions::from_mode(0o775)).unwrap();
+        let err = verify(&t.0, &[&t.0.join("asr-worker")], &borrowed(&table)).unwrap_err();
+        assert_eq!(err, IntegrityError::Writable("llama-server".into()));
     }
 
     #[test]
@@ -308,10 +355,28 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn a_probe_that_fails_or_hangs_means_cpu() {
-        // `false` thoát với mã 1; `yes` in mãi không thoát (quá thời gian chờ thì bị kill).
-        assert!(!run_probe(Path::new("/usr/bin/false"), Duration::from_secs(5)));
-        assert!(!run_probe(Path::new("/usr/bin/yes"), Duration::from_millis(200)));
-        assert!(!run_probe(Path::new("/khong/co/file"), Duration::from_secs(1)));
+        // `false` thoát với mã 1. `yes` in mãi không thoát: stdout được đọc trên luồng riêng nên không nghẽn, quá thời gian
+        // chờ thì bị kill, và kết quả là "chưa biết" (không nhớ).
+        assert_eq!(
+            run_probe(Path::new("/usr/bin/false"), Duration::from_secs(5)),
+            Some(false)
+        );
+        assert_eq!(run_probe(Path::new("/usr/bin/yes"), Duration::from_millis(200)), None);
+        assert_eq!(
+            run_probe(Path::new("/khong/co/file"), Duration::from_secs(1)),
+            Some(false)
+        );
+        // `true` thoát 0 mà không in danh sách GPU nào.
+        assert_eq!(
+            run_probe(Path::new("/usr/bin/true"), Duration::from_secs(5)),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn a_new_binary_gets_a_longer_probe() {
+        assert_eq!(probe_timeout(true), Duration::from_secs(60));
+        assert_eq!(probe_timeout(false), Duration::from_secs(10));
     }
 }
 ```
@@ -419,6 +484,8 @@ fn main() {
 /// danh sách rỗng, và app từ chối chạy tiến trình phụ nào.
 fn sidecar_hashes() {
     let dir = Path::new("binaries");
+    // Tạo thư mục rỗng nếu chưa có: `rerun-if-changed` với đường dẫn không tồn tại làm cargo build lại crate này mỗi lần.
+    std::fs::create_dir_all(dir).expect("tạo được src-tauri/binaries/");
     println!("cargo:rerun-if-changed=binaries");
     println!(
         "cargo:rustc-env=SIDECAR_TARGET={}",
@@ -491,6 +558,7 @@ Thêm vào `src-tauri/src/sidecar/integrity.rs` phần code sau, ngay dưới c�
 ```rust
 use sha2::{Digest, Sha256};
 use std::fmt::Write as _;
+use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
@@ -504,10 +572,33 @@ pub enum IntegrityError {
     Unverified(String),
     #[error("{0} khác bản build sẵn")]
     Tampered(String),
+    #[error("{0} để người khác ghi được")]
+    Writable(String),
 }
 
-pub fn sha256_file(path: &Path) -> std::io::Result<String> {
-    let mut file = std::fs::File::open(path)?;
+/// Kết quả kiểm: băm của từng file thực thi được hỏi, và (Windows) handle chỉ cho đọc của mọi file trong bảng. Giữ
+/// `locks` tới khi không cần chạy tiến trình phụ nữa.
+#[derive(Debug)]
+pub struct Verified {
+    pub hashes: Vec<String>,
+    pub locks: Vec<File>,
+}
+
+/// Mở file để kiểm. Windows: share mode chỉ `FILE_SHARE_READ`, nên khi handle còn mở thì không ai ghi, đổi tên hay xóa
+/// được file (tiến trình phụ vẫn chạy được, vì Windows chỉ cần quyền đọc).
+fn open_locked(path: &Path) -> std::io::Result<File> {
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_SHARE_READ: u32 = 0x1;
+        options.share_mode(FILE_SHARE_READ);
+    }
+    options.open(path)
+}
+
+fn sha256_of(file: &mut File) -> std::io::Result<String> {
     let mut hasher = Sha256::new();
     let mut buf = vec![0u8; 1 << 20];
     loop {
@@ -523,9 +614,35 @@ pub fn sha256_file(path: &Path) -> std::io::Result<String> {
     }))
 }
 
-/// Kiểm mọi file trong `table` (tên file trong `dir`, SHA-256), và mọi file thực thi trong `required` phải có trong bảng.
-/// Trả băm của từng file thực thi trong `required`, theo thứ tự.
-pub fn verify(dir: &Path, required: &[&Path], table: &[(&str, &str)]) -> Result<Vec<String>, IntegrityError> {
+pub fn sha256_file(path: &Path) -> std::io::Result<String> {
+    sha256_of(&mut File::open(path)?)
+}
+
+/// Tên có dạng thư viện mà `llama-server` hay hệ điều hành có thể nạp.
+pub fn looks_like_library(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.ends_with(".dll")
+        || lower.ends_with(".dylib")
+        || lower.ends_with(".so")
+        || lower.contains(".so.")
+        || lower.starts_with("libggml-")
+        || lower.starts_with("ggml-")
+}
+
+#[cfg(unix)]
+fn writable_by_others(file: &File) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    file.metadata().is_ok_and(|m| m.permissions().mode() & 0o022 != 0)
+}
+
+#[cfg(not(unix))]
+fn writable_by_others(_: &File) -> bool {
+    false
+}
+
+/// Kiểm mọi file trong `table` (tên file trong `dir`, SHA-256), mọi file thực thi trong `required` phải có trong bảng, và
+/// không có thư viện lạ trong `dir`. Trả băm của từng file thực thi trong `required`, theo thứ tự.
+pub fn verify(dir: &Path, required: &[&Path], table: &[(&str, &str)]) -> Result<Verified, IntegrityError> {
     let name = |p: &Path| {
         p.file_name()
             .map(|n| n.to_string_lossy().into_owned())
@@ -540,14 +657,29 @@ pub fn verify(dir: &Path, required: &[&Path], table: &[(&str, &str)]) -> Result<
             None => return Err(IntegrityError::Missing(exe_name)),
         }
     }
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let file = entry.file_name().to_string_lossy().into_owned();
+            if looks_like_library(&file) && !table.iter().any(|(n, _)| *n == file) {
+                return Err(IntegrityError::Unverified(file));
+            }
+        }
+    }
+    let mut locks = Vec::new();
     for (file, expected) in table {
-        let path = dir.join(file);
-        let actual = sha256_file(&path).map_err(|_| IntegrityError::Missing(file.to_string()))?;
+        let mut handle = open_locked(&dir.join(file)).map_err(|_| IntegrityError::Missing(file.to_string()))?;
+        if writable_by_others(&handle) {
+            return Err(IntegrityError::Writable(file.to_string()));
+        }
+        let actual = sha256_of(&mut handle).map_err(|_| IntegrityError::Missing(file.to_string()))?;
         if actual != *expected {
             return Err(IntegrityError::Tampered(file.to_string()));
         }
+        if cfg!(windows) {
+            locks.push(handle);
+        }
     }
-    Ok(hashes)
+    Ok(Verified { hashes, locks })
 }
 ```
 
@@ -669,37 +801,64 @@ pub fn usable_gpu(probe_stdout: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Chạy `exe --probe`, chờ tối đa `timeout`. Lỗi, quá giờ hay mã thoát khác 0 đều là "không có GPU dùng được".
-pub fn run_probe(exe: &Path, timeout: Duration) -> bool {
+/// Thời gian chờ `--probe`: binary đã từng chạy thì 10 giây; binary mới (vừa cài hay cập nhật) thì 60 giây, vì lần đầu
+/// Windows Defender quét file có thể lâu (Q7 của review 02c).
+pub fn probe_timeout(first_run: bool) -> Duration {
+    Duration::from_secs(if first_run { 60 } else { 10 })
+}
+
+/// Chạy `exe --probe`, chờ tối đa `timeout`. `Some(true)`: có GPU dùng được. `Some(false)`: không có (lỗi chạy, mã thoát
+/// khác 0, hay danh sách không có GPU nào dùng được). `None`: quá giờ; bên gọi không nên nhớ kết quả này, để lần sau dò
+/// lại. stdout được đọc trên luồng riêng, để tiến trình in nhiều không bị nghẽn vì pipe đầy.
+pub fn run_probe(exe: &Path, timeout: Duration) -> Option<bool> {
     let mut cmd = Command::new(exe);
     cmd.arg("--probe")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null());
+    if let Some(dir) = exe.parent().filter(|d| !d.as_os_str().is_empty()) {
+        cmd.current_dir(dir);
+    }
     pipeline::process::configure(&mut cmd);
-    let Ok(mut child) = cmd.spawn() else { return false };
+    let Ok(mut child) = pipeline::process::spawn(&mut cmd, exe) else {
+        return Some(false);
+    };
+    let reader = child.stdout.take().map(|mut stdout| {
+        std::thread::spawn(move || {
+            use std::io::Read;
+            let mut out = String::new();
+            let _ = stdout.read_to_string(&mut out);
+            out
+        })
+    });
     let started = Instant::now();
-    loop {
+    let result = loop {
         match child.try_wait() {
-            Ok(Some(status)) if status.success() => break,
+            Ok(Some(status)) if status.success() => break Some(true),
             Ok(Some(status)) => {
                 log::info!("{} --probe thoát với {status}: dùng bản CPU", exe.display());
-                return false;
+                break Some(false);
             }
             Ok(None) if started.elapsed() < timeout => std::thread::sleep(Duration::from_millis(50)),
-            _ => {
+            Ok(None) => {
+                log::warn!(
+                    "{} --probe quá {timeout:?}: lần này dùng bản CPU, lần sau dò lại",
+                    exe.display()
+                );
                 let _ = child.kill();
                 let _ = child.wait();
-                return false;
+                break None;
+            }
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break Some(false);
             }
         }
-    }
-    let mut out = String::new();
-    if let Some(mut stdout) = child.stdout.take() {
-        use std::io::Read;
-        let _ = stdout.read_to_string(&mut out);
-    }
-    usable_gpu(&out)
+    };
+    pipeline::process::release(child.id());
+    let out = reader.and_then(|r| r.join().ok()).unwrap_or_default();
+    result.map(|ok| ok && usable_gpu(&out))
 }
 ```
 
@@ -711,18 +870,21 @@ Run: `cargo test -p meeting-translator --lib sidecar`
 Expected:
 
 ```text
+test sidecar::probe::tests::a_new_binary_gets_a_longer_probe ... ok
 test sidecar::paths::tests::names_follow_the_external_bin_convention ... ok
 test sidecar::paths::tests::windows_has_two_asr_workers_and_macos_one ... ok
 test sidecar::paths::tests::model_files_by_tier ... ok
 test sidecar::probe::tests::discrete_or_integrated_gpus_are_usable ... ok
 test sidecar::probe::tests::no_gpu_software_renderer_or_garbage_means_cpu ... ok
 test sidecar::integrity::tests::sha256_matches_shasum ... ok
-test sidecar::integrity::tests::untouched_files_pass_and_return_the_executable_hashes ... ok
+test sidecar::integrity::tests::a_file_others_can_write_is_refused ... ok
 test sidecar::integrity::tests::unknown_or_missing_files_are_refused ... ok
-test sidecar::integrity::tests::a_changed_library_or_executable_is_refused ... ok
+test sidecar::integrity::tests::untouched_files_pass_and_return_the_executable_hashes ... ok
+test sidecar::integrity::tests::an_extra_library_in_the_folder_is_refused ... ok
 test sidecar::first_run::tests::a_binary_is_new_until_it_has_run_once ... ok
+test sidecar::integrity::tests::a_changed_library_or_executable_is_refused ... ok
 test sidecar::probe::tests::a_probe_that_fails_or_hangs_means_cpu ... ok
-test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 84 filtered out; finished in 0.28s
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 89 filtered out; finished in 0.42s
 ```
 
 - [ ] **Step 6: Chép tiến trình phụ cho bản dev** (cần bản release của `asr-worker`, 02a Task 1 Step 7)
@@ -778,8 +940,13 @@ git commit -m "feat(app): tiến trình phụ trong binaries/, SHA-256 build s�
 ## Task 2: Nguồn âm thanh của phiên, mã lỗi mới
 
 Dòng 7, 85–88, 90, 91, 94, 98, 230, 232, 248; QĐ16, QĐ20:
-- `capture.rs`: `LiveCapture` (trait `FrameSource` của engine). Nguồn chạy trên luồng riêng, vì `start()` có thể chờ lâu; mỗi 500 ms kiểm thiết bị phát mặc định và luồng thu, đổi hay chết thì mở lại; `ClockFiller` chèn im lặng theo đồng hồ thật trong lúc chưa có nguồn. Âm thanh chỉ nằm trong RAM. Lỗi mở nguồn đổi thành mã cho giao diện: `appNotPlaying` (app đã chọn không phát tiếng), `audioPermission` (tạo tap lỗi trên macOS, thường là chưa cấp quyền; chờ C1), `captureFailed`.
-- `errors.rs`: tám mã lỗi của phiên dịch (§9), kèm câu tiếng Anh và tiếng Việt trong `src/i18n/` (test `every_error_code_has_ui_text` bắt chỗ thiếu).
+- `capture.rs` (QĐ28): `LiveCapture` (trait `FrameSource` của engine).
+  - Nguồn được mở và chạy trên luồng riêng; mỗi 500 ms kiểm thiết bị phát mặc định (cả nguồn toàn hệ thống lẫn nguồn một app) và luồng thu, đổi hay chết thì mở lại (Q3 của review 02c). Nguồn một app trên macOS tap mọi tiến trình của app (`TapTarget::Processes`).
+  - `FailurePolicy`: lần mở đầu lỗi thì báo ngay; nguồn đã chạy rồi mà lỗi thì chỉ báo khi lỗi kéo dài 10 giây (Q2).
+  - `ZeroWatch`: macOS, mẫu toàn số 0 tuyệt đối 3 giây trong khi có app đang phát thì báo nghi thiếu quyền, không dừng phiên (Q4).
+  - `ClockFiller` chèn im lặng theo đồng hồ thật khi nguồn không trả mẫu. Âm thanh chỉ nằm trong RAM. Hủy `LiveCapture` thì chờ luồng thu tối đa 500 ms.
+  - Lỗi mở nguồn đổi thành mã cho giao diện: `appNotPlaying` (app đã chọn không phát tiếng), `audioPermission` (tạo tap lỗi trên macOS, thường là chưa cấp quyền; chờ C1), `captureFailed`.
+- `errors.rs`: mã lỗi của phiên dịch (§9): `sidecarMissing`, `sidecarTampered`, `sidecarFailed`, `modelMissing`, `modelBroken`, `audioPermission`, `captureFailed`, `appNotPlaying`, `vadFailed`, `quotaExhausted` (06 thêm thời điểm reset và nút nâng gói), và `unknown` cho lỗi bên trong không thuộc loại nào; câu tiếng Anh và tiếng Việt trong `src/i18n/` (test `every_error_code_has_ui_text` bắt chỗ thiếu).
 
 **Files:**
 - Sửa: `Cargo.lock` (cargo tự cập nhật)
@@ -817,7 +984,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 ```diff
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
-@@ -4,6 +4,7 @@
+@@ -7,6 +7,7 @@
  //! Kế hoạch 02 nối `audio-capture` và `pipeline` vào, thay `session_stub.rs` bằng `session.rs`.
  
  pub mod actions;
@@ -835,9 +1002,15 @@ Tạo `src-tauri/src/capture.rs`, lúc này mới có phần test (phần code t
 //! Nối `audio-capture` vào pipeline (spec §6.1, §6.2, §9): mở nguồn âm thanh theo cài đặt `audioSource`, đưa mẫu 16 kHz
 //! mono cho `pipeline::engine`.
 //!
-//! - Nguồn chạy trên một luồng riêng, vì `start()` có thể chờ lâu (macOS: tap chờ tới khi có app phát tiếng).
-//! - Mỗi 500 ms luồng đó xem thiết bị phát mặc định đã đổi chưa (cắm tai nghe, Bluetooth) và luồng thu còn sống không; có
-//!   thì mở lại nguồn (§9: khởi tạo lại trong ≤ 2 giây).
+//! - Nguồn được mở và chạy trên một luồng riêng ("capture"), để việc mở (tạo tap và aggregate device, lần đầu macOS có
+//!   thể hỏi quyền) không chặn luồng VAD.
+//! - Mỗi 500 ms luồng đó xem thiết bị phát mặc định đã đổi chưa (cắm tai nghe, Bluetooth, tai nghe đổi tần số mẫu) và
+//!   luồng thu còn sống không (`AudioSource::failed`; macOS chỉ tap một app: app đó đã thoát); có thì mở lại nguồn (§9:
+//!   khởi tạo lại trong ≤ 2 giây). Áp cho cả nguồn toàn hệ thống lẫn nguồn một app.
+//! - Báo lỗi ([`FailurePolicy`]): lần mở đầu tiên lỗi thì báo ngay. Nguồn đã chạy được rồi mà lỗi (đang mở lại) thì chỉ báo
+//!   khi lỗi kéo dài từ 10 giây, vì §9 đòi tự khởi tạo lại, không dừng phiên.
+//! - macOS: nguồn trả mẫu toàn số 0 tuyệt đối suốt 3 giây trong khi có app đang phát tiếng thì nhiều khả năng app chưa
+//!   được cấp quyền "Ghi âm thanh hệ thống" (§9): báo [`CaptureEvent::PermissionSuspected`], không dừng phiên.
 //! - Trong lúc nguồn chưa chạy hay đang mở lại, `ClockFiller` chèn im lặng theo đồng hồ thật, để thời gian phụ đề không
 //!   lệch.
 //! - Âm thanh chỉ nằm trong RAM (§10.1): không ghi xuống đĩa, không gửi đi đâu.
@@ -861,6 +1034,53 @@ mod tests {
             assert_eq!(error_code(&AudioSource::System, &tap), errors::AUDIO_PERMISSION);
         }
     }
+
+    /// Q2 của review 02c: lần mở đầu lỗi thì báo ngay; nguồn đã chạy rồi mà lỗi thì chỉ báo khi lỗi kéo dài 10 giây.
+    #[test]
+    fn failures_are_reported_at_once_only_before_the_first_success() {
+        let t0 = Instant::now();
+        let at = |s: u64| t0 + Duration::from_secs(s);
+        let mut p = FailurePolicy::default();
+        assert!(p.on_failure(at(0)), "lần mở đầu tiên");
+        assert!(!p.on_failure(at(2)), "đã báo rồi");
+        let mut p = FailurePolicy::default();
+        p.on_ok();
+        assert!(!p.on_failure(at(0)));
+        assert!(!p.on_failure(at(9)));
+        assert!(p.on_failure(at(10)), "lỗi liên tục 10 giây");
+        assert!(!p.on_failure(at(12)));
+        p.on_ok();
+        assert!(!p.on_failure(at(20)), "chạy lại được thì đếm lại từ đầu");
+        assert!(p.on_failure(at(31)));
+    }
+
+    /// Q4 của review 02c: mẫu toàn 0 tuyệt đối 3 giây trong khi có app phát tiếng thì nghi thiếu quyền.
+    #[test]
+    fn three_seconds_of_exact_zeros_while_an_app_plays_suggest_a_missing_permission() {
+        let t0 = Instant::now();
+        let at = |ms: u64| t0 + Duration::from_millis(ms);
+        let zeros = [0.0f32; 320];
+        let mut w = ZeroWatch::default();
+        assert_eq!(w.push(&zeros, at(0), || true), None);
+        assert_eq!(w.push(&[], at(5_000), || panic!("không mẫu nào thì không hỏi")), None);
+        assert_eq!(w.push(&zeros, at(2_999), || true), None);
+        assert_eq!(w.push(&zeros, at(3_000), || true), Some(true));
+        assert_eq!(w.push(&zeros, at(4_000), || true), None, "chỉ báo một lần");
+        assert_eq!(
+            w.push(&[0.0, 0.01], at(4_100), || true),
+            Some(false),
+            "có âm thanh thật"
+        );
+        // Không app nào phát: số 0 là im lặng thật, không báo.
+        let mut w = ZeroWatch::default();
+        assert_eq!(w.push(&zeros, at(0), || false), None);
+        assert_eq!(w.push(&zeros, at(3_500), || false), None);
+        assert_eq!(w.push(&zeros, at(6_000), || false), None);
+        // Tiếng rất nhỏ nhưng khác 0 thì không phải dấu hiệu.
+        let mut w = ZeroWatch::default();
+        assert_eq!(w.push(&[1e-7; 320], at(0), || true), None);
+        assert_eq!(w.push(&[1e-7; 320], at(5_000), || true), None);
+    }
 }
 ```
 
@@ -869,31 +1089,24 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 ```diff
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
-@@ -108,7 +108,23 @@
-             }
-             codes.push(CommandError::hotkey(HotkeyAction::ToggleLock, error).code);
-         }
--        codes.extend([AUTOSTART_FAILED, OVERLAY_FAILED, OPEN_FAILED, UNSUPPORTED].map(String::from));
-+        codes.extend(
-+            [
-+                AUTOSTART_FAILED,
-+                OVERLAY_FAILED,
-+                OPEN_FAILED,
-+                UNSUPPORTED,
+@@ -117,6 +117,17 @@
+                 OVERLAY_FAILED,
+                 OPEN_FAILED,
+                 UNSUPPORTED,
 +                SIDECAR_MISSING,
 +                SIDECAR_TAMPERED,
 +                SIDECAR_FAILED,
 +                MODEL_MISSING,
++                MODEL_BROKEN,
 +                AUDIO_PERMISSION,
 +                CAPTURE_FAILED,
 +                APP_NOT_PLAYING,
 +                VAD_FAILED,
-+            ]
-+            .map(String::from),
-+        );
-         for code in codes {
-             assert!(
-                 en.contains(&format!("\"error.{code}\":")),
++                QUOTA_EXHAUSTED,
++                UNKNOWN,
+             ]
+             .map(String::from),
+         );
 ```
 
 - [ ] **Step 3: Chạy test, thấy đỏ**
@@ -903,11 +1116,11 @@ Expected: biên dịch lỗi:
 
 ```text
 error[E0433]: cannot find type `AudioSource` in this scope
+error[E0433]: cannot find type `Instant` in this scope
+error[E0433]: cannot find type `Duration` in this scope
 error[E0425]: cannot find value `SIDECAR_MISSING` in this scope
 error[E0425]: cannot find value `SIDECAR_TAMPERED` in this scope
 error[E0425]: cannot find value `SIDECAR_FAILED` in this scope
-error[E0425]: cannot find value `MODEL_MISSING` in this scope
-error[E0425]: cannot find value `AUDIO_PERMISSION` in this scope
 ```
 
 - [ ] **Step 4: Viết code**
@@ -927,13 +1140,88 @@ use pipeline::engine::FrameSource;
 use crate::errors;
 use crate::settings::AudioSource;
 
-/// Chu kỳ kiểm thiết bị phát và luồng thu.
+/// Chu kỳ kiểm thiết bị phát và luồng thu (§6.2).
 const WATCH_EVERY: Duration = Duration::from_millis(500);
+/// Luồng thu xem cờ dừng sau mỗi bước chờ ngắn này.
+const STEP: Duration = Duration::from_millis(50);
 /// Mở nguồn lỗi thì thử lại sau chừng này.
 const RETRY_AFTER: Duration = Duration::from_secs(2);
+/// Nguồn đã chạy được rồi mà lỗi liên tục chừng này thì mới báo (§9: tự khởi tạo lại trong ≤ 2 giây).
+const FAIL_AFTER: Duration = Duration::from_secs(10);
+/// Mẫu toàn số 0 tuyệt đối chừng này (trong khi có app đang phát) thì nghi chưa có quyền (§9).
+const ZERO_FOR: Duration = Duration::from_secs(3);
+/// `LiveCapture` bị hủy thì chờ luồng thu tối đa chừng này, để tap cũ không còn chạy song song với phiên mới.
+const JOIN_WITHIN: Duration = Duration::from_millis(500);
 
-/// Lỗi mở nguồn, báo một lần cho phiên (mã lỗi của `errors`).
-pub type OnError = Box<dyn Fn(&'static str, String) + Send + Sync>;
+/// Việc nguồn âm thanh báo cho phiên.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CaptureEvent {
+    /// Không thu được âm thanh: phiên dừng với mã lỗi này (`errors`).
+    Failed { code: &'static str, message: String },
+    /// macOS: nghi chưa được cấp quyền ghi âm thanh hệ thống (`true`), hoặc đã có âm thanh thật trở lại (`false`).
+    PermissionSuspected(bool),
+}
+
+pub type OnEvent = Box<dyn Fn(CaptureEvent) + Send + Sync>;
+
+/// Khi nào một lần mở nguồn thất bại phải báo cho phiên (Q2 của review 02c).
+#[derive(Debug, Default)]
+pub struct FailurePolicy {
+    ever_ok: bool,
+    failing_since: Option<Instant>,
+    reported: bool,
+}
+
+impl FailurePolicy {
+    /// Nguồn vừa chạy được.
+    pub fn on_ok(&mut self) {
+        self.ever_ok = true;
+        self.failing_since = None;
+        self.reported = false;
+    }
+
+    /// Một lần mở thất bại lúc `now`. Trả `true` nếu phải báo lỗi bây giờ (mỗi đợt lỗi báo một lần).
+    pub fn on_failure(&mut self, now: Instant) -> bool {
+        let since = *self.failing_since.get_or_insert(now);
+        let due = !self.ever_ok || now.duration_since(since) >= FAIL_AFTER;
+        if due && !self.reported {
+            self.reported = true;
+            return true;
+        }
+        false
+    }
+}
+
+/// Theo dõi chuỗi mẫu toàn số 0 tuyệt đối (Q4 của review 02c).
+#[derive(Debug, Default)]
+pub struct ZeroWatch {
+    zero_since: Option<Instant>,
+    suspected: bool,
+}
+
+impl ZeroWatch {
+    /// Mẫu thật vừa nhận (không gồm im lặng do `ClockFiller` chèn). `someone_playing` chỉ được gọi khi chuỗi số 0 đã đủ
+    /// dài. Trả trạng thái mới khi nó đổi.
+    pub fn push(&mut self, samples: &[f32], now: Instant, someone_playing: impl FnOnce() -> bool) -> Option<bool> {
+        if samples.is_empty() {
+            return None;
+        }
+        if samples.iter().any(|&x| x != 0.0) {
+            self.zero_since = None;
+            return std::mem::take(&mut self.suspected).then_some(false);
+        }
+        let since = *self.zero_since.get_or_insert(now);
+        if !self.suspected && now.duration_since(since) >= ZERO_FOR {
+            if someone_playing() {
+                self.suspected = true;
+                return Some(true);
+            }
+            // Không app nào phát: số 0 là im lặng thật. Đếm lại từ đầu.
+            self.zero_since = Some(now);
+        }
+        None
+    }
+}
 
 /// Nguồn của cài đặt hiện tại. `include_self`: macOS, tap toàn hệ thống thu cả âm thanh của chính app (bước "Nghe thử",
 /// §4.1 bước 6, Đ16 của kế hoạch 00); Windows, loopback vốn thu mọi âm thanh của máy nên không đổi gì.
@@ -947,7 +1235,7 @@ fn open_sources(source: &AudioSource, include_self: bool) -> anyhow::Result<Vec<
                     .into_iter()
                     .find(|a| &a.bundle_id == bundle_id)
                     .ok_or_else(|| anyhow::anyhow!("{bundle_id} không phát âm thanh"))?;
-                TapTarget::Process(app.pid)
+                TapTarget::Processes(app.pids)
             }
             _ if include_self => TapTarget::System,
             _ => TapTarget::SystemExceptSelf,
@@ -985,6 +1273,14 @@ fn open_sources(source: &AudioSource, include_self: bool) -> anyhow::Result<Vec<
     }
 }
 
+/// Có app nào khác đang phát tiếng không (macOS). Windows không cần: loopback không phụ thuộc quyền.
+fn someone_playing() -> bool {
+    #[cfg(target_os = "macos")]
+    return audio_capture::macos::audio_apps().is_ok_and(|apps| !apps.is_empty());
+    #[allow(unreachable_code)]
+    false
+}
+
 /// Mã lỗi cho một lần mở nguồn thất bại.
 fn error_code(source: &AudioSource, err: &anyhow::Error) -> &'static str {
     let text = format!("{err:#}");
@@ -998,69 +1294,79 @@ fn error_code(source: &AudioSource, err: &anyhow::Error) -> &'static str {
     }
 }
 
+/// Chờ `d`, trả `true` nếu được yêu cầu dừng trong lúc chờ.
+fn wait_or_stop(stop: &AtomicBool, d: Duration) -> bool {
+    let deadline = Instant::now() + d;
+    while Instant::now() < deadline {
+        if stop.load(Ordering::SeqCst) {
+            return true;
+        }
+        std::thread::sleep(STEP);
+    }
+    stop.load(Ordering::SeqCst)
+}
+
+/// Mở các nguồn và chạy chúng; lỗi thì dừng những nguồn đã chạy.
+fn start_sources(source: &AudioSource, include_self: bool) -> anyhow::Result<(Vec<Box<dyn Source>>, Preprocessor)> {
+    let mut sources = open_sources(source, include_self)?;
+    let mut rings = Vec::new();
+    for s in &mut sources {
+        let (producer, consumer) = rtrb::RingBuffer::new(RING_SAMPLES);
+        if let Err(e) = s.start(producer) {
+            sources.iter_mut().for_each(|s| s.stop());
+            return Err(e);
+        }
+        rings.push((consumer, s.format()));
+    }
+    match Preprocessor::new(rings) {
+        Ok(p) => Ok((sources, p)),
+        Err(e) => {
+            sources.iter_mut().for_each(|s| s.stop());
+            Err(e)
+        }
+    }
+}
+
 /// Chạy nguồn cho tới khi `stop`, mở lại khi thiết bị đổi hay luồng thu chết.
 fn capture_loop(
     source: AudioSource,
     include_self: bool,
     shared: Arc<Mutex<Option<Preprocessor>>>,
     stop: Arc<AtomicBool>,
-    on_error: OnError,
+    on_event: Arc<OnEvent>,
 ) {
-    let mut reported = false;
+    let mut policy = FailurePolicy::default();
+    // Thiết bị chọn tay (Windows) không theo thiết bị mặc định.
+    let follows_default = !matches!(source, AudioSource::Device { .. });
     while !stop.load(Ordering::SeqCst) {
         let signature = audio_capture::default_output_signature();
-        let mut sources = match open_sources(&source, include_self) {
-            Ok(s) => s,
+        let mut sources = match start_sources(&source, include_self) {
+            Ok((sources, preprocessor)) => {
+                *shared.lock().unwrap_or_else(|e| e.into_inner()) = Some(preprocessor);
+                policy.on_ok();
+                sources
+            }
             Err(e) => {
                 log::warn!("không mở được nguồn âm thanh: {e:#}");
-                if !reported {
-                    reported = true;
-                    on_error(error_code(&source, &e), format!("{e:#}"));
+                if policy.on_failure(Instant::now()) {
+                    on_event(CaptureEvent::Failed {
+                        code: error_code(&source, &e),
+                        message: format!("{e:#}"),
+                    });
                 }
-                std::thread::sleep(RETRY_AFTER);
+                wait_or_stop(&stop, RETRY_AFTER);
                 continue;
             }
         };
-        let mut rings = Vec::new();
-        let mut failed = None;
-        for s in &mut sources {
-            let (producer, consumer) = rtrb::RingBuffer::new(RING_SAMPLES);
-            match s.start(producer) {
-                Ok(()) => rings.push((consumer, s.format())),
-                Err(e) => {
-                    failed = Some(e);
-                    break;
-                }
-            }
-        }
-        if let Some(e) = failed {
-            log::warn!("không chạy được nguồn âm thanh: {e:#}");
-            if !reported {
-                reported = true;
-                on_error(error_code(&source, &e), format!("{e:#}"));
-            }
-            sources.iter_mut().for_each(|s| s.stop());
-            std::thread::sleep(RETRY_AFTER);
-            continue;
-        }
-        match Preprocessor::new(rings) {
-            Ok(p) => *shared.lock().unwrap() = Some(p),
-            Err(e) => log::warn!("không dựng được bộ tiền xử lý: {e:#}"),
-        }
         log::info!("đang thu âm thanh ({} nguồn)", sources.len());
-        loop {
-            std::thread::sleep(WATCH_EVERY);
-            if stop.load(Ordering::SeqCst) {
-                break;
-            }
-            let device_changed =
-                matches!(source, AudioSource::System) && audio_capture::default_output_signature() != signature;
+        while !wait_or_stop(&stop, WATCH_EVERY) {
+            let device_changed = follows_default && audio_capture::default_output_signature() != signature;
             if device_changed || sources.iter().any(|s| s.failed()) {
                 log::info!("thiết bị phát đã đổi hoặc luồng thu dừng: mở lại nguồn âm thanh");
                 break;
             }
         }
-        *shared.lock().unwrap() = None;
+        *shared.lock().unwrap_or_else(|e| e.into_inner()) = None;
         sources.iter_mut().for_each(|s| s.stop());
     }
 }
@@ -1071,19 +1377,22 @@ pub struct LiveCapture {
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
     filler: ClockFiller,
+    zeros: ZeroWatch,
+    on_event: Arc<OnEvent>,
     started: Instant,
     buf: Vec<f32>,
 }
 
 impl LiveCapture {
-    pub fn open(source: AudioSource, include_self: bool, on_error: OnError) -> Self {
+    pub fn open(source: AudioSource, include_self: bool, on_event: OnEvent) -> Self {
         let shared = Arc::new(Mutex::new(None));
         let stop = Arc::new(AtomicBool::new(false));
+        let on_event = Arc::new(on_event);
         let thread = {
-            let (shared, stop) = (shared.clone(), stop.clone());
+            let (shared, stop, on_event) = (shared.clone(), stop.clone(), on_event.clone());
             std::thread::Builder::new()
                 .name("capture".into())
-                .spawn(move || capture_loop(source, include_self, shared, stop, on_error))
+                .spawn(move || capture_loop(source, include_self, shared, stop, on_event))
                 .ok()
         };
         Self {
@@ -1091,6 +1400,8 @@ impl LiveCapture {
             stop,
             thread,
             filler: ClockFiller::new(200),
+            zeros: ZeroWatch::default(),
+            on_event,
             started: Instant::now(),
             buf: Vec::new(),
         }
@@ -1101,8 +1412,13 @@ impl FrameSource for LiveCapture {
     fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
         std::thread::sleep(timeout.min(Duration::from_millis(20)));
         self.buf.clear();
-        if let Some(p) = self.shared.lock().unwrap().as_mut() {
+        if let Some(p) = self.shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
             p.drain(&mut self.buf)?;
+        }
+        if cfg!(target_os = "macos")
+            && let Some(suspected) = self.zeros.push(&self.buf, Instant::now(), someone_playing)
+        {
+            (self.on_event)(CaptureEvent::PermissionSuspected(suspected));
         }
         let silence = self.filler.silence_before(self.started.elapsed(), self.buf.len());
         out.extend(std::iter::repeat_n(0.0, silence));
@@ -1114,8 +1430,18 @@ impl FrameSource for LiveCapture {
 impl Drop for LiveCapture {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::SeqCst);
-        // Luồng thu có thể đang kẹt trong `start()` (macOS chờ app phát tiếng): không chờ nó, nó tự dừng khi `start` trả về.
-        drop(self.thread.take());
+        // Chờ luồng thu dừng tap (tối đa 500 ms), để tap của phiên cũ không chạy song song với phiên mới. Luồng kẹt lâu hơn
+        // (ví dụ đang chờ hộp thoại quyền lần đầu) thì bỏ mặc: nó tự dừng khi lệnh đang chờ trả về.
+        let Some(thread) = self.thread.take() else { return };
+        let deadline = Instant::now() + JOIN_WITHIN;
+        while !thread.is_finished() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        if thread.is_finished() {
+            let _ = thread.join();
+        } else {
+            log::warn!("luồng thu chưa dừng sau {JOIN_WITHIN:?}");
+        }
     }
 }
 ```
@@ -1125,7 +1451,7 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 ```diff
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
-@@ -21,6 +21,23 @@
+@@ -23,6 +23,29 @@
  pub const OVERLAY_FAILED: &str = "overlayFailed";
  pub const OPEN_FAILED: &str = "openFailed";
  pub const UNSUPPORTED: &str = "unsupported";
@@ -1144,8 +1470,14 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 +pub const CAPTURE_FAILED: &str = "captureFailed";
 +/// macOS, tap một app: app đó không phát âm thanh.
 +pub const APP_NOT_PLAYING: &str = "appNotPlaying";
++/// Model không nạp được, kể cả bằng CPU: model hỏng (§9: đề nghị tải lại, kế hoạch 04).
++pub const MODEL_BROKEN: &str = "modelBroken";
 +/// Không nạp được VAD.
 +pub const VAD_FAILED: &str = "vadFailed";
++/// Chạm hạn mức (§6.8): phiên dừng với lý do `quota_exhausted`. Kế hoạch 06 thêm thời điểm reset và nút nâng gói.
++pub const QUOTA_EXHAUSTED: &str = "quotaExhausted";
++/// Lỗi bên trong app không thuộc loại nào ở trên (ví dụ một tác vụ nền dừng bất thường).
++pub const UNKNOWN: &str = "unknown";
  
  impl CommandError {
      pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
@@ -1156,18 +1488,20 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 ```diff
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
-@@ -133,6 +133,14 @@
+@@ -134,6 +134,16 @@
    "error.overlayFailed": "Could not change the subtitle bar.",
    "error.openFailed": "Could not open it.",
    "error.unsupported": "Not available on this system.",
-+  "error.sidecarMissing": "Part of the app is missing. Please reinstall Meeting Translator.",
-+  "error.sidecarTampered": "Part of the app was changed or damaged. Please reinstall Meeting Translator.",
++  "error.sidecarMissing": "Part of the app is missing. Please reinstall AI Translator.",
++  "error.sidecarTampered": "Part of the app was changed or damaged. Please reinstall AI Translator.",
 +  "error.sidecarFailed": "Speech recognition stopped working. Press Start to try again; if it keeps failing, send the logs to support.",
 +  "error.modelMissing": "The model has not been downloaded yet.",
-+  "error.audioPermission": "Meeting Translator is not allowed to record system audio.",
++  "error.audioPermission": "AI Translator is not allowed to record system audio.",
 +  "error.captureFailed": "Could not capture audio.",
 +  "error.appNotPlaying": "The chosen app is not playing sound. Start the meeting audio, or choose the whole system.",
-+  "error.vadFailed": "Could not load the speech detector. Please reinstall Meeting Translator.",
++  "error.vadFailed": "Could not load the speech detector. Please reinstall AI Translator.",
++  "error.modelBroken": "The model is damaged. Please download it again.",
++  "error.quotaExhausted": "The translation quota has been used up.",
    "error.unknown": "Something went wrong.",
  } as const;
  
@@ -1178,18 +1512,20 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 ```diff
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
-@@ -133,5 +133,13 @@
+@@ -134,5 +134,15 @@
    "error.overlayFailed": "Không đổi được thanh phụ đề.",
    "error.openFailed": "Không mở được.",
    "error.unsupported": "Không có trên hệ điều hành này.",
-+  "error.sidecarMissing": "Thiếu một phần của app. Hãy cài lại Meeting Translator.",
-+  "error.sidecarTampered": "Một phần của app đã bị thay đổi hoặc hỏng. Hãy cài lại Meeting Translator.",
++  "error.sidecarMissing": "Thiếu một phần của app. Hãy cài lại AI Translator.",
++  "error.sidecarTampered": "Một phần của app đã bị thay đổi hoặc hỏng. Hãy cài lại AI Translator.",
 +  "error.sidecarFailed": "Phần nhận dạng giọng nói ngừng chạy. Bấm Bắt đầu để thử lại; nếu vẫn lỗi, hãy gửi log cho bộ phận hỗ trợ.",
 +  "error.modelMissing": "Chưa tải model.",
-+  "error.audioPermission": "Meeting Translator chưa được phép ghi âm thanh hệ thống.",
++  "error.audioPermission": "AI Translator chưa được phép ghi âm thanh hệ thống.",
 +  "error.captureFailed": "Không thu được âm thanh.",
 +  "error.appNotPlaying": "App đã chọn không phát tiếng. Hãy bật âm thanh cuộc họp, hoặc chọn toàn hệ thống.",
-+  "error.vadFailed": "Không nạp được bộ nhận biết tiếng nói. Hãy cài lại Meeting Translator.",
++  "error.vadFailed": "Không nạp được bộ nhận biết tiếng nói. Hãy cài lại AI Translator.",
++  "error.modelBroken": "Model bị hỏng. Hãy tải lại model.",
++  "error.quotaExhausted": "Đã dùng hết hạn mức dịch.",
    "error.unknown": "Có lỗi xảy ra.",
  };
 ```
@@ -1200,11 +1536,13 @@ Run: `cargo test -p meeting-translator --lib -- capture errors && pnpm test`
 Expected:
 
 ```text
+test capture::tests::failures_are_reported_at_once_only_before_the_first_success ... ok
+test capture::tests::three_seconds_of_exact_zeros_while_an_app_plays_suggest_a_missing_permission ... ok
 test capture::tests::capture_errors_map_to_ui_codes ... ok
 test errors::tests::invalid_setting_maps_to_reason_code_and_field ... ok
 test security::keystore::tests::platform_errors_are_reported ... ok
 test errors::tests::every_error_code_has_ui_text ... ok
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; finished in 0.00s
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 100 filtered out; finished in 0.00s
 ```
 
 ```text
@@ -1212,10 +1550,21 @@ test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; fin
       Tests  28 passed (28)
 ```
 
-- [ ] **Step 6: Clippy và định dạng**
+- [ ] **Step 6: Clippy (cả target Windows) và định dạng**
 
-Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
-Expected: không có cảnh báo, `cargo fmt` không in gì.
+Run:
+```bash
+cargo clippy -p meeting-translator --all-targets -- -D warnings
+RC_x86_64_pc_windows_msvc=$PWD/scripts/fake-llvm-rc PKG_CONFIG_x86_64_pc_windows_msvc=$PWD/scripts/fake-pkg-config \
+  PKG_CONFIG_ALLOW_CROSS=1 RUSTONIG_DYNAMIC_LIBONIG=1 \
+  cargo clippy -p meeting-translator --target x86_64-pc-windows-msvc --all-targets -- -D warnings
+cargo fmt --all -- --check
+```
+Expected: không có cảnh báo, `cargo fmt` không in gì. Dòng cuối của lệnh thứ hai:
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.81s
+```
 
 - [ ] **Step 7: Commit**
 
@@ -1232,19 +1581,20 @@ git commit -m "feat(app): nguồn âm thanh của phiên, mở lại khi thiết
 
 ## Task 3: Phiên dịch (`session.rs`)
 
-Thay `session_stub.rs` (dòng 15, 16, 43, 45, 61, 66, 73, 79, 81, 82, 96, 105, 141, 222, 236, 237, 305; QĐ17–QĐ20):
+Thay `session_stub.rs` (dòng 15, 16, 43, 45, 61, 66, 73, 79, 81, 82, 96, 105, 141, 222, 236, 237, 305; QĐ8, QĐ17–QĐ20, QĐ29):
 - `session.rs`:
   - trait `SessionDeps` (tiến trình phụ, nguồn âm thanh, VAD) với hai bản: `LiveDeps` cho app, `FakeDeps` cho test;
-  - `start`/`start_with` (`StartOptions { include_self }` cho bước nghe thử của 03), `stop`, `toggle` (đang nạp model thì bấm là hủy), `shutdown` (Thoát; đang nạp model thì kill luôn), `prewarm` (mở cửa sổ chính thì chạy sẵn tiến trình phụ, Đ19), `spawn_ticker` (tắt sau 10 phút rảnh);
-  - `TauriSink` phát `subtitle://upsert`, `subtitle://delta`, `audio://level`, cập nhật chỉ báo; lỗi làm phiên dừng (`Fatal::Vad` thành `vadFailed`, `Fatal::Asr` thành `sidecarFailed`, lỗi của nguồn âm thanh) chạy trên luồng riêng, và chỉ dừng đúng phiên gây lỗi;
-  - `StatusEvents`: sự kiện của tiến trình phụ thành trạng thái (`loading`, `cpuFallback`, `suggestLite`) và ghi `sidecars-seen.json`;
+  - `start`/`start_with` (`StartOptions { include_self }` cho bước nghe thử của 03), `stop`, `toggle` (đang chuẩn bị thì bấm là Hủy: về `idle` ngay, lần bắt đầu đang dở kiểm cờ hủy lần cuối cùng khóa với trạng thái; Q1 của review 02c), `shutdown` (Thoát; không chờ khóa của tiến trình phụ, N1), `prewarm` (mở cửa sổ chính thì chạy sẵn tiến trình phụ, Đ19), `spawn_ticker` (tắt sau 10 phút rảnh);
+  - `TauriSink` phát `subtitle://upsert`, `subtitle://delta`, `audio://level` (chỉ cửa sổ chính), cập nhật chỉ báo; lỗi làm phiên dừng (`fatal_code`: `Fatal::Vad` thành `vadFailed`, `Audio` thành `captureFailed`, `Asr` thành `sidecarFailed` hay `sidecarTampered`/`modelBroken` theo lý do bỏ cuộc, `Internal` thành `unknown`, `QuotaExhausted` thành `quotaExhausted`) chạy trên luồng riêng, và chỉ dừng đúng phiên gây lỗi; `usage` để mặc định (06 nối bộ đếm phút vào đây);
+  - `StatusEvents`: sự kiện của tiến trình phụ thành trạng thái (`loading`, `cpuFallback`, `suggestLite`), kiểm SHA-256 trước mỗi lần chạy (`before_spawn`, QĐ17), báo binary nào là lần đầu chạy (`is_first_run`) và ghi `sidecars-seen.json` khi binary đó tới `Ready`;
+  - `LiveDeps`: khóa `live` chỉ giữ trong lúc clone `Arc<SidecarManager>`, không bao giờ trong lúc chờ tiến trình phụ;
   - `engine_config`: ngôn ngữ (khóa nguồn thì một ngôn ngữ, F2), ngôn ngữ đích, `vadEndSilenceMs`, cờ ngữ cảnh, `id_base` theo số phiên.
-- `sidecar/mod.rs`: `prepare` kiểm SHA-256 (mã `sidecarMissing`, `sidecarTampered`), dò GPU sau khi đã kiểm, kiểm có file model (`modelMissing`; kích thước và SHA-256 ở 04), dựng `SidecarSpec`.
-- `state.rs`: trạng thái phiên thêm `starting` và `error`; `AppStatus` thêm `loading`, `sessionError`, `cpuFallback`, `suggestLite`, `indicators`. `tray.rs` coi `starting` như đang dịch.
+- `sidecar/mod.rs`: `prepare` kiểm SHA-256 (mã `sidecarMissing`, `sidecarTampered`; hàm thuần `integrity_error_code`, `give_up_code` có test), dò GPU sau khi đã kiểm (dùng kết quả của luồng dò nền `GpuProbe`, `start_gpu_probe`), kiểm có file model (`modelMissing`; kích thước và SHA-256 ở 04), dựng `SidecarSpec`.
+- `state.rs`: trạng thái phiên thêm `starting` và `error`; `AppStatus` thêm `loading`, `sessionError`, `cpuFallback`, `suggestLite`, `indicators`, `permissionSuspected` và `rev` (tăng mỗi lần trạng thái đổi). `tray.rs` coi `starting` như đang dịch.
 - `events.rs`: tên `subtitle://delta` và `audio://level`; trạng thái gửi cho cả hai cửa sổ (thanh phụ đề cần chỉ báo, 03).
-- `actions.rs`, `commands.rs`: `toggle_session` gọi `session::toggle`; lệnh `toggle_session` thành `async` (QĐ19); phím tắt và khay chạy trên luồng riêng; Thoát nhớ vị trí thanh phụ đề rồi tắt phiên và tiến trình phụ trên luồng riêng.
-- `lib.rs`: hook panic kill tiến trình phụ (`pipeline::process::install_panic_hook`), Windows `SetDefaultDllDirectories`, quản lý `Session`, luồng tick, lưới an toàn `kill_all` khi thoát. `window.rs`: `show_main` gọi `prewarm`.
-- `test_support.rs`: `FakeDeps`; `app_tests.rs`: phiên ra phụ đề thật qua engine, lỗi bắt đầu, lỗi sau khi bắt đầu, nghe thử thu cả âm thanh của app. Test `overlay_starts_hidden_and_appears_when_a_session_starts` của 01 vẫn qua.
+- `actions.rs`, `commands.rs`: `toggle_session` gọi `session::toggle`; lệnh `toggle_session` thành `async` (QĐ19; tác vụ nền dừng bất thường thì mã `unknown`); phím tắt và khay chạy trên luồng riêng; Thoát nhớ vị trí thanh phụ đề rồi tắt phiên và tiến trình phụ trên luồng riêng.
+- `lib.rs`: hook panic kill tiến trình phụ (`pipeline::process::install_panic_hook`), Windows `SetDefaultDllDirectories`; trong `setup`: kill tiến trình phụ còn sót từ lần chạy trước theo pidfile rồi bật pidfile (QĐ8, Q8(a) của review 02c), dò GPU nền, quản lý `Session`, luồng tick. `window.rs`: `show_main` gọi `prewarm`.
+- `test_support.rs`: `FakeDeps` (cổng chặn `prepare` như nạp model lâu, ghi lại việc của nguồn âm thanh từng phiên); `app_tests.rs`: phiên ra phụ đề thật qua engine, lỗi bắt đầu, lỗi sau khi bắt đầu, nghe thử thu cả âm thanh của app; và các luồng khó của Q6: Hủy lúc đang chuẩn bị về `idle` ngay, Thoát lúc `prepare` đang chặn trả về dưới 1 giây, lỗi tới muộn của phiên cũ không chạm phiên mới, bấm từ ba luồng cùng lúc cho kết quả nhất quán, `rev` tăng. Test `overlay_starts_hidden_and_appears_when_a_session_starts` của 01 vẫn qua.
 
 **Files:**
 - Sửa: `Cargo.lock` (cargo tự cập nhật)
@@ -1294,8 +1644,8 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 ```diff
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
-@@ -1,7 +1,7 @@
- //! Lõi Rust của app Meeting Translator (spec §5, §12). `main.rs` chỉ gọi `run()`.
+@@ -4,7 +4,7 @@
+ //! tên binary (`meeting-translator`) và tên thư mục repo giữ nguyên (QĐ29).
  //!
  //! Kế hoạch 01 dựng khung: cài đặt, i18n phía Rust, khay, phím tắt, hai cửa sổ, quyền, kho khóa, log.
 -//! Kế hoạch 02 nối `audio-capture` và `pipeline` vào, thay `session_stub.rs` bằng `session.rs`.
@@ -1303,7 +1653,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
  
  pub mod actions;
  pub mod capture;
-@@ -17,7 +17,7 @@
+@@ -20,7 +20,7 @@
  pub mod overlay;
  pub mod quit_guard;
  pub mod security;
@@ -1312,7 +1662,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
  pub mod settings;
  pub mod sidecar;
  pub mod state;
-@@ -33,6 +33,8 @@
+@@ -36,6 +36,8 @@
  #[cfg(test)]
  mod test_support;
  
@@ -1321,7 +1671,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
  use tauri::{App, AppHandle, Manager, RunEvent};
  
  use crate::hotkey_registry::HotkeyRegistry;
-@@ -43,6 +45,10 @@
+@@ -46,6 +48,10 @@
  pub const AUTOSTART_ARG: &str = "--autostart";
  
  pub fn run() {
@@ -1329,19 +1679,31 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 +    pipeline::process::install_panic_hook();
 +    #[cfg(windows)]
 +    harden_dll_search();
-     // single-instance phải là plugin đầu tiên: bản thứ hai thoát ngay, bản đang chạy hiện cửa sổ chính (Q7).
-     let builder = tauri::Builder::default()
-         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-@@ -95,6 +101,8 @@
+     let context = tauri::generate_context!();
+     // QĐ29: tên mục khởi động cùng hệ thống theo một luật duy nhất (`login_item::autostart_name`): macOS
+     // là bundle identifier (tên file LaunchAgent và `Label`), Windows là tên sản phẩm (tên giá trị trong `Run`).
+@@ -109,6 +115,20 @@
      }
      app.manage(AppState::new(settings.clone(), loaded.meta, launched_at_login));
      app.manage(HotkeyRegistry::default());
++    // Tiến trình phụ mà lần chạy trước bỏ lại (Force Quit, app bị kill): kill trước khi chạy sẵn tiến trình mới, rồi từ
++    // giờ ghi pidfile (Q8 của review 02c). Windows: Job Object đã lo, hàm không làm gì.
++    let pidfile = handle.path().app_local_data_dir()?.join("sidecars-live.json");
++    if let Ok(dir) = sidecar::paths::binaries_dir() {
++        let reaped = pipeline::process::reap_orphans(&pidfile, &dir);
++        if !reaped.is_empty() {
++            log::warn!("đã kill {} tiến trình phụ còn sót từ lần chạy trước", reaped.len());
++        }
++    }
++    pipeline::process::set_pidfile(&pidfile);
++    app.manage(sidecar::GpuProbe::default());
++    sidecar::start_gpu_probe(&handle);
 +    app.manage(session::Session::new(Arc::new(session::LiveDeps::new(handle.clone()))));
 +    session::spawn_ticker(&handle);
  
      #[cfg(target_os = "macos")]
      {
-@@ -130,6 +138,22 @@
+@@ -144,6 +164,22 @@
          // Bấm icon ở Dock khi cửa sổ chính đang ẩn.
          #[cfg(target_os = "macos")]
          RunEvent::Reopen { .. } => window::show_main(app),
@@ -1382,9 +1744,12 @@ use tauri::{Listener, Manager};
 use crate::actions;
 use crate::errors;
 use crate::events::{AUDIO_LEVEL, NOTICE, SUBTITLE_DELTA, SUBTITLE_UPSERT};
+use crate::login_item::AgentStatus;
 use crate::session::{self, StartOptions};
 use crate::state::{AppState, SessionStatus};
-use crate::test_support::{FakeAudio, FakeDeps, invoke, mock_app, mock_app_with, overlay_calls, window};
+use crate::test_support::{
+    FakeAudio, FakeDeps, PrepareGate, invoke, last_saved, login_state, mock_app, mock_app_with, overlay_calls, window,
+};
 
 /// Ghi lại mọi payload của một sự kiện.
 fn record(app: &tauri::App<tauri::test::MockRuntime>, event: &str) -> Arc<Mutex<Vec<Value>>> {
@@ -1430,30 +1795,93 @@ fn overlay_starts_hidden_and_appears_when_a_session_starts() {
     assert_eq!(overlay_calls(&app), ["show"]);
 }
 
-/// Chỉ thử ẩn/hiện: lệnh khóa ghi cài đặt qua `tauri-plugin-store`, mà app giả không đăng ký plugin này
-/// (đăng ký thì ghi vào thư mục cài đặt thật của app). Khóa thử tay ở Task 24–25.
 #[test]
-fn hide_and_show_reach_the_overlay_window() {
+fn hide_show_and_lock_reach_the_overlay_window() {
     let app = mock_app();
     let main = window(&app, "main");
     let status = invoke(&main, "set_overlay_visible", json!({ "visible": true })).unwrap();
     assert_eq!(status["overlayVisible"], true);
     let status = invoke(&main, "set_overlay_visible", json!({ "visible": false })).unwrap();
     assert_eq!(status["overlayVisible"], false);
-    assert_eq!(overlay_calls(&app), ["show", "hide"]);
+    let settings = invoke(&main, "set_overlay_locked", json!({ "locked": true })).unwrap();
+    assert_eq!(settings["overlay"]["locked"], true);
+    assert_eq!(
+        last_saved(&app, "overlay").unwrap()["locked"],
+        true,
+        "khóa được ghi vào file"
+    );
+    invoke(&main, "set_overlay_locked", json!({ "locked": false })).unwrap();
+    assert_eq!(
+        overlay_calls(&app),
+        ["show", "hide", "click_through on", "click_through off"],
+        "khóa và mở khóa không tự hiện hay ẩn thanh phụ đề"
+    );
 }
 
 #[test]
 fn blocked_quit_shows_a_notice_in_the_main_window() {
     let app = mock_app();
     let _main = window(&app, "main");
+    let received = notices(&app);
+    actions::quit_blocked(app.handle());
+    assert_eq!(*received.lock().unwrap(), [r#"{"kind":"quitFromTray"}"#]);
+}
+
+fn notices(app: &tauri::App<tauri::test::MockRuntime>) -> Arc<Mutex<Vec<String>>> {
     let received = Arc::new(Mutex::new(Vec::new()));
     let sink = received.clone();
     app.listen_any(NOTICE, move |event| {
         sink.lock().unwrap().push(event.payload().to_string())
     });
-    actions::quit_blocked(app.handle());
-    assert_eq!(*received.lock().unwrap(), [r#"{"kind":"quitFromTray"}"#]);
+    received
+}
+
+#[test]
+fn enabling_launch_at_login_blocked_in_login_items_shows_a_notice() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let received = notices(&app);
+    login_state(&app, |s| s.status = Some(AgentStatus::RequiresApproval));
+    let settings = invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": true } })).unwrap();
+    assert_eq!(settings["launchAtLogin"], true);
+    assert_eq!(*received.lock().unwrap(), [r#"{"kind":"loginItemsApproval"}"#]);
+}
+
+#[test]
+fn turning_off_launch_at_login_works_and_reports_when_it_stays_on() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let registered = |app: &tauri::App<tauri::test::MockRuntime>| {
+        let mut value = false;
+        login_state(app, |s| value = s.registered);
+        value
+    };
+    let settings = invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": true } })).unwrap();
+    assert_eq!(settings["launchAtLogin"], true);
+    assert!(registered(&app), "bật thì gọi `enable()`");
+    let settings = invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": false } })).unwrap();
+    assert_eq!(settings["launchAtLogin"], false);
+    assert!(!registered(&app), "tắt bình thường thì hết đăng ký");
+    invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": true } })).unwrap();
+    // Windows: mục ở `HKLM` không xóa được khi không có quyền admin.
+    login_state(&app, |s| s.stuck_on = true);
+    let error = invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": false } })).unwrap_err();
+    assert!(error.contains("autostartStillEnabled"), "{error}");
+    let settings = invoke(&main, "get_settings", json!({})).unwrap();
+    assert_eq!(settings["launchAtLogin"], true, "cài đặt giữ đúng trạng thái thật");
+}
+
+#[test]
+fn startup_follows_the_system_when_login_items_turned_it_off() {
+    let app = mock_app();
+    login_state(&app, |s| {
+        s.registered = true;
+        s.status = Some(AgentStatus::RequiresApproval);
+    });
+    let mut settings = crate::settings::Settings::defaults(crate::settings::UiLanguage::Vi);
+    settings.launch_at_login = true;
+    assert!(actions::sync_launch_at_login(app.handle(), &mut settings));
+    assert!(!settings.launch_at_login);
 }
 
 #[test]
@@ -1558,6 +1986,156 @@ fn a_listening_test_session_also_captures_the_app_itself() {
     session::stop(app.handle());
     assert_eq!(*captures.lock().unwrap(), [true, false]);
 }
+
+/// App giả có `prepare` chặn ở cổng (như nạp model lâu), và một lần bắt đầu phiên đang chờ ở đó trên luồng riêng.
+struct StartingApp {
+    app: tauri::App<tauri::test::MockRuntime>,
+    gate: Arc<PrepareGate>,
+    /// Các lần gọi `shutdown` và `kill_all` của phần bên ngoài giả.
+    shutdowns: Arc<Mutex<Vec<&'static str>>>,
+    starting: std::thread::JoinHandle<Result<crate::state::AppStatus, crate::errors::CommandError>>,
+}
+
+fn starting_app() -> StartingApp {
+    let gate = Arc::new(PrepareGate::default());
+    let deps = FakeDeps {
+        prepare_gate: Some(gate.clone()),
+        ..FakeDeps::default()
+    };
+    let shutdowns = deps.shutdowns.clone();
+    let app = mock_app_with(deps);
+    let _main = window(&app, "main");
+    let handle = app.handle().clone();
+    let starting = std::thread::spawn(move || session::start(&handle));
+    wait_until("đang chờ nạp model", || gate.waiting() == 1);
+    assert_eq!(app.state::<AppState>().status().session, SessionStatus::Starting);
+    StartingApp {
+        app,
+        gate,
+        shutdowns,
+        starting,
+    }
+}
+
+/// Q1 của review 02c: bấm lần nữa lúc đang chuẩn bị là Hủy: về `idle` ngay, không chờ nạp model; lần bắt đầu đang dở
+/// không chạy phiên khi nạp xong.
+#[test]
+fn cancel_while_starting_returns_to_idle_at_once() {
+    let StartingApp {
+        app, gate, starting, ..
+    } = starting_app();
+    let started = Instant::now();
+    let status = session::toggle(app.handle()).unwrap();
+    assert!(started.elapsed() < Duration::from_secs(1));
+    assert_eq!(status.session, SessionStatus::Idle);
+    gate.open();
+    let after = starting.join().unwrap().unwrap();
+    assert_eq!(after.session, SessionStatus::Idle);
+    assert!(!app.state::<session::Session>().has_engine(), "không có phiên nào chạy");
+    assert_eq!(app.state::<AppState>().status().session, SessionStatus::Idle);
+}
+
+/// N1 của review 02c: thoát app lúc đang chờ nạp model trả về ngay (không chờ 60–180 giây).
+#[test]
+fn shutdown_while_preparing_returns_quickly() {
+    let StartingApp {
+        app,
+        shutdowns,
+        starting,
+        ..
+    } = starting_app();
+    let started = Instant::now();
+    session::shutdown(app.handle());
+    assert!(started.elapsed() < Duration::from_secs(1), "{:?}", started.elapsed());
+    assert_eq!(*shutdowns.lock().unwrap(), ["shutdown", "kill_all"]);
+    let result = starting.join().unwrap();
+    assert!(result.is_ok(), "lần bắt đầu bị hủy, không báo lỗi: {result:?}");
+    assert!(!app.state::<session::Session>().has_engine());
+}
+
+/// Lỗi của một phiên cũ tới muộn (nguồn âm thanh của phiên trước) không dừng phiên mới.
+#[test]
+fn a_late_error_of_an_old_session_does_not_touch_the_new_one() {
+    let deps = FakeDeps::default();
+    let events = deps.capture_events.clone();
+    let app = mock_app_with(deps);
+    let _main = window(&app, "main");
+    session::start(app.handle()).unwrap();
+    session::stop(app.handle());
+    session::start(app.handle()).unwrap();
+    let old = events.lock().unwrap().remove(0);
+    old(crate::capture::CaptureEvent::Failed {
+        code: errors::CAPTURE_FAILED,
+        message: "phiên cũ".into(),
+    });
+    old(crate::capture::CaptureEvent::PermissionSuspected(true));
+    std::thread::sleep(Duration::from_millis(300));
+    let status = app.state::<AppState>().status();
+    assert_eq!(
+        (status.session, status.session_error, status.permission_suspected),
+        (SessionStatus::Running, None, false)
+    );
+    // Lỗi của chính phiên đang chạy thì dừng phiên.
+    let current = events.lock().unwrap().remove(0);
+    current(crate::capture::CaptureEvent::PermissionSuspected(true));
+    assert!(app.state::<AppState>().status().permission_suspected);
+    current(crate::capture::CaptureEvent::Failed {
+        code: errors::CAPTURE_FAILED,
+        message: "phiên này".into(),
+    });
+    let state = app.state::<AppState>();
+    wait_until("phiên dừng vì lỗi", || {
+        state.status().session == SessionStatus::Error
+    });
+    assert_eq!(state.status().session_error.as_deref(), Some(errors::CAPTURE_FAILED));
+}
+
+/// Bấm Bắt đầu từ ba nơi cùng lúc (nút, phím tắt, khay) trong lúc đang nạp model: kết quả cuối nhất quán, không kẹt ở
+/// `starting`, và có engine khi và chỉ khi trạng thái là `running`.
+#[test]
+fn toggling_from_three_threads_ends_in_a_consistent_state() {
+    let gate = Arc::new(PrepareGate::default());
+    let app = mock_app_with(FakeDeps {
+        prepare_gate: Some(gate.clone()),
+        ..FakeDeps::default()
+    });
+    let _main = window(&app, "main");
+    let toggles: Vec<_> = (0..3)
+        .map(|_| {
+            let handle = app.handle().clone();
+            std::thread::spawn(move || session::toggle(&handle))
+        })
+        .collect();
+    std::thread::sleep(Duration::from_millis(100));
+    gate.open();
+    for t in toggles {
+        t.join().unwrap().unwrap();
+    }
+    let status = app.state::<AppState>().status();
+    assert_ne!(status.session, SessionStatus::Starting);
+    assert_eq!(
+        status.session == SessionStatus::Running,
+        app.state::<session::Session>().has_engine()
+    );
+    session::stop(app.handle());
+}
+
+/// Trạng thái có `rev` tăng dần, để giao diện bỏ kết quả cũ tới muộn.
+#[test]
+fn the_status_revision_grows_with_every_change() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let before = invoke(&main, "get_app_status", json!({})).unwrap()["rev"]
+        .as_u64()
+        .unwrap();
+    let running = invoke(&main, "toggle_session", json!({})).unwrap()["rev"]
+        .as_u64()
+        .unwrap();
+    let idle = invoke(&main, "toggle_session", json!({})).unwrap()["rev"]
+        .as_u64()
+        .unwrap();
+    assert!(before < running && running < idle, "{before} {running} {idle}");
+}
 ```
 
 Tạo `src-tauri/src/session.rs`, lúc này mới có phần test (phần code thêm ở bước sau):
@@ -1567,13 +2145,20 @@ Tạo `src-tauri/src/session.rs`, lúc này mới có phần test (phần code t
 //!
 //! - Bắt đầu (nút, phím tắt, khay): hiện thanh phụ đề, chạy hai tiến trình phụ nếu chưa chạy ("Đang nạp model…"), mở nguồn
 //!   âm thanh, chạy `pipeline::engine`. Mọi việc này chặn lâu nên không bao giờ chạy trên luồng chính.
-//! - Dừng: engine chốt đoạn đang dở, xử lý nốt, rồi dừng; tiến trình phụ còn chạy thêm 10 phút (§5).
+//! - Bấm lần nữa khi đang chuẩn bị là Hủy: trạng thái về `idle` ngay; lần bắt đầu đang dở thấy cờ hủy thì không chạy
+//!   phiên (kiểm cả sau khi đã dựng engine, cùng khóa với trạng thái).
+//! - Dừng: engine chốt đoạn đang dở, dịch nốt câu cuối trong khoảng 3 giây, rồi dừng; tiến trình phụ còn chạy thêm 10 phút
+//!   (§5).
 //! - Lỗi làm phiên dừng (tiến trình phụ bỏ cuộc, không mở được nguồn âm thanh, thiếu quyền): trạng thái `error` kèm mã lỗi.
-//! - Phụ đề đi qua hai sự kiện của §6.6 (`subtitle://upsert`, `subtitle://delta`), mức âm lượng qua `audio://level`, chỉ
-//!   báo (trễ, không có âm thanh) qua `app://status`.
+//!   Lỗi của một phiên cũ (tới muộn) không chạm phiên mới.
+//! - Thoát app ([`shutdown`]): không chờ tiến trình phụ đang nạp model hay đang treo; kill chúng.
+//! - Phụ đề đi qua hai sự kiện của §6.6 (`subtitle://upsert`, `subtitle://delta`), mức âm lượng qua `audio://level` (chỉ
+//!   cửa sổ chính), chỉ báo (trễ, không có âm thanh) qua `app://status`.
+//! - Hạn mức (§6.8): engine báo phút đã dịch qua `EventSink::usage`; kế hoạch 06 nối bộ đếm vào [`TauriSink`]. Hết hạn mức
+//!   thì engine dừng với `Fatal::QuotaExhausted`, mã lỗi `quotaExhausted`.
 //!
 //! Phần bên ngoài (tiến trình phụ, nguồn âm thanh, VAD) đi qua `SessionDeps`: app dùng `LiveDeps`, test dùng bản giả
-//! (`test_support.rs`), nên luồng bắt đầu, dừng, lỗi test được bằng `MockRuntime`.
+//! (`test_support.rs`), nên luồng bắt đầu, hủy, dừng, lỗi, thoát test được bằng `MockRuntime`.
 
 #[cfg(test)]
 mod tests {
@@ -1598,6 +2183,106 @@ mod tests {
         assert_eq!(cfg.target, MtLang::En);
         assert!(cfg.translation_context);
     }
+
+    #[test]
+    fn every_fatal_reason_has_an_error_code() {
+        let codes: Vec<&str> = [
+            Fatal::Vad,
+            Fatal::Audio,
+            Fatal::Asr,
+            Fatal::Internal,
+            Fatal::QuotaExhausted,
+        ]
+        .into_iter()
+        .map(|k| fatal_code(k, errors::SIDECAR_TAMPERED))
+        .collect();
+        assert_eq!(
+            codes,
+            [
+                errors::VAD_FAILED,
+                errors::CAPTURE_FAILED,
+                errors::SIDECAR_TAMPERED,
+                errors::UNKNOWN,
+                errors::QUOTA_EXHAUSTED
+            ]
+        );
+    }
+}
+```
+
+Thay toàn bộ `src-tauri/src/sidecar/mod.rs` bằng:
+
+```rust
+//! Phần của app quanh hai tiến trình phụ (Đ2 của kế hoạch 00): tìm file, kiểm SHA-256, nhớ binary đã chạy, dò GPU trên
+//! Windows, rồi dựng `SidecarSpec`. Việc chạy và giám sát nằm ở `pipeline::supervisor`.
+
+pub mod first_run;
+pub mod integrity;
+pub mod paths;
+pub mod probe;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn errors_map_to_ui_codes() {
+        use integrity::IntegrityError;
+        assert_eq!(
+            integrity_error_code(&IntegrityError::Missing("x".into())),
+            errors::SIDECAR_MISSING
+        );
+        for e in [
+            IntegrityError::Unverified("x".into()),
+            IntegrityError::Tampered("x".into()),
+            IntegrityError::Writable("x".into()),
+        ] {
+            assert_eq!(integrity_error_code(&e), errors::SIDECAR_TAMPERED, "{e:?}");
+        }
+        assert_eq!(give_up_code(GiveUpCause::Tampered), errors::SIDECAR_TAMPERED);
+        assert_eq!(give_up_code(GiveUpCause::ModelLoad), errors::MODEL_BROKEN);
+        assert_eq!(give_up_code(GiveUpCause::Failures), errors::SIDECAR_FAILED);
+    }
+
+    /// Q7 của review 02c: dò quá giờ thì không nhớ (lần sau dò lại); có kết quả thì nhớ, và lần dò đang chạy được dùng chung.
+    #[test]
+    fn a_timed_out_probe_is_not_remembered() {
+        let probe = GpuProbe::default();
+        let calls = AtomicUsize::new(0);
+        assert_eq!(
+            probe.run(|| {
+                calls.fetch_add(1, Ordering::SeqCst);
+                None
+            }),
+            None
+        );
+        assert_eq!(probe.get(Duration::ZERO), None);
+        assert_eq!(
+            probe.run(|| {
+                calls.fetch_add(1, Ordering::SeqCst);
+                Some(true)
+            }),
+            Some(true)
+        );
+        assert_eq!(probe.run(|| panic!("đã có kết quả thì không dò nữa")), Some(true));
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        // Một luồng đang dò: luồng khác chờ kết quả đó.
+        let probe = Arc::new(GpuProbe::default());
+        let slow = {
+            let probe = probe.clone();
+            std::thread::spawn(move || {
+                probe.run(|| {
+                    std::thread::sleep(Duration::from_millis(100));
+                    Some(false)
+                })
+            })
+        };
+        std::thread::sleep(Duration::from_millis(20));
+        assert_eq!(probe.run(|| panic!("đang có người dò")), Some(false));
+        assert_eq!(slow.join().unwrap(), Some(false));
+    }
 }
 ```
 
@@ -1606,16 +2291,17 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 ```diff
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
-@@ -1,18 +1,29 @@
+@@ -1,20 +1,31 @@
  //! Dụng cụ cho các test chạy app bằng `MockRuntime`: đúng `tauri.conf.json`, `capabilities/` và app
 -//! manifest của `build.rs`, nhưng không mở cửa sổ thật.
+-
+-use std::sync::{Arc, Mutex};
 -
 +//! manifest của `build.rs`, nhưng không mở cửa sổ thật. Phiên dịch chạy đúng `session.rs` và `pipeline::engine`, với
 +//! phần bên ngoài giả (`FakeDeps`): không chạy tiến trình phụ, không thu âm thật.
 +
 +use std::ops::ControlFlow;
- use std::sync::{Arc, Mutex};
--
++use std::sync::{Arc, Condvar, Mutex};
 +use std::time::Duration;
 +
 +use asr_protocol::{TranscribeRequest, TranscribeResult};
@@ -1629,18 +2315,20 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
  use tauri::webview::InvokeRequest;
  use tauri::{Manager, WebviewWindow, WebviewWindowBuilder};
  
-+use crate::capture::OnError;
++use crate::capture::OnEvent;
  use crate::commands;
-+use crate::errors::CommandError;
++use crate::errors::{self, CommandError};
+ use crate::login_item::{AgentStatus, LoginItem, LoginItems};
  use crate::overlay::{OverlaySurface, Surface};
 +use crate::session::{Session, SessionDeps};
  use crate::settings::migrate::FileMeta;
+ use crate::settings::persist::{SettingsFile, Writer};
 -use crate::settings::{Settings, UiLanguage};
 +use crate::settings::{AudioSource, Settings, UiLanguage};
  use crate::state::AppState;
  use crate::system::{System, SystemOpener};
  
-@@ -65,7 +76,145 @@
+@@ -112,7 +123,212 @@
      }
  }
  
@@ -1654,18 +2342,67 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 +    Tone,
 +}
 +
++/// Cổng chặn `prepare` (như nạp model lâu): `prepare` chờ tới khi cổng mở, hoặc app thoát.
++#[derive(Debug, Default)]
++pub struct PrepareGate {
++    /// (cổng đã mở, app đang thoát)
++    state: Mutex<(bool, bool)>,
++    changed: Condvar,
++    /// Số lần `prepare` đang chờ ở cổng.
++    waiting: Mutex<usize>,
++}
++
++impl PrepareGate {
++    pub fn open(&self) {
++        self.state.lock().unwrap().0 = true;
++        self.changed.notify_all();
++    }
++
++    pub fn waiting(&self) -> usize {
++        *self.waiting.lock().unwrap()
++    }
++
++    fn close_for_shutdown(&self) {
++        self.state.lock().unwrap().1 = true;
++        self.changed.notify_all();
++    }
++
++    /// `Ok` khi cổng mở; `Err` khi app thoát trong lúc chờ.
++    fn pass(&self) -> Result<(), CommandError> {
++        *self.waiting.lock().unwrap() += 1;
++        let state = self.state.lock().unwrap();
++        let state = self
++            .changed
++            .wait_while(state, |(open, closing)| !*open && !*closing)
++            .unwrap();
++        let closing = state.1;
++        drop(state);
++        *self.waiting.lock().unwrap() -= 1;
++        if closing {
++            return Err(CommandError::new(errors::SIDECAR_FAILED, None, "app đang thoát"));
++        }
++        Ok(())
++    }
++}
++
 +/// Phần bên ngoài giả của phiên dịch.
-+#[derive(Clone, Debug, Default)]
++#[derive(Clone, Default)]
 +pub struct FakeDeps {
 +    pub audio: FakeAudio,
 +    /// `prepare` trả lỗi có mã này (ví dụ thiếu model).
 +    pub prepare_error: Option<&'static str>,
++    /// `prepare` chờ ở cổng này (Q6 của review 02c).
++    pub prepare_gate: Option<Arc<PrepareGate>>,
 +    /// Nguồn âm thanh báo lỗi có mã này ngay khi mở (ví dụ chưa cấp quyền).
 +    pub capture_error: Option<&'static str>,
 +    /// `asr-worker` không dùng được nữa (bỏ cuộc sau nhiều lần lỗi).
 +    pub asr_unavailable: bool,
 +    /// Giá trị `include_self` của từng lần mở nguồn âm thanh.
 +    pub captures: Arc<Mutex<Vec<bool>>>,
++    /// Nơi nhận việc của nguồn âm thanh của từng phiên, theo thứ tự: test gọi để giả lỗi tới muộn.
++    pub capture_events: Arc<Mutex<Vec<OnEvent>>>,
++    /// Số lần `shutdown` và `kill_all` được gọi.
++    pub shutdowns: Arc<Mutex<Vec<&'static str>>>,
 +}
 +
 +struct FakeCapture {
@@ -1746,6 +2483,9 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 +
 +impl SessionDeps for FakeDeps {
 +    fn prepare(&self, _settings: &Settings) -> Result<(), CommandError> {
++        if let Some(gate) = &self.prepare_gate {
++            gate.pass()?;
++        }
 +        match self.prepare_error {
 +            Some(code) => Err(CommandError::new(code, None, "lỗi giả")),
 +            None => Ok(()),
@@ -1766,15 +2506,30 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 +        Box::new(|| Ok(Box::new(EnergyVad { threshold_rms: 0.05 }) as _))
 +    }
 +
-+    fn capture(&self, _source: &AudioSource, include_self: bool, on_error: OnError) -> Box<dyn FrameSource> {
++    fn capture(&self, _source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource> {
 +        self.captures.lock().unwrap().push(include_self);
 +        if let Some(code) = self.capture_error {
-+            on_error(code, "lỗi giả".into());
++            on_event(crate::capture::CaptureEvent::Failed {
++                code,
++                message: "lỗi giả".into(),
++            });
 +        }
++        self.capture_events.lock().unwrap().push(on_event);
 +        Box::new(FakeCapture {
 +            audio: self.audio,
 +            pos: 0,
 +        })
++    }
++
++    fn shutdown(&self) {
++        self.shutdowns.lock().unwrap().push("shutdown");
++        if let Some(gate) = &self.prepare_gate {
++            gate.close_for_shutdown();
++        }
++    }
++
++    fn kill_all(&self) {
++        self.shutdowns.lock().unwrap().push("kill_all");
 +    }
 +}
 +
@@ -1786,10 +2541,10 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
      let builder = mock_builder();
      #[cfg(target_os = "macos")]
      let builder = builder.plugin(tauri_nspanel::init());
-@@ -81,6 +230,7 @@
-         .manage(surface)
-         .manage(System(Box::new(system.clone())))
-         .manage(system)
+@@ -134,6 +350,7 @@
+         .manage(login)
+         .manage(Writer(Box::new(file.clone())))
+         .manage(file)
 +        .manage(Session::new(Arc::new(deps)))
          .invoke_handler(commands::handler())
          .build(tauri::generate_context!(test = true))
@@ -1806,8 +2561,8 @@ error[E0432]: unresolved import `crate::session_stub`
 error[E0432]: unresolved import `crate::session::StartOptions`
 error[E0432]: unresolved imports `crate::session::Session`, `crate::session::SessionDeps`
 error[E0432]: unresolved imports `crate::events::AUDIO_LEVEL`, `crate::events::SUBTITLE_DELTA`
+error[E0433]: cannot find `GpuProbe` in `sidecar`
 error[E0433]: cannot find `Session` in `session`
-error[E0433]: cannot find `LiveDeps` in `session`
 ```
 
 - [ ] **Step 4: Viết code**
@@ -1820,8 +2575,8 @@ Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
 --- a/src-tauri/src/actions.rs
 +++ b/src-tauri/src/actions.rs
 @@ -8,8 +8,8 @@
- use crate::errors::{self, CommandError};
  use crate::hotkeys::HotkeyAction;
+ use crate::login_item::LoginItems;
  use crate::settings::{self, Settings, persist};
 -use crate::state::{AppState, AppStatus, OverlayView, SessionStatus};
 -use crate::{events, hotkey_registry, login_item, overlay, session_stub, system, tray, window};
@@ -1840,7 +2595,7 @@ Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
      let status = app.state::<AppState>().status();
      events::status_changed(app, &status);
      tray::refresh(app);
-@@ -81,16 +82,11 @@
+@@ -83,16 +84,11 @@
      }
  }
  
@@ -1861,7 +2616,7 @@ Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
  }
  
  pub fn set_overlay_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> Result<AppStatus, CommandError> {
-@@ -110,7 +106,16 @@
+@@ -112,7 +108,16 @@
  pub fn run_hotkey<R: Runtime>(app: &AppHandle<R>, action: HotkeyAction) {
      let state = app.state::<AppState>();
      let result = match action {
@@ -1879,7 +2634,7 @@ Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
          HotkeyAction::ToggleOverlay => set_overlay_visible(app, !state.status().overlay_visible).map(drop),
          HotkeyAction::ToggleLock => set_overlay_locked(app, !state.settings().overlay.locked).map(drop),
      };
-@@ -178,12 +183,16 @@
+@@ -187,12 +192,16 @@
      system::open_taskbar_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
  }
  
@@ -1929,7 +2684,7 @@ Sửa `src-tauri/src/commands.rs` (áp bằng `git apply`):
 +pub async fn toggle_session<R: Runtime>(app: AppHandle<R>) -> Result<AppStatus, CommandError> {
 +    tauri::async_runtime::spawn_blocking(move || actions::toggle_session(&app))
 +        .await
-+        .map_err(|e| CommandError::new(errors::SIDECAR_FAILED, None, e.to_string()))?
++        .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
  }
  
  #[tauri::command]
@@ -1986,31 +2741,34 @@ Sửa `src-tauri/src/overlay/mod.rs` (áp bằng `git apply`):
 Thêm vào `src-tauri/src/session.rs` phần code sau, ngay dưới các dòng `//!` đầu file và trên `#[cfg(test)]`:
 
 ```rust
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use pipeline::config::PipelineConfig;
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, VadFactory};
 use pipeline::prompt::Lang as MtLang;
 use pipeline::subtitle::{Delta, Subtitle};
-use pipeline::supervisor::{Asr, SidecarEvent, SidecarEvents, SidecarManager, SystemClock, Which};
+use pipeline::supervisor::{Asr, GiveUpCause, SidecarEvent, SidecarEvents, SidecarManager, SystemClock, Which};
 use pipeline::translate::Mt;
 use pipeline::vad::SileroVad;
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 
-use crate::capture::{LiveCapture, OnError};
+use crate::capture::{CaptureEvent, LiveCapture, OnEvent};
 use crate::errors::{self, CommandError};
-use crate::settings::{AudioSource, Lang, Settings};
-use crate::sidecar::{self, Prepared, first_run};
+use crate::settings::{AudioSource, Lang, ModelTier, Settings};
+use crate::sidecar::{self, first_run, integrity};
 use crate::state::{AppState, AppStatus, Loading, SessionStatus};
-use crate::{actions, events, overlay};
+use crate::{actions, events, overlay, window};
 
-/// Chu kỳ gọi `SessionDeps::tick` (tắt tiến trình phụ khi rảnh 10 phút).
+/// Chu kỳ gọi `SessionDeps::tick` (tắt tiến trình phụ khi rảnh 10 phút). Để ngoài `PipelineConfig`: chỉ là nhịp kiểm, mốc
+/// 10 phút nằm ở `supervisor.idle_shutdown_ms`.
 const TICK_EVERY: Duration = Duration::from_secs(30);
 /// Id phụ đề của phiên thứ n bắt đầu từ `n × ID_STRIDE` (không trùng giữa các phiên của một lần chạy app).
 const ID_STRIDE: u64 = 1_000_000;
+/// Thoát app: chờ lần bắt đầu hay dừng phiên đang dở tối đa chừng này (tiến trình phụ đã bị kill nên nó trả về nhanh).
+const SHUTDOWN_WAIT: Duration = Duration::from_secs(2);
 
 /// Những gì một phiên cần từ bên ngoài.
 pub trait SessionDeps: Send + Sync {
@@ -2019,15 +2777,21 @@ pub trait SessionDeps: Send + Sync {
     fn asr(&self) -> Box<dyn Asr>;
     fn mt(&self) -> Box<dyn Mt>;
     fn vad(&self) -> VadFactory;
-    /// Mở nguồn âm thanh. Lỗi mở nguồn tới sau (nguồn chạy trên luồng riêng) đi qua `on_error`. `include_self`: xem
+    /// Mở nguồn âm thanh. Việc của nguồn tới sau (nguồn chạy trên luồng riêng) đi qua `on_event`. `include_self`: xem
     /// [`StartOptions`].
-    fn capture(&self, source: &AudioSource, include_self: bool, on_error: OnError) -> Box<dyn FrameSource>;
+    fn capture(&self, source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource>;
     fn begin_session(&self) {}
     fn end_session(&self) {}
     /// Gọi định kỳ: tắt tiến trình phụ sau 10 phút không dịch.
     fn tick(&self) {}
-    /// Thoát app: tắt hai tiến trình phụ.
+    /// Thoát app, bước 1: từ giờ không chạy thêm tiến trình phụ nào, kill các tiến trình đang chạy. Không chờ gì.
     fn shutdown(&self) {}
+    /// Thoát app, bước cuối: kill mọi tiến trình phụ còn sót.
+    fn kill_all(&self) {}
+    /// Mã lỗi khi `asr-worker` không dùng được nữa giữa phiên.
+    fn asr_failure_code(&self) -> &'static str {
+        errors::SIDECAR_FAILED
+    }
 }
 
 /// Trạng thái phiên, quản lý bằng `tauri::Manager::manage`.
@@ -2036,7 +2800,7 @@ pub struct Session {
     engine: Mutex<Option<Engine>>,
     /// Bắt đầu, dừng và dừng vì lỗi lần lượt từng việc một.
     gate: Mutex<()>,
-    /// Người dùng bấm Dừng trong lúc đang nạp model.
+    /// Người dùng bấm Hủy trong lúc đang chuẩn bị (hoặc app đang thoát).
     cancel: AtomicBool,
     sessions: AtomicU64,
 }
@@ -2050,6 +2814,11 @@ impl Session {
             cancel: AtomicBool::new(false),
             sessions: AtomicU64::new(0),
         }
+    }
+
+    /// Có engine đang chạy không (cho test).
+    pub fn has_engine(&self) -> bool {
+        self.engine.lock().unwrap().is_some()
     }
 }
 
@@ -2084,6 +2853,17 @@ pub fn engine_config(settings: &Settings, id_base: u64) -> EngineConfig {
     }
 }
 
+/// Mã lỗi của một lý do dừng của engine.
+pub fn fatal_code(kind: Fatal, asr_code: &'static str) -> &'static str {
+    match kind {
+        Fatal::Vad => errors::VAD_FAILED,
+        Fatal::Audio => errors::CAPTURE_FAILED,
+        Fatal::Asr => asr_code,
+        Fatal::Internal => errors::UNKNOWN,
+        Fatal::QuotaExhausted => errors::QUOTA_EXHAUSTED,
+    }
+}
+
 fn changed<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
     actions::status_changed(app)
 }
@@ -2100,10 +2880,14 @@ fn show_overlay<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-fn set_error<R: Runtime>(app: &AppHandle<R>, code: &str) -> AppStatus {
+/// Báo lỗi của lần bắt đầu, trừ khi người dùng đã hủy (trạng thái đã về `idle`).
+fn start_failed<R: Runtime>(app: &AppHandle<R>, code: &str) -> AppStatus {
+    let session = app.state::<Session>();
     app.state::<AppState>().update_status(|s| {
-        s.session = SessionStatus::Error;
-        s.session_error = Some(code.to_string());
+        if s.session == SessionStatus::Starting && !session.cancel.load(Ordering::SeqCst) {
+            s.session = SessionStatus::Error;
+            s.session_error = Some(code.to_string());
+        }
         s.loading = None;
     });
     changed(app)
@@ -2117,7 +2901,7 @@ pub struct StartOptions {
     pub include_self: bool,
 }
 
-/// Bắt đầu phiên với nguồn âm thanh trong cài đặt. Chặn tới khi phiên chạy (hoặc lỗi): gọi từ luồng nền.
+/// Bắt đầu phiên với nguồn âm thanh trong cài đặt. Chặn tới khi phiên chạy (hoặc lỗi, hoặc bị hủy): gọi từ luồng nền.
 pub fn start<R: Runtime>(app: &AppHandle<R>) -> Result<AppStatus, CommandError> {
     start_with(app, StartOptions::default())
 }
@@ -2127,45 +2911,43 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     let session = app.state::<Session>();
     let state = app.state::<AppState>();
     let _gate = session.gate.lock().unwrap();
-    if matches!(state.status().session, SessionStatus::Starting | SessionStatus::Running) {
-        return Ok(state.status());
-    }
-    session.cancel.store(false, Ordering::SeqCst);
-    state.update_status(|s| {
+    let begun = state.update_status(|s| {
+        if matches!(s.session, SessionStatus::Starting | SessionStatus::Running) {
+            return false;
+        }
+        session.cancel.store(false, Ordering::SeqCst);
         s.session = SessionStatus::Starting;
         s.session_error = None;
         s.indicators = Indicators::default();
+        s.permission_suspected = false;
         s.overlay_visible = true;
+        true
     });
+    if !begun {
+        return Ok(state.status());
+    }
     show_overlay(app);
     changed(app);
     let settings = state.settings();
     if let Err(e) = session.deps.prepare(&settings) {
+        if session.cancel.load(Ordering::SeqCst) {
+            return Ok(state.status());
+        }
         log::error!("không bắt đầu được phiên: {} ({})", e.code, e.message);
-        set_error(app, &e.code);
+        start_failed(app, &e.code);
         return Err(e);
     }
     if session.cancel.load(Ordering::SeqCst) {
-        state.update_status(|s| {
-            s.session = SessionStatus::Idle;
-            s.loading = None;
-        });
-        return Ok(changed(app));
+        return Ok(state.status());
     }
     let n = session.sessions.fetch_add(1, Ordering::SeqCst) + 1;
-    let on_error: OnError = {
-        let app = app.clone();
-        Box::new(move |code, message| {
-            let app = app.clone();
-            std::thread::spawn(move || fail(&app, n, code, &message));
-        })
-    };
     let source = session
         .deps
-        .capture(&settings.audio_source, options.include_self, on_error);
+        .capture(&settings.audio_source, options.include_self, capture_events(app, n));
     let sink = Arc::new(TauriSink {
         app: app.clone(),
         session: n,
+        asr_code: session.deps.clone(),
     });
     let engine = match Engine::start(
         engine_config(&settings, n * ID_STRIDE),
@@ -2179,18 +2961,47 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         Err(e) => {
             let e = CommandError::new(errors::CAPTURE_FAILED, None, format!("{e:#}"));
             log::error!("không chạy được pipeline: {}", e.message);
-            set_error(app, &e.code);
+            start_failed(app, &e.code);
             return Err(e);
         }
     };
-    *session.engine.lock().unwrap() = Some(engine);
-    session.deps.begin_session();
-    state.update_status(|s| {
+    // Kiểm cờ hủy lần cuối, cùng khóa với trạng thái: Hủy tới sau bước này thì gặp trạng thái `running` và là Dừng.
+    let running = state.update_status(|s| {
+        if session.cancel.load(Ordering::SeqCst) || s.session != SessionStatus::Starting {
+            return false;
+        }
         s.session = SessionStatus::Running;
         s.loading = None;
+        true
     });
+    if !running {
+        engine.stop();
+        log::info!("hủy phiên dịch {n} lúc đang bắt đầu");
+        return Ok(state.status());
+    }
+    *session.engine.lock().unwrap() = Some(engine);
+    session.deps.begin_session();
     log::info!("bắt đầu phiên dịch {n}");
     Ok(changed(app))
+}
+
+/// Việc của nguồn âm thanh phiên `n` sang trạng thái của app.
+fn capture_events<R: Runtime>(app: &AppHandle<R>, n: u64) -> OnEvent {
+    let app = app.clone();
+    Box::new(move |event| match event {
+        CaptureEvent::Failed { code, message } => {
+            let app = app.clone();
+            std::thread::spawn(move || fail(&app, n, code, &message));
+        }
+        CaptureEvent::PermissionSuspected(suspected) => {
+            let current = app.state::<Session>().sessions.load(Ordering::SeqCst) == n;
+            if current {
+                app.state::<AppState>()
+                    .update_status(|s| s.permission_suspected = suspected);
+                changed(&app);
+            }
+        }
+    })
 }
 
 /// Dừng engine (nếu có) và báo cho tiến trình phụ. Không đổi trạng thái. Trả `false` nếu không có engine nào chạy.
@@ -2215,6 +3026,7 @@ pub fn stop<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
         s.session = SessionStatus::Idle;
         s.loading = None;
         s.indicators = Indicators::default();
+        s.permission_suspected = false;
     });
     changed(app)
 }
@@ -2228,18 +3040,35 @@ fn fail<R: Runtime>(app: &AppHandle<R>, n: u64, code: &str, message: &str) {
         return;
     }
     log::error!("phiên dịch dừng vì lỗi {code}: {message}");
-    set_error(app, code);
+    app.state::<AppState>().update_status(|s| {
+        s.session = SessionStatus::Error;
+        s.session_error = Some(code.to_string());
+        s.loading = None;
+    });
+    changed(app);
 }
 
-/// Nút, phím tắt, khay: bắt đầu khi chưa dịch; dừng khi đang dịch; đang nạp model thì hủy việc bắt đầu.
+/// Nút, phím tắt, khay: bắt đầu khi chưa dịch; dừng khi đang dịch; đang chuẩn bị thì Hủy (về `idle` ngay).
 pub fn toggle<R: Runtime>(app: &AppHandle<R>) -> Result<AppStatus, CommandError> {
-    match app.state::<AppState>().status().session {
-        SessionStatus::Idle | SessionStatus::Error => start(app),
-        SessionStatus::Starting => {
-            app.state::<Session>().cancel.store(true, Ordering::SeqCst);
-            Ok(app.state::<AppState>().status())
+    let session = app.state::<Session>();
+    let state = app.state::<AppState>();
+    let cancelled = state.update_status(|s| {
+        if s.session != SessionStatus::Starting {
+            return false;
         }
+        session.cancel.store(true, Ordering::SeqCst);
+        s.session = SessionStatus::Idle;
+        s.loading = None;
+        true
+    });
+    if cancelled {
+        log::info!("hủy lần bắt đầu phiên");
+        return Ok(changed(app));
+    }
+    match state.status().session {
+        SessionStatus::Idle | SessionStatus::Error => start(app),
         SessionStatus::Running => Ok(stop(app)),
+        SessionStatus::Starting => Ok(state.status()),
     }
 }
 
@@ -2259,18 +3088,30 @@ pub fn prewarm<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// Thoát app (Thoát ở menu khay, §4.3): dừng phiên rồi tắt hai tiến trình phụ. Đang nạp model thì không chờ: kill luôn.
+/// Thoát app (Thoát ở menu khay, §4.3). Không chờ khóa của tiến trình phụ (N1 của review 02c):
+/// 1. đặt cờ hủy, chặn mọi lần chạy tiến trình phụ mới và kill các tiến trình đang chạy (`SessionDeps::shutdown`), nên
+///    lần bắt đầu phiên hay lần chạy sẵn đang chờ nạp model trả về ngay;
+/// 2. chờ tối đa 2 giây để lấy khóa phiên, dừng engine nếu có;
+/// 3. kill mọi tiến trình phụ còn sót.
 pub fn shutdown<R: Runtime>(app: &AppHandle<R>) {
     let session = app.state::<Session>();
     session.cancel.store(true, Ordering::SeqCst);
-    match session.gate.try_lock() {
-        Ok(_gate) => {
-            stop_engine(&session);
-            session.deps.shutdown();
+    session.deps.shutdown();
+    let deadline = Instant::now() + SHUTDOWN_WAIT;
+    loop {
+        match session.gate.try_lock() {
+            Ok(_gate) => {
+                stop_engine(&session);
+                break;
+            }
+            Err(_) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(20)),
+            Err(_) => {
+                log::warn!("thoát lúc phiên còn đang bắt đầu hay dừng: không chờ nữa");
+                break;
+            }
         }
-        Err(_) => log::info!("thoát lúc đang bắt đầu hay dừng phiên: kill tiến trình phụ"),
     }
-    pipeline::process::kill_all();
+    session.deps.kill_all();
 }
 
 /// Luồng nền gọi `tick` định kỳ.
@@ -2284,10 +3125,11 @@ pub fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// Kết quả của engine sang giao diện.
+/// Kết quả của engine sang giao diện. Kế hoạch 06 thêm `usage` (đếm phút cho hạn mức, §6.8) ở đây.
 struct TauriSink<R: Runtime> {
     app: AppHandle<R>,
     session: u64,
+    asr_code: Arc<dyn SessionDeps>,
 }
 
 impl<R: Runtime> EventSink for TauriSink<R> {
@@ -2300,7 +3142,10 @@ impl<R: Runtime> EventSink for TauriSink<R> {
     }
 
     fn level(&self, rms: f32) {
-        let _ = self.app.emit(events::AUDIO_LEVEL, rms);
+        // Chỉ cửa sổ chính vẽ mức âm lượng.
+        let _ = self
+            .app
+            .emit_to(EventTarget::webview_window(window::MAIN), events::AUDIO_LEVEL, rms);
     }
 
     fn indicators(&self, indicators: &Indicators) {
@@ -2311,21 +3156,37 @@ impl<R: Runtime> EventSink for TauriSink<R> {
     }
 
     fn fatal(&self, kind: Fatal, reason: &str) {
-        let code = match kind {
-            Fatal::Vad => errors::VAD_FAILED,
-            Fatal::Asr => errors::SIDECAR_FAILED,
-        };
+        let code = fatal_code(kind, self.asr_code.asr_failure_code());
         let (app, n, reason) = (self.app.clone(), self.session, reason.to_string());
         std::thread::spawn(move || fail(&app, n, code, &reason));
     }
 }
 
-/// Sự kiện của tiến trình phụ sang trạng thái của app.
+/// Sự kiện của tiến trình phụ sang trạng thái của app, cộng bước kiểm SHA-256 trước mỗi lần chạy (QĐ17) và "lần đầu chạy".
 struct StatusEvents<R: Runtime> {
     app: AppHandle<R>,
-    asr_hash: String,
-    llama_hash: String,
-    seen_file: std::path::PathBuf,
+    dir: PathBuf,
+    hashes: Vec<(PathBuf, String)>,
+    seen_file: PathBuf,
+    /// Binary vừa chạy của mỗi bên (để ghi "đã chạy" khi nó tới `Ready`).
+    last_exe: Mutex<[Option<PathBuf>; 2]>,
+    /// Windows: handle chỉ cho đọc của lần kiểm gần nhất (`integrity::Verified::locks`), giữ suốt đời app.
+    locks: Mutex<Vec<std::fs::File>>,
+    /// Lý do bỏ cuộc gần nhất của `asr-worker`.
+    asr_gave_up: Arc<Mutex<Option<GiveUpCause>>>,
+}
+
+fn slot(which: Which) -> usize {
+    match which {
+        Which::Asr => 0,
+        Which::Llama => 1,
+    }
+}
+
+impl<R: Runtime> StatusEvents<R> {
+    fn hash_of(&self, exe: &Path) -> Option<&str> {
+        self.hashes.iter().find(|(p, _)| p == exe).map(|(_, h)| h.as_str())
+    }
 }
 
 impl<R: Runtime> SidecarEvents for StatusEvents<R> {
@@ -2336,15 +3197,12 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
                 state.update_status(|s| s.loading = Some(if *first_run { Loading::FirstRun } else { Loading::Model }))
             }
             SidecarEvent::Ready { which, first_run, .. } => {
-                if *first_run {
-                    let hash = if *which == Which::Asr {
-                        &self.asr_hash
-                    } else {
-                        &self.llama_hash
-                    };
-                    if let Err(e) = first_run::mark_seen(&self.seen_file, hash) {
-                        log::warn!("không ghi được {}: {e}", self.seen_file.display());
-                    }
+                let exe = self.last_exe.lock().unwrap()[slot(*which)].clone();
+                if *first_run
+                    && let Some(hash) = exe.as_deref().and_then(|e| self.hash_of(e))
+                    && let Err(e) = first_run::mark_seen(&self.seen_file, hash)
+                {
+                    log::warn!("không ghi được {}: {e}", self.seen_file.display());
                 }
                 if *which == Which::Llama {
                     state.update_status(|s| s.loading = None);
@@ -2352,23 +3210,43 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
             }
             SidecarEvent::CpuFallback { .. } => state.update_status(|s| s.cpu_fallback = true),
             SidecarEvent::OutOfMemory { .. } => state.update_status(|s| s.suggest_lite = true),
-            SidecarEvent::Restarting { .. } | SidecarEvent::GaveUp { .. } | SidecarEvent::Stopped { .. } => return,
+            SidecarEvent::GaveUp { which, cause, .. } => {
+                if *which == Which::Asr {
+                    *self.asr_gave_up.lock().unwrap() = Some(*cause);
+                }
+                return;
+            }
+            SidecarEvent::Restarting { .. } | SidecarEvent::Stopped { .. } => return,
         }
         changed(&self.app);
+    }
+
+    fn before_spawn(&self, which: Which, exe: &Path) -> Result<(), String> {
+        self.last_exe.lock().unwrap()[slot(which)] = Some(exe.to_path_buf());
+        let verified = integrity::verify(&self.dir, &[exe], integrity::SIDECAR_HASHES).map_err(|e| e.to_string())?;
+        if !verified.locks.is_empty() {
+            *self.locks.lock().unwrap() = verified.locks;
+        }
+        Ok(())
+    }
+
+    fn is_first_run(&self, _which: Which, exe: &Path) -> bool {
+        self.hash_of(exe)
+            .is_some_and(|h| first_run::is_first_run(&self.seen_file, h))
     }
 }
 
 struct Live {
     manager: Arc<SidecarManager>,
-    prepared: Prepared,
+    tier: Option<ModelTier>,
+    vad_model: PathBuf,
 }
 
 /// Phần bên ngoài thật: tiến trình phụ (`pipeline::supervisor`), nguồn âm thanh (`capture`), Silero VAD.
 pub struct LiveDeps<R: Runtime> {
     app: AppHandle<R>,
     live: Mutex<Option<Live>>,
-    /// Kết quả dò GPU, một lần mỗi lần chạy app.
-    gpu_usable: Mutex<Option<bool>>,
+    asr_gave_up: Arc<Mutex<Option<GiveUpCause>>>,
 }
 
 impl<R: Runtime> LiveDeps<R> {
@@ -2376,62 +3254,60 @@ impl<R: Runtime> LiveDeps<R> {
         Self {
             app,
             live: Mutex::new(None),
-            gpu_usable: Mutex::new(None),
+            asr_gave_up: Arc::default(),
         }
     }
 
-    /// macOS: Metal luôn có. Windows: `asr-worker-vulkan --probe` (§6.4).
-    fn gpu_usable(&self, exe: &Path) -> bool {
-        *self
-            .gpu_usable
-            .lock()
-            .unwrap()
-            .get_or_insert_with(|| !cfg!(windows) || sidecar::probe::run_probe(exe, PROBE_TIMEOUT))
+    /// Giám sát hiện tại. Khóa `live` chỉ giữ trong lúc clone, không bao giờ trong lúc chờ tiến trình phụ.
+    fn current(&self) -> Option<Arc<SidecarManager>> {
+        self.live.lock().unwrap().as_ref().map(|l| l.manager.clone())
     }
 
     fn manager(&self) -> Arc<SidecarManager> {
-        self.live
-            .lock()
-            .unwrap()
-            .as_ref()
-            .map(|l| l.manager.clone())
-            .expect("prepare() chạy trước")
+        self.current().expect("prepare() chạy trước")
     }
 }
 
-/// Thời gian chờ tối đa của `--probe`.
-const PROBE_TIMEOUT: Duration = Duration::from_secs(10);
-
 impl<R: Runtime> SessionDeps for LiveDeps<R> {
     fn prepare(&self, settings: &Settings) -> Result<(), CommandError> {
-        let running =
-            self.live.lock().unwrap().as_ref().and_then(|l| {
-                (l.prepared.tier == settings.model_tier && l.manager.running()).then(|| l.manager.clone())
-            });
-        if let Some(manager) = running {
+        let running = {
+            let live = self.live.lock().unwrap();
+            live.as_ref()
+                .filter(|l| l.tier == settings.model_tier)
+                .map(|l| l.manager.clone())
+        };
+        if let Some(manager) = running.filter(|m| m.running()) {
             manager.touch();
             return Ok(());
         }
-        // Kiểm SHA-256 mỗi lần chạy lại tiến trình phụ, không chỉ lúc mở app (§10.2).
-        let prepared = sidecar::prepare(&self.app, settings, |exe| self.gpu_usable(exe))?;
+        // Kiểm SHA-256 lúc chuẩn bị; giám sát còn kiểm lại trước mỗi lần chạy tiến trình phụ (`before_spawn`).
+        let prepared = sidecar::prepare(&self.app, settings)?;
         let manager = {
             let mut live = self.live.lock().unwrap();
             // Đổi gói model thì dựng lại; tiến trình cũ tắt khi phiên cuối còn dùng nó kết thúc (`SidecarManager` bị hủy).
-            if live.as_ref().is_none_or(|l| l.prepared.tier != prepared.tier) {
+            if live.as_ref().is_none_or(|l| l.tier != prepared.tier) {
+                *self.asr_gave_up.lock().unwrap() = None;
                 let events = Arc::new(StatusEvents {
                     app: self.app.clone(),
-                    asr_hash: prepared.asr_hash.clone(),
-                    llama_hash: prepared.llama_hash.clone(),
+                    dir: prepared.dir.clone(),
+                    hashes: prepared.hashes.clone(),
                     seen_file: prepared.seen_file.clone(),
+                    last_exe: Mutex::new([None, None]),
+                    locks: Mutex::new(prepared.locks),
+                    asr_gave_up: self.asr_gave_up.clone(),
                 });
-                let manager = SidecarManager::new(prepared.spec.clone(), Arc::new(SystemClock::default()), events);
-                *live = Some(Live { manager, prepared });
+                let manager = SidecarManager::new(prepared.spec, Arc::new(SystemClock::default()), events);
+                *live = Some(Live {
+                    manager,
+                    tier: prepared.tier,
+                    vad_model: prepared.vad_model,
+                });
             }
             live.as_ref().expect("vừa dựng").manager.clone()
         };
         manager
             .ensure_started()
-            .map_err(|e| CommandError::new(errors::SIDECAR_FAILED, None, e.to_string()))
+            .map_err(|e| CommandError::new(sidecar::give_up_code(e.cause), None, e.to_string()))
     }
 
     fn asr(&self) -> Box<dyn Asr> {
@@ -2448,13 +3324,13 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
             .lock()
             .unwrap()
             .as_ref()
-            .map(|l| l.prepared.vad_model.clone())
+            .map(|l| l.vad_model.clone())
             .unwrap_or_default();
         Box::new(move || Ok(Box::new(SileroVad::load(&path)?) as _))
     }
 
-    fn capture(&self, source: &AudioSource, include_self: bool, on_error: OnError) -> Box<dyn FrameSource> {
-        Box::new(LiveCapture::open(source.clone(), include_self, on_error))
+    fn capture(&self, source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource> {
+        Box::new(LiveCapture::open(source.clone(), include_self, on_event))
     }
 
     fn begin_session(&self) {
@@ -2466,8 +3342,7 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
     }
 
     fn tick(&self) {
-        let manager = self.live.lock().unwrap().as_ref().map(|l| l.manager.clone());
-        if let Some(manager) = manager
+        if let Some(manager) = self.current()
             && manager.tick()
         {
             log::info!("tắt tiến trình phụ sau 10 phút không dịch");
@@ -2475,10 +3350,21 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
     }
 
     fn shutdown(&self) {
-        let live = self.live.lock().unwrap().take();
-        if let Some(live) = live {
-            live.manager.stop(false);
+        pipeline::process::begin_shutdown();
+        if let Some(manager) = self.current() {
+            manager.shutdown();
         }
+    }
+
+    fn kill_all(&self) {
+        pipeline::process::kill_all();
+    }
+
+    fn asr_failure_code(&self) -> &'static str {
+        self.asr_gave_up
+            .lock()
+            .unwrap()
+            .map_or(errors::SIDECAR_FAILED, sidecar::give_up_code)
     }
 }
 ```
@@ -2495,54 +3381,163 @@ pub mod paths;
 pub mod probe;
 
 use std::path::{Path, PathBuf};
+use std::sync::{Condvar, Mutex};
+use std::time::Duration;
 
 use pipeline::config::PipelineConfig;
-use pipeline::supervisor::{AsrSpec, LlamaSpec, SidecarSpec};
+use pipeline::supervisor::{AsrSpec, GiveUpCause, LlamaSpec, SidecarSpec};
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::errors::{self, CommandError};
 use crate::settings::{ModelTier, Settings};
 
 /// Kết quả chuẩn bị: cách chạy hai tiến trình phụ, cộng những gì app cần nhớ.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Prepared {
     pub spec: SidecarSpec,
     pub tier: Option<ModelTier>,
-    /// SHA-256 của file thực thi `asr-worker` (bản GPU nếu có, không thì bản CPU) và `llama-server`.
-    pub asr_hash: String,
-    pub llama_hash: String,
+    /// Thư mục tiến trình phụ, và băm của từng file thực thi (theo đường dẫn), cho kiểm lại trước mỗi lần chạy và cho
+    /// "lần đầu chạy".
+    pub dir: PathBuf,
+    pub hashes: Vec<(PathBuf, String)>,
     pub vad_model: PathBuf,
     pub seen_file: PathBuf,
+    /// Windows: handle chỉ cho đọc của các file đã kiểm (`integrity::Verified::locks`).
+    pub locks: Vec<std::fs::File>,
 }
 
-/// Dựng cách chạy cho gói model trong cài đặt. `gpu_usable` nhận file `asr-worker` bản GPU và trả có dùng được GPU không
-/// (Windows: kết quả `--probe`; macOS luôn `true`, Metal). Hàm này chỉ được gọi sau khi mọi file đã qua kiểm SHA-256: không
-/// chạy binary nào chưa kiểm.
-pub fn prepare<R: Runtime>(
-    app: &AppHandle<R>,
-    settings: &Settings,
-    gpu_usable: impl FnOnce(&Path) -> bool,
-) -> Result<Prepared, CommandError> {
-    let path_error = |e: tauri::Error| CommandError::new(errors::SIDECAR_MISSING, None, e.to_string());
+impl Prepared {
+    pub fn hash_of(&self, exe: &Path) -> Option<&str> {
+        self.hashes.iter().find(|(p, _)| p == exe).map(|(_, h)| h.as_str())
+    }
+}
+
+/// Mã lỗi giao diện cho một lỗi kiểm SHA-256.
+pub fn integrity_error_code(e: &integrity::IntegrityError) -> &'static str {
+    match e {
+        integrity::IntegrityError::Missing(_) => errors::SIDECAR_MISSING,
+        _ => errors::SIDECAR_TAMPERED,
+    }
+}
+
+/// Mã lỗi giao diện khi giám sát bỏ cuộc với một tiến trình phụ.
+pub fn give_up_code(cause: GiveUpCause) -> &'static str {
+    match cause {
+        GiveUpCause::Tampered => errors::SIDECAR_TAMPERED,
+        GiveUpCause::ModelLoad => errors::MODEL_BROKEN,
+        GiveUpCause::Failures | GiveUpCause::NoSharedMode | GiveUpCause::Closing => errors::SIDECAR_FAILED,
+    }
+}
+
+/// Kết quả dò GPU trên Windows (`asr-worker-vulkan --probe`), dùng chung giữa luồng dò lúc mở app và lần chuẩn bị đầu
+/// tiên. `None` bên trong: chưa dò, hoặc lần dò trước quá giờ (dò lại).
+#[derive(Default)]
+pub struct GpuProbe {
+    result: Mutex<Option<bool>>,
+    running: Mutex<bool>,
+    done: Condvar,
+}
+
+impl GpuProbe {
+    /// Kết quả đã có; đang dò thì chờ tối đa `wait`. Trả `None` nếu chưa có kết quả.
+    pub fn get(&self, wait: Duration) -> Option<bool> {
+        let running = self.running.lock().unwrap_or_else(|e| e.into_inner());
+        let _running = self
+            .done
+            .wait_timeout_while(running, wait, |r| *r)
+            .unwrap_or_else(|e| e.into_inner());
+        *self.result.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Dò bằng `probe` nếu chưa có kết quả và chưa ai đang dò. Quá giờ (`None`) thì không nhớ.
+    pub fn run(&self, probe: impl FnOnce() -> Option<bool>) -> Option<bool> {
+        {
+            let mut running = self.running.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(known) = *self.result.lock().unwrap_or_else(|e| e.into_inner()) {
+                return Some(known);
+            }
+            if *running {
+                drop(running);
+                return self.get(Duration::from_secs(60));
+            }
+            *running = true;
+        }
+        let outcome = probe();
+        if outcome.is_some() {
+            *self.result.lock().unwrap_or_else(|e| e.into_inner()) = outcome;
+        }
+        *self.running.lock().unwrap_or_else(|e| e.into_inner()) = false;
+        self.done.notify_all();
+        outcome
+    }
+}
+
+/// Đường dẫn file của bản đang chạy.
+fn files() -> Result<(PathBuf, paths::SidecarFiles), CommandError> {
     let dir = paths::binaries_dir().map_err(|e| CommandError::new(errors::SIDECAR_MISSING, None, e.to_string()))?;
     let files = paths::sidecar_files(&dir, paths::TARGET, tauri::is_dev(), cfg!(windows));
+    Ok((dir, files))
+}
+
+/// Windows: dò GPU ngay khi mở app, trên luồng nền và sau khi đã kiểm SHA-256 của `asr-worker-vulkan` (Q7 của review
+/// 02c), để lúc bấm Bắt đầu đã có kết quả. macOS không cần (Metal luôn có).
+pub fn start_gpu_probe<R: Runtime>(app: &AppHandle<R>) {
+    if !cfg!(windows) {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let Ok((dir, files)) = files() else { return };
+        let Ok(verified) = integrity::verify(&dir, &[&files.asr_gpu], integrity::SIDECAR_HASHES) else {
+            return;
+        };
+        let seen = seen_file(&app);
+        let first = seen
+            .as_deref()
+            .is_none_or(|s| first_run::is_first_run(s, &verified.hashes[0]));
+        app.state::<GpuProbe>()
+            .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)));
+    });
+}
+
+fn seen_file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
+    app.path()
+        .app_local_data_dir()
+        .ok()
+        .map(|d| d.join("sidecars-seen.json"))
+}
+
+/// Dựng cách chạy cho gói model trong cài đặt. Kiểm SHA-256 trước, rồi mới chạy `--probe` (Windows): không chạy binary
+/// nào chưa kiểm.
+pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Prepared, CommandError> {
+    let path_error = |e: tauri::Error| CommandError::new(errors::SIDECAR_MISSING, None, e.to_string());
+    let (dir, files) = files()?;
     let required: Vec<&Path> = if cfg!(windows) {
         vec![&files.asr_gpu, &files.asr_cpu, &files.llama]
     } else {
         vec![&files.asr_cpu, &files.llama]
     };
-    let hashes = integrity::verify(&dir, &required, integrity::SIDECAR_HASHES).map_err(|e| {
-        let code = match e {
-            integrity::IntegrityError::Missing(_) => errors::SIDECAR_MISSING,
-            _ => errors::SIDECAR_TAMPERED,
-        };
-        CommandError::new(code, None, e.to_string())
-    })?;
-    let gpu_usable = gpu_usable(&files.asr_gpu);
+    let verified = integrity::verify(&dir, &required, integrity::SIDECAR_HASHES)
+        .map_err(|e| CommandError::new(integrity_error_code(&e), None, e.to_string()))?;
+    let hashes: Vec<(PathBuf, String)> = required
+        .iter()
+        .map(|p| p.to_path_buf())
+        .zip(verified.hashes.iter().cloned())
+        .collect();
+    let data = app.path().app_local_data_dir().map_err(path_error)?;
+    let seen_file = data.join("sidecars-seen.json");
+    let gpu_usable = if cfg!(windows) {
+        let first = first_run::is_first_run(&seen_file, &verified.hashes[0]);
+        app.state::<GpuProbe>()
+            .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)))
+            .unwrap_or(false)
+    } else {
+        true
+    };
     let models_dir = if tauri::is_dev() {
         paths::dev_models_dir()
     } else {
-        app.path().app_local_data_dir().map_err(path_error)?.join("models")
+        data.join("models")
     };
     let models = paths::model_files(&models_dir, settings.model_tier);
     if let Some(missing) = paths::first_missing(&models) {
@@ -2552,12 +3547,7 @@ pub fn prepare<R: Runtime>(
             format!("thiếu {}", missing.display()),
         ));
     }
-    let data = app.path().app_local_data_dir().map_err(path_error)?;
     let logs = app.path().app_log_dir().map_err(path_error)?;
-    let seen_file = data.join("sidecars-seen.json");
-    // Băm của bản `asr-worker` sẽ chạy: Windows không có GPU dùng được thì là bản CPU (phần tử thứ hai).
-    let asr_hash = hashes[if cfg!(windows) && !gpu_usable { 1 } else { 0 }].clone();
-    let llama_hash = hashes[hashes.len() - 1].clone();
     let config = PipelineConfig::default();
     let spec = SidecarSpec {
         asr: AsrSpec {
@@ -2565,7 +3555,8 @@ pub fn prepare<R: Runtime>(
             exe_cpu: files.asr_cpu.clone(),
             model: models.asr.clone(),
             log: logs.join("asr-worker.log"),
-            first_run: first_run::is_first_run(&seen_file, &asr_hash),
+            // Lần đầu chạy được hỏi cho từng binary qua `SidecarEvents::is_first_run` (session.rs).
+            first_run: false,
             require_shared: true,
             env: Vec::new(),
         },
@@ -2574,7 +3565,7 @@ pub fn prepare<R: Runtime>(
             model: models.mt.clone(),
             log: logs.join("llama-server.log"),
             extra_args: Vec::new(),
-            first_run: first_run::is_first_run(&seen_file, &llama_hash),
+            first_run: false,
             env: Vec::new(),
         },
         supervisor: config.supervisor,
@@ -2584,11 +3575,76 @@ pub fn prepare<R: Runtime>(
     Ok(Prepared {
         spec,
         tier: settings.model_tier,
-        asr_hash,
-        llama_hash,
+        dir,
+        hashes,
         vad_model: models.vad,
         seen_file,
+        locks: verified.locks,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn errors_map_to_ui_codes() {
+        use integrity::IntegrityError;
+        assert_eq!(
+            integrity_error_code(&IntegrityError::Missing("x".into())),
+            errors::SIDECAR_MISSING
+        );
+        for e in [
+            IntegrityError::Unverified("x".into()),
+            IntegrityError::Tampered("x".into()),
+            IntegrityError::Writable("x".into()),
+        ] {
+            assert_eq!(integrity_error_code(&e), errors::SIDECAR_TAMPERED, "{e:?}");
+        }
+        assert_eq!(give_up_code(GiveUpCause::Tampered), errors::SIDECAR_TAMPERED);
+        assert_eq!(give_up_code(GiveUpCause::ModelLoad), errors::MODEL_BROKEN);
+        assert_eq!(give_up_code(GiveUpCause::Failures), errors::SIDECAR_FAILED);
+    }
+
+    /// Q7 của review 02c: dò quá giờ thì không nhớ (lần sau dò lại); có kết quả thì nhớ, và lần dò đang chạy được dùng chung.
+    #[test]
+    fn a_timed_out_probe_is_not_remembered() {
+        let probe = GpuProbe::default();
+        let calls = AtomicUsize::new(0);
+        assert_eq!(
+            probe.run(|| {
+                calls.fetch_add(1, Ordering::SeqCst);
+                None
+            }),
+            None
+        );
+        assert_eq!(probe.get(Duration::ZERO), None);
+        assert_eq!(
+            probe.run(|| {
+                calls.fetch_add(1, Ordering::SeqCst);
+                Some(true)
+            }),
+            Some(true)
+        );
+        assert_eq!(probe.run(|| panic!("đã có kết quả thì không dò nữa")), Some(true));
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        // Một luồng đang dò: luồng khác chờ kết quả đó.
+        let probe = Arc::new(GpuProbe::default());
+        let slow = {
+            let probe = probe.clone();
+            std::thread::spawn(move || {
+                probe.run(|| {
+                    std::thread::sleep(Duration::from_millis(100));
+                    Some(false)
+                })
+            })
+        };
+        std::thread::sleep(Duration::from_millis(20));
+        assert_eq!(probe.run(|| panic!("đang có người dò")), Some(false));
+        assert_eq!(slow.join().unwrap(), Some(false));
+    }
 }
 ```
 
@@ -2631,7 +3687,7 @@ Sửa `src-tauri/src/state.rs` (áp bằng `git apply`):
  }
  
  /// Trạng thái lúc chạy, không lưu xuống đĩa. Cửa sổ chính nhận qua sự kiện `app://status`.
-@@ -24,6 +40,15 @@
+@@ -24,6 +40,21 @@
      pub overlay_visible: bool,
      /// Phím tắt không đăng ký được với hệ điều hành, theo thứ tự của `HotkeyAction::ALL`.
      pub hotkey_failures: Vec<HotkeyAction>,
@@ -2644,10 +3700,16 @@ Sửa `src-tauri/src/state.rs` (áp bằng `git apply`):
 +    pub suggest_lite: bool,
 +    /// Đang trễ, không có âm thanh, dịch không dùng được (§4.4, §9).
 +    pub indicators: Indicators,
++    /// macOS: nguồn âm thanh trả toàn im lặng tuyệt đối trong khi có app đang phát: nghi chưa được cấp quyền ghi âm thanh
++    /// hệ thống (§9). Phiên vẫn chạy; giao diện hiện `error.audioPermission` kèm nút mở System Settings.
++    pub permission_suspected: bool,
++    /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
++    /// tới sau sự kiện `app://status` mới hơn).
++    pub rev: u64,
  }
  
  /// Phần cài đặt mà thanh phụ đề cần. Cửa sổ `overlay` chỉ đọc được phần này (§10.2).
-@@ -83,6 +108,11 @@
+@@ -83,6 +114,13 @@
                  // Thanh phụ đề ẩn lúc khởi động, kể cả khi mở lúc đăng nhập; hiện khi bắt đầu phiên (§4.2, Đ19).
                  overlay_visible: false,
                  hotkey_failures: Vec::new(),
@@ -2656,9 +3718,25 @@ Sửa `src-tauri/src/state.rs` (áp bằng `git apply`):
 +                cpu_fallback: false,
 +                suggest_lite: false,
 +                indicators: Indicators::default(),
++                permission_suspected: false,
++                rev: 0,
              }),
              launched_at_login,
          }
+@@ -105,8 +143,12 @@
+         self.status.lock().unwrap().clone()
+     }
+ 
++    /// Đổi trạng thái dưới khóa của nó (một lần đổi là nguyên khối), rồi tăng `rev`.
+     pub fn update_status<T>(&self, f: impl FnOnce(&mut AppStatus) -> T) -> T {
+-        f(&mut self.status.lock().unwrap())
++        let mut status = self.status.lock().unwrap();
++        let out = f(&mut status);
++        status.rev += 1;
++        out
+     }
+ 
+     pub fn launched_at_login(&self) -> bool {
 ```
 
 Sửa `src-tauri/src/tray.rs` (áp bằng `git apply`):
@@ -2713,20 +3791,40 @@ Expected:
 
 ```text
 test app_tests::blocked_quit_shows_a_notice_in_the_main_window ... ok
-test app_tests::hide_and_show_reach_the_overlay_window ... ok
-test session::tests::the_engine_follows_the_language_and_pause_settings ... ok
+test app_tests::hide_show_and_lock_reach_the_overlay_window ... ok
+test app_tests::enabling_launch_at_login_blocked_in_login_items_shows_a_notice ... ok
 test app_tests::a_failed_start_reports_its_error_code ... ok
 test app_tests::a_listening_test_session_also_captures_the_app_itself ... ok
+test app_tests::startup_follows_the_system_when_login_items_turned_it_off ... ok
+test app_tests::turning_off_launch_at_login_works_and_reports_when_it_stays_on ... ok
+test session::tests::every_fatal_reason_has_an_error_code ... ok
+test session::tests::the_engine_follows_the_language_and_pause_settings ... ok
 test app_tests::overlay_starts_hidden_and_appears_when_a_session_starts ... ok
+test app_tests::the_status_revision_grows_with_every_change ... ok
+test app_tests::cancel_while_starting_returns_to_idle_at_once ... ok
+test app_tests::shutdown_while_preparing_returns_quickly ... ok
+test app_tests::toggling_from_three_threads_ends_in_a_consistent_state ... ok
 test app_tests::a_session_turns_speech_into_subtitle_events ... ok
 test app_tests::errors_after_the_start_stop_the_session_with_their_code ... ok
-test result: ok. 99 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.28s
+test app_tests::a_late_error_of_an_old_session_does_not_touch_the_new_one ... ok
+test result: ok. 117 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.44s
 ```
 
-- [ ] **Step 6: Clippy và định dạng**
+- [ ] **Step 6: Clippy (cả target Windows) và định dạng**
 
-Run: `cargo clippy -p meeting-translator --all-targets -- -D warnings && cargo fmt --all -- --check`
-Expected: không có cảnh báo, `cargo fmt` không in gì.
+Run:
+```bash
+cargo clippy -p meeting-translator --all-targets -- -D warnings
+RC_x86_64_pc_windows_msvc=$PWD/scripts/fake-llvm-rc PKG_CONFIG_x86_64_pc_windows_msvc=$PWD/scripts/fake-pkg-config \
+  PKG_CONFIG_ALLOW_CROSS=1 RUSTONIG_DYNAMIC_LIBONIG=1 \
+  cargo clippy -p meeting-translator --target x86_64-pc-windows-msvc --all-targets -- -D warnings
+cargo fmt --all -- --check
+```
+Expected: không có cảnh báo, `cargo fmt` không in gì. Dòng cuối của lệnh thứ hai:
+
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 24.04s
+```
 
 - [ ] **Step 7: Commit**
 
@@ -2751,20 +3849,24 @@ git commit -m "feat(app): phiên dịch thật thay session_stub: tiến trình 
 ## Task 4: Chọn nguồn âm thanh, quyền ghi âm thanh hệ thống
 
 Dòng 38, 87, 91, 92, 230:
-- lệnh `list_audio_sources` (`async`, vì hỏi Core Audio hay WASAPI có thể chậm): macOS, các app đang phát tiếng theo bundle ID (trừ chính app); Windows, các thiết bị phát;
+- lệnh `list_audio_sources` (`async`, vì hỏi Core Audio hay WASAPI có thể chậm): macOS, các app đang phát tiếng (đã gộp tiến trình helper, trừ chính app), mỗi dòng có bundle ID và tên hiển thị nếu có (QĐ30); Windows, các thiết bị phát;
 - lệnh `open_audio_permission_settings`: macOS, mở trang quyền ghi âm thanh hệ thống của System Settings. Như mọi việc mở ra ngoài app (QĐ28 của 01), lệnh đi qua `SystemOpener`: phương thức mới của trait, bản thật trong `system.rs` (`AUDIO_PERMISSION_URL`), bản giả trong `test_support::FakeSystem`, và tên lệnh trong `OPENER_COMMANDS` của `acl_tests.rs`. Test không mở gì thật; trên Windows lệnh trả `unsupported` trước khi tới `SystemOpener`;
 - hai lệnh có mặt ở đủ ba chỗ (`commands::handler`, `build.rs`, `capabilities/main.json`); test ACL lấy danh sách cố định từ `MAIN_COMMANDS`;
-- `src-tauri/Info.plist`: `NSAudioCaptureUsageDescription`, cùng câu của S1. Tauri gộp file này vào Info.plist của bộ cài (07) và nhúng vào binary của `pnpm tauri dev`, nên macOS hỏi quyền với đúng câu này ở cả hai.
+- câu xin quyền (QĐ31): `src-tauri/Info.plist` có `NSAudioCaptureUsageDescription` bằng tiếng Anh (tên AI Translator), `CFBundleDevelopmentRegion` và `CFBundleLocalizations` (en, vi); `src-tauri/macos/{en,vi}.lproj/InfoPlist.strings` có câu tiếng Anh và tiếng Việt; `tauri.conf.json` chép hai file đó vào `Contents/Resources/` qua `bundle.macOS.files`. Tauri gộp `Info.plist` vào gói `.app` (07) và nhúng vào binary của `pnpm tauri dev`; `tauri dev` chỉ có câu tiếng Anh. Test `the_audio_permission_prompt_is_localized` đọc cả ba file bằng `include_str!`.
 
 **Files:**
 - Tạo: `src-tauri/Info.plist`
 - Sửa: `src-tauri/build.rs`
 - Sửa: `src-tauri/capabilities/main.json`
+- Tạo: `src-tauri/macos/en.lproj/InfoPlist.strings`
+- Tạo: `src-tauri/macos/vi.lproj/InfoPlist.strings`
 - Test (sửa): `src-tauri/src/acl_tests.rs`
 - Sửa: `src-tauri/src/actions.rs`
+- Test (sửa): `src-tauri/src/app_tests.rs`
 - Sửa: `src-tauri/src/commands.rs`
 - Sửa: `src-tauri/src/system.rs`
 - Test (sửa): `src-tauri/src/test_support.rs`
+- Sửa: `src-tauri/tauri.conf.json`
 
 - [ ] **Step 1: Viết test**
 
@@ -2800,6 +3902,40 @@ Sửa `src-tauri/src/acl_tests.rs` (áp bằng `git apply`):
      } else {
          &["open_log_dir", "open_taskbar_settings"]
      };
+```
+
+Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
+
+```diff
+--- a/src-tauri/src/app_tests.rs
++++ b/src-tauri/src/app_tests.rs
+@@ -401,3 +401,26 @@
+         .unwrap();
+     assert!(before < running && running < idle, "{before} {running} {idle}");
+ }
++
++/// Q8(c) của review 02c: câu hỏi quyền ghi âm thanh hệ thống có bản tiếng Anh (gốc, trong `Info.plist`) và tiếng Việt
++/// (`vi.lproj`), đều nói tên AI Translator, và `tauri.conf.json` chép hai file `InfoPlist.strings` vào gói `.app`.
++#[test]
++fn the_audio_permission_prompt_is_localized() {
++    const KEY: &str = "NSAudioCaptureUsageDescription";
++    let plist = include_str!("../Info.plist");
++    let en = include_str!("../macos/en.lproj/InfoPlist.strings");
++    let vi = include_str!("../macos/vi.lproj/InfoPlist.strings");
++    for (name, text) in [("Info.plist", plist), ("en", en), ("vi", vi)] {
++        assert!(text.contains(KEY) && text.contains("AI Translator"), "{name}");
++    }
++    assert!(plist.contains("<string>vi</string>"), "CFBundleLocalizations có vi");
++    assert!(vi.contains("thu âm thanh máy đang phát"));
++    let conf: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
++    let files = &conf["bundle"]["macOS"]["files"];
++    for lang in ["en", "vi"] {
++        assert_eq!(
++            files[format!("Resources/{lang}.lproj/InfoPlist.strings")],
++            format!("macos/{lang}.lproj/InfoPlist.strings")
++        );
++    }
++}
 ```
 
 Sửa `src-tauri/src/system.rs` (áp bằng `git apply`):
@@ -2848,7 +3984,7 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 ```diff
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
-@@ -73,6 +73,9 @@
+@@ -75,6 +75,9 @@
      }
      fn open_external_url(&self, url: &str) -> Result<(), String> {
          self.push(format!("open_external_url {url}"))
@@ -2866,6 +4002,9 @@ Run: `cargo test -p meeting-translator --lib`
 Expected: biên dịch lỗi:
 
 ```text
+error: couldn't read `src-tauri/src/../Info.plist`: No such file or directory (os error 2)
+error: couldn't read `src-tauri/src/../macos/en.lproj/InfoPlist.strings`: No such file or directory (os error 2)
+error: couldn't read `src-tauri/src/../macos/vi.lproj/InfoPlist.strings`: No such file or directory (os error 2)
 error[E0407]: method `open_audio_permission_settings` is not a member of trait `SystemOpener`
 error[E0425]: cannot find function `open_audio_permission_settings` in this scope
 ```
@@ -2880,7 +4019,14 @@ Tạo `src-tauri/Info.plist`:
 <plist version="1.0">
 <dict>
   <key>NSAudioCaptureUsageDescription</key>
-  <string>Meeting Translator thu âm thanh máy đang phát để hiện phụ đề dịch. Âm thanh không rời khỏi máy.</string>
+  <string>AI Translator captures the audio your Mac is playing to show translated subtitles. The audio never leaves your Mac.</string>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>vi</string>
+  </array>
 </dict>
 </plist>
 ```
@@ -2917,6 +4063,20 @@ Sửa `src-tauri/capabilities/main.json` (áp bằng `git apply`):
      "core:webview:allow-set-webview-zoom"
 ```
 
+Tạo `src-tauri/macos/en.lproj/InfoPlist.strings`:
+
+```text
+/* Câu hỏi quyền "Ghi âm thanh hệ thống" của macOS (NSAudioCaptureUsageDescription), tiếng Anh. */
+"NSAudioCaptureUsageDescription" = "AI Translator captures the audio your Mac is playing to show translated subtitles. The audio never leaves your Mac.";
+```
+
+Tạo `src-tauri/macos/vi.lproj/InfoPlist.strings`:
+
+```text
+/* Câu hỏi quyền "Ghi âm thanh hệ thống" của macOS (NSAudioCaptureUsageDescription), tiếng Việt. */
+"NSAudioCaptureUsageDescription" = "AI Translator thu âm thanh máy đang phát để hiện phụ đề dịch. Âm thanh không rời khỏi máy.";
+```
+
 Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
 
 ```diff
@@ -2929,8 +4089,8 @@ Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
 +use serde::Serialize;
  use serde_json::Value;
  use tauri::{AppHandle, Manager, Runtime};
- use tauri_plugin_autostart::ManagerExt as _;
-@@ -183,6 +184,62 @@
+ 
+@@ -192,6 +193,62 @@
      system::open_taskbar_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
  }
  
@@ -2938,8 +4098,9 @@ Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
 +#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 +#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 +pub enum AudioSourceOption {
-+    /// macOS: một app đang phát âm thanh. Core Audio chỉ cho bundle ID, nên giao diện hiện bundle ID.
-+    App { bundle_id: String },
++    /// macOS: một app đang phát âm thanh, gộp cả các tiến trình helper của nó (trình duyệt, app Electron). `name` là tên
++    /// hiển thị (`NSRunningApplication.localizedName`); không có thì giao diện hiện bundle ID.
++    App { bundle_id: String, name: Option<String> },
 +    /// Windows: một thiết bị phát đang hoạt động.
 +    Device { id: String, name: String },
 +}
@@ -2949,17 +4110,16 @@ Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
 +    let failed = |e: anyhow::Error| CommandError::new(errors::CAPTURE_FAILED, None, format!("{e:#}"));
 +    #[cfg(target_os = "macos")]
 +    {
-+        let me = std::process::id() as i32;
-+        // Một app có thể có nhiều tiến trình phát tiếng (trình duyệt): mỗi bundle ID một dòng, theo thứ tự chữ cái.
-+        let bundles: std::collections::BTreeSet<String> = audio_capture::macos::audio_apps()
++        // `audio_apps` đã gộp tiến trình theo app và bỏ chính app; mỗi bundle ID một dòng, theo thứ tự chữ cái.
++        let apps: std::collections::BTreeMap<String, Option<String>> = audio_capture::macos::audio_apps()
 +            .map_err(failed)?
 +            .into_iter()
-+            .filter(|a| a.pid != me && !a.bundle_id.is_empty())
-+            .map(|a| a.bundle_id)
++            .filter(|a| !a.bundle_id.is_empty())
++            .map(|a| (a.bundle_id, a.name))
 +            .collect();
-+        Ok(bundles
++        Ok(apps
 +            .into_iter()
-+            .map(|bundle_id| AudioSourceOption::App { bundle_id })
++            .map(|(bundle_id, name)| AudioSourceOption::App { bundle_id, name })
 +            .collect())
 +    }
 +    #[cfg(windows)]
@@ -3018,7 +4178,7 @@ Sửa `src-tauri/src/commands.rs` (áp bằng `git apply`):
 +pub async fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError> {
 +    tauri::async_runtime::spawn_blocking(actions::list_audio_sources)
 +        .await
-+        .map_err(|e| CommandError::new(errors::CAPTURE_FAILED, None, e.to_string()))?
++        .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
 +}
 +
 +#[tauri::command]
@@ -3098,28 +4258,59 @@ Sửa `src-tauri/src/system.rs` (áp bằng `git apply`):
  #[cfg(test)]
 ```
 
+Sửa `src-tauri/tauri.conf.json` (áp bằng `git apply`):
+
+```diff
+--- a/src-tauri/tauri.conf.json
++++ b/src-tauri/tauri.conf.json
+@@ -18,6 +18,12 @@
+   },
+   "bundle": {
+     "active": false,
+-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.icns", "icons/icon.ico"]
++    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.icns", "icons/icon.ico"],
++    "macOS": {
++      "files": {
++        "Resources/en.lproj/InfoPlist.strings": "macos/en.lproj/InfoPlist.strings",
++        "Resources/vi.lproj/InfoPlist.strings": "macos/vi.lproj/InfoPlist.strings"
++      }
++    }
+   }
+ }
+```
+
 - [ ] **Step 4: Chạy test, thấy xanh**
 
-Run: `cargo test -p meeting-translator --lib && plutil -lint src-tauri/Info.plist`
+Run: `cargo test -p meeting-translator --lib && plutil -lint src-tauri/Info.plist src-tauri/macos/en.lproj/InfoPlist.strings src-tauri/macos/vi.lproj/InfoPlist.strings`
 Expected:
 
 ```text
 test acl_tests::capabilities_grant_exactly_the_fixed_lists ... ok
 test app_tests::blocked_quit_shows_a_notice_in_the_main_window ... ok
-test app_tests::hide_and_show_reach_the_overlay_window ... ok
 test acl_tests::outside_effects_only_reach_the_fake_opener ... ok
+test app_tests::hide_show_and_lock_reach_the_overlay_window ... ok
+test app_tests::the_audio_permission_prompt_is_localized ... ok
+test app_tests::enabling_launch_at_login_blocked_in_login_items_shows_a_notice ... ok
 test app_tests::a_failed_start_reports_its_error_code ... ok
-test acl_tests::each_window_only_reaches_its_own_commands ... ok
-test app_tests::overlay_starts_hidden_and_appears_when_a_session_starts ... ok
 test app_tests::a_listening_test_session_also_captures_the_app_itself ... ok
+test app_tests::startup_follows_the_system_when_login_items_turned_it_off ... ok
+test acl_tests::each_window_only_reaches_its_own_commands ... ok
+test app_tests::turning_off_launch_at_login_works_and_reports_when_it_stays_on ... ok
+test app_tests::overlay_starts_hidden_and_appears_when_a_session_starts ... ok
+test app_tests::the_status_revision_grows_with_every_change ... ok
+test app_tests::cancel_while_starting_returns_to_idle_at_once ... ok
+test app_tests::shutdown_while_preparing_returns_quickly ... ok
+test app_tests::toggling_from_three_threads_ends_in_a_consistent_state ... ok
 test app_tests::a_session_turns_speech_into_subtitle_events ... ok
 test app_tests::errors_after_the_start_stop_the_session_with_their_code ... ok
-test result: ok. 99 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.28s
+test app_tests::a_late_error_of_an_old_session_does_not_touch_the_new_one ... ok
+test result: ok. 118 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.45s
 ```
 
 ```text
-$ plutil -lint src-tauri/Info.plist
 src-tauri/Info.plist: OK
+src-tauri/macos/en.lproj/InfoPlist.strings: OK
+src-tauri/macos/vi.lproj/InfoPlist.strings: OK
 ```
 
 - [ ] **Step 5: Clippy và định dạng**
@@ -3133,20 +4324,25 @@ Expected: không có cảnh báo, `cargo fmt` không in gì.
 git add src-tauri/Info.plist \
   src-tauri/build.rs \
   src-tauri/capabilities/main.json \
+  src-tauri/macos/en.lproj/InfoPlist.strings \
+  src-tauri/macos/vi.lproj/InfoPlist.strings \
   src-tauri/src/acl_tests.rs \
   src-tauri/src/actions.rs \
+  src-tauri/src/app_tests.rs \
   src-tauri/src/commands.rs \
   src-tauri/src/system.rs \
-  src-tauri/src/test_support.rs
-git commit -m "feat(app): chọn nguồn âm thanh, mở trang quyền ghi âm thanh hệ thống, NSAudioCaptureUsageDescription" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+  src-tauri/src/test_support.rs \
+  src-tauri/tauri.conf.json
+git commit -m "feat(app): chọn nguồn âm thanh, mở trang quyền ghi âm thanh hệ thống, câu xin quyền tiếng Anh và tiếng Việt" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ## Task 5: Dữ liệu của giao diện: kiểu, store, thanh phụ đề
 
 Dòng 43, 66, 67, 152:
-- `src/lib/ipc.ts`: kiểu khớp phía Rust (trạng thái phiên mới, `Indicators`, `Subtitle.replaces`, `SubtitleDelta`, `AudioSourceOption`, hai lệnh mới, hai sự kiện mới).
-- `src/store/app.ts`: mức âm lượng theo `audio://level` (về 0 khi phiên không chạy), danh sách nguồn âm thanh, mở trang quyền; bắt đầu phiên lỗi thì lấy trạng thái lỗi từ phía Rust (`sessionError`) thay vì bật thanh báo lỗi chung; `levelToMeter` (thanh đo theo dBFS).
-- `src/store/overlay.ts`: `appendDelta` nối chữ dịch tới dần; `upsertLine` bỏ các phụ đề đã gộp (`replaces`).
+- `src/lib/ipc.ts`: kiểu khớp phía Rust (trạng thái phiên mới, `Indicators`, `permissionSuspected`, `rev`, `Subtitle.replaces`, `SubtitleDelta`, `AudioSourceOption` có `name`, hai lệnh mới, hai sự kiện mới).
+- `src/store/app.ts`: `setStatus` bỏ trạng thái có `rev` nhỏ hơn trạng thái đang có (sự kiện cũ tới sau kết quả của lệnh không ghi đè trạng thái mới; Q6 của review 02c); mức âm lượng theo `audio://level` (về 0 khi phiên không chạy), danh sách nguồn âm thanh, mở trang quyền; bắt đầu phiên lỗi thì lấy trạng thái lỗi từ phía Rust (`sessionError`) thay vì bật thanh báo lỗi chung; `levelToMeter` (thanh đo theo dBFS).
+- `src/store/app.ts`, `init()`: cài đặt hay trạng thái đã tới qua sự kiện trong lúc chờ `get_settings`, `get_app_status` thì giữ bản đó, không để kết quả của lệnh đè lên.
+- `src/store/overlay.ts`: `appendDelta` nối chữ dịch tới dần; `upsertLine` bỏ các phụ đề đã gộp (`replaces`), xếp theo `id`: phụ đề chưa có trên thanh mà cũ hơn dòng đầu (bản dịch xong sau khi câu đã trôi khỏi thanh) thì bỏ qua, còn lại chèn đúng chỗ theo `id` (id không trùng giữa các phiên nhờ `id_base`); store nghe `app://status` (bỏ trạng thái có `rev` nhỏ hơn) và xóa phụ đề khi một phiên mới bắt đầu (`starting`); `overlay://view` mới thì cắt `lines` theo số dòng mới.
 - `src/windows/overlay/overlay.tsx`: chưa có chữ dịch thì hiện câu gốc một lần (nhãn cho từng trạng thái ở 03).
 
 **Files:**
@@ -3173,7 +4369,7 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
  
  const settings: Settings = {
    uiLanguage: "vi",
-@@ -20,7 +20,16 @@
+@@ -20,7 +20,18 @@
    experimental: { translationContext: false },
    onboardingDone: false,
  };
@@ -3187,11 +4383,13 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
 +  cpuFallback: false,
 +  suggestLite: false,
 +  indicators: { lagging: false, noAudio: false, translationUnavailable: false },
++  permissionSuspected: false,
++  rev: 1,
 +};
  const info: AppInfo = {
-   name: "Meeting Translator",
+   name: "AI Translator",
    version: "0.1.0",
-@@ -29,13 +38,15 @@
+@@ -29,13 +40,17 @@
    launchedAtLogin: false,
  };
  
@@ -3206,25 +4404,28 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
      get_settings: () => settings,
 -    get_app_status: () => status,
 +    get_app_status: () =>
-+      failToggle === "model" ? { ...status, session: "error", sessionError: "modelMissing", overlayVisible: true } : status,
++      failToggle === "model"
++        ? { ...status, session: "error", sessionError: "modelMissing", overlayVisible: true, rev: 3 }
++        : status,
      get_app_info: () => info,
      update_settings: ({ patch }) => {
        if (patch.vadEndSilenceMs === 900) throw { code: "outOfRange", field: "vadEndSilenceMs", message: "…" };
-@@ -46,9 +57,12 @@
+@@ -46,9 +61,12 @@
        return { ...settings, hotkeys: { ...settings.hotkeys, [action]: accelerator.replace("Key", "") } };
      },
      toggle_session: () => {
 -      if (failToggle) throw { code: "overlayFailed", field: null, message: "…" };
+-      return { ...status, session: "running", overlayVisible: true };
 +      if (failToggle === "model") throw { code: "modelMissing", field: null, message: "…" };
 +      if (failToggle === "acl") throw "Command toggle_session not allowed by ACL";
-       return { ...status, session: "running", overlayVisible: true };
++      return { ...status, session: "running", overlayVisible: true, rev: 2 };
      },
-+    list_audio_sources: () => [{ kind: "app", bundleId: "us.zoom.xos" }],
++    list_audio_sources: () => [{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }],
 +    open_audio_permission_settings: () => null,
      set_overlay_locked: ({ locked }) => ({ ...settings, overlay: { ...settings.overlay, locked } }),
      open_login_items_settings: () => null,
    });
-@@ -56,7 +70,7 @@
+@@ -56,7 +74,7 @@
  }
  
  describe("app store", () => {
@@ -3233,7 +4434,7 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
      const { fake, store } = setup();
      const off = await store.getState().init();
      expect(store.getState().settings).toEqual(settings);
-@@ -66,6 +80,7 @@
+@@ -66,6 +84,7 @@
      expect(fake.listenerCount("app://status")).toBe(1);
      expect(fake.listenerCount("app://navigate")).toBe(1);
      expect(fake.listenerCount("app://notice")).toBe(1);
@@ -3241,7 +4442,7 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
      off();
      expect(fake.listenerCount("settings://changed")).toBe(0);
    });
-@@ -124,13 +139,52 @@
+@@ -124,13 +143,81 @@
      expect(store.getState().settings?.overlay.locked).toBe(true);
    });
  
@@ -3249,12 +4450,13 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
 -    const { store } = setup();
 -    await store.getState().init();
 -    failToggle = true;
+-    await store.getState().toggleSession();
+-    expect(store.getState().error).toEqual({ code: "overlayFailed", field: null });
 +  it("bắt đầu phiên lỗi thì trạng thái ra lỗi kèm mã, không bật thanh báo lỗi chung", async () => {
 +    const { store } = setup();
 +    await store.getState().init();
 +    failToggle = "model";
-     await store.getState().toggleSession();
--    expect(store.getState().error).toEqual({ code: "overlayFailed", field: null });
++    await store.getState().toggleSession();
 +    expect(store.getState().status?.session).toBe("error");
 +    expect(store.getState().status?.sessionError).toBe("modelMissing");
 +    expect(store.getState().error).toBeNull();
@@ -3272,11 +4474,40 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
 +  it("mức âm lượng theo sự kiện, về 0 khi phiên dừng", async () => {
 +    const { fake, store } = setup();
 +    await store.getState().init();
-+    fake.emit("app://status", { ...status, session: "running" });
++    fake.emit("app://status", { ...status, session: "running", rev: 2 });
 +    fake.emit("audio://level", 0.05);
 +    expect(store.getState().level).toBe(0.05);
-+    fake.emit("app://status", { ...status, session: "idle" });
++    fake.emit("app://status", { ...status, session: "idle", rev: 3 });
 +    expect(store.getState().level).toBe(0);
++  });
++
++  it("trạng thái cũ hơn trạng thái đang có (rev nhỏ hơn) bị bỏ", async () => {
++    const { fake, store } = setup();
++    await store.getState().init();
++    // Sự kiện của lần dừng (rev 5) tới trước kết quả của lệnh bắt đầu (rev 2).
++    fake.emit("app://status", { ...status, session: "idle", rev: 5 });
++    await store.getState().toggleSession();
++    expect(store.getState().status?.rev).toBe(5);
++    expect(store.getState().status?.session).toBe("idle");
++  });
++
++  it("init không đè trạng thái và cài đặt mới hơn đã tới qua sự kiện trong lúc chờ", async () => {
++    let fake: ReturnType<typeof fakeIpc> | null = null;
++    fake = fakeIpc({
++      get_settings: () => {
++        fake?.emit("settings://changed", { ...settings, uiLanguage: "en" });
++        return settings;
++      },
++      get_app_status: () => {
++        fake?.emit("app://status", { ...status, session: "starting", rev: 2 });
++        return status;
++      },
++      get_app_info: () => info,
++    });
++    const store = createAppStore(fake.ipc);
++    await store.getState().init();
++    expect(store.getState().settings?.uiLanguage).toBe("en");
++    expect(store.getState().status?.session).toBe("starting");
 +  });
 +
 +  it("đọc danh sách nguồn âm thanh và mở trang quyền ghi âm thanh", async () => {
@@ -3284,7 +4515,7 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
 +    await store.getState().init();
 +    expect(store.getState().audioSources).toBeNull();
 +    await store.getState().loadAudioSources();
-+    expect(store.getState().audioSources).toEqual([{ kind: "app", bundleId: "us.zoom.xos" }]);
++    expect(store.getState().audioSources).toEqual([{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }]);
 +    await store.getState().openAudioPermissionSettings();
 +    expect(fake.calls.at(-1)?.cmd).toBe("open_audio_permission_settings");
 +    expect(store.getState().error).toBeNull();
@@ -3301,61 +4532,129 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
    it("lời nhắc từ phía Rust hiện rồi đóng được", async () => {
 ```
 
-Sửa `src/store/overlay.test.ts` (áp bằng `git apply`):
+Thay toàn bộ `src/store/overlay.test.ts` bằng:
 
-```diff
---- a/src/store/overlay.test.ts
-+++ b/src/store/overlay.test.ts
-@@ -1,7 +1,7 @@
- import { describe, expect, it } from "vitest";
- import { fakeIpc } from "../lib/fakeIpc";
- import type { OverlayView, Subtitle } from "../lib/ipc";
--import { createOverlayStore, upsertLine } from "./overlay";
-+import { appendDelta, createOverlayStore, upsertLine } from "./overlay";
- 
- const sub = (id: number, tgt: string, provisional = false): Subtitle => ({
-   id,
-@@ -12,6 +12,7 @@
-   tgt_text: tgt,
-   status: "done",
-   provisional,
-+  replaces: [],
- });
- 
- const view: OverlayView = { uiLanguage: "vi", fontSize: 22, lines: 2, opacity: 0.6, showSource: false, locked: false };
-@@ -30,6 +31,20 @@
-   });
- });
- 
-+describe("gộp câu và chữ dịch tới dần", () => {
-+  it("phụ đề có replaces thì xóa các phụ đề đã gộp vào nó (§7)", () => {
-+    const lines = [sub(1, "a"), sub(2, "b"), sub(3, "c")];
-+    const merged = { ...sub(4, "b c"), replaces: [2, 3] };
-+    expect(upsertLine(lines, merged, 3).map((l) => l.id)).toEqual([1, 4]);
-+  });
-+
-+  it("delta nối vào chữ dịch của đúng phụ đề, phụ đề đã trôi khỏi thanh thì bỏ qua", () => {
-+    const lines = [sub(1, "Xin"), sub(2, "")];
-+    const next = appendDelta(appendDelta(lines, { id: 1, text: " chào" }), { id: 9, text: "x" });
-+    expect(next.map((l) => l.tgt_text)).toEqual(["Xin chào", ""]);
-+  });
-+});
-+
- describe("overlay store", () => {
-   it("đọc phần cài đặt của thanh phụ đề và nhận phụ đề qua sự kiện", async () => {
-     const fake = fakeIpc({ get_overlay_view: () => view });
-@@ -38,8 +53,10 @@
-     expect(store.getState().view).toEqual(view);
-     fake.emit("subtitle://upsert", sub(1, "một"));
-     fake.emit("subtitle://upsert", sub(2, "hai"));
--    fake.emit("subtitle://upsert", sub(3, "ba"));
-+    fake.emit("subtitle://upsert", sub(3, "b"));
-+    fake.emit("subtitle://delta", { id: 3, text: "a" });
-     expect(store.getState().lines.map((l) => l.id)).toEqual([2, 3]);
-+    expect(store.getState().lines[1]?.tgt_text).toBe("ba");
-     fake.emit("overlay://view", { ...view, lines: 1, locked: true });
-     expect(store.getState().view?.locked).toBe(true);
-     expect(store.getState().lines.map((l) => l.id)).toEqual([3]);
+```ts
+import { describe, expect, it } from "vitest";
+import { fakeIpc } from "../lib/fakeIpc";
+import type { AppStatus, OverlayView, Subtitle } from "../lib/ipc";
+import { appendDelta, createOverlayStore, upsertLine } from "./overlay";
+
+const sub = (id: number, tgt: string, provisional = false): Subtitle => ({
+  id,
+  start_ms: id * 1000,
+  end_ms: id * 1000 + 800,
+  src_lang: "en",
+  src_text: `src ${id}`,
+  tgt_text: tgt,
+  status: "done",
+  provisional,
+  replaces: [],
+});
+
+const view: OverlayView = { uiLanguage: "vi", fontSize: 22, lines: 2, opacity: 0.6, showSource: false, locked: false };
+
+describe("upsertLine", () => {
+  it("thêm dòng mới vào cuối, giữ tối đa max dòng", () => {
+    const lines = [sub(1, "a"), sub(2, "b")];
+    expect(upsertLine(lines, sub(3, "c"), 2).map((l) => l.id)).toEqual([2, 3]);
+  });
+
+  it("phụ đề đã trôi khỏi thanh thì bỏ qua, không gắn vào cuối", () => {
+    const lines = [sub(5, "e"), sub(6, "f")];
+    expect(upsertLine(lines, sub(4, "d"), 2).map((l) => l.id)).toEqual([5, 6]);
+    expect(upsertLine(lines, sub(4, "d"), 3).map((l) => l.id)).toEqual([5, 6]);
+  });
+
+  it("phụ đề chưa có trên thanh được chèn theo thứ tự id", () => {
+    const lines = [sub(1, "a"), sub(3, "c")];
+    expect(upsertLine(lines, sub(2, "b"), 3).map((l) => l.id)).toEqual([1, 2, 3]);
+    expect(upsertLine(lines, sub(2, "b"), 2).map((l) => l.id)).toEqual([2, 3]);
+  });
+
+  it("bản dịch xong của một dòng không nằm cuối được thay tại chỗ", () => {
+    const lines = [sub(1, ""), sub(2, "b"), sub(3, "c")];
+    const next = upsertLine(lines, sub(1, "a xong"), 3);
+    expect(next.map((l) => [l.id, l.tgt_text])).toEqual([
+      [1, "a xong"],
+      [2, "b"],
+      [3, "c"],
+    ]);
+  });
+
+  it("phụ đề tạm cùng id được thay tại chỗ", () => {
+    const lines = [sub(1, "a"), sub(2, "b", true)];
+    const next = upsertLine(lines, sub(2, "b đã ghép"), 3);
+    expect(next.map((l) => l.tgt_text)).toEqual(["a", "b đã ghép"]);
+    expect(next[1]?.provisional).toBe(false);
+  });
+});
+
+describe("gộp câu và chữ dịch tới dần", () => {
+  it("phụ đề có replaces thì xóa các phụ đề đã gộp vào nó (§7)", () => {
+    const lines = [sub(1, "a"), sub(2, "b"), sub(3, "c")];
+    const merged = { ...sub(4, "b c"), replaces: [2, 3] };
+    expect(upsertLine(lines, merged, 3).map((l) => l.id)).toEqual([1, 4]);
+  });
+
+  it("delta nối vào chữ dịch của đúng phụ đề, phụ đề đã trôi khỏi thanh thì bỏ qua", () => {
+    const lines = [sub(1, "Xin"), sub(2, "")];
+    const next = appendDelta(appendDelta(lines, { id: 1, text: " chào" }), { id: 9, text: "x" });
+    expect(next.map((l) => l.tgt_text)).toEqual(["Xin chào", ""]);
+  });
+});
+
+const status = (session: AppStatus["session"], rev: number): AppStatus => ({
+  session,
+  overlayVisible: true,
+  hotkeyFailures: [],
+  loading: null,
+  sessionError: null,
+  cpuFallback: false,
+  suggestLite: false,
+  indicators: { lagging: false, noAudio: false, translationUnavailable: false },
+  permissionSuspected: false,
+  rev,
+});
+
+describe("overlay store", () => {
+  it("phiên mới bắt đầu thì xóa phụ đề của phiên trước; trạng thái cũ tới muộn thì bỏ", async () => {
+    const fake = fakeIpc({ get_overlay_view: () => ({ ...view, lines: 3 }) });
+    const store = createOverlayStore(fake.ipc);
+    await store.getState().init();
+    fake.emit("app://status", status("starting", 1));
+    fake.emit("app://status", status("running", 2));
+    fake.emit("subtitle://upsert", sub(1, "một"));
+    fake.emit("app://status", status("idle", 3));
+    expect(store.getState().lines.map((l) => l.id)).toEqual([1]);
+    // Trạng thái `starting` cũ (rev 1) tới muộn: không xóa gì.
+    fake.emit("app://status", status("starting", 1));
+    expect(store.getState().lines.map((l) => l.id)).toEqual([1]);
+    expect(store.getState().status?.rev).toBe(3);
+    fake.emit("app://status", status("starting", 4));
+    expect(store.getState().lines).toEqual([]);
+    fake.emit("app://status", status("running", 5));
+    fake.emit("subtitle://upsert", sub(1_000_001, "hai"));
+    expect(store.getState().lines.map((l) => l.id)).toEqual([1_000_001]);
+  });
+
+  it("đọc phần cài đặt của thanh phụ đề và nhận phụ đề qua sự kiện", async () => {
+    const fake = fakeIpc({ get_overlay_view: () => view });
+    const store = createOverlayStore(fake.ipc);
+    await store.getState().init();
+    expect(store.getState().view).toEqual(view);
+    fake.emit("subtitle://upsert", sub(1, "một"));
+    fake.emit("subtitle://upsert", sub(2, "hai"));
+    fake.emit("subtitle://upsert", sub(3, "b"));
+    fake.emit("subtitle://delta", { id: 3, text: "a" });
+    expect(store.getState().lines.map((l) => l.id)).toEqual([2, 3]);
+    expect(store.getState().lines[1]?.tgt_text).toBe("ba");
+    fake.emit("overlay://view", { ...view, lines: 1, locked: true });
+    expect(store.getState().view?.locked).toBe(true);
+    expect(store.getState().lines.map((l) => l.id)).toEqual([3]);
+    expect(fake.calls.map((c) => c.cmd)).toEqual(["get_overlay_view"]);
+  });
+});
 ```
 
 - [ ] **Step 2: Chạy test, thấy đỏ**
@@ -3365,14 +4664,19 @@ Expected: các test mới lỗi:
 
 ```text
  Test Files  2 failed | 2 passed (4)
-      Tests  8 failed | 26 passed (34)
+      Tests  13 failed | 27 passed (40)
  FAIL  src/store/app.test.ts > app store > init đọc cài đặt, trạng thái, thông tin app và nghe năm sự kiện
  FAIL  src/store/app.test.ts > app store > bắt đầu phiên lỗi thì trạng thái ra lỗi kèm mã, không bật thanh báo lỗi chung
  FAIL  src/store/app.test.ts > app store > mức âm lượng theo sự kiện, về 0 khi phiên dừng
+ FAIL  src/store/app.test.ts > app store > trạng thái cũ hơn trạng thái đang có (rev nhỏ hơn) bị bỏ
+ FAIL  src/store/app.test.ts > app store > init không đè trạng thái và cài đặt mới hơn đã tới qua sự kiện trong lúc chờ
  FAIL  src/store/app.test.ts > app store > đọc danh sách nguồn âm thanh và mở trang quyền ghi âm thanh
  FAIL  src/store/app.test.ts > app store > thanh đo âm lượng theo dBFS: −60 dB trở xuống là 0, 0 dB là đầy
+ FAIL  src/store/overlay.test.ts > upsertLine > phụ đề đã trôi khỏi thanh thì bỏ qua, không gắn vào cuối
+ FAIL  src/store/overlay.test.ts > upsertLine > phụ đề chưa có trên thanh được chèn theo thứ tự id
  FAIL  src/store/overlay.test.ts > gộp câu và chữ dịch tới dần > phụ đề có replaces thì xóa các phụ đề đã gộp vào nó (§7)
  FAIL  src/store/overlay.test.ts > gộp câu và chữ dịch tới dần > delta nối vào chữ dịch của đúng phụ đề, phụ đề đã trôi khỏi thanh thì bỏ qua
+ FAIL  src/store/overlay.test.ts > overlay store > phiên mới bắt đầu thì xóa phụ đề của phiên trước; trạng thái cũ tới muộn thì bỏ
  FAIL  src/store/overlay.test.ts > overlay store > đọc phần cài đặt của thanh phụ đề và nhận phụ đề qua sự kiện
 ```
 
@@ -3383,7 +4687,7 @@ Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
 ```diff
 --- a/src/lib/ipc.ts
 +++ b/src/lib/ipc.ts
-@@ -58,13 +58,32 @@
+@@ -58,13 +58,39 @@
    experimental?: Partial<Settings["experimental"]>;
  };
  
@@ -3410,14 +4714,21 @@ Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
 +  cpuFallback: boolean;
 +  suggestLite: boolean;
 +  indicators: Indicators;
++  // macOS: âm thanh vào toàn im lặng tuyệt đối trong khi có app đang phát: nghi chưa được cấp quyền (§9).
++  permissionSuspected: boolean;
++  // Tăng mỗi lần trạng thái đổi: trạng thái có `rev` nhỏ hơn trạng thái đang có là cũ, bỏ qua.
++  rev: number;
  }
 +
-+// Một lựa chọn ở Cài đặt › Âm thanh (`actions::AudioSourceOption`): macOS, app đang phát tiếng; Windows, thiết bị phát.
-+export type AudioSourceOption = { kind: "app"; bundleId: string } | { kind: "device"; id: string; name: string };
++// Một lựa chọn ở Cài đặt › Âm thanh (`actions::AudioSourceOption`): macOS, app đang phát tiếng (tên hiển thị nếu có);
++// Windows, thiết bị phát.
++export type AudioSourceOption =
++  | { kind: "app"; bundleId: string; name: string | null }
++  | { kind: "device"; id: string; name: string };
  
  export interface AppInfo {
    name: string;
-@@ -83,7 +102,7 @@
+@@ -83,7 +109,7 @@
    locked: boolean;
  }
  
@@ -3426,7 +4737,7 @@ Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
  export interface Subtitle {
    id: number;
    start_ms: number;
-@@ -93,6 +112,14 @@
+@@ -93,6 +119,14 @@
    tgt_text: string;
    status: "asr_done" | "translating" | "done" | "failed" | "same_lang" | "skipped" | "dropped";
    provisional: boolean;
@@ -3441,7 +4752,7 @@ Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
  }
  
  export type Screen = "home" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "about";
-@@ -118,7 +145,8 @@
+@@ -118,7 +152,8 @@
    update_settings: { args: { patch: SettingsPatch }; result: Settings };
    set_hotkey: { args: { action: HotkeyAction; accelerator: string }; result: Settings };
    get_app_status: { args: undefined; result: AppStatus };
@@ -3451,7 +4762,7 @@ Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
    toggle_session: { args: undefined; result: AppStatus };
    set_overlay_visible: { args: { visible: boolean }; result: AppStatus };
    set_overlay_locked: { args: { locked: boolean }; result: Settings };
-@@ -126,6 +154,8 @@
+@@ -126,6 +161,8 @@
    open_log_dir: { args: undefined; result: null };
    open_taskbar_settings: { args: undefined; result: null };
    open_login_items_settings: { args: undefined; result: null };
@@ -3460,7 +4771,7 @@ Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
    get_overlay_view: { args: undefined; result: OverlayView };
  }
  
-@@ -136,6 +166,9 @@
+@@ -136,6 +173,9 @@
    "app://notice": AppNotice;
    "overlay://view": OverlayView;
    "subtitle://upsert": Subtitle;
@@ -3520,7 +4831,22 @@ Sửa `src/store/app.ts` (áp bằng `git apply`):
    finishOnboarding(): Promise<void>;
    dismissError(): void;
    dismissNotice(): void;
-@@ -84,11 +99,14 @@
+@@ -75,6 +90,14 @@
+       }
+     }
+ 
++    // Nhận một trạng thái mới, từ sự kiện `app://status` hay kết quả của một lệnh. Kết quả của lệnh có thể tới sau một
++    // sự kiện mới hơn: trạng thái có `rev` nhỏ hơn trạng thái đang có thì bỏ. Phiên không chạy thì mức âm lượng về 0.
++    function setStatus(status: AppStatus) {
++      const current = get().status;
++      if (current && status.rev < current.rev) return;
++      set(status.session === "running" ? { status } : { status, level: 0 });
++    }
++
+     return {
+       settings: null,
+       status: null,
+@@ -84,11 +107,14 @@
        onboardingStep: 0,
        error: null,
        notice: null,
@@ -3531,12 +4857,23 @@ Sửa `src/store/app.ts` (áp bằng `git apply`):
          const offs = await Promise.all([
            ipc.listen("settings://changed", (settings) => set({ settings })),
 -          ipc.listen("app://status", (status) => set({ status })),
-+          ipc.listen("app://status", (status) => set(status.session === "running" ? { status } : { status, level: 0 })),
++          ipc.listen("app://status", (status) => setStatus(status)),
 +          ipc.listen("audio://level", (level) => set({ level })),
            ipc.listen("app://navigate", (target: Navigate) => get().navigate(target.screen, target.settingsGroup)),
            ipc.listen("app://notice", (notice) => set({ notice })),
          ]);
-@@ -125,11 +143,16 @@
+@@ -97,7 +123,9 @@
+           ipc.invoke("get_app_status"),
+           ipc.invoke("get_app_info"),
+         ]);
+-        set({ settings, status, info });
++        // Cài đặt đã tới qua sự kiện trong lúc chờ `get_settings` thì mới hơn (hoặc bằng) kết quả của lệnh: giữ bản đó.
++        set({ settings: get().settings ?? settings, info });
++        setStatus(status);
+         return () => offs.forEach((off) => off());
+       },
+ 
+@@ -125,17 +153,22 @@
          }
        },
  
@@ -3548,16 +4885,23 @@ Sửa `src/store/app.ts` (áp bằng `git apply`):
 -          (status) => set({ status }),
 -        );
 +        try {
-+          set({ status: await ipc.invoke("toggle_session") });
++          setStatus(await ipc.invoke("toggle_session"));
 +        } catch (e) {
 +          const status = await ipc.invoke("get_app_status").catch(() => null);
-+          if (status?.session === "error") set({ status, level: 0 });
++          if (status?.session === "error") setStatus(status);
 +          else set({ error: toUiError(e) });
 +        }
        },
  
        async setOverlayVisible(visible) {
-@@ -168,6 +191,20 @@
+         await run(
+           () => ipc.invoke("set_overlay_visible", { visible }),
+-          (status) => set({ status }),
++          (status) => setStatus(status),
+         );
+       },
+ 
+@@ -168,6 +201,20 @@
          );
        },
  
@@ -3585,23 +4929,33 @@ Sửa `src/store/overlay.ts` (áp bằng `git apply`):
 ```diff
 --- a/src/store/overlay.ts
 +++ b/src/store/overlay.ts
-@@ -1,14 +1,21 @@
+@@ -1,18 +1,36 @@
  import { createStore } from "zustand/vanilla";
 -import type { Ipc, OverlayView, Subtitle } from "../lib/ipc";
-+import type { Ipc, OverlayView, Subtitle, SubtitleDelta } from "../lib/ipc";
++import type { AppStatus, Ipc, OverlayView, Subtitle, SubtitleDelta } from "../lib/ipc";
  
  // Store của thanh phụ đề. Cửa sổ `overlay` chỉ đọc được phần cài đặt của nó (`get_overlay_view`)
  // và nghe sự kiện; không gọi được lệnh nào khác (spec §10.2). Kế hoạch 03 làm đủ phần hiển thị.
  
 -// Giữ tối đa `max` phụ đề gần nhất. Phụ đề cùng `id` (phụ đề tạm được thay, §6.3) cập nhật tại chỗ.
-+// Giữ tối đa `max` phụ đề gần nhất. Phụ đề cùng `id` (phụ đề tạm được thay, §6.3) cập nhật tại chỗ; phụ đề đã được gộp
-+// vào phụ đề mới (`replaces`, §7) thì bỏ.
++// Giữ tối đa `max` phụ đề gần nhất, xếp theo `id` (id tăng theo thứ tự câu, và không trùng giữa các phiên nhờ `id_base`).
++// Phụ đề cùng `id` (phụ đề tạm được thay, §6.3; bản dịch xong) cập nhật tại chỗ; phụ đề đã được gộp vào phụ đề mới
++// (`replaces`, §7) thì bỏ. Phụ đề không có trên thanh mà cũ hơn dòng đầu (bản dịch xong sau khi câu đó đã trôi khỏi
++// thanh) thì bỏ qua; còn lại thì chèn đúng chỗ theo `id`, không gắn vào cuối.
  export function upsertLine(lines: readonly Subtitle[], subtitle: Subtitle, max: number): Subtitle[] {
 -  const i = lines.findIndex((l) => l.id === subtitle.id);
 -  const next = i >= 0 ? lines.map((l, j) => (j === i ? subtitle : l)) : [...lines, subtitle];
 +  const kept = lines.filter((l) => !subtitle.replaces.includes(l.id));
 +  const i = kept.findIndex((l) => l.id === subtitle.id);
-+  const next = i >= 0 ? kept.map((l, j) => (j === i ? subtitle : l)) : [...kept, subtitle];
++  let next: Subtitle[];
++  if (i >= 0) {
++    next = kept.map((l, j) => (j === i ? subtitle : l));
++  } else {
++    const first = kept[0];
++    if (first && subtitle.id < first.id) return kept;
++    const at = kept.findIndex((l) => l.id > subtitle.id);
++    next = at < 0 ? [...kept, subtitle] : [...kept.slice(0, at), subtitle, ...kept.slice(at)];
++  }
    return next.slice(-Math.max(1, max));
 +}
 +
@@ -3611,11 +4965,31 @@ Sửa `src/store/overlay.ts` (áp bằng `git apply`):
  }
  
  export interface OverlayStoreState {
-@@ -27,6 +34,7 @@
+   view: OverlayView | null;
++  status: AppStatus | null;
+   lines: Subtitle[];
+   init(): Promise<() => void>;
+ }
+@@ -20,6 +38,7 @@
+ export function createOverlayStore(ipc: Ipc) {
+   return createStore<OverlayStoreState>()((set, get) => ({
+     view: null,
++    status: null,
+     lines: [],
+     async init() {
+       const offs = await Promise.all([
+@@ -27,6 +46,14 @@
          ipc.listen("subtitle://upsert", (subtitle) =>
            set({ lines: upsertLine(get().lines, subtitle, get().view?.lines ?? 3) }),
          ),
 +        ipc.listen("subtitle://delta", (delta) => set({ lines: appendDelta(get().lines, delta) })),
++        // Trạng thái app (cùng `rev` như cửa sổ chính): bỏ trạng thái cũ tới muộn; phiên mới bắt đầu thì xóa phụ đề cũ.
++        ipc.listen("app://status", (status) => {
++          const prev = get().status;
++          if (prev && status.rev < prev.rev) return;
++          const fresh = status.session === "starting" && prev?.session !== "starting";
++          set(fresh ? { status, lines: [] } : { status });
++        }),
        ]);
        set({ view: await ipc.invoke("get_overlay_view") });
        return () => offs.forEach((off) => off());
@@ -3648,11 +5022,11 @@ Expected:
 
 ```text
  Test Files  4 passed (4)
-      Tests  34 passed (34)
+      Tests  40 passed (40)
 ```
 
 ```text
-✓ built in 324ms
+✓ built in 111ms
 ```
 
 - [ ] **Step 5: Commit**
@@ -3670,11 +5044,11 @@ git commit -m "feat(ui): kiểu và store cho phiên dịch thật, chữ dịch
 ## Task 6: Màn hình chính, Cài đặt › Âm thanh, bước quyền
 
 Dòng 38, 46, 52, 87, 91:
-- `src/lib/audioSource.ts`: giá trị của danh sách chọn nguồn, tên hiện cho từng nguồn (macOS: bundle ID; Windows: tên thiết bị); nguồn đang chọn vẫn có trong danh sách dù lúc này không đọc thấy.
-- `Home.tsx`: trạng thái (Sẵn sàng, Đang khởi động, Đang dịch, Lỗi), nút Bắt đầu/Hủy/Dừng, lỗi của phiên kèm nút mở System Settings khi thiếu quyền, nạp model và lần đầu chạy, chạy bằng CPU, đề xuất gói Nhẹ, chỉ báo, nguồn âm thanh, thanh đo âm lượng.
+- `src/lib/audioSource.ts`: giá trị của danh sách chọn nguồn, tên hiện cho từng nguồn (macOS: tên app, không có thì bundle ID; Windows: tên thiết bị); nguồn đang chọn vẫn có trong danh sách dù lúc này không đọc thấy.
+- `Home.tsx`: trạng thái (Sẵn sàng, Đang khởi động, Đang dịch, Lỗi), nút Bắt đầu/Hủy/Dừng, lỗi của phiên kèm nút mở System Settings khi thiếu quyền, cảnh báo nghi thiếu quyền khi phiên đang chạy mà chỉ nhận toàn im lặng (`permissionSuspected`), nạp model và lần đầu chạy, chạy bằng CPU, đề xuất gói Nhẹ, chỉ báo, nguồn âm thanh, thanh đo âm lượng (component `LevelMeter` riêng, để mỗi lần mức âm lượng đổi chỉ vẽ lại thanh đo).
 - `settings/AudioSettings.tsx`: nguồn âm thanh, độ nhạy ngắt câu 200–800 ms (lưu khi thả thanh trượt; áp dụng từ phiên sau).
 - `onboarding/Onboarding.tsx`: bước 4 (chỉ macOS) giải thích quyền và có nút mở System Settings.
-- `i18n`: câu tiếng Anh và tiếng Việt cho mọi chữ mới.
+- `i18n`: câu tiếng Anh và tiếng Việt cho mọi chữ mới; câu nhắc tên app dùng "AI Translator".
 
 **Files:**
 - Sửa: `src/i18n/en.ts`
@@ -3710,17 +5084,21 @@ describe("nguồn âm thanh", () => {
   });
 
   it("nguồn đang chọn vẫn có trong danh sách dù lúc này không đọc thấy", () => {
-    const options: AudioSourceOption[] = [{ kind: "app", bundleId: "com.microsoft.teams2" }];
+    const options: AudioSourceOption[] = [{ kind: "app", bundleId: "com.microsoft.teams2", name: "Microsoft Teams" }];
     const zoom: AudioSource = { kind: "app", bundleId: "us.zoom.xos" };
     expect(sourceChoices(zoom, options).map(sourceKey)).toEqual(["system", "app:com.microsoft.teams2", "app:us.zoom.xos"]);
     expect(sourceChoices({ kind: "system" }, null).map(sourceKey)).toEqual(["system"]);
   });
 
-  it("tên hiện: toàn hệ thống theo hệ điều hành, app theo bundle ID, thiết bị theo tên", () => {
+  it("tên hiện: toàn hệ thống theo hệ điều hành, app theo tên (không có thì bundle ID), thiết bị theo tên", () => {
     const devices: AudioSourceOption[] = [{ kind: "device", id: "d1", name: "Loa (Realtek)" }];
+    const apps: AudioSourceOption[] = [{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }];
     expect(sourceLabel({ kind: "system" }, "macos", null, t)).toBe("Toàn hệ thống, trừ app này");
     expect(sourceLabel({ kind: "system" }, "windows", null, t)).toBe("Thiết bị phát mặc định (tự động)");
     expect(sourceLabel({ kind: "app", bundleId: "us.zoom.xos" }, "macos", null, t)).toBe("Chỉ us.zoom.xos");
+    expect(sourceLabel({ kind: "app", bundleId: "us.zoom.xos" }, "macos", apps, t)).toBe("Chỉ zoom.us");
+    expect(sourceLabel(apps[0]!, "macos", null, t)).toBe("Chỉ zoom.us");
+    expect(sourceLabel({ kind: "app", bundleId: "x.y", name: null }, "macos", null, t)).toBe("Chỉ x.y");
     expect(sourceLabel({ kind: "device", id: "d1" }, "windows", devices, t)).toBe("Loa (Realtek)");
     expect(sourceLabel({ kind: "device", id: "d2" }, "windows", devices, t)).toBe("d2");
   });
@@ -3734,7 +5112,7 @@ Expected: `audioSource.test.ts` lỗi vì chưa có module:
 
 ```text
  Test Files  1 failed | 4 passed (5)
-      Tests  34 passed (34)
+      Tests  40 passed (40)
  FAIL  src/lib/audioSource.test.ts [ src/lib/audioSource.test.ts ]
 Error: Cannot find module './audioSource' imported from src/lib/audioSource.test.ts
 ```
@@ -3779,8 +5157,8 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
    "settings.privacy.description": "Saving history, delete all data, delete models and data.",
 +  "settings.audio.source": "Audio source",
 +  "settings.audio.refresh": "Refresh list",
-+  "settings.audio.hint.macos": "Only apps that are playing sound right now are listed. With one app chosen, other sounds such as notifications are not translated.",
-+  "settings.audio.hint.windows": "Automatic follows the default playback device and the communications device. Choose one device if your meeting app plays somewhere else.",
++  "settings.audio.hint.macos": "Only apps that are playing sound right now are listed, together with their helper processes (browsers, Electron apps). With one app chosen, other sounds such as notifications are not translated. A new source applies from the next session.",
++  "settings.audio.hint.windows": "Automatic follows the default playback device and the communications device. Choose one device if your meeting app plays somewhere else. A new source applies from the next session.",
 +  "settings.audio.pause": "Pause that ends a sentence",
 +  "settings.audio.pause.hint": "Shorter: subtitles appear sooner, but sentences may be cut. Longer: fewer cuts, more delay. Applies from the next session.",
    "settings.general.uiLanguage": "Interface language",
@@ -3790,15 +5168,16 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
    "onboarding.model.title": "Check this computer and choose a model pack",
    "onboarding.download.title": "Download the model",
    "onboarding.permission.title": "Allow system audio recording",
-+  "onboarding.permission.body": "macOS asks for permission the first time you start translating. If you refused, turn on Meeting Translator in System Settings › Privacy & Security › Screen & System Audio Recording, under System Audio Recording Only.",
++  "onboarding.permission.body": "macOS asks for permission the first time you start translating. If you refused, turn on AI Translator in System Settings › Privacy & Security › Screen & System Audio Recording, under System Audio Recording Only.",
    "onboarding.languages.title": "Choose your languages",
    "onboarding.test.title": "Try it",
    "onboarding.privacy.title": "Your privacy",
-@@ -115,6 +132,7 @@
+@@ -115,6 +132,8 @@
  
    "common.dismiss": "Dismiss",
    "common.notYet": "Not available yet.",
 +  "common.openPermissionSettings": "Open System Settings",
++  "home.permissionSuspected": "Nothing is heard although an app is playing sound: AI Translator may not be allowed to record system audio.",
  
    "error.outOfRange": "This value is out of range.",
    "error.empty": "Choose at least one item.",
@@ -3842,8 +5221,8 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
    "settings.privacy.description": "Lưu lịch sử, xóa toàn bộ dữ liệu, xóa model và dữ liệu.",
 +  "settings.audio.source": "Nguồn âm thanh",
 +  "settings.audio.refresh": "Làm mới danh sách",
-+  "settings.audio.hint.macos": "Danh sách chỉ có các app đang phát tiếng. Khi chọn một app, các âm thanh khác như tiếng thông báo sẽ không được dịch.",
-+  "settings.audio.hint.windows": "Chế độ tự động theo thiết bị phát mặc định và thiết bị liên lạc. Chọn một thiết bị nếu app họp phát tiếng ra chỗ khác.",
++  "settings.audio.hint.macos": "Danh sách chỉ có các app đang phát tiếng, gộp cả các tiến trình phụ của app (trình duyệt, app Electron). Khi chọn một app, các âm thanh khác như tiếng thông báo sẽ không được dịch. Đổi nguồn có tác dụng từ phiên dịch sau.",
++  "settings.audio.hint.windows": "Chế độ tự động theo thiết bị phát mặc định và thiết bị liên lạc. Chọn một thiết bị nếu app họp phát tiếng ra chỗ khác. Đổi nguồn có tác dụng từ phiên dịch sau.",
 +  "settings.audio.pause": "Độ nhạy ngắt câu",
 +  "settings.audio.pause.hint": "Ngắn hơn: phụ đề hiện sớm hơn nhưng câu dễ bị cắt. Dài hơn: ít bị cắt hơn nhưng trễ hơn. Áp dụng từ phiên dịch sau.",
    "settings.general.uiLanguage": "Ngôn ngữ giao diện",
@@ -3853,15 +5232,16 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
    "onboarding.model.title": "Kiểm tra máy và chọn gói model",
    "onboarding.download.title": "Tải model",
    "onboarding.permission.title": "Cho phép ghi âm thanh hệ thống",
-+  "onboarding.permission.body": "macOS hỏi quyền ở lần đầu bạn bắt đầu dịch. Nếu đã từ chối, hãy bật Meeting Translator trong System Settings › Privacy & Security › Screen & System Audio Recording, ở mục System Audio Recording Only.",
++  "onboarding.permission.body": "macOS hỏi quyền ở lần đầu bạn bắt đầu dịch. Nếu đã từ chối, hãy bật AI Translator trong System Settings › Privacy & Security › Screen & System Audio Recording, ở mục System Audio Recording Only.",
    "onboarding.languages.title": "Chọn ngôn ngữ",
    "onboarding.test.title": "Nghe thử",
    "onboarding.privacy.title": "Quyền riêng tư",
-@@ -115,6 +132,7 @@
+@@ -115,6 +132,8 @@
  
    "common.dismiss": "Đóng",
    "common.notYet": "Chưa có.",
 +  "common.openPermissionSettings": "Mở System Settings",
++  "home.permissionSuspected": "Không nghe thấy gì dù có app đang phát tiếng: có thể AI Translator chưa được phép ghi âm thanh hệ thống.",
  
    "error.outOfRange": "Giá trị nằm ngoài phạm vi cho phép.",
    "error.empty": "Hãy chọn ít nhất một mục.",
@@ -3904,8 +5284,8 @@ export function sourceChoices(
   return list;
 }
 
-// Tên hiện cho một nguồn. macOS chỉ biết bundle ID của app (Core Audio không cho tên). Windows: tên thiết bị nếu danh
-// sách đã đọc, không thì id.
+// Tên hiện cho một nguồn. App (macOS): tên hiển thị của app (`NSRunningApplication.localizedName`) nếu biết, từ chính lựa
+// chọn hay từ danh sách đã đọc; không thì bundle ID. Thiết bị (Windows): tên thiết bị nếu danh sách đã đọc, không thì id.
 export function sourceLabel(
   source: AudioSource | AudioSourceOption,
   platform: AppInfo["platform"],
@@ -3915,8 +5295,12 @@ export function sourceLabel(
   switch (source.kind) {
     case "system":
       return t(platform === "macos" ? "home.audioSource.system.macos" : "home.audioSource.system.windows");
-    case "app":
-      return t("home.audioSource.app", { app: source.bundleId });
+    case "app": {
+      const own = "name" in source ? source.name : null;
+      const found = options?.find((o) => o.kind === "app" && o.bundleId === source.bundleId);
+      const name = own ?? (found?.kind === "app" ? found.name : null);
+      return t("home.audioSource.app", { app: name ?? source.bundleId });
+    }
     case "device": {
       if ("name" in source) return source.name;
       const found = options?.find((o) => o.kind === "device" && o.id === source.id);
@@ -3982,104 +5366,124 @@ Sửa `src/windows/main/onboarding/Onboarding.tsx` (áp bằng `git apply`):
        return <LanguagePicker />;
 ```
 
-Sửa `src/windows/main/screens/Home.tsx` (áp bằng `git apply`):
+Thay toàn bộ `src/windows/main/screens/Home.tsx` bằng:
 
-```diff
---- a/src/windows/main/screens/Home.tsx
-+++ b/src/windows/main/screens/Home.tsx
-@@ -1,27 +1,72 @@
-+import { errorKey, type MessageKey } from "../../../i18n";
-+import { sourceLabel } from "../../../lib/audioSource";
-+import type { SessionStatus } from "../../../lib/ipc";
-+import { levelToMeter } from "../../../store/app";
- import { useApp, useT } from "../appStore";
- import { LanguagePicker } from "../LanguagePicker";
- 
--// Màn hình chính (§4.3). Kế hoạch 02 nối nút Bắt đầu với pipeline, nguồn âm thanh và mức âm lượng;
--// kế hoạch 06 điền số phút còn lại.
-+const BADGE: Record<SessionStatus, MessageKey> = {
-+  idle: "status.idle",
-+  starting: "status.starting",
-+  running: "status.running",
-+  error: "status.error",
-+};
-+
-+// Nút chính: đang khởi động thì bấm là hủy (`session::toggle`).
-+const BUTTON: Record<SessionStatus, MessageKey> = {
-+  idle: "home.start",
-+  starting: "home.cancel",
-+  running: "home.stop",
-+  error: "home.start",
-+};
-+
-+// Màn hình chính (§4.3): bắt đầu/dừng, trạng thái và lỗi của phiên, ngôn ngữ, nguồn âm thanh, mức âm lượng.
-+// Kế hoạch 06 điền số phút còn lại.
- export function Home() {
-   const t = useT();
-   const status = useApp((s) => s.status);
-   const settings = useApp((s) => s.settings);
-   const info = useApp((s) => s.info);
-+  const level = useApp((s) => s.level);
-+  const audioSources = useApp((s) => s.audioSources);
-   const toggleSession = useApp((s) => s.toggleSession);
-   const setVisible = useApp((s) => s.setOverlayVisible);
-   const setLocked = useApp((s) => s.setOverlayLocked);
-+  const navigate = useApp((s) => s.navigate);
-+  const openPermission = useApp((s) => s.openAudioPermissionSettings);
-   if (!status || !settings || !info) return null;
--  const running = status.session === "running";
-+  const session = status.session;
-+  const notes: MessageKey[] = [];
-+  if (status.loading) notes.push(status.loading === "firstRun" ? "home.loading.firstRun" : "home.loading.model");
-+  if (status.cpuFallback) notes.push("home.cpuFallback");
-+  if (status.suggestLite) notes.push("home.suggestLite");
-+  if (session === "running") {
-+    if (status.indicators.lagging) notes.push("home.lagging");
-+    if (status.indicators.noAudio) notes.push("home.noAudio");
-+    if (status.indicators.translationUnavailable) notes.push("home.translationUnavailable");
-+  }
-   return (
-     <>
-       <div className="card">
-         <div className="row">
--          <span className={running ? "badge running" : "badge"}>{t(running ? "status.running" : "status.idle")}</span>
-+          <span className={`badge ${session}`}>{t(BADGE[session])}</span>
-           <button className="primary" onClick={() => void toggleSession()}>
--            {t(running ? "home.stop" : "home.start")}
-+            {t(BUTTON[session])}
-           </button>
-         </div>
-+        {session === "error" && status.sessionError && (
-+          <div className="row" role="alert">
-+            <span className="error-text">{t(errorKey(status.sessionError))}</span>
-+            {status.sessionError === "audioPermission" && info.platform === "macos" && (
-+              <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
-+            )}
-+          </div>
-+        )}
-+        {notes.map((key) => (
-+          <p key={key} className="hint" role="status">
-+            {t(key)}
-+          </p>
-+        ))}
-       </div>
-       <div className="card">
-         <h2>{t("home.languages")}</h2>
-@@ -30,11 +75,12 @@
-       <div className="card">
-         <div className="row">
-           <span>{t("home.audioSource")}</span>
--          <span>{t(info.platform === "macos" ? "home.audioSource.system.macos" : "home.audioSource.system.windows")}</span>
-+          <span>{sourceLabel(settings.audioSource, info.platform, audioSources, t)}</span>
-+          <button onClick={() => navigate("settings", "audio")}>{t("home.audioSource.change")}</button>
-         </div>
-         <div className="row">
-           <span>{t("home.inputLevel")}</span>
--          <span className="hint">{t("common.notYet")}</span>
-+          <meter min={0} max={1} value={session === "running" ? levelToMeter(level) : 0} aria-label={t("home.inputLevel")} />
-         </div>
-         <div className="row">
-           <span>{t("home.minutesLeft")}</span>
+```tsx
+import { errorKey, type MessageKey } from "../../../i18n";
+import { sourceLabel } from "../../../lib/audioSource";
+import type { SessionStatus } from "../../../lib/ipc";
+import { levelToMeter } from "../../../store/app";
+import { useApp, useT } from "../appStore";
+import { LanguagePicker } from "../LanguagePicker";
+
+const BADGE: Record<SessionStatus, MessageKey> = {
+  idle: "status.idle",
+  starting: "status.starting",
+  running: "status.running",
+  error: "status.error",
+};
+
+// Nút chính: đang khởi động thì bấm là hủy (`session::toggle`).
+const BUTTON: Record<SessionStatus, MessageKey> = {
+  idle: "home.start",
+  starting: "home.cancel",
+  running: "home.stop",
+  error: "home.start",
+};
+
+// Màn hình chính (§4.3): bắt đầu/dừng, trạng thái và lỗi của phiên, ngôn ngữ, nguồn âm thanh, mức âm lượng.
+// Kế hoạch 06 điền số phút còn lại.
+export function Home() {
+  const t = useT();
+  const status = useApp((s) => s.status);
+  const settings = useApp((s) => s.settings);
+  const info = useApp((s) => s.info);
+  const audioSources = useApp((s) => s.audioSources);
+  const toggleSession = useApp((s) => s.toggleSession);
+  const setVisible = useApp((s) => s.setOverlayVisible);
+  const setLocked = useApp((s) => s.setOverlayLocked);
+  const navigate = useApp((s) => s.navigate);
+  const openPermission = useApp((s) => s.openAudioPermissionSettings);
+  if (!status || !settings || !info) return null;
+  const session = status.session;
+  const notes: MessageKey[] = [];
+  if (status.loading) notes.push(status.loading === "firstRun" ? "home.loading.firstRun" : "home.loading.model");
+  if (status.cpuFallback) notes.push("home.cpuFallback");
+  if (status.suggestLite) notes.push("home.suggestLite");
+  if (session === "running") {
+    if (status.indicators.lagging) notes.push("home.lagging");
+    if (status.indicators.noAudio) notes.push("home.noAudio");
+    if (status.indicators.translationUnavailable) notes.push("home.translationUnavailable");
+  }
+  return (
+    <>
+      <div className="card">
+        <div className="row">
+          <span className={`badge ${session}`}>{t(BADGE[session])}</span>
+          <button className="primary" onClick={() => void toggleSession()}>
+            {t(BUTTON[session])}
+          </button>
+        </div>
+        {session === "error" && status.sessionError && (
+          <div className="row" role="alert">
+            <span className="error-text">{t(errorKey(status.sessionError))}</span>
+            {status.sessionError === "audioPermission" && info.platform === "macos" && (
+              <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
+            )}
+          </div>
+        )}
+        {session === "running" && status.permissionSuspected && info.platform === "macos" && (
+          <div className="row" role="alert">
+            <span className="error-text">{t("home.permissionSuspected")}</span>
+            <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
+          </div>
+        )}
+        {notes.map((key) => (
+          <p key={key} className="hint" role="status">
+            {t(key)}
+          </p>
+        ))}
+      </div>
+      <div className="card">
+        <h2>{t("home.languages")}</h2>
+        <LanguagePicker />
+      </div>
+      <div className="card">
+        <div className="row">
+          <span>{t("home.audioSource")}</span>
+          <span>{sourceLabel(settings.audioSource, info.platform, audioSources, t)}</span>
+          <button onClick={() => navigate("settings", "audio")}>{t("home.audioSource.change")}</button>
+        </div>
+        <div className="row">
+          <span>{t("home.inputLevel")}</span>
+          <LevelMeter label={t("home.inputLevel")} />
+        </div>
+        <div className="row">
+          <span>{t("home.minutesLeft")}</span>
+          <span className="hint">{t("common.notYet")}</span>
+        </div>
+      </div>
+      <div className="card">
+        <div className="row">
+          <span>{t("home.overlay")}</span>
+          <button onClick={() => void setVisible(!status.overlayVisible)}>
+            {t(status.overlayVisible ? "home.overlay.hide" : "home.overlay.show")}
+          </button>
+          <button onClick={() => void setLocked(!settings.overlay.locked)}>
+            {t(settings.overlay.locked ? "home.overlay.unlock" : "home.overlay.lock")}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Thanh mức âm lượng: tự theo `level` (khoảng 10 lần mỗi giây), để phần còn lại của màn hình chính không vẽ lại theo.
+function LevelMeter({ label }: { label: string }) {
+  const running = useApp((s) => s.status?.session === "running");
+  const level = useApp((s) => s.level);
+  return <meter min={0} max={1} value={running ? levelToMeter(level) : 0} aria-label={label} />;
+}
 ```
 
 Sửa `src/windows/main/screens/SettingsScreen.tsx` (áp bằng `git apply`):
@@ -4187,11 +5591,11 @@ Expected:
 
 ```text
  Test Files  5 passed (5)
-      Tests  37 passed (37)
+      Tests  43 passed (43)
 ```
 
 ```text
-✓ built in 191ms
+✓ built in 94ms
 ```
 
 - [ ] **Step 5: Commit**
@@ -4211,7 +5615,7 @@ git commit -m "feat(ui): màn hình chính theo phiên thật, Cài đặt › �
 
 ## Task 7: Kiểm code Windows trên Mac, và kiểm tra chuẩn
 
-`scripts/check-windows.sh` kiểm thêm `pipeline` và `audio-capture`, với pkg-config giả của 02b (QĐ15), và nhận thêm tham số cho cargo.
+`scripts/check-windows.sh` kiểm thêm `pipeline` và `audio-capture`, với pkg-config giả của 02d Task 1 (QĐ15), và nhận thêm tham số cho cargo.
 
 **Files:**
 - Sửa: `scripts/check-windows.sh`
@@ -4243,7 +5647,7 @@ Run: `./scripts/check-windows.sh`
 Expected: dòng cuối `Finished \`dev\` profile`, không có cảnh báo:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.84s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.55s
 ```
 
 - [ ] **Step 3: Kiểm tra chuẩn** (mục 6.2 của kế hoạch 00)
@@ -4265,14 +5669,14 @@ pnpm audit
 Expected: không lỗi, clippy không cảnh báo, `cargo deny check` in `advisories ok, bans ok, licenses ok, sources ok`, `cargo audit` chỉ còn 3 cảnh báo đã được cho phép, `pnpm audit` in `No known vulnerabilities found`. Tổng số test của `cargo test --workspace`:
 
 ```text
-passed 351 failed 0 ignored 7
+passed 431 failed 0 ignored 9
 ```
 
 Và `pnpm test`:
 
 ```text
  Test Files  5 passed (5)
-      Tests  37 passed (37)
+      Tests  43 passed (43)
 ```
 
 - [ ] **Step 4: Commit**
@@ -4284,9 +5688,9 @@ git commit -m "chore(app): check-windows.sh kiểm cả pipeline và audio-captu
 
 ## Task 8: Thử trên Mac với âm thanh thật (cần người)
 
-Bàn giao chính của kế hoạch 02 (mục 2.2 của kế hoạch 00): bấm Bắt đầu là có phụ đề dịch từ âm thanh hệ thống. Agent không tự chạy app và không bật hộp thoại quyền (mục 6.8): agent chuẩn bị, đưa từng bước cho người, ghi kết quả. Dòng 25, 32, 38, 43, 61, 79, 230, 232, 305 (và C1).
+Bàn giao chính của kế hoạch 02 (mục 2.2 của kế hoạch 00): bấm Bắt đầu là có phụ đề dịch từ âm thanh hệ thống. Agent không tự chạy app và không bật hộp thoại quyền (mục 6.8): agent chuẩn bị, đưa từng bước cho người, ghi kết quả. Dòng 25, 32, 38, 43, 61, 79, 230, 232, 305 (và C1; Q9 của review 02c).
 
-**Cần người thao tác:** cả task. Nên chạy trên bản ký bằng chứng thư cố định (R8, `scripts/run-dev-signed.sh` của 01) để không phải cấp quyền lại sau mỗi lần build; không có thì dùng `pnpm tauri dev`.
+**Cần người thao tác:** cả task. Nên chạy trên bản ký bằng chứng thư cố định (R8, `scripts/run-dev-signed.sh` của 01) để không phải cấp quyền lại sau mỗi lần build; không có thì dùng `pnpm tauri dev`. `pnpm tauri dev` chỉ có câu xin quyền tiếng Anh; câu tiếng Việt (`vi.lproj/InfoPlist.strings`) chỉ thấy trên gói `.app` đã đóng gói (07).
 
 **Files:**
 - Create: `bench/phase0/results/gd1_app_mac.md`
@@ -4305,47 +5709,69 @@ Expected: ba file model; 12 file trong `binaries/` (02c Task 1 Step 6; chưa có
 
 Expected: cửa sổ chính hiện. Trong khoảng 10–20 giây, `pgrep -l -f 'asr-worker|llama-server'` có đủ hai tiến trình (chạy sẵn khi mở cửa sổ chính, Đ19). Lần đầu chạy binary mới, màn hình chính có dòng "Đang chuẩn bị lần đầu".
 
-- [ ] **Step 3: Bắt đầu và cấp quyền**
+- [ ] **Step 3: Lần đầu chạy: Hủy và Thoát lúc đang chuẩn bị**
+
+Agent xóa `sidecars-seen.json` trong thư mục dữ liệu của app (`~/Library/Application Support/com.aitranslator.desktop/`) để lần chạy sau được coi là lần đầu.
+- Người mở app, bấm Bắt đầu, rồi bấm Hủy khi màn hình còn "Đang chuẩn bị lần đầu". Expected: trạng thái về "Sẵn sàng" ngay (dưới 1 giây); không có lỗi; bấm Bắt đầu lại thì chạy tiếp.
+- Xóa lại file đó, mở app, bấm Bắt đầu, rồi chọn Thoát ở menu khay khi còn đang chuẩn bị. Expected: app đóng trong khoảng 1 giây; `pgrep -l -f 'asr-worker|llama-server'` không in gì.
+
+- [ ] **Step 4: Bắt đầu và cấp quyền**
 
 Người mở một video có người nói tiếng Anh (ví dụ bản tin) trong Safari hoặc Chrome, rồi bấm Bắt đầu.
 Expected:
-- Thanh phụ đề hiện. Lần đầu, macOS hỏi quyền ghi âm thanh với câu trong `Info.plist`; người bấm Allow. Không có hộp thoại mà phụ đề không hiện thì ghi lại (dòng 2 của C1).
+- Thanh phụ đề hiện. Lần đầu, macOS hỏi quyền ghi âm thanh với câu tiếng Anh trong `Info.plist` (có tên AI Translator); người bấm "Don't Allow". Expected: màn hình chính báo "AI Translator chưa được phép ghi âm thanh hệ thống." kèm nút "Mở System Settings", hoặc (nếu tap vẫn tạo được mà chỉ nhận toàn im lặng) cảnh báo "Không nghe thấy gì dù có app đang phát tiếng…" sau khoảng 3 giây. Ghi lại trường hợp nào xảy ra (dòng 2 của C1).
+- Người bật quyền trong System Settings. macOS có thể hiện hộp thoại "Quit & Reopen": bấm nút đó, rồi ghi lại là có hộp thoại này. Bấm Bắt đầu lại.
 - Trong khoảng 2 giây sau mỗi câu, phụ đề tiếng Việt hiện, chữ dịch hiện dần; câu chưa chốt nhạt hơn rồi được thay bằng bản dịch của cả câu.
 - Thanh đo âm lượng ở màn hình chính chạy theo tiếng.
 
-- [ ] **Step 4: Các thao tác của phiên**
+- [ ] **Step 5: Các thao tác của phiên**
 - Đổi sang video tiếng Việt. Expected: phụ đề là câu gốc, không dịch (`same_lang`).
-- Bấm Dừng. Expected: thanh phụ đề còn nguyên; trạng thái "Sẵn sàng". Bấm Bắt đầu lại: chạy ngay, không nạp lại model.
+- Bấm Dừng ngay sau khi người trong video nói xong một câu. Expected: câu cuối vẫn có bản dịch (dịch nốt trong khoảng 3 giây); thanh phụ đề còn nguyên; trạng thái "Sẵn sàng". Bấm Bắt đầu lại: chạy ngay, không nạp lại model.
 - Bắt đầu và dừng bằng phím tắt (mặc định `Ctrl+Alt+T`) và bằng menu khay. Expected: như nút.
-- Trong lúc dịch, cắm tai nghe có dây hoặc nối AirPods. Expected: phụ đề tiếp tục sau tối đa khoảng 2 giây (§9).
+- Bấm phím tắt rồi bấm ngay mục Bắt đầu/Dừng ở menu khay (gần như cùng lúc), lặp vài lần. Expected: trạng thái ở màn hình chính, khay và thanh phụ đề luôn khớp nhau; không có phiên nào chạy mà màn hình báo "Sẵn sàng".
+- Trong lúc dịch, cắm tai nghe có dây, rồi rút ra. Expected: phụ đề tiếp tục sau tối đa khoảng 2 giây mỗi lần (§9).
+- Trong lúc dịch, nối AirPods, rồi tắt AirPods (cất vào hộp). Expected: như trên; tiếng về loa máy vẫn có phụ đề.
 - Tạm dừng video hơn 60 giây. Expected: màn hình chính hiện "Một lúc lâu không nghe thấy âm thanh…".
+- Trong lúc dịch, cho máy ngủ (đóng nắp hoặc Apple menu › Sleep) 5 phút rồi mở lại, phát tiếp video. Expected: phụ đề tiếp tục, hoặc phiên dừng với một lỗi có câu rõ ràng; không treo, không crash. Ghi lại trường hợp nào.
 
-- [ ] **Step 5: Cài đặt › Âm thanh**
-- Mở danh sách nguồn khi video đang phát. Expected: có bundle ID của trình duyệt (ví dụ `com.apple.Safari`, hay tiến trình phụ của Chrome).
-- Chọn trình duyệt, bắt đầu phiên, rồi phát tiếng ở app khác. Expected: chỉ tiếng của trình duyệt có phụ đề.
+- [ ] **Step 6: Cài đặt › Âm thanh**
+- Mở danh sách nguồn khi video đang phát. Expected: có tên trình duyệt (ví dụ "Safari", "Google Chrome"), mỗi trình duyệt một dòng dù có nhiều tiến trình helper.
+- Chọn trình duyệt, bắt đầu phiên, rồi phát tiếng ở app khác. Expected: chỉ tiếng của trình duyệt có phụ đề. Đóng trình duyệt trong lúc dịch: phiên tiếp tục, khi mở lại trình duyệt và phát tiếng thì có phụ đề trở lại.
 - Chọn một app không phát tiếng, bắt đầu phiên. Expected: lỗi "App đã chọn không phát tiếng…".
 - Kéo "Độ nhạy ngắt câu" lên 800 ms. Expected: phiên sau câu bị cắt ít hơn, phụ đề hiện chậm hơn một chút.
 
-- [ ] **Step 6: Thiếu quyền**
+- [ ] **Step 7: Thiếu quyền và trang System Settings**
 
 Người tắt quyền của app trong System Settings › Privacy & Security › Screen & System Audio Recording (mục System Audio Recording Only), rồi bấm Bắt đầu.
-Expected: màn hình chính báo "Meeting Translator chưa được phép ghi âm thanh hệ thống." kèm nút "Mở System Settings"; bấm nút thì mở đúng phần "System Audio Recording Only". Không đúng trang thì ghi lại trang mở ra, thử `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"` trong Terminal, và ghi neo nào đúng (điểm cần quyết 6 của 02a). Bật lại quyền sau bước này.
+Expected: màn hình chính báo "AI Translator chưa được phép ghi âm thanh hệ thống." kèm nút "Mở System Settings" (hoặc cảnh báo nghi thiếu quyền như Step 4); bấm nút thì mở đúng phần "System Audio Recording Only". Trong Terminal, người thử thêm hai neo dưới đây, ghi neo nào mở đúng trang, rồi agent đặt neo đó vào `system::AUDIO_PERMISSION_URL` (điểm cần quyết 3 của 02a):
+```bash
+open "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture"
+open "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AudioCapture"
+```
+Bật lại quyền sau bước này.
 
-- [ ] **Step 7: Thoát và tắt khi rảnh**
+- [ ] **Step 8: Tiến trình phụ và model bị thay đổi**
+
+Chạy app bằng `scripts/run-dev-signed.sh`: bản dev đọc tiến trình phụ ở `src-tauri/binaries/`, mà `pnpm tauri dev` thấy file trong `src-tauri/` đổi thì build lại, và `build.rs` băm lại file đã sửa. Agent làm từng ca trong lúc app đang mở, sau mỗi ca chạy lại `./scripts/copy-sidecars.sh` hay đổi tên model về như cũ:
+- Sửa một byte trong `src-tauri/binaries/libggml.0.dylib`: `printf '\x00' | dd of=src-tauri/binaries/libggml.0.dylib bs=1 seek=4096 count=1 conv=notrunc`. Người bấm Bắt đầu. Expected: lỗi `sidecarTampered` ("Một phần của app đã bị thay đổi hoặc hỏng…"); không tiến trình phụ nào được chạy lại.
+- Đổi tên `models/Hy-MT2-1.8B-Q8_0.gguf`. Người bấm Bắt đầu. Expected: lỗi `modelMissing`.
+
+- [ ] **Step 9: Thoát, Force Quit và tắt khi rảnh**
 - Thoát ở menu khay. Expected: `pgrep -l -f 'asr-worker|llama-server'` không in gì (dòng 61, 305).
-- Mở lại app, mở cửa sổ chính, không dịch gì trong 10 phút. Expected: sau 10–11 phút, `pgrep` không còn tiến trình phụ (§5).
+- Mở lại app, bấm Bắt đầu, rồi Force Quit (Apple menu › Force Quit). Ghi pid của tiến trình phụ còn lại (`pgrep -l -f 'asr-worker|llama-server'`). Mở lại app. Expected: các pid đã ghi không còn; log của app có dòng "đã kill … tiến trình phụ còn sót từ lần chạy trước" (QĐ8).
+- Mở cửa sổ chính, không dịch gì trong 10 phút. Expected: sau 10–11 phút, `pgrep` không còn tiến trình phụ (§5).
 
-- [ ] **Step 8: Log**
+- [ ] **Step 10: Log**
 
-Mở Giới thiệu › Mở thư mục log, tìm vài chữ đã xuất hiện trong phụ đề ở Step 3 (`grep -ri '<chữ>' ~/Library/Logs/<bundle id>/`).
+Mở Giới thiệu › Mở thư mục log, tìm vài chữ đã xuất hiện trong phụ đề ở Step 4 (`grep -ri '<chữ>' ~/Library/Logs/com.aitranslator.desktop/`).
 Expected: không tìm thấy; log chỉ có trạng thái và số đo của phiên (dòng 315).
 
-- [ ] **Step 9 (tùy chọn): Phiên dài**
+- [ ] **Step 11 (tùy chọn): Phiên dài**
 
 Một phiên 2 giờ với âm thanh cuộc họp. Ở phút 60 và phút 120: `ps -o pid,rss,comm -p $(pgrep -d, -f 'meeting-translator|asr-worker|llama-server')`.
 Expected: không crash; RSS ở phút 120 không lớn hơn phút 60 quá 10% (A5, 08 đo chính thức).
 
-- [ ] **Step 10: Ghi kết quả và commit**
+- [ ] **Step 12: Ghi kết quả và commit**
 
 Ghi vào `bench/phase0/results/gd1_app_mac.md`: máy, macOS, commit, và mỗi bước một dòng (đạt, không đạt, ghi chú); bước không đạt thì kèm đoạn log liên quan.
 
@@ -4368,7 +5794,7 @@ cargo test --workspace
 cargo test -p audio-capture --lib -- --include-ignored the_default_device_is_listed
 cargo clippy --workspace --all-targets -- -D warnings
 ```
-Expected: mọi test qua, kể cả test `#[cfg(windows)]` của `audio-capture` và `pipeline` (Job Object); không có cảnh báo.
+Expected: mọi test qua, kể cả test `#[cfg(windows)]` của `audio-capture`, `pipeline` (Job Object) và app (file đã kiểm bị khóa ghi); không có cảnh báo.
 
 - [ ] **Step 2: Chép tiến trình phụ**
 
@@ -4392,8 +5818,11 @@ Expected: ba file `.exe` và các DLL của ggml và llama.
 - Cài đặt › Âm thanh: danh sách thiết bị phát có tên; chọn một thiết bị thì chỉ thu thiết bị đó.
 - Cắm, rút tai nghe trong lúc dịch: phụ đề tiếp tục sau tối đa khoảng 2 giây.
 - Tạm dừng video lâu, không ai nói: câu cuối vẫn được chốt, thời gian phụ đề không lệch (dòng 304).
+- Cho máy ngủ 5 phút trong lúc dịch rồi mở lại: phụ đề tiếp tục, hoặc phiên dừng với lỗi có câu rõ ràng; không treo.
 - Máy có GPU: `asr-worker-vulkan` chạy; log của `asr-worker` báo `backend=vulkan`.
+- Lần đầu chạy `--probe` khi Windows Defender đang quét (Windows Security › Virus & threat protection › Quick scan, bấm ngay trước khi mở app với `binaries\` vừa chép): app vẫn chọn được bản GPU hay CPU, hoặc lần này chạy CPU và lần mở sau dò lại; không treo.
 - Máy không có Vulkan (máy ảo): app vẫn mở được, dùng `asr-worker-cpu`, `llama-server` chạy bằng CPU, màn hình chính báo "Đang chạy bằng CPU" (dòng 236, 302; C3).
+- Thả một file lạ `ggml-cpu-x.dll` (chép bất kỳ DLL nào và đổi tên) vào thư mục chứa tiến trình phụ của bản đang chạy, rồi bấm Bắt đầu: lỗi `sidecarTampered`; xóa file đó thì chạy lại được (QĐ17).
 - Kill app bằng Task Manager trong lúc dịch: không còn `asr-worker` hay `llama-server` (Job Object, dòng 82).
 - Không có cửa sổ console nào bật lên khi tiến trình phụ chạy (`CREATE_NO_WINDOW`), không có hộp thoại tường lửa.
 - S4 trên Windows theo mục 2.2 và C4 của kế hoạch 00 (chat template của `llama-server` Vulkan).
@@ -4407,11 +5836,13 @@ git commit -m "test(app): thử phiên dịch thật trên Windows" -m "Co-Autho
 
 ## Task 10: Cập nhật kế hoạch 00
 
-Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`), cho cả ba file 02a, 02b, 02c:
-- Step 1–2: liệt kê 140 dòng có `02`, đổi trạng thái theo bảng "Dòng của bảng đối chiếu" của 02a và kết quả thật (SHA commit của task). Dòng còn phần chờ Windows, C1, Q4, Q6 hay clip nhạc thì để `chờ` kèm mã.
-- Step 3: thêm dòng cho việc phát sinh, nếu chủ dự án chưa quyết các điểm ở "Điểm cần chủ dự án quyết" của 02a (ví dụ luật riêng cho turbo ở điểm 10).
+Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`), cho cả bốn file 02a, 02d, 02b, 02c:
+- Step 1–2: liệt kê 145 dòng có `02`, đổi trạng thái theo bảng "Dòng của bảng đối chiếu" của 02a và kết quả thật (SHA commit của task). Dòng còn phần chờ Windows, C1, Q4, Q6 hay clip nhạc thì để `chờ` kèm mã.
+- Step 3: thêm dòng cho việc phát sinh, nếu chủ dự án chưa quyết các điểm ở "Điểm cần chủ dự án quyết" của 02a (ví dụ ngưỡng `filler_logprob_max` ở điểm 1, bộ nhạc thử ở điểm 9).
 - Step 4:
-  - mục 2: tên ba file 02a, 02b, 02c thay cho `…-02-pipeline.md`;
+  - mục 2: tên bốn file 02a, 02d, 02b, 02c thay cho `…-02-pipeline.md`;
   - mục 5: C12 có kết quả ở `bench/phase0/results/gd1_a4.md`;
-  - mục 6.2: `scripts/check-windows.sh` nay kiểm cả `pipeline` và `audio-capture`; bản dev cần `scripts/copy-sidecars.sh` trước `pnpm tauri dev`.
+  - mục 6.2: `scripts/check-windows.sh` nay kiểm cả `pipeline` và `audio-capture`; bản dev cần `scripts/copy-sidecars.sh` trước `pnpm tauri dev`;
+  - việc chuyển cho 07: điểm cần quyết 10 của 02a (`/DEPENDENTLOADFLAG:0x800` cần VC++ Redistributable hoặc `+crt-static`; mọi DLL, dylib đi kèm phải vào bảng SHA-256);
+  - việc chuyển cho 03: ghi chú N8 ở đầu 02c.
 - Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 02`.
