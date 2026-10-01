@@ -8,11 +8,12 @@ use anyhow::{Context, Result, bail};
 use asr_protocol::{MAX_PROMPT_TOKENS, MIN_AUDIO_CTX, TranscribeRequest, audio_ctx_for_samples};
 use pipeline::asr_client::AsrWorker;
 use pipeline::config::{FilterConfig, PipelineConfig};
-use pipeline::filter::{PcmSkip, is_no_speech, pcm_skip};
+use pipeline::filter::{Evidence, PcmSkip, Verdict, pcm_skip, verdict};
 use pipeline::llama::{LlamaServer, max_tokens_for};
 use pipeline::prompt::{Lang, translation_prompt};
 use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES, Segment, Segmenter, SegmenterConfig};
 use pipeline::sentence::{OpenSentence, Piece, merge_window_ms, plan_merge};
+use pipeline::text::display_text;
 use pipeline::vad::SileroVad;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -34,6 +35,12 @@ const EARLY_STOP_MS: i64 = 200;
 /// Đoạn không có tiếng nói theo luật `no_speech_prob` và `avg_logprob` (`pipeline::filter::is_no_speech`), hoặc chữ rỗng:
 /// app bỏ đoạn này (spec §6.4, "Lọc lỗi ảo giác").
 const SKIP_NO_SPEECH: &str = "no_speech";
+/// Đoạn chỉ gồm câu ảo giác quen thuộc ("Thank you for watching"…) hoặc chỉ có ký hiệu: app bỏ (`pipeline::filter`).
+const SKIP_HALLUCINATION: &str = "hallucination";
+/// Chữ là chuỗi lặp (tỉ lệ nén quá ngưỡng): app bỏ (`pipeline::filter`).
+const SKIP_REPETITION: &str = "repetition";
+/// Câu đệm ("you", "Thank you."…) có thêm dấu hiệu không phải tiếng nói thật: app bỏ (`pipeline::filter`).
+const SKIP_FILLER: &str = "filler";
 /// Đoạn ngắn hơn `MIN_PCM_SAMPLES`: không gửi cho `asr-worker`.
 const SKIP_TOO_SHORT: &str = "too_short";
 /// Đoạn dài hơn `MAX_PCM_SAMPLES`: không gửi cho `asr-worker`.
@@ -44,8 +51,11 @@ const SKIP_EMPTY_TRANSLATION: &str = "empty_translation";
 const SKIP_SAME_LANG: &str = "same_lang";
 /// Ngôn ngữ ngoài tập của công cụ; ghi thành `lang_ngoai_tap:<mã>`.
 const SKIP_OTHER_LANG: &str = "lang_ngoai_tap";
-const SKIP_KINDS: [&str; 6] = [
+const SKIP_KINDS: [&str; 9] = [
     SKIP_NO_SPEECH,
+    SKIP_HALLUCINATION,
+    SKIP_REPETITION,
+    SKIP_FILLER,
     SKIP_TOO_SHORT,
     SKIP_TOO_LONG,
     SKIP_EMPTY_TRANSLATION,
@@ -121,6 +131,8 @@ struct SegmentRecord {
     no_speech_prob: f32,
     /// Trung bình log-xác suất của các token văn bản, cùng `no_speech_prob` quyết định bỏ đoạn.
     avg_logprob: f32,
+    /// Xác suất tiếng nói trung bình của VAD (`Segment::mean_prob`). Bản ghi của Giai đoạn 0 không có số này.
+    vad_mean_prob: Option<f32>,
     /// Số đoạn trong câu đã dịch ở bước này (1 nếu không ghép; tối đa 3), và chữ nguồn của cả câu ghép (§6.3).
     merged_segments: Option<usize>,
     translated_source: Option<String>,
@@ -254,6 +266,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     let merge_window = merge_window_ms(args.end_silence_ms, &config.merge);
     let merge_config = config.merge.clone();
     let filter_config = config.filter.clone();
+    let asr_filter_config = config.filter.clone();
     let asr_thread = std::thread::spawn(move || -> Result<()> {
         let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
         // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ,
@@ -267,6 +280,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
                 start_ms: segment.start_ms,
                 end_ms: segment.end_ms,
                 audio_ms: segment.samples.len() as u64 * 1000 / 16_000,
+                vad_mean_prob: Some(segment.mean_prob),
                 closed_at_ms,
                 asr_started_at_ms: now_ms(),
                 ..Default::default()
@@ -304,9 +318,10 @@ pub fn run(args: LatencyArgs) -> Result<()> {
             tokens.drain(..excess);
             rec.lid_ms = result.lid_ms;
             rec.asr_ms = result.asr_ms;
+            // Chữ như app hiện và dịch: tiếng Trung đổi sang giản thể (`pipeline::text`).
+            rec.text = display_text(&result.lang, &result.text, &asr_filter_config);
             rec.lang = result.lang;
             rec.lang_prob = result.lang_prob;
-            rec.text = result.text;
             rec.no_speech_prob = result.no_speech_prob;
             rec.avg_logprob = result.avg_logprob;
             asr_tx.send(rec)?;
@@ -510,8 +525,12 @@ fn piece_of(rec: &SegmentRecord) -> Piece<'_> {
 
 /// Quy tắc của app cho một đoạn đã chép lời: `Ok(ngôn ngữ nguồn)` nếu phải dịch, `Err(lý do)` nếu bỏ bước dịch.
 fn route(rec: &SegmentRecord, target: Lang, cfg: &FilterConfig) -> Result<Lang, String> {
-    if is_no_speech(rec.no_speech_prob, rec.avg_logprob, &rec.text, cfg) {
-        return Err(SKIP_NO_SPEECH.into());
+    match verdict(&evidence(rec), &rec.text, cfg) {
+        Verdict::NoSpeech => return Err(SKIP_NO_SPEECH.into()),
+        Verdict::Hallucination => return Err(SKIP_HALLUCINATION.into()),
+        Verdict::Repetition => return Err(SKIP_REPETITION.into()),
+        Verdict::Filler => return Err(SKIP_FILLER.into()),
+        Verdict::Speech => {}
     }
     match Lang::from_code(&rec.lang) {
         Some(src) if src == target => Err(SKIP_SAME_LANG.into()),
@@ -520,12 +539,29 @@ fn route(rec: &SegmentRecord, target: Lang, cfg: &FilterConfig) -> Result<Lang, 
     }
 }
 
+/// Số liệu cho luật bỏ đoạn. `start_ms` và `end_ms` không gồm đệm, nên hiệu của chúng là `Segment::speech_ms`. Bản ghi
+/// không có số của VAD thì dấu hiệu VAD không bật (1,0).
+fn evidence(rec: &SegmentRecord) -> Evidence {
+    Evidence {
+        no_speech_prob: rec.no_speech_prob,
+        avg_logprob: rec.avg_logprob,
+        vad_mean_prob: rec.vad_mean_prob.unwrap_or(1.0),
+        speech_ms: rec.end_ms.saturating_sub(rec.start_ms),
+    }
+}
+
 /// Đoạn bị bỏ: app không hiện gì cho đoạn này, nên không có độ trễ để đo và không được tính là "hiện nhanh".
 /// `same_lang` thì khác: app hiện luôn bản chép lời, nên có độ trễ (bằng lúc xong chép lời).
 fn is_dropped(reason: &str) -> bool {
     matches!(
         reason,
-        SKIP_NO_SPEECH | SKIP_TOO_SHORT | SKIP_TOO_LONG | SKIP_EMPTY_TRANSLATION
+        SKIP_NO_SPEECH
+            | SKIP_HALLUCINATION
+            | SKIP_REPETITION
+            | SKIP_FILLER
+            | SKIP_TOO_SHORT
+            | SKIP_TOO_LONG
+            | SKIP_EMPTY_TRANSLATION
     )
 }
 
@@ -981,13 +1017,42 @@ mod tests {
         // Luật `no_speech` của pipeline (cần cả hai điều kiện), đặt tên lý do như Giai đoạn 0.
         assert_eq!(route(&rec("ko", "안녕", 0.9, -1.5)), Err("no_speech".into()));
         assert_eq!(route(&rec("ko", "안녕", 0.62, -0.25)), Ok(Lang::Ko));
+        assert_eq!(
+            route(&rec("en", "Thank you for watching!", 0.0, -0.2)),
+            Err("hallucination".into())
+        );
+        assert_eq!(route(&rec("en", "Thank you.", 0.0, -0.2)), Ok(Lang::En));
+        assert_eq!(route(&rec("en", "Thank you.", 0.0, -0.9)), Err("filler".into()));
+        let weak_vad = SegmentRecord {
+            vad_mean_prob: Some(0.5),
+            ..rec("en", "You", 0.0, -0.2)
+        };
+        assert_eq!(route(&weak_vad), Err("filler".into()));
+        let long = SegmentRecord {
+            start_ms: 1_000,
+            end_ms: 3_000,
+            ..rec("en", "You", 0.0, -0.2)
+        };
+        assert_eq!(route(&long), Err("filler".into()), "2 giây tiếng nói mà một từ");
+        assert_eq!(
+            route(&rec("en", &"I will go. ".repeat(20), 0.0, -0.2)),
+            Err("repetition".into())
+        );
         assert_eq!(route(&rec("vi", "Xin chào", 0.0, -0.3)), Err("same_lang".into()));
         assert_eq!(route(&rec("fr", "Bonjour", 0.0, -0.3)), Err("lang_ngoai_tap:fr".into()));
     }
 
     #[test]
     fn dropped_segments_have_no_shown_time() {
-        for reason in ["no_speech", "too_short", "too_long", "empty_translation"] {
+        for reason in [
+            "no_speech",
+            "hallucination",
+            "repetition",
+            "filler",
+            "too_short",
+            "too_long",
+            "empty_translation",
+        ] {
             let s = skipped(5_000, 5_400.0, reason);
             assert_eq!((s.shown_at_ms, s.first_shown_at_ms), (None, None), "{reason}");
         }
@@ -1122,6 +1187,9 @@ mod tests {
         assert_eq!(get("skipped_too_short"), 1.0);
         assert_eq!(get("skipped_same_lang"), 2.0);
         for zero in [
+            "skipped_hallucination",
+            "skipped_repetition",
+            "skipped_filler",
             "skipped_too_long",
             "skipped_empty_translation",
             "skipped_lang_ngoai_tap",
@@ -1307,23 +1375,16 @@ mod tests {
     /// Luật bỏ đoạn và ghép câu đã chuyển sang `pipeline` (Đ3 của kế hoạch 00) cho đúng các quyết định của 12 lượt S6 cấu
     /// hình chốt, `bench/phase0/results/latency/m4pro-chot-khuyennghi-*.json`: cùng lý do bỏ đoạn, cùng số đoạn ghép và
     /// cùng chữ nguồn đã gửi dịch, đoạn nào cũng vậy. Nhờ đó số đo S6 của lượt chốt vẫn là số đo của luật hiện tại.
+    ///
+    /// Luật mới của Giai đoạn 1 được áp như app: bộ lọc câu ảo giác và luật chuỗi lặp không bỏ đoạn nào của 12 lượt này;
+    /// chữ tiếng Trung được đổi sang giản thể, nên chữ nguồn mong đợi là bản ghi cũ sau khi đổi. Luật câu đệm có bỏ 2 đoạn
+    /// (xem `phase1_filler_rule_drops_only_known_hallucinations_on_s6`), nên lượt chạy lại này tắt luật đó.
     #[test]
     fn phase0_s6_decisions_replay_identically() {
-        #[derive(Deserialize)]
-        struct Saved {
-            config: HashMap<String, String>,
-            segments: Vec<SegmentRecord>,
-        }
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bench/phase0/results/latency");
-        let cfg = PipelineConfig::default();
+        let mut cfg = PipelineConfig::default();
+        cfg.filter.filler_phrases.clear();
         let (mut files, mut checked, mut merged_pieces) = (0, 0, 0);
-        for entry in std::fs::read_dir(&dir).unwrap() {
-            let path = entry.unwrap().path();
-            let name = path.file_name().unwrap().to_string_lossy().into_owned();
-            if !name.starts_with("m4pro-chot-khuyennghi-") {
-                continue;
-            }
-            let saved: Saved = serde_json::from_reader(std::fs::File::open(&path).unwrap()).unwrap();
+        for (name, saved) in s6_runs() {
             let target = Lang::from_code(&saved.config["target"]).unwrap();
             let end_silence: u64 = saved.config["end_silence_ms"].parse().unwrap();
             let window = merge_window_ms(end_silence, &cfg.merge);
@@ -1331,10 +1392,14 @@ mod tests {
             let mut segments = saved.segments;
             segments.sort_by_key(|s| s.id);
             let mut open = None;
-            for rec in &segments {
-                if matches!(rec.skipped.as_deref(), Some(SKIP_TOO_SHORT | SKIP_TOO_LONG)) {
+            for saved_rec in &segments {
+                if matches!(saved_rec.skipped.as_deref(), Some(SKIP_TOO_SHORT | SKIP_TOO_LONG)) {
                     continue; // không qua asr-worker, luồng MT không xét
                 }
+                let rec = &SegmentRecord {
+                    text: display_text(&saved_rec.lang, &saved_rec.text, &cfg.filter),
+                    ..saved_rec.clone()
+                };
                 let at = format!("{name}, đoạn {}", rec.id);
                 match route(rec, target, &cfg.filter) {
                     Err(reason) => {
@@ -1352,7 +1417,11 @@ mod tests {
                             rec.skipped
                         );
                         assert_eq!(rec.merged_segments, Some(merged), "{at}");
-                        assert_eq!(rec.translated_source.as_deref(), Some(source.as_str()), "{at}");
+                        let expected = rec
+                            .translated_source
+                            .as_deref()
+                            .map(|t| display_text(&rec.lang, t, &cfg.filter));
+                        assert_eq!(expected.as_deref(), Some(source.as_str()), "{at}");
                         merged_pieces += usize::from(merged > 1);
                     }
                 }
@@ -1366,5 +1435,122 @@ mod tests {
             checked > 400 && merged_pieces > 50,
             "{checked} đoạn, {merged_pieces} lần ghép"
         );
+    }
+
+    #[derive(Deserialize)]
+    struct Saved {
+        config: HashMap<String, String>,
+        segments: Vec<SegmentRecord>,
+    }
+
+    /// 12 lượt S6 của cấu hình chốt, theo tên file.
+    fn s6_runs() -> Vec<(String, Saved)> {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bench/phase0/results/latency");
+        let mut runs: Vec<(String, Saved)> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| {
+                p.file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with("m4pro-chot-khuyennghi-")
+            })
+            .map(|p| {
+                let name = p.file_name().unwrap().to_string_lossy().into_owned();
+                (name, serde_json::from_reader(std::fs::File::open(&p).unwrap()).unwrap())
+            })
+            .collect();
+        runs.sort_by(|a, b| a.0.cmp(&b.0));
+        runs
+    }
+
+    /// Q11 của review 02b, điều kiện nhận luật câu đệm: trên 528 đoạn S6, luật chỉ bỏ thêm 2 đoạn của gói Chuẩn (turbo),
+    /// cả 2 đều có chữ sai, và bản chép đúng (`bench/phase0/data/latency/*.truth.json`) ở đó không có "Thank you" hay
+    /// "Cảm ơn" (xem `gd1_no_speech.md`). Cả 2 bị bỏ vì `avg_logprob` dưới −0,7; bản ghi S6 không có số của VAD, nhưng chỉ
+    /// 3 đoạn S6 có chữ là câu đệm nên số đó không đổi kết quả. Đoạn 26 của `en` dài 32 ms, nằm ngay sau một câu, có
+    /// `no_speech_prob` 8e-11: đúng kiểu ảo giác mà luật `no_speech` không bắt được với turbo; với small, đoạn tương ứng đã
+    /// bị luật `no_speech` bỏ từ Giai đoạn 0. Đoạn 45 của `vi` là tiếng thật, đuôi câu "… ở Las Cañitas.", mà turbo chép
+    /// thành "Cảm ơn": bỏ đoạn này mất một phụ đề sai, không mất chữ đúng nào.
+    #[test]
+    fn phase1_filler_rule_drops_only_known_hallucinations_on_s6() {
+        let cfg = PipelineConfig::default();
+        let (mut seen, mut dropped) = (0, Vec::new());
+        for (name, saved) in s6_runs() {
+            let target = Lang::from_code(&saved.config["target"]).unwrap();
+            for rec in &saved.segments {
+                if matches!(rec.skipped.as_deref(), Some(SKIP_TOO_SHORT | SKIP_TOO_LONG)) {
+                    continue;
+                }
+                seen += 1;
+                let rec = SegmentRecord {
+                    text: display_text(&rec.lang, &rec.text, &cfg.filter),
+                    ..rec.clone()
+                };
+                if let Err(reason) = route(&rec, target, &cfg.filter)
+                    && rec.skipped.as_deref() != Some(reason.as_str())
+                {
+                    dropped.push(format!("{name} {} {reason} {:?}", rec.id, rec.text));
+                }
+            }
+        }
+        assert_eq!(seen, 528);
+        assert_eq!(
+            dropped,
+            [
+                r#"m4pro-chot-khuyennghi-chuan-en.json 26 filler "Thank you.""#,
+                r#"m4pro-chot-khuyennghi-chuan-vi.json 45 filler "Cảm ơn""#,
+            ]
+        );
+    }
+
+    /// Q11 của review 02b, điều kiện nhận luật mới trên A4: không bỏ clip nào trong 548 clip FLEURS (bản chép của turbo
+    /// và small, `bench/phase0/data/asr/out-m4pro-*-final.jsonl`). Không clip nào có chữ là câu đệm, nên số của VAD (không
+    /// có trong file) không đổi kết quả; độ dài tiếng nói lấy bằng độ dài clip. Cần dữ liệu của `bench/phase0/fetch.py`.
+    #[test]
+    #[ignore = "cần bench/phase0/data"]
+    fn phase1_rules_drop_no_a4_clip() {
+        #[derive(Deserialize)]
+        struct Clip {
+            id: String,
+            lang_hyp: String,
+            hyp: String,
+            no_speech_prob: f32,
+            avg_logprob: f32,
+            audio_ms: u64,
+        }
+        let cfg = PipelineConfig::default().filter;
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bench/phase0/data/asr");
+        for model in ["turbo", "small"] {
+            let path = dir.join(format!("out-m4pro-{model}-final.jsonl"));
+            let text = std::fs::read_to_string(&path).unwrap();
+            let clips: Vec<Clip> = text.lines().map(|l| serde_json::from_str(l).unwrap()).collect();
+            let mut kinds: HashMap<String, Vec<String>> = HashMap::new();
+            let mut max_ratio = 0.0f32;
+            for c in &clips {
+                let shown = display_text(&c.lang_hyp, &c.hyp, &cfg);
+                max_ratio = max_ratio.max(pipeline::filter::compression_ratio(&shown));
+                let ev = Evidence {
+                    no_speech_prob: c.no_speech_prob,
+                    avg_logprob: c.avg_logprob,
+                    vad_mean_prob: 1.0,
+                    speech_ms: c.audio_ms,
+                };
+                let v = verdict(&ev, &shown, &cfg);
+                if v != Verdict::Speech {
+                    kinds.entry(format!("{v:?}")).or_default().push(c.id.clone());
+                }
+            }
+            println!(
+                "{model}: {} clip, bị bỏ {kinds:?}, tỉ lệ nén lớn nhất {max_ratio:.2}",
+                clips.len()
+            );
+            assert_eq!(clips.len(), 548);
+            // Luật `no_speech` của Giai đoạn 0 bỏ đúng 1 clip của small (chữ bịa); luật mới không bỏ thêm clip nào.
+            let expected: HashMap<String, Vec<String>> = match model {
+                "small" => [("NoSpeech".to_string(), vec!["en-9810650684898829002_nb".to_string()])].into(),
+                _ => HashMap::new(),
+            };
+            assert_eq!(kinds, expected, "{model}");
+        }
     }
 }

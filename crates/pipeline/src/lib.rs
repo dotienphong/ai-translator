@@ -6,4 +6,5 @@ pub mod prompt;
 pub mod segmenter;
 pub mod sentence;
 pub mod sse;
+pub mod text;
 pub mod vad;

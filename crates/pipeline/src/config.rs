@@ -57,11 +57,49 @@ pub struct FilterConfig {
     /// Bỏ đoạn khi `no_speech_prob > no_speech_prob_max` **và** `avg_logprob < avg_logprob_min` (luật của OpenAI Whisper).
     pub no_speech_prob_max: f32,
     pub avg_logprob_min: f32,
-    /// Câu hay bị bịa ra khi chỉ có nhạc hoặc im lặng. Đoạn chỉ gồm các câu này (sau khi chuẩn hóa) thì bị bỏ.
+    /// Câu hay bị bịa ra khi chỉ có nhạc hoặc im lặng. Đoạn chỉ gồm các câu này (sau khi chuẩn hóa) thì bị bỏ. Cụm có
+    /// ngoặc (`[music]`, `(music)`) là nhãn: so khớp nguyên dạng có ngoặc, nên câu thật "Music." không bị bỏ.
     pub hallucination_phrases: Vec<String>,
+    /// Câu đệm ngắn mà model hay bịa ra từ tiếng ồn (Q11 của review 02b). Khác `hallucination_phrases`: đây cũng là câu
+    /// thật trong cuộc họp, nên chỉ bị bỏ khi có thêm ít nhất một dấu hiệu dưới đây.
+    pub filler_phrases: Vec<String>,
+    /// Dấu hiệu 1: `avg_logprob` dưới ngưỡng này.
+    pub filler_logprob_max: f32,
+    /// Dấu hiệu 2: xác suất tiếng nói trung bình của VAD trên các khung tiếng nói (`Segment::mean_prob`) dưới ngưỡng này.
+    pub filler_vad_prob_max: f32,
+    /// Dấu hiệu 3: đoạn có tiếng nói từ chừng này ms mà chỉ có tối đa `filler_long_max_words` từ.
+    pub filler_long_ms: u64,
+    pub filler_long_max_words: usize,
+    /// Tỉ lệ nén zlib của chữ (byte UTF-8 chia byte sau nén) lớn hơn ngưỡng này thì coi là chuỗi lặp và bỏ đoạn, như
+    /// `compression_ratio_threshold` của OpenAI Whisper.
+    pub compression_ratio_max: f32,
     /// Đổi chữ phồn thể sang giản thể cho đoạn tiếng Trung (§6.4, "Việc cho MVP"; `small` hay ra phồn thể).
     pub simplify_chinese: bool,
 }
+
+/// Câu đệm mặc định, theo ngôn ngữ: en, vi, ja, zh, ko. "I" đứng một mình là chữ bịa của gói Nhẹ trên nhạc
+/// (`bench/phase0/results/gd1_no_speech.md`).
+pub const DEFAULT_FILLER_PHRASES: &[&str] = &[
+    "you",
+    "i",
+    "so",
+    "okay",
+    "ok",
+    "bye",
+    "bye bye",
+    "thanks",
+    "thank you",
+    "thank you very much",
+    "cảm ơn",
+    "xin cảm ơn",
+    "cảm ơn các bạn",
+    "ありがとうございました",
+    "ありがとうございます",
+    "谢谢",
+    "谢谢大家",
+    "감사합니다",
+    "고맙습니다",
+];
 
 /// Danh sách mặc định: câu trong spec §6.4 cộng các biến thể hay gặp của cùng loại (cảm ơn đã xem, mời đăng ký kênh,
 /// phụ đề do ai làm, nhãn nhạc). Không có "Thank you." hay "Cảm ơn." đứng riêng: đó là câu thật trong cuộc họp.
@@ -100,6 +138,12 @@ impl Default for FilterConfig {
             no_speech_prob_max: 0.6,
             avg_logprob_min: -1.0,
             hallucination_phrases: DEFAULT_HALLUCINATION_PHRASES.iter().map(|s| s.to_string()).collect(),
+            filler_phrases: DEFAULT_FILLER_PHRASES.iter().map(|s| s.to_string()).collect(),
+            filler_logprob_max: -0.7,
+            filler_vad_prob_max: 0.7,
+            filler_long_ms: 2_000,
+            filler_long_max_words: 1,
+            compression_ratio_max: 2.4,
             simplify_chinese: true,
         }
     }
@@ -331,6 +375,12 @@ impl PipelineConfig {
                 (0.0..=1.0).contains(&self.filter.no_speech_prob_max),
             ),
             ("filter.avg_logprob_min", self.filter.avg_logprob_min <= 0.0),
+            ("filter.filler_logprob_max", self.filter.filler_logprob_max <= 0.0),
+            (
+                "filter.filler_vad_prob_max",
+                (0.0..=1.0).contains(&self.filter.filler_vad_prob_max),
+            ),
+            ("filter.compression_ratio_max", self.filter.compression_ratio_max >= 1.0),
             (
                 "asr.max_prompt_tokens",
                 self.asr.max_prompt_tokens <= asr_protocol::MAX_PROMPT_TOKENS,
@@ -411,7 +461,18 @@ mod tests {
             (m.window_min_ms, m.window_extra_ms, m.max_speech_ms, m.max_segments),
             (700, 400, 15_000, 3)
         );
-        assert_eq!((c.filter.no_speech_prob_max, c.filter.avg_logprob_min), (0.6, -1.0));
+        let f = &c.filter;
+        assert_eq!((f.no_speech_prob_max, f.avg_logprob_min), (0.6, -1.0));
+        assert_eq!(
+            (
+                f.filler_logprob_max,
+                f.filler_vad_prob_max,
+                f.filler_long_ms,
+                f.filler_long_max_words,
+                f.compression_ratio_max
+            ),
+            (-0.7, 0.7, 2_000, 1, 2.4)
+        );
         assert!(c.filter.simplify_chinese);
         assert_eq!((c.asr.max_prompt_tokens, c.asr.timeout_ms), (100, 30_000));
         let t = &c.mt;
@@ -522,7 +583,12 @@ mod tests {
     #[test]
     fn every_bounded_key_is_checked() {
         type Break = fn(&mut PipelineConfig);
-        let cases: [(&str, Break); 16] = [
+        let cases: [(&str, Break); 19] = [
+            ("filter.filler_logprob_max", |c| c.filter.filler_logprob_max = 0.5),
+            ("filter.filler_vad_prob_max", |c| {
+                c.filter.filler_vad_prob_max = f32::NAN
+            }),
+            ("filter.compression_ratio_max", |c| c.filter.compression_ratio_max = 0.0),
             ("queue.asr_merge_max_ms", |c| c.queue.asr_merge_max_ms = 0),
             ("supervisor.idle_shutdown_ms", |c| c.supervisor.idle_shutdown_ms = 0),
             ("supervisor.ready_timeout_ms", |c| c.supervisor.ready_timeout_ms = 0),
