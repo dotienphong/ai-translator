@@ -3,6 +3,7 @@
 
 pub mod hotkeys;
 pub mod i18n;
+pub mod login_item;
 pub mod navigation;
 pub mod overlay;
 pub mod quit_guard;
