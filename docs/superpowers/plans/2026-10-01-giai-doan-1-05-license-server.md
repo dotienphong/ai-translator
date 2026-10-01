@@ -9233,6 +9233,8 @@ Webhook sai chữ ký ở lệnh thứ hai tạo một cảnh báo `webhook_bad_
 - Nếu chủ dự án có kênh chat, webhook hay công cụ incident nhận được thông báo: Automations > Add automation, trigger "Occurrence threshold" = 1, chọn destination đó, bật Enabled, Create. Expected: automation hiện trong danh sách với trạng thái Enabled.
 - Không có kênh nào như vậy: bỏ qua automation; đây là rủi ro chấp nhận (QĐ27), người vận hành xem trang Issues định kỳ.
 
+**Giới hạn tần suất cho webhook (review cuối, N3): staging không đặt được.** Webhook sai chữ ký ghi D1 ở mọi request (cảnh báo `webhook_bad_signature`), nên ai gửi liên tục có thể ăn hạn mức ghi của D1. Luật rate limit của Cloudflare WAF gắn với một zone (tên miền trên Cloudflare); `*.workers.dev` không phải zone của tài khoản, nên staging không có luật này. Đây là rủi ro chấp nhận cho staging: URL staging không công bố, và D1 staging không phục vụ khách thật. Production đặt luật ở Task 21, Step 9a.
+
 - [ ] **Step 11: Bật Cloudflare Access cho Worker admin, đặt cookie, `ACCESS_AUD`, `API_ORIGIN`**
 
 a. Dashboard > Workers & Pages > `mt-license-admin-staging` > tab Access > Protect this Worker behind Access > chọn **All traffic**. Ở Authentication policy, chọn "Cloudflare account" (thành viên của tài khoản), hoặc Email domain của người vận hành. Bấm Apply Access.
@@ -9575,6 +9577,32 @@ Không ghi email, key hay token.
    - Wrangler in `Uploaded mt-license-production`, `Deployed mt-license-production triggers`, dòng `<tên miền license> (custom domain)`, `schedule: */5 * * * *`.
    - `curl` in `{"ok":true}`. Tên miền riêng có thể cần vài phút để cấp chứng chỉ; nếu lỗi TLS thì chờ rồi thử lại.
    - Workers Issues của `mt-license-production` đã bật; thêm automation như Task 19, Step 10 nếu có kênh nhận.
+
+- [ ] **Step 9a: Luật rate limit cho đường webhook (review cuối, N3)**
+
+   Webhook sai chữ ký trả `400` nhưng vẫn ghi D1 (cảnh báo `webhook_bad_signature`), và không qua giới hạn theo IP như các route khác. Luật WAF chạy trước Worker trên tên miền riêng, nên request bị chặn không tới Worker và không ghi D1. Webhook thật lỡ bị chặn cũng không mất: PayOS gửi lại khi nhận mã khác 2xx, và cron đối soát mỗi 5 phút vẫn xử lý đơn (Task 15).
+
+   Dashboard Cloudflare > chọn zone của `<tên miền license>` > **Security** > **Security rules** (bản dashboard cũ: **Security** > **WAF** > tab **Rate limiting rules**) > **Create rule** > **Rate limiting rules**:
+   - **Rule name:** `webhook-rate-limit`.
+   - **If incoming requests match:** Field `URI Path`, Operator `starts with`, Value `/v1/webhooks/`. Nếu gói của zone không cho `starts with`, dùng Operator `equals`, Value `/v1/webhooks/payos` (cổng lạ trả `404` trước khi ghi D1, nên chỉ đường của cổng thật cần luật).
+   - **With the same characteristics:** `IP` (gói Free chỉ có IP).
+   - **When rate exceeds:** Requests `5`, Period `10 seconds` (gói Free chỉ có 10 giây). PayOS gửi một webhook cho mỗi giao dịch, nên 5 lần trong 10 giây từ một IP là dư cho lưu lượng thật lúc đầu.
+   - **Then take action:** `Block`. **With response type:** `Custom JSON`, **With response code:** `429`, **Response body:** `{"error":"rate_limited"}` (cùng dạng lỗi với API). Gói Free không chọn được kiểu trả về thì để mặc định.
+   - **For duration:** `10 seconds` (gói Free chỉ có 10 giây; gói Pro trở lên nên chọn `1 hour`).
+   - Bấm **Deploy**.
+
+   Gói Free chỉ có 1 luật rate limit cho cả zone; luật này dùng hết suất đó. Thử:
+
+   ```bash
+   for i in 1 2 3 4 5 6 7; do curl -s -o /dev/null -w '%{http_code} ' -X POST "$PROD/v1/webhooks/payos" -H 'content-type: application/json' -d '{"data":{},"signature":"x"}'; done; echo
+   ```
+
+   Expected:
+   - Năm số đầu là `400`, rồi `429`: luật chặn từ request thứ 6 trong 10 giây.
+   - Security > Events có các sự kiện `Block` của luật `webhook-rate-limit`.
+   - Năm request đầu tạo cảnh báo `webhook_bad_signature (5)`; `OPERATOR_EMAIL` nhận một thư trong vòng 5 phút. Đây là thư thử, không phải sự cố.
+   - Đợi 10 giây rồi `curl -s "$PROD/v1/health"` vẫn in `{"ok":true}` (luật chỉ áp cho đường webhook).
+   - Ghi vào mục 8 của kế hoạch 00: gói của zone và thông số đã đặt.
 
 - [ ] **Step 10: Deploy Worker admin, bật Access, cookie, `ACCESS_AUD`, `API_ORIGIN`**
 
