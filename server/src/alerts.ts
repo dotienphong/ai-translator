@@ -25,6 +25,20 @@ export async function raiseAlert(db: D1Database, kind: AlertKind, now: number): 
 }
 
 /**
+ * Câu tạo cảnh báo để đặt trong batch, chỉ có tác dụng khi câu đứng ngay trước đổi đúng một dòng (`changes() = 1`).
+ * Đi cùng batch với lệnh ghi dữ liệu, nên không có trường hợp dữ liệu đã đổi mà cảnh báo bị mất.
+ */
+export function alertIfChanged(db: D1Database, kind: AlertKind, now: number): D1PreparedStatement {
+  // "WHERE" trước "ON CONFLICT" là bắt buộc khi INSERT … SELECT có upsert (tài liệu SQLite, mục "Parsing Ambiguity").
+  return db
+    .prepare(
+      `INSERT INTO ops_alerts (kind, window_start, count) SELECT ?1, ?2, 1 WHERE changes() = 1
+       ON CONFLICT (kind, window_start) DO UPDATE SET count = count + 1`,
+    )
+    .bind(kind, now - (now % HOUR));
+}
+
+/**
  * Gửi các cảnh báo chưa báo, gộp theo loại. Loại nào đã báo trong 1 giờ qua thì để lần sau.
  * Gửi lỗi thì giữ nguyên để lần cron sau thử lại (không tạo cảnh báo email_failed mới, tránh vòng lặp).
  */

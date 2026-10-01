@@ -33,6 +33,7 @@ CREATE TABLE orders (
   license_id TEXT REFERENCES licenses (id),
   grant_kind TEXT,                       -- lúc cấp: 'new' | 'extend' (cùng gói) | 'change' (đổi gói), QĐ32
   status TEXT NOT NULL,                  -- pending | processing | paid | underpaid | cancelled | expired | failed
+                                         -- | paid_needs_review (license đã thu hồi nhận được tiền, QĐ37) | refunded (admin ghi đã hoàn)
   amount_paid INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL,           -- hạn của link thanh toán (tạo đơn + 15 phút)

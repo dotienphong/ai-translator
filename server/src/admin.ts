@@ -10,7 +10,7 @@ import type { EmailProvider } from "./email/provider";
 import type { AdminEnv } from "./env";
 import { fail, isRecord, parseEmail, readJson } from "./http";
 import { formatLicenseKey, generateLicenseKey } from "./license-key";
-import { grantOrder, loadOrder, mailGranted } from "./orders";
+import { grantOrder, loadOrder, mailGranted, settledResult } from "./orders";
 import type { PayOSProvider } from "./payment/payos";
 import type { PaymentProvider } from "./payment/provider";
 import { computeGrant, isPlan, PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
@@ -165,7 +165,11 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       amountPaid: order.amount_paid,
       actor: c.get("actor"),
     });
-    if (granted === "already_settled") return c.json({ error: "already_paid" }, 409);
+    if (granted === "already_settled") {
+      // already_paid: đơn đã cấp. already_settled: đơn đã hoàn tiền hay đang chờ xử lý (QĐ37), không cấp tay được.
+      const st = (await loadOrder(c.env.DB, orderCode))?.status ?? "";
+      return c.json({ error: settledResult(st) === "already_paid" ? "already_paid" : "already_settled", status: st }, 409);
+    }
     // License của đơn đã bị thu hồi: đơn chuyển sang paid_needs_review; xử lý bằng /resolve (QĐ37).
     if (granted === "needs_review") return c.json({ error: "order_needs_review" }, 409);
     await audit(c.env.DB, {

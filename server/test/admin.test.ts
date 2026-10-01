@@ -211,7 +211,10 @@ describe("thay đổi license", () => {
     expect(order).toEqual({ status: "paid", amount_paid: 1500 });
     expect(w.resend.sent).toHaveLength(1);
     expect(await lastAudit()).toMatchObject({ action: "order_granted_manually" });
-    expect((await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "lần hai" } })).status).toBe(409);
+    expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "lần hai" } })).toEqual({
+      status: 409,
+      body: { error: "already_paid", status: "paid" },
+    });
   });
 
   it("cấp tay đơn gia hạn đổi gói: cùng luật với webhook, tính từ lúc thao tác", async () => {
@@ -363,7 +366,10 @@ describe("đơn paid_needs_review: license đã thu hồi mà nhận được ti
 
   it("cấp tay thường không áp được đơn này (409), không đổi gì", async () => {
     const { adminCall, orderCode } = await needsReview();
-    expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "x" } })).toMatchObject({ status: 409, body: { error: "already_paid" } });
+    expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "x" } })).toEqual({
+      status: 409,
+      body: { error: "already_settled", status: "paid_needs_review" },
+    });
     expect(await orderStatus(orderCode)).toEqual({ status: "paid_needs_review" });
   });
 
@@ -398,6 +404,8 @@ describe("đơn paid_needs_review: license đã thu hồi mà nhận được ti
     expect(w.resend.sent[0]!.text).toContain(res.body.license_key as string);
     expect((await w.getOrder(orderCode, token)).body).toMatchObject({ status: "paid", grant_kind: "new", license_key: res.body.license_key });
     expect(await lastAudit()).toMatchObject({ action: "order_review_granted", order_code: orderCode });
+    // paid_at vẫn là lúc server xác nhận khách trả tiền, không phải lúc người vận hành xử lý.
+    expect(await env.DB.prepare("SELECT paid_at FROM orders WHERE order_code = ?").bind(orderCode).first()).toEqual({ paid_at: T0 });
     // Làm lại lần hai thì 409.
     expect((await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "refunded", note: "x" } })).status).toBe(409);
   });
@@ -410,8 +418,12 @@ describe("đơn paid_needs_review: license đã thu hồi mà nhận được ti
     expect(w.resend.sent).toHaveLength(0);
     expect((await w.getOrder(orderCode, token)).body).toMatchObject({ status: "refunded" });
     expect(await lastAudit()).toMatchObject({ action: "order_refunded_outside", order_code: orderCode });
-    // Đơn đã hoàn tiền thì webhook gửi lại cũng không áp.
-    expect((await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode))).body).toEqual({ ok: true, result: "already_paid" });
+    // Đơn đã hoàn tiền thì webhook gửi lại cũng không áp, và không bị gọi là "đã trả".
+    expect((await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode))).body).toEqual({ ok: true, result: "already_settled" });
+    expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "x" } })).toEqual({
+      status: 409,
+      body: { error: "already_settled", status: "refunded" },
+    });
     expect((await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "grant_new_license", note: "x" } })).status).toBe(409);
   });
 

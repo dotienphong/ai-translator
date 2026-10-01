@@ -15,6 +15,16 @@ export function auditStatement(db: D1Database, e: AuditEntry): D1PreparedStateme
     .bind(e.at, e.actor, e.action, e.licenseId ?? null, e.orderCode ?? null, e.detail ? JSON.stringify(e.detail) : null);
 }
 
+/**
+ * Như auditStatement, nhưng chỉ ghi khi câu lệnh đứng ngay trước trong cùng batch đổi đúng một dòng (`changes() = 1`).
+ * Dùng cho thao tác có điều kiện: lần chạy trùng hay chạy chồng không đổi gì thì cũng không ghi nhật ký.
+ */
+export function auditIfChanged(db: D1Database, e: AuditEntry): D1PreparedStatement {
+  return db
+    .prepare("INSERT INTO audit_log (at, actor, action, license_id, order_code, detail) SELECT ?, ?, ?, ?, ?, ? WHERE changes() = 1")
+    .bind(e.at, e.actor, e.action, e.licenseId ?? null, e.orderCode ?? null, e.detail ? JSON.stringify(e.detail) : null);
+}
+
 export async function audit(db: D1Database, e: AuditEntry): Promise<void> {
   await auditStatement(db, e).run();
 }

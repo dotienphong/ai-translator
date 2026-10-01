@@ -18,6 +18,18 @@ async function checkout(w: ReturnType<typeof makeWorld>, extra: Record<string, u
   return { orderCode: res.body.order_code as number, token: res.body.order_token as string };
 }
 
+/** Cho một câu ghi hỏng (trigger RAISE), để kiểm các câu ghi cùng batch có quay lui cùng nhau không. */
+async function withFailingInsert<T>(table: string, when: string, run: () => Promise<T>): Promise<T> {
+  await env.DB.prepare(`CREATE TRIGGER test_fail BEFORE INSERT ON ${table} WHEN ${when} BEGIN SELECT RAISE(ABORT, 'ghi hỏng'); END`).run();
+  try {
+    return await run();
+  } finally {
+    await env.DB.prepare("DROP TRIGGER test_fail").run();
+  }
+}
+const auditCount = async (action: string) =>
+  (await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = ?").bind(action).first<{ n: number }>())?.n;
+
 const licenseCount = async () =>
   (await env.DB.prepare("SELECT COUNT(*) AS n FROM licenses").first<{ n: number }>())?.n;
 const orderRow = (orderCode: number) =>
@@ -153,6 +165,31 @@ describe("webhook PayOS", () => {
     expect(await orderRow(orderCode)).toEqual({ status: "failed", amount_paid: 1000 });
     const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'order_amount_mismatch'").first<{ detail: string }>();
     expect(JSON.parse(log!.detail)).toEqual({ amount: 50000, provider_amount: 1000, amount_paid: 1000 });
+  });
+
+  it("amount của PayOS lớn hơn amount của đơn: cũng không cấp, đơn thành failed", async () => {
+    const w = makeWorld();
+    const { orderCode } = await checkout(w);
+    w.payos.setAmount(orderCode, 60000);
+    w.payos.pay(orderCode);
+    const res = await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    expect(res.body).toEqual({ ok: true, result: "not_paid" });
+    expect(await licenseCount()).toBe(0);
+    expect(await orderRow(orderCode)).toEqual({ status: "failed", amount_paid: 60000 });
+  });
+
+  it("nhật ký license_issued nằm cùng batch với lệnh cấp: ghi nhật ký lỗi thì không cấp gì, webhook gửi lại thì cấp đủ", async () => {
+    const w = makeWorld();
+    const { orderCode } = await checkout(w);
+    w.payos.pay(orderCode);
+    const body = await w.payos.webhookBody(orderCode);
+    const failed = await withFailingInsert("audit_log", "NEW.action = 'license_issued'", () => w.call("POST", "/v1/webhooks/payos", body));
+    expect(failed.status).toBe(503);
+    expect(await licenseCount()).toBe(0);
+    expect(await orderRow(orderCode)).toEqual({ status: "pending", amount_paid: 0 });
+    expect((await w.call("POST", "/v1/webhooks/payos", body)).body).toEqual({ ok: true, result: "granted" });
+    expect(await licenseCount()).toBe(1);
+    expect(await auditCount("license_issued")).toBe(1);
   });
 
   it("PayOS không trả lời thì 503 để PayOS gửi lại", async () => {
@@ -359,6 +396,14 @@ describe("thời điểm tính là lúc khách trả tiền (QĐ33)", () => {
     w.clock.now = T0 + 13 * DAY;
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(late.orderCode));
     expect(await license()).toMatchObject({ plan: "pro_x2", cycle_anchor: T0 + 10 * DAY, expires_at: T0 + 76 * DAY });
+    // Gia hạn cùng gói khi còn hạn thì hạn mới không phụ thuộc thời điểm: kiểm thời điểm đã kẹp ở nhật ký.
+    const paidAt = async (orderCode: number) =>
+      JSON.parse(
+        (await env.DB.prepare("SELECT detail FROM audit_log WHERE order_code = ? AND action LIKE 'license_%'").bind(orderCode).first<{ detail: string }>())!
+          .detail,
+      ).paid_at;
+    expect(await paidAt(early.orderCode)).toBe(T0 + 10 * DAY);
+    expect(await paidAt(late.orderCode)).toBe(T0 + 12 * DAY + 900);
   });
 });
 
@@ -418,6 +463,24 @@ describe("hai đơn của cùng license xác nhận cùng lúc (QĐ32)", () => {
     const again = await grantOrder(env.DB, plans(), (await loadOrder(env.DB, a))!, { now: T0 + 10 * DAY, amountPaid: 150000, actor: "test" });
     expect(again).toBe("already_settled");
     expect(await license()).toMatchObject({ version: 1 });
+  });
+});
+
+describe("nhật ký đổi gói cùng batch với lệnh ghi license", () => {
+  it("ghi nhật ký license_plan_changed lỗi thì license và đơn giữ nguyên; webhook gửi lại thì áp đủ một lần", async () => {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy();
+    w.clock.now = T0 + 10 * DAY;
+    const { orderCode } = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
+    w.payos.pay(orderCode);
+    const body = await w.payos.webhookBody(orderCode);
+    const failed = await withFailingInsert("audit_log", "NEW.action = 'license_plan_changed'", () => w.call("POST", "/v1/webhooks/payos", body));
+    expect(failed.status).toBe(503);
+    expect(await license()).toEqual({ plan: "pro", expires_at: T0 + 30 * DAY, cycle_anchor: T0, version: 0 });
+    expect(await orderRow(orderCode)).toEqual({ status: "pending", amount_paid: 0 });
+    expect((await w.call("POST", "/v1/webhooks/payos", body)).body).toEqual({ ok: true, result: "granted" });
+    expect(await license()).toMatchObject({ plan: "pro_x2", version: 1 });
+    expect(await auditCount("license_plan_changed")).toBe(1);
   });
 });
 
@@ -511,6 +574,38 @@ describe("license đã thu hồi mà nhận được tiền (QĐ37)", () => {
     expect(result).toBe("needs_review");
     expect(await license()).toMatchObject({ plan: "pro", version: 0 });
     expect(await env.DB.prepare("SELECT status FROM orders WHERE order_code = ?").bind(orderCode).first()).toEqual({ status: "paid_needs_review" });
+  });
+
+  it("chuyển trạng thái, nhật ký và cảnh báo nằm cùng một batch: tạo cảnh báo lỗi thì đơn giữ nguyên, lần sau đủ cả ba", async () => {
+    const { w, orderCode } = await revokedRenewal();
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 10 * DAY).run();
+    const body = await w.payos.webhookBody(orderCode);
+    const failed = await withFailingInsert("ops_alerts", "NEW.kind = 'order_needs_review'", () => w.call("POST", "/v1/webhooks/payos", body));
+    expect(failed.status).toBe(503);
+    expect(await orderRow(orderCode)).toEqual({ status: "pending", amount_paid: 0 });
+    expect(await auditCount("order_needs_review")).toBe(0);
+    // Webhook gửi lại (hay đối soát): đơn chuyển trạng thái, có nhật ký và cảnh báo, mỗi thứ một lần.
+    expect((await w.call("POST", "/v1/webhooks/payos", body)).body).toEqual({ ok: true, result: "needs_review" });
+    expect((await w.call("POST", "/v1/webhooks/payos", body)).body).toEqual({ ok: true, result: "needs_review" });
+    expect(await orderRow(orderCode)).toEqual({ status: "paid_needs_review", amount_paid: 150000 });
+    expect(await auditCount("order_needs_review")).toBe(1);
+    expect(await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'order_needs_review'").first()).toEqual({ n: 1 });
+  });
+
+  it("đơn đã paid, license bị thu hồi sau đó, grantOrder gọi lại: đơn giữ paid, không chuyển sang chờ xử lý", async () => {
+    const { w, orderCode } = await revokedRenewal();
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    expect(await orderRow(orderCode)).toEqual({ status: "paid", amount_paid: 150000 });
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 11 * DAY).run();
+    const again = await grantOrder(env.DB, parsePlans(env.PLANS) as PlanTable, (await loadOrder(env.DB, orderCode))!, {
+      now: T0 + 11 * DAY,
+      amountPaid: 150000,
+      actor: "test",
+    });
+    expect(again).toBe("already_settled");
+    expect(await orderRow(orderCode)).toEqual({ status: "paid", amount_paid: 150000 });
+    expect(await auditCount("order_needs_review")).toBe(0);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM ops_alerts").first()).toEqual({ n: 0 });
   });
 
   it("đơn mua license mới không bị ảnh hưởng: license khác của cùng email bị thu hồi vẫn cấp bình thường", async () => {

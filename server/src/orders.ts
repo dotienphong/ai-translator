@@ -1,9 +1,9 @@
 // Vòng đời đơn hàng sau khi tạo (§6.8, §9): webhook của cổng thanh toán, app hỏi trạng thái,
 // cấp license mới, gia hạn hoặc đổi gói, gửi lại email chưa gửi được.
 import type { Hono } from "hono";
-import { raiseAlert } from "./alerts";
+import { alertIfChanged, raiseAlert } from "./alerts";
 import type { AppEnv } from "./app";
-import { audit } from "./audit";
+import { audit, auditIfChanged } from "./audit";
 import { sha256Hex, timingSafeEqual } from "./crypto";
 import { type Deps, sendLicenseMail } from "./deps";
 import { clientIp, fail, tooMany } from "./http";
@@ -124,9 +124,11 @@ export async function grantOrder(
            SELECT ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?1, ?8 WHERE ${unpaid}`,
         )
         .bind(order.order_code, licenseId, generateLicenseKey(), order.email, plan, terms.expires_at, terms.cycle_anchor, opts.now);
+      // Đơn paid_needs_review đã có paid_at (lúc server xác nhận khách trả tiền): giữ nguyên khi admin cấp license mới.
       mark = db
         .prepare(
-          `UPDATE orders SET status = 'paid', paid_at = ?2, amount_paid = ?3, license_id = ?4, grant_kind = ?5, last_checked_at = ?2
+          `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, ?2), amount_paid = ?3, license_id = ?4, grant_kind = ?5,
+                  last_checked_at = ?2
            WHERE order_code = ?1 AND ${pending} AND EXISTS (SELECT 1 FROM licenses WHERE id = ?4 AND last_order_code = ?1)`,
         )
         .bind(order.order_code, opts.now, opts.amountPaid, licenseId, terms.kind);
@@ -158,40 +160,8 @@ export async function grantOrder(
         )
         .bind(order.order_code, opts.now, opts.amountPaid, licenseId, terms.kind, cur.version + 1);
     }
-    await opts.beforeCommit?.();
-    const results = await db.batch([write, mark]);
-    if (results[1]?.meta.changes !== 1) {
-      if (order.renew_license_id !== null && !opts.resolveAsNewLicense) {
-        // License đã thu hồi: không áp đơn, chuyển đơn sang chờ người vận hành (QĐ37).
-        const review = await db
-          .prepare(
-            `UPDATE orders SET status = 'paid_needs_review', paid_at = ?2, amount_paid = ?3, last_checked_at = ?2
-             WHERE order_code = ?1 AND ${NOT_SETTLED}
-               AND EXISTS (SELECT 1 FROM licenses WHERE id = ?4 AND revoked_at IS NOT NULL)`,
-          )
-          .bind(order.order_code, opts.now, opts.amountPaid, licenseId)
-          .run();
-        if (review.meta.changes === 1) {
-          console.warn(JSON.stringify({ event: "order_needs_review", order_code: order.order_code }));
-          await raiseAlert(db, "order_needs_review", opts.now);
-          await audit(db, {
-            at: opts.now,
-            actor: opts.actor,
-            action: "order_needs_review",
-            licenseId,
-            orderCode: order.order_code,
-            detail: { reason: "license_revoked", plan, amount_paid: opts.amountPaid, paid_at: at },
-          });
-          return "needs_review";
-        }
-      }
-      const st = await db.prepare("SELECT status FROM orders WHERE order_code = ?").bind(order.order_code).first<{ status: string }>();
-      if ((SETTLED_STATUSES as readonly string[]).includes(st?.status ?? "")) return "already_settled";
-      continue; // license vừa bị một đơn khác đổi: đọc lại và tính lại
-    }
-    const lic = await db.prepare("SELECT license_key FROM licenses WHERE id = ?").bind(licenseId).first<{ license_key: string }>();
-    if (!lic) throw new Error(`không thấy license ${licenseId} sau khi cấp`);
-    await audit(db, {
+    // Nhật ký đứng ngay sau câu đánh dấu đơn và chỉ ghi khi câu đó có tác dụng: cấp và ghi nhật ký cùng thành hoặc cùng không.
+    const log = auditIfChanged(db, {
       at: opts.now,
       actor: opts.actor,
       action: terms.kind === "new" ? "license_issued" : terms.kind === "extend" ? "license_extended" : "license_plan_changed",
@@ -207,6 +177,41 @@ export async function grantOrder(
         amount_paid: opts.amountPaid,
       },
     });
+    await opts.beforeCommit?.();
+    const results = await db.batch([write, mark, log]);
+    if (results[1]?.meta.changes !== 1) {
+      if (order.renew_license_id !== null && !opts.resolveAsNewLicense) {
+        // License đã thu hồi: không áp đơn, chuyển đơn sang chờ người vận hành (QĐ37). Chuyển trạng thái, nhật ký và
+        // cảnh báo cùng một batch, nên không có trường hợp đơn đã chuyển mà cảnh báo bị mất.
+        const [review] = await db.batch([
+          db
+            .prepare(
+              `UPDATE orders SET status = 'paid_needs_review', paid_at = ?2, amount_paid = ?3, last_checked_at = ?2
+               WHERE order_code = ?1 AND ${NOT_SETTLED}
+                 AND EXISTS (SELECT 1 FROM licenses WHERE id = ?4 AND revoked_at IS NOT NULL)`,
+            )
+            .bind(order.order_code, opts.now, opts.amountPaid, licenseId),
+          auditIfChanged(db, {
+            at: opts.now,
+            actor: opts.actor,
+            action: "order_needs_review",
+            licenseId,
+            orderCode: order.order_code,
+            detail: { reason: "license_revoked", plan, amount_paid: opts.amountPaid, paid_at: at },
+          }),
+          alertIfChanged(db, "order_needs_review", opts.now),
+        ]);
+        if (review?.meta.changes === 1) {
+          console.warn(JSON.stringify({ event: "order_needs_review", order_code: order.order_code }));
+          return "needs_review";
+        }
+      }
+      const st = await db.prepare("SELECT status FROM orders WHERE order_code = ?").bind(order.order_code).first<{ status: string }>();
+      if ((SETTLED_STATUSES as readonly string[]).includes(st?.status ?? "")) return "already_settled";
+      continue; // license vừa bị một đơn khác đổi: đọc lại và tính lại
+    }
+    const lic = await db.prepare("SELECT license_key FROM licenses WHERE id = ?").bind(licenseId).first<{ license_key: string }>();
+    if (!lic) throw new Error(`không thấy license ${licenseId} sau khi cấp`);
     return {
       licenseId,
       licenseKey: lic.license_key,
@@ -273,7 +278,21 @@ export async function mailGranted(
   await update.run();
 }
 
-export type FulfilResult = "granted" | "already_paid" | "needs_review" | "not_paid" | "unknown_order";
+/**
+ * `already_paid`: đơn đã cấp (`paid`). `already_settled`: đơn đã khép mà không phải đã cấp (`refunded`).
+ * `needs_review`: đơn đang chờ người vận hành (`paid_needs_review`).
+ */
+export type FulfilResult = "granted" | "already_paid" | "already_settled" | "needs_review" | "not_paid" | "unknown_order";
+
+/** Nhãn kết quả cho đơn đã ở trạng thái không áp lại. */
+export function settledResult(status: string): "already_paid" | "already_settled" | "needs_review" {
+  return status === "paid" ? "already_paid" : status === "paid_needs_review" ? "needs_review" : "already_settled";
+}
+
+async function orderStatus(db: D1Database, orderCode: number): Promise<string> {
+  const row = await db.prepare("SELECT status FROM orders WHERE order_code = ?").bind(orderCode).first<{ status: string }>();
+  return row?.status ?? "";
+}
 
 /**
  * Hỏi cổng thanh toán của đơn (orders.provider) trạng thái thật rồi xử lý (§6.8): chỉ cấp khi status paid,
@@ -287,8 +306,7 @@ export async function fulfilOrder(
 ): Promise<FulfilResult> {
   const order = await loadOrder(env.DB, orderCode);
   if (!order) return "unknown_order";
-  if (order.status === "paid_needs_review") return "needs_review";
-  if ((SETTLED_STATUSES as readonly string[]).includes(order.status)) return "already_paid";
+  if ((SETTLED_STATUSES as readonly string[]).includes(order.status)) return settledResult(order.status);
   const provider = Object.hasOwn(deps.payments, order.provider) ? deps.payments[order.provider] : undefined;
   if (!provider) throw new Error(`không có cổng thanh toán ${order.provider}`);
   const now = deps.now();
@@ -303,7 +321,7 @@ export async function fulfilOrder(
       amountPaid: st.amountPaid,
       actor,
     });
-    if (granted === "already_settled") return "already_paid";
+    if (granted === "already_settled") return settledResult(await orderStatus(env.DB, orderCode));
     // Đơn chờ người vận hành: không gửi thư key.
     if (granted === "needs_review") return "needs_review";
     await mailGranted(env.DB, deps, env.ENVIRONMENT, order, granted);
