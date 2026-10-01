@@ -8,6 +8,7 @@
 
 pub mod migrate;
 pub mod patch;
+pub mod persist;
 
 use std::collections::BTreeMap;
 
