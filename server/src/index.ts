@@ -1,8 +1,11 @@
-// Điểm vào của Worker API: HTTP (Hono) và Cron Trigger mỗi 5 phút (đối soát, gửi lại email, cảnh báo).
+// Điểm vào của Worker API: HTTP (Hono), Cron Trigger mỗi 5 phút (đối soát, gửi lại email, cảnh báo),
+// và entrypoint AdminRpc cho Worker admin (src/admin-rpc.ts).
 import { createApp } from "./app";
 import { realDeps } from "./deps";
 import type { ApiEnv } from "./env";
 import { reconcile } from "./reconcile";
+
+export { AdminRpc } from "./admin-rpc";
 
 const app = createApp();
 
