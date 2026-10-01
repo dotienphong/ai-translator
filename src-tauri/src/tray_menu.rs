@@ -87,8 +87,12 @@ mod tests {
     use super::*;
     use crate::i18n;
 
-    fn texts(lines: &[Option<(TrayItem, &'static str)>]) -> Vec<&'static str> {
-        lines.iter().map(|l| l.map_or("---", |(_, text)| text)).collect()
+    /// Mỗi dòng là `(id, chữ)`, để chữ đúng mà gắn nhầm việc cũng bị bắt; đường kẻ là `("---", "---")`.
+    fn lines(lines: &[Option<(TrayItem, &'static str)>]) -> Vec<(&'static str, &'static str)> {
+        lines
+            .iter()
+            .map(|l| l.map_or(("---", "---"), |(item, text)| (item.id(), text)))
+            .collect()
     }
 
     #[test]
@@ -100,15 +104,15 @@ mod tests {
             hotkeys_failed: false,
         };
         assert_eq!(
-            texts(&menu_lines(&i18n::VI, model)),
+            lines(&menu_lines(&i18n::VI, model)),
             [
-                "Bắt đầu dịch",
-                "Ẩn phụ đề",
-                "Khóa phụ đề (click xuyên qua)",
-                "---",
-                "Mở cửa sổ chính",
-                "---",
-                "Thoát"
+                ("session", "Bắt đầu dịch"),
+                ("overlay-visible", "Ẩn phụ đề"),
+                ("overlay-lock", "Khóa phụ đề (click xuyên qua)"),
+                ("---", "---"),
+                ("open-main", "Mở cửa sổ chính"),
+                ("---", "---"),
+                ("quit", "Thoát")
             ]
         );
     }
@@ -122,17 +126,17 @@ mod tests {
             hotkeys_failed: true,
         };
         assert_eq!(
-            texts(&menu_lines(&i18n::EN, model)),
+            lines(&menu_lines(&i18n::EN, model)),
             [
-                "Some shortcuts could not be registered",
-                "---",
-                "Stop translating",
-                "Show subtitles",
-                "Unlock subtitles",
-                "---",
-                "Open main window",
-                "---",
-                "Quit"
+                ("hotkey-warning", "Some shortcuts could not be registered"),
+                ("---", "---"),
+                ("session", "Stop translating"),
+                ("overlay-visible", "Show subtitles"),
+                ("overlay-lock", "Unlock subtitles"),
+                ("---", "---"),
+                ("open-main", "Open main window"),
+                ("---", "---"),
+                ("quit", "Quit")
             ]
         );
     }
@@ -143,5 +147,23 @@ mod tests {
             assert_eq!(TrayItem::from_id(item.id()), Some(item));
         }
         assert_eq!(TrayItem::from_id("khac"), None);
+    }
+
+    #[test]
+    fn all_lists_every_item_in_menu_order() {
+        for (index, item) in TrayItem::ALL.into_iter().enumerate() {
+            // Không dùng `_`: thêm biến thể mới thì không biên dịch được cho tới khi thêm nhánh ở đây, kèm
+            // vị trí của biến thể đó trong `ALL`.
+            let position = match item {
+                TrayItem::HotkeyWarning => 0,
+                TrayItem::Session => 1,
+                TrayItem::Overlay => 2,
+                TrayItem::Lock => 3,
+                TrayItem::OpenMain => 4,
+                TrayItem::Quit => 5,
+            };
+            assert_eq!(position, index, "{item:?}");
+        }
+        assert_eq!(TrayItem::ALL.len(), 6);
     }
 }

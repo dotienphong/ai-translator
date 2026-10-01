@@ -16,12 +16,18 @@ pub struct CommandError {
     pub message: String,
 }
 
-/// Mã lỗi ngoài lỗi cài đặt (`settings::Reason`) và lỗi phím tắt (`CommandError::hotkey`).
+// Năm hằng dưới đây là các mã lỗi ngoài lỗi cài đặt (`settings::Reason`) và lỗi phím tắt
+// (`CommandError::hotkey`).
+
+/// Không bật, tắt hay đọc được trạng thái khởi động cùng hệ thống.
 pub const AUTOSTART_FAILED: &str = "autostartFailed";
 /// Windows: tắt rồi mà vẫn còn mục khởi động ở `HKLM`, app không có quyền xóa (QĐ16).
 pub const AUTOSTART_STILL_ENABLED: &str = "autostartStillEnabled";
+/// Không ẩn, hiện hay khóa được thanh phụ đề.
 pub const OVERLAY_FAILED: &str = "overlayFailed";
+/// Không mở được thư mục, trang cài đặt của hệ thống hay link ngoài (`system::SystemOpener`).
 pub const OPEN_FAILED: &str = "openFailed";
+/// Việc không có trên hệ điều hành này.
 pub const UNSUPPORTED: &str = "unsupported";
 
 impl CommandError {
