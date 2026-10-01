@@ -266,7 +266,9 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - khóa dự phòng: secret `TOKEN_SIGNING_KEY_NEXT` thay cho bản trong kho mật khẩu (QĐ29, Task 7, 19, 21, Phụ lục A); chuyển khóa bằng cấu hình của Worker vì secret không đọc lại được; lệnh admin ký thử bằng khóa dự phòng;
   - Q9: giữ dữ liệu không thời hạn; `POST /admin/erase` chỉ chạy tay; bỏ "Chờ Q9" ở bảng "Nơi lưu dữ liệu cá nhân";
   - Q10: không gửi thông tin hóa đơn (giữ QĐ23).
-  - Token thêm `quota_epoch` (số nguyên của activation) và `activation_created_at`; bảng `activations` thêm cột `quota_epoch`.
+  - Token thêm `quota_epoch` (số nguyên của activation), `activation_created_at` và `quota_fresh` (`true` chỉ ở token đầu tiên sau khi tạo activation mới hoặc tăng `quota_epoch`); bảng `activations` thêm cột `quota_epoch` và cờ "đã cấp token fresh".
+  - Gỡ máy không xóa dòng activation; kích hoạt lại cùng `device_id_hash`, kể cả sau khi gỡ, dùng lại đúng activation đó, không đặt `quota_fresh`.
+  - `transactionDateTime` không có múi giờ thì parse theo GMT+7; cấp tay dùng giờ thao tác, kể cả đơn `underpaid` đã chuyển bù.
   - Thao tác admin "reset hạn mức của máy": tăng `quota_epoch` của một activation, ghi nhật ký.
   - "Hiện tại" của gia hạn và đổi gói là `transactionDateTime` của PayOS, kẹp trong thời hạn của link; admin cấp tay không qua đơn dùng lúc thao tác.
   - Mô tả đơn đổi tiền tố từ `MT` sang `AT` (`AT<order_code>`, vẫn tối đa 9 ký tự).
@@ -694,11 +696,11 @@ Cách đọc:
 | 333 | Chạm hạn mức: hạn mức còn 0 thì không cho bắt đầu phiên; đang dịch thì bỏ hàng đợi, chỉ dịch xong câu đang dịch, dừng với `quota_exhausted`; tính năng Pro khác vẫn dùng được khi gói còn hạn | 06, 02 | Q16 | chưa làm |
 | 334 | App xử lý `423 license_locked` (báo key bị khóa tạm, hướng dẫn liên hệ hỗ trợ) và `429` kèm `Retry-After` (báo thử lại sau, không thử lại liên tục) | 06 | Spec §9 thêm hai dòng ngày 2026-10-01 | chưa làm |
 | 335 | Admin ký thử một token bằng khóa dự phòng `TOKEN_SIGNING_KEY_NEXT`, rồi kiểm bằng `keys/public-keys.json`, để chứng minh khóa công khai build sẵn trong app khớp | 05, 05 (người) | Thay `jwk-public.mjs` đọc từ kho mật khẩu (05 QĐ31) | chưa làm |
-| 340 | Token thêm `quota_epoch` (số nguyên của activation, bắt đầu từ 0) và `activation_created_at`; thao tác admin "reset hạn mức của máy" tăng `quota_epoch` của một activation và ghi nhật ký, chỉ làm khi khách liên hệ | 05, 05 (người) | Spec §6.8 sửa sau review | chưa làm |
+| 340 | Token thêm `quota_epoch` (số nguyên của activation, bắt đầu từ 0), `activation_created_at` (chỉ để hiển thị và hỗ trợ) và `quota_fresh` (`true` chỉ ở token đầu tiên sau khi tạo activation mới hoặc tăng `quota_epoch`); gỡ máy không xóa dòng activation; kích hoạt lại cùng `device_id_hash`, kể cả sau khi gỡ, dùng lại đúng activation đó (giữ `activation_id`, `activation_created_at`, `quota_epoch`, không đặt `quota_fresh`); thao tác admin "reset hạn mức của máy" tăng `quota_epoch` và ghi nhật ký, chỉ làm khi khách liên hệ | 05, 05 (người) | Spec §6.8 sửa sau review lần 2 | chưa làm |
 | 341 | "Hiện tại" của gia hạn và đổi gói là thời điểm thanh toán do PayOS báo (`transactionDateTime`), kẹp trong thời hạn của link; admin cấp tay không qua đơn dùng lúc thao tác; ước tính của checkout chênh tối đa 15 phút, `ngày_quy_đổi` có thể ít hơn 1 ngày | 05 | | chưa làm |
 | 342 | Mô tả đơn PayOS là `AT<order_code>`, `AT` cộng tối đa 7 chữ số, không quá 9 ký tự | 05 | Thay tiền tố `MT` của 05 | chưa làm |
-| 343 | Free: "đồng hồ thật" là thời gian đơn điệu cộng dồn lúc app chạy, lưu trong kho khóa, cộng header `Date` của server khi có mạng (lấy giá trị lớn nhất); bộ đếm Free của ngày cộng cả phút dịch lúc ở gói trả phí; hết hạn mức gói trả phí thì Free của ngày cũng hết; lách khi offline lâu là rủi ro chấp nhận | 06 | Q16 | chưa làm |
-| 344 | Mất bản ghi bộ đếm theo luật chặt: bản ghi đánh dấu "đã từng chạy license này" trong kho khóa; ba trường hợp coi là mất (Free không còn bộ đếm ngày; bản ghi đánh dấu nói đã có bộ đếm mà không còn; không có bản ghi đánh dấu, không có bộ đếm, `activation_created_at` trước mốc đầu chu kỳ); máy kích hoạt mới thật bắt đầu từ 0; app báo rõ lý do và hướng dẫn liên hệ hỗ trợ | 06 | Q16, R22 | chưa làm |
+| 343 | Free: "đồng hồ thật" = max(thời gian đơn điệu cộng dồn lúc app chạy, hiệu hai header `Date` của server, hiệu giờ máy), hiệu giờ máy chỉ tính khi giờ máy không nhỏ hơn mốc lớn nhất từng thấy; bộ đếm Free của ngày cộng cả phút dịch lúc ở gói trả phí; hết hạn mức gói trả phí thì Free của ngày cũng hết; rủi ro chấp nhận: chỉnh giờ tới trước khi offline, xóa sạch dữ liệu trên cùng máy, gỡ kích hoạt sau khi hết hạn mức gói trả phí | 06 | Q16 | chưa làm |
+| 344 | Bộ đếm và mất bản ghi: bản ghi đánh dấu (`license_id`, mốc đầu chu kỳ, `quota_epoch`) trong kho khóa; bắt đầu từ 0 chỉ khi token có `quota_fresh: true`, hoặc sang chu kỳ mới khi đã có bản ghi đánh dấu; coi là mất khi: Free không còn bộ đếm ngày, bản ghi đánh dấu đúng chu kỳ và đúng epoch mà mất bộ đếm, hoặc token `quota_fresh: false` mà không có bản ghi đánh dấu lẫn bộ đếm; trường hợp hiếm (tắt app trước khi ghi bộ đếm sau token `fresh`) chấp nhận; app báo rõ lý do và hướng dẫn liên hệ hỗ trợ | 06 | Q16, R22 | chưa làm |
 | 345 | Chu kỳ cuối ngắn hơn 30 ngày (`expires_at` trước mốc đầu chu kỳ kế tiếp): hạn mức `ceil(quota_minutes_per_cycle × số_ngày / 30)`, app tự tính từ `expires_at`, gia hạn thì tính lại | 06 | Q16 | chưa làm |
 | 346 | Hiển thị thời điểm reset: Free là max(00:00 hôm sau, lần reset trước + 20 giờ); gói trả phí là mốc đầu chu kỳ kế tiếp, kèm ghi chú cần có mạng; `expires_at` đến trước mốc đó thì báo ngày hết hạn | 06, 03 | Spec §4.2 | chưa làm |
 | 347 | Giờ máy qua mốc chu kỳ mới khi offline: dùng tiếp bộ đếm của chu kỳ cũ, báo cần kết nối mạng để mở hạn mức mới; có mạng thì gọi `validate` ngay | 06 | Spec §9 | chưa làm |
@@ -1165,7 +1167,7 @@ Cách làm:
 Mỗi điểm có đề xuất. Nếu tới lúc làm mà chưa có quyết định, kế hoạch con làm theo đề xuất và ghi rõ, trừ khi điểm đó ghi "phải quyết".
 
 Cập nhật ngày 2026-10-01:
-- **Đã chốt:** Q1 (trừ tên miền và logo), Q2, Q9, Q10, P05-6. Spec đã sửa theo ở commit `6804a7c`, rồi chặt hơn sau review ở commit `868dcfa`.
+- **Đã chốt:** Q1 (trừ tên miền và logo), Q2, Q9, Q10, P05-6. Spec đã sửa theo ở commit `6804a7c`, rồi chặt hơn sau hai lượt review ở commit `868dcfa` và `dc4ac49`.
 - **Theo đề xuất đã áp dụng** (kế hoạch con đã làm theo, spec đã sửa nếu cần): Q4, Q5, Q7, Q11, Q12, Q13, Q14.
 - **Còn mở:** Q3, Q6, Q8, Q15, Q16, Q17; P05-1, P05-2, P05-4, P05-5 của kế hoạch 05.
 
@@ -1245,16 +1247,18 @@ Cập nhật ngày 2026-10-01:
   - **Đề xuất: giữ như spec; 06 làm theo nếu chưa có quyết định khác.**
   - Số thứ tự chu kỳ `n` tính theo `issued_at` của token mới nhất (giờ server), nên chỉnh đồng hồ máy tới hay lùi không có tác dụng. Giờ máy qua mốc mà `issued_at` còn trước mốc thì hẹn `validate` lại sau (mốc − `issued_at`) + 1 phút. Offline lúc qua mốc thì dùng tiếp bộ đếm cũ và báo cần có mạng.
   - Khóa của bộ đếm gói trả phí là (`license_id`, mốc đầu chu kỳ, `quota_epoch`). Mốc đầu chu kỳ thay cho số thứ tự, vì đổi gói đặt lại `cycle_anchor`.
-  - Mất bản ghi bộ đếm theo luật chặt: coi như hết hạn mức của ngày (Free) hoặc cả chu kỳ (gói trả phí). Xóa sạch dữ liệu rồi nhập lại key trên cùng máy cũng tính là mất, nhờ bản ghi đánh dấu trong kho khóa và `activation_created_at` trong token. Đường cứu: admin "reset hạn mức của máy" tăng `quota_epoch` (R22).
-  - "Đồng hồ thật" của Free là thời gian đơn điệu cộng dồn lúc app chạy, lưu trong kho khóa, cộng header `Date` của server khi có mạng. Lách được khi offline lâu: rủi ro chấp nhận.
+  - Bộ đếm chỉ bắt đầu từ 0 khi token có `quota_fresh: true` (chỉ ở token đầu tiên sau khi tạo activation mới hoặc tăng `quota_epoch`), hoặc sang chu kỳ mới khi đã có bản ghi đánh dấu. Bản ghi đánh dấu gồm (`license_id`, mốc đầu chu kỳ, `quota_epoch`).
+  - Mất bản ghi bộ đếm theo luật chặt: coi như hết hạn mức của ngày (Free) hoặc cả chu kỳ (gói trả phí). Xóa sạch dữ liệu rồi nhập lại key trên cùng máy cũng tính là mất, vì server dùng lại activation cũ và không cấp token `fresh`. `activation_created_at` không dùng cho luật này. Đường cứu: admin "reset hạn mức của máy" tăng `quota_epoch` (R22). Trường hợp hiếm (tắt app trước khi ghi bộ đếm sau token `fresh`) chấp nhận.
+  - Gỡ máy không xóa dòng activation; kích hoạt lại cùng máy dùng lại đúng activation đó.
+  - "Đồng hồ thật" của Free = max(thời gian đơn điệu lúc app chạy, hiệu hai header `Date` của server, hiệu giờ máy khi giờ máy không nhỏ hơn mốc lớn nhất từng thấy). Rủi ro chấp nhận: chỉnh giờ tới trước khi offline; xóa sạch dữ liệu trên cùng máy để reset Free; sửa bản ghi trong kho khóa; gỡ kích hoạt sau khi hết hạn mức gói trả phí thì từ hôm sau có 10 phút Free mỗi ngày.
   - Bộ đếm Free của ngày cộng cả phút dịch lúc ở gói trả phí; hết hạn mức gói trả phí thì Free của ngày cũng hết.
   - Chu kỳ cuối ngắn hơn 30 ngày có hạn mức `ceil(hạn_mức × số_ngày / 30)`.
   - Xoay key sang máy khác cho thêm hạn mức: rủi ro chấp nhận; luật khóa tạm chỉ giới hạn được phần nào.
   - Chạm hạn mức: không bắt đầu phiên khi còn 0; bỏ hàng đợi, chỉ dịch xong câu đang dịch. Bộ đếm cộng khi phụ đề sang `done`; `same_lang`, `skipped`, `failed` không tính.
   - Nhắc khi còn 5 phút áp cho mọi gói có hạn mức. Thời điểm reset hiển thị của Free là max(00:00 hôm sau, lần reset trước + 20 giờ).
-  - Đổi gói và gia hạn: "hiện tại" là `transactionDateTime` của PayOS, kẹp trong thời hạn của link; giá quy đổi theo bảng giá hiện hành; checkout trả ước tính `license_expires_at`. Thêm `GET /v1/plans`.
+  - Đổi gói và gia hạn: "hiện tại" là `transactionDateTime` của PayOS (không có múi giờ thì parse theo GMT+7), kẹp trong thời hạn của link; cấp tay dùng giờ thao tác, kể cả đơn `underpaid` đã chuyển bù; giá quy đổi theo bảng giá hiện hành; checkout trả ước tính `license_expires_at`. Thêm `GET /v1/plans`.
   - Mô tả đơn PayOS là `AT<7 chữ số>`.
-  - Khi khách yêu cầu xóa dữ liệu, giữ `device_id_hash` ở dạng đã băm (spec §10.1); cần luật sư xác nhận.
+  - Khi khách yêu cầu xóa dữ liệu, giữ `device_id_hash` ở dạng đã băm: dữ liệu bí danh, giữ cho mục đích chống lạm dụng (giới hạn 2 máy, khóa tạm) (spec §10.1); cần luật sư xác nhận.
 - **Q17. Bản sao của khóa ký bản cập nhật và khóa ký manifest. Phải quyết trước khi 07 tạo khóa production.**
   - Trước đây định giữ bản sao trong kho mật khẩu (mục 6.5); nay không dùng kho mật khẩu (P05-6). Mất khóa ký bản cập nhật thì không cập nhật được app đã cài (R18). Secret của CI không đọc lại được, nên không coi là bản sao.
   - Phương án:
