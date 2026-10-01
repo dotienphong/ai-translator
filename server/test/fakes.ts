@@ -198,7 +198,7 @@ export class FakeGateway implements PaymentProvider {
     throw new Error("không dùng trong test");
   }
 
-  async verifyWebhook(body: unknown): Promise<WebhookEvent | null> {
+  async verifyWebhook(body: unknown): Promise<WebhookEvent | "malformed" | null> {
     const b = body as { secret?: string; orderCode?: number };
     return b.secret === "fakepay-ok" && typeof b.orderCode === "number" ? { orderCode: b.orderCode } : null;
   }

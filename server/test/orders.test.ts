@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hmacSha256Hex } from "../src/crypto";
-import { grantOrder, loadOrder } from "../src/orders";
+import { grantOrder, loadOrder, paymentTime } from "../src/orders";
 import { objectSignatureData } from "../src/payment/payos";
 import { parsePlans, type PlanTable } from "../src/plans";
 import { resetDb, withFailingInsert } from "./db";
@@ -635,4 +635,52 @@ describe("GET /v1/orders/{order_code}", () => {
       expect(res).toMatchObject({ status: 404, body: { error: "order_not_found" } });
     }
   });
+});
+
+describe("đồng hồ PayOS chạy nhanh hơn Worker (review cuối, N1)", () => {
+  it("transactionDateTime muộn hơn lúc server xử lý thì kẹp về lúc xử lý: cycle_anchor không muộn hơn giờ server", async () => {
+    const w = makeWorld();
+    const { orderCode, token } = await checkout(w);
+    w.payos.pay(orderCode, undefined, T0 + 120); // PayOS ghi giờ muộn hơn giờ của Worker 60 giây
+    w.clock.now = T0 + 60;
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    expect(await env.DB.prepare("SELECT expires_at, cycle_anchor, anchor_applied_at FROM licenses").first()).toEqual({
+      expires_at: T0 + 60 + 30 * DAY,
+      cycle_anchor: T0 + 60,
+      anchor_applied_at: T0 + 60,
+    });
+    // Token đầu tiên cấp ngay lúc đó: cycle_anchor không muộn hơn issued_at, nên app không tính ra chu kỳ âm.
+    const key = (await w.getOrder(orderCode, token)).body.license_key as string;
+    const a = await w.call("POST", "/v1/licenses/activate", { key, device_id_hash: "a".repeat(64), device_label: "M" });
+    expect(a.body.cycle_anchor).toBe(T0 + 60);
+  });
+
+  it("paymentTime kẹp trong [lúc tạo link, min(hạn của link, lúc xử lý)]", () => {
+    const order = { created_at: T0, expires_at: T0 + 900 };
+    expect(paymentTime(order, T0 + 120, T0 + 60)).toBe(T0 + 60);
+    expect(paymentTime(order, T0 + 30, T0 + 60)).toBe(T0 + 30);
+    expect(paymentTime(order, T0 - 5, T0 + 60)).toBe(T0);
+    expect(paymentTime(order, T0 + 2000, T0 + 3000)).toBe(T0 + 900);
+    expect(paymentTime(order, null, T0 + 60)).toBe(T0 + 60);
+  });
+});
+
+describe("webhook đúng chữ ký mà nội dung sai dạng (review cuối, N2)", () => {
+  it.each([["chuỗi", "12"], ["số lẻ", 1.5], ["thiếu", undefined]])(
+    "orderCode %s: 400 invalid_request, không báo sai chữ ký, không cảnh báo, không gọi PayOS",
+    async (_why, orderCode) => {
+      const w = makeWorld();
+      const data: Record<string, unknown> = { ...(await w.payos.webhookBody(1)).data as Record<string, unknown>, orderCode };
+      if (orderCode === undefined) delete data.orderCode;
+      const body = { code: "00", desc: "success", success: true, data, signature: await hmacSha256Hex(TEST_CHECKSUM_KEY, objectSignatureData(data)) };
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const res = await w.call("POST", "/v1/webhooks/payos", body);
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ error: "invalid_request" });
+      expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM ops_alerts").first()).toEqual({ n: 0 });
+      expect(w.payos.requests).toHaveLength(0);
+      expect(warn.mock.calls.map((c) => JSON.parse(String(c[0])).event)).toEqual(["webhook_malformed"]);
+      warn.mockRestore();
+    },
+  );
 });

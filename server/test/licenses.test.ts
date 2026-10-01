@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { sha256Hex } from "../src/crypto";
 import { verifyToken } from "../src/token";
-import { resetDb, wrapDb } from "./db";
+import { gateDb, resetDb, wrapDb } from "./db";
 import vectors from "./vectors/token-v1.json";
 import { DAY, makeWorld, T0 } from "./world";
 
@@ -399,6 +399,28 @@ describe("quota_fresh (QĐ35)", () => {
     await env.DB.prepare("UPDATE activations SET quota_epoch = 1, epoch_pending = 1, epoch_window_start = NULL").run();
     const [x, y] = await Promise.all([validate(w, licenseKey, a.body.activation_id), validate(w, licenseKey, a.body.activation_id)]);
     expect([x.body.quota_fresh, y.body.quota_fresh]).toEqual([true, true]);
+  });
+
+  it("hai validate chen nhau, đồng hồ khác nhau: request mở cửa sổ sau không ghi đè mốc của request mở trước (review cuối, N7)", async () => {
+    const { w, activate, licenseKey } = await setup();
+    const a = await activate(1);
+    await env.DB.prepare("UPDATE activations SET quota_epoch = 1, epoch_pending = 1, epoch_window_start = NULL").run();
+    // Request chậm đọc activation (còn đang chờ) rồi dừng ngay trước câu mở cửa sổ.
+    const g = gateDb(env.DB, /UPDATE activations SET epoch_window_start/);
+    const slow = makeWorld({ DB: g.db });
+    slow.clock.now = T0 + 5 * DAY + 1000;
+    const late = slow.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a.body.activation_id });
+    await g.reached;
+    // Trong lúc đó một request khác, lúc T0 + 5 ngày, mở cửa sổ.
+    w.clock.now = T0 + 5 * DAY;
+    expect((await validate(w, licenseKey, a.body.activation_id)).body).toMatchObject({ quota_epoch: 1, quota_fresh: true });
+    g.release();
+    // Request chậm không mở lại cửa sổ từ giờ của nó: mốc vẫn là T0 + 5 ngày, nên ở giây 1000 sau mốc đã hết fresh.
+    expect((await late).body).toMatchObject({ quota_epoch: 1, quota_fresh: false });
+    expect(await env.DB.prepare("SELECT epoch_pending, epoch_window_start FROM activations").first()).toEqual({
+      epoch_pending: 0,
+      epoch_window_start: T0 + 5 * DAY,
+    });
   });
 
   it("webhook đổi gói tới muộn 1 giờ: mốc là lúc server áp thay đổi, token ngay sau đó vẫn fresh", async () => {

@@ -48,11 +48,12 @@ export async function loadOrder(db: D1Database, orderCode: number): Promise<Orde
 }
 
 /**
- * Thời điểm thanh toán của đơn (QĐ33): thời điểm cổng báo, kẹp trong khoảng từ lúc tạo link tới lúc link hết hạn.
- * Cổng không báo thì dùng lúc xử lý, cũng kẹp như vậy.
+ * Thời điểm thanh toán của đơn (QĐ33): thời điểm cổng báo, kẹp trong khoảng từ lúc tạo link tới lúc link hết hạn,
+ * và không muộn hơn lúc xử lý (`now`): đồng hồ của cổng chạy nhanh hơn Worker thì `cycle_anchor` vẫn không muộn hơn
+ * `issued_at` của token đầu tiên (review cuối, N1). Cổng không báo thì dùng lúc xử lý, cũng kẹp như vậy.
  */
 export function paymentTime(order: Pick<OrderRow, "created_at" | "expires_at">, reported: number | null, now: number): number {
-  return Math.min(Math.max(reported ?? now, order.created_at), order.expires_at);
+  return Math.min(Math.max(reported ?? now, order.created_at), order.expires_at, now);
 }
 
 /** Số lần thử lại khi license bị một đơn khác đổi cùng lúc (QĐ32). */
@@ -406,6 +407,12 @@ export function registerOrders(app: Hono<AppEnv>) {
       return fail(c, 400, "invalid_request");
     }
     const event = await provider.verifyWebhook(body);
+    if (event === "malformed") {
+      // Đúng chữ ký (đúng là cổng gửi) mà nội dung không đọc được: không phải giả mạo, nên không báo sai chữ ký, không
+      // tạo cảnh báo webhook_bad_signature và không ghi D1 (review cuối, N2).
+      console.warn(JSON.stringify({ event: "webhook_malformed", provider: provider.name }));
+      return fail(c, 400, "invalid_request");
+    }
     if (!event) {
       console.warn(JSON.stringify({ event: "webhook_bad_signature", provider: provider.name }));
       await raiseAlert(c.env.DB, "webhook_bad_signature", deps.now());

@@ -1,5 +1,5 @@
 {
-  "_note": "Chỉ dùng để thử scripts/verify-token.mjs với khóa test của vector. Cùng dạng với server/keys/public-keys.json: môi trường → ô khóa (a, b) → {kid, x}.",
+  "_note": "Chỉ dùng để thử scripts/verify-token.mjs và scripts/gen-token-key.mjs với khóa test của vector. Cùng dạng với server/keys/public-keys.json: môi trường → ô khóa (a, b) → {kid, x}, cộng danh sách retired (kid đã dùng rồi bỏ, kèm x; app bỏ qua).",
   "test": {
     "a": {
       "kid": "test-1",
@@ -9,5 +9,11 @@
       "kid": "test-2",
       "x": "q5ZECmVfbTxWLsBMSfgVBX-QhE6PToK-1TGzmPChkSg"
     }
-  }
+  },
+  "retired": [
+    {
+      "kid": "stg-2026-09-1",
+      "x": "2ln1wbSTtub8-vRejAQIW6XIdT7CxB61JpYHwVnifIo"
+    }
+  ]
 }

@@ -1,0 +1,4 @@
+{
+  "_note": "Chỉ dùng để thử scripts/gen-token-key.mjs: retired sai dạng (không phải mảng) thì script từ chối.",
+  "retired": { "kid": "stg-2026-09-1" }
+}

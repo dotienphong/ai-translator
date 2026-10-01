@@ -9,6 +9,7 @@ import { test } from "node:test";
 
 const script = fileURLToPath(new URL("../../scripts/gen-token-key.mjs", import.meta.url));
 const fixture = fileURLToPath(new URL("../fixtures/public-keys.test.json", import.meta.url));
+const badRetired = fileURLToPath(new URL("../fixtures/public-keys.bad-retired.test.json", import.meta.url));
 const missing = fileURLToPath(new URL("../fixtures/khong-co-file-nay.json", import.meta.url));
 const defaultKeys = fileURLToPath(new URL("../../keys/public-keys.json", import.meta.url));
 
@@ -59,6 +60,20 @@ test("--keys chỉ tới file có sẵn và kid mới: sinh khóa vào pipe", ()
   assert.equal(typeof jwk.d, "string");
   assert.equal(jwk.d.length, 43);
   assert.ok(r.stderr.includes(`{"kid":"stg-2026-10-1","x":"${jwk.x}"}`));
+});
+
+test("kid đã dùng rồi bỏ (có trong retired của public-keys.json): từ chối, thoát mã 2, không sinh khóa", () => {
+  const r = run("stg-2026-09-1", "--keys", fixture);
+  assert.equal(r.stdout.length, 0);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /kid stg-2026-09-1 đã dùng rồi bỏ \(retired trong public-keys\.json\)\. Dùng số thứ tự mới\./);
+});
+
+test("retired không phải mảng: báo lỗi, thoát mã 2, không sinh khóa", () => {
+  const r = run("stg-2026-10-1", "--keys", badRetired);
+  assert.equal(r.stdout.length, 0);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /retired trong public-keys\.json phải là mảng/);
 });
 
 test("không có --keys và file mặc định chưa có (trước lần tạo khóa đầu tiên): vẫn sinh khóa", { skip: existsSync(defaultKeys) }, () => {

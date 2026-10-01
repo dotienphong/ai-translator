@@ -50,3 +50,45 @@ export function wrapDb(db: D1Database, fail: (sql: string) => boolean = () => fa
   });
   return { db: wrapped, sql };
 }
+
+/**
+ * D1 bọc lại cho test: câu SQL đầu tiên khớp `match` dừng ở lúc chạy (`first`, `run`, `all`) cho tới khi gọi `release()`.
+ * `reached` xong khi câu đó đã tới chỗ dừng. Dùng để dựng đúng một thứ tự chen nhau giữa hai request.
+ */
+export function gateDb(db: D1Database, match: RegExp) {
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  let arrive!: () => void;
+  const reached = new Promise<void>((r) => (arrive = r));
+  let used = false;
+  const hold = (stmt: D1PreparedStatement): D1PreparedStatement =>
+    new Proxy(stmt, {
+      get(target, prop) {
+        if (prop === "bind") return (...args: unknown[]) => hold(target.bind(...args));
+        if (prop === "first" || prop === "run" || prop === "all") {
+          return async (...args: unknown[]) => {
+            arrive();
+            await gate;
+            return (target[prop] as (...a: unknown[]) => unknown).apply(target, args);
+          };
+        }
+        const v: unknown = Reflect.get(target, prop);
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    });
+  const wrapped = new Proxy(db, {
+    get(target, prop) {
+      if (prop === "prepare") {
+        return (q: string) => {
+          const stmt = target.prepare(q);
+          if (used || !match.test(q)) return stmt;
+          used = true;
+          return hold(stmt);
+        };
+      }
+      const v: unknown = Reflect.get(target, prop);
+      return typeof v === "function" ? v.bind(target) : v;
+    },
+  });
+  return { db: wrapped, release, reached };
+}

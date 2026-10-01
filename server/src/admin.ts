@@ -1,7 +1,11 @@
 // Worker admin (§6.8 "Công cụ hỗ trợ"), chạy riêng và đặt sau Cloudflare Access ("Protect this Worker").
 // Worker tự kiểm lại: request không qua Access thì không có ctx.access và bị từ chối (403); ngoài dev,
-// ACCESS_AUD là bắt buộc và phải khớp. Request thay đổi dữ liệu phải là JSON cùng origin (chống CSRF).
-// Mọi thao tác, kể cả tra cứu, đều ghi audit_log với actor "admin:<email người vận hành>".
+// ACCESS_AUD là bắt buộc và phải khớp; không đọc được email người vận hành từ Access thì cũng 403. Request thay đổi
+// dữ liệu phải là JSON cùng origin (chống CSRF).
+// Mọi thao tác, kể cả tra cứu, đều ghi audit_log với actor "admin:<email người vận hành>". Thao tác thất bại có ý nghĩa
+// (cổng thanh toán lỗi, ký thử lỗi, URL webhook bị từ chối, 409) cũng ghi, không kèm câu lỗi gốc. Không ghi: whoami
+// (chỉ trả email của chính người vận hành), request không qua Access hay chống CSRF, và các request sai input hay không
+// tìm thấy khác (400, 404).
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { audit, auditIfChanged, auditStatement } from "./audit";
@@ -12,7 +16,7 @@ import { fail, isRecord, parseEmail, readJson } from "./http";
 import { formatLicenseKey, generateLicenseKey } from "./license-key";
 import { grantOrder, loadOrder, mailGranted, settledResult } from "./orders";
 import type { PayOSProvider } from "./payment/payos";
-import type { PaymentProvider } from "./payment/provider";
+import { type PaymentProvider, PaymentProviderError } from "./payment/provider";
 import { computeGrant, isPlan, PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
 import type { KeyCheck } from "./token";
 
@@ -59,8 +63,15 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
         return fail(c, 415, "unsupported_media_type");
       }
     }
-    const identity = await access.getIdentity();
-    c.set("actor", `admin:${identity?.email ?? "unknown"}`);
+    // Không đọc được email người vận hành (Access lỗi, service token không có email…) thì từ chối: nhật ký phải có danh tính.
+    let email: unknown;
+    try {
+      email = (await access.getIdentity())?.email;
+    } catch {
+      email = undefined;
+    }
+    if (typeof email !== "string" || email === "") return fail(c, 403, "forbidden");
+    c.set("actor", `admin:${email}`);
     c.set("deps", makeDeps(c.env));
     await next();
   });
@@ -175,11 +186,18 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     // Đơn đã khép thì không cấp tay được. Nhãn như FulfilResult: already_paid (đơn đã cấp), already_settled (đã hoàn
     // tiền), needs_review (đang chờ xử lý, QĐ37). Lần cấp tay làm đơn chuyển sang paid_needs_review (license của đơn đã bị
     // thu hồi) cũng trả needs_review; xử lý bằng /resolve.
-    if (granted === "already_settled") {
-      const st = (await loadOrder(c.env.DB, orderCode))?.status ?? "";
-      return c.json({ error: settledResult(st), status: st }, 409);
+    if (granted === "already_settled" || granted === "needs_review") {
+      const status = granted === "needs_review" ? "paid_needs_review" : ((await loadOrder(c.env.DB, orderCode))?.status ?? "");
+      const error = granted === "needs_review" ? "needs_review" : settledResult(status);
+      await audit(c.env.DB, {
+        at: now,
+        actor: c.get("actor"),
+        action: "order_grant_rejected",
+        orderCode,
+        detail: { error, status, note: input.note },
+      });
+      return c.json({ error, status }, 409);
     }
-    if (granted === "needs_review") return c.json({ error: "needs_review", status: "paid_needs_review" }, 409);
     await audit(c.env.DB, {
       at: now,
       actor: c.get("actor"),
@@ -215,7 +233,18 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     const db = c.env.DB;
     const order = await loadOrder(db, orderCode);
     if (!order) return fail(c, 404, "order_not_found");
-    if (order.status !== "paid_needs_review") return c.json({ error: "not_needs_review", status: order.status }, 409);
+    /** 409: đơn không ở trạng thái chờ xử lý, hay vừa được xử lý ở một lần thao tác chạy cùng lúc. Ghi nhật ký rồi trả. */
+    const rejected = async (status: string) => {
+      await audit(db, {
+        at: now,
+        actor: c.get("actor"),
+        action: "order_resolve_rejected",
+        orderCode,
+        detail: { action, error: "not_needs_review", status, note: input.note },
+      });
+      return c.json({ error: "not_needs_review", status }, 409);
+    };
+    if (order.status !== "paid_needs_review") return rejected(order.status);
     if (action === "refunded") {
       const [res] = await db.batch([
         db.prepare("UPDATE orders SET status = 'refunded' WHERE order_code = ? AND status = 'paid_needs_review'").bind(orderCode),
@@ -229,7 +258,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
           detail: { note: input.note },
         }),
       ]);
-      if (res?.meta.changes !== 1) return c.json({ error: "not_needs_review" }, 409);
+      if (res?.meta.changes !== 1) return rejected((await loadOrder(db, orderCode))?.status ?? "");
       return c.json({ order_code: orderCode, status: "refunded" });
     }
     const plans = await plansOf(c);
@@ -241,7 +270,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       actor: c.get("actor"),
       resolveAsNewLicense: true,
     });
-    if (typeof granted === "string") return c.json({ error: "not_needs_review" }, 409);
+    if (typeof granted === "string") return rejected((await loadOrder(db, orderCode))?.status ?? "");
     await audit(db, {
       at: now,
       actor: c.get("actor"),
@@ -428,6 +457,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     try {
       check = await c.get("deps").keyCheck();
     } catch (err) {
+      // Nhật ký không chép câu lỗi: lỗi đọc JWK (JSON.parse) có thể trích một đoạn secret. Câu lỗi chỉ trả cho người vận hành.
+      await audit(c.env.DB, { at: c.get("deps").now(), actor: c.get("actor"), action: "key_check_failed" });
       return fail(c, 503, "key_check_failed", { message: String(err) });
     }
     await audit(c.env.DB, {
@@ -490,11 +521,31 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       url.search ||
       url.hash
     ) {
+      // Không ghi URL bị từ chối: có thể chứa userinfo ("user:pass@").
+      await audit(c.env.DB, {
+        at: c.get("deps").now(),
+        actor: c.get("actor"),
+        action: "payos_webhook_confirm_failed",
+        detail: { reason: "invalid_webhook_url" },
+      });
       return fail(c, 400, "invalid_request", { field: "webhook_url" });
     }
     try {
       await c.get("deps").payos.confirmWebhook(url.href);
     } catch (err) {
+      // URL đã kiểm (đúng API_ORIGIN, không userinfo). Ghi mã lỗi của cổng, không ghi câu lỗi (`desc` của PayOS).
+      const pe = err instanceof PaymentProviderError ? err : null;
+      await audit(c.env.DB, {
+        at: c.get("deps").now(),
+        actor: c.get("actor"),
+        action: "payos_webhook_confirm_failed",
+        detail: {
+          reason: "payment_provider_error",
+          url: url.href,
+          ...(pe?.httpStatus !== undefined ? { http_status: pe.httpStatus } : {}),
+          ...(pe?.code !== undefined ? { provider_code: pe.code } : {}),
+        },
+      });
       return fail(c, 502, "payment_provider_error", { message: String(err) });
     }
     await audit(c.env.DB, {

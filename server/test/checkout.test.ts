@@ -109,6 +109,11 @@ describe("POST /v1/checkout", () => {
   it.each([
     [{ ...valid, consent: false }, "consent"],
     [{ ...valid, consent: undefined }, "consent"],
+    // consent phải đúng là true: chuỗi "true" hay số 1 cũng là 400 (review cuối, N7).
+    [{ ...valid, consent: "true" }, "consent"],
+    [{ ...valid, consent: 1 }, "consent"],
+    // Email dài 255 ký tự (quá 254, RFC 5321) là 400.
+    [{ ...valid, email: `${"a".repeat(243)}@example.com` }, "email"],
     [{ ...valid, email: "không-phải-email" }, "email"],
     [{ ...valid, plan: "pro_forever" }, "plan"],
     [{ ...valid, plan: "free" }, "plan"],
@@ -117,6 +122,14 @@ describe("POST /v1/checkout", () => {
   ])("input sai (%j) thì 400", async (body, field) => {
     const res = await makeWorld().call("POST", "/v1/checkout", body);
     expect(res).toMatchObject({ status: 400, body: { error: "invalid_request", field } });
+  });
+
+  it("email dài đúng 254 ký tự vẫn nhận (biên của giới hạn 254)", async () => {
+    const email = `${"a".repeat(242)}@example.com`;
+    expect(email).toHaveLength(254);
+    const res = await makeWorld().call("POST", "/v1/checkout", { ...valid, email });
+    expect(res.status).toBe(201);
+    expect(await env.DB.prepare("SELECT email FROM orders").first()).toEqual({ email });
   });
 
   it("body không phải JSON object thì 400", async () => {

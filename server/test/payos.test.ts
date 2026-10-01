@@ -57,6 +57,18 @@ describe("PayOS: chữ ký webhook", () => {
     expect(await provider(fetch).verifyWebhook(body)).toBeNull();
   });
 
+  it("đúng chữ ký mà orderCode không phải số nguyên: trả \"malformed\", không phải null (sai chữ ký) (review cuối, N2)", async () => {
+    const p = provider(fetch);
+    for (const orderCode of ["123", 1.5, null, -0.5]) {
+      expect(await p.verifyWebhook(await signed({ ...DOC_WEBHOOK.data, orderCode }))).toBe("malformed");
+    }
+    const { orderCode: _drop, ...noCode } = DOC_WEBHOOK.data;
+    expect(await p.verifyWebhook(await signed(noCode))).toBe("malformed");
+    // Sai chữ ký thì vẫn là null, dù orderCode cũng sai dạng: chưa kiểm được chữ ký thì không tin nội dung.
+    // (Chuỗi ký không phân biệt "123" với 123, nên đổi giá trị chứ không chỉ đổi kiểu.)
+    expect(await p.verifyWebhook({ data: { ...DOC_WEBHOOK.data, orderCode: "124" }, signature: DOC_WEBHOOK.signature })).toBeNull();
+  });
+
   it("từ chối body sai định dạng", async () => {
     const p = provider(fetch);
     expect(await p.verifyWebhook(null)).toBeNull();

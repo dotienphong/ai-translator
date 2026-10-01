@@ -5,7 +5,9 @@
 //   Pipe thẳng vào `wrangler secret put` của ô khóa A hoặc B. Secret của Worker không đọc lại được, nên khóa riêng
 //   chỉ còn ở đó.
 // - Khóa công khai ra stderr, để ghi vào server/keys/public-keys.json (không phải bí mật).
-// - kid phải là duy nhất: script từ chối kid đã có trong public-keys.json (--keys để chỉ file khác).
+// - kid phải là duy nhất: script từ chối kid đã có trong public-keys.json (--keys để chỉ file khác), kể cả kid đã
+//   dùng rồi bỏ: khi bỏ một khóa khỏi ô (Phụ lục A, bước 4), chuyển {kid, x} của nó vào mảng `retired` ở gốc file.
+//   `retired` chỉ có khóa công khai và kid, không có bí mật; app bỏ qua phần này.
 //   File mặc định chưa có thì bỏ qua (trước lần tạo khóa đầu tiên); file chỉ bằng --keys mà không có thì báo lỗi.
 //   Quy ước: <env>-<năm>-<tháng>-<số thứ tự>; mỗi khóa mới, kể cả khóa dự phòng, lấy số thứ tự kế tiếp.
 //
@@ -35,7 +37,10 @@ if (!out.isFIFO() && !out.isSocket()) {
   fail("stdout phải là pipe (không phải terminal, không phải file): pipe thẳng vào `wrangler secret put`.");
 }
 if (existsSync(keysFile)) {
-  for (const [envName, slots] of Object.entries(JSON.parse(readFileSync(keysFile, "utf8")))) {
+  const { retired = [], ...envs } = JSON.parse(readFileSync(keysFile, "utf8"));
+  if (!Array.isArray(retired)) fail("retired trong public-keys.json phải là mảng các {kid, x}.");
+  if (retired.some((k) => k?.kid === kid)) fail(`kid ${kid} đã dùng rồi bỏ (retired trong public-keys.json). Dùng số thứ tự mới.`);
+  for (const [envName, slots] of Object.entries(envs)) {
     for (const [slot, k] of Object.entries(slots ?? {})) {
       if (k?.kid === kid) fail(`kid ${kid} đã có trong public-keys.json (${envName}.${slot}). Dùng số thứ tự mới.`);
     }

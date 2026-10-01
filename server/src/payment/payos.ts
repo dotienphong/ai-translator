@@ -133,12 +133,12 @@ export class PayOSProvider implements PaymentProvider {
     return { providerRef: paymentLinkId, checkoutUrl, qrCode };
   }
 
-  async verifyWebhook(body: unknown): Promise<WebhookEvent | null> {
+  async verifyWebhook(body: unknown): Promise<WebhookEvent | "malformed" | null> {
     if (!isRecord(body) || !isRecord(body.data) || typeof body.signature !== "string") return null;
     const expected = await hmacSha256Hex(this.cfg.checksumKey, objectSignatureData(body.data));
     if (!timingSafeEqual(expected, body.signature)) return null;
     const orderCode = body.data.orderCode;
-    return Number.isSafeInteger(orderCode) ? { orderCode: orderCode as number } : null;
+    return Number.isSafeInteger(orderCode) ? { orderCode: orderCode as number } : "malformed";
   }
 
   async getPaymentStatus(orderCode: number): Promise<PaymentStatusResult> {

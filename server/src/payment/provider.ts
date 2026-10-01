@@ -38,8 +38,11 @@ export interface WebhookEvent {
 export interface PaymentProvider {
   readonly name: string;
   createCheckout(req: CheckoutRequest): Promise<CheckoutResult>;
-  /** Trả về null nếu body sai định dạng hoặc sai chữ ký. */
-  verifyWebhook(body: unknown): Promise<WebhookEvent | null>;
+  /**
+   * Trả về null nếu body không kiểm được chữ ký (thiếu `data`, thiếu chữ ký) hoặc sai chữ ký; "malformed" nếu đúng chữ
+   * ký nhưng nội dung không đọc được (ví dụ `orderCode` không phải số nguyên): đúng là cổng gửi, không phải giả mạo.
+   */
+  verifyWebhook(body: unknown): Promise<WebhookEvent | "malformed" | null>;
   getPaymentStatus(orderCode: number): Promise<PaymentStatusResult>;
 }
 
