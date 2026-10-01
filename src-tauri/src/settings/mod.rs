@@ -7,6 +7,7 @@
 //! nếu khóa cũ đổi tên hay đổi nghĩa (khóa mới hoàn toàn thì chỉ cần giá trị mặc định).
 
 pub mod migrate;
+pub mod patch;
 
 use std::collections::BTreeMap;
 
