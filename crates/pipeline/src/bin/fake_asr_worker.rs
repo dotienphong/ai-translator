@@ -13,7 +13,9 @@
 //!   - `crash_on:<n>`: thoát với mã 3, không trả lời, khi nhận `Transcribe` thứ `n` của lần chạy này;
 //!   - `hang_on:<n>`: treo khi nhận `Transcribe` thứ `n`;
 //!   - `wrong_id_on:<n>`: kết quả của `Transcribe` thứ `n` mang id đoạn cộng 1000;
-//!   - `slow_ms:<ms>`: chờ chừng này trước khi trả mỗi kết quả `Transcribe` (để test hàng đợi tất định).
+//!   - `slow_ms:<ms>`: chờ chừng này trước khi trả mỗi kết quả `Transcribe` (để test hàng đợi tất định);
+//!   - `error_on:<n>[:<OutOfMemory|Internal>]`: trả `Error` (mặc định `Internal`) cho `Transcribe` thứ `n`, vẫn sống;
+//!   - `load_delay_ms:<ms>`: chờ chừng này trước khi trả lời `Load` (nạp model chậm, như lần đầu chạy trên macOS).
 //! - `FAKE_ASR_LOG`: file ghi nối tiếp các sự kiện (`start use_gpu=…`, `transcribe <id> prev=<ngôn ngữ> prompt=<số token>`).
 //! - `FAKE_ASR_TEXTS`: file, mỗi dòng `<ngôn ngữ>\t<chữ>`; đoạn có id `i` trả dòng `i % số dòng`. Thêm `\t!nospeech` ở cuối
 //!   dòng thì trả `no_speech_prob` 0,9 và `avg_logprob` −1,5. Không đặt thì trả `đoạn <id>` bằng ngôn ngữ đầu tiên được phép.
@@ -33,6 +35,9 @@ struct Plan {
     hang_on: Option<u32>,
     wrong_id_on: Option<u32>,
     slow_ms: u64,
+    error_on: Option<u32>,
+    error_kind: ErrorKind,
+    load_delay_ms: u64,
 }
 
 fn next_plan_line() -> String {
@@ -58,6 +63,9 @@ fn parse(line: &str) -> Plan {
         hang_on: None,
         wrong_id_on: None,
         slow_ms: 0,
+        error_on: None,
+        error_kind: ErrorKind::Internal,
+        load_delay_ms: 0,
     };
     for word in line.split_whitespace() {
         let (key, value) = word.split_once(':').unwrap_or((word, ""));
@@ -84,6 +92,15 @@ fn parse(line: &str) -> Plan {
             "hang_on" => plan.hang_on = value.parse().ok(),
             "wrong_id_on" => plan.wrong_id_on = value.parse().ok(),
             "slow_ms" => plan.slow_ms = value.parse().expect("số ms"),
+            "error_on" => {
+                let (n, kind) = value.split_once(':').unwrap_or((value, "Internal"));
+                plan.error_on = n.parse().ok();
+                plan.error_kind = match kind {
+                    "OutOfMemory" => ErrorKind::OutOfMemory,
+                    _ => ErrorKind::Internal,
+                };
+            }
+            "load_delay_ms" => plan.load_delay_ms = value.parse().expect("số ms"),
             other => panic!("lệnh kịch bản lạ: {other}"),
         }
     }
@@ -132,6 +149,7 @@ fn main() {
         let response = match request {
             Request::Load { use_gpu, .. } => {
                 log(&format!("start use_gpu={use_gpu}"));
+                std::thread::sleep(std::time::Duration::from_millis(plan.load_delay_ms));
                 match plan.load_error {
                     Some(kind) => Response::Error {
                         segment_id: None,
@@ -185,6 +203,12 @@ fn main() {
                         segment_id: Some(req.segment_id),
                         kind: ErrorKind::NotLoaded,
                         message: "chưa nạp model".into(),
+                    }
+                } else if plan.error_on == Some(transcribes) {
+                    Response::Error {
+                        segment_id: Some(req.segment_id),
+                        kind: plan.error_kind,
+                        message: "lỗi giả khi chép lời".into(),
                     }
                 } else {
                     let (lang, text, nospeech) = if texts.is_empty() {

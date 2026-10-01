@@ -2,8 +2,10 @@
 //!
 //! Lỗi chia hai loại, để bên giám sát (`supervisor`) biết khi nào phải khởi động lại worker:
 //! - `AsrError::Worker`: worker trả `Error` cho yêu cầu (vẫn sống), kèm `ErrorKind`;
-//! - `AsrError::Crashed`: worker chết, pipe hỏng, khung sai, lệch phiên bản giao thức, hoặc quá thời gian chờ (worker
-//!   bị kill). Luồng giao thức không còn dùng được.
+//! - `AsrError::Crashed`: worker chết, pipe hỏng, khung sai, hoặc lệch phiên bản giao thức;
+//! - `AsrError::TimedOut`: quá thời gian chờ, worker đã bị kill.
+//!
+//! Hai loại sau đều làm luồng giao thức không còn dùng được (`is_crash`).
 
 use crate::logfile;
 use crate::process;
@@ -25,17 +27,23 @@ pub enum AsrError {
     Worker { kind: ErrorKind, message: String },
     #[error("asr-worker không dùng được nữa: {0}")]
     Crashed(String),
+    #[error("asr-worker không trả lời: {0}")]
+    TimedOut(String),
 }
 
 impl AsrError {
     pub fn is_crash(&self) -> bool {
-        matches!(self, Self::Crashed(_))
+        matches!(self, Self::Crashed(_) | Self::TimedOut(_))
+    }
+
+    pub fn is_timeout(&self) -> bool {
+        matches!(self, Self::TimedOut(_))
     }
 
     pub fn kind(&self) -> Option<ErrorKind> {
         match self {
             Self::Worker { kind, .. } => Some(*kind),
-            Self::Crashed(_) => None,
+            Self::Crashed(_) | Self::TimedOut(_) => None,
         }
     }
 }
@@ -103,6 +111,15 @@ impl AsrWorker {
     /// Chạy worker, gửi `Load`, chờ `Ready` và kiểm phiên bản giao thức. Worker chết lúc nạp thì lỗi kèm vài dòng cuối
     /// của stderr (log của whisper.cpp, không có âm thanh hay chữ chép lời), để phân loại được lỗi GPU và hết bộ nhớ.
     pub fn spawn(launch: &AsrLaunch) -> Result<(Self, ReadyInfo), AsrError> {
+        Self::spawn_with(launch, &mut |_| {})
+    }
+
+    /// Như [`AsrWorker::spawn`]; `on_spawn` nhận cách kill worker ngay khi tiến trình chạy, trước khi chờ `Ready`, để
+    /// bên giám sát dừng được cả một worker đang nạp model (app thoát giữa lúc chuẩn bị).
+    pub fn spawn_with(
+        launch: &AsrLaunch,
+        on_spawn: &mut dyn FnMut(process::Killer),
+    ) -> Result<(Self, ReadyInfo), AsrError> {
         let crashed = |e: String| AsrError::Crashed(e);
         let log = logfile::RotatingLog::open(&launch.log, logfile::MAX_BYTES, logfile::KEEP)
             .map_err(|e| crashed(format!("không mở được log {}: {e}", launch.log.display())))?;
@@ -124,6 +141,7 @@ impl AsrWorker {
             request_timeout: launch.request_timeout,
             shutdown_grace: launch.shutdown_grace,
         };
+        on_spawn(worker.killer());
         let load = Request::Load {
             model_path: launch.model.display().to_string(),
             use_gpu: launch.use_gpu,
@@ -134,6 +152,10 @@ impl AsrWorker {
             Err(AsrError::Crashed(e)) => {
                 drop(worker); // chờ worker thoát và luồng chép log đọc hết stderr
                 return Err(crashed(with_tail(e, &tail.lines())));
+            }
+            Err(AsrError::TimedOut(e)) => {
+                drop(worker);
+                return Err(AsrError::TimedOut(with_tail(e, &tail.lines())));
             }
             Err(e) => return Err(e),
         };
@@ -168,6 +190,11 @@ impl AsrWorker {
     /// Vài dòng cuối của stderr.
     pub fn log_tail(&self) -> Vec<String> {
         self.tail.lines()
+    }
+
+    /// Kill worker từ luồng khác, kể cả khi luồng đang dùng nó chặn giữa request.
+    pub fn killer(&self) -> process::Killer {
+        process::Killer::new(self.child.clone())
     }
 
     pub fn warmup(&mut self) -> Result<f32, AsrError> {
@@ -216,7 +243,7 @@ impl AsrWorker {
         let _ = watchdog.join();
         res.map_err(|e| {
             if timed_out.load(Ordering::SeqCst) {
-                return AsrError::Crashed(format!("asr-worker không trả lời sau {timeout:?}, đã kill"));
+                return AsrError::TimedOut(format!("không trả lời sau {timeout:?}, đã kill"));
             }
             // Lỗi pipe thường là do worker vừa chết: chờ ngắn để lấy mã thoát (tiến trình có thể chưa kịp thành zombie).
             let deadline = Instant::now() + Duration::from_millis(200);

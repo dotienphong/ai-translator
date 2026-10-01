@@ -12,7 +12,8 @@
 //!   - `delay_ms:<ms>`: chờ chừng này trước mỗi gói SSE (để test hủy và hàng đợi tất định);
 //!   - `stall_after:<n>`: gửi `n` gói chữ rồi ngừng, không đóng kết nối (server treo giữa lúc sinh);
 //!   - `oom_at_start`: in ra stderr dòng lỗi hết bộ nhớ của ggml rồi thoát với mã 1, như khi không đủ VRAM để nạp model;
-//!   - `leak_key`: in tham số dòng lệnh và `LLAMA_API_KEY=<key>` ra stderr, như một bản server lỡ log khóa.
+//!   - `leak_key`: in tham số dòng lệnh và `LLAMA_API_KEY=<key>` ra stderr, như một bản server lỡ log khóa;
+//!   - `health_delay_ms:<ms>`: `/health` trả 503 (đang nạp model) cho tới chừng này ms sau khi chạy.
 //! - `FAKE_LLAMA_LOG`: file ghi nối tiếp các sự kiện (`start ngl=…`, `chat <n> repeat=<p> max=<m>`). Không ghi API key.
 //! - `FAKE_LLAMA_KEY_FILE`: file nhận đúng API key, chỉ để test kiểm rằng key không lộ ở chỗ khác.
 
@@ -31,6 +32,7 @@ struct Plan {
     stall_after: Option<usize>,
     oom_at_start: bool,
     leak_key: bool,
+    health_delay_ms: u64,
 }
 
 fn next_plan_line() -> String {
@@ -61,6 +63,7 @@ fn parse(line: &str) -> Plan {
             "stall_after" => plan.stall_after = value.parse().ok(),
             "oom_at_start" => plan.oom_at_start = true,
             "leak_key" => plan.leak_key = true,
+            "health_delay_ms" => plan.health_delay_ms = value.parse().expect("số ms"),
             other => panic!("lệnh kịch bản lạ: {other}"),
         }
     }
@@ -156,6 +159,7 @@ fn main() {
             .and_then(|i| args.get(i + 1))
             .cloned()
     };
+    let started = std::time::Instant::now();
     let plan = parse(&next_plan_line());
     log(&format!(
         "start ngl={} extra={}",
@@ -195,7 +199,16 @@ fn main() {
         let Ok(stream) = stream else { continue };
         let Some(req) = read_request(&stream) else { continue };
         if req.method == "GET" && req.path == "/health" {
-            respond(&stream, "200 OK", "application/json", r#"{"status":"ok"}"#);
+            if started.elapsed() < std::time::Duration::from_millis(plan.health_delay_ms) {
+                respond(
+                    &stream,
+                    "503 Service Unavailable",
+                    "application/json",
+                    r#"{"error":"Loading model"}"#,
+                );
+            } else {
+                respond(&stream, "200 OK", "application/json", r#"{"status":"ok"}"#);
+            }
             continue;
         }
         if req.authorization.as_deref() != Some(&format!("Bearer {key}")) {

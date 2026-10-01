@@ -157,7 +157,7 @@ fn a_hung_worker_is_killed_after_the_timeout() {
     let started = std::time::Instant::now();
     let err = worker.transcribe(request(1)).unwrap_err();
     assert!(
-        matches!(&err, AsrError::Crashed(m) if m.contains("không trả lời")),
+        matches!(&err, AsrError::TimedOut(m) if m.contains("không trả lời sau")),
         "{err}"
     );
     assert!(started.elapsed() < Duration::from_secs(5));

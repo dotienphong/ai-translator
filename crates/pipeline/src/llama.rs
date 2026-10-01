@@ -118,8 +118,23 @@ pub struct Translation {
     pub finish_reason: Option<String>,
 }
 
+/// `llama-server` không báo sẵn sàng trong thời gian chờ (khác với chết lúc khởi động). Lần đầu chạy, giám sát không tính
+/// lần này là một lần lỗi (§6.5).
+#[derive(Debug, thiserror::Error)]
+#[error("llama-server không sẵn sàng sau {timeout:?}, xem log {log}")]
+pub struct NotReady {
+    pub timeout: Duration,
+    pub log: String,
+}
+
+/// Lỗi khởi động có phải vì quá thời gian chờ `/health` không.
+pub fn is_not_ready(e: &anyhow::Error) -> bool {
+    e.downcast_ref::<NotReady>().is_some()
+}
+
 pub struct LlamaServer {
-    child: Child,
+    child: std::sync::Arc<std::sync::Mutex<Child>>,
+    pid: u32,
     /// Luồng chép stderr vào log (che key); kết thúc khi server thoát.
     pump: Option<std::thread::JoinHandle<()>>,
     tail: logfile::Tail,
@@ -134,7 +149,7 @@ pub struct LlamaServer {
 impl std::fmt::Debug for LlamaServer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LlamaServer")
-            .field("pid", &self.child.id())
+            .field("pid", &self.pid)
             .field("base_url", &self.base_url)
             .field("api_key", &"<ẩn>")
             .finish()
@@ -143,6 +158,11 @@ impl std::fmt::Debug for LlamaServer {
 
 impl LlamaServer {
     pub fn spawn(launch: &LlamaLaunch) -> Result<Self> {
+        Self::spawn_with(launch, &mut |_| {})
+    }
+
+    /// Như [`LlamaServer::spawn`]; `on_spawn` nhận cách kill server ngay khi tiến trình chạy, trước khi chờ `/health`.
+    pub fn spawn_with(launch: &LlamaLaunch, on_spawn: &mut dyn FnMut(process::Killer)) -> Result<Self> {
         // Chỉ gọi 127.0.0.1: reqwest vẫn đọc HTTP_PROXY/ALL_PROXY kể cả khi tắt feature `system-proxy`,
         // nên phải tắt proxy tường minh, giống `ProxyHandler({})` trong common.py.
         // Dựng client trước khi chạy tiến trình, để lỗi ở đây không bỏ lại server mồ côi.
@@ -159,7 +179,8 @@ impl LlamaServer {
         let stderr = child.stderr.take().expect("stderr là pipe");
         let (pump, tail) = logfile::pump(stderr, log, vec![api_key.clone()]);
         let mut server = Self {
-            child,
+            pid: child.id(),
+            child: std::sync::Arc::new(std::sync::Mutex::new(child)),
             pump: Some(pump),
             tail,
             base_url: format!("http://127.0.0.1:{port}"),
@@ -168,17 +189,31 @@ impl LlamaServer {
             log_path: launch.log.clone(),
             request_timeout: launch.request_timeout,
         };
+        on_spawn(server.killer());
         if let Err(e) = server.wait_healthy(launch.ready_timeout) {
             // Kill rồi chờ luồng chép log đọc hết, để lỗi mang đủ các dòng cuối (hết bộ nhớ, lỗi GPU…).
             let tail = server.tail.clone();
             drop(server);
-            bail!(crate::asr_client::with_tail(format!("{e:#}"), &tail.lines()));
+            let lines = tail.lines();
+            return Err(match crate::asr_client::with_tail(String::new(), &lines) {
+                t if t.is_empty() => e,
+                t => e.context(t.trim_start_matches("; ").to_string()),
+            });
         }
         Ok(server)
     }
 
     pub fn pid(&self) -> u32 {
-        self.child.id()
+        self.pid
+    }
+
+    fn child(&self) -> std::sync::MutexGuard<'_, Child> {
+        self.child.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Kill server từ luồng khác, kể cả khi luồng đang dùng nó chặn giữa request.
+    pub fn killer(&self) -> process::Killer {
+        process::Killer::new(self.child.clone())
     }
 
     /// `http://127.0.0.1:<cổng>`.
@@ -193,7 +228,7 @@ impl LlamaServer {
 
     /// Mã thoát nếu server đã chết.
     pub fn exited(&mut self) -> Option<ExitStatus> {
-        self.child.try_wait().ok().flatten()
+        self.child().try_wait().ok().flatten()
     }
 
     /// `/health` trả 200 (không cần API key). 503 khi đang nạp model.
@@ -208,7 +243,7 @@ impl LlamaServer {
     fn wait_healthy(&mut self, timeout: Duration) -> Result<()> {
         let started = Instant::now();
         while started.elapsed() < timeout {
-            if let Some(status) = self.child.try_wait()? {
+            if let Some(status) = self.child().try_wait()? {
                 bail!("llama-server thoát sớm ({status}), xem log {}", self.log_path.display());
             }
             // Mỗi lần hỏi chỉ chờ 2 giây, để tổng thời gian chờ không vượt `timeout` quá nhiều.
@@ -217,10 +252,11 @@ impl LlamaServer {
             }
             std::thread::sleep(Duration::from_millis(200));
         }
-        bail!(
-            "llama-server không sẵn sàng sau {timeout:?}, xem log {}",
-            self.log_path.display()
-        )
+        Err(NotReady {
+            timeout,
+            log: self.log_path.display().to_string(),
+        }
+        .into())
     }
 
     /// Dịch một prompt với tham số sinh của §6.5, stream tới hết. `on_delta` nhận từng gói chữ; trả `Break` để dừng
@@ -355,9 +391,12 @@ fn read_stream(
 
 impl Drop for LlamaServer {
     fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-        process::release(self.child.id());
+        {
+            let mut child = self.child();
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        process::release(self.pid);
         if let Some(pump) = self.pump.take() {
             let _ = pump.join();
         }

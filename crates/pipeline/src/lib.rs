@@ -10,6 +10,7 @@ pub mod prompt_history;
 pub mod segmenter;
 pub mod sentence;
 pub mod sse;
+pub mod supervisor;
 pub mod text;
 pub mod translate;
 pub mod vad;

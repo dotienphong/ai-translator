@@ -230,6 +230,21 @@ fn exe_path(_pid: u32) -> Option<PathBuf> {
     None
 }
 
+/// Cách kill một tiến trình phụ từ luồng khác, không cần khóa của bên đang dùng nó (ví dụ giám sát dừng một worker đang
+/// treo giữa request). Giữ chung `Child` với client, nên không bao giờ kill nhầm một pid đã được cấp lại.
+#[derive(Clone)]
+pub struct Killer(pub(crate) std::sync::Arc<Mutex<Child>>);
+
+impl Killer {
+    pub fn new(child: std::sync::Arc<Mutex<Child>>) -> Self {
+        Self(child)
+    }
+
+    pub fn kill(&self) {
+        let _ = self.0.lock().unwrap_or_else(|e| e.into_inner()).kill();
+    }
+}
+
 /// Bật cờ thoát: từ giờ [`spawn`] luôn trả lỗi. Gọi trước [`kill_all`] lúc app thoát.
 pub fn begin_shutdown() {
     SHUTTING_DOWN.store(true, Ordering::SeqCst);
