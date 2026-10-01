@@ -194,7 +194,7 @@ Sửa `crates/pipeline/src/config.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/pipeline/src/config.rs
 +++ b/crates/pipeline/src/config.rs
-@@ -508,6 +508,18 @@
+@@ -510,6 +510,18 @@
          assert_eq!(c.validate(), Ok(()));
      }
  
@@ -2436,8 +2436,8 @@ Run: `cargo test -p pipeline && cargo test -p asr-worker --test stdin_eof && car
 Expected (`pipeline`, rồi `stdin_eof.rs`, rồi `latency-bench`):
 
 ```text
-test result: ok. 93 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 93 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
@@ -2447,7 +2447,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 ```
 
 ```text
-test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.66s
+test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.72s
 ```
 
 - [ ] **Step 6: Clippy (cả target Windows) và định dạng**
@@ -2463,7 +2463,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo, `cargo fmt` không in gì. Dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 16.28s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 15.55s
 ```
 
 - [ ] **Step 7: Commit**
@@ -3673,7 +3673,7 @@ Sửa `crates/pipeline/src/config.rs` (áp bằng `git apply`):
 ```diff
 --- a/crates/pipeline/src/config.rs
 +++ b/crates/pipeline/src/config.rs
-@@ -181,9 +181,9 @@
+@@ -183,9 +183,9 @@
  #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
  #[serde(default)]
  pub struct MtConfig {
@@ -4136,8 +4136,8 @@ Expected:
 test result: ok. 109 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.14s
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.25s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
      Running unittests src/lib.rs (target/debug/deps/pipeline-901454d330477dd2)
@@ -4158,7 +4158,7 @@ Expected:
 
 ```text
 test real_llama_server_requires_the_api_key ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 1.05s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 1.06s
 ```
 
 - [ ] **Step 6: Clippy và định dạng**
@@ -4186,14 +4186,14 @@ git commit -m "feat(pipeline): dịch một câu theo §6.5, hậu xử lý khi 
 - `RestartTracker`: luật thuần cho một tiến trình phụ (chờ 1, 2, 5 giây; bỏ cuộc khi quá 5 lần trong 10 phút; chuyển CPU sau 2 lần lỗi liên tiếp khi dùng GPU).
 - `SidecarManager`:
   - chạy `asr-worker` (`Load` rồi `Warmup`) rồi mới chạy `llama-server`; đọc `Ready.backend` và `decode_mode` (bản phát hành chỉ nhận chế độ B, `require_shared`); khởi động lại và gửi lại đoạn; `llama-server` chạy `-ngl 0` khi không có GPU hay khi `asr-worker` đã sang CPU;
-  - trước mỗi lần chạy hỏi app `SidecarEvents::before_spawn` (kiểm SHA-256) và `is_first_run`; bỏ cuộc có lý do `GiveUpCause`; `allow_retry` (người dùng bấm Bắt đầu) cho lần khởi động kế tiếp quên việc bỏ cuộc, tách khỏi `begin_session` (chỉ đếm phiên; R3-1 của review 02 lần 3);
+  - trước mỗi lần chạy hỏi app `SidecarEvents::before_spawn` (kiểm SHA-256) và `is_first_run`; bỏ cuộc có lý do `GiveUpCause`; `allow_retry` (người dùng bấm Bắt đầu) cho lần khởi động kế tiếp quên việc bỏ cuộc và bắt đầu lại từ quyết định ban đầu về GPU (Q4-2 của review 02 lần 4), tách khỏi `begin_session` (chỉ đếm phiên; R3-1 của review 02 lần 3);
   - lần đầu chạy quá giờ không tính là lỗi; `llama-server` hết bộ nhớ lúc khởi động thì phát `OutOfMemory`; `asr-worker` báo `OutOfMemory` lúc chép lời thì phát `OutOfMemory` và tính là một lần lỗi trên GPU (Q1 của review 02 lần 2);
   - `shutdown` cho lúc app thoát: không chờ khóa, ngắt lần chờ (`Wake`), kill tiến trình đang chạy qua `process::Killer`; tiến trình vừa chạy mà app đã bắt đầu thoát thì kill ngay; `stop` bỏ `Killer` cùng khóa với slot; `running()` không khóa;
   - phát `SidecarEvent` để app hiện trạng thái; tắt khi rảnh 10 phút (`tick`).
 - `asr_client.rs`, `llama.rs`: `spawn_with` đưa `Killer` ra ngay khi tiến trình chạy (trước khi chờ `Ready` hay `/health`); `AsrError::TimedOut` và `llama::NotReady` tách "quá thời gian chờ" khỏi "chết", cho luật lần đầu chạy. Hai tiến trình phụ giả thêm lệnh `error_on` (kèm loại lỗi, ví dụ `error_on:1:OutOfMemory`), `load_delay_ms` và `health_delay_ms`.
 - `SupervisedAsr` và `SupervisedMt`: bọc hai client thành trait `Asr` và `Mt` cho engine (02b, Task 2).
 - `Clock`: `SystemClock` cho app (chờ ngắt được), `FakeClock` cho test.
-- `tests/lifecycle.rs` (dòng 296): đúng thứ tự, crash và khởi động lại, gửi lại đoạn, worker báo lỗi mà vẫn sống thì không khởi động lại (S8), model hỏng trên CPU thì bỏ cuộc (S12), chuyển CPU, `llama-server` theo sang CPU, không có GPU thì cả hai chạy CPU (kể cả khi dịch trước lúc `asr-worker` chạy lần nào; khi đó `running()` vẫn đúng và tắt khi rảnh vẫn tắt được), bỏ cuộc rồi chỉ thử lại sau `allow_retry`, lần đầu chạy (kể cả quá giờ không tính lỗi, và binary CPU mới), kiểm binary trước mọi lần chạy, binary bị sửa thì không chạy, app thoát lúc worker treo hay đang nạp model trả về ngay, request tới muộn sau khi thoát không chạy lại gì (không có cả sự kiện `Starting`), khóa API không lọt vào sự kiện, tắt sau 10 phút; hết bộ nhớ lúc chép lời (lần đầu khởi động lại trên GPU, lần thứ hai liên tiếp mới chuyển CPU: Q-1 của review 02 lần 3) và lúc `llama-server` khởi động; `shutdown` ngắt lần chờ trước khi khởi động lại của cả hai tiến trình phụ và lần chờ sau lần đầu chạy quá giờ (Q-3); `running()` trả về ngay dù một luồng đang giữ khóa trong lúc nạp model (Q3 của review 02 lần 2). Tiến trình phụ là bản giả; đồng hồ là đồng hồ giả, trừ test ngắt lần chờ (đồng hồ thật, backoff 60 giây, test kết thúc ngay khi `shutdown`).
+- `tests/lifecycle.rs` (dòng 296): đúng thứ tự, crash và khởi động lại, gửi lại đoạn, worker báo lỗi mà vẫn sống thì không khởi động lại (S8), model hỏng trên CPU thì bỏ cuộc (S12), chuyển CPU, `llama-server` theo sang CPU, không có GPU thì cả hai chạy CPU (kể cả khi dịch trước lúc `asr-worker` chạy lần nào; khi đó `running()` vẫn đúng và tắt khi rảnh vẫn tắt được), bỏ cuộc rồi chỉ thử lại sau `allow_retry` (cả `asr-worker` lẫn `llama-server`; `Tampered` thì SHA-256 được kiểm lại; model nạp lỗi rồi thử lại thì cả hai chạy lại bằng GPU), lần đầu chạy (kể cả quá giờ không tính lỗi, và binary CPU mới), kiểm binary trước mọi lần chạy, binary bị sửa thì không chạy, app thoát lúc worker treo hay đang nạp model trả về ngay, request tới muộn sau khi thoát không chạy lại gì (không có cả sự kiện `Starting`), khóa API không lọt vào sự kiện, tắt sau 10 phút; hết bộ nhớ lúc chép lời (lần đầu khởi động lại trên GPU, lần thứ hai liên tiếp mới chuyển CPU: Q-1 của review 02 lần 3) và lúc `llama-server` khởi động; `shutdown` ngắt lần chờ trước khi khởi động lại của cả hai tiến trình phụ và lần chờ sau lần đầu chạy quá giờ (Q-3); `running()` trả về ngay dù một luồng đang giữ khóa trong lúc nạp model (Q3 của review 02 lần 2). Tiến trình phụ là bản giả; đồng hồ là đồng hồ giả, trừ test ngắt lần chờ (đồng hồ thật, backoff 60 giây, test kết thúc ngay khi `shutdown`).
 
 **Files:**
 - Sửa: `crates/pipeline/src/asr_client.rs`
@@ -5239,6 +5239,63 @@ fn shutdown_interrupts_the_wait_after_a_slow_first_start() {
         .expect("shutdown ngắt được lần chờ")
         .unwrap_err();
     assert_eq!(err.cause, GiveUpCause::Closing);
+}
+
+/// Q4-2 của review 02 lần 4: bản GPU nạp model lỗi thì chuyển CPU, rồi `ModelLoad` trên CPU thì bỏ cuộc (model hỏng).
+/// Người dùng tải lại model rồi bấm Bắt đầu (`allow_retry`): cả hai tiến trình phụ chạy lại từ đầu bằng GPU, không giữ CPU
+/// của lần bỏ cuộc.
+#[test]
+fn a_retry_after_giving_up_starts_again_on_the_gpu() {
+    let s = setup(
+        "retry-gpu",
+        true,
+        &["load_error:ModelLoad", "load_error:ModelLoad", "ok"],
+        &[],
+    );
+    let err = s.manager.ensure_started().unwrap_err();
+    assert_eq!((err.which, err.cause), (Which::Asr, GiveUpCause::ModelLoad));
+    s.manager.allow_retry();
+    s.manager.ensure_started().unwrap();
+    let names = s.events.names();
+    let after = names.iter().position(|n| n == "gave-up Asr ModelLoad").unwrap() + 1;
+    assert_eq!(
+        names[after..],
+        ["start Asr", "ready Asr gpu=true", "start Llama", "ready Llama gpu=true"]
+    );
+    assert_eq!(s.t.read("llama-events").lines().next(), Some("start ngl=auto extra="));
+}
+
+/// Q4-1 của review 02 lần 4: `llama-server` bỏ cuộc (hơn 5 lần lỗi), rồi người dùng bấm Bắt đầu: chạy lại được, và từ
+/// quyết định ban đầu (GPU), dù trước đó đã sang `-ngl 0` vì lỗi liên tiếp.
+#[test]
+fn llama_server_is_retried_after_giving_up() {
+    let s = setup("retry-llama", true, &["ok"], &["exit_at_start:1"; 6]);
+    let err = s.manager.ensure_started().unwrap_err();
+    assert_eq!((err.which, err.cause), (Which::Llama, GiveUpCause::Failures));
+    assert!(s.events.names().contains(&"cpu Llama".to_string()));
+    std::fs::write(s.t.path("llama-plan"), "ok").unwrap();
+    s.manager.begin_session();
+    assert_eq!(s.manager.ensure_started().unwrap_err().cause, GiveUpCause::Failures);
+    s.manager.allow_retry();
+    s.manager.ensure_started().unwrap();
+    assert_eq!(s.events.names().last().unwrap(), "ready Llama gpu=true");
+    assert_eq!(s.t.read("llama-events").lines().last(), Some("start ngl=auto extra="));
+}
+
+/// Q4-1 của review 02 lần 4: binary bị sửa thì bỏ cuộc (`Tampered`); cài lại rồi bấm Bắt đầu thì SHA-256 được kiểm lại
+/// (`before_spawn`) và tiến trình phụ chạy.
+#[test]
+fn a_tampered_sidecar_is_checked_again_on_retry() {
+    let s = setup("retry-tampered", true, &[], &[]);
+    *s.events.reject.lock().unwrap() = Some(Which::Asr);
+    let err = s.manager.ensure_started().unwrap_err();
+    assert_eq!(err.cause, GiveUpCause::Tampered);
+    *s.events.reject.lock().unwrap() = None;
+    assert_eq!(s.manager.ensure_started().unwrap_err().cause, GiveUpCause::Tampered);
+    assert_eq!(s.events.checked(), [Which::Asr], "chưa bấm thử lại thì không kiểm lại");
+    s.manager.allow_retry();
+    s.manager.ensure_started().unwrap();
+    assert_eq!(s.events.checked(), [Which::Asr, Which::Asr, Which::Llama]);
 }
 ```
 
@@ -6324,7 +6381,13 @@ impl SidecarManager {
     /// Chạy `asr-worker` nếu chưa chạy, khởi động lại theo luật khi lỗi.
     fn start_asr(&self, slot: &mut AsrSlot) -> Result<(), StartError> {
         if self.retry_asr.swap(false, Ordering::SeqCst) && slot.gave_up.take().is_some() {
+            // Người dùng bấm thử lại sau khi bỏ cuộc (với mọi lý do): bắt đầu lại từ quyết định ban đầu, kể cả GPU theo
+            // `--probe`, vì nguyên nhân có thể không phải GPU (model hỏng đã được tải lại). GPU vẫn lỗi thì luật 2 lần lỗi
+            // liên tiếp chuyển CPU lại (Q4-2 của review 02 lần 4). Chưa bỏ cuộc thì giữ CPU như cũ.
             slot.tracker.reset();
+            let gpu = self.spec.asr.exe_gpu.is_some();
+            slot.use_gpu = gpu;
+            self.asr_on_cpu.store(!gpu, Ordering::SeqCst);
         }
         while slot.worker.is_none() {
             if self.closing() {
@@ -6496,7 +6559,10 @@ impl SidecarManager {
 
     fn start_llama(&self, slot: &mut LlamaSlot) -> Result<(), StartError> {
         if self.retry_llama.swap(false, Ordering::SeqCst) && slot.gave_up.take().is_some() {
+            // Như `start_asr`: thử lại từ quyết định ban đầu (`-ngl` theo `--probe`); `asr-worker` đang chạy bằng CPU thì
+            // `llama-server` vẫn theo nó ngay dưới đây.
             slot.tracker.reset();
+            slot.use_gpu = self.spec.asr.exe_gpu.is_some();
         }
         while slot.server.is_none() {
             if self.closing() {
@@ -6698,7 +6764,7 @@ test result: ok. 117 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fi
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s
-test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.34s
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.76s
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
