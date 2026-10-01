@@ -1,7 +1,10 @@
 # AI Translator: app desktop dịch phụ đề cuộc họp offline — Design
 
 **Ngày:** 2026-09-29
-**Trạng thái:** Đã duyệt ngày 2026-09-29. Sửa ngày 2026-10-01 theo quyết định của chủ dự án: chốt tên, bốn gói và hạn mức, cách lưu dữ liệu; đưa vào spec các điểm lệch nhỏ đã chốt ở kế hoạch Giai đoạn 1 · 01, 02 và 05. Kế hoạch nằm ở `docs/superpowers/plans/`.
+**Trạng thái:**
+- Đã duyệt ngày 2026-09-29. Kế hoạch nằm ở `docs/superpowers/plans/`.
+- Sửa ngày 2026-10-01 theo quyết định của chủ dự án: chốt tên, bốn gói và hạn mức, cách lưu dữ liệu. Cùng đợt, spec nhận các điểm lệch nhỏ đã chốt ở kế hoạch Giai đoạn 1 · 01, 02 và 05.
+- Các chi tiết hạn mức do controller tự quyết (§6.8, "Hạn mức") còn chờ chủ dự án xem (Q16 của kế hoạch Giai đoạn 1 · 00).
 **Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS, cùng một license server nhỏ để nhận thanh toán qua PayOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
 **Tên và định danh** (D13):
 - Tên sản phẩm: **AI Translator**. Logo và tên miền chưa có (§15).
@@ -52,7 +55,7 @@
 | D11 | Thanh toán | **MVP dùng PayOS**: khách chuyển khoản ngân hàng bằng mã VietQR, trả bằng VND. Khi bán ra nước ngoài thì thêm một cổng thanh toán quốc tế (§13). |
 | D12 | Độ trễ mục tiêu | Trên máy khuyến nghị, **p50 ≤ 2,0 giây** (xem A2 và §8) |
 | D13 | Tên và định danh | **AI Translator**, bundle identifier `com.aitranslator.desktop`. Tên miền mua sau. Repo, crate và binary giữ tên `meeting-translator` (đầu spec). |
-| P1 | Kiếm tiền | **Không có quảng cáo.** Bốn gói, xem bảng dưới. Ba gói trả phí có chung các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), chỉ khác hạn mức dịch. Gói trả phí bán theo **đơn 30 ngày, trả trước** bằng VND, không tự gia hạn, vì PayOS không có thanh toán định kỳ. Không có gói 12 tháng hay gói trọn đời. Hạn mức tính riêng cho từng máy (§6.8). |
+| P1 | Kiếm tiền | **Không có quảng cáo.** Bốn gói, xem bảng dưới. Ba gói trả phí có chung các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), chỉ khác hạn mức dịch. Gói trả phí bán theo **đơn 30 ngày, trả trước** bằng VND, không tự gia hạn, vì PayOS không có thanh toán định kỳ. Không có gói 12 tháng hay gói trọn đời. Hạn mức tính riêng cho từng máy (§6.8). "Chỉ bán đơn 30 ngày" và "tính năng Pro dùng chung cho mọi gói trả phí" là controller tự quyết; chủ dự án có thể đổi. |
 | P2 | Bản quyền | License key do **license server riêng** của sản phẩm cấp, sau khi PayOS xác nhận đã nhận tiền. Mỗi key kích hoạt tối đa 2 máy, và mỗi máy có đủ hạn mức của gói. Dùng được offline nhờ token có ký số (ân hạn 14 ngày). Không có tài khoản đăng nhập. Chi tiết ở §6.8. |
 
 P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-10-01. Giữ mã P1, P2 để tham chiếu trong các kế hoạch không đổi.
@@ -162,7 +165,10 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 1. Người dùng bấm **Bắt đầu**, qua nút, phím tắt hoặc menu khay. Thanh phụ đề (ẩn lúc mở app, §4.4) hiện ra, kèm chỉ báo "đang nghe" (mức âm lượng) và chỉ báo độ trễ. Nếu hai tiến trình phụ chưa chạy (§5), thanh phụ đề hiện "Đang nạp model…" trong vài giây đầu.
 2. **Hạn mức** (§6.8), với các gói có hạn mức (Free, Professional, Professional X2):
    - Khi còn 5 phút thì nhắc.
-   - Hết hạn mức thì dừng phiên, với lý do `quota_exhausted`. Thanh phụ đề và cửa sổ chính báo đã hết hạn mức, ghi thời điểm hạn mức được reset (0 giờ hôm sau với Free; đầu chu kỳ kế tiếp với gói trả phí), kèm nút nâng gói.
+   - Hết hạn mức thì dừng phiên, với lý do `quota_exhausted`. Thanh phụ đề và cửa sổ chính báo đã hết hạn mức, ghi thời điểm hạn mức được reset, kèm nút nâng gói. Thời điểm reset hiển thị:
+     - Free: max(00:00 hôm sau, lần reset trước + 20 giờ) (§6.8);
+     - gói trả phí: mốc đầu chu kỳ kế tiếp, kèm ghi chú cần có mạng để mở hạn mức mới. Nếu `expires_at` đến trước mốc đó thì báo ngày hết hạn của gói thay cho thời điểm reset.
+   - Hạn mức còn 0 thì không bắt đầu được phiên mới.
    - App không chạy tiếp ở chế độ "chỉ chép lời".
    - Professional X5 không giới hạn.
 3. Người dùng bấm **Dừng** để kết thúc phiên. Thanh phụ đề giữ nguyên các dòng cuối để người dùng đọc nốt. Sau đó người dùng có thể mở bản chép lời của phiên.
@@ -323,7 +329,9 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Giữ luật hiện tại. Với zh, mô phỏng trên session S6 cho thấy số câu còn nguyên vẹn gần như nhau dù ghép hay không; với ja, ghép giữ nguyên vẹn nhiều câu hơn (ước lượng của review, `phase0_review_notes.md`).
     - So với tắt ghép, trên M4 Pro (4 session zh và ja, đo trước khi có sàn 512, máy chạy bằng pin): p50 tăng 36–140 ms, p90 tăng 74–356 ms (`m4pro-khuyennghi-*-nomerge-*.json`).
     - Mồi dấu câu cho zh và ja đã thử, nhưng không giúp ghép câu (§6.4).
-- **Đầu ra:** `Segment { id, start_ms, end_ms, samples }`. Thời gian tính từ lúc bắt đầu phiên theo đồng hồ thật, không theo số mẫu đã nhận (§6.1).
+- **Đầu ra:** `Segment { id, start_ms, end_ms, speech_ms, samples }`. Thời gian tính từ lúc bắt đầu phiên theo đồng hồ thật, không theo số mẫu đã nhận (§6.1).
+  - `start_ms` và `end_ms` là lúc tiếng nói bắt đầu và kết thúc, **không gồm phần đệm**; `samples` có cả phần đệm.
+  - `speech_ms` là độ dài tiếng nói của đoạn, không gồm phần đệm. Đoạn gộp ở hàng đợi (§7) có `speech_ms` bằng tổng của các đoạn con, không tính khoảng nghỉ ở giữa. Hạn mức tính phút bằng `speech_ms` (§6.8).
 - **Cách chạy Silero (chốt ở S3):** Silero VAD v6.2.3 (`silero_vad.onnx`) chạy trong tiến trình chính bằng `candle-onnx`. Crate này thuần Rust, nên không cần thư viện ONNX Runtime, và tiến trình chính vẫn không chứa ggml (§5). VAD vẫn chạy khi `asr-worker` khởi động lại.
   - Không dùng `ort`, vì crate này chỉ có bản RC (§6.12). Bản `op18_ifless` của model không chạy được trên candle.
   - State của LSTM phải `detach()` sau mỗi khung. Nếu không, mỗi khung giữ thêm khoảng 0,5 MB: RSS tăng khoảng 1 GB mỗi phút, và việc hủy chuỗi đó làm tràn stack sau vài phút (đo lúc review, `phase0_review_notes.md`).
@@ -563,7 +571,8 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - Hạn mức Free (10 phút mỗi ngày) là hằng số phía app, vì Free không có token.
 
 **Mua thêm và đổi gói:**
-- Server tính lúc xác nhận đã nhận tiền (webhook, đối soát, hoặc admin cấp tay), theo gói và hạn của license **tại thời điểm đó**. "Hiện tại" là thời điểm xác nhận, không làm tròn về đầu ngày.
+- Server tính khi xác nhận đã nhận tiền (webhook, đối soát, hoặc admin cấp tay), theo gói và hạn của license tại "hiện tại".
+- **"Hiện tại"** là thời điểm thanh toán do PayOS báo (`transactionDateTime`), kẹp trong thời hạn của link thanh toán (từ lúc tạo đơn tới `expiredAt`). Không làm tròn về đầu ngày. Vì vậy webhook đến chậm hay đối soát sau vài giờ vẫn cho cùng kết quả. Admin cấp tay không qua đơn thì dùng thời điểm thao tác.
 - **License mới:** `plan` là gói của đơn; `expires_at` = hiện tại + 30 ngày; `cycle_anchor` = hiện tại.
 - **Mua thêm cùng gói:** `expires_at` cộng 30 ngày, tính từ max(hiện tại, `expires_at`). `cycle_anchor` giữ nguyên; nếu license đã hết hạn thì `cycle_anchor` = hiện tại.
 - **Đổi gói khi license còn hạn** (lên gói hay xuống gói đều làm như nhau):
@@ -577,7 +586,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Ví dụ lên gói: Professional còn 20 ngày, mua X2. Ta có 20 × 50.000 / 150.000 = 6,67, làm tròn xuống 6 ngày. X2 chạy trong 36 ngày.
   - Ví dụ xuống gói: X2 còn 10 ngày, mua Professional. Ta có 10 × 150.000 / 50.000 = 30 ngày. Professional chạy trong 60 ngày.
 - **License đã hết hạn mà mua gói khác:** tính như license mới, nhưng giữ key cũ.
-- Đơn gia hạn hay đổi gói: response của checkout có thêm ước tính `license_expires_at`, tính theo thời điểm tạo đơn, để app hiện trước cho người dùng. Số chính thức tính lúc xác nhận; vì link chỉ sống 15 phút, hai số chênh nhau nhiều nhất 1 ngày.
+- Đơn gia hạn hay đổi gói: response của checkout có thêm ước tính `license_expires_at`, tính theo thời điểm tạo đơn, để app hiện trước cho người dùng. Số chính thức tính theo thời điểm thanh toán, muộn hơn lúc tạo đơn tối đa 15 phút (thời hạn của link). Vì vậy `expires_at` chính thức muộn hơn ước tính tối đa 15 phút; riêng khi đổi gói, `ngày_quy_đổi` có thể ít hơn ước tính 1 ngày, vì `ngày_còn_lại` giảm và phép làm tròn xuống.
 - Máy thứ hai của cùng key nhận gói mới ở lần `validate` kế tiếp ("Kiểm tra định kỳ" bên dưới); trước đó máy đó vẫn dùng token cũ.
 
 **API của license server:**
@@ -599,7 +608,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Trạng thái đơn:** `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed`, theo trạng thái của PayOS. `PAID` mà thiếu tiền thì coi là `underpaid`.
 - **Dải số đơn theo môi trường:**
   - staging dùng `order_code` từ 1 tới 999.999; production từ 1.000.001. Hai môi trường không trùng số, kể cả khi dùng chung một kênh PayOS;
-  - trần là 9.999.999, để mô tả đơn `MT<order_code>` không quá 9 ký tự (§14, giả định 7). Vượt trần thì checkout trả `503`, không gọi PayOS.
+  - trần là 9.999.999, để mô tả đơn `AT<order_code>` (`AT` cộng tối đa 7 chữ số) không quá 9 ký tự (§14, giả định 7). Vượt trần thì checkout trả `503`, không gọi PayOS.
 
 **Gửi email:** qua Resend (API HTTP, gọi từ Worker), sau interface `EmailProvider` để đổi dịch vụ được. Khóa API của Resend là secret của Worker. Tên miền gửi phải được xác thực (SPF, DKIM).
 - Email là văn bản thuần, song ngữ vi/en.
@@ -616,6 +625,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - Mở khóa key bị khóa tạm (§10.2).
 - Cấp hoặc gia hạn tay, ví dụ khi khách chuyển thiếu rồi chuyển bù.
 - Gỡ activation, thu hồi key.
+- **Reset hạn mức của máy:** tăng `quota_epoch` của một activation, để máy đó bắt đầu bộ đếm mới ở lần `validate` sau (§6.8, "Hạn mức"). Chỉ làm khi khách liên hệ, ví dụ khi máy mất bản ghi bộ đếm.
 - **Xóa hoặc ẩn danh dữ liệu cá nhân theo email** (§10.1). Thao tác này chỉ chạy khi người vận hành tự gọi, ví dụ khi khách yêu cầu xóa; không bao giờ chạy tự động.
 - **Ký thử một token bằng khóa dự phòng** (`TOKEN_SIGNING_KEY_NEXT`), để kiểm khóa công khai tương ứng trong `keys/public-keys.json`, cũng là khóa build sẵn vào app, khớp khóa riêng (§10.2).
 - Đăng ký URL webhook với PayOS (`confirm-webhook`).
@@ -629,6 +639,8 @@ Mọi thao tác đều được ghi nhật ký, kể cả tra cứu.
 - Token gồm:
   - `kid`: mã của khóa đã ký token (§10.2);
   - `license_id`, `activation_id`, `device_id_hash`;
+  - `activation_created_at`: lúc activation này được tạo;
+  - `quota_epoch`: số nguyên của activation, bắt đầu từ 0, tăng khi admin reset hạn mức của máy;
   - `plan`: mã gói trả phí, `pro`, `pro_x2` hoặc `pro_x5`;
   - `expires_at`;
   - `cycle_anchor`: mốc tính chu kỳ hạn mức 30 ngày ("Hạn mức" bên dưới);
@@ -649,24 +661,44 @@ Mọi thao tác đều được ghi nhật ký, kể cả tra cứu.
 **Hạn mức:**
 - **Đếm riêng trên từng máy.** Mỗi máy kích hoạt có đủ hạn mức của gói; hai máy của cùng một key không chia chung. Server không theo dõi số phút đã dùng.
 - **Cách đếm phút**, áp cho mọi gói:
-  - chỉ tính độ dài tiếng nói (`end_ms − start_ms` của đoạn, không tính phần đệm) của các đoạn đã chép lời và **có ngôn ngữ khác ngôn ngữ đích**, tức các đoạn thật sự được dịch;
-  - không tính đoạn cùng ngôn ngữ (`same_lang`), đoạn bị bỏ (`dropped`), đoạn bị lọc (§6.4), đoạn không được dịch (`skipped`, `failed`), hay lúc im lặng;
-  - mỗi đoạn tính một lần, kể cả khi câu được dịch lại sau khi ghép (§6.3) hay gộp (§7).
-- **Chu kỳ:**
-  - Free: theo ngày. Reset lúc 00:00 theo giờ máy, nhưng chỉ khi ngày đã tăng so với lần reset trước và đã qua ít nhất 20 giờ theo đồng hồ thật. Vì vậy đổi múi giờ qua lại không reset được hạn mức.
-  - Gói trả phí: chu kỳ 30 ngày tính từ `cycle_anchor`, không theo tháng dương lịch. App tự tính chu kỳ hiện tại `n = floor((hiện tại − cycle_anchor) / 30 ngày)`; chu kỳ này bắt đầu lúc `cycle_anchor + n × 30 ngày`.
-  - Chu kỳ mới của gói trả phí chỉ được tính khi app đã có token với `issued_at` (giờ server) từ lúc bắt đầu chu kỳ đó trở đi. Khi giờ máy qua mốc, app gọi `validate` ngay nếu có mạng; offline thì vẫn dùng bộ đếm của chu kỳ cũ tới lần `validate` kế tiếp. Nhờ vậy chỉnh giờ máy tới trước không mở được chu kỳ mới.
+  - Phút tính bằng **độ dài tiếng nói** `speech_ms` của từng đoạn (§6.3), không gồm phần đệm. Đoạn gộp ở hàng đợi (§7) cộng `speech_ms` của từng đoạn con, không tính khoảng nghỉ ở giữa.
+  - Chỉ tính đoạn đã chép lời, **có ngôn ngữ khác ngôn ngữ đích**, và đã được dịch xong: bộ đếm cộng phút khi phụ đề chuyển sang `done`. Mỗi đoạn tính một lần, kể cả khi câu được dịch lại sau khi ghép (§6.3) hay gộp (§7).
+  - Không tính đoạn cùng ngôn ngữ đích (`same_lang`), đoạn bị bỏ (`dropped`), đoạn bị lọc (§6.4), đoạn không được dịch (`skipped`, `failed`), hay lúc im lặng.
+  - Vì vậy chép lời câu đã là ngôn ngữ đích là miễn phí. Đây là chủ ý: app chỉ tính tiền phần dịch.
+- **Chu kỳ của Free:** theo ngày.
+  - Reset lúc 00:00 theo giờ máy, nhưng chỉ khi ngày đã tăng so với lần reset trước **và** đã qua ít nhất 20 giờ theo "đồng hồ thật" kể từ lần reset trước. Vì vậy đổi múi giờ qua lại không reset được hạn mức.
+  - "Đồng hồ thật" là thời gian đơn điệu cộng dồn trong lúc app chạy, lưu trong kho khóa. Khi có mạng, app lấy thêm header `Date` của mọi response từ server của app (license server, CDN của manifest và bản cập nhật) làm mốc, và chọn giá trị lớn nhất.
+  - Bộ đếm Free của ngày luôn cộng cả số phút dịch lúc đang ở gói trả phí. Ngày nào hết hạn mức của gói trả phí thì Free của ngày đó cũng coi là đã hết. Nhờ vậy gói trả phí hết hạn hay hết hạn mức giữa ngày không mở thêm 10 phút Free.
+- **Chu kỳ của gói trả phí:** 30 ngày tính từ `cycle_anchor`, không theo tháng dương lịch.
+  - Số thứ tự chu kỳ `n = floor((issued_at − cycle_anchor) / 30 ngày)`, với `issued_at` của **token mới nhất** (giờ server), không theo giờ máy. Chu kỳ `n` bắt đầu lúc `cycle_anchor + n × 30 ngày` ("mốc đầu chu kỳ").
+  - Nhờ vậy `n` không bao giờ giảm, và chỉnh đồng hồ máy tới hay lùi đều không mở được chu kỳ mới. Giờ máy chỉ dùng để biết khi nào gọi `validate`.
+  - Giờ máy qua mốc đầu chu kỳ kế tiếp thì app gọi `validate` ngay, nếu có mạng. Token mới mà `issued_at` vẫn trước mốc (giờ máy chạy nhanh) thì app hẹn `validate` lại sau (mốc − `issued_at`) + 1 phút.
+  - Offline lúc qua mốc thì app dùng tiếp bộ đếm của chu kỳ cũ, và báo cần có mạng để mở hạn mức mới (§9).
+  - **Chu kỳ cuối ngắn hơn 30 ngày** (khi `expires_at` đến trước mốc đầu chu kỳ kế tiếp, ví dụ sau khi đổi gói có ngày quy đổi): hạn mức của chu kỳ đó là `ceil(quota_minutes_per_cycle × số_ngày / 30)`, với `số_ngày` là số ngày từ mốc đầu chu kỳ tới `expires_at`, làm tròn lên. App tự tính từ `expires_at` của token; gia hạn làm `expires_at` lùi ra thì app tính lại.
 - **Lưu bộ đếm:** trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows; §10.2).
   - Free: một bộ đếm theo ngày.
-  - Gói trả phí: khóa của bộ đếm là (`license_id`, lúc bắt đầu chu kỳ). Dùng lúc bắt đầu chu kỳ thay cho số thứ tự chu kỳ, vì đổi gói đặt lại `cycle_anchor`: chu kỳ đầu của gói mới không được dùng chung bộ đếm với chu kỳ đầu của gói cũ.
-  - **Gỡ máy rồi kích hoạt máy khác không chuyển bộ đếm.** Máy mới có bộ đếm riêng, bắt đầu từ 0 ở chu kỳ hiện tại; bộ đếm của máy cũ ở lại máy cũ. Kích hoạt lại chính máy cũ thì dùng tiếp bộ đếm cũ, vì bộ đếm nằm trong kho khóa, không mất khi gỡ app (§4.3, A6). Xoay một key qua nhiều máy để có thêm hạn mức thì bị chặn bởi luật khóa tạm (§10.2).
-  - **Mất bản ghi bộ đếm** trong khi app đã có dữ liệu từ trước (ví dụ file cài đặt): coi như đã dùng hết hạn mức của ngày (Free) hoặc của chu kỳ hiện tại (gói trả phí). Sang ngày hay chu kỳ mới mà chưa có bộ đếm thì bắt đầu từ 0; đó không phải là mất bản ghi.
-- **Khi hết hạn mức:**
-  - Đang dịch thì dừng phiên, với lý do `quota_exhausted`. Câu đang dịch dở được dịch xong, nên có thể vượt hạn mức tối đa một câu (trần 15 giây tiếng nói, §6.3).
+  - Gói trả phí: khóa của bộ đếm là (`license_id`, mốc đầu chu kỳ, `quota_epoch`).
+    - Dùng mốc đầu chu kỳ thay cho số thứ tự, vì đổi gói đặt lại `cycle_anchor`: chu kỳ đầu của gói mới không được dùng chung bộ đếm với chu kỳ đầu của gói cũ.
+    - `quota_epoch` là số nguyên của activation, nằm trong token. Admin tăng số này bằng thao tác "reset hạn mức của máy" (§6.8, "Công cụ hỗ trợ"); ở lần `validate` sau, app nhận epoch mới và bắt đầu một bộ đếm mới.
+  - **Bản ghi đánh dấu:** app giữ trong kho khóa một bản ghi "đã từng chạy license này trên máy này", gồm `license_id` và mốc đầu chu kỳ gần nhất đã có bộ đếm.
+- **Mất bản ghi bộ đếm:** luật chặt, coi như **đã dùng hết hạn mức** của ngày (Free) hoặc của cả chu kỳ hiện tại (gói trả phí). App coi là mất khi:
+  - Free: không còn bộ đếm của ngày trong khi app đã có dữ liệu từ trước (ví dụ file cài đặt);
+  - gói trả phí, có bản ghi đánh dấu: bản ghi đánh dấu nói chu kỳ hiện tại đã có bộ đếm, mà bộ đếm đó không còn;
+  - gói trả phí, không có bản ghi đánh dấu và không có bộ đếm nào của license này: `activation_created_at` trước mốc đầu chu kỳ hiện tại, tức activation đã có từ trước và đang được dùng lại (ví dụ xóa sạch dữ liệu rồi nhập lại key trên cùng máy).
+
+  Không phải mất bản ghi:
+  - máy kích hoạt mới thật: `activation_created_at` sau mốc đầu chu kỳ hiện tại, nên bắt đầu từ 0;
+  - sang ngày hay chu kỳ mới mà chưa có bộ đếm: bắt đầu từ 0.
+
+  **Đường cứu cho khách thật:** khách liên hệ hỗ trợ; người vận hành dùng thao tác "reset hạn mức của máy" (tăng `quota_epoch`). Thao tác này chỉ người vận hành làm, và được ghi nhật ký.
+- **Gỡ máy rồi kích hoạt máy khác không chuyển bộ đếm.** Máy mới có activation mới và bộ đếm riêng, bắt đầu từ 0 ở chu kỳ hiện tại; bộ đếm của máy cũ ở lại máy cũ. Kích hoạt lại chính máy cũ thì dùng lại activation cũ, và dùng tiếp bộ đếm cũ trong kho khóa (bộ đếm không mất khi gỡ app, §4.3, A6).
+  - Vì vậy xoay một key qua nhiều máy cho thêm hạn mức. Luật khóa tạm (§10.2) chỉ giới hạn được phần nào (tối đa khoảng 3 lần đổi máy mỗi 30 ngày). MVP chấp nhận rủi ro này (§10.2).
+- **Khi chạm hạn mức:**
+  - Hạn mức còn 0 thì không cho bắt đầu phiên.
+  - Đang dịch mà chạm hạn mức thì dừng phiên, với lý do `quota_exhausted`: bỏ các đoạn và câu còn trong hàng đợi, chỉ dịch xong câu đang dịch.
   - App báo thời điểm hạn mức được reset, kèm nút nâng gói (§4.2). Không chạy tiếp ở chế độ "chỉ chép lời".
-  - Hết hạn mức của gói trả phí thì không dùng thêm 10 phút của Free.
   - Các tính năng Pro khác (lịch sử, từ điển, xuất file) vẫn dùng được khi gói còn hạn.
-- MVP chấp nhận rủi ro bị lách ở mức cơ bản, nhưng chặn các cách lách dễ nhất ở trên và ở §10.2 (chỉnh lùi đồng hồ, xóa bản ghi).
+- MVP chấp nhận rủi ro bị lách ở mức cơ bản; các cách lách đã chặn và rủi ro chấp nhận ghi ở §10.2.
 
 **Các quy tắc khác:**
 - **Gia hạn:** PayOS không tự trừ tiền định kỳ. App nhắc trước 7 ngày và khi đã hết hạn. Nút "Gia hạn" mở màn hình Nâng cấp, tạo đơn mới gắn với key hiện có, cùng gói hoặc đổi gói.
@@ -894,6 +926,8 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 | Thiếu RAM hoặc VRAM | RAM trống thấp, hoặc tiến trình phụ báo hết bộ nhớ, kể cả bộ nhớ GPU | Đề xuất chuyển sang gói Nhẹ |
 | Trễ dồn lại | Độ trễ > 6 giây | Hiện chỉ báo và áp dụng chính sách ở §7 |
 | Hết hạn mức (Free: 10 phút hôm nay; Professional, X2: hạn mức của chu kỳ) | Bộ đếm phút (§6.8, "Hạn mức") | Dừng phiên với lý do `quota_exhausted`. Báo đã hết hạn mức và thời điểm reset, kèm nút nâng gói (§4.2) |
+| Giờ máy qua mốc chu kỳ mới của gói trả phí khi đang offline | Giờ máy qua mốc, `validate` lỗi mạng | Dùng tiếp bộ đếm của chu kỳ cũ; báo "Cần kết nối mạng để mở hạn mức của chu kỳ mới". Có mạng thì gọi `validate` ngay |
+| Mất bản ghi bộ đếm (§6.8) | Luật "Mất bản ghi bộ đếm" ở §6.8 | Coi như đã hết hạn mức của ngày hoặc của chu kỳ. Báo rõ lý do, hướng dẫn liên hệ hỗ trợ để người vận hành reset hạn mức của máy |
 | License không hợp lệ, hết hạn hoặc bị thu hồi | Kết quả `validate` | Về Free, báo rõ lý do |
 | Mất mạng đúng lúc cần kiểm tra license | Lỗi mạng | Giữ gói trả phí trong 14 ngày ân hạn |
 | Key bị khóa tạm vì gỡ máy quá nhiều | `activate` trả `423 license_locked` | Báo key bị khóa tạm, hướng dẫn liên hệ hỗ trợ (§10.2). Máy đang kích hoạt vẫn dùng được |
@@ -930,8 +964,16 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
   - Server không gửi email người mua sang PayOS.
   - **Thời gian lưu (chốt 2026-10-01): dữ liệu cá nhân được giữ không thời hạn**, không bao giờ tự xóa:
     - Email, `device_label`, đơn hàng và activation được giữ mãi. Không có cron tự xóa hay tự ẩn danh.
-    - Khách yêu cầu xóa thì người vận hành gọi thao tác admin "xóa hoặc ẩn danh dữ liệu theo email" (§6.8). Thao tác này bỏ email và `device_label`, và giữ lại dòng đơn hàng ở mức kế toán cần (mã đơn, ngày, số tiền). License vẫn dùng được, nhưng không khôi phục qua email được nữa. Thao tác này không bao giờ chạy tự động.
-    - Ngoài phạm vi: dữ liệu giới hạn tần suất (khoảng 3 giờ, chỉ lưu HMAC của IP, key, email; §10.2) và log của Cloudflare tự hết hạn. Đây là dữ liệu kỹ thuật, không phải hồ sơ khách hàng.
+    - Khách yêu cầu xóa thì người vận hành gọi thao tác admin "xóa hoặc ẩn danh dữ liệu theo email" (§6.8). Thao tác này không bao giờ chạy tự động, và làm như sau:
+      - bỏ email và `device_label`;
+      - **giữ `device_id_hash` ở dạng đã băm.** Lý do: đây là SHA-256 của ID phần cứng, không dò ngược ra ID máy được; sau khi bỏ email, server không còn nối nó với một người; và server cần nó để giữ giới hạn 2 máy, luật khóa tạm và việc dùng lại activation khi cài lại. Cách chọn này cần luật sư xác nhận (§15);
+      - giữ thời điểm đồng ý xử lý email, làm bằng chứng đã có sự đồng ý trước đó;
+      - giữ dòng đơn hàng ở mức kế toán cần: mã đơn, ngày, số tiền.
+
+      License vẫn dùng được, nhưng không khôi phục qua email được nữa.
+    - Ngoài phạm vi:
+      - dữ liệu giới hạn tần suất (khoảng 3 giờ, chỉ lưu HMAC của IP, key, email; §10.2) và log của Cloudflare tự hết hạn. Đây là dữ liệu kỹ thuật, không phải hồ sơ khách hàng;
+      - log thư do Resend lưu (địa chỉ nhận và nội dung thư, có key), theo chính sách lưu của Resend. Thời hạn lưu cụ thể chưa kiểm; kiểm khi tạo tài khoản Resend (T6) và ghi vào chính sách quyền riêng tư.
     - Việc giữ không thời hạn cần hỏi luật sư (§15).
   - Chính sách quyền riêng tư phải ghi rõ dữ liệu nào được lưu, **được giữ không thời hạn**, và khách có thể yêu cầu xóa theo cách nào.
   - **Hóa đơn điện tử: chưa làm trong MVP** (chốt 2026-10-01). Server không gửi thông tin người mua (tên, mã số thuế, email) sang PayOS, và app không có ô nhập các thông tin này. Làm sau MVP (§15); nghĩa vụ thuế khi bán vẫn cần hỏi kế toán.
@@ -972,8 +1014,8 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 |---|---|
 | Crack để dùng Pro miễn phí | Kiểm tra bản quyền ở nhiều chỗ trong code Rust, không dồn vào một biến đúng/sai duy nhất. Bản phát hành bật `strip`, `lto`, `codegen-units = 1`, `panic = "abort"`, và làm rối các chuỗi liên quan tới bản quyền. |
 | Sửa hoặc ký lại file của app | Lúc khởi động, app tự kiểm chữ ký số của chính nó. macOS dùng `SecStaticCodeCheckValidity` kèm yêu cầu đúng Team ID. Windows dùng `WinVerifyTrust` và so tên chủ chứng thư. Chữ ký không hợp lệ thì app chỉ chạy chế độ Free, báo "Bản cài không chính hãng" kèm link tải chính thức. Bản build dev bỏ qua bước này. |
-| Chỉnh đồng hồ máy (lùi, tới trước, hoặc đổi múi giờ qua lại) để lách hạn mức hoặc hạn dùng | App lưu mốc thời gian lớn nhất từng thấy. Nếu giờ hiện tại nhỏ hơn mốc đó quá 10 phút thì: không reset hạn mức ngày, coi token là phải kiểm tra online lại, và nhắc người dùng chỉnh giờ. Hạn mức Free chỉ reset khi đã qua ít nhất 20 giờ theo đồng hồ thật. Chu kỳ mới của gói trả phí chỉ bắt đầu khi đã có token mà `issued_at` (giờ server) qua mốc đầu chu kỳ (§6.8, "Hạn mức"). |
-| Sửa hoặc xóa trạng thái bản quyền và bộ đếm hạn mức trên máy | Lưu trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows), không lưu file thường. Trên Windows, mục lưu ở chế độ cục bộ (`persistence = Local`), không đi theo hồ sơ roaming sang máy khác, vì bản quyền và hạn mức gắn với từng máy. Mất bản ghi bộ đếm thì coi như đã hết hạn mức của ngày hoặc của chu kỳ (§6.8). |
+| Chỉnh đồng hồ máy (lùi, tới trước, hoặc đổi múi giờ qua lại) để lách hạn mức hoặc hạn dùng | **Gói trả phí:** số thứ tự chu kỳ tính theo `issued_at` của token mới nhất (giờ server), không theo giờ máy, nên chỉnh đồng hồ không có tác dụng; giờ máy chỉ quyết định lúc gọi `validate` (§6.8, "Hạn mức"). **Free:** reset cần ngày tăng và đã qua 20 giờ theo "đồng hồ thật" (thời gian đơn điệu cộng dồn lúc app chạy, cộng header `Date` của server khi có mạng). **Hạn dùng:** app lưu mốc thời gian lớn nhất từng thấy; giờ hiện tại nhỏ hơn mốc đó quá 10 phút thì coi token là phải kiểm tra online lại, và nhắc người dùng chỉnh giờ. |
+| Sửa hoặc xóa trạng thái bản quyền và bộ đếm hạn mức trên máy | Lưu trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows), không lưu file thường. Trên Windows, mục lưu ở chế độ cục bộ (`persistence = Local`), không đi theo hồ sơ roaming sang máy khác, vì bản quyền và hạn mức gắn với từng máy. Mất bản ghi bộ đếm thì coi như đã hết hạn mức của ngày hoặc của chu kỳ. Xóa sạch dữ liệu rồi nhập lại key trên cùng máy cũng bị coi là mất bản ghi, nhờ bản ghi đánh dấu và `activation_created_at` trong token. Khách thật thì nhờ hỗ trợ reset hạn mức của máy (`quota_epoch`) (§6.8). |
 | Chia sẻ hoặc bán lại key | Mỗi key tối đa 2 máy; kích hoạt lại trên cùng một máy không tốn thêm suất. Key sinh ngẫu nhiên với ít nhất 128 bit, có ký tự kiểm tra để phát hiện gõ sai. **Khóa tạm:** xem luật dưới bảng. |
 | Dò key hoặc spam license server | Giới hạn request theo IP, theo key và theo email, theo cửa sổ 1 giờ: `activate` ≤ 10 lần/giờ/IP, `validate` ≤ 30 lần/giờ/key, `checkout` ≤ 10 lần/giờ/IP, `recover` ≤ 3 lần/giờ/email và ≤ 10 lần/giờ/IP, `deactivate` ≤ 10 lần/giờ/IP, hỏi đơn ≤ 600 lần/giờ cho mỗi cặp (IP, đơn). `validate` đếm theo key đã chuẩn hóa. Vượt ngưỡng thì trả `429`. Bộ đếm nằm trong D1 và chỉ lưu HMAC-SHA256 (có pepper bí mật) của IP, key, email. **Chặn IP:** xem luật dưới bảng. |
 | Bị clone, đổi thương hiệu rồi bán lại | **Pháp lý:** đăng ký nhãn hiệu (tên và logo) tại Cục Sở hữu trí tuệ Việt Nam, mở rộng ra quốc tế sau. EULA cấm dịch ngược, cấm phân phối lại, cấm đổi thương hiệu. Có sẵn quy trình yêu cầu Microsoft Store và nhà cung cấp hosting gỡ bản nhái. **Kỹ thuật:** logic quan trọng (prompt, cắt và ghép câu, khớp thuật ngữ) nằm trong Rust đã biên dịch; JavaScript chỉ lo hiển thị và được rút gọn. Manifest model, bản cập nhật và token đều ký bằng khóa riêng, nên bản nhái không dùng được hạ tầng của sản phẩm. |
@@ -985,7 +1027,11 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 | Lộ khóa ký token | Token có trường `kid`. App build sẵn 2 khóa công khai: khóa đang dùng và khóa dự phòng. Cách giữ và đổi khóa: xem "Khóa ký token" dưới bảng. |
 | Rủi ro chuỗi cung ứng | Không khóa ký nào (ký mã, cập nhật, token, manifest) nằm trên máy dev. Bản phát hành được build và ký trong CI, từ tag đã commit, dùng secret của CI hoặc dịch vụ ký trên cloud. CI chạy `cargo audit`, `cargo deny`, `pnpm audit`, và bật Dependabot. llama.cpp và whisper.cpp được build trong CI từ tag đã khóa, có kiểm tra checksum. |
 
-**Khóa tạm key** (chống xoay key qua nhiều máy):
+**Rủi ro chấp nhận ở MVP** (hạn mức):
+- **Xoay key sang máy khác:** mỗi máy mới bắt đầu bộ đếm từ 0 (§6.8), nên gỡ máy rồi kích hoạt máy khác cho thêm hạn mức. Luật khóa tạm bên dưới chỉ giới hạn được phần nào (khoảng 3 lần đổi máy mỗi 30 ngày).
+- **Free bị lách khi offline lâu:** khi không có mạng, "đồng hồ thật" của Free chỉ là thời gian app chạy, nên người cố ý tắt mạng và chỉnh giờ vẫn có thể reset Free sớm hơn đúng luật.
+
+**Khóa tạm key** (giới hạn việc xoay key qua nhiều máy):
 - Đếm số lần gỡ do người dùng (tự gỡ hoặc gỡ từ xa; không tính admin gỡ) trong 30 ngày gần nhất, chỉ tính từ lần admin mở khóa gần nhất, và **trừ các lần gỡ chính máy đang kích hoạt**.
 - Khi một máy không đang kích hoạt xin `activate`, kể cả máy từng dùng key này, mà số trên lớn hơn 3, server khóa key, trả `423 license_locked`, và tạo cảnh báo cho người vận hành.
 - Gỡ rồi kích hoạt lại cùng một máy bao nhiêu lần cũng không bị khóa.
@@ -1034,12 +1080,18 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
   - Tạo prompt: nhánh tiếng Trung và không tiếng Trung, tên ngôn ngữ của từng mẫu; khớp thuật ngữ tiếng Việt có dấu và chữ Trung, Nhật, Hàn.
   - Hậu xử lý bản dịch khi đang stream: lọc nhãn và ngoặc kép, ngưỡng tỉ lệ token theo cặp ngôn ngữ, thử lại với tham số khác.
   - Các trạng thái của phụ đề, kể cả `same_lang`, `skipped` và `dropped`.
-  - Hạn mức (§6.8): cách đếm phút (chỉ đoạn được dịch, mỗi đoạn một lần); Free reset theo ngày, đổi múi giờ qua lại không reset được; chu kỳ 30 ngày tính từ `cycle_anchor`, chu kỳ mới cần token có `issued_at` qua mốc; đổi gói không dùng lại bộ đếm cũ; mất bản ghi bộ đếm thì coi như hết hạn mức của ngày hoặc chu kỳ; hết hạn mức thì dừng phiên với `quota_exhausted`; X5 không giới hạn.
+  - Hạn mức (§6.8):
+    - cách đếm phút: theo `speech_ms`, không gồm đệm, đoạn gộp cộng từng đoạn con; chỉ cộng khi phụ đề sang `done`; mỗi đoạn một lần; `same_lang`, `skipped`, `failed`, `dropped`, đoạn bị lọc không tính;
+    - Free: reset khi ngày tăng và đã qua 20 giờ "đồng hồ thật"; đổi múi giờ qua lại không reset được; header `Date` của server được lấy làm mốc; phút dịch lúc ở gói trả phí cũng cộng vào Free của ngày; hết hạn mức gói trả phí thì Free của ngày cũng hết;
+    - gói trả phí: `n` tính theo `issued_at` của token mới nhất, chỉnh giờ máy tới hay lùi không đổi `n`; hẹn `validate` lại sau (mốc − `issued_at`) + 1 phút; offline qua mốc thì dùng tiếp bộ đếm cũ; chu kỳ cuối ngắn có hạn mức `ceil(hạn_mức × số_ngày / 30)`;
+    - khóa bộ đếm (`license_id`, mốc đầu chu kỳ, `quota_epoch`): đổi gói không dùng lại bộ đếm cũ; epoch mới thì bộ đếm mới;
+    - mất bản ghi: ba trường hợp của §6.8 coi như hết hạn mức; máy kích hoạt mới thật (`activation_created_at` sau mốc) bắt đầu từ 0;
+    - chạm hạn mức: không bắt đầu được phiên khi còn 0; bỏ hàng đợi, dịch xong câu đang dịch, dừng với `quota_exhausted`; X5 không giới hạn.
   - Trạng thái bản quyền: ân hạn, thu hồi, tự làm mới token khi app chạy liên tục quá 24 giờ.
   - Manifest và SHA-256.
 - **Test giao diện (`vitest`):** i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề. Các hàm xuất file viết và test phía Rust (`transcript/export.rs`, §12), vì webview chặn `blob:` (§10.2).
 - **License server:**
-  - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp license khi `PAID`, `amountPaid` ≥ `amount` và `amount` khớp đơn; mua thêm cùng gói (từ max(hiện tại, `expires_at`), giữ `cycle_anchor`, đặt lại khi đã hết hạn); đổi gói (công thức quy đổi, cả hai ví dụ ở §6.8, `cycle_anchor` mới); giới hạn 2 máy, kích hoạt lại cùng máy không tốn suất, gỡ từ xa khi đã đủ máy; khóa tạm (`423`); chặn IP và trường hợp CGNAT; `recover` luôn trả `200`; ký và kiểm tra token Ed25519, có `cycle_anchor` và `quota_minutes_per_cycle`; phân loại lỗi email.
+  - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp license khi `PAID`, `amountPaid` ≥ `amount` và `amount` khớp đơn; mua thêm cùng gói (từ max(hiện tại, `expires_at`), giữ `cycle_anchor`, đặt lại khi đã hết hạn); đổi gói (công thức quy đổi, cả hai ví dụ ở §6.8, `cycle_anchor` mới); giới hạn 2 máy, kích hoạt lại cùng máy không tốn suất, gỡ từ xa khi đã đủ máy; khóa tạm (`423`); chặn IP và trường hợp CGNAT; `recover` luôn trả `200`; ký và kiểm tra token Ed25519, có `cycle_anchor`, `quota_minutes_per_cycle`, `quota_epoch`, `activation_created_at`; "hiện tại" của gia hạn và đổi gói là `transactionDateTime` kẹp trong thời hạn link; reset hạn mức của máy tăng `quota_epoch`; phân loại lỗi email.
   - Test tích hợp với PayOS trên môi trường test nếu có; nếu không có thì dùng giao dịch với số tiền nhỏ.
 - **Test tích hợp:**
   - Chạy pipeline từ file WAV (không cần thu âm thật), kiểm tra phụ đề có xuất hiện, đúng thứ tự, đúng thời gian.
@@ -1161,14 +1213,14 @@ meeting-translator/
    - Đăng ký được với loại hình kinh doanh của PHONG.
    - Webhook và cách ký HMAC-SHA256 đúng như tài liệu.
    - Có môi trường test; nếu không có thì test bằng giao dịch nhỏ. Kiểm ngày 2026-10-01: PayOS không có sandbox, nên test bằng giao dịch nhỏ trên staging.
-   - Mô tả đơn cần ngắn (với một số ngân hàng tối đa 9 ký tự), nên dùng mã dạng `MT` cộng số đơn (tối đa 7 chữ số, §6.8).
+   - Mô tả đơn cần ngắn (với một số ngân hàng tối đa 9 ký tự), nên dùng mã dạng `AT` cộng số đơn (tối đa 7 chữ số, §6.8).
 8. Rút ngắn `audio_ctx` không làm WER tăng quá 10% so với cửa sổ 30 giây đầy đủ. (S7) Kết quả S7: không đạt theo từng ô, xem §6.4 "Rút ngắn cửa sổ mã hóa".
 9. Chi phí nhận diện ngôn ngữ giữ được dưới 20% thời gian nhận dạng của đoạn (§6.4). (S3)
 10. Truyền âm thanh qua stdin/stdout sang `asr-worker` thêm không quá 10 ms mỗi đoạn. (S3)
 
 ## 15. Việc còn mở (không chặn phần kỹ thuật)
 
-Đã quyết ngày 2026-10-01 và đã đưa vào spec: tên và bundle identifier (D13), bốn gói và giá (P1, §2), hạn mức (§6.8), cách lưu dữ liệu (§10.1), chưa làm hóa đơn điện tử (§10.1), không dùng kho mật khẩu cho khóa ký token (§10.2). Dịch vụ email (Resend) và tài khoản Cloudflare riêng đã có.
+Đã quyết ngày 2026-10-01 và đã đưa vào spec: tên và bundle identifier (D13), bốn gói và giá (P1, §2), hạn mức (§6.8), cách lưu dữ liệu (§10.1), chưa làm hóa đơn điện tử (§10.1), không dùng kho mật khẩu cho khóa ký token (§10.2). Dịch vụ email đã chọn là Resend, nhưng chưa có tài khoản (T6 của kế hoạch Giai đoạn 1 · 00). Tài khoản Cloudflare riêng đã có.
 
 Còn mở:
 - **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, staging dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Cần tên miền trước khi license server lên production (email gửi từ tên miền đã xác thực, `returnUrl`) và trước bản beta đầu tiên.
@@ -1177,6 +1229,7 @@ Còn mở:
 - **Pháp lý:** hỏi luật sư về:
   - hồ sơ chuyển dữ liệu cá nhân ra nước ngoài (§10.1);
   - việc **giữ dữ liệu cá nhân không thời hạn** (§10.1), xét theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân (hiệu lực từ 1/1/2026);
+  - việc giữ `device_id_hash` (đã băm) khi khách yêu cầu xóa (§10.1);
   - thủ tục thông báo website bán hàng với Bộ Công Thương.
 - **PayOS:** liên kết tài khoản ngân hàng nhận tiền theo loại hình đăng ký kinh doanh (doanh nghiệp, hộ kinh doanh hoặc cá nhân).
 - **Thanh toán quốc tế:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam, nên MVP chỉ bán cho khách ở Việt Nam. Muốn bán ra nước ngoài thì chọn thêm một nhà cung cấp sau MVP (có thể cân nhắc Polar).
