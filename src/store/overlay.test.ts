@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
 import type { OverlayView, Subtitle } from "../lib/ipc";
 import { createOverlayStore, upsertLine } from "./overlay";
@@ -28,6 +28,16 @@ describe("upsertLine", () => {
     expect(next.map((l) => l.tgt_text)).toEqual(["a", "b đã ghép"]);
     expect(next[1]?.provisional).toBe(false);
   });
+
+  it("thay tại chỗ cả dòng không nằm cuối, thứ tự giữ nguyên", () => {
+    const lines = [sub(1, "a", true), sub(2, "b"), sub(3, "c")];
+    const next = upsertLine(lines, sub(1, "a đã ghép"), 3);
+    expect(next.map((l) => [l.id, l.tgt_text])).toEqual([
+      [1, "a đã ghép"],
+      [2, "b"],
+      [3, "c"],
+    ]);
+  });
 });
 
 describe("overlay store", () => {
@@ -44,5 +54,18 @@ describe("overlay store", () => {
     expect(store.getState().view?.locked).toBe(true);
     expect(store.getState().lines.map((l) => l.id)).toEqual([3]);
     expect(fake.calls.map((c) => c.cmd)).toEqual(["get_overlay_view"]);
+  });
+
+  it("phụ đề tới trước khi đọc xong cài đặt thì giữ mặc định 3 dòng", async () => {
+    let release: (v: OverlayView) => void = () => {};
+    const fake = fakeIpc({ get_overlay_view: () => new Promise<OverlayView>((resolve) => (release = resolve)) });
+    const store = createOverlayStore(fake.ipc);
+    const ready = store.getState().init();
+    await vi.waitFor(() => expect(fake.calls.map((c) => c.cmd)).toEqual(["get_overlay_view"]));
+    for (const id of [1, 2, 3, 4]) fake.emit("subtitle://upsert", sub(id, `${id}`));
+    expect(store.getState().view).toBeNull();
+    expect(store.getState().lines.map((l) => l.id)).toEqual([2, 3, 4]);
+    release(view);
+    await ready;
   });
 });

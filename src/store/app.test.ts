@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
-import type { AppInfo, AppStatus, Settings } from "../lib/ipc";
+import type { AppInfo, AppStatus, Ipc, Settings } from "../lib/ipc";
 import { canOpenScreens, createAppStore, toUiError } from "./app";
 
 const settings: Settings = {
@@ -30,15 +30,20 @@ const info: AppInfo = {
 };
 
 let failToggle = false;
+let failLoginItems = false;
+let failOnboarding = false;
 
 function setup() {
   failToggle = false;
+  failLoginItems = false;
+  failOnboarding = false;
   const fake = fakeIpc({
     get_settings: () => settings,
     get_app_status: () => status,
     get_app_info: () => info,
     update_settings: ({ patch }) => {
       if (patch.vadEndSilenceMs === 900) throw { code: "outOfRange", field: "vadEndSilenceMs", message: "…" };
+      if (patch.onboardingDone && failOnboarding) throw { code: "unknown", field: null, message: "…" };
       return { ...settings, ...patch } as Settings;
     },
     set_hotkey: ({ action, accelerator }) => {
@@ -50,7 +55,10 @@ function setup() {
       return { ...status, session: "running", overlayVisible: true };
     },
     set_overlay_locked: ({ locked }) => ({ ...settings, overlay: { ...settings.overlay, locked } }),
-    open_login_items_settings: () => null,
+    open_login_items_settings: () => {
+      if (failLoginItems) throw { code: "openFailed", field: null, message: "…" };
+      return null;
+    },
   });
   return { fake, store: createAppStore(fake.ipc) };
 }
@@ -177,5 +185,114 @@ describe("app store", () => {
     expect(fake.calls.at(-1)).toEqual({ cmd: "update_settings", args: { patch: { onboardingDone: true } } });
     expect(store.getState().settings?.onboardingDone).toBe(true);
     expect(store.getState().screen).toBe("home");
+  });
+
+  it("lưu onboardingDone lỗi thì vẫn ở màn hình cũ và báo lỗi", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    store.getState().navigate("about");
+    failOnboarding = true;
+    await store.getState().finishOnboarding();
+    expect(store.getState().screen).toBe("about");
+    expect(store.getState().settings?.onboardingDone).toBe(false);
+    expect(store.getState().error).toEqual({ code: "unknown", field: null });
+  });
+
+  it("mở Login Items lỗi thì báo lỗi, lời nhắc vẫn còn", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    fake.emit("app://notice", { kind: "loginItemsApproval" });
+    failLoginItems = true;
+    await store.getState().openLoginItemsSettings();
+    expect(store.getState().error).toEqual({ code: "openFailed", field: null });
+    expect(store.getState().notice).toEqual({ kind: "loginItemsApproval" });
+  });
+
+  it("lỗi của lệnh trước tự xóa khi lệnh sau thành công", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    await store.getState().updateSettings({ vadEndSilenceMs: 900 });
+    expect(store.getState().error).not.toBeNull();
+    await store.getState().setOverlayLocked(true);
+    expect(store.getState().error).toBeNull();
+    await store.getState().openLogDir();
+    expect(store.getState().error).toEqual({ code: "unknown", field: null });
+    expect(await store.getState().updateSettings({ theme: "dark" })).toBe(true);
+    expect(store.getState().error).toBeNull();
+  });
+
+  it("init: một lệnh đọc lỗi thì gỡ mọi listener đã đăng ký và báo lỗi cho bên gọi", async () => {
+    const fake = fakeIpc({ get_settings: () => settings, get_app_status: () => status });
+    const store = createAppStore(fake.ipc);
+    await expect(store.getState().init()).rejects.toBeDefined();
+    for (const event of ["settings://changed", "app://status", "app://navigate", "app://notice"] as const) {
+      expect(fake.listenerCount(event), event).toBe(0);
+    }
+  });
+
+  it("init: đăng ký một sự kiện lỗi thì gỡ các listener khác và không đọc gì", async () => {
+    const fake = fakeIpc({ get_settings: () => settings, get_app_status: () => status, get_app_info: () => info });
+    const ipc: Ipc = {
+      invoke: fake.ipc.invoke,
+      listen: (event, handler) => (event === "app://navigate" ? Promise.reject("listen lỗi") : fake.ipc.listen(event, handler)),
+    };
+    const store = createAppStore(ipc);
+    await expect(store.getState().init()).rejects.toBe("listen lỗi");
+    for (const event of ["settings://changed", "app://status", "app://notice"] as const) {
+      expect(fake.listenerCount(event), event).toBe(0);
+    }
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("bấm đúp Bắt đầu/Dừng chỉ gửi một lệnh; đang gửi thì sessionPending bật", async () => {
+    let release: (s: AppStatus) => void = () => {};
+    const fake = fakeIpc({
+      get_settings: () => settings,
+      get_app_status: () => status,
+      get_app_info: () => info,
+      toggle_session: () => new Promise<AppStatus>((resolve) => (release = resolve)),
+    });
+    const store = createAppStore(fake.ipc);
+    await store.getState().init();
+    expect(store.getState().sessionPending).toBe(false);
+    const first = store.getState().toggleSession();
+    const second = store.getState().toggleSession();
+    await second;
+    expect(store.getState().sessionPending).toBe(true);
+    release({ ...status, session: "running" });
+    await first;
+    expect(fake.calls.filter((c) => c.cmd === "toggle_session")).toHaveLength(1);
+    expect(store.getState().sessionPending).toBe(false);
+    expect(store.getState().status?.session).toBe("running");
+  });
+
+  it("lệnh Bắt đầu/Dừng lỗi thì sessionPending tắt lại", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    failToggle = true;
+    await store.getState().toggleSession();
+    expect(store.getState().sessionPending).toBe(false);
+    failToggle = false;
+    await store.getState().toggleSession();
+    expect(store.getState().status?.session).toBe("running");
+  });
+
+  it("bật tắt một ngôn ngữ nguồn tính từ cài đặt mới nhất, theo thứ tự LANGS", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    fake.emit("settings://changed", { ...settings, sourceLanguages: ["ko"] });
+    await store.getState().setSourceLanguage("en", true);
+    expect(fake.calls.at(-1)).toEqual({ cmd: "update_settings", args: { patch: { sourceLanguages: ["en", "ko"] } } });
+    await store.getState().setSourceLanguage("ko", false);
+    expect(fake.calls.at(-1)).toEqual({ cmd: "update_settings", args: { patch: { sourceLanguages: ["en"] } } });
+  });
+
+  it("không bỏ chọn ngôn ngữ nguồn cuối cùng", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    fake.emit("settings://changed", { ...settings, sourceLanguages: ["ja"] });
+    const before = fake.calls.length;
+    await store.getState().setSourceLanguage("ja", false);
+    expect(fake.calls.length).toBe(before);
   });
 });
