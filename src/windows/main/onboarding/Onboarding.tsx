@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { MessageKey, UiLanguage } from "../../../i18n";
 import { useApp, useT } from "../appStore";
 import { LanguagePicker } from "../LanguagePicker";
@@ -31,6 +32,14 @@ export function Onboarding() {
   const index = useApp((s) => s.onboardingStep);
   const setStep = useApp((s) => s.setOnboardingStep);
   const finish = useApp((s) => s.finishOnboarding);
+  const title = useRef<HTMLHeadingElement>(null);
+  const shown = useRef(index);
+  // Sang bước khác thì đưa focus về tiêu đề của bước mới (nút vừa bấm có thể đã biến mất hay bị khóa).
+  useEffect(() => {
+    if (shown.current === index) return;
+    shown.current = index;
+    title.current?.focus();
+  }, [index]);
   if (!info) return null;
   const steps = stepsFor(info.platform);
   const current = Math.min(index, steps.length - 1);
@@ -40,7 +49,9 @@ export function Onboarding() {
     <main className="onboarding">
       <Notice />
       <p className="hint">{t("onboarding.step", { n: current + 1, total: steps.length })}</p>
-      <h1>{t(TITLES[step])}</h1>
+      <h1 id="onboarding-title" ref={title} tabIndex={-1}>
+        {t(TITLES[step])}
+      </h1>
       <StepBody step={step} platform={info.platform} />
       <div className="actions">
         <button disabled={current === 0} onClick={() => setStep(current - 1)}>
@@ -63,7 +74,7 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
     // Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (bước 5 đổi lại được).
     case "language":
       return (
-        <div className="checks" role="radiogroup">
+        <div className="checks" role="radiogroup" aria-labelledby="onboarding-title">
           {(["vi", "en"] as UiLanguage[]).map((lang) => (
             <label key={lang}>
               <input
@@ -72,7 +83,7 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
                 checked={settings?.uiLanguage === lang}
                 onChange={() => void update({ uiLanguage: lang, targetLanguage: lang })}
               />{" "}
-              {lang === "vi" ? "Tiếng Việt" : "English"}
+              {t(`lang.${lang}`)}
             </label>
           ))}
         </div>

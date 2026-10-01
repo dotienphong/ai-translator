@@ -7,6 +7,10 @@ import { tauriIpc } from "../../lib/ipc";
 import { createOverlayStore } from "../../store/overlay";
 
 const store = createOverlayStore(tauriIpc);
+// Thuộc tính `lang` của trang theo ngôn ngữ giao diện (chữ chờ, sau này là nhãn), để trình đọc màn hình đọc đúng giọng.
+store.subscribe((state) => {
+  if (state.view) document.documentElement.lang = state.view.uiLanguage;
+});
 void store.getState().init();
 
 // Thanh phụ đề (§4.4): N dòng gần nhất, phụ đề tạm màu nhạt hơn. Khi chưa khóa thì kéo được cả thanh

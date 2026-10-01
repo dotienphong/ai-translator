@@ -9,6 +9,7 @@ export function Home() {
   const settings = useApp((s) => s.settings);
   const info = useApp((s) => s.info);
   const toggleSession = useApp((s) => s.toggleSession);
+  const pending = useApp((s) => s.sessionPending);
   const setVisible = useApp((s) => s.setOverlayVisible);
   const setLocked = useApp((s) => s.setOverlayLocked);
   if (!status || !settings || !info) return null;
@@ -18,7 +19,7 @@ export function Home() {
       <div className="card">
         <div className="row">
           <span className={running ? "badge running" : "badge"}>{t(running ? "status.running" : "status.idle")}</span>
-          <button className="primary" onClick={() => void toggleSession()}>
+          <button className="primary" disabled={pending} onClick={() => void toggleSession()}>
             {t(running ? "home.stop" : "home.start")}
           </button>
         </div>

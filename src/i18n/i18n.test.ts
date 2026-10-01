@@ -21,6 +21,10 @@ describe("từ điển giao diện", () => {
     }
   });
 
+  it("tiếng Việt gọi icon là \"biểu tượng\", một từ thống nhất", () => {
+    for (const [key, text] of Object.entries(vi)) expect(text, key).not.toMatch(/\bicon\b/i);
+  });
+
   it("chuỗi tiếng Việt đã được dịch, trừ tên riêng và tên ngôn ngữ", () => {
     const same = (Object.keys(en) as (keyof typeof en)[]).filter((key) => en[key] === vi[key]);
     expect(same.sort()).toEqual(

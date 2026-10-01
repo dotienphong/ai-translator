@@ -39,6 +39,20 @@ button:disabled {
   opacity: 0.5;
 }
 
+fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* `float` đưa legend về thành một hộp thường, nên nó đứng cùng hàng với các ô chọn như nhãn của các dòng khác. */
+.row > legend {
+  float: left;
+  min-width: 14rem;
+  padding: 0;
+}
+
 select {
   padding: 0.3rem 0.5rem;
   border: 1px solid var(--color-border);
@@ -144,7 +158,14 @@ select {
   gap: 1rem;
   padding: 0.6rem 1rem;
   margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.notice.error {
+  border-color: var(--color-danger);
   background: var(--color-danger-bg);
   color: var(--color-danger);
 }

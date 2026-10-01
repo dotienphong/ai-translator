@@ -3,6 +3,7 @@ import type { MessageKey } from "./en";
 // Từ điển tiếng Việt. Kiểu `Record<MessageKey, string>` bắt đủ mọi khóa của en.ts (spec §4.5).
 export const vi: Record<MessageKey, string> = {
   "app.name": "AI Translator",
+  "app.loadFailed": "AI Translator không mở được cửa sổ này. Hãy thoát ở biểu tượng trên menu bar hoặc trong khay, rồi mở lại app.",
 
   "nav.home": "Màn hình chính",
   "nav.transcript": "Bản chép lời",
@@ -99,9 +100,9 @@ export const vi: Record<MessageKey, string> = {
   "onboarding.privacy.local": "Âm thanh không rời khỏi máy: nhận dạng giọng nói và dịch đều chạy trên máy của bạn.",
   "onboarding.privacy.notify": "Nếu pháp luật hoặc quy định công ty yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp là bạn dùng công cụ dịch.",
   "onboarding.tray.title": "AI Translator vẫn chạy khi bạn đóng cửa sổ",
-  "onboarding.tray.macos": "App nằm ở menu bar. Đóng cửa sổ này chỉ ẩn nó đi; muốn thoát hẳn thì chọn Thoát ở icon trên menu bar.",
-  "onboarding.tray.windows": "App nằm ở khay hệ thống. Đóng cửa sổ này chỉ ẩn nó đi; muốn thoát hẳn thì chọn Thoát ở icon trong khay.",
-  "onboarding.tray.windowsPin": "Windows giấu icon mới vào mục mũi tên ^. Hãy kéo icon ra taskbar, hoặc bật icon trong cài đặt Taskbar.",
+  "onboarding.tray.macos": "App nằm ở menu bar. Đóng cửa sổ này chỉ ẩn nó đi; muốn thoát hẳn thì chọn Thoát ở biểu tượng trên menu bar.",
+  "onboarding.tray.windows": "App nằm ở khay hệ thống. Đóng cửa sổ này chỉ ẩn nó đi; muốn thoát hẳn thì chọn Thoát ở biểu tượng trong khay.",
+  "onboarding.tray.windowsPin": "Windows giấu biểu tượng mới vào mục mũi tên ^. Hãy kéo biểu tượng ra taskbar, hoặc bật biểu tượng trong cài đặt Taskbar.",
   "onboarding.tray.openTaskbarSettings": "Mở cài đặt Taskbar",
 
   "overlay.waiting": "Phụ đề sẽ hiện ở đây",
@@ -110,7 +111,7 @@ export const vi: Record<MessageKey, string> = {
   "notice.hotkeysFailedLater": "Có phím tắt không đăng ký được. Bạn đổi được ở Cài đặt › Phím tắt sau khi xong các bước này.",
   "notice.openSettings": "Mở cài đặt",
   "notice.quitFromTray": "AI Translator vẫn chạy ở menu bar. Muốn thoát, chọn Thoát ở biểu tượng trên menu bar.",
-  "notice.loginItemsApproval": "AI Translator đang bị tắt ở System Settings › General › Login Items, nên sẽ không tự mở khi đăng nhập. Hãy bật lại ở đó.",
+  "notice.loginItemsApproval": "AI Translator đang bị tắt ở System Settings › General › Login Items & Extensions (macOS 14: Login Items), nên sẽ không tự mở khi đăng nhập. Hãy bật lại ở đó.",
   "notice.openLoginItems": "Mở Login Items",
 
   "common.dismiss": "Đóng",

@@ -2,16 +2,14 @@ import { LANGS, type Lang } from "../../lib/ipc";
 import { useApp, useT } from "./appStore";
 
 // Ngôn ngữ đích, tập ngôn ngữ nguồn và khóa một ngôn ngữ (F2). Dùng ở màn hình chính và bước 5 của
-// lần đầu mở. Phía Rust từ chối tập nguồn rỗng; ở đây không cho bỏ chọn ngôn ngữ cuối cùng.
+// lần đầu mở. Phía Rust từ chối tập nguồn rỗng; ở đây không cho bỏ chọn ngôn ngữ cuối cùng. Tập nguồn mới
+// tính trong store, từ cài đặt mới nhất lúc bấm (`setSourceLanguage`).
 export function LanguagePicker() {
   const t = useT();
   const settings = useApp((s) => s.settings);
   const update = useApp((s) => s.updateSettings);
+  const setSource = useApp((s) => s.setSourceLanguage);
   if (!settings) return null;
-  const toggleSource = (lang: Lang, on: boolean) => {
-    const next = on ? LANGS.filter((l) => l === lang || settings.sourceLanguages.includes(l)) : settings.sourceLanguages.filter((l) => l !== lang);
-    void update({ sourceLanguages: next });
-  };
   return (
     <>
       <div className="row">
@@ -24,8 +22,8 @@ export function LanguagePicker() {
           ))}
         </select>
       </div>
-      <div className="row">
-        <span>{t("languages.sources")}</span>
+      <fieldset className="row">
+        <legend>{t("languages.sources")}</legend>
         <div className="checks">
           {LANGS.map((l) => {
             const checked = settings.sourceLanguages.includes(l);
@@ -35,14 +33,14 @@ export function LanguagePicker() {
                   type="checkbox"
                   checked={checked}
                   disabled={checked && settings.sourceLanguages.length === 1}
-                  onChange={(e) => toggleSource(l, e.target.checked)}
+                  onChange={(e) => void setSource(l, e.target.checked)}
                 />{" "}
                 {t(`lang.${l}`)}
               </label>
             );
           })}
         </div>
-      </div>
+      </fieldset>
       <div className="row">
         <label htmlFor="lock">{t("languages.lock")}</label>
         <select

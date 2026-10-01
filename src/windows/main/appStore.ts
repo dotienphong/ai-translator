@@ -10,7 +10,8 @@ export function useApp<T>(selector: (state: AppStoreState) => T): T {
   return useStore(appStore, selector);
 }
 
-const fallbackLanguage = detectUiLanguage(navigator.languages);
+// Ngôn ngữ giao diện khi chưa đọc được cài đặt.
+export const fallbackLanguage = detectUiLanguage(navigator.languages);
 
 // Hàm dịch theo ngôn ngữ giao diện đang chọn; đổi ngôn ngữ thì mọi màn hình vẽ lại ngay (§4.5).
 export function useT(): (key: MessageKey, params?: Params) => string {

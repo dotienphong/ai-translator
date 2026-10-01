@@ -17,8 +17,8 @@ export function GeneralSettings() {
           value={settings.uiLanguage}
           onChange={(e) => void update({ uiLanguage: e.target.value as UiLanguage })}
         >
-          <option value="en">English</option>
-          <option value="vi">Tiếng Việt</option>
+          <option value="en">{t("lang.en")}</option>
+          <option value="vi">{t("lang.vi")}</option>
         </select>
       </div>
       <div className="row">

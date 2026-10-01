@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { Screen } from "../../lib/ipc";
 import { useApp, useT } from "./appStore";
 import { Notice } from "./Notice";
@@ -18,12 +19,20 @@ const BODIES: Record<Screen, () => React.JSX.Element | null> = {
   about: About,
 };
 
-// Khung cửa sổ chính: thanh điều hướng tới mọi màn hình ở §4.3.
+// Khung cửa sổ chính: thanh điều hướng tới mọi màn hình ở §4.3. Đổi màn hình (bấm nút, menu khay, thanh báo)
+// thì đưa focus về tiêu đề của màn hình mới, để người dùng bàn phím và trình đọc màn hình biết đã sang chỗ khác.
 export function Shell() {
   const t = useT();
   const screen = useApp((s) => s.screen);
   const navigate = useApp((s) => s.navigate);
   const Body = BODIES[screen];
+  const title = useRef<HTMLHeadingElement>(null);
+  const shown = useRef(screen);
+  useEffect(() => {
+    if (shown.current === screen) return;
+    shown.current = screen;
+    title.current?.focus();
+  }, [screen]);
   return (
     <div className="shell">
       <nav className="nav">
@@ -35,7 +44,9 @@ export function Shell() {
         ))}
       </nav>
       <main className="content">
-        <h1>{t(`nav.${screen}`)}</h1>
+        <h1 ref={title} tabIndex={-1}>
+          {t(`nav.${screen}`)}
+        </h1>
         <Notice />
         <Body />
       </main>

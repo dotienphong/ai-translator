@@ -3,6 +3,7 @@
 // `{tên}` là chỗ điền tham số; hai ngôn ngữ phải có cùng tham số (test ở i18n.test.ts).
 export const en = {
   "app.name": "AI Translator",
+  "app.loadFailed": "AI Translator could not load this window. Quit from the menu bar or tray icon, then open the app again.",
 
   "nav.home": "Home",
   "nav.transcript": "Transcript",
@@ -110,7 +111,7 @@ export const en = {
   "notice.hotkeysFailedLater": "Some shortcuts could not be registered. You can change them in Settings › Shortcuts after these steps.",
   "notice.openSettings": "Open settings",
   "notice.quitFromTray": "AI Translator keeps running in the menu bar. To quit, choose Quit from the menu bar icon.",
-  "notice.loginItemsApproval": "AI Translator is turned off in System Settings › General › Login Items, so it will not open when you log in. Turn it on there.",
+  "notice.loginItemsApproval": "AI Translator is turned off in System Settings › General › Login Items & Extensions (Login Items on macOS 14), so it will not open when you log in. Turn it on there.",
   "notice.openLoginItems": "Open Login Items",
 
   "common.dismiss": "Dismiss",
