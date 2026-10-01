@@ -1000,6 +1000,61 @@ fn llama_server_follows_the_worker_back_to_the_gpu() {
     assert_eq!(s.t.read("llama-events").lines().last(), Some("start ngl=auto extra="));
 }
 
+/// Kịch bản của `llama_server_follows_the_worker_back_to_the_gpu`: `llama-server` chạy CPU theo `asr-worker` và lỗi hai
+/// lần trong lúc đó (ba lần chạy `-ngl 0`); `asr-worker` bỏ cuộc, người dùng bấm thử lại, cả hai về GPU.
+fn follow_the_worker_to_the_cpu_and_back(name: &str) -> Setup {
+    let s = setup(
+        name,
+        true,
+        &["exit_at_start:1", "ok"],
+        &["exit_at_start:1", "exit_at_start:1", "ok"],
+    );
+    s.manager.ensure_started().unwrap();
+    s.manager.stop(true);
+    std::fs::write(s.t.path("asr-plan"), ["exit_at_start:1"; 6].join("\n")).unwrap();
+    assert_eq!(s.manager.ensure_started().unwrap_err().cause, GiveUpCause::Failures);
+    std::fs::write(s.t.path("asr-plan"), "ok").unwrap();
+    s.manager.allow_retry();
+    s.manager.ensure_started().unwrap();
+    assert_eq!(
+        s.t.read("llama-events")
+            .lines()
+            .filter_map(|l| l.split_whitespace().nth(1))
+            .collect::<Vec<_>>(),
+        ["ngl=0", "ngl=0", "ngl=0", "ngl=auto"]
+    );
+    s
+}
+
+/// N1 của lần kiểm 6 (V5): `cpu Llama` chỉ phát khi lần chạy này bằng CPU mà lần trước dùng GPU (hay là lần đầu), không
+/// phát lại ở mỗi lần chạy CPU theo `asr-worker`.
+#[test]
+fn following_the_worker_to_the_cpu_is_reported_once() {
+    let s = follow_the_worker_to_the_cpu_and_back("follow-cpu-once");
+    let names = s.events.names();
+    assert_eq!(names.iter().filter(|n| *n == "cpu Llama").count(), 1, "{names:?}");
+}
+
+/// N1 của lần kiểm 6 (V4), QĐ7: lỗi của `llama-server` trong lúc chạy CPU theo `asr-worker` không cộng vào bộ đếm lỗi
+/// GPU liên tiếp. Về GPU rồi lỗi một lần lúc khởi động thì vẫn chạy lại bằng GPU, không chuyển CPU.
+#[test]
+fn failures_while_following_the_worker_to_the_cpu_are_not_gpu_failures() {
+    let s = follow_the_worker_to_the_cpu_and_back("follow-cpu-failures");
+    s.manager.stop(true);
+    std::fs::write(s.t.path("llama-plan"), "exit_at_start:1\nok").unwrap();
+    let before = s.events.names().len();
+    s.manager.ensure_started().unwrap();
+    let names = s.events.names();
+    assert!(!names[before..].iter().any(|n| n == "cpu Llama"), "{names:?}");
+    assert_eq!(names.last().unwrap(), "ready Llama gpu=true", "{names:?}");
+    let log = s.t.read("llama-events");
+    assert_eq!(
+        log.lines().rev().take(2).collect::<Vec<_>>(),
+        ["start ngl=auto extra=", "start ngl=auto extra="],
+        "{log}"
+    );
+}
+
 /// GP6 của review 02 lần 5: đã chuyển CPU vì lỗi mà chưa bỏ cuộc thì bấm Bắt đầu không đưa về GPU.
 #[test]
 fn a_retry_without_giving_up_keeps_the_cpu() {
