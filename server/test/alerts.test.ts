@@ -106,6 +106,14 @@ describe("cảnh báo cho người vận hành", () => {
     vi.restoreAllMocks();
   });
 
+  it("cảnh báo quá 24 giờ, hai lần cron chạy chồng nhau: chỉ ghi log một lần", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await raiseAlert(env.DB, "many_failures", T);
+    await Promise.all([1, 2, 3].map(() => sendAlerts(ops, mailbox().provider, T + 3600 + 86400)));
+    expect(warn).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
+
   it("gửi lỗi thì lần sau thử lại", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
