@@ -6887,14 +6887,14 @@ Tiến trình phụ đang chạy (chạy sẵn khi mở cửa sổ chính, Đ19)
    ```
 4. Người bấm Bắt đầu ở menu khay. Expected: lỗi `sidecarTampered` ("Một phần của app đã bị thay đổi hoặc hỏng…"); không tiến trình phụ nào được chạy. Agent chạy lại `./scripts/copy-sidecars.sh`.
 5. Agent đổi tên model dịch: `m="${MT_MODELS_DIR:-models}"; mv -n "$m/Hy-MT2-1.8B-Q8_0.gguf" "$m/mt-original.gguf"`. Người bấm Bắt đầu. Expected: lỗi `modelMissing`. Agent trả lại: `mv -n "$m/mt-original.gguf" "$m/Hy-MT2-1.8B-Q8_0.gguf"`.
-6. Ca bỏ cuộc thật bên trong giám sát (Q4-1 của review 02 lần 4). Trước hết `pgrep -l -f 'asr-worker|llama-server'` phải không in gì: tiến trình phụ đang chạy (người đã mở cửa sổ chính, Đ19) thì bước chuẩn bị trả về ngay và ca này không đạt; khi đó người thoát app rồi mở lại như mục 3, không mở cửa sổ chính. Agent chuyển model nhận dạng sang chỗ khác và đặt vào chỗ cũ một file rác cùng tên; `mv -n` không bao giờ đè lên model thật nếu bước này bị chạy lại:
+6. Ca bỏ cuộc thật bên trong giám sát (Q4-1 của review 02 lần 4). Trước hết `pgrep -l -f 'asr-worker|llama-server'` phải không in gì: tiến trình phụ đang chạy (chạy sẵn khi mở cửa sổ chính, Đ19) thì bước chuẩn bị trả về ngay và ca này không đạt. Nếu `pgrep` có in, người thoát app ở menu khay, agent đặt file rác như dưới đây **trước**, rồi người mở lại như mục 3: lần chạy sẵn khi mở cửa sổ chính tự bỏ cuộc vì model rác, và bấm Bắt đầu vẫn ra đúng Expected. Agent chuyển model nhận dạng sang chỗ khác và đặt vào chỗ cũ một file rác cùng tên; `mv -n` không bao giờ đè lên model thật nếu bước này bị chạy lại:
    ```bash
    m="${MT_MODELS_DIR:-models}"
    mv -n "$m/ggml-large-v3-turbo-q5_0.bin" "$m/turbo-original.bin"
    [ -e "$m/turbo-original.bin" ] && [ ! -e "$m/ggml-large-v3-turbo-q5_0.bin" ] && head -c 1048576 /dev/urandom > "$m/ggml-large-v3-turbo-q5_0.bin"
    ```
    Người bấm Bắt đầu ở menu khay. Expected: lỗi `modelBroken` (bản GPU nạp lỗi thì chạy bằng CPU, nạp lỗi nữa thì bỏ cuộc).
-7. Agent trả model thật về: `m="${MT_MODELS_DIR:-models}"; rm "$m/ggml-large-v3-turbo-q5_0.bin" && mv -n "$m/turbo-original.bin" "$m/ggml-large-v3-turbo-q5_0.bin"`. Người bấm Bắt đầu, không khởi động lại app. Expected: phiên chạy, phụ đề hiện, màn hình chính không còn "Đang chạy bằng CPU" (thử lại sau khi bỏ cuộc là bắt đầu lại từ đầu, kể cả GPU: R3-1 của review 02 lần 3, Q4-2 của review 02 lần 4).
+7. Agent trả model thật về: `m="${MT_MODELS_DIR:-models}"; [ -e "$m/turbo-original.bin" ] && rm "$m/ggml-large-v3-turbo-q5_0.bin" && mv -n "$m/turbo-original.bin" "$m/ggml-large-v3-turbo-q5_0.bin"`. Người bấm Bắt đầu, không khởi động lại app. Expected: phiên chạy, phụ đề hiện, màn hình chính không còn "Đang chạy bằng CPU" (thử lại sau khi bỏ cuộc là bắt đầu lại từ đầu, kể cả GPU: R3-1 của review 02 lần 3, Q4-2 của review 02 lần 4).
 
 - [ ] **Step 9: Thoát, Force Quit và tắt khi rảnh**
 - Thoát ở menu khay. Expected: `pgrep -l -f 'asr-worker|llama-server'` không in gì (dòng 61, 305).
@@ -6959,7 +6959,7 @@ Expected: ba file `.exe` và các DLL của ggml và llama.
 - Cắm, rút tai nghe trong lúc dịch: phụ đề tiếp tục sau tối đa khoảng 2 giây.
 - Tạm dừng video lâu, không ai nói: câu cuối vẫn được chốt, thời gian phụ đề không lệch (dòng 304).
 - Cho máy ngủ 5 phút trong lúc dịch rồi mở lại: phụ đề tiếp tục, hoặc phiên dừng với lỗi có câu rõ ràng; không treo.
-- Máy có GPU: `asr-worker-vulkan` chạy; log của `asr-worker` báo `backend=vulkan`.
+- Máy có GPU: `asr-worker-vulkan` chạy; log của `asr-worker` báo `backend=vulkan`. Log của `llama-server` (`llama-server.log` trong thư mục log) có dòng offload lên thiết bị Vulkan (ví dụ `offloaded N/N layers to GPU`): llama.cpp không thấy GPU thì tự chạy CPU mà không báo lỗi, và app không biết (N5 của lần kiểm 6).
 - Lần đầu chạy `--probe` khi Windows Defender đang quét (Windows Security › Virus & threat protection › Quick scan, bấm ngay trước khi mở app với `binaries\` vừa chép): app vẫn chọn được bản GPU hay CPU, hoặc lần này chạy CPU và lần mở sau dò lại; không treo.
 - Máy không có Vulkan (máy ảo): app vẫn mở được, dùng `asr-worker-cpu`, `llama-server` chạy bằng CPU, màn hình chính báo "Đang chạy bằng CPU" (dòng 236, 302; C3).
 - Thả một file lạ `ggml-cpu-x.dll` (chép bất kỳ DLL nào và đổi tên) vào thư mục chứa tiến trình phụ của bản đang chạy, rồi bấm Bắt đầu: lỗi `sidecarTampered`; xóa file đó thì chạy lại được (QĐ17).
