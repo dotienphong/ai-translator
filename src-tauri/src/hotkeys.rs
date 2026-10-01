@@ -36,7 +36,7 @@ impl HotkeyAction {
 pub enum HotkeyError {
     #[error("không đọc được phím tắt")]
     Invalid,
-    #[error("phím tắt phải có ít nhất một phím bổ trợ (Ctrl, Alt, Shift, Cmd hoặc Win)")]
+    #[error("phím tắt phải có ít nhất một trong các phím Ctrl, Alt, Cmd hoặc Win (chỉ Shift thì chưa đủ)")]
     NoModifier,
     #[error("phím tắt đang dùng cho việc khác của app")]
     Duplicate,
@@ -54,7 +54,9 @@ pub fn parse(accelerator: &str) -> Result<(Shortcut, String), HotkeyError> {
         return Err(HotkeyError::Invalid);
     }
     let shortcut: Shortcut = accelerator.parse().map_err(|_| HotkeyError::Invalid)?;
-    let modifiers = Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT | Modifiers::SUPER;
+    // Shift không tính: Shift+chữ là cách gõ chữ hoa, đăng ký làm phím tắt toàn cục thì người dùng không
+    // gõ được chữ đó ở mọi app.
+    let modifiers = Modifiers::CONTROL | Modifiers::ALT | Modifiers::SUPER;
     if (shortcut.mods & modifiers).is_empty() {
         return Err(HotkeyError::NoModifier);
     }
@@ -83,7 +85,7 @@ fn canonical(shortcut: &Shortcut) -> String {
     parts.join("+")
 }
 
-/// Kiểm cả bộ phím tắt: mỗi phím đọc được, có phím bổ trợ, và không trùng phím của việc khác.
+/// Kiểm cả bộ phím tắt: mỗi phím đọc được, có Ctrl, Alt hoặc Super, và không trùng phím của việc khác.
 /// Lỗi trả về việc gặp lỗi đầu tiên theo thứ tự của `bindings`.
 pub fn check_all(bindings: &[(HotkeyAction, &str)]) -> Result<(), (HotkeyAction, HotkeyError)> {
     let mut seen: Vec<String> = Vec::with_capacity(bindings.len());
@@ -233,9 +235,34 @@ mod tests {
     }
 
     #[test]
+    fn rejects_accelerators_longer_than_max_len_even_if_parsable() {
+        // Bộ đọc của plugin bỏ khoảng trắng quanh từng phím, nên chuỗi này đọc được nếu không giới hạn độ dài.
+        let padded = format!("Ctrl+{}Alt+T", " ".repeat(70));
+        assert!(padded.len() > MAX_LEN);
+        assert!(
+            padded.parse::<Shortcut>().is_ok(),
+            "chuỗi phải đọc được để test đúng giới hạn"
+        );
+        assert_eq!(canonical_of(&padded), Err(HotkeyError::Invalid));
+    }
+
+    #[test]
     fn requires_a_modifier() {
         assert_eq!(canonical_of("T"), Err(HotkeyError::NoModifier));
         assert_eq!(canonical_of("F10"), Err(HotkeyError::NoModifier));
+    }
+
+    #[test]
+    fn shift_alone_is_not_enough() {
+        // Shift+chữ là cách gõ chữ hoa: đăng ký làm phím tắt toàn cục thì không gõ được chữ đó ở mọi app.
+        assert_eq!(canonical_of("Shift+T"), Err(HotkeyError::NoModifier));
+        assert_eq!(canonical_of("Shift+F10"), Err(HotkeyError::NoModifier));
+        assert_eq!(canonical_of("Shift+Digit1"), Err(HotkeyError::NoModifier));
+        assert_eq!(canonical_of("Ctrl+Shift+T").unwrap(), "Ctrl+Shift+T");
+        assert_eq!(canonical_of("Alt+Shift+T").unwrap(), "Alt+Shift+T");
+        assert_eq!(canonical_of("Shift+Super+T").unwrap(), "Shift+Super+T");
+        assert_eq!(canonical_of("Alt+T").unwrap(), "Alt+T");
+        assert_eq!(canonical_of("Super+T").unwrap(), "Super+T");
     }
 
     #[test]
@@ -453,5 +480,31 @@ mod tests {
             Ok("Ctrl+Alt+K".into())
         );
         assert_eq!(*registrar.calls.borrow(), ["+Ctrl+Alt+K"]);
+    }
+
+    #[test]
+    fn invalid_shortcut_for_an_action_without_one_reports_it_inactive() {
+        let registrar = FakeRegistrar::default();
+        registrar.refuse("Ctrl+Alt+L");
+        let mut bound = Bound::default();
+        register_all(&registrar, &mut bound, &DEFAULTS);
+        registrar.calls.borrow_mut().clear();
+        // Việc chưa có phím tắt nào (hệ điều hành từ chối lúc khởi động), người dùng nhập phím sai.
+        for (accelerator, error) in [
+            ("L", HotkeyError::NoModifier),
+            ("Ctrl+Alt+", HotkeyError::Invalid),
+            ("Ctrl+Alt+T", HotkeyError::Duplicate),
+        ] {
+            assert_eq!(
+                rebind(&registrar, &mut bound, &DEFAULTS, HotkeyAction::ToggleLock, accelerator),
+                Err(RebindError {
+                    error,
+                    old_active: false
+                }),
+                "{accelerator}"
+            );
+        }
+        assert!(registrar.calls.borrow().is_empty());
+        assert_eq!(bound.get(HotkeyAction::ToggleLock), None);
     }
 }

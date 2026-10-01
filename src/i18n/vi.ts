@@ -76,7 +76,7 @@ export const vi: Record<MessageKey, string> = {
   "hotkeys.cancel": "Hủy",
   "hotkeys.press": "Bấm tổ hợp phím mới, hoặc Esc để hủy",
   "hotkeys.failed": "Chưa đăng ký được: có thể app khác đang dùng.",
-  "hotkeys.hint": "Phím tắt dùng được ở mọi app. Hãy dùng ít nhất một phím Ctrl, Alt, Shift hoặc {super}.",
+  "hotkeys.hint": "Phím tắt dùng được ở mọi app. Hãy dùng ít nhất một phím Ctrl, Alt hoặc {super}; chỉ có Shift thì chưa đủ.",
 
   "about.version": "Phiên bản {version}",
   "about.openLogs": "Mở thư mục log",
@@ -126,7 +126,7 @@ export const vi: Record<MessageKey, string> = {
   "error.readOnly": "Không đổi được cài đặt này ở đây.",
   "error.notObject": "Yêu cầu thay đổi không hợp lệ.",
   "error.hotkeyInvalid": "Không dùng được tổ hợp phím này.",
-  "error.hotkeyNoModifier": "Hãy dùng ít nhất một phím Ctrl, Alt, Shift hoặc Cmd/Win.",
+  "error.hotkeyNoModifier": "Hãy dùng ít nhất một phím Ctrl, Alt hoặc Cmd/Win. Chỉ có Shift thì chưa đủ.",
   "error.hotkeyDuplicate": "Tổ hợp này đang dùng cho việc khác.",
   "error.hotkeyRegisterFailed": "Hệ thống không cho dùng tổ hợp này; có thể app khác đang giữ.",
   "error.autostartFailed": "Không đổi được chế độ khởi động cùng hệ thống.",

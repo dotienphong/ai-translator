@@ -76,7 +76,7 @@ export const en = {
   "hotkeys.cancel": "Cancel",
   "hotkeys.press": "Press the new shortcut, or Esc to cancel",
   "hotkeys.failed": "Not registered: another app may be using it.",
-  "hotkeys.hint": "Shortcuts work in every app. Use at least one of Ctrl, Alt, Shift or {super}.",
+  "hotkeys.hint": "Shortcuts work in every app. Use at least one of Ctrl, Alt or {super}; Shift alone is not enough.",
 
   "about.version": "Version {version}",
   "about.openLogs": "Open log folder",
@@ -126,7 +126,7 @@ export const en = {
   "error.readOnly": "This setting cannot be changed here.",
   "error.notObject": "The change request is not valid.",
   "error.hotkeyInvalid": "This key combination is not supported.",
-  "error.hotkeyNoModifier": "Use at least one of Ctrl, Alt, Shift or Cmd/Win.",
+  "error.hotkeyNoModifier": "Use at least one of Ctrl, Alt or Cmd/Win. Shift alone is not enough.",
   "error.hotkeyDuplicate": "This shortcut is already used for another action.",
   "error.hotkeyRegisterFailed": "The system refused this shortcut; another app may be using it.",
   "error.autostartFailed": "Could not change launch at login.",
