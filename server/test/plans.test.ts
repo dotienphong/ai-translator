@@ -65,6 +65,33 @@ describe("luật mua thêm và đổi gói (§6.8)", () => {
     });
   });
 
+  it("mua thêm cùng gói ở biên hết hạn: hết hạn đúng lúc này là đã hết (chu kỳ mới); còn 1 giây là còn hạn (giữ chu kỳ)", () => {
+    expect(computeGrant(plans, lic("pro", 0), "pro", "VND", T0)).toEqual({
+      plan: "pro",
+      expires_at: T0 + 30 * DAY,
+      cycle_anchor: T0,
+      kind: "extend",
+      converted_days: 0,
+    });
+    expect(computeGrant(plans, { ...lic("pro", 0), expires_at: T0 + 1 }, "pro", "VND", T0)).toEqual({
+      plan: "pro",
+      expires_at: T0 + 1 + 30 * DAY,
+      cycle_anchor: T0 - 10 * DAY,
+      kind: "extend",
+      converted_days: 0,
+    });
+  });
+
+  it("mua thêm cùng gói khi đã hết hạn 10 ngày: 30 ngày từ hiện tại, không cộng nối hạn cũ", () => {
+    expect(computeGrant(plans, lic("pro_x2", -10), "pro_x2", "VND", T0)).toEqual({
+      plan: "pro_x2",
+      expires_at: T0 + 30 * DAY,
+      cycle_anchor: T0,
+      kind: "extend",
+      converted_days: 0,
+    });
+  });
+
   it("mua thêm cùng gói khi đã hết hạn: 30 ngày từ hiện tại, cycle_anchor = hiện tại", () => {
     expect(computeGrant(plans, lic("pro_x5", -3), "pro_x5", "VND", T0)).toMatchObject({
       expires_at: T0 + 30 * DAY,
@@ -102,6 +129,16 @@ describe("luật mua thêm và đổi gói (§6.8)", () => {
     expect(computeGrant(plans, lic("pro", 3), "pro_x2", "VND", T0).converted_days).toBe(1);
   });
 
+  it("phép tính số nguyên chính xác: X5 (500.000 đ) còn 195 ngày đổi sang gói 3.000 đ ra đúng 32.500 ngày", () => {
+    // 195 × 500.000 / 3.000 = 32.500 đúng. Tính bằng số thực (195 × (500.000 / 3.000)) ra 32.499,99… và làm tròn xuống thành 32.499.
+    const cheap = structuredClone(plans);
+    cheap.pro.prices.VND = 3000;
+    expect(computeGrant(cheap, lic("pro_x5", 195), "pro", "VND", T0)).toMatchObject({
+      converted_days: 32500,
+      expires_at: T0 + (30 + 32500) * DAY,
+    });
+  });
+
   it("lên X5 và xuống từ X5", () => {
     expect(computeGrant(plans, lic("pro_x2", 25), "pro_x5", "VND", T0)).toMatchObject({ converted_days: 7, expires_at: T0 + 37 * DAY });
     expect(computeGrant(plans, lic("pro_x5", 2), "pro", "VND", T0)).toMatchObject({ converted_days: 20, expires_at: T0 + 50 * DAY });
@@ -117,6 +154,14 @@ describe("luật mua thêm và đổi gói (§6.8)", () => {
     });
     // Hết hạn đúng lúc này cũng là hết hạn.
     expect(computeGrant(plans, lic("pro", 0), "pro_x2", "VND", T0).converted_days).toBe(0);
+    // Đã hết hạn 10 ngày: không quy đổi số âm, hạn mới tính từ hiện tại.
+    expect(computeGrant(plans, lic("pro_x5", -10), "pro", "VND", T0)).toEqual({
+      plan: "pro",
+      expires_at: T0 + 30 * DAY,
+      cycle_anchor: T0,
+      kind: "change",
+      converted_days: 0,
+    });
   });
 
   it("giá lấy theo bảng hiện hành", () => {

@@ -286,6 +286,18 @@ describe("activate", () => {
     for (let i = 0; i < 10; i++) await activate(1, "203.0.113.50");
     expect((await activate(1, "203.0.113.50")).status).toBe(429);
   });
+
+  it("key sai định dạng hay không tồn tại: mỗi lần tính một lần thất bại của IP; key đúng thì không", async () => {
+    const { w, activate } = await setup();
+    const failures = () => env.DB.prepare("SELECT SUM(count) AS n FROM rate_limits WHERE bucket LIKE 'failure_ip:%'").first();
+    const body = { device_id_hash: await device(1), device_label: "Máy 1" };
+    expect((await w.call("POST", "/v1/licenses/activate", { ...body, key: "abc" })).status).toBe(400);
+    expect(await failures()).toEqual({ n: 1 });
+    expect((await w.call("POST", "/v1/licenses/activate", { ...body, key: UNKNOWN_KEY })).status).toBe(404);
+    expect(await failures()).toEqual({ n: 2 });
+    expect((await activate(1)).status).toBe(200);
+    expect(await failures()).toEqual({ n: 2 });
+  });
 });
 
 describe("quota_fresh (QĐ35)", () => {
@@ -592,6 +604,19 @@ describe("deactivate", () => {
     expect((await activate(1)).status).toBe(200);
     expect((await activate(4)).status).toBe(423);
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM activations").first()).toEqual({ n: 3 });
+  });
+
+  it("quá 10 lần mỗi giờ mỗi IP thì 429 (deactivate_ip), kể cả với key và activation hợp lệ; IP khác vẫn gỡ được", async () => {
+    const { w, activate, licenseKey } = await setup();
+    const a = await activate(1);
+    const ip = { "cf-connecting-ip": "203.0.113.51" };
+    const call = (headers: Record<string, string>) =>
+      w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: a.body.activation_id }, headers);
+    for (let i = 0; i < 10; i++) expect((await call(ip)).status).toBe(200);
+    const res = await call(ip);
+    expect(res).toMatchObject({ status: 429, body: { error: "rate_limited" } });
+    expect(res.headers.get("retry-after")).toBe("3600");
+    expect((await call({ "cf-connecting-ip": "203.0.113.52" })).status).toBe(200);
   });
 
   it("gỡ lại activation đã gỡ vẫn 200; activation của key khác thì 404 và tính là thất bại", async () => {

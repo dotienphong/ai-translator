@@ -51,6 +51,18 @@ describe("POST /v1/licenses/recover", () => {
     expect(res.status).toBe(429);
   });
 
+  it("quá 10 lần mỗi giờ mỗi IP thì 429 (recover_ip), dù mỗi lần một email khác; IP khác vẫn được", async () => {
+    const w = makeWorld();
+    const ip = { "cf-connecting-ip": "203.0.113.70" };
+    for (let i = 0; i < 10; i++) {
+      expect((await w.call("POST", "/v1/licenses/recover", { email: `u${i}@example.com` }, ip)).status).toBe(200);
+    }
+    const res = await w.call("POST", "/v1/licenses/recover", { email: "u10@example.com" }, ip);
+    expect(res).toMatchObject({ status: 429, body: { error: "rate_limited" } });
+    expect(res.headers.get("retry-after")).toBe("3600");
+    expect((await w.call("POST", "/v1/licenses/recover", { email: "u10@example.com" }, { "cf-connecting-ip": "203.0.113.71" })).status).toBe(200);
+  });
+
   it("email sai định dạng thì 400", async () => {
     const res = await makeWorld().call("POST", "/v1/licenses/recover", { email: "abc" });
     expect(res).toMatchObject({ status: 400, body: { error: "invalid_request", field: "email" } });

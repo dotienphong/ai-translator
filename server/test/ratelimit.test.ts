@@ -33,7 +33,10 @@ describe("giới hạn tần suất", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     for (let i = 0; i < 59; i++) await noteFailure(env, "203.0.113.9", T, "activate");
     expect(await failureBlock(env, "203.0.113.9", T + 10)).toBe(0);
-    for (let i = 0; i < 6; i++) await noteFailure(env, "203.0.113.9", T, "activate");
+    // Đúng lần thứ 60 là bị chặn (ngưỡng tính cả lần chạm, `>=`).
+    await noteFailure(env, "203.0.113.9", T, "activate");
+    expect(await failureBlock(env, "203.0.113.9", T + 10)).toBe(3590);
+    for (let i = 0; i < 5; i++) await noteFailure(env, "203.0.113.9", T, "activate");
     expect(await failureBlock(env, "203.0.113.9", T + 10)).toBe(3590);
     expect(await failureBlock(env, "198.51.100.1", T + 10)).toBe(0);
     expect(await failureBlock(env, "203.0.113.9", T + 3600)).toBe(0);

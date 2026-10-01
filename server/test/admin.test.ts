@@ -121,10 +121,30 @@ describe("chống CSRF", () => {
     expect(revoked).toBeNull();
   });
 
+  it("content-type gần giống application/json (jsonx, +json, text/json, json đứng sau) thì 415; có charset thì được", async () => {
+    for (const type of ["application/jsonx", "application/json-patch+json", "application/merge-patch+json", "text/json", "text/plain; application/json"]) {
+      const { res, revoked } = await revokeWith({ headers: { "content-type": type }, rawBody: '{"note":"x"}' });
+      expect(res.status, type).toBe(415);
+      expect(revoked).toBeNull();
+    }
+    for (const type of ["application/json; charset=utf-8", "Application/JSON"]) {
+      const { res } = await revokeWith({ headers: { "content-type": type }, rawBody: '{"note":"x"}' });
+      expect(res.status, type).toBe(200);
+    }
+  });
+
   it("Origin khác origin của Worker admin thì 403", async () => {
     const { res, revoked } = await revokeWith({ headers: { origin: "https://evil.example" } });
     expect(res).toMatchObject({ status: 403, body: { error: "forbidden" } });
     expect(revoked).toBeNull();
+  });
+
+  it("Origin chỉ giống phần đầu (admin.test.evil.com, admin.test:8443) hay khác scheme thì 403", async () => {
+    for (const origin of ["https://admin.test.evil.com", "https://admin.test:8443", "http://admin.test", "null"]) {
+      const { res, revoked } = await revokeWith({ headers: { origin } });
+      expect(res.status, origin).toBe(403);
+      expect(revoked).toBeNull();
+    }
   });
 
   it("Sec-Fetch-Site cross-site hay same-site thì 403", async () => {
@@ -402,6 +422,25 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
     expect(again.status).toBe(200);
   });
 
+  it("giữ device_id_hash (đã băm): máy đó kích hoạt lại thì dùng lại đúng activation cũ, không tốn suất mới", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy({ email: "erase@example.com" });
+    const hash = await sha256Hex("d1");
+    const first = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: hash, device_label: "MacBook của An" });
+    await w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: first.body.activation_id });
+    await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } });
+    expect((await env.DB.prepare("SELECT id, device_id_hash, device_label FROM activations").all()).results).toEqual([
+      { id: first.body.activation_id, device_id_hash: hash, device_label: null },
+    ]);
+    w.clock.now = T0 + 3600;
+    const again = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: hash, device_label: "Máy mới đặt tên" });
+    expect(again).toMatchObject({
+      status: 200,
+      body: { activation_id: first.body.activation_id, activation_created_at: first.body.activation_created_at },
+    });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM activations").first()).toEqual({ n: 1 });
+  });
+
   it("nhật ký cùng batch với lệnh xóa: ghi nhật ký lỗi thì không xóa gì", async () => {
     const { w, adminCall } = makeAdmin();
     await w.buy({ email: "erase@example.com" });
@@ -604,6 +643,10 @@ describe("đăng ký webhook với PayOS", () => {
     for (const bad of [
       "https://evil.example/v1/webhooks/payos",
       `${API_ORIGIN}/v1/webhooks/payos?x=1`,
+      `${API_ORIGIN}/v1/webhooks/payos#x`,
+      "https://mt-license-staging.example.workers.dev.evil.com/v1/webhooks/payos",
+      "https://evil.com/mt-license-staging.example.workers.dev/v1/webhooks/payos",
+      `${API_ORIGIN}:8443/v1/webhooks/payos`,
       "https://user:pass@mt-license-staging.example.workers.dev/v1/webhooks/payos",
       "https://user@mt-license-staging.example.workers.dev/v1/webhooks/payos",
       `${API_ORIGIN}/khac`,

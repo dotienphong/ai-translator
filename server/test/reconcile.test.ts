@@ -65,6 +65,80 @@ describe("đối soát mỗi 5 phút", () => {
     expect((await reconcile(w.env, w.deps)).checked).toBe(0);
   });
 
+  it("biên 240 giây trong giờ đầu: hỏi lại sau đúng 240 giây, chưa tới thì chưa hỏi", async () => {
+    const w = makeWorld();
+    await newOrder(w);
+    w.clock.now = T0 + 300;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(1);
+    w.clock.now = T0 + 300 + 239;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(0);
+    w.clock.now = T0 + 300 + 240;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(1);
+  });
+
+  it("biên 3600 giây: giây thứ 3600 sau khi tạo đơn vẫn là giờ đầu (hỏi sau 240 giây), từ giây 3601 là mỗi giờ (3540 giây)", async () => {
+    const w = makeWorld();
+    await newOrder(w);
+    w.clock.now = T0 + 3600 - 240;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(1);
+    w.clock.now = T0 + 3600;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(1);
+    w.clock.now = T0 + 3600 + 240;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(0);
+    w.clock.now = T0 + 3600 + 3539;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(0);
+    w.clock.now = T0 + 3600 + 3540;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(1);
+  });
+
+  it("đơn hỏi lỗi sau giờ đầu: chỉ hỏi lại sau một giờ, không hỏi mỗi 5 phút", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const w = makeWorld();
+    await newOrder(w);
+    w.payos.down = true;
+    w.clock.now = T0 + 2 * 3600;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 1, errors: 1 });
+    w.payos.down = false;
+    const gets = () => w.payos.requests.filter((r) => r.method === "GET").length;
+    const before = gets();
+    for (const t of [300, 600, 1800, 3539]) {
+      w.clock.now = T0 + 2 * 3600 + t;
+      expect((await reconcile(w.env, w.deps)).checked).toBe(0);
+    }
+    expect(gets()).toBe(before);
+    w.clock.now = T0 + 2 * 3600 + 3540;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(1);
+  });
+
+  it("đơn chuyển thiếu quá 24 giờ thì thôi hỏi PayOS (vẫn giữ underpaid)", async () => {
+    const w = makeWorld();
+    const under = await newOrder(w);
+    w.payos.pay(under, 100);
+    w.clock.now = T0 + DAY;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(1);
+    expect(await status(under)).toBe("underpaid");
+    const gets = w.payos.requests.filter((r) => r.method === "GET").length;
+    w.clock.now = T0 + DAY + 1;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(0);
+    w.clock.now = T0 + 2 * DAY;
+    expect((await reconcile(w.env, w.deps)).checked).toBe(0);
+    expect(w.payos.requests.filter((r) => r.method === "GET")).toHaveLength(gets);
+    expect(await status(under)).toBe("underpaid");
+  });
+
+  it("đối soát dọn bộ đếm cũ (pruneRateLimits) mỗi lần chạy, kể cả khi không có đơn nào", async () => {
+    const w = makeWorld();
+    await env.DB.prepare("INSERT INTO rate_limits (bucket, window_start, count) VALUES ('cu', ?, 1), ('moi', ?, 1)")
+      .bind(T0 - 3 * 3600, T0)
+      .run();
+    await env.DB.prepare("INSERT INTO ops_alerts (kind, window_start, count, notified_count) VALUES ('license_locked', ?, 1, 1)")
+      .bind(T0 - 8 * DAY)
+      .run();
+    await reconcile(w.env, w.deps);
+    expect((await env.DB.prepare("SELECT bucket FROM rate_limits").all()).results).toEqual([{ bucket: "moi" }]);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM ops_alerts").first()).toEqual({ n: 0 });
+  });
+
   it("PayOS báo EXPIRED hay CANCELLED thì ghi nhận và thôi hỏi", async () => {
     const w = makeWorld();
     const a = await newOrder(w);
