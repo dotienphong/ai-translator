@@ -576,6 +576,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **"Hiện tại"** là thời điểm thanh toán do PayOS báo (`transactionDateTime`), kẹp trong thời hạn của link thanh toán (từ lúc tạo đơn tới `expiredAt`). Không làm tròn về đầu ngày. Vì vậy webhook đến chậm hay đối soát sau vài giờ vẫn cho cùng kết quả.
   - `transactionDateTime` có thể là giờ Việt Nam không kèm múi giờ (dạng `2026-10-01 14:30:00`), và tài liệu PayOS không ghi múi giờ. Server parse giá trị không có múi giờ theo GMT+7, và nhận cả ISO 8601 có múi giờ. Đây là giả định cần kiểm (§14, giả định 11).
   - Admin cấp tay dùng thời điểm thao tác, kể cả với đơn `underpaid` mà khách đã chuyển bù.
+  - **"Hiện tại" khi áp đơn không được sớm hơn `cycle_anchor` đang có của license.** Luật này dùng khi các đơn được áp không theo thứ tự thanh toán: đơn trả sớm hơn mà được xử lý sau một đơn trả muộn hơn (ví dụ webhook tới không theo thứ tự) thì tính tại `cycle_anchor` của license. Nhờ vậy `cycle_anchor` không bao giờ lùi.
 - **License mới:** `plan` là gói của đơn; `expires_at` = hiện tại + 30 ngày; `cycle_anchor` = hiện tại.
 - **Mua thêm cùng gói:** `expires_at` cộng 30 ngày, tính từ max(hiện tại, `expires_at`). `cycle_anchor` giữ nguyên; nếu license đã hết hạn thì `cycle_anchor` = hiện tại.
 - **Đổi gói khi license còn hạn** (lên gói hay xuống gói đều làm như nhau):
@@ -608,8 +609,14 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 | `POST /v1/licenses/deactivate` `{key, activation_id}` | Gỡ kích hoạt để chuyển máy. Gọi được từ chính máy đó, hoặc từ máy mới khi key đã đủ 2 máy (gỡ từ xa). Mỗi lần gỡ tính vào luật khóa tạm ở §10.2. **Gỡ không xóa dòng activation**, chỉ đánh dấu đã gỡ và trả lại suất, để kích hoạt lại cùng máy dùng lại đúng activation đó. |
 | `POST /v1/licenses/recover` `{email}` | Gửi lại mọi key còn hiệu lực của email này vào chính email đó. Luôn trả `200`, để không lộ email nào có key. Server tra và gửi thư sau khi đã trả lời, để thời gian phản hồi cũng không lộ. Email không có key thì không gửi gì. Có giới hạn tần suất (§10.2). |
 
-- **Trạng thái đơn:** `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed`, theo trạng thái của PayOS. `PAID` mà thiếu tiền thì coi là `underpaid`. Thêm một trạng thái của server: `paid_needs_review` (dưới đây).
-- **License đã bị thu hồi mà nhận được tiền** của một đơn gia hạn hay đổi gói: server không áp đơn. Đơn chuyển sang `paid_needs_review`, server tạo cảnh báo `order_needs_review` cho người vận hành (§10.2), và admin xử lý tay (ví dụ hoàn tiền ngoài hệ thống, hoặc cấp lại).
+- **Trạng thái đơn:**
+  - theo trạng thái của PayOS: `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed`. `PAID` mà thiếu tiền thì coi là `underpaid`;
+  - của server, không phải của PayOS: `paid_needs_review` và `refunded` (dưới đây).
+  - Webhook gửi lại, đối soát hay cấp tay không bao giờ áp lại đơn đã ở `paid`, `paid_needs_review` hay `refunded`.
+- **License đã bị thu hồi mà nhận được tiền** của một đơn gia hạn hay đổi gói:
+  - server không áp đơn. Đơn chuyển sang `paid_needs_review`, server tạo cảnh báo `order_needs_review` cho người vận hành (§10.2);
+  - `GET /v1/orders` trả `status: "paid_needs_review"`, không có key; app báo "đã nhận tiền, đang chờ hỗ trợ xử lý" kèm cách liên hệ;
+  - admin xử lý bằng thao tác `resolve` ("Công cụ hỗ trợ" bên dưới). Sau đó đơn thành `paid` (cấp key mới) hoặc `refunded` (đã hoàn tiền).
 - **Dải số đơn theo môi trường:**
   - staging dùng `order_code` từ 1 tới 999.999; production từ 1.000.001. Hai môi trường không trùng số, kể cả khi dùng chung một kênh PayOS;
   - trần là 9.999.999, để mô tả đơn `AT<order_code>` (`AT` cộng tối đa 7 chữ số) không quá 9 ký tự (§14, giả định 7). Vượt trần thì checkout trả `503`, không gọi PayOS.
@@ -628,6 +635,9 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - Tra cứu theo email hoặc `order_code`, gửi lại key.
 - Mở khóa key bị khóa tạm (§10.2).
 - Cấp hoặc gia hạn tay, ví dụ khi khách chuyển thiếu rồi chuyển bù. Gia hạn tay một license **đã hết hạn** thì đặt lại `cycle_anchor` và mở cửa sổ `quota_fresh`, như khi mua thêm cùng gói (§6.8, "Mua thêm và đổi gói").
+- **Xử lý đơn `paid_needs_review`:** `POST /admin/orders/{order_code}/resolve`, cần `note`. `action` nhận một trong hai giá trị:
+  - `grant_new_license`: cấp một license mới theo gói của đơn (key mới, 30 ngày từ lúc thao tác), gửi thư chứa key; license đã thu hồi giữ nguyên. Đơn thành `paid`;
+  - `refunded`: ghi nhận là đã hoàn tiền ở bên ngoài hệ thống. Đơn thành `refunded`.
 - Gỡ activation, thu hồi key. Admin gỡ activation cũng chỉ đánh dấu đã gỡ, không xóa dòng activation, giống người dùng tự gỡ.
 - **Reset hạn mức của máy:** tăng `quota_epoch` của một activation. Ở lần `validate` sau, máy nhận epoch mới (cửa sổ `quota_fresh` 15 phút tính từ token đầu tiên cấp sau khi tăng), nên bắt đầu bộ đếm mới (§6.8, "Hạn mức"). Chỉ làm khi khách liên hệ, ví dụ khi máy mất bản ghi bộ đếm.
 - **Xóa hoặc ẩn danh dữ liệu cá nhân theo email** (§10.1). Thao tác này chỉ chạy khi người vận hành tự gọi, ví dụ khi khách yêu cầu xóa; không bao giờ chạy tự động.
