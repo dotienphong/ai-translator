@@ -3,10 +3,12 @@
 
 pub mod hotkeys;
 pub mod i18n;
+pub mod navigation;
 pub mod overlay;
 pub mod quit_guard;
 pub mod security;
 pub mod settings;
+pub mod system;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
