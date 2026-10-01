@@ -1,6 +1,7 @@
 // Worker API công khai (spec §6.8). Route nhận phụ thuộc qua `deps` để test thay được PayOS, Resend, đồng hồ.
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { registerCheckout } from "./checkout";
 import { type Deps, type DepsFactory, realDeps } from "./deps";
 import type { ApiEnv } from "./env";
 import { fail } from "./http";
@@ -17,6 +18,7 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
   });
   app.use("/v1/*", bodyLimit({ maxSize: 16 * 1024, onError: (c) => fail(c, 413, "invalid_request") }));
   app.get("/v1/health", (c) => c.json({ ok: true }));
+  registerCheckout(app);
   app.notFound((c) => fail(c, 404, "not_found"));
   app.onError((err, c) => {
     console.error(JSON.stringify({ event: "unhandled", name: err.name, message: err.message }));
