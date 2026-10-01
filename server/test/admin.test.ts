@@ -433,7 +433,7 @@ describe("đơn paid_needs_review: license đã thu hồi mà nhận được ti
     const { adminCall, orderCode } = await needsReview();
     expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "x" } })).toEqual({
       status: 409,
-      body: { error: "already_settled", status: "paid_needs_review" },
+      body: { error: "needs_review", status: "paid_needs_review" },
     });
     expect(await orderStatus(orderCode)).toEqual({ status: "paid_needs_review" });
   });
@@ -446,9 +446,14 @@ describe("đơn paid_needs_review: license đã thu hồi mà nhận được ti
     w.payos.pay(orderCode, 1000);
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode, 1000));
     await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0).run();
-    expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "chuyển bù" } })).toMatchObject({
+    // Cùng nhãn với lần cấp tay sau đó và với kết quả của webhook (FulfilResult): needs_review.
+    expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "chuyển bù" } })).toEqual({
       status: 409,
-      body: { error: "order_needs_review" },
+      body: { error: "needs_review", status: "paid_needs_review" },
+    });
+    expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "chuyển bù" } })).toEqual({
+      status: 409,
+      body: { error: "needs_review", status: "paid_needs_review" },
     });
     expect(await orderStatus(orderCode)).toEqual({ status: "paid_needs_review" });
   });

@@ -433,6 +433,8 @@ describe("hai đơn của cùng license xác nhận cùng lúc (QĐ32)", () => {
     expect(granted).toMatchObject({ plan: "pro_x2", expiresAt: now + 136 * DAY, convertedDays: 106 });
     expect(await license()).toEqual({ plan: "pro_x2", expires_at: now + 136 * DAY, cycle_anchor: now, version: 2 });
     expect(await statuses()).toEqual([{ status: "paid" }, { status: "paid" }]);
+    // Lần ghi đầu của A bị B chen nên không có tác dụng: không để lại dòng nhật ký nào; mỗi đơn đúng một dòng.
+    expect([await auditCount("license_issued"), await auditCount("license_plan_changed"), await auditCount("license_extended")]).toEqual([1, 2, 0]);
   });
 
   it("hai webhook chạy song song: kết quả bằng đúng việc áp lần lượt hai đơn", async () => {

@@ -63,8 +63,8 @@ function byKind(rows: AlertRow[]): { kind: AlertKind; count: number; since: numb
 }
 
 /**
- * Sự kiện chưa báo mà đã quá 24 giờ (email lỗi suốt một ngày, cron không chạy): không gửi nữa, nhưng ghi log một lần
- * rồi đánh dấu đã báo. Câu đánh dấu có điều kiện `notified_count` vẫn như lúc đọc, nên hai lần cron chồng nhau chỉ ghi một lần.
+ * Sự kiện chưa báo mà đã quá 24 giờ (email lỗi suốt một ngày, cron không chạy): không gửi nữa, nhưng ghi log mức error
+ * một lần rồi đánh dấu đã báo. Câu đánh dấu có điều kiện `notified_count` vẫn như lúc đọc, nên hai lần cron chồng nhau chỉ ghi một lần.
  */
 async function logExpired(db: D1Database, now: number): Promise<void> {
   const { results } = await db
@@ -80,7 +80,7 @@ async function logExpired(db: D1Database, now: number): Promise<void> {
     ),
   );
   for (const g of byKind(results.filter((_, i) => marked[i]?.meta.changes === 1))) {
-    console.warn(JSON.stringify({ event: "alert_expired_unreported", kind: g.kind, count: g.count, since: g.since }));
+    console.error(JSON.stringify({ event: "alert_expired_unreported", kind: g.kind, count: g.count, since: g.since }));
   }
 }
 

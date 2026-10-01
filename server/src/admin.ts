@@ -172,13 +172,14 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       amountPaid: order.amount_paid,
       actor: c.get("actor"),
     });
+    // Đơn đã khép thì không cấp tay được. Nhãn như FulfilResult: already_paid (đơn đã cấp), already_settled (đã hoàn
+    // tiền), needs_review (đang chờ xử lý, QĐ37). Lần cấp tay làm đơn chuyển sang paid_needs_review (license của đơn đã bị
+    // thu hồi) cũng trả needs_review; xử lý bằng /resolve.
     if (granted === "already_settled") {
-      // already_paid: đơn đã cấp. already_settled: đơn đã hoàn tiền hay đang chờ xử lý (QĐ37), không cấp tay được.
       const st = (await loadOrder(c.env.DB, orderCode))?.status ?? "";
-      return c.json({ error: settledResult(st) === "already_paid" ? "already_paid" : "already_settled", status: st }, 409);
+      return c.json({ error: settledResult(st), status: st }, 409);
     }
-    // License của đơn đã bị thu hồi: đơn chuyển sang paid_needs_review; xử lý bằng /resolve (QĐ37).
-    if (granted === "needs_review") return c.json({ error: "order_needs_review" }, 409);
+    if (granted === "needs_review") return c.json({ error: "needs_review", status: "paid_needs_review" }, 409);
     await audit(c.env.DB, {
       at: now,
       actor: c.get("actor"),
