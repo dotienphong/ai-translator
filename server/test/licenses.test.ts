@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { sha256Hex } from "../src/crypto";
 import { verifyToken } from "../src/token";
-import { resetDb } from "./db";
+import { resetDb, wrapDb } from "./db";
 import vectors from "./vectors/token-v1.json";
 import { DAY, makeWorld, T0 } from "./world";
 
@@ -155,6 +155,24 @@ describe("activate", () => {
     const log = await env.DB.prepare("SELECT action FROM audit_log WHERE action = 'license_locked'").first();
     expect(log).not.toBeNull();
     expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
+  });
+
+  it("hai máy mới kích hoạt cùng lúc khi vừa quá ngưỡng: khóa một lần, một dòng nhật ký, một cảnh báo", async () => {
+    const { w, activate, deactivate } = await setup();
+    for (let i = 1; i <= 4; i++) {
+      w.clock.now = T0 + i * DAY;
+      const r = await activate(i);
+      await deactivate(r.body.activation_id as string);
+    }
+    w.clock.now = T0 + 5 * DAY;
+    const results = await Promise.all([activate(5), activate(6), activate(7)]);
+    expect(results.map((r) => r.status)).toEqual([423, 423, 423]);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'license_locked'").first()).toEqual({ n: 1 });
+    expect(await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'license_locked'").first()).toEqual({ n: 1 });
+    // Đã khóa thì lần kích hoạt sau không khóa lại, không đổi locked_at.
+    w.clock.now = T0 + 6 * DAY;
+    expect((await activate(8)).status).toBe(423);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 5 * DAY });
   });
 
   it("gỡ rồi kích hoạt lại cùng một máy nhiều lần: không bị khóa", async () => {
@@ -347,6 +365,21 @@ describe("quota_fresh (QĐ35)", () => {
     });
   });
 
+  it("không có lần tăng epoch đang chờ thì validate không ghi gì vào epoch_window_start (bớt một lần ghi)", async () => {
+    const w0 = wrapDb(env.DB);
+    const w = makeWorld({ DB: w0.db });
+    const { licenseKey } = await w.buy();
+    const a = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await device(1), device_label: "M1" });
+    const epochWrites = () => w0.sql.filter((q) => /UPDATE activations SET epoch_window_start/.test(q)).length;
+    w0.sql.length = 0;
+    w.clock.now = T0 + DAY;
+    expect((await validate(w, licenseKey, a.body.activation_id)).status).toBe(200);
+    expect(epochWrites()).toBe(0);
+    await env.DB.prepare("UPDATE activations SET quota_epoch = 1, epoch_pending = 1").run();
+    expect((await validate(w, licenseKey, a.body.activation_id)).body).toMatchObject({ quota_epoch: 1, quota_fresh: true });
+    expect(epochWrites()).toBe(1);
+  });
+
   it("hai validate chạy cùng lúc ngay sau khi tăng epoch: cả hai thấy cùng một mốc, đều fresh", async () => {
     const { w, activate, licenseKey } = await setup();
     const a = await activate(1);
@@ -401,6 +434,20 @@ describe("validate", () => {
     await deactivate(a.body.activation_id as string);
     const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a.body.activation_id });
     expect(v).toMatchObject({ status: 404, body: { error: "activation_not_found" } });
+  });
+
+  it("activation đã gỡ (kể cả gỡ từ xa) không tính là thất bại của IP, như deactivate; activation lạ thì vẫn tính", async () => {
+    const { w, activate, deactivate, licenseKey } = await setup();
+    const a = await activate(1);
+    await deactivate(a.body.activation_id as string);
+    for (let i = 0; i < 3; i++) {
+      const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a.body.activation_id });
+      expect(v).toMatchObject({ status: 404, body: { error: "activation_not_found" } });
+    }
+    const failures = () => env.DB.prepare("SELECT SUM(count) AS n FROM rate_limits WHERE bucket LIKE 'failure_ip:%'").first();
+    expect(await failures()).toEqual({ n: null });
+    await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: crypto.randomUUID() });
+    expect(await failures()).toEqual({ n: 1 });
   });
 
   it("đã gia hạn từ máy khác: token mới mang expires_at mới", async () => {
@@ -520,6 +567,7 @@ describe("deactivate", () => {
       deactivated_by: "user",
     });
     expect((await env.DB.prepare("SELECT at, by FROM deactivations").all()).results).toEqual([{ at: T0 + 300, by: "user" }]);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'deactivated'").first()).toEqual({ n: 1 });
   });
 
   it("kích hoạt lại dùng lại dòng cũ nhưng các lần gỡ trước vẫn tính vào luật khóa tạm", async () => {

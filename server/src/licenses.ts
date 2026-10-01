@@ -1,8 +1,8 @@
 // /v1/licenses/* (§6.8, §10.2): kích hoạt tối đa 2 máy, làm mới token, gỡ máy, gửi lại key.
 import type { Context, Hono } from "hono";
-import { raiseAlert } from "./alerts";
+import { alertIfChanged } from "./alerts";
 import type { AppEnv } from "./app";
-import { audit, auditStatement } from "./audit";
+import { audit, auditIfChanged } from "./audit";
 import { type Deps, sendLicenseMail } from "./deps";
 import { clientIp, fail, parseDeviceIdHash, parseDeviceLabel, parseEmail, parseUuid, readJson, tooMany } from "./http";
 import { normalizeLicenseKey } from "./license-key";
@@ -39,9 +39,11 @@ interface TokenActivation {
   device_id_hash: string;
   created_at: number;
   quota_epoch: number;
+  epoch_pending: number;
+  epoch_window_start: number | null;
 }
 
-const ACT_COLUMNS = "id, device_id_hash, created_at, quota_epoch";
+const ACT_COLUMNS = "id, device_id_hash, created_at, quota_epoch, epoch_pending, epoch_window_start";
 /** Token cấp trong khoảng này sau mốc bắt đầu bộ đếm mới mang quota_fresh = true (QĐ35). */
 export const QUOTA_FRESH_SECONDS = 15 * 60;
 
@@ -62,22 +64,27 @@ async function findLicense(db: D1Database, rawKey: unknown): Promise<KeyLookup> 
  * Ký token theo gói và hạn hiện tại của license; hạn mức lấy theo bảng gói hiện hành.
  * quota_fresh (QĐ35): true khi token cấp trong 15 phút sau mốc muộn nhất trong ba mốc:
  * - lúc tạo activation;
- * - lúc cấp token đầu tiên sau khi admin tăng quota_epoch (epoch_window_start, ghi nguyên tử ngay dưới đây);
+ * - lúc cấp token đầu tiên sau khi admin tăng quota_epoch (epoch_window_start, ghi nguyên tử ngay dưới đây, và chỉ ghi
+ *   khi đang chờ: validate thường không tốn thêm lần ghi nào);
  * - lúc server đặt lại cycle_anchor (anchor_applied_at: lúc xử lý đơn đổi gói hay mua lại sau khi hết hạn).
  */
 async function issueToken(db: D1Database, deps: Deps, plans: PlanTable, lic: LicenseRow, act: TokenActivation) {
   const key = await deps.signingKey();
   const now = deps.now();
-  // Một câu lệnh: nếu đang chờ thì mở cửa sổ từ bây giờ; luôn trả mốc hiện có. Hai request chạy cùng lúc thấy cùng một mốc.
-  const epoch = await db
-    .prepare(
-      `UPDATE activations SET epoch_window_start = CASE WHEN epoch_pending = 1 THEN ?1 ELSE epoch_window_start END,
-              epoch_pending = 0
-       WHERE id = ?2 RETURNING epoch_window_start`,
-    )
-    .bind(now, act.id)
-    .first<{ epoch_window_start: number | null }>();
-  const freshFrom = Math.max(act.created_at, epoch?.epoch_window_start ?? 0, lic.anchor_applied_at);
+  let windowStart = act.epoch_window_start;
+  if (act.epoch_pending === 1) {
+    // Đang chờ: mở cửa sổ từ bây giờ, có điều kiện epoch_pending = 1. Request chạy cùng lúc mà mở trước thì câu này không
+    // đổi gì; khi đó đọc lại mốc request kia đã ghi, nên hai request thấy cùng một mốc.
+    const opened = await db
+      .prepare("UPDATE activations SET epoch_window_start = ?1, epoch_pending = 0 WHERE id = ?2 AND epoch_pending = 1 RETURNING epoch_window_start")
+      .bind(now, act.id)
+      .first<{ epoch_window_start: number }>();
+    windowStart = opened
+      ? opened.epoch_window_start
+      : ((await db.prepare("SELECT epoch_window_start FROM activations WHERE id = ?").bind(act.id).first<{ epoch_window_start: number | null }>())
+          ?.epoch_window_start ?? null);
+  }
+  const freshFrom = Math.max(act.created_at, windowStart ?? 0, lic.anchor_applied_at);
   const claims = {
     kid: key.kid,
     license_id: lic.id,
@@ -189,18 +196,19 @@ export function registerLicenses(app: Hono<AppEnv>) {
       .bind(lic.id, since, deviceIdHash)
       .first<{ n: number }>();
     if ((recent?.n ?? 0) > MAX_DEACTIVATIONS_IN_WINDOW) {
-      await db.batch([
-        db.prepare("UPDATE licenses SET locked_at = ? WHERE id = ?").bind(now, lic.id),
-        auditStatement(db, {
+      // Chỉ khóa khi chưa khóa: nhiều request cùng lúc thì một request khóa, một dòng nhật ký, một cảnh báo.
+      const [locked] = await db.batch([
+        db.prepare("UPDATE licenses SET locked_at = ? WHERE id = ? AND locked_at IS NULL").bind(now, lic.id),
+        auditIfChanged(db, {
           at: now,
           actor: "api",
           action: "license_locked",
           licenseId: lic.id,
           detail: { deactivations: recent?.n },
         }),
+        alertIfChanged(db, "license_locked", now),
       ]);
-      console.warn(JSON.stringify({ event: "license_locked", license_id: lic.id }));
-      await raiseAlert(db, "license_locked", now);
+      if (locked?.meta.changes === 1) console.warn(JSON.stringify({ event: "license_locked", license_id: lic.id }));
       return fail(c, 423, "license_locked");
     }
 
@@ -278,9 +286,14 @@ export function registerLicenses(app: Hono<AppEnv>) {
       await noteFailure(c.env, ip, now, "validate");
       return fail(c, 404, "invalid_key");
     }
-    // Máy bị gỡ từ xa về Free ở lần validate kế tiếp (§6.8).
+    // Máy bị gỡ từ xa về Free ở lần validate kế tiếp (§6.8). Activation đã gỡ của đúng key này không tính là thất bại
+    // (như deactivate): máy bị gỡ từ xa không phải đang dò key. Activation lạ thì tính.
     if (!act) {
-      await noteFailure(c.env, ip, now, "validate");
+      const known = await db
+        .prepare("SELECT 1 AS x FROM activations WHERE id = ? AND license_id = ?")
+        .bind(activationId, lic.id)
+        .first();
+      if (!known) await noteFailure(c.env, ip, now, "validate");
       return fail(c, 404, "activation_not_found");
     }
     const problem = licenseProblem(c, lic, now);
@@ -332,7 +345,8 @@ export function registerLicenses(app: Hono<AppEnv>) {
       db
         .prepare("UPDATE activations SET deactivated_at = ?, deactivated_by = 'user' WHERE id = ? AND deactivated_at IS NULL")
         .bind(now, act.id),
-      auditStatement(db, { at: now, actor: "api", action: "deactivated", licenseId: lic.id, detail: { activation_id: act.id } }),
+      // Chỉ ghi khi câu UPDATE ngay trên có tác dụng: hai lần gỡ chạy cùng lúc chỉ có một dòng nhật ký.
+      auditIfChanged(db, { at: now, actor: "api", action: "deactivated", licenseId: lic.id, detail: { activation_id: act.id } }),
     ]);
     return c.json({ ok: true });
   });
