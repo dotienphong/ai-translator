@@ -237,9 +237,10 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
   - Xoay vòng 2 suất giữa nhiều máy thì bị khóa sau vài lượt: với 5 máy, lượt thứ 5 bị `423` (test ở Task 14).
   - Key đã khóa thì chặn mọi máy không đang kích hoạt. Các máy đang kích hoạt vẫn `validate` được, và vẫn gỡ máy được.
   - Admin mở khóa thì các lần gỡ trước lúc mở khóa không còn tính (P05-3).
+  - Admin gỡ máy (`by = 'admin'`) không tính: admin gỡ 4 máy liền rồi kích hoạt máy thứ 5 vẫn được (test ở Task 16).
 - **QĐ11. Token mang gói và hạn mức (spec §6.8, thay QĐ11 cũ vốn để `plan: "pro"`).**
   - `plan` là mã gói của license: `pro`, `pro_x2` hoặc `pro_x5`. `licenses.plan` lưu đúng mã đó (có `CHECK`).
-  - `cycle_anchor` lấy từ license; `quota_minutes_per_cycle` lấy từ bảng gói **hiện hành** lúc ký (Professional 1800, X2 6000, X5 `null`), nên đổi hạn mức trong cấu hình có tác dụng ở lần `validate` sau.
+  - `cycle_anchor` lấy từ license; `quota_minutes_per_cycle` lấy từ bảng gói **hiện hành** lúc ký (Professional 1800, X2 6000, X5 `null`), nên đổi hạn mức trong cấu hình có tác dụng ở lần `validate` sau, với mọi license của gói đó. Vì vậy **không được hạ hạn mức của một gói đang bán** (spec §6.8, QĐ17).
   - `quota_epoch`, `activation_created_at`, `quota_fresh`: QĐ35.
   - Response của `activate` và `validate` có thêm các trường của token (trừ `kid`, `license_id`, `device_id_hash`, `issued_at`), để app không phải giải mã token mới biết. Số chính thức vẫn là trong token.
   - Kế hoạch 06 dùng `test/vectors/token-v1.json` (sinh lại ở Task 6) làm hợp đồng.
@@ -255,6 +256,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
   - `parsePlans` kiểm chặt: đủ đúng ba gói, hạn mức là `null` hay số nguyên dương, số ngày từ 1 tới 366, giá là số nguyên dương theo mã tiền 3 chữ hoa, mọi gói có cùng các loại tiền. Sai bất kỳ chỗ nào thì mọi route cần bảng (checkout, `GET /v1/plans`, `activate`, `validate`, cấp license) trả `503 pricing_not_configured`, không bán sai giá, không ký token sai hạn mức.
   - Gốc (dev, test) và production: giá chính thức 50.000 đ, 150.000 đ, 500.000 đ. Staging: giá thử nhỏ, mỗi gói một giá, 2.000 đ, 3.000 đ, 4.000 đ (P05-2), hạn mức như production.
   - `GET /v1/plans` trả bảng này cho màn hình Nâng cấp của 06.
+  - **Không hạ hạn mức của gói đang bán** (spec §6.8): token lấy hạn mức từ bảng hiện hành (QĐ11), nên hạ hạn mức trong `PLANS` là hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới (sửa `src/plans.ts`, và app). Tăng hạn mức hay đổi giá thì được. Comment cạnh `PLANS` trong `wrangler.jsonc` ghi luật này, và Task 21, Step 3 nhắc lại.
 - **QĐ18. Số đơn (`orderCode`) theo môi trường.** Mỗi môi trường có D1 và khóa ký riêng, và nên có kênh PayOS riêng (P05-1). Số đơn đánh bằng `AUTOINCREMENT` của D1:
   - staging dùng số từ 1 tới 999.999;
   - production bắt đầu từ 1.000.001: ngay sau khi tạo D1 production, chèn rồi xóa một dòng giữ chỗ số 1.000.000 (Task 21, Step 4). AUTOINCREMENT nhớ số lớn nhất đã dùng, nên đơn kế tiếp là 1.000.001, kể cả khi D1 mới dùng lại kênh PayOS của staging;
@@ -283,14 +285,14 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
   - Admin tra cứu bằng `POST /admin/lookup` với email trong body.
 - **QĐ26. Tên trường JSON dùng `snake_case` cho toàn bộ API của server** (`order_code`, `checkout_url`, `qr_code`, `order_token`, `license_key`, `device_id_hash`…), cả request lẫn response. Chỉ khi gọi PayOS mới dùng `camelCase` của PayOS. Spec §6.8 đã theo quy ước này từ ngày 2026-10-01.
 - **QĐ27. Cảnh báo cho người vận hành (§10.2).**
-  - Bốn loại sự kiện: `many_failures` (một IP chạm 60 lần thất bại), `webhook_bad_signature`, `email_failed`, `license_locked`. Mỗi sự kiện được đếm theo loại và theo giờ trong bảng `ops_alerts`.
+  - Năm loại sự kiện: `many_failures` (một IP chạm 60 lần thất bại), `webhook_bad_signature`, `email_failed`, `license_locked`, `order_needs_review` (license đã thu hồi nhận được tiền, QĐ37). Mỗi sự kiện được đếm theo loại và theo giờ trong bảng `ops_alerts`.
   - Cron gửi một email mỗi loại, **tối đa một lần mỗi giờ**, tới `OPERATOR_EMAIL`, qua `EmailProvider`. Gửi lỗi thì lần cron sau thử lại.
   - `OPERATOR_EMAIL` là dữ liệu cá nhân nên là secret (`wrangler secret put`), không nằm trong repo hay `wrangler.jsonc`. Thiếu biến này thì cảnh báo chỉ ghi log.
   - **Giới hạn:** cảnh báo đi cùng kênh Resend với thư chứa key, nên khi Resend sập thì chỉ còn log. Cách giảm rủi ro: bật **Workers Issues** (`observability.issues.enabled`, miễn phí trong giai đoạn beta). Issues ghi mọi `console.error` và response `5xx`, kể cả `email_failed`, rồi gửi qua automation tới webhook, chat hay công cụ incident, không qua Resend (Task 19, Step 10). Nếu Issues hết miễn phí, hoặc chủ dự án không có kênh chat hay webhook nhận automation, thì đây là rủi ro chấp nhận: người vận hành xem trang Issues và Workers Logs định kỳ.
 - **QĐ28. Cổng thanh toán chọn theo `orders.provider`.** `Deps.payments` là map tên cổng → `PaymentProvider`. Webhook là một route chung `/v1/webhooks/{provider}` (PayOS là `/v1/webhooks/payos`); `fulfilOrder` và đối soát lấy cổng theo cột `provider` của đơn. Thêm cổng chỉ cần thêm một cài đặt vào map, không sửa `orders.ts` hay `reconcile.ts`. Tên cổng lạ thì `404`.
 - **QĐ29. Khóa ký token: hai ô khóa là secret của Worker; không kho mật khẩu, không bản nào trên máy người vận hành** (spec §10.2, P05-6).
   - **Hai ô khóa:** secret `TOKEN_SIGNING_KEY_A` và `TOKEN_SIGNING_KEY_B` (JWK Ed25519 có `kid`). Biến `TOKEN_SIGNING_SLOT` (`"a"` hoặc `"b"`, trong `wrangler.jsonc`) chọn ô đang ký; ô còn lại là khóa dự phòng. Cả hai ô nằm trong `secrets.required`, nên thiếu khóa dự phòng thì `wrangler deploy` báo lỗi.
-  - **Lệch tên với spec §10.2:** spec gọi hai vai là `TOKEN_SIGNING_KEY` (khóa chính) và `TOKEN_SIGNING_KEY_NEXT` (khóa dự phòng). Kế hoạch đặt tên theo ô, không theo vai, vì secret của Worker không đọc lại được: "chuyển `NEXT` thành khóa chính" chỉ làm được bằng cấu hình, và nếu tên theo vai thì sau lần đổi khóa đầu tiên secret tên `TOKEN_SIGNING_KEY` lại giữ khóa dự phòng. Với hai ô, đổi khóa là đổi `TOKEN_SIGNING_SLOT` rồi ghi khóa dự phòng mới vào ô cũ (Phụ lục A). Ánh xạ: `TOKEN_SIGNING_KEY` của spec = ô `TOKEN_SIGNING_SLOT`, `TOKEN_SIGNING_KEY_NEXT` = ô kia. Đề xuất sửa chữ trong spec (Task 22).
+  - **Tên theo ô, không theo vai** (spec §10.2): secret của Worker không đọc lại được, nên không chép được khóa từ secret này sang secret khác; nếu đặt tên theo vai thì sau lần đổi khóa đầu tiên tên sẽ sai với vai. Với hai ô, đổi khóa là đổi `TOKEN_SIGNING_SLOT` rồi ghi khóa dự phòng mới vào ô vừa rảnh (Phụ lục A).
   - **Khóa riêng không bao giờ in ra terminal hay ghi ra file.** `gen-token-key.mjs` chỉ ghi khóa riêng khi stdout là pipe hoặc socket (`fs.fstatSync(1).isFIFO()`, `isSocket()`); terminal và file đều bị từ chối, thoát mã 2, không ghi byte nào. Cả hai khóa pipe thẳng vào `wrangler secret put`. Bỏ hẳn đường `--vault op|bw`, `pbcopy` của bản trước.
   - **`kid` phải là duy nhất, có số thứ tự:** `<env>-<năm>-<tháng>-<số thứ tự>`; mỗi khóa mới, kể cả khóa dự phòng, lấy số kế tiếp (ví dụ `stg-2026-10-1` ở ô A, `stg-2026-10-2` ở ô B). `gen-token-key.mjs` từ chối `kid` đã có trong `keys/public-keys.json`.
   - `loadSigningKey` từ chối `kid` `test-*` ngoài `dev`; `signKeyCheck` từ chối khi hai ô có cùng `kid`.
@@ -309,6 +311,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
 - **QĐ32. Luật mua thêm và đổi gói nằm ở một hàm, áp với kiểm soát đồng thời lạc quan** (spec §6.8 "Mua thêm và đổi gói").
   - `computeGrant(plans, license, plan, currency, hiện_tại)` (`src/plans.ts`) là hàm thuần: license mới; cùng gói (cộng 30 ngày từ max(hiện tại, `expires_at`), giữ `cycle_anchor`, đặt lại khi đã hết hạn); đổi gói khi còn hạn (`ngày_quy_đổi = floor((expires_at − hiện tại) × giá_cũ / (giá_mới × 86400))`, tính bằng `BigInt` nên làm tròn xuống đúng tuyệt đối; `expires_at` = hiện tại + 30 ngày + `ngày_quy_đổi`; `cycle_anchor` = hiện tại); license đã hết hạn mua gói khác thì như license mới, giữ key. Giá lấy từ bảng hiện hành, theo loại tiền của đơn. Test có hai ví dụ của spec (6 và 30 ngày quy đổi), lên gói, xuống gói, X5, phần lẻ, hết hạn.
   - Webhook, đối soát và admin cấp tay đều gọi `grantOrder`, và `grantOrder` gọi `computeGrant`. Checkout cũng gọi `computeGrant` để trả ước tính `license_expires_at` và `converted_days`.
+  - **"Hiện tại" không sớm hơn `cycle_anchor` đang có của license.** Đơn trả sớm hơn mà được xử lý sau một đơn trả muộn hơn (webhook tới không theo thứ tự) thì tính tại `cycle_anchor` của license, để `cycle_anchor` không bao giờ lùi (test ở Task 13).
   - **Hai đơn của cùng license xác nhận cùng lúc:** license có cột `version` và `last_order_code`. Lần ghi chỉ có tác dụng khi license còn đúng `version` đã đọc; câu đánh dấu đơn đã trả kiểm license đã mang `last_order_code` của chính đơn đó, nên không bao giờ có đơn `paid` mà license không đổi. Bị đơn khác ghi chen thì đọc lại và tính lại (tối đa 5 lần). Kết quả luôn bằng việc áp lần lượt từng đơn theo thứ tự ghi; không mất cập nhật (test ở Task 13, kể cả ghi chen có chủ đích).
   - `orders.grant_kind` ghi kiểu cấp (`new`, `extend`, `change`), để thư gửi lại đúng loại và `GET /v1/orders` trả về.
 - **QĐ33. "Hiện tại" của luật mua thêm và đổi gói là thời điểm thanh toán** (spec §6.8, dòng 341).
@@ -329,8 +332,14 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
     - lúc cấp token đầu tiên sau khi admin tăng `quota_epoch`: admin đặt `epoch_pending = 1`, `epoch_window_start = NULL`; lần cấp token kế tiếp ghi `epoch_window_start = now` trong một câu `UPDATE … RETURNING`, nên hai request chạy cùng lúc thấy cùng một mốc;
     - lúc server áp việc đặt lại `cycle_anchor` (`licenses.anchor_applied_at`, lúc xử lý đơn), không theo giá trị `cycle_anchor` (vốn là thời điểm thanh toán).
   - Admin "reset hạn mức của máy" (`POST /admin/activations/{id}/reset-quota`) tăng `quota_epoch`, ghi nhật ký `quota_reset`, chống CSRF như mọi thao tác khác.
-  - Test ở Task 14 và 16: phút 14 là `true`, phút 16 là `false`; cả ba mốc; validate 2 giờ sau khi tăng epoch vẫn `fresh`; webhook tới muộn 1 giờ vẫn `fresh`; kích hoạt lại activation đã gỡ là `false`.
+  - Test ở Task 14 và 16: phút 14 là `true`, phút 16 là `false`; biên đúng giây 899 là `true`, giây 900 là `false`; cả ba mốc; validate 2 giờ sau khi tăng epoch vẫn `fresh`; webhook đổi gói tới muộn 1 giờ, và license đã hết hạn mua lại cùng gói qua webhook muộn, vẫn `fresh`; kích hoạt lại activation đã gỡ là `false`.
 - **QĐ36. Tên sản phẩm "AI Translator" (D13) ở mọi chữ người dùng thấy.** Tiêu đề và nội dung email, tên người gửi (`EMAIL_FROM`), trang `returnUrl`/`cancelUrl`. Tên Worker (`mt-license-*`), D1 (`mt-license-<env>`), repo và nhãn seed của khóa test giữ nguyên. Mô tả chuyển khoản là `AT<order_code>` (spec §6.8): giới hạn 9 ký tự của ngân hàng chỉ còn chỗ cho 2 ký tự tiền tố và 7 chữ số.
+- **QĐ37. License đã thu hồi mà nhận được tiền của một đơn gia hạn hay đổi gói** (spec §6.8, "Trạng thái đơn").
+  - Server không áp đơn. Câu `UPDATE licenses` trong batch có `revoked_at IS NULL`, nên không có khe hở giữa lúc admin thu hồi và lúc cấp. Câu ghi không có tác dụng thì đơn chuyển sang trạng thái `paid_needs_review` (lưu `amount_paid`, `paid_at`), server ghi nhật ký `order_needs_review` và tạo cảnh báo cùng tên (QĐ27). Không gửi thư key.
+  - `paid_needs_review` và `refunded` là trạng thái của server, không phải của PayOS. Mọi điều kiện "đơn chưa áp" (ở `grantOrder`, `fulfilOrder`, cấp tay) loại cả `paid`, `paid_needs_review` và `refunded`, nên webhook gửi lại, đối soát hay cấp tay không áp lại đơn. Đối soát chỉ hỏi đơn `pending`, `processing`, `underpaid`, nên không hỏi lại đơn này.
+  - `GET /v1/orders` trả `status: "paid_needs_review"` (rồi `paid` hay `refunded` sau khi xử lý), không có `license_key`. App (06) hiện "đã nhận tiền, đang chờ hỗ trợ xử lý" kèm cách liên hệ.
+  - Admin xử lý bằng `POST /admin/orders/{order_code}/resolve`: `action: "grant_new_license"` cấp một license mới cho đơn (key mới, gói của đơn, 30 ngày từ lúc thao tác, gửi thư key; license đã thu hồi giữ nguyên), hoặc `action: "refunded"` ghi là đã hoàn tiền ngoài hệ thống (đơn thành `refunded`). Cả hai cần `note` và ghi nhật ký.
+  - Đơn mua license mới không có license cũ, nên không bị ảnh hưởng.
 
 ## Điểm cần chủ dự án quyết
 
@@ -364,7 +373,7 @@ Mọi body là JSON, tên trường `snake_case` (QĐ26). Lỗi có dạng `{"er
 
 - Token: ngoài các trường ở response của `activate`, token có `kid`, `license_id`, `device_id_hash`, `issued_at` (QĐ4, QĐ11). `quota_fresh` chỉ đúng trong response vừa nhận (spec §6.8); app không tin cờ này ở token đọc lại từ kho khóa.
 - Kích hoạt lại cùng `device_id_hash`, kể cả sau khi gỡ, trả lại đúng `activation_id`, `activation_created_at`, `quota_epoch` cũ (QĐ35).
-- `status` của đơn: `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed`.
+- `status` của đơn: `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed` (theo PayOS), cộng hai trạng thái của server: `paid_needs_review` (license đã thu hồi nhận được tiền, chờ hỗ trợ; không có key) và `refunded` (hỗ trợ đã hoàn tiền ngoài hệ thống) (QĐ37).
 - `429` luôn kèm header `Retry-After` (giây). App hiện lỗi "thử lại sau", không thử lại liên tục.
 - **Hợp đồng khi IP bị chặn (QĐ7, CGNAT).** Sau 60 lần thất bại trong 1 giờ từ một IP, server chỉ cho qua `validate` và `deactivate` có key hợp lệ **kèm `activation_id` đang hoạt động và khớp**; mọi request khác từ IP đó trả `429` tới hết giờ, kể cả `activate`. Vì vậy app (06) luôn gửi `activation_id` khi `validate`, và không coi `429` ở `activate` là key sai.
 - Header `Authorization` nhận scheme `Bearer` không phân biệt hoa thường.
@@ -609,6 +618,8 @@ allowBuilds:
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
     "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
     // Bảng gói (src/plans.ts). Môi trường dev và test dùng giá chính thức của spec §2.
+    // Không hạ hạn mức của một gói đang bán (spec §6.8, QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ ở đây là
+    // hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới (sửa src/plans.ts và app).
     "PLANS": {
       "pro": { "quota_minutes_per_cycle": 1800, "days_per_order": 30, "prices": { "VND": 50000 } },
       "pro_x2": { "quota_minutes_per_cycle": 6000, "days_per_order": 30, "prices": { "VND": 150000 } },
@@ -731,7 +742,7 @@ devDependencies:
 + typescript 7.0.2
 + vitest 4.1.11
 + wrangler 4.144.0
-Done in 3.6s using pnpm v12.6.0
+Done in 5.5s using pnpm v12.6.0
 ```
 
 - Có thêm `server/pnpm-lock.yaml`.
@@ -1855,8 +1866,9 @@ export interface TokenClaims {
   /** Số của bộ đếm hạn mức trên máy; admin tăng để máy bắt đầu bộ đếm mới (QĐ35). */
   quota_epoch: number;
   /**
-   * true khi token cấp trong 15 phút sau mốc muộn nhất của: lúc tạo activation, lúc admin tăng quota_epoch,
-   * cycle_anchor (QĐ35). App dùng để phân biệt bộ đếm mới thật với bộ đếm bị mất.
+   * true khi token cấp trong 15 phút sau mốc muộn nhất của: lúc tạo activation, lúc cấp token đầu tiên sau khi
+   * admin tăng quota_epoch, và anchor_applied_at của license (QĐ35). App dùng để phân biệt bộ đếm mới thật với
+   * bộ đếm bị mất.
    */
   quota_fresh: boolean;
   issued_at: number;
@@ -2134,7 +2146,8 @@ kid stg-2026-10-1 đã có trong public-keys.json (staging.a). Dùng số thứ 
 // (ô a hoặc b), như app sẽ kiểm (kế hoạch 06). Viết độc lập với src/token.ts. Đọc từ stdin một trong hai dạng:
 // - token thô (ví dụ token thật từ activate):
 //     printf '%s' "$TOKEN" | node scripts/verify-token.mjs staging
-// - JSON {"slot","kid","token"} của POST /admin/keys/test-sign (QĐ31): kiểm thêm token nằm đúng ô dự phòng:
+// - JSON {"slot","kid","token"} của POST /admin/keys/test-sign (QĐ31): kiểm thêm `kid` Worker báo khớp `kid` trong
+//   token, và token nằm đúng ô dự phòng:
 //     cloudflared access curl … /admin/keys/test-sign | node scripts/verify-token.mjs staging
 // In "OK <env> <ô> <kid>" và claims; sai thì in "FAIL <lý do>" và thoát mã 1.
 import { readFileSync } from "node:fs";
@@ -2160,6 +2173,7 @@ for await (const chunk of process.stdin) input += chunk;
 input = input.trim();
 let token = input;
 let expectedSlot = null;
+let expectedKid = null;
 if (input.startsWith("{")) {
   let check;
   try {
@@ -2170,6 +2184,7 @@ if (input.startsWith("{")) {
   if (typeof check.token !== "string") failWith(`không có token trong JSON: ${input.slice(0, 200)}`);
   token = check.token;
   expectedSlot = typeof check.slot === "string" ? check.slot : null;
+  expectedKid = typeof check.kid === "string" ? check.kid : null;
 }
 const keys = JSON.parse(readFileSync(keysFile, "utf8"))[envName];
 if (!keys) failWith(`không có môi trường ${envName} trong public-keys.json`);
@@ -2187,6 +2202,7 @@ try {
 if (typeof claims !== "object" || claims === null || Array.isArray(claims) || typeof claims.kid !== "string") {
   failWith("malformed");
 }
+if (expectedKid !== null && expectedKid !== claims.kid) failWith(`kid_mismatch: Worker báo ${expectedKid}, token mang ${claims.kid}`);
 const found = Object.entries(keys).find(([, k]) => k.kid === claims.kid);
 if (!found) failWith(`unknown_kid ${claims.kid}`);
 const [slot, k] = found;
@@ -2237,16 +2253,17 @@ FAIL unknown_kid test-9
 
 - [ ] **Step 7: Kiểm dạng JSON của "ký thử bằng khóa dự phòng" (QĐ31)**
 
-`POST /admin/keys/test-sign` (Task 16) trả `{slot, kid, token}`. Ở đây giả lập bằng token `valid_backup_key` của vector (ký bằng `test-2`, nằm ở ô `b`): báo đúng ô thì qua, báo sai ô thì `FAIL wrong_slot`.
+`POST /admin/keys/test-sign` (Task 16) trả `{slot, kid, token}`. Ở đây giả lập bằng token `valid_backup_key` của vector (ký bằng `test-2`, nằm ở ô `b`): báo đúng ô và đúng `kid` thì qua; báo sai ô thì `FAIL wrong_slot`; báo `kid` khác `kid` trong token thì `FAIL kid_mismatch`.
 
 ```bash
-cd server && for s in b a; do node -e 'const t=require("./test/vectors/token-v1.json").tokens.find((t)=>t.name==="valid_backup_key").token;process.stdout.write(JSON.stringify({slot:process.argv[1],kid:"test-2",token:t}))' $s | node scripts/verify-token.mjs test --keys test/fixtures/public-keys.test.json | head -1; done
+cd server && for p in b:test-2 a:test-2 b:test-1; do node -e 'const t=require("./test/vectors/token-v1.json").tokens.find((t)=>t.name==="valid_backup_key").token;process.stdout.write(JSON.stringify({slot:process.argv[1],kid:process.argv[2],token:t}))' "${p%%:*}" "${p#*:}" | node scripts/verify-token.mjs test --keys test/fixtures/public-keys.test.json | head -1; done
 ```
 
 Expected:
 ```
 OK test b test-2
 FAIL wrong_slot: test-2 nằm ở ô b trong public-keys.json, Worker báo ô a
+FAIL kid_mismatch: Worker báo test-1, token mang test-2
 ```
 
 Payload không phải object (`null`, số, mảng) hay thiếu `kid` thì in `FAIL malformed`, không ném `TypeError`:
@@ -3253,13 +3270,14 @@ Tests  no tests
 // tối đa một email mỗi loại mỗi giờ. Thiếu OPERATOR_EMAIL thì chỉ ghi log.
 import type { EmailProvider } from "./email/provider";
 
-export type AlertKind = "many_failures" | "webhook_bad_signature" | "email_failed" | "license_locked";
+export type AlertKind = "many_failures" | "webhook_bad_signature" | "email_failed" | "license_locked" | "order_needs_review";
 
 const ALERT_TEXT: Record<AlertKind, string> = {
   many_failures: "Một IP có từ 60 lần kiểm key hoặc activation thất bại trong 1 giờ (có thể đang dò key)",
   webhook_bad_signature: "Webhook thanh toán sai chữ ký (có thể bị giả mạo, hoặc checksum key sai)",
   email_failed: "Gửi email chứa license key thất bại (cron sẽ gửi lại)",
   license_locked: "Key bị khóa tạm vì gỡ rồi kích hoạt máy khác quá ngưỡng",
+  order_needs_review: "License đã thu hồi nhận được tiền của một đơn gia hạn hay đổi gói; xử lý tay ở /admin/orders/<n>/resolve",
 };
 const HOUR = 3600;
 
@@ -3956,7 +3974,7 @@ type KeyEnv = Pick<ApiEnv, "TOKEN_SIGNING_SLOT" | "TOKEN_SIGNING_KEY_A" | "TOKEN
 
 /**
  * Hai ô khóa ký (QĐ29): TOKEN_SIGNING_SLOT chọn ô đang ký ("active"), ô còn lại là khóa dự phòng ("next").
- * Spec §10.2 gọi hai vai này là TOKEN_SIGNING_KEY và TOKEN_SIGNING_KEY_NEXT.
+ * Tên theo ô, không theo vai (spec §10.2): đổi khóa là đổi TOKEN_SIGNING_SLOT, không chép khóa giữa hai secret.
  */
 export function signingSlots(env: Pick<ApiEnv, "TOKEN_SIGNING_SLOT">): { active: "a" | "b"; next: "a" | "b" } {
   if (env.TOKEN_SIGNING_SLOT === "a") return { active: "a", next: "b" };
@@ -4937,7 +4955,7 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
 
 - [ ] **Step 2: Viết test `server/test/orders.test.ts`**
 
-Ngoài webhook và hỏi đơn: mua thêm cùng gói, đổi gói, license đã hết hạn mua gói khác (QĐ32); thời điểm tính là lúc trả tiền, kể cả khi webhook tới muộn 24 giờ, và bị kẹp trong thời hạn link (QĐ33); hai đơn của cùng license xác nhận cùng lúc, cả khi một đơn ghi chen có chủ đích lẫn khi hai webhook chạy song song.
+Ngoài webhook và hỏi đơn: mua thêm cùng gói, đổi gói, license đã hết hạn mua gói khác (QĐ32); thời điểm tính là lúc trả tiền, kể cả khi webhook tới muộn 24 giờ, và bị kẹp trong thời hạn link (QĐ33); hai đơn của cùng license xác nhận cùng lúc, cả khi một đơn ghi chen có chủ đích lẫn khi hai webhook chạy song song; đơn trả sớm hơn mà xử lý sau thì không làm `cycle_anchor` lùi; license đã thu hồi nhận được tiền thì đơn thành `paid_needs_review`, không áp lại khi webhook gửi lại, kể cả khi thu hồi đúng lúc giữa lúc đọc và lúc ghi (QĐ37).
 
 `server/test/orders.test.ts`:
 
@@ -5356,12 +5374,114 @@ describe("hai đơn của cùng license xác nhận cùng lúc (QĐ32)", () => {
     expect(w.resend.sent.filter((m) => m.subject.startsWith("Đã đổi gói"))).toHaveLength(2);
   });
 
-  it("đơn đã áp rồi thì grantOrder trả null, không áp lần hai", async () => {
+  it("đơn đã áp rồi thì grantOrder trả already_settled, không áp lần hai", async () => {
     const { w, a } = await twoOrders();
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(a));
     const again = await grantOrder(env.DB, plans(), (await loadOrder(env.DB, a))!, { now: T0 + 10 * DAY, amountPaid: 150000, actor: "test" });
-    expect(again).toBeNull();
+    expect(again).toBe("already_settled");
     expect(await license()).toMatchObject({ version: 1 });
+  });
+});
+
+describe("đơn của cùng license áp không theo thứ tự thanh toán", () => {
+  it("đơn trả sớm hơn mà xử lý sau: tính tại cycle_anchor đang có, để cycle_anchor không lùi", async () => {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy(); // Professional, hết hạn T0 + 30 ngày
+    w.clock.now = T0 + 10 * DAY;
+    const a = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
+    const b = await checkout(w, { plan: "pro_x5", license_key: licenseKey });
+    const t1 = T0 + 10 * DAY;
+    const t2 = T0 + 10 * DAY + 300;
+    w.payos.pay(a.orderCode, undefined, t1);
+    w.payos.pay(b.orderCode, undefined, t2);
+    w.clock.now = T0 + 10 * DAY + 600;
+    // Webhook của B (trả muộn hơn) tới trước.
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(b.orderCode));
+    // B: Professional còn 20 ngày trừ 300 giây → X5, floor(1,99…) = 1 ngày quy đổi, chạy 31 ngày từ t2.
+    expect(await license()).toMatchObject({ plan: "pro_x5", cycle_anchor: t2, expires_at: t2 + 31 * DAY });
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(a.orderCode));
+    // A tính tại t2, không tại t1: X5 còn đúng 31 ngày → X2, floor(103,3) = 103, chạy 133 ngày từ t2.
+    expect(await license()).toEqual({ plan: "pro_x2", expires_at: t2 + 133 * DAY, cycle_anchor: t2, version: 2 });
+    const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'license_plan_changed' AND order_code = ?")
+      .bind(a.orderCode)
+      .first<{ detail: string }>();
+    expect(JSON.parse(log!.detail)).toMatchObject({ paid_at: t2, converted_days: 103 });
+  });
+});
+
+describe("license đã thu hồi mà nhận được tiền (QĐ37)", () => {
+  async function revokedRenewal() {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy();
+    w.clock.now = T0 + 10 * DAY;
+    const { orderCode, token } = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
+    w.payos.pay(orderCode);
+    w.resend.sent.length = 0;
+    return { w, licenseKey, orderCode, token };
+  }
+
+  it("không áp đơn: đơn thành paid_needs_review, có cảnh báo và nhật ký, không gửi thư key", async () => {
+    const { w, orderCode, token } = await revokedRenewal();
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 10 * DAY).run();
+    const wh = await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    expect(wh.body).toEqual({ ok: true, result: "needs_review" });
+    expect(await license()).toEqual({ plan: "pro", expires_at: T0 + 30 * DAY, cycle_anchor: T0, version: 0 });
+    expect(await env.DB.prepare("SELECT status, amount_paid, license_id, grant_kind FROM orders WHERE order_code = ?").bind(orderCode).first())
+      .toEqual({ status: "paid_needs_review", amount_paid: 150000, license_id: null, grant_kind: null });
+    expect(w.resend.sent).toHaveLength(0);
+    expect(await env.DB.prepare("SELECT kind, count FROM ops_alerts").all()).toMatchObject({ results: [{ kind: "order_needs_review", count: 1 }] });
+    const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'order_needs_review'").first<{ detail: string }>();
+    expect(JSON.parse(log!.detail)).toMatchObject({ reason: "license_revoked", plan: "pro_x2", amount_paid: 150000 });
+    // App thấy trạng thái này, không có key.
+    const order = await w.getOrder(orderCode, token);
+    expect(order.body).toMatchObject({ status: "paid_needs_review", plan: "pro_x2" });
+    expect(order.body).not.toHaveProperty("license_key");
+  });
+
+  it("webhook gửi lại và grantOrder gọi lại không áp đơn, không tạo thêm cảnh báo", async () => {
+    const { w, orderCode } = await revokedRenewal();
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 10 * DAY).run();
+    const body = await w.payos.webhookBody(orderCode);
+    await w.call("POST", "/v1/webhooks/payos", body);
+    const before = w.payos.requests.length;
+    expect((await w.call("POST", "/v1/webhooks/payos", body)).body).toEqual({ ok: true, result: "needs_review" });
+    // Không hỏi lại PayOS cho đơn đang chờ người vận hành.
+    expect(w.payos.requests.length).toBe(before);
+    // Gỡ thu hồi rồi gọi thẳng grantOrder: đơn vẫn không được áp lại.
+    await env.DB.prepare("UPDATE licenses SET revoked_at = NULL").run();
+    const again = await grantOrder(env.DB, parsePlans(env.PLANS) as PlanTable, (await loadOrder(env.DB, orderCode))!, {
+      now: T0 + 11 * DAY,
+      amountPaid: 150000,
+      actor: "test",
+    });
+    expect(again).toBe("already_settled");
+    expect(await license()).toMatchObject({ plan: "pro", version: 0 });
+    expect(await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'order_needs_review'").first()).toEqual({ n: 1 });
+    expect(w.resend.sent).toHaveLength(0);
+  });
+
+  it("thu hồi đúng lúc giữa lúc đọc và lúc ghi: câu ghi license kiểm revoked_at, đơn vẫn thành paid_needs_review", async () => {
+    const { orderCode } = await revokedRenewal();
+    const result = await grantOrder(env.DB, parsePlans(env.PLANS) as PlanTable, (await loadOrder(env.DB, orderCode))!, {
+      now: T0 + 10 * DAY,
+      amountPaid: 150000,
+      actor: "test",
+      beforeCommit: async () => {
+        await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 10 * DAY).run();
+      },
+    });
+    expect(result).toBe("needs_review");
+    expect(await license()).toMatchObject({ plan: "pro", version: 0 });
+    expect(await env.DB.prepare("SELECT status FROM orders WHERE order_code = ?").bind(orderCode).first()).toEqual({ status: "paid_needs_review" });
+  });
+
+  it("đơn mua license mới không bị ảnh hưởng: license khác của cùng email bị thu hồi vẫn cấp bình thường", async () => {
+    const w = makeWorld();
+    await w.buy();
+    await env.DB.prepare("UPDATE licenses SET revoked_at = 1").run();
+    const { orderCode } = await checkout(w);
+    w.payos.pay(orderCode);
+    expect((await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode))).body).toEqual({ ok: true, result: "granted" });
   });
 });
 
@@ -5468,6 +5588,13 @@ export function paymentTime(order: Pick<OrderRow, "created_at" | "expires_at">, 
 /** Số lần thử lại khi license bị một đơn khác đổi cùng lúc (QĐ32). */
 const GRANT_ATTEMPTS = 5;
 
+/**
+ * Trạng thái mà đơn không bao giờ được áp lại: đã cấp (`paid`), hay license đã thu hồi nhận được tiền và đang chờ
+ * người vận hành xử lý (`paid_needs_review`, QĐ37), hay người vận hành đã ghi là hoàn tiền ngoài hệ thống (`refunded`).
+ */
+export const SETTLED_STATUSES = ["paid", "paid_needs_review", "refunded"] as const;
+const NOT_SETTLED = `status NOT IN (${SETTLED_STATUSES.map((x) => `'${x}'`).join(", ")})`;
+
 export interface GrantOptions {
   /** Lúc xử lý: lúc ghi nhật ký và mốc anchor_applied_at của quota_fresh (QĐ35). */
   now: number;
@@ -5477,7 +5604,15 @@ export interface GrantOptions {
   actor: string;
   /** Chỉ cho test: chạy sau khi đọc license, trước khi ghi, để giả lập một đơn khác ghi chen vào. */
   beforeCommit?: () => Promise<void>;
+  /**
+   * Chỉ cho admin xử lý đơn `paid_needs_review` (QĐ37): cấp một license mới cho đơn, không đụng license đã thu hồi.
+   * Khi đó điều kiện "đơn chưa áp" là `status = 'paid_needs_review'`.
+   */
+  resolveAsNewLicense?: boolean;
 }
+
+/** `needs_review`: license của đơn gia hạn hay đổi gói đã bị thu hồi; đơn chuyển sang `paid_needs_review` (QĐ37). */
+export type GrantResult = Granted | "already_settled" | "needs_review";
 
 /**
  * Áp một đơn đã trả tiền vào license theo luật mua thêm và đổi gói (src/plans.ts, computeGrant) rồi đánh dấu
@@ -5486,24 +5621,30 @@ export interface GrantOptions {
  * - đơn gia hạn hay đổi gói chỉ ghi khi license còn đúng `version` đã đọc, và câu đánh dấu đơn kiểm license đã
  *   mang dấu của chính đơn này (`last_order_code`). Một đơn khác của cùng license ghi chen vào thì lần ghi này
  *   không có tác dụng gì, và vòng lặp đọc lại rồi tính lại. Kết quả bằng đúng việc áp lần lượt từng đơn.
- * Trả về null nếu đơn đã được cấp từ trước.
+ * - license đã thu hồi thì câu ghi license không có tác dụng (`revoked_at IS NULL` nằm ngay trong câu `UPDATE`, nên
+ *   không có khe hở giữa lúc thu hồi và lúc cấp); đơn chuyển sang `paid_needs_review` và có cảnh báo (QĐ37).
+ * - "hiện tại" không sớm hơn `cycle_anchor` đang có của license: đơn trả sớm hơn mà được xử lý sau một đơn trả muộn
+ *   hơn thì tính tại mốc của đơn kia, để `cycle_anchor` không bao giờ lùi.
+ * Trả về `already_settled` nếu đơn đã được áp hay đã chuyển sang trạng thái không áp lại.
  */
 export async function grantOrder(
   db: D1Database,
   plans: PlanTable,
   order: OrderRow,
   opts: GrantOptions,
-): Promise<Granted | null> {
+): Promise<GrantResult> {
   if (!isPlan(order.plan)) throw new Error(`gói lạ trong đơn ${order.order_code}`);
   const plan = order.plan;
-  const unpaid = "EXISTS (SELECT 1 FROM orders WHERE order_code = ?1 AND status <> 'paid')";
+  const pending = opts.resolveAsNewLicense ? "status = 'paid_needs_review'" : NOT_SETTLED;
+  const unpaid = `EXISTS (SELECT 1 FROM orders WHERE order_code = ?1 AND ${pending})`;
   for (let attempt = 0; attempt < GRANT_ATTEMPTS; attempt++) {
     let licenseId: string;
     let terms: GrantTerms;
     let write: D1PreparedStatement;
     let mark: D1PreparedStatement;
     let from: { plan: string; expires_at: number } | null = null;
-    if (order.renew_license_id === null) {
+    let at = opts.paidAt ?? opts.now;
+    if (order.renew_license_id === null || opts.resolveAsNewLicense) {
       licenseId = crypto.randomUUID();
       terms = computeGrant(plans, null, plan, order.currency, opts.paidAt ?? opts.now);
       // cycle_anchor (?7) là thời điểm thanh toán; anchor_applied_at và created_at (?8) là lúc xử lý.
@@ -5516,7 +5657,7 @@ export async function grantOrder(
       mark = db
         .prepare(
           `UPDATE orders SET status = 'paid', paid_at = ?2, amount_paid = ?3, license_id = ?4, grant_kind = ?5, last_checked_at = ?2
-           WHERE order_code = ?1 AND status <> 'paid' AND EXISTS (SELECT 1 FROM licenses WHERE id = ?4 AND last_order_code = ?1)`,
+           WHERE order_code = ?1 AND ${pending} AND EXISTS (SELECT 1 FROM licenses WHERE id = ?4 AND last_order_code = ?1)`,
         )
         .bind(order.order_code, opts.now, opts.amountPaid, licenseId, terms.kind);
     } else {
@@ -5527,7 +5668,8 @@ export async function grantOrder(
         .first<{ plan: PlanCode; expires_at: number; cycle_anchor: number; version: number }>();
       if (!cur) throw new Error(`không thấy license ${licenseId} của đơn ${order.order_code}`);
       from = { plan: cur.plan, expires_at: cur.expires_at };
-      terms = computeGrant(plans, cur, plan, order.currency, opts.paidAt ?? opts.now);
+      at = Math.max(opts.paidAt ?? opts.now, cur.cycle_anchor);
+      terms = computeGrant(plans, cur, plan, order.currency, at);
       // Chu kỳ được đặt lại (đổi gói, mua lại sau khi hết hạn): ghi lúc server áp thay đổi, là mốc của
       // quota_fresh (QĐ35). Không dùng cycle_anchor làm mốc, vì nó là lúc trả tiền và webhook có thể tới muộn.
       const anchorReset = terms.kind === "change" || terms.cycle_anchor !== cur.cycle_anchor;
@@ -5535,13 +5677,13 @@ export async function grantOrder(
         .prepare(
           `UPDATE licenses SET plan = ?2, expires_at = ?3, cycle_anchor = ?4, version = version + 1, last_order_code = ?1,
                   anchor_applied_at = CASE WHEN ?7 THEN ?8 ELSE anchor_applied_at END
-           WHERE id = ?5 AND version = ?6 AND ${unpaid}`,
+           WHERE id = ?5 AND version = ?6 AND revoked_at IS NULL AND ${unpaid}`,
         )
         .bind(order.order_code, plan, terms.expires_at, terms.cycle_anchor, licenseId, cur.version, anchorReset ? 1 : 0, opts.now);
       mark = db
         .prepare(
           `UPDATE orders SET status = 'paid', paid_at = ?2, amount_paid = ?3, license_id = ?4, grant_kind = ?5, last_checked_at = ?2
-           WHERE order_code = ?1 AND status <> 'paid'
+           WHERE order_code = ?1 AND ${NOT_SETTLED}
              AND EXISTS (SELECT 1 FROM licenses WHERE id = ?4 AND last_order_code = ?1 AND version = ?6)`,
         )
         .bind(order.order_code, opts.now, opts.amountPaid, licenseId, terms.kind, cur.version + 1);
@@ -5549,8 +5691,32 @@ export async function grantOrder(
     await opts.beforeCommit?.();
     const results = await db.batch([write, mark]);
     if (results[1]?.meta.changes !== 1) {
+      if (order.renew_license_id !== null && !opts.resolveAsNewLicense) {
+        // License đã thu hồi: không áp đơn, chuyển đơn sang chờ người vận hành (QĐ37).
+        const review = await db
+          .prepare(
+            `UPDATE orders SET status = 'paid_needs_review', paid_at = ?2, amount_paid = ?3, last_checked_at = ?2
+             WHERE order_code = ?1 AND ${NOT_SETTLED}
+               AND EXISTS (SELECT 1 FROM licenses WHERE id = ?4 AND revoked_at IS NOT NULL)`,
+          )
+          .bind(order.order_code, opts.now, opts.amountPaid, licenseId)
+          .run();
+        if (review.meta.changes === 1) {
+          console.warn(JSON.stringify({ event: "order_needs_review", order_code: order.order_code }));
+          await raiseAlert(db, "order_needs_review", opts.now);
+          await audit(db, {
+            at: opts.now,
+            actor: opts.actor,
+            action: "order_needs_review",
+            licenseId,
+            orderCode: order.order_code,
+            detail: { reason: "license_revoked", plan, amount_paid: opts.amountPaid, paid_at: at },
+          });
+          return "needs_review";
+        }
+      }
       const st = await db.prepare("SELECT status FROM orders WHERE order_code = ?").bind(order.order_code).first<{ status: string }>();
-      if (st?.status === "paid") return null;
+      if ((SETTLED_STATUSES as readonly string[]).includes(st?.status ?? "")) return "already_settled";
       continue; // license vừa bị một đơn khác đổi: đọc lại và tính lại
     }
     const lic = await db.prepare("SELECT license_key FROM licenses WHERE id = ?").bind(licenseId).first<{ license_key: string }>();
@@ -5567,7 +5733,7 @@ export async function grantOrder(
         expires_at: terms.expires_at,
         cycle_anchor: terms.cycle_anchor,
         converted_days: terms.converted_days,
-        paid_at: opts.paidAt ?? opts.now,
+        paid_at: at,
         amount_paid: opts.amountPaid,
       },
     });
@@ -5637,7 +5803,7 @@ export async function mailGranted(
   await update.run();
 }
 
-export type FulfilResult = "granted" | "already_paid" | "not_paid" | "unknown_order";
+export type FulfilResult = "granted" | "already_paid" | "needs_review" | "not_paid" | "unknown_order";
 
 /**
  * Hỏi cổng thanh toán của đơn (orders.provider) trạng thái thật rồi xử lý (§6.8): chỉ cấp khi status paid,
@@ -5651,7 +5817,8 @@ export async function fulfilOrder(
 ): Promise<FulfilResult> {
   const order = await loadOrder(env.DB, orderCode);
   if (!order) return "unknown_order";
-  if (order.status === "paid") return "already_paid";
+  if (order.status === "paid_needs_review") return "needs_review";
+  if ((SETTLED_STATUSES as readonly string[]).includes(order.status)) return "already_paid";
   const provider = Object.hasOwn(deps.payments, order.provider) ? deps.payments[order.provider] : undefined;
   if (!provider) throw new Error(`không có cổng thanh toán ${order.provider}`);
   const now = deps.now();
@@ -5666,14 +5833,16 @@ export async function fulfilOrder(
       amountPaid: st.amountPaid,
       actor,
     });
-    if (!granted) return "already_paid";
+    if (granted === "already_settled") return "already_paid";
+    // Đơn chờ người vận hành: không gửi thư key.
+    if (granted === "needs_review") return "needs_review";
     await mailGranted(env.DB, deps, env.ENVIRONMENT, order, granted);
     return "granted";
   }
   // Số tiền của cổng khác số tiền của đơn là bất thường: không cấp, để người vận hành xem (admin cấp tay nếu đúng).
   const local = !amountMatches ? "failed" : st.status === "paid" ? "underpaid" : st.status;
   const changed = await env.DB.prepare(
-    "UPDATE orders SET status = ?2, amount_paid = ?3, last_checked_at = ?4 WHERE order_code = ?1 AND status <> 'paid'",
+    `UPDATE orders SET status = ?2, amount_paid = ?3, last_checked_at = ?4 WHERE order_code = ?1 AND ${NOT_SETTLED}`,
   )
     .bind(orderCode, local, st.amountPaid, now)
     .run();
@@ -5849,7 +6018,7 @@ cd server && pnpm exec vitest run test/orders.test.ts && pnpm typecheck
 Expected:
 ```
 Test Files  1 passed (1)
-Tests  29 passed (29)
+Tests  34 passed (34)
 ```
 
 - [ ] **Step 7: Commit**
@@ -5867,7 +6036,7 @@ git commit -m "feat(server): webhook theo cổng thanh toán, hỏi trạng thá
 
 - [ ] **Step 1: Viết test `server/test/licenses.test.ts`**
 
-Ngoài 2 máy, khóa tạm, chặn dò key: token mang gói, `cycle_anchor`, hạn mức theo bảng gói (QĐ11); gỡ rồi kích hoạt lại cùng máy dùng lại đúng activation, vẫn chiếm suất; các lần gỡ trước vẫn tính vào luật khóa tạm (QĐ10); cửa sổ `quota_fresh` 15 phút với cả ba mốc (QĐ35); đổi gói từ máy khác thì máy này nhận gói mới ở lần `validate` sau.
+Ngoài 2 máy, khóa tạm, chặn dò key: token mang gói, `cycle_anchor`, hạn mức theo bảng gói (QĐ11); gỡ rồi kích hoạt lại cùng máy dùng lại đúng activation, vẫn chiếm suất; các lần gỡ trước vẫn tính vào luật khóa tạm (QĐ10); cửa sổ `quota_fresh` 15 phút với cả ba mốc, biên giây 899 và 900, và license hết hạn mua lại cùng gói qua webhook muộn (QĐ35); đổi gói từ máy khác thì máy này nhận gói mới ở lần `validate` sau.
 
 `server/test/licenses.test.ts`:
 
@@ -6147,6 +6316,37 @@ describe("activate", () => {
 describe("quota_fresh (QĐ35)", () => {
   const validate = (w: ReturnType<typeof makeWorld>, key: string, id: unknown) =>
     w.call("POST", "/v1/licenses/validate", { key, activation_id: id });
+
+  it("biên của cửa sổ: giây 899 sau khi tạo activation còn true, giây 900 là false", async () => {
+    const { w, activate, licenseKey } = await setup();
+    w.clock.now = T0 + DAY;
+    const a = await activate(1);
+    w.clock.now = T0 + DAY + 899;
+    expect((await validate(w, licenseKey, a.body.activation_id)).body.quota_fresh).toBe(true);
+    w.clock.now = T0 + DAY + 900;
+    expect((await validate(w, licenseKey, a.body.activation_id)).body.quota_fresh).toBe(false);
+  });
+
+  it("license đã hết hạn mua lại cùng gói, webhook tới muộn 1 giờ: token trong 15 phút sau lúc xử lý là true", async () => {
+    const { w, activate, licenseKey } = await setup();
+    const a = await activate(1);
+    w.clock.now = T0 + 35 * DAY; // hết hạn từ T0 + 30 ngày
+    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "buyer@example.com", consent: true, license_key: licenseKey });
+    const orderCode = co.body.order_code as number;
+    w.payos.pay(orderCode);
+    const body = await w.payos.webhookBody(orderCode);
+    w.clock.now = T0 + 35 * DAY + 3600;
+    await w.call("POST", "/v1/webhooks/payos", body);
+    w.clock.now = T0 + 35 * DAY + 3600 + 14 * 60;
+    // Mua lại sau khi hết hạn đặt lại cycle_anchor (lúc trả tiền), nên mốc của cửa sổ là lúc server xử lý đơn.
+    expect((await validate(w, licenseKey, a.body.activation_id)).body).toMatchObject({
+      plan: "pro",
+      cycle_anchor: T0 + 35 * DAY,
+      quota_fresh: true,
+    });
+    w.clock.now = T0 + 35 * DAY + 3600 + 16 * 60;
+    expect((await validate(w, licenseKey, a.body.activation_id)).body.quota_fresh).toBe(false);
+  });
 
   it("true trong 15 phút sau khi tạo activation: phút 14 còn true, phút 16 là false", async () => {
     const { w, activate, licenseKey } = await setup();
@@ -6477,7 +6677,7 @@ cd server && pnpm exec vitest run test/licenses.test.ts test/recover.test.ts
 Expected: FAIL. Test duy nhất qua là `key đã hết hạn không được gửi`, vì khi chưa có route thì không email nào được gửi.
 ```
 Test Files  2 failed (2)
-Tests  40 failed | 1 passed (41)
+Tests  42 failed | 1 passed (43)
 ```
 ```
 AssertionError: expected 404 to be 200 // Object.is equality
@@ -6909,7 +7109,7 @@ cd server && pnpm exec vitest run test/licenses.test.ts test/recover.test.ts && 
 Expected:
 ```
 Test Files  2 passed (2)
-Tests  41 passed (41)
+Tests  43 passed (43)
 ```
 
 - [ ] **Step 7: Commit**
@@ -6921,7 +7121,7 @@ git commit -m "feat(server): activate tối đa 2 máy, validate, gỡ từ xa, 
 
 ## Task 15: Cron Trigger: đối soát, gửi lại email, gửi cảnh báo
 
-Cron không xóa hay ẩn danh dữ liệu khách nào (Q9, QĐ16); chỉ dọn `rate_limits` và `ops_alerts`.
+Cron không xóa hay ẩn danh dữ liệu khách nào (Q9, QĐ16); chỉ dọn `rate_limits` và `ops_alerts`. Đơn `paid_needs_review` chỉ được chuyển sang trạng thái này một lần, rồi không bị hỏi lại (QĐ37).
 
 **Files:**
 - Create: `server/test/reconcile.test.ts`, `server/src/reconcile.ts`
@@ -7006,6 +7206,29 @@ describe("đối soát mỗi 5 phút", () => {
     expect([await status(a), await status(b)]).toEqual(["expired", "cancelled"]);
     w.clock.now = T0 + 2000;
     expect((await reconcile(w.env, w.deps)).checked).toBe(0);
+  });
+
+  it("license đã thu hồi: đối soát chuyển đơn sang paid_needs_review một lần, rồi không hỏi lại, không gửi thư", async () => {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy();
+    w.resend.sent.length = 0;
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0).run();
+    const res = await w.call("POST", "/v1/checkout", { plan: "pro", email: "buyer@example.com", consent: true, license_key: licenseKey });
+    expect(res.status).toBe(403); // checkout từ chối license đã thu hồi
+    // Đơn tạo trước lúc thu hồi.
+    await env.DB.prepare("UPDATE licenses SET revoked_at = NULL").run();
+    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "buyer@example.com", consent: true, license_key: licenseKey });
+    const orderCode = co.body.order_code as number;
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 60).run();
+    w.payos.pay(orderCode);
+    w.clock.now = T0 + 300;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 1, granted: 0, errors: 0 });
+    expect(await status(orderCode)).toBe("paid_needs_review");
+    const asked = w.payos.requests.filter((r) => r.method === "GET").length;
+    w.clock.now = T0 + 900;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 0 });
+    expect(w.payos.requests.filter((r) => r.method === "GET").length).toBe(asked);
+    expect(w.resend.sent.filter((m) => m.to.includes("buyer@example.com"))).toHaveLength(0);
   });
 
   it("chuyển thiếu rồi chuyển bù trong 24 giờ: đối soát thấy PAID thì cấp", async () => {
@@ -7286,7 +7509,7 @@ cd server && pnpm exec vitest run test/reconcile.test.ts && pnpm typecheck
 Expected:
 ```
 Test Files  1 passed (1)
-Tests  17 passed (17)
+Tests  18 passed (18)
 ```
 
 - [ ] **Step 6: Commit**
@@ -7309,7 +7532,8 @@ Test gắn `ctx.access` giả vào execution context, giống điều runtime l�
 Thêm theo mô hình gói mới:
 - cấp tay đơn đổi gói dùng đúng luật của webhook, tính từ lúc thao tác (QĐ32, QĐ33); không lấy được bảng gói thì `503`;
 - cấp license mới theo mã gói; gia hạn tay license đã hết hạn thì đặt lại `cycle_anchor`;
-- admin gỡ activation chỉ đánh dấu, không xóa dòng; reset hạn mức của máy, kể cả cửa sổ `quota_fresh` mở ở token đầu tiên 2 giờ sau đó (QĐ35);
+- admin gỡ activation chỉ đánh dấu, không xóa dòng, và không tính vào luật khóa tạm; reset hạn mức của máy, kể cả cửa sổ `quota_fresh` mở ở token đầu tiên 2 giờ sau đó (QĐ35);
+- đơn `paid_needs_review`: cấp tay thường không áp được; xử lý bằng `/resolve` (cấp license mới, hay ghi đã hoàn tiền); cấp tay một đơn gia hạn mà license đã thu hồi thì đơn chuyển sang `paid_needs_review` (QĐ37);
 - ký thử bằng khóa dự phòng, kiểm được bằng khóa công khai; lỗi phía Worker API thì `503 key_check_failed`; và entrypoint `AdminRpc` gọi thẳng trong workerd (QĐ31, QĐ34).
 
 Worker admin trong test nhận bản giả của hai hàm RPC: `plans()` trả biến `PLANS` của test, `keyCheck()` gọi `signKeyCheck` với hai khóa test của vector.
@@ -7606,6 +7830,19 @@ describe("thay đổi license", () => {
     expect((await activate(5)).status).toBe(200);
   });
 
+  it("admin gỡ 4 máy liền rồi kích hoạt máy khác vẫn được: lần admin gỡ không tính vào luật khóa tạm", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy();
+    const activate = async (n: number) =>
+      w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex(`d${n}`), device_label: `M${n}` }, { "cf-connecting-ip": `198.51.100.${n}` });
+    for (let i = 1; i <= 4; i++) {
+      const r = await activate(i);
+      expect((await adminCall(`/admin/activations/${r.body.activation_id as string}/deactivate`, { body: { note: "hỗ trợ" } })).status).toBe(200);
+    }
+    expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE by = 'admin'").first())).toEqual({ n: 4 });
+    expect((await activate(5)).status).toBe(200);
+  });
+
   it("gỡ activation: chỉ đánh dấu, không xóa dòng, không tính vào ngưỡng khóa; rồi thu hồi key", async () => {
     const { w, adminCall } = makeAdmin();
     const { licenseKey } = await w.buy();
@@ -7649,6 +7886,86 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
     expect(String((log as { detail: string }).detail)).not.toContain("erase@example.com");
     const again = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "M" });
     expect(again.status).toBe(200);
+  });
+});
+
+describe("đơn paid_needs_review: license đã thu hồi mà nhận được tiền (QĐ37)", () => {
+  async function needsReview() {
+    const ctx = makeAdmin();
+    const { w } = ctx;
+    const { licenseKey } = await w.buy({ email: "b@example.com" });
+    const co = await w.call("POST", "/v1/checkout", { plan: "pro_x2", email: "b@example.com", consent: true, license_key: licenseKey });
+    const orderCode = co.body.order_code as number;
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0).run();
+    w.payos.pay(orderCode);
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    w.resend.sent.length = 0;
+    return { ...ctx, orderCode, token: co.body.order_token as string };
+  }
+  const orderStatus = (n: number) => env.DB.prepare("SELECT status FROM orders WHERE order_code = ?").bind(n).first();
+
+  it("cấp tay thường không áp được đơn này (409), không đổi gì", async () => {
+    const { adminCall, orderCode } = await needsReview();
+    expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "x" } })).toMatchObject({ status: 409, body: { error: "already_paid" } });
+    expect(await orderStatus(orderCode)).toEqual({ status: "paid_needs_review" });
+  });
+
+  it("cấp tay một đơn gia hạn mà license đã thu hồi: đơn chuyển sang paid_needs_review, trả 409", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy();
+    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "b@example.com", consent: true, license_key: licenseKey });
+    const orderCode = co.body.order_code as number;
+    w.payos.pay(orderCode, 1000);
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode, 1000));
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0).run();
+    expect(await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "chuyển bù" } })).toMatchObject({
+      status: 409,
+      body: { error: "order_needs_review" },
+    });
+    expect(await orderStatus(orderCode)).toEqual({ status: "paid_needs_review" });
+  });
+
+  it("xử lý bằng cách cấp license mới: key mới, gói của đơn, gửi thư; license đã thu hồi giữ nguyên", async () => {
+    const { w, adminCall, orderCode, token } = await needsReview();
+    w.clock.now = T0 + DAY;
+    expect((await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "grant_new_license" } })).status).toBe(400);
+    expect((await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "x", note: "y" } })).status).toBe(400);
+    const res = await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "grant_new_license", note: "khách đã xác minh" } });
+    expect(res).toMatchObject({ status: 200, body: { order_code: orderCode, status: "paid", plan: "pro_x2", expires_at: T0 + 31 * DAY } });
+    const lics = await env.DB.prepare("SELECT plan, revoked_at FROM licenses ORDER BY created_at").all();
+    expect(lics.results).toEqual([
+      { plan: "pro", revoked_at: T0 },
+      { plan: "pro_x2", revoked_at: null },
+    ]);
+    expect(w.resend.sent).toHaveLength(1);
+    expect(w.resend.sent[0]!.text).toContain(res.body.license_key as string);
+    expect((await w.getOrder(orderCode, token)).body).toMatchObject({ status: "paid", grant_kind: "new", license_key: res.body.license_key });
+    expect(await lastAudit()).toMatchObject({ action: "order_review_granted", order_code: orderCode });
+    // Làm lại lần hai thì 409.
+    expect((await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "refunded", note: "x" } })).status).toBe(409);
+  });
+
+  it("xử lý bằng cách ghi đã hoàn tiền ngoài hệ thống: đơn thành refunded, không cấp gì, không gửi thư", async () => {
+    const { w, adminCall, orderCode, token } = await needsReview();
+    const res = await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "refunded", note: "đã hoàn 150.000đ qua ngân hàng, mã GD FT9" } });
+    expect(res).toEqual({ status: 200, body: { order_code: orderCode, status: "refunded" } });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM licenses").first()).toEqual({ n: 1 });
+    expect(w.resend.sent).toHaveLength(0);
+    expect((await w.getOrder(orderCode, token)).body).toMatchObject({ status: "refunded" });
+    expect(await lastAudit()).toMatchObject({ action: "order_refunded_outside", order_code: orderCode });
+    // Đơn đã hoàn tiền thì webhook gửi lại cũng không áp.
+    expect((await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode))).body).toEqual({ ok: true, result: "already_paid" });
+    expect((await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "grant_new_license", note: "x" } })).status).toBe(409);
+  });
+
+  it("đơn không ở trạng thái chờ xử lý thì resolve trả 409", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { orderCode } = await w.buy();
+    expect(await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "refunded", note: "x" } })).toMatchObject({
+      status: 409,
+      body: { error: "not_needs_review", status: "paid" },
+    });
+    expect((await adminCall("/admin/orders/999/resolve", { body: { action: "refunded", note: "x" } })).status).toBe(404);
   });
 });
 
@@ -7926,7 +8243,9 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       amountPaid: order.amount_paid,
       actor: c.get("actor"),
     });
-    if (!granted) return c.json({ error: "already_paid" }, 409);
+    if (granted === "already_settled") return c.json({ error: "already_paid" }, 409);
+    // License của đơn đã bị thu hồi: đơn chuyển sang paid_needs_review; xử lý bằng /resolve (QĐ37).
+    if (granted === "needs_review") return c.json({ error: "order_needs_review" }, 409);
     await audit(c.env.DB, {
       at: now,
       actor: c.get("actor"),
@@ -7943,6 +8262,67 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       expires_at: granted.expiresAt,
       grant_kind: granted.kind,
       converted_days: granted.convertedDays,
+    });
+  });
+
+  // Xử lý đơn paid_needs_review (license đã thu hồi mà nhận được tiền, QĐ37). Hai cách:
+  // - "grant_new_license": cấp một license mới cho đơn (key mới, gói của đơn, 30 ngày từ lúc thao tác), gửi key qua email;
+  //   license đã thu hồi giữ nguyên;
+  // - "refunded": ghi là đã hoàn tiền ngoài hệ thống; đơn thành refunded.
+  app.post("/admin/orders/:orderCode/resolve", async (c) => {
+    const deps = c.get("deps");
+    const input = await noteBody(c);
+    const orderCode = Number(c.req.param("orderCode"));
+    const action = input?.body.action;
+    if (!input || !Number.isSafeInteger(orderCode) || (action !== "grant_new_license" && action !== "refunded")) {
+      return fail(c, 400, "invalid_request");
+    }
+    const now = deps.now();
+    const db = c.env.DB;
+    const order = await loadOrder(db, orderCode);
+    if (!order) return fail(c, 404, "order_not_found");
+    if (order.status !== "paid_needs_review") return c.json({ error: "not_needs_review", status: order.status }, 409);
+    if (action === "refunded") {
+      const [res] = await db.batch([
+        db.prepare("UPDATE orders SET status = 'refunded' WHERE order_code = ? AND status = 'paid_needs_review'").bind(orderCode),
+        auditStatement(db, {
+          at: now,
+          actor: c.get("actor"),
+          action: "order_refunded_outside",
+          licenseId: order.renew_license_id,
+          orderCode,
+          detail: { note: input.note },
+        }),
+      ]);
+      if (res?.meta.changes !== 1) return c.json({ error: "not_needs_review" }, 409);
+      return c.json({ order_code: orderCode, status: "refunded" });
+    }
+    const plans = await plansOf(c);
+    if (!plans) return fail(c, 503, "pricing_not_configured");
+    const granted = await grantOrder(db, plans, order, {
+      now,
+      paidAt: now,
+      amountPaid: order.amount_paid,
+      actor: c.get("actor"),
+      resolveAsNewLicense: true,
+    });
+    if (typeof granted === "string") return c.json({ error: "not_needs_review" }, 409);
+    await audit(db, {
+      at: now,
+      actor: c.get("actor"),
+      action: "order_review_granted",
+      licenseId: granted.licenseId,
+      orderCode,
+      detail: { revoked_license_id: order.renew_license_id, note: input.note },
+    });
+    await mailGranted(db, deps, c.env.ENVIRONMENT, order, granted);
+    return c.json({
+      order_code: orderCode,
+      status: "paid",
+      license_id: granted.licenseId,
+      license_key: formatLicenseKey(granted.licenseKey),
+      plan: granted.plan,
+      expires_at: granted.expiresAt,
     });
   });
 
@@ -8258,7 +8638,7 @@ cd server && pnpm exec vitest run test/admin.test.ts && pnpm typecheck
 Expected:
 ```
 Test Files  1 passed (1)
-Tests  28 passed (28)
+Tests  34 passed (34)
 ```
 
 - [ ] **Step 7: Commit**
@@ -8378,6 +8758,8 @@ Mỗi môi trường có bảng gói `PLANS` riêng (QĐ17): staging dùng giá 
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
     "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
     // Bảng gói (src/plans.ts). Môi trường dev và test dùng giá chính thức của spec §2.
+    // Không hạ hạn mức của một gói đang bán (spec §6.8, QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ ở đây là
+    // hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới (sửa src/plans.ts và app).
     "PLANS": {
       "pro": { "quota_minutes_per_cycle": 1800, "days_per_order": 30, "prices": { "VND": 50000 } },
       "pro_x2": { "quota_minutes_per_cycle": 6000, "days_per_order": 30, "prices": { "VND": 150000 } },
@@ -8403,6 +8785,8 @@ Mỗi môi trường có bảng gói `PLANS` riêng (QĐ17): staging dùng giá 
         // Chưa có tên miền đã xác thực (Q1): Resend chỉ gửi được tới email của chủ tài khoản Resend.
         "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
         // Giá thử nhỏ, mỗi gói một giá, để thử bằng tiền thật (PayOS không có sandbox; P05-2). Hạn mức như production.
+        // Không hạ hạn mức của một gói đang bán (spec §6.8, QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ ở đây là
+        // hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới (sửa src/plans.ts và app).
         "PLANS": {
           "pro": { "quota_minutes_per_cycle": 1800, "days_per_order": 30, "prices": { "VND": 2000 } },
           "pro_x2": { "quota_minutes_per_cycle": 6000, "days_per_order": 30, "prices": { "VND": 3000 } },
@@ -8431,6 +8815,8 @@ Mỗi môi trường có bảng gói `PLANS` riêng (QĐ17): staging dùng giá 
         // Đổi sang địa chỉ trên tên miền đã xác thực SPF, DKIM khi có Q1.
         "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
         // Giá chính thức (spec §2, chốt 2026-10-01).
+        // Không hạ hạn mức của một gói đang bán (spec §6.8, QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ ở đây là
+        // hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới (sửa src/plans.ts và app).
         "PLANS": {
           "pro": { "quota_minutes_per_cycle": 1800, "days_per_order": 30, "prices": { "VND": 50000 } },
           "pro_x2": { "quota_minutes_per_cycle": 6000, "days_per_order": 30, "prices": { "VND": 150000 } },
@@ -8583,15 +8969,15 @@ $ tsc --noEmit
 $ node scripts/gen-token-vectors.mjs | cmp - test/vectors/token-v1.json
 $ vitest run
 Test Files  18 passed (18)
-Tests  249 passed (249)
+Tests  263 passed (263)
 $ wrangler deploy --dry-run --env staging && wrangler deploy --dry-run --env production && wrangler deploy --dry-run -c wrangler.admin.jsonc --env staging && wrangler deploy --dry-run -c wrangler.admin.jsonc --env production
-Total Upload: 117.90 KiB / gzip: 30.93 KiB
+Total Upload: 119.64 KiB / gzip: 31.32 KiB
 --dry-run: exiting now.
-Total Upload: 117.90 KiB / gzip: 30.93 KiB
+Total Upload: 119.64 KiB / gzip: 31.32 KiB
 --dry-run: exiting now.
-Total Upload: 97.57 KiB / gzip: 25.41 KiB
+Total Upload: 101.21 KiB / gzip: 26.01 KiB
 --dry-run: exiting now.
-Total Upload: 97.57 KiB / gzip: 25.41 KiB
+Total Upload: 101.21 KiB / gzip: 26.01 KiB
 --dry-run: exiting now.
 ```
 Không có dòng `WARNING` nào của wrangler.
@@ -9051,7 +9437,7 @@ Không ghi email, key hay token.
 
    Trong `env.production` của `wrangler.jsonc`:
    - `EMAIL_FROM`: `"AI Translator <license@<tên miền gửi>>"`;
-   - giữ nguyên `PLANS` (giá chính thức 50.000 đ, 150.000 đ, 500.000 đ) và `TOKEN_SIGNING_SLOT: "a"`;
+   - giữ nguyên `PLANS` (giá chính thức 50.000 đ, 150.000 đ, 500.000 đ) và `TOKEN_SIGNING_SLOT: "a"`. Từ lúc bán, **không hạ hạn mức của gói đang bán** (QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ là hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới. Tăng hạn mức hay đổi giá thì được;
    - thêm `"routes": [{ "pattern": "<tên miền license>", "custom_domain": true }]` và đặt `"workers_dev": false`.
 
    Trong `env.production` của `wrangler.admin.jsonc`: `EMAIL_FROM` giống trên.
@@ -9249,15 +9635,11 @@ pnpm -C server check
 pnpm -C server audit
 ```
 
-Expected: `pnpm -C server check` in `Tests  249 passed (249)` (lúc lập kế hoạch), và 4 lần `--dry-run: exiting now.`
+Expected: `pnpm -C server check` in `Tests  263 passed (263)` (lúc lập kế hoạch), và 4 lần `--dry-run: exiting now.`
 - [ ] **Step 3: Ghi vào mục 8 của kế hoạch 00**
   - P05-1 tới P05-5 (P05-6 đã chốt: không dùng kho mật khẩu).
-  - Chỗ kế hoạch này lệch chữ với spec, đề xuất sửa ở lần cập nhật spec kế tiếp (Q12):
-    - **tên secret khóa ký** (QĐ29): spec §6.8 và §10.2 ghi `TOKEN_SIGNING_KEY` và `TOKEN_SIGNING_KEY_NEXT`; kế hoạch dùng hai ô `TOKEN_SIGNING_KEY_A`, `TOKEN_SIGNING_KEY_B` và biến `TOKEN_SIGNING_SLOT`. Đề xuất spec ghi: "khóa chính là ô do `TOKEN_SIGNING_SLOT` chọn, khóa dự phòng là ô kia";
-    - `keys/public-keys.json` của spec là `server/keys/public-keys.json`, khóa theo ô `a`/`b`, không theo vai;
-    - response của `activate`, `validate` có thêm các trường của token (QĐ11); `GET /v1/orders` trả `license_plan` và `grant_kind`; checkout trả thêm `plan` và `converted_days`; `GET /v1/plans` trả thêm `name` (QĐ17);
-    - `GET /v1/plans`, `activate` và `validate` cũng trả `503 pricing_not_configured` khi bảng gói thiếu hay sai (QĐ17);
-    - module thêm ở `server/src` (`admin-rpc.ts` và các module ở QĐ22), service binding RPC giữa hai Worker (QĐ34), bảng `deactivations` (QĐ10).
+  - Spec đã theo kế hoạch này ở commit `7a7aa2c`: hai ô khóa `TOKEN_SIGNING_KEY_A`, `_B` và `TOKEN_SIGNING_SLOT` (QĐ29); `server/keys/public-keys.json` theo ô; các trường thêm của API; `503 pricing_not_configured` ở mọi route cần bảng gói; luật không hạ hạn mức (QĐ17); `paid_needs_review` và cảnh báo `order_needs_review` (QĐ37); `admin-rpc.ts`, service binding, bảng `deactivations`. Kiểm lại không còn chỗ lệch nào; còn thì ghi vào Q12.
+  - Chưa có trong spec, đề xuất thêm ở lần cập nhật kế tiếp (Q12): trạng thái `refunded` và thao tác `POST /admin/orders/{order_code}/resolve` (QĐ37); luật "hiện tại" không sớm hơn `cycle_anchor` đang có (QĐ32).
   - Ghi vào mục 5.3: T5 cần kênh PayOS thứ hai cho staging (P05-1); T6 cần tạo tài khoản Resend.
   - Ghi vào mục 6.5 tên secret đã chốt: Worker API có `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `RESEND_API_KEY`, `TOKEN_SIGNING_KEY_A`, `TOKEN_SIGNING_KEY_B`, `RATE_LIMIT_PEPPER`, `OPERATOR_EMAIL` (không bắt buộc); biến `TOKEN_SIGNING_SLOT` và `PLANS`. Worker admin chỉ có bốn secret đầu, cộng service binding `API`.
   - Ghi vào mục 6.1 luật tuổi phát hành của pnpm (không commit `minimumReleaseAgeExclude`), nếu kế hoạch 01 chưa ghi.
@@ -9275,7 +9657,14 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
    cd server && pnpm check && pnpm exec wrangler deploy --env production
    ```
 
-   Từ lúc này, mọi token mới mang `kid` của ô B; app đã có sẵn khóa công khai của nó.
+   Từ lúc này, mọi token mới mang `kid` của ô B; app đã có sẵn khóa công khai của nó. Commit `wrangler.jsonc` ngay, để repo khớp với Worker đang chạy (lần deploy sau từ máy khác không đưa ô cũ trở lại):
+
+   ```bash
+   git add server/wrangler.jsonc
+   git commit -m "chore(server): production ký token bằng ô B (đổi khóa)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+   ```
+
+   Rồi người vận hành push commit này lên remote (`git push`). Agent không push.
 2. **Kiểm server đang ký bằng ô B:** kích hoạt một máy giả rồi kiểm token như Task 21, Step 12. Expected: `OK production b prod-…-2`. Gỡ máy giả đó sau khi kiểm.
 3. **Tạo khóa dự phòng mới vào ô A** (ghi đè khóa bị lộ), `kid` lấy số thứ tự kế tiếp:
 
@@ -9290,7 +9679,7 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
    cd server && cloudflared access curl "$PADMIN/admin/keys/test-sign" -X POST -H 'content-type: application/json' -d '{}' | node scripts/verify-token.mjs production
    ```
 
-   Expected: `OK production a prod-…-3`. Commit `wrangler.jsonc` và `keys/public-keys.json`, rồi phát hành bản cập nhật app mang hai khóa này (kế hoạch 07). Bản mới không còn nhận `kid` bị lộ.
+   Expected: `OK production a prod-…-3`. Commit `keys/public-keys.json` (người vận hành push), rồi phát hành bản cập nhật app mang hai khóa này (kế hoạch 07). Bản mới không còn nhận `kid` bị lộ.
 5. Các bản app cũ vẫn nhận token ký bằng khóa bị lộ cho tới khi được cập nhật. Server không ký bằng khóa đó nữa. Vì vậy token giả chỉ dùng được trên bản app chưa cập nhật, trong phạm vi của `refresh_before` mà kẻ giả tự đặt. Đây là rủi ro còn lại, đã chấp nhận ở §10.2.
 6. Ghi sự cố vào nhật ký vận hành, kèm ngày, `kid` bị lộ và `kid` mới.
 
@@ -9315,6 +9704,7 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
 | Gửi lại key | `… "$ADMIN/admin/licenses/<license_id>/resend" -X POST … -d '{}'` |
 | Mở khóa key bị khóa tạm | `… "$ADMIN/admin/licenses/<license_id>/unlock" -X POST … -d '{"note":"…"}'` |
 | Thu hồi key | `… "$ADMIN/admin/licenses/<license_id>/revoke" -X POST … -d '{"note":"…"}'` |
+| Xử lý đơn `paid_needs_review` (license đã thu hồi mà nhận được tiền, QĐ37): cấp license mới, hoặc ghi đã hoàn tiền ngoài hệ thống | `… "$ADMIN/admin/orders/<n>/resolve" -X POST … -d '{"action":"grant_new_license","note":"…"}'` hoặc `-d '{"action":"refunded","note":"đã hoàn …, mã GD …"}'` |
 | Gỡ một activation (chỉ đánh dấu, không xóa dòng; không tính vào luật khóa tạm) | `… "$ADMIN/admin/activations/<activation_id>/deactivate" -X POST … -d '{"note":"…"}'` |
 | Reset hạn mức của một máy (tăng `quota_epoch`; chỉ khi khách liên hệ) | `… "$ADMIN/admin/activations/<activation_id>/reset-quota" -X POST … -d '{"note":"…"}'` |
 | Ký thử bằng khóa dự phòng | `… "$ADMIN/admin/keys/test-sign" -X POST … -d '{}' \| node scripts/verify-token.mjs <env>` (chạy trong `server/`) |
@@ -9331,10 +9721,11 @@ Ví dụ cho production đang ký bằng ô A (`prod-…-1`), ô B (`prod-…-2`
 - **Kiểu nhất quán.** Replay 18 task (xem "Đã chạy thử") dựng lại đúng từng file của bản đã test, và `tsc --noEmit` xanh sau mỗi task có code.
 - **Test bắt được lỗi thật.** Lúc lập kế hoạch đã thử bỏ từng điều kiện trong code, và mỗi lần đều có test đỏ: `status = paid`, `amountPaid ≥ amount`, `amount` khớp đơn, kiểm license thu hồi hay hết hạn ở `validate`, đếm `validate` theo key đã chuẩn hóa; khóa tạm: trừ lần gỡ chính máy đang kích hoạt, chặn mọi máy không đang kích hoạt khi đã khóa; IP bị chặn: chỉ cho qua key hợp lệ kèm activation đang hoạt động (không chặn cả trường hợp này, và không cho qua mọi key thật); gửi lại email: giãn thời gian, không gửi lại lỗi vĩnh viễn, chỉ 400 và 422 là lỗi vĩnh viễn, cảnh báo một lần mỗi đơn.
 - Với mô hình gói mới, lúc lập kế hoạch đã thử thêm từng lỗi sau, và mỗi lần đều có test đỏ (số test đỏ trong ngoặc): bỏ điều kiện `version` khi ghi license (2); câu đánh dấu đơn không kiểm `last_order_code` và `version` (11); tính "hiện tại" của gia hạn, đổi gói theo lúc xử lý thay vì lúc trả tiền (3); lấy mốc `quota_fresh` từ `cycle_anchor` thay vì `anchor_applied_at` (1); mở cửa sổ epoch lúc admin bấm thay vì ở token đầu tiên (1); đếm luật khóa tạm trên bảng `activations` thay vì `deactivations` (3); cửa sổ `quota_fresh` tính từ lúc cấp token, tức activation dùng lại cũng `fresh` (6).
+- Sau review lần đầu của bản này, thử thêm, đều có test đỏ: chỉ đặt lại `anchor_applied_at` khi đổi gói, bỏ qua mua lại cùng gói sau khi hết hạn (O4, 1); bỏ điều kiện `d.by = 'user'` khi đếm luật khóa tạm (L1, 1); biên cửa sổ `quota_fresh` dùng `<=` thay `<` (F1, 1); bỏ phần kẹp "hiện tại" ≥ `cycle_anchor` (1); bỏ `revoked_at IS NULL` trong câu ghi license (3); coi chỉ `paid` là đã áp (3); `fulfilOrder` không chặn đơn `paid_needs_review` (1).
 
 ## Đã chạy thử lúc lập kế hoạch
 
 - Làm trong worktree tách riêng, rồi chạy lại Task 1–18 trong một worktree mới, đúng thứ tự và đúng lệnh của kế hoạch. Mọi bước "thấy lỗi" đều lỗi đúng lý do; mọi bước "chạy test" đều xanh.
 - Cây `server/` dựng lại giống hệt bản đã test (`diff -r`, không tính `node_modules` và `.wrangler`). `pnpm install` không ghi `minimumReleaseAgeExclude`, vì mọi bản đã chốt đều ra được ít nhất 1 ngày.
-- Kết quả cuối (`pnpm check`): `Test Files  18 passed (18)`, `Tests  249 passed (249)`; `tsc` sạch; 4 lần `wrangler deploy --dry-run` qua (Worker API 117,90 KiB, gzip 30,93 KiB; Worker admin 97,57 KiB, gzip 25,41 KiB); `pnpm audit` sạch.
+- Kết quả cuối (`pnpm check`): `Test Files  18 passed (18)`, `Tests  263 passed (263)`; `tsc` sạch; 4 lần `wrangler deploy --dry-run` qua (Worker API 119,64 KiB, gzip 31,32 KiB; Worker admin 101,21 KiB, gzip 26,01 KiB); `pnpm audit` sạch.
 - **Chưa chạy được** (cần tài khoản): Task 19–21 (`wrangler login`, D1 thật, secret, deploy, service binding thật giữa hai Worker, Access và cookie, `confirm-webhook`, ký thử khóa dự phòng qua Access, giao dịch thật, múi giờ thật của `transactionDateTime`).
