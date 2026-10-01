@@ -8,7 +8,7 @@
 //!
 //! Nếu chưa được cấp quyền, tap chỉ trả im lặng (chưa kiểm; dòng 2 của Task 6 sẽ cho biết).
 
-use crate::{AudioFormat, AudioSource, CaptureStats};
+use crate::{AudioApp, AudioFormat, AudioSource, CaptureStats};
 use anyhow::{Result, bail};
 use block2::RcBlock;
 use objc2::AllocAnyThread;
@@ -20,28 +20,35 @@ use objc2_core_audio::{
     AudioObjectGetPropertyDataSize, AudioObjectID, AudioObjectPropertyAddress, CATapDescription, CATapMuteBehavior,
     kAudioAggregateDeviceIsPrivateKey, kAudioAggregateDeviceIsStackedKey, kAudioAggregateDeviceNameKey,
     kAudioAggregateDeviceTapAutoStartKey, kAudioAggregateDeviceTapListKey, kAudioAggregateDeviceUIDKey,
-    kAudioDevicePropertyStreamConfiguration, kAudioHardwarePropertyTranslatePIDToProcessObject,
-    kAudioObjectPropertyElementMain, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyScopeInput,
-    kAudioObjectSystemObject, kAudioSubTapDriftCompensationKey, kAudioSubTapUIDKey, kAudioTapPropertyFormat,
+    kAudioDevicePropertyNominalSampleRate, kAudioDevicePropertyStreamConfiguration,
+    kAudioHardwarePropertyDefaultOutputDevice, kAudioHardwarePropertyProcessObjectList,
+    kAudioHardwarePropertyTranslatePIDToProcessObject, kAudioObjectPropertyElementMain,
+    kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyScopeInput, kAudioObjectSystemObject,
+    kAudioProcessPropertyBundleID, kAudioProcessPropertyIsRunningOutput, kAudioProcessPropertyPID,
+    kAudioSubTapDriftCompensationKey, kAudioSubTapUIDKey, kAudioTapPropertyFormat,
 };
 use objc2_core_audio_types::{
     AudioBuffer, AudioBufferList, AudioStreamBasicDescription, AudioTimeStamp, kAudioFormatFlagIsFloat,
     kAudioFormatFlagIsNonInterleaved,
 };
-use objc2_core_foundation::{CFArray, CFBoolean, CFDictionary, CFString, CFType};
+use objc2_core_foundation::{CFArray, CFBoolean, CFDictionary, CFRetained, CFString, CFType};
 use objc2_foundation::{NSArray, NSNumber};
 use std::cell::UnsafeCell;
 use std::ffi::{CStr, c_void};
+use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TapTarget {
     /// Toàn hệ thống, trừ chính app (mặc định, spec §6.1).
     SystemExceptSelf,
-    /// Chỉ một app, theo pid.
-    Process(i32),
+    /// Toàn hệ thống, kể cả chính app: chỉ cho bước "Nghe thử" (§4.1 bước 6, Đ16 của kế hoạch 00), khi app tự phát câu mẫu.
+    System,
+    /// Chỉ một app: mọi tiến trình đang phát tiếng của app đó (`AudioApp::pids`). Trình duyệt và app Electron phát tiếng
+    /// từ tiến trình helper, nên một app thường có nhiều pid.
+    Processes(Vec<i32>),
 }
 
 type IoBlock = RcBlock<
@@ -99,22 +106,34 @@ impl MacTapSource {
 
 impl AudioSource for MacTapSource {
     fn start(&mut self, sink: rtrb::Producer<f32>) -> Result<()> {
-        let processes: Vec<Retained<NSNumber>> = match self.target {
+        let processes: Vec<Retained<NSNumber>> = match &self.target {
             // App chưa từng phát âm thanh thì chưa có process object; khi đó không cần loại trừ.
             TapTarget::SystemExceptSelf => process_object(std::process::id() as i32)
                 .ok()
                 .into_iter()
                 .map(NSNumber::new_u32)
                 .collect(),
-            TapTarget::Process(pid) => vec![NSNumber::new_u32(process_object(pid)?)],
+            TapTarget::System => Vec::new(),
+            // Tiến trình vừa thoát thì bỏ qua; chỉ lỗi khi không còn tiến trình nào.
+            TapTarget::Processes(pids) => {
+                let objects: Vec<_> = pids
+                    .iter()
+                    .filter_map(|&pid| process_object(pid).ok())
+                    .map(NSNumber::new_u32)
+                    .collect();
+                if objects.is_empty() {
+                    bail!("không tiến trình nào trong {pids:?} còn phát âm thanh");
+                }
+                objects
+            }
         };
         let list = NSArray::from_retained_slice(&processes);
         let description = unsafe {
             match self.target {
-                TapTarget::SystemExceptSelf => {
+                TapTarget::SystemExceptSelf | TapTarget::System => {
                     CATapDescription::initStereoGlobalTapButExcludeProcesses(CATapDescription::alloc(), &list)
                 }
-                TapTarget::Process(_) => {
+                TapTarget::Processes(_) => {
                     CATapDescription::initStereoMixdownOfProcesses(CATapDescription::alloc(), &list)
                 }
             }
@@ -216,6 +235,24 @@ impl AudioSource for MacTapSource {
     fn format(&self) -> AudioFormat {
         self.format
     }
+
+    /// Chỉ tap một app mà mọi tiến trình của app đó đã thoát: tap không bao giờ có tiếng nữa, app phải mở lại nguồn (khi
+    /// app họp mở lại, nó có pid mới). Tap toàn hệ thống không có cách tự báo chết: đổi thiết bị phát được phát hiện qua
+    /// `default_output_signature`. Không dùng "không có khung mới trong 2 giây" làm dấu hiệu, vì aggregate đặt
+    /// `tapautostart`: không app nào phát tiếng thì IO block không được gọi, dù tap vẫn sống.
+    fn failed(&self) -> bool {
+        match &self.target {
+            TapTarget::Processes(pids) => self.aggregate_id != 0 && !pids.iter().any(|&pid| pid_alive(pid)),
+            _ => false,
+        }
+    }
+}
+
+/// Tiến trình `pid` còn tồn tại (kể cả khi không có quyền gửi tín hiệu cho nó).
+fn pid_alive(pid: i32) -> bool {
+    // SAFETY: tín hiệu 0 chỉ kiểm tiến trình có tồn tại không, không gửi gì.
+    let rc = unsafe { libc::kill(pid, 0) };
+    rc == 0 || std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
 }
 
 impl Drop for MacTapSource {
@@ -365,6 +402,262 @@ fn create_aggregate_device(tap_uid: &str) -> Result<AudioObjectID> {
     Ok(aggregate_id)
 }
 
+/// Thiết bị phát mặc định của hệ thống. App hỏi định kỳ để biết thiết bị đã đổi (cắm tai nghe, Bluetooth), rồi khởi tạo
+/// lại việc thu (§9). Chỉ đọc thuộc tính của HAL, không cần quyền ghi âm thanh.
+pub fn default_output_device() -> Result<AudioObjectID> {
+    let mut id: AudioObjectID = 0;
+    get_property(
+        kAudioObjectSystemObject as AudioObjectID,
+        kAudioHardwarePropertyDefaultOutputDevice,
+        std::ptr::null(),
+        0,
+        &mut id,
+    )?;
+    Ok(id)
+}
+
+/// Tần số mẫu danh định của thiết bị. Tai nghe Bluetooth (AirPods) đổi tần số trên cùng thiết bị khi app họp mở micro
+/// (chuyển sang chế độ đàm thoại), nên tần số là một phần của dấu hiệu thiết bị (`default_output_signature`).
+pub fn nominal_sample_rate(device: AudioObjectID) -> Result<f64> {
+    let mut rate: f64 = 0.0;
+    get_property(
+        device,
+        kAudioDevicePropertyNominalSampleRate,
+        std::ptr::null(),
+        0,
+        &mut rate,
+    )?;
+    Ok(rate)
+}
+
+/// Một tiến trình đang phát tiếng, theo Core Audio.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PlayingProcess {
+    pub pid: i32,
+    /// Bundle ID mà Core Audio báo cho tiến trình (helper có bundle ID riêng).
+    pub bundle_id: String,
+    /// Đường dẫn binary (`proc_pidpath`), nếu đọc được.
+    pub path: Option<PathBuf>,
+}
+
+/// Tên và bundle ID của một app: theo gói `.app` ngoài cùng (`Info.plist`), hoặc theo `NSRunningApplication`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AppIdentity {
+    pub name: Option<String>,
+    pub bundle_id: Option<String>,
+}
+
+/// Gói `.app` ngoài cùng chứa `path`: helper của trình duyệt và app Electron nằm trong gói của app chính (ví dụ
+/// `/Applications/Google Chrome.app/Contents/Frameworks/…/Google Chrome Helper.app/…`).
+pub fn outer_app(path: &Path) -> Option<PathBuf> {
+    let mut out = PathBuf::new();
+    for part in path.components() {
+        out.push(part);
+        if part.as_os_str().to_string_lossy().ends_with(".app") {
+            return Some(out);
+        }
+    }
+    None
+}
+
+/// Gộp các tiến trình đang phát tiếng theo gói `.app` ngoài cùng (không có gói thì theo bundle ID), rồi lấy tên và bundle
+/// ID của app: trước hết từ chính gói `.app` ngoài cùng (`bundle`), vì `NSRunningApplication` của một helper có thể trả
+/// về chính helper (ví dụ `com.google.Chrome.helper`), làm bundle ID đã lưu đổi giữa các lần (Q-F của review 02 lần 2);
+/// không có gói thì từ `running` (tìm ở tiến trình đó hoặc tối đa 3 tiến trình cha). Tách riêng khỏi Core Audio để test.
+pub fn group_processes(
+    processes: &[PlayingProcess],
+    bundle: impl Fn(&Path) -> Option<AppIdentity>,
+    running: impl Fn(i32) -> Option<AppIdentity>,
+) -> Vec<AudioApp> {
+    let mut groups: Vec<(String, Option<PathBuf>, Vec<&PlayingProcess>)> = Vec::new();
+    for p in processes {
+        let app = p.path.as_deref().and_then(outer_app);
+        let key = app
+            .as_ref()
+            .map(|a| a.to_string_lossy().into_owned())
+            .unwrap_or_else(|| p.bundle_id.clone());
+        match groups.iter_mut().find(|(k, _, _)| *k == key) {
+            Some((_, _, members)) => members.push(p),
+            None => groups.push((key, app, vec![p])),
+        }
+    }
+    let mut apps: Vec<AudioApp> = groups
+        .into_iter()
+        .map(|(_, app, members)| {
+            let found = app
+                .as_deref()
+                .and_then(&bundle)
+                .filter(|f| f.bundle_id.is_some())
+                .or_else(|| members.iter().find_map(|p| running(p.pid)));
+            let mut pids: Vec<i32> = members.iter().map(|p| p.pid).collect();
+            pids.sort_unstable();
+            AudioApp {
+                pids,
+                bundle_id: found
+                    .as_ref()
+                    .and_then(|f| f.bundle_id.clone())
+                    .unwrap_or_else(|| members[0].bundle_id.clone()),
+                name: found.and_then(|f| f.name),
+            }
+        })
+        .collect();
+    apps.sort_by(|a, b| a.bundle_id.cmp(&b.bundle_id));
+    apps
+}
+
+/// Đường dẫn binary của tiến trình `pid`.
+fn pid_path(pid: i32) -> Option<PathBuf> {
+    use std::os::unix::ffi::OsStrExt;
+    let mut buf = vec![0u8; libc::PROC_PIDPATHINFO_MAXSIZE as usize];
+    // SAFETY: `buf` có đúng `PROC_PIDPATHINFO_MAXSIZE` byte.
+    let n = unsafe { libc::proc_pidpath(pid, buf.as_mut_ptr().cast(), buf.len() as u32) };
+    (n > 0).then(|| PathBuf::from(std::ffi::OsStr::from_bytes(&buf[..n as usize])))
+}
+
+/// Tiến trình cha của `pid`.
+fn parent_pid(pid: i32) -> Option<i32> {
+    let mut info: libc::proc_bsdinfo = unsafe { std::mem::zeroed() };
+    let size = size_of::<libc::proc_bsdinfo>() as libc::c_int;
+    // SAFETY: `info` đủ chỗ cho `PROC_PIDTBSDINFO`; hàm chỉ ghi vào đó.
+    let n = unsafe {
+        libc::proc_pidinfo(
+            pid,
+            libc::PROC_PIDTBSDINFO,
+            0,
+            (&mut info as *mut libc::proc_bsdinfo).cast(),
+            size,
+        )
+    };
+    (n == size && info.pbi_ppid > 1).then_some(info.pbi_ppid as i32)
+}
+
+/// Tên hiển thị và bundle ID đọc từ `Info.plist` của gói `app` (`NSBundle`; tên theo ngôn ngữ của máy nếu gói có bản
+/// dịch: `CFBundleDisplayName`, rồi `CFBundleName`, rồi tên gói bỏ đuôi `.app`).
+pub fn bundle_identity(app: &Path) -> Option<AppIdentity> {
+    use objc2_foundation::{NSBundle, NSString};
+    let bundle = NSBundle::bundleWithPath(&NSString::from_str(app.to_str()?))?;
+    let bundle_id = bundle.bundleIdentifier().map(|s| s.to_string());
+    let name = ["CFBundleDisplayName", "CFBundleName"]
+        .iter()
+        .find_map(|key| {
+            let value = bundle.objectForInfoDictionaryKey(&NSString::from_str(key))?;
+            let value = value.downcast::<NSString>().ok()?.to_string();
+            (!value.trim().is_empty()).then_some(value)
+        })
+        .or_else(|| {
+            app.file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .filter(|s| !s.is_empty())
+        });
+    Some(AppIdentity { name, bundle_id })
+}
+
+/// Tên hiển thị (`localizedName`) và bundle ID của app chứa `pid`: thử chính `pid`, rồi đi lên tối đa 3 tiến trình cha
+/// (helper do app chính chạy). Bỏ tên rỗng.
+pub fn app_identity(pid: i32) -> Option<AppIdentity> {
+    let mut current = Some(pid);
+    for _ in 0..4 {
+        let p = current?;
+        if let Some(app) = objc2_app_kit::NSRunningApplication::runningApplicationWithProcessIdentifier(p) {
+            let name = app
+                .localizedName()
+                .map(|s| s.to_string())
+                .filter(|s| !s.trim().is_empty());
+            if name.is_some() {
+                return Some(AppIdentity {
+                    name,
+                    bundle_id: app.bundleIdentifier().map(|s| s.to_string()),
+                });
+            }
+        }
+        current = parent_pid(p);
+    }
+    None
+}
+
+/// Các app đang phát âm thanh, cho tùy chọn "chỉ tap một app họp" (§6.1). Không cần quyền ghi âm thanh. Chạy trong một
+/// `autoreleasepool`: hàm được gọi từ luồng nền của app (không có pool riêng), và `NSBundle`, `NSRunningApplication` trả
+/// về đối tượng autorelease.
+pub fn audio_apps() -> Result<Vec<AudioApp>> {
+    objc2::rc::autoreleasepool(|_| audio_apps_inner())
+}
+
+fn audio_apps_inner() -> Result<Vec<AudioApp>> {
+    let system = kAudioObjectSystemObject as AudioObjectID;
+    let mut address = AudioObjectPropertyAddress {
+        mSelector: kAudioHardwarePropertyProcessObjectList,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain,
+    };
+    let mut size = 0u32;
+    check(
+        unsafe {
+            AudioObjectGetPropertyDataSize(
+                system,
+                NonNull::from(&mut address),
+                0,
+                std::ptr::null(),
+                NonNull::from(&mut size),
+            )
+        },
+        "AudioObjectGetPropertyDataSize",
+    )?;
+    let mut ids = vec![0 as AudioObjectID; size as usize / size_of::<AudioObjectID>()];
+    if !ids.is_empty() {
+        check(
+            unsafe {
+                AudioObjectGetPropertyData(
+                    system,
+                    NonNull::from(&mut address),
+                    0,
+                    std::ptr::null(),
+                    NonNull::from(&mut size),
+                    NonNull::from(ids.as_mut_slice()).cast(),
+                )
+            },
+            "AudioObjectGetPropertyData",
+        )?;
+        ids.truncate(size as usize / size_of::<AudioObjectID>());
+    }
+    let mut playing = Vec::new();
+    for id in ids {
+        // Tiến trình vừa thoát giữa chừng thì bỏ qua nó, không làm hỏng cả danh sách.
+        let mut running: u32 = 0;
+        if get_property(
+            id,
+            kAudioProcessPropertyIsRunningOutput,
+            std::ptr::null(),
+            0,
+            &mut running,
+        )
+        .is_err()
+            || running == 0
+        {
+            continue;
+        }
+        let mut pid: i32 = 0;
+        if get_property(id, kAudioProcessPropertyPID, std::ptr::null(), 0, &mut pid).is_err() {
+            continue;
+        }
+        let mut bundle: *const CFString = std::ptr::null();
+        if get_property(id, kAudioProcessPropertyBundleID, std::ptr::null(), 0, &mut bundle).is_err() {
+            continue;
+        }
+        // SAFETY: Core Audio trả một CFString đã retain (+1); `CFRetained` nhận quyền sở hữu và release khi xong.
+        let bundle_id = NonNull::new(bundle.cast_mut())
+            .map(|p| unsafe { CFRetained::from_raw(p) }.to_string())
+            .unwrap_or_default();
+        if pid != std::process::id() as i32 && !bundle_id.is_empty() {
+            playing.push(PlayingProcess {
+                pid,
+                bundle_id,
+                path: pid_path(pid),
+            });
+        }
+    }
+    Ok(group_processes(&playing, bundle_identity, app_identity))
+}
+
 fn process_object(pid: i32) -> Result<AudioObjectID> {
     let mut id: AudioObjectID = 0;
     get_property(
@@ -416,6 +709,150 @@ fn check(status: i32, what: &str) -> Result<()> {
         bail!("{what} lỗi OSStatus {status} ('{fourcc}')");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod hal {
+    use super::*;
+
+    /// Đọc danh sách app và thiết bị phát của máy thật; không tạo tap nên không hỏi quyền.
+    #[test]
+    #[ignore = "đọc thiết bị âm thanh của máy thật"]
+    fn default_device_and_audio_apps_can_be_read() {
+        let device = default_output_device().unwrap();
+        assert_ne!(device, 0);
+        assert!(nominal_sample_rate(device).unwrap() > 0.0);
+        assert!(crate::default_output_signature().unwrap().contains('@'));
+        let apps = audio_apps().unwrap();
+        assert!(
+            apps.iter()
+                .all(|a| !a.pids.is_empty() && a.pids.iter().all(|&p| p > 0) && !a.bundle_id.is_empty()),
+            "{apps:?}"
+        );
+        println!("{apps:?}");
+    }
+
+    /// Tiến trình của chính test có `proc_pidpath`, cha của nó còn sống, và một pid không tồn tại thì không sống.
+    #[test]
+    fn process_helpers_read_the_running_process() {
+        let me = std::process::id() as i32;
+        assert!(pid_path(me).is_some_and(|p| p.is_absolute()));
+        assert!(pid_alive(me));
+        assert!(!pid_alive(i32::MAX - 7), "pid không tồn tại");
+        assert!(parent_pid(me).is_none_or(|p| p > 1));
+    }
+}
+
+#[cfg(test)]
+mod grouping {
+    use super::*;
+
+    fn proc(pid: i32, bundle_id: &str, path: &str) -> PlayingProcess {
+        PlayingProcess {
+            pid,
+            bundle_id: bundle_id.into(),
+            path: Some(PathBuf::from(path)),
+        }
+    }
+
+    /// Tên và bundle ID đọc từ `Info.plist` của một gói `.app` có sẵn trên mọi máy macOS. Chỉ đọc file, không cần quyền.
+    #[test]
+    fn a_bundle_names_its_app() {
+        let id = bundle_identity(Path::new("/System/Applications/Calculator.app")).unwrap();
+        assert_eq!(id.bundle_id.as_deref(), Some("com.apple.calculator"));
+        assert!(id.name.is_some_and(|n| !n.is_empty()));
+        assert_eq!(bundle_identity(Path::new("/khong/co.app")), None);
+    }
+
+    /// Bảng các app đang phát tiếng của máy này, để người thử ở 02c Task 8 so với app thật (tên, bundle ID, pid). Đọc
+    /// thuộc tính của Core Audio HAL, không cần quyền; bỏ qua mặc định vì kết quả tùy máy.
+    #[test]
+    #[ignore = "in bảng app đang phát tiếng của máy này"]
+    fn print_the_playing_apps() {
+        for app in audio_apps().unwrap() {
+            println!("{:?}\t{}\t{:?}", app.name, app.bundle_id, app.pids);
+        }
+    }
+
+    #[test]
+    fn the_outer_app_bundle_is_found() {
+        let chrome = "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/\
+                      Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)";
+        assert_eq!(
+            outer_app(Path::new(chrome)),
+            Some(PathBuf::from("/Applications/Google Chrome.app"))
+        );
+        assert_eq!(outer_app(Path::new("/usr/libexec/coreaudiod")), None);
+    }
+
+    /// Q9 của review 02b: các tiến trình helper gộp vào app chính; tên lấy từ `NSRunningApplication`, đi lên tiến trình
+    /// cha khi helper không có tên.
+    #[test]
+    fn helper_processes_are_grouped_under_their_app() {
+        let processes = [
+            proc(
+                300,
+                "com.google.Chrome.helper",
+                "/Applications/Google Chrome.app/Contents/Frameworks/x.framework/Helpers/Google Chrome Helper.app/Contents/MacOS/h",
+            ),
+            proc(200, "us.zoom.xos", "/Applications/zoom.us.app/Contents/MacOS/zoom.us"),
+            proc(
+                301,
+                "com.google.Chrome.helper",
+                "/Applications/Google Chrome.app/Contents/Frameworks/x.framework/Helpers/Google Chrome Helper.app/Contents/MacOS/h",
+            ),
+            PlayingProcess {
+                pid: 400,
+                bundle_id: "com.example.tool".into(),
+                path: None,
+            },
+        ];
+        // Gói `.app` ngoài cùng cho tên và bundle ID của app chính, kể cả khi `NSRunningApplication` của helper trả về
+        // chính helper (Q-F của review 02 lần 2).
+        let bundle = |app: &Path| match app.to_str()? {
+            "/Applications/Google Chrome.app" => Some(AppIdentity {
+                name: Some("Google Chrome".into()),
+                bundle_id: Some("com.google.Chrome".into()),
+            }),
+            // Gói đọc không được bundle ID: dùng `NSRunningApplication`.
+            _ => Some(AppIdentity {
+                name: None,
+                bundle_id: None,
+            }),
+        };
+        let running = |pid: i32| match pid {
+            300 | 301 => Some(AppIdentity {
+                name: Some("Google Chrome Helper".into()),
+                bundle_id: Some("com.google.Chrome.helper".into()),
+            }),
+            200 => Some(AppIdentity {
+                name: Some("zoom.us".into()),
+                bundle_id: Some("us.zoom.xos".into()),
+            }),
+            _ => None,
+        };
+        let apps = group_processes(&processes, bundle, running);
+        assert_eq!(
+            apps,
+            [
+                AudioApp {
+                    pids: vec![400],
+                    bundle_id: "com.example.tool".into(),
+                    name: None
+                },
+                AudioApp {
+                    pids: vec![300, 301],
+                    bundle_id: "com.google.Chrome".into(),
+                    name: Some("Google Chrome".into())
+                },
+                AudioApp {
+                    pids: vec![200],
+                    bundle_id: "us.zoom.xos".into(),
+                    name: Some("zoom.us".into())
+                },
+            ]
+        );
+    }
 }
 
 #[cfg(test)]

@@ -19,9 +19,14 @@ objc2-core-audio = "0.3.2"
 objc2-core-audio-types = "0.3.2"
 objc2-core-foundation = "0.3.2"
 objc2-foundation = "0.3.2"
+# Tên hiển thị của app đang phát tiếng (`NSRunningApplication.localizedName`). Cùng bản Tauri đang dùng.
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "libc", "NSRunningApplication"] }
+# `proc_pidpath`, `proc_pidinfo`: gộp tiến trình helper theo gói `.app`, biết tiến trình đã thoát.
+libc = "0.2.189"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = [
+    "Win32_Devices_FunctionDiscovery",
     "Win32_Foundation",
     "Win32_Media_Audio",
     "Win32_Media_KernelStreaming",
@@ -30,4 +35,5 @@ windows = { version = "0.62.2", features = [
     "Win32_System_Com_StructuredStorage",
     "Win32_System_Performance",
     "Win32_System_Variant",
+    "Win32_UI_Shell_PropertiesSystem",
 ] }

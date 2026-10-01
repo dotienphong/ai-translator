@@ -2,10 +2,13 @@
 
 pub mod gapfill;
 pub mod mix;
+pub mod preprocess;
 pub mod resample;
 
 #[cfg(target_os = "macos")]
 pub mod macos;
+#[cfg(windows)]
+pub mod windows;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -22,6 +25,43 @@ pub trait AudioSource {
     fn stop(&mut self);
     /// Hợp lệ sau khi `start` thành công.
     fn format(&self) -> AudioFormat;
+    /// Luồng thu đã chết (ví dụ thiết bị bị rút): app phải khởi tạo lại việc thu (§9).
+    fn failed(&self) -> bool {
+        false
+    }
+}
+
+/// Một app đang phát âm thanh (macOS: tùy chọn chỉ tap app họp, §6.1).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AudioApp {
+    /// Mọi tiến trình đang phát tiếng của app, kể cả tiến trình helper cùng gói `.app` (trình duyệt, app Electron).
+    pub pids: Vec<i32>,
+    /// Bundle ID của app chính; không tìm được app chính thì là bundle ID mà Core Audio báo cho tiến trình.
+    pub bundle_id: String,
+    /// Tên hiển thị (`NSRunningApplication.localizedName`); `None` nếu không có.
+    pub name: Option<String>,
+}
+
+/// Dấu hiệu của thiết bị phát mặc định: đổi thì app khởi tạo lại việc thu trong ≤ 2 giây (§9). App hỏi định kỳ (mỗi 500 ms)
+/// thay cho listener của Core Audio và `IMMNotificationClient`: cùng kết quả, không có callback chạy trên luồng của hệ
+/// thống. `None` nếu không đọc được.
+///
+/// macOS: id của thiết bị kèm tần số mẫu danh định (`<id>@<Hz>`), vì tai nghe Bluetooth đổi tần số trên cùng thiết bị.
+pub fn default_output_signature() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    return macos::default_output_device().ok().map(|id| {
+        let rate = macos::nominal_sample_rate(id).unwrap_or(0.0);
+        format!("{id}@{rate:.0}")
+    });
+    #[cfg(windows)]
+    return {
+        use crate::windows::{Role, default_endpoint_id};
+        let console = default_endpoint_id(Role::Console).ok()?;
+        let communications = default_endpoint_id(Role::Communications).unwrap_or_default();
+        Some(format!("{console}|{communications}"))
+    };
+    #[allow(unreachable_code)]
+    None
 }
 
 /// Số liệu chẩn đoán, cập nhật từ luồng thu.

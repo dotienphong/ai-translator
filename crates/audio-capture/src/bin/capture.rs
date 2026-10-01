@@ -125,14 +125,16 @@ type Source = (Box<dyn AudioSource>, Arc<CaptureStats>);
 #[cfg(target_os = "macos")]
 fn make_sources(args: &Args) -> Result<Vec<Source>> {
     use audio_capture::macos::{MacTapSource, TapTarget};
-    let target = args.pid.map_or(TapTarget::SystemExceptSelf, TapTarget::Process);
+    let target = args
+        .pid
+        .map_or(TapTarget::SystemExceptSelf, |pid| TapTarget::Processes(vec![pid]));
     let stats = Arc::new(CaptureStats::default());
     Ok(vec![(Box::new(MacTapSource::new(target, stats.clone())), stats)])
 }
 
 #[cfg(windows)]
 fn make_sources(args: &Args) -> Result<Vec<Source>> {
-    use audio_capture::windows::{LoopbackSource, Role, default_endpoint_id};
+    use audio_capture::windows::{Endpoint, LoopbackSource, Role, default_endpoint_id};
     let roles = match args.role.as_str() {
         "console" => vec![Role::Console],
         "communications" => vec![Role::Communications],
@@ -148,7 +150,7 @@ fn make_sources(args: &Args) -> Result<Vec<Source>> {
         .map(|role| {
             let stats = Arc::new(CaptureStats::default());
             (
-                Box::new(LoopbackSource::new(role, stats.clone())) as Box<dyn AudioSource>,
+                Box::new(LoopbackSource::new(Endpoint::Default(role), stats.clone())) as Box<dyn AudioSource>,
                 stats,
             )
         })
