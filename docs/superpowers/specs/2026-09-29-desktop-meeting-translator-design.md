@@ -627,7 +627,8 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - Email mua hàng có idempotency key theo đơn, nên gửi lại không bao giờ thành hai thư.
 - **Phân loại lỗi của Resend:**
   - Chỉ `400` và `422` (thư sai dạng, địa chỉ nhận không hợp lệ) là lỗi vĩnh viễn: thôi gửi.
-  - Mọi lỗi khác là lỗi tạm: `401`, `403` (khóa API bị khóa, tên miền chưa xác thực: sửa cấu hình xong là gửi được), `409` (hai lượt gửi chồng nhau), `429`, `5xx` và lỗi mạng.
+  - `409 invalid_idempotent_request` (idempotency key đã dùng với nội dung khác, tức là một lần gửi trước đã được nhận) thì coi là thư đã gửi, thôi gửi lại.
+  - Mọi lỗi khác là lỗi tạm: `401`, `403` (khóa API bị khóa, tên miền chưa xác thực: sửa cấu hình xong là gửi được), `409 concurrent_idempotent_requests` (hai lượt gửi chồng nhau), `429`, `5xx` và lỗi mạng.
   - Lỗi tạm thì cron gửi lại, giãn dần: sau 5 phút, 15 phút, 1 giờ, rồi mỗi 6 giờ, trong 24 giờ sau khi trả tiền.
   - Cảnh báo `email_failed` cho người vận hành chỉ tạo ở lần lỗi đầu của mỗi đơn (§10.2).
 
