@@ -31,9 +31,10 @@ Chi tiết ở bảng "Phiên bản đã chốt".
 
 Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.1, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Kế hoạch spike S5: `docs/superpowers/plans/2026-09-29-giai-doan-0-05-s5-thanh-phu-de.md`.
 
-Bản này đã sửa theo hai lượt review ngày 2026-10-01:
+Bản này đã sửa theo ba lượt review ngày 2026-10-01:
 - lượt 1: thanh phụ đề ẩn lúc khởi động, quyền phóng to chữ, chặn điều hướng ra ngoài, test ACL chặt hơn, giữ giá trị của file cài đặt bản mới hơn, thanh phụ đề trên Windows hiện mà không lấy focus, và các mục nhỏ ở QĐ21–QĐ27;
-- lượt 2: trên Windows, ẩn/hiện và khóa thanh phụ đề làm hẳn bằng Win32 (QĐ23); giữ cả khóa con lạ của file bản mới hơn (QĐ2); test ACL kiểm khóa của file capability (QĐ5); origin của app theo từng hệ điều hành (QĐ22); lời nhắc khi Login Items cần cho phép (QĐ16); `<Notice/>` ở cả các bước lần đầu mở; test hiện/ẩn/khóa bằng bản giả của thanh phụ đề (QĐ27).
+- lượt 2: trên Windows, ẩn/hiện và khóa thanh phụ đề làm hẳn bằng Win32 (QĐ23); giữ cả khóa con lạ của file bản mới hơn (QĐ2); test ACL kiểm khóa của file capability (QĐ5); origin của app theo từng hệ điều hành (QĐ22); lời nhắc khi Login Items cần cho phép (QĐ16); `<Notice/>` ở cả các bước lần đầu mở; test hiện/ẩn/khóa bằng bản giả của thanh phụ đề (QĐ27);
+- lượt 3: bản dev nhận biết bằng `tauri::is_dev()`, để `pnpm tauri build --debug` không trắng màn hình (QĐ22); thanh phụ đề trên Windows không phóng to hay ghép nửa màn hình khi kéo lên mép (QĐ23); mọi việc mở ra ngoài app đi qua `SystemOpener`, test dùng bản giả (QĐ28); thanh báo trong các bước lần đầu mở không có nút "Mở cài đặt" (QĐ12).
 
 ---
 
@@ -105,11 +106,11 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00. Cột cuối là t
 
 ## Quyết định của kế hoạch này
 
-Đánh số QĐ1–QĐ27, chỉ dùng trong file này. QĐ21–QĐ27 thêm khi sửa theo review.
+Đánh số QĐ1–QĐ28, chỉ dùng trong file này. QĐ21–QĐ28 thêm khi sửa theo review.
 
 - **QĐ1. Chia module.** `src-tauri/src/` theo §12 (`settings/`, `tray.rs`, `hotkeys.rs`, `i18n.rs`, `overlay/{macos,windows}.rs`, `security/keystore.rs`), thêm:
   - `commands.rs` (lệnh `invoke`), `actions.rs` (việc dùng chung cho lệnh, khay, phím tắt), `events.rs` (tên và cách gửi sự kiện), `state.rs` (trạng thái dùng chung);
-  - `window.rs` (cửa sổ chính, menu app trên Mac), `hotkey_registry.rs` (đăng ký với hệ điều hành), `quit_guard.rs` (chặn `⌘Q`), `navigation.rs` (chặn điều hướng), `login_item.rs` (trạng thái khởi động cùng hệ thống), `logging.rs`, `session_stub.rs` (phiên tạm);
+  - `window.rs` (cửa sổ chính, menu app trên Mac), `hotkey_registry.rs` (đăng ký với hệ điều hành), `quit_guard.rs` (chặn `⌘Q`), `navigation.rs` (chặn điều hướng), `system.rs` (mọi việc mở ra ngoài app, QĐ28), `login_item.rs` (trạng thái khởi động cùng hệ thống), `logging.rs`, `session_stub.rs` (phiên tạm);
   - phần thuần tách riêng để test trước: `errors.rs` (mã lỗi trả về giao diện), `tray_menu.rs` (nội dung menu khay);
   - test chạy bằng MockRuntime: `test_support.rs`, `acl_tests.rs`, `app_tests.rs`.
 - **QĐ2. File cài đặt phẳng.** Mỗi khóa của `Settings` là một mục ở mức trên cùng của store, cộng `schemaVersion`.
@@ -159,6 +160,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00. Cột cuối là t
   - Lỗi của lệnh gần nhất hiện ở thanh báo của cửa sổ chính.
   - Lời nhắc từ phía Rust (sự kiện `app://notice`, hiện chỉ có "thoát ở menu bar") hiện ở thanh báo, đóng được.
   - Phím tắt không đăng ký được thì hiện ở thanh báo, ở nhóm Cài đặt "Phím tắt", và ở một dòng trong menu khay; bấm dòng đó thì mở đúng nhóm Cài đặt.
+  - Thanh báo có ở cả khung cửa sổ chính lẫn các bước lần đầu mở. Trong các bước lần đầu mở, `App` chỉ hiện `Onboarding`, nên nút "Mở cài đặt" ở thanh báo phím tắt bị ẩn (`canOpenScreens`, có test), và câu báo đổi thành "đổi ở Cài đặt › Phím tắt sau khi xong các bước này". Không thêm bước phím tắt vào lần đầu mở, vì §4.1 không có bước này.
   - Không xin quyền thông báo hệ thống.
 - **QĐ13. Vị trí thanh phụ đề theo màn hình.**
   - Khóa của màn hình là tên cộng độ phân giải.
@@ -170,7 +172,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00. Cột cuối là t
 - **QĐ15.** Menu app trên Mac dùng chữ mặc định (English) của các mục có sẵn (About, Edit, Window, Quit…). Chỉ menu khay theo ngôn ngữ giao diện.
 - **QĐ16. Trạng thái thật của "khởi động cùng hệ thống".** Lúc khởi động, `launchAtLogin` lấy theo hệ điều hành chứ không theo file cài đặt.
   - macOS: plugin chỉ xem file LaunchAgent có tồn tại không. Người dùng tắt app ở System Settings › General › Login Items thì file vẫn còn. Vì vậy app hỏi thêm `SMAppService statusForLegacyURL:` và chỉ coi là bật khi trạng thái là `Enabled`. Lúc lập kế hoạch, với một file không tồn tại, hàm này trả `NotRegistered` và không bật hộp thoại nào. Task 24 thử với Login Items thật.
-  - macOS, bật trong app mà hệ thống báo `RequiresApproval` (mục đang bị tắt ở Login Items): app gửi lời nhắc `loginItemsApproval`, có nút mở System Settings › General › Login Items bằng `SMAppService openSystemSettingsLoginItems` (lệnh `open_login_items_settings`). Lúc lập kế hoạch chỉ build và test phần quyết định (`login_item::needs_approval`), không gọi hàm mở System Settings; Task 24 dòng 21 thử bằng tay.
+  - macOS, bật trong app mà hệ thống báo `RequiresApproval` (mục đang bị tắt ở Login Items): app gửi lời nhắc `loginItemsApproval`, có nút mở System Settings › General › Login Items bằng `SMAppService openSystemSettingsLoginItems` (lệnh `open_login_items_settings`). Lệnh này đi qua `SystemOpener` (QĐ28): app giả của test dùng bản giả, nên kể cả khi ACL lỡ cấp thừa, không test nào mở System Settings thật. Phần quyết định (`login_item::needs_approval`) có test; Task 24 dòng 21 thử bằng tay.
   - Windows: `auto-launch` 0.5.0 (plugin dùng) đọc cả giá trị trong `HKCU\...\Run` lẫn khóa `Explorer\StartupApproved\Run` của Task Manager, nên tắt ở Task Manager thì app hiện "tắt". `enable()` ghi lại cả hai, nên bật trong app là bật thật.
 - **QĐ17.** Trên Windows, bấm chuột trái vào icon khay thì mở cửa sổ chính, chuột phải thì mở menu. Trên Mac, bấm vào icon luôn mở menu, như mọi icon ở menu bar.
 - **QĐ18.** Kiểm kiểu và clippy phần code Windows ngay trên Mac bằng `scripts/check-windows.sh`, với một `llvm-rc` giả, vì tauri-build cần trình biên dịch resource cho target Windows. `cargo check` và `cargo clippy` không link, nên file resource rỗng không ảnh hưởng gì.
@@ -181,7 +183,8 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00. Cột cuối là t
   - Dừng phiên thì thanh giữ nguyên, để người dùng còn đọc được các dòng cuối.
   - Ẩn/hiện bằng tay (nút, phím tắt, khay) vẫn dùng được.
 - **QĐ22. Điều hướng của webview (§10.2).**
-  - URL của app thì cho đi. Bản phát hành chỉ nhận origin của giao diện đóng gói trên đúng hệ điều hành đang chạy: macOS `tauri://localhost`, Windows `http(s)://tauri.localhost`. Bản dev chỉ nhận đúng origin của dev server (`devUrl`).
+  - URL của app thì cho đi. Bản nạp giao diện đóng gói chỉ nhận origin của giao diện đó trên đúng hệ điều hành đang chạy: macOS `tauri://localhost`, Windows `http(s)://tauri.localhost`. Bản dev chỉ nhận đúng origin của dev server (`devUrl`).
+  - "Bản dev" là `tauri::is_dev()` (chưa bật feature `custom-protocol`), đúng cách Tauri chọn nguồn giao diện; không dùng `cfg!(debug_assertions)`, vì `pnpm tauri build --debug` là bản debug mà vẫn nạp giao diện đóng gói, và khi đó cả hai cửa sổ sẽ trắng. Phần chọn URL (`dev_url_for`) có test.
   - `blob:` bị chặn, kể cả `blob:` của chính app. Ghi chú cho 03: nếu xuất file bằng cách điều hướng tới `blob:` (`<a download>`) thì phải làm cách khác, ví dụ ghi file phía Rust.
   - URL `https` ở cổng mặc định, có tên miền đúng từng chữ trong `navigation::EXTERNAL_HOSTS`, thì mở bằng trình duyệt qua opener phía Rust.
   - Còn lại thì chặn và ghi log (chỉ ghi origin).
@@ -191,7 +194,10 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00. Cột cuối là t
   - Hiện: `ShowWindow(SW_SHOWNOACTIVATE)`, để không lấy focus của app họp. Ẩn: `ShowWindow(SW_HIDE)`.
   - Khóa (click xuyên qua): `SetWindowLongPtrW(GWL_EXSTYLE, …)` bật/tắt `WS_EX_TRANSPARENT | WS_EX_LAYERED` như tao làm, rồi `SetWindowPos(SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED)`.
   - Lý do: tao giữ cờ `VISIBLE` riêng. Cửa sổ hiện bằng Win32 thì tao vẫn tưởng đang ẩn, nên `hide()` không làm gì. Đổi click xuyên qua tao thì tao áp lại cả bộ cờ: gọi `SW_HIDE` (thanh biến mất) hoặc `SW_SHOW` (lấy focus).
-  - `AppStatus.overlay_visible` là trạng thái gốc. Kiểm kiểu bằng `scripts/check-windows.sh`; hành vi thật ở Task 25 dòng 5–7.
+  - Cũng vì tao giữ cờ riêng, sau khi tạo thì không gọi hàm nào đổi cờ của tao cho overlay trên Windows (`set_resizable`, `set_always_on_top`, `set_decorations`, `set_maximizable`, `set_minimizable`…): mọi cờ đặt một lần lúc tạo.
+  - Overlay tạo với `maximizable(false)` và `minimizable(false)`: kéo thanh lên mép màn hình thì Aero Snap không phóng to (nếu phóng to, `remember_position` sẽ lưu luôn kích thước đó, và cờ `MAXIMIZED` của tao bị lệch).
+  - Ghi chú cho 03 khi làm kéo cạnh: dùng `start_resize_dragging` (không đổi cờ); nếu cần đổi `resizable` thì đặt lúc tạo cửa sổ, không gọi `set_resizable` sau đó.
+  - `AppStatus.overlay_visible` là trạng thái gốc. Kiểm kiểu bằng `scripts/check-windows.sh`; hành vi thật ở Task 25 dòng 5–7 và 17.
 - **QĐ24. Đổi phím tắt mà phím cũ cũng không đăng ký lại được** thì việc đó được thêm vào `hotkeyFailures`, để khay và thanh báo có cảnh báo như lỗi lúc khởi động. Luật nằm ở `hotkeys::rebind`, test bằng bộ đăng ký giả.
 - **QĐ25. `toggle_session` trả `Result<AppStatus, CommandError>` ngay từ 01.**
   - Lệnh này hiện là lệnh đồng bộ, chạy trên luồng chính.
@@ -203,6 +209,11 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00. Cột cuối là t
   - bỏ qua yêu cầu thoát thì gửi lời nhắc tới cửa sổ chính.
   - Thao tác cửa sổ của thanh phụ đề đi qua trait `overlay::Surface`: bản thật gọi `macos.rs` hay `windows.rs`, test dùng bản giả ghi lại từng lần gọi (`test_support::FakeSurface`).
   - Hạn chế: bản giả không kiểm được code Win32 hay NSPanel. Lệnh khóa cũng chưa có test tự động, vì nó ghi cài đặt qua `tauri-plugin-store`, mà app giả không đăng ký plugin này (đăng ký thì ghi vào thư mục cài đặt thật của app). Các phần này thử tay ở Task 24 dòng 4–5 và Task 25 dòng 5–7.
+- **QĐ28. Mọi việc mở ra ngoài app đi qua trait `system::SystemOpener`,** cách làm giống `overlay::Surface`: mở thư mục log, trang Taskbar của Windows, trang Login Items của macOS, link ngoài bằng trình duyệt. Kế hoạch 02 thêm `open_audio_permission_settings` (trang quyền ghi âm thanh) vào đây.
+  - App thật cài bản thật ở đầu `setup` (`system::install`); chưa cài thì mọi lời gọi trả lỗi, không mở gì.
+  - `mock_app` và mọi test dùng bản giả `test_support::FakeSystem`, ghi lại các lần gọi. Vì vậy kể cả khi ACL lỡ cấp thừa một lệnh, test chạy tới handler cũng không mở Finder, System Settings hay Settings của Windows.
+  - Test ACL kiểm: lệnh bị chặn thì bản giả không ghi nhận gì; lệnh được phép thì ghi nhận đúng lời gọi.
+  - Không chỗ nào khác gọi `tauri-plugin-opener` hay API mở System Settings.
 
 ## Điểm cần chủ dự án xem
 
@@ -233,7 +244,7 @@ src-tauri/
     ├── settings/{mod,migrate,patch,persist}.rs
     ├── hotkeys.rs  hotkey_registry.rs
     ├── i18n.rs  errors.rs  tray_menu.rs  tray.rs  window.rs
-    ├── quit_guard.rs  navigation.rs  login_item.rs
+    ├── quit_guard.rs  navigation.rs  system.rs  login_item.rs
     ├── overlay/{mod,placement,macos,windows}.rs
     ├── security/{mod,keystore}.rs
     ├── state.rs  events.rs  commands.rs  actions.rs
@@ -258,10 +269,10 @@ index.html, overlay.html, package.json, vitest.config.ts, Cargo.lock, pnpm-lock.
 ## Lưu ý khi thực thi
 
 - Mọi lệnh shell bắt đầu bằng `source "$HOME/.cargo/env" && eval "$(fnm env --use-on-cd)" >/dev/null && …`, chạy từ gốc repo. Các Expected dưới đây bỏ phần tiền tố này.
-- Expected ghi số đo thật **lúc lập kế hoạch** (2026-10-01, trên M4 Pro, trên commit `dc82599`; code của app như `3f085a9`). Lần chạy thử dùng target riêng, build lại từ đầu, nên thời gian build ở Expected là của lần build đầu.
+- Expected ghi số đo thật **lúc lập kế hoạch** (2026-10-01, trên M4 Pro, trên commit `47f5939`; code của app như `3f085a9`). Lần chạy thử dùng target riêng, build lại từ đầu, nên thời gian build ở Expected là của lần build đầu.
 - Kế hoạch này chạy song song được với phần crate của 02 (Đ18), nhưng hai bên cùng sửa `Cargo.lock`. Task 1 của 01 nên làm xong và commit trước khi 02 thêm crate mới. Nếu 02 đang giữ thay đổi chưa commit ở `Cargo.lock`, hai bên thống nhất trước khi chạy `cargo update` hay thêm phụ thuộc.
 - Task 24–25 cần người thao tác hoặc máy Windows. Agent làm Task 1–23 và 26, rồi dừng chờ kết quả của 24–25 trước khi đánh dấu các dòng liên quan là `xong`.
-- Agent không chạy `pnpm tauri dev` hay binary của app, và không chạy test `#[ignore]` đụng Keychain (mục 6.8 của kế hoạch 00). Riêng test `#[ignore]` của `login_item` chỉ đọc trạng thái, không bật hộp thoại, nên agent chạy được (Task 12, Step 6).
+- Agent không chạy `pnpm tauri dev` hay binary của app, và không chạy test `#[ignore]` đụng Keychain (mục 6.8 của kế hoạch 00). Agent không chạy thứ gì mở cửa sổ, System Settings hay Finder trên màn hình người dùng; mutation cấp thừa lệnh mở ra ngoài app (Task 17 Step 17) chỉ chạy khi `mock_app` đã dùng bản giả `FakeSystem`. Riêng test `#[ignore]` của `login_item` chỉ đọc trạng thái, không bật hộp thoại, nên agent chạy được (Task 12, Step 6).
 
 ---
 
@@ -3454,19 +3465,21 @@ git add src-tauri/src/quit_guard.rs src-tauri/src/lib.rs
 git commit -m "feat(app): ⌘Q và Quit ở Dock không thoát app, vẫn cho thoát khi đăng xuất hay tắt máy (§4.3)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-## Task 11: Chặn điều hướng ra ngoài, link ngoài mở bằng trình duyệt (TDD)
+## Task 11: Chặn điều hướng ra ngoài; mọi việc mở ra ngoài app đi qua `SystemOpener` (TDD)
 
 **Files:**
-- Create: `src-tauri/src/navigation.rs`
-- Modify: `src-tauri/src/lib.rs` (thêm `pub mod navigation;`)
+- Create: `src-tauri/src/navigation.rs`, `src-tauri/src/system.rs`
+- Modify: `src-tauri/src/lib.rs` (thêm `pub mod navigation;` và `pub mod system;`)
 
-Theo QĐ22 (§10.2: "Link ngoài mở bằng trình duyệt của hệ thống").
+Theo QĐ22 (§10.2: "Link ngoài mở bằng trình duyệt của hệ thống") và QĐ28.
 - `decide` là hàm thuần, có test. Hệ điều hành là tham số (`Os`), nên test kiểm được origin của cả macOS lẫn Windows ngay trên Mac; app truyền `CURRENT_OS`.
+- `dev_url_for` chọn URL của dev server theo `tauri::is_dev()`, không theo `cfg!(debug_assertions)`: `pnpm tauri build --debug` là bản debug nhưng nạp giao diện đóng gói, nên không được coi là bản dev (nếu không, cả hai cửa sổ trắng).
 - `blob:` bị chặn, kể cả `blob:` của chính app (ghi chú cho 03 ở QĐ22).
 - `plugin()` (hook `on_navigation`) và `new_window_handler()` (gắn vào từng cửa sổ) được nối vào app ở Task 17.
 - Danh sách `EXTERNAL_HOSTS` để rỗng; test dùng một danh sách riêng.
+- `system.rs`: trait `SystemOpener` cho mọi việc mở ra ngoài app (thư mục log, trang Taskbar của Windows, trang Login Items của macOS, link ngoài). Chưa cài thì mọi lời gọi trả lỗi. Test chỉ dùng app giả của Tauri và một bản ghi lời gọi, không mở gì. App thật cài bản thật ở `setup` (Task 17); app giả của các test sau dùng bản giả `test_support::FakeSystem` (Task 17).
 
-- [ ] **Step 1: Khai báo module.** Thêm `pub mod navigation;` vào khối `pub mod` ở đầu `src-tauri/src/lib.rs`.
+- [ ] **Step 1: Khai báo module.** Thêm `pub mod navigation;` và `pub mod system;` vào khối `pub mod` ở đầu `src-tauri/src/lib.rs`.
 
 - [ ] **Step 2: Viết test trước.** Tạo `src-tauri/src/navigation.rs`, tạm thời chỉ có phần chú thích đầu file và test:
 
@@ -3476,7 +3489,7 @@ Theo QĐ22 (§10.2: "Link ngoài mở bằng trình duyệt của hệ thống")
 //!   hành đang chạy (macOS `tauri://localhost`, Windows `http(s)://tauri.localhost`); bản dev chỉ nhận
 //!   origin của dev server.
 //! - URL `https` (cổng mặc định) có tên miền nằm trong `EXTERNAL_HOSTS`: không mở trong webview, mà
-//!   mở bằng trình duyệt của hệ thống qua `tauri-plugin-opener` phía Rust.
+//!   mở bằng trình duyệt của hệ thống qua `system::open_external_url` (`SystemOpener`, QĐ28).
 //! - Mọi URL khác: chặn và ghi log (chỉ ghi origin, không ghi đường dẫn hay tham số).
 //!
 //! Áp cho cả điều hướng trong trang (`on_navigation` của plugin, cho mọi webview) và yêu cầu mở cửa sổ
@@ -3528,6 +3541,17 @@ mod tests {
             assert_eq!(d("http://tauri.localhost/", os, DEV, &[]), Decision::Block);
             assert_eq!(d("http://user@localhost:1420/", os, DEV, &[]), Decision::Block);
         }
+    }
+
+    #[test]
+    fn packaged_ui_ignores_dev_url_even_in_debug_builds() {
+        let dev = Url::parse("http://localhost:1420").unwrap();
+        assert_eq!(dev_url_for(true, Some(&dev)), Some(dev.clone()));
+        assert_eq!(dev_url_for(true, None), None);
+        assert_eq!(dev_url_for(false, Some(&dev)), None, "`tauri build --debug`");
+        let packaged = dev_url_for(false, Some(&dev));
+        let url = Url::parse("tauri://localhost/index.html").unwrap();
+        assert_eq!(decide(&url, Os::MacOs, packaged.as_ref(), &[]), Decision::Allow);
     }
 
     #[test]
@@ -3588,25 +3612,105 @@ mod tests {
 }
 ```
 
+Tạo `src-tauri/src/system.rs`, cũng chỉ có phần chú thích đầu file và test:
+
+```rust
+//! Mọi việc app mở ra ngoài chính nó: thư mục log trong Finder/Explorer, trang của System Settings
+//! hay Settings của Windows, link ngoài trong trình duyệt (QĐ28 của kế hoạch 01).
+//!
+//! Tất cả đi qua trait `SystemOpener`, quản lý bằng `app.manage(System(..))`:
+//! - app thật cài bản thật ở `setup` (`install`);
+//! - app giả của test cài bản giả ghi lại từng lần gọi (`test_support::FakeSystem`). Vì vậy kể cả khi
+//!   ACL lỡ cấp thừa một lệnh, test chạy tới handler cũng không mở gì trên màn hình người dùng.
+//! - Chưa cài thì mọi lời gọi trả lỗi, không mở gì.
+//!
+//! Kế hoạch sau thêm việc mở ra ngoài (ví dụ 02: trang quyền ghi âm thanh của System Settings) thì thêm
+//! một phương thức vào trait này, không gọi `tauri-plugin-opener` hay API hệ thống ở chỗ khác.
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use super::*;
+
+    #[derive(Clone, Default)]
+    struct Recorder(Arc<Mutex<Vec<String>>>);
+
+    impl Recorder {
+        fn push(&self, call: &str) -> Result<(), String> {
+            self.0.lock().unwrap().push(call.into());
+            Ok(())
+        }
+    }
+
+    impl SystemOpener for Recorder {
+        fn open_log_dir(&self) -> Result<(), String> {
+            self.push("open_log_dir")
+        }
+        fn open_taskbar_settings(&self) -> Result<(), String> {
+            self.push("open_taskbar_settings")
+        }
+        fn open_login_items_settings(&self) -> Result<(), String> {
+            self.push("open_login_items_settings")
+        }
+        fn open_external_url(&self, url: &str) -> Result<(), String> {
+            self.push(&format!("open_external_url {url}"))
+        }
+    }
+
+    #[test]
+    fn nothing_opens_until_an_opener_is_installed() {
+        let app = tauri::test::mock_app();
+        let app = app.handle();
+        assert!(open_log_dir(app).is_err());
+        assert!(open_taskbar_settings(app).is_err());
+        assert!(open_login_items_settings(app).is_err());
+        assert!(open_external_url(app, "https://pay.payos.vn/").is_err());
+    }
+
+    #[test]
+    fn calls_go_to_the_installed_opener() {
+        let app = tauri::test::mock_app();
+        let recorder = Recorder::default();
+        app.manage(System(Box::new(recorder.clone())));
+        let app = app.handle();
+        open_log_dir(app).unwrap();
+        open_taskbar_settings(app).unwrap();
+        open_login_items_settings(app).unwrap();
+        open_external_url(app, "https://pay.payos.vn/web/1").unwrap();
+        assert_eq!(
+            *recorder.0.lock().unwrap(),
+            [
+                "open_log_dir",
+                "open_taskbar_settings",
+                "open_login_items_settings",
+                "open_external_url https://pay.payos.vn/web/1",
+            ]
+        );
+    }
+}
+```
+
 - [ ] **Step 3: Chạy test, thấy lỗi**
 
-Run: `cargo test -p meeting-translator --lib navigation::`
+Run: `cargo test -p meeting-translator --lib -- navigation:: system::`
 Expected: FAIL, biên dịch lỗi:
 ```text
 error[E0425]: cannot find type `Os` in this scope
 error[E0425]: cannot find type `Decision` in this scope
+error[E0405]: cannot find trait `SystemOpener` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `System` in this scope
 error[E0433]: cannot find type `Url` in this scope
-error[E0425]: cannot find function `decide` in this scope
-error[E0433]: cannot find type `Os` in this scope
 ```
 
-- [ ] **Step 4: Viết code.** Chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+- [ ] **Step 4: Viết code.** Trong `src-tauri/src/navigation.rs`, chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
 
 ```rust
 use tauri::plugin::TauriPlugin;
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
 use tauri::{AppHandle, Manager, Runtime, Url};
-use tauri_plugin_opener::OpenerExt as _;
+
+use crate::system;
 
 /// Tên miền được mở bằng trình duyệt. Kế hoạch 06 thêm trang thanh toán của PayOS, kế hoạch 07 thêm
 /// website của sản phẩm (tên miền chờ Q1). Chỉ so khớp đúng cả tên miền, không nhận tên miền con.
@@ -3668,12 +3772,15 @@ fn is_app_url(url: &Url, os: Os, dev_url: Option<&Url>) -> bool {
     }
 }
 
+/// URL của dev server, chỉ khi app nạp giao diện từ đó. `tauri::is_dev()` (chưa bật feature
+/// `custom-protocol`) là đúng cách Tauri chọn nguồn giao diện; `cfg!(debug_assertions)` thì sai với
+/// `pnpm tauri build --debug`, bản debug mà vẫn nạp giao diện đóng gói từ `tauri://localhost`.
+pub fn dev_url_for(is_dev: bool, configured: Option<&Url>) -> Option<Url> {
+    if is_dev { configured.cloned() } else { None }
+}
+
 fn dev_url<R: Runtime>(app: &AppHandle<R>) -> Option<Url> {
-    if cfg!(debug_assertions) {
-        app.config().build.dev_url.clone()
-    } else {
-        None
-    }
+    dev_url_for(tauri::is_dev(), app.config().build.dev_url.as_ref())
 }
 
 /// Áp quyết định; trả về `true` nếu webview được đi tới URL này.
@@ -3681,7 +3788,7 @@ fn apply<R: Runtime>(app: &AppHandle<R>, url: &Url) -> bool {
     match decide(url, CURRENT_OS, dev_url(app).as_ref(), EXTERNAL_HOSTS) {
         Decision::Allow => true,
         Decision::OpenExternal => {
-            if let Err(e) = app.opener().open_url(url.as_str(), None::<&str>) {
+            if let Err(e) = system::open_external_url(app, url.as_str()) {
                 log::warn!(
                     "không mở được {} bằng trình duyệt: {e}",
                     url.origin().ascii_serialization()
@@ -3715,12 +3822,103 @@ pub fn new_window_handler<R: Runtime>(
 }
 ```
 
+Trong `src-tauri/src/system.rs`, chèn đoạn sau ngay dưới các dòng `//!`, trên `#[cfg(test)]`:
+
+```rust
+use tauri::{AppHandle, Manager, Runtime};
+use tauri_plugin_opener::OpenerExt as _;
+
+pub trait SystemOpener: Send + Sync + 'static {
+    /// Mở thư mục log bằng trình quản lý file (tạo thư mục nếu chưa có).
+    fn open_log_dir(&self) -> Result<(), String>;
+    /// Windows: Settings › Personalization › Taskbar.
+    fn open_taskbar_settings(&self) -> Result<(), String>;
+    /// macOS: System Settings › General › Login Items.
+    fn open_login_items_settings(&self) -> Result<(), String>;
+    /// Mở một URL mà `navigation` đã cho phép bằng trình duyệt của hệ thống.
+    fn open_external_url(&self, url: &str) -> Result<(), String>;
+}
+
+/// `SystemOpener` đang dùng.
+pub struct System(pub Box<dyn SystemOpener>);
+
+struct Native<R: Runtime>(AppHandle<R>);
+
+impl<R: Runtime> SystemOpener for Native<R> {
+    fn open_log_dir(&self) -> Result<(), String> {
+        let dir = self.0.path().app_log_dir().map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        self.0
+            .opener()
+            .open_path(dir.to_string_lossy(), None::<&str>)
+            .map_err(|e| e.to_string())
+    }
+
+    fn open_taskbar_settings(&self) -> Result<(), String> {
+        if !cfg!(windows) {
+            return Err("chỉ có trên Windows".into());
+        }
+        self.0
+            .opener()
+            .open_url("ms-settings:taskbar", None::<&str>)
+            .map_err(|e| e.to_string())
+    }
+
+    fn open_login_items_settings(&self) -> Result<(), String> {
+        #[cfg(target_os = "macos")]
+        {
+            use objc2_service_management::SMAppService;
+            // SAFETY: phương thức lớp, không tham số; có từ macOS 13, app yêu cầu 14.2 trở lên (spec D3).
+            unsafe { SMAppService::openSystemSettingsLoginItems() };
+            Ok(())
+        }
+        #[cfg(not(target_os = "macos"))]
+        Err("chỉ có trên macOS".into())
+    }
+
+    fn open_external_url(&self, url: &str) -> Result<(), String> {
+        self.0.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+    }
+}
+
+/// Cài bản thật. Gọi một lần ở đầu `setup`, trước khi tạo cửa sổ.
+pub fn install<R: Runtime>(app: &AppHandle<R>) {
+    app.manage(System(Box::new(Native(app.clone()))));
+}
+
+fn with<R: Runtime>(
+    app: &AppHandle<R>,
+    call: impl FnOnce(&dyn SystemOpener) -> Result<(), String>,
+) -> Result<(), String> {
+    match app.try_state::<System>() {
+        Some(system) => call(system.0.as_ref()),
+        None => Err("chưa cài SystemOpener".into()),
+    }
+}
+
+pub fn open_log_dir<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    with(app, |s| s.open_log_dir())
+}
+
+pub fn open_taskbar_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    with(app, |s| s.open_taskbar_settings())
+}
+
+pub fn open_login_items_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    with(app, |s| s.open_login_items_settings())
+}
+
+pub fn open_external_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<(), String> {
+    with(app, |s| s.open_external_url(url))
+}
+```
+
 - [ ] **Step 5: Chạy test, thấy qua**
 
-Run: `cargo test -p meeting-translator --lib navigation::`
+Run: `cargo test -p meeting-translator --lib -- navigation:: system::`
 Expected:
 ```text
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.00s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.00s
 ```
 
 - [ ] **Step 6: clippy và định dạng**
@@ -3731,8 +3929,8 @@ Expected: không lỗi, không cảnh báo.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src-tauri/src/navigation.rs src-tauri/src/lib.rs
-git commit -m "feat(app): chặn điều hướng ra ngoài app, link ngoài được phép thì mở bằng trình duyệt (§10.2)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git add src-tauri/src/navigation.rs src-tauri/src/system.rs src-tauri/src/lib.rs
+git commit -m "feat(app): chặn điều hướng ra ngoài app, link ngoài được phép thì mở bằng trình duyệt (§10.2); mọi việc mở ra ngoài app đi qua SystemOpener" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ## Task 12: Trạng thái thật của "khởi động cùng hệ thống" (TDD)
@@ -3744,8 +3942,8 @@ git commit -m "feat(app): chặn điều hướng ra ngoài app, link ngoài đ�
 Theo QĐ16.
 - `effective`, `needs_approval` và `launch_agent_path` là phần thuần, có test.
 - `agent_status` (macOS) hỏi `SMAppService statusForLegacyURL:`. Hàm này chỉ đọc, không đăng ký gì và không bật hộp thoại, nên agent chạy được test `#[ignore]` của nó (Step 6).
-- `open_login_items_settings` (macOS) gọi `SMAppService openSystemSettingsLoginItems`, mở System Settings trên màn hình người dùng. Agent chỉ build hàm này, **không gọi**; không test nào gọi nó. Người thử ở Task 24 dòng 21.
-- Task 17 dùng các hàm này trong `actions::sync_launch_at_login`, `actions::update_settings` (lời nhắc khi cần cho phép) và lệnh `open_login_items_settings`.
+- Việc mở System Settings › Login Items (`SMAppService openSystemSettingsLoginItems`) không nằm ở đây, mà ở `SystemOpener` (Task 11, QĐ28). Test dùng bản giả, nên kể cả khi ACL lỡ cấp thừa, không test nào mở System Settings thật. Người thử bằng tay ở Task 24 dòng 21.
+- Task 17 dùng các hàm này trong `actions::sync_launch_at_login` và `actions::update_settings` (lời nhắc khi cần cho phép).
 
 - [ ] **Step 1: Khai báo module.** Thêm `pub mod login_item;` vào khối `pub mod` ở đầu `src-tauri/src/lib.rs`.
 
@@ -3759,7 +3957,7 @@ Theo QĐ16.
 //! › Login Items thì file vẫn còn, nhưng launchd không chạy nó nữa. Vì vậy trên macOS app hỏi thêm
 //! `SMAppService statusForLegacyURL:` (macOS 13+): chỉ coi là bật khi trạng thái là `Enabled`.
 //! Người dùng bật lại trong app mà mục vẫn bị tắt ở Login Items thì hệ thống báo `RequiresApproval`;
-//! app hiện lời nhắc kèm nút mở đúng trang đó của System Settings (`open_login_items_settings`).
+//! app hiện lời nhắc kèm nút mở đúng trang đó của System Settings (`system::open_login_items_settings`).
 //!
 //! Windows: không cần gì thêm. `auto-launch` 0.5.0 (dùng bởi plugin) đọc cả giá trị trong
 //! `HKCU\...\Run` lẫn khóa `Explorer\StartupApproved\Run` mà Task Manager ghi khi người dùng tắt mục
@@ -3894,15 +4092,6 @@ pub fn agent_status(plist: &Path) -> Option<AgentStatus> {
 pub fn agent_status(_plist: &Path) -> Option<AgentStatus> {
     None
 }
-
-/// Mở System Settings › General › Login Items. Chỉ gọi khi người dùng bấm nút ở lời nhắc; test và agent
-/// không gọi, vì hàm này mở System Settings trên màn hình người dùng.
-#[cfg(target_os = "macos")]
-pub fn open_login_items_settings() {
-    use objc2_service_management::SMAppService;
-    // SAFETY: phương thức lớp, không tham số; có từ macOS 13.
-    unsafe { SMAppService::openSystemSettingsLoginItems() }
-}
 ```
 
 - [ ] **Step 5: Chạy test, thấy qua**
@@ -3910,7 +4099,7 @@ pub fn open_login_items_settings() {
 Run: `cargo test -p meeting-translator --lib login_item::`
 Expected:
 ```text
-test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 64 filtered out; finished in 0.00s
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 67 filtered out; finished in 0.00s
 ```
 
 - [ ] **Step 6: Hỏi hệ thống thật một lần** (chỉ đọc)
@@ -3919,7 +4108,7 @@ Run: `cargo test -p meeting-translator --lib login_item -- --ignored --nocapture
 Expected (lúc lập kế hoạch):
 ```text
 Some(NotRegistered)
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 67 filtered out; finished in 0.00s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 70 filtered out; finished in 0.00s
 ```
 
 - [ ] **Step 7: clippy và định dạng**
@@ -4097,7 +4286,7 @@ pub fn backup_if_corrupt(path: &Path) -> std::io::Result<Option<PathBuf>> {
 Run: `cargo test -p meeting-translator --lib settings::persist`
 Expected:
 ```text
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 68 filtered out; finished in 0.01s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 0.01s
 ```
 
 - [ ] **Step 6: clippy và định dạng**
@@ -4337,6 +4526,7 @@ export const en = {
   "overlay.waiting": "Subtitles will appear here",
 
   "notice.hotkeysFailed": "Some shortcuts could not be registered. Open Settings › Shortcuts to change them.",
+  "notice.hotkeysFailedLater": "Some shortcuts could not be registered. You can change them in Settings › Shortcuts after these steps.",
   "notice.openSettings": "Open settings",
   "notice.quitFromTray": "Meeting Translator keeps running in the menu bar. To quit, choose Quit from the menu bar icon.",
   "notice.loginItemsApproval": "Meeting Translator is turned off in System Settings › General › Login Items, so it will not open when you log in. Turn it on there.",
@@ -4480,6 +4670,7 @@ export const vi: Record<MessageKey, string> = {
   "overlay.waiting": "Phụ đề sẽ hiện ở đây",
 
   "notice.hotkeysFailed": "Có phím tắt không đăng ký được. Mở Cài đặt › Phím tắt để đổi.",
+  "notice.hotkeysFailedLater": "Có phím tắt không đăng ký được. Bạn đổi được ở Cài đặt › Phím tắt sau khi xong các bước này.",
   "notice.openSettings": "Mở cài đặt",
   "notice.quitFromTray": "Meeting Translator vẫn chạy ở menu bar. Muốn thoát, chọn Thoát ở biểu tượng trên menu bar.",
   "notice.loginItemsApproval": "Meeting Translator đang bị tắt ở System Settings › General › Login Items, nên sẽ không tự mở khi đăng nhập. Hãy bật lại ở đó.",
@@ -4732,7 +4923,7 @@ impl From<Invalid> for CommandError {
 Run: `cargo test -p meeting-translator --lib errors::`
 Expected:
 ```text
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 70 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 73 filtered out; finished in 0.00s
 ```
 
 - [ ] **Step 6: clippy và định dạng**
@@ -4929,7 +5120,7 @@ pub fn menu_lines(strings: &Strings, model: TrayModel) -> Vec<Option<(TrayItem, 
 Run: `cargo test -p meeting-translator --lib tray_menu::`
 Expected:
 ```text
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 72 filtered out; finished in 0.00s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 75 filtered out; finished in 0.00s
 ```
 
 - [ ] **Step 6: clippy và định dạng**
@@ -4957,6 +5148,7 @@ Task này thay code spike S5 trong `lib.rs` bằng khung app thật.
   - từ chối cửa sổ mới (QĐ22);
   - trên Windows, ẩn/hiện và khóa làm hẳn bằng Win32, hiện mà không lấy focus (QĐ23);
   - ẩn/hiện và khóa đi qua trait `overlay::Surface`, để test dùng bản giả (QĐ27).
+- `setup` cài `SystemOpener` thật (`system::install`, Task 11) trước khi tạo cửa sổ; mọi lệnh mở ra ngoài app đi qua nó. App giả của test dùng bản giả (QĐ28).
 - Cửa sổ chính tạo bằng code (`window::create_main`), để gắn được `on_new_window`.
 - Các file phụ thuộc lẫn nhau (`actions.rs` gọi khay, thanh phụ đề, phím tắt; các nơi đó lại gọi `actions.rs`), nên chỉ build được khi đủ file. Test viết trước ở Step 1.
 
@@ -4983,7 +5175,7 @@ Lệnh và sự kiện:
 | `overlay://view` | overlay | như `get_overlay_view` |
 | `subtitle://upsert` | cả hai | phụ đề (§6.6); ở kế hoạch này chỉ có phụ đề mẫu của phiên tạm |
 
-- [ ] **Step 1: Viết test trước.** Tạo `src-tauri/src/test_support.rs` (app giả, kèm bản giả `FakeSurface` của thanh phụ đề):
+- [ ] **Step 1: Viết test trước.** Tạo `src-tauri/src/test_support.rs` (app giả, kèm bản giả `FakeSurface` của thanh phụ đề và `FakeSystem` của `SystemOpener`):
 
 ```rust
 //! Dụng cụ cho các test chạy app bằng `MockRuntime`: đúng `tauri.conf.json`, `capabilities/` và app
@@ -5002,6 +5194,7 @@ use crate::overlay::{OverlaySurface, Surface};
 use crate::settings::migrate::FileMeta;
 use crate::settings::{Settings, UiLanguage};
 use crate::state::AppState;
+use crate::system::{System, SystemOpener};
 
 /// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`.
 #[derive(Clone, Default)]
@@ -5025,11 +5218,39 @@ impl Surface for FakeSurface {
     }
 }
 
+/// Bản giả của `SystemOpener`: ghi lại từng lần gọi, không mở gì (QĐ28). Mọi test chạy app giả đều dùng
+/// bản này, nên kể cả khi ACL lỡ cấp thừa, lệnh tới handler cũng không mở Finder hay System Settings.
+#[derive(Clone, Default)]
+pub struct FakeSystem(Arc<Mutex<Vec<String>>>);
+
+impl FakeSystem {
+    fn push(&self, call: String) -> Result<(), String> {
+        self.0.lock().unwrap().push(call);
+        Ok(())
+    }
+}
+
+impl SystemOpener for FakeSystem {
+    fn open_log_dir(&self) -> Result<(), String> {
+        self.push("open_log_dir".into())
+    }
+    fn open_taskbar_settings(&self) -> Result<(), String> {
+        self.push("open_taskbar_settings".into())
+    }
+    fn open_login_items_settings(&self) -> Result<(), String> {
+        self.push("open_login_items_settings".into())
+    }
+    fn open_external_url(&self, url: &str) -> Result<(), String> {
+        self.push(format!("open_external_url {url}"))
+    }
+}
+
 pub fn mock_app() -> tauri::App<MockRuntime> {
     let builder = mock_builder();
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
     let surface = FakeSurface::default();
+    let system = FakeSystem::default();
     builder
         .manage(AppState::new(
             Settings::defaults(UiLanguage::Vi),
@@ -5038,9 +5259,16 @@ pub fn mock_app() -> tauri::App<MockRuntime> {
         ))
         .manage(OverlaySurface(Box::new(surface.clone())))
         .manage(surface)
+        .manage(System(Box::new(system.clone())))
+        .manage(system)
         .invoke_handler(commands::handler())
         .build(tauri::generate_context!(test = true))
         .expect("dựng được app giả")
+}
+
+/// Các lần gọi tới `SystemOpener` từ lúc dựng app giả.
+pub fn system_calls(app: &tauri::App<MockRuntime>) -> Vec<String> {
+    app.state::<FakeSystem>().0.lock().unwrap().clone()
 }
 
 /// Các lần gọi tới thanh phụ đề từ lúc dựng app giả.
@@ -5078,7 +5306,7 @@ pub fn denied(result: &Result<Value, String>) -> bool {
 }
 ```
 
-Tạo `src-tauri/src/acl_tests.rs` (QĐ5):
+Tạo `src-tauri/src/acl_tests.rs` (QĐ5, QĐ28):
 
 ```rust
 //! Test quyền của từng cửa sổ (spec §10.2, §11 "cửa sổ overlay gọi một lệnh không được cấp thì Tauri
@@ -5087,6 +5315,8 @@ Tạo `src-tauri/src/acl_tests.rs` (QĐ5):
 //!    khóa đã biết (không có `remote`, `platforms`, `local`…), gắn đúng một cửa sổ; thư mục chỉ có hai
 //!    file; `tauri.conf.json` không khai capability riêng.
 //! 2. Lúc chạy: app chạy bằng `MockRuntime` với ACL thật của app; lệnh không được cấp thì bị chặn.
+//! 3. Lệnh có tác dụng ra ngoài app chỉ tới bản giả của `SystemOpener` (QĐ28): bị chặn thì bản giả
+//!    không ghi nhận gì, được phép thì ghi nhận đúng lời gọi.
 //!
 //! Kế hoạch sau thêm quyền (ví dụ 03 cấp `core:window:allow-start-resize-dragging` cho overlay) thì sửa
 //! danh sách cố định ở đây trong cùng commit.
@@ -5094,7 +5324,7 @@ Tạo `src-tauri/src/acl_tests.rs` (QĐ5):
 use serde_json::{Value, json};
 
 use crate::commands::{MAIN_COMMANDS, OVERLAY_COMMANDS};
-use crate::test_support::{denied, invoke, mock_app, window};
+use crate::test_support::{denied, invoke, mock_app, system_calls, window};
 
 /// Quyền không phải lệnh của app, theo từng cửa sổ.
 const MAIN_CORE_PERMISSIONS: &[&str] = &[
@@ -5123,6 +5353,9 @@ const FORBIDDEN: &[&str] = &[
     "plugin:event|emit",
     "plugin:global-shortcut|register",
 ];
+
+/// Lệnh của app có tác dụng ra ngoài app (mở Finder, System Settings, Settings của Windows).
+const OPENER_COMMANDS: &[&str] = &["open_log_dir", "open_taskbar_settings", "open_login_items_settings"];
 
 fn allow(cmd: &str) -> String {
     format!("allow-{}", cmd.replace('_', "-"))
@@ -5230,6 +5463,28 @@ fn each_window_only_reaches_its_own_commands() {
     // Cửa sổ lạ (ví dụ trang ngoài mở trong webview mới) không có quyền nào.
     let stranger = window(&app, "stranger");
     assert!(denied(&invoke(&stranger, "get_settings", json!({}))));
+}
+
+#[test]
+fn outside_effects_only_reach_the_fake_opener() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let overlay = window(&app, "overlay");
+    for cmd in OPENER_COMMANDS {
+        let result = invoke(&overlay, cmd, json!({}));
+        assert!(denied(&result), "overlay không được gọi {cmd}: {result:?}");
+    }
+    assert!(system_calls(&app).is_empty(), "lệnh bị chặn không tới SystemOpener");
+    for cmd in OPENER_COMMANDS {
+        let _ = invoke(&main, cmd, json!({}));
+    }
+    // Lệnh không có trên hệ điều hành này trả `unsupported` trước khi tới SystemOpener.
+    let expected: &[&str] = if cfg!(target_os = "macos") {
+        &["open_log_dir", "open_login_items_settings"]
+    } else {
+        &["open_log_dir", "open_taskbar_settings"]
+    };
+    assert_eq!(system_calls(&app), expected);
 }
 ```
 
@@ -5651,13 +5906,12 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
 use serde_json::Value;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_autostart::ManagerExt as _;
-use tauri_plugin_opener::OpenerExt as _;
 
 use crate::errors::{self, CommandError};
 use crate::hotkeys::HotkeyAction;
 use crate::settings::{self, Settings, persist};
 use crate::state::{AppState, AppStatus, OverlayView, SessionStatus};
-use crate::{events, hotkey_registry, login_item, overlay, session_stub, tray, window};
+use crate::{events, hotkey_registry, login_item, overlay, session_stub, system, tray, window};
 
 /// Lưu cài đặt mới rồi báo mọi nơi cần biết.
 fn commit_settings<R: Runtime>(app: &AppHandle<R>, next: Settings) -> Settings {
@@ -5806,35 +6060,24 @@ fn launch_agent_status<R: Runtime>(app: &AppHandle<R>) -> Option<login_item::Age
 }
 
 /// macOS: mở System Settings › General › Login Items, từ nút ở lời nhắc `LoginItemsApproval`.
-pub fn open_login_items_settings<R: Runtime>(_app: &AppHandle<R>) -> Result<(), CommandError> {
-    #[cfg(target_os = "macos")]
-    {
-        login_item::open_login_items_settings();
-        Ok(())
+pub fn open_login_items_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    if !cfg!(target_os = "macos") {
+        return Err(CommandError::new(errors::UNSUPPORTED, None, "chỉ có trên macOS"));
     }
-    #[cfg(not(target_os = "macos"))]
-    Err(CommandError::new(errors::UNSUPPORTED, None, "chỉ có trên macOS"))
+    system::open_login_items_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
 }
 
 /// Mở thư mục log bằng trình quản lý file của hệ điều hành (Đ10), để người dùng tự gửi log khi cần hỗ trợ.
 pub fn open_log_dir<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
-    let failed = |e: String| CommandError::new(errors::OPEN_FAILED, None, e);
-    let dir = app.path().app_log_dir().map_err(|e| failed(e.to_string()))?;
-    std::fs::create_dir_all(&dir).map_err(|e| failed(e.to_string()))?;
-    app.opener()
-        .open_path(dir.to_string_lossy(), None::<&str>)
-        .map_err(|e| failed(e.to_string()))
+    system::open_log_dir(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
 }
 
 /// Windows: mở trang cài đặt Taskbar để người dùng bật icon của app (§4.1, bước 8).
 pub fn open_taskbar_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
-    if cfg!(windows) {
-        app.opener()
-            .open_url("ms-settings:taskbar", None::<&str>)
-            .map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e.to_string()))
-    } else {
-        Err(CommandError::new(errors::UNSUPPORTED, None, "chỉ có trên Windows"))
+    if !cfg!(windows) {
+        return Err(CommandError::new(errors::UNSUPPORTED, None, "chỉ có trên Windows"));
     }
+    system::open_taskbar_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
 }
 
 /// Thoát hẳn, chỉ gọi từ menu khay (§4.3). Kế hoạch 02 dừng phiên và tắt hai tiến trình phụ ở đây.
@@ -6488,7 +6731,7 @@ pub fn set_ignore_mouse<R: Runtime>(app: &AppHandle<R>, ignore: bool) -> tauri::
 }
 ```
 
-Tạo `src-tauri/src/overlay/windows.rs` (QĐ23: sau khi tạo, ẩn/hiện và click xuyên qua chỉ dùng Win32, không gọi `show`, `hide`, `set_ignore_cursor_events` của tao):
+Tạo `src-tauri/src/overlay/windows.rs` (QĐ23: sau khi tạo, ẩn/hiện và click xuyên qua chỉ dùng Win32, không gọi `show`, `hide`, `set_ignore_cursor_events` hay hàm đổi cờ nào khác của tao; `maximizable(false)` và `minimizable(false)` để Aero Snap không phóng to):
 
 ```rust
 //! Thanh phụ đề trên Windows: cửa sổ không viền, trong suốt, topmost, không có nút ở taskbar, không
@@ -6499,6 +6742,8 @@ Tạo `src-tauri/src/overlay/windows.rs` (QĐ23: sau khi tạo, ẩn/hiện và 
 //! `set_ignore_cursor_events` của tao (QĐ23). tao giữ cờ `VISIBLE` riêng: cửa sổ hiện bằng Win32 thì tao
 //! vẫn tưởng đang ẩn, nên `hide()` không làm gì; đổi click xuyên qua tao thì tao áp lại cả bộ cờ, gọi
 //! `SW_HIDE` (thanh biến mất) hoặc `SW_SHOW` (lấy focus). `AppStatus.overlay_visible` là trạng thái gốc.
+//! Cũng vì vậy, không gọi hàm nào đổi cờ của tao cho cửa sổ này sau khi tạo (`set_resizable`,
+//! `set_always_on_top`, `set_decorations`, `set_maximizable`…): mọi cờ đặt một lần ở `create`.
 
 use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -6517,6 +6762,9 @@ pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> 
         .transparent(true)
         .always_on_top(true)
         .skip_taskbar(true)
+        // Kéo thanh lên mép màn hình thì Aero Snap không phóng to hay ghép nửa màn hình.
+        .maximizable(false)
+        .minimizable(false)
         .shadow(false)
         .focused(false)
         .focusable(false)
@@ -6714,6 +6962,7 @@ pub mod security;
 pub mod session_stub;
 pub mod settings;
 pub mod state;
+pub mod system;
 pub mod tray;
 pub mod tray_menu;
 pub mod window;
@@ -6763,6 +7012,8 @@ pub fn run() {
 
 fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle().clone();
+    // Mọi việc mở ra ngoài app (Finder, System Settings, trình duyệt) đi qua đây (QĐ28).
+    system::install(&handle);
     let launched_at_login = std::env::args().any(|arg| arg == AUTOSTART_ARG);
     log::info!(
         "khởi động {} {}, lúc đăng nhập: {launched_at_login}",
@@ -6935,8 +7186,8 @@ Thay toàn bộ `src-tauri/tauri.conf.json`.
 Run: `cargo test -p meeting-translator`
 Expected (lúc lập kế hoạch):
 ```text
-running 80 tests
-test result: ok. 78 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.02s
+running 84 tests
+test result: ok. 82 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.01s
 running 0 tests
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 running 0 tests
@@ -6944,7 +7195,9 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 ```
 Khối đầu là test của lib. Hai test bỏ qua là `os_keystore_roundtrip` và `system_reports_missing_agent`. Hai khối sau là binary `main.rs` và doc-test.
 
-- [ ] **Step 17: Kiểm chéo rằng test ACL bắt được quyền thừa.** Lần lượt cấp thêm cho `main` ba quyền nhạy cảm, thêm khóa `remote` vào `main.json`, rồi thêm một file capability thứ ba. Mỗi lần chạy test ACL, rồi trả file về như cũ.
+- [ ] **Step 17: Kiểm chéo rằng test ACL bắt được quyền thừa.** Lần lượt cấp thêm cho `main` ba quyền nhạy cảm, thêm khóa `remote` vào `main.json`, cấp cho `overlay` lệnh `open_login_items_settings`, rồi thêm một file capability thứ ba. Mỗi lần chạy test ACL, rồi trả file về như cũ.
+
+Chỉ chạy bước này khi `test_support::mock_app` đã cài bản giả `FakeSystem` (Step 1). Khi đó lệnh mở ra ngoài app, nếu lỡ tới handler, chỉ đi tới bản giả; không có gì mở trên màn hình (QĐ28).
 
 Run:
 ```bash
@@ -6961,6 +7214,12 @@ import json; p = "src-tauri/capabilities/main.json"; c = json.load(open(p)); c["
 echo "=== remote"
 cargo test -p meeting-translator --lib acl_tests 2>&1 | grep -E "panicked|khóa đã biết|test result"
 cp "${TMPDIR:-/tmp}/main.json.bak" src-tauri/capabilities/main.json
+cp src-tauri/capabilities/overlay.json "${TMPDIR:-/tmp}/overlay.json.bak"
+python3 -c '
+import json; p = "src-tauri/capabilities/overlay.json"; c = json.load(open(p)); c["permissions"].append("allow-open-login-items-settings"); open(p, "w").write(json.dumps(c, indent=2, ensure_ascii=False) + "\n")'
+echo "=== overlay: allow-open-login-items-settings"
+cargo test -p meeting-translator --lib acl_tests 2>&1 | grep -E "panicked|không được gọi|test result"
+cp "${TMPDIR:-/tmp}/overlay.json.bak" src-tauri/capabilities/overlay.json
 printf '%s\n' '{' '  "identifier": "extra",' '  "windows": ["main"],' '  "permissions": ["core:window:allow-set-position"]' '}' > src-tauri/capabilities/extra.json
 echo "=== extra.json"
 cargo test -p meeting-translator --lib acl_tests 2>&1 | grep -E "panicked|không được gọi|không có capability|test result"
@@ -6971,36 +7230,45 @@ cargo test -p meeting-translator --lib acl_tests 2>&1 | grep -E "test result"
 Expected (lúc lập kế hoạch):
 - mỗi lần có quyền thừa, cả hai test ACL đều hỏng: danh sách cố định lệch, và lệnh nhạy cảm đi tới được handler (lỗi chỉ còn là thiếu tham số, hoặc plugin chưa đăng ký trong app giả);
 - có khóa `remote` thì test tĩnh hỏng vì file có khóa lạ; test lúc chạy vẫn qua, vì `remote` chỉ cấp quyền cho trang web ngoài, mà test gọi lệnh từ `tauri://localhost`;
+- overlay được cấp `open_login_items_settings` thì cả ba test hỏng; lệnh tới handler và trả `Ok(Null)` từ bản giả, System Settings không mở;
 - trả file về thì xanh lại.
+- Các test chạy song song, nên thứ tự các dòng `panicked` trong cùng một lần chạy có thể khác giữa các lần (ví dụ ở `extra.json`).
 
 ```text
 === core:window:allow-set-position
-thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:85:5:
-thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:144:13:
+thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:90:5:
+thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:149:13:
 main không được gọi plugin:window|set_position: Err("\"invalid args `value` for command `set_position`: command set_position missing required key value\"")
-test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 78 filtered out; finished in 0.02s
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 81 filtered out; finished in 0.01s
 === store:allow-set
-thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:85:5:
-thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:144:13:
+thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:90:5:
+thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:149:13:
 main không được gọi plugin:store|set: Err("\"plugin store not found\"")
-test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 78 filtered out; finished in 0.03s
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 81 filtered out; finished in 0.01s
 === core:webview:allow-create-webview-window
-thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:85:5:
-thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:144:13:
+thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:90:5:
+thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:149:13:
 main không được gọi plugin:webview|create_webview_window: Err("\"invalid args `options` for command `create_webview_window`: command create_webview_window missing required key options\"")
-test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 78 filtered out; finished in 0.01s
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 81 filtered out; finished in 0.01s
 === remote
-thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:66:5:
+thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:71:5:
 assertion `left == right` failed: capability main chỉ có các khóa đã biết
-test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 78 filtered out; finished in 0.07s
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 81 filtered out; finished in 0.03s
+=== overlay: allow-open-login-items-settings
+thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:94:5:
+thread 'acl_tests::outside_effects_only_reach_the_fake_opener' (…) panicked at src-tauri/src/acl_tests.rs:164:9:
+overlay không được gọi open_login_items_settings: Ok(Null)
+thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:133:9:
+overlay không được gọi open_login_items_settings: Ok(Null)
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 81 filtered out; finished in 0.00s
 === extra.json
-thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:144:13:
-main không được gọi plugin:window|set_position: Err("\"invalid args `value` for command `set_position`: command set_position missing required key value\"")
-thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:100:5:
+thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:105:5:
 assertion `left == right` failed: không có capability nào khác
-test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 78 filtered out; finished in 0.04s
+thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:149:13:
+main không được gọi plugin:window|set_position: Err("\"invalid args `value` for command `set_position`: command set_position missing required key value\"")
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 81 filtered out; finished in 0.01s
 === trả lại
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 78 filtered out; finished in 0.01s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 81 filtered out; finished in 0.01s
 ```
 
 - [ ] **Step 18: clippy, định dạng, và build cả hai kiểu**
@@ -7014,7 +7282,7 @@ CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 cargo bui
 ```
 Expected: không lỗi, không cảnh báo.
 - Bản release nhúng `dist/`, nên phải chạy `pnpm build` trước.
-- Tắt LTO chỉ để build nhanh hơn, không đổi hành vi cửa sổ. Lúc lập kế hoạch, lần build release đầu tiên (chưa có thư viện release nào trong `target/`) mất 2 phút 48 giây.
+- Tắt LTO chỉ để build nhanh hơn, không đổi hành vi cửa sổ. Lúc lập kế hoạch, lần build release đầu tiên (chưa có thư viện release nào trong `target/`) mất khoảng 1 phút (``Finished `release` profile [optimized] target(s) in 55.92s``); lúc máy đang bận build việc khác thì tới gần 3 phút.
 - Không chạy binary vừa build.
 
 - [ ] **Step 19: Commit**
@@ -7035,6 +7303,7 @@ git commit -m "feat(app): khung app thật: lệnh và quyền từng cửa sổ
 - `ipc.ts` phải khớp kiểu ở `settings/mod.rs`, `state.rs`, `commands.rs`, `events.rs` của Task 17.
 - `toggle_session` trả lỗi như mọi lệnh khác (QĐ25).
 - Lời nhắc `app://notice` vào `notice` của store (QĐ12). Lời nhắc `loginItemsApproval` có nút gọi `open_login_items_settings`; bấm rồi thì lời nhắc đóng (QĐ16).
+- `canOpenScreens`: chưa xong các bước lần đầu mở thì `false`, để thanh báo không có nút đưa tới màn hình khác (QĐ12).
 
 - [ ] **Step 1: Tạo `src/lib/ipc.ts`**
 
@@ -7239,7 +7508,7 @@ export function fakeIpc(handlers: Handlers) {
 import { describe, expect, it } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
 import type { AppInfo, AppStatus, Settings } from "../lib/ipc";
-import { createAppStore, toUiError } from "./app";
+import { canOpenScreens, createAppStore, toUiError } from "./app";
 
 const settings: Settings = {
   uiLanguage: "vi",
@@ -7398,6 +7667,15 @@ describe("app store", () => {
     expect(toUiError(new Error("x"))).toEqual({ code: "unknown", field: null });
   });
 
+  it("đang ở các bước lần đầu thì không có nút mở màn hình khác", async () => {
+    const { store } = setup();
+    expect(canOpenScreens(store.getState())).toBe(false);
+    await store.getState().init();
+    expect(canOpenScreens(store.getState())).toBe(false);
+    await store.getState().finishOnboarding();
+    expect(canOpenScreens(store.getState())).toBe(true);
+  });
+
   it("xong các bước lần đầu thì lưu onboardingDone và về màn hình chính", async () => {
     const { fake, store } = setup();
     await store.getState().init();
@@ -7470,6 +7748,12 @@ export interface AppStoreState {
   finishOnboarding(): Promise<void>;
   dismissError(): void;
   dismissNotice(): void;
+}
+
+// Đã xong các bước lần đầu mở chưa. Chưa xong thì `App` chỉ hiện `Onboarding`, nên đổi `screen` không có
+// tác dụng gì; nút đưa tới một màn hình (ví dụ "Mở cài đặt" ở thanh báo phím tắt lỗi) phải ẩn đi.
+export function canOpenScreens(state: Pick<AppStoreState, "settings">): boolean {
+  return state.settings?.onboardingDone === true;
 }
 
 // Lỗi từ `invoke`: `CommandError` của app, hoặc chuỗi lỗi của Tauri (sai tham số, bị ACL chặn).
@@ -7608,7 +7892,7 @@ export type AppStore = ReturnType<typeof createAppStore>;
 - [ ] **Step 6: Chạy test và kiểm kiểu**
 
 Run: `pnpm exec vitest run src/store/app.test.ts && pnpm exec tsc --noEmit`
-Expected: `Test Files  1 passed (1)`, `Tests  11 passed (11)`; `tsc` không in gì và trả mã 0. Vitest không kiểm kiểu, nên cần `tsc` để bắt chỗ `ipc.ts` lệch với store.
+Expected: `Test Files  1 passed (1)`, `Tests  12 passed (12)`; `tsc` không in gì và trả mã 0. Vitest không kiểm kiểu, nên cần `tsc` để bắt chỗ `ipc.ts` lệch với store.
 
 - [ ] **Step 7: Commit**
 
@@ -7858,7 +8142,7 @@ export function createOverlayStore(ipc: Ipc) {
 - [ ] **Step 4: Chạy toàn bộ test giao diện**
 
 Run: `pnpm test`
-Expected: `Test Files  4 passed (4)`, `Tests  27 passed (27)`.
+Expected: `Test Files  4 passed (4)`, `Tests  28 passed (28)`.
 
 - [ ] **Step 5: Commit**
 
@@ -7877,7 +8161,7 @@ git commit -m "feat(ui): store của thanh phụ đề, chỉ đọc phần cài
 
 Chỉ là khung (QĐ10): màn hình nào chưa có chức năng thì hiện trạng thái trống có chuỗi i18n. Phần do 01 làm có chức năng thật:
 - màn hình chính: trạng thái, Bắt đầu/Dừng (phiên tạm), ngôn ngữ đích và tập nguồn (F2), ẩn/hiện và khóa thanh phụ đề;
-- thanh báo (`Notice.tsx`): lỗi của lệnh gần nhất, lời nhắc "thoát ở menu bar", lời nhắc Login Items kèm nút mở System Settings (QĐ16), phím tắt không đăng ký được (QĐ12). Thanh báo có ở cả khung cửa sổ chính (`Shell`) lẫn các bước lần đầu mở (`Onboarding`), để khi đang ở các bước này vẫn thấy lời nhắc và lỗi;
+- thanh báo (`Notice.tsx`): lỗi của lệnh gần nhất, lời nhắc "thoát ở menu bar", lời nhắc Login Items kèm nút mở System Settings (QĐ16), phím tắt không đăng ký được (QĐ12). Thanh báo có ở cả khung cửa sổ chính (`Shell`) lẫn các bước lần đầu mở (`Onboarding`), để khi đang ở các bước này vẫn thấy lời nhắc và lỗi. Trong các bước lần đầu mở, thanh báo phím tắt không có nút "Mở cài đặt" và nói "đổi sau khi xong các bước này" (QĐ12);
 - Cài đặt, nhóm Chung (ngôn ngữ giao diện, khởi động cùng hệ thống, sáng/tối, kênh cập nhật) và nhóm Phím tắt;
 - Giới thiệu: phiên bản, nút mở thư mục log, câu miễn trừ nhãn hiệu (§10.1);
 - các bước lần đầu mở 1, 5, 7, 8 của §4.1. Bước 8 (ghim icon khay) trên Windows có hình minh họa tạm và nút mở cài đặt Taskbar. Bước 2, 3 (04), 4 (02, chỉ macOS) và 6 (03) là khung. Windows không có bước 4, nên ở đó chỉ có 7 bước và bước ghim icon hiện là "Bước 7/7".
@@ -8181,11 +8465,13 @@ Tạo `src/windows/main/Notice.tsx` (QĐ12):
 
 ```tsx
 import { errorKey } from "../../i18n";
+import { canOpenScreens } from "../../store/app";
 import { useApp, useT } from "./appStore";
 
 // Thông báo trong app (Q13 của kế hoạch 00: MVP không dùng thông báo hệ thống): lời nhắc từ phía Rust
 // (vừa bỏ qua ⌘Q; mục Login Items đang bị tắt), lỗi của lệnh gần nhất, và phím tắt không đăng ký được.
-// Đặt ở cả khung cửa sổ chính (`Shell`) lẫn các bước lần đầu mở (`Onboarding`).
+// Đặt ở cả khung cửa sổ chính (`Shell`) lẫn các bước lần đầu mở (`Onboarding`). Trong các bước lần đầu
+// mở thì không có nút "Mở cài đặt" (`canOpenScreens`), vì chưa mở được màn hình Cài đặt.
 export function Notice() {
   const t = useT();
   const error = useApp((s) => s.error);
@@ -8195,6 +8481,7 @@ export function Notice() {
   const dismissNotice = useApp((s) => s.dismissNotice);
   const navigate = useApp((s) => s.navigate);
   const openLoginItems = useApp((s) => s.openLoginItemsSettings);
+  const canNavigate = useApp(canOpenScreens);
   return (
     <>
       {notice?.kind === "quitFromTray" && (
@@ -8218,8 +8505,8 @@ export function Notice() {
       )}
       {failures > 0 && (
         <div className="notice" role="status">
-          <span>{t("notice.hotkeysFailed")}</span>
-          <button onClick={() => navigate("settings", "hotkeys")}>{t("notice.openSettings")}</button>
+          <span>{t(canNavigate ? "notice.hotkeysFailed" : "notice.hotkeysFailedLater")}</span>
+          {canNavigate && <button onClick={() => navigate("settings", "hotkeys")}>{t("notice.openSettings")}</button>}
         </div>
       )}
     </>
@@ -8947,12 +9234,12 @@ dist/overlay.html                      0.40 kB │ gzip:  0.25 kB
 dist/index.html                        0.48 kB │ gzip:  0.29 kB
 dist/assets/overlay-74s5WgTU.css       0.46 kB │ gzip:  0.29 kB
 dist/assets/main-Bod--Ppy.css          3.62 kB │ gzip:  1.14 kB
-dist/assets/overlay-C5GOI1aK.js        1.26 kB │ gzip:  0.70 kB
-dist/assets/main-DmEdhbOD.js          15.75 kB │ gzip:  4.27 kB
-dist/assets/jsx-runtime-D12vYxRR.js  235.72 kB │ gzip: 74.50 kB
-✓ built in 296ms
+dist/assets/overlay-BL4HTWgY.js        1.26 kB │ gzip:  0.70 kB
+dist/assets/main-BFybEd9O.js          15.84 kB │ gzip:  4.31 kB
+dist/assets/jsx-runtime-CQcqO-ZP.js  236.02 kB │ gzip: 74.56 kB
+✓ built in 352ms
 ```
-và `Tests  27 passed (27)`.
+và `Tests  28 passed (28)`.
 
 - [ ] **Step 9: Commit**
 
@@ -9050,7 +9337,7 @@ info: component rust-std for target x86_64-pc-windows-msvc is up to date
 ```
   Nếu chưa có thì `rustup` tải thư viện chuẩn cho target Windows (một lần, khoảng 115 MB, không cần quyền admin).
 - `check-windows.sh` kết thúc bằng dòng ``Finished `dev` profile …``, không lỗi, không cảnh báo. Script kiểm cả code chỉ có trên Windows: ẩn/hiện và click xuyên qua bằng Win32 (QĐ23), `persistence = Local` của kho khóa (QĐ8), `open_login_items_settings` trả `unsupported`.
-- Lần đầu mất khoảng 70 giây (lúc lập kế hoạch: ``Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 08s``), và thư mục `target/x86_64-pc-windows-msvc/` khoảng 260 MB.
+- Lần đầu mất khoảng 30 giây (lúc lập kế hoạch: ``Finished `dev` profile [unoptimized + debuginfo] target(s) in 27.97s``; lúc máy đang bận build việc khác thì hơn 1 phút), và thư mục `target/x86_64-pc-windows-msvc/` khoảng 260 MB.
 
 - [ ] **Step 5: Commit**
 
@@ -9081,8 +9368,8 @@ pnpm audit
 ```
 Expected (lúc lập kế hoạch):
 - không lỗi, không cảnh báo của clippy. Build script của `whisper-rs-sys` in một cảnh báo `variable does not need to be mutable` từ trước; đó là code trong `third_party/`, không phải lint của clippy.
-- `pnpm test`: `Tests  27 passed (27)`;
-- `cargo test --workspace`: `passed 222 failed 0 ignored 3`. So với mốc trước kế hoạch này (`passed 144 failed 0 ignored 1`), thêm 78 test của `meeting-translator`. Ba test bỏ qua là `vad_reference`, `os_keystore_roundtrip` và `system_reports_missing_agent`.
+- `pnpm test`: `Tests  28 passed (28)`;
+- `cargo test --workspace`: `passed 226 failed 0 ignored 3`. So với mốc trước kế hoạch này (`passed 144 failed 0 ignored 1`), thêm 82 test của `meeting-translator`. Ba test bỏ qua là `vad_reference`, `os_keystore_roundtrip` và `system_reports_missing_agent`.
 - `cargo test -p asr-worker --features shared-encode`: `28 passed`;
 - `advisories ok, bans ok, licenses ok, sources ok`; `cargo audit` kết thúc bằng `warning: 3 allowed warnings found`;
 - `No known vulnerabilities found`.
@@ -9144,6 +9431,7 @@ Chuẩn bị:
 | 27 | Phím tắt trùng với app họp (C5; ma trận S5, dòng 13): để Zoom, Teams, Meet (Chrome) lần lượt active, bấm ba phím tắt | Ghi lại phản ứng của cả app này và app họp |
 | 28 | Ma trận S5 trên Mac (kế hoạch 0-05, Task 3), nếu chưa chạy: ít nhất dòng 1, 7, 9, 11 với app này (Bắt đầu dịch trước để thanh phụ đề hiện) | Như ma trận S5 |
 | 29 | Tùy chọn (R8): tạo chứng thư trong Keychain Access › Certificate Assistant › Create a Certificate…: tên "Meeting Translator Dev", Identity Type "Self Signed Root", Certificate Type "Code Signing". Chạy `./scripts/run-dev-signed.sh` | Script in `valid on disk` và `satisfies its Designated Requirement`, rồi app mở như `pnpm tauri dev`. Kế hoạch 02, 03, 06 dùng cách này để quyền ghi âm thanh và Keychain không hỏi lại sau mỗi lần build |
+| 30 | Bản debug có giao diện đóng gói: `pnpm build && pnpm tauri build --debug --no-bundle`, rồi chạy `target/debug/meeting-translator` | Cửa sổ chính hiện giao diện bình thường (không trắng); Bắt đầu dịch thì thanh phụ đề có phụ đề mẫu. Log không có dòng `chặn điều hướng tới tauri://localhost` (QĐ22) |
 
 - [ ] **Step 2: Ghi `bench/phase1/results/p01_app_shell_manual.md`:** phiên bản macOS, máy, commit đã thử, bảng trên với cột kết quả, và ảnh chụp dòng 2, 5 và 14 (lưu trong `bench/phase1/results/p01/`).
 
@@ -9173,8 +9461,8 @@ cargo clippy -p meeting-translator --all-targets -- -D warnings
 cargo test -p meeting-translator
 ```
 Expected:
-- vitest `Tests  27 passed (27)`;
-- lib của `meeting-translator`: `78 passed; 0 failed; 1 ignored`. Trên Mac là 2 test bỏ qua; `system_reports_missing_agent` chỉ có trên macOS nên Windows không có. Số này tính từ code, chưa chạy thật trên Windows.
+- vitest `Tests  28 passed (28)`;
+- lib của `meeting-translator`: `82 passed; 0 failed; 1 ignored`. Trên Mac là 2 test bỏ qua; `system_reports_missing_agent` chỉ có trên macOS nên Windows không có. Số này tính từ code, chưa chạy thật trên Windows.
 
 - [ ] **Step 2: Chạy `pnpm tauri dev` và làm từng dòng**
 
@@ -9198,8 +9486,9 @@ Xóa `%APPDATA%\dev.meetingtranslator.spike\settings.json` (nếu có) trước 
 | 14 | `cargo test -p meeting-translator --lib os_keystore -- --ignored` | `1 passed` (Credential Manager, `persistence = Local`, QĐ8) |
 | 15 | Đường dẫn file | Cài đặt ở `%APPDATA%\dev.meetingtranslator.spike\settings.json`; log ở `%LOCALAPPDATA%\dev.meetingtranslator.spike\logs\app.log` |
 | 16 | Màn hình scale 150% và hai màn hình: kéo thanh phụ đề sang màn hình kia, thoát, mở lại, bấm `Ctrl+Alt+H` | Thanh về đúng màn hình và vị trí; chữ nét, không bị cắt |
+| 17 | Thanh phụ đề đang hiện, chưa khóa: kéo thanh lên sát mép trên màn hình rồi thả; làm lại với mép trái và mép phải; Thoát ở khay, mở lại app, bấm `Ctrl+Alt+H` | Thanh không phóng to và không bám vào nửa màn hình; kích thước giữ nguyên. Mở lại thì thanh có đúng kích thước cũ (QĐ23). Nếu Windows vẫn ghép thanh vào nửa màn hình, ghi lại để 03 xử lý |
 
-- [ ] **Step 3: Ghi kết quả vào mục "Windows" của `bench/phase1/results/p01_app_shell_manual.md`** (phiên bản Windows, máy, ảnh chụp dòng 1, 2, 4 và 7), rồi commit
+- [ ] **Step 3: Ghi kết quả vào mục "Windows" của `bench/phase1/results/p01_app_shell_manual.md`** (phiên bản Windows, máy, ảnh chụp dòng 1, 2, 4, 7 và 17), rồi commit
 
 ```powershell
 git add bench/phase1/results/p01_app_shell_manual.md bench/phase1/results/p01
@@ -9223,12 +9512,12 @@ git commit -m "test(app): thử tay khung app trên Windows (khay, Alt+F4, thanh
 Ghi chú cho vài dòng:
 - dòng 24 và 305 còn phần kiểm trùng phím tắt với app họp (C5) và phần Windows;
 - dòng 271 và 312 còn phần của 06 (lệnh bản quyền, trang thanh toán trong `navigation::EXTERNAL_HOSTS`) và 07 (website);
-- dòng 17 và 71 còn phần Windows của QĐ23 (Task 25 dòng 5–7).
+- dòng 17 và 71 còn phần Windows của QĐ23 (Task 25 dòng 5–7 và 17).
 
 - [ ] **Step 2: Cập nhật các mục khác của kế hoạch 00**
   - Mục 6.2:
     - thêm `pnpm test` sau `pnpm build`, và `./scripts/check-windows.sh` sau `cargo build --release -p asr-worker …`;
-    - sửa số test thành "222 test qua, 3 test bỏ qua (`vad_reference`, `os_keystore_roundtrip`, `system_reports_missing_agent`)".
+    - sửa số test thành "226 test qua, 3 test bỏ qua (`vad_reference`, `os_keystore_roundtrip`, `system_reports_missing_agent`)".
   - Mục 2.1, ghi các chỗ bàn giao khác mô tả:
     - overlay có một lệnh chỉ đọc `get_overlay_view` và không gọi lệnh khóa (QĐ5);
     - menu app trên Mac chỉ có chữ English (QĐ15);
@@ -9239,11 +9528,12 @@ Ghi chú cho vài dòng:
     - menu app trên Mac chỉ có chữ English ở MVP (QĐ15); §4.5 chỉ đòi khay theo ngôn ngữ giao diện.
   - Mục 2.2 (02):
     - 02 thay `session_stub.rs` bằng `session.rs`. Bắt đầu phiên phải hiện thanh phụ đề như `session_stub::start` (QĐ21), và test `app_tests.rs` phải còn qua;
+    - lệnh mở trang quyền ghi âm thanh (`open_audio_permission_settings`) thêm thành một phương thức của `system::SystemOpener`, và vào `test_support::FakeSystem`, `OPENER_COMMANDS` của test ACL (QĐ28); không gọi `tauri-plugin-opener` hay API mở System Settings ở chỗ khác;
     - `toggle_session` đã trả `Result<AppStatus, CommandError>` (QĐ25). Bắt đầu phiên thật (thu âm, chạy tiến trình phụ) không chạy trên luồng chính, nên 02 chuyển lệnh sang `async`;
     - chạy tiến trình phụ ở `window::show_main` và khi bắt đầu phiên; không chạy khi `AppState::launched_at_login()` và cửa sổ chính chưa mở (Đ19);
     - dừng phiên và tắt tiến trình phụ trong `actions::quit`.
-  - Mục 2.3 (03): mặc định của thanh phụ đề ở QĐ3; quyền kéo cạnh ở trên; `blob:` bị chặn, kể cả của chính app, nên xuất file không đi qua `<a download>` tới `blob:` (QĐ22); ẩn/hiện và khóa thanh phụ đề đi qua `overlay::Surface`, trên Windows là Win32 (QĐ23); nếu Task 24 dòng 6–7 không đạt thì ghi ở đây.
-  - Mục 2.6 (06): không gửi bí mật qua sự kiện (QĐ6); dùng `security::keystore::Keystore`; thêm tên miền trang thanh toán vào `navigation::EXTERNAL_HOSTS` kèm test.
+  - Mục 2.3 (03): mặc định của thanh phụ đề ở QĐ3; quyền kéo cạnh ở trên; kéo cạnh dùng `start_resize_dragging`, không gọi hàm đổi cờ của tao cho overlay trên Windows (QĐ23); `blob:` bị chặn, kể cả của chính app, nên xuất file không đi qua `<a download>` tới `blob:` (QĐ22); ẩn/hiện và khóa thanh phụ đề đi qua `overlay::Surface`, trên Windows là Win32 (QĐ23); nếu Task 24 dòng 6–7 không đạt thì ghi ở đây.
+  - Mục 2.6 (06): không gửi bí mật qua sự kiện (QĐ6); dùng `security::keystore::Keystore`; thêm tên miền trang thanh toán vào `navigation::EXTERNAL_HOSTS` kèm test; mở trang thanh toán qua `SystemOpener` (QĐ28).
   - Mục 2.7 (07): thêm tên miền website vào `navigation::EXTERNAL_HOSTS`; `AppHandle::restart` không qua chặn thoát (QĐ7).
 
 - [ ] **Step 3: Commit**
