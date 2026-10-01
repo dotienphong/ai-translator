@@ -267,6 +267,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (cột Kế hoạch
   - Staging gửi từ `onboarding@resend.dev`, và địa chỉ này chỉ gửi tới email của chủ tài khoản Resend.
   - Lỗi gửi email không chặn việc cấp key: key vẫn lấy được qua `GET /v1/orders`, `recover` hay admin.
   - Email mua hàng có idempotency key `<env>-order-<orderCode>`, nên gửi lại không bao giờ thành hai thư.
+  - `409 invalid_idempotent_request` của Resend (cùng khóa, nội dung khác: một lần gửi trước đã được nhận, thư gửi lại mang hạn mới hơn) thì coi là thư đã gửi, thôi gửi lại (sửa sau review, Phụ lục C đợt B).
   - Chỉ 400 và 422 của Resend (thư sai dạng, địa chỉ nhận không hợp lệ) là lỗi vĩnh viễn: thôi gửi. Mọi lỗi khác là lỗi tạm, gồm 401 và 403 (API key bị khóa, tên miền chưa xác thực: sửa cấu hình xong là gửi được), 409 `concurrent_idempotent_requests` (hai lượt gửi chồng nhau; tài liệu Resend ghi "Retry later"), 429, 5xx và lỗi mạng. Lỗi tạm thì cron gửi lại, giãn dần: sau 5 phút, 15 phút, 1 giờ, rồi mỗi 6 giờ, trong 24 giờ sau khi trả tiền. Cảnh báo `email_failed` chỉ tạo ở lần lỗi đầu của mỗi đơn.
   - Đơn đã cấp mà chưa thử gửi thư lần nào (Worker dừng giữa lúc cấp và gửi) thì cron gửi sau 5 phút.
 - **QĐ20. Chỉ nhận HTTPS** khi `ENVIRONMENT` khác `dev`, và kiểm ngay trong Worker (§10.2). Worker không bật CORS, vì app gọi server từ phía Rust (`LicenseProvider`, §6.8), không gọi từ WebView.
@@ -9766,3 +9767,44 @@ Làm các mục 8–12 trong ghi chú review của Task 6–7, trước khi vi�
 - `pnpm check`: `tsc` sạch, `vectors:check` sạch, Vitest `Test Files  18 passed (18)`, `Tests  269 passed (269)`, `node --test` 3/3, và 4 lần dry-run qua.
 
 Kế hoạch 06 dùng `server/test/vectors/token-v1.json` ở commit này làm hợp đồng.
+
+### Đợt B (commit `481e984` … `b689a5c`): đơn hàng, email, cron, admin
+
+Làm các mục 1–4, 13–15, 18–19, 25–30, 32–36, 38–43 trong ghi chú review của Task 8–16. Mỗi mục có test viết trước và thấy đỏ đúng lý do; mục chỉ thêm test (13, 25, 26, 27) thì kiểm bằng thử đột biến. Hai helper test mới trong `test/db.ts`: `withFailingInsert` (trigger `RAISE` làm hỏng một câu INSERT, để kiểm các câu cùng batch quay lui cùng nhau) và `wrapDb` (bọc D1: ghi lại SQL, cho câu chọn trước ném lỗi).
+
+- **PayOS** (`481e984`, `5cd9273`):
+  - 13: test lặp đủ 7 trạng thái PayOS.
+  - 14: nhánh ISO 8601 của `parsePayOSTime` kiểm ngày, giờ, phút, giây có thật trước `Date.parse` (V8 tự cộng `2026-02-30` thành 02/03 và nhận `24:00`). Múi giờ sai thì `Date.parse` đã trả `NaN`, nên không kiểm thêm.
+  - 15: lỗi mạng thành `PaymentProviderError("PayOS không trả lời (…)")`, quá thời gian chờ thành `PaymentProviderError("PayOS không trả lời sau 10 giây")`.
+- **Đơn hàng** (`dbf2295`):
+  - 1: câu chuyển `paid_needs_review`, nhật ký và cảnh báo nằm trong một `db.batch`; hai câu sau là `INSERT … SELECT … WHERE changes() = 1` (`auditIfChanged` trong `audit.ts`, `alertIfChanged` trong `alerts.ts`).
+  - 3: câu đánh dấu đơn của nhánh license mới dùng `paid_at = COALESCE(paid_at, ?2)`.
+  - 4: comment `orders.status` trong `0001_init.sql` có thêm `paid_needs_review` và `refunded`.
+  - 25: test kẹp trên của `paymentTime` kiểm `paid_at` trong nhật ký của đơn sớm và đơn trễ.
+  - 26: test đơn đã `paid`, license bị thu hồi, `grantOrder` gọi lại: đơn giữ `paid`.
+  - 27: test `amount` của PayOS lớn hơn đơn: không cấp, đơn thành `failed`.
+  - 28: nhật ký `license_issued`, `license_extended`, `license_plan_changed` vào cùng batch với câu ghi license và câu đánh dấu đơn, sau câu đánh dấu, bằng `WHERE changes() = 1`.
+  - 30: `FulfilResult` có thêm `already_settled` (đơn `refunded`); `paid_needs_review` vẫn là `needs_review`. Cấp tay đơn đã khép trả `409 {error: "already_paid" | "already_settled", status}`.
+- **Email** (`1b7b529`), mục 29: `ResendEmailProvider` đọc mã lỗi (`name`, chỉ nhận `[a-z_]`) vào `EmailProviderError.code`. `409 invalid_idempotent_request` thì `alreadySent`; `sendLicenseMail` ghi log `email_already_sent` và coi là đã gửi. `409 concurrent_idempotent_requests` vẫn là lỗi tạm. QĐ19 và spec §6.8 đã sửa theo.
+- **Cron và cảnh báo** (`8829418`, `6f4b6a1`):
+  - 18, 35: `sendAlerts` giữ chỗ bằng một câu `UPDATE ops_alerts SET notified_at = now … RETURNING`. Lần cron chạy chồng không giữ được dòng nào. Gửi xong thì đặt `notified_count` bằng số đọc được lúc giữ chỗ; gửi lỗi thì trả chỗ (`notified_at = NULL`).
+  - 19: sự kiện chưa báo mà quá 24 giờ thì ghi log `alert_expired_unreported` một lần (câu đánh dấu có điều kiện `notified_count` như lúc đọc).
+  - 36: `reconcile` chạy từng bước trong `try/catch` riêng (`reconcile_step_failed`); câu ghi `last_checked_at` trong `catch` có `try/catch` riêng (`reconcile_mark_failed`); `retryUnsentEmails` bắt lỗi từng đơn (`email_retry_failed`); `index.ts` dựng deps trong chuỗi promise và `.catch` ghi `reconcile_crashed`.
+  - 38: `retryUnsentEmails` bỏ qua license đã thu hồi.
+  - 39: `PaymentProviderError` có `httpStatus`. PayOS trả 429, hoặc 5xx 3 lần liên tiếp, thì dừng đợt hỏi (`reconcile_stopped_early`); các bước sau vẫn chạy. `checked` giờ là số đơn đã hỏi.
+- **License** (`ff9e2bb`):
+  - 32: gỡ máy ghi nhật ký bằng `auditIfChanged`; khóa key dùng `WHERE locked_at IS NULL`, nhật ký và cảnh báo cùng batch, chỉ khi khóa được.
+  - 33: `issueToken` chỉ chạy `UPDATE … WHERE epoch_pending = 1 RETURNING` khi activation đang chờ; request chạy cùng lúc mà không mở được thì đọc lại mốc.
+  - 34: `validate` với activation đã gỡ của đúng key không tính thất bại, như `deactivate`; activation lạ vẫn tính.
+- **Admin** (`b689a5c`):
+  - 2: `resolve` với `refunded` ghi nhật ký bằng `auditIfChanged`.
+  - 32: admin gỡ máy ghi nhật ký bằng `auditIfChanged`; lần gỡ không đổi được dòng nào trả 404.
+  - 40: `confirm-webhook` từ chối URL có userinfo (`URL.origin` bỏ qua phần này).
+  - 41: `GET payment-status` trả 403 khi `Sec-Fetch-Site` khác `same-origin` và `none`.
+  - 42: `revoke`, `unlock`, `extend` ghi nhật ký bằng `auditIfChanged`.
+  - 43: `erase` ghi nhật ký ở đầu cùng batch, đếm bằng subquery trong cùng transaction; `reset-quota` ghi nhật ký cùng batch bằng `INSERT … SELECT … FROM activations WHERE changes() = 1`.
+- **Thử đột biến**, mỗi lần đều có test đỏ: `UNDERPAID → paid`, bỏ `EXPIRED`, bỏ kiểm ngày ISO, bỏ bọc lỗi mạng và nhánh timeout; `paid_at = ?2`; đưa nhật ký cấp ra ngoài batch; `auditIfChanged` và `alertIfChanged` luôn ghi; đưa cảnh báo `order_needs_review` ra ngoài batch; bỏ `NOT_SETTLED` ở câu chuyển `paid_needs_review` (M20); `amount >=` (M6); bỏ kẹp trên (M17); nhãn `refunded` thành `already_paid`; admin luôn `already_paid`; coi mọi 409 là đã gửi, bỏ kiểm status 409, bỏ lọc mã lỗi; `notified_count = count`; bỏ giữ chỗ; không trả chỗ khi gửi lỗi; bỏ log quá hạn và bỏ điều kiện chống ghi đôi của nó; bỏ lọc license thu hồi; bỏ `try/catch` từng đơn, trong `catch`, từng bước, và `.catch` của `index.ts`; không dừng khi 429; ngưỡng 5xx thành 4; không đặt lại bộ đếm 5xx; bỏ `httpStatus`; khóa không kiểm `locked_at IS NULL`; gỡ máy ghi nhật ký ngoài điều kiện; luôn chạy UPDATE epoch; không đọc lại mốc khi chạy cùng lúc; tính hay không tính thất bại sai cho activation đã gỡ và activation lạ; nhật ký admin luôn ghi ở `resolve`, `extend`, `revoke`/`unlock`, gỡ máy; chạy riêng từng câu của `reset-quota` và `erase`; bỏ kiểm userinfo; bỏ kiểm `Sec-Fetch-Site`.
+- `pnpm check`: `tsc` sạch, `vectors:check` sạch, Vitest `Test Files  18 passed (18)`, `Tests  302 passed (302)` (chạy 5 lần liền đều qua), `node --test` 4/4, 4 lần dry-run qua (Worker API 125,93 KiB, gzip 32,85 KiB; Worker admin 104,85 KiB, gzip 26,92 KiB).
+- **Còn lưu ý:**
+  - Mục 3: đơn `paid_needs_review` được xử lý sau hơn 24 giờ thì thư key gửi lỗi sẽ không được cron gửi lại, vì cửa sổ gửi lại tính từ `paid_at`. Người vận hành dùng `/admin/licenses/<id>/resend`.
+  - Mục 39: lỗi mạng và quá thời gian chờ không tính vào chuỗi 5xx; mỗi đơn vẫn chờ tối đa 10 giây.
