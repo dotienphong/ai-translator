@@ -151,6 +151,47 @@ struct Row<'a> {
     finish_reason: &'static str,
     status: &'static str,
     attempts: u8,
+    /// Chỉ có ở câu lỗi: lý do của lần thử cuối (lỗi gọi server, hay luật hậu xử lý nào chặn bản dịch).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<String>,
+}
+
+/// Dòng kết quả của một câu. Hủy hay server không dùng được thì không phải kết quả của câu: dừng lần chạy.
+fn to_row(item: &Item, outcome: Outcome) -> Result<Row<'_>> {
+    Ok(match outcome {
+        Outcome::Done(t) => Row {
+            id: &item.id,
+            dir: &item.dir,
+            hyp: t.text,
+            src_tokens: t.source_tokens,
+            completion_tokens: t.completion_tokens.unwrap_or(0),
+            total_ms: t.total_ms,
+            first_token_ms: t.first_delta_ms,
+            finish_reason: "stop",
+            status: "done",
+            attempts: t.attempts,
+            reason: None,
+        },
+        Outcome::Failed {
+            reason,
+            source_tokens,
+            completion_tokens,
+            attempts,
+        } => Row {
+            id: &item.id,
+            dir: &item.dir,
+            hyp: item.src.clone(),
+            src_tokens: source_tokens,
+            completion_tokens: completion_tokens.unwrap_or(0),
+            total_ms: 0.0,
+            first_token_ms: None,
+            finish_reason: "failed",
+            status: "failed",
+            attempts,
+            reason: Some(reason),
+        },
+        other => bail!("câu {}: {other:?}", item.id),
+    })
 }
 
 /// Các id đã có trong file kết quả. Dòng cuối viết dở (lần trước bị ngắt) thì cắt bỏ.
@@ -262,38 +303,10 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
                 None
             },
         };
-        let row = match translate(&mut server, &job, &cfg, &mut |_| ControlFlow::Continue(())) {
-            Outcome::Done(t) => Row {
-                id: &item.id,
-                dir: &item.dir,
-                hyp: t.text,
-                src_tokens: t.source_tokens,
-                completion_tokens: t.completion_tokens.unwrap_or(0),
-                total_ms: t.total_ms,
-                first_token_ms: t.first_delta_ms,
-                finish_reason: "stop",
-                status: "done",
-                attempts: t.attempts,
-            },
-            Outcome::Failed {
-                source_tokens,
-                completion_tokens,
-                attempts,
-                ..
-            } => Row {
-                id: &item.id,
-                dir: &item.dir,
-                hyp: item.src.clone(),
-                src_tokens: source_tokens,
-                completion_tokens: completion_tokens.unwrap_or(0),
-                total_ms: 0.0,
-                first_token_ms: None,
-                finish_reason: "failed",
-                status: "failed",
-                attempts,
-            },
-            other => bail!("câu {}: {other:?}", item.id),
-        };
+        let row = to_row(
+            item,
+            translate(&mut server, &job, &cfg, &mut |_| ControlFlow::Continue(())),
+        )?;
         writeln!(out, "{}", serde_json::to_string(&row)?)?;
         out.flush()?;
         if (n + 1) % 25 == 0 || n + 1 == todo.len() {
@@ -306,6 +319,7 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pipeline::translate::Translated;
 
     #[test]
     fn a_half_written_last_line_is_cut_on_resume() {
@@ -336,6 +350,46 @@ mod tests {
             limit: 0,
             mt_config: serde_json::to_value(MtConfig::default()).unwrap(),
         }
+    }
+
+    fn item() -> Item {
+        Item {
+            id: "ja-en-378".into(),
+            dir: "ja->en".into(),
+            src_lang: "ja".into(),
+            tgt_lang: "en".into(),
+            src: "無料で".into(),
+            context: None,
+        }
+    }
+
+    /// Câu lỗi ghi lý do (ví dụ lỗi /tokenize ở e591a1e), để không phải dựng lại lỗi mới biết vì sao; câu dịch xong thì
+    /// không có trường `reason`.
+    #[test]
+    fn a_failed_row_records_the_reason() {
+        let item = item();
+        let failed = Outcome::Failed {
+            reason: "không gọi được llama-server /tokenize".into(),
+            attempts: 0,
+            source_tokens: 0,
+            completion_tokens: None,
+        };
+        let json: serde_json::Value = serde_json::to_value(to_row(&item, failed).unwrap()).unwrap();
+        assert_eq!(json["status"], "failed");
+        assert_eq!(json["hyp"], "無料で");
+        assert_eq!(json["reason"], "không gọi được llama-server /tokenize");
+        let done = Outcome::Done(Translated {
+            text: "Free".into(),
+            attempts: 1,
+            source_tokens: 3,
+            completion_tokens: Some(1),
+            first_delta_ms: Some(10.0),
+            total_ms: 20.0,
+        });
+        let json: serde_json::Value = serde_json::to_value(to_row(&item, done).unwrap()).unwrap();
+        assert_eq!(json["status"], "done");
+        assert!(json.get("reason").is_none(), "{json}");
+        assert!(to_row(&item, Outcome::Cancelled).is_err());
     }
 
     /// Q7 của review 02b: dịch tiếp chỉ khi điều kiện y hệt lần trước.
