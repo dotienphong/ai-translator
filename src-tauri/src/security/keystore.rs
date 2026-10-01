@@ -217,7 +217,8 @@ mod tests {
     }
 
     /// Chạy tay (người): `cargo test -p meeting-translator --lib os_keystore -- --ignored`.
-    /// Ghi, đọc rồi xóa một mục thật trong Keychain hoặc Credential Manager.
+    /// Ghi, đọc rồi xóa một mục thật trong Keychain hoặc Credential Manager. Có biến môi trường
+    /// `KEYSTORE_KEEP` thì không xóa, để xem mục bằng `cmdkey /list` (Task 25 của kế hoạch 01); người thử tự xóa.
     #[test]
     #[ignore = "đụng kho khóa thật của hệ điều hành; có thể bật hộp thoại hỏi quyền"]
     fn os_keystore_roundtrip() {
@@ -231,6 +232,10 @@ mod tests {
             ks.entry(&name).unwrap().get_attributes().unwrap()["persistence"],
             "Local"
         );
+        if std::env::var_os("KEYSTORE_KEEP").is_some() {
+            println!("giữ lại mục {name} của service {SERVICE}");
+            return;
+        }
         assert!(ks.delete(&name).unwrap());
         assert_eq!(ks.get(&name).unwrap(), None);
     }
