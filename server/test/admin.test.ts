@@ -332,6 +332,32 @@ describe("thay đổi license", () => {
     expect((await adminCall(`/admin/licenses/${id}/extend`, { body: { days: 0, note: "x" } })).status).toBe(400);
   });
 
+  it("mở khóa key không bị khóa: 404, không đặt lại lock_cleared_at, không ghi nhật ký; mở khóa lần hai cũng vậy", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy();
+    const id = (await licenseRow())!.id as string;
+    // Key chưa bị khóa: không có gì để gỡ.
+    expect((await adminCall(`/admin/licenses/${id}/unlock`, { body: { note: "nhầm" } })).status).toBe(404);
+    expect(await licenseRow()).toMatchObject({ locked_at: null, lock_cleared_at: null });
+    expect(await auditCount("license_unlocked")).toBe(0);
+    // Khóa thật rồi mở: lần đầu được.
+    const activate = async (n: number) =>
+      w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex(`d${n}`), device_label: `M${n}` }, { "cf-connecting-ip": `198.51.100.${n}` });
+    for (let i = 1; i <= 4; i++) {
+      const r = await activate(i);
+      await w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: r.body.activation_id });
+    }
+    expect((await activate(5)).status).toBe(423);
+    w.clock.now = T0 + 5;
+    expect((await adminCall(`/admin/licenses/${id}/unlock`, { body: { note: "đã xác minh" } })).status).toBe(200);
+    expect(await licenseRow()).toMatchObject({ locked_at: null, lock_cleared_at: T0 + 5 });
+    // Lần hai: key đã mở, mốc lock_cleared_at giữ nguyên, không thêm nhật ký.
+    w.clock.now = T0 + 99;
+    expect((await adminCall(`/admin/licenses/${id}/unlock`, { body: { note: "lần hai" } })).status).toBe(404);
+    expect(await licenseRow()).toMatchObject({ locked_at: null, lock_cleared_at: T0 + 5 });
+    expect(await auditCount("license_unlocked")).toBe(1);
+  });
+
   it("gia hạn tay license đã hết hạn: cộng từ bây giờ và đặt lại cycle_anchor", async () => {
     const { w, adminCall } = makeAdmin();
     await w.buy();

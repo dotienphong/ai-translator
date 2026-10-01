@@ -339,7 +339,12 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     });
   }
   // Mở khóa: các lần gỡ trước lúc mở khóa không còn tính vào ngưỡng 3 máy/30 ngày.
-  licenseAction("unlock", "license_unlocked", "UPDATE licenses SET locked_at = NULL, lock_cleared_at = ?1 WHERE id = ?2");
+  // Chỉ khi key đang bị khóa; không thì không có gì để gỡ, không đặt lại lock_cleared_at và không ghi nhật ký.
+  licenseAction(
+    "unlock",
+    "license_unlocked",
+    "UPDATE licenses SET locked_at = NULL, lock_cleared_at = ?1 WHERE id = ?2 AND locked_at IS NOT NULL",
+  );
   licenseAction("revoke", "license_revoked", "UPDATE licenses SET revoked_at = ?1 WHERE id = ?2 AND revoked_at IS NULL");
 
   app.post("/admin/licenses/:id/resend", async (c) => {
