@@ -3442,8 +3442,8 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.53s
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.18s
-test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.76s
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.81s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
      Running unittests src/lib.rs (target/debug/deps/pipeline-901454d330477dd2)
@@ -4103,12 +4103,12 @@ Run: `cargo test -p pipeline`
 Expected:
 
 ```text
-test result: ok. 153 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+test result: ok. 153 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.54s
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.62s
-test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.80s
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.56s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.63s
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.93s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
@@ -4139,12 +4139,12 @@ MT_VAD_MODEL=$PWD/models/silero_vad_v6.2.3.onnx cargo test -p pipeline --test re
 Expected: mỗi câu có ít nhất một phụ đề nằm trong khoảng thời gian của câu, đúng thứ tự; hai câu tiếng Anh `Done`, câu tiếng Việt `SameLang` (có thể bị VAD cắt làm hai đoạn); trước đó một dòng tóm tắt số đo của phiên (số đoạn theo kết cục, thời gian từng bước; không dùng làm số đo hiệu năng). Chữ chép và bản dịch tùy máy. Lúc lập kế hoạch (gói Nhẹ):
 
 ```text
-4 đoạn (lọc 0, bỏ 0), 2 câu dịch, 0 lỗi, 0 bỏ bước dịch, 2 cùng ngôn ngữ, 0 lần ghép; cắt đoạn p50 320 ms, p90 320 ms; nhận dạng p50 104 ms, p90 117 ms; dịch p50 201 ms, p90 202 ms; tổng p50 496 ms, p90 509 ms; tiếng nói đã dịch 6016 ms
+4 đoạn (lọc 0, bỏ 0), 2 câu dịch, 0 lỗi, 0 bỏ bước dịch, 2 cùng ngôn ngữ, 0 lần ghép; cắt đoạn p50 320 ms, p90 320 ms; nhận dạng p50 111 ms, p90 114 ms; dịch p50 201 ms, p90 201 ms; tổng p50 496 ms, p90 509 ms; tiếng nói đã dịch 6016 ms
 0 1472–4032 Done That didn't seem to make sense to me. It certainly wasn't fair. | Điều đó dường như không hợp lý chút nào. Chắc chắn là không công bằng.
 1 7072–10528 Done The results of plotting analysis will be posted to a public website. | Kết quả phân tích đồ họa sẽ được đăng trên một trang web công cộng.
 2 13088–14336 SameLang Cái nhà khoa học cho viết | 
 3 14784–17472 SameLang vụp và trạm đã gây ra vụ nổ gắt lớn | 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 32.18s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 32.16s
 ```
 
 Run:
@@ -5078,7 +5078,7 @@ Run: `cargo test -p latency-bench`
 Expected:
 
 ```text
-test result: ok. 30 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.68s
+test result: ok. 30 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.65s
 ```
 
 Run: `python3 -m unittest discover -s bench/phase0/mt -p 'test_*.py'`
@@ -6501,7 +6501,7 @@ Expected:
 ```text
 test result: ok. 34 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.07s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
@@ -6512,7 +6512,7 @@ Expected:
 
 ```text
 test macos::hal::default_device_and_audio_apps_can_be_read ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.04s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.05s
 ```
 
 - [ ] **Step 6: Clippy cho Mac và cho target Windows** (cần một lần: `rustup target add x86_64-pc-windows-msvc`)
@@ -6528,7 +6528,7 @@ cargo fmt --all -- --check
 Expected: không có cảnh báo; `cargo fmt` không in gì; dòng cuối của lệnh thứ hai:
 
 ```text
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.48s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.85s
 ```
 
 - [ ] **Step 7: Kiểm toàn bộ phần crate** (mục 6.2 của kế hoạch 00)
@@ -6562,7 +6562,7 @@ warning: 3 allowed warnings found
 Tổng số test của `cargo test --workspace` (gồm cả lib của app từ 01):
 
 ```text
-passed 440 failed 0 ignored 10
+passed 443 failed 0 ignored 10
 ```
 
 - [ ] **Step 8: Commit**
@@ -6694,7 +6694,7 @@ turbo: 548 clip, bị bỏ {}, tỉ lệ nén lớn nhất 1.54
 small: 548 clip, bị bỏ {"NoSpeech": ["en-9810650684898829002_nb"]}, tỉ lệ nén lớn nhất 1.54
 test latency::tests::phase1_rules_drop_no_a4_clip ... ok
 test latency::tests::phase1_filler_rule_drops_only_known_hallucinations_on_s6 ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.34s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.32s
 ```
 
 - [ ] **Step 5: Ghi `gd1_no_speech.md`**
@@ -6816,11 +6816,11 @@ Hy-MT2-1.8B-Q4_K_M-plain: 1440/1440
 | ja->en | 112 | 89 | 1.33 | 1.7 | 0 | — | — | 0 |
 | ja->ko | 112 | 89 | 2.17 | 2.8 | 0 | — | — | 0 |
 | ja->vi | 12 | 0 | — | — | 0 | — | — | 0 |
-| ja->zh | 112 | 89 | 1.17 | 1.5 | 0 | — | — | 0 |
-| ko->en | 112 | 94 | 1.46 | 1.9 | 2 | 3 | 40 | 0 |
+| ja->zh | 112 | 89 | 1.17 | 1.5 | 0 | — | — | 1 |
+| ko->en | 112 | 94 | 1.46 | 1.9 | 2 | 3 | 40 | 1 |
 | ko->ja | 112 | 94 | 1.60 | 2.0 | 2 | 4 | 40 | 0 |
 | ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 0 |
-| ko->zh | 112 | 94 | 1.00 | 1.3 | 2 | 3 | 40 | 0 |
+| ko->zh | 112 | 93 | 1.00 | 1.3 | 2 | 3 | 40 | 1 |
 | vi->en | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ja | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
@@ -6834,15 +6834,15 @@ Hy-MT2-1.8B-Q4_K_M-plain: 1440/1440
 
 | chiều | câu | câu gốc ≥ 10 token | tỉ lệ lớn nhất (≥ 10) | ngưỡng đề xuất | câu gốc < 3 token | token dịch lớn nhất (< 3) | hạn mức sinh (< 3) | lỗi |
 |---|---|---|---|---|---|---|---|---|
-| en->ja | 112 | 74 | 2.22 | 2.8 | 9 | 7 | 40 | 1 |
+| en->ja | 112 | 75 | 2.22 | 2.8 | 9 | 7 | 40 | 0 |
 | en->ko | 112 | 75 | 2.31 | 2.9 | 9 | 9 | 40 | 0 |
 | en->vi | 12 | 0 | — | — | 9 | 8 | 40 | 0 |
 | en->zh | 112 | 75 | 1.46 | 1.9 | 9 | 3 | 40 | 0 |
 | ja->en | 112 | 89 | 1.33 | 1.7 | 0 | — | — | 0 |
 | ja->ko | 112 | 89 | 1.85 | 2.4 | 0 | — | — | 0 |
 | ja->vi | 12 | 0 | — | — | 0 | — | — | 0 |
-| ja->zh | 112 | 89 | 1.11 | 1.4 | 0 | — | — | 1 |
-| ko->en | 112 | 94 | 1.17 | 1.5 | 2 | 4 | 40 | 0 |
+| ja->zh | 112 | 89 | 1.11 | 1.4 | 0 | — | — | 0 |
+| ko->en | 112 | 93 | 1.17 | 1.5 | 2 | 4 | 40 | 1 |
 | ko->ja | 112 | 94 | 1.47 | 1.9 | 2 | 4 | 40 | 0 |
 | ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 0 |
 | ko->zh | 112 | 94 | 0.93 | 1.2 | 2 | 3 | 40 | 0 |
@@ -6851,8 +6851,8 @@ Hy-MT2-1.8B-Q4_K_M-plain: 1440/1440
 | vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->zh | 12 | 0 | — | — | 0 | — | — | 0 |
 | zh->en | 112 | 76 | 2.08 | 2.6 | 9 | 4 | 40 | 0 |
-| zh->ja | 112 | 76 | 3.00 | 3.8 | 8 | 7 | 40 | 1 |
-| zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 1 |
+| zh->ja | 112 | 75 | 3.00 | 3.8 | 9 | 7 | 40 | 1 |
+| zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 0 |
 | zh->vi | 12 | 0 | — | — | 9 | 6 | 40 | 0 |
 ```
 
