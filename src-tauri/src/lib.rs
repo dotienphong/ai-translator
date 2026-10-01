@@ -2,6 +2,7 @@
 //! macOS dùng NSPanel kiểu non-activating (tauri-nspanel); Windows dùng cửa sổ topmost.
 
 pub mod hotkeys;
+pub mod i18n;
 pub mod settings;
 
 use std::sync::Arc;
