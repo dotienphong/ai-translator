@@ -3,6 +3,7 @@
 
 pub mod hotkeys;
 pub mod i18n;
+pub mod security;
 pub mod settings;
 
 use std::sync::Arc;
