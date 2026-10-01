@@ -4,12 +4,15 @@
 //! Thời gian tính theo số khung, nên luồng vào phải liền mạch theo đồng hồ thật
 //! (trên Windows, luồng thu đã được chèn im lặng vào khoảng trống, spec §6.1).
 
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
 pub const FRAME_SAMPLES: usize = 512;
 pub const FRAME_MS: u64 = 32;
 
-#[derive(Clone, Debug)]
+/// Tham số VAD và cắt đoạn (§6.3). Là một phần của `config::PipelineConfig`, nên nạp được từ manifest.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SegmenterConfig {
     pub threshold: f32,
     pub min_speech_ms: u64,
@@ -40,6 +43,12 @@ pub struct Segment {
     /// Ranh giới tiếng nói, tính từ đầu phiên, không gồm phần đệm.
     pub start_ms: u64,
     pub end_ms: u64,
+    /// Độ dài tiếng nói, không gồm phần đệm: `end_ms − start_ms` (§6.3). Hạn mức tính phút bằng số này (§6.8).
+    pub speech_ms: u64,
+    /// Xác suất VAD trung bình trên các khung tiếng nói, và tỉ lệ khung vượt ngưỡng. Luật lọc câu đệm nghi ảo giác
+    /// (`filter`) dùng hai số này: tiếng nói thật thường cho xác suất cao và đều.
+    pub mean_prob: f32,
+    pub speech_ratio: f32,
     /// Âm thanh 16 kHz mono, đã gồm phần đệm: 200 ms làm tròn lên 7 khung (224 ms) mỗi phía. Đầu phiên,
     /// cuối phiên (`flush`) và phía bị cắt cưỡng bức có ít hơn. Đệm cuối của đoạn trước có thể trùng đệm đầu
     /// của đoạn sau (đều là khung im lặng), nên không được ghép `samples` của hai đoạn liền nhau mà coi như
@@ -52,6 +61,8 @@ struct Active {
     pre_roll: Vec<Vec<f32>>,
     frames: Vec<Vec<f32>>,
     energies: Vec<f32>,
+    /// Xác suất VAD của từng khung trong `frames`.
+    probs: Vec<f32>,
     last_speech_frame: u64,
     silence_run: u64,
     /// Phần dư sau cắt cưỡng bức đang còn tiếng nói: nối tiếp một đoạn dài, không áp `min_speech`.
@@ -98,6 +109,7 @@ impl Segmenter {
                     pre_roll: self.history.drain(..).collect(),
                     frames: vec![frame.to_vec()],
                     energies: vec![energy(frame)],
+                    probs: vec![prob],
                     last_speech_frame: index,
                     silence_run: 0,
                     continuation: false,
@@ -113,6 +125,7 @@ impl Segmenter {
 
         active.frames.push(frame.to_vec());
         active.energies.push(energy(frame));
+        active.probs.push(prob);
         if prob >= self.cfg.threshold {
             active.last_speech_frame = index;
             active.silence_run = 0;
@@ -129,7 +142,13 @@ impl Segmenter {
             let speech_frames = speech_end.saturating_sub(active.start_frame);
             let keep = ((speech_frames as usize) + pad_frames).min(active.frames.len());
             if active.continuation || speech_frames * FRAME_MS >= self.cfg.min_speech_ms {
-                out.push(self.emit(active.start_frame, speech_end, &active.pre_roll, &active.frames[..keep]));
+                out.push(self.emit(
+                    active.start_frame,
+                    speech_end,
+                    &active.pre_roll,
+                    &active.frames[..keep],
+                    &active.probs,
+                ));
             }
             let tail_start = active.frames.len().saturating_sub(pad_frames);
             self.history = active.frames[tail_start..].iter().cloned().collect();
@@ -147,12 +166,20 @@ impl Segmenter {
             let cut_frame = active.start_frame + cut as u64;
             let rest_frames = active.frames.split_off(cut);
             let rest_energies = active.energies.split_off(cut);
-            out.push(self.emit(active.start_frame, cut_frame, &active.pre_roll, &active.frames));
+            let rest_probs = active.probs.split_off(cut);
+            out.push(self.emit(
+                active.start_frame,
+                cut_frame,
+                &active.pre_roll,
+                &active.frames,
+                &active.probs,
+            ));
             self.active = Some(Active {
                 start_frame: cut_frame,
                 pre_roll: Vec::new(),
                 frames: rest_frames,
                 energies: rest_energies,
+                probs: rest_probs,
                 last_speech_frame: active.last_speech_frame,
                 silence_run: active.silence_run,
                 continuation: active.last_speech_frame >= cut_frame,
@@ -168,18 +195,38 @@ impl Segmenter {
         let speech_end = active.last_speech_frame + 1;
         let speech_frames = speech_end.saturating_sub(active.start_frame);
         let keep = (speech_frames as usize + pad_frames).min(active.frames.len());
-        (active.continuation || speech_frames * FRAME_MS >= self.cfg.min_speech_ms)
-            .then(|| self.emit(active.start_frame, speech_end, &active.pre_roll, &active.frames[..keep]))
+        (active.continuation || speech_frames * FRAME_MS >= self.cfg.min_speech_ms).then(|| {
+            self.emit(
+                active.start_frame,
+                speech_end,
+                &active.pre_roll,
+                &active.frames[..keep],
+                &active.probs,
+            )
+        })
     }
 
-    fn emit(&mut self, start_frame: u64, end_frame: u64, pre_roll: &[Vec<f32>], frames: &[Vec<f32>]) -> Segment {
+    /// `probs` thẳng hàng với khung đầu của đoạn (`start_frame`).
+    fn emit(
+        &mut self,
+        start_frame: u64,
+        end_frame: u64,
+        pre_roll: &[Vec<f32>],
+        frames: &[Vec<f32>],
+        probs: &[f32],
+    ) -> Segment {
         let id = self.next_id;
         self.next_id += 1;
         let samples = pre_roll.iter().chain(frames).flatten().copied().collect();
+        let speech = &probs[..((end_frame - start_frame) as usize).min(probs.len())];
+        let n = speech.len().max(1) as f32;
         Segment {
             id,
             start_ms: start_frame * FRAME_MS,
             end_ms: end_frame * FRAME_MS,
+            speech_ms: (end_frame - start_frame) * FRAME_MS,
+            mean_prob: speech.iter().sum::<f32>() / n,
+            speech_ratio: speech.iter().filter(|&&p| p >= self.cfg.threshold).count() as f32 / n,
             samples,
         }
     }
@@ -192,6 +239,9 @@ impl std::fmt::Debug for Segment {
             .field("id", &self.id)
             .field("start_ms", &self.start_ms)
             .field("end_ms", &self.end_ms)
+            .field("speech_ms", &self.speech_ms)
+            .field("mean_prob", &self.mean_prob)
+            .field("speech_ratio", &self.speech_ratio)
             .field("samples", &format_args!("<{} mẫu>", self.samples.len()))
             .finish()
     }
@@ -239,6 +289,23 @@ mod tests {
         assert_eq!(s.end_ms, 51 * FRAME_MS);
         // 7 khung đệm trước + 31 khung tiếng nói + 7 khung đệm sau (200 ms làm tròn lên 7 khung).
         assert_eq!(s.samples.len(), (7 + 31 + 7) * FRAME_SAMPLES);
+    }
+
+    /// `speech_ms` không gồm đệm (§6.3, hạn mức §6.8); `mean_prob` và `speech_ratio` chỉ tính các khung tiếng nói.
+    #[test]
+    fn segments_carry_speech_length_and_vad_statistics() {
+        let mut seg = Segmenter::new(SegmenterConfig::default());
+        // 10 khung chắc chắn (0,9) và 10 khung ở vùng trễ (0,4, vẫn là tiếng nói).
+        let out = run(
+            &mut seg,
+            &[(0.0, 0.0, 10), (0.9, 0.5, 10), (0.4, 0.3, 10), (0.0, 0.0, 20)],
+        );
+        assert_eq!(out.len(), 1);
+        let s = &out[0];
+        assert_eq!(s.speech_ms, 20 * FRAME_MS);
+        assert_eq!(s.speech_ms, s.end_ms - s.start_ms);
+        assert!((s.mean_prob - 0.65).abs() < 1e-5, "{}", s.mean_prob);
+        assert!((s.speech_ratio - 0.5).abs() < 1e-5, "{}", s.speech_ratio);
     }
 
     #[test]

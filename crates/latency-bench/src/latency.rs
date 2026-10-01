@@ -5,15 +5,16 @@
 
 use crate::stats::{Utterance, match_segments, percentile};
 use anyhow::{Context, Result, bail};
-use asr_protocol::{
-    MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_AUDIO_CTX, MIN_PCM_SAMPLES, TranscribeRequest, audio_ctx_for_samples,
-};
+use asr_protocol::{MAX_PROMPT_TOKENS, MIN_AUDIO_CTX, TranscribeRequest, audio_ctx_for_samples};
 use pipeline::asr_client::AsrWorker;
+use pipeline::config::{FilterConfig, PipelineConfig};
+use pipeline::filter::{PcmSkip, is_no_speech, pcm_skip};
 use pipeline::llama::{LlamaServer, max_tokens_for};
 use pipeline::prompt::{Lang, translation_prompt};
 use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES, Segment, Segmenter, SegmenterConfig};
+use pipeline::sentence::{OpenSentence, Piece, merge_window_ms, plan_merge};
 use pipeline::vad::SileroVad;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -22,34 +23,16 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
-/// Luật bỏ đoạn "không có tiếng nói" theo OpenAI Whisper (spec §6.4, "Lọc lỗi ảo giác"): bỏ khi `no_speech_prob` lớn hơn
-/// ngưỡng này **và** `avg_logprob` nhỏ hơn `AVG_LOGPROB_MIN`.
-/// `avg_logprob` của worker không tính EOT, cố ý khác OpenAI: âm hơn một chút, nên chặt hơn một chút ở đoạn ngắn. Chế độ A
-/// không có `cut_loop` nên `avg_logprob` của nó gồm cả token lặp.
-///
-/// Chỉ dùng `no_speech_prob` thì bỏ nhầm câu đúng: một câu tiếng Hàn có `no_speech_prob` 0,62 mà `avg_logprob` −0,25.
-/// Trên A4 (`out-m4pro-small-final.jsonl`, 548 clip) luật bỏ đúng 1 clip, `en-9810650684898829002_nb`, có bản chép là ảo
-/// giác; `avg_logprob` ở phân vị 1 (nội suy tuyến tính) là −0,695 với small và −0,269 với turbo. Với turbo,
-/// `no_speech_prob` luôn cỡ 1e-11 nên luật không bao giờ bỏ đoạn nào. Chỉ dùng `avg_logprob < −1` thì bỏ nhầm 1 clip ja
-/// thật (`ja-887319630625143301_nb`, −1,318).
-const NO_SPEECH_MAX: f32 = 0.6;
-/// Ngưỡng `avg_logprob` của cùng luật trên (`logprob_threshold` mặc định của OpenAI Whisper).
-const AVG_LOGPROB_MIN: f32 = -1.0;
 /// Cửa sổ (ms) ghép đoạn với mốc dừng câu thật, xem `match_segments`.
 const MATCH_WINDOW_MS: u64 = 1_000;
 /// Khung âm thanh tới trễ hơn thời gian thực quá ngưỡng này (ms) thì kết quả lệch cùng cỡ: báo cho người chạy.
 const FEED_LAG_WARN_MS: f64 = 100.0;
 /// Đoạn có mốc dừng sớm hơn mốc VAD của câu quá ngưỡng này (ms) thì câu bị gắn cờ `early_stop`.
 const EARLY_STOP_MS: i64 = 200;
-/// Dấu câu kết thúc của §6.3. Đúng chữ của spec: đuôi như `."` hay `」` chưa được xử lý riêng.
-const SENTENCE_END: [char; 6] = ['.', '?', '!', '。', '？', '！'];
-/// Trần của một câu ghép (§6.3): 15 giây âm thanh hoặc 3 đoạn.
-const MERGE_MAX_SPEECH_MS: u64 = 15_000;
-const MERGE_MAX_SEGMENTS: usize = 3;
 
 // Lý do một đoạn không được dịch, ghi ở `SegmentRecord::skipped`.
-/// Đoạn không có tiếng nói theo luật `no_speech_prob` và `avg_logprob` (xem `NO_SPEECH_MAX`), hoặc chữ rỗng: app bỏ đoạn
-/// này (spec §6.4, "Lọc lỗi ảo giác").
+/// Đoạn không có tiếng nói theo luật `no_speech_prob` và `avg_logprob` (`pipeline::filter::is_no_speech`), hoặc chữ rỗng:
+/// app bỏ đoạn này (spec §6.4, "Lọc lỗi ảo giác").
 const SKIP_NO_SPEECH: &str = "no_speech";
 /// Đoạn ngắn hơn `MIN_PCM_SAMPLES`: không gửi cho `asr-worker`.
 const SKIP_TOO_SHORT: &str = "too_short";
@@ -119,7 +102,8 @@ pub struct LatencyArgs {
     llama_args: String,
 }
 
-#[derive(Serialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
 struct SegmentRecord {
     id: u64,
     start_ms: u64,
@@ -219,9 +203,11 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     // Nạp VAD trước khi chạy tiến trình phụ: đường dẫn sai thì báo lỗi ngay mà không để lại server chạy dở,
     // và việc nạp không chiếm giờ của lượt phát lại.
     let mut vad = SileroVad::load(&args.vad_model)?;
+    // Ngưỡng mặc định của app (`pipeline::config`): công cụ đo dùng đúng luật app chạy.
+    let config = PipelineConfig::default();
     let mut segmenter = Segmenter::new(SegmenterConfig {
         end_silence_ms: args.end_silence_ms,
-        ..Default::default()
+        ..config.segmenter.clone()
     });
 
     let (mut asr, ready) = AsrWorker::spawn(
@@ -265,11 +251,15 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     let languages = args.languages.clone();
     let min_ctx = args.min_ctx;
     let merge = args.merge;
-    let merge_window = merge_window_ms(args.end_silence_ms);
+    let merge_window = merge_window_ms(args.end_silence_ms, &config.merge);
+    let merge_config = config.merge.clone();
+    let filter_config = config.filter.clone();
     let asr_thread = std::thread::spawn(move || -> Result<()> {
         let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
         // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ,
         // để số đo S6 không đổi khi `prev_lang` chuyển sang `TranscribeRequest`.
+        // Cố ý khác app: engine của kế hoạch 02b chỉ cập nhật `prev_lang` và prompt bằng đoạn được giữ lại, còn S6 vẫn đo theo
+        // luật của Giai đoạn 0 để so được với mốc cũ. Đổi luật ở đây thì phải đo lại mốc S6.
         let mut prev_lang: Option<String> = None;
         for (segment, closed_at_ms) in seg_rx {
             let mut rec = SegmentRecord {
@@ -282,8 +272,8 @@ pub fn run(args: LatencyArgs) -> Result<()> {
                 ..Default::default()
             };
             // Worker từ chối đoạn ngoài khoảng, và một lỗi làm dừng cả lượt đo: không gửi, chỉ ghi lại.
-            if let Some(reason) = pcm_skip_reason(segment.samples.len()) {
-                rec.skipped = Some(reason.into());
+            if let Some(reason) = pcm_skip(segment.samples.len()) {
+                rec.skipped = Some(skip_name(reason).into());
                 rec.asr_done_at_ms = now_ms();
                 asr_tx.send(rec)?;
                 continue;
@@ -329,7 +319,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         for mut rec in asr_rx {
             let mt_started = now_ms();
             if rec.skipped.is_none() {
-                match route(&rec, target) {
+                match route(&rec, target, &filter_config) {
                     Err(reason) => {
                         // Đoạn hiện luôn chữ gốc (cùng ngôn ngữ đích, hoặc ngoài tập) cắt chuỗi ghép; đoạn bị bỏ thì không.
                         if !is_dropped(&reason) {
@@ -341,7 +331,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
                         rec.mt_started_at_ms = Some(mt_started);
                         // Ghép câu (§6.3): đoạn bắt đầu nói trong cửa sổ ghép thì dịch lại cả câu, không chỉ đoạn này.
                         let (merged, source) = if merge {
-                            plan_merge(&mut open, &rec, src, merge_window)
+                            plan_merge(&mut open, &piece_of(&rec), merge_window, &merge_config)
                         } else {
                             (1, rec.text.trim().to_string())
                         };
@@ -500,92 +490,27 @@ fn kill_process(pid: u32) {
         .output();
 }
 
-/// Lý do không gửi đoạn cho `asr-worker`: số mẫu ngoài khoảng worker nhận.
-fn pcm_skip_reason(n_samples: usize) -> Option<&'static str> {
-    if n_samples < MIN_PCM_SAMPLES {
-        Some(SKIP_TOO_SHORT)
-    } else if n_samples > MAX_PCM_SAMPLES {
-        Some(SKIP_TOO_LONG)
-    } else {
-        None
+/// Tên lý do trong file kết quả, giữ như Giai đoạn 0.
+fn skip_name(reason: PcmSkip) -> &'static str {
+    match reason {
+        PcmSkip::TooShort => SKIP_TOO_SHORT,
+        PcmSkip::TooLong => SKIP_TOO_LONG,
     }
 }
 
-/// Cửa sổ ghép của §6.3: max(700 ms, `vadEndSilenceMs` + 400 ms).
-fn merge_window_ms(end_silence_ms: u64) -> u64 {
-    (end_silence_ms + 400).max(700)
-}
-
-/// Đoạn kết thúc bằng dấu câu kết thúc thì câu đã chốt: không còn là phụ đề tạm.
-fn ends_sentence(text: &str) -> bool {
-    text.trim_end().ends_with(SENTENCE_END)
-}
-
-/// Câu đang mở theo §6.3: các đoạn liên tiếp đã ghép và chưa chốt. Mọi mốc thời gian là mốc tiếng nói
-/// (`Segment::start_ms` và `end_ms`, không gồm đệm), nên cửa sổ tính từ lúc hết tiếng nói của đoạn trước tới lúc có
-/// tiếng nói của đoạn sau.
-struct OpenSentence {
-    /// Ngôn ngữ nhận diện của các đoạn. Đoạn sau khác ngôn ngữ thì không ghép (spec §6.3, "Ghép câu và phụ đề tạm").
-    lang: String,
-    /// Chỗ nối chữ: tiếng Trung và tiếng Nhật không có dấu cách giữa các từ.
-    joiner: &'static str,
-    text: String,
-    segments: usize,
-    /// Tổng thời lượng tiếng nói, không tính đệm và không tính khoảng nghỉ giữa các đoạn.
-    speech_ms: u64,
-    /// Lúc hết tiếng nói của đoạn cuối.
-    last_end_ms: u64,
-    /// Đoạn cuối kết thúc bằng dấu câu kết thúc: câu đã chốt.
-    closed: bool,
-}
-
-impl OpenSentence {
-    fn new(first: &SegmentRecord, lang: Lang) -> Self {
-        Self {
-            lang: first.lang.clone(),
-            joiner: if matches!(lang, Lang::Zh | Lang::Ja) { "" } else { " " },
-            text: first.text.trim().to_string(),
-            segments: 1,
-            speech_ms: first.end_ms.saturating_sub(first.start_ms),
-            last_end_ms: first.end_ms,
-            closed: ends_sentence(&first.text),
-        }
+/// Đoạn đã chép lời, ở dạng luật ghép câu cần (`pipeline::sentence`). Chỉ mốc tiếng nói, không có `audio_ms` (gồm đệm).
+fn piece_of(rec: &SegmentRecord) -> Piece<'_> {
+    Piece {
+        start_ms: rec.start_ms,
+        end_ms: rec.end_ms,
+        lang: &rec.lang,
+        text: &rec.text,
     }
-
-    /// `next` ghép được vào câu này không. Đoạn cắt cưỡng bức (8 giây) bắt đầu đúng chỗ đoạn trước kết thúc, nên
-    /// khoảng cách bằng 0. Đạt trần thì chốt câu, đoạn sau mở câu mới.
-    fn accepts(&self, next: &SegmentRecord, window_ms: u64) -> bool {
-        !self.closed
-            && next.lang == self.lang
-            && next.start_ms.saturating_sub(self.last_end_ms) <= window_ms
-            && self.segments < MERGE_MAX_SEGMENTS
-            && self.speech_ms + next.end_ms.saturating_sub(next.start_ms) <= MERGE_MAX_SPEECH_MS
-    }
-
-    fn push(&mut self, next: &SegmentRecord) {
-        self.text = format!("{}{}{}", self.text.trim_end(), self.joiner, next.text.trim());
-        self.segments += 1;
-        self.speech_ms += next.end_ms.saturating_sub(next.start_ms);
-        self.last_end_ms = next.end_ms;
-        self.closed = ends_sentence(&next.text);
-    }
-}
-
-/// Đoạn vừa chép lời xong và cần dịch: ghép vào câu đang mở nếu được, không thì mở câu mới.
-/// Trả (số đoạn trong câu, chữ nguồn của cả câu để dịch).
-fn plan_merge(open: &mut Option<OpenSentence>, rec: &SegmentRecord, src: Lang, window_ms: u64) -> (usize, String) {
-    match open.as_mut().filter(|o| o.accepts(rec, window_ms)) {
-        Some(o) => o.push(rec),
-        None => *open = Some(OpenSentence::new(rec, src)),
-    }
-    let o = open.as_ref().expect("vừa ghép hoặc vừa mở câu");
-    (o.segments, o.text.clone())
 }
 
 /// Quy tắc của app cho một đoạn đã chép lời: `Ok(ngôn ngữ nguồn)` nếu phải dịch, `Err(lý do)` nếu bỏ bước dịch.
-fn route(rec: &SegmentRecord, target: Lang) -> Result<Lang, String> {
-    let no_speech = rec.no_speech_prob > NO_SPEECH_MAX && rec.avg_logprob < AVG_LOGPROB_MIN;
-    if no_speech || rec.text.trim().is_empty() {
+fn route(rec: &SegmentRecord, target: Lang, cfg: &FilterConfig) -> Result<Lang, String> {
+    if is_no_speech(rec.no_speech_prob, rec.avg_logprob, &rec.text, cfg) {
         return Err(SKIP_NO_SPEECH.into());
     }
     match Lang::from_code(&rec.lang) {
@@ -1041,46 +966,23 @@ mod tests {
     }
 
     #[test]
-    fn segments_outside_the_worker_range_are_not_sent() {
-        assert_eq!(pcm_skip_reason(0), Some("too_short"));
-        assert_eq!(pcm_skip_reason(MIN_PCM_SAMPLES - 1), Some("too_short"));
-        assert_eq!(pcm_skip_reason(MIN_PCM_SAMPLES), None);
-        assert_eq!(pcm_skip_reason(MAX_PCM_SAMPLES), None);
-        assert_eq!(pcm_skip_reason(MAX_PCM_SAMPLES + 1), Some("too_long"));
+    fn pcm_skip_reasons_keep_their_phase0_names() {
+        assert_eq!(skip_name(PcmSkip::TooShort), "too_short");
+        assert_eq!(skip_name(PcmSkip::TooLong), "too_long");
     }
 
     #[test]
     fn route_follows_the_app_rules() {
-        assert_eq!(route(&rec("en", "Hello", 0.0, -0.3), Lang::Vi), Ok(Lang::En));
-        assert_eq!(route(&rec("en", "", 0.0, 0.0), Lang::Vi), Err("no_speech".into()));
-        assert_eq!(route(&rec("en", " \n", 0.0, -0.3), Lang::Vi), Err("no_speech".into()));
-        assert_eq!(
-            route(&rec("vi", "Xin chào", 0.0, -0.3), Lang::Vi),
-            Err("same_lang".into())
-        );
-        assert_eq!(
-            route(&rec("fr", "Bonjour", 0.0, -0.3), Lang::Vi),
-            Err("lang_ngoai_tap:fr".into())
-        );
-    }
-
-    #[test]
-    fn no_speech_needs_both_a_high_no_speech_prob_and_a_low_avg_logprob() {
-        let drops = |no_speech: f32, logprob: f32| route(&rec("ko", "안녕", no_speech, logprob), Lang::Vi).is_err();
-        // Luật của OpenAI Whisper: bỏ khi cả hai điều kiện cùng đúng.
-        assert!(drops(0.9, -1.5));
-        // `no_speech` cao mà chữ chắc chắn (câu tiếng Hàn đúng có no_speech 0,62 và avg_logprob −0,25): giữ.
-        assert!(!drops(0.62, -0.25));
-        assert!(!drops(1.0, -0.5));
-        // `no_speech` thấp mà chữ kém chắc chắn: giữ (turbo có no_speech khoảng 1e-11 nên không bao giờ bị bỏ).
-        assert!(!drops(0.0, -3.0));
-        assert!(!drops(1e-11, -3.0));
-        // Biên: đúng 0,6 chưa quá ngưỡng, đúng −1,0 chưa dưới ngưỡng.
-        assert!(!drops(0.6, -1.5));
-        assert!(!drops(0.9, -1.0));
-        assert!(drops(0.61, -1.01));
-        // Lý do bỏ vẫn tên `no_speech`.
-        assert_eq!(route(&rec("ko", "안녕", 0.9, -1.5), Lang::Vi), Err("no_speech".into()));
+        let cfg = FilterConfig::default();
+        let route = |r: &SegmentRecord| route(r, Lang::Vi, &cfg);
+        assert_eq!(route(&rec("en", "Hello", 0.0, -0.3)), Ok(Lang::En));
+        assert_eq!(route(&rec("en", "", 0.0, 0.0)), Err("no_speech".into()));
+        assert_eq!(route(&rec("en", " \n", 0.0, -0.3)), Err("no_speech".into()));
+        // Luật `no_speech` của pipeline (cần cả hai điều kiện), đặt tên lý do như Giai đoạn 0.
+        assert_eq!(route(&rec("ko", "안녕", 0.9, -1.5)), Err("no_speech".into()));
+        assert_eq!(route(&rec("ko", "안녕", 0.62, -0.25)), Ok(Lang::Ko));
+        assert_eq!(route(&rec("vi", "Xin chào", 0.0, -0.3)), Err("same_lang".into()));
+        assert_eq!(route(&rec("fr", "Bonjour", 0.0, -0.3)), Err("lang_ngoai_tap:fr".into()));
     }
 
     #[test]
@@ -1236,157 +1138,13 @@ mod tests {
     }
 
     #[test]
-    fn merge_window_is_measured_from_speech_end_to_next_speech_start() {
-        let open = OpenSentence::new(&piece(1_000, 4_000, "so we went to"), Lang::En);
-        // Hết tiếng ở 4 000 ms: bắt đầu nói lại ở 4 700 là đúng cửa sổ 700 ms, ở 4 701 là quá 1 ms.
-        assert!(open.accepts(&piece(4_700, 6_000, "the market"), 700));
-        assert!(!open.accepts(&piece(4_701, 6_000, "the market"), 700));
-    }
-
-    #[test]
     fn padding_does_not_widen_the_window() {
         // `audio_ms` gồm đệm 2 × 224 ms; cửa sổ chỉ tính theo mốc tiếng nói `start_ms` và `end_ms`.
-        let open = OpenSentence::new(&piece(1_000, 4_000, "so we went to"), Lang::En);
+        let cfg = PipelineConfig::default().merge;
+        let open = OpenSentence::new(&piece_of(&piece(1_000, 4_000, "so we went to")), &cfg);
         let next = piece(4_701, 6_000, "the market");
         assert!(next.audio_ms > next.end_ms - next.start_ms);
-        assert!(!open.accepts(&next, 700));
-    }
-
-    #[test]
-    fn forced_cut_pieces_touch_and_merge() {
-        // Cắt cưỡng bức ở 8 giây: đoạn sau bắt đầu đúng chỗ đoạn trước kết thúc, khoảng cách bằng 0.
-        let open = OpenSentence::new(&piece(0, 8_000, "a long sentence that"), Lang::En);
-        assert!(open.accepts(&piece(8_000, 12_000, "keeps going"), 700));
-    }
-
-    #[test]
-    fn merge_window_follows_end_silence() {
-        assert_eq!(merge_window_ms(200), 700);
-        assert_eq!(merge_window_ms(300), 700);
-        assert_eq!(merge_window_ms(301), 701);
-        assert_eq!(merge_window_ms(800), 1_200);
-    }
-
-    #[test]
-    fn sentence_is_capped_at_three_segments() {
-        let mut open = OpenSentence::new(&piece(0, 2_000, "one"), Lang::En);
-        let two = piece(2_100, 4_000, "two");
-        let three = piece(4_100, 6_000, "three");
-        assert!(open.accepts(&two, 700));
-        open.push(&two);
-        assert!(open.accepts(&three, 700)); // mới 2 đoạn: còn chỗ
-        open.push(&three);
-        assert_eq!(open.segments, 3);
-        assert!(!open.accepts(&piece(6_100, 7_000, "four"), 700)); // đủ 3 đoạn: đoạn sau mở câu mới
-    }
-
-    #[test]
-    fn sentence_is_capped_at_15_seconds_of_speech() {
-        let open = OpenSentence::new(&piece(0, 8_000, "x"), Lang::En); // 8 giây tiếng nói
-        assert!(open.accepts(&piece(8_100, 15_000, "y"), 700)); // tổng 14,9 giây
-        assert!(open.accepts(&piece(8_100, 15_100, "y"), 700)); // đúng 15 giây: còn được
-        assert!(!open.accepts(&piece(8_100, 15_101, "y"), 700)); // 15,001 giây: quá trần
-    }
-
-    #[test]
-    fn speech_duration_counts_only_speech_not_the_pauses_between_pieces() {
-        let mut open = OpenSentence::new(&piece(0, 5_000, "x"), Lang::En);
-        open.push(&piece(5_600, 10_600, "y")); // hai khoảng nói 5 giây, nghỉ 0,6 giây: tiếng nói 10 giây
-        assert!(open.accepts(&piece(11_200, 16_200, "z"), 700)); // 10 + 5 = 15 giây tiếng nói, dù cả câu trải 16,2 giây
-    }
-
-    #[test]
-    fn terminal_punctuation_closes_the_sentence() {
-        for end in [".", "?", "!", "。", "？", "！", ". ", "?\n"] {
-            let open = OpenSentence::new(&piece(0, 2_000, &format!("đã xong{end}")), Lang::En);
-            assert!(!open.accepts(&piece(2_100, 3_000, "câu sau"), 700), "{end:?}");
-        }
-        for end in ["", ",", ";", ":", "，", "、", " và"] {
-            let open = OpenSentence::new(&piece(0, 2_000, &format!("còn tiếp{end}")), Lang::En);
-            assert!(open.accepts(&piece(2_100, 3_000, "câu sau"), 700), "{end:?}");
-        }
-    }
-
-    #[test]
-    fn only_the_last_piece_decides_whether_the_sentence_is_closed() {
-        let mut open = OpenSentence::new(&piece(0, 2_000, "Xong rồi."), Lang::En);
-        assert!(!open.accepts(&piece(2_100, 3_000, "tiếp"), 700));
-        // Câu mở mà đoạn đầu có dấu chấm giữa chừng (ví dụ "Mr. Smith") vẫn ghép tiếp nếu đoạn cuối không có.
-        open = OpenSentence::new(&piece(0, 2_000, "Mr. Smith said"), Lang::En);
-        open.push(&piece(2_100, 3_000, "that it was done."));
-        assert!(!open.accepts(&piece(3_100, 4_000, "next"), 700));
-    }
-
-    #[test]
-    fn different_language_does_not_merge() {
-        let open = OpenSentence::new(&piece(0, 2_000, "hello"), Lang::En);
-        let mut next = piece(2_100, 3_000, "xin chào");
-        next.lang = "vi".into();
-        assert!(!open.accepts(&next, 700));
-    }
-
-    #[test]
-    fn merged_source_is_the_whole_sentence() {
-        let mut open = None;
-        let a = piece(0, 3_000, "We walked to the");
-        let b = piece(3_400, 6_000, "market yesterday.");
-        let c = piece(6_200, 8_000, "Then we ate.");
-        assert_eq!(
-            plan_merge(&mut open, &a, Lang::En, 700),
-            (1, "We walked to the".to_string())
-        );
-        assert_eq!(
-            plan_merge(&mut open, &b, Lang::En, 700),
-            (2, "We walked to the market yesterday.".to_string())
-        );
-        // `b` kết thúc bằng dấu chấm: câu đã chốt, `c` mở câu mới.
-        assert_eq!(
-            plan_merge(&mut open, &c, Lang::En, 700),
-            (1, "Then we ate.".to_string())
-        );
-    }
-
-    #[test]
-    fn a_piece_outside_the_window_starts_a_new_sentence() {
-        let mut open = None;
-        plan_merge(&mut open, &piece(0, 3_000, "first part"), Lang::En, 700);
-        let late = piece(3_701, 5_000, "second part");
-        assert_eq!(
-            plan_merge(&mut open, &late, Lang::En, 700),
-            (1, "second part".to_string())
-        );
-    }
-
-    #[test]
-    fn chinese_and_japanese_join_without_a_space() {
-        for (lang, code) in [(Lang::Zh, "zh"), (Lang::Ja, "ja")] {
-            let mut open = None;
-            let mut a = piece(0, 3_000, "我们走到 ");
-            let mut b = piece(3_200, 5_000, " 市场");
-            (a.lang, b.lang) = (code.into(), code.into());
-            plan_merge(&mut open, &a, lang, 700);
-            assert_eq!(
-                plan_merge(&mut open, &b, lang, 700),
-                (2, "我们走到市场".to_string()),
-                "{code}"
-            );
-        }
-    }
-
-    #[test]
-    fn other_languages_join_with_one_space() {
-        for (lang, code) in [(Lang::En, "en"), (Lang::Ko, "ko"), (Lang::Vi, "vi")] {
-            let mut open = None;
-            let mut a = piece(0, 3_000, "một hai ");
-            let mut b = piece(3_200, 5_000, " ba bốn");
-            (a.lang, b.lang) = (code.into(), code.into());
-            plan_merge(&mut open, &a, lang, 700);
-            assert_eq!(
-                plan_merge(&mut open, &b, lang, 700),
-                (2, "một hai ba bốn".to_string()),
-                "{code}"
-            );
-        }
+        assert!(!open.accepts(&piece_of(&next), 700));
     }
 
     #[test]
@@ -1544,5 +1302,69 @@ mod tests {
         ];
         let utterances = utterance_latencies(&[utt("a", 1_000), utt("b", 2_000)], &segments, Lang::Vi);
         assert_eq!(build_summary(&utterances, &segments)["skipped_lang_ngoai_tap"], 2.0);
+    }
+
+    /// Luật bỏ đoạn và ghép câu đã chuyển sang `pipeline` (Đ3 của kế hoạch 00) cho đúng các quyết định của 12 lượt S6 cấu
+    /// hình chốt, `bench/phase0/results/latency/m4pro-chot-khuyennghi-*.json`: cùng lý do bỏ đoạn, cùng số đoạn ghép và
+    /// cùng chữ nguồn đã gửi dịch, đoạn nào cũng vậy. Nhờ đó số đo S6 của lượt chốt vẫn là số đo của luật hiện tại.
+    #[test]
+    fn phase0_s6_decisions_replay_identically() {
+        #[derive(Deserialize)]
+        struct Saved {
+            config: HashMap<String, String>,
+            segments: Vec<SegmentRecord>,
+        }
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bench/phase0/results/latency");
+        let cfg = PipelineConfig::default();
+        let (mut files, mut checked, mut merged_pieces) = (0, 0, 0);
+        for entry in std::fs::read_dir(&dir).unwrap() {
+            let path = entry.unwrap().path();
+            let name = path.file_name().unwrap().to_string_lossy().into_owned();
+            if !name.starts_with("m4pro-chot-khuyennghi-") {
+                continue;
+            }
+            let saved: Saved = serde_json::from_reader(std::fs::File::open(&path).unwrap()).unwrap();
+            let target = Lang::from_code(&saved.config["target"]).unwrap();
+            let end_silence: u64 = saved.config["end_silence_ms"].parse().unwrap();
+            let window = merge_window_ms(end_silence, &cfg.merge);
+            assert_eq!(window.to_string(), saved.config["merge_window_ms"], "{name}");
+            let mut segments = saved.segments;
+            segments.sort_by_key(|s| s.id);
+            let mut open = None;
+            for rec in &segments {
+                if matches!(rec.skipped.as_deref(), Some(SKIP_TOO_SHORT | SKIP_TOO_LONG)) {
+                    continue; // không qua asr-worker, luồng MT không xét
+                }
+                let at = format!("{name}, đoạn {}", rec.id);
+                match route(rec, target, &cfg.filter) {
+                    Err(reason) => {
+                        if !is_dropped(&reason) {
+                            open = None;
+                        }
+                        assert_eq!(rec.skipped.as_deref(), Some(reason.as_str()), "{at}");
+                    }
+                    Ok(_) => {
+                        let (merged, source) = plan_merge(&mut open, &piece_of(rec), window, &cfg.merge);
+                        // `empty_translation` được ghi sau khi dịch: đoạn đó vẫn đi qua bước ghép câu.
+                        assert!(
+                            matches!(rec.skipped.as_deref(), None | Some(SKIP_EMPTY_TRANSLATION)),
+                            "{at}: {:?}",
+                            rec.skipped
+                        );
+                        assert_eq!(rec.merged_segments, Some(merged), "{at}");
+                        assert_eq!(rec.translated_source.as_deref(), Some(source.as_str()), "{at}");
+                        merged_pieces += usize::from(merged > 1);
+                    }
+                }
+                checked += 1;
+            }
+            files += 1;
+        }
+        assert_eq!(files, 12, "đủ 12 lượt: 2 gói × 6 session");
+        println!("{files} lượt, {checked} đoạn, {merged_pieces} lần ghép");
+        assert!(
+            checked > 400 && merged_pieces > 50,
+            "{checked} đoạn, {merged_pieces} lần ghép"
+        );
     }
 }
