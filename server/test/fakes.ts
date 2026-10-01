@@ -28,8 +28,12 @@ export class FakePayOS {
   readonly links = new Map<number, FakeLink>();
   readonly requests: { method: string; path: string; body: unknown }[] = [];
   down = false;
-  /** Mã HTTP lỗi cho các lần hỏi trạng thái đơn kế tiếp, lần lượt; 200 là trả bình thường. Hết hàng đợi thì trả bình thường. */
-  statusFailures: number[] = [];
+  /**
+   * Lỗi cho các lần hỏi trạng thái đơn kế tiếp, lần lượt: mã HTTP (200 là trả bình thường), "timeout" (fetch ném
+   * TimeoutError như AbortSignal.timeout), "network" (fetch ném TypeError) hay "bad_signature" (trả lời nhưng sai chữ ký).
+   * Hết hàng đợi thì trả bình thường.
+   */
+  statusFailures: (number | "timeout" | "network" | "bad_signature")[] = [];
   confirmedWebhook: string | null = null;
 
   constructor(
@@ -74,6 +78,9 @@ export class FakePayOS {
     const m = path.match(/^\/v2\/payment-requests\/(\d+)$/);
     if (method === "GET" && m) {
       const failure = this.statusFailures.shift();
+      if (failure === "timeout") throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+      if (failure === "network") throw new TypeError("fetch failed");
+      if (failure === "bad_signature") return json({ code: "00", desc: "success", data: { orderCode: 0 }, signature: "0".repeat(64) });
       if (failure !== undefined && failure !== 200) return json({ code: String(failure), desc: "lỗi giả", data: null }, failure);
       const link = this.links.get(Number(m[1]));
       if (!link) return json({ code: "101", desc: "Mã thanh toán không tồn tại", data: null });

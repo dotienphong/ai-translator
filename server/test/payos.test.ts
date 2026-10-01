@@ -262,6 +262,30 @@ describe("PayOS: trạng thái đơn", () => {
       .catch((e: unknown) => e);
     expect(slow).toBeInstanceOf(PaymentProviderError);
     expect(String(slow)).toBe("PaymentProviderError: PayOS không trả lời sau 10 giây");
+    // Hai trường hợp này là "không liên lạc được": đối soát tính chung chuỗi với 5xx để dừng sớm.
+    expect((down as PaymentProviderError).unreachable).toBe(true);
+    expect((slow as PaymentProviderError).unreachable).toBe(true);
+  });
+
+  it("lỗi có trả lời (HTTP lỗi, không phải JSON, sai chữ ký, dữ liệu lạ) không phải unreachable, dù không có httpStatus", async () => {
+    const errOf = (body: string, status = 200): Promise<PaymentProviderError> =>
+      provider(async () => new Response(body, { status }))
+        .getPaymentStatus(42)
+        .then(
+          () => {
+            throw new Error("phải báo lỗi");
+          },
+          (e: unknown) => e as PaymentProviderError,
+        );
+    const http = await errOf(JSON.stringify({ code: "401", desc: "Unauthorized" }), 401);
+    const notJson = await errOf("<html>", 502);
+    const badSig = await errOf(JSON.stringify({ ...(await signed(info("PAID", 2000))), signature: "0".repeat(64) }));
+    const odd = await errOf(JSON.stringify(await signed(info("WEIRD", 0))));
+    for (const e of [http, notJson, badSig, odd]) {
+      expect(e).toBeInstanceOf(PaymentProviderError);
+      expect(e.unreachable).toBe(false);
+    }
+    expect([http.httpStatus, notJson.httpStatus, badSig.httpStatus, odd.httpStatus]).toEqual([401, 502, undefined, undefined]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { createExecutionContext, createScheduledController, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { raiseAlert } from "../src/alerts";
 import worker from "../src/index";
 import { reconcile } from "../src/reconcile";
@@ -9,6 +9,10 @@ import { FakeGateway } from "./fakes";
 import { DAY, makeWorld, T0 } from "./world";
 
 beforeEach(resetDb);
+// Gỡ mọi spy kể cả khi test đỏ giữa chừng, để console của test sau không bị nuốt.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 async function newOrder(w: ReturnType<typeof makeWorld>) {
   const res = await w.call("POST", "/v1/checkout", { plan: "pro", email: "buyer@example.com", consent: true });
@@ -305,7 +309,6 @@ describe("đối soát mỗi 5 phút", () => {
     expect(w.resend.sent.filter((m) => m.to.includes("buyer@example.com"))).toHaveLength(1);
     const logged = error.mock.calls.map((c) => JSON.parse(c[0] as string) as Record<string, unknown>);
     expect(logged).toContainEqual(expect.objectContaining({ event: "email_retry_failed", order_code: a }));
-    vi.restoreAllMocks();
   });
 
   it("một bước lỗi (kể cả câu ghi trong catch) thì các bước sau vẫn chạy: cảnh báo, dọn bộ đếm", async () => {
@@ -325,7 +328,6 @@ describe("đối soát mỗi 5 phút", () => {
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = 'cu'").first()).toEqual({ n: 0 });
     const events = error.mock.calls.map((c) => (JSON.parse(c[0] as string) as { event: string }).event);
     expect(events).toEqual(["reconcile_failed", "reconcile_mark_failed", "reconcile_step_failed", "reconcile_step_failed"]);
-    vi.restoreAllMocks();
   });
 
   it("PayOS trả 429: dừng cả đợt, các bước sau vẫn chạy", async () => {
@@ -338,7 +340,6 @@ describe("đối soát mỗi 5 phút", () => {
     expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 1, errors: 1 });
     expect(w.payos.requests.filter((r) => r.method === "GET")).toHaveLength(1);
     expect(warn.mock.calls.map((c) => JSON.parse(c[0] as string))).toContainEqual({ event: "reconcile_stopped_early", reason: "rate_limited", skipped: 3 });
-    vi.restoreAllMocks();
   });
 
   it("PayOS trả 5xx 3 lần liên tiếp: dừng cả đợt; 5xx xen kẽ lần trả lời bình thường thì không dừng", async () => {
@@ -357,7 +358,52 @@ describe("đối soát mỗi 5 phút", () => {
     w2.payos.statusFailures = [503, 503, 200, 503, 503];
     w2.clock.now = T0 + 300;
     expect(await reconcile(w2.env, w2.deps)).toMatchObject({ checked: 5, errors: 4 });
-    vi.restoreAllMocks();
+  });
+
+  it("PayOS hết thời gian chờ 3 lần liên tiếp: dừng cả đợt như 5xx", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const w = makeWorld();
+    for (let i = 0; i < 5; i++) await newOrder(w);
+    w.payos.statusFailures = ["timeout", "timeout", "timeout", "timeout"];
+    w.clock.now = T0 + 300;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 3, errors: 3 });
+    expect(w.payos.requests.filter((r) => r.method === "GET")).toHaveLength(3);
+    expect(warn.mock.calls.map((c) => JSON.parse(c[0] as string))).toContainEqual({ event: "reconcile_stopped_early", reason: "server_errors", skipped: 2 });
+  });
+
+  it("5xx, lỗi mạng, 5xx liên tiếp: tính chung một chuỗi, dừng cả đợt", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const w = makeWorld();
+    for (let i = 0; i < 5; i++) await newOrder(w);
+    w.payos.statusFailures = [503, "network", 502];
+    w.clock.now = T0 + 300;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 3, errors: 3 });
+    expect(warn.mock.calls.map((c) => JSON.parse(c[0] as string))).toContainEqual({ event: "reconcile_stopped_early", reason: "server_errors", skipped: 2 });
+  });
+
+  it("lỗi dữ liệu (sai chữ ký, không có httpStatus) xen giữa: bộ đếm về 0, không dừng", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const w = makeWorld();
+    for (let i = 0; i < 5; i++) await newOrder(w);
+    w.payos.statusFailures = [503, "timeout", "bad_signature", "network", 500];
+    w.clock.now = T0 + 300;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 5, errors: 5 });
+    expect(warn.mock.calls.map((c) => (JSON.parse(c[0] as string) as { event: string }).event)).not.toContain("reconcile_stopped_early");
+  });
+
+  it("5xx, timeout, rồi 4xx xen giữa: bộ đếm về 0, không dừng", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const w = makeWorld();
+    for (let i = 0; i < 5; i++) await newOrder(w);
+    w.payos.statusFailures = [503, "timeout", 401, "timeout", 500];
+    w.clock.now = T0 + 300;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 5, errors: 5 });
+    expect(w.payos.requests.filter((r) => r.method === "GET")).toHaveLength(5);
+    expect(warn.mock.calls.map((c) => (JSON.parse(c[0] as string) as { event: string }).event)).not.toContain("reconcile_stopped_early");
   });
 
   it("gửi cảnh báo cho OPERATOR_EMAIL", async () => {
@@ -367,7 +413,6 @@ describe("đối soát mỗi 5 phút", () => {
     w.clock.now = T0 + 300;
     expect((await reconcile(w.env, w.deps)).alerts_sent).toBe(1);
     expect(w.resend.sent[0]).toMatchObject({ to: ["ops@example.com"], subject: "[license dev] Cảnh báo: license_locked (1)" });
-    vi.restoreAllMocks();
   });
 
   it("Cron Trigger của Worker gọi đối soát (không có đơn nào thì không gọi mạng)", async () => {

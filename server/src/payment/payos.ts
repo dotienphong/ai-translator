@@ -185,9 +185,9 @@ export class PayOSProvider implements PaymentProvider {
     } catch (err) {
       // Lỗi mạng hay quá thời gian chờ: bên gọi chỉ cần biết là lỗi của cổng thanh toán.
       if (err instanceof DOMException && err.name === "TimeoutError") {
-        throw new PaymentProviderError(`PayOS không trả lời sau ${TIMEOUT_MS / 1000} giây`);
+        throw new PaymentProviderError(`PayOS không trả lời sau ${TIMEOUT_MS / 1000} giây`, undefined, undefined, true);
       }
-      throw new PaymentProviderError(`PayOS không trả lời (${String(err)})`);
+      throw new PaymentProviderError(`PayOS không trả lời (${String(err)})`, undefined, undefined, true);
     }
     let json: PayOSEnvelope;
     try {

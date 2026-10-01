@@ -14,7 +14,10 @@ const RECHECK_FIRST_HOUR = 240;
 const RECHECK_LATER = 3540;
 const GIVE_UP_AFTER = 86400;
 const BATCH = 50;
-/** Cổng trả 5xx liên tiếp từng này lần thì dừng đợt hỏi; 429 thì dừng ngay. */
+/**
+ * Cổng trả 5xx hay không trả lời (lỗi mạng, quá thời gian chờ) liên tiếp từng này lần thì dừng đợt hỏi; 429 thì dừng ngay.
+ * Lỗi khác (4xx, dữ liệu lạ, D1) không tính và đặt lại bộ đếm.
+ */
 const MAX_SERVER_ERRORS_IN_A_ROW = 3;
 
 export interface ReconcileResult {
@@ -69,7 +72,8 @@ export async function reconcile(
         }
         // Cổng đang quá tải hay đang lỗi: hỏi tiếp chỉ làm nặng thêm. Các đơn còn lại để lần cron sau.
         const status = err instanceof PaymentProviderError ? err.httpStatus : undefined;
-        serverErrors = status !== undefined && status >= 500 ? serverErrors + 1 : 0;
+        const unavailable = err instanceof PaymentProviderError && (err.unreachable || (status !== undefined && status >= 500));
+        serverErrors = unavailable ? serverErrors + 1 : 0;
         const reason = status === 429 ? "rate_limited" : serverErrors >= MAX_SERVER_ERRORS_IN_A_ROW ? "server_errors" : null;
         if (reason) {
           console.warn(JSON.stringify({ event: "reconcile_stopped_early", reason, skipped: results.length - i - 1 }));

@@ -49,6 +49,11 @@ export class PaymentProviderError extends Error {
     readonly code?: string,
     /** Mã HTTP cổng trả về; không có nếu lỗi mạng, quá thời gian chờ hay lỗi dữ liệu. Đối soát dùng để dừng sớm (429, 5xx). */
     readonly httpStatus?: number,
+    /**
+     * Không liên lạc được với cổng: lỗi mạng hay quá thời gian chờ, chỉ đặt ở chỗ gọi fetch. Không suy ra từ việc thiếu
+     * `httpStatus`, vì lỗi chữ ký hay dữ liệu cũng không có `httpStatus`. Đối soát tính chung chuỗi với 5xx.
+     */
+    readonly unreachable: boolean = false,
   ) {
     super(message);
     this.name = "PaymentProviderError";
