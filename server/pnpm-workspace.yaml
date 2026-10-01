@@ -1,0 +1,5 @@
+# server/ là dự án pnpm riêng, không thuộc workspace ở gốc repo (xem kế hoạch Giai đoạn 1 · 05).
+# esbuild và workerd cần chạy script cài đặt để tải binary cho đúng nền tảng.
+allowBuilds:
+  esbuild: true
+  workerd: true
