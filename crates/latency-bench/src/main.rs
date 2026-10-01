@@ -1,7 +1,8 @@
-//! Công cụ đo cho Giai đoạn 0: `latency` (S6) và `asr-eval` (S7, A4).
+//! Công cụ đo: `latency` (S6), `asr-eval` (S7, A4), `mt-eval` (A3, qua đúng code dịch của app).
 
 mod asr_eval;
 mod latency;
+mod mt_eval;
 mod stats;
 
 use clap::Parser;
@@ -12,6 +13,8 @@ enum Command {
     Latency(latency::LatencyArgs),
     /// Chép lời bộ clip A4 để tính WER/CER.
     AsrEval(asr_eval::AsrEvalArgs),
+    /// Dịch bộ test A3 bằng code dịch của app, để score_mt.py chấm COMET.
+    MtEval(mt_eval::MtEvalArgs),
 }
 
 /// Stack của luồng chạy lệnh. `SileroVad` (candle-onnx) cần hơn 1 MiB ở bản debug (`cargo run`), mà luồng chính của Windows
@@ -27,6 +30,7 @@ fn main() -> anyhow::Result<()> {
         .spawn(move || match command {
             Command::Latency(args) => latency::run(args),
             Command::AsrEval(args) => asr_eval::run(args),
+            Command::MtEval(args) => mt_eval::run(args),
         })?;
     worker.join().map_err(|_| anyhow::anyhow!("luồng chạy lệnh bị panic"))?
 }

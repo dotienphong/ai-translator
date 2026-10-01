@@ -3,6 +3,8 @@
 Dùng:
   python3 bench/phase0/mt/translate.py --model models/Hy-MT2-1.8B-Q8_0.gguf [--variant plain|context] [--limit N]
 Kết quả: bench/phase0/data/mt/outputs/<model>-<variant>.jsonl, chạy lại thì tiếp tục từ câu chưa dịch.
+Thêm `--label <nhãn>` thì ghi vào outputs-<nhãn>/, không đụng tới kết quả mốc trong outputs/.
+Từ Giai đoạn 1, A3 dịch bằng `latency-bench mt-eval` (code dịch của app); công cụ này giữ để so sánh.
 """
 import argparse
 import json
@@ -18,6 +20,7 @@ def main():
     ap.add_argument("--model", required=True)
     ap.add_argument("--variant", choices=["plain", "context"], default="plain")
     ap.add_argument("--limit", type=int, default=0, help="chỉ dịch N câu đầu của mỗi chiều (chạy thử)")
+    ap.add_argument("--label", default="", help="ghi vào outputs-<nhãn>/ thay vì outputs/ (mốc)")
     args = ap.parse_args()
 
     items = [json.loads(line) for line in open(os.path.join(DATA, "testset_phase0.jsonl"), encoding="utf-8")]
@@ -32,7 +35,7 @@ def main():
         items = [it for it in items if it["context"]]
 
     stem = os.path.basename(args.model).removesuffix(".gguf")
-    out_dir = os.path.join(DATA, "outputs")
+    out_dir = os.path.join(DATA, f"outputs-{args.label}" if args.label else "outputs")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"{stem}-{args.variant}.jsonl")
     done = set()

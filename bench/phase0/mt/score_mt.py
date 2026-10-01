@@ -1,9 +1,14 @@
 """S7: chấm COMET từng chiều, so sánh theo cặp và lấy ngưỡng tỉ lệ token cho hậu xử lý (spec A3, §6.5).
 
-Dùng (môi trường COMET, xem kế hoạch 02):
-  python bench/phase0/mt/score_mt.py            # COMET + tỉ lệ token
-  python bench/phase0/mt/score_mt.py --no-comet # chỉ tỉ lệ token, không cần torch
-Kết quả: bench/phase0/results/s7_mt.json và s7_mt.md.
+Chấm một lượt mới mà không đụng tới mốc (chống thụt lùi A3, kế hoạch Giai đoạn 1 · 00 mục 6.7):
+  python bench/phase0/mt/score_mt.py --outputs bench/phase0/data/mt/outputs-<nhãn> --label <nhãn> \
+    --baseline bench/phase0/results/s7_mt.json
+Kết quả: bench/phase0/results/s7_mt-<nhãn>.json và .md; bảng cuối so từng chiều với mốc (không thấp hơn quá 0,01). Thêm
+`--no-comet` để chỉ tính tỉ lệ token (không cần torch); khi đó không so được với mốc.
+
+Ghi lại chính mốc S7 (bench/phase0/results/s7_mt.json và s7_mt.md, từ bench/phase0/data/mt/outputs/) phải nói rõ:
+  python bench/phase0/mt/score_mt.py --write-baseline
+Không có `--label` hay `--write-baseline` thì công cụ từ chối chạy, để không lỡ tay ghi đè mốc.
 """
 import argparse
 import glob
@@ -19,6 +24,7 @@ DATA = os.path.join(ROOT, "bench", "phase0", "data", "mt")
 RESULTS = os.path.join(ROOT, "bench", "phase0", "results")
 FLOOR = {"Q8_0": 0.83, "Q4_K_M": 0.80}  # mức sàn Anh→Việt (A3)
 CJK_GAP = 0.05  # Trung/Nhật/Hàn→Việt thấp hơn Anh→Việt quá mức này thì xem lại D5 (A3)
+REGRESSION = 0.01  # chống thụt lùi A3: mỗi chiều không thấp hơn mốc quá mức này
 MARKERS = ("[", "【")  # tiêu đề của mẫu prompt có ngữ cảnh: [Background Information], 【背景信息】
 
 
@@ -46,17 +52,25 @@ def looks_leaked(src, hyp):
     return ("\n" in hyp and "\n" not in src) or (hyp.lstrip().startswith(MARKERS) and not src.lstrip().startswith(MARKERS))
 
 
+def is_failed(r):
+    """Dòng `failed` của `latency-bench mt-eval`: dịch lỗi cả hai lần, `hyp` là câu gốc, không có số đo thời gian."""
+    return r.get("finish_reason") == "failed"
+
+
 def summarize(rows, scores, items):
-    # Bản dịch bị cắt ở số token tối đa (finish_reason "length") là sinh lan man: đếm riêng, không tính vào ngưỡng.
+    # Bản dịch bị cắt ở số token tối đa (finish_reason "length", chỉ có ở translate.py) là sinh lan man: đếm riêng, không
+    # tính vào ngưỡng. Dòng `failed` (mt-eval) cũng đếm riêng: không có tỉ lệ token hay thời gian thật.
     capped = sum(r.get("finish_reason") == "length" for r in rows)
-    kept = [r for r in rows if r.get("finish_reason") != "length"] or rows  # cả chiều đều bị cắt: vẫn tính, để thấy
-    ratios = [r["completion_tokens"] / max(r["src_tokens"], 1) for r in kept]
-    out = {"n": len(rows), "length_capped": capped,
+    failed = sum(is_failed(r) for r in rows)
+    ok = [r for r in rows if not is_failed(r)]
+    kept = [r for r in ok if r.get("finish_reason") != "length"] or ok  # cả chiều đều bị cắt: vẫn tính, để thấy
+    ratios = [r["completion_tokens"] / max(r["src_tokens"], 1) for r in kept] or [0.0]
+    out = {"n": len(rows), "length_capped": capped, "failed": failed,
            "leaked": sum(looks_leaked(items[r["id"]]["src"], r["hyp"]) for r in rows),
            "token_ratio_max": max(ratios), "token_ratio_p99": percentile(ratios, 99),
            # Ngưỡng đề xuất: tỉ lệ lớn nhất đo được, cộng biên 25%, làm tròn lên 0,1.
            "proposed_threshold": math.ceil(max(ratios) * 1.25 * 10) / 10,
-           "total_ms_p50": percentile([r["total_ms"] for r in rows], 50)}
+           "total_ms_p50": percentile([r["total_ms"] for r in ok], 50) if ok else None}
     if scores:
         out["comet"] = mean(scores[r["id"]] for r in rows)
     return out
@@ -70,9 +84,10 @@ def compare(runs, scores, a, b):
             by_dir[r["dir"]].append(i)
     out = {}
     for d, ids in sorted(by_dir.items()):
-        ms_a = percentile([runs[a][i]["total_ms"] for i in ids], 50)
-        ms_b = percentile([runs[b][i]["total_ms"] for i in ids], 50)
-        row = {"n": len(ids), "ms_change": ms_a / ms_b - 1,
+        timed = [i for i in ids if not is_failed(runs[a][i]) and not is_failed(runs[b][i])] or ids
+        ms_a = percentile([runs[a][i]["total_ms"] for i in timed], 50)
+        ms_b = percentile([runs[b][i]["total_ms"] for i in timed], 50)
+        row = {"n": len(ids), "ms_change": ms_a / ms_b - 1 if ms_b else 0.0,
                # Bản dịch dài hơn gấp đôi lượt kia: dấu hiệu dịch luôn câu ngữ cảnh hoặc sinh lan man.
                "longer_x2": sum(runs[a][i]["completion_tokens"] > 2 * runs[b][i]["completion_tokens"] for i in ids)}
         if scores:
@@ -99,13 +114,57 @@ def floor_cell(name, d, per_dir):
     return f"{floor:.3f} ({'đạt' if per_dir[d]['comet'] >= floor else 'KHÔNG ĐẠT'})"
 
 
+def regression_lines(report, baseline):
+    """So COMET từng chiều của các lượt cùng tên với mốc.
+
+    Trả (các dòng Markdown, có chiều nào thụt lùi không, các chỗ không so được). Không so được là lỗi, vì khi đó bảng
+    trống mà lệnh vẫn "đạt": lượt này không có lượt nào cùng tên với mốc; một lượt thiếu chiều mà mốc có; hoặc thiếu
+    COMET (chấm bằng `--no-comet`) ở chiều mà mốc có. Lượt của mốc mà lượt này không chạy (ví dụ chỉ chạy Q4_K_M-plain)
+    thì không tính là thiếu.
+    """
+    lines = ["", "## So với mốc (chống thụt lùi A3)", "",
+             "| Lượt chạy | Chiều | Mốc | Lượt này | Chênh | Kết luận |", "|---|---|---|---|---|---|"]
+    regressed, missing = False, []
+    matched = [name for name in report if name in baseline["runs"]]
+    if not matched:
+        missing.append(f"không lượt nào trùng tên với mốc (lượt này: {sorted(report)}, mốc: {sorted(baseline['runs'])})")
+    for name in matched:
+        per_dir, base = report[name], baseline["runs"][name]
+        for d in sorted(base):
+            if "comet" not in base[d]:
+                continue
+            if d not in per_dir:
+                missing.append(f"{name}: thiếu chiều {d}")
+                continue
+            if "comet" not in per_dir[d]:
+                missing.append(f"{name} {d}: không có COMET (chấm bằng --no-comet?)")
+                continue
+            diff = per_dir[d]["comet"] - base[d]["comet"]
+            ok = diff >= -REGRESSION
+            regressed |= not ok
+            lines.append(f"| {name} | {d} | {base[d]['comet']:.3f} | {per_dir[d]['comet']:.3f} | {diff:+.3f} | "
+                         f"{'đạt' if ok else 'THỤT LÙI'} |")
+    return lines, regressed, missing
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-comet", action="store_true")
+    ap.add_argument("--outputs", default=os.path.join(DATA, "outputs"),
+                    help="thư mục JSONL của translate.py hoặc latency-bench mt-eval")
+    ap.add_argument("--label", default="",
+                    help="nhãn kết quả: ghi s7_mt-<nhãn>.json và .md, không ghi đè mốc s7_mt.json")
+    ap.add_argument("--write-baseline", action="store_true",
+                    help="ghi lại mốc S7 (s7_mt.json, s7_mt.md) từ bench/phase0/data/mt/outputs/")
+    ap.add_argument("--baseline", help="file s7_mt.json làm mốc: thêm bảng so từng chiều")
     args = ap.parse_args()
+    if bool(args.label) == args.write_baseline:
+        ap.error("cần đúng một trong hai: --label <nhãn> (lượt mới) hoặc --write-baseline (ghi lại mốc S7)")
+    if args.write_baseline and os.path.abspath(args.outputs) != os.path.join(DATA, "outputs"):
+        ap.error("--write-baseline chỉ chấm bench/phase0/data/mt/outputs/ (kết quả mốc của S7)")
     items = {it["id"]: it for it in map(json.loads, open(os.path.join(DATA, "testset_phase0.jsonl"), encoding="utf-8"))}
     runs = {}
-    for path in sorted(glob.glob(os.path.join(DATA, "outputs", "*.jsonl"))):
+    for path in sorted(glob.glob(os.path.join(args.outputs, "*.jsonl"))):
         name = os.path.basename(path).removesuffix(".jsonl")
         runs[name] = {r["id"]: r for r in map(json.loads, open(path, encoding="utf-8"))}
     if not runs:
@@ -146,20 +205,22 @@ def main():
                 thresholds[d] = max(thresholds[d], r["proposed_threshold"])
 
     os.makedirs(RESULTS, exist_ok=True)
-    with open(os.path.join(RESULTS, "s7_mt.json"), "w", encoding="utf-8") as f:
+    stem = f"s7_mt-{args.label}" if args.label else "s7_mt"
+    with open(os.path.join(RESULTS, f"{stem}.json"), "w", encoding="utf-8") as f:
         json.dump({"runs": report, "comparisons": comparisons, "token_ratio_thresholds": thresholds}, f,
                   ensure_ascii=False, indent=1)
 
     lines = ["## Mốc theo lượt chạy", "",
-             "| Lượt chạy | Chiều | Số câu | COMET | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | Bị cắt | Nghi lẫn mẫu "
-             "| p50 thời gian (ms) |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             "| Lượt chạy | Chiều | Số câu | COMET | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | Bị cắt | Lỗi "
+             "| Nghi lẫn mẫu | p50 thời gian (ms) |",
+             "|---|---|---|---|---|---|---|---|---|---|---|"]
     for name, per_dir in report.items():
         for d, r in per_dir.items():
             comet_s = f"{r['comet']:.3f}" if "comet" in r else "—"
+            ms_s = f"{r['total_ms_p50']:.0f}" if r["total_ms_p50"] is not None else "—"
             lines.append(f"| {name} | {d} | {r['n']} | {comet_s} | {floor_cell(name, d, per_dir)} | "
                          f"{r['token_ratio_max']:.2f} | {r['proposed_threshold']:.1f} | {r['length_capped']} | "
-                         f"{r['leaked']} | {r['total_ms_p50']:.0f} |")
+                         f"{r['failed']} | {r['leaked']} | {ms_s} |")
     lines += ["", "## So sánh theo cặp (cùng tập câu)", "",
               "| So sánh | Chiều | Số câu | Chênh COMET | 95% CI | Chênh p50 thời gian | Số câu dài gấp đôi |",
               "|---|---|---|---|---|---|---|"]
@@ -171,9 +232,17 @@ def main():
     lines += ["", "## Ngưỡng tỉ lệ token đề xuất cho §6.5 (từ các lượt chạy không có ngữ cảnh)", "",
               "| Chiều | Ngưỡng |", "|---|---|"]
     lines += [f"| {d} | {v:.1f} |" for d, v in sorted(thresholds.items())]
-    with open(os.path.join(RESULTS, "s7_mt.md"), "w", encoding="utf-8") as f:
+    regressed, missing = False, []
+    if args.baseline:
+        extra, regressed, missing = regression_lines(report, json.load(open(args.baseline, encoding="utf-8")))
+        lines += extra + [f"- Không so được: {m}" for m in missing]
+    with open(os.path.join(RESULTS, f"{stem}.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print("\n".join(lines))
+    if missing:
+        raise SystemExit("không so được với mốc: " + "; ".join(missing))
+    if regressed:
+        raise SystemExit("có chiều thấp hơn mốc quá 0,01: không commit thay đổi gây ra nó, báo chủ dự án (mục 6.7)")
 
 
 if __name__ == "__main__":
