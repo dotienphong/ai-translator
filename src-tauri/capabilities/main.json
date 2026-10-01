@@ -1,7 +1,22 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Cửa sổ chính: chỉ ba lệnh của spike và nghe sự kiện khóa (spec §10.2).",
+  "description": "Cửa sổ chính: đúng các lệnh của màn hình ở §4.3, nghe sự kiện, và phóng to chữ bằng ⌘+/Ctrl+ (spec §6.10, §10.2). Không cấp lệnh của plugin nào khác.",
   "windows": ["main"],
-  "permissions": ["allow-toggle-ticker", "allow-set-locked", "allow-set-accessory", "core:event:allow-listen", "core:event:allow-unlisten"]
+  "permissions": [
+    "allow-get-settings",
+    "allow-update-settings",
+    "allow-set-hotkey",
+    "allow-get-app-status",
+    "allow-toggle-session",
+    "allow-set-overlay-visible",
+    "allow-set-overlay-locked",
+    "allow-get-app-info",
+    "allow-open-log-dir",
+    "allow-open-taskbar-settings",
+    "allow-open-login-items-settings",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:webview:allow-set-webview-zoom"
+  ]
 }

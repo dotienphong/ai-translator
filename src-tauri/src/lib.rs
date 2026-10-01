@@ -1,226 +1,147 @@
-//! Spike S5: thanh phụ đề nổi trên app họp đang toàn màn hình (spec §4.4).
-//! macOS dùng NSPanel kiểu non-activating (tauri-nspanel); Windows dùng cửa sổ topmost.
+//! Lõi Rust của app AI Translator (spec §5, §12). `main.rs` chỉ gọi `run()`.
+//!
+//! Tên sản phẩm và bundle identifier nằm ở `tauri.conf.json` (`productName`, `identifier`); tên crate,
+//! tên binary (`meeting-translator`) và tên thư mục repo giữ nguyên (QĐ29).
+//!
+//! Kế hoạch 01 dựng khung: cài đặt, i18n phía Rust, khay, phím tắt, hai cửa sổ, quyền, kho khóa, log.
+//! Kế hoạch 02 nối `audio-capture` và `pipeline` vào, thay `session_stub.rs` bằng `session.rs`.
 
+pub mod actions;
+pub mod commands;
 pub mod errors;
+pub mod events;
+pub mod hotkey_registry;
 pub mod hotkeys;
 pub mod i18n;
+pub mod logging;
 pub mod login_item;
 pub mod navigation;
 pub mod overlay;
 pub mod quit_guard;
 pub mod security;
+pub mod session_stub;
 pub mod settings;
+pub mod state;
 pub mod system;
+pub mod tray;
 pub mod tray_menu;
+pub mod window;
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl};
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+#[cfg(test)]
+mod acl_tests;
+#[cfg(test)]
+mod app_tests;
+#[cfg(test)]
+mod test_support;
 
-#[cfg(target_os = "macos")]
-tauri_nspanel::tauri_panel! {
-    panel!(OverlayPanel {
-        config: {
-            can_become_key_window: false,
-            is_floating_panel: true
-        }
-    })
-}
+use tauri::{App, AppHandle, Manager, RunEvent};
 
-#[derive(Default)]
-struct Flags {
-    ticker: AtomicBool,
-    locked: AtomicBool,
-    hidden: AtomicBool,
-}
+use crate::hotkey_registry::HotkeyRegistry;
+use crate::settings::{Settings, persist};
+use crate::state::AppState;
 
-const SAMPLES: &[(&str, &str)] = &[
-    (
-        "Good morning everyone, thanks for joining.",
-        "Chào buổi sáng mọi người, cảm ơn đã tham gia.",
-    ),
-    (
-        "Let's review the quarterly numbers first.",
-        "Trước hết hãy xem lại số liệu quý.",
-    ),
-    (
-        "我们下周需要完成测试。",
-        "Tuần sau chúng ta cần hoàn thành việc kiểm thử.",
-    ),
-    (
-        "来月の予算を確認させてください。",
-        "Cho tôi xác nhận lại ngân sách tháng tới.",
-    ),
-];
-
-#[tauri::command]
-fn toggle_ticker(flags: tauri::State<'_, Arc<Flags>>) -> bool {
-    !flags.ticker.fetch_xor(true, Ordering::Relaxed)
-}
-
-#[tauri::command]
-fn set_locked(app: AppHandle, flags: tauri::State<'_, Arc<Flags>>, locked: bool) -> Result<(), String> {
-    flags.locked.store(locked, Ordering::Relaxed);
-    apply_lock(&app, locked).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn set_accessory(app: AppHandle, accessory: bool) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        let policy = if accessory {
-            tauri::ActivationPolicy::Accessory
-        } else {
-            tauri::ActivationPolicy::Regular
-        };
-        app.set_activation_policy(policy).map_err(|e| e.to_string())?;
-    }
-    let _ = (app, accessory);
-    Ok(())
-}
-
-fn create_overlay(app: &AppHandle) -> tauri::Result<()> {
-    #[cfg(target_os = "macos")]
-    {
-        use tauri_nspanel::{CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
-        let panel = PanelBuilder::<_, OverlayPanel>::new(app, "overlay")
-            .url(WebviewUrl::App("overlay.html".into()))
-            .size(tauri::Size::Logical(tauri::LogicalSize::new(900.0, 160.0)))
-            // Tạo sẵn cửa sổ gốc không viền (Borderless|Resizable), WKWebView trong suốt,
-            // không nhận key lúc tạo, chưa hiện; click đầu tiên vào panel không-key vẫn tới webview.
-            .with_window(|w| {
-                w.decorations(false)
-                    .transparent(true)
-                    .focused(false)
-                    .visible(false)
-                    .accept_first_mouse(true)
-            })
-            .level(PanelLevel::Status)
-            // Chỉ OR thêm NonactivatingPanel. `StyleMask::borderless()` GÁN mask = 0 nên không được gọi sau.
-            .add_style_mask(StyleMask::empty().nonactivating_panel())
-            .collection_behavior(
-                CollectionBehavior::new()
-                    .can_join_all_spaces()
-                    .full_screen_auxiliary()
-                    .stationary(),
-            )
-            .transparent(true)
-            .has_shadow(false)
-            .hides_on_deactivate(false)
-            .no_activate(true)
-            .build()?;
-        panel.show();
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        tauri::WebviewWindowBuilder::new(app, "overlay", WebviewUrl::App("overlay.html".into()))
-            .title("Phụ đề")
-            .inner_size(900.0, 160.0)
-            .decorations(false)
-            .transparent(true)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .shadow(false)
-            .focused(false)
-            .focusable(false) // WS_EX_NOACTIVATE: click/kéo không kích hoạt thanh phụ đề
-            .build()?;
-    }
-    Ok(())
-}
-
-/// Chế độ khóa: cho click xuyên qua thanh phụ đề (spec §4.4).
-fn apply_lock(app: &AppHandle, locked: bool) -> tauri::Result<()> {
-    #[cfg(target_os = "macos")]
-    {
-        use tauri_nspanel::ManagerExt;
-        if let Ok(panel) = app.get_webview_panel("overlay") {
-            panel.set_ignores_mouse_events(locked);
-        }
-    }
-    #[cfg(not(target_os = "macos"))]
-    if let Some(window) = app.get_webview_window("overlay") {
-        window.set_ignore_cursor_events(locked)?;
-    }
-    app.emit("overlay://locked", locked)
-}
-
-fn toggle_visible(app: &AppHandle, flags: &Flags) -> tauri::Result<()> {
-    let hide = !flags.hidden.fetch_xor(true, Ordering::Relaxed);
-    #[cfg(target_os = "macos")]
-    {
-        use tauri_nspanel::ManagerExt;
-        if let Ok(panel) = app.get_webview_panel("overlay") {
-            if hide { panel.hide() } else { panel.show() }
-        }
-    }
-    #[cfg(not(target_os = "macos"))]
-    if let Some(window) = app.get_webview_window("overlay") {
-        if hide { window.hide()? } else { window.show()? }
-    }
-    Ok(())
-}
+/// Tham số hệ điều hành truyền khi mở app lúc đăng nhập (tauri-plugin-autostart).
+pub const AUTOSTART_ARG: &str = "--autostart";
 
 pub fn run() {
-    let flags = Arc::new(Flags::default());
-    let builder = tauri::Builder::default();
-    #[cfg(target_os = "macos")]
-    let builder = builder.plugin(tauri_nspanel::init());
-    builder
+    let context = tauri::generate_context!();
+    // QĐ29: tên mục khởi động cùng hệ thống theo một luật duy nhất (`login_item::autostart_name`): macOS
+    // là bundle identifier (tên file LaunchAgent và `Label`), Windows là tên sản phẩm (tên giá trị trong `Run`).
+    let autostart_name =
+        login_item::autostart_name(&context.config().identifier, &context.package_info().name).to_string();
+    let autostart = tauri_plugin_autostart::Builder::new()
+        .app_name(autostart_name)
+        .arg(AUTOSTART_ARG);
+    // single-instance phải là plugin đầu tiên: bản thứ hai thoát ngay, bản đang chạy hiện cửa sổ chính (Q7).
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            window::show_main(app)
+        }))
+        .plugin(logging::plugin())
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(autostart.build())
         .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, shortcut, event| {
-                    if event.state() != ShortcutState::Pressed {
-                        return;
-                    }
-                    let flags = app.state::<Arc<Flags>>();
-                    match shortcut.key {
-                        Code::KeyT => {
-                            flags.ticker.fetch_xor(true, Ordering::Relaxed);
-                        }
-                        Code::KeyH => {
-                            let _ = toggle_visible(app, &flags);
-                        }
-                        Code::KeyL => {
-                            let locked = !flags.locked.fetch_xor(true, Ordering::Relaxed);
-                            let _ = apply_lock(app, locked);
-                        }
-                        _ => {}
-                    }
-                })
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
                 .build(),
         )
-        .manage(flags.clone())
-        .invoke_handler(tauri::generate_handler![toggle_ticker, set_locked, set_accessory])
-        .setup(move |app| {
-            create_overlay(app.handle())?;
-            // Phím tắt mặc định của F10; lỗi đăng ký nghĩa là đã có app khác giữ tổ hợp này.
-            for code in [Code::KeyT, Code::KeyH, Code::KeyL] {
-                if let Err(e) = app
-                    .global_shortcut()
-                    .register(Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), code))
-                {
-                    eprintln!("không đăng ký được Ctrl+Alt+{code:?}: {e}");
-                }
-            }
-            let handle = app.handle().clone();
-            std::thread::spawn(move || {
-                let mut n = 0u64;
-                loop {
-                    std::thread::sleep(Duration::from_millis(1500));
-                    if !flags.ticker.load(Ordering::Relaxed) {
-                        continue;
-                    }
-                    let (src, tgt) = SAMPLES[n as usize % SAMPLES.len()];
-                    let payload =
-                        serde_json::json!({ "id": n, "src_text": src, "tgt_text": tgt, "provisional": n % 4 == 3 });
-                    let _ = handle.emit("subtitle://upsert", payload);
-                    n += 1;
-                }
-            });
-            Ok(())
-        })
-        .run(tauri::generate_context!())
-        .expect("lỗi khi chạy app");
+        .plugin(hotkey_registry::plugin())
+        .plugin(navigation::plugin());
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init()).menu(window::app_menu);
+    builder
+        .invoke_handler(commands::handler())
+        .on_window_event(window::on_window_event)
+        .setup(setup)
+        .build(context)
+        .expect("không dựng được app")
+        .run(on_run_event);
+}
+
+fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
+    let handle = app.handle().clone();
+    // Mọi việc mở ra ngoài app (Finder, System Settings, trình duyệt) đi qua đây (QĐ28).
+    system::install(&handle);
+    // Ghi file cài đặt và bật/tắt khởi động cùng hệ thống cũng qua trait, để test dùng bản giả.
+    persist::install(&handle);
+    login_item::install(&handle);
+    let launched_at_login = std::env::args().any(|arg| arg == AUTOSTART_ARG);
+    log::info!(
+        "khởi động {} {}, lúc đăng nhập: {launched_at_login}",
+        handle.package_info().name,
+        handle.package_info().version
+    );
+
+    let loaded = persist::load(&handle, Settings::defaults(i18n::system_ui_language()))?;
+    if !loaded.rejected.is_empty() {
+        log::warn!(
+            "bỏ các khóa cài đặt không hợp lệ, dùng giá trị mặc định: {:?}",
+            loaded.rejected
+        );
+    }
+    let needs_save = loaded.needs_save();
+    let mut settings = loaded.settings;
+    let launch_changed = actions::sync_launch_at_login(&handle, &mut settings);
+    if needs_save || launch_changed {
+        persist::save(&handle, &settings, &loaded.meta)?;
+    }
+    app.manage(AppState::new(settings.clone(), loaded.meta, launched_at_login));
+    app.manage(HotkeyRegistry::default());
+
+    #[cfg(target_os = "macos")]
+    {
+        let app = handle.clone();
+        quit_guard::install(move || actions::quit_blocked(&app));
+    }
+
+    window::create_main(&handle)?;
+    overlay::create(&handle)?;
+    let failures = hotkey_registry::register_all(&handle, &settings.hotkeys);
+    handle
+        .state::<AppState>()
+        .update_status(|s| s.hotkey_failures = failures);
+    tray::create(&handle)?;
+
+    // Đ19: mở lúc đăng nhập thì chỉ nằm ở khay; người dùng tự mở app thì hiện cửa sổ chính. Thanh phụ
+    // đề ẩn trong cả hai trường hợp, tới khi bắt đầu phiên.
+    if launched_at_login {
+        window::hide_main(&handle)
+    } else {
+        window::show_main(&handle)
+    }
+    Ok(())
+}
+
+// `app` chỉ dùng trên macOS.
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
+fn on_run_event(app: &AppHandle, event: RunEvent) {
+    match event {
+        // Đóng hết cửa sổ không làm app thoát; chỉ Thoát ở menu khay mới thoát (`AppHandle::exit`,
+        // lúc đó `code` có giá trị).
+        RunEvent::ExitRequested { code: None, api, .. } => api.prevent_exit(),
+        // Bấm icon ở Dock khi cửa sổ chính đang ẩn.
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { .. } => window::show_main(app),
+        _ => {}
+    }
 }

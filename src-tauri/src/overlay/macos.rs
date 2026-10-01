@@ -1,0 +1,64 @@
+//! Thanh phụ đề trên macOS: NSPanel non-activating, mức `Status`, có mặt ở mọi Space kể cả Space
+//! toàn màn hình của app khác (spec §4.4). Giữ nguyên cách tạo của spike S5 (kế hoạch 0-05, Task 2):
+//! - panel tạo từ cửa sổ không viền, trong suốt, không focus, `accept_first_mouse`;
+//! - bit NonactivatingPanel được cộng thêm bằng `add_style_mask`; `StyleMask::borderless()` gán đè
+//!   cả mask nên không được dùng, nếu không panel sẽ lấy focus của app họp.
+
+use tauri::{AppHandle, Runtime, WebviewUrl};
+use tauri_nspanel::{CollectionBehavior, ManagerExt, PanelBuilder, PanelLevel, StyleMask};
+
+use super::LABEL;
+use crate::navigation;
+
+tauri_nspanel::tauri_panel! {
+    panel!(OverlayPanel {
+        config: {
+            can_become_key_window: false,
+            is_floating_panel: true
+        }
+    })
+}
+
+pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> {
+    let handle = app.clone();
+    PanelBuilder::<_, OverlayPanel<R>>::new(app, LABEL)
+        .url(WebviewUrl::App("overlay.html".into()))
+        .title(title)
+        .size(tauri::Size::Logical(tauri::LogicalSize::new(900.0, 160.0)))
+        .with_window(move |w| {
+            w.decorations(false)
+                .transparent(true)
+                .focused(false)
+                .visible(false)
+                .accept_first_mouse(true)
+                .on_new_window(navigation::new_window_handler(handle.clone()))
+        })
+        .level(PanelLevel::Status)
+        .add_style_mask(StyleMask::empty().nonactivating_panel())
+        .collection_behavior(
+            CollectionBehavior::new()
+                .can_join_all_spaces()
+                .full_screen_auxiliary()
+                .stationary(),
+        )
+        .transparent(true)
+        .has_shadow(false)
+        .hides_on_deactivate(false)
+        .no_activate(true)
+        .build()?;
+    Ok(())
+}
+
+pub fn set_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> tauri::Result<()> {
+    if let Ok(panel) = app.get_webview_panel(LABEL) {
+        if visible { panel.show() } else { panel.hide() }
+    }
+    Ok(())
+}
+
+pub fn set_ignore_mouse<R: Runtime>(app: &AppHandle<R>, ignore: bool) -> tauri::Result<()> {
+    if let Ok(panel) = app.get_webview_panel(LABEL) {
+        panel.set_ignores_mouse_events(ignore);
+    }
+    Ok(())
+}
