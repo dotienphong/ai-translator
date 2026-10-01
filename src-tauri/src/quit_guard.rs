@@ -57,6 +57,9 @@ pub const NS_TERMINATE_NOW: usize = 1;
 
 /// Trả lời cho một yêu cầu thoát. Hủy thì gọi `on_cancel`; `on_cancel` mà panic thì chỉ ghi log, không để
 /// panic chạy ngược qua khung của AppKit (hành vi không xác định).
+///
+/// Bản phát hành build với `panic = "abort"` (`[profile.release]` ở `Cargo.toml` gốc): panic dừng app ngay, không
+/// chạy ngược, nên `catch_unwind` ở đây chỉ có tác dụng ở bản dev và trong test.
 pub fn terminate_reply(event: Option<QuitEvent>, on_cancel: Option<&dyn Fn()>) -> usize {
     if allow_terminate(event) {
         log::info!("cho thoát theo yêu cầu của hệ thống: {event:?}");
