@@ -1,6 +1,7 @@
 //! Spike S5: thanh phụ đề nổi trên app họp đang toàn màn hình (spec §4.4).
 //! macOS dùng NSPanel kiểu non-activating (tauri-nspanel); Windows dùng cửa sổ topmost.
 
+pub mod errors;
 pub mod hotkeys;
 pub mod i18n;
 pub mod login_item;
