@@ -17,13 +17,13 @@
     "check": "pnpm typecheck && pnpm vectors:check && pnpm test && pnpm test:scripts && pnpm dry-run"
   },
   "dependencies": {
-    "hono": "4.13.11"
+    "hono": "4.13.12"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "1.3.3",
-    "@cloudflare/workers-types": "5.20260930.1",
+    "@cloudflare/vitest-plugin": "1.3.4",
+    "@cloudflare/workers-types": "5.20260930.2",
     "typescript": "7.0.2",
     "vitest": "4.1.11",
-    "wrangler": "4.144.0"
+    "wrangler": "4.145.0"
   }
 }
