@@ -1,0 +1,174 @@
+//! Trên Mac, `⌘Q` và mục Quit ở Dock không thoát app (spec §4.3); chỉ Thoát ở menu khay mới thoát.
+//! Nhưng không được cản đăng xuất, khởi động lại, tắt máy (R9 của kế hoạch 00).
+//!
+//! Cách làm: tao (event loop của Tauri) không cài `applicationShouldTerminate:`, nên `⌘Q`, Quit ở
+//! Dock và yêu cầu thoát của hệ thống đều đi thẳng tới `NSApp terminate:` rồi thoát. App thêm
+//! `applicationShouldTerminate:` vào lớp app delegate của tao:
+//! - Apple Event `quit` có thuộc tính lý do (`kAEQuitReason`) là do loginwindow gửi khi đăng xuất,
+//!   khởi động lại hay tắt máy: cho thoát.
+//! - Mọi trường hợp khác (`⌘Q`, mục Quit ở menu app, Quit ở Dock, `osascript -e 'quit app ...'`): hủy,
+//!   rồi gọi `on_cancel` để app hiện cửa sổ chính kèm lời nhắc thoát ở menu bar (không dùng thông báo
+//!   hệ thống, vì cần xin quyền).
+//!
+//! Thoát ở menu khay gọi `AppHandle::exit`; tao dừng event loop bằng `stop:`, không qua `terminate:`,
+//! nên không bị hàm này chặn. Cập nhật app (kế hoạch 07) dùng `AppHandle::restart`, cũng không qua đây.
+
+/// Mã bốn ký tự của Apple Event, như `'why?'`.
+pub const fn four_cc(code: &[u8; 4]) -> u32 {
+    u32::from_be_bytes(*code)
+}
+
+pub const K_CORE_EVENT_CLASS: u32 = four_cc(b"aevt");
+pub const K_AE_QUIT_APPLICATION: u32 = four_cc(b"quit");
+pub const K_AE_QUIT_REASON: u32 = four_cc(b"why?");
+
+/// Các lý do thoát do hệ thống gửi (AERegistry.h).
+const SYSTEM_QUIT_REASONS: [u32; 6] = [
+    four_cc(b"logo"), // kAELogOut
+    four_cc(b"rlgo"), // kAEReallyLogOut
+    four_cc(b"rrst"), // kAEShowRestartDialog
+    four_cc(b"rsdn"), // kAEShowShutdownDialog
+    four_cc(b"rest"), // kAERestart
+    four_cc(b"shut"), // kAEShutDown
+];
+
+/// Apple Event đang được xử lý lúc `terminate:` được gọi, nếu có.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct QuitEvent {
+    pub event_class: u32,
+    pub event_id: u32,
+    /// Giá trị của thuộc tính `kAEQuitReason`, nếu có.
+    pub reason: Option<u32>,
+}
+
+/// Có cho app thoát không.
+pub fn allow_terminate(event: Option<QuitEvent>) -> bool {
+    event.is_some_and(|e| {
+        e.event_class == K_CORE_EVENT_CLASS
+            && e.event_id == K_AE_QUIT_APPLICATION
+            && e.reason.is_some_and(|r| SYSTEM_QUIT_REASONS.contains(&r))
+    })
+}
+
+/// Việc cần làm khi hủy một yêu cầu thoát.
+#[cfg(target_os = "macos")]
+static ON_CANCEL: std::sync::OnceLock<Box<dyn Fn() + Send + Sync>> = std::sync::OnceLock::new();
+
+/// Cài `applicationShouldTerminate:` vào app delegate. Gọi một lần trong `setup`, trên luồng chính.
+#[cfg(target_os = "macos")]
+pub fn install(on_cancel: impl Fn() + Send + Sync + 'static) {
+    use objc2::runtime::{AnyClass, AnyObject, Imp, Sel};
+    use objc2::{class, msg_send, sel};
+
+    const NS_TERMINATE_CANCEL: usize = 0;
+    const NS_TERMINATE_NOW: usize = 1;
+
+    extern "C-unwind" fn should_terminate(_this: *mut AnyObject, _cmd: Sel, _sender: *mut AnyObject) -> usize {
+        let event = current_quit_event();
+        if allow_terminate(event) {
+            log::info!("cho thoát theo yêu cầu của hệ thống: {event:?}");
+            NS_TERMINATE_NOW
+        } else {
+            log::info!("bỏ qua yêu cầu thoát không đến từ menu khay: {event:?}");
+            if let Some(on_cancel) = ON_CANCEL.get() {
+                on_cancel();
+            }
+            NS_TERMINATE_CANCEL
+        }
+    }
+
+    if ON_CANCEL.set(Box::new(on_cancel)).is_err() {
+        log::warn!("chặn thoát đã được cài");
+        return;
+    }
+    // SAFETY: gọi trên luồng chính sau khi tao đã tạo NSApplication và gắn delegate. Chữ ký của
+    // hàm khớp `- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender`,
+    // kiểu trả về là NSUInteger ("Q"); `class_addMethod` không ghi đè nếu lớp đã có phương thức này.
+    unsafe {
+        let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+        let delegate: *mut AnyObject = msg_send![app, delegate];
+        let Some(delegate) = delegate.as_ref() else {
+            log::warn!("NSApp chưa có delegate, không cài được chặn thoát");
+            return;
+        };
+        let class = delegate.class() as *const AnyClass as *mut AnyClass;
+        let imp: Imp = std::mem::transmute::<extern "C-unwind" fn(*mut AnyObject, Sel, *mut AnyObject) -> usize, Imp>(
+            should_terminate,
+        );
+        let added = objc2::ffi::class_addMethod(class, sel!(applicationShouldTerminate:), imp, c"Q@:@".as_ptr());
+        if !added.as_bool() {
+            log::warn!("app delegate đã có applicationShouldTerminate:, không cài chặn thoát");
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn current_quit_event() -> Option<QuitEvent> {
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+    // SAFETY: NSAppleEventManager dùng được trên luồng chính; `currentAppleEvent` trả nil khi không
+    // có Apple Event nào đang xử lý. AEEventClass, AEEventID, AEKeyword và OSType đều là UInt32.
+    unsafe {
+        let manager: *mut AnyObject = msg_send![class!(NSAppleEventManager), sharedAppleEventManager];
+        let event: *mut AnyObject = msg_send![manager, currentAppleEvent];
+        let event = event.as_ref()?;
+        let event_class: u32 = msg_send![event, eventClass];
+        let event_id: u32 = msg_send![event, eventID];
+        let reason: *mut AnyObject = msg_send![event, attributeDescriptorForKeyword: K_AE_QUIT_REASON];
+        let reason = reason.as_ref().map(|descriptor| {
+            let code: u32 = msg_send![descriptor, enumCodeValue];
+            code
+        });
+        Some(QuitEvent {
+            event_class,
+            event_id,
+            reason,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn quit(reason: Option<&[u8; 4]>) -> Option<QuitEvent> {
+        Some(QuitEvent {
+            event_class: K_CORE_EVENT_CLASS,
+            event_id: K_AE_QUIT_APPLICATION,
+            reason: reason.map(four_cc),
+        })
+    }
+
+    #[test]
+    fn four_cc_is_big_endian() {
+        assert_eq!(four_cc(b"quit"), 0x7175_6974);
+    }
+
+    #[test]
+    fn logout_restart_and_shutdown_are_allowed() {
+        for reason in [b"logo", b"rlgo", b"rrst", b"rsdn", b"rest", b"shut"] {
+            assert!(
+                allow_terminate(quit(Some(reason))),
+                "{}",
+                String::from_utf8_lossy(reason)
+            );
+        }
+    }
+
+    #[test]
+    fn cmd_q_and_dock_quit_are_cancelled() {
+        // ⌘Q gọi thẳng `terminate:`, không có Apple Event.
+        assert!(!allow_terminate(None));
+        // Quit ở Dock và `osascript` gửi Apple Event `quit` không có lý do.
+        assert!(!allow_terminate(quit(None)));
+        // Lý do lạ cũng không cho qua.
+        assert!(!allow_terminate(quit(Some(b"abcd"))));
+        // Apple Event khác (ví dụ mở file) đang xử lý lúc gọi `terminate:`.
+        let open = QuitEvent {
+            event_class: K_CORE_EVENT_CLASS,
+            event_id: four_cc(b"odoc"),
+            reason: Some(four_cc(b"shut")),
+        };
+        assert!(!allow_terminate(Some(open)));
+    }
+}
