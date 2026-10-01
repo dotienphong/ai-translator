@@ -13,7 +13,12 @@
 //!   - `stall_after:<n>`: gửi `n` gói chữ rồi ngừng, không đóng kết nối (server treo giữa lúc sinh);
 //!   - `oom_at_start`: in ra stderr dòng lỗi hết bộ nhớ của ggml rồi thoát với mã 1, như khi không đủ VRAM để nạp model;
 //!   - `leak_key`: in tham số dòng lệnh và `LLAMA_API_KEY=<key>` ra stderr, như một bản server lỡ log khóa;
-//!   - `health_delay_ms:<ms>`: `/health` trả 503 (đang nạp model) cho tới chừng này ms sau khi chạy.
+//!   - `health_delay_ms:<ms>`: `/health` trả 503 (đang nạp model) cho tới chừng này ms sau khi chạy;
+//!   - `close_after_stream`: trả bản dịch không kèm `Connection: close` (mặc định HTTP/1.1 là giữ kết nối), rồi đóng kết
+//!     nối mà không trả lời request kế tiếp gửi trên đó. Giống `llama-server` b11146: nó đóng kết nối ngay sau mỗi response
+//!     stream dù báo `Keep-Alive: timeout=5, max=100`; client gửi request kế tiếp trên kết nối cũ trước khi thấy kết nối
+//!     bị đóng thì nhận "connection closed before message completed". Server giả chờ request kế tiếp rồi mới đóng, để
+//!     cuộc đua này xảy ra chắc chắn.
 //! - `FAKE_LLAMA_LOG`: file ghi nối tiếp các sự kiện (`start ngl=…`, `chat <n> repeat=<p> max=<m>`). Không ghi API key.
 //! - `FAKE_LLAMA_KEY_FILE`: file nhận đúng API key, chỉ để test kiểm rằng key không lộ ở chỗ khác.
 
@@ -33,6 +38,7 @@ struct Plan {
     oom_at_start: bool,
     leak_key: bool,
     health_delay_ms: u64,
+    close_after_stream: bool,
 }
 
 fn next_plan_line() -> String {
@@ -64,6 +70,7 @@ fn parse(line: &str) -> Plan {
             "oom_at_start" => plan.oom_at_start = true,
             "leak_key" => plan.leak_key = true,
             "health_delay_ms" => plan.health_delay_ms = value.parse().expect("số ms"),
+            "close_after_stream" => plan.close_after_stream = true,
             other => panic!("lệnh kịch bản lạ: {other}"),
         }
     }
@@ -273,7 +280,19 @@ fn main() {
                     "timings": { "predicted_n": words.len() },
                 });
                 sse.push_str(&format!("data: {last}\n\ndata: [DONE]\n\n"));
-                if plan.delay_ms == 0 && plan.stall_after.is_none() {
+                if plan.close_after_stream {
+                    let mut s = &stream;
+                    let _ = write!(
+                        s,
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\n\r\n{sse}",
+                        sse.len()
+                    );
+                    // Chờ request kế tiếp trên kết nối này (client đóng kết nối thì thôi chờ), rồi đóng mà không trả lời.
+                    let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(5)));
+                    if let Some(next) = read_request(&stream) {
+                        log(&format!("dropped {}", next.path));
+                    }
+                } else if plan.delay_ms == 0 && plan.stall_after.is_none() {
                     respond(&stream, "200 OK", "text/event-stream", &sse);
                 } else {
                     stream_slowly(&stream, &sse, &plan);

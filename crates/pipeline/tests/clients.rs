@@ -276,6 +276,22 @@ fn real_llama_server_requires_the_api_key() {
     assert!(server.count_tokens("xin chào").unwrap() > 0, "có key: 200");
 }
 
+/// `llama-server` b11146 đóng kết nối ngay sau mỗi response stream dù báo `Keep-Alive`. Client không được gửi request
+/// kế tiếp (`/tokenize` của câu sau) trên kết nối đó: nếu gửi trước khi thấy kết nối bị đóng thì request lỗi
+/// "connection closed before message completed" (đo với b11146 thật: 13/1440 câu của bộ tỉ lệ).
+#[test]
+fn a_request_after_a_stream_does_not_reuse_the_connection() {
+    let t = Temp::new("llama-close-after-stream");
+    let server = LlamaServer::spawn(&llama_launch(&t, &["close_after_stream"])).unwrap();
+    for _ in 0..3 {
+        server.translate("Translate.\n\nxin chào", 16).unwrap();
+        assert_eq!(server.count_tokens("xin chào").unwrap(), 2);
+    }
+    drop(server);
+    let events = std::fs::read_to_string(t.path("llama-events")).unwrap();
+    assert!(!events.contains("dropped"), "{events}");
+}
+
 #[test]
 fn cpu_mode_passes_ngl_0_and_extra_args() {
     let t = Temp::new("llama-cpu");

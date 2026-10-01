@@ -165,9 +165,13 @@ impl LlamaServer {
     pub fn spawn_with(launch: &LlamaLaunch, on_spawn: &mut dyn FnMut(process::Killer)) -> Result<Self> {
         // Chỉ gọi 127.0.0.1: reqwest vẫn đọc HTTP_PROXY/ALL_PROXY kể cả khi tắt feature `system-proxy`,
         // nên phải tắt proxy tường minh, giống `ProxyHandler({})` trong common.py.
+        // Không giữ kết nối để dùng lại: b11146 đóng kết nối ngay sau mỗi response stream dù báo `Keep-Alive`, nên request
+        // kế tiếp (`/tokenize` của câu sau) gửi trên kết nối cũ trước khi thấy nó bị đóng sẽ lỗi "connection closed before
+        // message completed". Mở kết nối mới tới 127.0.0.1 tốn không đáng kể so với một lần dịch.
         // Dựng client trước khi chạy tiến trình, để lỗi ở đây không bỏ lại server mồ côi.
         let http = reqwest::blocking::Client::builder()
             .no_proxy()
+            .pool_max_idle_per_host(0)
             .timeout(launch.request_timeout)
             .build()?;
         let port = TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
