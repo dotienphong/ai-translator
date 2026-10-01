@@ -17,7 +17,12 @@ const READ_ONLY: &[&str] = &["hotkeys", "overlay.locked", "overlay.positions", "
 /// Khóa là object con: bản sửa gửi object con thì ghép theo từng khóa con.
 const NESTED: &[&str] = &["overlay", "experimental"];
 
-/// Áp bản sửa `patch` lên `current`. Trả về cài đặt mới đã kiểm phạm vi, hoặc lỗi của khóa đầu tiên sai.
+/// Áp bản sửa `patch` lên `current`. Trả về cài đặt mới đã kiểm phạm vi, hoặc lỗi của một khóa sai.
+///
+/// Thứ tự kiểm: khóa lạ và khóa chỉ đọc trước, rồi sai kiểu (`WrongType`, hoặc `OutOfRange` cho số
+/// âm hay số tràn kiểu), cuối cùng là phạm vi theo thứ tự của `Settings::validate`. Trong hai bước
+/// đầu, khóa được xét theo thứ tự chữ cái của tên khóa, không theo thứ tự trong bản sửa (`Map` của
+/// `serde_json` không bật `preserve_order` nên luôn sắp theo tên).
 pub fn apply(current: &Settings, patch: &Value) -> Result<Settings, Invalid> {
     let Value::Object(patch) = patch else {
         return Err(Invalid::new("", Reason::NotObject));
@@ -59,15 +64,43 @@ fn set(merged: &mut Map<String, Value>, key: &str, value: &Value) -> Result<(), 
     Ok(())
 }
 
-/// Tìm khóa làm hỏng kiểu dữ liệu, bằng cách áp riêng từng khóa của bản sửa.
+/// Tìm khóa làm hỏng kiểu dữ liệu, bằng cách áp riêng từng khóa của bản sửa. Ở nhóm con thì áp riêng
+/// từng khóa con, để báo đúng tên khóa con (`overlay.fontSize`), không báo tên nhóm.
 fn first_wrong_type(current: &Settings, patch: &Map<String, Value>) -> Invalid {
+    let original = to_object(current);
     for (key, value) in patch {
-        let mut merged = to_object(current);
-        if set(&mut merged, key, value).is_ok() && serde_json::from_value::<Settings>(Value::Object(merged)).is_err() {
-            return Invalid::new(key.as_str(), Reason::WrongType);
+        // (tên báo lỗi, giá trị đang có, giá trị mới, bản sửa chỉ chứa khóa hay khóa con này)
+        let parts: Vec<(String, Option<&Value>, &Value, Value)> = match value {
+            Value::Object(sub) if NESTED.contains(&key.as_str()) => sub
+                .iter()
+                .map(|(sub_key, sub_value)| {
+                    let single = Map::from_iter([(sub_key.clone(), sub_value.clone())]);
+                    let old = original.get(key).and_then(|group| group.get(sub_key));
+                    (format!("{key}.{sub_key}"), old, sub_value, Value::Object(single))
+                })
+                .collect(),
+            _ => vec![(key.clone(), original.get(key), value, value.clone())],
+        };
+        for (field, old, new, part) in parts {
+            let mut merged = original.clone();
+            if set(&mut merged, key, &part).is_ok()
+                && serde_json::from_value::<Settings>(Value::Object(merged)).is_err()
+            {
+                return Invalid::new(field, reason_for(old, new));
+            }
         }
     }
     Invalid::new("", Reason::WrongType)
+}
+
+/// Khóa số nguyên nhận một số nguyên mà không đọc được: số âm hay tràn kiểu, nên là `OutOfRange`.
+fn reason_for(old: Option<&Value>, new: &Value) -> Reason {
+    let integer = |v: &Value| v.is_i64() || v.is_u64();
+    if old.is_some_and(integer) && integer(new) {
+        Reason::OutOfRange
+    } else {
+        Reason::WrongType
+    }
 }
 
 #[cfg(test)]
@@ -160,6 +193,54 @@ mod tests {
         assert_eq!(
             apply(&current(), &json!({ "overlay": { "positions": {} } })),
             Err(Invalid::new("overlay.positions", Reason::ReadOnly))
+        );
+        assert_eq!(
+            apply(
+                &current(),
+                &json!({ "overlay": { "lastMonitor": "DELL U2723QE 2560x1440" } })
+            ),
+            Err(Invalid::new("overlay.lastMonitor", Reason::ReadOnly))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "experimental": { "newFlag": true } })),
+            Err(Invalid::new("experimental.newFlag", Reason::UnknownKey))
+        );
+    }
+
+    #[test]
+    fn wrong_type_in_a_group_names_the_sub_key() {
+        assert_eq!(
+            apply(&current(), &json!({ "overlay": { "lines": 2, "fontSize": "to" } })),
+            Err(Invalid::new("overlay.fontSize", Reason::WrongType))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "experimental": { "translationContext": "yes" } })),
+            Err(Invalid::new("experimental.translationContext", Reason::WrongType))
+        );
+    }
+
+    #[test]
+    fn negative_or_overflowing_numbers_are_out_of_range() {
+        assert_eq!(
+            apply(&current(), &json!({ "vadEndSilenceMs": -300 })),
+            Err(Invalid::new("vadEndSilenceMs", Reason::OutOfRange))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "vadEndSilenceMs": u64::from(u32::MAX) + 1 })),
+            Err(Invalid::new("vadEndSilenceMs", Reason::OutOfRange))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "overlay": { "lines": -1 } })),
+            Err(Invalid::new("overlay.lines", Reason::OutOfRange))
+        );
+        // Số lẻ cho khóa số nguyên, hay số cho khóa không phải số: sai kiểu.
+        assert_eq!(
+            apply(&current(), &json!({ "vadEndSilenceMs": 300.5 })),
+            Err(Invalid::new("vadEndSilenceMs", Reason::WrongType))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "theme": 2 })),
+            Err(Invalid::new("theme", Reason::WrongType))
         );
     }
 

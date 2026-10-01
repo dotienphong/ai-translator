@@ -13,7 +13,7 @@
 //! sẽ ghi vào thư mục cài đặt thật của app. Chưa cài thì `save` trả lỗi, không panic.
 
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 use tauri::{AppHandle, Manager, Runtime};
@@ -24,11 +24,14 @@ use super::migrate::{self, FileMeta, Loaded};
 
 pub const STORE_FILE: &str = "settings.json";
 const AUTO_SAVE: Duration = Duration::from_millis(300);
+/// Số bản sao `.corrupt` tối đa trong cùng một giây; quá thì báo lỗi thay vì ghi đè.
+const MAX_SAME_SECOND_BACKUPS: u32 = 100;
 
 /// Mở store và đọc cài đặt, kèm migrate từ schema cũ.
 pub fn load<R: Runtime>(app: &AppHandle<R>, defaults: Settings) -> Result<Loaded, tauri_plugin_store::Error> {
     let path = tauri_plugin_store::resolve_store_path(app, STORE_FILE)?;
-    match backup_if_corrupt(&path) {
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
+    match backup_if_corrupt(&path, now) {
         Ok(Some(backup)) => log::warn!("file cài đặt hỏng, đã đổi tên thành {}", backup.display()),
         Ok(None) => {}
         Err(e) => log::warn!("không kiểm được file cài đặt: {e}"),
@@ -87,9 +90,11 @@ pub fn save_overlay<R: Runtime>(app: &AppHandle<R>, settings: &Settings, meta: &
 }
 
 /// `tauri-plugin-store` bỏ qua file không đọc được và mở store rỗng; lần ghi sau sẽ đè mất file.
-/// Vì vậy trước khi mở store, file không phải object JSON thì đổi tên thành `settings.json.corrupt`
-/// để người dùng hay bộ phận hỗ trợ còn xem lại được. Trả về đường dẫn bản đã đổi tên, nếu có.
-pub fn backup_if_corrupt(path: &Path) -> std::io::Result<Option<PathBuf>> {
+/// Vì vậy trước khi mở store, file không phải object JSON thì đổi tên thành
+/// `settings.json.corrupt-<now>` (`now` là giây Unix) để người dùng hay bộ phận hỗ trợ còn xem lại
+/// được. Bản sao cũ không bao giờ bị ghi đè: trùng tên (hỏng hai lần trong một giây) thì thêm `-1`,
+/// `-2`… Trả về đường dẫn bản đã đổi tên, nếu có.
+pub fn backup_if_corrupt(path: &Path, now: u64) -> std::io::Result<Option<PathBuf>> {
     let bytes = match std::fs::read(path) {
         Ok(bytes) => bytes,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -98,9 +103,22 @@ pub fn backup_if_corrupt(path: &Path) -> std::io::Result<Option<PathBuf>> {
     if serde_json::from_slice::<Map<String, Value>>(&bytes).is_ok() {
         return Ok(None);
     }
-    let mut backup = path.as_os_str().to_owned();
-    backup.push(".corrupt");
-    let backup = PathBuf::from(backup);
+    let Some(backup) = (0..MAX_SAME_SECOND_BACKUPS)
+        .map(|n| {
+            let mut name = path.as_os_str().to_owned();
+            name.push(format!(".corrupt-{now}"));
+            if n > 0 {
+                name.push(format!("-{n}"));
+            }
+            PathBuf::from(name)
+        })
+        .find(|candidate| !candidate.exists())
+    else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            "quá nhiều bản sao file cài đặt hỏng trong cùng một giây",
+        ));
+    };
     std::fs::rename(path, &backup)?;
     Ok(Some(backup))
 }
@@ -121,10 +139,30 @@ mod tests {
         let dir = temp_dir("corrupt");
         let path = dir.join(STORE_FILE);
         std::fs::write(&path, b"{\"uiLanguage\": \"vi\",").unwrap();
-        let backup = backup_if_corrupt(&path).unwrap().unwrap();
-        assert_eq!(backup, dir.join("settings.json.corrupt"));
+        let backup = backup_if_corrupt(&path, 1_700_000_000).unwrap().unwrap();
+        assert_eq!(backup, dir.join("settings.json.corrupt-1700000000"));
         assert!(!path.exists());
         assert_eq!(std::fs::read(&backup).unwrap(), b"{\"uiLanguage\": \"vi\",");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn older_backups_are_never_overwritten() {
+        let dir = temp_dir("corrupt-twice");
+        let path = dir.join(STORE_FILE);
+        std::fs::write(&path, b"lan 1").unwrap();
+        let first = backup_if_corrupt(&path, 100).unwrap().unwrap();
+        std::fs::write(&path, b"lan 2").unwrap();
+        let second = backup_if_corrupt(&path, 200).unwrap().unwrap();
+        // Hỏng hai lần trong cùng một giây.
+        std::fs::write(&path, b"lan 3").unwrap();
+        let third = backup_if_corrupt(&path, 200).unwrap().unwrap();
+        assert_eq!(first, dir.join("settings.json.corrupt-100"));
+        assert_eq!(second, dir.join("settings.json.corrupt-200"));
+        assert_eq!(third, dir.join("settings.json.corrupt-200-1"));
+        assert_eq!(std::fs::read(&first).unwrap(), b"lan 1");
+        assert_eq!(std::fs::read(&second).unwrap(), b"lan 2");
+        assert_eq!(std::fs::read(&third).unwrap(), b"lan 3");
         std::fs::remove_dir_all(dir).unwrap();
     }
 
@@ -168,13 +206,13 @@ mod tests {
     fn valid_or_missing_file_is_left_alone() {
         let dir = temp_dir("valid");
         let path = dir.join(STORE_FILE);
-        assert_eq!(backup_if_corrupt(&path).unwrap(), None);
+        assert_eq!(backup_if_corrupt(&path, 1).unwrap(), None);
         std::fs::write(&path, b"{\"schemaVersion\": 1}").unwrap();
-        assert_eq!(backup_if_corrupt(&path).unwrap(), None);
+        assert_eq!(backup_if_corrupt(&path, 1).unwrap(), None);
         assert!(path.exists());
         // Mảng JSON không phải object của store: coi là hỏng.
         std::fs::write(&path, b"[1, 2]").unwrap();
-        assert!(backup_if_corrupt(&path).unwrap().is_some());
+        assert!(backup_if_corrupt(&path, 1).unwrap().is_some());
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

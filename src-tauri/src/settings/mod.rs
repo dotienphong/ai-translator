@@ -100,7 +100,7 @@ pub struct OverlaySettings {
     pub opacity: f64,
     pub show_source: bool,
     pub locked: bool,
-    /// Vị trí đã nhớ theo từng màn hình, khóa là `overlay::placement::monitor_key`.
+    /// Vị trí đã nhớ theo từng màn hình, khóa là `overlay::placement::screen_key`.
     pub positions: BTreeMap<String, OverlayRect>,
     /// Màn hình của lần đặt thanh phụ đề gần nhất.
     pub last_monitor: Option<String>,
@@ -176,6 +176,7 @@ pub const OVERLAY_WIDTH: std::ops::RangeInclusive<f64> = 200.0..=10_000.0;
 pub const OVERLAY_HEIGHT: std::ops::RangeInclusive<f64> = 40.0..=4_000.0;
 /// Số màn hình nhớ vị trí tối đa, để file cài đặt không phình ra.
 pub const MAX_OVERLAY_POSITIONS: usize = 16;
+/// Độ dài tối đa của ID thiết bị, bundle ID và khóa màn hình, tính theo ký tự (không theo byte).
 const MAX_ID_LEN: usize = 512;
 
 impl Settings {
@@ -276,7 +277,7 @@ fn check_id(field: &str, value: &str) -> Result<(), Invalid> {
     if value.is_empty() {
         return Err(Invalid::new(field, Reason::Empty));
     }
-    if value.len() > MAX_ID_LEN {
+    if value.chars().count() > MAX_ID_LEN {
         return Err(Invalid::new(field, Reason::TooLong));
     }
     Ok(())
@@ -438,6 +439,22 @@ mod tests {
             bundle_id: "x".repeat(513),
         };
         rejects(s, "audioSource", Reason::TooLong);
+    }
+
+    #[test]
+    fn id_length_counts_characters_not_bytes() {
+        // 512 ký tự có dấu là 1536 byte: vẫn hợp lệ; 513 ký tự thì quá dài.
+        let mut s = valid();
+        s.audio_source = AudioSource::Device { id: "ế".repeat(512) };
+        assert_eq!(s.validate(), Ok(()));
+        s.overlay.last_monitor = Some("ế".repeat(512));
+        assert_eq!(s.validate(), Ok(()));
+        let mut s = valid();
+        s.audio_source = AudioSource::Device { id: "ế".repeat(513) };
+        rejects(s, "audioSource", Reason::TooLong);
+        let mut s = valid();
+        s.overlay.last_monitor = Some("x".repeat(513));
+        rejects(s, "overlay.lastMonitor", Reason::TooLong);
     }
 
     #[test]

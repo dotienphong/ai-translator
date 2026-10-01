@@ -7,9 +7,11 @@
 //! 1. Chạy lần lượt các bước migrate từ phiên bản của file lên `CURRENT_SCHEMA_VERSION`.
 //! 2. Ghép từng khóa của file vào giá trị mặc định. Khóa nào sai kiểu hay ngoài phạm vi thì giữ
 //!    giá trị mặc định và ghi vào `rejected`; không bỏ cả file vì một khóa hỏng.
-//! 3. Khóa lạ (ví dụ của bản app mới hơn) bị bỏ qua khi đọc, nhưng vẫn nằm nguyên trong file, vì
+//! 3. Phím tắt được đưa về dạng chuẩn của `hotkeys::parse` (file sửa tay có thể ghi `control+alt+KeyT`),
+//!    ghi vào `normalized`, để giao diện và việc kiểm trùng luôn thấy cùng một dạng.
+//! 4. Khóa lạ (ví dụ của bản app mới hơn) bị bỏ qua khi đọc, nhưng vẫn nằm nguyên trong file, vì
 //!    `persist::save` chỉ ghi các khóa nó biết.
-//! 4. File do bản app mới hơn ghi (`schemaVersion` lớn hơn bản hiện tại): khóa không đọc được có thể
+//! 5. File do bản app mới hơn ghi (`schemaVersion` lớn hơn bản hiện tại): khóa không đọc được có thể
 //!    là giá trị hợp lệ của bản mới. App dùng mặc định trong lúc chạy, nhưng giữ nguyên giá trị thô
 //!    khi ghi file, trừ khi người dùng đổi chính khóa đó (`FileMeta::preserved`). Khóa con lạ trong
 //!    các nhóm (ví dụ `overlay.futureSub`) cũng được ghép lại khi ghi (`FileMeta::unknown`), vì store
@@ -21,7 +23,8 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 
-use super::Settings;
+use super::{Hotkeys, Settings};
+use crate::hotkeys::{self, HotkeyAction};
 
 pub const SCHEMA_VERSION_KEY: &str = "schemaVersion";
 
@@ -80,14 +83,17 @@ pub struct Loaded {
     pub meta: FileMeta,
     /// Các khóa trong file bị bỏ vì sai kiểu hoặc ngoài phạm vi, dạng `overlay.lines`.
     pub rejected: Vec<String>,
+    /// Các phím tắt trong file đã được đưa về dạng chuẩn, dạng `hotkeys.toggleSession`.
+    pub normalized: Vec<String>,
 }
 
 impl Loaded {
     /// Có cần ghi lại file không: file cũ hơn bản hiện tại; hoặc file cùng bản có khóa hỏng (ghi lại
-    /// giá trị mặc định). File của bản mới hơn thì không ghi chỉ vì có khóa không đọc được.
+    /// giá trị mặc định) hay phím tắt chưa ở dạng chuẩn. File của bản mới hơn thì không ghi chỉ vì vậy.
     pub fn needs_save(&self) -> bool {
         self.meta.version < CURRENT_SCHEMA_VERSION
-            || (self.meta.version == CURRENT_SCHEMA_VERSION && !self.rejected.is_empty())
+            || (self.meta.version == CURRENT_SCHEMA_VERSION
+                && (!self.rejected.is_empty() || !self.normalized.is_empty()))
     }
 }
 
@@ -154,7 +160,8 @@ pub fn load_with(mut raw: Map<String, Value>, defaults: Settings, migrations: &[
             }
         }
     }
-    let settings = serde_json::from_value(Value::Object(merged)).expect("giá trị đã ghép luôn đọc được");
+    let mut settings: Settings = serde_json::from_value(Value::Object(merged)).expect("giá trị đã ghép luôn đọc được");
+    let normalized = canonicalize_hotkeys(&mut settings.hotkeys);
     Loaded {
         settings,
         meta: FileMeta {
@@ -163,7 +170,23 @@ pub fn load_with(mut raw: Map<String, Value>, defaults: Settings, migrations: &[
             unknown,
         },
         rejected,
+        normalized,
     }
+}
+
+/// Đưa phím tắt về dạng chuẩn. Trả về các khóa đã đổi, dạng `hotkeys.toggleSession`. Phím tắt ở đây
+/// đã qua `validate` nên luôn đọc được; đổi sang dạng chuẩn không làm đổi kết quả kiểm trùng.
+fn canonicalize_hotkeys(bindings: &mut Hotkeys) -> Vec<String> {
+    let mut changed = Vec::new();
+    for action in HotkeyAction::ALL {
+        if let Ok((_, canonical)) = hotkeys::parse(bindings.get(action))
+            && canonical != bindings.get(action)
+        {
+            bindings.set(action, canonical);
+            changed.push(format!("hotkeys.{}", action.key()));
+        }
+    }
+    changed
 }
 
 fn at_path<'a>(map: &'a Map<String, Value>, path: &str) -> Option<&'a Value> {
@@ -411,6 +434,48 @@ mod tests {
         let loaded = load(raw, defaults());
         let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
         assert!(entries["overlay"].get("futureSub").is_none());
+    }
+
+    #[test]
+    fn schema_version_beyond_u32_counts_as_newer() {
+        let raw = object(json!({ "schemaVersion": u64::from(u32::MAX) + 1, "theme": 2 }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.meta.version, u32::MAX);
+        assert!(!loaded.needs_save(), "file của bản mới hơn, không ghi đè");
+        assert!(
+            loaded.meta.preserved.contains_key("theme"),
+            "giữ giá trị bản này không đọc được"
+        );
+        let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
+        assert_eq!(entries[SCHEMA_VERSION_KEY], json!(u32::MAX));
+        assert_eq!(entries["theme"], json!(2));
+    }
+
+    #[test]
+    fn hotkeys_are_canonicalized_on_load() {
+        let raw = object(json!({
+            "schemaVersion": 1,
+            "hotkeys": { "toggleSession": "control+alt+KeyK", "toggleLock": "Alt+Ctrl+l" },
+        }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.hotkeys.toggle_session, "Ctrl+Alt+K");
+        assert_eq!(loaded.settings.hotkeys.toggle_overlay, "Ctrl+Alt+H");
+        assert_eq!(loaded.settings.hotkeys.toggle_lock, "Ctrl+Alt+L");
+        assert!(loaded.rejected.is_empty());
+        assert_eq!(loaded.normalized, ["hotkeys.toggleSession", "hotkeys.toggleLock"]);
+        assert!(loaded.needs_save(), "ghi lại dạng chuẩn");
+        let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
+        assert_eq!(entries["hotkeys"]["toggleSession"], json!("Ctrl+Alt+K"));
+        // Đã ở dạng chuẩn: không có gì để ghi lại.
+        let raw = object(json!({ "schemaVersion": 1, "hotkeys": { "toggleSession": "Ctrl+Alt+K" } }));
+        let loaded = load(raw, defaults());
+        assert!(loaded.normalized.is_empty());
+        assert!(!loaded.needs_save());
+        // File của bản mới hơn: chuẩn hóa lúc chạy, nhưng không ghi đè file chỉ vì vậy.
+        let raw = object(json!({ "schemaVersion": 7, "hotkeys": { "toggleSession": "control+alt+KeyK" } }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.hotkeys.toggle_session, "Ctrl+Alt+K");
+        assert!(!loaded.needs_save());
     }
 
     #[test]
