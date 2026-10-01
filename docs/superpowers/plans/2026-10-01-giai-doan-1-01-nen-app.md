@@ -216,7 +216,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00. Cột cuối là t
 - **QĐ27.** Test chạy bằng MockRuntime (`app_tests.rs`) kiểm hành vi qua lệnh thật:
   - thanh phụ đề ẩn lúc đầu, hiện khi bắt đầu phiên, giữ nguyên khi dừng;
   - lệnh ẩn, hiện, khóa, mở khóa đi tới đúng cửa sổ, khóa không tự ẩn hay hiện thanh, và khóa được ghi vào file cài đặt;
-  - bật khởi động cùng hệ thống khi Login Items cần cho phép thì có lời nhắc; tắt mà vẫn còn bật thì báo lỗi; lúc khởi động, cài đặt theo trạng thái thật của hệ thống;
+  - bật khởi động cùng hệ thống khi Login Items cần cho phép thì có lời nhắc; bật thì đăng ký, tắt bình thường thì hết đăng ký, tắt mà vẫn còn bật thì báo lỗi; lúc khởi động, cài đặt theo trạng thái thật của hệ thống;
   - bỏ qua yêu cầu thoát thì gửi lời nhắc tới cửa sổ chính.
   - Thao tác cửa sổ của thanh phụ đề đi qua trait `overlay::Surface`: bản thật gọi `macos.rs` hay `windows.rs`, test dùng bản giả ghi lại từng lần gọi (`test_support::FakeSurface`).
   - Ghi file cài đặt đi qua trait `persist::SettingsFile` (bản thật ghi vào `tauri-plugin-store`), bật/tắt khởi động cùng hệ thống qua `login_item::LoginItem`; app giả dùng `FakeSettingsFile`, `FakeLoginItem`. Đăng ký `tauri-plugin-store` thật trong test sẽ ghi vào thư mục cài đặt thật của app, nên không làm vậy.
@@ -288,7 +288,7 @@ index.html, overlay.html, package.json, vitest.config.ts, Cargo.lock, pnpm-lock.
 ## Lưu ý khi thực thi
 
 - Mọi lệnh shell bắt đầu bằng `source "$HOME/.cargo/env" && eval "$(fnm env --use-on-cd)" >/dev/null && …`, chạy từ gốc repo. Các Expected dưới đây bỏ phần tiền tố này.
-- Expected ghi số đo thật **lúc lập kế hoạch** (2026-10-01, trên M4 Pro, trên commit `b221f3c`; code của app như `3f085a9`). Lần chạy thử dùng target riêng, build lại từ đầu, nên thời gian build ở Expected là của lần build đầu.
+- Expected ghi số đo thật **lúc lập kế hoạch** (2026-10-01, trên M4 Pro, trên commit `10bb011`; code của app như `3f085a9`). Lần chạy thử dùng target riêng, build lại từ đầu, nên thời gian build ở Expected là của lần build đầu.
 - Kế hoạch này chạy song song được với phần crate của 02 (Đ18), nhưng hai bên cùng sửa `Cargo.lock`. Task 1 của 01 nên làm xong và commit trước khi 02 thêm crate mới. Nếu 02 đang giữ thay đổi chưa commit ở `Cargo.lock`, hai bên thống nhất trước khi chạy `cargo update` hay thêm phụ thuộc.
 - Task 24–25 cần người thao tác hoặc máy Windows. Agent làm Task 1–23 và 26, rồi dừng chờ kết quả của 24–25 trước khi đánh dấu các dòng liên quan là `xong`.
 - Agent không chạy `pnpm tauri dev` hay binary của app, và không chạy test `#[ignore]` đụng Keychain (mục 6.8 của kế hoạch 00). Agent không chạy thứ gì mở cửa sổ, System Settings hay Finder trên màn hình người dùng; mutation cấp thừa lệnh mở ra ngoài app (Task 17 Step 17) chỉ chạy khi `mock_app` đã dùng bản giả `FakeSystem`. Riêng test `#[ignore]` của `login_item` chỉ đọc trạng thái, không bật hộp thoại, nên agent chạy được (Task 12, Step 6).
@@ -5836,9 +5836,20 @@ fn enabling_launch_at_login_blocked_in_login_items_shows_a_notice() {
 }
 
 #[test]
-fn turning_off_launch_at_login_that_stays_on_is_an_error() {
+fn turning_off_launch_at_login_works_and_reports_when_it_stays_on() {
     let app = mock_app();
     let main = window(&app, "main");
+    let registered = |app: &tauri::App<tauri::test::MockRuntime>| {
+        let mut value = false;
+        login_state(app, |s| value = s.registered);
+        value
+    };
+    let settings = invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": true } })).unwrap();
+    assert_eq!(settings["launchAtLogin"], true);
+    assert!(registered(&app), "bật thì gọi `enable()`");
+    let settings = invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": false } })).unwrap();
+    assert_eq!(settings["launchAtLogin"], false);
+    assert!(!registered(&app), "tắt bình thường thì hết đăng ký");
     invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": true } })).unwrap();
     // Windows: mục ở `HKLM` không xóa được khi không có quyền admin.
     login_state(&app, |s| s.stuck_on = true);
@@ -6253,9 +6264,11 @@ pub fn update_settings<R: Runtime>(app: &AppHandle<R>, patch: &Value) -> Result<
     if next.launch_at_login != current.launch_at_login {
         set_launch_at_login(app, next.launch_at_login)?;
     }
+    // macOS: mục đã bị tắt ở Login Items thì bật lại trong app chưa đủ; nhắc người dùng (QĐ16). Hỏi trước
+    // khi lưu, để không có lỗi nào xảy ra sau khi cài đặt đã được lưu.
+    let needs_approval = enabling && login_item::needs_approval(login_items(app)?.0.system_status());
     let next = commit_settings(app, next);
-    // macOS: mục đã bị tắt ở Login Items thì bật lại trong app chưa đủ; nhắc người dùng (QĐ16).
-    if enabling && login_item::needs_approval(login_items(app)?.0.system_status()) {
+    if needs_approval {
         events::notice(app, events::Notice::LoginItemsApproval);
     }
     Ok(next)
@@ -7305,11 +7318,13 @@ pub const AUTOSTART_ARG: &str = "--autostart";
 
 pub fn run() {
     let context = tauri::generate_context!();
-    let autostart = tauri_plugin_autostart::Builder::new().arg(AUTOSTART_ARG);
-    // QĐ29: trên macOS, tên file LaunchAgent và `Label` là bundle identifier, không phải tên sản phẩm có
-    // dấu cách. Windows giữ mặc định của plugin (tên sản phẩm làm tên giá trị trong `Run`).
-    #[cfg(target_os = "macos")]
-    let autostart = autostart.app_name(context.config().identifier.clone());
+    // QĐ29: tên mục khởi động cùng hệ thống theo một luật duy nhất (`login_item::autostart_name`): macOS
+    // là bundle identifier (tên file LaunchAgent và `Label`), Windows là tên sản phẩm (tên giá trị trong `Run`).
+    let autostart_name =
+        login_item::autostart_name(&context.config().identifier, &context.package_info().name).to_string();
+    let autostart = tauri_plugin_autostart::Builder::new()
+        .app_name(autostart_name)
+        .arg(AUTOSTART_ARG);
     // single-instance phải là plugin đầu tiên: bản thứ hai thoát ngay, bản đang chạy hiện cửa sổ chính (Q7).
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -7525,7 +7540,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 ```
 Khối đầu là test của lib. Hai test bỏ qua là `os_keystore_roundtrip` và `system_reports_missing_agent`. Hai khối sau là binary `main.rs` và doc-test.
 
-- [ ] **Step 17: Kiểm chéo rằng test ACL bắt được quyền thừa.** Lần lượt cấp thêm cho `main` ba quyền nhạy cảm, thêm khóa `remote` vào `main.json`, cấp cho `overlay` lệnh `open_login_items_settings`, rồi thêm một file capability thứ ba. Mỗi lần chạy test ACL, rồi trả file về như cũ.
+- [ ] **Step 17: Kiểm chéo rằng test bắt được lỗi.** Lần lượt cấp thêm cho `main` ba quyền nhạy cảm, thêm khóa `remote` vào `main.json`, cấp cho `overlay` lệnh `open_login_items_settings`, rồi thêm một file capability thứ ba; mỗi lần chạy test ACL. Sau đó sửa `actions.rs` hai cách (bỏ bước hỏi lại `is_registered()` sau khi tắt; bỏ lời gọi `enable()`), mỗi lần chạy test tắt khởi động cùng hệ thống. Mỗi lần xong thì trả file về như cũ.
 
 Chỉ chạy bước này khi `test_support::mock_app` đã cài bản giả `FakeSystem` (Step 1). Khi đó lệnh mở ra ngoài app, nếu lỡ tới handler, chỉ đi tới bản giả; không có gì mở trên màn hình (QĐ28).
 
@@ -7556,11 +7571,25 @@ cargo test -p meeting-translator --lib acl_tests 2>&1 | grep -E "panicked|không
 rm src-tauri/capabilities/extra.json
 echo "=== trả lại"
 cargo test -p meeting-translator --lib acl_tests 2>&1 | grep -E "test result"
+cp src-tauri/src/actions.rs "${TMPDIR:-/tmp}/actions.rs.bak"
+python3 -c '
+p = "src-tauri/src/actions.rs"; s = open(p).read(); s = s.replace("if !enabled && items.0.is_registered().unwrap_or(false) {", "if false {"); open(p, "w").write(s)'
+echo "=== actions.rs: bỏ kiểm is_registered() sau khi tắt"
+cargo test -p meeting-translator --lib app_tests::turning_off 2>&1 | grep -E "panicked|unwrap_err|test result"
+cp "${TMPDIR:-/tmp}/actions.rs.bak" src-tauri/src/actions.rs
+python3 -c '
+p = "src-tauri/src/actions.rs"; s = open(p).read(); s = s.replace("items.0.enable()", "Ok(())"); open(p, "w").write(s)'
+echo "=== actions.rs: bỏ lời gọi enable()"
+cargo test -p meeting-translator --lib app_tests::turning_off 2>&1 | grep -E "panicked|bật thì|test result"
+cp "${TMPDIR:-/tmp}/actions.rs.bak" src-tauri/src/actions.rs
+echo "=== trả lại actions.rs"
+cargo test -p meeting-translator --lib app_tests::turning_off 2>&1 | grep -E "test result"
 ```
 Expected (lúc lập kế hoạch):
 - mỗi lần có quyền thừa, cả hai test ACL đều hỏng: danh sách cố định lệch, và lệnh nhạy cảm đi tới được handler (lỗi chỉ còn là thiếu tham số, hoặc plugin chưa đăng ký trong app giả);
 - có khóa `remote` thì test tĩnh hỏng vì file có khóa lạ; test lúc chạy vẫn qua, vì `remote` chỉ cấp quyền cho trang web ngoài, mà test gọi lệnh từ `tauri://localhost`;
 - overlay được cấp `open_login_items_settings` thì cả ba test hỏng; lệnh tới handler và trả `Ok(Null)` từ bản giả, System Settings không mở;
+- bỏ bước hỏi lại `is_registered()` thì lần tắt cuối trả `Ok` thay vì lỗi `autostartStillEnabled`; bỏ `enable()` thì test hỏng ngay ở bước bật (QĐ16);
 - trả file về thì xanh lại.
 - Các test chạy song song, nên thứ tự các dòng `panicked` trong cùng một lần chạy có thể khác giữa các lần (ví dụ ở `extra.json`).
 
@@ -7590,15 +7619,25 @@ thread 'acl_tests::outside_effects_only_reach_the_fake_opener' (…) panicked at
 overlay không được gọi open_login_items_settings: Ok(Null)
 thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:133:9:
 overlay không được gọi open_login_items_settings: Ok(Null)
-test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 86 filtered out; finished in 0.00s
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 86 filtered out; finished in 0.01s
 === extra.json
 thread 'acl_tests::capabilities_grant_exactly_the_fixed_lists' (…) panicked at src-tauri/src/acl_tests.rs:105:5:
 assertion `left == right` failed: không có capability nào khác
 thread 'acl_tests::each_window_only_reaches_its_own_commands' (…) panicked at src-tauri/src/acl_tests.rs:149:13:
 main không được gọi plugin:window|set_position: Err("\"invalid args `value` for command `set_position`: command set_position missing required key value\"")
-test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 86 filtered out; finished in 0.00s
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 86 filtered out; finished in 0.01s
 === trả lại
 test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 86 filtered out; finished in 0.01s
+=== actions.rs: bỏ kiểm is_registered() sau khi tắt
+thread 'app_tests::turning_off_launch_at_login_works_and_reports_when_it_stays_on' (…) panicked at src-tauri/src/app_tests.rs:108:98:
+called `Result::unwrap_err()` on an `Ok` value: Object {"audioSource": Object {"kind": String("system")}, "experimental": Object {"translationContext": Bool(false)}, "hotkeys": Object {"toggleLock": String("Ctrl+Alt+L"), "toggleOverlay": String("Ctrl+Alt+H"), "toggleSession": String("Ctrl+Alt+T")}, "launchAtLogin": Bool(false), "modelTier": Null, "onboardingDone": Bool(false), "overlay": Object {"fontSize": Number(22), "lastMonitor": Null, "lines": Number(2), "locked": Bool(false), "opacity": Number(0.6), "positions": Object {}, "showSource": Bool(false)}, "saveHistory": Bool(false), "sourceLanguages": Array [String("en"), String("zh"), String("ja"), String("ko"), String("vi")], "sourceLock": Null, "targetLanguage": String("vi"), "theme": String("system"), "uiLanguage": String("vi"), "updateChannel": String("stable"), "vadEndSilenceMs": Number(300)}
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.00s
+=== actions.rs: bỏ lời gọi enable()
+thread 'app_tests::turning_off_launch_at_login_works_and_reports_when_it_stays_on' (…) panicked at src-tauri/src/app_tests.rs:101:5:
+bật thì gọi `enable()`
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.00s
+=== trả lại actions.rs
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.00s
 ```
 
 - [ ] **Step 18: clippy, định dạng, và build cả hai kiểu**
@@ -7612,7 +7651,7 @@ CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 cargo bui
 ```
 Expected: không lỗi, không cảnh báo.
 - Bản release nhúng `dist/`, nên phải chạy `pnpm build` trước.
-- Tắt LTO chỉ để build nhanh hơn, không đổi hành vi cửa sổ. Lúc lập kế hoạch, lần build release đầu tiên (chưa có thư viện release nào trong `target/`) mất khoảng 1 phút (``Finished `release` profile [optimized] target(s) in 1m 01s``); lúc máy đang bận build việc khác thì tới gần 3 phút.
+- Tắt LTO chỉ để build nhanh hơn, không đổi hành vi cửa sổ. Lúc lập kế hoạch, lần build release đầu tiên (chưa có thư viện release nào trong `target/`) mất khoảng 1 phút (``Finished `release` profile [optimized] target(s) in 1m 09s``); lúc máy đang bận build việc khác thì tới gần 3 phút.
 - Không chạy binary vừa build.
 
 - [ ] **Step 19: Commit**
@@ -9567,7 +9606,7 @@ dist/assets/main-Bod--Ppy.css          3.62 kB │ gzip:  1.14 kB
 dist/assets/overlay-BaNgG9U0.js        1.26 kB │ gzip:  0.69 kB
 dist/assets/main-DLHY9pdO.js          15.84 kB │ gzip:  4.31 kB
 dist/assets/jsx-runtime-BOs0BLyN.js  236.30 kB │ gzip: 74.69 kB
-✓ built in 338ms
+✓ built in 306ms
 ```
 và `Tests  28 passed (28)`.
 
@@ -9667,7 +9706,7 @@ info: component rust-std for target x86_64-pc-windows-msvc is up to date
 ```
   Nếu chưa có thì `rustup` tải thư viện chuẩn cho target Windows (một lần, khoảng 115 MB, không cần quyền admin).
 - `check-windows.sh` kết thúc bằng dòng ``Finished `dev` profile …``, không lỗi, không cảnh báo. Script kiểm cả code chỉ có trên Windows: ẩn/hiện và click xuyên qua bằng Win32 (QĐ23), `persistence = Local` của kho khóa (QĐ8), `open_login_items_settings` trả `unsupported`.
-- Lần đầu mất khoảng 30 giây (lúc lập kế hoạch: ``Finished `dev` profile [unoptimized + debuginfo] target(s) in 31.91s``; lúc máy đang bận build việc khác thì hơn 1 phút), và thư mục `target/x86_64-pc-windows-msvc/` khoảng 260 MB.
+- Lần đầu mất khoảng 30 giây (lúc lập kế hoạch: ``Finished `dev` profile [unoptimized + debuginfo] target(s) in 36.28s``; lúc máy đang bận build việc khác thì hơn 1 phút), và thư mục `target/x86_64-pc-windows-msvc/` khoảng 260 MB.
 
 - [ ] **Step 5: Commit**
 
