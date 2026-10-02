@@ -22,7 +22,7 @@ Kế hoạch 04 chia hai file, làm theo thứ tự:
 
 Bảng phiên bản, bảng dòng của bảng đối chiếu, quyết định (QĐ), điểm cần chủ dự án quyết và mục "Nối với kế hoạch 03" nằm ở file này, dùng chung cho cả hai.
 
-**Kế hoạch 03 thực thi trước 04.** Kế hoạch này dựng và chạy thử trên cây cuối của 03: `meeting-translator-work/p03-repo`, nhánh `plan03`, commit `f30491f` (`main` `5925d42` cộng mọi task có commit của 03; 01, 02, 05 đã làm trên Mac; Tauri 2.12.1). Trước khi làm, kiểm `main` đã có đủ 03 và đọc mục "Nối với kế hoạch 03".
+**Kế hoạch 03 thực thi trước 04.** Kế hoạch này dựng và chạy thử trên `main` `d63efc6`: 03 đã thực thi xong (cây code trùng `meeting-translator-work/p03-repo` nhánh `plan03` `f30491f`), cộng bốn commit sửa nhỏ sau review cuối của 03 (`d794e60`, `ba4546f`, `b310518`, `d63efc6`); 01, 02, 05 đã làm trên Mac; Tauri 2.12.1. Trước khi làm, kiểm code của `main` vẫn là cây đó (`git diff d63efc6 HEAD --stat -- . ':!docs' ':!bench'` không in gì) và đọc mục "Nối với kế hoạch 03".
 
 ---
 
@@ -46,10 +46,10 @@ Không crate nào mới kéo ggml hay bản thứ hai của một thư viện C 
 
 Như mục "Cách đọc kế hoạch này" của 02a, cộng các điểm riêng:
 - **Khối code.** "Tạo `<file>`": chép nguyên khối. "Tạo `<file>`, lúc này mới có phần test": file chỉ có các dòng `//!` đầu và khối `#[cfg(test)] mod tests`. "Thêm vào `<file>` (giữa các dòng `//!` đầu file và khối test)": chèn khối vào giữa hai phần đó, cách mỗi bên một dòng trống. "Sửa `<file>` (áp bằng `git apply`)": lưu khối `diff` vào file tạm, chạy `git apply <file tạm>` từ gốc repo; `--check` lỗi thì dừng, đừng sửa tay.
-- **Khối `diff` dựng trên cây cuối của 03 và có dòng `index` đầy đủ** (`git diff --full-index`). Khi `main` đúng là cây đó, mọi khối áp thẳng bằng `git apply`. Phụ thuộc mới của 04 nằm ở cuối nhóm `[dependencies]` của `src-tauri/Cargo.toml`, nên không khối `diff` nào lấy dòng phiên bản của crate khác làm ngữ cảnh. Với các file mà kế hoạch khác hay sửa (`lib.rs`, `commands.rs`, `i18n`…), khối `diff` chỉ lấy một dòng ngữ cảnh.
-- **Nếu `main` khác cây cuối của 03** (03 có sửa lúc thực thi, hay một kế hoạch khác đã vào trước): trước Task 1, lấy về các blob của chuỗi tham chiếu để `--3way` có bản gốc: `git fetch /Users/dtphong/Desktop/software_business/meeting-translator-work/p04-repo ref` (chỉ lấy object, không tạo nhánh). Khối nào `git apply --check` lỗi thì áp bằng `git apply --3way`, gộp marker giữ phần của cả hai bên (mục "Nối với kế hoạch 03" ghi các chỗ 04 đã gộp với 03), `git add` file đó, và ghi chỗ lệch vào mục "Kết quả thử" của 04b. Khối không lỗi `--check` thì áp như thường; lỗi cả `--3way` thì dừng và báo.
+- **Khối `diff` dựng trên `main` `d63efc6` và có dòng `index` đầy đủ** (`git diff --full-index`). Khi code của `main` đúng là cây đó, mọi khối áp thẳng bằng `git apply`. Phụ thuộc mới của 04 nằm ở cuối nhóm `[dependencies]` của `src-tauri/Cargo.toml`, nên không khối `diff` nào lấy dòng phiên bản của crate khác làm ngữ cảnh. Với các file mà kế hoạch khác hay sửa (`lib.rs`, `commands.rs`, `i18n`…), khối `diff` chỉ lấy một dòng ngữ cảnh.
+- **Nếu code của `main` khác cây đó** (một kế hoạch khác đã vào trước): trước Task 1, lấy về các blob của chuỗi tham chiếu để `--3way` có bản gốc: `git fetch /Users/dtphong/Desktop/software_business/meeting-translator-work/p04-repo ref` (chỉ lấy object, không tạo nhánh). Khối nào `git apply --check` lỗi thì áp bằng `git apply --3way`, gộp marker giữ phần của cả hai bên (mục "Nối với kế hoạch 03" ghi các chỗ 04 đã gộp với 03), `git add` file đó, và ghi chỗ lệch vào mục "Kết quả thử" của 04b. Khối không lỗi `--check` thì áp như thường; lỗi cả `--3way` thì dừng và báo.
 - **`node_modules`.** Worktree mới thì chạy `pnpm install --frozen-lockfile` một lần trước Task 7 (lần `pnpm build` đầu tiên); repo chính đã có sẵn (N11 của review lần 1).
-- **Khối Expected.** Là output thật của một lần chạy lại toàn bộ kế hoạch trên worktree sạch dựng từ cây cuối của 03 (`f30491f`), ngày 2026-10-03. Thời gian (`finished in …`) sẽ khác; số test và tên lỗi phải giống. Lệnh có `grep` hay `head` thì Expected là phần đã lọc. Số test là số lúc lập kế hoạch: nếu `main` có thêm commit ngoài 03 thì số test tổng (`cargo test -p meeting-translator --lib` không lọc, `pnpm test`) có thể lớn hơn; số của lệnh có bộ lọc `models::…` vẫn phải giống.
+- **Khối Expected.** Là output thật của một lần chạy lại toàn bộ kế hoạch trên worktree sạch dựng từ `main` `d63efc6`, ngày 2026-10-03. Thời gian (`finished in …`) sẽ khác; số test và tên lỗi phải giống. Lệnh có `grep` hay `head` thì Expected là phần đã lọc. Số test là số lúc lập kế hoạch: nếu `main` có thêm commit ngoài 03 thì số test tổng (`cargo test -p meeting-translator --lib` không lọc, `pnpm test`) có thể lớn hơn; số của lệnh có bộ lọc `models::…` vẫn phải giống.
 - **Chuỗi commit tham chiếu.** Repo `meeting-translator-work/p04-repo` (ngoài repo chính), nhánh `ref`: mỗi task một commit, đúng như kế hoạch này tạo ra. So cây sau mỗi task bằng `git diff <commit tham chiếu> -- <đường dẫn>`.
 - **Đĩa.** Kiểm `df -h /` trước Task 1 và trước kiểm tra chuẩn; dưới 6 GiB thì dừng và báo. Sau `./scripts/check-windows.sh`, xóa `target/x86_64-pc-windows-msvc` (khoảng 0,3 GiB) nếu đĩa chật.
 - **Không bật hộp thoại quyền** (mục 6.8 của kế hoạch 00): không task nào mở app hay System Settings. Test dùng server HTTP giả trên `127.0.0.1` (có thể hiện hộp thoại tường lửa trên Windows lần đầu; trên Mac thì không).
@@ -59,17 +59,17 @@ Như mục "Cách đọc kế hoạch này" của 02a, cộng các điểm riên
 
 | Task | Commit tham chiếu (`p04-repo`, nhánh `ref`) | Nội dung |
 |---|---|---|
-| 1 | `e2791ce` | feat(models): manifest model, kiểu và kiểm phần thân |
-| 2 | `34f1e37` | feat(models): phong bì ký Ed25519, khóa build sẵn, vector và script ký staging |
-| 3 | `46d3202` | feat(models): tải một file model bằng HTTP Range, kiểm SHA-256, thử lại và tạm dừng |
-| 4 | `0ba04cc` | feat(models): kho model trên máy: đã tải, kiểm kích thước, băm lại, xóa, dọn |
-| 5 | `f7ca610` | feat(models): cấu hình máy và đề xuất gói theo ngưỡng của manifest; --probe giữ danh sách GPU |
-| 6 | `e728fde` | feat(models): nguồn manifest: URL theo bản, tải và kiểm, chống quay lui, kiểm mỗi ngày một lần |
-| 7 | `d6fd08c` | feat(settings): modelTier là mã gói của manifest, chỉ đổi qua lệnh quản lý model |
-| 8 | `8d09fc6` | feat(models): dịch vụ model, lệnh và sự kiện models://state: tải gói, tạm dừng, cập nhật, xóa |
-| 9 | `d388714` | feat(app): phiên dịch lấy model và ngưỡng từ kho model; model hỏng thì băm lại; gói mới dùng từ phiên sau |
-| 10 | `8c619fa` | feat(ui): kiểu, store và chuỗi giao diện của quản lý model |
-| 11 | `986c7c6` | feat(ui): bước 2–3 của lần đầu mở, Cài đặt › Model, nút Xóa model và dữ liệu, lời mời cập nhật model |
+| 1 | `02633cb` | feat(models): manifest model, kiểu và kiểm phần thân |
+| 2 | `19add12` | feat(models): phong bì ký Ed25519, khóa build sẵn, vector và script ký staging |
+| 3 | `b78e9e2` | feat(models): tải một file model bằng HTTP Range, kiểm SHA-256, thử lại và tạm dừng |
+| 4 | `d7ac45c` | feat(models): kho model trên máy: đã tải, kiểm kích thước, băm lại, xóa, dọn |
+| 5 | `e1029f8` | feat(models): cấu hình máy và đề xuất gói theo ngưỡng của manifest; --probe giữ danh sách GPU |
+| 6 | `85ea345` | feat(models): nguồn manifest: URL theo bản, tải và kiểm, chống quay lui, kiểm mỗi ngày một lần |
+| 7 | `67664ce` | feat(settings): modelTier là mã gói của manifest, chỉ đổi qua lệnh quản lý model |
+| 8 | `239da40` | feat(models): dịch vụ model, lệnh và sự kiện models://state: tải gói, tạm dừng, cập nhật, xóa |
+| 9 | `857f0d8` | feat(app): phiên dịch lấy model và ngưỡng từ kho model; model hỏng thì băm lại; gói mới dùng từ phiên sau |
+| 10 | `d909acf` | feat(ui): kiểu, store và chuỗi giao diện của quản lý model |
+| 11 | `4b6503a` | feat(ui): bước 2–3 của lần đầu mở, Cài đặt › Model, nút Xóa model và dữ liệu, lời mời cập nhật model |
 | 12–15 | — | Task 12 kiểm tra chuẩn (không commit); Task 13 (người) và Task 15 commit lúc thực thi; Task 14 đợt Windows |
 
 ## Dòng của bảng đối chiếu
@@ -152,7 +152,7 @@ Ngoài bảng: ghi chú 8 của review cuối 02 (đổi gói lúc đang dịch;
 
 ## Nối với kế hoạch 03
 
-04 dựng trên cây cuối của 03, nên mọi chỗ hai kế hoạch cùng đụng đã gộp sẵn trong khối `diff` và code của 04; không còn bước gộp tay. Bảng dưới để đối chiếu (và để gộp nếu `main` lệch khỏi cây cuối của 03, mục "Cách đọc kế hoạch này"):
+04 dựng trên `main` đã có 03 (`d63efc6`), nên mọi chỗ hai kế hoạch cùng đụng đã gộp sẵn trong khối `diff` và code của 04; không còn bước gộp tay. Bảng dưới để đối chiếu (và để gộp nếu `main` lệch khỏi cây cuối của 03, mục "Cách đọc kế hoạch này"):
 
 | Task | File | 04 gộp với 03 thế nào |
 |---|---|---|
@@ -202,7 +202,7 @@ Script ngoài repo `meeting-translator-work/p04-mut4/mut4.py`, chạy trên cây
 
 Bỏ hai mutation của bộ tắt khi rảnh (I1, I2) của lượt trước: phần đó nay do 03 làm (03a Task 12), có mutation riêng của 03.
 
-Kết quả (log `p04-mut4/mut4-final-r3.log`): 83 mutation, 81 bị giết, 2 tương đương (đổi code mà hành vi không đổi: R15, R05b; người review lần 2 đồng ý). Không còn mutation nào sống. Trong ngoặc là test đỏ đầu tiên:
+Kết quả (log `p04-mut4/mut4-final-r3.log`, chạy trên 04 dựng trên `f30491f`; code của 04 không đổi khi chuyển sang `main` `d63efc6`, và 8 mutation chính (QA1, QA3, QB1, W1, W2, N9m, R01, G1) chạy lại trên cây mới đều bị giết, log `p04-mut4/mut4-d63.log`): 83 mutation, 81 bị giết, 2 tương đương (đổi code mà hành vi không đổi: R15, R05b; người review lần 2 đồng ý). Không còn mutation nào sống. Trong ngoặc là test đỏ đầu tiên:
 
 ```text
 S1 bỏ kiểm chữ ký: bị giết (a_small_order_key_never_verifies, vectors_verify_as_expected)
@@ -379,7 +379,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
-index c912bf1ea5632a9e72940cd4e7103d157ff423d7..c7f2691ab6d5381f972115ec962bf3c4cbbcf0fe 100644
+index e3a89f39580bcb575df2ba8007831c2c47ba6416..219d56f81e28ae8fed30a4cdbe6645d92e82e954 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -23,2 +23,3 @@ pub mod logging;
@@ -1051,7 +1051,7 @@ Run: `cargo test -p meeting-translator --lib models::manifest 2>&1 | grep -E '^t
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 10 passed; 0 failed; 1 ignored; 0 measured; 223 filtered out; finished in 0.01s
+test result: ok. 10 passed; 0 failed; 1 ignored; 0 measured; 225 filtered out; finished in 0.01s
 ```
 
 - [ ] **Step 6: Định dạng, clippy, cargo deny**
@@ -1685,7 +1685,7 @@ Run: `cargo test -p meeting-translator --lib models:: 2>&1 | grep -E '^test resu
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 223 filtered out; finished in 0.01s
+test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 225 filtered out; finished in 0.01s
 ```
 
 - [ ] **Step 7: Viết test của các script**
@@ -2999,7 +2999,7 @@ Run: `cargo test -p meeting-translator --lib models::download 2>&1 | grep -E '^t
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 239 filtered out; finished in 0.13s
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 241 filtered out; finished in 0.12s
 ```
 
 - [ ] **Step 6: Định dạng, clippy**
@@ -3727,7 +3727,7 @@ Run: `cargo test -p meeting-translator --lib models:: 2>&1 | grep -E '^test resu
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 40 passed; 0 failed; 1 ignored; 0 measured; 223 filtered out; finished in 0.26s
+test result: ok. 40 passed; 0 failed; 1 ignored; 0 measured; 225 filtered out; finished in 0.26s
 ```
 
 - [ ] **Step 5: Định dạng, clippy**
@@ -4454,7 +4454,7 @@ Run: `cargo test -p meeting-translator --lib -- models:: sidecar:: 2>&1 | grep -
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 64 passed; 0 failed; 1 ignored; 0 measured; 206 filtered out; finished in 0.58s
+test result: ok. 64 passed; 0 failed; 1 ignored; 0 measured; 208 filtered out; finished in 0.55s
 ```
 
 - [ ] **Step 6: Định dạng, clippy, code Windows, cargo deny**
@@ -4870,7 +4870,7 @@ Run: `cargo test -p meeting-translator --lib models:: 2>&1 | grep -E '^test resu
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 52 passed; 0 failed; 1 ignored; 0 measured; 224 filtered out; finished in 0.28s
+test result: ok. 52 passed; 0 failed; 1 ignored; 0 measured; 226 filtered out; finished in 0.26s
 ```
 
 - [ ] **Step 5: Định dạng, clippy**

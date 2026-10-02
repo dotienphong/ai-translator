@@ -329,7 +329,7 @@ Run: `cargo test -p meeting-translator --lib -- settings:: sidecar:: 2>&1 | grep
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 223 filtered out; finished in 0.36s
+test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 225 filtered out; finished in 0.35s
 ```
 
 Run: `pnpm build 2>&1 | grep -E 'error|built in' | sed -E 's/ in [0-9]+ms//'; pnpm test 2>&1 | perl -pe 's/\e\[[0-9;]*m//g' | grep -E '^ +(Test Files|Tests) '`
@@ -339,7 +339,7 @@ Expected (lúc lập kế hoạch):
 ```text
 ✓ built
  Test Files  10 passed (10)
-      Tests  97 passed (97)
+      Tests  98 passed (98)
 ```
 
 - [ ] **Step 5: Định dạng, clippy**
@@ -2383,7 +2383,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
-index c7f2691ab6d5381f972115ec962bf3c4cbbcf0fe..8203090b486e58bffdee23a7f9f76017e6ac4304 100644
+index 219d56f81e28ae8fed30a4cdbe6645d92e82e954..a4f496e94b3d57e5bf3737bbd3704858b98d1984 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -148,2 +148,7 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
@@ -2400,10 +2400,10 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
-index f29846f00634a2c4b510a240d91321cfed29f6ac..775c83f4bec813d13ab1ebd70e19161fc3d8aac6 100644
+index 16aec8fdc9220eff9267e9f0273baec4ce0d11f2..e6e11c1142a2af08a1f0af5d4a03364d0b3062a4 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
-@@ -252,2 +252,14 @@ export const en = {
+@@ -253,2 +253,14 @@ export const en = {
    "error.modelBroken": "The model is damaged. Please download it again.",
 +  "error.modelsNoSource": "This build has no model download address yet.",
 +  "error.modelsOffline": "Could not reach the model server. Check your internet connection and try again.",
@@ -2424,10 +2424,10 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
-index fde2cb59238fb10c272d588b012cb8aaa3d5fa09..c2482ca41cc0d76af4c24b3a2765ddcaec557a6f 100644
+index 046fbc8e0e839e15ab0fe05c2e210c2fb6c0adb5..3d6dac106b48c373910d8cd25be69b05b12e6005 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
-@@ -252,2 +252,14 @@ export const vi: Record<MessageKey, string> = {
+@@ -253,2 +253,14 @@ export const vi: Record<MessageKey, string> = {
    "error.modelBroken": "Model bị hỏng. Hãy tải lại model.",
 +  "error.modelsNoSource": "Bản này chưa có địa chỉ tải model.",
 +  "error.modelsOffline": "Không kết nối được máy chủ model. Kiểm tra kết nối mạng rồi thử lại.",
@@ -2451,7 +2451,7 @@ Run: `cargo test -p meeting-translator --lib models::service 2>&1 | grep -E '^te
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 278 filtered out; finished in 3.27s
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 280 filtered out; finished in 3.32s
 ```
 
 Run: `cargo test -p meeting-translator --lib 2>&1 | grep -E '^test result'; pnpm test 2>&1 | perl -pe 's/\e\[[0-9;]*m//g' | grep -E '^ +(Test Files|Tests) '`
@@ -2459,9 +2459,9 @@ Run: `cargo test -p meeting-translator --lib 2>&1 | grep -E '^test result'; pnpm
 Expected (lúc lập kế hoạch; cả `acl_tests` và `errors::tests` đều chạy trong lệnh đầu):
 
 ```text
-test result: ok. 298 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 3.19s
+test result: ok. 300 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 3.27s
  Test Files  10 passed (10)
-      Tests  97 passed (97)
+      Tests  98 passed (98)
 ```
 
 - [ ] **Step 6: Định dạng, clippy**
@@ -3096,7 +3096,7 @@ Run: `cargo test -p meeting-translator --lib -- session:: models::service 2>&1 |
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 271 filtered out; finished in 2.88s
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 273 filtered out; finished in 3.34s
 ```
 
 - [ ] **Step 5: Định dạng, clippy, code Windows**
@@ -3422,7 +3422,7 @@ Run: `pnpm test 2>&1 | perl -pe 's/\e\[[0-9;]*m//g' | grep -E '^ *(FAIL|Test Fil
 Expected (lúc lập kế hoạch):
 
 ```text
-      Tests  97 passed (97)
+      Tests  98 passed (98)
  FAIL  src/lib/models.test.ts [ src/lib/models.test.ts ]
  FAIL  src/store/models.test.ts [ src/store/models.test.ts ]
  Test Files  2 failed | 10 passed (12)
@@ -3745,7 +3745,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
-index 775c83f4bec813d13ab1ebd70e19161fc3d8aac6..9f54ea2b6a62bd72bb1a6810ea3113931c35e20e 100644
+index e6e11c1142a2af08a1f0af5d4a03364d0b3062a4..289f6f63da701a04789b203fe7c956d06192dfff 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -180,2 +180,46 @@ export const en = {
@@ -3801,7 +3801,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
-index c2482ca41cc0d76af4c24b3a2765ddcaec557a6f..e2473efdd4989fa413a78ff07f0d63a14d3f9093 100644
+index 3d6dac106b48c373910d8cd25be69b05b12e6005..9be2e9ac95dbf360d4f5a7ec016cf76d790eb742 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -180,2 +180,46 @@ export const vi: Record<MessageKey, string> = {
@@ -3861,7 +3861,7 @@ Expected (lúc lập kế hoạch):
 
 ```text
  Test Files  12 passed (12)
-      Tests  112 passed (112)
+      Tests  113 passed (113)
 ✓ built
 ```
 
@@ -3942,7 +3942,7 @@ Run: `pnpm test 2>&1 | perl -pe 's/\e\[[0-9;]*m//g' | grep -E '^ *(FAIL|Test Fil
 Expected (lúc lập kế hoạch):
 
 ```text
-      Tests  1 failed | 112 passed (113)
+      Tests  1 failed | 113 passed (114)
  FAIL  src/lib/models.test.ts > packBadges > đề xuất, đang dùng hay đã tải, cần app mới hơn
  Test Files  1 failed | 11 passed (12)
 ```
@@ -3979,7 +3979,7 @@ Expected (lúc lập kế hoạch):
 
 ```text
  Test Files  12 passed (12)
-      Tests  113 passed (113)
+      Tests  114 passed (114)
 ```
 
 - [ ] **Step 3: Store của cửa sổ chính và các component**
@@ -4504,7 +4504,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
-index 9f54ea2b6a62bd72bb1a6810ea3113931c35e20e..7adad9807915377a85bb0519e2aebef406f5ccb2 100644
+index 289f6f63da701a04789b203fe7c956d06192dfff..0b4a0f07859b7bbb2387bf7ab6dae7d6f23a9c52 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -103,3 +103,2 @@ export const en = {
@@ -4517,7 +4517,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
-index e2473efdd4989fa413a78ff07f0d63a14d3f9093..3530247bdf4ed167db3b41a8d18441046a75a0d4 100644
+index 9be2e9ac95dbf360d4f5a7ec016cf76d790eb742..b650f397097429692157afa5b2b4c2a12edd5db3 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -103,3 +103,2 @@ export const vi: Record<MessageKey, string> = {
@@ -4586,7 +4586,7 @@ Expected (lúc lập kế hoạch):
 ```text
 ✓ built
  Test Files  12 passed (12)
-      Tests  113 passed (113)
+      Tests  114 passed (114)
 ```
 
 - [ ] **Step 6: Commit**
@@ -4622,17 +4622,17 @@ pnpm audit 2>&1 | tail -1
 node --test --test-reporter=tap scripts/models/manifest.test.mjs 2>&1 | grep -E '^# (tests|pass|fail)'
 ```
 
-Expected (lúc lập kế hoạch, trên cây cuối của 03 cộng 04):
+Expected (lúc lập kế hoạch, trên `main` `d63efc6` cộng 04):
 
 ```text
 fmt ok
 Done
 ✓ built
 0
-passed 302 failed 0 ignored 3
+passed 304 failed 0 ignored 3
 advisories ok, bans ok, licenses ok, sources ok
  Test Files  12 passed (12)
-      Tests  113 passed (113)
+      Tests  114 passed (114)
 No known vulnerabilities found
 # tests 6
 # pass 6
@@ -4662,7 +4662,7 @@ Expected (lúc lập kế hoạch; hai dòng đầu là số dòng lỗi của h
 ```text
 0
 0
-passed 657 failed 0 ignored 13
+passed 659 failed 0 ignored 13
 passed 42 failed 0 ignored 1
     Finished `release` profile [optimized] target(s)
    1 warning: 3 allowed warnings found

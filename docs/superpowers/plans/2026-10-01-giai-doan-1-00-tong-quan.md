@@ -251,7 +251,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
 - **Làm trên Mac:** phần lớn.
 - **Cần Windows:** `--probe` trên GPU thật; đường dẫn `%LOCALAPPDATA%\<bundle-id>\models`.
 - **Cần người thao tác:** tạo bucket, gắn tên miền và tạo API token trên dashboard Cloudflare; thử rớt mạng thật.
-- **Trạng thái:** đã viết thành hai file 04a (Task 1–6), 04b (Task 7–15); sửa theo review lần 1, lần 2 và quyết định của chủ dự án, dựng lại trên cây cuối của 03 (`p03-repo` `plan03` `f30491f`), không còn bước gộp tay (04a mục "Nối với kế hoạch 03"). Làm sau 03. Ngưỡng thật chờ C6, nhưng không chặn việc viết hay làm.
+- **Trạng thái:** đã viết thành hai file 04a (Task 1–6), 04b (Task 7–15); sửa theo review lần 1, lần 2 và quyết định của chủ dự án, dựng lại trên `main` `d63efc6` (03 đã thực thi cộng bốn sửa sau review cuối), không còn bước gộp tay (04a mục "Nối với kế hoạch 03"). Làm sau 03. Ngưỡng thật chờ C6, nhưng không chặn việc viết hay làm.
   - **Chủ dự án quyết ngày 2026-10-02:**
     - giữ ngưỡng đề xuất gói Chuẩn RAM 15 360 MiB, VRAM 5 632 MiB; `min_ram_mib` là 6 144 MiB;
     - đang tải bản cập nhật của gói đang dùng thì chặn bắt đầu phiên;
