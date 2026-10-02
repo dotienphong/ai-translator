@@ -17,7 +17,7 @@
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -76,14 +76,18 @@ pub struct FileJob {
 
 impl FileJob {
     pub fn part(&self) -> PathBuf {
-        let name = self
-            .dest
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let tag = self.sha256.get(..16).unwrap_or(&self.sha256);
-        self.dest.with_file_name(format!("{name}.{tag}.part"))
+        part_path(&self.dest, &self.sha256)
     }
+}
+
+/// File tạm của bản `sha256` của file `dest`.
+pub fn part_path(dest: &Path, sha256: &str) -> PathBuf {
+    let name = dest
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let tag = sha256.get(..16).unwrap_or(sha256);
+    dest.with_file_name(format!("{name}.{tag}.part"))
 }
 
 /// Cờ tạm dừng, dùng chung giữa luồng tải và lệnh của giao diện.

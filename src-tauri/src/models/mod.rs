@@ -4,5 +4,6 @@
 pub mod download;
 pub mod manifest;
 pub mod signed;
+pub mod store;
 #[cfg(test)]
 pub mod test_http;
