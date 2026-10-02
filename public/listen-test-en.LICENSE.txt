@@ -1,0 +1,5 @@
+listen-test-en.wav: câu "The result of plotting analysis will be posted to a public website." (en-6415341913845555034)
+của bộ dữ liệu FLEURS (tập dev). Conneau và cộng sự, "FLEURS: Few-shot Learning Evaluation of Universal Representations
+of Speech", 2022, Google. Giấy phép Creative Commons Attribution 4.0 (CC BY 4.0),
+https://creativecommons.org/licenses/by/4.0/. Bản ở đây đã được sửa: cắt lặng đầu cuối, rồi cắt riêng câu này kèm 0,3
+giây lặng ở hai đầu (scripts/make_listen_test.py).

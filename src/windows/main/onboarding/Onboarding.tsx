@@ -3,6 +3,7 @@ import type { MessageKey, UiLanguage } from "../../../i18n";
 import { useApp, useT } from "../appStore";
 import { LanguagePicker } from "../LanguagePicker";
 import { Notice } from "../Notice";
+import { ListenTest } from "./ListenTest";
 import { TaskbarGuide } from "./TaskbarGuide";
 
 // Các bước lần đầu mở app (§4.1). Kế hoạch 01 làm khung và các bước 1, 5, 7, 8; bước 2–3 do kế
@@ -102,6 +103,8 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
       );
     case "languages":
       return <LanguagePicker />;
+    case "test":
+      return <ListenTest />;
     case "privacy":
       return (
         <>

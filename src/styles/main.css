@@ -302,6 +302,18 @@ input[type="text"] {
   min-width: 12rem;
 }
 
+.debug table {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.debug th,
+.debug td {
+  padding: 0.2rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
 /* Ô chọn màu của Cài đặt › Phụ đề: mỗi ô là một nút radio, xem trước chữ "A" trên nền. */
 fieldset.swatches {
   margin: 0;
