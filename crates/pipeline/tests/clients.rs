@@ -276,6 +276,191 @@ fn real_llama_server_requires_the_api_key() {
     assert!(server.count_tokens("xin chào").unwrap() > 0, "có key: 200");
 }
 
+/// Một kết nối HTTP/1.1 thô tới `llama-server` thật: gửi nhiều request trên cùng kết nối, như một client có pool.
+struct RawConn {
+    reader: std::io::BufReader<std::net::TcpStream>,
+    writer: std::net::TcpStream,
+    port: u16,
+    key: String,
+}
+
+/// Response: dòng trạng thái kèm header (chữ thường), và thân (đã ghép các chunk).
+struct RawResponse {
+    head: String,
+    body: Vec<u8>,
+}
+
+impl RawConn {
+    fn open(port: u16, key: &str) -> std::io::Result<Self> {
+        let writer = std::net::TcpStream::connect(("127.0.0.1", port))?;
+        writer.set_read_timeout(Some(Duration::from_secs(60)))?;
+        Ok(Self {
+            reader: std::io::BufReader::new(writer.try_clone()?),
+            writer,
+            port,
+            key: key.to_string(),
+        })
+    }
+
+    /// `Ok(None)`: server đã đóng kết nối (đọc ra EOF trước byte đầu tiên, hay bị reset).
+    fn send(&mut self, method: &str, path: &str, body: &str) -> std::io::Result<Option<RawResponse>> {
+        use std::io::{BufRead, ErrorKind, Read, Write};
+        let request = format!(
+            "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1:{}\r\nAuthorization: Bearer {}\r\n\
+             Content-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
+            self.port,
+            self.key,
+            body.len()
+        );
+        let closed = |e: &std::io::Error| {
+            matches!(
+                e.kind(),
+                ErrorKind::ConnectionReset | ErrorKind::ConnectionAborted | ErrorKind::BrokenPipe
+            )
+        };
+        match self.writer.write_all(request.as_bytes()) {
+            Err(e) if closed(&e) => return Ok(None),
+            other => other?,
+        }
+        let mut head = String::new();
+        loop {
+            let mut line = String::new();
+            match self.reader.read_line(&mut line) {
+                Ok(0) if head.is_empty() => return Ok(None),
+                Ok(0) => return Err(ErrorKind::UnexpectedEof.into()),
+                Err(e) if closed(&e) && head.is_empty() => return Ok(None),
+                Err(e) => return Err(e),
+                Ok(_) if line == "\r\n" => break,
+                Ok(_) => head.push_str(&line.to_ascii_lowercase()),
+            }
+        }
+        let mut body = Vec::new();
+        if head.contains("transfer-encoding: chunked") {
+            loop {
+                let mut size = String::new();
+                self.reader.read_line(&mut size)?;
+                let size = usize::from_str_radix(size.trim().split(';').next().unwrap(), 16).unwrap();
+                if size == 0 {
+                    // Bỏ trailer tới dòng trống.
+                    let mut line = String::new();
+                    while self.reader.read_line(&mut line)? > 0 && line != "\r\n" {
+                        line.clear();
+                    }
+                    break;
+                }
+                let mut chunk = vec![0; size + 2];
+                self.reader.read_exact(&mut chunk)?;
+                body.extend_from_slice(&chunk[..size]);
+            }
+        } else if let Some(len) = head
+            .lines()
+            .find_map(|l| l.strip_prefix("content-length: "))
+            .map(|v| v.trim().parse::<usize>().unwrap())
+        {
+            body.resize(len, 0);
+            self.reader.read_exact(&mut body)?;
+        }
+        Ok(Some(RawResponse { head, body }))
+    }
+}
+
+/// Kill `llama-server` của test khi xong (kể cả khi test lỗi).
+struct KillOnDrop(std::process::Child);
+
+impl Drop for KillOnDrop {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+/// Tiền đề của `e591a1e` (`pool_max_idle_per_host(0)` ở `LlamaServer::spawn_with`), với `llama-server` thật: sau một
+/// response stream của `/v1/chat/completions`, server đóng kết nối dù header báo `Keep-Alive` (không có
+/// `Connection: close`), nên request kế tiếp trên cùng kết nối không được trả lời. Đối chứng: hai `/tokenize` liên tiếp
+/// trên một kết nối thì đều được trả lời, tức test này thấy được việc dùng lại kết nối.
+///
+/// **Khi nâng llama.cpp thì chạy lại test này** (cùng lệnh với `real_llama_server_requires_the_api_key`, đổi đường dẫn
+/// sang bản mới):
+/// - test qua: tiền đề còn đúng, phải giữ việc tắt pool;
+/// - test lỗi ở bước "đóng kết nối": bản mới giữ kết nối sau stream, có thể cân nhắc bật lại pool (kiểm thêm trước khi
+///   đổi);
+/// - test lỗi ở header: bản mới báo `Connection: close`, client tự đóng kết nối, cũng có thể cân nhắc bật lại pool.
+#[test]
+#[ignore = "cần llama-server b11146 và model"]
+fn real_llama_server_closes_the_connection_after_a_stream() {
+    let exe = PathBuf::from(std::env::var("MT_LLAMA_SERVER").expect("MT_LLAMA_SERVER"));
+    let model = PathBuf::from(std::env::var("MT_LLAMA_MODEL").expect("MT_LLAMA_MODEL"));
+    let t = Temp::new("llama-real-close");
+    let launch = LlamaLaunch::new(&exe, &model, &t.path("llama-server.log"));
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let key = format!("test-{}-{port}", std::process::id());
+    let mut cmd = pipeline::llama::command(&launch, port, &key);
+    cmd.stderr(std::process::Stdio::null());
+    let _server = KillOnDrop(cmd.spawn().unwrap());
+    let started = std::time::Instant::now();
+    loop {
+        let ok = RawConn::open(port, &key)
+            .and_then(|mut c| c.send("GET", "/health", ""))
+            .is_ok_and(|r| r.is_some_and(|r| r.head.starts_with("http/1.1 200")));
+        if ok {
+            break;
+        }
+        assert!(
+            started.elapsed() < Duration::from_secs(180),
+            "llama-server không sẵn sàng"
+        );
+        std::thread::sleep(Duration::from_millis(200));
+    }
+    let tokenize = r#"{"content":"xin chào"}"#;
+    let mut conn = RawConn::open(port, &key).unwrap();
+    for n in 0..2 {
+        let response = conn.send("POST", "/tokenize", tokenize).unwrap();
+        let response = response.unwrap_or_else(|| panic!("đối chứng: /tokenize lần {n} bị đóng kết nối"));
+        assert!(response.head.starts_with("http/1.1 200"), "{}", response.head);
+    }
+    let stream = serde_json::json!({
+        "messages": [{
+            "role": "user",
+            "content": "Translate the following segment into Vietnamese, without additional explanation.\n\nGood morning everyone."
+        }],
+        "stream": true,
+        "temperature": 0,
+        "max_tokens": 32
+    })
+    .to_string();
+    for n in 0..5 {
+        let mut conn = RawConn::open(port, &key).unwrap();
+        let response = conn
+            .send("POST", "/v1/chat/completions", &stream)
+            .unwrap()
+            .expect("response stream");
+        let head = &response.head;
+        assert!(head.starts_with("http/1.1 200"), "{head}");
+        assert!(
+            head.contains("\r\nkeep-alive:"),
+            "lần {n}: header vẫn báo Keep-Alive: {head}"
+        );
+        assert!(
+            !head.contains("\r\nconnection: close"),
+            "lần {n}: không báo Connection: close: {head}"
+        );
+        assert!(
+            String::from_utf8_lossy(&response.body).contains("data: [DONE]"),
+            "lần {n}: đọc hết stream"
+        );
+        let next = conn.send("POST", "/tokenize", tokenize).unwrap();
+        assert!(
+            next.is_none(),
+            "lần {n}: llama-server trả lời request sau stream trên cùng kết nối ({}): tiền đề của e591a1e không còn đúng",
+            next.unwrap().head.lines().next().unwrap_or_default()
+        );
+    }
+}
+
 /// `llama-server` b11146 đóng kết nối ngay sau mỗi response stream dù báo `Keep-Alive`. Client không được gửi request
 /// kế tiếp (`/tokenize` của câu sau) trên kết nối đó: nếu gửi trước khi thấy kết nối bị đóng thì request lỗi
 /// "connection closed before message completed" (đo với b11146 thật: 13/1440 câu của bộ tỉ lệ).
