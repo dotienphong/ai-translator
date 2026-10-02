@@ -1,4 +1,4 @@
-//! Chuỗi phía Rust (spec §4.5): menu khay, chú thích icon khay, tiêu đề cửa sổ.
+//! Chuỗi phía Rust (spec §4.5): menu khay, chú thích icon khay, tiêu đề cửa sổ, chữ trong file xuất bản chép lời.
 //! Giao diện React có từ điển riêng ở `src/i18n/`. MVP không dùng thông báo hệ thống (Q13):
 //! lỗi và lời nhắc hiện ngay trong app (cửa sổ chính, menu khay, thanh phụ đề).
 //!
@@ -23,6 +23,13 @@ pub struct Strings {
     pub status_idle: &'static str,
     pub status_running: &'static str,
     pub overlay_title: &'static str,
+    /// File xuất bản chép lời (`transcript/export.rs`): tiêu đề, tên cột, đoạn bị bỏ, câu dịch lỗi.
+    pub export_title: &'static str,
+    pub export_time: &'static str,
+    pub export_source: &'static str,
+    pub export_translation: &'static str,
+    pub export_dropped: &'static str,
+    pub export_failed: &'static str,
 }
 
 pub const EN: Strings = Strings {
@@ -39,6 +46,12 @@ pub const EN: Strings = Strings {
     status_idle: "Ready",
     status_running: "Translating",
     overlay_title: "Subtitles",
+    export_title: "Transcript",
+    export_time: "Time",
+    export_source: "Original",
+    export_translation: "Translation",
+    export_dropped: "[segment skipped]",
+    export_failed: "(not translated)",
 };
 
 pub const VI: Strings = Strings {
@@ -55,6 +68,12 @@ pub const VI: Strings = Strings {
     status_idle: "Sẵn sàng",
     status_running: "Đang dịch",
     overlay_title: "Phụ đề",
+    export_title: "Bản chép lời",
+    export_time: "Giờ",
+    export_source: "Câu gốc",
+    export_translation: "Bản dịch",
+    export_dropped: "[bỏ qua đoạn]",
+    export_failed: "(chưa dịch được)",
 };
 
 impl Strings {
@@ -75,6 +94,12 @@ impl Strings {
             status_idle,
             status_running,
             overlay_title,
+            export_title,
+            export_time,
+            export_source,
+            export_translation,
+            export_dropped,
+            export_failed,
         } = *self;
         vec![
             ("tray_start", tray_start),
@@ -90,6 +115,12 @@ impl Strings {
             ("status_idle", status_idle),
             ("status_running", status_running),
             ("overlay_title", overlay_title),
+            ("export_title", export_title),
+            ("export_time", export_time),
+            ("export_source", export_source),
+            ("export_translation", export_translation),
+            ("export_dropped", export_dropped),
+            ("export_failed", export_failed),
         ]
     }
 

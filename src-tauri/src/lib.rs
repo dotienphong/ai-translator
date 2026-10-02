@@ -28,6 +28,7 @@ pub mod settings;
 pub mod sidecar;
 pub mod state;
 pub mod system;
+pub mod transcript;
 pub mod tray;
 pub mod tray_menu;
 pub mod window;
@@ -122,6 +123,7 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     // DB mã hóa của lịch sử và từ điển: chưa mở, chưa đọc kho khóa ở đây (db.rs).
     db::install(&handle)?;
     app.manage(glossary::ActiveGlossary::default());
+    app.manage(transcript::store::TranscriptStore::default());
     app.manage(HotkeyRegistry::default());
     // Tiến trình phụ mà lần chạy trước bỏ lại (Force Quit, app bị kill): kill trước khi chạy sẵn tiến trình mới, rồi từ
     // giờ ghi pidfile (Q8 của review 02c). Windows: Job Object đã lo, hàm không làm gì. Đọc pidfile ở đây chỉ đúng vì

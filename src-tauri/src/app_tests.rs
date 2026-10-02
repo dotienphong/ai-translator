@@ -534,6 +534,38 @@ fn the_status_revision_grows_with_every_change() {
     assert!(before < running && running < idle, "{before} {running} {idle}");
 }
 
+/// Bản chép lời của phiên nằm trong bộ nhớ (§6.6): đủ các câu, chữ dịch đầy đủ; dừng phiên thì có giờ kết thúc; phiên sau
+/// bắt đầu với bản mới.
+#[test]
+fn a_session_keeps_its_transcript_in_memory() {
+    use crate::transcript::store::TranscriptStore;
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let _main = window(&app, "main");
+    let store = app.state::<TranscriptStore>();
+    session::start(app.handle()).unwrap();
+    wait_until("một câu dịch xong", || {
+        store
+            .snapshot()
+            .lines
+            .iter()
+            .any(|l| l.tgt_text == "Xin chào mọi người.")
+    });
+    assert_eq!(store.snapshot().ended_at, None);
+    session::stop(app.handle());
+    let t = store.snapshot();
+    assert_eq!((t.session, t.target_lang.as_str()), (1, "vi"));
+    assert!(t.started_at > 1_700_000_000_000, "giờ Unix ms: {}", t.started_at);
+    assert!(t.ended_at.is_some_and(|end| end >= t.started_at));
+    assert!(t.lines.iter().all(|l| l.src_text == "Hello everyone."));
+    session::start(app.handle()).unwrap();
+    assert_eq!(store.snapshot().session, 2);
+    assert_eq!(store.snapshot().ended_at, None);
+    session::stop(app.handle());
+}
+
 /// Từ điển thuật ngữ (F5) vào prompt của phiên ở gói Pro, theo mẫu "terminology" (§6.5); gói Free thì không (Đ6).
 #[test]
 fn glossary_terms_reach_the_prompt_only_for_pro() {

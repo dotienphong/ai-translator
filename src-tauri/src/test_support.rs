@@ -33,6 +33,7 @@ use crate::settings::persist::{SettingsFile, Writer};
 use crate::settings::{AudioSource, Settings, UiLanguage};
 use crate::state::AppState;
 use crate::system::{System, SystemOpener};
+use crate::transcript::store::TranscriptStore;
 
 /// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`.
 #[derive(Clone, Default)]
@@ -413,6 +414,7 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
             Ok(Keystore::mock("com.aitranslator.desktop.test")),
         ))
         .manage(ActiveGlossary::default())
+        .manage(TranscriptStore::default())
         .manage(pro)
         .manage(Session::new(Arc::new(deps)))
         .invoke_handler(commands::handler())

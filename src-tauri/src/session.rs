@@ -20,7 +20,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use pipeline::config::PipelineConfig;
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, VadFactory};
@@ -38,6 +38,7 @@ use crate::glossary::{self, ActiveGlossary};
 use crate::settings::{AudioSource, Lang, ModelTier, Settings};
 use crate::sidecar::{self, first_run, integrity};
 use crate::state::{AppState, AppStatus, Loading, SessionStatus};
+use crate::transcript::store::TranscriptStore;
 use crate::{actions, events, overlay, window};
 
 /// Chu kỳ gọi `SessionDeps::tick` (tắt tiến trình phụ khi rảnh 10 phút). Để ngoài `PipelineConfig`: chỉ là nhịp kiểm, mốc
@@ -282,6 +283,9 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         return Ok(state.status());
     }
     let n = session.sessions.fetch_add(1, Ordering::SeqCst) + 1;
+    if let Some(transcript) = app.try_state::<TranscriptStore>() {
+        transcript.begin(n, now_ms(), code_of(settings.target_language));
+    }
     let source = session
         .deps
         .capture(&settings.audio_source, options.include_self, capture_events(app, n));
@@ -353,8 +357,9 @@ fn capture_events<R: Runtime>(app: &AppHandle<R>, n: u64) -> OnEvent {
     })
 }
 
-/// Dừng engine (nếu có) và báo cho tiến trình phụ. Không đổi trạng thái. Trả `false` nếu không có engine nào chạy.
-fn stop_engine(session: &Session) -> bool {
+/// Dừng engine (nếu có), báo cho tiến trình phụ, chốt bản chép lời của phiên. Không đổi trạng thái. Trả `false` nếu
+/// không có engine nào chạy.
+fn stop_engine<R: Runtime>(app: &AppHandle<R>, session: &Session) -> bool {
     let engine = session.engine.lock().unwrap().take();
     let Some(engine) = engine else {
         return false;
@@ -363,14 +368,24 @@ fn stop_engine(session: &Session) -> bool {
     // Số đo của phiên vào log, không có chữ chép lời (§7, Đ17).
     log::info!("kết thúc phiên dịch: {}", metrics.summary());
     session.deps.end_session();
+    if let Some(transcript) = app.try_state::<TranscriptStore>() {
+        transcript.end(session.sessions.load(Ordering::SeqCst), now_ms());
+    }
     true
+}
+
+/// Giờ Unix, ms.
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64)
 }
 
 /// Dừng phiên (bấm Dừng). Thanh phụ đề giữ nguyên để người dùng còn đọc được các dòng cuối.
 pub fn stop<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
     let session = app.state::<Session>();
     let _gate = session.gate.lock().unwrap();
-    stop_engine(&session);
+    stop_engine(app, &session);
     app.state::<AppState>().update_status(|s| {
         s.session = SessionStatus::Idle;
         s.loading = None;
@@ -386,7 +401,7 @@ pub fn stop<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
 fn fail<R: Runtime>(app: &AppHandle<R>, n: u64, code: &str, message: &str) {
     let session = app.state::<Session>();
     let _gate = session.gate.lock().unwrap();
-    if session.sessions.load(Ordering::SeqCst) != n || !stop_engine(&session) {
+    if session.sessions.load(Ordering::SeqCst) != n || !stop_engine(app, &session) {
         return;
     }
     log::error!("phiên dịch dừng vì lỗi {code}: {message}");
@@ -458,7 +473,7 @@ pub fn shutdown<R: Runtime>(app: &AppHandle<R>) {
     loop {
         match session.gate.try_lock() {
             Ok(_gate) => {
-                stop_engine(&session);
+                stop_engine(app, &session);
                 break;
             }
             Err(_) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(20)),
@@ -482,7 +497,8 @@ pub fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// Kết quả của engine sang giao diện. Kế hoạch 06 thêm `usage` (đếm phút cho hạn mức, §6.8) ở đây.
+/// Kết quả của engine sang giao diện và sang bản chép lời trong bộ nhớ (§6.6). Kế hoạch 06 thêm `usage` (đếm phút cho hạn
+/// mức, §6.8) ở đây.
 struct TauriSink<R: Runtime> {
     app: AppHandle<R>,
     session: u64,
@@ -491,10 +507,16 @@ struct TauriSink<R: Runtime> {
 
 impl<R: Runtime> EventSink for TauriSink<R> {
     fn subtitle(&self, subtitle: &Subtitle) {
+        if let Some(transcript) = self.app.try_state::<TranscriptStore>() {
+            transcript.upsert(self.session, subtitle);
+        }
         let _ = self.app.emit(events::SUBTITLE_UPSERT, subtitle);
     }
 
     fn delta(&self, delta: &Delta) {
+        if let Some(transcript) = self.app.try_state::<TranscriptStore>() {
+            transcript.delta(self.session, delta);
+        }
         let _ = self.app.emit(events::SUBTITLE_DELTA, delta);
     }
 
