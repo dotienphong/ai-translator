@@ -52,7 +52,7 @@ Sinh bởi `bench/phase0/mt/ratio_stats.py` từ kết quả `latency-bench mt-e
 | zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 0 |
 | zh->vi | 12 | 0 | — | — | 9 | 6 | 40 | 0 |
 
-## Đề xuất (chủ dự án quyết ở điểm cần quyết 4; chưa sửa `crates/pipeline/src/config.rs`)
+## Đề xuất (điểm cần quyết 4 của 02a; đã quyết ngày 2026-10-02 và áp vào `crates/pipeline/src/config.rs` ở `22fa4fe`)
 
 ### Ngưỡng tỉ lệ token cho 12 chiều không có tiếng Việt
 

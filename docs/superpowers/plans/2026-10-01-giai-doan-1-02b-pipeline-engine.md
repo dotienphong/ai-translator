@@ -6860,7 +6860,9 @@ Thêm vào cuối `gd1_mt_ratio.md` một đoạn đề xuất:
 - ngưỡng cho 12 chiều mới, lấy số lớn hơn của hai model ở cột "ngưỡng đề xuất";
 - câu gốc dưới 3 token: hạn mức sinh `4 × số token + 32` có đủ không (so cột "token dịch lớn nhất" với cột "hạn mức sinh").
 
-Ngưỡng chỉ vào `DEFAULT_RATIO_THRESHOLDS` (`crates/pipeline/src/config.rs`) sau khi chủ dự án duyệt (điểm cần quyết 4).
+Ngưỡng chỉ vào `DEFAULT_RATIO_THRESHOLDS` (`crates/pipeline/src/config.rs`) sau khi được duyệt (điểm cần quyết 4). **Đã quyết** (controller, 2026-10-02): ngưỡng của 12 chiều theo mục "Đề xuất" đã vào `DEFAULT_RATIO_THRESHOLDS` ở `22fa4fe`; câu gốc dưới 3 token giữ hạn mức `4 × số token + 32`.
+
+**Đo lại sau `22fa4fe`.** `mt-eval` dịch bằng `MtConfig::default()`, nên từ `22fa4fe` bản dịch của cả 12 chiều này bị cắt ở ngưỡng mặc định: cột "tỉ lệ lớn nhất" không vượt được ngưỡng; câu vượt ngưỡng bị dịch lại, hai lần đều vượt thì thành lỗi. Muốn đo tỉ lệ khách quan thì chạy với danh sách ngưỡng rỗng (`ratio_thresholds` trống); `mt-eval` chưa có cờ cho việc này, nên phải sửa tạm `MtConfig` trong `mt_eval.rs` hoặc thêm cờ.
 
 - [ ] **Step 7: Commit**
 

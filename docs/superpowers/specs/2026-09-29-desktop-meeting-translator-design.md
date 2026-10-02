@@ -488,12 +488,13 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Ngưỡng: Anh→Việt 4,4; Trung→Việt 6,6; Nhật→Việt 3,5; Hàn→Việt 3,5; Việt→Anh 1,6; Việt→Trung 1,2; Việt→Nhật 2,2; Việt→Hàn 2,2.
     - Câu gốc rất ngắn làm tỉ lệ dao động mạnh. Ngưỡng Trung→Việt 6,6 chỉ do một câu gốc 4 token có bản dịch đúng dài 21 token. Chỉ tính câu gốc từ 10 token trở lên thì Trung→Việt còn 4,3 và Việt→Anh còn 1,4; sáu chiều còn lại giữ nguyên.
     - **Chỉ áp ngưỡng tỉ lệ khi câu gốc có từ 10 token trở lên** (chốt 2026-10-01, cách 2 ở Q4 của kế hoạch Giai đoạn 1 · 00). Câu ngắn hơn chỉ chịu hạn mức sinh ở "Tham số sinh" (tối đa 68 token khi câu gốc dưới 10 token). Lý do: không cần hằng số chỉ do một câu (`zh-vi-888`) quyết định, và hạn mức sinh chưa cắt bản dịch nào trong 1240 bản dịch của S7. Ngưỡng giữ nguyên các số ở trên.
-    - Cặp chưa có ngưỡng (không có tiếng Việt) chưa bị kiểm tỉ lệ, cho tới khi đo xong (Việc cho MVP bên dưới).
-    - Bộ test không có câu gốc dưới 3 token (như "Vâng", "OK"), và không có cặp nào không chứa tiếng Việt.
+    - Mười hai chiều không có tiếng Việt (chốt 2026-10-02, điểm cần quyết 4 của kế hoạch Giai đoạn 1 · 02a): ngưỡng lấy ở lượt đo Đ12 của kế hoạch Giai đoạn 1 · 00 (`bench/phase0/results/gd1_mt_ratio.md`), cùng cách tính trên câu gốc từ 10 token, lấy số lớn hơn của Q8_0 và Q4_K_M để gói Chuẩn và gói Nhẹ dùng chung một bộ ngưỡng. Ngưỡng: Anh→Nhật 3,3; Anh→Hàn 3,2; Anh→Trung 2,0; Nhật→Anh 1,7; Nhật→Hàn 2,8; Nhật→Trung 1,5; Hàn→Anh 1,9; Hàn→Nhật 2,0; Hàn→Trung 1,3; Trung→Anh 2,7; Trung→Nhật 3,8; Trung→Hàn 3,7.
+    - Cặp không có trong danh sách ngưỡng (ví dụ manifest chỉ ghi vài cặp) thì không bị kiểm tỉ lệ, chỉ chịu hạn mức sinh.
+    - Bộ test S7 không có câu gốc dưới 3 token (như "Vâng", "OK"), và không có cặp nào không chứa tiếng Việt; Đ12 đo riêng hai trường hợp này. Câu gốc dưới 3 token giữ hạn mức sinh `4 × số token + 32`: trên lượt đo Đ12, mọi câu như vậy có 2 token (hạn mức 40), bản dịch dài nhất 10 token, không câu nào chạm hạn mức hay phải dịch lại.
   - **Thử lại** một lần với repeat penalty cao hơn (1,15). Với temperature 0, giữ nguyên tham số thì kết quả sẽ y hệt lần trước. Vẫn lỗi thì hiện câu gốc, đánh dấu "chưa dịch được".
 - **Bỏ qua bước dịch** khi ngôn ngữ câu gốc trùng ngôn ngữ đích.
 - **Việc cho MVP:**
-  - Đo ngưỡng cho các cặp không có tiếng Việt, và cho câu gốc dưới 3 token.
+  - Đo ngưỡng cho các cặp không có tiếng Việt, và cho câu gốc dưới 3 token: đã xong (Đ12, chốt 2026-10-02); số ở mục "Bản dịch quá dài" bên trên.
   - Đo lại thời gian chờ lần đầu với bản đã ký và notarize.
 
 ### 6.6 Phụ đề và bản chép lời
