@@ -54,7 +54,7 @@ Ghi chú:
 
 ## Cách đọc kế hoạch này
 
-- **Thứ tự và trạng thái đầu.** Làm trên `main`, sau khi 04 đã thực thi xong (`ffc84db`); cây đầu là `4b6503a` (mục "Nối với kế hoạch 04"). Trước mỗi task, `git status` phải sạch. 06a làm hết rồi mới tới 06b.
+- **Thứ tự và trạng thái đầu.** Làm trên `main`, sau khi 04 đã thực thi xong (`d28fe3b`); cây đầu là `5f48558` (mục "Nối với kế hoạch 04"). Trước mỗi task, `git status` phải sạch. 06a làm hết rồi mới tới 06b.
 - **Khối code.**
   - "Tạo `<file>`": chép nguyên khối vào file mới.
   - "Tạo `<file>`, lúc này mới có phần test": file chỉ có các dòng `//!` đầu và khối `#[cfg(test)] mod tests`; bước sau thêm phần code.
@@ -62,7 +62,7 @@ Ghi chú:
   - "Sửa `<file>` (áp bằng `git apply`)": khối `diff` là bản vá chuẩn; lưu khối vào một file tạm rồi chạy `git apply <file tạm>` từ gốc repo. `git apply --check` báo lỗi nghĩa là cây file đã lệch so với kế hoạch: dừng lại, đừng sửa tay cho khớp.
   - "Xóa `<file>`": chạy đúng lệnh `git rm -q` ghi kèm.
   - Mỗi khối `diff` có dòng `index <blob trước>..<blob sau>` (SHA đầy đủ). Nếu cây đã lệch vì `main` có commit mới, `git apply --3way <file tạm>` gộp được, với điều kiện file trước task còn đúng như cây tham chiếu (blob có sẵn trong repo). Khối áp lên file vừa được bước viết test sửa thì blob trước không có sẵn: khi đó thêm tay đúng các dòng `+`, giữ phần của `main`.
-- **Khối Expected.** Mọi khối Expected là output thật, lấy từ một lần chạy lại toàn bộ các task từ file kế hoạch trên một bản sao sạch của `4b6503a`, với target riêng (2026-10-03). Lệnh đã lọc output (`grep`, `sed`) để Expected không phụ thuộc thời gian chạy; test chạy một luồng (`--test-threads=1`) khi Expected liệt kê tên test, để thứ tự cố định. Bước đỏ chỉ in tối đa 6 dòng lỗi khác nhau (sắp theo chữ cái); output thật có thể dài hơn. Số test là số lúc lập kế hoạch.
+- **Khối Expected.** Mọi khối Expected là output thật, lấy từ một lần chạy lại toàn bộ các task từ file kế hoạch trên một bản sao sạch của `5f48558`, với target riêng (2026-10-03). Lệnh đã lọc output (`grep`, `sed`) để Expected không phụ thuộc thời gian chạy; test chạy một luồng (`--test-threads=1`) khi Expected liệt kê tên test, để thứ tự cố định. Bước đỏ chỉ in tối đa 6 dòng lỗi khác nhau (sắp theo chữ cái); output thật có thể dài hơn. Số test là số lúc lập kế hoạch.
 - **Môi trường.** Mọi lệnh chạy từ gốc repo, sau `source "$HOME/.cargo/env" && eval "$(fnm env --use-on-cd)"` (Node 24.21.0, pnpm 12.6.0, Rust 1.98.1). Bản sao mới thì chạy `pnpm install --frozen-lockfile` một lần trước task đầu, và `pnpm build` (để `dist/` có sẵn cho `src-tauri`).
 - **Không gọi dịch vụ thật, không bật hộp thoại quyền** (mục 6.8 của kế hoạch 00): test dùng server HTTP giả trên `127.0.0.1` (Task 6), `FakeApi`, kho khóa trong bộ nhớ (`FakeVault`, `Keystore::mock`) và token ký bằng khóa test `test-1` của bộ vector; không task nào của 06a mở app, đọc Keychain thật, gọi PayOS, Resend hay license server thật. Task 3 và Task 10 đọc IOPlatformUUID và chữ ký của `/bin/ls`: không cần quyền gì.
 - **Staging chưa chạy** (05 Task 19 chưa làm, cần tài khoản Cloudflare và PayOS). Mọi task của 06a chạy được mà không có staging. Phần cần staging nằm ở 06b Task 6 (cần người).
@@ -70,14 +70,14 @@ Ghi chú:
 
 ## Nối với kế hoạch 04
 
-**04 thực thi trước 06** (controller quyết, 2026-10-03). **base: `4b6503a`.** Kế hoạch này dựng trên cây cuối của 04: `meeting-translator-work/p04-repo`, nhánh `ref`, commit `4b6503a` (11 commit T1–T11 của 04 trên `main` `d63efc6`, tức sau 01, 02, 03 và 05; kế hoạch 04 ở `main` `2be774f`). 04 đã thực thi trên `main` (`1797cd1` là 04 T11, `ffc84db` cập nhật kế hoạch 00); cây code của `main` trùng `4b6503a` (`git diff 4b6503a ffc84db -- . ':!docs'` không in gì, kiểm ngày 2026-10-03). Trước khi làm, kiểm cây của `main` khớp `4b6503a` (`git diff --stat 4b6503a HEAD -- src src-tauri crates` không in gì; commit có thể khác SHA nếu 04 được commit lại); lệch thì xem mục "Cách đọc" (dùng `--3way`), lệch nhiều thì báo controller để dựng lại 06 trên `main` thật như đã làm cho 04.
+**04 thực thi trước 06** (controller quyết, 2026-10-03). **base: `5f48558`.** Kế hoạch này dựng trên cây cuối của 04: `meeting-translator-work/p04-repo`, nhánh `ref-fix2`, commit `5f48558` (11 commit T1–T11 của 04 cộng 5 commit sửa sau review cuối thực thi 04: QE-1, N-1, N-2, N-4 và race của `run_download`; tất cả trên `main` `d63efc6`). 04 đã thực thi trên `main` cùng các sửa đó (`d28fe3b`); cây code của `main` trùng `5f48558` (`git diff 5f48558 d28fe3b -- . ':!docs'` không in gì, kiểm ngày 2026-10-03). Trước khi làm, kiểm cây của `main` khớp `5f48558` (`git diff --stat 5f48558 HEAD -- src src-tauri crates` không in gì); lệch thì xem mục "Cách đọc" (dùng `--3way`), lệch nhiều thì báo controller để dựng lại 06 trên `main` thật.
 
 06 dùng đúng các crate và feature 04a đã chốt (`ed25519-dalek` 3.0.0, `base64` 0.23.1, `reqwest` 0.13.5 `blocking` + `native-tls` + `system-proxy`, `libc` 0.2.189): không thêm dòng nào cho chúng. Thân JSON của request tự ghi bằng `serde_json`, nên không cần feature `json` của `reqwest`. Mọi chỗ hai kế hoạch cùng đụng đã gộp sẵn trong khối `diff` của 06:
 
 | File | 04 đã có | 06 thêm |
 |---|---|---|
 | `src-tauri/Cargo.toml` | `base64`, `ed25519-dalek`, `reqwest`, `libc` ở cuối `[dependencies]`; feature `Win32_Storage_FileSystem`, `Win32_System_SystemInformation` của `windows` | `chrono`, `qrcode` ở cuối nhóm; `security-framework`, `core-foundation` (macOS); feature `Win32_System_Registry`, `Win32_Security_*` của `windows`, xếp theo chữ cái |
-| `src-tauri/src/session.rs` | `start_with` có `refuse` cho lỗi trước khi bắt đầu (`check_quota`: đang cập nhật model…) | `check_start` của bản quyền chạy trước `check_quota`, cùng đường `refuse` (hết hạn mức thì `quotaExhausted`) |
+| `src-tauri/src/session.rs` | `start_with` có `refuse` cho lỗi trước khi bắt đầu (`check_quota`: đang cập nhật model…); đọc cài đặt trước `begin`, ghi `Session.pack` trong `begin` (QE-1); `SessionDeps::models_in_use` | `check_start` của bản quyền chạy trước `check_quota`, cùng đường `refuse` (hết hạn mức thì `quotaExhausted`) |
 | `src-tauri/src/commands.rs`, `build.rs`, `capabilities/main.json` | 9 lệnh của màn hình Model | 11 lệnh bản quyền, đặt sau các lệnh của 04 |
 | `src/windows/main/main.tsx` | `modelsStore.init()` | `licenseStore.init()` ngay sau |
 | `src/windows/main/screens/SettingsScreen.tsx` | nhóm Model (`ModelSettings`); câu mô tả tạm còn cho nhóm Bản quyền | nhóm Bản quyền (`LicenseSettings`); không còn nhóm nào cần câu mô tả tạm |
@@ -107,7 +107,7 @@ Lấy từ mục 4 của kế hoạch 00 (các dòng có `06` ở cột kế ho�
 | 178 | Token Ed25519, khóa công khai build sẵn, đủ trường | `token.rs`, `keys.rs`, 30 vector | a1 |
 | 179 | `device_id_hash` từ IOPlatformUUID, MachineGuid | `device.rs` | a3; b7 (Win) |
 | 180 | Quá `refresh_before` chưa làm mới được thì về Free | `Standing::RefreshNeeded` | a7 |
-| 181 | Quá `expires_at`: có mạng thì `validate` trước; về Free khi server xác nhận, hay khi không có mạng | `validate_due`, `Standing::Expired` | a7 |
+| 181 | Quá `expires_at`: có mạng thì `validate` trước; về Free khi server xác nhận, hay khi không có mạng | `validate_due`; chờ một lần `validate` tối đa 5 phút (QĐ30); `Standing::Expired`, kết luận của server nhớ qua lần mở lại (QĐ14) | a7 |
 | 182 | Mua trong app: gói, email, đồng ý; VietQR tự vẽ, nút mở trang PayOS; hỏi đơn mỗi 3 giây; tự kích hoạt; gia hạn, đổi gói thì `validate`; lưu đơn để hỏi lại | `purchase.rs`, `license-order` | a9, b3; b6 (người, staging) |
 | 183 | Gia hạn: nhắc trước 7 ngày và khi đã hết hạn; nút "Gia hạn" | `licenseNotice`, nút ở Cài đặt và thanh báo | a9, b1, b2, b4 |
 | 184 | Kiểm tra lúc khởi động và mỗi giờ; quá 24 giờ thì `validate`, kể cả khi chạy liên tục | ticker mỗi phút, `validate_due` | a7, a8 |
@@ -127,7 +127,7 @@ Lấy từ mục 4 của kế hoạch 00 (các dòng có `06` ở cột kế ho�
 | 262 | Không đầu tư quá tay vào chống crack | QĐ27 | a8, a10 |
 | 263 | Kiểm bản quyền ở nhiều chỗ, không dồn vào một biến; làm rối chuỗi | kiểm ở nhiều chỗ: có; làm rối chuỗi: chưa (QĐ27, điểm cần quyết 3) | a8 |
 | 264, 308 | Tự kiểm chữ ký (Team ID, tên chủ chứng thư); sai thì chỉ Free, báo "Bản cài không chính hãng" | `genuine.rs`, `Standing::NotGenuine` | a10, b1; Team ID và tên thật ở 07 (Đ14, chờ T1, T2) |
-| 265, 310 | Chỉnh đồng hồ: mốc lớn nhất từng thấy; lùi quá 10 phút thì không reset, kiểm online lại, nhắc chỉnh giờ; chu kỳ mới chỉ khi có token qua mốc | `Seen`, `Standing::ClockRolledBack`, `n` theo `issued_at` | a4, a7, b1; b6 (người, đổi giờ thật) |
+| 265, 310 | Chỉnh đồng hồ: mốc lớn nhất từng thấy; lùi quá 10 phút thì không reset, kiểm online lại, nhắc chỉnh giờ; chu kỳ mới chỉ khi có token qua mốc | `Seen` (so cả với `Date` của server), giờ tin được, `Standing::ClockRolledBack`, `n` theo `issued_at`; Free: bộ đếm "ở tương lai" kéo về, hỏi giờ của server, nhắc cả ở Free (QĐ8, QĐ29, QĐ31) | a4, a7, a8, b1; b6 (người, đổi giờ thật) |
 | 266 | Trạng thái bản quyền, bộ đếm trong kho khóa, không file thường | `store.rs` | a5; b6 (người), b7 (Win) |
 | 267, 268 | Tối đa 2 máy, khóa tạm `423`; `429` kèm `Retry-After` | `licenseLocked`, `licenseRateLimited`, chờ `Retry-After` | a6, a7 |
 | 271 | Link ngoài chỉ mở khi nằm trong danh sách cho phép | `EXTERNAL_HOSTS = ["pay.payos.vn"]` | a9 |
@@ -151,9 +151,24 @@ Lấy từ mục 4 của kế hoạch 00 (các dòng có `06` ở cột kế ho�
 - **Cửa sổ `quota_fresh`** (mục 21, 26 của `quota-decisions-2.md`; mục 2 của ghi chú review spec lần 5): server đặt `quota_fresh: true` cho mọi token cấp trong 15 phút kể từ mốc gần nhất (tạo activation; token đầu tiên sau khi admin tăng `quota_epoch`, kể cả khi response của token đó mất trên đường; lúc server áp đổi `cycle_anchor`). App không tự tính cửa sổ này: chỉ tin cờ trong response vừa nhận, token đọc lại từ kho khóa luôn là `false` (QĐ7).
 - **URL của server:** `client::STAGING_URL`, `PRODUCTION_URL` còn `None`; điền ở 06b Task 6 Step 1 khi 05 Task 19 (staging) và Task 21 (production) xong. Bản debug đặt được `AI_TRANSLATOR_LICENSE_URL=http://127.0.0.1:8787` để thử với `wrangler dev`.
 
+## Sửa sau review lần 1 (2026-10-03)
+
+Review lần 1 (`$S/review-06-r1.md`, trên `0a01ac4`) kết luận "Cần sửa": 0 Nghiêm trọng, 2 Quan trọng, 6 Nhỏ; hai điểm Quan trọng đã được tái hiện bằng test tạm. Bản này sửa như sau; mọi test mới đỏ trước khi sửa code (chạy với stub ở cây tham chiếu).
+
+| Mã | Sửa ở đâu | Cách sửa |
+|---|---|---|
+| Q1 | 06a Task 4, 5, 7 | `Seen::rolled_back` so cả với header `Date` mới nhất (giờ máy chậm từ trước lần mở app đầu cũng là chỉnh lùi); thời hạn của token so với `Seen::trusted_now`; `license_expired`, `license_revoked` lưu vào `LicenseRecord.verdict` (QĐ8, QĐ14, QĐ15). Test `a_machine_clock_behind_the_server_is_rolled_back`, `a_machine_clock_behind_the_server_from_the_start_is_caught`, `expired_and_revoked_from_the_server_are_kept_across_restarts` |
+| Q2 | 06a Task 4, 7, 8; 06b Task 1, 2 | bộ đếm Free "ở tương lai" kéo về hiện tại, giữ `used_ms` (QĐ29); người dùng Free hỏi giờ của server khi giờ máy bị coi là chỉnh lùi (QĐ31); `LicenseView.clock_rolled_back` và lời nhắc ở cả gói Free. Test `a_free_counter_from_a_clock_set_ahead_is_pulled_back_without_new_minutes` (cả hai chiều), `a_free_user_with_a_clock_set_ahead_gets_the_time_from_the_server` |
+| N1 | 06a Task 7 | ghi bị từ chối thì giữ luật chặt tới khi ghi lại được, không đọc lại bộ đếm cũ; gói trả phí lấy số lớn hơn ở lần `validate` sau (QĐ13). Test `a_keystore_that_refuses_writes_never_gives_minutes_back`; QA19 nay bị giết |
+| N2 | 06b Task 6 Step 2 | người (không phải agent) xóa thư mục dữ liệu và các mục Keychain của app; Expected "Còn 10 phút" đúng khi cả hai đã xóa |
+| N3 | 06a Task 1 | test vector so đủ 13 trường của claims |
+| N4 | 06a Task 7 | ở `expires_at`, chờ một lần `validate` tối đa 5 phút (QĐ30). Test `at_expiry_the_plan_waits_for_one_validate_before_going_free` |
+| N5 | 06a Task 7, 8 | chưa kiểm xong chữ ký thì chưa mở Pro, chưa báo "không chính hãng" (QĐ26). Test `pro_waits_for_the_build_check` |
+| N6 | mục "Nối với kế hoạch 04" | dựng lại trên `5f48558` (04 cộng các sửa sau review cuối thực thi 04, gồm QE-1 ở `session.rs`) |
+
 ## Quyết định của kế hoạch này
 
-Đánh số QĐ1–QĐ28, dùng chung cho 06a và 06b.
+Đánh số QĐ1–QĐ31, dùng chung cho 06a và 06b. Các QĐ sửa hay thêm sau review lần 1 ghi rõ mã của review.
 
 - **QĐ1. Token kiểm đúng thứ tự của server** (`server/src/token.ts`): định dạng, `kid`, chữ ký (`verify_strict`), máy, `expires_at`, `refresh_before`. `decode` (ba bước đầu) tách khỏi `check` (ba bước sau) để token đã lưu mà hết hạn vẫn đọc được gói, `cycle_anchor` cho màn hình và cho lịch `validate`.
 - **QĐ2. Khóa công khai theo môi trường của bản build:** bản debug dùng `staging`, bản phát hành dùng `production`. Không có cách nào đổi môi trường lúc chạy (không biến môi trường, không cài đặt). Một môi trường có hai ô `a`, `b` (khóa đang ký và khóa dự phòng, §10.2); khóa trong `retired` không bao giờ được build vào app.
@@ -162,14 +177,14 @@ Lấy từ mục 4 của kế hoạch 00 (các dòng có `06` ở cột kế ho�
 - **QĐ5. Luật chọn bộ đếm gói trả phí** (thứ tự trong `resolve_paid`): đã có bộ đếm của khóa hiện tại (`license_id`, `activation_id`, mốc, epoch) thì dùng (luật 1 của ghi chú review spec lần 5, mục 1; **spec §6.8 chưa có câu này**, 06b Task 8 thêm); `quota_fresh` trong response vừa nhận; epoch của token lớn hơn epoch trong bản ghi đánh dấu; bản ghi đánh dấu có mốc cũ hơn mốc hiện tại; còn lại là mất bản ghi, đã dùng hết. Đổi gói làm `cycle_anchor` đổi nên mốc đổi: server đặt `quota_fresh`, hay bản ghi đánh dấu có mốc cũ hơn, đều bắt đầu từ 0.
 - **QĐ6. Free:** một bộ đếm (`quota-free`); lần đầu chạy app (chưa có `settings.json` từ trước, chưa có `license-seen` và bản ghi license) thì bắt đầu từ 0; đã có dữ liệu mà mất bộ đếm thì hết 10 phút của ngày. Reset theo spec (ngày tăng và 20 giờ "đồng hồ thật"). "Ngày" theo múi giờ hiện tại của máy (`chrono::Local`): đổi múi giờ không mở được ngày mới vì vẫn cần 20 giờ.
 - **QĐ7. `quota_fresh` chỉ tin trong response vừa nhận** (`Granted.quota_fresh`), không đọc từ token đã lưu.
-- **QĐ8. Chống chỉnh lùi đồng hồ:** `license-seen` giữ giờ máy lớn nhất từng thấy (cập nhật mỗi phút) và header `Date` mới nhất. Giờ máy nhỏ hơn mốc quá 10 phút: Free không reset, token trả phí không được tin (`Standing::ClockRolledBack`, chạy Free) tới khi giờ máy về đúng; `validate_due` gọi ngay, thử lại mỗi 5 phút; giao diện nhắc chỉnh giờ. Header `Date` của server (qua TLS) hạ mốc về giờ server khi mốc vượt giờ server quá 10 phút: người từng đặt nhầm giờ tới trước rồi chỉnh lại không bị kẹt mãi ở trạng thái "giờ máy bị chỉnh lùi"; chỉnh lùi thật vẫn bị phát hiện vì giờ máy khi đó nhỏ hơn cả giờ server. Máy có giờ chậm thật (pin đồng hồ hỏng) thì phải chỉnh giờ mới dùng được gói trả phí.
+- **QĐ8. Chống chỉnh lùi đồng hồ:** `license-seen` giữ giờ máy lớn nhất từng thấy (cập nhật mỗi phút) và header `Date` mới nhất. Giờ máy nhỏ hơn mốc quá 10 phút: Free không reset, token trả phí không được tin (`Standing::ClockRolledBack`, chạy Free) tới khi giờ máy về đúng; `validate_due` gọi ngay, thử lại mỗi 5 phút; giao diện nhắc chỉnh giờ. Header `Date` của server (qua TLS) hạ mốc về giờ server khi mốc vượt giờ server quá 10 phút: người từng đặt nhầm giờ tới trước rồi chỉnh lại không bị kẹt mãi ở trạng thái "giờ máy bị chỉnh lùi"; chỉnh lùi thật vẫn bị phát hiện vì giờ máy khi đó nhỏ hơn cả giờ server. Giờ máy chậm hơn header `Date` mới nhất của server quá 10 phút cũng là chỉnh lùi, kể cả khi giờ máy đã chậm từ trước lần mở app đầu tiên; thời hạn của token (`expires_at`, `refresh_before`) so với "giờ tin được" = max(giờ máy, `Date` mới nhất) (Q1 của review lần 1). Máy có giờ chậm thật (pin đồng hồ hỏng) thì phải chỉnh giờ mới dùng được gói trả phí; giao diện nhắc chỉnh giờ ở cả gói Free (`LicenseView.clock_rolled_back`).
 - **QĐ9. Phút dịch** lấy đúng từ `EventSink::usage` của 02 (đã theo luật đếm của spec §6.8). Bộ đếm Free luôn cộng; bộ đếm gói trả phí cộng khi đang có gói hiệu lực; gói trả phí hết thì Free của ngày cũng hết.
 - **QĐ10. Mỗi mục kho khóa là một JSON nhỏ** (dưới 2048 byte, test với token thật của vector). Tên mục của bộ đếm, bản ghi đánh dấu có 32 ký tự hex của SHA-256 khóa (giới hạn tên 64 ký tự của `Keystore`); nội dung giữ đủ khóa, đọc ra mà khóa không khớp thì coi như không có. Bộ đếm cũ của chu kỳ trước không xóa (vài trăm byte mỗi chu kỳ; xóa sẽ mở đường "mất bản ghi" giả).
 - **QĐ11. Không theo redirect, chỉ `https`.** Server không bao giờ trả redirect; theo redirect chỉ mở đường cho proxy độc hại đổi đích. Timeout 10 giây kết nối, 20 giây toàn bộ.
 - **QĐ12. User-Agent chung** (`AI-Translator`), không có phiên bản app hay hệ điều hành (§10.1: không gửi gì không cần). Không ghi key, token, email vào log.
-- **QĐ13. Lỗi kho khóa áp luật chặt:** đọc hay ghi bộ đếm lỗi (kho khóa bị từ chối, mục hỏng) thì coi như hết hạn mức (`licenseStorage` trong log, giao diện báo hết hạn mức); đọc bản ghi license lỗi thì chạy Free ở lần chạy đó (ghi log, không xóa gì), lần mở app sau đọc lại; token đã lưu mà không đọc được (khóa công khai đã đổi, token hỏng) thì `Standing::Unverified`, chạy Free, `validate` khi có mạng. Lý do: kho khóa từ chối có thể do người dùng cố tình chặn để không ghi được bộ đếm.
-- **QĐ14. Kết quả của `validate`:** `activation_not_found` (máy bị gỡ) hay `invalid_key`: xóa bản ghi license, về Free. `license_revoked`: về Free, giữ key. `license_expired`: `Standing::Expired`, giữ key để gia hạn. Lỗi mạng, `5xx`: giữ token tới `refresh_before`. `429`: chờ đúng `Retry-After`, không coi là lỗi của key.
-- **QĐ15. Lịch `validate`** (`validate_due`, ticker mỗi phút): lúc khởi động; quá 24 giờ từ lần thành công gần nhất (thử lại mỗi giờ); giờ máy qua mốc chu kỳ kế tiếp (token mới vẫn trước mốc thì hẹn lại (mốc − `issued_at`) + 1 phút); qua `expires_at` (có thể đã gia hạn ở máy khác); giờ máy lùi; token đã lưu không đọc được. Ba việc cuối thử lại mỗi 5 phút.
+- **QĐ13. Lỗi kho khóa áp luật chặt:** đọc hay ghi bộ đếm lỗi (kho khóa bị từ chối, mục hỏng) thì coi như hết hạn mức (`licenseStorage` trong log, giao diện báo hết hạn mức); đọc bản ghi license lỗi thì chạy Free ở lần chạy đó (ghi log, không xóa gì), lần mở app sau đọc lại; token đã lưu mà không đọc được (khóa công khai đã đổi, token hỏng) thì `Standing::Unverified`, chạy Free, `validate` khi có mạng. Ghi bị từ chối thì luật chặt giữ tới khi một lần ghi sau thành công (ticker ghi lại mỗi phút); bộ đếm trong bộ nhớ không bị thay bằng bản cũ đọc từ kho khóa, cả với Free (ở `tick`) lẫn gói trả phí (ở lần `validate` sau: lấy số lớn hơn) (N1 của review lần 1). Lý do: kho khóa từ chối có thể do người dùng cố tình chặn để không ghi được bộ đếm.
+- **QĐ14. Kết quả của `validate`:** `activation_not_found` (máy bị gỡ) hay `invalid_key`: xóa bản ghi license, về Free. `license_revoked`: `Standing::Revoked`, giữ key. `license_expired`: `Standing::Expired`, giữ key để gia hạn. Hai kết luận này ghi vào bản ghi license (`LicenseRecord.verdict`), nên mở lại app khi offline vẫn đúng; token mới từ server xóa nó (Q1 của review lần 1). Lỗi mạng, `5xx`: giữ token tới `refresh_before`. `429`: chờ đúng `Retry-After`, không coi là lỗi của key.
+- **QĐ15. Lịch `validate`** (`validate_due`, ticker mỗi phút): lúc khởi động; quá 24 giờ từ lần thành công gần nhất (thử lại mỗi giờ); giờ máy qua mốc chu kỳ kế tiếp (token mới vẫn trước mốc thì hẹn lại (mốc − `issued_at`) + 1 phút); qua `expires_at` theo giờ tin được, hay server đã báo `license_expired` (có thể đã gia hạn ở máy khác); giờ máy lùi; token đã lưu không đọc được. Ba việc cuối thử lại mỗi 5 phút.
 - **QĐ16. Gỡ kích hoạt máy này cần mạng:** server phải nhận để trả suất; lỗi mạng thì báo `licenseNetwork`, giữ nguyên. Server trả `activation_not_found` (đã bị gỡ từ máy khác) thì coi là đã gỡ. Gỡ máy khác (từ danh sách `409`) dùng key người dùng vừa gõ, không cần máy này đã kích hoạt.
 - **QĐ17. Bản debug không giới hạn** (tiếp QĐ7 của 03): bản debug không đặt `AI_TRANSLATOR_DEV_FREE=1` cài `DevGate` (Pro) và không đếm phút, để dev thử app không bị khóa; đặt biến này thì dùng trạng thái bản quyền thật, như bản phát hành (thử Free, hạn mức, mua trên staging). Bản phát hành luôn dùng `LicenseGate`, không đọc biến này (test chạy ở profile release, 06b Task 5).
 - **QĐ18. Nhắc còn 5 phút** một lần cho mỗi bộ đếm (mỗi ngày Free, mỗi chu kỳ gói trả phí), qua `AppStatus.quota_warning` (thanh phụ đề) và `QuotaView` (cửa sổ chính). Sắp hết hạn gói (7 ngày) là lời nhắc riêng ở thanh báo của cửa sổ chính.
@@ -180,9 +195,12 @@ Lấy từ mục 4 của kế hoạch 00 (các dòng có `06` ở cột kế ho�
 - **QĐ23. Đơn đang chờ** lưu ở `license-order` (có `order_token`), hỏi mỗi 3 giây trên một luồng nền duy nhất tới khi đơn kết thúc; mở lại app thì hỏi tiếp; giữ thêm 24 giờ sau khi link hết hạn (webhook đến chậm) rồi bỏ. Đơn `paid`: `grant_kind: new` thì kích hoạt key mới (kể cả đơn gia hạn được hỗ trợ cấp key mới, mục 2 của review cuối 05); `extend`, `change` thì `validate`. Đơn `underpaid` hỏi tiếp (khách có thể chuyển bù); `paid_needs_review`, `refunded`, `cancelled`, `expired`, `failed` thì thôi và hiện câu theo bảng của 05.
 - **QĐ24. Thiếu ô đồng ý thì không gọi server** (`licenseConsentRequired`); email kiểm sơ bộ (có `@`, có dấu chấm sau `@`, tối đa 254 ký tự), server kiểm kỹ.
 - **QĐ25. Lệnh bản quyền chỉ cho cửa sổ chính** (11 lệnh, ba chỗ `commands.rs`, `build.rs`, `capabilities/main.json`); overlay chỉ nhận `AppStatus.quota_warning`, `quota_reset_at` qua `app://status` như cũ.
-- **QĐ26. Tự kiểm chữ ký lúc khởi động**, trên luồng ticker, trước lần `validate` đầu, nên không làm chậm lúc mở cửa sổ (macOS kiểm cả code lồng bên trong gói; model không nằm trong gói). Bản phát hành thiếu `AI_TRANSLATOR_TEAM_ID` (macOS) hay `AI_TRANSLATOR_SIGNER` (Windows) lúc build thì không chính hãng: quên cấu hình thì khóa, không mở cho không. 07 đặt hai biến trong CI và thêm một test chạy bản phát hành đã ký (Nhận từ 06 ở kế hoạch 00).
+- **QĐ26. Tự kiểm chữ ký lúc khởi động**, trên luồng ticker, trước lần `validate` đầu, nên không làm chậm lúc mở cửa sổ (macOS kiểm cả code lồng bên trong gói; model không nằm trong gói). Bản phát hành thiếu `AI_TRANSLATOR_TEAM_ID` (macOS) hay `AI_TRANSLATOR_SIGNER` (Windows) lúc build thì không chính hãng: quên cấu hình thì khóa, không mở cho không. 07 đặt hai biến trong CI và thêm một test chạy bản phát hành đã ký (Nhận từ 06 ở kế hoạch 00). Chưa kiểm xong thì chưa mở Pro (`genuine` bắt đầu là "chưa biết"), nhưng cũng chưa báo "không chính hãng": vài giây đầu sau khi mở app, người có gói trả phí thấy tính năng Pro khóa rồi mở (N5 của review lần 1).
 - **QĐ27. Mức chống crack** (dòng 262, 263): kiểm ở nhiều chỗ (QĐ20), token ký số, tự kiểm chữ ký; bản phát hành đã có `strip`, `lto`, `codegen-units = 1`, `panic = "abort"` từ GĐ0. **Chưa làm rối chuỗi** liên quan tới bản quyền: lợi ích nhỏ (người crack tìm theo lời gọi hàm, không theo chuỗi), thêm một crate macro. Ghi ở điểm cần quyết 3.
 - **QĐ28. Bảng gói lấy từ server** (`GET /v1/plans`: tên, hạn mức, giá); app chỉ giữ mã gói (`pro`, `pro_x2`, `pro_x5`) và gói Free (10 phút mỗi ngày, hằng số của app). Không có mạng thì màn hình Nâng cấp báo cần mạng, không hiện giá cũ.
+- **QĐ29. Bộ đếm Free "ở tương lai"** (giờ máy từng đặt nhầm tới trước lúc reset, rồi chỉnh lại; Q2 của review lần 1): `resolve_free` kéo `day`, `reset_at` về hiện tại, **giữ `used_ms`** và thời gian đơn điệu đã đếm. Không mở thêm phút nào; lần reset kế tiếp vẫn cần sang ngày mới và 20 giờ "đồng hồ thật". Chiều ngược lại (chỉnh lùi sau khi đã dùng hết) cũng giữ `used_ms` và vẫn cần 20 giờ thật, nên không lách được. Có test cả hai chiều.
+- **QĐ30. Ở `expires_at`, chờ một lần `validate`** (N4 của review lần 1): có server mà chưa thử `validate` nào từ sau mốc thì gói còn dùng được tối đa 5 phút (`EXPIRY_GRACE_SECS`); ticker gọi `validate` trong vòng 1 phút. Đã gia hạn ở máy khác thì nhận token mới và dùng tiếp, không bị dừng phiên; lần thử lỗi mạng hay server báo `license_expired` thì về Free ngay.
+- **QĐ31. Người dùng Free cũng lấy giờ của server khi giờ máy bị coi là chỉnh lùi** (Q2 của review lần 1): chưa có license thì không có `validate`, nên ticker gọi `GET /v1/plans` (không gửi gì của người dùng) tối đa 5 phút một lần, tới khi header `Date` hạ mốc về giờ thật.
 
 ## Điểm cần chủ dự án quyết
 
@@ -194,137 +212,102 @@ Lấy từ mục 4 của kế hoạch 00 (các dòng có `06` ở cột kế ho�
 
 ## Kết quả mutation lúc lập kế hoạch
 
-Script ngoài repo `meeting-translator-work/p06gen/mut6.py`, chạy trên cây cuối của 06 (`plan06`). Mỗi mutation sửa đúng một chỗ, chạy bộ test liên quan (lọc theo module), test phải đỏ, rồi trả code về. Trọng tâm theo yêu cầu: luật hạn mức, chống lùi đồng hồ, kiểm chữ ký token; thêm lịch `validate`, mua gói, gate Pro. Kết quả dưới đây là lượt chạy trên cây cuối (`plan06`): 52/53 bị giết, một mutation tương đương. Lượt đầu (trên chuỗi dựng thử) có 10 mutation sống (TK2, TK9, TK10, QA2, QA11, QA16, QA17, QA18, QA19, VA2); 9 bị giết sau khi thêm test (khóa yếu và chữ ký tầm thường, file chỉ có khối `staging`, token của activation khác, hạn mức không chia hết cho 30, cùng ngày đã qua 20 giờ, Free cộng phút của gói trả phí, kho khóa lỗi, qua `expires_at`).
+Script ngoài repo `meeting-translator-work/p06gen/mut6.py`, chạy trên cây cuối của 06 (`plan06`). Mỗi mutation sửa đúng một chỗ, chạy bộ test liên quan (lọc theo module), test phải đỏ, rồi trả code về. Trọng tâm theo yêu cầu: luật hạn mức, chống lùi đồng hồ, kiểm chữ ký token; thêm lịch `validate`, mua gói, gate Pro. Kết quả dưới đây là lượt chạy trên cây cuối (`plan06`, base `5f48558`): 71/71 bị giết. Lượt đầu (53 mutation, trên chuỗi dựng thử) có 10 mutation sống; 9 bị giết sau khi thêm test (khóa yếu và chữ ký tầm thường, file chỉ có khối `staging`, token của activation khác, hạn mức không chia hết cho 30, cùng ngày đã qua 20 giờ, Free cộng phút của gói trả phí, kho khóa lỗi, qua `expires_at`); QA19 lúc đó bị ghi nhầm là tương đương (N1 của review lần 1), nay bị giết. Sau review lần 1 thêm 18 mutation (TK11, CL7–CL11, QA24–QA28, VA7–VA11, GT3, UL1); CL8 và QA28 bị giết sau khi thêm test.
 
 | Mã | File | Mutation | Kết quả |
 |---|---|---|---|
-| TK1 | `license/token.rs` | không kiểm chữ ký Ed25519 | bị giết
- |
-| TK2 | `license/token.rs` | `verify` thay `verify_strict` (nhận chữ ký không chuẩn, khóa yếu) | bị giết
- |
-| TK3 | `license/token.rs` | không kiểm số nguyên an toàn (|n| ≤ 2^53 − 1) | bị giết
- |
-| TK4 | `license/token.rs` | không kiểm `device_id_hash` | bị giết
- |
-| TK5 | `license/token.rs` | đúng lúc `expires_at` vẫn còn hạn | bị giết
- |
-| TK6 | `license/token.rs` | không kiểm `refresh_before` | bị giết
- |
-| TK7 | `license/token.rs` | thiếu `quota_minutes_per_cycle` coi là không giới hạn | bị giết
- |
-| TK8 | `license/token.rs` | nhận payload có BOM, UTF-8 hỏng | bị giết
- |
-| TK9 | `license/keys.rs` | thiếu khối `production` thì dùng khóa `staging` | bị giết
- |
-| TK10 | `license/manager.rs` | nhận token của activation khác | bị giết
- |
-| KE1 | `license/key.rs` | không kiểm ký tự kiểm tra Luhn | bị giết
- |
-| QA1 | `license/quota.rs` | không kẹp `n ≥ 0` | bị giết
- |
-| QA2 | `license/quota.rs` | chu kỳ cuối ngắn làm tròn xuống | bị giết
- |
-| QA3 | `license/quota.rs` | số ngày của chu kỳ cuối không làm tròn lên | bị giết
- |
-| QA4 | `license/quota.rs` | bỏ luật 1 (đã có bộ đếm của khóa hiện tại thì dùng) | bị giết
- |
-| QA5 | `license/quota.rs` | dùng bộ đếm của khóa khác | bị giết
- |
-| QA6 | `license/quota.rs` | bỏ qua `quota_fresh` | bị giết
- |
-| QA7 | `license/quota.rs` | epoch bằng epoch của bản ghi đánh dấu cũng bắt đầu từ 0 | bị giết
- |
-| QA8 | `license/quota.rs` | sang chu kỳ mới không bắt đầu từ 0 | bị giết
- |
-| QA9 | `license/quota.rs` | dùng bản ghi đánh dấu của activation khác | bị giết
- |
-| QA10 | `license/quota.rs` | Free reset không cần 20 giờ | bị giết
- |
-| QA11 | `license/quota.rs` | Free reset không cần sang ngày mới | bị giết
- |
-| QA12 | `license/quota.rs` | mất bộ đếm Free khi đã có dữ liệu thì bắt đầu từ 0 | bị giết
- |
-| QA13 | `license/quota.rs` | dùng hiệu `Date` khi không có `Date` trước lần reset | bị giết
- |
-| QA14 | `license/store.rs` | ghi bản ghi đánh dấu trước bộ đếm | bị giết
- |
-| QA15 | `license/manager.rs` | token đọc lại từ kho khóa coi là `quota_fresh` | bị giết
- |
-| QA16 | `license/manager.rs` | Free không cộng phút dịch lúc ở gói trả phí | bị giết
- |
-| QA17 | `license/manager.rs` | hết gói trả phí mà Free của ngày vẫn còn | bị giết
- |
-| QA18 | `license/manager.rs` | kho khóa lỗi khi ghi bộ đếm gói trả phí mà vẫn dịch được | bị giết
- |
-| QA19 | `license/manager.rs` | kho khóa lỗi khi đọc bộ đếm Free mà vẫn dịch được | SỐNG (tương đương: `free_error` thì không có bộ đếm Free, hạn mức còn lại đã là 0)
- |
-| QA20 | `license/manager.rs` | nhắc còn 5 phút lặp lại | bị giết
- |
-| QA21 | `license/app.rs` | hạn mức còn 0 vẫn bắt đầu được phiên | bị giết
- |
-| QA22 | `session.rs` | chạm hạn mức mà phiên không dừng | bị giết
- |
-| QA23 | `license/manager.rs` | đã có `license-seen` mà vẫn coi là lần đầu chạy (Free từ 0) | bị giết
- |
-| CL1 | `license/quota.rs` | dung sai chỉnh lùi 100 phút thay vì 10 | bị giết
- |
-| CL2 | `license/quota.rs` | đồng hồ bị chỉnh lùi mà vẫn tính hiệu giờ máy | bị giết
- |
-| CL3 | `license/quota.rs` | header `Date` không hạ mốc giờ máy (đặt nhầm giờ tới trước thì kẹt mãi) | bị giết
- |
-| CL4 | `license/manager.rs` | giờ máy chỉnh lùi mà vẫn tin token | bị giết
- |
-| CL5 | `license/manager.rs` | giờ máy chỉnh lùi mà không gọi `validate` ngay | bị giết
- |
-| CL6 | `license/manager.rs` | ticker không cập nhật giờ máy lớn nhất | bị giết
- |
-| VA1 | `license/manager.rs` | `validate` mỗi 48 giờ thay vì 24 | bị giết
- |
-| VA2 | `license/manager.rs` | qua `expires_at` mà không gọi `validate` ngay | bị giết
- |
-| VA3 | `license/manager.rs` | token mới vẫn trước mốc chu kỳ mà gọi lại ngay (không hẹn) | bị giết
- |
-| VA4 | `license/manager.rs` | máy bị gỡ từ xa mà vẫn giữ bản ghi license | bị giết
- |
-| VA5 | `license/manager.rs` | license bị thu hồi mà vẫn Pro | bị giết
- |
-| VA6 | `license/manager.rs` | `429` không chờ đúng `Retry-After` | bị giết
- |
-| PU1 | `license/purchase.rs` | tạo đơn không cần ô đồng ý | bị giết
- |
-| PU2 | `license/purchase.rs` | đơn gia hạn được cấp key mới mà vẫn `validate` key cũ | bị giết
- |
-| PU3 | `license/purchase.rs` | đơn `underpaid` thôi hỏi | bị giết
- |
-| PU4 | `navigation.rs` | mở URL ngoài danh sách cho phép | bị giết
- |
-| PU5 | `license/manager.rs` | `LicenseView` mang key đầy đủ | bị giết
- |
-| GT1 | `pro.rs` | bản phát hành chạy Pro không giới hạn (test chạy ở profile release) | bị giết
- |
-| GT2 | `license/genuine.rs` | bản phát hành thiếu Team ID mà vẫn chính hãng (test chạy ở profile release) | bị giết
- |
+| TK1 | `license/token.rs` | không kiểm chữ ký Ed25519 | bị giết |
+| TK2 | `license/token.rs` | `verify` thay `verify_strict` (nhận chữ ký không chuẩn, khóa yếu) | bị giết |
+| TK3 | `license/token.rs` | không kiểm số nguyên an toàn (|n| ≤ 2^53 − 1) | bị giết |
+| TK4 | `license/token.rs` | không kiểm `device_id_hash` | bị giết |
+| TK5 | `license/token.rs` | đúng lúc `expires_at` vẫn còn hạn | bị giết |
+| TK6 | `license/token.rs` | không kiểm `refresh_before` | bị giết |
+| TK7 | `license/token.rs` | thiếu `quota_minutes_per_cycle` coi là không giới hạn | bị giết |
+| TK8 | `license/token.rs` | nhận payload có BOM, UTF-8 hỏng | bị giết |
+| TK9 | `license/keys.rs` | thiếu khối `production` thì dùng khóa `staging` | bị giết |
+| TK10 | `license/manager.rs` | nhận token của activation khác | bị giết |
+| KE1 | `license/key.rs` | không kiểm ký tự kiểm tra Luhn | bị giết |
+| QA1 | `license/quota.rs` | không kẹp `n ≥ 0` | bị giết |
+| QA2 | `license/quota.rs` | chu kỳ cuối ngắn làm tròn xuống | bị giết |
+| QA3 | `license/quota.rs` | số ngày của chu kỳ cuối không làm tròn lên | bị giết |
+| QA4 | `license/quota.rs` | bỏ luật 1 (đã có bộ đếm của khóa hiện tại thì dùng) | bị giết |
+| QA5 | `license/quota.rs` | dùng bộ đếm của khóa khác | bị giết |
+| QA6 | `license/quota.rs` | bỏ qua `quota_fresh` | bị giết |
+| QA7 | `license/quota.rs` | epoch bằng epoch của bản ghi đánh dấu cũng bắt đầu từ 0 | bị giết |
+| QA8 | `license/quota.rs` | sang chu kỳ mới không bắt đầu từ 0 | bị giết |
+| QA9 | `license/quota.rs` | dùng bản ghi đánh dấu của activation khác | bị giết |
+| QA10 | `license/quota.rs` | Free reset không cần 20 giờ | bị giết |
+| QA11 | `license/quota.rs` | Free reset không cần sang ngày mới | bị giết |
+| QA12 | `license/quota.rs` | mất bộ đếm Free khi đã có dữ liệu thì bắt đầu từ 0 | bị giết |
+| QA13 | `license/quota.rs` | dùng hiệu `Date` khi không có `Date` trước lần reset | bị giết |
+| QA14 | `license/store.rs` | ghi bản ghi đánh dấu trước bộ đếm | bị giết |
+| QA15 | `license/manager.rs` | token đọc lại từ kho khóa coi là `quota_fresh` | bị giết |
+| QA16 | `license/manager.rs` | Free không cộng phút dịch lúc ở gói trả phí | bị giết |
+| QA17 | `license/manager.rs` | hết gói trả phí mà Free của ngày vẫn còn | bị giết |
+| QA18 | `license/manager.rs` | kho khóa lỗi khi ghi bộ đếm gói trả phí mà vẫn dịch được | bị giết |
+| QA19 | `license/manager.rs` | kho khóa lỗi khi đọc bộ đếm Free mà vẫn dịch được | bị giết |
+| QA20 | `license/manager.rs` | nhắc còn 5 phút lặp lại | bị giết |
+| QA21 | `license/app.rs` | hạn mức còn 0 vẫn bắt đầu được phiên | bị giết |
+| QA22 | `session.rs` | chạm hạn mức mà phiên không dừng | bị giết |
+| QA23 | `license/manager.rs` | đã có `license-seen` mà vẫn coi là lần đầu chạy (Free từ 0) | bị giết |
+| CL1 | `license/quota.rs` | dung sai chỉnh lùi 100 phút thay vì 10 | bị giết |
+| CL2 | `license/quota.rs` | đồng hồ bị chỉnh lùi mà vẫn tính hiệu giờ máy | bị giết |
+| CL3 | `license/quota.rs` | header `Date` không hạ mốc giờ máy (đặt nhầm giờ tới trước thì kẹt mãi) | bị giết |
+| CL4 | `license/manager.rs` | giờ máy chỉnh lùi mà vẫn tin token | bị giết |
+| CL5 | `license/manager.rs` | giờ máy chỉnh lùi mà không gọi `validate` ngay | bị giết |
+| CL6 | `license/manager.rs` | ticker không cập nhật giờ máy lớn nhất | bị giết |
+| VA1 | `license/manager.rs` | `validate` mỗi 48 giờ thay vì 24 | bị giết |
+| VA2 | `license/manager.rs` | qua `expires_at` mà không gọi `validate` ngay | bị giết |
+| VA3 | `license/manager.rs` | token mới vẫn trước mốc chu kỳ mà gọi lại ngay (không hẹn) | bị giết |
+| VA4 | `license/manager.rs` | máy bị gỡ từ xa mà vẫn giữ bản ghi license | bị giết |
+| VA5 | `license/manager.rs` | license bị thu hồi mà vẫn Pro | bị giết |
+| VA6 | `license/manager.rs` | `429` không chờ đúng `Retry-After` | bị giết |
+| PU1 | `license/purchase.rs` | tạo đơn không cần ô đồng ý | bị giết |
+| PU2 | `license/purchase.rs` | đơn gia hạn được cấp key mới mà vẫn `validate` key cũ | bị giết |
+| PU3 | `license/purchase.rs` | đơn `underpaid` thôi hỏi | bị giết |
+| PU4 | `navigation.rs` | mở URL ngoài danh sách cho phép | bị giết |
+| PU5 | `license/manager.rs` | `LicenseView` mang key đầy đủ | bị giết |
+| GT1 | `pro.rs` | bản phát hành chạy Pro không giới hạn (test chạy ở profile release) | bị giết |
+| GT2 | `license/genuine.rs` | bản phát hành thiếu Team ID mà vẫn chính hãng (test chạy ở profile release) | bị giết |
+| TK11 | `license/token.rs` | đọc `cycle_anchor` từ trường `issued_at` (N3 của review lần 1) | bị giết |
+| CL7 | `license/quota.rs` | chỉnh lùi chỉ so với giờ máy lớn nhất, bỏ qua `Date` của server (Q1) | bị giết |
+| CL8 | `license/manager.rs` | thời hạn của token so với giờ máy, không với giờ tin được (Q1) | bị giết |
+| CL9 | `license/quota.rs` | giờ tin được là giờ máy (Q1) | bị giết |
+| CL10 | `license/manager.rs` | Free hỏi giờ server mà không đọc `Date` (Q2) | bị giết |
+| CL11 | `license/manager.rs` | Free hỏi giờ server mỗi phút, không giới hạn 5 phút (Q2) | bị giết |
+| QA24 | `license/quota.rs` | không kéo bộ đếm Free "ở tương lai" về hiện tại (Q2) | bị giết |
+| QA25 | `license/quota.rs` | kéo về mà đặt lại phút đã dùng về 0 (Q2, chiều gian lận) | bị giết |
+| QA26 | `license/manager.rs` | ghi Free bị từ chối thì đọc lại bộ đếm cũ (N1) | bị giết |
+| QA27 | `license/manager.rs` | `validate` thay bộ đếm gói trả phí trong bộ nhớ bằng bản cũ (N1) | bị giết |
+| QA28 | `license/manager.rs` | ticker không ghi lại bộ đếm gói trả phí bị từ chối (N1) | bị giết |
+| VA7 | `license/manager.rs` | `license_expired` từ server không đổi trạng thái (Q1) | bị giết |
+| VA8 | `license/manager.rs` | kết luận `expired` đã lưu bị bỏ qua (Q1) | bị giết |
+| VA9 | `license/manager.rs` | về Free ngay ở `expires_at`, không chờ `validate` (N4) | bị giết |
+| VA10 | `license/manager.rs` | chờ `validate` cả khi đã thử sau mốc (N4) | bị giết |
+| VA11 | `license/manager.rs` | kết luận của server không ghi vào kho khóa (Q1) | bị giết |
+| GT3 | `license/manager.rs` | chưa kiểm xong chữ ký mà đã mở Pro (N5) | bị giết |
+| UL1 | `lib/license.ts` | gói Free không nhắc giờ máy chỉnh lùi (Q2) | bị giết |
 
 ## Bảng task → commit tham chiếu
 
-Cây tham chiếu: `meeting-translator-work/p06-repo`, nhánh `plan06` (dựng bằng cách chạy lại kế hoạch từ file, từ `4b6503a`). Mỗi task có code ứng với đúng một commit; cây sau mỗi commit khớp từng byte với chuỗi dựng thử ban đầu (nhánh `p06`).
+Cây tham chiếu: `meeting-translator-work/p06-repo`, nhánh `plan06` (dựng bằng cách chạy lại kế hoạch từ file, từ `5f48558`). Mỗi task có code ứng với đúng một commit; cây sau mỗi commit khớp từng byte với chuỗi dựng thử ban đầu (nhánh `p06`).
 
 | Task | Commit | Thông điệp |
 |---|---|---|
-| 06a Task 1 | `2f42114` | feat(app): token bản quyền v1 ký Ed25519, kiểm offline bằng khóa công khai build sẵn, theo bộ vector của 05 (§6.8, §10.2) |
-| 06a Task 2 | `05ccb3a` | feat(app): kiểm license key người dùng gõ bằng ký tự kiểm tra Luhn mod 32 như server (§10.2) |
-| 06a Task 3 | `b4ae7cf` | feat(app): device_id_hash từ IOPlatformUUID hay MachineGuid, tên máy cho danh sách kích hoạt (§6.8) |
-| 06a Task 4 | `91c8b9e` | feat(app): luật hạn mức của gói trả phí và Free, chống chỉnh đồng hồ, dạng phép tính thuần (§6.8) |
-| 06a Task 5 | `059b388` | feat(app): bản ghi bản quyền và bộ đếm hạn mức trong kho khóa, ghi bộ đếm trước bản ghi đánh dấu (§6.8) |
-| 06a Task 6 | `2ea5b16` | feat(app): client của license server qua TLS của hệ điều hành, đọc header Date, lỗi có mã (§6.8) |
-| 06a Task 7 | `d8d6310` | feat(app): trạng thái bản quyền và hạn mức của máy: kích hoạt, làm mới, gỡ, đếm phút, lịch validate (§6.8) |
-| 06a Task 8 | `a0f87c0` | feat(app): điểm kiểm tra Pro theo bản quyền thật, hạn mức chặn và dừng phiên, lịch validate chạy nền (§6.8, §4.2) |
-| 06a Task 9 | `492319f` | feat(app): mua, gia hạn, đổi gói bằng VietQR ngay trong app, lệnh bản quyền cho cửa sổ chính (§6.8, §4.3) |
-| 06a Task 10 | `2dc7ee4` | feat(app): app tự kiểm chữ ký số của bản cài, không chính hãng thì chỉ chạy Free (§10.2) |
-| 06b Task 1 | `7b26fd2` | feat(ui): kiểu và store cho bản quyền, hạn mức và mua gói; thanh phụ đề nhắc còn dưới 5 phút |
-| 06b Task 2 | `2de2238` | feat(ui): Cài đặt › Bản quyền: gói, hạn, hạn mức, kích hoạt key, gỡ máy, gửi lại key (§4.3) |
-| 06b Task 3 | `c8618af` | feat(ui): màn hình Nâng cấp: 4 gói, email và ô đồng ý, mã VietQR trong app, trạng thái đơn (§4.3, §6.8) |
-| 06b Task 4 | `343a354` | feat(ui): hạn mức còn lại và lúc reset ở màn hình chính, lời nhắc bản quyền, giờ mở lại trên thanh phụ đề (§4.2) |
+| 06a Task 1 | `077ba38` | T1: token v1 and public keys |
+| 06a Task 2 | `2d2e196` | T2: license key format |
+| 06a Task 3 | `cc59076` | T3: device id hash and label |
+| 06a Task 4 | `9da7ac6` | T4: quota rules |
+| 06a Task 5 | `3ca463c` | T5: license store in keystore |
+| 06a Task 6 | `28989ec` | T6: license server client |
+| 06a Task 7 | `6867913` | T7: license manager |
+| 06a Task 8 | `75c1ce7` | T8: license wired into the app |
+| 06a Task 9 | `9d47a50` | T9: purchase flow and license commands |
+| 06a Task 10 | `a209d2f` | T10: genuine build self-check |
+| 06b Task 1 | `b0a8d4f` | B1: license ipc types and store |
+| 06b Task 2 | `3f7bf70` | B2: license settings group |
+| 06b Task 3 | `d8c92c3` | B3: upgrade screen |
+| 06b Task 4 | `690956e` | B4: quota on home, license notices, overlay reset time |
 
 06a Task 11 và 06b Task 5 là kiểm tra, không có commit; 06b Task 6–8 là việc của người, Windows và cập nhật kế hoạch 00.
 
@@ -335,7 +318,7 @@ Cây tham chiếu: `meeting-translator-work/p06-repo`, nhánh `plan06` (dựng b
 Spec §6.8 "Token bản quyền", §10.2 "Khóa ký token"; hợp đồng với 05 (QĐ4 của 05, `server/src/token.ts`). QĐ1, QĐ2.
 
 - `token::decode` đọc và kiểm định dạng (đủ trường, đúng kiểu, số nguyên an toàn của JavaScript, UTF-8 chặt không BOM), rồi `kid`, rồi chữ ký Ed25519 (`verify_strict`); `token::check` kiểm máy, `expires_at`, `refresh_before`. Thứ tự lỗi đúng `checks_order` của vector.
-- Test chạy cả 30 token của `server/test/vectors/token-v1.json` (đọc bằng `include_str!`, kiểm SHA-256 của file đúng bản đã chốt với server).
+- Test chạy cả 30 token của `server/test/vectors/token-v1.json` (đọc bằng `include_str!`, kiểm SHA-256 của file đúng bản đã chốt với server); token `ok` so đủ 13 trường của claims với vector (N3 của review lần 1).
 - `keys::PublicKeys`: đọc khối `staging` hay `production` của `src-tauri/keys/license-public-keys.json` (định dạng y hệt `server/keys/public-keys.json`, chép nguyên file đó sau 05 Task 19), bỏ qua `retired`, `_note` và khóa lạ ở gốc. Bản debug dùng `staging`, bản phát hành dùng `production`. Hai khối còn trống: mọi token là `unknown_kid`, tức Free, tới khi điền khóa (06b Task 6). Test kiểm bản chép khớp file của server khi file đó đã có.
 
 **Files:**
@@ -549,16 +532,28 @@ mod tests {
             match got {
                 Ok(claims) => {
                     assert_eq!(expected, "ok", "{name}");
-                    let want = &t["claims"];
-                    assert_eq!(claims.kid, want["kid"].as_str().unwrap(), "{name}");
-                    assert_eq!(claims.license_id, want["license_id"].as_str().unwrap(), "{name}");
-                    assert_eq!(claims.issued_at, want["issued_at"].as_i64().unwrap(), "{name}");
-                    assert_eq!(
-                        claims.quota_minutes_per_cycle.map(i64::from),
-                        want["quota_minutes_per_cycle"].as_i64(),
-                        "{name}"
-                    );
-                    assert_eq!(claims.quota_fresh, want["quota_fresh"].as_bool().unwrap(), "{name}");
+                    // So đủ mọi trường với `claims` của vector (N3 của review 06 lần 1).
+                    let plan = match claims.plan {
+                        Plan::Pro => "pro",
+                        Plan::ProX2 => "pro_x2",
+                        Plan::ProX5 => "pro_x5",
+                    };
+                    let got = serde_json::json!({
+                        "kid": claims.kid,
+                        "license_id": claims.license_id,
+                        "activation_id": claims.activation_id,
+                        "activation_created_at": claims.activation_created_at,
+                        "device_id_hash": claims.device_id_hash,
+                        "plan": plan,
+                        "expires_at": claims.expires_at,
+                        "cycle_anchor": claims.cycle_anchor,
+                        "quota_minutes_per_cycle": claims.quota_minutes_per_cycle,
+                        "quota_epoch": claims.quota_epoch,
+                        "quota_fresh": claims.quota_fresh,
+                        "issued_at": claims.issued_at,
+                        "refresh_before": claims.refresh_before,
+                    });
+                    assert_eq!(got, t["claims"], "{name}");
                 }
                 Err(e) => {
                     assert_eq!(label(e), expected, "{name}");
@@ -628,7 +623,7 @@ cargo test -p meeting-translator --lib license:: 2>&1 | grep -E '^error(\[E[0-9]
 ```
 Expected (lúc lập kế hoạch; chưa có phần code của `token.rs`, `keys.rs`):
 ```text
-error: could not compile `meeting-translator` (lib test) due to 56 previous errors; 2 warnings emitted
+error: could not compile `meeting-translator` (lib test) due to 59 previous errors; 2 warnings emitted
 error[E0425]: cannot find function `decode` in this scope
 error[E0425]: cannot find function `verify` in this scope
 error[E0425]: cannot find type `PublicKeys` in this scope
@@ -953,7 +948,7 @@ test license::token::tests::errors_are_ordered_like_the_contract ... ok
 test license::token::tests::every_vector_gives_the_expected_result ... ok
 test license::token::tests::the_vector_file_is_the_agreed_one ... ok
 test license::token::tests::without_keys_every_token_is_unknown ... ok
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 307 filtered out
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 311 filtered out
 ```
 
 Run:
@@ -962,7 +957,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 313 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out
+test result: ok. 317 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -1178,7 +1173,7 @@ Expected (lúc lập kế hoạch):
 test license::key::tests::display_groups_by_four_and_long_or_odd_input_is_refused ... ok
 test license::key::tests::every_single_character_typo_is_caught ... ok
 test license::key::tests::keys_normalize_like_the_server ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 316 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 320 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -1466,7 +1461,7 @@ Expected (lúc lập kế hoạch):
 test license::device::tests::labels_are_cleaned_like_the_server_does ... ok
 test license::device::tests::the_hardware_id_is_the_platform_uuid ... ok
 test license::device::tests::the_hash_is_64_lowercase_hex_digits_like_the_server_wants ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 319 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 323 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -1507,6 +1502,7 @@ Spec §6.8 "Hạn mức", §4.2 bước 2, §10.2 (chỉnh đồng hồ); `quota
 - **Chu kỳ** (`cycle`): `n = floor((issued_at − cycle_anchor) / 30 ngày)` theo token mới nhất (giờ server), kẹp `n ≥ 0`; chu kỳ cuối ngắn thì `ceil(hạn_mức × số_ngày / 30)`.
 - **Bộ đếm gói trả phí** (`resolve_paid`), theo thứ tự: đã có bộ đếm của khóa hiện tại thì dùng nó (luật 1, mục 1 của `notes-for-plan06.md`); token vừa nhận có `quota_fresh`; epoch lớn hơn bản ghi đánh dấu; bản ghi đánh dấu có mốc cũ hơn (sang chu kỳ mới); còn lại là mất bản ghi (đã dùng hết). Bản ghi của activation khác không dùng.
 - **Free** (`resolve_free`): bắt đầu từ 0 ở lần đầu chạy, mất bộ đếm khi đã có dữ liệu thì coi như hết; reset khi ngày theo giờ máy tăng và đã qua 20 giờ theo "đồng hồ thật" (thời gian đơn điệu, hiệu hai header `Date`, hiệu giờ máy chỉ khi giờ máy không nhỏ hơn mốc lớn nhất từng thấy quá 10 phút). Múi giờ truyền vào (`chrono::Local` ở app, múi giờ cố định trong test).
+- **Đồng hồ** (`Seen`, QĐ8): chỉnh lùi là giờ máy nhỏ hơn quá 10 phút so với mốc lớn nhất từng thấy, hay so với header `Date` mới nhất của server; `trusted_now` = max(giờ máy, `Date`). Bộ đếm Free "ở tương lai" kéo về hiện tại, giữ phút đã dùng (QĐ29).
 - Test có đủ các ca `notes-for-plan06.md` mục 3: tắt app giữa hai lần ghi ở cả ba luật bắt đầu từ 0, mất bản ghi đánh dấu mà còn bộ đếm, epoch mới khi cửa sổ đã đóng (còn và không còn bản ghi đánh dấu), đổi gói (có và không có bản ghi đánh dấu).
 
 **Files:**
@@ -1835,6 +1831,47 @@ mod tests {
         assert!(!resolve_free(&east, Some(c2), true, MORNING + 11 * 3600, &Seen::default()).1);
     }
 
+    /// Bộ đếm Free reset lúc giờ máy đặt nhầm tới trước (Q2 của review 06 lần 1): giờ máy về đúng thì kéo `day`, `reset_at`
+    /// về hiện tại, giữ phút đã dùng; lần reset kế tiếp theo luật thường (sang ngày mới và 20 giờ đồng hồ thật). Chiều
+    /// ngược lại (chỉnh lùi sau khi đã dùng hết) không mở được phút nào.
+    #[test]
+    fn a_free_counter_from_a_clock_set_ahead_is_pulled_back_without_new_minutes() {
+        let ahead = MORNING + 365 * DAY_SECS;
+        let mut used = free_start(&vn(), ahead, &Seen::default());
+        used.used_ms = FREE_DAILY_MS;
+        used.monotonic_ms = 3600 * 1000;
+        let (pulled, write) = resolve_free(&vn(), Some(used), true, MORNING, &Seen::default());
+        assert!(write);
+        assert_eq!((pulled.day, pulled.reset_at), (local_day(&vn(), MORNING), MORNING));
+        assert_eq!(pulled.used_ms, FREE_DAILY_MS, "không mở thêm phút nào");
+        assert_eq!(
+            pulled.monotonic_ms,
+            3600 * 1000,
+            "thời gian đơn điệu đã đếm vẫn là thời gian thật"
+        );
+        assert!(!resolve_free(&vn(), Some(pulled.clone()), true, MORNING + 3600, &Seen::default()).1);
+        let (next, reset) = resolve_free(&vn(), Some(pulled), true, MORNING + 21 * 3600, &Seen::default());
+        assert!(
+            reset && next.used_ms == 0,
+            "hôm sau reset như thường, không kẹt tới năm sau"
+        );
+        // Chiều ngược lại: dùng hết hôm nay rồi chỉnh lùi hai ngày, rồi đặt tới "ngày mai" của ngày giả.
+        let mut today = free_start(&vn(), MORNING, &Seen::default());
+        today.used_ms = FREE_DAILY_MS;
+        let seen = Seen {
+            max_machine: MORNING,
+            latest_server_date: None,
+        };
+        let back = MORNING - 2 * DAY_SECS;
+        let (c, _) = resolve_free(&vn(), Some(today), true, back, &seen);
+        assert_eq!(c.used_ms, FREE_DAILY_MS);
+        let (c, reset) = resolve_free(&vn(), Some(c), true, back + DAY_SECS, &seen);
+        assert!(
+            !reset && c.used_ms == FREE_DAILY_MS,
+            "chưa đủ 20 giờ thật: không mở phút nào"
+        );
+    }
+
     /// Free chỉ reset khi sang ngày mới theo giờ máy, kể cả khi đã qua 20 giờ (§6.8).
     #[test]
     fn free_needs_a_new_day_as_well_as_twenty_hours() {
@@ -1872,6 +1909,20 @@ mod tests {
             "chỉnh lùi thật vẫn bị phát hiện"
         );
     }
+
+    /// Giờ máy chậm hơn header `Date` của server quá 10 phút cũng là chỉnh lùi, kể cả khi giờ máy đã chậm từ trước lần
+    /// mở app đầu tiên (Q1 của review 06 lần 1). Giờ tin được là giờ lớn hơn trong hai giờ.
+    #[test]
+    fn a_machine_clock_behind_the_server_is_rolled_back() {
+        let year = 365 * DAY_SECS;
+        let mut seen = Seen::default();
+        seen.observe_machine(T0 - year);
+        seen.observe_server(T0);
+        assert!(seen.rolled_back(T0 - year + 60));
+        assert_eq!(seen.trusted_now(T0 - year + 60), T0);
+        assert!(!seen.rolled_back(T0 - ROLLBACK_TOLERANCE_SECS));
+        assert_eq!(seen.trusted_now(T0 + 60), T0 + 60);
+    }
 }
 ```
 
@@ -1883,7 +1934,7 @@ cargo test -p meeting-translator --lib license::quota 2>&1 | grep -E '^error(\[E
 ```
 Expected (lúc lập kế hoạch; chưa có phần code của `quota.rs`, chưa có `chrono`):
 ```text
-error: could not compile `meeting-translator` (lib test) due to 114 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 139 previous errors; 1 warning emitted
 error[E0422]: cannot find struct, variant or union type `Claims` in this scope
 error[E0422]: cannot find struct, variant or union type `PaidCounter` in this scope
 error[E0422]: cannot find struct, variant or union type `Seen` in this scope
@@ -2142,9 +2193,19 @@ impl Seen {
         }
     }
 
-    /// Giờ máy hiện tại nhỏ hơn mốc lớn nhất từng thấy quá 10 phút: đồng hồ đã bị chỉnh lùi (§10.2).
+    /// Giờ tin được: giờ máy, hay header `Date` mới nhất của server nếu lớn hơn (giờ máy chậm). Dùng để so thời hạn của
+    /// token, để đặt giờ máy lùi không kéo dài được gói trả phí.
+    pub fn trusted_now(&self, now: i64) -> i64 {
+        self.latest_server_date.map_or(now, |d| now.max(d))
+    }
+
+    /// Đồng hồ đã bị chỉnh lùi (§10.2): giờ máy hiện tại nhỏ hơn quá 10 phút so với mốc lớn nhất từng thấy, hay so với
+    /// header `Date` mới nhất của server (giờ máy chậm từ trước lần mở app đầu tiên).
     pub fn rolled_back(&self, now: i64) -> bool {
-        now < self.max_machine - ROLLBACK_TOLERANCE_SECS
+        let mark = self
+            .latest_server_date
+            .map_or(self.max_machine, |d| self.max_machine.max(d));
+        now < mark - ROLLBACK_TOLERANCE_SECS
     }
 }
 
@@ -2192,6 +2253,17 @@ pub fn resolve_free<Tz: TimeZone>(
     seen: &Seen,
 ) -> (FreeCounter, bool) {
     match stored {
+        // Lần reset ghi theo giờ máy ở tương lai (giờ máy từng đặt nhầm tới trước rồi chỉnh lại): kéo `day`, `reset_at` về
+        // hiện tại, giữ phút đã dùng và thời gian đơn điệu đã đếm. Không mở thêm phút nào; lần reset kế tiếp vẫn cần
+        // sang ngày mới và 20 giờ "đồng hồ thật", nên chỉnh lùi cũng không lách được.
+        Some(c) if c.day > local_day(tz, now) || c.reset_at > now + ROLLBACK_TOLERANCE_SECS => (
+            FreeCounter {
+                day: local_day(tz, now),
+                reset_at: now,
+                ..c
+            },
+            true,
+        ),
         Some(c) if local_day(tz, now) > c.day && free_elapsed(&c, now, seen) >= FREE_MIN_GAP_SECS => {
             (free_start(tz, now, seen), true)
         }
@@ -2232,6 +2304,8 @@ cargo test -p meeting-translator --lib license::quota -- --test-threads=1 2>&1 |
 ```
 Expected (lúc lập kế hoạch):
 ```text
+test license::quota::tests::a_free_counter_from_a_clock_set_ahead_is_pulled_back_without_new_minutes ... ok
+test license::quota::tests::a_machine_clock_behind_the_server_is_rolled_back ... ok
 test license::quota::tests::a_marker_without_its_counter_means_the_record_was_lost ... ok
 test license::quota::tests::a_new_epoch_starts_over_with_a_marker_or_inside_the_fresh_window ... ok
 test license::quota::tests::a_short_last_cycle_gets_a_share_of_the_quota_rounded_up ... ok
@@ -2245,7 +2319,7 @@ test license::quota::tests::records_of_another_activation_are_not_used ... ok
 test license::quota::tests::the_cycle_follows_the_server_clock_and_never_goes_below_zero ... ok
 test license::quota::tests::the_rollback_tolerance_is_ten_minutes ... ok
 test license::quota::tests::the_three_fresh_rules_survive_a_crash_between_the_two_writes ... ok
-test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 322 filtered out
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 326 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -2294,6 +2368,7 @@ Spec §6.8 "Lưu bộ đếm", "Thứ tự ghi", §10.2. QĐ10. Mỗi mục kho 
 
 - `write_paid` ghi bộ đếm trước, bản ghi đánh dấu sau. Test kiểm thứ tự, và ca app bị tắt sau lần ghi đầu.
 - Đọc lỗi (kho khóa bị từ chối, mục hỏng) khác "chưa có": nơi gọi áp luật chặt.
+- Bản ghi license có `verdict` (`expired`, `revoked`): kết luận gần nhất của server, nhớ qua lần mở app sau (QĐ14).
 - `Vault` là trait (kho khóa thật, `FakeVault` trong test).
 
 **Files:**
@@ -2420,6 +2495,18 @@ pub struct LicenseRecord {
     pub token: String,
     /// Giờ máy của lần `activate` hay `validate` thành công gần nhất (giây Unix).
     pub validated_at: i64,
+    /// Kết luận gần nhất của server về license này (`license_expired`, `license_revoked`), nhớ qua lần mở app sau kể cả khi
+    /// offline. Token mới từ server xóa nó.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verdict: Option<Verdict>,
+}
+
+/// Kết luận của server khi `validate`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Verdict {
+    Expired,
+    Revoked,
 }
 
 /// Đơn đang chờ thanh toán.
@@ -2680,6 +2767,7 @@ pub mod tests {
             activation_id: "5d0e8a47-3b2c-4f6d-8e1a-7c9b0d2e4f60".into(),
             token: vectors["tokens"][0]["token"].as_str().unwrap().into(),
             validated_at: 1_790_816_400,
+            verdict: Some(Verdict::Revoked),
         };
         write(&ks, LICENSE, &record).unwrap();
         assert_eq!(read::<LicenseRecord>(&ks, LICENSE).unwrap(), Some(record));
@@ -2701,7 +2789,7 @@ test license::store::tests::names_fit_the_keystore_and_a_counter_is_only_used_fo
 test license::store::tests::read_errors_and_corrupt_items_are_not_the_same_as_missing ... ok
 test license::store::tests::the_counter_is_written_before_the_marker ... ok
 test license::store::tests::wiping_user_data_keeps_the_license_and_the_quota_counters ... ok
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 335 filtered out
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 341 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -3351,7 +3439,7 @@ test license::client::tests::errors_keep_their_code_and_the_fields_the_app_shows
 test license::client::tests::http_dates_parse_and_bad_ones_are_ignored ... ok
 test license::client::tests::only_https_is_accepted_and_http_only_for_this_machine_in_debug ... ok
 test license::client::tests::the_order_token_goes_in_the_authorization_header ... ok
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 341 filtered out
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 347 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -3412,6 +3500,7 @@ Spec §6.8, §9, §10.2. QĐ13–QĐ18. `License` không phụ thuộc Tauri: n�
 - `activate` (kiểm key tại chỗ trước), `validate` (máy bị gỡ, key không còn: xóa bản ghi, về Free; thu hồi: về Free giữ key; hết hạn; lỗi mạng: giữ tới `refresh_before`; `429`: chờ `Retry-After`), `deactivate` (máy này, hay máy khác từ danh sách `409`).
 - `validate_due`: quá 24 giờ (thử lại mỗi giờ); qua mốc chu kỳ kế tiếp (token mới vẫn trước mốc thì hẹn lại sau (mốc − `issued_at`) + 1 phút); qua `expires_at`; giờ máy chỉnh lùi; token không đọc được (thử lại mỗi 5 phút).
 - `add_usage`: cộng vào Free của ngày, và vào bộ đếm gói trả phí nếu đang có gói; gói trả phí hết thì Free của ngày cũng hết; `Break` khi chạm hạn mức. `can_start`, `take_warning` (còn từ 5 phút, một lần mỗi bộ đếm), `tick` (thời gian đơn điệu, reset Free, giờ máy lớn nhất), `view` (giao diện).
+- Thời hạn của token so với giờ tin được (QĐ8); ở `expires_at` chờ một lần `validate` tối đa 5 phút (QĐ30); kết luận `license_expired`, `license_revoked` ghi vào bản ghi (QĐ14); ghi kho khóa bị từ chối thì giữ luật chặt tới khi ghi lại được (QĐ13); chưa kiểm xong chữ ký bản cài thì chưa mở Pro (QĐ26); `refresh_clock` cho người dùng Free (QĐ31).
 - Bản debug không giới hạn (`dev_unlimited`): Pro, không đếm phút.
 - Test dùng server giả (`FakeApi`), kho khóa giả và token ký bằng khóa `test-1` của bộ vector.
 
@@ -3472,7 +3561,7 @@ Tạo `src-tauri/src/license/manager.rs`:
 
 use std::ops::ControlFlow;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 
 use chrono::{FixedOffset, Local};
 use serde::Serialize;
@@ -3481,7 +3570,7 @@ use super::client::{ApiError, Device, Granted, LicenseApi, Reply};
 use super::key;
 use super::keys::PublicKeys;
 use super::quota::{self, FreeCounter, PaidCounter, Seen};
-use super::store::{self, LicenseRecord, Vault};
+use super::store::{self, LicenseRecord, Vault, Verdict};
 use super::token::{self, Claims, Plan};
 
 /// Lần `validate` thành công gần nhất quá chừng này thì gọi lại (§6.8, "Kiểm tra định kỳ").
@@ -3491,6 +3580,12 @@ pub const RENEW_WARNING_SECS: i64 = 7 * 86_400;
 const ROUTINE_RETRY_SECS: i64 = 3600;
 const URGENT_RETRY_SECS: i64 = 300;
 const CYCLE_RETRY_SLACK_SECS: i64 = 60;
+/// Tới `expires_at`, gói còn dùng được trong lúc chờ lần `validate` đầu sau mốc (có thể đã gia hạn ở máy khác), tối đa
+/// chừng này (N4 của review 06 lần 1).
+pub const EXPIRY_GRACE_SECS: i64 = 300;
+const GENUINE_UNKNOWN: u8 = 0;
+const GENUINE_YES: u8 = 1;
+const GENUINE_NO: u8 = 2;
 
 /// Múi giờ cho "ngày" của Free: giờ máy, hay múi giờ cố định trong test.
 #[derive(Clone, Copy, Debug)]
@@ -3592,6 +3687,8 @@ pub struct LicenseView {
     pub server_configured: bool,
     /// Bản debug chạy Pro không giới hạn (`DevGate`, kế hoạch 03).
     pub dev_override: bool,
+    /// Giờ máy bị coi là chỉnh lùi (cả ở gói Free): giao diện nhắc chỉnh giờ.
+    pub clock_rolled_back: bool,
 }
 
 /// Lỗi của một thao tác bản quyền; giao diện chọn câu theo [`LicenseError::code`].
@@ -3669,7 +3766,6 @@ struct Inner {
     record: Option<LicenseRecord>,
     /// Claims của token đã lưu: đã kiểm chữ ký, đúng máy và đúng activation. `None` nếu không đọc được.
     claims: Option<Claims>,
-    revoked: bool,
     paid: Option<PaidCounter>,
     paid_error: bool,
     free: Option<FreeCounter>,
@@ -3683,6 +3779,8 @@ struct Inner {
     /// Đã nhắc "còn 5 phút" cho bộ đếm nào (tên mục kho khóa), để chỉ nhắc một lần.
     warned: Option<String>,
     has_prior_data: bool,
+    /// Lần hỏi giờ của server gần nhất khi giờ máy bị coi là chỉnh lùi mà chưa có license ([`License::refresh_clock`]).
+    clock_check_at: Option<i64>,
 }
 
 pub struct License {
@@ -3694,7 +3792,8 @@ pub struct License {
     server_configured: bool,
     /// Bản debug: Pro không giới hạn (`DevGate`).
     dev_unlimited: bool,
-    genuine: AtomicBool,
+    /// Kết quả kiểm chữ ký bản cài: chưa kiểm xong thì chưa mở Pro, nhưng chưa báo "không chính hãng" (N5 của review 06).
+    genuine: AtomicU8,
     inner: Mutex<Inner>,
 }
 
@@ -3726,7 +3825,7 @@ impl License {
             zone,
             server_configured,
             dev_unlimited,
-            genuine: AtomicBool::new(true),
+            genuine: AtomicU8::new(GENUINE_UNKNOWN),
             inner: Mutex::new(Inner {
                 has_prior_data,
                 ..Inner::default()
@@ -3810,7 +3909,16 @@ impl License {
             inner.paid_error = true;
             return;
         };
-        let state = quota::resolve_paid(claims, fresh, existing, marker.as_ref());
+        let mut state = quota::resolve_paid(claims, fresh, existing, marker.as_ref());
+        // Lần ghi trước bị kho khóa từ chối: phút đã cộng trong bộ nhớ không mất (N1 của review 06 lần 1).
+        if let Some(mem) = inner
+            .paid
+            .as_ref()
+            .filter(|m| m.key == state.counter.key && m.used_ms > state.counter.used_ms)
+        {
+            state.counter.used_ms = mem.used_ms;
+            state.write_counter = true;
+        }
         if state.resolution == quota::Resolution::Lost {
             log::warn!("mất bản ghi bộ đếm hạn mức của chu kỳ này: coi như đã dùng hết");
         }
@@ -3820,7 +3928,8 @@ impl License {
 
     /// Kết quả kiểm chữ ký bản cài (§10.2). Không chính hãng thì chỉ chạy Free.
     pub fn set_genuine(&self, genuine: bool) {
-        self.genuine.store(genuine, Ordering::SeqCst);
+        self.genuine
+            .store(if genuine { GENUINE_YES } else { GENUINE_NO }, Ordering::SeqCst);
     }
 
     pub fn dev_unlimited(&self) -> bool {
@@ -3828,14 +3937,16 @@ impl License {
     }
 
     fn standing_locked(&self, inner: &Inner, now: i64) -> Standing {
-        if !self.genuine.load(Ordering::SeqCst) {
+        if self.genuine.load(Ordering::SeqCst) == GENUINE_NO {
             return Standing::NotGenuine;
         }
-        let Some(_record) = &inner.record else {
+        let Some(record) = &inner.record else {
             return Standing::Free;
         };
-        if inner.revoked {
-            return Standing::Revoked;
+        match record.verdict {
+            Some(Verdict::Revoked) => return Standing::Revoked,
+            Some(Verdict::Expired) => return Standing::Expired,
+            None => {}
         }
         let Some(claims) = &inner.claims else {
             return Standing::Unverified;
@@ -3843,20 +3954,32 @@ impl License {
         if inner.seen.rolled_back(now) {
             return Standing::ClockRolledBack;
         }
-        match token::check(claims, now, &self.machine.id_hash) {
+        // So thời hạn theo giờ tin được: giờ máy chậm hơn server không kéo dài được gói (Q1 của review 06 lần 1).
+        let trusted = inner.seen.trusted_now(now);
+        match token::check(claims, trusted, &self.machine.id_hash) {
             Ok(()) => Standing::Active,
+            Err(token::VerifyError::LicenseExpired) if self.in_expiry_grace(inner, claims, trusted) => Standing::Active,
             Err(token::VerifyError::LicenseExpired) => Standing::Expired,
             Err(_) => Standing::RefreshNeeded,
         }
     }
 
-    /// Đang có gói trả phí hiệu lực không (xem đầu module). Bản debug không giới hạn thì luôn có.
-    pub fn is_pro(&self, now: i64) -> bool {
-        self.dev_unlimited || self.standing_locked(&self.lock(), now) == Standing::Active
+    /// Vừa qua `expires_at`, có server, và chưa thử `validate` nào từ sau mốc: chờ lần thử đó (tối đa
+    /// [`EXPIRY_GRACE_SECS`]) rồi mới về Free, vì có thể đã gia hạn ở máy khác (N4 của review 06 lần 1).
+    fn in_expiry_grace(&self, inner: &Inner, claims: &Claims, trusted: i64) -> bool {
+        self.server_configured
+            && trusted < claims.expires_at + EXPIRY_GRACE_SECS
+            && inner.last_attempt.is_none_or(|t| t < claims.expires_at)
     }
 
+    /// Đang có gói trả phí hiệu lực không (xem đầu module). Bản debug không giới hạn thì luôn có.
+    pub fn is_pro(&self, now: i64) -> bool {
+        self.dev_unlimited || self.active_claims(&self.lock(), now).is_some()
+    }
+
+    /// Claims của gói đang hiệu lực: `Active` và bản cài đã kiểm là chính hãng.
     fn active_claims(&self, inner: &Inner, now: i64) -> Option<Claims> {
-        (self.standing_locked(inner, now) == Standing::Active)
+        (self.standing_locked(inner, now) == Standing::Active && self.genuine.load(Ordering::SeqCst) == GENUINE_YES)
             .then(|| inner.claims.clone())
             .flatten()
     }
@@ -3881,11 +4004,11 @@ impl License {
             activation_id: granted.activation_id.clone(),
             token: granted.token,
             validated_at: now,
+            verdict: None,
         };
         store::write(self.vault.as_ref(), store::LICENSE, &record).map_err(|e| LicenseError::Storage(e.to_string()))?;
         let mut inner = self.lock();
         inner.record = Some(record);
-        inner.revoked = false;
         inner.last_attempt = None;
         inner.blocked_until = None;
         // Giờ máy đã qua mốc chu kỳ kế tiếp mà token mới vẫn trước mốc (giờ máy nhanh): hẹn lại.
@@ -3927,13 +4050,24 @@ impl License {
                         inner.claims = None;
                         inner.paid = None;
                     }
-                    LicenseError::Revoked => inner.revoked = true,
+                    LicenseError::Revoked => self.keep_verdict(&mut inner, Verdict::Revoked),
+                    LicenseError::Expired(_) => self.keep_verdict(&mut inner, Verdict::Expired),
                     LicenseError::RateLimited(after) => {
                         inner.blocked_until = Some(now + after.map_or(ROUTINE_RETRY_SECS, |s| s as i64));
                     }
                     _ => {}
                 }
                 Err(e)
+            }
+        }
+    }
+
+    /// Nhớ kết luận của server vào bản ghi license, để mở lại app khi offline không quay về `Active`.
+    fn keep_verdict(&self, inner: &mut Inner, verdict: Verdict) {
+        if let Some(record) = inner.record.as_mut() {
+            record.verdict = Some(verdict);
+            if let Err(e) = store::write(self.vault.as_ref(), store::LICENSE, record) {
+                log::warn!("không ghi được kết luận của server: {e}");
             }
         }
     }
@@ -3974,9 +4108,12 @@ impl License {
             return false;
         }
         let since_attempt = inner.last_attempt.map_or(i64::MAX, |t| now - t);
+        let trusted = inner.seen.trusted_now(now);
         let urgent = inner.claims.as_ref().is_none_or(|c| {
-            now >= c.expires_at || (now >= quota::cycle(c).next_start && inner.cycle_retry_at.is_none_or(|t| now >= t))
-        }) || inner.seen.rolled_back(now);
+            trusted >= c.expires_at
+                || (now >= quota::cycle(c).next_start && inner.cycle_retry_at.is_none_or(|t| now >= t))
+        }) || record.verdict == Some(Verdict::Expired)
+            || inner.seen.rolled_back(now);
         let routine = now - record.validated_at >= VALIDATE_EVERY_SECS || now < record.validated_at;
         (urgent && since_attempt >= URGENT_RETRY_SECS) || (routine && since_attempt >= ROUTINE_RETRY_SECS)
     }
@@ -3989,8 +4126,10 @@ impl License {
         }
         inner.seen.observe_machine(now);
         let _ = store::write(self.vault.as_ref(), store::SEEN, &inner.seen);
+        // Lần ghi trước bị từ chối thì bộ đếm trong bộ nhớ vẫn đúng: ghi lại, không đọc bản cũ trong kho khóa (N1 của review 06
+        // lần 1). Chỉ đọc lại khi chưa có bộ đếm (đọc lỗi lúc khởi động).
         let stored = inner.free.clone();
-        if inner.free_error || stored.is_none() {
+        if stored.is_none() {
             self.resolve_free_locked(&mut inner, now);
         } else {
             let (counter, reset) = self.zone.resolve_free(stored, true, now, &inner.seen);
@@ -3999,6 +4138,11 @@ impl License {
             }
             inner.free = Some(counter);
             save_free(self.vault.as_ref(), &mut inner);
+        }
+        if inner.paid_error
+            && let Some(counter) = inner.paid.clone()
+        {
+            inner.paid_error = store::save_paid(self.vault.as_ref(), &counter).is_err();
         }
     }
 
@@ -4144,7 +4288,27 @@ impl License {
             quota,
             server_configured: self.server_configured,
             dev_override: self.dev_unlimited,
+            clock_rolled_back: inner.seen.rolled_back(now),
         }
+    }
+
+    /// Chưa có license mà giờ máy bị coi là chỉnh lùi (thường là giờ máy từng đặt nhầm tới trước rồi chỉnh lại): hỏi giờ
+    /// của server bằng một request nhẹ (`GET /v1/plans`), tối đa 5 phút một lần, để header `Date` hạ mốc về giờ thật (Q2 của
+    /// review 06 lần 1). Có license thì việc này là của `validate`.
+    pub fn refresh_clock(&self, now: i64) {
+        {
+            let mut inner = self.lock();
+            if !self.server_configured
+                || inner.record.is_some()
+                || !inner.seen.rolled_back(now)
+                || inner.clock_check_at.is_some_and(|t| now - t < URGENT_RETRY_SECS)
+            {
+                return;
+            }
+            inner.clock_check_at = Some(now);
+        }
+        let reply = self.api.plans();
+        self.observe(&reply);
     }
 
     pub fn api(&self) -> &dyn LicenseApi {
@@ -4270,9 +4434,10 @@ pub mod tests {
 
     impl LicenseApi for Arc<FakeApi> {
         fn plans(&self) -> Reply<Vec<PlanOffer>> {
+            self.calls.lock().unwrap().push("plans".into());
             Reply {
                 result: Ok(Vec::new()),
-                date: None,
+                date: *self.date.lock().unwrap(),
             }
         }
         fn checkout(&self, _: &str, _: &str, _: Option<&str>) -> Reply<Checkout> {
@@ -4327,7 +4492,8 @@ pub mod tests {
         Zone::Fixed(FixedOffset::east_opt(7 * 3600).unwrap())
     }
 
-    pub fn license(api: &Arc<FakeApi>, vault: &Arc<FakeVault>, now: i64) -> License {
+    /// `License` vừa tạo, chưa có kết quả kiểm chữ ký bản cài.
+    pub fn license_unchecked(api: &Arc<FakeApi>, vault: &Arc<FakeVault>, now: i64) -> License {
         License::new(
             Box::new(api.clone()),
             Box::new(vault.clone()),
@@ -4342,6 +4508,13 @@ pub mod tests {
             false,
             now,
         )
+    }
+
+    /// `License` của bản cài đã kiểm chữ ký xong (chính hãng).
+    pub fn license(api: &Arc<FakeApi>, vault: &Arc<FakeVault>, now: i64) -> License {
+        let l = license_unchecked(api, vault, now);
+        l.set_genuine(true);
+        l
     }
 
     fn activated(now: i64, fresh: bool) -> (Arc<FakeApi>, Arc<FakeVault>, License) {
@@ -4522,7 +4695,9 @@ pub mod tests {
         let l = license(&api, &vault, T0);
         api.replies.lock().unwrap().push_back(granted(&c, true));
         l.activate(KEY, T0).unwrap();
-        assert_eq!(l.view(T0 + 2 * DAY).standing, Standing::Expired);
+        // Chờ lần `validate` đầu sau mốc tối đa 5 phút (N4 của review 06 lần 1), rồi hết hạn.
+        assert_eq!(l.view(T0 + 2 * DAY).standing, Standing::Active);
+        assert_eq!(l.view(T0 + 2 * DAY + EXPIRY_GRACE_SECS).standing, Standing::Expired);
         assert!(l.view(T0 + DAY).renew_soon);
     }
 
@@ -4566,7 +4741,7 @@ pub mod tests {
     /// (§6.8).
     #[test]
     fn paid_minutes_also_count_against_free_and_a_used_up_plan_ends_free_for_the_day() {
-        let after = T0 + 3600 + 60;
+        let after = T0 + 3600 + EXPIRY_GRACE_SECS;
         let mut c = claims(T0);
         c["expires_at"] = json!(T0 + 3600);
         let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
@@ -4613,6 +4788,161 @@ pub mod tests {
         l.activate(KEY, T0).unwrap();
         assert!(!l.validate_due(T0 + 3599));
         assert!(l.validate_due(T0 + 3600));
+    }
+
+    /// Giờ máy chậm từ trước lần mở app đầu (Q1 của review 06 lần 1): header `Date` của server cho thấy giờ máy lùi, gói
+    /// trả phí không được tin tới khi giờ máy về đúng.
+    #[test]
+    fn a_machine_clock_behind_the_server_from_the_start_is_caught() {
+        let year = 365 * DAY;
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0 - year);
+        *api.date.lock().unwrap() = Some(T0);
+        api.replies.lock().unwrap().push_back(granted(&claims(T0), true));
+        l.activate(KEY, T0 - year).unwrap();
+        assert_eq!(l.view(T0 - year + 60).standing, Standing::ClockRolledBack);
+        assert!(!l.is_pro(T0 - year + 60));
+        assert!(l.validate_due(T0 - year + 60));
+        assert!(l.is_pro(T0 + 60), "giờ máy về đúng: dùng được");
+        // Giờ máy chậm dưới 10 phút (chưa là chỉnh lùi) nhưng theo giờ server thì token đã hết hạn quá 5 phút: hết hạn.
+        let mut c = claims(T0);
+        c["expires_at"] = json!(T0 + 3600);
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies.lock().unwrap().push_back(granted(&c, true));
+        l.activate(KEY, T0).unwrap();
+        *api.date.lock().unwrap() = Some(T0 + 4000);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Network("chậm".into())));
+        let _ = l.validate(T0 + 3500);
+        assert_eq!(l.view(T0 + 3500).standing, Standing::Expired);
+    }
+
+    /// `license_expired`, `license_revoked` từ server đổi trạng thái ngay và được nhớ qua lần mở app sau, kể cả khi
+    /// offline (QĐ14; Q1 của review 06 lần 1). Token mới từ server xóa trạng thái đó.
+    #[test]
+    fn expired_and_revoked_from_the_server_are_kept_across_restarts() {
+        let (api, vault, l) = activated(T0, true);
+        let t = T0 + 10 * DAY;
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(server(403, "license_expired")));
+        assert!(matches!(l.validate(t), Err(LicenseError::Expired(_))));
+        assert_eq!(l.view(t).standing, Standing::Expired);
+        assert!(!l.is_pro(t));
+        let reopened = license(&api, &vault, t + 60);
+        assert_eq!(
+            reopened.view(t + 60).standing,
+            Standing::Expired,
+            "mở lại app vẫn hết hạn"
+        );
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(server(403, "license_revoked")));
+        let _ = reopened.validate(t + 120);
+        let reopened = license(&api, &vault, t + 180);
+        assert_eq!(reopened.view(t + 180).standing, Standing::Revoked);
+        // Gia hạn ở máy khác rồi `validate`: token mới, về Active.
+        api.replies.lock().unwrap().push_back(granted(&claims(t + 240), false));
+        reopened.validate(t + 240).unwrap();
+        assert_eq!(reopened.view(t + 240).standing, Standing::Active);
+    }
+
+    /// Tới `expires_at` (có thể đã gia hạn ở máy khác): còn dùng được trong lúc chờ lần `validate` đầu sau mốc, tối đa 5
+    /// phút, rồi mới về Free (N4 của review 06 lần 1). Lần thử đó lỗi mạng thì về Free ngay.
+    #[test]
+    fn at_expiry_the_plan_waits_for_one_validate_before_going_free() {
+        let mut c = claims(T0);
+        c["expires_at"] = json!(T0 + 3600);
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies.lock().unwrap().push_back(granted(&c, true));
+        l.activate(KEY, T0).unwrap();
+        let at = T0 + 3600;
+        assert!(l.is_pro(at), "chưa validate sau mốc: còn dùng được");
+        assert!(!l.is_pro(at + 301), "quá 5 phút: về Free");
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Network("tắt mạng".into())));
+        let _ = l.validate(at + 30);
+        assert!(!l.is_pro(at + 31), "lỗi mạng sau mốc: về Free");
+        let mut renewed = claims(at + 60);
+        renewed["expires_at"] = json!(at + 30 * DAY);
+        api.replies.lock().unwrap().push_back(granted(&renewed, false));
+        l.validate(at + 60).unwrap();
+        assert!(l.is_pro(at + 61), "đã gia hạn ở máy khác: dùng tiếp");
+    }
+
+    /// Kho khóa từ chối ghi mà vẫn đọc được (N1 của review 06 lần 1): luật chặt giữ tới khi ghi lại được, và không đọc
+    /// lại bộ đếm cũ (phút đã dùng không mất). Gói trả phí cũng vậy ở lần `validate` sau.
+    #[test]
+    fn a_keystore_that_refuses_writes_never_gives_minutes_back() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        *vault.fail_writes_of.lock().unwrap() = Some("quota-free".into());
+        assert!(l.add_usage(3 * 60_000, T0 + 60).is_break());
+        l.tick(T0 + 120, 60_000);
+        assert!(!l.can_start(T0 + 120), "vẫn chặn khi chưa ghi được");
+        *vault.fail_writes_of.lock().unwrap() = None;
+        l.tick(T0 + 180, 60_000);
+        assert!(l.can_start(T0 + 180));
+        assert_eq!(l.view(T0 + 180).quota.used_ms, 3 * 60_000, "phút đã dùng không mất");
+        let (api, vault, l) = activated(T0, true);
+        *vault.fail_writes_of.lock().unwrap() = Some("quota-paid-".into());
+        let _ = l.add_usage(3 * 60_000, T0 + 60);
+        *vault.fail_writes_of.lock().unwrap() = None;
+        api.replies.lock().unwrap().push_back(granted(&claims(T0 + 120), false));
+        l.validate(T0 + 120).unwrap();
+        assert_eq!(l.view(T0 + 120).quota.used_ms, 3 * 60_000);
+        assert!(l.can_start(T0 + 120));
+        // Không có `validate` nào: ticker ghi lại bộ đếm gói trả phí khi kho khóa nhận ghi trở lại.
+        let (_, vault, l) = activated(T0, true);
+        *vault.fail_writes_of.lock().unwrap() = Some("quota-paid-".into());
+        let _ = l.add_usage(3 * 60_000, T0 + 60);
+        assert!(!l.can_start(T0 + 60));
+        *vault.fail_writes_of.lock().unwrap() = None;
+        l.tick(T0 + 120, 60_000);
+        assert!(l.can_start(T0 + 120));
+    }
+
+    /// Chưa kiểm xong chữ ký bản cài (vài giây đầu sau khi mở app): chưa mở Pro, nhưng cũng chưa báo "không chính hãng"
+    /// (N5 của review 06 lần 1).
+    #[test]
+    fn pro_waits_for_the_build_check() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license_unchecked(&api, &vault, T0);
+        api.replies.lock().unwrap().push_back(granted(&claims(T0), true));
+        l.activate(KEY, T0).unwrap();
+        assert!(!l.is_pro(T0));
+        assert_eq!(l.view(T0).standing, Standing::Active);
+        l.set_genuine(true);
+        assert!(l.is_pro(T0));
+        l.set_genuine(false);
+        assert_eq!(l.view(T0).standing, Standing::NotGenuine);
+    }
+
+    /// Người dùng Free có giờ máy từng đặt tới trước rồi chỉnh lại (Q2 của review 06 lần 1): giao diện nhắc, và app hỏi giờ
+    /// của server bằng một request nhẹ (`GET /v1/plans`), tối đa 5 phút một lần, tới khi giờ máy được tin lại.
+    #[test]
+    fn a_free_user_with_a_clock_set_ahead_gets_the_time_from_the_server() {
+        let year = 365 * DAY;
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0 + year);
+        l.tick(T0, 60_000);
+        assert!(l.view(T0).clock_rolled_back);
+        l.refresh_clock(T0);
+        l.refresh_clock(T0 + 60);
+        assert_eq!(api.calls.lock().unwrap().len(), 1, "offline: tối đa 5 phút một lần");
+        *api.date.lock().unwrap() = Some(T0 + 301);
+        l.refresh_clock(T0 + 301);
+        assert!(!l.view(T0 + 301).clock_rolled_back);
+        l.refresh_clock(T0 + 700);
+        assert_eq!(api.calls.lock().unwrap().len(), 2, "giờ máy đã được tin: không hỏi nữa");
     }
 
     #[test]
@@ -4774,21 +5104,27 @@ test license::manager::tests::a_debug_override_is_pro_without_limits ... ok
 test license::manager::tests::a_failing_keystore_counts_as_a_used_up_quota ... ok
 test license::manager::tests::a_fast_machine_clock_at_the_cycle_boundary_retries_later ... ok
 test license::manager::tests::a_first_run_is_free_with_ten_minutes_that_stop_the_session_when_used_up ... ok
+test license::manager::tests::a_free_user_with_a_clock_set_ahead_gets_the_time_from_the_server ... ok
+test license::manager::tests::a_keystore_that_refuses_writes_never_gives_minutes_back ... ok
+test license::manager::tests::a_machine_clock_behind_the_server_from_the_start_is_caught ... ok
 test license::manager::tests::a_missing_free_counter_after_earlier_runs_counts_as_used_up ... ok
 test license::manager::tests::a_relaunch_keeps_the_paid_counter ... ok
 test license::manager::tests::a_token_for_another_activation_is_refused ... ok
 test license::manager::tests::activating_checks_the_key_locally_then_uses_the_fresh_flag_of_the_reply ... ok
 test license::manager::tests::an_unreadable_keystore_counts_as_used_up_and_a_fake_build_is_free ... ok
+test license::manager::tests::at_expiry_the_plan_waits_for_one_validate_before_going_free ... ok
 test license::manager::tests::deactivating_this_machine_or_another_one ... ok
+test license::manager::tests::expired_and_revoked_from_the_server_are_kept_across_restarts ... ok
 test license::manager::tests::expiry_triggers_a_validate_right_away ... ok
 test license::manager::tests::paid_minutes_also_count_against_free_and_a_used_up_plan_ends_free_for_the_day ... ok
 test license::manager::tests::paid_minutes_also_count_for_free_and_a_used_up_plan_uses_up_free_for_the_day ... ok
+test license::manager::tests::pro_waits_for_the_build_check ... ok
 test license::manager::tests::server_dates_are_recorded ... ok
 test license::manager::tests::server_refusals_are_reported_with_their_details ... ok
 test license::manager::tests::the_five_minute_warning_fires_once_per_counter ... ok
 test license::manager::tests::validate_results_move_the_machine_to_the_right_standing ... ok
 test license::manager::tests::validate_runs_daily_at_cycle_boundaries_and_at_expiry_but_not_in_a_loop ... ok
-test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 347 filtered out
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 353 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -4817,7 +5153,7 @@ Spec §6.8, §4.2 bước 2; Đ6 của kế hoạch 00. QĐ19–QĐ21.
 
 - `license::app::install` ở `setup` (thay `pro::install_default_gate` của 03): kho khóa thật, ID máy, khóa công khai build sẵn, server của bản build. Bản phát hành cài `LicenseGate` (Pro theo trạng thái bản quyền thật); bản debug không đặt `AI_TRANSLATOR_DEV_FREE=1` cài `DevGate` và không đếm phút (`pro::dev_override`, `pro::install_dev_gate`).
 - `session::start_with` hỏi `license::app::check_start` trước (hạn mức còn 0: `quotaExhausted`); `TauriSink::usage` gọi `license::app::add_usage` (`Break` thì engine dừng phiên với `quotaExhausted`).
-- Ticker nền mỗi phút: `tick`, `validate` khi tới lịch, báo giao diện. `AppStatus` thêm `quota_warning`, `quota_reset_at` (cho thanh phụ đề); cửa sổ chính nhận `LicenseView` qua `license://changed`. View chỉ có key đã che (`••••-…-RST5`), không token (01 QĐ6).
+- Ticker nền mỗi phút: `tick`, `refresh_clock` (QĐ31), `validate` khi tới lịch, báo giao diện. `AppStatus` thêm `quota_warning`, `quota_reset_at` (cho thanh phụ đề); cửa sổ chính nhận `LicenseView` qua `license://changed`. View chỉ có key đã che (`••••-…-RST5`), không token (01 QĐ6).
 
 **Files:**
 - Modify: `src-tauri/src/app_tests.rs`
@@ -4836,10 +5172,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
-index 1d9bcefdea77e0862b317b43156d9ce316d93dd6..02cf362bd9fa5127fe8084410544f9e291abad76 100644
+index 1d9bcefdea77e0862b317b43156d9ce316d93dd6..6b708d899dc29d253621f12894457d5e70e2cc04 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -1360,3 +1360,100 @@
+@@ -1360,3 +1360,101 @@
          );
      }
  }
@@ -4870,6 +5206,7 @@ index 1d9bcefdea77e0862b317b43156d9ce316d93dd6..02cf362bd9fa5127fe8084410544f9e2
 +        false,
 +        crate::license::app::now(),
 +    );
++    license.set_genuine(true);
 +    crate::license::app::install_with(app.handle(), license);
 +    let installed = app.state::<crate::license::app::Licensing>().0.clone();
 +    (api, installed)
@@ -5247,7 +5584,9 @@ fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
             let elapsed = last.elapsed();
             last = Instant::now();
             if let Some(license) = licensing(&app) {
-                license.tick(now(), elapsed.as_millis() as u64);
+                let t = now();
+                license.tick(t, elapsed.as_millis() as u64);
+                license.refresh_clock(t);
             }
             validate_if_due(&app);
             refresh(&app);
@@ -5284,10 +5623,10 @@ Sửa `src-tauri/src/license/manager.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/license/manager.rs b/src-tauri/src/license/manager.rs
-index a8f6b90e7fd5b577d5099e40911366b8d01d2157..82c414cc0f77443678c746d1e07fa4638fa0626e 100644
+index d8cb785427465af5e56f8162164c84abf3d07b69..e6597b2d6b33cbc96fa7c4ab815e512d49c077b6 100644
 --- a/src-tauri/src/license/manager.rs
 +++ b/src-tauri/src/license/manager.rs
-@@ -123,7 +123,8 @@
+@@ -129,7 +129,8 @@
      pub plan: String,
      /// Gói ghi trong token đã lưu (kể cả khi đã hết hạn), để hiện "Professional đã hết hạn".
      pub licensed_plan: Option<Plan>,
@@ -5297,7 +5636,7 @@ index a8f6b90e7fd5b577d5099e40911366b8d01d2157..82c414cc0f77443678c746d1e07fa463
      pub key: Option<String>,
      pub expires_at: Option<i64>,
      pub refresh_before: Option<i64>,
-@@ -679,7 +680,7 @@
+@@ -734,7 +735,7 @@
                  (None, _) => "free".into(),
              },
              licensed_plan: stored.map(|c| c.plan),
@@ -5306,7 +5645,7 @@ index a8f6b90e7fd5b577d5099e40911366b8d01d2157..82c414cc0f77443678c746d1e07fa463
              expires_at: stored.map(|c| c.expires_at),
              refresh_before: stored.map(|c| c.refresh_before),
              validated_at: inner.record.as_ref().map(|r| r.validated_at),
-@@ -946,7 +947,7 @@
+@@ -1030,7 +1031,7 @@
          let v = l.view(T0);
          assert_eq!(
              (v.standing, v.plan.as_str(), v.key.as_deref()),
@@ -5375,7 +5714,7 @@ Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
-index b69efcf3cf02603e7dd758a493202c8d1cb0c920..d799e169a239c045686707aac817ae8721b45394 100644
+index f775556e6da11559b53d30892b4d75626f49f16e..22ef0ca556a623903d9c96dda45aa9af68d3bab8 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
 @@ -17,13 +17,14 @@
@@ -5394,7 +5733,7 @@ index b69efcf3cf02603e7dd758a493202c8d1cb0c920..d799e169a239c045686707aac817ae87
  use pipeline::glossary::SharedGlossary;
  use pipeline::prompt::Lang as MtLang;
  use pipeline::subtitle::{Delta, Subtitle};
-@@ -267,7 +268,7 @@
+@@ -276,7 +277,7 @@
          }
          Ok(state.status())
      };
@@ -5403,7 +5742,7 @@ index b69efcf3cf02603e7dd758a493202c8d1cb0c920..d799e169a239c045686707aac817ae87
          return refuse(e);
      }
      let mut attempt = 0;
-@@ -648,6 +649,11 @@
+@@ -669,6 +670,11 @@
              .state::<AppState>()
              .update_status(|s| s.indicators = indicators.clone());
          changed(&self.app);
@@ -5456,7 +5795,7 @@ Expected (lúc lập kế hoạch):
 ```text
 test app_tests::a_used_up_quota_stops_the_session_and_refuses_the_next_one ... ok
 test license::manager::tests::a_failing_keystore_counts_as_a_used_up_quota ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 368 filtered out
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 380 filtered out
 ```
 
 Run:
@@ -5467,7 +5806,7 @@ Expected (lúc lập kế hoạch):
 ```text
 test app_tests::the_five_minute_warning_reaches_the_status ... ok
 test license::manager::tests::the_five_minute_warning_fires_once_per_counter ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 368 filtered out
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 380 filtered out
 ```
 
 Run:
@@ -5477,7 +5816,7 @@ cargo test -p meeting-translator --lib license_events -- --test-threads=1 2>&1 |
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::license_events_never_carry_the_key_or_the_token ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 369 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 381 filtered out
 ```
 
 Run:
@@ -5486,7 +5825,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 367 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out
+test result: ok. 379 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out
 ```
 
 Run:
@@ -5496,7 +5835,7 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 Expected (lúc lập kế hoạch):
 ```text
  Test Files  12 passed (12)
-      Tests  114 passed (114)
+      Tests  115 passed (115)
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -5568,10 +5907,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
-index 02cf362bd9fa5127fe8084410544f9e291abad76..7f929ea2b49f96b6e0651736cb61d7f6ed4eaeb1 100644
+index 6b708d899dc29d253621f12894457d5e70e2cc04..677ad6e05b2e678349fde4ae86187cff4cd6974f 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -1457,3 +1457,65 @@
+@@ -1458,3 +1458,65 @@
      assert!(!text.contains("0123-4567"), "không có key đầy đủ");
      assert!(app.state::<AppState>().status().pro, "gate Pro theo bản quyền thật");
  }
@@ -6164,7 +6503,7 @@ Sửa `src-tauri/src/license/app.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/license/app.rs b/src-tauri/src/license/app.rs
-index 1968a1a1da6d94d211dff9d48690b0f55725b889..32b4a71512f9910583c53dc5ab645b6bf0428199 100644
+index 5f81307c95bf5e614b1b267a6ec13d4b6f0ceb85..3462788f07aa9ebc66607036f4530d88d3951e1d 100644
 --- a/src-tauri/src/license/app.rs
 +++ b/src-tauri/src/license/app.rs
 @@ -11,27 +11,37 @@
@@ -6225,7 +6564,7 @@ index 1968a1a1da6d94d211dff9d48690b0f55725b889..32b4a71512f9910583c53dc5ab645b6b
      if license.dev_unlimited() {
          pro::install_dev_gate(app);
      } else {
-@@ -199,3 +211,142 @@
+@@ -201,3 +213,142 @@
          }
      });
  }
@@ -6374,19 +6713,18 @@ Sửa `src-tauri/src/license/manager.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/license/manager.rs b/src-tauri/src/license/manager.rs
-index 82c414cc0f77443678c746d1e07fa4638fa0626e..42ec631b5ce6037ab48b749bdb4af4870f22c839 100644
+index e6597b2d6b33cbc96fa7c4ab815e512d49c077b6..fe629d7e1a43fcee215e3365b8605347d4462020 100644
 --- a/src-tauri/src/license/manager.rs
 +++ b/src-tauri/src/license/manager.rs
-@@ -167,7 +167,30 @@
+@@ -175,7 +175,30 @@
      Storage(String),
      #[error("server trả lỗi {0}")]
      Server(String),
--}
 +    #[error("chưa đồng ý xử lý email")]
 +    ConsentRequired,
 +    #[error("email không hợp lệ")]
 +    EmailInvalid,
-+}
+ }
 +
 +/// Mọi mã lỗi của bản quyền (test của `errors.rs` kiểm đủ câu báo lỗi).
 +pub const ERROR_CODES: &[&str] = &[
@@ -6409,26 +6747,22 @@ index 82c414cc0f77443678c746d1e07fa4638fa0626e..42ec631b5ce6037ab48b749bdb4af487
  
  impl LicenseError {
      /// Mã lỗi cho giao diện (`error.<mã>` trong i18n).
-@@ -186,11 +209,13 @@
+@@ -194,11 +217,13 @@
              Self::BadToken(_) => "licenseBadToken",
              Self::Storage(_) => "licenseStorage",
              Self::Server(_) => "licenseServer",
--        }
--    }
--}
--
--fn map_api(e: ApiError) -> LicenseError {
 +            Self::ConsentRequired => "licenseConsentRequired",
 +            Self::EmailInvalid => "licenseEmailInvalid",
-+        }
-+    }
-+}
-+
+         }
+     }
+ }
+ 
+-fn map_api(e: ApiError) -> LicenseError {
 +pub(crate) fn map_api(e: ApiError) -> LicenseError {
      match e {
          ApiError::NotConfigured => LicenseError::NotConfigured,
          ApiError::Network(_) => LicenseError::Network,
-@@ -793,6 +818,8 @@
+@@ -868,6 +893,8 @@
      pub struct FakeApi {
          pub replies: Mutex<VecDeque<Result<Granted, ApiError>>>,
          pub deactivations: Mutex<VecDeque<Result<(), ApiError>>>,
@@ -6437,8 +6771,8 @@ index 82c414cc0f77443678c746d1e07fa4638fa0626e..42ec631b5ce6037ab48b749bdb4af487
          pub calls: Mutex<Vec<String>>,
          pub date: Mutex<Option<i64>>,
      }
-@@ -819,15 +846,30 @@
-                 date: None,
+@@ -895,15 +922,30 @@
+                 date: *self.date.lock().unwrap(),
              }
          }
 -        fn checkout(&self, _: &str, _: &str, _: Option<&str>) -> Reply<Checkout> {
@@ -6711,10 +7045,10 @@ Sửa `src-tauri/src/license/store.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/license/store.rs b/src-tauri/src/license/store.rs
-index 8a977bbf5a9ff6e86b940155c6d667cbe965e802..dd69b0dc7ca0bb0e2370352edd694a66ee7936c0 100644
+index 454d5a6bcd182a89df80413b06ebfc0621995bce..90e56073a7c4edfdd82091b19fdfd7ba309785f1 100644
 --- a/src-tauri/src/license/store.rs
 +++ b/src-tauri/src/license/store.rs
-@@ -79,6 +79,10 @@
+@@ -91,6 +91,10 @@
      pub expires_at: i64,
      /// Đơn gia hạn hay đổi gói (có `license_key`): khi đã trả tiền thì `validate`, không `activate`.
      pub renewal: bool,
@@ -6856,7 +7190,7 @@ test license::purchase::tests::a_paid_new_order_activates_its_key_on_this_machin
 test license::purchase::tests::a_paid_order_whose_key_cannot_be_activated_here_reports_why ... ok
 test license::purchase::tests::a_paid_renewal_validates_unless_support_granted_a_new_key ... ok
 test license::purchase::tests::other_order_states_end_or_continue_polling_as_the_contract_says ... ok
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 373 filtered out
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 385 filtered out
 ```
 
 Run:
@@ -6867,7 +7201,7 @@ Expected (lúc lập kế hoạch):
 ```text
 test app_tests::the_checkout_page_opens_only_for_the_pending_payos_order ... ok
 test navigation::tests::the_payos_checkout_page_is_the_only_external_host ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 377 filtered out
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 389 filtered out
 ```
 
 Run:
@@ -6877,7 +7211,7 @@ cargo test -p meeting-translator --lib full_key -- --test-threads=1 2>&1 | grep 
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::activating_a_full_key_returns_its_devices ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 378 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 390 filtered out
 ```
 
 Run:
@@ -6887,7 +7221,7 @@ cargo test -p meeting-translator --lib payos_checkout -- --test-threads=1 2>&1 |
 Expected (lúc lập kế hoạch):
 ```text
 test navigation::tests::the_payos_checkout_page_is_the_only_external_host ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 378 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 390 filtered out
 ```
 
 Run:
@@ -6899,7 +7233,7 @@ Expected (lúc lập kế hoạch):
 test acl_tests::capabilities_grant_exactly_the_fixed_lists ... ok
 test acl_tests::each_window_only_reaches_its_own_commands ... ok
 test acl_tests::outside_effects_only_reach_the_fake_opener ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 376 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 388 filtered out
 ```
 
 Run:
@@ -6909,7 +7243,7 @@ cargo test -p meeting-translator --lib every_error_code -- --test-threads=1 2>&1
 Expected (lúc lập kế hoạch):
 ```text
 test errors::tests::every_error_code_has_ui_text ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 378 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 390 filtered out
 ```
 
 Run:
@@ -6918,7 +7252,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 376 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out
+test result: ok. 388 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out
 ```
 
 Run:
@@ -6928,7 +7262,7 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 Expected (lúc lập kế hoạch):
 ```text
  Test Files  12 passed (12)
-      Tests  114 passed (114)
+      Tests  115 passed (115)
 ```
 
 Run:
@@ -7130,7 +7464,7 @@ Sửa `src-tauri/src/license/app.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/license/app.rs b/src-tauri/src/license/app.rs
-index 32b4a71512f9910583c53dc5ab645b6bf0428199..0b79b72a2c2eacc4883dfc90565294e7b1b7537e 100644
+index 3462788f07aa9ebc66607036f4530d88d3951e1d..cb4f101bacf2b9183ce1097515d284031c4a4478 100644
 --- a/src-tauri/src/license/app.rs
 +++ b/src-tauri/src/license/app.rs
 @@ -196,6 +196,15 @@
@@ -7340,7 +7674,7 @@ Expected (lúc lập kế hoạch):
 ```text
 test license::genuine::tests::signatures_are_checked_against_the_requirement ... ok
 test license::genuine::tests::the_team_requirement_only_takes_a_real_team_id ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 379 filtered out
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 391 filtered out
 ```
 
 Run:
@@ -7349,7 +7683,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 378 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out
+test result: ok. 390 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -7412,9 +7746,9 @@ Run:
 ```bash
 cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8} END {print "passed", p, "failed", f, "ignored", i}'
 ```
-Expected (lúc lập kế hoạch; trên cây đầu `4b6503a` là 659 test qua, 0 lỗi, 13 bỏ qua):
+Expected (lúc lập kế hoạch; trên cây đầu `5f48558` là 663 test qua, 0 lỗi, 13 bỏ qua):
 ```text
-passed 733 failed 0 ignored 13
+passed 745 failed 0 ignored 13
 ```
 
 - [ ] **Step 2: `cargo deny`, `cargo audit`, giao diện, kiểm code Windows**
@@ -7441,10 +7775,10 @@ Run:
 ```bash
 NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) ' && pnpm build >/dev/null 2>&1 && echo build ok
 ```
-Expected (lúc lập kế hoạch; trên cây đầu `4b6503a` là 114 test trong 12 file):
+Expected (lúc lập kế hoạch; trên cây đầu `5f48558` là 115 test trong 12 file):
 ```text
  Test Files  12 passed (12)
-      Tests  114 passed (114)
+      Tests  115 passed (115)
 build ok
 ```
 

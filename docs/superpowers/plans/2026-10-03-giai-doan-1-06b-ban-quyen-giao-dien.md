@@ -12,7 +12,7 @@
 
 **Công nghệ:** Giữ nguyên React 19.3, Zustand 5.0.15, Vite 8.3, TypeScript 7.0, vitest 5.0.3, `@tauri-apps/api` 2.12.1. Không thêm gói npm nào.
 
-Làm sau khi 06a đã xong hẳn (06a Task 11 xanh). Bảng phiên bản, thứ tự với kế hoạch 04 và file giao nhau, dòng của bảng đối chiếu, hợp đồng với 05, quyết định (QĐ1–QĐ28), điểm cần chủ dự án quyết, kết quả mutation và bảng task → commit tham chiếu nằm ở 06a: `docs/superpowers/plans/2026-10-03-giai-doan-1-06a-ban-quyen-loi.md`. Cách đọc các khối code, lệnh và Expected cũng như 06a.
+Làm sau khi 06a đã xong hẳn (06a Task 11 xanh). Bảng phiên bản, mục "Nối với kế hoạch 04", dòng của bảng đối chiếu, hợp đồng với 05, quyết định (QĐ1–QĐ31), điểm cần chủ dự án quyết, kết quả mutation và bảng task → commit tham chiếu nằm ở 06a: `docs/superpowers/plans/2026-10-03-giai-doan-1-06a-ban-quyen-loi.md`. Cách đọc các khối code, lệnh và Expected cũng như 06a.
 
 ---
 
@@ -21,7 +21,7 @@ Làm sau khi 06a đã xong hẳn (06a Task 11 xanh). Bảng phiên bản, thứ 
 Phần logic của giao diện, test bằng vitest (không cần DOM):
 
 - `src/lib/ipc.ts`: `LicenseView`, `QuotaView`, `Device`, `PlanOffer`, `CheckoutView`, `OrderOutcome`, 11 lệnh và 2 sự kiện mới; `AppStatus.quotaWarning`, `quotaResetAt`.
-- `src/lib/license.ts`: số phút còn lại, câu tóm tắt hạn mức theo thứ tự ưu tiên, lời nhắc bản quyền (không chính hãng, giờ máy chỉnh lùi, lâu chưa kiểm, hết hạn, thu hồi, sắp hết hạn 7 ngày), gia hạn hay mua mới, tên máy thay thế khi `device_label` là `null`, câu theo trạng thái đơn.
+- `src/lib/license.ts`: số phút còn lại, câu tóm tắt hạn mức theo thứ tự ưu tiên, lời nhắc bản quyền (không chính hãng, giờ máy chỉnh lùi, cả ở gói Free, lâu chưa kiểm, hết hạn, thu hồi, sắp hết hạn 7 ngày), gia hạn hay mua mới, tên máy thay thế khi `device_label` là `null`, câu theo trạng thái đơn.
 - `src/store/license.ts`: trạng thái bản quyền, kích hoạt (key đủ 2 máy: danh sách máy, gỡ một máy rồi kích hoạt lại), gỡ, kiểm tra ngay, bảng gói, tạo đơn, mở trang thanh toán, hủy đơn, gửi lại key; chặn bấm đúp.
 - Thanh phụ đề nhắc "còn dưới 5 phút" (`overlayNotes`: `quotaLow`) khi đang dịch.
 
@@ -73,6 +73,7 @@ const licenseView = (patch: Partial<LicenseView> = {}): LicenseView => ({
   quota: quota(),
   serverConfigured: true,
   devOverride: false,
+  clockRolledBack: false,
   ...patch,
 });
 
@@ -105,6 +106,8 @@ describe("lời nhắc bản quyền", () => {
     expect(licenseNotice(licenseView({ standing: "revoked" }))).toBe("license.notice.revoked");
     expect(licenseNotice(licenseView({ standing: "active", renewSoon: true }))).toBe("license.notice.renewSoon");
     expect(licenseNotice(licenseView({ standing: "active" }))).toBeNull();
+    // Gói Free cũng nhắc chỉnh giờ máy (Q2 của review 06 lần 1).
+    expect(licenseNotice(licenseView({ standing: "free", clockRolledBack: true }))).toBe("license.notice.clockRolledBack");
   });
 
   it("gia hạn khi đã có key chưa bị thu hồi", () => {
@@ -217,6 +220,7 @@ const licenseView = (patch: Partial<LicenseView> = {}): LicenseView => ({
   },
   serverConfigured: true,
   devOverride: false,
+  clockRolledBack: false,
   ...patch,
 });
 
@@ -387,7 +391,7 @@ Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/lib/ipc.ts b/src/lib/ipc.ts
-index 9ef7a9fcef0b52c536975aac12a9dd6b399995ea..54f86286e27213ba9c570ac6ba8f8d8e4b2403d7 100644
+index 9ef7a9fcef0b52c536975aac12a9dd6b399995ea..877369c8d34761e03bdb819b94bcd769aeb6b433 100644
 --- a/src/lib/ipc.ts
 +++ b/src/lib/ipc.ts
 @@ -100,6 +100,10 @@
@@ -401,7 +405,7 @@ index 9ef7a9fcef0b52c536975aac12a9dd6b399995ea..54f86286e27213ba9c570ac6ba8f8d8e
    // Tăng mỗi lần trạng thái đổi: trạng thái có `rev` nhỏ hơn trạng thái đang có là cũ, bỏ qua.
    rev: number;
  }
-@@ -229,6 +233,86 @@
+@@ -229,6 +233,88 @@
    field: string | null;
    message: string;
  }
@@ -442,6 +446,8 @@ index 9ef7a9fcef0b52c536975aac12a9dd6b399995ea..54f86286e27213ba9c570ac6ba8f8d8e
 +  quota: QuotaView;
 +  serverConfigured: boolean;
 +  devOverride: boolean;
++  // Giờ máy bị coi là chỉnh lùi (cả ở gói Free): nhắc chỉnh giờ.
++  clockRolledBack: boolean;
 +}
 +
 +// Một máy đã kích hoạt, trong `409 device_limit` (`license::client::Device`). `device_label` có thể là `null`.
@@ -488,7 +494,7 @@ index 9ef7a9fcef0b52c536975aac12a9dd6b399995ea..54f86286e27213ba9c570ac6ba8f8d8e
  
  export interface Commands {
    get_settings: { args: undefined; result: Settings };
-@@ -270,6 +354,17 @@
+@@ -270,6 +356,17 @@
    clear_all_data: { args: undefined; result: null };
    get_debug_sessions: { args: undefined; result: DebugSession[] };
    get_overlay_view: { args: undefined; result: OverlayView };
@@ -506,7 +512,7 @@ index 9ef7a9fcef0b52c536975aac12a9dd6b399995ea..54f86286e27213ba9c570ac6ba8f8d8e
    hide_overlay: { args: undefined; result: null };
    begin_overlay_resize: { args: { edge: ResizeEdge }; result: null };
    overlay_resize_move: { args: undefined; result: null };
-@@ -294,6 +389,8 @@
+@@ -294,6 +391,8 @@
    "app://navigate": Navigate;
    "app://notice": AppNotice;
    "overlay://view": OverlayView;
@@ -575,6 +581,7 @@ export function licenseNotice(view: LicenseView | null): LicenseNoticeKey | null
   };
   const key = byStanding[view.standing];
   if (key) return key;
+  if (view.clockRolledBack) return "license.notice.clockRolledBack";
   return view.standing === "active" && view.renewSoon ? "license.notice.renewSoon" : null;
 }
 
@@ -793,7 +800,7 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 Expected (lúc lập kế hoạch):
 ```text
  Test Files  14 passed (14)
-      Tests  124 passed (124)
+      Tests  125 passed (125)
 ```
 
 Run:
@@ -880,7 +887,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
-index b67e26bf228f17472871aa1b29dd4ee3fa7ed1d4..b3e5470fddee335295e7696fa1e3753e9c7f7c63 100644
+index b67e26bf228f17472871aa1b29dd4ee3fa7ed1d4..c0da5d4a29d38ca8337c0cca096ca2c92c363c42 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -262,6 +262,59 @@
@@ -935,7 +942,7 @@ index b67e26bf228f17472871aa1b29dd4ee3fa7ed1d4..b3e5470fddee335295e7696fa1e3753e
 +  "quota.resetAt": "resets {time}",
 +  "quota.expiresAt": "plan ends {time}",
 +  "license.notice.notGenuine": "This copy of AI Translator is not genuine, so only Free works. Download it from the official website.",
-+  "license.notice.clockRolledBack": "This computer's clock was moved back. Set the right time and connect to the internet to keep your plan.",
++  "license.notice.clockRolledBack": "This computer's clock was moved back. Set the right time and connect to the internet so the app can check it.",
 +  "license.notice.refreshNeeded": "Your plan could not be checked for 14 days, so Free is used. Connect to the internet.",
 +  "license.notice.expired": "Your plan has expired. Renew it to keep the Pro features.",
 +  "license.notice.revoked": "Your license has been revoked. Contact support.",
@@ -949,7 +956,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
-index 1e84492a275130cccc00ea6c4d66593cc6db6358..f9e9a27db79cd98f0987ac1919be873a6dac6466 100644
+index 1e84492a275130cccc00ea6c4d66593cc6db6358..de1e7873467acf034ab91fe9b73a1e1e21e6abd6 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -262,6 +262,59 @@
@@ -1004,7 +1011,7 @@ index 1e84492a275130cccc00ea6c4d66593cc6db6358..f9e9a27db79cd98f0987ac1919be873a
 +  "quota.resetAt": "mở lại lúc {time}",
 +  "quota.expiresAt": "gói hết hạn lúc {time}",
 +  "license.notice.notGenuine": "Bản cài AI Translator này không chính hãng nên chỉ dùng được Free. Hãy tải bản chính thức từ website.",
-+  "license.notice.clockRolledBack": "Giờ máy đã bị chỉnh lùi. Chỉnh lại giờ cho đúng và kết nối mạng để giữ gói.",
++  "license.notice.clockRolledBack": "Giờ máy đã bị chỉnh lùi. Chỉnh lại giờ cho đúng và kết nối mạng để app kiểm lại giờ.",
 +  "license.notice.refreshNeeded": "Đã 14 ngày chưa kiểm được gói nên đang dùng Free. Hãy kết nối mạng.",
 +  "license.notice.expired": "Gói đã hết hạn. Gia hạn để tiếp tục dùng tính năng Pro.",
 +  "license.notice.revoked": "License đã bị thu hồi. Vui lòng liên hệ hỗ trợ.",
@@ -1344,7 +1351,7 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 Expected (lúc lập kế hoạch):
 ```text
  Test Files  14 passed (14)
-      Tests  124 passed (124)
+      Tests  125 passed (125)
 ```
 
 Run:
@@ -1390,7 +1397,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
-index b3e5470fddee335295e7696fa1e3753e9c7f7c63..21300e1f46ac5ed0cc70487ebc6d0e6d1e25c9b7 100644
+index c0da5d4a29d38ca8337c0cca096ca2c92c363c42..80d822ecf632671eb208e4b13230d9fc032034ff 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -59,7 +59,33 @@
@@ -1434,7 +1441,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
-index f9e9a27db79cd98f0987ac1919be873a6dac6466..0befee6bdf5e857172b8881949fd1c4fd6dbf749 100644
+index de1e7873467acf034ab91fe9b73a1e1e21e6abd6..6d38ff22a1bcf1bc921ac21104eec0ed7bd1c004 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -59,7 +59,33 @@
@@ -1684,7 +1691,7 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 Expected (lúc lập kế hoạch):
 ```text
  Test Files  14 passed (14)
-      Tests  124 passed (124)
+      Tests  125 passed (125)
 ```
 
 Run:
@@ -1729,7 +1736,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
-index 21300e1f46ac5ed0cc70487ebc6d0e6d1e25c9b7..3522d660f349259e9427d92b786358b02f98cc14 100644
+index 80d822ecf632671eb208e4b13230d9fc032034ff..1e2a66043c7e91af457124ef19668ab628cb1a2b 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -38,7 +38,8 @@
@@ -1756,7 +1763,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
-index 0befee6bdf5e857172b8881949fd1c4fd6dbf749..154b8e16625b048ba03465dee16bed479a756298 100644
+index 6d38ff22a1bcf1bc921ac21104eec0ed7bd1c004..9ea6754ca7b6586dc96385f802fc44772afb1189 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -38,7 +38,8 @@
@@ -1955,7 +1962,7 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 Expected (lúc lập kế hoạch):
 ```text
  Test Files  14 passed (14)
-      Tests  124 passed (124)
+      Tests  125 passed (125)
 ```
 
 Run:
@@ -2009,7 +2016,7 @@ cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8
 ```
 Expected (lúc lập kế hoạch; 06b không thêm test Rust):
 ```text
-passed 733 failed 0 ignored 13
+passed 745 failed 0 ignored 13
 ```
 
 Run:
@@ -2038,7 +2045,7 @@ cargo test --release -p meeting-translator --lib -- pro:: license:: --test-threa
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 71 passed; 0 failed; 0 ignored; 0 measured; 309 filtered out
+test result: ok. 79 passed; 0 failed; 0 ignored; 0 measured; 313 filtered out
 ```
 
 Run:
@@ -2051,7 +2058,7 @@ test license::genuine::tests::the_team_requirement_only_takes_a_real_team_id ...
 test license::keys::tests::the_embedded_file_parses_for_both_environments ... ok
 test pro::tests::only_a_debug_build_runs_unlimited ... ok
 test pro::tests::the_dev_gate_exists_only_in_debug_builds ... ok
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 376 filtered out
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 388 filtered out
 ```
 
 Run:
@@ -2079,10 +2086,10 @@ Run:
 ```bash
 NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 ```
-Expected (lúc lập kế hoạch; trên cây đầu `4b6503a` là 114 test trong 12 file):
+Expected (lúc lập kế hoạch; trên cây đầu `5f48558` là 115 test trong 12 file):
 ```text
  Test Files  14 passed (14)
-      Tests  124 passed (124)
+      Tests  125 passed (125)
 ```
 
 Run:
@@ -2093,6 +2100,85 @@ Expected (lúc lập kế hoạch):
 ```text
 No known vulnerabilities found
 ```
+
+- [ ] **Step 3: Kiểm code Windows trên Mac**
+
+Run:
+```bash
+./scripts/check-windows.sh -q && echo check-windows ok
+```
+Expected (lúc lập kế hoạch):
+```text
+check-windows ok
+```
+
+- [ ] **Step 4: License server (không đổi)**
+
+Run:
+```bash
+pnpm -C server install --frozen-lockfile >/dev/null 2>&1 && NO_COLOR=1 pnpm -C server check 2>&1 | grep -E '^ +Tests |^# (pass|fail) ' && pnpm -C server audit 2>&1 | tail -1
+```
+Expected (lúc lập kế hoạch):
+```text
+      Tests  360 passed (360)
+# pass 6
+# fail 0
+No known vulnerabilities found
+```
+
+- [ ] **Step 5: Không có bí mật nào trong app** (spec §10.2)
+
+Dò tên các bí mật thật của server (khóa ký token, khóa của PayOS, Resend) và khóa riêng dạng PEM trong mã của app. Khóa test trong `#[cfg(test)]` (hạt giống `test-1` của bộ vector 05, khóa test manifest của 04) là khóa công khai của bộ test, không phải bí mật.
+
+Run:
+```bash
+P='TOKEN_SIGNING_KEY|PAYOS_(CLIENT_ID|API_KEY|CHECKSUM_KEY)|RESEND_API_KEY|BEGIN (EC |RSA |OPENSSH )?PRIVATE KEY'
+git grep -nIE "$P" -- src src-tauri | head -5; echo "khớp: $(git grep -IlE "$P" -- src src-tauri | wc -l | tr -d ' ')"
+```
+Expected (lúc lập kế hoạch):
+```text
+khớp: 0
+```
+
+## Task 6: Thử tay trên Mac với staging (cần người)
+
+Bàn giao "chạy được" của 06 (mục 2.6 của kế hoạch 00) cần staging của 05 và người: giao dịch thật, hộp thoại của Keychain, đổi giờ máy thật. Agent không tự chạy app và không bật hộp thoại quyền (mục 6.8 của kế hoạch 00): agent chuẩn bị, đưa từng bước cho người, ghi kết quả. Dòng 11, 14, 44, 46, 55, 58, 182, 183, 242, 265, 266, 310 (phần người).
+
+**Cần người thao tác:** cả task. **Cần trước:** 05 Task 19 (staging chạy, có cặp khóa ký token của staging, kênh PayOS của staging theo P05-1); Q14 của 05 (tài khoản PayOS). Chạy app bằng `scripts/run-dev-app.sh` với `AI_TRANSLATOR_DEV_FREE=1` (bản debug, dùng trạng thái bản quyền thật và khóa `staging`; QĐ17).
+
+**Files:**
+- Modify: `src-tauri/keys/license-public-keys.json`, `src-tauri/src/license/client.rs` (Step 1)
+- Create: `bench/phase0/results/gd1_06_mac.md`
+
+- [ ] **Step 1: Agent điền khóa công khai và URL của staging**
+
+Chép nguyên `server/keys/public-keys.json` (05 Task 19 đã ghi khối `staging`) vào `src-tauri/keys/license-public-keys.json`. Đặt `STAGING_URL` trong `src-tauri/src/license/client.rs` thành URL của Worker staging (05 Task 19 Step cuối ghi URL; dạng `https://…workers.dev` hay tên miền riêng). Chỉ khóa công khai và URL, không bí mật nào (§10.2).
+
+Run:
+```bash
+cargo test -p meeting-translator --lib license::keys -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
+curl -sS -o /dev/null -w '%{http_code}\n' "$(grep -oE 'https://[^"]+' src-tauri/src/license/client.rs | head -1)/v1/plans"
+```
+Expected: 4 test của `license::keys` qua (cả `the_app_copy_matches_the_server_file_when_it_exists`); `curl` in `200`.
+
+```bash
+git add src-tauri/keys/license-public-keys.json src-tauri/src/license/client.rs
+git commit -m "feat(app): khóa công khai và URL của license server staging (kế hoạch 06)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+- [ ] **Step 2: Free và hạn mức** (dòng 44, 46)
+
+Người (không phải agent) đưa app về trạng thái máy mới, vì xóa mục Keychain có thể làm macOS hỏi mật khẩu (mục 6.8 của kế hoạch 00 cấm agent bật hộp thoại quyền), và vì còn `settings.json` thì thiếu `quota-free` là mất bản ghi (QĐ6), không phải lần đầu chạy:
+1. Thoát app.
+2. Trong thư mục `~/Library/Application Support/com.aitranslator.desktop/`, xóa mọi thứ trừ thư mục con `models/` (model của 04, vài GB; giữ để khỏi tải lại): `settings.json`, `data.db*`, các file khác.
+3. Mở Keychain Access, tìm `com.aitranslator.desktop`, xóa các mục `license`, `license-seen`, `license-order`, `quota-free`, `quota-paid-…`, `quota-mark-…`, `db-key` (nếu có). macOS có thể hỏi mật khẩu đăng nhập.
+
+Rồi người mở app (bước lần đầu mở hiện lại; đi hết các bước).
+Expected:
+- Màn hình chính "Còn 10 phút hôm nay · mở lại lúc …", có nút Nâng cấp; Cài đặt › Bản quyền "Free"; Lịch sử, Từ điển hiện "là tính năng Pro".
+- Dịch một video tiếng Anh. Khi còn 5 phút: thanh phụ đề và màn hình chính nhắc một lần. Hết 10 phút: phiên dừng; thanh phụ đề "Đã hết hạn mức dịch · mở lại lúc <giờ>"; màn hình chính báo hết hạn mức kèm nút nâng gói; bấm Bắt đầu: bị từ chối ngay.
+- Lần đầu app đọc, ghi các mục bản quyền, macOS có thể hỏi quyền truy cập Keychain (bấm Always Allow). Ghi lại có hay không, mấy lần.
+- Nếu chỉ xóa mục Keychain mà còn thư mục dữ liệu: Expected là hết hạn mức của hôm nay kèm "mất bản ghi" (QĐ6), không phải "Còn 10 phút".
 
 - [ ] **Step 3: Kiểm code Windows trên Mac**
 
@@ -2188,6 +2274,7 @@ Expected:
 - Tắt Wi-Fi, thoát rồi mở app: vẫn Professional, dịch được (token dùng tới `refresh_before`); "Kiểm tra ngay" báo cần mạng.
 - Bật lại mạng. System Settings › General › Date & Time: tắt "Set time automatically", lùi giờ 1 giờ khi app đang chạy. Expected: trong vòng 1 phút, thanh báo "Giờ máy bị chỉnh lùi…", gói về Free (Lịch sử bị khóa); bật lại giờ tự động: trong vòng 5 phút (hay bấm "Kiểm tra ngay") về Professional.
 - Đặt giờ tới trước 1 năm, chờ 1 phút, rồi bật lại giờ tự động, bấm "Kiểm tra ngay": về Professional (header `Date` của server hạ mốc, QĐ8).
+- Ở Free (máy khác, hay sau Step 6 khi đã gỡ kích hoạt): đặt giờ tới trước 1 năm, chờ 1 phút, rồi bật lại giờ tự động. Expected: thanh báo "Giờ máy đã bị chỉnh lùi…" hiện ngay; trong vòng 5 phút có mạng thì thanh báo tắt (app hỏi giờ của server, QĐ31); hạn mức Free không kẹt tới năm sau (hôm sau mở lại như thường, QĐ29).
 - Ở Free: đặt giờ tới trước 1 ngày khi offline. Ghi lại hạn mức Free có mở lại không (rủi ro chấp nhận của §10.2: chỉnh tới trước khi offline lách được); bật lại giờ tự động thì báo chỉnh lùi.
 - Ghi mọi lần thấy hộp thoại Keychain.
 
