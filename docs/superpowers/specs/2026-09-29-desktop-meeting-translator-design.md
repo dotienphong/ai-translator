@@ -152,7 +152,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 ### 4.1 Lần đầu mở app
 
 1. **Chọn ngôn ngữ giao diện.** Mặc định theo hệ điều hành: tiếng Việt nếu máy dùng tiếng Việt, còn lại là English.
-2. **Kiểm tra cấu hình** (RAM, GPU, dung lượng trống), rồi đề xuất **gói Chuẩn (khoảng 2,5 GB)** hoặc **gói Nhẹ (khoảng 1,3 GB)**, có ghi rõ dung lượng sẽ tải.
+2. **Kiểm tra cấu hình** (RAM, GPU, dung lượng trống), rồi đề xuất **gói Chuẩn (khoảng 2,5 GB)** hoặc **gói Nhẹ (khoảng 1,3 GB)**, có ghi rõ dung lượng sẽ tải. Máy chưa được hỗ trợ (§8) thì báo lý do và cấu hình tối thiểu, và không cho tải model (§6.7).
 3. **Tải model.** Có thể tạm dừng rồi tải tiếp. Tải xong là dùng được ngay.
 4. **Cấp quyền trên macOS:** hướng dẫn bật quyền "Ghi âm thanh hệ thống", kèm nút mở System Settings. Windows không cần bước này.
 5. **Chọn ngôn ngữ đích** (mặc định theo ngôn ngữ giao diện) và tập ngôn ngữ nguồn.
@@ -523,8 +523,15 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 ### 6.7 Quản lý model
 
-- **Manifest `models.json`** đặt trên CDN của thương hiệu (Cloudflare R2 + tên miền riêng), **ký bằng Ed25519**. Khóa công khai được build sẵn vào app.
-  - Các trường: `id`, `tier`, `kind` (asr/mt/vad), `version`, `url`, `bytes`, `sha256`, `license_id`, `min_app_version`.
+- **Manifest `models.json`** đặt trên CDN của thương hiệu (Cloudflare R2 + tên miền riêng), **ký bằng Ed25519**. Khóa công khai được build sẵn vào app (kế hoạch Giai đoạn 1 · 04, QĐ1–QĐ2).
+  - **Phong bì:** `{ "format": "ai-translator-models", "version": 1, "kid", "body", "sig" }`. `body` là base64url (không đệm) của các byte JSON phần thân; `sig` là chữ ký Ed25519 trên `"ai-translator-models.v1." + body`. Tiền tố tách chữ ký manifest khỏi chữ ký token bản quyền. Phong bì đọc chặt: khóa lạ, base64url có đệm hay không ở dạng chuẩn, BOM, quá 1 MiB, `kid` lạ hay chữ ký sai đều bị từ chối.
+  - **Khóa:** bản dev chỉ nhận khóa staging, bản phát hành chỉ nhận khóa production (§10.2, "Khóa ký manifest và bản cập nhật"). App nhúng một khóa công khai cho mỗi môi trường; định dạng vẫn có `kid` để đổi khóa ở bản app sau.
+  - **Phần thân:** `schema` (bản 1), `sequence`, `published_at`, `files`, `packs`, `recommend`, và `pipeline` (không bắt buộc). Khóa lạ bị bỏ qua (manifest mới hơn app); khóa thiếu là lỗi.
+    - Mỗi file trong `files`: `id`, `tier` (**danh sách** gói có file này: VAD và giấy phép dùng chung các gói), `kind` (`asr`, `mt`, `vad`, hoặc `license` cho LICENSE, NOTICE), `version`, `file` (tên file trên máy), `url` (tương đối so với URL của manifest, hay `https://` đầy đủ), `bytes`, `sha256`, `license_id`, `min_app_version`. Tên file phải an toàn: không có thư mục con, không trùng file của kho model, không phải tên thiết bị của Windows; hai file không được trùng tên kể cả khác hoa thường.
+    - `packs`: mã gói, tên và ghi chú chất lượng theo hai ngôn ngữ giao diện (§8). Mỗi gói có đúng một file `asr`, một `mt`, một `vad`. Gói mới (ví dụ gói lai, §8) thêm bằng manifest, không cần phát hành lại app; cài đặt `modelTier` lưu mã gói.
+    - `recommend`: `min_ram_mib` (dưới mức này là máy chưa được hỗ trợ), danh sách luật đề xuất xét theo thứ tự (điều kiện `os`, `min_ram_mib`, `gpu: "discrete"`, `min_vram_mib`; luật đầu tiên khớp thắng), và `fallback`.
+    - `sequence` tăng mỗi lần phát hành: app từ chối manifest có số nhỏ hơn bản đã nhận, hay cùng số mà khác nội dung (chống phát lại manifest cũ).
+    - `pipeline`: các ngưỡng của `PipelineConfig` muốn đổi (§7); giá trị vô lý thì giữ mặc định, manifest vẫn dùng được.
 - **Hai gói model:**
 
   | Gói | Nhận dạng giọng nói | Dịch | VAD | Tổng |
@@ -532,7 +539,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   | **Chuẩn** | whisper large-v3-turbo q5_0 | Hy-MT2-1.8B Q8_0 (1,91 GB) | silero-vad | khoảng 2,5 GB |
   | **Nhẹ** | whisper small q5_1 | Hy-MT2-1.8B Q4_K_M (1,13 GB) | silero-vad | khoảng 1,3 GB |
 
-- **Đề xuất gói Chuẩn khi:**
+- **Đề xuất gói Chuẩn khi** (ngưỡng nằm trong `recommend` của manifest, tính bằng MiB và thấp hơn dung lượng danh nghĩa vì hệ điều hành báo ít hơn: RAM 15 360 MiB cho máy "16 GB", VRAM 5 632 MiB cho card "6 GB"; chủ dự án duyệt 2026-10-02, chốt lại khi có kết quả S6):
   - máy Apple Silicon có RAM từ 16 GB; hoặc
   - máy Windows có RAM từ 16 GB và **card đồ họa rời** hỗ trợ Vulkan, có bộ nhớ riêng (VRAM) **từ 6 GB**. Gói Chuẩn cần khoảng 3,2–4 GB VRAM cho hai engine, cộng khoảng 1 GB cho app họp và Windows (bảng VRAM ở §8).
     - App xác định qua `asr-worker-vulkan --probe` (§6.4): `deviceType` là `VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU`, và heap `DEVICE_LOCAL` lớn nhất từ 6 GB.
@@ -542,15 +549,19 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Chờ kết quả S6 trên card rời 6 GB, 4 GB và GPU tích hợp (kế hoạch 06, Task 8) để chốt ngưỡng VRAM 6 GB.
 
   Các máy còn lại được đề xuất gói Nhẹ. Người dùng vẫn đổi được.
+- **Máy chưa được hỗ trợ thì không tải được model** (chủ dự án quyết 2026-10-02): RAM dưới `min_ram_mib` của manifest (6 144 MiB, để máy "8 GB" có GPU tích hợp giữ bớt RAM không bị chặn nhầm), hay CPU x86_64 không có AVX2 (§8, §6.12). App báo rõ lý do và cấu hình tối thiểu, khóa nút tải, và phía Rust cũng từ chối lệnh tải. Ổ không đủ chỗ (dưới đây) cũng không tải được. Bản dev chạy bằng model của Giai đoạn 0 trong `models/` của repo thì vẫn chạy như cũ.
 - **Tải model:**
-  - Dùng HTTP Range để tải tiếp được khi rớt mạng.
-  - Ghi ra file `*.part`, kiểm tra SHA-256, rồi mới đổi tên thành file chính thức.
-  - Trước khi tải, kiểm tra dung lượng trống còn ít nhất bằng kích thước model cộng 1 GB.
+  - Dùng HTTP Range để tải tiếp được khi rớt mạng. Tạm dừng rồi tải tiếp được.
+  - Ghi ra file `*.part` (tên kèm 16 ký tự đầu của SHA-256, để bản mới không tải tiếp trên phần dở của bản cũ), kiểm tra SHA-256, rồi mới đổi tên thành file chính thức.
+  - Trước khi tải, kiểm tra dung lượng trống còn ít nhất bằng phần còn phải tải cộng 1 GB.
+  - Chỉ theo redirect sang `https` (tối đa 5 bước), không bao giờ hạ xuống `http`.
+  - Tải xong một gói thì gói đó thành gói đang dùng, có tác dụng từ phiên dịch sau.
 - **Nơi lưu:** thư mục dữ liệu của app theo Tauri (`app_local_data_dir`), nằm ngoài thư mục cài đặt.
   - macOS: `~/Library/Application Support/<bundle-id>/models`, tức `~/Library/Application Support/com.aitranslator.desktop/models`
   - Windows: `%LOCALAPPDATA%\<bundle-id>\models`. Không đặt trong `%LOCALAPPDATA%\<tên app>`, vì đó là thư mục cài đặt của bộ cài NSIS kiểu per-user. Ô "xóa dữ liệu app" của bộ gỡ cài đặt chỉ xóa `%APPDATA%\<bundle-id>` và `%LOCALAPPDATA%\<bundle-id>` (A6).
 - **Tự host model:** Apache 2.0 và MIT cho phép phân phối lại. File LICENSE và NOTICE được đặt cạnh file model. Không tải từ Hugging Face hay GitHub của người khác.
-- **Cập nhật model:** khi có mạng, app kiểm tra manifest lúc khởi động, tối đa một lần mỗi ngày. Có bản mới thì hỏi người dùng, không tự tải.
+- **Cập nhật model:** khi có mạng, app kiểm tra manifest lúc khởi động, tối đa một lần mỗi ngày (hay khi giờ máy lùi về trước lần kiểm trước). Có bản mới thì hỏi người dùng, không tự tải.
+  - Đang tải bản cập nhật đè lên file của gói đang dùng thì không bắt đầu phiên dịch được (chủ dự án quyết 2026-10-02); đang dịch bằng gói đó thì không tải đè hay xóa nó. App tắt tiến trình phụ đang rảnh trước khi tải đè hay xóa model, vì Windows không cho đổi tên đè file đang mở.
 
 ### 6.8 Thanh toán (PayOS) và bản quyền
 
@@ -866,6 +877,8 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
 | Tối thiểu | Apple Silicon, RAM 8 GB | RAM 8 GB, CPU 4 nhân có AVX2 | Nhẹ |
 | Chưa hỗ trợ trong MVP | Mac chip Intel | ARM64, CPU không có AVX2, RAM < 8 GB | — |
 
+Máy chưa được hỗ trợ thì app báo rõ lý do và cấu hình tối thiểu, và **không cho tải model** (chủ dự án quyết 2026-10-02; §6.7). App tự kiểm RAM (ngưỡng `min_ram_mib` của manifest, 6 144 MiB) và AVX2 (Đ13 của kế hoạch Giai đoạn 1 · 00); bản build chỉ có arm64 cho macOS và x64 cho Windows.
+
 Chờ kết quả S6 trên các máy tham chiếu (§13; kế hoạch 06, Task 8–9, `results/s6_latency.md`) để chốt hạng máy khuyến nghị. M4 Pro, máy đã đo, không phải máy quyết định.
 
 **Chất lượng nhận dạng theo gói** (A4, mốc ở §3.3): gói Nhẹ chép kém rõ ở tiếng Việt (WER 0,225, so với 0,087 của gói Chuẩn), tiếng Nhật (CER 0,131 so với 0,045), tiếng Hàn (0,082 so với 0,041) và tiếng Trung (0,096 so với 0,056). Tiếng Anh gần ngang (0,066 so với 0,054). Khi chọn gói (§4.1, §6.7), app phải ghi chú điều này, và khuyến nghị gói Chuẩn cho người dùng nghe chủ yếu tiếng Việt, Nhật, Hàn, Trung.
@@ -972,7 +985,8 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 | Khách đã chuyển khoản nhưng webhook của PayOS đến chậm hoặc bị mất | App vẫn đang chờ; server có đơn chưa xác nhận | App hỏi trạng thái đơn mỗi 3 giây. Server tự đối soát bằng `GET /v2/payment-requests/{id}`, theo lịch ở dưới bảng. |
 | Webhook bị gửi trùng | Trùng `order_code` | Xử lý idempotent: mỗi đơn chỉ cấp, gia hạn hoặc đổi gói license một lần |
 | Khách chuyển thiếu tiền, hoặc link thanh toán hết hạn | `amountPaid` < `amount`, hoặc trạng thái đơn trả về từ PayOS | Không cấp license, hiện hướng dẫn liên hệ hỗ trợ. Hỗ trợ cấp tay khi khách đã chuyển bù (§6.8). |
-| Tải model thất bại | Lỗi HTTP hoặc sai SHA-256 | Thử lại 3 lần, cho phép tải tiếp sau |
+| Tải model thất bại | Lỗi HTTP hoặc sai SHA-256 | Thử lại 3 lần (chờ 1, 5, 15 giây), cho phép tải tiếp sau. Rớt mạng mà phần đã tải dài hơn mọi lần trước thì đếm lại từ đầu |
+| Máy chưa được hỗ trợ, hoặc ổ không đủ chỗ | Cấu hình máy (§8), dung lượng trống so với phần còn phải tải cộng 1 GB (§6.7) | Không cho tải model: báo lý do và cấu hình tối thiểu, khóa nút tải; lệnh tải bị từ chối cả ở phía Rust |
 | Bản dịch lỗi (quá dài, có kèm lời giải thích) | Tỉ lệ token theo từng cặp ngôn ngữ (§6.5), mẫu nhận dạng | Cắt stream, thử lại một lần với repeat penalty cao hơn, sau đó hiện câu gốc |
 
 **Lịch đối soát đơn** (Cron Trigger chạy mỗi 5 phút):
@@ -1104,6 +1118,12 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
   3. Sửa `server/keys/public-keys.json`: chuyển khóa bị lộ từ ô sang mảng `retired`, ghi khóa mới vào đúng ô. Phát hành bản cập nhật app mang hai khóa công khai này.
   4. Bản app cũ vẫn nhận token ký bằng khóa bị lộ cho tới khi được cập nhật. Đây là rủi ro còn lại, chấp nhận.
 - **Đánh đổi:** tài khoản Cloudflare bị chiếm thì mất cả hai khóa. Nhưng khi đó server cũng đã bị chiếm, nên một khóa dự phòng cất ở chỗ khác cũng không cứu được.
+
+**Khóa ký manifest và bản cập nhật** (chủ dự án quyết 2026-10-02, Q17 của kế hoạch Giai đoạn 1 · 00):
+- Mỗi loại một khóa production: một khóa ký manifest model, một khóa ký bản cập nhật Tauri. Không làm hai ô khóa A/B như khóa token.
+- Khóa nằm trong secret của CI (kế hoạch 07 tạo, ngay trong CI hay trên máy không nối mạng rồi nhập thẳng vào secret). Kèm **một bản sao offline**, mã hóa bằng passphrase, cất trên USB; passphrase in ra giấy, cất riêng.
+- Lộ khóa thì phát hành bản app mới mang khóa công khai mới. App nhúng một khóa công khai production cho manifest; định dạng manifest vẫn có `kid` để bản app sau đổi khóa. Khi đổi khóa manifest, giữ `kid` cũ trong app ít nhất một bản phát hành, để app chưa cập nhật vẫn đọc được manifest đã lưu.
+- Khóa staging của manifest nằm ngoài repo, trên máy người vận hành (file JWK quyền 0600), vì staging chưa có CI; bản phát hành không bao giờ nhận khóa staging.
 
 **Để Giai đoạn 2**, và chỉ làm khi thấy bị crack nhiều thật: chống debug, làm rối code sâu hơn, kiểm tra toàn vẹn nhiều lớp, phát hiện gian lận phía server bằng phân tích hành vi.
 
@@ -1265,6 +1285,8 @@ meeting-translator/
 ## 15. Việc còn mở (không chặn phần kỹ thuật)
 
 Đã quyết ngày 2026-10-01 và đã đưa vào spec: tên và bundle identifier (D13), bốn gói và giá (P1, §2), hạn mức (§6.8), cách lưu dữ liệu (§10.1), chưa làm hóa đơn điện tử (§10.1), không dùng kho mật khẩu cho khóa ký token (§10.2). Dịch vụ email đã chọn là Resend, nhưng chưa có tài khoản (T6 của kế hoạch Giai đoạn 1 · 00). Tài khoản Cloudflare riêng đã có.
+
+Đã quyết ngày 2026-10-02: khóa ký manifest model và khóa ký bản cập nhật, mỗi loại một khóa trong secret của CI kèm bản sao offline mã hóa (§10.2); máy chưa được hỗ trợ thì không tải model (§6.7, §8).
 
 Còn mở:
 - **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, staging dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Cần tên miền trước khi license server lên production (email gửi từ tên miền đã xác thực, `returnUrl`) và trước bản beta đầu tiên.

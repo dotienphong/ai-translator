@@ -101,7 +101,7 @@ Chưa có:
 | `2026-10-01-giai-doan-1-01-nen-app.md` | 01 Nền app | đã viết, đã duyệt; đã làm trên Mac Task 1–23 (`69f30ba` … `5281e27`, sửa sau review đợt R và U, nâng `475cf0b`, `34777f0`); còn Task 24 (thử tay trên Mac, người), Task 25 (Windows) | — |
 | `2026-10-01-giai-doan-1-02a-pipeline-crate.md`, `…-02d-pipeline-clients.md`, `…-02b-pipeline-engine.md`, `…-02c-pipeline-app.md` (làm theo thứ tự này) | 02 Pipeline trong app | đã viết, đã duyệt; đã làm trên Mac tới 02c Task 7 (`f2edbd6`); còn 02b Task 7–9 (máy rảnh), 02c Task 8 (người), 02c Task 9 (Windows) | phần crate: —; phần nối vào app: 01 |
 | `2026-10-02-giai-doan-1-03a-phu-de-du-lieu.md`, `2026-10-02-giai-doan-1-03b-phu-de-giao-dien.md` (làm theo thứ tự này, trước 04) | 03 Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ | đã viết, chờ duyệt | 01, 02 |
-| `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `2026-10-02-giai-doan-1-04b-quan-ly-model-app.md` (làm theo thứ tự này) | 04 Quản lý model | đã viết, chờ duyệt | 01, 02 |
+| `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `2026-10-02-giai-doan-1-04b-quan-ly-model-app.md` (làm theo thứ tự này) | 04 Quản lý model | đã viết; đã sửa theo review lần 1 và quyết định của chủ dự án ngày 2026-10-02, chờ duyệt; làm sau 03 | 01, 02 (03 trước) |
 | `2026-10-01-giai-doan-1-05-license-server.md` | 05 License server | đã viết, đã duyệt; đã làm Task 1–18 (`35d758d` … `5664b1b`, sửa sau review đợt A–D, review cuối Approved ở `4dbd229`); còn Task 19–21 (người: triển khai staging, giao dịch thử, lên production) | — |
 | `2026-10-01-giai-doan-1-06-ban-quyen-app.md` | 06 Bản quyền trong app | sau khi 05 xong và 03 có điểm kiểm tra Pro | 01, 02, 03, 05 |
 | `2026-10-01-giai-doan-1-07-dong-goi-cap-nhat.md` | 07 Đóng gói, ký số, cập nhật, CI | sau khi 01, 02 và 05 xong | phần CI: 01; bộ cài đủ tính năng: 01–06 |
@@ -246,7 +246,15 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
 - **Làm trên Mac:** phần lớn.
 - **Cần Windows:** `--probe` trên GPU thật; đường dẫn `%LOCALAPPDATA%\<bundle-id>\models`.
 - **Cần người thao tác:** tạo bucket, gắn tên miền và tạo API token trên dashboard Cloudflare; thử rớt mạng thật.
-- **Trạng thái:** viết sau khi 01 và 02 xong. Ngưỡng thật chờ C6, nhưng không chặn việc viết hay làm.
+- **Trạng thái:** đã viết thành hai file 04a, 04b; sửa theo review lần 1. Làm sau 03 (04a mục "File giao nhau với kế hoạch 03" ghi các chỗ gộp tay). Ngưỡng thật chờ C6, nhưng không chặn việc viết hay làm.
+  - **Chủ dự án quyết ngày 2026-10-02:**
+    - giữ ngưỡng đề xuất gói Chuẩn RAM 15 360 MiB, VRAM 5 632 MiB; `min_ram_mib` là 6 144 MiB;
+    - đang tải bản cập nhật của gói đang dùng thì chặn bắt đầu phiên;
+    - **máy chưa được hỗ trợ thì không cho tải model** (RAM dưới `min_ram_mib`, x86_64 không AVX2, ổ không đủ chỗ), phía Rust từ chối lệnh tải;
+    - "Xóa model và dữ liệu" không đưa app về lần đầu mở;
+    - Q17 (mục 8.1).
+  - 04 cũng sửa N1 của review cuối 02 (bộ tắt khi rảnh chen vào giữa `prepare` và `begin_session`, `supervisor.rs`).
+  - **Nhận từ 03:** `data::clear_all_data` cho "Xóa model và dữ liệu"; `PrivacySettings.tsx` chứa nút của 04; `session::engine_config` nhận cả `SharedGlossary` lẫn `PipelineConfig`.
 
 ### 2.5 Kế hoạch 05: License server
 
@@ -357,6 +365,11 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - `.cargo/config.toml` thêm cờ linker `/DEPENDENTLOADFLAG:0x800` cho mọi binary của workspace trên `x86_64-pc-windows-msvc`: DLL import thẳng, kể cả `VCRUNTIME140.dll`, chỉ được tìm trong System32. Bộ cài Windows phải có VC++ Redistributable, hoặc build với `+crt-static` (dòng 214, C9).
   - Thư mục cài đặt Windows và `Contents/MacOS` không được có thư viện nào ngoài bảng SHA-256 của tiến trình phụ: 07 đưa mọi DLL, dylib đi kèm vào bảng, và CI sinh bảng từ đúng binary phát hành (Đ15). macOS bản phát hành bật hardened runtime và library validation.
   - Bản phát hành bật `shared-encode` cho `asr-worker` (dòng 119); câu xin quyền ghi âm thanh hệ thống có `InfoPlist.strings` en, vi (dòng 92).
+- **Nhận từ 04** (04a QĐ5, QĐ10; Q17):
+  - Tạo **một** khóa production ký manifest model và **một** khóa production ký bản cập nhật Tauri, trong CI (hay trên máy không nối mạng rồi nhập thẳng vào secret của CI), kèm một bản sao offline mã hóa bằng passphrase trên USB, passphrase in ra giấy cất riêng (spec §10.2).
+  - Ghi khóa công khai production của manifest vào khối `production` của `src-tauri/keys/manifest-public-keys.json`; đặt `PRODUCTION_URL` trong `src-tauri/src/models/source.rs`; ký manifest production trong CI bằng `scripts/models/sign-manifest.mjs --env production` (đổi script để đọc khóa từ secret). Khi đổi khóa manifest, giữ `kid` cũ trong app ít nhất một bản phát hành.
+  - `tauri-plugin-updater` dùng TLS của hệ điều hành (`native-tls`) như 04, để không kéo thêm `rustls` với `aws-lc`.
+  - Bộ gỡ Windows xóa `%LOCALAPPDATA%\com.aitranslator.desktop` (gồm `models`) khi tick "xóa dữ liệu app".
 - **Trạng thái:** viết sau khi 01, 02 và 05 xong. Làm xong sau 06.
 
 ### 2.8 Kế hoạch 08: Nghiệm thu
@@ -1102,7 +1115,7 @@ Ghi chú:
   - khóa riêng ký manifest model;
   - API token Cloudflare phạm vi hẹp (R2, deploy Worker).
 - **Không dùng kho mật khẩu** (P05-6, chốt 2026-10-01). Khóa dự phòng ký token là ô secret không đang ký (`TOKEN_SIGNING_KEY_A` hoặc `_B`) của Worker, không có bản sao nào trên máy người vận hành. Đánh đổi: tài khoản Cloudflare bị chiếm thì mất cả hai khóa, nhưng khi đó server cũng đã bị chiếm.
-- Bản sao của khóa ký bản cập nhật (mất khóa này thì không cập nhật được app đã cài) và khóa ký manifest: còn mở (Q17), vì trước đây định để trong kho mật khẩu.
+- Khóa ký bản cập nhật và khóa ký manifest (Q17, chốt 2026-10-02): mỗi loại một khóa trong secret của CI, kèm một bản sao offline mã hóa bằng passphrase (USB; passphrase in ra giấy, cất riêng). Lộ khóa thì phát hành bản app mới mang khóa công khai mới.
 - Không khóa ký nào nằm trên máy dev (§10.2). Khóa production được tạo rồi đưa thẳng vào nơi lưu, không ghi ra đĩa (Q11).
 - Khóa staging và dev tách khỏi khóa production. Bản dev của app nhận khóa staging; bản phát hành chỉ nhận khóa production.
 - `.gitignore` thêm `.dev.vars*`, `.env*`, `*.pem`, `*.p12`, `*.pfx`, `*.key` trước khi tạo `server/` (task đầu của 05).
@@ -1206,7 +1219,7 @@ Cách làm:
 | R15 | Cloudflare Access bảo vệ theo tên miền và đường dẫn: `/admin` trên `*.workers.dev`, hay chung tên miền với API, cần cấu hình đúng; Worker vẫn phải tự kiểm JWT của Access | §6.8, §10.2 | 05 chọn giữa Worker admin riêng và đường dẫn trên tên miền riêng; test Worker từ chối request thiếu JWT hợp lệ | 05 |
 | R16 | Chưa có tên miền (chủ dự án mua sau): email production, tên miền của R2 và Worker, `returnUrl` của PayOS chưa có đích thật | Q1, T7 | Staging dùng tên miền tạm; mọi URL đọc từ cấu hình | 04, 05, 07 |
 | R17 | Đổi bundle identifier sau khi đã có người dùng làm mất thư mục dữ liệu (model) và các mục trong kho khóa | Q1, §6.7 | Đã chốt `com.aitranslator.desktop` ngày 2026-10-01; 01 đổi trước khi 03 và 06 ghi vào kho khóa; identifier đọc từ một chỗ duy nhất | 01, 07 |
-| R18 | Mất khóa ký bản cập nhật thì không cập nhật được các bản đã cài; lộ khóa thì kẻ gian phát hành được bản giả | §6.11, §10.2 | Chờ Q17 (bản sao của khóa); chỉ job phát hành của CI đọc khóa | 07 |
+| R18 | Mất khóa ký bản cập nhật thì không cập nhật được các bản đã cài; lộ khóa thì kẻ gian phát hành được bản giả | §6.11, §10.2 | Q17 (chốt 2026-10-02): bản sao offline mã hóa của khóa; chỉ job phát hành của CI đọc khóa | 07 |
 | R19 | Hai kế hoạch chạy song song trên `main` sửa cùng file | Đ18 | Chỉ song song khi tập file không giao nhau | 00 |
 | R20 | Với turbo, luật `no_speech` gần như không bao giờ bỏ đoạn, nên câu ảo giác khi chỉ có nhạc hay im lặng chỉ còn bộ lọc câu quen thuộc chặn | §6.4 | Thử trên im lặng, nhiễu, nhạc (Việc cho MVP); bộ lọc câu | 02 |
 | R21 | Việc pháp lý (chuyển dữ liệu ra nước ngoài, giữ dữ liệu cá nhân không thời hạn) có thể lùi ngày bán hoặc buộc đổi cách lưu dữ liệu | §10.1, §15 | Hỏi luật sư sớm; thao tác xóa theo email đã có, nên đổi sang lưu có thời hạn chỉ cần thêm một cron | CDA |
@@ -1219,7 +1232,7 @@ Mỗi điểm có đề xuất. Nếu tới lúc làm mà chưa có quyết đ�
 Cập nhật ngày 2026-10-01:
 - **Đã chốt:** Q1 (trừ tên miền và logo), Q2, Q9, Q10, P05-6. Spec đã sửa theo ở commit `6804a7c`, rồi chặt hơn sau bốn lượt review ở commit `868dcfa`, `dc4ac49`, `d3dc512` và `7458783`.
 - **Theo đề xuất đã áp dụng** (kế hoạch con đã làm theo, spec đã sửa nếu cần): Q4, Q5, Q7, Q11, Q12, Q13, Q14.
-- **Còn mở:** Q3, Q6, Q8, Q15, Q16, Q17; P05-1, P05-2, P05-4, P05-5 của kế hoạch 05; điểm cần quyết 1, 2, 6, 7, 8 của 02a (dòng 350–354 của bảng đối chiếu, mục 8.3).
+- **Còn mở:** Q3, Q6, Q8, Q15, Q16; P05-1, P05-2, P05-4, P05-5 của kế hoạch 05; điểm cần quyết 1, 2, 6, 7, 8 của 02a (dòng 350–354 của bảng đối chiếu, mục 8.3).
 
 ### 8.1 Đã chốt
 
@@ -1263,7 +1276,7 @@ Cập nhật ngày 2026-10-01:
 - **Q11. Tạo và giữ khóa ký.** Chủ dự án chỉ quyết P05-6 (không dùng kho mật khẩu); phần còn lại làm theo đề xuất:
   - Khóa ký token production: tạo bằng script, không ghi ra đĩa, pipe thẳng vào `wrangler secret put`. Khi đã có CI (Q3), có thể tạo trong một job CI chạy tay.
   - Khóa dự phòng ký token: ô secret không đang ký (`TOKEN_SIGNING_KEY_A` hoặc `_B`) của Worker (P05-6).
-  - Khóa ký manifest và khóa ký bản cập nhật: tạo trong CI. Bản sao của hai khóa này: Q17.
+  - Khóa ký manifest và khóa ký bản cập nhật: tạo trong CI, mỗi loại một khóa; bản sao offline mã hóa (Q17, chốt 2026-10-02).
   - Staging dùng cặp khóa riêng.
 
 - **Q4. Câu gốc ngắn trong ngưỡng tỉ lệ token.** Áp dụng cách 2 (02a QĐ12): chỉ áp tỉ lệ khi câu gốc từ 10 token; câu ngắn hơn chỉ chịu hạn mức sinh (tối đa 68 token). Spec §6.5 đã sửa.
@@ -1311,11 +1324,11 @@ Cập nhật ngày 2026-10-01:
   - Đổi gói và gia hạn: "hiện tại" là `transactionDateTime` của PayOS (không có múi giờ thì parse theo GMT+7), kẹp trong thời hạn của link; cấp tay dùng giờ thao tác, kể cả đơn `underpaid` đã chuyển bù; giá quy đổi theo bảng giá hiện hành; checkout trả ước tính `license_expires_at`. Thêm `GET /v1/plans`.
   - Mô tả đơn PayOS là `AT<7 chữ số>`.
   - Khi khách yêu cầu xóa dữ liệu, giữ `device_id_hash` ở dạng đã băm: dữ liệu bí danh, giữ cho mục đích chống lạm dụng (giới hạn 2 máy, khóa tạm) (spec §10.1); cần luật sư xác nhận.
-- **Q17. Bản sao của khóa ký bản cập nhật và khóa ký manifest. Phải quyết trước khi 07 tạo khóa production.**
-  - Trước đây định giữ bản sao trong kho mật khẩu (mục 6.5); nay không dùng kho mật khẩu (P05-6). Mất khóa ký bản cập nhật thì không cập nhật được app đã cài (R18). Secret của CI không đọc lại được, nên không coi là bản sao.
-  - Phương án:
-    - (a) bản sao mã hóa bằng passphrase, cất trên USB hoặc giấy, ở nơi an toàn ngoài máy dev;
-    - (b) chấp nhận rủi ro: mất khóa thì người dùng tải lại app từ website, vì bản đã cài không nhận bản cập nhật ký bằng khóa mới.
+- **Q17. Bản sao của khóa ký bản cập nhật và khóa ký manifest. Chốt ngày 2026-10-02** (chủ dự án): phương án (a).
+  - Mỗi loại **một** khóa (khóa ký manifest, khóa ký bản cập nhật), nằm trong secret của CI. Không làm hai ô khóa A/B như khóa token.
+  - Kèm một bản sao offline mã hóa bằng passphrase, cất trên USB; passphrase in ra giấy, cất riêng.
+  - Lộ khóa thì phát hành bản app mới mang khóa công khai mới. App nhúng một khóa công khai production cho manifest (định dạng vẫn có `kid`).
+  - Việc tạo khóa production và bản sao thuộc 07 (mục 2.7). Spec §10.2, §15 đã ghi.
 - **P05-1 (kế hoạch 05). Kênh PayOS riêng cho staging.** Mỗi kênh chỉ có một URL webhook. Cần có trước khi triển khai staging (Task 19 của 05).
 - **P05-2. Giá thử trên staging.** Đề xuất: giá nhỏ cho từng gói (ví dụ 2.000 đ, 3.000 đ, 4.000 đ); sửa nếu PayOS có mức tối thiểu cao hơn.
 - **P05-4. Giao diện admin.** 05 chỉ làm JSON API, gọi bằng `cloudflared access curl`. Có cần một trang giao diện nhỏ không?
@@ -1363,7 +1376,7 @@ Cập nhật ngày 2026-10-01:
   - Trước khi triển khai staging của 05: P05-1, P05-5.
   - Trước khi thực thi 02 và 04: Q3, Q6.
   - Trước khi viết 06: Q16.
-  - Trước khi viết 07: Q8. **Trước khi 07 tạo khóa production: Q17 (phải quyết).**
+  - Trước khi viết 07: Q8. Q17 đã chốt ngày 2026-10-02.
   - Trước khi 05 lên production: tên miền (phần còn mở của Q1).
   - Khi có kết quả C6: Q15.
 - [ ] **Step 2: Ghi quyết định vào từng mục Q**: ngày và nội dung. Điểm nào đổi yêu cầu của spec thì ghi "cần sửa spec"; chủ dự án sửa spec, hoặc duyệt bản sửa.
