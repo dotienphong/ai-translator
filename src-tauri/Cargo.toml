@@ -17,6 +17,8 @@ tauri-build = { version = "2.7.1", features = [] }
 [dependencies]
 anyhow.workspace = true
 audio-capture = { path = "../crates/audio-capture" }
+# Nhập và xuất từ điển thuật ngữ dạng CSV (glossary.rs).
+csv = "1.4.0"
 # Khóa ngẫu nhiên của DB (db.rs). Cùng bản `Cargo.lock` đã có (qua `tempfile`).
 getrandom = "0.4.3"
 keyring-core = "1.0.0"

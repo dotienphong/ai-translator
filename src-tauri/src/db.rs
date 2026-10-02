@@ -94,17 +94,20 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Chạy `f` với DB của app. Chưa cài `DataStore` thì lỗi `dataUnavailable`.
-pub fn with<R: Runtime, T>(
+/// Chạy `f` với DB của app. Lỗi (của DB hay của `f`) thành `CommandError`; chưa cài `DataStore` thì `dataUnavailable`.
+pub fn with<R: Runtime, T, E>(
     app: &AppHandle<R>,
-    f: impl FnOnce(&mut Connection) -> Result<T, DbError>,
-) -> Result<T, CommandError> {
+    f: impl FnOnce(&mut Connection) -> Result<T, E>,
+) -> Result<T, CommandError>
+where
+    E: From<DbError> + Into<CommandError> + std::fmt::Display,
+{
     let store = app
         .try_state::<DataStore>()
         .ok_or_else(|| CommandError::new(errors::DATA_UNAVAILABLE, None, "chưa cài DataStore"))?;
     store.with(f).map_err(|e| {
-        log::error!("DB lỗi: {e}");
-        CommandError::from(e)
+        log::warn!("thao tác với DB lỗi: {e}");
+        e.into()
     })
 }
 
@@ -131,7 +134,7 @@ impl DataStore {
     }
 
     /// Chạy `f` với kết nối, mở DB nếu chưa mở. Các lần gọi chạy lần lượt (một kết nối, giữ khóa trong lúc chạy).
-    pub fn with<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T, DbError>) -> Result<T, DbError> {
+    pub fn with<T, E: From<DbError>>(&self, f: impl FnOnce(&mut Connection) -> Result<T, E>) -> Result<T, E> {
         let mut slot = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         if slot.is_none() {
             *slot = Some(self.open()?);
@@ -305,6 +308,11 @@ mod tests {
         Keystore::with_store(SERVICE, keys.clone())
     }
 
+    /// `DataStore::with` với lỗi là `DbError` (để suy ra kiểu lỗi trong test).
+    fn run<T>(db: &DataStore, f: impl FnOnce(&mut Connection) -> Result<T, DbError>) -> Result<T, DbError> {
+        db.with(f)
+    }
+
     fn tables(conn: &Connection) -> Vec<String> {
         let mut stmt = conn
             .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
@@ -317,14 +325,13 @@ mod tests {
         let dir = temp_dir("new");
         let keys = MockStore::new().unwrap();
         let db = store(&dir, &keys);
-        let (names, version) = db
-            .with(|c| {
-                Ok((
-                    tables(c),
-                    c.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))?,
-                ))
-            })
-            .unwrap();
+        let (names, version) = run(&db, |c| {
+            Ok((
+                tables(c),
+                c.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))?,
+            ))
+        })
+        .unwrap();
         assert_eq!(names, ["glossary", "lines", "sessions"]);
         assert_eq!(version, SCHEMA_VERSION);
         let secure = db
@@ -348,7 +355,7 @@ mod tests {
         let dir = temp_dir("nokey");
         let keys = MockStore::new().unwrap();
         let db = store(&dir, &keys);
-        db.with(|c| {
+        run(&db, |c| {
             c.execute("INSERT INTO sessions VALUES (1, 0, 0, 'vi')", [])?;
             Ok(())
         })
@@ -378,7 +385,7 @@ mod tests {
         let dir = temp_dir("cli");
         let keys = MockStore::new().unwrap();
         let db = store(&dir, &keys);
-        db.with(|c| {
+        run(&db, |c| {
             c.execute(
                 "INSERT INTO glossary (source, target, match_key, created_at) VALUES ('API', 'giao diện lập trình', 'api', 0)",
                 [],
@@ -402,15 +409,15 @@ mod tests {
     fn reopening_uses_the_same_key() {
         let dir = temp_dir("reopen");
         let keys = MockStore::new().unwrap();
-        store(&dir, &keys)
-            .with(|c| {
-                c.execute("INSERT INTO sessions VALUES (1, 10, 20, 'vi')", [])?;
-                Ok(())
-            })
-            .unwrap();
-        let count = store(&dir, &keys)
-            .with(|c| Ok(c.query_row("SELECT count(*) FROM sessions", [], |r| r.get::<_, i64>(0))?))
-            .unwrap();
+        run(&store(&dir, &keys), |c| {
+            c.execute("INSERT INTO sessions VALUES (1, 10, 20, 'vi')", [])?;
+            Ok(())
+        })
+        .unwrap();
+        let count = run(&store(&dir, &keys), |c| {
+            Ok(c.query_row("SELECT count(*) FROM sessions", [], |r| r.get::<_, i64>(0))?)
+        })
+        .unwrap();
         assert_eq!(count, 1);
         std::fs::remove_dir_all(dir).unwrap();
     }
@@ -419,16 +426,16 @@ mod tests {
     fn a_lost_key_moves_the_old_file_aside() {
         let dir = temp_dir("lost");
         let keys = MockStore::new().unwrap();
-        store(&dir, &keys)
-            .with(|c| {
-                c.execute("INSERT INTO sessions VALUES (1, 10, 20, 'vi')", [])?;
-                Ok(())
-            })
-            .unwrap();
+        run(&store(&dir, &keys), |c| {
+            c.execute("INSERT INTO sessions VALUES (1, 10, 20, 'vi')", [])?;
+            Ok(())
+        })
+        .unwrap();
         assert!(keystore(&keys).delete(KEY_NAME).unwrap());
-        let count = store(&dir, &keys)
-            .with(|c| Ok(c.query_row("SELECT count(*) FROM sessions", [], |r| r.get::<_, i64>(0))?))
-            .unwrap();
+        let count = run(&store(&dir, &keys), |c| {
+            Ok(c.query_row("SELECT count(*) FROM sessions", [], |r| r.get::<_, i64>(0))?)
+        })
+        .unwrap();
         assert_eq!(count, 0, "DB mới, rỗng");
         let aside: Vec<String> = std::fs::read_dir(&dir)
             .unwrap()
@@ -448,7 +455,7 @@ mod tests {
         keystore(&keys)
             .set(KEY_NAME, to_hex(&[2; KEY_BYTES]).as_bytes())
             .unwrap();
-        let names = store(&dir, &keys).with(|c| Ok(tables(c))).unwrap();
+        let names = run(&store(&dir, &keys), |c| Ok(tables(c))).unwrap();
         assert_eq!(names, ["glossary", "lines", "sessions"]);
         assert_eq!(
             std::fs::read_dir(&dir).unwrap().count(),
@@ -462,17 +469,17 @@ mod tests {
     fn keystore_errors_leave_the_file_alone() {
         let dir = temp_dir("denied");
         let keys = MockStore::new().unwrap();
-        store(&dir, &keys).with(|_| Ok(())).unwrap();
+        run(&store(&dir, &keys), |_| Ok(())).unwrap();
         let before = std::fs::read(dir.join(DB_FILE)).unwrap();
         let entry = keys.build(SERVICE, KEY_NAME, None).unwrap();
         let cred: &keyring_core::mock::Cred = entry.as_any().downcast_ref().unwrap();
         cred.set_error(keyring_core::Error::NoStorageAccess("người dùng từ chối".into()));
-        let err = store(&dir, &keys).with(|_| Ok(())).unwrap_err();
+        let err = run(&store(&dir, &keys), |_| Ok(())).unwrap_err();
         assert!(matches!(err, DbError::Keystore(_)), "{err}");
         assert_eq!(std::fs::read(dir.join(DB_FILE)).unwrap(), before);
         assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
         let none = DataStore::new(dir.clone(), Err("không có kho khóa".into()));
-        assert!(matches!(none.with(|_| Ok(())), Err(DbError::Keystore(_))));
+        assert!(matches!(run(&none, |_| Ok(())), Err(DbError::Keystore(_))));
         std::fs::remove_dir_all(dir).unwrap();
     }
 
@@ -495,7 +502,7 @@ mod tests {
         let dir = temp_dir("wipe");
         let keys = MockStore::new().unwrap();
         let db = store(&dir, &keys);
-        db.with(|c| {
+        run(&db, |c| {
             c.execute("INSERT INTO sessions VALUES (1, 10, 20, 'vi')", [])?;
             Ok(())
         })
@@ -512,9 +519,10 @@ mod tests {
             "không còn file nào của dữ liệu cũ"
         );
         assert_eq!(keystore(&keys).get(KEY_NAME).unwrap(), None);
-        let count = db
-            .with(|c| Ok(c.query_row("SELECT count(*) FROM sessions", [], |r| r.get::<_, i64>(0))?))
-            .unwrap();
+        let count = run(&db, |c| {
+            Ok(c.query_row("SELECT count(*) FROM sessions", [], |r| r.get::<_, i64>(0))?)
+        })
+        .unwrap();
         assert_eq!(count, 0, "lần dùng sau tạo DB mới");
         db.wipe().unwrap();
         db.wipe().unwrap();

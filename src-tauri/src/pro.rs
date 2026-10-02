@@ -113,6 +113,11 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     }
     state.update_status(|s| s.pro = pro);
     actions::status_changed(app);
+    // Về Free giữa phiên (06: hết hạn, bị thu hồi): thuật ngữ thôi vào prompt ngay (N11 của review 03). Lên Pro thì
+    // không đọc DB ở đây (lúc khởi động không mở DB, QĐ4): phiên sau nạp từ điển lúc bắt đầu.
+    if !pro {
+        crate::glossary::forget(app);
+    }
 }
 
 #[cfg(test)]

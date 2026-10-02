@@ -168,5 +168,12 @@ export const vi: Record<MessageKey, string> = {
   "error.quotaExhausted": "Đã dùng hết hạn mức dịch.",
   "error.proRequired": "Đây là tính năng Pro. Nâng cấp lên gói trả phí để dùng.",
   "error.dataUnavailable": "Không mở được dữ liệu lịch sử và từ điển. Nếu hệ thống hỏi quyền truy cập kho khóa, hãy cho phép rồi thử lại.",
+  "error.glossaryEmpty": "Hãy điền cả thuật ngữ lẫn bản dịch.",
+  "error.glossaryTooLong": "Dùng tối đa 200 ký tự.",
+  "error.glossaryInvalidChar": "Không dùng được dấu xuống dòng và dấu tab.",
+  "error.glossaryDuplicate": "Thuật ngữ này đã có trong từ điển.",
+  "error.glossaryFull": "Từ điển đã đủ 500 thuật ngữ. Hãy xóa bớt trước khi thêm.",
+  "error.glossaryNotFound": "Thuật ngữ này không còn nữa.",
+  "error.csvInvalid": "Không đọc được file CSV này. Chưa nhập gì.",
   "error.unknown": "Có lỗi xảy ra.",
 };

@@ -168,6 +168,7 @@ mod tests {
             ]
             .map(String::from),
         );
+        codes.extend(crate::glossary::ERROR_CODES.iter().map(|c| c.to_string()));
         for code in codes {
             assert!(
                 en.contains(&format!("\"error.{code}\":")),

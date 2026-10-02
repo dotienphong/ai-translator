@@ -13,7 +13,8 @@ use crate::login_item::AgentStatus;
 use crate::session::{self, StartOptions};
 use crate::state::{AppState, SessionStatus};
 use crate::test_support::{
-    FakeAudio, FakeDeps, PrepareGate, invoke, last_saved, login_state, mock_app, mock_app_with, overlay_calls, window,
+    FakeAudio, FakeDeps, PrepareGate, invoke, last_saved, login_state, mock_app, mock_app_with, overlay_calls, set_pro,
+    window,
 };
 
 /// Ghi lại mọi payload của một sự kiện.
@@ -531,6 +532,59 @@ fn the_status_revision_grows_with_every_change() {
         .as_u64()
         .unwrap();
     assert!(before < running && running < idle, "{before} {running} {idle}");
+}
+
+/// Từ điển thuật ngữ (F5) vào prompt của phiên ở gói Pro, theo mẫu "terminology" (§6.5); gói Free thì không (Đ6).
+#[test]
+fn glossary_terms_reach_the_prompt_only_for_pro() {
+    let deps = FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    };
+    let prompts = deps.prompts.clone();
+    let app = mock_app_with(deps);
+    let _main = window(&app, "main");
+    crate::db::with(app.handle(), |c| crate::glossary::add(c, "everyone", "mọi người")).unwrap();
+    // Prompt của câu "Hello everyone." trong một phiên (bỏ lần làm nóng).
+    let sentence_prompt = || {
+        prompts.lock().unwrap().clear();
+        session::start(app.handle()).unwrap();
+        wait_until("câu đầu được gửi đi dịch", || {
+            prompts.lock().unwrap().iter().any(|p| p.ends_with("Hello everyone."))
+        });
+        session::stop(app.handle());
+        let prompts = prompts.lock().unwrap();
+        prompts.iter().find(|p| p.ends_with("Hello everyone.")).unwrap().clone()
+    };
+    let pro = sentence_prompt();
+    assert!(
+        pro.starts_with("Reference the following translations:\neveryone translates to mọi người\n"),
+        "{pro}"
+    );
+    set_pro(&app, false);
+    let free = sentence_prompt();
+    assert!(
+        free.starts_with("Translate the following text into Vietnamese."),
+        "{free}"
+    );
+}
+
+/// N11 của review 03: về Free (`pro::refresh`) thì luồng dịch thôi dùng thuật ngữ ngay, không chờ phiên sau. Lên Pro thì
+/// không mở DB (lúc khởi động app cũng vậy, QĐ4).
+#[test]
+fn losing_pro_empties_the_glossary_of_the_translation_thread() {
+    let app = mock_app();
+    assert!(
+        !app.state::<crate::db::DataStore>().path().exists(),
+        "dựng app (Pro) không mở DB"
+    );
+    crate::db::with(app.handle(), |c| crate::glossary::add(c, "sprint", "sprint")).unwrap();
+    crate::glossary::reload(app.handle());
+    let active = || app.state::<crate::glossary::ActiveGlossary>().0.read().unwrap().len();
+    assert_eq!(active(), 1);
+    set_pro(&app, false);
+    crate::pro::refresh(app.handle());
+    assert_eq!(active(), 0, "về Free thì không còn thuật ngữ trong prompt");
 }
 
 /// Cài đặt có số thứ tự tăng dần (điểm cần quyết 10 của 02a), để giao diện bỏ bản cũ tới muộn. Số trong kết quả của

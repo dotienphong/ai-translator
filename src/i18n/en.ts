@@ -168,6 +168,13 @@ export const en = {
   "error.quotaExhausted": "The translation quota has been used up.",
   "error.proRequired": "This is a Pro feature. Upgrade to a paid plan to use it.",
   "error.dataUnavailable": "Could not open the history and glossary data. If the system asked for keychain access, allow it and try again.",
+  "error.glossaryEmpty": "Fill in both the term and its translation.",
+  "error.glossaryTooLong": "Use at most 200 characters.",
+  "error.glossaryInvalidChar": "Line breaks and tabs are not allowed.",
+  "error.glossaryDuplicate": "This term is already in the glossary.",
+  "error.glossaryFull": "The glossary already has 500 terms. Delete some before adding more.",
+  "error.glossaryNotFound": "This term no longer exists.",
+  "error.csvInvalid": "This CSV file could not be read. Nothing was imported.",
   "error.unknown": "Something went wrong.",
 } as const;
 

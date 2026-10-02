@@ -24,6 +24,7 @@ use std::time::{Duration, Instant};
 
 use pipeline::config::PipelineConfig;
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, VadFactory};
+use pipeline::glossary::SharedGlossary;
 use pipeline::prompt::Lang as MtLang;
 use pipeline::subtitle::{Delta, Subtitle};
 use pipeline::supervisor::{Asr, GiveUpCause, SidecarEvent, SidecarEvents, SidecarManager, SystemClock, Which};
@@ -33,6 +34,7 @@ use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 
 use crate::capture::{CaptureEvent, LiveCapture, OnEvent};
 use crate::errors::{self, CommandError};
+use crate::glossary::{self, ActiveGlossary};
 use crate::settings::{AudioSource, Lang, ModelTier, Settings};
 use crate::sidecar::{self, first_run, integrity};
 use crate::state::{AppState, AppStatus, Loading, SessionStatus};
@@ -130,8 +132,8 @@ fn code_of(settings: Lang) -> &'static str {
     }
 }
 
-/// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh.
-pub fn engine_config(settings: &Settings, id_base: u64) -> EngineConfig {
+/// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh; và từ điển thuật ngữ dùng chung.
+pub fn engine_config(settings: &Settings, id_base: u64, glossary: SharedGlossary) -> EngineConfig {
     let mut pipeline = PipelineConfig::default();
     pipeline.segmenter.end_silence_ms = u64::from(settings.vad_end_silence_ms);
     let languages = match settings.source_lock {
@@ -148,7 +150,7 @@ pub fn engine_config(settings: &Settings, id_base: u64) -> EngineConfig {
         target: MtLang::from_code(code_of(settings.target_language)).expect("năm ngôn ngữ của F2"),
         translation_context: settings.experimental.translation_context,
         id_base,
-        glossary: Default::default(),
+        glossary,
     }
 }
 
@@ -267,6 +269,12 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     if !current() {
         return Ok(state.status());
     }
+    // Từ điển thuật ngữ theo gói và theo DB lúc này (§6.5, F5); đọc DB có thể chờ kho khóa nên làm trước khi giữ khóa.
+    glossary::reload(app);
+    let glossary = app
+        .try_state::<ActiveGlossary>()
+        .map(|g| g.0.clone())
+        .unwrap_or_default();
     // Từ đây tới lúc gắn engine thì giữ khóa (nhanh: chỉ mở nguồn và tạo luồng): lỗi của nguồn âm thanh tới ngay lúc mở
     // (`fail`, trên luồng riêng) chờ tới khi engine đã gắn rồi mới dừng nó.
     let _gate = session.gate.lock().unwrap();
@@ -283,7 +291,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         asr_code: session.deps.clone(),
     });
     let engine = match Engine::start(
-        engine_config(&settings, n * ID_STRIDE),
+        engine_config(&settings, n * ID_STRIDE, glossary),
         source,
         session.deps.vad(),
         session.deps.asr(),
@@ -961,7 +969,7 @@ mod tests {
     fn the_engine_follows_the_language_and_pause_settings() {
         let mut settings = Settings::defaults(UiLanguage::Vi);
         settings.vad_end_silence_ms = 500;
-        let cfg = engine_config(&settings, 3_000_000);
+        let cfg = engine_config(&settings, 3_000_000, SharedGlossary::default());
         assert_eq!(cfg.languages, ["en", "zh", "ja", "ko", "vi"]);
         assert_eq!(cfg.target, MtLang::Vi);
         assert_eq!(cfg.pipeline.segmenter.end_silence_ms, 500);
@@ -970,7 +978,7 @@ mod tests {
         settings.source_lock = Some(Lang::Ja);
         settings.target_language = Lang::En;
         settings.experimental.translation_context = true;
-        let cfg = engine_config(&settings, 0);
+        let cfg = engine_config(&settings, 0, SharedGlossary::default());
         assert_eq!(cfg.languages, ["ja"], "khóa ngôn ngữ nguồn thì bỏ nhận diện (§6.4)");
         assert_eq!(cfg.target, MtLang::En);
         assert!(cfg.translation_context);

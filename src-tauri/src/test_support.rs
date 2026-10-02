@@ -22,6 +22,7 @@ use crate::capture::OnEvent;
 use crate::commands;
 use crate::db::DataStore;
 use crate::errors::{self, CommandError};
+use crate::glossary::ActiveGlossary;
 use crate::login_item::{AgentStatus, LoginItem, LoginItems};
 use crate::overlay::{OverlaySurface, Surface};
 use crate::pro::{Entitlement, ProGate};
@@ -217,6 +218,8 @@ pub struct FakeDeps {
     pub capture_events: Arc<Mutex<Vec<OnEvent>>>,
     /// Số lần `shutdown` và `kill_all` được gọi.
     pub shutdowns: Arc<Mutex<Vec<&'static str>>>,
+    /// Prompt của từng request dịch, kể cả lần làm nóng.
+    pub prompts: Arc<Mutex<Vec<String>>>,
 }
 
 struct FakeCapture {
@@ -265,7 +268,9 @@ impl Asr for FakeAsr {
     }
 }
 
-struct FakeMt;
+struct FakeMt {
+    prompts: Arc<Mutex<Vec<String>>>,
+}
 
 impl Mt for FakeMt {
     fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
@@ -274,9 +279,10 @@ impl Mt for FakeMt {
 
     fn stream(
         &mut self,
-        _req: &ChatRequest,
+        req: &ChatRequest,
         on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
     ) -> Result<StreamEnd, MtError> {
+        self.prompts.lock().unwrap().push(req.prompt.to_string());
         let chunks = ["Xin", " chào", " mọi", " người."];
         for c in chunks {
             if on_delta(c).is_break() {
@@ -326,7 +332,9 @@ impl SessionDeps for FakeDeps {
     }
 
     fn mt(&self) -> Box<dyn Mt> {
-        Box::new(FakeMt)
+        Box::new(FakeMt {
+            prompts: self.prompts.clone(),
+        })
     }
 
     fn vad(&self) -> VadFactory {
@@ -404,6 +412,7 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
             data_dir,
             Ok(Keystore::mock("com.aitranslator.desktop.test")),
         ))
+        .manage(ActiveGlossary::default())
         .manage(pro)
         .manage(Session::new(Arc::new(deps)))
         .invoke_handler(commands::handler())
