@@ -5,15 +5,15 @@ import { useApp, useT } from "../appStore";
 import { AudioSettings } from "../settings/AudioSettings";
 import { GeneralSettings } from "../settings/GeneralSettings";
 import { HotkeySettings } from "../settings/HotkeySettings";
+import { PrivacySettings } from "../settings/PrivacySettings";
+import { SubtitleSettings } from "../settings/SubtitleSettings";
 
 const GROUPS: readonly SettingsGroup[] = ["general", "subtitles", "audio", "model", "hotkeys", "license", "privacy"];
 
-// Nhóm do kế hoạch khác làm: Phụ đề (03), Model (04), Bản quyền (06), Quyền riêng tư (03, 04).
+// Nhóm do kế hoạch khác làm: Model (04), Bản quyền (06).
 const DESCRIPTIONS: Partial<Record<SettingsGroup, MessageKey>> = {
-  subtitles: "settings.subtitles.description",
   model: "settings.model.description",
   license: "settings.license.description",
-  privacy: "settings.privacy.description",
 };
 
 // Nhóm cài đặt là một bộ tab (WAI-ARIA Tabs): chỉ tab đang chọn nằm trong thứ tự Tab, mũi tên trái/phải và
@@ -66,6 +66,8 @@ export function SettingsScreen() {
         tabIndex={description ? 0 : undefined}
       >
         {group === "general" && <GeneralSettings />}
+        {group === "subtitles" && <SubtitleSettings />}
+        {group === "privacy" && <PrivacySettings />}
         {group === "audio" && <AudioSettings />}
         {group === "hotkeys" && <HotkeySettings />}
         {description && (
