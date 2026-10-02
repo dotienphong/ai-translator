@@ -187,7 +187,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Từ điển thuật ngữ (Pro):** thêm, sửa, xóa; nhập và xuất CSV.
 - **Cài đặt:**
   - **Chung:** ngôn ngữ giao diện, khởi động cùng hệ thống, giao diện sáng/tối, kênh cập nhật (stable hoặc beta).
-  - **Phụ đề:** cỡ chữ, số dòng, độ mờ nền, có hiện câu gốc hay không.
+  - **Phụ đề:** cỡ chữ, số dòng, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen. Đổi là thấy ngay trên thanh phụ đề.
   - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
@@ -217,7 +217,8 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
   - Hiện 1–3 dòng bản dịch gần nhất; tùy chọn hiện câu gốc chữ nhỏ ở phía trên.
   - **Bản dịch hiện dần từng chữ** trong lúc model đang dịch.
   - **Phụ đề tạm:** câu chưa chốt hiện màu nhạt hơn. Nếu người nói nói tiếp ngay (§6.3), phụ đề tạm được thay bằng bản dịch của cả câu đã ghép.
-- **Di chuyển và kích thước:** kéo để di chuyển, kéo cạnh để đổi kích thước. App nhớ vị trí riêng cho từng màn hình.
+- **Di chuyển và kích thước:** kéo để di chuyển, kéo cạnh hoặc góc để đổi kích thước (cả macOS lẫn Windows; kích thước tối thiểu 320×80 điểm). App nhớ vị trí và kích thước riêng cho từng màn hình.
+- **Nút ẩn:** khi thanh chưa khóa, rê chuột vào thanh thì hiện nút ✕ ở góc trên bên phải. Bấm nút thì ẩn thanh, như phím tắt ẩn/hiện; không dừng phiên dịch và không thoát app. Khi đã khóa thì không có nút, vì click đi xuyên qua.
 - **Chế độ khóa:** cho click xuyên qua thanh phụ đề, để không cản thao tác trên cửa sổ họp. Mở khóa bằng phím tắt hoặc menu khay. Thanh phụ đề không có nút khóa: khi đã khóa thì click đi xuyên qua, không bấm được gì trên thanh.
 - **Nổi trên app họp đang toàn màn hình:**
   - macOS: dùng NSPanel kiểu non-activating, đặt window level cao, cho tham gia mọi Space với cờ `canJoinAllSpaces` và `fullScreenAuxiliary`. Chỉ đặt các cờ này trên một NSWindow thường thì thường chưa đủ để nổi trên Space toàn màn hình của app khác. Chờ kết quả S5 (kế hoạch 05, Task 3–4, `results/s5_overlay.md`).
