@@ -55,7 +55,7 @@ Ghi chú:
 
 ## Cách đọc kế hoạch này
 
-- **Thứ tự và trạng thái đầu.** Làm trên `main`, từ commit `5925d42` (01, 02 và 05 đã xong phần code trên Mac; sau `45de838` của lần lập kế hoạch đầu, `main` chỉ đổi `vite.config.ts`, `scripts/run-dev-app.sh`, một dòng `box-sizing` của `src/windows/overlay/overlay.css` kèm test `overlay.css.test.ts`, và tài liệu; `19b7324` sau đó chỉ thêm kết quả thử tay trong `bench/`, không đụng file nào của 03). Trước mỗi task, `git status` phải sạch. 03a làm hết rồi mới tới 03b.
+- **Thứ tự và trạng thái đầu.** Làm trên `main`, từ commit `5925d42` (01, 02 và 05 đã xong phần code trên Mac; sau `45de838` của lần lập kế hoạch đầu, `main` chỉ đổi `vite.config.ts`, `scripts/run-dev-app.sh`, một dòng `box-sizing` của `src/windows/overlay/overlay.css` kèm test `overlay.css.test.ts`, và tài liệu; `19b7324` và `31ca0fb` sau đó chỉ thêm kết quả thử tay trong `bench/` và sửa spec §6.9, không đụng file nào mà khối code của 03 sửa). Trước mỗi task, `git status` phải sạch. 03a làm hết rồi mới tới 03b.
 - **Khối code.**
   - "Tạo `<file>`": chép nguyên khối vào file mới.
   - "Tạo `<file>`, lúc này mới có phần test": file chỉ có các dòng `//!` đầu và khối `#[cfg(test)] mod tests`; bước sau thêm phần code.
@@ -117,7 +117,16 @@ Review lần 1 (`$S/review-03-r1.md`) chạy lại bản trước từ file, kh�
 | N12 | 03a Task 8 | hộp thoại `set_parent` cửa sổ chính; 03b Task 8 kiểm |
 | N13 | QĐ20; 03b Task 10 | ghi cho 06: phiên nghe thử là phiên thật, có dấu `StartOptions::LISTEN_TEST` |
 
-Yêu cầu mới của chủ dự án sau khi thử tay (spec §4.3, §4.4, commit `5925d42`): kéo cạnh hoặc góc trên cả macOS lẫn Windows, cỡ tối thiểu 320 × 80 (03a Task 10, 03b Task 2); nút ✕ ẩn thanh khi chưa khóa (03a Task 10, 03b Task 2); màu chữ và màu nền trong Cài đặt › Phụ đề (03a Task 11, 03b Task 1–3). Spec §6.9 chưa liệt kê hai khóa màu trong `overlay.{…}`; kế hoạch 00 Task 2 (03b Task 10) ghi việc sửa spec.
+Yêu cầu mới của chủ dự án sau khi thử tay (spec §4.3, §4.4, commit `5925d42`): kéo cạnh hoặc góc trên cả macOS lẫn Windows, cỡ tối thiểu 320 × 80 (03a Task 10, 03b Task 2); nút ✕ ẩn thanh khi chưa khóa (03a Task 10, 03b Task 2); màu chữ và màu nền trong Cài đặt › Phụ đề (03a Task 11, 03b Task 1–3). Spec §6.9 đã có hai khóa màu trong `overlay.{…}` (`31ca0fb`).
+
+Review lần 2 (`$S/review-03-r2.md`) chạy lại bản `24acd83` từ file, khớp từng dòng; kết luận "Cần sửa" nhẹ. Bản này sửa thêm:
+
+| Mã | Sửa ở đâu | Cách sửa |
+|---|---|---|
+| Q-A | 03a Task 10; 03b Task 8 Step 3 | macOS: kéo cạnh tính độ dời con trỏ bằng điểm logic (`Surface::cursor` trả điểm, chia vị trí của tao cho tỉ lệ màn hình chính), rồi đổi ra pixel theo tỉ lệ của màn hình chứa thanh; test `the_edge_follows_the_cursor_on_screens_of_different_scales` (tỉ lệ 1 và 2); thử tay hai màn hình khác tỉ lệ |
+| N-A | 03a Task 7 | `RunEvent::Exit` gọi `on_exit(app, pipeline::process::kill_all)` ở `lib.rs`; test Q3 gọi đúng `on_exit` với hàm kill giả (giết mutation X1) |
+| N-B | 03b Task 10 | mục 2.4 của kế hoạch 00: 04 chỉ làm N2 của review cuối 02 |
+| N-C | 03b Task 10; mục trên | spec §6.9 đã có hai khóa màu (`31ca0fb`), không thêm lần nữa |
 ## Dòng của bảng đối chiếu giao cho kế hoạch 03
 
 Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (45 dòng có `03`). Cột "Task": `a<số>` là 03a, `b<số>` là 03b; dòng nào còn phần của kế hoạch khác hay còn chờ thì ghi rõ.
@@ -192,7 +201,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (45 dòng có `03`)
 - **QĐ16. Xuất file:** TXT và Markdown ghi giờ địa phương lúc câu bắt đầu; SRT ghi mốc tính từ đầu phiên. App không kèm dữ liệu múi giờ: giao diện gửi độ lệch so với UTC tại lúc bắt đầu phiên (`utcOffsetMinutes`; phiên ghi ở mùa giờ khác vẫn đúng giờ, N4 của review 03); phía Rust từ chối độ lệch ngoài ±18 giờ (`outOfRange`). Chữ trong file (tiêu đề, "[bỏ qua đoạn]", "(chưa dịch được)") theo ngôn ngữ giao diện, ở bảng chuỗi phía Rust (`i18n.rs`). SRT bản dịch: câu không có bản dịch thì hiện câu gốc.
 - **QĐ17. Hộp thoại file qua `tauri-plugin-dialog`, chỉ gọi từ Rust** (`files.rs`, trait `FilePicker`), gắn vào cửa sổ chính (`set_parent`, N12 của review 03). Không cửa sổ nào được cấp `dialog:*`; `acl_tests` thêm `plugin:dialog|save`, `open`, `message` vào danh sách bị cấm. Plugin chèn một script nhỏ vào webview (thay `window.alert`, `confirm`); vì lệnh của plugin bị chặn, giao diện không dùng `confirm()` mà tự vẽ bước xác nhận.
 - **QĐ18. Số thứ tự `Settings.revision`** chỉ có lúc chạy (không ghi file, không sửa được qua `update_settings`), tăng dưới khóa của `AppState` mỗi lần thay cài đặt. Giao diện bỏ bản có số nhỏ hơn; lúc `init`, kết quả của `get_settings` chỉ thay bản đã tới qua sự kiện khi lớn hơn hẳn.
-- **QĐ19. Thanh phụ đề kéo cạnh trên cả macOS lẫn Windows** (§4.4 sửa ngày 2026-10-02, yêu cầu của chủ dự án sau khi thử tay). Thanh tự vẽ vùng kéo ở cạnh (6 px) và góc (12 px) khi chưa khóa, rồi gọi lệnh của Rust (`begin_overlay_resize`, `overlay_resize_move`, `end_overlay_resize`). Windows: Rust gọi `start_resize_dragging` của Tauri, hệ điều hành đổi kích thước (QĐ23 của 01: cờ đặt một lần lúc tạo). macOS: tao không có `drag_resize_window`, nên Rust tự đặt khung cửa sổ theo vị trí con trỏ mỗi khung hình (đọc con trỏ ở phía Rust, không nhận tọa độ từ giao diện); NSPanel vẫn `resizable(true)` phòng khi mép ngoài cùng của nó cũng kéo được. Overlay không được cấp quyền `core:window:*` mới. Cỡ tối thiểu 320 × 80 điểm (spec), trên mức kiểm của `Settings::validate`, để vị trí luôn lưu được. Vị trí cũng được nhớ lúc ẩn thanh, phòng khi NSPanel không báo sự kiện di chuyển. Nút ✕ (chỉ khi chưa khóa, hiện khi rê chuột) gọi `hide_overlay`: ẩn như phím tắt, phiên vẫn chạy. Rủi ro chưa kiểm được trên máy không có người: NSPanel không làm cửa sổ chính (non-key) có nhận `:hover` và con trỏ đổi hình không; 03b Task 8 kiểm.
+- **QĐ19. Thanh phụ đề kéo cạnh trên cả macOS lẫn Windows** (§4.4 sửa ngày 2026-10-02, yêu cầu của chủ dự án sau khi thử tay). Thanh tự vẽ vùng kéo ở cạnh (6 px) và góc (12 px) khi chưa khóa, rồi gọi lệnh của Rust (`begin_overlay_resize`, `overlay_resize_move`, `end_overlay_resize`). Windows: Rust gọi `start_resize_dragging` của Tauri, hệ điều hành đổi kích thước (QĐ23 của 01: cờ đặt một lần lúc tạo). macOS: tao không có `drag_resize_window`, nên Rust tự đặt khung cửa sổ theo vị trí con trỏ mỗi khung hình (đọc con trỏ ở phía Rust, không nhận tọa độ từ giao diện; độ dời tính bằng điểm rồi nhân tỉ lệ của màn hình chứa thanh, vì tao đổi vị trí con trỏ ra pixel theo tỉ lệ của màn hình chính, Q-A của review 03 lần 2); NSPanel vẫn `resizable(true)` phòng khi mép ngoài cùng của nó cũng kéo được. Overlay không được cấp quyền `core:window:*` mới. Cỡ tối thiểu 320 × 80 điểm (spec), trên mức kiểm của `Settings::validate`, để vị trí luôn lưu được. Vị trí cũng được nhớ lúc ẩn thanh, phòng khi NSPanel không báo sự kiện di chuyển. Nút ✕ (chỉ khi chưa khóa, hiện khi rê chuột) gọi `hide_overlay`: ẩn như phím tắt, phiên vẫn chạy. Rủi ro chưa kiểm được trên máy không có người: NSPanel không làm cửa sổ chính (non-key) có nhận `:hover` và con trỏ đổi hình không; 03b Task 8 kiểm.
 - **QĐ20. Bước "Nghe thử"** phát câu mẫu bằng thẻ `<audio>` của webview, trong một phiên `StartOptions::LISTEN_TEST`: thu cả âm thanh của app và thu toàn hệ thống, bỏ qua nguồn đã chọn (câu mẫu phát ra thiết bị mặc định, không phát từ app họp). Tiếng của webview đi qua tiến trình WebKit (macOS) hay WebView2 (Windows), nên chỉ thu được ở chế độ toàn hệ thống (ghi chú N8 của 02c). Phát xong 6 giây thì tự dừng. Rời bước trong lúc `start_listen_test` còn chờ thì phiên vừa bắt đầu được dừng (N3 của review 03). Phiên nghe thử là một phiên thật: 06 quyết có trừ hạn mức không (dấu hiệu là `StartOptions::LISTEN_TEST`), và nó vào lịch sử nếu đã bật lưu (N13).
 - **QĐ21. Bảng debug ẩn** ở màn hình Giới thiệu, mở bằng cách bấm 5 lần vào dòng phiên bản; giữ số đo của 10 phiên gần nhất trong bộ nhớ, không có chữ chép lời.
 - **QĐ22. `sourceLock` không cần nằm trong `sourceLanguages`** (mục 8 của ghi chú cho 01): khi khóa một ngôn ngữ nguồn, tập nguồn bị bỏ qua (§6.4); `session::engine_config` đã làm vậy từ 02 và có test `the_engine_follows_the_language_and_pause_settings`. Không đổi code.
@@ -317,6 +326,9 @@ Kết quả (`bị giết`: có test đỏ):
 | U8 | `lib/subtitleView.ts` | màu cam tối, không đủ tương phản trên nền nâu | bị giết |
 | U9 | `lib/subtitleView.ts` | nền bỏ qua độ mờ | bị giết |
 | U10 | `lib/listenTest.ts` | rời bước Nghe thử trong lúc chờ mà vẫn phát | bị giết |
+| X1 | `lib.rs` | `RunEvent::Exit` (`on_exit`) không gọi `save_on_exit` | bị giết |
+| KS1 | `overlay/mod.rs` | kéo cạnh cộng thẳng độ dời con trỏ (điểm) vào khung (pixel), không nhân tỉ lệ màn hình | bị giết |
+| KS2 | `overlay/mod.rs` | kéo cạnh dùng tỉ lệ 1 thay vì tỉ lệ của màn hình chứa thanh | bị giết |
 | J1 | `store/app.ts` | nhận cài đặt cũ hơn | bị giết |
 | J2 | `store/app.ts` | `init` ghi đè bản tới qua sự kiện cùng số thứ tự | bị giết |
 | J3 | `store/transcript.ts` | bản đọc tới muộn thêm lại dòng đã gộp | bị giết |
@@ -327,7 +339,7 @@ Kết quả (`bị giết`: có test đỏ):
 | J8 | `store/overlay.ts` | mức âm lượng không về 0 khi dừng | bị giết |
 | J9 | `store/library.ts` | xóa phiên đang mở mà vẫn mở | bị giết |
 
-Kết quả: 106 mutation, 104 bị giết. C1 và U3 sống ở lần chạy đầu của bản này và đã có test (C1: lớp "về Free thì `forget`" của N11 che mất, nên test xóa thêm một lần khi đang Pro; U3: test đổi store app sau khi xóa). Hai mutation còn sống được chấp nhận:
+Kết quả: 109 mutation, 107 bị giết (gồm X1, KS1, KS2 thêm sau review lần 2: X1 sống ở review lần 2, nay bị giết). C1 và U3 sống ở lần chạy đầu của bản này và đã có test (C1: lớp "về Free thì `forget`" của N11 che mất, nên test xóa thêm một lần khi đang Pro; U3: test đổi store app sau khi xóa). Hai mutation còn sống được chấp nhận:
 - **M06** (bỏ `PRAGMA secure_delete = ON`): SQLCipher tự bật `secure_delete` cho mọi DB có khóa (`sqlcipher/sqlite3.c` của `libsqlite3-sys` 0.38.2, quanh dòng 112894, `sqlite3BtreeSecureDelete(pDb->pBt, 1)` lúc gắn khóa). Dòng PRAGMA giữ lại để ý định rõ ràng, còn test `a_new_database_is_encrypted_and_has_the_schema` kiểm giá trị thật là 1, nên nếu SQLCipher đổi mặc định mà ai đó bỏ dòng này thì test đỏ.
 - **B2** (bỏ lần kiểm lại "rảnh" trước khi tắt `asr-worker`): chỉ có tác dụng khi một lần Bắt đầu chen vào đúng giữa lúc tắt `llama-server` và lúc tắt `asr-worker`; không dựng được tất định bằng đồng hồ giả. B1 (lần kiểm trước `llama-server`) bị giết.
 
@@ -354,18 +366,18 @@ Chuỗi commit dựng lại theo đúng kế hoạch này (lần chạy lại �
 | 03a Task 4 | `c63fe94` | feat(pipeline): khớp thuật ngữ theo §6.5 và mẫu terminology của Hy-MT2 (F5) |
 | 03a Task 5 | `4369a14` | feat(app): từ điển thuật ngữ trong DB mã hóa, nhập và xuất CSV, đưa vào phiên dịch ở gói Pro (F5) |
 | 03a Task 6 | `520b9a7` | feat(app): bản chép lời trong bộ nhớ theo phiên, xuất TXT, SRT, Markdown (F4, §6.6) |
-| 03a Task 7 | `9c23abe` | feat(app): lịch sử chép lời trong DB mã hóa, chỉ lưu khi bật và là Pro (F4) |
-| 03a Task 8 | `f434f33` | feat(app): lệnh bản chép lời, lịch sử và xuất file qua hộp thoại lưu (F4) |
-| 03a Task 9 | `fbf7a68` | feat(app): lệnh từ điển thuật ngữ, xóa toàn bộ dữ liệu, bảng debug ẩn (F5, §4.3, §7) |
-| 03a Task 10 | `31a53f4` | feat(app): thanh phụ đề kéo cạnh trên cả macOS và Windows, nút ẩn, mức âm lượng, lệnh nghe thử (§4.1 bước 6, §4.4) |
-| 03a Task 11 | `4ad7a72` | feat(app): màu chữ và màu nền của phụ đề trong cài đặt, tới thanh phụ đề ngay khi đổi (§4.3) |
-| 03a Task 12 | `0821b34` | fix(pipeline): tắt tiến trình phụ khi rảnh kiểm lại dưới khóa, không chen vào lần Bắt đầu (N1 của review cuối 02) |
-| 03b Task 1 | `4e06683` | feat(ui): kiểu và store cho bản chép lời, lịch sử, từ điển; cách hiện phụ đề theo trạng thái |
-| 03b Task 2 | `75f6238` | feat(ui): thanh phụ đề đủ §4.4: trạng thái từng dòng, chỉ báo đang nghe, lời nhắc, nút ẩn, kéo cạnh, màu chữ và màu nền |
-| 03b Task 3 | `3c10cec` | feat(ui): Cài đặt › Phụ đề và Quyền riêng tư: cỡ chữ, số dòng, màu chữ, màu nền, độ mờ, câu gốc; lưu lịch sử, xóa toàn bộ dữ liệu |
-| 03b Task 4 | `63056ea` | feat(ui): màn hình Bản chép lời và Lịch sử: tìm, sao chép, xuất file, xem lại và xóa phiên đã lưu (F4) |
-| 03b Task 5 | `8dfb163` | feat(ui): màn hình Từ điển thuật ngữ: thêm, sửa, xóa, nhập và xuất CSV (F5) |
-| 03b Task 6 | `590cdfd` | feat(ui): bước Nghe thử phát câu mẫu và hiện phụ đề; bảng debug ẩn ở màn hình Giới thiệu (§4.1 bước 6, §7) |
+| 03a Task 7 | `c2d32ea` | feat(app): lịch sử chép lời trong DB mã hóa, chỉ lưu khi bật và là Pro (F4) |
+| 03a Task 8 | `195966a` | feat(app): lệnh bản chép lời, lịch sử và xuất file qua hộp thoại lưu (F4) |
+| 03a Task 9 | `d8b489f` | feat(app): lệnh từ điển thuật ngữ, xóa toàn bộ dữ liệu, bảng debug ẩn (F5, §4.3, §7) |
+| 03a Task 10 | `96cebb8` | feat(app): thanh phụ đề kéo cạnh trên cả macOS và Windows, nút ẩn, mức âm lượng, lệnh nghe thử (§4.1 bước 6, §4.4) |
+| 03a Task 11 | `8ca1bc8` | feat(app): màu chữ và màu nền của phụ đề trong cài đặt, tới thanh phụ đề ngay khi đổi (§4.3) |
+| 03a Task 12 | `08defad` | fix(pipeline): tắt tiến trình phụ khi rảnh kiểm lại dưới khóa, không chen vào lần Bắt đầu (N1 của review cuối 02) |
+| 03b Task 1 | `f4c0447` | feat(ui): kiểu và store cho bản chép lời, lịch sử, từ điển; cách hiện phụ đề theo trạng thái |
+| 03b Task 2 | `1642b2b` | feat(ui): thanh phụ đề đủ §4.4: trạng thái từng dòng, chỉ báo đang nghe, lời nhắc, nút ẩn, kéo cạnh, màu chữ và màu nền |
+| 03b Task 3 | `8c13434` | feat(ui): Cài đặt › Phụ đề và Quyền riêng tư: cỡ chữ, số dòng, màu chữ, màu nền, độ mờ, câu gốc; lưu lịch sử, xóa toàn bộ dữ liệu |
+| 03b Task 4 | `550d481` | feat(ui): màn hình Bản chép lời và Lịch sử: tìm, sao chép, xuất file, xem lại và xóa phiên đã lưu (F4) |
+| 03b Task 5 | `35bd7de` | feat(ui): màn hình Từ điển thuật ngữ: thêm, sửa, xóa, nhập và xuất CSV (F5) |
+| 03b Task 6 | `f30491f` | feat(ui): bước Nghe thử phát câu mẫu và hiện phụ đề; bảng debug ẩn ở màn hình Giới thiệu (§4.1 bước 6, §7) |
 
 03a Task 13 và 03b Task 7 là kiểm tra, không có commit; 03b Task 8–10 là việc của người, Windows và cập nhật kế hoạch 00.
 
@@ -5817,7 +5829,7 @@ Dòng 18, 48, 155, 252, 273; QĐ15.
 - `save_if_enabled`: chỉ khi bật "Lưu lịch sử" và là Pro; lỗi chỉ ghi log, không có chữ chép lời.
 - `pipeline::subtitle::Status` thêm `Deserialize` để đọc lại trạng thái đã lưu.
 - `session::stop_engine` lưu lịch sử ngay lúc phiên dừng: bấm Dừng, lỗi, Thoát ở menu khay (`session::shutdown`).
-- `session::save_on_exit`, gọi ở `RunEvent::Exit` (sau `kill_all`): lưu phiên đang chạy khi app thoát không qua menu khay, tức máy tắt, khởi động lại, đăng xuất, app tự khởi động lại để cập nhật (Q3 của review 03). Không chờ engine; `TranscriptStore::end` chỉ trả bản chép lời một lần, nên không lưu hai lần.
+- `session::save_on_exit`, gọi ở `RunEvent::Exit` qua `on_exit` của `lib.rs` (sau `kill_all`; `on_exit` nhận hàm kill để test gọi được, N-A của review 03 lần 2): lưu phiên đang chạy khi app thoát không qua menu khay, tức máy tắt, khởi động lại, đăng xuất, app tự khởi động lại để cập nhật (Q3 của review 03). Không chờ engine; `TranscriptStore::end` chỉ trả bản chép lời một lần, nên không lưu hai lần.
 
 **Files:**
 - Modify: `crates/pipeline/src/subtitle.rs`
@@ -5836,10 +5848,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
-index 919baaafc89cf3e77536d5d644570451680bfce9..5c2991ab64ccdbf48940a6e59d1fccc839db49ce 100644
+index 919baaafc89cf3e77536d5d644570451680bfce9..88159c54365b0f445839ce3606b1ced85049f575 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -566,6 +566,81 @@
+@@ -566,6 +566,88 @@
      session::stop(app.handle());
  }
  
@@ -5907,13 +5919,20 @@ index 919baaafc89cf3e77536d5d644570451680bfce9..5c2991ab64ccdbf48940a6e59d1fccc8
 +}
 +
 +/// Q3 của review 03: app thoát không qua menu khay (máy tắt, đăng xuất, app tự khởi động lại để cập nhật) thì
-+/// `RunEvent::Exit` gọi `session::save_on_exit`: phiên đang chạy vào lịch sử, không chờ engine dừng.
++/// `RunEvent::Exit` gọi `crate::on_exit`: kill tiến trình phụ rồi lưu phiên đang chạy vào lịch sử, không chờ engine dừng
++/// (N-A của review 03 lần 2: test đi qua đúng hàm mà `RunEvent::Exit` gọi).
 +#[test]
 +fn the_exit_event_saves_the_running_session_to_history() {
++    use std::sync::atomic::{AtomicBool, Ordering};
++    static KILLED: AtomicBool = AtomicBool::new(false);
++    fn fake_kill_all() {
++        KILLED.store(true, Ordering::SeqCst);
++    }
 +    let app = running_session_with_history();
-+    session::save_on_exit(app.handle());
++    crate::on_exit(app.handle(), fake_kill_all);
++    assert!(KILLED.load(Ordering::SeqCst), "kill tiến trình phụ còn sót");
 +    assert_eq!(saved_sessions(&app), 1);
-+    session::save_on_exit(app.handle());
++    crate::on_exit(app.handle(), fake_kill_all);
 +    session::stop(app.handle());
 +    assert_eq!(saved_sessions(&app), 1, "không lưu hai lần");
 +}
@@ -6111,24 +6130,29 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
-index 6b283584576fa3fc4fa6df36663f723b4cbe25c4..591a243f017e629eaaad0fc47019f56a1fc749b1 100644
+index 6b283584576fa3fc4fa6df36663f723b4cbe25c4..656c723e0a830b65e375a027d77614bbf998b225 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
-@@ -176,8 +176,12 @@
+@@ -176,10 +176,17 @@
          // Bấm icon ở Dock khi cửa sổ chính đang ẩn.
          #[cfg(target_os = "macos")]
          RunEvent::Reopen { .. } => window::show_main(app),
 -        // Lưới an toàn: tiến trình phụ nào còn sống lúc app thoát thì kill (Thoát ở menu khay đã tắt chúng).
 -        RunEvent::Exit => pipeline::process::kill_all(),
-+        // Lưới an toàn: tiến trình phụ nào còn sống lúc app thoát thì kill (Thoát ở menu khay đã tắt chúng). Rồi lưu lịch
-+        // sử của phiên còn chạy khi app thoát không qua menu khay (tắt máy, đăng xuất, cập nhật; Q3 của review 03).
-+        RunEvent::Exit => {
-+            pipeline::process::kill_all();
-+            session::save_on_exit(app);
-+        }
++        RunEvent::Exit => on_exit(app, pipeline::process::kill_all),
          _ => {}
      }
++}
++
++/// App thoát (`RunEvent::Exit`): lưới an toàn kill tiến trình phụ còn sống (Thoát ở menu khay đã tắt chúng), rồi lưu lịch
++/// sử của phiên còn chạy khi app thoát không qua menu khay: tắt máy, đăng xuất, cập nhật (Q3 của review 03). Tách riêng,
++/// nhận hàm kill, để test gọi được mà không kill tiến trình của test khác (N-A của review 03 lần 2).
++pub(crate) fn on_exit<R: tauri::Runtime>(app: &AppHandle<R>, kill_all: fn()) {
++    kill_all();
++    session::save_on_exit(app);
  }
+ 
+ /// Windows: chỉ nạp DLL từ thư mục hệ thống và thư mục của app, không từ thư mục hiện hành hay `PATH` (chống DLL
 ```
 
 Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
@@ -6539,10 +6563,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
-index 5c2991ab64ccdbf48940a6e59d1fccc839db49ce..00d12d1bc82cd9fa84595d1a7ff39664a0fcf690 100644
+index 88159c54365b0f445839ce3606b1ced85049f575..2bd0af37c66e3b2817f2b1366820ae4496b2e3e0 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -641,6 +641,180 @@
+@@ -648,6 +648,180 @@
      assert_eq!(saved_sessions(&app), 1, "không lưu hai lần");
  }
  
@@ -6747,7 +6771,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
-index 591a243f017e629eaaad0fc47019f56a1fc749b1..356e8e68eb68f1cda08a54395dadae5ba62da12a 100644
+index 656c723e0a830b65e375a027d77614bbf998b225..a5d4ec270ea60a320feb1b2b2c94e59b6e4fd76e 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -9,9 +9,11 @@
@@ -7306,7 +7330,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
-index 356e8e68eb68f1cda08a54395dadae5ba62da12a..231c8bbdd04caaabc965af28546d86e96b80f2dd 100644
+index a5d4ec270ea60a320feb1b2b2c94e59b6e4fd76e..c02d6e4a87d65767ddbbe9c7f82f974b6ddc8eed 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -74,6 +74,7 @@
@@ -7502,10 +7526,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
-index 00d12d1bc82cd9fa84595d1a7ff39664a0fcf690..951bf0d6ac54a228af86ff17e0453c1033f72256 100644
+index 2bd0af37c66e3b2817f2b1366820ae4496b2e3e0..7bbf7eee4e6f7f45882ddd892a8ca07417072846 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -815,6 +815,205 @@
+@@ -822,6 +822,205 @@
      assert_eq!(invoke(&main, "clear_history", json!({})).unwrap(), 0);
  }
  
@@ -7753,7 +7777,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
-index 231c8bbdd04caaabc965af28546d86e96b80f2dd..799f5e1680beb949a361203825cc3eeb08b459f0 100644
+index c02d6e4a87d65767ddbbe9c7f82f974b6ddc8eed..05ff528a8d0b2f23a60f6db84435e141c55a97bb 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -11,6 +11,7 @@
@@ -8196,7 +8220,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
-index 799f5e1680beb949a361203825cc3eeb08b459f0..98e66edd0a50e16e606d88d9c8dc5bba11fc5e85 100644
+index 05ff528a8d0b2f23a60f6db84435e141c55a97bb..c912bf1ea5632a9e72940cd4e7103d157ff423d7 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -129,6 +129,7 @@
@@ -8318,7 +8342,7 @@ Dòng 17, 40, 43, 68; QĐ19, QĐ20. Theo §4.4 đã sửa ngày 2026-10-02 (comm
 
 - `TauriSink::level` gửi `audio://level` cho cả thanh phụ đề (chỉ báo "đang nghe", §4.2).
 - Trait `Surface` thêm `frame`, `set_frame`, `cursor`, `system_resize`; `OverlaySurface::new` giữ lần kéo cạnh đang dở. `remember_position` đọc khung qua `Surface`, nên test được bằng `FakeSurface` (đặt khung, màn hình, con trỏ).
-- Kéo cạnh (`overlay::begin_resize`, `resize_to_cursor`, `end_resize`; `placement::resized` là phép tính): Windows để hệ điều hành đổi kích thước (`start_resize_dragging` của Tauri); macOS không có cách đó trong tao, nên app tự đặt khung theo vị trí con trỏ (đọc ở phía Rust, không nhận tọa độ từ giao diện). Không nhỏ hơn 320 × 80 điểm; nhả chuột thì nhớ kích thước mới; thanh đang khóa thì không làm gì. Cả hai bản `overlay::create` vẫn đặt `resizable(true)` và cỡ tối thiểu lúc tạo.
+- Kéo cạnh (`overlay::begin_resize`, `resize_to_cursor`, `end_resize`; `placement::resized` là phép tính): Windows để hệ điều hành đổi kích thước (`start_resize_dragging` của Tauri); macOS không có cách đó trong tao, nên app tự đặt khung theo vị trí con trỏ (đọc ở phía Rust, không nhận tọa độ từ giao diện). Độ dời con trỏ tính bằng điểm logic rồi đổi ra pixel theo tỉ lệ của màn hình chứa thanh, nên hai màn hình khác tỉ lệ vẫn đúng (Q-A của review 03 lần 2; test `the_edge_follows_the_cursor_on_screens_of_different_scales`). Không nhỏ hơn 320 × 80 điểm; nhả chuột thì nhớ kích thước mới; thanh đang khóa thì không làm gì. Cả hai bản `overlay::create` vẫn đặt `resizable(true)` và cỡ tối thiểu lúc tạo.
 - Bốn lệnh mới của cửa sổ `overlay` (đủ ba chỗ: `commands.rs`, `build.rs`, `capabilities/overlay.json`): `hide_overlay` (nút ✕: ẩn như phím tắt, phiên vẫn chạy), `begin_overlay_resize`, `overlay_resize_move`, `end_overlay_resize`. Các lệnh này chỉ đụng tới cửa sổ của chính thanh phụ đề; overlay **không** được cấp `core:window:allow-start-resize-dragging`.
 - `actions::set_overlay_visible(false)` nhớ vị trí trước khi ẩn; có test (M17 của review 03).
 - `StartOptions::LISTEN_TEST` (thu cả âm thanh của app, thu toàn hệ thống) và lệnh `start_listen_test` cho bước "Nghe thử"; `FakeDeps.capture_sources` ghi lại nguồn của từng lần mở.
@@ -8373,10 +8397,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
-index 951bf0d6ac54a228af86ff17e0453c1033f72256..57104cc8757c9fccc8f16d7605d3137c30b6c5f8 100644
+index 7bbf7eee4e6f7f45882ddd892a8ca07417072846..37691163b39e9c4308ea3c3c29bd0a5ad01f5c95 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -246,11 +246,160 @@
+@@ -246,11 +246,194 @@
      let captures = deps.captures.clone();
      let app = mock_app_with(deps);
      let _main = window(&app, "main");
@@ -8423,11 +8447,12 @@ index 951bf0d6ac54a228af86ff17e0453c1033f72256..57104cc8757c9fccc8f16d7605d3137c
 +    let app = mock_app();
 +    let overlay = window(&app, "overlay");
 +    let surface = overlay_on_a_retina_screen(&app);
-+    *surface.cursor.lock().unwrap() = (200.0, 1700.0);
++    // Con trỏ tính bằng điểm: dời (100, −30) điểm là (200, −60) pixel trên màn hình tỉ lệ 2.
++    *surface.cursor.lock().unwrap() = (100.0, 850.0);
 +    invoke(&overlay, "begin_overlay_resize", json!({ "edge": "northWest" })).unwrap();
-+    *surface.cursor.lock().unwrap() = (400.0, 1640.0);
++    *surface.cursor.lock().unwrap() = (200.0, 820.0);
 +    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
-+    *surface.cursor.lock().unwrap() = (5000.0, 5000.0);
++    *surface.cursor.lock().unwrap() = (2500.0, 2500.0);
 +    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
 +    invoke(&overlay, "end_overlay_resize", json!({})).unwrap();
 +    assert_eq!(
@@ -8445,6 +8470,39 @@ index 951bf0d6ac54a228af86ff17e0453c1033f72256..57104cc8757c9fccc8f16d7605d3137c
 +    invoke(&overlay, "begin_overlay_resize", json!({ "edge": "east" })).unwrap();
 +    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
 +    assert_eq!(overlay_calls(&app).len(), before, "đang khóa thì không đổi kích thước");
++}
++
++/// Q-A của review 03 lần 2: mép thanh dính theo con trỏ trên màn hình tỉ lệ 1 cũng như trên màn hình Retina (tỉ lệ 2), dù
++/// màn hình chính có tỉ lệ nào: con trỏ dời 100 điểm thì khung dời 100 điểm, tức 100 pixel trên màn hình 1×, 200 pixel trên
++/// màn hình 2×.
++#[test]
++fn the_edge_follows_the_cursor_on_screens_of_different_scales() {
++    use crate::overlay::placement::{Frame, Screen};
++    for (scale, expected) in [(1.0, "frame 0 0 1000x160"), (2.0, "frame 0 0 1100x160")] {
++        let app = mock_app();
++        let overlay = window(&app, "overlay");
++        let surface = app.state::<crate::test_support::FakeSurface>().inner().clone();
++        let screen = Screen {
++            key: format!("screen {scale}"),
++            x: 0,
++            y: 0,
++            width: 3840,
++            height: 2160,
++            scale,
++        };
++        let frame = Frame {
++            x: 0,
++            y: 0,
++            width: 900,
++            height: 160,
++        };
++        *surface.frame.lock().unwrap() = Some((frame, screen));
++        *surface.cursor.lock().unwrap() = (500.0, 50.0);
++        invoke(&overlay, "begin_overlay_resize", json!({ "edge": "east" })).unwrap();
++        *surface.cursor.lock().unwrap() = (600.0, 50.0);
++        invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
++        assert_eq!(overlay_calls(&app), [expected], "tỉ lệ {scale}");
++    }
 +}
 +
 +/// Kéo cạnh trên Windows (§4.4): hệ điều hành đổi kích thước (`start_resize_dragging`); app không tự đặt khung.
@@ -8611,7 +8669,7 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
-index 8d0b418c0fa0cd949a238c26f209e52383b26f20..5a8becafd2838f89d5f376bb0d97c6260c3b521c 100644
+index 8d0b418c0fa0cd949a238c26f209e52383b26f20..7151909e71c803394d92aed0f20d181a5c5256d4 100644
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
 @@ -26,6 +26,7 @@
@@ -8622,13 +8680,14 @@ index 8d0b418c0fa0cd949a238c26f209e52383b26f20..5a8becafd2838f89d5f376bb0d97c626
  use crate::overlay::{OverlaySurface, Surface};
  use crate::pro::{Entitlement, ProGate};
  use crate::security::keystore::Keystore;
-@@ -37,25 +38,59 @@
+@@ -37,25 +38,60 @@
  use crate::system::{System, SystemOpener};
  use crate::transcript::store::TranscriptStore;
  
 -/// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`.
 +/// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`, `frame 1 2 300x80`,
-+/// `system resize west`. Khung cửa sổ, màn hình và con trỏ do test đặt; mặc định chưa có khung (như chưa có cửa sổ).
++/// `system resize west`. Khung cửa sổ (pixel), màn hình và con trỏ (điểm logic, như `Surface::cursor`) do test đặt; mặc
++/// định chưa có khung (như chưa có cửa sổ).
  #[derive(Clone, Default)]
 -pub struct FakeSurface(Arc<Mutex<Vec<String>>>);
 +pub struct FakeSurface {
@@ -8693,7 +8752,7 @@ index 8d0b418c0fa0cd949a238c26f209e52383b26f20..5a8becafd2838f89d5f376bb0d97c626
      }
  }
  
-@@ -246,6 +281,8 @@
+@@ -246,6 +282,8 @@
      pub asr_unavailable: bool,
      /// Giá trị `include_self` của từng lần mở nguồn âm thanh.
      pub captures: Arc<Mutex<Vec<bool>>>,
@@ -8702,7 +8761,7 @@ index 8d0b418c0fa0cd949a238c26f209e52383b26f20..5a8becafd2838f89d5f376bb0d97c626
      /// Nơi nhận việc của nguồn âm thanh của từng phiên, theo thứ tự: test gọi để giả lỗi tới muộn.
      pub capture_events: Arc<Mutex<Vec<OnEvent>>>,
      /// Số lần `shutdown` và `kill_all` được gọi.
-@@ -373,8 +410,9 @@
+@@ -373,8 +411,9 @@
          Box::new(|| Ok(Box::new(EnergyVad { threshold_rms: 0.05 }) as _))
      }
  
@@ -8713,7 +8772,7 @@ index 8d0b418c0fa0cd949a238c26f209e52383b26f20..5a8becafd2838f89d5f376bb0d97c626
          if let Some(code) = self.capture_error {
              on_event(crate::capture::CaptureEvent::Failed {
                  code,
-@@ -433,7 +471,7 @@
+@@ -433,7 +472,7 @@
              FileMeta::current(),
              false,
          ))
@@ -8722,7 +8781,7 @@ index 8d0b418c0fa0cd949a238c26f209e52383b26f20..5a8becafd2838f89d5f376bb0d97c626
          .manage(surface)
          .manage(System(Box::new(system.clone())))
          .manage(system)
-@@ -515,7 +553,7 @@
+@@ -515,7 +554,7 @@
  
  /// Các lần gọi tới thanh phụ đề từ lúc dựng app giả.
  pub fn overlay_calls(app: &tauri::App<MockRuntime>) -> Vec<String> {
@@ -8741,7 +8800,7 @@ cargo test -p meeting-translator --lib overlay 2>&1 | grep -E '^error(\[E[0-9]+\
 ```
 Expected (lúc lập kế hoạch; chưa có `placement::Frame`, `Edge`, các hàm mới của `Surface`, `StartOptions::LISTEN_TEST`, `capture_sources`):
 ```text
-error: could not compile `meeting-translator` (lib test) due to 27 previous errors
+error: could not compile `meeting-translator` (lib test) due to 28 previous errors
 error[E0407]: method `cursor` is not a member of trait `Surface`
 error[E0407]: method `frame` is not a member of trait `Surface`
 error[E0407]: method `set_frame` is not a member of trait `Surface`
@@ -8995,10 +9054,10 @@ Sửa `src-tauri/src/overlay/mod.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/overlay/mod.rs b/src-tauri/src/overlay/mod.rs
-index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0af19dc30 100644
+index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..fc4ddf6eb7ffdc15f804a6752fc77961fdb4d298 100644
 --- a/src-tauri/src/overlay/mod.rs
 +++ b/src-tauri/src/overlay/mod.rs
-@@ -3,8 +3,13 @@
+@@ -3,8 +3,16 @@
  //! - macOS (`macos.rs`): NSPanel non-activating qua `tauri-nspanel`;
  //! - Windows (`windows.rs`): cửa sổ topmost, `skip_taskbar`, `focusable(false)`.
  //!
@@ -9010,11 +9069,14 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
 +//! Kéo cạnh hay góc (§4.4, cả macOS lẫn Windows): thanh phụ đề vẽ vùng kéo ở mép (khi chưa khóa) và gọi
 +//! [`begin_resize`], [`resize_to_cursor`], [`end_resize`]. Windows để hệ điều hành đổi kích thước (`start_resize_dragging`).
 +//! macOS không có cách đó trong tao, nên app tự đặt khung cửa sổ theo vị trí con trỏ (đọc ở phía Rust, không nhận tọa độ
-+//! từ giao diện) mỗi lần con trỏ di chuyển.
++//! từ giao diện) mỗi lần con trỏ di chuyển. Độ dời của con trỏ tính bằng điểm logic rồi mới đổi ra pixel theo tỉ lệ của
++//! màn hình chứa thanh: tao đổi vị trí con trỏ ra pixel theo tỉ lệ của màn hình chính, còn khung cửa sổ theo tỉ lệ của màn
++//! hình chứa nó, nên hai màn hình khác tỉ lệ (Retina và màn hình ngoài 1×) mà cộng thẳng pixel thì mép thanh chạy nhanh
++//! gấp đôi hay chậm một nửa so với con trỏ (Q-A của review 03 lần 2).
  
  pub mod placement;
  
-@@ -17,6 +22,7 @@
+@@ -17,6 +25,7 @@
  #[cfg(not(target_os = "macos"))]
  use windows as platform;
  
@@ -9022,7 +9084,7 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
  use std::time::{SystemTime, UNIX_EPOCH};
  
  use tauri::{AppHandle, Manager, Monitor, PhysicalPosition, PhysicalSize, Runtime};
-@@ -24,9 +30,13 @@
+@@ -24,9 +33,13 @@
  use crate::i18n;
  use crate::settings::{MAX_OVERLAY_POSITIONS, persist};
  use crate::state::AppState;
@@ -9037,26 +9099,28 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
  
  /// Thao tác trên cửa sổ của thanh phụ đề. Bản thật gọi `macos.rs` hoặc `windows.rs`; test dùng bản giả
  /// ghi lại từng lần gọi (`test_support::FakeSurface`).
-@@ -34,10 +44,43 @@
+@@ -34,10 +47,45 @@
      fn set_visible(&self, visible: bool) -> tauri::Result<()>;
      /// Chế độ khóa: click đi xuyên qua thanh phụ đề (§4.4).
      fn set_click_through(&self, on: bool) -> tauri::Result<()>;
 +    /// Khung hiện tại của cửa sổ và màn hình nó đang nằm. `None`: chưa có cửa sổ, hay không đọc được.
 +    fn frame(&self) -> Option<(Frame, Screen)>;
 +    fn set_frame(&self, frame: Frame) -> tauri::Result<()>;
-+    /// Vị trí con trỏ chuột, tọa độ vật lý của màn hình.
++    /// Vị trí con trỏ chuột, bằng điểm logic (không phải pixel).
 +    fn cursor(&self) -> Option<(f64, f64)>;
 +    /// Để hệ điều hành đổi kích thước theo con trỏ cho tới khi nhả chuột. `false`: hệ điều hành không làm được (macOS),
 +    /// app tự đổi ([`resize_to_cursor`]).
 +    fn system_resize(&self, edge: Edge) -> bool;
 +}
 +
-+/// Một lần kéo cạnh đang dở (macOS): cạnh đang kéo, con trỏ và khung lúc bấm, cỡ tối thiểu theo pixel của màn hình đó.
++/// Một lần kéo cạnh đang dở (macOS): cạnh đang kéo, con trỏ (điểm) và khung (pixel) lúc bấm, tỉ lệ của màn hình chứa
++/// thanh, cỡ tối thiểu theo pixel của màn hình đó.
 +#[derive(Clone, Copy, Debug)]
 +struct Drag {
 +    edge: Edge,
 +    cursor: (f64, f64),
 +    frame: Frame,
++    scale: f64,
 +    min: (u32, u32),
  }
  
@@ -9082,7 +9146,7 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
  
  struct Native<R: Runtime>(AppHandle<R>);
  
-@@ -48,6 +91,38 @@
+@@ -48,6 +96,47 @@
  
      fn set_click_through(&self, on: bool) -> tauri::Result<()> {
          platform::set_ignore_mouse(&self.0, on)
@@ -9113,7 +9177,16 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
 +    }
 +
 +    fn cursor(&self) -> Option<(f64, f64)> {
-+        self.0.cursor_position().ok().map(|p| (p.x, p.y))
++        // tao đổi vị trí con trỏ (điểm, `NSEvent mouseLocation`) ra pixel theo tỉ lệ của màn hình chính: chia lại cho tỉ lệ
++        // đó. Chỉ macOS dùng (Windows để hệ điều hành đổi kích thước).
++        let p = self.0.cursor_position().ok()?;
++        let scale = self
++            .0
++            .primary_monitor()
++            .ok()
++            .flatten()
++            .map_or(1.0, |m| m.scale_factor());
++        Some((p.x / scale, p.y / scale))
 +    }
 +
 +    fn system_resize(&self, edge: Edge) -> bool {
@@ -9121,7 +9194,7 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
      }
  }
  
-@@ -56,14 +131,14 @@
+@@ -56,14 +145,14 @@
  pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
      let settings = app.state::<AppState>().settings();
      platform::create(app, i18n::strings(settings.ui_language).overlay_title)?;
@@ -9138,7 +9211,7 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
          None => Ok(()),
      }
  }
-@@ -71,7 +146,7 @@
+@@ -71,7 +160,7 @@
  /// Chế độ khóa: cho click xuyên qua thanh phụ đề (§4.4).
  pub fn set_locked<R: Runtime>(app: &AppHandle<R>, locked: bool) -> tauri::Result<()> {
      match app.try_state::<OverlaySurface>() {
@@ -9147,7 +9220,7 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
          None => Ok(()),
      }
  }
-@@ -119,18 +194,12 @@
+@@ -119,18 +208,12 @@
  }
  
  /// Nhớ vị trí hiện tại của thanh phụ đề cho màn hình nó đang nằm (gọi khi cửa sổ di chuyển hay đổi
@@ -9171,7 +9244,7 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
      let state = app.state::<AppState>();
      let mut next = state.settings();
      let unchanged = next
-@@ -159,3 +228,60 @@
+@@ -159,3 +242,62 @@
          log::warn!("không lưu được vị trí thanh phụ đề: {e}");
      }
  }
@@ -9200,6 +9273,7 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
 +        edge,
 +        cursor,
 +        frame,
++        scale: screen.scale,
 +        min,
 +    });
 +}
@@ -9215,8 +9289,9 @@ index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0
 +    let Some(cursor) = overlay.surface.cursor() else {
 +        return;
 +    };
-+    let dx = (cursor.0 - drag.cursor.0).round() as i32;
-+    let dy = (cursor.1 - drag.cursor.1).round() as i32;
++    // Độ dời bằng điểm, đổi ra pixel theo tỉ lệ của màn hình chứa thanh.
++    let dx = ((cursor.0 - drag.cursor.0) * drag.scale).round() as i32;
++    let dy = ((cursor.1 - drag.cursor.1) * drag.scale).round() as i32;
 +    let next = placement::resized(drag.frame, drag.edge, dx, dy, drag.min.0, drag.min.1);
 +    if let Err(e) = overlay.surface.set_frame(next) {
 +        log::warn!("không đổi được kích thước thanh phụ đề: {e}");
@@ -9449,7 +9524,7 @@ Expected (lúc lập kế hoạch):
 ```text
 test app_tests::a_listening_test_session_also_captures_the_app_itself ... ok
 test app_tests::the_listening_test_captures_the_whole_system_and_the_overlay_hears_the_level ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 217 filtered out
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 218 filtered out
 ```
 
 Run:
@@ -9482,7 +9557,17 @@ test overlay::placement::tests::screen_key_uses_name_and_resolution ... ok
 test overlay::placement::tests::unplugged_screen_falls_back_to_another_saved_screen_then_default ... ok
 test settings::persist::tests::save_writes_every_key_and_save_overlay_only_overlay ... ok
 test settings::tests::overlay_positions_are_bounded ... ok
-test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 195 filtered out
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 196 filtered out
+```
+
+Run:
+```bash
+cargo test -p meeting-translator --lib different_scales -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
+```
+Expected (lúc lập kế hoạch):
+```text
+test app_tests::the_edge_follows_the_cursor_on_screens_of_different_scales ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 219 filtered out
 ```
 
 Run:
@@ -9494,7 +9579,7 @@ Expected (lúc lập kế hoạch):
 test acl_tests::capabilities_grant_exactly_the_fixed_lists ... ok
 test acl_tests::each_window_only_reaches_its_own_commands ... ok
 test acl_tests::outside_effects_only_reach_the_fake_opener ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 216 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 217 filtered out
 ```
 
 Run:
@@ -9503,7 +9588,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 217 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 218 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 Run:
@@ -9586,7 +9671,7 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
-index 57104cc8757c9fccc8f16d7605d3137c30b6c5f8..34edb39ae2a24bd318ef42b5c350acac17246167 100644
+index 37691163b39e9c4308ea3c3c29bd0a5ad01f5c95..5b97117d76448a7aacf336bde024caf461d59f48 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
 @@ -279,6 +279,37 @@
@@ -9839,7 +9924,7 @@ Expected (lúc lập kế hoạch):
 test app_tests::subtitle_colors_reach_the_overlay_at_once ... ok
 test settings::migrate::tests::subtitle_colors_default_to_white_on_black ... ok
 test settings::patch::tests::subtitle_colors_come_from_the_palette ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 219 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 220 filtered out
 ```
 
 Run:
@@ -9848,7 +9933,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 220 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 221 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -10083,7 +10168,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 220 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 221 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -10126,9 +10211,9 @@ Run:
 ```bash
 cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8} END {print "passed", p, "failed", f, "ignored", i}'
 ```
-Expected (lúc lập kế hoạch; trên `main` `5925d42` là 500 qua, 11 bỏ qua; 03a thêm 75 test, và `real_terms` bỏ qua):
+Expected (lúc lập kế hoạch; trên `main` `5925d42` là 500 qua, 11 bỏ qua; 03a thêm 76 test, và `real_terms` bỏ qua):
 ```text
-passed 575 failed 0 ignored 12
+passed 576 failed 0 ignored 12
 ```
 
 - [ ] **Step 2: `cargo deny`, `cargo audit`, giao diện, kiểm code Windows**

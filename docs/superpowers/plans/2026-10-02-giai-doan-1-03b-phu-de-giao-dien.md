@@ -4101,7 +4101,7 @@ cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8
 ```
 Expected (lúc lập kế hoạch; 03b không thêm test Rust):
 ```text
-passed 575 failed 0 ignored 12
+passed 576 failed 0 ignored 12
 ```
 
 Run:
@@ -4133,7 +4133,7 @@ Expected (lúc lập kế hoạch):
 test pro::tests::require_follows_the_gate_and_the_status_follows_refresh ... ok
 test pro::tests::the_dev_gate_exists_only_in_debug_builds ... ok
 test pro::tests::without_a_gate_the_app_is_free ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 218 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 219 filtered out
 ```
 
 Run:
@@ -4247,6 +4247,7 @@ Expected:
 - Thoát app, mở lại, bắt đầu phiên: thanh ở đúng vị trí và kích thước cũ. Ẩn thanh bằng phím tắt rồi mở lại app: vẫn đúng vị trí (vị trí được nhớ cả lúc ẩn).
 - Khóa thanh (phím tắt): click đi xuyên qua; vùng kéo cạnh và nút ✕ không còn.
 - Màn hình thứ hai (nếu có): kéo thanh sang, thoát rồi mở lại: thanh về màn hình đó; rút màn hình: thanh về màn hình chính.
+- Hai màn hình khác tỉ lệ (MacBook Retina và một màn hình ngoài 1×, thử cả hai cách chọn màn hình chính trong System Settings › Displays): kéo cạnh phải và góc trên bên trái của thanh trên từng màn hình. Expected: mép thanh dính theo con trỏ suốt lúc kéo, không chạy nhanh gấp đôi hay chậm một nửa (Q-A của review 03 lần 2).
 
 - [ ] **Step 4: App họp toàn màn hình** (dòng 25, 301)
 
@@ -4341,11 +4342,11 @@ Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-
 - Step 4:
   - mục 2: tên hai file 03a, 03b thay cho tên đang ghi ở bảng mục 2 và mục 2.3; trạng thái của 03;
   - mục 2.6 (06), "Nhận từ 03": điểm kiểm tra Pro là `src-tauri/src/pro.rs` (`ProGate`, `install_gate`, `refresh`, `require`, `is_pro`); thay `DevGate` bằng trạng thái bản quyền và gọi `refresh` khi bản quyền đổi; `AppStatus.pro` là trạng thái giao diện dùng; danh sách tính năng Pro ở QĐ8 của 03a; hai nút xóa dữ liệu chỉ xóa `data.db` và mục `db-key` (Q14);
-  - mục 2.4 (04), "Nhận từ 03": nút "Xóa model và dữ liệu" gọi `data::clear_all_data` rồi xóa model, đặt trong `PrivacySettings.tsx`; ghi chú N1, N2 của review cuối 02 thuộc 04; danh sách file giao nhau ở 03a;
+  - mục 2.4 (04), "Nhận từ 03": nút "Xóa model và dữ liệu" gọi `data::clear_all_data` rồi xóa model, đặt trong `PrivacySettings.tsx`; ghi chú N2 của review cuối 02 thuộc 04 (N1 đã do 03 làm, xem gạch dưới); danh sách file giao nhau ở 03a;
   - mục 2.7 (07), "Nhận từ 03": ghi công SQLCipher (BSD), OpenSSL 3.6.3 (Apache-2.0, chỉ Windows) và câu mẫu FLEURS (CC BY 4.0) vào `THIRD_PARTY_NOTICES`; CI Windows cần Perl để build `openssl-src`; `public/listen-test-en.wav` nằm trong `dist/`;
   - mục 6.2: `scripts/check-windows.sh` nay đặt thêm biến cho `libsqlite3-sys` và `openssl-sys`.
   - mục 2.6 (06), thêm vào "Nhận từ 03": `DevGate` chỉ có trong bản debug; 06 cài gate thật đúng một lần ở chỗ của `pro::install_default_gate` (không gọi `install_gate` lần hai); `refresh` về Free thì luồng dịch thôi dùng thuật ngữ; phiên "Nghe thử" là phiên thật (`StartOptions::LISTEN_TEST`), 06 quyết có trừ hạn mức không (N13 của review 03).
   - mục 2.7 (07), thêm vào "Nhận từ 03": CI phát hành chạy `cargo test --release -p meeting-translator --lib pro::` (bản release không có `DevGate`, Q1); cập nhật app dùng `AppHandle::request_restart` (đi qua `RunEvent::Exit`, nên `session::save_on_exit` lưu lịch sử), hoặc gọi `save_on_exit` trước `restart` nếu gọi trên luồng chính (Q3).
   - mục 2.4 (04): ghi chú N1 của review cuối 02 đã do 03 làm (03a Task 12); 04 chỉ làm N2. Khối `diff` của 04 dựng lại trên cây cuối của 03.
-- Spec §6.9: thêm `textColor`, `background` vào danh sách khóa `overlay.{…}` (QĐ23), trong cùng commit.
-- Step 5–6: kiểm định dạng bảng, rồi commit (cả kế hoạch 00 và spec) với thông điệp `docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 03`.
+- Spec §6.9 đã có hai khóa `textColor`, `background` trong `overlay.{…}` (`31ca0fb`, khớp QĐ23): chỉ kiểm lại, không thêm (N-C của review 03 lần 2).
+- Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 03`.
