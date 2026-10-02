@@ -235,6 +235,63 @@ kbd {
   color: var(--color-muted);
 }
 
+button.link {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+input[type="search"],
+input[type="text"] {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  min-width: 16rem;
+}
+
+/* Bản chép lời: giờ ở cột trái, câu gốc rồi bản dịch. Chọn và sao chép bằng chuột được như chữ thường. */
+.transcript {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.transcript li {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.transcript time {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.transcript .tgt {
+  font-weight: 600;
+}
+
+.transcript .provisional,
+.transcript .pending {
+  opacity: 0.65;
+}
+
+.transcript .dropped .src,
+.transcript .failed .tgt {
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 /* Ô chọn màu của Cài đặt › Phụ đề: mỗi ô là một nút radio, xem trước chữ "A" trên nền. */
 fieldset.swatches {
   margin: 0;

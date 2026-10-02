@@ -4,15 +4,17 @@ import { useApp, useT } from "./appStore";
 import { Notice } from "./Notice";
 import { About } from "./screens/About";
 import { Home } from "./screens/Home";
-import { Glossary, History, Transcript, Upgrade } from "./screens/Placeholders";
+import { HistoryScreen } from "./screens/HistoryScreen";
+import { Glossary, Upgrade } from "./screens/Placeholders";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { TranscriptScreen } from "./screens/TranscriptScreen";
 
 const SCREENS: readonly Screen[] = ["home", "transcript", "history", "glossary", "settings", "upgrade", "about"];
 
 const BODIES: Record<Screen, () => React.JSX.Element | null> = {
   home: Home,
-  transcript: Transcript,
-  history: History,
+  transcript: TranscriptScreen,
+  history: HistoryScreen,
   glossary: Glossary,
   settings: SettingsScreen,
   upgrade: Upgrade,

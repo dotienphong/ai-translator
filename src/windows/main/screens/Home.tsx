@@ -3,6 +3,7 @@ import { sourceLabel } from "../../../lib/audioSource";
 import type { SessionStatus } from "../../../lib/ipc";
 import { levelToMeter } from "../../../store/app";
 import { useApp, useT } from "../appStore";
+import { useTranscript } from "../dataStores";
 import { LanguagePicker } from "../LanguagePicker";
 
 const BADGE: Record<SessionStatus, MessageKey> = {
@@ -34,6 +35,7 @@ export function Home() {
   const setLocked = useApp((s) => s.setOverlayLocked);
   const navigate = useApp((s) => s.navigate);
   const openPermission = useApp((s) => s.openAudioPermissionSettings);
+  const hasTranscript = useTranscript((s) => (s.transcript?.lines.length ?? 0) > 0);
   if (!status || !settings || !info) return null;
   const session = status.session;
   const notes: MessageKey[] = [];
@@ -74,6 +76,12 @@ export function Home() {
             {t(key)}
           </p>
         ))}
+        {/* Dừng xong thì mở được bản chép lời của phiên (§4.2 bước 3). */}
+        {session !== "running" && session !== "starting" && hasTranscript && (
+          <div className="row">
+            <button onClick={() => navigate("transcript")}>{t("home.openTranscript")}</button>
+          </div>
+        )}
       </div>
       <div className="card">
         <h2>{t("home.languages")}</h2>
