@@ -56,6 +56,10 @@ pub const QUOTA_EXHAUSTED: &str = "quotaExhausted";
 pub const PRO_REQUIRED: &str = "proRequired";
 /// Không mở được DB của lịch sử và từ điển (kho khóa bị từ chối, file lỗi, file của bản app mới hơn).
 pub const DATA_UNAVAILABLE: &str = "dataUnavailable";
+/// Không đọc hay ghi được file người dùng đã chọn (`files.rs`).
+pub const FILE_FAILED: &str = "fileFailed";
+/// File chọn để nhập lớn quá giới hạn (`files::MAX_IMPORT_BYTES`).
+pub const FILE_TOO_LARGE: &str = "fileTooLarge";
 /// Lỗi bên trong app không thuộc loại nào ở trên (ví dụ một tác vụ nền dừng bất thường).
 pub const UNKNOWN: &str = "unknown";
 
@@ -164,6 +168,8 @@ mod tests {
                 QUOTA_EXHAUSTED,
                 PRO_REQUIRED,
                 DATA_UNAVAILABLE,
+                FILE_FAILED,
+                FILE_TOO_LARGE,
                 UNKNOWN,
             ]
             .map(String::from),

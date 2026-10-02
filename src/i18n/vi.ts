@@ -176,5 +176,7 @@ export const vi: Record<MessageKey, string> = {
   "error.glossaryNotFound": "Thuật ngữ này không còn nữa.",
   "error.csvInvalid": "Không đọc được file CSV này. Chưa nhập gì.",
   "error.historyNotFound": "Phiên này không còn trong lịch sử.",
+  "error.fileFailed": "Không đọc hay ghi được file đó. Hãy chọn chỗ khác rồi thử lại.",
+  "error.fileTooLarge": "File này quá lớn. File từ điển tối đa 1 MB.",
   "error.unknown": "Có lỗi xảy ra.",
 };

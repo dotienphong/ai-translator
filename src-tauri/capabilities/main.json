@@ -17,6 +17,13 @@
     "allow-open-login-items-settings",
     "allow-list-audio-sources",
     "allow-open-audio-permission-settings",
+    "allow-get-transcript",
+    "allow-transcript-text",
+    "allow-export-transcript",
+    "allow-list-history",
+    "allow-get-history-session",
+    "allow-delete-history-session",
+    "allow-clear-history",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "core:webview:allow-set-webview-zoom"

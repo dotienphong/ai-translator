@@ -41,6 +41,9 @@ const FORBIDDEN: &[&str] = &[
     "plugin:log|log",
     "plugin:event|emit",
     "plugin:global-shortcut|register",
+    "plugin:dialog|save",
+    "plugin:dialog|open",
+    "plugin:dialog|message",
 ];
 
 /// Lệnh của app có tác dụng ra ngoài app (mở Finder, System Settings, Settings của Windows).

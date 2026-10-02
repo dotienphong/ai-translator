@@ -3,6 +3,7 @@
 //! phần bên ngoài giả (`FakeDeps`): không chạy tiến trình phụ, không thu âm thật.
 
 use std::ops::ControlFlow;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, SystemTime};
@@ -22,6 +23,7 @@ use crate::capture::OnEvent;
 use crate::commands;
 use crate::db::DataStore;
 use crate::errors::{self, CommandError};
+use crate::files::{FilePicker, FileType, Picker};
 use crate::glossary::ActiveGlossary;
 use crate::login_item::{AgentStatus, LoginItem, LoginItems};
 use crate::overlay::{OverlaySurface, Surface};
@@ -125,6 +127,35 @@ pub struct FakePro(Arc<AtomicBool>);
 impl ProGate for FakePro {
     fn is_pro(&self) -> bool {
         self.0.load(Ordering::SeqCst)
+    }
+}
+
+/// Bản giả của `FilePicker`: "lưu" vào thư mục tạm của app giả với tên gợi ý, "mở" file test đã đặt; hoặc như người
+/// dùng bấm Hủy.
+#[derive(Clone, Default)]
+pub struct FakePicker {
+    pub dir: Arc<Mutex<PathBuf>>,
+    /// File trả về khi hỏi mở.
+    pub to_open: Arc<Mutex<Option<PathBuf>>>,
+    /// Người dùng bấm Hủy.
+    pub cancel: Arc<AtomicBool>,
+}
+
+impl FilePicker for FakePicker {
+    fn save(&self, file_name: &str, _kind: FileType) -> Option<PathBuf> {
+        if self.cancel.load(Ordering::SeqCst) {
+            return None;
+        }
+        let dir = self.dir.lock().unwrap().clone();
+        std::fs::create_dir_all(&dir).unwrap();
+        Some(dir.join(file_name))
+    }
+
+    fn open(&self, _kind: FileType) -> Option<PathBuf> {
+        if self.cancel.load(Ordering::SeqCst) {
+            return None;
+        }
+        self.to_open.lock().unwrap().clone()
     }
 }
 
@@ -394,6 +425,8 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
         APPS.fetch_add(1, Ordering::SeqCst)
     ));
     let _ = std::fs::remove_dir_all(&data_dir);
+    let picker = FakePicker::default();
+    *picker.dir.lock().unwrap() = data_dir.join("exports");
     let app = builder
         .manage(AppState::new(
             Settings::defaults(UiLanguage::Vi),
@@ -415,6 +448,8 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
         ))
         .manage(ActiveGlossary::default())
         .manage(TranscriptStore::default())
+        .manage(Picker(Box::new(picker.clone())))
+        .manage(picker)
         .manage(pro)
         .manage(Session::new(Arc::new(deps)))
         .invoke_handler(commands::handler())

@@ -176,6 +176,8 @@ export const en = {
   "error.glossaryNotFound": "This term no longer exists.",
   "error.csvInvalid": "This CSV file could not be read. Nothing was imported.",
   "error.historyNotFound": "This session is no longer in the history.",
+  "error.fileFailed": "Could not read or write that file. Choose another place and try again.",
+  "error.fileTooLarge": "This file is too large. A glossary file is at most 1 MB.",
   "error.unknown": "Something went wrong.",
 } as const;
 

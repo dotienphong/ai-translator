@@ -648,6 +648,180 @@ fn the_exit_event_saves_the_running_session_to_history() {
     assert_eq!(saved_sessions(&app), 1, "không lưu hai lần");
 }
 
+/// App giả đã chạy xong một phiên có câu dịch (lưu lịch sử bật hay tắt theo `save_history`).
+fn app_after_one_session(save_history: bool) -> tauri::App<tauri::test::MockRuntime> {
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let main = window(&app, "main");
+    invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "saveHistory": save_history } }),
+    )
+    .unwrap();
+    let store = app.state::<crate::transcript::store::TranscriptStore>();
+    session::start(app.handle()).unwrap();
+    wait_until("một câu dịch xong", || {
+        store
+            .snapshot()
+            .lines
+            .iter()
+            .any(|l| l.status == pipeline::subtitle::Status::Done)
+    });
+    session::stop(app.handle());
+    app
+}
+
+/// File chọn để nhập lớn hơn 1 MiB thì từ chối (`fileTooLarge`), đúng 1 MiB thì đọc được (M05 của review 03).
+#[test]
+fn files_larger_than_1_mib_are_not_read() {
+    use crate::test_support::FakePicker;
+    let app = mock_app();
+    let picker = app.state::<FakePicker>();
+    let dir = picker.dir.lock().unwrap().clone();
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("big.csv");
+    *picker.to_open.lock().unwrap() = Some(path.clone());
+    std::fs::write(&path, vec![b'a'; crate::files::MAX_IMPORT_BYTES as usize]).unwrap();
+    let read = crate::files::open_bytes(app.handle(), crate::files::CSV)
+        .unwrap()
+        .unwrap();
+    assert_eq!(read.len() as u64, crate::files::MAX_IMPORT_BYTES);
+    std::fs::write(&path, vec![b'a'; crate::files::MAX_IMPORT_BYTES as usize + 1]).unwrap();
+    let refused = crate::files::open_bytes(app.handle(), crate::files::CSV).unwrap_err();
+    assert_eq!(refused.code, errors::FILE_TOO_LARGE);
+}
+
+/// Bản chép lời (F4): xem và sao chép ở mọi gói; xuất file là Pro, ghi đúng định dạng vào chỗ người dùng chọn.
+#[test]
+fn the_transcript_can_be_read_copied_and_exported() {
+    use crate::test_support::FakePicker;
+    let app = app_after_one_session(false);
+    let main = window(&app, "main");
+    let t = invoke(&main, "get_transcript", json!({})).unwrap();
+    assert!(
+        t["lines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|l| l["tgt_text"] == "Xin chào mọi người.")
+    );
+    assert!(t["startedAt"].as_u64().is_some() && t["endedAt"].as_u64().is_some());
+    let current = json!({ "kind": "current" });
+    let text = invoke(
+        &main,
+        "transcript_text",
+        json!({ "source": current, "utcOffsetMinutes": 420 }),
+    )
+    .unwrap();
+    let text = text.as_str().unwrap();
+    assert!(text.contains("] Hello everyone.\n→ Xin chào mọi người.\n"), "{text}");
+
+    let export = |format: &str| {
+        invoke(
+            &main,
+            "export_transcript",
+            json!({ "source": current, "format": format, "srtText": "translation", "utcOffsetMinutes": 0 }),
+        )
+    };
+    // N4 của review 03: độ lệch múi giờ ngoài ±18 giờ là dữ liệu hỏng.
+    for bad in [1081, -1081] {
+        let refused = invoke(
+            &main,
+            "transcript_text",
+            json!({ "source": current, "utcOffsetMinutes": bad }),
+        )
+        .unwrap_err();
+        assert!(refused.contains("outOfRange"), "{refused}");
+        let refused = invoke(
+            &main,
+            "export_transcript",
+            json!({ "source": current, "format": "txt", "srtText": "translation", "utcOffsetMinutes": bad }),
+        )
+        .unwrap_err();
+        assert!(refused.contains("outOfRange"), "{refused}");
+    }
+    assert!(
+        invoke(
+            &main,
+            "transcript_text",
+            json!({ "source": current, "utcOffsetMinutes": -1080 })
+        )
+        .is_ok()
+    );
+    let path = export("srt").unwrap();
+    let written = std::fs::read_to_string(path.as_str().unwrap()).unwrap();
+    assert!(written.starts_with("1\n00:00:"), "{written}");
+    assert!(written.contains("Xin chào mọi người."));
+    assert!(path.as_str().unwrap().ends_with(".srt"));
+    let md = export("markdown").unwrap();
+    assert!(
+        std::fs::read_to_string(md.as_str().unwrap())
+            .unwrap()
+            .starts_with("# Bản chép lời · ")
+    );
+
+    app.state::<FakePicker>()
+        .cancel
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(export("txt").unwrap(), Value::Null, "bấm Hủy thì không ghi gì");
+    app.state::<FakePicker>()
+        .cancel
+        .store(false, std::sync::atomic::Ordering::SeqCst);
+
+    set_pro(&app, false);
+    let refused = export("txt").unwrap_err();
+    assert!(refused.contains(errors::PRO_REQUIRED), "{refused}");
+    assert!(
+        invoke(
+            &main,
+            "transcript_text",
+            json!({ "source": current, "utcOffsetMinutes": 0 })
+        )
+        .is_ok()
+    );
+}
+
+/// Lịch sử (Pro): danh sách, xem lại, xuất, xóa từng phiên, xóa tất cả; gói Free bị khóa.
+#[test]
+fn history_commands_list_open_delete_and_need_pro() {
+    let app = app_after_one_session(true);
+    let main = window(&app, "main");
+    let list = invoke(&main, "list_history", json!({})).unwrap();
+    let id = list[0]["id"].as_i64().unwrap();
+    assert_eq!(list[0]["preview"], "Hello everyone.");
+    let saved = invoke(&main, "get_history_session", json!({ "id": id })).unwrap();
+    assert_eq!(saved["session"], 0);
+    assert!(!saved["lines"].as_array().unwrap().is_empty());
+    let source = json!({ "kind": "history", "id": id });
+    let text = invoke(
+        &main,
+        "transcript_text",
+        json!({ "source": source, "utcOffsetMinutes": 0 }),
+    )
+    .unwrap();
+    assert!(text.as_str().unwrap().contains("Hello everyone."));
+
+    set_pro(&app, false);
+    for (cmd, args) in [
+        ("list_history", json!({})),
+        ("get_history_session", json!({ "id": id })),
+        ("delete_history_session", json!({ "id": id })),
+        ("clear_history", json!({})),
+        ("transcript_text", json!({ "source": source, "utcOffsetMinutes": 0 })),
+    ] {
+        let refused = invoke(&main, cmd, args).unwrap_err();
+        assert!(refused.contains(errors::PRO_REQUIRED), "{cmd}: {refused}");
+    }
+    set_pro(&app, true);
+    invoke(&main, "delete_history_session", json!({ "id": id })).unwrap();
+    let missing = invoke(&main, "get_history_session", json!({ "id": id })).unwrap_err();
+    assert!(missing.contains("historyNotFound"), "{missing}");
+    assert_eq!(invoke(&main, "clear_history", json!({})).unwrap(), 0);
+}
+
 /// Từ điển thuật ngữ (F5) vào prompt của phiên ở gói Pro, theo mẫu "terminology" (§6.5); gói Free thì không (Đ6).
 #[test]
 fn glossary_terms_reach_the_prompt_only_for_pro() {

@@ -22,6 +22,13 @@ fn main() {
             "open_login_items_settings",
             "list_audio_sources",
             "open_audio_permission_settings",
+            "get_transcript",
+            "transcript_text",
+            "export_transcript",
+            "list_history",
+            "get_history_session",
+            "delete_history_session",
+            "clear_history",
             "get_overlay_view",
         ])),
     )

@@ -9,9 +9,11 @@
 pub mod actions;
 pub mod capture;
 pub mod commands;
+pub mod data;
 pub mod db;
 pub mod errors;
 pub mod events;
+pub mod files;
 pub mod glossary;
 pub mod hotkey_registry;
 pub mod hotkeys;
@@ -72,6 +74,7 @@ pub fn run() {
         .plugin(logging::plugin())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(autostart.build())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_opener::Builder::new()
                 .open_js_links_on_click(false)
@@ -124,6 +127,7 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     db::install(&handle)?;
     app.manage(glossary::ActiveGlossary::default());
     app.manage(transcript::store::TranscriptStore::default());
+    files::install(&handle);
     app.manage(HotkeyRegistry::default());
     // Tiến trình phụ mà lần chạy trước bỏ lại (Force Quit, app bị kill): kill trước khi chạy sẵn tiến trình mới, rồi từ
     // giờ ghi pidfile (Q8 của review 02c). Windows: Job Object đã lo, hàm không làm gì. Đọc pidfile ở đây chỉ đúng vì
