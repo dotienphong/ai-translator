@@ -132,12 +132,17 @@ impl<R: Runtime> Surface for Native<R> {
             .ok()
             .flatten()
             .map_or(1.0, |m| m.scale_factor());
-        Some((p.x / scale, p.y / scale))
+        Some(cursor_in_points((p.x, p.y), scale))
     }
 
     fn system_resize(&self, edge: Edge) -> bool {
         platform::system_resize(&self.0, edge)
     }
+}
+
+/// Vị trí con trỏ do tao trả (pixel theo tỉ lệ của màn hình chính) đổi lại ra điểm logic. Tách riêng để test với hai tỉ lệ.
+fn cursor_in_points(cursor: (f64, f64), primary_scale: f64) -> (f64, f64) {
+    (cursor.0 / primary_scale, cursor.1 / primary_scale)
 }
 
 /// Tạo thanh phụ đề ở trạng thái ẩn, đặt vào vị trí đã nhớ, áp chế độ khóa đã lưu. Thanh chỉ hiện khi
@@ -299,5 +304,19 @@ pub fn end_resize<R: Runtime>(app: &AppHandle<R>) {
     };
     if overlay.drag().take().is_some() {
         remember_position(app);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::cursor_in_points;
+
+    /// N-2 của review cuối 03 (nửa thứ hai của Q-A): tao đổi vị trí con trỏ (điểm) ra pixel theo tỉ lệ của màn hình chính;
+    /// chia lại cho đúng tỉ lệ đó thì ra điểm. Bỏ phép chia thì tỉ lệ 2 cho vị trí gấp đôi.
+    #[test]
+    fn the_cursor_goes_back_to_points_by_the_primary_scale() {
+        assert_eq!(cursor_in_points((500.0, 50.0), 1.0), (500.0, 50.0));
+        assert_eq!(cursor_in_points((1000.0, 100.0), 2.0), (500.0, 50.0));
+        assert_eq!(cursor_in_points((750.0, 75.0), 1.5), (500.0, 50.0));
     }
 }
