@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import type { AppStatus, Ipc, OverlayView, Subtitle, SubtitleDelta } from "../lib/ipc";
+import type { AppStatus, Ipc, OverlayView, ResizeEdge, Subtitle, SubtitleDelta } from "../lib/ipc";
 
 // Store của thanh phụ đề. Cửa sổ `overlay` chỉ đọc được phần cài đặt của nó (`get_overlay_view`)
 // và nghe sự kiện (phụ đề, trạng thái, mức âm lượng); không gọi được lệnh nào khác (spec §10.2).
@@ -72,4 +72,32 @@ export function createOverlayStore(ipc: Ipc) {
       return () => offs.forEach((off) => off());
     },
   }));
+}
+
+// Kéo cạnh hay góc để đổi kích thước thanh phụ đề (§4.4): bấm giữ thì báo phía Rust cạnh nào (`begin_overlay_resize`),
+// con trỏ di chuyển thì báo mỗi khung hình nhiều nhất một lần (`overlay_resize_move`; phía Rust tự đọc vị trí con trỏ,
+// không nhận tọa độ từ giao diện), nhả chuột thì báo xong (`end_overlay_resize`, phía Rust nhớ kích thước mới).
+export function createResizeDrag(ipc: Ipc, nextFrame: (run: () => void) => void = (run) => requestAnimationFrame(run)) {
+  let dragging = false;
+  let queued = false;
+  const send = (call: Promise<unknown>) => void call.catch(() => {});
+  return {
+    begin(edge: ResizeEdge) {
+      dragging = true;
+      send(ipc.invoke("begin_overlay_resize", { edge }));
+    },
+    move() {
+      if (!dragging || queued) return;
+      queued = true;
+      nextFrame(() => {
+        queued = false;
+        if (dragging) send(ipc.invoke("overlay_resize_move"));
+      });
+    },
+    end() {
+      if (!dragging) return;
+      dragging = false;
+      send(ipc.invoke("end_overlay_resize"));
+    },
+  };
 }

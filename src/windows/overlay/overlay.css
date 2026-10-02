@@ -4,8 +4,12 @@ body {
   overflow: hidden;
 }
 
+/* Chữ có viền tối (bóng chữ nhiều hướng): đọc được cả khi nền gần trong suốt, trên mọi màu của cửa sổ họp bên dưới
+   (§6.10, trợ năng: đủ tương phản cho phụ đề). Màu chữ và màu nền đặt ở `style` theo Cài đặt › Phụ đề; trắng trên đen là
+   mặc định. */
 .overlay {
   box-sizing: border-box;
+  position: relative;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -16,6 +20,11 @@ body {
   color: #ffffff;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.35;
+  text-shadow:
+    0 0 2px #000000,
+    0 0 2px #000000,
+    1px 1px 2px #000000,
+    -1px -1px 2px #000000;
 }
 
 .overlay.unlocked {
@@ -26,14 +35,158 @@ body {
 
 .overlay .source {
   font-size: 0.6em;
-  opacity: 0.75;
+  opacity: 0.8;
 }
 
-.overlay .provisional {
-  opacity: 0.6;
+/* Câu chưa dịch xong hay phụ đề tạm: nhạt hơn (§4.4). */
+.overlay .provisional,
+.overlay .pending {
+  opacity: 0.65;
+}
+
+.overlay .sourceOnly,
+.overlay .failed,
+.overlay .dropped {
+  font-style: italic;
+}
+
+.overlay .tag {
+  margin-left: 0.5em;
+  font-size: 0.55em;
+  padding: 0 0.4em;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 0.3em;
+  vertical-align: middle;
 }
 
 .overlay .waiting {
-  opacity: 0.6;
+  opacity: 0.7;
   font-size: 0.7em;
+}
+
+.overlay .indicators {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 13px;
+}
+
+/* Chưa khóa: chừa chỗ cho nút ✕ ở góc trên bên phải. */
+.overlay.unlocked .indicators {
+  right: 2.25rem;
+}
+
+/* Nút ẩn (§4.4): chỉ khi chưa khóa, hiện lúc rê chuột vào thanh (hay khi được focus bằng bàn phím). */
+.overlay .hide {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.4rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.5rem;
+  text-shadow: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+.overlay:hover .hide,
+.overlay .hide:focus-visible {
+  opacity: 1;
+}
+.overlay .hide:hover {
+  background: rgba(163, 38, 27, 0.9);
+}
+
+.overlay .dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 2px #000000;
+}
+
+.overlay .dot.hearing {
+  background: #4cc38a;
+}
+
+.overlay .note {
+  padding: 0.05rem 0.45rem;
+  border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.overlay .note.lagging,
+.overlay .note.noAudio,
+.overlay .note.error,
+.overlay .note.quotaExhausted {
+  background: rgba(163, 38, 27, 0.85);
+}
+
+/* Vùng kéo cạnh (cả macOS lẫn Windows): 6 px ở mỗi cạnh, 12 px ở góc. */
+.overlay .edge {
+  position: absolute;
+  z-index: 1;
+}
+.overlay .edge.n,
+.overlay .edge.s {
+  left: 12px;
+  right: 12px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.overlay .edge.e,
+.overlay .edge.w {
+  top: 12px;
+  bottom: 12px;
+  width: 6px;
+  cursor: ew-resize;
+}
+.overlay .edge.n {
+  top: 0;
+}
+.overlay .edge.s {
+  bottom: 0;
+}
+.overlay .edge.e {
+  right: 0;
+}
+.overlay .edge.w {
+  left: 0;
+}
+.overlay .edge.ne,
+.overlay .edge.nw,
+.overlay .edge.se,
+.overlay .edge.sw {
+  width: 12px;
+  height: 12px;
+}
+.overlay .edge.ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+.overlay .edge.sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+.overlay .edge.nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+.overlay .edge.se {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
 }

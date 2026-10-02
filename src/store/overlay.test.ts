@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
 import type { AppStatus, OverlayView, Subtitle } from "../lib/ipc";
-import { appendDelta, createOverlayStore, upsertLine } from "./overlay";
+import { appendDelta, createOverlayStore, createResizeDrag, upsertLine } from "./overlay";
 
 const sub = (id: number, tgt: string, provisional = false): Subtitle => ({
   id,
@@ -198,5 +198,34 @@ describe("overlay store", () => {
     expect(store.getState().lines.map((l) => l.id)).toEqual([2, 3, 4]);
     release(view);
     await ready;
+  });
+});
+
+describe("kéo cạnh để đổi kích thước (§4.4)", () => {
+  it("bấm giữ, di chuyển mỗi khung hình một lần, nhả chuột; chưa bấm giữ thì không gửi gì", () => {
+    const fake = fakeIpc({ begin_overlay_resize: () => null, overlay_resize_move: () => null, end_overlay_resize: () => null });
+    const frames: (() => void)[] = [];
+    const drag = createResizeDrag(fake.ipc, (run) => frames.push(run));
+    drag.move();
+    drag.end();
+    expect(frames).toHaveLength(0);
+    drag.begin("southEast");
+    drag.move();
+    drag.move();
+    drag.move();
+    expect(frames).toHaveLength(1);
+    frames.shift()?.();
+    drag.move();
+    frames.shift()?.();
+    drag.move();
+    drag.end();
+    frames.shift()?.();
+    drag.end();
+    expect(fake.calls).toEqual([
+      { cmd: "begin_overlay_resize", args: { edge: "southEast" } },
+      { cmd: "overlay_resize_move", args: undefined },
+      { cmd: "overlay_resize_move", args: undefined },
+      { cmd: "end_overlay_resize", args: undefined },
+    ]);
   });
 });
