@@ -15,6 +15,8 @@
     "allow-open-log-dir",
     "allow-open-taskbar-settings",
     "allow-open-login-items-settings",
+    "allow-list-audio-sources",
+    "allow-open-audio-permission-settings",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "core:webview:allow-set-webview-zoom"

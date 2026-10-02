@@ -44,7 +44,12 @@ const FORBIDDEN: &[&str] = &[
 ];
 
 /// Lệnh của app có tác dụng ra ngoài app (mở Finder, System Settings, Settings của Windows).
-const OPENER_COMMANDS: &[&str] = &["open_log_dir", "open_taskbar_settings", "open_login_items_settings"];
+const OPENER_COMMANDS: &[&str] = &[
+    "open_log_dir",
+    "open_taskbar_settings",
+    "open_login_items_settings",
+    "open_audio_permission_settings",
+];
 
 fn allow(cmd: &str) -> String {
     format!("allow-{}", cmd.replace('_', "-"))
@@ -169,7 +174,11 @@ fn outside_effects_only_reach_the_fake_opener() {
     }
     // Lệnh không có trên hệ điều hành này trả `unsupported` trước khi tới SystemOpener.
     let expected: &[&str] = if cfg!(target_os = "macos") {
-        &["open_log_dir", "open_login_items_settings"]
+        &[
+            "open_log_dir",
+            "open_login_items_settings",
+            "open_audio_permission_settings",
+        ]
     } else {
         &["open_log_dir", "open_taskbar_settings"]
     };

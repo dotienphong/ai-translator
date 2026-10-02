@@ -20,6 +20,8 @@ fn main() {
             "open_log_dir",
             "open_taskbar_settings",
             "open_login_items_settings",
+            "list_audio_sources",
+            "open_audio_permission_settings",
             "get_overlay_view",
         ])),
     )

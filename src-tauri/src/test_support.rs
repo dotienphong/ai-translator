@@ -76,6 +76,9 @@ impl SystemOpener for FakeSystem {
     fn open_external_url(&self, url: &str) -> Result<(), String> {
         self.push(format!("open_external_url {url}"))
     }
+    fn open_audio_permission_settings(&self) -> Result<(), String> {
+        self.push("open_audio_permission_settings".into())
+    }
 }
 
 /// Trạng thái của bản giả `FakeLoginItem`.

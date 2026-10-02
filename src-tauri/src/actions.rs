@@ -1,6 +1,7 @@
 //! Các việc dùng chung cho lệnh `invoke`, menu khay và phím tắt. Mỗi việc đổi trạng thái rồi báo
 //! lại cho giao diện, menu khay và thanh phụ đề, để ba nơi luôn khớp nhau.
 
+use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Manager, Runtime};
 
@@ -190,6 +191,62 @@ pub fn open_taskbar_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), Comma
         return Err(CommandError::new(errors::UNSUPPORTED, None, "chỉ có trên Windows"));
     }
     system::open_taskbar_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
+}
+
+/// Một lựa chọn ở Cài đặt › Âm thanh, ngoài "toàn hệ thống" (§6.1). Cùng dạng với `settings::AudioSource`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum AudioSourceOption {
+    /// macOS: một app đang phát âm thanh, gộp cả các tiến trình helper của nó (trình duyệt, app Electron). `name` là tên
+    /// hiển thị (`NSRunningApplication.localizedName`); không có thì giao diện hiện bundle ID.
+    App { bundle_id: String, name: Option<String> },
+    /// Windows: một thiết bị phát đang hoạt động.
+    Device { id: String, name: String },
+}
+
+/// Danh sách nguồn chọn được lúc này: macOS, các app đang phát âm thanh (trừ chính app); Windows, các thiết bị phát.
+pub fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError> {
+    let failed = |e: anyhow::Error| CommandError::new(errors::CAPTURE_FAILED, None, format!("{e:#}"));
+    #[cfg(target_os = "macos")]
+    {
+        // `audio_apps` đã gộp tiến trình theo app và bỏ chính app; mỗi bundle ID một dòng, theo thứ tự chữ cái.
+        let apps: std::collections::BTreeMap<String, Option<String>> = audio_capture::macos::audio_apps()
+            .map_err(failed)?
+            .into_iter()
+            .filter(|a| !a.bundle_id.is_empty())
+            .map(|a| (a.bundle_id, a.name))
+            .collect();
+        Ok(apps
+            .into_iter()
+            .map(|(bundle_id, name)| AudioSourceOption::App { bundle_id, name })
+            .collect())
+    }
+    #[cfg(windows)]
+    {
+        Ok(audio_capture::windows::list_render_devices()
+            .map_err(failed)?
+            .into_iter()
+            .map(|d| AudioSourceOption::Device { id: d.id, name: d.name })
+            .collect())
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
+    {
+        let _ = failed;
+        Err(CommandError::new(
+            errors::UNSUPPORTED,
+            None,
+            "chỉ có trên macOS và Windows",
+        ))
+    }
+}
+
+/// macOS: mở System Settings ở trang quyền ghi âm thanh hệ thống, cho bước lần đầu và lỗi "chưa cấp quyền" (§4.1
+/// bước 4, §9). Đi qua `SystemOpener` như mọi việc mở ra ngoài app.
+pub fn open_audio_permission_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    if !cfg!(target_os = "macos") {
+        return Err(CommandError::new(errors::UNSUPPORTED, None, "chỉ có trên macOS"));
+    }
+    system::open_audio_permission_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
 }
 
 /// Thoát hẳn, chỉ gọi từ menu khay (§4.3): nhớ vị trí thanh phụ đề, dừng phiên, tắt hai tiến trình phụ, rồi thoát.

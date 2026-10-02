@@ -9,7 +9,7 @@
 use serde_json::Value;
 use tauri::{AppHandle, Runtime, State};
 
-use crate::actions;
+use crate::actions::{self, AudioSourceOption};
 use crate::errors::{self, CommandError};
 use crate::hotkeys::HotkeyAction;
 use crate::settings::Settings;
@@ -84,6 +84,19 @@ pub fn open_login_items_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), Co
     actions::open_login_items_settings(&app)
 }
 
+/// Hỏi Core Audio hay WASAPI có thể chậm: lệnh `async` để không chặn luồng chính.
+#[tauri::command]
+pub async fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError> {
+    tauri::async_runtime::spawn_blocking(actions::list_audio_sources)
+        .await
+        .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
+}
+
+#[tauri::command]
+pub fn open_audio_permission_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    actions::open_audio_permission_settings(&app)
+}
+
 /// Lệnh duy nhất cửa sổ `overlay` gọi được, chỉ đọc (§10.2).
 #[tauri::command]
 pub fn get_overlay_view(state: State<'_, AppState>) -> OverlayView {
@@ -103,6 +116,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "open_log_dir",
     "open_taskbar_settings",
     "open_login_items_settings",
+    "list_audio_sources",
+    "open_audio_permission_settings",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -121,6 +136,8 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         open_log_dir,
         open_taskbar_settings,
         open_login_items_settings,
+        list_audio_sources,
+        open_audio_permission_settings,
         get_overlay_view,
     ]
 }
