@@ -172,9 +172,15 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// `app` chỉ dùng trên macOS.
-#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
 fn on_run_event(app: &AppHandle, event: RunEvent) {
+    handle_run_event(app, event, pipeline::process::kill_all);
+}
+
+/// Xử lý sự kiện vòng lặp chính. Tổng quát theo `Runtime` và nhận hàm kill để test đưa thẳng `RunEvent::Exit` vào (N-2
+/// của review cuối 03), không kill tiến trình của test khác.
+// `app` chỉ dùng trên macOS và ở nhánh `Exit`.
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
+pub(crate) fn handle_run_event<R: tauri::Runtime>(app: &AppHandle<R>, event: RunEvent, kill_all: fn()) {
     match event {
         // Đóng hết cửa sổ không làm app thoát; chỉ Thoát ở menu khay mới thoát (`AppHandle::exit`,
         // lúc đó `code` có giá trị).
@@ -182,7 +188,7 @@ fn on_run_event(app: &AppHandle, event: RunEvent) {
         // Bấm icon ở Dock khi cửa sổ chính đang ẩn.
         #[cfg(target_os = "macos")]
         RunEvent::Reopen { .. } => window::show_main(app),
-        RunEvent::Exit => on_exit(app, pipeline::process::kill_all),
+        RunEvent::Exit => on_exit(app, kill_all),
         _ => {}
     }
 }

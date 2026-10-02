@@ -845,7 +845,8 @@ fn quitting_saves_the_running_session_to_history() {
 
 /// Q3 của review 03: app thoát không qua menu khay (máy tắt, đăng xuất, app tự khởi động lại để cập nhật) thì
 /// `RunEvent::Exit` gọi `crate::on_exit`: kill tiến trình phụ rồi lưu phiên đang chạy vào lịch sử, không chờ engine dừng
-/// (N-A của review 03 lần 2: test đi qua đúng hàm mà `RunEvent::Exit` gọi).
+/// (N-A của review 03 lần 2; N-2 của review cuối 03: test đưa chính `RunEvent::Exit` vào `crate::handle_run_event`, nên
+/// bỏ lời gọi `on_exit` ở nhánh `Exit` thì test đỏ).
 #[test]
 fn the_exit_event_saves_the_running_session_to_history() {
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -854,10 +855,10 @@ fn the_exit_event_saves_the_running_session_to_history() {
         KILLED.store(true, Ordering::SeqCst);
     }
     let app = running_session_with_history();
-    crate::on_exit(app.handle(), fake_kill_all);
+    crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, fake_kill_all);
     assert!(KILLED.load(Ordering::SeqCst), "kill tiến trình phụ còn sót");
     assert_eq!(saved_sessions(&app), 1);
-    crate::on_exit(app.handle(), fake_kill_all);
+    crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, fake_kill_all);
     session::stop(app.handle());
     assert_eq!(saved_sessions(&app), 1, "không lưu hai lần");
 }
