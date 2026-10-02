@@ -4,8 +4,9 @@ import { useApp, useT } from "./appStore";
 import { Notice } from "./Notice";
 import { About } from "./screens/About";
 import { Home } from "./screens/Home";
+import { GlossaryScreen } from "./screens/GlossaryScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
-import { Glossary, Upgrade } from "./screens/Placeholders";
+import { Upgrade } from "./screens/Placeholders";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TranscriptScreen } from "./screens/TranscriptScreen";
 
@@ -15,7 +16,7 @@ const BODIES: Record<Screen, () => React.JSX.Element | null> = {
   home: Home,
   transcript: TranscriptScreen,
   history: HistoryScreen,
-  glossary: Glossary,
+  glossary: GlossaryScreen,
   settings: SettingsScreen,
   upgrade: Upgrade,
   about: About,

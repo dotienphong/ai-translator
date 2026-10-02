@@ -292,6 +292,16 @@ input[type="text"] {
   padding: 0;
 }
 
+.glossary {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.glossary .term {
+  min-width: 12rem;
+}
+
 /* Ô chọn màu của Cài đặt › Phụ đề: mỗi ô là một nút radio, xem trước chữ "A" trên nền. */
 fieldset.swatches {
   margin: 0;
