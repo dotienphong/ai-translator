@@ -2,15 +2,15 @@ import { useRef } from "react";
 import type { MessageKey } from "../../../i18n";
 import type { SettingsGroup } from "../../../lib/ipc";
 import { useApp, useT } from "../appStore";
+import { AudioSettings } from "../settings/AudioSettings";
 import { GeneralSettings } from "../settings/GeneralSettings";
 import { HotkeySettings } from "../settings/HotkeySettings";
 
 const GROUPS: readonly SettingsGroup[] = ["general", "subtitles", "audio", "model", "hotkeys", "license", "privacy"];
 
-// Nhóm do kế hoạch khác làm: Phụ đề (03), Âm thanh (02), Model (04), Bản quyền (06), Quyền riêng tư (03, 04).
+// Nhóm do kế hoạch khác làm: Phụ đề (03), Model (04), Bản quyền (06), Quyền riêng tư (03, 04).
 const DESCRIPTIONS: Partial<Record<SettingsGroup, MessageKey>> = {
   subtitles: "settings.subtitles.description",
-  audio: "settings.audio.description",
   model: "settings.model.description",
   license: "settings.license.description",
   privacy: "settings.privacy.description",
@@ -66,6 +66,7 @@ export function SettingsScreen() {
         tabIndex={description ? 0 : undefined}
       >
         {group === "general" && <GeneralSettings />}
+        {group === "audio" && <AudioSettings />}
         {group === "hotkeys" && <HotkeySettings />}
         {description && (
           <div className="card">

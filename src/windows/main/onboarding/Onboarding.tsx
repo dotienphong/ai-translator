@@ -70,6 +70,7 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
   const settings = useApp((s) => s.settings);
   const update = useApp((s) => s.updateSettings);
   const openTaskbarSettings = useApp((s) => s.openTaskbarSettings);
+  const openPermission = useApp((s) => s.openAudioPermissionSettings);
   switch (step) {
     // Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (bước 5 đổi lại được).
     case "language":
@@ -87,6 +88,17 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
             </label>
           ))}
         </div>
+      );
+    // Bước 4, chỉ macOS: quyền "Ghi âm thanh hệ thống" (§4.1). macOS tự hỏi ở lần đầu tạo tap; bước này nói trước cho
+    // người dùng biết, và mở sẵn trang cài đặt cho ai đã lỡ từ chối.
+    case "permission":
+      return (
+        <>
+          <p>{t("onboarding.permission.body")}</p>
+          <div className="row">
+            <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
+          </div>
+        </>
       );
     case "languages":
       return <LanguagePicker />;

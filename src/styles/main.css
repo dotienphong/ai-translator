@@ -152,6 +152,15 @@ select {
   border-color: var(--color-running);
 }
 
+.badge.error {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+meter {
+  width: 12rem;
+}
+
 .notice {
   display: flex;
   align-items: center;
