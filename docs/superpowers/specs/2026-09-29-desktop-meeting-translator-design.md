@@ -762,7 +762,8 @@ Lưu dạng JSON bằng `tauri-plugin-store`, có số phiên bản schema và b
 Các khóa chính:
 - `uiLanguage`, `targetLanguage`, `sourceLanguages[]`, `sourceLock?`
 - `audioSource`, `vadEndSilenceMs`
-- `overlay.{fontSize, lines, opacity, showSource, locked, positions}`
+- `overlay.{fontSize, lines, textColor, background, opacity, showSource, locked, positions}`
+  - `textColor` (`white`, `yellow`, `green`, `lightBlue`, `orange`) và `background` (`black`, `darkGray`, `navy`, `darkBrown`, `darkPurple`): tên màu trong bảng màu của §4.3, mặc định `white` và `black`. Giá trị ngoài bảng thì về mặc định như mọi khóa khác; file cũ thiếu khóa này không cần migrate. Mã màu cụ thể nằm ở giao diện, không nằm trong file cài đặt.
 - `modelTier`
 - `hotkeys`
 - `saveHistory`
