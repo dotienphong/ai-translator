@@ -17,10 +17,10 @@ Sinh bởi `bench/phase0/mt/ratio_stats.py` từ kết quả `latency-bench mt-e
 | ko->en | 112 | 94 | 1.46 | 1.9 | 2 | 3 | 40 | 0 |
 | ko->ja | 112 | 94 | 1.60 | 2.0 | 2 | 4 | 40 | 0 |
 | ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 0 |
-| ko->zh | 112 | 93 | 1.00 | 1.3 | 2 | 3 | 40 | 1 |
+| ko->zh | 112 | 94 | 1.00 | 1.3 | 2 | 3 | 40 | 0 |
 | vi->en | 12 | 0 | — | — | 0 | — | — | 0 |
-| vi->ja | 12 | 0 | — | — | 0 | — | — | 1 |
-| vi->ko | 12 | 0 | — | — | 0 | — | — | 1 |
+| vi->ja | 12 | 0 | — | — | 0 | — | — | 0 |
+| vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->zh | 12 | 0 | — | — | 0 | — | — | 0 |
 | zh->en | 112 | 76 | 2.15 | 2.7 | 9 | 4 | 40 | 0 |
 | zh->ja | 112 | 76 | 2.88 | 3.6 | 9 | 10 | 40 | 0 |
@@ -32,21 +32,21 @@ Sinh bởi `bench/phase0/mt/ratio_stats.py` từ kết quả `latency-bench mt-e
 | chiều | câu | câu gốc ≥ 10 token | tỉ lệ lớn nhất (≥ 10) | ngưỡng đề xuất | câu gốc < 3 token | token dịch lớn nhất (< 3) | hạn mức sinh (< 3) | lỗi |
 |---|---|---|---|---|---|---|---|---|
 | en->ja | 112 | 75 | 2.22 | 2.8 | 9 | 7 | 40 | 0 |
-| en->ko | 112 | 75 | 2.31 | 2.9 | 8 | 9 | 40 | 1 |
+| en->ko | 112 | 75 | 2.31 | 2.9 | 9 | 9 | 40 | 0 |
 | en->vi | 12 | 0 | — | — | 9 | 8 | 40 | 0 |
 | en->zh | 112 | 75 | 1.46 | 1.9 | 9 | 3 | 40 | 0 |
-| ja->en | 112 | 87 | 1.33 | 1.7 | 0 | — | — | 2 |
-| ja->ko | 112 | 88 | 1.85 | 2.4 | 0 | — | — | 1 |
+| ja->en | 112 | 89 | 1.33 | 1.7 | 0 | — | — | 0 |
+| ja->ko | 112 | 89 | 1.85 | 2.4 | 0 | — | — | 0 |
 | ja->vi | 12 | 0 | — | — | 0 | — | — | 0 |
 | ja->zh | 112 | 89 | 1.11 | 1.4 | 0 | — | — | 0 |
 | ko->en | 112 | 94 | 1.17 | 1.5 | 2 | 4 | 40 | 0 |
-| ko->ja | 112 | 93 | 1.47 | 1.9 | 2 | 4 | 40 | 1 |
+| ko->ja | 112 | 94 | 1.47 | 1.9 | 2 | 4 | 40 | 0 |
 | ko->vi | 12 | 0 | — | — | 2 | 5 | 40 | 0 |
-| ko->zh | 112 | 93 | 0.93 | 1.2 | 2 | 3 | 40 | 1 |
-| vi->en | 12 | 0 | — | — | 0 | — | — | 1 |
+| ko->zh | 112 | 94 | 0.93 | 1.2 | 2 | 3 | 40 | 0 |
+| vi->en | 12 | 0 | — | — | 0 | — | — | 0 |
 | vi->ja | 12 | 0 | — | — | 0 | — | — | 0 |
-| vi->ko | 12 | 0 | — | — | 0 | — | — | 1 |
-| vi->zh | 12 | 0 | — | — | 0 | — | — | 1 |
+| vi->ko | 12 | 0 | — | — | 0 | — | — | 0 |
+| vi->zh | 12 | 0 | — | — | 0 | — | — | 0 |
 | zh->en | 112 | 76 | 2.08 | 2.6 | 9 | 4 | 40 | 0 |
 | zh->ja | 112 | 76 | 3.00 | 3.8 | 9 | 7 | 40 | 0 |
 | zh->ko | 112 | 76 | 2.92 | 3.7 | 9 | 7 | 40 | 0 |
@@ -108,9 +108,20 @@ token (hạn mức 32 hoặc 36) không có trong bộ đo, nhưng token dịch 
 
 ### Câu dịch lỗi (cột "lỗi")
 
-Q8_0 có 3 câu lỗi, Q4_K_M có 9. Cả 12 câu đều lỗi ở bước đếm token câu gốc (`count_tokens`, kết quả `attempts = 0`,
-`src_tokens = 0`), trước khi sinh chữ nào; không có câu nào lỗi do rỗng, lời giải thích hay chạm hạn mức sinh. Câu lỗi nằm
-ở các câu khác nhau giữa hai model và giữa các lần chạy (số đo lúc lập kế hoạch cũng lệch nhẹ), nên khó là lỗi của câu cụ thể.
-Các câu này bị bỏ khỏi cột tỉ lệ và cột câu ngắn, nên không ảnh hưởng ngưỡng đề xuất ở trên. Nguyên nhân chưa được xác
-định; nên xem lại cách `count_tokens` xử lý phản hồi `/tokenize` trước khi tin vào cột "lỗi" như một chỉ số về chất lượng
-dịch.
+Không còn câu lỗi: cả hai model dịch xong 1440/1440 câu, đều ở lần thử đầu (`attempts = 1`).
+
+Lần đo trước (commit `9d6c7fd`) có 3 câu lỗi với Q8_0 và 9 với Q4_K_M, đều ở bước đếm token câu gốc (`attempts = 0`,
+`src_tokens = 0`). Đó là lỗi của client, không phải của câu hay của model, và đã sửa ở `e591a1e`:
+- `llama-server` b11146 đóng kết nối ngay sau mỗi response stream, dù header báo `Keep-Alive`;
+- client trả kết nối đó về pool, và `/tokenize` của câu kế tiếp gửi lên kết nối đã bị đóng thì lỗi "connection closed before
+  message completed".
+
+Lần này đo lại từ đầu, sau khi sửa. Từ `7279c07`, câu lỗi có ghi lý do (trường `reason`).
+
+So với lần đo trước, "tỉ lệ lớn nhất" và "ngưỡng đề xuất" không đổi ở cả 40 dòng. Chỉ đổi cột "lỗi" (về 0) và số câu được
+tính, vì các câu lỗi lần trước nay đã được tính:
+- cột "câu gốc ≥ 10 token": Q8_0 `ko->zh` 93 → 94; Q4_K_M `ja->en` 87 → 89, `ja->ko` 88 → 89, `ko->ja` 93 → 94,
+  `ko->zh` 93 → 94;
+- cột "câu gốc < 3 token": Q4_K_M `en->ko` 8 → 9.
+
+Bảng ngưỡng ở trên vì vậy giữ nguyên.
