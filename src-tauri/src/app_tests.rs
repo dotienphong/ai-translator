@@ -379,6 +379,31 @@ fn a_user_start_allows_a_retry_before_preparing_and_prewarm_does_not() {
     session::stop(app.handle());
 }
 
+/// N3 của review cuối 02: đang có một lần chạy sẵn chờ nạp model thì mở lại cửa sổ chính không tạo thêm luồng `prewarm`.
+#[test]
+fn reopening_the_main_window_while_prewarming_does_not_prepare_again() {
+    let gate = Arc::new(PrepareGate::default());
+    let deps = FakeDeps {
+        prepare_gate: Some(gate.clone()),
+        ..FakeDeps::default()
+    };
+    let prepares = deps.prepares.clone();
+    let app = mock_app_with(deps);
+    let _main = window(&app, "main");
+    session::prewarm(app.handle());
+    wait_until("lần chạy sẵn đầu đang chờ", || gate.waiting() == 1);
+    session::prewarm(app.handle());
+    session::prewarm(app.handle());
+    std::thread::sleep(Duration::from_millis(200));
+    assert_eq!(*prepares.lock().unwrap(), 1, "không chạy sẵn trùng");
+    gate.open();
+    let session = app.state::<session::Session>();
+    wait_until("lần chạy sẵn đầu xong", || !session.is_prewarming());
+    session::prewarm(app.handle());
+    wait_until("lần chạy sẵn sau", || !session.is_prewarming());
+    assert_eq!(*prepares.lock().unwrap(), 2, "xong rồi thì chạy lại được");
+}
+
 /// Chỗ nối của kế hoạch 06: hạn mức còn 0 thì không bắt đầu phiên (không chuẩn bị tiến trình phụ), trạng thái ra lỗi
 /// `quotaExhausted`.
 #[test]

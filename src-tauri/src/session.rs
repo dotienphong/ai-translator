@@ -91,6 +91,9 @@ pub struct Session {
     /// App đang thoát: không bắt đầu phiên mới.
     closing: AtomicBool,
     sessions: AtomicU64,
+    /// Đang có một luồng `prewarm` chạy: mở lại cửa sổ chính trong lúc nạp model không tạo thêm luồng (N3 của review cuối
+    /// 02).
+    prewarming: AtomicBool,
 }
 
 impl Session {
@@ -102,12 +105,18 @@ impl Session {
             attempt: AtomicU64::new(0),
             closing: AtomicBool::new(false),
             sessions: AtomicU64::new(0),
+            prewarming: AtomicBool::new(false),
         }
     }
 
     /// Có engine đang chạy không (cho test).
     pub fn has_engine(&self) -> bool {
         self.engine.lock().unwrap().is_some()
+    }
+
+    /// Có luồng `prewarm` đang chạy không (cho test).
+    pub fn is_prewarming(&self) -> bool {
+        self.prewarming.load(Ordering::SeqCst)
     }
 }
 
@@ -404,15 +413,21 @@ pub fn toggle<R: Runtime>(app: &AppHandle<R>) -> Result<AppStatus, CommandError>
     }
 }
 
-/// Mở cửa sổ chính: chạy sẵn hai tiến trình phụ trên luồng nền (§5, Đ19).
+/// Mở cửa sổ chính: chạy sẵn hai tiến trình phụ trên luồng nền (§5, Đ19). Đang có một lần chạy sẵn thì thôi.
 pub fn prewarm<R: Runtime>(app: &AppHandle<R>) {
+    let Some(session) = app.try_state::<Session>() else {
+        return;
+    };
+    if session.prewarming.swap(true, Ordering::SeqCst) {
+        return;
+    }
     let app = app.clone();
     std::thread::spawn(move || {
-        let Some(session) = app.try_state::<Session>() else {
-            return;
-        };
+        let session = app.state::<Session>();
         let settings = app.state::<AppState>().settings();
-        if let Err(e) = session.deps.prepare(&settings) {
+        let result = session.deps.prepare(&settings);
+        session.prewarming.store(false, Ordering::SeqCst);
+        if let Err(e) = result {
             log::warn!("chưa chạy được tiến trình phụ: {} ({})", e.code, e.message);
             app.state::<AppState>().update_status(|s| s.loading = None);
             changed(&app);
