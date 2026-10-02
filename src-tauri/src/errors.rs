@@ -63,6 +63,31 @@ pub const FILE_TOO_LARGE: &str = "fileTooLarge";
 /// Lỗi bên trong app không thuộc loại nào ở trên (ví dụ một tác vụ nền dừng bất thường).
 pub const UNKNOWN: &str = "unknown";
 
+// Mã lỗi của quản lý model (kế hoạch 04, spec §6.7, §9).
+/// Bản này chưa có URL manifest (bản dev chưa cấu hình staging; bản phát hành chờ kế hoạch 07).
+pub const MODELS_NO_SOURCE: &str = "modelsNoSource";
+/// Không tải được manifest (mất mạng, server lỗi).
+pub const MODELS_OFFLINE: &str = "modelsOffline";
+/// Manifest sai chữ ký, sai định dạng, hay cũ hơn bản đã có.
+pub const MODELS_MANIFEST_INVALID: &str = "modelsManifestInvalid";
+pub const MODELS_UNKNOWN_PACK: &str = "modelsUnknownPack";
+/// Gói cần app bản mới hơn (`min_app_version`).
+pub const MODELS_APP_TOO_OLD: &str = "modelsAppTooOld";
+/// Không đủ dung lượng trống: phần còn phải tải cộng 1 GB (§6.7).
+pub const MODELS_NO_SPACE: &str = "modelsNoSpace";
+/// Đang tải model, hay đang cập nhật model của gói đang dùng.
+pub const MODELS_BUSY: &str = "modelsBusy";
+/// Đang dịch bằng gói này: dừng dịch trước khi cập nhật hay xóa nó.
+pub const MODELS_IN_USE: &str = "modelsInUse";
+/// Tải model không xong sau 3 lần thử lại (§9); phần đã tải được giữ để tải tiếp.
+pub const MODELS_DOWNLOAD_FAILED: &str = "modelsDownloadFailed";
+/// File tải về sai SHA-256 sau 3 lần thử lại (§9).
+pub const MODELS_CHECKSUM: &str = "modelsChecksum";
+/// Không ghi hay xóa được file trong thư mục model.
+pub const MODELS_DISK: &str = "modelsDisk";
+/// Máy chưa được hỗ trợ (§8: RAM dưới mức tối thiểu, CPU x64 không có AVX2): không cho tải model. `field` là lý do.
+pub const MODELS_UNSUPPORTED: &str = "modelsUnsupported";
+
 impl CommandError {
     pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
         Self {
@@ -171,6 +196,18 @@ mod tests {
                 FILE_FAILED,
                 FILE_TOO_LARGE,
                 UNKNOWN,
+                MODELS_NO_SOURCE,
+                MODELS_OFFLINE,
+                MODELS_MANIFEST_INVALID,
+                MODELS_UNKNOWN_PACK,
+                MODELS_APP_TOO_OLD,
+                MODELS_NO_SPACE,
+                MODELS_BUSY,
+                MODELS_IN_USE,
+                MODELS_DOWNLOAD_FAILED,
+                MODELS_CHECKSUM,
+                MODELS_DISK,
+                MODELS_UNSUPPORTED,
             ]
             .map(String::from),
         );

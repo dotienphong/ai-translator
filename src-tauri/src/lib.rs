@@ -146,6 +146,11 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     pipeline::process::set_pidfile(&pidfile);
     app.manage(sidecar::GpuProbe::default());
     sidecar::start_gpu_probe(&handle);
+    // Quản lý model (kế hoạch 04): đọc manifest đã lưu, kiểm bản mới tối đa mỗi ngày một lần.
+    app.manage(Arc::new(models::service::ModelService::new(
+        models::service::Config::live(&handle)?,
+    )));
+    models::service::check_on_startup(&handle);
     app.manage(session::Session::new(Arc::new(session::LiveDeps::new(handle.clone()))));
     session::spawn_ticker(&handle);
 

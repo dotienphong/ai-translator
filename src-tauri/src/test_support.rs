@@ -4,7 +4,7 @@
 
 use std::ops::ControlFlow;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, SystemTime};
 
@@ -26,6 +26,10 @@ use crate::errors::{self, CommandError};
 use crate::files::{FilePicker, FileType, Picker};
 use crate::glossary::ActiveGlossary;
 use crate::login_item::{AgentStatus, LoginItem, LoginItems};
+use crate::models::download::Retry;
+use crate::models::machine::Machine;
+use crate::models::manifest::Os;
+use crate::models::service::{Config as ModelsConfig, ModelService};
 use crate::overlay::placement::{Edge, Frame, Screen};
 use crate::overlay::{OverlaySurface, Surface};
 use crate::pro::{Entitlement, ProGate};
@@ -286,6 +290,8 @@ pub struct FakeDeps {
     pub capture_sources: Arc<Mutex<Vec<AudioSource>>>,
     /// Nơi nhận việc của nguồn âm thanh của từng phiên, theo thứ tự: test gọi để giả lỗi tới muộn.
     pub capture_events: Arc<Mutex<Vec<OnEvent>>>,
+    /// Số lần `release_models` được gọi (tắt tiến trình phụ rảnh trước khi xóa hay tải đè model, kế hoạch 04).
+    pub releases: Arc<Mutex<usize>>,
     /// Số lần `shutdown` và `kill_all` được gọi.
     pub shutdowns: Arc<Mutex<Vec<&'static str>>>,
     /// Prompt của từng request dịch, kể cả lần làm nóng.
@@ -427,6 +433,10 @@ impl SessionDeps for FakeDeps {
         })
     }
 
+    fn release_models(&self) {
+        *self.releases.lock().unwrap() += 1;
+    }
+
     fn shutdown(&self) {
         self.shutdowns.lock().unwrap().push("shutdown");
         if let Some(gate) = &self.prepare_gate {
@@ -443,7 +453,45 @@ pub fn mock_app() -> tauri::App<MockRuntime> {
     mock_app_with(FakeDeps::default())
 }
 
+/// Giờ giả mặc định của quản lý model trong app giả (giây Unix, 2026-09-21).
+pub const MODELS_NOW: u64 = 1_790_000_000;
+
+/// Quản lý model của app giả: thư mục tạm riêng cho mỗi app, khóa test của bộ vector, máy Mac 16 GB, ổ đĩa còn trống,
+/// đồng hồ `clock`, không chờ thật trước khi thử lại. `source`: URL manifest (server giả), `None` là chưa có nguồn.
+pub fn models_config(source: Option<reqwest::Url>, clock: Arc<AtomicU64>) -> ModelsConfig {
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    let dir = std::env::temp_dir().join(format!(
+        "mt-models-app-{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::SeqCst)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    ModelsConfig {
+        dir,
+        source,
+        keys: crate::models::signed::tests::test_keys(),
+        app_version: "0.1.0".into(),
+        retry: Retry {
+            retries: 3,
+            backoff: vec![Duration::ZERO],
+        },
+        machine: Box::new(|_| Machine {
+            os: Os::Macos,
+            ram_mib: 16_384,
+            avx2: true,
+            gpus: Vec::new(),
+            gpu_known: true,
+        }),
+        free_disk: Box::new(|_| Some(1 << 40)),
+        now: Box::new(move || clock.load(Ordering::SeqCst)),
+    }
+}
+
 pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
+    mock_app_full(deps, models_config(None, Arc::new(AtomicU64::new(MODELS_NOW))))
+}
+
+pub fn mock_app_full(deps: FakeDeps, models: ModelsConfig) -> tauri::App<MockRuntime> {
     let builder = mock_builder();
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
@@ -492,6 +540,7 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
         .manage(picker)
         .manage(pro)
         .manage(Session::new(Arc::new(deps)))
+        .manage(Arc::new(ModelService::new(models)))
         .invoke_handler(commands::handler())
         .build(tauri::generate_context!(test = true))
         .expect("dựng được app giả");

@@ -36,6 +36,7 @@ use crate::capture::{CaptureEvent, LiveCapture, OnEvent};
 use crate::debug::{DebugLog, DebugSession};
 use crate::errors::{self, CommandError};
 use crate::glossary::{self, ActiveGlossary};
+use crate::models::service::ModelService;
 use crate::settings::{AudioSource, Lang, Settings};
 use crate::sidecar::{self, first_run, integrity};
 use crate::state::{AppState, AppStatus, Loading, SessionStatus};
@@ -46,6 +47,8 @@ use crate::{actions, events, overlay, window};
 /// Chu kỳ gọi `SessionDeps::tick` (tắt tiến trình phụ khi rảnh 10 phút). Để ngoài `PipelineConfig`: chỉ là nhịp kiểm, mốc
 /// 10 phút nằm ở `supervisor.idle_shutdown_ms`.
 const TICK_EVERY: Duration = Duration::from_secs(30);
+/// Chờ lần chạy sẵn đang nạp dở tối đa chừng này (lần nạp đầu tiên tới 180 giây, §5) trước khi tắt tiến trình phụ.
+const PREWARM_WAIT: Duration = Duration::from_secs(180);
 /// Id phụ đề của phiên thứ n bắt đầu từ `n × ID_STRIDE` (không trùng giữa các phiên của một lần chạy app).
 const ID_STRIDE: u64 = 1_000_000;
 /// Thoát app: chờ lần bắt đầu hay dừng phiên đang dở tối đa chừng này (tiến trình phụ đã bị kill nên nó trả về nhanh).
@@ -73,6 +76,9 @@ pub trait SessionDeps: Send + Sync {
     }
     /// Gọi định kỳ: tắt tiến trình phụ sau 10 phút không dịch.
     fn tick(&self) {}
+    /// Tắt tiến trình phụ đang rảnh để chúng nhả file model (trước khi xóa hay tải đè model, kế hoạch 04). Lần chuẩn bị
+    /// sau chạy lại chúng.
+    fn release_models(&self) {}
     /// Thoát app, bước 1: từ giờ không chạy thêm tiến trình phụ nào, kill các tiến trình đang chạy. Không chờ gì.
     fn shutdown(&self) {}
     /// Thoát app, bước cuối: kill mọi tiến trình phụ còn sót.
@@ -228,7 +234,8 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     if session.closing.load(Ordering::SeqCst) {
         return Ok(state.status());
     }
-    if let Err(e) = session.deps.check_quota() {
+    // Chưa bắt đầu được (hết hạn mức, đang cập nhật model): báo lỗi, trừ khi một phiên khác đang chạy.
+    let refuse = |e: CommandError| {
         let refused = state.update_status(|s| {
             if matches!(s.session, SessionStatus::Starting | SessionStatus::Running) {
                 return false;
@@ -241,22 +248,36 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
             changed(app);
             return Err(e);
         }
-        return Ok(state.status());
+        Ok(state.status())
+    };
+    if let Err(e) = session.deps.check_quota() {
+        return refuse(e);
     }
     let mut attempt = 0;
-    let begun = state.update_status(|s| {
-        if matches!(s.session, SessionStatus::Starting | SessionStatus::Running) {
-            return false;
-        }
-        attempt = session.attempt.fetch_add(1, Ordering::SeqCst) + 1;
-        s.session = SessionStatus::Starting;
-        s.session_error = None;
-        s.indicators = Indicators::default();
-        s.permission_suspected = false;
-        s.waiting_for_app = false;
-        s.overlay_visible = true;
-        true
-    });
+    let mut begin = || {
+        state.update_status(|s| {
+            if matches!(s.session, SessionStatus::Starting | SessionStatus::Running) {
+                return false;
+            }
+            attempt = session.attempt.fetch_add(1, Ordering::SeqCst) + 1;
+            s.session = SessionStatus::Starting;
+            s.session_error = None;
+            s.indicators = Indicators::default();
+            s.permission_suspected = false;
+            s.waiting_for_app = false;
+            s.overlay_visible = true;
+            true
+        })
+    };
+    // Đang tải bản cập nhật, xóa hay kiểm gói đang dùng thì không bắt đầu (QĐ15 của 04). Mọi đường bắt đầu phiên (nút,
+    // khay, phím tắt, bước Nghe thử) đều qua đây, kể cả khi tiến trình phụ đang chạy sẵn (Q-A của review 04 lần 2).
+    let begun = match app.try_state::<Arc<ModelService>>() {
+        Some(models) => match models.begin_session(begin) {
+            Ok(begun) => begun,
+            Err(e) => return refuse(e),
+        },
+        None => begin(),
+    };
     if !begun {
         return Ok(state.status());
     }
@@ -487,6 +508,12 @@ pub fn prewarm<R: Runtime>(app: &AppHandle<R>) {
     if session.prewarming.swap(true, Ordering::SeqCst) {
         return;
     }
+    // Đang tải bản cập nhật, xóa hay kiểm gói đang dùng: không chạy tiến trình phụ (Q-A của review 04 lần 2). Kiểm sau
+    // khi đặt cờ, nên `release_models` (chờ cờ này về `false`) không bỏ sót lần chạy sẵn nào.
+    if app.try_state::<Arc<ModelService>>().is_some_and(|m| m.busy()) {
+        session.prewarming.store(false, Ordering::SeqCst);
+        return;
+    }
     let app = app.clone();
     std::thread::spawn(move || {
         let session = app.state::<Session>();
@@ -526,6 +553,24 @@ pub fn shutdown<R: Runtime>(app: &AppHandle<R>) {
         }
     }
     session.deps.kill_all();
+}
+
+/// Tắt tiến trình phụ đang rảnh để nhả file model (kế hoạch 04). Gọi khi không có phiên nào chạy.
+pub fn release_models<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(session) = app.try_state::<Session>() {
+        wait_for_prewarm(&session);
+        session.deps.release_models();
+    }
+}
+
+/// Chờ lần chạy sẵn đang nạp dở xong (tối đa [`PREWARM_WAIT`], hay tới khi app thoát). Trước khi tắt tiến trình phụ để
+/// tải đè hay xóa model: nếu không, lần chạy sẵn còn chạy `llama-server` sau lần tắt (Q-A của review 04 lần 2). Người
+/// gọi đã đặt việc đụng tới gói đang dùng (`ModelService::busy`), nên không lần chạy sẵn mới nào bắt đầu trong lúc chờ.
+fn wait_for_prewarm(session: &Session) {
+    let since = Instant::now();
+    while session.is_prewarming() && !session.closing.load(Ordering::SeqCst) && since.elapsed() < PREWARM_WAIT {
+        std::thread::sleep(Duration::from_millis(20));
+    }
 }
 
 /// Luồng nền gọi `tick` định kỳ.
@@ -816,6 +861,12 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
             && manager.tick()
         {
             log::info!("tắt tiến trình phụ sau 10 phút không dịch");
+        }
+    }
+
+    fn release_models(&self) {
+        if let Some(manager) = self.current() {
+            manager.stop(true);
         }
     }
 

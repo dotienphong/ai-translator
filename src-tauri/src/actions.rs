@@ -13,7 +13,7 @@ use crate::state::{AppState, AppStatus, OverlayView};
 use crate::{events, hotkey_registry, login_item, overlay, session, system, tray, window};
 
 /// Lưu cài đặt mới rồi báo mọi nơi cần biết.
-fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings) -> Settings {
+pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings) -> Settings {
     let state = app.state::<AppState>();
     let previous = state.replace_settings(&mut next);
     if let Err(e) = persist::save(app, &next, state.file_meta()) {
@@ -53,6 +53,14 @@ pub fn update_settings<R: Runtime>(app: &AppHandle<R>, patch: &Value) -> Result<
         events::notice(app, events::Notice::LoginItemsApproval);
     }
     Ok(next)
+}
+
+/// Đổi gói model đang dùng (kế hoạch 04: gói đã tải xong, hay `None` sau khi xóa hết model). Không đi qua
+/// `update_settings` vì `modelTier` là khóa chỉ đọc ở đó.
+pub(crate) fn set_model_tier<R: Runtime>(app: &AppHandle<R>, pack: Option<String>) -> Settings {
+    let mut next = app.state::<AppState>().settings();
+    next.model_tier = pack;
+    commit_settings(app, next)
 }
 
 pub fn set_hotkey<R: Runtime>(

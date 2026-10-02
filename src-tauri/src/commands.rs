@@ -284,6 +284,15 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "export_glossary_csv",
     "clear_all_data",
     "get_debug_sessions",
+    "get_models_state",
+    "load_models",
+    "download_models",
+    "pause_models_download",
+    "select_model_pack",
+    "delete_models",
+    "delete_models_and_data",
+    "dismiss_models_update",
+    "verify_models",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -331,5 +340,14 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         begin_overlay_resize,
         overlay_resize_move,
         end_overlay_resize,
+        crate::models::commands::get_models_state,
+        crate::models::commands::load_models,
+        crate::models::commands::download_models,
+        crate::models::commands::pause_models_download,
+        crate::models::commands::select_model_pack,
+        crate::models::commands::delete_models,
+        crate::models::commands::delete_models_and_data,
+        crate::models::commands::dismiss_models_update,
+        crate::models::commands::verify_models,
     ]
 }
