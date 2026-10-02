@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { UiLanguage } from "../i18n";
+import type { ModelsView } from "./models";
 
 // Kiểu dữ liệu và tên lệnh, tên sự kiện giữa giao diện và lõi Rust (spec §6.10).
 // Phía Rust là nơi quyết định: kiểu ở đây phải khớp `src-tauri/src/settings/mod.rs`, `state.rs`,
@@ -273,6 +274,18 @@ export interface Commands {
   begin_overlay_resize: { args: { edge: ResizeEdge }; result: null };
   overlay_resize_move: { args: undefined; result: null };
   end_overlay_resize: { args: undefined; result: null };
+  // Quản lý model (kế hoạch 04). `load_models` tải manifest nếu chưa có hay đã quá một ngày; `download_models` trả về
+  // ngay, tiến độ tới qua sự kiện `models://state`; tải xong thì gói thành gói đang dùng.
+  get_models_state: { args: undefined; result: ModelsView };
+  load_models: { args: undefined; result: ModelsView };
+  download_models: { args: { pack: string }; result: ModelsView };
+  pause_models_download: { args: undefined; result: ModelsView };
+  select_model_pack: { args: { pack: string }; result: Settings };
+  delete_models: { args: { pack: string }; result: ModelsView };
+  delete_models_and_data: { args: undefined; result: ModelsView };
+  dismiss_models_update: { args: undefined; result: ModelsView };
+  // "Tải lại": băm lại gói, bỏ file hỏng (để lần tải sau chỉ tải lại chúng).
+  verify_models: { args: { pack: string }; result: ModelsView };
 }
 
 export interface Events {
@@ -285,6 +298,8 @@ export interface Events {
   "subtitle://delta": SubtitleDelta;
   // Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch; tới cả cửa sổ chính lẫn thanh phụ đề.
   "audio://level": number;
+  // Trạng thái quản lý model (kế hoạch 04).
+  "models://state": ModelsView;
 }
 
 export type Command = keyof Commands;
