@@ -167,6 +167,7 @@ export const en = {
   "error.modelBroken": "The model is damaged. Please download it again.",
   "error.quotaExhausted": "The translation quota has been used up.",
   "error.proRequired": "This is a Pro feature. Upgrade to a paid plan to use it.",
+  "error.dataUnavailable": "Could not open the history and glossary data. If the system asked for keychain access, allow it and try again.",
   "error.unknown": "Something went wrong.",
 } as const;
 

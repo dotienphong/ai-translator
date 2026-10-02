@@ -54,6 +54,8 @@ pub const QUOTA_EXHAUSTED: &str = "quotaExhausted";
 // Mã lỗi của kế hoạch 03.
 /// Tính năng Pro (lịch sử, xuất file, từ điển thuật ngữ) khi đang ở gói Free (`pro::require`).
 pub const PRO_REQUIRED: &str = "proRequired";
+/// Không mở được DB của lịch sử và từ điển (kho khóa bị từ chối, file lỗi, file của bản app mới hơn).
+pub const DATA_UNAVAILABLE: &str = "dataUnavailable";
 /// Lỗi bên trong app không thuộc loại nào ở trên (ví dụ một tác vụ nền dừng bất thường).
 pub const UNKNOWN: &str = "unknown";
 
@@ -161,6 +163,7 @@ mod tests {
                 VAD_FAILED,
                 QUOTA_EXHAUSTED,
                 PRO_REQUIRED,
+                DATA_UNAVAILABLE,
                 UNKNOWN,
             ]
             .map(String::from),

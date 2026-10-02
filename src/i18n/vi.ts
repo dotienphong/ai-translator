@@ -167,5 +167,6 @@ export const vi: Record<MessageKey, string> = {
   "error.modelBroken": "Model bị hỏng. Hãy tải lại model.",
   "error.quotaExhausted": "Đã dùng hết hạn mức dịch.",
   "error.proRequired": "Đây là tính năng Pro. Nâng cấp lên gói trả phí để dùng.",
+  "error.dataUnavailable": "Không mở được dữ liệu lịch sử và từ điển. Nếu hệ thống hỏi quyền truy cập kho khóa, hãy cho phép rồi thử lại.",
   "error.unknown": "Có lỗi xảy ra.",
 };

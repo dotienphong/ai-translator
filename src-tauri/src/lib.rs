@@ -9,6 +9,7 @@
 pub mod actions;
 pub mod capture;
 pub mod commands;
+pub mod db;
 pub mod errors;
 pub mod events;
 pub mod hotkey_registry;
@@ -117,6 +118,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(AppState::new(settings.clone(), loaded.meta, launched_at_login));
     // Điểm kiểm tra Pro duy nhất (Đ6): bản debug luôn Pro, bản release là Free; kế hoạch 06 cài trạng thái bản quyền.
     pro::install_default_gate(&handle);
+    // DB mã hóa của lịch sử và từ điển: chưa mở, chưa đọc kho khóa ở đây (db.rs).
+    db::install(&handle)?;
     app.manage(HotkeyRegistry::default());
     // Tiến trình phụ mà lần chạy trước bỏ lại (Force Quit, app bị kill): kill trước khi chạy sẵn tiến trình mới, rồi từ
     // giờ ghi pidfile (Q8 của review 02c). Windows: Job Object đã lo, hàm không làm gì. Đọc pidfile ở đây chỉ đúng vì

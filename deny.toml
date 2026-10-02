@@ -45,6 +45,10 @@ wildcards = "allow"
 deny = [
     { crate = "whisper-rs-sys", wrappers = ["whisper-rs", "asr-worker"], reason = "ggml chỉ được vào qua whisper-rs, hoặc asr-worker đọc bảng thiết bị ggml" },
     { crate = "whisper-rs", wrappers = ["asr-worker"], reason = "chỉ asr-worker được link whisper.cpp" },
+    # Một thư viện mật mã C duy nhất trong tiến trình chính (§6.12, mục 6.4 của kế hoạch 00): OpenSSL chỉ vào qua
+    # SQLCipher trên Windows (kế hoạch 03), build tĩnh từ mã nguồn.
+    { crate = "openssl-sys", wrappers = ["libsqlite3-sys"], reason = "OpenSSL chỉ dành cho SQLCipher trên Windows" },
+    { crate = "openssl-src", wrappers = ["openssl-sys"], reason = "OpenSSL chỉ build kèm cho SQLCipher" },
 ]
 
 [sources]

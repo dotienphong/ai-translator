@@ -3,9 +3,9 @@
 //! phần bên ngoài giả (`FakeDeps`): không chạy tiến trình phụ, không thu âm thật.
 
 use std::ops::ControlFlow;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use asr_protocol::{TranscribeRequest, TranscribeResult};
 use pipeline::engine::{EnergyVad, FrameSource, VadFactory};
@@ -20,10 +20,12 @@ use tauri::{Manager, WebviewWindow, WebviewWindowBuilder};
 
 use crate::capture::OnEvent;
 use crate::commands;
+use crate::db::DataStore;
 use crate::errors::{self, CommandError};
 use crate::login_item::{AgentStatus, LoginItem, LoginItems};
 use crate::overlay::{OverlaySurface, Surface};
 use crate::pro::{Entitlement, ProGate};
+use crate::security::keystore::Keystore;
 use crate::session::{Session, SessionDeps};
 use crate::settings::migrate::FileMeta;
 use crate::settings::persist::{SettingsFile, Writer};
@@ -371,6 +373,18 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
     let login = FakeLoginItem::default();
     let file = FakeSettingsFile::default();
     let pro = FakePro(Arc::new(AtomicBool::new(true)));
+    // Mỗi app giả một thư mục DB riêng trong thư mục tạm, kho khóa trong bộ nhớ.
+    static APPS: AtomicUsize = AtomicUsize::new(0);
+    static CLEAN: std::sync::Once = std::sync::Once::new();
+    CLEAN.call_once(|| {
+        remove_stale_app_dirs(&std::env::temp_dir(), SystemTime::now());
+    });
+    let data_dir = std::env::temp_dir().join(format!(
+        "{APP_DIR_PREFIX}{}-{}",
+        std::process::id(),
+        APPS.fetch_add(1, Ordering::SeqCst)
+    ));
+    let _ = std::fs::remove_dir_all(&data_dir);
     let app = builder
         .manage(AppState::new(
             Settings::defaults(UiLanguage::Vi),
@@ -386,6 +400,10 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
         .manage(Writer(Box::new(file.clone())))
         .manage(file)
         .manage(Entitlement(Box::new(pro.clone())))
+        .manage(DataStore::new(
+            data_dir,
+            Ok(Keystore::mock("com.aitranslator.desktop.test")),
+        ))
         .manage(pro)
         .manage(Session::new(Arc::new(deps)))
         .invoke_handler(commands::handler())
@@ -393,6 +411,34 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
         .expect("dựng được app giả");
     crate::pro::refresh(app.handle());
     app
+}
+
+const APP_DIR_PREFIX: &str = "mt-app-data-";
+
+/// Thư mục tạm của app giả (DB, file xuất) không xóa được lúc app giả bị hủy: state của app giả không bao giờ được drop
+/// (app giữ `AppHandle` trong chính state của nó), và tiến trình test thoát mà không chạy `Drop` của biến `static`. Nên lần
+/// đầu dựng app giả trong một tiến trình test thì xóa thư mục của những lần chạy trước, cũ hơn một giờ tính tới `now` (để
+/// không đụng thư mục của một lần `cargo test` khác đang chạy cùng lúc). Trả số thư mục đã xóa (N8 của review 03).
+pub fn remove_stale_app_dirs(parent: &std::path::Path, now: SystemTime) -> usize {
+    let Ok(entries) = std::fs::read_dir(parent) else {
+        return 0;
+    };
+    let mut removed = 0;
+    for entry in entries.flatten() {
+        let old = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| now.duration_since(t).ok())
+            .is_some_and(|age| age >= Duration::from_secs(3600));
+        if old
+            && entry.file_name().to_string_lossy().starts_with(APP_DIR_PREFIX)
+            && std::fs::remove_dir_all(entry.path()).is_ok()
+        {
+            removed += 1;
+        }
+    }
+    removed
 }
 
 /// Đổi gói của app giả: `true` là Pro, `false` là Free.

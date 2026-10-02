@@ -17,10 +17,15 @@ tauri-build = { version = "2.7.1", features = [] }
 [dependencies]
 anyhow.workspace = true
 audio-capture = { path = "../crates/audio-capture" }
+# Khóa ngẫu nhiên của DB (db.rs). Cùng bản `Cargo.lock` đã có (qua `tempfile`).
+getrandom = "0.4.3"
 keyring-core = "1.0.0"
 log = "0.4.34"
 pipeline = { path = "../crates/pipeline" }
 rtrb.workspace = true
+# SQLite mã hóa bằng SQLCipher (spec §6.6, §10.2): SQLCipher 4.14 (SQLite 3.51.3) build kèm. macOS dùng CommonCrypto của
+# hệ thống; Windows thêm OpenSSL build tĩnh từ mã nguồn (bên dưới). Không bật `cache` mặc định (không cần `hashlink`).
+rusqlite = { version = "0.40.2", default-features = false, features = ["bundled-sqlcipher"] }
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.11.0"
@@ -48,6 +53,9 @@ windows = { version = "0.62.2", features = [
     "Win32_UI_WindowsAndMessaging",
 ] }
 windows-native-keyring-store = "1.1.0"
+# Windows không có CommonCrypto: SQLCipher dùng OpenSSL 3.6 (`openssl-src` 300.6, Apache-2.0) link tĩnh, nên không có DLL
+# OpenSSL nào trong thư mục cài đặt. Build cần Perl (Strawberry Perl); có `nasm` thì bật mã assembly, không thì `no-asm`.
+rusqlite = { version = "0.40.2", default-features = false, features = ["bundled-sqlcipher-vendored-openssl"] }
 
 [dev-dependencies]
 # Kiểu `TranscribeRequest`/`TranscribeResult` cho `asr-worker` giả trong `test_support.rs`.

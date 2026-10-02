@@ -561,6 +561,27 @@ fn the_settings_revision_grows_with_every_change() {
     assert!(last_saved(&app, "revision").is_none(), "số thứ tự không vào file");
 }
 
+/// N8 của review 03: thư mục tạm của app giả từ những lần chạy trước (cũ hơn một giờ) được dọn; thư mục mới và thư mục
+/// khác thì giữ.
+#[test]
+fn old_temporary_folders_of_mock_apps_are_removed() {
+    let parent = std::env::temp_dir().join(format!("mt-stale-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&parent);
+    std::fs::create_dir_all(parent.join("mt-app-data-1-0").join("x")).unwrap();
+    std::fs::create_dir_all(parent.join("mt-app-data-1-1")).unwrap();
+    std::fs::create_dir_all(parent.join("mt-settings-x")).unwrap();
+    let now = std::time::SystemTime::now();
+    assert_eq!(
+        crate::test_support::remove_stale_app_dirs(&parent, now),
+        0,
+        "thư mục mới thì giữ"
+    );
+    let later = now + Duration::from_secs(2 * 3600);
+    assert_eq!(crate::test_support::remove_stale_app_dirs(&parent, later), 2);
+    assert!(parent.join("mt-settings-x").exists(), "chỉ dọn thư mục của app giả");
+    std::fs::remove_dir_all(parent).unwrap();
+}
+
 /// Q8(c) của review 02c: câu hỏi quyền ghi âm thanh hệ thống có bản tiếng Anh (gốc, trong `Info.plist`) và tiếng Việt
 /// (`vi.lproj`), đều nói tên AI Translator, và `tauri.conf.json` chép hai file `InfoPlist.strings` vào gói `.app`.
 #[test]
