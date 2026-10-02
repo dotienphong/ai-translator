@@ -137,9 +137,12 @@ impl AppState {
         self.settings.lock().unwrap().clone()
     }
 
-    /// Thay cài đặt, trả về bản cũ.
-    pub fn replace_settings(&self, next: Settings) -> Settings {
-        std::mem::replace(&mut *self.settings.lock().unwrap(), next)
+    /// Thay cài đặt, trả về bản cũ. `next.revision` được đặt bằng số của bản cũ cộng 1, dưới cùng khóa, nên số thứ tự
+    /// tăng đúng theo thứ tự các lần thay.
+    pub fn replace_settings(&self, next: &mut Settings) -> Settings {
+        let mut current = self.settings.lock().unwrap();
+        next.revision = current.revision + 1;
+        std::mem::replace(&mut *current, next.clone())
     }
 
     pub fn file_meta(&self) -> &FileMeta {

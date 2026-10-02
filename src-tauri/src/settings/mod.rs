@@ -167,6 +167,12 @@ pub struct Settings {
     pub experimental: Experimental,
     /// Đã đi hết các bước lần đầu mở app (§4.1).
     pub onboarding_done: bool,
+    /// Số thứ tự của bản cài đặt trong lần chạy này của app (điểm cần quyết 10 của kế hoạch 02a): tăng mỗi lần cài đặt
+    /// đổi (`AppState::replace_settings`). Giao diện bỏ bản có số nhỏ hơn bản đang có, vì kết quả của một lệnh có thể tới
+    /// sau sự kiện `settings://changed` mới hơn. Không ghi vào file (`migrate::RUNTIME_KEYS`), không sửa được qua
+    /// `update_settings`.
+    #[serde(default)]
+    pub revision: u64,
 }
 
 pub const VAD_END_SILENCE_MS: std::ops::RangeInclusive<u32> = 200..=800;
@@ -216,6 +222,7 @@ impl Settings {
                 translation_context: false,
             },
             onboarding_done: false,
+            revision: 0,
         }
     }
 
@@ -368,6 +375,7 @@ mod tests {
             "updateChannel",
             "experimental",
             "onboardingDone",
+            "revision",
         ] {
             assert!(keys.contains(&key.to_string()), "thiếu khóa {key}");
         }

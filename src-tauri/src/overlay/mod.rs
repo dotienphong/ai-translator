@@ -154,7 +154,7 @@ pub fn remember_position<R: Runtime>(app: &AppHandle<R>) {
         // Cửa sổ bị thu quá nhỏ hay nằm ngoài phạm vi: không lưu.
         return;
     }
-    state.replace_settings(next.clone());
+    state.replace_settings(&mut next);
     if let Err(e) = persist::save_overlay(app, &next, state.file_meta()) {
         log::warn!("không lưu được vị trí thanh phụ đề: {e}");
     }

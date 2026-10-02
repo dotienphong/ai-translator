@@ -49,11 +49,13 @@ export interface Settings {
   updateChannel: UpdateChannel;
   experimental: { translationContext: boolean };
   onboardingDone: boolean;
+  // Số thứ tự của bản cài đặt trong lần chạy này của app: bản có số nhỏ hơn bản đang có là cũ, bỏ qua.
+  revision: number;
 }
 
 // Bản sửa gửi cho `update_settings`. Không có `hotkeys` (dùng `set_hotkey`), `overlay.locked`
-// (dùng `set_overlay_locked`), `overlay.positions` và `overlay.lastMonitor` (chỉ phía Rust ghi).
-export type SettingsPatch = Partial<Omit<Settings, "hotkeys" | "overlay" | "experimental">> & {
+// (dùng `set_overlay_locked`), `overlay.positions`, `overlay.lastMonitor` và `revision` (chỉ phía Rust ghi).
+export type SettingsPatch = Partial<Omit<Settings, "hotkeys" | "overlay" | "experimental" | "revision">> & {
   overlay?: Partial<Omit<Settings["overlay"], "locked" | "positions" | "lastMonitor">>;
   experimental?: Partial<Settings["experimental"]>;
 };

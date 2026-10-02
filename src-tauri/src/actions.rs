@@ -13,9 +13,9 @@ use crate::state::{AppState, AppStatus, OverlayView};
 use crate::{events, hotkey_registry, login_item, overlay, session, system, tray, window};
 
 /// Lưu cài đặt mới rồi báo mọi nơi cần biết.
-fn commit_settings<R: Runtime>(app: &AppHandle<R>, next: Settings) -> Settings {
+fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings) -> Settings {
     let state = app.state::<AppState>();
-    let previous = state.replace_settings(next.clone());
+    let previous = state.replace_settings(&mut next);
     if let Err(e) = persist::save(app, &next, state.file_meta()) {
         log::error!("không lưu được cài đặt: {e}");
     }

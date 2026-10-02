@@ -19,6 +19,7 @@ const settings: Settings = {
   updateChannel: "stable",
   experimental: { translationContext: false },
   onboardingDone: false,
+  revision: 1,
 };
 const status: AppStatus = {
   session: "idle",
@@ -220,6 +221,34 @@ describe("app store", () => {
     await store.getState().init();
     expect(store.getState().settings?.uiLanguage).toBe("en");
     expect(store.getState().status?.session).toBe("starting");
+  });
+
+  it("cài đặt cũ hơn bản đang có (revision nhỏ hơn) bị bỏ, dù tới từ kết quả lệnh hay từ sự kiện", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    // Sự kiện của lần đổi sau (revision 5) tới trước kết quả của lệnh đổi trước (bản giả trả revision 1).
+    fake.emit("settings://changed", { ...settings, theme: "light", revision: 5 });
+    expect(await store.getState().updateSettings({ theme: "dark" })).toBe(true);
+    expect(store.getState().settings?.theme).toBe("light");
+    fake.emit("settings://changed", { ...settings, theme: "dark", revision: 4 });
+    expect(store.getState().settings?.theme).toBe("light");
+    fake.emit("settings://changed", { ...settings, theme: "dark", revision: 6 });
+    expect(store.getState().settings?.theme).toBe("dark");
+  });
+
+  it("init lấy kết quả của get_settings khi nó mới hơn bản đã tới qua sự kiện", async () => {
+    let fake: ReturnType<typeof fakeIpc> | null = null;
+    fake = fakeIpc({
+      get_settings: () => {
+        fake?.emit("settings://changed", { ...settings, uiLanguage: "en", revision: 0 });
+        return settings;
+      },
+      get_app_status: () => status,
+      get_app_info: () => info,
+    });
+    const store = createAppStore(fake.ipc);
+    await store.getState().init();
+    expect(store.getState().settings).toEqual(settings);
   });
 
   it("đọc danh sách nguồn âm thanh và mở trang quyền ghi âm thanh", async () => {

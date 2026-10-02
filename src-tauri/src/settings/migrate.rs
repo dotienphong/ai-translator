@@ -41,6 +41,9 @@ pub const CURRENT_SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;
 /// (chưa có `schemaVersion`) đi qua cùng một đường với mọi bản sau.
 fn v0_to_v1(_raw: &mut Map<String, Value>) {}
 
+/// Khóa chỉ có lúc chạy, không đọc từ file và không ghi vào file (`Settings::revision`).
+pub const RUNTIME_KEYS: &[&str] = &["revision"];
+
 /// Khóa là object con: ghép theo từng khóa con, để một khóa con hỏng không kéo cả nhóm về mặc định.
 const NESTED: &[&str] = &["overlay", "hotkeys", "experimental"];
 
@@ -116,6 +119,9 @@ pub fn load_with(mut raw: Map<String, Value>, defaults: Settings, migrations: &[
     let mut rejected = Vec::new();
     let mut unknown = BTreeMap::new();
     for (key, value) in &raw {
+        if RUNTIME_KEYS.contains(&key.as_str()) {
+            continue;
+        }
         let Some(current) = merged.get(key).cloned() else {
             continue;
         };
@@ -230,6 +236,7 @@ pub(crate) fn to_object(settings: &Settings) -> Map<String, Value> {
 /// chưa đổi thì ghi lại giá trị thô của file; khóa con lạ trong `meta.unknown` được ghép lại vào nhóm.
 pub fn to_entries(settings: &Settings, meta: &FileMeta) -> Vec<(String, Value)> {
     let mut object = to_object(settings);
+    object.retain(|key, _| !RUNTIME_KEYS.contains(&key.as_str()));
     for (key, extra) in &meta.unknown {
         if let Some(Value::Object(group)) = object.get_mut(key) {
             for (sub_key, value) in extra {
@@ -289,6 +296,19 @@ mod tests {
         let loaded = load(raw, defaults());
         assert_eq!(loaded.settings, settings);
         assert!(!loaded.needs_save());
+    }
+
+    #[test]
+    fn the_runtime_revision_is_neither_saved_nor_loaded() {
+        let mut settings = Settings::defaults(UiLanguage::Vi);
+        settings.revision = 7;
+        let raw: Map<String, Value> = to_entries(&settings, &FileMeta::current()).into_iter().collect();
+        assert!(!raw.contains_key("revision"), "số thứ tự không vào file");
+        let mut raw = raw;
+        raw.insert("revision".into(), json!(9));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.revision, 0, "số thứ tự trong file (sửa tay) bị bỏ qua");
+        assert!(loaded.rejected.is_empty());
     }
 
     #[test]

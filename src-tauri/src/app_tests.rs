@@ -533,6 +533,34 @@ fn the_status_revision_grows_with_every_change() {
     assert!(before < running && running < idle, "{before} {running} {idle}");
 }
 
+/// Cài đặt có số thứ tự tăng dần (điểm cần quyết 10 của 02a), để giao diện bỏ bản cũ tới muộn. Số trong kết quả của
+/// lệnh, trong sự kiện `settings://changed` và trong `get_settings` là một.
+#[test]
+fn the_settings_revision_grows_with_every_change() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let changed = record(&app, crate::events::SETTINGS_CHANGED);
+    let before = invoke(&main, "get_settings", json!({})).unwrap()["revision"]
+        .as_u64()
+        .unwrap();
+    let first = invoke(&main, "update_settings", json!({ "patch": { "theme": "dark" } })).unwrap();
+    let second = invoke(&main, "set_overlay_locked", json!({ "locked": true })).unwrap();
+    let (first, second) = (
+        first["revision"].as_u64().unwrap(),
+        second["revision"].as_u64().unwrap(),
+    );
+    assert!(before < first && first < second, "{before} {first} {second}");
+    let events: Vec<u64> = changed
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|s| s["revision"].as_u64().unwrap())
+        .collect();
+    assert_eq!(events, [first, second]);
+    assert_eq!(invoke(&main, "get_settings", json!({})).unwrap()["revision"], second);
+    assert!(last_saved(&app, "revision").is_none(), "số thứ tự không vào file");
+}
+
 /// Q8(c) của review 02c: câu hỏi quyền ghi âm thanh hệ thống có bản tiếng Anh (gốc, trong `Info.plist`) và tiếng Việt
 /// (`vi.lproj`), đều nói tên AI Translator, và `tauri.conf.json` chép hai file `InfoPlist.strings` vào gói `.app`.
 #[test]

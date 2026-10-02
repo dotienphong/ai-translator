@@ -104,6 +104,14 @@ export function createAppStore(ipc: Ipc) {
       set(status.session === "running" ? { status } : { status, level: 0 });
     }
 
+    // Nhận một bản cài đặt mới, từ sự kiện `settings://changed` hay kết quả của một lệnh. Kết quả của lệnh có thể tới sau
+    // một sự kiện mới hơn: bản có `revision` nhỏ hơn bản đang có thì bỏ (bằng nhau thì nhận, vì là cùng một bản).
+    function setSettings(settings: Settings) {
+      const current = get().settings;
+      if (current && settings.revision < current.revision) return;
+      set({ settings });
+    }
+
     return {
       settings: null,
       status: null,
@@ -120,7 +128,7 @@ export function createAppStore(ipc: Ipc) {
       // Lỗi ở bất kỳ bước nào thì gỡ các listener đã đăng ký rồi ném lỗi tiếp cho bên gọi (`main.tsx` hiện câu báo).
       async init() {
         const listening = await Promise.allSettled([
-          ipc.listen("settings://changed", (settings) => set({ settings })),
+          ipc.listen("settings://changed", (settings) => setSettings(settings)),
           ipc.listen("app://status", (status) => setStatus(status)),
           ipc.listen("audio://level", (level) => set({ level })),
           ipc.listen("app://navigate", (target: Navigate) => get().navigate(target.screen, target.settingsGroup)),
@@ -136,8 +144,11 @@ export function createAppStore(ipc: Ipc) {
             ipc.invoke("get_app_status"),
             ipc.invoke("get_app_info"),
           ]);
-          // Cài đặt đã tới qua sự kiện trong lúc chờ `get_settings` thì mới hơn (hoặc bằng) kết quả của lệnh: giữ bản đó.
-          set({ settings: get().settings ?? settings, info });
+          // Cài đặt đã tới qua sự kiện trong lúc chờ `get_settings` thì chỉ thay khi kết quả của lệnh mới hơn hẳn: cùng số
+          // thứ tự là cùng một bản, giữ bản của sự kiện.
+          const current = get().settings;
+          if (!current || settings.revision > current.revision) set({ settings });
+          set({ info });
           setStatus(status);
         } catch (e) {
           off();
@@ -157,7 +168,7 @@ export function createAppStore(ipc: Ipc) {
       updateSettings(patch) {
         return run(
           () => ipc.invoke("update_settings", { patch }),
-          (settings) => set({ settings }),
+          (settings) => setSettings(settings),
         );
       },
 
@@ -173,7 +184,7 @@ export function createAppStore(ipc: Ipc) {
 
       async setHotkey(action, accelerator) {
         try {
-          set({ settings: await ipc.invoke("set_hotkey", { action, accelerator }) });
+          setSettings(await ipc.invoke("set_hotkey", { action, accelerator }));
           return null;
         } catch (e) {
           return toUiError(e);
@@ -210,7 +221,7 @@ export function createAppStore(ipc: Ipc) {
       async setOverlayLocked(locked) {
         await run(
           () => ipc.invoke("set_overlay_locked", { locked }),
-          (settings) => set({ settings }),
+          (settings) => setSettings(settings),
         );
       },
 
