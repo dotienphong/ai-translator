@@ -16,6 +16,13 @@ export type ModelTier = "standard" | "lite";
 export type HotkeyAction = "toggleSession" | "toggleOverlay" | "toggleLock";
 export const HOTKEY_ACTIONS: readonly HotkeyAction[] = ["toggleSession", "toggleOverlay", "toggleLock"];
 
+// Màu chữ và màu nền của phụ đề (§4.3, `settings::TextColor`, `settings::BackgroundColor`); mã màu ở `subtitleView.ts`.
+export type TextColor = "white" | "yellow" | "green" | "lightBlue" | "orange";
+export type BackgroundColor = "black" | "darkGray" | "navy" | "darkBrown" | "darkPurple";
+
+// Cạnh hay góc của thanh phụ đề đang kéo để đổi kích thước (`overlay::placement::Edge`).
+export type ResizeEdge = "north" | "south" | "east" | "west" | "northEast" | "northWest" | "southEast" | "southWest";
+
 export interface OverlayRect {
   x: number;
   y: number;
@@ -36,6 +43,8 @@ export interface Settings {
     fontSize: number;
     lines: number;
     opacity: number;
+    textColor: TextColor;
+    background: BackgroundColor;
     showSource: boolean;
     locked: boolean;
     positions: Record<string, OverlayRect>;
@@ -111,6 +120,8 @@ export interface OverlayView {
   fontSize: number;
   lines: number;
   opacity: number;
+  textColor: TextColor;
+  background: BackgroundColor;
   showSource: boolean;
   locked: boolean;
 }
@@ -133,6 +144,69 @@ export interface Subtitle {
 export interface SubtitleDelta {
   id: number;
   text: string;
+}
+
+// Bản chép lời của một phiên (`transcript::store::Transcript`). `startedAt`, `endedAt`: giờ Unix (ms); `start_ms`,
+// `end_ms` của từng dòng tính từ `startedAt`. `session` là 0 với phiên đọc từ lịch sử.
+export interface Transcript {
+  session: number;
+  startedAt: number;
+  endedAt: number | null;
+  targetLang: string;
+  lines: Subtitle[];
+}
+
+// Bản chép lời nào: của phiên hiện tại (hoặc vừa dừng), hay một phiên trong lịch sử (`data::TranscriptRef`).
+export type TranscriptRef = { kind: "current" } | { kind: "history"; id: number };
+export type ExportFormat = "txt" | "srt" | "markdown";
+export type SrtText = "source" | "translation";
+
+// Một phiên trong Lịch sử (`transcript::history::SessionSummary`).
+export interface SessionSummary {
+  id: number;
+  startedAt: number;
+  endedAt: number;
+  targetLang: string;
+  lines: number;
+  preview: string;
+}
+
+// Một cặp thuật ngữ (`glossary::GlossaryEntry`) và kết quả nhập CSV (`glossary::ImportReport`).
+export interface GlossaryEntry {
+  id: number;
+  source: string;
+  target: string;
+}
+
+export interface ImportReport {
+  added: number;
+  updated: number;
+  skipped: number;
+  overLimit: number;
+}
+
+// Số đo của một phiên đã dừng, cho bảng debug ẩn (`debug::DebugSession`). Không có chữ chép lời.
+export interface DebugStage {
+  name: "vad" | "asr" | "mt" | "total";
+  count: number;
+  p50: number | null;
+  p90: number | null;
+}
+
+export interface DebugSession {
+  session: number;
+  endedAt: number;
+  summary: string;
+  segments: number;
+  filtered: number;
+  dropped: number;
+  translated: number;
+  failed: number;
+  skipped: number;
+  sameLang: number;
+  merges: number;
+  translatedSpeechMs: number;
+  stages: DebugStage[];
 }
 
 export type Screen = "home" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "about";
@@ -169,7 +243,34 @@ export interface Commands {
   open_login_items_settings: { args: undefined; result: null };
   list_audio_sources: { args: undefined; result: AudioSourceOption[] };
   open_audio_permission_settings: { args: undefined; result: null };
+  // Bước "Nghe thử": phiên thu toàn hệ thống, kể cả âm thanh của chính app. Dừng bằng `toggle_session`.
+  start_listen_test: { args: undefined; result: AppStatus };
+  get_transcript: { args: undefined; result: Transcript };
+  // `utcOffsetMinutes`: độ lệch múi giờ của máy (phút, dương ở phía đông), để ghi giờ địa phương.
+  transcript_text: { args: { source: TranscriptRef; utcOffsetMinutes: number }; result: string };
+  // Pro. Trả đường dẫn đã ghi, `null` nếu người dùng bấm Hủy ở hộp thoại lưu.
+  export_transcript: {
+    args: { source: TranscriptRef; format: ExportFormat; srtText: SrtText; utcOffsetMinutes: number };
+    result: string | null;
+  };
+  list_history: { args: undefined; result: SessionSummary[] };
+  get_history_session: { args: { id: number }; result: Transcript };
+  delete_history_session: { args: { id: number }; result: null };
+  clear_history: { args: undefined; result: number };
+  list_glossary: { args: undefined; result: GlossaryEntry[] };
+  add_glossary_entry: { args: { source: string; target: string }; result: GlossaryEntry };
+  update_glossary_entry: { args: { id: number; source: string; target: string }; result: GlossaryEntry };
+  delete_glossary_entry: { args: { id: number }; result: null };
+  // `null` nếu người dùng bấm Hủy ở hộp thoại mở hay lưu file.
+  import_glossary_csv: { args: undefined; result: ImportReport | null };
+  export_glossary_csv: { args: undefined; result: string | null };
+  clear_all_data: { args: undefined; result: null };
+  get_debug_sessions: { args: undefined; result: DebugSession[] };
   get_overlay_view: { args: undefined; result: OverlayView };
+  hide_overlay: { args: undefined; result: null };
+  begin_overlay_resize: { args: { edge: ResizeEdge }; result: null };
+  overlay_resize_move: { args: undefined; result: null };
+  end_overlay_resize: { args: undefined; result: null };
 }
 
 export interface Events {
@@ -180,7 +281,7 @@ export interface Events {
   "overlay://view": OverlayView;
   "subtitle://upsert": Subtitle;
   "subtitle://delta": SubtitleDelta;
-  // Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch.
+  // Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch; tới cả cửa sổ chính lẫn thanh phụ đề.
   "audio://level": number;
 }
 

@@ -15,7 +15,16 @@ const sub = (id: number, tgt: string, provisional = false): Subtitle => ({
   replaces: [],
 });
 
-const view: OverlayView = { uiLanguage: "vi", fontSize: 22, lines: 2, opacity: 0.6, showSource: false, locked: false };
+const view: OverlayView = {
+  uiLanguage: "vi",
+  fontSize: 22,
+  lines: 2,
+  opacity: 0.6,
+  textColor: "white",
+  background: "black",
+  showSource: false,
+  locked: false,
+};
 
 describe("upsertLine", () => {
   it("thêm dòng mới vào cuối, giữ tối đa max dòng", () => {
@@ -121,6 +130,19 @@ describe("overlay store", () => {
     fake.emit("app://status", status("running", 5));
     fake.emit("subtitle://upsert", sub(1_000_001, "hai"));
     expect(store.getState().lines.map((l) => l.id)).toEqual([1_000_001]);
+  });
+
+  it("mức âm lượng cho chỉ báo đang nghe, về 0 khi phiên dừng", async () => {
+    const fake = fakeIpc({ get_overlay_view: () => view });
+    const store = createOverlayStore(fake.ipc);
+    await store.getState().init();
+    fake.emit("app://status", status("running", 1));
+    fake.emit("audio://level", 0.02);
+    expect(store.getState().level).toBe(0.02);
+    fake.emit("app://status", status("running", 2));
+    expect(store.getState().level).toBe(0.02);
+    fake.emit("app://status", status("idle", 3));
+    expect(store.getState().level).toBe(0);
   });
 
   it("đọc phần cài đặt của thanh phụ đề và nhận phụ đề qua sự kiện", async () => {

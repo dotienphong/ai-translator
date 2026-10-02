@@ -5,6 +5,7 @@ import type {
   AppStatus,
   AudioSourceOption,
   CommandError,
+  DebugSession,
   HotkeyAction,
   Ipc,
   Lang,
@@ -48,6 +49,10 @@ export interface AppStoreState {
   level: number;
   // Nguồn chọn được ở Cài đặt › Âm thanh; `null` là chưa đọc.
   audioSources: AudioSourceOption[] | null;
+  // Số đo của các phiên gần nhất cho bảng debug ẩn (§7); `null` là chưa đọc.
+  debugSessions: DebugSession[] | null;
+  // Vừa xóa xong toàn bộ dữ liệu (Cài đặt › Quyền riêng tư), để báo lại.
+  dataCleared: boolean;
   init(): Promise<() => void>;
   navigate(screen: Screen, settingsGroup?: SettingsGroup | null): void;
   setOnboardingStep(step: number): void;
@@ -63,6 +68,10 @@ export interface AppStoreState {
   openAudioPermissionSettings(): Promise<void>;
   loadAudioSources(): Promise<void>;
   finishOnboarding(): Promise<void>;
+  // Bước "Nghe thử" (§4.1 bước 6): bắt đầu phiên thu toàn hệ thống, kể cả âm thanh của chính app.
+  startListenTest(): Promise<void>;
+  clearAllData(): Promise<void>;
+  loadDebugSessions(): Promise<void>;
   dismissError(): void;
   dismissNotice(): void;
 }
@@ -124,6 +133,8 @@ export function createAppStore(ipc: Ipc) {
       sessionPending: false,
       level: 0,
       audioSources: null,
+      debugSessions: null,
+      dataCleared: false,
 
       // Lỗi ở bất kỳ bước nào thì gỡ các listener đã đăng ký rồi ném lỗi tiếp cho bên gọi (`main.tsx` hiện câu báo).
       async init() {
@@ -263,6 +274,39 @@ export function createAppStore(ipc: Ipc) {
 
       async finishOnboarding() {
         if (await get().updateSettings({ onboardingDone: true })) set({ screen: "home" });
+      },
+
+      // Như `toggleSession`: chặn bấm đúp; lỗi bắt đầu nằm trong trạng thái phiên.
+      async startListenTest() {
+        if (get().sessionPending) return;
+        set({ sessionPending: true });
+        try {
+          setStatus(await ipc.invoke("start_listen_test"));
+          set({ error: null });
+        } catch (e) {
+          const status = await ipc.invoke("get_app_status").catch(() => null);
+          if (status?.session === "error") {
+            setStatus(status);
+            set({ error: null });
+          } else set({ error: toUiError(e) });
+        } finally {
+          set({ sessionPending: false });
+        }
+      },
+
+      async clearAllData() {
+        set({ dataCleared: false });
+        await run(
+          () => ipc.invoke("clear_all_data"),
+          () => set({ dataCleared: true }),
+        );
+      },
+
+      async loadDebugSessions() {
+        await run(
+          () => ipc.invoke("get_debug_sessions"),
+          (debugSessions) => set({ debugSessions }),
+        );
       },
 
       dismissError() {

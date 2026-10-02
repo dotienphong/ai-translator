@@ -2,7 +2,7 @@ import { createStore } from "zustand/vanilla";
 import type { AppStatus, Ipc, OverlayView, Subtitle, SubtitleDelta } from "../lib/ipc";
 
 // Store của thanh phụ đề. Cửa sổ `overlay` chỉ đọc được phần cài đặt của nó (`get_overlay_view`)
-// và nghe sự kiện; không gọi được lệnh nào khác (spec §10.2). Kế hoạch 03 làm đủ phần hiển thị.
+// và nghe sự kiện (phụ đề, trạng thái, mức âm lượng); không gọi được lệnh nào khác (spec §10.2).
 
 // Giữ tối đa `max` phụ đề gần nhất, xếp theo `id` (id tăng theo thứ tự câu, và không trùng giữa các phiên nhờ `id_base`).
 // Phụ đề cùng `id` (phụ đề tạm được thay, §6.3; bản dịch xong) cập nhật tại chỗ; phụ đề đã được gộp vào phụ đề mới
@@ -38,6 +38,8 @@ export interface OverlayStoreState {
   view: OverlayView | null;
   status: AppStatus | null;
   lines: Subtitle[];
+  // Mức âm lượng vào gần nhất (RMS), cho chỉ báo "đang nghe"; 0 khi phiên không chạy.
+  level: number;
   init(): Promise<() => void>;
 }
 
@@ -46,6 +48,7 @@ export function createOverlayStore(ipc: Ipc) {
     view: null,
     status: null,
     lines: [],
+    level: 0,
     async init() {
       const offs = await Promise.all([
         ipc.listen("overlay://view", (view) => set({ view, lines: get().lines.slice(-view.lines) })),
@@ -53,12 +56,14 @@ export function createOverlayStore(ipc: Ipc) {
           set({ lines: upsertLine(get().lines, subtitle, get().view?.lines ?? 3) }),
         ),
         ipc.listen("subtitle://delta", (delta) => set({ lines: appendDelta(get().lines, delta) })),
+        ipc.listen("audio://level", (level) => set({ level })),
         // Trạng thái app (cùng `rev` như cửa sổ chính): bỏ trạng thái cũ tới muộn; phiên mới bắt đầu thì xóa phụ đề cũ.
         ipc.listen("app://status", (status) => {
           const prev = get().status;
           if (prev && status.rev < prev.rev) return;
           const fresh = status.session === "starting" && prev?.session !== "starting";
-          set(fresh ? { status, lines: [] } : { status });
+          const level = status.session === "running" ? get().level : 0;
+          set(fresh ? { status, lines: [], level } : { status, level });
         }),
       ]);
       // Cài đặt mới hơn đã tới qua `overlay://view` trong lúc chờ thì giữ bản đó (N-3 của review 02 lần 2).

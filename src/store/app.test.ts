@@ -10,7 +10,17 @@ const settings: Settings = {
   sourceLock: null,
   audioSource: { kind: "system" },
   vadEndSilenceMs: 300,
-  overlay: { fontSize: 22, lines: 2, opacity: 0.6, showSource: false, locked: false, positions: {}, lastMonitor: null },
+  overlay: {
+    fontSize: 22,
+    lines: 2,
+    opacity: 0.6,
+    textColor: "white",
+    background: "black",
+    showSource: false,
+    locked: false,
+    positions: {},
+    lastMonitor: null,
+  },
   modelTier: null,
   hotkeys: { toggleSession: "Ctrl+Alt+T", toggleOverlay: "Ctrl+Alt+H", toggleLock: "Ctrl+Alt+L" },
   saveHistory: false,
@@ -74,6 +84,9 @@ function setup() {
       return { ...status, session: "running", overlayVisible: true, rev: 2 };
     },
     list_audio_sources: () => [{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }],
+    start_listen_test: () => ({ ...status, session: "running", overlayVisible: true, rev: 4 }),
+    clear_all_data: () => null,
+    get_debug_sessions: () => [],
     open_audio_permission_settings: () => null,
     set_overlay_locked: ({ locked }) => ({ ...settings, overlay: { ...settings.overlay, locked } }),
     open_login_items_settings: () => {
@@ -260,6 +273,19 @@ describe("app store", () => {
     await store.getState().openAudioPermissionSettings();
     expect(fake.calls.at(-1)?.cmd).toBe("open_audio_permission_settings");
     expect(store.getState().error).toBeNull();
+  });
+
+  it("nghe thử bắt đầu phiên riêng; xóa toàn bộ dữ liệu báo lại; đọc bảng debug", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    await store.getState().startListenTest();
+    expect(fake.calls.at(-1)?.cmd).toBe("start_listen_test");
+    expect(store.getState().status?.session).toBe("running");
+    await store.getState().clearAllData();
+    expect(store.getState().dataCleared).toBe(true);
+    expect(store.getState().debugSessions).toBeNull();
+    await store.getState().loadDebugSessions();
+    expect(store.getState().debugSessions).toEqual([]);
   });
 
   it("thanh đo âm lượng theo dBFS: −60 dB trở xuống là 0, 0 dB là đầy", () => {
