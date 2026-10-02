@@ -6,6 +6,7 @@ pub mod machine;
 pub mod manifest;
 pub mod recommend;
 pub mod signed;
+pub mod source;
 pub mod store;
 #[cfg(test)]
 pub mod test_http;

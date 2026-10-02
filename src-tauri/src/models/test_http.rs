@@ -28,7 +28,13 @@ pub enum Fault {
     Redirect(&'static str),
     /// Gửi thân từng khối 100 byte, nghỉ chừng này mili giây giữa hai khối (mạng chậm, để test kịp tạm dừng).
     Slow(u64),
+    /// Trả `200` không có `Content-Length`, thân gửi mãi (tới [`ENDLESS_BYTES`]) cho tới khi client đóng kết nối; số byte
+    /// đã gửi được ghi lại (`endless_sent`).
+    Endless,
 }
+
+/// Lỗi giả `Endless` dừng sau chừng này byte, để một client không giới hạn cũng không làm test treo.
+pub const ENDLESS_BYTES: usize = 64 << 20;
 
 /// Một request đã nhận.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -43,6 +49,7 @@ struct Shared {
     files: HashMap<String, Vec<u8>>,
     faults: VecDeque<Fault>,
     requests: Vec<Request>,
+    endless_sent: usize,
 }
 
 pub struct FakeServer {
@@ -86,6 +93,11 @@ impl FakeServer {
     pub fn requests(&self) -> Vec<Request> {
         self.shared.lock().unwrap().requests.clone()
     }
+
+    /// Số byte lỗi giả `Endless` đã gửi được trước khi client đóng kết nối.
+    pub fn endless_sent(&self) -> usize {
+        self.shared.lock().unwrap().endless_sent
+    }
 }
 
 fn serve(stream: TcpStream, shared: &Mutex<Shared>) {
@@ -126,6 +138,16 @@ fn serve(stream: TcpStream, shared: &Mutex<Shared>) {
         let _ = out.write_all(head("404 Not Found", "", 0).as_bytes());
         return;
     };
+    if fault == Some(Fault::Endless) {
+        let _ = out.write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+        let chunk = vec![b' '; 64 * 1024];
+        let mut sent = 0;
+        while sent < ENDLESS_BYTES && out.write_all(&chunk).is_ok() {
+            sent += chunk.len();
+        }
+        shared.lock().unwrap().endless_sent = sent;
+        return;
+    }
     if let Some(Fault::Redirect(to)) = fault {
         let _ = out.write_all(head("302 Found", &format!("Location: {to}\r\n"), 0).as_bytes());
         return;
