@@ -754,13 +754,26 @@ impl ModelService {
 
     /// Model nạp lỗi (§9): băm lại đầy đủ file của gói; file hỏng bị bỏ để người dùng tải lại.
     pub fn verify_selected<R: Runtime>(&self, app: &AppHandle<R>) {
-        let (Some(pack), Some(manifest)) = (selected(app), self.manifest()) else {
+        // Gói của phiên vừa lỗi; chưa có phiên nào thì gói đang chọn.
+        let pack = session::models_in_use(app).0.or_else(|| selected(app));
+        let (Some(pack), Some(manifest)) = (pack, self.manifest()) else {
             return;
         };
+        // Như "Kiểm tra và tải lại": không chạy cùng lúc với việc tải, xóa, kiểm khác hay với lần bắt đầu phiên (N-2 của
+        // review cuối 04). Đang bận thì bỏ qua; lần nạp lỗi sau sẽ băm lại.
+        let work = match self.begin_work(app, Some(&manifest.manifest), |_| true) {
+            Ok((work, _)) => work,
+            Err(e) => {
+                log::info!("chưa băm lại gói {pack}: {}", e.message);
+                return;
+            }
+        };
+        session::release_models(app);
         let broken = self.store.verify_pack(&manifest.manifest, &pack);
         if !broken.is_empty() {
             log::warn!("gói {pack} có file hỏng: {broken:?}");
         }
+        drop(work);
         self.changed(app);
     }
 
@@ -1259,6 +1272,32 @@ mod tests {
             h.service().resolve(Some("lite")).unwrap_err().code,
             errors::MODEL_BROKEN,
             "sai kích thước"
+        );
+    }
+
+    /// N-2 của review cuối 04: băm lại sau `modelBroken` đi qua `begin_work` như "Kiểm tra và tải lại": đang tải thì bỏ
+    /// qua (lần lỗi sau băm lại), không ghi `installed.json` cùng lúc với việc tải.
+    #[test]
+    fn hashing_again_after_a_broken_model_waits_for_downloads() {
+        let h = slow_harness(FakeDeps::default());
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        h.wait("done");
+        let path = h.dir().join("Hy-MT2-1.8B-Q8_0.gguf");
+        let mut bytes = std::fs::read(&path).unwrap();
+        bytes[0] ^= 1;
+        std::fs::write(&path, bytes).unwrap();
+        h.server.fault(Fault::Slow(100));
+        h.call("download_models", json!({ "pack": "lite" })).unwrap();
+        h.service().verify_selected(h.app.handle());
+        assert!(path.exists(), "đang tải: chưa băm lại");
+        h.wait("done");
+        h.call("select_model_pack", json!({ "pack": "standard" })).unwrap();
+        h.service().verify_selected(h.app.handle());
+        assert!(!path.exists(), "file hỏng bị bỏ");
+        let view = h.call("get_models_state", json!({})).unwrap();
+        assert_eq!(
+            view["packs"][1]["complete"], true,
+            "gói Nhẹ vừa tải vẫn còn trong danh sách đã tải"
         );
     }
 
