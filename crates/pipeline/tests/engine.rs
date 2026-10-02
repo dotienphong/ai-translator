@@ -202,6 +202,7 @@ fn config(languages: &[&str]) -> EngineConfig {
         target: Lang::Vi,
         translation_context: false,
         id_base: 1_000,
+        glossary: Default::default(),
     }
 }
 

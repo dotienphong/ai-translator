@@ -1,5 +1,7 @@
 //! Mẫu prompt lấy nguyên văn từ model card của Hy-MT2 (spec §6.5).
 
+use crate::glossary::Term;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Lang {
     En,
@@ -74,6 +76,35 @@ pub fn translation_prompt(text: &str, src: Lang, tgt: Lang) -> String {
     }
 }
 
+/// Mẫu "terminology" của model card Hy-MT2 (spec §6.5 "Thuật ngữ"; README của `tencent/Hy-MT2-1.8B`, commit `9a341cd`,
+/// mục "Hy-MT2 Translation Task Instruction Examples"): mỗi cặp một dòng, rồi câu lệnh dịch. Chọn mẫu tiếng Trung hay tiếng
+/// Anh theo cùng luật với mẫu mặc định. Mẫu tiếng Anh có dòng trống trước câu lệnh và viết "must ONLY", mẫu tiếng Trung
+/// không có dòng trống: đúng như model card.
+pub fn terminology_prompt(text: &str, terms: &[Term], src: Lang, tgt: Lang) -> String {
+    if uses_chinese_template(src, tgt) {
+        let mut prompt = String::from("参考下面的翻译：\n");
+        for t in terms {
+            prompt.push_str(&format!("{} 翻译成 {}\n", t.source, t.target));
+        }
+        prompt.push_str(&format!(
+            "将以下文本翻译为{}，注意只需要输出翻译后的结果，不要额外解释：\n\n{text}",
+            tgt.chinese_name()
+        ));
+        prompt
+    } else {
+        let mut prompt = String::from("Reference the following translations:\n");
+        for t in terms {
+            prompt.push_str(&format!("{} translates to {}\n", t.source, t.target));
+        }
+        prompt.push_str(&format!(
+            "\nTranslate the following text into {}. Note that you must ONLY output the translated result without any \
+             additional explanation:\n\n{text}",
+            tgt.english_name()
+        ));
+        prompt
+    }
+}
+
 /// Mẫu "background information" của model card, dùng cho cờ thử nghiệm ngữ cảnh câu trước (spec §6.5).
 pub fn context_prompt(text: &str, context: &str, src: Lang, tgt: Lang) -> String {
     if uses_chinese_template(src, tgt) {
@@ -121,6 +152,37 @@ mod tests {
         let p = context_prompt("B", "A", Lang::Ja, Lang::Vi);
         assert!(p.starts_with("[Background Information]\nA\n\nPlease translate the following text into Vietnamese,"));
         assert!(p.ends_with("[Source Text]\nB"));
+    }
+
+    fn terms() -> Vec<Term> {
+        vec![
+            Term {
+                source: "sprint".into(),
+                target: "đợt chạy".into(),
+            },
+            Term {
+                source: "API".into(),
+                target: "giao diện lập trình".into(),
+            },
+        ]
+    }
+
+    #[test]
+    fn terminology_template_english() {
+        assert_eq!(
+            terminology_prompt("The sprint API", &terms(), Lang::En, Lang::Vi),
+            "Reference the following translations:\nsprint translates to đợt chạy\nAPI translates to giao diện lập trình\n\n\
+             Translate the following text into Vietnamese. Note that you must ONLY output the translated result without \
+             any additional explanation:\n\nThe sprint API"
+        );
+    }
+
+    #[test]
+    fn terminology_template_chinese() {
+        assert_eq!(
+            terminology_prompt("这个API", &terms()[1..], Lang::Zh, Lang::Vi),
+            "参考下面的翻译：\nAPI 翻译成 giao diện lập trình\n将以下文本翻译为越南语，注意只需要输出翻译后的结果，不要额外解释：\n\n这个API"
+        );
     }
 
     #[test]

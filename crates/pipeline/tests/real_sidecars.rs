@@ -102,6 +102,7 @@ fn real_sidecars_translate_the_fixture_in_order() {
             target: Lang::Vi,
             translation_context: false,
             id_base: 0,
+            glossary: Default::default(),
         },
         Box::new(SampleSource::new(samples, 512, Duration::from_millis(32))),
         Box::new(move || Ok(Box::new(SileroVad::load(&vad_model)?) as _)),

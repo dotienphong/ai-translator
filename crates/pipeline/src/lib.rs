@@ -2,6 +2,7 @@ pub mod asr_client;
 pub mod config;
 pub mod engine;
 pub mod filter;
+pub mod glossary;
 pub mod llama;
 pub mod logfile;
 pub mod metrics;

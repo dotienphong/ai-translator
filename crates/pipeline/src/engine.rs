@@ -31,6 +31,7 @@
 
 use crate::config::{AudioConfig, FilterConfig, MtConfig, PipelineConfig};
 use crate::filter::{Evidence, Verdict, pcm_skip, verdict};
+use crate::glossary::SharedGlossary;
 use crate::metrics::SessionMetrics;
 use crate::prompt::{Lang, translation_prompt};
 use crate::prompt_history::PromptHistory;
@@ -68,6 +69,9 @@ pub struct EngineConfig {
     pub translation_context: bool,
     /// Cộng vào id của mọi phụ đề, để id không trùng giữa các phiên của cùng một lần chạy app.
     pub id_base: u64,
+    /// Từ điển thuật ngữ (F5, §6.5). Luồng dịch đọc bản mới nhất ở mỗi câu, nên app sửa từ điển giữa phiên thì câu sau
+    /// dùng ngay. Gói Free: app đưa từ điển rỗng.
+    pub glossary: SharedGlossary,
 }
 
 /// Nguồn âm thanh 16 kHz mono.
@@ -383,11 +387,12 @@ impl Engine {
 
         let mt_thread = {
             let (tx, mt_cfg, target, hurry) = (tx.clone(), cfg.pipeline.mt.clone(), cfg.target, flags.hurry.clone());
+            let glossary = cfg.glossary.clone();
             std::thread::Builder::new()
                 .name("mt".into())
                 .spawn(move || {
                     let _guard = MtGuard(tx.clone());
-                    mt_loop(mt, jobs_rx, &tx, &mt_cfg, target, &hurry)
+                    mt_loop(mt, jobs_rx, &tx, &mt_cfg, target, &hurry, &glossary)
                 })
                 .map_err(|e| fail(e, &flags, &queue))?
         };
@@ -728,6 +733,7 @@ fn mt_loop(
     cfg: &MtConfig,
     target: Lang,
     hurry: &AtomicBool,
+    glossary: &SharedGlossary,
 ) {
     // Làm nóng khi bắt đầu phiên (§6.5); lỗi ở đây không quan trọng, request thật sẽ báo lỗi của nó. Bấm Dừng thì bỏ
     // ngang lần làm nóng.
@@ -750,11 +756,14 @@ fn mt_loop(
     }
     for job in jobs {
         let (sub_id, version) = (job.sub_id, job.version);
+        // Thuật ngữ có trong câu, theo bản từ điển lúc bắt đầu dịch câu này (§6.5).
+        let terms = glossary.read().map(|g| g.matches(&job.text)).unwrap_or_default();
         let request = Job {
             text: &job.text,
             src: job.src,
             tgt: target,
             context: job.context.as_deref(),
+            terms: &terms,
         };
         let outcome = translate(&mut *mt, &request, cfg, &mut |event| {
             if job.cancel.load(Ordering::SeqCst) {
@@ -1429,6 +1438,106 @@ mod tests {
         assert_eq!(out.len(), 1_000);
     }
 
+    /// Luồng dịch đưa thuật ngữ có trong câu vào prompt theo mẫu "terminology" (§6.5); sửa từ điển giữa phiên thì câu sau
+    /// dùng ngay bản mới; câu không có thuật ngữ nào giữ prompt mặc định.
+    #[test]
+    fn the_translation_thread_puts_matching_terms_into_the_prompt() {
+        use crate::glossary::{Glossary, Term};
+        use crate::prompt::terminology_prompt;
+        use std::sync::RwLock;
+
+        struct Recording(Arc<Mutex<Vec<String>>>);
+        impl Mt for Recording {
+            fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
+                Ok(text.split_whitespace().count())
+            }
+            fn stream(
+                &mut self,
+                req: &ChatRequest,
+                on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
+            ) -> Result<StreamEnd, MtError> {
+                self.0.lock().unwrap().push(req.prompt.to_string());
+                let _ = on_delta("Xong");
+                Ok(StreamEnd {
+                    text: "Xong".into(),
+                    finish_reason: Some("stop".into()),
+                    chunks: 1,
+                    ..StreamEnd::default()
+                })
+            }
+        }
+        let term = |source: &str, target: &str| Term {
+            source: source.into(),
+            target: target.into(),
+        };
+        let prompts = Arc::new(Mutex::new(Vec::new()));
+        let glossary: SharedGlossary = Arc::new(RwLock::new(Glossary::new([term("sprint", "đợt chạy")])));
+        let (jobs_tx, jobs_rx) = mpsc::channel::<MtJob>();
+        let (tx, rx) = mpsc::channel::<Msg>();
+        let thread = {
+            let (mt, glossary) = (Box::new(Recording(prompts.clone())), glossary.clone());
+            std::thread::spawn(move || {
+                mt_loop(
+                    mt,
+                    jobs_rx,
+                    &tx,
+                    &MtConfig::default(),
+                    Lang::Vi,
+                    &AtomicBool::new(false),
+                    &glossary,
+                )
+            })
+        };
+        let translate_one = |sub_id: u64, text: &str| {
+            let cancel = Arc::new(AtomicBool::new(false));
+            jobs_tx
+                .send(MtJob {
+                    sub_id,
+                    version: 0,
+                    src: Lang::En,
+                    text: text.into(),
+                    context: None,
+                    cancel,
+                })
+                .unwrap();
+            loop {
+                if let Msg::MtDone { sub_id: done, .. } = rx.recv().unwrap()
+                    && done == sub_id
+                {
+                    break;
+                }
+            }
+        };
+        translate_one(1, "The sprint starts today");
+        *glossary.write().unwrap() = Glossary::new([term("sprint", "đợt chạy"), term("demo", "buổi trình diễn")]);
+        translate_one(2, "A demo after the sprint");
+        translate_one(3, "Nothing to look up");
+        drop(jobs_tx);
+        thread.join().unwrap();
+        let prompts = prompts.lock().unwrap();
+        assert_eq!(prompts.len(), 4, "làm nóng rồi ba câu");
+        assert_eq!(
+            prompts[1],
+            terminology_prompt(
+                "The sprint starts today",
+                &[term("sprint", "đợt chạy")],
+                Lang::En,
+                Lang::Vi
+            )
+        );
+        assert_eq!(
+            prompts[2],
+            terminology_prompt(
+                "A demo after the sprint",
+                &[term("sprint", "đợt chạy"), term("demo", "buổi trình diễn")],
+                Lang::En,
+                Lang::Vi
+            ),
+            "từ điển mới; mục dài hơn trước"
+        );
+        assert_eq!(prompts[3], translation_prompt("Nothing to look up", Lang::En, Lang::Vi));
+    }
+
     // ---- Luồng phụ đề, nạp thẳng tin nhắn (Q2 của review 02b): tất định, không luồng, không tiến trình phụ. ----
 
     #[derive(Default)]
@@ -1494,6 +1603,7 @@ mod tests {
             target: Lang::Vi,
             translation_context: false,
             id_base: 0,
+            glossary: SharedGlossary::default(),
         }
     }
 

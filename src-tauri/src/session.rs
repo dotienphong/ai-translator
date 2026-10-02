@@ -148,6 +148,7 @@ pub fn engine_config(settings: &Settings, id_base: u64) -> EngineConfig {
         target: MtLang::from_code(code_of(settings.target_language)).expect("năm ngôn ngữ của F2"),
         translation_context: settings.experimental.translation_context,
         id_base,
+        glossary: Default::default(),
     }
 }
 

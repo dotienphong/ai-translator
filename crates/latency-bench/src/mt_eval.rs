@@ -323,6 +323,8 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
             } else {
                 None
             },
+            // A3 chấm prompt mặc định, không có từ điển.
+            terms: &[],
         };
         let row = to_row(
             item,

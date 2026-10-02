@@ -3,9 +3,10 @@
 //! Đ4 của kế hoạch 00) dùng đúng hàm này.
 
 use crate::config::MtConfig;
+use crate::glossary::Term;
 use crate::llama::{ChatRequest, LlamaServer, StreamEnd};
 use crate::postprocess::{PostProcessor, Step, Violation};
-use crate::prompt::{Lang, context_prompt, translation_prompt};
+use crate::prompt::{Lang, context_prompt, terminology_prompt, translation_prompt};
 use std::ops::ControlFlow;
 use std::time::Instant;
 
@@ -51,6 +52,9 @@ pub struct Job<'a> {
     pub tgt: Lang,
     /// Câu trước, khi bật cờ thử nghiệm `experimental.translationContext` (§6.5).
     pub context: Option<&'a str>,
+    /// Thuật ngữ có trong câu (`Glossary::matches`, §6.5). Có thuật ngữ thì dùng mẫu "terminology" và bỏ ngữ cảnh: model
+    /// card không có mẫu gộp hai thứ, và cờ ngữ cảnh chỉ là thử nghiệm, mặc định tắt.
+    pub terms: &'a [Term],
 }
 
 /// Sự kiện trong lúc dịch, cho luồng phụ đề.
@@ -106,6 +110,7 @@ pub fn translate(
 ) -> Outcome {
     let started = Instant::now();
     let prompt = match job.context {
+        _ if !job.terms.is_empty() => terminology_prompt(job.text, job.terms, job.src, job.tgt),
         Some(context) => context_prompt(job.text, context, job.src, job.tgt),
         None => translation_prompt(job.text, job.src, job.tgt),
     };
@@ -243,6 +248,7 @@ mod tests {
             src: Lang::En,
             tgt: Lang::Vi,
             context: None,
+            terms: &[],
         }
     }
 
@@ -374,5 +380,27 @@ mod tests {
         };
         run(&mut mt, &with_context);
         assert!(mt.requests[0].0.starts_with("[Background Information]\ncâu trước"));
+    }
+
+    #[test]
+    fn terms_use_the_terminology_template_and_drop_the_context() {
+        let mut mt = Scripted {
+            replies: vec![Ok((vec!["Đợt", " chạy"], "stop"))],
+            requests: vec![],
+        };
+        let terms = [Term {
+            source: "sprint".into(),
+            target: "đợt chạy".into(),
+        }];
+        let with_terms = Job {
+            context: Some("câu trước"),
+            terms: &terms,
+            ..job("The sprint")
+        };
+        run(&mut mt, &with_terms);
+        assert_eq!(
+            mt.requests[0].0,
+            terminology_prompt("The sprint", &terms, Lang::En, Lang::Vi)
+        );
     }
 }
