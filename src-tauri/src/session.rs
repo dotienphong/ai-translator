@@ -732,9 +732,13 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
                 .filter(|l| l.tier == settings.model_tier)
                 .map(|l| l.manager.clone())
         };
-        if let Some(manager) = running.filter(|m| m.running()) {
+        // Chạm trước rồi mới hỏi còn chạy không: lần tắt khi rảnh (`SidecarManager::stop_if_idle`) kiểm lại "rảnh" dưới khóa
+        // của tiến trình phụ, nên nó không tắt sau lần chạm này (Q5 của review 03).
+        if let Some(manager) = running {
             manager.touch();
-            return Ok(());
+            if manager.running() {
+                return Ok(());
+            }
         }
         // Kiểm SHA-256 lúc chuẩn bị; giám sát còn kiểm lại trước mỗi lần chạy tiến trình phụ (`before_spawn`).
         let prepared = sidecar::prepare(&self.app, settings)?;

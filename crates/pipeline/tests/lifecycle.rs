@@ -370,6 +370,27 @@ fn both_sidecars_stop_after_10_minutes_without_translating() {
     );
 }
 
+/// N1 của review cuối 02 (Q5 của review 03): `tick` đã tính "rảnh", rồi một lần Bắt đầu `touch` hay `begin_session`
+/// trước khi `tick` kịp tắt. Lần tắt kiểm lại dưới khóa của tiến trình phụ, nên phiên mới giữ được tiến trình phụ.
+#[test]
+fn a_start_right_after_the_idle_check_keeps_the_sidecars() {
+    let s = setup("idle-race", true, &[], &[]);
+    s.manager.ensure_started().unwrap();
+    s.clock.advance(Duration::from_secs(10 * 60));
+    // Như `tick` đã thấy rảnh, rồi `prepare` của lần Bắt đầu chạm vào trước khi `tick` tắt.
+    s.manager.touch();
+    assert!(!s.manager.stop_if_idle());
+    assert!(s.manager.running());
+    s.clock.advance(Duration::from_secs(10 * 60));
+    s.manager.begin_session();
+    assert!(!s.manager.stop_if_idle());
+    assert!(s.manager.running());
+    s.manager.end_session();
+    s.clock.advance(Duration::from_secs(10 * 60));
+    assert!(s.manager.stop_if_idle(), "rảnh thật thì vẫn tắt");
+    assert!(!s.manager.running());
+}
+
 #[test]
 fn a_running_session_keeps_the_sidecars() {
     let s = setup("session", true, &[], &[]);

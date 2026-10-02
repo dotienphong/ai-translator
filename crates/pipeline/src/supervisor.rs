@@ -530,18 +530,26 @@ impl SidecarManager {
         a.last_active_ms = self.clock.now_ms();
     }
 
+    /// Không có phiên nào và rảnh quá `idle_shutdown_ms`.
+    fn idle(&self) -> bool {
+        let a = lock(&self.activity);
+        a.sessions == 0 && self.clock.now_ms().saturating_sub(a.last_active_ms) >= self.spec.supervisor.idle_shutdown_ms
+    }
+
     /// Gọi định kỳ. Không có phiên nào và rảnh quá `idle_shutdown_ms` thì tắt cả hai; trả `true` nếu vừa tắt.
     pub fn tick(&self) -> bool {
-        let idle = {
-            let a = lock(&self.activity);
-            a.sessions == 0
-                && self.clock.now_ms().saturating_sub(a.last_active_ms) >= self.spec.supervisor.idle_shutdown_ms
-        };
-        if !idle || !self.running() || self.closing() {
+        if !self.idle() || !self.running() || self.closing() {
             return false;
         }
-        self.stop(true);
-        true
+        self.stop_if_idle()
+    }
+
+    /// Tắt cả hai vì rảnh, nhưng kiểm lại "rảnh" dưới khóa của từng tiến trình phụ, ngay trước khi lấy nó ra. `tick` tính
+    /// "rảnh" rồi mới tới đây: trong lúc đó một lần Bắt đầu có thể đã `touch` (chuẩn bị tiến trình phụ cho phiên) hay
+    /// `begin_session`, và phiên mới không được mất tiến trình phụ vừa giữ (N1 của review cuối 02, Q5 của review 03).
+    /// Trả `true` nếu đã tắt ít nhất một tiến trình.
+    pub fn stop_if_idle(&self) -> bool {
+        self.stop_each(true, true)
     }
 
     /// Có tiến trình phụ nào đang chạy không. Không chờ khóa nào.
@@ -581,9 +589,18 @@ impl SidecarManager {
         if !idle {
             self.shutdown();
         }
+        self.stop_each(idle, false);
+    }
+
+    /// Lấy từng tiến trình phụ ra khỏi slot rồi tắt. `recheck`: dưới khóa của slot, không còn rảnh thì thôi (giữ tiến
+    /// trình đó và tiến trình sau). Trả `true` nếu đã tắt ít nhất một tiến trình.
+    fn stop_each(&self, idle: bool, recheck: bool) -> bool {
         // Bỏ `killers` cùng lúc lấy tiến trình ra khỏi slot (dưới khóa của slot), để không lần chạy mới nào xen vào giữa.
         let server = {
             let mut slot = lock(&self.llama);
+            if recheck && !self.idle() {
+                return false;
+            }
             let server = slot.server.take();
             if server.is_some() {
                 self.llama_running.store(false, Ordering::SeqCst);
@@ -591,6 +608,7 @@ impl SidecarManager {
             }
             server
         };
+        let stopped_llama = server.is_some();
         if let Some(server) = server {
             drop(server);
             self.emit(SidecarEvent::Stopped {
@@ -600,6 +618,9 @@ impl SidecarManager {
         }
         let worker = {
             let mut slot = lock(&self.asr);
+            if recheck && !self.idle() {
+                return stopped_llama;
+            }
             let worker = slot.worker.take();
             if worker.is_some() {
                 self.asr_running.store(false, Ordering::SeqCst);
@@ -607,6 +628,7 @@ impl SidecarManager {
             }
             worker
         };
+        let stopped_asr = worker.is_some();
         if let Some(worker) = worker {
             drop(worker);
             self.emit(SidecarEvent::Stopped {
@@ -614,6 +636,7 @@ impl SidecarManager {
                 idle,
             });
         }
+        stopped_llama || stopped_asr
     }
 
     /// Thiết bị thật của `asr-worker` lần chạy gần nhất. Không chờ khóa của tiến trình phụ.
