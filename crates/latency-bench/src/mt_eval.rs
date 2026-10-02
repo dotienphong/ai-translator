@@ -4,7 +4,7 @@
 //!
 //! Kết quả: `<out-dir>/<tên model>-<plain|context>.jsonl`, cùng `<…>.meta.json` ghi điều kiện của lượt chạy: git HEAD (kèm
 //! cờ có thay đổi chưa commit), tên và kích thước model, đường dẫn và kích thước `llama-server`, `MtConfig`, biến thể, bộ
-//! test. Chạy lại cùng `--out-dir` thì dịch
+//! test, cờ `--no-ratio-thresholds`. Chạy lại cùng `--out-dir` thì dịch
 //! tiếp các câu chưa có, như `translate.py`, nhưng chỉ khi điều kiện y hệt lần trước (R6 của kế hoạch 00: tránh trộn
 //! kết quả của hai phiên bản code hay hai model). Khác thì từ chối, trừ khi có `--resume-anyway`. Muốn dịch lại từ đầu
 //! thì dùng thư mục khác (nhãn khác), đừng xóa kết quả mốc.
@@ -41,6 +41,19 @@ pub struct MtEvalArgs {
     /// Dịch tiếp file kết quả cũ dù điều kiện lần trước khác lần này (`<…>.meta.json`).
     #[arg(long)]
     resume_anyway: bool,
+    /// Không kiểm ngưỡng tỉ lệ token (`ratio_thresholds` rỗng), chỉ giữ hạn mức sinh: để đo tỉ lệ khách quan. Mặc định
+    /// dịch như app, nên bản dịch bị cắt ở ngưỡng mặc định (N4 của review cuối 02).
+    #[arg(long)]
+    no_ratio_thresholds: bool,
+}
+
+/// Cấu hình dịch của lượt chạy: như app, trừ khi `--no-ratio-thresholds`.
+fn mt_config(args: &MtEvalArgs) -> MtConfig {
+    let mut cfg = MtConfig::default();
+    if args.no_ratio_thresholds {
+        cfg.ratio_thresholds.clear();
+    }
+    cfg
 }
 
 /// Điều kiện của một lượt chạy, ghi cạnh file kết quả.
@@ -57,6 +70,9 @@ struct Meta {
     testset_file: String,
     testset_lines: usize,
     limit: usize,
+    /// `--no-ratio-thresholds`. `meta.json` cũ không có trường này: lúc đó chưa có cờ, tức là chạy có ngưỡng.
+    #[serde(default)]
+    no_ratio_thresholds: bool,
     mt_config: serde_json::Value,
 }
 
@@ -79,7 +95,7 @@ fn git_state() -> (String, bool) {
 /// So điều kiện lần này với lần trước; trả các khóa khác nhau.
 fn meta_diff(old: &Meta, new: &Meta) -> Vec<&'static str> {
     let mut keys = Vec::new();
-    let pairs: [(&'static str, bool); 11] = [
+    let pairs: [(&'static str, bool); 12] = [
         ("git_head", old.git_head == new.git_head),
         ("git_dirty", old.git_dirty == new.git_dirty),
         ("model_file", old.model_file == new.model_file),
@@ -90,6 +106,10 @@ fn meta_diff(old: &Meta, new: &Meta) -> Vec<&'static str> {
         ("testset_file", old.testset_file == new.testset_file),
         ("testset_lines", old.testset_lines == new.testset_lines),
         ("limit", old.limit == new.limit),
+        (
+            "no_ratio_thresholds",
+            old.no_ratio_thresholds == new.no_ratio_thresholds,
+        ),
         ("mt_config", old.mt_config == new.mt_config),
     ];
     for (key, same) in pairs {
@@ -243,7 +263,7 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
         }
         items.push(item);
     }
-    let cfg = MtConfig::default();
+    let cfg = mt_config(&args);
     let (git_head, git_dirty) = git_state();
     let meta = Meta {
         git_head,
@@ -264,6 +284,7 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
             .unwrap_or_default(),
         testset_lines: lines,
         limit: args.limit,
+        no_ratio_thresholds: args.no_ratio_thresholds,
         mt_config: serde_json::to_value(&cfg)?,
     };
     let meta_path = args.out_dir.join(format!("{stem}-{}.meta.json", args.variant));
@@ -348,6 +369,7 @@ mod tests {
             testset_file: "t.jsonl".into(),
             testset_lines: 620,
             limit: 0,
+            no_ratio_thresholds: false,
             mt_config: serde_json::to_value(MtConfig::default()).unwrap(),
         }
     }
@@ -390,6 +412,75 @@ mod tests {
         assert_eq!(json["status"], "done");
         assert!(json.get("reason").is_none(), "{json}");
         assert!(to_row(&item, Outcome::Cancelled).is_err());
+    }
+
+    #[derive(clap::Parser)]
+    struct Cli {
+        #[command(flatten)]
+        args: MtEvalArgs,
+    }
+
+    fn parse(extra: &[&str]) -> MtEvalArgs {
+        let base = [
+            "mt-eval",
+            "--testset",
+            "t.jsonl",
+            "--llama-server",
+            "s",
+            "--model",
+            "m.gguf",
+            "--out-dir",
+            "o",
+        ];
+        <Cli as clap::Parser>::try_parse_from(base.iter().chain(extra))
+            .unwrap()
+            .args
+    }
+
+    /// N4 của review cuối 02: `--no-ratio-thresholds` bỏ hết ngưỡng tỉ lệ token (đo tỉ lệ khách quan, không bị cắt ở
+    /// ngưỡng mặc định); mọi tham số dịch khác giữ như app.
+    #[test]
+    fn no_ratio_thresholds_empties_only_the_thresholds() {
+        let args = parse(&[]);
+        assert!(!args.no_ratio_thresholds);
+        assert_eq!(mt_config(&args), MtConfig::default());
+        let args = parse(&["--no-ratio-thresholds"]);
+        assert!(args.no_ratio_thresholds);
+        let cfg = mt_config(&args);
+        assert!(cfg.ratio_thresholds.is_empty());
+        assert_eq!(cfg.ratio_for("ko", "zh"), None);
+        assert_eq!(
+            MtConfig {
+                ratio_thresholds: MtConfig::default().ratio_thresholds,
+                ..cfg
+            },
+            MtConfig::default(),
+            "chỉ bỏ ngưỡng"
+        );
+    }
+
+    /// N4 của review cuối 02: cờ được ghi trong `meta.json`, nên dịch tiếp không trộn kết quả có ngưỡng với không ngưỡng.
+    /// `meta.json` cũ (trước khi có cờ) đọc ra là chạy có ngưỡng.
+    #[test]
+    fn resuming_does_not_mix_runs_with_and_without_thresholds() {
+        let dir = std::env::temp_dir().join(format!("mt-eval-ratio-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("m-plain.meta.json");
+        let json = serde_json::to_value(meta()).unwrap();
+        assert_eq!(json["no_ratio_thresholds"], false);
+        check_meta(&path, false, &meta(), false).unwrap();
+        let unthresholded = Meta {
+            no_ratio_thresholds: true,
+            mt_config: serde_json::to_value(mt_config(&parse(&["--no-ratio-thresholds"]))).unwrap(),
+            ..meta()
+        };
+        let err = check_meta(&path, true, &unthresholded, false).unwrap_err().to_string();
+        assert!(err.contains("no_ratio_thresholds, mt_config"), "{err}");
+        let mut old = json;
+        old.as_object_mut().unwrap().remove("no_ratio_thresholds");
+        std::fs::write(&path, serde_json::to_vec(&old).unwrap()).unwrap();
+        check_meta(&path, true, &meta(), false).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Q7 của review 02b: dịch tiếp chỉ khi điều kiện y hệt lần trước.

@@ -6862,7 +6862,7 @@ Thêm vào cuối `gd1_mt_ratio.md` một đoạn đề xuất:
 
 Ngưỡng chỉ vào `DEFAULT_RATIO_THRESHOLDS` (`crates/pipeline/src/config.rs`) sau khi được duyệt (điểm cần quyết 4). **Đã quyết** (controller, 2026-10-02): ngưỡng của 12 chiều theo mục "Đề xuất" đã vào `DEFAULT_RATIO_THRESHOLDS` ở `22fa4fe`; câu gốc dưới 3 token giữ hạn mức `4 × số token + 32`.
 
-**Đo lại sau `22fa4fe`.** `mt-eval` dịch bằng `MtConfig::default()`, nên từ `22fa4fe` bản dịch của cả 12 chiều này bị cắt ở ngưỡng mặc định: cột "tỉ lệ lớn nhất" không vượt được ngưỡng; câu vượt ngưỡng bị dịch lại, hai lần đều vượt thì thành lỗi. Muốn đo tỉ lệ khách quan thì chạy với danh sách ngưỡng rỗng (`ratio_thresholds` trống); `mt-eval` chưa có cờ cho việc này, nên phải sửa tạm `MtConfig` trong `mt_eval.rs` hoặc thêm cờ.
+**Đo lại sau `22fa4fe`.** Mặc định `mt-eval` dịch bằng `MtConfig::default()`, nên từ `22fa4fe` bản dịch của cả 12 chiều này bị cắt ở ngưỡng mặc định: cột "tỉ lệ lớn nhất" không vượt được ngưỡng; câu vượt ngưỡng bị dịch lại, hai lần đều vượt thì thành lỗi. Muốn đo tỉ lệ khách quan thì thêm cờ `--no-ratio-thresholds` vào lệnh `mt-eval` ở trên: danh sách ngưỡng rỗng, chỉ còn hạn mức sinh (N4 của review cuối 02). Cờ được ghi trong `<…>.meta.json`, nên `mt-eval` từ chối dịch tiếp vào kết quả của một lượt chạy có ngưỡng; dùng `--out-dir` khác, ví dụ `bench/phase0/data/mt/outputs-gd1-ratio-nothr`.
 
 - [ ] **Step 7: Commit**
 
