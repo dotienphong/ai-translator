@@ -113,7 +113,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | A4 | **Chất lượng nhận dạng giọng nói**, đo trên bộ clip mẫu dựng ở Giai đoạn 0 (S7). Mỗi ngôn ngữ nguồn mặc định có ít nhất 15 phút âm thanh, kèm bản chép chuẩn đã được người kiểm lại, và có cả âm thanh thu qua tai nghe Bluetooth (băng hẹp). Chỉ dùng clip có quyền sử dụng: tự thu, hoặc bộ dữ liệu mở như FLEURS và AMI (CC BY 4.0). Tiếng Anh và tiếng Việt đo WER; tiếng Trung, Nhật, Hàn đo CER theo thông lệ cho các ngôn ngữ này. Lấy mốc cho cả gói Chuẩn và gói Nhẹ; mốc đo ở S7 ghi ở bảng dưới. Sau mỗi lần đổi model hay engine, WER/CER không được xấu hơn mốc quá 10% (tương đối). |
 | A5 | **Ổn định:** một phiên dịch liên tục 2 giờ không crash. RAM sau giờ đầu không tăng quá 10%. |
 | A6 | **Cài đặt:** bộ cài ký số hợp lệ. Bản macOS đã notarize, mở không bị Gatekeeper chặn. **Gỡ app sạch, người dùng chọn giữ hay xóa model:** trên Windows, bộ gỡ cài đặt có ô "xóa dữ liệu app", xóa được cả model (§6.7). Trên macOS, gỡ app chỉ là kéo vào Thùng rác, không có bước nào để hỏi; vì vậy trong app có nút "Xóa model và dữ liệu" (§4.3), và trang hỗ trợ hướng dẫn bấm nút này trước khi gỡ. |
-| A7 | **Quyền riêng tư:** kiểm tra qua proxy mạng, trong lúc dịch không có request mạng nào, trừ các việc chạy theo lịch: kiểm tra bản quyền, kiểm tra cập nhật app và manifest model. Không request nào chứa âm thanh hay nội dung chép lời. |
+| A7 | **Quyền riêng tư:** kiểm tra qua proxy mạng, trong lúc dịch không có request mạng nào, trừ các việc chạy theo lịch: kiểm tra bản quyền, hỏi giờ của license server khi giờ máy bị coi là chỉnh lùi (§6.8, §10.2), kiểm tra cập nhật app và manifest model. Không request nào chứa âm thanh hay nội dung chép lời. |
 
 **Mốc đo ở Giai đoạn 0** (Mac M4 Pro, 2026-09-30; số liệu gốc ở `bench/phase0/results/`):
 
@@ -1004,7 +1004,7 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 ### 10.1 Quyền riêng tư và pháp lý
 
 - **Âm thanh** chỉ nằm trong RAM: không ghi xuống đĩa, không gửi qua mạng.
-- **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi license server của sản phẩm (khi mua, kích hoạt, kiểm tra bản quyền). MVP **không có analytics và không gửi báo cáo crash**. Log nằm trên máy; khi cần hỗ trợ, người dùng tự gửi.
+- **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi license server của sản phẩm (khi mua, kích hoạt, kiểm tra bản quyền; và hỏi giờ của server bằng `GET /v1/plans`, không gửi dữ liệu gì của người dùng, tối đa 5 phút một lần, khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về sau khi giờ máy đặt nhầm tới trước). MVP **không có analytics và không gửi báo cáo crash**. Log nằm trên máy; khi cần hỗ trợ, người dùng tự gửi.
 - **Tiến trình phụ:** `llama-server` chỉ nghe trên `127.0.0.1`, với API key ngẫu nhiên tạo mới mỗi lần chạy, truyền qua biến môi trường (§6.5; trạng thái đích cho MVP, Giai đoạn 0 còn dùng `--api-key`). `asr-worker` không mở cổng mạng nào, chỉ giao tiếp qua stdin/stdout.
 - **Khóa API của PayOS** (client id, api key, checksum key) chỉ nằm trên license server, được lưu dưới dạng secret, không bao giờ có trong app.
 - **Lịch sử chép lời** mặc định tắt, chỉ lưu trên máy, xóa toàn bộ được bằng một nút.
