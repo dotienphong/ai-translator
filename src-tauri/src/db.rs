@@ -195,7 +195,7 @@ impl DataStore {
         std::fs::create_dir_all(&self.dir)?;
         match open_with_key(&path, &key) {
             Err(DbError::Sql(e)) if e.sqlite_error_code() == Some(ErrorCode::NotADatabase) => {
-                log::warn!("khóa không mở được {}: tạo DB mới", path.display());
+                log::warn!("khóa không mở được {}: tạo DB mới", log_name(&path));
                 set_aside(&path)?;
                 open_with_key(&path, &key)
             }
@@ -252,8 +252,15 @@ fn set_aside(path: &Path) -> Result<PathBuf, DbError> {
     if journal.exists() {
         std::fs::remove_file(journal)?;
     }
-    log::warn!("đã đổi tên DB không đọc được thành {}", target.display());
+    log::warn!("đã đổi tên DB không đọc được thành {}", log_name(&target));
     Ok(target)
+}
+
+/// Tên file để ghi log: không ghi đường dẫn, vì đường dẫn có tên tài khoản của hệ điều hành và log do người dùng tự gửi
+/// khi cần hỗ trợ (N-3 của review cuối 03).
+fn log_name(path: &Path) -> String {
+    path.file_name()
+        .map_or_else(|| "data.db".to_owned(), |name| name.to_string_lossy().into_owned())
 }
 
 fn journal_path(path: &Path) -> PathBuf {
@@ -544,6 +551,16 @@ mod tests {
         assert_eq!(std::fs::read(&first).unwrap(), b"lan 1");
         assert_eq!(std::fs::read(&second).unwrap(), b"lan 2");
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// N-3 của review cuối 03: log chỉ có tên file, không có đường dẫn (đường dẫn chứa tên tài khoản của hệ điều hành).
+    #[test]
+    fn the_log_names_only_the_file() {
+        let path =
+            Path::new("/Users/someone/Library/Application Support/com.aitranslator.desktop/data.db.unreadable-17");
+        assert_eq!(log_name(path), "data.db.unreadable-17");
+        assert_eq!(log_name(Path::new("data.db")), "data.db");
+        assert!(!log_name(path).contains("someone"));
     }
 
     /// N7 của review 03: SQLCipher dùng đúng thư viện mật mã của từng hệ điều hành (QĐ1). Máy build có `OPENSSL_DIR` thì
