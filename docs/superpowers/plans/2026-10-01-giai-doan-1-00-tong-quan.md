@@ -100,7 +100,7 @@ Chưa có:
 |---|---|---|---|
 | `2026-10-01-giai-doan-1-01-nen-app.md` | 01 Nền app | đã viết, đã duyệt; đã làm trên Mac Task 1–23 (`69f30ba` … `5281e27`, sửa sau review đợt R và U, nâng `475cf0b`, `34777f0`); còn Task 24 (thử tay trên Mac, người), Task 25 (Windows) | — |
 | `2026-10-01-giai-doan-1-02a-pipeline-crate.md`, `…-02d-pipeline-clients.md`, `…-02b-pipeline-engine.md`, `…-02c-pipeline-app.md` (làm theo thứ tự này) | 02 Pipeline trong app | đã viết, đã duyệt; đã làm trên Mac tới 02c Task 7 (`f2edbd6`); còn 02b Task 7–9 (máy rảnh), 02c Task 8 (người), 02c Task 9 (Windows) | phần crate: —; phần nối vào app: 01 |
-| `2026-10-02-giai-doan-1-03a-phu-de-du-lieu.md`, `2026-10-02-giai-doan-1-03b-phu-de-giao-dien.md` (làm theo thứ tự này, trước 04) | 03 Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ | đã viết, chờ duyệt | 01, 02 |
+| `2026-10-02-giai-doan-1-03a-phu-de-du-lieu.md`, `2026-10-02-giai-doan-1-03b-phu-de-giao-dien.md` (làm theo thứ tự này, trước 04) | 03 Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ | đã viết, đã sửa theo review lần 1 và yêu cầu mới của §4.3, §4.4 (`5925d42`), chờ duyệt lại | 01, 02 |
 | `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `2026-10-02-giai-doan-1-04b-quan-ly-model-app.md` (làm theo thứ tự này) | 04 Quản lý model | đã viết; đã sửa theo review lần 1 và quyết định của chủ dự án ngày 2026-10-02, chờ duyệt; làm sau 03 | 01, 02 (03 trước) |
 | `2026-10-01-giai-doan-1-05-license-server.md` | 05 License server | đã viết, đã duyệt; đã làm Task 1–18 (`35d758d` … `5664b1b`, sửa sau review đợt A–D, review cuối Approved ở `4dbd229`); còn Task 19–21 (người: triển khai staging, giao dịch thử, lên production) | — |
 | `2026-10-01-giai-doan-1-06-ban-quyen-app.md` | 06 Bản quyền trong app | sau khi 05 xong và 03 có điểm kiểm tra Pro | 01, 02, 03, 05 |
@@ -222,7 +222,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
 - **Nhận từ 02:**
   - Ghi chú N8 ở đầu 02c: nguồn `SystemExceptSelf` chỉ loại các pid của chính app. Tiếng do WebView của app phát ra đi qua tiến trình `com.apple.WebKit.GPU` (macOS) nên vẫn bị thu; bước "Nghe thử" không được phát tiếng mẫu qua WebView mà mong nó bị loại.
   - Điểm cần quyết 10 của 02a (controller quyết ngày 2026-10-02): 03 thêm số thứ tự `revision` cho `Settings`; 02 giữ như hiện tại (`AppStatus` có `rev`, `init()` giữ cài đặt đã tới qua sự kiện).
-- **Trạng thái:** viết sau khi 01 và 02 xong.
+- **Trạng thái:** đã viết thành hai file 03a (Task 1–13), 03b (Task 1–10), base `5925d42`. Đã sửa theo review lần 1 (Q1–Q5, N1–N13) và yêu cầu mới của chủ dự án sau khi thử tay (kéo cạnh hoặc góc trên cả macOS lẫn Windows, nút ✕ ẩn thanh, màu chữ và màu nền; spec §4.3, §4.4). Chủ dự án đã duyệt bốn điểm cần quyết của 03 (2026-10-02). 03 làm luôn ghi chú N1 của review cuối 02 (03a Task 12); 04 chỉ làm N2.
 
 ### 2.4 Kế hoạch 04: Quản lý model
 

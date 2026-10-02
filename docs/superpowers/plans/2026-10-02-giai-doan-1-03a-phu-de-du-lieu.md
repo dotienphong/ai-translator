@@ -8,14 +8,15 @@
 - SQLite mã hóa bằng SQLCipher, khóa trong kho khóa của hệ điều hành (§6.6, §10.2);
 - từ điển thuật ngữ: khớp theo §6.5, mẫu "terminology" của Hy-MT2, lưu trong DB, nhập và xuất CSV (F5);
 - bản chép lời trong bộ nhớ, xuất TXT, SRT, Markdown, lịch sử trong DB (F4);
-- lệnh của giao diện cho các việc trên, bảng debug ẩn (§7), và phần phía Rust của thanh phụ đề và bước "Nghe thử" (§4.1 bước 6, §4.4).
+- lệnh của giao diện cho các việc trên, bảng debug ẩn (§7), và phần phía Rust của thanh phụ đề và bước "Nghe thử" (§4.1 bước 6, §4.4): kéo cạnh trên cả macOS lẫn Windows, nút ✕ ẩn thanh, màu chữ và màu nền (§4.3, §4.4 sửa ngày 2026-10-02, commit `5925d42`);
+- sửa ghi chú N1 của review cuối 02: tắt tiến trình phụ khi rảnh không chen vào lần Bắt đầu.
 
 Giao diện (thanh phụ đề đủ §4.4, các màn hình, nhóm Cài đặt "Phụ đề" và "Quyền riêng tư", bước "Nghe thử"), thử tay, đợt Windows và cập nhật kế hoạch 00 nằm ở **03b** (`docs/superpowers/plans/2026-10-02-giai-doan-1-03b-phu-de-giao-dien.md`). Làm 03a trước, rồi 03b.
 
 **Kiến trúc:**
 - Logic nằm trong Rust (§10.2, "Bị clone"): khớp thuật ngữ và mẫu prompt ở crate `pipeline` (`glossary.rs`, `prompt.rs`); DB, lịch sử, xuất file, từ điển ở `src-tauri` (`db.rs`, `glossary.rs`, `transcript/`). JavaScript chỉ hiển thị.
 - Một file `data.db` (SQLCipher 4.14, khóa thô 32 byte ngẫu nhiên trong kho khóa, mục `db-key`), mở lúc cần: người dùng Free không bao giờ chạm tới DB.
-- Mọi tính năng Pro hỏi `pro::require` (lệnh) hoặc `pro::is_pro` (việc chạy ngầm). Bản tạm `DevGate` luôn là Pro, trừ khi chạy app với `AI_TRANSLATOR_DEV_FREE=1`.
+- Mọi tính năng Pro hỏi `pro::require` (lệnh) hoặc `pro::is_pro` (việc chạy ngầm). Bản tạm `DevGate` chỉ có trong bản debug và luôn là Pro, trừ khi chạy app với `AI_TRANSLATOR_DEV_FREE=1`; bản release là Free cho tới khi 06 cài trạng thái bản quyền thật.
 - Lệnh chạm DB hay hộp thoại file là lệnh `async`, chạy việc trên luồng của `spawn_blocking` (mở DB lần đầu có thể chờ hộp thoại của Keychain).
 - Hộp thoại lưu và mở file của hệ điều hành đi qua `tauri-plugin-dialog`, chỉ gọi từ Rust (trait `FilePicker`); không cửa sổ nào được cấp quyền `dialog:*`.
 
@@ -24,7 +25,7 @@ Giao diện (thanh phụ đề đủ §4.4, các màn hình, nhóm Cài đặt "
 Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.3, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Tên file dùng ngày viết `2026-10-02` (controller quyết, thay Đ1 của kế hoạch 00 cho kế hoạch này).
 
 Kế hoạch 03 có khoảng 12 000 dòng nên chia hai file, làm theo thứ tự:
-1. **03a** (file này): Task 1–11.
+1. **03a** (file này): Task 1–13.
 2. **03b**: Task 1–10.
 
 Bảng phiên bản, thứ tự với kế hoạch 04, dòng của bảng đối chiếu, quyết định (QĐ), điểm cần chủ dự án quyết, kết quả mutation và bảng commit tham chiếu nằm ở file này, dùng chung cho cả hai.
@@ -54,31 +55,33 @@ Ghi chú:
 
 ## Cách đọc kế hoạch này
 
-- **Thứ tự và trạng thái đầu.** Làm trên `main`, từ commit `45de838` (01, 02 và 05 đã xong phần code trên Mac). Trước mỗi task, `git status` phải sạch. 03a làm hết rồi mới tới 03b.
+- **Thứ tự và trạng thái đầu.** Làm trên `main`, từ commit `5925d42` (01, 02 và 05 đã xong phần code trên Mac; sau `45de838` của lần lập kế hoạch đầu, `main` chỉ đổi `vite.config.ts`, `scripts/run-dev-app.sh`, một dòng `box-sizing` của `src/windows/overlay/overlay.css` kèm test `overlay.css.test.ts`, và tài liệu; `19b7324` sau đó chỉ thêm kết quả thử tay trong `bench/`, không đụng file nào của 03). Trước mỗi task, `git status` phải sạch. 03a làm hết rồi mới tới 03b.
 - **Khối code.**
   - "Tạo `<file>`": chép nguyên khối vào file mới.
   - "Tạo `<file>`, lúc này mới có phần test": file chỉ có các dòng `//!` đầu và khối `#[cfg(test)] mod tests`; bước sau thêm phần code.
   - "Thêm vào `<file>`": chèn khối vào giữa các dòng `//!` đầu file và khối `#[cfg(test)] mod tests`, cách mỗi bên một dòng trống.
   - "Sửa `<file>` (áp bằng `git apply`)": khối `diff` là bản vá chuẩn; lưu khối vào một file tạm rồi chạy `git apply <file tạm>` từ gốc repo. `git apply --check` báo lỗi nghĩa là cây file đã lệch so với kế hoạch: dừng lại, đừng sửa tay cho khớp.
-  - Khối `diff` của `Cargo.toml` có dòng phiên bản làm ngữ cảnh ở vài chỗ: nếu `main` đã nâng crate đó thì `git apply --3way`, hoặc thêm tay đúng các dòng `+`, giữ dòng phiên bản của `main`.
-- **Khối Expected.** Mọi khối Expected là output thật, lấy từ một lần chạy lại toàn bộ các task trên một worktree sạch của `45de838`, với target riêng còn trống (2026-10-02). Lệnh đã lọc output (`grep`, `sed`) để Expected không phụ thuộc thời gian chạy; test chạy một luồng (`--test-threads=1`) khi Expected liệt kê tên test, để thứ tự cố định. Bước đỏ chỉ in tối đa 6 dòng lỗi khác nhau (sắp theo chữ cái); output thật có thể dài hơn. Số test là số lúc lập kế hoạch.
+  - Mỗi khối `diff` có dòng `index <blob trước>..<blob sau>` (SHA đầy đủ). Nếu cây đã lệch vì `main` có commit mới (ví dụ đã nâng một crate mà khối `diff` của `Cargo.toml` lấy dòng phiên bản làm ngữ cảnh), `git apply --3way <file tạm>` gộp được, với điều kiện file trước task còn đúng như cây tham chiếu (blob có sẵn trong repo). Khối áp lên file vừa được bước viết test sửa thì blob trước không có sẵn: khi đó thêm tay đúng các dòng `+`, giữ phần của `main`.
+- **Khối Expected.** Mọi khối Expected là output thật, lấy từ một lần chạy lại toàn bộ các task trên một worktree sạch của `5925d42`, với target riêng (2026-10-02). Lệnh đã lọc output (`grep`, `sed`) để Expected không phụ thuộc thời gian chạy; test chạy một luồng (`--test-threads=1`) khi Expected liệt kê tên test, để thứ tự cố định. Bước đỏ chỉ in tối đa 6 dòng lỗi khác nhau (sắp theo chữ cái); output thật có thể dài hơn. Số test là số lúc lập kế hoạch.
 - **Môi trường.** Mọi lệnh chạy từ gốc repo, sau `source "$HOME/.cargo/env" && eval "$(fnm env --use-on-cd)"` (Node 24.21.0, pnpm 12.6.0, Rust 1.98.1). Worktree mới thì chạy `pnpm install --frozen-lockfile` một lần trước task đầu, và `pnpm build` (để `dist/` có sẵn cho `src-tauri`).
 - **Không bật hộp thoại quyền** (mục 6.8 của kế hoạch 00): test dùng kho khóa trong bộ nhớ (`Keystore::mock`) và hộp thoại file giả (`FakePicker`); không task nào của 03a mở app, đọc Keychain thật hay mở hộp thoại thật.
 - **Task cần người hoặc Windows:** ở cuối 03b (Task 8, 9).
-- **Tiến trình phụ thật:** Task 4 Step 5 chạy `llama-server` b11146 với Hy-MT2 thật (có sẵn trên máy dev ở `tools/`, `models/`, bị `.gitignore` bỏ qua). Không có thì bỏ bước đó; mọi test khác không cần model.
+- **Tiến trình phụ thật:** Task 4 Step 5 chạy `llama-server` b11146 với Hy-MT2 thật (có sẵn ở `tools/`, `models/` của repo chính trên máy dev, bị `.gitignore` bỏ qua; đặt biến `R` là đường dẫn repo chính). Không có thì bỏ bước đó; mọi test khác không cần model.
 
 ## Thứ tự với kế hoạch 04 và file giao nhau
 
-Kế hoạch 04 (quản lý model: `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `…-04b-quan-ly-model-app.md`) được viết cùng lúc, trên `main` `45de838`. Controller đề xuất **03 thực thi trước 04**: 04 dựng trên cây cuối của 03 (sau 03b Task 10); mục "File giao nhau với kế hoạch 03" của 04a ghi cách áp lại. Hai chỗ cần để ý khi dựng 04 trên 03: `session::engine_config` của 03 nhận thêm tham số từ điển (`SharedGlossary`), 04 thêm `PipelineConfig`, nên hàm nhận cả hai; `wipe_user_data` của 04 gọi `data::clear_all_data` của 03. Hai kế hoạch cùng đụng các file dưới đây; khi thực thi 04 sau 03, các khối `diff` của 04 ở những file này cần `git apply --3way` hoặc tác giả 04 dựng lại diff trên cây cuối của 03:
+Kế hoạch 04 (quản lý model: `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `…-04b-quan-ly-model-app.md`) được viết cùng lúc, trên `main` `45de838`. Controller đề xuất **03 thực thi trước 04**: 04 dựng trên cây cuối của 03 (sau 03b Task 10). Khối `diff` của 04 viết trên `45de838` không áp thẳng được lên cây của 03, và `git apply --3way` cũng không cứu được nếu khối thiếu dòng `index`, nên **tác giả 04 phải dựng lại các khối `diff` của 04 trên cây cuối của 03** (nhánh `plan03` của cây tham chiếu, xem bảng cuối file này). Hai chỗ cần để ý khi dựng 04 trên 03: `session::engine_config` của 03 nhận thêm tham số từ điển (`SharedGlossary`), 04 thêm `PipelineConfig`, nên hàm nhận cả hai; `wipe_user_data` của 04 gọi `data::clear_all_data` của 03 (hàm này nay xóa cả các bản `data.db.unreadable-*`). Hai kế hoạch cùng đụng các file dưới đây:
 
 | File | 03 đổi gì | 04 có thể đổi gì |
 |---|---|---|
 | `src-tauri/Cargo.toml`, `Cargo.lock` | thêm `rusqlite`, `getrandom`, `csv`, `tauri-plugin-dialog` | thêm crate tải file, Ed25519, SHA-256 |
 | `src-tauri/src/lib.rs` | `mod` mới (`pro`, `db`, `data`, `debug`, `files`, `glossary`, `transcript`); `setup` cài `DataStore`, `ActiveGlossary`, `TranscriptStore`, `Picker`, `DebugLog`, Pro; đăng ký `tauri_plugin_dialog` | `mod models`, cài trình tải |
-| `src-tauri/src/commands.rs`, `build.rs`, `capabilities/main.json`, `acl_tests.rs` | 16 lệnh mới (danh sách cố định ba chỗ phải khớp); overlay thêm `core:window:allow-start-resize-dragging` | lệnh của màn hình Model |
+| `src-tauri/src/commands.rs`, `build.rs`, `capabilities/main.json`, `capabilities/overlay.json`, `acl_tests.rs` | 16 lệnh mới của `main`, 4 lệnh mới của `overlay` (danh sách cố định ba chỗ phải khớp) | lệnh của màn hình Model |
 | `src-tauri/src/errors.rs`, `src/i18n/en.ts`, `src/i18n/vi.ts` | mã lỗi mới, chuỗi giao diện mới | mã lỗi và chuỗi của model |
-| `src-tauri/src/state.rs` (`AppStatus`, `OverlayView`) | `AppStatus.pro`, `OverlayView.edge_resize` | trạng thái tải model |
-| `src-tauri/src/session.rs` | từ điển và bản chép lời nối vào phiên; `StartOptions::LISTEN_TEST`; số đo vào bảng debug | `LiveDeps::prepare` theo gói model (ghi chú N1, N2 của review cuối 02) |
+| `src-tauri/src/state.rs` (`AppStatus`, `OverlayView`) | `AppStatus.pro`, màu trong `OverlayView` | trạng thái tải model |
+| `src-tauri/src/settings/mod.rs` | `TextColor`, `BackgroundColor`, hai khóa màu của `overlay` | `modelTier` (nếu đổi) |
+| `src-tauri/src/session.rs` | từ điển và bản chép lời nối vào phiên; `StartOptions::LISTEN_TEST`; số đo vào bảng debug; `save_on_exit`; `LiveDeps::prepare` chạm trước khi hỏi `running` (N1 của review cuối 02) | `LiveDeps::prepare` theo gói model (ghi chú N2 của review cuối 02) |
+| `crates/pipeline/src/supervisor.rs`, `crates/pipeline/tests/lifecycle.rs` | `stop_if_idle` (N1 của review cuối 02) | (nếu có) |
 | `src-tauri/src/test_support.rs` | `FakePro`, `FakePicker`, `DataStore` tạm, `prompts`, `capture_sources` | bản giả của trình tải |
 | `src/lib/ipc.ts`, `src/store/app.ts`, `src/store/app.test.ts` | kiểu và lệnh mới; `Settings.revision`, `AppStatus.pro` | kiểu và lệnh của model |
 | `src/windows/main/settings/PrivacySettings.tsx` (03b tạo) | lưu lịch sử, "Xóa toàn bộ dữ liệu" | thêm nút "Xóa model và dữ liệu", gọi `data::clear_all_data` của 03 rồi xóa model (dòng 57) |
@@ -86,8 +89,35 @@ Kế hoạch 04 (quản lý model: `2026-10-02-giai-doan-1-04a-quan-ly-model-loi
 | `src/windows/main/onboarding/Onboarding.tsx` | bước 6 "Nghe thử" | bước 2–3 (kiểm tra máy, tải model) |
 | `src/styles/main.css` | kiểu của các màn hình mới | kiểu của màn hình Model |
 
-Hai ghi chú của review cuối 02 cho 03/04 (`notes-for-plan02-exec.md`, mục 7 N1 và mục 8 N2) đều nằm ở `LiveDeps::prepare` và vòng đời tiến trình phụ: **03 không làm, để 04 làm** cùng lúc với chỗ chọn gói model (N2 bắt buộc khi 04 cho đổi `modelTier` ở giao diện). Controller cần báo tác giả 04.
+Hai ghi chú của review cuối 02 cho 03/04 (`notes-for-plan02-exec.md`, mục 7 N1 và mục 8 N2): **03 làm N1** (Task 12, Q5 của review 03); **04 làm N2** cùng lúc với chỗ chọn gói model (N2 bắt buộc khi 04 cho đổi `modelTier` ở giao diện).
 
+
+## Sửa sau review lần 1 và yêu cầu mới (2026-10-02)
+
+Review lần 1 (`$S/review-03-r1.md`) chạy lại bản trước từ file, khớp hết; kết luận "Cần sửa". Bản này sửa như sau.
+
+| Mã | Sửa ở đâu | Cách sửa |
+|---|---|---|
+| Q1 | 03a Task 1 | `DevGate` chỉ có trong bản debug; bản release không cài gate nào (Free). Test `the_dev_gate_exists_only_in_debug_builds` chạy cả ở bản release (03b Task 7 Step 1) |
+| Q2 | 03a Task 3 | `wipe` xóa thêm mọi `data.db.unreadable-*` và journal; test kiểm thư mục trống |
+| Q3 | 03a Task 7 | `session::save_on_exit` ở `RunEvent::Exit`; test Thoát ở menu khay và `RunEvent::Exit` đều lưu đúng một lần (giết M11) |
+| Q4 | 03a Task 3, 9, 10 | test cho M01–M04 (Task 9), M06 (Task 3), M17 (Task 10); M11 ở Q3; thêm test M05, M07, M08 |
+| Q5 | 03a Task 12 (mới) | 03 nhận N1 của review cuối 02 (QĐ24); 04 chỉ làm N2 |
+| N1 | 03a Task 5 | chặn công thức Excel khi xuất CSV, bỏ dấu chặn khi nhập |
+| N2 | 03b Task 1, 4 | `reset` của ba store dữ liệu, `resetWhenDataCleared` |
+| N3 | 03b Task 6 | `afterListenTestStart`: rời bước trong lúc chờ thì dừng phiên |
+| N4 | 03b Task 1, 4; 03a Task 8 | độ lệch múi giờ tại lúc bắt đầu phiên; Rust từ chối ngoài ±18 giờ |
+| N5 | 03b Task 5 | lời giới thiệu của màn hình Từ điển nói thuật ngữ là gợi ý |
+| N6 | cả hai file | khối `diff` có dòng `index`; mục "Cách đọc" sửa cách dùng `--3way`; 04 dựng lại diff trên cây cuối của 03 |
+| N7 | 03a Task 3 | test `the_cipher_provider_matches_the_platform` |
+| N8 | 03a Task 3 | `remove_stale_app_dirs` (state của app giả không được drop, nên `Drop` không dùng được) |
+| N9 | 03b Task 7 | lọc dòng `is locked` khỏi output của `cargo audit` |
+| N10 | 03a Task 4 Step 5 | dùng `$R/tools`, `$R/models` |
+| N11 | 03a Task 5 | `pro::refresh` về Free thì `glossary::forget`; lên Pro không đọc DB (QĐ4) |
+| N12 | 03a Task 8 | hộp thoại `set_parent` cửa sổ chính; 03b Task 8 kiểm |
+| N13 | QĐ20; 03b Task 10 | ghi cho 06: phiên nghe thử là phiên thật, có dấu `StartOptions::LISTEN_TEST` |
+
+Yêu cầu mới của chủ dự án sau khi thử tay (spec §4.3, §4.4, commit `5925d42`): kéo cạnh hoặc góc trên cả macOS lẫn Windows, cỡ tối thiểu 320 × 80 (03a Task 10, 03b Task 2); nút ✕ ẩn thanh khi chưa khóa (03a Task 10, 03b Task 2); màu chữ và màu nền trong Cài đặt › Phụ đề (03a Task 11, 03b Task 1–3). Spec §6.9 chưa liệt kê hai khóa màu trong `overlay.{…}`; kế hoạch 00 Task 2 (03b Task 10) ghi việc sửa spec.
 ## Dòng của bảng đối chiếu giao cho kế hoạch 03
 
 Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (45 dòng có `03`). Cột "Task": `a<số>` là 03a, `b<số>` là 03b; dòng nào còn phần của kế hoạch khác hay còn chờ thì ghi rõ.
@@ -95,7 +125,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (45 dòng có `03`)
 | # | Yêu cầu (rút gọn) | Phần của 03 | Task |
 |---|---|---|---|
 | 15 | F1: phụ đề dịch trực tiếp từ âm thanh hệ thống | hiển thị đủ trên thanh phụ đề và cửa sổ chính | a10, b2, b4 |
-| 17 | F3: thanh phụ đề nổi theo §4.4 | nội dung, chỉ báo, kéo cạnh, nhóm Cài đặt "Phụ đề" | a10, b2, b3; b8 (người), b9 (Win) |
+| 17 | F3: thanh phụ đề nổi theo §4.4 | nội dung, chỉ báo, kéo cạnh, nút ✕ ẩn thanh, màu chữ và màu nền, nhóm Cài đặt "Phụ đề" | a10, a11, b2, b3; b8 (người), b9 (Win) |
 | 18 | F4: bản chép lời: xem, tìm, sao chép; xuất TXT, SRT, Markdown và lưu lịch sử là Pro; lịch sử mặc định tắt | bản chép lời trong bộ nhớ, xuất, lịch sử; khóa Pro qua điểm kiểm tra duy nhất | a1, a6, a7, a8, b4; 06 nối bản quyền thật |
 | 19 | F5: từ điển thuật ngữ (Pro), tối đa 500 cặp; chỉ thuật ngữ có trong câu vào prompt | khớp, prompt, lưu, CSV, màn hình | a4, a5, a9, b5; 06 nối bản quyền thật |
 | 25 | A1: Teams, Zoom, Meet, Zalo PC; loa, tai nghe | thanh phụ đề hiện đúng trên app họp (thử tay) | b8 (người), b9 (Win); nghiệm thu ở 08 |
@@ -106,13 +136,13 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (45 dòng có `03`)
 | 47 | Bản chép lời: giờ, câu gốc, bản dịch; tìm, sao chép, xuất file (Pro) | màn hình Bản chép lời | a6, a8, b1, b4 |
 | 48 | Lịch sử (Pro): danh sách, xóa từng phiên hoặc tất cả | màn hình Lịch sử | a7, a8, b1, b4 |
 | 49 | Từ điển (Pro): thêm, sửa, xóa; nhập và xuất CSV | màn hình Từ điển thuật ngữ | a5, a9, b1, b5 |
-| 51 | Cài đặt › Phụ đề: cỡ chữ, số dòng, độ mờ nền, câu gốc | nhóm Phụ đề | b3 |
+| 51 | Cài đặt › Phụ đề: cỡ chữ, số dòng, màu chữ, màu nền, độ mờ nền, câu gốc | nhóm Phụ đề; màu chọn từ bảng màu có sẵn, mặc định chữ trắng trên nền đen | a11, b1, b3 |
 | 56 | Cài đặt › Quyền riêng tư: lưu lịch sử; xóa toàn bộ dữ liệu | nhóm Quyền riêng tư, lệnh `clear_all_data` | a9, b3 |
 | 57 | Nút "Xóa model và dữ liệu"; cả hai nút giữ bản quyền và bộ đếm | `data::clear_all_data` chỉ xóa `data.db` và mục `db-key`; chỗ đặt nút ở `PrivacySettings.tsx` | a9, b3; nút ở 04; 06 kiểm Q14 |
 | 65 | 1–3 dòng bản dịch, câu gốc chữ nhỏ ở trên | | b1, b2 |
 | 66 | Bản dịch hiện dần từng chữ | giữ `subtitle://delta` của 02, hiện đúng trạng thái `translating` | b1, b2 |
 | 67 | Phụ đề tạm màu nhạt; thay bằng bản dịch của câu đã ghép | | b1, b2 |
-| 68 | Kéo để di chuyển, kéo cạnh đổi kích thước; nhớ vị trí từng màn hình | kéo cạnh (Windows tự vẽ vùng kéo, macOS cạnh của NSPanel), cỡ tối thiểu, nhớ vị trí cả lúc ẩn | a10, b2; b8 (người), b9 (Win) |
+| 68 | Kéo để di chuyển, kéo cạnh hoặc góc đổi kích thước (cả macOS lẫn Windows, tối thiểu 320 × 80); nhớ vị trí và kích thước từng màn hình; nút ✕ ẩn thanh khi chưa khóa | vùng kéo cạnh trên cả hai hệ điều hành (Windows: hệ điều hành đổi kích thước; macOS: app đổi theo con trỏ), cỡ tối thiểu, nhớ vị trí cả lúc ẩn, nút ✕ | a10, b2; b8 (người), b9 (Win) |
 | 73 | Chỉ báo nhỏ: đang nghe, không có âm thanh, đang trễ | | b1, b2 |
 | 81 | Lần đầu nạp model: thanh phụ đề hiện "Đang nạp model…" | | b1, b2 |
 | 136 | Lần đầu chạy binary mới: "Đang chuẩn bị lần đầu" | thanh phụ đề hiện lời nhắc này | b2; số đo thật chờ T1 |
@@ -142,34 +172,36 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (45 dòng có `03`)
 
 ## Quyết định của kế hoạch này
 
-Đánh số QĐ1–QĐ22, dùng chung cho 03a và 03b.
+Đánh số QĐ1–QĐ24, dùng chung cho 03a và 03b. Các QĐ sửa hay thêm sau review lần 1 ghi rõ mã của review.
 
 - **QĐ1. SQLCipher qua `rusqlite` + `bundled-sqlcipher`, khác nhau theo hệ điều hành.** macOS dùng CommonCrypto của hệ thống (không có OpenSSL); Windows bật `bundled-sqlcipher-vendored-openssl` (OpenSSL 3.6.3 build tĩnh). Chọn tính năng theo target trong `Cargo.toml` (resolver 3 không gộp tính năng của target khác). Phương án khác đã xét: SQLite3 Multiple Ciphers (không có trong `rusqlite`), OpenSSL dạng DLL kèm bộ cài (thêm file vào bảng SHA-256 của 07, phải cập nhật bảo mật riêng). Cách đã chọn không thêm DLL, và chỉ một bản OpenSSL.
 - **QĐ2. Khóa DB là khóa thô 32 byte**, không phải mật khẩu: `PRAGMA key = "x'<64 chữ số hex>'"`, SQLCipher bỏ qua PBKDF2 nên mở nhanh. Khóa ngẫu nhiên từ `getrandom`, lưu dạng hex ở mục `db-key` của kho khóa (service là bundle identifier, `persistence = Local` trên Windows).
 - **QĐ3. DB ở `app_local_data_dir`**: macOS là `~/Library/Application Support/com.aitranslator.desktop/` (cùng chỗ `settings.json`), Windows là `%LOCALAPPDATA%\com.aitranslator.desktop\` (không đi theo hồ sơ roaming, cùng máy với khóa).
-- **QĐ4. Mở DB lúc cần, không lúc khởi động.** Người dùng Free không đọc kho khóa vì DB. Mất khóa hay khóa sai: đổi tên file thành `data.db.unreadable-<giây>` rồi tạo DB mới. Kho khóa lỗi (bị từ chối): báo `dataUnavailable`, không đụng file. File của bản app mới hơn (`user_version` lớn hơn): từ chối, không sửa.
-- **QĐ5. `PRAGMA secure_delete = ON`**: dữ liệu bị xóa được ghi đè bằng số 0. Khóa ngoại đã bật sẵn trong bản SQLCipher kèm theo (`SQLITE_DEFAULT_FOREIGN_KEYS=1`), test xóa phiên kiểm cả các câu bị xóa theo.
-- **QĐ6. "Xóa toàn bộ dữ liệu" xóa hẳn file và mục khóa** (`DataStore::wipe`), không `DELETE` từng bảng: không còn gì của dữ liệu cũ trên đĩa. Không phải tính năng Pro (người đã về Free vẫn xóa được). Bản chép lời trong bộ nhớ cũng bị xóa. Kế hoạch 04 gọi `data::clear_all_data` cho nút "Xóa model và dữ liệu".
-- **QĐ7. Điểm kiểm tra Pro duy nhất** là `pro.rs` (Đ6): trait `ProGate`, `require` cho lệnh, `is_pro` cho việc chạy ngầm, `refresh` đưa trạng thái vào `AppStatus.pro`. Chưa cài `ProGate` thì là Free. Bản tạm `DevGate` của 03 luôn Pro, trừ khi `AI_TRANSLATOR_DEV_FREE=1`. 06 thay `DevGate` bằng trạng thái bản quyền, gọi `refresh` khi bản quyền đổi, và thêm kiểm tra ở nhiều chỗ theo §10.2.
+- **QĐ4. Mở DB lúc cần, không lúc khởi động.** Người dùng Free không đọc kho khóa vì DB. Mất khóa hay khóa sai: đổi tên file thành `data.db.unreadable-<giây>` rồi tạo DB mới (giữ để hỗ trợ xem; mỗi lần mất khóa thêm một file, chấp nhận vì hiếm và "Xóa toàn bộ dữ liệu" dọn hết). Kho khóa lỗi (bị từ chối): báo `dataUnavailable`, không đụng file. File của bản app mới hơn (`user_version` lớn hơn): từ chối, không sửa.
+- **QĐ5. `PRAGMA secure_delete = ON`**: dữ liệu bị xóa được ghi đè bằng số 0 (có test, M06 của review 03). Khóa ngoại đã bật sẵn trong bản SQLCipher kèm theo (`SQLITE_DEFAULT_FOREIGN_KEYS=1`), test xóa phiên kiểm cả các câu bị xóa theo.
+- **QĐ6. "Xóa toàn bộ dữ liệu" xóa hẳn file, journal, mọi bản `data.db.unreadable-*` và mục khóa** (`DataStore::wipe`; Q2 của review 03), không `DELETE` từng bảng: không còn gì của dữ liệu cũ trên đĩa. Cửa sổ chính cũng bỏ bản chép lời, lịch sử và từ điển đang hiện (N2). Không phải tính năng Pro (người đã về Free vẫn xóa được). Bản chép lời trong bộ nhớ cũng bị xóa. Kế hoạch 04 gọi `data::clear_all_data` cho nút "Xóa model và dữ liệu".
+- **QĐ7. Điểm kiểm tra Pro duy nhất** là `pro.rs` (Đ6): trait `ProGate`, `require` cho lệnh, `is_pro` cho việc chạy ngầm, `refresh` đưa trạng thái vào `AppStatus.pro`. Chưa cài `ProGate` thì là Free. Bản tạm `DevGate` của 03 **chỉ có trong bản debug** (`cfg(debug_assertions)`; Q1 của review 03) và luôn Pro, trừ khi `AI_TRANSLATOR_DEV_FREE=1`; bản release không cài gate nào nên là Free. 06 cài trạng thái bản quyền đúng một lần ở chỗ của `install_default_gate` (`app.manage` không thay được state đã có), gọi `refresh` khi bản quyền đổi, và thêm kiểm tra ở nhiều chỗ theo §10.2. `refresh` về Free thì luồng dịch thôi dùng thuật ngữ ngay (N11).
 - **QĐ8. Tính năng nào là Pro:** xem và xóa lịch sử, lưu lịch sử, xuất file, từ điển (xem, sửa, nhập, xuất, đưa vào prompt). Không phải Pro: xem bản chép lời của phiên hiện tại, tìm, sao chép, xóa toàn bộ dữ liệu, bảng debug.
 - **QĐ9. Thuật ngữ là cặp (chữ nguồn, bản dịch), không gắn ngôn ngữ.** Mục nào khớp câu thì vào prompt, dù ngôn ngữ đích là gì (điểm cần quyết 2).
 - **QĐ10. Luật khớp thuật ngữ** (§6.5): cả câu và thuật ngữ chuẩn hóa NFC rồi chữ thường. Ranh giới từ xét riêng ở từng đầu của thuật ngữ: đầu đó là chữ hay số không phải Trung, Nhật, Hàn thì ký tự kề bên trong câu không được là chữ hay số không phải Trung, Nhật, Hàn. Nên "AI" không khớp trong "said" nhưng khớp trong "使用AI模型"; thuật ngữ trộn như "AI模型" vẫn đúng luật; "C++" khớp trong "C++11" (đầu phải là dấu +). Quá 20 mục thì lấy mục dài hơn trước, cùng độ dài theo thứ tự trong từ điển.
 - **QĐ11. Mẫu "terminology" lấy nguyên văn model card** (`tencent/Hy-MT2-1.8B`, commit `9a341cd`, cùng commit với tokenizer đang dùng): mẫu tiếng Anh "Reference the following translations:" … "translates to" … dòng trống … "Note that you must ONLY output…"; mẫu tiếng Trung "参考下面的翻译：" … "翻译成" … không có dòng trống. Chọn mẫu tiếng Trung hay tiếng Anh theo cùng luật với mẫu mặc định. Có thuật ngữ thì bỏ ngữ cảnh câu trước (cờ thử nghiệm): model card không có mẫu gộp hai thứ.
 - **QĐ12. Từ điển của luồng dịch đọc lại ở mỗi câu** (`SharedGlossary = Arc<RwLock<Glossary>>`): sửa từ điển giữa phiên thì câu sau dùng ngay. App nạp lại lúc bắt đầu phiên và sau mỗi lần sửa; Free thì rỗng. Đọc DB lỗi lúc bắt đầu phiên thì dịch không có thuật ngữ, ghi log.
 - **QĐ13. Prompt mặc định không đổi**: câu không có thuật ngữ nào dùng đúng mẫu cũ, và `latency-bench mt-eval` truyền từ điển rỗng. Vì vậy 03 không cần chạy lại A3 (mục 6.7 của kế hoạch 00).
-- **QĐ14. Từ điển:** tối đa 500 cặp; mỗi ô cắt khoảng trắng, không rỗng, tối đa 200 ký tự, không có ký tự điều khiển (xuống dòng làm hỏng mẫu "terminology"); không trùng chữ nguồn sau khi chuẩn hóa. CSV hai cột `source,target`, UTF-8 có BOM (Excel mở đúng tiếng Việt); nhập: chữ nguồn đã có thì lấy bản dịch trong file, mới thì thêm tới 500, dòng hỏng bỏ qua và đếm, file không phải UTF-8 thì từ chối, cả lần nhập là một transaction; file tối đa 1 MiB.
-- **QĐ15. Lịch sử lưu một lần khi phiên dừng** (bấm Dừng, lỗi, thoát app), trong một transaction, chỉ khi bật "Lưu lịch sử" và là Pro; phiên không có câu nào thì không lưu. App bị tắt đột ngột thì mất phiên đó. Lưu đồng bộ ngay lúc dừng (cả khi thoát), không đẩy sang luồng khác, để không mất phiên cuối.
-- **QĐ16. Xuất file:** TXT và Markdown ghi giờ địa phương lúc câu bắt đầu; SRT ghi mốc tính từ đầu phiên. App không kèm dữ liệu múi giờ: giao diện gửi độ lệch so với UTC lúc xuất (`utcOffsetMinutes`). Chữ trong file (tiêu đề, "[bỏ qua đoạn]", "(chưa dịch được)") theo ngôn ngữ giao diện, ở bảng chuỗi phía Rust (`i18n.rs`). SRT bản dịch: câu không có bản dịch thì hiện câu gốc.
-- **QĐ17. Hộp thoại file qua `tauri-plugin-dialog`, chỉ gọi từ Rust** (`files.rs`, trait `FilePicker`). Không cửa sổ nào được cấp `dialog:*`; `acl_tests` thêm `plugin:dialog|save`, `open`, `message` vào danh sách bị cấm. Plugin chèn một script nhỏ vào webview (thay `window.alert`, `confirm`); vì lệnh của plugin bị chặn, giao diện không dùng `confirm()` mà tự vẽ bước xác nhận.
+- **QĐ14. Từ điển:** tối đa 500 cặp; mỗi ô cắt khoảng trắng, không rỗng, tối đa 200 ký tự, không có ký tự điều khiển (xuống dòng làm hỏng mẫu "terminology"); không trùng chữ nguồn sau khi chuẩn hóa. CSV hai cột `source,target`, UTF-8 có BOM (Excel mở đúng tiếng Việt); nhập: chữ nguồn đã có thì lấy bản dịch trong file, mới thì thêm tới 500, dòng hỏng bỏ qua và đếm, file không phải UTF-8 thì từ chối, cả lần nhập là một transaction; file tối đa 1 MiB. Ô bắt đầu bằng `=`, `+`, `-`, `@` được thêm `'` khi xuất để Excel không chạy công thức, bỏ lại khi nhập (N1 của review 03).
+- **QĐ15. Lịch sử lưu một lần khi phiên dừng** (bấm Dừng, lỗi, Thoát ở menu khay, và mọi lần app thoát có kiểm soát: máy tắt, khởi động lại, đăng xuất, app tự khởi động lại để cập nhật, qua `session::save_on_exit` ở `RunEvent::Exit`; Q3 của review 03), trong một transaction, chỉ khi bật "Lưu lịch sử" và là Pro; phiên không có câu nào thì không lưu. Chỉ mất phiên khi app bị kill hay mất điện. Lưu đồng bộ ngay lúc dừng (cả khi thoát), không đẩy sang luồng khác, để không mất phiên cuối. 07 dùng `AppHandle::request_restart` để cập nhật (đi qua `RunEvent::Exit`); nếu gọi `restart` trên luồng chính thì phải gọi `save_on_exit` trước, vì Tauri bỏ qua sự kiện khi đó.
+- **QĐ16. Xuất file:** TXT và Markdown ghi giờ địa phương lúc câu bắt đầu; SRT ghi mốc tính từ đầu phiên. App không kèm dữ liệu múi giờ: giao diện gửi độ lệch so với UTC tại lúc bắt đầu phiên (`utcOffsetMinutes`; phiên ghi ở mùa giờ khác vẫn đúng giờ, N4 của review 03); phía Rust từ chối độ lệch ngoài ±18 giờ (`outOfRange`). Chữ trong file (tiêu đề, "[bỏ qua đoạn]", "(chưa dịch được)") theo ngôn ngữ giao diện, ở bảng chuỗi phía Rust (`i18n.rs`). SRT bản dịch: câu không có bản dịch thì hiện câu gốc.
+- **QĐ17. Hộp thoại file qua `tauri-plugin-dialog`, chỉ gọi từ Rust** (`files.rs`, trait `FilePicker`), gắn vào cửa sổ chính (`set_parent`, N12 của review 03). Không cửa sổ nào được cấp `dialog:*`; `acl_tests` thêm `plugin:dialog|save`, `open`, `message` vào danh sách bị cấm. Plugin chèn một script nhỏ vào webview (thay `window.alert`, `confirm`); vì lệnh của plugin bị chặn, giao diện không dùng `confirm()` mà tự vẽ bước xác nhận.
 - **QĐ18. Số thứ tự `Settings.revision`** chỉ có lúc chạy (không ghi file, không sửa được qua `update_settings`), tăng dưới khóa của `AppState` mỗi lần thay cài đặt. Giao diện bỏ bản có số nhỏ hơn; lúc `init`, kết quả của `get_settings` chỉ thay bản đã tới qua sự kiện khi lớn hơn hẳn.
-- **QĐ19. Thanh phụ đề kéo cạnh:** Windows tự vẽ vùng kéo cạnh rồi gọi `startResizeDragging` (QĐ23 của 01), cấp `core:window:allow-start-resize-dragging` cho overlay; macOS không có `drag_resize_window` trong tao, nên dùng cạnh của chính NSPanel (`resizable(true)` lúc tạo). Cỡ tối thiểu 240 × 60 điểm, trên mức kiểm của `Settings::validate`, để vị trí luôn lưu được. Vị trí cũng được nhớ lúc ẩn thanh phụ đề, phòng khi NSPanel không báo sự kiện di chuyển (01 Task 24 dòng 6–7 chưa có kết quả).
-- **QĐ20. Bước "Nghe thử"** phát câu mẫu bằng thẻ `<audio>` của webview, trong một phiên `StartOptions::LISTEN_TEST`: thu cả âm thanh của app và thu toàn hệ thống, bỏ qua nguồn đã chọn (câu mẫu phát ra thiết bị mặc định, không phát từ app họp). Tiếng của webview đi qua tiến trình WebKit (macOS) hay WebView2 (Windows), nên chỉ thu được ở chế độ toàn hệ thống (ghi chú N8 của 02c). Phát xong 6 giây thì tự dừng.
+- **QĐ19. Thanh phụ đề kéo cạnh trên cả macOS lẫn Windows** (§4.4 sửa ngày 2026-10-02, yêu cầu của chủ dự án sau khi thử tay). Thanh tự vẽ vùng kéo ở cạnh (6 px) và góc (12 px) khi chưa khóa, rồi gọi lệnh của Rust (`begin_overlay_resize`, `overlay_resize_move`, `end_overlay_resize`). Windows: Rust gọi `start_resize_dragging` của Tauri, hệ điều hành đổi kích thước (QĐ23 của 01: cờ đặt một lần lúc tạo). macOS: tao không có `drag_resize_window`, nên Rust tự đặt khung cửa sổ theo vị trí con trỏ mỗi khung hình (đọc con trỏ ở phía Rust, không nhận tọa độ từ giao diện); NSPanel vẫn `resizable(true)` phòng khi mép ngoài cùng của nó cũng kéo được. Overlay không được cấp quyền `core:window:*` mới. Cỡ tối thiểu 320 × 80 điểm (spec), trên mức kiểm của `Settings::validate`, để vị trí luôn lưu được. Vị trí cũng được nhớ lúc ẩn thanh, phòng khi NSPanel không báo sự kiện di chuyển. Nút ✕ (chỉ khi chưa khóa, hiện khi rê chuột) gọi `hide_overlay`: ẩn như phím tắt, phiên vẫn chạy. Rủi ro chưa kiểm được trên máy không có người: NSPanel không làm cửa sổ chính (non-key) có nhận `:hover` và con trỏ đổi hình không; 03b Task 8 kiểm.
+- **QĐ20. Bước "Nghe thử"** phát câu mẫu bằng thẻ `<audio>` của webview, trong một phiên `StartOptions::LISTEN_TEST`: thu cả âm thanh của app và thu toàn hệ thống, bỏ qua nguồn đã chọn (câu mẫu phát ra thiết bị mặc định, không phát từ app họp). Tiếng của webview đi qua tiến trình WebKit (macOS) hay WebView2 (Windows), nên chỉ thu được ở chế độ toàn hệ thống (ghi chú N8 của 02c). Phát xong 6 giây thì tự dừng. Rời bước trong lúc `start_listen_test` còn chờ thì phiên vừa bắt đầu được dừng (N3 của review 03). Phiên nghe thử là một phiên thật: 06 quyết có trừ hạn mức không (dấu hiệu là `StartOptions::LISTEN_TEST`), và nó vào lịch sử nếu đã bật lưu (N13).
 - **QĐ21. Bảng debug ẩn** ở màn hình Giới thiệu, mở bằng cách bấm 5 lần vào dòng phiên bản; giữ số đo của 10 phiên gần nhất trong bộ nhớ, không có chữ chép lời.
 - **QĐ22. `sourceLock` không cần nằm trong `sourceLanguages`** (mục 8 của ghi chú cho 01): khi khóa một ngôn ngữ nguồn, tập nguồn bị bỏ qua (§6.4); `session::engine_config` đã làm vậy từ 02 và có test `the_engine_follows_the_language_and_pause_settings`. Không đổi code.
+- **QĐ23. Màu chữ và màu nền của phụ đề** (§4.3 sửa ngày 2026-10-02): hai khóa `overlay.textColor` (`white`, `yellow`, `green`, `lightBlue`, `orange`) và `overlay.background` (`black`, `darkGray`, `navy`, `darkBrown`, `darkPurple`), mặc định trắng trên đen, có `#[serde(default)]` nên file cũ không cần migrate. Mã màu chỉ nằm ở giao diện (`src/lib/subtitleView.ts`), do controller chọn: chữ `#ffffff`, `#ffd60a`, `#4ade80`, `#7dd3fc`, `#fb923c`; nền `#000000`, `#262626`, `#0c1b3a`, `#342112`, `#2e1046`. Test kiểm mọi cặp có tương phản ít nhất 4,5:1 khi nền đặc. Độ mờ nền vẫn là `opacity`; viền chữ tối giữ nguyên.
+- **QĐ24. Tắt tiến trình phụ khi rảnh kiểm lại dưới khóa** (N1 của review cuối 02, Q5 của review 03): `SidecarManager::stop_if_idle` kiểm "rảnh" dưới khóa của từng tiến trình phụ ngay trước khi lấy ra; `LiveDeps::prepare` chạm trước rồi mới hỏi `running`. Không gộp `touch` và `tick` vào một khóa dài, vì khóa của tiến trình phụ có thể bị giữ cả phút khi đang nạp model.
 
-## Điểm cần chủ dự án quyết
+## Điểm cần chủ dự án quyết (đã duyệt)
 
-Kế hoạch đã làm theo phương án ghi trong ngoặc; chủ dự án đổi thì sửa kế hoạch trước khi thực thi.
+Chủ dự án duyệt cả bốn điểm ngày 2026-10-02, đúng phương án kế hoạch đã làm (ghi trong ngoặc): từ điển chỉ là gợi ý cho model; từ điển không gắn ngôn ngữ đích; xuất bản chép lời qua hộp thoại lưu file; lịch sử lưu khi dừng phiên (nay gồm cả mọi lần app thoát có kiểm soát, Q3 của review 03). Giữ lại dưới đây để biết lý do.
 
 1. **Thuật ngữ với gói Chuẩn (Q8_0) chỉ được theo khoảng một nửa** (bảng "Thuật ngữ với model thật" dưới đây): Q8_0 đúng 4/8 thuật ngữ, Q4_K_M đúng 7/8 (không có từ điển: 0/8 và 1/8). Model 1,8B coi danh sách thuật ngữ là gợi ý. Phương án: nhận như hiện tại và ghi rõ trên màn hình Từ điển rằng đây là gợi ý (kế hoạch này); hoặc 08 đo trên bộ câu lớn hơn rồi xét đổi cách trình bày (ví dụ đặt thuật ngữ trong ngoặc kép) và chạy lại A3.
 2. **Thuật ngữ không gắn ngôn ngữ** (QĐ9): người dùng đổi ngôn ngữ đích thì từ điển cũ vẫn được đưa vào prompt. Phương án: giữ (kế hoạch này; đơn giản, đa số người dùng một ngôn ngữ đích); hoặc thêm cột ngôn ngữ đích cho mỗi cặp (đổi schema DB và CSV).
@@ -178,7 +210,7 @@ Kế hoạch đã làm theo phương án ghi trong ngoặc; chủ dự án đổ
 
 ## Kiểm bằng mutation lúc lập kế hoạch
 
-Script đặt ngoài repo, chạy trên cây cuối của 03 (trước khi chạy lại kế hoạch): mỗi mutation sửa đúng một chỗ của code, chạy nhóm test liên quan, test phải đỏ, rồi trả code về như cũ. Bốn mutation sống ở lần chạy đầu đều là lớp chặn thừa, nên code được rút gọn, hoặc thêm test, rồi chạy lại cả bốn (D1, D6, S6, H2 dưới đây là kết quả lần chạy lại):
+Script đặt ngoài repo, chạy trên cây cuối của 03 (sau lần chạy lại kế hoạch, base `5925d42`): mỗi mutation sửa đúng một chỗ của code, chạy nhóm test liên quan, test phải đỏ, rồi trả code về như cũ. Gồm 55 mutation của lần lập kế hoạch đầu (C1 viết lại theo `glossary::forget`), 20 mutation M01–M20 của review lần 1 (bảy mutation sống ở lần đó nay có test), và các mutation mới cho phần sửa sau review và yêu cầu mới (mã Q, N, K, A, B, U). Bốn mutation sống ở lần chạy đầu đều là lớp chặn thừa, nên code được rút gọn, hoặc thêm test, rồi chạy lại cả bốn (D1, D6, S6, H2 dưới đây là kết quả lần chạy lại):
 - bỏ nhánh "không có khóa mà file đã có thì đổi tên file" (nhánh `NotADatabase` đã làm việc đó): bỏ nhánh;
 - `parse_key` kiểm `is_ascii_hexdigit`: thêm test chuỗi `+f…` (`from_str_radix` nhận dấu `+`) và chuỗi nhiều byte (cắt giữa ký tự thì panic);
 - bỏ BOM khi nhập CSV (`csv` tự bỏ): bỏ dòng đó; mutation mới bỏ BOM khi xuất;
@@ -230,10 +262,61 @@ Kết quả (`bị giết`: có test đỏ):
 | V1 | `state.rs` | không tăng `revision` | bị giết |
 | V2 | `settings/migrate.rs` | ghi `revision` vào file | bị giết |
 | V3 | `settings/migrate.rs` | đọc `revision` từ file | bị giết |
-| C1 | `data.rs` | xóa dữ liệu mà luồng dịch còn giữ từ điển | bị giết |
+| C1 | `data.rs` | xóa dữ liệu mà luồng dịch còn giữ từ điển (`glossary::forget`) | bị giết |
 | C2 | `data.rs` | xóa dữ liệu mà còn bản chép lời trong bộ nhớ | bị giết |
 | L1 | `session.rs` | nghe thử vẫn theo nguồn trong cài đặt | bị giết |
 | L2 | `session.rs` | thanh phụ đề không nhận mức âm lượng | bị giết |
+| M01 | `data.rs` | `update_glossary_entry` không hỏi Pro | bị giết |
+| M02 | `data.rs` | `delete_glossary_entry` không hỏi Pro | bị giết |
+| M03 | `data.rs` | xóa thuật ngữ mà không nạp lại từ điển của luồng dịch | bị giết |
+| M04 | `data.rs` | nhập CSV mà không nạp lại từ điển của luồng dịch | bị giết |
+| M05 | `files.rs` | bỏ giới hạn 1 MiB khi nhập | bị giết |
+| M06 | `db.rs` | bỏ `PRAGMA secure_delete = ON` | SỐNG |
+| M07 | `db.rs` | `set_aside` không xóa journal cũ | bị giết |
+| M08 | `db.rs` | `wipe` không xóa journal | bị giết |
+| M09 | `glossary.rs` | ô dài đúng 200 ký tự bị từ chối | bị giết |
+| M10 | `glossary.rs` | dòng tên cột CSV không cắt khoảng trắng | bị giết |
+| M11 | `session.rs` | dừng engine (cả khi Thoát) mà không lưu lịch sử | bị giết |
+| M12 | `session.rs` | phiên mới không `begin` bản chép lời | bị giết |
+| M13 | `transcript/store.rs` | `delta` không nối chữ dịch vào bản chép lời | bị giết |
+| M14 | `data.rs` | gói Free vẫn đọc được lịch sử qua `load` | bị giết |
+| M15 | `transcript/history.rs` | câu xem trước lấy cả câu gốc rỗng | bị giết |
+| M16 | `session.rs` | nghe thử không thu âm thanh của chính app | bị giết |
+| M17 | `actions.rs` | ẩn thanh phụ đề mà không nhớ vị trí | bị giết |
+| M18 | `pipeline/glossary.rs` | chữ CJK Extension B không tính là CJK | bị giết |
+| M19 | `pipeline/glossary.rs` | Hangul không tính là CJK | bị giết |
+| M20 | `glossary.rs` | nhập CSV không đếm `updated` | bị giết |
+| Q1 | `pro.rs` | bản release cài một gate luôn Pro (chạy test ở profile release) | bị giết |
+| Q2 | `db.rs` | `wipe` không xóa các bản `data.db.unreadable-*` | bị giết |
+| Q3 | `session.rs` | `save_on_exit` không lưu gì | bị giết |
+| N1a | `glossary.rs` | xuất CSV không chặn công thức | bị giết |
+| N1b | `glossary.rs` | nhập CSV không bỏ dấu chặn công thức | bị giết |
+| N1c | `glossary.rs` | ô bắt đầu bằng `'` rồi ký tự công thức không được chặn thêm | bị giết |
+| N4 | `data.rs` | nhận độ lệch múi giờ ngoài ±18 giờ | bị giết |
+| N11 | `pro.rs` | về Free mà luồng dịch còn dùng thuật ngữ | bị giết |
+| N8 | `test_support.rs` | dọn cả thư mục tạm mới của app giả | bị giết |
+| K1 | `overlay/mod.rs` | thanh đang khóa vẫn kéo cạnh được | bị giết |
+| K2 | `overlay/mod.rs` | Windows: app vẫn tự đổi kích thước thay vì để hệ điều hành | bị giết |
+| K3 | `overlay/mod.rs` | nhả chuột không nhớ kích thước mới | bị giết |
+| K4 | `overlay/mod.rs` | cỡ tối thiểu không nhân tỉ lệ của màn hình | bị giết |
+| K5 | `overlay/placement.rs` | kéo cạnh không dừng ở cỡ tối thiểu | bị giết |
+| K6 | `overlay/placement.rs` | kéo cạnh trái mà cạnh phải không đứng yên | bị giết |
+| K7 | `overlay/mod.rs` | cỡ tối thiểu 240 thay vì 320 điểm | bị giết |
+| K8 | `commands.rs` | nút ✕ ẩn thanh mà không cập nhật trạng thái, không nhớ vị trí | bị giết |
+| A1 | `state.rs` | thanh phụ đề không nhận màu chữ đã chọn | bị giết |
+| A2 | `settings/mod.rs` | màu nền mặc định không phải đen | bị giết (không biên dịch) |
+| B1 | `pipeline/supervisor.rs` | không kiểm lại "rảnh" trước khi tắt `llama-server` | bị giết |
+| B2 | `pipeline/supervisor.rs` | không kiểm lại "rảnh" trước khi tắt `asr-worker` | SỐNG |
+| U1 | `store/overlay.ts` | kéo cạnh gửi mọi lần di chuyển, không gộp theo khung hình | bị giết |
+| U2 | `store/overlay.ts` | nhả chuột rồi vẫn gửi lần di chuyển đã hẹn | bị giết |
+| U3 | `store/library.ts` | đặt lại store mỗi lần store app đổi, không chỉ lúc vừa xóa xong | bị giết |
+| U4 | `store/library.ts` | đặt lại mà từ điển đang hiện không mất | bị giết |
+| U5 | `store/transcript.ts` | đặt lại mà bản chép lời đang hiện không mất | bị giết |
+| U6 | `store/transcript.ts` | sao chép dùng độ lệch múi giờ không theo lúc bắt đầu phiên | bị giết |
+| U7 | `lib/subtitleView.ts` | độ lệch múi giờ của lúc này, không của thời điểm đã cho | bị giết |
+| U8 | `lib/subtitleView.ts` | màu cam tối, không đủ tương phản trên nền nâu | bị giết |
+| U9 | `lib/subtitleView.ts` | nền bỏ qua độ mờ | bị giết |
+| U10 | `lib/listenTest.ts` | rời bước Nghe thử trong lúc chờ mà vẫn phát | bị giết |
 | J1 | `store/app.ts` | nhận cài đặt cũ hơn | bị giết |
 | J2 | `store/app.ts` | `init` ghi đè bản tới qua sự kiện cùng số thứ tự | bị giết |
 | J3 | `store/transcript.ts` | bản đọc tới muộn thêm lại dòng đã gộp | bị giết |
@@ -243,6 +326,10 @@ Kết quả (`bị giết`: có test đỏ):
 | J7 | `lib/subtitleView.ts` | chỉ báo của phiên hiện cả khi không dịch | bị giết |
 | J8 | `store/overlay.ts` | mức âm lượng không về 0 khi dừng | bị giết |
 | J9 | `store/library.ts` | xóa phiên đang mở mà vẫn mở | bị giết |
+
+Kết quả: 106 mutation, 104 bị giết. C1 và U3 sống ở lần chạy đầu của bản này và đã có test (C1: lớp "về Free thì `forget`" của N11 che mất, nên test xóa thêm một lần khi đang Pro; U3: test đổi store app sau khi xóa). Hai mutation còn sống được chấp nhận:
+- **M06** (bỏ `PRAGMA secure_delete = ON`): SQLCipher tự bật `secure_delete` cho mọi DB có khóa (`sqlcipher/sqlite3.c` của `libsqlite3-sys` 0.38.2, quanh dòng 112894, `sqlite3BtreeSecureDelete(pDb->pBt, 1)` lúc gắn khóa). Dòng PRAGMA giữ lại để ý định rõ ràng, còn test `a_new_database_is_encrypted_and_has_the_schema` kiểm giá trị thật là 1, nên nếu SQLCipher đổi mặc định mà ai đó bỏ dòng này thì test đỏ.
+- **B2** (bỏ lần kiểm lại "rảnh" trước khi tắt `asr-worker`): chỉ có tác dụng khi một lần Bắt đầu chen vào đúng giữa lúc tắt `llama-server` và lúc tắt `asr-worker`; không dựng được tất định bằng đồng hồ giả. B1 (lần kiểm trước `llama-server`) bị giết.
 
 ## Thuật ngữ với model thật (lúc lập kế hoạch)
 
@@ -257,28 +344,30 @@ Ví dụ (Q4_K_M): "The sprint ends on Friday, so the standup moves to nine." kh
 
 ## Bảng task → commit tham chiếu
 
-Chuỗi commit dựng lại theo đúng kế hoạch này (lần chạy lại ở mục "Cách đọc"), giữ ở repo `$S/p03-repo` của controller (`S=/Users/dtphong/Desktop/software_business/meeting-translator-work`), nhánh `plan03`, gốc là `45de838`. Sau mỗi task, so cây với commit tương ứng: `git diff --stat <commit> -- . ':!Cargo.lock'` phải rỗng.
+Chuỗi commit dựng lại theo đúng kế hoạch này (lần chạy lại ở mục "Cách đọc"), giữ ở repo `$S/p03-repo` của controller (`S=/Users/dtphong/Desktop/software_business/meeting-translator-work`), nhánh `plan03`, gốc là `5925d42` (bản trước sửa, gốc `45de838`, ở nhánh `plan03-r0` và `p03-r1-before`). Sau mỗi task, so cây với commit tương ứng: `git diff --stat <commit> -- . ':!Cargo.lock'` phải rỗng.
 
 | Task | Commit | Thông điệp |
 |---|---|---|
-| 03a Task 1 | `b00a991` | feat(app): điểm kiểm tra Pro duy nhất, bản tạm luôn Pro (Đ6) |
-| 03a Task 2 | `c2a00ac` | feat(app): số thứ tự revision của cài đặt, giao diện bỏ bản cũ tới muộn (điểm cần quyết 10 của 02a) |
-| 03a Task 3 | `4aac788` | feat(app): SQLite mã hóa bằng SQLCipher, khóa ngẫu nhiên trong kho khóa (§6.6, §10.2) |
-| 03a Task 4 | `3a625b8` | feat(pipeline): khớp thuật ngữ theo §6.5 và mẫu terminology của Hy-MT2 (F5) |
-| 03a Task 5 | `5727171` | feat(app): từ điển thuật ngữ trong DB mã hóa, nhập và xuất CSV, đưa vào phiên dịch ở gói Pro (F5) |
-| 03a Task 6 | `296dfd7` | feat(app): bản chép lời trong bộ nhớ theo phiên, xuất TXT, SRT, Markdown (F4, §6.6) |
-| 03a Task 7 | `c5b9ae6` | feat(app): lịch sử chép lời trong DB mã hóa, chỉ lưu khi bật và là Pro (F4) |
-| 03a Task 8 | `47811b4` | feat(app): lệnh bản chép lời, lịch sử và xuất file qua hộp thoại lưu (F4) |
-| 03a Task 9 | `629ef25` | feat(app): lệnh từ điển thuật ngữ, xóa toàn bộ dữ liệu, bảng debug ẩn (F5, §4.3, §7) |
-| 03a Task 10 | `66fc63f` | feat(app): mức âm lượng tới thanh phụ đề, kéo cạnh đổi kích thước, lệnh nghe thử (§4.1 bước 6, §4.4) |
-| 03b Task 1 | `8868a9b` | feat(ui): kiểu và store cho bản chép lời, lịch sử, từ điển; cách hiện phụ đề theo trạng thái |
-| 03b Task 2 | `8d166d7` | feat(ui): thanh phụ đề đủ §4.4: trạng thái từng dòng, chỉ báo đang nghe, lời nhắc, kéo cạnh trên Windows |
-| 03b Task 3 | `a81b4e9` | feat(ui): Cài đặt › Phụ đề và Quyền riêng tư: cỡ chữ, số dòng, độ mờ, câu gốc; lưu lịch sử, xóa toàn bộ dữ liệu |
-| 03b Task 4 | `fd41cd8` | feat(ui): màn hình Bản chép lời và Lịch sử: tìm, sao chép, xuất file, xem lại và xóa phiên đã lưu (F4) |
-| 03b Task 5 | `19f25da` | feat(ui): màn hình Từ điển thuật ngữ: thêm, sửa, xóa, nhập và xuất CSV (F5) |
-| 03b Task 6 | `aeb4c7d` | feat(ui): bước Nghe thử phát câu mẫu và hiện phụ đề; bảng debug ẩn ở màn hình Giới thiệu (§4.1 bước 6, §7) |
+| 03a Task 1 | `95f2e40` | feat(app): điểm kiểm tra Pro duy nhất; bản tạm luôn Pro chỉ có ở bản debug (Đ6) |
+| 03a Task 2 | `78e2afc` | feat(app): số thứ tự revision của cài đặt, giao diện bỏ bản cũ tới muộn (điểm cần quyết 10 của 02a) |
+| 03a Task 3 | `96d098b` | feat(app): SQLite mã hóa bằng SQLCipher, khóa ngẫu nhiên trong kho khóa (§6.6, §10.2) |
+| 03a Task 4 | `c63fe94` | feat(pipeline): khớp thuật ngữ theo §6.5 và mẫu terminology của Hy-MT2 (F5) |
+| 03a Task 5 | `4369a14` | feat(app): từ điển thuật ngữ trong DB mã hóa, nhập và xuất CSV, đưa vào phiên dịch ở gói Pro (F5) |
+| 03a Task 6 | `520b9a7` | feat(app): bản chép lời trong bộ nhớ theo phiên, xuất TXT, SRT, Markdown (F4, §6.6) |
+| 03a Task 7 | `9c23abe` | feat(app): lịch sử chép lời trong DB mã hóa, chỉ lưu khi bật và là Pro (F4) |
+| 03a Task 8 | `f434f33` | feat(app): lệnh bản chép lời, lịch sử và xuất file qua hộp thoại lưu (F4) |
+| 03a Task 9 | `fbf7a68` | feat(app): lệnh từ điển thuật ngữ, xóa toàn bộ dữ liệu, bảng debug ẩn (F5, §4.3, §7) |
+| 03a Task 10 | `31a53f4` | feat(app): thanh phụ đề kéo cạnh trên cả macOS và Windows, nút ẩn, mức âm lượng, lệnh nghe thử (§4.1 bước 6, §4.4) |
+| 03a Task 11 | `4ad7a72` | feat(app): màu chữ và màu nền của phụ đề trong cài đặt, tới thanh phụ đề ngay khi đổi (§4.3) |
+| 03a Task 12 | `0821b34` | fix(pipeline): tắt tiến trình phụ khi rảnh kiểm lại dưới khóa, không chen vào lần Bắt đầu (N1 của review cuối 02) |
+| 03b Task 1 | `4e06683` | feat(ui): kiểu và store cho bản chép lời, lịch sử, từ điển; cách hiện phụ đề theo trạng thái |
+| 03b Task 2 | `75f6238` | feat(ui): thanh phụ đề đủ §4.4: trạng thái từng dòng, chỉ báo đang nghe, lời nhắc, nút ẩn, kéo cạnh, màu chữ và màu nền |
+| 03b Task 3 | `3c10cec` | feat(ui): Cài đặt › Phụ đề và Quyền riêng tư: cỡ chữ, số dòng, màu chữ, màu nền, độ mờ, câu gốc; lưu lịch sử, xóa toàn bộ dữ liệu |
+| 03b Task 4 | `63056ea` | feat(ui): màn hình Bản chép lời và Lịch sử: tìm, sao chép, xuất file, xem lại và xóa phiên đã lưu (F4) |
+| 03b Task 5 | `8dfb163` | feat(ui): màn hình Từ điển thuật ngữ: thêm, sửa, xóa, nhập và xuất CSV (F5) |
+| 03b Task 6 | `590cdfd` | feat(ui): bước Nghe thử phát câu mẫu và hiện phụ đề; bảng debug ẩn ở màn hình Giới thiệu (§4.1 bước 6, §7) |
 
-03a Task 11 và 03b Task 7 là kiểm tra, không có commit; 03b Task 8–10 là việc của người, Windows và cập nhật kế hoạch 00.
+03a Task 13 và 03b Task 7 là kiểm tra, không có commit; 03b Task 8–10 là việc của người, Windows và cập nhật kế hoạch 00.
 
 
 ---
@@ -288,7 +377,7 @@ Chuỗi commit dựng lại theo đúng kế hoạch này (lần chạy lại �
 Đ6 của kế hoạch 00: 03 khóa tính năng Pro qua **một điểm kiểm tra duy nhất** phía Rust, bản dev tạm trả Pro; 06 thay bằng trạng thái bản quyền thật. Dòng 18, 19 (phần khóa Pro).
 
 - `ProGate` (trait), quản lý bằng `Entitlement`; `pro::require` cho lệnh (lỗi `proRequired`), `pro::is_pro` cho việc chạy ngầm; `pro::refresh` đưa kết quả vào `AppStatus.pro` (giao diện mở hay khóa màn hình Pro) và chỉ báo khi có đổi.
-- Chưa cài `ProGate` thì là Free. Bản tạm `DevGate` (QĐ7) cài ở `setup`.
+- Chưa cài `ProGate` thì là Free. Bản tạm `DevGate` (QĐ7) **chỉ có trong bản debug** (`cfg(debug_assertions)`), cài ở `setup` qua `install_default_gate`; bản release không cài gate nào, tức Free cho tới khi 06 cài trạng thái bản quyền thật (Q1 của review 03). Test `the_dev_gate_exists_only_in_debug_builds` chạy cả ở bản release (03b Task 7).
 - Test dùng `FakePro` trong `test_support.rs` (app giả mặc định là Pro) và `set_pro`.
 
 **Files:**
@@ -309,6 +398,7 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/errors.rs b/src-tauri/src/errors.rs
+index 0a7b1e3a8f43867d04958efa9840faab1a4ace94..fca92350c60a565a67c030f9aa053319efcb65c7 100644
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
 @@ -157,6 +157,7 @@
@@ -325,6 +415,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 3c8a2feac009b10d65ddc8ef38dbc2407f2e4de0..2cdb8508282e1e5553802da9318e48df0a508c61 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -18,6 +18,7 @@
@@ -345,9 +436,11 @@ Tạo `src-tauri/src/pro.rs`, lúc này mới có phần test:
 //! - [`require`] cho lệnh của giao diện: không phải Pro thì trả lỗi `proRequired`;
 //! - [`is_pro`] cho việc chạy ngầm: lưu lịch sử khi phiên dừng, đưa thuật ngữ vào prompt.
 //!
-//! Kế hoạch 03 chỉ có bản tạm [`DevGate`]: luôn là Pro, trừ khi chạy app với biến môi trường `AI_TRANSLATOR_DEV_FREE=1`
-//! (để thử bằng tay giao diện khi bị khóa Pro). Kế hoạch 06 thay bằng trạng thái bản quyền thật: cài một [`ProGate`] khác
-//! bằng [`install_gate`], gọi [`refresh`] mỗi khi trạng thái bản quyền đổi, và thêm kiểm tra ở nhiều chỗ theo §10.2.
+//! Kế hoạch 03 chỉ có bản tạm `DevGate`, **chỉ có trong bản debug** (`cfg(debug_assertions)`): luôn là Pro, trừ khi chạy
+//! app với biến môi trường `AI_TRANSLATOR_DEV_FREE=1` (để thử bằng tay giao diện khi bị khóa Pro). Bản release không cài
+//! gate nào, tức là Free, cho tới khi kế hoạch 06 cài trạng thái bản quyền thật bằng [`install_gate`] (một lần, ở đúng chỗ
+//! của [`install_default_gate`]: `app.manage` không thay được state đã có), gọi [`refresh`] mỗi khi trạng thái bản quyền
+//! đổi, và thêm kiểm tra ở nhiều chỗ theo §10.2.
 //!
 //! Chưa cài `ProGate` nào thì coi là Free: quên cài thì khóa tính năng, không mở cho không.
 //! Xóa toàn bộ dữ liệu (§4.3, Quyền riêng tư) không đi qua đây: người đã về Free vẫn xóa được lịch sử và từ điển cũ.
@@ -357,6 +450,23 @@ mod tests {
     use super::*;
     use crate::test_support::{mock_app, set_pro};
 
+    /// Q1 của review 03 lần 1: bản release không có `DevGate`, nên mặc định là Free. Chạy cả với `--release` ở 03b
+    /// Task 7.
+    #[test]
+    fn the_dev_gate_exists_only_in_debug_builds() {
+        assert_eq!(default_gate().is_some(), cfg!(debug_assertions));
+        let app = tauri::test::mock_app();
+        app.manage(AppState::new(
+            crate::settings::Settings::defaults(crate::settings::UiLanguage::Vi),
+            crate::settings::migrate::FileMeta::current(),
+            false,
+        ));
+        install_default_gate(app.handle());
+        assert_eq!(is_pro(app.handle()), cfg!(debug_assertions));
+        assert_eq!(app.state::<AppState>().status().pro, cfg!(debug_assertions));
+    }
+
+    #[cfg(debug_assertions)]
     #[test]
     fn the_dev_gate_is_pro_unless_asked_to_be_free() {
         assert!(DevGate::from_value(None).is_pro());
@@ -395,6 +505,7 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
+index 401fb229a002d893f6cbb6a90f4852a4de64ca04..9055e19a4f7e0dfc40c7ed1610169209446248e1 100644
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
 @@ -3,6 +3,7 @@
@@ -468,6 +579,7 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/store/app.test.ts b/src/store/app.test.ts
+index 2f08368e41c8400a3f472c3784d47f6a8e5aace7..3bf174d9c3b640d78b47c1a2f82b9f4e29e9941e 100644
 --- a/src/store/app.test.ts
 +++ b/src/store/app.test.ts
 @@ -31,6 +31,7 @@
@@ -484,6 +596,7 @@ Sửa `src/store/overlay.test.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/store/overlay.test.ts b/src/store/overlay.test.ts
+index 827f42d06308e4c54bf00d8ffd3017944815c4f0..a085ead39fb35fc446d2870a5d13a65b9daadcd3 100644
 --- a/src/store/overlay.test.ts
 +++ b/src/store/overlay.test.ts
 @@ -98,6 +98,7 @@
@@ -504,12 +617,12 @@ cargo test -p meeting-translator --lib pro:: 2>&1 | grep -E '^error(\[E[0-9]+\])
 ```
 Expected (lúc lập kế hoạch; chưa có `pro.rs` phần code, `AppStatus.pro`, `errors::PRO_REQUIRED`):
 ```text
-error: could not compile `meeting-translator` (lib test) due to 16 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 21 previous errors; 1 warning emitted
+error[E0425]: cannot find function `default_gate` in this scope
+error[E0425]: cannot find function `install_default_gate` in this scope
 error[E0425]: cannot find function `is_pro` in this scope
 error[E0425]: cannot find function `refresh` in module `crate::pro`
 error[E0425]: cannot find function `refresh` in this scope
-error[E0425]: cannot find function `require` in this scope
-error[E0425]: cannot find type `AppState` in this scope
 ```
 
 - [ ] **Step 3: Viết code**
@@ -518,6 +631,7 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/errors.rs b/src-tauri/src/errors.rs
+index fca92350c60a565a67c030f9aa053319efcb65c7..eefd817d4c54b7f3820fd39cebe0f1f83d26cfc6 100644
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
 @@ -51,6 +51,9 @@
@@ -536,14 +650,15 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 2cdb8508282e1e5553802da9318e48df0a508c61..a76dcd687a73f5e819088e4c374ffc8ec215eaf3 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -115,6 +115,8 @@
          persist::save(&handle, &settings, &loaded.meta)?;
      }
      app.manage(AppState::new(settings.clone(), loaded.meta, launched_at_login));
-+    // Điểm kiểm tra Pro duy nhất (Đ6); kế hoạch 06 thay bản tạm bằng trạng thái bản quyền.
-+    pro::install_gate(&handle, Box::new(pro::DevGate::from_env()));
++    // Điểm kiểm tra Pro duy nhất (Đ6): bản debug luôn Pro, bản release là Free; kế hoạch 06 cài trạng thái bản quyền.
++    pro::install_default_gate(&handle);
      app.manage(HotkeyRegistry::default());
      // Tiến trình phụ mà lần chạy trước bỏ lại (Force Quit, app bị kill): kill trước khi chạy sẵn tiến trình mới, rồi từ
      // giờ ghi pidfile (Q8 của review 02c). Windows: Job Object đã lo, hàm không làm gì. Đọc pidfile ở đây chỉ đúng vì
@@ -558,7 +673,8 @@ use crate::actions;
 use crate::errors::{self, CommandError};
 use crate::state::AppState;
 
-/// Biến môi trường của bản tạm: `1` thì app chạy như gói Free.
+/// Biến môi trường của bản tạm: `1` thì app chạy như gói Free. Chỉ bản debug đọc biến này.
+#[cfg(debug_assertions)]
 pub const DEV_FREE_ENV: &str = "AI_TRANSLATOR_DEV_FREE";
 
 /// Nguồn sự thật "đang có gói trả phí còn hạn" (spec §2). Kế hoạch 06 cài bằng trạng thái bản quyền.
@@ -569,12 +685,14 @@ pub trait ProGate: Send + Sync + 'static {
 /// `ProGate` đang dùng, quản lý bằng `app.manage`.
 pub struct Entitlement(pub Box<dyn ProGate>);
 
-/// Bản tạm của kế hoạch 03: Pro, trừ khi `AI_TRANSLATOR_DEV_FREE=1`.
+/// Bản tạm của kế hoạch 03, chỉ có trong bản debug: Pro, trừ khi `AI_TRANSLATOR_DEV_FREE=1`.
+#[cfg(debug_assertions)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DevGate {
     pro: bool,
 }
 
+#[cfg(debug_assertions)]
 impl DevGate {
     /// Theo giá trị của biến `AI_TRANSLATOR_DEV_FREE` (không có thì `None`).
     pub fn from_value(value: Option<&str>) -> Self {
@@ -588,9 +706,30 @@ impl DevGate {
     }
 }
 
+#[cfg(debug_assertions)]
 impl ProGate for DevGate {
     fn is_pro(&self) -> bool {
         self.pro
+    }
+}
+
+/// Gate lúc khởi động: bản debug là `DevGate`; bản release không có gate nào (Free) cho tới khi kế hoạch 06 cài trạng thái
+/// bản quyền thật.
+pub fn default_gate() -> Option<Box<dyn ProGate>> {
+    #[cfg(debug_assertions)]
+    {
+        Some(Box::new(DevGate::from_env()))
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        None
+    }
+}
+
+/// Cài [`default_gate`] (nếu có). Gọi một lần ở `setup`, sau khi đã có `AppState`.
+pub fn install_default_gate<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(gate) = default_gate() {
+        install_gate(app, gate);
     }
 }
 
@@ -636,6 +775,7 @@ Sửa `src-tauri/src/state.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/state.rs b/src-tauri/src/state.rs
+index 93d8f8253b0baf5a0060b786d1d6e3bf5a121a13..7c80fd01f0dc5f8a46091e50419f6957ec47662d 100644
 --- a/src-tauri/src/state.rs
 +++ b/src-tauri/src/state.rs
 @@ -55,6 +55,8 @@
@@ -661,6 +801,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
+index 4443ac2edbb1943782834810b547e6ff02b0cc8a..583c8cec6799344eba85b0329c4940f2f6f6ec6e 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -166,6 +166,7 @@
@@ -677,6 +818,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
+index 0fdb07891afb03f5dff0a9b7fb27362f66e8542a..492d7f866eff6e1f92edf84e51f58cc3a7632e3a 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -166,5 +166,6 @@
@@ -692,6 +834,7 @@ Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/lib/ipc.ts b/src/lib/ipc.ts
+index 874fc31801c8d536224c4cf58680d2920bc84742..a8639279b01713de147cb0cd725e0bf3da473812 100644
 --- a/src/lib/ipc.ts
 +++ b/src/lib/ipc.ts
 @@ -84,6 +84,8 @@
@@ -714,9 +857,10 @@ cargo test -p meeting-translator --lib pro:: -- --test-threads=1 2>&1 | grep -E 
 Expected (lúc lập kế hoạch):
 ```text
 test pro::tests::require_follows_the_gate_and_the_status_follows_refresh ... ok
+test pro::tests::the_dev_gate_exists_only_in_debug_builds ... ok
 test pro::tests::the_dev_gate_is_pro_unless_asked_to_be_free ... ok
 test pro::tests::without_a_gate_the_app_is_free ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 160 filtered out
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 160 filtered out
 ```
 
 Run:
@@ -725,7 +869,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 161 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 162 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 Run:
@@ -734,8 +878,8 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 ```
 Expected (lúc lập kế hoạch):
 ```text
- Test Files  5 passed (5)
-      Tests  64 passed (64)
+ Test Files  6 passed (6)
+      Tests  65 passed (65)
 ```
 
 Run:
@@ -771,7 +915,7 @@ git add src-tauri/src/errors.rs \
   src/lib/ipc.ts \
   src/store/app.test.ts \
   src/store/overlay.test.ts
-git commit -m "feat(app): điểm kiểm tra Pro duy nhất, bản tạm luôn Pro (Đ6)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(app): điểm kiểm tra Pro duy nhất; bản tạm luôn Pro chỉ có ở bản debug (Đ6)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 
@@ -801,6 +945,7 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
+index 43107033472f8de5bb1a95f9f808e1e5d475de4c..7570c49c0aade08a1b65ac15b699d8d84c6cdbab 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
 @@ -533,6 +533,34 @@
@@ -844,6 +989,7 @@ Sửa `src-tauri/src/settings/migrate.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/settings/migrate.rs b/src-tauri/src/settings/migrate.rs
+index 2bb597ca2fd303670eb0c0dc84679723160f110a..92a220e1d213a5a1c3333d0e2fb86352ea6d7592 100644
 --- a/src-tauri/src/settings/migrate.rs
 +++ b/src-tauri/src/settings/migrate.rs
 @@ -292,6 +292,19 @@
@@ -872,6 +1018,7 @@ Sửa `src-tauri/src/settings/mod.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/settings/mod.rs b/src-tauri/src/settings/mod.rs
+index 4d7a0cdc3862bc6effa3e64607f54bd231929a4c..647176402102fcd009511198eb73b9d4360dd0dd 100644
 --- a/src-tauri/src/settings/mod.rs
 +++ b/src-tauri/src/settings/mod.rs
 @@ -368,6 +368,7 @@
@@ -888,6 +1035,7 @@ Sửa `src-tauri/src/settings/patch.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/settings/patch.rs b/src-tauri/src/settings/patch.rs
+index 9f120cdd5536fe411385c898a8ba2354671488c2..ddb3224383830541cb8d6e5a042f75ce2b59e65a 100644
 --- a/src-tauri/src/settings/patch.rs
 +++ b/src-tauri/src/settings/patch.rs
 @@ -205,6 +205,10 @@
@@ -907,6 +1055,7 @@ Sửa `src/store/app.test.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/store/app.test.ts b/src/store/app.test.ts
+index 3bf174d9c3b640d78b47c1a2f82b9f4e29e9941e..f5cfa904363b1ba175d2073d891462e2726f8384 100644
 --- a/src/store/app.test.ts
 +++ b/src/store/app.test.ts
 @@ -19,6 +19,7 @@
@@ -972,6 +1121,7 @@ Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/actions.rs b/src-tauri/src/actions.rs
+index 2714150d8382c1f31c65fe5ddc676a89dd57862b..6ce90d0396275c85a16a1ab20d8bfd2c30ba7ab2 100644
 --- a/src-tauri/src/actions.rs
 +++ b/src-tauri/src/actions.rs
 @@ -13,9 +13,9 @@
@@ -992,6 +1142,7 @@ Sửa `src-tauri/src/overlay/mod.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/overlay/mod.rs b/src-tauri/src/overlay/mod.rs
+index f302afe73b77d1f6f6eec9d6ab3e258ef2710bd8..5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4 100644
 --- a/src-tauri/src/overlay/mod.rs
 +++ b/src-tauri/src/overlay/mod.rs
 @@ -154,7 +154,7 @@
@@ -1009,6 +1160,7 @@ Sửa `src-tauri/src/settings/migrate.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/settings/migrate.rs b/src-tauri/src/settings/migrate.rs
+index 92a220e1d213a5a1c3333d0e2fb86352ea6d7592..e14e91e20327646f26960183ab2bdb424bcdfad1 100644
 --- a/src-tauri/src/settings/migrate.rs
 +++ b/src-tauri/src/settings/migrate.rs
 @@ -41,6 +41,9 @@
@@ -1045,6 +1197,7 @@ Sửa `src-tauri/src/settings/mod.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/settings/mod.rs b/src-tauri/src/settings/mod.rs
+index 647176402102fcd009511198eb73b9d4360dd0dd..1996abbe66365022d7cbfb5e2f8a90f66c27d422 100644
 --- a/src-tauri/src/settings/mod.rs
 +++ b/src-tauri/src/settings/mod.rs
 @@ -167,6 +167,12 @@
@@ -1074,6 +1227,7 @@ Sửa `src-tauri/src/settings/patch.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/settings/patch.rs b/src-tauri/src/settings/patch.rs
+index ddb3224383830541cb8d6e5a042f75ce2b59e65a..75cd9700733c212b6d7bfbc193b4166ebf40ddcf 100644
 --- a/src-tauri/src/settings/patch.rs
 +++ b/src-tauri/src/settings/patch.rs
 @@ -11,8 +11,15 @@
@@ -1100,6 +1254,7 @@ Sửa `src-tauri/src/state.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/state.rs b/src-tauri/src/state.rs
+index 7c80fd01f0dc5f8a46091e50419f6957ec47662d..9cca06d63496f823db073ab0207985b6d78402d6 100644
 --- a/src-tauri/src/state.rs
 +++ b/src-tauri/src/state.rs
 @@ -137,9 +137,12 @@
@@ -1124,6 +1279,7 @@ Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/lib/ipc.ts b/src/lib/ipc.ts
+index a8639279b01713de147cb0cd725e0bf3da473812..d55160be2341cdefc8b2fab197104fbfe8f97aef 100644
 --- a/src/lib/ipc.ts
 +++ b/src/lib/ipc.ts
 @@ -49,11 +49,13 @@
@@ -1148,6 +1304,7 @@ Sửa `src/store/app.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/store/app.ts b/src/store/app.ts
+index 1dced1c540f30184bd797560a2dfbccc85b7777f..62fec1a05a0e7d4e631039f7abf3ed2e3e381e40 100644
 --- a/src/store/app.ts
 +++ b/src/store/app.ts
 @@ -104,6 +104,14 @@
@@ -1228,7 +1385,7 @@ Expected (lúc lập kế hoạch):
 test app_tests::the_settings_revision_grows_with_every_change ... ok
 test app_tests::the_status_revision_grows_with_every_change ... ok
 test settings::migrate::tests::the_runtime_revision_is_neither_saved_nor_loaded ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 162 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 163 filtered out
 ```
 
 Run:
@@ -1238,7 +1395,7 @@ cargo test -p meeting-translator --lib read_only -- --test-threads=1 2>&1 | grep
 Expected (lúc lập kế hoạch):
 ```text
 test settings::patch::tests::rejects_unknown_and_read_only_keys ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 164 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 165 filtered out
 ```
 
 Run:
@@ -1247,7 +1404,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 163 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 164 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 Run:
@@ -1256,8 +1413,8 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 ```
 Expected (lúc lập kế hoạch):
 ```text
- Test Files  5 passed (5)
-      Tests  66 passed (66)
+ Test Files  6 passed (6)
+      Tests  67 passed (67)
 ```
 
 Run:
@@ -1301,9 +1458,10 @@ git commit -m "feat(app): số thứ tự revision của cài đặt, giao diệ
 
 Dòng 155, 273, 314, 318 (`db.rs`); QĐ1–QĐ6. `data.db` mã hóa bằng SQLCipher 4.14, khóa thô 32 byte ngẫu nhiên lưu trong kho khóa (`security::keystore`, mục `db-key`). Schema bản 1: bảng `glossary`, `sessions`, `lines`.
 
-- `DataStore` (quản lý bằng `app.manage`): mở lúc cần ở lần dùng đầu; `with` chạy một việc với kết nối; `wipe` đóng kết nối, xóa file và mục khóa.
+- `DataStore` (quản lý bằng `app.manage`): mở lúc cần ở lần dùng đầu; `with` chạy một việc với kết nối; `wipe` đóng kết nối, xóa file, journal, mọi bản `data.db.unreadable-*` (Q2 của review 03) và mục khóa.
 - Mất khóa hay khóa sai: đổi tên file cũ thành `data.db.unreadable-<giây>`, tạo DB mới. Kho khóa lỗi: lỗi `dataUnavailable`, không đụng file. `user_version` lớn hơn bản này: từ chối.
-- `test_support` cài `DataStore` trong thư mục tạm riêng của mỗi app giả, với `Keystore::mock`.
+- `test_support` cài `DataStore` trong thư mục tạm riêng của mỗi app giả, với `Keystore::mock`. State của app giả không bao giờ được drop, nên lần đầu dựng app giả trong một tiến trình test thì xóa thư mục `mt-app-data-*` cũ hơn một giờ (`remove_stale_app_dirs`, N8 của review 03).
+- Test thêm theo review 03: `PRAGMA secure_delete` là 1 (M06), `set_aside` xóa journal cũ và không ghi đè bản cũ hơn (M07), `cipher_provider` đúng thư viện mật mã của từng hệ điều hành (N7: macOS `commoncrypto`, Windows `openssl` 3.6.3).
 - Test `the_sqlite3_tool_cannot_read_the_file` chạy `sqlite3` của hệ thống (macOS có sẵn): "file is not a database" (spec §11, "Bảo mật"). Máy không có `sqlite3` thì test tự bỏ qua.
 - `deny.toml`: OpenSSL chỉ được vào qua `libsqlite3-sys`. `scripts/check-windows.sh`: kiểm kiểu cho Windows mà không biên dịch SQLCipher và OpenSSL (ghi chú ở bảng phiên bản).
 
@@ -1311,6 +1469,7 @@ Dòng 155, 273, 314, 318 (`db.rs`); QĐ1–QĐ6. `data.db` mã hóa bằng SQLCi
 - Modify: `deny.toml`
 - Modify: `scripts/check-windows.sh`
 - Modify: `src-tauri/Cargo.toml`
+- Modify: `src-tauri/src/app_tests.rs`
 - Create: `src-tauri/src/db.rs`
 - Modify: `src-tauri/src/errors.rs`
 - Modify: `src-tauri/src/lib.rs`
@@ -1320,6 +1479,43 @@ Dòng 155, 273, 314, 318 (`db.rs`); QĐ1–QĐ6. `data.db` mã hóa bằng SQLCi
 - Modify: `Cargo.lock` (cargo tự cập nhật; Step 3 khóa đúng bản đã thử)
 
 - [ ] **Step 1: Viết test trước**
+
+Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
+index 7570c49c0aade08a1b65ac15b699d8d84c6cdbab..671a04a114b5995d6b62729a606bb0506065cc93 100644
+--- a/src-tauri/src/app_tests.rs
++++ b/src-tauri/src/app_tests.rs
+@@ -561,6 +561,27 @@
+     assert!(last_saved(&app, "revision").is_none(), "số thứ tự không vào file");
+ }
+ 
++/// N8 của review 03: thư mục tạm của app giả từ những lần chạy trước (cũ hơn một giờ) được dọn; thư mục mới và thư mục
++/// khác thì giữ.
++#[test]
++fn old_temporary_folders_of_mock_apps_are_removed() {
++    let parent = std::env::temp_dir().join(format!("mt-stale-test-{}", std::process::id()));
++    let _ = std::fs::remove_dir_all(&parent);
++    std::fs::create_dir_all(parent.join("mt-app-data-1-0").join("x")).unwrap();
++    std::fs::create_dir_all(parent.join("mt-app-data-1-1")).unwrap();
++    std::fs::create_dir_all(parent.join("mt-settings-x")).unwrap();
++    let now = std::time::SystemTime::now();
++    assert_eq!(
++        crate::test_support::remove_stale_app_dirs(&parent, now),
++        0,
++        "thư mục mới thì giữ"
++    );
++    let later = now + Duration::from_secs(2 * 3600);
++    assert_eq!(crate::test_support::remove_stale_app_dirs(&parent, later), 2);
++    assert!(parent.join("mt-settings-x").exists(), "chỉ dọn thư mục của app giả");
++    std::fs::remove_dir_all(parent).unwrap();
++}
++
+ /// Q8(c) của review 02c: câu hỏi quyền ghi âm thanh hệ thống có bản tiếng Anh (gốc, trong `Info.plist`) và tiếng Việt
+ /// (`vi.lproj`), đều nói tên AI Translator, và `tauri.conf.json` chép hai file `InfoPlist.strings` vào gói `.app`.
+ #[test]
+```
 
 Tạo `src-tauri/src/db.rs`, lúc này mới có phần test:
 
@@ -1338,9 +1534,9 @@ Tạo `src-tauri/src/db.rs`, lúc này mới có phần test:
 //!   dùng từ chối hộp thoại Keychain, Credential Manager không mở được): trả lỗi, không đụng tới file.
 //! - **Schema:** `PRAGMA user_version` là số phiên bản; [`MIGRATIONS`] chạy lần lượt trong một transaction. File của bản
 //!   app mới hơn (số lớn hơn) thì từ chối mở, không sửa gì.
-//! - **Xóa:** [`DataStore::wipe`] đóng kết nối, xóa file và mục khóa. Hai nút "Xóa toàn bộ dữ liệu" (kế hoạch 03) và
-//!   "Xóa model và dữ liệu" (kế hoạch 04) đều gọi hàm này; trạng thái bản quyền và bộ đếm hạn mức nằm ở mục khác của kho
-//!   khóa nên không bị xóa (§4.3).
+//! - **Xóa:** [`DataStore::wipe`] đóng kết nối, xóa file (cả journal và các bản `data.db.unreadable-*`) và mục khóa. Hai
+//!   nút "Xóa toàn bộ dữ liệu" (kế hoạch 03) và "Xóa model và dữ liệu" (kế hoạch 04) đều gọi hàm này; trạng thái bản quyền
+//!   và bộ đếm hạn mức nằm ở mục khác của kho khóa nên không bị xóa (§4.3).
 //! - macOS dùng CommonCrypto; Windows dùng OpenSSL build tĩnh từ mã nguồn (`openssl-src`), xem `Cargo.toml`.
 
 #[cfg(test)]
@@ -1388,6 +1584,10 @@ mod tests {
             .unwrap();
         assert_eq!(names, ["glossary", "lines", "sessions"]);
         assert_eq!(version, SCHEMA_VERSION);
+        let secure = db
+            .with(|c| Ok::<i64, DbError>(c.query_row("PRAGMA secure_delete", [], |r| r.get(0))?))
+            .unwrap();
+        assert_eq!(secure, 1, "dữ liệu bị xóa được ghi đè (QĐ5)");
         let header = std::fs::read(db.path()).unwrap();
         assert_ne!(
             &header[..16],
@@ -1557,8 +1757,17 @@ mod tests {
             Ok(())
         })
         .unwrap();
+        // Bản đã đổi tên vì mất khóa (`set_aside`) và journal cũng mất: thư mục không còn file nào (Q2 của review 03).
+        std::fs::write(dir.join(format!("{DB_FILE}.unreadable-1")), b"cu").unwrap();
+        std::fs::write(dir.join(format!("{DB_FILE}.unreadable-1-1")), b"cu hon").unwrap();
+        std::fs::write(journal_path(&db.path()), b"journal").unwrap();
         db.wipe().unwrap();
         assert!(!db.path().exists());
+        assert_eq!(
+            std::fs::read_dir(&dir).unwrap().count(),
+            0,
+            "không còn file nào của dữ liệu cũ"
+        );
         assert_eq!(keystore(&keys).get(KEY_NAME).unwrap(), None);
         let count = db
             .with(|c| Ok(c.query_row("SELECT count(*) FROM sessions", [], |r| r.get::<_, i64>(0))?))
@@ -1566,6 +1775,44 @@ mod tests {
         assert_eq!(count, 0, "lần dùng sau tạo DB mới");
         db.wipe().unwrap();
         db.wipe().unwrap();
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn set_aside_keeps_older_copies_and_drops_the_journal() {
+        let dir = temp_dir("aside");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(DB_FILE);
+        std::fs::write(&path, b"lan 1").unwrap();
+        std::fs::write(journal_path(&path), b"journal").unwrap();
+        let first = set_aside(&path).unwrap();
+        assert!(!journal_path(&path).exists(), "journal của file cũ không còn dùng được");
+        std::fs::write(&path, b"lan 2").unwrap();
+        let second = set_aside(&path).unwrap();
+        assert_ne!(first, second, "không ghi đè bản cũ hơn");
+        assert_eq!(std::fs::read(&first).unwrap(), b"lan 1");
+        assert_eq!(std::fs::read(&second).unwrap(), b"lan 2");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// N7 của review 03: SQLCipher dùng đúng thư viện mật mã của từng hệ điều hành (QĐ1). Máy build có `OPENSSL_DIR` thì
+    /// `libsqlite3-sys` có thể link OpenSSL động cả trên macOS: test này đỏ.
+    #[test]
+    fn the_cipher_provider_matches_the_platform() {
+        let dir = temp_dir("provider");
+        std::fs::create_dir_all(&dir).unwrap();
+        let conn = open_with_key(&dir.join(DB_FILE), &[4; KEY_BYTES]).unwrap();
+        let provider: String = conn.query_row("PRAGMA cipher_provider", [], |r| r.get(0)).unwrap();
+        let version: String = conn
+            .query_row("PRAGMA cipher_provider_version", [], |r| r.get(0))
+            .unwrap();
+        if cfg!(target_os = "macos") {
+            assert_eq!(provider, "commoncrypto");
+        } else if cfg!(windows) {
+            assert_eq!(provider, "openssl");
+            assert!(version.starts_with("OpenSSL 3.6.3"), "{version}");
+        }
+        drop(conn);
         std::fs::remove_dir_all(dir).unwrap();
     }
 
@@ -1592,6 +1839,7 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/errors.rs b/src-tauri/src/errors.rs
+index eefd817d4c54b7f3820fd39cebe0f1f83d26cfc6..0d3cb3b6861f5cb15d714b86db88a1014aa045c2 100644
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
 @@ -161,6 +161,7 @@
@@ -1608,6 +1856,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index a76dcd687a73f5e819088e4c374ffc8ec215eaf3..0d3dec655914efaceb69a834902465d61325625e 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -9,6 +9,7 @@
@@ -1624,17 +1873,21 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
+index 9055e19a4f7e0dfc40c7ed1610169209446248e1..efde5a95498c646ced643410faf307b8c47a836d 100644
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
-@@ -3,7 +3,7 @@
+@@ -3,9 +3,9 @@
  //! phần bên ngoài giả (`FakeDeps`): không chạy tiến trình phụ, không thu âm thật.
  
  use std::ops::ControlFlow;
 -use std::sync::atomic::{AtomicBool, Ordering};
 +use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
  use std::sync::{Arc, Condvar, Mutex};
- use std::time::Duration;
+-use std::time::Duration;
++use std::time::{Duration, SystemTime};
  
+ use asr_protocol::{TranscribeRequest, TranscribeResult};
+ use pipeline::engine::{EnergyVad, FrameSource, VadFactory};
 @@ -20,10 +20,12 @@
  
  use crate::capture::OnEvent;
@@ -1648,14 +1901,18 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
  use crate::session::{Session, SessionDeps};
  use crate::settings::migrate::FileMeta;
  use crate::settings::persist::{SettingsFile, Writer};
-@@ -371,6 +373,14 @@
+@@ -371,6 +373,18 @@
      let login = FakeLoginItem::default();
      let file = FakeSettingsFile::default();
      let pro = FakePro(Arc::new(AtomicBool::new(true)));
 +    // Mỗi app giả một thư mục DB riêng trong thư mục tạm, kho khóa trong bộ nhớ.
 +    static APPS: AtomicUsize = AtomicUsize::new(0);
++    static CLEAN: std::sync::Once = std::sync::Once::new();
++    CLEAN.call_once(|| {
++        remove_stale_app_dirs(&std::env::temp_dir(), SystemTime::now());
++    });
 +    let data_dir = std::env::temp_dir().join(format!(
-+        "mt-app-data-{}-{}",
++        "{APP_DIR_PREFIX}{}-{}",
 +        std::process::id(),
 +        APPS.fetch_add(1, Ordering::SeqCst)
 +    ));
@@ -1663,7 +1920,7 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
      let app = builder
          .manage(AppState::new(
              Settings::defaults(UiLanguage::Vi),
-@@ -386,6 +396,10 @@
+@@ -386,6 +400,10 @@
          .manage(Writer(Box::new(file.clone())))
          .manage(file)
          .manage(Entitlement(Box::new(pro.clone())))
@@ -1674,6 +1931,41 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
          .manage(pro)
          .manage(Session::new(Arc::new(deps)))
          .invoke_handler(commands::handler())
+@@ -393,6 +411,34 @@
+         .expect("dựng được app giả");
+     crate::pro::refresh(app.handle());
+     app
++}
++
++const APP_DIR_PREFIX: &str = "mt-app-data-";
++
++/// Thư mục tạm của app giả (DB, file xuất) không xóa được lúc app giả bị hủy: state của app giả không bao giờ được drop
++/// (app giữ `AppHandle` trong chính state của nó), và tiến trình test thoát mà không chạy `Drop` của biến `static`. Nên lần
++/// đầu dựng app giả trong một tiến trình test thì xóa thư mục của những lần chạy trước, cũ hơn một giờ tính tới `now` (để
++/// không đụng thư mục của một lần `cargo test` khác đang chạy cùng lúc). Trả số thư mục đã xóa (N8 của review 03).
++pub fn remove_stale_app_dirs(parent: &std::path::Path, now: SystemTime) -> usize {
++    let Ok(entries) = std::fs::read_dir(parent) else {
++        return 0;
++    };
++    let mut removed = 0;
++    for entry in entries.flatten() {
++        let old = entry
++            .metadata()
++            .and_then(|m| m.modified())
++            .ok()
++            .and_then(|t| now.duration_since(t).ok())
++            .is_some_and(|age| age >= Duration::from_secs(3600));
++        if old
++            && entry.file_name().to_string_lossy().starts_with(APP_DIR_PREFIX)
++            && std::fs::remove_dir_all(entry.path()).is_ok()
++        {
++            removed += 1;
++        }
++    }
++    removed
+ }
+ 
+ /// Đổi gói của app giả: `true` là Pro, `false` là Free.
 ```
 
 - [ ] **Step 2: Chạy test, thấy đỏ**
@@ -1684,12 +1976,12 @@ cargo test -p meeting-translator --lib db:: 2>&1 | grep -E '^error(\[E[0-9]+\])?
 ```
 Expected (lúc lập kế hoạch; chưa có phần code của `db.rs`, chưa có `rusqlite`):
 ```text
-error: could not compile `meeting-translator` (lib test) due to 48 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 60 previous errors; 1 warning emitted
+error[E0425]: cannot find function `journal_path` in this scope
 error[E0425]: cannot find function `new_key` in this scope
 error[E0425]: cannot find function `open_with_key` in this scope
 error[E0425]: cannot find function `parse_key` in this scope
-error[E0425]: cannot find function `to_hex` in this scope
-error[E0425]: cannot find type `Connection` in this scope
+error[E0425]: cannot find function `set_aside` in this scope
 ```
 
 - [ ] **Step 3: Viết code**
@@ -1698,6 +1990,7 @@ Sửa `deny.toml` (áp bằng `git apply`):
 
 ```diff
 diff --git a/deny.toml b/deny.toml
+index ee53a66fcd7e41524d7517a4c6788583545e11b4..16d036329820242022722da53296843009abd725 100644
 --- a/deny.toml
 +++ b/deny.toml
 @@ -45,6 +45,10 @@
@@ -1717,6 +2010,7 @@ Sửa `scripts/check-windows.sh` (áp bằng `git apply`):
 
 ```diff
 diff --git a/scripts/check-windows.sh b/scripts/check-windows.sh
+index f450c49eff0c4df9cd784497874fe1fc981320dd..e6896a625b2eb6c89e23e5423e8445b2bd9369f8 100755
 --- a/scripts/check-windows.sh
 +++ b/scripts/check-windows.sh
 @@ -10,5 +10,19 @@
@@ -1745,6 +2039,7 @@ Sửa `src-tauri/Cargo.toml` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/Cargo.toml b/src-tauri/Cargo.toml
+index 7771c4f24f8a6c5249a79cb738778e592587c209..92a8ddbee7ba88adaf6f7b07e1a569ab5286aeb2 100644
 --- a/src-tauri/Cargo.toml
 +++ b/src-tauri/Cargo.toml
 @@ -17,10 +17,15 @@
@@ -1906,7 +2201,19 @@ impl DataStore {
         if let Some(conn) = slot.take() {
             conn.close().map_err(|(_, e)| e)?;
         }
-        for path in [self.path(), journal_path(&self.path())] {
+        // Cả các bản đã đổi tên vì không đọc được (`set_aside`): chúng vẫn chứa dữ liệu đã mã hóa, đọc lại được nếu khóa cũ
+        // xuất hiện lại (Keychain khôi phục từ bản sao lưu). "Xóa toàn bộ dữ liệu" thì không để lại gì (Q2 của review 03).
+        let mut paths = vec![self.path(), journal_path(&self.path())];
+        if let Ok(entries) = std::fs::read_dir(&self.dir) {
+            let prefix = format!("{DB_FILE}.unreadable-");
+            paths.extend(
+                entries
+                    .flatten()
+                    .filter(|e| e.file_name().to_string_lossy().starts_with(&prefix))
+                    .map(|e| e.path()),
+            );
+        }
+        for path in paths {
             match std::fs::remove_file(&path) {
                 Ok(()) => {}
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
@@ -2036,6 +2343,7 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/errors.rs b/src-tauri/src/errors.rs
+index 0d3cb3b6861f5cb15d714b86db88a1014aa045c2..52df62e462fde8fb2701f8c37a2e80577729487a 100644
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
 @@ -54,6 +54,8 @@
@@ -2053,12 +2361,13 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 0d3dec655914efaceb69a834902465d61325625e..f82d4e5d094bf0d0700efc94b22168091467713d 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -118,6 +118,8 @@
      app.manage(AppState::new(settings.clone(), loaded.meta, launched_at_login));
-     // Điểm kiểm tra Pro duy nhất (Đ6); kế hoạch 06 thay bản tạm bằng trạng thái bản quyền.
-     pro::install_gate(&handle, Box::new(pro::DevGate::from_env()));
+     // Điểm kiểm tra Pro duy nhất (Đ6): bản debug luôn Pro, bản release là Free; kế hoạch 06 cài trạng thái bản quyền.
+     pro::install_default_gate(&handle);
 +    // DB mã hóa của lịch sử và từ điển: chưa mở, chưa đọc kho khóa ở đây (db.rs).
 +    db::install(&handle)?;
      app.manage(HotkeyRegistry::default());
@@ -2070,6 +2379,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
+index 583c8cec6799344eba85b0329c4940f2f6f6ec6e..eb020a83d726dab5eba5c6bb86c55c635cf371b8 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -167,6 +167,7 @@
@@ -2086,6 +2396,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
+index 492d7f866eff6e1f92edf84e51f58cc3a7632e3a..45c715e9b7a102e84623e091be520942b2d87e69 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -167,5 +167,6 @@
@@ -2133,10 +2444,22 @@ test db::tests::a_wrong_key_also_moves_the_old_file_aside ... ok
 test db::tests::keys_are_64_hex_digits ... ok
 test db::tests::keystore_errors_leave_the_file_alone ... ok
 test db::tests::reopening_uses_the_same_key ... ok
+test db::tests::set_aside_keeps_older_copies_and_drops_the_journal ... ok
+test db::tests::the_cipher_provider_matches_the_platform ... ok
 test db::tests::the_file_cannot_be_read_without_the_right_key ... ok
 test db::tests::the_sqlite3_tool_cannot_read_the_file ... ok
 test db::tests::wipe_removes_the_file_and_the_key ... ok
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 165 filtered out
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 167 filtered out
+```
+
+Run:
+```bash
+cargo test -p meeting-translator --lib old_temporary -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
+```
+Expected (lúc lập kế hoạch):
+```text
+test app_tests::old_temporary_folders_of_mock_apps_are_removed ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 178 filtered out
 ```
 
 Run:
@@ -2145,7 +2468,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 173 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 177 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 Run:
@@ -2154,8 +2477,8 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 ```
 Expected (lúc lập kế hoạch):
 ```text
- Test Files  5 passed (5)
-      Tests  66 passed (66)
+ Test Files  6 passed (6)
+      Tests  67 passed (67)
 ```
 
 Run:
@@ -2203,6 +2526,7 @@ git add Cargo.lock \
   deny.toml \
   scripts/check-windows.sh \
   src-tauri/Cargo.toml \
+  src-tauri/src/app_tests.rs \
   src-tauri/src/db.rs \
   src-tauri/src/errors.rs \
   src-tauri/src/lib.rs \
@@ -2244,6 +2568,7 @@ Sửa `crates/pipeline/src/engine.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/src/engine.rs b/crates/pipeline/src/engine.rs
+index 88c6856abe3b75e2c0d9bf4cfec72c2320043852..1590688089782ae35b40ffb5200c1ad7c1aa77e1 100644
 --- a/crates/pipeline/src/engine.rs
 +++ b/crates/pipeline/src/engine.rs
 @@ -1429,6 +1429,106 @@
@@ -2505,6 +2830,7 @@ Sửa `crates/pipeline/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/src/lib.rs b/crates/pipeline/src/lib.rs
+index 7c05ddd12a7f7270826121763f9b86e4fad4c87f..3ea22a2820b6616408c672bbf3f24dd199d39250 100644
 --- a/crates/pipeline/src/lib.rs
 +++ b/crates/pipeline/src/lib.rs
 @@ -2,6 +2,7 @@
@@ -2521,6 +2847,7 @@ Sửa `crates/pipeline/src/prompt.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/src/prompt.rs b/crates/pipeline/src/prompt.rs
+index 9364cd940b8ce347f2db08293308c50af5488803..c277554dbe785735d3c427551aebbe659ffbc357 100644
 --- a/crates/pipeline/src/prompt.rs
 +++ b/crates/pipeline/src/prompt.rs
 @@ -123,6 +123,37 @@
@@ -2567,6 +2894,7 @@ Sửa `crates/pipeline/src/translate.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/src/translate.rs b/crates/pipeline/src/translate.rs
+index 8ec91c288b46c38500174b63268e8b3b59e2f7c1..075fab708bc606621fd228a1d564d1e025a2f3f5 100644
 --- a/crates/pipeline/src/translate.rs
 +++ b/crates/pipeline/src/translate.rs
 @@ -243,6 +243,7 @@
@@ -2611,6 +2939,7 @@ Sửa `crates/pipeline/tests/engine.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/tests/engine.rs b/crates/pipeline/tests/engine.rs
+index b1891fa9ab5f3804caecf2f1969efdc2d56b39f0..73cbec8cb7913f1105a357ca9b8d1d249b53a400 100644
 --- a/crates/pipeline/tests/engine.rs
 +++ b/crates/pipeline/tests/engine.rs
 @@ -202,6 +202,7 @@
@@ -2627,6 +2956,7 @@ Sửa `crates/pipeline/tests/lifecycle.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/tests/lifecycle.rs b/crates/pipeline/tests/lifecycle.rs
+index 3040fb4eac15877801c4979368315354a30ce49e..0a2d42a36048f5f4ec9236e9450e61cf0f226bcd 100644
 --- a/crates/pipeline/tests/lifecycle.rs
 +++ b/crates/pipeline/tests/lifecycle.rs
 @@ -388,6 +388,7 @@
@@ -2643,6 +2973,7 @@ Sửa `crates/pipeline/tests/real_sidecars.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/tests/real_sidecars.rs b/crates/pipeline/tests/real_sidecars.rs
+index 795ace5763a91af6bce2f7d32c5c9843af88db18..85f875e4817b61caa580685055fa1e205ff86c20 100644
 --- a/crates/pipeline/tests/real_sidecars.rs
 +++ b/crates/pipeline/tests/real_sidecars.rs
 @@ -102,6 +102,7 @@
@@ -2777,6 +3108,7 @@ Sửa `crates/latency-bench/src/mt_eval.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/latency-bench/src/mt_eval.rs b/crates/latency-bench/src/mt_eval.rs
+index b9518aa48139cdcdd53fdd241b8f9e860e6f48fc..aa3ad3361f14c5d9fb0bd164b88aad65a27aaac0 100644
 --- a/crates/latency-bench/src/mt_eval.rs
 +++ b/crates/latency-bench/src/mt_eval.rs
 @@ -323,6 +323,8 @@
@@ -2794,6 +3126,7 @@ Sửa `crates/pipeline/Cargo.toml` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/Cargo.toml b/crates/pipeline/Cargo.toml
+index c829b71c3421e4ac76253f76025fefe06ae04ec3..c30247637a8fd7b1f9f0c20fe267820e9cace088 100644
 --- a/crates/pipeline/Cargo.toml
 +++ b/crates/pipeline/Cargo.toml
 @@ -18,6 +18,8 @@
@@ -2811,6 +3144,7 @@ Sửa `crates/pipeline/src/engine.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/src/engine.rs b/crates/pipeline/src/engine.rs
+index 1590688089782ae35b40ffb5200c1ad7c1aa77e1..a85d156f50a269daddcf296c78cabc9665a86e97 100644
 --- a/crates/pipeline/src/engine.rs
 +++ b/crates/pipeline/src/engine.rs
 @@ -31,6 +31,7 @@
@@ -2996,6 +3330,7 @@ Sửa `crates/pipeline/src/prompt.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/src/prompt.rs b/crates/pipeline/src/prompt.rs
+index c277554dbe785735d3c427551aebbe659ffbc357..06a7fc920149e1f724e0e7b0cd4bae55346b9abf 100644
 --- a/crates/pipeline/src/prompt.rs
 +++ b/crates/pipeline/src/prompt.rs
 @@ -1,4 +1,6 @@
@@ -3047,6 +3382,7 @@ Sửa `crates/pipeline/src/translate.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/src/translate.rs b/crates/pipeline/src/translate.rs
+index 075fab708bc606621fd228a1d564d1e025a2f3f5..8c979cd4b5434129c37abc62766e9881ca60f59c 100644
 --- a/crates/pipeline/src/translate.rs
 +++ b/crates/pipeline/src/translate.rs
 @@ -3,9 +3,10 @@
@@ -3085,6 +3421,7 @@ Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
+index 9a99ee30ba3bb0abb4c01b323076debec66d8791..ac4e057f51f270890823c3ddd6e7518ebaa0d073 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
 @@ -148,6 +148,7 @@
@@ -3165,18 +3502,19 @@ cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8
 ```
 Expected (lúc lập kế hoạch):
 ```text
-passed 527 failed 0 ignored 12
+passed 531 failed 0 ignored 12
 ```
 
 - [ ] **Step 5: Thử với model thật (tùy chọn)**
 
-Chạy với `llama-server` b11146 và Hy-MT2 thật (cần `tools/` và `models/` của Giai đoạn 0; không có thì bỏ bước này). Mỗi model chạy vài giây, không đo thời gian. Test chỉ đòi có từ điển thì đúng nhiều hơn hẳn không có (ít nhất 3 thuật ngữ); số cụ thể ghi ở bảng "Thuật ngữ với model thật" của file này.
+Chạy với `llama-server` b11146 và Hy-MT2 thật. `tools/` và `models/` không có trong worktree sạch (bị `.gitignore` bỏ qua), nên đặt `R` là repo chính có hai thư mục đó (N10 của review 03); không có thì bỏ bước này. Mỗi model chạy vài giây, không đo thời gian. Test chỉ đòi có từ điển thì đúng nhiều hơn hẳn không có (ít nhất 3 thuật ngữ); số cụ thể ghi ở bảng "Thuật ngữ với model thật" của file này.
 
 Run:
 ```bash
+R=${R:-/Users/dtphong/Desktop/software_business/meeting-translator}
 for m in Q8_0 Q4_K_M; do
-  MT_LLAMA_SERVER=$PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server \
-  MT_MT_MODEL=$PWD/models/Hy-MT2-1.8B-$m.gguf \
+  MT_LLAMA_SERVER=$R/tools/llama-b11146/macos-arm64/llama-b11146/llama-server \
+  MT_MT_MODEL=$R/models/Hy-MT2-1.8B-$m.gguf \
   cargo test -q -p pipeline --test real_terms -- --include-ignored --nocapture 2>&1 | grep -E '^thuật ngữ|^test result' | sed 's/; finished in .*//'
 done
 ```
@@ -3233,8 +3571,9 @@ git commit -m "feat(pipeline): khớp thuật ngữ theo §6.5 và mẫu termino
 Dòng 19, 49, 155, 193, 318 (`glossary.rs` của app); QĐ12, QĐ14.
 
 - Thêm, sửa, xóa, liệt kê; mã lỗi `glossaryEmpty`, `glossaryTooLong`, `glossaryInvalidChar`, `glossaryDuplicate` (kèm trường `source` hay `target`), `glossaryFull`, `glossaryNotFound`, `csvInvalid`.
-- `export_csv`, `import_csv` theo QĐ14 (bằng crate `csv`).
+- `export_csv`, `import_csv` theo QĐ14 (bằng crate `csv`). Ô bắt đầu bằng `=`, `+`, `-`, `@` được thêm `'` khi xuất để Excel không chạy công thức (`guard`), và bỏ đúng dấu đó khi nhập (`unguard`), nên nhập rồi xuất lại giữ nguyên thuật ngữ (N1 của review 03).
 - `ActiveGlossary` (một `SharedGlossary` cho mọi phiên) và `reload`: Pro thì đọc DB, Free thì rỗng. `session::start_with` gọi `reload` trước khi giữ khóa của phiên (đọc DB có thể chờ kho khóa), rồi truyền vào `EngineConfig`.
+- `forget`: luồng dịch thôi dùng thuật ngữ mà không đọc DB. `pro::refresh` gọi nó khi gói về Free, để thuật ngữ thôi vào prompt ngay giữa phiên (N11 của review 03); lên Pro thì không đọc DB ở đó (lúc khởi động không mở DB, QĐ4), phiên sau tự nạp.
 - `db::with` và `DataStore::with` nhận lỗi kiểu bất kỳ có `From<DbError>` (để hàm của từ điển trả `GlossaryError`); test của `db.rs` dùng hàm `run` để suy ra kiểu lỗi.
 - `FakeDeps` ghi lại prompt của từng request dịch (`prompts`), để test phiên kiểm thuật ngữ vào prompt ở gói Pro, không vào ở gói Free.
 
@@ -3245,6 +3584,7 @@ Dòng 19, 49, 155, 193, 318 (`glossary.rs` của app); QĐ12, QĐ14.
 - Modify: `src-tauri/src/errors.rs`
 - Create: `src-tauri/src/glossary.rs`
 - Modify: `src-tauri/src/lib.rs`
+- Modify: `src-tauri/src/pro.rs`
 - Modify: `src-tauri/src/session.rs`
 - Modify: `src-tauri/src/test_support.rs`
 - Modify: `src/i18n/en.ts`
@@ -3257,6 +3597,7 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
+index 671a04a114b5995d6b62729a606bb0506065cc93..6270209029578dbf1dfb884a4f4329fad2352bb7 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
 @@ -13,7 +13,8 @@
@@ -3269,7 +3610,7 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
  };
  
  /// Ghi lại mọi payload của một sự kiện.
-@@ -533,6 +534,41 @@
+@@ -533,6 +534,59 @@
      assert!(before < running && running < idle, "{before} {running} {idle}");
  }
  
@@ -3308,6 +3649,24 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
 +    );
 +}
 +
++/// N11 của review 03: về Free (`pro::refresh`) thì luồng dịch thôi dùng thuật ngữ ngay, không chờ phiên sau. Lên Pro thì
++/// không mở DB (lúc khởi động app cũng vậy, QĐ4).
++#[test]
++fn losing_pro_empties_the_glossary_of_the_translation_thread() {
++    let app = mock_app();
++    assert!(
++        !app.state::<crate::db::DataStore>().path().exists(),
++        "dựng app (Pro) không mở DB"
++    );
++    crate::db::with(app.handle(), |c| crate::glossary::add(c, "sprint", "sprint")).unwrap();
++    crate::glossary::reload(app.handle());
++    let active = || app.state::<crate::glossary::ActiveGlossary>().0.read().unwrap().len();
++    assert_eq!(active(), 1);
++    set_pro(&app, false);
++    crate::pro::refresh(app.handle());
++    assert_eq!(active(), 0, "về Free thì không còn thuật ngữ trong prompt");
++}
++
  /// Cài đặt có số thứ tự tăng dần (điểm cần quyết 10 của 02a), để giao diện bỏ bản cũ tới muộn. Số trong kết quả của
  /// lệnh, trong sự kiện `settings://changed` và trong `get_settings` là một.
  #[test]
@@ -3317,9 +3676,10 @@ Sửa `src-tauri/src/db.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
+index 7db991da2c0ddaa4a72f45dc706ef8af7c0300f7..9604986a9dc952c5ec081f31b3479cdf2535a9de 100644
 --- a/src-tauri/src/db.rs
 +++ b/src-tauri/src/db.rs
-@@ -293,6 +293,11 @@
+@@ -305,6 +305,11 @@
          Keystore::with_store(SERVICE, keys.clone())
      }
  
@@ -3331,7 +3691,7 @@ diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
      fn tables(conn: &Connection) -> Vec<String> {
          let mut stmt = conn
              .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
-@@ -305,14 +310,13 @@
+@@ -317,14 +322,13 @@
          let dir = temp_dir("new");
          let keys = MockStore::new().unwrap();
          let db = store(&dir, &keys);
@@ -3352,8 +3712,8 @@ diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
 +        .unwrap();
          assert_eq!(names, ["glossary", "lines", "sessions"]);
          assert_eq!(version, SCHEMA_VERSION);
-         let header = std::fs::read(db.path()).unwrap();
-@@ -332,7 +336,7 @@
+         let secure = db
+@@ -348,7 +352,7 @@
          let dir = temp_dir("nokey");
          let keys = MockStore::new().unwrap();
          let db = store(&dir, &keys);
@@ -3362,7 +3722,7 @@ diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
              c.execute("INSERT INTO sessions VALUES (1, 0, 0, 'vi')", [])?;
              Ok(())
          })
-@@ -362,7 +366,7 @@
+@@ -378,7 +382,7 @@
          let dir = temp_dir("cli");
          let keys = MockStore::new().unwrap();
          let db = store(&dir, &keys);
@@ -3371,7 +3731,7 @@ diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
              c.execute(
                  "INSERT INTO glossary (source, target, match_key, created_at) VALUES ('API', 'giao diện lập trình', 'api', 0)",
                  [],
-@@ -386,15 +390,15 @@
+@@ -402,15 +406,15 @@
      fn reopening_uses_the_same_key() {
          let dir = temp_dir("reopen");
          let keys = MockStore::new().unwrap();
@@ -3396,7 +3756,7 @@ diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
          assert_eq!(count, 1);
          std::fs::remove_dir_all(dir).unwrap();
      }
-@@ -403,16 +407,16 @@
+@@ -419,16 +423,16 @@
      fn a_lost_key_moves_the_old_file_aside() {
          let dir = temp_dir("lost");
          let keys = MockStore::new().unwrap();
@@ -3422,7 +3782,7 @@ diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
          assert_eq!(count, 0, "DB mới, rỗng");
          let aside: Vec<String> = std::fs::read_dir(&dir)
              .unwrap()
-@@ -432,7 +436,7 @@
+@@ -448,7 +452,7 @@
          keystore(&keys)
              .set(KEY_NAME, to_hex(&[2; KEY_BYTES]).as_bytes())
              .unwrap();
@@ -3431,7 +3791,7 @@ diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
          assert_eq!(names, ["glossary", "lines", "sessions"]);
          assert_eq!(
              std::fs::read_dir(&dir).unwrap().count(),
-@@ -446,17 +450,17 @@
+@@ -462,17 +466,17 @@
      fn keystore_errors_leave_the_file_alone() {
          let dir = temp_dir("denied");
          let keys = MockStore::new().unwrap();
@@ -3452,7 +3812,7 @@ diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
          std::fs::remove_dir_all(dir).unwrap();
      }
  
-@@ -479,7 +483,7 @@
+@@ -495,7 +499,7 @@
          let dir = temp_dir("wipe");
          let keys = MockStore::new().unwrap();
          let db = store(&dir, &keys);
@@ -3461,9 +3821,9 @@ diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
              c.execute("INSERT INTO sessions VALUES (1, 10, 20, 'vi')", [])?;
              Ok(())
          })
-@@ -487,9 +491,10 @@
-         db.wipe().unwrap();
-         assert!(!db.path().exists());
+@@ -512,9 +516,10 @@
+             "không còn file nào của dữ liệu cũ"
+         );
          assert_eq!(keystore(&keys).get(KEY_NAME).unwrap(), None);
 -        let count = db
 -            .with(|c| Ok(c.query_row("SELECT count(*) FROM sessions", [], |r| r.get::<_, i64>(0))?))
@@ -3481,6 +3841,7 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/errors.rs b/src-tauri/src/errors.rs
+index 52df62e462fde8fb2701f8c37a2e80577729487a..7ca3070a07d72ea158e10f2e07a96e9586b25ac5 100644
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
 @@ -168,6 +168,7 @@
@@ -3506,6 +3867,8 @@ Tạo `src-tauri/src/glossary.rs`, lúc này mới có phần test:
 //! - CSV: hai cột `source,target`, dòng đầu là tên cột, mã UTF-8 có BOM để Excel mở đúng tiếng Việt. Nhập: bỏ BOM, bỏ
 //!   dòng tên cột nếu có, chữ nguồn đã có thì cập nhật bản dịch, chữ nguồn mới thì thêm tới khi đủ 500, dòng không hợp lệ
 //!   thì bỏ qua và đếm; cả lần nhập là một transaction.
+//! - Chặn công thức khi mở bằng Excel (N1 của review 03): khi xuất, ô bắt đầu bằng `=`, `+`, `-`, `@` được thêm một dấu
+//!   `'` ở đầu ([`guard`]); khi nhập, bỏ đúng một dấu `'` đó ([`unguard`]), nên nhập rồi xuất lại vẫn giữ nguyên thuật ngữ.
 //! - Luồng dịch dùng bản trong bộ nhớ ([`ActiveGlossary`]): nạp lúc bắt đầu phiên và sau mỗi lần sửa ([`reload`]); gói
 //!   Free thì rỗng (`pro::is_pro`).
 
@@ -3617,6 +3980,38 @@ mod tests {
         std::fs::remove_dir_all(other_dir).unwrap();
     }
 
+    /// N1 của review 03: Excel không chạy công thức từ file xuất ra; nhập lại thì được đúng thuật ngữ cũ.
+    #[test]
+    fn csv_cells_that_excel_reads_as_formulas_are_guarded() {
+        assert_eq!(guard("=HYPERLINK(\"x\")"), "'=HYPERLINK(\"x\")");
+        for (cell, out) in [
+            ("+1", "'+1"),
+            ("-ish", "'-ish"),
+            ("@home", "'@home"),
+            ("'=x", "''=x"),
+            ("a=b", "a=b"),
+        ] {
+            assert_eq!(guard(cell), out);
+            assert_eq!(unguard(out.to_string()), cell);
+        }
+        assert_eq!(unguard("'abc".into()), "'abc", "dấu ' của người dùng thì giữ");
+        assert_eq!(unguard("'".into()), "'");
+        let (c, dir) = conn("formula");
+        add(&c, "=1+1", "-sum").unwrap();
+        add(&c, "'@x", "y").unwrap();
+        let text = export_csv(&c).unwrap();
+        assert!(text.contains("'=1+1,'-sum\n"), "{text:?}");
+        assert!(text.contains("''@x,y\n"), "{text:?}");
+        let (mut other, other_dir) = conn("formula-other");
+        import_csv(&mut other, text.as_bytes()).unwrap();
+        let pairs = |c: &Connection| -> Vec<(String, String)> {
+            list(c).unwrap().into_iter().map(|e| (e.source, e.target)).collect()
+        };
+        assert_eq!(pairs(&other), pairs(&c));
+        std::fs::remove_dir_all(dir).unwrap();
+        std::fs::remove_dir_all(other_dir).unwrap();
+    }
+
     #[test]
     fn import_updates_existing_terms_and_counts_bad_rows() {
         let (mut c, dir) = conn("import");
@@ -3665,6 +4060,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index f82d4e5d094bf0d0700efc94b22168091467713d..b2fb1ffaac5873729f528c8eee7fbb52b2b23ed0 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -12,6 +12,7 @@
@@ -3681,6 +4077,7 @@ Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
+index ac4e057f51f270890823c3ddd6e7518ebaa0d073..57026cc3362089c2f3cdecf74a954827688eaba2 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
 @@ -961,7 +961,7 @@
@@ -3707,6 +4104,7 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
+index efde5a95498c646ced643410faf307b8c47a836d..c738b3eb8795dd365aa8d08dfa16aa00d1c2d9e5 100644
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
 @@ -22,6 +22,7 @@
@@ -3760,7 +4158,7 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
      }
  
      fn vad(&self) -> VadFactory {
-@@ -400,6 +408,7 @@
+@@ -404,6 +412,7 @@
              data_dir,
              Ok(Keystore::mock("com.aitranslator.desktop.test")),
          ))
@@ -3778,7 +4176,7 @@ cargo test -p meeting-translator --lib glossary 2>&1 | grep -E '^error(\[E[0-9]+
 ```
 Expected (lúc lập kế hoạch; chưa có phần code của `glossary.rs`, `ActiveGlossary`, `FakeDeps.prompts`):
 ```text
-error: could not compile `meeting-translator` (lib test) due to 54 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 69 previous errors; 1 warning emitted
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
 error[E0422]: cannot find struct, variant or union type `ImportReport` in this scope
 error[E0425]: cannot find function `add` in module `crate::glossary`
@@ -3792,6 +4190,7 @@ Sửa `src-tauri/Cargo.toml` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/Cargo.toml b/src-tauri/Cargo.toml
+index 92a8ddbee7ba88adaf6f7b07e1a569ab5286aeb2..95467d3c968e8c524d523569940a342f71699696 100644
 --- a/src-tauri/Cargo.toml
 +++ b/src-tauri/Cargo.toml
 @@ -17,6 +17,8 @@
@@ -3809,6 +4208,7 @@ Sửa `src-tauri/src/db.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
+index 9604986a9dc952c5ec081f31b3479cdf2535a9de..53ff335403eb1f25b30172119795539f84ada8e8 100644
 --- a/src-tauri/src/db.rs
 +++ b/src-tauri/src/db.rs
 @@ -94,17 +94,20 @@
@@ -4029,13 +4429,40 @@ pub fn delete(conn: &Connection, id: i64) -> Result<(), GlossaryError> {
     Ok(())
 }
 
+/// Ô này Excel sẽ đọc như công thức (bắt đầu bằng `=`, `+`, `-`, `@`), hoặc là một ô đã được [`guard`] (một dấu `'` rồi
+/// tới một ô như vậy): cần thêm dấu `'` khi xuất.
+fn needs_guard(cell: &str) -> bool {
+    match cell.chars().next() {
+        Some('=' | '+' | '-' | '@') => true,
+        Some('\'') => needs_guard(&cell[1..]),
+        _ => false,
+    }
+}
+
+/// Ô khi xuất CSV: thêm `'` ở đầu nếu Excel sẽ đọc ô như công thức.
+pub fn guard(cell: &str) -> String {
+    if needs_guard(cell) {
+        format!("'{cell}")
+    } else {
+        cell.to_string()
+    }
+}
+
+/// Ngược của [`guard`] khi nhập CSV: bỏ một dấu `'` ở đầu nếu phần còn lại là ô cần chặn.
+pub fn unguard(cell: String) -> String {
+    match cell.strip_prefix('\'') {
+        Some(rest) if needs_guard(rest) => rest.to_string(),
+        _ => cell,
+    }
+}
+
 /// Ghi cả từ điển ra CSV (UTF-8 có BOM, dòng đầu là tên cột).
 pub fn export_csv(conn: &Connection) -> Result<String, GlossaryError> {
     let mut out = csv::Writer::from_writer(Vec::new());
     out.write_record(HEADER)
         .map_err(|e| GlossaryError::Csv(e.to_string()))?;
     for e in list(conn)? {
-        out.write_record([&e.source, &e.target])
+        out.write_record([guard(&e.source), guard(&e.target)])
             .map_err(|e| GlossaryError::Csv(e.to_string()))?;
     }
     let bytes = out.into_inner().map_err(|e| GlossaryError::Csv(e.to_string()))?;
@@ -4076,6 +4503,7 @@ pub fn import_csv(conn: &mut Connection, bytes: &[u8]) -> Result<ImportReport, G
             report.skipped += 1;
             continue;
         };
+        let (source, target) = (unguard(source), unguard(target));
         let key = normalize(&source);
         match id_of_key(&tx, &key)? {
             Some(id) => {
@@ -4103,6 +4531,13 @@ pub fn import_csv(conn: &mut Connection, bytes: &[u8]) -> Result<ImportReport, G
 /// Từ điển của luồng dịch, dùng chung cho mọi phiên. Quản lý bằng `app.manage`.
 #[derive(Default)]
 pub struct ActiveGlossary(pub SharedGlossary);
+
+/// Gói về Free: luồng dịch thôi dùng thuật ngữ ngay, từ câu sau (N11 của review 03). Không đọc DB.
+pub fn forget<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(active) = app.try_state::<ActiveGlossary>() {
+        *active.0.write().unwrap_or_else(|e| e.into_inner()) = Glossary::default();
+    }
+}
 
 /// Nạp lại từ điển của luồng dịch: Pro thì đọc DB, Free thì rỗng. Đọc DB lỗi thì để rỗng và ghi log (phiên vẫn dịch,
 /// chỉ không có thuật ngữ). Gọi lúc bắt đầu phiên và sau mỗi lần sửa từ điển.
@@ -4132,10 +4567,11 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index b2fb1ffaac5873729f528c8eee7fbb52b2b23ed0..211f56fddc97e46bc7d244fc0ca9dd25b51113d0 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -121,6 +121,7 @@
-     pro::install_gate(&handle, Box::new(pro::DevGate::from_env()));
+     pro::install_default_gate(&handle);
      // DB mã hóa của lịch sử và từ điển: chưa mở, chưa đọc kho khóa ở đây (db.rs).
      db::install(&handle)?;
 +    app.manage(glossary::ActiveGlossary::default());
@@ -4144,10 +4580,32 @@ diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
      // giờ ghi pidfile (Q8 của review 02c). Windows: Job Object đã lo, hàm không làm gì. Đọc pidfile ở đây chỉ đúng vì
 ```
 
+Sửa `src-tauri/src/pro.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/pro.rs b/src-tauri/src/pro.rs
+index 35c0923cd0c30774c9fb3f8a1f6de5d0496f9372..6e45fcc2fa06dd2629e2301ad1b65e8952db286f 100644
+--- a/src-tauri/src/pro.rs
++++ b/src-tauri/src/pro.rs
+@@ -113,6 +113,11 @@
+     }
+     state.update_status(|s| s.pro = pro);
+     actions::status_changed(app);
++    // Về Free giữa phiên (06: hết hạn, bị thu hồi): thuật ngữ thôi vào prompt ngay (N11 của review 03). Lên Pro thì
++    // không đọc DB ở đây (lúc khởi động không mở DB, QĐ4): phiên sau nạp từ điển lúc bắt đầu.
++    if !pro {
++        crate::glossary::forget(app);
++    }
+ }
+ 
+ #[cfg(test)]
+```
+
 Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
+index 57026cc3362089c2f3cdecf74a954827688eaba2..beb4240aeac09bc1fe39472516efaab3633ad718 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
 @@ -24,6 +24,7 @@
@@ -4214,6 +4672,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
+index eb020a83d726dab5eba5c6bb86c55c635cf371b8..67ed717c6214becd477aaec92f37e7c192b3902d 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -168,6 +168,13 @@
@@ -4236,6 +4695,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
+index 45c715e9b7a102e84623e091be520942b2d87e69..d8eeb932a4e24878bcf94ca76e88ddfb0504cd07 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -168,5 +168,12 @@
@@ -4277,14 +4737,16 @@ cargo test -p meeting-translator --lib glossary -- --test-threads=1 2>&1 | grep 
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::glossary_terms_reach_the_prompt_only_for_pro ... ok
+test app_tests::losing_pro_empties_the_glossary_of_the_translation_thread ... ok
 test glossary::tests::add_update_delete_and_list ... ok
 test glossary::tests::at_most_500_entries ... ok
+test glossary::tests::csv_cells_that_excel_reads_as_formulas_are_guarded ... ok
 test glossary::tests::csv_roundtrip_keeps_commas_quotes_and_vietnamese ... ok
 test glossary::tests::duplicates_follow_the_matching_rules ... ok
 test glossary::tests::import_stops_adding_at_500_and_a_file_that_is_not_utf8_imports_nothing ... ok
 test glossary::tests::import_updates_existing_terms_and_counts_bad_rows ... ok
 test glossary::tests::values_are_checked ... ok
-test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 175 filtered out
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 179 filtered out
 ```
 
 Run:
@@ -4300,10 +4762,12 @@ test db::tests::a_wrong_key_also_moves_the_old_file_aside ... ok
 test db::tests::keys_are_64_hex_digits ... ok
 test db::tests::keystore_errors_leave_the_file_alone ... ok
 test db::tests::reopening_uses_the_same_key ... ok
+test db::tests::set_aside_keeps_older_copies_and_drops_the_journal ... ok
+test db::tests::the_cipher_provider_matches_the_platform ... ok
 test db::tests::the_file_cannot_be_read_without_the_right_key ... ok
 test db::tests::the_sqlite3_tool_cannot_read_the_file ... ok
 test db::tests::wipe_removes_the_file_and_the_key ... ok
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 173 filtered out
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 177 filtered out
 ```
 
 Run:
@@ -4312,7 +4776,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 181 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 187 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 Run:
@@ -4321,8 +4785,8 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 ```
 Expected (lúc lập kế hoạch):
 ```text
- Test Files  5 passed (5)
-      Tests  66 passed (66)
+ Test Files  6 passed (6)
+      Tests  67 passed (67)
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -4355,6 +4819,7 @@ git add Cargo.lock \
   src-tauri/src/errors.rs \
   src-tauri/src/glossary.rs \
   src-tauri/src/lib.rs \
+  src-tauri/src/pro.rs \
   src-tauri/src/session.rs \
   src-tauri/src/test_support.rs \
   src/i18n/en.ts \
@@ -4387,6 +4852,7 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
+index 6270209029578dbf1dfb884a4f4329fad2352bb7..919baaafc89cf3e77536d5d644570451680bfce9 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
 @@ -534,6 +534,38 @@
@@ -4434,6 +4900,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 211f56fddc97e46bc7d244fc0ca9dd25b51113d0..33c6a6308934056b9a82bb10343492cb56883c39 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -28,6 +28,7 @@
@@ -4450,6 +4917,7 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
+index c738b3eb8795dd365aa8d08dfa16aa00d1c2d9e5..12aca690685267a358ae1c2143fa09e497759229 100644
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
 @@ -33,6 +33,7 @@
@@ -4460,7 +4928,7 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
  
  /// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`.
  #[derive(Clone, Default)]
-@@ -409,6 +410,7 @@
+@@ -413,6 +414,7 @@
              Ok(Keystore::mock("com.aitranslator.desktop.test")),
          ))
          .manage(ActiveGlossary::default())
@@ -4751,6 +5219,7 @@ Sửa `src-tauri/src/i18n.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/i18n.rs b/src-tauri/src/i18n.rs
+index 89993b26f8681ebe8e67bf296b9b7de0c49c7424..58f0253768a4f14e2c771da877d30f502977fd5c 100644
 --- a/src-tauri/src/i18n.rs
 +++ b/src-tauri/src/i18n.rs
 @@ -1,4 +1,4 @@
@@ -4831,6 +5300,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 33c6a6308934056b9a82bb10343492cb56883c39..6b283584576fa3fc4fa6df36663f723b4cbe25c4 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -123,6 +123,7 @@
@@ -4847,6 +5317,7 @@ Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
+index beb4240aeac09bc1fe39472516efaab3633ad718..dad11c562e8b594b727b27d78af031c7ecd92b4c 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
 @@ -20,7 +20,7 @@
@@ -5290,7 +5761,7 @@ test transcript::store::tests::end_returns_the_transcript_once ... ok
 test transcript::store::tests::events_of_another_session_are_ignored_and_a_new_session_starts_empty ... ok
 test transcript::store::tests::keeps_every_line_of_the_session_in_order ... ok
 test transcript::store::tests::merged_subtitles_replace_the_ones_they_absorb ... ok
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 184 filtered out
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 190 filtered out
 ```
 
 Run:
@@ -5300,7 +5771,7 @@ cargo test -p meeting-translator --lib a_session_keeps -- --test-threads=1 2>&1 
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::a_session_keeps_its_transcript_in_memory ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 192 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 198 filtered out
 ```
 
 Run:
@@ -5309,7 +5780,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 191 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 197 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -5345,12 +5816,14 @@ Dòng 18, 48, 155, 252, 273; QĐ15.
 - `transcript/history.rs`: `save` (một transaction; phiên không có câu nào thì không lưu), `list` (mới nhất trước, câu xem trước 80 ký tự), `get`, `delete`, `clear`; mã lỗi `historyNotFound`.
 - `save_if_enabled`: chỉ khi bật "Lưu lịch sử" và là Pro; lỗi chỉ ghi log, không có chữ chép lời.
 - `pipeline::subtitle::Status` thêm `Deserialize` để đọc lại trạng thái đã lưu.
-- `session::stop_engine` lưu lịch sử ngay lúc phiên dừng (cả khi thoát app).
+- `session::stop_engine` lưu lịch sử ngay lúc phiên dừng: bấm Dừng, lỗi, Thoát ở menu khay (`session::shutdown`).
+- `session::save_on_exit`, gọi ở `RunEvent::Exit` (sau `kill_all`): lưu phiên đang chạy khi app thoát không qua menu khay, tức máy tắt, khởi động lại, đăng xuất, app tự khởi động lại để cập nhật (Q3 của review 03). Không chờ engine; `TranscriptStore::end` chỉ trả bản chép lời một lần, nên không lưu hai lần.
 
 **Files:**
 - Modify: `crates/pipeline/src/subtitle.rs`
 - Modify: `src-tauri/src/app_tests.rs`
 - Modify: `src-tauri/src/errors.rs`
+- Modify: `src-tauri/src/lib.rs`
 - Modify: `src-tauri/src/session.rs`
 - Create: `src-tauri/src/transcript/history.rs`
 - Modify: `src-tauri/src/transcript/mod.rs`
@@ -5363,9 +5836,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
+index 919baaafc89cf3e77536d5d644570451680bfce9..5c2991ab64ccdbf48940a6e59d1fccc839db49ce 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -566,6 +566,36 @@
+@@ -566,6 +566,81 @@
      session::stop(app.handle());
  }
  
@@ -5399,6 +5873,51 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
 +    assert_eq!(saved(), 1, "gói Free không lưu");
 +}
 +
++/// Chạy một phiên có lưu lịch sử tới khi có một câu dịch xong; phiên vẫn chạy khi hàm trả về.
++fn running_session_with_history() -> tauri::App<tauri::test::MockRuntime> {
++    let app = mock_app_with(FakeDeps {
++        audio: FakeAudio::Tone,
++        ..FakeDeps::default()
++    });
++    let main = window(&app, "main");
++    invoke(&main, "update_settings", json!({ "patch": { "saveHistory": true } })).unwrap();
++    session::start(app.handle()).unwrap();
++    let store = app.state::<crate::transcript::store::TranscriptStore>();
++    wait_until("một câu dịch xong", || {
++        store.snapshot().lines.iter().any(|l| !l.tgt_text.is_empty())
++    });
++    app
++}
++
++fn saved_sessions(app: &tauri::App<tauri::test::MockRuntime>) -> usize {
++    crate::db::with(app.handle(), |c| crate::transcript::history::list(c))
++        .unwrap()
++        .len()
++}
++
++/// Q3 của review 03: Thoát ở menu khay (`session::shutdown`) lưu phiên đang chạy vào lịch sử, như khi bấm Dừng (§4.3).
++/// `RunEvent::Exit` tới sau đó không lưu lần nữa.
++#[test]
++fn quitting_saves_the_running_session_to_history() {
++    let app = running_session_with_history();
++    session::shutdown(app.handle());
++    assert_eq!(saved_sessions(&app), 1);
++    session::save_on_exit(app.handle());
++    assert_eq!(saved_sessions(&app), 1, "không lưu hai lần");
++}
++
++/// Q3 của review 03: app thoát không qua menu khay (máy tắt, đăng xuất, app tự khởi động lại để cập nhật) thì
++/// `RunEvent::Exit` gọi `session::save_on_exit`: phiên đang chạy vào lịch sử, không chờ engine dừng.
++#[test]
++fn the_exit_event_saves_the_running_session_to_history() {
++    let app = running_session_with_history();
++    session::save_on_exit(app.handle());
++    assert_eq!(saved_sessions(&app), 1);
++    session::save_on_exit(app.handle());
++    session::stop(app.handle());
++    assert_eq!(saved_sessions(&app), 1, "không lưu hai lần");
++}
++
  /// Từ điển thuật ngữ (F5) vào prompt của phiên ở gói Pro, theo mẫu "terminology" (§6.5); gói Free thì không (Đ6).
  #[test]
  fn glossary_terms_reach_the_prompt_only_for_pro() {
@@ -5408,6 +5927,7 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/errors.rs b/src-tauri/src/errors.rs
+index 7ca3070a07d72ea158e10f2e07a96e9586b25ac5..ef1de8f1a6201268f8dda84c0007f72126075ab2 100644
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
 @@ -169,6 +169,7 @@
@@ -5536,6 +6056,7 @@ Sửa `src-tauri/src/transcript/mod.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/transcript/mod.rs b/src-tauri/src/transcript/mod.rs
+index 6c67454e38f2adb9b3506a77cf4a45166dd3cdd0..9cfaa0ec6b87feff371b491c3d7aaf9301a4802f 100644
 --- a/src-tauri/src/transcript/mod.rs
 +++ b/src-tauri/src/transcript/mod.rs
 @@ -2,4 +2,5 @@
@@ -5554,7 +6075,7 @@ cargo test -p meeting-translator --lib history 2>&1 | grep -E '^error(\[E[0-9]+\
 ```
 Expected (lúc lập kế hoạch; chưa có phần code của `history.rs`):
 ```text
-error: could not compile `meeting-translator` (lib test) due to 37 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 41 previous errors; 1 warning emitted
 error[E0422]: cannot find struct, variant or union type `Subtitle` in this scope
 error[E0422]: cannot find struct, variant or union type `Transcript` in this scope
 error[E0425]: cannot find function `clear` in this scope
@@ -5568,6 +6089,7 @@ Sửa `crates/pipeline/src/subtitle.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/crates/pipeline/src/subtitle.rs b/crates/pipeline/src/subtitle.rs
+index f3745bc33ac22b6ae905b141a6c45dbe9dc97d99..b1a39220a3d13d1f18513cbeab2550de365dbfd2 100644
 --- a/crates/pipeline/src/subtitle.rs
 +++ b/crates/pipeline/src/subtitle.rs
 @@ -4,9 +4,10 @@
@@ -5585,10 +6107,35 @@ diff --git a/crates/pipeline/src/subtitle.rs b/crates/pipeline/src/subtitle.rs
      /// Đã có chữ gốc, đang chờ dịch.
 ```
 
+Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 6b283584576fa3fc4fa6df36663f723b4cbe25c4..591a243f017e629eaaad0fc47019f56a1fc749b1 100644
+--- a/src-tauri/src/lib.rs
++++ b/src-tauri/src/lib.rs
+@@ -176,8 +176,12 @@
+         // Bấm icon ở Dock khi cửa sổ chính đang ẩn.
+         #[cfg(target_os = "macos")]
+         RunEvent::Reopen { .. } => window::show_main(app),
+-        // Lưới an toàn: tiến trình phụ nào còn sống lúc app thoát thì kill (Thoát ở menu khay đã tắt chúng).
+-        RunEvent::Exit => pipeline::process::kill_all(),
++        // Lưới an toàn: tiến trình phụ nào còn sống lúc app thoát thì kill (Thoát ở menu khay đã tắt chúng). Rồi lưu lịch
++        // sử của phiên còn chạy khi app thoát không qua menu khay (tắt máy, đăng xuất, cập nhật; Q3 của review 03).
++        RunEvent::Exit => {
++            pipeline::process::kill_all();
++            session::save_on_exit(app);
++        }
+         _ => {}
+     }
+ }
+```
+
 Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
+index dad11c562e8b594b727b27d78af031c7ecd92b4c..d12eb2d7ad1d85e57fd0d1f10fdf4b4d56429aa5 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
 @@ -38,6 +38,7 @@
@@ -5599,21 +6146,40 @@ diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
  use crate::transcript::store::TranscriptStore;
  use crate::{actions, events, overlay, window};
  
-@@ -368,8 +369,12 @@
+@@ -368,10 +369,30 @@
      // Số đo của phiên vào log, không có chữ chép lời (§7, Đ17).
      log::info!("kết thúc phiên dịch: {}", metrics.summary());
      session.deps.end_session();
 -    if let Some(transcript) = app.try_state::<TranscriptStore>() {
 -        transcript.end(session.sessions.load(Ordering::SeqCst), now_ms());
+-    }
 +    // Lưu lịch sử nếu bật "Lưu lịch sử" và là Pro (F4). Chạy ngay ở đây, cả khi thoát app, để không mất phiên cuối.
++    end_transcript(app, session);
+     true
++}
++
++/// Chốt bản chép lời của phiên hiện tại và lưu lịch sử nếu được (`history::save_if_enabled`). `TranscriptStore::end` chỉ
++/// trả bản chép lời một lần mỗi phiên, nên gọi lại không lưu hai lần.
++fn end_transcript<R: Runtime>(app: &AppHandle<R>, session: &Session) {
 +    let ended = app
 +        .try_state::<TranscriptStore>()
 +        .and_then(|t| t.end(session.sessions.load(Ordering::SeqCst), now_ms()));
 +    if let Some(transcript) = ended {
 +        history::save_if_enabled(app, &transcript);
-     }
-     true
++    }
++}
++
++/// App thoát mà không qua Thoát ở menu khay: máy tắt, khởi động lại, đăng xuất (macOS cho thoát ngay, `quit_guard`), app
++/// tự khởi động lại để cập nhật (§4.3, §6.11). Gọi ở `RunEvent::Exit`: lưu lịch sử của phiên đang chạy như khi bấm Dừng
++/// (QĐ15), không chờ engine hay khóa của phiên (Q3 của review 03). Thoát ở menu khay đã lưu ở [`shutdown`], nên lần gọi
++/// này không làm gì.
++pub fn save_on_exit<R: Runtime>(app: &AppHandle<R>) {
++    if let Some(session) = app.try_state::<Session>() {
++        end_transcript(app, &session);
++    }
  }
+ 
+ /// Giờ Unix, ms.
 ```
 
 Thêm vào `src-tauri/src/transcript/history.rs` (phần code, nằm giữa các dòng `//!` đầu file và khối `#[cfg(test)] mod tests`):
@@ -5809,6 +6375,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
+index 67ed717c6214becd477aaec92f37e7c192b3902d..85f3149bbb848dad34521af644d81c6e23b73068 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -175,6 +175,7 @@
@@ -5825,6 +6392,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
+index d8eeb932a4e24878bcf94ca76e88ddfb0504cd07..648ce06ffda1c6492f484d81f99e32ba838fe331 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -175,5 +175,6 @@
@@ -5845,10 +6413,12 @@ cargo test -p meeting-translator --lib history -- --test-threads=1 2>&1 | grep -
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::a_stopped_session_is_saved_only_with_save_history_on_and_pro ... ok
+test app_tests::quitting_saves_the_running_session_to_history ... ok
+test app_tests::the_exit_event_saves_the_running_session_to_history ... ok
 test transcript::history::tests::a_saved_session_reads_back_with_its_lines_and_statuses ... ok
 test transcript::history::tests::delete_one_or_all ... ok
 test transcript::history::tests::the_list_is_newest_first_with_a_preview ... ok
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 193 filtered out
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 199 filtered out
 ```
 
 Run:
@@ -5858,7 +6428,18 @@ cargo test -p meeting-translator --lib a_stopped_session -- --test-threads=1 2>&
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::a_stopped_session_is_saved_only_with_save_history_on_and_pro ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 196 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 204 filtered out
+```
+
+Run:
+```bash
+cargo test -p meeting-translator --lib saves_the_running_session -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
+```
+Expected (lúc lập kế hoạch):
+```text
+test app_tests::quitting_saves_the_running_session_to_history ... ok
+test app_tests::the_exit_event_saves_the_running_session_to_history ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 203 filtered out
 ```
 
 Run:
@@ -5867,7 +6448,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 195 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 203 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 Run:
@@ -5896,6 +6477,7 @@ clippy: 0
 git add crates/pipeline/src/subtitle.rs \
   src-tauri/src/app_tests.rs \
   src-tauri/src/errors.rs \
+  src-tauri/src/lib.rs \
   src-tauri/src/session.rs \
   src-tauri/src/transcript/history.rs \
   src-tauri/src/transcript/mod.rs \
@@ -5911,7 +6493,8 @@ Dòng 47, 48, 156; QĐ8, QĐ17. Bảy lệnh mới của cửa sổ `main` (đ�
 `get_transcript`, `transcript_text` (sao chép, mọi gói), `export_transcript` (Pro), `list_history`, `get_history_session`, `delete_history_session`, `clear_history` (Pro).
 
 - `data.rs`: việc của các lệnh; `blocking` chạy việc trên luồng của `spawn_blocking` (lệnh `async`), vì mở DB lần đầu có thể chờ Keychain và hộp thoại lưu chặn tới khi người dùng chọn.
-- `files.rs`: trait `FilePicker` (bản thật dùng `tauri-plugin-dialog`, gọi từ Rust), `save_as`, `open_bytes` (tối đa 1 MiB); mã lỗi `fileFailed`, `fileTooLarge`. Đường dẫn chỉ vào `message` của lỗi (log), không lên giao diện.
+- `files.rs`: trait `FilePicker` (bản thật dùng `tauri-plugin-dialog`, gọi từ Rust, hộp thoại gắn vào cửa sổ chính bằng `set_parent`, N12 của review 03), `save_as`, `open_bytes` (tối đa 1 MiB, có test M05); mã lỗi `fileFailed`, `fileTooLarge`. Đường dẫn chỉ vào `message` của lỗi (log), không lên giao diện.
+- `utcOffsetMinutes` ngoài ±1080 (±18 giờ) thì lỗi `outOfRange` (§10.2, N4 của review 03).
 - `test_support`: `FakePicker` lưu vào thư mục tạm của app giả, hoặc như người dùng bấm Hủy.
 - `acl_tests`: lệnh của plugin dialog bị cấm ở mọi cửa sổ.
 
@@ -5937,6 +6520,7 @@ Sửa `src-tauri/src/acl_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/acl_tests.rs b/src-tauri/src/acl_tests.rs
+index 774f1a031e27c14cc145c7e1e2030268dd81ccb3..926c97fbc92a7bc30a8640369f644f91e0d64dbb 100644
 --- a/src-tauri/src/acl_tests.rs
 +++ b/src-tauri/src/acl_tests.rs
 @@ -41,6 +41,9 @@
@@ -5955,10 +6539,11 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
+index 5c2991ab64ccdbf48940a6e59d1fccc839db49ce..00d12d1bc82cd9fa84595d1a7ff39664a0fcf690 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -596,6 +596,135 @@
-     assert_eq!(saved(), 1, "gói Free không lưu");
+@@ -641,6 +641,180 @@
+     assert_eq!(saved_sessions(&app), 1, "không lưu hai lần");
  }
  
 +/// App giả đã chạy xong một phiên có câu dịch (lưu lịch sử bật hay tắt theo `save_history`).
@@ -5985,6 +6570,26 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
 +    });
 +    session::stop(app.handle());
 +    app
++}
++
++/// File chọn để nhập lớn hơn 1 MiB thì từ chối (`fileTooLarge`), đúng 1 MiB thì đọc được (M05 của review 03).
++#[test]
++fn files_larger_than_1_mib_are_not_read() {
++    use crate::test_support::FakePicker;
++    let app = mock_app();
++    let picker = app.state::<FakePicker>();
++    let dir = picker.dir.lock().unwrap().clone();
++    std::fs::create_dir_all(&dir).unwrap();
++    let path = dir.join("big.csv");
++    *picker.to_open.lock().unwrap() = Some(path.clone());
++    std::fs::write(&path, vec![b'a'; crate::files::MAX_IMPORT_BYTES as usize]).unwrap();
++    let read = crate::files::open_bytes(app.handle(), crate::files::CSV)
++        .unwrap()
++        .unwrap();
++    assert_eq!(read.len() as u64, crate::files::MAX_IMPORT_BYTES);
++    std::fs::write(&path, vec![b'a'; crate::files::MAX_IMPORT_BYTES as usize + 1]).unwrap();
++    let refused = crate::files::open_bytes(app.handle(), crate::files::CSV).unwrap_err();
++    assert_eq!(refused.code, errors::FILE_TOO_LARGE);
 +}
 +
 +/// Bản chép lời (F4): xem và sao chép ở mọi gói; xuất file là Pro, ghi đúng định dạng vào chỗ người dùng chọn.
@@ -6019,6 +6624,31 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
 +            json!({ "source": current, "format": format, "srtText": "translation", "utcOffsetMinutes": 0 }),
 +        )
 +    };
++    // N4 của review 03: độ lệch múi giờ ngoài ±18 giờ là dữ liệu hỏng.
++    for bad in [1081, -1081] {
++        let refused = invoke(
++            &main,
++            "transcript_text",
++            json!({ "source": current, "utcOffsetMinutes": bad }),
++        )
++        .unwrap_err();
++        assert!(refused.contains("outOfRange"), "{refused}");
++        let refused = invoke(
++            &main,
++            "export_transcript",
++            json!({ "source": current, "format": "txt", "srtText": "translation", "utcOffsetMinutes": bad }),
++        )
++        .unwrap_err();
++        assert!(refused.contains("outOfRange"), "{refused}");
++    }
++    assert!(
++        invoke(
++            &main,
++            "transcript_text",
++            json!({ "source": current, "utcOffsetMinutes": -1080 })
++        )
++        .is_ok()
++    );
 +    let path = export("srt").unwrap();
 +    let written = std::fs::read_to_string(path.as_str().unwrap()).unwrap();
 +    assert!(written.starts_with("1\n00:00:"), "{written}");
@@ -6099,6 +6729,7 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/errors.rs b/src-tauri/src/errors.rs
+index ef1de8f1a6201268f8dda84c0007f72126075ab2..d6ce6a4e69169ac3e1eaeb813daf21bb9a41036b 100644
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
 @@ -164,6 +164,8 @@
@@ -6116,6 +6747,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 591a243f017e629eaaad0fc47019f56a1fc749b1..356e8e68eb68f1cda08a54395dadae5ba62da12a 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -9,9 +9,11 @@
@@ -6136,6 +6768,7 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
+index 12aca690685267a358ae1c2143fa09e497759229..64e76a139ed74178496d2590d1361a189625352b 100644
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
 @@ -3,6 +3,7 @@
@@ -6145,7 +6778,7 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
 +use std::path::PathBuf;
  use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
  use std::sync::{Arc, Condvar, Mutex};
- use std::time::Duration;
+ use std::time::{Duration, SystemTime};
 @@ -22,6 +23,7 @@
  use crate::commands;
  use crate::db::DataStore;
@@ -6190,7 +6823,7 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
      }
  }
  
-@@ -390,6 +421,8 @@
+@@ -394,6 +425,8 @@
          APPS.fetch_add(1, Ordering::SeqCst)
      ));
      let _ = std::fs::remove_dir_all(&data_dir);
@@ -6199,7 +6832,7 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
      let app = builder
          .manage(AppState::new(
              Settings::defaults(UiLanguage::Vi),
-@@ -411,6 +444,8 @@
+@@ -415,6 +448,8 @@
          ))
          .manage(ActiveGlossary::default())
          .manage(TranscriptStore::default())
@@ -6218,8 +6851,9 @@ cargo test -p meeting-translator --lib history_commands 2>&1 | grep -E '^error(\
 ```
 Expected (lúc lập kế hoạch; chưa có lệnh mới, `data.rs`, `files.rs`):
 ```text
-error: could not compile `meeting-translator` (lib test) due to 4 previous errors
+error: could not compile `meeting-translator` (lib test) due to 5 previous errors
 error[E0425]: cannot find value `FILE_FAILED` in this scope
+error[E0425]: cannot find value `FILE_TOO_LARGE` in module `errors`
 error[E0425]: cannot find value `FILE_TOO_LARGE` in this scope
 error[E0583]: file not found for module `data`
 error[E0583]: file not found for module `files`
@@ -6231,6 +6865,7 @@ Sửa `src-tauri/Cargo.toml` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/Cargo.toml b/src-tauri/Cargo.toml
+index 95467d3c968e8c524d523569940a342f71699696..808c65c755e3c9a4a966034debc44a71981c59a5 100644
 --- a/src-tauri/Cargo.toml
 +++ b/src-tauri/Cargo.toml
 @@ -34,6 +34,8 @@
@@ -6248,6 +6883,7 @@ Sửa `src-tauri/build.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/build.rs b/src-tauri/build.rs
+index 4fb539bfbbf9f17646b29e22e5669ddb9972cef1..a9fe97f92f7cd198f5c362b5239d63b86627e892 100644
 --- a/src-tauri/build.rs
 +++ b/src-tauri/build.rs
 @@ -22,6 +22,13 @@
@@ -6270,6 +6906,7 @@ Sửa `src-tauri/capabilities/main.json` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/capabilities/main.json b/src-tauri/capabilities/main.json
+index 918ab885ac67df7536f5b3ff18ce69c5d526842f..a87feba58289ee512e76f8263106d0503b274e48 100644
 --- a/src-tauri/capabilities/main.json
 +++ b/src-tauri/capabilities/main.json
 @@ -17,6 +17,13 @@
@@ -6292,6 +6929,7 @@ Sửa `src-tauri/src/commands.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/commands.rs b/src-tauri/src/commands.rs
+index ed627a8cfe73a19a1ec33a18f22acf8d241c6b69..0d479044e13e6488f5601f4268c18d31f65f2cd4 100644
 --- a/src-tauri/src/commands.rs
 +++ b/src-tauri/src/commands.rs
 @@ -10,10 +10,14 @@
@@ -6411,6 +7049,7 @@ use serde::Deserialize;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::errors::{self, CommandError};
+use crate::settings::{Invalid, Reason};
 use crate::state::AppState;
 use crate::transcript::export::{self, Format, SrtText};
 use crate::transcript::history::{self, SessionSummary};
@@ -6452,6 +7091,18 @@ pub fn load<R: Runtime>(app: &AppHandle<R>, source: TranscriptRef) -> Result<Tra
     }
 }
 
+/// Độ lệch múi giờ lớn nhất giao diện được gửi: ±18 giờ (giới hạn của ISO 8601). Ngoài khoảng này là dữ liệu hỏng, trả lỗi
+/// `outOfRange` (§10.2: kiểm phạm vi mọi dữ liệu từ giao diện; N4 của review 03).
+pub const MAX_UTC_OFFSET_MINUTES: i32 = 18 * 60;
+
+fn check_offset(utc_offset_minutes: i32) -> Result<(), CommandError> {
+    if (-MAX_UTC_OFFSET_MINUTES..=MAX_UTC_OFFSET_MINUTES).contains(&utc_offset_minutes) {
+        Ok(())
+    } else {
+        Err(Invalid::new("utcOffsetMinutes", Reason::OutOfRange).into())
+    }
+}
+
 fn strings<R: Runtime>(app: &AppHandle<R>) -> &'static i18n::Strings {
     i18n::strings(app.state::<AppState>().settings().ui_language)
 }
@@ -6462,6 +7113,7 @@ pub fn transcript_text<R: Runtime>(
     source: TranscriptRef,
     utc_offset_minutes: i32,
 ) -> Result<String, CommandError> {
+    check_offset(utc_offset_minutes)?;
     let t = load(app, source)?;
     Ok(export::txt(&t, utc_offset_minutes, strings(app)))
 }
@@ -6475,6 +7127,7 @@ pub fn export_transcript<R: Runtime>(
     utc_offset_minutes: i32,
 ) -> Result<Option<String>, CommandError> {
     pro::require(app)?;
+    check_offset(utc_offset_minutes)?;
     let t = load(app, source)?;
     let s = strings(app);
     let (content, kind) = match format {
@@ -6505,6 +7158,7 @@ Sửa `src-tauri/src/errors.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/errors.rs b/src-tauri/src/errors.rs
+index d6ce6a4e69169ac3e1eaeb813daf21bb9a41036b..c8a521804700ce5229620ce8ba1a74728578603e 100644
 --- a/src-tauri/src/errors.rs
 +++ b/src-tauri/src/errors.rs
 @@ -56,6 +56,10 @@
@@ -6533,9 +7187,10 @@ Tạo `src-tauri/src/files.rs`:
 use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager, Runtime};
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, FileDialogBuilder};
 
 use crate::errors::{self, CommandError};
+use crate::window;
 
 /// Một loại file cho hộp thoại: tên hiển thị và đuôi file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -6576,11 +7231,21 @@ pub struct Picker(pub Box<dyn FilePicker>);
 
 struct Dialogs<R: Runtime>(AppHandle<R>);
 
+impl<R: Runtime> Dialogs<R> {
+    /// Hộp thoại gắn vào cửa sổ chính (N12 của review 03): trên macOS nó hiện như sheet của cửa sổ chính, không mở thành
+    /// cửa sổ riêng có thể nằm sau cửa sổ chính.
+    fn builder(&self) -> FileDialogBuilder<R> {
+        let builder = self.0.dialog().file();
+        match self.0.get_webview_window(window::MAIN) {
+            Some(main) => builder.set_parent(&main),
+            None => builder,
+        }
+    }
+}
+
 impl<R: Runtime> FilePicker for Dialogs<R> {
     fn save(&self, file_name: &str, kind: FileType) -> Option<PathBuf> {
-        self.0
-            .dialog()
-            .file()
+        self.builder()
             .set_file_name(file_name)
             .add_filter(kind.name, &[kind.extension])
             .blocking_save_file()
@@ -6588,9 +7253,7 @@ impl<R: Runtime> FilePicker for Dialogs<R> {
     }
 
     fn open(&self, kind: FileType) -> Option<PathBuf> {
-        self.0
-            .dialog()
-            .file()
+        self.builder()
             .add_filter(kind.name, &[kind.extension])
             .blocking_pick_file()
             .and_then(|p| p.into_path().ok())
@@ -6643,6 +7306,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 356e8e68eb68f1cda08a54395dadae5ba62da12a..231c8bbdd04caaabc965af28546d86e96b80f2dd 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -74,6 +74,7 @@
@@ -6667,6 +7331,7 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
+index 85f3149bbb848dad34521af644d81c6e23b73068..7fc78310fa9e7b521a0275814b9c160e61133164 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -176,6 +176,8 @@
@@ -6684,6 +7349,7 @@ Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
+index 648ce06ffda1c6492f484d81f99e32ba838fe331..b2cb33539ec3e2fb033fff3a5e2f9d5d2a91b730 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
 @@ -176,5 +176,7 @@
@@ -6723,7 +7389,17 @@ cargo test -p meeting-translator --lib the_transcript_can_be -- --test-threads=1
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::the_transcript_can_be_read_copied_and_exported ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 198 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out
+```
+
+Run:
+```bash
+cargo test -p meeting-translator --lib files_larger_than -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
+```
+Expected (lúc lập kế hoạch):
+```text
+test app_tests::files_larger_than_1_mib_are_not_read ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out
 ```
 
 Run:
@@ -6733,7 +7409,7 @@ cargo test -p meeting-translator --lib history_commands -- --test-threads=1 2>&1
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::history_commands_list_open_delete_and_need_pro ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 198 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out
 ```
 
 Run:
@@ -6745,7 +7421,7 @@ Expected (lúc lập kế hoạch):
 test acl_tests::capabilities_grant_exactly_the_fixed_lists ... ok
 test acl_tests::each_window_only_reaches_its_own_commands ... ok
 test acl_tests::outside_effects_only_reach_the_fake_opener ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 196 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 205 filtered out
 ```
 
 Run:
@@ -6754,7 +7430,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 197 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 206 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -6803,7 +7479,8 @@ git commit -m "feat(app): lệnh bản chép lời, lịch sử và xuất file 
 Dòng 49, 56, 57, 222, 252, 273; QĐ6, QĐ21. Tám lệnh mới của cửa sổ `main`:
 `list_glossary`, `add_glossary_entry`, `update_glossary_entry`, `delete_glossary_entry`, `import_glossary_csv`, `export_glossary_csv` (Pro; sửa xong thì nạp lại từ điển của luồng dịch), `clear_all_data` (mọi gói), `get_debug_sessions`.
 
-- `data::clear_all_data`: `DataStore::wipe`, xóa bản chép lời trong bộ nhớ, đặt từ điển của luồng dịch về rỗng (không đọc DB, để không tạo ngay file và khóa mới). Kế hoạch 04 gọi hàm này cho nút "Xóa model và dữ liệu".
+- `data::clear_all_data`: `DataStore::wipe`, xóa bản chép lời trong bộ nhớ, đặt từ điển của luồng dịch về rỗng (`glossary::forget`, không đọc DB, để không tạo ngay file và khóa mới). Kế hoạch 04 gọi hàm này cho nút "Xóa model và dữ liệu".
+- Test theo Q4 của review 03: mọi lệnh của từ điển, kể cả sửa và xóa, trả `proRequired` ở gói Free và không sửa gì (M01, M02); luồng dịch có ngay bản mới sau thêm, sửa, xóa và nhập (M03, M04).
 - `debug.rs`: `DebugLog` giữ số đo của 10 phiên gần nhất (`DebugSession`: số câu theo loại, p50 và p90 từng bước), ghi ở `session::stop_engine`. Không có chữ chép lời.
 - `ImportReport` gửi sang giao diện ở dạng camelCase (`overLimit`).
 
@@ -6825,9 +7502,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
+index 00d12d1bc82cd9fa84595d1a7ff39664a0fcf690..951bf0d6ac54a228af86ff17e0453c1033f72256 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -725,6 +725,160 @@
+@@ -815,6 +815,205 @@
      assert_eq!(invoke(&main, "clear_history", json!({})).unwrap(), 0);
  }
  
@@ -6851,20 +7529,32 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
 +    )
 +    .unwrap_err();
 +    assert!(dup.contains("glossaryDuplicate"), "{dup}");
++    // Mỗi lần sửa thì luồng dịch có ngay bản mới (QĐ12): sau thêm, sửa, xóa và nhập (M03, M04 của review 03).
++    let active = app.state::<crate::glossary::ActiveGlossary>();
++    let active_target = |source: &str| {
++        active
++            .0
++            .read()
++            .unwrap()
++            .matches(source)
++            .first()
++            .map(|t| t.target.clone())
++    };
++    assert_eq!(active_target("sprint").as_deref(), Some("đợt chạy"));
 +    invoke(
 +        &main,
 +        "update_glossary_entry",
 +        json!({ "id": id, "source": "sprint", "target": "chặng" }),
 +    )
 +    .unwrap();
++    assert_eq!(active_target("sprint").as_deref(), Some("chặng"));
 +    invoke(
 +        &main,
 +        "add_glossary_entry",
 +        json!({ "source": "API, SDK", "target": "giao diện" }),
 +    )
 +    .unwrap();
-+    let active = app.state::<crate::glossary::ActiveGlossary>();
-+    assert_eq!(active.0.read().unwrap().len(), 2, "luồng dịch có ngay bản mới");
++    assert_eq!(active.0.read().unwrap().len(), 2);
 +
 +    let path = invoke(&main, "export_glossary_csv", json!({})).unwrap();
 +    let path = std::path::PathBuf::from(path.as_str().unwrap());
@@ -6872,6 +7562,7 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
 +    let csv = std::fs::read_to_string(&path).unwrap();
 +    assert_eq!(csv, "\u{feff}source,target\nsprint,chặng\n\"API, SDK\",giao diện\n");
 +    invoke(&main, "delete_glossary_entry", json!({ "id": id })).unwrap();
++    assert_eq!(active_target("sprint"), None, "xóa xong thì thôi dùng ngay");
 +    assert_eq!(
 +        invoke(&main, "list_glossary", json!({}))
 +            .unwrap()
@@ -6895,18 +7586,35 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
 +        .map(|e| e["source"].clone())
 +        .collect();
 +    assert_eq!(sources, [json!("API, SDK"), json!("sprint")]);
++    assert_eq!(
++        active_target("sprint").as_deref(),
++        Some("chặng"),
++        "nhập xong thì dùng ngay"
++    );
 +    app.state::<FakePicker>()
 +        .cancel
 +        .store(true, std::sync::atomic::Ordering::SeqCst);
 +    assert_eq!(invoke(&main, "import_glossary_csv", json!({})).unwrap(), Value::Null);
 +
++    // Mọi lệnh của từ điển đi qua điểm kiểm tra Pro (M01, M02 của review 03), và không sửa gì ở gói Free.
 +    set_pro(&app, false);
-+    for cmd in ["list_glossary", "import_glossary_csv", "export_glossary_csv"] {
-+        let refused = invoke(&main, cmd, json!({})).unwrap_err();
++    for (cmd, args) in [
++        ("list_glossary", json!({})),
++        ("import_glossary_csv", json!({})),
++        ("export_glossary_csv", json!({})),
++        ("add_glossary_entry", json!({ "source": "a", "target": "b" })),
++        (
++            "update_glossary_entry",
++            json!({ "id": id, "source": "sprint", "target": "x" }),
++        ),
++        ("delete_glossary_entry", json!({ "id": id })),
++    ] {
++        let refused = invoke(&main, cmd, args).unwrap_err();
 +        assert!(refused.contains(errors::PRO_REQUIRED), "{cmd}: {refused}");
 +    }
-+    let refused = invoke(&main, "add_glossary_entry", json!({ "source": "a", "target": "b" })).unwrap_err();
-+    assert!(refused.contains(errors::PRO_REQUIRED));
++    let kept = crate::db::with(app.handle(), |c| crate::glossary::list(c)).unwrap();
++    assert_eq!(kept.len(), 2);
++    assert!(kept.iter().any(|e| e.source == "sprint" && e.target == "chặng"));
 +}
 +
 +/// Nút "Xóa toàn bộ dữ liệu" (§4.3): lịch sử, từ điển và bản chép lời trong bộ nhớ đều mất, kể cả ở gói Free; cài đặt
@@ -6966,6 +7674,21 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
 +        invoke(&main, "get_settings", json!({})).unwrap()["saveHistory"],
 +        true,
 +        "cài đặt giữ nguyên"
++    );
++    // Xóa khi đang Pro: luồng dịch cũng thôi dùng thuật ngữ ngay (ở trên, về Free đã làm việc đó, C1 của lần chạy mutation).
++    invoke(
++        &main,
++        "add_glossary_entry",
++        json!({ "source": "sprint", "target": "đợt chạy" }),
++    )
++    .unwrap();
++    invoke(&main, "clear_all_data", json!({})).unwrap();
++    assert!(
++        app.state::<crate::glossary::ActiveGlossary>()
++            .0
++            .read()
++            .unwrap()
++            .is_empty()
 +    );
 +}
 +
@@ -7030,6 +7753,7 @@ Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 231c8bbdd04caaabc965af28546d86e96b80f2dd..799f5e1680beb949a361203825cc3eeb08b459f0 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -11,6 +11,7 @@
@@ -7046,9 +7770,10 @@ Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
+index 64e76a139ed74178496d2590d1361a189625352b..8d0b418c0fa0cd949a238c26f209e52383b26f20 100644
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
-@@ -444,6 +444,7 @@
+@@ -448,6 +448,7 @@
          ))
          .manage(ActiveGlossary::default())
          .manage(TranscriptStore::default())
@@ -7080,6 +7805,7 @@ Sửa `src-tauri/build.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/build.rs b/src-tauri/build.rs
+index a9fe97f92f7cd198f5c362b5239d63b86627e892..3569d05133aa10d168acc3e6ff90052f29d01da6 100644
 --- a/src-tauri/build.rs
 +++ b/src-tauri/build.rs
 @@ -29,6 +29,14 @@
@@ -7103,6 +7829,7 @@ Sửa `src-tauri/capabilities/main.json` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/capabilities/main.json b/src-tauri/capabilities/main.json
+index a87feba58289ee512e76f8263106d0503b274e48..0e0644bfeede45f1db286cf90ddb8b913f233478 100644
 --- a/src-tauri/capabilities/main.json
 +++ b/src-tauri/capabilities/main.json
 @@ -24,6 +24,14 @@
@@ -7126,6 +7853,7 @@ Sửa `src-tauri/src/commands.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/commands.rs b/src-tauri/src/commands.rs
+index 0d479044e13e6488f5601f4268c18d31f65f2cd4..3d37e6b87c76a424f3acc08899b5933eec7282b4 100644
 --- a/src-tauri/src/commands.rs
 +++ b/src-tauri/src/commands.rs
 @@ -11,7 +11,9 @@
@@ -7236,6 +7964,7 @@ Sửa `src-tauri/src/data.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/data.rs b/src-tauri/src/data.rs
+index ae31893627400b9cd2bdf74a484e9337ed462492..9cac62a422141a96e6ccf0cbbe33f21ddc563721 100644
 --- a/src-tauri/src/data.rs
 +++ b/src-tauri/src/data.rs
 @@ -1,11 +1,14 @@
@@ -7252,10 +7981,10 @@ diff --git a/src-tauri/src/data.rs b/src-tauri/src/data.rs
 +use crate::debug::{DebugLog, DebugSession};
  use crate::errors::{self, CommandError};
 +use crate::glossary::{self, GlossaryEntry, ImportReport};
+ use crate::settings::{Invalid, Reason};
  use crate::state::AppState;
  use crate::transcript::export::{self, Format, SrtText};
- use crate::transcript::history::{self, SessionSummary};
-@@ -94,3 +97,82 @@
+@@ -109,3 +112,82 @@
      pro::require(app)?;
      db::with(app, |c| history::clear(c))
  }
@@ -7329,7 +8058,7 @@ diff --git a/src-tauri/src/data.rs b/src-tauri/src/data.rs
 +        transcript.clear();
 +    }
 +    // Không nạp lại từ DB ở đây: đọc DB sẽ tạo ngay file và khóa mới.
-+    glossary::set_active(app, pipeline::glossary::Glossary::default());
++    glossary::forget(app);
 +    log::info!("đã xóa toàn bộ lịch sử và từ điển theo yêu cầu của người dùng");
 +    Ok(())
 +}
@@ -7440,9 +8169,10 @@ Sửa `src-tauri/src/glossary.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/glossary.rs b/src-tauri/src/glossary.rs
+index cf4fb55c44c78b83caab4b7132675cc69fa86ffa..de45c16a6d7e55ab662d01c0753527057355de6b 100644
 --- a/src-tauri/src/glossary.rs
 +++ b/src-tauri/src/glossary.rs
-@@ -37,6 +37,7 @@
+@@ -39,6 +39,7 @@
  
  /// Kết quả một lần nhập CSV.
  #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
@@ -7450,26 +8180,23 @@ diff --git a/src-tauri/src/glossary.rs b/src-tauri/src/glossary.rs
  pub struct ImportReport {
      pub added: usize,
      /// Chữ nguồn đã có, bản dịch được thay.
-@@ -286,6 +287,13 @@
-     *active.0.write().unwrap_or_else(|e| e.into_inner()) = next;
- }
+@@ -293,7 +294,8 @@
+ #[derive(Default)]
+ pub struct ActiveGlossary(pub SharedGlossary);
  
-+/// Đặt thẳng từ điển của luồng dịch (xóa toàn bộ dữ liệu: rỗng, không đọc DB).
-+pub fn set_active<R: Runtime>(app: &AppHandle<R>, glossary: Glossary) {
-+    if let Some(active) = app.try_state::<ActiveGlossary>() {
-+        *active.0.write().unwrap_or_else(|e| e.into_inner()) = glossary;
-+    }
-+}
-+
- #[cfg(test)]
- mod tests {
-     use super::*;
+-/// Gói về Free: luồng dịch thôi dùng thuật ngữ ngay, từ câu sau (N11 của review 03). Không đọc DB.
++/// Luồng dịch thôi dùng thuật ngữ ngay, từ câu sau, mà không đọc DB: khi gói về Free (N11 của review 03) và khi xóa toàn
++/// bộ dữ liệu.
+ pub fn forget<R: Runtime>(app: &AppHandle<R>) {
+     if let Some(active) = app.try_state::<ActiveGlossary>() {
+         *active.0.write().unwrap_or_else(|e| e.into_inner()) = Glossary::default();
 ```
 
 Sửa `src-tauri/src/lib.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 799f5e1680beb949a361203825cc3eeb08b459f0..98e66edd0a50e16e606d88d9c8dc5bba11fc5e85 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
 @@ -129,6 +129,7 @@
@@ -7486,6 +8213,7 @@ Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
+index d12eb2d7ad1d85e57fd0d1f10fdf4b4d56429aa5..39ad48fa99e58417aaa81fffee21625fcde44ae3 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
 @@ -33,6 +33,7 @@
@@ -7496,7 +8224,7 @@ diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
  use crate::errors::{self, CommandError};
  use crate::glossary::{self, ActiveGlossary};
  use crate::settings::{AudioSource, Lang, ModelTier, Settings};
-@@ -366,13 +367,15 @@
+@@ -366,8 +367,12 @@
          return false;
      };
      let metrics = engine.stop();
@@ -7509,13 +8237,7 @@ diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
 +    }
      session.deps.end_session();
      // Lưu lịch sử nếu bật "Lưu lịch sử" và là Pro (F4). Chạy ngay ở đây, cả khi thoát app, để không mất phiên cuối.
--    let ended = app
--        .try_state::<TranscriptStore>()
--        .and_then(|t| t.end(session.sessions.load(Ordering::SeqCst), now_ms()));
-+    let ended = app.try_state::<TranscriptStore>().and_then(|t| t.end(n, now_ms()));
-     if let Some(transcript) = ended {
-         history::save_if_enabled(app, &transcript);
-     }
+     end_transcript(app, session);
 ```
 
 - [ ] **Step 4: Chạy test, thấy xanh**
@@ -7527,7 +8249,7 @@ cargo test -p meeting-translator --lib glossary_commands -- --test-threads=1 2>&
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::glossary_commands_edit_import_export_and_need_pro ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 202 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 211 filtered out
 ```
 
 Run:
@@ -7537,7 +8259,7 @@ cargo test -p meeting-translator --lib clear_all_data -- --test-threads=1 2>&1 |
 Expected (lúc lập kế hoạch):
 ```text
 test app_tests::clear_all_data_removes_history_glossary_and_the_transcript ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 202 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 211 filtered out
 ```
 
 Run:
@@ -7549,7 +8271,8 @@ Expected (lúc lập kế hoạch):
 test app_tests::the_debug_panel_lists_the_metrics_of_finished_sessions ... ok
 test debug::tests::keeps_the_last_ten_sessions_newest_first_with_stage_percentiles ... ok
 test navigation::tests::packaged_ui_ignores_dev_url_even_in_debug_builds ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 200 filtered out
+test pro::tests::the_dev_gate_exists_only_in_debug_builds ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 208 filtered out
 ```
 
 Run:
@@ -7558,7 +8281,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 201 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 210 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 - [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
@@ -7589,13 +8312,15 @@ git commit -m "feat(app): lệnh từ điển thuật ngữ, xóa toàn bộ d�
 ```
 
 
-## Task 10: Thanh phụ đề phía Rust: mức âm lượng, kéo cạnh, lệnh nghe thử
+## Task 10: Thanh phụ đề phía Rust: mức âm lượng, kéo cạnh, nút ẩn, lệnh nghe thử
 
-Dòng 17, 40, 43, 68; QĐ19, QĐ20.
+Dòng 17, 40, 43, 68; QĐ19, QĐ20. Theo §4.4 đã sửa ngày 2026-10-02 (commit `5925d42`, yêu cầu của chủ dự án sau khi thử tay): kéo cạnh hoặc góc trên cả macOS lẫn Windows, cỡ tối thiểu 320 × 80 điểm, nút ✕ ẩn thanh.
 
 - `TauriSink::level` gửi `audio://level` cho cả thanh phụ đề (chỉ báo "đang nghe", §4.2).
-- `OverlayView.edge_resize` (Windows): thanh phụ đề tự vẽ vùng kéo cạnh. Overlay được cấp thêm `core:window:allow-start-resize-dragging` (danh sách cố định của `acl_tests` sửa theo). Cả hai bản `overlay::create` đặt `resizable(true)` và cỡ tối thiểu 240 × 60 lúc tạo.
-- `actions::set_overlay_visible(false)` nhớ vị trí trước khi ẩn.
+- Trait `Surface` thêm `frame`, `set_frame`, `cursor`, `system_resize`; `OverlaySurface::new` giữ lần kéo cạnh đang dở. `remember_position` đọc khung qua `Surface`, nên test được bằng `FakeSurface` (đặt khung, màn hình, con trỏ).
+- Kéo cạnh (`overlay::begin_resize`, `resize_to_cursor`, `end_resize`; `placement::resized` là phép tính): Windows để hệ điều hành đổi kích thước (`start_resize_dragging` của Tauri); macOS không có cách đó trong tao, nên app tự đặt khung theo vị trí con trỏ (đọc ở phía Rust, không nhận tọa độ từ giao diện). Không nhỏ hơn 320 × 80 điểm; nhả chuột thì nhớ kích thước mới; thanh đang khóa thì không làm gì. Cả hai bản `overlay::create` vẫn đặt `resizable(true)` và cỡ tối thiểu lúc tạo.
+- Bốn lệnh mới của cửa sổ `overlay` (đủ ba chỗ: `commands.rs`, `build.rs`, `capabilities/overlay.json`): `hide_overlay` (nút ✕: ẩn như phím tắt, phiên vẫn chạy), `begin_overlay_resize`, `overlay_resize_move`, `end_overlay_resize`. Các lệnh này chỉ đụng tới cửa sổ của chính thanh phụ đề; overlay **không** được cấp `core:window:allow-start-resize-dragging`.
+- `actions::set_overlay_visible(false)` nhớ vị trí trước khi ẩn; có test (M17 của review 03).
 - `StartOptions::LISTEN_TEST` (thu cả âm thanh của app, thu toàn hệ thống) và lệnh `start_listen_test` cho bước "Nghe thử"; `FakeDeps.capture_sources` ghi lại nguồn của từng lần mở.
 
 **Files:**
@@ -7608,12 +8333,10 @@ Dòng 17, 40, 43, 68; QĐ19, QĐ20.
 - Modify: `src-tauri/src/commands.rs`
 - Modify: `src-tauri/src/overlay/macos.rs`
 - Modify: `src-tauri/src/overlay/mod.rs`
+- Modify: `src-tauri/src/overlay/placement.rs`
 - Modify: `src-tauri/src/overlay/windows.rs`
 - Modify: `src-tauri/src/session.rs`
-- Modify: `src-tauri/src/state.rs`
 - Modify: `src-tauri/src/test_support.rs`
-- Modify: `src/lib/ipc.ts`
-- Modify: `src/store/overlay.test.ts`
 
 - [ ] **Step 1: Viết test trước**
 
@@ -7621,6 +8344,7 @@ Sửa `src-tauri/src/acl_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/acl_tests.rs b/src-tauri/src/acl_tests.rs
+index 926c97fbc92a7bc30a8640369f644f91e0d64dbb..848c4a277a4c105b2265f2ac51e3de6452d6faed 100644
 --- a/src-tauri/src/acl_tests.rs
 +++ b/src-tauri/src/acl_tests.rs
 @@ -7,8 +7,8 @@
@@ -7629,25 +8353,17 @@ diff --git a/src-tauri/src/acl_tests.rs b/src-tauri/src/acl_tests.rs
  //!
 -//! Kế hoạch sau thêm quyền (ví dụ 03 cấp `core:window:allow-start-resize-dragging` cho overlay) thì sửa
 -//! danh sách cố định ở đây trong cùng commit.
-+//! Kế hoạch sau thêm quyền thì sửa danh sách cố định ở đây trong cùng commit (03 đã cấp
-+//! `core:window:allow-start-resize-dragging` cho overlay: kéo cạnh để đổi kích thước trên Windows).
++//! Kế hoạch sau thêm quyền thì sửa danh sách cố định ở đây trong cùng commit. Kéo cạnh và nút ẩn của thanh phụ đề (03)
++//! là lệnh của app chỉ đụng tới cửa sổ của chính nó, không cấp `core:window:allow-start-resize-dragging`.
  
  use serde_json::{Value, json};
  
-@@ -25,6 +25,7 @@
-     "core:event:allow-listen",
-     "core:event:allow-unlisten",
-     "core:window:allow-start-dragging",
-+    "core:window:allow-start-resize-dragging",
- ];
- 
- /// Lệnh của Tauri và plugin mà không cửa sổ nào được gọi.
-@@ -102,7 +103,7 @@
+@@ -102,7 +102,7 @@
      assert_eq!(
          permissions(include_str!("../capabilities/overlay.json"), "overlay"),
          expected(OVERLAY_COMMANDS, OVERLAY_CORE_PERMISSIONS),
 -        "overlay chỉ đọc phần cài đặt của nó, nghe sự kiện và kéo cửa sổ của chính nó"
-+        "overlay chỉ đọc phần cài đặt của nó, nghe sự kiện, kéo và đổi kích thước cửa sổ của chính nó"
++        "overlay chỉ đọc phần cài đặt của nó, nghe sự kiện, kéo, đổi kích thước và ẩn cửa sổ của chính nó"
      );
      let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/capabilities");
      let mut files: Vec<String> = std::fs::read_dir(dir)
@@ -7657,9 +8373,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
+index 951bf0d6ac54a228af86ff17e0453c1033f72256..57104cc8757c9fccc8f16d7605d3137c30b6c5f8 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -246,11 +246,64 @@
+@@ -246,11 +246,160 @@
      let captures = deps.captures.clone();
      let app = mock_app_with(deps);
      let _main = window(&app, "main");
@@ -7671,13 +8388,109 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
      assert_eq!(*captures.lock().unwrap(), [true, false]);
 +}
 +
-+/// Thanh phụ đề tự vẽ vùng kéo cạnh chỉ trên Windows; trên macOS cửa sổ tự cho kéo cạnh (§4.4).
++/// Thanh phụ đề trên màn hình 1920 × 1080 điểm, tỉ lệ 2 (Retina): khung 900 × 160 điểm.
++fn overlay_on_a_retina_screen(app: &tauri::App<tauri::test::MockRuntime>) -> crate::test_support::FakeSurface {
++    use crate::overlay::placement::{Frame, Screen};
++    let surface = app.state::<crate::test_support::FakeSurface>().inner().clone();
++    let screen = Screen {
++        key: "Retina 3840x2160".into(),
++        x: 0,
++        y: 0,
++        width: 3840,
++        height: 2160,
++        scale: 2.0,
++    };
++    let frame = Frame {
++        x: 200,
++        y: 1600,
++        width: 1800,
++        height: 320,
++    };
++    *surface.frame.lock().unwrap() = Some((frame, screen));
++    surface
++}
++
++fn saved_rect(app: &tauri::App<tauri::test::MockRuntime>) -> Option<(f64, f64, f64, f64)> {
++    let settings = app.state::<AppState>().settings();
++    let r = settings.overlay.positions.get("Retina 3840x2160")?;
++    Some((r.x, r.y, r.width, r.height))
++}
++
++/// Kéo cạnh trên macOS (§4.4): app tự đặt khung theo con trỏ, không nhỏ hơn 320 × 80 điểm; nhả chuột thì nhớ kích thước
++/// mới cho màn hình đó. Thanh đang khóa thì không đổi gì.
 +#[test]
-+fn the_overlay_draws_resize_edges_only_on_windows() {
++fn dragging_an_edge_resizes_the_overlay_and_remembers_it() {
 +    let app = mock_app();
 +    let overlay = window(&app, "overlay");
-+    let view = invoke(&overlay, "get_overlay_view", json!({})).unwrap();
-+    assert_eq!(view["edgeResize"], cfg!(windows));
++    let surface = overlay_on_a_retina_screen(&app);
++    *surface.cursor.lock().unwrap() = (200.0, 1700.0);
++    invoke(&overlay, "begin_overlay_resize", json!({ "edge": "northWest" })).unwrap();
++    *surface.cursor.lock().unwrap() = (400.0, 1640.0);
++    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
++    *surface.cursor.lock().unwrap() = (5000.0, 5000.0);
++    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
++    invoke(&overlay, "end_overlay_resize", json!({})).unwrap();
++    assert_eq!(
++        overlay_calls(&app),
++        ["frame 400 1540 1600x380", "frame 1360 1760 640x160"],
++        "cạnh phải và cạnh dưới đứng yên; cỡ tối thiểu 320 × 80 điểm là 640 × 160 pixel"
++    );
++    assert_eq!(saved_rect(&app), Some((680.0, 880.0, 320.0, 80.0)));
++    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
++    assert_eq!(overlay_calls(&app).len(), 2, "nhả chuột rồi thì thôi theo con trỏ");
++
++    let main = window(&app, "main");
++    invoke(&main, "set_overlay_locked", json!({ "locked": true })).unwrap();
++    let before = overlay_calls(&app).len();
++    invoke(&overlay, "begin_overlay_resize", json!({ "edge": "east" })).unwrap();
++    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
++    assert_eq!(overlay_calls(&app).len(), before, "đang khóa thì không đổi kích thước");
++}
++
++/// Kéo cạnh trên Windows (§4.4): hệ điều hành đổi kích thước (`start_resize_dragging`); app không tự đặt khung.
++#[test]
++fn on_windows_the_system_resizes_the_overlay() {
++    let app = mock_app();
++    let overlay = window(&app, "overlay");
++    let surface = overlay_on_a_retina_screen(&app);
++    surface.system_resize.store(true, std::sync::atomic::Ordering::SeqCst);
++    invoke(&overlay, "begin_overlay_resize", json!({ "edge": "southEast" })).unwrap();
++    *surface.cursor.lock().unwrap() = (400.0, 1640.0);
++    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
++    invoke(&overlay, "end_overlay_resize", json!({})).unwrap();
++    assert_eq!(overlay_calls(&app), ["system resize SouthEast"]);
++    assert!(invoke(&overlay, "begin_overlay_resize", json!({ "edge": "up" })).is_err());
++}
++
++/// Nút ✕ (§4.4): ẩn thanh như phím tắt, phiên dịch vẫn chạy; vị trí được nhớ lúc ẩn (QĐ19, M17 của review 03).
++#[test]
++fn the_hide_button_hides_the_overlay_keeps_the_session_and_remembers_the_position() {
++    let app = mock_app_with(FakeDeps {
++        audio: FakeAudio::Tone,
++        ..FakeDeps::default()
++    });
++    let overlay = window(&app, "overlay");
++    overlay_on_a_retina_screen(&app);
++    session::start(app.handle()).unwrap();
++    assert!(app.state::<AppState>().status().overlay_visible);
++    invoke(&overlay, "hide_overlay", json!({})).unwrap();
++    let status = app.state::<AppState>().status();
++    assert!(!status.overlay_visible);
++    assert_eq!(status.session, SessionStatus::Running, "ẩn thanh không dừng phiên");
++    assert_eq!(overlay_calls(&app).last().map(String::as_str), Some("hide"));
++    assert_eq!(saved_rect(&app), Some((100.0, 800.0, 900.0, 160.0)));
++    session::stop(app.handle());
++}
++
++/// Ẩn bằng phím tắt, menu khay hay nút ở cửa sổ chính cũng nhớ vị trí (QĐ19, M17 của review 03).
++#[test]
++fn hiding_the_overlay_from_the_main_window_remembers_the_position() {
++    let app = mock_app();
++    let main = window(&app, "main");
++    overlay_on_a_retina_screen(&app);
++    assert_eq!(saved_rect(&app), None);
++    invoke(&main, "set_overlay_visible", json!({ "visible": false })).unwrap();
++    assert_eq!(saved_rect(&app), Some((100.0, 800.0, 900.0, 160.0)));
 +}
 +
 +/// Lệnh `start_listen_test`: thu toàn hệ thống kể cả chính app, dù cài đặt đang chọn một app họp; phiên thường vẫn theo
@@ -7727,13 +8540,160 @@ diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
  /// App giả có `prepare` chặn ở cổng (như nạp model lâu), và một lần bắt đầu phiên đang chờ ở đó trên luồng riêng.
 ```
 
+Sửa `src-tauri/src/overlay/placement.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/overlay/placement.rs b/src-tauri/src/overlay/placement.rs
+index 5ed16dd2aedfb3f4efe7657760ca4ce4a59b9b44..b6039482d5dd1ce58b88fc264ceb1d6dfaa24dcc 100644
+--- a/src-tauri/src/overlay/placement.rs
++++ b/src-tauri/src/overlay/placement.rs
+@@ -406,4 +406,56 @@
+         remember(&mut positions, "e", rect_at(0.0), 50, 3);
+         assert_eq!(positions.keys().collect::<Vec<_>>(), ["b", "d", "e"]);
+     }
+-}
++
++    /// Kéo cạnh hay góc (§4.4): chỉ cạnh được kéo dời đi, cạnh đối diện đứng yên; không nhỏ hơn cỡ tối thiểu.
++    #[test]
++    fn resizing_moves_only_the_dragged_sides() {
++        let start = Frame {
++            x: 100,
++            y: 500,
++            width: 900,
++            height: 160,
++        };
++        let f = |x, y, width, height| Frame { x, y, width, height };
++        let cases = [
++            (Edge::East, 50, 30, f(100, 500, 950, 160)),
++            (Edge::West, 50, 30, f(150, 500, 850, 160)),
++            (Edge::North, 50, -30, f(100, 470, 900, 190)),
++            (Edge::South, 50, -30, f(100, 500, 900, 130)),
++            (Edge::NorthEast, -100, 20, f(100, 520, 800, 140)),
++            (Edge::NorthWest, -100, 20, f(0, 520, 1000, 140)),
++            (Edge::SouthEast, 10, 10, f(100, 500, 910, 170)),
++            (Edge::SouthWest, 10, 10, f(110, 500, 890, 170)),
++        ];
++        for (edge, dx, dy, expected) in cases {
++            assert_eq!(resized(start, edge, dx, dy, 640, 80), expected, "{edge:?}");
++        }
++        // Kéo quá cỡ tối thiểu: dừng ở cỡ tối thiểu, cạnh đối diện vẫn đứng yên.
++        assert_eq!(resized(start, Edge::West, 5000, 0, 640, 80), f(360, 500, 640, 160));
++        assert_eq!(resized(start, Edge::North, 0, 5000, 640, 80), f(100, 580, 900, 80));
++        assert_eq!(
++            resized(start, Edge::SouthEast, -5000, -5000, 640, 80),
++            f(100, 500, 640, 80)
++        );
++    }
++
++    /// Giao diện gửi tên cạnh dạng camelCase; Windows nhận tên hướng của Tauri.
++    #[test]
++    fn edges_come_in_camel_case_and_map_to_tauri_directions() {
++        let names = [
++            ("north", "North"),
++            ("south", "South"),
++            ("east", "East"),
++            ("west", "West"),
++            ("northEast", "NorthEast"),
++            ("northWest", "NorthWest"),
++            ("southEast", "SouthEast"),
++            ("southWest", "SouthWest"),
++        ];
++        for (name, direction) in names {
++            let edge: Edge = serde_json::from_value(serde_json::json!(name)).unwrap();
++            assert_eq!(edge.direction(), direction);
++        }
++        assert!(serde_json::from_value::<Edge>(serde_json::json!("up")).is_err());
++    }
++}
+```
+
 Sửa `src-tauri/src/test_support.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
+index 8d0b418c0fa0cd949a238c26f209e52383b26f20..5a8becafd2838f89d5f376bb0d97c6260c3b521c 100644
 --- a/src-tauri/src/test_support.rs
 +++ b/src-tauri/src/test_support.rs
-@@ -246,6 +246,8 @@
+@@ -26,6 +26,7 @@
+ use crate::files::{FilePicker, FileType, Picker};
+ use crate::glossary::ActiveGlossary;
+ use crate::login_item::{AgentStatus, LoginItem, LoginItems};
++use crate::overlay::placement::{Edge, Frame, Screen};
+ use crate::overlay::{OverlaySurface, Surface};
+ use crate::pro::{Entitlement, ProGate};
+ use crate::security::keystore::Keystore;
+@@ -37,25 +38,59 @@
+ use crate::system::{System, SystemOpener};
+ use crate::transcript::store::TranscriptStore;
+ 
+-/// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`.
++/// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`, `frame 1 2 300x80`,
++/// `system resize west`. Khung cửa sổ, màn hình và con trỏ do test đặt; mặc định chưa có khung (như chưa có cửa sổ).
+ #[derive(Clone, Default)]
+-pub struct FakeSurface(Arc<Mutex<Vec<String>>>);
++pub struct FakeSurface {
++    calls: Arc<Mutex<Vec<String>>>,
++    pub frame: Arc<Mutex<Option<(Frame, Screen)>>>,
++    pub cursor: Arc<Mutex<(f64, f64)>>,
++    /// Hệ điều hành tự đổi kích thước (như Windows); mặc định không (như macOS).
++    pub system_resize: Arc<AtomicBool>,
++}
++
++impl FakeSurface {
++    fn push(&self, call: String) {
++        self.calls.lock().unwrap().push(call);
++    }
++}
+ 
+ impl Surface for FakeSurface {
+     fn set_visible(&self, visible: bool) -> tauri::Result<()> {
+-        self.0
+-            .lock()
+-            .unwrap()
+-            .push(if visible { "show" } else { "hide" }.into());
++        self.push(if visible { "show" } else { "hide" }.into());
+         Ok(())
+     }
+ 
+     fn set_click_through(&self, on: bool) -> tauri::Result<()> {
+-        self.0
+-            .lock()
+-            .unwrap()
+-            .push(if on { "click_through on" } else { "click_through off" }.into());
+-        Ok(())
++        self.push(if on { "click_through on" } else { "click_through off" }.into());
++        Ok(())
++    }
++
++    fn frame(&self) -> Option<(Frame, Screen)> {
++        self.frame.lock().unwrap().clone()
++    }
++
++    fn set_frame(&self, frame: Frame) -> tauri::Result<()> {
++        self.push(format!(
++            "frame {} {} {}x{}",
++            frame.x, frame.y, frame.width, frame.height
++        ));
++        if let Some((current, _)) = self.frame.lock().unwrap().as_mut() {
++            *current = frame;
++        }
++        Ok(())
++    }
++
++    fn cursor(&self) -> Option<(f64, f64)> {
++        Some(*self.cursor.lock().unwrap())
++    }
++
++    fn system_resize(&self, edge: Edge) -> bool {
++        if !self.system_resize.load(Ordering::SeqCst) {
++            return false;
++        }
++        self.push(format!("system resize {}", edge.direction()));
++        true
+     }
+ }
+ 
+@@ -246,6 +281,8 @@
      pub asr_unavailable: bool,
      /// Giá trị `include_self` của từng lần mở nguồn âm thanh.
      pub captures: Arc<Mutex<Vec<bool>>>,
@@ -7742,7 +8702,7 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
      /// Nơi nhận việc của nguồn âm thanh của từng phiên, theo thứ tự: test gọi để giả lỗi tới muộn.
      pub capture_events: Arc<Mutex<Vec<OnEvent>>>,
      /// Số lần `shutdown` và `kill_all` được gọi.
-@@ -373,8 +375,9 @@
+@@ -373,8 +410,9 @@
          Box::new(|| Ok(Box::new(EnergyVad { threshold_rms: 0.05 }) as _))
      }
  
@@ -7753,35 +8713,40 @@ diff --git a/src-tauri/src/test_support.rs b/src-tauri/src/test_support.rs
          if let Some(code) = self.capture_error {
              on_event(crate::capture::CaptureEvent::Failed {
                  code,
-```
-
-Sửa `src/store/overlay.test.ts` (áp bằng `git apply`):
-
-```diff
-diff --git a/src/store/overlay.test.ts b/src/store/overlay.test.ts
---- a/src/store/overlay.test.ts
-+++ b/src/store/overlay.test.ts
-@@ -15,7 +15,7 @@
-   replaces: [],
- });
+@@ -433,7 +471,7 @@
+             FileMeta::current(),
+             false,
+         ))
+-        .manage(OverlaySurface(Box::new(surface.clone())))
++        .manage(OverlaySurface::new(Box::new(surface.clone())))
+         .manage(surface)
+         .manage(System(Box::new(system.clone())))
+         .manage(system)
+@@ -515,7 +553,7 @@
  
--const view: OverlayView = { uiLanguage: "vi", fontSize: 22, lines: 2, opacity: 0.6, showSource: false, locked: false };
-+const view: OverlayView = { uiLanguage: "vi", fontSize: 22, lines: 2, opacity: 0.6, showSource: false, locked: false, edgeResize: false };
+ /// Các lần gọi tới thanh phụ đề từ lúc dựng app giả.
+ pub fn overlay_calls(app: &tauri::App<MockRuntime>) -> Vec<String> {
+-    app.state::<FakeSurface>().0.lock().unwrap().clone()
++    app.state::<FakeSurface>().calls.lock().unwrap().clone()
+ }
  
- describe("upsertLine", () => {
-   it("thêm dòng mới vào cuối, giữ tối đa max dòng", () => {
+ pub fn window(app: &tauri::App<MockRuntime>, label: &str) -> WebviewWindow<MockRuntime> {
 ```
 
 - [ ] **Step 2: Chạy test, thấy đỏ**
 
 Run:
 ```bash
-cargo test -p meeting-translator --lib listening 2>&1 | grep -E '^error(\[E[0-9]+\])?:' | sort -u | head -6
+cargo test -p meeting-translator --lib overlay 2>&1 | grep -E '^error(\[E[0-9]+\])?:' | sort -u | head -6
 ```
-Expected (lúc lập kế hoạch; chưa có `StartOptions::LISTEN_TEST`, `capture_sources`, `edge_resize`):
+Expected (lúc lập kế hoạch; chưa có `placement::Frame`, `Edge`, các hàm mới của `Surface`, `StartOptions::LISTEN_TEST`, `capture_sources`):
 ```text
-error: could not compile `meeting-translator` (lib test) due to 1 previous error
-error[E0599]: no associated function or constant named `LISTEN_TEST` found for struct `StartOptions` in the current scope
+error: could not compile `meeting-translator` (lib test) due to 27 previous errors
+error[E0407]: method `cursor` is not a member of trait `Surface`
+error[E0407]: method `frame` is not a member of trait `Surface`
+error[E0407]: method `set_frame` is not a member of trait `Surface`
+error[E0407]: method `system_resize` is not a member of trait `Surface`
+error[E0422]: cannot find struct, variant or union type `Frame` in this scope
 ```
 
 - [ ] **Step 3: Viết code**
@@ -7790,6 +8755,7 @@ Sửa `src-tauri/build.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/build.rs b/src-tauri/build.rs
+index 3569d05133aa10d168acc3e6ff90052f29d01da6..568ad369f6eedca41db211f6fa2b905b52c0ce12 100644
 --- a/src-tauri/build.rs
 +++ b/src-tauri/build.rs
 @@ -14,6 +14,7 @@
@@ -7800,12 +8766,24 @@ diff --git a/src-tauri/build.rs b/src-tauri/build.rs
              "set_overlay_visible",
              "set_overlay_locked",
              "get_app_info",
+@@ -38,6 +39,10 @@
+             "clear_all_data",
+             "get_debug_sessions",
+             "get_overlay_view",
++            "hide_overlay",
++            "begin_overlay_resize",
++            "overlay_resize_move",
++            "end_overlay_resize",
+         ])),
+     )
+     .expect("tauri-build thất bại");
 ```
 
 Sửa `src-tauri/capabilities/main.json` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/capabilities/main.json b/src-tauri/capabilities/main.json
+index 0e0644bfeede45f1db286cf90ddb8b913f233478..6c58d5ab82c7337d07fcff63fcd4333588c9ebb5 100644
 --- a/src-tauri/capabilities/main.json
 +++ b/src-tauri/capabilities/main.json
 @@ -9,6 +9,7 @@
@@ -7822,30 +8800,32 @@ Sửa `src-tauri/capabilities/overlay.json` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/capabilities/overlay.json b/src-tauri/capabilities/overlay.json
+index 8dd428903b74dc233b3f03ca903e25a308207043..4781eba37ce9579626b74daa080e377b2ef6228d 100644
 --- a/src-tauri/capabilities/overlay.json
 +++ b/src-tauri/capabilities/overlay.json
-@@ -1,12 +1,13 @@
+@@ -1,10 +1,14 @@
  {
    "$schema": "../gen/schemas/desktop-schema.json",
    "identifier": "overlay",
 -  "description": "Thanh phụ đề: chỉ đọc phần cài đặt của nó, nghe sự kiện và kéo cửa sổ của chính nó (spec §10.2).",
-+  "description": "Thanh phụ đề: chỉ đọc phần cài đặt của nó, nghe sự kiện, kéo và kéo cạnh để đổi kích thước cửa sổ của chính nó (spec §4.4, §10.2).",
++  "description": "Thanh phụ đề: chỉ đọc phần cài đặt của nó, nghe sự kiện, kéo, kéo cạnh để đổi kích thước và ẩn cửa sổ của chính nó (spec §4.4, §10.2).",
    "windows": ["overlay"],
    "permissions": [
      "allow-get-overlay-view",
++    "allow-hide-overlay",
++    "allow-begin-overlay-resize",
++    "allow-overlay-resize-move",
++    "allow-end-overlay-resize",
      "core:event:allow-listen",
      "core:event:allow-unlisten",
--    "core:window:allow-start-dragging"
-+    "core:window:allow-start-dragging",
-+    "core:window:allow-start-resize-dragging"
-   ]
- }
+     "core:window:allow-start-dragging"
 ```
 
 Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/actions.rs b/src-tauri/src/actions.rs
+index 6ce90d0396275c85a16a1ab20d8bfd2c30ba7ab2..5bcbf77c997b4c9f0d69fdee4ca299cf16a5711f 100644
 --- a/src-tauri/src/actions.rs
 +++ b/src-tauri/src/actions.rs
 @@ -93,6 +93,10 @@
@@ -7865,12 +8845,23 @@ Sửa `src-tauri/src/commands.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/commands.rs b/src-tauri/src/commands.rs
+index 3d37e6b87c76a424f3acc08899b5933eec7282b4..801f3fbc1b8e0e097d336434faa21438dc0ed48c 100644
 --- a/src-tauri/src/commands.rs
 +++ b/src-tauri/src/commands.rs
-@@ -54,6 +54,17 @@
+@@ -15,6 +15,7 @@
+ use crate::errors::{self, CommandError};
+ use crate::glossary::{GlossaryEntry, ImportReport};
+ use crate::hotkeys::HotkeyAction;
++use crate::overlay::{self, placement::Edge};
+ use crate::settings::Settings;
+ use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
+ use crate::transcript::export::{Format, SrtText};
+@@ -52,6 +53,17 @@
+     tauri::async_runtime::spawn_blocking(move || actions::toggle_session(&app))
+         .await
          .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
- }
- 
++}
++
 +/// Bước "Nghe thử" (§4.1 bước 6): bắt đầu phiên thu toàn hệ thống, kể cả câu mẫu do chính app phát. Dừng bằng
 +/// `toggle_session` như phiên thường.
 +#[tauri::command]
@@ -7880,12 +8871,45 @@ diff --git a/src-tauri/src/commands.rs b/src-tauri/src/commands.rs
 +    })
 +    .await
 +    .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
-+}
+ }
+ 
+ #[tauri::command]
+@@ -212,10 +224,33 @@
+     data::debug_sessions(&app)
+ }
+ 
+-/// Lệnh duy nhất cửa sổ `overlay` gọi được, chỉ đọc (§10.2).
++// ---- Lệnh của cửa sổ `overlay` (§10.2): đọc phần cài đặt của nó, và chỉ đụng tới cửa sổ của chính nó. ----
 +
  #[tauri::command]
- pub fn set_overlay_visible<R: Runtime>(app: AppHandle<R>, visible: bool) -> Result<AppStatus, CommandError> {
-     actions::set_overlay_visible(&app, visible)
-@@ -225,6 +236,7 @@
+ pub fn get_overlay_view(state: State<'_, AppState>) -> OverlayView {
+     OverlayView::from_settings(&state.settings())
++}
++
++/// Nút ✕ của thanh phụ đề (§4.4): ẩn thanh như phím tắt ẩn/hiện; phiên dịch vẫn chạy, app không thoát.
++#[tauri::command]
++pub fn hide_overlay<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
++    actions::set_overlay_visible(&app, false).map(|_| ())
++}
++
++/// Bấm giữ ở cạnh hay góc của thanh phụ đề để đổi kích thước (§4.4). Vị trí con trỏ đọc ở phía Rust.
++#[tauri::command]
++pub fn begin_overlay_resize<R: Runtime>(app: AppHandle<R>, edge: Edge) {
++    overlay::begin_resize(&app, edge);
++}
++
++#[tauri::command]
++pub fn overlay_resize_move<R: Runtime>(app: AppHandle<R>) {
++    overlay::resize_to_cursor(&app);
++}
++
++#[tauri::command]
++pub fn end_overlay_resize<R: Runtime>(app: AppHandle<R>) {
++    overlay::end_resize(&app);
+ }
+ 
+ /// Lệnh của cửa sổ `main`.
+@@ -225,6 +260,7 @@
      "set_hotkey",
      "get_app_status",
      "toggle_session",
@@ -7893,7 +8917,22 @@ diff --git a/src-tauri/src/commands.rs b/src-tauri/src/commands.rs
      "set_overlay_visible",
      "set_overlay_locked",
      "get_app_info",
-@@ -260,6 +272,7 @@
+@@ -251,7 +287,13 @@
+ ];
+ 
+ /// Lệnh của cửa sổ `overlay`.
+-pub const OVERLAY_COMMANDS: &[&str] = &["get_overlay_view"];
++pub const OVERLAY_COMMANDS: &[&str] = &[
++    "get_overlay_view",
++    "hide_overlay",
++    "begin_overlay_resize",
++    "overlay_resize_move",
++    "end_overlay_resize",
++];
+ 
+ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static {
+     tauri::generate_handler![
+@@ -260,6 +302,7 @@
          set_hotkey,
          get_app_status,
          toggle_session,
@@ -7901,78 +8940,450 @@ diff --git a/src-tauri/src/commands.rs b/src-tauri/src/commands.rs
          set_overlay_visible,
          set_overlay_locked,
          get_app_info,
+@@ -284,5 +327,9 @@
+         clear_all_data,
+         get_debug_sessions,
+         get_overlay_view,
++        hide_overlay,
++        begin_overlay_resize,
++        overlay_resize_move,
++        end_overlay_resize,
+     ]
+ }
 ```
 
 Sửa `src-tauri/src/overlay/macos.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/overlay/macos.rs b/src-tauri/src/overlay/macos.rs
+index 19546dcfd6b5627d23bb85f6429d594305a8b57d..4759f637f337ebf0fdf162ccdf27e364c8e5cce8 100644
 --- a/src-tauri/src/overlay/macos.rs
 +++ b/src-tauri/src/overlay/macos.rs
-@@ -7,7 +7,7 @@
+@@ -7,7 +7,8 @@
  use tauri::{AppHandle, Runtime, WebviewUrl};
  use tauri_nspanel::{CollectionBehavior, ManagerExt, PanelBuilder, PanelLevel, StyleMask};
  
 -use super::LABEL;
++use super::placement::Edge;
 +use super::{LABEL, MIN_HEIGHT, MIN_WIDTH};
  use crate::navigation;
  
  tauri_nspanel::tauri_panel! {
-@@ -25,6 +25,10 @@
+@@ -25,6 +26,10 @@
          .url(WebviewUrl::App("overlay.html".into()))
          .title(title)
          .size(tauri::Size::Logical(tauri::LogicalSize::new(900.0, 160.0)))
-+        // Kéo cạnh để đổi kích thước (§4.4): cửa sổ không viền mà `resizable` thì macOS vẫn cho kéo cạnh. Cỡ tối thiểu
-+        // trên mức `settings::OVERLAY_WIDTH`, `OVERLAY_HEIGHT`, để vị trí luôn lưu được.
++        // Kéo cạnh để đổi kích thước (§4.4): app tự đổi khung theo con trỏ (`overlay::resize_to_cursor`). Vẫn đặt
++        // `resizable` và cỡ tối thiểu, phòng khi chính NSPanel không viền cũng cho kéo ở mép ngoài cùng.
 +        .resizable(true)
 +        .min_size(tauri::Size::Logical(tauri::LogicalSize::new(MIN_WIDTH, MIN_HEIGHT)))
          .with_window(move |w| {
              w.decorations(false)
                  .transparent(true)
+@@ -62,3 +67,8 @@
+     }
+     Ok(())
+ }
++
++/// tao trên macOS không có `drag_resize_window`: app tự đổi kích thước theo con trỏ.
++pub fn system_resize<R: Runtime>(_app: &AppHandle<R>, _edge: Edge) -> bool {
++    false
++}
 ```
 
 Sửa `src-tauri/src/overlay/mod.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/overlay/mod.rs b/src-tauri/src/overlay/mod.rs
+index 5fff622dc1d9bd379477bebe2d8d7b74d2bc08e4..aae19208965feb1c2169dc72c1d841b0af19dc30 100644
 --- a/src-tauri/src/overlay/mod.rs
 +++ b/src-tauri/src/overlay/mod.rs
-@@ -27,6 +27,10 @@
- use placement::Screen;
+@@ -3,8 +3,13 @@
+ //! - macOS (`macos.rs`): NSPanel non-activating qua `tauri-nspanel`;
+ //! - Windows (`windows.rs`): cửa sổ topmost, `skip_taskbar`, `focusable(false)`.
+ //!
+-//! Phần chung ở đây: ẩn/hiện, khóa (click xuyên qua), nhớ vị trí theo từng màn hình. Ẩn/hiện và khóa
+-//! đi qua trait `Surface`, để test (`app_tests.rs`) kiểm bằng bản giả mà không cần cửa sổ thật.
++//! Phần chung ở đây: ẩn/hiện, khóa (click xuyên qua), nhớ vị trí theo từng màn hình, kéo cạnh để đổi kích thước. Các
++//! thao tác trên cửa sổ đi qua trait `Surface`, để test (`app_tests.rs`) kiểm bằng bản giả mà không cần cửa sổ thật.
++//!
++//! Kéo cạnh hay góc (§4.4, cả macOS lẫn Windows): thanh phụ đề vẽ vùng kéo ở mép (khi chưa khóa) và gọi
++//! [`begin_resize`], [`resize_to_cursor`], [`end_resize`]. Windows để hệ điều hành đổi kích thước (`start_resize_dragging`).
++//! macOS không có cách đó trong tao, nên app tự đặt khung cửa sổ theo vị trí con trỏ (đọc ở phía Rust, không nhận tọa độ
++//! từ giao diện) mỗi lần con trỏ di chuyển.
+ 
+ pub mod placement;
+ 
+@@ -17,6 +22,7 @@
+ #[cfg(not(target_os = "macos"))]
+ use windows as platform;
+ 
++use std::sync::Mutex;
+ use std::time::{SystemTime, UNIX_EPOCH};
+ 
+ use tauri::{AppHandle, Manager, Monitor, PhysicalPosition, PhysicalSize, Runtime};
+@@ -24,9 +30,13 @@
+ use crate::i18n;
+ use crate::settings::{MAX_OVERLAY_POSITIONS, persist};
+ use crate::state::AppState;
+-use placement::Screen;
++use placement::{Edge, Frame, Screen};
  
  pub const LABEL: &str = "overlay";
-+/// Cỡ nhỏ nhất của thanh phụ đề khi kéo cạnh (điểm logic): lớn hơn mức tối thiểu `settings::OVERLAY_WIDTH` (200) và
-+/// `OVERLAY_HEIGHT` (40), để vị trí sau khi kéo luôn qua `Settings::validate` và được lưu.
-+pub const MIN_WIDTH: f64 = 240.0;
-+pub const MIN_HEIGHT: f64 = 60.0;
++/// Cỡ nhỏ nhất của thanh phụ đề khi kéo cạnh (điểm logic, §4.4): 320 × 80, trên mức tối thiểu `settings::OVERLAY_WIDTH`
++/// (200) và `OVERLAY_HEIGHT` (40), để vị trí sau khi kéo luôn qua `Settings::validate` và được lưu.
++pub const MIN_WIDTH: f64 = 320.0;
++pub const MIN_HEIGHT: f64 = 80.0;
  
  /// Thao tác trên cửa sổ của thanh phụ đề. Bản thật gọi `macos.rs` hoặc `windows.rs`; test dùng bản giả
  /// ghi lại từng lần gọi (`test_support::FakeSurface`).
+@@ -34,10 +44,43 @@
+     fn set_visible(&self, visible: bool) -> tauri::Result<()>;
+     /// Chế độ khóa: click đi xuyên qua thanh phụ đề (§4.4).
+     fn set_click_through(&self, on: bool) -> tauri::Result<()>;
++    /// Khung hiện tại của cửa sổ và màn hình nó đang nằm. `None`: chưa có cửa sổ, hay không đọc được.
++    fn frame(&self) -> Option<(Frame, Screen)>;
++    fn set_frame(&self, frame: Frame) -> tauri::Result<()>;
++    /// Vị trí con trỏ chuột, tọa độ vật lý của màn hình.
++    fn cursor(&self) -> Option<(f64, f64)>;
++    /// Để hệ điều hành đổi kích thước theo con trỏ cho tới khi nhả chuột. `false`: hệ điều hành không làm được (macOS),
++    /// app tự đổi ([`resize_to_cursor`]).
++    fn system_resize(&self, edge: Edge) -> bool;
++}
++
++/// Một lần kéo cạnh đang dở (macOS): cạnh đang kéo, con trỏ và khung lúc bấm, cỡ tối thiểu theo pixel của màn hình đó.
++#[derive(Clone, Copy, Debug)]
++struct Drag {
++    edge: Edge,
++    cursor: (f64, f64),
++    frame: Frame,
++    min: (u32, u32),
+ }
+ 
+ /// `Surface` đang dùng, quản lý bằng `app.manage`: `create` đặt bản thật, test đặt bản giả.
+-pub struct OverlaySurface(pub Box<dyn Surface>);
++pub struct OverlaySurface {
++    surface: Box<dyn Surface>,
++    drag: Mutex<Option<Drag>>,
++}
++
++impl OverlaySurface {
++    pub fn new(surface: Box<dyn Surface>) -> Self {
++        Self {
++            surface,
++            drag: Mutex::new(None),
++        }
++    }
++
++    fn drag(&self) -> std::sync::MutexGuard<'_, Option<Drag>> {
++        self.drag.lock().unwrap_or_else(|e| e.into_inner())
++    }
++}
+ 
+ struct Native<R: Runtime>(AppHandle<R>);
+ 
+@@ -48,6 +91,38 @@
+ 
+     fn set_click_through(&self, on: bool) -> tauri::Result<()> {
+         platform::set_ignore_mouse(&self.0, on)
++    }
++
++    fn frame(&self) -> Option<(Frame, Screen)> {
++        let window = self.0.get_webview_window(LABEL)?;
++        let (Ok(position), Ok(size), Ok(Some(monitor))) =
++            (window.outer_position(), window.outer_size(), window.current_monitor())
++        else {
++            return None;
++        };
++        let frame = Frame {
++            x: position.x,
++            y: position.y,
++            width: size.width,
++            height: size.height,
++        };
++        Some((frame, screen_of(&monitor)))
++    }
++
++    fn set_frame(&self, frame: Frame) -> tauri::Result<()> {
++        if let Some(window) = self.0.get_webview_window(LABEL) {
++            window.set_size(PhysicalSize::new(frame.width, frame.height))?;
++            window.set_position(PhysicalPosition::new(frame.x, frame.y))?;
++        }
++        Ok(())
++    }
++
++    fn cursor(&self) -> Option<(f64, f64)> {
++        self.0.cursor_position().ok().map(|p| (p.x, p.y))
++    }
++
++    fn system_resize(&self, edge: Edge) -> bool {
++        platform::system_resize(&self.0, edge)
+     }
+ }
+ 
+@@ -56,14 +131,14 @@
+ pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+     let settings = app.state::<AppState>().settings();
+     platform::create(app, i18n::strings(settings.ui_language).overlay_title)?;
+-    app.manage(OverlaySurface(Box::new(Native(app.clone()))));
++    app.manage(OverlaySurface::new(Box::new(Native(app.clone()))));
+     restore_position(app);
+     set_locked(app, settings.overlay.locked)
+ }
+ 
+ pub fn set_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> tauri::Result<()> {
+     match app.try_state::<OverlaySurface>() {
+-        Some(surface) => surface.0.set_visible(visible),
++        Some(overlay) => overlay.surface.set_visible(visible),
+         None => Ok(()),
+     }
+ }
+@@ -71,7 +146,7 @@
+ /// Chế độ khóa: cho click xuyên qua thanh phụ đề (§4.4).
+ pub fn set_locked<R: Runtime>(app: &AppHandle<R>, locked: bool) -> tauri::Result<()> {
+     match app.try_state::<OverlaySurface>() {
+-        Some(surface) => surface.0.set_click_through(locked),
++        Some(overlay) => overlay.surface.set_click_through(locked),
+         None => Ok(()),
+     }
+ }
+@@ -119,18 +194,12 @@
+ }
+ 
+ /// Nhớ vị trí hiện tại của thanh phụ đề cho màn hình nó đang nằm (gọi khi cửa sổ di chuyển hay đổi
+-/// kích thước, và trước khi thoát).
++/// kích thước, khi ẩn, và trước khi thoát).
+ pub fn remember_position<R: Runtime>(app: &AppHandle<R>) {
+-    let Some(window) = app.get_webview_window(LABEL) else {
+-        return;
+-    };
+-    let (Ok(position), Ok(size), Ok(Some(monitor))) =
+-        (window.outer_position(), window.outer_size(), window.current_monitor())
+-    else {
+-        return;
+-    };
+-    let screen = screen_of(&monitor);
+-    let rect = placement::to_relative(&screen, position.x, position.y, size.width, size.height);
++    let Some((frame, screen)) = app.try_state::<OverlaySurface>().and_then(|o| o.surface.frame()) else {
++        return;
++    };
++    let rect = placement::to_relative(&screen, frame.x, frame.y, frame.width, frame.height);
+     let state = app.state::<AppState>();
+     let mut next = state.settings();
+     let unchanged = next
+@@ -159,3 +228,60 @@
+         log::warn!("không lưu được vị trí thanh phụ đề: {e}");
+     }
+ }
++
++/// Bấm giữ ở cạnh hay góc `edge` của thanh phụ đề (§4.4). Thanh đang khóa thì không làm gì (click đi xuyên qua, nên lệnh
++/// này thường không tới).
++pub fn begin_resize<R: Runtime>(app: &AppHandle<R>, edge: Edge) {
++    if app.state::<AppState>().settings().overlay.locked {
++        return;
++    }
++    let Some(overlay) = app.try_state::<OverlaySurface>() else {
++        return;
++    };
++    *overlay.drag() = None;
++    if overlay.surface.system_resize(edge) {
++        return;
++    }
++    let (Some((frame, screen)), Some(cursor)) = (overlay.surface.frame(), overlay.surface.cursor()) else {
++        return;
++    };
++    let min = (
++        (MIN_WIDTH * screen.scale).ceil() as u32,
++        (MIN_HEIGHT * screen.scale).ceil() as u32,
++    );
++    *overlay.drag() = Some(Drag {
++        edge,
++        cursor,
++        frame,
++        min,
++    });
++}
++
++/// Con trỏ di chuyển trong lúc kéo cạnh: đặt khung theo con trỏ (chỉ khi app tự đổi kích thước, xem [`Surface`]).
++pub fn resize_to_cursor<R: Runtime>(app: &AppHandle<R>) {
++    let Some(overlay) = app.try_state::<OverlaySurface>() else {
++        return;
++    };
++    let Some(drag) = *overlay.drag() else {
++        return;
++    };
++    let Some(cursor) = overlay.surface.cursor() else {
++        return;
++    };
++    let dx = (cursor.0 - drag.cursor.0).round() as i32;
++    let dy = (cursor.1 - drag.cursor.1).round() as i32;
++    let next = placement::resized(drag.frame, drag.edge, dx, dy, drag.min.0, drag.min.1);
++    if let Err(e) = overlay.surface.set_frame(next) {
++        log::warn!("không đổi được kích thước thanh phụ đề: {e}");
++    }
++}
++
++/// Nhả chuột: hết lần kéo cạnh, nhớ vị trí và kích thước mới.
++pub fn end_resize<R: Runtime>(app: &AppHandle<R>) {
++    let Some(overlay) = app.try_state::<OverlaySurface>() else {
++        return;
++    };
++    if overlay.drag().take().is_some() {
++        remember_position(app);
++    }
++}
+```
+
+Sửa `src-tauri/src/overlay/placement.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/overlay/placement.rs b/src-tauri/src/overlay/placement.rs
+index b6039482d5dd1ce58b88fc264ceb1d6dfaa24dcc..8b530ef63d5b4f6ba8077b2efc50ddbe5335a2b8 100644
+--- a/src-tauri/src/overlay/placement.rs
++++ b/src-tauri/src/overlay/placement.rs
+@@ -5,6 +5,8 @@
+ //! File này chỉ có phép tính, không gọi Tauri; phần đọc màn hình và đặt cửa sổ nằm ở `overlay/mod.rs`.
+ 
+ use std::collections::BTreeMap;
++
++use serde::Deserialize;
+ 
+ use crate::settings::OverlayRect;
+ 
+@@ -35,6 +37,82 @@
+ /// Khoảng cách tối thiểu tới mép trái và phải, và khoảng cách tới mép dưới khi đặt mặc định.
+ const MARGIN: f64 = 24.0;
+ const BOTTOM_GAP: f64 = 72.0;
++
++/// Khung của cửa sổ, tọa độ vật lý (pixel).
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct Frame {
++    pub x: i32,
++    pub y: i32,
++    pub width: u32,
++    pub height: u32,
++}
++
++/// Cạnh hay góc đang kéo để đổi kích thước thanh phụ đề (§4.4). Tên theo hướng: `north` là cạnh trên.
++#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
++#[serde(rename_all = "camelCase")]
++pub enum Edge {
++    North,
++    South,
++    East,
++    West,
++    NorthEast,
++    NorthWest,
++    SouthEast,
++    SouthWest,
++}
++
++impl Edge {
++    /// Tên hướng theo `ResizeDirection` của Tauri (`start_resize_dragging`).
++    pub fn direction(self) -> &'static str {
++        use Edge::*;
++        match self {
++            North => "North",
++            South => "South",
++            East => "East",
++            West => "West",
++            NorthEast => "NorthEast",
++            NorthWest => "NorthWest",
++            SouthEast => "SouthEast",
++            SouthWest => "SouthWest",
++        }
++    }
++
++    fn sides(self) -> (bool, bool, bool, bool) {
++        use Edge::*;
++        // (trên, dưới, trái, phải)
++        match self {
++            North => (true, false, false, false),
++            South => (false, true, false, false),
++            East => (false, false, false, true),
++            West => (false, false, true, false),
++            NorthEast => (true, false, false, true),
++            NorthWest => (true, false, true, false),
++            SouthEast => (false, true, false, true),
++            SouthWest => (false, true, true, false),
++        }
++    }
++}
++
++/// Khung mới khi kéo `edge` của khung `start` đi một đoạn (`dx`, `dy`) pixel: chỉ cạnh được kéo dời đi, cạnh đối diện đứng
++/// yên; không nhỏ hơn `min_width` × `min_height`.
++pub fn resized(start: Frame, edge: Edge, dx: i32, dy: i32, min_width: u32, min_height: u32) -> Frame {
++    let (top, bottom, left, right) = edge.sides();
++    let grow = |size: u32, by: i32, min: u32| (i64::from(size) + i64::from(by)).max(i64::from(min)) as u32;
++    let mut next = start;
++    if left {
++        next.width = grow(start.width, -dx, min_width);
++        next.x = start.x + start.width as i32 - next.width as i32;
++    } else if right {
++        next.width = grow(start.width, dx, min_width);
++    }
++    if top {
++        next.height = grow(start.height, -dy, min_height);
++        next.y = start.y + start.height as i32 - next.height as i32;
++    } else if bottom {
++        next.height = grow(start.height, dy, min_height);
++    }
++    next
++}
+ 
+ /// Khóa của một màn hình: tên và độ phân giải đầy đủ. Hai màn hình cùng model và cùng độ phân giải
+ /// dùng chung một vị trí; chấp nhận được, vì vị trí vẫn nằm trong màn hình.
 ```
 
 Sửa `src-tauri/src/overlay/windows.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/overlay/windows.rs b/src-tauri/src/overlay/windows.rs
+index 7cd707983852d222d7b220c44eda6a6bd76df0c3..1e47ec5f90c65129be0e16cb10cc0b2eba9f01d7 100644
 --- a/src-tauri/src/overlay/windows.rs
 +++ b/src-tauri/src/overlay/windows.rs
-@@ -22,6 +22,10 @@
+@@ -16,12 +16,18 @@
+ };
+ 
+ use super::LABEL;
++use super::placement::Edge;
+ use crate::navigation;
+ 
+ pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> {
      WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("overlay.html".into()))
          .title(title)
          .inner_size(900.0, 160.0)
-+        // Kéo cạnh để đổi kích thước (§4.4): thanh phụ đề tự vẽ vùng kéo cạnh và gọi `startResizeDragging` (cờ đặt một
-+        // lần ở đây, QĐ23 của kế hoạch 01). Cỡ tối thiểu trên mức của `settings`, để vị trí luôn lưu được.
++        // Kéo cạnh để đổi kích thước (§4.4): thanh phụ đề tự vẽ vùng kéo cạnh, rồi hệ điều hành đổi kích thước
++        // (`system_resize`). Cờ đặt một lần ở đây (QĐ23 của kế hoạch 01). Cỡ tối thiểu trên mức của `settings`, để vị trí
++        // luôn lưu được.
 +        .resizable(true)
 +        .min_inner_size(super::MIN_WIDTH, super::MIN_HEIGHT)
          .decorations(false)
          .transparent(true)
          .always_on_top(true)
+@@ -79,3 +85,15 @@
+     }
+     Ok(())
+ }
++
++/// Hệ điều hành đổi kích thước theo con trỏ tới khi nhả chuột (`WM_NCLBUTTONDOWN` với cạnh tương ứng, qua tao).
++pub fn system_resize<R: Runtime>(app: &AppHandle<R>, edge: Edge) -> bool {
++    let Some(window) = app.get_webview_window(LABEL) else {
++        return false;
++    };
++    // `tauri` không xuất kiểu `ResizeDirection`; tên hướng trùng `Edge::direction`, nên dựng qua serde.
++    let Ok(direction) = serde_json::from_value(serde_json::Value::String(edge.direction().into())) else {
++        return false;
++    };
++    window.as_ref().window().start_resize_dragging(direction).is_ok()
++}
 ```
 
 Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
+index 39ad48fa99e58417aaa81fffee21625fcde44ae3..f4725b270ef9bbbd0d4b2a0fcc5a77d66bc7d04b 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
 @@ -203,6 +203,17 @@
@@ -8009,7 +9420,7 @@ diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
      let sink = Arc::new(TauriSink {
          app: app.clone(),
          session: n,
-@@ -529,10 +545,12 @@
+@@ -547,10 +563,12 @@
      }
  
      fn level(&self, rms: f32) {
@@ -8028,50 +9439,6 @@ diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
      fn indicators(&self, indicators: &Indicators) {
 ```
 
-Sửa `src-tauri/src/state.rs` (áp bằng `git apply`):
-
-```diff
-diff --git a/src-tauri/src/state.rs b/src-tauri/src/state.rs
---- a/src-tauri/src/state.rs
-+++ b/src-tauri/src/state.rs
-@@ -72,6 +72,10 @@
-     pub opacity: f64,
-     pub show_source: bool,
-     pub locked: bool,
-+    /// Thanh phụ đề tự vẽ vùng kéo cạnh để đổi kích thước (`startResizeDragging`): chỉ trên Windows. macOS đổi kích
-+    /// thước bằng cạnh của chính NSPanel (cửa sổ không viền vẫn `resizable`), vì tao trên macOS không có
-+    /// `drag_resize_window`.
-+    pub edge_resize: bool,
- }
- 
- impl OverlayView {
-@@ -84,6 +88,7 @@
-             opacity: o.opacity,
-             show_source: o.show_source,
-             locked: o.locked,
-+            edge_resize: cfg!(windows),
-         }
-     }
- }
-```
-
-Sửa `src/lib/ipc.ts` (áp bằng `git apply`):
-
-```diff
-diff --git a/src/lib/ipc.ts b/src/lib/ipc.ts
---- a/src/lib/ipc.ts
-+++ b/src/lib/ipc.ts
-@@ -113,6 +113,8 @@
-   opacity: number;
-   showSource: boolean;
-   locked: boolean;
-+  // Thanh phụ đề tự vẽ vùng kéo cạnh (Windows); macOS kéo cạnh của chính cửa sổ.
-+  edgeResize: boolean;
- }
- 
- // Phụ đề (spec §6.6, `pipeline::subtitle::Subtitle`).
-```
-
 - [ ] **Step 4: Chạy test, thấy xanh**
 
 Run:
@@ -8082,17 +9449,40 @@ Expected (lúc lập kế hoạch):
 ```text
 test app_tests::a_listening_test_session_also_captures_the_app_itself ... ok
 test app_tests::the_listening_test_captures_the_whole_system_and_the_overlay_hears_the_level ... ok
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 203 filtered out
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 217 filtered out
 ```
 
 Run:
 ```bash
-cargo test -p meeting-translator --lib resize_edges -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
+cargo test -p meeting-translator --lib overlay -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test app_tests::the_overlay_draws_resize_edges_only_on_windows ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 204 filtered out
+test app_tests::dragging_an_edge_resizes_the_overlay_and_remembers_it ... ok
+test app_tests::hide_show_and_lock_reach_the_overlay_window ... ok
+test app_tests::hiding_the_overlay_from_the_main_window_remembers_the_position ... ok
+test app_tests::on_windows_the_system_resizes_the_overlay ... ok
+test app_tests::overlay_starts_hidden_and_appears_when_a_session_starts ... ok
+test app_tests::the_hide_button_hides_the_overlay_keeps_the_session_and_remembers_the_position ... ok
+test app_tests::the_listening_test_captures_the_whole_system_and_the_overlay_hears_the_level ... ok
+test overlay::placement::tests::edges_come_in_camel_case_and_map_to_tauri_directions ... ok
+test overlay::placement::tests::first_launch_goes_bottom_center_of_primary ... ok
+test overlay::placement::tests::last_screen_without_a_saved_position_is_skipped ... ok
+test overlay::placement::tests::narrow_screen_keeps_margins_in_default_rect ... ok
+test overlay::placement::tests::no_screen_means_no_placement ... ok
+test overlay::placement::tests::off_screen_position_is_pulled_back_inside ... ok
+test overlay::placement::tests::position_below_the_bottom_edge_is_pulled_up ... ok
+test overlay::placement::tests::relative_position_roundtrips_through_scale ... ok
+test overlay::placement::tests::remember_drops_the_least_recently_used_screen ... ok
+test overlay::placement::tests::remember_stamps_time_and_updates_in_place ... ok
+test overlay::placement::tests::resizing_moves_only_the_dragged_sides ... ok
+test overlay::placement::tests::saved_position_is_restored_on_its_screen ... ok
+test overlay::placement::tests::saved_screen_is_found_anywhere_in_the_list ... ok
+test overlay::placement::tests::screen_key_uses_name_and_resolution ... ok
+test overlay::placement::tests::unplugged_screen_falls_back_to_another_saved_screen_then_default ... ok
+test settings::persist::tests::save_writes_every_key_and_save_overlay_only_overlay ... ok
+test settings::tests::overlay_positions_are_bounded ... ok
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 195 filtered out
 ```
 
 Run:
@@ -8104,7 +9494,7 @@ Expected (lúc lập kế hoạch):
 test acl_tests::capabilities_grant_exactly_the_fixed_lists ... ok
 test acl_tests::each_window_only_reaches_its_own_commands ... ok
 test acl_tests::outside_effects_only_reach_the_fake_opener ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 202 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 216 filtered out
 ```
 
 Run:
@@ -8113,7 +9503,7 @@ cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finis
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 203 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+test result: ok. 217 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
 ```
 
 Run:
@@ -8122,8 +9512,8 @@ NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) '
 ```
 Expected (lúc lập kế hoạch):
 ```text
- Test Files  5 passed (5)
-      Tests  66 passed (66)
+ Test Files  6 passed (6)
+      Tests  67 passed (67)
 ```
 
 Run:
@@ -8167,17 +9557,557 @@ git add src-tauri/build.rs \
   src-tauri/src/commands.rs \
   src-tauri/src/overlay/macos.rs \
   src-tauri/src/overlay/mod.rs \
+  src-tauri/src/overlay/placement.rs \
   src-tauri/src/overlay/windows.rs \
   src-tauri/src/session.rs \
-  src-tauri/src/state.rs \
-  src-tauri/src/test_support.rs \
-  src/lib/ipc.ts \
-  src/store/overlay.test.ts
-git commit -m "feat(app): mức âm lượng tới thanh phụ đề, kéo cạnh đổi kích thước, lệnh nghe thử (§4.1 bước 6, §4.4)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+  src-tauri/src/test_support.rs
+git commit -m "feat(app): thanh phụ đề kéo cạnh trên cả macOS và Windows, nút ẩn, mức âm lượng, lệnh nghe thử (§4.1 bước 6, §4.4)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 
-## Task 11: Kiểm tra chuẩn sau 03a
+## Task 11: Màu chữ và màu nền của phụ đề (phía Rust)
+
+§4.3 đã sửa ngày 2026-10-02 (commit `5925d42`): Cài đặt › Phụ đề có màu chữ và màu nền, chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm), mặc định chữ trắng trên nền đen, đổi là thấy ngay trên thanh phụ đề. QĐ23.
+
+- `settings::TextColor`, `settings::BackgroundColor` (tên camelCase trong file và IPC), hai khóa `overlay.textColor`, `overlay.background` có `#[serde(default)]`: file cài đặt của bản trước không cần bước migrate, màu không có trong bảng thì về mặc định (`rejected`), như mọi khóa khác.
+- `update_settings` nhận hai khóa này (không phải khóa chỉ đọc); giá trị ngoài bảng màu là `wrongType`.
+- `OverlayView` thêm `textColor`, `background`, nên thanh phụ đề nhận màu mới qua `overlay://view` ngay khi đổi. Mã màu nằm ở giao diện (03b Task 1).
+
+**Files:**
+- Modify: `src-tauri/src/app_tests.rs`
+- Modify: `src-tauri/src/settings/migrate.rs`
+- Modify: `src-tauri/src/settings/mod.rs`
+- Modify: `src-tauri/src/settings/patch.rs`
+- Modify: `src-tauri/src/state.rs`
+
+- [ ] **Step 1: Viết test trước**
+
+Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
+index 57104cc8757c9fccc8f16d7605d3137c30b6c5f8..34edb39ae2a24bd318ef42b5c350acac17246167 100644
+--- a/src-tauri/src/app_tests.rs
++++ b/src-tauri/src/app_tests.rs
+@@ -279,6 +279,37 @@
+     let settings = app.state::<AppState>().settings();
+     let r = settings.overlay.positions.get("Retina 3840x2160")?;
+     Some((r.x, r.y, r.width, r.height))
++}
++
++/// Đổi màu chữ, màu nền ở Cài đặt › Phụ đề (§4.3): thanh phụ đề thấy ngay qua `overlay://view`. Mặc định chữ trắng trên
++/// nền đen.
++#[test]
++fn subtitle_colors_reach_the_overlay_at_once() {
++    let app = mock_app();
++    let main = window(&app, "main");
++    let overlay = window(&app, "overlay");
++    let view = invoke(&overlay, "get_overlay_view", json!({})).unwrap();
++    assert_eq!(
++        (&view["textColor"], &view["background"]),
++        (&json!("white"), &json!("black"))
++    );
++    let views = record(&app, crate::events::OVERLAY_VIEW);
++    invoke(
++        &main,
++        "update_settings",
++        json!({ "patch": { "overlay": { "textColor": "yellow", "background": "navy" } } }),
++    )
++    .unwrap();
++    let last = views.lock().unwrap().last().cloned().unwrap();
++    assert_eq!(
++        (&last["textColor"], &last["background"]),
++        (&json!("yellow"), &json!("navy"))
++    );
++    let saved = last_saved(&app, "overlay").unwrap();
++    assert_eq!(
++        (&saved["textColor"], &saved["background"]),
++        (&json!("yellow"), &json!("navy"))
++    );
+ }
+ 
+ /// Kéo cạnh trên macOS (§4.4): app tự đặt khung theo con trỏ, không nhỏ hơn 320 × 80 điểm; nhả chuột thì nhớ kích thước
+```
+
+Sửa `src-tauri/src/settings/migrate.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/settings/migrate.rs b/src-tauri/src/settings/migrate.rs
+index e14e91e20327646f26960183ab2bdb424bcdfad1..7bb0255b288c93691afb16d33c724129367e6198 100644
+--- a/src-tauri/src/settings/migrate.rs
++++ b/src-tauri/src/settings/migrate.rs
+@@ -374,6 +374,34 @@
+         assert!(loaded.needs_save());
+     }
+ 
++    /// File của bản trước chưa có màu phụ đề: chữ trắng trên nền đen (§4.3), các khóa khác của nhóm giữ nguyên. Màu
++    /// không có trong bảng màu thì về mặc định.
++    #[test]
++    fn subtitle_colors_default_to_white_on_black() {
++        use crate::settings::{BackgroundColor, TextColor};
++        let raw = object(json!({ "schemaVersion": 1, "overlay": { "fontSize": 30 } }));
++        let loaded = load(raw, defaults());
++        let o = &loaded.settings.overlay;
++        assert_eq!(
++            (o.text_color, o.background, o.font_size),
++            (TextColor::White, BackgroundColor::Black, 30)
++        );
++        let raw = object(json!({
++            "schemaVersion": 1,
++            "overlay": { "textColor": "yellow", "background": "pink" },
++        }));
++        let loaded = load(raw, defaults());
++        let o = &loaded.settings.overlay;
++        assert_eq!(
++            (o.text_color, o.background),
++            (TextColor::Yellow, BackgroundColor::Black)
++        );
++        assert_eq!(loaded.rejected, ["overlay.background"]);
++        let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
++        assert_eq!(entries["overlay"]["textColor"], "yellow");
++        assert_eq!(entries["overlay"]["background"], "black");
++    }
++
+     #[test]
+     fn swapped_hotkeys_are_kept_together() {
+         let raw = object(json!({
+```
+
+Sửa `src-tauri/src/settings/patch.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/settings/patch.rs b/src-tauri/src/settings/patch.rs
+index 75cd9700733c212b6d7bfbc193b4166ebf40ddcf..13825fb866b8250cb18365d29408e49e8d8dd861 100644
+--- a/src-tauri/src/settings/patch.rs
++++ b/src-tauri/src/settings/patch.rs
+@@ -159,6 +159,29 @@
+         );
+     }
+ 
++    /// Màu chữ và màu nền của phụ đề (§4.3): chỉ nhận màu trong bảng màu có sẵn.
++    #[test]
++    fn subtitle_colors_come_from_the_palette() {
++        use crate::settings::{BackgroundColor, TextColor};
++        let s = apply(
++            &current(),
++            &json!({ "overlay": { "textColor": "lightBlue", "background": "darkPurple" } }),
++        )
++        .unwrap();
++        assert_eq!(
++            (s.overlay.text_color, s.overlay.background),
++            (TextColor::LightBlue, BackgroundColor::DarkPurple)
++        );
++        assert_eq!(
++            apply(&current(), &json!({ "overlay": { "textColor": "#ff00ff" } })),
++            Err(Invalid::new("overlay.textColor", Reason::WrongType))
++        );
++        assert_eq!(
++            apply(&current(), &json!({ "overlay": { "background": "white" } })),
++            Err(Invalid::new("overlay.background", Reason::WrongType))
++        );
++    }
++
+     #[test]
+     fn rejects_wrong_types() {
+         assert_eq!(
+```
+
+- [ ] **Step 2: Chạy test, thấy đỏ**
+
+Run:
+```bash
+cargo test -p meeting-translator --lib color 2>&1 | grep -E '^error(\[E[0-9]+\])?:' | sort -u | head -6
+```
+Expected (lúc lập kế hoạch; chưa có `TextColor`, `BackgroundColor`):
+```text
+error: could not compile `meeting-translator` (lib test) due to 8 previous errors
+error[E0432]: unresolved imports `crate::settings::BackgroundColor`, `crate::settings::TextColor`
+error[E0609]: no field `background` on type `&OverlaySettings`
+error[E0609]: no field `background` on type `OverlaySettings`
+error[E0609]: no field `text_color` on type `&OverlaySettings`
+error[E0609]: no field `text_color` on type `OverlaySettings`
+```
+
+- [ ] **Step 3: Viết code**
+
+Sửa `src-tauri/src/settings/mod.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/settings/mod.rs b/src-tauri/src/settings/mod.rs
+index 1996abbe66365022d7cbfb5e2f8a90f66c27d422..bacb7578c1482b83cb027aac3ae92b4c5bd7200b 100644
+--- a/src-tauri/src/settings/mod.rs
++++ b/src-tauri/src/settings/mod.rs
+@@ -76,6 +76,31 @@
+     Beta,
+ }
+ 
++/// Màu chữ của phụ đề (§4.3, Cài đặt › Phụ đề), chọn từ bảng màu có sẵn. Mã màu nằm ở giao diện
++/// (`src/lib/subtitleView.ts`).
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(rename_all = "camelCase")]
++pub enum TextColor {
++    #[default]
++    White,
++    Yellow,
++    Green,
++    LightBlue,
++    Orange,
++}
++
++/// Màu nền của thanh phụ đề (§4.3); độ trong suốt của nền là `OverlaySettings::opacity`.
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(rename_all = "camelCase")]
++pub enum BackgroundColor {
++    #[default]
++    Black,
++    DarkGray,
++    Navy,
++    DarkBrown,
++    DarkPurple,
++}
++
+ /// Vị trí và kích thước thanh phụ đề trên một màn hình, tính bằng điểm logic so với góc trên
+ /// bên trái vùng làm việc của màn hình đó.
+ #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+@@ -98,6 +123,11 @@
+     pub lines: u32,
+     /// Độ mờ của nền, 0 là trong suốt hẳn.
+     pub opacity: f64,
++    /// Mặc định chữ trắng trên nền đen (§4.3). File cài đặt của bản trước chưa có hai khóa này thì lấy mặc định.
++    #[serde(default)]
++    pub text_color: TextColor,
++    #[serde(default)]
++    pub background: BackgroundColor,
+     pub show_source: bool,
+     pub locked: bool,
+     /// Vị trí đã nhớ theo từng màn hình, khóa là `overlay::placement::screen_key`.
+@@ -203,6 +233,8 @@
+                 font_size: 22,
+                 lines: 2,
+                 opacity: 0.6,
++                text_color: TextColor::White,
++                background: BackgroundColor::Black,
+                 show_source: false,
+                 locked: false,
+                 positions: BTreeMap::new(),
+```
+
+Sửa `src-tauri/src/state.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/state.rs b/src-tauri/src/state.rs
+index 9cca06d63496f823db073ab0207985b6d78402d6..705be782963aea3eb08c5118e108b780c2ae59c1 100644
+--- a/src-tauri/src/state.rs
++++ b/src-tauri/src/state.rs
+@@ -8,7 +8,7 @@
+ 
+ use crate::hotkeys::HotkeyAction;
+ use crate::settings::migrate::FileMeta;
+-use crate::settings::{Settings, UiLanguage};
++use crate::settings::{BackgroundColor, Settings, TextColor, UiLanguage};
+ 
+ /// Trạng thái phiên dịch (§4.3: Sẵn sàng, Đang dịch, Lỗi).
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+@@ -70,6 +70,8 @@
+     pub font_size: u32,
+     pub lines: u32,
+     pub opacity: f64,
++    pub text_color: TextColor,
++    pub background: BackgroundColor,
+     pub show_source: bool,
+     pub locked: bool,
+ }
+@@ -82,6 +84,8 @@
+             font_size: o.font_size,
+             lines: o.lines,
+             opacity: o.opacity,
++            text_color: o.text_color,
++            background: o.background,
+             show_source: o.show_source,
+             locked: o.locked,
+         }
+```
+
+- [ ] **Step 4: Chạy test, thấy xanh**
+
+Run:
+```bash
+cargo test -p meeting-translator --lib color -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
+```
+Expected (lúc lập kế hoạch):
+```text
+test app_tests::subtitle_colors_reach_the_overlay_at_once ... ok
+test settings::migrate::tests::subtitle_colors_default_to_white_on_black ... ok
+test settings::patch::tests::subtitle_colors_come_from_the_palette ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 219 filtered out
+```
+
+Run:
+```bash
+cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finished in .*//'
+```
+Expected (lúc lập kế hoạch):
+```text
+test result: ok. 220 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+```
+
+- [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
+
+Run:
+```bash
+cargo fmt --all -- --check && cargo clippy -p meeting-translator --all-targets -q -- -D warnings && echo clippy ok
+```
+Expected (lúc lập kế hoạch):
+```text
+clippy ok
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src-tauri/src/app_tests.rs \
+  src-tauri/src/settings/migrate.rs \
+  src-tauri/src/settings/mod.rs \
+  src-tauri/src/settings/patch.rs \
+  src-tauri/src/state.rs
+git commit -m "feat(app): màu chữ và màu nền của phụ đề trong cài đặt, tới thanh phụ đề ngay khi đổi (§4.3)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+
+## Task 12: Tắt tiến trình phụ khi rảnh không chen vào lần Bắt đầu
+
+Ghi chú N1 của review cuối 02 (`notes-for-plan02-exec.md` mục 7), Q5 của review 03: 03 nhận ghi chú này (04 làm N2). Kịch bản: `tick` tính "rảnh" (10 phút không dịch), rồi `LiveDeps::prepare` của một lần Bắt đầu thấy tiến trình phụ còn chạy nên chỉ `touch`, rồi `tick` tắt cả hai. Phiên vẫn chạy được (tiến trình phụ chạy lại khi cần), nhưng câu đầu phải chờ nạp model 10–60 giây. QĐ24.
+
+- `SidecarManager::stop_if_idle` (`tick` gọi): kiểm lại "rảnh" dưới khóa của từng tiến trình phụ, ngay trước khi lấy nó ra; không còn rảnh thì giữ. `stop` (thoát app, test) giữ nguyên, dùng chung `stop_each`.
+- `LiveDeps::prepare`: `touch` trước rồi mới hỏi `running`, để lần kiểm lại ở trên thấy lần chạm này.
+- Test với đồng hồ giả (`tests/lifecycle.rs`): chạm hay `begin_session` sau khi đã rảnh 10 phút thì `stop_if_idle` không tắt; rảnh thật thì vẫn tắt.
+
+**Files:**
+- Modify: `crates/pipeline/src/supervisor.rs`
+- Modify: `crates/pipeline/tests/lifecycle.rs`
+- Modify: `src-tauri/src/session.rs`
+
+- [ ] **Step 1: Viết test trước**
+
+Sửa `crates/pipeline/tests/lifecycle.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/crates/pipeline/tests/lifecycle.rs b/crates/pipeline/tests/lifecycle.rs
+index 0a2d42a36048f5f4ec9236e9450e61cf0f226bcd..5118d8748e3958e852694a3df0ab2bef18f1ae5b 100644
+--- a/crates/pipeline/tests/lifecycle.rs
++++ b/crates/pipeline/tests/lifecycle.rs
+@@ -370,6 +370,27 @@
+     );
+ }
+ 
++/// N1 của review cuối 02 (Q5 của review 03): `tick` đã tính "rảnh", rồi một lần Bắt đầu `touch` hay `begin_session`
++/// trước khi `tick` kịp tắt. Lần tắt kiểm lại dưới khóa của tiến trình phụ, nên phiên mới giữ được tiến trình phụ.
++#[test]
++fn a_start_right_after_the_idle_check_keeps_the_sidecars() {
++    let s = setup("idle-race", true, &[], &[]);
++    s.manager.ensure_started().unwrap();
++    s.clock.advance(Duration::from_secs(10 * 60));
++    // Như `tick` đã thấy rảnh, rồi `prepare` của lần Bắt đầu chạm vào trước khi `tick` tắt.
++    s.manager.touch();
++    assert!(!s.manager.stop_if_idle());
++    assert!(s.manager.running());
++    s.clock.advance(Duration::from_secs(10 * 60));
++    s.manager.begin_session();
++    assert!(!s.manager.stop_if_idle());
++    assert!(s.manager.running());
++    s.manager.end_session();
++    s.clock.advance(Duration::from_secs(10 * 60));
++    assert!(s.manager.stop_if_idle(), "rảnh thật thì vẫn tắt");
++    assert!(!s.manager.running());
++}
++
+ #[test]
+ fn a_running_session_keeps_the_sidecars() {
+     let s = setup("session", true, &[], &[]);
+```
+
+- [ ] **Step 2: Chạy test, thấy đỏ**
+
+Run:
+```bash
+cargo test -p pipeline --test lifecycle 2>&1 | grep -E '^error(\[E[0-9]+\])?:' | sort -u | head -6
+```
+Expected (lúc lập kế hoạch; chưa có `stop_if_idle`):
+```text
+error: could not compile `pipeline` (test "lifecycle") due to 3 previous errors
+error[E0599]: no method named `stop_if_idle` found for struct `Arc<SidecarManager>` in the current scope
+```
+
+- [ ] **Step 3: Viết code**
+
+Sửa `crates/pipeline/src/supervisor.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/crates/pipeline/src/supervisor.rs b/crates/pipeline/src/supervisor.rs
+index 64704b6c1ceb18f72b26db0fc070f74190f13019..bf1986d347f7f6be422ec4a8562a7c70a989966f 100644
+--- a/crates/pipeline/src/supervisor.rs
++++ b/crates/pipeline/src/supervisor.rs
+@@ -530,18 +530,26 @@
+         a.last_active_ms = self.clock.now_ms();
+     }
+ 
++    /// Không có phiên nào và rảnh quá `idle_shutdown_ms`.
++    fn idle(&self) -> bool {
++        let a = lock(&self.activity);
++        a.sessions == 0 && self.clock.now_ms().saturating_sub(a.last_active_ms) >= self.spec.supervisor.idle_shutdown_ms
++    }
++
+     /// Gọi định kỳ. Không có phiên nào và rảnh quá `idle_shutdown_ms` thì tắt cả hai; trả `true` nếu vừa tắt.
+     pub fn tick(&self) -> bool {
+-        let idle = {
+-            let a = lock(&self.activity);
+-            a.sessions == 0
+-                && self.clock.now_ms().saturating_sub(a.last_active_ms) >= self.spec.supervisor.idle_shutdown_ms
+-        };
+-        if !idle || !self.running() || self.closing() {
++        if !self.idle() || !self.running() || self.closing() {
+             return false;
+         }
+-        self.stop(true);
+-        true
++        self.stop_if_idle()
++    }
++
++    /// Tắt cả hai vì rảnh, nhưng kiểm lại "rảnh" dưới khóa của từng tiến trình phụ, ngay trước khi lấy nó ra. `tick` tính
++    /// "rảnh" rồi mới tới đây: trong lúc đó một lần Bắt đầu có thể đã `touch` (chuẩn bị tiến trình phụ cho phiên) hay
++    /// `begin_session`, và phiên mới không được mất tiến trình phụ vừa giữ (N1 của review cuối 02, Q5 của review 03).
++    /// Trả `true` nếu đã tắt ít nhất một tiến trình.
++    pub fn stop_if_idle(&self) -> bool {
++        self.stop_each(true, true)
+     }
+ 
+     /// Có tiến trình phụ nào đang chạy không. Không chờ khóa nào.
+@@ -581,9 +589,18 @@
+         if !idle {
+             self.shutdown();
+         }
++        self.stop_each(idle, false);
++    }
++
++    /// Lấy từng tiến trình phụ ra khỏi slot rồi tắt. `recheck`: dưới khóa của slot, không còn rảnh thì thôi (giữ tiến
++    /// trình đó và tiến trình sau). Trả `true` nếu đã tắt ít nhất một tiến trình.
++    fn stop_each(&self, idle: bool, recheck: bool) -> bool {
+         // Bỏ `killers` cùng lúc lấy tiến trình ra khỏi slot (dưới khóa của slot), để không lần chạy mới nào xen vào giữa.
+         let server = {
+             let mut slot = lock(&self.llama);
++            if recheck && !self.idle() {
++                return false;
++            }
+             let server = slot.server.take();
+             if server.is_some() {
+                 self.llama_running.store(false, Ordering::SeqCst);
+@@ -591,6 +608,7 @@
+             }
+             server
+         };
++        let stopped_llama = server.is_some();
+         if let Some(server) = server {
+             drop(server);
+             self.emit(SidecarEvent::Stopped {
+@@ -600,6 +618,9 @@
+         }
+         let worker = {
+             let mut slot = lock(&self.asr);
++            if recheck && !self.idle() {
++                return stopped_llama;
++            }
+             let worker = slot.worker.take();
+             if worker.is_some() {
+                 self.asr_running.store(false, Ordering::SeqCst);
+@@ -607,6 +628,7 @@
+             }
+             worker
+         };
++        let stopped_asr = worker.is_some();
+         if let Some(worker) = worker {
+             drop(worker);
+             self.emit(SidecarEvent::Stopped {
+@@ -614,6 +636,7 @@
+                 idle,
+             });
+         }
++        stopped_llama || stopped_asr
+     }
+ 
+     /// Thiết bị thật của `asr-worker` lần chạy gần nhất. Không chờ khóa của tiến trình phụ.
+```
+
+Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
+index f4725b270ef9bbbd0d4b2a0fcc5a77d66bc7d04b..253e10e4490031252d65c8129620ff4ce7dc7eef 100644
+--- a/src-tauri/src/session.rs
++++ b/src-tauri/src/session.rs
+@@ -732,9 +732,13 @@
+                 .filter(|l| l.tier == settings.model_tier)
+                 .map(|l| l.manager.clone())
+         };
+-        if let Some(manager) = running.filter(|m| m.running()) {
++        // Chạm trước rồi mới hỏi còn chạy không: lần tắt khi rảnh (`SidecarManager::stop_if_idle`) kiểm lại "rảnh" dưới khóa
++        // của tiến trình phụ, nên nó không tắt sau lần chạm này (Q5 của review 03).
++        if let Some(manager) = running {
+             manager.touch();
+-            return Ok(());
++            if manager.running() {
++                return Ok(());
++            }
+         }
+         // Kiểm SHA-256 lúc chuẩn bị; giám sát còn kiểm lại trước mỗi lần chạy tiến trình phụ (`before_spawn`).
+         let prepared = sidecar::prepare(&self.app, settings)?;
+```
+
+- [ ] **Step 4: Chạy test, thấy xanh**
+
+Run:
+```bash
+cargo test -p pipeline --test lifecycle sidecars -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
+```
+Expected (lúc lập kế hoạch):
+```text
+test a_running_session_keeps_the_sidecars ... ok
+test a_start_right_after_the_idle_check_keeps_the_sidecars ... ok
+test both_sidecars_stop_after_10_minutes_without_translating ... ok
+test without_a_gpu_both_sidecars_run_on_the_cpu ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 37 filtered out
+```
+
+Run:
+```bash
+cargo test -p meeting-translator 2>&1 | grep -m1 '^test result' | sed 's/; finished in .*//'
+```
+Expected (lúc lập kế hoạch):
+```text
+test result: ok. 220 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out
+```
+
+- [ ] **Step 5: Định dạng, clippy và các kiểm tra khác**
+
+Run:
+```bash
+cargo fmt --all -- --check && cargo clippy --workspace --all-targets -q -- -D warnings 2>&1 | grep -E '^error' | head -3; echo "clippy: ${PIPESTATUS[0]}"
+```
+Expected (lúc lập kế hoạch):
+```text
+clippy: 0
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add crates/pipeline/src/supervisor.rs \
+  crates/pipeline/tests/lifecycle.rs \
+  src-tauri/src/session.rs
+git commit -m "fix(pipeline): tắt tiến trình phụ khi rảnh kiểm lại dưới khóa, không chen vào lần Bắt đầu (N1 của review cuối 02)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+
+## Task 13: Kiểm tra chuẩn sau 03a
 
 Kiểm cả workspace trước khi sang 03b. Không có commit. Đủ khối lệnh của mục 6.2 của kế hoạch 00 chạy ở 03b Task 7.
 
@@ -8196,9 +10126,9 @@ Run:
 ```bash
 cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8} END {print "passed", p, "failed", f, "ignored", i}'
 ```
-Expected (lúc lập kế hoạch; trên `main` `45de838` là 500 qua, 11 bỏ qua; 03a thêm 57 test, và `real_terms` bỏ qua):
+Expected (lúc lập kế hoạch; trên `main` `5925d42` là 500 qua, 11 bỏ qua; 03a thêm 75 test, và `real_terms` bỏ qua):
 ```text
-passed 557 failed 0 ignored 12
+passed 575 failed 0 ignored 12
 ```
 
 - [ ] **Step 2: `cargo deny`, `cargo audit`, giao diện, kiểm code Windows**
@@ -8214,11 +10144,10 @@ advisories ok, bans ok, licenses ok, sources ok
 
 Run:
 ```bash
-cargo audit 2>&1 | grep -E '^(error|warning):'
+cargo audit 2>&1 | grep -E '^(error|warning):' | grep -v 'is locked'
 ```
-Expected (lúc lập kế hoạch; ba cảnh báo cũ đã được cho phép, như trước 03):
+Expected (lúc lập kế hoạch; ba cảnh báo cũ đã được cho phép, như trước 03; dòng `… is locked` chỉ hiện khi tiến trình khác đang dùng advisory-db nên bị lọc, N9 của review 03):
 ```text
-warning: directory /Users/dtphong/.cargo/advisory-db is locked, waiting for up to 300 seconds for it to become available
 warning: 3 allowed warnings found
 ```
 
@@ -8226,10 +10155,10 @@ Run:
 ```bash
 NO_COLOR=1 pnpm test 2>&1 | grep -E '^ +(Test Files|Tests) ' && pnpm build >/dev/null 2>&1 && echo build ok
 ```
-Expected (lúc lập kế hoạch; 03a thêm 2 test vitest):
+Expected (lúc lập kế hoạch; trên `main` `5925d42` là 65 test trong 6 file; Task 1 và 2 của 03a thêm 2 test vitest):
 ```text
- Test Files  5 passed (5)
-      Tests  66 passed (66)
+ Test Files  6 passed (6)
+      Tests  67 passed (67)
 build ok
 ```
 
