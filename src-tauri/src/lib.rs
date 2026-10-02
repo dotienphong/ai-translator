@@ -7,6 +7,7 @@
 //! Kế hoạch 02 nối `audio-capture` và `pipeline` vào, thay `session_stub.rs` bằng `session.rs`.
 
 pub mod actions;
+pub mod capture;
 pub mod commands;
 pub mod errors;
 pub mod events;

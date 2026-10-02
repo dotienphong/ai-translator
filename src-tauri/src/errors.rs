@@ -16,8 +16,8 @@ pub struct CommandError {
     pub message: String,
 }
 
-// Năm hằng dưới đây là các mã lỗi ngoài lỗi cài đặt (`settings::Reason`) và lỗi phím tắt
-// (`CommandError::hotkey`).
+// Các hằng dưới đây là các mã lỗi ngoài lỗi cài đặt (`settings::Reason`) và lỗi phím tắt (`CommandError::hotkey`):
+// năm mã chung của app, rồi các mã của phiên dịch (kế hoạch 02).
 
 /// Không bật, tắt hay đọc được trạng thái khởi động cùng hệ thống.
 pub const AUTOSTART_FAILED: &str = "autostartFailed";
@@ -29,6 +29,30 @@ pub const OVERLAY_FAILED: &str = "overlayFailed";
 pub const OPEN_FAILED: &str = "openFailed";
 /// Việc không có trên hệ điều hành này.
 pub const UNSUPPORTED: &str = "unsupported";
+
+// Mã lỗi của phiên dịch (kế hoạch 02, spec §9).
+/// Thiếu tiến trình phụ trong bản cài (bản dev: chưa chạy `scripts/copy-sidecars.sh`).
+pub const SIDECAR_MISSING: &str = "sidecarMissing";
+/// Tiến trình phụ hay thư viện đi kèm khác bản build sẵn (§10.2).
+pub const SIDECAR_TAMPERED: &str = "sidecarTampered";
+/// Tiến trình phụ không khởi động được, hoặc lỗi quá 5 lần trong 10 phút.
+pub const SIDECAR_FAILED: &str = "sidecarFailed";
+/// Thiếu file model (kế hoạch 04 tải về).
+pub const MODEL_MISSING: &str = "modelMissing";
+/// macOS: tạo tap lỗi, thường là chưa cấp quyền "Ghi âm thanh hệ thống".
+pub const AUDIO_PERMISSION: &str = "audioPermission";
+/// Không mở được nguồn âm thanh.
+pub const CAPTURE_FAILED: &str = "captureFailed";
+/// macOS, tap một app: app đó không phát âm thanh.
+pub const APP_NOT_PLAYING: &str = "appNotPlaying";
+/// Model không nạp được, kể cả bằng CPU: model hỏng (§9: đề nghị tải lại, kế hoạch 04).
+pub const MODEL_BROKEN: &str = "modelBroken";
+/// Không nạp được VAD.
+pub const VAD_FAILED: &str = "vadFailed";
+/// Chạm hạn mức (§6.8): phiên dừng với lý do `quota_exhausted`. Kế hoạch 06 thêm thời điểm reset và nút nâng gói.
+pub const QUOTA_EXHAUSTED: &str = "quotaExhausted";
+/// Lỗi bên trong app không thuộc loại nào ở trên (ví dụ một tác vụ nền dừng bất thường).
+pub const UNKNOWN: &str = "unknown";
 
 impl CommandError {
     pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
@@ -123,6 +147,17 @@ mod tests {
                 OVERLAY_FAILED,
                 OPEN_FAILED,
                 UNSUPPORTED,
+                SIDECAR_MISSING,
+                SIDECAR_TAMPERED,
+                SIDECAR_FAILED,
+                MODEL_MISSING,
+                MODEL_BROKEN,
+                AUDIO_PERMISSION,
+                CAPTURE_FAILED,
+                APP_NOT_PLAYING,
+                VAD_FAILED,
+                QUOTA_EXHAUSTED,
+                UNKNOWN,
             ]
             .map(String::from),
         );

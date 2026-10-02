@@ -3003,13 +3003,16 @@ dependencies = [
 name = "meeting-translator"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "apple-native-keyring-store",
+ "audio-capture",
  "keyring-core",
  "log",
  "objc2",
  "objc2-foundation",
  "objc2-service-management",
  "pipeline",
+ "rtrb",
  "serde",
  "serde_json",
  "sha2 0.11.0",

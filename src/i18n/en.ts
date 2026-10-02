@@ -135,6 +135,16 @@ export const en = {
   "error.overlayFailed": "Could not change the subtitle bar.",
   "error.openFailed": "Could not open it.",
   "error.unsupported": "Not available on this system.",
+  "error.sidecarMissing": "Part of the app is missing. Please reinstall AI Translator.",
+  "error.sidecarTampered": "Part of the app was changed or damaged. Please reinstall AI Translator.",
+  "error.sidecarFailed": "Speech recognition stopped working. Press Start to try again; if it keeps failing, send the logs to support.",
+  "error.modelMissing": "The model has not been downloaded yet.",
+  "error.audioPermission": "AI Translator is not allowed to record system audio.",
+  "error.captureFailed": "Could not capture audio.",
+  "error.appNotPlaying": "The chosen app is not playing sound. Start the meeting audio, or choose the whole system.",
+  "error.vadFailed": "Could not load the speech detector. Please reinstall AI Translator.",
+  "error.modelBroken": "The model is damaged. Please download it again.",
+  "error.quotaExhausted": "The translation quota has been used up.",
   "error.unknown": "Something went wrong.",
 } as const;
 

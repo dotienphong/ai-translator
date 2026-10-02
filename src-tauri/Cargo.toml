@@ -15,9 +15,12 @@ sha2 = "0.11.0"
 tauri-build = { version = "2.7.1", features = [] }
 
 [dependencies]
+anyhow.workspace = true
+audio-capture = { path = "../crates/audio-capture" }
 keyring-core = "1.0.0"
 log = "0.4.34"
 pipeline = { path = "../crates/pipeline" }
+rtrb.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.11.0"
