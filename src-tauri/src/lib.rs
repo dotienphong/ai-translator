@@ -21,6 +21,7 @@ pub mod hotkeys;
 pub mod i18n;
 pub mod logging;
 pub mod login_item;
+pub mod models;
 pub mod navigation;
 pub mod overlay;
 pub mod pro;
