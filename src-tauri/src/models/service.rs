@@ -597,6 +597,15 @@ impl ModelService {
             }
             Ok(())
         })();
+        // Dọn bản cũ và chọn gói trước, rồi mới báo `Done`: ai thấy "đã tải xong" (giao diện, lần bắt đầu phiên) thì việc
+        // tải đã xong hẳn, file bản cũ đã dọn và gói đã là gói đang dùng.
+        if result.is_ok() {
+            log::info!("đã tải xong gói model {pack}");
+            if let Err(e) = self.store.cleanup(m) {
+                log::warn!("không dọn được file model cũ: {e}");
+            }
+            actions::set_model_tier(app, Some(pack.to_string()));
+        }
         {
             let mut inner = self.lock();
             match result {
@@ -610,13 +619,6 @@ impl ModelService {
                     inner.job.error = Some(code.to_string());
                 }
             }
-        }
-        if result.is_ok() {
-            log::info!("đã tải xong gói model {pack}");
-            if let Err(e) = self.store.cleanup(m) {
-                log::warn!("không dọn được file model cũ: {e}");
-            }
-            actions::set_model_tier(app, Some(pack.to_string()));
         }
         self.changed(app);
     }
