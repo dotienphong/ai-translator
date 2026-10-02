@@ -101,7 +101,7 @@ Chưa có:
 | `2026-10-01-giai-doan-1-01-nen-app.md` | 01 Nền app | đã viết, đã duyệt; đã làm trên Mac Task 1–23 (`69f30ba` … `5281e27`, sửa sau review đợt R và U, nâng `475cf0b`, `34777f0`); còn Task 24 (thử tay trên Mac, người), Task 25 (Windows) | — |
 | `2026-10-01-giai-doan-1-02a-pipeline-crate.md`, `…-02d-pipeline-clients.md`, `…-02b-pipeline-engine.md`, `…-02c-pipeline-app.md` (làm theo thứ tự này) | 02 Pipeline trong app | đã viết, đã duyệt; đã làm trên Mac tới 02c Task 7 (`f2edbd6`); còn 02b Task 7–9 (máy rảnh), 02c Task 8 (người), 02c Task 9 (Windows) | phần crate: —; phần nối vào app: 01 |
 | `2026-10-02-giai-doan-1-03a-phu-de-du-lieu.md`, `2026-10-02-giai-doan-1-03b-phu-de-giao-dien.md` (làm theo thứ tự này, trước 04) | 03 Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ | đã viết, đã sửa theo review lần 1 và yêu cầu mới của §4.3, §4.4 (`5925d42`), chờ duyệt lại | 01, 02 |
-| `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `2026-10-02-giai-doan-1-04b-quan-ly-model-app.md` (làm theo thứ tự này) | 04 Quản lý model | đã viết; đã sửa theo review lần 1 và quyết định của chủ dự án ngày 2026-10-02, chờ duyệt; làm sau 03 | 01, 02 (03 trước) |
+| `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `2026-10-02-giai-doan-1-04b-quan-ly-model-app.md` (làm theo thứ tự này) | 04 Quản lý model | đã viết; đã sửa theo review lần 1 và quyết định của chủ dự án ngày 2026-10-02, dựng lại trên cây cuối của 03; chờ duyệt; làm sau 03 | 01, 02, 03 |
 | `2026-10-01-giai-doan-1-05-license-server.md` | 05 License server | đã viết, đã duyệt; đã làm Task 1–18 (`35d758d` … `5664b1b`, sửa sau review đợt A–D, review cuối Approved ở `4dbd229`); còn Task 19–21 (người: triển khai staging, giao dịch thử, lên production) | — |
 | `2026-10-01-giai-doan-1-06-ban-quyen-app.md` | 06 Bản quyền trong app | sau khi 05 xong và 03 có điểm kiểm tra Pro | 01, 02, 03, 05 |
 | `2026-10-01-giai-doan-1-07-dong-goi-cap-nhat.md` | 07 Đóng gói, ký số, cập nhật, CI | sau khi 01, 02 và 05 xong | phần CI: 01; bộ cài đủ tính năng: 01–06 |
@@ -246,15 +246,15 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
 - **Làm trên Mac:** phần lớn.
 - **Cần Windows:** `--probe` trên GPU thật; đường dẫn `%LOCALAPPDATA%\<bundle-id>\models`.
 - **Cần người thao tác:** tạo bucket, gắn tên miền và tạo API token trên dashboard Cloudflare; thử rớt mạng thật.
-- **Trạng thái:** đã viết thành hai file 04a, 04b; sửa theo review lần 1. Làm sau 03 (04a mục "File giao nhau với kế hoạch 03" ghi các chỗ gộp tay). Ngưỡng thật chờ C6, nhưng không chặn việc viết hay làm.
+- **Trạng thái:** đã viết thành hai file 04a (Task 1–6), 04b (Task 7–15); sửa theo review lần 1 và quyết định của chủ dự án, dựng lại trên cây cuối của 03 (`p03-repo` `plan03` `f30491f`), không còn bước gộp tay (04a mục "Nối với kế hoạch 03"). Làm sau 03. Ngưỡng thật chờ C6, nhưng không chặn việc viết hay làm.
   - **Chủ dự án quyết ngày 2026-10-02:**
     - giữ ngưỡng đề xuất gói Chuẩn RAM 15 360 MiB, VRAM 5 632 MiB; `min_ram_mib` là 6 144 MiB;
     - đang tải bản cập nhật của gói đang dùng thì chặn bắt đầu phiên;
     - **máy chưa được hỗ trợ thì không cho tải model** (RAM dưới `min_ram_mib`, x86_64 không AVX2, ổ không đủ chỗ), phía Rust từ chối lệnh tải;
     - "Xóa model và dữ liệu" không đưa app về lần đầu mở;
     - Q17 (mục 8.1).
-  - 04 cũng sửa N1 của review cuối 02 (bộ tắt khi rảnh chen vào giữa `prepare` và `begin_session`, `supervisor.rs`).
-  - **Nhận từ 03:** `data::clear_all_data` cho "Xóa model và dữ liệu"; `PrivacySettings.tsx` chứa nút của 04; `session::engine_config` nhận cả `SharedGlossary` lẫn `PipelineConfig`.
+  - N1 của review cuối 02 (bộ tắt khi rảnh) do 03 làm (03a Task 12); 04 làm ghi chú 8 (N2: đổi gói lúc đang dịch, 04b Task 7, 9).
+  - **Nhận từ 03:** `data::clear_all_data` cho "Xóa model và dữ liệu"; `dataCleared` của store chính (giao diện bỏ dữ liệu đang hiện); `PrivacySettings.tsx` chứa nút của 04; `session::engine_config` nhận cả `SharedGlossary` lẫn `PipelineConfig`.
 
 ### 2.5 Kế hoạch 05: License server
 
