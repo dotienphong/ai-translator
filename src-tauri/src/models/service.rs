@@ -740,6 +740,16 @@ pub fn check_on_startup<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
+/// Model nạp lỗi (§9): băm lại file của gói đang dùng trên luồng nền.
+pub fn verify_in_background<R: Runtime>(app: &AppHandle<R>) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        if let Some(service) = app.try_state::<Arc<ModelService>>() {
+            service.verify_selected(&app);
+        }
+    });
+}
+
 /// Báo trạng thái model mới (ví dụ khi `--probe` vừa có kết quả).
 pub fn changed<R: Runtime>(app: &AppHandle<R>) {
     if let Some(service) = app.try_state::<Arc<ModelService>>() {
@@ -1452,6 +1462,31 @@ mod tests {
         h.wait("done");
         let fetched: Vec<_> = h.server.requests()[before..].iter().map(|r| r.path.clone()).collect();
         assert_eq!(fetched, ["/files/Hy-MT2-1.8B-Q4_K_M.gguf"]);
+    }
+
+    /// §9: phiên không bắt đầu được vì model nạp lỗi thì app băm lại file của gói đang dùng.
+    #[test]
+    fn a_session_failing_on_a_broken_model_hashes_the_pack_again() {
+        let deps = FakeDeps {
+            prepare_error: Some(errors::MODEL_BROKEN),
+            ..FakeDeps::default()
+        };
+        let h = harness_with(deps, |_| {});
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "lite" })).unwrap();
+        h.wait("done");
+        let path = h.dir().join("ggml-small-q5_1.bin");
+        let mut bytes = std::fs::read(&path).unwrap();
+        bytes[0] ^= 1;
+        std::fs::write(&path, bytes).unwrap();
+        let refused = h.call("toggle_session", json!({})).unwrap_err();
+        assert!(refused.contains("\"code\":\"modelBroken\""), "{refused}");
+        let started = Instant::now();
+        while h.call("get_models_state", json!({})).unwrap()["packs"][1]["usable"] == true {
+            assert!(started.elapsed() < Duration::from_secs(10), "không băm lại");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert!(!path.exists(), "file hỏng bị xóa để tải lại");
     }
 
     #[test]

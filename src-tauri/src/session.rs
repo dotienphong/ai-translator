@@ -87,6 +87,10 @@ pub trait SessionDeps: Send + Sync {
     fn asr_failure_code(&self) -> &'static str {
         errors::SIDECAR_FAILED
     }
+    /// Ngưỡng của pipeline: mặc định, hay theo manifest model đã ký (kế hoạch 04, 02a QĐ21).
+    fn pipeline_config(&self) -> PipelineConfig {
+        PipelineConfig::default()
+    }
 }
 
 /// Trạng thái phiên, quản lý bằng `tauri::Manager::manage`.
@@ -141,9 +145,14 @@ fn code_of(settings: Lang) -> &'static str {
     }
 }
 
-/// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh; và từ điển thuật ngữ dùng chung.
-pub fn engine_config(settings: &Settings, id_base: u64, glossary: SharedGlossary) -> EngineConfig {
-    let mut pipeline = PipelineConfig::default();
+/// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh; từ điển thuật ngữ dùng chung; các
+/// ngưỡng khác theo `pipeline`.
+pub fn engine_config(
+    settings: &Settings,
+    mut pipeline: PipelineConfig,
+    id_base: u64,
+    glossary: SharedGlossary,
+) -> EngineConfig {
     pipeline.segmenter.end_silence_ms = u64::from(settings.vad_end_silence_ms);
     let languages = match settings.source_lock {
         Some(lang) => vec![code_of(lang).to_string()],
@@ -190,8 +199,16 @@ fn show_overlay<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Model nạp lỗi (§9): băm lại file của gói đang dùng trên luồng nền; file hỏng thì gói hiện "chưa tải" để tải lại.
+fn check_broken_model<R: Runtime>(app: &AppHandle<R>, code: &str) {
+    if code == errors::MODEL_BROKEN {
+        crate::models::service::verify_in_background(app);
+    }
+}
+
 /// Báo lỗi của lần bắt đầu số `attempt`, trừ khi người dùng đã hủy lần đó (trạng thái đã về `idle`, hay đã sang lần sau).
 fn start_failed<R: Runtime>(app: &AppHandle<R>, attempt: u64, code: &str) -> AppStatus {
+    check_broken_model(app, code);
     let session = app.state::<Session>();
     app.state::<AppState>().update_status(|s| {
         if s.session == SessionStatus::Starting && session.attempt.load(Ordering::SeqCst) == attempt {
@@ -285,6 +302,9 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     show_overlay(app);
     changed(app);
     let settings = state.settings();
+    // Lần chạy sẵn đang nạp dở (có thể của gói vừa đổi): chờ nó xong, để không có hai bộ tiến trình phụ cùng nạp (ghi chú
+    // 8 của review cuối 02, N-9 của review 04 lần 2).
+    wait_for_prewarm(&session);
     session.deps.allow_retry();
     if let Err(e) = session.deps.prepare(&settings) {
         if !current() {
@@ -334,7 +354,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         asr_code: session.deps.clone(),
     });
     let engine = match Engine::start(
-        engine_config(&settings, n * ID_STRIDE, glossary),
+        engine_config(&settings, session.deps.pipeline_config(), n * ID_STRIDE, glossary),
         source,
         session.deps.vad(),
         session.deps.asr(),
@@ -468,6 +488,7 @@ fn fail<R: Runtime>(app: &AppHandle<R>, n: u64, code: &str, message: &str) {
         return;
     }
     log::error!("phiên dịch dừng vì lỗi {code}: {message}");
+    check_broken_model(app, code);
     app.state::<AppState>().update_status(|s| {
         s.session = SessionStatus::Error;
         s.session_error = Some(code.to_string());
@@ -505,6 +526,12 @@ pub fn prewarm<R: Runtime>(app: &AppHandle<R>) {
     let Some(session) = app.try_state::<Session>() else {
         return;
     };
+    // Phiên đang bắt đầu hay đang chạy đã có (hay đang dựng) tiến trình phụ của nó. Chuẩn bị theo cài đặt lúc này có thể
+    // dựng bộ thứ hai cho gói vừa đổi (ghi chú 8 của review cuối 02, Q4 của review 04): gói mới chỉ dùng từ phiên sau.
+    let session_status = app.state::<AppState>().status().session;
+    if matches!(session_status, SessionStatus::Starting | SessionStatus::Running) {
+        return;
+    }
     if session.prewarming.swap(true, Ordering::SeqCst) {
         return;
     }
@@ -739,8 +766,15 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
 
 struct Live {
     manager: Arc<SidecarManager>,
-    tier: Option<String>,
+    key: sidecar::SidecarKey,
     vad_model: PathBuf,
+}
+
+/// Bộ tiến trình phụ đang có dùng lại được cho lần chuẩn bị theo `key` không: chỉ khi cùng gói, cùng file model và cùng
+/// ngưỡng. Khác thì dựng bộ mới (bộ cũ tắt khi phiên cuối còn dùng nó kết thúc), nên gói mới hay bản cập nhật của gói
+/// có tác dụng từ phiên sau (QĐ15 của 04, Q-B của review 04 lần 2).
+fn reusable(live: Option<&Live>, key: &sidecar::SidecarKey) -> Option<Arc<SidecarManager>> {
+    live.filter(|l| &l.key == key).map(|l| l.manager.clone())
 }
 
 /// Phần bên ngoài thật: tiến trình phụ (`pipeline::supervisor`), nguồn âm thanh (`capture`), Silero VAD.
@@ -771,12 +805,9 @@ impl<R: Runtime> LiveDeps<R> {
 
 impl<R: Runtime> SessionDeps for LiveDeps<R> {
     fn prepare(&self, settings: &Settings) -> Result<(), CommandError> {
-        let running = {
-            let live = self.live.lock().unwrap();
-            live.as_ref()
-                .filter(|l| l.tier == settings.model_tier)
-                .map(|l| l.manager.clone())
-        };
+        // Kiểm file model mỗi lần (rẻ), kể cả khi tiến trình phụ đang chạy: bản cập nhật có thể đã đổi file hay ngưỡng.
+        let key = sidecar::sidecar_key(&self.app, settings)?;
+        let running = reusable(self.live.lock().unwrap().as_ref(), &key);
         // Chạm trước rồi mới hỏi còn chạy không: lần tắt khi rảnh (`SidecarManager::stop_if_idle`) kiểm lại "rảnh" dưới khóa
         // của tiến trình phụ, nên nó không tắt sau lần chạm này (Q5 của review 03).
         if let Some(manager) = running {
@@ -789,8 +820,9 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
         let prepared = sidecar::prepare(&self.app, settings)?;
         let manager = {
             let mut live = self.live.lock().unwrap();
-            // Đổi gói model thì dựng lại; tiến trình cũ tắt khi phiên cuối còn dùng nó kết thúc (`SidecarManager` bị hủy).
-            if live.as_ref().is_none_or(|l| l.tier != prepared.tier) {
+            // Khác gói, file model hay ngưỡng thì dựng lại; tiến trình cũ tắt khi phiên cuối còn dùng nó kết thúc
+            // (`SidecarManager` bị hủy).
+            if reusable(live.as_ref(), &prepared.key).is_none() {
                 *self.asr_gave_up.lock().unwrap() = None;
                 let events = Arc::new(StatusEvents {
                     app: self.app.clone(),
@@ -806,7 +838,7 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
                 let manager = SidecarManager::new(prepared.spec, Arc::new(SystemClock::default()), events);
                 *live = Some(Live {
                     manager,
-                    tier: prepared.tier,
+                    key: prepared.key,
                     vad_model: prepared.vad_model,
                 });
             }
@@ -887,6 +919,13 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
             .unwrap()
             .map_or(errors::SIDECAR_FAILED, sidecar::give_up_code)
     }
+
+    fn pipeline_config(&self) -> PipelineConfig {
+        self.app
+            .try_state::<Arc<crate::models::service::ModelService>>()
+            .map(|models| models.pipeline_config())
+            .unwrap_or_default()
+    }
 }
 
 #[cfg(test)]
@@ -906,19 +945,17 @@ mod tests {
         }
     }
 
-    /// Q4-1 của review 02 lần 4: `LiveDeps::allow_retry` cho đúng `SidecarManager` đang dùng thử lại. Tiến trình phụ trỏ
-    /// tới một binary không có nên lỗi ngay; `max_failures` 0 nên bỏ cuộc ở lần lỗi đầu.
-    #[test]
-    fn allow_retry_reaches_the_live_manager() {
+    /// Tiến trình phụ trỏ tới binary không có: chạy là lỗi ngay; `max_failures` 0 nên bỏ cuộc ở lần lỗi đầu.
+    fn missing_sidecars(tag: &str) -> pipeline::supervisor::SidecarSpec {
         use pipeline::config::{AsrConfig, MtConfig, SupervisorConfig};
-        use pipeline::supervisor::{AsrSpec, FakeClock, LlamaSpec, SidecarSpec};
+        use pipeline::supervisor::{AsrSpec, LlamaSpec, SidecarSpec};
         let missing = PathBuf::from("/khong/co/asr-worker");
-        let spec = SidecarSpec {
+        SidecarSpec {
             asr: AsrSpec {
                 exe_gpu: None,
                 exe_cpu: missing.clone(),
                 model: PathBuf::from("/khong/co/model.bin"),
-                log: std::env::temp_dir().join(format!("mt-allow-retry-{}.log", std::process::id())),
+                log: std::env::temp_dir().join(format!("mt-{tag}-{}.log", std::process::id())),
                 first_run: false,
                 require_shared: false,
                 env: Vec::new(),
@@ -926,7 +963,7 @@ mod tests {
             llama: LlamaSpec {
                 exe: missing,
                 model: PathBuf::from("/khong/co/mt.gguf"),
-                log: std::env::temp_dir().join(format!("mt-allow-retry-llama-{}.log", std::process::id())),
+                log: std::env::temp_dir().join(format!("mt-{tag}-llama-{}.log", std::process::id())),
                 extra_args: Vec::new(),
                 first_run: false,
                 env: Vec::new(),
@@ -937,14 +974,22 @@ mod tests {
             },
             asr_config: AsrConfig::default(),
             mt_config: MtConfig::default(),
-        };
+        }
+    }
+
+    /// Q4-1 của review 02 lần 4: `LiveDeps::allow_retry` cho đúng `SidecarManager` đang dùng thử lại. Tiến trình phụ trỏ
+    /// tới một binary không có nên lỗi ngay; `max_failures` 0 nên bỏ cuộc ở lần lỗi đầu.
+    #[test]
+    fn allow_retry_reaches_the_live_manager() {
+        use pipeline::supervisor::FakeClock;
+        let spec = missing_sidecars("allow-retry");
         let spawns = Arc::new(CountSpawns::default());
         let manager = SidecarManager::new(spec, Arc::new(FakeClock::default()), spawns.clone());
         let app = tauri::test::mock_app();
         let deps = LiveDeps::new(app.handle().clone());
         *deps.live.lock().unwrap() = Some(Live {
             manager: manager.clone(),
-            tier: None,
+            key: sidecar::SidecarKey::default(),
             vad_model: PathBuf::new(),
         });
         assert_eq!(manager.ensure_started().unwrap_err().cause, GiveUpCause::Failures);
@@ -953,6 +998,44 @@ mod tests {
         deps.allow_retry();
         assert!(manager.ensure_started().is_err());
         assert_eq!(*spawns.0.lock().unwrap(), 2, "bấm Bắt đầu thì thử lại");
+    }
+
+    /// Ghi chú 8 của review cuối 02 và Q-B của review 04 lần 2: lần chuẩn bị chỉ dùng lại bộ tiến trình phụ đang có khi
+    /// cùng gói, cùng file model và cùng ngưỡng; đổi gói, hay bản cập nhật đổi tên file hay ngưỡng, thì dựng bộ mới.
+    #[test]
+    fn sidecars_are_reused_only_for_the_same_pack_files_and_thresholds() {
+        let key = |tier: &str, mt: &str| sidecar::SidecarKey {
+            tier: Some(tier.into()),
+            models: sidecar::paths::ModelFiles {
+                asr: PathBuf::from("/m/asr.bin"),
+                mt: PathBuf::from(mt),
+                vad: PathBuf::from("/m/vad.onnx"),
+            },
+            ..sidecar::SidecarKey::default()
+        };
+        let manager = SidecarManager::new(
+            missing_sidecars("reuse"),
+            Arc::new(pipeline::supervisor::FakeClock::default()),
+            Arc::new(CountSpawns::default()),
+        );
+        let live = Live {
+            manager: manager.clone(),
+            key: key("lite", "/m/q4.gguf"),
+            vad_model: PathBuf::new(),
+        };
+        assert!(reusable(Some(&live), &key("lite", "/m/q4.gguf")).is_some_and(|m| Arc::ptr_eq(&m, &manager)));
+        assert!(reusable(Some(&live), &key("standard", "/m/q4.gguf")).is_none());
+        assert!(
+            reusable(Some(&live), &key("lite", "/m/q4-v2.gguf")).is_none(),
+            "bản cập nhật đổi tên file"
+        );
+        let mut other_threshold = key("lite", "/m/q4.gguf");
+        other_threshold.mt.max_tokens_cap += 1;
+        assert!(
+            reusable(Some(&live), &other_threshold).is_none(),
+            "ngưỡng mới của manifest"
+        );
+        assert!(reusable(None, &key("lite", "/m/q4.gguf")).is_none());
     }
 
     /// Q4-2 của review 02 lần 4: `asr-worker` chạy lại được bằng GPU thì bỏ chỉ báo "Đang chạy bằng CPU".
@@ -1090,7 +1173,12 @@ mod tests {
     fn the_engine_follows_the_language_and_pause_settings() {
         let mut settings = Settings::defaults(UiLanguage::Vi);
         settings.vad_end_silence_ms = 500;
-        let cfg = engine_config(&settings, 3_000_000, SharedGlossary::default());
+        let cfg = engine_config(
+            &settings,
+            PipelineConfig::default(),
+            3_000_000,
+            SharedGlossary::default(),
+        );
         assert_eq!(cfg.languages, ["en", "zh", "ja", "ko", "vi"]);
         assert_eq!(cfg.target, MtLang::Vi);
         assert_eq!(cfg.pipeline.segmenter.end_silence_ms, 500);
@@ -1099,10 +1187,90 @@ mod tests {
         settings.source_lock = Some(Lang::Ja);
         settings.target_language = Lang::En;
         settings.experimental.translation_context = true;
-        let cfg = engine_config(&settings, 0, SharedGlossary::default());
+        let mut from_manifest = PipelineConfig::default();
+        from_manifest.queue.lag_warn_ms = 8_000;
+        from_manifest.segmenter.end_silence_ms = 900;
+        let cfg = engine_config(&settings, from_manifest, 0, SharedGlossary::default());
         assert_eq!(cfg.languages, ["ja"], "khóa ngôn ngữ nguồn thì bỏ nhận diện (§6.4)");
         assert_eq!(cfg.target, MtLang::En);
         assert!(cfg.translation_context);
+        assert_eq!(cfg.pipeline.queue.lag_warn_ms, 8_000, "ngưỡng theo manifest");
+        assert_eq!(
+            cfg.pipeline.segmenter.end_silence_ms, 500,
+            "vadEndSilenceMs của người dùng đè manifest"
+        );
+    }
+
+    /// Ghi chú 8 của review cuối 02, Q4 của review 04: mở lại cửa sổ chính lúc phiên đang bắt đầu hay đang chạy thì không
+    /// chuẩn bị tiến trình phụ lần nữa. Nhờ vậy gói vừa đổi (bấm "Dùng gói này", hay một gói vừa tải xong) chỉ dùng từ
+    /// phiên sau, và không có bộ tiến trình phụ thứ hai.
+    #[test]
+    fn prewarm_does_nothing_while_a_session_starts_or_runs() {
+        use crate::test_support::{FakeDeps, PrepareGate, mock_app_with};
+        let gate = Arc::new(PrepareGate::default());
+        let deps = FakeDeps {
+            prepare_gate: Some(gate.clone()),
+            ..FakeDeps::default()
+        };
+        let prepares = deps.prepares.clone();
+        let app = mock_app_with(deps);
+        let handle = app.handle().clone();
+        let starting = std::thread::spawn(move || toggle(&handle));
+        let since = Instant::now();
+        while gate.waiting() == 0 {
+            assert!(
+                since.elapsed() < Duration::from_secs(10),
+                "lần bắt đầu không tới prepare"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        prewarm(app.handle());
+        std::thread::sleep(Duration::from_millis(100));
+        assert_eq!(*prepares.lock().unwrap(), 1, "đang bắt đầu: prewarm không chuẩn bị");
+        gate.open();
+        let status = starting.join().unwrap().unwrap();
+        assert_eq!(status.session, SessionStatus::Running);
+        prewarm(app.handle());
+        std::thread::sleep(Duration::from_millis(100));
+        assert_eq!(*prepares.lock().unwrap(), 1, "đang dịch: prewarm không chuẩn bị");
+        assert!(!app.state::<Session>().is_prewarming());
+        toggle(app.handle()).unwrap();
+        prewarm(app.handle());
+        let since = Instant::now();
+        while *prepares.lock().unwrap() < 2 {
+            assert!(since.elapsed() < Duration::from_secs(10), "rảnh: prewarm chuẩn bị");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    /// N-9 của review 04 lần 2: lần bắt đầu phiên chờ lần chạy sẵn đang nạp xong rồi mới chuẩn bị.
+    #[test]
+    fn a_start_waits_for_a_prewarm_in_progress() {
+        use crate::test_support::{FakeDeps, PrepareGate, mock_app_with};
+        let gate = Arc::new(PrepareGate::default());
+        let deps = FakeDeps {
+            prepare_gate: Some(gate.clone()),
+            ..FakeDeps::default()
+        };
+        let prepares = deps.prepares.clone();
+        let app = mock_app_with(deps);
+        prewarm(app.handle());
+        let since = Instant::now();
+        while gate.waiting() == 0 {
+            assert!(
+                since.elapsed() < Duration::from_secs(10),
+                "lần chạy sẵn không tới prepare"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let handle = app.handle().clone();
+        let starting = std::thread::spawn(move || toggle(&handle));
+        std::thread::sleep(Duration::from_millis(200));
+        assert_eq!(*prepares.lock().unwrap(), 1, "chưa chuẩn bị khi lần chạy sẵn còn nạp");
+        gate.open();
+        assert_eq!(starting.join().unwrap().unwrap().session, SessionStatus::Running);
+        assert_eq!(*prepares.lock().unwrap(), 2);
+        toggle(app.handle()).unwrap();
     }
 
     #[test]

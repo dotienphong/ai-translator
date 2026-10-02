@@ -2,8 +2,8 @@
 //!
 //! - Tiến trình phụ: bản dev ở `src-tauri/binaries/`, tên kèm target triple (`scripts/copy-sidecars.sh` chép vào); bản
 //!   phát hành nằm cạnh file chạy của app, tên không kèm triple (Tauri `externalBin` bỏ triple khi đóng gói, kế hoạch 07).
-//! - Model: bản dev đọc `MT_MODELS_DIR`, không đặt thì `<repo>/models`; bản phát hành ở `app_local_data_dir/models`
-//!   (kế hoạch 04 tải về đó).
+//! - Model: theo kho model của kế hoạch 04 (`app_local_data_dir/models`, `models::store`). Bản dev chưa tải gói nào
+//!   thì dùng file của Giai đoạn 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
 
 use std::path::{Path, PathBuf};
 
@@ -55,7 +55,7 @@ pub fn binaries_dir() -> std::io::Result<PathBuf> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ModelFiles {
     pub asr: PathBuf,
     pub mt: PathBuf,
@@ -83,7 +83,7 @@ pub fn dev_models_dir() -> PathBuf {
         .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../models"))
 }
 
-/// File model đầu tiên còn thiếu (§9: lúc bắt đầu chỉ kiểm có file; kích thước và SHA-256 theo manifest là việc của 04).
+/// File model đầu tiên còn thiếu (bản dev, file của Giai đoạn 0 không có trong kho model).
 pub fn first_missing(files: &ModelFiles) -> Option<&Path> {
     [&files.asr, &files.mt, &files.vad]
         .into_iter()

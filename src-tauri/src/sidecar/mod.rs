@@ -7,21 +7,50 @@ pub mod paths;
 pub mod probe;
 
 use std::path::{Path, PathBuf};
-use std::sync::{Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
-use pipeline::config::PipelineConfig;
+use pipeline::config::{AsrConfig, MtConfig, SupervisorConfig};
 use pipeline::supervisor::{AsrSpec, GiveUpCause, LlamaSpec, SidecarSpec};
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::errors::{self, CommandError};
+use crate::models::service::ModelService;
 use crate::settings::Settings;
 
 /// Kết quả chuẩn bị: cách chạy hai tiến trình phụ, cộng những gì app cần nhớ.
+/// Những gì một bộ tiến trình phụ đang chạy dựa vào: gói, file model, ngưỡng của giám sát và của hai tiến trình phụ.
+/// Khác thì phải dựng bộ mới: bản cập nhật cùng mã gói có thể đổi tên file hay ngưỡng (Q-B của review 04 lần 2).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SidecarKey {
+    pub tier: Option<String>,
+    pub models: paths::ModelFiles,
+    pub supervisor: SupervisorConfig,
+    pub asr: AsrConfig,
+    pub mt: MtConfig,
+}
+
+/// [`SidecarKey`] cho cài đặt lúc này. Rẻ (chỉ kiểm có file và kích thước), nên lần chuẩn bị nào cũng gọi, kể cả khi
+/// tiến trình phụ đang chạy.
+pub fn sidecar_key<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<SidecarKey, CommandError> {
+    let models = resolve_models(app, settings)?;
+    let config = app
+        .try_state::<Arc<ModelService>>()
+        .map(|models| models.pipeline_config())
+        .unwrap_or_default();
+    Ok(SidecarKey {
+        tier: settings.model_tier.clone(),
+        models,
+        supervisor: config.supervisor,
+        asr: config.asr,
+        mt: config.mt,
+    })
+}
+
 #[derive(Debug)]
 pub struct Prepared {
     pub spec: SidecarSpec,
-    pub tier: Option<String>,
+    pub key: SidecarKey,
     /// Thư mục tiến trình phụ, và băm của từng file thực thi (theo đường dẫn), cho kiểm lại trước mỗi lần chạy và cho
     /// "lần đầu chạy".
     pub dir: PathBuf,
@@ -123,6 +152,8 @@ pub fn start_gpu_probe<R: Runtime>(app: &AppHandle<R>) {
             .is_none_or(|s| first_run::is_first_run(s, &verified.hashes[0]));
         app.state::<GpuProbe>()
             .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)));
+        // Đề xuất gói theo VRAM của card rời (kế hoạch 04) đổi theo kết quả dò.
+        crate::models::service::changed(&app);
     });
 }
 
@@ -131,6 +162,26 @@ fn seen_file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
         .app_local_data_dir()
         .ok()
         .map(|d| d.join("sidecars-seen.json"))
+}
+
+/// File model của gói đang dùng, theo kho model (kế hoạch 04; lúc bắt đầu chỉ kiểm có file và đúng kích thước, §9).
+/// Bản dev chưa tải gói nào qua manifest thì dùng file của Giai đoạn 0 trong `models/` của repo, như trước.
+fn resolve_models<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<paths::ModelFiles, CommandError> {
+    let pack = settings.model_tier.as_deref();
+    let resolved = match app.try_state::<Arc<ModelService>>() {
+        Some(models) => models.resolve(pack),
+        None => Err(CommandError::new(errors::MODEL_MISSING, None, "chưa có quản lý model")),
+    };
+    match resolved {
+        Err(e) if e.code == errors::MODEL_MISSING && tauri::is_dev() => {
+            let dev = paths::model_files(&paths::dev_models_dir(), pack);
+            match paths::first_missing(&dev) {
+                None => Ok(dev),
+                Some(_) => Err(e),
+            }
+        }
+        other => other,
+    }
 }
 
 /// Dựng cách chạy cho gói model trong cài đặt. Kiểm SHA-256 trước, rồi mới chạy `--probe` (Windows): không chạy binary
@@ -160,21 +211,9 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
     } else {
         true
     };
-    let models_dir = if tauri::is_dev() {
-        paths::dev_models_dir()
-    } else {
-        data.join("models")
-    };
-    let models = paths::model_files(&models_dir, settings.model_tier.as_deref());
-    if let Some(missing) = paths::first_missing(&models) {
-        return Err(CommandError::new(
-            errors::MODEL_MISSING,
-            None,
-            format!("thiếu {}", missing.display()),
-        ));
-    }
+    let key = sidecar_key(app, settings)?;
+    let models = &key.models;
     let logs = app.path().app_log_dir().map_err(path_error)?;
-    let config = PipelineConfig::default();
     let spec = SidecarSpec {
         asr: AsrSpec {
             exe_gpu: gpu_usable.then(|| files.asr_gpu.clone()),
@@ -194,16 +233,16 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
             first_run: false,
             env: Vec::new(),
         },
-        supervisor: config.supervisor,
-        asr_config: config.asr,
-        mt_config: config.mt,
+        supervisor: key.supervisor.clone(),
+        asr_config: key.asr.clone(),
+        mt_config: key.mt.clone(),
     };
     Ok(Prepared {
+        vad_model: key.models.vad.clone(),
         spec,
-        tier: settings.model_tier.clone(),
+        key,
         dir,
         hashes,
-        vad_model: models.vad,
         seen_file,
         locks: verified.locks,
     })
