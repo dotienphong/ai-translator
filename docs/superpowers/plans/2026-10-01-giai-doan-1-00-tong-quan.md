@@ -103,7 +103,7 @@ Chưa có:
 | `2026-10-02-giai-doan-1-03a-phu-de-du-lieu.md`, `2026-10-02-giai-doan-1-03b-phu-de-giao-dien.md` (làm theo thứ tự này, trước 04) | 03 Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ | đã viết, sửa theo review, đã thực thi trên Mac: 03a Task 1–13 và 03b Task 1–7 (code và kiểm tra chuẩn); còn 03b Task 8 (thử tay Mac, người) và Task 9 (Windows) | 01, 02 |
 | `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `2026-10-02-giai-doan-1-04b-quan-ly-model-app.md` (làm theo thứ tự này) | 04 Quản lý model | đã viết; đã sửa theo review lần 1, lần 2 và quyết định của chủ dự án ngày 2026-10-02, dựng trên cây cuối của 03; chờ duyệt; làm sau 03 | 01, 02, 03 |
 | `2026-10-01-giai-doan-1-05-license-server.md` | 05 License server | đã viết, đã duyệt; đã làm Task 1–18 (`35d758d` … `5664b1b`, sửa sau review đợt A–D, review cuối Approved ở `4dbd229`); còn Task 19–21 (người: triển khai staging, giao dịch thử, lên production) | — |
-| `2026-10-01-giai-doan-1-06-ban-quyen-app.md` | 06 Bản quyền trong app | sau khi 05 xong và 03 có điểm kiểm tra Pro | 01, 02, 03, 05 |
+| `2026-10-03-giai-doan-1-06a-ban-quyen-loi.md` (06a: token, hạn mức, client, trạng thái bản quyền, mua gói, tự kiểm chữ ký); `2026-10-03-giai-doan-1-06b-ban-quyen-giao-dien.md` (06b: giao diện, thử tay, Windows) | 06 Bản quyền trong app | sau khi 05 xong và 03 có điểm kiểm tra Pro | 01, 02, 03, 05 |
 | `2026-10-02-giai-doan-1-07a-ci-dong-goi.md` (07a: CI, build tiến trình phụ từ mã nguồn đã khóa, đóng gói, THIRD_PARTY_NOTICES, các bước ký chạy khi có secret); `…-07b-…` (cập nhật, kênh stable/beta, ký thật, phát hành) | 07 Đóng gói, ký số, cập nhật, CI | 07a đã viết, chờ duyệt; làm được ngay (sau 01, trước hay sau 03/04). 07b viết sau 06 | 07a: 01; 07b: 01–06 |
 | `2026-10-01-giai-doan-1-08-nghiem-thu.md` | 08 Nghiệm thu | sau khi 07 có bộ cài chạy được | 07 |
 
@@ -352,7 +352,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - Hai nút xóa dữ liệu chỉ xóa `data.db` và mục `db-key`, không đụng bản quyền và bộ đếm hạn mức (Q14): 06 kiểm.
   - Phiên "Nghe thử" là phiên thật (`StartOptions::LISTEN_TEST`): 06 quyết có trừ hạn mức không (N13 của review 03).
 - **Nhận từ 04:** `modelTier` là mã gói của manifest; `ModelService::resolve` và các lệnh tải, xóa model không đụng kho khóa; "Xóa model và dữ liệu" cũng không (Q14): 06 kiểm hai nút cùng giữ bản quyền và bộ đếm hạn mức.
-- **Trạng thái:** viết sau khi 05 xong và 03 có điểm kiểm tra Pro (03 đã xong trên Mac, `pro.rs` ở 03a Task 1, `3a3d58a`). Code của 05 đã xong; staging chạy được sau 05 Task 19.
+- **Trạng thái:** đã viết thành hai file 06a (Task 1–11), 06b (Task 1–8), base `4b6503a` (cây cuối của 04; 04 thực thi trước 06, controller quyết ngày 2026-10-03). Chờ review. Mọi task có code đã chạy lại từ file; mutation 52/53 bị giết, một mutation tương đương. Còn: 06b Task 6 (staging, cần 05 Task 19 và người), Task 7 (Windows), Task 8 (cập nhật mục này và câu "luật 1" của spec §6.8). Sửa của 04 sau review cuối (QE-1) chạm `session.rs`: dựng lại khối `diff` giao nhau trước khi thực thi 06.
 
 ### 2.7 Kế hoạch 07: Đóng gói, ký số, cập nhật, CI
 
