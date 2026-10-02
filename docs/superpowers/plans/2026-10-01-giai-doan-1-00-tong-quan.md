@@ -104,7 +104,7 @@ Chưa có:
 | `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `2026-10-02-giai-doan-1-04b-quan-ly-model-app.md` (làm theo thứ tự này) | 04 Quản lý model | đã viết; đã sửa theo review lần 1 và quyết định của chủ dự án ngày 2026-10-02, dựng lại trên cây cuối của 03; chờ duyệt; làm sau 03 | 01, 02, 03 |
 | `2026-10-01-giai-doan-1-05-license-server.md` | 05 License server | đã viết, đã duyệt; đã làm Task 1–18 (`35d758d` … `5664b1b`, sửa sau review đợt A–D, review cuối Approved ở `4dbd229`); còn Task 19–21 (người: triển khai staging, giao dịch thử, lên production) | — |
 | `2026-10-01-giai-doan-1-06-ban-quyen-app.md` | 06 Bản quyền trong app | sau khi 05 xong và 03 có điểm kiểm tra Pro | 01, 02, 03, 05 |
-| `2026-10-01-giai-doan-1-07-dong-goi-cap-nhat.md` | 07 Đóng gói, ký số, cập nhật, CI | sau khi 01, 02 và 05 xong | phần CI: 01; bộ cài đủ tính năng: 01–06 |
+| `2026-10-02-giai-doan-1-07a-ci-dong-goi.md` (07a: CI, build tiến trình phụ từ mã nguồn đã khóa, đóng gói, THIRD_PARTY_NOTICES, các bước ký chạy khi có secret); `…-07b-…` (cập nhật, kênh stable/beta, ký thật, phát hành) | 07 Đóng gói, ký số, cập nhật, CI | 07a đã viết, chờ duyệt; làm được ngay (sau 01, trước hay sau 03/04). 07b viết sau 06 | 07a: 01; 07b: 01–06 |
 | `2026-10-01-giai-doan-1-08-nghiem-thu.md` | 08 Nghiệm thu | sau khi 07 có bộ cài chạy được | 07 |
 
 Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chưa phải task. Danh sách dòng của bảng đối chiếu (mục 4) mà một kế hoạch nhận thì lọc bằng lệnh ở Task 2, Step 1.
