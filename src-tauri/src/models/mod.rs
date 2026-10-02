@@ -2,7 +2,9 @@
 //! xuất gói theo máy, xóa model.
 
 pub mod download;
+pub mod machine;
 pub mod manifest;
+pub mod recommend;
 pub mod signed;
 pub mod store;
 #[cfg(test)]

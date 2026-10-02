@@ -59,27 +59,27 @@ pub fn give_up_code(cause: GiveUpCause) -> &'static str {
 /// tiên. `None` bên trong: chưa dò, hoặc lần dò trước quá giờ (dò lại).
 #[derive(Default)]
 pub struct GpuProbe {
-    result: Mutex<Option<bool>>,
+    result: Mutex<Option<probe::ProbeOutcome>>,
     running: Mutex<bool>,
     done: Condvar,
 }
 
 impl GpuProbe {
     /// Kết quả đã có; đang dò thì chờ tối đa `wait`. Trả `None` nếu chưa có kết quả.
-    pub fn get(&self, wait: Duration) -> Option<bool> {
+    pub fn get(&self, wait: Duration) -> Option<probe::ProbeOutcome> {
         let running = self.running.lock().unwrap_or_else(|e| e.into_inner());
         let _running = self
             .done
             .wait_timeout_while(running, wait, |r| *r)
             .unwrap_or_else(|e| e.into_inner());
-        *self.result.lock().unwrap_or_else(|e| e.into_inner())
+        self.result.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Dò bằng `probe` nếu chưa có kết quả và chưa ai đang dò. Quá giờ (`None`) thì không nhớ.
-    pub fn run(&self, probe: impl FnOnce() -> Option<bool>) -> Option<bool> {
+    pub fn run(&self, probe: impl FnOnce() -> Option<probe::ProbeOutcome>) -> Option<probe::ProbeOutcome> {
         {
             let mut running = self.running.lock().unwrap_or_else(|e| e.into_inner());
-            if let Some(known) = *self.result.lock().unwrap_or_else(|e| e.into_inner()) {
+            if let Some(known) = self.result.lock().unwrap_or_else(|e| e.into_inner()).clone() {
                 return Some(known);
             }
             if *running {
@@ -90,7 +90,7 @@ impl GpuProbe {
         }
         let outcome = probe();
         if outcome.is_some() {
-            *self.result.lock().unwrap_or_else(|e| e.into_inner()) = outcome;
+            *self.result.lock().unwrap_or_else(|e| e.into_inner()) = outcome.clone();
         }
         *self.running.lock().unwrap_or_else(|e| e.into_inner()) = false;
         self.done.notify_all();
@@ -156,7 +156,7 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
         let first = first_run::is_first_run(&seen_file, &verified.hashes[0]);
         app.state::<GpuProbe>()
             .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)))
-            .unwrap_or(false)
+            .is_some_and(|o| o.usable)
     } else {
         true
     };
@@ -237,6 +237,10 @@ mod tests {
     /// Q7 của review 02c: dò quá giờ thì không nhớ (lần sau dò lại); có kết quả thì nhớ, và lần dò đang chạy được dùng chung.
     #[test]
     fn a_timed_out_probe_is_not_remembered() {
+        let outcome = |usable| probe::ProbeOutcome {
+            usable,
+            gpus: Vec::new(),
+        };
         let probe = GpuProbe::default();
         let calls = AtomicUsize::new(0);
         assert_eq!(
@@ -250,11 +254,14 @@ mod tests {
         assert_eq!(
             probe.run(|| {
                 calls.fetch_add(1, Ordering::SeqCst);
-                Some(true)
+                Some(outcome(true))
             }),
-            Some(true)
+            Some(outcome(true))
         );
-        assert_eq!(probe.run(|| panic!("đã có kết quả thì không dò nữa")), Some(true));
+        assert_eq!(
+            probe.run(|| panic!("đã có kết quả thì không dò nữa")),
+            Some(outcome(true))
+        );
         assert_eq!(calls.load(Ordering::SeqCst), 2);
         // Một luồng đang dò: luồng khác chờ kết quả đó.
         let probe = Arc::new(GpuProbe::default());
@@ -263,12 +270,12 @@ mod tests {
             std::thread::spawn(move || {
                 probe.run(|| {
                     std::thread::sleep(Duration::from_millis(100));
-                    Some(false)
+                    Some(outcome(false))
                 })
             })
         };
         std::thread::sleep(Duration::from_millis(20));
-        assert_eq!(probe.run(|| panic!("đang có người dò")), Some(false));
-        assert_eq!(slow.join().unwrap(), Some(false));
+        assert_eq!(probe.run(|| panic!("đang có người dò")), Some(outcome(false)));
+        assert_eq!(slow.join().unwrap(), Some(outcome(false)));
     }
 }

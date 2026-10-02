@@ -3153,6 +3153,7 @@ dependencies = [
  "ed25519-dalek",
  "getrandom 0.4.3",
  "keyring-core",
+ "libc",
  "log",
  "objc2",
  "objc2-foundation",

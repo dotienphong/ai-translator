@@ -49,6 +49,8 @@ ed25519-dalek = { version = "3.0.0", default-features = false }
 # ngữ cảnh. Tải manifest và model (spec §6.7): TLS của hệ điều hành (Security.framework, SChannel), proxy của hệ
 # thống.
 reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "native-tls", "system-proxy"] }
+# macOS: RAM và dung lượng trống cho đề xuất gói model (spec §8). Cùng bản `pipeline` đang dùng.
+libc = "0.2.189"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
@@ -60,7 +62,9 @@ tauri-nspanel = "2.1.0"
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = [
     "Win32_Foundation",
+    "Win32_Storage_FileSystem",
     "Win32_System_LibraryLoader",
+    "Win32_System_SystemInformation",
     "Win32_UI_WindowsAndMessaging",
 ] }
 windows-native-keyring-store = "1.1.0"
