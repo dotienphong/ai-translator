@@ -190,7 +190,8 @@ pub struct MtConfig {
     pub max_tokens_per_source_token: u32,
     pub max_tokens_extra: u32,
     pub max_tokens_cap: u32,
-    /// Ngưỡng theo cặp, lấy ở S7. Cặp không có trong danh sách thì không kiểm tỉ lệ, chỉ chịu hạn mức sinh.
+    /// Ngưỡng theo cặp: 8 chiều có tiếng Việt lấy ở S7, 12 chiều không có tiếng Việt lấy ở Đ12. Cặp không có trong
+    /// danh sách (ví dụ manifest chỉ ghi vài cặp) thì không kiểm tỉ lệ, chỉ chịu hạn mức sinh.
     pub ratio_thresholds: Vec<PairRatio>,
     /// Chỉ kiểm tỉ lệ khi câu gốc có từ chừng này token (cách 2 của Q4, đề xuất của kế hoạch 00).
     pub ratio_min_source_tokens: usize,
@@ -200,10 +201,15 @@ pub struct MtConfig {
     pub stop_grace_ms: u64,
 }
 
-/// Ngưỡng tỉ lệ token của S7: cột "câu gốc ≥ 10 token" của bảng ngưỡng trong
-/// `bench/phase0/results/s7_mt_decisions.md`, tức tỉ lệ lớn nhất đo được trên các câu gốc từ 10 token cộng biên 25%,
-/// làm tròn lên 0,1. Cột này khớp với `ratio_min_source_tokens` = 10 (cách 2 của Q4): câu ngắn hơn không bị kiểm.
-/// Tính lại cho cả tám cặp từ `bench/phase0/data/mt/outputs/*-plain.jsonl` ngày 2026-10-01, cùng số với bảng.
+/// Ngưỡng tỉ lệ token mặc định, đều là tỉ lệ lớn nhất đo được trên các câu gốc từ 10 token cộng biên 25%, làm tròn
+/// lên 0,1. Cách lấy này khớp với `ratio_min_source_tokens` = 10 (cách 2 của Q4): câu ngắn hơn không bị kiểm.
+///
+/// - Tám chiều có tiếng Việt (S7): cột "câu gốc ≥ 10 token" của bảng ngưỡng trong
+///   `bench/phase0/results/s7_mt_decisions.md`. Tính lại cho cả tám cặp từ `bench/phase0/data/mt/outputs/*-plain.jsonl`
+///   ngày 2026-10-01, cùng số với bảng.
+/// - Mười hai chiều không có tiếng Việt (Đ12, điểm cần quyết 4 của 02a): mục "Đề xuất" của
+///   `bench/phase0/results/gd1_mt_ratio.md`, lấy số lớn hơn của Hy-MT2 Q8_0 và Q4_K_M, để một bộ ngưỡng dùng chung
+///   cho cả gói Chuẩn lẫn gói Nhanh.
 pub const DEFAULT_RATIO_THRESHOLDS: &[(&str, &str, f32)] = &[
     ("en", "vi", 4.4),
     ("zh", "vi", 4.3),
@@ -213,6 +219,19 @@ pub const DEFAULT_RATIO_THRESHOLDS: &[(&str, &str, f32)] = &[
     ("vi", "zh", 1.2),
     ("vi", "ja", 2.2),
     ("vi", "ko", 2.2),
+    // Đ12: `bench/phase0/results/gd1_mt_ratio.md`, max của Q8_0 và Q4_K_M.
+    ("en", "ja", 3.3),
+    ("en", "ko", 3.2),
+    ("en", "zh", 2.0),
+    ("ja", "en", 1.7),
+    ("ja", "ko", 2.8),
+    ("ja", "zh", 1.5),
+    ("ko", "en", 1.9),
+    ("ko", "ja", 2.0),
+    ("ko", "zh", 1.3),
+    ("zh", "en", 2.7),
+    ("zh", "ja", 3.8),
+    ("zh", "ko", 3.7),
 ];
 
 impl Default for MtConfig {
@@ -486,7 +505,16 @@ mod tests {
         assert_eq!(t.ratio_for("zh", "vi"), Some(4.3));
         assert_eq!(t.ratio_for("vi", "en"), Some(1.4));
         assert_eq!(t.ratio_for("vi", "zh"), Some(1.2));
-        assert_eq!(t.ratio_for("en", "zh"), None, "cặp chưa đo thì không có ngưỡng");
+        assert_eq!(
+            t.ratio_thresholds.len(),
+            20,
+            "8 chiều có tiếng Việt và 12 chiều không có"
+        );
+        assert_eq!(
+            t.ratio_for("vi", "vi"),
+            None,
+            "cặp không có trong danh sách thì không có ngưỡng"
+        );
         let q = &c.queue;
         assert_eq!(
             (
@@ -508,6 +536,35 @@ mod tests {
         assert!(v.first_run_ready_timeout_ms >= 30_000);
         assert_eq!(c.audio.no_audio_after_ms, 60_000);
         assert_eq!(c.validate(), Ok(()));
+    }
+
+    /// Điểm cần quyết 4 của 02a: ngưỡng cho 12 chiều không có tiếng Việt lấy ở mục "Đề xuất" của
+    /// `bench/phase0/results/gd1_mt_ratio.md` (Đ12), số lớn hơn của Hy-MT2 Q8_0 và Q4_K_M.
+    #[test]
+    fn pairs_without_vietnamese_use_the_d12_thresholds() {
+        let mt = MtConfig::default();
+        let expected = [
+            ("en", "ja", 3.3),
+            ("en", "ko", 3.2),
+            ("en", "zh", 2.0),
+            ("ja", "en", 1.7),
+            ("ja", "ko", 2.8),
+            ("ja", "zh", 1.5),
+            ("ko", "en", 1.9),
+            ("ko", "ja", 2.0),
+            ("ko", "zh", 1.3),
+            ("zh", "en", 2.7),
+            ("zh", "ja", 3.8),
+            ("zh", "ko", 3.7),
+        ];
+        for (src, tgt, ratio) in expected {
+            assert_eq!(mt.ratio_for(src, tgt), Some(ratio), "{src}->{tgt}");
+        }
+        // Mỗi cặp chỉ có một dòng, để `ratio_for` (lấy dòng đầu) không giấu dòng trùng.
+        let mut pairs: Vec<_> = mt.ratio_thresholds.iter().map(|p| (&p.src, &p.tgt)).collect();
+        pairs.sort();
+        pairs.dedup();
+        assert_eq!(pairs.len(), mt.ratio_thresholds.len());
     }
 
     #[test]
