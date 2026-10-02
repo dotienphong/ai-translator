@@ -6,7 +6,10 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
-  server: { port: 1420, strictPort: true },
+  // Vite mặc định lắng nghe `localhost`, mà Node 24 phân giải thành `::1` (IPv6) trước. Cửa sổ của app (WKWebView, mở
+  // bằng `open` từ gói `.app`) lại kết nối `localhost` qua IPv4, nên gặp "Could not connect to the server" và trang trắng.
+  // Ép lắng nghe 127.0.0.1; `devUrl` vẫn là `http://localhost:1420` vì chặn điều hướng chỉ cho địa chỉ đó (navigation.rs).
+  server: { host: "127.0.0.1", port: 1420, strictPort: true },
   build: {
     rollupOptions: {
       input: {
