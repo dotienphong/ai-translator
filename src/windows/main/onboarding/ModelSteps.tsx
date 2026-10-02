@@ -1,5 +1,12 @@
 import { useEffect } from "react";
-import { defaultChoice, downloadBlock, localized, packById, shouldAutoDownload } from "../../../lib/models";
+import {
+  defaultChoice,
+  downloadBlock,
+  localized,
+  needsManualDownload,
+  packById,
+  shouldAutoDownload,
+} from "../../../lib/models";
 import { useApp, useT } from "../appStore";
 import { BlockNote } from "../models/BlockNote";
 import { DownloadPanel } from "../models/DownloadPanel";
@@ -40,7 +47,9 @@ export function DownloadStep() {
   const current = useApp((s) => s.settings?.modelTier ?? null);
   const chosen = view ? defaultChoice(view, choice, current) : null;
   const pack = packById(view, chosen);
-  const auto = view !== null && shouldAutoDownload(view, chosen, choice !== null || current !== null);
+  const picked = choice !== null || current !== null;
+  const auto = view !== null && shouldAutoDownload(view, chosen, picked);
+  const manual = view !== null && needsManualDownload(view, chosen, picked);
   useEffect(() => {
     if (auto && chosen) void download(chosen);
   }, [auto, chosen, download]);
@@ -68,10 +77,17 @@ export function DownloadStep() {
         </div>
       )}
       <DownloadPanel />
+      {manual && (
+        <div className="row">
+          <button className="primary" onClick={() => void download(pack.id)}>
+            {t("models.download")}
+          </button>
+        </div>
+      )}
       {pack.complete ? (
         <p>{t("models.done")}</p>
       ) : (
-        !blocked && <p className="hint">{t("models.continueHint")}</p>
+        !blocked && !manual && <p className="hint">{t("models.continueHint")}</p>
       )}
     </>
   );

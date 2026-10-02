@@ -143,6 +143,18 @@ export function shouldAutoDownload(view: ModelsView, chosen: string | null, pick
   return job.state === "idle" || job.state === "done" || job.pack !== pack.id;
 }
 
+// Bước 3: gói chọn sẵn chưa đủ, tải được, không có việc tải nào đang chạy hay đang dừng của chính gói đó (khung tiến độ
+// đã có nút Tiếp tục), mà cũng không tự tải được (ví dụ Windows dò GPU quá giờ nên `gpuKnown` vẫn `false`): hiện nút
+// "Tải về" để người dùng không kẹt ở bước này mà chưa có model (N-1 của review cuối 04).
+export function needsManualDownload(view: ModelsView, chosen: string | null, picked: boolean): boolean {
+  const pack = packById(view, chosen);
+  if (!pack || pack.complete || downloadBlock(view, pack)) return false;
+  const job = view.job;
+  if (job.state === "downloading") return false;
+  if (job.pack === pack.id && (job.state === "paused" || job.state === "failed")) return false;
+  return !shouldAutoDownload(view, chosen, picked);
+}
+
 export type PackBadge = "recommended" | "inUse" | "installed" | "appTooOld";
 
 // Nhãn cạnh tên gói: đề xuất cho máy này, đang dùng, đã tải, cần app mới hơn.

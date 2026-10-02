@@ -5,6 +5,7 @@ import {
   downloadBlock,
   formatBytes,
   jobFor,
+  needsManualDownload,
   packBadges,
   progress,
   recommendedPack,
@@ -93,6 +94,17 @@ describe("tải được không", () => {
     expect(shouldAutoDownload(done, "lite", true)).toBe(false);
     expect(shouldAutoDownload(view({ verdict: { kind: "unsupported", reason: "lowRam" } }), "lite", true)).toBe(false);
     expect(shouldAutoDownload(view(), null, true)).toBe(false);
+  });
+
+  it("bước 3 hiện nút tải khi không tự tải được gói chọn sẵn (N-1 của review cuối 04)", () => {
+    const windows = view({ machine: { os: "windows", ramMib: 16_384, avx2: true, gpus: [], gpuKnown: false } });
+    expect(needsManualDownload(windows, "lite", false)).toBe(true);
+    expect(needsManualDownload(windows, "lite", true)).toBe(false);
+    expect(needsManualDownload(view({ job: job("downloading", "standard") }), "lite", false)).toBe(false);
+    expect(needsManualDownload(view({ job: job("paused", "lite") }), "lite", true)).toBe(false);
+    const done = view({ packs: [pack("lite", 1, { usable: true, complete: true })] });
+    expect(needsManualDownload(done, "lite", true)).toBe(false);
+    expect(needsManualDownload(view({ verdict: { kind: "unsupported", reason: "lowRam" } }), "lite", true)).toBe(false);
   });
 
   it("Windows chưa dò xong GPU thì chỉ tự tải gói người dùng đã tự chọn", () => {
