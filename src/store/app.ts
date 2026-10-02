@@ -3,6 +3,7 @@ import type {
   AppInfo,
   AppNotice,
   AppStatus,
+  AudioSourceOption,
   CommandError,
   HotkeyAction,
   Ipc,
@@ -24,6 +25,14 @@ export interface UiError {
   field: string | null;
 }
 
+// Mức âm lượng (RMS 0–1) ra độ dài thanh đo 0–1, theo dBFS từ −60 dB tới 0 dB: tiếng nói bình thường (−30 tới −10 dBFS)
+// nằm giữa thanh, thay vì dồn sát đầu như khi vẽ thẳng RMS.
+export function levelToMeter(rms: number): number {
+  if (!(rms > 0)) return 0;
+  const db = 20 * Math.log10(rms);
+  return Math.min(1, Math.max(0, (db + 60) / 60));
+}
+
 export interface AppStoreState {
   settings: Settings | null;
   status: AppStatus | null;
@@ -35,6 +44,10 @@ export interface AppStoreState {
   notice: AppNotice | null;
   // Lệnh Bắt đầu/Dừng đang chờ phía Rust trả lời: nút bị khóa, bấm thêm không gửi lệnh thứ hai.
   sessionPending: boolean;
+  // Mức âm lượng vào gần nhất (RMS), 0 khi không dịch.
+  level: number;
+  // Nguồn chọn được ở Cài đặt › Âm thanh; `null` là chưa đọc.
+  audioSources: AudioSourceOption[] | null;
   init(): Promise<() => void>;
   navigate(screen: Screen, settingsGroup?: SettingsGroup | null): void;
   setOnboardingStep(step: number): void;
@@ -47,6 +60,8 @@ export interface AppStoreState {
   openLogDir(): Promise<void>;
   openTaskbarSettings(): Promise<void>;
   openLoginItemsSettings(): Promise<void>;
+  openAudioPermissionSettings(): Promise<void>;
+  loadAudioSources(): Promise<void>;
   finishOnboarding(): Promise<void>;
   dismissError(): void;
   dismissNotice(): void;
@@ -81,6 +96,14 @@ export function createAppStore(ipc: Ipc) {
       }
     }
 
+    // Nhận một trạng thái mới, từ sự kiện `app://status` hay kết quả của một lệnh. Kết quả của lệnh có thể tới sau một
+    // sự kiện mới hơn: trạng thái có `rev` nhỏ hơn trạng thái đang có thì bỏ. Phiên không chạy thì mức âm lượng về 0.
+    function setStatus(status: AppStatus) {
+      const current = get().status;
+      if (current && status.rev < current.rev) return;
+      set(status.session === "running" ? { status } : { status, level: 0 });
+    }
+
     return {
       settings: null,
       status: null,
@@ -91,12 +114,15 @@ export function createAppStore(ipc: Ipc) {
       error: null,
       notice: null,
       sessionPending: false,
+      level: 0,
+      audioSources: null,
 
       // Lỗi ở bất kỳ bước nào thì gỡ các listener đã đăng ký rồi ném lỗi tiếp cho bên gọi (`main.tsx` hiện câu báo).
       async init() {
         const listening = await Promise.allSettled([
           ipc.listen("settings://changed", (settings) => set({ settings })),
-          ipc.listen("app://status", (status) => set({ status })),
+          ipc.listen("app://status", (status) => setStatus(status)),
+          ipc.listen("audio://level", (level) => set({ level })),
           ipc.listen("app://navigate", (target: Navigate) => get().navigate(target.screen, target.settingsGroup)),
           ipc.listen("app://notice", (notice) => set({ notice })),
         ]);
@@ -110,7 +136,9 @@ export function createAppStore(ipc: Ipc) {
             ipc.invoke("get_app_status"),
             ipc.invoke("get_app_info"),
           ]);
-          set({ settings, status, info });
+          // Cài đặt đã tới qua sự kiện trong lúc chờ `get_settings` thì mới hơn (hoặc bằng) kết quả của lệnh: giữ bản đó.
+          set({ settings: get().settings ?? settings, info });
+          setStatus(status);
         } catch (e) {
           off();
           throw e;
@@ -152,14 +180,21 @@ export function createAppStore(ipc: Ipc) {
         }
       },
 
+      // Lỗi bắt đầu phiên nằm trong trạng thái (`session` "error", `sessionError`), Home hiện ngay dưới nút; chỉ lỗi
+      // khác (ví dụ lệnh bị chặn) mới lên thanh báo lỗi chung.
       async toggleSession() {
         if (get().sessionPending) return;
         set({ sessionPending: true });
         try {
-          await run(
-            () => ipc.invoke("toggle_session"),
-            (status) => set({ status }),
-          );
+          setStatus(await ipc.invoke("toggle_session"));
+          set({ error: null });
+        } catch (e) {
+          const status = await ipc.invoke("get_app_status").catch(() => null);
+          if (status?.session === "error") {
+            // Lỗi bắt đầu nằm trong trạng thái; thanh báo lỗi của lệnh trước không còn đúng (Nhỏ-8 của review 02 lần 3).
+            setStatus(status);
+            set({ error: null });
+          } else set({ error: toUiError(e) });
         } finally {
           set({ sessionPending: false });
         }
@@ -168,7 +203,7 @@ export function createAppStore(ipc: Ipc) {
       async setOverlayVisible(visible) {
         await run(
           () => ipc.invoke("set_overlay_visible", { visible }),
-          (status) => set({ status }),
+          (status) => setStatus(status),
         );
       },
 
@@ -198,6 +233,20 @@ export function createAppStore(ipc: Ipc) {
         await run(
           () => ipc.invoke("open_login_items_settings"),
           () => set({ notice: null }),
+        );
+      },
+
+      async openAudioPermissionSettings() {
+        await run(
+          () => ipc.invoke("open_audio_permission_settings"),
+          () => {},
+        );
+      },
+
+      async loadAudioSources() {
+        await run(
+          () => ipc.invoke("list_audio_sources"),
+          (audioSources) => set({ audioSources }),
         );
       },
 

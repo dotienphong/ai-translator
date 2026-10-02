@@ -29,8 +29,10 @@ function Overlay() {
       {lines.length === 0 && <div className="waiting">{translate(view.uiLanguage, "overlay.waiting")}</div>}
       {lines.map((l) => (
         <div key={l.id} className={l.provisional ? "provisional" : undefined}>
-          {view.showSource && <div className="source">{l.src_text}</div>}
-          <div>{l.tgt_text}</div>
+          {/* Chưa có chữ dịch (đang dịch, cùng ngôn ngữ, dịch lỗi): hiện câu gốc một lần. Kế hoạch 03 thêm nhãn cho từng
+              trạng thái. */}
+          {view.showSource && l.tgt_text && <div className="source">{l.src_text}</div>}
+          <div>{l.tgt_text || l.src_text}</div>
         </div>
       ))}
     </div>

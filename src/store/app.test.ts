@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
 import type { AppInfo, AppStatus, Ipc, Settings } from "../lib/ipc";
-import { canOpenScreens, createAppStore, toUiError } from "./app";
+import { canOpenScreens, createAppStore, levelToMeter, toUiError } from "./app";
 
 const settings: Settings = {
   uiLanguage: "vi",
@@ -20,7 +20,19 @@ const settings: Settings = {
   experimental: { translationContext: false },
   onboardingDone: false,
 };
-const status: AppStatus = { session: "idle", overlayVisible: true, hotkeyFailures: [] };
+const status: AppStatus = {
+  session: "idle",
+  overlayVisible: true,
+  hotkeyFailures: [],
+  loading: null,
+  sessionError: null,
+  cpuFallback: false,
+  suggestLite: false,
+  indicators: { lagging: false, noAudio: false, translationUnavailable: false },
+  permissionSuspected: false,
+  waitingForApp: false,
+  rev: 1,
+};
 const info: AppInfo = {
   name: "AI Translator",
   version: "0.1.0",
@@ -29,17 +41,21 @@ const info: AppInfo = {
   launchedAtLogin: false,
 };
 
-let failToggle = false;
+// `toggle_session` lỗi: "model" là lỗi của phiên (trạng thái ra "error"), "acl" là lỗi khác.
+let failToggle: "model" | "acl" | null = null;
 let failLoginItems = false;
 let failOnboarding = false;
 
 function setup() {
-  failToggle = false;
+  failToggle = null;
   failLoginItems = false;
   failOnboarding = false;
   const fake = fakeIpc({
     get_settings: () => settings,
-    get_app_status: () => status,
+    get_app_status: () =>
+      failToggle === "model"
+        ? { ...status, session: "error", sessionError: "modelMissing", overlayVisible: true, rev: 3 }
+        : status,
     get_app_info: () => info,
     update_settings: ({ patch }) => {
       if (patch.vadEndSilenceMs === 900) throw { code: "outOfRange", field: "vadEndSilenceMs", message: "…" };
@@ -51,9 +67,12 @@ function setup() {
       return { ...settings, hotkeys: { ...settings.hotkeys, [action]: accelerator.replace("Key", "") } };
     },
     toggle_session: () => {
-      if (failToggle) throw { code: "overlayFailed", field: null, message: "…" };
-      return { ...status, session: "running", overlayVisible: true };
+      if (failToggle === "model") throw { code: "modelMissing", field: null, message: "…" };
+      if (failToggle === "acl") throw "Command toggle_session not allowed by ACL";
+      return { ...status, session: "running", overlayVisible: true, rev: 2 };
     },
+    list_audio_sources: () => [{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }],
+    open_audio_permission_settings: () => null,
     set_overlay_locked: ({ locked }) => ({ ...settings, overlay: { ...settings.overlay, locked } }),
     open_login_items_settings: () => {
       if (failLoginItems) throw { code: "openFailed", field: null, message: "…" };
@@ -64,7 +83,7 @@ function setup() {
 }
 
 describe("app store", () => {
-  it("init đọc cài đặt, trạng thái, thông tin app và nghe bốn sự kiện", async () => {
+  it("init đọc cài đặt, trạng thái, thông tin app và nghe năm sự kiện", async () => {
     const { fake, store } = setup();
     const off = await store.getState().init();
     expect(store.getState().settings).toEqual(settings);
@@ -74,6 +93,7 @@ describe("app store", () => {
     expect(fake.listenerCount("app://status")).toBe(1);
     expect(fake.listenerCount("app://navigate")).toBe(1);
     expect(fake.listenerCount("app://notice")).toBe(1);
+    expect(fake.listenerCount("audio://level")).toBe(1);
     off();
     expect(fake.listenerCount("settings://changed")).toBe(0);
   });
@@ -132,13 +152,92 @@ describe("app store", () => {
     expect(store.getState().settings?.overlay.locked).toBe(true);
   });
 
-  it("bắt đầu phiên lỗi thì báo lỗi, trạng thái giữ nguyên", async () => {
+  it("bắt đầu phiên lỗi thì trạng thái ra lỗi kèm mã, không bật thanh báo lỗi chung", async () => {
     const { store } = setup();
     await store.getState().init();
-    failToggle = true;
+    failToggle = "model";
     await store.getState().toggleSession();
-    expect(store.getState().error).toEqual({ code: "overlayFailed", field: null });
+    expect(store.getState().status?.session).toBe("error");
+    expect(store.getState().status?.sessionError).toBe("modelMissing");
+    expect(store.getState().error).toBeNull();
+  });
+
+  it("bắt đầu phiên lỗi thì thanh báo lỗi của lệnh trước cũng mất (chỉ còn lỗi trong trạng thái)", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    await store.getState().updateSettings({ vadEndSilenceMs: 900 });
+    expect(store.getState().error?.code).toBe("outOfRange");
+    failToggle = "model";
+    await store.getState().toggleSession();
+    expect(store.getState().status?.sessionError).toBe("modelMissing");
+    expect(store.getState().error).toBeNull();
+  });
+
+  it("lỗi khác của toggle_session thì lên thanh báo lỗi, trạng thái giữ nguyên", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    failToggle = "acl";
+    await store.getState().toggleSession();
+    expect(store.getState().error).toEqual({ code: "unknown", field: null });
     expect(store.getState().status?.session).toBe("idle");
+  });
+
+  it("mức âm lượng theo sự kiện, về 0 khi phiên dừng", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    fake.emit("app://status", { ...status, session: "running", rev: 2 });
+    fake.emit("audio://level", 0.05);
+    expect(store.getState().level).toBe(0.05);
+    fake.emit("app://status", { ...status, session: "idle", rev: 3 });
+    expect(store.getState().level).toBe(0);
+  });
+
+  it("trạng thái cũ hơn trạng thái đang có (rev nhỏ hơn) bị bỏ", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    // Sự kiện của lần dừng (rev 5) tới trước kết quả của lệnh bắt đầu (rev 2).
+    fake.emit("app://status", { ...status, session: "idle", rev: 5 });
+    await store.getState().toggleSession();
+    expect(store.getState().status?.rev).toBe(5);
+    expect(store.getState().status?.session).toBe("idle");
+  });
+
+  it("init không đè trạng thái và cài đặt mới hơn đã tới qua sự kiện trong lúc chờ", async () => {
+    let fake: ReturnType<typeof fakeIpc> | null = null;
+    fake = fakeIpc({
+      get_settings: () => {
+        fake?.emit("settings://changed", { ...settings, uiLanguage: "en" });
+        return settings;
+      },
+      get_app_status: () => {
+        fake?.emit("app://status", { ...status, session: "starting", rev: 2 });
+        return status;
+      },
+      get_app_info: () => info,
+    });
+    const store = createAppStore(fake.ipc);
+    await store.getState().init();
+    expect(store.getState().settings?.uiLanguage).toBe("en");
+    expect(store.getState().status?.session).toBe("starting");
+  });
+
+  it("đọc danh sách nguồn âm thanh và mở trang quyền ghi âm thanh", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    expect(store.getState().audioSources).toBeNull();
+    await store.getState().loadAudioSources();
+    expect(store.getState().audioSources).toEqual([{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }]);
+    await store.getState().openAudioPermissionSettings();
+    expect(fake.calls.at(-1)?.cmd).toBe("open_audio_permission_settings");
+    expect(store.getState().error).toBeNull();
+  });
+
+  it("thanh đo âm lượng theo dBFS: −60 dB trở xuống là 0, 0 dB là đầy", () => {
+    expect(levelToMeter(0)).toBe(0);
+    expect(levelToMeter(0.001)).toBe(0);
+    expect(levelToMeter(1)).toBe(1);
+    expect(levelToMeter(0.1)).toBeCloseTo(2 / 3);
+    expect(levelToMeter(Number.NaN)).toBe(0);
   });
 
   it("lời nhắc từ phía Rust hiện rồi đóng được", async () => {
@@ -269,10 +368,10 @@ describe("app store", () => {
   it("lệnh Bắt đầu/Dừng lỗi thì sessionPending tắt lại", async () => {
     const { store } = setup();
     await store.getState().init();
-    failToggle = true;
+    failToggle = "acl";
     await store.getState().toggleSession();
     expect(store.getState().sessionPending).toBe(false);
-    failToggle = false;
+    failToggle = null;
     await store.getState().toggleSession();
     expect(store.getState().status?.session).toBe("running");
   });
