@@ -101,7 +101,6 @@ export const en = {
   "settings.group.hotkeys": "Shortcuts",
   "settings.group.license": "License",
   "settings.group.privacy": "Privacy",
-  "settings.model.description": "Model pack in use, disk space, download again or delete.",
   "settings.license.description": "License key, status and expiry date, renew or deactivate.",
   "settings.subtitles.fontSize": "Font size",
   "settings.subtitles.lines": "Number of lines",

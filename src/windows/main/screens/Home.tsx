@@ -5,6 +5,8 @@ import { levelToMeter } from "../../../store/app";
 import { useApp, useT } from "../appStore";
 import { useTranscript } from "../dataStores";
 import { LanguagePicker } from "../LanguagePicker";
+import { DownloadPanel } from "../models/DownloadPanel";
+import { UpdateNotice } from "../models/UpdateNotice";
 
 const BADGE: Record<SessionStatus, MessageKey> = {
   idle: "status.idle",
@@ -63,6 +65,9 @@ export function Home() {
             {status.sessionError === "audioPermission" && info.platform === "macos" && (
               <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
             )}
+            {(status.sessionError === "modelMissing" || status.sessionError === "modelBroken") && (
+              <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
+            )}
           </div>
         )}
         {session === "running" && status.permissionSuspected && info.platform === "macos" && (
@@ -82,7 +87,12 @@ export function Home() {
             <button onClick={() => navigate("transcript")}>{t("home.openTranscript")}</button>
           </div>
         )}
+        {status.suggestLite && (
+          <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
+        )}
       </div>
+      <UpdateNotice />
+      <DownloadPanel />
       <div className="card">
         <h2>{t("home.languages")}</h2>
         <LanguagePicker />

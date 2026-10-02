@@ -101,7 +101,6 @@ export const vi: Record<MessageKey, string> = {
   "settings.group.hotkeys": "Phím tắt",
   "settings.group.license": "Bản quyền",
   "settings.group.privacy": "Quyền riêng tư",
-  "settings.model.description": "Gói model đang dùng, dung lượng, tải lại hoặc xóa.",
   "settings.license.description": "Key bản quyền, trạng thái và ngày hết hạn, gia hạn hoặc gỡ kích hoạt.",
   "settings.subtitles.fontSize": "Cỡ chữ",
   "settings.subtitles.lines": "Số dòng",

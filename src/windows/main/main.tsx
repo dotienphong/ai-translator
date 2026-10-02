@@ -5,6 +5,7 @@ import { translate } from "../../i18n";
 import { App } from "./App";
 import { appStore, fallbackLanguage } from "./appStore";
 import { transcriptStore } from "./dataStores";
+import { modelsStore } from "./modelsStore";
 
 // Giao diện sáng/tối và thuộc tính `lang` theo cài đặt, đổi ngay khi cài đặt đổi.
 appStore.subscribe((state) => {
@@ -28,6 +29,12 @@ transcriptStore
   .getState()
   .init()
   .catch((e: unknown) => console.error("không đọc được bản chép lời", e));
+
+// Quản lý model (kế hoạch 04): lỗi ở đây chỉ ghi log, phần còn lại của cửa sổ vẫn dùng được.
+modelsStore
+  .getState()
+  .init()
+  .catch((e: unknown) => console.error("không khởi tạo được quản lý model", e));
 
 // Không đọc được cài đặt hay trạng thái (lệnh bị chặn, phía Rust lỗi) thì hiện câu báo theo ngôn ngữ của hệ
 // điều hành, thay vì để cửa sổ trắng trơn.

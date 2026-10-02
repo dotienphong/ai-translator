@@ -5,6 +5,7 @@ import {
   downloadBlock,
   formatBytes,
   jobFor,
+  packBadges,
   progress,
   recommendedPack,
   remainingBytes,
@@ -101,5 +102,18 @@ describe("tải được không", () => {
     expect(shouldAutoDownload(windows(false), "lite", true)).toBe(true);
     expect(shouldAutoDownload(windows(true), "lite", false)).toBe(true);
     expect(shouldAutoDownload(view(), "lite", false)).toBe(true);
+  });
+});
+
+describe("packBadges", () => {
+  it("đề xuất, đang dùng hay đã tải, cần app mới hơn", () => {
+    const standard = pack("standard", 2_485_000_000, { usable: true });
+    const lite = pack("lite", 1_326_000_000, { usable: true, appTooOld: true });
+    const v = view({ packs: [standard, lite] });
+    expect(packBadges(v, standard, "standard")).toEqual(["recommended", "inUse"]);
+    expect(packBadges(v, standard, "lite")).toEqual(["recommended", "installed"]);
+    expect(packBadges(v, lite, "standard")).toEqual(["installed", "appTooOld"]);
+    const unsupported = view({ verdict: { kind: "unsupported", reason: "lowRam" } });
+    expect(packBadges(unsupported, pack("lite", 1), null)).toEqual([]);
   });
 });

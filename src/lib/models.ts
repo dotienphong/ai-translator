@@ -142,3 +142,15 @@ export function shouldAutoDownload(view: ModelsView, chosen: string | null, pick
   if (job.state === "downloading") return false;
   return job.state === "idle" || job.state === "done" || job.pack !== pack.id;
 }
+
+export type PackBadge = "recommended" | "inUse" | "installed" | "appTooOld";
+
+// Nhãn cạnh tên gói: đề xuất cho máy này, đang dùng, đã tải, cần app mới hơn.
+export function packBadges(view: ModelsView, pack: PackView, current: string | null): PackBadge[] {
+  const badges: PackBadge[] = [];
+  if (recommendedPack(view) === pack.id && view.verdict?.kind === "recommend") badges.push("recommended");
+  if (pack.usable && pack.id === current) badges.push("inUse");
+  else if (pack.usable) badges.push("installed");
+  if (pack.appTooOld) badges.push("appTooOld");
+  return badges;
+}

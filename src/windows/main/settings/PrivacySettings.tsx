@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useApp, useT } from "../appStore";
+import { DeleteModelsAndData } from "./DeleteModelsAndData";
 
 // Nhóm Cài đặt "Quyền riêng tư" (§4.3): bật/tắt lưu lịch sử (Pro, mặc định tắt), và nút xóa toàn bộ dữ liệu (lịch sử và
 // từ điển thuật ngữ), có bước xác nhận. Xóa dữ liệu không đụng tới bản quyền, hạn mức hay cài đặt, và dùng được ở mọi gói.
-// Kế hoạch 04 thêm nút "Xóa model và dữ liệu" vào nhóm này.
+// Ngay sau là nút "Xóa model và dữ liệu" của kế hoạch 04.
 export function PrivacySettings() {
   const t = useT();
   const settings = useApp((s) => s.settings);
@@ -56,6 +57,7 @@ export function PrivacySettings() {
           {!confirming && cleared && <span>{t("settings.privacy.cleared")}</span>}
         </div>
       </div>
+      <DeleteModelsAndData />
     </>
   );
 }

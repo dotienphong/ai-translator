@@ -5,14 +5,14 @@ import { useApp, useT } from "../appStore";
 import { AudioSettings } from "../settings/AudioSettings";
 import { GeneralSettings } from "../settings/GeneralSettings";
 import { HotkeySettings } from "../settings/HotkeySettings";
+import { ModelSettings } from "../settings/ModelSettings";
 import { PrivacySettings } from "../settings/PrivacySettings";
 import { SubtitleSettings } from "../settings/SubtitleSettings";
 
 const GROUPS: readonly SettingsGroup[] = ["general", "subtitles", "audio", "model", "hotkeys", "license", "privacy"];
 
-// Nhóm do kế hoạch khác làm: Model (04), Bản quyền (06).
+// Nhóm do kế hoạch khác làm: Bản quyền (06).
 const DESCRIPTIONS: Partial<Record<SettingsGroup, MessageKey>> = {
-  model: "settings.model.description",
   license: "settings.license.description",
 };
 
@@ -70,6 +70,7 @@ export function SettingsScreen() {
         {group === "privacy" && <PrivacySettings />}
         {group === "audio" && <AudioSettings />}
         {group === "hotkeys" && <HotkeySettings />}
+        {group === "model" && <ModelSettings />}
         {description && (
           <div className="card">
             <p>{t(description)}</p>
