@@ -10,6 +10,7 @@
 //!   sau" nhớ theo `sequence` của manifest.
 //! - Phần thay được trong test (thư mục, URL, khóa, cấu hình máy, dung lượng trống, đồng hồ) nằm trong [`Config`].
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -22,7 +23,7 @@ use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 
 use super::download::{self, DownloadError, Pause, Retry};
 use super::machine::{self, Machine};
-use super::manifest::Localized;
+use super::manifest::{Localized, Manifest};
 use super::recommend::{self, Unsupported, Verdict};
 use super::signed::{self, Signed, TrustedKey};
 use super::source::{self, FetchError};
@@ -286,10 +287,37 @@ impl ModelService {
         Ok(begin())
     }
 
-    /// Bắt đầu một việc xóa hay kiểm, dưới khóa của dịch vụ: từ chối khi việc đụng gói đang dùng mà phiên đang bắt đầu
-    /// hay đang chạy (`modelsInUse`), hay khi đang tải hoặc đang có việc khác (`modelsBusy`).
-    fn begin_work<R: Runtime>(&self, app: &AppHandle<R>, in_use: bool) -> Result<Work<'_>, CommandError> {
+    /// File model đang được dùng (QE-1 của review cuối 04): của gói đang chọn; của phiên đang bắt đầu hay đang chạy (có
+    /// thể là gói cũ, nếu người dùng vừa đổi gói); và file mà bộ tiến trình phụ hiện có đã nạp, kể cả khi rảnh (Windows
+    /// không cho xóa hay đổi tên đè file đang mở). Gọi dưới khóa của dịch vụ: gói của phiên được ghi lúc phiên chuyển sang
+    /// `Starting`, cũng dưới khóa này (`begin_session`).
+    fn files_in_use<R: Runtime>(&self, app: &AppHandle<R>, manifest: Option<&Manifest>) -> HashSet<PathBuf> {
+        let (session_pack, held) = session::models_in_use(app);
+        let mut packs: Vec<String> = selected(app).into_iter().collect();
+        if session_active(app) {
+            packs.extend(session_pack);
+        }
+        let mut files: HashSet<PathBuf> = held.into_iter().collect();
+        if let Some(m) = manifest {
+            for pack in &packs {
+                files.extend(m.files_of(pack).iter().map(|f| self.store.path(&f.file)));
+            }
+        }
+        files
+    }
+
+    /// Bắt đầu một việc xóa hay kiểm, dưới khóa của dịch vụ. `touches` nhận các file đang được dùng (`files_in_use`) và
+    /// trả việc này có đụng tới chúng không. Từ chối khi việc đụng file đang dùng mà phiên đang bắt đầu hay đang chạy
+    /// (`modelsInUse`), hay khi đang tải hoặc đang có việc khác (`modelsBusy`). Trả kèm "có đụng file đang dùng không",
+    /// để người gọi tắt tiến trình phụ rảnh trước (QĐ16).
+    fn begin_work<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        manifest: Option<&Manifest>,
+        touches: impl FnOnce(&HashSet<PathBuf>) -> bool,
+    ) -> Result<(Work<'_>, bool), CommandError> {
         let mut inner = self.lock();
+        let in_use = touches(&self.files_in_use(app, manifest));
         if in_use && session_active(app) {
             return Err(CommandError::new(errors::MODELS_IN_USE, None, "đang dịch bằng gói này"));
         }
@@ -297,7 +325,7 @@ impl ModelService {
             return Err(CommandError::new(errors::MODELS_BUSY, None, "đang tải"));
         }
         inner.maintenance = Some(in_use);
-        Ok(Work(self))
+        Ok((Work(self), in_use))
     }
 
     /// Cấu hình máy, với kết quả dò GPU nếu đã có.
@@ -472,13 +500,6 @@ impl ModelService {
             .cloned()
             .collect();
         let status = self.store.pack_status(m, pack);
-        // File sẽ đè lên file của gói đang dùng (cùng tên): bản cập nhật.
-        let in_use: Vec<String> = selected(app)
-            .map(|s| m.files_of(&s).iter().map(|f| f.file.clone()).collect())
-            .unwrap_or_default();
-        let replaces_in_use = todo
-            .iter()
-            .any(|f| in_use.contains(&f.file) && self.store.path(&f.file).exists());
         if let Err((need, free)) = self.fits(&status) {
             return Err(CommandError::new(
                 errors::MODELS_NO_SPACE,
@@ -491,6 +512,13 @@ impl ModelService {
             if inner.job.state == JobState::Downloading || inner.maintenance.is_some() {
                 return Err(CommandError::new(errors::MODELS_BUSY, None, "đang tải"));
             }
+            // File sẽ đè lên file đang được dùng (cùng tên): bản cập nhật (QE-1 của review cuối 04: tính cả gói của phiên
+            // đang chạy và file của tiến trình phụ rảnh, không chỉ gói đang chọn).
+            let used = self.files_in_use(app, Some(m));
+            let replaces_in_use = todo.iter().any(|f| {
+                let path = self.store.path(&f.file);
+                used.contains(&path) && path.exists()
+            });
             // Kiểm phiên dưới khóa của dịch vụ: phiên bắt đầu sau lúc này thì thấy `busy()` (N5 của review 04).
             if replaces_in_use && session_active(app) {
                 return Err(CommandError::new(errors::MODELS_IN_USE, None, "đang dịch bằng gói này"));
@@ -616,17 +644,24 @@ impl ModelService {
         if m.pack(pack).is_none() {
             return Err(CommandError::new(errors::MODELS_UNKNOWN_PACK, Some("pack"), pack));
         }
-        let in_use = selected(app).as_deref() == Some(pack);
-        let work = self.begin_work(app, in_use)?;
-        if in_use {
-            session::release_models(app);
-        }
         let keep: Vec<&str> = m
             .packs
             .iter()
             .map(|p| p.id.as_str())
             .filter(|p| *p != pack && self.store.pack_status(m, p).usable)
             .collect();
+        // File sẽ bị xóa: của gói này, trừ file dùng chung với gói khác còn dùng được (như `Store::delete_pack`).
+        let shared: HashSet<&str> = keep.iter().flat_map(|k| m.files_of(k)).map(|f| f.id.as_str()).collect();
+        let doomed: Vec<PathBuf> = m
+            .files_of(pack)
+            .into_iter()
+            .filter(|f| !shared.contains(f.id.as_str()))
+            .map(|f| self.store.path(&f.file))
+            .collect();
+        let (work, in_use) = self.begin_work(app, Some(m), |used| doomed.iter().any(|p| used.contains(p)))?;
+        if in_use {
+            session::release_models(app);
+        }
         self.store
             .delete_pack(m, pack, &keep)
             .map_err(|e| CommandError::new(errors::MODELS_DISK, None, e.to_string()))?;
@@ -643,7 +678,7 @@ impl ModelService {
     /// "Xóa model và dữ liệu" (§4.3, A6): xóa cả thư mục model, bỏ gói đang dùng. Bản quyền và bộ đếm hạn mức trong
     /// kho khóa giữ nguyên (Q14). Manifest vẫn giữ trong bộ nhớ, để tải lại được ngay mà không cần mạng.
     pub fn delete_all<R: Runtime>(&self, app: &AppHandle<R>) -> Result<ModelsView, CommandError> {
-        let work = self.begin_work(app, true)?;
+        let (work, _) = self.begin_work(app, None, |_| true)?;
         session::release_models(app);
         // Giữ lại manifest đã nhận: nó là mốc chống quay lui về manifest cũ (N3 của review 04).
         let saved = std::fs::read(self.store.path(store::MANIFEST)).ok();
@@ -671,8 +706,15 @@ impl ModelService {
         if manifest.manifest.pack(pack).is_none() {
             return Err(CommandError::new(errors::MODELS_UNKNOWN_PACK, Some("pack"), pack));
         }
-        let in_use = selected(app).as_deref() == Some(pack);
-        let work = self.begin_work(app, in_use)?;
+        let files: Vec<PathBuf> = manifest
+            .manifest
+            .files_of(pack)
+            .iter()
+            .map(|f| self.store.path(&f.file))
+            .collect();
+        let (work, in_use) = self.begin_work(app, Some(&manifest.manifest), |used| {
+            files.iter().any(|p| used.contains(p))
+        })?;
         if in_use {
             session::release_models(app);
         }
@@ -1106,7 +1148,46 @@ mod tests {
         h.call("download_models", json!({ "pack": "standard" })).unwrap();
         h.wait("done");
         assert_eq!(h.model_tier(), "standard", "gói mới dùng từ phiên sau");
+        // QE-1 của review cuối 04: phiên vẫn dịch bằng gói Nhẹ dù gói đang chọn đã là gói Chuẩn.
+        assert!(
+            busy(h.call("delete_models", json!({ "pack": "lite" }))),
+            "không xóa gói của phiên đang chạy"
+        );
+        assert!(busy(h.call("verify_models", json!({ "pack": "lite" }))));
+        assert!(
+            busy(h.call("download_models", json!({ "pack": "lite" }))),
+            "không tải đè gói của phiên đang chạy"
+        );
         h.call("toggle_session", json!({})).unwrap();
+        h.call("delete_models", json!({ "pack": "lite" })).unwrap();
+    }
+
+    /// QE-1 của review cuối 04 (Windows, QĐ16): tiến trình phụ rảnh còn giữ file của gói vừa bỏ chọn; xóa hay tải đè gói
+    /// đó thì tắt chúng trước.
+    #[test]
+    fn idle_sidecars_holding_a_pack_are_released_before_it_changes() {
+        let deps = FakeDeps::default();
+        let (releases, held) = (deps.releases.clone(), deps.held.clone());
+        let h = harness_with(deps, |_| {});
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        h.wait("done");
+        let manifest = h.service().manifest().unwrap();
+        *held.lock().unwrap() = manifest
+            .manifest
+            .files_of("standard")
+            .iter()
+            .filter(|f| f.kind != super::super::manifest::Kind::License)
+            .map(|f| h.dir().join(&f.file))
+            .collect();
+        h.call("download_models", json!({ "pack": "lite" })).unwrap();
+        h.wait("done");
+        assert_eq!(h.model_tier(), "lite");
+        assert_eq!(*releases.lock().unwrap(), 0, "gói Nhẹ không đụng file đang giữ");
+        h.call("verify_models", json!({ "pack": "standard" })).unwrap();
+        assert_eq!(*releases.lock().unwrap(), 1, "kiểm gói mà tiến trình phụ rảnh còn giữ");
+        h.call("delete_models", json!({ "pack": "standard" })).unwrap();
+        assert_eq!(*releases.lock().unwrap(), 2, "xóa gói mà tiến trình phụ rảnh còn giữ");
     }
 
     #[test]

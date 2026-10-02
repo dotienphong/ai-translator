@@ -292,6 +292,8 @@ pub struct FakeDeps {
     pub capture_events: Arc<Mutex<Vec<OnEvent>>>,
     /// Số lần `release_models` được gọi (tắt tiến trình phụ rảnh trước khi xóa hay tải đè model, kế hoạch 04).
     pub releases: Arc<Mutex<usize>>,
+    /// File model mà bộ tiến trình phụ giả đang giữ (`models_in_use`); test đặt.
+    pub held: Arc<Mutex<Vec<PathBuf>>>,
     /// Số lần `shutdown` và `kill_all` được gọi.
     pub shutdowns: Arc<Mutex<Vec<&'static str>>>,
     /// Prompt của từng request dịch, kể cả lần làm nóng.
@@ -435,6 +437,10 @@ impl SessionDeps for FakeDeps {
 
     fn release_models(&self) {
         *self.releases.lock().unwrap() += 1;
+    }
+
+    fn models_in_use(&self) -> Vec<PathBuf> {
+        self.held.lock().unwrap().clone()
     }
 
     fn shutdown(&self) {

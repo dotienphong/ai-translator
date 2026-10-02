@@ -79,6 +79,11 @@ pub trait SessionDeps: Send + Sync {
     /// Tắt tiến trình phụ đang rảnh để chúng nhả file model (trước khi xóa hay tải đè model, kế hoạch 04). Lần chuẩn bị
     /// sau chạy lại chúng.
     fn release_models(&self) {}
+    /// File model mà bộ tiến trình phụ hiện có (đang chạy hay đang rảnh) đã nạp: chúng còn giữ file đó dù người dùng đã
+    /// đổi gói (QE-1 của review cuối 04).
+    fn models_in_use(&self) -> Vec<PathBuf> {
+        Vec::new()
+    }
     /// Thoát app, bước 1: từ giờ không chạy thêm tiến trình phụ nào, kill các tiến trình đang chạy. Không chờ gì.
     fn shutdown(&self) {}
     /// Thoát app, bước cuối: kill mọi tiến trình phụ còn sót.
@@ -109,6 +114,9 @@ pub struct Session {
     /// Đang có một luồng `prewarm` chạy: mở lại cửa sổ chính trong lúc nạp model không tạo thêm luồng (N3 của review cuối
     /// 02).
     prewarming: AtomicBool,
+    /// Gói của lần bắt đầu phiên gần nhất. Khi phiên đang bắt đầu hay đang chạy, đây là gói mà phiên dùng, có thể khác
+    /// gói đang chọn nếu người dùng vừa đổi gói (QE-1 của review cuối 04).
+    pack: Mutex<Option<String>>,
 }
 
 impl Session {
@@ -121,6 +129,7 @@ impl Session {
             closing: AtomicBool::new(false),
             sessions: AtomicU64::new(0),
             prewarming: AtomicBool::new(false),
+            pack: Mutex::new(None),
         }
     }
 
@@ -271,11 +280,15 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         return refuse(e);
     }
     let mut attempt = 0;
+    // Cài đặt của phiên này: gói ghi lại lúc chuyển sang `Starting` (dưới khóa của dịch vụ model) phải đúng là gói mà lần
+    // chuẩn bị dùng.
+    let settings = state.settings();
     let mut begin = || {
         state.update_status(|s| {
             if matches!(s.session, SessionStatus::Starting | SessionStatus::Running) {
                 return false;
             }
+            *session.pack.lock().unwrap() = settings.model_tier.clone();
             attempt = session.attempt.fetch_add(1, Ordering::SeqCst) + 1;
             s.session = SessionStatus::Starting;
             s.session_error = None;
@@ -301,7 +314,6 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     let current = || session.attempt.load(Ordering::SeqCst) == attempt;
     show_overlay(app);
     changed(app);
-    let settings = state.settings();
     // Lần chạy sẵn đang nạp dở (có thể của gói vừa đổi): chờ nó xong, để không có hai bộ tiến trình phụ cùng nạp (ghi chú
     // 8 của review cuối 02, N-9 của review 04 lần 2).
     wait_for_prewarm(&session);
@@ -587,6 +599,15 @@ pub fn release_models<R: Runtime>(app: &AppHandle<R>) {
     if let Some(session) = app.try_state::<Session>() {
         wait_for_prewarm(&session);
         session.deps.release_models();
+    }
+}
+
+/// File model đang được dùng ngoài gói đang chọn: gói của phiên gần nhất (người gọi chỉ tính nó khi phiên đang bắt
+/// đầu hay đang chạy) và file mà bộ tiến trình phụ hiện có đã nạp (QE-1 của review cuối 04).
+pub fn models_in_use<R: Runtime>(app: &AppHandle<R>) -> (Option<String>, Vec<PathBuf>) {
+    match app.try_state::<Session>() {
+        Some(session) => (session.pack.lock().unwrap().clone(), session.deps.models_in_use()),
+        None => (None, Vec::new()),
     }
 }
 
@@ -894,6 +915,19 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
         {
             log::info!("tắt tiến trình phụ sau 10 phút không dịch");
         }
+    }
+
+    fn models_in_use(&self) -> Vec<PathBuf> {
+        let live = self.live.lock().unwrap();
+        live.as_ref()
+            .map(|l| {
+                vec![
+                    l.key.models.asr.clone(),
+                    l.key.models.mt.clone(),
+                    l.key.models.vad.clone(),
+                ]
+            })
+            .unwrap_or_default()
     }
 
     fn release_models(&self) {
