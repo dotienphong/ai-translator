@@ -17,8 +17,12 @@ pub const STATUS_CHANGED: &str = "app://status";
 pub const NAVIGATE: &str = "app://navigate";
 pub const NOTICE: &str = "app://notice";
 pub const OVERLAY_VIEW: &str = "overlay://view";
-/// Phụ đề (spec §6.6). Kế hoạch 02 phát sự kiện này từ pipeline; kế hoạch 01 chỉ phát phụ đề mẫu.
+/// Phụ đề (spec §6.6): cả đối tượng (`pipeline::subtitle::Subtitle`).
 pub const SUBTITLE_UPSERT: &str = "subtitle://upsert";
+/// Phần chữ dịch mới trong lúc đang dịch (`pipeline::subtitle::Delta`).
+pub const SUBTITLE_DELTA: &str = "subtitle://delta";
+/// Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch.
+pub const AUDIO_LEVEL: &str = "audio://level";
 
 /// Yêu cầu cửa sổ chính mở một màn hình, ví dụ khi bấm dòng báo lỗi phím tắt ở menu khay.
 #[derive(Clone, Debug, Serialize)]
@@ -43,8 +47,10 @@ pub fn settings_changed<R: Runtime>(app: &AppHandle<R>, settings: &Settings) {
     emit(app, window::MAIN, SETTINGS_CHANGED, settings);
 }
 
+/// Gửi cho cả thanh phụ đề: nó cần biết đang nạp model, đang trễ, không có âm thanh (§4.4; kế hoạch 03 hiển thị).
 pub fn status_changed<R: Runtime>(app: &AppHandle<R>, status: &AppStatus) {
     emit(app, window::MAIN, STATUS_CHANGED, status);
+    emit(app, overlay::LABEL, STATUS_CHANGED, status);
 }
 
 pub fn overlay_view<R: Runtime>(app: &AppHandle<R>, view: &OverlayView) {

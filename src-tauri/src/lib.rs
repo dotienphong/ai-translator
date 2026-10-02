@@ -4,7 +4,7 @@
 //! tên binary (`meeting-translator`) và tên thư mục repo giữ nguyên (QĐ29).
 //!
 //! Kế hoạch 01 dựng khung: cài đặt, i18n phía Rust, khay, phím tắt, hai cửa sổ, quyền, kho khóa, log.
-//! Kế hoạch 02 nối `audio-capture` và `pipeline` vào, thay `session_stub.rs` bằng `session.rs`.
+//! Kế hoạch 02 nối `audio-capture` và `pipeline` vào (`session.rs`, `capture.rs`, `sidecar/`).
 
 pub mod actions;
 pub mod capture;
@@ -20,7 +20,7 @@ pub mod navigation;
 pub mod overlay;
 pub mod quit_guard;
 pub mod security;
-pub mod session_stub;
+pub mod session;
 pub mod settings;
 pub mod sidecar;
 pub mod state;
@@ -36,6 +36,8 @@ mod app_tests;
 #[cfg(test)]
 mod test_support;
 
+use std::sync::Arc;
+
 use tauri::{App, AppHandle, Manager, RunEvent};
 
 use crate::hotkey_registry::HotkeyRegistry;
@@ -46,6 +48,10 @@ use crate::state::AppState;
 pub const AUTOSTART_ARG: &str = "--autostart";
 
 pub fn run() {
+    // App panic thì kill tiến trình phụ trước khi abort (Windows: Job Object lo việc này).
+    pipeline::process::install_panic_hook();
+    #[cfg(windows)]
+    harden_dll_search();
     let context = tauri::generate_context!();
     // QĐ29: tên mục khởi động cùng hệ thống theo một luật duy nhất (`login_item::autostart_name`): macOS
     // là bundle identifier (tên file LaunchAgent và `Label`), Windows là tên sản phẩm (tên giá trị trong `Run`).
@@ -109,6 +115,22 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     }
     app.manage(AppState::new(settings.clone(), loaded.meta, launched_at_login));
     app.manage(HotkeyRegistry::default());
+    // Tiến trình phụ mà lần chạy trước bỏ lại (Force Quit, app bị kill): kill trước khi chạy sẵn tiến trình mới, rồi từ
+    // giờ ghi pidfile (Q8 của review 02c). Windows: Job Object đã lo, hàm không làm gì. Đọc pidfile ở đây chỉ đúng vì
+    // plugin single-instance (đăng ký trước `setup`) bảo đảm không có bản app nào khác đang chạy: bản thứ hai thoát trước
+    // khi tới đây, nên mọi mục trong file là của một lần chạy đã chết, không phải của bản đang dùng tiến trình phụ đó.
+    let pidfile = handle.path().app_local_data_dir()?.join("sidecars-live.json");
+    if let Ok(dir) = sidecar::paths::binaries_dir() {
+        let reaped = pipeline::process::reap_orphans(&pidfile, &dir);
+        if !reaped.is_empty() {
+            log::warn!("đã kill {} tiến trình phụ còn sót từ lần chạy trước", reaped.len());
+        }
+    }
+    pipeline::process::set_pidfile(&pidfile);
+    app.manage(sidecar::GpuProbe::default());
+    sidecar::start_gpu_probe(&handle);
+    app.manage(session::Session::new(Arc::new(session::LiveDeps::new(handle.clone()))));
+    session::spawn_ticker(&handle);
 
     #[cfg(target_os = "macos")]
     {
@@ -144,6 +166,22 @@ fn on_run_event(app: &AppHandle, event: RunEvent) {
         // Bấm icon ở Dock khi cửa sổ chính đang ẩn.
         #[cfg(target_os = "macos")]
         RunEvent::Reopen { .. } => window::show_main(app),
+        // Lưới an toàn: tiến trình phụ nào còn sống lúc app thoát thì kill (Thoát ở menu khay đã tắt chúng).
+        RunEvent::Exit => pipeline::process::kill_all(),
         _ => {}
+    }
+}
+
+/// Windows: chỉ nạp DLL từ thư mục hệ thống và thư mục của app, không từ thư mục hiện hành hay `PATH` (chống DLL
+/// hijacking, §10.2).
+#[cfg(windows)]
+fn harden_dll_search() {
+    use windows::Win32::System::LibraryLoader::{
+        LOAD_LIBRARY_SEARCH_APPLICATION_DIR, LOAD_LIBRARY_SEARCH_SYSTEM32, SetDefaultDllDirectories,
+    };
+    if let Err(e) =
+        unsafe { SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_APPLICATION_DIR) }
+    {
+        log::warn!("không đặt được thư mục tìm DLL: {e}");
     }
 }

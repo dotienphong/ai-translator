@@ -3005,6 +3005,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "apple-native-keyring-store",
+ "asr-protocol",
  "audio-capture",
  "keyring-core",
  "log",

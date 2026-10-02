@@ -10,7 +10,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Runtime, State};
 
 use crate::actions;
-use crate::errors::CommandError;
+use crate::errors::{self, CommandError};
 use crate::hotkeys::HotkeyAction;
 use crate::settings::Settings;
 use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
@@ -39,11 +39,13 @@ pub fn get_app_status(state: State<'_, AppState>) -> AppStatus {
     state.status()
 }
 
-/// Kế hoạch 02: bắt đầu phiên thật (mở thu âm, chạy tiến trình phụ) không được chạy trên luồng chính;
-/// lệnh đồng bộ của Tauri chạy trên luồng chính, nên khi đó chuyển lệnh này sang `async`.
+/// Bắt đầu phiên thật (chạy tiến trình phụ, mở nguồn âm thanh) có thể chặn vài chục giây, nên không chạy trên luồng
+/// chính: lệnh `async` chạy trên runtime của Tauri, việc chặn chạy trên luồng của `spawn_blocking`.
 #[tauri::command]
-pub fn toggle_session<R: Runtime>(app: AppHandle<R>) -> Result<AppStatus, CommandError> {
-    actions::toggle_session(&app)
+pub async fn toggle_session<R: Runtime>(app: AppHandle<R>) -> Result<AppStatus, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || actions::toggle_session(&app))
+        .await
+        .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
 }
 
 #[tauri::command]

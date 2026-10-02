@@ -4,16 +4,32 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 
+use pipeline::engine::Indicators;
+
 use crate::hotkeys::HotkeyAction;
 use crate::settings::migrate::FileMeta;
 use crate::settings::{Settings, UiLanguage};
 
-/// Trạng thái phiên dịch. Kế hoạch 02 thêm trạng thái (đang nạp model, lỗi…) khi nối pipeline.
+/// Trạng thái phiên dịch (§4.3: Sẵn sàng, Đang dịch, Lỗi).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SessionStatus {
     Idle,
+    /// Đang chạy tiến trình phụ và mở nguồn âm thanh ("Đang nạp model…").
+    Starting,
     Running,
+    /// Phiên vừa dừng vì lỗi; mã lỗi ở `AppStatus::session_error`.
+    Error,
+}
+
+/// Đang chờ tiến trình phụ (§4.2, §6.5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Loading {
+    /// "Đang nạp model…"
+    Model,
+    /// Lần đầu chạy binary mới: "Đang chuẩn bị lần đầu".
+    FirstRun,
 }
 
 /// Trạng thái lúc chạy, không lưu xuống đĩa. Cửa sổ chính nhận qua sự kiện `app://status`.
@@ -24,6 +40,24 @@ pub struct AppStatus {
     pub overlay_visible: bool,
     /// Phím tắt không đăng ký được với hệ điều hành, theo thứ tự của `HotkeyAction::ALL`.
     pub hotkey_failures: Vec<HotkeyAction>,
+    pub loading: Option<Loading>,
+    /// Mã lỗi của phiên (`error.<mã>` trong i18n) khi `session` là `error`.
+    pub session_error: Option<String>,
+    /// "Đang chạy bằng CPU (chậm hơn)" (§9).
+    pub cpu_fallback: bool,
+    /// Tiến trình phụ báo hết bộ nhớ: đề xuất gói Nhẹ (§9).
+    pub suggest_lite: bool,
+    /// Đang trễ, không có âm thanh, dịch không dùng được (§4.4, §9).
+    pub indicators: Indicators,
+    /// macOS: nguồn âm thanh trả toàn im lặng tuyệt đối trong khi có app đang phát: nghi chưa được cấp quyền ghi âm thanh
+    /// hệ thống (§9). Phiên vẫn chạy; giao diện hiện `error.audioPermission` kèm nút mở System Settings.
+    pub permission_suspected: bool,
+    /// macOS, nguồn một app: app đã chọn không phát tiếng nữa (đã đóng); phiên vẫn chạy và thử thu lại mỗi 2 giây
+    /// (Q-C của review 02 lần 2). Giao diện hiện chỉ báo.
+    pub waiting_for_app: bool,
+    /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
+    /// tới sau sự kiện `app://status` mới hơn).
+    pub rev: u64,
 }
 
 /// Phần cài đặt mà thanh phụ đề cần. Cửa sổ `overlay` chỉ đọc được phần này (§10.2).
@@ -83,6 +117,14 @@ impl AppState {
                 // Thanh phụ đề ẩn lúc khởi động, kể cả khi mở lúc đăng nhập; hiện khi bắt đầu phiên (§4.2, Đ19).
                 overlay_visible: false,
                 hotkey_failures: Vec::new(),
+                loading: None,
+                session_error: None,
+                cpu_fallback: false,
+                suggest_lite: false,
+                indicators: Indicators::default(),
+                permission_suspected: false,
+                waiting_for_app: false,
+                rev: 0,
             }),
             launched_at_login,
         }
@@ -105,8 +147,12 @@ impl AppState {
         self.status.lock().unwrap().clone()
     }
 
+    /// Đổi trạng thái dưới khóa của nó (một lần đổi là nguyên khối), rồi tăng `rev`.
     pub fn update_status<T>(&self, f: impl FnOnce(&mut AppStatus) -> T) -> T {
-        f(&mut self.status.lock().unwrap())
+        let mut status = self.status.lock().unwrap();
+        let out = f(&mut status);
+        status.rev += 1;
+        out
     }
 
     pub fn launched_at_login(&self) -> bool {

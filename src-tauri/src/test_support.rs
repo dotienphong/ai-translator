@@ -1,20 +1,31 @@
 //! Dụng cụ cho các test chạy app bằng `MockRuntime`: đúng `tauri.conf.json`, `capabilities/` và app
-//! manifest của `build.rs`, nhưng không mở cửa sổ thật.
+//! manifest của `build.rs`, nhưng không mở cửa sổ thật. Phiên dịch chạy đúng `session.rs` và `pipeline::engine`, với
+//! phần bên ngoài giả (`FakeDeps`): không chạy tiến trình phụ, không thu âm thật.
 
-use std::sync::{Arc, Mutex};
+use std::ops::ControlFlow;
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::Duration;
 
+use asr_protocol::{TranscribeRequest, TranscribeResult};
+use pipeline::engine::{EnergyVad, FrameSource, VadFactory};
+use pipeline::llama::{ChatRequest, StreamEnd};
+use pipeline::supervisor::{Asr, AsrFailure};
+use pipeline::translate::{Mt, MtError};
 use serde_json::Value;
 use tauri::ipc::{CallbackFn, InvokeBody};
 use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
 use tauri::webview::InvokeRequest;
 use tauri::{Manager, WebviewWindow, WebviewWindowBuilder};
 
+use crate::capture::OnEvent;
 use crate::commands;
+use crate::errors::{self, CommandError};
 use crate::login_item::{AgentStatus, LoginItem, LoginItems};
 use crate::overlay::{OverlaySurface, Surface};
+use crate::session::{Session, SessionDeps};
 use crate::settings::migrate::FileMeta;
 use crate::settings::persist::{SettingsFile, Writer};
-use crate::settings::{Settings, UiLanguage};
+use crate::settings::{AudioSource, Settings, UiLanguage};
 use crate::state::AppState;
 use crate::system::{System, SystemOpener};
 
@@ -112,7 +123,231 @@ impl SettingsFile for FakeSettingsFile {
     }
 }
 
+/// Âm thanh giả của một phiên.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum FakeAudio {
+    /// Chỉ im lặng: phiên chạy nhưng không có phụ đề.
+    #[default]
+    Silence,
+    /// 1 giây tiếng, 1 giây im lặng, lặp lại; phát nhanh gấp 10 lần thời gian thật.
+    Tone,
+}
+
+/// Cổng chặn `prepare` (như nạp model lâu): `prepare` chờ tới khi cổng mở, hoặc app thoát.
+#[derive(Debug, Default)]
+pub struct PrepareGate {
+    /// (cổng đã mở, app đang thoát)
+    state: Mutex<(bool, bool)>,
+    changed: Condvar,
+    /// Số lần `prepare` đang chờ ở cổng.
+    waiting: Mutex<usize>,
+}
+
+impl PrepareGate {
+    pub fn open(&self) {
+        self.state.lock().unwrap().0 = true;
+        self.changed.notify_all();
+    }
+
+    pub fn waiting(&self) -> usize {
+        *self.waiting.lock().unwrap()
+    }
+
+    fn close_for_shutdown(&self) {
+        self.state.lock().unwrap().1 = true;
+        self.changed.notify_all();
+    }
+
+    /// `Ok` khi cổng mở; `Err` khi app thoát trong lúc chờ.
+    fn pass(&self) -> Result<(), CommandError> {
+        *self.waiting.lock().unwrap() += 1;
+        let state = self.state.lock().unwrap();
+        let state = self
+            .changed
+            .wait_while(state, |(open, closing)| !*open && !*closing)
+            .unwrap();
+        let closing = state.1;
+        drop(state);
+        *self.waiting.lock().unwrap() -= 1;
+        if closing {
+            return Err(CommandError::new(errors::SIDECAR_FAILED, None, "app đang thoát"));
+        }
+        Ok(())
+    }
+}
+
+/// Phần bên ngoài giả của phiên dịch.
+#[derive(Clone, Default)]
+pub struct FakeDeps {
+    pub audio: FakeAudio,
+    /// `prepare` trả lỗi có mã này (ví dụ thiếu model).
+    pub prepare_error: Option<&'static str>,
+    /// `prepare` chờ ở cổng này (Q6 của review 02c).
+    pub prepare_gate: Option<Arc<PrepareGate>>,
+    /// Hạn mức đã hết: `check_quota` từ chối (chỗ nối của kế hoạch 06).
+    pub quota_exhausted: bool,
+    /// Số lần `prepare` được gọi.
+    pub prepares: Arc<Mutex<usize>>,
+    /// Thứ tự gọi `allow_retry` và `prepare` (R3-1 của review 02 lần 3).
+    pub calls: Arc<Mutex<Vec<&'static str>>>,
+    /// Nguồn âm thanh báo lỗi có mã này ngay khi mở (ví dụ chưa cấp quyền).
+    pub capture_error: Option<&'static str>,
+    /// `asr-worker` không dùng được nữa (bỏ cuộc sau nhiều lần lỗi).
+    pub asr_unavailable: bool,
+    /// Giá trị `include_self` của từng lần mở nguồn âm thanh.
+    pub captures: Arc<Mutex<Vec<bool>>>,
+    /// Nơi nhận việc của nguồn âm thanh của từng phiên, theo thứ tự: test gọi để giả lỗi tới muộn.
+    pub capture_events: Arc<Mutex<Vec<OnEvent>>>,
+    /// Số lần `shutdown` và `kill_all` được gọi.
+    pub shutdowns: Arc<Mutex<Vec<&'static str>>>,
+}
+
+struct FakeCapture {
+    audio: FakeAudio,
+    pos: usize,
+}
+
+impl FrameSource for FakeCapture {
+    fn read(&mut self, out: &mut Vec<f32>, _timeout: Duration) -> anyhow::Result<bool> {
+        // 100 ms âm thanh mỗi 10 ms.
+        std::thread::sleep(Duration::from_millis(10));
+        for _ in 0..1_600 {
+            let speaking = self.audio == FakeAudio::Tone && (self.pos / 16_000).is_multiple_of(2);
+            let t = self.pos as f32 / 16_000.0;
+            out.push(if speaking {
+                0.3 * (2.0 * std::f32::consts::PI * 220.0 * t).sin()
+            } else {
+                0.0
+            });
+            self.pos += 1;
+        }
+        Ok(true)
+    }
+}
+
+struct FakeAsr {
+    unavailable: bool,
+}
+
+impl Asr for FakeAsr {
+    fn transcribe(&mut self, req: TranscribeRequest) -> Result<TranscribeResult, AsrFailure> {
+        if self.unavailable {
+            return Err(AsrFailure::Unavailable("asr-worker giả bỏ cuộc".into()));
+        }
+        Ok(TranscribeResult {
+            segment_id: req.segment_id,
+            lang: "en".into(),
+            lang_prob: 0.99,
+            text: "Hello everyone.".into(),
+            tokens: vec![15947, 1518, 13],
+            no_speech_prob: 0.01,
+            lid_ms: 1.0,
+            asr_ms: 5.0,
+            avg_logprob: -0.2,
+        })
+    }
+}
+
+struct FakeMt;
+
+impl Mt for FakeMt {
+    fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
+        Ok(text.split_whitespace().count())
+    }
+
+    fn stream(
+        &mut self,
+        _req: &ChatRequest,
+        on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
+    ) -> Result<StreamEnd, MtError> {
+        let chunks = ["Xin", " chào", " mọi", " người."];
+        for c in chunks {
+            if on_delta(c).is_break() {
+                break;
+            }
+        }
+        Ok(StreamEnd {
+            text: chunks.concat(),
+            first_token_ms: 1.0,
+            total_ms: 2.0,
+            finish_reason: Some("stop".into()),
+            completion_tokens: Some(chunks.len()),
+            chunks: chunks.len(),
+            cancelled: false,
+        })
+    }
+}
+
+impl SessionDeps for FakeDeps {
+    fn check_quota(&self) -> Result<(), CommandError> {
+        if self.quota_exhausted {
+            return Err(CommandError::new(errors::QUOTA_EXHAUSTED, None, "hạn mức còn 0"));
+        }
+        Ok(())
+    }
+
+    fn allow_retry(&self) {
+        self.calls.lock().unwrap().push("allow_retry");
+    }
+
+    fn prepare(&self, _settings: &Settings) -> Result<(), CommandError> {
+        *self.prepares.lock().unwrap() += 1;
+        self.calls.lock().unwrap().push("prepare");
+        if let Some(gate) = &self.prepare_gate {
+            gate.pass()?;
+        }
+        match self.prepare_error {
+            Some(code) => Err(CommandError::new(code, None, "lỗi giả")),
+            None => Ok(()),
+        }
+    }
+
+    fn asr(&self) -> Box<dyn Asr> {
+        Box::new(FakeAsr {
+            unavailable: self.asr_unavailable,
+        })
+    }
+
+    fn mt(&self) -> Box<dyn Mt> {
+        Box::new(FakeMt)
+    }
+
+    fn vad(&self) -> VadFactory {
+        Box::new(|| Ok(Box::new(EnergyVad { threshold_rms: 0.05 }) as _))
+    }
+
+    fn capture(&self, _source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource> {
+        self.captures.lock().unwrap().push(include_self);
+        if let Some(code) = self.capture_error {
+            on_event(crate::capture::CaptureEvent::Failed {
+                code,
+                message: "lỗi giả".into(),
+            });
+        }
+        self.capture_events.lock().unwrap().push(on_event);
+        Box::new(FakeCapture {
+            audio: self.audio,
+            pos: 0,
+        })
+    }
+
+    fn shutdown(&self) {
+        self.shutdowns.lock().unwrap().push("shutdown");
+        if let Some(gate) = &self.prepare_gate {
+            gate.close_for_shutdown();
+        }
+    }
+
+    fn kill_all(&self) {
+        self.shutdowns.lock().unwrap().push("kill_all");
+    }
+}
+
 pub fn mock_app() -> tauri::App<MockRuntime> {
+    mock_app_with(FakeDeps::default())
+}
+
+pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
     let builder = mock_builder();
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
@@ -134,6 +369,7 @@ pub fn mock_app() -> tauri::App<MockRuntime> {
         .manage(login)
         .manage(Writer(Box::new(file.clone())))
         .manage(file)
+        .manage(Session::new(Arc::new(deps)))
         .invoke_handler(commands::handler())
         .build(tauri::generate_context!(test = true))
         .expect("dựng được app giả")

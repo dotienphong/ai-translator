@@ -2,7 +2,7 @@
 
 use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder, Window, WindowEvent};
 
-use crate::{navigation, overlay};
+use crate::{navigation, overlay, session};
 
 pub const MAIN: &str = "main";
 
@@ -22,9 +22,10 @@ pub fn create_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Hiện cửa sổ chính. Trên Mac, app hiện icon ở Dock (activation policy `regular`).
-/// Kế hoạch 02 chạy hai tiến trình phụ khi cửa sổ chính mở (§5), từ chỗ gọi hàm này.
+/// Hiện cửa sổ chính. Trên Mac, app hiện icon ở Dock (activation policy `regular`). Hai tiến trình phụ chạy sẵn trên
+/// luồng nền (§5): tới lúc bấm Bắt đầu thì model đã nạp xong.
 pub fn show_main<R: Runtime>(app: &AppHandle<R>) {
+    session::prewarm(app);
     #[cfg(target_os = "macos")]
     if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
         log::warn!("không đổi được activation policy: {e}");

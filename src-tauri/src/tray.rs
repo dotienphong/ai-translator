@@ -19,7 +19,7 @@ fn model<R: Runtime>(app: &AppHandle<R>) -> (TrayModel, &'static Strings) {
     let settings = state.settings();
     let status = state.status();
     let model = TrayModel {
-        running: status.session == SessionStatus::Running,
+        running: matches!(status.session, SessionStatus::Starting | SessionStatus::Running),
         overlay_visible: status.overlay_visible,
         locked: settings.overlay.locked,
         hotkeys_failed: !status.hotkey_failures.is_empty(),

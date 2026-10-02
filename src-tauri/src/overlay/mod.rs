@@ -52,7 +52,7 @@ impl<R: Runtime> Surface for Native<R> {
 }
 
 /// Tạo thanh phụ đề ở trạng thái ẩn, đặt vào vị trí đã nhớ, áp chế độ khóa đã lưu. Thanh chỉ hiện khi
-/// bắt đầu phiên (`session_stub::start`, sau này `session.rs` của 02) hoặc khi người dùng bấm hiện (§4.2).
+/// bắt đầu phiên (`session::start`) hoặc khi người dùng bấm hiện (§4.2).
 pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let settings = app.state::<AppState>().settings();
     platform::create(app, i18n::strings(settings.ui_language).overlay_title)?;

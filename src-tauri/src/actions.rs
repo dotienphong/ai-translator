@@ -8,8 +8,8 @@ use crate::errors::{self, CommandError};
 use crate::hotkeys::HotkeyAction;
 use crate::login_item::LoginItems;
 use crate::settings::{self, Settings, persist};
-use crate::state::{AppState, AppStatus, OverlayView, SessionStatus};
-use crate::{events, hotkey_registry, login_item, overlay, session_stub, system, tray, window};
+use crate::state::{AppState, AppStatus, OverlayView};
+use crate::{events, hotkey_registry, login_item, overlay, session, system, tray, window};
 
 /// Lưu cài đặt mới rồi báo mọi nơi cần biết.
 fn commit_settings<R: Runtime>(app: &AppHandle<R>, next: Settings) -> Settings {
@@ -29,7 +29,8 @@ fn commit_settings<R: Runtime>(app: &AppHandle<R>, next: Settings) -> Settings {
     next
 }
 
-fn status_changed<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
+/// Báo trạng thái mới cho giao diện và menu khay. `session.rs` gọi hàm này mỗi khi trạng thái phiên đổi.
+pub(crate) fn status_changed<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
     let status = app.state::<AppState>().status();
     events::status_changed(app, &status);
     tray::refresh(app);
@@ -83,16 +84,11 @@ pub fn set_hotkey<R: Runtime>(
     }
 }
 
-/// Bắt đầu hoặc dừng phiên. Bắt đầu thì hiện thanh phụ đề (§4.2); dừng thì thanh giữ nguyên, để
-/// người dùng còn đọc được các dòng cuối.
+/// Bắt đầu hoặc dừng phiên (`session::toggle`). Bắt đầu thì hiện thanh phụ đề (§4.2); dừng thì thanh giữ nguyên, để
+/// người dùng còn đọc được các dòng cuối. Chặn tới khi phiên chạy hay lỗi (nạp model có thể mất vài chục giây): không
+/// gọi từ luồng chính.
 pub fn toggle_session<R: Runtime>(app: &AppHandle<R>) -> Result<AppStatus, CommandError> {
-    match app.state::<AppState>().status().session {
-        SessionStatus::Idle => {
-            session_stub::start(app).map_err(|e| CommandError::new(errors::OVERLAY_FAILED, None, e.to_string()))?
-        }
-        SessionStatus::Running => session_stub::stop(app),
-    }
-    Ok(status_changed(app))
+    session::toggle(app)
 }
 
 pub fn set_overlay_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> Result<AppStatus, CommandError> {
@@ -112,7 +108,16 @@ pub fn set_overlay_locked<R: Runtime>(app: &AppHandle<R>, locked: bool) -> Resul
 pub fn run_hotkey<R: Runtime>(app: &AppHandle<R>, action: HotkeyAction) {
     let state = app.state::<AppState>();
     let result = match action {
-        HotkeyAction::ToggleSession => toggle_session(app).map(drop),
+        // Phím tắt và menu khay chạy trên luồng chính: bắt đầu phiên trên luồng riêng.
+        HotkeyAction::ToggleSession => {
+            let app = app.clone();
+            std::thread::spawn(move || {
+                if let Err(e) = toggle_session(&app) {
+                    log::warn!("phím tắt {action:?} lỗi: {e:?}");
+                }
+            });
+            Ok(())
+        }
         HotkeyAction::ToggleOverlay => set_overlay_visible(app, !state.status().overlay_visible).map(drop),
         HotkeyAction::ToggleLock => set_overlay_locked(app, !state.settings().overlay.locked).map(drop),
     };
@@ -187,12 +192,16 @@ pub fn open_taskbar_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), Comma
     system::open_taskbar_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
 }
 
-/// Thoát hẳn, chỉ gọi từ menu khay (§4.3). Kế hoạch 02 dừng phiên và tắt hai tiến trình phụ ở đây.
+/// Thoát hẳn, chỉ gọi từ menu khay (§4.3): nhớ vị trí thanh phụ đề, dừng phiên, tắt hai tiến trình phụ, rồi thoát.
+/// Dừng phiên có thể chờ tới 2 giây (câu đang dịch), nên việc đó chạy trên luồng riêng.
 pub fn quit<R: Runtime>(app: &AppHandle<R>) {
-    session_stub::stop(app);
     overlay::remember_position(app);
     log::info!("thoát theo yêu cầu từ menu khay");
-    app.exit(0);
+    let app = app.clone();
+    std::thread::spawn(move || {
+        session::shutdown(&app);
+        app.exit(0);
+    });
 }
 
 /// macOS: vừa bỏ qua một yêu cầu thoát không đến từ menu khay (`⌘Q`, mục Quit ở menu app, Quit ở
