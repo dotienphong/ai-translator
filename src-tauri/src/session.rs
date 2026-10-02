@@ -38,6 +38,7 @@ use crate::glossary::{self, ActiveGlossary};
 use crate::settings::{AudioSource, Lang, ModelTier, Settings};
 use crate::sidecar::{self, first_run, integrity};
 use crate::state::{AppState, AppStatus, Loading, SessionStatus};
+use crate::transcript::history;
 use crate::transcript::store::TranscriptStore;
 use crate::{actions, events, overlay, window};
 
@@ -368,10 +369,30 @@ fn stop_engine<R: Runtime>(app: &AppHandle<R>, session: &Session) -> bool {
     // Số đo của phiên vào log, không có chữ chép lời (§7, Đ17).
     log::info!("kết thúc phiên dịch: {}", metrics.summary());
     session.deps.end_session();
-    if let Some(transcript) = app.try_state::<TranscriptStore>() {
-        transcript.end(session.sessions.load(Ordering::SeqCst), now_ms());
-    }
+    // Lưu lịch sử nếu bật "Lưu lịch sử" và là Pro (F4). Chạy ngay ở đây, cả khi thoát app, để không mất phiên cuối.
+    end_transcript(app, session);
     true
+}
+
+/// Chốt bản chép lời của phiên hiện tại và lưu lịch sử nếu được (`history::save_if_enabled`). `TranscriptStore::end` chỉ
+/// trả bản chép lời một lần mỗi phiên, nên gọi lại không lưu hai lần.
+fn end_transcript<R: Runtime>(app: &AppHandle<R>, session: &Session) {
+    let ended = app
+        .try_state::<TranscriptStore>()
+        .and_then(|t| t.end(session.sessions.load(Ordering::SeqCst), now_ms()));
+    if let Some(transcript) = ended {
+        history::save_if_enabled(app, &transcript);
+    }
+}
+
+/// App thoát mà không qua Thoát ở menu khay: máy tắt, khởi động lại, đăng xuất (macOS cho thoát ngay, `quit_guard`), app
+/// tự khởi động lại để cập nhật (§4.3, §6.11). Gọi ở `RunEvent::Exit`: lưu lịch sử của phiên đang chạy như khi bấm Dừng
+/// (QĐ15), không chờ engine hay khóa của phiên (Q3 của review 03). Thoát ở menu khay đã lưu ở [`shutdown`], nên lần gọi
+/// này không làm gì.
+pub fn save_on_exit<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(session) = app.try_state::<Session>() {
+        end_transcript(app, &session);
+    }
 }
 
 /// Giờ Unix, ms.

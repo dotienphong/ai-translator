@@ -566,6 +566,88 @@ fn a_session_keeps_its_transcript_in_memory() {
     session::stop(app.handle());
 }
 
+/// Lịch sử (F4): phiên dừng thì được lưu chỉ khi bật "Lưu lịch sử" và là Pro; mặc định tắt nên không lưu gì.
+#[test]
+fn a_stopped_session_is_saved_only_with_save_history_on_and_pro() {
+    use crate::transcript::history;
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let main = window(&app, "main");
+    let run_session = || {
+        let store = app.state::<crate::transcript::store::TranscriptStore>();
+        session::start(app.handle()).unwrap();
+        wait_until("một câu dịch xong", || {
+            store.snapshot().lines.iter().any(|l| !l.tgt_text.is_empty())
+        });
+        session::stop(app.handle());
+    };
+    let saved = || crate::db::with(app.handle(), |c| history::list(c)).unwrap().len();
+    run_session();
+    assert_eq!(saved(), 0, "lưu lịch sử mặc định tắt");
+    invoke(&main, "update_settings", json!({ "patch": { "saveHistory": true } })).unwrap();
+    run_session();
+    assert_eq!(saved(), 1);
+    let list = crate::db::with(app.handle(), |c| history::list(c)).unwrap();
+    assert_eq!(list[0].preview, "Hello everyone.");
+    set_pro(&app, false);
+    run_session();
+    assert_eq!(saved(), 1, "gói Free không lưu");
+}
+
+/// Chạy một phiên có lưu lịch sử tới khi có một câu dịch xong; phiên vẫn chạy khi hàm trả về.
+fn running_session_with_history() -> tauri::App<tauri::test::MockRuntime> {
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let main = window(&app, "main");
+    invoke(&main, "update_settings", json!({ "patch": { "saveHistory": true } })).unwrap();
+    session::start(app.handle()).unwrap();
+    let store = app.state::<crate::transcript::store::TranscriptStore>();
+    wait_until("một câu dịch xong", || {
+        store.snapshot().lines.iter().any(|l| !l.tgt_text.is_empty())
+    });
+    app
+}
+
+fn saved_sessions(app: &tauri::App<tauri::test::MockRuntime>) -> usize {
+    crate::db::with(app.handle(), |c| crate::transcript::history::list(c))
+        .unwrap()
+        .len()
+}
+
+/// Q3 của review 03: Thoát ở menu khay (`session::shutdown`) lưu phiên đang chạy vào lịch sử, như khi bấm Dừng (§4.3).
+/// `RunEvent::Exit` tới sau đó không lưu lần nữa.
+#[test]
+fn quitting_saves_the_running_session_to_history() {
+    let app = running_session_with_history();
+    session::shutdown(app.handle());
+    assert_eq!(saved_sessions(&app), 1);
+    session::save_on_exit(app.handle());
+    assert_eq!(saved_sessions(&app), 1, "không lưu hai lần");
+}
+
+/// Q3 của review 03: app thoát không qua menu khay (máy tắt, đăng xuất, app tự khởi động lại để cập nhật) thì
+/// `RunEvent::Exit` gọi `crate::on_exit`: kill tiến trình phụ rồi lưu phiên đang chạy vào lịch sử, không chờ engine dừng
+/// (N-A của review 03 lần 2: test đi qua đúng hàm mà `RunEvent::Exit` gọi).
+#[test]
+fn the_exit_event_saves_the_running_session_to_history() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static KILLED: AtomicBool = AtomicBool::new(false);
+    fn fake_kill_all() {
+        KILLED.store(true, Ordering::SeqCst);
+    }
+    let app = running_session_with_history();
+    crate::on_exit(app.handle(), fake_kill_all);
+    assert!(KILLED.load(Ordering::SeqCst), "kill tiến trình phụ còn sót");
+    assert_eq!(saved_sessions(&app), 1);
+    crate::on_exit(app.handle(), fake_kill_all);
+    session::stop(app.handle());
+    assert_eq!(saved_sessions(&app), 1, "không lưu hai lần");
+}
+
 /// Từ điển thuật ngữ (F5) vào prompt của phiên ở gói Pro, theo mẫu "terminology" (§6.5); gói Free thì không (Đ6).
 #[test]
 fn glossary_terms_reach_the_prompt_only_for_pro() {

@@ -175,5 +175,6 @@ export const vi: Record<MessageKey, string> = {
   "error.glossaryFull": "Từ điển đã đủ 500 thuật ngữ. Hãy xóa bớt trước khi thêm.",
   "error.glossaryNotFound": "Thuật ngữ này không còn nữa.",
   "error.csvInvalid": "Không đọc được file CSV này. Chưa nhập gì.",
+  "error.historyNotFound": "Phiên này không còn trong lịch sử.",
   "error.unknown": "Có lỗi xảy ra.",
 };

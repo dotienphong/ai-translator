@@ -4,9 +4,10 @@
 //! dịch mới trong lúc đang dịch (giao diện nối vào `tgt_text` của phụ đề cùng `id`). Một upsert luôn thay hẳn chữ dịch,
 //! nên sau khi dịch lại (ghép câu, thử lại) chữ cũ không còn.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+/// `Deserialize` cho lịch sử chép lời của app (đọc lại trạng thái đã lưu trong DB, kế hoạch 03).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Status {
     /// Đã có chữ gốc, đang chờ dịch.

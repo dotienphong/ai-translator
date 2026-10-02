@@ -175,6 +175,7 @@ export const en = {
   "error.glossaryFull": "The glossary already has 500 terms. Delete some before adding more.",
   "error.glossaryNotFound": "This term no longer exists.",
   "error.csvInvalid": "This CSV file could not be read. Nothing was imported.",
+  "error.historyNotFound": "This session is no longer in the history.",
   "error.unknown": "Something went wrong.",
 } as const;
 

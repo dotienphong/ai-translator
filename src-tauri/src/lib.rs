@@ -176,10 +176,17 @@ fn on_run_event(app: &AppHandle, event: RunEvent) {
         // Bấm icon ở Dock khi cửa sổ chính đang ẩn.
         #[cfg(target_os = "macos")]
         RunEvent::Reopen { .. } => window::show_main(app),
-        // Lưới an toàn: tiến trình phụ nào còn sống lúc app thoát thì kill (Thoát ở menu khay đã tắt chúng).
-        RunEvent::Exit => pipeline::process::kill_all(),
+        RunEvent::Exit => on_exit(app, pipeline::process::kill_all),
         _ => {}
     }
+}
+
+/// App thoát (`RunEvent::Exit`): lưới an toàn kill tiến trình phụ còn sống (Thoát ở menu khay đã tắt chúng), rồi lưu lịch
+/// sử của phiên còn chạy khi app thoát không qua menu khay: tắt máy, đăng xuất, cập nhật (Q3 của review 03). Tách riêng,
+/// nhận hàm kill, để test gọi được mà không kill tiến trình của test khác (N-A của review 03 lần 2).
+pub(crate) fn on_exit<R: tauri::Runtime>(app: &AppHandle<R>, kill_all: fn()) {
+    kill_all();
+    session::save_on_exit(app);
 }
 
 /// Windows: chỉ nạp DLL từ thư mục hệ thống và thư mục của app, không từ thư mục hiện hành hay `PATH` (chống DLL
