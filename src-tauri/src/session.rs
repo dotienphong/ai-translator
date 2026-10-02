@@ -203,6 +203,17 @@ pub struct StartOptions {
     /// Thu cả âm thanh của chính app: cho bước "Nghe thử" (§4.1 bước 6), khi app tự phát một câu mẫu. Kế hoạch 03 dùng
     /// (Đ16 của kế hoạch 00). Chỉ có tác dụng trên macOS với nguồn toàn hệ thống.
     pub include_self: bool,
+    /// Thu toàn hệ thống, bỏ qua nguồn trong cài đặt: câu mẫu của bước "Nghe thử" phát ra thiết bị mặc định, không phát
+    /// từ app họp đã chọn (macOS) hay thiết bị đã chọn (Windows).
+    pub system_source: bool,
+}
+
+impl StartOptions {
+    /// Bước "Nghe thử": thu toàn hệ thống, kể cả âm thanh của chính app.
+    pub const LISTEN_TEST: StartOptions = StartOptions {
+        include_self: true,
+        system_source: true,
+    };
 }
 
 /// Bắt đầu phiên với nguồn âm thanh trong cài đặt. Chặn tới khi phiên chạy (hoặc lỗi, hoặc bị hủy): gọi từ luồng nền.
@@ -288,9 +299,14 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     if let Some(transcript) = app.try_state::<TranscriptStore>() {
         transcript.begin(n, now_ms(), code_of(settings.target_language));
     }
+    let audio_source = if options.system_source {
+        AudioSource::System
+    } else {
+        settings.audio_source.clone()
+    };
     let source = session
         .deps
-        .capture(&settings.audio_source, options.include_self, capture_events(app, n));
+        .capture(&audio_source, options.include_self, capture_events(app, n));
     let sink = Arc::new(TauriSink {
         app: app.clone(),
         session: n,
@@ -547,10 +563,12 @@ impl<R: Runtime> EventSink for TauriSink<R> {
     }
 
     fn level(&self, rms: f32) {
-        // Chỉ cửa sổ chính vẽ mức âm lượng.
-        let _ = self
-            .app
-            .emit_to(EventTarget::webview_window(window::MAIN), events::AUDIO_LEVEL, rms);
+        // Cửa sổ chính vẽ thanh mức âm lượng; thanh phụ đề vẽ chỉ báo "đang nghe" (§4.2, §4.4).
+        for label in [window::MAIN, overlay::LABEL] {
+            let _ = self
+                .app
+                .emit_to(EventTarget::webview_window(label), events::AUDIO_LEVEL, rms);
+        }
     }
 
     fn indicators(&self, indicators: &Indicators) {

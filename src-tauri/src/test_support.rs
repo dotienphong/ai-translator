@@ -26,6 +26,7 @@ use crate::errors::{self, CommandError};
 use crate::files::{FilePicker, FileType, Picker};
 use crate::glossary::ActiveGlossary;
 use crate::login_item::{AgentStatus, LoginItem, LoginItems};
+use crate::overlay::placement::{Edge, Frame, Screen};
 use crate::overlay::{OverlaySurface, Surface};
 use crate::pro::{Entitlement, ProGate};
 use crate::security::keystore::Keystore;
@@ -37,25 +38,60 @@ use crate::state::AppState;
 use crate::system::{System, SystemOpener};
 use crate::transcript::store::TranscriptStore;
 
-/// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`.
+/// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`, `frame 1 2 300x80`,
+/// `system resize west`. Khung cửa sổ (pixel), màn hình và con trỏ (điểm logic, như `Surface::cursor`) do test đặt; mặc
+/// định chưa có khung (như chưa có cửa sổ).
 #[derive(Clone, Default)]
-pub struct FakeSurface(Arc<Mutex<Vec<String>>>);
+pub struct FakeSurface {
+    calls: Arc<Mutex<Vec<String>>>,
+    pub frame: Arc<Mutex<Option<(Frame, Screen)>>>,
+    pub cursor: Arc<Mutex<(f64, f64)>>,
+    /// Hệ điều hành tự đổi kích thước (như Windows); mặc định không (như macOS).
+    pub system_resize: Arc<AtomicBool>,
+}
+
+impl FakeSurface {
+    fn push(&self, call: String) {
+        self.calls.lock().unwrap().push(call);
+    }
+}
 
 impl Surface for FakeSurface {
     fn set_visible(&self, visible: bool) -> tauri::Result<()> {
-        self.0
-            .lock()
-            .unwrap()
-            .push(if visible { "show" } else { "hide" }.into());
+        self.push(if visible { "show" } else { "hide" }.into());
         Ok(())
     }
 
     fn set_click_through(&self, on: bool) -> tauri::Result<()> {
-        self.0
-            .lock()
-            .unwrap()
-            .push(if on { "click_through on" } else { "click_through off" }.into());
+        self.push(if on { "click_through on" } else { "click_through off" }.into());
         Ok(())
+    }
+
+    fn frame(&self) -> Option<(Frame, Screen)> {
+        self.frame.lock().unwrap().clone()
+    }
+
+    fn set_frame(&self, frame: Frame) -> tauri::Result<()> {
+        self.push(format!(
+            "frame {} {} {}x{}",
+            frame.x, frame.y, frame.width, frame.height
+        ));
+        if let Some((current, _)) = self.frame.lock().unwrap().as_mut() {
+            *current = frame;
+        }
+        Ok(())
+    }
+
+    fn cursor(&self) -> Option<(f64, f64)> {
+        Some(*self.cursor.lock().unwrap())
+    }
+
+    fn system_resize(&self, edge: Edge) -> bool {
+        if !self.system_resize.load(Ordering::SeqCst) {
+            return false;
+        }
+        self.push(format!("system resize {}", edge.direction()));
+        true
     }
 }
 
@@ -246,6 +282,8 @@ pub struct FakeDeps {
     pub asr_unavailable: bool,
     /// Giá trị `include_self` của từng lần mở nguồn âm thanh.
     pub captures: Arc<Mutex<Vec<bool>>>,
+    /// Nguồn âm thanh của từng lần mở.
+    pub capture_sources: Arc<Mutex<Vec<AudioSource>>>,
     /// Nơi nhận việc của nguồn âm thanh của từng phiên, theo thứ tự: test gọi để giả lỗi tới muộn.
     pub capture_events: Arc<Mutex<Vec<OnEvent>>>,
     /// Số lần `shutdown` và `kill_all` được gọi.
@@ -373,8 +411,9 @@ impl SessionDeps for FakeDeps {
         Box::new(|| Ok(Box::new(EnergyVad { threshold_rms: 0.05 }) as _))
     }
 
-    fn capture(&self, _source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource> {
+    fn capture(&self, source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource> {
         self.captures.lock().unwrap().push(include_self);
+        self.capture_sources.lock().unwrap().push(source.clone());
         if let Some(code) = self.capture_error {
             on_event(crate::capture::CaptureEvent::Failed {
                 code,
@@ -433,7 +472,7 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
             FileMeta::current(),
             false,
         ))
-        .manage(OverlaySurface(Box::new(surface.clone())))
+        .manage(OverlaySurface::new(Box::new(surface.clone())))
         .manage(surface)
         .manage(System(Box::new(system.clone())))
         .manage(system)
@@ -515,7 +554,7 @@ pub fn system_calls(app: &tauri::App<MockRuntime>) -> Vec<String> {
 
 /// Các lần gọi tới thanh phụ đề từ lúc dựng app giả.
 pub fn overlay_calls(app: &tauri::App<MockRuntime>) -> Vec<String> {
-    app.state::<FakeSurface>().0.lock().unwrap().clone()
+    app.state::<FakeSurface>().calls.lock().unwrap().clone()
 }
 
 pub fn window(app: &tauri::App<MockRuntime>, label: &str) -> WebviewWindow<MockRuntime> {

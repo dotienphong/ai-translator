@@ -246,11 +246,194 @@ fn a_listening_test_session_also_captures_the_app_itself() {
     let captures = deps.captures.clone();
     let app = mock_app_with(deps);
     let _main = window(&app, "main");
-    session::start_with(app.handle(), StartOptions { include_self: true }).unwrap();
+    session::start_with(app.handle(), StartOptions::LISTEN_TEST).unwrap();
     session::stop(app.handle());
     session::start(app.handle()).unwrap();
     session::stop(app.handle());
     assert_eq!(*captures.lock().unwrap(), [true, false]);
+}
+
+/// Thanh phụ đề trên màn hình 1920 × 1080 điểm, tỉ lệ 2 (Retina): khung 900 × 160 điểm.
+fn overlay_on_a_retina_screen(app: &tauri::App<tauri::test::MockRuntime>) -> crate::test_support::FakeSurface {
+    use crate::overlay::placement::{Frame, Screen};
+    let surface = app.state::<crate::test_support::FakeSurface>().inner().clone();
+    let screen = Screen {
+        key: "Retina 3840x2160".into(),
+        x: 0,
+        y: 0,
+        width: 3840,
+        height: 2160,
+        scale: 2.0,
+    };
+    let frame = Frame {
+        x: 200,
+        y: 1600,
+        width: 1800,
+        height: 320,
+    };
+    *surface.frame.lock().unwrap() = Some((frame, screen));
+    surface
+}
+
+fn saved_rect(app: &tauri::App<tauri::test::MockRuntime>) -> Option<(f64, f64, f64, f64)> {
+    let settings = app.state::<AppState>().settings();
+    let r = settings.overlay.positions.get("Retina 3840x2160")?;
+    Some((r.x, r.y, r.width, r.height))
+}
+
+/// Kéo cạnh trên macOS (§4.4): app tự đặt khung theo con trỏ, không nhỏ hơn 320 × 80 điểm; nhả chuột thì nhớ kích thước
+/// mới cho màn hình đó. Thanh đang khóa thì không đổi gì.
+#[test]
+fn dragging_an_edge_resizes_the_overlay_and_remembers_it() {
+    let app = mock_app();
+    let overlay = window(&app, "overlay");
+    let surface = overlay_on_a_retina_screen(&app);
+    // Con trỏ tính bằng điểm: dời (100, −30) điểm là (200, −60) pixel trên màn hình tỉ lệ 2.
+    *surface.cursor.lock().unwrap() = (100.0, 850.0);
+    invoke(&overlay, "begin_overlay_resize", json!({ "edge": "northWest" })).unwrap();
+    *surface.cursor.lock().unwrap() = (200.0, 820.0);
+    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
+    *surface.cursor.lock().unwrap() = (2500.0, 2500.0);
+    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
+    invoke(&overlay, "end_overlay_resize", json!({})).unwrap();
+    assert_eq!(
+        overlay_calls(&app),
+        ["frame 400 1540 1600x380", "frame 1360 1760 640x160"],
+        "cạnh phải và cạnh dưới đứng yên; cỡ tối thiểu 320 × 80 điểm là 640 × 160 pixel"
+    );
+    assert_eq!(saved_rect(&app), Some((680.0, 880.0, 320.0, 80.0)));
+    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
+    assert_eq!(overlay_calls(&app).len(), 2, "nhả chuột rồi thì thôi theo con trỏ");
+
+    let main = window(&app, "main");
+    invoke(&main, "set_overlay_locked", json!({ "locked": true })).unwrap();
+    let before = overlay_calls(&app).len();
+    invoke(&overlay, "begin_overlay_resize", json!({ "edge": "east" })).unwrap();
+    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
+    assert_eq!(overlay_calls(&app).len(), before, "đang khóa thì không đổi kích thước");
+}
+
+/// Q-A của review 03 lần 2: mép thanh dính theo con trỏ trên màn hình tỉ lệ 1 cũng như trên màn hình Retina (tỉ lệ 2), dù
+/// màn hình chính có tỉ lệ nào: con trỏ dời 100 điểm thì khung dời 100 điểm, tức 100 pixel trên màn hình 1×, 200 pixel trên
+/// màn hình 2×.
+#[test]
+fn the_edge_follows_the_cursor_on_screens_of_different_scales() {
+    use crate::overlay::placement::{Frame, Screen};
+    for (scale, expected) in [(1.0, "frame 0 0 1000x160"), (2.0, "frame 0 0 1100x160")] {
+        let app = mock_app();
+        let overlay = window(&app, "overlay");
+        let surface = app.state::<crate::test_support::FakeSurface>().inner().clone();
+        let screen = Screen {
+            key: format!("screen {scale}"),
+            x: 0,
+            y: 0,
+            width: 3840,
+            height: 2160,
+            scale,
+        };
+        let frame = Frame {
+            x: 0,
+            y: 0,
+            width: 900,
+            height: 160,
+        };
+        *surface.frame.lock().unwrap() = Some((frame, screen));
+        *surface.cursor.lock().unwrap() = (500.0, 50.0);
+        invoke(&overlay, "begin_overlay_resize", json!({ "edge": "east" })).unwrap();
+        *surface.cursor.lock().unwrap() = (600.0, 50.0);
+        invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
+        assert_eq!(overlay_calls(&app), [expected], "tỉ lệ {scale}");
+    }
+}
+
+/// Kéo cạnh trên Windows (§4.4): hệ điều hành đổi kích thước (`start_resize_dragging`); app không tự đặt khung.
+#[test]
+fn on_windows_the_system_resizes_the_overlay() {
+    let app = mock_app();
+    let overlay = window(&app, "overlay");
+    let surface = overlay_on_a_retina_screen(&app);
+    surface.system_resize.store(true, std::sync::atomic::Ordering::SeqCst);
+    invoke(&overlay, "begin_overlay_resize", json!({ "edge": "southEast" })).unwrap();
+    *surface.cursor.lock().unwrap() = (400.0, 1640.0);
+    invoke(&overlay, "overlay_resize_move", json!({})).unwrap();
+    invoke(&overlay, "end_overlay_resize", json!({})).unwrap();
+    assert_eq!(overlay_calls(&app), ["system resize SouthEast"]);
+    assert!(invoke(&overlay, "begin_overlay_resize", json!({ "edge": "up" })).is_err());
+}
+
+/// Nút ✕ (§4.4): ẩn thanh như phím tắt, phiên dịch vẫn chạy; vị trí được nhớ lúc ẩn (QĐ19, M17 của review 03).
+#[test]
+fn the_hide_button_hides_the_overlay_keeps_the_session_and_remembers_the_position() {
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let overlay = window(&app, "overlay");
+    overlay_on_a_retina_screen(&app);
+    session::start(app.handle()).unwrap();
+    assert!(app.state::<AppState>().status().overlay_visible);
+    invoke(&overlay, "hide_overlay", json!({})).unwrap();
+    let status = app.state::<AppState>().status();
+    assert!(!status.overlay_visible);
+    assert_eq!(status.session, SessionStatus::Running, "ẩn thanh không dừng phiên");
+    assert_eq!(overlay_calls(&app).last().map(String::as_str), Some("hide"));
+    assert_eq!(saved_rect(&app), Some((100.0, 800.0, 900.0, 160.0)));
+    session::stop(app.handle());
+}
+
+/// Ẩn bằng phím tắt, menu khay hay nút ở cửa sổ chính cũng nhớ vị trí (QĐ19, M17 của review 03).
+#[test]
+fn hiding_the_overlay_from_the_main_window_remembers_the_position() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    overlay_on_a_retina_screen(&app);
+    assert_eq!(saved_rect(&app), None);
+    invoke(&main, "set_overlay_visible", json!({ "visible": false })).unwrap();
+    assert_eq!(saved_rect(&app), Some((100.0, 800.0, 900.0, 160.0)));
+}
+
+/// Lệnh `start_listen_test`: thu toàn hệ thống kể cả chính app, dù cài đặt đang chọn một app họp; phiên thường vẫn theo
+/// cài đặt. Thanh phụ đề cũng nhận mức âm lượng (chỉ báo "đang nghe", §4.4).
+#[test]
+fn the_listening_test_captures_the_whole_system_and_the_overlay_hears_the_level() {
+    use crate::settings::AudioSource;
+    let deps = FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    };
+    let (captures, sources) = (deps.captures.clone(), deps.capture_sources.clone());
+    let app = mock_app_with(deps);
+    let main = window(&app, "main");
+    let _overlay = window(&app, "overlay");
+    invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "audioSource": { "kind": "app", "bundleId": "us.zoom.xos" } } }),
+    )
+    .unwrap();
+    let levels = Arc::new(Mutex::new(0usize));
+    let seen = levels.clone();
+    app.get_webview_window("overlay")
+        .unwrap()
+        .listen(AUDIO_LEVEL, move |_| *seen.lock().unwrap() += 1);
+    let status = invoke(&main, "start_listen_test", json!({})).unwrap();
+    assert_eq!(status["session"], "running");
+    wait_until("thanh phụ đề nhận mức âm lượng", || {
+        *levels.lock().unwrap() > 0
+    });
+    invoke(&main, "toggle_session", json!({})).unwrap();
+    invoke(&main, "toggle_session", json!({})).unwrap();
+    invoke(&main, "toggle_session", json!({})).unwrap();
+    assert_eq!(*captures.lock().unwrap(), [true, false]);
+    assert_eq!(
+        *sources.lock().unwrap(),
+        [
+            AudioSource::System,
+            AudioSource::App {
+                bundle_id: "us.zoom.xos".into()
+            }
+        ]
+    );
 }
 
 /// App giả có `prepare` chặn ở cổng (như nạp model lâu), và một lần bắt đầu phiên đang chờ ở đó trên luồng riêng.

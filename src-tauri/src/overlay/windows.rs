@@ -16,12 +16,18 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 use super::LABEL;
+use super::placement::Edge;
 use crate::navigation;
 
 pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> {
     WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("overlay.html".into()))
         .title(title)
         .inner_size(900.0, 160.0)
+        // Kéo cạnh để đổi kích thước (§4.4): thanh phụ đề tự vẽ vùng kéo cạnh, rồi hệ điều hành đổi kích thước
+        // (`system_resize`). Cờ đặt một lần ở đây (QĐ23 của kế hoạch 01). Cỡ tối thiểu trên mức của `settings`, để vị trí
+        // luôn lưu được.
+        .resizable(true)
+        .min_inner_size(super::MIN_WIDTH, super::MIN_HEIGHT)
         .decorations(false)
         .transparent(true)
         .always_on_top(true)
@@ -78,4 +84,16 @@ pub fn set_ignore_mouse<R: Runtime>(app: &AppHandle<R>, ignore: bool) -> tauri::
         .map_err(std::io::Error::other)?;
     }
     Ok(())
+}
+
+/// Hệ điều hành đổi kích thước theo con trỏ tới khi nhả chuột (`WM_NCLBUTTONDOWN` với cạnh tương ứng, qua tao).
+pub fn system_resize<R: Runtime>(app: &AppHandle<R>, edge: Edge) -> bool {
+    let Some(window) = app.get_webview_window(LABEL) else {
+        return false;
+    };
+    // `tauri` không xuất kiểu `ResizeDirection`; tên hướng trùng `Edge::direction`, nên dựng qua serde.
+    let Ok(direction) = serde_json::from_value(serde_json::Value::String(edge.direction().into())) else {
+        return false;
+    };
+    window.as_ref().window().start_resize_dragging(direction).is_ok()
 }

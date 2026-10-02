@@ -14,6 +14,7 @@ fn main() {
             "set_hotkey",
             "get_app_status",
             "toggle_session",
+            "start_listen_test",
             "set_overlay_visible",
             "set_overlay_locked",
             "get_app_info",
@@ -38,6 +39,10 @@ fn main() {
             "clear_all_data",
             "get_debug_sessions",
             "get_overlay_view",
+            "hide_overlay",
+            "begin_overlay_resize",
+            "overlay_resize_move",
+            "end_overlay_resize",
         ])),
     )
     .expect("tauri-build thất bại");

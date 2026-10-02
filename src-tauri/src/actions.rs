@@ -93,6 +93,10 @@ pub fn toggle_session<R: Runtime>(app: &AppHandle<R>) -> Result<AppStatus, Comma
 }
 
 pub fn set_overlay_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> Result<AppStatus, CommandError> {
+    if !visible {
+        // Nhớ vị trí cả lúc ẩn, phòng khi NSPanel không báo sự kiện di chuyển (mục 2.3 của kế hoạch 00, 01 Task 24).
+        overlay::remember_position(app);
+    }
     overlay::set_visible(app, visible).map_err(|e| CommandError::new(errors::OVERLAY_FAILED, None, e.to_string()))?;
     app.state::<AppState>().update_status(|s| s.overlay_visible = visible);
     Ok(status_changed(app))

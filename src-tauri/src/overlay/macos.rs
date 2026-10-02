@@ -7,7 +7,8 @@
 use tauri::{AppHandle, Runtime, WebviewUrl};
 use tauri_nspanel::{CollectionBehavior, ManagerExt, PanelBuilder, PanelLevel, StyleMask};
 
-use super::LABEL;
+use super::placement::Edge;
+use super::{LABEL, MIN_HEIGHT, MIN_WIDTH};
 use crate::navigation;
 
 tauri_nspanel::tauri_panel! {
@@ -25,6 +26,10 @@ pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> 
         .url(WebviewUrl::App("overlay.html".into()))
         .title(title)
         .size(tauri::Size::Logical(tauri::LogicalSize::new(900.0, 160.0)))
+        // Kéo cạnh để đổi kích thước (§4.4): app tự đổi khung theo con trỏ (`overlay::resize_to_cursor`). Vẫn đặt
+        // `resizable` và cỡ tối thiểu, phòng khi chính NSPanel không viền cũng cho kéo ở mép ngoài cùng.
+        .resizable(true)
+        .min_size(tauri::Size::Logical(tauri::LogicalSize::new(MIN_WIDTH, MIN_HEIGHT)))
         .with_window(move |w| {
             w.decorations(false)
                 .transparent(true)
@@ -61,4 +66,9 @@ pub fn set_ignore_mouse<R: Runtime>(app: &AppHandle<R>, ignore: bool) -> tauri::
         panel.set_ignores_mouse_events(ignore);
     }
     Ok(())
+}
+
+/// tao trên macOS không có `drag_resize_window`: app tự đổi kích thước theo con trỏ.
+pub fn system_resize<R: Runtime>(_app: &AppHandle<R>, _edge: Edge) -> bool {
+    false
 }

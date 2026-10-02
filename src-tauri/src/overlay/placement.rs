@@ -6,6 +6,8 @@
 
 use std::collections::BTreeMap;
 
+use serde::Deserialize;
+
 use crate::settings::OverlayRect;
 
 /// Một màn hình đang cắm, tọa độ vật lý (pixel) như Tauri trả về.
@@ -35,6 +37,82 @@ pub const DEFAULT_HEIGHT: f64 = 160.0;
 /// Khoảng cách tối thiểu tới mép trái và phải, và khoảng cách tới mép dưới khi đặt mặc định.
 const MARGIN: f64 = 24.0;
 const BOTTOM_GAP: f64 = 72.0;
+
+/// Khung của cửa sổ, tọa độ vật lý (pixel).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Frame {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Cạnh hay góc đang kéo để đổi kích thước thanh phụ đề (§4.4). Tên theo hướng: `north` là cạnh trên.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Edge {
+    North,
+    South,
+    East,
+    West,
+    NorthEast,
+    NorthWest,
+    SouthEast,
+    SouthWest,
+}
+
+impl Edge {
+    /// Tên hướng theo `ResizeDirection` của Tauri (`start_resize_dragging`).
+    pub fn direction(self) -> &'static str {
+        use Edge::*;
+        match self {
+            North => "North",
+            South => "South",
+            East => "East",
+            West => "West",
+            NorthEast => "NorthEast",
+            NorthWest => "NorthWest",
+            SouthEast => "SouthEast",
+            SouthWest => "SouthWest",
+        }
+    }
+
+    fn sides(self) -> (bool, bool, bool, bool) {
+        use Edge::*;
+        // (trên, dưới, trái, phải)
+        match self {
+            North => (true, false, false, false),
+            South => (false, true, false, false),
+            East => (false, false, false, true),
+            West => (false, false, true, false),
+            NorthEast => (true, false, false, true),
+            NorthWest => (true, false, true, false),
+            SouthEast => (false, true, false, true),
+            SouthWest => (false, true, true, false),
+        }
+    }
+}
+
+/// Khung mới khi kéo `edge` của khung `start` đi một đoạn (`dx`, `dy`) pixel: chỉ cạnh được kéo dời đi, cạnh đối diện đứng
+/// yên; không nhỏ hơn `min_width` × `min_height`.
+pub fn resized(start: Frame, edge: Edge, dx: i32, dy: i32, min_width: u32, min_height: u32) -> Frame {
+    let (top, bottom, left, right) = edge.sides();
+    let grow = |size: u32, by: i32, min: u32| (i64::from(size) + i64::from(by)).max(i64::from(min)) as u32;
+    let mut next = start;
+    if left {
+        next.width = grow(start.width, -dx, min_width);
+        next.x = start.x + start.width as i32 - next.width as i32;
+    } else if right {
+        next.width = grow(start.width, dx, min_width);
+    }
+    if top {
+        next.height = grow(start.height, -dy, min_height);
+        next.y = start.y + start.height as i32 - next.height as i32;
+    } else if bottom {
+        next.height = grow(start.height, dy, min_height);
+    }
+    next
+}
 
 /// Khóa của một màn hình: tên và độ phân giải đầy đủ. Hai màn hình cùng model và cùng độ phân giải
 /// dùng chung một vị trí; chấp nhận được, vì vị trí vẫn nằm trong màn hình.
@@ -405,5 +483,57 @@ mod tests {
         // Màn hình vừa nhớ không bao giờ bị bỏ, kể cả khi đồng hồ lùi.
         remember(&mut positions, "e", rect_at(0.0), 50, 3);
         assert_eq!(positions.keys().collect::<Vec<_>>(), ["b", "d", "e"]);
+    }
+
+    /// Kéo cạnh hay góc (§4.4): chỉ cạnh được kéo dời đi, cạnh đối diện đứng yên; không nhỏ hơn cỡ tối thiểu.
+    #[test]
+    fn resizing_moves_only_the_dragged_sides() {
+        let start = Frame {
+            x: 100,
+            y: 500,
+            width: 900,
+            height: 160,
+        };
+        let f = |x, y, width, height| Frame { x, y, width, height };
+        let cases = [
+            (Edge::East, 50, 30, f(100, 500, 950, 160)),
+            (Edge::West, 50, 30, f(150, 500, 850, 160)),
+            (Edge::North, 50, -30, f(100, 470, 900, 190)),
+            (Edge::South, 50, -30, f(100, 500, 900, 130)),
+            (Edge::NorthEast, -100, 20, f(100, 520, 800, 140)),
+            (Edge::NorthWest, -100, 20, f(0, 520, 1000, 140)),
+            (Edge::SouthEast, 10, 10, f(100, 500, 910, 170)),
+            (Edge::SouthWest, 10, 10, f(110, 500, 890, 170)),
+        ];
+        for (edge, dx, dy, expected) in cases {
+            assert_eq!(resized(start, edge, dx, dy, 640, 80), expected, "{edge:?}");
+        }
+        // Kéo quá cỡ tối thiểu: dừng ở cỡ tối thiểu, cạnh đối diện vẫn đứng yên.
+        assert_eq!(resized(start, Edge::West, 5000, 0, 640, 80), f(360, 500, 640, 160));
+        assert_eq!(resized(start, Edge::North, 0, 5000, 640, 80), f(100, 580, 900, 80));
+        assert_eq!(
+            resized(start, Edge::SouthEast, -5000, -5000, 640, 80),
+            f(100, 500, 640, 80)
+        );
+    }
+
+    /// Giao diện gửi tên cạnh dạng camelCase; Windows nhận tên hướng của Tauri.
+    #[test]
+    fn edges_come_in_camel_case_and_map_to_tauri_directions() {
+        let names = [
+            ("north", "North"),
+            ("south", "South"),
+            ("east", "East"),
+            ("west", "West"),
+            ("northEast", "NorthEast"),
+            ("northWest", "NorthWest"),
+            ("southEast", "SouthEast"),
+            ("southWest", "SouthWest"),
+        ];
+        for (name, direction) in names {
+            let edge: Edge = serde_json::from_value(serde_json::json!(name)).unwrap();
+            assert_eq!(edge.direction(), direction);
+        }
+        assert!(serde_json::from_value::<Edge>(serde_json::json!("up")).is_err());
     }
 }

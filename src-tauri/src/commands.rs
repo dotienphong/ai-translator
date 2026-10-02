@@ -15,6 +15,7 @@ use crate::debug::DebugSession;
 use crate::errors::{self, CommandError};
 use crate::glossary::{GlossaryEntry, ImportReport};
 use crate::hotkeys::HotkeyAction;
+use crate::overlay::{self, placement::Edge};
 use crate::settings::Settings;
 use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
 use crate::transcript::export::{Format, SrtText};
@@ -52,6 +53,17 @@ pub async fn toggle_session<R: Runtime>(app: AppHandle<R>) -> Result<AppStatus, 
     tauri::async_runtime::spawn_blocking(move || actions::toggle_session(&app))
         .await
         .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
+}
+
+/// Bước "Nghe thử" (§4.1 bước 6): bắt đầu phiên thu toàn hệ thống, kể cả câu mẫu do chính app phát. Dừng bằng
+/// `toggle_session` như phiên thường.
+#[tauri::command]
+pub async fn start_listen_test<R: Runtime>(app: AppHandle<R>) -> Result<AppStatus, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::session::start_with(&app, crate::session::StartOptions::LISTEN_TEST)
+    })
+    .await
+    .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
 }
 
 #[tauri::command]
@@ -212,10 +224,33 @@ pub fn get_debug_sessions<R: Runtime>(app: AppHandle<R>) -> Vec<DebugSession> {
     data::debug_sessions(&app)
 }
 
-/// Lệnh duy nhất cửa sổ `overlay` gọi được, chỉ đọc (§10.2).
+// ---- Lệnh của cửa sổ `overlay` (§10.2): đọc phần cài đặt của nó, và chỉ đụng tới cửa sổ của chính nó. ----
+
 #[tauri::command]
 pub fn get_overlay_view(state: State<'_, AppState>) -> OverlayView {
     OverlayView::from_settings(&state.settings())
+}
+
+/// Nút ✕ của thanh phụ đề (§4.4): ẩn thanh như phím tắt ẩn/hiện; phiên dịch vẫn chạy, app không thoát.
+#[tauri::command]
+pub fn hide_overlay<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    actions::set_overlay_visible(&app, false).map(|_| ())
+}
+
+/// Bấm giữ ở cạnh hay góc của thanh phụ đề để đổi kích thước (§4.4). Vị trí con trỏ đọc ở phía Rust.
+#[tauri::command]
+pub fn begin_overlay_resize<R: Runtime>(app: AppHandle<R>, edge: Edge) {
+    overlay::begin_resize(&app, edge);
+}
+
+#[tauri::command]
+pub fn overlay_resize_move<R: Runtime>(app: AppHandle<R>) {
+    overlay::resize_to_cursor(&app);
+}
+
+#[tauri::command]
+pub fn end_overlay_resize<R: Runtime>(app: AppHandle<R>) {
+    overlay::end_resize(&app);
 }
 
 /// Lệnh của cửa sổ `main`.
@@ -225,6 +260,7 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "set_hotkey",
     "get_app_status",
     "toggle_session",
+    "start_listen_test",
     "set_overlay_visible",
     "set_overlay_locked",
     "get_app_info",
@@ -251,7 +287,13 @@ pub const MAIN_COMMANDS: &[&str] = &[
 ];
 
 /// Lệnh của cửa sổ `overlay`.
-pub const OVERLAY_COMMANDS: &[&str] = &["get_overlay_view"];
+pub const OVERLAY_COMMANDS: &[&str] = &[
+    "get_overlay_view",
+    "hide_overlay",
+    "begin_overlay_resize",
+    "overlay_resize_move",
+    "end_overlay_resize",
+];
 
 pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
@@ -260,6 +302,7 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         set_hotkey,
         get_app_status,
         toggle_session,
+        start_listen_test,
         set_overlay_visible,
         set_overlay_locked,
         get_app_info,
@@ -284,5 +327,9 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         clear_all_data,
         get_debug_sessions,
         get_overlay_view,
+        hide_overlay,
+        begin_overlay_resize,
+        overlay_resize_move,
+        end_overlay_resize,
     ]
 }

@@ -7,8 +7,8 @@
 //! 3. Lệnh có tác dụng ra ngoài app chỉ tới bản giả của `SystemOpener` (QĐ28): bị chặn thì bản giả
 //!    không ghi nhận gì, được phép thì ghi nhận đúng lời gọi.
 //!
-//! Kế hoạch sau thêm quyền (ví dụ 03 cấp `core:window:allow-start-resize-dragging` cho overlay) thì sửa
-//! danh sách cố định ở đây trong cùng commit.
+//! Kế hoạch sau thêm quyền thì sửa danh sách cố định ở đây trong cùng commit. Kéo cạnh và nút ẩn của thanh phụ đề (03)
+//! là lệnh của app chỉ đụng tới cửa sổ của chính nó, không cấp `core:window:allow-start-resize-dragging`.
 
 use serde_json::{Value, json};
 
@@ -102,7 +102,7 @@ fn capabilities_grant_exactly_the_fixed_lists() {
     assert_eq!(
         permissions(include_str!("../capabilities/overlay.json"), "overlay"),
         expected(OVERLAY_COMMANDS, OVERLAY_CORE_PERMISSIONS),
-        "overlay chỉ đọc phần cài đặt của nó, nghe sự kiện và kéo cửa sổ của chính nó"
+        "overlay chỉ đọc phần cài đặt của nó, nghe sự kiện, kéo, đổi kích thước và ẩn cửa sổ của chính nó"
     );
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/capabilities");
     let mut files: Vec<String> = std::fs::read_dir(dir)

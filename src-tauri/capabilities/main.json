@@ -9,6 +9,7 @@
     "allow-set-hotkey",
     "allow-get-app-status",
     "allow-toggle-session",
+    "allow-start-listen-test",
     "allow-set-overlay-visible",
     "allow-set-overlay-locked",
     "allow-get-app-info",
