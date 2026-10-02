@@ -1,0 +1,5 @@
+{
+  "_note": "Khóa công khai kiểm token bản quyền (spec §6.8, §10.2), chép nguyên từ server/keys/public-keys.json (kế hoạch 05, Task 19, 21). Mỗi môi trường có hai ô a, b (khóa đang ký và khóa dự phòng). App bỏ qua `retired` và `_note`. Bản debug dùng `staging`, bản phát hành dùng `production`; ô trống thì mọi token đều `unknown_kid` (gói Free).",
+  "staging": {},
+  "production": {}
+}

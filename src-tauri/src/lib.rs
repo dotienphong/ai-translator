@@ -19,6 +19,7 @@ pub mod glossary;
 pub mod hotkey_registry;
 pub mod hotkeys;
 pub mod i18n;
+pub mod license;
 pub mod logging;
 pub mod login_item;
 pub mod models;
