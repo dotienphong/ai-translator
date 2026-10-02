@@ -72,6 +72,9 @@ pub struct FileJob {
     pub dest: PathBuf,
     pub bytes: u64,
     pub sha256: String,
+    /// Tải xong và đúng SHA-256 thì để nguyên ở `*.part`, không đổi tên thành `dest`: người gọi đổi tên mọi file của một
+    /// lần tải cùng lúc, khi tất cả đã đủ (N-4 của review cuối 04). Lần tải sau thấy phần dở đã đủ thì chỉ băm lại.
+    pub keep_part: bool,
 }
 
 impl FileJob {
@@ -282,7 +285,9 @@ fn attempt(
             let _ = std::fs::remove_file(job.part());
             return Err(DownloadError::Checksum);
         }
-        std::fs::rename(job.part(), &job.dest).map_err(io)?;
+        if !job.keep_part {
+            std::fs::rename(job.part(), &job.dest).map_err(io)?;
+        }
         Ok(())
     })()
 }
@@ -381,6 +386,7 @@ mod tests {
             dest: t.0.join("model.bin"),
             bytes: bytes.len() as u64,
             sha256: hex(&Sha256::digest(&bytes)),
+            keep_part: false,
         };
         (t, server, job, bytes)
     }
@@ -434,8 +440,21 @@ mod tests {
             dest: PathBuf::from("/m/a.bin"),
             bytes: 1,
             sha256: "0123456789abcdef".repeat(4),
+            keep_part: false,
         };
         assert_eq!(job.part(), PathBuf::from("/m/a.bin.0123456789abcdef.part"));
+    }
+
+    /// N-4 của review cuối 04: `keep_part` để file đã đủ và đúng SHA-256 ở `*.part`; lần sau chỉ băm lại, không tải lại.
+    #[test]
+    fn a_kept_part_is_verified_but_not_renamed() {
+        let (_t, server, job, bytes) = setup("keep");
+        let job = FileJob { keep_part: true, ..job };
+        run(&job, &Pause::default(), &mut Vec::new(), &mut Vec::new()).unwrap();
+        assert!(!job.dest.exists());
+        assert_eq!(std::fs::read(job.part()).unwrap(), bytes);
+        run(&job, &Pause::default(), &mut Vec::new(), &mut Vec::new()).unwrap();
+        assert_eq!(server.requests().len(), 1, "phần dở đã đủ thì không tải lại");
     }
 
     /// Rớt mạng giữa chừng: lần thử sau gửi `Range` từ chỗ đã có, không tải lại từ đầu.

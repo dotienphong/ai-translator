@@ -194,6 +194,7 @@ impl Store {
             dest: self.path(&entry.file),
             bytes: entry.bytes,
             sha256: entry.sha256.clone(),
+            keep_part: false,
         }
     }
 

@@ -558,7 +558,8 @@ impl ModelService {
             std::fs::create_dir_all(self.store.dir()).map_err(|_| errors::MODELS_DISK)?;
             for entry in &todo {
                 let file_url = source::file_url(url, entry).ok_or(errors::MODELS_MANIFEST_INVALID)?;
-                let job = self.store.job(entry, file_url);
+                let mut job = self.store.job(entry, file_url);
+                job.keep_part = true;
                 let part = std::fs::metadata(job.part()).map(|m| m.len()).unwrap_or(0);
                 let before = self.lock().job.done_bytes.saturating_sub(part);
                 let mut last = Instant::now();
@@ -585,8 +586,14 @@ impl ModelService {
                         download_code(&e)
                     }
                 })?;
-                self.store.mark_installed(entry).map_err(|_| errors::MODELS_DISK)?;
                 self.lock().job.done_bytes = before + entry.bytes;
+            }
+            // Mọi file đã đủ và đúng SHA-256: giờ mới thay vào chỗ file cũ, để gói không bao giờ là trộn hai bản (một
+            // bản cập nhật tạm dừng hay lỗi giữa chừng thì gói vẫn là bản cũ trọn vẹn; N-4 của review cuối 04).
+            for entry in &todo {
+                std::fs::rename(self.store.part(entry), self.store.path(&entry.file))
+                    .map_err(|_| errors::MODELS_DISK)?;
+                self.store.mark_installed(entry).map_err(|_| errors::MODELS_DISK)?;
             }
             Ok(())
         })();
@@ -1299,6 +1306,48 @@ mod tests {
             view["packs"][1]["complete"], true,
             "gói Nhẹ vừa tải vẫn còn trong danh sách đã tải"
         );
+    }
+
+    /// N-4 của review cuối 04: bản cập nhật đổi hai file của gói đang dùng mà file sau lỗi thì không file nào bị thay
+    /// (gói vẫn là bản cũ trọn vẹn, không trộn hai bản); tải lại thì xong cả hai, file đã đủ không tải lại.
+    #[test]
+    fn an_update_is_installed_only_when_every_file_is_ready() {
+        let h = harness(|_| {});
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        h.wait("done");
+        let asr = h.dir().join("ggml-large-v3-turbo-q5_0.bin");
+        let old_asr = std::fs::read(&asr).unwrap();
+        let mut newer = real_sample();
+        newer["sequence"] = 4.into();
+        for (i, id) in [(0, "whisper-turbo"), (2, "hy-mt2-q8")] {
+            let f = &mut newer["files"][i];
+            f["bytes"] = 2_000.into();
+            let sha = sha2::Sha256::digest(content(id, 2_000));
+            f["sha256"] = sha.iter().map(|b| format!("{b:02x}")).collect::<String>().into();
+        }
+        publish(&h.server, &newer);
+        let mt_url = newer["files"][2]["url"].as_str().unwrap().to_string();
+        h.server.put(&mt_url, &[0u8; 2_000]);
+        h.tick_days(1);
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        h.wait("failed");
+        assert_eq!(
+            std::fs::read(&asr).unwrap(),
+            old_asr,
+            "file đầu đã tải xong nhưng chưa thay"
+        );
+        assert!(
+            h.service().resolve(Some("standard")).is_ok(),
+            "gói vẫn là bản cũ trọn vẹn"
+        );
+        h.server.put(&mt_url, &content("hy-mt2-q8", 2_000));
+        let requests = h.server.requests().len();
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        h.wait("done");
+        assert_eq!(std::fs::read(&asr).unwrap(), content("whisper-turbo", 2_000));
+        assert_eq!(h.server.requests().len(), requests + 1, "chỉ tải lại file còn thiếu");
     }
 
     /// Gói Nhẹ với file nhận dạng lớn hơn (2 000 byte), để tải chậm đủ lâu cho test tạm dừng và bận.
