@@ -55,6 +55,8 @@ pub struct AppStatus {
     /// macOS, nguồn một app: app đã chọn không phát tiếng nữa (đã đóng); phiên vẫn chạy và thử thu lại mỗi 2 giây
     /// (Q-C của review 02 lần 2). Giao diện hiện chỉ báo.
     pub waiting_for_app: bool,
+    /// Đang có gói trả phí còn hạn (spec §2 "Pro"): giao diện mở hay khóa tính năng Pro. Đặt bởi `pro::refresh`.
+    pub pro: bool,
     /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
     /// tới sau sự kiện `app://status` mới hơn).
     pub rev: u64,
@@ -124,6 +126,7 @@ impl AppState {
                 indicators: Indicators::default(),
                 permission_suspected: false,
                 waiting_for_app: false,
+                pro: false,
                 rev: 0,
             }),
             launched_at_login,

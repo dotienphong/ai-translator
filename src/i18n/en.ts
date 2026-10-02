@@ -166,6 +166,7 @@ export const en = {
   "error.vadFailed": "Could not load the speech detector. Please reinstall AI Translator.",
   "error.modelBroken": "The model is damaged. Please download it again.",
   "error.quotaExhausted": "The translation quota has been used up.",
+  "error.proRequired": "This is a Pro feature. Upgrade to a paid plan to use it.",
   "error.unknown": "Something went wrong.",
 } as const;
 

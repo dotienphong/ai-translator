@@ -51,6 +51,9 @@ pub const MODEL_BROKEN: &str = "modelBroken";
 pub const VAD_FAILED: &str = "vadFailed";
 /// Chạm hạn mức (§6.8): phiên dừng với lý do `quota_exhausted`. Kế hoạch 06 thêm thời điểm reset và nút nâng gói.
 pub const QUOTA_EXHAUSTED: &str = "quotaExhausted";
+// Mã lỗi của kế hoạch 03.
+/// Tính năng Pro (lịch sử, xuất file, từ điển thuật ngữ) khi đang ở gói Free (`pro::require`).
+pub const PRO_REQUIRED: &str = "proRequired";
 /// Lỗi bên trong app không thuộc loại nào ở trên (ví dụ một tác vụ nền dừng bất thường).
 pub const UNKNOWN: &str = "unknown";
 
@@ -157,6 +160,7 @@ mod tests {
                 APP_NOT_PLAYING,
                 VAD_FAILED,
                 QUOTA_EXHAUSTED,
+                PRO_REQUIRED,
                 UNKNOWN,
             ]
             .map(String::from),

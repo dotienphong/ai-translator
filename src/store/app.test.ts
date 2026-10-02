@@ -31,6 +31,7 @@ const status: AppStatus = {
   indicators: { lagging: false, noAudio: false, translationUnavailable: false },
   permissionSuspected: false,
   waitingForApp: false,
+  pro: true,
   rev: 1,
 };
 const info: AppInfo = {

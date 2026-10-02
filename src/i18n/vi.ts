@@ -166,5 +166,6 @@ export const vi: Record<MessageKey, string> = {
   "error.vadFailed": "Không nạp được bộ nhận biết tiếng nói. Hãy cài lại AI Translator.",
   "error.modelBroken": "Model bị hỏng. Hãy tải lại model.",
   "error.quotaExhausted": "Đã dùng hết hạn mức dịch.",
+  "error.proRequired": "Đây là tính năng Pro. Nâng cấp lên gói trả phí để dùng.",
   "error.unknown": "Có lỗi xảy ra.",
 };

@@ -3,6 +3,7 @@
 //! phần bên ngoài giả (`FakeDeps`): không chạy tiến trình phụ, không thu âm thật.
 
 use std::ops::ControlFlow;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
@@ -22,6 +23,7 @@ use crate::commands;
 use crate::errors::{self, CommandError};
 use crate::login_item::{AgentStatus, LoginItem, LoginItems};
 use crate::overlay::{OverlaySurface, Surface};
+use crate::pro::{Entitlement, ProGate};
 use crate::session::{Session, SessionDeps};
 use crate::settings::migrate::FileMeta;
 use crate::settings::persist::{SettingsFile, Writer};
@@ -109,6 +111,16 @@ impl LoginItem for FakeLoginItem {
     }
     fn system_status(&self) -> Option<AgentStatus> {
         self.0.lock().unwrap().status
+    }
+}
+
+/// Bản giả của `ProGate`: test bật tắt Pro bằng [`set_pro`]. App giả mặc định là Pro.
+#[derive(Clone)]
+pub struct FakePro(Arc<AtomicBool>);
+
+impl ProGate for FakePro {
+    fn is_pro(&self) -> bool {
+        self.0.load(Ordering::SeqCst)
     }
 }
 
@@ -358,7 +370,8 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
     let system = FakeSystem::default();
     let login = FakeLoginItem::default();
     let file = FakeSettingsFile::default();
-    builder
+    let pro = FakePro(Arc::new(AtomicBool::new(true)));
+    let app = builder
         .manage(AppState::new(
             Settings::defaults(UiLanguage::Vi),
             FileMeta::current(),
@@ -372,10 +385,20 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
         .manage(login)
         .manage(Writer(Box::new(file.clone())))
         .manage(file)
+        .manage(Entitlement(Box::new(pro.clone())))
+        .manage(pro)
         .manage(Session::new(Arc::new(deps)))
         .invoke_handler(commands::handler())
         .build(tauri::generate_context!(test = true))
-        .expect("dựng được app giả")
+        .expect("dựng được app giả");
+    crate::pro::refresh(app.handle());
+    app
+}
+
+/// Đổi gói của app giả: `true` là Pro, `false` là Free.
+pub fn set_pro(app: &tauri::App<MockRuntime>, pro: bool) {
+    app.state::<FakePro>().0.store(pro, Ordering::SeqCst);
+    crate::pro::refresh(app.handle());
 }
 
 /// Giá trị của `key` ở lần ghi file cài đặt gần nhất có khóa đó.

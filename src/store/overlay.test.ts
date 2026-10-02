@@ -98,6 +98,7 @@ const status = (session: AppStatus["session"], rev: number): AppStatus => ({
   indicators: { lagging: false, noAudio: false, translationUnavailable: false },
   permissionSuspected: false,
   waitingForApp: false,
+  pro: true,
   rev,
 });
 
