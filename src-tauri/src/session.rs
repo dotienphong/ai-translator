@@ -36,7 +36,7 @@ use crate::capture::{CaptureEvent, LiveCapture, OnEvent};
 use crate::debug::{DebugLog, DebugSession};
 use crate::errors::{self, CommandError};
 use crate::glossary::{self, ActiveGlossary};
-use crate::settings::{AudioSource, Lang, ModelTier, Settings};
+use crate::settings::{AudioSource, Lang, Settings};
 use crate::sidecar::{self, first_run, integrity};
 use crate::state::{AppState, AppStatus, Loading, SessionStatus};
 use crate::transcript::history;
@@ -694,7 +694,7 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
 
 struct Live {
     manager: Arc<SidecarManager>,
-    tier: Option<ModelTier>,
+    tier: Option<String>,
     vad_model: PathBuf,
 }
 

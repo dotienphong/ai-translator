@@ -7,8 +7,6 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::settings::ModelTier;
-
 /// Target triple lúc build (build.rs đặt).
 pub const TARGET: &str = env!("SIDECAR_TARGET");
 
@@ -64,11 +62,12 @@ pub struct ModelFiles {
     pub vad: PathBuf,
 }
 
-/// File model của một gói (§6.7). Chưa chọn gói (`modelTier` rỗng, kế hoạch 04 đặt) thì dùng gói Chuẩn.
-pub fn model_files(dir: &Path, tier: Option<ModelTier>) -> ModelFiles {
-    let (asr, mt) = match tier.unwrap_or(ModelTier::Standard) {
-        ModelTier::Standard => ("ggml-large-v3-turbo-q5_0.bin", "Hy-MT2-1.8B-Q8_0.gguf"),
-        ModelTier::Lite => ("ggml-small-q5_1.bin", "Hy-MT2-1.8B-Q4_K_M.gguf"),
+/// Bản dev chưa tải gói nào qua manifest: file model của Giai đoạn 0 trong `models/` của repo, theo tên cố định
+/// (§6.7). Gói `lite` dùng bộ của gói Nhẹ, mọi gói khác (kể cả chưa chọn) dùng gói Chuẩn.
+pub fn model_files(dir: &Path, tier: Option<&str>) -> ModelFiles {
+    let (asr, mt) = match tier {
+        Some("lite") => ("ggml-small-q5_1.bin", "Hy-MT2-1.8B-Q4_K_M.gguf"),
+        _ => ("ggml-large-v3-turbo-q5_0.bin", "Hy-MT2-1.8B-Q8_0.gguf"),
     };
     ModelFiles {
         asr: dir.join(asr),
@@ -127,7 +126,7 @@ mod tests {
         let std = model_files(Path::new("/m"), None);
         assert_eq!(std.asr, Path::new("/m/ggml-large-v3-turbo-q5_0.bin"));
         assert_eq!(std.mt, Path::new("/m/Hy-MT2-1.8B-Q8_0.gguf"));
-        let lite = model_files(Path::new("/m"), Some(ModelTier::Lite));
+        let lite = model_files(Path::new("/m"), Some("lite"));
         assert_eq!(lite.asr, Path::new("/m/ggml-small-q5_1.bin"));
         assert_eq!(lite.vad, Path::new("/m/silero_vad_v6.2.3.onnx"));
         assert_eq!(first_missing(&lite), Some(Path::new("/m/ggml-small-q5_1.bin")));

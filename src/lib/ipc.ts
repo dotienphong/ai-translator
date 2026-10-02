@@ -12,7 +12,8 @@ export const LANGS: readonly Lang[] = ["en", "zh", "ja", "ko", "vi"];
 export type AudioSource = { kind: "system" } | { kind: "device"; id: string } | { kind: "app"; bundleId: string };
 export type Theme = "system" | "light" | "dark";
 export type UpdateChannel = "stable" | "beta";
-export type ModelTier = "standard" | "lite";
+// Mã gói model trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest).
+export type ModelTier = string;
 export type HotkeyAction = "toggleSession" | "toggleOverlay" | "toggleLock";
 export const HOTKEY_ACTIONS: readonly HotkeyAction[] = ["toggleSession", "toggleOverlay", "toggleLock"];
 
@@ -63,8 +64,9 @@ export interface Settings {
 }
 
 // Bản sửa gửi cho `update_settings`. Không có `hotkeys` (dùng `set_hotkey`), `overlay.locked`
-// (dùng `set_overlay_locked`), `overlay.positions`, `overlay.lastMonitor` và `revision` (chỉ phía Rust ghi).
-export type SettingsPatch = Partial<Omit<Settings, "hotkeys" | "overlay" | "experimental" | "revision">> & {
+// (dùng `set_overlay_locked`), `overlay.positions`, `overlay.lastMonitor` và `revision` (chỉ phía Rust ghi), `modelTier`
+// (lệnh của quản lý model).
+export type SettingsPatch = Partial<Omit<Settings, "hotkeys" | "overlay" | "experimental" | "revision" | "modelTier">> & {
   overlay?: Partial<Omit<Settings["overlay"], "locked" | "positions" | "lastMonitor">>;
   experimental?: Partial<Settings["experimental"]>;
 };

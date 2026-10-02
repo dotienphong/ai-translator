@@ -15,13 +15,13 @@ use pipeline::supervisor::{AsrSpec, GiveUpCause, LlamaSpec, SidecarSpec};
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::errors::{self, CommandError};
-use crate::settings::{ModelTier, Settings};
+use crate::settings::Settings;
 
 /// Kết quả chuẩn bị: cách chạy hai tiến trình phụ, cộng những gì app cần nhớ.
 #[derive(Debug)]
 pub struct Prepared {
     pub spec: SidecarSpec,
-    pub tier: Option<ModelTier>,
+    pub tier: Option<String>,
     /// Thư mục tiến trình phụ, và băm của từng file thực thi (theo đường dẫn), cho kiểm lại trước mỗi lần chạy và cho
     /// "lần đầu chạy".
     pub dir: PathBuf,
@@ -165,7 +165,7 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
     } else {
         data.join("models")
     };
-    let models = paths::model_files(&models_dir, settings.model_tier);
+    let models = paths::model_files(&models_dir, settings.model_tier.as_deref());
     if let Some(missing) = paths::first_missing(&models) {
         return Err(CommandError::new(
             errors::MODEL_MISSING,
@@ -200,7 +200,7 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
     };
     Ok(Prepared {
         spec,
-        tier: settings.model_tier,
+        tier: settings.model_tier.clone(),
         dir,
         hashes,
         vad_model: models.vad,

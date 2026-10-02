@@ -51,14 +51,6 @@ pub enum AudioSource {
     App { bundle_id: String },
 }
 
-/// Gói model (§6.7). `None` là chưa chọn; kế hoạch 04 đặt giá trị này.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ModelTier {
-    Standard,
-    Lite,
-}
-
 /// Giao diện sáng/tối (§4.3, nhóm Chung).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -188,7 +180,9 @@ pub struct Settings {
     /// Im lặng bao lâu thì chốt đoạn (§6.3, "Độ nhạy ngắt câu").
     pub vad_end_silence_ms: u32,
     pub overlay: OverlaySettings,
-    pub model_tier: Option<ModelTier>,
+    /// Gói model đang dùng (§6.7): mã gói trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest, Đ7).
+    /// `None` là chưa có gói nào. Chỉ đổi qua lệnh của kế hoạch 04 (gói phải đã tải xong).
+    pub model_tier: Option<String>,
     pub hotkeys: Hotkeys,
     pub save_history: bool,
     pub launch_at_login: bool,
@@ -300,6 +294,15 @@ impl Settings {
         }
         if let Some(key) = &overlay.last_monitor {
             check_id("overlay.lastMonitor", key)?;
+        }
+        if let Some(pack) = &self.model_tier {
+            check_id("modelTier", pack)?;
+            if pack.chars().count() > 32 {
+                return Err(Invalid::new("modelTier", Reason::TooLong));
+            }
+            if !crate::models::manifest::is_id(pack, 32) {
+                return Err(Invalid::new("modelTier", Reason::WrongType));
+            }
         }
         hotkeys::check_all(&self.hotkeys.bindings()).map_err(|(action, error)| {
             let reason = match error {
@@ -528,6 +531,31 @@ mod tests {
             s.overlay.positions.insert(format!("m{i}"), rect);
         }
         rejects(s, "overlay.positions", Reason::TooLong);
+    }
+
+    /// Gói model là mã gói của manifest (Đ7): chữ thường, số, `.`, `_`, `-`, tối đa 32 ký tự.
+    #[test]
+    fn model_tier_is_a_pack_id() {
+        let mut s = valid();
+        for pack in ["standard", "lite", "hybrid-m1"] {
+            s.model_tier = Some(pack.into());
+            assert_eq!(s.validate(), Ok(()), "{pack}");
+        }
+        let mut s = valid();
+        s.model_tier = Some(String::new());
+        rejects(s, "modelTier", Reason::Empty);
+        let mut s = valid();
+        s.model_tier = Some("x".repeat(33));
+        rejects(s, "modelTier", Reason::TooLong);
+        let mut s = valid();
+        s.model_tier = Some("../Standard".into());
+        rejects(s, "modelTier", Reason::WrongType);
+        let value = serde_json::to_value(Settings {
+            model_tier: Some("lite".into()),
+            ..valid()
+        })
+        .unwrap();
+        assert_eq!(value["modelTier"], json!("lite"), "file cài đặt cũ vẫn đọc được");
     }
 
     #[test]

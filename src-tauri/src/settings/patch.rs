@@ -12,13 +12,15 @@ use super::{Invalid, Reason, Settings};
 /// - `hotkeys`: phải đăng ký lại với hệ điều hành (lệnh `set_hotkey`);
 /// - `overlay.locked`: phải đổi cửa sổ sang click xuyên qua (lệnh `set_overlay_locked`);
 /// - `overlay.positions`, `overlay.lastMonitor`: chỉ phía Rust ghi, khi thanh phụ đề di chuyển;
-/// - `revision`: số thứ tự do `AppState` đặt.
+/// - `revision`: số thứ tự do `AppState` đặt;
+/// - `modelTier`: gói phải đã tải xong (lệnh `select_model_pack`, `download_models` của kế hoạch 04).
 const READ_ONLY: &[&str] = &[
     "hotkeys",
     "overlay.locked",
     "overlay.positions",
     "overlay.lastMonitor",
     "revision",
+    "modelTier",
 ];
 
 /// Khóa là object con: bản sửa gửi object con thì ghép theo từng khóa con.
@@ -238,6 +240,10 @@ mod tests {
         assert_eq!(
             apply(&current(), &json!({ "revision": 99 })),
             Err(Invalid::new("revision", Reason::ReadOnly))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "modelTier": "lite" })),
+            Err(Invalid::new("modelTier", Reason::ReadOnly))
         );
     }
 
