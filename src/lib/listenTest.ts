@@ -5,3 +5,14 @@ export function afterListenTestStart(running: boolean, left: boolean): "play" | 
   if (!running) return "none";
   return left ? "stop" : "play";
 }
+
+// Phát câu mẫu. `play()` có thể bị từ chối (file không giải mã được, webview chặn tự phát): khi đó trả `false` để bước
+// dừng phiên thu toàn hệ thống vừa bắt đầu, nếu không nó chạy tới khi người dùng bấm Dừng (N-1 của review cuối 03).
+export async function playSample(audio: { play(): Promise<unknown> }): Promise<boolean> {
+  try {
+    await audio.play();
+    return true;
+  } catch {
+    return false;
+  }
+}

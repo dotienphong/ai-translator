@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { errorKey } from "../../../i18n";
-import { afterListenTestStart } from "../../../lib/listenTest";
+import { afterListenTestStart, playSample } from "../../../lib/listenTest";
 import { appStore, useApp, useT } from "../appStore";
 import { useTranscript } from "../dataStores";
 
@@ -28,6 +28,7 @@ export function ListenTest() {
   // Đã rời bước này (component đã gỡ), kể cả trong lúc chờ `start_listen_test`.
   const left = useRef(false);
   const [played, setPlayed] = useState(false);
+  const [playFailed, setPlayFailed] = useState(false);
   const running = status?.session === "running";
 
   const stop = () => {
@@ -50,6 +51,7 @@ export function ListenTest() {
 
   const play = async () => {
     setPlayed(false);
+    setPlayFailed(false);
     await start();
     // Phiên không chạy (lỗi, thiếu model, đã bấm Hủy): lỗi hiện bên dưới, không phát gì. Đã rời bước trong lúc chờ: dừng
     // phiên vừa bắt đầu.
@@ -58,7 +60,12 @@ export function ListenTest() {
     if (next !== "play" || !audio.current) return;
     ours.current = true;
     audio.current.currentTime = 0;
-    await audio.current.play().catch(() => {});
+    if (!(await playSample(audio.current))) {
+      // Không phát được thì phiên thu toàn hệ thống không có gì để nghe: dừng nó và báo.
+      stop();
+      setPlayFailed(true);
+      return;
+    }
     setPlayed(true);
   };
 
@@ -93,6 +100,7 @@ export function ListenTest() {
         {status?.session === "error" && status.sessionError && (
           <p className="error-text">{t(errorKey(status.sessionError))}</p>
         )}
+        {playFailed && <p className="error-text">{t("onboarding.test.playFailed")}</p>}
       </div>
     </>
   );

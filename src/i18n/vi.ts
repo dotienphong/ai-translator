@@ -186,6 +186,7 @@ export const vi: Record<MessageKey, string> = {
   "onboarding.test.play": "Phát câu mẫu",
   "onboarding.test.ok": "Đã chạy. Bản dịch:",
   "onboarding.test.nothing": "Chưa thấy phụ đề. Kiểm tra loa không bị tắt tiếng rồi thử lại. Trên macOS, hãy cho phép ghi âm thanh hệ thống nếu được hỏi.",
+  "onboarding.test.playFailed": "Không phát được câu mẫu nên đã dừng bước nghe thử. Kiểm tra thiết bị âm thanh rồi thử lại.",
   "onboarding.privacy.title": "Quyền riêng tư",
   "onboarding.privacy.local": "Âm thanh không rời khỏi máy: nhận dạng giọng nói và dịch đều chạy trên máy của bạn.",
   "onboarding.privacy.notify": "Nếu pháp luật hoặc quy định công ty yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp là bạn dùng công cụ dịch.",

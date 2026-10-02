@@ -186,6 +186,7 @@ export const en = {
   "onboarding.test.play": "Play a sample sentence",
   "onboarding.test.ok": "It works. Translation:",
   "onboarding.test.nothing": "No subtitle yet. Check that the speakers are not muted, then try again. On macOS, allow system audio recording if asked.",
+  "onboarding.test.playFailed": "Could not play the sample sentence, so the test was stopped. Check the audio output and try again.",
   "onboarding.privacy.title": "Your privacy",
   "onboarding.privacy.local": "Audio never leaves this computer: speech recognition and translation run entirely on your machine.",
   "onboarding.privacy.notify": "If the law or your company requires it, you are responsible for telling other participants that you use a translation tool.",
