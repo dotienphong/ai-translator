@@ -374,6 +374,34 @@ mod tests {
         assert!(loaded.needs_save());
     }
 
+    /// File của bản trước chưa có màu phụ đề: chữ trắng trên nền đen (§4.3), các khóa khác của nhóm giữ nguyên. Màu
+    /// không có trong bảng màu thì về mặc định.
+    #[test]
+    fn subtitle_colors_default_to_white_on_black() {
+        use crate::settings::{BackgroundColor, TextColor};
+        let raw = object(json!({ "schemaVersion": 1, "overlay": { "fontSize": 30 } }));
+        let loaded = load(raw, defaults());
+        let o = &loaded.settings.overlay;
+        assert_eq!(
+            (o.text_color, o.background, o.font_size),
+            (TextColor::White, BackgroundColor::Black, 30)
+        );
+        let raw = object(json!({
+            "schemaVersion": 1,
+            "overlay": { "textColor": "yellow", "background": "pink" },
+        }));
+        let loaded = load(raw, defaults());
+        let o = &loaded.settings.overlay;
+        assert_eq!(
+            (o.text_color, o.background),
+            (TextColor::Yellow, BackgroundColor::Black)
+        );
+        assert_eq!(loaded.rejected, ["overlay.background"]);
+        let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
+        assert_eq!(entries["overlay"]["textColor"], "yellow");
+        assert_eq!(entries["overlay"]["background"], "black");
+    }
+
     #[test]
     fn swapped_hotkeys_are_kept_together() {
         let raw = object(json!({

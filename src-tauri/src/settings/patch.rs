@@ -159,6 +159,29 @@ mod tests {
         );
     }
 
+    /// Màu chữ và màu nền của phụ đề (§4.3): chỉ nhận màu trong bảng màu có sẵn.
+    #[test]
+    fn subtitle_colors_come_from_the_palette() {
+        use crate::settings::{BackgroundColor, TextColor};
+        let s = apply(
+            &current(),
+            &json!({ "overlay": { "textColor": "lightBlue", "background": "darkPurple" } }),
+        )
+        .unwrap();
+        assert_eq!(
+            (s.overlay.text_color, s.overlay.background),
+            (TextColor::LightBlue, BackgroundColor::DarkPurple)
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "overlay": { "textColor": "#ff00ff" } })),
+            Err(Invalid::new("overlay.textColor", Reason::WrongType))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "overlay": { "background": "white" } })),
+            Err(Invalid::new("overlay.background", Reason::WrongType))
+        );
+    }
+
     #[test]
     fn rejects_wrong_types() {
         assert_eq!(

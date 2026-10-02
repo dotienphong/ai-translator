@@ -8,7 +8,7 @@ use pipeline::engine::Indicators;
 
 use crate::hotkeys::HotkeyAction;
 use crate::settings::migrate::FileMeta;
-use crate::settings::{Settings, UiLanguage};
+use crate::settings::{BackgroundColor, Settings, TextColor, UiLanguage};
 
 /// Trạng thái phiên dịch (§4.3: Sẵn sàng, Đang dịch, Lỗi).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -70,6 +70,8 @@ pub struct OverlayView {
     pub font_size: u32,
     pub lines: u32,
     pub opacity: f64,
+    pub text_color: TextColor,
+    pub background: BackgroundColor,
     pub show_source: bool,
     pub locked: bool,
 }
@@ -82,6 +84,8 @@ impl OverlayView {
             font_size: o.font_size,
             lines: o.lines,
             opacity: o.opacity,
+            text_color: o.text_color,
+            background: o.background,
             show_source: o.show_source,
             locked: o.locked,
         }

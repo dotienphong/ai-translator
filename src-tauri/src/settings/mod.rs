@@ -76,6 +76,31 @@ pub enum UpdateChannel {
     Beta,
 }
 
+/// Màu chữ của phụ đề (§4.3, Cài đặt › Phụ đề), chọn từ bảng màu có sẵn. Mã màu nằm ở giao diện
+/// (`src/lib/subtitleView.ts`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TextColor {
+    #[default]
+    White,
+    Yellow,
+    Green,
+    LightBlue,
+    Orange,
+}
+
+/// Màu nền của thanh phụ đề (§4.3); độ trong suốt của nền là `OverlaySettings::opacity`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BackgroundColor {
+    #[default]
+    Black,
+    DarkGray,
+    Navy,
+    DarkBrown,
+    DarkPurple,
+}
+
 /// Vị trí và kích thước thanh phụ đề trên một màn hình, tính bằng điểm logic so với góc trên
 /// bên trái vùng làm việc của màn hình đó.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -98,6 +123,11 @@ pub struct OverlaySettings {
     pub lines: u32,
     /// Độ mờ của nền, 0 là trong suốt hẳn.
     pub opacity: f64,
+    /// Mặc định chữ trắng trên nền đen (§4.3). File cài đặt của bản trước chưa có hai khóa này thì lấy mặc định.
+    #[serde(default)]
+    pub text_color: TextColor,
+    #[serde(default)]
+    pub background: BackgroundColor,
     pub show_source: bool,
     pub locked: bool,
     /// Vị trí đã nhớ theo từng màn hình, khóa là `overlay::placement::screen_key`.
@@ -203,6 +233,8 @@ impl Settings {
                 font_size: 22,
                 lines: 2,
                 opacity: 0.6,
+                text_color: TextColor::White,
+                background: BackgroundColor::Black,
                 show_source: false,
                 locked: false,
                 positions: BTreeMap::new(),

@@ -281,6 +281,37 @@ fn saved_rect(app: &tauri::App<tauri::test::MockRuntime>) -> Option<(f64, f64, f
     Some((r.x, r.y, r.width, r.height))
 }
 
+/// Đổi màu chữ, màu nền ở Cài đặt › Phụ đề (§4.3): thanh phụ đề thấy ngay qua `overlay://view`. Mặc định chữ trắng trên
+/// nền đen.
+#[test]
+fn subtitle_colors_reach_the_overlay_at_once() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let overlay = window(&app, "overlay");
+    let view = invoke(&overlay, "get_overlay_view", json!({})).unwrap();
+    assert_eq!(
+        (&view["textColor"], &view["background"]),
+        (&json!("white"), &json!("black"))
+    );
+    let views = record(&app, crate::events::OVERLAY_VIEW);
+    invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "overlay": { "textColor": "yellow", "background": "navy" } } }),
+    )
+    .unwrap();
+    let last = views.lock().unwrap().last().cloned().unwrap();
+    assert_eq!(
+        (&last["textColor"], &last["background"]),
+        (&json!("yellow"), &json!("navy"))
+    );
+    let saved = last_saved(&app, "overlay").unwrap();
+    assert_eq!(
+        (&saved["textColor"], &saved["background"]),
+        (&json!("yellow"), &json!("navy"))
+    );
+}
+
 /// Kéo cạnh trên macOS (§4.4): app tự đặt khung theo con trỏ, không nhỏ hơn 320 × 80 điểm; nhả chuột thì nhớ kích thước
 /// mới cho màn hình đó. Thanh đang khóa thì không đổi gì.
 #[test]
