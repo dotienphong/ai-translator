@@ -10,13 +10,17 @@ publish.workspace = true
 name = "meeting_translator_lib"
 
 [build-dependencies]
+# SHA-256 của tiến trình phụ trong `binaries/`, build sẵn vào app (spec §10.2, Đ15 của kế hoạch 00).
+sha2 = "0.11.0"
 tauri-build = { version = "2.7.1", features = [] }
 
 [dependencies]
 keyring-core = "1.0.0"
 log = "0.4.34"
+pipeline = { path = "../crates/pipeline" }
 serde.workspace = true
 serde_json.workspace = true
+sha2 = "0.11.0"
 sys-locale = "0.3.2"
 tauri = { version = "2.12.1", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-autostart = "2.7.0"

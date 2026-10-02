@@ -21,6 +21,7 @@ pub mod quit_guard;
 pub mod security;
 pub mod session_stub;
 pub mod settings;
+pub mod sidecar;
 pub mod state;
 pub mod system;
 pub mod tray;
