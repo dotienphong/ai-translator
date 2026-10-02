@@ -4,7 +4,7 @@
 
 **Mục tiêu:** Làm phần lõi của kế hoạch 04 (mục 2.4 của kế hoạch 00; spec F6, D5, D6, §6.7, §8, §9): manifest `models.json` ký Ed25519 với khóa công khai build sẵn, bộ vector test và script ký cho staging; tải từng file bằng HTTP Range, kiểm SHA-256, thử lại, tạm dừng và tải tiếp; kho model trên máy; cấu hình máy và đề xuất gói theo ngưỡng đọc từ manifest (Đ7); nguồn manifest, chống quay lui, kiểm tối đa mỗi ngày một lần; chỉ theo redirect sang `https`.
 
-Bản này sửa theo review lần 1 (`meeting-translator-work/review-04-r1.md`, Q1–Q5, N1–N11), theo quyết định của chủ dự án ngày 2026-10-02 (mục "Điểm cần chủ dự án quyết"), và dựng lại trên cây cuối của kế hoạch 03 (03 làm trước 04). Mục "Đã sửa theo review lần 1" ở cuối phần đầu file liệt kê từng mục và chỗ sửa.
+Bản này sửa theo review lần 1 (`meeting-translator-work/review-04-r1.md`, Q1–Q5, N1–N11) và lần 2 (`review-04-r2.md`, Q-A, Q-B, N-1–N-13), theo quyết định của chủ dự án ngày 2026-10-02 (mục "Điểm cần chủ dự án quyết"), và dựng trên cây cuối của kế hoạch 03 (03 làm trước 04). Hai mục "Đã sửa theo review lần 1", "Đã sửa theo review lần 2" ở cuối phần đầu file liệt kê từng mục và chỗ sửa.
 
 **Kiến trúc:**
 - Mọi thứ nằm trong module mới `src-tauri/src/models/` (§12 ghi `models/{manifest,download,store}.rs`; 04 thêm `signed.rs`, `machine.rs`, `recommend.rs`, `source.rs`, rồi ở 04b `service.rs`, `commands.rs`). Mỗi file một việc và có test riêng, không cần mở cửa sổ.
@@ -34,7 +34,7 @@ Kiểm bằng `cargo info` và API của crates.io (bản ổn định mới nh�
 |---|---|---|---|
 | ed25519-dalek | 3.0.0 (`default-features = false`) | app (`models/signed.rs`) | Bản ổn định mới nhất (2026-07-06), BSD-3-Clause (có trong `deny.toml`), MSRV 1.85. Kéo `curve25519-dalek` 5.0.0, `ed25519` 3.0.0, `signature`, `subtle`, `fiat-crypto`: thuần Rust. Chỉ dùng để kiểm chữ ký (`verify_strict`); test dùng `SigningKey` với khóa test |
 | base64 | 0.23.1 | app | Bản mới nhất (2026-08-04), MIT OR Apache-2.0, MSRV 1.71. Cùng bản `reqwest` đang kéo vào. `URL_SAFE_NO_PAD` từ chối đệm và bit thừa (dạng không chuẩn) |
-| reqwest | 0.13.5 (đã có ở `pipeline`); app bật `blocking`, `native-tls`, `system-proxy`, `default-features = false` | app | Chính sách redirect riêng: chỉ theo sang `https`, tối đa 5 bước (Q1 của review lần 1). TLS của hệ điều hành qua `native-tls` 0.2.18 (2026-02-18; Security.framework 3.7.0 trên macOS, SChannel 0.1.29 trên Windows): nhận chứng chỉ gốc cài trong máy (proxy công ty, A7), không thêm thư viện C nào vào tiến trình chính. `openssl*` chỉ xuất hiện trong `Cargo.lock` cho Linux, không có trong cây của `aarch64-apple-darwin` hay `x86_64-pc-windows-msvc` (`cargo tree --target … -i openssl-sys` không in gì). `system-proxy` đọc proxy của hệ thống (`system-configuration` 0.7.0 trên macOS). Client của `llama-server` vẫn `.no_proxy()` như 02 |
+| reqwest | 0.13.5 (đã có ở `pipeline`); app bật `blocking`, `native-tls`, `system-proxy`, `default-features = false` | app | Chính sách redirect riêng: chỉ theo sang `https`, tối đa 5 bước (Q1 của review lần 1). TLS của hệ điều hành qua `native-tls` 0.2.18 (2026-02-18; Security.framework 3.7.0 trên macOS, SChannel 0.1.29 trên Windows): nhận chứng chỉ gốc cài trong máy (proxy công ty, A7), không thêm thư viện C nào vào tiến trình chính. 04 không kéo `openssl-sys`: `native-tls` dùng Security.framework trên macOS và SChannel trên Windows, `openssl` chỉ có cho Linux. `cargo tree -p meeting-translator --target aarch64-apple-darwin -i openssl-sys` không in gì; trên `x86_64-pc-windows-msvc` lệnh đó chỉ in nhánh `libsqlite3-sys` → `rusqlite` (SQLCipher tĩnh của 03), không có nhánh nào qua `native-tls` (N-4 của review lần 2). `system-proxy` đọc proxy của hệ thống (`system-configuration` 0.7.0 trên macOS). Client của `llama-server` vẫn `.no_proxy()` như 02 |
 | libc | 0.2.189 | app (khai ở nhóm chung, chỉ dùng trên macOS) | Cùng bản `pipeline`; `sysctlbyname("hw.memsize")`, `statfs`. Khai ở cuối nhóm `[dependencies]` cùng các crate khác của 04, để khối `diff` không lấy dòng phiên bản của crate khác làm ngữ cảnh; `libc` biên dịch được trên Windows |
 | windows | 0.62.2, thêm `Win32_Storage_FileSystem`, `Win32_System_SystemInformation` | app, chỉ Windows | Cùng bản đang dùng; `GlobalMemoryStatusEx`, `GetDiskFreeSpaceExW`. Kiểm bằng `./scripts/check-windows.sh` |
 | sha2 | 0.11.0 (đã có) | app | SHA-256 khi tải và khi băm lại |
@@ -49,7 +49,7 @@ Như mục "Cách đọc kế hoạch này" của 02a, cộng các điểm riên
 - **Khối `diff` dựng trên cây cuối của 03 và có dòng `index` đầy đủ** (`git diff --full-index`). Khi `main` đúng là cây đó, mọi khối áp thẳng bằng `git apply`. Phụ thuộc mới của 04 nằm ở cuối nhóm `[dependencies]` của `src-tauri/Cargo.toml`, nên không khối `diff` nào lấy dòng phiên bản của crate khác làm ngữ cảnh. Với các file mà kế hoạch khác hay sửa (`lib.rs`, `commands.rs`, `i18n`…), khối `diff` chỉ lấy một dòng ngữ cảnh.
 - **Nếu `main` khác cây cuối của 03** (03 có sửa lúc thực thi, hay một kế hoạch khác đã vào trước): trước Task 1, lấy về các blob của chuỗi tham chiếu để `--3way` có bản gốc: `git fetch /Users/dtphong/Desktop/software_business/meeting-translator-work/p04-repo ref` (chỉ lấy object, không tạo nhánh). Khối nào `git apply --check` lỗi thì áp bằng `git apply --3way`, gộp marker giữ phần của cả hai bên (mục "Nối với kế hoạch 03" ghi các chỗ 04 đã gộp với 03), `git add` file đó, và ghi chỗ lệch vào mục "Kết quả thử" của 04b. Khối không lỗi `--check` thì áp như thường; lỗi cả `--3way` thì dừng và báo.
 - **`node_modules`.** Worktree mới thì chạy `pnpm install --frozen-lockfile` một lần trước Task 7 (lần `pnpm build` đầu tiên); repo chính đã có sẵn (N11 của review lần 1).
-- **Khối Expected.** Là output thật của một lần chạy lại toàn bộ kế hoạch trên worktree sạch dựng từ cây cuối của 03 (`f30491f`), ngày 2026-10-02. Thời gian (`finished in …`) sẽ khác; số test và tên lỗi phải giống. Lệnh có `grep` hay `head` thì Expected là phần đã lọc. Số test là số lúc lập kế hoạch: nếu `main` có thêm commit ngoài 03 thì số test tổng (`cargo test -p meeting-translator --lib` không lọc, `pnpm test`) có thể lớn hơn; số của lệnh có bộ lọc `models::…` vẫn phải giống.
+- **Khối Expected.** Là output thật của một lần chạy lại toàn bộ kế hoạch trên worktree sạch dựng từ cây cuối của 03 (`f30491f`), ngày 2026-10-03. Thời gian (`finished in …`) sẽ khác; số test và tên lỗi phải giống. Lệnh có `grep` hay `head` thì Expected là phần đã lọc. Số test là số lúc lập kế hoạch: nếu `main` có thêm commit ngoài 03 thì số test tổng (`cargo test -p meeting-translator --lib` không lọc, `pnpm test`) có thể lớn hơn; số của lệnh có bộ lọc `models::…` vẫn phải giống.
 - **Chuỗi commit tham chiếu.** Repo `meeting-translator-work/p04-repo` (ngoài repo chính), nhánh `ref`: mỗi task một commit, đúng như kế hoạch này tạo ra. So cây sau mỗi task bằng `git diff <commit tham chiếu> -- <đường dẫn>`.
 - **Đĩa.** Kiểm `df -h /` trước Task 1 và trước kiểm tra chuẩn; dưới 6 GiB thì dừng và báo. Sau `./scripts/check-windows.sh`, xóa `target/x86_64-pc-windows-msvc` (khoảng 0,3 GiB) nếu đĩa chật.
 - **Không bật hộp thoại quyền** (mục 6.8 của kế hoạch 00): không task nào mở app hay System Settings. Test dùng server HTTP giả trên `127.0.0.1` (có thể hiện hộp thoại tường lửa trên Windows lần đầu; trên Mac thì không).
@@ -59,17 +59,17 @@ Như mục "Cách đọc kế hoạch này" của 02a, cộng các điểm riên
 
 | Task | Commit tham chiếu (`p04-repo`, nhánh `ref`) | Nội dung |
 |---|---|---|
-| 1 | `8cc18de` | feat(models): manifest model, kiểu và kiểm phần thân |
-| 2 | `c53cdbd` | feat(models): phong bì ký Ed25519, khóa build sẵn, vector và script ký staging |
-| 3 | `8d1d9d3` | feat(models): tải một file model bằng HTTP Range, kiểm SHA-256, thử lại và tạm dừng |
-| 4 | `8320331` | feat(models): kho model trên máy: đã tải, kiểm kích thước, băm lại, xóa, dọn |
-| 5 | `617c6a3` | feat(models): cấu hình máy và đề xuất gói theo ngưỡng của manifest; --probe giữ danh sách GPU |
-| 6 | `be675a0` | feat(models): nguồn manifest: URL theo bản, tải và kiểm, chống quay lui, kiểm mỗi ngày một lần |
-| 7 | `6730711` | feat(settings): modelTier là mã gói của manifest, chỉ đổi qua lệnh quản lý model |
-| 8 | `b2fbb1a` | feat(models): dịch vụ model, lệnh và sự kiện models://state: tải gói, tạm dừng, cập nhật, xóa |
-| 9 | `afa3440` | feat(app): phiên dịch lấy model và ngưỡng từ kho model; model hỏng thì băm lại; gói mới dùng từ phiên sau |
-| 10 | `fe6b068` | feat(ui): kiểu, store và chuỗi giao diện của quản lý model |
-| 11 | `8863659` | feat(ui): bước 2–3 của lần đầu mở, Cài đặt › Model, nút Xóa model và dữ liệu, lời mời cập nhật model |
+| 1 | `e2791ce` | feat(models): manifest model, kiểu và kiểm phần thân |
+| 2 | `34f1e37` | feat(models): phong bì ký Ed25519, khóa build sẵn, vector và script ký staging |
+| 3 | `46d3202` | feat(models): tải một file model bằng HTTP Range, kiểm SHA-256, thử lại và tạm dừng |
+| 4 | `0ba04cc` | feat(models): kho model trên máy: đã tải, kiểm kích thước, băm lại, xóa, dọn |
+| 5 | `f7ca610` | feat(models): cấu hình máy và đề xuất gói theo ngưỡng của manifest; --probe giữ danh sách GPU |
+| 6 | `e728fde` | feat(models): nguồn manifest: URL theo bản, tải và kiểm, chống quay lui, kiểm mỗi ngày một lần |
+| 7 | `d6fd08c` | feat(settings): modelTier là mã gói của manifest, chỉ đổi qua lệnh quản lý model |
+| 8 | `8d09fc6` | feat(models): dịch vụ model, lệnh và sự kiện models://state: tải gói, tạm dừng, cập nhật, xóa |
+| 9 | `d388714` | feat(app): phiên dịch lấy model và ngưỡng từ kho model; model hỏng thì băm lại; gói mới dùng từ phiên sau |
+| 10 | `8c619fa` | feat(ui): kiểu, store và chuỗi giao diện của quản lý model |
+| 11 | `986c7c6` | feat(ui): bước 2–3 của lần đầu mở, Cài đặt › Model, nút Xóa model và dữ liệu, lời mời cập nhật model |
 | 12–15 | — | Task 12 kiểm tra chuẩn (không commit); Task 13 (người) và Task 15 commit lúc thực thi; Task 14 đợt Windows |
 
 ## Dòng của bảng đối chiếu
@@ -121,19 +121,20 @@ Ngoài bảng: ghi chú 8 của review cuối 02 (đổi gói lúc đang dịch;
   - `sequence` tăng dần, app từ chối manifest có số nhỏ hơn bản đã nhận, hay cùng số mà khác nội dung (chống phát lại manifest cũ);
   - `pipeline`: ngưỡng của `PipelineConfig` muốn đổi (dòng 338); sai thì giữ mặc định, manifest vẫn dùng được.
   - `url` tương đối so với URL của manifest, hay `https://` đầy đủ. Khóa lạ bị bỏ qua (manifest mới hơn app).
+  - **`id` của file ổn định giữa các bản** (N-8 của review lần 2): kho tìm file đã tải theo `id`, nên bản mới đổi `id` của file `asr`, `mt` hay `vad` làm gói đang dùng thành "chưa tải" ngay, không có lời mời cập nhật. Bản mới chỉ đổi `version`, `file`, `bytes`, `sha256`; `check_manifest_body` (`MANIFEST_PREVIOUS`) và hàm `renamed_ids` bắt lỗi này trước khi ký.
   - Tên file an toàn (N1 của review lần 1): ký tự đầu là chữ hay số, chỉ chữ, số, `.`, `_`, `-`; không kết thúc bằng `.`; không đuôi `.part` hay `.tmp` (file tạm của kho); không trùng `manifest.json`, `installed.json`, `state.json` của kho; không phải tên thiết bị của Windows (`CON`, `NUL.bin`, `COM1`…); hai file không trùng tên kể cả khác hoa thường. `installed.json` đọc lại cũng bỏ bản ghi có tên không an toàn (N2).
   - Spec §6.7 đã sửa theo định dạng này (commit `0edc828`).
 - **QĐ3. `modelTier` là mã gói của manifest** (chuỗi, không còn enum `standard | lite`), để gói thêm bằng manifest dùng được không phát hành lại app (Đ7). File cài đặt cũ vẫn đọc được (`"standard"`, `"lite"`). `modelTier` thành khóa chỉ đọc của `update_settings`; chỉ đổi qua `select_model_pack` (gói phải đã tải) và khi tải xong một gói (04b Task 7–8).
 - **QĐ4. Ngưỡng tính bằng MiB, thấp hơn dung lượng danh nghĩa**, vì hệ điều hành báo ít hơn: máy "16 GB" chạy Windows thường báo khoảng 15,7–15,9 GiB; card RTX 4050 "6 GB" báo heap `DEVICE_LOCAL` 6 128 MiB; máy "8 GB" có GPU tích hợp giữ sẵn 1–2 GB thì `GlobalMemoryStatusEx` báo khoảng 6–7 GiB. Chủ dự án duyệt ngày 2026-10-02: RAM đề xuất gói Chuẩn 15 360 MiB, VRAM gói Chuẩn 5 632 MiB, RAM tối thiểu (`min_ram_mib`) 6 144 MiB. Card dưới ngưỡng (kể cả 4 GB) và GPU tích hợp rơi về `fallback` là gói Nhẹ. Đổi bằng manifest khi có C6, C7. Ghi chú chất lượng của hai gói theo số đo A4 (spec §3.3, §8): gói Chuẩn khoảng 9% lỗi từ tiếng Việt, 4–6% lỗi ký tự tiếng Nhật, Hàn, Trung; gói Nhẹ khoảng 22% lỗi từ tiếng Việt; COMET của hai gói gần ngang (A3).
-- **QĐ5. TLS của hệ điều hành** (`native-tls`) cho manifest và model: nhận chứng chỉ gốc của proxy công ty (A7), không thêm thư viện C. Ghi cho 07: `tauri-plugin-updater` nên dùng cùng TLS (`native-tls`) để không kéo thêm `rustls` với `aws-lc`. **Redirect** (Q1 của review lần 1): chỉ theo sang `https`, tối đa 5 bước; ngoại lệ duy nhất là chuỗi bắt đầu ở `http` tới máy này (server giả của test, `AT_MODELS_URL` của bản dev) thì được đi tiếp `http` tới máy này. Manifest có chữ ký và file có SHA-256 nên redirect xấu không đổi được nội dung, nhưng không để lộ app đang tải gì hay bị chèn dữ liệu rác qua `http`.
+- **QĐ5. TLS của hệ điều hành** (`native-tls`) cho manifest và model: nhận chứng chỉ gốc của proxy công ty (A7), không thêm thư viện C. Ghi cho 07: `tauri-plugin-updater` nên dùng cùng TLS (`native-tls`) để không kéo thêm `rustls` với `aws-lc`. **Redirect** (Q1 của review lần 1): chỉ theo sang `https`, tối đa 5 bước như spec §6.7 (`reqwest` tính bước đầu là 1, nên luật là `hops <= 5`; N-3 của review lần 2); ngoại lệ duy nhất là chuỗi bắt đầu ở `http` tới máy này (server giả của test, `AT_MODELS_URL` của bản dev) thì được đi tiếp `http` tới máy này. Manifest có chữ ký và file có SHA-256 nên redirect xấu không đổi được nội dung, nhưng không để lộ app đang tải gì hay bị chèn dữ liệu rác qua `http`.
 - **QĐ6. Thử lại.** Thử lại 3 lần khi lỗi mạng, lỗi HTTP hay sai SHA-256, chờ 1, 5, 15 giây (§9). Rớt mạng mà phần dở dài hơn mọi lần trước thì đếm lại từ đầu, để mạng chập chờn không làm bỏ cuộc giữa file 2 GB; server bỏ qua `Range` rồi rớt ở cùng một chỗ thì không tính là tiến, nên không thử lại mãi (N4 của review lần 1). Hết lượt thì giữ phần dở, người dùng bấm Tiếp tục. Tạm dừng có tác dụng sau lần chờ server đang dở (tối đa 30 giây mỗi lần đọc, N10).
 - **QĐ7. File tạm tên theo SHA-256** (`<file>.<16 hex đầu>.part`): bản mới của một file không tải tiếp trên phần dở của bản cũ. Trạng thái băm giữ qua các lần thử, nên rớt mạng không phải băm lại phần đã có.
-- **QĐ8. Máy chưa được hỗ trợ thì không tải được model** (chủ dự án quyết 2026-10-02, đổi so với bản trước): RAM dưới `min_ram_mib` của manifest, hay CPU x86_64 không có AVX2 (Đ13); ổ không đủ chỗ (phần còn phải tải cộng 1 GB) cũng không tải được. Giao diện báo lý do và cấu hình tối thiểu, khóa nút tải; phía Rust cũng từ chối lệnh tải (`modelsUnsupported`, `modelsNoSpace`). AVX2 kiểm trong app (bản build cần nó), không qua manifest. Bản dev chạy bằng `models/` của repo (QĐ11) vẫn chạy như cũ.
+- **QĐ8. Máy chưa được hỗ trợ thì không tải được model** (chủ dự án quyết 2026-10-02, đổi so với bản trước): RAM dưới `min_ram_mib` của manifest, hay CPU x86_64 không có AVX2 (Đ13); ổ không đủ chỗ (phần còn phải tải cộng 1 GB) cũng không tải được. Giao diện báo lý do và cấu hình tối thiểu, khóa nút tải; phía Rust cũng từ chối lệnh tải (`modelsUnsupported`, `modelsNoSpace`). AVX2 kiểm trong app (bản build cần nó), không qua manifest. Dung lượng trống trên macOS đo bằng `statfs.f_bavail`, không tính phần "purgeable" mà Finder có tính, nên app có thể báo ít hơn Finder; 04b Task 13 Step 7 so hai số trên máy có iCloud Drive, nếu chặn nhầm thì đổi sang `NSURLVolumeAvailableCapacityForImportantUsageKey` (N-11 của review lần 2). Bản dev chạy bằng `models/` của repo (QĐ11) vẫn chạy như cũ.
 - **QĐ9. Kiểm manifest** khi app khởi động (luồng nền) và khi mở bước 2 hay Cài đặt › Model, cùng một luật: chưa có manifest nào, hoặc đã quá 24 giờ từ lần kiểm thành công gần nhất, hoặc giờ máy lùi về trước lần đó. Lỗi mạng không xóa bản đang có.
-- **QĐ10. Khóa và URL theo loại bản.** Bản dev (`tauri::is_dev()`) chỉ nhận khối `staging` của `src-tauri/keys/manifest-public-keys.json` và URL staging (biến môi trường `AT_MODELS_URL` đè được, cho phép `http` tới `127.0.0.1`); bản phát hành chỉ nhận khối `production` và `PRODUCTION_URL`. Lúc lập kế hoạch cả hai khối khóa rỗng và cả hai URL là `None`: 04b Task 13 (người) thêm khóa và URL staging; 07 thêm khóa và URL production. Khóa riêng staging là file JWK quyền 0600 ngoài repo, kid `stg-…` (Đ8); script từ chối đường dẫn trong repo và kid khác `stg-`. **Q17 (chủ dự án quyết 2026-10-02):** production chỉ có **một** khóa ký manifest (và một khóa ký bản cập nhật), trong secret của CI, kèm bản sao offline mã hóa bằng passphrase; app nhúng một khóa công khai production, định dạng vẫn có `kid` để bản app sau đổi khóa. Việc tạo khóa và bản sao thuộc 07 (kế hoạch 00, mục 2.7).
+- **QĐ10. Khóa và URL theo loại bản.** Bản dev (`tauri::is_dev()`) chỉ nhận khối `staging` của `src-tauri/keys/manifest-public-keys.json` và URL staging (biến môi trường `AT_MODELS_URL` đè được, cho phép `http` tới `127.0.0.1`); bản phát hành chỉ nhận khối `production` và `PRODUCTION_URL`. Lúc lập kế hoạch cả hai khối khóa rỗng và cả hai URL là `None`: 04b Task 13 (người) thêm khóa và URL staging; 07 thêm khóa và URL production. Khóa riêng staging là file JWK quyền 0600 ngoài repo, kid `stg-…` (Đ8); script từ chối đường dẫn trong repo và kid khác `stg-`. **Q17 (chủ dự án quyết 2026-10-02):** production chỉ có **một** khóa ký manifest (và một khóa ký bản cập nhật), trong secret của CI, kèm bản sao offline mã hóa bằng passphrase; app nhúng một khóa công khai production, định dạng vẫn có `kid` để bản app sau đổi khóa. **Đổi khóa** (controller thống nhất với Q17, 2026-10-03): đổi có kế hoạch thì một bản phát hành tin cả `kid` cũ lẫn `kid` mới, bản sau bỏ `kid` cũ; lộ khóa thì bản app mới chỉ tin `kid` mới ngay, `kid` đã lộ bị gỡ khỏi app. Mốc chống quay lui không phụ thuộc việc giữ `kid` cũ (N-7 của review lần 2). Việc tạo khóa và bản sao thuộc 07 (kế hoạch 00, mục 2.7).
 - **QĐ11. Bản dev chưa tải gói nào qua manifest** thì vẫn chạy bằng file của Giai đoạn 0 trong `models/` của repo như 02 (04b Task 9).
 - **QĐ12. NOTICE của sản phẩm.** Hy-MT2 không có file NOTICE; `scripts/models/NOTICE.txt` ghi nguồn, bản và giấy phép của từng model, và ghi rõ không sửa đổi. LICENSE của Whisper, whisper.cpp, Silero VAD lấy từ tag cố định khi dựng bucket (04b Task 13).
-- **QĐ13 – QĐ21:** phần nối vào app, ở mục "Quyết định" của 04b.
+- **QĐ13 – QĐ23:** phần nối vào app, ở mục "Quyết định" của 04b.
 
 ## Điểm cần chủ dự án quyết
 
@@ -143,7 +144,7 @@ Ngoài bảng: ghi chú 8 của review cuối 02 (đổi gói lúc đang dịch;
 3. **Máy chưa được hỗ trợ thì không cho tải model** (QĐ8): RAM dưới `min_ram_mib`, x86_64 không có AVX2, ổ không đủ chỗ. Giao diện báo lý do và cấu hình tối thiểu, khóa nút tải; phía Rust từ chối lệnh tải. Có test.
 4. **"Xóa model và dữ liệu" không đưa app về lần đầu mở** (04b QĐ18).
 5. **Tên file `2026-10-02`:** đồng ý.
-6. **Q17:** mỗi loại một khóa (ký manifest, ký bản cập nhật) trong secret của CI, kèm bản sao offline mã hóa bằng passphrase (USB, passphrase in ra giấy). Lộ khóa thì ra bản app mới có khóa công khai mới. Không làm hai khóa A/B. App nhúng một khóa công khai production (QĐ10). Việc tạo khóa ghi cho 07.
+6. **Q17:** mỗi loại một khóa (ký manifest, ký bản cập nhật) trong secret của CI, kèm bản sao offline mã hóa bằng passphrase (USB, passphrase in ra giấy). Lộ khóa thì ra bản app mới chỉ tin khóa công khai mới (khóa đã lộ bị gỡ khỏi app); đổi khóa có kế hoạch thì một bản phát hành tin cả hai `kid` (controller thống nhất 2026-10-03, QĐ10). Không làm hai khóa A/B. App nhúng một khóa công khai production. Việc tạo khóa ghi cho 07.
 
 **Còn cần chủ dự án duyệt:**
 1. **Chữ ghi chú chất lượng của hai gói** trong `scripts/models/models.config.json` (bản nháp theo số đo A4, QĐ4).
@@ -196,17 +197,18 @@ File 04 sửa mà kế hoạch sau (06, 07) có thể cũng sửa:
 Script ngoài repo `meeting-translator-work/p04-mut4/mut4.py`, chạy trên cây cuối của 04 (đã dựng trên 03). Mỗi mutation sửa một chỗ, chạy test lọc theo module (`cargo test -p meeting-translator --lib -- …`, hay vitest cho file của store), rồi trả code về; test treo quá 15 phút tính là bị giết. Helper `run` của test tải (Task 3) dừng việc tải sau 50 lần chờ thử lại, nên code thử lại mãi (D4) làm test đỏ chứ không treo. Gồm:
 - mutation của tác giả lượt trước (`p04-mut/mut.py`), kể cả các chỗ sửa theo review lần 1 (Q1, N1–N4, N7, máy chưa hỗ trợ);
 - 24 mutation của người review lần 1 (`r04r1/mut.py`, R01–R24), đổi R09, R10, R11 theo code mới (cờ tạm dừng xóa trước khi phát trạng thái; tắt tiến trình phụ ở luồng tải; chặn lần chạy sẵn khi phiên đang bắt đầu hay đang chạy), và R05b, V8, V9 cho các lệnh khác bị chặn lúc đang tải hay đang dịch;
-- mutation cho phần nối với 03: W1 ("Xóa model và dữ liệu" không gọi `data::clear_all_data`), W2 (không báo cửa sổ chính bỏ dữ liệu đang hiện), P1 (lần chuẩn bị không xét gói), P3 (`engine_config` bỏ ngưỡng của manifest).
+- mutation cho phần nối với 03: W1 ("Xóa model và dữ liệu" không gọi `data::clear_all_data`), W2 (không báo cửa sổ chính bỏ dữ liệu đang hiện), P3 (`engine_config` bỏ ngưỡng của manifest);
+- mutation cho từng chỗ sửa theo review lần 2: QA1–QA4 (luật "đang đụng gói đang dùng" ở lần bắt đầu phiên, lần chạy sẵn, lần tắt tiến trình phụ), QB1–QB2 (khóa của bộ tiến trình phụ), N3m (redirect 5 bước), N8m (đổi `id`), N9m (chờ lần chạy sẵn), N10a–N10c (xóa, kiểm dưới khóa), N12m (Windows chưa dò GPU); R21 viết lại có `use Verifier` (nay biên dịch được), R23 nay có test thân manifest dài vô hạn; R02–R05, V7 theo `begin_work`.
 
 Bỏ hai mutation của bộ tắt khi rảnh (I1, I2) của lượt trước: phần đó nay do 03 làm (03a Task 12), có mutation riêng của 03.
 
-Kết quả (log `p04-mut4/mut4-final.log`): 74 mutation, 70 bị giết, 3 tương đương (đổi code mà hành vi không đổi), 1 không áp dụng (R21, không biên dịch được). Không còn mutation nào sống. Trong ngoặc là test đỏ đầu tiên:
+Kết quả (log `p04-mut4/mut4-final-r3.log`): 83 mutation, 81 bị giết, 2 tương đương (đổi code mà hành vi không đổi: R15, R05b; người review lần 2 đồng ý). Không còn mutation nào sống. Trong ngoặc là test đỏ đầu tiên:
 
 ```text
-S1 bỏ kiểm chữ ký: bị giết (vectors_verify_as_expected)
+S1 bỏ kiểm chữ ký: bị giết (a_small_order_key_never_verifies, vectors_verify_as_expected)
 S2 ký không tiền tố: bị giết (vectors_verify_as_expected)
 S3 nhận khóa lạ trong phong bì: bị giết (vectors_verify_as_expected)
-R21 dùng verify thay verify_strict: không biên dịch được (`default-features = false` không có `verify`): không áp dụng
+R21 dùng verify thay verify_strict: bị giết (a_small_order_key_never_verifies)
 R22 kid chữ hoa: bị giết (vectors_verify_as_expected)
 F1 bỏ kiểm sha256 hex: bị giết (rejects_bad_files)
 F2 cho url http: bị giết (rejects_bad_files)
@@ -224,13 +226,14 @@ D5 thử lại 2 lần: bị giết (http_errors_are_retried_three_times, more_b
 D6 không chặn gửi quá: bị giết (more_bytes_than_the_manifest_says_is_an_error)
 D7 200 không ghi lại từ đầu: bị giết (a_server_ignoring_range_restarts_from_zero, restarting_and_dropping_at_the_same_place_is_not_progress)
 Q1 theo redirect sang http: bị giết (redirects_never_downgrade_to_http, a_redirect_to_http_elsewhere_is_refused)
+N3m redirect tối đa 4 bước: bị giết (redirects_never_downgrade_to_http)
 Q1b không đặt chính sách redirect: bị giết (a_redirect_to_http_elsewhere_is_refused)
 R14 416 không xóa phần dở: bị giết (range_not_satisfiable_restarts_from_zero)
 R15 phần dở dài hơn file không cắt: tương đương: phần dở dài hơn file thì SHA-256 sai, file bị xóa rồi tải lại (người review lần 1 cũng ghi vậy)
 T1 resolve bỏ kiểm kích thước: bị giết (resolve_checks_presence_and_size)
 T2 xóa gói không giữ file dùng chung: bị giết (deleting_a_pack_keeps_files_shared_with_another)
 T3 verify_pack không xóa khỏi danh sách: bị giết (verify_pack_drops_files_with_a_wrong_sha256)
-T4 cập nhật vẫn tính complete: bị giết (an_update_is_offered_not_downloaded, an_update_with_a_new_file_name_removes_the_old_file)
+T4 cập nhật vẫn tính complete: bị giết (an_update_with_a_new_file_name_removes_the_old_file, an_update_is_offered_not_downloaded)
 N2 installed không lọc tên: bị giết (state_round_trips_and_survives_garbage)
 R16 dọn file xóa cả phần dở đang tải: bị giết (cleanup_removes_old_versions_and_stale_parts)
 R19 kho bỏ kiểm kích thước khi xem đã tải: bị giết (pack_status_follows_installed_files)
@@ -243,7 +246,7 @@ C2 nhận manifest cũ hơn: bị giết (a_bad_or_older_manifest_is_refused_and
 R20 cùng sequence khác nội dung vẫn nhận: bị giết (older_or_conflicting_manifests_are_refused)
 C3 http tới máy khác: bị giết (dev_builds_read_staging_or_the_env_and_release_builds_production)
 R13 file http tới máy khác khi manifest ở loopback: bị giết (file_urls_resolve_against_the_manifest)
-R23 manifest quá 1 MiB khi tải: tương đương: `signed::verify` vẫn từ chối manifest quá 1 MiB, chỉ khác bộ nhớ dùng lúc đọc
+R23 manifest quá 1 MiB khi tải: bị giết (an_endless_manifest_is_cut_after_one_mebibyte)
 G1 modelTier sửa được qua update_settings: bị giết (downloading_a_pack_makes_it_the_pack_in_use)
 G2 bỏ kiểm mã gói: bị giết (model_tier_is_a_pack_id)
 V1 bỏ kiểm dung lượng trống: bị giết (a_download_needs_free_space_plus_one_gigabyte, packs_that_do_not_fit_on_disk_are_marked)
@@ -253,30 +256,38 @@ V3 cập nhật đè gói đang dịch: bị giết (the_pack_in_use_is_not_repl
 V4 tải xong không chọn gói: bị giết (a_failed_download_can_be_resumed, a_broken_model_is_found_by_hashing_again)
 V5 xóa hết không bỏ gói: bị giết (deleting_packs_and_everything)
 V6 lỗi tải manifest xóa bản cũ: bị giết (a_bad_or_older_manifest_is_refused_and_the_old_one_kept)
-V7 verify không bỏ file hỏng: bị giết (verifying_keeps_good_files_and_drops_broken_ones)
 N3 xóa hết không giữ manifest: bị giết (deleting_packs_and_everything)
 U1 máy chưa hỗ trợ vẫn tải: bị giết (an_unsupported_machine_cannot_download)
 U2 không báo thiếu chỗ cho từng gói: bị giết (packs_that_do_not_fit_on_disk_are_marked)
 R01 resolve bỏ chặn khi đang tải bản cập nhật: bị giết (updating_the_pack_in_use_blocks_sessions_and_releases_models)
-R02 cho hai lệnh tải chạy cùng lúc: bị giết (nothing_else_runs_while_downloading)
-R03 xóa gói đang dịch: bị giết (the_pack_in_use_is_not_replaced_during_a_session)
-R04 xóa gói trong lúc đang tải: bị giết (nothing_else_runs_while_downloading)
-R05 xóa hết trong lúc đang tải: bị giết (nothing_else_runs_while_downloading)
 R05b tạm dừng khi không tải vẫn đặt cờ: tương đương: `download` xóa cờ tạm dừng trước khi chạy (R09), nên cờ đặt lúc không tải không có tác dụng
-V8 kiểm gói trong lúc dịch bằng gói đó: bị giết (the_pack_in_use_is_not_replaced_during_a_session)
-V9 kiểm gói trong lúc đang tải: bị giết (nothing_else_runs_while_downloading)
+V7 verify không bỏ file hỏng: bị giết (verifying_keeps_good_files_and_drops_broken_ones)
+R02 cho hai lệnh tải chạy cùng lúc: bị giết (nothing_else_runs_while_downloading)
+N10c tải trong lúc đang xóa hay kiểm: bị giết (deleting_blocks_sessions_and_downloads_until_done)
+R03 xóa hay kiểm gói đang dịch: bị giết (the_pack_in_use_is_not_replaced_during_a_session)
+R04 xóa hay kiểm trong lúc đang tải: bị giết (nothing_else_runs_while_downloading)
 R06 select gói chưa tải: bị giết (downloading_a_pack_makes_it_the_pack_in_use)
 R07 tải gói cần app mới hơn: bị giết (a_pack_for_a_newer_app_is_refused)
 R09 tiếp tục sau tạm dừng không xóa cờ: bị giết (pause_then_resume_continues_with_range)
-R10 không tắt tiến trình phụ trước khi tải đè: bị giết (updating_the_pack_in_use_blocks_sessions_and_releases_models)
+R10 không tắt tiến trình phụ trước khi tải đè: bị giết (updating_the_pack_in_use_blocks_sessions_and_releases_models, an_update_waits_for_a_prewarm_in_progress_and_stops_new_ones)
 R24 tải xong không dọn bản cũ: bị giết (an_update_with_a_new_file_name_removes_the_old_file)
 W1 xóa model và dữ liệu không xóa dữ liệu: bị giết (deleting_packs_and_everything)
 P2 không băm lại khi model hỏng: bị giết (a_session_failing_on_a_broken_model_hashes_the_pack_again)
 P3 ngưỡng manifest bị bỏ: bị giết (the_engine_follows_the_language_and_pause_settings)
 R11 prewarm chạy cả lúc phiên đang bắt đầu: bị giết (prewarm_does_nothing_while_a_session_starts_or_runs)
 R11b prewarm chạy cả lúc đang dịch: bị giết (prewarm_does_nothing_while_a_session_starts_or_runs)
-P1 lần chuẩn bị không xét gói: bị giết (sidecars_are_reused_only_for_the_same_pack)
+QB1 dùng lại bộ tiến trình phụ chỉ theo mã gói: bị giết (sidecars_are_reused_only_for_the_same_pack_files_and_thresholds)
+QB2 không bao giờ dựng lại bộ tiến trình phụ: bị giết (sidecars_are_reused_only_for_the_same_pack_files_and_thresholds)
+QA1 bắt đầu phiên không xét việc đang đụng gói đang dùng: bị giết (updating_the_pack_in_use_blocks_sessions_and_releases_models, deleting_blocks_sessions_and_downloads_until_done)
+QA2 lần chạy sẵn không xét việc đang đụng gói đang dùng: bị giết (an_update_waits_for_a_prewarm_in_progress_and_stops_new_ones)
+QA3 tắt tiến trình phụ không chờ lần chạy sẵn: bị giết (an_update_waits_for_a_prewarm_in_progress_and_stops_new_ones)
+QA4 tải đè không tính là đụng gói đang dùng: bị giết (updating_the_pack_in_use_blocks_sessions_and_releases_models, an_update_waits_for_a_prewarm_in_progress_and_stops_new_ones)
+N9m bắt đầu phiên không chờ lần chạy sẵn: bị giết (a_start_waits_for_a_prewarm_in_progress)
+N10a xóa, kiểm không đặt trạng thái: bị giết (deleting_blocks_sessions_and_downloads_until_done)
+N10b việc xóa gói đang dùng không chặn phiên: bị giết (deleting_blocks_sessions_and_downloads_until_done)
+N8m đổi id không bị báo: bị giết (renamed_model_ids_are_reported)
 W2 xóa model và dữ liệu không báo cửa sổ chính bỏ dữ liệu: bị giết (Tests  1 failed | 6 passed (7))
+N12m Windows chưa dò GPU vẫn tự tải gói chọn sẵn: bị giết (Tests  1 failed | 8 passed (9))
 ```
 
 ## Đã sửa theo review lần 1
@@ -303,12 +314,33 @@ W2 xóa model và dữ liệu không báo cửa sổ chính bỏ dữ liệu: b�
 | N1 của review cuối 02 | Do 03 làm (03a Task 12); bỏ khỏi 04. 04 chỉ còn ghi chú 8 (N2 của review cuối 02): Task 7, Task 9 |
 | Ghi chú bàn giao của 03 (`p04-notes-from-03.md`) | Mục "Nối với kế hoạch 03"; Task 8 (`data::clear_all_data`), Task 10–11 (`onDataCleared`, nút trong `PrivacySettings.tsx`) |
 
+
+## Đã sửa theo review lần 2
+
+| Mục | Sửa ở đâu |
+|---|---|
+| Q-A luật "đang tải bản cập nhật thì không bắt đầu phiên" bị bỏ qua khi tiến trình phụ đang chạy; `release_models` không tắt được lần nạp dở | 04b QĐ15, QĐ16. Task 8: `ModelService::begin_session` (đặt `Starting` dưới khóa của dịch vụ, cùng khóa với lúc tải, xóa, kiểm bắt đầu); `session::start_with` (mọi đường bắt đầu phiên) đi qua nó; `prewarm` không chạy khi `busy()`; `release_models` chờ lần chạy sẵn đang nạp xong rồi mới tắt. Task 9: lần chuẩn bị luôn gọi `resolve` (qua `sidecar_key`), kể cả khi tiến trình phụ đang chạy. Test đi qua `toggle_session` và `prewarm` thật (`updating_the_pack_in_use_blocks_sessions_and_releases_models`, `an_update_waits_for_a_prewarm_in_progress_and_stops_new_ones`), đỏ trước khi sửa |
+| Q-B bộ tiến trình phụ giữ đặc tả cũ sau bản cập nhật | 04b QĐ22; Task 9: `sidecar::SidecarKey` (gói, file model, ngưỡng của giám sát và hai tiến trình phụ); `reusable` và điều kiện dựng lại trong `LiveDeps::prepare` so cả khóa này; test `sidecars_are_reused_only_for_the_same_pack_files_and_thresholds` |
+| N-1 R23 không tương đương | Task 6: lỗi giả `Endless`, test `an_endless_manifest_is_cut_after_one_mebibyte`; R23 thành mutation bị giết |
+| N-2 R21 biên dịch được và sống | Task 2: test `a_small_order_key_never_verifies` (khóa bậc nhỏ qua `verify` thường, không qua `verify_strict`); R21 viết lại có `use Verifier` |
+| N-3 redirect tối đa 4 bước | QĐ5; Task 3: `hops <= MAX_REDIRECTS`, test bước 5 được, bước 6 bị từ chối |
+| N-4 câu về `openssl-sys` trên Windows | Bảng "Phiên bản đã chốt", dòng `reqwest` |
+| N-5 `wrangler` chỉ nhận file tới 315 MB | 04b Task 13 Step 5: ba file lớn tải lên bằng `rclone` (S3, nhiều phần) |
+| N-6 test chỉ đúng trên Mac | Task 5: `#[cfg(target_os = "macos")]`, thêm test `cfg(windows)`; 04b Task 14 Step 1 |
+| N-7 "giữ `kid` cũ" mâu thuẫn Q17 | QĐ10, điểm 6 của "Điểm cần chủ dự án quyết"; 04b Task 15; kế hoạch 00 (Q17, mục 2.7); spec §10.2 (commit riêng) |
+| N-8 đổi `id` làm gói đang dùng thành "chưa tải" | QĐ2; Task 1 `renamed_ids`, test `renamed_model_ids_are_reported`; `check_manifest_body` nhận `MANIFEST_PREVIOUS`; 04b Task 13 Step 2; `_note` của `models.config.json` |
+| N-9 hai bộ tiến trình phụ cùng nạp | 04b QĐ15; Task 9: `start_with` chờ lần chạy sẵn đang nạp xong; test `a_start_waits_for_a_prewarm_in_progress` |
+| N-10 xóa, kiểm ngoài khóa | 04b QĐ23; Task 8: `begin_work` đặt `maintenance` dưới khóa; `resolve`, `download`, `begin_session` thấy nó; test `deleting_blocks_sessions_and_downloads_until_done` |
+| N-11 `f_bavail` không tính purgeable | QĐ8; chú thích của `free_disk_bytes`; 04b Task 13 Step 7 so với Finder |
+| N-12 Windows đề xuất trước khi `--probe` xong | 04b QĐ19; Task 10 `shouldAutoDownload(view, chosen, picked)`; Task 11 `DownloadStep` |
+| N-13 chú thích ngược quyết định | Task 5 `recommend.rs` (`Verdict::Unsupported`, `Unsupported::LowRam`) |
+| Proxy PAC/WPAD (mục 10 của review) | 04b Task 13 Step 7, Task 14 Step 6 (thử tay) |
 ---
 
 ## Task 1: Manifest model: kiểu và kiểm phần thân
 
 Dòng 5, 6, 157, 291, 318, 338; QĐ2:
-- `src-tauri/src/models/manifest.rs`: kiểu của phần thân (`Manifest`, `FileEntry`, `Pack`, `Recommend`, `Rule`), đọc và kiểm từng trường, trả tên trường sai đầu tiên; tên file an toàn (N1 của review lần 1); file của một gói, dung lượng gói, gói cần app mới hơn (`min_app_version`), ngưỡng của pipeline theo manifest.
+- `src-tauri/src/models/manifest.rs`: kiểu của phần thân (`Manifest`, `FileEntry`, `Pack`, `Recommend`, `Rule`), đọc và kiểm từng trường, trả tên trường sai đầu tiên; tên file an toàn (N1 của review lần 1); file của một gói, dung lượng gói, gói cần app mới hơn (`min_app_version`), ngưỡng của pipeline theo manifest; `renamed_ids` báo file model đổi `id` giữa hai bản (N-8 của review lần 2).
 - Test dùng manifest mẫu `sample()` (hai gói, VAD và giấy phép dùng chung); test của các task sau dùng lại mẫu này. Test `#[ignore]` `check_manifest_body` kiểm một phần thân thật trước khi ký (04b Task 13, N9).
 - Phụ thuộc mới của 04 đặt ở cuối nhóm `[dependencies]` của app (Q3 của review lần 1).
 
@@ -589,13 +621,24 @@ pub(crate) mod tests {
     }
 
     /// Kiểm phần thân manifest staging trước khi ký và upload (04b Task 13): đọc file ở `MANIFEST_BODY`, kiểm như app
-    /// kiểm, in dung lượng từng gói. Chạy tay:
+    /// kiểm, in dung lượng từng gói. `MANIFEST_PREVIOUS` (nếu có): phần thân của bản đang phát hành; bản mới không được
+    /// đổi `id` của file model (`renamed_ids`). Chạy tay:
     /// `MANIFEST_BODY=<body.json> cargo test -p meeting-translator --lib check_manifest_body -- --ignored --nocapture`
     #[test]
     #[ignore = "chạy tay với MANIFEST_BODY"]
     fn check_manifest_body() {
         let path = std::env::var("MANIFEST_BODY").expect("đặt MANIFEST_BODY");
         let m = Manifest::parse(&std::fs::read(path).unwrap()).unwrap();
+        if let Ok(previous) = std::env::var("MANIFEST_PREVIOUS") {
+            let old = Manifest::parse(&std::fs::read(previous).unwrap()).unwrap();
+            assert!(old.sequence < m.sequence, "sequence phải tăng");
+            let renamed = renamed_ids(&old, &m);
+            assert!(renamed.is_empty(), "đổi id của file model: {renamed:?}");
+            println!(
+                "so với bản trước: sequence {} -> {}, không đổi id",
+                old.sequence, m.sequence
+            );
+        }
         for p in &m.packs {
             println!(
                 "{}: {} file, {} byte",
@@ -605,6 +648,26 @@ pub(crate) mod tests {
             );
         }
         println!("sequence {}", m.sequence);
+    }
+
+    /// N-8 của review 04 lần 2: bản mới đổi `id` của file model thì bị báo; đổi `file`, `version` thì không.
+    #[test]
+    fn renamed_model_ids_are_reported() {
+        let old = parse(&sample()).unwrap();
+        let mut value = sample();
+        value["files"][3]["file"] = json!("Hy-MT2-1.8B-Q4_K_M-v2.gguf");
+        value["files"][3]["version"] = json!("2");
+        assert_eq!(renamed_ids(&old, &parse(&value).unwrap()), Vec::<String>::new());
+        value["files"][3]["id"] = json!("hy-mt2-q4-v2");
+        value["files"][4]["id"] = json!("silero-vad-6.3");
+        assert_eq!(
+            renamed_ids(&old, &parse(&value).unwrap()),
+            [
+                "standard Vad: silero-vad -> silero-vad-6.3",
+                "lite Mt: hy-mt2-q4 -> hy-mt2-q4-v2",
+                "lite Vad: silero-vad -> silero-vad-6.3",
+            ]
+        );
     }
 
     /// Dòng 338 của bảng đối chiếu: ngưỡng của pipeline đổi được bằng manifest; giá trị vô lý thì giữ mặc định.
@@ -630,14 +693,14 @@ Run: `cargo test -p meeting-translator --lib models::manifest 2>&1 | grep -E '^e
 Expected (lúc lập kế hoạch):
 
 ```text
-error: could not compile `meeting-translator` (lib test) due to 16 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 20 previous errors; 1 warning emitted
 error[E0425]: cannot find function `is_safe_file_name` in this scope
+error[E0425]: cannot find function `renamed_ids` in this scope
 error[E0425]: cannot find function `version` in this scope
 error[E0425]: cannot find function, tuple struct or tuple variant `Invalid` in this scope
 error[E0425]: cannot find type `Invalid` in this scope
 error[E0425]: cannot find type `Manifest` in this scope
 error[E0425]: cannot find value `MAX_FILE_BYTES` in this scope
-error[E0433]: cannot find type `Manifest` in this scope
 ```
 
 - [ ] **Step 4: Viết code**
@@ -955,6 +1018,30 @@ impl Manifest {
         }
     }
 }
+
+/// File model (`asr`, `mt`, `vad`) của một gói đổi `id` giữa hai bản manifest. Kho tìm file đã tải theo `id`, nên đổi
+/// `id` làm gói đang dùng thành "chưa tải" ngay khi máy nhận bản mới, và không có lời mời cập nhật (N-8 của review 04
+/// lần 2). Luật cho người soạn manifest: giữ `id` ổn định giữa các bản, chỉ đổi `version`, `file`, `bytes`, `sha256`.
+/// Trả mô tả từng chỗ đổi; `check_manifest_body` chạy hàm này trước khi ký.
+pub fn renamed_ids(old: &Manifest, new: &Manifest) -> Vec<String> {
+    let id = |m: &Manifest, pack: &str, kind: Kind| {
+        m.files_of(pack)
+            .into_iter()
+            .find(|f| f.kind == kind)
+            .map(|f| f.id.clone())
+    };
+    let mut out = Vec::new();
+    for pack in &new.packs {
+        for kind in [Kind::Asr, Kind::Mt, Kind::Vad] {
+            if let (Some(a), Some(b)) = (id(old, &pack.id, kind), id(new, &pack.id, kind))
+                && a != b
+            {
+                out.push(format!("{} {kind:?}: {a} -> {b}", pack.id));
+            }
+        }
+    }
+    out
+}
 ```
 
 - [ ] **Step 5: Chạy test**
@@ -964,7 +1051,7 @@ Run: `cargo test -p meeting-translator --lib models::manifest 2>&1 | grep -E '^t
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 9 passed; 0 failed; 1 ignored; 0 measured; 223 filtered out; finished in 0.01s
+test result: ok. 10 passed; 0 failed; 1 ignored; 0 measured; 223 filtered out; finished in 0.01s
 ```
 
 - [ ] **Step 6: Định dạng, clippy, cargo deny**
@@ -992,7 +1079,7 @@ git commit -q -m "feat(models): manifest model, kiểu và kiểm phần thân (
 ## Task 2: Chữ ký Ed25519, khóa build sẵn, bộ vector và script ký staging
 
 Dòng 107, 157, 158, 162, 224, 228, 258; QĐ1, QĐ10, QĐ12; Đ8:
-- `src-tauri/src/models/signed.rs`: đọc phong bì, kiểm chữ ký bằng khóa công khai build sẵn (`src-tauri/keys/manifest-public-keys.json`, khối theo loại bản), rồi kiểm phần thân.
+- `src-tauri/src/models/signed.rs`: đọc phong bì, kiểm chữ ký bằng khóa công khai build sẵn (`src-tauri/keys/manifest-public-keys.json`, khối theo loại bản), rồi kiểm phần thân. Test khóa bậc nhỏ: chữ ký qua được `verify` thường nhưng không qua `verify_strict` (N-2 của review lần 2).
 - `scripts/models/`: thư viện chung (`lib.mjs`), sinh bộ vector (`gen-manifest-vectors.mjs`), tạo khóa staging (`gen-manifest-key.mjs`), dựng phần thân từ file thật (`build-manifest.mjs` + `models.config.json`), ký (`sign-manifest.mjs`), `NOTICE.txt`, và test `node --test`.
 - Bộ vector `src-tauri/src/models/testdata/manifest-vectors.json` do script Node sinh, Rust kiểm: hai bên dùng cùng định dạng. Khóa trong bộ vector là khóa test sinh từ nhãn cố định, kid `test-…`, không bao giờ có trong file khóa của app.
 
@@ -1369,6 +1456,37 @@ pub(crate) mod tests {
             Ok(Vec::new())
         );
     }
+
+    /// N-2 của review 04 lần 2: khóa bậc nhỏ (ở đây là điểm đơn vị) cùng chữ ký `R` = đơn vị, `S` = 0 qua được `verify`
+    /// thường với mọi thông điệp, nhưng không qua `verify_strict`. App chỉ dùng `verify_strict`, nên manifest ký kiểu đó
+    /// bị từ chối.
+    #[test]
+    fn a_small_order_key_never_verifies() {
+        use ed25519_dalek::Verifier;
+        let mut identity = [0u8; 32];
+        identity[0] = 1;
+        let keys = vec![TrustedKey {
+            kid: "test-weak".into(),
+            key: VerifyingKey::from_bytes(&identity).unwrap(),
+        }];
+        let body = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&crate::models::manifest::tests::sample()).unwrap());
+        let mut sig = [0u8; 64];
+        sig[0] = 1;
+        assert!(
+            keys[0]
+                .key
+                .verify(&message(&body), &Signature::from_bytes(&sig))
+                .is_ok(),
+            "ca này phân biệt được verify với verify_strict"
+        );
+        let envelope = serde_json::json!({
+            "format": FORMAT, "version": VERSION, "kid": "test-weak", "body": body, "sig": URL_SAFE_NO_PAD.encode(sig)
+        });
+        assert_eq!(
+            verify(&serde_json::to_vec(&envelope).unwrap(), &keys).err(),
+            Some(SignedError::BadSignature)
+        );
+    }
 }
 ````
 
@@ -1379,14 +1497,14 @@ Run: `cargo test -p meeting-translator --lib models::signed 2>&1 | grep -E '^err
 Expected (lúc lập kế hoạch):
 
 ```text
-error: could not compile `meeting-translator` (lib test) due to 38 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 48 previous errors; 1 warning emitted
+error[E0422]: cannot find struct, variant or union type `TrustedKey` in this scope
 error[E0425]: cannot find function `keys_from_json` in this scope
 error[E0425]: cannot find function `message` in this scope
 error[E0425]: cannot find function `verify` in this scope
 error[E0425]: cannot find type `SignedError` in this scope
 error[E0425]: cannot find type `Signed` in this scope
 error[E0425]: cannot find type `TrustedKey` in this scope
-error[E0425]: cannot find value `FORMAT` in this scope
 ```
 
 - [ ] **Step 5: Viết code**
@@ -1567,7 +1685,7 @@ Run: `cargo test -p meeting-translator --lib models:: 2>&1 | grep -E '^test resu
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 13 passed; 0 failed; 1 ignored; 0 measured; 223 filtered out; finished in 0.01s
+test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 223 filtered out; finished in 0.01s
 ```
 
 - [ ] **Step 7: Viết test của các script**
@@ -1853,7 +1971,7 @@ Tạo `scripts/models/models.config.json`:
 
 ```json
 {
-  "_note": "Cấu hình manifest model (spec §6.7, §8; Đ7 của kế hoạch 00). build-manifest.mjs thêm bytes và sha256 từ file thật. Ngưỡng RAM, VRAM tính bằng MiB, thấp hơn dung lượng ghi trên máy vì hệ điều hành báo ít hơn (QĐ4 của kế hoạch 04, chủ dự án duyệt 2026-10-02); máy dưới min_ram_mib không được tải model. Ghi chú chất lượng theo số đo A4 (spec §3.3, §8). Chốt lại khi có C6, C7.",
+  "_note": "Cấu hình manifest model (spec §6.7, §8; Đ7 của kế hoạch 00). build-manifest.mjs thêm bytes và sha256 từ file thật. Ngưỡng RAM, VRAM tính bằng MiB, thấp hơn dung lượng ghi trên máy vì hệ điều hành báo ít hơn (QĐ4 của kế hoạch 04, chủ dự án duyệt 2026-10-02); máy dưới min_ram_mib không được tải model. Ghi chú chất lượng theo số đo A4 (spec §3.3, §8). Chốt lại khi có C6, C7. Giữ `id` của mỗi file ổn định giữa các bản, chỉ đổi version, file, bytes, sha256: app tìm file đã tải theo id, đổi id thì gói đang dùng thành chưa tải (kế hoạch 04, QĐ2).",
   "files": [
     { "id": "whisper-large-v3-turbo-q5_0", "tier": ["standard"], "kind": "asr", "version": "whisper.cpp-5359861", "file": "ggml-large-v3-turbo-q5_0.bin", "url": "whisper/ggml-large-v3-turbo-q5_0.bin", "license_id": "MIT", "min_app_version": "0.1.0" },
     { "id": "whisper-small-q5_1", "tier": ["lite"], "kind": "asr", "version": "whisper.cpp-5359861", "file": "ggml-small-q5_1.bin", "url": "whisper/ggml-small-q5_1.bin", "license_id": "MIT", "min_app_version": "0.1.0" },
@@ -1951,7 +2069,7 @@ git commit -q -m "feat(models): phong bì ký Ed25519, khóa build sẵn, vector
 ## Task 3: Tải một file: HTTP Range, `*.part`, SHA-256, thử lại, tạm dừng
 
 Dòng 20, 37, 160, 246, 291; QĐ5, QĐ6, QĐ7:
-- `src-tauri/src/models/download.rs`: client HTTP (User-Agent chung `AI-Translator/<phiên bản>`, không mang thông tin người dùng; chỉ theo redirect sang `https`, QĐ5), tải một file vào `*.part` với `Range` từ cuối phần dở, kiểm SHA-256 rồi đổi tên, thử lại (chỉ đếm lại khi phần dở dài hơn mọi lần trước, QĐ6), tạm dừng.
+- `src-tauri/src/models/download.rs`: client HTTP (User-Agent chung `AI-Translator/<phiên bản>`, không mang thông tin người dùng; chỉ theo redirect sang `https`, tối đa 5 bước, QĐ5), tải một file vào `*.part` với `Range` từ cuối phần dở, kiểm SHA-256 rồi đổi tên, thử lại (chỉ đếm lại khi phần dở dài hơn mọi lần trước, QĐ6), tạm dừng.
 - `src-tauri/src/models/test_http.rs`: HTTP server giả, chỉ biên dịch trong test. Giả được: rớt mạng, mã lỗi, bỏ qua `Range`, `Content-Range` lệch, dữ liệu hỏng, bỏ qua `Range` rồi rớt ở cùng chỗ, redirect, mạng chậm (để test tạm dừng ở 04b).
 
 **Files:**
@@ -2371,7 +2489,12 @@ mod tests {
         assert!(redirect_allowed(&local, &url("http://localhost:9000/x.bin"), 1));
         assert!(redirect_allowed(&local, &url("https://cdn.example/x.bin"), 1));
         assert!(!redirect_allowed(&local, &url("http://cdn.example/x.bin"), 1));
-        assert!(!redirect_allowed(&cdn, &url("https://r2.example/x.bin"), MAX_REDIRECTS));
+        assert!(redirect_allowed(&cdn, &url("https://r2.example/x.bin"), MAX_REDIRECTS));
+        assert!(!redirect_allowed(
+            &cdn,
+            &url("https://r2.example/x.bin"),
+            MAX_REDIRECTS + 1
+        ));
     }
 
     #[test]
@@ -2527,7 +2650,7 @@ Run: `cargo test -p meeting-translator --lib models::download 2>&1 | grep -E '^e
 Expected (lúc lập kế hoạch):
 
 ```text
-error: could not compile `meeting-translator` (lib test) due to 66 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 68 previous errors; 1 warning emitted
 error[E0422]: cannot find struct, variant or union type `FileJob` in this scope
 error[E0425]: cannot find function `client` in this scope
 error[E0425]: cannot find function `download` in this scope
@@ -2564,11 +2687,12 @@ pub fn is_loopback(url: &Url) -> bool {
     matches!(url.host_str(), Some("127.0.0.1" | "localhost" | "[::1]"))
 }
 
-/// Có theo redirect tới `next` không, khi chuỗi bắt đầu ở `first` và đã qua `hops` bước. Không bao giờ hạ từ `https`
-/// xuống `http`.
+/// Có theo redirect tới `next` không, khi chuỗi bắt đầu ở `first` và đây là bước thứ `hops` (bước đầu là 1: `reqwest`
+/// đưa URL đang xét vào danh sách trước khi hỏi). Tối đa [`MAX_REDIRECTS`] bước (spec §6.7). Không bao giờ hạ từ
+/// `https` xuống `http`.
 pub fn redirect_allowed(first: &Url, next: &Url, hops: usize) -> bool {
     let local_http = first.scheme() == "http" && is_loopback(first) && next.scheme() == "http" && is_loopback(next);
-    hops < MAX_REDIRECTS && (next.scheme() == "https" || local_http)
+    hops <= MAX_REDIRECTS && (next.scheme() == "https" || local_http)
 }
 
 /// Client HTTP cho manifest và model: proxy và chứng chỉ của hệ điều hành; redirect theo [`redirect_allowed`].
@@ -2875,7 +2999,7 @@ Run: `cargo test -p meeting-translator --lib models::download 2>&1 | grep -E '^t
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 237 filtered out; finished in 0.12s
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 239 filtered out; finished in 0.13s
 ```
 
 - [ ] **Step 6: Định dạng, clippy**
@@ -3200,7 +3324,7 @@ Sửa `src-tauri/src/models/download.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/models/download.rs b/src-tauri/src/models/download.rs
-index b14046c563cfb148b167e3fca6908ecc69cd6b42..7a670433aa6661b73326ce67346752096ec78b19 100644
+index acdb886843fd3c9ee9556ceb6fce075ae7570cf6..7b5afa914af95bc5cb190e04f6ef5da95ebe0242 100644
 --- a/src-tauri/src/models/download.rs
 +++ b/src-tauri/src/models/download.rs
 @@ -18,5 +18,5 @@
@@ -3210,7 +3334,7 @@ index b14046c563cfb148b167e3fca6908ecc69cd6b42..7a670433aa6661b73326ce6734675209
 +use std::path::{Path, PathBuf};
  use std::sync::atomic::{AtomicBool, Ordering};
  use std::time::Duration;
-@@ -76,14 +76,18 @@ pub struct FileJob {
+@@ -77,14 +77,18 @@ pub struct FileJob {
  impl FileJob {
      pub fn part(&self) -> PathBuf {
 -        let name = self
@@ -3603,7 +3727,7 @@ Run: `cargo test -p meeting-translator --lib models:: 2>&1 | grep -E '^test resu
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 38 passed; 0 failed; 1 ignored; 0 measured; 223 filtered out; finished in 0.23s
+test result: ok. 40 passed; 0 failed; 1 ignored; 0 measured; 223 filtered out; finished in 0.26s
 ```
 
 - [ ] **Step 5: Định dạng, clippy**
@@ -3629,6 +3753,7 @@ Dòng 36, 105, 159, 223, 226; Đ7, Đ13; QĐ4, QĐ8:
 - `src-tauri/src/models/machine.rs`: RAM (macOS `hw.memsize`, Windows `GlobalMemoryStatusEx`), dung lượng trống của ổ chứa thư mục model (macOS `statfs`, Windows `GetDiskFreeSpaceExW`; thư mục chưa có thì xét thư mục cha gần nhất), AVX2, GPU từ `--probe`.
 - `src-tauri/src/models/recommend.rs`: luật của manifest xét theo thứ tự; card rời so VRAM; GPU tích hợp không tính; máy chưa được hỗ trợ.
 - `sidecar/probe.rs` giữ cả danh sách GPU (`ProbeOutcome`) thay vì chỉ "có GPU dùng được"; `GpuProbe` nhớ kết quả đó.
+- Test cấu hình máy thật: một test cho Mac, một cho Windows (`cfg`), để đợt Windows chạy được cả bộ (N-6 của review lần 2).
 
 **Files:**
 - Sửa: `Cargo.lock` (cargo tự cập nhật)
@@ -3691,12 +3816,33 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(target_os = "macos")]
     fn this_mac_reports_ram_disk_and_cpu() {
         let m = detect(None);
         assert_eq!(m.os, Os::Macos);
         assert!(m.ram_mib >= 4_096, "{}", m.ram_mib);
         assert!(m.avx2, "Apple Silicon luôn đủ");
         assert!(m.gpu_known && m.gpus.is_empty());
+        let free = free_disk_bytes(&std::env::temp_dir()).unwrap();
+        assert!(free > 0);
+        let missing = std::env::temp_dir().join("mt-khong-co/models/con");
+        assert_eq!(
+            free_disk_bytes(&missing).map(|b| b > 0),
+            Some(true),
+            "dùng thư mục cha đã có"
+        );
+    }
+
+    /// Chạy ở đợt Windows (04b Task 14). Có AVX2 hay không tùy máy, nên chỉ in ra để ghi vào "Kết quả thử".
+    #[test]
+    #[cfg(windows)]
+    fn this_windows_pc_reports_ram_disk_and_cpu() {
+        let m = detect(None);
+        assert_eq!(m.os, Os::Windows);
+        assert!(m.ram_mib >= 4_096, "{}", m.ram_mib);
+        assert!(!m.gpu_known, "chưa có kết quả dò GPU");
+        assert!(detect(Some(&[])).gpu_known);
+        println!("RAM {} MiB, AVX2 {}", m.ram_mib, m.avx2);
         let free = free_disk_bytes(&std::env::temp_dir()).unwrap();
         assert!(free > 0);
         let missing = std::env::temp_dir().join("mt-khong-co/models/con");
@@ -4083,7 +4229,9 @@ fn existing_ancestor(path: &Path) -> Option<&Path> {
     path.ancestors().find(|p| p.is_dir())
 }
 
-/// Dung lượng trống cho người dùng hiện tại trên ổ chứa `path`.
+/// Dung lượng trống cho người dùng hiện tại trên ổ chứa `path`. Trên APFS, `f_bavail` không tính phần "purgeable"
+/// (bản sao iCloud, cache) mà Finder có tính, nên số này có thể nhỏ hơn số Finder hiện (N-11 của review 04 lần 2; 04b
+/// Task 13 Step 7 so hai số).
 #[cfg(target_os = "macos")]
 pub fn free_disk_bytes(path: &Path) -> Option<u64> {
     use std::os::unix::ffi::OsStrExt;
@@ -4120,7 +4268,7 @@ use super::manifest::{GpuKind, Recommend, Rule};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Unsupported {
-    /// RAM dưới mức tối thiểu (§8: 8 GB).
+    /// RAM dưới `min_ram_mib` của manifest (§8; lúc lập kế hoạch 6 144 MiB).
     LowRam,
     /// CPU x64 không có AVX2 (§8, §6.12).
     NoAvx2,
@@ -4129,7 +4277,8 @@ pub enum Unsupported {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Verdict {
-    /// Máy chưa được hỗ trợ trong MVP. Người dùng vẫn chọn và tải được gói, nhưng app báo rõ.
+    /// Máy chưa được hỗ trợ trong MVP: app báo lý do và cấu hình tối thiểu, và không cho tải model (chủ dự án quyết
+    /// 2026-10-02; `ModelService::download` trả `modelsUnsupported`).
     Unsupported {
         reason: Unsupported,
     },
@@ -4305,7 +4454,7 @@ Run: `cargo test -p meeting-translator --lib -- models:: sidecar:: 2>&1 | grep -
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 62 passed; 0 failed; 1 ignored; 0 measured; 206 filtered out; finished in 0.54s
+test result: ok. 64 passed; 0 failed; 1 ignored; 0 measured; 206 filtered out; finished in 0.58s
 ```
 
 - [ ] **Step 6: Định dạng, clippy, code Windows, cargo deny**
@@ -4340,9 +4489,11 @@ git commit -q -m "feat(models): cấu hình máy và đề xuất gói theo ngư
 
 Dòng 157, 163; QĐ2 (`sequence`), QĐ9, QĐ10:
 - `src-tauri/src/models/source.rs`: URL theo loại bản (`STAGING_URL`, `PRODUCTION_URL`, `AT_MODELS_URL` cho bản dev), URL tuyệt đối của từng file, "đã tới lúc kiểm chưa", tải và kiểm `models.json` (tối đa 1 MiB), nhận hay từ chối manifest mới.
+- `test_http.rs` thêm lỗi giả `Endless` (thân dài mãi): đọc manifest dừng sau 1 MiB, không treo, không ăn bộ nhớ (N-1 của review lần 2).
 
 **Files:**
 - Sửa: `src-tauri/src/models/mod.rs`
+- Sửa: `src-tauri/src/models/test_http.rs`
 - Tạo: `src-tauri/src/models/source.rs`
 
 - [ ] **Step 1: Viết test**
@@ -4360,6 +4511,59 @@ index f5356f95b0765edb1f4325b5982c3860576793a9..fdb6d89a8801241aadc81e0bf6e41316
 +pub mod source;
  pub mod store;
  #[cfg(test)]
+```
+
+Sửa `src-tauri/src/models/test_http.rs` (áp bằng `git apply`):
+
+```diff
+diff --git a/src-tauri/src/models/test_http.rs b/src-tauri/src/models/test_http.rs
+index 725ccb3bbd7ec9802b359bc8576d3304c3d7d46c..1b4ab7ce723c17170067df072d615f8a9e197806 100644
+--- a/src-tauri/src/models/test_http.rs
++++ b/src-tauri/src/models/test_http.rs
+@@ -29,6 +29,12 @@ pub enum Fault {
+     /// Gửi thân từng khối 100 byte, nghỉ chừng này mili giây giữa hai khối (mạng chậm, để test kịp tạm dừng).
+     Slow(u64),
++    /// Trả `200` không có `Content-Length`, thân gửi mãi (tới [`ENDLESS_BYTES`]) cho tới khi client đóng kết nối; số byte
++    /// đã gửi được ghi lại (`endless_sent`).
++    Endless,
+ }
+ 
++/// Lỗi giả `Endless` dừng sau chừng này byte, để một client không giới hạn cũng không làm test treo.
++pub const ENDLESS_BYTES: usize = 64 << 20;
++
+ /// Một request đã nhận.
+ #[derive(Clone, Debug, PartialEq, Eq)]
+@@ -44,4 +50,5 @@ struct Shared {
+     faults: VecDeque<Fault>,
+     requests: Vec<Request>,
++    endless_sent: usize,
+ }
+ 
+@@ -87,4 +94,9 @@ impl FakeServer {
+         self.shared.lock().unwrap().requests.clone()
+     }
++
++    /// Số byte lỗi giả `Endless` đã gửi được trước khi client đóng kết nối.
++    pub fn endless_sent(&self) -> usize {
++        self.shared.lock().unwrap().endless_sent
++    }
+ }
+ 
+@@ -127,4 +139,14 @@ fn serve(stream: TcpStream, shared: &Mutex<Shared>) {
+         return;
+     };
++    if fault == Some(Fault::Endless) {
++        let _ = out.write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
++        let chunk = vec![b' '; 64 * 1024];
++        let mut sent = 0;
++        while sent < ENDLESS_BYTES && out.write_all(&chunk).is_ok() {
++            sent += chunk.len();
++        }
++        shared.lock().unwrap().endless_sent = sent;
++        return;
++    }
+     if let Some(Fault::Redirect(to)) = fault {
+         let _ = out.write_all(head("302 Found", &format!("Location: {to}\r\n"), 0).as_bytes());
 ```
 
 Tạo `src-tauri/src/models/source.rs`, lúc này mới có phần test (phần code thêm ở bước sau):
@@ -4487,6 +4691,33 @@ mod tests {
         ));
     }
 
+    /// N-1 của review 04 lần 2: server (hay proxy) gửi thân dài mãi thì chỉ đọc tới 1 MiB rồi bỏ, không treo việc kiểm
+    /// manifest và không ăn bộ nhớ.
+    #[test]
+    fn an_endless_manifest_is_cut_after_one_mebibyte() {
+        let server = FakeServer::start();
+        server.put("models.json", &signed_with_test_key(&sample()));
+        server.fault(Fault::Endless);
+        let client = crate::models::download::client().unwrap();
+        assert!(matches!(
+            fetch(&client, &server.url("models.json"), &test_keys()),
+            Err(FetchError::Signed(SignedError::Malformed(_)))
+        ));
+        let since = std::time::Instant::now();
+        while server.endless_sent() == 0 {
+            assert!(
+                since.elapsed() < std::time::Duration::from_secs(10),
+                "server giả chưa xong"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        assert!(
+            server.endless_sent() < 16 << 20,
+            "client đọc tới {} byte",
+            server.endless_sent()
+        );
+    }
+
     #[test]
     fn older_or_conflicting_manifests_are_refused() {
         let keys = test_keys();
@@ -4516,7 +4747,7 @@ Run: `cargo test -p meeting-translator --lib models::source 2>&1 | grep -E '^err
 Expected (lúc lập kế hoạch):
 
 ```text
-error: could not compile `meeting-translator` (lib test) due to 46 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 49 previous errors; 1 warning emitted
 error[E0422]: cannot find struct, variant or union type `StoreState` in this scope
 error[E0425]: cannot find function `accept` in this scope
 error[E0425]: cannot find function `due` in this scope
@@ -4639,7 +4870,7 @@ Run: `cargo test -p meeting-translator --lib models:: 2>&1 | grep -E '^test resu
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 49 passed; 0 failed; 1 ignored; 0 measured; 224 filtered out; finished in 0.30s
+test result: ok. 52 passed; 0 failed; 1 ignored; 0 measured; 224 filtered out; finished in 0.28s
 ```
 
 - [ ] **Step 5: Định dạng, clippy**
@@ -4655,7 +4886,7 @@ Expected:
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src-tauri/src/models/mod.rs src-tauri/src/models/source.rs
+git add src-tauri/src/models/mod.rs src-tauri/src/models/test_http.rs src-tauri/src/models/source.rs
 git commit -q -m "feat(models): nguồn manifest: URL theo bản, tải và kiểm, chống quay lui, kiểm mỗi ngày một lần (04 T6)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 

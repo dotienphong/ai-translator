@@ -23,13 +23,15 @@
 
 - **QĐ13. Phần "dữ liệu" của "Xóa model và dữ liệu".** Lệnh `delete_models_and_data` xóa thư mục model rồi gọi `data::clear_all_data` của 03 (lịch sử, bản chép lời, từ điển, file DB không đọc được và journal), cùng việc với nút "Xóa toàn bộ dữ liệu". Xóa model bị từ chối (đang dịch, đang tải) thì không xóa dữ liệu. Xong thì cửa sổ chính bật `dataCleared` như nút của 03, nên bản chép lời, lịch sử và từ điển đang hiện bị bỏ. Bản quyền và bộ đếm hạn mức trong kho khóa không bị đụng tới (Q14).
 - **QĐ14. Tải xong một gói thì gói đó thành gói đang dùng.** Lý do duy nhất để tải một gói khác là đổi sang gói đó (§4.3: "gói đang dùng, dung lượng, tải lại hoặc xóa"). Gói đã tải thì đổi bằng nút "Dùng gói này" (`select_model_pack`).
-- **QĐ15. Gói mới dùng từ phiên sau; không chạy hai bộ tiến trình phụ** (ghi chú 8 của review cuối 02, Q4 của review lần 1). `modelTier` không sửa được qua `update_settings` (Task 7). Lần chạy sẵn khi mở cửa sổ chính (`prewarm`) không làm gì khi phiên đang bắt đầu hay đang chạy; chỉ lần bắt đầu phiên mới dựng bộ tiến trình phụ theo gói mới. Đang dịch bằng một gói thì không tải bản cập nhật đè lên nó và không xóa nó (`modelsInUse`). **Đang tải bản cập nhật của gói đang dùng thì không bắt đầu phiên được** (`modelsBusy`; chủ dự án quyết 2026-10-02). Tải một gói khác trong lúc dịch vẫn được.
-- **QĐ16. Tắt tiến trình phụ rảnh trước khi xóa hay tải đè model** (`SessionDeps::release_models`): Windows không cho đổi tên đè hay xóa file đang mở. Với việc tải, lệnh tắt chạy ở đầu luồng tải, không ở lệnh: tắt có thể phải chờ lần nạp model đang dở tới vài chục giây (Q2 của review lần 1).
+- **QĐ15. Gói mới dùng từ phiên sau; không chạy hai bộ tiến trình phụ** (ghi chú 8 của review cuối 02, Q4 của review lần 1). `modelTier` không sửa được qua `update_settings` (Task 7). Lần chạy sẵn khi mở cửa sổ chính (`prewarm`) không làm gì khi phiên đang bắt đầu hay đang chạy; chỉ lần bắt đầu phiên mới dựng bộ tiến trình phụ theo gói mới. Đang dịch bằng một gói thì không tải bản cập nhật đè lên nó và không xóa nó (`modelsInUse`). **Đang tải bản cập nhật của gói đang dùng thì không bắt đầu phiên được** (`modelsBusy`; chủ dự án quyết 2026-10-02). Tải một gói khác trong lúc dịch vẫn được. Luật này nằm ở `ModelService::begin_session`: `session::start_with` (mọi đường bắt đầu phiên: nút, khay, phím tắt, bước Nghe thử) đặt `Starting` bên trong nó, dưới khóa của dịch vụ, cùng khóa mà việc tải, xóa, kiểm giữ lúc kiểm "đang dịch" rồi bắt đầu; nên hoặc phiên bị từ chối, hoặc việc kia bị từ chối, không bao giờ cả hai cùng chạy (Q-A của review lần 2). `prewarm` cũng không chạy khi đang có việc như vậy, và lần chuẩn bị luôn gọi `ModelService::resolve`, kể cả khi tiến trình phụ đang chạy. Lần bắt đầu phiên chờ lần chạy sẵn đang nạp dở xong rồi mới chuẩn bị, để không có hai bộ tiến trình phụ cùng nạp khi người dùng vừa đổi gói (N-9 của review lần 2).
+- **QĐ16. Tắt tiến trình phụ rảnh trước khi xóa hay tải đè model** (`SessionDeps::release_models`): Windows không cho đổi tên đè hay xóa file đang mở. Với việc tải, lệnh tắt chạy ở đầu luồng tải, không ở lệnh: tắt có thể phải chờ lần nạp model đang dở tới vài chục giây (Q2 của review lần 1). `session::release_models` chờ lần chạy sẵn đang nạp dở xong (tối đa 180 giây) rồi mới tắt; nếu không, lần chạy sẵn còn chạy `llama-server` sau lần tắt (Q-A của review lần 2).
 - **QĐ17. Model nạp lỗi (`modelBroken`) thì băm lại cả gói trên luồng nền**; file sai SHA-256 bị xóa, gói hiện "chưa tải" và người dùng tải lại (§9). Lúc bắt đầu phiên chỉ kiểm có file và đúng kích thước; sai kích thước là `modelBroken`. Nút "Kiểm tra và tải lại" ở Cài đặt › Model cũng băm lại rồi chỉ tải phần thiếu hay hỏng, không xóa gói đang dùng trước (lệnh `verify_models`, N7 của review lần 1).
 - **QĐ18. "Xóa model và dữ liệu" bỏ gói đang dùng (`modelTier` thành `null`) nhưng không đưa app về lần đầu mở** (chủ dự án đồng ý 2026-10-02). Xóa hết file trong thư mục model, nhưng ghi lại `manifest.json` (mốc chống quay lui về manifest cũ, N3 của review lần 1); manifest vẫn giữ trong bộ nhớ để tải lại được ngay. Xác nhận hai bước ngay trong app (không dùng `window.confirm`).
-- **QĐ19. Bước 3 tự bắt đầu tải gói đã chọn** khi vào bước (`shouldAutoDownload`): gói chưa đủ, tải được, và không có việc tải nào đang chạy hay đang dừng giữa chừng của chính gói đó. Người dùng quay lại chọn gói khác trong lúc một gói đang tải thì bước 3 mời tạm dừng gói đó (N6 của review lần 1). Người dùng đi tiếp được trong lúc model tải ở nền; tiến độ hiện ở màn hình chính. Mở lại app không tự tải tiếp; Cài đặt › Model và màn hình chính có nút Tiếp tục.
+- **QĐ19. Bước 3 tự bắt đầu tải gói đã chọn** khi vào bước (`shouldAutoDownload`): gói chưa đủ, tải được, và không có việc tải nào đang chạy hay đang dừng giữa chừng của chính gói đó. Người dùng quay lại chọn gói khác trong lúc một gói đang tải thì bước 3 mời tạm dừng gói đó (N6 của review lần 1). Windows chưa dò xong GPU (`gpuKnown = false`) mà người dùng chưa tự chọn gói thì chờ kết quả dò rồi mới tự tải: gói chọn sẵn lúc đó chưa tính card rời (N-12 của review lần 2). Người dùng đi tiếp được trong lúc model tải ở nền; tiến độ hiện ở màn hình chính. Mở lại app không tự tải tiếp; Cài đặt › Model và màn hình chính có nút Tiếp tục.
 - **QĐ20. Dung lượng hiển thị theo đơn vị thập phân** (GB = 10⁹ byte), như spec ghi "khoảng 2,5 GB"; tiếng Việt dùng dấu phẩy thập phân.
 - **QĐ21. Máy chưa được hỗ trợ, gói cần app mới hơn, ổ không đủ chỗ thì không tải** (04a QĐ8). Phía Rust từ chối lệnh tải (`modelsUnsupported` với lý do `lowRam` hay `noAvx2`, `modelsAppTooOld`, `modelsNoSpace`); `PackView.enoughSpace` cho giao diện biết gói nào không vừa ổ; giao diện báo lý do (`downloadBlock`) và khóa nút tải.
+- **QĐ22. Bộ tiến trình phụ nhận dạng bằng `sidecar::SidecarKey`**: gói, ba file model, ngưỡng của giám sát và của hai tiến trình phụ (Q-B của review lần 2). Bản cập nhật cùng mã gói có thể đổi tên file hay ngưỡng; so cả khóa này thì lần chuẩn bị sau dựng bộ mới, bộ cũ tắt khi không còn phiên nào dùng. Tính khóa chỉ kiểm có file và kích thước, nên lần chuẩn bị nào cũng tính.
+- **QĐ23. Xóa và kiểm gói chạy dưới một trạng thái của dịch vụ** (`maintenance`, đặt bằng `begin_work` dưới khóa, cùng lúc kiểm "đang dịch", "đang tải"; N-10 của review lần 2). Trong lúc đó không tải được; nếu việc đụng gói đang dùng thì cũng không bắt đầu phiên và không chạy sẵn tiến trình phụ.
 
 ---
 
@@ -327,7 +329,7 @@ Run: `cargo test -p meeting-translator --lib -- settings:: sidecar:: 2>&1 | grep
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 220 filtered out; finished in 0.34s
+test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 223 filtered out; finished in 0.36s
 ```
 
 Run: `pnpm build 2>&1 | grep -E 'error|built in' | sed -E 's/ in [0-9]+ms//'; pnpm test 2>&1 | perl -pe 's/\e\[[0-9;]*m//g' | grep -E '^ +(Test Files|Tests) '`
@@ -359,11 +361,11 @@ git commit -q -m "feat(settings): modelTier là mã gói của manifest, chỉ �
 
 ## Task 8: Dịch vụ model, lệnh và sự kiện `models://state`
 
-Dòng 20, 33, 36, 37, 53, 57, 160, 161, 163, 223, 233, 246; QĐ9, QĐ13–QĐ18, QĐ21:
-- `models/service.rs`: `ModelService` (đọc manifest đã lưu, tải manifest khi chưa có hay đã quá một ngày, tải gói trên luồng riêng, tiến độ tối đa 4 lần mỗi giây, tạm dừng, dùng gói đã tải, xóa gói, xóa hết mà giữ `manifest.json`, kiểm và băm lại một gói, "Để sau", file model cho phiên, băm lại khi nạp lỗi, ngưỡng pipeline), `check_on_startup`, `changed`. Từ chối tải khi máy chưa được hỗ trợ, gói cần app mới hơn, ổ không đủ chỗ; kiểm phiên đang chạy dưới khóa của dịch vụ (N5 của review lần 1).
+Dòng 20, 33, 36, 37, 53, 57, 160, 161, 163, 223, 233, 246; QĐ9, QĐ13–QĐ18, QĐ21, QĐ23:
+- `models/service.rs`: `ModelService` (đọc manifest đã lưu, tải manifest khi chưa có hay đã quá một ngày, tải gói trên luồng riêng, tiến độ tối đa 4 lần mỗi giây, tạm dừng, dùng gói đã tải, xóa gói, xóa hết mà giữ `manifest.json`, kiểm và băm lại một gói, "Để sau", file model cho phiên, băm lại khi nạp lỗi, ngưỡng pipeline), `check_on_startup`, `changed`. Từ chối tải khi máy chưa được hỗ trợ, gói cần app mới hơn, ổ không đủ chỗ; kiểm phiên đang chạy dưới khóa của dịch vụ (N5 của review lần 1). `begin_session` cho lần bắt đầu phiên, `begin_work` cho xóa và kiểm (QĐ15, QĐ23).
 - `models/commands.rs`: 9 lệnh, chỉ cửa sổ `main` (§10.2); "Xóa model và dữ liệu" gọi `data::clear_all_data` của 03 (QĐ13): `get_models_state`, `load_models`, `download_models`, `pause_models_download`, `select_model_pack`, `delete_models`, `delete_models_and_data`, `dismiss_models_update`, `verify_models`. Lệnh có thể chặn (mạng, đĩa, cấu hình máy) là `async` và chạy trên `spawn_blocking`, kể cả `download_models` (Q2 của review lần 1).
 - Mã lỗi mới (`errors.rs`) và câu báo lỗi vi/en (test `every_error_code_has_ui_text` và test i18n giữ chúng khớp).
-- `actions.rs`: `set_model_tier`; `session.rs`: `release_models`; `lib.rs`: quản lý dịch vụ và kiểm manifest lúc khởi động; `test_support.rs`: app giả có dịch vụ model (`mock_app_full`, `models_config`), `FakeDeps` đếm số lần `release_models`.
+- `actions.rs`: `set_model_tier`; `session.rs`: `release_models` (chờ lần chạy sẵn đang nạp dở), `start_with` bắt đầu phiên qua `ModelService::begin_session`, `prewarm` không chạy khi `busy()` (Q-A của review lần 2); `lib.rs`: quản lý dịch vụ và kiểm manifest lúc khởi động; `test_support.rs`: app giả có dịch vụ model (`mock_app_full`, `models_config`), `FakeDeps` đếm số lần `release_models`.
 
 **Files:**
 - Sửa: `src-tauri/src/errors.rs`
@@ -387,7 +389,8 @@ Test của dịch vụ chạy app giả với server HTTP giả của 04a: manif
 - tải xong thì gói thành gói đang dùng; tải lỗi rồi tải tiếp bằng `Range`; sai SHA-256; đủ dung lượng trống, và gói không vừa ổ được đánh dấu;
 - tạm dừng rồi tiếp tục, lần sau gửi `Range` (lỗi giả "mạng chậm" giữ việc tải đủ lâu);
 - đang tải thì lệnh tải, xóa gói, xóa hết, kiểm gói đều trả `modelsBusy`;
-- tải bản cập nhật gói đang dùng: `resolve` trả `modelsBusy` (không bắt đầu phiên), tiến trình phụ được tắt đúng một lần; xóa gói đang dùng, xóa hết: mỗi việc tắt một lần;
+- tải bản cập nhật gói đang dùng: `toggle_session` trả `modelsBusy` và không chuẩn bị tiến trình phụ, tiến trình phụ được tắt đúng một lần; xóa gói đang dùng, xóa hết: mỗi việc tắt một lần;
+- lần chạy sẵn đang nạp dở: việc tải đè chờ nó xong rồi mới tắt, và lần chạy sẵn mới không chạy trong lúc tải đè; trong lúc xóa (đang chờ lần chạy sẵn), không bắt đầu phiên và không tải được (Q-A, N-10 của review lần 2);
 - gói cần app mới hơn bị từ chối; máy chưa được hỗ trợ (RAM thấp, không AVX2) bị từ chối, không request nào tới file model;
 - bản cập nhật được hỏi chứ không tự tải, "Để sau"; bản mới đổi tên file thì file cũ bị dọn; không đè hay xóa gói đang dịch;
 - xóa gói và xóa hết (chỉ còn `manifest.json`; từ điển của 03 cũng bị xóa); "Kiểm tra và tải lại" chỉ tải file hỏng; băm lại khi model hỏng.
@@ -543,7 +546,7 @@ mod tests {
     use crate::models::signed::tests::signed_with_test_key;
     use crate::models::store::tests::{content, real_sample};
     use crate::models::test_http::{FakeServer, Fault};
-    use crate::test_support::{FakeDeps, MODELS_NOW, invoke, mock_app_full, models_config, window};
+    use crate::test_support::{FakeDeps, MODELS_NOW, PrepareGate, invoke, mock_app_full, models_config, window};
 
     const DAY: u64 = 24 * 3600;
 
@@ -1020,17 +1023,8 @@ mod tests {
         h.wait("done");
     }
 
-    /// Đang tải bản cập nhật của gói đang dùng: không bắt đầu phiên (QĐ15, chủ dự án quyết 2026-10-02); trước khi tải,
-    /// tiến trình phụ đang rảnh được tắt để nhả file (QĐ16).
-    #[test]
-    fn updating_the_pack_in_use_blocks_sessions_and_releases_models() {
-        let deps = FakeDeps::default();
-        let releases = deps.releases.clone();
-        let h = harness_with(deps, |_| {});
-        h.call("load_models", json!({})).unwrap();
-        h.call("download_models", json!({ "pack": "standard" })).unwrap();
-        h.wait("done");
-        assert_eq!(*releases.lock().unwrap(), 0, "tải gói mới không cần tắt gì");
+    /// Bản cập nhật của gói `standard` (đang dùng): file `whisper-turbo` cùng tên, khác nội dung, tải chậm.
+    fn publish_update_of_standard(h: &Harness) {
         let mut newer = slow_sample();
         newer["sequence"] = 4.into();
         let turbo = &mut newer["files"][0];
@@ -1041,17 +1035,119 @@ mod tests {
         h.tick_days(1);
         h.call("load_models", json!({})).unwrap();
         h.server.fault(Fault::Slow(100));
+    }
+
+    /// `toggle_session` như giao diện gọi, nhưng có hạn: code sai có thể làm lần bắt đầu phiên chờ mãi (lần chạy sẵn bị
+    /// chặn ở cổng của test), khi đó test đỏ thay vì treo.
+    fn toggle_within(h: &Harness) -> Result<Value, String> {
+        let (main, (tx, rx)) = (h.main(), std::sync::mpsc::channel());
+        std::thread::spawn(move || tx.send(invoke(&main, "toggle_session", json!({}))));
+        rx.recv_timeout(Duration::from_secs(10))
+            .expect("toggle_session không trả về")
+    }
+
+    fn wait_for(what: &str, done: impl Fn() -> bool) {
+        let started = Instant::now();
+        while !done() {
+            assert!(started.elapsed() < Duration::from_secs(10), "chờ quá lâu: {what}");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    /// Đang tải bản cập nhật của gói đang dùng: không bắt đầu phiên (QĐ15, chủ dự án quyết 2026-10-02), kiểm qua đường
+    /// bắt đầu phiên thật (`toggle_session`, Q-A của review 04 lần 2); trước khi tải, tiến trình phụ đang rảnh được tắt
+    /// để nhả file (QĐ16).
+    #[test]
+    fn updating_the_pack_in_use_blocks_sessions_and_releases_models() {
+        let deps = FakeDeps::default();
+        let (releases, prepares) = (deps.releases.clone(), deps.prepares.clone());
+        let h = harness_with(deps, |_| {});
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        h.wait("done");
+        assert_eq!(*releases.lock().unwrap(), 0, "tải gói mới không cần tắt gì");
+        publish_update_of_standard(&h);
         let started = h.call("download_models", json!({ "pack": "standard" })).unwrap();
         assert_eq!(started["job"]["replacesInUse"], true);
+        let refused = toggle_within(&h).unwrap_err();
+        assert!(refused.contains("\"code\":\"modelsBusy\""), "{refused}");
+        assert_eq!(
+            *prepares.lock().unwrap(),
+            0,
+            "không chuẩn bị tiến trình phụ trong lúc tải đè"
+        );
         let busy = h.service().resolve(Some("standard")).unwrap_err();
-        assert_eq!(busy.code, errors::MODELS_BUSY, "không bắt đầu phiên trong lúc tải đè");
+        assert_eq!(
+            busy.code,
+            errors::MODELS_BUSY,
+            "lần chạy sẵn đã qua cổng thì dừng ở resolve, không nạp tiếp"
+        );
         h.wait("done");
         assert_eq!(*releases.lock().unwrap(), 1);
-        assert!(h.service().resolve(Some("standard")).is_ok());
+        assert_eq!(h.call("toggle_session", json!({})).unwrap()["session"], "running");
+        h.call("toggle_session", json!({})).unwrap();
         h.call("delete_models", json!({ "pack": "standard" })).unwrap();
         assert_eq!(*releases.lock().unwrap(), 2, "xóa gói đang dùng");
         h.call("delete_models_and_data", json!({})).unwrap();
         assert_eq!(*releases.lock().unwrap(), 3, "xóa hết");
+    }
+
+    /// Q-A của review 04 lần 2: lần chạy sẵn đang nạp dở thì việc tải đè chờ nó xong rồi mới tắt tiến trình phụ (nếu
+    /// không, nó còn chạy `llama-server` sau lần tắt); trong lúc tải đè, lần chạy sẵn mới không chạy.
+    #[test]
+    fn an_update_waits_for_a_prewarm_in_progress_and_stops_new_ones() {
+        let gate = Arc::new(PrepareGate::default());
+        let deps = FakeDeps {
+            prepare_gate: Some(gate.clone()),
+            ..FakeDeps::default()
+        };
+        let (releases, prepares) = (deps.releases.clone(), deps.prepares.clone());
+        let h = harness_with(deps, |_| {});
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        h.wait("done");
+        crate::session::prewarm(h.app.handle());
+        wait_for("lần chạy sẵn tới prepare", || gate.waiting() == 1);
+        publish_update_of_standard(&h);
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(*releases.lock().unwrap(), 0, "chờ lần chạy sẵn đang nạp");
+        gate.open();
+        wait_for("tắt tiến trình phụ", || *releases.lock().unwrap() == 1);
+        assert_eq!(
+            h.call("get_models_state", json!({})).unwrap()["job"]["state"],
+            "downloading"
+        );
+        crate::session::prewarm(h.app.handle());
+        std::thread::sleep(Duration::from_millis(100));
+        assert_eq!(*prepares.lock().unwrap(), 1, "đang tải đè: không chạy sẵn");
+        h.wait("done");
+    }
+
+    /// N-10 của review 04 lần 2: trong lúc xóa (có thể phải chờ lần chạy sẵn đang nạp dở), không bắt đầu phiên và không
+    /// tải được.
+    #[test]
+    fn deleting_blocks_sessions_and_downloads_until_done() {
+        let gate = Arc::new(PrepareGate::default());
+        let deps = FakeDeps {
+            prepare_gate: Some(gate.clone()),
+            ..FakeDeps::default()
+        };
+        let h = harness_with(deps, |_| {});
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "lite" })).unwrap();
+        h.wait("done");
+        crate::session::prewarm(h.app.handle());
+        wait_for("lần chạy sẵn tới prepare", || gate.waiting() == 1);
+        let (service, handle) = (h.service(), h.app.handle().clone());
+        let deleting = std::thread::spawn(move || service.delete_all(&handle).map(|_| ()));
+        wait_for("đang xóa", || h.service().busy());
+        let busy = |r: Result<Value, String>| r.unwrap_err().contains("\"code\":\"modelsBusy\"");
+        assert!(busy(toggle_within(&h)));
+        assert!(busy(h.call("download_models", json!({ "pack": "standard" }))));
+        gate.open();
+        deleting.join().unwrap().unwrap();
+        assert!(!h.service().busy());
     }
 
     #[test]
@@ -1161,7 +1257,7 @@ Run: `cargo test -p meeting-translator --lib models::service 2>&1 | grep -E '^er
 Expected (lúc lập kế hoạch):
 
 ```text
-error: could not compile `meeting-translator` (lib test) due to 42 previous errors; 1 warning emitted
+error: could not compile `meeting-translator` (lib test) due to 50 previous errors; 1 warning emitted
 error[E0407]: method `release_models` is not a member of trait `SessionDeps`
 error[E0425]: cannot find type `Arc` in this scope
 error[E0425]: cannot find type `Config` in this scope
@@ -1325,7 +1421,27 @@ struct Inner {
     checking: bool,
     manifest_error: Option<String>,
     job: Job,
+    /// Đang xóa hay kiểm một gói (`Some(true)`: gói đang dùng); đặt dưới khóa này cùng lúc kiểm "đang dịch", "đang tải"
+    /// (N-10 của review 04 lần 2).
+    maintenance: Option<bool>,
     rev: u64,
+}
+
+impl Inner {
+    /// Có việc đang đụng tới file của gói đang dùng: tải bản cập nhật đè lên nó, hay xóa hoặc kiểm nó. Trong lúc đó không
+    /// bắt đầu phiên và không chạy sẵn tiến trình phụ (QĐ15, Q-A của review 04 lần 2).
+    fn touches_in_use(&self) -> bool {
+        (self.job.state == JobState::Downloading && self.job.replaces_in_use) || self.maintenance == Some(true)
+    }
+}
+
+/// Việc xóa hay kiểm đang chạy; hủy thì hết (`ModelService::begin_work`).
+struct Work<'a>(&'a ModelService);
+
+impl Drop for Work<'_> {
+    fn drop(&mut self) {
+        self.0.lock().maintenance = None;
+    }
 }
 
 pub struct ModelService {
@@ -1375,6 +1491,7 @@ impl ModelService {
                 checking: false,
                 manifest_error: None,
                 job: Job::idle(),
+                maintenance: None,
                 rev: 0,
             }),
             pause: Arc::new(Pause::default()),
@@ -1414,9 +1531,35 @@ impl ModelService {
     }
 
     /// Đang tải bản cập nhật đè lên file của gói đang dùng.
+    /// Xem [`Inner::touches_in_use`].
     pub fn busy(&self) -> bool {
+        self.lock().touches_in_use()
+    }
+
+    /// Bắt đầu phiên dịch: `begin` (đặt trạng thái `Starting`) chạy dưới khóa của dịch vụ, cùng khóa mà `download`,
+    /// `delete`, `delete_all`, `verify` giữ lúc kiểm "đang dịch" rồi bắt đầu việc của chúng. Vì vậy hoặc phiên thấy việc
+    /// đó và bị từ chối (`modelsBusy`), hoặc việc đó thấy phiên và bị từ chối (`modelsInUse`); không có trường hợp cả hai
+    /// cùng chạy (Q-A của review 04 lần 2).
+    pub fn begin_session<T>(&self, begin: impl FnOnce() -> T) -> Result<T, CommandError> {
         let inner = self.lock();
-        inner.job.state == JobState::Downloading && inner.job.replaces_in_use
+        if inner.touches_in_use() {
+            return Err(CommandError::new(errors::MODELS_BUSY, None, "đang cập nhật model"));
+        }
+        Ok(begin())
+    }
+
+    /// Bắt đầu một việc xóa hay kiểm, dưới khóa của dịch vụ: từ chối khi việc đụng gói đang dùng mà phiên đang bắt đầu
+    /// hay đang chạy (`modelsInUse`), hay khi đang tải hoặc đang có việc khác (`modelsBusy`).
+    fn begin_work<R: Runtime>(&self, app: &AppHandle<R>, in_use: bool) -> Result<Work<'_>, CommandError> {
+        let mut inner = self.lock();
+        if in_use && session_active(app) {
+            return Err(CommandError::new(errors::MODELS_IN_USE, None, "đang dịch bằng gói này"));
+        }
+        if inner.job.state == JobState::Downloading || inner.maintenance.is_some() {
+            return Err(CommandError::new(errors::MODELS_BUSY, None, "đang tải"));
+        }
+        inner.maintenance = Some(in_use);
+        Ok(Work(self))
     }
 
     /// Cấu hình máy, với kết quả dò GPU nếu đã có.
@@ -1607,7 +1750,7 @@ impl ModelService {
         }
         {
             let mut inner = self.lock();
-            if inner.job.state == JobState::Downloading {
+            if inner.job.state == JobState::Downloading || inner.maintenance.is_some() {
                 return Err(CommandError::new(errors::MODELS_BUSY, None, "đang tải"));
             }
             // Kiểm phiên dưới khóa của dịch vụ: phiên bắt đầu sau lúc này thì thấy `busy()` (N5 của review 04).
@@ -1736,12 +1879,7 @@ impl ModelService {
             return Err(CommandError::new(errors::MODELS_UNKNOWN_PACK, Some("pack"), pack));
         }
         let in_use = selected(app).as_deref() == Some(pack);
-        if in_use && session_active(app) {
-            return Err(CommandError::new(errors::MODELS_IN_USE, None, "đang dịch bằng gói này"));
-        }
-        if self.lock().job.state == JobState::Downloading {
-            return Err(CommandError::new(errors::MODELS_BUSY, None, "đang tải"));
-        }
+        let work = self.begin_work(app, in_use)?;
         if in_use {
             session::release_models(app);
         }
@@ -1760,18 +1898,14 @@ impl ModelService {
                 inner.job = Job::idle();
             }
         }
+        drop(work);
         Ok(self.changed(app))
     }
 
     /// "Xóa model và dữ liệu" (§4.3, A6): xóa cả thư mục model, bỏ gói đang dùng. Bản quyền và bộ đếm hạn mức trong
     /// kho khóa giữ nguyên (Q14). Manifest vẫn giữ trong bộ nhớ, để tải lại được ngay mà không cần mạng.
     pub fn delete_all<R: Runtime>(&self, app: &AppHandle<R>) -> Result<ModelsView, CommandError> {
-        if session_active(app) {
-            return Err(CommandError::new(errors::MODELS_IN_USE, None, "đang dịch"));
-        }
-        if self.lock().job.state == JobState::Downloading {
-            return Err(CommandError::new(errors::MODELS_BUSY, None, "đang tải"));
-        }
+        let work = self.begin_work(app, true)?;
         session::release_models(app);
         // Giữ lại manifest đã nhận: nó là mốc chống quay lui về manifest cũ (N3 của review 04).
         let saved = std::fs::read(self.store.path(store::MANIFEST)).ok();
@@ -1786,6 +1920,7 @@ impl ModelService {
         self.lock().job = Job::idle();
         actions::set_model_tier(app, None);
         log::info!("đã xóa model và dữ liệu");
+        drop(work);
         Ok(self.changed(app))
     }
 
@@ -1799,12 +1934,7 @@ impl ModelService {
             return Err(CommandError::new(errors::MODELS_UNKNOWN_PACK, Some("pack"), pack));
         }
         let in_use = selected(app).as_deref() == Some(pack);
-        if in_use && session_active(app) {
-            return Err(CommandError::new(errors::MODELS_IN_USE, None, "đang dịch bằng gói này"));
-        }
-        if self.lock().job.state == JobState::Downloading {
-            return Err(CommandError::new(errors::MODELS_BUSY, None, "đang tải"));
-        }
+        let work = self.begin_work(app, in_use)?;
         if in_use {
             session::release_models(app);
         }
@@ -1812,6 +1942,7 @@ impl ModelService {
         if !broken.is_empty() {
             log::warn!("gói {pack} có file hỏng: {broken:?}");
         }
+        drop(work);
         Ok(self.changed(app))
     }
 
@@ -2041,10 +2172,23 @@ Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
-index 969bd8ef8ec0b389a7e3b37adeb71d9c1753a77f..f93152191498e561685c3563e752848fa24ea3e2 100644
+index 969bd8ef8ec0b389a7e3b37adeb71d9c1753a77f..faf2a7da6c2b1d446aeab8625cf38e3ee912569e 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
-@@ -74,4 +74,7 @@ pub trait SessionDeps: Send + Sync {
+@@ -37,4 +37,5 @@ use crate::debug::{DebugLog, DebugSession};
+ use crate::errors::{self, CommandError};
+ use crate::glossary::{self, ActiveGlossary};
++use crate::models::service::ModelService;
+ use crate::settings::{AudioSource, Lang, Settings};
+ use crate::sidecar::{self, first_run, integrity};
+@@ -47,4 +48,6 @@ use crate::{actions, events, overlay, window};
+ /// 10 phút nằm ở `supervisor.idle_shutdown_ms`.
+ const TICK_EVERY: Duration = Duration::from_secs(30);
++/// Chờ lần chạy sẵn đang nạp dở tối đa chừng này (lần nạp đầu tiên tới 180 giây, §5) trước khi tắt tiến trình phụ.
++const PREWARM_WAIT: Duration = Duration::from_secs(180);
+ /// Id phụ đề của phiên thứ n bắt đầu từ `n × ID_STRIDE` (không trùng giữa các phiên của một lần chạy app).
+ const ID_STRIDE: u64 = 1_000_000;
+@@ -74,4 +77,7 @@ pub trait SessionDeps: Send + Sync {
      /// Gọi định kỳ: tắt tiến trình phụ sau 10 phút không dịch.
      fn tick(&self) {}
 +    /// Tắt tiến trình phụ đang rảnh để chúng nhả file model (trước khi xóa hay tải đè model, kế hoạch 04). Lần chuẩn bị
@@ -2052,19 +2196,98 @@ index 969bd8ef8ec0b389a7e3b37adeb71d9c1753a77f..f93152191498e561685c3563e752848f
 +    fn release_models(&self) {}
      /// Thoát app, bước 1: từ giờ không chạy thêm tiến trình phụ nào, kill các tiến trình đang chạy. Không chờ gì.
      fn shutdown(&self) {}
-@@ -529,4 +532,11 @@ pub fn shutdown<R: Runtime>(app: &AppHandle<R>) {
+@@ -229,5 +235,6 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
+         return Ok(state.status());
+     }
+-    if let Err(e) = session.deps.check_quota() {
++    // Chưa bắt đầu được (hết hạn mức, đang cập nhật model): báo lỗi, trừ khi một phiên khác đang chạy.
++    let refuse = |e: CommandError| {
+         let refused = state.update_status(|s| {
+             if matches!(s.session, SessionStatus::Starting | SessionStatus::Running) {
+@@ -242,20 +249,34 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
+             return Err(e);
+         }
+-        return Ok(state.status());
++        Ok(state.status())
++    };
++    if let Err(e) = session.deps.check_quota() {
++        return refuse(e);
+     }
+     let mut attempt = 0;
+-    let begun = state.update_status(|s| {
+-        if matches!(s.session, SessionStatus::Starting | SessionStatus::Running) {
+-            return false;
+-        }
+-        attempt = session.attempt.fetch_add(1, Ordering::SeqCst) + 1;
+-        s.session = SessionStatus::Starting;
+-        s.session_error = None;
+-        s.indicators = Indicators::default();
+-        s.permission_suspected = false;
+-        s.waiting_for_app = false;
+-        s.overlay_visible = true;
+-        true
+-    });
++    let mut begin = || {
++        state.update_status(|s| {
++            if matches!(s.session, SessionStatus::Starting | SessionStatus::Running) {
++                return false;
++            }
++            attempt = session.attempt.fetch_add(1, Ordering::SeqCst) + 1;
++            s.session = SessionStatus::Starting;
++            s.session_error = None;
++            s.indicators = Indicators::default();
++            s.permission_suspected = false;
++            s.waiting_for_app = false;
++            s.overlay_visible = true;
++            true
++        })
++    };
++    // Đang tải bản cập nhật, xóa hay kiểm gói đang dùng thì không bắt đầu (QĐ15 của 04). Mọi đường bắt đầu phiên (nút,
++    // khay, phím tắt, bước Nghe thử) đều qua đây, kể cả khi tiến trình phụ đang chạy sẵn (Q-A của review 04 lần 2).
++    let begun = match app.try_state::<Arc<ModelService>>() {
++        Some(models) => match models.begin_session(begin) {
++            Ok(begun) => begun,
++            Err(e) => return refuse(e),
++        },
++        None => begin(),
++    };
+     if !begun {
+         return Ok(state.status());
+@@ -488,4 +509,10 @@ pub fn prewarm<R: Runtime>(app: &AppHandle<R>) {
+         return;
+     }
++    // Đang tải bản cập nhật, xóa hay kiểm gói đang dùng: không chạy tiến trình phụ (Q-A của review 04 lần 2). Kiểm sau
++    // khi đặt cờ, nên `release_models` (chờ cờ này về `false`) không bỏ sót lần chạy sẵn nào.
++    if app.try_state::<Arc<ModelService>>().is_some_and(|m| m.busy()) {
++        session.prewarming.store(false, Ordering::SeqCst);
++        return;
++    }
+     let app = app.clone();
+     std::thread::spawn(move || {
+@@ -529,4 +556,22 @@ pub fn shutdown<R: Runtime>(app: &AppHandle<R>) {
  }
  
 +/// Tắt tiến trình phụ đang rảnh để nhả file model (kế hoạch 04). Gọi khi không có phiên nào chạy.
 +pub fn release_models<R: Runtime>(app: &AppHandle<R>) {
 +    if let Some(session) = app.try_state::<Session>() {
++        wait_for_prewarm(&session);
 +        session.deps.release_models();
++    }
++}
++
++/// Chờ lần chạy sẵn đang nạp dở xong (tối đa [`PREWARM_WAIT`], hay tới khi app thoát). Trước khi tắt tiến trình phụ để
++/// tải đè hay xóa model: nếu không, lần chạy sẵn còn chạy `llama-server` sau lần tắt (Q-A của review 04 lần 2). Người
++/// gọi đã đặt việc đụng tới gói đang dùng (`ModelService::busy`), nên không lần chạy sẵn mới nào bắt đầu trong lúc chờ.
++fn wait_for_prewarm(session: &Session) {
++    let since = Instant::now();
++    while session.is_prewarming() && !session.closing.load(Ordering::SeqCst) && since.elapsed() < PREWARM_WAIT {
++        std::thread::sleep(Duration::from_millis(20));
 +    }
 +}
 +
  /// Luồng nền gọi `tick` định kỳ.
  pub fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
-@@ -820,4 +830,10 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
+@@ -820,4 +865,10 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
      }
  
 +    fn release_models(&self) {
@@ -2228,7 +2451,7 @@ Run: `cargo test -p meeting-translator --lib models::service 2>&1 | grep -E '^te
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 275 filtered out; finished in 2.83s
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 278 filtered out; finished in 3.27s
 ```
 
 Run: `cargo test -p meeting-translator --lib 2>&1 | grep -E '^test result'; pnpm test 2>&1 | perl -pe 's/\e\[[0-9;]*m//g' | grep -E '^ +(Test Files|Tests) '`
@@ -2236,7 +2459,7 @@ Run: `cargo test -p meeting-translator --lib 2>&1 | grep -E '^test result'; pnpm
 Expected (lúc lập kế hoạch; cả `acl_tests` và `errors::tests` đều chạy trong lệnh đầu):
 
 ```text
-test result: ok. 293 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 2.98s
+test result: ok. 298 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 3.19s
  Test Files  10 passed (10)
       Tests  97 passed (97)
 ```
@@ -2260,9 +2483,9 @@ git commit -q -m "feat(models): dịch vụ model, lệnh và sự kiện models
 
 ## Task 9: Phiên dịch dùng kho model
 
-Dòng 233, 338; QĐ11, QĐ15, QĐ17; ghi chú 8 của review cuối 02:
-- `sidecar/mod.rs`: file model của gói đang dùng lấy từ `ModelService::resolve` (kiểm có file và kích thước; đang tải bản cập nhật thì `modelsBusy`); bản dev chưa tải gói nào thì dùng `models/` của repo như 02; ngưỡng của giám sát và của hai tiến trình phụ theo manifest. Dò GPU xong thì báo lại trạng thái model (đề xuất theo VRAM).
-- `session.rs`: `engine_config` nhận `PipelineConfig` (từ manifest; `vadEndSilenceMs` của người dùng vẫn đè); `SessionDeps::pipeline_config`; lỗi `modelBroken` (lúc bắt đầu hay giữa phiên) thì băm lại gói; `prewarm` không làm gì khi phiên đang bắt đầu hay đang chạy (QĐ15, Q4 của review lần 1), có test bằng `PrepareGate` của app giả; lần chuẩn bị chỉ dùng lại bộ tiến trình phụ đang có khi cùng gói (`reusable`, có test).
+Dòng 233, 338; QĐ11, QĐ15, QĐ17, QĐ22; ghi chú 8 của review cuối 02:
+- `sidecar/mod.rs`: file model của gói đang dùng lấy từ `ModelService::resolve` (kiểm có file và kích thước; đang tải bản cập nhật thì `modelsBusy`); `SidecarKey`, `sidecar_key`; bản dev chưa tải gói nào thì dùng `models/` của repo như 02; ngưỡng của giám sát và của hai tiến trình phụ theo manifest. Dò GPU xong thì báo lại trạng thái model (đề xuất theo VRAM).
+- `session.rs`: `engine_config` nhận `PipelineConfig` (từ manifest; `vadEndSilenceMs` của người dùng vẫn đè); `SessionDeps::pipeline_config`; lỗi `modelBroken` (lúc bắt đầu hay giữa phiên) thì băm lại gói; `prewarm` không làm gì khi phiên đang bắt đầu hay đang chạy (QĐ15, Q4 của review lần 1), có test bằng `PrepareGate` của app giả; lần chuẩn bị luôn tính `sidecar::sidecar_key` (gọi `resolve`, kể cả khi tiến trình phụ đang chạy) và chỉ dùng lại bộ tiến trình phụ đang có khi cùng khóa (`reusable`; QĐ22, Q-B của review lần 2); lần bắt đầu phiên chờ lần chạy sẵn đang nạp dở xong (N-9). Có test cho cả hai.
 
 **Files:**
 - Sửa: `src-tauri/src/session.rs`
@@ -2276,10 +2499,10 @@ Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
-index f93152191498e561685c3563e752848fa24ea3e2..6cb50a9b4ab748723421edb62243adce1ff02575 100644
+index faf2a7da6c2b1d446aeab8625cf38e3ee912569e..6a8bd498bded0c68987df7f31b4789d404731c3c 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
-@@ -872,17 +872,15 @@ mod tests {
+@@ -907,17 +907,15 @@ mod tests {
      }
  
 -    /// Q4-1 của review 02 lần 4: `LiveDeps::allow_retry` cho đúng `SidecarManager` đang dùng thử lại. Tiến trình phụ trỏ
@@ -2302,14 +2525,14 @@ index f93152191498e561685c3563e752848fa24ea3e2..6cb50a9b4ab748723421edb62243adce
 +                log: std::env::temp_dir().join(format!("mt-{tag}-{}.log", std::process::id())),
                  first_run: false,
                  require_shared: false,
-@@ -892,5 +890,5 @@ mod tests {
+@@ -927,5 +925,5 @@ mod tests {
                  exe: missing,
                  model: PathBuf::from("/khong/co/mt.gguf"),
 -                log: std::env::temp_dir().join(format!("mt-allow-retry-llama-{}.log", std::process::id())),
 +                log: std::env::temp_dir().join(format!("mt-{tag}-llama-{}.log", std::process::id())),
                  extra_args: Vec::new(),
                  first_run: false,
-@@ -903,5 +901,13 @@ mod tests {
+@@ -938,5 +936,13 @@ mod tests {
              asr_config: AsrConfig::default(),
              mt_config: MtConfig::default(),
 -        };
@@ -2324,13 +2547,29 @@ index f93152191498e561685c3563e752848fa24ea3e2..6cb50a9b4ab748723421edb62243adce
 +        let spec = missing_sidecars("allow-retry");
          let spawns = Arc::new(CountSpawns::default());
          let manager = SidecarManager::new(spec, Arc::new(FakeClock::default()), spawns.clone());
-@@ -921,4 +927,26 @@ mod tests {
+@@ -945,5 +951,5 @@ mod tests {
+         *deps.live.lock().unwrap() = Some(Live {
+             manager: manager.clone(),
+-            tier: None,
++            key: sidecar::SidecarKey::default(),
+             vad_model: PathBuf::new(),
+         });
+@@ -956,4 +962,42 @@ mod tests {
      }
  
-+    /// Ghi chú 8 của review cuối 02: lần chuẩn bị chỉ dùng lại bộ tiến trình phụ đang có khi cùng gói model; đổi gói thì
-+    /// dựng bộ mới, không chạy tiếp model của gói cũ.
++    /// Ghi chú 8 của review cuối 02 và Q-B của review 04 lần 2: lần chuẩn bị chỉ dùng lại bộ tiến trình phụ đang có khi
++    /// cùng gói, cùng file model và cùng ngưỡng; đổi gói, hay bản cập nhật đổi tên file hay ngưỡng, thì dựng bộ mới.
 +    #[test]
-+    fn sidecars_are_reused_only_for_the_same_pack() {
++    fn sidecars_are_reused_only_for_the_same_pack_files_and_thresholds() {
++        let key = |tier: &str, mt: &str| sidecar::SidecarKey {
++            tier: Some(tier.into()),
++            models: sidecar::paths::ModelFiles {
++                asr: PathBuf::from("/m/asr.bin"),
++                mt: PathBuf::from(mt),
++                vad: PathBuf::from("/m/vad.onnx"),
++            },
++            ..sidecar::SidecarKey::default()
++        };
 +        let manager = SidecarManager::new(
 +            missing_sidecars("reuse"),
 +            Arc::new(pipeline::supervisor::FakeClock::default()),
@@ -2338,20 +2577,27 @@ index f93152191498e561685c3563e752848fa24ea3e2..6cb50a9b4ab748723421edb62243adce
 +        );
 +        let live = Live {
 +            manager: manager.clone(),
-+            tier: Some("lite".into()),
++            key: key("lite", "/m/q4.gguf"),
 +            vad_model: PathBuf::new(),
 +        };
-+        let mut settings = Settings::defaults(UiLanguage::Vi);
-+        settings.model_tier = Some("lite".into());
-+        assert!(reusable(Some(&live), &settings).is_some_and(|m| Arc::ptr_eq(&m, &manager)));
-+        settings.model_tier = Some("standard".into());
-+        assert!(reusable(Some(&live), &settings).is_none());
-+        assert!(reusable(None, &settings).is_none());
++        assert!(reusable(Some(&live), &key("lite", "/m/q4.gguf")).is_some_and(|m| Arc::ptr_eq(&m, &manager)));
++        assert!(reusable(Some(&live), &key("standard", "/m/q4.gguf")).is_none());
++        assert!(
++            reusable(Some(&live), &key("lite", "/m/q4-v2.gguf")).is_none(),
++            "bản cập nhật đổi tên file"
++        );
++        let mut other_threshold = key("lite", "/m/q4.gguf");
++        other_threshold.mt.max_tokens_cap += 1;
++        assert!(
++            reusable(Some(&live), &other_threshold).is_none(),
++            "ngưỡng mới của manifest"
++        );
++        assert!(reusable(None, &key("lite", "/m/q4.gguf")).is_none());
 +    }
 +
      /// Q4-2 của review 02 lần 4: `asr-worker` chạy lại được bằng GPU thì bỏ chỉ báo "Đang chạy bằng CPU".
      #[test]
-@@ -1056,5 +1084,10 @@ mod tests {
+@@ -1091,5 +1135,10 @@ mod tests {
          let mut settings = Settings::defaults(UiLanguage::Vi);
          settings.vad_end_silence_ms = 500;
 -        let cfg = engine_config(&settings, 3_000_000, SharedGlossary::default());
@@ -2363,7 +2609,7 @@ index f93152191498e561685c3563e752848fa24ea3e2..6cb50a9b4ab748723421edb62243adce
 +        );
          assert_eq!(cfg.languages, ["en", "zh", "ja", "ko", "vi"]);
          assert_eq!(cfg.target, MtLang::Vi);
-@@ -1065,8 +1098,58 @@ mod tests {
+@@ -1100,8 +1149,88 @@ mod tests {
          settings.target_language = Lang::En;
          settings.experimental.translation_context = true;
 -        let cfg = engine_config(&settings, 0, SharedGlossary::default());
@@ -2421,6 +2667,36 @@ index f93152191498e561685c3563e752848fa24ea3e2..6cb50a9b4ab748723421edb62243adce
 +            assert!(since.elapsed() < Duration::from_secs(10), "rảnh: prewarm chuẩn bị");
 +            std::thread::sleep(Duration::from_millis(5));
 +        }
++    }
++
++    /// N-9 của review 04 lần 2: lần bắt đầu phiên chờ lần chạy sẵn đang nạp xong rồi mới chuẩn bị.
++    #[test]
++    fn a_start_waits_for_a_prewarm_in_progress() {
++        use crate::test_support::{FakeDeps, PrepareGate, mock_app_with};
++        let gate = Arc::new(PrepareGate::default());
++        let deps = FakeDeps {
++            prepare_gate: Some(gate.clone()),
++            ..FakeDeps::default()
++        };
++        let prepares = deps.prepares.clone();
++        let app = mock_app_with(deps);
++        prewarm(app.handle());
++        let since = Instant::now();
++        while gate.waiting() == 0 {
++            assert!(
++                since.elapsed() < Duration::from_secs(10),
++                "lần chạy sẵn không tới prepare"
++            );
++            std::thread::sleep(Duration::from_millis(5));
++        }
++        let handle = app.handle().clone();
++        let starting = std::thread::spawn(move || toggle(&handle));
++        std::thread::sleep(Duration::from_millis(200));
++        assert_eq!(*prepares.lock().unwrap(), 1, "chưa chuẩn bị khi lần chạy sẵn còn nạp");
++        gate.open();
++        assert_eq!(starting.join().unwrap().unwrap().session, SessionStatus::Running);
++        assert_eq!(*prepares.lock().unwrap(), 2);
++        toggle(app.handle()).unwrap();
      }
  
 ```
@@ -2429,10 +2705,10 @@ Sửa `src-tauri/src/models/service.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/models/service.rs b/src-tauri/src/models/service.rs
-index 0dffef019f40b9d6115f16c8c793a081504f57f0..83d6f29d36ce346a8302623c649b0bd1295a24b3 100644
+index 44758ef07449c5ef57490afb89f3b86a1ae1240c..4edf6b768784d61d8f1f379ede7738471793d2ca 100644
 --- a/src-tauri/src/models/service.rs
 +++ b/src-tauri/src/models/service.rs
-@@ -1327,4 +1327,29 @@ mod tests {
+@@ -1455,4 +1455,29 @@ mod tests {
      }
  
 +    /// §9: phiên không bắt đầu được vì model nạp lỗi thì app băm lại file của gói đang dùng.
@@ -2471,9 +2747,12 @@ Run: `cargo test -p meeting-translator --lib -- session:: models::service 2>&1 |
 Expected (lúc lập kế hoạch):
 
 ```text
-error: could not compile `meeting-translator` (lib test) due to 5 previous errors
+error: could not compile `meeting-translator` (lib test) due to 12 previous errors
 error[E0061]: this function takes 3 arguments but 4 arguments were supplied
+error[E0422]: cannot find struct, variant or union type `SidecarKey` in module `sidecar`
 error[E0425]: cannot find function `reusable` in this scope
+error[E0433]: cannot find `SidecarKey` in `sidecar`
+error[E0560]: struct `session::Live` has no field named `key`
 ```
 
 - [ ] **Step 3: Viết code**
@@ -2482,10 +2761,10 @@ Sửa `src-tauri/src/session.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/session.rs b/src-tauri/src/session.rs
-index 6cb50a9b4ab748723421edb62243adce1ff02575..cd5263c76eeb4dfaf1e1871ff85b4debbf9e9128 100644
+index 6a8bd498bded0c68987df7f31b4789d404731c3c..b69efcf3cf02603e7dd758a493202c8d1cb0c920 100644
 --- a/src-tauri/src/session.rs
 +++ b/src-tauri/src/session.rs
-@@ -85,4 +85,8 @@ pub trait SessionDeps: Send + Sync {
+@@ -88,4 +88,8 @@ pub trait SessionDeps: Send + Sync {
          errors::SIDECAR_FAILED
      }
 +    /// Ngưỡng của pipeline: mặc định, hay theo manifest model đã ký (kế hoạch 04, 02a QĐ21).
@@ -2494,7 +2773,7 @@ index 6cb50a9b4ab748723421edb62243adce1ff02575..cd5263c76eeb4dfaf1e1871ff85b4deb
 +    }
  }
  
-@@ -139,7 +143,12 @@ fn code_of(settings: Lang) -> &'static str {
+@@ -142,7 +146,12 @@ fn code_of(settings: Lang) -> &'static str {
  }
  
 -/// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh; và từ điển thuật ngữ dùng chung.
@@ -2510,7 +2789,7 @@ index 6cb50a9b4ab748723421edb62243adce1ff02575..cd5263c76eeb4dfaf1e1871ff85b4deb
 +) -> EngineConfig {
      pipeline.segmenter.end_silence_ms = u64::from(settings.vad_end_silence_ms);
      let languages = match settings.source_lock {
-@@ -188,6 +197,14 @@ fn show_overlay<R: Runtime>(app: &AppHandle<R>) {
+@@ -191,6 +200,14 @@ fn show_overlay<R: Runtime>(app: &AppHandle<R>) {
  }
  
 +/// Model nạp lỗi (§9): băm lại file của gói đang dùng trên luồng nền; file hỏng thì gói hiện "chưa tải" để tải lại.
@@ -2525,20 +2804,28 @@ index 6cb50a9b4ab748723421edb62243adce1ff02575..cd5263c76eeb4dfaf1e1871ff85b4deb
 +    check_broken_model(app, code);
      let session = app.state::<Session>();
      app.state::<AppState>().update_status(|s| {
-@@ -317,5 +334,5 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
+@@ -286,4 +303,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
+     changed(app);
+     let settings = state.settings();
++    // Lần chạy sẵn đang nạp dở (có thể của gói vừa đổi): chờ nó xong, để không có hai bộ tiến trình phụ cùng nạp (ghi chú
++    // 8 của review cuối 02, N-9 của review 04 lần 2).
++    wait_for_prewarm(&session);
+     session.deps.allow_retry();
+     if let Err(e) = session.deps.prepare(&settings) {
+@@ -335,5 +355,5 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
      });
      let engine = match Engine::start(
 -        engine_config(&settings, n * ID_STRIDE, glossary),
 +        engine_config(&settings, session.deps.pipeline_config(), n * ID_STRIDE, glossary),
          source,
          session.deps.vad(),
-@@ -451,4 +468,5 @@ fn fail<R: Runtime>(app: &AppHandle<R>, n: u64, code: &str, message: &str) {
+@@ -469,4 +489,5 @@ fn fail<R: Runtime>(app: &AppHandle<R>, n: u64, code: &str, message: &str) {
      }
      log::error!("phiên dịch dừng vì lỗi {code}: {message}");
 +    check_broken_model(app, code);
      app.state::<AppState>().update_status(|s| {
          s.session = SessionStatus::Error;
-@@ -488,4 +506,10 @@ pub fn prewarm<R: Runtime>(app: &AppHandle<R>) {
+@@ -506,4 +527,10 @@ pub fn prewarm<R: Runtime>(app: &AppHandle<R>) {
          return;
      };
 +    // Phiên đang bắt đầu hay đang chạy đã có (hay đang dựng) tiến trình phụ của nó. Chuẩn bị theo cài đặt lúc này có thể
@@ -2549,19 +2836,24 @@ index 6cb50a9b4ab748723421edb62243adce1ff02575..cd5263c76eeb4dfaf1e1871ff85b4deb
 +    }
      if session.prewarming.swap(true, Ordering::SeqCst) {
          return;
-@@ -709,4 +733,11 @@ struct Live {
+@@ -740,8 +767,15 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
+ struct Live {
+     manager: Arc<SidecarManager>,
+-    tier: Option<String>,
++    key: sidecar::SidecarKey,
+     vad_model: PathBuf,
  }
  
-+/// Bộ tiến trình phụ đang có dùng lại được cho lần chuẩn bị theo `settings` không: chỉ khi cùng gói model. Đổi gói thì
-+/// dựng bộ mới (bộ cũ tắt khi phiên cuối còn dùng nó kết thúc), nên gói mới có tác dụng từ phiên sau (QĐ15 của 04).
-+fn reusable(live: Option<&Live>, settings: &Settings) -> Option<Arc<SidecarManager>> {
-+    live.filter(|l| l.tier == settings.model_tier)
-+        .map(|l| l.manager.clone())
++/// Bộ tiến trình phụ đang có dùng lại được cho lần chuẩn bị theo `key` không: chỉ khi cùng gói, cùng file model và cùng
++/// ngưỡng. Khác thì dựng bộ mới (bộ cũ tắt khi phiên cuối còn dùng nó kết thúc), nên gói mới hay bản cập nhật của gói
++/// có tác dụng từ phiên sau (QĐ15 của 04, Q-B của review 04 lần 2).
++fn reusable(live: Option<&Live>, key: &sidecar::SidecarKey) -> Option<Arc<SidecarManager>> {
++    live.filter(|l| &l.key == key).map(|l| l.manager.clone())
 +}
 +
  /// Phần bên ngoài thật: tiến trình phụ (`pipeline::supervisor`), nguồn âm thanh (`capture`), Silero VAD.
  pub struct LiveDeps<R: Runtime> {
-@@ -737,10 +768,5 @@ impl<R: Runtime> LiveDeps<R> {
+@@ -772,10 +806,7 @@ impl<R: Runtime> LiveDeps<R> {
  impl<R: Runtime> SessionDeps for LiveDeps<R> {
      fn prepare(&self, settings: &Settings) -> Result<(), CommandError> {
 -        let running = {
@@ -2570,10 +2862,29 @@ index 6cb50a9b4ab748723421edb62243adce1ff02575..cd5263c76eeb4dfaf1e1871ff85b4deb
 -                .filter(|l| l.tier == settings.model_tier)
 -                .map(|l| l.manager.clone())
 -        };
-+        let running = reusable(self.live.lock().unwrap().as_ref(), settings);
++        // Kiểm file model mỗi lần (rẻ), kể cả khi tiến trình phụ đang chạy: bản cập nhật có thể đã đổi file hay ngưỡng.
++        let key = sidecar::sidecar_key(&self.app, settings)?;
++        let running = reusable(self.live.lock().unwrap().as_ref(), &key);
          // Chạm trước rồi mới hỏi còn chạy không: lần tắt khi rảnh (`SidecarManager::stop_if_idle`) kiểm lại "rảnh" dưới khóa
          // của tiến trình phụ, nên nó không tắt sau lần chạm này (Q5 của review 03).
-@@ -853,4 +879,11 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
+@@ -790,6 +821,7 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
+         let manager = {
+             let mut live = self.live.lock().unwrap();
+-            // Đổi gói model thì dựng lại; tiến trình cũ tắt khi phiên cuối còn dùng nó kết thúc (`SidecarManager` bị hủy).
+-            if live.as_ref().is_none_or(|l| l.tier != prepared.tier) {
++            // Khác gói, file model hay ngưỡng thì dựng lại; tiến trình cũ tắt khi phiên cuối còn dùng nó kết thúc
++            // (`SidecarManager` bị hủy).
++            if reusable(live.as_ref(), &prepared.key).is_none() {
+                 *self.asr_gave_up.lock().unwrap() = None;
+                 let events = Arc::new(StatusEvents {
+@@ -807,5 +839,5 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
+                 *live = Some(Live {
+                     manager,
+-                    tier: prepared.tier,
++                    key: prepared.key,
+                     vad_model: prepared.vad_model,
+                 });
+@@ -888,4 +920,11 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
              .map_or(errors::SIDECAR_FAILED, sidecar::give_up_code)
      }
 +
@@ -2591,10 +2902,10 @@ Sửa `src-tauri/src/models/service.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/models/service.rs b/src-tauri/src/models/service.rs
-index 83d6f29d36ce346a8302623c649b0bd1295a24b3..4aa4f13d1d3e0c6fcebf19354782299f98c64923 100644
+index 4edf6b768784d61d8f1f379ede7738471793d2ca..4e50a5a8fd9a1cf6b3693c1329c85868edff8a24 100644
 --- a/src-tauri/src/models/service.rs
 +++ b/src-tauri/src/models/service.rs
-@@ -706,4 +706,14 @@ pub fn check_on_startup<R: Runtime>(app: &AppHandle<R>) {
+@@ -741,4 +741,14 @@ pub fn check_on_startup<R: Runtime>(app: &AppHandle<R>) {
  }
  
 +/// Model nạp lỗi (§9): băm lại file của gói đang dùng trên luồng nền.
@@ -2615,10 +2926,10 @@ Sửa `src-tauri/src/sidecar/mod.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/sidecar/mod.rs b/src-tauri/src/sidecar/mod.rs
-index b34964edcbac90458ac999f7f229f71cb0fb9694..c0f2949c21d4a74d4532ae9f91b6c5f419da52a3 100644
+index b34964edcbac90458ac999f7f229f71cb0fb9694..733271a15fc4d6ec9b18b1514ef8708d40a8bef4 100644
 --- a/src-tauri/src/sidecar/mod.rs
 +++ b/src-tauri/src/sidecar/mod.rs
-@@ -8,12 +8,12 @@ pub mod probe;
+@@ -8,19 +8,48 @@ pub mod probe;
  
  use std::path::{Path, PathBuf};
 -use std::sync::{Condvar, Mutex};
@@ -2626,6 +2937,7 @@ index b34964edcbac90458ac999f7f229f71cb0fb9694..c0f2949c21d4a74d4532ae9f91b6c5f4
  use std::time::Duration;
  
 -use pipeline::config::PipelineConfig;
++use pipeline::config::{AsrConfig, MtConfig, SupervisorConfig};
  use pipeline::supervisor::{AsrSpec, GiveUpCause, LlamaSpec, SidecarSpec};
  use tauri::{AppHandle, Manager, Runtime};
  
@@ -2633,14 +2945,50 @@ index b34964edcbac90458ac999f7f229f71cb0fb9694..c0f2949c21d4a74d4532ae9f91b6c5f4
 +use crate::models::service::ModelService;
  use crate::settings::Settings;
  
-@@ -124,4 +124,6 @@ pub fn start_gpu_probe<R: Runtime>(app: &AppHandle<R>) {
+ /// Kết quả chuẩn bị: cách chạy hai tiến trình phụ, cộng những gì app cần nhớ.
++/// Những gì một bộ tiến trình phụ đang chạy dựa vào: gói, file model, ngưỡng của giám sát và của hai tiến trình phụ.
++/// Khác thì phải dựng bộ mới: bản cập nhật cùng mã gói có thể đổi tên file hay ngưỡng (Q-B của review 04 lần 2).
++#[derive(Clone, Debug, Default, PartialEq)]
++pub struct SidecarKey {
++    pub tier: Option<String>,
++    pub models: paths::ModelFiles,
++    pub supervisor: SupervisorConfig,
++    pub asr: AsrConfig,
++    pub mt: MtConfig,
++}
++
++/// [`SidecarKey`] cho cài đặt lúc này. Rẻ (chỉ kiểm có file và kích thước), nên lần chuẩn bị nào cũng gọi, kể cả khi
++/// tiến trình phụ đang chạy.
++pub fn sidecar_key<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<SidecarKey, CommandError> {
++    let models = resolve_models(app, settings)?;
++    let config = app
++        .try_state::<Arc<ModelService>>()
++        .map(|models| models.pipeline_config())
++        .unwrap_or_default();
++    Ok(SidecarKey {
++        tier: settings.model_tier.clone(),
++        models,
++        supervisor: config.supervisor,
++        asr: config.asr,
++        mt: config.mt,
++    })
++}
++
+ #[derive(Debug)]
+ pub struct Prepared {
+     pub spec: SidecarSpec,
+-    pub tier: Option<String>,
++    pub key: SidecarKey,
+     /// Thư mục tiến trình phụ, và băm của từng file thực thi (theo đường dẫn), cho kiểm lại trước mỗi lần chạy và cho
+     /// "lần đầu chạy".
+@@ -124,4 +153,6 @@ pub fn start_gpu_probe<R: Runtime>(app: &AppHandle<R>) {
          app.state::<GpuProbe>()
              .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)));
 +        // Đề xuất gói theo VRAM của card rời (kế hoạch 04) đổi theo kết quả dò.
 +        crate::models::service::changed(&app);
      });
  }
-@@ -134,4 +136,24 @@ fn seen_file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
+@@ -134,4 +165,24 @@ fn seen_file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
  }
  
 +/// File model của gói đang dùng, theo kho model (kế hoạch 04; lúc bắt đầu chỉ kiểm có file và đúng kích thước, §9).
@@ -2665,7 +3013,7 @@ index b34964edcbac90458ac999f7f229f71cb0fb9694..c0f2949c21d4a74d4532ae9f91b6c5f4
 +
  /// Dựng cách chạy cho gói model trong cài đặt. Kiểm SHA-256 trước, rồi mới chạy `--probe` (Windows): không chạy binary
  /// nào chưa kiểm.
-@@ -161,19 +183,10 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
+@@ -161,19 +212,7 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
          true
      };
 -    let models_dir = if tauri::is_dev() {
@@ -2681,22 +3029,39 @@ index b34964edcbac90458ac999f7f229f71cb0fb9694..c0f2949c21d4a74d4532ae9f91b6c5f4
 -            format!("thiếu {}", missing.display()),
 -        ));
 -    }
-+    let models = resolve_models(app, settings)?;
++    let key = sidecar_key(app, settings)?;
++    let models = &key.models;
      let logs = app.path().app_log_dir().map_err(path_error)?;
 -    let config = PipelineConfig::default();
-+    let config = app
-+        .try_state::<Arc<ModelService>>()
-+        .map(|models| models.pipeline_config())
-+        .unwrap_or_default();
      let spec = SidecarSpec {
          asr: AsrSpec {
+@@ -195,14 +234,14 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
+             env: Vec::new(),
+         },
+-        supervisor: config.supervisor,
+-        asr_config: config.asr,
+-        mt_config: config.mt,
++        supervisor: key.supervisor.clone(),
++        asr_config: key.asr.clone(),
++        mt_config: key.mt.clone(),
+     };
+     Ok(Prepared {
++        vad_model: key.models.vad.clone(),
+         spec,
+-        tier: settings.model_tier.clone(),
++        key,
+         dir,
+         hashes,
+-        vad_model: models.vad,
+         seen_file,
+         locks: verified.locks,
 ```
 
 Sửa `src-tauri/src/sidecar/paths.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/sidecar/paths.rs b/src-tauri/src/sidecar/paths.rs
-index f79b26a216ad36331cd86a2474172e6a1473658b..a5b311c2214aca13afebbe2ba00245029954fc9c 100644
+index f79b26a216ad36331cd86a2474172e6a1473658b..c14d9d973df49d9274f5750c6a2cd1ef17845abc 100644
 --- a/src-tauri/src/sidecar/paths.rs
 +++ b/src-tauri/src/sidecar/paths.rs
 @@ -3,6 +3,6 @@
@@ -2708,6 +3073,13 @@ index f79b26a216ad36331cd86a2474172e6a1473658b..a5b311c2214aca13afebbe2ba0024502
 +//!   thì dùng file của Giai đoạn 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
  
  use std::path::{Path, PathBuf};
+@@ -56,5 +56,5 @@ pub fn binaries_dir() -> std::io::Result<PathBuf> {
+ }
+ 
+-#[derive(Clone, Debug, PartialEq, Eq)]
++#[derive(Clone, Debug, Default, PartialEq, Eq)]
+ pub struct ModelFiles {
+     pub asr: PathBuf,
 @@ -84,5 +84,5 @@ pub fn dev_models_dir() -> PathBuf {
  }
  
@@ -2724,7 +3096,7 @@ Run: `cargo test -p meeting-translator --lib -- session:: models::service 2>&1 |
 Expected (lúc lập kế hoạch):
 
 ```text
-test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 268 filtered out; finished in 2.69s
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 271 filtered out; finished in 2.88s
 ```
 
 - [ ] **Step 5: Định dạng, clippy, code Windows**
@@ -2754,7 +3126,7 @@ git commit -q -m "feat(app): phiên dịch lấy model và ngưỡng từ kho mo
 ## Task 10: Giao diện: kiểu, store và chuỗi
 
 Dòng 36, 37, 53, 163, 223; QĐ19–QĐ21:
-- `src/lib/models.ts`: kiểu khớp `ModelsView` phía Rust; hàm thuần: định dạng dung lượng, gói đề xuất, gói chọn sẵn, phần còn phải tải, tiến độ, lý do không tải được (`downloadBlock`), bước 3 có tự tải không (`shouldAutoDownload`, N6 của review lần 1).
+- `src/lib/models.ts`: kiểu khớp `ModelsView` phía Rust; hàm thuần: định dạng dung lượng, gói đề xuất, gói chọn sẵn, phần còn phải tải, tiến độ, lý do không tải được (`downloadBlock`), bước 3 có tự tải không (`shouldAutoDownload`, N6 của review lần 1; chờ kết quả dò GPU trên Windows khi người dùng chưa tự chọn, N-12 của review lần 2).
 - `src/store/models.ts`: store Zustand riêng (nghe `models://state`, bỏ trạng thái cũ theo `rev`, gọi 9 lệnh; `repair` băm lại rồi chỉ tải khi gói còn thiếu, N7; "Xóa model và dữ liệu" xong thì gọi `onDataCleared`, QĐ13).
 - `src/lib/ipc.ts`: lệnh và sự kiện mới. `src/i18n`: khối `models.*`.
 - `src/lib/fakeModels.ts`: dữ liệu giả cho test (như `fakeIpc.ts`).
@@ -2899,17 +3271,26 @@ describe("tải được không", () => {
   });
 
   it("bước 3 tự tải gói vừa chọn, kể cả khi gói khác đang dừng giữa chừng", () => {
-    expect(shouldAutoDownload(view(), "lite")).toBe(true);
-    expect(shouldAutoDownload(view({ job: job("downloading", "standard") }), "lite")).toBe(false);
-    expect(shouldAutoDownload(view({ job: job("paused", "standard") }), "lite")).toBe(true);
-    expect(shouldAutoDownload(view({ job: job("failed", "standard") }), "lite")).toBe(true);
-    expect(shouldAutoDownload(view({ job: job("paused", "lite") }), "lite")).toBe(false);
-    expect(shouldAutoDownload(view({ job: job("failed", "lite") }), "lite")).toBe(false);
-    expect(shouldAutoDownload(view({ job: job("done", "standard") }), "lite")).toBe(true);
+    expect(shouldAutoDownload(view(), "lite", true)).toBe(true);
+    expect(shouldAutoDownload(view({ job: job("downloading", "standard") }), "lite", true)).toBe(false);
+    expect(shouldAutoDownload(view({ job: job("paused", "standard") }), "lite", true)).toBe(true);
+    expect(shouldAutoDownload(view({ job: job("failed", "standard") }), "lite", true)).toBe(true);
+    expect(shouldAutoDownload(view({ job: job("paused", "lite") }), "lite", true)).toBe(false);
+    expect(shouldAutoDownload(view({ job: job("failed", "lite") }), "lite", true)).toBe(false);
+    expect(shouldAutoDownload(view({ job: job("done", "standard") }), "lite", true)).toBe(true);
     const done = view({ packs: [pack("lite", 1, { usable: true, complete: true })] });
-    expect(shouldAutoDownload(done, "lite")).toBe(false);
-    expect(shouldAutoDownload(view({ verdict: { kind: "unsupported", reason: "lowRam" } }), "lite")).toBe(false);
-    expect(shouldAutoDownload(view(), null)).toBe(false);
+    expect(shouldAutoDownload(done, "lite", true)).toBe(false);
+    expect(shouldAutoDownload(view({ verdict: { kind: "unsupported", reason: "lowRam" } }), "lite", true)).toBe(false);
+    expect(shouldAutoDownload(view(), null, true)).toBe(false);
+  });
+
+  it("Windows chưa dò xong GPU thì chỉ tự tải gói người dùng đã tự chọn", () => {
+    const windows = (gpuKnown: boolean) =>
+      view({ machine: { os: "windows", ramMib: 16_384, avx2: true, gpus: [], gpuKnown } });
+    expect(shouldAutoDownload(windows(false), "lite", false)).toBe(false);
+    expect(shouldAutoDownload(windows(false), "lite", true)).toBe(true);
+    expect(shouldAutoDownload(windows(true), "lite", false)).toBe(true);
+    expect(shouldAutoDownload(view(), "lite", false)).toBe(true);
   });
 });
 ```
@@ -3186,10 +3567,12 @@ export function downloadBlock(view: ModelsView, pack: PackView): DownloadBlock |
 
 // Bước 3 của lần đầu mở: tự bắt đầu tải gói đã chọn khi gói chưa đủ, tải được, và không có việc tải nào đang chạy hay
 // đang dừng giữa chừng của chính gói đó (người dùng đã bấm Tạm dừng thì không tự tải tiếp). Gói khác đang tạm dừng
-// hay lỗi thì vẫn bắt đầu gói vừa chọn (N6 của review 04).
-export function shouldAutoDownload(view: ModelsView, chosen: string | null): boolean {
+// hay lỗi thì vẫn bắt đầu gói vừa chọn (N6 của review 04). `picked`: người dùng đã tự chọn gói. Chưa tự chọn mà
+// Windows chưa dò xong GPU thì chờ: gói chọn sẵn lúc đó chưa tính card rời (N-12 của review 04 lần 2).
+export function shouldAutoDownload(view: ModelsView, chosen: string | null, picked: boolean): boolean {
   const pack = packById(view, chosen);
   if (!pack || pack.complete || downloadBlock(view, pack)) return false;
+  if (!picked && !view.machine.gpuKnown) return false;
   const job = view.job;
   if (job.state === "downloading") return false;
   return job.state === "idle" || job.state === "done" || job.pack !== pack.id;
@@ -3478,7 +3861,7 @@ Expected (lúc lập kế hoạch):
 
 ```text
  Test Files  12 passed (12)
-      Tests  111 passed (111)
+      Tests  112 passed (112)
 ✓ built
 ```
 
@@ -3527,7 +3910,7 @@ Sửa `src/lib/models.test.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/lib/models.test.ts b/src/lib/models.test.ts
-index 1202c22aec2912f956ef12f11b89343f95f0668f..83d3459389e1658e22c0a193ad3707ce7c487c30 100644
+index 6f17ddde654d91fe600378e2ec348634496688bd..11c0d789af9ea5a45346c68e13f086b80e4c3e41 100644
 --- a/src/lib/models.test.ts
 +++ b/src/lib/models.test.ts
 @@ -6,4 +6,5 @@ import {
@@ -3536,7 +3919,7 @@ index 1202c22aec2912f956ef12f11b89343f95f0668f..83d3459389e1658e22c0a193ad3707ce
 +  packBadges,
    progress,
    recommendedPack,
-@@ -95,2 +96,15 @@ describe("tải được không", () => {
+@@ -104,2 +105,15 @@ describe("tải được không", () => {
    });
  });
 +
@@ -3559,7 +3942,7 @@ Run: `pnpm test 2>&1 | perl -pe 's/\e\[[0-9;]*m//g' | grep -E '^ *(FAIL|Test Fil
 Expected (lúc lập kế hoạch):
 
 ```text
-      Tests  1 failed | 111 passed (112)
+      Tests  1 failed | 112 passed (113)
  FAIL  src/lib/models.test.ts > packBadges > đề xuất, đang dùng hay đã tải, cần app mới hơn
  Test Files  1 failed | 11 passed (12)
 ```
@@ -3570,10 +3953,10 @@ Sửa `src/lib/models.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/lib/models.ts b/src/lib/models.ts
-index 37d42a4e63126d4b6e5d0fb4b458baad20131843..ec148502a325a3c69b2fc2901efd96fba0ef803c 100644
+index 64e9f033a92e4fe61d4b5503317da8da16fa082b..0f96d3faa15182c7e3c1de23234af5ada7913c77 100644
 --- a/src/lib/models.ts
 +++ b/src/lib/models.ts
-@@ -141,2 +141,14 @@ export function shouldAutoDownload(view: ModelsView, chosen: string | null): boo
+@@ -143,2 +143,14 @@ export function shouldAutoDownload(view: ModelsView, chosen: string | null, pick
    return job.state === "idle" || job.state === "done" || job.pack !== pack.id;
  }
 +
@@ -3596,7 +3979,7 @@ Expected (lúc lập kế hoạch):
 
 ```text
  Test Files  12 passed (12)
-      Tests  112 passed (112)
+      Tests  113 passed (113)
 ```
 
 - [ ] **Step 3: Store của cửa sổ chính và các component**
@@ -3885,7 +4268,7 @@ export function DownloadStep() {
   const current = useApp((s) => s.settings?.modelTier ?? null);
   const chosen = view ? defaultChoice(view, choice, current) : null;
   const pack = packById(view, chosen);
-  const auto = view !== null && shouldAutoDownload(view, chosen);
+  const auto = view !== null && shouldAutoDownload(view, chosen, choice !== null || current !== null);
   useEffect(() => {
     if (auto && chosen) void download(chosen);
   }, [auto, chosen, download]);
@@ -4203,7 +4586,7 @@ Expected (lúc lập kế hoạch):
 ```text
 ✓ built
  Test Files  12 passed (12)
-      Tests  112 passed (112)
+      Tests  113 passed (113)
 ```
 
 - [ ] **Step 6: Commit**
@@ -4246,10 +4629,10 @@ fmt ok
 Done
 ✓ built
 0
-passed 296 failed 0 ignored 3
+passed 302 failed 0 ignored 3
 advisories ok, bans ok, licenses ok, sources ok
  Test Files  12 passed (12)
-      Tests  112 passed (112)
+      Tests  113 passed (113)
 No known vulnerabilities found
 # tests 6
 # pass 6
@@ -4266,7 +4649,7 @@ cargo clippy -p asr-worker --features metal,shared-encode --all-targets -- -D wa
 cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8} END {print "passed", p, "failed", f, "ignored", i}'
 cargo test -p asr-worker --features shared-encode 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8} END {print "passed", p, "failed", f, "ignored", i}'
 cargo build --release -p asr-worker --features metal,shared-encode 2>&1 | grep -E '^error|Finished' | sed -E 's/ in [0-9.]+(s|m [0-9]+s)$//'
-cargo audit 2>&1 | grep -E '^(Crate|ID|warning|error):' | sort | uniq -c | sort -rn | head -8
+cargo audit 2>&1 | grep -E '^(Crate|ID|warning|error):' | grep -v 'is locked' | sort | uniq -c | sort -rn | head -8
 ./scripts/check-windows.sh 2>&1 | grep -E '^(warning|error)|Finished' | sed -E 's/ in [0-9.]+s$//'
 rm -rf "${CARGO_TARGET_DIR:-target}/x86_64-pc-windows-msvc"
 pnpm -C server install --frozen-lockfile 2>&1 | grep -E 'ERR|Done' | sed -E 's/ in [0-9.]+m?s.*//'
@@ -4279,7 +4662,7 @@ Expected (lúc lập kế hoạch; hai dòng đầu là số dòng lỗi của h
 ```text
 0
 0
-passed 651 failed 0 ignored 13
+passed 657 failed 0 ignored 13
 passed 42 failed 0 ignored 1
     Finished `release` profile [optimized] target(s)
    1 warning: 3 allowed warnings found
@@ -4320,10 +4703,12 @@ node scripts/models/build-manifest.mjs --dir "$STG" --sequence 1 > "$STG/../body
 Kiểm phần thân đúng như app sẽ kiểm, trước khi ký (N9 của review lần 1):
 
 ```bash
-MANIFEST_BODY="$HOME/ai-translator-staging/body.json" cargo test -p meeting-translator --lib check_manifest_body -- --ignored --nocapture 2>&1 | grep -E '^(standard|lite|sequence)|test result'
+MANIFEST_BODY="$HOME/ai-translator-staging/body.json" cargo test -p meeting-translator --lib check_manifest_body -- --ignored --nocapture 2>&1 | grep -E '^(standard|lite|sequence|so với)|test result'
 ```
 
 Expected: `standard: 8 file, 2484912654 byte`, `lite: 8 file, 1325509202 byte`, `sequence 1`, `test result: ok. 1 passed`. Lỗi thì sửa `models.config.json`, không ký.
+
+Từ bản thứ hai trở đi, thêm `MANIFEST_PREVIOUS=<phần thân của bản đang phát hành>` vào lệnh trên (N-8 của review lần 2). Expected thêm dòng `so với bản trước: sequence <cũ> -> <mới>, không đổi id`; bản mới đổi `id` của file model thì test đỏ với danh sách chỗ đổi, sửa `models.config.json` cho `id` giữ như cũ.
 
 Expected của bước dựng: `body.json` có 10 file; `sha256` của 6 file model trùng `models/MANIFEST.json` (lúc lập kế hoạch: `394221709cd5…`, `ae85e4a935d7…`, `5c3fe0b1408a…`, `dc5f44fcf1fa…`, `a1d52d448f81…`, `1a153a22f450…`). Ba file LICENSE lúc lập kế hoạch có 1 063, 1 078 và 1 075 byte.
 
@@ -4343,21 +4728,34 @@ node scripts/models/sign-manifest.mjs --key "$HOME/.config/ai-translator/manifes
 
 Expected: `Đã ký …/models.json: kid stg-2026-10-1, sequence 1.`
 
-- [ ] **Step 5 (người hoặc agent có token): Upload.** Cấu trúc trên bucket theo trường `url` của manifest: `models.json` và `NOTICE.txt` ở gốc; `whisper/…`, `hy-mt2/…`, `silero-vad/…`. Ví dụ với `wrangler` (đã `wrangler login`):
+- [ ] **Step 5 (người hoặc agent có token): Upload.** Cấu trúc trên bucket theo trường `url` của manifest: `models.json` và `NOTICE.txt` ở gốc; `whisper/…`, `hy-mt2/…`, `silero-vad/…`. `wrangler r2 object put` chỉ nhận file tới 315 MB (tài liệu Cloudflare, "Upload objects"), nên chia làm hai phần (N-5 của review lần 2).
+
+File nhỏ bằng `wrangler` (đã `wrangler login`):
 
 ```bash
 cd "$HOME/ai-translator-staging/models"
 B=ai-translator-models-staging
 pnpm -C "$OLDPWD/server" exec wrangler r2 object put "$B/models.json" --file models.json --remote
 pnpm -C "$OLDPWD/server" exec wrangler r2 object put "$B/NOTICE.txt" --file NOTICE.txt --remote
-for f in ggml-large-v3-turbo-q5_0.bin ggml-small-q5_1.bin whisper-LICENSE.txt whisper.cpp-LICENSE.txt; do pnpm -C "$OLDPWD/server" exec wrangler r2 object put "$B/whisper/$f" --file "$f" --remote; done
-for f in Hy-MT2-1.8B-Q8_0.gguf Hy-MT2-1.8B-Q4_K_M.gguf Hy-MT2-LICENSE.txt; do pnpm -C "$OLDPWD/server" exec wrangler r2 object put "$B/hy-mt2/$f" --file "$f" --remote; done
+for f in ggml-small-q5_1.bin whisper-LICENSE.txt whisper.cpp-LICENSE.txt; do pnpm -C "$OLDPWD/server" exec wrangler r2 object put "$B/whisper/$f" --file "$f" --remote; done
+pnpm -C "$OLDPWD/server" exec wrangler r2 object put "$B/hy-mt2/Hy-MT2-LICENSE.txt" --file Hy-MT2-LICENSE.txt --remote
 for f in silero_vad_v6.2.3.onnx silero-vad-LICENSE.txt; do pnpm -C "$OLDPWD/server" exec wrangler r2 object put "$B/silero-vad/$f" --file "$f" --remote; done
 ```
 
-`wrangler r2 object put` có giới hạn kích thước một lần upload; nếu file Q8_0 (1,9 GB) bị từ chối thì upload bằng dashboard hay `rclone` với API token R2 của Step 1.
+Ba file lớn hơn 315 MB (`ggml-large-v3-turbo-q5_0.bin` 574 MB, `Hy-MT2-1.8B-Q4_K_M.gguf` 1,13 GB, `Hy-MT2-1.8B-Q8_0.gguf` 1,9 GB) bằng `rclone` (`brew install rclone`), qua API S3 của R2, tải lên nhiều phần. Khóa của API token R2 (Step 1) nhập vào biến môi trường trong terminal, không ghi vào file cấu hình hay kế hoạch:
 
-Expected: `curl -sI <URL gốc>/models.json` và `curl -sI -H 'Range: bytes=0-0' <URL gốc>/hy-mt2/Hy-MT2-1.8B-Q8_0.gguf` lần lượt trả `200` và `206` (R2 hỗ trợ `Range`).
+```bash
+export RCLONE_CONFIG_R2_TYPE=s3 RCLONE_CONFIG_R2_PROVIDER=Cloudflare
+export RCLONE_CONFIG_R2_ENDPOINT="https://<account id>.r2.cloudflarestorage.com"
+read -r RCLONE_CONFIG_R2_ACCESS_KEY_ID; read -rs RCLONE_CONFIG_R2_SECRET_ACCESS_KEY; export RCLONE_CONFIG_R2_ACCESS_KEY_ID RCLONE_CONFIG_R2_SECRET_ACCESS_KEY
+rclone copyto ggml-large-v3-turbo-q5_0.bin "r2:$B/whisper/ggml-large-v3-turbo-q5_0.bin" --s3-chunk-size 64M --progress
+for f in Hy-MT2-1.8B-Q4_K_M.gguf Hy-MT2-1.8B-Q8_0.gguf; do rclone copyto "$f" "r2:$B/hy-mt2/$f" --s3-chunk-size 64M --progress; done
+rclone lsl "r2:$B" | sort -k4
+```
+
+Expected:
+- `rclone lsl` liệt kê đủ 10 object, kích thước đúng bằng file trong `$STG`. Lúc lập kế hoạch: `574041195 … whisper/ggml-large-v3-turbo-q5_0.bin`, `190085487 … whisper/ggml-small-q5_1.bin`, `1908528192 … hy-mt2/Hy-MT2-1.8B-Q8_0.gguf`, `1133080448 … hy-mt2/Hy-MT2-1.8B-Q4_K_M.gguf`, `2327524 … silero-vad/silero_vad_v6.2.3.onnx`.
+- `curl -sI <URL gốc>/models.json` và `curl -sI -H 'Range: bytes=0-0' <URL gốc>/hy-mt2/Hy-MT2-1.8B-Q8_0.gguf` lần lượt trả `200` và `206` (R2 hỗ trợ `Range`).
 
 - [ ] **Step 6: Ghi URL staging vào app.** Sửa `src-tauri/src/models/source.rs`: `pub const STAGING_URL: Option<&str> = Some("<URL gốc>/models.json");`. Chạy `cargo test -p meeting-translator --lib models::` (Expected: mọi test qua; test `dev_builds_read_staging_or_the_env_and_release_builds_production` tự theo hằng mới).
 - [ ] **Step 7 (người): Thử thật trên Mac** với `pnpm tauri dev` (bản dev nhận khóa staging), từ một hồ sơ app sạch (đổi tên tạm `~/Library/Application Support/com.aitranslator.desktop/models` nếu có):
@@ -4368,6 +4766,10 @@ Expected: `curl -sI <URL gốc>/models.json` và `curl -sI -H 'Range: bytes=0-0'
   - Cài đặt › Model: hiện gói đang dùng, dung lượng; đổi sang gói Nhẹ (tải, tự dùng); xóa gói Chuẩn.
   - Ký lại manifest với `--sequence 2` sau khi đổi một ghi chú; ngày hôm sau mở app (hay xóa `state.json` trong thư mục model để giả qua một ngày): manifest mới được nhận; đổi một file model trên bucket thì app hỏi "Có bản mới…" chứ không tự tải.
   - Sửa một byte của `models.json` trên bucket: app báo "Danh sách model từ máy chủ không hợp lệ", vẫn dùng bản cũ.
+  - Tải bản cập nhật của gói đang dùng ngay sau khi mở cửa sổ chính (lần chạy sẵn đang nạp): bấm Bắt đầu (cả nút lẫn phím tắt) trong lúc tải thì app báo đang cập nhật model, không bắt đầu phiên; `ps` không còn `llama-server` hay `asr-worker` sau khi lần chạy sẵn xong và việc tải bắt đầu (Q-A của review lần 2).
+  - Bản cập nhật đổi tên một file của gói đang dùng (ví dụ file `mt` thành `…-v2.gguf`): tải xong, phiên sau dùng file mới (`ps` thấy `llama-server -m …-v2.gguf`), file cũ bị dọn (Q-B của review lần 2).
+  - Dung lượng trống app hiện ở bước 2 so với Finder (Get Info của ổ) trên máy có iCloud Drive: ghi cả hai số; app ít hơn Finder nhiều tới mức chặn nhầm thì báo để đổi cách đo (04a QĐ8, N-11 của review lần 2).
+  - Proxy công ty kiểu PAC/WPAD: bật "Automatic Proxy Configuration" với một file PAC trỏ tới proxy thử (ví dụ `mitmproxy` hay Squid trên máy khác) và chặn đi thẳng ra ngoài; ghi app có tải được manifest và model không. `reqwest` (`system-proxy`) đọc proxy tĩnh của hệ thống; nếu PAC không được dùng thì ghi vào "Kết quả thử" để quyết có cần hỗ trợ PAC không (A7).
   - Cài đặt › Quyền riêng tư › "Xóa model và dữ liệu": thư mục model chỉ còn `manifest.json`; lịch sử, bản chép lời và từ điển cũng mất (màn hình Lịch sử và Từ điển trống ngay, không cần mở lại app); app không quay về lần đầu mở; Keychain không bị đụng tới (06 kiểm thêm, Q14).
   Ghi kết quả vào mục "Kết quả thử" ở cuối file này.
 - [ ] **Step 8: Commit**
@@ -4381,17 +4783,19 @@ git commit -m "feat(models): khóa công khai và URL manifest staging (04 T13)"
 
 Dòng 105, 161, 228, 303. Làm trong đợt Windows của kế hoạch 00 (mục 3), sau 02c Task 9.
 
-- [ ] **Step 1:** `cargo test -p meeting-translator --lib models::` trên Windows: mọi test qua, kể cả `machine::tests` (RAM, ổ trống thật của Windows; test `this_mac_reports_ram_disk_and_cpu` chỉ đúng trên Mac thì đánh dấu lại cho Windows theo kết quả, ghi vào đây). Lần đầu chạy, tường lửa Windows có thể hỏi về server giả trên `127.0.0.1`: chọn không cho phép mạng ngoài, test vẫn chạy vì chỉ dùng loopback.
+- [ ] **Step 1:** `cargo test -p meeting-translator --lib models:: -- --nocapture` trên Windows: mọi test qua. `machine::tests` trên Windows chạy `this_windows_pc_reports_ram_disk_and_cpu` (test của Mac có `cfg(target_os = "macos")`, không chạy; N-6 của review lần 2) và in `RAM <số> MiB, AVX2 <true|false>`: ghi dòng đó vào "Kết quả thử". Lần đầu chạy, tường lửa Windows có thể hỏi về server giả trên `127.0.0.1`: chọn không cho phép mạng ngoài, test vẫn chạy vì chỉ dùng loopback.
 - [ ] **Step 2:** `pnpm tauri dev` trên máy có card rời 6 GB và máy card 4 GB (hay một máy, đổi ngưỡng trong manifest staging): bước 2 hiện tên card, bộ nhớ đồ họa, đề xuất đúng gói (6 GB: Chuẩn; 4 GB: Nhẹ). Máy chỉ có GPU tích hợp: gói Nhẹ. Ghi heap `DEVICE_LOCAL` báo được của từng card (để chốt ngưỡng 5 632 MiB, C7).
 - [ ] **Step 3:** Model nằm ở `%LOCALAPPDATA%\com.aitranslator.desktop\models` (không phải `%LOCALAPPDATA%\AI Translator`). Tải bản cập nhật gói đang dùng khi tiến trình phụ đang chạy sẵn (vừa mở cửa sổ chính): tiến trình phụ được tắt trước, đổi tên đè thành công.
 - [ ] **Step 4:** Chọn gói Chuẩn trên card 4 GB: `llama-server` tự chuyển bớt lớp sang CPU, không lỗi hết bộ nhớ (dòng 303, cùng 08).
-- [ ] **Step 5:** Máy không có AVX2 (máy ảo tắt AVX2 nếu có): bước 2 báo máy chưa được hỗ trợ.
+- [ ] **Step 5:** Máy không có AVX2 (máy ảo tắt AVX2 nếu có): bước 2 báo máy chưa được hỗ trợ, nút tải bị khóa.
+- [ ] **Step 6:** Proxy công ty trên Windows: "Automatically detect settings" (WPAD) hay "Use setup script" (PAC) trỏ tới proxy thử, chặn đi thẳng ra ngoài: ghi app có tải được manifest và model không (như 04b Task 13 Step 7; A7).
+- [ ] **Step 7:** Bước 3 của lần đầu mở trên máy có card rời 6 GB, đi qua bước 2 thật nhanh ngay lần chạy đầu: bước 3 chờ kết quả dò GPU rồi mới tự tải, và tải gói Chuẩn (N-12 của review lần 2).
 
 ## Task 15: Cập nhật kế hoạch 00
 
 Task 2 của kế hoạch 00, cho kế hoạch 04:
 - Trạng thái các dòng ở mục "Dòng của bảng đối chiếu" của 04a: `xong` kèm SHA commit cho phần đã có test; `chờ` cho phần chờ Task 13 (T4, T7), Task 14 (Windows), C6, C7; dòng 226 giữ cho CDA (Q15).
-- Mục 2.4: trạng thái "đã làm trên Mac tới Task 12", SHA; ghi "Nhận từ 04" cho 06 (gói, `ModelService::resolve` không đụng kho khóa; "Xóa model và dữ liệu" không đụng kho khóa) và cho 07 (QĐ5: TLS của updater; khóa và URL production của manifest, một khóa kèm bản sao offline theo Q17; khi đổi khóa manifest, giữ `kid` cũ trong app ít nhất một bản phát hành (N3 của review 04); bộ gỡ Windows xóa `%LOCALAPPDATA%\com.aitranslator.desktop`).
+- Mục 2.4: trạng thái "đã làm trên Mac tới Task 12", SHA; ghi "Nhận từ 04" cho 06 (gói, `ModelService::resolve` không đụng kho khóa; "Xóa model và dữ liệu" không đụng kho khóa) và cho 07 (QĐ5: TLS của updater; khóa và URL production của manifest, một khóa kèm bản sao offline theo Q17; đổi khóa có kế hoạch thì một bản phát hành tin cả `kid` cũ lẫn mới rồi bản sau bỏ `kid` cũ, lộ khóa thì bản app mới chỉ tin `kid` mới ngay (04a QĐ10, N-7 của review 04 lần 2); bộ gỡ Windows xóa `%LOCALAPPDATA%\com.aitranslator.desktop`).
 - Mục 6.2: thêm `node --test scripts/models/manifest.test.mjs`.
 - Mục 2.2: N1 của review cuối 02 (bộ tắt khi rảnh) do 03 sửa (03a Task 12), không phải 04; ghi chú 8 (đổi gói lúc đang dịch) đã sửa ở 04 Task 7, 9, kèm SHA.
 - Spec §6.7, §8, §9, §10.2, §15 đã sửa theo 04 và quyết định của chủ dự án ở commit `0edc828`; nếu lúc thực thi có đổi gì so với kế hoạch thì soạn đề xuất sửa spec (gửi chủ dự án, không tự sửa).

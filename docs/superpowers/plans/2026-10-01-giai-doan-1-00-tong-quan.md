@@ -101,7 +101,7 @@ Chưa có:
 | `2026-10-01-giai-doan-1-01-nen-app.md` | 01 Nền app | đã viết, đã duyệt; đã làm trên Mac Task 1–23 (`69f30ba` … `5281e27`, sửa sau review đợt R và U, nâng `475cf0b`, `34777f0`); còn Task 24 (thử tay trên Mac, người), Task 25 (Windows) | — |
 | `2026-10-01-giai-doan-1-02a-pipeline-crate.md`, `…-02d-pipeline-clients.md`, `…-02b-pipeline-engine.md`, `…-02c-pipeline-app.md` (làm theo thứ tự này) | 02 Pipeline trong app | đã viết, đã duyệt; đã làm trên Mac tới 02c Task 7 (`f2edbd6`); còn 02b Task 7–9 (máy rảnh), 02c Task 8 (người), 02c Task 9 (Windows) | phần crate: —; phần nối vào app: 01 |
 | `2026-10-02-giai-doan-1-03a-phu-de-du-lieu.md`, `2026-10-02-giai-doan-1-03b-phu-de-giao-dien.md` (làm theo thứ tự này, trước 04) | 03 Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ | đã viết, sửa theo review, đã thực thi trên Mac: 03a Task 1–13 và 03b Task 1–7 (code và kiểm tra chuẩn); còn 03b Task 8 (thử tay Mac, người) và Task 9 (Windows) | 01, 02 |
-| `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `2026-10-02-giai-doan-1-04b-quan-ly-model-app.md` (làm theo thứ tự này) | 04 Quản lý model | đã viết; đã sửa theo review lần 1 và quyết định của chủ dự án ngày 2026-10-02, dựng lại trên cây cuối của 03; chờ duyệt; làm sau 03 | 01, 02, 03 |
+| `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `2026-10-02-giai-doan-1-04b-quan-ly-model-app.md` (làm theo thứ tự này) | 04 Quản lý model | đã viết; đã sửa theo review lần 1, lần 2 và quyết định của chủ dự án ngày 2026-10-02, dựng trên cây cuối của 03; chờ duyệt; làm sau 03 | 01, 02, 03 |
 | `2026-10-01-giai-doan-1-05-license-server.md` | 05 License server | đã viết, đã duyệt; đã làm Task 1–18 (`35d758d` … `5664b1b`, sửa sau review đợt A–D, review cuối Approved ở `4dbd229`); còn Task 19–21 (người: triển khai staging, giao dịch thử, lên production) | — |
 | `2026-10-01-giai-doan-1-06-ban-quyen-app.md` | 06 Bản quyền trong app | sau khi 05 xong và 03 có điểm kiểm tra Pro | 01, 02, 03, 05 |
 | `2026-10-02-giai-doan-1-07a-ci-dong-goi.md` (07a: CI, build tiến trình phụ từ mã nguồn đã khóa, đóng gói, THIRD_PARTY_NOTICES, các bước ký chạy khi có secret); `…-07b-…` (cập nhật, kênh stable/beta, ký thật, phát hành) | 07 Đóng gói, ký số, cập nhật, CI | 07a đã viết, chờ duyệt; làm được ngay (sau 01, trước hay sau 03/04). 07b viết sau 06 | 07a: 01; 07b: 01–06 |
@@ -251,7 +251,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
 - **Làm trên Mac:** phần lớn.
 - **Cần Windows:** `--probe` trên GPU thật; đường dẫn `%LOCALAPPDATA%\<bundle-id>\models`.
 - **Cần người thao tác:** tạo bucket, gắn tên miền và tạo API token trên dashboard Cloudflare; thử rớt mạng thật.
-- **Trạng thái:** đã viết thành hai file 04a (Task 1–6), 04b (Task 7–15); sửa theo review lần 1 và quyết định của chủ dự án, dựng lại trên cây cuối của 03 (`p03-repo` `plan03` `f30491f`), không còn bước gộp tay (04a mục "Nối với kế hoạch 03"). Làm sau 03. Ngưỡng thật chờ C6, nhưng không chặn việc viết hay làm.
+- **Trạng thái:** đã viết thành hai file 04a (Task 1–6), 04b (Task 7–15); sửa theo review lần 1, lần 2 và quyết định của chủ dự án, dựng lại trên cây cuối của 03 (`p03-repo` `plan03` `f30491f`), không còn bước gộp tay (04a mục "Nối với kế hoạch 03"). Làm sau 03. Ngưỡng thật chờ C6, nhưng không chặn việc viết hay làm.
   - **Chủ dự án quyết ngày 2026-10-02:**
     - giữ ngưỡng đề xuất gói Chuẩn RAM 15 360 MiB, VRAM 5 632 MiB; `min_ram_mib` là 6 144 MiB;
     - đang tải bản cập nhật của gói đang dùng thì chặn bắt đầu phiên;
@@ -384,7 +384,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - Cập nhật app dùng `AppHandle::request_restart` (đi qua `RunEvent::Exit`, nên `session::save_on_exit` lưu lịch sử); nếu gọi `restart` trên luồng chính thì gọi `save_on_exit` trước (Q3 của review 03).
 - **Nhận từ 04** (04a QĐ5, QĐ10; Q17):
   - Tạo **một** khóa production ký manifest model và **một** khóa production ký bản cập nhật Tauri, trong CI (hay trên máy không nối mạng rồi nhập thẳng vào secret của CI), kèm một bản sao offline mã hóa bằng passphrase trên USB, passphrase in ra giấy cất riêng (spec §10.2).
-  - Ghi khóa công khai production của manifest vào khối `production` của `src-tauri/keys/manifest-public-keys.json`; đặt `PRODUCTION_URL` trong `src-tauri/src/models/source.rs`; ký manifest production trong CI bằng `scripts/models/sign-manifest.mjs --env production` (đổi script để đọc khóa từ secret). Khi đổi khóa manifest, giữ `kid` cũ trong app ít nhất một bản phát hành.
+  - Ghi khóa công khai production của manifest vào khối `production` của `src-tauri/keys/manifest-public-keys.json`; đặt `PRODUCTION_URL` trong `src-tauri/src/models/source.rs`; ký manifest production trong CI bằng `scripts/models/sign-manifest.mjs --env production` (đổi script để đọc khóa từ secret). Đổi khóa manifest có kế hoạch thì một bản phát hành tin cả `kid` cũ lẫn mới, bản sau bỏ `kid` cũ; lộ khóa thì bản app mới chỉ tin `kid` mới ngay (Q17).
   - `tauri-plugin-updater` dùng TLS của hệ điều hành (`native-tls`) như 04, để không kéo thêm `rustls` với `aws-lc`.
   - Bộ gỡ Windows xóa `%LOCALAPPDATA%\com.aitranslator.desktop` (gồm `models`) khi tick "xóa dữ liệu app".
 - **Trạng thái:** viết sau khi 01, 02 và 05 xong. Làm xong sau 06.
@@ -1347,6 +1347,7 @@ Cập nhật ngày 2026-10-01:
   - Mỗi loại **một** khóa (khóa ký manifest, khóa ký bản cập nhật), nằm trong secret của CI. Không làm hai ô khóa A/B như khóa token.
   - Kèm một bản sao offline mã hóa bằng passphrase, cất trên USB; passphrase in ra giấy, cất riêng.
   - Lộ khóa thì phát hành bản app mới mang khóa công khai mới. App nhúng một khóa công khai production cho manifest (định dạng vẫn có `kid`).
+  - Đổi khóa (controller thống nhất ngày 2026-10-03): đổi có kế hoạch thì một bản phát hành tin cả `kid` cũ lẫn `kid` mới, bản sau bỏ `kid` cũ; lộ khóa thì bản app mới chỉ tin `kid` mới ngay, `kid` đã lộ bị gỡ khỏi app.
   - Việc tạo khóa production và bản sao thuộc 07 (mục 2.7). Spec §10.2, §15 đã ghi.
 - **P05-1 (kế hoạch 05). Kênh PayOS riêng cho staging.** Mỗi kênh chỉ có một URL webhook. Cần có trước khi triển khai staging (Task 19 của 05).
 - **P05-2. Giá thử trên staging.** Đề xuất: giá nhỏ cho từng gói (ví dụ 2.000 đ, 3.000 đ, 4.000 đ); sửa nếu PayOS có mức tối thiểu cao hơn.
