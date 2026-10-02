@@ -1,0 +1,41 @@
+{
+  "_note": "Cấu hình manifest model (spec §6.7, §8; Đ7 của kế hoạch 00). build-manifest.mjs thêm bytes và sha256 từ file thật. Ngưỡng RAM, VRAM tính bằng MiB, thấp hơn dung lượng ghi trên máy vì hệ điều hành báo ít hơn (QĐ4 của kế hoạch 04, chủ dự án duyệt 2026-10-02); máy dưới min_ram_mib không được tải model. Ghi chú chất lượng theo số đo A4 (spec §3.3, §8). Chốt lại khi có C6, C7. Giữ `id` của mỗi file ổn định giữa các bản, chỉ đổi version, file, bytes, sha256: app tìm file đã tải theo id, đổi id thì gói đang dùng thành chưa tải (kế hoạch 04, QĐ2).",
+  "files": [
+    { "id": "whisper-large-v3-turbo-q5_0", "tier": ["standard"], "kind": "asr", "version": "whisper.cpp-5359861", "file": "ggml-large-v3-turbo-q5_0.bin", "url": "whisper/ggml-large-v3-turbo-q5_0.bin", "license_id": "MIT", "min_app_version": "0.1.0" },
+    { "id": "whisper-small-q5_1", "tier": ["lite"], "kind": "asr", "version": "whisper.cpp-5359861", "file": "ggml-small-q5_1.bin", "url": "whisper/ggml-small-q5_1.bin", "license_id": "MIT", "min_app_version": "0.1.0" },
+    { "id": "whisper-license", "tier": ["standard", "lite"], "kind": "license", "version": "v20250625", "file": "whisper-LICENSE.txt", "url": "whisper/whisper-LICENSE.txt", "license_id": "MIT", "min_app_version": "0.1.0" },
+    { "id": "whisper-cpp-license", "tier": ["standard", "lite"], "kind": "license", "version": "v1.8.3", "file": "whisper.cpp-LICENSE.txt", "url": "whisper/whisper.cpp-LICENSE.txt", "license_id": "MIT", "min_app_version": "0.1.0" },
+    { "id": "hy-mt2-1.8b-q8_0", "tier": ["standard"], "kind": "mt", "version": "a0c709d", "file": "Hy-MT2-1.8B-Q8_0.gguf", "url": "hy-mt2/Hy-MT2-1.8B-Q8_0.gguf", "license_id": "Apache-2.0", "min_app_version": "0.1.0" },
+    { "id": "hy-mt2-1.8b-q4_k_m", "tier": ["lite"], "kind": "mt", "version": "a0c709d", "file": "Hy-MT2-1.8B-Q4_K_M.gguf", "url": "hy-mt2/Hy-MT2-1.8B-Q4_K_M.gguf", "license_id": "Apache-2.0", "min_app_version": "0.1.0" },
+    { "id": "hy-mt2-license", "tier": ["standard", "lite"], "kind": "license", "version": "a0c709d", "file": "Hy-MT2-LICENSE.txt", "url": "hy-mt2/Hy-MT2-LICENSE.txt", "license_id": "Apache-2.0", "min_app_version": "0.1.0" },
+    { "id": "silero-vad-v6.2.3", "tier": ["standard", "lite"], "kind": "vad", "version": "v6.2.3", "file": "silero_vad_v6.2.3.onnx", "url": "silero-vad/silero_vad_v6.2.3.onnx", "license_id": "MIT", "min_app_version": "0.1.0" },
+    { "id": "silero-vad-license", "tier": ["standard", "lite"], "kind": "license", "version": "v6.2.3", "file": "silero-vad-LICENSE.txt", "url": "silero-vad/silero-vad-LICENSE.txt", "license_id": "MIT", "min_app_version": "0.1.0" },
+    { "id": "notice", "tier": ["standard", "lite"], "kind": "license", "version": "1", "file": "NOTICE.txt", "url": "NOTICE.txt", "license_id": "Apache-2.0", "min_app_version": "0.1.0" }
+  ],
+  "packs": [
+    {
+      "id": "standard",
+      "name": { "vi": "Chuẩn", "en": "Standard" },
+      "note": {
+        "vi": "Chép lời chính xác nhất. Trên tập thử, lỗi từ tiếng Việt khoảng 9%, lỗi ký tự tiếng Nhật, Hàn, Trung 4–6%. Nên chọn nếu bạn nghe chủ yếu tiếng Việt, Nhật, Hàn hoặc Trung. Cần máy RAM 16 GB.",
+        "en": "Most accurate transcription. On our test set: about 9% word errors in Vietnamese, 4–6% character errors in Japanese, Korean and Chinese. Recommended if you mostly listen to Vietnamese, Japanese, Korean or Chinese. Needs 16 GB of RAM."
+      }
+    },
+    {
+      "id": "lite",
+      "name": { "vi": "Nhẹ", "en": "Lite" },
+      "note": {
+        "vi": "Nhẹ hơn, chạy được trên máy RAM 8 GB. Tiếng Anh gần ngang gói Chuẩn, nhưng chép lời tiếng Việt sai nhiều hơn rõ (khoảng 22% lỗi từ, so với 9%), tiếng Nhật, Hàn, Trung cũng kém hơn. Chất lượng dịch gần ngang gói Chuẩn.",
+        "en": "Lighter, runs with 8 GB of RAM. English is close to Standard, but Vietnamese transcription has clearly more errors (about 22% word errors versus 9%), and Japanese, Korean and Chinese are weaker too. Translation quality is close to Standard."
+      }
+    }
+  ],
+  "recommend": {
+    "min_ram_mib": 6144,
+    "rules": [
+      { "pack": "standard", "os": "macos", "min_ram_mib": 15360 },
+      { "pack": "standard", "os": "windows", "min_ram_mib": 15360, "gpu": "discrete", "min_vram_mib": 5632 }
+    ],
+    "fallback": "lite"
+  }
+}

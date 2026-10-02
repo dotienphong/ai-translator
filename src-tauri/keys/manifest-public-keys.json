@@ -1,0 +1,5 @@
+{
+  "_note": "Khóa công khai kiểm manifest model (spec §6.7, §10.2; kế hoạch 04). Bản dev nhận khối staging, bản phát hành chỉ nhận production. Không bao giờ có khóa riêng (d) ở đây. Thêm khóa: scripts/models/gen-manifest-key.mjs.",
+  "staging": [],
+  "production": []
+}

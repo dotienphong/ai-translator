@@ -42,6 +42,9 @@ tauri-plugin-opener = "2.7.0"
 tauri-plugin-single-instance = "2.5.2"
 tauri-plugin-store = "2.5.0"
 thiserror.workspace = true
+# Manifest model (spec §6.7): base64url của phong bì, kiểm chữ ký Ed25519 bằng khóa công khai build sẵn.
+base64 = "0.23.1"
+ed25519-dalek = { version = "3.0.0", default-features = false }
 # Quản lý model (kế hoạch 04). Đặt riêng ở cuối nhóm, để khối diff không lấy dòng phiên bản của crate khác làm
 # ngữ cảnh. Tải manifest và model (spec §6.7): TLS của hệ điều hành (Security.framework, SChannel), proxy của hệ
 # thống.

@@ -1,0 +1,14 @@
+AI Translator: model files
+
+These files are redistributed unmodified from their original sources, next to their licenses.
+
+- Hy-MT2-1.8B-Q8_0.gguf, Hy-MT2-1.8B-Q4_K_M.gguf
+  Source: https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF (revision a0c709d9fac510f2c807aa3af52872340dc37a4a)
+  Copyright (C) 2026 Tencent. Licensed under the Apache License, Version 2.0 (Hy-MT2-LICENSE.txt).
+- ggml-large-v3-turbo-q5_0.bin, ggml-small-q5_1.bin
+  Source: https://huggingface.co/ggerganov/whisper.cpp (revision 5359861c739e955e79d9a303bcbc70fb988958b1)
+  Whisper weights: Copyright (c) 2022 OpenAI, MIT License (whisper-LICENSE.txt).
+  ggml conversion: Copyright (c) 2023-2024 The ggml authors, MIT License (whisper.cpp-LICENSE.txt).
+- silero_vad_v6.2.3.onnx
+  Source: https://github.com/snakers4/silero-vad (tag v6.2.3)
+  Copyright (c) 2020-present Silero Team, MIT License (silero-vad-LICENSE.txt).

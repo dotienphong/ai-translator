@@ -2,3 +2,4 @@
 //! xuất gói theo máy, xóa model.
 
 pub mod manifest;
+pub mod signed;
