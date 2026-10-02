@@ -822,6 +822,205 @@ fn history_commands_list_open_delete_and_need_pro() {
     assert_eq!(invoke(&main, "clear_history", json!({})).unwrap(), 0);
 }
 
+/// Từ điển thuật ngữ (Pro): thêm, sửa, xóa, xuất rồi nhập CSV qua hộp thoại; lỗi có mã; gói Free bị khóa.
+#[test]
+fn glossary_commands_edit_import_export_and_need_pro() {
+    use crate::test_support::FakePicker;
+    let app = mock_app();
+    let main = window(&app, "main");
+    let added = invoke(
+        &main,
+        "add_glossary_entry",
+        json!({ "source": "sprint", "target": "đợt chạy" }),
+    )
+    .unwrap();
+    let id = added["id"].as_i64().unwrap();
+    let dup = invoke(
+        &main,
+        "add_glossary_entry",
+        json!({ "source": "SPRINT", "target": "x" }),
+    )
+    .unwrap_err();
+    assert!(dup.contains("glossaryDuplicate"), "{dup}");
+    // Mỗi lần sửa thì luồng dịch có ngay bản mới (QĐ12): sau thêm, sửa, xóa và nhập (M03, M04 của review 03).
+    let active = app.state::<crate::glossary::ActiveGlossary>();
+    let active_target = |source: &str| {
+        active
+            .0
+            .read()
+            .unwrap()
+            .matches(source)
+            .first()
+            .map(|t| t.target.clone())
+    };
+    assert_eq!(active_target("sprint").as_deref(), Some("đợt chạy"));
+    invoke(
+        &main,
+        "update_glossary_entry",
+        json!({ "id": id, "source": "sprint", "target": "chặng" }),
+    )
+    .unwrap();
+    assert_eq!(active_target("sprint").as_deref(), Some("chặng"));
+    invoke(
+        &main,
+        "add_glossary_entry",
+        json!({ "source": "API, SDK", "target": "giao diện" }),
+    )
+    .unwrap();
+    assert_eq!(active.0.read().unwrap().len(), 2);
+
+    let path = invoke(&main, "export_glossary_csv", json!({})).unwrap();
+    let path = std::path::PathBuf::from(path.as_str().unwrap());
+    assert!(path.ends_with("glossary.csv"));
+    let csv = std::fs::read_to_string(&path).unwrap();
+    assert_eq!(csv, "\u{feff}source,target\nsprint,chặng\n\"API, SDK\",giao diện\n");
+    invoke(&main, "delete_glossary_entry", json!({ "id": id })).unwrap();
+    assert_eq!(active_target("sprint"), None, "xóa xong thì thôi dùng ngay");
+    assert_eq!(
+        invoke(&main, "list_glossary", json!({}))
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+
+    *app.state::<FakePicker>().to_open.lock().unwrap() = Some(path);
+    let report = invoke(&main, "import_glossary_csv", json!({})).unwrap();
+    assert_eq!(
+        report,
+        json!({ "added": 1, "updated": 1, "skipped": 0, "overLimit": 0 })
+    );
+    let sources: Vec<Value> = invoke(&main, "list_glossary", json!({}))
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["source"].clone())
+        .collect();
+    assert_eq!(sources, [json!("API, SDK"), json!("sprint")]);
+    assert_eq!(
+        active_target("sprint").as_deref(),
+        Some("chặng"),
+        "nhập xong thì dùng ngay"
+    );
+    app.state::<FakePicker>()
+        .cancel
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(invoke(&main, "import_glossary_csv", json!({})).unwrap(), Value::Null);
+
+    // Mọi lệnh của từ điển đi qua điểm kiểm tra Pro (M01, M02 của review 03), và không sửa gì ở gói Free.
+    set_pro(&app, false);
+    for (cmd, args) in [
+        ("list_glossary", json!({})),
+        ("import_glossary_csv", json!({})),
+        ("export_glossary_csv", json!({})),
+        ("add_glossary_entry", json!({ "source": "a", "target": "b" })),
+        (
+            "update_glossary_entry",
+            json!({ "id": id, "source": "sprint", "target": "x" }),
+        ),
+        ("delete_glossary_entry", json!({ "id": id })),
+    ] {
+        let refused = invoke(&main, cmd, args).unwrap_err();
+        assert!(refused.contains(errors::PRO_REQUIRED), "{cmd}: {refused}");
+    }
+    let kept = crate::db::with(app.handle(), |c| crate::glossary::list(c)).unwrap();
+    assert_eq!(kept.len(), 2);
+    assert!(kept.iter().any(|e| e.source == "sprint" && e.target == "chặng"));
+}
+
+/// Nút "Xóa toàn bộ dữ liệu" (§4.3): lịch sử, từ điển và bản chép lời trong bộ nhớ đều mất, kể cả ở gói Free; cài đặt
+/// giữ nguyên.
+#[test]
+fn clear_all_data_removes_history_glossary_and_the_transcript() {
+    let app = app_after_one_session(true);
+    let main = window(&app, "main");
+    invoke(
+        &main,
+        "add_glossary_entry",
+        json!({ "source": "sprint", "target": "đợt chạy" }),
+    )
+    .unwrap();
+    assert_eq!(
+        invoke(&main, "list_history", json!({}))
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    let db_file = app.state::<crate::db::DataStore>().path();
+    assert!(db_file.exists());
+    set_pro(&app, false);
+    invoke(&main, "clear_all_data", json!({})).unwrap();
+    assert!(!db_file.exists(), "file DB bị xóa");
+    assert!(
+        invoke(&main, "get_transcript", json!({})).unwrap()["lines"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        app.state::<crate::glossary::ActiveGlossary>()
+            .0
+            .read()
+            .unwrap()
+            .is_empty()
+    );
+    set_pro(&app, true);
+    assert!(
+        invoke(&main, "list_history", json!({}))
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        invoke(&main, "list_glossary", json!({}))
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        invoke(&main, "get_settings", json!({})).unwrap()["saveHistory"],
+        true,
+        "cài đặt giữ nguyên"
+    );
+    // Xóa khi đang Pro: luồng dịch cũng thôi dùng thuật ngữ ngay (ở trên, về Free đã làm việc đó, C1 của lần chạy mutation).
+    invoke(
+        &main,
+        "add_glossary_entry",
+        json!({ "source": "sprint", "target": "đợt chạy" }),
+    )
+    .unwrap();
+    invoke(&main, "clear_all_data", json!({})).unwrap();
+    assert!(
+        app.state::<crate::glossary::ActiveGlossary>()
+            .0
+            .read()
+            .unwrap()
+            .is_empty()
+    );
+}
+
+/// Bảng debug ẩn (§7): số đo của phiên vừa dừng, không có chữ chép lời.
+#[test]
+fn the_debug_panel_lists_the_metrics_of_finished_sessions() {
+    let app = app_after_one_session(false);
+    let main = window(&app, "main");
+    let sessions = invoke(&main, "get_debug_sessions", json!({})).unwrap();
+    let first = &sessions[0];
+    assert_eq!(first["session"], 1);
+    assert!(first["translated"].as_u64().unwrap() >= 1);
+    assert_eq!(first["stages"][3]["name"], "total");
+    assert!(
+        !sessions.to_string().contains("Hello everyone"),
+        "không có chữ chép lời"
+    );
+}
+
 /// Từ điển thuật ngữ (F5) vào prompt của phiên ở gói Pro, theo mẫu "terminology" (§6.5); gói Free thì không (Đ6).
 #[test]
 fn glossary_terms_reach_the_prompt_only_for_pro() {

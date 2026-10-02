@@ -33,6 +33,7 @@ use pipeline::vad::SileroVad;
 use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 
 use crate::capture::{CaptureEvent, LiveCapture, OnEvent};
+use crate::debug::{DebugLog, DebugSession};
 use crate::errors::{self, CommandError};
 use crate::glossary::{self, ActiveGlossary};
 use crate::settings::{AudioSource, Lang, ModelTier, Settings};
@@ -366,8 +367,12 @@ fn stop_engine<R: Runtime>(app: &AppHandle<R>, session: &Session) -> bool {
         return false;
     };
     let metrics = engine.stop();
-    // Số đo của phiên vào log, không có chữ chép lời (§7, Đ17).
+    // Số đo của phiên vào log và bảng debug ẩn, không có chữ chép lời (§7, Đ17).
     log::info!("kết thúc phiên dịch: {}", metrics.summary());
+    let n = session.sessions.load(Ordering::SeqCst);
+    if let Some(debug) = app.try_state::<DebugLog>() {
+        debug.record(DebugSession::new(n, now_ms(), &metrics));
+    }
     session.deps.end_session();
     // Lưu lịch sử nếu bật "Lưu lịch sử" và là Pro (F4). Chạy ngay ở đây, cả khi thoát app, để không mất phiên cuối.
     end_transcript(app, session);

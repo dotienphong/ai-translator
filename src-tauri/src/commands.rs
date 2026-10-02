@@ -11,7 +11,9 @@ use tauri::{AppHandle, Runtime, State};
 
 use crate::actions::{self, AudioSourceOption};
 use crate::data::{self, TranscriptRef, blocking};
+use crate::debug::DebugSession;
 use crate::errors::{self, CommandError};
+use crate::glossary::{GlossaryEntry, ImportReport};
 use crate::hotkeys::HotkeyAction;
 use crate::settings::Settings;
 use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
@@ -155,6 +157,61 @@ pub async fn clear_history<R: Runtime>(app: AppHandle<R>) -> Result<usize, Comma
     blocking(app, data::clear_history).await
 }
 
+// ---- Từ điển thuật ngữ (F5, Pro), quyền riêng tư, bảng debug. ----
+
+#[tauri::command]
+pub async fn list_glossary<R: Runtime>(app: AppHandle<R>) -> Result<Vec<GlossaryEntry>, CommandError> {
+    blocking(app, data::list_glossary).await
+}
+
+#[tauri::command]
+pub async fn add_glossary_entry<R: Runtime>(
+    app: AppHandle<R>,
+    source: String,
+    target: String,
+) -> Result<GlossaryEntry, CommandError> {
+    blocking(app, move |app| data::add_glossary_entry(app, &source, &target)).await
+}
+
+#[tauri::command]
+pub async fn update_glossary_entry<R: Runtime>(
+    app: AppHandle<R>,
+    id: i64,
+    source: String,
+    target: String,
+) -> Result<GlossaryEntry, CommandError> {
+    blocking(app, move |app| data::update_glossary_entry(app, id, &source, &target)).await
+}
+
+#[tauri::command]
+pub async fn delete_glossary_entry<R: Runtime>(app: AppHandle<R>, id: i64) -> Result<(), CommandError> {
+    blocking(app, move |app| data::delete_glossary_entry(app, id)).await
+}
+
+/// Nhập CSV (Pro). `null` nếu người dùng bấm Hủy ở hộp thoại mở file.
+#[tauri::command]
+pub async fn import_glossary_csv<R: Runtime>(app: AppHandle<R>) -> Result<Option<ImportReport>, CommandError> {
+    blocking(app, data::import_glossary_csv).await
+}
+
+/// Xuất CSV (Pro). Trả đường dẫn đã ghi, `null` nếu người dùng bấm Hủy.
+#[tauri::command]
+pub async fn export_glossary_csv<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>, CommandError> {
+    blocking(app, data::export_glossary_csv).await
+}
+
+/// Nút "Xóa toàn bộ dữ liệu": lịch sử và từ điển (§4.3).
+#[tauri::command]
+pub async fn clear_all_data<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    blocking(app, data::clear_all_data).await
+}
+
+/// Số đo của các phiên gần nhất, cho bảng debug ẩn (§7).
+#[tauri::command]
+pub fn get_debug_sessions<R: Runtime>(app: AppHandle<R>) -> Vec<DebugSession> {
+    data::debug_sessions(&app)
+}
+
 /// Lệnh duy nhất cửa sổ `overlay` gọi được, chỉ đọc (§10.2).
 #[tauri::command]
 pub fn get_overlay_view(state: State<'_, AppState>) -> OverlayView {
@@ -183,6 +240,14 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "get_history_session",
     "delete_history_session",
     "clear_history",
+    "list_glossary",
+    "add_glossary_entry",
+    "update_glossary_entry",
+    "delete_glossary_entry",
+    "import_glossary_csv",
+    "export_glossary_csv",
+    "clear_all_data",
+    "get_debug_sessions",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -210,6 +275,14 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         get_history_session,
         delete_history_session,
         clear_history,
+        list_glossary,
+        add_glossary_entry,
+        update_glossary_entry,
+        delete_glossary_entry,
+        import_glossary_csv,
+        export_glossary_csv,
+        clear_all_data,
+        get_debug_sessions,
         get_overlay_view,
     ]
 }

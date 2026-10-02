@@ -39,6 +39,7 @@ pub struct GlossaryEntry {
 
 /// Kết quả một lần nhập CSV.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ImportReport {
     pub added: usize,
     /// Chữ nguồn đã có, bản dịch được thay.
@@ -293,7 +294,8 @@ pub fn import_csv(conn: &mut Connection, bytes: &[u8]) -> Result<ImportReport, G
 #[derive(Default)]
 pub struct ActiveGlossary(pub SharedGlossary);
 
-/// Gói về Free: luồng dịch thôi dùng thuật ngữ ngay, từ câu sau (N11 của review 03). Không đọc DB.
+/// Luồng dịch thôi dùng thuật ngữ ngay, từ câu sau, mà không đọc DB: khi gói về Free (N11 của review 03) và khi xóa toàn
+/// bộ dữ liệu.
 pub fn forget<R: Runtime>(app: &AppHandle<R>) {
     if let Some(active) = app.try_state::<ActiveGlossary>() {
         *active.0.write().unwrap_or_else(|e| e.into_inner()) = Glossary::default();

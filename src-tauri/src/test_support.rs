@@ -448,6 +448,7 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
         ))
         .manage(ActiveGlossary::default())
         .manage(TranscriptStore::default())
+        .manage(crate::debug::DebugLog::default())
         .manage(Picker(Box::new(picker.clone())))
         .manage(picker)
         .manage(pro)
