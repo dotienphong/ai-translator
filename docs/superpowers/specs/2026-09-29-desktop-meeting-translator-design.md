@@ -466,6 +466,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **API:** dùng `/v1/chat/completions` với `stream: true`, chat template lấy từ GGUF.
   - S4 đã xác nhận trên macOS arm64, với cả Q8_0 và Q4_K_M: token prompt do `llama-server` b11146 dựng từ template trong GGUF trùng từng token với tokenizer Hugging Face, và bản dịch stream giống hệt khi nạp token của Hugging Face.
   - Kết luận chỉ áp cho lệnh chạy ở trên (không `--jinja`, không `--chat-template`). Đổi cờ, hoặc chạy trên Windows, thì làm lại S4.
+  - Client không dùng lại kết nối HTTP: mỗi request mở kết nối mới tới `127.0.0.1`. Lý do: b11146 đóng kết nối TCP ngay sau mỗi response stream, dù header báo `Keep-Alive`; request kế tiếp gửi lên kết nối đã đóng thì lỗi.
   - **Phương án dự phòng**, nếu template trong GGUF không dùng được: render template bằng `minijinja` phía Rust rồi gọi `/completion`. Khi đó phải truyền mảng token, hoặc bỏ BOS ở đầu chuỗi: nếu GGUF có `add_bos_token=true` thì sẽ ra BOS kép (S4 đã tái hiện). `/v1/chat/completions` không bị lỗi này.
 - **Mẫu prompt** lấy theo model card của Hy-MT2:
   - Khi câu có liên quan tới tiếng Trung, dùng mẫu tiếng Trung: `将以下文本翻译为{目标语言}，注意只需要输出翻译后的结果，不要额外解释：\n\n{text}`

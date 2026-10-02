@@ -2487,6 +2487,8 @@ git add Cargo.lock \
 git commit -m "feat(pipeline): client asr-worker và llama-server bản 2, log xoay vòng, dọn tiến trình phụ" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+**Sửa sau khi thực thi (`e591a1e`).** Client `llama-server` không dùng lại kết nối: `Client::builder()` trong `LlamaServer` thêm `.pool_max_idle_per_host(0)`, nên mỗi request mở kết nối mới tới `127.0.0.1`. Lý do: `llama-server` b11146 đóng kết nối TCP ngay sau mỗi response stream của `/v1/chat/completions`, dù header báo `Keep-Alive: timeout=5, max=100` và không có `Connection: close`. `reqwest` trả kết nối đó về pool; `/tokenize` của câu kế tiếp gửi lên kết nối đã đóng thì lỗi "connection closed before message completed" (02b Task 6 gặp 3/1440 câu với Q8_0, 9/1440 với Q4_K_M). Server giả có thêm lệnh `close_after_stream`, và `tests/clients.rs` có thêm 1 test dựng lại lỗi này (clients 12 + 1 thay vì 11 + 1). Cùng đợt, `mt-eval` ghi trường `reason` cho câu lỗi (`7279c07`), vì trước đó dòng lỗi không cho biết lý do.
+
 ## Task 2: Tiến trình phụ giả, hậu xử lý bản dịch, dịch một câu
 
 Dịch một câu đúng §6.5 (dòng 144–148, 247; QĐ11, QĐ12, QĐ14):
