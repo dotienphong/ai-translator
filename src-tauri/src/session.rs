@@ -510,6 +510,10 @@ struct StatusEvents<R: Runtime> {
     /// Mỗi tiến trình phụ (`slot`) đang chạy bằng CPU không: theo `Ready.use_gpu` của lần chạy gần nhất, và bật ngay khi có
     /// `CpuFallback`. Chỉ báo "Đang chạy bằng CPU" hiện khi có ít nhất một cờ bật (Q5-1 của review 02 lần 5).
     on_cpu: Mutex<[bool; 2]>,
+    /// Mỗi tiến trình phụ (`slot`) đang nạp không: bật ở `Starting`, tắt ở `Ready` hay `GaveUp` của chính nó. Chỉ báo "Đang
+    /// nạp model…" hiện khi có ít nhất một cờ bật, nên tiến trình phụ khởi động lại giữa phiên hay bỏ cuộc không làm chỉ báo
+    /// kẹt (Q1 của review cuối 02).
+    loading: Mutex<[Option<Loading>; 2]>,
 }
 
 impl<R: Runtime> StatusEvents<R> {
@@ -519,6 +523,18 @@ impl<R: Runtime> StatusEvents<R> {
         flags[slot(which)] = cpu;
         let any = flags.iter().any(|&f| f);
         self.app.state::<AppState>().update_status(|s| s.cpu_fallback = any);
+    }
+
+    /// Đặt cờ "đang nạp" của `which` rồi tính lại chỉ báo chung: bên nào nạp lần đầu thì báo `FirstRun`.
+    fn set_loading(&self, which: Which, loading: Option<Loading>) {
+        let mut flags = self.loading.lock().unwrap();
+        flags[slot(which)] = loading;
+        let shown = if flags.contains(&Some(Loading::FirstRun)) {
+            Some(Loading::FirstRun)
+        } else {
+            flags.iter().flatten().next().copied()
+        };
+        self.app.state::<AppState>().update_status(|s| s.loading = shown);
     }
 }
 
@@ -539,9 +555,10 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
     fn on_event(&self, event: &SidecarEvent) {
         let state = self.app.state::<AppState>();
         match event {
-            SidecarEvent::Starting { first_run, .. } => {
-                state.update_status(|s| s.loading = Some(if *first_run { Loading::FirstRun } else { Loading::Model }))
-            }
+            SidecarEvent::Starting { which, first_run } => self.set_loading(
+                *which,
+                Some(if *first_run { Loading::FirstRun } else { Loading::Model }),
+            ),
             SidecarEvent::Ready { which, first_run, .. } => {
                 let exe = self.last_exe.lock().unwrap()[slot(*which)].clone();
                 if *first_run
@@ -550,9 +567,7 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
                 {
                     log::warn!("không ghi được {}: {e}", self.seen_file.display());
                 }
-                if *which == Which::Llama {
-                    state.update_status(|s| s.loading = None);
-                }
+                self.set_loading(*which, None);
                 // Chỉ báo CPU theo từng tiến trình phụ: tiến trình này chạy lại bằng GPU (bấm thử lại sau khi bỏ cuộc, Q4-2 của
                 // review 02 lần 4) chỉ tắt cờ của chính nó (Q5-1 của review 02 lần 5).
                 if let SidecarEvent::Ready { use_gpu, .. } = event {
@@ -565,7 +580,7 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
                 if *which == Which::Asr {
                     *self.asr_gave_up.lock().unwrap() = Some(*cause);
                 }
-                return;
+                self.set_loading(*which, None);
             }
             SidecarEvent::Restarting { .. } | SidecarEvent::Stopped { .. } => return,
         }
@@ -647,6 +662,7 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
                     locks: Mutex::new(prepared.locks),
                     asr_gave_up: self.asr_gave_up.clone(),
                     on_cpu: Mutex::new([false, false]),
+                    loading: Mutex::new([None, None]),
                 });
                 let manager = SidecarManager::new(prepared.spec, Arc::new(SystemClock::default()), events);
                 *live = Some(Live {
@@ -798,16 +814,7 @@ mod tests {
     #[test]
     fn a_gpu_ready_clears_the_cpu_fallback_note() {
         let app = crate::test_support::mock_app();
-        let events = StatusEvents {
-            app: app.handle().clone(),
-            dir: PathBuf::new(),
-            hashes: Vec::new(),
-            seen_file: PathBuf::new(),
-            last_exe: Mutex::new([None, None]),
-            locks: Mutex::new(Vec::new()),
-            asr_gave_up: Arc::default(),
-            on_cpu: Mutex::new([false, false]),
-        };
+        let events = status_events(&app);
         let state = app.state::<AppState>();
         events.on_event(&SidecarEvent::CpuFallback { which: Which::Asr });
         assert!(state.status().cpu_fallback);
@@ -835,6 +842,92 @@ mod tests {
         // Máy không có GPU dùng được: `Ready` bằng CPU ngay lần đầu cũng bật chỉ báo.
         events.on_event(&ready(Which::Asr, false));
         assert!(state.status().cpu_fallback);
+    }
+
+    /// `StatusEvents` không kiểm binary, dùng trong test sự kiện của tiến trình phụ.
+    fn status_events(app: &tauri::App<tauri::test::MockRuntime>) -> StatusEvents<tauri::test::MockRuntime> {
+        StatusEvents {
+            app: app.handle().clone(),
+            dir: PathBuf::new(),
+            hashes: Vec::new(),
+            seen_file: PathBuf::new(),
+            last_exe: Mutex::new([None, None]),
+            locks: Mutex::new(Vec::new()),
+            asr_gave_up: Arc::default(),
+            on_cpu: Mutex::new([false, false]),
+            loading: Mutex::new([None, None]),
+        }
+    }
+
+    fn starting(which: Which, first_run: bool) -> SidecarEvent {
+        SidecarEvent::Starting { which, first_run }
+    }
+
+    fn ready(which: Which) -> SidecarEvent {
+        SidecarEvent::Ready {
+            which,
+            use_gpu: true,
+            backend: None,
+            first_run: false,
+        }
+    }
+
+    /// Q1 của review cuối 02, kịch bản 1: `asr-worker` khởi động lại giữa phiên (`transcribe` → `start_asr`) thì "Đang nạp
+    /// model…" tắt khi nó `Ready`, không chờ `llama-server`.
+    #[test]
+    fn an_asr_restart_mid_session_clears_the_loading_note_when_ready() {
+        let app = crate::test_support::mock_app();
+        let events = status_events(&app);
+        let state = app.state::<AppState>();
+        for event in [
+            starting(Which::Asr, false),
+            ready(Which::Asr),
+            starting(Which::Llama, false),
+            ready(Which::Llama),
+        ] {
+            events.on_event(&event);
+        }
+        assert_eq!(state.status().loading, None, "khởi động bình thường");
+        events.on_event(&starting(Which::Asr, false));
+        assert_eq!(state.status().loading, Some(Loading::Model));
+        events.on_event(&ready(Which::Asr));
+        assert_eq!(state.status().loading, None, "asr-worker đã chạy lại xong");
+        // Hai bên cùng nạp: một bên xong thì chỉ báo còn, tới khi bên kia xong. Bên nào nạp lần đầu thì giữ `FirstRun`.
+        events.on_event(&starting(Which::Asr, false));
+        events.on_event(&starting(Which::Llama, true));
+        assert_eq!(state.status().loading, Some(Loading::FirstRun));
+        events.on_event(&ready(Which::Llama));
+        assert_eq!(state.status().loading, Some(Loading::Model), "asr-worker vẫn đang nạp");
+        events.on_event(&ready(Which::Asr));
+        assert_eq!(state.status().loading, None);
+    }
+
+    /// Q1 của review cuối 02, kịch bản 2: `llama-server` chết giữa phiên và khởi động lại không được thì không còn báo "Đang
+    /// nạp model…" cùng lúc với "Dịch không khả dụng".
+    #[test]
+    fn a_llama_give_up_mid_session_clears_the_loading_note() {
+        let app = crate::test_support::mock_app();
+        let events = status_events(&app);
+        let state = app.state::<AppState>();
+        events.on_event(&starting(Which::Llama, false));
+        assert_eq!(state.status().loading, Some(Loading::Model));
+        events.on_event(&SidecarEvent::GaveUp {
+            which: Which::Llama,
+            cause: GiveUpCause::Failures,
+            reason: "quá 3 lần lỗi".into(),
+        });
+        assert_eq!(state.status().loading, None);
+        // Bỏ cuộc của một bên không tắt chỉ báo của bên kia đang nạp.
+        events.on_event(&starting(Which::Asr, false));
+        events.on_event(&starting(Which::Llama, false));
+        events.on_event(&SidecarEvent::GaveUp {
+            which: Which::Llama,
+            cause: GiveUpCause::Failures,
+            reason: "quá 3 lần lỗi".into(),
+        });
+        assert_eq!(state.status().loading, Some(Loading::Model), "asr-worker vẫn đang nạp");
+        events.on_event(&ready(Which::Asr));
+        assert_eq!(state.status().loading, None);
     }
 
     /// N-6 của review 02 lần 2: bấm Bắt đầu thì quên lý do bỏ cuộc cũ, mã lỗi giữa phiên về mặc định.
