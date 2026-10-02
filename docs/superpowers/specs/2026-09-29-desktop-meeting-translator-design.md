@@ -1124,7 +1124,7 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 **Khóa ký manifest và bản cập nhật** (chủ dự án quyết 2026-10-02, Q17 của kế hoạch Giai đoạn 1 · 00):
 - Mỗi loại một khóa production: một khóa ký manifest model, một khóa ký bản cập nhật Tauri. Không làm hai ô khóa A/B như khóa token.
 - Khóa nằm trong secret của CI (kế hoạch 07 tạo, ngay trong CI hay trên máy không nối mạng rồi nhập thẳng vào secret). Kèm **một bản sao offline**, mã hóa bằng passphrase, cất trên USB; passphrase in ra giấy, cất riêng.
-- Lộ khóa thì phát hành bản app mới mang khóa công khai mới. App nhúng một khóa công khai production cho manifest; định dạng manifest vẫn có `kid` để bản app sau đổi khóa. Khi đổi khóa manifest, giữ `kid` cũ trong app ít nhất một bản phát hành, để app chưa cập nhật vẫn đọc được manifest đã lưu.
+- Lộ khóa thì phát hành bản app mới mang khóa công khai mới. App nhúng một khóa công khai production cho manifest; định dạng manifest vẫn có `kid` để bản app sau đổi khóa. Đổi khóa manifest có kế hoạch thì một bản phát hành tin cả `kid` cũ lẫn `kid` mới, bản sau bỏ `kid` cũ; lộ khóa thì bản app mới chỉ tin `kid` mới ngay, `kid` đã lộ bị gỡ khỏi app.
 - Khóa staging của manifest nằm ngoài repo, trên máy người vận hành (file JWK quyền 0600), vì staging chưa có CI; bản phát hành không bao giờ nhận khóa staging.
 
 **Để Giai đoạn 2**, và chỉ làm khi thấy bị crack nhiều thật: chống debug, làm rối code sâu hơn, kiểm tra toàn vẹn nhiều lớp, phát hiện gian lận phía server bằng phân tích hành vi.
