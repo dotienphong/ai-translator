@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlement của AI Translator.app khi ký với hardened runtime (kế hoạch 07a, N9 của review lần 1).
+  Hardened runtime chặn đường vào âm thanh (audio input) nếu app không khai entitlement này. App thu âm thanh hệ thống
+  bằng Core Audio process tap, đọc qua một aggregate device (crates/audio-capture), tức một đường vào âm thanh. App không
+  mở micro; quyền "Ghi âm thanh hệ thống" vẫn do macOS hỏi theo NSAudioCaptureUsageDescription. Không có entitlement nào
+  tắt library validation hay cho JIT. Task 15 thử bản đã ký này với âm thanh thật.
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+</dict>
+</plist>

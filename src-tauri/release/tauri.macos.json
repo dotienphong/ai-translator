@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "category": "Productivity",
+    "shortDescription": "Live translated subtitles for meetings",
+    "externalBin": ["binaries/asr-worker", "binaries/llama-server"],
+    "resources": {
+      "../THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt"
+    },
+    "macOS": {
+      "minimumSystemVersion": "14.2",
+      "hardenedRuntime": true
+    }
+  }
+}
