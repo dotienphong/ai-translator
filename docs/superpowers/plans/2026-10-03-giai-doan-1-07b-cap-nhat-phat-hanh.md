@@ -55,19 +55,19 @@ Mọi crate khác mà plugin cần (`base64` 0.22, `semver`, `time`, `tempfile`,
 
 ## Bảng task và commit tham chiếu
 
-Chuỗi commit dựng lúc lập kế hoạch nằm ở `$S/p07-repo`, nhánh `plan07b-r5` (trên `plan07a-r3` của 07a). Sau mỗi task, so cây: `git diff --stat <commit tham chiếu> HEAD` phải rỗng (cần `git fetch $S/p07-repo plan07b-r5` một lần).
+Chuỗi commit dựng lúc lập kế hoạch nằm ở `$S/p07-repo`, nhánh `plan07b-r6` (trên `plan07a-r3` của 07a). Sau mỗi task, so cây: `git diff --stat <commit tham chiếu> HEAD` phải rỗng (cần `git fetch $S/p07-repo plan07b-r6` một lần).
 
 | Task | Nội dung | Commit tham chiếu |
 |---|---|---|
 | 0 | Siết 07a theo review cuối thực thi (job có secret, nhận artifact) | `949ca5d` |
 | 1 | Plugin cập nhật, nguồn bản cập nhật, khóa công khai | `555fb6f` |
 | 2 | Kiểm và tải qua plugin, test với plugin thật | `48ec83d` |
-| 3 | Luồng nền, cài lúc thoát, khởi động lại, menu khay | `f391d9e` |
-| 4 | Lời mời ở cửa sổ chính | `1ac20a5` |
-| 5 | Windows: giá trị `Run` có dấu nháy | `1db370f` |
-| 6 | Script manifest theo kênh, đăng bản, kiểm cấu hình production | `6b130c8` |
-| 7 | Job `publish` và `github-release` | `7a76e0e` |
-| 8 | Tài liệu phát hành và khóa; khóa manifest production | `a63dacf` |
+| 3 | Luồng nền, cài lúc thoát, khởi động lại, menu khay | `9591240` |
+| 4 | Lời mời ở cửa sổ chính | `1f76cc5` |
+| 5 | Windows: giá trị `Run` có dấu nháy | `875c7c7` |
+| 6 | Script manifest theo kênh, đăng bản, kiểm cấu hình production | `52d821d` |
+| 7 | Job `publish` và `github-release` | `c5e55f0` |
+| 8 | Tài liệu phát hành và khóa; khóa manifest production | `7360e0a` |
 | 9 | Kiểm tra chuẩn | không có commit |
 | 10 | Cập nhật kế hoạch 00 | commit riêng |
 | 11 | Khóa production (người, máy không nối mạng) | commit khóa công khai |
@@ -1443,7 +1443,7 @@ feat(app): kiểm và tải bản cập nhật qua plugin; chữ ký sai, không
 
 ## Task 3: Luồng nền, cài lúc thoát, khởi động lại, menu khay
 
-`Updater` (QĐ5–QĐ9, QĐ21): kiểm 60 giây sau khi mở app rồi mỗi 24 giờ theo giờ máy, đổi kênh thì kiểm ngay, lỗi mạng thì thử lại ở lần thức sau (mỗi giờ); tải vào `app_local_data_dir/updates/`, giữ SHA-256 của các byte đã kiểm chữ ký; báo `AppStatus.update_ready`. `on_exit` cài bản đã tải sau `kill_all` và `save_on_exit`, chỉ khi người dùng chủ động thoát (`actions::quit` gọi `updater::user_quits`) hay khởi động lại để cập nhật (QĐ7), và chỉ khi SHA-256 của file trên đĩa còn khớp. Lệnh `restart_to_update` và mục menu khay (QĐ10, QĐ11) chỉ chạy khi có bản đã tải và app rảnh, dừng như Thoát ở menu khay rồi `request_restart`.
+`Updater` (QĐ5–QĐ9, QĐ21): kiểm 60 giây sau khi mở app rồi mỗi 24 giờ theo giờ máy, đổi kênh thì kiểm ngay, lỗi mạng thì thử lại ở lần thức sau (mỗi giờ); tải vào `app_local_data_dir/updates/`, giữ SHA-256 của các byte đã kiểm chữ ký; báo `AppStatus.update_ready`. `on_exit` cài bản đã tải sau `kill_all` và `save_on_exit`, chỉ khi người dùng chủ động thoát (`actions::quit` gọi `prepare_quit`, hàm này gọi `updater::user_quits`; tách riêng để test gọi được mà không thoát app) hay khởi động lại để cập nhật (QĐ7), và chỉ khi SHA-256 của file trên đĩa còn khớp. Lệnh `restart_to_update` và mục menu khay (QĐ10, QĐ11) chỉ chạy khi có bản đã tải và app rảnh, dừng như Thoát ở menu khay rồi `request_restart`.
 
 **Files:**
 - Modify: `src-tauri/src/updater/mod.rs` (thay toàn bộ), `src-tauri/src/errors.rs`, `src-tauri/src/state.rs`, `src-tauri/src/lib.rs`, `src-tauri/src/commands.rs`, `src-tauri/build.rs`, `src-tauri/capabilities/main.json`, `src-tauri/src/actions.rs`, `src-tauri/src/i18n.rs`, `src-tauri/src/tray_menu.rs`, `src-tauri/src/tray.rs`, `src-tauri/src/app_tests.rs`
@@ -1454,10 +1454,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
-index a8c8cad51c5f1c48c9093c2816b7e87a96095d63..684af38aab0556caa7dd48a067fe79d7f7a37bd0 100644
+index a8c8cad51c5f1c48c9093c2816b7e87a96095d63..735f3363c9af87243f40e8c765ad2caf01bdd2ae 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -1595,3 +1595,126 @@ fn activating_a_full_key_returns_its_devices() {
+@@ -1595,3 +1595,127 @@ fn activating_a_full_key_returns_its_devices() {
      let bad = invoke(&main, "activate_license", json!({ "key": "abc" })).unwrap_err();
      assert!(bad.contains("licenseInvalidKey"), "{bad}");
  }
@@ -1558,7 +1558,8 @@ index a8c8cad51c5f1c48c9093c2816b7e87a96095d63..684af38aab0556caa7dd48a067fe79d7
 +    crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, kill_all_into_update_log);
 +    assert_eq!(*UPDATE_LOG.lock().unwrap(), ["kill_all"], "tắt máy, đăng xuất: không cài");
 +    UPDATE_LOG.lock().unwrap().clear();
-+    crate::updater::user_quits(app.handle());
++    // Phần đồng bộ của Thoát ở menu khay (`actions::quit` gọi rồi mới dừng phiên và thoát).
++    crate::actions::prepare_quit(app.handle());
 +    crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, kill_all_into_update_log);
 +    assert_eq!(
 +        *UPDATE_LOG.lock().unwrap(),
@@ -1593,9 +1594,9 @@ cargo test -p meeting-translator --lib -- app_tests::restart 2>&1 | grep -E '^er
 
 Expected (lúc lập kế hoạch: chưa biên dịch được, chưa có `updater::tests`, `Updater`, `publish`, `restart_to_update`):
 ```text
+   1 error[E0425]: cannot find function `prepare_quit` in module `crate::actions`
    1 error[E0425]: cannot find function `publish` in module `crate::updater`
    1 error[E0425]: cannot find function `restart_to_update` in module `crate::updater`
-   1 error[E0425]: cannot find function `user_quits` in module `crate::updater`
    2 error[E0425]: cannot find type `Updater` in module `crate::updater`
    1 error[E0425]: cannot find value `UPDATE_BUSY` in module `errors`
    2 error[E0425]: cannot find value `UPDATE_NOT_READY` in module `errors`
@@ -2384,7 +2385,7 @@ Sửa `src-tauri/src/actions.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/actions.rs b/src-tauri/src/actions.rs
-index 39e7a877717462f0d0f9def544183204610510db..62618d2194bf4b4ca1f6fbdda0cd2e5fa9a5b2af 100644
+index 39e7a877717462f0d0f9def544183204610510db..16ecf324ab9e36a9fd63d352c92a38ee07c06fd9 100644
 --- a/src-tauri/src/actions.rs
 +++ b/src-tauri/src/actions.rs
 @@ -10,7 +10,7 @@ use crate::hotkeys::HotkeyAction;
@@ -2406,12 +2407,24 @@ index 39e7a877717462f0d0f9def544183204610510db..62618d2194bf4b4ca1f6fbdda0cd2e5f
      next
  }
  
-@@ -266,6 +269,8 @@ pub fn open_audio_permission_settings<R: Runtime>(app: &AppHandle<R>) -> Result<
- pub fn quit<R: Runtime>(app: &AppHandle<R>) {
-     overlay::remember_position(app);
-     log::info!("thoát theo yêu cầu từ menu khay");
-+    // Người dùng chủ động thoát: được cài bản cập nhật đã tải (khác tắt máy, đăng xuất; kế hoạch 07b).
+@@ -261,11 +264,18 @@ pub fn open_audio_permission_settings<R: Runtime>(app: &AppHandle<R>) -> Result<
+     system::open_audio_permission_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
+ }
+ 
++/// Phần đồng bộ của Thoát ở menu khay, trước khi dừng phiên và thoát: nhớ vị trí thanh phụ đề, và cho phép cài bản cập nhật
++/// đã tải vì người dùng chủ động thoát (khác tắt máy, đăng xuất; kế hoạch 07b). Tách riêng để test gọi được mà không thoát.
++pub(crate) fn prepare_quit<R: Runtime>(app: &AppHandle<R>) {
++    overlay::remember_position(app);
++    log::info!("thoát theo yêu cầu từ menu khay");
 +    updater::user_quits(app);
++}
++
+ /// Thoát hẳn, chỉ gọi từ menu khay (§4.3): nhớ vị trí thanh phụ đề, dừng phiên, tắt hai tiến trình phụ, rồi thoát.
+ /// Dừng phiên có thể chờ tới 2 giây (câu đang dịch), nên việc đó chạy trên luồng riêng.
+ pub fn quit<R: Runtime>(app: &AppHandle<R>) {
+-    overlay::remember_position(app);
+-    log::info!("thoát theo yêu cầu từ menu khay");
++    prepare_quit(app);
      let app = app.clone();
      std::thread::spawn(move || {
          session::shutdown(&app);
@@ -2627,35 +2640,35 @@ Expected (lúc lập kế hoạch):
 test updater::backend::tests::accepts_only_newer_and_no_pre_release_on_stable ... ok
 test tray_menu::tests::all_lists_every_item_in_menu_order ... ok
 test tray_menu::tests::item_ids_roundtrip ... ok
-test tray_menu::tests::labels_follow_state_in_english ... ok
 test tray_menu::tests::idle_menu_in_vietnamese ... ok
 test tray_menu::tests::restart_to_update_only_when_idle ... ok
-test updater::source::tests::endpoint_per_channel ... ok
+test tray_menu::tests::labels_follow_state_in_english ... ok
 test updater::source::tests::only_https_except_loopback_http_in_dev ... ok
+test updater::source::tests::endpoint_per_channel ... ok
 test updater::source::tests::dev_builds_read_staging_or_the_env_and_release_builds_only_production ... ok
-test updater::source::tests::the_shipped_key_file_has_no_private_key ... ok
 test updater::source::tests::public_key_per_environment_and_only_the_tauri_format ... ok
-test updater::tests::a_new_run_forgets_the_previous_download ... ok
-test updater::tests::a_newer_release_replaces_the_downloaded_one ... ok
-test updater::tests::a_release_pulled_from_the_channel_is_not_installed ... ok
-test updater::tests::due_after_a_day_or_when_the_clock_goes_back ... ok
-test updater::tests::checks_once_a_day_and_downloads_each_version_once ... ok
-test updater::tests::exiting_without_the_user_asking_installs_nothing ... ok
-test updater::tests::a_file_changed_on_disk_is_never_installed ... ok
-test updater::tests::network_errors_retry_at_the_next_wake_and_keep_the_download ... ok
-test updater::tests::installs_the_downloaded_file_once_and_cleans_up ... ok
-test updater::tests::switching_channel_drops_the_download_and_checks_at_once ... ok
+test updater::source::tests::the_shipped_key_file_has_no_private_key ... ok
 test updater::backend::tests::the_stable_channel_never_takes_a_pre_release ... ok
 test updater::backend::tests::server_errors_are_errors_not_no_update ... ok
 test updater::backend::tests::no_update_when_the_manifest_is_not_newer ... ok
-test updater::backend::tests::finds_downloads_and_verifies_the_manifest_the_release_script_writes ... ok
+test updater::tests::due_after_a_day_or_when_the_clock_goes_back ... ok
+test updater::tests::a_new_run_forgets_the_previous_download ... ok
+test updater::tests::a_newer_release_replaces_the_downloaded_one ... ok
+test updater::tests::exiting_without_the_user_asking_installs_nothing ... ok
+test updater::tests::a_release_pulled_from_the_channel_is_not_installed ... ok
+test updater::tests::network_errors_retry_at_the_next_wake_and_keep_the_download ... ok
 test updater::backend::tests::bad_signatures_never_reach_the_disk ... ok
+test updater::backend::tests::finds_downloads_and_verifies_the_manifest_the_release_script_writes ... ok
+test updater::tests::checks_once_a_day_and_downloads_each_version_once ... ok
+test updater::tests::switching_channel_drops_the_download_and_checks_at_once ... ok
+test updater::tests::a_file_changed_on_disk_is_never_installed ... ok
+test updater::tests::installs_the_downloaded_file_once_and_cleans_up ... ok
 test app_tests::a_user_quit_installs_the_download_after_killing_sidecars ... ok
 test app_tests::restart_to_update_needs_a_download_and_an_idle_app ... ok
 test app_tests::changing_the_update_channel_wakes_the_updater ... ok
 test updater::tests::wake_ends_the_wait_early ... ok
 test app_tests::the_exit_event_saves_the_running_session_to_history ... ok
-test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 401 filtered out; finished in 0.29s
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 401 filtered out; finished in 0.28s
 ```
 
 Run:
@@ -2667,7 +2680,7 @@ cargo clippy -p meeting-translator --all-targets -q -- -D warnings; echo "clippy
 
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 429 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 3.53s
+test result: ok. 429 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 4.05s
 clippy: 0
 check-windows: 0
 ```
@@ -3250,7 +3263,7 @@ fix(app): Windows: giá trị khởi động cùng hệ thống trong Run có d�
 
 - `update-manifest.mjs`: `latest.json` (dạng tĩnh của plugin, bốn khóa nền tảng) cho kênh stable và beta (QĐ8, QĐ12).
 - `release-ready.mjs`: `--tag` kiểm tag khớp `version` của `tauri.conf.json` (kể cả bản beta, QĐ13); không `--tag` thì kiểm đủ bảy giá trị production.
-- `publish-release.mjs`: đăng một bản lên R2 bằng wrangler của `server/`; từ chối nếu bản đã có; `latest.json` của kênh ghi sau cùng; `--dry-run` không gọi mạng.
+- `publish-release.mjs`: đăng một bản lên R2 bằng wrangler của `server/`; `latest.json` của kênh ghi sau các file của bản, rồi dấu `<phiên bản>/published.json`; từ chối nếu đã có dấu đó hay kênh đã báo bản này (QĐ12); `--dry-run` không gọi mạng.
 
 **Files:**
 - Create: `scripts/release/update-manifest.test.mjs`, `scripts/release/update-manifest.mjs`, `scripts/release/release-ready.test.mjs`, `scripts/release/release-ready.mjs`, `scripts/release/publish-release.test.mjs`, `scripts/release/publish-release.mjs`
@@ -3464,7 +3477,7 @@ import { test } from "node:test";
 
 import { contentType, main, uploadPlan } from "./publish-release.mjs";
 
-test("file của bản tải lên trước, manifest của kênh tải sau cùng", () => {
+test("file của bản tải lên trước, rồi manifest của kênh, cuối cùng dấu đã đăng của bản", () => {
   const plan = uploadPlan({
     bucket: "b",
     version: "0.2.0",
@@ -3479,9 +3492,11 @@ test("file của bản tải lên trước, manifest của kênh tải sau cùng
       "b/0.2.0/SHA256SUMS-macos.txt",
       "b/stable/latest.json",
       "b/beta/latest.json",
+      "b/0.2.0/published.json",
     ],
   );
   assert.equal(plan.at(-1).type, "application/json");
+  assert.equal(plan.at(-1).file, "manifests/published.json");
   assert.equal(contentType("x.exe"), "application/vnd.microsoft.portable-executable");
   assert.equal(contentType("x.tar.gz"), "application/gzip");
   assert.equal(contentType("x.dmg"), "application/x-apple-diskimage");
@@ -3519,6 +3534,7 @@ test("--dry-run: in lệnh wrangler theo đúng thứ tự, manifest trỏ tới
     "rel/0.1.0-beta.1/AI Translator_0.1.0-beta.1_x64-setup.exe",
     "rel/0.1.0-beta.1/AI Translator_0.1.0-beta.1_x64-setup.exe.sig",
     "rel/beta/latest.json",
+    "rel/0.1.0-beta.1/published.json",
   ]);
   assert.match(lines.at(-1), / --cache-control no-cache$/);
   const beta = JSON.parse(readFileSync(join(out, "manifests", "beta", "latest.json"), "utf8"));
@@ -3539,10 +3555,12 @@ test("tag lệch tauri.conf.json, thiếu tham số hay URL không https thì kh
   assert.deepEqual(lines, []);
 });
 
-/** `fetch` giả: `latest.json` của từng kênh (null là 404); ghi lại URL đã hỏi. */
-function fakeFetch(versions, asked = []) {
+/** `fetch` giả: `latest.json` của từng kênh (null là 404), và các bản đã có dấu `published.json`; ghi lại URL đã hỏi. */
+function fakeFetch(versions, asked = [], published = []) {
   return async (url) => {
     asked.push(url);
+    const marker = /\/([^/]+)\/published\.json$/.exec(url)?.[1];
+    if (marker) return published.includes(marker) ? { status: 200, ok: true } : { status: 404, ok: false };
     const channel = /\/(stable|beta)\/latest\.json$/.exec(url)?.[1];
     const version = channel ? versions[channel] : null;
     if (!version) return { status: 404, ok: false };
@@ -3565,9 +3583,25 @@ test("bản đã có trong latest.json của kênh thì không đăng lại; l�
     version: "0.2.0",
     channels: ["stable", "beta"],
   });
-  assert.deepEqual(asked, ["https://cdn.example/r/stable/latest.json", "https://cdn.example/r/beta/latest.json"]);
-  assert.equal(runs.length, 7);
-  assert.deepEqual(runs.slice(-2), ["rel/stable/latest.json", "rel/beta/latest.json"]);
+  assert.deepEqual(asked, [
+    "https://cdn.example/r/0.2.0/published.json",
+    "https://cdn.example/r/stable/latest.json",
+    "https://cdn.example/r/beta/latest.json",
+  ]);
+  assert.equal(runs.length, 8);
+  assert.deepEqual(runs.slice(-3), ["rel/stable/latest.json", "rel/beta/latest.json", "rel/0.2.0/published.json"]);
+  const marker = JSON.parse(readFileSync(join(out, "manifests", "published.json"), "utf8"));
+  assert.deepEqual(marker, { version: "0.2.0", tag: "v0.2.0", channels: ["stable", "beta"] });
+});
+
+test("bản đã rút (latest.json về bản trước) vẫn không đăng lại được: dấu published.json còn đó (Q-A của review 07b lần 2)", async (t) => {
+  const { repo, out } = fixture(t, "0.3.0");
+  t.mock.method(console, "log", () => {});
+  const base = ["--tag", "v0.3.0", "--dir", out, "--bucket", "rel", "--base-url", "https://cdn.example/r"];
+  const runs = [];
+  const fetch = fakeFetch({ stable: "0.2.0", beta: "0.2.0" }, [], ["0.3.0"]);
+  await assert.rejects(main(base, { repo, fetch, run: (cmd) => runs.push(cmd[7]) }), /0.3.0 đã được đăng.*published\.json/);
+  assert.deepEqual(runs, [], "không tải gì");
 });
 ```
 
@@ -3838,8 +3872,10 @@ Tạo `scripts/release/publish-release.mjs`:
 // Thứ tự: kiểm tag khớp version trong tauri.conf.json; đọc `latest.json` hiện có của hai kênh qua URL công khai; từ chối
 // nếu một kênh đã báo bản này (đã phát hành thì không bao giờ ghi đè); tải mọi file của bản lên `<version>/`; sinh
 // `latest.json` (update-manifest.mjs) rồi mới tải lên `<kênh>/latest.json`, để app không bao giờ thấy manifest trỏ tới file
-// chưa có. Bản chỉ coi là đã đăng khi `latest.json` của kênh đã báo nó: lần chạy trước đứt giữa chừng (một phần file đã
-// lên, `latest.json` chưa đổi) thì chạy lại job, các file của bản được tải lại. Lệnh tải là wrangler của `server/` (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID từ secret của environment).
+// chưa có. Sau cùng ghi dấu bền `<version>/published.json`. Bản coi là đã đăng khi có dấu đó hay `latest.json` của một kênh
+// đã báo nó: kể cả sau khi bản bị rút (`latest.json` về bản trước, dấu vẫn còn), chạy lại job cũng không đăng lại hay ghi
+// đè file của nó (Q-A của review 07b lần 2). Lần chạy trước đứt trước khi ghi `latest.json` thì chưa có dấu: chạy lại job,
+// các file của bản được tải lại. Lệnh tải là wrangler của `server/` (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID từ secret của environment).
 // `--dry-run` không gọi mạng, chỉ in các lệnh (coi như hai kênh chưa có bản nào).
 
 import { execFileSync } from "node:child_process";
@@ -3871,7 +3907,18 @@ export function uploadPlan({ bucket, version, files, channels }) {
   for (const channel of channels) {
     steps.push({ key: `${bucket}/${channel}/latest.json`, file: join("manifests", channel, "latest.json"), type: "application/json" });
   }
+  steps.push({ key: `${bucket}/${version}/published.json`, file: join("manifests", "published.json"), type: "application/json" });
   return steps;
+}
+
+/** Bản đã có dấu `<version>/published.json` trên CDN chưa. */
+async function hasMarker(fetch, baseUrl, version) {
+  const res = await fetch(`${trim(baseUrl)}/${version}/published.json`, {
+    headers: { "User-Agent": "ai-translator-release", "Cache-Control": "no-cache" },
+  });
+  if (res.status === 404) return false;
+  if (!res.ok) throw new Error(`${version}/published.json: HTTP ${res.status}`);
+  return true;
 }
 
 const trim = (url) => url.replace(/\/+$/, "");
@@ -3908,6 +3955,9 @@ export async function main(argv, { repo = root, fetch = globalThis.fetch, run = 
   if (errors.length > 0) throw new Error(errors.join("; "));
   const version = conf.version;
 
+  if (!dryRun && (await hasMarker(fetch, baseUrl, version))) {
+    throw new Error(`${version} đã được đăng (có ${version}/published.json); không đăng lại hay ghi đè một bản đã phát hành`);
+  }
   const current = {
     stable: dryRun ? null : await currentVersion(fetch, baseUrl, "stable"),
     beta: dryRun ? null : await currentVersion(fetch, baseUrl, "beta"),
@@ -3933,11 +3983,12 @@ export async function main(argv, { repo = root, fetch = globalThis.fetch, run = 
     }
   }
   writeManifests(args);
+  writeFileSync(join(dir, "manifests", "published.json"), `${JSON.stringify({ version, tag, channels })}\n`);
 
   for (const step of uploadPlan({ bucket, version, files, channels })) {
     const cmd = ["-C", "server", "exec", "wrangler", "r2", "object", "put", step.key, "--file", join(dir, step.file)];
     cmd.push("--content-type", step.type, "--remote");
-    if (step.key.endsWith("/latest.json")) cmd.push("--cache-control", "no-cache");
+    if (step.key.endsWith(".json") && step.file.startsWith("manifests")) cmd.push("--cache-control", "no-cache");
     console.log(`${dryRun ? "(dry-run) " : ""}pnpm ${cmd.join(" ")}`);
     if (!dryRun) run(cmd, repo);
   }
@@ -3959,8 +4010,8 @@ Run: `node --test "scripts/release/*.test.mjs" 2>&1 | grep -E '^ℹ (tests|pass|
 
 Expected (lúc lập kế hoạch):
 ```text
-ℹ tests 54
-ℹ pass 54
+ℹ tests 55
+ℹ pass 55
 ℹ fail 0
 ```
 
@@ -4306,7 +4357,8 @@ hdiutil detach $ram                                  # ổ RAM mất hẳn
    deployments): bốn job ký, `update-signatures`, `publish`. Duyệt từng job khi nó tới lượt, sau khi xem log của job trước.
 3. Job `publish`:
    - kiểm đủ cấu hình production;
-   - từ chối nếu `latest.json` của kênh đã báo bản này (bản đã phát hành không bao giờ bị ghi đè; sửa lỗi thì ra bản mới);
+   - từ chối nếu bản này đã đăng: có dấu `<version>/published.json`, hay `latest.json` của kênh đã báo bản này (bản đã
+     phát hành không bao giờ bị ghi đè, kể cả sau khi rút; sửa lỗi thì ra bản mới);
      job đứt giữa chừng (một phần file đã lên, `latest.json` chưa đổi) thì bấm "Re-run failed jobs": các file của bản được
      tải lại;
    - tải mọi file của bản lên `<version>/`, rồi mới ghi `latest.json` của kênh.
@@ -4317,9 +4369,17 @@ hdiutil detach $ram                                  # ổ RAM mất hẳn
    - tải `.dmg` và `.exe` từ `<RELEASES_BASE_URL>/<version>/`, so SHA-256 với `SHA256SUMS-*.txt`;
    - một máy đang chạy bản trước, cùng kênh: trong vòng 24 giờ (hay mở lại app) thấy lời mời khởi động lại để cập nhật.
 
+### Phát hành lần lượt
+
+Mỗi lần chỉ đẩy một tag, chờ job `publish` của tag đó xong (xanh hay đỏ) rồi mới đẩy tag kế tiếp. Job `publish` của mọi tag
+dùng chung một nhóm `concurrency`: GitHub chỉ giữ **một** lần chạy chờ cho mỗi nhóm, nên ba tag đẩy gần nhau thì `publish` của
+tag giữa bị hủy ("Canceled … higher priority waiting request"). Bản đó không lên R2, và chạy lại sau sẽ bị từ chối vì không
+mới hơn bản đã đăng sau nó; khi đó ra một bản mới.
+
 ### Rút một bản đã đăng
 
-Không xóa file trong `<version>/`. Ghi lại `latest.json` của kênh về bản trước:
+Không xóa file trong `<version>/`, nhất là `<version>/published.json`: dấu này làm job `publish` của tag đó từ chối chạy lại,
+nên bản đã rút không bị đăng lại dù ai bấm "Re-run" và người duyệt bấm duyệt. Ghi lại `latest.json` của kênh về bản trước:
 
 ```bash
 node scripts/release/update-manifest.mjs --version <bản trước> --base-url "$RELEASES_BASE_URL" --dir <file của bản trước> \
@@ -4616,8 +4676,8 @@ Expected (lúc lập kế hoạch):
 build: 0
  Test Files  15 passed (15)
       Tests  130 passed (130)
-ℹ tests 62
-ℹ pass 62
+ℹ tests 63
+ℹ pass 63
 ℹ fail 0
 No known vulnerabilities found
 ```
@@ -4704,7 +4764,12 @@ Trên mỗi máy (Mac arm64 macOS 14.2+, Windows 10/11 x64): gỡ bản cũ, cà
 - [ ] **Step 2: Đang dịch thì không mời.** Bắt đầu dịch: lời mời và mục menu khay biến mất; dừng dịch: hiện lại. "Để sau" ẩn lời mời, menu khay vẫn còn mục.
 - [ ] **Step 3: Khởi động lại để cập nhật.** Bấm "Khởi động lại" (Mac: không có hộp thoại chặn thoát của ⌘Q; Windows: thấy cửa sổ tiến trình của bộ cài): app mở lại, Giới thiệu ghi 0.1.0-beta.2; Cài đặt và lịch sử còn nguyên; `pgrep -fl asr-worker` (Mac) hay Task Manager không còn tiến trình phụ của bản cũ.
 - [ ] **Step 4: Cài ở lần thoát kế tiếp.** Trên máy thứ hai (hay cài lại beta.1): chờ có lời mời, chọn Thoát ở menu khay, mở lại app: Giới thiệu ghi 0.1.0-beta.2. Windows: bộ cài không tự mở lại app sau khi thoát.
-- [ ] **Step 5: Tắt máy hay đăng xuất khi có bản đã tải** (QĐ7). Chờ có lời mời, rồi tắt máy (Mac: Apple menu › Shut Down; Windows: Start › Shut down). Expected: máy tắt bình thường, không có hộp thoại admin hay cửa sổ bộ cài; log có `app thoát không do người dùng`; mở lại máy và app: vẫn là bản cũ, trong vòng một phút có lời mời lại. Lặp lại với đăng xuất.
+- [ ] **Step 5: Tắt máy hay đăng xuất khi có bản đã tải** (QĐ7). Chờ có lời mời, rồi tắt máy (Mac: Apple menu › Shut Down; Windows: Start › Shut down). Expected:
+  - máy tắt bình thường, không có hộp thoại admin hay cửa sổ bộ cài;
+  - mở lại máy và app: Giới thiệu vẫn ghi bản cũ;
+  - log của lần chạy đó có dòng `app thoát không do người dùng`, **hoặc** không có dòng nào sau lúc tắt máy (hệ điều hành có thể kill app trước khi có `RunEvent::Exit`; kết quả vẫn đúng). Sai là khi log có dòng `cài bản cập nhật`;
+  - lời mời hiện lại sau khi app tải xong bản mới lần nữa (60 giây sau khi mở, cộng thời gian tải; thư mục `updates/` bị xóa khi mở app), không phải ngay khi mở.
+  - Lặp lại với đăng xuất.
 - [ ] **Step 6: Mac, tài khoản không phải admin** (QĐ7), app ở `/Applications` do tài khoản admin cài. Chờ có lời mời, Thoát ở menu khay. Expected: hệ thống hỏi mật khẩu admin. Bấm Hủy: app cũ còn nguyên, mở được, lần sau mời lại. Nhập mật khẩu admin: mở lại thấy bản mới.
 - [ ] **Step 7: Windows: mục khởi động.** Bật khởi động cùng hệ thống; `reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v "AI Translator"` ra giá trị có dấu nháy quanh đường dẫn; đăng xuất rồi đăng nhập: app mở ở khay.
 - Ghi kết quả từng step (đạt hay không, log khi lỗi) vào dòng 23, 63, 203, 204 của kế hoạch 00; step nào không đạt thì mở việc sửa, không bỏ qua. Chữ ký sai, chữ ký của bản khác hay của khóa khác đã có test tự động với plugin thật (Task 2), không thử tay.
@@ -4727,12 +4792,12 @@ Trên bản `0.1.0-beta.2` đã ký thật, máy chưa từng chạy app:
 - **QĐ4. `requireSignedVersion: true`; Windows `installMode: passive`.** Manifest (`latest.json`) không ký, theo đúng mô hình của Tauri: chữ ký nằm ở từng bộ cài và plugin kiểm (QĐ20). Vì vậy chữ ký phải gắn đúng phiên bản (07a QĐ20 đã ký bằng `--app-version`), để manifest bị sửa không ghép được số phiên bản mới với bộ cài cũ. Passive hiện tiến trình cài, không hỏi gì.
 - **QĐ5. Lịch kiểm.** 60 giây sau khi mở app; luồng nền thức mỗi giờ và kiểm khi đã qua 24 giờ theo giờ máy (đồng hồ đơn điệu dừng khi máy ngủ), giờ máy lùi thì kiểm; đổi kênh thì đánh thức và kiểm ngay; lỗi mạng hay lỗi tải không tính là đã kiểm, nên thử lại ở lần thức sau. Không lưu lần kiểm ra đĩa: mỗi lần mở app kiểm lại (§6.11 "kiểm lúc khởi động").
 - **QĐ6. Bản đã tải ghi ra đĩa** (`app_local_data_dir/updates/<phiên bản>.bin`), không giữ trong RAM (bộ cài Windows tới gần 60 MB, app nằm khay nhiều ngày). Thư mục bị xóa khi mở app, vì chỉ cài được qua đối tượng `Update` của plugin trong bộ nhớ. Ghi qua file tạm rồi đổi tên.
-- **QĐ7. Cài trong `RunEvent::Exit`, sau `kill_all` và `save_on_exit`, chỉ khi người dùng chủ động thoát** (Thoát ở menu khay, hay khởi động lại để cập nhật; Q-2 của review lần 1). Tắt máy, đăng xuất, khởi động lại máy thì không cài: bộ cài NSIS có thể bị kill giữa chừng, hộp thoại admin của macOS hiện giữa lúc đăng xuất; lần mở sau tải lại và mời lại. Windows: plugin chạy bộ cài rồi `std::process::exit(0)`, không quay lại; bộ cài thay file của app nên tiến trình phụ phải tắt trước. Bộ cài mở lại app chỉ khi khởi động lại để cập nhật. macOS: plugin thay gói `.app` tại chỗ; không ghi được (người dùng không phải admin, app trong `/Applications`) thì hệ thống hỏi mật khẩu admin lúc thoát.
+- **QĐ7. Cài trong `RunEvent::Exit`, sau `kill_all` và `save_on_exit`, chỉ khi người dùng chủ động thoát** (Thoát ở menu khay, hay khởi động lại để cập nhật; Q-2 của review lần 1). Tắt máy, đăng xuất, khởi động lại máy thì không cài: bộ cài NSIS có thể bị kill giữa chừng, hộp thoại admin của macOS hiện giữa lúc đăng xuất; lần mở sau tải lại và mời lại. Windows: plugin chạy bộ cài rồi `std::process::exit(0)`, không quay lại; bộ cài thay file của app nên tiến trình phụ phải tắt trước. Bộ cài mở lại app chỉ khi khởi động lại để cập nhật. macOS: plugin thay gói `.app` tại chỗ; không ghi được (người dùng không phải admin, app trong `/Applications`) thì hệ thống hỏi mật khẩu admin lúc thoát. Rủi ro còn lại, nằm trong plugin (N-B của review lần 2): plugin giải nén `.app` mới vào thư mục tạm của người dùng rồi chỉ `mv` bằng quyền admin sau khi người dùng nhập mật khẩu; một tiến trình cùng tài khoản có thể sửa thư mục đó trong lúc hộp thoại chờ. Windows có khe tương tự nhưng ngắn hơn (bộ cài ghi ra file tạm rồi chạy). Điều kiện là đã có mã độc chạy dưới tài khoản người dùng; chấp nhận ở MVP. Việc so SHA-256 của QĐ21 chỉ phủ tới lúc app trao byte cho plugin.
 - **QĐ8. Kênh.** Bản beta là semver pre-release `X.Y.Z-beta.N` (cả `version` của app, tag, tên bộ cài); mỗi kênh một `latest.json`; bản stable vào cả kênh beta khi mới hơn bản beta đang có; từ beta về stable không hạ cấp (chờ bản stable mới hơn). Đổi kênh thì bỏ bản đã tải của kênh cũ.
 - **QĐ9. Bản bị rút khỏi kênh** (manifest không còn báo bản mới hơn bản đang chạy) thì bỏ bản đã tải, không cài.
 - **QĐ10. Mời ở cửa sổ chính và menu khay**, không ở thanh phụ đề (chỉ hiện khi dịch, mà khi dịch thì không mời), không thông báo hệ thống (Q13). Không mời khi đang bắt đầu hay đang dịch; lệnh từ chối cả khi đang tải model (`updateBusy`), vì khởi động lại làm hỏng lần tải. "Để sau" chỉ trong lần chạy.
 - **QĐ11. Khởi động lại qua `AppHandle::request_restart`.** Sự kiện `ExitRequested` có mã thoát `RESTART_EXIT_CODE` nên `handle_run_event` không chặn (chỉ chặn khi `code` là `None`); trên macOS cùng đường với Thoát ở menu khay, `quit_guard` không chặn. Trước đó dừng như Thoát ở menu khay (`session::shutdown`, nhớ vị trí thanh phụ đề).
-- **QĐ12. Bố cục R2:** `<URL gốc>/<phiên bản>/` chứa mọi file của bản (`.dmg`, `.exe`, `.app.tar.gz`, `.sig`, `SHA256SUMS-*`, bảng SHA-256 tiến trình phụ, THIRD_PARTY_NOTICES); `<URL gốc>/<kênh>/latest.json` ghi sau cùng với `Cache-Control: no-cache`. Một bản coi là đã đăng khi `latest.json` của một kênh đã báo nó: từ đó không bao giờ ghi đè. Trước đó (job đứt giữa chừng) thì chạy lại job, các file của bản được tải lại (N-2 của review lần 1). Job `publish` của mọi tag dùng chung một nhóm `concurrency` (N-4); bước cài wrangler không có token Cloudflare (N-3).
+- **QĐ12. Bố cục R2:** `<URL gốc>/<phiên bản>/` chứa mọi file của bản (`.dmg`, `.exe`, `.app.tar.gz`, `.sig`, `SHA256SUMS-*`, bảng SHA-256 tiến trình phụ, THIRD_PARTY_NOTICES); `<URL gốc>/<kênh>/latest.json` ghi sau cùng với `Cache-Control: no-cache`. Sau cùng ghi dấu bền `<URL gốc>/<phiên bản>/published.json`. Một bản coi là đã đăng khi có dấu đó hay `latest.json` của một kênh đã báo nó: từ đó không bao giờ đăng lại hay ghi đè, kể cả sau khi bản bị rút (`latest.json` về bản trước, dấu vẫn còn; Q-A của review lần 2). Trước đó (job đứt giữa chừng) thì chạy lại job, các file của bản được tải lại (N-2 của review lần 1). Job `publish` của mọi tag dùng chung một nhóm `concurrency` (N-4); GitHub chỉ giữ một lần chờ cho mỗi nhóm nên phát hành lần lượt, mỗi lần một tag (N-A của review lần 2, `phat-hanh.md`); bước cài wrangler không có token Cloudflare (N-3).
 - **QĐ13. Tag phải khớp `version`** (kể cả bản beta), kiểm ở bước đầu của hai job tiến trình phụ; job `publish` kiểm đủ bảy giá trị production và `RELEASES_BASE_URL` đúng URL build sẵn trong app, thiếu thì không đăng gì. Chạy tay (`workflow_dispatch`) không đăng.
 - **QĐ14. Bản nháp GitHub Release ở job riêng** không secret, chỉ job này có `contents: write`; nhận artifact qua `take-artifact.mjs` như job có secret. Repo riêng tư nên bản nháp chỉ là kho lưu; người dùng tải từ R2.
 - **QĐ15. Bản sao offline của khóa.** Khóa bản cập nhật: file `.key` của `tauri signer generate` đã mã hóa bằng passphrase. Khóa manifest: JWK mã hóa bằng `openssl enc -aes-256-cbc -pbkdf2 -iter 600000` (LibreSSL của macOS có sẵn), giải mã đi thẳng vào `gh secret set` qua pipe.
@@ -4746,7 +4811,7 @@ Trên bản `0.1.0-beta.2` đã ký thật, máy chưa từng chạy app:
 
 ## Kiểm bằng mutation lúc lập kế hoạch
 
-Script `$S/p07b-gen/mut.py` (Task 1–8) và `$S/p07/mut.py` (Task 0, chạy trên cây có Task 0; cùng lần đó chạy lại các mutation của 07a chạm file Task 0 sửa: QA1–QA6, QB1, QN1, QN2, K1–K3, S1–S4, U1, U2 của 07a, đều bị giết), trên cây cuối: mỗi mutation sửa một chỗ, chạy test, rồi trả file về như cũ. Cả 40 mutation dưới đây đều bị bắt. Ba mutation sống ở lần đầu: U2 (test đổi kênh trả "không có bản mới", nhánh đó cũng bỏ bản đã tải; nay kênh mới mất mạng), P2 (kiểm `https` của `publish-release.mjs` trùng với của `update-manifest.mjs`; nay test gọi với repo trống), U7 (bộ lọc test của script mutation chưa có tên test mới). Không có mutation cho: phần ghi registry của Task 5 (chỉ chạy trên Windows; Task 14 thử), lời gọi `updater::user_quits` trong `actions::quit` (hàm đó thoát app thật; Task 14 Step 4 thử).
+Script `$S/p07b-gen/mut.py` (Task 1–8) và `$S/p07/mut.py` (Task 0, chạy trên cây có Task 0; cùng lần đó chạy lại các mutation của 07a chạm file Task 0 sửa: QA1–QA6, QB1, QN1, QN2, K1–K3, S1–S4, U1, U2 của 07a, đều bị giết), trên cây cuối: mỗi mutation sửa một chỗ, chạy test, rồi trả file về như cũ. Cả 42 mutation dưới đây đều bị bắt. Ba mutation sống ở lần đầu: U2 (test đổi kênh trả "không có bản mới", nhánh đó cũng bỏ bản đã tải; nay kênh mới mất mạng), P2 (kiểm `https` của `publish-release.mjs` trùng với của `update-manifest.mjs`; nay test gọi với repo trống), U7 (bộ lọc test của script mutation chưa có tên test mới). Không có mutation cho phần ghi registry của Task 5 (chỉ chạy trên Windows; Task 14 thử). Lời gọi `updater::user_quits` khi Thoát ở menu khay nay nằm trong `actions::prepare_quit`, có test (U17).
 
 ```text
 Z1 update-signatures cài gói trong bước có khóa: bị giết [ℹ fail 1]
@@ -4770,6 +4835,7 @@ U13 cấp lệnh của plugin cho cửa sổ chính: bị giết [test result: F
 U14 bỏ so SHA-256 trước khi cài: bị giết [test result: FAILED. 39 passed; 1 failed; 1 ignored; 0 measured; 392 filtered out]
 U15 cài cả khi hệ điều hành đóng app: bị giết [test result: FAILED. 39 passed; 1 failed; 1 ignored; 0 measured; 392 filtered out]
 U16 kênh stable nhận bản pre-release: bị giết [test result: FAILED. 38 passed; 2 failed; 1 ignored; 0 measured; 392 filtered out]
+U17 Thoát ở menu khay không cho cài: bị giết [test result: FAILED. 40 passed; 1 failed; 1 ignored; 0 measured; 391 filtered out]
 S1 bản phát hành nhận http: bị giết [test result: FAILED. 39 passed; 1 failed; 1 ignored; 0 measured; 392 filtered out]
 S2 bản phát hành dùng khóa staging: bị giết [test result: FAILED. 39 passed; 1 failed; 1 ignored; 0 measured; 392 filtered out]
 S3 không kiểm độ dài khóa: bị giết [test result: FAILED. 39 passed; 1 failed; 1 ignored; 0 measured; 392 filtered out]
@@ -4786,6 +4852,7 @@ P2 đăng qua http: bị giết [ℹ fail 1]
 P3 đăng lại bản kênh đã báo: bị giết [ℹ fail 1]
 P4 job publish không có concurrency: bị giết [ℹ fail 1]
 P5 cài wrangler trong bước có token: bị giết [ℹ fail 1]
+P6 bản đã rút đăng lại được (bỏ kiểm dấu published.json): bị giết [ℹ fail 2]
 M1 bản stable không vào kênh beta: bị giết [ℹ fail 3]
 M2 nhận bản không mới hơn: bị giết [ℹ fail 1]
 G1 --production nhận kid stg-: bị giết [ℹ fail 1]
