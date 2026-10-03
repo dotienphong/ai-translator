@@ -1,0 +1,5 @@
+{
+  "_note": "Khóa công khai kiểm bản cập nhật (tauri-plugin-updater, spec §6.11, §10.2; kế hoạch 07b): nội dung file `.key.pub` mà `tauri signer generate` tạo (base64 một dòng). Bản dev dùng `staging`, bản phát hành chỉ dùng `production`; chuỗi rỗng thì tắt tự cập nhật. Không bao giờ có khóa riêng ở đây.",
+  "staging": "",
+  "production": ""
+}

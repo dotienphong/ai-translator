@@ -56,6 +56,9 @@ libc = "0.2.189"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
 # Vẽ mã VietQR của đơn thành SVG ngay trong app (license/purchase.rs, spec §6.8 "Mua ngay trong app"). Không kéo crate nào.
 qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
+# Tự cập nhật (kế hoạch 07b, spec §6.11): TLS của hệ điều hành và proxy của hệ thống như `reqwest` ở trên; bỏ `zip` (chỉ
+# cần cho bộ cài `.msi.zip`/`.nsis.zip` cũ), bỏ `rustls-tls`. Lệnh của plugin không cấp cho cửa sổ nào (acl_tests).
+tauri-plugin-updater = { version = "2.13.1", default-features = false, features = ["native-tls", "system-proxy"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Bản quyền (kế hoạch 06): app tự kiểm chữ ký của gói `.app` (`SecStaticCodeCheckValidity`, license/genuine.rs, §10.2).

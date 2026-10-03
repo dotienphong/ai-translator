@@ -44,6 +44,10 @@ const FORBIDDEN: &[&str] = &[
     "plugin:dialog|save",
     "plugin:dialog|open",
     "plugin:dialog|message",
+    "plugin:updater|check",
+    "plugin:updater|download",
+    "plugin:updater|install",
+    "plugin:updater|download_and_install",
 ];
 
 /// Lệnh của app có tác dụng ra ngoài app (mở Finder, System Settings, Settings của Windows).

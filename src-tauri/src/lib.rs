@@ -36,6 +36,7 @@ pub mod system;
 pub mod transcript;
 pub mod tray;
 pub mod tray_menu;
+pub mod updater;
 pub mod window;
 
 #[cfg(test)]
@@ -84,7 +85,8 @@ pub fn run() {
                 .build(),
         )
         .plugin(hotkey_registry::plugin())
-        .plugin(navigation::plugin());
+        .plugin(navigation::plugin())
+        .plugin(updater::plugin());
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init()).menu(window::app_menu);
     builder

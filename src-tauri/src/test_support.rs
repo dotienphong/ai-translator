@@ -498,7 +498,8 @@ pub fn mock_app_with(deps: FakeDeps) -> tauri::App<MockRuntime> {
 }
 
 pub fn mock_app_full(deps: FakeDeps, models: ModelsConfig) -> tauri::App<MockRuntime> {
-    let builder = mock_builder();
+    // Plugin cập nhật như app thật, để `acl_tests` thấy lệnh của nó bị chặn chứ không phải chưa đăng ký.
+    let builder = mock_builder().plugin(crate::updater::plugin());
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
     let surface = FakeSurface::default();
