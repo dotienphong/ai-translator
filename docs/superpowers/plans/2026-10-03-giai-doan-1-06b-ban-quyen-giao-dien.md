@@ -2016,7 +2016,7 @@ cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8
 ```
 Expected (lúc lập kế hoạch; 06b không thêm test Rust):
 ```text
-passed 751 failed 0 ignored 13
+passed 753 failed 0 ignored 13
 ```
 
 Run:
@@ -2045,7 +2045,7 @@ cargo test --release -p meeting-translator --lib -- pro:: license:: --test-threa
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 85 passed; 0 failed; 0 ignored; 0 measured; 313 filtered out
+test result: ok. 87 passed; 0 failed; 0 ignored; 0 measured; 313 filtered out
 ```
 
 Run:
@@ -2058,7 +2058,7 @@ test license::genuine::tests::the_team_requirement_only_takes_a_real_team_id ...
 test license::keys::tests::the_embedded_file_parses_for_both_environments ... ok
 test pro::tests::only_a_debug_build_runs_unlimited ... ok
 test pro::tests::the_dev_gate_exists_only_in_debug_builds ... ok
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 394 filtered out
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 396 filtered out
 ```
 
 Run:
