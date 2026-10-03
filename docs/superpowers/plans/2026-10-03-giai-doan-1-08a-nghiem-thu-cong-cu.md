@@ -59,17 +59,33 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (37 dòng có `08`)
 
 Ngoài 37 dòng này, 08b Task 2 điều phối mọi bước còn chờ người hay Windows của 01–07 (các dòng còn lại không ở trạng thái `xong`), và 08b Task 11 đưa cả bảng về `xong` hay `hoãn` có duyệt.
 
+## Sửa sau review lần 1 (2026-10-03)
+
+Review lần 1 (`$S/review-08-r1.md`, trên `4f2baac`) kết luận "Cần sửa": 0 Nghiêm trọng, 5 Quan trọng, 4 Nhỏ; công cụ có thể báo ĐẠT khi chưa nên. Bản này sửa như sau; mọi test mới đỏ trước khi sửa.
+
+| Mã | Sửa ở đâu | Cách sửa |
+|---|---|---|
+| Q1 | 08a Task 2; 08b Task 5 | `gates.py a2` gọi lại `summarize.problems`, ngưỡng `summarize.A2`; hạng máy lấy từ nhãn, bỏ `--class`; lượt tắt ghép câu không tính. Test `test_an_untrustworthy_run_cannot_pass`, `test_the_class_comes_from_the_label`, `test_a_run_without_merging_is_left_out` |
+| Q2 | 08a Task 2, 5 | A3 đòi đủ các lượt `-plain` của mốc; `report.py` có tập bắt buộc (`REQUIRED`): A4 hai gói (`--pack`), A5 và A7 Mac và Windows (QĐ9). Test `test_a_missing_pack_fails`, `test_part_of_the_required_set_is_not_enough` |
+| Q3 | 08a Task 3; 08b Task 6 | soak tính WebView (Windows: con cháu của app; macOS: `com.apple.WebKit.*`), `--require` app và hai tiến trình phụ; khởi động lại là pid mới sau mẫu đầu (QĐ5, QĐ6). Test `test_windows_keeps_every_descendant_of_the_app`, `test_a_required_process_absent_from_the_start_fails`, `test_two_webviews_at_once_are_not_a_restart` |
+| Q4 | 08a Task 4; 08b Task 7 | mitmproxy theo tiến trình của app, bỏ bước mở trình duyệt, phát video bằng QuickTime (QĐ7) |
+| Q5 | QĐ3; 08b Task 5 | S6 dùng tiến trình phụ của bản ứng viên; thêm số p50/p90 `total` của bảng debug của app thật; đưa lệch kế hoạch 00 vào điểm cần quyết 6 |
+| N1 | 08a Task 1 | `hoãn` cần đúng cụm "chủ dự án duyệt YYYY-MM-DD" (QĐ2). Test `test_postponed_needs_the_owner_approval_with_its_date` |
+| N2 | 08a Task 4 | `--start`, `--stop` bắt buộc; thêm từ mồi tiếng Việt. Test `test_the_session_window_is_required` |
+| N3 | 08b Task 2 | thêm dòng 16: C15 (báo cáo Giai đoạn 0, kết luận S3) |
+| N4 | 08b Task 5 | thêm Mac Apple Silicon 8 GB vào danh sách máy đo A2 (hạng tối thiểu) |
+
 ## Quyết định của kế hoạch này
 
 - **QĐ1. Script Python thư viện chuẩn trong `bench/phase1/acceptance/`**, như `bench/phase0/`: không thêm phụ thuộc, chạy được trên Mac và Windows có Python 3.12. Phương án khác đã xét: script Node `.mjs` như `scripts/release/` (cũng không phụ thuộc); chọn Python vì các công cụ chấm (`score_mt.py`, `score_asr.py`) và S6 (`run_matrix.py`, `summarize.py`) đều là Python, và `gates.py a3` gọi thẳng `regression_lines` của `score_mt.py`.
-- **QĐ2. "Đủ 100%"** (Task 5 kế hoạch 00) là: không lỗi định dạng, mọi dòng `xong`, hoặc `hoãn` có ngày duyệt dạng YYYY-MM-DD trong Ghi chú. `mapping.py check` kiểm đúng điều đó, thay cho ba lệnh `awk`; nhóm "việc đang chặn" chỉ để điều phối, không ảnh hưởng kết quả.
-- **QĐ3. A2 đo bằng S6 (`latency-bench latency`) trên máy tham chiếu**, không đo trên app với âm thanh thật: S6 chạy đúng luật của `pipeline` (Đ3 của kế hoạch 00) với file WAV có mốc "người nói dừng" chính xác, còn app không ghi mốc đó. Thử tay trên app (08b Task 8) chỉ xác nhận phụ đề hiện kịp. Ngưỡng theo hạng máy của §8: khuyến nghị (p50, p90, chữ đầu tiên) và tối thiểu (p50).
+- **QĐ2. "Đủ 100%"** (Task 5 kế hoạch 00) là: không lỗi định dạng, mọi dòng `xong`, hoặc `hoãn` có đúng cụm "chủ dự án duyệt YYYY-MM-DD" trong Ghi chú (một ngày bất kỳ, như ngày kiểm hay ngày đo, không tính; N1 của review lần 1). `mapping.py check` kiểm đúng điều đó, thay cho ba lệnh `awk`; nhóm "việc đang chặn" chỉ để điều phối, không ảnh hưởng kết quả.
+- **QĐ3. A2: S6 là phép đo chính, cộng số của app thật** (Q5 của review lần 1, controller quyết 2026-10-03). S6 (`latency-bench latency`) chạy đúng luật của `pipeline` (Đ3 của kế hoạch 00) với file WAV có mốc "người nói dừng" chính xác, và dùng tiến trình phụ của bản ứng viên (cách của 07a Task 13); cổng A2 tính trên số này. Kế hoạch 00 ghi "08 đo lại A2 bằng app thật" (mục 5, C6): app không ghi mốc người nói dừng, và S6 không đi qua đường thu thật, `TauriSink`, IPC, lúc webview vẽ chữ. Vì vậy trên mỗi máy tham chiếu, 08b Task 5 còn chạy bản đã cài, phát cùng file của S6 qua loa, đọc p50/p90 `total` ở bảng debug của app (§7; `SessionMetrics::latency_ms`, từ lúc hết tiếng nói tới lúc bản dịch hiện đủ) và ghi cạnh số S6; chênh quá 300 ms thì phải giải thích trước khi kết luận A2. Lệch so với kế hoạch 00 nên đưa chủ dự án quyết (điểm cần quyết 6).
 - **QĐ4. A3, A4 so với mốc hiện hành:** A3 dùng `s7_mt.json` và luật 0,01 của `score_mt.py`, cộng mức sàn Anh→Việt cho lượt không có ngữ cảnh; A4 dùng `a4_m4pro-{turbo,small}-final.json` (mục 6.7 của kế hoạch 00), cho tới khi chủ dự án duyệt mốc mới sau C13 (08b Task 3).
-- **QĐ5. RAM của A5** là tổng RSS (working set trên Windows) của app và hai tiến trình phụ; "sau giờ đầu không tăng quá 10%" so số lớn nhất sau phút 60 với trung bình phút 55–60 (không dùng một mẫu đơn lẻ, tránh nhiễu). RSS của `llama-server` gồm trang file model mmap; vì so tương đối nên không ảnh hưởng.
-- **QĐ6. CPU của §8** là tổng thời gian CPU của app và hai tiến trình phụ chia thời gian thực và số lõi logic, đo trong cùng lượt soak (người nói liên tục). Không tính app họp. GPU trên macOS không đo bằng script (`powermetrics` cần `sudo`); 08b Task 6 ghi GPU từ Activity Monitor (Mac) và Task Manager (Windows) bằng tay.
-- **QĐ7. A7 kiểm bằng proxy có giải mã TLS** (mitmproxy hay Proxyman; người cài chứng chỉ gốc của proxy lên máy thử rồi gỡ sau khi thử): app dùng TLS của hệ điều hành, nên tin chứng chỉ gốc đã cài. Không giải mã thì chỉ thấy máy chủ, không kiểm được thân request. Từ mồi là các câu sẽ phát vào app (mặc định là câu mẫu của bước "Nghe thử").
+- **QĐ5. RAM của A5** là tổng RSS (working set trên Windows) của app, WebView của app và hai tiến trình phụ (§8 tính "App và WebView"; Q3 của review lần 1). Windows: mọi tiến trình con cháu của app, gồm `msedgewebview2`. macOS: `com.apple.WebKit.*` theo tên (tiến trình XPC có cha là `launchd`, không lọc theo cha được), nên lúc đo không mở app WebKit nào khác. App và hai tiến trình phụ là bắt buộc (`--require`): thiếu ở mẫu đầu thì không đạt; "sau giờ đầu không tăng quá 10%" so số lớn nhất sau phút 60 với trung bình phút 55–60 (không dùng một mẫu đơn lẻ, tránh nhiễu). RSS của `llama-server` gồm trang file model mmap; vì so tương đối nên không ảnh hưởng.
+- **QĐ6. CPU của §8** là tổng thời gian CPU của app, WebView và hai tiến trình phụ chia thời gian thực và số lõi logic, đo trong cùng lượt soak (người nói liên tục). Không tính app họp. GPU trên macOS không đo bằng script (`powermetrics` cần `sudo`); 08b Task 6 ghi GPU từ Activity Monitor (Mac) và Task Manager (Windows) bằng tay.
+- **QĐ7. A7 kiểm bằng proxy có giải mã TLS, chỉ bắt lưu lượng của app** (Q4 của review lần 1): mitmproxy chế độ theo tiến trình (`mitmdump --mode local:meeting-translator,asr-worker,llama-server`, macOS và Windows), không phải proxy hệ thống, vì HAR không ghi tiến trình gửi và request của trình duyệt, app họp, dịch vụ nền sẽ thành vi phạm giả. Người cài và tin chứng chỉ gốc của mitmproxy lên máy thử rồi gỡ sau khi thử; app dùng TLS của hệ điều hành nên tin chứng chỉ đó. Video phát bằng app không qua mạng (QuickTime, file có sẵn). Hai mốc Bắt đầu, Dừng là bắt buộc. Từ mồi gồm cụm của câu phát vào app và cụm của bản dịch app đã hiện (chép từ bản chép lời xuất ra; N2).
 - **QĐ8. Danh sách cho phép của A7 lấy từ bản build đang thử** (URL license server, manifest model, `latest.json`); tên miền chưa mua (T7) nên mẫu dùng `LICENSE_HOST`, `MODELS_HOST`, `UPDATE_HOST`. Đường dẫn được gọi trong lúc dịch: `validate`, `plans` (hỏi giờ, QĐ31 của 06), manifest, `latest.json`. Tải model, mua gói, kích hoạt không được xảy ra trong lúc dịch.
-- **QĐ9. Thiếu số liệu không bao giờ thành đạt** (`report.py`): mỗi tiêu chí là `đạt`, `không đạt` hay `chưa có số liệu`; kết luận chung chỉ ĐẠT khi mọi dòng đạt. A2 cần cả máy khuyến nghị lẫn máy tối thiểu.
+- **QĐ9. Thiếu số liệu không bao giờ thành đạt** (`report.py`): mỗi tiêu chí là `đạt`, `không đạt` hay `chưa có số liệu`; kết luận chung chỉ ĐẠT khi mọi dòng đạt. Mỗi tiêu chí có tập bắt buộc (Q2 của review lần 1): A2 đủ hai hạng máy (hạng lấy từ nhãn, không từ dòng lệnh); A3, A4 đủ hai gói; A5, tải máy, A7 một máy Mac và một máy Windows. Thiếu một phần là `chưa có số liệu`.
 - **QĐ10. Kết quả của 08 commit vào `bench/phase1/results/acceptance/`**: JSON của từng cổng, CSV và JSON của soak (2 giờ, mẫu 10 giây, ba tiến trình: khoảng 2 200 dòng), ma trận A1, danh sách A6, `report.md`. Nhật ký HAR không commit (có thể chứa token, key của lần thử); chỉ commit `a7-<máy>.json`.
 - **QĐ11. Ma trận A1 rút gọn 27 ô**, không phải tích Đề-các (4 bản macOS × 6 app họp × 3 thiết bị × …): mỗi app họp với loa trên macOS 26 và Windows 11, hai loại tai nghe với Zoom (Bluetooth thêm với Teams), toàn màn hình với Zoom và Teams, hai màn hình với Meet, cộng một lượt nhanh trên macOS 14.2, 15, 27 và Windows 10. Thu âm không phụ thuộc app họp (D1, §6.1), nên rủi ro nằm ở từng app, từng loại thiết bị và từng hệ điều hành, không ở tổ hợp. Điểm cần quyết 1.
 - **QĐ12. 08b không viết lại bước của người đã có ở kế hoạch trước** (01 Task 24–25, 02b Task 7–9, 02c Task 8–9, 03b Task 8–9, 04b Task 13–14, 05 Task 19–21, 06b Task 6–7, 07a Task 13–16, 07b Task 11–15, các task GĐ0 còn chờ): 08b sắp thứ tự, nói ai làm, và nơi ghi kết quả; Expected nằm ở kế hoạch gốc.
@@ -77,14 +93,15 @@ Ngoài 37 dòng này, 08b Task 2 điều phối mọi bước còn chờ ngườ
 ## Điểm cần chủ dự án quyết
 
 1. **Ma trận A1 27 ô** (QĐ11). **Đề xuất:** dùng 27 ô; ô nào không đạt thì thêm các tổ hợp liền kề của ô đó.
-2. **A5 chạy trên mấy máy:** **Đề xuất:** một lượt 2 giờ trên Mac khuyến nghị và một lượt trên Windows có card rời (08b Task 6); máy tối thiểu chỉ chạy 30 phút để xem RAM.
+2. **A5 và A7 chạy trên mấy máy:** `report.py` đòi một máy Mac và một máy Windows (`REQUIRED`). **Đề xuất:** giữ; A5 2 giờ trên Mac khuyến nghị và Windows có card rời, máy tối thiểu chỉ chạy 30 phút để xem RAM (không vào báo cáo).
 3. **Thêm test của `bench/phase1/acceptance/` vào CI** (`ci.yml` của 07a). **Đề xuất:** có, một bước `python3 -m unittest discover …` ở job macOS; 08 không sửa `ci.yml` vì 07b đang sửa file này.
 4. **Cài chứng chỉ gốc của proxy lên máy thử cho A7** (QĐ7). **Đề xuất:** dùng máy thử riêng hay tài khoản macOS riêng, gỡ chứng chỉ ngay sau khi thử.
 5. **Mua thật một đơn trên production** (Nhận từ 06; 08b Task 10): số tiền thật nhỏ nhất (Professional 50 000 đ), hoàn tiền tay sau đó hay giữ. **Đề xuất:** giữ đơn, dùng key đó cho máy thử.
+6. **A2 đo bằng S6 cộng số của app thật, lệch "08 đo lại A2 bằng app thật" của kế hoạch 00** (QĐ3; controller quyết theo đề xuất của review). **Đề xuất:** duyệt; nếu chủ dự án muốn cổng A2 tính trên số của app thật thì cần thêm mốc "người nói dừng" vào app (việc mới, ngoài Giai đoạn 1).
 
 ## Kết quả mutation lúc lập kế hoạch
 
-Script ngoài repo `meeting-translator-work/p08gen/mut8.py`, chạy trên cây cuối của 08a (`plan08`). Mỗi mutation sửa đúng một chỗ của một script, chạy test của script đó (`unittest`), test phải đỏ, rồi trả code về.
+Script ngoài repo `meeting-translator-work/p08gen/mut8.py`, chạy trên cây cuối của 08a (`plan08`). Mỗi mutation sửa đúng một chỗ của một script, chạy test của script đó (`unittest`), test phải đỏ, rồi trả code về. Chạy với `PYTHONDONTWRITEBYTECODE=1` và xóa `__pycache__` trước mỗi lần: mutation và lúc trả lại có cùng độ dài, trong cùng một giây, thì Python vẫn dùng file `.pyc` của bản đã đột biến (gặp lúc sửa theo review lần 1). 47 mutation, gồm 11 cho phần sửa theo review lần 1 (MP7, GA9–GA12, SK9–SK11, NA9, RP7, RP8).
 
 | Mã | File | Mutation | Kết quả |
 |---|---|---|---|
@@ -95,7 +112,7 @@ Script ngoài repo `meeting-translator-work/p08gen/mut8.py`, chạy trên cây c
 | MP5 | `mapping.py` | dòng thiếu cột không bị báo | bị giết |
 | MP6 | `mapping.py` | "(cần người)" trong Ghi chú không được nhận | bị giết |
 | GA1 | `gates.py` | A2: bằng đúng ngưỡng là không đạt | bị giết |
-| GA2 | `gates.py` | A2: chữ dịch đầu tiên ≤ 1,1 s thay vì 1,0 s | bị giết |
+| GA2 | `summarize.py` (GĐ0, `gates.py` dùng lại) | A2: chữ dịch đầu tiên ≤ 1,1 s thay vì 1,0 s | bị giết |
 | GA3 | `gates.py` | A2: không có session nào vẫn đạt | bị giết |
 | GA4 | `gates.py` | A3: mức sàn áp cả lượt có ngữ cảnh | bị giết |
 | GA5 | `gates.py` | A3: thiếu chiều mà vẫn đạt | bị giết |
@@ -124,6 +141,17 @@ Script ngoài repo `meeting-translator-work/p08gen/mut8.py`, chạy trên cây c
 | RP4 | `report.py` | A1 đạt khi còn ô `chưa thử` | bị giết |
 | RP5 | `report.py` | kết luận chung ĐẠT khi còn tiêu chí chưa có số liệu | bị giết |
 | RP6 | `report.py` | một file đạt là cả tiêu chí đạt | bị giết |
+| MP7 | `mapping.py` | `hoãn` nhận một ngày bất kỳ, không cần "chủ dự án duyệt" (N1 của review lần 1) | bị giết |
+| GA9 | `gates.py` | A2: bỏ luật lượt đo đáng tin của `summarize.py` (Q1) | bị giết |
+| GA10 | `gates.py` | A2: hạng máy không lấy từ nhãn (Q1) | bị giết |
+| GA11 | `gates.py` | A2: lượt tắt ghép câu vẫn được tính (Q1) | bị giết |
+| GA12 | `gates.py` | A3: thiếu một gói của mốc vẫn đạt (Q2) | bị giết |
+| SK9 | `soak.py` | không đòi tiến trình bắt buộc có mặt (Q3) | bị giết |
+| SK10 | `soak.py` | không giữ tiến trình con cháu của app (WebView2) (Q3) | bị giết |
+| SK11 | `soak.py` | mọi pid đều tính là khởi động lại (hai WebContent cùng lúc) (Q3) | bị giết |
+| NA9 | `netaudit.py` | thiếu mốc Bắt đầu, Dừng vẫn đạt (N2) | bị giết |
+| RP7 | `report.py` | thiếu một máy hay một gói của tập bắt buộc vẫn đạt (Q2) | bị giết |
+| RP8 | `report.py` | file mang tên gói này mà chứa gói kia vẫn đạt (Q2) | bị giết |
 
 ## Bảng task → commit tham chiếu
 
@@ -131,12 +159,12 @@ Cây tham chiếu: `meeting-translator-work/p08-repo`, nhánh `plan08` (dựng b
 
 | Task | Commit | Thông điệp |
 |---|---|---|
-| 08a Task 1 | `3d1e499` | feat(bench): kiểm bảng đối chiếu của kế hoạch 00: đếm trạng thái, nhóm việc đang chặn, điều kiện đủ 100% (kế hoạch 08) |
-| 08a Task 2 | `83226ef` | feat(bench): cổng số liệu A2, A3, A4 của nghiệm thu, dùng lại luật chống thụt lùi của score_mt.py (kế hoạch 08) |
-| 08a Task 3 | `005d138` | feat(bench): soak test A5 và tải máy: lấy mẫu RAM, thời gian CPU của app và tiến trình phụ trên macOS và Windows (kế hoạch 08) |
-| 08a Task 4 | `6565d0e` | feat(bench): kiểm nhật ký mạng A7 qua proxy: máy chủ, đường dẫn, request trong lúc dịch, thân request, từ mồi (kế hoạch 08) |
-| 08a Task 5 | `fceaaee` | feat(bench): báo cáo nghiệm thu A1–A7 và bảng đối chiếu; mẫu ma trận A1, danh sách A6 (kế hoạch 08) |
-| 08a Task 6 | `ad39d6c` | docs(bench): bảng công cụ nghiệm thu Giai đoạn 1 (kế hoạch 08) |
+| 08a Task 1 | `c8cb762` | feat(bench): kiểm bảng đối chiếu của kế hoạch 00: đếm trạng thái, nhóm việc đang chặn, điều kiện đủ 100% (kế hoạch 08) |
+| 08a Task 2 | `582cb17` | feat(bench): cổng số liệu A2, A3, A4 của nghiệm thu, dùng lại luật chống thụt lùi của score_mt.py (kế hoạch 08) |
+| 08a Task 3 | `3d17650` | feat(bench): soak test A5 và tải máy: lấy mẫu RAM, thời gian CPU của app và tiến trình phụ trên macOS và Windows (kế hoạch 08) |
+| 08a Task 4 | `bcc9e5f` | feat(bench): kiểm nhật ký mạng A7 qua proxy: máy chủ, đường dẫn, request trong lúc dịch, thân request, từ mồi (kế hoạch 08) |
+| 08a Task 5 | `86163e8` | feat(bench): báo cáo nghiệm thu A1–A7 và bảng đối chiếu; mẫu ma trận A1, danh sách A6 (kế hoạch 08) |
+| 08a Task 6 | `34198e8` | docs(bench): bảng công cụ nghiệm thu Giai đoạn 1 (kế hoạch 08) |
 
 08b là điều phối các bước của người, không có commit tham chiếu.
 
@@ -147,7 +175,7 @@ Cây tham chiếu: `meeting-translator-work/p08-repo`, nhánh `plan08` (dựng b
 Kế hoạch 00, mục 4 (bảng đối chiếu) và Task 5 (kiểm đủ 100% trước khi phát hành); bàn giao của mục 2.8. QĐ1, QĐ2.
 
 - `summary`: đếm năm trạng thái, nhóm các dòng chưa xong theo việc đang chặn: mã việc chờ, tài khoản, điểm cần quyết (`C…`, `T…`, `Q…`, `P05-…`) trong Ghi chú; phần cần người (`(người)` ở cột Kế hoạch hay chữ "người" trong Ghi chú); phần Windows; việc của chủ dự án (`CDA`). "T8 `adb1e7b`" là Task 8 kèm SHA, không phải tài khoản T8. Dòng không có dấu nào vào nhóm "khác".
-- `check`: các lỗi định dạng của Task 2 Step 5 (số cột, trạng thái lạ, số trùng), cộng mọi dòng chưa `xong`, và dòng `hoãn` thiếu ngày duyệt (YYYY-MM-DD). Rỗng là đủ 100%; mã thoát 1 nếu chưa.
+- `check`: các lỗi định dạng của Task 2 Step 5 (số cột, trạng thái lạ, số trùng), cộng mọi dòng chưa `xong`, và dòng `hoãn` mà Ghi chú không có đúng cụm "chủ dự án duyệt YYYY-MM-DD" (một ngày bất kỳ, như ngày kiểm, không đủ; N1 của review lần 1). Rỗng là đủ 100%; mã thoát 1 nếu chưa.
 - Thay ba lệnh `awk` của Task 2 Step 5 và Task 5 Step 1 kế hoạch 00 bằng một lệnh có test.
 
 **Files:**
@@ -245,9 +273,13 @@ class Release(unittest.TestCase):
         issues = release_problems(rows, problems)
         self.assertEqual(issues, ["#1: chờ", "#2: chưa làm", "#3: đang làm", "#4: chưa làm"])
 
-    def test_postponed_needs_an_approval_date(self):
-        rows, problems = parse("| 1 | a | 08 | chủ dự án duyệt | hoãn |\n| 2 | b | 08 | duyệt 2026-10-05 | hoãn |\n")
-        self.assertEqual(release_problems(rows, problems), ["#1: hoãn mà Ghi chú không có ngày chủ dự án duyệt"])
+    def test_postponed_needs_the_owner_approval_with_its_date(self):
+        text = ("| 1 | a | 08 | chủ dự án duyệt | hoãn |\n"
+                "| 2 | b | 08 | hoãn, chủ dự án duyệt 2026-10-05 | hoãn |\n"
+                "| 3 | c | 02, 08 | 02 kiểm ngày 2026-10-01; vẫn tắt, kiểm 2026-11-02 | hoãn |\n")
+        rows, problems = parse(text)
+        why = "hoãn mà Ghi chú không có \"chủ dự án duyệt YYYY-MM-DD\""
+        self.assertEqual(release_problems(rows, problems), [f"#1: {why}", f"#3: {why}"])
 
     def test_format_problems_block_the_release(self):
         rows, problems = parse("| 1 | a | 01 | | xong |\n| 1 | b | 01 | | xong |\n")
@@ -282,7 +314,8 @@ Tạo `bench/phase1/acceptance/mapping.py`:
 """Bảng đối chiếu spec → kế hoạch con (mục 4 của kế hoạch Giai đoạn 1 · 00).
 
 Đếm trạng thái, nhóm các dòng chưa xong theo việc đang chặn (mã C, T, Q, P05-…, phần cần người, phần Windows, việc của
-chủ dự án), và kiểm điều kiện phát hành của Task 5 kế hoạch 00: mọi dòng `xong`, hoặc `hoãn` có ngày chủ dự án duyệt.
+chủ dự án), và kiểm điều kiện phát hành của Task 5 kế hoạch 00: mọi dòng `xong`, hoặc `hoãn` có cụm "chủ dự án duyệt YYYY-MM-DD" trong
+Ghi chú.
 
 Chạy từ gốc repo:
   python3 bench/phase1/acceptance/mapping.py summary
@@ -301,7 +334,8 @@ STATUSES = ("chưa làm", "đang làm", "chờ", "xong", "hoãn")
 ROW = re.compile(r"^\| ([0-9]+) \|")
 # Mã việc chờ (mục 5 kế hoạch 00) và điểm cần quyết. Không nhận "T8 `adb1e7b`": đó là Task 8 kèm SHA của commit.
 CODE = re.compile(r"(?<![0-9A-Za-z])(C[0-9]+|T[0-9]+|Q[0-9]+|P05-[0-9]+)(?![0-9A-Za-z])(?! `)")
-DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+# Dòng `hoãn` ghi đúng cụm này trong Ghi chú; một ngày bất kỳ (ngày kiểm, ngày đo) không phải ngày duyệt.
+APPROVED = re.compile(r"chủ dự án duyệt [0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 
 @dataclass
@@ -364,8 +398,8 @@ def release_problems(rows, problems):
     for r in rows:
         if r.status not in ("xong", "hoãn"):
             out.append(f"#{r.num}: {r.status}")
-        elif r.status == "hoãn" and not DATE.search(r.note):
-            out.append(f"#{r.num}: hoãn mà Ghi chú không có ngày chủ dự án duyệt")
+        elif r.status == "hoãn" and not APPROVED.search(r.note):
+            out.append(f"#{r.num}: hoãn mà Ghi chú không có \"chủ dự án duyệt YYYY-MM-DD\"")
     return out
 
 
@@ -423,7 +457,7 @@ test_rows_and_statuses (test_mapping.Parse.test_rows_and_statuses) ... ok
 test_all_done_is_ready (test_mapping.Release.test_all_done_is_ready) ... ok
 test_every_row_not_done_blocks_the_release (test_mapping.Release.test_every_row_not_done_blocks_the_release) ... ok
 test_format_problems_block_the_release (test_mapping.Release.test_format_problems_block_the_release) ... ok
-test_postponed_needs_an_approval_date (test_mapping.Release.test_postponed_needs_an_approval_date) ... ok
+test_postponed_needs_the_owner_approval_with_its_date (test_mapping.Release.test_postponed_needs_the_owner_approval_with_its_date) ... ok
 test_counts_and_groups_skip_done_and_postponed (test_mapping.Summary.test_counts_and_groups_skip_done_and_postponed) ... ok
 test_groups_are_sorted_by_size (test_mapping.Summary.test_groups_are_sorted_by_size) ... ok
 Ran 14 tests
@@ -462,9 +496,9 @@ git commit -m "feat(bench): kiểm bảng đối chiếu của kế hoạch 00: 
 
 Spec §3.3 (A2, A3, A4), §8 (ngân sách độ trễ). QĐ3, QĐ4.
 
-- `a2`: đọc JSON của `latency-bench latency` (cùng định dạng S6, `bench/phase0/latency/run_matrix.py`), so `summary.shown_p50_ms`, `shown_p90_ms`, `first_p50_ms` với ngưỡng của hạng máy: khuyến nghị 2000, 3000, 1000 ms; tối thiểu chỉ p50 3500 ms. Thiếu số hay không có session nào là không đạt.
-- `a3`: dùng lại `regression_lines` của `bench/phase0/mt/score_mt.py` (không viết lại luật thụt lùi 0,01), cộng mức sàn Anh→Việt 0,83 (Q8_0), 0,80 (Q4_K_M) cho lượt không có ngữ cảnh (`-plain`).
-- `a4`: so `a4_<nhãn>.json` của `score_asr.py` với mốc `a4_m4pro-{turbo,small}-final.json` từng nhóm (`en`, `en-nb`, …), WER hay CER theo mốc, xấu hơn quá 10% tương đối là không đạt; thiếu nhóm là không đạt.
+- `a2`: đọc JSON của `latency-bench latency` (cùng định dạng S6, `bench/phase0/latency/run_matrix.py`) và dùng lại đúng luật của `bench/phase0/latency/summarize.py` (Q1 của review lần 1): ngưỡng `A2` (khuyến nghị p50 2000, p90 3000, chữ đầu tiên 1000 ms; tối thiểu p50 3500 ms), hạng máy lấy từ nhãn (`-khuyennghi-`, `-toithieu-`; không có cờ `--class`), lượt tắt ghép câu không tính, và lượt đo không đáng tin (`problems`: đo dưới 85% số câu, phát lại trễ quá 100 ms, mốc dừng lệch quá 300 ms) là không đạt. Thiếu số hay không có lượt nào được tính là không đạt.
+- `a3`: dùng lại `regression_lines` của `bench/phase0/mt/score_mt.py` (không viết lại luật thụt lùi 0,01), cộng mức sàn Anh→Việt 0,83 (Q8_0), 0,80 (Q4_K_M) cho lượt không có ngữ cảnh (`-plain`). Mọi lượt `-plain` của mốc (cả hai gói) phải có mặt (Q2).
+- `a4`: so `a4_<nhãn>.json` của `score_asr.py` với mốc `a4_m4pro-{turbo,small}-final.json` từng nhóm (`en`, `en-nb`, …), WER hay CER theo mốc, xấu hơn quá 10% tương đối là không đạt; thiếu nhóm là không đạt. `--pack` ghi tên gói vào JSON để `report.py` kiểm đủ hai gói.
 - Chạy thử trên số liệu GĐ0 có sẵn: 12 session S6 đều đạt A2; mốc so với chính nó đạt A3, A4.
 
 **Files:**
@@ -487,26 +521,53 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gates import gate_a2, gate_a3, gate_a4  # noqa: E402
 
 
-def session(p50, p90, first):
-    return {"summary": {"shown_p50_ms": p50, "shown_p90_ms": p90, "first_p50_ms": first}}
+def session(tier, p50, p90, first, measured=21, lag=10, offset=40, merge="true", machine="m1"):
+    """Một file của `latency-bench latency` (các trường `summarize.py` cần)."""
+    return {"label": f"{machine}-{tier}-chuan-en", "config": {"merge": merge},
+            "summary": {"utterances": 21, "measured": measured, "merges": 4, "feed_lag_max_ms": lag,
+                        "end_offset_max_abs_ms": offset, "shown_p50_ms": p50, "shown_p90_ms": p90, "first_p50_ms": first}}
 
 
 class A2(unittest.TestCase):
     def test_recommended_machine_limits(self):
-        ok = gate_a2({"en": session(1999, 2999, 999), "vi": session(2000, 3000, 1000)}, "khuyennghi")
+        ok = gate_a2([session("khuyennghi", 1999, 2999, 999), session("khuyennghi", 2000, 3000, 1000)])
         self.assertTrue(ok["pass"])
-        slow = gate_a2({"en": session(2001, 1500, 600), "zh": session(900, 3001, 1001)}, "khuyennghi")
+        self.assertEqual(ok["classes"], ["khuyennghi"])
+        slow = gate_a2([session("khuyennghi", 2001, 1500, 600), session("khuyennghi", 900, 3001, 1001)])
         self.assertFalse(slow["pass"])
         self.assertEqual([r["failed"] for r in slow["sessions"]],
                          [["shown_p50_ms"], ["shown_p90_ms", "first_p50_ms"]])
 
     def test_minimum_machine_only_limits_p50(self):
-        self.assertTrue(gate_a2({"en": session(3500, 9000, 3000)}, "toithieu")["pass"])
-        self.assertFalse(gate_a2({"en": session(3501, 100, 100)}, "toithieu")["pass"])
+        self.assertTrue(gate_a2([session("toithieu", 3500, 9000, 3000)])["pass"])
+        self.assertFalse(gate_a2([session("toithieu", 3501, 100, 100)])["pass"])
+
+    def test_the_class_comes_from_the_label(self):
+        out = gate_a2([session("khuyennghi", 3000, 2000, 900), session("toithieu", 3000, 2000, 900)])
+        self.assertEqual(out["classes"], ["khuyennghi", "toithieu"])
+        self.assertEqual([r["failed"] for r in out["sessions"]], [["shown_p50_ms"], []])
+        nolabel = session("khuyennghi", 900, 900, 900)
+        nolabel["label"] = "m1-chuan-en"
+        self.assertFalse(gate_a2([nolabel])["pass"])
+
+    def test_an_untrustworthy_run_cannot_pass(self):
+        """Luật "lượt đo đáng tin" của bench/phase0/latency/summarize.py (Q1 của review 08 lần 1)."""
+        for bad in (dict(measured=5), dict(lag=900), dict(offset=400)):
+            out = gate_a2([session("khuyennghi", 800, 900, 500, **bad)])
+            self.assertFalse(out["pass"], bad)
+            self.assertTrue(out["sessions"][0]["failed"][0].startswith(("chỉ đo được", "phát lại trễ", "mốc dừng lệch")))
+
+    def test_a_run_without_merging_is_left_out(self):
+        out = gate_a2([session("khuyennghi", 5000, 9000, 900, merge="false"), session("khuyennghi", 900, 900, 900)])
+        self.assertTrue(out["pass"])
+        self.assertEqual(out["sessions"][0]["skipped"], "lượt tắt ghép câu")
+        self.assertFalse(gate_a2([session("khuyennghi", 900, 900, 900, merge="false")])["pass"])
 
     def test_a_missing_value_or_no_session_fails(self):
-        self.assertFalse(gate_a2({"en": {"summary": {"shown_p50_ms": 100}}}, "khuyennghi")["pass"])
-        self.assertFalse(gate_a2({}, "khuyennghi")["pass"])
+        partial = session("khuyennghi", 900, 900, 900)
+        del partial["summary"]["first_p50_ms"]
+        self.assertFalse(gate_a2([partial])["pass"])
+        self.assertFalse(gate_a2([])["pass"])
 
 
 BASE = {"Q8_0-plain": {"en->vi": {"comet": 0.842}, "zh->vi": {"comet": 0.829}},
@@ -537,9 +598,15 @@ class A3(unittest.TestCase):
         base = {"Q8_0-context": {"en->vi": {"comet": 0.671}}}
         self.assertTrue(gate_a3({"Q8_0-context": {"en->vi": {"comet": 0.671}}}, base)["pass"])
 
+    def test_a_missing_pack_fails(self):
+        """Lượt của mốc mà lượt này không chạy (một gói) là thiếu (Q2 của review 08 lần 1)."""
+        out = gate_a3({"Q4_K_M-plain": {"en->vi": {"comet": 0.841}}}, BASE)
+        self.assertEqual(out["missing"], ["thiếu lượt Q8_0-plain"])
+        self.assertFalse(out["pass"])
+
     def test_a_missing_direction_fails(self):
         out = gate_a3({"Q8_0-plain": {"en->vi": {"comet": 0.85}}}, BASE)
-        self.assertEqual(out["missing"], ["Q8_0-plain: thiếu chiều zh->vi"])
+        self.assertEqual(out["missing"], ["Q8_0-plain: thiếu chiều zh->vi", "thiếu lượt Q4_K_M-plain"])
         self.assertFalse(out["pass"])
 
 
@@ -547,21 +614,22 @@ class A4(unittest.TestCase):
     BASE = {"en": {"wer": 0.054}, "en-nb": {"wer": 0.105}, "zh": {"cer": 0.056}}
 
     def test_up_to_10_percent_worse_passes(self):
-        out = gate_a4({"en": {"wer": 0.0594}, "en-nb": {"wer": 0.09}, "zh": {"cer": 0.0616}}, self.BASE)
+        out = gate_a4({"en": {"wer": 0.0594}, "en-nb": {"wer": 0.09}, "zh": {"cer": 0.0616}}, self.BASE, "turbo")
         self.assertTrue(out["pass"], out)
+        self.assertEqual(out["pack"], "turbo")
 
     def test_more_than_10_percent_worse_fails(self):
-        out = gate_a4({"en": {"wer": 0.0595}, "en-nb": {"wer": 0.09}, "zh": {"cer": 0.05}}, self.BASE)
+        out = gate_a4({"en": {"wer": 0.0595}, "en-nb": {"wer": 0.09}, "zh": {"cer": 0.05}}, self.BASE, "small")
         self.assertEqual([r["pass"] for r in out["groups"]], [False, True, True])
         self.assertFalse(out["pass"])
 
     def test_cer_is_used_where_the_baseline_has_cer(self):
-        out = gate_a4({"en": {"wer": 0.05}, "en-nb": {"wer": 0.1}, "zh": {"wer": 0.01, "cer": 0.07}}, self.BASE)
+        out = gate_a4({"en": {"wer": 0.05}, "en-nb": {"wer": 0.1}, "zh": {"wer": 0.01, "cer": 0.07}}, self.BASE, "small")
         self.assertEqual(out["groups"][2]["metric"], "cer")
         self.assertFalse(out["pass"])
 
     def test_a_missing_group_fails(self):
-        out = gate_a4({"en": {"wer": 0.05}, "zh": {"cer": 0.05}}, self.BASE)
+        out = gate_a4({"en": {"wer": 0.05}, "zh": {"cer": 0.05}}, self.BASE, "small")
         self.assertEqual(out["missing"], ["en-nb"])
         self.assertFalse(out["pass"])
 
@@ -589,10 +657,13 @@ Tạo `bench/phase1/acceptance/gates.py`:
 ```python
 """Cổng số liệu của nghiệm thu (spec §3.3): A2 độ trễ, A3 chất lượng dịch, A4 nhận dạng giọng nói.
 
-- `a2`: file JSON của `latency-bench latency` (mỗi file một session, `bench/phase0/latency/run_matrix.py`), so
-  `shown_p50_ms`, `shown_p90_ms`, `first_p50_ms` của `summary` với ngưỡng theo hạng máy.
+- `a2`: file JSON của `latency-bench latency` (mỗi file một session, `bench/phase0/latency/run_matrix.py`). Dùng lại đúng
+  luật của `bench/phase0/latency/summarize.py`: ngưỡng `A2` theo hạng máy, hạng lấy từ nhãn (`-khuyennghi-`, `-toithieu-`),
+  lượt tắt ghép câu không tính, và lượt đo không đáng tin (`problems`: đo dưới 85% số câu, phát lại trễ, mốc dừng lệch)
+  thì không đạt.
 - `a3`: kết quả `bench/phase0/mt/score_mt.py --label <nhãn>` (`s7_mt-<nhãn>.json`), so mốc `s7_mt.json` bằng chính hàm
-  `regression_lines` của `score_mt.py` (thấp hơn mốc quá 0,01 là thụt lùi), cộng mức sàn Anh→Việt.
+  `regression_lines` của `score_mt.py` (thấp hơn mốc quá 0,01 là thụt lùi), cộng mức sàn Anh→Việt; mọi lượt `-plain` của
+  mốc (hai gói) phải có mặt.
 - `a4`: kết quả `bench/phase0/asr/score_asr.py` (`a4_<nhãn>.json`), so mốc `a4_m4pro-{turbo,small}-final.json`: mỗi nhóm
   không xấu hơn mốc quá 10% tương đối.
 
@@ -605,13 +676,10 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "phase0", "mt"))
+sys.path.insert(0, os.path.join(HERE, "..", "..", "phase0", "latency"))
+import summarize  # noqa: E402
 from score_mt import regression_lines  # noqa: E402
 
-# A2: máy khuyến nghị p50 ≤ 2,0 s, p90 ≤ 3,0 s, chữ dịch đầu tiên p50 ≤ 1,0 s; máy tối thiểu p50 ≤ 3,5 s.
-LIMITS = {
-    "khuyennghi": {"shown_p50_ms": 2000.0, "shown_p90_ms": 3000.0, "first_p50_ms": 1000.0},
-    "toithieu": {"shown_p50_ms": 3500.0},
-}
 # A3: mức sàn Anh→Việt theo gói, cho lượt không có ngữ cảnh (cấu hình mặc định, tên lượt kết thúc bằng `-plain`); lượt
 # có ngữ cảnh là cờ thử nghiệm, chỉ so mốc.
 FLOORS = {"Q8_0": 0.83, "Q4_K_M": 0.80}
@@ -619,21 +687,38 @@ FLOORS = {"Q8_0": 0.83, "Q4_K_M": 0.80}
 A4_RELATIVE = 0.10
 
 
-def gate_a2(sessions, machine_class):
-    """`sessions`: {nhãn: nội dung JSON}. Không có session nào thì không đạt."""
-    limits = LIMITS[machine_class]
+def tier_of(label):
+    """Hạng máy trong nhãn, như `summarize.py`."""
+    return next((t for t in summarize.A2 if f"-{t}-" in label), None)
+
+
+def gate_a2(results):
+    """`results`: nội dung các file JSON của `latency-bench latency`. Không có lượt nào được tính thì không đạt."""
     rows = []
-    for label, data in sorted(sessions.items()):
-        summary = data.get("summary", {})
-        failed = [k for k, limit in limits.items() if k not in summary or summary[k] > limit]
-        rows.append({"label": label, "values": {k: summary.get(k) for k in limits}, "failed": failed})
-    ok = bool(rows) and not any(r["failed"] for r in rows)
-    return {"criterion": "A2", "class": machine_class, "pass": ok, "sessions": rows}
+    for r in sorted(results, key=lambda r: r["label"]):
+        s = r.get("summary", {})
+        if r.get("config", {}).get("merge") == "false":
+            rows.append({"label": r["label"], "tier": None, "values": {}, "failed": [], "skipped": "lượt tắt ghép câu"})
+            continue
+        tier = tier_of(r["label"])
+        if tier is None:
+            failed = ["nhãn không có hạng máy (-khuyennghi- hay -toithieu-)"]
+            limits = {}
+        else:
+            limits = summarize.A2[tier]
+            failed = summarize.problems(s) or [k for k, v in limits.items() if s[k] > v]
+        rows.append({"label": r["label"], "tier": tier, "values": {k: s.get(k) for k in limits}, "failed": failed})
+    counted = [r for r in rows if "skipped" not in r]
+    ok = bool(counted) and not any(r["failed"] for r in counted)
+    return {"criterion": "A2", "pass": ok, "classes": sorted({r["tier"] for r in counted if r["tier"]}),
+            "sessions": rows}
 
 
 def gate_a3(report, baseline):
     """`report`, `baseline`: phần `runs` của `s7_mt-<nhãn>.json` và `s7_mt.json`."""
     lines, regressed, missing = regression_lines(report, {"runs": baseline})
+    # `regression_lines` bỏ qua lượt của mốc mà lượt này không chạy; nghiệm thu cần đủ cả hai gói (Q2 của review 08 lần 1).
+    missing += [f"thiếu lượt {name}" for name in sorted(baseline) if name.endswith("-plain") and name not in report]
     below_floor = []
     for name, per_dir in report.items():
         floor = next((v for k, v in FLOORS.items() if k in name), None) if name.endswith("-plain") else None
@@ -645,8 +730,8 @@ def gate_a3(report, baseline):
             "table": lines}
 
 
-def gate_a4(result, baseline):
-    """`result`, `baseline`: nội dung `a4_<nhãn>.json`, theo nhóm (`en`, `en-nb`, …)."""
+def gate_a4(result, baseline, pack):
+    """`result`, `baseline`: nội dung `a4_<nhãn>.json`, theo nhóm (`en`, `en-nb`, …). `pack`: `turbo` hay `small`."""
     rows, missing = [], []
     for group in sorted(baseline):
         metric = "cer" if "cer" in baseline[group] else "wer"
@@ -657,7 +742,7 @@ def gate_a4(result, baseline):
         ok = new <= base * (1 + A4_RELATIVE) + 1e-12
         rows.append({"group": group, "metric": metric, "baseline": base, "result": new, "pass": ok})
     ok = bool(rows) and not missing and all(r["pass"] for r in rows)
-    return {"criterion": "A4", "pass": ok, "missing": missing, "groups": rows}
+    return {"criterion": "A4", "pack": pack, "pass": ok, "missing": missing, "groups": rows}
 
 
 def load(path):
@@ -669,26 +754,28 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Cổng số liệu A2, A3, A4 của nghiệm thu.")
     sub = ap.add_subparsers(dest="gate", required=True)
     a2 = sub.add_parser("a2")
-    a2.add_argument("files", nargs="+", help="JSON của latency-bench latency")
-    a2.add_argument("--class", dest="machine_class", choices=sorted(LIMITS), required=True)
+    a2.add_argument("files", nargs="+", help="JSON của latency-bench latency (hạng máy lấy từ nhãn)")
     a3 = sub.add_parser("a3")
     a3.add_argument("--report", required=True, help="s7_mt-<nhãn>.json")
     a3.add_argument("--baseline", required=True, help="s7_mt.json")
     a4 = sub.add_parser("a4")
     a4.add_argument("--result", required=True, help="a4_<nhãn>.json")
     a4.add_argument("--baseline", required=True, help="a4_m4pro-<model>-final.json")
+    a4.add_argument("--pack", required=True, choices=["turbo", "small"], help="gói đang so (Chuẩn: turbo, Nhẹ: small)")
     for p in (a2, a3, a4):
         p.add_argument("--out", help="ghi kết quả JSON vào file này")
     args = ap.parse_args(argv)
 
     if args.gate == "a2":
-        sessions = {os.path.basename(f).removesuffix(".json"): load(f) for f in args.files}
-        out = gate_a2(sessions, args.machine_class)
-        print("| Session | " + " | ".join(LIMITS[args.machine_class]) + " | Kết luận |")
-        print("|---|" + "---|" * len(LIMITS[args.machine_class]) + "---|")
+        out = gate_a2([load(f) for f in args.files])
+        print("| Session | Hạng | p50 | p90 | Chữ đầu p50 | Kết luận |")
+        print("|---|---|---|---|---|---|")
         for r in out["sessions"]:
-            vals = " | ".join("—" if v is None else f"{v:.0f}" for v in r["values"].values())
-            print(f"| {r['label']} | {vals} | {'đạt' if not r['failed'] else 'KHÔNG ĐẠT: ' + ', '.join(r['failed'])} |")
+            v = r["values"]
+            vals = " | ".join("—" if v.get(k) is None else f"{v[k]:.0f}"
+                              for k in ("shown_p50_ms", "shown_p90_ms", "first_p50_ms"))
+            mark = r.get("skipped") or ("đạt" if not r["failed"] else "KHÔNG ĐẠT: " + "; ".join(r["failed"]))
+            print(f"| {r['label']} | {r['tier'] or '—'} | {vals} | {mark} |")
     elif args.gate == "a3":
         out = gate_a3(load(args.report)["runs"], load(args.baseline)["runs"])
         print("\n".join(out["table"]))
@@ -697,7 +784,7 @@ def main(argv=None):
         for b in out["below_floor"]:
             print(f"Dưới mức sàn: {b}")
     else:
-        out = gate_a4(load(args.result), load(args.baseline))
+        out = gate_a4(load(args.result), load(args.baseline), args.pack)
         print("| Nhóm | Chỉ số | Mốc | Lượt này | Kết luận |")
         print("|---|---|---|---|---|")
         for r in out["groups"]:
@@ -725,9 +812,13 @@ python3 -m unittest discover -s bench/phase1/acceptance -p 'test_gates.py' -v 2>
 Expected (lúc lập kế hoạch):
 ```text
 test_a_missing_value_or_no_session_fails (test_gates.A2.test_a_missing_value_or_no_session_fails) ... ok
+test_a_run_without_merging_is_left_out (test_gates.A2.test_a_run_without_merging_is_left_out) ... ok
+Luật "lượt đo đáng tin" của bench/phase0/latency/summarize.py (Q1 của review 08 lần 1). ... ok
 test_minimum_machine_only_limits_p50 (test_gates.A2.test_minimum_machine_only_limits_p50) ... ok
 test_recommended_machine_limits (test_gates.A2.test_recommended_machine_limits) ... ok
+test_the_class_comes_from_the_label (test_gates.A2.test_the_class_comes_from_the_label) ... ok
 test_a_missing_direction_fails (test_gates.A3.test_a_missing_direction_fails) ... ok
+Lượt của mốc mà lượt này không chạy (một gói) là thiếu (Q2 của review 08 lần 1). ... ok
 test_more_than_0_01_below_regresses (test_gates.A3.test_more_than_0_01_below_regresses) ... ok
 test_the_english_floor_applies_per_pack (test_gates.A3.test_the_english_floor_applies_per_pack) ... ok
 test_the_floor_does_not_apply_to_runs_with_context (test_gates.A3.test_the_floor_does_not_apply_to_runs_with_context) ... ok
@@ -736,30 +827,30 @@ test_a_missing_group_fails (test_gates.A4.test_a_missing_group_fails) ... ok
 test_cer_is_used_where_the_baseline_has_cer (test_gates.A4.test_cer_is_used_where_the_baseline_has_cer) ... ok
 test_more_than_10_percent_worse_fails (test_gates.A4.test_more_than_10_percent_worse_fails) ... ok
 test_up_to_10_percent_worse_passes (test_gates.A4.test_up_to_10_percent_worse_passes) ... ok
-Ran 12 tests
+Ran 16 tests
 OK
 ```
 
 Run:
 ```bash
-python3 bench/phase1/acceptance/gates.py a2 --class khuyennghi bench/phase0/results/latency/m4pro-chot-khuyennghi-*.json
+python3 bench/phase1/acceptance/gates.py a2 bench/phase0/results/latency/m4pro-chot-khuyennghi-*.json
 ```
 Expected (lúc lập kế hoạch):
 ```text
-| Session | shown_p50_ms | shown_p90_ms | first_p50_ms | Kết luận |
-|---|---|---|---|---|
-| m4pro-chot-khuyennghi-chuan-en | 1014 | 1147 | 659 | đạt |
-| m4pro-chot-khuyennghi-chuan-ja | 1007 | 1306 | 686 | đạt |
-| m4pro-chot-khuyennghi-chuan-ko | 1019 | 1341 | 650 | đạt |
-| m4pro-chot-khuyennghi-chuan-mixed | 948 | 1247 | 656 | đạt |
-| m4pro-chot-khuyennghi-chuan-vi | 764 | 940 | 631 | đạt |
-| m4pro-chot-khuyennghi-chuan-zh | 1028 | 1187 | 636 | đạt |
-| m4pro-chot-khuyennghi-nhe-en | 734 | 926 | 522 | đạt |
-| m4pro-chot-khuyennghi-nhe-ja | 796 | 990 | 565 | đạt |
-| m4pro-chot-khuyennghi-nhe-ko | 822 | 996 | 550 | đạt |
-| m4pro-chot-khuyennghi-nhe-mixed | 752 | 987 | 530 | đạt |
-| m4pro-chot-khuyennghi-nhe-vi | 613 | 725 | 517 | đạt |
-| m4pro-chot-khuyennghi-nhe-zh | 844 | 1142 | 521 | đạt |
+| Session | Hạng | p50 | p90 | Chữ đầu p50 | Kết luận |
+|---|---|---|---|---|---|
+| m4pro-chot-khuyennghi-chuan-en | khuyennghi | 1014 | 1147 | 659 | đạt |
+| m4pro-chot-khuyennghi-chuan-ja | khuyennghi | 1007 | 1306 | 686 | đạt |
+| m4pro-chot-khuyennghi-chuan-ko | khuyennghi | 1019 | 1341 | 650 | đạt |
+| m4pro-chot-khuyennghi-chuan-mixed | khuyennghi | 948 | 1247 | 656 | đạt |
+| m4pro-chot-khuyennghi-chuan-vi | khuyennghi | 764 | 940 | 631 | đạt |
+| m4pro-chot-khuyennghi-chuan-zh | khuyennghi | 1028 | 1187 | 636 | đạt |
+| m4pro-chot-khuyennghi-nhe-en | khuyennghi | 734 | 926 | 522 | đạt |
+| m4pro-chot-khuyennghi-nhe-ja | khuyennghi | 796 | 990 | 565 | đạt |
+| m4pro-chot-khuyennghi-nhe-ko | khuyennghi | 822 | 996 | 550 | đạt |
+| m4pro-chot-khuyennghi-nhe-mixed | khuyennghi | 752 | 987 | 530 | đạt |
+| m4pro-chot-khuyennghi-nhe-vi | khuyennghi | 613 | 725 | 517 | đạt |
+| m4pro-chot-khuyennghi-nhe-zh | khuyennghi | 844 | 1142 | 521 | đạt |
 A2: ĐẠT
 ```
 
@@ -774,7 +865,7 @@ A3: ĐẠT
 
 Run:
 ```bash
-python3 bench/phase1/acceptance/gates.py a4 --result bench/phase0/results/a4_m4pro-small-final.json --baseline bench/phase0/results/a4_m4pro-small-final.json | tail -1
+python3 bench/phase1/acceptance/gates.py a4 --pack small --result bench/phase0/results/a4_m4pro-small-final.json --baseline bench/phase0/results/a4_m4pro-small-final.json | tail -1
 ```
 Expected (lúc lập kế hoạch):
 ```text
@@ -794,8 +885,9 @@ git commit -m "feat(bench): cổng số liệu A2, A3, A4 của nghiệm thu, d�
 
 Spec §3.3 (A5), §8 (CPU trung bình ≤ 30% trên máy khuyến nghị), §11 (soak test). QĐ5, QĐ6.
 
-- `sample`: mỗi 10 giây (mặc định) chụp danh sách tiến trình (`ps -A -o pid=,rss=,time=,comm=` trên macOS; PowerShell `Get-Process` dạng JSON trên Windows), giữ `meeting-translator`, `asr-worker*`, `llama-server`, ghi CSV ngay sau mỗi mẫu (mất điện giữa chừng vẫn còn số liệu). Ctrl+C để dừng sớm.
-- `summarize`: A5 đạt khi đủ 2 giờ, không tiến trình nào biến mất hay đổi pid, và tổng RSS lớn nhất sau giờ đầu không quá 110% trung bình của phút 55–60. Tải máy: tổng thời gian CPU (theo từng pid) chia thời gian thực và số lõi logic.
+- `sample`: mỗi 10 giây (mặc định) chụp danh sách tiến trình (`ps -A -o pid=,ppid=,rss=,time=,comm=` trên macOS; PowerShell `Win32_Process` dạng JSON trên Windows), giữ `meeting-translator`, `asr-worker*`, `llama-server`, WebView của app, ghi CSV ngay sau mỗi mẫu (mất điện giữa chừng vẫn còn số liệu). Ctrl+C để dừng sớm.
+- WebView (§8 tính RAM "App và WebView"; Q3 của review lần 1): trên Windows giữ mọi tiến trình con cháu của app (`--app`), gồm `msedgewebview2`; trên macOS giữ `com.apple.WebKit.*` theo tên (tiến trình XPC có cha là `launchd`), nên lúc đo không mở app WebKit nào khác.
+- `summarize`: A5 đạt khi mọi tên trong `--require` (mặc định app và hai tiến trình phụ) có ở mẫu đầu, đủ 2 giờ, không tiến trình nào biến mất, không có pid mới của một tên sau mẫu đầu (hai WebContent cùng lúc từ đầu không tính là khởi động lại), và tổng RSS lớn nhất sau giờ đầu không quá 110% trung bình của phút 55–60. Tải máy: tổng thời gian CPU (theo từng pid) chia thời gian thực và số lõi logic; thiếu tiến trình bắt buộc thì cũng không đạt.
 - Phần Windows chỉ test bằng JSON mẫu; chạy thật ở 08b Task 6.
 
 **Files:**
@@ -816,16 +908,30 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from soak import parse_cputime, parse_powershell, parse_ps, read_csv, sample, summarize  # noqa: E402
+from soak import parse_cputime, parse_powershell, parse_ps, read_csv, sample, select, summarize  # noqa: E402
 
-NAMES = ("meeting-translator", "asr-worker", "llama-server")
+NAMES = ("meeting-translator", "asr-worker", "llama-server", "com.apple.WebKit")
+REQUIRE = ("meeting-translator", "asr-worker", "llama-server")
 
-PS = """    1  13264   0:12.34 /sbin/launchd
-  812 120000   1:02.50 /Applications/AI Translator.app/Contents/MacOS/meeting-translator
-  830 650000   2:03:04.00 /Applications/AI Translator.app/Contents/MacOS/asr-worker
-  831 2100000 1-00:00:01 /Applications/AI Translator.app/Contents/MacOS/llama-server
-  900   2000   0:00.01 /bin/zsh
+PS = """    1     0  13264   0:12.34 /sbin/launchd
+  812     1 120000   1:02.50 /Applications/AI Translator.app/Contents/MacOS/meeting-translator
+  830   812 650000   2:03:04.00 /Applications/AI Translator.app/Contents/MacOS/asr-worker
+  831   812 2100000 1-00:00:01 /Applications/AI Translator.app/Contents/MacOS/llama-server
+  840     1 300000   0:30.00 /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent
+  900     1   2000   0:00.01 /bin/zsh
 """
+
+WIN = ('[{"ProcessId":4,"ParentProcessId":0,"Name":"System","WorkingSetSize":1024,"KernelModeTime":0,"UserModeTime":0},'
+       '{"ProcessId":70,"ParentProcessId":4,"Name":"meeting-translator.exe","WorkingSetSize":"104857600",'
+       '"KernelModeTime":20000000,"UserModeTime":30000000},'
+       '{"ProcessId":77,"ParentProcessId":70,"Name":"asr-worker-vulkan.exe","WorkingSetSize":2097152,'
+       '"KernelModeTime":0,"UserModeTime":122500000},'
+       '{"ProcessId":80,"ParentProcessId":70,"Name":"msedgewebview2.exe","WorkingSetSize":4194304,'
+       '"KernelModeTime":10000000,"UserModeTime":0},'
+       '{"ProcessId":81,"ParentProcessId":80,"Name":"msedgewebview2.exe","WorkingSetSize":1048576,'
+       '"KernelModeTime":0,"UserModeTime":0},'
+       '{"ProcessId":90,"ParentProcessId":4,"Name":"msedgewebview2.exe","WorkingSetSize":9999999,'
+       '"KernelModeTime":0,"UserModeTime":0}]')
 
 
 class Parse(unittest.TestCase):
@@ -834,21 +940,21 @@ class Parse(unittest.TestCase):
         self.assertEqual(parse_cputime("2:03:04.00"), 7384.0)
         self.assertEqual(parse_cputime("1-00:00:01"), 86401.0)
 
-    def test_ps_keeps_only_the_app_and_its_sidecars(self):
-        rows = parse_ps(PS, NAMES)
+    def test_ps_keeps_the_app_its_sidecars_and_webkit(self):
+        rows = select(parse_ps(PS), NAMES, "meeting-translator")
         self.assertEqual([r[:2] for r in rows], [(812, "meeting-translator"), (830, "asr-worker"),
-                                                  (831, "llama-server")])
+                                                  (831, "llama-server"), (840, "com.apple.WebKit.WebContent")])
         self.assertEqual(rows[2][2], 2100000)
         self.assertEqual(rows[0][3], 62.5)
 
-    def test_powershell_json(self):
-        text = ('[{"Id":4,"ProcessName":"System","WorkingSet64":1024,"CPU":1.5},'
-                '{"Id":77,"ProcessName":"asr-worker-vulkan","WorkingSet64":2097152,"CPU":12.25},'
-                '{"Id":78,"ProcessName":"llama-server","WorkingSet64":4096,"CPU":null}]')
-        self.assertEqual(parse_powershell(text, NAMES), [(77, "asr-worker-vulkan", 2048, 12.25),
-                                                         (78, "llama-server", 4, 0.0)])
-        one = '{"Id":5,"ProcessName":"meeting-translator","WorkingSet64":1024,"CPU":2}'
-        self.assertEqual(parse_powershell(one, NAMES), [(5, "meeting-translator", 1, 2.0)])
+    def test_windows_keeps_every_descendant_of_the_app(self):
+        """WebView2 (`msedgewebview2`) là con của app; WebView2 của app khác (pid 90) không tính (Q3 của review 08 lần 1)."""
+        rows = select(parse_powershell(WIN), REQUIRE, "meeting-translator")
+        self.assertEqual(rows, [(70, "meeting-translator", 102400, 5.0), (77, "asr-worker-vulkan", 2048, 12.25),
+                                (80, "msedgewebview2", 4096, 1.0), (81, "msedgewebview2", 1024, 0.0)])
+        one = '{"ProcessId":5,"ParentProcessId":1,"Name":"meeting-translator.exe","WorkingSetSize":1024,"UserModeTime":0}'
+        self.assertEqual(select(parse_powershell(one), REQUIRE, "meeting-translator"),
+                         [(5, "meeting-translator", 1, 0.0)])
 
 
 def run(hours, ram=lambda t: 1000 * 1024, cpu_rate=0.5, every=60, restart_at=None, vanish_at=None):
@@ -856,7 +962,7 @@ def run(hours, ram=lambda t: 1000 * 1024, cpu_rate=0.5, every=60, restart_at=Non
     rows = []
     for k in range(int(hours * 3600 / every) + 1):
         t = k * every
-        for i, name in enumerate(NAMES):
+        for i, name in enumerate(REQUIRE):
             if vanish_at is not None and name == "llama-server" and t >= vanish_at:
                 continue
             pid = 100 + i + (1000 if restart_at is not None and name == "asr-worker" and t >= restart_at else 0)
@@ -905,6 +1011,22 @@ class Summarize(unittest.TestCase):
     def test_no_samples(self):
         self.assertFalse(summarize([], ncpu=10)["pass_a5"])
 
+    def test_a_required_process_absent_from_the_start_fails(self):
+        """Gõ sai tên app ở `--names`, hay app không chạy: không đạt (Q3 của review 08 lần 1)."""
+        rows = [r for r in run(2) if r[2] != "meeting-translator"]
+        out = summarize(rows, ncpu=10, require=REQUIRE)
+        self.assertEqual(out["absent"], ["meeting-translator"])
+        self.assertFalse(out["pass_a5"])
+        self.assertFalse(out["pass_cpu"])
+
+    def test_two_webviews_at_once_are_not_a_restart(self):
+        rows = run(2)
+        rows += [(t, 500 + k, "com.apple.WebKit.WebContent", 1000, 0.0) for t in sorted({r[0] for r in rows})
+                 for k in (0, 1)]
+        out = summarize(rows, ncpu=10)
+        self.assertEqual(out["restarts"], {})
+        self.assertTrue(out["pass_a5"], out)
+
 
 class Sample(unittest.TestCase):
     def test_writes_one_row_per_process_per_tick(self):
@@ -916,7 +1038,7 @@ class Sample(unittest.TestCase):
         def sleep(s):
             now[0] += s
 
-        snap = lambda names: [(1, "meeting-translator", 1000, now[0] / 10), (2, "llama-server", 2000, 0.0)]  # noqa
+        snap = lambda names, app: [(1, "meeting-translator", 1000, now[0] / 10), (2, "llama-server", 2000, 0.0)]  # noqa
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "s.csv")
             self.assertEqual(sample(NAMES, 10, 30, path, snap=snap, clock=clock, sleep=sleep), 4)
@@ -949,12 +1071,17 @@ Tạo `bench/phase1/acceptance/soak.py`:
 ```python
 """Soak test A5 (spec §3.3, §11) và tải máy (§8): lấy mẫu RAM và thời gian CPU của app và hai tiến trình phụ.
 
-- `sample`: mỗi `--every` giây chụp danh sách tiến trình (macOS: `ps`; Windows: PowerShell `Get-Process`), giữ tiến trình
-  có tên chứa một trong `--names`, ghi CSV `t_s,pid,name,rss_kib,cpu_s` (giây từ lúc bắt đầu, RSS hay working set, tổng
-  thời gian CPU của tiến trình). Dừng sau `--duration` giây hoặc khi bấm Ctrl+C; mỗi mẫu ghi ngay xuống file.
-- `summarize`: A5 đạt khi chạy đủ `--hours` giờ, không tiến trình nào biến mất hay khởi động lại (đổi pid), và RAM tổng
-  sau giờ đầu không vượt quá 110% RAM trung bình của phút 55–60. Tải máy: tổng thời gian CPU chia thời gian thực và số
-  lõi logic, mục tiêu ≤ 30% trên máy khuyến nghị.
+- `sample`: mỗi `--every` giây chụp danh sách tiến trình (macOS: `ps`; Windows: PowerShell `Win32_Process`), giữ tiến
+  trình có tên chứa một trong `--names` và mọi tiến trình con cháu của app (`--app`), ghi CSV `t_s,pid,name,rss_kib,cpu_s`
+  (giây từ lúc bắt đầu, RSS hay working set, tổng thời gian CPU). Dừng sau `--duration` giây hoặc khi bấm Ctrl+C; mỗi mẫu
+  ghi ngay xuống file.
+- WebView (spec §8 tính RAM "App và WebView"): trên Windows, `msedgewebview2` là con của app nên được giữ theo cây tiến
+  trình; trên macOS, tiến trình XPC của WebKit (`com.apple.WebKit.*`) có cha là `launchd`, nên giữ theo tên, và lúc đo
+  không được mở app WebKit nào khác (Safari, Mail…).
+- `summarize`: A5 đạt khi mọi tên trong `--require` có mặt ở mẫu đầu, chạy đủ `--hours` giờ, không tiến trình nào biến mất
+  hay khởi động lại (pid mới của một tên xuất hiện sau mẫu đầu), và RAM tổng sau giờ đầu không vượt quá 110% RAM trung
+  bình của phút 55–60. Tải máy: tổng thời gian CPU chia thời gian thực và số lõi logic, mục tiêu ≤ 30% trên máy khuyến
+  nghị.
 
 RSS của `llama-server` tính cả trang file model được mmap (§8), nên số tuyệt đối lớn hơn `phys_footprint`; A5 chỉ so
 tương đối nên không ảnh hưởng.
@@ -967,7 +1094,9 @@ import subprocess
 import sys
 import time
 
-DEFAULT_NAMES = ("meeting-translator", "asr-worker", "llama-server")
+DEFAULT_NAMES = ("meeting-translator", "asr-worker", "llama-server", "com.apple.WebKit")
+DEFAULT_APP = "meeting-translator"
+DEFAULT_REQUIRE = ("meeting-translator", "asr-worker", "llama-server")
 RAM_GROWTH_MAX = 0.10
 CPU_AVG_MAX = 0.30
 
@@ -989,45 +1118,64 @@ def matches(name, names):
     return any(n in name for n in names)
 
 
-def parse_ps(text, names):
-    """Output của `ps -A -o pid=,rss=,time=,comm=` (macOS). `comm` có thể là đường dẫn có dấu cách."""
+def parse_ps(text):
+    """Output của `ps -A -o pid=,ppid=,rss=,time=,comm=` (macOS): (pid, ppid, tên, RSS KiB, CPU giây).
+    `comm` có thể là đường dẫn có dấu cách."""
     out = []
     for line in text.splitlines():
-        fields = line.split(None, 3)
-        if len(fields) < 4:
+        fields = line.split(None, 4)
+        if len(fields) < 5:
             continue
-        pid, rss, cputime, comm = fields
-        name = os.path.basename(comm.strip())
-        if matches(name, names):
-            out.append((int(pid), name, int(rss), parse_cputime(cputime)))
+        pid, ppid, rss, cputime, comm = fields
+        out.append((int(pid), int(ppid), os.path.basename(comm.strip()), int(rss), parse_cputime(cputime)))
     return out
 
 
-def parse_powershell(text, names):
-    """JSON của `Get-Process | Select-Object Id,ProcessName,WorkingSet64,CPU | ConvertTo-Json` (Windows)."""
+def parse_powershell(text):
+    """JSON của `Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,WorkingSetSize,
+    KernelModeTime,UserModeTime | ConvertTo-Json` (Windows). Thời gian CPU tính bằng đơn vị 100 ns."""
     data = json.loads(text or "[]")
     if isinstance(data, dict):
         data = [data]
     out = []
     for p in data:
-        name = p.get("ProcessName") or ""
-        if matches(name, names):
-            out.append((int(p["Id"]), name, int(p.get("WorkingSet64") or 0) // 1024, float(p.get("CPU") or 0.0)))
+        name = (p.get("Name") or "").removesuffix(".exe")
+        cpu = (int(p.get("KernelModeTime") or 0) + int(p.get("UserModeTime") or 0)) / 1e7
+        out.append((int(p["ProcessId"]), int(p.get("ParentProcessId") or 0), name,
+                    int(p.get("WorkingSetSize") or 0) // 1024, cpu))
     return out
 
 
-def snapshot(names):
+def select(procs, names, app):
+    """Giữ tiến trình có tên chứa một trong `names`, và mọi tiến trình con cháu của tiến trình có tên chứa `app`."""
+    parent = {pid: ppid for pid, ppid, _, _, _ in procs}
+    roots = {pid for pid, _, name, _, _ in procs if app in name}
+
+    def under_app(pid):
+        seen = set()
+        while pid in parent and pid not in seen:
+            seen.add(pid)
+            pid = parent[pid]
+            if pid in roots:
+                return True
+        return False
+
+    return [(pid, name, rss, cpu) for pid, _, name, rss, cpu in procs if matches(name, names) or under_app(pid)]
+
+
+def snapshot(names, app=DEFAULT_APP):
     if sys.platform == "win32":
         cmd = ["powershell", "-NoProfile", "-Command",
-               "Get-Process | Select-Object Id,ProcessName,WorkingSet64,CPU | ConvertTo-Json -Compress"]
+               "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,WorkingSetSize,"
+               "KernelModeTime,UserModeTime | ConvertTo-Json -Compress"]
         text = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
-        return parse_powershell(text, names)
-    text = subprocess.run(["ps", "-A", "-o", "pid=,rss=,time=,comm="], capture_output=True, text=True,
+        return select(parse_powershell(text), names, app)
+    text = subprocess.run(["ps", "-A", "-o", "pid=,ppid=,rss=,time=,comm="], capture_output=True, text=True,
                           check=True).stdout
-    return parse_ps(text, names)
+    return select(parse_ps(text), names, app)
 
 
-def sample(names, every, duration, out_path, snap=snapshot, clock=time.monotonic, sleep=time.sleep):
+def sample(names, every, duration, out_path, snap=snapshot, clock=time.monotonic, sleep=time.sleep, app=DEFAULT_APP):
     """Ghi CSV; trả số mẫu đã lấy."""
     start = clock()
     taken = 0
@@ -1037,7 +1185,7 @@ def sample(names, every, duration, out_path, snap=snapshot, clock=time.monotonic
         try:
             while True:
                 t = clock() - start
-                for pid, name, rss, cpu in snap(names):
+                for pid, name, rss, cpu in snap(names, app):
                     w.writerow([f"{t:.1f}", pid, name, rss, f"{cpu:.2f}"])
                 f.flush()
                 taken += 1
@@ -1056,24 +1204,29 @@ def read_csv(path):
                 for r in csv.DictReader(f)]
 
 
-def summarize(rows, ncpu, hours=2.0):
+def summarize(rows, ncpu, hours=2.0, require=DEFAULT_REQUIRE):
     """Tổng hợp các mẫu (t, pid, tên, RSS KiB, CPU giây)."""
     times = sorted({r[0] for r in rows})
     if not times:
-        return {"samples": 0, "pass_a5": False, "pass_cpu": False}
+        return {"samples": 0, "absent": list(require), "pass_a5": False, "pass_cpu": False}
     t0, t1 = times[0], times[-1]
     by_time = {}
     for t, pid, name, rss, cpu in rows:
         by_time.setdefault(t, []).append((pid, name, rss, cpu))
     every = (t1 - t0) / (len(times) - 1) if len(times) > 1 else 0.0
     duration = t1 - t0
-    # Tiến trình biến mất: có ở mẫu đầu mà không có ở mẫu nào sau đó. Khởi động lại: một tên có nhiều pid theo thời gian.
+    # Tên bắt buộc (app, hai tiến trình phụ) phải có ở mẫu đầu. Biến mất: tên có ở mẫu đầu mà vắng ở một mẫu sau đó.
+    # Khởi động lại: pid mới của một tên xuất hiện sau mẫu đầu (nhiều pid cùng tên ngay từ đầu, như hai WebContent, thì
+    # không tính).
     first_names = {name for _, name, _, _ in by_time[t0]}
+    absent = [n for n in require if not any(n in name for name in first_names)]
     missing = sorted({n for t in times for n in first_names - {name for _, name, _, _ in by_time[t]}})
-    pids = {}
+    first_pids = {pid for pid, _, _, _ in by_time[t0]}
+    restarts = {}
     for _, pid, name, _, _ in rows:
-        pids.setdefault(name, set()).add(pid)
-    restarts = {n: len(p) - 1 for n, p in sorted(pids.items()) if len(p) > 1}
+        if pid not in first_pids:
+            restarts.setdefault(name, set()).add(pid)
+    restarts = {n: len(p) for n, p in sorted(restarts.items())}
     total_mib = {t: sum(r[2] for r in by_time[t]) / 1024 for t in times}
     hour1 = [total_mib[t] for t in times if 3300 <= t - t0 <= 3600]
     after = [total_mib[t] for t in times if t - t0 > 3600]
@@ -1087,12 +1240,13 @@ def summarize(rows, ncpu, hours=2.0):
     cpu_s = sum(hi - lo for lo, hi in cpu_by_pid.values())
     cpu_avg = cpu_s / (duration * ncpu) if duration > 0 else None
     long_enough = duration >= hours * 3600 - 2 * every
-    pass_a5 = long_enough and not missing and not restarts and growth is not None and growth <= RAM_GROWTH_MAX
+    pass_a5 = (not absent and long_enough and not missing and not restarts and growth is not None
+               and growth <= RAM_GROWTH_MAX)
     return {
-        "samples": len(times), "duration_s": duration, "long_enough": long_enough, "missing": missing,
+        "samples": len(times), "duration_s": duration, "long_enough": long_enough, "absent": absent, "missing": missing,
         "restarts": restarts, "ram_hour1_mib": ram_hour1, "ram_after_max_mib": ram_after, "ram_growth": growth,
         "ram_peak_mib": max(total_mib.values()), "cpu_avg": cpu_avg, "ncpu": ncpu, "pass_a5": pass_a5,
-        "pass_cpu": cpu_avg is not None and cpu_avg <= CPU_AVG_MAX,
+        "pass_cpu": not absent and cpu_avg is not None and cpu_avg <= CPU_AVG_MAX,
     }
 
 
@@ -1105,6 +1259,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("sample")
     s.add_argument("--names", default=",".join(DEFAULT_NAMES), help="tên tiến trình, cách nhau bằng dấu phẩy")
+    s.add_argument("--app", default=DEFAULT_APP, help="tên tiến trình của app: giữ thêm mọi tiến trình con cháu của nó")
     s.add_argument("--every", type=float, default=10.0)
     s.add_argument("--duration", type=float, default=2 * 3600 + 120)
     s.add_argument("--out", required=True)
@@ -1112,15 +1267,19 @@ def main(argv=None):
     m.add_argument("csv")
     m.add_argument("--hours", type=float, default=2.0)
     m.add_argument("--ncpu", type=int, default=os.cpu_count())
+    m.add_argument("--require", default=",".join(DEFAULT_REQUIRE),
+                   help="tên phải có ở mẫu đầu (thiếu là không đạt), cách nhau bằng dấu phẩy")
     m.add_argument("--out", help="ghi kết quả JSON vào file này")
     args = ap.parse_args(argv)
     if args.cmd == "sample":
-        n = sample(tuple(x for x in args.names.split(",") if x), args.every, args.duration, args.out)
+        n = sample(tuple(x for x in args.names.split(",") if x), args.every, args.duration, args.out, app=args.app)
         print(f"{n} mẫu, ghi {args.out}")
         return 0
-    out = summarize(read_csv(args.csv), args.ncpu, args.hours)
+    out = summarize(read_csv(args.csv), args.ncpu, args.hours, tuple(x for x in args.require.split(",") if x))
     print(f"Số mẫu: {out['samples']}; thời gian: {fmt(out.get('duration_s'), '.0f')} giây "
           f"({'đủ' if out.get('long_enough') else 'chưa đủ'} {args.hours:g} giờ)")
+    if out.get("absent"):
+        print(f"THIẾU tiến trình bắt buộc ở mẫu đầu: {', '.join(out['absent'])}")
     print(f"Biến mất: {', '.join(out.get('missing', [])) or 'không'}; khởi động lại: "
           f"{', '.join(f'{k} {v} lần' for k, v in out.get('restarts', {}).items()) or 'không'}")
     print(f"RAM: phút 55–60 {fmt(out.get('ram_hour1_mib'), '.0f')} MiB, lớn nhất sau giờ đầu "
@@ -1146,9 +1305,10 @@ python3 -m unittest discover -s bench/phase1/acceptance -p 'test_soak.py' -v 2>&
 Expected (lúc lập kế hoạch):
 ```text
 test_cputime_formats (test_soak.Parse.test_cputime_formats) ... ok
-test_powershell_json (test_soak.Parse.test_powershell_json) ... ok
-test_ps_keeps_only_the_app_and_its_sidecars (test_soak.Parse.test_ps_keeps_only_the_app_and_its_sidecars) ... ok
+test_ps_keeps_the_app_its_sidecars_and_webkit (test_soak.Parse.test_ps_keeps_the_app_its_sidecars_and_webkit) ... ok
+WebView2 (`msedgewebview2`) là con của app; WebView2 của app khác (pid 90) không tính (Q3 của review 08 lần 1). ... ok
 test_writes_one_row_per_process_per_tick (test_soak.Sample.test_writes_one_row_per_process_per_tick) ... ok
+Gõ sai tên app ở `--names`, hay app không chạy: không đạt (Q3 của review 08 lần 1). ... ok
 test_a_restart_or_a_vanished_process_fails (test_soak.Summarize.test_a_restart_or_a_vanished_process_fails) ... ok
 test_a_steady_two_hour_run_passes (test_soak.Summarize.test_a_steady_two_hour_run_passes) ... ok
 test_cpu_over_30_percent_of_the_machine_fails (test_soak.Summarize.test_cpu_over_30_percent_of_the_machine_fails) ... ok
@@ -1156,18 +1316,28 @@ test_growth_inside_the_first_hour_does_not_count (test_soak.Summarize.test_growt
 test_no_samples (test_soak.Summarize.test_no_samples) ... ok
 test_ram_growth_over_10_percent_after_the_first_hour_fails (test_soak.Summarize.test_ram_growth_over_10_percent_after_the_first_hour_fails) ... ok
 test_too_short_fails (test_soak.Summarize.test_too_short_fails) ... ok
-Ran 11 tests
+test_two_webviews_at_once_are_not_a_restart (test_soak.Summarize.test_two_webviews_at_once_are_not_a_restart) ... ok
+Ran 13 tests
 OK
 ```
 
 Run:
 ```bash
-d=$(mktemp -d) && python3 bench/phase1/acceptance/soak.py sample --names launchd --every 1 --duration 2 --out "$d/s.csv" >/dev/null && python3 bench/phase1/acceptance/soak.py summarize "$d/s.csv" | head -2
+d=$(mktemp -d) && python3 bench/phase1/acceptance/soak.py sample --names launchd --app khong-co-app --every 1 --duration 2 --out "$d/s.csv" >/dev/null && python3 bench/phase1/acceptance/soak.py summarize "$d/s.csv" --require launchd | head -2
 ```
 Expected (lúc lập kế hoạch):
 ```text
 Số mẫu: 3; thời gian: 2 giây (chưa đủ 2 giờ)
 Biến mất: không; khởi động lại: không
+```
+
+Run:
+```bash
+d=$(mktemp -d) && python3 bench/phase1/acceptance/soak.py sample --names launchd --app khong-co-app --every 1 --duration 1 --out "$d/s.csv" >/dev/null && python3 bench/phase1/acceptance/soak.py summarize "$d/s.csv" | sed -n 2p
+```
+Expected (lúc lập kế hoạch):
+```text
+THIẾU tiến trình bắt buộc ở mẫu đầu: meeting-translator, asr-worker, llama-server
 ```
 
 - [ ] **Step 5: Commit**
@@ -1184,7 +1354,8 @@ git commit -m "feat(bench): soak test A5 và tải máy: lấy mẫu RAM, thời
 Spec §3.3 (A7), §10.1 (app chỉ kết nối mạng để …), §10.2. QĐ7, QĐ8.
 
 - Đọc nhật ký HAR của proxy (mitmproxy, Proxyman, Charles đều xuất được) và danh sách cho phép (`a7-allow.template.json`: máy chủ, đường dẫn, đường dẫn nào được gọi trong lúc dịch, giới hạn thân request, từ mồi).
-- Báo vi phạm: máy chủ hay đường dẫn lạ; request không theo lịch trong khoảng Bắt đầu…Dừng; thân request quá giới hạn hay có kiểu âm thanh, multipart, nhị phân; URL hay thân request chứa từ mồi (câu đã phát vào app, so sau NFC và chữ thường). Không có request ra ngoài nào cũng là không đạt (proxy không thấy app).
+- Báo vi phạm: máy chủ hay đường dẫn lạ; request không theo lịch trong khoảng Bắt đầu…Dừng (hai mốc bắt buộc; N2 của review lần 1); thân request quá giới hạn hay có kiểu âm thanh, multipart, nhị phân; URL hay thân request chứa từ mồi (cụm của câu đã phát vào app và của bản dịch app đã hiện, so sau NFC và chữ thường). Không có request ra ngoài nào cũng là không đạt (proxy không thấy app).
+- Nhật ký chỉ được có lưu lượng của app và tiến trình phụ (mitmproxy `--mode local:…`; Q4 của review lần 1): HAR không ghi tiến trình gửi, nên request của trình duyệt hay app khác sẽ thành vi phạm.
 - Request tới `127.0.0.1`, `localhost` (hai tiến trình phụ) bỏ qua: không ra khỏi máy.
 
 **Files:**
@@ -1244,7 +1415,7 @@ class Audit(unittest.TestCase):
 
     def test_unknown_host_or_path_fails(self):
         out = audit(har(entry("https://tracker.example/collect"),
-                        entry("https://license.example/v1/admin/x")), ALLOW)
+                        entry("https://license.example/v1/admin/x")), ALLOW, START, STOP)
         self.assertEqual([v["reason"] for v in out["violations"]],
                          ["máy chủ không có trong danh sách cho phép", "đường dẫn không có trong danh sách cho phép"])
 
@@ -1259,20 +1430,26 @@ class Audit(unittest.TestCase):
     def test_large_or_audio_bodies_fail(self):
         big = entry("https://license.example/v1/plans", method="POST", body="a" * 257)
         audio = entry("https://license.example/v1/plans", method="POST", body="RIFF", mime="audio/wav")
-        out = audit(har(big, audio), ALLOW)
+        out = audit(har(big, audio), ALLOW, START, STOP)
         self.assertEqual([v["reason"] for v in out["violations"]], ["thân request 257 byte, quá 256", "kiểu audio/wav"])
 
     def test_a_canary_in_the_body_or_the_url_fails(self):
         body = entry("https://license.example/v1/plans", method="POST", body='{"t":"the PLOTTING analysis"}')
         url = entry("https://license.example/v1/plans?q=k%E1%BA%BFt%20qu%E1%BA%A3%20ph%C3%A2n%20t%C3%ADch")
-        out = audit(har(body, url), ALLOW)
+        out = audit(har(body, url), ALLOW, START, STOP)
         self.assertEqual([v["reason"] for v in out["violations"]],
                          ["có từ mồi 'plotting analysis'", "có từ mồi 'kết quả phân tích'"])
 
     def test_no_external_request_means_the_proxy_saw_nothing(self):
-        out = audit(har(entry("http://localhost:9000/health")), ALLOW)
+        out = audit(har(entry("http://localhost:9000/health")), ALLOW, START, STOP)
         self.assertFalse(out["pass"])
         self.assertEqual(out["violations"][0]["reason"], "không có request ra ngoài nào: kiểm lại proxy")
+
+    def test_the_session_window_is_required(self):
+        """Thiếu mốc Bắt đầu, Dừng thì luật "trong lúc dịch" không chạy được: không đạt (N2 của review 08 lần 1)."""
+        out = audit(har(entry("https://license.example/v1/plans")), ALLOW)
+        self.assertEqual([v["reason"] for v in out["violations"]], ["thiếu mốc Bắt đầu, Dừng của phiên dịch"])
+        self.assertFalse(out["pass"])
 
     def test_the_longest_matching_rule_wins(self):
         allow = {"hosts": {"license.example": [{"path": "/v1/", "during_session": False},
@@ -1303,7 +1480,7 @@ Tạo `bench/phase1/acceptance/a7-allow.template.json`:
 
 ```json
 {
- "_note": "Mẫu cho netaudit.py (A7). Chép thành bench/phase1/results/acceptance/a7-allow.json, thay LICENSE_HOST, MODELS_HOST, UPDATE_HOST bằng máy chủ thật của bản đang thử (URL của license server, của manifest model và của latest.json trong bản build). Cụm từ mồi là các câu sẽ phát vào app lúc thử.",
+ "_note": "Mẫu cho netaudit.py (A7). Chép thành bench/phase1/results/acceptance/a7-allow.json, thay LICENSE_HOST, MODELS_HOST, UPDATE_HOST bằng máy chủ thật của bản đang thử (URL của license server, của manifest model và của latest.json trong bản build). Từ mồi: cụm của câu sẽ phát vào app lúc thử (câu mẫu của bước Nghe thử), cộng cụm của bản dịch mà app hiện trong lúc thử (chép từ bản chép lời xuất ra sau khi dừng; mặc định có một cụm thường gặp).",
  "hosts": {
   "LICENSE_HOST": [
    {"path": "/v1/licenses/validate", "during_session": true},
@@ -1326,7 +1503,8 @@ Tạo `bench/phase1/acceptance/a7-allow.template.json`:
  "max_body_bytes": 4096,
  "canaries": [
   "plotting analysis",
-  "public website"
+  "public website",
+  "kết quả phân tích"
  ]
 }
 ```
@@ -1341,11 +1519,13 @@ Luật:
 - Mọi request ra ngoài (trừ `127.0.0.1`, `localhost`, `::1`) phải tới máy chủ và đường dẫn có trong danh sách cho phép
   (`--allow`, JSON). Mỗi đường dẫn ghi kèm có được gọi trong lúc dịch không (`during_session`): A7 chỉ cho các việc chạy
   theo lịch (kiểm tra bản quyền, hỏi giờ của license server, kiểm tra cập nhật app và manifest model).
-- Trong khoảng `--start`…`--stop` (lúc bấm Bắt đầu tới lúc bấm Dừng) chỉ request có `during_session: true`.
+- Trong khoảng `--start`…`--stop` (lúc bấm Bắt đầu tới lúc bấm Dừng; bắt buộc) chỉ request có `during_session: true`.
 - Không request nào có thân lớn hơn `max_body_bytes`, hay có kiểu `audio/*`, `multipart/*`, `application/octet-stream`.
 - Không URL hay thân request nào chứa một "từ mồi" (`canaries`): cụm từ có trong câu đã phát vào app lúc thử. So sau khi
   chuẩn hóa NFC và đổi chữ thường.
-- Phải có ít nhất một request ra ngoài, để chứng minh proxy thật sự thấy lưu lượng của app.
+- Phải có ít nhất một request ra ngoài, để chứng minh proxy thật sự thấy lưu lượng của app. Nhật ký phải chỉ có lưu lượng
+  của app và tiến trình phụ (mitmproxy `--mode local:…`, hay lọc theo app trong Proxyman trước khi xuất): HAR không ghi
+  tiến trình gửi, nên request của trình duyệt hay app khác sẽ thành vi phạm.
 """
 import argparse
 import json
@@ -1408,6 +1588,8 @@ def audit(har, allow, start=None, stop=None):
                 reasons.append(f"có từ mồi {c!r}")
         for r in reasons:
             violations.append({"time": e["startedDateTime"], "method": req["method"], "url": req["url"], "reason": r})
+    if start is None or stop is None:
+        violations.append({"time": None, "method": None, "url": None, "reason": "thiếu mốc Bắt đầu, Dừng của phiên dịch"})
     if external == 0:
         violations.append({"time": None, "method": None, "url": None,
                            "reason": "không có request ra ngoài nào: kiểm lại proxy"})
@@ -1419,17 +1601,15 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="A7: kiểm nhật ký HAR của một lần thử qua proxy.")
     ap.add_argument("har")
     ap.add_argument("--allow", required=True, help="JSON: hosts, max_body_bytes, canaries")
-    ap.add_argument("--start", help="lúc bấm Bắt đầu, ISO 8601 có múi giờ")
-    ap.add_argument("--stop", help="lúc bấm Dừng, ISO 8601 có múi giờ")
+    ap.add_argument("--start", required=True, help="lúc bấm Bắt đầu, ISO 8601 có múi giờ")
+    ap.add_argument("--stop", required=True, help="lúc bấm Dừng, ISO 8601 có múi giờ")
     ap.add_argument("--out", help="ghi kết quả JSON vào file này")
     args = ap.parse_args(argv)
-    if bool(args.start) != bool(args.stop):
-        ap.error("--start và --stop đi cùng nhau")
     with open(args.har, encoding="utf-8") as f:
         har = json.load(f)
     with open(args.allow, encoding="utf-8") as f:
         allow = json.load(f)
-    out = audit(har, allow, when(args.start) if args.start else None, when(args.stop) if args.stop else None)
+    out = audit(har, allow, when(args.start), when(args.stop))
     print(f"Request ra ngoài: {out['external']}; trong lúc dịch: {out['in_session']}")
     for v in out["violations"]:
         print(f"VI PHẠM: {v['method'] or ''} {v['url'] or ''} — {v['reason']}".replace("  ", " "))
@@ -1457,9 +1637,10 @@ test_large_or_audio_bodies_fail (test_netaudit.Audit.test_large_or_audio_bodies_
 test_no_external_request_means_the_proxy_saw_nothing (test_netaudit.Audit.test_no_external_request_means_the_proxy_saw_nothing) ... ok
 test_scheduled_requests_during_the_session_pass (test_netaudit.Audit.test_scheduled_requests_during_the_session_pass) ... ok
 test_the_longest_matching_rule_wins (test_netaudit.Audit.test_the_longest_matching_rule_wins) ... ok
+Thiếu mốc Bắt đầu, Dừng thì luật "trong lúc dịch" không chạy được: không đạt (N2 của review 08 lần 1). ... ok
 test_unknown_host_or_path_fails (test_netaudit.Audit.test_unknown_host_or_path_fails) ... ok
 test_unscheduled_request_only_fails_during_the_session (test_netaudit.Audit.test_unscheduled_request_only_fails_during_the_session) ... ok
-Ran 7 tests
+Ran 8 tests
 OK
 ```
 
@@ -1469,7 +1650,16 @@ python3 -c "import json; a = json.load(open('bench/phase1/acceptance/a7-allow.te
 ```
 Expected (lúc lập kế hoạch):
 ```text
-['LICENSE_HOST', 'MODELS_HOST', 'UPDATE_HOST'] 4096 ['plotting analysis', 'public website']
+['LICENSE_HOST', 'MODELS_HOST', 'UPDATE_HOST'] 4096 ['plotting analysis', 'public website', 'kết quả phân tích']
+```
+
+Run:
+```bash
+python3 bench/phase1/acceptance/netaudit.py /dev/null --allow bench/phase1/acceptance/a7-allow.template.json 2>&1 | tail -1
+```
+Expected (lúc lập kế hoạch):
+```text
+netaudit.py: error: the following arguments are required: --start, --stop
 ```
 
 - [ ] **Step 5: Commit**
@@ -1487,7 +1677,7 @@ git commit -m "feat(bench): kiểm nhật ký mạng A7 qua proxy: máy chủ, �
 Bàn giao của mục 2.8 kế hoạch 00 (báo cáo nghiệm thu, số liệu gốc commit trong `bench/`). QĐ9, QĐ10.
 
 - Gom kết quả trong `bench/phase1/results/acceptance/` (bảng ở đầu `report.py`) và bảng đối chiếu thành `report.md`: mỗi tiêu chí `đạt`, `không đạt` hay `chưa có số liệu`, kèm đường dẫn bằng chứng. Kết luận chung chỉ ĐẠT khi mọi dòng đạt; thiếu số liệu không bao giờ thành đạt.
-- A2 cần cả máy khuyến nghị lẫn máy tối thiểu; A1 còn ô `chưa thử` là chưa có số liệu; A6 còn mục chưa đánh dấu là chưa có số liệu.
+- Mỗi tiêu chí có tập số liệu bắt buộc (`REQUIRED`; Q2 của review lần 1): A2 đủ hạng khuyến nghị và hạng tối thiểu (lấy từ nhãn); A3 đủ hai gói (`gates.py` kiểm); A4 `a4-turbo.json` và `a4-small.json`; A5, tải máy và A7 một máy Mac và một máy Windows (`a5-mac`, `a5-win`, `a7-mac`, `a7-win`). Thiếu một file là `chưa có số liệu`; một file không đạt là `không đạt`. A1 còn ô `chưa thử`, A6 còn mục chưa đánh dấu cũng là chưa có số liệu.
 - Mẫu cho người điền: `a1-matrix.template.md` (27 ô: mỗi app họp với loa trên macOS 26 và Windows 11, hai loại tai nghe, toàn màn hình, hai màn hình, cộng lượt nhanh trên macOS 14.2, 15, 27, Windows 10), `a6-checklist.template.md` (8 mục).
 
 **Files:**
@@ -1513,7 +1703,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from report import FAIL, NONE, PASS, build, render  # noqa: E402
 
-PLAN_DONE = "| 1 | a | 01 | `abc1234` | xong |\n| 2 | b | 08 | duyệt 2026-10-05 | hoãn |\n"
+PLAN_DONE = "| 1 | a | 01 | `abc1234` | xong |\n| 2 | b | 08 | hoãn, chủ dự án duyệt 2026-10-05 | hoãn |\n"
 PLAN_OPEN = "| 1 | a | 01 | | chờ |\n"
 MATRIX = """| Hệ điều hành | App họp | Thiết bị | Kết quả |
 |---|---|---|---|
@@ -1538,14 +1728,16 @@ class Report(unittest.TestCase):
 
     def complete(self):
         self.write("a1-matrix.md", MATRIX.format(last="đạt"))
-        self.write("a2-m4pro.json", {"class": "khuyennghi", "pass": True})
-        self.write("a2-m1-8gb.json", {"class": "toithieu", "pass": True})
+        self.write("a2-m4pro.json", {"classes": ["khuyennghi"], "pass": True})
+        self.write("a2-m1-8gb.json", {"classes": ["toithieu"], "pass": True})
         self.write("a3.json", {"pass": True})
-        self.write("a4-turbo.json", {"pass": True})
-        self.write("a4-small.json", {"pass": True})
+        self.write("a4-turbo.json", {"pack": "turbo", "pass": True})
+        self.write("a4-small.json", {"pack": "small", "pass": True})
         self.write("a5-mac.json", {"pass_a5": True, "pass_cpu": True})
+        self.write("a5-win.json", {"pass_a5": True, "pass_cpu": True})
         self.write("a6-checklist.md", "- [x] Gatekeeper\n- [x] Gỡ app\n")
         self.write("a7-mac.json", {"pass": True})
+        self.write("a7-win.json", {"pass": True})
 
     def statuses(self):
         return {name: status for name, status, _, _ in build(self.dir, self.plan)}
@@ -1575,17 +1767,35 @@ class Report(unittest.TestCase):
         self.complete()
         os.remove(os.path.join(self.dir, "a2-m1-8gb.json"))
         self.assertEqual(self.statuses()["A2 Độ trễ"], NONE)
-        self.write("a2-m1-8gb.json", {"class": "toithieu", "pass": False})
+        self.write("a2-m1-8gb.json", {"classes": ["toithieu"], "pass": False})
         self.assertEqual(self.statuses()["A2 Độ trễ"], FAIL)
 
     def test_one_failed_file_fails_the_criterion(self):
         self.complete()
-        self.write("a4-small.json", {"pass": False})
+        self.write("a4-small.json", {"pack": "small", "pass": False})
         self.write("a7-win.json", {"pass": False})
         self.write("a5-win.json", {"pass_a5": True, "pass_cpu": False})
         s = self.statuses()
         self.assertEqual((s["A4 Nhận dạng giọng nói"], s["A5 Ổn định (2 giờ)"], s["§8 Tải máy ≤ 30%"],
                           s["A7 Quyền riêng tư"]), (FAIL, PASS, FAIL, FAIL))
+
+    def test_part_of_the_required_set_is_not_enough(self):
+        """Một gói, một máy là chưa đủ số liệu, kể cả khi file có mặt đều đạt (Q2 của review 08 lần 1)."""
+        self.complete()
+        for name in ("a4-small.json", "a5-win.json", "a7-win.json"):
+            os.remove(os.path.join(self.dir, name))
+        rows = {name: (status, detail) for name, status, _, detail in build(self.dir, self.plan)}
+        self.assertEqual(rows["A4 Nhận dạng giọng nói"], (NONE, "thiếu: small"))
+        self.assertEqual(rows["A5 Ổn định (2 giờ)"], (NONE, "thiếu: win"))
+        self.assertEqual(rows["§8 Tải máy ≤ 30%"], (NONE, "thiếu: win"))
+        self.assertEqual(rows["A7 Quyền riêng tư"], (NONE, "thiếu: win"))
+        self.write("a5-mac.json", {"pass_a5": False, "pass_cpu": True})
+        self.assertEqual(self.statuses()["A5 Ổn định (2 giờ)"], FAIL, "một file không đạt là không đạt, kể cả khi còn thiếu")
+
+    def test_a_file_named_for_one_pack_holding_the_other_fails(self):
+        self.complete()
+        self.write("a4-small.json", {"pack": "turbo", "pass": True})
+        self.assertEqual(self.statuses()["A4 Nhận dạng giọng nói"], FAIL)
 
     def test_an_unchecked_install_item_is_not_done(self):
         self.complete()
@@ -1688,12 +1898,14 @@ Tạo `bench/phase1/acceptance/report.py`:
 
 Đọc thư mục kết quả (mặc định `bench/phase1/results/acceptance/`):
 - `a1-matrix.md`: bảng ma trận tương thích, có cột `Kết quả` mang `đạt`, `không đạt` hay `chưa thử`;
-- `a2-*.json`: kết quả `gates.py a2` (cần ít nhất một file máy khuyến nghị và một file máy tối thiểu);
+- `a2-*.json`: kết quả `gates.py a2`, mỗi file một máy (cần đủ hạng khuyến nghị và hạng tối thiểu, hạng lấy từ nhãn);
 - `a3.json`: kết quả `gates.py a3`;
-- `a4-*.json`: kết quả `gates.py a4` (một file mỗi gói);
-- `a5-*.json`: kết quả `soak.py summarize` (A5; cột tải máy §8 lấy `pass_cpu` của cùng file);
+- `a4-turbo.json`, `a4-small.json`: kết quả `gates.py a4` của từng gói;
+- `a5-mac.json`, `a5-win.json`: kết quả `soak.py summarize` (A5; dòng tải máy §8 lấy `pass_cpu` của cùng file);
 - `a6-checklist.md`: danh sách `- [x]` / `- [ ]` của phần cài đặt và gỡ (A6);
-- `a7-*.json`: kết quả `netaudit.py` (một file mỗi máy, ví dụ `a7-mac.json`, `a7-win.json`).
+- `a7-mac.json`, `a7-win.json`: kết quả `netaudit.py` của từng máy.
+Thiếu một file của tập bắt buộc (`REQUIRED`) là `chưa có số liệu`, kể cả khi các file có mặt đều đạt; một file không đạt
+là `không đạt`.
 Cộng bảng đối chiếu của kế hoạch 00 (Task 5: mọi dòng `xong`, hoặc `hoãn` có ngày duyệt).
 
 Mỗi tiêu chí là `đạt`, `không đạt` hay `chưa có số liệu`. Báo cáo chung chỉ ĐẠT khi mọi tiêu chí đạt.
@@ -1712,6 +1924,8 @@ import mapping  # noqa: E402
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 RESULTS = os.path.join(ROOT, "bench", "phase1", "results", "acceptance")
 PASS, FAIL, NONE = "đạt", "không đạt", "chưa có số liệu"
+# Tập số liệu bắt buộc của từng tiêu chí (điểm cần quyết 2 của 08a cho A5): hai gói, hay một máy Mac và một máy Windows.
+REQUIRED = {"a4": ("turbo", "small"), "a5": ("mac", "win"), "a7": ("mac", "win")}
 
 
 def rel(path):
@@ -1727,6 +1941,22 @@ def from_json_files(paths, key="pass"):
     if not paths:
         return NONE
     return PASS if all(load(p).get(key) for p in paths) else FAIL
+
+
+def required_set(results, prefix, key="pass"):
+    """Trạng thái từ các file `<prefix>-<tên>.json` của tập bắt buộc."""
+    names = REQUIRED[prefix]
+    paths = [os.path.join(results, f"{prefix}-{n}.json") for n in names]
+    present = [(n, p) for n, p in zip(names, paths) if os.path.exists(p)]
+    found = [p for _, p in present]
+    for n, p in present:
+        data = load(p)
+        if not data.get(key) or data.get("pack", n) != n:
+            return FAIL, found, f"{os.path.basename(p)} không đạt"
+    missing = [n for n, p in zip(names, paths) if not os.path.exists(p)]
+    if missing:
+        return NONE, found, "thiếu: " + ", ".join(missing)
+    return PASS, found, ", ".join(names)
 
 
 def a1(results):
@@ -1751,7 +1981,7 @@ def a1(results):
 
 def a2(results):
     paths = sorted(glob.glob(os.path.join(results, "a2-*.json")))
-    classes = {load(p).get("class") for p in paths}
+    classes = set().union(*(load(p).get("classes", []) for p in paths))
     status = from_json_files(paths)
     if status == PASS and not {"khuyennghi", "toithieu"} <= classes:
         return NONE, paths, "thiếu máy khuyến nghị hay máy tối thiểu"
@@ -1775,14 +2005,11 @@ def build(results, plan):
     rows = [("A1 Tương thích", *a1(results)), ("A2 Độ trễ", *a2(results))]
     a3p = [p for p in [os.path.join(results, "a3.json")] if os.path.exists(p)]
     rows.append(("A3 Chất lượng dịch", from_json_files(a3p), a3p, "chống thụt lùi và mức sàn"))
-    a4p = sorted(glob.glob(os.path.join(results, "a4-*.json")))
-    rows.append(("A4 Nhận dạng giọng nói", from_json_files(a4p), a4p, f"{len(a4p)} gói"))
-    a5p = sorted(glob.glob(os.path.join(results, "a5-*.json")))
-    rows.append(("A5 Ổn định (2 giờ)", from_json_files(a5p, "pass_a5"), a5p, f"{len(a5p)} lần chạy"))
-    rows.append(("§8 Tải máy ≤ 30%", from_json_files(a5p, "pass_cpu"), a5p, "CPU trung bình của lần chạy A5"))
+    rows.append(("A4 Nhận dạng giọng nói", *required_set(results, "a4")))
+    rows.append(("A5 Ổn định (2 giờ)", *required_set(results, "a5", "pass_a5")))
+    rows.append(("§8 Tải máy ≤ 30%", *required_set(results, "a5", "pass_cpu")))
     rows.append(("A6 Cài đặt", *checklist(os.path.join(results, "a6-checklist.md"))))
-    a7p = sorted(glob.glob(os.path.join(results, "a7-*.json")))
-    rows.append(("A7 Quyền riêng tư", from_json_files(a7p), a7p, f"{len(a7p)} máy, kiểm qua proxy"))
+    rows.append(("A7 Quyền riêng tư", *required_set(results, "a7")))
     with open(plan, encoding="utf-8") as f:
         table, problems = mapping.parse(f.read())
     issues = mapping.release_problems(table, problems)
@@ -1830,13 +2057,15 @@ Expected (lúc lập kế hoạch):
 ```text
 test_a2_needs_both_machine_classes (test_report.Report.test_a2_needs_both_machine_classes) ... ok
 test_a_failed_matrix_cell_or_an_untried_one (test_report.Report.test_a_failed_matrix_cell_or_an_untried_one) ... ok
+test_a_file_named_for_one_pack_holding_the_other_fails (test_report.Report.test_a_file_named_for_one_pack_holding_the_other_fails) ... ok
 test_an_open_mapping_row_blocks_acceptance (test_report.Report.test_an_open_mapping_row_blocks_acceptance) ... ok
 test_an_unchecked_install_item_is_not_done (test_report.Report.test_an_unchecked_install_item_is_not_done) ... ok
 test_everything_passing_is_accepted (test_report.Report.test_everything_passing_is_accepted) ... ok
 test_nothing_yet_means_no_data_not_a_pass (test_report.Report.test_nothing_yet_means_no_data_not_a_pass) ... ok
 test_one_failed_file_fails_the_criterion (test_report.Report.test_one_failed_file_fails_the_criterion) ... ok
+Một gói, một máy là chưa đủ số liệu, kể cả khi file có mặt đều đạt (Q2 của review 08 lần 1). ... ok
 test_the_templates_read_as_not_tried_yet (test_report.Report.test_the_templates_read_as_not_tried_yet) ... ok
-Ran 8 tests
+Ran 10 tests
 OK
 ```
 
@@ -1850,11 +2079,11 @@ Expected (lúc lập kế hoạch):
 | A1 Tương thích | chưa có số liệu | chưa có ma trận | — |
 | A2 Độ trễ | chưa có số liệu | 0 máy | — |
 | A3 Chất lượng dịch | chưa có số liệu | chống thụt lùi và mức sàn | — |
-| A4 Nhận dạng giọng nói | chưa có số liệu | 0 gói | — |
-| A5 Ổn định (2 giờ) | chưa có số liệu | 0 lần chạy | — |
-| §8 Tải máy ≤ 30% | chưa có số liệu | CPU trung bình của lần chạy A5 | — |
+| A4 Nhận dạng giọng nói | chưa có số liệu | thiếu: turbo, small | — |
+| A5 Ổn định (2 giờ) | chưa có số liệu | thiếu: mac, win | — |
+| §8 Tải máy ≤ 30% | chưa có số liệu | thiếu: mac, win | — |
 | A6 Cài đặt | chưa có số liệu | chưa có danh sách | — |
-| A7 Quyền riêng tư | chưa có số liệu | 0 máy, kiểm qua proxy | — |
+| A7 Quyền riêng tư | chưa có số liệu | thiếu: mac, win | — |
 | Bảng đối chiếu (kế hoạch 00, Task 5) | không đạt | 357 dòng, 158 chưa xong | `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` |
 mã thoát: 1
 ```
@@ -1890,11 +2119,11 @@ Python 3.12 trở lên, chỉ dùng thư viện chuẩn. Chạy từ gốc repo.
 | Script | Việc | Ra |
 |---|---|---|
 | `mapping.py summary` / `check` | Bảng đối chiếu của kế hoạch 00: đếm trạng thái, nhóm dòng chưa xong theo việc đang chặn; `check` là Task 5 của kế hoạch 00 | in Markdown hay JSON (`--json`) |
-| `gates.py a2` | A2 từ JSON của `latency-bench latency`, theo hạng máy (`--class khuyennghi` hay `toithieu`) | `a2-<máy>.json` |
+| `gates.py a2` | A2 từ JSON của `latency-bench latency`: luật lượt đo đáng tin và ngưỡng của `summarize.py`, hạng máy lấy từ nhãn | `a2-<máy>.json` |
 | `gates.py a3` | A3 từ `s7_mt-<nhãn>.json` của `score_mt.py`, so mốc `s7_mt.json`, cộng mức sàn Anh→Việt | `a3.json` |
-| `gates.py a4` | A4 từ `a4_<nhãn>.json` của `score_asr.py`, so mốc `a4_m4pro-<model>-final.json` (≤ 10% tương đối) | `a4-<gói>.json` |
-| `soak.py sample` / `summarize` | A5 (2 giờ, không crash, RAM sau giờ đầu ≤ 110%) và tải máy §8 (CPU ≤ 30%) | `a5-<máy>.csv`, `a5-<máy>.json` |
-| `netaudit.py` | A7 từ nhật ký HAR của proxy, theo danh sách cho phép (`a7-allow.template.json`) | `a7-<máy>.json` |
+| `gates.py a4` | A4 từ `a4_<nhãn>.json` của `score_asr.py`, so mốc `a4_m4pro-<model>-final.json` (≤ 10% tương đối), `--pack turbo` hay `small` | `a4-turbo.json`, `a4-small.json` |
+| `soak.py sample` / `summarize` | A5 (2 giờ, không crash, RAM sau giờ đầu ≤ 110%) và tải máy §8 (CPU ≤ 30%), gồm WebView; `--require` các tiến trình bắt buộc | `a5-mac.*`, `a5-win.*` |
+| `netaudit.py` | A7 từ nhật ký HAR của proxy (chỉ lưu lượng của app), theo danh sách cho phép (`a7-allow.template.json`), bắt buộc mốc Bắt đầu, Dừng | `a7-mac.json`, `a7-win.json` |
 | `report.py` | Gom tất cả thành báo cáo nghiệm thu | `report.md` |
 
 Mẫu cho phần người điền: `a1-matrix.template.md` (A1), `a6-checklist.template.md` (A6), `a7-allow.template.json` (A7).
@@ -1910,7 +2139,7 @@ python3 -m unittest discover -s bench/phase1/acceptance -p 'test_*.py' 2>&1 | ta
 ```
 Expected (lúc lập kế hoạch):
 ```text
-Ran 52 tests
+Ran 61 tests
 
 OK
 ```

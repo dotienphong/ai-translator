@@ -429,7 +429,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - Chủ yếu do người thao tác: app họp, tai nghe, máy tham chiếu, proxy. Agent chạy script đo và tổng hợp.
   - Hai điều kiện A4 (C13) làm được ngay (Đ11).
 - **Nhận từ 06:** nghiệm thu dòng 308–310 với bản phát hành đã ký; mua thật một đơn trên production (P1).
-- **Trạng thái:** đã viết thành hai file 08a (Task 1–6, script trong `bench/phase1/acceptance/`, base `b2ea5b0`, mutation 36/36 bị giết) và 08b (Task 1–11, điều phối; phần lớn cần người, máy tham chiếu, Windows, tài khoản). Chờ review.
+- **Trạng thái:** đã viết thành hai file 08a (Task 1–6, script trong `bench/phase1/acceptance/`, base `b2ea5b0`) và 08b (Task 1–11, điều phối; phần lớn cần người, máy tham chiếu, Windows, tài khoản). Đã sửa theo review lần 1 (Q1–Q5, N1–N4): cổng A2 dùng luật lượt đo đáng tin của `summarize.py`, báo cáo đòi đủ tập số liệu, soak tính WebView, A7 bắt theo tiến trình của app; mutation 47/47. A2 đo bằng S6 cộng số của app thật, lệch "08 đo lại A2 bằng app thật" ở mục 5: chờ chủ dự án duyệt (điểm cần quyết 6 của 08a).
 
 ## 3. Thứ tự thực thi và phụ thuộc
 
