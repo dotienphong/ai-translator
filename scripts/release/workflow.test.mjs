@@ -29,3 +29,12 @@ test("file chứa bí mật được tạo với quyền 0600 ngay từ đầu (
   }
   assert.match(workflows[0][1], /umask 077; printf '%s' "\$APPLE_API_KEY_P8"/);
 });
+
+test("job publish: một nhóm concurrency cho mọi tag (N-4 của review 07b lần 1); bước có token Cloudflare không cài gói", () => {
+  const yml = workflows[0][1];
+  const job = yml.slice(yml.indexOf("\n  publish:\n"), yml.indexOf("\n  github-release:\n"));
+  assert.match(job, /\n    concurrency:\n      group: release-publish\n      cancel-in-progress: false\n/);
+  const secret = steps(job).filter((s) => s.includes("secrets."));
+  assert.equal(secret.length, 1);
+  assert.match(secret[0], /node scripts\/release\/publish-release\.mjs/);
+});

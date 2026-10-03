@@ -1,5 +1,7 @@
 # Build bản phát hành từ tag đã commit (spec §10.2): `.dmg` cho macOS arm64 và bộ cài NSIS `.exe` cho Windows x64, cùng
-# SHA-256 của bộ cài, bảng SHA-256 của tiến trình phụ (Đ15) và chữ ký bản cập nhật. Kế hoạch 07a; 07b thêm phần đăng bản.
+# SHA-256 của bộ cài, bảng SHA-256 của tiến trình phụ (Đ15) và chữ ký bản cập nhật. Kế hoạch 07a; 07b thêm phần đăng bản:
+# từ tag `v*`, job `publish` đăng bản lên R2 và cập nhật `latest.json` của kênh (stable, hay beta với tag `vX.Y.Z-beta.N`),
+# rồi job `github-release` tạo bản nháp GitHub Release. Chạy tay (workflow_dispatch) thì không đăng gì.
 #
 # Tách job theo secret (Q1 của review 07a lần 1): job biên dịch code (của repo và của bên thứ ba: crate, CMake, npm) không
 # có secret nào; job có secret (environment `release`) chạy trên runner mới, checkout lại đúng commit, không biên dịch gì,
@@ -14,10 +16,13 @@
 #   APPLE_CERTIFICATE_P12, APPLE_CERTIFICATE_PASSWORD   chứng thư Developer ID Application (.p12, base64) và mật khẩu
 #   APPLE_API_KEY_P8, APPLE_API_KEY_ID, APPLE_API_ISSUER  khóa App Store Connect API để notarize
 #   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD  khóa ký bản cập nhật (Q17)
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   token R2 chỉ ghi được bucket bản phát hành (kế hoạch 07b, Task 12)
 # Biến cấu hình (Variables, không bí mật):
 #   APPLE_TEAM_ID         Team ID mà app tự kiểm trong chữ ký của mình (kế hoạch 06, AI_TRANSLATOR_TEAM_ID)
 #   WINDOWS_SIGNER        tên chủ chứng thư ký mã Windows (kế hoạch 06, AI_TRANSLATOR_SIGNER)
 #   MT_WINDOWS_SIGN_CMD   lệnh ký của dịch vụ ký cloud (sign-windows.mjs; chọn ở T2)
+#   RELEASES_BUCKET       tên bucket R2 của bản phát hành; RELEASES_BASE_URL  URL công khai của nó, đúng URL gốc build sẵn
+#                         trong app (`updater/source.rs`, PRODUCTION_URL)
 name: Release
 
 on:
@@ -49,6 +54,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
+      - name: Tag khớp version trong tauri.conf.json (bản beta là X.Y.Z-beta.N)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: node scripts/release/release-ready.mjs --tag "$GITHUB_REF_NAME"
       - name: Rust theo rust-toolchain.toml
         run: rustup toolchain install
       - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
@@ -236,6 +244,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
+      - name: Tag khớp version trong tauri.conf.json (bản beta là X.Y.Z-beta.N)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: node scripts/release/release-ready.mjs --tag "$GITHUB_REF_NAME"
       - name: Rust theo rust-toolchain.toml
         run: rustup toolchain install
       - name: Vulkan SDK
@@ -439,3 +450,75 @@ jobs:
           name: release
           path: target/release-out/
           if-no-files-found: error
+
+  publish:
+    name: "Đăng bản lên R2 (secret, không biên dịch)"
+    needs: update-signatures
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-26
+    timeout-minutes: 20
+    environment: release
+    # Mọi tag dùng chung một nhóm: hai bản được duyệt gần nhau không đọc cùng latest.json cũ rồi ghi đè nhau (N-4 của review
+    # 07b lần 1). Không hủy lần đang chạy.
+    concurrency:
+      group: release-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      # Như mọi job có secret: tải vào thư mục trống ngoài checkout, chỉ nhận file đúng tên (07a QĐ29).
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release
+          path: ${{ runner.temp }}/in/release
+      - name: Nhận bộ cài và chữ ký của hai nền tảng
+        run: node scripts/release/take-artifact.mjs release "$RUNNER_TEMP/in/release" target/release-out
+      - name: Đủ cấu hình production (khóa công khai, URL, tên miền website)
+        env:
+          RELEASES_BASE_URL: ${{ vars.RELEASES_BASE_URL }}
+        run: node scripts/release/release-ready.mjs --base-url "$RELEASES_BASE_URL"
+      - name: wrangler của server/ (không secret, không chạy script cài đặt)
+        run: pnpm -C server install --frozen-lockfile --ignore-scripts
+      - name: Tải bộ cài, chữ ký, SHA-256 lên R2; rồi latest.json của kênh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RELEASES_BUCKET: ${{ vars.RELEASES_BUCKET }}
+          RELEASES_BASE_URL: ${{ vars.RELEASES_BASE_URL }}
+        run: |
+          node scripts/release/publish-release.mjs --tag "$GITHUB_REF_NAME" --dir target/release-out \
+            --bucket "$RELEASES_BUCKET" --base-url "$RELEASES_BASE_URL"
+
+  github-release:
+    name: "Bản nháp GitHub Release (không secret)"
+    needs: publish
+    runs-on: macos-26
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release
+          path: ${{ runner.temp }}/in/release
+      - name: Nhận bộ cài và chữ ký (chỉ file đúng tên, như job publish)
+        run: node scripts/release/take-artifact.mjs release "$RUNNER_TEMP/in/release" target/release-out
+      - name: Bản nháp với đủ file của bản (bản beta đánh dấu pre-release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pre=()
+          case "$GITHUB_REF_NAME" in *-beta.*) pre=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag "${pre[@]}" \
+            --title "AI Translator ${GITHUB_REF_NAME#v}" --notes "" target/release-out/*
