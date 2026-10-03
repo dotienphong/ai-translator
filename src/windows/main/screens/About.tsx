@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useApp, useT } from "../appStore";
+import { Licenses } from "./Licenses";
 import { DebugPanel } from "../DebugPanel";
 
 // Số lần bấm vào dòng phiên bản để mở bảng debug ẩn (§7).
 const DEBUG_CLICKS = 5;
 
 // Giới thiệu (§4.3): phiên bản, thư mục log (Đ10), câu miễn trừ nhãn hiệu (§10.1).
-// Kế hoạch 07 thêm danh sách giấy phép sinh từ `THIRD_PARTY_NOTICES`. Bấm 5 lần vào dòng phiên bản thì hiện bảng debug.
+// Danh sách giấy phép sinh từ `THIRD_PARTY_NOTICES` (kế hoạch 07a, `Licenses.tsx`). Bấm 5 lần vào dòng phiên bản thì hiện bảng debug.
 export function About() {
   const t = useT();
   const info = useApp((s) => s.info);
@@ -25,7 +26,7 @@ export function About() {
       </div>
       <div className="card">
         <h2>{t("about.licenses")}</h2>
-        <p className="hint">{t("about.licensesPending")}</p>
+        <Licenses />
       </div>
       <p className="hint">{t("about.trademark")}</p>
       {clicks >= DEBUG_CLICKS && <DebugPanel />}

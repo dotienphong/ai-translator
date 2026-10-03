@@ -34,3 +34,6 @@ __pycache__/
 # License server
 /server/node_modules/
 /server/.wrangler/
+
+# Danh sách giấy phép bên thứ ba, sinh lúc build bản phát hành (scripts/release/notices.mjs)
+/THIRD_PARTY_NOTICES.txt
