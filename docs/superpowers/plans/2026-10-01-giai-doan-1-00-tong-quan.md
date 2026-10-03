@@ -105,7 +105,7 @@ Chưa có:
 | `2026-10-01-giai-doan-1-05-license-server.md` | 05 License server | đã viết, đã duyệt; đã làm Task 1–18 (`35d758d` … `5664b1b`, sửa sau review đợt A–D, review cuối Approved ở `4dbd229`); còn Task 19–21 (người: triển khai staging, giao dịch thử, lên production) | — |
 | `2026-10-03-giai-doan-1-06a-ban-quyen-loi.md` (06a: token, hạn mức, client, trạng thái bản quyền, mua gói, tự kiểm chữ ký); `2026-10-03-giai-doan-1-06b-ban-quyen-giao-dien.md` (06b: giao diện, thử tay, Windows) | 06 Bản quyền trong app | đã viết, sửa theo ba lần review, đã thực thi trên Mac: 06a Task 1–10 và 06b Task 1–4 (code, kiểm tra chuẩn ở 06a Task 11 và 06b Task 5); còn 06b Task 6 (staging, người), Task 7 (Windows) | 01, 02, 03, 05 |
 | `2026-10-02-giai-doan-1-07a-ci-dong-goi.md` (07a: CI, build tiến trình phụ từ mã nguồn đã khóa, đóng gói, THIRD_PARTY_NOTICES, các bước ký chạy khi có secret); `…-07b-…` (cập nhật, kênh stable/beta, ký thật, phát hành) | 07 Đóng gói, ký số, cập nhật, CI (07a: CI, build, đóng gói; 07b: cập nhật, phát hành, ký thật, viết sau 06) | 07a đã sửa theo review lần 3 (`70b50cc`), đã thực thi trên Mac: Task 1–10 (`4deffe8`, `6e8d8d6`, `2d57bc0`, `4574c1c`, `a816756`, `6d02688`, `adc656f`, `265d57f`, `589a3ef`, `46b8521`), Task 11 kiểm tra chuẩn; còn 07a Task 13 (A3, S6 với `llama-server` tự build, máy rảnh), Task 14 (GitHub CI lần đầu, người), Task 15 (thử `.dmg`, người), Task 16 (Windows). 07b đã viết (`2026-10-03-giai-doan-1-07b-cap-nhat-phat-hanh.md`), chờ duyệt | 07a: 01 (dựng trên cây sau 06); 07b: 01–06 |
-| `2026-10-01-giai-doan-1-08-nghiem-thu.md` | 08 Nghiệm thu | sau khi 07 có bộ cài chạy được | 07 |
+| `2026-10-03-giai-doan-1-08a-nghiem-thu-cong-cu.md` (08a: script đo và tổng hợp: bảng đối chiếu, cổng A2/A3/A4, soak A5, kiểm mạng A7, báo cáo); `2026-10-03-giai-doan-1-08b-nghiem-thu-dieu-phoi.md` (08b: điều phối người, đo, báo cáo nghiệm thu) | 08 Nghiệm thu | sau khi 07 có bộ cài chạy được | 07 |
 
 Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chưa phải task. Danh sách dòng của bảng đối chiếu (mục 4) mà một kế hoạch nhận thì lọc bằng lệnh ở Task 2, Step 1.
 
@@ -429,7 +429,7 @@ Mỗi mục dưới đây mô tả phạm vi để viết kế hoạch con, chư
   - Chủ yếu do người thao tác: app họp, tai nghe, máy tham chiếu, proxy. Agent chạy script đo và tổng hợp.
   - Hai điều kiện A4 (C13) làm được ngay (Đ11).
 - **Nhận từ 06:** nghiệm thu dòng 308–310 với bản phát hành đã ký; mua thật một đơn trên production (P1).
-- **Trạng thái:** viết sau khi 07 có bộ cài chạy được.
+- **Trạng thái:** đã viết thành hai file 08a (Task 1–6, script trong `bench/phase1/acceptance/`, base `b2ea5b0`, mutation 36/36 bị giết) và 08b (Task 1–11, điều phối; phần lớn cần người, máy tham chiếu, Windows, tài khoản). Chờ review.
 
 ## 3. Thứ tự thực thi và phụ thuộc
 
