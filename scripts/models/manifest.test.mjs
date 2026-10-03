@@ -2,14 +2,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { REPO, signBody, testKey, verifyEnvelope } from "./lib.mjs";
 
 const script = (name) => resolve(REPO, "scripts/models", name);
 const run = (name, args) => spawnSync(process.execPath, [script(name), ...args], { encoding: "utf8" });
-const temp = () => mkdtempSync(join(tmpdir(), "mt-manifest-"));
+/** Thư mục tạm của một test, xóa khi test xong (`t.after` chạy cả khi test lỗi). */
+const temp = (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "mt-manifest-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  return dir;
+};
 
 test("bộ vector trong repo đúng như script sinh ra", () => {
   const fresh = execFileSync(process.execPath, [script("gen-manifest-vectors.mjs")], { encoding: "utf8" });
@@ -26,8 +32,8 @@ test("ký rồi kiểm được; sửa phần thân thì hỏng", async () => {
   await assert.rejects(verifyEnvelope({ ...envelope, kid: "test-m2" }, [k]), /Không có khóa công khai/);
 });
 
-test("build-manifest tính bytes và sha256 từ file thật", () => {
-  const dir = temp();
+test("build-manifest tính bytes và sha256 từ file thật", (t) => {
+  const dir = temp(t);
   writeFileSync(join(dir, "a.bin"), "worker");
   const config = join(dir, "config.json");
   writeFileSync(
@@ -63,8 +69,8 @@ test("cấu hình staging trong repo có đủ file cho hai gói", () => {
   assert.ok(config.files.some((f) => f.file === "NOTICE.txt"));
 });
 
-test("gen-manifest-key: chỉ ghi khóa riêng ra ngoài repo, quyền 0600, in khóa công khai", () => {
-  const dir = temp();
+test("gen-manifest-key: chỉ ghi khóa riêng ra ngoài repo, quyền 0600, in khóa công khai", (t) => {
+  const dir = temp(t);
   const keys = join(dir, "keys.json");
   writeFileSync(keys, JSON.stringify({ staging: [{ kid: "stg-2026-10-1", x: "x" }], production: [] }));
   const inside = run("gen-manifest-key.mjs", ["stg-2026-10-2", "--out", resolve(REPO, "k.jwk"), "--keys", keys]);
@@ -82,8 +88,8 @@ test("gen-manifest-key: chỉ ghi khóa riêng ra ngoài repo, quyền 0600, in 
   assert.equal(run("gen-manifest-key.mjs", ["stg-2026-10-3", "--out", join(dir, "c.jwk"), "--keys", keys]).status, 2, "không ghi đè");
 });
 
-test("gen-manifest-key --production: chỉ kid prod-, không trùng kid ở khối nào (kế hoạch 07b)", () => {
-  const dir = temp();
+test("gen-manifest-key --production: chỉ kid prod-, không trùng kid ở khối nào (kế hoạch 07b)", (t) => {
+  const dir = temp(t);
   const keys = join(dir, "keys.json");
   writeFileSync(keys, JSON.stringify({ staging: [{ kid: "prod-2026-11-1", x: "x" }], production: [] }));
   assert.equal(run("gen-manifest-key.mjs", ["stg-2026-11-1", "--production", "--out", join(dir, "a.jwk"), "--keys", keys]).status, 2);
@@ -97,8 +103,8 @@ test("gen-manifest-key --production: chỉ kid prod-, không trùng kid ở kh�
   assert.equal(statSync(join(dir, "c.jwk")).mode & 0o777, 0o600);
 });
 
-test("sign-manifest: chỉ ký bằng khóa có trong khối của môi trường, và tự kiểm lại", () => {
-  const dir = temp();
+test("sign-manifest: chỉ ký bằng khóa có trong khối của môi trường, và tự kiểm lại", (t) => {
+  const dir = temp(t);
   const keys = join(dir, "keys.json");
   writeFileSync(keys, JSON.stringify({ staging: [], production: [] }));
   const made = run("gen-manifest-key.mjs", ["stg-2026-10-5", "--out", join(dir, "k.jwk"), "--keys", keys]);
@@ -116,4 +122,20 @@ test("sign-manifest: chỉ ký bằng khóa có trong khối của môi trườn
   const envelope = JSON.parse(readFileSync(join(dir, "models.json"), "utf8"));
   assert.equal(envelope.kid, "stg-2026-10-5");
   assert.equal(envelope.format, "ai-translator-models");
+});
+
+// Chạy lại cả file này trong một tiến trình con với thư mục tạm riêng: sau khi chạy xong, không còn thư mục `mt-manifest-*`
+// nào (mỗi test tự xóa thư mục tạm của nó bằng `t.after`, chạy cả khi test lỗi). Tiến trình con bỏ qua test này.
+test("mọi thư mục tạm của file test này đều bị xóa sau khi chạy", { skip: process.env.MT_MANIFEST_TEST_CHILD === "1" }, () => {
+  const tmp = mkdtempSync(join(tmpdir(), "mt-manifest-check-"));
+  try {
+    // Bỏ NODE_TEST_CONTEXT của test runner cha, để tiến trình con chạy như một lần `node --test` bình thường.
+    const { NODE_TEST_CONTEXT: _, ...parent } = process.env;
+    const env = { ...parent, MT_MANIFEST_TEST_CHILD: "1", TMPDIR: tmp, TMP: tmp, TEMP: tmp };
+    const child = spawnSync(process.execPath, ["--test", fileURLToPath(import.meta.url)], { encoding: "utf8", env });
+    assert.equal(child.status, 0, child.stdout + child.stderr);
+    assert.deepEqual(readdirSync(tmp).filter((name) => name.startsWith("mt-manifest-")), []);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
