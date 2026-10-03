@@ -61,6 +61,9 @@ pub struct AppStatus {
     pub quota_warning: bool,
     /// Thời điểm hạn mức được reset (giây Unix), để báo khi hết hạn mức; `None` khi không giới hạn.
     pub quota_reset_at: Option<i64>,
+    /// Phiên bản app mới đã tải xong, sẽ cài ở lần thoát kế tiếp (§6.11; kế hoạch 07b). Khi app rảnh, cửa sổ chính và menu
+    /// khay mời khởi động lại để cập nhật. Đặt bởi `updater::publish`.
+    pub update_ready: Option<String>,
     /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
     /// tới sau sự kiện `app://status` mới hơn).
     pub rev: u64,
@@ -137,6 +140,7 @@ impl AppState {
                 pro: false,
                 quota_warning: false,
                 quota_reset_at: None,
+                update_ready: None,
                 rev: 0,
             }),
             launched_at_login,

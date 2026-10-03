@@ -337,6 +337,12 @@ pub fn end_overlay_resize<R: Runtime>(app: AppHandle<R>) {
     overlay::end_resize(&app);
 }
 
+/// Khởi động lại để cài bản cập nhật đã tải (kế hoạch 07b): chỉ khi app rảnh.
+#[tauri::command]
+pub fn restart_to_update<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    crate::updater::restart_to_update(&app, |app| app.request_restart())
+}
+
 /// Lệnh của cửa sổ `main`.
 pub const MAIN_COMMANDS: &[&str] = &[
     "get_settings",
@@ -388,6 +394,7 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "cancel_checkout",
     "open_checkout_page",
     "recover_license",
+    "restart_to_update",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -441,6 +448,7 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         cancel_checkout,
         open_checkout_page,
         recover_license,
+        restart_to_update,
         get_overlay_view,
         hide_overlay,
         begin_overlay_resize,

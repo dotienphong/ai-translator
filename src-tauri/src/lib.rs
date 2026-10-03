@@ -157,6 +157,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         models::service::Config::live(&handle)?,
     )));
     models::service::check_on_startup(&handle);
+    // Tự cập nhật (kế hoạch 07b): kiểm 1 phút sau khi mở rồi mỗi 24 giờ, tải nền; tắt khi bản build chưa có nguồn.
+    updater::install(&handle)?;
     app.manage(session::Session::new(Arc::new(session::LiveDeps::new(handle.clone()))));
     session::spawn_ticker(&handle);
 
@@ -208,9 +210,13 @@ pub(crate) fn handle_run_event<R: tauri::Runtime>(app: &AppHandle<R>, event: Run
 /// App thoát (`RunEvent::Exit`): lưới an toàn kill tiến trình phụ còn sống (Thoát ở menu khay đã tắt chúng), rồi lưu lịch
 /// sử của phiên còn chạy khi app thoát không qua menu khay: tắt máy, đăng xuất, cập nhật (Q3 của review 03). Tách riêng,
 /// nhận hàm kill, để test gọi được mà không kill tiến trình của test khác (N-A của review 03 lần 2).
+///
+/// Cuối cùng cài bản cập nhật đã tải (kế hoạch 07b). Phải sau hai việc trên: trên Windows plugin chạy bộ cài rồi thoát
+/// tiến trình ngay (`std::process::exit`), không quay lại đây; bộ cài thay file của app, nên tiến trình phụ phải tắt trước.
 pub(crate) fn on_exit<R: tauri::Runtime>(app: &AppHandle<R>, kill_all: fn()) {
     kill_all();
     session::save_on_exit(app);
+    updater::install_on_exit(app);
 }
 
 /// Windows: chỉ nạp DLL từ thư mục hệ thống và thư mục của app, không từ thư mục hiện hành hay `PATH` (chống DLL

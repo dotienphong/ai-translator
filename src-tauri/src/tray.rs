@@ -10,7 +10,7 @@ use crate::hotkeys::HotkeyAction;
 use crate::i18n::{self, Strings};
 use crate::state::{AppState, SessionStatus};
 use crate::tray_menu::{TrayItem, TrayModel, menu_lines};
-use crate::{actions, events, window};
+use crate::{actions, events, updater, window};
 
 pub const TRAY_ID: &str = "main";
 
@@ -23,6 +23,7 @@ fn model<R: Runtime>(app: &AppHandle<R>) -> (TrayModel, &'static Strings) {
         overlay_visible: status.overlay_visible,
         locked: settings.overlay.locked,
         hotkeys_failed: !status.hotkey_failures.is_empty(),
+        update_ready: status.update_ready.is_some(),
     };
     (model, i18n::strings(settings.ui_language))
 }
@@ -101,6 +102,11 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
         Some(TrayItem::Overlay) => actions::run_hotkey(app, HotkeyAction::ToggleOverlay),
         Some(TrayItem::Lock) => actions::run_hotkey(app, HotkeyAction::ToggleLock),
         Some(TrayItem::OpenMain) => window::show_main(app),
+        Some(TrayItem::RestartToUpdate) => {
+            if let Err(e) = updater::restart_to_update(app, |app| app.request_restart()) {
+                log::warn!("không khởi động lại để cập nhật được: {}", e.message);
+            }
+        }
         Some(TrayItem::Quit) => actions::quit(app),
         None => log::warn!("mục menu khay lạ: {id}"),
     }

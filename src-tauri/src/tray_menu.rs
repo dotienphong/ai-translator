@@ -10,16 +10,18 @@ pub enum TrayItem {
     Overlay,
     Lock,
     OpenMain,
+    RestartToUpdate,
     Quit,
 }
 
 impl TrayItem {
-    pub const ALL: [TrayItem; 6] = [
+    pub const ALL: [TrayItem; 7] = [
         Self::HotkeyWarning,
         Self::Session,
         Self::Overlay,
         Self::Lock,
         Self::OpenMain,
+        Self::RestartToUpdate,
         Self::Quit,
     ];
 
@@ -30,6 +32,7 @@ impl TrayItem {
             Self::Overlay => "overlay-visible",
             Self::Lock => "overlay-lock",
             Self::OpenMain => "open-main",
+            Self::RestartToUpdate => "restart-to-update",
             Self::Quit => "quit",
         }
     }
@@ -46,6 +49,8 @@ pub struct TrayModel {
     pub overlay_visible: bool,
     pub locked: bool,
     pub hotkeys_failed: bool,
+    /// Có bản cập nhật đã tải (kế hoạch 07b). Dòng mời chỉ hiện khi không dịch (§6.11: "app đang rảnh").
+    pub update_ready: bool,
 }
 
 /// Các dòng của menu theo thứ tự; `None` là đường kẻ ngang.
@@ -78,6 +83,9 @@ pub fn menu_lines(strings: &Strings, model: TrayModel) -> Vec<Option<(TrayItem, 
     lines.push(None);
     lines.push(Some((TrayItem::OpenMain, strings.tray_open_main)));
     lines.push(None);
+    if model.update_ready && !model.running {
+        lines.push(Some((TrayItem::RestartToUpdate, strings.tray_restart_to_update)));
+    }
     lines.push(Some((TrayItem::Quit, strings.tray_quit)));
     lines
 }
@@ -102,6 +110,7 @@ mod tests {
             overlay_visible: true,
             locked: false,
             hotkeys_failed: false,
+            update_ready: false,
         };
         assert_eq!(
             lines(&menu_lines(&i18n::VI, model)),
@@ -124,6 +133,7 @@ mod tests {
             overlay_visible: false,
             locked: true,
             hotkeys_failed: true,
+            update_ready: true,
         };
         assert_eq!(
             lines(&menu_lines(&i18n::EN, model)),
@@ -160,10 +170,37 @@ mod tests {
                 TrayItem::Overlay => 2,
                 TrayItem::Lock => 3,
                 TrayItem::OpenMain => 4,
-                TrayItem::Quit => 5,
+                TrayItem::RestartToUpdate => 5,
+                TrayItem::Quit => 6,
             };
             assert_eq!(position, index, "{item:?}");
         }
-        assert_eq!(TrayItem::ALL.len(), 6);
+        assert_eq!(TrayItem::ALL.len(), 7);
+    }
+
+    #[test]
+    fn restart_to_update_only_when_idle() {
+        let model = |running| TrayModel {
+            running,
+            overlay_visible: false,
+            locked: false,
+            hotkeys_failed: false,
+            update_ready: true,
+        };
+        assert_eq!(
+            lines(&menu_lines(&i18n::VI, model(false)))[4..],
+            [
+                ("open-main", "Mở cửa sổ chính"),
+                ("---", "---"),
+                ("restart-to-update", "Khởi động lại để cập nhật"),
+                ("quit", "Thoát")
+            ]
+        );
+        assert!(
+            !lines(&menu_lines(&i18n::EN, model(true)))
+                .iter()
+                .any(|(id, _)| *id == "restart-to-update"),
+            "đang dịch thì không mời"
+        );
     }
 }

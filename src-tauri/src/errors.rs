@@ -63,6 +63,12 @@ pub const FILE_TOO_LARGE: &str = "fileTooLarge";
 /// Lỗi bên trong app không thuộc loại nào ở trên (ví dụ một tác vụ nền dừng bất thường).
 pub const UNKNOWN: &str = "unknown";
 
+// Mã lỗi của tự cập nhật (kế hoạch 07b, spec §6.11).
+/// Khởi động lại để cập nhật khi chưa có bản nào tải xong.
+pub const UPDATE_NOT_READY: &str = "updateNotReady";
+/// Khởi động lại để cập nhật khi đang dịch hay đang tải model: dừng việc đó trước.
+pub const UPDATE_BUSY: &str = "updateBusy";
+
 // Mã lỗi của quản lý model (kế hoạch 04, spec §6.7, §9).
 /// Bản này chưa có URL manifest (bản dev chưa cấu hình staging; bản phát hành chờ kế hoạch 07).
 pub const MODELS_NO_SOURCE: &str = "modelsNoSource";

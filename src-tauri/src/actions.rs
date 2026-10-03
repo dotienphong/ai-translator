@@ -10,7 +10,7 @@ use crate::hotkeys::HotkeyAction;
 use crate::login_item::LoginItems;
 use crate::settings::{self, Settings, persist};
 use crate::state::{AppState, AppStatus, OverlayView};
-use crate::{events, hotkey_registry, login_item, overlay, session, system, tray, window};
+use crate::{events, hotkey_registry, login_item, overlay, session, system, tray, updater, window};
 
 /// Lưu cài đặt mới rồi báo mọi nơi cần biết.
 pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings) -> Settings {
@@ -26,6 +26,9 @@ pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings
     }
     if previous.ui_language != next.ui_language || previous.overlay.locked != next.overlay.locked {
         tray::refresh(app);
+    }
+    if previous.update_channel != next.update_channel {
+        updater::channel_changed(app);
     }
     next
 }
@@ -261,11 +264,18 @@ pub fn open_audio_permission_settings<R: Runtime>(app: &AppHandle<R>) -> Result<
     system::open_audio_permission_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
 }
 
+/// Phần đồng bộ của Thoát ở menu khay, trước khi dừng phiên và thoát: nhớ vị trí thanh phụ đề, và cho phép cài bản cập nhật
+/// đã tải vì người dùng chủ động thoát (khác tắt máy, đăng xuất; kế hoạch 07b). Tách riêng để test gọi được mà không thoát.
+pub(crate) fn prepare_quit<R: Runtime>(app: &AppHandle<R>) {
+    overlay::remember_position(app);
+    log::info!("thoát theo yêu cầu từ menu khay");
+    updater::user_quits(app);
+}
+
 /// Thoát hẳn, chỉ gọi từ menu khay (§4.3): nhớ vị trí thanh phụ đề, dừng phiên, tắt hai tiến trình phụ, rồi thoát.
 /// Dừng phiên có thể chờ tới 2 giây (câu đang dịch), nên việc đó chạy trên luồng riêng.
 pub fn quit<R: Runtime>(app: &AppHandle<R>) {
-    overlay::remember_position(app);
-    log::info!("thoát theo yêu cầu từ menu khay");
+    prepare_quit(app);
     let app = app.clone();
     std::thread::spawn(move || {
         session::shutdown(&app);

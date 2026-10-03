@@ -1595,3 +1595,131 @@ fn activating_a_full_key_returns_its_devices() {
     let bad = invoke(&main, "activate_license", json!({ "key": "abc" })).unwrap_err();
     assert!(bad.contains("licenseInvalidKey"), "{bad}");
 }
+
+// Tự cập nhật (kế hoạch 07b): lệnh khởi động lại, đổi kênh, cài ở lúc thoát.
+
+/// Việc của `kill_all` giả và của bản cập nhật giả, cùng một chỗ để so thứ tự.
+static UPDATE_LOG: std::sync::LazyLock<crate::updater::tests::Log> = std::sync::LazyLock::new(Default::default);
+
+fn kill_all_into_update_log() {
+    UPDATE_LOG.lock().unwrap().push("kill_all".into());
+}
+
+/// App giả có tự cập nhật với bản giả: manifest báo bản 0.2.0.
+fn app_with_update(log: crate::updater::tests::Log) -> tauri::App<tauri::test::MockRuntime> {
+    use crate::updater::tests::{Answer, NOW, fake_with_log};
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let clock = Arc::new(std::sync::atomic::AtomicU64::new(NOW));
+    let (updater, _log, _dir) = fake_with_log(vec![Answer::Newer("0.2.0")], clock, log);
+    app.manage(Arc::new(updater));
+    app
+}
+
+fn updater_of(app: &tauri::App<tauri::test::MockRuntime>) -> Arc<crate::updater::Updater> {
+    app.state::<Arc<crate::updater::Updater>>().inner().clone()
+}
+
+#[test]
+fn restart_to_update_needs_a_download_and_an_idle_app() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static RESTARTED: AtomicBool = AtomicBool::new(false);
+    fn fake_restart(_: &tauri::AppHandle<tauri::test::MockRuntime>) {
+        RESTARTED.store(true, Ordering::SeqCst);
+    }
+    let code = |r: Result<Value, String>| -> String {
+        serde_json::from_str::<Value>(&r.unwrap_err())
+            .map(|v| v["code"].as_str().unwrap_or("").to_string())
+            .unwrap_or_default()
+    };
+    // Bản build không có nguồn cập nhật: không có `Updater`.
+    let plain = mock_app();
+    assert_eq!(
+        code(invoke(&window(&plain, "main"), "restart_to_update", json!({}))),
+        errors::UPDATE_NOT_READY
+    );
+
+    let log = crate::updater::tests::Log::default();
+    let app = app_with_update(log.clone());
+    let main = window(&app, "main");
+    assert_eq!(
+        code(invoke(&main, "restart_to_update", json!({}))),
+        errors::UPDATE_NOT_READY
+    );
+    assert_eq!(
+        invoke(&main, "get_app_status", json!({})).unwrap()["updateReady"],
+        Value::Null
+    );
+
+    assert!(updater_of(&app).tick(crate::settings::UpdateChannel::Stable));
+    crate::updater::publish(app.handle());
+    assert_eq!(
+        invoke(&main, "get_app_status", json!({})).unwrap()["updateReady"],
+        "0.2.0"
+    );
+
+    session::start(app.handle()).unwrap();
+    assert_eq!(
+        code(invoke(&main, "restart_to_update", json!({}))),
+        errors::UPDATE_BUSY,
+        "đang dịch"
+    );
+    session::stop(app.handle());
+    assert!(!RESTARTED.load(Ordering::SeqCst));
+
+    crate::updater::restart_to_update(app.handle(), fake_restart).unwrap();
+    wait_until("gọi khởi động lại", || RESTARTED.load(Ordering::SeqCst));
+    // Sau đó `RunEvent::Exit` cài bản mới, và báo bộ cài Windows mở lại app.
+    crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, || {});
+    assert!(
+        log.lock()
+            .unwrap()
+            .contains(&"install 0.2.0 [bộ cài 0.2.0] restart=true".to_string()),
+        "{:?}",
+        log.lock().unwrap()
+    );
+}
+
+/// Thoát ở menu khay cũng cài bản đã tải, sau khi kill tiến trình phụ và lưu lịch sử; bộ cài Windows không mở lại app.
+/// `RunEvent::Exit` mà người dùng không yêu cầu (tắt máy, đăng xuất) thì không cài.
+#[test]
+fn a_user_quit_installs_the_download_after_killing_sidecars() {
+    let app = app_with_update(UPDATE_LOG.clone());
+    updater_of(&app).tick(crate::settings::UpdateChannel::Stable);
+    UPDATE_LOG.lock().unwrap().clear();
+    crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, kill_all_into_update_log);
+    assert_eq!(
+        *UPDATE_LOG.lock().unwrap(),
+        ["kill_all"],
+        "tắt máy, đăng xuất: không cài"
+    );
+    UPDATE_LOG.lock().unwrap().clear();
+    // Phần đồng bộ của Thoát ở menu khay (`actions::quit` gọi rồi mới dừng phiên và thoát).
+    crate::actions::prepare_quit(app.handle());
+    crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, kill_all_into_update_log);
+    assert_eq!(
+        *UPDATE_LOG.lock().unwrap(),
+        ["kill_all", "install 0.2.0 [bộ cài 0.2.0] restart=false"]
+    );
+}
+
+#[test]
+fn changing_the_update_channel_wakes_the_updater() {
+    let app = app_with_update(Default::default());
+    let updater = updater_of(&app);
+    let waiter = updater.clone();
+    let started = Instant::now();
+    let done = std::thread::spawn(move || waiter.wait(Duration::from_secs(30)));
+    std::thread::sleep(Duration::from_millis(50));
+    let main = window(&app, "main");
+    invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "updateChannel": "beta" } }),
+    )
+    .unwrap();
+    done.join().unwrap();
+    assert!(started.elapsed() < Duration::from_secs(10), "đổi kênh thì kiểm ngay");
+}
