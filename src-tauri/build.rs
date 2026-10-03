@@ -2,6 +2,9 @@ use sha2::{Digest, Sha256};
 use std::fmt::Write as _;
 use std::path::Path;
 
+#[path = "src/sidecar/bundled_name.rs"]
+mod bundled_name;
+
 fn main() {
     sidecar_hashes();
     // App manifest: lệnh của app cũng đi qua ACL (spec §10.2). Cửa sổ nào không được cấp
@@ -71,15 +74,18 @@ fn main() {
 /// SHA-256 của mọi file trong `binaries/` (tiến trình phụ và thư viện đi kèm), ghi vào `sidecar_hashes.rs` để app kiểm
 /// trước khi chạy (spec §10.2, "Thay tiến trình phụ, hoặc chèn thư viện giả"; Đ15 của kế hoạch 00). Thư mục chưa có thì
 /// danh sách rỗng, và app từ chối chạy tiến trình phụ nào.
+///
+/// Bản phát hành (`tauri build`, Tauri không ở chế độ dev) ghi tên file sau khi đóng gói, tức tên không kèm target
+/// triple (`bundled_name`), vì app tìm tiến trình phụ theo tên đó cạnh file chạy của nó. Bundler chép nguyên byte, nên
+/// SHA-256 không đổi; file nào cần ký thì phải ký trước khi build (kế hoạch 07a, `scripts/release/`).
 fn sidecar_hashes() {
     let dir = Path::new("binaries");
     // Tạo thư mục rỗng nếu chưa có: `rerun-if-changed` với đường dẫn không tồn tại làm cargo build lại crate này mỗi lần.
     std::fs::create_dir_all(dir).expect("tạo được src-tauri/binaries/");
     println!("cargo:rerun-if-changed=binaries");
-    println!(
-        "cargo:rustc-env=SIDECAR_TARGET={}",
-        std::env::var("TARGET").expect("cargo đặt TARGET")
-    );
+    let target = std::env::var("TARGET").expect("cargo đặt TARGET");
+    println!("cargo:rustc-env=SIDECAR_TARGET={target}");
+    let dev = tauri_build::is_dev();
     let mut entries: Vec<(String, String)> = Vec::new();
     if let Ok(read) = std::fs::read_dir(dir) {
         for entry in read.flatten() {
@@ -94,7 +100,8 @@ fn sidecar_hashes() {
                 let _ = write!(s, "{b:02x}");
                 s
             });
-            entries.push((entry.file_name().to_string_lossy().into_owned(), hex));
+            let name = entry.file_name().to_string_lossy().into_owned();
+            entries.push((bundled_name::bundled_name(&name, &target, dev), hex));
         }
     }
     entries.sort();

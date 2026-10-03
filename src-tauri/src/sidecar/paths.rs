@@ -1,7 +1,8 @@
 //! Chỗ đặt tiến trình phụ (spec §6.11) và model (§6.7).
 //!
 //! - Tiến trình phụ: bản dev ở `src-tauri/binaries/`, tên kèm target triple (`scripts/copy-sidecars.sh` chép vào); bản
-//!   phát hành nằm cạnh file chạy của app, tên không kèm triple (Tauri `externalBin` bỏ triple khi đóng gói, kế hoạch 07).
+//!   phát hành nằm cạnh file chạy của app, tên không kèm triple (Tauri `externalBin` bỏ triple khi đóng gói; bảng SHA-256
+//!   dùng tên đó, xem `bundled_name`).
 //! - Model: theo kho model của kế hoạch 04 (`app_local_data_dir/models`, `models::store`). Bản dev chưa tải gói nào
 //!   thì dùng file của Giai đoạn 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
 
@@ -119,6 +120,20 @@ mod tests {
         assert_eq!(win.asr_gpu, Path::new("/b/asr-worker-vulkan.exe"));
         assert_eq!(win.asr_cpu, Path::new("/b/asr-worker-cpu.exe"));
         assert_eq!(win.llama, Path::new("/b/llama-server.exe"));
+    }
+
+    /// Tên bản dev mà `build.rs` đổi thành tên bản phát hành (`bundled_name`) phải đúng là tên app tìm lúc chạy.
+    #[test]
+    fn bundled_names_match_the_release_file_names() {
+        for (target, windows) in [("aarch64-apple-darwin", false), ("x86_64-pc-windows-msvc", true)] {
+            for base in ["asr-worker", "asr-worker-vulkan", "asr-worker-cpu", "llama-server"] {
+                let dev = file_name(base, target, true, windows);
+                assert_eq!(
+                    crate::sidecar::bundled_name::bundled_name(&dev, target, false),
+                    file_name(base, target, false, windows)
+                );
+            }
+        }
     }
 
     #[test]
