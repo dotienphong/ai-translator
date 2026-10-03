@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
 import type { AppInfo, AppStatus, Ipc, Settings } from "../lib/ipc";
-import { canOpenScreens, createAppStore, levelToMeter, toUiError } from "./app";
+import { canOpenScreens, createAppStore, levelToMeter, toUiError, updateInvite } from "./app";
 
 const settings: Settings = {
   uiLanguage: "vi",
@@ -45,6 +45,7 @@ const status: AppStatus = {
   pro: true,
   quotaWarning: false,
   quotaResetAt: null,
+  updateReady: null,
   rev: 1,
 };
 const info: AppInfo = {
@@ -59,11 +60,13 @@ const info: AppInfo = {
 let failToggle: "model" | "acl" | null = null;
 let failLoginItems = false;
 let failOnboarding = false;
+let failRestart = false;
 
 function setup() {
   failToggle = null;
   failLoginItems = false;
   failOnboarding = false;
+  failRestart = false;
   const fake = fakeIpc({
     get_settings: () => settings,
     get_app_status: () =>
@@ -91,6 +94,10 @@ function setup() {
     get_debug_sessions: () => [],
     open_audio_permission_settings: () => null,
     set_overlay_locked: ({ locked }) => ({ ...settings, overlay: { ...settings.overlay, locked } }),
+    restart_to_update: () => {
+      if (failRestart) throw { code: "updateBusy", field: null, message: "…" };
+      return null;
+    },
     open_login_items_settings: () => {
       if (failLoginItems) throw { code: "openFailed", field: null, message: "…" };
       return null;
@@ -451,5 +458,32 @@ describe("app store", () => {
     const before = fake.calls.length;
     await store.getState().setSourceLanguage("ja", false);
     expect(fake.calls.length).toBe(before);
+  });
+
+  it("mời cập nhật khi đã tải xong và app rảnh; Để sau ẩn đúng bản đó", () => {
+    const ready = { ...status, updateReady: "0.2.0" };
+    expect(updateInvite({ status, updateDismissed: null })).toBeNull();
+    expect(updateInvite({ status: null, updateDismissed: null })).toBeNull();
+    expect(updateInvite({ status: ready, updateDismissed: null })).toBe("0.2.0");
+    expect(updateInvite({ status: { ...ready, session: "error" }, updateDismissed: null })).toBe("0.2.0");
+    expect(updateInvite({ status: { ...ready, session: "running" }, updateDismissed: null })).toBeNull();
+    expect(updateInvite({ status: { ...ready, session: "starting" }, updateDismissed: null })).toBeNull();
+    expect(updateInvite({ status: ready, updateDismissed: "0.2.0" })).toBeNull();
+    expect(updateInvite({ status: { ...ready, updateReady: "0.2.1" }, updateDismissed: "0.2.0" })).toBe("0.2.1");
+  });
+
+  it("restartToUpdate gọi lệnh; lỗi hiện ở thanh báo lỗi; dismissUpdate nhớ bản đang mời", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    fake.emit("app://status", { ...status, updateReady: "0.2.0", rev: 5 });
+    await store.getState().restartToUpdate();
+    expect(fake.calls.at(-1)).toEqual({ cmd: "restart_to_update", args: undefined });
+    expect(store.getState().error).toBeNull();
+    failRestart = true;
+    await store.getState().restartToUpdate();
+    expect(store.getState().error?.code).toBe("updateBusy");
+    store.getState().dismissUpdate();
+    expect(store.getState().updateDismissed).toBe("0.2.0");
+    expect(updateInvite(store.getState())).toBeNull();
   });
 });

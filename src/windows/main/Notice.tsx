@@ -1,11 +1,12 @@
 import { errorKey } from "../../i18n";
 import { licenseNotice } from "../../lib/license";
-import { canOpenScreens } from "../../store/app";
+import { canOpenScreens, updateInvite } from "../../store/app";
 import { useApp, useT } from "./appStore";
 import { useLicense } from "./licenseStore";
 
 // Thông báo trong app (Q13 của kế hoạch 00: MVP không dùng thông báo hệ thống): lời nhắc từ phía Rust
-// (vừa bỏ qua ⌘Q; mục Login Items đang bị tắt), lỗi của lệnh gần nhất, và phím tắt không đăng ký được.
+// (vừa bỏ qua ⌘Q; mục Login Items đang bị tắt), lời mời khởi động lại để cập nhật (kế hoạch 07b), lỗi của lệnh gần
+// nhất, và phím tắt không đăng ký được.
 // Đặt ở cả khung cửa sổ chính (`Shell`) lẫn các bước lần đầu mở (`Onboarding`). Trong các bước lần đầu
 // mở thì không có nút "Mở cài đặt" (`canOpenScreens`), vì chưa mở được màn hình Cài đặt.
 // Hai vùng live (`status` cho lời nhắc, `alert` cho lỗi) luôn có trong DOM, nội dung mới chèn vào sau, để trình đọc
@@ -25,9 +26,21 @@ export function Notice() {
   // hạn (7 ngày), bị thu hồi.
   const license = useLicense((s) => licenseNotice(s.view));
   const renewable = license === "license.notice.expired" || license === "license.notice.renewSoon";
+  const update = useApp(updateInvite);
+  const restartToUpdate = useApp((s) => s.restartToUpdate);
+  const dismissUpdate = useApp((s) => s.dismissUpdate);
   return (
     <>
       <div role="status">
+        {update && (
+          <div className="notice">
+            <span>{t("notice.updateReady", { version: update })}</span>
+            <button className="primary" onClick={() => void restartToUpdate()}>
+              {t("notice.restartToUpdate")}
+            </button>
+            <button onClick={dismissUpdate}>{t("notice.updateLater")}</button>
+          </div>
+        )}
         {notice?.kind === "quitFromTray" && (
           <div className="notice">
             <span>{t("notice.quitFromTray")}</span>

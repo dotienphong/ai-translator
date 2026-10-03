@@ -104,6 +104,8 @@ export interface AppStatus {
   quotaWarning: boolean;
   // Thời điểm hạn mức được reset (giây Unix); `null` khi không giới hạn.
   quotaResetAt: number | null;
+  // Phiên bản app mới đã tải xong, cài ở lần thoát kế tiếp (kế hoạch 07b); `null` khi chưa có.
+  updateReady: string | null;
   // Tăng mỗi lần trạng thái đổi: trạng thái có `rev` nhỏ hơn trạng thái đang có là cũ, bỏ qua.
   rev: number;
 }
@@ -367,6 +369,7 @@ export interface Commands {
   cancel_checkout: { args: undefined; result: null };
   open_checkout_page: { args: undefined; result: null };
   recover_license: { args: { email: string }; result: null };
+  restart_to_update: { args: undefined; result: null };
   hide_overlay: { args: undefined; result: null };
   begin_overlay_resize: { args: { edge: ResizeEdge }; result: null };
   overlay_resize_move: { args: undefined; result: null };

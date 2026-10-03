@@ -291,6 +291,9 @@ export const en = {
   "notice.quitFromTray": "AI Translator keeps running in the menu bar. To quit, choose Quit from the menu bar icon.",
   "notice.loginItemsApproval": "AI Translator is turned off in System Settings › General › Login Items & Extensions (Login Items on macOS 14), so it will not open when you log in. Turn it on there.",
   "notice.openLoginItems": "Open Login Items",
+  "notice.updateReady": "Version {version} has been downloaded and will be installed when you quit. Restart now to update?",
+  "notice.restartToUpdate": "Restart",
+  "notice.updateLater": "Later",
 
   "plan.free": "Free",
   "plan.pro": "Professional",
@@ -420,6 +423,8 @@ export const en = {
   "error.licenseConsentRequired": "Please agree to the processing of your email to continue.",
   "error.licenseEmailInvalid": "This email address is not valid.",
   "error.unknown": "Something went wrong.",
+  "error.updateNotReady": "No update has finished downloading yet.",
+  "error.updateBusy": "Translation or a model download is running. Stop it, then restart to update.",
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -291,6 +291,9 @@ export const vi: Record<MessageKey, string> = {
   "notice.quitFromTray": "AI Translator vẫn chạy ở menu bar. Muốn thoát, chọn Thoát ở biểu tượng trên menu bar.",
   "notice.loginItemsApproval": "AI Translator đang bị tắt ở System Settings › General › Login Items & Extensions (macOS 14: Login Items), nên sẽ không tự mở khi đăng nhập. Hãy bật lại ở đó.",
   "notice.openLoginItems": "Mở Login Items",
+  "notice.updateReady": "Bản {version} đã tải xong và sẽ được cài khi bạn thoát app. Khởi động lại ngay để cập nhật?",
+  "notice.restartToUpdate": "Khởi động lại",
+  "notice.updateLater": "Để sau",
 
   "plan.free": "Free",
   "plan.pro": "Professional",
@@ -420,4 +423,6 @@ export const vi: Record<MessageKey, string> = {
   "error.licenseConsentRequired": "Vui lòng đồng ý cho xử lý email để tiếp tục.",
   "error.licenseEmailInvalid": "Địa chỉ email không hợp lệ.",
   "error.unknown": "Có lỗi xảy ra.",
+  "error.updateNotReady": "Chưa có bản cập nhật nào tải xong.",
+  "error.updateBusy": "Đang dịch hay đang tải model. Dừng việc đó rồi khởi động lại để cập nhật.",
 };

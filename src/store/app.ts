@@ -53,6 +53,8 @@ export interface AppStoreState {
   debugSessions: DebugSession[] | null;
   // Vừa xóa xong toàn bộ dữ liệu (Cài đặt › Quyền riêng tư), để báo lại.
   dataCleared: boolean;
+  // Phiên bản cập nhật mà người dùng đã bấm "Để sau" (chỉ trong lần chạy này; menu khay vẫn còn mục khởi động lại).
+  updateDismissed: string | null;
   init(): Promise<() => void>;
   navigate(screen: Screen, settingsGroup?: SettingsGroup | null): void;
   setOnboardingStep(step: number): void;
@@ -74,12 +76,24 @@ export interface AppStoreState {
   loadDebugSessions(): Promise<void>;
   dismissError(): void;
   dismissNotice(): void;
+  // Khởi động lại để cài bản cập nhật đã tải (kế hoạch 07b). Lỗi (đang dịch, đang tải model) hiện ở thanh báo lỗi.
+  restartToUpdate(): Promise<void>;
+  dismissUpdate(): void;
 }
 
 // Đã xong các bước lần đầu mở chưa. Chưa xong thì `App` chỉ hiện `Onboarding`, nên đổi `screen` không có
 // tác dụng gì; nút đưa tới một màn hình (ví dụ "Mở cài đặt" ở thanh báo phím tắt lỗi) phải ẩn đi.
 export function canOpenScreens(state: Pick<AppStoreState, "settings">): boolean {
   return state.settings?.onboardingDone === true;
+}
+
+// Phiên bản để mời khởi động lại cập nhật (§6.11, Q13): có bản đã tải, app rảnh (không đang bắt đầu hay đang dịch), và
+// người dùng chưa bấm "Để sau" cho đúng bản đó. Đang dịch thì không mời; dừng dịch thì lời mời hiện lại.
+export function updateInvite(state: Pick<AppStoreState, "status" | "updateDismissed">): string | null {
+  const status = state.status;
+  if (!status?.updateReady) return null;
+  if (status.session === "starting" || status.session === "running") return null;
+  return state.updateDismissed === status.updateReady ? null : status.updateReady;
 }
 
 // Lỗi từ `invoke`: `CommandError` của app, hoặc chuỗi lỗi của Tauri (sai tham số, bị ACL chặn).
@@ -135,6 +149,7 @@ export function createAppStore(ipc: Ipc) {
       audioSources: null,
       debugSessions: null,
       dataCleared: false,
+      updateDismissed: null,
 
       // Lỗi ở bất kỳ bước nào thì gỡ các listener đã đăng ký rồi ném lỗi tiếp cho bên gọi (`main.tsx` hiện câu báo).
       async init() {
@@ -315,6 +330,17 @@ export function createAppStore(ipc: Ipc) {
 
       dismissNotice() {
         set({ notice: null });
+      },
+
+      async restartToUpdate() {
+        await run(
+          () => ipc.invoke("restart_to_update"),
+          () => {},
+        );
+      },
+
+      dismissUpdate() {
+        set({ updateDismissed: get().status?.updateReady ?? null });
       },
     };
   });
