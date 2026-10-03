@@ -795,8 +795,10 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
   - **macOS:** Developer ID Application, bật hardened runtime và notarize.
 - **macOS không chạy sandbox**, vì phân phối trực tiếp. App cần process tap, và cần bật `macOSPrivateApi` để làm cửa sổ trong suốt. Vì vậy hiện chưa thể lên Mac App Store, khớp với quyết định D10.
 - **Tự cập nhật:** dùng `tauri-plugin-updater`.
-  - File manifest cập nhật đặt trên CDN, ký bằng khóa cập nhật.
-  - Kiểm tra lúc khởi động và mỗi 24 giờ; cài bản mới ở lần thoát app kế tiếp. App thường nằm ở khay nhiều ngày nên ít khi thoát. Vì vậy khi có bản mới và app đang rảnh (không dịch), app hiện thông báo mời khởi động lại để cập nhật.
+  - Bộ cài của mỗi bản ký bằng khóa cập nhật, chữ ký gắn phiên bản (`requireSignedVersion`). App kiểm chữ ký khi tải, trước khi ghi file, và so lại SHA-256 của file ngay trước khi cài.
+  - File manifest cập nhật (`latest.json` của từng kênh) đặt trên CDN và không ký, theo mô hình của Tauri. App chỉ nhận bản mới hơn bản đang chạy, và kênh stable không nhận bản beta.
+  - **Rủi ro còn lại, chấp nhận ở MVP:** ai ghi được CDN có thể giữ manifest cũ (đóng băng cập nhật) hay đẩy một bản mới hơn đã bị rút, nhưng không cài được bản không do khóa cập nhật ký. Giảm bằng: chỉ job phát hành dưới environment `release` (có người duyệt) có token ghi CDN, và token chỉ ghi được bucket bản phát hành.
+  - Kiểm tra lúc khởi động và mỗi 24 giờ. Cài bản mới ở lần kế tiếp người dùng chủ động thoát app (Thoát ở menu khay); không cài khi máy tắt, khởi động lại hay đăng xuất. App thường nằm ở khay nhiều ngày nên ít khi thoát. Vì vậy khi có bản mới và app đang rảnh (không dịch, không tải model), app hiện lời mời khởi động lại để cập nhật.
   - Có hai kênh: stable và beta, chọn trong Cài đặt (§6.9).
 - **File đi kèm:** các tiến trình phụ đặt ở `src-tauri/binaries/`, tên kèm target triple:
   - `asr-worker` trên macOS; `asr-worker-vulkan` và `asr-worker-cpu` trên Windows (§6.4).
