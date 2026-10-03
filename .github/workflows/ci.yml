@@ -1,0 +1,123 @@
+# Kiểm tra chuẩn (mục 6.2 của kế hoạch 00) trên macOS arm64 và Windows x64, cho mỗi lần push lên main và mỗi pull request
+# (kế hoạch 07a; spec §6.12, §10.2, §11). Không dùng secret nào. Mọi action khóa theo SHA commit, ghi bản ở chú thích.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  macos:
+    name: macOS arm64
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Rust theo rust-toolchain.toml
+        run: |
+          rustup toolchain install
+          rustup target add x86_64-pc-windows-msvc
+          rustc --version
+      - name: protoc
+        run: node scripts/release/install-tools.mjs protoc --dest "$RUNNER_TEMP/protoc"
+      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: cargo-deny@0.20.2,cargo-audit@0.22.2,cargo-about@0.9.2
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: Giao diện (build, vitest)
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          pnpm test
+      - name: Script phát hành và script manifest model (node --test)
+        run: node --test "scripts/release/*.test.mjs" scripts/models/manifest.test.mjs
+      - name: cargo clippy
+        run: |
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+          cargo clippy --locked -p asr-worker --features metal,shared-encode --all-targets -- -D warnings
+      - name: cargo test
+        run: |
+          cargo test --locked --workspace
+          cargo test --locked -p asr-worker --features shared-encode
+      - name: Test bản quyền ở bản release (không có phần chỉ dành cho bản debug)
+        run: |
+          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1
+      - name: asr-worker bản phát hành (Metal, shared-encode)
+        run: cargo build --release --locked -p asr-worker --features metal,shared-encode
+      - name: Code Windows biên dịch được (clippy cho target Windows)
+        run: ./scripts/check-windows.sh --locked
+      - name: third_party đúng bằng crate gốc cộng bản vá
+        run: scripts/release/verify-third-party.sh
+      - name: Giấy phép (THIRD_PARTY_NOTICES, allow-list của deny.toml)
+        run: |
+          cargo fetch --locked
+          node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --no-llama
+      - name: Cấu hình đóng gói hợp lệ
+        run: scripts/release/check-release-config.sh
+      - name: cargo deny, cargo audit
+        run: |
+          cargo deny check
+          cargo audit
+      - name: pnpm audit
+        run: pnpm audit --audit-level high
+      - name: License server
+        run: |
+          pnpm -C server install --frozen-lockfile
+          pnpm -C server check
+          pnpm -C server audit --audit-level high
+
+  windows:
+    name: Windows x64
+    runs-on: windows-2025
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Rust theo rust-toolchain.toml
+        run: |
+          rustup toolchain install
+          rustc --version
+      - name: protoc
+        run: node scripts/release/install-tools.mjs protoc --dest "$RUNNER_TEMP/protoc"
+      - name: Giao diện (build để có dist/ cho src-tauri)
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Script phát hành (node --test)
+        run: node --test "scripts/release/*.test.mjs"
+      - name: cargo clippy
+        run: |
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+          cargo clippy --locked -p asr-worker --features shared-encode --all-targets -- -D warnings
+      - name: cargo test
+        run: |
+          cargo test --locked --workspace
+          cargo test --locked -p asr-worker --features shared-encode

@@ -1,0 +1,31 @@
+# Dependabot (spec §10.2): báo lỗ hổng và đề xuất bản mới. PR của Dependabot chỉ là đề xuất; nâng phiên bản vẫn theo
+# §6.12 (kiểm tương thích, build lại, chạy hết test). `cooldown` giữ luật tuổi phát hành: chỉ đề xuất bản đã ra ít nhất 1 ngày.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /server
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
