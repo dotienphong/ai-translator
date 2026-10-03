@@ -118,14 +118,17 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     let needs_save = loaded.needs_save();
+    // File cài đặt đã có từ trước: không phải lần đầu chạy app, nên thiếu bộ đếm Free là mất bản ghi (§6.8).
+    let had_settings = loaded.meta.version > 0;
     let mut settings = loaded.settings;
     let launch_changed = actions::sync_launch_at_login(&handle, &mut settings);
     if needs_save || launch_changed {
         persist::save(&handle, &settings, &loaded.meta)?;
     }
     app.manage(AppState::new(settings.clone(), loaded.meta, launched_at_login));
-    // Điểm kiểm tra Pro duy nhất (Đ6): bản debug luôn Pro, bản release là Free; kế hoạch 06 cài trạng thái bản quyền.
-    pro::install_default_gate(&handle);
+    // Điểm kiểm tra Pro duy nhất (Đ6), theo trạng thái bản quyền thật (kế hoạch 06); bản debug không đặt
+    // `AI_TRANSLATOR_DEV_FREE=1` thì Pro không giới hạn.
+    license::app::install(&handle, had_settings);
     // DB mã hóa của lịch sử và từ điển: chưa mở, chưa đọc kho khóa ở đây (db.rs).
     db::install(&handle)?;
     app.manage(glossary::ActiveGlossary::default());

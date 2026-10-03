@@ -57,6 +57,10 @@ pub struct AppStatus {
     pub waiting_for_app: bool,
     /// Đang có gói trả phí còn hạn (spec §2 "Pro"): giao diện mở hay khóa tính năng Pro. Đặt bởi `pro::refresh`.
     pub pro: bool,
+    /// Hạn mức còn từ 5 phút trở xuống (§4.2 bước 2): thanh phụ đề và cửa sổ chính nhắc. Đặt bởi `license::app::refresh`.
+    pub quota_warning: bool,
+    /// Thời điểm hạn mức được reset (giây Unix), để báo khi hết hạn mức; `None` khi không giới hạn.
+    pub quota_reset_at: Option<i64>,
     /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
     /// tới sau sự kiện `app://status` mới hơn).
     pub rev: u64,
@@ -131,6 +135,8 @@ impl AppState {
                 permission_suspected: false,
                 waiting_for_app: false,
                 pro: false,
+                quota_warning: false,
+                quota_reset_at: None,
                 rev: 0,
             }),
             launched_at_login,

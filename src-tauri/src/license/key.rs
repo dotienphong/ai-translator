@@ -51,6 +51,14 @@ pub fn display(key: &str) -> String {
         .join("-")
 }
 
+/// Dạng che để hiện trên giao diện: mọi nhóm trừ nhóm cuối thay bằng `••••`.
+pub fn masked(key: &str) -> String {
+    let groups = display(key);
+    let mut parts: Vec<&str> = groups.split('-').collect();
+    let last = parts.pop().unwrap_or_default();
+    parts.iter().map(|_| "••••").chain([last]).collect::<Vec<_>>().join("-")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -94,6 +102,10 @@ mod tests {
         assert_eq!(
             display("0123456789ABCDEFGHJKMNPQRST5"),
             "0123-4567-89AB-CDEF-GHJK-MNPQ-RST5"
+        );
+        assert_eq!(
+            masked("0123456789ABCDEFGHJKMNPQRST5"),
+            "••••-••••-••••-••••-••••-••••-RST5"
         );
         assert_eq!(normalize(&"0".repeat(65)), None);
         assert_eq!(normalize("0123-4567-89AB-CDEF-GHJK-MNPQ-RSTÀ"), None);

@@ -1360,3 +1360,101 @@ fn the_audio_permission_prompt_is_localized() {
         );
     }
 }
+
+/// Bản quyền cho app giả: server và kho khóa giả của `license::manager::tests`, giờ thật.
+fn license_for(
+    app: &tauri::App<tauri::test::MockRuntime>,
+) -> (
+    Arc<crate::license::manager::tests::FakeApi>,
+    Arc<crate::license::manager::License>,
+) {
+    use crate::license::manager::tests::{DEVICE, FakeApi, test_keys, vn};
+    use crate::license::manager::{License, Machine};
+    use crate::license::store::tests::FakeVault;
+    let api = Arc::new(FakeApi::default());
+    let vault = Arc::new(FakeVault::default());
+    let license = License::new(
+        Box::new(api.clone()),
+        Box::new(vault),
+        test_keys(),
+        Machine {
+            id_hash: DEVICE.into(),
+            label: None,
+        },
+        vn(),
+        true,
+        false,
+        false,
+        crate::license::app::now(),
+    );
+    license.set_genuine(true);
+    crate::license::app::install_with(app.handle(), license);
+    let installed = app.state::<crate::license::app::Licensing>().0.clone();
+    (api, installed)
+}
+
+/// Hạn mức (§6.8, "Khi chạm hạn mức"): đang dịch mà chạm hạn mức thì phiên dừng với `quotaExhausted`; hạn mức còn 0 thì
+/// không bắt đầu được phiên mới.
+#[test]
+fn a_used_up_quota_stops_the_session_and_refuses_the_next_one() {
+    use crate::license::quota::FREE_DAILY_MS;
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let _main = window(&app, "main");
+    let (_, license) = license_for(&app);
+    let now = crate::license::app::now();
+    assert!(license.add_usage(FREE_DAILY_MS - 1, now).is_continue());
+    session::start(app.handle()).unwrap();
+    let state = app.state::<AppState>();
+    wait_until("phiên dừng vì hết hạn mức", || {
+        state.status().session == SessionStatus::Error
+    });
+    assert_eq!(state.status().session_error.as_deref(), Some(errors::QUOTA_EXHAUSTED));
+    let refused = session::start(app.handle()).unwrap_err();
+    assert_eq!(refused.code, errors::QUOTA_EXHAUSTED);
+    assert!(state.status().quota_reset_at.is_some(), "báo thời điểm reset");
+    // Phiên "Nghe thử" là phiên thật (N13 của review 03): cũng trừ hạn mức và cũng bị chặn (QĐ của 06).
+    let refused = session::start_with(app.handle(), StartOptions::LISTEN_TEST).unwrap_err();
+    assert_eq!(refused.code, errors::QUOTA_EXHAUSTED);
+}
+
+/// Còn từ 5 phút trở xuống: `AppStatus.quota_warning` bật, thanh phụ đề và cửa sổ chính nhắc (§4.2 bước 2).
+#[test]
+fn the_five_minute_warning_reaches_the_status() {
+    use crate::license::quota::FREE_DAILY_MS;
+    let app = mock_app();
+    let (_, license) = license_for(&app);
+    let state = app.state::<AppState>();
+    assert!(!state.status().quota_warning);
+    let _ = license.add_usage(FREE_DAILY_MS - 4 * 60_000, crate::license::app::now());
+    crate::license::app::refresh(app.handle());
+    assert!(state.status().quota_warning);
+}
+
+/// Sự kiện `license://changed` không mang key đầy đủ hay token (01 QĐ6: sự kiện không phải ranh giới quyền).
+#[test]
+fn license_events_never_carry_the_key_or_the_token() {
+    use crate::license::manager::tests::{DEVICE, KEY, granted, sign};
+    let app = mock_app();
+    let views = record(&app, crate::license::app::LICENSE_CHANGED);
+    let (api, license) = license_for(&app);
+    let now = crate::license::app::now();
+    let claims = json!({
+        "kid": "test-1", "license_id": "lic", "activation_id": "act", "activation_created_at": now,
+        "device_id_hash": DEVICE, "plan": "pro_x2", "expires_at": now + 30 * 86_400, "cycle_anchor": now,
+        "quota_minutes_per_cycle": 6000, "quota_epoch": 0, "quota_fresh": true,
+        "issued_at": now, "refresh_before": now + 14 * 86_400,
+    });
+    api.replies.lock().unwrap().push_back(granted(&claims, true));
+    license.activate(KEY, now).unwrap();
+    crate::license::app::refresh(app.handle());
+    let last = views.lock().unwrap().last().cloned().unwrap();
+    assert_eq!(last["plan"], "pro_x2");
+    let text = last.to_string();
+    assert!(text.contains("••••-••••-••••-••••-••••-••••-RST5"), "{text}");
+    assert!(!text.contains(&sign(&claims)[..20]), "không có token");
+    assert!(!text.contains("0123-4567"), "không có key đầy đủ");
+    assert!(app.state::<AppState>().status().pro, "gate Pro theo bản quyền thật");
+}

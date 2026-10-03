@@ -136,7 +136,8 @@ pub struct LicenseView {
     pub plan: String,
     /// Gói ghi trong token đã lưu (kể cả khi đã hết hạn), để hiện "Professional đã hết hạn".
     pub licensed_plan: Option<Plan>,
-    /// Key dạng hiển thị.
+    /// Key đã che, chỉ còn 4 ký tự cuối (`••••-…-RST5`): sự kiện không phải ranh giới quyền, nên không gửi key đầy đủ
+    /// (01 QĐ6). Key đầy đủ nằm trong email mua hàng.
     pub key: Option<String>,
     pub expires_at: Option<i64>,
     pub refresh_before: Option<i64>,
@@ -763,7 +764,7 @@ impl License {
                 (None, _) => "free".into(),
             },
             licensed_plan: stored.map(|c| c.plan),
-            key: inner.record.as_ref().map(|r| key::display(&r.key)),
+            key: inner.record.as_ref().map(|r| key::masked(&r.key)),
             expires_at: stored.map(|c| c.expires_at),
             refresh_before: stored.map(|c| c.refresh_before),
             validated_at: inner.record.as_ref().map(|r| r.validated_at),
@@ -1064,7 +1065,7 @@ pub mod tests {
         let v = l.view(T0);
         assert_eq!(
             (v.standing, v.plan.as_str(), v.key.as_deref()),
-            (Standing::Active, "pro", Some(KEY))
+            (Standing::Active, "pro", Some("••••-••••-••••-••••-••••-••••-RST5"))
         );
         assert_eq!(
             (v.quota.limit_ms, v.quota.remaining_ms, v.quota.lost),

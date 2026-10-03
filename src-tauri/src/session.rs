@@ -17,13 +17,14 @@
 //! Phần bên ngoài (tiến trình phụ, nguồn âm thanh, VAD) đi qua `SessionDeps`: app dùng `LiveDeps`, test dùng bản giả
 //! (`test_support.rs`), nên luồng bắt đầu, hủy, dừng, lỗi, thoát test được bằng `MockRuntime`.
 
+use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use pipeline::config::PipelineConfig;
-use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, VadFactory};
+use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, Usage, VadFactory};
 use pipeline::glossary::SharedGlossary;
 use pipeline::prompt::Lang as MtLang;
 use pipeline::subtitle::{Delta, Subtitle};
@@ -276,7 +277,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         }
         Ok(state.status())
     };
-    if let Err(e) = session.deps.check_quota() {
+    if let Err(e) = crate::license::app::check_start(app).and_then(|()| session.deps.check_quota()) {
         return refuse(e);
     }
     let mut attempt = 0;
@@ -669,6 +670,11 @@ impl<R: Runtime> EventSink for TauriSink<R> {
             .state::<AppState>()
             .update_status(|s| s.indicators = indicators.clone());
         changed(&self.app);
+    }
+
+    /// Đếm phút cho hạn mức (§6.8): `Break` khi chạm hạn mức, engine dừng phiên với `quotaExhausted`.
+    fn usage(&self, usage: &Usage) -> ControlFlow<()> {
+        crate::license::app::add_usage(&self.app, usage.speech_ms)
     }
 
     fn fatal(&self, kind: Fatal, reason: &str) {

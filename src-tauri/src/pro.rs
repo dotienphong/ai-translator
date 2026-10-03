@@ -71,6 +71,27 @@ pub fn default_gate() -> Option<Box<dyn ProGate>> {
     }
 }
 
+/// Bản debug chạy Pro không giới hạn (`DevGate` là Pro): không đặt `AI_TRANSLATOR_DEV_FREE=1`. Bản phát hành luôn `false`.
+/// Kế hoạch 06 dùng để chọn gate và bỏ hạn mức ở bản debug (`license::app::install`).
+pub fn dev_override() -> bool {
+    #[cfg(debug_assertions)]
+    {
+        DevGate::from_env().is_pro()
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        false
+    }
+}
+
+/// Cài `DevGate` Pro (chỉ bản debug, khi [`dev_override`]). Bản phát hành không làm gì: không có `DevGate`.
+pub fn install_dev_gate<R: Runtime>(app: &AppHandle<R>) {
+    #[cfg(debug_assertions)]
+    install_gate(app, Box::new(DevGate::from_value(None)));
+    #[cfg(not(debug_assertions))]
+    let _ = app;
+}
+
 /// Cài [`default_gate`] (nếu có). Gọi một lần ở `setup`, sau khi đã có `AppState`.
 pub fn install_default_gate<R: Runtime>(app: &AppHandle<R>) {
     if let Some(gate) = default_gate() {
@@ -139,6 +160,14 @@ mod tests {
         install_default_gate(app.handle());
         assert_eq!(is_pro(app.handle()), cfg!(debug_assertions));
         assert_eq!(app.state::<AppState>().status().pro, cfg!(debug_assertions));
+    }
+
+    /// Bản phát hành không bao giờ chạy Pro không giới hạn nhờ biến môi trường (QĐ17 của 06); bản debug thì có, trừ khi
+    /// `AI_TRANSLATOR_DEV_FREE=1`. Chạy cả với `--release` ở 06b Task 5.
+    #[test]
+    fn only_a_debug_build_runs_unlimited() {
+        let asked_free = std::env::var("AI_TRANSLATOR_DEV_FREE").as_deref() == Ok("1");
+        assert_eq!(dev_override(), cfg!(debug_assertions) && !asked_free);
     }
 
     #[cfg(debug_assertions)]
