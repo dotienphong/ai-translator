@@ -196,6 +196,15 @@ pub fn validate_if_due<R: Runtime>(app: &AppHandle<R>) {
 fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
     let app = app.clone();
     std::thread::spawn(move || {
+        // Kiểm chữ ký của bản cài trước (§10.2); không chính hãng thì chỉ chạy Free.
+        let genuine = super::genuine::check_this_build();
+        if let super::genuine::Genuineness::NotGenuine(why) = &genuine {
+            log::error!("bản cài không chính hãng: {why}");
+        }
+        if let Some(license) = licensing(&app) {
+            license.set_genuine(!matches!(genuine, super::genuine::Genuineness::NotGenuine(_)));
+        }
+        refresh(&app);
         // Lúc khởi động: kiểm ngay (§6.8, "Kiểm tra định kỳ").
         validate_if_due(&app);
         let mut last = Instant::now();

@@ -58,6 +58,10 @@ chrono = { version = "0.4.45", default-features = false, features = ["clock", "s
 qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+# Bản quyền (kế hoạch 06): app tự kiểm chữ ký của gói `.app` (`SecStaticCodeCheckValidity`, license/genuine.rs, §10.2).
+# Cùng bản `native-tls` đang kéo vào.
+core-foundation = "0.10.1"
+security-framework = "3.7.0"
 apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
 objc2 = "0.6.4"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString", "NSURL"] }
@@ -69,6 +73,10 @@ windows = { version = "0.62.2", features = [
     "Win32_Foundation",
     "Win32_Storage_FileSystem",
     "Win32_System_LibraryLoader",
+    "Win32_Security_Cryptography",
+    "Win32_Security_Cryptography_Catalog",
+    "Win32_Security_Cryptography_Sip",
+    "Win32_Security_WinTrust",
     "Win32_System_Registry",
     "Win32_System_SystemInformation",
     "Win32_UI_WindowsAndMessaging",

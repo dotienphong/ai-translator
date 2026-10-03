@@ -5,6 +5,7 @@
 //! - [`app`]: nối vào app: điểm kiểm tra Pro thật, hạn mức của phiên, lịch `validate`, sự kiện cho giao diện.
 //! - [`client`]: gọi license server (`LicenseApi`, bản thật [`client::HttpApi`]).
 //! - [`device`]: `device_id_hash` và tên máy gửi cho server.
+//! - [`genuine`]: app tự kiểm chữ ký số của chính nó (§10.2).
 //! - [`key`]: chuẩn hóa và kiểm ký tự kiểm tra của license key người dùng gõ.
 //! - [`store`]: bản ghi trong kho khóa (key, token, bộ đếm, bản ghi đánh dấu, đơn đang chờ).
 //! - [`manager`]: trạng thái bản quyền và hạn mức của máy này: kích hoạt, làm mới, gỡ, đếm phút, lịch `validate`.
@@ -14,6 +15,7 @@
 pub mod app;
 pub mod client;
 pub mod device;
+pub mod genuine;
 pub mod key;
 pub mod keys;
 pub mod manager;
