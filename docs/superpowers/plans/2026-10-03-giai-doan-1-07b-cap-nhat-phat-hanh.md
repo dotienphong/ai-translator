@@ -47,6 +47,7 @@ Mọi crate khác mà plugin cần (`base64` 0.22, `semver`, `time`, `tempfile`,
 ## Cách đọc kế hoạch này
 
 - **Thứ tự và trạng thái đầu.** Làm trên `main` sau khi 07a đã thực thi (cây code `46b8521`, trùng chuỗi tham chiếu `plan07a-r3` của 07a, trên `0d9e243`). Task 0 sửa vài file của 07a theo review cuối thực thi 07a, vì 07b cũng sửa `release.yml` và dùng `take-artifact.mjs`. Lúc lập kế hoạch, mọi task dựng trên `plan07a-r3`. Trước mỗi task, `git status` phải sạch.
+- **Định dạng.** Mọi file Rust trong các khối code đã qua `cargo fmt`; mỗi task có Rust chạy `cargo fmt --all -- --check` trước khi commit (CI và Task 9 cũng chạy bước này).
 - **Khối code.** Như 07a: "Tạo `<file>`" chép nguyên khối vào file mới; "Thay toàn bộ `<file>` bằng" ghi đè cả file; "Sửa `<file>` (áp bằng `git apply`)" là bản vá chuẩn có dòng `index` đầy đủ, lưu khối vào file tạm rồi `git apply <file tạm>` từ gốc repo (lỗi thì `git apply --3way`; vẫn lỗi thì dừng); "Run:" kèm khối `bash` chạy cả khối từ gốc repo.
 - **Khối Expected.** Output thật, lấy từ một lần chạy lại toàn bộ các task trên một clone sạch (`0d9e243` cộng chuỗi tham chiếu của 07a), bằng chính các khối của file này (`$S/p07b-gen/run.py`, `S=/Users/dtphong/Desktop/software_business/meeting-translator-work`). Thêm `$S/p07b-gen/check_md.py` đọc file này như implementer, áp mọi khối Tạo/Thay toàn bộ/Sửa lên một clone sạch: cây sau mỗi Task 0–8 khớp đúng commit tham chiếu. Đường dẫn đã đổi về gốc repo. Thời gian chạy khác; số test, tên lỗi phải giống. `target/` phải là thư mục thật, không phải symlink: Tauri từ chối `current_exe()` có symlink, nên test của Task 2 đỏ. Lần chạy lại đầy đủ (có build) chạy trên chuỗi trước khi thêm Task 0; Task 0 chỉ đổi script và workflow, nên sau đó chạy lại toàn bộ các lệnh không build trên chuỗi cuối (Expected của Task 0, các lệnh Node, vitest, actionlint); output của các lệnh build Rust giữ từ lần trước, cùng mã Rust.
 - **Không có khóa thật nào.** Task 1 và 2 dùng một khóa thử tạo lúc lập kế hoạch: chỉ khóa công khai và các chữ ký nằm trong `src-tauri/src/updater/testdata/`, khóa riêng đã xóa ngay sau khi ký. Khóa production chỉ tạo ở Task 11 (người).
@@ -55,19 +56,19 @@ Mọi crate khác mà plugin cần (`base64` 0.22, `semver`, `time`, `tempfile`,
 
 ## Bảng task và commit tham chiếu
 
-Chuỗi commit dựng lúc lập kế hoạch nằm ở `$S/p07-repo`, nhánh `plan07b-r6` (trên `plan07a-r3` của 07a). Sau mỗi task, so cây: `git diff --stat <commit tham chiếu> HEAD` phải rỗng (cần `git fetch $S/p07-repo plan07b-r6` một lần).
+Chuỗi commit dựng lúc lập kế hoạch nằm ở `$S/p07-repo`, nhánh `plan07b-r7` (trên `plan07a-r3` của 07a). Sau mỗi task, so cây: `git diff --stat <commit tham chiếu> HEAD` phải rỗng (cần `git fetch $S/p07-repo plan07b-r7` một lần).
 
 | Task | Nội dung | Commit tham chiếu |
 |---|---|---|
 | 0 | Siết 07a theo review cuối thực thi (job có secret, nhận artifact) | `949ca5d` |
 | 1 | Plugin cập nhật, nguồn bản cập nhật, khóa công khai | `555fb6f` |
-| 2 | Kiểm và tải qua plugin, test với plugin thật | `48ec83d` |
-| 3 | Luồng nền, cài lúc thoát, khởi động lại, menu khay | `9591240` |
-| 4 | Lời mời ở cửa sổ chính | `1f76cc5` |
-| 5 | Windows: giá trị `Run` có dấu nháy | `875c7c7` |
-| 6 | Script manifest theo kênh, đăng bản, kiểm cấu hình production | `52d821d` |
-| 7 | Job `publish` và `github-release` | `c5e55f0` |
-| 8 | Tài liệu phát hành và khóa; khóa manifest production | `7360e0a` |
+| 2 | Kiểm và tải qua plugin, test với plugin thật | `a273297` |
+| 3 | Luồng nền, cài lúc thoát, khởi động lại, menu khay | `6765ddd` |
+| 4 | Lời mời ở cửa sổ chính | `0ce12a0` |
+| 5 | Windows: giá trị `Run` có dấu nháy | `4f8023c` |
+| 6 | Script manifest theo kênh, đăng bản, kiểm cấu hình production | `9d47f46` |
+| 7 | Job `publish` và `github-release` | `1cfb922` |
+| 8 | Tài liệu phát hành và khóa; khóa manifest production | `be70e54` |
 | 9 | Kiểm tra chuẩn | không có commit |
 | 10 | Cập nhật kế hoạch 00 | commit riêng |
 | 11 | Khóa production (người, máy không nối mạng) | commit khóa công khai |
@@ -1055,6 +1056,13 @@ Expected (lúc lập kế hoạch):
 advisories ok, bans ok, licenses ok, sources ok
 ```
 
+Run: `cargo fmt --all -- --check; echo "fmt: $?"`
+
+Expected (lúc lập kế hoạch; mã của file này đã đúng rustfmt):
+```text
+fmt: 0
+```
+
 - [ ] **Step 4: Commit**
 
 Run:
@@ -1321,7 +1329,11 @@ mod tests {
         let dest = dest();
         let downloaded = found.download(&dest).unwrap();
         assert_eq!(std::fs::read(&dest).unwrap(), PAYLOAD);
-        assert_eq!(downloaded.sha256, <[u8; 32]>::from(Sha256::digest(PAYLOAD)), "SHA-256 của đúng các byte đã kiểm");
+        assert_eq!(
+            downloaded.sha256,
+            <[u8; 32]>::from(Sha256::digest(PAYLOAD)),
+            "SHA-256 của đúng các byte đã kiểm"
+        );
         assert!(!dest.with_extension("part").exists());
         let installer = if cfg!(windows) { "x64-setup.exe" } else { "app.tar.gz" };
         assert!(
@@ -1346,7 +1358,9 @@ mod tests {
         let app = app();
         let server = serve("0.9.0-beta.1", SIG);
         assert!(check_on(&server, &app, UpdateChannel::Stable).unwrap().is_none());
-        let found = check_on(&server, &app, UpdateChannel::Beta).unwrap().expect("kênh beta nhận bản beta");
+        let found = check_on(&server, &app, UpdateChannel::Beta)
+            .unwrap()
+            .expect("kênh beta nhận bản beta");
         assert_eq!(found.version(), "0.9.0-beta.1");
     }
 
@@ -1356,7 +1370,10 @@ mod tests {
         assert!(accepts(true, false, Stable) && accepts(true, false, Beta));
         assert!(accepts(true, true, Beta));
         assert!(!accepts(true, true, Stable), "beta vào stable");
-        assert!(!accepts(false, false, Stable) && !accepts(false, true, Beta), "không mới hơn");
+        assert!(
+            !accepts(false, false, Stable) && !accepts(false, true, Beta),
+            "không mới hơn"
+        );
     }
 
     #[test]
@@ -1427,6 +1444,13 @@ test updater::backend::tests::bad_signatures_never_reach_the_disk ... ok
 test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 411 filtered out; finished in 0.02s
 ```
 
+Run: `cargo fmt --all -- --check; echo "fmt: $?"`
+
+Expected (lúc lập kế hoạch; mã của file này đã đúng rustfmt):
+```text
+fmt: 0
+```
+
 - [ ] **Step 3: Commit**
 
 Run:
@@ -1454,10 +1478,10 @@ Sửa `src-tauri/src/app_tests.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/app_tests.rs b/src-tauri/src/app_tests.rs
-index a8c8cad51c5f1c48c9093c2816b7e87a96095d63..735f3363c9af87243f40e8c765ad2caf01bdd2ae 100644
+index a8c8cad51c5f1c48c9093c2816b7e87a96095d63..34b7fd5fc1113f4f7c08438ad39f7ca6bdc5b1e3 100644
 --- a/src-tauri/src/app_tests.rs
 +++ b/src-tauri/src/app_tests.rs
-@@ -1595,3 +1595,127 @@ fn activating_a_full_key_returns_its_devices() {
+@@ -1595,3 +1595,131 @@ fn activating_a_full_key_returns_its_devices() {
      let bad = invoke(&main, "activate_license", json!({ "key": "abc" })).unwrap_err();
      assert!(bad.contains("licenseInvalidKey"), "{bad}");
  }
@@ -1556,7 +1580,11 @@ index a8c8cad51c5f1c48c9093c2816b7e87a96095d63..735f3363c9af87243f40e8c765ad2caf
 +    updater_of(&app).tick(crate::settings::UpdateChannel::Stable);
 +    UPDATE_LOG.lock().unwrap().clear();
 +    crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, kill_all_into_update_log);
-+    assert_eq!(*UPDATE_LOG.lock().unwrap(), ["kill_all"], "tắt máy, đăng xuất: không cài");
++    assert_eq!(
++        *UPDATE_LOG.lock().unwrap(),
++        ["kill_all"],
++        "tắt máy, đăng xuất: không cài"
++    );
 +    UPDATE_LOG.lock().unwrap().clear();
 +    // Phần đồng bộ của Thoát ở menu khay (`actions::quit` gọi rồi mới dừng phiên và thoát).
 +    crate::actions::prepare_quit(app.handle());
@@ -1813,12 +1841,14 @@ impl Updater {
         };
         let Some(pending) = pending else { return };
         log::info!("cài bản cập nhật {}", pending.version);
-        let result = std::fs::read(&pending.file).map_err(|e| e.to_string()).and_then(|bytes| {
-            if <[u8; 32]>::from(Sha256::digest(&bytes)) != pending.sha256 {
-                return Err("file trên đĩa khác bản đã kiểm chữ ký lúc tải, không cài".into());
-            }
-            pending.installer.install(&bytes, restart)
-        });
+        let result = std::fs::read(&pending.file)
+            .map_err(|e| e.to_string())
+            .and_then(|bytes| {
+                if <[u8; 32]>::from(Sha256::digest(&bytes)) != pending.sha256 {
+                    return Err("file trên đĩa khác bản đã kiểm chữ ký lúc tải, không cài".into());
+                }
+                pending.installer.install(&bytes, restart)
+            });
         if let Err(e) = result {
             log::error!("không cài được bản cập nhật {}: {e}", pending.version);
         }
@@ -2685,6 +2715,13 @@ clippy: 0
 check-windows: 0
 ```
 
+Run: `cargo fmt --all -- --check; echo "fmt: $?"`
+
+Expected (lúc lập kế hoạch; mã của file này đã đúng rustfmt):
+```text
+fmt: 0
+```
+
 - [ ] **Step 4: Commit**
 
 Run:
@@ -3243,6 +3280,13 @@ test app_tests::startup_follows_the_system_when_login_items_turned_it_off ... ok
 test app_tests::enabling_launch_at_login_blocked_in_login_items_shows_a_notice ... ok
 test result: ok. 7 passed; 0 failed; 1 ignored; 0 measured; 425 filtered out; finished in 0.92s
 check-windows: 0
+```
+
+Run: `cargo fmt --all -- --check; echo "fmt: $?"`
+
+Expected (lúc lập kế hoạch; mã của file này đã đúng rustfmt):
+```text
+fmt: 0
 ```
 
 - [ ] **Step 2: Commit**
@@ -4560,79 +4604,9 @@ cargo fmt --all -- --check; echo "fmt: $?"
 cargo clippy --workspace --all-targets -q -- -D warnings 2>&1 | grep -E '^(warning|error)(\[|:)' | sort | uniq -c; echo "clippy: done"
 ```
 
-Expected (lúc lập kế hoạch; cảnh báo `unused_mut` là của `third_party/whisper-rs-sys/build.rs` (build script, không phải lint của clippy), có từ trước):
+Expected (lúc lập kế hoạch; cảnh báo `unused_mut` là của `third_party/whisper-rs-sys/build.rs` (build script, không phải lint của clippy), có từ trước. Dòng `fmt` chạy lại trên cây cuối (đã format); hai dòng clippy từ lần chạy có build trước, cùng mã, chỉ khác định dạng):
 ```text
-Diff in /Users/dtphong/Desktop/software_business/meeting-translator/src-tauri/src/app_tests.rs:1690:
-     updater_of(&app).tick(crate::settings::UpdateChannel::Stable);
-     UPDATE_LOG.lock().unwrap().clear();
-     crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, kill_all_into_update_log);
-[31m-    assert_eq!(*UPDATE_LOG.lock().unwrap(), ["kill_all"], "tắt máy, đăng xuất: không cài");
-[m[32m+    assert_eq!(
-[m[32m+        *UPDATE_LOG.lock().unwrap(),
-[m[32m+        ["kill_all"],
-[m[32m+        "tắt máy, đăng xuất: không cài"
-[m[32m+    );
-[m     UPDATE_LOG.lock().unwrap().clear();
-     crate::updater::user_quits(app.handle());
-     crate::handle_run_event(app.handle(), tauri::RunEvent::Exit, kill_all_into_update_log);
-Diff in /Users/dtphong/Desktop/software_business/meeting-translator/src-tauri/src/updater/backend.rs:177:
-         let dest = dest();
-         let downloaded = found.download(&dest).unwrap();
-         assert_eq!(std::fs::read(&dest).unwrap(), PAYLOAD);
-[31m-        assert_eq!(downloaded.sha256, <[u8; 32]>::from(Sha256::digest(PAYLOAD)), "SHA-256 của đúng các byte đã kiểm");
-[m[32m+        assert_eq!(
-[m[32m+            downloaded.sha256,
-[m[32m+            <[u8; 32]>::from(Sha256::digest(PAYLOAD)),
-[m[32m+            "SHA-256 của đúng các byte đã kiểm"
-[m[32m+        );
-[m         assert!(!dest.with_extension("part").exists());
-         let installer = if cfg!(windows) { "x64-setup.exe" } else { "app.tar.gz" };
-         assert!(
-Diff in /Users/dtphong/Desktop/software_business/meeting-translator/src-tauri/src/updater/backend.rs:202:
-         let app = app();
-         let server = serve("0.9.0-beta.1", SIG);
-         assert!(check_on(&server, &app, UpdateChannel::Stable).unwrap().is_none());
-[31m-        let found = check_on(&server, &app, UpdateChannel::Beta).unwrap().expect("kênh beta nhận bản beta");
-[m[32m+        let found = check_on(&server, &app, UpdateChannel::Beta)
-[m[32m+            .unwrap()
-[m[32m+            .expect("kênh beta nhận bản beta");
-[m         assert_eq!(found.version(), "0.9.0-beta.1");
-     }
- 
-Diff in /Users/dtphong/Desktop/software_business/meeting-translator/src-tauri/src/updater/backend.rs:212:
-         assert!(accepts(true, false, Stable) && accepts(true, false, Beta));
-         assert!(accepts(true, true, Beta));
-         assert!(!accepts(true, true, Stable), "beta vào stable");
-[31m-        assert!(!accepts(false, false, Stable) && !accepts(false, true, Beta), "không mới hơn");
-[m[32m+        assert!(
-[m[32m+            !accepts(false, false, Stable) && !accepts(false, true, Beta),
-[m[32m+            "không mới hơn"
-[m[32m+        );
-[m     }
- 
-     #[test]
-Diff in /Users/dtphong/Desktop/software_business/meeting-translator/src-tauri/src/updater/mod.rs:202:
-         };
-         let Some(pending) = pending else { return };
-         log::info!("cài bản cập nhật {}", pending.version);
-[31m-        let result = std::fs::read(&pending.file).map_err(|e| e.to_string()).and_then(|bytes| {
-[m[31m-            if <[u8; 32]>::from(Sha256::digest(&bytes)) != pending.sha256 {
-[m[31m-                return Err("file trên đĩa khác bản đã kiểm chữ ký lúc tải, không cài".into());
-[m[31m-            }
-[m[31m-            pending.installer.install(&bytes, restart)
-[m[31m-        });
-[m[32m+        let result = std::fs::read(&pending.file)
-[m[32m+            .map_err(|e| e.to_string())
-[m[32m+            .and_then(|bytes| {
-[m[32m+                if <[u8; 32]>::from(Sha256::digest(&bytes)) != pending.sha256 {
-[m[32m+                    return Err("file trên đĩa khác bản đã kiểm chữ ký lúc tải, không cài".into());
-[m[32m+                }
-[m[32m+                pending.installer.install(&bytes, restart)
-[m[32m+            });
-[m         if let Err(e) = result {
-             log::error!("không cài được bản cập nhật {}: {e}", pending.version);
-         }
-fmt: 1
+fmt: 0
    1 warning: variable does not need to be mutable
 clippy: done
 ```
