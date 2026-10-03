@@ -93,15 +93,29 @@ Review lần 2 (`$S/review-08-r2.md`, trên `1469b29`) kết luận "Cần sửa
 | N7 | 08b Task 7; 08a Task 3; QĐ7 | ghi rõ giới hạn: chế độ `local` bắt theo tên tiến trình nên không thấy WebView, HAR bỏ luồng không phải HTTP; bù bằng `soak.py pids` và kiểm kết nối của các tiến trình đó trong phiên (điểm cần quyết 7). Test `test_lists_the_processes_of_the_app_for_the_network_check` |
 | — | 08b Task 7 | Step đầu: kiểm cách mitmproxy khớp tên tiến trình ở chế độ `local` (khớp nguyên tên hay một phần; `asr-worker-vulkan.exe` trên Windows), có Expected |
 
+## Sửa sau review lần 3 (2026-10-03)
+
+Review lần 3 (`$S/review-08-r3.md`, trên `bca83c4`) kết luận "Cần sửa nhẹ": 1 Quan trọng, 5 Nhỏ; đồng ý cả 7 điểm cần quyết. Lúc đó 08a đã thực thi trên `main` (6 commit `3361681`…`f4c3f30`), nên phần code sửa bằng 3 commit mới trên `main` (`35f6f40`, `d2411bd`, `de2446b`), test đỏ trước; file này cập nhật theo để chạy lại từ đầu cho ra đúng cây đó.
+
+| Mã | Sửa ở đâu | Cách sửa |
+|---|---|---|
+| Q1 | 08a Task 2; 08b Task 5 | hạng khuyến nghị cần RAM ≥ 15 GB (không 16): Windows ghi RAM dùng được, máy 16 GB báo 15,3–15,9 GB. Chọn đổi ngưỡng thay vì ghi RAM lắp trong `latency-bench`: thay đổi nhỏ nhất, không phải build lại Rust, và macOS (16.0, 8.0) không đổi kết quả. 08b bỏ hướng dẫn "đo lại với hạng đúng" khi chỉ thiếu RAM. Test `test_a_16_gb_windows_machine_reports_less_than_16` (15.7 đạt, 14.0 không) |
+| N1 | 08a Task 2 | mọi số của `summarize.NEEDED` phải hữu hạn. Test `test_nan_is_refused` (thêm `feed_lag_max_ms`, `measured`, `end_offset_max_abs_ms`) |
+| N2 | 08a Task 2; 08b Task 5 | Windows chia hạng theo `config.asr_backend` (Vulkan là khuyến nghị, CPU là tối thiểu); session khớp `utterances[].lang`. Test `test_on_windows_the_class_follows_the_backend`, `test_the_session_must_match_its_sentences` |
+| N3 | 08a Task 4; 08b Task 7 | `netaudit.py --app-log`: cửa sổ kiểm là hợp của mốc đã ghi và phiên trong log của app. Test `test_the_app_log_widens_a_window_noted_too_short`, `test_the_app_log_must_have_the_session` |
+| N4 | 08a Task 3; 08b Task 6 | `summarize` mặc định đòi WebView theo nơi đo; `sample` trên macOS dừng với lỗi khi không có hàm responsibility. Test `test_the_webview_is_required_by_default`, `test_sampling_on_macos_stops_without_the_responsibility_function` |
+| N5 | 08b Task 7 | kiểm kết nối suốt phiên, không chụp một lần: macOS `nettop` theo tiến trình, chỉ giao diện ngoài, mỗi 5 giây; Windows vòng lặp `Get-NetTCPConnection`, `Get-NetUDPEndpoint` mỗi 5 giây |
+| Điểm 5 | điểm cần quyết 5; 08b Task 10 | ghi rõ đơn thật đầu tiên đã có ở 05 Task 21 Step 12 (đơn `1000001`), để khỏi mua hai lần ngoài ý muốn |
+
 ## Quyết định của kế hoạch này
 
 - **QĐ1. Script Python thư viện chuẩn trong `bench/phase1/acceptance/`**, như `bench/phase0/`: không thêm phụ thuộc, chạy được trên Mac và Windows có Python 3.12. Phương án khác đã xét: script Node `.mjs` như `scripts/release/` (cũng không phụ thuộc); chọn Python vì các công cụ chấm (`score_mt.py`, `score_asr.py`) và S6 (`run_matrix.py`, `summarize.py`) đều là Python, và `gates.py a3` gọi thẳng `regression_lines` của `score_mt.py`.
 - **QĐ2. "Đủ 100%"** (Task 5 kế hoạch 00) là: không lỗi định dạng (kể cả dòng `| <số> |` sai khoảng trắng), mọi dòng `xong`, hoặc `hoãn` có đúng cụm "chủ dự án duyệt YYYY-MM-DD" trong Ghi chú, với ngày có thật (một ngày bất kỳ, như ngày kiểm hay ngày đo, không tính; "gửi chủ dự án duyệt …", "chờ chủ dự án duyệt …" cũng không; N1 của review lần 1, N3 của review lần 2). `mapping.py check` kiểm đúng điều đó, thay cho ba lệnh `awk`; nhóm "việc đang chặn" chỉ để điều phối, không ảnh hưởng kết quả.
-- **QĐ3. A2: S6 là phép đo chính, cộng số của app thật** (Q5 của review lần 1, controller quyết 2026-10-03). S6 (`latency-bench latency`) chạy đúng luật của `pipeline` (Đ3 của kế hoạch 00) với file WAV có mốc "người nói dừng" chính xác, và dùng tiến trình phụ của bản ứng viên (cách của 07a Task 13); cổng A2 tính trên số này. Gói lấy từ model ghi trong từng file, máy từ `machine`; hạng trong nhãn chỉ để đối chiếu (Q2 của review lần 2): trên macOS RAM ≥ 16 GB là khuyến nghị, dưới là tối thiểu (§8: Apple Silicon 8 GB là tối thiểu); Windows chia hạng theo GPU mà file không ghi, nên công cụ chỉ kiểm hạng khuyến nghị có RAM ≥ 16 GB, và 08b Task 5 ghi GPU bằng tay. Hạng khuyến nghị đạt khi đủ 6 session của gói Chuẩn; hạng tối thiểu, 6 session của gói Nhẹ. Kế hoạch 00 ghi "08 đo lại A2 bằng app thật" (mục 5, C6): app không ghi mốc người nói dừng, và S6 không đi qua đường thu thật, `TauriSink`, IPC, lúc webview vẽ chữ. Vì vậy trên mỗi máy tham chiếu, 08b Task 5 còn chạy bản đã cài, phát cùng file của S6 qua loa, đọc p50/p90 `total` ở bảng debug của app (§7; `SessionMetrics::latency_ms`, từ lúc hết tiếng nói tới lúc bản dịch hiện đủ) và ghi cạnh số S6; chênh quá 300 ms thì phải giải thích trước khi kết luận A2. Lệch so với kế hoạch 00 nên đưa chủ dự án quyết (điểm cần quyết 6).
+- **QĐ3. A2: S6 là phép đo chính, cộng số của app thật** (Q5 của review lần 1, controller quyết 2026-10-03). S6 (`latency-bench latency`) chạy đúng luật của `pipeline` (Đ3 của kế hoạch 00) với file WAV có mốc "người nói dừng" chính xác, và dùng tiến trình phụ của bản ứng viên (cách của 07a Task 13); cổng A2 tính trên số này. Gói lấy từ model ghi trong từng file, máy từ `machine`; hạng trong nhãn chỉ để đối chiếu (Q2 của review lần 2): trên macOS RAM ≥ 15 GB là khuyến nghị, dưới là tối thiểu (§8: 16 GB và 8 GB); Windows chia hạng theo card đồ họa mà file không ghi, nên công cụ dùng backend của `asr-worker` (`config.asr_backend`: Vulkan là có card, khuyến nghị nếu RAM ≥ 15 GB; CPU là tối thiểu), và 08b Task 5 ghi tên card, VRAM bằng tay. Ngưỡng 15 GB vì Windows ghi RAM dùng được (Q1 của review lần 3). Công cụ không phân biệt card rời với GPU tích hợp hay card 4 GB (cũng chạy Vulkan): 08b Task 5 chỉ đưa vào `acceptance/` kết quả của máy đúng hạng §8. Session trong nhãn phải khớp ngôn ngữ của các câu đã đo. Hạng khuyến nghị đạt khi đủ 6 session của gói Chuẩn; hạng tối thiểu, 6 session của gói Nhẹ. Kế hoạch 00 ghi "08 đo lại A2 bằng app thật" (mục 5, C6): app không ghi mốc người nói dừng, và S6 không đi qua đường thu thật, `TauriSink`, IPC, lúc webview vẽ chữ. Vì vậy trên mỗi máy tham chiếu, 08b Task 5 còn chạy bản đã cài, phát cùng file của S6 qua loa, đọc p50/p90 `total` ở bảng debug của app (§7; `SessionMetrics::latency_ms`, từ lúc hết tiếng nói tới lúc bản dịch hiện đủ) và ghi cạnh số S6; chênh quá 300 ms thì phải giải thích trước khi kết luận A2. Lệch so với kế hoạch 00 nên đưa chủ dự án quyết (điểm cần quyết 6).
 - **QĐ4. A3, A4 so với mốc hiện hành:** A3 dùng `s7_mt.json` và luật 0,01 của `score_mt.py`, cộng mức sàn Anh→Việt cho lượt không có ngữ cảnh; A4 dùng `a4_m4pro-{turbo,small}-final.json` (mục 6.7 của kế hoạch 00), cho tới khi chủ dự án duyệt mốc mới sau C13 (08b Task 3).
-- **QĐ5. RAM của A5** là tổng RSS (working set trên Windows) của app, WebView của app và hai tiến trình phụ (§8 tính "App và WebView"; Q3 của review lần 1). Windows: mọi tiến trình con cháu của app, gồm `msedgewebview2`. macOS: `com.apple.WebKit.*` mà hệ điều hành ghi app là tiến trình chịu trách nhiệm (`responsibility_get_pid_responsible_for_pid` của libSystem; tiến trình XPC có cha là `launchd`, không lọc theo cha được; N1 của review lần 2), nên Safari, Mail mở cùng lúc không bị tính. Hàm này không có trong tài liệu công khai của Apple nhưng có từ macOS 10.14 và đang được dùng; nếu một bản macOS bỏ nó, `select` không tính WebKit và `--require` vẫn kiểm ba tiến trình chính. App và hai tiến trình phụ là bắt buộc (`--require`): thiếu ở mẫu đầu thì không đạt; "sau giờ đầu không tăng quá 10%" so số lớn nhất sau phút 60 với trung bình phút 55–60 (không dùng một mẫu đơn lẻ, tránh nhiễu). RSS của `llama-server` gồm trang file model mmap; vì so tương đối nên không ảnh hưởng.
+- **QĐ5. RAM của A5** là tổng RSS (working set trên Windows) của app, WebView của app và hai tiến trình phụ (§8 tính "App và WebView"; Q3 của review lần 1). Windows: mọi tiến trình con cháu của app, gồm `msedgewebview2`. macOS: `com.apple.WebKit.*` mà hệ điều hành ghi app là tiến trình chịu trách nhiệm (`responsibility_get_pid_responsible_for_pid` của libSystem; tiến trình XPC có cha là `launchd`, không lọc theo cha được; N1 của review lần 2), nên Safari, Mail mở cùng lúc không bị tính. Hàm này không có trong tài liệu công khai của Apple nhưng có từ macOS 10.14 và đang được dùng; nếu một bản macOS bỏ nó, `sample` dừng với lỗi, và `summarize` mặc định đòi WebView có mặt (`com.apple.WebKit`, Windows `msedgewebview2`), nên WebView không bị bỏ lặng lẽ (N4 của review lần 3). App và hai tiến trình phụ là bắt buộc (`--require`): thiếu ở mẫu đầu thì không đạt; "sau giờ đầu không tăng quá 10%" so số lớn nhất sau phút 60 với trung bình phút 55–60 (không dùng một mẫu đơn lẻ, tránh nhiễu). RSS của `llama-server` gồm trang file model mmap; vì so tương đối nên không ảnh hưởng.
 - **QĐ6. CPU của §8** là tổng thời gian CPU của app, WebView và hai tiến trình phụ chia thời gian thực và số lõi logic, đo trong cùng lượt soak (người nói liên tục). Không tính app họp. GPU trên macOS không đo bằng script (`powermetrics` cần `sudo`); 08b Task 6 ghi GPU từ Activity Monitor (Mac) và Task Manager (Windows) bằng tay.
-- **QĐ7. A7 kiểm bằng proxy có giải mã TLS, chỉ bắt lưu lượng của app** (Q4 của review lần 1): mitmproxy chế độ theo tiến trình (`mitmdump --mode local:meeting-translator,asr-worker,llama-server`, macOS và Windows), không phải proxy hệ thống, vì HAR không ghi tiến trình gửi và request của trình duyệt, app họp, dịch vụ nền sẽ thành vi phạm giả. Người cài và tin chứng chỉ gốc của mitmproxy lên máy thử rồi gỡ sau khi thử; app dùng TLS của hệ điều hành nên tin chứng chỉ đó. Video phát bằng app không qua mạng (QuickTime, file có sẵn). Hai mốc Bắt đầu, Dừng là bắt buộc, có múi giờ, nằm trong nhật ký (Q3 của review lần 2). Từ mồi gồm cụm của câu phát vào app và cụm của bản dịch app đã hiện (chép từ bản chép lời xuất ra; N2), so sau khi giải mã. Giới hạn (N7 của review lần 2): chế độ `local` chỉ bắt tiến trình có tên trong danh sách, nên request của WebView (`com.apple.WebKit.Networking`, `msedgewebview2`, cũng dùng chung tên với app khác) không qua proxy; HAR chỉ ghi luồng HTTP, bỏ luồng TCP, UDP khác. Bù lại: trong phiên, 08b Task 7 lấy pid các tiến trình của app bằng `soak.py pids` và liệt kê kết nối mạng của chúng (`lsof -i` trên macOS, `Get-NetTCPConnection`, `Get-NetUDPEndpoint` trên Windows); mọi kết nối ra ngoài máy phải là tới máy chủ trong danh sách cho phép, và WebView không được có kết nối ra ngoài (giao diện chỉ gọi lõi Rust qua IPC). Điểm cần quyết 7.
+- **QĐ7. A7 kiểm bằng proxy có giải mã TLS, chỉ bắt lưu lượng của app** (Q4 của review lần 1): mitmproxy chế độ theo tiến trình (`mitmdump --mode local:meeting-translator,asr-worker,llama-server`, macOS và Windows), không phải proxy hệ thống, vì HAR không ghi tiến trình gửi và request của trình duyệt, app họp, dịch vụ nền sẽ thành vi phạm giả. Người cài và tin chứng chỉ gốc của mitmproxy lên máy thử rồi gỡ sau khi thử; app dùng TLS của hệ điều hành nên tin chứng chỉ đó. Video phát bằng app không qua mạng (QuickTime, file có sẵn). Hai mốc Bắt đầu, Dừng là bắt buộc, có múi giờ, nằm trong nhật ký (Q3 của review lần 2), và được đối chiếu với log của app (dòng bắt đầu, kết thúc phiên dịch): cửa sổ kiểm là hợp của hai nguồn, nên người ghi Dừng sớm không làm sót phần cuối phiên (N3 của review lần 3). Từ mồi gồm cụm của câu phát vào app và cụm của bản dịch app đã hiện (chép từ bản chép lời xuất ra; N2), so sau khi giải mã. Giới hạn (N7 của review lần 2): chế độ `local` chỉ bắt tiến trình có tên trong danh sách, nên request của WebView (`com.apple.WebKit.Networking`, `msedgewebview2`, cũng dùng chung tên với app khác) không qua proxy; HAR chỉ ghi luồng HTTP, bỏ luồng TCP, UDP khác. Bù lại: suốt phiên, 08b Task 7 lấy pid các tiến trình của app bằng `soak.py pids` rồi ghi lưu lượng ra ngoài của chúng mỗi 5 giây (`nettop -t external` trên macOS; vòng lặp `Get-NetTCPConnection`, `Get-NetUDPEndpoint` trên Windows; N5 của review lần 3); mọi kết nối ra ngoài máy phải là tới máy chủ trong danh sách cho phép, và WebView không được có kết nối ra ngoài (giao diện chỉ gọi lõi Rust qua IPC). Điểm cần quyết 7.
 - **QĐ8. Danh sách cho phép của A7 lấy từ bản build đang thử** (URL license server, manifest model, `latest.json`); tên miền chưa mua (T7) nên mẫu dùng `LICENSE_HOST`, `MODELS_HOST`, `UPDATE_HOST`. Đường dẫn được gọi trong lúc dịch: `validate`, `plans` (hỏi giờ, QĐ31 của 06), manifest, `latest.json`. Tải model, mua gói, kích hoạt không được xảy ra trong lúc dịch.
 - **QĐ9. Thiếu số liệu không bao giờ thành đạt** (`report.py`): mỗi tiêu chí là `đạt`, `không đạt` hay `chưa có số liệu`; kết luận chung chỉ ĐẠT khi mọi dòng đạt. Mỗi tiêu chí có tập bắt buộc (Q2 của review lần 1), đọc từ nội dung file (Q1 của review lần 2): A2 hạng khuyến nghị và hạng tối thiểu (`tier`) trên hai máy khác nhau (`machine`); A3 đủ hai gói (`gates.py` kiểm); A4 gói `turbo` và `small` (`pack`, suy từ số đo); A5, tải máy, A7 `os` là `mac` và `win`. Thiếu một phần là `chưa có số liệu`. Mã máy (`host`) chỉ để người đọc báo cáo đối chiếu, `report.py` không đòi hai máy khác nhau cho A5, A7 vì Mac và Windows đã là hai máy.
 - **QĐ10. Kết quả của 08 commit vào `bench/phase1/results/acceptance/`**: JSON của từng cổng (`a2-<máy>.json`, `a3.json`, `a4-<gói>.json`), CSV và JSON của soak (`a5-<máy>.*`; 2 giờ, mẫu 10 giây, khoảng 5–7 tiến trình gồm WebView: khoảng 4 000–5 000 dòng), ma trận A1, danh sách A6, `report.md`. Tên file chỉ để gom và để người đọc; `report.py` không dựa vào nó. Nhật ký HAR không commit (có thể chứa token, key của lần thử); chỉ commit `a7-<máy>.json`, trong đó có SHA-256 của HAR (hai kết quả cùng mã băm là chép nhầm một lần kiểm thành hai).
@@ -115,13 +129,13 @@ Review lần 2 (`$S/review-08-r2.md`, trên `1469b29`) kết luận "Cần sửa
 2. **A5 và A7 chạy trên mấy máy:** `report.py` đòi một máy Mac và một máy Windows (`REQUIRED`; hệ điều hành đọc từ nội dung file, do `soak.py`, `netaudit.py` ghi lúc chạy trên máy thử). **Đề xuất:** giữ; A5 2 giờ trên Mac khuyến nghị và Windows có card rời, máy tối thiểu chỉ chạy 30 phút để xem RAM (không vào báo cáo).
 3. **Thêm test của `bench/phase1/acceptance/` vào CI** (`ci.yml` của 07a). **Đề xuất:** có, một bước `python3 -m unittest discover …` ở job macOS; 08 không sửa `ci.yml` vì 07b đang sửa file này.
 4. **Cài chứng chỉ gốc của proxy lên máy thử cho A7** (QĐ7). **Đề xuất:** dùng máy thử riêng hay tài khoản macOS riêng, gỡ chứng chỉ ngay sau khi thử.
-5. **Mua thật một đơn trên production** (Nhận từ 06; 08b Task 10): số tiền thật nhỏ nhất (Professional 50 000 đ), hoàn tiền tay sau đó hay giữ. **Đề xuất:** giữ đơn, dùng key đó cho máy thử.
+5. **Mua thật một đơn trên production** (Nhận từ 06; 08b Task 10): số tiền thật nhỏ nhất (Professional 50 000 đ), hoàn tiền tay sau đó hay giữ. Lưu ý: 05 Task 21 Step 12 đã có một giao dịch thật (đơn đầu tiên của production, `1000001`, mua bằng lệnh và kích hoạt máy giả); 08b Task 10 khác ở chỗ mua qua app đã ký (VietQR, app tự kích hoạt, email có key). **Đề xuất:** nếu bản beta đã ký có trước khi làm 05 Task 21 Step 12 thì gộp: mua đơn `1000001` bằng app, ghi kết quả cho cả hai task, chỉ một đơn; nếu 05 đã làm xong thì 08b Task 10 là đơn thứ hai. Giữ cả hai đơn (không hoàn tiền), dùng key cho máy thử.
 6. **A2 đo bằng S6 cộng số của app thật, lệch "08 đo lại A2 bằng app thật" của kế hoạch 00** (QĐ3; controller quyết theo đề xuất của review). **Đề xuất:** duyệt; nếu chủ dự án muốn cổng A2 tính trên số của app thật thì cần thêm mốc "người nói dừng" vào app (việc mới, ngoài Giai đoạn 1).
 7. **Phạm vi của A7** (N7 của review lần 2; QĐ7): proxy theo tiến trình không thấy request của WebView, và HAR bỏ luồng không phải HTTP; 08b Task 7 bù bằng danh sách kết nối của các tiến trình của app trong phiên (thấy máy đích, không thấy nội dung). **Đề xuất:** chấp nhận cho Giai đoạn 1: WebView của app không gọi mạng (giao diện gọi lõi Rust qua IPC, CSP của Tauri), nên kiểm kết nối đủ để phát hiện sai; nếu thấy kết nối lạ thì bắt thêm bằng proxy hệ thống với đúng lần thử đó.
 
 ## Kết quả mutation lúc lập kế hoạch
 
-Script ngoài repo `meeting-translator-work/p08gen/mut8.py`, chạy trên cây cuối của 08a (`plan08`). Mỗi mutation sửa đúng một chỗ của một script, chạy test của script đó (`unittest`), test phải đỏ, rồi trả code về. Chạy với `PYTHONDONTWRITEBYTECODE=1` và xóa `__pycache__` trước mỗi lần: mutation và lúc trả lại có cùng độ dài, trong cùng một giây, thì Python vẫn dùng file `.pyc` của bản đã đột biến (gặp lúc sửa theo review lần 1). 71 mutation, gồm 11 cho phần sửa theo review lần 1 (MP7, GA9–GA12, SK9–SK11, NA9, RP7, RP8) và 24 cho phần sửa theo review lần 2 (MP8, MP9, GA13–GA21, SK12–SK16, NA10–NA15, RP9, RP10). Lần sửa thứ hai cũng viết lại mẫu của GA3, GA9, GA10, MP2, MP7, NA8, RP1, RP6, RP8, SK10 cho đúng code mới (code cũ không còn); RP6 và GA16 sống ở lần chạy đầu, nên thêm câu kiểm vào `test_nothing_yet_means_no_data_not_a_pass` (A3 không có file) và `test_an_unknown_pack_or_no_session_fails` (cấu hình lẫn hai gói), rồi chạy lại.
+Script ngoài repo `meeting-translator-work/p08gen/mut8.py`, chạy trên cây cuối của 08a (`plan08`). Mỗi mutation sửa đúng một chỗ của một script, chạy test của script đó (`unittest`), test phải đỏ, rồi trả code về. Chạy với `PYTHONDONTWRITEBYTECODE=1` và xóa `__pycache__` trước mỗi lần: mutation và lúc trả lại có cùng độ dài, trong cùng một giây, thì Python vẫn dùng file `.pyc` của bản đã đột biến (gặp lúc sửa theo review lần 1). 84 mutation, gồm 11 cho phần sửa theo review lần 1 (MP7, GA9–GA12, SK9–SK11, NA9, RP7, RP8) và 24 cho phần sửa theo review lần 2 (MP8, MP9, GA13–GA21, SK12–SK16, NA10–NA15, RP9, RP10) và 13 cho phần sửa theo review lần 3. Lần sửa thứ ba thêm 13 mutation (GA22–GA27, SK17, SK18, NA16–NA20) và viết lại mẫu của GA13, GA15, GA18; GA26 sống ở lần chạy đầu (session `en` có thêm câu `ja` vẫn đạt), nên thêm ca đó vào `test_the_session_must_match_its_sentences`, rồi chạy lại. Lần sửa thứ hai cũng viết lại mẫu của GA3, GA9, GA10, MP2, MP7, NA8, RP1, RP6, RP8, SK10 cho đúng code mới (code cũ không còn); RP6 và GA16 sống ở lần chạy đầu, nên thêm câu kiểm vào `test_nothing_yet_means_no_data_not_a_pass` (A3 không có file) và `test_an_unknown_pack_or_no_session_fails` (cấu hình lẫn hai gói), rồi chạy lại.
 
 | Mã | File | Mutation | Kết quả |
 |---|---|---|---|
@@ -176,10 +190,10 @@ Script ngoài repo `meeting-translator-work/p08gen/mut8.py`, chạy trên cây c
 | MP9 | `mapping.py` | dòng sai khoảng trắng bị bỏ qua thay vì báo lỗi (N3) | bị giết |
 | GA13 | `gates.py` | A2: hạng trong nhãn không đối chiếu với máy (Q2) | bị giết |
 | GA14 | `gates.py` | A2: máy Mac 24 GB gắn nhãn tối thiểu vẫn đạt (Q2) | bị giết |
-| GA15 | `gates.py` | A2: máy Windows 8 GB gắn nhãn khuyến nghị vẫn đạt (Q2) | bị giết |
+| GA15 | `gates.py` | A2: Windows: hạng lấy theo nhãn khi đủ RAM, không theo backend (Q2; N2 của review lần 3) | bị giết |
 | GA16 | `gates.py` | A2: gói nhận theo một model, cấu hình lẫn hai gói vẫn được coi là Chuẩn (Q2) | bị giết |
 | GA17 | `gates.py` | A2: hai lượt cùng session (lượt cũ lẫn vào) không bị báo (Q1, N6) | bị giết |
-| GA18 | `gates.py` | A2: số `NaN` lọt qua ngưỡng (N5) | bị giết |
+| GA18 | `gates.py` | A2: số `NaN` lọt qua (N5; N1 của review lần 3) | bị giết |
 | GA19 | `gates.py` | A2: thiếu session của gói đúng hạng vẫn đạt (Q2) | bị giết |
 | GA20 | `gates.py` | A3: lượt chỉ chấm vài câu vẫn so được (N2) | bị giết |
 | GA21 | `gates.py` | A4: gói suy ra là mốc xa hơn (Q1) | bị giết |
@@ -194,6 +208,19 @@ Script ngoài repo `meeting-translator-work/p08gen/mut8.py`, chạy trên cây c
 | NA14 | `netaudit.py` | lệnh nhận mốc không có múi giờ (Q3) | bị giết |
 | NA15 | `netaudit.py` | kết quả không ghi hệ điều hành, mã máy (Q1) | bị giết |
 | SK16 | `soak.py` | lệnh `pids` không in tiến trình của app (N7) | bị giết |
+| GA22 | `gates.py` | A2: hạng khuyến nghị đòi 16 GB, máy Windows 16 GB (báo 15.7) bị loại (Q1 của review lần 3) | bị giết |
+| GA23 | `gates.py` | A2: Windows chạy CPU vẫn là khuyến nghị (N2 của review lần 3) | bị giết |
+| GA24 | `gates.py` | A2: session trong nhãn không đối chiếu với ngôn ngữ của câu (N2) | bị giết |
+| GA25 | `gates.py` | A2: session `mixed` chỉ một ngôn ngữ vẫn đạt (N2) | bị giết |
+| GA26 | `gates.py` | A2: session một ngôn ngữ lẫn câu ngôn ngữ khác vẫn đạt (N2) | bị giết |
+| GA27 | `gates.py` | A2: chỉ kiểm NaN ở ba số ngưỡng (N1 của review lần 3) | bị giết |
+| SK17 | `soak.py` | `summarize` không đòi WebView theo nơi đo (N4 của review lần 3) | bị giết |
+| SK18 | `soak.py` | `sample` trên macOS chạy tiếp khi không có hàm responsibility (N4) | bị giết |
+| NA16 | `netaudit.py` | cửa sổ không mở rộng theo log của app, Dừng ghi sớm làm sót phần cuối (N3 của review lần 3) | bị giết |
+| NA17 | `netaudit.py` | log không có phiên trùng mốc vẫn đạt (N3) | bị giết |
+| NA18 | `netaudit.py` | phiên trong log chưa có dòng kết thúc không bị báo (N3) | bị giết |
+| NA19 | `netaudit.py` | phiên cũ không có dòng kết thúc làm hỏng phiên sau (N3) | bị giết |
+| NA20 | `netaudit.py` | lệnh đọc `--app-log` mà không dùng (N3) | bị giết |
 | RP9 | `report.py` | A2: một máy không đạt mà tiêu chí không trượt (Q1) | bị giết |
 | RP10 | `report.py` | A2: hai hạng đo trên cùng một máy vẫn đạt (Q1) | bị giết |
 
@@ -203,12 +230,12 @@ Cây tham chiếu: `meeting-translator-work/p08-repo`, nhánh `plan08` (dựng b
 
 | Task | Commit | Thông điệp |
 |---|---|---|
-| 08a Task 1 | `fda2a58` | feat(bench): kiểm bảng đối chiếu của kế hoạch 00: đếm trạng thái, nhóm việc đang chặn, điều kiện đủ 100% (kế hoạch 08) |
-| 08a Task 2 | `c8853fa` | feat(bench): cổng số liệu A2, A3, A4 của nghiệm thu, dùng lại luật chống thụt lùi của score_mt.py (kế hoạch 08) |
-| 08a Task 3 | `47d190e` | feat(bench): soak test A5 và tải máy: lấy mẫu RAM, thời gian CPU của app và tiến trình phụ trên macOS và Windows (kế hoạch 08) |
-| 08a Task 4 | `26f10c6` | feat(bench): kiểm nhật ký mạng A7 qua proxy: máy chủ, đường dẫn, request trong lúc dịch, thân request, từ mồi (kế hoạch 08) |
-| 08a Task 5 | `d87ba83` | feat(bench): báo cáo nghiệm thu A1–A7 và bảng đối chiếu; mẫu ma trận A1, danh sách A6 (kế hoạch 08) |
-| 08a Task 6 | `58e8ff5` | docs(bench): bảng công cụ nghiệm thu Giai đoạn 1 (kế hoạch 08) |
+| 08a Task 1 | `06be50f` | feat(bench): kiểm bảng đối chiếu của kế hoạch 00: đếm trạng thái, nhóm việc đang chặn, điều kiện đủ 100% (kế hoạch 08) |
+| 08a Task 2 | `1b9b0b7` | feat(bench): cổng số liệu A2, A3, A4 của nghiệm thu, dùng lại luật chống thụt lùi của score_mt.py (kế hoạch 08) |
+| 08a Task 3 | `5c3c579` | feat(bench): soak test A5 và tải máy: lấy mẫu RAM, thời gian CPU của app và tiến trình phụ trên macOS và Windows (kế hoạch 08) |
+| 08a Task 4 | `6fabc15` | feat(bench): kiểm nhật ký mạng A7 qua proxy: máy chủ, đường dẫn, request trong lúc dịch, thân request, từ mồi (kế hoạch 08) |
+| 08a Task 5 | `f0e1bcc` | feat(bench): báo cáo nghiệm thu A1–A7 và bảng đối chiếu; mẫu ma trận A1, danh sách A6 (kế hoạch 08) |
+| 08a Task 6 | `424e345` | docs(bench): bảng công cụ nghiệm thu Giai đoạn 1 (kế hoạch 08) |
 
 08b là điều phối các bước của người, không có commit tham chiếu.
 
@@ -575,8 +602,8 @@ git commit -m "feat(bench): kiểm bảng đối chiếu của kế hoạch 00: 
 
 Spec §3.3 (A2, A3, A4), §8 (ngân sách độ trễ). QĐ3, QĐ4.
 
-- `a2`: đọc JSON của `latency-bench latency` của **một máy** (cùng định dạng S6, `bench/phase0/latency/run_matrix.py`) và dùng lại đúng luật của `bench/phase0/latency/summarize.py` (Q1 của review lần 1): ngưỡng `A2` (khuyến nghị p50 2000, p90 3000, chữ đầu tiên 1000 ms; tối thiểu p50 3500 ms), lượt tắt ghép câu không tính, và lượt đo không đáng tin (`problems`: đo dưới 85% số câu, phát lại trễ quá 100 ms, mốc dừng lệch quá 300 ms) là không đạt. Thiếu số, số `NaN` (N5 của review lần 2) hay không có lượt nào được tính là không đạt.
-- Số liệu tự khai (Q1, Q2 của review lần 2): gói lấy từ `config.mt_model`, `config.asr_model` của từng file (Q8_0 + turbo là Chuẩn, Q4_K_M + small là Nhẹ; lẫn hai gói là lỗi); máy lấy từ `machine` (hệ điều hành, CPU, RAM, số lõi). Hạng máy trong nhãn (`-khuyennghi-`, `-toithieu-`) chỉ để đối chiếu với máy: trên macOS RAM ≥ 16 GB là khuyến nghị, dưới là tối thiểu, nhãn khác là lỗi; Windows không ghi GPU nên chỉ kiểm hạng khuyến nghị cần RAM ≥ 16 GB. Một lượt cổng cần đúng một máy, một hạng, đủ 6 session (`en`, `vi`, `zh`, `ja`, `ko`, `mixed`) của gói đúng hạng (khuyến nghị: Chuẩn; tối thiểu: Nhẹ; §8); trùng session (lượt cũ cùng thư mục lẫn vào) là lỗi. JSON ghi `machine`, `tier` cho `report.py`.
+- `a2`: đọc JSON của `latency-bench latency` của **một máy** (cùng định dạng S6, `bench/phase0/latency/run_matrix.py`) và dùng lại đúng luật của `bench/phase0/latency/summarize.py` (Q1 của review lần 1): ngưỡng `A2` (khuyến nghị p50 2000, p90 3000, chữ đầu tiên 1000 ms; tối thiểu p50 3500 ms), lượt tắt ghép câu không tính, và lượt đo không đáng tin (`problems`: đo dưới 85% số câu, phát lại trễ quá 100 ms, mốc dừng lệch quá 300 ms) là không đạt. Thiếu số, số không hữu hạn (`NaN`, vô cực) ở bất kỳ số nào của cổng, kể cả các số độ tin cậy (N5 của review lần 2, N1 của lần 3), hay không có lượt nào được tính là không đạt.
+- Số liệu tự khai (Q1, Q2 của review lần 2): gói lấy từ `config.mt_model`, `config.asr_model` của từng file (Q8_0 + turbo là Chuẩn, Q4_K_M + small là Nhẹ; lẫn hai gói là lỗi); máy lấy từ `machine` (hệ điều hành, CPU, RAM, số lõi). Hạng máy trong nhãn (`-khuyennghi-`, `-toithieu-`) chỉ để đối chiếu với máy: trên macOS RAM ≥ 15 GB là khuyến nghị, dưới là tối thiểu; trên Windows khuyến nghị khi RAM ≥ 15 GB và `config.asr_backend` là `vulkan` (card rời), còn lại (CPU) là tối thiểu; nhãn khác là lỗi (N2 của review lần 3). Ngưỡng 15 chứ không 16 vì `latency-bench` ghi RAM của `sysinfo`, trên Windows là RAM dùng được (`ullTotalPhys`): máy 16 GB báo 15,3–15,9 GB (Q1 của review lần 3). Session lấy từ đuôi nhãn phải khớp `utterances[].lang` (một ngôn ngữ đúng session; `mixed` ít nhất hai). Một lượt cổng cần đúng một máy, một hạng, đủ 6 session (`en`, `vi`, `zh`, `ja`, `ko`, `mixed`) của gói đúng hạng (khuyến nghị: Chuẩn; tối thiểu: Nhẹ; §8); trùng session (lượt cũ cùng thư mục lẫn vào) là lỗi. JSON ghi `machine`, `tier` cho `report.py`.
 - `a3`: dùng lại `regression_lines` của `bench/phase0/mt/score_mt.py` (không viết lại luật thụt lùi 0,01), cộng mức sàn Anh→Việt 0,83 (Q8_0), 0,80 (Q4_K_M) cho lượt không có ngữ cảnh (`-plain`). Mọi lượt `-plain` của mốc (cả hai gói) phải có mặt (Q2), và mỗi chiều chấm đủ số câu của mốc (N2 của review lần 2).
 - `a4`: so `a4_<nhãn>.json` của `score_asr.py` với mốc `a4_m4pro-{turbo,small}-final.json` từng nhóm (`en`, `en-nb`, …), WER hay CER theo mốc, xấu hơn quá 10% tương đối là không đạt; thiếu nhóm là không đạt. Kết quả của `score_asr.py` không ghi model, nên gói suy từ chính số đo: nhận cả hai mốc, chọn mốc gần hơn (trung bình |ln(kết quả/mốc)| trên các nhóm), ghi `pack` vào JSON cho `report.py` (Q1 của review lần 2; bỏ cờ `--pack` gõ tay).
 - Chạy thử trên số liệu GĐ0 có sẵn: 12 session S6 đều đạt A2; mốc so với chính nó đạt A3, A4.
@@ -606,12 +633,21 @@ MODELS = {"chuan": ("models/Hy-MT2-1.8B-Q8_0.gguf", "models/ggml-large-v3-turbo-
           "nhe": ("models/Hy-MT2-1.8B-Q4_K_M.gguf", "models/ggml-small-q5_1.bin")}
 
 
+LANGS = {"mixed": ["en", "zh", "ja", "ko"]}
+
+
 def session(tier, pack, sess, p50=900, p90=1200, first=600, measured=21, lag=10, offset=40, merge="true",
-            name="m1", os="macOS 26", ram="16.0"):
-    """Một file của `latency-bench latency`: nhãn, cấu hình (model), máy, và các số `summarize.py` cần."""
+            name="m1", os="macOS 26", ram="16.0", backend=None, langs=None):
+    """Một file của `latency-bench latency`: nhãn, cấu hình (model, backend), máy, ngôn ngữ của các câu, và các số
+    `summarize.py` cần. Backend mặc định: Metal trên Mac; Windows khuyến nghị Vulkan, tối thiểu CPU."""
     mt, asr = MODELS[pack]
-    return {"label": f"{name}-{tier}-{pack}-{sess}", "config": {"merge": merge, "mt_model": mt, "asr_model": asr},
+    if backend is None:
+        backend = "metal" if os.startswith("macOS") else "vulkan" if tier == "khuyennghi" else "cpu"
+    langs = LANGS.get(sess, [sess] * 3) if langs is None else langs
+    return {"label": f"{name}-{tier}-{pack}-{sess}",
+            "config": {"merge": merge, "mt_model": mt, "asr_model": asr, "asr_backend": backend},
             "machine": {"os": os, "cpu": "Apple M1", "logical_cores": "8", "ram_gb": ram},
+            "utterances": [{"id": i, "lang": l} for i, l in enumerate(langs)],
             "summary": {"utterances": 21, "measured": measured, "merges": 4, "feed_lag_max_ms": lag,
                         "end_offset_max_abs_ms": offset, "shown_p50_ms": p50, "shown_p90_ms": p90, "first_p50_ms": first}}
 
@@ -655,6 +691,36 @@ class A2(unittest.TestCase):
         self.assertTrue(gate_a2(full("toithieu", "nhe", os="Windows 11", ram="16.0"))["pass"])
         self.assertFalse(gate_a2(full("khuyennghi", "chuan", os="Windows 11", ram="8.0"))["pass"])
 
+    def test_a_16_gb_windows_machine_reports_less_than_16(self):
+        """Windows ghi RAM dùng được (`ullTotalPhys`), máy 16 GB thường báo 15,3–15,9 GB: vẫn là khuyến nghị (Q1 của
+        review 08 lần 3)."""
+        self.assertTrue(gate_a2(full("khuyennghi", "chuan", os="Windows 11", ram="15.7"))["pass"])
+        low = gate_a2(full("khuyennghi", "chuan", os="Windows 11", ram="14.0"))
+        self.assertFalse(low["pass"])
+        self.assertIn("14 GB", failed(low)["en"][0])
+
+    def test_on_windows_the_class_follows_the_backend(self):
+        """Windows khuyến nghị có card (Vulkan), tối thiểu chạy CPU (§8): máy 32 GB chạy Vulkan mà nhãn ghi tối thiểu,
+        hay máy chạy CPU mà nhãn ghi khuyến nghị, là lỗi (N2 của review 08 lần 3)."""
+        big = gate_a2(full("toithieu", "nhe", os="Windows 11", ram="32.0", backend="vulkan"))
+        self.assertFalse(big["pass"])
+        self.assertIn("nhãn ghi toithieu mà máy là khuyennghi", failed(big)["en"][0])
+        cpu = gate_a2(full("khuyennghi", "chuan", os="Windows 11", ram="32.0", backend="cpu"))
+        self.assertIn("nhãn ghi khuyennghi mà máy là toithieu", failed(cpu)["en"][0])
+        self.assertTrue(gate_a2(full("toithieu", "nhe", os="Windows 11", ram="32.0", backend="cpu"))["pass"])
+
+    def test_the_session_must_match_its_sentences(self):
+        """Session lấy từ nhãn phải khớp ngôn ngữ của các câu đã đo (N2 của review 08 lần 3)."""
+        runs = full("khuyennghi", "chuan")
+        runs[1] = session("khuyennghi", "chuan", "vi", langs=["en", "en"])
+        runs[5] = session("khuyennghi", "chuan", "mixed", langs=["en", "en"])
+        runs[2] = session("khuyennghi", "chuan", "zh", langs=[])
+        runs[0] = session("khuyennghi", "chuan", "en", langs=["en", "ja"])
+        out = gate_a2(runs)
+        self.assertFalse(out["pass"])
+        self.assertEqual(sorted(failed(out)), ["en", "mixed", "vi", "zh"])
+        self.assertIn("câu đo là en", failed(out)["vi"][0])
+
     def test_each_class_needs_its_pack_and_every_session(self):
         """Máy khuyến nghị chạy gói Chuẩn, máy tối thiểu gói Nhẹ (§8), đủ 6 session (Q2 của review 08 lần 2)."""
         only_light = gate_a2(full("khuyennghi", "nhe"))
@@ -683,9 +749,14 @@ class A2(unittest.TestCase):
             self.assertTrue(failed(out)["en"][0].startswith(("chỉ đo được", "phát lại trễ", "mốc dừng lệch")))
 
     def test_nan_is_refused(self):
-        runs = full("khuyennghi", "chuan")
-        runs[0] = session("khuyennghi", "chuan", "en", p50=float("nan"))
-        self.assertFalse(gate_a2(runs)["pass"])
+        """Mọi số của cổng, cả các số độ tin cậy (N1 của review 08 lần 3)."""
+        for bad in (dict(p50=float("nan")), dict(lag=float("nan")), dict(measured=float("nan")),
+                    dict(offset=float("inf"))):
+            runs = full("khuyennghi", "chuan")
+            runs[0] = session("khuyennghi", "chuan", "en", **bad)
+            out = gate_a2(runs)
+            self.assertFalse(out["pass"], bad)
+            self.assertTrue(failed(out)["en"][0].startswith("số không hợp lệ"), bad)
 
     def test_a_run_without_merging_is_left_out(self):
         runs = full("khuyennghi", "chuan") + [session("khuyennghi", "chuan", "en", name="m1-nomerge", merge="false",
@@ -810,9 +881,11 @@ Tạo `bench/phase1/acceptance/gates.py`:
 
 - `a2`: file JSON của `latency-bench latency` của **một máy** (mỗi file một session, `run_matrix.py`). Dùng lại đúng luật của
   `bench/phase0/latency/summarize.py` (ngưỡng `A2`, lượt đo không đáng tin `problems`, lượt tắt ghép câu không tính). Gói lấy
-  từ `config.mt_model`, `config.asr_model`; hạng máy lấy từ nhãn và đối chiếu với `machine` (macOS: RAM ≥ 16 GB là khuyến
-  nghị; Windows không ghi GPU nên chỉ kiểm RAM của hạng khuyến nghị), mâu thuẫn là lỗi. Hạng khuyến nghị cần đủ 6 session
-  của gói Chuẩn, hạng tối thiểu đủ 6 session của gói Nhẹ (§8); trùng session hay nhiều máy trong một lượt cổng là lỗi.
+  từ `config.mt_model`, `config.asr_model`; hạng máy lấy từ nhãn và đối chiếu với máy (macOS: RAM ≥ 15 GB là khuyến
+  nghị; Windows: RAM ≥ 15 GB và `config.asr_backend` là Vulkan là khuyến nghị, còn lại tối thiểu), mâu thuẫn là lỗi.
+  Session lấy từ nhãn phải khớp ngôn ngữ của các câu đã đo (`utterances[].lang`). Hạng khuyến nghị cần đủ 6 session của
+  gói Chuẩn, hạng tối thiểu đủ 6 session của gói Nhẹ (§8); trùng session, số không hữu hạn hay nhiều máy trong một lượt
+  cổng là lỗi.
 - `a3`: kết quả `bench/phase0/mt/score_mt.py --label <nhãn>` (`s7_mt-<nhãn>.json`), so mốc `s7_mt.json` bằng chính hàm
   `regression_lines` của `score_mt.py` (thấp hơn mốc quá 0,01 là thụt lùi), cộng mức sàn Anh→Việt; mọi lượt `-plain` của
   mốc (hai gói) phải có mặt, và mỗi chiều chấm đủ số câu của mốc.
@@ -843,6 +916,10 @@ A4_RELATIVE = 0.10
 
 SESSIONS = ("en", "vi", "zh", "ja", "ko", "mixed")
 PACK_OF_TIER = {"khuyennghi": "chuan", "toithieu": "nhe"}
+# RAM của hạng khuyến nghị (§8: 16 GB), có dung sai: `latency-bench` ghi `sysinfo::total_memory()`, trên Windows là RAM
+# dùng được (`ullTotalPhys`, đã trừ phần phần cứng giữ), máy 16 GB thường báo 15,3–15,9 GB; macOS báo đúng RAM lắp
+# (16.0, 8.0). Q1 của review 08 lần 3.
+RECOMMENDED_RAM_GB = 15
 
 
 def tier_of(label):
@@ -864,15 +941,29 @@ def machine_of(m):
     return f"{m.get('os', '?')} | {m.get('cpu', '?')} | {m.get('ram_gb', '?')} GB | {m.get('logical_cores', '?')} lõi"
 
 
-def tier_problem(label_tier, m):
-    """Mâu thuẫn giữa hạng ghi trong nhãn và máy (§8), hay None."""
+def tier_problem(label_tier, m, backend):
+    """Mâu thuẫn giữa hạng ghi trong nhãn và máy (§8), hay None. macOS theo RAM; Windows theo RAM và backend của
+    `asr-worker` (khuyến nghị có card rời chạy Vulkan, tối thiểu chạy CPU; N2 của review 08 lần 3)."""
     ram = float(m.get("ram_gb") or 0)
-    derived = "khuyennghi" if ram >= 16 else "toithieu"
     if "macOS" in m.get("os", ""):
-        return None if derived == label_tier else f"nhãn ghi {label_tier} mà máy là {derived} (macOS, {ram:g} GB)"
-    if label_tier == "khuyennghi" and derived != "khuyennghi":
-        return f"nhãn ghi khuyennghi mà máy chỉ có {ram:g} GB"
-    return None
+        derived = "khuyennghi" if ram >= RECOMMENDED_RAM_GB else "toithieu"
+        why = f"macOS, {ram:g} GB"
+    else:
+        derived = "khuyennghi" if ram >= RECOMMENDED_RAM_GB and backend == "vulkan" else "toithieu"
+        why = f"Windows, {ram:g} GB, {backend or 'không rõ backend'}"
+    return None if derived == label_tier else f"nhãn ghi {label_tier} mà máy là {derived} ({why})"
+
+
+def session_problem(sess, utterances):
+    """Session trong nhãn so với ngôn ngữ của các câu đã đo, hay None (N2 của review 08 lần 3)."""
+    langs = sorted({u.get("lang") for u in utterances or []} - {None})
+    if sess not in SESSIONS:
+        return f"session lạ {sess!r}"
+    if not langs:
+        return "file không có câu nào"
+    if sess == "mixed":
+        return None if len(langs) >= 2 else f"nhãn ghi session mixed mà câu đo chỉ là {langs[0]}"
+    return None if langs == [sess] else f"nhãn ghi session {sess} mà câu đo là {', '.join(langs)}"
 
 
 def gate_a2(results):
@@ -889,18 +980,23 @@ def gate_a2(results):
         failed, limits = [], {}
         if tier is None:
             failed.append("nhãn không có hạng máy (-khuyennghi- hay -toithieu-)")
-        elif tier_problem(tier, m):
-            failed.append(tier_problem(tier, m))
+        elif tier_problem(tier, m, r.get("config", {}).get("asr_backend")):
+            failed.append(tier_problem(tier, m, r.get("config", {}).get("asr_backend")))
+        if session_problem(sess, r.get("utterances")):
+            failed.append(session_problem(sess, r.get("utterances")))
         if pack is None:
             failed.append("không nhận ra gói từ config.mt_model, config.asr_model")
         if (pack, sess) in seen:
             failed.append(f"trùng session {pack}-{sess} (lượt cũ hay lượt biến thể lẫn vào?)")
             seen[(pack, sess)]["failed"].append(f"trùng session {pack}-{sess} (lượt cũ hay lượt biến thể lẫn vào?)")
+        # Mọi số của cổng phải hữu hạn: so sánh với NaN luôn sai, nên NaN lọt qua cả ngưỡng lẫn luật độ tin cậy (N5 của
+        # review 08 lần 2, N1 của lần 3).
+        bad = [k for k in summarize.NEEDED if isinstance(s.get(k), float) and not math.isfinite(s[k])]
+        if bad:
+            failed.append(f"số không hợp lệ: {', '.join(bad)}")
         if not failed:
             limits = summarize.A2[tier]
-            bad = [k for k in limits if k in s and not math.isfinite(s[k])]
-            failed = ([f"số không hợp lệ: {', '.join(bad)}"] if bad else
-                      summarize.problems(s) or [k for k, v in limits.items() if s[k] > v])
+            failed = summarize.problems(s) or [k for k, v in limits.items() if s[k] > v]
         row = {"label": r["label"], "tier": tier, "pack": pack, "session": sess, "machine": machine_of(m),
                "values": {k: s.get(k) for k in limits}, "failed": failed}
         seen.setdefault((pack, sess), row)
@@ -1039,16 +1135,19 @@ python3 -m unittest discover -s bench/phase1/acceptance -p 'test_gates.py' -v 2>
 ```
 Expected (lúc lập kế hoạch):
 ```text
+Windows ghi RAM dùng được (`ullTotalPhys`), máy 16 GB thường báo 15,3–15,9 GB: vẫn là khuyến nghị (Q1 của ... ok
 test_a_full_recommended_run_passes (test_gates.A2.test_a_full_recommended_run_passes) ... ok
 test_a_run_without_merging_is_left_out (test_gates.A2.test_a_run_without_merging_is_left_out) ... ok
 test_an_unknown_pack_or_no_session_fails (test_gates.A2.test_an_unknown_pack_or_no_session_fails) ... ok
 Luật "lượt đo đáng tin" của bench/phase0/latency/summarize.py (Q1 của review 08 lần 1). ... ok
 Máy khuyến nghị chạy gói Chuẩn, máy tối thiểu gói Nhẹ (§8), đủ 6 session (Q2 của review 08 lần 2). ... ok
 test_minimum_machine_only_limits_p50 (test_gates.A2.test_minimum_machine_only_limits_p50) ... ok
-test_nan_is_refused (test_gates.A2.test_nan_is_refused) ... ok
+Mọi số của cổng, cả các số độ tin cậy (N1 của review 08 lần 3). ... ok
+Windows khuyến nghị có card (Vulkan), tối thiểu chạy CPU (§8): máy 32 GB chạy Vulkan mà nhãn ghi tối thiểu, ... ok
 Glob rộng ăn cả lượt cũ hay lượt biến thể: trùng session là lỗi; hai máy trong một lượt cổng là lỗi (N6). ... ok
 test_recommended_machine_limits (test_gates.A2.test_recommended_machine_limits) ... ok
 Nhãn chỉ để đối chiếu: Mac 24 GB mà nhãn ghi tối thiểu, hay Mac 8 GB nhãn khuyến nghị, là lỗi (Q2 của review 08 ... ok
+Session lấy từ nhãn phải khớp ngôn ngữ của các câu đã đo (N2 của review 08 lần 3). ... ok
 test_a_missing_direction_fails (test_gates.A3.test_a_missing_direction_fails) ... ok
 Lượt của mốc mà lượt này không chạy (một gói) là thiếu (Q2 của review 08 lần 1). ... ok
 Lượt chỉ chấm 3 câu không so được với mốc 100 câu (N2 của review 08 lần 2). ... ok
@@ -1060,7 +1159,7 @@ test_a_missing_group_fails (test_gates.A4.test_a_missing_group_fails) ... ok
 test_cer_is_used_where_the_baseline_has_cer (test_gates.A4.test_cer_is_used_where_the_baseline_has_cer) ... ok
 test_more_than_10_percent_worse_fails (test_gates.A4.test_more_than_10_percent_worse_fails) ... ok
 Gói suy từ số đo (gần mốc nào hơn), không từ cờ hay tên file (Q1 của review 08 lần 2). ... ok
-Ran 21 tests
+Ran 24 tests
 OK
 ```
 
@@ -1122,6 +1221,7 @@ Spec §3.3 (A5), §8 (CPU trung bình ≤ 30% trên máy khuyến nghị), §11 
 
 - `sample`: mỗi 10 giây (mặc định) chụp danh sách tiến trình (`ps -A -o pid=,ppid=,rss=,time=,comm=` trên macOS; PowerShell `Win32_Process` dạng JSON trên Windows), giữ `meeting-translator`, `asr-worker*`, `llama-server`, WebView của app, ghi CSV ngay sau mỗi mẫu (mất điện giữa chừng vẫn còn số liệu). Ctrl+C để dừng sớm.
 - WebView (§8 tính RAM "App và WebView"; Q3 của review lần 1): trên Windows giữ mọi tiến trình con cháu của app (`--app`), gồm `msedgewebview2`; trên macOS tiến trình XPC `com.apple.WebKit.*` có cha là `launchd`, nên giữ những tiến trình mà `responsibility_get_pid_responsible_for_pid` (libSystem, gọi bằng `ctypes`, không cần quyền) gán cho app; WebKit của Safari, Mail không bị tính (N1 của review lần 2).
+- WebView của app là tiến trình bắt buộc mặc định của `summarize` theo nơi đo (`com.apple.WebKit` trên macOS, `msedgewebview2` trên Windows); trên macOS không có hàm `responsibility_get_pid_responsible_for_pid` thì `sample` dừng với lỗi, không lặng lẽ bỏ WebView (N4 của review lần 3).
 - Mỗi dòng CSV ghi hệ điều hành và mã máy (12 ký tự đầu SHA-256 của địa chỉ MAC, không ghi tên máy); kết quả `summarize` ghi `os`, `host` cho `report.py`. CSV lẫn mẫu của hai máy là không đạt (Q1 của review lần 2).
 - `pids`: in pid và tên các tiến trình đang tính (app, WebView của app, tiến trình phụ), cho bước kiểm kết nối của WebView ở 08b Task 7 (N7 của review lần 2).
 - `summarize`: A5 đạt khi mọi tên trong `--require` (mặc định app và hai tiến trình phụ) có ở mẫu đầu, đủ 2 giờ, không tiến trình nào biến mất, không có pid mới của một tên sau mẫu đầu (hai WebContent cùng lúc từ đầu không tính là khởi động lại), và tổng RSS lớn nhất sau giờ đầu không quá 110% trung bình của phút 55–60. Tải máy: tổng thời gian CPU (theo từng pid) chia thời gian thực và số lõi logic; thiếu tiến trình bắt buộc thì cũng không đạt.
@@ -1255,12 +1355,23 @@ class Summarize(unittest.TestCase):
 
     def test_the_summary_says_where_it_was_measured(self):
         """Hệ điều hành và mã máy ghi lúc lấy mẫu, không theo tên file (Q1 của review 08 lần 2)."""
-        out = summarize(run(2), ncpu=10, where=[{"os": "win", "host": "abc123"}])
+        out = summarize(run(2), ncpu=10, require=REQUIRE, where=[{"os": "win", "host": "abc123"}])
         self.assertEqual((out["os"], out["host"]), ("win", "abc123"))
         self.assertTrue(out["pass_a5"])
         mixed = summarize(run(2), ncpu=10, where=[{"os": "win", "host": "a"}, {"os": "mac", "host": "b"}])
         self.assertEqual(mixed["os"], None)
         self.assertFalse(mixed["pass_a5"])
+
+    def test_the_webview_is_required_by_default(self):
+        """WebView của app bắt buộc có mặt theo nơi đo: thiếu (hàm của libSystem vắng hay trả -1) là không đạt, không lặng
+        lẽ bỏ qua (N4 của review 08 lần 3)."""
+        mac = [{"os": "mac", "host": "a"}]
+        out = summarize(run(2), ncpu=10, where=mac)
+        self.assertEqual(out["absent"], ["com.apple.WebKit"])
+        self.assertFalse(out["pass_a5"])
+        rows = run(2) + [(t, 840, "com.apple.WebKit.WebContent", 1000, 0.0) for t in sorted({r[0] for r in run(2)})]
+        self.assertTrue(summarize(rows, ncpu=10, where=mac)["pass_a5"])
+        self.assertEqual(summarize(run(2), ncpu=10, where=[{"os": "win", "host": "a"}])["absent"], ["msedgewebview2"])
 
     def test_origin_names_the_platform_without_the_host_name(self):
         o = origin()
@@ -1308,6 +1419,17 @@ class Sample(unittest.TestCase):
         self.assertEqual(rows[-2], (30.0, 1, "meeting-translator", 1000, 3.0))
 
 
+class Command(unittest.TestCase):
+    def test_sampling_on_macos_stops_without_the_responsibility_function(self):
+        """Không có hàm thì không gán được WebKit cho app: dừng với lỗi trước khi lấy mẫu (N4 của review 08 lần 3)."""
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(soak.sys, "platform", "darwin"), \
+                mock.patch.object(soak, "mac_responsible", return_value=None), \
+                contextlib.redirect_stderr(io.StringIO()) as err, self.assertRaises(SystemExit) as stop:
+            soak.main(["sample", "--duration", "0", "--out", os.path.join(d, "s.csv")])
+        self.assertEqual(stop.exception.code, 2)
+        self.assertIn("responsibility_get_pid_responsible_for_pid", err.getvalue())
+
+
 class Pids(unittest.TestCase):
     def test_lists_the_processes_of_the_app_for_the_network_check(self):
         """`pids` in pid và tên các tiến trình của app (cả WebView) cho bước bù của A7 (N7 của review 08 lần 2)."""
@@ -1349,10 +1471,12 @@ Tạo `bench/phase1/acceptance/soak.py`:
 - WebView (spec §8 tính RAM "App và WebView"): trên Windows, `msedgewebview2` là con của app nên được giữ theo cây tiến
   trình; trên macOS, tiến trình XPC của WebKit (`com.apple.WebKit.*`) có cha là `launchd`, nên giữ theo tiến trình chịu
   trách nhiệm (`responsibility_get_pid_responsible_for_pid` của libSystem, gọi bằng `ctypes`, không cần quyền): chỉ WebKit
-  của chính app, không lẫn WebKit của Safari hay app khác (N1 của review 08 lần 2).
+  của chính app, không lẫn WebKit của Safari hay app khác (N1 của review 08 lần 2). Hàm này không có trên máy thì `sample`
+  dừng với lỗi, không lặng lẽ bỏ WebView (N4 của review 08 lần 3).
 - Mỗi dòng CSV ghi hệ điều hành và mã máy (`os`, `host`: 12 ký tự đầu SHA-256 của địa chỉ phần cứng, không lộ tên máy) lúc
   lấy mẫu, để kết quả tự khai nơi đo (Q1 của review 08 lần 2).
-- `summarize`: A5 đạt khi mọi tên trong `--require` có mặt ở mẫu đầu, chạy đủ `--hours` giờ, không tiến trình nào biến mất
+- `summarize`: A5 đạt khi mọi tên trong `--require` (mặc định app, hai tiến trình phụ và WebView của hệ điều hành nơi đo;
+  N4 của review 08 lần 3) có mặt ở mẫu đầu, chạy đủ `--hours` giờ, không tiến trình nào biến mất
   hay khởi động lại (pid mới của một tên xuất hiện sau mẫu đầu), và RAM tổng sau giờ đầu không vượt quá 110% RAM trung
   bình của phút 55–60. Tải máy: tổng thời gian CPU chia thời gian thực và số lõi logic, mục tiêu ≤ 30% trên máy khuyến
   nghị.
@@ -1377,6 +1501,8 @@ import uuid
 DEFAULT_NAMES = ("meeting-translator", "asr-worker", "llama-server")
 DEFAULT_APP = "meeting-translator"
 DEFAULT_REQUIRE = ("meeting-translator", "asr-worker", "llama-server")
+# WebView của app, bắt buộc theo nơi đo khi không chỉ `--require` (N4 của review 08 lần 3).
+WEBVIEW = {"mac": "com.apple.WebKit", "win": "msedgewebview2"}
 RAM_GROWTH_MAX = 0.10
 CPU_AVG_MAX = 0.30
 
@@ -1513,9 +1639,12 @@ def read_csv(path):
     return rows, where
 
 
-def summarize(rows, ncpu, hours=2.0, require=DEFAULT_REQUIRE, where=None):
-    """Tổng hợp các mẫu (t, pid, tên, RSS KiB, CPU giây). `where`: các nơi đo trong file (phải đúng một)."""
+def summarize(rows, ncpu, hours=2.0, require=None, where=None):
+    """Tổng hợp các mẫu (t, pid, tên, RSS KiB, CPU giây). `where`: các nơi đo trong file (phải đúng một). `require`
+    mặc định là app, hai tiến trình phụ và WebView của hệ điều hành nơi đo."""
     one = where[0] if where and len(where) == 1 else {"os": None, "host": None}
+    if require is None:
+        require = DEFAULT_REQUIRE + tuple(WEBVIEW[o] for o in [one["os"]] if o in WEBVIEW)
     times = sorted({r[0] for r in rows})
     if not times:
         return {"os": None, "host": None, "samples": 0, "absent": list(require), "pass_a5": False, "pass_cpu": False}
@@ -1581,10 +1710,14 @@ def main(argv=None):
     m.add_argument("csv")
     m.add_argument("--hours", type=float, default=2.0)
     m.add_argument("--ncpu", type=int, default=os.cpu_count())
-    m.add_argument("--require", default=",".join(DEFAULT_REQUIRE),
-                   help="tên phải có ở mẫu đầu (thiếu là không đạt), cách nhau bằng dấu phẩy")
+    m.add_argument("--require", default=None,
+                   help="tên phải có ở mẫu đầu (thiếu là không đạt), cách nhau bằng dấu phẩy; mặc định app, hai tiến "
+                        "trình phụ và WebView (macOS com.apple.WebKit, Windows msedgewebview2)")
     m.add_argument("--out", help="ghi kết quả JSON vào file này")
     args = ap.parse_args(argv)
+    if args.cmd == "sample" and sys.platform == "darwin" and mac_responsible() is None:
+        ap.error("macOS không có responsibility_get_pid_responsible_for_pid: không gán được WebKit cho app, "
+                 "A5 sẽ thiếu WebView; báo người lập kế hoạch")
     if args.cmd == "sample":
         n = sample(tuple(x for x in args.names.split(",") if x), args.every, args.duration, args.out, app=args.app)
         print(f"{n} mẫu, ghi {args.out}")
@@ -1594,7 +1727,8 @@ def main(argv=None):
             print(pid, name)
         return 0
     rows, where = read_csv(args.csv)
-    out = summarize(rows, args.ncpu, args.hours, tuple(x for x in args.require.split(",") if x), where)
+    require = None if args.require is None else tuple(x for x in args.require.split(",") if x)
+    out = summarize(rows, args.ncpu, args.hours, require, where)
     print(f"Nơi đo: {out.get('os') or 'NHIỀU NƠI/KHÔNG RÕ'}, máy {out.get('host') or '—'}")
     print(f"Số mẫu: {out['samples']}; thời gian: {fmt(out.get('duration_s'), '.0f')} giây "
           f"({'đủ' if out.get('long_enough') else 'chưa đủ'} {args.hours:g} giờ)")
@@ -1624,6 +1758,7 @@ python3 -m unittest discover -s bench/phase1/acceptance -p 'test_soak.py' -v 2>&
 ```
 Expected (lúc lập kế hoạch):
 ```text
+Không có hàm thì không gán được WebKit cho app: dừng với lỗi trước khi lấy mẫu (N4 của review 08 lần 3). ... ok
 test_cputime_formats (test_soak.Parse.test_cputime_formats) ... ok
 WebKit của app khác (pid 850, Safari) không tính: gán theo tiến trình chịu trách nhiệm (N1 của review 08 lần 2). ... ok
 WebView2 (`msedgewebview2`) là con của app; WebView2 của app khác (pid 90) không tính (Q3 của review 08 lần 1). ... ok
@@ -1638,9 +1773,10 @@ test_no_samples (test_soak.Summarize.test_no_samples) ... ok
 test_origin_names_the_platform_without_the_host_name (test_soak.Summarize.test_origin_names_the_platform_without_the_host_name) ... ok
 test_ram_growth_over_10_percent_after_the_first_hour_fails (test_soak.Summarize.test_ram_growth_over_10_percent_after_the_first_hour_fails) ... ok
 Hệ điều hành và mã máy ghi lúc lấy mẫu, không theo tên file (Q1 của review 08 lần 2). ... ok
+WebView của app bắt buộc có mặt theo nơi đo: thiếu (hàm của libSystem vắng hay trả -1) là không đạt, không lặng ... ok
 test_too_short_fails (test_soak.Summarize.test_too_short_fails) ... ok
 test_two_webviews_at_once_are_not_a_restart (test_soak.Summarize.test_two_webviews_at_once_are_not_a_restart) ... ok
-Ran 16 tests
+Ran 18 tests
 OK
 ```
 
@@ -1661,7 +1797,7 @@ d=$(mktemp -d) && python3 bench/phase1/acceptance/soak.py sample --names launchd
 ```
 Expected (lúc lập kế hoạch):
 ```text
-THIẾU tiến trình bắt buộc ở mẫu đầu: meeting-translator, asr-worker, llama-server
+THIẾU tiến trình bắt buộc ở mẫu đầu: meeting-translator, asr-worker, llama-server, com.apple.WebKit
 ```
 
 - [ ] **Step 5: Commit**
@@ -1680,6 +1816,7 @@ Spec §3.3 (A7), §10.1 (app chỉ kết nối mạng để …), §10.2. QĐ7, 
 - Đọc nhật ký HAR của proxy (mitmproxy, Proxyman, Charles đều xuất được) và danh sách cho phép (`a7-allow.template.json`: máy chủ, đường dẫn, đường dẫn nào được gọi trong lúc dịch, giới hạn thân request, từ mồi).
 - Báo vi phạm: máy chủ hay đường dẫn lạ; request không theo lịch trong khoảng Bắt đầu…Dừng; thân request quá giới hạn hay có kiểu âm thanh, multipart, nhị phân; URL hay thân request chứa từ mồi (cụm của câu đã phát vào app và của bản dịch app đã hiện, so sau khi giải mã `%XX`, `+`, `\u` của JSON, NFC và chữ thường; N4 của review lần 2). Không có request ra ngoài nào cũng là không đạt (proxy không thấy app).
 - Cửa sổ Bắt đầu…Dừng (N2 của review lần 1, Q3 của review lần 2): hai mốc bắt buộc và phải có múi giờ; Dừng phải sau Bắt đầu; cửa sổ phải nằm hẳn trong khoảng thời gian của nhật ký (08b có request trước Bắt đầu và sau Dừng), lệch ra ngoài là dấu hiệu ghi sai múi giờ. Sai một điều là không đạt.
+- Đối chiếu mốc với log của app (`--app-log`, bắt buộc; N3 của review lần 3): dòng "bắt đầu phiên dịch", "kết thúc phiên dịch" của `session.rs` (giờ địa phương). Cửa sổ kiểm là hợp của mốc người ghi và các phiên trong log trùng với nó, nên ghi Dừng sớm không làm sót phần cuối phiên; không có phiên trùng mốc, hay phiên chưa có dòng kết thúc, là lỗi. Phiên cũ không có dòng kết thúc (app bị tắt) bị bỏ qua.
 - Kết quả ghi SHA-256 của file HAR, hệ điều hành và mã máy nơi chạy lệnh (08b chạy ngay trên máy thử) cho `report.py`.
 - Nhật ký chỉ được có lưu lượng của app và tiến trình phụ (mitmproxy `--mode local:…`; Q4 của review lần 1): HAR không ghi tiến trình gửi, nên request của trình duyệt hay app khác sẽ thành vi phạm.
 - Request tới `127.0.0.1`, `localhost` (hai tiến trình phụ) bỏ qua: không ra khỏi máy.
@@ -1706,7 +1843,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from netaudit import audit, main, when  # noqa: E402
+from netaudit import audit, main, sessions_from_log, when  # noqa: E402
 from soak import origin  # noqa: E402
 
 ALLOW = {
@@ -1722,6 +1859,10 @@ ALLOW = {
     "canaries": ["plotting analysis", "Kết quả phân tích"],
 }
 START, STOP = when("2026-10-03T10:00:00+07:00"), when("2026-10-03T11:00:00+07:00")
+LOG = ("[2026-10-03][09:49:58][INFO][meeting_translator_lib] khởi động AI Translator 0.1.0, lúc đăng nhập: false\n"
+       "[2026-10-03][10:00:02][INFO][meeting_translator_lib::session] bắt đầu phiên dịch 1\n"
+       "[2026-10-03][10:59:58][INFO][pipeline::engine] phiên dịch kết thúc: 12 đoạn\n"
+       "[2026-10-03][10:59:58][INFO][meeting_translator_lib::session] kết thúc phiên dịch: 12 đoạn (lọc 0, bỏ 0)\n")
 
 
 def entry(url, at="2026-10-03T10:30:00+07:00", method="GET", body=None, mime="application/json"):
@@ -1795,6 +1936,31 @@ class Audit(unittest.TestCase):
                       [v["reason"] for v in utc["violations"]])
         self.assertFalse(flipped["pass"] or utc["pass"])
 
+    def test_the_app_log_widens_a_window_noted_too_short(self):
+        """Người ghi Dừng sớm: phiên trong log của app (10:00:02–10:59:58) vẫn được kiểm đủ (N3 của review 08 lần 3)."""
+        late = entry("https://license.example/v1/checkout", at="2026-10-03T10:30:00+07:00", method="POST", body="{}")
+        sessions = sessions_from_log(LOG, START.tzinfo)
+        self.assertEqual(sessions, [(when("2026-10-03T10:00:02+07:00"), when("2026-10-03T10:59:58+07:00"))])
+        early_stop = when("2026-10-03T10:10:00+07:00")
+        self.assertTrue(audit(har(late), ALLOW, START, early_stop)["pass"], "không có log: phần sau 10:10 không kiểm")
+        out = audit(har(late), ALLOW, START, early_stop, sessions)
+        self.assertEqual([v["reason"] for v in out["violations"]],
+                         ["gọi trong lúc dịch mà không phải việc chạy theo lịch"])
+        self.assertEqual(out["window"], ["2026-10-03T10:00:00+07:00", "2026-10-03T10:59:58+07:00"])
+
+    def test_the_app_log_must_have_the_session(self):
+        none = audit(har(), ALLOW, START, STOP, sessions_from_log(LOG.replace("2026-10-03", "2026-10-02"), START.tzinfo))
+        self.assertIn("log của app không có phiên dịch nào trùng mốc Bắt đầu, Dừng", [v["reason"] for v in none["violations"]])
+        unfinished = sessions_from_log(LOG.splitlines()[1], START.tzinfo)
+        self.assertEqual(unfinished, [(when("2026-10-03T10:00:02+07:00"), None)])
+        out = audit(har(), ALLOW, START, STOP, unfinished)
+        self.assertIn("phiên dịch trong log của app chưa có dòng kết thúc (app thoát giữa phiên?)",
+                      [v["reason"] for v in out["violations"]])
+        self.assertFalse(none["pass"] or out["pass"])
+        crashed_before = "[2026-10-02][16:00:00][INFO][meeting_translator_lib::session] bắt đầu phiên dịch 1\n" + LOG
+        self.assertEqual(sessions_from_log(crashed_before, START.tzinfo), sessions_from_log(LOG, START.tzinfo),
+                         "phiên cũ không có dòng kết thúc (app bị tắt) không làm hỏng phiên sau")
+
     def test_encoded_canaries_are_found(self):
         """Từ mồi trong query có dấu +, thân form, JSON có \\u (N4 của review 08 lần 2)."""
         allow = dict(ALLOW, hosts={"license.example": [{"path": "/v1/", "during_session": True}]})
@@ -1819,20 +1985,23 @@ class Command(unittest.TestCase):
     def test_the_command_needs_a_timezone_and_records_the_log_and_the_machine(self):
         """Mốc không múi giờ là lỗi; kết quả ghi mã băm nhật ký và nơi chạy (Q1, Q3 của review 08 lần 2)."""
         with tempfile.TemporaryDirectory() as d:
-            paths = {n: os.path.join(d, n) for n in ("a.har", "allow.json", "out.json")}
+            paths = {n: os.path.join(d, n) for n in ("a.har", "allow.json", "out.json", "app.log")}
+            with open(paths["app.log"], "w", encoding="utf-8") as f:
+                f.write(LOG)
             for name, data in (("a.har", har(entry("https://license.example/v1/plans"))), ("allow.json", ALLOW)):
                 with open(paths[name], "w", encoding="utf-8") as f:
                     json.dump(data, f)
-            args = [paths["a.har"], "--allow", paths["allow.json"], "--out", paths["out.json"]]
+            args = [paths["a.har"], "--allow", paths["allow.json"], "--out", paths["out.json"], "--app-log", paths["app.log"]]
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as naive:
                 main(args + ["--start", "2026-10-03T10:00:00", "--stop", "2026-10-03T11:00:00"])
             self.assertEqual(naive.exception.code, 2)
             with contextlib.redirect_stdout(io.StringIO()):
-                code = main(args + ["--start", "2026-10-03T10:00:00+07:00", "--stop", "2026-10-03T11:00:00+07:00"])
+                code = main(args + ["--start", "2026-10-03T10:00:00+07:00", "--stop", "2026-10-03T10:30:00+07:00"])
             with open(paths["out.json"], encoding="utf-8") as f:
                 out = json.load(f)
         self.assertEqual(code, 0)
         self.assertRegex(out["har_sha256"], "^[0-9a-f]{64}$")
+        self.assertEqual(out["window"], ["2026-10-03T10:00:00+07:00", "2026-10-03T10:59:58+07:00"], "theo log của app")
         self.assertEqual((out["os"], out["host"]), (origin()["os"], origin()["host"]))
 
 
@@ -1908,6 +2077,10 @@ Luật:
   của app và tiến trình phụ (mitmproxy `--mode local:…`, hay lọc theo app trong Proxyman trước khi xuất): HAR không ghi
   tiến trình gửi, nên request của trình duyệt hay app khác sẽ thành vi phạm.
 - Từ mồi so trên URL và thân đã giải mã (`%XX`, dấu `+` của query và form, `\\uXXXX` của JSON; N4 của review 08 lần 2).
+- Mốc người ghi được đối chiếu với log của app (`--app-log`: dòng "bắt đầu phiên dịch", "kết thúc phiên dịch" của
+  `session.rs`, giờ địa phương, lấy múi giờ của `--start`): cửa sổ kiểm là hợp của mốc đã ghi và mọi phiên trong log trùng
+  với nó, nên ghi Dừng sớm hay Bắt đầu muộn không làm sót phần phiên nào. Log không có phiên trùng mốc, hay phiên chưa có
+  dòng kết thúc, là lỗi (N3 của review 08 lần 3).
 - Kết quả tự khai nơi chạy (`os`, `host` như `soak.py`) và SHA-256 của file HAR: chạy trên chính máy đã thử (Q1).
 """
 import argparse
@@ -1916,6 +2089,7 @@ import json
 import os
 import sys
 import unicodedata
+import re
 from datetime import datetime
 from urllib.parse import unquote_plus, urlsplit
 
@@ -1924,6 +2098,9 @@ from soak import origin  # noqa: E402
 
 LOCAL = {"127.0.0.1", "localhost", "::1", "[::1]"}
 BAD_TYPES = ("audio/", "multipart/", "application/octet-stream")
+# Dòng log của `tauri-plugin-log` (giờ địa phương): `[2026-10-03][10:00:02][INFO][…::session] bắt đầu phiên dịch 1`.
+LOG_LINE = re.compile(r"^\[(\d{4}-\d{2}-\d{2})\]\[(\d{2}:\d{2}:\d{2})\]\[\w+\]\[[^\]]*::session\] "
+                      r"(bắt đầu phiên dịch \d+|kết thúc phiên dịch:)")
 
 
 def fold(text):
@@ -1950,7 +2127,26 @@ def decoded(text):
     return fold("\n".join(out))
 
 
-def audit(har, allow, start=None, stop=None):
+def sessions_from_log(text, tz):
+    """Các phiên dịch trong log của app: [(bắt đầu, kết thúc hay None)], giờ gắn múi `tz`."""
+    out = []
+    for line in text.splitlines():
+        m = LOG_LINE.match(line)
+        if not m:
+            continue
+        t = datetime.fromisoformat(f"{m.group(1)}T{m.group(2)}").replace(tzinfo=tz)
+        if m.group(3).startswith("bắt đầu"):
+            # Phiên trước chưa có dòng kết thúc (app bị tắt giữa phiên) thì bỏ: không biết nó dừng lúc nào.
+            if out and out[-1][1] is None:
+                out.pop()
+            out.append((t, None))
+        elif out and out[-1][1] is None:
+            out[-1] = (out[-1][0], t)
+    return out
+
+
+def audit(har, allow, start=None, stop=None, sessions=None):
+    """`sessions`: phiên trong log của app (`sessions_from_log`), hay None nếu không đối chiếu."""
     canaries = [fold(c) for c in allow.get("canaries", [])]
     entries = har["log"]["entries"]
     window = []
@@ -1958,7 +2154,15 @@ def audit(har, allow, start=None, stop=None):
         window.append("thiếu mốc Bắt đầu, Dừng của phiên dịch")
     elif stop <= start:
         window.append("mốc Dừng không sau mốc Bắt đầu")
-    elif entries:
+    elif sessions is not None:
+        hit = [(a, b) for a, b in sessions if a < stop and (b is None or b > start)]
+        if not hit:
+            window.append("log của app không có phiên dịch nào trùng mốc Bắt đầu, Dừng")
+        elif any(b is None for _, b in hit):
+            window.append("phiên dịch trong log của app chưa có dòng kết thúc (app thoát giữa phiên?)")
+        else:
+            start, stop = min([start] + [a for a, _ in hit]), max([stop] + [b for _, b in hit])
+    if not window and entries:
         times = sorted(when(e["startedDateTime"]) for e in entries)
         if not times[0] < start < stop < times[-1]:
             window.append("cửa sổ phiên dịch không nằm trong khoảng thời gian của nhật ký (sai múi giờ?)")
@@ -2001,7 +2205,7 @@ def audit(har, allow, start=None, stop=None):
         violations.append({"time": None, "method": None, "url": None,
                            "reason": "không có request ra ngoài nào: kiểm lại proxy"})
     return {"criterion": "A7", "external": external, "in_session": in_session, "violations": violations,
-            "pass": not violations}
+            "window": [start.isoformat(), stop.isoformat()] if start and stop else None, "pass": not violations}
 
 
 def main(argv=None):
@@ -2010,6 +2214,7 @@ def main(argv=None):
     ap.add_argument("--allow", required=True, help="JSON: hosts, max_body_bytes, canaries")
     ap.add_argument("--start", required=True, help="lúc bấm Bắt đầu, ISO 8601 có múi giờ")
     ap.add_argument("--stop", required=True, help="lúc bấm Dừng, ISO 8601 có múi giờ")
+    ap.add_argument("--app-log", required=True, help="log của app trên máy thử (app.log), để đối chiếu mốc phiên")
     ap.add_argument("--out", help="ghi kết quả JSON vào file này")
     args = ap.parse_args(argv)
     start, stop = when(args.start), when(args.stop)
@@ -2019,10 +2224,14 @@ def main(argv=None):
         har = json.load(f)
     with open(args.allow, encoding="utf-8") as f:
         allow = json.load(f)
-    out = audit(har, allow, start, stop)
+    with open(args.app_log, encoding="utf-8", errors="replace") as f:
+        sessions = sessions_from_log(f.read(), start.tzinfo)
+    out = audit(har, allow, start, stop, sessions)
     with open(args.har, "rb") as f:
         out["har_sha256"] = hashlib.sha256(f.read()).hexdigest()
     out.update(origin())
+    if out["window"]:
+        print(f"Cửa sổ phiên đã kiểm (mốc đã ghi hợp với log của app): {out['window'][0]} … {out['window'][1]}")
     print(f"Request ra ngoài: {out['external']}; trong lúc dịch: {out['in_session']}")
     for v in out["violations"]:
         print(f"VI PHẠM: {v['method'] or ''} {v['url'] or ''} — {v['reason']}".replace("  ", " "))
@@ -2050,13 +2259,15 @@ Từ mồi trong query có dấu +, thân form, JSON có \u (N4 của review 08 
 test_large_or_audio_bodies_fail (test_netaudit.Audit.test_large_or_audio_bodies_fail) ... ok
 test_no_external_request_means_the_proxy_saw_nothing (test_netaudit.Audit.test_no_external_request_means_the_proxy_saw_nothing) ... ok
 test_scheduled_requests_during_the_session_pass (test_netaudit.Audit.test_scheduled_requests_during_the_session_pass) ... ok
+test_the_app_log_must_have_the_session (test_netaudit.Audit.test_the_app_log_must_have_the_session) ... ok
+Người ghi Dừng sớm: phiên trong log của app (10:00:02–10:59:58) vẫn được kiểm đủ (N3 của review 08 lần 3). ... ok
 test_the_longest_matching_rule_wins (test_netaudit.Audit.test_the_longest_matching_rule_wins) ... ok
 Thiếu mốc Bắt đầu, Dừng thì luật "trong lúc dịch" không chạy được: không đạt (N2 của review 08 lần 1). ... ok
 Mốc đảo, hay ghi sai múi giờ (cửa sổ lệch khỏi nhật ký): lỗi, không phải đạt (Q3 của review 08 lần 2). ... ok
 test_unknown_host_or_path_fails (test_netaudit.Audit.test_unknown_host_or_path_fails) ... ok
 test_unscheduled_request_only_fails_during_the_session (test_netaudit.Audit.test_unscheduled_request_only_fails_during_the_session) ... ok
 Mốc không múi giờ là lỗi; kết quả ghi mã băm nhật ký và nơi chạy (Q1, Q3 của review 08 lần 2). ... ok
-Ran 11 tests
+Ran 13 tests
 OK
 ```
 
@@ -2071,7 +2282,7 @@ Expected (lúc lập kế hoạch):
 
 Run:
 ```bash
-python3 bench/phase1/acceptance/netaudit.py /dev/null --allow bench/phase1/acceptance/a7-allow.template.json --start 2026-10-10T09:00:00 --stop 2026-10-10T10:00:00 2>&1 | tail -1
+python3 bench/phase1/acceptance/netaudit.py /dev/null --allow bench/phase1/acceptance/a7-allow.template.json --app-log /dev/null --start 2026-10-10T09:00:00 --stop 2026-10-10T10:00:00 2>&1 | tail -1
 ```
 Expected (lúc lập kế hoạch):
 ```text
@@ -2557,11 +2768,11 @@ Python 3.12 trở lên, chỉ dùng thư viện chuẩn. Chạy từ gốc repo.
 | Script | Việc | Ra |
 |---|---|---|
 | `mapping.py summary` / `check` | Bảng đối chiếu của kế hoạch 00: đếm trạng thái, nhóm dòng chưa xong theo việc đang chặn; `check` là Task 5 của kế hoạch 00 | in Markdown hay JSON (`--json`) |
-| `gates.py a2` | A2 từ JSON của `latency-bench latency` của một máy: luật lượt đo đáng tin và ngưỡng của `summarize.py`; gói lấy từ model, hạng trong nhãn đối chiếu với máy; đủ 6 session | `a2-<máy>.json` |
+| `gates.py a2` | A2 từ JSON của `latency-bench latency` của một máy: luật lượt đo đáng tin và ngưỡng của `summarize.py`; gói lấy từ model, hạng trong nhãn đối chiếu với máy (RAM ≥ 15 GB; Windows thêm backend Vulkan), session khớp ngôn ngữ của câu; đủ 6 session | `a2-<máy>.json` |
 | `gates.py a3` | A3 từ `s7_mt-<nhãn>.json` của `score_mt.py`, so mốc `s7_mt.json`, cộng mức sàn Anh→Việt | `a3.json` |
 | `gates.py a4` | A4 từ `a4_<nhãn>.json` của `score_asr.py`, nhận cả hai mốc `a4_m4pro-{turbo,small}-final.json`, gói suy từ số đo (mốc gần hơn), ≤ 10% tương đối | `a4-<gói>.json` |
-| `soak.py sample` / `summarize` / `pids` | A5 (2 giờ, không crash, RAM sau giờ đầu ≤ 110%) và tải máy §8 (CPU ≤ 30%), gồm WebView của chính app; `--require` các tiến trình bắt buộc; CSV ghi hệ điều hành, mã máy; `pids` in tiến trình của app cho A7 | `a5-<máy>.*` |
-| `netaudit.py` | A7 từ nhật ký HAR của proxy (chỉ lưu lượng của app), theo danh sách cho phép (`a7-allow.template.json`); mốc Bắt đầu, Dừng bắt buộc, có múi giờ, nằm trong nhật ký; chạy trên chính máy thử | `a7-<máy>.json` |
+| `soak.py sample` / `summarize` / `pids` | A5 (2 giờ, không crash, RAM sau giờ đầu ≤ 110%) và tải máy §8 (CPU ≤ 30%), gồm WebView của chính app (mặc định bắt buộc có mặt); `--require` các tiến trình bắt buộc; CSV ghi hệ điều hành, mã máy; `pids` in tiến trình của app cho A7 | `a5-<máy>.*` |
+| `netaudit.py` | A7 từ nhật ký HAR của proxy (chỉ lưu lượng của app), theo danh sách cho phép (`a7-allow.template.json`); mốc Bắt đầu, Dừng bắt buộc, có múi giờ, nằm trong nhật ký, đối chiếu với log của app (`--app-log`); chạy trên chính máy thử | `a7-<máy>.json` |
 | `report.py` | Gom tất cả thành báo cáo nghiệm thu | `report.md` |
 
 Gói, hạng, máy, hệ điều hành do công cụ ghi vào nội dung file; `report.py` đọc nội dung, không tin tên file.
@@ -2579,7 +2790,7 @@ python3 -m unittest discover -s bench/phase1/acceptance -p 'test_*.py' 2>&1 | ta
 ```
 Expected (lúc lập kế hoạch):
 ```text
-Ran 75 tests
+Ran 82 tests
 
 OK
 ```
