@@ -14,12 +14,21 @@ MODELS = {"chuan": ("models/Hy-MT2-1.8B-Q8_0.gguf", "models/ggml-large-v3-turbo-
           "nhe": ("models/Hy-MT2-1.8B-Q4_K_M.gguf", "models/ggml-small-q5_1.bin")}
 
 
+LANGS = {"mixed": ["en", "zh", "ja", "ko"]}
+
+
 def session(tier, pack, sess, p50=900, p90=1200, first=600, measured=21, lag=10, offset=40, merge="true",
-            name="m1", os="macOS 26", ram="16.0"):
-    """Một file của `latency-bench latency`: nhãn, cấu hình (model), máy, và các số `summarize.py` cần."""
+            name="m1", os="macOS 26", ram="16.0", backend=None, langs=None):
+    """Một file của `latency-bench latency`: nhãn, cấu hình (model, backend), máy, ngôn ngữ của các câu, và các số
+    `summarize.py` cần. Backend mặc định: Metal trên Mac; Windows khuyến nghị Vulkan, tối thiểu CPU."""
     mt, asr = MODELS[pack]
-    return {"label": f"{name}-{tier}-{pack}-{sess}", "config": {"merge": merge, "mt_model": mt, "asr_model": asr},
+    if backend is None:
+        backend = "metal" if os.startswith("macOS") else "vulkan" if tier == "khuyennghi" else "cpu"
+    langs = LANGS.get(sess, [sess] * 3) if langs is None else langs
+    return {"label": f"{name}-{tier}-{pack}-{sess}",
+            "config": {"merge": merge, "mt_model": mt, "asr_model": asr, "asr_backend": backend},
             "machine": {"os": os, "cpu": "Apple M1", "logical_cores": "8", "ram_gb": ram},
+            "utterances": [{"id": i, "lang": l} for i, l in enumerate(langs)],
             "summary": {"utterances": 21, "measured": measured, "merges": 4, "feed_lag_max_ms": lag,
                         "end_offset_max_abs_ms": offset, "shown_p50_ms": p50, "shown_p90_ms": p90, "first_p50_ms": first}}
 
@@ -63,6 +72,36 @@ class A2(unittest.TestCase):
         self.assertTrue(gate_a2(full("toithieu", "nhe", os="Windows 11", ram="16.0"))["pass"])
         self.assertFalse(gate_a2(full("khuyennghi", "chuan", os="Windows 11", ram="8.0"))["pass"])
 
+    def test_a_16_gb_windows_machine_reports_less_than_16(self):
+        """Windows ghi RAM dùng được (`ullTotalPhys`), máy 16 GB thường báo 15,3–15,9 GB: vẫn là khuyến nghị (Q1 của
+        review 08 lần 3)."""
+        self.assertTrue(gate_a2(full("khuyennghi", "chuan", os="Windows 11", ram="15.7"))["pass"])
+        low = gate_a2(full("khuyennghi", "chuan", os="Windows 11", ram="14.0"))
+        self.assertFalse(low["pass"])
+        self.assertIn("14 GB", failed(low)["en"][0])
+
+    def test_on_windows_the_class_follows_the_backend(self):
+        """Windows khuyến nghị có card (Vulkan), tối thiểu chạy CPU (§8): máy 32 GB chạy Vulkan mà nhãn ghi tối thiểu,
+        hay máy chạy CPU mà nhãn ghi khuyến nghị, là lỗi (N2 của review 08 lần 3)."""
+        big = gate_a2(full("toithieu", "nhe", os="Windows 11", ram="32.0", backend="vulkan"))
+        self.assertFalse(big["pass"])
+        self.assertIn("nhãn ghi toithieu mà máy là khuyennghi", failed(big)["en"][0])
+        cpu = gate_a2(full("khuyennghi", "chuan", os="Windows 11", ram="32.0", backend="cpu"))
+        self.assertIn("nhãn ghi khuyennghi mà máy là toithieu", failed(cpu)["en"][0])
+        self.assertTrue(gate_a2(full("toithieu", "nhe", os="Windows 11", ram="32.0", backend="cpu"))["pass"])
+
+    def test_the_session_must_match_its_sentences(self):
+        """Session lấy từ nhãn phải khớp ngôn ngữ của các câu đã đo (N2 của review 08 lần 3)."""
+        runs = full("khuyennghi", "chuan")
+        runs[1] = session("khuyennghi", "chuan", "vi", langs=["en", "en"])
+        runs[5] = session("khuyennghi", "chuan", "mixed", langs=["en", "en"])
+        runs[2] = session("khuyennghi", "chuan", "zh", langs=[])
+        runs[0] = session("khuyennghi", "chuan", "en", langs=["en", "ja"])
+        out = gate_a2(runs)
+        self.assertFalse(out["pass"])
+        self.assertEqual(sorted(failed(out)), ["en", "mixed", "vi", "zh"])
+        self.assertIn("câu đo là en", failed(out)["vi"][0])
+
     def test_each_class_needs_its_pack_and_every_session(self):
         """Máy khuyến nghị chạy gói Chuẩn, máy tối thiểu gói Nhẹ (§8), đủ 6 session (Q2 của review 08 lần 2)."""
         only_light = gate_a2(full("khuyennghi", "nhe"))
@@ -91,9 +130,14 @@ class A2(unittest.TestCase):
             self.assertTrue(failed(out)["en"][0].startswith(("chỉ đo được", "phát lại trễ", "mốc dừng lệch")))
 
     def test_nan_is_refused(self):
-        runs = full("khuyennghi", "chuan")
-        runs[0] = session("khuyennghi", "chuan", "en", p50=float("nan"))
-        self.assertFalse(gate_a2(runs)["pass"])
+        """Mọi số của cổng, cả các số độ tin cậy (N1 của review 08 lần 3)."""
+        for bad in (dict(p50=float("nan")), dict(lag=float("nan")), dict(measured=float("nan")),
+                    dict(offset=float("inf"))):
+            runs = full("khuyennghi", "chuan")
+            runs[0] = session("khuyennghi", "chuan", "en", **bad)
+            out = gate_a2(runs)
+            self.assertFalse(out["pass"], bad)
+            self.assertTrue(failed(out)["en"][0].startswith("số không hợp lệ"), bad)
 
     def test_a_run_without_merging_is_left_out(self):
         runs = full("khuyennghi", "chuan") + [session("khuyennghi", "chuan", "en", name="m1-nomerge", merge="false",

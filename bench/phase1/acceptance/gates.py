@@ -2,9 +2,11 @@
 
 - `a2`: file JSON của `latency-bench latency` của **một máy** (mỗi file một session, `run_matrix.py`). Dùng lại đúng luật của
   `bench/phase0/latency/summarize.py` (ngưỡng `A2`, lượt đo không đáng tin `problems`, lượt tắt ghép câu không tính). Gói lấy
-  từ `config.mt_model`, `config.asr_model`; hạng máy lấy từ nhãn và đối chiếu với `machine` (macOS: RAM ≥ 16 GB là khuyến
-  nghị; Windows không ghi GPU nên chỉ kiểm RAM của hạng khuyến nghị), mâu thuẫn là lỗi. Hạng khuyến nghị cần đủ 6 session
-  của gói Chuẩn, hạng tối thiểu đủ 6 session của gói Nhẹ (§8); trùng session hay nhiều máy trong một lượt cổng là lỗi.
+  từ `config.mt_model`, `config.asr_model`; hạng máy lấy từ nhãn và đối chiếu với máy (macOS: RAM ≥ 15 GB là khuyến
+  nghị; Windows: RAM ≥ 15 GB và `config.asr_backend` là Vulkan là khuyến nghị, còn lại tối thiểu), mâu thuẫn là lỗi.
+  Session lấy từ nhãn phải khớp ngôn ngữ của các câu đã đo (`utterances[].lang`). Hạng khuyến nghị cần đủ 6 session của
+  gói Chuẩn, hạng tối thiểu đủ 6 session của gói Nhẹ (§8); trùng session, số không hữu hạn hay nhiều máy trong một lượt
+  cổng là lỗi.
 - `a3`: kết quả `bench/phase0/mt/score_mt.py --label <nhãn>` (`s7_mt-<nhãn>.json`), so mốc `s7_mt.json` bằng chính hàm
   `regression_lines` của `score_mt.py` (thấp hơn mốc quá 0,01 là thụt lùi), cộng mức sàn Anh→Việt; mọi lượt `-plain` của
   mốc (hai gói) phải có mặt, và mỗi chiều chấm đủ số câu của mốc.
@@ -35,6 +37,10 @@ A4_RELATIVE = 0.10
 
 SESSIONS = ("en", "vi", "zh", "ja", "ko", "mixed")
 PACK_OF_TIER = {"khuyennghi": "chuan", "toithieu": "nhe"}
+# RAM của hạng khuyến nghị (§8: 16 GB), có dung sai: `latency-bench` ghi `sysinfo::total_memory()`, trên Windows là RAM
+# dùng được (`ullTotalPhys`, đã trừ phần phần cứng giữ), máy 16 GB thường báo 15,3–15,9 GB; macOS báo đúng RAM lắp
+# (16.0, 8.0). Q1 của review 08 lần 3.
+RECOMMENDED_RAM_GB = 15
 
 
 def tier_of(label):
@@ -56,15 +62,29 @@ def machine_of(m):
     return f"{m.get('os', '?')} | {m.get('cpu', '?')} | {m.get('ram_gb', '?')} GB | {m.get('logical_cores', '?')} lõi"
 
 
-def tier_problem(label_tier, m):
-    """Mâu thuẫn giữa hạng ghi trong nhãn và máy (§8), hay None."""
+def tier_problem(label_tier, m, backend):
+    """Mâu thuẫn giữa hạng ghi trong nhãn và máy (§8), hay None. macOS theo RAM; Windows theo RAM và backend của
+    `asr-worker` (khuyến nghị có card rời chạy Vulkan, tối thiểu chạy CPU; N2 của review 08 lần 3)."""
     ram = float(m.get("ram_gb") or 0)
-    derived = "khuyennghi" if ram >= 16 else "toithieu"
     if "macOS" in m.get("os", ""):
-        return None if derived == label_tier else f"nhãn ghi {label_tier} mà máy là {derived} (macOS, {ram:g} GB)"
-    if label_tier == "khuyennghi" and derived != "khuyennghi":
-        return f"nhãn ghi khuyennghi mà máy chỉ có {ram:g} GB"
-    return None
+        derived = "khuyennghi" if ram >= RECOMMENDED_RAM_GB else "toithieu"
+        why = f"macOS, {ram:g} GB"
+    else:
+        derived = "khuyennghi" if ram >= RECOMMENDED_RAM_GB and backend == "vulkan" else "toithieu"
+        why = f"Windows, {ram:g} GB, {backend or 'không rõ backend'}"
+    return None if derived == label_tier else f"nhãn ghi {label_tier} mà máy là {derived} ({why})"
+
+
+def session_problem(sess, utterances):
+    """Session trong nhãn so với ngôn ngữ của các câu đã đo, hay None (N2 của review 08 lần 3)."""
+    langs = sorted({u.get("lang") for u in utterances or []} - {None})
+    if sess not in SESSIONS:
+        return f"session lạ {sess!r}"
+    if not langs:
+        return "file không có câu nào"
+    if sess == "mixed":
+        return None if len(langs) >= 2 else f"nhãn ghi session mixed mà câu đo chỉ là {langs[0]}"
+    return None if langs == [sess] else f"nhãn ghi session {sess} mà câu đo là {', '.join(langs)}"
 
 
 def gate_a2(results):
@@ -81,18 +101,23 @@ def gate_a2(results):
         failed, limits = [], {}
         if tier is None:
             failed.append("nhãn không có hạng máy (-khuyennghi- hay -toithieu-)")
-        elif tier_problem(tier, m):
-            failed.append(tier_problem(tier, m))
+        elif tier_problem(tier, m, r.get("config", {}).get("asr_backend")):
+            failed.append(tier_problem(tier, m, r.get("config", {}).get("asr_backend")))
+        if session_problem(sess, r.get("utterances")):
+            failed.append(session_problem(sess, r.get("utterances")))
         if pack is None:
             failed.append("không nhận ra gói từ config.mt_model, config.asr_model")
         if (pack, sess) in seen:
             failed.append(f"trùng session {pack}-{sess} (lượt cũ hay lượt biến thể lẫn vào?)")
             seen[(pack, sess)]["failed"].append(f"trùng session {pack}-{sess} (lượt cũ hay lượt biến thể lẫn vào?)")
+        # Mọi số của cổng phải hữu hạn: so sánh với NaN luôn sai, nên NaN lọt qua cả ngưỡng lẫn luật độ tin cậy (N5 của
+        # review 08 lần 2, N1 của lần 3).
+        bad = [k for k in summarize.NEEDED if isinstance(s.get(k), float) and not math.isfinite(s[k])]
+        if bad:
+            failed.append(f"số không hợp lệ: {', '.join(bad)}")
         if not failed:
             limits = summarize.A2[tier]
-            bad = [k for k in limits if k in s and not math.isfinite(s[k])]
-            failed = ([f"số không hợp lệ: {', '.join(bad)}"] if bad else
-                      summarize.problems(s) or [k for k, v in limits.items() if s[k] > v])
+            failed = summarize.problems(s) or [k for k, v in limits.items() if s[k] > v]
         row = {"label": r["label"], "tier": tier, "pack": pack, "session": sess, "machine": machine_of(m),
                "values": {k: s.get(k) for k in limits}, "failed": failed}
         seen.setdefault((pack, sess), row)
