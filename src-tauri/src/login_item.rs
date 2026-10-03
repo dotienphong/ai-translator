@@ -14,6 +14,8 @@
 //! `HKCU`, nên `is_enabled()` đã là trạng thái thật. `enable()` ghi `HKLM` trước (mọi người dùng), chỉ
 //! khi không có quyền mới ghi `HKCU`; `disable()` xóa cả hai, nhưng không có quyền admin thì mục ở
 //! `HKLM` còn nguyên. Vì vậy sau khi tắt, app hỏi lại và báo lỗi nếu vẫn còn bật.
+//! Giá trị mà `auto-launch` ghi không có dấu nháy quanh đường dẫn, mà thư mục cài đặt có dấu cách; sau khi bật, app ghi
+//! lại giá trị có nháy ([`quoted_run_value`], kế hoạch 07b).
 //!
 //! Việc bật/tắt và hỏi trạng thái đi qua trait `LoginItem`, để test dùng bản giả
 //! (`test_support::FakeLoginItem`) mà không đụng LaunchAgent, Login Items hay registry thật.
@@ -32,6 +34,16 @@ pub fn autostart_name<'a>(identifier: &'a str, product_name: &'a str) -> &'a str
     } else {
         product_name
     }
+}
+
+/// Windows: `auto-launch` ghi giá trị trong `Run` dạng `<đường dẫn exe> --autostart`, không có dấu nháy. Thư mục cài
+/// đặt của NSIS có dấu cách (`%LOCALAPPDATA%\AI Translator\`), nên Windows tách ở dấu cách đầu tiên và thử chạy
+/// `C:\Users\…\AI` trước (lỗi kiểu "unquoted path": ai đặt được file ở đó thì chạy được lúc đăng nhập). Trả giá trị
+/// có nháy khi `value` đúng là `<exe>` theo sau là hết chuỗi hay một dấu cách; `None` khi đã có nháy hay không phải
+/// đường dẫn của app.
+pub fn quoted_run_value(value: &str, exe: &str) -> Option<String> {
+    let rest = value.strip_prefix(exe)?;
+    (!exe.is_empty() && (rest.is_empty() || rest.starts_with(' '))).then(|| format!("\"{exe}\"{rest}"))
 }
 
 /// Đường dẫn LaunchAgent mà `auto-launch` (dùng bởi `tauri-plugin-autostart`) tạo cho app.
@@ -110,7 +122,10 @@ struct Native<R: Runtime>(AppHandle<R>);
 
 impl<R: Runtime> LoginItem for Native<R> {
     fn enable(&self) -> Result<(), String> {
-        self.0.autolaunch().enable().map_err(|e| e.to_string())
+        self.0.autolaunch().enable().map_err(|e| e.to_string())?;
+        #[cfg(windows)]
+        quote_run_values(&self.0.package_info().name);
+        Ok(())
     }
 
     fn disable(&self) -> Result<(), String> {
@@ -125,6 +140,61 @@ impl<R: Runtime> LoginItem for Native<R> {
         let home = self.0.path().home_dir().ok()?;
         let name = autostart_name(&self.0.config().identifier, &self.0.package_info().name);
         agent_status(&launch_agent_path(&home, name))
+    }
+}
+
+/// Windows: ghi lại giá trị trong `Run` (cả `HKLM` lẫn `HKCU`, chỗ nào `auto-launch` đã ghi) với đường dẫn trong dấu
+/// nháy. Lỗi chỉ ghi log: mục khởi động vẫn chạy được như trước.
+#[cfg(windows)]
+fn quote_run_values(name: &str) {
+    use windows::Win32::System::Registry::{
+        HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, REG_SZ, RRF_RT_REG_SZ, RegGetValueW, RegSetKeyValueW,
+    };
+    use windows::core::{HSTRING, w};
+
+    let Ok(exe) = std::env::current_exe() else { return };
+    let exe = exe.display().to_string();
+    let key = w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
+    let name = HSTRING::from(name);
+    for root in [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER] {
+        let read = |root: HKEY| -> Option<String> {
+            let mut buf = vec![0u16; 4096];
+            let mut size = (buf.len() * 2) as u32;
+            // SAFETY: `buf` và `size` sống suốt lời gọi; `size` là số byte của `buf`.
+            let rc = unsafe {
+                RegGetValueW(
+                    root,
+                    key,
+                    &name,
+                    RRF_RT_REG_SZ,
+                    None,
+                    Some(buf.as_mut_ptr().cast()),
+                    Some(&mut size),
+                )
+            };
+            rc.is_ok().then(|| {
+                let chars = (size as usize / 2).saturating_sub(1);
+                String::from_utf16_lossy(&buf[..chars.min(buf.len())])
+            })
+        };
+        let Some(quoted) = read(root).and_then(|value| quoted_run_value(&value, &exe)) else {
+            continue;
+        };
+        let data: Vec<u16> = quoted.encode_utf16().chain(std::iter::once(0)).collect();
+        // SAFETY: `data` sống suốt lời gọi; số byte gồm cả ký tự kết thúc.
+        let rc = unsafe {
+            RegSetKeyValueW(
+                root,
+                key,
+                &name,
+                REG_SZ.0,
+                Some(data.as_ptr().cast()),
+                (data.len() * 2) as u32,
+            )
+        };
+        if rc.is_err() {
+            log::warn!("không ghi được giá trị Run có dấu nháy: {rc:?}");
+        }
     }
 }
 
@@ -149,6 +219,28 @@ mod tests {
         } else {
             assert_eq!(name, "AI Translator", "Windows: tên giá trị trong `Run`");
         }
+    }
+
+    #[test]
+    fn run_values_get_quotes_around_the_app_path() {
+        let exe = r"C:\Users\An\AppData\Local\AI Translator\meeting-translator.exe";
+        assert_eq!(
+            quoted_run_value(&format!("{exe} --autostart"), exe).as_deref(),
+            Some(r#""C:\Users\An\AppData\Local\AI Translator\meeting-translator.exe" --autostart"#)
+        );
+        assert_eq!(quoted_run_value(exe, exe), Some(format!("\"{exe}\"")));
+        assert_eq!(
+            quoted_run_value(&format!("\"{exe}\" --autostart"), exe),
+            None,
+            "đã có nháy"
+        );
+        assert_eq!(
+            quoted_run_value(&format!("{exe}x --autostart"), exe),
+            None,
+            "exe khác cùng tiền tố"
+        );
+        assert_eq!(quoted_run_value(r"C:\Khac\app.exe --autostart", exe), None);
+        assert_eq!(quoted_run_value(" --autostart", ""), None);
     }
 
     #[test]
