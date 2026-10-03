@@ -86,19 +86,45 @@ test("tên DLL và bộ cài chặt: không %, nháy, &, thư mục con", (t) =>
     "THIRD_PARTY_NOTICES-macos.txt", "AI Translator_0.2.0-beta.1_x64-setup.exe", "SHA256SUMS-windows.txt",
     "sidecar-sha256-windows.json", "THIRD_PARTY_NOTICES-windows.txt",
   ];
+  const v = "0.2.0-beta.1";
   put(out, files);
   put(out, ["AI Translator.app.tar.gz.sig", "AI Translator_0.2.0-beta.1_x64-setup.exe.sig"]);
-  assert.deepEqual(plan("release", out).errors, []);
+  assert.deepEqual(plan("release", out, v).errors, []);
   const mac = tempDir(t);
   put(mac, files.slice(0, 5));
-  assert.deepEqual(plan("macos-arm64", mac).errors, []);
+  assert.deepEqual(plan("macos-arm64", mac, v).errors, []);
   put(mac, ["AI Translator_0.2.0-beta.1_x64-setup.exe"]);
-  assert.match(plan("macos-arm64", mac).errors[0], /file lạ: AI Translator_0.2.0-beta.1_x64-setup.exe/);
+  assert.match(plan("macos-arm64", mac, v).errors[0], /file lạ: AI Translator_0.2.0-beta.1_x64-setup.exe/);
   const pct = tempDir(t);
-  put(pct, [...files, "%TAURI_SIGNING_PRIVATE_KEY%.sig"]);
-  assert.match(plan("release", pct).errors[0], /ký tự không cho phép/);
+  put(pct, [...files, "AI Translator.app.tar.gz.sig", "AI Translator_0.2.0-beta.1_x64-setup.exe.sig", "%KEY%.sig"]);
+  assert.match(plan("release", pct, v).errors[0], /ký tự không cho phép/);
   put(out, ["AI Translator_9_aarch64.dmg"]);
-  assert.match(plan("release", out).errors[0], /file lạ/);
+  assert.match(plan("release", out, v).errors[0], /file lạ/);
+});
+
+test("bộ cài và chữ ký bắt buộc, đúng phiên bản của bản phát hành (N-3 của review cuối 07a)", (t) => {
+  const v = "0.2.0";
+  const mac = ["AI Translator.app.tar.gz", "SHA256SUMS-macos.txt", "sidecar-sha256-macos.json", "THIRD_PARTY_NOTICES-macos.txt"];
+  const win = ["SHA256SUMS-windows.txt", "sidecar-sha256-windows.json", "THIRD_PARTY_NOTICES-windows.txt"];
+  const noDmg = tempDir(t);
+  put(noDmg, mac);
+  assert.deepEqual(plan("macos-arm64", noDmg, v).errors, ["thiếu AI Translator_0.2.0_aarch64.dmg"]);
+  const other = tempDir(t);
+  put(other, [...mac, "AI Translator_0.1.9_aarch64.dmg"]);
+  assert.deepEqual(plan("macos-arm64", other, v).errors, [
+    "file lạ: AI Translator_0.1.9_aarch64.dmg",
+    "thiếu AI Translator_0.2.0_aarch64.dmg",
+  ]);
+  const noExe = tempDir(t);
+  put(noExe, win);
+  assert.deepEqual(plan("windows-x64", noExe, v).errors, ["thiếu AI Translator_0.2.0_x64-setup.exe"]);
+  const unsigned = tempDir(t);
+  put(unsigned, [...mac, ...win, "AI Translator_0.2.0_aarch64.dmg", "AI Translator_0.2.0_x64-setup.exe"]);
+  assert.deepEqual(plan("release", unsigned, v).errors, [
+    "thiếu AI Translator.app.tar.gz.sig",
+    "thiếu AI Translator_0.2.0_x64-setup.exe.sig",
+  ]);
+  assert.match(plan("release", unsigned).errors[0], /cần phiên bản/);
 });
 
 test("job có secret chỉ tải artifact theo tên vào $RUNNER_TEMP/in/, chỉ take-artifact đọc ở đó, mọi artifact đó đều có luật", () => {

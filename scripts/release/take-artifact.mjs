@@ -2,7 +2,10 @@
 // Nhận một artifact trong job có secret (QA của review 07a lần 2). Job có secret tải artifact vào một thư mục TRỐNG ngoài
 // checkout (`$RUNNER_TEMP/in/<tên>`), rồi script này chép vào chỗ dùng CHỈ các file đúng tên chờ đợi của artifact đó.
 //
-//   node scripts/release/take-artifact.mjs <tên artifact> <thư mục đã tải> <thư mục đích>
+//   node scripts/release/take-artifact.mjs <tên artifact> <thư mục đã tải> <thư mục đích> [--version <X.Y.Z[-beta.N]>]
+//
+// Bộ cài (`macos-arm64`, `windows-x64`, `release`) phải có đúng file của đúng phiên bản: `--version`, mặc định là `version`
+// của tauri.conf.json trong checkout; `release` phải có cả hai chữ ký bản cập nhật (N-3 của review cuối 07a).
 //
 // Lý do: artifact đến từ job không secret, là job mà build script hay crate bị chiếm có thể điều khiển. Tải thẳng vào gốc
 // checkout thì artifact ghi đè được script của repo sẽ chạy ngay sau đó với secret. Ở đây:
@@ -17,30 +20,31 @@ import { copyFileSync, lstatSync, mkdirSync, readFileSync, readdirSync } from "n
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { root } from "./versions.mjs";
+
 const MAC = "aarch64-apple-darwin";
 const WIN = "x86_64-pc-windows-msvc";
-const VERSION = String.raw`\d+\.\d+\.\d+(?:-beta\.\d+)?`;
 const DLL = /^[A-Za-z0-9._-]+\.dll$/;
 
 const mac = [`asr-worker-${MAC}`, `llama-server-${MAC}`];
 const win = [`asr-worker-vulkan-${WIN}.exe`, `asr-worker-cpu-${WIN}.exe`, `llama-server-${WIN}.exe`];
-const macOut = [
+const macOut = (v) => [
+  `AI Translator_${v}_aarch64.dmg`,
   "AI Translator.app.tar.gz",
   "SHA256SUMS-macos.txt",
   "sidecar-sha256-macos.json",
   "THIRD_PARTY_NOTICES-macos.txt",
-  new RegExp(`^AI Translator_${VERSION}_aarch64\\.dmg$`),
 ];
-const winOut = [
+const winOut = (v) => [
+  `AI Translator_${v}_x64-setup.exe`,
   "SHA256SUMS-windows.txt",
   "sidecar-sha256-windows.json",
   "THIRD_PARTY_NOTICES-windows.txt",
-  new RegExp(`^AI Translator_${VERSION}_x64-setup\\.exe$`),
 ];
 
 /**
- * Luật của từng artifact: `required` là đường dẫn phải có, `allowed` là đường dẫn hay mẫu tên (RegExp, chỉ ở thư mục gốc
- * của mẫu) được phép có thêm. Đường dẫn dùng `/`.
+ * Luật của từng artifact: `required` là đường dẫn phải có, `allowed` là mẫu tên (RegExp, chỉ ở thư mục `dir`) được phép có
+ * thêm. Đường dẫn dùng `/`. Luật của bộ cài là hàm của phiên bản.
  */
 export const RULES = {
   "macos-sidecars": { required: [...mac.map((f) => `src-tauri/binaries/${f}`), "THIRD_PARTY_NOTICES.txt"], allowed: [] },
@@ -52,13 +56,13 @@ export const RULES = {
   },
   "windows-sidecars-signed": { required: win, allowed: [{ dir: "", name: DLL }] },
   "windows-app": { required: ["release/meeting-translator.exe", "release-work/binaries-before-build.json"], allowed: [] },
-  "macos-arm64": { required: macOut.filter((x) => typeof x === "string"), allowed: [{ dir: "", name: macOut.at(-1) }] },
-  "windows-x64": { required: winOut.filter((x) => typeof x === "string"), allowed: [{ dir: "", name: winOut.at(-1) }] },
-  // Artifact `release` của job update-signatures: như trên, cộng chữ ký bản cập nhật (07b dùng ở job đăng bản).
-  release: {
-    required: [...macOut, ...winOut].filter((x) => typeof x === "string"),
-    allowed: [macOut.at(-1), winOut.at(-1), /\.sig$/].map((name) => ({ dir: "", name })),
-  },
+  "macos-arm64": (v) => ({ required: macOut(v), allowed: [] }),
+  "windows-x64": (v) => ({ required: winOut(v), allowed: [] }),
+  // Artifact `release` của job update-signatures: như trên, cộng hai chữ ký bản cập nhật (07b dùng ở job đăng bản).
+  release: (v) => ({
+    required: [...macOut(v), ...winOut(v), "AI Translator.app.tar.gz.sig", `AI Translator_${v}_x64-setup.exe.sig`],
+    allowed: [],
+  }),
 };
 
 const SAFE_NAME = /^[A-Za-z0-9._ -]+$/;
@@ -78,9 +82,13 @@ function walk(dir, prefix = "") {
 }
 
 /** Kiểm nội dung đã tải theo luật; trả `{ files, errors }`, `files` là các đường dẫn sẽ chép. */
-export function plan(name, from) {
-  const rule = RULES[name];
+export function plan(name, from, version) {
+  let rule = RULES[name];
   if (!rule) return { files: [], errors: [`artifact lạ: ${name}`] };
+  if (typeof rule === "function") {
+    if (!version) return { files: [], errors: [`${name}: cần phiên bản (--version hay tauri.conf.json)`] };
+    rule = rule(version);
+  }
   const entries = walk(from);
   const dirs = new Set();
   for (const p of [...rule.required, ...rule.allowed.map((a) => (a.dir ? `${a.dir}/x` : "x"))]) {
@@ -114,8 +122,8 @@ export function plan(name, from) {
 }
 
 /** Chép các file của artifact `name` từ `from` vào `to`, sau khi kiểm hết. Lỗi thì không chép gì. */
-export function take(name, from, to, log = console.log) {
-  const { files, errors } = plan(name, from);
+export function take(name, from, to, log = console.log, version = undefined) {
+  const { files, errors } = plan(name, from, version);
   if (errors.length > 0) throw new Error(`${name}: ${errors.join("; ")}`);
   for (const rel of files) {
     const dest = join(to, rel);
@@ -129,9 +137,12 @@ export function take(name, from, to, log = console.log) {
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   try {
-    const [name, from, to] = process.argv.slice(2);
-    if (!name || !from || !to) throw new Error("dùng: take-artifact.mjs <tên artifact> <thư mục đã tải> <thư mục đích>");
-    take(name, from, to);
+    const args = process.argv.slice(2);
+    const i = args.indexOf("--version");
+    const version = i >= 0 ? args.splice(i, 2)[1] : JSON.parse(readFileSync(join(root, "src-tauri/tauri.conf.json"), "utf8")).version;
+    const [name, from, to] = args;
+    if (!name || !from || !to) throw new Error("dùng: take-artifact.mjs <tên artifact> <thư mục đã tải> <thư mục đích> [--version <v>]");
+    take(name, from, to, console.log, version);
   } catch (error) {
     console.error(`LỖI: ${error.message}`);
     process.exitCode = 1;

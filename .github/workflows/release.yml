@@ -207,8 +207,7 @@ jobs:
             eval "$(scripts/release/macos-keychain.sh import)"
           fi
           if [ "$HAS_NOTARY_KEY" = "true" ]; then
-            printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/notary.p8"
-            chmod 600 "$RUNNER_TEMP/notary.p8"
+            (umask 077; printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/notary.p8")
             export APPLE_API_KEY_PATH="$RUNNER_TEMP/notary.p8"
           fi
           unset P12 P12_PASSWORD APPLE_API_KEY_P8
@@ -379,12 +378,13 @@ jobs:
           node scripts/release/take-artifact.mjs windows-sidecars-signed "$RUNNER_TEMP/in/windows-sidecars-signed" src-tauri/binaries
           node scripts/release/take-artifact.mjs windows-app "$RUNNER_TEMP/in/windows-app" target
           node scripts/release/take-artifact.mjs windows-sidecars "$RUNNER_TEMP/in/windows-sidecars" target/release-work/unsigned
+      - name: Tauri CLI cho tauri bundle (không secret, không chạy script cài đặt)
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Bộ cài NSIS, ký, kiểm, SHA-256
         env:
           MT_WINDOWS_SIGN_CMD: ${{ vars.MT_WINDOWS_SIGN_CMD }}
         run: |
           cp target/release-work/unsigned/THIRD_PARTY_NOTICES.txt .
-          pnpm install --frozen-lockfile --ignore-scripts
           node scripts/release/package-windows.mjs bundle
           cp target/release/bundle/nsis/*-setup.exe "$MT_RELEASE_OUT/"
           node scripts/release/release-check.mjs table src-tauri/binaries --target x86_64-pc-windows-msvc \
@@ -425,12 +425,13 @@ jobs:
         run: |
           node scripts/release/take-artifact.mjs macos-arm64 "$RUNNER_TEMP/in/macos-arm64" target/release-out
           node scripts/release/take-artifact.mjs windows-x64 "$RUNNER_TEMP/in/windows-x64" target/release-out
+      - name: Tauri CLI cho tauri signer (không secret, không chạy script cài đặt)
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Ký .app.tar.gz và bộ cài Windows (tauri signer, gắn phiên bản)
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          pnpm install --frozen-lockfile --ignore-scripts
           node scripts/release/sign-updates.mjs --dir target/release-out
           ls target/release-out
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

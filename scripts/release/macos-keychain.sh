@@ -9,16 +9,18 @@
 # (build-sidecars-macos.sh, package-macos.sh). Mật khẩu keychain ngẫu nhiên, chỉ sống trong lệnh `import`. CI nạp chứng thư
 # ngay trước bước ký và xóa ngay sau đó, nên các bước biên dịch không bao giờ thấy chứng thư.
 set -eu
-keychain="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/release.keychain-db"
+tmp="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
+keychain="$tmp/release.keychain-db"
 case "${1:-}" in
   import)
     pass=$(openssl rand -hex 24)
     security create-keychain -p "$pass" "$keychain"
-    # Lỗi ở bất kỳ bước nào sau đây thì xóa keychain vừa tạo.
-    trap 'security delete-keychain "$keychain" 2>/dev/null || true' EXIT
+    # File P12 tạm (mktemp: 0600) nằm trong thư mục tạm của job. Lỗi ở bất kỳ bước nào sau đây thì xóa keychain vừa tạo
+    # và file P12 (N-2 của review cuối 07a: trước đây `security import` lỗi thì file P12 còn lại).
+    cert=$(mktemp "$tmp/p12.XXXXXX")
+    trap 'security delete-keychain "$keychain" 2>/dev/null || true; rm -f "$cert"' EXIT
     security set-keychain-settings -lut 3600 "$keychain"
     security unlock-keychain -p "$pass" "$keychain"
-    cert=$(mktemp)
     printf '%s' "$P12" | base64 --decode >"$cert"
     security import "$cert" -f pkcs12 -k "$keychain" -P "$P12_PASSWORD" -T /usr/bin/codesign >/dev/null
     rm -f "$cert"

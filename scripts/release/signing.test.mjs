@@ -130,7 +130,10 @@ exit 0
     encoding: "utf8",
   });
   const log = existsSync(calls) ? readFileSync(calls, "utf8") : "";
-  return { ...r, log, keychain: join(dir, "release.keychain-db") };
+  // File P12 tạm nằm trong RUNNER_TEMP và không bao giờ còn lại, kể cả khi `security import` lỗi (N-2 của review cuối 07a).
+  const p12 = /security import (\S+) /.exec(log)?.[1];
+  if (p12) assert.equal(p12.startsWith(`${dir}/`), true, `file P12 tạm ngoài RUNNER_TEMP: ${p12}`);
+  return { ...r, log, keychain: join(dir, "release.keychain-db"), leftovers: p12 && existsSync(p12) ? [p12] : [] };
 }
 
 test("keychain: nhận đúng chứng thư Developer ID hợp lệ, in lệnh đặt biến, giữ keychain", (t) => {
@@ -149,6 +152,7 @@ test("keychain: nhận đúng chứng thư Developer ID hợp lệ, in lệnh đ
   assert.equal(existsSync(r.keychain), true);
   assert.doesNotMatch(r.log, /delete-keychain/);
   assert.match(r.log, /security import .* -f pkcs12 .* -T \/usr\/bin\/codesign/);
+  assert.deepEqual(r.leftovers, []);
 });
 
 test("keychain: không có Developer ID, import lỗi, hay tên có dấu nháy đơn thì báo lỗi và xóa keychain", (t) => {
@@ -163,6 +167,7 @@ test("keychain: không có Developer ID, import lỗi, hay tên có dấu nháy 
     assert.equal(r.stdout, "");
     assert.match(r.log, /delete-keychain/);
     assert.equal(existsSync(r.keychain), false);
+    assert.deepEqual(r.leftovers, [], "file P12 tạm đã bị xóa");
   }
   const bad = runKeychain(t, { identities: [], arg: "nope" });
   assert.equal(bad.status, 1);
