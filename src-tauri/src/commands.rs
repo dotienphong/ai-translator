@@ -228,7 +228,8 @@ pub fn get_debug_sessions<R: Runtime>(app: AppHandle<R>) -> Vec<DebugSession> {
     data::debug_sessions(&app)
 }
 
-// ---- Bản quyền (kế hoạch 06, §4.3 "Bản quyền", "Nâng cấp"). Chỉ cửa sổ `main`. Lệnh gọi server là `async`. ----
+// ---- Bản quyền (kế hoạch 06, §4.3 "Bản quyền", "Nâng cấp"). Chỉ cửa sổ `main`. Lệnh gọi server hay đụng kho khóa là
+// `async`; `get_license` chỉ đọc bộ nhớ. ----
 
 #[tauri::command]
 pub fn get_license<R: Runtime>(app: AppHandle<R>) -> Option<LicenseView> {
@@ -279,20 +280,27 @@ pub async fn start_checkout<R: Runtime>(
     .await
 }
 
+// Ba lệnh dưới đọc hay ghi kho khóa (đơn đang chờ): Keychain có thể chờ hộp thoại quyền truy cập, nên không chạy trên luồng
+// chính (N-1 của review cuối 06).
+
 #[tauri::command]
-pub fn get_pending_order<R: Runtime>(app: AppHandle<R>) -> Option<CheckoutView> {
-    license_app::pending_order(&app)
+pub async fn get_pending_order<R: Runtime>(app: AppHandle<R>) -> Result<Option<CheckoutView>, CommandError> {
+    blocking(app, |app| Ok(license_app::pending_order(app))).await
 }
 
 #[tauri::command]
-pub fn cancel_checkout<R: Runtime>(app: AppHandle<R>) {
-    license_app::cancel_checkout(&app);
+pub async fn cancel_checkout<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    blocking(app, |app| {
+        license_app::cancel_checkout(app);
+        Ok(())
+    })
+    .await
 }
 
 /// Mở trang thanh toán của đơn đang chờ bằng trình duyệt của hệ thống. Không nhận URL từ giao diện.
 #[tauri::command]
-pub fn open_checkout_page<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
-    license_app::open_checkout_page(&app)
+pub async fn open_checkout_page<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    blocking(app, license_app::open_checkout_page).await
 }
 
 #[tauri::command]

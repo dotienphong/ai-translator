@@ -1492,6 +1492,81 @@ fn the_checkout_page_opens_only_for_the_pending_payos_order() {
     assert_eq!(invoke(&main, "get_pending_order", json!({})).unwrap(), Value::Null);
 }
 
+/// Lệnh bản quyền đọc hay ghi kho khóa không chạy trên luồng chính (N-1 của review cuối 06): Keychain có thể chờ người dùng
+/// trả lời hộp thoại quyền truy cập, khi đó cửa sổ, khay và thanh phụ đề sẽ đứng. Kho khóa giả ghi lại luồng của mỗi lần đọc
+/// ghi: lệnh đồng bộ chạy ngay trên luồng gọi `invoke` (luồng của test), lệnh `async` chạy trên luồng của `spawn_blocking`.
+#[test]
+fn license_commands_touch_the_keystore_off_the_calling_thread() {
+    use crate::license::manager::tests::{DEVICE, FakeApi, test_keys, vn};
+    use crate::license::manager::{License, Machine};
+    use crate::license::store::tests::FakeVault;
+    use crate::license::store::{self, PendingOrder, Vault};
+    use std::thread::ThreadId;
+
+    #[derive(Default)]
+    struct ThreadVault {
+        inner: FakeVault,
+        threads: Mutex<Vec<ThreadId>>,
+    }
+    impl ThreadVault {
+        fn seen(&self) {
+            self.threads.lock().unwrap().push(std::thread::current().id());
+        }
+    }
+    impl Vault for Arc<ThreadVault> {
+        fn get(&self, name: &str) -> Result<Option<Vec<u8>>, String> {
+            self.seen();
+            self.inner.get(name)
+        }
+        fn set(&self, name: &str, value: &[u8]) -> Result<(), String> {
+            self.seen();
+            self.inner.set(name, value)
+        }
+        fn delete(&self, name: &str) -> Result<(), String> {
+            self.seen();
+            self.inner.delete(name)
+        }
+    }
+
+    let app = mock_app();
+    let main = window(&app, "main");
+    let vault = Arc::new(ThreadVault::default());
+    let license = License::new(
+        Box::new(Arc::new(FakeApi::default())),
+        Box::new(vault.clone()),
+        test_keys(),
+        Machine {
+            id_hash: DEVICE.into(),
+            label: None,
+        },
+        vn(),
+        true,
+        false,
+        false,
+        crate::license::app::now(),
+    );
+    license.set_genuine(true);
+    crate::license::app::install_with(app.handle(), license);
+    let order = PendingOrder {
+        order_code: 7,
+        order_token: "tok".into(),
+        plan: "pro".into(),
+        expires_at: crate::license::app::now() + 900,
+        renewal: false,
+        checkout_url: "https://pay.payos.vn/web/abc".into(),
+        qr_code: "000201".into(),
+    };
+    store::write(&vault, store::ORDER, &order).unwrap();
+    let here = std::thread::current().id();
+    for cmd in ["get_pending_order", "open_checkout_page", "cancel_checkout"] {
+        vault.threads.lock().unwrap().clear();
+        let _ = invoke(&main, cmd, json!({}));
+        let threads = vault.threads.lock().unwrap().clone();
+        assert!(!threads.is_empty(), "{cmd} đọc hay ghi kho khóa");
+        assert!(threads.iter().all(|t| *t != here), "{cmd} chạy trên luồng gọi lệnh");
+    }
+}
+
 /// Key đã đủ 2 máy: lệnh kích hoạt trả danh sách máy để gỡ một máy (§9), không phải lỗi.
 #[test]
 fn activating_a_full_key_returns_its_devices() {
