@@ -6,7 +6,7 @@ import { About } from "./screens/About";
 import { Home } from "./screens/Home";
 import { GlossaryScreen } from "./screens/GlossaryScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
-import { Upgrade } from "./screens/Placeholders";
+import { UpgradeScreen } from "./screens/UpgradeScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TranscriptScreen } from "./screens/TranscriptScreen";
 
@@ -18,7 +18,7 @@ const BODIES: Record<Screen, () => React.JSX.Element | null> = {
   history: HistoryScreen,
   glossary: GlossaryScreen,
   settings: SettingsScreen,
-  upgrade: Upgrade,
+  upgrade: UpgradeScreen,
   about: About,
 };
 
