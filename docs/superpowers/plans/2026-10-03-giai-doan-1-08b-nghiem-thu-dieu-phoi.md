@@ -130,10 +130,11 @@ Expected: `A3: ĐẠT`. Không đạt thì dừng: tìm thay đổi nào gây th
 
 Run:
 ```bash
-python3 bench/phase1/acceptance/gates.py a4 --pack turbo --result bench/phase0/results/a4_m4pro-turbo-gd1-08.json --baseline bench/phase0/results/a4_m4pro-turbo-final.json --out bench/phase1/results/acceptance/a4-turbo.json | tail -1
-python3 bench/phase1/acceptance/gates.py a4 --pack small --result bench/phase0/results/a4_m4pro-small-gd1-08.json --baseline bench/phase0/results/a4_m4pro-small-final.json --out bench/phase1/results/acceptance/a4-small.json | tail -1
+for m in turbo small; do
+  python3 bench/phase1/acceptance/gates.py a4 --result bench/phase0/results/a4_m4pro-$m-gd1-08.json --baseline-turbo bench/phase0/results/a4_m4pro-turbo-final.json --baseline-small bench/phase0/results/a4_m4pro-small-final.json --out bench/phase1/results/acceptance/a4-$m.json | sed -n '1p;$p'
+done
 ```
-Expected: hai dòng `A4: ĐẠT`.
+Expected: `Gói (suy từ số đo): turbo`, `A4: ĐẠT`, `Gói (suy từ số đo): small`, `A4: ĐẠT`. Gói do `gates.py` suy từ số đo (mốc gần hơn) và ghi vào JSON; `report.py` đọc gói đó, không đọc tên file (Q1 của review lần 2). Gói suy ra khác tên file nghĩa là chép nhầm kết quả: kiểm lại nhãn ở Step 3. Mốc mới đã duyệt ở Task 3 thì thay đường dẫn của `--baseline-turbo`, `--baseline-small`.
 
 - [ ] **Step 5: Flash attention** (dòng 121): xem trạng thái `ggml-org/whisper.cpp#3941` (mask cho phần đệm). Đã có bản sửa trong bản phát hành của whisper.cpp đang dùng thì ghi đề xuất bật lại cho controller (đổi engine: phải chạy lại Step 3–4); chưa có thì ghi "vẫn tắt, upstream chưa sửa" kèm ngày vào dòng 121.
 - [ ] **Step 6: Commit**
@@ -149,16 +150,22 @@ git commit -m "test(bench): A3, A4 chống thụt lùi trên bản ứng viên p
 
 Máy (C6, C7, C8): Mac M1 16 GB; Mac chip cơ bản đời mới (M2–M5); Mac Apple Silicon 8 GB (hạng tối thiểu, gói Nhẹ; N4 của review lần 1); laptop Windows card rời 6 GB và 4 GB; máy Windows 8 GB chỉ có CPU (hạng tối thiểu); GPU tích hợp. Mỗi máy đóng app nặng, cắm sạc (mục 6.9 của kế hoạch 00).
 
-- [ ] **Step 1: Đo S6** theo kế hoạch 0-06 Task 8–9 (Windows có thêm `vram-sample.ps1`), với `latency-bench` và `asr-worker` build từ commit của bản ứng viên, và `llama-server` của bản ứng viên: đặt binary lấy từ bộ cài vào `tools/llama-b11146/<biến thể>/` rồi thêm `--llama-variant <biến thể>`, đúng cách của 07a Task 13 Step 2 và 4 (Q5 của review lần 1). Lệnh: `python3 bench/phase0/latency/run_matrix.py --machine <tên-máy> --tier <khuyennghi|toithieu> --package <chuan|nhe> --llama-variant <biến thể>`. Expected: 6 file mỗi gói, `bench/phase0/results/latency/<tên-máy>-<hạng>-<gói>-*.json` (nhãn có hạng máy); Windows thêm `vram-<tên-máy>-<gói>.csv`.
-- [ ] **Step 2: Cổng A2** cho từng máy (hạng lấy từ nhãn; QĐ3 của 08a)
+- [ ] **Step 1: Đo S6** theo kế hoạch 0-06 Task 8–9 (Windows có thêm `vram-sample.ps1`), với `latency-bench` và `asr-worker` build từ commit của bản ứng viên, và `llama-server` của bản ứng viên: đặt binary lấy từ bộ cài vào `tools/llama-b11146/<biến thể>/` rồi thêm `--llama-variant <biến thể>`, đúng cách của 07a Task 13 Step 2 và 4 (Q5 của review lần 1). Lệnh: `python3 bench/phase0/latency/run_matrix.py --machine <tên-máy> --tier <khuyennghi|toithieu> --package <chuan|nhe> --llama-variant <biến thể>`. Expected: 6 file mỗi gói, `bench/phase0/results/latency/<tên-máy>-<hạng>-<gói>-<session>.json` (nhãn có hạng máy; session là `en`, `vi`, `zh`, `ja`, `ko`, `mixed`); Windows thêm `vram-<tên-máy>-<gói>.csv`. Máy khuyến nghị đo ít nhất gói Chuẩn, máy tối thiểu ít nhất gói Nhẹ (§8). `<tên-máy>` khác cho mỗi máy và không trùng tên của lượt cũ trong thư mục (ví dụ thêm ngày: `m1-16g-1010`); đo lại một session thì ghi đè đúng file đó (cùng nhãn).
+- [ ] **Step 2: Cổng A2** cho từng máy (QĐ3 của 08a)
 
-Run:
+Run (liệt kê đúng file của lượt này, theo nhãn; N6 của review lần 2):
 ```bash
-python3 bench/phase1/acceptance/gates.py a2 bench/phase0/results/latency/<tên-máy>-*.json --out bench/phase1/results/acceptance/a2-<tên-máy>.json | tail -1
+ls bench/phase0/results/latency/<tên-máy>-<hạng>-*.json
+python3 bench/phase1/acceptance/gates.py a2 bench/phase0/results/latency/<tên-máy>-<hạng>-*.json --out bench/phase1/results/acceptance/a2-<tên-máy>.json
 ```
-Expected: `A2: ĐẠT`. Dòng nào ghi `KHÔNG ĐẠT: chỉ đo được …`, `phát lại trễ …` hay `mốc dừng lệch …` là lượt đo không đáng tin (máy bận): đóng app nặng, đo lại session đó. Máy nào không đạt thì ghi vào C8 (chọn phương án ở §8, Q15) cho chủ dự án; không sửa ngưỡng.
+Expected: `ls` in đúng các file của Step 1 (6 hay 12 file, cộng file `-nomerge` nếu có), không file nào của lượt khác. Lệnh cổng in dòng đầu `Máy: <hệ điều hành> | <CPU> | <RAM> GB | <số lõi> lõi; hạng: <hạng>` khớp với máy đang đo (người đối chiếu với Giới thiệu về máy này / Settings › System › About), không có dòng `Thiếu session: …`, và dòng cuối `A2: ĐẠT`. Gói, máy do `gates.py` đọc từ chính các file (model, `machine`); hạng trong nhãn chỉ để đối chiếu (Q2 của review lần 2):
+  - `nhãn ghi … mà máy là …` (macOS: RAM ≥ 16 GB là khuyến nghị) hay `nhãn ghi khuyennghi mà máy chỉ có … GB` (Windows): đặt nhầm `--tier` ở Step 1, đo lại với hạng đúng.
+  - `trùng session …`: có file của lượt cũ hay của biến thể cùng nhãn; bỏ file thừa khỏi lệnh (đổi tên máy, hay xóa file cũ chưa commit), chạy lại.
+  - `chỉ đo được …`, `phát lại trễ …`, `mốc dừng lệch …`: lượt đo không đáng tin (máy bận): đóng app nặng, đo lại session đó.
+  - Windows chia hạng theo GPU (§8) mà file không ghi GPU: ghi tên card và VRAM của máy vào `bench/phase0/results/s6_latency.md` cạnh kết quả (Step 3).
+  Máy nào không đạt thì ghi vào C8 (chọn phương án ở §8, Q15) cho chủ dự án; không sửa ngưỡng. `report.py` cần một máy hạng khuyến nghị và một máy hạng tối thiểu, hai máy khác nhau (đọc `tier`, `machine` trong `a2-*.json`).
 
-- [ ] **Step 2b: Số của app thật** (người; QĐ3 của 08a). Cài bản ứng viên trên cùng máy, mở bảng debug (Giới thiệu, bấm 5 lần vào dòng phiên bản), bấm Bắt đầu, phát lần lượt các file WAV mà S6 đã dùng (`bench/phase0/data/latency/` của kế hoạch 0-06) bằng QuickTime (Windows: Media Player) qua loa, rồi Dừng. Ghi p50, p90 của bước `total` mỗi phiên vào `bench/phase1/results/acceptance/a2-<tên-máy>-app.md`, cạnh p50, p90 của S6 cùng file. Expected: chênh không quá 300 ms; chênh nhiều hơn thì tìm nguyên nhân (đường thu, IPC, vẽ chữ) và ghi giải thích trước khi kết luận A2.
+- [ ] **Step 2b: Số của app thật** (người; QĐ3 của 08a). Cài bản ứng viên trên cùng máy, chọn cùng gói với S6 (khuyến nghị: Chuẩn; tối thiểu: Nhẹ), mở bảng debug (Giới thiệu, bấm 5 lần vào dòng phiên bản). Với **từng** file WAV mà S6 đã dùng (`bench/phase0/data/latency/` của kế hoạch 0-06; 6 file, một mỗi session): bấm Bắt đầu, phát đúng file đó bằng QuickTime (Windows: Media Player) qua loa, đợi câu cuối hiện, đọc p50, p90 của bước `total`, rồi Dừng; mỗi file một phiên. Agent ghi vào `bench/phase1/results/acceptance/a2-<tên-máy>-app.md` một bảng, mỗi dòng một file: `| session | file WAV | S6 p50 | S6 p90 | app p50 | app p90 | chênh p50 | chênh p90 |`, với số S6 lấy từ `summary.shown_p50_ms`, `summary.shown_p90_ms` của đúng file `<tên-máy>-<hạng>-<gói>-<session>.json` (N6 của review lần 2). Expected: mỗi dòng chênh không quá 300 ms; dòng nào chênh nhiều hơn thì tìm nguyên nhân (đường thu, IPC, vẽ chữ) và ghi giải thích dưới bảng trước khi kết luận A2.
 
 - [ ] **Step 3: RAM, VRAM, mức CPU cố định**: ghi `peak_rss_mb`, `peak_footprint_mb` (từ `usage` của các file JSON) và VRAM đỉnh (`vram_peak.py`) vào `bench/phase0/results/s6_latency.md` theo kế hoạch 0-06. Máy CPU thiếu RAM thì thử `--no-repack` (dòng 227). Máy tối thiểu x64 (AVX2, không AVX-512) chạy được bản phát hành là bằng chứng cho dòng 209. Ngưỡng VRAM, đề xuất gói đổi thì sửa manifest theo Task 4 của kế hoạch 00, không phát hành lại app.
 - [ ] **Step 4: Commit**
@@ -172,7 +179,7 @@ git commit -m "test(bench): A2, RAM, VRAM trên máy tham chiếu <tên-máy> (k
 
 **Ai làm:** người chạy app và phát âm thanh; agent lấy mẫu và tổng hợp. **Cần trước:** Task 1 Step 2. **Dòng:** 32, 229, 306.
 
-Một lượt trên Mac khuyến nghị (`a5-mac`) và một lượt trên Windows có card rời (`a5-win`); máy tối thiểu chạy 30 phút để xem RAM (điểm cần quyết 2 của 08a).
+Một lượt trên Mac khuyến nghị (`a5-mac`) và một lượt trên Windows có card rời (`a5-win`); máy tối thiểu chạy 30 phút để xem RAM (điểm cần quyết 2 của 08a). Tên file chỉ để người đọc: mỗi dòng CSV ghi hệ điều hành và mã máy lúc lấy mẫu, `report.py` đọc `os` trong `a5-*.json` (Q1 của review lần 2). Mọi lệnh chạy trên chính máy đo.
 
 - [ ] **Step 1: Kiểm tên tiến trình** (người mở bản ứng viên đã cài, bấm Bắt đầu với một video bất kỳ; agent chạy)
 
@@ -184,7 +191,13 @@ Run (Windows, PowerShell):
 ```powershell
 Get-Process | Where-Object { $_.ProcessName -match 'translator|asr-worker|llama-server' } | Select-Object -ExpandProperty ProcessName -Unique
 ```
-Expected: tên của app (ví dụ `meeting-translator` hay `AI Translator`), `asr-worker` (Windows: `asr-worker-vulkan` hay `asr-worker-cpu`) và `llama-server`. Tên app khác `meeting-translator` thì dùng tên đó cho `--app` ở Step 2 và `--require` ở Step 3. WebView (Q3 của review lần 1): trên macOS, đóng mọi app dùng WebKit khác (Safari, Mail, App Store, Messages…) trước khi đo, vì `soak.py` tính mọi `com.apple.WebKit.*`; kiểm bằng `ps -A -o comm= | grep -c com.apple.WebKit` lúc chỉ app đang mở (Expected: 2–4). Trên Windows, `msedgewebview2` của app được tính theo cây tiến trình, không cần đóng trình duyệt Edge.
+Expected: tên của app (ví dụ `meeting-translator` hay `AI Translator`), `asr-worker` (Windows: `asr-worker-vulkan` hay `asr-worker-cpu`) và `llama-server`. Tên app khác `meeting-translator` thì dùng tên đó cho `--app` ở Step 2, `--require` ở Step 3, và cho 08b Task 7.
+
+Rồi kiểm các tiến trình `soak.py` sẽ tính (Windows: `py -3` thay cho `python3`):
+```bash
+python3 bench/phase1/acceptance/soak.py pids --app <tên app>
+```
+Expected: mỗi dòng một `pid tên`: app, `asr-worker…`, `llama-server`, cộng WebView của app: macOS 2–4 dòng `com.apple.WebKit.*` (chỉ của app; Safari, Mail đang mở không có trong danh sách: `soak.py` hỏi hệ điều hành tiến trình chịu trách nhiệm, N1 của review lần 2), Windows vài dòng `msedgewebview2` (con cháu của app). Không cần đóng app khác. macOS không có dòng `com.apple.WebKit` nào thì ghi lại vào `a5-mac.md` (hàm của libSystem không trả được) và tiếp tục: A5 vẫn tính app và hai tiến trình phụ.
 
 - [ ] **Step 2: Phát 2 giờ và lấy mẫu.** Người phát một bản ghi cuộc họp hay hội thảo tiếng Anh dài hơn 2 giờ, nói liên tục (ví dụ một buổi họp công khai, bài giảng), qua loa ở âm lượng thường, app họp mở như khi họp (Zoom hay Meet không bắt buộc). Bấm Bắt đầu, rồi agent chạy:
 
@@ -199,9 +212,9 @@ Run:
 ```bash
 python3 bench/phase1/acceptance/soak.py summarize bench/phase1/results/acceptance/a5-mac.csv --require <tên app>,asr-worker,llama-server --out bench/phase1/results/acceptance/a5-mac.json
 ```
-Expected: không có dòng `THIẾU tiến trình bắt buộc…`, `Số mẫu: 733; thời gian: 7320 giây (đủ 2 giờ)`, `Biến mất: không; khởi động lại: không`, RAM tăng không quá `+10.0%`, `A5: ĐẠT; tải máy ≤ 30%: ĐẠT` (tải máy chỉ là tiêu chí trên máy khuyến nghị). App crash hay tiến trình phụ khởi động lại thì xem log của app (Cài đặt › Giới thiệu › mở thư mục log), sửa theo superpowers:systematic-debugging, chạy lại.
+Expected: dòng đầu `Nơi đo: mac, máy <mã 12 ký tự>` (một nơi; `NHIỀU NƠI/KHÔNG RÕ` là CSV lẫn mẫu của máy khác: lấy mẫu lại vào file mới), không có dòng `THIẾU tiến trình bắt buộc…`, `Số mẫu: 733; thời gian: 7320 giây (đủ 2 giờ)`, `Biến mất: không; khởi động lại: không`, RAM tăng không quá `+10.0%`, `A5: ĐẠT; tải máy ≤ 30%: ĐẠT` (tải máy chỉ là tiêu chí trên máy khuyến nghị). App crash hay tiến trình phụ khởi động lại thì xem log của app (Cài đặt › Giới thiệu › mở thư mục log), sửa theo superpowers:systematic-debugging, chạy lại.
 
-- [ ] **Step 4: Windows**: lặp Step 1–3 trên máy Windows có card rời, tên file `a5-win.*`. Máy tối thiểu: `--duration 1800` ở `sample`, `--hours 0.5` ở `summarize`, ghi ra `bench/phase1/results/a5-min-30m.csv` và `.json`, ngoài thư mục `acceptance/` (chỉ để xem RAM; `report.py` tính mọi file `a5-*.json` trong `acceptance/` là lượt 2 giờ).
+- [ ] **Step 4: Windows**: lặp Step 1–3 trên máy Windows có card rời, tên file `a5-win.*`; Expected như trên với `Nơi đo: win, …`. Máy tối thiểu: `--duration 1800` ở `sample`, `--hours 0.5` ở `summarize`, ghi ra `bench/phase1/results/a5-min-30m.csv` và `.json`, ngoài thư mục `acceptance/`: lượt này chỉ để xem RAM, còn `report.py` gom mọi `a5-*.json` trong `acceptance/` và đòi mỗi file đạt 2 giờ.
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -213,36 +226,57 @@ git commit -m "test(bench): A5 soak 2 giờ và tải máy trên Mac và Windows
 
 **Ai làm:** người cài proxy và chứng chỉ gốc, thao tác app; agent kiểm nhật ký. **Cần trước:** Task 1 Step 2; bản ứng viên có URL license server, manifest, `latest.json` thật (Task 2 dòng 7, 8, 13, 14). **Dòng:** 7, 34, 83, 248, 249, 315.
 
-- [ ] **Step 1: Danh sách cho phép** (agent): chép `bench/phase1/acceptance/a7-allow.template.json` thành `bench/phase1/results/acceptance/a7-allow.json`, thay `LICENSE_HOST`, `MODELS_HOST`, `UPDATE_HOST` bằng máy chủ thật của bản ứng viên (đọc từ cấu hình build của 04, 06, 07b), sửa đường dẫn manifest và `latest.json` cho khớp. Giữ từ mồi mặc định.
-- [ ] **Step 2: Proxy theo tiến trình của app** (người, Mac; QĐ7 của 08a, Q4 của review lần 1): cài mitmproxy, cài và tin chứng chỉ gốc của nó (`~/.mitmproxy/mitmproxy-ca-cert.pem`, theo hướng dẫn của mitmproxy), rồi chạy
+- [ ] **Step 1: Kiểm cách mitmproxy khớp tên tiến trình** (người, trên máy thử, trước khi cài chứng chỉ; mỗi hệ điều hành một lần). Chế độ `local:<tên>` có thể khớp nguyên tên hay một phần tên, và trên Windows tên có đuôi `.exe`; lệnh ở Step 3 dựa vào kết quả này. Dùng `curl` với `http://` (không TLS, không cần chứng chỉ):
+
+Run (cửa sổ 1, lần lượt từng dòng, mỗi lần Ctrl+C rồi dòng sau):
+```bash
+mitmdump --mode local:curl
+mitmdump --mode local:cur
+```
+Run (cửa sổ 2, mỗi lần cửa sổ 1 đang chạy; Windows dùng `curl.exe`):
+```bash
+curl -s -o /dev/null http://example.com/
+```
+Expected: với `local:curl`, cửa sổ 1 in một dòng có `GET http://example.com/` (chế độ `local` chạy được). Với `local:cur`: có dòng `GET` nghĩa là mitmproxy khớp một phần tên, `asr-worker` ở Step 3 bắt được `asr-worker-vulkan`, `asr-worker-cpu`; không có dòng nào nghĩa là khớp nguyên tên, Step 3 phải liệt kê đúng tên đầy đủ ở 08b Task 6 Step 1 (Windows: thử thêm `local:curl.exe`; dòng nào bắt được thì dùng dạng tên đó, ví dụ `asr-worker-vulkan.exe`). Ghi kết quả (khớp một phần hay nguyên tên, có `.exe` hay không) vào `bench/phase1/results/acceptance/a7-<máy>.md`.
+
+- [ ] **Step 2: Danh sách cho phép** (agent): chép `bench/phase1/acceptance/a7-allow.template.json` thành `bench/phase1/results/acceptance/a7-allow.json`, thay `LICENSE_HOST`, `MODELS_HOST`, `UPDATE_HOST` bằng máy chủ thật của bản ứng viên (đọc từ cấu hình build của 04, 06, 07b), sửa đường dẫn manifest và `latest.json` cho khớp. Giữ từ mồi mặc định.
+- [ ] **Step 3: Proxy theo tiến trình của app** (người, Mac; QĐ7 của 08a, Q4 của review lần 1): cài và tin chứng chỉ gốc của mitmproxy (`~/.mitmproxy/mitmproxy-ca-cert.pem`, theo hướng dẫn của mitmproxy), rồi chạy
 
 ```bash
 mitmdump --mode local:meeting-translator,asr-worker,llama-server --set hardump=$HOME/a7.har
 ```
-(tên app khác thì dùng tên ở 08b Task 6 Step 1; cú pháp chế độ `local` kiểm bằng `mitmdump --help` của bản đã cài; lần đầu macOS hỏi cho phép network extension của mitmproxy). Không đặt proxy hệ thống, không mở trình duyệt: chế độ này chỉ bắt lưu lượng của app và tiến trình phụ.
-- [ ] **Step 3: Thao tác** (người, ghi giờ đồng hồ của máy theo dạng `2026-10-10T09:00:00+07:00`):
-  1. Mở app (bản ứng viên, có gói trả phí để có `validate`); bấm Cài đặt › Bản quyền › Kiểm tra ngay (để chắc có một request ra ngoài).
+(tên theo kết quả Step 1: khớp nguyên tên thì liệt kê đủ tên ở 08b Task 6 Step 1, ví dụ `local:meeting-translator,asr-worker-vulkan,llama-server`; lần đầu macOS hỏi cho phép network extension của mitmproxy). Không đặt proxy hệ thống, không mở trình duyệt: chế độ này chỉ bắt lưu lượng của app và tiến trình phụ.
+
+Giới hạn (N7 của review lần 2; QĐ7 và điểm cần quyết 7 của 08a): chế độ `local` không bắt WebView của app (`com.apple.WebKit.Networking`, `msedgewebview2` mang tên riêng và dùng chung với app khác, nên không đưa vào danh sách), và HAR chỉ ghi luồng HTTP. Phần đó kiểm bằng danh sách kết nối ở Step 4, mục 3.
+- [ ] **Step 4: Thao tác** (người, ghi giờ đồng hồ của máy, có múi giờ, theo dạng `2026-10-10T09:00:00+07:00`; lấy bằng `date +%Y-%m-%dT%H:%M:%S%z` trên macOS, `Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz"` trên Windows):
+  1. Mở app (bản ứng viên, có gói trả phí để có `validate`); bấm Cài đặt › Bản quyền › Kiểm tra ngay (để nhật ký có một request ra ngoài **trước** Bắt đầu).
   2. **Bắt đầu** (ghi giờ), phát câu mẫu `public/listen-test-en.wav` của repo nhiều lần trong 15 phút bằng QuickTime (file có sẵn, không qua mạng), cùng một file video tiếng Anh có sẵn trên máy.
-  3. **Dừng** (ghi giờ). Xuất bản chép lời ra file (TXT), mở Lịch sử.
-  4. Thoát app, dừng mitmdump (HAR được ghi khi dừng), **gỡ chứng chỉ gốc của mitmproxy**.
-  5. Agent mở file bản chép lời vừa xuất, chép một cụm 3–5 từ của bản dịch tiếng Việt của câu mẫu vào `canaries` của `a7-allow.json` (N2 của review lần 1).
-- [ ] **Step 4: Kiểm** (agent)
+  3. Giữa phiên, agent chạy trên máy thử (Windows: `py -3`):
+     ```bash
+     python3 bench/phase1/acceptance/soak.py pids --app <tên app>
+     lsof -nP -i -a -p <các pid ở dòng trên, cách nhau bằng dấu phẩy>
+     ```
+     Windows (PowerShell), với từng pid: `Get-NetTCPConnection -OwningProcess <pid>; Get-NetUDPEndpoint -OwningProcess <pid>`. Expected: các tiến trình WebView (`com.apple.WebKit.*`, `msedgewebview2`) và hai tiến trình phụ chỉ có kết nối tới `127.0.0.1`, `[::1]` hay không có kết nối nào; tiến trình app chỉ có kết nối TCP cổng 443 (tới máy chủ trong danh sách cho phép, đã thấy trong HAR) và kết nối tới hai tiến trình phụ. Không có UDP ra ngoài. Ghi output vào `a7-<máy>.md`. Kết nối khác thì ghi lại (tiến trình, địa chỉ, cổng) và xử lý như một vi phạm (Step 5).
+  4. **Dừng** (ghi giờ). Bấm Cài đặt › Bản quyền › Kiểm tra ngay lần nữa (để nhật ký có request **sau** Dừng; `netaudit.py` đòi cửa sổ phiên nằm trong nhật ký, Q3 của review lần 2). Xuất bản chép lời ra file (TXT), mở Lịch sử.
+  5. Thoát app, dừng mitmdump (HAR được ghi khi dừng), **gỡ chứng chỉ gốc của mitmproxy**.
+  6. Agent mở file bản chép lời vừa xuất, chép một cụm 3–5 từ của bản dịch tiếng Việt của câu mẫu vào `canaries` của `a7-allow.json` (N2 của review lần 1).
+- [ ] **Step 5: Kiểm** (agent, chạy trên chính máy thử: kết quả ghi hệ điều hành, mã máy của máy chạy lệnh và SHA-256 của HAR; Windows: `py -3`)
 
 Run:
 ```bash
 python3 bench/phase1/acceptance/netaudit.py "$HOME/a7.har" --allow bench/phase1/results/acceptance/a7-allow.json --start <giờ Bắt đầu> --stop <giờ Dừng> --out bench/phase1/results/acceptance/a7-mac.json
 ```
-Expected: `Request ra ngoài: N; trong lúc dịch: M` với N ≥ 1, không dòng `VI PHẠM` nào, `A7: ĐẠT`. Vi phạm "máy chủ không có trong danh sách cho phép" với máy chủ của trình duyệt hay app khác nghĩa là proxy không lọc theo tiến trình: làm lại Step 2, không thêm máy chủ đó vào danh sách. Có vi phạm thì ghi lỗi (request nào, lúc nào), sửa ở kế hoạch sở hữu code đó, chạy lại cả task. Không commit file HAR (QĐ10 của 08a); xóa `$HOME/a7.har` sau khi kiểm.
+Expected: `Request ra ngoài: N; trong lúc dịch: M` với N ≥ 3 (trước, trong và sau phiên), không dòng `VI PHẠM` nào, `A7: ĐẠT`. `--start`, `--stop` không có múi giờ thì lệnh báo lỗi ngay; `mốc Dừng không sau mốc Bắt đầu` là chép đảo hai mốc; `cửa sổ phiên dịch không nằm trong khoảng thời gian của nhật ký (sai múi giờ?)` là ghi sai múi giờ hay thiếu bước Kiểm tra ngay ở Step 4: sửa mốc (không sửa HAR) rồi chạy lại. Vi phạm "máy chủ không có trong danh sách cho phép" với máy chủ của trình duyệt hay app khác nghĩa là proxy không lọc theo tiến trình: làm lại Step 3, không thêm máy chủ đó vào danh sách. Có vi phạm thì ghi lỗi (request nào, lúc nào), sửa ở kế hoạch sở hữu code đó, chạy lại cả task. Không commit file HAR (QĐ10 của 08a); xóa `$HOME/a7.har` sau khi kiểm.
 
-- [ ] **Step 5: Log không có chữ chép lời** (agent, dòng 315)
+- [ ] **Step 6: Log không có chữ chép lời** (agent, dòng 315)
 
 Run (macOS):
 ```bash
 grep -rli -e "plotting analysis" -e "public website" "$HOME/Library/Logs/com.aitranslator.desktop" | wc -l
 ```
-Expected: `0`. Lặp Step 2–5 trên Windows (mitmproxy chế độ `local` cũng chạy trên Windows; log ở `%LOCALAPPDATA%\com.aitranslator.desktop\logs` hay đường dẫn trong Cài đặt › Giới thiệu), ghi `a7-win.json`. `report.py` đọc mọi `a7-*.json`; A7 đạt khi cả hai đạt.
+Expected: `0`. Lặp Step 1, 3–6 trên Windows (mitmproxy chế độ `local` cũng chạy trên Windows; log ở `%LOCALAPPDATA%\com.aitranslator.desktop\logs` hay đường dẫn trong Cài đặt › Giới thiệu), ghi `a7-win.json`. `report.py` gom mọi `a7-*.json` và đọc `os` trong nội dung (do `netaudit.py` ghi trên máy chạy lệnh, nên Step 5 phải chạy trên chính máy thử): A7 đạt khi có `mac` và `win` và mọi file đạt.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add bench/phase1/results/acceptance
@@ -310,7 +344,7 @@ git commit -m "test: mua thật một đơn trên production (kế hoạch 08)" 
 
 **Ai làm:** agent; chủ dự án duyệt `hoãn` và phát hành. **Cần trước:** Task 3–10. **Dòng:** 322 và mọi dòng còn lại.
 
-- [ ] **Step 1: Bảng đối chiếu** theo Task 5 của kế hoạch 00 (Step 2–4: yêu cầu spec mới, đọc lại spec, mục 5 và mục 8). Dòng nào không làm kịp thì soạn đề xuất `hoãn` kèm lý do, gửi chủ dự án; chủ dự án duyệt thì ghi trạng thái `hoãn` và đúng cụm "chủ dự án duyệt YYYY-MM-DD" (ngày duyệt) vào Ghi chú (QĐ2 của 08a; `mapping.py` không nhận ngày khác).
+- [ ] **Step 1: Bảng đối chiếu** theo Task 5 của kế hoạch 00 (Step 2–4: yêu cầu spec mới, đọc lại spec, mục 5 và mục 8). Dòng nào không làm kịp thì soạn đề xuất `hoãn` kèm lý do, gửi chủ dự án; chủ dự án duyệt thì ghi trạng thái `hoãn` và đúng cụm "chủ dự án duyệt YYYY-MM-DD" (ngày duyệt) vào Ghi chú (QĐ2 của 08a; `mapping.py` không nhận ngày khác, không nhận "gửi chủ dự án duyệt …", "chờ chủ dự án duyệt …", và báo dòng sai khoảng trắng như `|  12|` là lỗi định dạng).
 
 Run:
 ```bash
@@ -324,7 +358,7 @@ Run:
 ```bash
 python3 bench/phase1/acceptance/report.py --out bench/phase1/results/acceptance/report.md | sed -n 3p
 ```
-Expected: `Kết luận: **ĐẠT**`. Còn dòng `chưa có số liệu` hay `không đạt` thì quay lại task tương ứng.
+Expected: `Kết luận: **ĐẠT**`. Còn dòng `chưa có số liệu` hay `không đạt` thì quay lại task tương ứng. Cột Chi tiết ghi phần còn thiếu theo **nội dung** file (`thiếu: win`, `thiếu: small`, `thiếu hạng: toithieu`, `hai hạng phải đo trên hai máy khác nhau`): có file mang tên đúng mà vẫn báo thiếu nghĩa là file đó chép nhầm từ lượt khác (Q1 của review lần 2).
 
 - [ ] **Step 3: Kiểm tra chuẩn (mục 6.2 của kế hoạch 00) trên Mac và Windows** ở đúng commit sẽ phát hành, cộng `python3 -m unittest discover -s bench/phase1/acceptance -p 'test_*.py'` (Expected: `OK`).
 - [ ] **Step 4: Cập nhật kế hoạch 00**: mục 2.8 (trạng thái, file 08a, 08b), mục 6.2 (thêm lệnh test của `bench/phase1/acceptance/`), mục 5 (C1–C15 đã có kết quả), và dòng 322 (`xong` kèm SHA của commit báo cáo).
