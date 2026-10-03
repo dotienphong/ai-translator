@@ -1,0 +1,28 @@
+{
+ "_note": "Mẫu cho netaudit.py (A7). Chép thành bench/phase1/results/acceptance/a7-allow.json, thay LICENSE_HOST, MODELS_HOST, UPDATE_HOST bằng máy chủ thật của bản đang thử (URL của license server, của manifest model và của latest.json trong bản build). Từ mồi: cụm của câu sẽ phát vào app lúc thử (câu mẫu của bước Nghe thử), cộng cụm của bản dịch mà app hiện trong lúc thử (chép từ bản chép lời xuất ra sau khi dừng; mặc định có một cụm thường gặp).",
+ "hosts": {
+  "LICENSE_HOST": [
+   {"path": "/v1/licenses/validate", "during_session": true},
+   {"path": "/v1/plans", "during_session": true},
+   {"path": "/v1/licenses/activate", "during_session": false},
+   {"path": "/v1/licenses/deactivate", "during_session": false},
+   {"path": "/v1/licenses/recover", "during_session": false},
+   {"path": "/v1/checkout", "during_session": false},
+   {"path": "/v1/orders/", "during_session": false}
+  ],
+  "MODELS_HOST": [
+   {"path": "/", "during_session": false},
+   {"path": "/models.json", "during_session": true}
+  ],
+  "UPDATE_HOST": [
+   {"path": "/", "during_session": false},
+   {"path": "/latest.json", "during_session": true}
+  ]
+ },
+ "max_body_bytes": 4096,
+ "canaries": [
+  "plotting analysis",
+  "public website",
+  "kết quả phân tích"
+ ]
+}
