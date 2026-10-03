@@ -177,7 +177,11 @@ mod tests {
         let dest = dest();
         let downloaded = found.download(&dest).unwrap();
         assert_eq!(std::fs::read(&dest).unwrap(), PAYLOAD);
-        assert_eq!(downloaded.sha256, <[u8; 32]>::from(Sha256::digest(PAYLOAD)), "SHA-256 của đúng các byte đã kiểm");
+        assert_eq!(
+            downloaded.sha256,
+            <[u8; 32]>::from(Sha256::digest(PAYLOAD)),
+            "SHA-256 của đúng các byte đã kiểm"
+        );
         assert!(!dest.with_extension("part").exists());
         let installer = if cfg!(windows) { "x64-setup.exe" } else { "app.tar.gz" };
         assert!(
@@ -202,7 +206,9 @@ mod tests {
         let app = app();
         let server = serve("0.9.0-beta.1", SIG);
         assert!(check_on(&server, &app, UpdateChannel::Stable).unwrap().is_none());
-        let found = check_on(&server, &app, UpdateChannel::Beta).unwrap().expect("kênh beta nhận bản beta");
+        let found = check_on(&server, &app, UpdateChannel::Beta)
+            .unwrap()
+            .expect("kênh beta nhận bản beta");
         assert_eq!(found.version(), "0.9.0-beta.1");
     }
 
@@ -212,7 +218,10 @@ mod tests {
         assert!(accepts(true, false, Stable) && accepts(true, false, Beta));
         assert!(accepts(true, true, Beta));
         assert!(!accepts(true, true, Stable), "beta vào stable");
-        assert!(!accepts(false, false, Stable) && !accepts(false, true, Beta), "không mới hơn");
+        assert!(
+            !accepts(false, false, Stable) && !accepts(false, true, Beta),
+            "không mới hơn"
+        );
     }
 
     #[test]
