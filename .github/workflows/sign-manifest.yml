@@ -1,0 +1,77 @@
+# Ký manifest model production trong CI (spec §10.2; Q17 của kế hoạch 00; kế hoạch 04a QĐ10, 07a). Khóa riêng duy nhất
+# nằm ở secret MANIFEST_SIGNING_KEY của environment `release` (JWK Ed25519, có `kid` thuộc khối `production` của
+# src-tauri/keys/manifest-public-keys.json); bản sao offline mã hóa nằm ngoài CI. Người vận hành chạy workflow bằng tay với
+# đường dẫn phần thân (JSON chưa ký, commit trong repo), rồi tải models.json đã ký lên R2.
+#
+# Hai job (N2 và Q1 của review 07a lần 1): `check` (không secret) kiểm phần thân bằng đúng luật của app
+# (`check_manifest_body` của kế hoạch 04: Manifest::parse, và so với phần thân của bản đang phát hành để chặn đổi `id`);
+# `sign` (environment `release`) chạy trên runner mới, không biên dịch gì, chỉ ký.
+name: Sign model manifest
+
+on:
+  workflow_dispatch:
+    inputs:
+      body:
+        description: Đường dẫn tương đối trong repo tới phần thân manifest mới (JSON chưa ký)
+        required: true
+        type: string
+      previous:
+        description: Đường dẫn tương đối trong repo tới phần thân của bản đang phát hành (chỉ bỏ trống khi chưa có khóa production)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Kiểm phần thân bằng luật của app (không secret)
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Rust theo rust-toolchain.toml
+        run: rustup toolchain install
+      - name: protoc
+        run: node scripts/release/install-tools.mjs protoc --dest "$RUNNER_TEMP/protoc"
+      - name: check_manifest_body
+        env:
+          BODY: ${{ inputs.body }}
+          PREVIOUS: ${{ inputs.previous }}
+        run: |
+          node scripts/release/sign-manifest-ci.mjs --check
+          pnpm install --frozen-lockfile
+          pnpm build
+          export MANIFEST_BODY="$PWD/$BODY"
+          if [ -n "$PREVIOUS" ]; then export MANIFEST_PREVIOUS="$PWD/$PREVIOUS"; fi
+          cargo test --locked -p meeting-translator --lib check_manifest_body -- --ignored --nocapture
+
+  sign:
+    name: Ký manifest production (secret, không biên dịch)
+    needs: check
+    runs-on: macos-26
+    timeout-minutes: 15
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Ký phần thân bằng khóa production
+        env:
+          MANIFEST_SIGNING_KEY: ${{ secrets.MANIFEST_SIGNING_KEY }}
+          BODY: ${{ inputs.body }}
+        run: node scripts/release/sign-manifest-ci.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: models-manifest
+          path: target/manifest/models.json
+          if-no-files-found: error
