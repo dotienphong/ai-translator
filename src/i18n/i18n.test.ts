@@ -28,7 +28,22 @@ describe("từ điển giao diện", () => {
   it("chuỗi tiếng Việt đã được dịch, trừ tên riêng và tên ngôn ngữ", () => {
     const same = (Object.keys(en) as (keyof typeof en)[]).filter((key) => en[key] === vi[key]);
     expect(same.sort()).toEqual(
-      ["app.name", "channel.beta", "lang.en", "lang.ja", "lang.ko", "lang.vi", "lang.zh", "settings.group.model"].sort(),
+      [
+        "app.name",
+        "channel.beta",
+        "lang.en",
+        "lang.ja",
+        "lang.ko",
+        "lang.vi",
+        "lang.zh",
+        "settings.group.model",
+        // Tên gói là tên riêng (spec §2).
+        "plan.free",
+        "plan.pro",
+        "plan.pro_x2",
+        "plan.pro_x5",
+        "license.standing.free",
+      ].sort(),
     );
   });
 });

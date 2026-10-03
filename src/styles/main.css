@@ -163,6 +163,26 @@ select {
   border-color: var(--color-danger);
 }
 
+/* Tình trạng bản quyền (Cài đặt › Bản quyền). */
+.badge.active {
+  color: var(--color-running);
+  border-color: var(--color-running);
+}
+
+.badge.expired,
+.badge.revoked,
+.badge.notGenuine,
+.badge.clockRolledBack {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+ul.devices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 meter {
   width: 12rem;
 }

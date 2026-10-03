@@ -5,16 +5,15 @@ import { useApp, useT } from "../appStore";
 import { AudioSettings } from "../settings/AudioSettings";
 import { GeneralSettings } from "../settings/GeneralSettings";
 import { HotkeySettings } from "../settings/HotkeySettings";
+import { LicenseSettings } from "../settings/LicenseSettings";
 import { ModelSettings } from "../settings/ModelSettings";
 import { PrivacySettings } from "../settings/PrivacySettings";
 import { SubtitleSettings } from "../settings/SubtitleSettings";
 
 const GROUPS: readonly SettingsGroup[] = ["general", "subtitles", "audio", "model", "hotkeys", "license", "privacy"];
 
-// Nhóm do kế hoạch khác làm: Bản quyền (06).
-const DESCRIPTIONS: Partial<Record<SettingsGroup, MessageKey>> = {
-  license: "settings.license.description",
-};
+// Nhóm chưa có nội dung thì hiện câu mô tả. Sau 04 (Model) và 06 (Bản quyền) không còn nhóm nào như vậy.
+const DESCRIPTIONS: Partial<Record<SettingsGroup, MessageKey>> = {};
 
 // Nhóm cài đặt là một bộ tab (WAI-ARIA Tabs): chỉ tab đang chọn nằm trong thứ tự Tab, mũi tên trái/phải và
 // Home/End chuyển tab và đưa focus theo.
@@ -71,6 +70,7 @@ export function SettingsScreen() {
         {group === "audio" && <AudioSettings />}
         {group === "hotkeys" && <HotkeySettings />}
         {group === "model" && <ModelSettings />}
+        {group === "license" && <LicenseSettings />}
         {description && (
           <div className="card">
             <p>{t(description)}</p>

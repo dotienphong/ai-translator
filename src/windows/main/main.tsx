@@ -6,6 +6,7 @@ import { App } from "./App";
 import { appStore, fallbackLanguage } from "./appStore";
 import { transcriptStore } from "./dataStores";
 import { modelsStore } from "./modelsStore";
+import { licenseStore } from "./licenseStore";
 
 // Giao diện sáng/tối và thuộc tính `lang` theo cài đặt, đổi ngay khi cài đặt đổi.
 appStore.subscribe((state) => {
@@ -35,6 +36,11 @@ modelsStore
   .getState()
   .init()
   .catch((e: unknown) => console.error("không khởi tạo được quản lý model", e));
+// Bản quyền và hạn mức nghe sự kiện từ lúc mở cửa sổ: màn hình chính, thanh báo và nhóm Bản quyền dùng chung.
+licenseStore
+  .getState()
+  .init()
+  .catch((e: unknown) => console.error("không đọc được bản quyền", e));
 
 // Không đọc được cài đặt hay trạng thái (lệnh bị chặn, phía Rust lỗi) thì hiện câu báo theo ngôn ngữ của hệ
 // điều hành, thay vì để cửa sổ trắng trơn.
