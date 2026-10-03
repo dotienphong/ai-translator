@@ -6,12 +6,14 @@
 //! - [`device`]: `device_id_hash` và tên máy gửi cho server.
 //! - [`key`]: chuẩn hóa và kiểm ký tự kiểm tra của license key người dùng gõ.
 //! - [`store`]: bản ghi trong kho khóa (key, token, bộ đếm, bản ghi đánh dấu, đơn đang chờ).
+//! - [`manager`]: trạng thái bản quyền và hạn mức của máy này: kích hoạt, làm mới, gỡ, đếm phút, lịch `validate`.
 //! - [`quota`]: luật hạn mức của gói trả phí và của Free, chống chỉnh đồng hồ, dạng phép tính thuần.
 
 pub mod client;
 pub mod device;
 pub mod key;
 pub mod keys;
+pub mod manager;
 pub mod quota;
 pub mod store;
 pub mod token;
