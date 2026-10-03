@@ -82,6 +82,21 @@ test("gen-manifest-key: chỉ ghi khóa riêng ra ngoài repo, quyền 0600, in 
   assert.equal(run("gen-manifest-key.mjs", ["stg-2026-10-3", "--out", join(dir, "c.jwk"), "--keys", keys]).status, 2, "không ghi đè");
 });
 
+test("gen-manifest-key --production: chỉ kid prod-, không trùng kid ở khối nào (kế hoạch 07b)", () => {
+  const dir = temp();
+  const keys = join(dir, "keys.json");
+  writeFileSync(keys, JSON.stringify({ staging: [{ kid: "prod-2026-11-1", x: "x" }], production: [] }));
+  assert.equal(run("gen-manifest-key.mjs", ["stg-2026-11-1", "--production", "--out", join(dir, "a.jwk"), "--keys", keys]).status, 2);
+  assert.equal(run("gen-manifest-key.mjs", ["prod-2026-11-1", "--production", "--out", join(dir, "b.jwk"), "--keys", keys]).status, 2, "kid đã có");
+  const inside = run("gen-manifest-key.mjs", ["prod-2026-11-2", "--production", "--out", resolve(REPO, "p.jwk"), "--keys", keys]);
+  assert.match(inside.stderr, /không được nằm trong repo/);
+  const ok = run("gen-manifest-key.mjs", ["prod-2026-11-2", "--production", "--out", join(dir, "c.jwk"), "--keys", keys]);
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(JSON.parse(ok.stdout).kid, "prod-2026-11-2");
+  assert.match(ok.stderr, /khối "production"/);
+  assert.equal(statSync(join(dir, "c.jwk")).mode & 0o777, 0o600);
+});
+
 test("sign-manifest: chỉ ký bằng khóa có trong khối của môi trường, và tự kiểm lại", () => {
   const dir = temp();
   const keys = join(dir, "keys.json");
