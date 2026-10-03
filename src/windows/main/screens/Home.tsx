@@ -4,6 +4,8 @@ import type { SessionStatus } from "../../../lib/ipc";
 import { levelToMeter } from "../../../store/app";
 import { useApp, useT } from "../appStore";
 import { useTranscript } from "../dataStores";
+import { useLicense } from "../licenseStore";
+import { QuotaSummary, when } from "../LicenseText";
 import { LanguagePicker } from "../LanguagePicker";
 import { DownloadPanel } from "../models/DownloadPanel";
 import { UpdateNotice } from "../models/UpdateNotice";
@@ -23,8 +25,8 @@ const BUTTON: Record<SessionStatus, MessageKey> = {
   error: "home.start",
 };
 
-// Màn hình chính (§4.3): bắt đầu/dừng, trạng thái và lỗi của phiên, ngôn ngữ, nguồn âm thanh, mức âm lượng.
-// Kế hoạch 06 điền số phút còn lại.
+// Màn hình chính (§4.3): bắt đầu/dừng, trạng thái và lỗi của phiên, ngôn ngữ, nguồn âm thanh, mức âm lượng, hạn mức còn
+// lại kèm thời điểm reset (kế hoạch 06). Hết hạn mức thì báo thời điểm reset và có nút nâng gói (§4.2 bước 2).
 export function Home() {
   const t = useT();
   const status = useApp((s) => s.status);
@@ -38,6 +40,7 @@ export function Home() {
   const navigate = useApp((s) => s.navigate);
   const openPermission = useApp((s) => s.openAudioPermissionSettings);
   const hasTranscript = useTranscript((s) => (s.transcript?.lines.length ?? 0) > 0);
+  const license = useLicense((s) => s.view);
   if (!status || !settings || !info) return null;
   const session = status.session;
   const notes: MessageKey[] = [];
@@ -68,6 +71,14 @@ export function Home() {
             {(status.sessionError === "modelMissing" || status.sessionError === "modelBroken") && (
               <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
             )}
+            {status.sessionError === "quotaExhausted" && (
+              <>
+                {status.quotaResetAt !== null && (
+                  <span className="hint">{t("quota.resetAt", { time: when(status.quotaResetAt) })}</span>
+                )}
+                <button onClick={() => navigate("upgrade")}>{t("settings.license.buy")}</button>
+              </>
+            )}
           </div>
         )}
         {session === "running" && status.permissionSuspected && info.platform === "macos" && (
@@ -75,6 +86,11 @@ export function Home() {
             <span className="error-text">{t("home.permissionSuspected")}</span>
             <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
           </div>
+        )}
+        {session === "running" && status.quotaWarning && (
+          <p className="hint" role="status">
+            {t("home.quotaLow")}
+          </p>
         )}
         {notes.map((key) => (
           <p key={key} className="hint" role="status">
@@ -107,10 +123,13 @@ export function Home() {
           <span>{t("home.inputLevel")}</span>
           <LevelMeter label={t("home.inputLevel")} />
         </div>
-        <div className="row">
-          <span>{t("home.minutesLeft")}</span>
-          <span className="hint">{t("common.notYet")}</span>
-        </div>
+        {license && (
+          <div className="row">
+            <span>{t("home.minutesLeft")}</span>
+            <QuotaSummary quota={license.quota} />
+            {!status.pro && <button onClick={() => navigate("upgrade")}>{t("settings.license.buy")}</button>}
+          </div>
+        )}
       </div>
       <div className="card">
         <div className="row">

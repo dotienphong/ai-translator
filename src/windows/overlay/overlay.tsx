@@ -4,7 +4,15 @@ import { createRoot } from "react-dom/client";
 import { useStore } from "zustand";
 import { translate } from "../../i18n";
 import { type ResizeEdge, tauriIpc as ipc } from "../../lib/ipc";
-import { HEARING_RMS, TEXT_COLORS, lineView, overlayBackground, overlayNotes } from "../../lib/subtitleView";
+import {
+  HEARING_RMS,
+  TEXT_COLORS,
+  dateTime,
+  lineView,
+  localOffsetMinutes,
+  overlayBackground,
+  overlayNotes,
+} from "../../lib/subtitleView";
 import { createOverlayStore, createResizeDrag } from "../../store/overlay";
 
 const store = createOverlayStore(ipc);
@@ -102,7 +110,11 @@ function Overlay() {
         )}
         {notes.map((n) => (
           <span key={n} className={`note ${n}`}>
-            {t(`overlay.note.${n}`)}
+            {n === "quotaExhausted" && status?.quotaResetAt != null
+              ? translate(view.uiLanguage, "overlay.note.quotaExhausted.reset", {
+                  time: dateTime(status.quotaResetAt * 1000, localOffsetMinutes(status.quotaResetAt * 1000)),
+                })
+              : t(`overlay.note.${n}`)}
           </span>
         ))}
       </div>

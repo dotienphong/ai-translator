@@ -1,6 +1,8 @@
 import { errorKey } from "../../i18n";
+import { licenseNotice } from "../../lib/license";
 import { canOpenScreens } from "../../store/app";
 import { useApp, useT } from "./appStore";
+import { useLicense } from "./licenseStore";
 
 // Thông báo trong app (Q13 của kế hoạch 00: MVP không dùng thông báo hệ thống): lời nhắc từ phía Rust
 // (vừa bỏ qua ⌘Q; mục Login Items đang bị tắt), lỗi của lệnh gần nhất, và phím tắt không đăng ký được.
@@ -19,6 +21,10 @@ export function Notice() {
   const navigate = useApp((s) => s.navigate);
   const openLoginItems = useApp((s) => s.openLoginItemsSettings);
   const canNavigate = useApp(canOpenScreens);
+  // Lời nhắc bản quyền (kế hoạch 06): bản không chính hãng, giờ máy chỉnh lùi, lâu chưa kiểm được gói, hết hạn, sắp hết
+  // hạn (7 ngày), bị thu hồi.
+  const license = useLicense((s) => licenseNotice(s.view));
+  const renewable = license === "license.notice.expired" || license === "license.notice.renewSoon";
   return (
     <>
       <div role="status">
@@ -33,6 +39,16 @@ export function Notice() {
             <span>{t("notice.loginItemsApproval")}</span>
             <button onClick={() => void openLoginItems()}>{t("notice.openLoginItems")}</button>
             <button onClick={dismissNotice}>{t("common.dismiss")}</button>
+          </div>
+        )}
+        {license && (
+          <div className="notice">
+            <span>{t(license)}</span>
+            {canNavigate && (
+              <button onClick={() => (renewable ? navigate("upgrade") : navigate("settings", "license"))}>
+                {t(renewable ? "settings.license.renew" : "notice.openSettings")}
+              </button>
+            )}
           </div>
         )}
         {failures > 0 && (
