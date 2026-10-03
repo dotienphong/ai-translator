@@ -51,6 +51,9 @@ ed25519-dalek = { version = "3.0.0", default-features = false }
 reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "native-tls", "system-proxy"] }
 # macOS: RAM và dung lượng trống cho đề xuất gói model (spec §8). Cùng bản `pipeline` đang dùng.
 libc = "0.2.189"
+# Bản quyền (kế hoạch 06): các crate 04 đã thêm (`base64`, `ed25519-dalek`, `reqwest`, `libc`) dùng chung, ở trên.
+# Ngày theo giờ máy cho hạn mức Free (license/quota.rs): múi giờ của hệ điều hành. Cùng bản `Cargo.lock` đã có.
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
