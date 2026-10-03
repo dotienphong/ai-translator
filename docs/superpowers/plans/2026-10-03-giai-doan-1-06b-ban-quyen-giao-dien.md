@@ -2016,7 +2016,7 @@ cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8
 ```
 Expected (lúc lập kế hoạch; 06b không thêm test Rust):
 ```text
-passed 745 failed 0 ignored 13
+passed 751 failed 0 ignored 13
 ```
 
 Run:
@@ -2045,7 +2045,7 @@ cargo test --release -p meeting-translator --lib -- pro:: license:: --test-threa
 ```
 Expected (lúc lập kế hoạch):
 ```text
-test result: ok. 79 passed; 0 failed; 0 ignored; 0 measured; 313 filtered out
+test result: ok. 85 passed; 0 failed; 0 ignored; 0 measured; 313 filtered out
 ```
 
 Run:
@@ -2058,7 +2058,7 @@ test license::genuine::tests::the_team_requirement_only_takes_a_real_team_id ...
 test license::keys::tests::the_embedded_file_parses_for_both_environments ... ok
 test pro::tests::only_a_debug_build_runs_unlimited ... ok
 test pro::tests::the_dev_gate_exists_only_in_debug_builds ... ok
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 388 filtered out
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 394 filtered out
 ```
 
 Run:
@@ -2180,79 +2180,6 @@ Expected:
 - Lần đầu app đọc, ghi các mục bản quyền, macOS có thể hỏi quyền truy cập Keychain (bấm Always Allow). Ghi lại có hay không, mấy lần.
 - Nếu chỉ xóa mục Keychain mà còn thư mục dữ liệu: Expected là hết hạn mức của hôm nay kèm "mất bản ghi" (QĐ6), không phải "Còn 10 phút".
 
-- [ ] **Step 3: Kiểm code Windows trên Mac**
-
-Run:
-```bash
-./scripts/check-windows.sh -q && echo check-windows ok
-```
-Expected (lúc lập kế hoạch):
-```text
-check-windows ok
-```
-
-- [ ] **Step 4: License server (không đổi)**
-
-Run:
-```bash
-pnpm -C server install --frozen-lockfile >/dev/null 2>&1 && NO_COLOR=1 pnpm -C server check 2>&1 | grep -E '^ +Tests |^# (pass|fail) ' && pnpm -C server audit 2>&1 | tail -1
-```
-Expected (lúc lập kế hoạch):
-```text
-      Tests  360 passed (360)
-# pass 6
-# fail 0
-No known vulnerabilities found
-```
-
-- [ ] **Step 5: Không có bí mật nào trong app** (spec §10.2)
-
-Dò tên các bí mật thật của server (khóa ký token, khóa của PayOS, Resend) và khóa riêng dạng PEM trong mã của app. Khóa test trong `#[cfg(test)]` (hạt giống `test-1` của bộ vector 05, khóa test manifest của 04) là khóa công khai của bộ test, không phải bí mật.
-
-Run:
-```bash
-P='TOKEN_SIGNING_KEY|PAYOS_(CLIENT_ID|API_KEY|CHECKSUM_KEY)|RESEND_API_KEY|BEGIN (EC |RSA |OPENSSH )?PRIVATE KEY'
-git grep -nIE "$P" -- src src-tauri | head -5; echo "khớp: $(git grep -IlE "$P" -- src src-tauri | wc -l | tr -d ' ')"
-```
-Expected (lúc lập kế hoạch):
-```text
-khớp: 0
-```
-
-## Task 6: Thử tay trên Mac với staging (cần người)
-
-Bàn giao "chạy được" của 06 (mục 2.6 của kế hoạch 00) cần staging của 05 và người: giao dịch thật, hộp thoại của Keychain, đổi giờ máy thật. Agent không tự chạy app và không bật hộp thoại quyền (mục 6.8 của kế hoạch 00): agent chuẩn bị, đưa từng bước cho người, ghi kết quả. Dòng 11, 14, 44, 46, 55, 58, 182, 183, 242, 265, 266, 310 (phần người).
-
-**Cần người thao tác:** cả task. **Cần trước:** 05 Task 19 (staging chạy, có cặp khóa ký token của staging, kênh PayOS của staging theo P05-1); Q14 của 05 (tài khoản PayOS). Chạy app bằng `scripts/run-dev-app.sh` với `AI_TRANSLATOR_DEV_FREE=1` (bản debug, dùng trạng thái bản quyền thật và khóa `staging`; QĐ17).
-
-**Files:**
-- Modify: `src-tauri/keys/license-public-keys.json`, `src-tauri/src/license/client.rs` (Step 1)
-- Create: `bench/phase0/results/gd1_06_mac.md`
-
-- [ ] **Step 1: Agent điền khóa công khai và URL của staging**
-
-Chép nguyên `server/keys/public-keys.json` (05 Task 19 đã ghi khối `staging`) vào `src-tauri/keys/license-public-keys.json`. Đặt `STAGING_URL` trong `src-tauri/src/license/client.rs` thành URL của Worker staging (05 Task 19 Step cuối ghi URL; dạng `https://…workers.dev` hay tên miền riêng). Chỉ khóa công khai và URL, không bí mật nào (§10.2).
-
-Run:
-```bash
-cargo test -p meeting-translator --lib license::keys -- --test-threads=1 2>&1 | grep -E '^test |^test result' | sed 's/; finished in .*//'
-curl -sS -o /dev/null -w '%{http_code}\n' "$(grep -oE 'https://[^"]+' src-tauri/src/license/client.rs | head -1)/v1/plans"
-```
-Expected: 4 test của `license::keys` qua (cả `the_app_copy_matches_the_server_file_when_it_exists`); `curl` in `200`.
-
-```bash
-git add src-tauri/keys/license-public-keys.json src-tauri/src/license/client.rs
-git commit -m "feat(app): khóa công khai và URL của license server staging (kế hoạch 06)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
-```
-
-- [ ] **Step 2: Free và hạn mức** (dòng 44, 46)
-
-Agent xóa các mục của app trong Keychain trước (`security delete-generic-password -s com.aitranslator.desktop -a <tên>` với `license`, `license-seen`, `quota-free`; không in mật khẩu), rồi người mở app.
-Expected:
-- Màn hình chính "Còn 10 phút hôm nay · mở lại lúc …", có nút Nâng cấp; Cài đặt › Bản quyền "Free"; Lịch sử, Từ điển hiện "là tính năng Pro".
-- Dịch một video tiếng Anh. Khi còn 5 phút: thanh phụ đề và màn hình chính nhắc một lần. Hết 10 phút: phiên dừng; thanh phụ đề "Đã hết hạn mức dịch · mở lại lúc <giờ>"; màn hình chính báo hết hạn mức kèm nút nâng gói; bấm Bắt đầu: bị từ chối ngay.
-- Lần đầu app đọc, ghi các mục bản quyền, macOS có thể hỏi quyền truy cập Keychain (bấm Always Allow). Ghi lại có hay không, mấy lần.
-
 - [ ] **Step 3: Mua gói bằng VietQR trên staging** (dòng 11, 58, 182)
 
 Người bấm Nâng cấp, chọn Professional, nhập email thật của mình, tick đồng ý, bấm Mua.
@@ -2274,8 +2201,8 @@ Expected:
 - Tắt Wi-Fi, thoát rồi mở app: vẫn Professional, dịch được (token dùng tới `refresh_before`); "Kiểm tra ngay" báo cần mạng.
 - Bật lại mạng. System Settings › General › Date & Time: tắt "Set time automatically", lùi giờ 1 giờ khi app đang chạy. Expected: trong vòng 1 phút, thanh báo "Giờ máy bị chỉnh lùi…", gói về Free (Lịch sử bị khóa); bật lại giờ tự động: trong vòng 5 phút (hay bấm "Kiểm tra ngay") về Professional.
 - Đặt giờ tới trước 1 năm, chờ 1 phút, rồi bật lại giờ tự động, bấm "Kiểm tra ngay": về Professional (header `Date` của server hạ mốc, QĐ8).
-- Ở Free (máy khác, hay sau Step 6 khi đã gỡ kích hoạt): đặt giờ tới trước 1 năm, chờ 1 phút, rồi bật lại giờ tự động. Expected: thanh báo "Giờ máy đã bị chỉnh lùi…" hiện ngay; trong vòng 5 phút có mạng thì thanh báo tắt (app hỏi giờ của server, QĐ31); hạn mức Free không kẹt tới năm sau (hôm sau mở lại như thường, QĐ29).
-- Ở Free: đặt giờ tới trước 1 ngày khi offline. Ghi lại hạn mức Free có mở lại không (rủi ro chấp nhận của §10.2: chỉnh tới trước khi offline lách được); bật lại giờ tự động thì báo chỉnh lùi.
+- Ở Free (máy khác, hay sau Step 6 khi đã gỡ kích hoạt): đặt giờ tới trước 1 năm, chờ 1 phút, rồi bật lại giờ tự động. Expected: thanh báo "Giờ máy đã bị chỉnh lùi…" hiện ngay; trong vòng 5 phút có mạng thì thanh báo tắt (app hỏi giờ của server, QĐ31); hạn mức Free không kẹt tới năm sau: hôm sau, có mạng thì mở lại khi đã qua 20 giờ theo giờ của server; offline thì khi app đã chạy đủ 20 giờ (QĐ29, QĐ31).
+- Ở Free, dùng hết 10 phút: đặt giờ tới trước 1 ngày khi offline. Ghi lại hạn mức Free có mở lại không (rủi ro chấp nhận của §10.2: lần chỉnh tới trước đầu lách được). Bật lại giờ tự động, rồi đặt tới trước 1 ngày lần nữa (cùng độ lệch). Expected: lần thứ hai không mở thêm phút nào (bảng mô hình đe dọa của 06a, QĐ29).
 - Ghi mọi lần thấy hộp thoại Keychain.
 
 - [ ] **Step 6: Xóa dữ liệu giữ bản quyền** (dòng 57)
