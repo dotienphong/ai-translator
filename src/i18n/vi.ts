@@ -249,6 +249,7 @@ export const vi: Record<MessageKey, string> = {
   "overlay.note.error": "Phiên dịch đã dừng vì lỗi. Mở cửa sổ chính để xem chi tiết.",
   "overlay.note.noAudio": "Không nghe thấy âm thanh. Kiểm tra âm thanh cuộc họp có đang phát không.",
   "overlay.note.waitingForApp": "App đã chọn không phát tiếng",
+  "overlay.note.quotaLow": "Còn dưới 5 phút dịch",
   "overlay.note.lagging": "Đang trễ",
   "overlay.note.translationUnavailable": "Dịch không khả dụng: chỉ hiện câu gốc",
   "subtitle.dropped": "[bỏ qua đoạn]",

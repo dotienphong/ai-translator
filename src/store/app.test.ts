@@ -43,6 +43,8 @@ const status: AppStatus = {
   permissionSuspected: false,
   waitingForApp: false,
   pro: true,
+  quotaWarning: false,
+  quotaResetAt: null,
   rev: 1,
 };
 const info: AppInfo = {

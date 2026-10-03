@@ -27,6 +27,8 @@ const status = (session: AppStatus["session"], rev: number): AppStatus => ({
   permissionSuspected: false,
   waitingForApp: false,
   pro: true,
+  quotaWarning: false,
+  quotaResetAt: null,
   rev,
 });
 

@@ -35,6 +35,8 @@ const status = (patch: Partial<AppStatus>): AppStatus => ({
   permissionSuspected: false,
   waitingForApp: false,
   pro: true,
+  quotaWarning: false,
+  quotaResetAt: null,
   rev: 1,
   ...patch,
 });
@@ -141,10 +143,13 @@ describe("overlayNotes", () => {
       overlayNotes(
         status({
           waitingForApp: true,
+          quotaWarning: true,
           indicators: { lagging: true, noAudio: true, translationUnavailable: true },
         }),
       ),
-    ).toEqual(["noAudio", "waitingForApp", "lagging", "translationUnavailable"]);
+    ).toEqual(["noAudio", "waitingForApp", "quotaLow", "lagging", "translationUnavailable"]);
+    // Còn dưới 5 phút chỉ nhắc khi đang dịch (kế hoạch 06).
+    expect(overlayNotes(status({ session: "idle", quotaWarning: true }))).toEqual([]);
   });
 
   it("chỉ báo của phiên chỉ hiện khi đang dịch; lỗi và hết hạn mức hiện sau khi dừng", () => {

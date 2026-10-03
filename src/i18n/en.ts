@@ -249,6 +249,7 @@ export const en = {
   "overlay.note.error": "Translation stopped because of an error. Open the main window for details.",
   "overlay.note.noAudio": "No audio heard. Check that the meeting sound is playing.",
   "overlay.note.waitingForApp": "The chosen app is not playing sound",
+  "overlay.note.quotaLow": "Less than 5 minutes of translation left",
   "overlay.note.lagging": "Falling behind",
   "overlay.note.translationUnavailable": "Translation unavailable: original text only",
   "subtitle.dropped": "[segment skipped]",

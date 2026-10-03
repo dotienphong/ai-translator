@@ -100,6 +100,10 @@ export interface AppStatus {
   waitingForApp: boolean;
   // Đang có gói trả phí còn hạn: tính năng Pro (lịch sử, xuất file, từ điển thuật ngữ) mở; không thì khóa.
   pro: boolean;
+  // Hạn mức còn từ 5 phút trở xuống (§4.2 bước 2): nhắc trên thanh phụ đề và cửa sổ chính.
+  quotaWarning: boolean;
+  // Thời điểm hạn mức được reset (giây Unix); `null` khi không giới hạn.
+  quotaResetAt: number | null;
   // Tăng mỗi lần trạng thái đổi: trạng thái có `rev` nhỏ hơn trạng thái đang có là cũ, bỏ qua.
   rev: number;
 }
@@ -230,6 +234,88 @@ export interface CommandError {
   message: string;
 }
 
+// Bản quyền (kế hoạch 06; `license::manager::LicenseView`). Không có key đầy đủ hay token: `key` đã che.
+export type LicensePlan = "free" | "pro" | "pro_x2" | "pro_x5";
+export type Standing =
+  | "free"
+  | "active"
+  | "expired"
+  | "revoked"
+  | "refreshNeeded"
+  | "clockRolledBack"
+  | "unverified"
+  | "notGenuine";
+
+export interface QuotaView {
+  unlimited: boolean;
+  limitMs: number;
+  usedMs: number;
+  remainingMs: number;
+  resetAt: number | null;
+  resetKind: "daily" | "cycle" | "expiry";
+  needsNetwork: boolean;
+  lost: boolean;
+  storageError: boolean;
+}
+
+export interface LicenseView {
+  standing: Standing;
+  plan: LicensePlan;
+  licensedPlan: Exclude<LicensePlan, "free"> | null;
+  key: string | null;
+  expiresAt: number | null;
+  refreshBefore: number | null;
+  validatedAt: number | null;
+  renewSoon: boolean;
+  quota: QuotaView;
+  serverConfigured: boolean;
+  devOverride: boolean;
+  // Giờ máy bị coi là chỉnh lùi (cả ở gói Free): nhắc chỉnh giờ.
+  clockRolledBack: boolean;
+}
+
+// Một máy đã kích hoạt, trong `409 device_limit` (`license::client::Device`). `device_label` có thể là `null`.
+export interface Device {
+  activation_id: string;
+  device_label: string | null;
+  last_validated_at: number | null;
+}
+
+export interface ActivateOutcome {
+  view: LicenseView | null;
+  devices: Device[] | null;
+}
+
+// Gói đang bán (`GET /v1/plans`).
+export interface PlanOffer {
+  code: Exclude<LicensePlan, "free">;
+  name: string;
+  quota_minutes_per_cycle: number | null;
+  days_per_order: number;
+  prices: Record<string, number>;
+}
+
+export interface CheckoutView {
+  orderCode: number;
+  plan: string;
+  amount: number;
+  currency: string;
+  expiresAt: number;
+  qrSvg: string;
+  licenseExpiresAt: number | null;
+  convertedDays: number | null;
+}
+
+// Kết quả mỗi lần hỏi đơn (`license::purchase::OrderOutcome`).
+export type OrderOutcome =
+  | { state: "waiting"; order_code: number; expires_at: number }
+  | { state: "paid"; order_code: number; plan: string }
+  | { state: "underpaid"; order_code: number }
+  | { state: "needsReview"; order_code: number }
+  | { state: "refunded"; order_code: number }
+  | { state: "failed"; order_code: number }
+  | { state: "paidButNotApplied"; order_code: number; code: string };
+
 export interface Commands {
   get_settings: { args: undefined; result: Settings };
   update_settings: { args: { patch: SettingsPatch }; result: Settings };
@@ -270,6 +356,17 @@ export interface Commands {
   clear_all_data: { args: undefined; result: null };
   get_debug_sessions: { args: undefined; result: DebugSession[] };
   get_overlay_view: { args: undefined; result: OverlayView };
+  get_license: { args: undefined; result: LicenseView | null };
+  activate_license: { args: { key: string }; result: ActivateOutcome };
+  deactivate_license: { args: undefined; result: LicenseView | null };
+  deactivate_other_device: { args: { key: string; activationId: string }; result: null };
+  validate_license: { args: undefined; result: LicenseView | null };
+  get_plans: { args: undefined; result: PlanOffer[] };
+  start_checkout: { args: { plan: string; email: string; consent: boolean; renew: boolean }; result: CheckoutView };
+  get_pending_order: { args: undefined; result: CheckoutView | null };
+  cancel_checkout: { args: undefined; result: null };
+  open_checkout_page: { args: undefined; result: null };
+  recover_license: { args: { email: string }; result: null };
   hide_overlay: { args: undefined; result: null };
   begin_overlay_resize: { args: { edge: ResizeEdge }; result: null };
   overlay_resize_move: { args: undefined; result: null };
@@ -294,6 +391,8 @@ export interface Events {
   "app://navigate": Navigate;
   "app://notice": AppNotice;
   "overlay://view": OverlayView;
+  "license://changed": LicenseView;
+  "license://order": OrderOutcome;
   "subtitle://upsert": Subtitle;
   "subtitle://delta": SubtitleDelta;
   // Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch; tới cả cửa sổ chính lẫn thanh phụ đề.
