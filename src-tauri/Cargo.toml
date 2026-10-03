@@ -54,6 +54,8 @@ libc = "0.2.189"
 # Bản quyền (kế hoạch 06): các crate 04 đã thêm (`base64`, `ed25519-dalek`, `reqwest`, `libc`) dùng chung, ở trên.
 # Ngày theo giờ máy cho hạn mức Free (license/quota.rs): múi giờ của hệ điều hành. Cùng bản `Cargo.lock` đã có.
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
+# Vẽ mã VietQR của đơn thành SVG ngay trong app (license/purchase.rs, spec §6.8 "Mua ngay trong app"). Không kéo crate nào.
+qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }

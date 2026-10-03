@@ -8,6 +8,7 @@
 //! - [`key`]: chuẩn hóa và kiểm ký tự kiểm tra của license key người dùng gõ.
 //! - [`store`]: bản ghi trong kho khóa (key, token, bộ đếm, bản ghi đánh dấu, đơn đang chờ).
 //! - [`manager`]: trạng thái bản quyền và hạn mức của máy này: kích hoạt, làm mới, gỡ, đếm phút, lịch `validate`.
+//! - [`purchase`]: mua, gia hạn, đổi gói ngay trong app (bảng gói, đơn, mã VietQR, hỏi trạng thái đơn).
 //! - [`quota`]: luật hạn mức của gói trả phí và của Free, chống chỉnh đồng hồ, dạng phép tính thuần.
 
 pub mod app;
@@ -16,6 +17,7 @@ pub mod device;
 pub mod key;
 pub mod keys;
 pub mod manager;
+pub mod purchase;
 pub mod quota;
 pub mod store;
 pub mod token;

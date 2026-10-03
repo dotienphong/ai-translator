@@ -182,7 +182,30 @@ pub enum LicenseError {
     Storage(String),
     #[error("server trả lỗi {0}")]
     Server(String),
+    #[error("chưa đồng ý xử lý email")]
+    ConsentRequired,
+    #[error("email không hợp lệ")]
+    EmailInvalid,
 }
+
+/// Mọi mã lỗi của bản quyền (test của `errors.rs` kiểm đủ câu báo lỗi).
+pub const ERROR_CODES: &[&str] = &[
+    "licenseInvalidKey",
+    "licenseNotActivated",
+    "licenseNotConfigured",
+    "licenseNetwork",
+    "licenseRateLimited",
+    "licenseDeviceLimit",
+    "licenseLocked",
+    "licenseRevoked",
+    "licenseExpired",
+    "licenseDeactivated",
+    "licenseBadToken",
+    "licenseStorage",
+    "licenseServer",
+    "licenseConsentRequired",
+    "licenseEmailInvalid",
+];
 
 impl LicenseError {
     /// Mã lỗi cho giao diện (`error.<mã>` trong i18n).
@@ -201,11 +224,13 @@ impl LicenseError {
             Self::BadToken(_) => "licenseBadToken",
             Self::Storage(_) => "licenseStorage",
             Self::Server(_) => "licenseServer",
+            Self::ConsentRequired => "licenseConsentRequired",
+            Self::EmailInvalid => "licenseEmailInvalid",
         }
     }
 }
 
-fn map_api(e: ApiError) -> LicenseError {
+pub(crate) fn map_api(e: ApiError) -> LicenseError {
     match e {
         ApiError::NotConfigured => LicenseError::NotConfigured,
         ApiError::Network(_) => LicenseError::Network,
@@ -902,6 +927,8 @@ pub mod tests {
     pub struct FakeApi {
         pub replies: Mutex<VecDeque<Result<Granted, ApiError>>>,
         pub deactivations: Mutex<VecDeque<Result<(), ApiError>>>,
+        pub checkouts: Mutex<VecDeque<Result<Checkout, ApiError>>>,
+        pub orders: Mutex<VecDeque<Result<OrderStatus, ApiError>>>,
         pub calls: Mutex<Vec<String>>,
         pub date: Mutex<Option<i64>>,
     }
@@ -929,15 +956,30 @@ pub mod tests {
                 date: *self.date.lock().unwrap(),
             }
         }
-        fn checkout(&self, _: &str, _: &str, _: Option<&str>) -> Reply<Checkout> {
+        fn checkout(&self, plan: &str, email: &str, key: Option<&str>) -> Reply<Checkout> {
+            self.calls
+                .lock()
+                .unwrap()
+                .push(format!("checkout {plan} {email} {}", key.unwrap_or("-")));
             Reply {
-                result: Err(ApiError::NotConfigured),
+                result: self
+                    .checkouts
+                    .lock()
+                    .unwrap()
+                    .pop_front()
+                    .unwrap_or(Err(ApiError::NotConfigured)),
                 date: None,
             }
         }
-        fn order(&self, _: i64, _: &str) -> Reply<OrderStatus> {
+        fn order(&self, code: i64, token: &str) -> Reply<OrderStatus> {
+            self.calls.lock().unwrap().push(format!("order {code} {token}"));
             Reply {
-                result: Err(ApiError::NotConfigured),
+                result: self
+                    .orders
+                    .lock()
+                    .unwrap()
+                    .pop_front()
+                    .unwrap_or(Err(ApiError::NotConfigured)),
                 date: None,
             }
         }

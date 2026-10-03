@@ -11,27 +11,37 @@
 
 use std::ops::ControlFlow;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 
-use super::client::HttpApi;
+use super::client::{Device, HttpApi, PlanOffer};
 use super::device;
 use super::keys::PublicKeys;
-use super::manager::{License, LicenseView, Machine, Zone};
+use super::manager::{License, LicenseError, LicenseView, Machine, Zone};
+use super::purchase::{self, CheckoutView, OrderOutcome};
 use super::store::Vault;
 use crate::errors::{self, CommandError};
 use crate::pro::{self, ProGate};
 use crate::security::keystore::Keystore;
 use crate::state::AppState;
-use crate::{actions, window};
+use crate::{actions, navigation, window};
 
 pub const LICENSE_CHANGED: &str = "license://changed";
+/// Kết quả mỗi lần hỏi đơn đang chờ ([`OrderOutcome`]), cho màn hình Nâng cấp.
+pub const ORDER_CHANGED: &str = "license://order";
 /// Ticker của bản quyền: cộng thời gian đơn điệu, reset Free, gọi `validate` khi tới lịch.
 const TICK_EVERY: Duration = Duration::from_secs(60);
 
 /// [`License`] của app, quản lý bằng `app.manage`.
-pub struct Licensing(pub Arc<License>);
+pub struct Licensing(pub Arc<License>, AtomicBool);
+
+impl Licensing {
+    pub fn new(license: Arc<License>) -> Self {
+        Self(license, AtomicBool::new(false))
+    }
+}
 
 /// `ProGate` theo trạng thái bản quyền thật.
 struct LicenseGate(Arc<License>);
@@ -97,12 +107,14 @@ pub fn install<R: Runtime>(app: &AppHandle<R>, has_prior_data: bool) {
     );
     install_with(app, license);
     spawn_ticker(app);
+    // Đơn còn chờ từ lần chạy trước (§6.8 bước 5): hỏi tiếp.
+    spawn_order_poller(app);
 }
 
 /// Cài một [`License`] đã dựng (test dùng server và kho khóa giả). Không chạy ticker.
 pub fn install_with<R: Runtime>(app: &AppHandle<R>, license: License) {
     let license = Arc::new(license);
-    app.manage(Licensing(license.clone()));
+    app.manage(Licensing::new(license.clone()));
     if license.dev_unlimited() {
         pro::install_dev_gate(app);
     } else {
@@ -198,6 +210,145 @@ fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
             }
             validate_if_due(&app);
             refresh(&app);
+        }
+    });
+}
+
+fn command_error(e: LicenseError) -> CommandError {
+    CommandError::new(e.code(), None, e.to_string())
+}
+
+fn license_or_error<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<License>, CommandError> {
+    licensing(app).ok_or_else(|| command_error(LicenseError::NotConfigured))
+}
+
+/// Kết quả của lệnh kích hoạt: thành công, hay key đã đủ 2 máy (giao diện hiện danh sách để gỡ một máy).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivateOutcome {
+    pub view: Option<LicenseView>,
+    pub devices: Option<Vec<Device>>,
+}
+
+pub fn activate<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<ActivateOutcome, CommandError> {
+    let license = license_or_error(app)?;
+    let result = license.activate(key, now());
+    refresh(app);
+    match result {
+        Ok(()) => Ok(ActivateOutcome {
+            view: Some(license.view(now())),
+            devices: None,
+        }),
+        Err(LicenseError::DeviceLimit(devices)) => Ok(ActivateOutcome {
+            view: None,
+            devices: Some(devices),
+        }),
+        Err(e) => Err(command_error(e)),
+    }
+}
+
+pub fn deactivate<R: Runtime>(app: &AppHandle<R>) -> Result<Option<LicenseView>, CommandError> {
+    let license = license_or_error(app)?;
+    let result = license.deactivate(None);
+    refresh(app);
+    result.map(|()| Some(license.view(now()))).map_err(command_error)
+}
+
+pub fn deactivate_other<R: Runtime>(app: &AppHandle<R>, key: &str, activation_id: &str) -> Result<(), CommandError> {
+    license_or_error(app)?
+        .deactivate(Some((key, activation_id)))
+        .map_err(command_error)
+}
+
+pub fn validate_now<R: Runtime>(app: &AppHandle<R>) -> Result<Option<LicenseView>, CommandError> {
+    let license = license_or_error(app)?;
+    let result = license.validate(now());
+    refresh(app);
+    result.map(|()| Some(license.view(now()))).map_err(command_error)
+}
+
+pub fn plans<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<PlanOffer>, CommandError> {
+    purchase::plans(&*license_or_error(app)?).map_err(command_error)
+}
+
+pub fn start_checkout<R: Runtime>(
+    app: &AppHandle<R>,
+    plan: &str,
+    email: &str,
+    consent: bool,
+    renew: bool,
+) -> Result<CheckoutView, CommandError> {
+    let view = purchase::start(&*license_or_error(app)?, plan, email, consent, renew).map_err(command_error)?;
+    spawn_order_poller(app);
+    Ok(view)
+}
+
+/// Đơn đang chờ, vẽ lại mã QR (mở lại màn hình Nâng cấp hay mở lại app).
+pub fn pending_order<R: Runtime>(app: &AppHandle<R>) -> Option<CheckoutView> {
+    let order = purchase::pending(&*licensing(app)?)?;
+    Some(CheckoutView {
+        order_code: order.order_code,
+        plan: order.plan,
+        amount: 0,
+        currency: String::new(),
+        expires_at: order.expires_at,
+        qr_svg: purchase::qr_svg(&order.qr_code).ok()?,
+        license_expires_at: None,
+        converted_days: None,
+    })
+}
+
+pub fn cancel_checkout<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(license) = licensing(app) {
+        purchase::forget(&license);
+    }
+}
+
+pub fn open_checkout_page<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    let order = licensing(app)
+        .and_then(|l| purchase::pending(&l))
+        .ok_or_else(|| CommandError::new(errors::OPEN_FAILED, None, "không có đơn đang chờ"))?;
+    navigation::open_external(app, &order.checkout_url).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
+}
+
+pub fn recover<R: Runtime>(app: &AppHandle<R>, email: &str) -> Result<(), CommandError> {
+    let license = license_or_error(app)?;
+    let reply = license.api().recover(email.trim());
+    license.observe_reply(&reply);
+    reply.result.map_err(|e| command_error(super::manager::map_api(e)))
+}
+
+/// Hỏi đơn đang chờ mỗi 3 giây tới khi có kết quả cuối (§6.8 bước 4). Chỉ một luồng hỏi mỗi lúc.
+pub fn spawn_order_poller<R: Runtime>(app: &AppHandle<R>) {
+    let Some(state) = app.try_state::<Licensing>() else {
+        return;
+    };
+    if state.1.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || {
+        loop {
+            let Some(license) = licensing(&app) else {
+                break;
+            };
+            let Some(outcome) = purchase::poll(&license, now()) else {
+                break;
+            };
+            let _ = app.emit_to(EventTarget::webview_window(window::MAIN), ORDER_CHANGED, &outcome);
+            if matches!(
+                outcome,
+                OrderOutcome::Paid { .. } | OrderOutcome::PaidButNotApplied { .. }
+            ) {
+                refresh(&app);
+            }
+            if outcome.is_final() {
+                break;
+            }
+            std::thread::sleep(Duration::from_secs(purchase::POLL_EVERY_SECS));
+        }
+        if let Some(state) = app.try_state::<Licensing>() {
+            state.1.store(false, Ordering::SeqCst);
         }
     });
 }

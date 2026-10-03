@@ -91,6 +91,10 @@ pub struct PendingOrder {
     pub expires_at: i64,
     /// Đơn gia hạn hay đổi gói (có `license_key`): khi đã trả tiền thì `validate`, không `activate`.
     pub renewal: bool,
+    /// Trang thanh toán của PayOS, để mở lại bằng trình duyệt (không nhận URL từ giao diện).
+    pub checkout_url: String,
+    /// Chuỗi VietQR thô, để vẽ lại mã QR khi mở lại màn hình Nâng cấp.
+    pub qr_code: String,
 }
 
 fn short_hash(parts: &[&str]) -> String {

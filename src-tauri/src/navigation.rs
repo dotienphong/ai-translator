@@ -20,7 +20,10 @@ use crate::system;
 
 /// Tên miền được mở bằng trình duyệt. Kế hoạch 06 thêm trang thanh toán của PayOS, kế hoạch 07 thêm
 /// website của sản phẩm (tên miền chờ Q1). Chỉ so khớp đúng cả tên miền, không nhận tên miền con.
-pub const EXTERNAL_HOSTS: &[&str] = &[];
+pub const EXTERNAL_HOSTS: &[&str] = &[
+    // Trang thanh toán của PayOS (`checkout_url` của đơn, kế hoạch 06; spec §6.8 "Mua ngay trong app" bước 2).
+    "pay.payos.vn",
+];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Decision {
@@ -111,6 +114,20 @@ fn apply<R: Runtime>(app: &AppHandle<R>, url: &Url, external_hosts: &[&str]) -> 
             false
         }
     }
+}
+
+/// Mở một URL do phía Rust giữ (ví dụ trang thanh toán của đơn, kế hoạch 06) bằng trình duyệt, chỉ khi URL đó là link
+/// ngoài được phép (`EXTERNAL_HOSTS`, `https`). Còn lại thì từ chối và ghi log.
+pub fn open_external<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<(), String> {
+    let parsed = Url::parse(url).map_err(|e| e.to_string())?;
+    if decide(&parsed, CURRENT_OS, None, EXTERNAL_HOSTS) != Decision::OpenExternal {
+        log::warn!(
+            "không mở {}: không nằm trong danh sách cho phép",
+            parsed.origin().ascii_serialization()
+        );
+        return Err("không nằm trong danh sách cho phép".into());
+    }
+    system::open_external_url(app, parsed.as_str())
 }
 
 /// Plugin kiểm mọi lần điều hướng của mọi webview.
@@ -279,5 +296,26 @@ mod tests {
             );
         }
         assert_eq!(system_calls(&app), ["open_external_url https://pay.payos.vn/web/abc"]);
+    }
+
+    /// Danh sách thật (kế hoạch 06): trang thanh toán của PayOS mở bằng trình duyệt; tên miền con, `http` hay cổng khác
+    /// thì chặn.
+    #[test]
+    fn the_payos_checkout_page_is_the_only_external_host() {
+        let ok = Url::parse("https://pay.payos.vn/web/abc").unwrap();
+        assert_eq!(decide(&ok, Os::MacOs, None, EXTERNAL_HOSTS), Decision::OpenExternal);
+        for bad in [
+            "http://pay.payos.vn/web/abc",
+            "https://evil.pay.payos.vn/x",
+            "https://pay.payos.vn:8443/x",
+            "https://pay.payos.vn.evil.example/x",
+            "https://payos.vn/x",
+        ] {
+            assert_eq!(
+                decide(&Url::parse(bad).unwrap(), Os::MacOs, None, EXTERNAL_HOSTS),
+                Decision::Block,
+                "{bad}"
+            );
+        }
     }
 }

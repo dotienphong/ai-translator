@@ -15,6 +15,10 @@ use crate::debug::DebugSession;
 use crate::errors::{self, CommandError};
 use crate::glossary::{GlossaryEntry, ImportReport};
 use crate::hotkeys::HotkeyAction;
+use crate::license::app::{self as license_app, ActivateOutcome};
+use crate::license::client::PlanOffer;
+use crate::license::manager::LicenseView;
+use crate::license::purchase::CheckoutView;
 use crate::overlay::{self, placement::Edge};
 use crate::settings::Settings;
 use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
@@ -224,6 +228,78 @@ pub fn get_debug_sessions<R: Runtime>(app: AppHandle<R>) -> Vec<DebugSession> {
     data::debug_sessions(&app)
 }
 
+// ---- Bản quyền (kế hoạch 06, §4.3 "Bản quyền", "Nâng cấp"). Chỉ cửa sổ `main`. Lệnh gọi server là `async`. ----
+
+#[tauri::command]
+pub fn get_license<R: Runtime>(app: AppHandle<R>) -> Option<LicenseView> {
+    license_app::view(&app)
+}
+
+#[tauri::command]
+pub async fn activate_license<R: Runtime>(app: AppHandle<R>, key: String) -> Result<ActivateOutcome, CommandError> {
+    blocking(app, move |app| license_app::activate(app, &key)).await
+}
+
+#[tauri::command]
+pub async fn deactivate_license<R: Runtime>(app: AppHandle<R>) -> Result<Option<LicenseView>, CommandError> {
+    blocking(app, license_app::deactivate).await
+}
+
+/// Gỡ một máy khác của key (danh sách `409 device_limit`), với key người dùng vừa gõ.
+#[tauri::command]
+pub async fn deactivate_other_device<R: Runtime>(
+    app: AppHandle<R>,
+    key: String,
+    activation_id: String,
+) -> Result<(), CommandError> {
+    blocking(app, move |app| license_app::deactivate_other(app, &key, &activation_id)).await
+}
+
+#[tauri::command]
+pub async fn validate_license<R: Runtime>(app: AppHandle<R>) -> Result<Option<LicenseView>, CommandError> {
+    blocking(app, license_app::validate_now).await
+}
+
+#[tauri::command]
+pub async fn get_plans<R: Runtime>(app: AppHandle<R>) -> Result<Vec<PlanOffer>, CommandError> {
+    blocking(app, license_app::plans).await
+}
+
+#[tauri::command]
+pub async fn start_checkout<R: Runtime>(
+    app: AppHandle<R>,
+    plan: String,
+    email: String,
+    consent: bool,
+    renew: bool,
+) -> Result<CheckoutView, CommandError> {
+    blocking(app, move |app| {
+        license_app::start_checkout(app, &plan, &email, consent, renew)
+    })
+    .await
+}
+
+#[tauri::command]
+pub fn get_pending_order<R: Runtime>(app: AppHandle<R>) -> Option<CheckoutView> {
+    license_app::pending_order(&app)
+}
+
+#[tauri::command]
+pub fn cancel_checkout<R: Runtime>(app: AppHandle<R>) {
+    license_app::cancel_checkout(&app);
+}
+
+/// Mở trang thanh toán của đơn đang chờ bằng trình duyệt của hệ thống. Không nhận URL từ giao diện.
+#[tauri::command]
+pub fn open_checkout_page<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    license_app::open_checkout_page(&app)
+}
+
+#[tauri::command]
+pub async fn recover_license<R: Runtime>(app: AppHandle<R>, email: String) -> Result<(), CommandError> {
+    blocking(app, move |app| license_app::recover(app, &email)).await
+}
+
 // ---- Lệnh của cửa sổ `overlay` (§10.2): đọc phần cài đặt của nó, và chỉ đụng tới cửa sổ của chính nó. ----
 
 #[tauri::command]
@@ -293,6 +369,17 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "delete_models_and_data",
     "dismiss_models_update",
     "verify_models",
+    "get_license",
+    "activate_license",
+    "deactivate_license",
+    "deactivate_other_device",
+    "validate_license",
+    "get_plans",
+    "start_checkout",
+    "get_pending_order",
+    "cancel_checkout",
+    "open_checkout_page",
+    "recover_license",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -335,6 +422,17 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         export_glossary_csv,
         clear_all_data,
         get_debug_sessions,
+        get_license,
+        activate_license,
+        deactivate_license,
+        deactivate_other_device,
+        validate_license,
+        get_plans,
+        start_checkout,
+        get_pending_order,
+        cancel_checkout,
+        open_checkout_page,
+        recover_license,
         get_overlay_view,
         hide_overlay,
         begin_overlay_resize,

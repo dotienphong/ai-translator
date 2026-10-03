@@ -213,6 +213,7 @@ mod tests {
         );
         codes.extend(crate::glossary::ERROR_CODES.iter().map(|c| c.to_string()));
         codes.push(crate::transcript::history::NOT_FOUND.to_string());
+        codes.extend(crate::license::manager::ERROR_CODES.iter().map(|c| c.to_string()));
         for code in codes {
             assert!(
                 en.contains(&format!("\"error.{code}\":")),

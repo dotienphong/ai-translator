@@ -1458,3 +1458,65 @@ fn license_events_never_carry_the_key_or_the_token() {
     assert!(!text.contains("0123-4567"), "không có key đầy đủ");
     assert!(app.state::<AppState>().status().pro, "gate Pro theo bản quyền thật");
 }
+
+/// Trang thanh toán của PayOS mở bằng trình duyệt của hệ thống (01 QĐ28), chỉ với URL do phía Rust giữ và nằm trong
+/// danh sách cho phép (§10.2); giao diện không gửi URL nào.
+#[test]
+fn the_checkout_page_opens_only_for_the_pending_payos_order() {
+    use crate::license::store::{self, PendingOrder};
+    use crate::test_support::system_calls;
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (_, license) = license_for(&app);
+    let refused = invoke(&main, "open_checkout_page", json!({})).unwrap_err();
+    assert!(refused.contains(errors::OPEN_FAILED), "{refused}");
+    let mut order = PendingOrder {
+        order_code: 7,
+        order_token: "tok".into(),
+        plan: "pro".into(),
+        expires_at: crate::license::app::now() + 900,
+        renewal: false,
+        checkout_url: "https://pay.payos.vn/web/abc".into(),
+        qr_code: "000201".into(),
+    };
+    store::write(license.vault(), store::ORDER, &order).unwrap();
+    invoke(&main, "open_checkout_page", json!({})).unwrap();
+    assert_eq!(system_calls(&app), ["open_external_url https://pay.payos.vn/web/abc"]);
+    order.checkout_url = "https://pay.payos.vn.evil.example/x".into();
+    store::write(license.vault(), store::ORDER, &order).unwrap();
+    assert!(invoke(&main, "open_checkout_page", json!({})).is_err());
+    let pending = invoke(&main, "get_pending_order", json!({})).unwrap();
+    assert!(pending["qrSvg"].as_str().unwrap().contains("<svg"));
+    assert!(!pending.to_string().contains("tok"), "order_token không ra giao diện");
+    invoke(&main, "cancel_checkout", json!({})).unwrap();
+    assert_eq!(invoke(&main, "get_pending_order", json!({})).unwrap(), Value::Null);
+}
+
+/// Key đã đủ 2 máy: lệnh kích hoạt trả danh sách máy để gỡ một máy (§9), không phải lỗi.
+#[test]
+fn activating_a_full_key_returns_its_devices() {
+    use crate::license::client::{ApiError, Device, ServerError};
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, _) = license_for(&app);
+    api.replies.lock().unwrap().push_back(Err(ApiError::Server(ServerError {
+        status: 409,
+        code: "device_limit".into(),
+        devices: vec![Device {
+            activation_id: "a1".into(),
+            device_label: None,
+            last_validated_at: Some(1),
+        }],
+        ..ServerError::default()
+    })));
+    let out = invoke(
+        &main,
+        "activate_license",
+        json!({ "key": crate::license::manager::tests::KEY }),
+    )
+    .unwrap();
+    assert_eq!(out["view"], Value::Null);
+    assert_eq!(out["devices"][0]["activation_id"], "a1");
+    let bad = invoke(&main, "activate_license", json!({ "key": "abc" })).unwrap_err();
+    assert!(bad.contains("licenseInvalidKey"), "{bad}");
+}
