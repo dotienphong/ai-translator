@@ -101,7 +101,7 @@ mới hơn bản đã đăng sau nó; khi đó ra một bản mới.
 ### Rút một bản đã đăng
 
 Không xóa file trong `<version>/`, nhất là `<version>/published.json`: dấu này làm job `publish` của tag đó từ chối chạy lại,
-nên bản đã rút không bị đăng lại dù ai bấm "Re-run" và người duyệt bấm duyệt. Ghi lại `latest.json` của kênh về bản trước:
+nên bản đã rút không bị đăng lại dù ai bấm "Re-run" và người duyệt bấm duyệt. Một ngoại lệ: dấu được ghi sau cùng, sau `latest.json`. Nếu job `publish` đỏ đúng ở bước cuối đó thì `latest.json` đã báo bản này nhưng dấu chưa có, và nếu bản bị rút thì job chạy lại sẽ đăng lại được. Khi job `publish` đỏ ở bước cuối, hãy tải tay `<version>/published.json` (version, tag, kênh) lên R2 trước khi làm việc khác. Ghi lại `latest.json` của kênh về bản trước:
 
 ```bash
 node scripts/release/update-manifest.mjs --version <bản trước> --base-url "$RELEASES_BASE_URL" --dir <file của bản trước> \
