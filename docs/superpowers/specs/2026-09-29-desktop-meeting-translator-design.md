@@ -113,7 +113,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | A4 | **Chất lượng nhận dạng giọng nói**, đo trên bộ clip mẫu dựng ở Giai đoạn 0 (S7). Mỗi ngôn ngữ nguồn mặc định có ít nhất 15 phút âm thanh, kèm bản chép chuẩn đã được người kiểm lại, và có cả âm thanh thu qua tai nghe Bluetooth (băng hẹp). Chỉ dùng clip có quyền sử dụng: tự thu, hoặc bộ dữ liệu mở như FLEURS và AMI (CC BY 4.0). Tiếng Anh và tiếng Việt đo WER; tiếng Trung, Nhật, Hàn đo CER theo thông lệ cho các ngôn ngữ này. Lấy mốc cho cả gói Chuẩn và gói Nhẹ; mốc đo ở S7 ghi ở bảng dưới. Sau mỗi lần đổi model hay engine, WER/CER không được xấu hơn mốc quá 10% (tương đối). |
 | A5 | **Ổn định:** một phiên dịch liên tục 2 giờ không crash. RAM sau giờ đầu không tăng quá 10%. |
 | A6 | **Cài đặt:** bộ cài ký số hợp lệ. Bản macOS đã notarize, mở không bị Gatekeeper chặn. **Gỡ app sạch, người dùng chọn giữ hay xóa model:** trên Windows, bộ gỡ cài đặt có ô "xóa dữ liệu app", xóa được cả model (§6.7). Trên macOS, gỡ app chỉ là kéo vào Thùng rác, không có bước nào để hỏi; vì vậy trong app có nút "Xóa model và dữ liệu" (§4.3), và trang hỗ trợ hướng dẫn bấm nút này trước khi gỡ. |
-| A7 | **Quyền riêng tư:** kiểm tra qua proxy mạng, trong lúc dịch không có request mạng nào, trừ các việc chạy theo lịch: kiểm tra bản quyền, hỏi giờ của license server khi giờ máy bị coi là chỉnh lùi (§6.8, §10.2), kiểm tra cập nhật app và manifest model. Không request nào chứa âm thanh hay nội dung chép lời. |
+| A7 | **Quyền riêng tư:** kiểm tra qua proxy mạng, trong lúc dịch không có request mạng nào, trừ các việc chạy theo lịch: kiểm tra bản quyền, hỏi giờ của license server khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về sau khi giờ máy đặt nhầm tới trước (§6.8, §10.2), kiểm tra cập nhật app và manifest model. Không request nào chứa âm thanh hay nội dung chép lời. |
 
 **Mốc đo ở Giai đoạn 0** (Mac M4 Pro, 2026-09-30; số liệu gốc ở `bench/phase0/results/`):
 
@@ -271,7 +271,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - Lần đầu phải chờ nạp model vài giây; thanh phụ đề hiện "Đang nạp model…". Thời gian này không tính vào độ trễ ở A2.
 - **Việc cho MVP:** app chính build với `panic = "abort"` (§10.2), nên `Drop` không chạy khi app crash. Dùng Job Object (`KILL_ON_JOB_CLOSE`) trên Windows và process group trên macOS, để tiến trình phụ không bị bỏ lại.
 
-**Thành phần nằm ngoài app:** một license server nhỏ làm việc với PayOS (chi tiết ở §6.8). App chỉ gọi server này khi mua, kích hoạt, kiểm tra bản quyền và hỏi giờ của server khi giờ máy bị coi là chỉnh lùi (§10.1). Âm thanh và nội dung chép lời không bao giờ đi qua server.
+**Thành phần nằm ngoài app:** một license server nhỏ làm việc với PayOS (chi tiết ở §6.8). App chỉ gọi server này khi mua, kích hoạt, kiểm tra bản quyền và hỏi giờ của server khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về (§10.1). Âm thanh và nội dung chép lời không bao giờ đi qua server.
 
 ```
 App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhook── PayOS ◄── khách quét VietQR
