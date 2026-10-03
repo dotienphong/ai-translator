@@ -117,12 +117,23 @@ class Summarize(unittest.TestCase):
 
     def test_the_summary_says_where_it_was_measured(self):
         """Hệ điều hành và mã máy ghi lúc lấy mẫu, không theo tên file (Q1 của review 08 lần 2)."""
-        out = summarize(run(2), ncpu=10, where=[{"os": "win", "host": "abc123"}])
+        out = summarize(run(2), ncpu=10, require=REQUIRE, where=[{"os": "win", "host": "abc123"}])
         self.assertEqual((out["os"], out["host"]), ("win", "abc123"))
         self.assertTrue(out["pass_a5"])
         mixed = summarize(run(2), ncpu=10, where=[{"os": "win", "host": "a"}, {"os": "mac", "host": "b"}])
         self.assertEqual(mixed["os"], None)
         self.assertFalse(mixed["pass_a5"])
+
+    def test_the_webview_is_required_by_default(self):
+        """WebView của app bắt buộc có mặt theo nơi đo: thiếu (hàm của libSystem vắng hay trả -1) là không đạt, không lặng
+        lẽ bỏ qua (N4 của review 08 lần 3)."""
+        mac = [{"os": "mac", "host": "a"}]
+        out = summarize(run(2), ncpu=10, where=mac)
+        self.assertEqual(out["absent"], ["com.apple.WebKit"])
+        self.assertFalse(out["pass_a5"])
+        rows = run(2) + [(t, 840, "com.apple.WebKit.WebContent", 1000, 0.0) for t in sorted({r[0] for r in run(2)})]
+        self.assertTrue(summarize(rows, ncpu=10, where=mac)["pass_a5"])
+        self.assertEqual(summarize(run(2), ncpu=10, where=[{"os": "win", "host": "a"}])["absent"], ["msedgewebview2"])
 
     def test_origin_names_the_platform_without_the_host_name(self):
         o = origin()
@@ -168,6 +179,17 @@ class Sample(unittest.TestCase):
         self.assertEqual(len(rows), 8)
         self.assertEqual(sorted({r[0] for r in rows}), [0.0, 10.0, 20.0, 30.0])
         self.assertEqual(rows[-2], (30.0, 1, "meeting-translator", 1000, 3.0))
+
+
+class Command(unittest.TestCase):
+    def test_sampling_on_macos_stops_without_the_responsibility_function(self):
+        """Không có hàm thì không gán được WebKit cho app: dừng với lỗi trước khi lấy mẫu (N4 của review 08 lần 3)."""
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(soak.sys, "platform", "darwin"), \
+                mock.patch.object(soak, "mac_responsible", return_value=None), \
+                contextlib.redirect_stderr(io.StringIO()) as err, self.assertRaises(SystemExit) as stop:
+            soak.main(["sample", "--duration", "0", "--out", os.path.join(d, "s.csv")])
+        self.assertEqual(stop.exception.code, 2)
+        self.assertIn("responsibility_get_pid_responsible_for_pid", err.getvalue())
 
 
 class Pids(unittest.TestCase):

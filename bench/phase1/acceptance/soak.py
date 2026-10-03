@@ -7,10 +7,12 @@
 - WebView (spec §8 tính RAM "App và WebView"): trên Windows, `msedgewebview2` là con của app nên được giữ theo cây tiến
   trình; trên macOS, tiến trình XPC của WebKit (`com.apple.WebKit.*`) có cha là `launchd`, nên giữ theo tiến trình chịu
   trách nhiệm (`responsibility_get_pid_responsible_for_pid` của libSystem, gọi bằng `ctypes`, không cần quyền): chỉ WebKit
-  của chính app, không lẫn WebKit của Safari hay app khác (N1 của review 08 lần 2).
+  của chính app, không lẫn WebKit của Safari hay app khác (N1 của review 08 lần 2). Hàm này không có trên máy thì `sample`
+  dừng với lỗi, không lặng lẽ bỏ WebView (N4 của review 08 lần 3).
 - Mỗi dòng CSV ghi hệ điều hành và mã máy (`os`, `host`: 12 ký tự đầu SHA-256 của địa chỉ phần cứng, không lộ tên máy) lúc
   lấy mẫu, để kết quả tự khai nơi đo (Q1 của review 08 lần 2).
-- `summarize`: A5 đạt khi mọi tên trong `--require` có mặt ở mẫu đầu, chạy đủ `--hours` giờ, không tiến trình nào biến mất
+- `summarize`: A5 đạt khi mọi tên trong `--require` (mặc định app, hai tiến trình phụ và WebView của hệ điều hành nơi đo;
+  N4 của review 08 lần 3) có mặt ở mẫu đầu, chạy đủ `--hours` giờ, không tiến trình nào biến mất
   hay khởi động lại (pid mới của một tên xuất hiện sau mẫu đầu), và RAM tổng sau giờ đầu không vượt quá 110% RAM trung
   bình của phút 55–60. Tải máy: tổng thời gian CPU chia thời gian thực và số lõi logic, mục tiêu ≤ 30% trên máy khuyến
   nghị.
@@ -35,6 +37,8 @@ import uuid
 DEFAULT_NAMES = ("meeting-translator", "asr-worker", "llama-server")
 DEFAULT_APP = "meeting-translator"
 DEFAULT_REQUIRE = ("meeting-translator", "asr-worker", "llama-server")
+# WebView của app, bắt buộc theo nơi đo khi không chỉ `--require` (N4 của review 08 lần 3).
+WEBVIEW = {"mac": "com.apple.WebKit", "win": "msedgewebview2"}
 RAM_GROWTH_MAX = 0.10
 CPU_AVG_MAX = 0.30
 
@@ -171,9 +175,12 @@ def read_csv(path):
     return rows, where
 
 
-def summarize(rows, ncpu, hours=2.0, require=DEFAULT_REQUIRE, where=None):
-    """Tổng hợp các mẫu (t, pid, tên, RSS KiB, CPU giây). `where`: các nơi đo trong file (phải đúng một)."""
+def summarize(rows, ncpu, hours=2.0, require=None, where=None):
+    """Tổng hợp các mẫu (t, pid, tên, RSS KiB, CPU giây). `where`: các nơi đo trong file (phải đúng một). `require`
+    mặc định là app, hai tiến trình phụ và WebView của hệ điều hành nơi đo."""
     one = where[0] if where and len(where) == 1 else {"os": None, "host": None}
+    if require is None:
+        require = DEFAULT_REQUIRE + tuple(WEBVIEW[o] for o in [one["os"]] if o in WEBVIEW)
     times = sorted({r[0] for r in rows})
     if not times:
         return {"os": None, "host": None, "samples": 0, "absent": list(require), "pass_a5": False, "pass_cpu": False}
@@ -239,10 +246,14 @@ def main(argv=None):
     m.add_argument("csv")
     m.add_argument("--hours", type=float, default=2.0)
     m.add_argument("--ncpu", type=int, default=os.cpu_count())
-    m.add_argument("--require", default=",".join(DEFAULT_REQUIRE),
-                   help="tên phải có ở mẫu đầu (thiếu là không đạt), cách nhau bằng dấu phẩy")
+    m.add_argument("--require", default=None,
+                   help="tên phải có ở mẫu đầu (thiếu là không đạt), cách nhau bằng dấu phẩy; mặc định app, hai tiến "
+                        "trình phụ và WebView (macOS com.apple.WebKit, Windows msedgewebview2)")
     m.add_argument("--out", help="ghi kết quả JSON vào file này")
     args = ap.parse_args(argv)
+    if args.cmd == "sample" and sys.platform == "darwin" and mac_responsible() is None:
+        ap.error("macOS không có responsibility_get_pid_responsible_for_pid: không gán được WebKit cho app, "
+                 "A5 sẽ thiếu WebView; báo người lập kế hoạch")
     if args.cmd == "sample":
         n = sample(tuple(x for x in args.names.split(",") if x), args.every, args.duration, args.out, app=args.app)
         print(f"{n} mẫu, ghi {args.out}")
@@ -252,7 +263,8 @@ def main(argv=None):
             print(pid, name)
         return 0
     rows, where = read_csv(args.csv)
-    out = summarize(rows, args.ncpu, args.hours, tuple(x for x in args.require.split(",") if x), where)
+    require = None if args.require is None else tuple(x for x in args.require.split(",") if x)
+    out = summarize(rows, args.ncpu, args.hours, require, where)
     print(f"Nơi đo: {out.get('os') or 'NHIỀU NƠI/KHÔNG RÕ'}, máy {out.get('host') or '—'}")
     print(f"Số mẫu: {out['samples']}; thời gian: {fmt(out.get('duration_s'), '.0f')} giây "
           f"({'đủ' if out.get('long_enough') else 'chưa đủ'} {args.hours:g} giờ)")
