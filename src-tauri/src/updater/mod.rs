@@ -5,6 +5,7 @@
 //! - `requireSignedVersion` bật trong `tauri.conf.json`: chữ ký phải gắn đúng phiên bản mà manifest báo, để manifest
 //!   bị sửa không ghép được số phiên bản mới với bộ cài cũ.
 
+pub mod backend;
 pub mod source;
 
 use tauri::Runtime;

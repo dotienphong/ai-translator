@@ -1,0 +1,23 @@
+{
+  "version": "0.9.0",
+  "notes": "Bản thử",
+  "pub_date": "2026-10-03T00:00:00Z",
+  "platforms": {
+    "darwin-aarch64-app": {
+      "url": "https://releases.example.com/desktop/0.9.0/AI%20Translator.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSZUJ3eEJIN0R0enhlcVN1S2RDTHFNa2RKRU5ENHZRdmFZOWN6Kzgyb2hCcjBFZlVlYnI5RnpOS1NmMlhqd0wyVWg2U0hXU2N0Skd0dFJJczJ4c0E2elFHaytYODFRYlFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwOTkxOTk3CWZpbGU6dXBkYXRlLTAuOS4wLmJpbgl2ZXJzaW9uOjAuOS4wCmc0QXdITEpHZHVSZU1HVElrQWNiNjFwR1ByMFRXWi9KUzVoa2xTZ3FiNG5SMTR3RmlZZzNXemJwQVU1Nkd1dEJRQndaN2RMMGVwb0RWNE04ZFNoZUNBPT0K"
+    },
+    "darwin-aarch64": {
+      "url": "https://releases.example.com/desktop/0.9.0/AI%20Translator.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSZUJ3eEJIN0R0enhlcVN1S2RDTHFNa2RKRU5ENHZRdmFZOWN6Kzgyb2hCcjBFZlVlYnI5RnpOS1NmMlhqd0wyVWg2U0hXU2N0Skd0dFJJczJ4c0E2elFHaytYODFRYlFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwOTkxOTk3CWZpbGU6dXBkYXRlLTAuOS4wLmJpbgl2ZXJzaW9uOjAuOS4wCmc0QXdITEpHZHVSZU1HVElrQWNiNjFwR1ByMFRXWi9KUzVoa2xTZ3FiNG5SMTR3RmlZZzNXemJwQVU1Nkd1dEJRQndaN2RMMGVwb0RWNE04ZFNoZUNBPT0K"
+    },
+    "windows-x86_64-nsis": {
+      "url": "https://releases.example.com/desktop/0.9.0/AI%20Translator_0.9.0_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSZUJ3eEJIN0R0enhlcVN1S2RDTHFNa2RKRU5ENHZRdmFZOWN6Kzgyb2hCcjBFZlVlYnI5RnpOS1NmMlhqd0wyVWg2U0hXU2N0Skd0dFJJczJ4c0E2elFHaytYODFRYlFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwOTkxOTk3CWZpbGU6dXBkYXRlLTAuOS4wLmJpbgl2ZXJzaW9uOjAuOS4wCmc0QXdITEpHZHVSZU1HVElrQWNiNjFwR1ByMFRXWi9KUzVoa2xTZ3FiNG5SMTR3RmlZZzNXemJwQVU1Nkd1dEJRQndaN2RMMGVwb0RWNE04ZFNoZUNBPT0K"
+    },
+    "windows-x86_64": {
+      "url": "https://releases.example.com/desktop/0.9.0/AI%20Translator_0.9.0_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSZUJ3eEJIN0R0enhlcVN1S2RDTHFNa2RKRU5ENHZRdmFZOWN6Kzgyb2hCcjBFZlVlYnI5RnpOS1NmMlhqd0wyVWg2U0hXU2N0Skd0dFJJczJ4c0E2elFHaytYODFRYlFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwOTkxOTk3CWZpbGU6dXBkYXRlLTAuOS4wLmJpbgl2ZXJzaW9uOjAuOS4wCmc0QXdITEpHZHVSZU1HVElrQWNiNjFwR1ByMFRXWi9KUzVoa2xTZ3FiNG5SMTR3RmlZZzNXemJwQVU1Nkd1dEJRQndaN2RMMGVwb0RWNE04ZFNoZUNBPT0K"
+    }
+  }
+}
