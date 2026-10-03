@@ -18,7 +18,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const root = join(import.meta.dirname, "..", "..");
+import { readVersions, root } from "./versions.mjs";
 
 /** So chuỗi theo mã ký tự, không theo locale, để thứ tự giống nhau trên mọi máy. */
 const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
@@ -205,15 +205,6 @@ function cargoAbout(manifest) {
   return JSON.parse(json);
 }
 
-function versionsEnv() {
-  const env = {};
-  for (const line of readFileSync(join(root, "scripts/release/versions.env"), "utf8").split("\n")) {
-    const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (match) env[match[1]] = match[2];
-  }
-  return env;
-}
-
 export function main(argv) {
   const args = [...argv];
   const outIndex = args.indexOf("--out");
@@ -223,7 +214,7 @@ export function main(argv) {
   const noLlama = args.includes("--no-llama");
   if ((llamaIndex < 0) === !noLlama) throw new Error("cần đúng một trong --llama-src <thư mục> và --no-llama");
   const llamaSrc = llamaIndex >= 0 ? args[llamaIndex + 1] : null;
-  const env = versionsEnv();
+  const env = readVersions();
   if (llamaSrc) {
     const head = execFileSync("git", ["-C", llamaSrc, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
     if (head !== env.LLAMA_CPP_COMMIT) throw new Error(`llama.cpp ở ${head}, versions.env khóa ${env.LLAMA_CPP_COMMIT}`);
