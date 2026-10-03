@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "category": "Productivity",
+    "shortDescription": "Live translated subtitles for meetings",
+    "externalBin": ["binaries/asr-worker-vulkan", "binaries/asr-worker-cpu", "binaries/llama-server"],
+    "resources": {
+      "../THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",
+      "binaries/*.dll": ""
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English", "Vietnamese"],
+        "displayLanguageSelector": false,
+        "installerHooks": "release/nsis-hooks.nsh"
+      }
+    }
+  }
+}
