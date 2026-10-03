@@ -15,7 +15,7 @@ Không làm ở đây (để 07b, viết sau 06): `tauri-plugin-updater` và hai
 - Hai workflow chính: `ci.yml` (mỗi lần push lên `main` và mỗi pull request, không dùng secret nào) và `release.yml` (từ tag `v*` hoặc chạy tay, trong environment `release`). Thêm `sign-manifest.yml` (chạy tay) để ký manifest model production.
 - Mọi logic nằm trong `scripts/release/` (Node 24 không gói npm nào, cộng vài script `sh` cho macOS), có test `node --test`. Workflow chỉ gọi các script này, nên mọi bước chạy được trên máy dev, trừ phần cần Windows.
 - Thứ tự ký theo bảng SHA-256 của app (`build.rs` băm file trong `src-tauri/binaries/`): ký tiến trình phụ trước, rồi mới build app; Tauri không được ký lại chúng. macOS: `tauri build --no-sign`, rồi tự ký app (không `--deep`) và tự tạo `.dmg`. Windows: Tauri tự bỏ qua file đã có chữ ký, nên chỉ ký file chạy của app, bộ cài và bộ gỡ.
-- Bước nào có secret thì không biên dịch code: build script của các crate chạy ở bước khác, khi môi trường không có secret và chưa có chứng thư nào trong keychain (rủi ro chuỗi cung ứng, §10.2).
+- Job có secret không biên dịch gì và không chạy chung runner với job biên dịch (rủi ro chuỗi cung ứng, §10.2; Q1 của review lần 1): `release.yml` có 9 job nối nhau bằng artifact. Mỗi nền tảng: build tiến trình phụ (không secret) → ký tiến trình phụ (`release`) → build app (không secret) → ký app và đóng gói (`release`); cuối cùng một job riêng ký bản cập nhật. Job có secret checkout lại đúng commit trên runner mới, chỉ chạy script của repo và công cụ của hệ thống.
 - Cấu hình đóng gói nằm riêng ở `src-tauri/release/tauri.macos.json` và `tauri.windows.json`, truyền bằng `--config`: bản dev, `cargo test` và các kế hoạch khác không đổi gì.
 
 **Công nghệ:** Giữ nguyên Rust 1.98.1, Tauri 2.12.1 (CLI 2.12.1), Node 24.21.0, pnpm 12.6.0. Không thêm crate hay gói npm nào: `Cargo.lock`, `pnpm-lock.yaml` và `server/pnpm-lock.yaml` giữ nguyên. Công cụ mới chỉ dùng trong CI và lúc phát hành (bảng "Phiên bản đã chốt").
@@ -54,13 +54,13 @@ Ghi chú:
 
 ## Cách đọc kế hoạch này
 
-- **Thứ tự và trạng thái đầu.** Làm trên `main`, sau 01 (đã xong phần code). Lúc lập kế hoạch, mọi task dựng trên `31ca0fb`. Kế hoạch này làm được trước hay sau 03, 04 (xem "File giao nhau với 03 và 04"). Trước mỗi task, `git status` phải sạch.
+- **Thứ tự và trạng thái đầu.** Làm trên `main`, sau 06 (03, 04, 06 đã thực thi). Lúc lập kế hoạch, mọi task dựng trên `d266be5` (code sau 06; bản sửa theo review lần 1 dựng lại trên cây này). Trước mỗi task, `git status` phải sạch.
 - **Khối code.**
   - "Tạo `<file>`": chép nguyên khối vào file mới.
   - "Thay toàn bộ `<file>` bằng": ghi đè cả file.
   - "Sửa `<file>` (áp bằng `git apply`)": khối `diff` là bản vá chuẩn, có dòng `index` đầy đủ; lưu khối vào một file tạm rồi chạy `git apply <file tạm>` từ gốc repo. Nếu 03 hay 04 đã thực thi trước và `git apply --check` báo lỗi, dùng `git apply --3way <file tạm>` (đã thử trên cây của 03, xem dưới). `--3way` cũng lỗi thì dừng, đừng sửa tay cho khớp.
   - "Run:" kèm khối `bash`: chạy cả khối từ gốc repo.
-- **Khối Expected.** Mọi khối Expected là output thật, lấy từ một lần chạy lại toàn bộ các task trên một clone sạch ở `31ca0fb` (2026-10-03), bằng chính các khối của file này (`$S/p07/run.py`; vài lệnh chạy lại riêng sau khi sửa script chạy để gộp stdout với stderr đúng thứ tự). Thêm `$S/p07/check_md.py` đọc file này như implementer, áp mọi khối Tạo/Thay toàn bộ/Sửa lên một clone sạch: cây sau mỗi Task 1–10 khớp đúng commit tham chiếu. Đường dẫn đã đổi về gốc repo (`/Users/dtphong/Desktop/software_business/meeting-translator`, target ở `target/`). Thời gian chạy và dòng `Compiling` khác; số test, tên lỗi, SHA-256 của file nguồn phải giống. SHA-256 của file build ra (tiến trình phụ, bộ cài) chỉ giống khi cùng máy và cùng bộ dịch; trên máy khác thì khác, nhưng các phép kiểm vẫn phải in "khớp".
+- **Khối Expected.** Mọi khối Expected là output thật, lấy từ một lần chạy lại toàn bộ các task trên một clone sạch ở `d266be5` (2026-10-03), bằng chính các khối của file này (`$S/p07/run.py`; vài lệnh chạy lại riêng sau khi sửa script chạy để gộp stdout với stderr đúng thứ tự). Thêm `$S/p07/check_md.py` đọc file này như implementer, áp mọi khối Tạo/Thay toàn bộ/Sửa lên một clone sạch: cây sau mỗi Task 1–10 khớp đúng commit tham chiếu. Đường dẫn đã đổi về gốc repo (`/Users/dtphong/Desktop/software_business/meeting-translator`, target ở `target/`). Thời gian chạy và dòng `Compiling` khác; số test, tên lỗi, SHA-256 của file nguồn phải giống. SHA-256 của file build ra (tiến trình phụ, bộ cài) chỉ giống khi cùng máy và cùng bộ dịch; trên máy khác thì khác, nhưng các phép kiểm vẫn phải in "khớp".
 - **Mạng.** Task 3 clone llama.cpp từ GitHub; Task 5 tải hai file giấy phép và cargo-about từ GitHub; Task 7 tải protoc; Task 9, 10 tải actionlint, shellcheck. Mọi file tải về đều kiểm SHA-256 hoặc commit.
 - **Đĩa.** Task 3 và Task 6 build bản release (`asr-worker`, llama.cpp, app với LTO): thêm khoảng 3 GB ở `target/`. Task 3 Step 4 kiểm `df -h /System/Volumes/Data`; dưới 4 GiB thì dừng.
 - **Không bật hộp thoại quyền, không mở app.** Không task nào của agent mở `AI Translator.app` hay chạy tap thu âm. Ký ad-hoc (`codesign --sign -`) không cần keychain. Thử app đã đóng gói là Task 15 (người).
@@ -69,20 +69,20 @@ Ghi chú:
 
 ## Bảng task và commit tham chiếu
 
-Chuỗi commit dựng lúc lập kế hoạch nằm ở repo riêng `$S/p07-repo` (`S=/Users/dtphong/Desktop/software_business/meeting-translator-work`), nhánh `plan07a`, base `31ca0fb`. Sau mỗi task, so cây: `git diff --stat <commit tham chiếu> HEAD` phải rỗng (cần `git fetch $S/p07-repo plan07a` một lần).
+Chuỗi commit dựng lúc lập kế hoạch nằm ở repo riêng `$S/p07-repo` (`S=/Users/dtphong/Desktop/software_business/meeting-translator-work`), nhánh `plan07a`, base `d266be5` (bản trước review lần 1, base `31ca0fb`, giữ ở nhánh `plan07a-v1`). Sau mỗi task, so cây: `git diff --stat <commit tham chiếu> HEAD` phải rỗng (cần `git fetch $S/p07-repo plan07a` một lần).
 
 | Task | Nội dung | Commit tham chiếu |
 |---|---|---|
-| 1 | Bảng SHA-256 dùng tên sau khi đóng gói | `e85377b` |
-| 2 | Script kiểm bản phát hành | `74da09d` |
-| 3 | Tiến trình phụ macOS từ mã nguồn đã khóa | `b317ea8` |
-| 4 | Kiểm `third_party` từ crates.io | `451c441` |
-| 5 | THIRD_PARTY_NOTICES và màn hình Giới thiệu | `813a2d7` |
-| 6 | Đóng gói macOS | `687c1c7` |
-| 7 | Cài protoc, Vulkan SDK; `versions.mjs` | `e40cdd5` |
-| 8 | Đóng gói Windows | `8291523` |
-| 9 | Workflow CI, Dependabot | `7b457a5` |
-| 10 | Workflow phát hành, ký manifest | `04d132c` |
+| 1 | Bảng SHA-256 dùng tên sau khi đóng gói | `248d59f` |
+| 2 | Script kiểm bản phát hành | `d76c4b5` |
+| 3 | Tiến trình phụ macOS từ mã nguồn đã khóa | `14a5c9e` |
+| 4 | Kiểm `third_party` từ crates.io | `bfabf37` |
+| 5 | THIRD_PARTY_NOTICES và màn hình Giới thiệu | `27589c7` |
+| 6 | Đóng gói macOS | `6b9aff6` |
+| 7 | Cài protoc, Vulkan SDK; `versions.mjs` | `78612f1` |
+| 8 | Đóng gói Windows | `21617cb` |
+| 9 | Workflow CI, Dependabot | `fe4b4f4` |
+| 10 | Workflow phát hành, ký manifest | `f1da67a` |
 | 11 | Kiểm tra chuẩn (mục 6.2 của kế hoạch 00) | không có commit |
 | 12 | Cập nhật kế hoạch 00 | commit tài liệu |
 | 13 | So `llama-server` tự build với b11146: A3, S6 (cần máy rảnh) | commit kết quả đo |
@@ -92,7 +92,7 @@ Chuỗi commit dựng lúc lập kế hoạch nằm ở repo riêng `$S/p07-repo
 
 ## Quyết định của kế hoạch này
 
-Đánh số QĐ1–QĐ22, chỉ dùng trong file này.
+Đánh số QĐ1–QĐ28, chỉ dùng trong file này. QĐ23–QĐ28 thêm khi sửa theo review lần 1.
 
 - **QĐ1. Bảng SHA-256 dùng tên sau khi đóng gói.** Bundler của Tauri chép `externalBin` vào cạnh file chạy của app và bỏ hậu tố target triple; app bản phát hành tìm tiến trình phụ theo tên không có triple (`sidecar/paths.rs`). Trước kế hoạch này, `build.rs` ghi tên có triple, nên bản phát hành sẽ từ chối mọi tiến trình phụ. Nay `build.rs` gọi `sidecar::bundled_name` (một file dùng chung cho build script và app, nạp qua `#[path]`), và chỉ đổi tên khi `tauri_build::is_dev()` là `false` (`tauri build` bật `custom-protocol`). Bản dev giữ tên như cũ. `release-check.mjs embedded` kiểm file chạy của bản đóng gói có đủ SHA-256 và không còn tên kèm triple.
 - **QĐ2. macOS: Tauri không ký gì.** `tauri-bundler` 2.12.1 (`bundle/macos/app.rs`) ký mọi `externalBin` bằng `codesign --force` khi có danh tính ký, làm SHA-256 của tiến trình phụ đổi sau khi `build.rs` đã băm. Vì vậy: ký tiến trình phụ trước (`build-sidecars-macos.sh`), `tauri build --no-sign`, rồi ký app không `--deep` (chữ ký của tiến trình phụ giữ nguyên, `codesign` kiểm chúng đã được ký), và tự tạo `.dmg` bằng `hdiutil` (nén LZMA, định dạng `ULMO`, như cách đo của S3 ở §6.11).
@@ -105,27 +105,38 @@ Chuỗi commit dựng lúc lập kế hoạch nằm ở repo riêng `$S/p07-repo
 - **QĐ9. Ngưỡng dung lượng 60 MB là 60 000 000 byte** của file bộ cài (`.dmg`, `-setup.exe`), chặt hơn 60 MiB.
 - **QĐ10. THIRD_PARTY_NOTICES.** Rust: `cargo about generate --format json --frozen` cho app và cho `asr-worker` (hai binary có code Rust được phát hành), gộp theo văn bản giấy phép; JavaScript: `pnpm licenses list --prod --json` và file LICENSE của từng gói (gói của giao diện đã build); C/C++: whisper.cpp và ggml, llama.cpp và các thư viện nó nhúng (từ mã nguồn đã clone); model: Hy-MT2, trọng số Whisper, Silero VAD (`licenses/models/`, commit vào repo). File sinh ra không commit (`.gitignore`); bản phát hành sinh lúc build và đặt trong bộ cài (`Resources/` trên macOS, thư mục cài trên Windows). Giao diện đọc file qua `import.meta.glob`, thành một chunk riêng chỉ tải khi mở Giới thiệu; không thêm lệnh Tauri nào, để không đụng `commands.rs`, `build.rs` (danh sách lệnh), `capabilities/*.json`, `acl_tests.rs` mà 03 và 04 cùng sửa. Bản dev chưa sinh file thì màn hình ghi "Bản này không có danh sách giấy phép".
 - **QĐ11. `about.toml` nhận đúng các giấy phép của `deny.toml`** (`accepted` = `[licenses] allow`, test giữ hai danh sách khớp). `onig_sys` nhúng mã nguồn C của Oniguruma (BSD-2-Clause) vào tiến trình chính mà giấy phép của crate chỉ ghi MIT, nên `about.toml` khai thêm `oniguruma/COPYING` (có checksum).
-- **QĐ12. Bước có secret không biên dịch code.** macOS: chứng thư nằm trong một keychain tạm (`macos-keychain.sh`), nạp ngay trước bước ký và xóa ngay sau, không vào danh sách tìm kiếm của người dùng (`codesign --keychain`); khóa notarize `.p8` chỉ nằm trên đĩa trong bước ký. Windows: lệnh ký chỉ có trong hai bước ký. Khóa ký bản cập nhật chỉ có trong bước đóng gói cuối.
+- **QĐ12. Job có secret không biên dịch gì, và chạy trên runner riêng** (Q1 của review lần 1). Chung một job, một build script độc hại ở bước biên dịch để lại được thứ chạy ở bước ký (ghi `$GITHUB_ENV` như `NODE_OPTIONS`, `BASH_ENV`; ghi `$GITHUB_PATH`; sửa `scripts/release/*`), và lấy được khóa. Nên `release.yml` tách job, nối bằng artifact:
+  - macOS: `macos-sidecars` (build tiến trình phụ, sinh THIRD_PARTY_NOTICES) → `macos-sidecars-signed` (`release`: ký bằng Developer ID) → `macos-app` (build app với tiến trình phụ đã ký, vì `build.rs` băm chúng) → `macos-sign-app` (`release`: ký app, notarize, `.dmg`, `.app.tar.gz`);
+  - Windows: `windows-sidecars` → `windows-sidecars-signed` (`release`) → `windows-app` (`tauri build --no-bundle`) → `windows-bundle` (`release`: `tauri bundle` ký file chạy, bộ cài, bộ gỡ);
+  - `update-signatures` (`release`): job duy nhất có khóa ký bản cập nhật, ký `.app.tar.gz` và bộ cài Windows (`sign-updates.mjs`).
+
+  Job có secret chỉ cài `pnpm install --frozen-lockfile --ignore-scripts` khi cần CLI của Tauri, không chạy build script hay CMake nào. Trong job, chứng thư nằm trong keychain tạm (`macos-keychain.sh`, không vào danh sách tìm kiếm, `codesign --keychain`), xóa khi bước kết thúc; khóa notarize `.p8` chỉ nằm trên đĩa trong bước ký.
 - **QĐ13. Lệnh ký Windows là biến cấu hình `MT_WINDOWS_SIGN_CMD`** (`{file}` thay bằng đường dẫn), vì dịch vụ ký cloud của chứng thư OV chưa chọn (T2). Secret của dịch vụ đó thêm vào hai bước ký khi chọn xong (07b).
 - **QĐ14. Bộ gỡ Windows.** Mẫu NSIS của Tauri 2.12 đã có ô "xóa dữ liệu app" (xóa `%APPDATA%\com.aitranslator.desktop` và `%LOCALAPPDATA%\com.aitranslator.desktop`, gồm model) và luôn xóa giá trị `AI Translator` ở `HKCU\...\Run`. `nsis-hooks.nsh` thêm: xóa giá trị đó ở `HKLM\...\Run` và ở `Explorer\StartupApproved\Run` của cả `HKLM` lẫn `HKCU`, trừ khi bộ gỡ chạy để cập nhật. `HKLM` chỉ xóa được khi bộ gỡ có quyền admin; còn sót thì ghi một dòng chi tiết. Kho khóa (Credential Manager) giữ nguyên vì bộ đếm hạn mức không mất khi gỡ app (§6.8).
 - **QĐ15. NSIS:** `installMode` `currentUser` (mặc định của Tauri; thư mục cài `%LOCALAPPDATA%\AI Translator`, khác thư mục dữ liệu theo bundle id, spec §6.7); hai ngôn ngữ English và Vietnamese, không hỏi chọn ngôn ngữ (theo ngôn ngữ của Windows); WebView2 qua bootstrapper tải về (`downloadBootstrapper`, im lặng).
 - **QĐ16. Dependabot** cho cargo, npm (gốc và `server/`) và GitHub Actions, mỗi tuần, `cooldown` 1 ngày (luật tuổi phát hành, §6.12). PR của Dependabot chỉ là đề xuất; nâng phiên bản vẫn theo §6.12.
 - **QĐ17. Không cache trong CI.** Đơn giản, và không có đường nào để cache bị nhiễm đi vào bản phát hành. CI chạy lâu hơn; xem lại sau Task 14.
-- **QĐ18. Workflow phát hành chạy `cargo test --release -p meeting-translator --lib`** (nhận từ 03: phần chỉ có ở bản debug, như `DevGate`, không có trong bản release). Lúc lập kế hoạch: 162 test qua, 115 giây trên M4 Pro.
+- **QĐ18. Workflow phát hành chạy `cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1`** trước khi build app (nhận từ 03 và 06: bản release không có `DevGate`, và phần bản quyền của 06 phải đúng ở profile release; `--test-threads=1` theo mục 6.2 của kế hoạch 00). `ci.yml` cũng chạy lệnh này.
 - **QĐ19. Runner `macos-26` và `windows-2025`;** Rust theo `rust-toolchain.toml` (`rustup toolchain install`); cargo-deny, cargo-audit, cargo-about qua `taiki-e/install-action`.
 - **QĐ20. Chữ ký bản cập nhật gắn phiên bản** (`tauri signer sign --app-version`), để updater của 07b có thể bật `requireSignedVersion`.
 - **QĐ21. Tiến trình phụ macOS ký với hardened runtime và identifier `com.aitranslator.desktop.<tên>`,** kể cả khi ký ad-hoc, để bản thử nội bộ chạy giống bản phát hành.
 - **QĐ22. Không đổi `.cargo/config.toml`.** Cờ `/DEPENDENTLOADFLAG:0x800` có sẵn; `+crt-static` chỉ áp cho `asr-worker` lúc phát hành (QĐ5), vì app chính đã có VC runtime tĩnh của Tauri và hai cách trộn nhau chưa thử được trên Windows.
+- **QĐ23. Entitlement `com.apple.security.device.audio-input` cho app** (`src-tauri/release/entitlements.plist`; N9 của review lần 1). Hardened runtime chặn đường vào âm thanh nếu app không khai entitlement này, và app đọc tap qua một aggregate device. App không mở micro. S1 của Giai đoạn 0 chưa chạy với app ký hardened runtime, nên thêm ngay thay vì chờ thử; Task 15 thử với âm thanh thật. Tiến trình phụ không có entitlement nào.
+- **QĐ24. `cargo fetch --locked` trước khi sinh THIRD_PARTY_NOTICES** (Q2 của review lần 1). cargo-about chạy `--frozen` và đọc file giấy phép trong mã nguồn crate của cả hai target, mà runner chỉ có crate của nền tảng mình. Lúc lập kế hoạch đã tái hiện: `CARGO_HOME` trống, `cargo fetch --locked --target aarch64-apple-darwin`, rồi `notices.mjs` báo `attempting to make an HTTP request, but --frozen was specified`; thêm `cargo fetch --locked` (mọi target) thì ra đủ 139 văn bản, 498 crate như máy dev (cây sau kế hoạch 06).
+- **QĐ25. `--locked` cho mọi lệnh cargo của CI và của bản phát hành** (`tauri build … -- --locked`; N6): `Cargo.toml` lệch `Cargo.lock` thì đỏ, không tự sửa lock.
+- **QĐ26. Ký manifest production qua hai job** (N2): `check` (không secret) chạy `check_manifest_body` của 04 với `MANIFEST_BODY` và `MANIFEST_PREVIOUS` (phần thân của bản đang phát hành, commit trong repo); `sign` (`release`) chỉ ký. Bước ký viết bằng Node (`sign-manifest-ci.mjs`) để test được: đường dẫn phần thân, file khóa 0600, tiến trình con không thấy biến khóa, file khóa bị xóa kể cả khi lỗi (N8).
+- **QĐ27. Biến `AI_TRANSLATOR_TEAM_ID` (macOS) và `AI_TRANSLATOR_SIGNER` (Windows) đặt lúc build app** từ biến cấu hình `APPLE_TEAM_ID`, `WINDOWS_SIGNER` của repo (kế hoạch 06, `license/genuine.rs`). Thiếu thì bản phát hành tự coi là không chính hãng và chỉ chạy Free; bản ký ad-hoc cũng vậy (Task 15).
+- **QĐ28. Vulkan-Headers vào THIRD_PARTY_NOTICES** (N4): header của Vulkan SDK 1.4.363.0 được biên dịch vào `asr-worker-vulkan` và `ggml-vulkan.dll`; văn bản `LICENSE.md` và `MIT.txt` lấy ở tag `vulkan-sdk-1.4.363.0` của KhronosGroup/Vulkan-Headers (`licenses/native/`).
 
 ## Kiểm bằng mutation lúc lập kế hoạch
 
-Script `$S/p07/mut.py`, chạy trên cây cuối của 07a: mỗi mutation sửa một chỗ, chạy test, rồi trả file về như cũ. M4 chạy bằng `package-macos.sh build` (build app thật). Mọi mutation đều bị bắt; N2 sống ở lần chạy đầu, đã thêm một assert vào test của Task 5 ("MIT WITH Unknown-exception").
+Script `$S/p07/mut.py`, chạy trên cây cuối của 07a: mỗi mutation sửa một chỗ, chạy test, rồi trả file về như cũ. M4 chạy bằng `package-macos.sh build` (build app thật). Cả 42 mutation đều bị bắt (chạy lại trên cây sau kế hoạch 06); N2 sống ở lần chạy đầu, đã thêm một assert vào test của Task 5 ("MIT WITH Unknown-exception").
 
 ```text
-B1 bundled_name bỏ qua dev: bị giết [test result: FAILED. 20 passed; 1 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.34s]
-B2 bundled_name không cần dấu nối: bị giết [test result: FAILED. 20 passed; 1 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.33s]
-B3 bundled_name không tách .exe: bị giết [test result: FAILED. 19 passed; 2 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.34s]
-B4 bundled_name nhận tên rỗng trước triple: bị giết [test result: FAILED. 20 passed; 1 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.36s]
+B1 bundled_name bỏ qua dev: bị giết [test result: FAILED. 21 passed; 1 failed; 0 ignored; 0 measured; 383 filtered out; finished in 0.37s]
+B2 bundled_name không cần dấu nối: bị giết [test result: FAILED. 21 passed; 1 failed; 0 ignored; 0 measured; 383 filtered out; finished in 0.34s]
+B3 bundled_name không tách .exe: bị giết [test result: FAILED. 20 passed; 2 failed; 0 ignored; 0 measured; 383 filtered out; finished in 0.35s]
+B4 bundled_name nhận tên rỗng trước triple: bị giết [test result: FAILED. 21 passed; 1 failed; 0 ignored; 0 measured; 383 filtered out; finished in 0.34s]
 M4 build.rs luôn coi là bản dev (giữ tên kèm triple): bị giết [package-macos.sh build: "LỖI: file chạy của app còn tên bản dev asr-worker-aarch64-apple-darwin"]
 R1 checkBundle không so SHA-256: bị giết [ℹ fail 1]
 R2 checkBundle bỏ qua thư viện lạ: bị giết [ℹ fail 1]
@@ -152,8 +163,18 @@ W4 llama.cpp Windows tải UI có sẵn: bị giết [ℹ fail 1]
 W5 env trùng tên khác hoa thường: bị giết [ℹ fail 1]
 W6 build mang cấu hình ký: bị giết [ℹ fail 1]
 W7 lệnh ký không đặt đường dẫn trong nháy: bị giết [ℹ fail 1]
-F1 notices rỗng vẫn hiện: bị giết [Tests  1 failed | 67 passed (68)]
-F2 notices lỗi tải ném ra giao diện: bị giết [Tests  1 failed | 67 passed (68)]
+F1 notices rỗng vẫn hiện: bị giết [Tests  1 failed | 127 passed (128)]
+F2 notices lỗi tải ném ra giao diện: bị giết [Tests  1 failed | 127 passed (128)]
+S1 BODY không chặn '..': bị giết [ℹ fail 2]
+S2 không xóa file khóa: bị giết [ℹ fail 1]
+S3 tiến trình con thấy biến khóa: bị giết [ℹ fail 1]
+S4 file khóa không phải 0600: bị giết [ℹ fail 1]
+U1 ký bản cập nhật khi chưa có khóa: bị giết [ℹ fail 1]
+U2 chữ ký không gắn phiên bản: bị giết [ℹ fail 2]
+K1 keychain không tự xóa khi lỗi: bị giết [ℹ fail 1]
+K2 keychain nhận chứng thư bất kỳ: bị giết [ℹ fail 2]
+K3 keychain bỏ kiểm dấu nháy đơn: bị giết [ℹ fail 1]
+P1 tauri build mất --locked: bị giết [ℹ fail 1]
 ```
 
 ## Secret và biến của CI
@@ -169,20 +190,16 @@ Mọi secret nằm trong environment `release` của repo (Settings › Environm
 | `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | secret | cả hai: chữ ký bản cập nhật | Khóa ký bản cập nhật (Q17), tạo bằng `tauri signer generate` |
 | `MANIFEST_SIGNING_KEY` | secret | `sign-manifest.yml` | JWK Ed25519 khóa ký manifest model production (Q17; định dạng của `scripts/models/gen-manifest-key.mjs`, kế hoạch 04) |
 | `MT_WINDOWS_SIGN_CMD` | biến (Variables) | Windows: ký tiến trình phụ, app, bộ cài | Lệnh ký của dịch vụ ký cloud, có `{file}` (QĐ13) |
+| `APPLE_TEAM_ID` | biến (Variables) | macOS: build app | Team ID mà app tự kiểm trong chữ ký của mình (`AI_TRANSLATOR_TEAM_ID`, QĐ27) |
+| `WINDOWS_SIGNER` | biến (Variables) | Windows: build app | Tên chủ chứng thư ký mã (`AI_TRANSLATOR_SIGNER`, QĐ27) |
+
+**Bắt buộc trước khi nhập secret đầu tiên** (N1 của review lần 1): environment `release` có "Required reviewers" (chủ dự án) và "Deployment branches and tags" chỉ cho tag `v*` (cộng nhánh `main` cho lần chạy tay), và tag `v*` được bảo vệ bằng ruleset (chỉ chủ dự án tạo được). Không có hai luật này thì ai có quyền ghi cũng chạy được `release.yml` trên một nhánh mình sửa và lấy được secret. Mỗi job có secret chờ duyệt riêng: một lần phát hành có năm job chờ duyệt (hai ký tiến trình phụ, ký app macOS, đóng gói Windows, chữ ký bản cập nhật).
 
 Thiếu secret nào thì bước tương ứng bỏ qua (hoặc ký ad-hoc trên macOS), và bản ra chỉ dùng thử nội bộ. Việc tạo khóa thật và nhập secret là của người, ở 07b (danh sách cuối file).
 
-## File giao nhau với 03 và 04
+## File giao nhau với 03, 04, 06
 
-| File | 07a sửa | 03, 04 sửa | Cách làm |
-|---|---|---|---|
-| `src/windows/main/screens/About.tsx` | thay câu "sẽ hiện ở đây" bằng `<Licenses />` | 03b thêm bảng debug ẩn | Task 5 sửa bằng một script node chạy được trên cả hai cây (đã thử trên cây của 03); không dùng `git apply` |
-| `src/i18n/en.ts`, `vi.ts` | thay khóa `about.licensesPending` bằng ba khóa mới | 03, 04 thêm khóa | `git apply --3way` (đã thử với 03) |
-| `.gitignore` | thêm `/THIRD_PARTY_NOTICES.txt` ở cuối | — | — |
-| `src-tauri/build.rs` | hàm `sidecar_hashes` | 03, 04 thêm lệnh vào danh sách `commands` | `--3way` (đã thử với 03) |
-| `src-tauri/src/sidecar/mod.rs`, `paths.rs` | thêm module, thêm một test | 04b sửa `paths.rs` | `--3way` |
-
-Lúc lập kế hoạch, cả mười commit của 07a áp được lên nhánh `plan03` của `$S/p03-repo` (`f30491f`) bằng `git am --3way`; riêng `About.tsx` xung đột ở dòng import nên Task 5 dùng script. Chưa thử với 04 (kế hoạch 04 đang sửa). Ghi chú khi 03 đã vào `main`: `THIRD_PARTY_NOTICES` phải có thêm SQLCipher (BSD), OpenSSL (Apache-2.0, chỉ Windows) và câu mẫu FLEURS (CC BY 4.0) mà 03 thêm; việc này ở 07b (cần `clarify` cho `libsqlite3-sys`, `openssl-src` với checksum của file giấy phép thật).
+07a dựng thẳng trên `d266be5` (sau 03, 04, 06), nên mọi khối `diff` là diff thật trên cây đó. Các file 07a sửa mà kế hoạch khác cũng đã sửa: `src-tauri/build.rs` (hàm `sidecar_hashes`; 03, 04, 06 thêm lệnh vào danh sách `commands`), `src-tauri/src/sidecar/mod.rs`, `paths.rs` (04 sửa phần model), `src/i18n/en.ts`, `vi.ts` (thay khóa `about.licensesPending`), `src/windows/main/screens/About.tsx` (03 thêm bảng debug ẩn; Task 5 sửa bằng script node, không bằng `git apply`), `.gitignore`. Sau `d266be5`, `main` có thêm `0d9e243` (N-1 của review cuối 06: `src-tauri/src/commands.rs`, `app_tests.rs`, thêm 1 test) và hai commit tài liệu; 07a không đụng các file đó, cả chuỗi 07a rebase lên `0d9e243` không xung đột (đã thử). Trên `0d9e243`, số test của app ở Task 11 nhiều hơn Expected 1. Commit nào khác vào `main` đổi một trong các file trên thì dùng `git apply --3way`.
 
 ---
 
@@ -275,7 +292,7 @@ Sửa `src-tauri/src/sidecar/mod.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/sidecar/mod.rs b/src-tauri/src/sidecar/mod.rs
-index 3c03b1bfd4025927193abf3b36390fd36974e038..899b1d10abf62021e55230d39caa2435efdb0c58 100644
+index 733271a15fc4d6ec9b18b1514ef8708d40a8bef4..ec286302797ef81dc0bd77c040c9a5e944db43b4 100644
 --- a/src-tauri/src/sidecar/mod.rs
 +++ b/src-tauri/src/sidecar/mod.rs
 @@ -1,6 +1,7 @@
@@ -395,7 +412,7 @@ Sửa `src-tauri/src/sidecar/paths.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/src/sidecar/paths.rs b/src-tauri/src/sidecar/paths.rs
-index 7eef8a1a0e991b5453447673f985edab6335981d..8664842377c0b4e04c1915f9f440e34e0990d4be 100644
+index c14d9d973df49d9274f5750c6a2cd1ef17845abc..f0d2f092dd346e4e9bcdc9ac9fd7d967278cbfb2 100644
 --- a/src-tauri/src/sidecar/paths.rs
 +++ b/src-tauri/src/sidecar/paths.rs
 @@ -1,7 +1,8 @@
@@ -405,10 +422,10 @@ index 7eef8a1a0e991b5453447673f985edab6335981d..8664842377c0b4e04c1915f9f440e34e
 -//!   phát hành nằm cạnh file chạy của app, tên không kèm triple (Tauri `externalBin` bỏ triple khi đóng gói, kế hoạch 07).
 +//!   phát hành nằm cạnh file chạy của app, tên không kèm triple (Tauri `externalBin` bỏ triple khi đóng gói; bảng SHA-256
 +//!   dùng tên đó, xem `bundled_name`).
- //! - Model: bản dev đọc `MT_MODELS_DIR`, không đặt thì `<repo>/models`; bản phát hành ở `app_local_data_dir/models`
- //!   (kế hoạch 04 tải về đó).
+ //! - Model: theo kho model của kế hoạch 04 (`app_local_data_dir/models`, `models::store`). Bản dev chưa tải gói nào
+ //!   thì dùng file của Giai đoạn 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
  
-@@ -122,6 +123,20 @@ mod tests {
+@@ -121,6 +122,20 @@ mod tests {
          assert_eq!(win.llama, Path::new("/b/llama-server.exe"));
      }
  
@@ -435,7 +452,7 @@ Sửa `src-tauri/build.rs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src-tauri/build.rs b/src-tauri/build.rs
-index 4fb539bfbbf9f17646b29e22e5669ddb9972cef1..5b91ade18cd7c306200979c7884d837e4c0d6a2a 100644
+index 3434946262cce5136ddc0d07b04b639d4a375931..f56b69886d8875a3195aeac0ea796fba0bc84490 100644
 --- a/src-tauri/build.rs
 +++ b/src-tauri/build.rs
 @@ -2,6 +2,9 @@ use sha2::{Digest, Sha256};
@@ -448,7 +465,7 @@ index 4fb539bfbbf9f17646b29e22e5669ddb9972cef1..5b91ade18cd7c306200979c7884d837e
  fn main() {
      sidecar_hashes();
      // App manifest: lệnh của app cũng đi qua ACL (spec §10.2). Cửa sổ nào không được cấp
-@@ -31,15 +34,18 @@ fn main() {
+@@ -71,15 +74,18 @@ fn main() {
  /// SHA-256 của mọi file trong `binaries/` (tiến trình phụ và thư viện đi kèm), ghi vào `sidecar_hashes.rs` để app kiểm
  /// trước khi chạy (spec §10.2, "Thay tiến trình phụ, hoặc chèn thư viện giả"; Đ15 của kế hoạch 00). Thư mục chưa có thì
  /// danh sách rỗng, và app từ chối chạy tiến trình phụ nào.
@@ -471,7 +488,7 @@ index 4fb539bfbbf9f17646b29e22e5669ddb9972cef1..5b91ade18cd7c306200979c7884d837e
      let mut entries: Vec<(String, String)> = Vec::new();
      if let Ok(read) = std::fs::read_dir(dir) {
          for entry in read.flatten() {
-@@ -54,7 +60,8 @@ fn sidecar_hashes() {
+@@ -94,7 +100,8 @@ fn sidecar_hashes() {
                  let _ = write!(s, "{b:02x}");
                  s
              });
@@ -487,30 +504,31 @@ index 4fb539bfbbf9f17646b29e22e5669ddb9972cef1..5b91ade18cd7c306200979c7884d837e
 
 Run: `cargo test -p meeting-translator --lib sidecar:: 2>&1 | grep -E '^test |^test result'`
 
-Expected (lúc lập kế hoạch, trên `31ca0fb`; 03, 04 đã vào `main` thì số `filtered out` lớn hơn):
+Expected (lúc lập kế hoạch, trên `d266be5`):
 ```text
 test sidecar::bundled_name::tests::dev_keeps_every_name ... ok
-test sidecar::bundled_name::tests::libraries_and_other_names_are_kept ... ok
 test sidecar::bundled_name::tests::release_drops_the_target_triple ... ok
 test sidecar::paths::tests::names_follow_the_external_bin_convention ... ok
+test sidecar::bundled_name::tests::libraries_and_other_names_are_kept ... ok
 test sidecar::paths::tests::bundled_names_match_the_release_file_names ... ok
 test sidecar::paths::tests::windows_has_two_asr_workers_and_macos_one ... ok
-test sidecar::paths::tests::model_files_by_tier ... ok
 test sidecar::probe::tests::a_new_binary_gets_a_longer_probe ... ok
+test sidecar::paths::tests::model_files_by_tier ... ok
 test sidecar::probe::tests::no_gpu_software_renderer_or_garbage_means_cpu ... ok
 test sidecar::probe::tests::discrete_or_integrated_gpus_are_usable ... ok
+test sidecar::probe::tests::probe_output_keeps_the_gpu_list ... ok
 test sidecar::tests::errors_map_to_ui_codes ... ok
 test sidecar::probe::tests::probe_output_is_capped ... ok
-test sidecar::integrity::tests::a_file_others_can_write_is_refused ... ok
 test sidecar::integrity::tests::sha256_matches_shasum ... ok
 test sidecar::integrity::tests::untouched_files_pass_and_return_the_executable_hashes ... ok
 test sidecar::integrity::tests::unknown_or_missing_files_are_refused ... ok
 test sidecar::first_run::tests::a_binary_is_new_until_it_has_run_once ... ok
-test sidecar::integrity::tests::a_changed_library_or_executable_is_refused ... ok
-test sidecar::integrity::tests::an_extra_library_in_the_folder_is_refused ... ok
 test sidecar::tests::a_timed_out_probe_is_not_remembered ... ok
 test sidecar::probe::tests::a_probe_that_fails_or_hangs_means_cpu ... ok
-test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.34s
+test sidecar::integrity::tests::a_file_others_can_write_is_refused ... ok
+test sidecar::integrity::tests::a_changed_library_or_executable_is_refused ... ok
+test sidecar::integrity::tests::an_extra_library_in_the_folder_is_refused ... ok
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 383 filtered out; finished in 1.44s
 ```
 
 - [ ] **Step 4: fmt, clippy**
@@ -1065,18 +1083,18 @@ Run: `node --test "scripts/release/*.test.mjs" 2>&1 | grep -E '^(✔|✖|ℹ (te
 
 Expected (lúc lập kế hoạch):
 ```text
-✔ tên sau khi đóng gói giống luật của bundled_name.rs (0.409667ms)
-✔ bảng SHA-256 có tên gốc, tên sau khi đóng gói, số byte (4.3635ms)
-✔ bản đóng gói khớp binaries/ thì không lỗi (3.106958ms)
-✔ bản đóng gói thiếu file, file bị đổi (ví dụ ký lại), hay có thư viện lạ thì lỗi (2.63575ms)
-✔ binaries/ rỗng là lỗi (0.901625ms)
-✔ file chạy của app phải mang SHA-256 của mọi file, với tên sau khi đóng gói (0.172708ms)
-✔ đọc otool -L và otool -l (0.194209ms)
-✔ macOS: thư viện ngoài hệ thống và minos cao hơn đều là lỗi (0.088375ms)
-✔ đọc dumpbin /dependents, kể cả phần delay load (0.357ms)
-✔ Windows: C runtime của Visual C++ luôn là lỗi; DLL cạnh file là lỗi khi --no-local-libs (1.715459ms)
-✔ ngưỡng dung lượng tính bằng byte, bằng ngưỡng vẫn đạt (0.056666ms)
-✔ CLI: size và sha256sums (1.787958ms)
+✔ tên sau khi đóng gói giống luật của bundled_name.rs (0.410125ms)
+✔ bảng SHA-256 có tên gốc, tên sau khi đóng gói, số byte (5.193375ms)
+✔ bản đóng gói khớp binaries/ thì không lỗi (7.234084ms)
+✔ bản đóng gói thiếu file, file bị đổi (ví dụ ký lại), hay có thư viện lạ thì lỗi (8.624958ms)
+✔ binaries/ rỗng là lỗi (0.865209ms)
+✔ file chạy của app phải mang SHA-256 của mọi file, với tên sau khi đóng gói (0.155292ms)
+✔ đọc otool -L và otool -l (0.198166ms)
+✔ macOS: thư viện ngoài hệ thống và minos cao hơn đều là lỗi (0.097625ms)
+✔ đọc dumpbin /dependents, kể cả phần delay load (0.31975ms)
+✔ Windows: C runtime của Visual C++ luôn là lỗi; DLL cạnh file là lỗi khi --no-local-libs (0.579792ms)
+✔ ngưỡng dung lượng tính bằng byte, bằng ngưỡng vẫn đạt (0.039333ms)
+✔ CLI: size và sha256sums (6.144625ms)
 ℹ tests 12
 ℹ pass 12
 ℹ fail 0
@@ -1147,7 +1165,7 @@ PROTOC_SHA256_OSX_AARCH64=9cd98a532c5c5e0c4161314de0225de27e4c8a323917b6ea7b1b71
 PROTOC_SHA256_WIN64=f0c128dc0d8492eceece83bb459a4c0e316764b929ffbf1aa416357fd644edd3
 
 # Vulkan SDK (build asr-worker-vulkan và ggml-vulkan của llama-server trên Windows). SHA-256 của bộ cài chốt ở lần chạy
-# đầu (kế hoạch 07a, Task 12): còn trống thì bước cài in SHA-256 thật rồi dừng.
+# đầu (kế hoạch 07a, Task 14): còn trống thì bước cài in SHA-256 thật rồi dừng.
 VULKAN_SDK_VERSION=1.4.363.0
 VULKAN_SDK_SHA256=
 ```
@@ -1468,7 +1486,7 @@ scripts/release/build-sidecars-macos.sh 2>&1 | grep -v -E '^\s*(Compiling|Downlo
 Expected (lúc lập kế hoạch; SHA-256 chỉ giống khi cùng máy và cùng Xcode):
 ```text
 == asr-worker (metal, shared-encode)
-    Finished `release` profile [optimized] target(s) in 23.07s
+    Finished `release` profile [optimized] target(s) in 36.33s
 == llama.cpp b11146
 CMAKE_BUILD_TYPE=Release
 == src-tauri/binaries
@@ -1680,10 +1698,10 @@ feat(release): kiểm third_party đúng bằng whisper-rs-sys và whisper-rs tr
 
 ## Task 5: THIRD_PARTY_NOTICES và màn hình Giới thiệu
 
-QĐ10, QĐ11 (§10.1; dòng 257, 258, 259 của kế hoạch 00).
+QĐ10, QĐ11, QĐ28 (§10.1; dòng 257, 258, 259 của kế hoạch 00; N4 của review lần 1). Ngoài crate Rust và gói npm (kể cả `qrcode`, `ed25519-dalek`, `chrono` của 06, cargo-about tự liệt kê), danh sách có: whisper.cpp và ggml, llama.cpp và các thư viện nó nhúng, Vulkan-Headers (Windows), SQLCipher và OpenSSL (`clarify` trong `about.toml`, vì crate chỉ khai giấy phép của phần Rust), câu mẫu FLEURS của bước Nghe thử (`public/listen-test-en.LICENSE.txt`, CC BY 4.0), và ba model.
 
 **Files:**
-- Create: `about.toml`, `licenses/models/{Hy-MT2,whisper,silero-vad}-LICENSE.txt`, `scripts/release/notices.test.mjs`, `scripts/release/notices.mjs`, `src/lib/notices.test.ts`, `src/lib/notices.ts`, `src/windows/main/screens/Licenses.tsx`
+- Create: `about.toml`, `licenses/models/{Hy-MT2,whisper,silero-vad}-LICENSE.txt`, `licenses/native/Vulkan-Headers-{LICENSE.md,MIT.txt}`, `scripts/release/notices.test.mjs`, `scripts/release/notices.mjs`, `src/lib/notices.test.ts`, `src/lib/notices.ts`, `src/windows/main/screens/Licenses.tsx`
 - Modify: `src/windows/main/screens/About.tsx` (bằng script), `src/i18n/en.ts`, `src/i18n/vi.ts`, `.gitignore`
 
 - [ ] **Step 1: cargo-about** (bản build sẵn, chỉ dùng trên máy dev; CI cài bằng `taiki-e/install-action`)
@@ -1704,18 +1722,22 @@ cargo-about-0.9.2-aarch64-apple-darwin.tar.gz: OK
 cargo-about 0.9.2
 ```
 
-- [ ] **Step 2: Giấy phép của model** (văn bản ở cùng các tag mà kế hoạch 04 dùng; file của Hy-MT2 có sẵn trong `models/` từ Giai đoạn 0)
+- [ ] **Step 2: Giấy phép của model và của Vulkan-Headers** (văn bản ở cùng các tag mà kế hoạch 04 dùng, và ở tag `vulkan-sdk-1.4.363.0` của KhronosGroup/Vulkan-Headers; file của Hy-MT2 có sẵn trong `models/` từ Giai đoạn 0)
 
 Run:
 ```bash
-mkdir -p licenses/models
+mkdir -p licenses/models licenses/native
 curl -sfL https://raw.githubusercontent.com/openai/whisper/v20250625/LICENSE -o licenses/models/whisper-LICENSE.txt
 curl -sfL https://raw.githubusercontent.com/snakers4/silero-vad/v6.2.3/LICENSE -o licenses/models/silero-vad-LICENSE.txt
 cp models/Hy-MT2-LICENSE.txt licenses/models/Hy-MT2-LICENSE.txt
+curl -sfL https://raw.githubusercontent.com/KhronosGroup/Vulkan-Headers/vulkan-sdk-1.4.363.0/LICENSE.md -o licenses/native/Vulkan-Headers-LICENSE.md
+curl -sfL https://raw.githubusercontent.com/KhronosGroup/Vulkan-Headers/vulkan-sdk-1.4.363.0/LICENSES/MIT.txt -o licenses/native/Vulkan-Headers-MIT.txt
 shasum -a 256 -c - <<'EOF'
 a1d52d448f81c584a47c583e19dfab2d3851c7c84431b07baee093c1113ed114  licenses/models/Hy-MT2-LICENSE.txt
 2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b  licenses/models/silero-vad-LICENSE.txt
 b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d  licenses/models/whisper-LICENSE.txt
+95ad366d23fadf701d355bc45fb8b82ae2d700239471d35d41286ac3b08ff903  licenses/native/Vulkan-Headers-LICENSE.md
+1ca3502222d967f3be5751c55f6b7ee735b5383909c3b501495f54b216dbf227  licenses/native/Vulkan-Headers-MIT.txt
 EOF
 ```
 
@@ -1724,6 +1746,8 @@ Expected (lúc lập kế hoạch):
 licenses/models/Hy-MT2-LICENSE.txt: OK
 licenses/models/silero-vad-LICENSE.txt: OK
 licenses/models/whisper-LICENSE.txt: OK
+licenses/native/Vulkan-Headers-LICENSE.md: OK
+licenses/native/Vulkan-Headers-MIT.txt: OK
 ```
 
 - [ ] **Step 3: `about.toml`**
@@ -1770,6 +1794,41 @@ checksum = "71f321038b088358004bee991635ac09e4c703bec467d3c30c06992c0595f189"
 path = "oniguruma/COPYING"
 license = "BSD-2-Clause"
 checksum = "70ba5469ea0bab6e18a32d7009068f996503168d27be57747e08da34337ff26f"
+
+# libsqlite3-sys (rusqlite, kế hoạch 03) nhúng mã nguồn SQLCipher (BSD-3-Clause, `sqlcipher/LICENSE`) và SQLite (public
+# domain) vào tiến trình chính; giấy phép của crate chỉ ghi MIT (N4 của review 07a lần 1).
+[libsqlite3-sys.clarify]
+license = "MIT AND BSD-3-Clause"
+
+[[libsqlite3-sys.clarify.files]]
+path = "LICENSE"
+license = "MIT"
+checksum = "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
+
+[[libsqlite3-sys.clarify.files]]
+path = "sqlcipher/LICENSE"
+license = "BSD-3-Clause"
+checksum = "ea4fcb309f14a22065e1ea45362d494d320012249ed865fe9c7c0946db754131"
+
+# openssl-src (chỉ Windows: SQLCipher dùng OpenSSL 3.6.3 build tĩnh) nhúng mã nguồn OpenSSL (Apache-2.0,
+# `openssl/LICENSE.txt`); giấy phép của crate chỉ ghi MIT/Apache-2.0 cho phần Rust.
+[openssl-src.clarify]
+license = "(MIT OR Apache-2.0) AND Apache-2.0"
+
+[[openssl-src.clarify.files]]
+path = "LICENSE-MIT"
+license = "MIT"
+checksum = "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
+
+[[openssl-src.clarify.files]]
+path = "LICENSE-APACHE"
+license = "Apache-2.0"
+checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+
+[[openssl-src.clarify.files]]
+path = "openssl/LICENSE.txt"
+license = "Apache-2.0"
+checksum = "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
 ```
 
 - [ ] **Step 4: Test của script sinh danh sách, rồi code**
@@ -2102,6 +2161,14 @@ export function nativeComponents(llamaSrc, llamaTag) {
   }
   items.push(
     {
+      title: "Vulkan-Headers, Vulkan SDK 1.4.363.0 (Apache-2.0 OR MIT) - in asr-worker-vulkan and ggml-vulkan.dll (Windows)",
+      files: [join(root, "licenses/native/Vulkan-Headers-LICENSE.md"), join(root, "licenses/native/Vulkan-Headers-MIT.txt")],
+    },
+    {
+      title: "FLEURS sample sentence of the listen test (CC BY 4.0), Google",
+      files: [join(root, "public/listen-test-en.LICENSE.txt")],
+    },
+    {
       title: "Hy-MT2-1.8B-GGUF translation model (Apache-2.0), Tencent",
       files: [join(root, "licenses/models/Hy-MT2-LICENSE.txt")],
     },
@@ -2226,18 +2293,18 @@ shasum -a 256 THIRD_PARTY_NOTICES.txt | cut -c1-16
 node scripts/release/notices.mjs --out target/release-work/notices-again.txt --llama-src target/release-work/llama.cpp >/dev/null 2>&1
 cmp THIRD_PARTY_NOTICES.txt target/release-work/notices-again.txt && echo "chạy lại ra đúng file cũ"
 grep -n -E '^(Rust crates|JavaScript packages|Native libraries)' THIRD_PARTY_NOTICES.txt
-grep -c 'K.Kosako' THIRD_PARTY_NOTICES.txt
+grep -c -E 'K.Kosako|Zetetic LLC|OpenSSL Project|FLEURS|Khronos Group' THIRD_PARTY_NOTICES.txt
 ```
 
 Expected (lúc lập kế hoạch. Dòng `warning: config found for a crate not present in the graph` (đã lọc ở đây) là của lần chạy cho `asr-worker`, vì `onig_sys` chỉ có trong app):
 ```text
-THIRD_PARTY_NOTICES.txt: 125 văn bản giấy phép Rust (464 crate), 5 gói npm, 10 mục C/C++ và model
-bb153e9b9f7ffe08
+THIRD_PARTY_NOTICES.txt: 139 văn bản giấy phép Rust (498 crate), 5 gói npm, 12 mục C/C++ và model
+8a4bdc861fc4a70a
 chạy lại ra đúng file cũ
-5:Rust crates (125 license texts)
-11592:JavaScript packages (5)
-11924:Native libraries and models
-1
+5:Rust crates (139 license texts)
+13077:JavaScript packages (5)
+13409:Native libraries and models
+6
 ```
 
 - [ ] **Step 5b: CI dùng `--no-llama` khi chưa clone llama.cpp**
@@ -2250,7 +2317,7 @@ node scripts/release/notices.mjs --out x.txt 2>&1; echo "exit=$?"
 
 Expected (lúc lập kế hoạch):
 ```text
-target/release-work/notices-ci.txt: 125 văn bản giấy phép Rust (464 crate), 5 gói npm, 4 mục C/C++ và model
+target/release-work/notices-ci.txt: 139 văn bản giấy phép Rust (498 crate), 5 gói npm, 6 mục C/C++ và model
 LỖI: cần đúng một trong --llama-src <thư mục> và --no-llama
 exit=1
 ```
@@ -2292,8 +2359,8 @@ Run: `pnpm test 2>&1 | grep -E "Cannot find module|Test Files|Tests "`
 Expected (lúc lập kế hoạch: chưa có module):
 ```text
 Error: Cannot find module './notices' imported from /Users/dtphong/Desktop/software_business/meeting-translator/src/lib/notices.test.ts
- Test Files  1 failed | 6 passed (7)
-      Tests  65 passed (65)
+ Test Files  1 failed | 14 passed (15)
+      Tests  125 passed (125)
 ```
 
 - [ ] **Step 7: Giao diện: code**
@@ -2394,10 +2461,10 @@ Sửa `src/i18n/en.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
-index 4443ac2edbb1943782834810b547e6ff02b0cc8a..598267ded93a8c10bec4c1b7f07bc6e4213e5259 100644
+index 1e2a66043c7e91af457124ef19668ab628cb1a2b..c06b7e46d225383f97a02cdf3ee935b9a30bb1d2 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
-@@ -101,7 +101,9 @@ export const en = {
+@@ -184,7 +184,9 @@ export const en = {
    "about.openLogs": "Open log folder",
    "about.logsHint": "Logs stay on this computer and never contain what was said. Send them to support only if you want to.",
    "about.licenses": "Open-source licenses",
@@ -2406,18 +2473,18 @@ index 4443ac2edbb1943782834810b547e6ff02b0cc8a..598267ded93a8c10bec4c1b7f07bc6e4
 +  "about.licensesLoading": "Loading the list of licenses…",
 +  "about.licensesMissing": "This build has no list of licenses. Release builds include it.",
    "about.trademark": "Microsoft Teams, Zoom and Google Meet are mentioned only to describe compatibility. AI Translator is not affiliated with these companies.",
- 
-   "onboarding.step": "Step {n} of {total}",
+   "debug.title": "Diagnostics",
+   "debug.refresh": "Refresh",
 ```
 
 Sửa `src/i18n/vi.ts` (áp bằng `git apply`):
 
 ```diff
 diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
-index 0fdb07891afb03f5dff0a9b7fb27362f66e8542a..e89df1b50efb2afcf0216d63960669e08ef9af35 100644
+index 9ea6754ca7b6586dc96385f802fc44772afb1189..22ef5f70a0b7ce071329beaa9a6e46e7a172145b 100644
 --- a/src/i18n/vi.ts
 +++ b/src/i18n/vi.ts
-@@ -101,7 +101,9 @@ export const vi: Record<MessageKey, string> = {
+@@ -184,7 +184,9 @@ export const vi: Record<MessageKey, string> = {
    "about.openLogs": "Mở thư mục log",
    "about.logsHint": "Log chỉ nằm trên máy này và không bao giờ chứa nội dung cuộc họp. Bạn tự gửi cho bộ phận hỗ trợ khi cần.",
    "about.licenses": "Giấy phép mã nguồn mở",
@@ -2426,8 +2493,8 @@ index 0fdb07891afb03f5dff0a9b7fb27362f66e8542a..e89df1b50efb2afcf0216d63960669e0
 +  "about.licensesLoading": "Đang tải danh sách giấy phép…",
 +  "about.licensesMissing": "Bản này không có danh sách giấy phép. Bản phát hành có danh sách này.",
    "about.trademark": "Microsoft Teams, Zoom và Google Meet chỉ được nhắc tới để mô tả khả năng tương thích. AI Translator không liên kết với các công ty này.",
- 
-   "onboarding.step": "Bước {n}/{total}",
+   "debug.title": "Chẩn đoán",
+   "debug.refresh": "Làm mới",
 ```
 
 Sửa `.gitignore` (áp bằng `git apply`):
@@ -2456,9 +2523,9 @@ pnpm build 2>&1 | grep -E 'THIRD_PARTY_NOTICES|built in|error' | sed -E 's/in [0
 
 Expected (lúc lập kế hoạch):
 ```text
- Test Files  7 passed (7)
-      Tests  68 passed (68)
-dist/assets/THIRD_PARTY_NOTICES-D3Dj_cvD.js  679.27 kB │ gzip: 58.79 kB
+ Test Files  15 passed (15)
+      Tests  128 passed (128)
+dist/assets/THIRD_PARTY_NOTICES-Ck7A_e_2.js  761.97 kB │ gzip: 62.61 kB
 ✓ built in …ms
 ```
 
@@ -2480,7 +2547,7 @@ Expected (lúc lập kế hoạch: `0`, không có chunk nào):
 
 Run:
 ```bash
-git add .gitignore about.toml licenses/models scripts/release/notices.mjs scripts/release/notices.test.mjs src/lib/notices.ts src/lib/notices.test.ts src/windows/main/screens/Licenses.tsx src/windows/main/screens/About.tsx src/i18n/en.ts src/i18n/vi.ts
+git add .gitignore about.toml licenses/models licenses/native scripts/release/notices.mjs scripts/release/notices.test.mjs src/lib/notices.ts src/lib/notices.test.ts src/windows/main/screens/Licenses.tsx src/windows/main/screens/About.tsx src/i18n/en.ts src/i18n/vi.ts
 git commit -q -m "feat(release): sinh THIRD_PARTY_NOTICES từ Cargo.lock, pnpm-lock.yaml và mã nguồn C/C++ đã khóa; hiện ở màn hình Giới thiệu (§10.1)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git log --oneline -1 | cut -c9-
 ```
@@ -2488,18 +2555,14 @@ git log --oneline -1 | cut -c9-
 Expected (lúc lập kế hoạch):
 ```text
 feat(release): sinh THIRD_PARTY_NOTICES từ Cargo.lock, pnpm-lock.yaml và mã nguồn C/C++ đã khóa; hiện ở màn hình Giới thiệu (§10.1)
-The following paths are ignored by one of your .gitignore files:
-licenses/models
-hint: Use -f if you really want to add them.
-hint: Disable this message with "git config set advice.addIgnoredFile false"
 ```
 
 ## Task 6: Đóng gói macOS
 
-QĐ2, QĐ9, QĐ12, QĐ20. Cấu hình đóng gói riêng (`tauri.macos.json`) và script đóng gói hai phần: `build` (không cần secret) và `sign` (ký, notarize, `.dmg`, kiểm). Không có secret thì ký ad-hoc, bỏ qua notarize và chữ ký bản cập nhật.
+QĐ2, QĐ9, QĐ12, QĐ23, QĐ25. Cấu hình đóng gói riêng (`tauri.macos.json`), entitlement của app, và script đóng gói hai phần: `build` (không cần secret; CI chạy ở job `macos-app`) và `sign` (ký, notarize, `.dmg`, `.app.tar.gz` cho bản cập nhật, kiểm; CI chạy ở job `macos-sign-app`). Không có secret thì ký ad-hoc và bỏ qua notarize. Chữ ký bản cập nhật (`.sig`) không ký ở đây mà ở Task 10 (`sign-updates.mjs`).
 
 **Files:**
-- Create: `src-tauri/release/tauri.macos.json`, `scripts/release/package-macos.sh`
+- Create: `src-tauri/release/tauri.macos.json`, `src-tauri/release/entitlements.plist`, `scripts/release/package-macos.sh`
 
 - [ ] **Step 1: Cấu hình và script**
 
@@ -2525,6 +2588,26 @@ Tạo `src-tauri/release/tauri.macos.json`:
 }
 ```
 
+Tạo `src-tauri/release/entitlements.plist`:
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlement của AI Translator.app khi ký với hardened runtime (kế hoạch 07a, N9 của review lần 1).
+  Hardened runtime chặn đường vào âm thanh (audio input) nếu app không khai entitlement này. App thu âm thanh hệ thống
+  bằng Core Audio process tap, đọc qua một aggregate device (crates/audio-capture), tức một đường vào âm thanh. App không
+  mở micro; quyền "Ghi âm thanh hệ thống" vẫn do macOS hỏi theo NSAudioCaptureUsageDescription. Không có entitlement nào
+  tắt library validation hay cho JIT. Task 15 thử bản đã ký này với âm thanh thật.
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+</dict>
+</plist>
+```
+
 Tạo `scripts/release/package-macos.sh`:
 
 ```sh
@@ -2536,24 +2619,26 @@ Tạo `scripts/release/package-macos.sh`:
 #   scripts/release/package-macos.sh build    # bước 1–2, không cần secret nào
 #   scripts/release/package-macos.sh sign     # bước 3–6, sau `build`
 #
-# CI chạy `build` khi keychain còn khóa và chưa có secret nào trong môi trường, rồi mới chạy `sign` với secret, để build
-# script của các crate không đọc được secret hay dùng được chứng thư (spec §10.2, rủi ro chuỗi cung ứng).
+# CI chạy `build` và `sign` ở hai job khác nhau, trên hai runner khác nhau: job `build` không có secret nào, job `sign`
+# (environment `release`) không biên dịch gì, chỉ chạy script của repo và công cụ của hệ thống (spec §10.2, rủi ro chuỗi
+# cung ứng; Q1 của review 07a lần 1). Job `sign` nhận `.app` qua artifact, đặt lại đúng chỗ rồi mới gọi phần này.
 #
 # Thứ tự, vì app kiểm SHA-256 của tiến trình phụ theo bảng build sẵn (build.rs):
 #   1. `tauri build --no-sign`: bundler của Tauri ký lại mọi `externalBin` bằng `codesign --force` nếu được ký, làm SHA-256
 #      đổi; nên Tauri không ký gì, tiến trình phụ đã ký sẵn ở build-sidecars-macos.sh.
 #   2. Kiểm bản đóng gói: tiến trình phụ trong Contents/MacOS đúng từng byte như binaries/, không có thư viện lạ, và file
 #      chạy của app mang bảng SHA-256 của chúng với tên sau khi đóng gói.
-#   3. Ký app (không `--deep`, để chữ ký của tiến trình phụ giữ nguyên), hardened runtime; kiểm lại bước 2.
+#   3. Ký app (không `--deep`, để chữ ký của tiến trình phụ giữ nguyên), hardened runtime với entitlement thu âm thanh
+#      (src-tauri/release/entitlements.plist); kiểm lại bước 2.
 #   4. Có thông tin notarize thì notarize app và staple.
 #   5. Tạo `.dmg` (nén LZMA, có lối tắt Applications), ký, notarize và staple nếu có thông tin.
-#   6. Kiểm dung lượng ≤ 60 000 000 byte (§6.11), ghi SHA-256 (§10.2); có khóa ký bản cập nhật thì tạo và ký `.app.tar.gz`.
+#   6. Kiểm dung lượng ≤ 60 000 000 byte (§6.11), ghi SHA-256 (§10.2), tạo `.app.tar.gz` cho bản cập nhật. Chữ ký bản cập
+#      nhật (`.sig`) ký ở một job riêng (sign-updates.mjs), để khóa ký bản cập nhật không nằm chung với chứng thư Apple.
 #
 # Biến môi trường (CI đặt từ secret; không đặt thì bỏ qua bước tương ứng, bản ra chỉ dùng thử nội bộ):
 #   MT_SIGN_IDENTITY        chứng thư Developer ID Application; không đặt thì ký ad-hoc
 #   MT_KEYCHAIN             keychain chứa chứng thư đó (macos-keychain.sh); không đặt thì codesign tìm ở keychain mặc định
 #   APPLE_API_KEY_PATH, APPLE_API_KEY_ID, APPLE_API_ISSUER   khóa App Store Connect API để notarize
-#   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD   khóa ký bản cập nhật (Q17 của kế hoạch 00)
 #   MT_RELEASE_OUT          thư mục ra, mặc định target/release-out
 set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -2607,7 +2692,7 @@ sign() {
 
 if [ "$phase" != "sign" ]; then
   echo "== tauri build (không ký)"
-  (cd "$root" && pnpm tauri build --ci --no-sign --bundles app --config src-tauri/release/tauri.macos.json)
+  (cd "$root" && pnpm tauri build --ci --no-sign --bundles app --config src-tauri/release/tauri.macos.json -- --locked)
   node "$check" bundle "$root/src-tauri/binaries" "$app/Contents/MacOS" --target "$triple"
   node "$check" embedded "$root/src-tauri/binaries" "$app/Contents/MacOS/meeting-translator" --target "$triple"
   if [ "$phase" = "build" ]; then
@@ -2619,7 +2704,7 @@ elif [ ! -d "$app" ]; then
 fi
 
 echo "== ký app"
-sign --options runtime "$app"
+sign --options runtime --entitlements "$root/src-tauri/release/entitlements.plist" "$app"
 codesign --verify --strict --deep "$app"
 codesign -dv "$app" 2>&1 | grep -E '^(Identifier=|CodeDirectory |TeamIdentifier=)'
 node "$check" bundle "$root/src-tauri/binaries" "$app/Contents/MacOS" --target "$triple"
@@ -2646,13 +2731,9 @@ fi
 node "$check" size "$dmg" --max-bytes 60000000
 node "$check" sha256sums "$dmg" --out "$out/SHA256SUMS-macos.txt"
 
-if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
-  echo "== bản cập nhật (.app.tar.gz và chữ ký)"
-  tar -czf "$out/$product.app.tar.gz" -C "$(dirname "$app")" "$product.app"
-  (cd "$root" && pnpm tauri signer sign --app-version "$version" "$out/$product.app.tar.gz")
-else
-  echo "chưa có khóa ký bản cập nhật: bỏ qua .app.tar.gz"
-fi
+echo "== bản cập nhật (.app.tar.gz, ký chữ ký ở sign-updates.mjs)"
+tar -czf "$out/$product.app.tar.gz" -C "$(dirname "$app")" "$product.app"
+ls "$out"
 ```
 
 Run: `chmod +x scripts/release/package-macos.sh`
@@ -2671,20 +2752,23 @@ Expected (lúc lập kế hoạch; SHA-256 của `.dmg` đổi mỗi lần tạo
     Bundling AI Translator.app (/Users/dtphong/Desktop/software_business/meeting-translator/target/release/bundle/macos/AI Translator.app)
         Warn Skipping signing due to --no-sign flag.
     Finished 1 bundle at:
-        /Users/dtphong/Desktop/software_business/meeting-translator/target/release/bundle/macos/AI Translator.app (25.07 MiB)
+        /Users/dtphong/Desktop/software_business/meeting-translator/target/release/bundle/macos/AI Translator.app (28.25 MiB)
 
 bản đóng gói khớp 2 file của binaries/
 meeting-translator mang bảng SHA-256 của 2 file, đúng tên sau khi đóng gói
 == ký app
 /Users/dtphong/Desktop/software_business/meeting-translator/target/release/bundle/macos/AI Translator.app: replacing existing signature
 Identifier=com.aitranslator.desktop
-CodeDirectory v=20500 size=17241 flags=0x10002(adhoc,runtime) hashes=532+3 location=embedded
+CodeDirectory v=20500 size=23641 flags=0x10002(adhoc,runtime) hashes=728+7 location=embedded
 TeamIdentifier=not set
 bản đóng gói khớp 2 file của binaries/
 == dmg
-AI Translator_0.1.0_aarch64.dmg: 7571752 byte (7.6 MB), ngưỡng 60000000 byte
-bc3c3047753ce0887be8b8ee9e282080060aa27615c5d537e146e0292f59bbbc  AI Translator_0.1.0_aarch64.dmg
-chưa có khóa ký bản cập nhật: bỏ qua .app.tar.gz
+AI Translator_0.1.0_aarch64.dmg: 8786839 byte (8.8 MB), ngưỡng 60000000 byte
+4a3f9a3fbd8c007cba242fd70743093c89f2e2c017bc829f235fd5d824a63589  AI Translator_0.1.0_aarch64.dmg
+== bản cập nhật (.app.tar.gz, ký chữ ký ở sign-updates.mjs)
+AI Translator.app.tar.gz
+AI Translator_0.1.0_aarch64.dmg
+SHA256SUMS-macos.txt
 ```
 
 Run:
@@ -2713,6 +2797,7 @@ vi.lproj
   "LSMinimumSystemVersion" => "14.2"
   "NSAudioCaptureUsageDescription" => "AI Translator captures the audio your Mac is playin
 Format: ULMO
+AI Translator.app.tar.gz
 AI Translator_0.1.0_aarch64.dmg
 SHA256SUMS-macos.txt
 ```
@@ -2735,14 +2820,27 @@ meeting-translator mang bảng SHA-256 của 2 file, đúng tên sau khi đóng 
 == ký app
 bản đóng gói khớp 2 file của binaries/
 == dmg
-AI Translator_0.1.0_aarch64.dmg: 7572980 byte (7.6 MB), ngưỡ
+AI Translator_0.1.0_aarch64.dmg: 8786847 byte (8.8 MB), ngưỡ
+== bản cập nhật (.app.tar.gz, ký chữ ký ở sign-updates.mjs)
+AI Translator_0.1.0_aarch64.dmg
 ```
 
 - [ ] **Step 4: Commit**
 
 Run:
 ```bash
-git add src-tauri/release/tauri.macos.json scripts/release/package-macos.sh
+codesign -d --entitlements - --xml "target/release/bundle/macos/AI Translator.app" 2>/dev/null | plutil -convert xml1 -o - - | grep -A1 '<key>'
+```
+
+Expected (lúc lập kế hoạch: app đã ký mang đúng một entitlement):
+```text
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+```
+
+Run:
+```bash
+git add src-tauri/release/tauri.macos.json src-tauri/release/entitlements.plist scripts/release/package-macos.sh
 git commit -q -m "feat(release): đóng gói macOS: .app không để Tauri ký lại tiến trình phụ, ký app, .dmg LZMA, notarize, kiểm dung lượng, SHA-256, chữ ký bản cập nhật (§6.11, §10.2)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git log --oneline -1 | cut -c9-
 ```
@@ -2856,7 +2954,7 @@ Tạo `scripts/release/install-tools.mjs`:
 //
 // Trong GitHub Actions (có GITHUB_PATH, GITHUB_ENV), thư mục bin được thêm vào PATH của các bước sau, và Vulkan SDK đặt
 // biến VULKAN_SDK. Vulkan SDK chưa có SHA-256 trong versions.env thì in SHA-256 của file vừa tải rồi dừng: người chốt so
-// với trang tải của LunarG rồi ghi vào versions.env (Task 12 của kế hoạch 07a).
+// với trang tải của LunarG rồi ghi vào versions.env (Task 14 của kế hoạch 07a).
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -2964,7 +3062,7 @@ Sửa `scripts/release/notices.mjs` (áp bằng `git apply`):
 
 ```diff
 diff --git a/scripts/release/notices.mjs b/scripts/release/notices.mjs
-index 83bd5528ffa90f5620a3b2b93ac8850f1bca9bdb..e53ff2a7226078adcbedde69369e33466aeb703a 100644
+index a587715acbf6309bd40d58389c0ffb6c82131745..ed07dad69921ba0afb27e7b9bbc1eda657fdf4ce 100644
 --- a/scripts/release/notices.mjs
 +++ b/scripts/release/notices.mjs
 @@ -18,7 +18,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -2976,7 +3074,7 @@ index 83bd5528ffa90f5620a3b2b93ac8850f1bca9bdb..e53ff2a7226078adcbedde69369e3346
  
  /** So chuỗi theo mã ký tự, không theo locale, để thứ tự giống nhau trên mọi máy. */
  const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-@@ -197,15 +197,6 @@ function cargoAbout(manifest) {
+@@ -205,15 +205,6 @@ function cargoAbout(manifest) {
    return JSON.parse(json);
  }
  
@@ -2992,7 +3090,7 @@ index 83bd5528ffa90f5620a3b2b93ac8850f1bca9bdb..e53ff2a7226078adcbedde69369e3346
  export function main(argv) {
    const args = [...argv];
    const outIndex = args.indexOf("--out");
-@@ -215,7 +206,7 @@ export function main(argv) {
+@@ -223,7 +214,7 @@ export function main(argv) {
    const noLlama = args.includes("--no-llama");
    if ((llamaIndex < 0) === !noLlama) throw new Error("cần đúng một trong --llama-src <thư mục> và --no-llama");
    const llamaSrc = llamaIndex >= 0 ? args[llamaIndex + 1] : null;
@@ -3131,6 +3229,8 @@ test("đóng gói Windows: build không mang cấu hình ký, bundle mới mang;
     "--no-bundle",
     "--config",
     "src-tauri/release/tauri.windows.json",
+    "--",
+    "--locked",
   ]);
   assert.deepEqual(tauriArgs("bundle", null), [
     "tauri",
@@ -3433,10 +3533,11 @@ Tạo `scripts/release/package-windows.mjs`:
 //      (sign-windows.mjs): Tauri ký file chạy của app, bộ cài, bộ gỡ, và bỏ qua tiến trình phụ, DLL đã ký sẵn (Tauri chỉ
 //      ký file chưa có chữ ký hợp lệ, nên tiến trình phụ phải ký trước, ở build-sidecars-windows.mjs).
 //   4. binaries/ vẫn không đổi; giải nén bộ cài bằng 7-Zip rồi kiểm tiến trình phụ, DLL đúng từng byte.
-//   5. Kiểm dung lượng ≤ 60 000 000 byte (§6.11, C10), ghi SHA-256; có khóa ký bản cập nhật thì ký bộ cài (`.sig`).
+//   5. Kiểm dung lượng ≤ 60 000 000 byte (§6.11, C10), ghi SHA-256. Chữ ký bản cập nhật (`.sig`) ký ở job riêng
+//      (sign-updates.mjs).
 //
-// CI chạy `build` khi chưa có secret nào trong môi trường, rồi `bundle` với secret, để build script của các crate không
-// đọc được secret (spec §10.2, rủi ro chuỗi cung ứng).
+// CI chạy `build` và `bundle` ở hai job khác nhau, trên hai runner khác nhau: job `build` không có secret nào, job
+// `bundle` (environment `release`) không biên dịch gì (spec §10.2, rủi ro chuỗi cung ứng; Q1 của review 07a lần 1).
 
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -3452,7 +3553,7 @@ const SIDECARS = ["asr-worker-vulkan", "asr-worker-cpu", "llama-server"];
 /** Tham số của `tauri build --no-bundle` (phần `build`) và `tauri bundle` (phần `bundle`, kèm file cấu hình ký nếu có). */
 export function tauriArgs(phase, signConfig) {
   const config = ["--config", "src-tauri/release/tauri.windows.json"];
-  if (phase === "build") return ["tauri", "build", "--ci", "--no-bundle", ...config];
+  if (phase === "build") return ["tauri", "build", "--ci", "--no-bundle", ...config, "--", "--locked"];
   const args = ["tauri", "bundle", "--ci", "--bundles", "nsis", ...config];
   if (signConfig) args.push("--config", signConfig);
   return args;
@@ -3529,11 +3630,6 @@ export function main(phase = "all") {
   const sums = `${sha256File(installer)}  ${conf.productName}_${conf.version}_x64-setup.exe\n`;
   writeFileSync(join(out, "SHA256SUMS-windows.txt"), sums);
   process.stdout.write(sums);
-  if (errors.length === 0 && process.env.TAURI_SIGNING_PRIVATE_KEY) {
-    pnpm(["tauri", "signer", "sign", "--app-version", conf.version, installer], process.env);
-  } else if (errors.length === 0) {
-    console.log("chưa có khóa ký bản cập nhật: bỏ qua chữ ký .sig");
-  }
   return errors;
 }
 
@@ -3689,13 +3785,13 @@ fi
 echo "== tauri.macos.json"
 placeholder asr-worker-aarch64-apple-darwin
 placeholder llama-server-aarch64-apple-darwin
-(cd "$root" && TAURI_CONFIG="$(cat src-tauri/release/tauri.macos.json)" cargo check -q -p meeting-translator)
+(cd "$root" && TAURI_CONFIG="$(cat src-tauri/release/tauri.macos.json)" cargo check -q --locked -p meeting-translator)
 copied "$target/debug" asr-worker llama-server THIRD_PARTY_NOTICES.txt
 
 echo "== tauri.windows.json"
 for name in asr-worker-vulkan asr-worker-cpu llama-server; do placeholder "$name-x86_64-pc-windows-msvc.exe"; done
 placeholder ggml-placeholder.dll
-(cd "$root" && TAURI_CONFIG="$(cat src-tauri/release/tauri.windows.json)" ./scripts/check-windows.sh -q)
+(cd "$root" && TAURI_CONFIG="$(cat src-tauri/release/tauri.windows.json)" ./scripts/check-windows.sh -q --locked)
 copied "$target/x86_64-pc-windows-msvc/debug" asr-worker-vulkan.exe asr-worker-cpu.exe llama-server.exe ggml-placeholder.dll \
   THIRD_PARTY_NOTICES.txt
 echo "hai cấu hình đóng gói hợp lệ"
@@ -3814,24 +3910,29 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
           pnpm test
-      - name: Script phát hành (node --test)
-        run: node --test "scripts/release/*.test.mjs"
+      - name: Script phát hành và script manifest model (node --test)
+        run: node --test "scripts/release/*.test.mjs" scripts/models/manifest.test.mjs
       - name: cargo clippy
         run: |
-          cargo clippy --workspace --all-targets -- -D warnings
-          cargo clippy -p asr-worker --features metal,shared-encode --all-targets -- -D warnings
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+          cargo clippy --locked -p asr-worker --features metal,shared-encode --all-targets -- -D warnings
       - name: cargo test
         run: |
-          cargo test --workspace
-          cargo test -p asr-worker --features shared-encode
+          cargo test --locked --workspace
+          cargo test --locked -p asr-worker --features shared-encode
+      - name: Test bản quyền ở bản release (không có phần chỉ dành cho bản debug)
+        run: |
+          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1
       - name: asr-worker bản phát hành (Metal, shared-encode)
         run: cargo build --release --locked -p asr-worker --features metal,shared-encode
       - name: Code Windows biên dịch được (clippy cho target Windows)
-        run: ./scripts/check-windows.sh
+        run: ./scripts/check-windows.sh --locked
       - name: third_party đúng bằng crate gốc cộng bản vá
         run: scripts/release/verify-third-party.sh
       - name: Giấy phép (THIRD_PARTY_NOTICES, allow-list của deny.toml)
-        run: node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --no-llama
+        run: |
+          cargo fetch --locked
+          node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --no-llama
       - name: Cấu hình đóng gói hợp lệ
         run: scripts/release/check-release-config.sh
       - name: cargo deny, cargo audit
@@ -3875,12 +3976,12 @@ jobs:
         run: node --test "scripts/release/*.test.mjs"
       - name: cargo clippy
         run: |
-          cargo clippy --workspace --all-targets -- -D warnings
-          cargo clippy -p asr-worker --features shared-encode --all-targets -- -D warnings
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+          cargo clippy --locked -p asr-worker --features shared-encode --all-targets -- -D warnings
       - name: cargo test
         run: |
-          cargo test --workspace
-          cargo test -p asr-worker --features shared-encode
+          cargo test --locked --workspace
+          cargo test --locked -p asr-worker --features shared-encode
 ```
 
 Tạo `.github/dependabot.yml`:
@@ -3972,14 +4073,326 @@ Expected (lúc lập kế hoạch):
 ci: kiểm tra chuẩn trên macOS arm64 và Windows x64 (build, fmt, clippy, test, vitest, server, deny, audit, giấy phép, cấu hình đóng gói); Dependabot (§10.2, §11)
 ```
 
-## Task 10: Workflow phát hành và ký manifest
+## Task 10: Workflow phát hành, ký bản cập nhật và ký manifest
 
-QĐ12, QĐ13, QĐ18, QĐ20. `release.yml` build hai bộ cài từ tag; ký, notarize, ký bản cập nhật chỉ khi environment `release` có secret; bước có secret không biên dịch. `sign-manifest.yml` ký phần thân manifest model bằng khóa production (cần `scripts/models/sign-manifest.mjs` của kế hoạch 04).
+QĐ12, QĐ13, QĐ18, QĐ20, QĐ26, QĐ27. `release.yml` có 9 job: job biên dịch không có secret, job có secret (environment `release`) không biên dịch gì, nối với nhau bằng artifact (Q1 của review lần 1). `sign-updates.mjs` ký bản cập nhật ở job riêng cuối cùng. `sign-manifest.yml` kiểm phần thân manifest model bằng luật của app (job không secret) rồi mới ký bằng khóa production (cần `scripts/models/` của kế hoạch 04). Ba script của bước có secret có test, kể cả `macos-keychain.sh` (chạy với `security` và `openssl` giả).
 
 **Files:**
-- Create: `scripts/release/macos-keychain.sh`, `scripts/release/sign-manifest-ci.sh`, `.github/workflows/release.yml`, `.github/workflows/sign-manifest.yml`
+- Create: `scripts/release/signing.test.mjs`, `scripts/release/sign-updates.mjs`, `scripts/release/sign-manifest-ci.mjs`, `scripts/release/macos-keychain.sh`, `.github/workflows/release.yml`, `.github/workflows/sign-manifest.yml`
 
-- [ ] **Step 1: Hai script cho bước có secret**
+- [ ] **Step 1: Test trước**
+
+Tạo `scripts/release/signing.test.mjs`:
+
+```js
+// Test của các bước có secret: sign-updates.mjs, sign-manifest-ci.mjs, macos-keychain.sh (N8 của review 07a lần 1).
+// Không dùng khóa thật nào: khóa ký bản cập nhật tạo mới trong thư mục tạm; `security`, `openssl` là bản giả trên PATH.
+import assert from "node:assert/strict";
+import { execFileSync, spawnSync } from "node:child_process";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+
+import { bodyErrors, main as signManifest } from "./sign-manifest-ci.mjs";
+import { main as signUpdates, signerArgs, updateFiles } from "./sign-updates.mjs";
+import { root } from "./versions.mjs";
+
+function tempDir(t) {
+  const dir = mkdtempSync(join(tmpdir(), "signing-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  return dir;
+}
+
+test("sign-updates: chỉ ký đúng hai loại bộ cài của phiên bản hiện tại", () => {
+  const present = ["AI Translator.app.tar.gz", "AI Translator_0.1.0_x64-setup.exe", "AI Translator_0.0.9_x64-setup.exe"];
+  assert.deepEqual(updateFiles(present, "AI Translator", "0.1.0"), ["AI Translator.app.tar.gz", "AI Translator_0.1.0_x64-setup.exe"]);
+  assert.deepEqual(updateFiles(["x.dmg"], "AI Translator", "0.1.0"), []);
+  assert.deepEqual(signerArgs("0.1.0", "/d/f.exe"), ["tauri", "signer", "sign", "--app-version", "0.1.0", "/d/f.exe"]);
+});
+
+test("sign-updates: không có khóa thì không ký; có khóa thì tạo .sig gắn phiên bản", (t) => {
+  const dir = tempDir(t);
+  writeFileSync(join(dir, "AI Translator.app.tar.gz"), "app");
+  writeFileSync(join(dir, "AI Translator_0.1.0_x64-setup.exe"), "exe");
+  assert.deepEqual(signUpdates(["--dir", dir], { PATH: process.env.PATH }), []);
+  assert.equal(existsSync(join(dir, "AI Translator.app.tar.gz.sig")), false);
+  // Khóa tạm, chỉ cho test này.
+  const keyFile = join(dir, "test.key");
+  execFileSync("pnpm", ["tauri", "signer", "generate", "--ci", "-p", "test-only", "-w", keyFile], { cwd: root, stdio: "ignore" });
+  const env = { ...process.env, TAURI_SIGNING_PRIVATE_KEY: readFileSync(keyFile, "utf8"), TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "test-only" };
+  assert.deepEqual(signUpdates(["--dir", dir], env), ["AI Translator.app.tar.gz", "AI Translator_0.1.0_x64-setup.exe"]);
+  const sig = Buffer.from(readFileSync(join(dir, "AI Translator_0.1.0_x64-setup.exe.sig"), "utf8"), "base64").toString();
+  assert.match(sig, /trusted comment: .*file:AI Translator_0\.1\.0_x64-setup\.exe/);
+  assert.match(sig, /version:0\.1\.0/);
+  assert.throws(() => signUpdates(["--dir", tempDir(t)], env), /không có bản cập nhật nào/);
+});
+
+test("sign-manifest: BODY phải là file tương đối trong repo, không có '..'", (t) => {
+  const dir = tempDir(t);
+  mkdirSync(join(dir, "models"));
+  writeFileSync(join(dir, "models", "body.json"), "{}");
+  assert.deepEqual(bodyErrors(dir, "models/body.json"), []);
+  assert.deepEqual(bodyErrors(dir, ""), ["BODY trống"]);
+  assert.deepEqual(bodyErrors(dir, "/etc/passwd"), ["BODY phải là đường dẫn tương đối trong repo"]);
+  assert.deepEqual(bodyErrors(dir, "models/../../x.json"), ["BODY không được có '..'"]);
+  assert.deepEqual(bodyErrors(dir, "models\\..\\x.json"), ["BODY không được có '..'"]);
+  assert.deepEqual(bodyErrors(dir, "models/none.json"), ["không thấy models/none.json"]);
+  assert.deepEqual(bodyErrors(dir, "models"), ["không thấy models"]);
+});
+
+test("sign-manifest: khóa ghi ra file 0600 ngoài repo, con không thấy biến khóa, file khóa bị xóa kể cả khi lỗi", (t) => {
+  const dir = tempDir(t);
+  const fakeRoot = join(dir, "repo");
+  mkdirSync(join(fakeRoot, "scripts", "models"), { recursive: true });
+  writeFileSync(join(fakeRoot, "body.json"), "{}");
+  const log = join(dir, "log.json");
+  // sign-manifest.mjs giả: ghi lại tham số, quyền file khóa, nội dung khóa và biến môi trường mà nó thấy.
+  writeFileSync(
+    join(fakeRoot, "scripts", "models", "sign-manifest.mjs"),
+    `import { readFileSync, statSync, writeFileSync } from "node:fs";
+const a = process.argv.slice(2); const opt = (n) => a[a.indexOf(n) + 1];
+writeFileSync(${JSON.stringify(log)}, JSON.stringify({ env: opt("--env"), key: opt("--key"),
+  mode: (statSync(opt("--key")).mode & 0o777).toString(8), content: readFileSync(opt("--key"), "utf8"),
+  sees: process.env.MANIFEST_SIGNING_KEY ?? null }));
+writeFileSync(opt("--out"), "{}");
+process.exit(Number(process.env.STUB_EXIT ?? 0));
+`,
+  );
+  const env = { PATH: process.env.PATH, RUNNER_TEMP: dir, MANIFEST_SIGNING_KEY: '{"kid":"thử"}', BODY: "body.json" };
+  assert.equal(signManifest(env, fakeRoot), join(fakeRoot, "target", "manifest", "models.json"));
+  const seen = JSON.parse(readFileSync(log, "utf8"));
+  assert.deepEqual({ ...seen, key: undefined }, { env: "production", key: undefined, mode: "600", content: '{"kid":"thử"}', sees: null });
+  assert.equal(seen.key.startsWith(dir), true);
+  assert.equal(existsSync(seen.key), false, "file khóa đã bị xóa");
+  assert.throws(() => signManifest({ ...env, STUB_EXIT: "3" }, fakeRoot), /thoát mã 3/);
+  assert.equal(existsSync(JSON.parse(readFileSync(log, "utf8")).key), false, "lỗi vẫn xóa file khóa");
+  assert.throws(() => signManifest({ ...env, MANIFEST_SIGNING_KEY: "" }, fakeRoot), /chưa có secret/);
+  assert.throws(() => signManifest({ ...env, BODY: "../x" }, fakeRoot), /không được có '..'/);
+  assert.throws(() => signManifest(env, dir), /chưa có scripts\/models\/sign-manifest.mjs/);
+});
+
+/** Chạy macos-keychain.sh với `security` và `openssl` giả; bản giả ghi mọi lệnh vào calls.log. */
+function runKeychain(t, { identities, importFails = false, arg = "import" }) {
+  const dir = tempDir(t);
+  const bin = join(dir, "bin");
+  mkdirSync(bin);
+  const calls = join(dir, "calls.log");
+  writeFileSync(
+    join(bin, "security"),
+    `#!/bin/sh
+echo "security $*" >> "${calls}"
+case "$1" in
+  import) [ "${importFails ? 1 : 0}" = 1 ] && exit 1 ;;
+  find-identity) cat "${join(dir, "identities.txt")}" ;;
+  create-keychain) : > "$4" ;;
+  delete-keychain) rm -f "$2" ;;
+esac
+exit 0
+`,
+  );
+  writeFileSync(join(dir, "identities.txt"), identities.map((i) => `${i}\n`).join(""));
+  writeFileSync(join(bin, "openssl"), "#!/bin/sh\necho abcd\n");
+  chmodSync(join(bin, "security"), 0o755);
+  chmodSync(join(bin, "openssl"), 0o755);
+  const r = spawnSync("sh", [join(root, "scripts/release/macos-keychain.sh"), arg], {
+    env: { PATH: `${bin}:/usr/bin:/bin`, RUNNER_TEMP: dir, P12: Buffer.from("p12").toString("base64"), P12_PASSWORD: "pw" },
+    encoding: "utf8",
+  });
+  const log = existsSync(calls) ? readFileSync(calls, "utf8") : "";
+  return { ...r, log, keychain: join(dir, "release.keychain-db") };
+}
+
+test("keychain: nhận đúng chứng thư Developer ID hợp lệ, in lệnh đặt biến, giữ keychain", (t) => {
+  const r = runKeychain(t, {
+    identities: [
+      '  1) AAAA "Apple Development: x (Y)"',
+      '  2) BBBB "Developer ID Application: Công ty A (TEAMID1234)"',
+      "     2 valid identities found",
+    ],
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(
+    r.stdout,
+    `MT_SIGN_IDENTITY='Developer ID Application: Công ty A (TEAMID1234)'; MT_KEYCHAIN='${r.keychain}'; export MT_SIGN_IDENTITY MT_KEYCHAIN\n`,
+  );
+  assert.equal(existsSync(r.keychain), true);
+  assert.doesNotMatch(r.log, /delete-keychain/);
+  assert.match(r.log, /security import .* -f pkcs12 .* -T \/usr\/bin\/codesign/);
+});
+
+test("keychain: không có Developer ID, import lỗi, hay tên có dấu nháy đơn thì báo lỗi và xóa keychain", (t) => {
+  for (const [opts, message] of [
+    [{ identities: ['  1) AAAA "Apple Development: x (Y)"'] }, /không phải Developer ID Application/],
+    [{ identities: [], importFails: true }, /^$/],
+    [{ identities: [`  1) BBBB "Developer ID Application: O'Brien (TEAMID1234)"`] }, /dấu nháy đơn/],
+  ]) {
+    const r = runKeychain(t, opts);
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr.trim(), message);
+    assert.equal(r.stdout, "");
+    assert.match(r.log, /delete-keychain/);
+    assert.equal(existsSync(r.keychain), false);
+  }
+  const bad = runKeychain(t, { identities: [], arg: "nope" });
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /dùng: macos-keychain.sh import \| delete/);
+});
+```
+
+Run:
+```bash
+node --test "scripts/release/*.test.mjs" 2>&1 | grep -E 'ERR_MODULE_NOT_FOUND\]|^ℹ (tests|pass|fail)'
+```
+
+Expected (lúc lập kế hoạch: chưa có module):
+```text
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/dtphong/Desktop/software_business/meeting-translator/scripts/release/sign-manifest-ci.mjs' imported from /Users/dtphong/Desktop/software_business/meeting-translator/scripts/release/signing.test.mjs
+ℹ tests 28
+ℹ pass 27
+ℹ fail 1
+```
+
+- [ ] **Step 2: Ba script của bước có secret**
+
+Tạo `scripts/release/sign-updates.mjs`:
+
+```js
+#!/usr/bin/env node
+// Ký bản cập nhật của tauri-plugin-updater (Q17 của kế hoạch 00; spec §6.11). Chạy ở job riêng của release.yml, job duy
+// nhất có TAURI_SIGNING_PRIVATE_KEY, trên runner mới, không biên dịch gì (Q1 của review 07a lần 1).
+//
+//   node scripts/release/sign-updates.mjs --dir <thư mục có bộ cài của hai nền tảng>
+//
+// Ký `<tên>.app.tar.gz` (macOS) và `<tên>_<phiên bản>_x64-setup.exe` (Windows) bằng `tauri signer sign --app-version`
+// (chữ ký gắn phiên bản, để updater bật requireSignedVersion), ra file `.sig` cạnh mỗi file. Khóa đọc từ biến môi trường
+// TAURI_SIGNING_PRIVATE_KEY (và _PASSWORD), không qua tham số dòng lệnh. Chưa có khóa thì không ký gì và báo.
+
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+import { root } from "./versions.mjs";
+
+/** Các file bản cập nhật cần ký trong `present` (tên file có trong thư mục), theo tên sản phẩm và phiên bản. */
+export function updateFiles(present, product, version) {
+  const wanted = [`${product}.app.tar.gz`, `${product}_${version}_x64-setup.exe`];
+  return wanted.filter((name) => present.includes(name));
+}
+
+/** Tham số của `pnpm` để ký một file. */
+export function signerArgs(version, file) {
+  return ["tauri", "signer", "sign", "--app-version", version, file];
+}
+
+export function main(argv, env = process.env) {
+  const i = argv.indexOf("--dir");
+  if (i < 0 || !argv[i + 1]) throw new Error("thiếu --dir <thư mục>");
+  const dir = argv[i + 1];
+  const conf = JSON.parse(readFileSync(join(root, "src-tauri/tauri.conf.json"), "utf8"));
+  const present = [`${conf.productName}.app.tar.gz`, `${conf.productName}_${conf.version}_x64-setup.exe`].filter((n) =>
+    existsSync(join(dir, n)),
+  );
+  const files = updateFiles(present, conf.productName, conf.version);
+  if (files.length === 0) throw new Error(`không có bản cập nhật nào trong ${dir}`);
+  if (!env.TAURI_SIGNING_PRIVATE_KEY) {
+    console.log(`chưa có khóa ký bản cập nhật: không ký ${files.join(", ")}`);
+    return [];
+  }
+  for (const name of files) {
+    execFileSync("pnpm", signerArgs(conf.version, join(dir, name)), {
+      cwd: root,
+      stdio: ["ignore", "ignore", "inherit"],
+      env,
+      shell: process.platform === "win32",
+    });
+    if (!existsSync(join(dir, `${name}.sig`))) throw new Error(`tauri signer không tạo ${name}.sig`);
+    console.log(`đã ký ${name}`);
+  }
+  return files;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  try {
+    main(process.argv.slice(2));
+  } catch (error) {
+    console.error(`LỖI: ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+```
+
+Tạo `scripts/release/sign-manifest-ci.mjs`:
+
+```js
+#!/usr/bin/env node
+// Bước ký manifest model production của sign-manifest.yml (kế hoạch 07a; Q17 của kế hoạch 00). Chạy ở job có secret,
+// sau job `check` (không secret) đã kiểm phần thân bằng đúng luật của app (`check_manifest_body` của kế hoạch 04).
+//
+//   MANIFEST_SIGNING_KEY=<JWK> BODY=<đường dẫn trong repo> node scripts/release/sign-manifest-ci.mjs
+//
+// Ghi khóa riêng ra file tạm quyền 0600 ngoài repo (sign-manifest.mjs của 04 đòi vậy), chạy sign-manifest.mjs
+// `--env production` với môi trường không còn biến khóa, rồi xóa file khóa dù thành công hay lỗi. Ra:
+// target/manifest/models.json.
+
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { isAbsolute, join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+import { root as repoRoot } from "./versions.mjs";
+
+/** Lỗi của đường dẫn phần thân: phải tương đối, nằm trong repo, không có `..`, và là một file có thật. */
+export function bodyErrors(root, body) {
+  if (!body) return ["BODY trống"];
+  if (isAbsolute(body) || body.startsWith("/") || body.startsWith("\\")) return ["BODY phải là đường dẫn tương đối trong repo"];
+  if (body.split(/[\\/]/).includes("..")) {
+    return ["BODY không được có '..'"];
+  }
+  const full = join(root, body);
+  if (!existsSync(full) || !statSync(full).isFile()) return [`không thấy ${body}`];
+  return [];
+}
+
+export function main(env = process.env, root = repoRoot) {
+  const key = env.MANIFEST_SIGNING_KEY;
+  if (!key) throw new Error("environment release chưa có secret MANIFEST_SIGNING_KEY");
+  const script = join(root, "scripts/models/sign-manifest.mjs");
+  if (!existsSync(script)) throw new Error("chưa có scripts/models/sign-manifest.mjs (kế hoạch 04)");
+  const errors = bodyErrors(root, env.BODY);
+  if (errors.length > 0) throw new Error(errors.join("; "));
+  const dir = env.RUNNER_TEMP ?? tmpdir();
+  const keyFile = join(dir, `manifest-signing-key-${process.pid}.jwk`);
+  const childEnv = { ...env };
+  delete childEnv.MANIFEST_SIGNING_KEY;
+  try {
+    writeFileSync(keyFile, key, { mode: 0o600 });
+    mkdirSync(join(root, "target", "manifest"), { recursive: true });
+    const out = join(root, "target", "manifest", "models.json");
+    const r = spawnSync(
+      process.execPath,
+      [script, "--env", "production", "--key", keyFile, "--body", join(root, env.BODY), "--out", out],
+      { cwd: root, env: childEnv, stdio: "inherit" },
+    );
+    if (r.status !== 0) throw new Error(`sign-manifest.mjs thoát mã ${r.status}`);
+    return out;
+  } finally {
+    rmSync(keyFile, { force: true });
+  }
+}
+
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  try {
+    console.log(`đã ký ${main()}`);
+  } catch (error) {
+    console.error(`LỖI: ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+```
 
 Tạo `scripts/release/macos-keychain.sh`:
 
@@ -4034,65 +4447,51 @@ case "${1:-}" in
 esac
 ```
 
-Tạo `scripts/release/sign-manifest-ci.sh`:
+Run: `chmod +x scripts/release/macos-keychain.sh`
 
-```sh
-#!/bin/sh
-# Bước ký manifest model production của workflow sign-manifest.yml (kế hoạch 07a). Đọc khóa riêng từ biến
-# MANIFEST_SIGNING_KEY, ghi ra file tạm quyền 0600 ngoài repo (sign-manifest.mjs của kế hoạch 04 đòi vậy), ký phần thân
-# BODY bằng `--env production`, rồi xóa file khóa dù thành công hay lỗi. Kết quả: target/manifest/models.json.
-set -eu
-root=$(cd "$(dirname "$0")/../.." && pwd)
-if [ -z "${MANIFEST_SIGNING_KEY:-}" ]; then
-  echo "environment release chưa có secret MANIFEST_SIGNING_KEY" >&2
-  exit 1
-fi
-if [ ! -f "$root/scripts/models/sign-manifest.mjs" ]; then
-  echo "chưa có scripts/models/sign-manifest.mjs (kế hoạch 04)" >&2
-  exit 1
-fi
-case "${BODY:-}" in
-  "" | /* | *..*)
-    echo "BODY phải là đường dẫn tương đối trong repo, không có '..'" >&2
-    exit 1
-    ;;
-esac
-if [ ! -f "$root/$BODY" ]; then
-  echo "không thấy $BODY" >&2
-  exit 1
-fi
-key="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/manifest-signing-key.jwk"
-trap 'rm -f "$key"' EXIT INT TERM
-(
-  umask 077
-  printf '%s' "$MANIFEST_SIGNING_KEY" >"$key"
-)
-unset MANIFEST_SIGNING_KEY
-mkdir -p "$root/target/manifest"
-node "$root/scripts/models/sign-manifest.mjs" --env production --key "$key" --body "$root/$BODY" \
-  --out "$root/target/manifest/models.json"
+Run:
+```bash
+node --test "scripts/release/*.test.mjs" 2>&1 | grep -E '^(✔ (sign|keychain)|ℹ (tests|pass|fail))' | sed -E 's/ \([0-9.]+ms\)//'
 ```
 
-Run: `chmod +x scripts/release/macos-keychain.sh scripts/release/sign-manifest-ci.sh`
+Expected (lúc lập kế hoạch; test của sign-updates tạo một khóa ký tạm bằng `tauri signer generate` trong thư mục tạm rồi xóa):
+```text
+✔ sign-updates: chỉ ký đúng hai loại bộ cài của phiên bản hiện tại
+✔ sign-updates: không có khóa thì không ký; có khóa thì tạo .sig gắn phiên bản
+✔ sign-manifest: BODY phải là file tương đối trong repo, không có '..'
+✔ sign-manifest: khóa ghi ra file 0600 ngoài repo, con không thấy biến khóa, file khóa bị xóa kể cả khi lỗi
+✔ keychain: nhận đúng chứng thư Developer ID hợp lệ, in lệnh đặt biến, giữ keychain
+✔ keychain: không có Developer ID, import lỗi, hay tên có dấu nháy đơn thì báo lỗi và xóa keychain
+ℹ tests 33
+ℹ pass 33
+ℹ fail 0
+```
 
-- [ ] **Step 2: Workflow**
+- [ ] **Step 3: Workflow**
 
 Tạo `.github/workflows/release.yml`:
 
 ```yaml
 # Build bản phát hành từ tag đã commit (spec §10.2): `.dmg` cho macOS arm64 và bộ cài NSIS `.exe` cho Windows x64, cùng
-# SHA-256 của bộ cài và bảng SHA-256 của tiến trình phụ (Đ15). Kế hoạch 07a; 07b thêm phần đăng bản (manifest cập nhật,
-# kênh stable/beta) và ký thật.
+# SHA-256 của bộ cài, bảng SHA-256 của tiến trình phụ (Đ15) và chữ ký bản cập nhật. Kế hoạch 07a; 07b thêm phần đăng bản.
 #
-# Ký, notarize, ký bản cập nhật chỉ chạy khi environment `release` có secret tương ứng; thiếu secret thì bước đó bỏ qua
-# và bản ra chỉ dùng thử nội bộ. Bước nào có secret thì không biên dịch gì: build script của các crate chạy ở bước khác,
-# khi môi trường không có secret và keychain đang khóa (rủi ro chuỗi cung ứng).
+# Tách job theo secret (Q1 của review 07a lần 1): job biên dịch code (của repo và của bên thứ ba: crate, CMake, npm) không
+# có secret nào; job có secret (environment `release`) chạy trên runner mới, checkout lại đúng commit, không biên dịch gì,
+# chỉ chạy script của repo và công cụ của hệ thống. Hai loại job chỉ nối với nhau qua artifact. Vì `build.rs` băm tiến
+# trình phụ đã ký, mỗi nền tảng có bốn job: build tiến trình phụ → ký chúng → build app → ký và đóng gói. Chữ ký bản cập
+# nhật ký ở một job riêng cuối cùng, để khóa ký bản cập nhật không nằm chung job với chứng thư hay dịch vụ ký.
 #
-# Secret của environment `release` (tên đã chốt ở kế hoạch 07a, mục "Secret của CI"):
+# Environment `release` phải có Required reviewers và chỉ cho tag `v*` (cùng nhánh `main` cho lần chạy tay) TRƯỚC khi
+# nhập secret đầu tiên (kế hoạch 07a, Task 14). Mỗi job có secret chờ người duyệt.
+#
+# Secret của environment `release`:
 #   APPLE_CERTIFICATE_P12, APPLE_CERTIFICATE_PASSWORD   chứng thư Developer ID Application (.p12, base64) và mật khẩu
 #   APPLE_API_KEY_P8, APPLE_API_KEY_ID, APPLE_API_ISSUER  khóa App Store Connect API để notarize
 #   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD  khóa ký bản cập nhật (Q17)
-# Biến cấu hình (không bí mật): MT_WINDOWS_SIGN_CMD, lệnh ký của dịch vụ ký cloud (sign-windows.mjs; chọn ở T2).
+# Biến cấu hình (Variables, không bí mật):
+#   APPLE_TEAM_ID         Team ID mà app tự kiểm trong chữ ký của mình (kế hoạch 06, AI_TRANSLATOR_TEAM_ID)
+#   WINDOWS_SIGNER        tên chủ chứng thư ký mã Windows (kế hoạch 06, AI_TRANSLATOR_SIGNER)
+#   MT_WINDOWS_SIGN_CMD   lệnh ký của dịch vụ ký cloud (sign-windows.mjs; chọn ở T2)
 name: Release
 
 on:
@@ -4112,15 +4511,79 @@ env:
   CARGO_INCREMENTAL: "0"
 
 jobs:
-  macos:
-    name: macOS arm64
+  macos-sidecars:
+    name: "macOS 1/4: tiến trình phụ (không secret)"
     runs-on: macos-26
-    timeout-minutes: 150
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Rust theo rust-toolchain.toml
+        run: rustup toolchain install
+      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: cargo-about@0.9.2
+      - name: asr-worker và llama-server tĩnh, ký ad-hoc
+        run: scripts/release/build-sidecars-macos.sh
+      - name: THIRD_PARTY_NOTICES (tải mã nguồn crate của mọi target trước, vì cargo-about chạy --frozen)
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          cargo fetch --locked
+          node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src target/release-work/llama.cpp
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-sidecars
+          path: |
+            src-tauri/binaries/
+            THIRD_PARTY_NOTICES.txt
+          if-no-files-found: error
+
+  macos-sidecars-signed:
+    name: "macOS 2/4: ký tiến trình phụ (secret, không biên dịch)"
+    needs: macos-sidecars
+    runs-on: macos-26
+    timeout-minutes: 20
     environment: release
     env:
       HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE_P12 != '' }}
-      HAS_NOTARY_KEY: ${{ secrets.APPLE_API_KEY_P8 != '' }}
-      MT_RELEASE_OUT: ${{ github.workspace }}/target/release-out
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: macos-sidecars
+      - name: Ký bằng Developer ID (không có chứng thư thì ký ad-hoc)
+        env:
+          P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          chmod +x src-tauri/binaries/*
+          trap 'scripts/release/macos-keychain.sh delete' EXIT
+          if [ "$HAS_APPLE_CERT" = "true" ]; then
+            eval "$(scripts/release/macos-keychain.sh import)"
+          fi
+          unset P12 P12_PASSWORD
+          scripts/release/build-sidecars-macos.sh --sign-only
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-sidecars-signed
+          path: src-tauri/binaries/
+          if-no-files-found: error
+
+  macos-app:
+    name: "macOS 3/4: build app (không secret)"
+    needs: [macos-sidecars, macos-sidecars-signed]
+    runs-on: macos-26
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -4133,40 +4596,76 @@ jobs:
         run: rustup toolchain install
       - name: protoc
         run: node scripts/release/install-tools.mjs protoc --dest "$RUNNER_TEMP/protoc"
-      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          tool: cargo-about@0.9.2
-      - name: Phụ thuộc của giao diện
+          name: macos-sidecars-signed
+          path: src-tauri/binaries
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: macos-sidecars
+          path: target/release-work/unsigned
+      - name: Phụ thuộc và build của giao diện
         run: |
+          chmod +x src-tauri/binaries/*
+          cp target/release-work/unsigned/THIRD_PARTY_NOTICES.txt .
           pnpm install --frozen-lockfile
           pnpm build
-      - name: Test thư viện app ở bản release (không có phần chỉ dành cho bản debug)
-        run: cargo test --release --locked -p meeting-translator --lib
-      - name: Tiến trình phụ (asr-worker, llama-server tĩnh), ký ad-hoc
-        run: scripts/release/build-sidecars-macos.sh
-      - name: THIRD_PARTY_NOTICES
-        run: node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src target/release-work/llama.cpp
-      - name: Ký tiến trình phụ bằng Developer ID
-        if: env.HAS_APPLE_CERT == 'true'
-        env:
-          P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-          P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      - name: Test bản quyền ở bản release (không có phần chỉ dành cho bản debug)
         run: |
-          eval "$(scripts/release/macos-keychain.sh import)"
-          trap 'scripts/release/macos-keychain.sh delete' EXIT
-          scripts/release/build-sidecars-macos.sh --sign-only
-      - name: Build app (không ký, không secret)
-        run: scripts/release/package-macos.sh build
-      - name: Ký app, notarize, .dmg, kiểm dung lượng, SHA-256, chữ ký bản cập nhật
+          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1
+      - name: Build app (Tauri không ký)
+        env:
+          AI_TRANSLATOR_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          scripts/release/package-macos.sh build
+          tar -C target/release/bundle/macos -cf "$RUNNER_TEMP/app.tar" "AI Translator.app"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-app
+          path: ${{ runner.temp }}/app.tar
+          if-no-files-found: error
+
+  macos-sign-app:
+    name: "macOS 4/4: ký app, notarize, .dmg (secret, không biên dịch)"
+    needs: [macos-sidecars, macos-sidecars-signed, macos-app]
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment: release
+    env:
+      HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE_P12 != '' }}
+      HAS_NOTARY_KEY: ${{ secrets.APPLE_API_KEY_P8 != '' }}
+      MT_RELEASE_OUT: ${{ github.workspace }}/target/release-out
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: macos-sidecars-signed
+          path: src-tauri/binaries
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: macos-app
+          path: ${{ runner.temp }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: macos-sidecars
+          path: target/release-work/unsigned
+      - name: Ký app, notarize, .dmg, kiểm dung lượng, SHA-256
         env:
           P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
+          chmod +x src-tauri/binaries/*
+          cp target/release-work/unsigned/THIRD_PARTY_NOTICES.txt .
+          mkdir -p target/release/bundle/macos
+          tar -C target/release/bundle/macos -xf "$RUNNER_TEMP/app.tar"
           trap 'scripts/release/macos-keychain.sh delete; rm -f "$RUNNER_TEMP/notary.p8"' EXIT
           if [ "$HAS_APPLE_CERT" = "true" ]; then
             eval "$(scripts/release/macos-keychain.sh import)"
@@ -4180,17 +4679,132 @@ jobs:
           scripts/release/package-macos.sh sign
           node scripts/release/release-check.mjs table src-tauri/binaries --target aarch64-apple-darwin \
             --out "$MT_RELEASE_OUT/sidecar-sha256-macos.json"
-          cp THIRD_PARTY_NOTICES.txt "$MT_RELEASE_OUT/"
+          cp THIRD_PARTY_NOTICES.txt "$MT_RELEASE_OUT/THIRD_PARTY_NOTICES-macos.txt"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: macos-arm64
           path: target/release-out/
           if-no-files-found: error
 
-  windows:
-    name: Windows x64
+  windows-sidecars:
+    name: "Windows 1/4: tiến trình phụ (không secret)"
     runs-on: windows-2025
-    timeout-minutes: 180
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Rust theo rust-toolchain.toml
+        run: rustup toolchain install
+      - name: Vulkan SDK
+        run: node scripts/release/install-tools.mjs vulkan-sdk
+      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: cargo-about@0.9.2
+      - name: asr-worker-vulkan, asr-worker-cpu, llama-server và DLL (chưa ký)
+        run: node scripts/release/build-sidecars-windows.mjs
+      - name: THIRD_PARTY_NOTICES (tải mã nguồn crate của mọi target trước, vì cargo-about chạy --frozen)
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          cargo fetch --locked
+          node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src target/release-work/llama.cpp
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-sidecars
+          path: |
+            src-tauri/binaries/
+            THIRD_PARTY_NOTICES.txt
+          if-no-files-found: error
+
+  windows-sidecars-signed:
+    name: "Windows 2/4: ký tiến trình phụ (secret, không biên dịch)"
+    needs: windows-sidecars
+    runs-on: windows-2025
+    timeout-minutes: 20
+    environment: release
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows-sidecars
+      - name: Ký tiến trình phụ và DLL (không có lệnh ký thì chỉ kiểm dumpbin)
+        env:
+          MT_WINDOWS_SIGN_CMD: ${{ vars.MT_WINDOWS_SIGN_CMD }}
+        run: node scripts/release/build-sidecars-windows.mjs --sign-only
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-sidecars-signed
+          path: src-tauri/binaries/
+          if-no-files-found: error
+
+  windows-app:
+    name: "Windows 3/4: build app (không secret)"
+    needs: [windows-sidecars, windows-sidecars-signed]
+    runs-on: windows-2025
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Rust theo rust-toolchain.toml
+        run: rustup toolchain install
+      - name: protoc
+        run: node scripts/release/install-tools.mjs protoc --dest "$RUNNER_TEMP/protoc"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows-sidecars-signed
+          path: src-tauri/binaries
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows-sidecars
+          path: target/release-work/unsigned
+      - name: Phụ thuộc và build của giao diện
+        run: |
+          cp target/release-work/unsigned/THIRD_PARTY_NOTICES.txt .
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Test bản quyền ở bản release (không có phần chỉ dành cho bản debug)
+        run: |
+          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1
+      - name: Build app (chưa đóng gói)
+        env:
+          AI_TRANSLATOR_SIGNER: ${{ vars.WINDOWS_SIGNER }}
+        run: node scripts/release/package-windows.mjs build
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-app
+          path: |
+            target/release/meeting-translator.exe
+            target/release-work/binaries-before-build.json
+          if-no-files-found: error
+
+  windows-bundle:
+    name: "Windows 4/4: bộ cài NSIS, ký (secret, không biên dịch)"
+    needs: [windows-sidecars, windows-sidecars-signed, windows-app]
+    runs-on: windows-2025
+    timeout-minutes: 60
     environment: release
     defaults:
       run:
@@ -4205,46 +4819,67 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-      - name: Rust theo rust-toolchain.toml
+      - name: Rust theo rust-toolchain.toml (tauri bundle đọc cargo metadata, không biên dịch)
         run: rustup toolchain install
-      - name: protoc
-        run: node scripts/release/install-tools.mjs protoc --dest "$RUNNER_TEMP/protoc"
-      - name: Vulkan SDK
-        run: node scripts/release/install-tools.mjs vulkan-sdk
-      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          tool: cargo-about@0.9.2
-      - name: Phụ thuộc của giao diện
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build
-      - name: Test thư viện app ở bản release (không có phần chỉ dành cho bản debug)
-        run: cargo test --release --locked -p meeting-translator --lib
-      - name: Tiến trình phụ (asr-worker-vulkan, asr-worker-cpu, llama-server và DLL)
-        run: node scripts/release/build-sidecars-windows.mjs
-      - name: Ký tiến trình phụ và DLL
-        if: vars.MT_WINDOWS_SIGN_CMD != ''
+          name: windows-sidecars-signed
+          path: src-tauri/binaries
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows-app
+          path: target
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows-sidecars
+          path: target/release-work/unsigned
+      - name: Bộ cài NSIS, ký, kiểm, SHA-256
         env:
           MT_WINDOWS_SIGN_CMD: ${{ vars.MT_WINDOWS_SIGN_CMD }}
-        run: node scripts/release/build-sidecars-windows.mjs --sign-only
-      - name: THIRD_PARTY_NOTICES
-        run: node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src target/release-work/llama.cpp
-      - name: Build app (không secret)
-        run: node scripts/release/package-windows.mjs build
-      - name: Bộ cài NSIS, ký, kiểm, SHA-256, chữ ký bản cập nhật
-        env:
-          MT_WINDOWS_SIGN_CMD: ${{ vars.MT_WINDOWS_SIGN_CMD }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
+          cp target/release-work/unsigned/THIRD_PARTY_NOTICES.txt .
+          pnpm install --frozen-lockfile --ignore-scripts
           node scripts/release/package-windows.mjs bundle
-          cp target/release/bundle/nsis/*-setup.exe* "$MT_RELEASE_OUT/"
+          cp target/release/bundle/nsis/*-setup.exe "$MT_RELEASE_OUT/"
           node scripts/release/release-check.mjs table src-tauri/binaries --target x86_64-pc-windows-msvc \
             --out "$MT_RELEASE_OUT/sidecar-sha256-windows.json"
-          cp THIRD_PARTY_NOTICES.txt "$MT_RELEASE_OUT/"
+          cp THIRD_PARTY_NOTICES.txt "$MT_RELEASE_OUT/THIRD_PARTY_NOTICES-windows.txt"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-x64
+          path: target/release-out/
+          if-no-files-found: error
+
+  update-signatures:
+    name: "Chữ ký bản cập nhật (secret, không biên dịch)"
+    needs: [macos-sign-app, windows-bundle]
+    runs-on: macos-26
+    timeout-minutes: 15
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: "*-*64"
+          merge-multiple: true
+          path: target/release-out
+      - name: Ký .app.tar.gz và bộ cài Windows (tauri signer, gắn phiên bản)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          node scripts/release/sign-updates.mjs --dir target/release-out
+          ls target/release-out
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release
           path: target/release-out/
           if-no-files-found: error
 ```
@@ -4255,23 +4890,59 @@ Tạo `.github/workflows/sign-manifest.yml`:
 # Ký manifest model production trong CI (spec §10.2; Q17 của kế hoạch 00; kế hoạch 04a QĐ10, 07a). Khóa riêng duy nhất
 # nằm ở secret MANIFEST_SIGNING_KEY của environment `release` (JWK Ed25519, có `kid` thuộc khối `production` của
 # src-tauri/keys/manifest-public-keys.json); bản sao offline mã hóa nằm ngoài CI. Người vận hành chạy workflow bằng tay với
-# đường dẫn phần thân (JSON chưa ký, sinh bằng scripts/models/build-manifest.mjs), rồi tải models.json đã ký lên R2.
+# đường dẫn phần thân (JSON chưa ký, commit trong repo), rồi tải models.json đã ký lên R2.
+#
+# Hai job (N2 và Q1 của review 07a lần 1): `check` (không secret) kiểm phần thân bằng đúng luật của app
+# (`check_manifest_body` của kế hoạch 04: Manifest::parse, và so với phần thân của bản đang phát hành để chặn đổi `id`);
+# `sign` (environment `release`) chạy trên runner mới, không biên dịch gì, chỉ ký.
 name: Sign model manifest
 
 on:
   workflow_dispatch:
     inputs:
       body:
-        description: Đường dẫn tương đối trong repo tới phần thân manifest (JSON chưa ký)
+        description: Đường dẫn tương đối trong repo tới phần thân manifest mới (JSON chưa ký)
         required: true
+        type: string
+      previous:
+        description: Đường dẫn tương đối trong repo tới phần thân của bản đang phát hành (bỏ trống ở lần đầu)
+        required: false
         type: string
 
 permissions:
   contents: read
 
 jobs:
+  check:
+    name: Kiểm phần thân bằng luật của app (không secret)
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Rust theo rust-toolchain.toml
+        run: rustup toolchain install
+      - name: protoc
+        run: node scripts/release/install-tools.mjs protoc --dest "$RUNNER_TEMP/protoc"
+      - name: check_manifest_body
+        env:
+          BODY: ${{ inputs.body }}
+          PREVIOUS: ${{ inputs.previous }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          export MANIFEST_BODY="$PWD/$BODY"
+          if [ -n "$PREVIOUS" ]; then export MANIFEST_PREVIOUS="$PWD/$PREVIOUS"; fi
+          cargo test --locked -p meeting-translator --lib check_manifest_body -- --ignored --nocapture
+
   sign:
-    name: Ký manifest production
+    name: Ký manifest production (secret, không biên dịch)
+    needs: check
     runs-on: macos-26
     timeout-minutes: 15
     environment: release
@@ -4286,7 +4957,7 @@ jobs:
         env:
           MANIFEST_SIGNING_KEY: ${{ secrets.MANIFEST_SIGNING_KEY }}
           BODY: ${{ inputs.body }}
-        run: scripts/release/sign-manifest-ci.sh
+        run: node scripts/release/sign-manifest-ci.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: models-manifest
@@ -4294,7 +4965,7 @@ jobs:
           if-no-files-found: error
 ```
 
-- [ ] **Step 3: Kiểm cú pháp workflow và script sh** (shellcheck bản build sẵn, chỉ trên máy dev)
+- [ ] **Step 4: Kiểm cú pháp workflow và script sh** (shellcheck bản build sẵn, chỉ trên máy dev), và kiểm không job có secret nào biên dịch
 
 Run:
 ```bash
@@ -4314,64 +4985,53 @@ actionlint: sạch
 shellcheck: sạch
 ```
 
-- [ ] **Step 4: Thử bước ký manifest ở các chiều lỗi** (không có khóa; chưa có script của 04; đường dẫn ra ngoài repo)
+Job có `environment: release` không được có lệnh biên dịch nào (`cargo build`/`test`, `pnpm build`, `build-sidecars-*` trừ `--sign-only`, `package-*` phần `build`, `pnpm install` không `--ignore-scripts`):
 
 Run:
 ```bash
-BODY=x.json scripts/release/sign-manifest-ci.sh; echo "exit=$?"
-MANIFEST_SIGNING_KEY='{"kid":"thử"}' BODY=x.json scripts/release/sign-manifest-ci.sh; echo "exit=$?"
-mkdir -p scripts/models && touch scripts/models/sign-manifest.mjs
-MANIFEST_SIGNING_KEY='{"kid":"thử"}' BODY=../x.json scripts/release/sign-manifest-ci.sh; echo "exit=$?"
-rm -r scripts/models
+ruby -ryaml -e '
+compile = /cargo (build|test|clippy)|pnpm build|pnpm install --frozen-lockfile$|build-sidecars-(macos\.sh|windows\.mjs)$|package-(macos\.sh|windows\.mjs) build/
+%w[release sign-manifest].each do |wf|
+  YAML.load_file(".github/workflows/#{wf}.yml")["jobs"].each do |name, job|
+    runs = job["steps"].map { |s| s["run"].to_s }.join("\n").lines.map(&:strip)
+    bad = runs.grep(compile)
+    puts "#{wf}/#{name}: #{job["environment"] ? "secret" : "không secret"}#{job["environment"] && !bad.empty? ? " -- BIÊN DỊCH: #{bad}" : ""}"
+  end
+end'
+```
+
+Expected (lúc lập kế hoạch: năm job có secret, không job nào trong đó biên dịch):
+```text
+release/macos-sidecars: không secret
+release/macos-sidecars-signed: secret
+release/macos-app: không secret
+release/macos-sign-app: secret
+release/windows-sidecars: không secret
+release/windows-sidecars-signed: secret
+release/windows-app: không secret
+release/windows-bundle: secret
+release/update-signatures: secret
+sign-manifest/check: không secret
+sign-manifest/sign: secret
+```
+
+- [ ] **Step 5: Bước test bản quyền ở bản release** (QĐ18; lúc lập kế hoạch khoảng 2 phút)
+
+Run:
+```bash
+cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1 2>&1 | grep -E '^test result'
 ```
 
 Expected (lúc lập kế hoạch):
 ```text
-environment release chưa có secret MANIFEST_SIGNING_KEY
-exit=1
-chưa có scripts/models/sign-manifest.mjs (kế hoạch 04)
-exit=1
-BODY phải là đường dẫn tương đối trong repo, không có '..'
-exit=1
-```
-
-- [ ] **Step 5: Thử keychain tạm** với một chứng thư tự ký mang tên "Developer ID Application" (chỉ để thử, xóa ngay): `security import` nhận file, nhưng `find-identity -v` không nhận chứng thư không tin cậy, nên script báo lỗi và tự xóa keychain. Chứng thư Developer ID thật chỉ thử được ở Task 14.
-
-Run:
-```bash
-t=target/release-work/kc && rm -rf "$t" && mkdir -p "$t"
-printf '[req]\ndistinguished_name = dn\nprompt = no\n[dn]\nCN = Developer ID Application: Test Only (TEAMID1234)\n[ext]\nkeyUsage = critical, digitalSignature\nextendedKeyUsage = critical, codeSigning\nbasicConstraints = critical, CA:false\n' > "$t/cert.cnf"
-/usr/bin/openssl req -x509 -newkey rsa:2048 -nodes -keyout "$t/k.pem" -out "$t/c.pem" -days 1 -config "$t/cert.cnf" -extensions ext 2>/dev/null
-/usr/bin/openssl pkcs12 -export -inkey "$t/k.pem" -in "$t/c.pem" -out "$t/t.p12" -passout pass:test-only
-RUNNER_TEMP="$PWD/$t" P12="$(base64 < "$t/t.p12")" P12_PASSWORD=test-only scripts/release/macos-keychain.sh import; echo "exit=$?"
-ls "$t"
-rm -rf "$t"
-```
-
-Expected (lúc lập kế hoạch; không còn file `release.keychain-db` sau lệnh):
-```text
-chứng thư trong P12 không phải Developer ID Application
-exit=1
-c.pem
-cert.cnf
-k.pem
-t.p12
-```
-
-- [ ] **Step 5b: Bước test thư viện app ở bản release** (QĐ18; lúc lập kế hoạch khoảng 2 phút)
-
-Run: `cargo test --release --locked -p meeting-translator --lib 2>&1 | grep -E '^test result'`
-
-Expected (lúc lập kế hoạch):
-```text
-test result: ok. 162 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.38s
+test result: ok. 87 passed; 0 failed; 0 ignored; 0 measured; 317 filtered out; finished in 0.78s
 ```
 
 - [ ] **Step 6: Commit**
 
 Run:
 ```bash
-git add scripts/release/macos-keychain.sh scripts/release/sign-manifest-ci.sh .github/workflows/release.yml .github/workflows/sign-manifest.yml
+git add scripts/release/signing.test.mjs scripts/release/sign-updates.mjs scripts/release/sign-manifest-ci.mjs scripts/release/macos-keychain.sh .github/workflows/release.yml .github/workflows/sign-manifest.yml
 git commit -q -m "ci: workflow phát hành macOS và Windows từ tag; ký, notarize, ký bản cập nhật và ký manifest model chỉ chạy khi có secret, không bước có secret nào biên dịch code (§6.11, §10.2, Q17)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git log --oneline -1 | cut -c9-
 ```
@@ -4383,7 +5043,7 @@ ci: workflow phát hành macOS và Windows từ tag; ký, notarize, ký bản c�
 
 ## Task 11: Kiểm tra chuẩn (mục 6.2 của kế hoạch 00)
 
-Đủ khối lệnh của mục 6.2 của kế hoạch 00 trên cây cuối của 07a, cộng các phép kiểm mới của file này (đúng các bước của job macOS trong `ci.yml`). Không có commit. 07a không đổi crate nào ngoài app, nên số test của các crate khác như trên `31ca0fb`.
+Đủ khối lệnh của mục 6.2 của kế hoạch 00 trên cây cuối của 07a, cộng các phép kiểm mới của file này (đúng các bước của job macOS trong `ci.yml`). Không có commit. 07a không đổi crate nào ngoài app, nên số test của các crate khác như trên `d266be5`.
 
 - [ ] **Step 1: Rust**
 
@@ -4414,9 +5074,19 @@ Run:
 cargo test --workspace 2>&1 | grep -E '^test result' | awk '{p+=$4; f+=$6; i+=$8} END {print "passed", p, "failed", f, "ignored", i}'
 ```
 
-Expected (lúc lập kế hoạch, trên `31ca0fb` cộng 07a (4 test mới trong app)):
+Expected (lúc lập kế hoạch, trên `d266be5` cộng 07a (4 test mới trong app)):
 ```text
-passed 504 failed 0 ignored 11
+passed 757 failed 0 ignored 13
+```
+
+Run:
+```bash
+cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1 2>&1 | grep -E '^test result'
+```
+
+Expected (lúc lập kế hoạch; bản release không có `DevGate` (03), bản quyền của 06):
+```text
+test result: ok. 87 passed; 0 failed; 0 ignored; 0 measured; 317 filtered out; finished in 0.89s
 ```
 
 Run:
@@ -4453,17 +5123,17 @@ Run:
 ```bash
 pnpm install --frozen-lockfile >/dev/null && pnpm build >/dev/null 2>&1; echo "build: $?"
 pnpm test 2>&1 | grep -E 'Test Files|Tests '
-node --test "scripts/release/*.test.mjs" 2>&1 | grep -E '^ℹ (tests|pass|fail)'
+node --test "scripts/release/*.test.mjs" scripts/models/manifest.test.mjs 2>&1 | grep -E '^ℹ (tests|pass|fail)'
 pnpm audit --audit-level high 2>&1 | tail -1
 ```
 
 Expected (lúc lập kế hoạch):
 ```text
 build: 0
- Test Files  7 passed (7)
-      Tests  68 passed (68)
-ℹ tests 27
-ℹ pass 27
+ Test Files  15 passed (15)
+      Tests  128 passed (128)
+ℹ tests 39
+ℹ pass 39
 ℹ fail 0
 No known vulnerabilities found
 ```
@@ -4478,7 +5148,7 @@ scripts/release/check-release-config.sh 2>&1 | tail -1
 Expected (lúc lập kế hoạch; `--no-llama` ghi đè file có đủ llama.cpp của Task 5, chạy lại Task 5 Step 5 trước khi đóng gói):
 ```text
 third_party khớp whisper-rs-sys 0.15.0 và whisper-rs 0.16.0 trên crates.io cộng hai bản vá
-THIRD_PARTY_NOTICES.txt: 125 văn bản giấy phép Rust (464 crate), 5 gói npm, 4 mục C/C++ và model
+THIRD_PARTY_NOTICES.txt: 139 văn bản giấy phép Rust (498 crate), 5 gói npm, 6 mục C/C++ và model
 hai cấu hình đóng gói hợp lệ
 ```
 
@@ -4577,23 +5247,29 @@ Agent không đẩy lên GitHub, không tạo secret và không chạy workflow 
 
 - [ ] **Step 1 (người): Cấu hình repo.**
   - Settings › Actions › General: cho phép Actions; "Workflow permissions" để "Read repository contents" (mặc định của repo mới).
-  - Settings › Environments: tạo `release`. Đề xuất (điểm cần quyết 3): bật "Required reviewers" là chủ dự án, và "Deployment branches and tags" chỉ cho tag `v*` (và nhánh `main` cho lần chạy tay).
-  - Chưa cần secret nào cho bước này.
+  - Settings › Environments: tạo `release`, **bắt buộc** (N1 của review lần 1): bật "Required reviewers" là chủ dự án, và "Deployment branches and tags" chỉ cho tag `v*` cộng nhánh `main` (cho lần chạy tay).
+  - Settings › Rules › Rulesets: một ruleset cho tag `v*` (chỉ chủ dự án tạo, không ai xóa hay sửa tag).
+  - Settings › Secrets and variables › Actions › Variables: `APPLE_TEAM_ID`, `WINDOWS_SIGNER` để trống tới khi có T1, T2 (QĐ27).
+  - Chưa nhập secret nào ở task này. Không bao giờ nhập secret trước khi hai luật trên có hiệu lực.
 - [ ] **Step 2 (người): Đẩy `main`.** Workflow `CI` chạy hai job. Expected: job macOS xanh. Job Windows là lần đầu code Windows của app chạy thật (trước đây chỉ `check-windows.sh` trên Mac): test nào đỏ thì ghi lại tên test và log, mở việc sửa theo kế hoạch của phần đó (01, 02); không tắt test.
 - [ ] **Step 3 (người): Chạy `Release` bằng tay** (Actions › Release › Run workflow, nhánh `main`).
   - Expected lần đầu: job Windows dừng ở bước "Vulkan SDK" với `vulkansdk-windows-X64-1.4.363.0.exe: versions.env chưa có SHA-256; SHA-256 của file vừa tải là <64 ký tự>` (QĐ8). So số đó với SHA-256 mà trang tải của LunarG công bố cho đúng file đó; khớp thì ghi vào `VULKAN_SDK_SHA256=` trong `scripts/release/versions.env`, commit (`build(release): khóa SHA-256 của Vulkan SDK 1.4.363.0`), đẩy, chạy lại.
-  - Expected job macOS: xanh; artifact `macos-arm64` có `AI Translator_0.1.0_aarch64.dmg` (khoảng 7,6 MB), `SHA256SUMS-macos.txt`, `sidecar-sha256-macos.json`, `THIRD_PARTY_NOTICES.txt`; log có "chưa có khóa notarize" và "chưa có khóa ký bản cập nhật".
-  - Expected job Windows (lần chạy sau): xanh; log bước tiến trình phụ in danh sách DLL của từng file (`dumpbin`), không có dòng `LỖI`; artifact `windows-x64` có `AI Translator_0.1.0_x64-setup.exe` và số byte của nó ≤ 60 000 000.
-- [ ] **Step 4: Ghi kết quả vào kế hoạch 00** (agent làm được khi người gửi log): C9 (VC runtime: dòng `deps-windows` của mọi file không có `VCRUNTIME`, `MSVCP`, `VCOMP`), C10 (dung lượng bộ cài Windows), C11 (hai bản `asr-worker` không nạp DLL nào nằm cạnh chúng); dòng 199, 208, 210, 214. Đỏ ở bước nào thì sửa script theo log, chạy lại.
+  - Mỗi job có `release` chờ duyệt (Review deployments): duyệt từng job khi nó tới lượt.
+  - Expected nhánh macOS (4 job): xanh; bước "THIRD_PARTY_NOTICES" của `macos-sidecars` in đủ số văn bản giấy phép và số crate như Task 11 trên máy dev (Q2: nhờ `cargo fetch --locked`); artifact `macos-arm64` có `AI Translator_0.1.0_aarch64.dmg` (khoảng 7,6 MB), `AI Translator.app.tar.gz`, `SHA256SUMS-macos.txt`, `sidecar-sha256-macos.json`, `THIRD_PARTY_NOTICES-macos.txt`; log có "chưa có khóa notarize".
+  - Expected nhánh Windows (4 job, lần chạy sau): xanh; log của `windows-sidecars` và `windows-sidecars-signed` in danh sách DLL của từng file (`dumpbin`), không có dòng `LỖI`; artifact `windows-x64` có `AI Translator_0.1.0_x64-setup.exe`, số byte ≤ 60 000 000.
+  - Expected job `update-signatures`: "chưa có khóa ký bản cập nhật"; artifact `release` gộp đủ file của hai nền tảng.
+  - Kiểm: log của năm job có `release` không có dòng `Compiling`, `cmake` hay `Building`; chỉ job không secret mới có (QĐ12).
+  - Bộ cài Windows vượt 60 000 000 byte (C10, N5 của review lần 1) thì thử theo thứ tự, mỗi lần đo lại: (1) chỉ giữ biến thể CPU từ `haswell` trở lên của `ggml-cpu-*.dll` (Đ13 đã đòi AVX2; bỏ các DLL biến thể thấp hơn khỏi `binaries/` trước khi băm); (2) đặt `bundle.windows.nsis.compression` là `lzma` (đặc) trong `tauri.windows.json`; (3) vẫn vượt thì báo chủ dự án chọn giữa nâng ngưỡng và tách bộ cài (bản CPU riêng, bản Vulkan riêng).
+- [ ] **Step 4: Ghi kết quả vào kế hoạch 00** (agent làm được khi người gửi log): số phút của từng job (điểm cần quyết 4); C9 (VC runtime: dòng `deps-windows` của mọi file không có `VCRUNTIME`, `MSVCP`, `VCOMP`), C10 (dung lượng bộ cài Windows), C11 (hai bản `asr-worker` không nạp DLL nào nằm cạnh chúng); dòng 199, 208, 210, 214. Đỏ ở bước nào thì sửa script theo log, chạy lại.
 
 ## Task 15: Thử bản `.dmg` trên Mac (cần người)
 
-Bản ký ad-hoc từ Task 6 (hoặc artifact của Task 14). Chưa notarize nên Gatekeeper chặn lần mở đầu; đây là bước thử nội bộ, không phải A6.
+Bản ký ad-hoc với hardened runtime và entitlement của QĐ23, từ Task 6 (hoặc artifact của Task 14). Phải thử bản này, không thử `pnpm tauri dev` hay `run-dev-app.sh` (N9 của review lần 1: chỉ bản ký hardened runtime mới cho biết entitlement có đủ không). Chưa notarize nên Gatekeeper chặn lần mở đầu; đây là bước thử nội bộ, không phải A6. Bản ký ad-hoc không có Team ID nên tự kiểm chữ ký của 06 coi là không chính hãng (QĐ27): app chỉ chạy Free và báo "Bản cài không chính hãng"; đó là đúng thiết kế, không phải lỗi.
 
 - [ ] **Step 1 (người):** Mở `target/release-out/AI Translator_0.1.0_aarch64.dmg`, kéo AI Translator vào Applications. Chạy `xattr -dr com.apple.quarantine "/Applications/AI Translator.app"` (bản chưa notarize), rồi mở app.
-  - Expected: app mở, có biểu tượng ở menu bar; Giới thiệu hiện câu "AI Translator dùng các phần mềm mã nguồn mở…" và khung danh sách giấy phép cuộn được (có `whisper.cpp`, `llama.cpp`, `react`, `tauri`).
+  - Expected: app mở, có biểu tượng ở menu bar, có thông báo "Bản cài không chính hãng" (chỉ Free); Giới thiệu hiện câu "AI Translator dùng các phần mềm mã nguồn mở…" và khung danh sách giấy phép cuộn được (có `whisper.cpp`, `llama.cpp`, `react`, `tauri`).
 - [ ] **Step 2 (người):** Có model ở thư mục model của bản phát hành (`~/Library/Application Support/com.aitranslator.desktop/models`; trước khi có 04 thì chép 4 file của `models/`), bấm Bắt đầu với một video có tiếng.
-  - Expected: macOS hỏi quyền "Ghi âm thanh hệ thống" với câu của `InfoPlist.strings`; cho phép thì phụ đề hiện. Đây là lần đầu app chạy với hardened runtime: nếu thu âm thanh không chạy, xem Console (lọc `AI Translator`, `tccd`, `amfid`) và báo lại, vì có thể cần thêm entitlement (07b).
+  - Expected: macOS hỏi quyền "Ghi âm thanh hệ thống" với câu của `InfoPlist.strings`; cho phép thì phụ đề hiện (trong hạn mức Free). Đây là lần đầu app thu âm thanh hệ thống dưới hardened runtime: nếu không thu được, xem Console (lọc `AI Translator`, `tccd`, `amfid`), ký lại app không có entitlement (`codesign --force --sign - --options runtime`) để so, và báo lại: sửa `entitlements.plist` ngay trong 07a, không chờ 07b, vì thiếu nó thì bản phát hành không dịch được.
   - Expected: không có lỗi `sidecarTampered` hay `sidecarMissing` (bảng SHA-256 dùng đúng tên sau khi đóng gói, QĐ1).
 - [ ] **Step 3 (người):** Thoát bằng menu bar › Thoát, xóa app khỏi Applications.
 
@@ -4612,7 +5288,7 @@ Bộ cài chưa ký từ artifact `windows-x64` của Task 14. SmartScreen sẽ 
 
 1. **Dịch vụ ký cloud cho chứng thư OV Windows** (T2): SSL.com eSigner, DigiCert KeyLocker, Azure Trusted Signing, hay dịch vụ khác. Chọn xong thì đặt biến `MT_WINDOWS_SIGN_CMD` và thêm secret của dịch vụ vào hai bước ký của `release.yml` (07b). Chưa chọn thì bộ cài Windows không ký.
 2. **Tài khoản Apple Developer** (T1): cá nhân hay tổ chức (tổ chức cần D-U-N-S). Có tài khoản thì tạo chứng thư Developer ID Application và khóa App Store Connect API, nhập 5 secret Apple vào environment `release`.
-3. **Environment `release`:** đề xuất bật "Required reviewers" (chủ dự án duyệt từng lần phát hành) và chỉ cho tag `v*`. Đồng ý không?
+3. **Người duyệt của environment `release`:** luật đã bắt buộc (Task 14 Step 1); cần chọn ai là người duyệt (chủ dự án, hay thêm một người nữa), biết rằng một lần phát hành có năm job chờ duyệt.
 4. **Phút chạy Actions của repo riêng tư:** runner macOS tính phút gấp nhiều lần Linux. CI chạy ở mỗi push lên `main` và mỗi PR như hiện tại, hay chỉ PR và chạy tay? Không có cache (QĐ17) nên mỗi lần chạy lâu (ước lượng 30–60 phút cho job macOS; số thật có sau Task 14).
 5. **Thông tin bộ cài:** `publisher` và `copyright` (tên pháp nhân hay hộ kinh doanh) chưa đặt trong `tauri.*.json`; EULA trong bộ cài (Q8) chưa có nội dung. Cần tên và nội dung trước bản phát hành công khai.
 6. **Dependabot:** giữ PR đề xuất bản mới mỗi tuần (QĐ16), hay chỉ bật cảnh báo bảo mật (Dependabot alerts và security updates)?
@@ -4624,11 +5300,11 @@ Bộ cài chưa ký từ artifact `windows-x64` của Task 14. SmartScreen sẽ 
 
 1. `tauri-plugin-updater` (cùng dòng 2.x với Tauri core, TLS của hệ điều hành như 04): manifest cập nhật trên CDN, kiểm lúc khởi động và mỗi 24 giờ, cài ở lần thoát kế tiếp, mời khởi động lại khi rảnh (Q13), hai kênh stable và beta theo `updateChannel` (dòng 50, 203, 204). Khởi động lại để cập nhật dùng `AppHandle::request_restart` (đi qua `RunEvent::Exit`, 03 lưu lịch sử ở đó) và không bị chặn thoát (dòng 63).
 2. Khóa công khai của bản cập nhật trong cấu hình app; bật `requireSignedVersion` (chữ ký đã gắn phiên bản, QĐ20); sinh và ký `latest.json` cho từng kênh trong `release.yml`; thử cập nhật thật từ bản trước (dòng 307).
-3. Tạo khóa production theo Q17: một khóa ký bản cập nhật (`tauri signer generate`), một khóa ký manifest model (`scripts/models/gen-manifest-key.mjs` của 04), tạo trên máy không nối mạng hay trong CI, nhập thẳng vào secret của environment `release`, kèm bản sao offline mã hóa bằng passphrase (USB; passphrase in ra giấy). Ghi khóa công khai manifest vào khối `production` của `src-tauri/keys/manifest-public-keys.json`, đặt `PRODUCTION_URL` (04); chạy `sign-manifest.yml` lần đầu.
+3. Tạo khóa production theo Q17: một khóa ký bản cập nhật (`tauri signer generate`), một khóa ký manifest model, tạo trên máy không nối mạng hay trong CI, nhập thẳng vào secret của environment `release` (sau khi luật của Task 14 Step 1 có hiệu lực), kèm bản sao offline mã hóa bằng passphrase (USB; passphrase in ra giấy). `scripts/models/gen-manifest-key.mjs` của 04 chỉ nhận `kid` dạng `stg-…` (N3 của review lần 1): 07b thêm cách tạo `kid` `prod-<năm>-<tháng>-<số>` (cờ `--env production` có test, ghi khóa riêng thẳng ra nơi lưu, không ra đĩa thường). Ghi khóa công khai manifest vào khối `production` của `src-tauri/keys/manifest-public-keys.json`, đặt `PRODUCTION_URL` (04); commit phần thân manifest production vào repo và chạy `sign-manifest.yml` lần đầu. Quy trình đổi khóa theo spec §10.2, áp cho cả khóa manifest lẫn `pubkey` của updater: đổi có kế hoạch thì một bản phát hành tin cả khóa cũ lẫn mới, bản sau bỏ khóa cũ (lần mở đầu sau đó cần mạng); lộ khóa thì bản app mới chỉ tin khóa mới, khóa lộ bị gỡ ngay.
 4. Ký thật: macOS (T1) với notarize và staple; đo lại thời gian chờ lần đầu với bản đã ký (dòng 150); Windows (T2) với `MT_WINDOWS_SIGN_CMD` và secret của dịch vụ ký; tự kiểm chữ ký lúc khởi động có Team ID, tên chủ chứng thư thật (dòng 264, 06 và 07).
 5. Chuỗi phát hành cuối: tag `v*`, bản nháp GitHub Release hay tải lên CDN, công bố SHA-256 trên website (dòng 270), thêm tên miền website vào `navigation::EXTERNAL_HOSTS` (T7).
-6. THIRD_PARTY_NOTICES sau 03 và 06: SQLCipher (BSD), OpenSSL 3.6.3 (Apache-2.0, chỉ Windows), câu mẫu FLEURS (CC BY 4.0), thư viện vẽ mã QR (06); `clarify` trong `about.toml` cho crate nhúng mã nguồn C (`libsqlite3-sys`, `openssl-src`), có checksum của file giấy phép thật.
+6. Rà lại THIRD_PARTY_NOTICES theo cây cuối (sau 06): mọi crate nhúng mã nguồn C có `clarify` (07a đã làm `onig_sys`, `libsqlite3-sys`, `openssl-src`), mọi file dữ liệu bên thứ ba trong `public/` có giấy phép đi kèm.
 7. Windows: giá trị trong `Run` không có dấu nháy (01, mục 2.7 của kế hoạch 00): ghi lại giá trị có nháy sau `enable()`, có test bằng bản giả; thử ở đợt Windows.
-8. Entitlement của hardened runtime nếu Task 15 cho thấy cần (thu âm thanh hệ thống, Metal).
+8. Thử lại entitlement (QĐ23) với bản ký Developer ID thật và notarize (Task 15 của 07a chỉ thử bản ad-hoc).
 9. Xem lại cache của CI và lịch chạy (điểm cần quyết 4) sau khi có số phút thật của Task 14.
 10. EULA trong bộ cài và màn hình Giới thiệu (Q8), `publisher`, `copyright` (điểm cần quyết 5); logo thật thay biểu tượng tạm (dòng 196).
