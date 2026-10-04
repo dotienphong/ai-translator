@@ -7,69 +7,90 @@ mod bundled_name;
 
 fn main() {
     sidecar_hashes();
+    embed_windows_manifest();
     // App manifest: lệnh của app cũng đi qua ACL (spec §10.2). Cửa sổ nào không được cấp
     // `allow-<tên-lệnh>` trong capabilities thì không gọi được. Danh sách phải khớp
     // `src/commands.rs` (test `acl_tests::capabilities_grant_exactly_the_fixed_lists`).
     tauri_build::try_build(
-        tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&[
-            "get_settings",
-            "update_settings",
-            "set_hotkey",
-            "get_app_status",
-            "toggle_session",
-            "start_listen_test",
-            "set_overlay_visible",
-            "set_overlay_locked",
-            "get_app_info",
-            "open_log_dir",
-            "open_taskbar_settings",
-            "open_login_items_settings",
-            "list_audio_sources",
-            "open_audio_permission_settings",
-            "get_transcript",
-            "transcript_text",
-            "export_transcript",
-            "list_history",
-            "get_history_session",
-            "delete_history_session",
-            "clear_history",
-            "list_glossary",
-            "add_glossary_entry",
-            "update_glossary_entry",
-            "delete_glossary_entry",
-            "import_glossary_csv",
-            "export_glossary_csv",
-            "clear_all_data",
-            "get_debug_sessions",
-            "get_models_state",
-            "load_models",
-            "download_models",
-            "pause_models_download",
-            "select_model_pack",
-            "delete_models",
-            "delete_models_and_data",
-            "dismiss_models_update",
-            "verify_models",
-            "get_license",
-            "activate_license",
-            "deactivate_license",
-            "deactivate_other_device",
-            "validate_license",
-            "get_plans",
-            "start_checkout",
-            "get_pending_order",
-            "cancel_checkout",
-            "open_checkout_page",
-            "recover_license",
-            "restart_to_update",
-            "get_overlay_view",
-            "hide_overlay",
-            "begin_overlay_resize",
-            "overlay_resize_move",
-            "end_overlay_resize",
-        ])),
+        // Manifest Windows do `embed_windows_manifest` nhúng, không phải tauri-build (xem hàm đó).
+        tauri_build::Attributes::new()
+            .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest())
+            .app_manifest(tauri_build::AppManifest::new().commands(&[
+                "get_settings",
+                "update_settings",
+                "set_hotkey",
+                "get_app_status",
+                "toggle_session",
+                "start_listen_test",
+                "set_overlay_visible",
+                "set_overlay_locked",
+                "get_app_info",
+                "open_log_dir",
+                "open_taskbar_settings",
+                "open_login_items_settings",
+                "list_audio_sources",
+                "open_audio_permission_settings",
+                "get_transcript",
+                "transcript_text",
+                "export_transcript",
+                "list_history",
+                "get_history_session",
+                "delete_history_session",
+                "clear_history",
+                "list_glossary",
+                "add_glossary_entry",
+                "update_glossary_entry",
+                "delete_glossary_entry",
+                "import_glossary_csv",
+                "export_glossary_csv",
+                "clear_all_data",
+                "get_debug_sessions",
+                "get_models_state",
+                "load_models",
+                "download_models",
+                "pause_models_download",
+                "select_model_pack",
+                "delete_models",
+                "delete_models_and_data",
+                "dismiss_models_update",
+                "verify_models",
+                "get_license",
+                "activate_license",
+                "deactivate_license",
+                "deactivate_other_device",
+                "validate_license",
+                "get_plans",
+                "start_checkout",
+                "get_pending_order",
+                "cancel_checkout",
+                "open_checkout_page",
+                "recover_license",
+                "restart_to_update",
+                "get_overlay_view",
+                "hide_overlay",
+                "begin_overlay_resize",
+                "overlay_resize_move",
+                "end_overlay_resize",
+            ])),
     )
     .expect("tauri-build thất bại");
+}
+
+/// Nhúng `windows-app-manifest.xml` (Common Controls v6, nội dung mặc định của tauri-build) vào mọi file chạy của crate trên
+/// Windows. tauri-build chỉ nhúng manifest vào binary của app, không vào binary test của lib (`cargo test --lib`); binary
+/// đó import `TaskDialogIndirect` của comctl32 v6 nên không khởi động được (STATUS_ENTRYPOINT_NOT_FOUND, 0xc0000139).
+/// `rustc-link-arg-tests` và `-bins` không áp cho test trong lib; chỉ `rustc-link-arg` thường áp. Vì vậy tauri-build phải
+/// không nhúng manifest nữa (`new_without_app_manifest`), nếu không file chạy có hai manifest và linker báo CVT1100.
+fn embed_windows_manifest() {
+    let manifest = Path::new(&std::env::var("CARGO_MANIFEST_DIR").expect("cargo đặt CARGO_MANIFEST_DIR"))
+        .join("windows-app-manifest.xml");
+    println!("cargo:rerun-if-changed={}", manifest.display());
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
+        && std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc")
+    {
+        println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
+        println!("cargo:rustc-link-arg=/MANIFESTINPUT:{}", manifest.display());
+    }
 }
 
 /// SHA-256 của mọi file trong `binaries/` (tiến trình phụ và thư viện đi kèm), ghi vào `sidecar_hashes.rs` để app kiểm
