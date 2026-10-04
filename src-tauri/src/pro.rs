@@ -28,7 +28,7 @@ pub const DEV_PRO_ENV: &str = "AI_TRANSLATOR_DEV_PRO";
 #[cfg(debug_assertions)]
 pub const DEV_GATE_CANARY: &str = "mt-dev-pro-gate-v1";
 
-/// Nguồn sự thật "đang có gói trả phí còn hạn" (spec §2). Kế hoạch 06 cài bằng trạng thái bản quyền.
+/// Nguồn sự thật "đang có gói trả phí còn hạn" (spec §2). `license::app::install` cài bằng trạng thái bản quyền thật.
 pub trait ProGate: Send + Sync + 'static {
     fn is_pro(&self) -> bool;
 }
@@ -120,7 +120,7 @@ pub fn require<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
     }
 }
 
-/// Đọc lại `ProGate` vào `AppStatus.pro` và báo giao diện nếu đổi. Kế hoạch 06 gọi sau mỗi lần trạng thái bản quyền đổi.
+/// Đọc lại `ProGate` vào `AppStatus.pro` và báo giao diện nếu đổi. `license::app` gọi sau mỗi lần trạng thái bản quyền đổi.
 pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     let pro = is_pro(app);
     let Some(state) = app.try_state::<AppState>() else {
@@ -147,6 +147,11 @@ mod tests {
     /// §2.2). Chạy cả với `--release` (CI: "Test bản quyền ở bản release").
     #[test]
     fn the_dev_gate_exists_only_in_a_debug_build_with_the_switch_on() {
+        #[cfg(not(debug_assertions))]
+        {
+            assert!(default_gate().is_none());
+            assert!(!dev_override());
+        }
         assert_eq!(default_gate().is_some(), dev_override());
         let app = tauri::test::mock_app();
         app.manage(AppState::new(
@@ -163,6 +168,7 @@ mod tests {
     /// `AI_TRANSLATOR_DEV_PRO=true`. Chạy cả với `--release`.
     #[test]
     fn only_a_debug_build_with_the_switch_on_runs_unlimited() {
+        // Tên biến viết thẳng ở đây vì hằng `DEV_PRO_ENV` chỉ có ở bản debug, mà test này phải biên dịch cả ở bản release.
         let on = std::env::var("AI_TRANSLATOR_DEV_PRO").as_deref() == Ok("true");
         assert_eq!(dev_override(), cfg!(debug_assertions) && on);
     }
