@@ -50,7 +50,7 @@ jobs:
           pnpm build
           pnpm test
       - name: Script phát hành và script manifest model (node --test)
-        run: node --test "scripts/release/*.test.mjs" scripts/models/manifest.test.mjs
+        run: node --test "scripts/release/*.test.mjs" scripts/models/manifest.test.mjs scripts/dev-env.test.mjs
       - name: cargo clippy
         run: |
           cargo clippy --locked --workspace --all-targets -- -D warnings

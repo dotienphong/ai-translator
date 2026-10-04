@@ -26,6 +26,7 @@ __pycache__/
 # Bí mật (spec §10.2, §12): không commit file chứa khóa hay biến môi trường thật
 .dev.vars*
 .env*
+!.env.example
 *.pem
 *.p12
 *.pfx

@@ -14,6 +14,7 @@
 # App mở bằng `open` không thừa hưởng biến môi trường của shell (Nhỏ-9 của review 02 lần 3): script chuyển các biến
 # `MT_*` đang đặt qua `open --env` (có từ macOS 13; app cần macOS 14.2 trở lên nên luôn dùng được). Mức log của app đặt cố
 # định trong `logging.rs`, không đọc `RUST_LOG`, nên biến đó không được chuyển.
+# Công tắc Pro của bản dev đặt trong `.env` (xem `.env.example`).
 set -eu
 identity="${MT_DEV_SIGN_IDENTITY:-AI Translator Dev}"
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -68,4 +69,25 @@ set --
 for name in $(env | sed -n 's/^\(MT_[A-Za-z0-9_]*\)=.*/\1/p'); do
   set -- "$@" --env "$name=$(printenv "$name")"
 done
+# `.env` ở gốc repo (đã gitignore, mẫu: `.env.example`): chỉ các khóa trong danh sách cho phép, không `source` (spec
+# 2026-10-04, §2.3). Biến `AI_TRANSLATOR_DEV_PRO` đặt trong shell KHÔNG được chuyển; chỉ `.env` mới bật công tắc.
+# `set -f` tắt mở rộng glob: giá trị trong `.env` (vd. `*`) không được thành tên file khi tách `$pairs` theo dòng.
+dev_pro=off
+pairs=$(sh "$root/scripts/read-dev-env.sh" "$root/.env")
+oldifs=$IFS
+IFS='
+'
+set -f
+for pair in $pairs; do
+  set -- "$@" --env "$pair"
+  if [ "$pair" = "AI_TRANSLATOR_DEV_PRO=true" ]; then dev_pro=on; fi
+done
+set +f
+IFS=$oldifs
+if [ "$dev_pro" = on ]; then
+  echo "================================================================" >&2
+  echo "CẢNH BÁO: AI_TRANSLATOR_DEV_PRO=true. Bản này GIẢ LẬP Pro không giới hạn." >&2
+  echo "Không dùng để đo hạn mức hay thử luồng mua; muốn thử đường thật thì đặt false." >&2
+  echo "================================================================" >&2
+fi
 open -W "$@" "$app"
