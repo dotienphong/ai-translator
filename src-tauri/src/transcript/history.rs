@@ -244,7 +244,9 @@ mod tests {
         );
         assert_eq!(back.lines[1].tgt_text, "Xin chào.");
         assert_eq!(back.lines[1].start_ms, 1_000_002_000, "giữ nguyên mốc thời gian");
-        std::fs::remove_dir_all(dir).unwrap();
+        // Dọn dẹp cố gắng hết sức: Windows không xóa được file DB khi kết nối còn mở; `temp_dir` đã xóa thư mục
+        // này ở đầu lần chạy sau.
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -267,7 +269,7 @@ mod tests {
         assert_eq!(list[1].preview, "Old meeting.", "bỏ qua câu rỗng của đoạn bị bỏ");
         assert_eq!(list[0].preview.chars().count(), 80);
         assert_eq!((list[1].lines, list[1].target_lang.as_str()), (4, "vi"));
-        std::fs::remove_dir_all(dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -287,6 +289,6 @@ mod tests {
         assert!(list(&c).unwrap().is_empty());
         let lines: i64 = c.query_row("SELECT count(*) FROM lines", [], |r| r.get(0)).unwrap();
         assert_eq!(lines, 0);
-        std::fs::remove_dir_all(dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

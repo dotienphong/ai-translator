@@ -621,13 +621,23 @@ pub fn window(app: &tauri::App<MockRuntime>, label: &str) -> WebviewWindow<MockR
     })
 }
 
+/// Origin của giao diện đóng gói: ACL của Tauri chỉ coi là "local" đúng origin này (macOS `tauri://localhost`, Windows
+/// `http://tauri.localhost`, xem `navigation.rs`). Dùng origin của hệ điều hành khác thì mọi lệnh bị chặn.
+fn app_origin() -> &'static str {
+    if cfg!(windows) {
+        "http://tauri.localhost"
+    } else {
+        "tauri://localhost"
+    }
+}
+
 /// Gọi một lệnh như giao diện gọi `invoke(cmd, args)` từ cửa sổ `window`.
 pub fn invoke(window: &WebviewWindow<MockRuntime>, cmd: &str, args: Value) -> Result<Value, String> {
     let request = InvokeRequest {
         cmd: cmd.into(),
         callback: CallbackFn(0),
         error: CallbackFn(1),
-        url: "tauri://localhost".parse().unwrap(),
+        url: app_origin().parse().unwrap(),
         body: InvokeBody::Json(args),
         headers: Default::default(),
         invoke_key: INVOKE_KEY.to_string(),

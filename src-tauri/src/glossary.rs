@@ -357,7 +357,9 @@ mod tests {
         assert_eq!(list(&c).unwrap(), [sprint]);
         assert_eq!(code(delete(&c, api.id).unwrap_err()).0, "glossaryNotFound");
         assert_eq!(code(update(&c, 999, "x", "y").unwrap_err()).0, "glossaryNotFound");
-        std::fs::remove_dir_all(dir).unwrap();
+        // Dọn dẹp cố gắng hết sức: Windows không xóa được file DB khi kết nối còn mở; `temp_dir` đã xóa thư mục
+        // này ở đầu lần chạy sau.
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -376,7 +378,7 @@ mod tests {
             "glossaryDuplicate"
         );
         update(&c, first.id, "ĐÀ NẴNG", "Đà Nẵng city").unwrap();
-        std::fs::remove_dir_all(dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -389,7 +391,7 @@ mod tests {
         add(&c, &"ế".repeat(200), "x").unwrap();
         assert_eq!(code(add(&c, "a\nb", "x").unwrap_err()).0, "glossaryInvalidChar");
         assert_eq!(field(add(&c, "ab", "x\ty").unwrap_err()), "target");
-        std::fs::remove_dir_all(dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -401,7 +403,7 @@ mod tests {
         assert_eq!(code(add(&c, "one more", "x").unwrap_err()).0, "glossaryFull");
         let first = list(&c).unwrap()[0].id;
         update(&c, first, "renamed", "y").unwrap();
-        std::fs::remove_dir_all(dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -429,8 +431,8 @@ mod tests {
         assert_eq!(pairs(&other), pairs(&c));
         let again = import_csv(&mut c, text.as_bytes()).unwrap();
         assert_eq!((again.added, again.updated), (0, 3), "nhập lại cùng file: chỉ cập nhật");
-        std::fs::remove_dir_all(dir).unwrap();
-        std::fs::remove_dir_all(other_dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
+        let _ = std::fs::remove_dir_all(other_dir);
     }
 
     /// N1 của review 03: Excel không chạy công thức từ file xuất ra; nhập lại thì được đúng thuật ngữ cũ.
@@ -461,8 +463,8 @@ mod tests {
             list(c).unwrap().into_iter().map(|e| (e.source, e.target)).collect()
         };
         assert_eq!(pairs(&other), pairs(&c));
-        std::fs::remove_dir_all(dir).unwrap();
-        std::fs::remove_dir_all(other_dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
+        let _ = std::fs::remove_dir_all(other_dir);
     }
 
     #[test]
@@ -485,7 +487,7 @@ mod tests {
             api.target, "giao diện lập trình",
             "không có dòng tên cột thì dòng đầu là dữ liệu"
         );
-        std::fs::remove_dir_all(dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -503,7 +505,7 @@ mod tests {
         let err = import_csv(&mut empty, b"H\xf4i ngh\xf2,conference\n").unwrap_err();
         assert_eq!(code(err).0, "csvInvalid");
         assert!(list(&empty).unwrap().is_empty());
-        std::fs::remove_dir_all(dir).unwrap();
-        std::fs::remove_dir_all(empty_dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
+        let _ = std::fs::remove_dir_all(empty_dir);
     }
 }

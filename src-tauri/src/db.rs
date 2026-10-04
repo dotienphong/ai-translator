@@ -354,7 +354,9 @@ mod tests {
         let stored = keystore(&keys).get(KEY_NAME).unwrap().unwrap();
         assert_eq!(stored.len(), 64);
         assert!(parse_key(&stored).is_some());
-        std::fs::remove_dir_all(dir).unwrap();
+        // Dọn dẹp cố gắng hết sức: Windows không xóa được file DB khi kết nối còn mở; `temp_dir` đã xóa thư mục
+        // này ở đầu lần chạy sau.
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -377,7 +379,7 @@ mod tests {
             matches!(&wrong, DbError::Sql(e) if e.sqlite_error_code() == Some(ErrorCode::NotADatabase)),
             "{wrong}"
         );
-        std::fs::remove_dir_all(dir).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     /// Spec §11 ("Bảo mật"): mở file lịch sử bằng công cụ SQLite bên ngoài thì không đọc được. Chạy được khi máy có
