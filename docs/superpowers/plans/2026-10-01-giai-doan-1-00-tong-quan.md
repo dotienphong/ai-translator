@@ -698,8 +698,8 @@ Cách đọc:
 | 128 | Việc cho MVP §6.4: log của `asr-worker` (mở chế độ append) có xoay vòng hoặc giới hạn kích thước | 02 | d1 `8159852` | xong |
 | 129 | MVP cần `Ready.backend` trả thiết bị thật, không phải backend được yêu cầu, để áp quy tắc chuyển sang CPU | 02 | Ghi ở §6.4, mục thông điệp `Load`; a1 `e963cdb` | xong |
 | 130 | Chạy lại lượt fullctx với bản build chốt, để có số so sánh cùng cấu hình cho giả định 8 | 02 | C12; chờ 02b Task 8 (cần máy rảnh) | chờ |
-| 350 | Luật câu đệm (02a QĐ24) bỏ cả đoạn có tiếng thật mà chữ sai: đoạn 45 của session `vi` gói Chuẩn ở S6 (đuôi câu chép thành "Cảm ơn"). Chọn giữ `filler_logprob_max` −0,7, hay hạ xuống −1,0 | CDA, 02 | Điểm cần quyết 1 của 02a, chủ dự án chưa quyết. 02 đã làm theo −0,7 (`9d6c7fd`, `gd1_no_speech.md`); đổi thì sửa `FilterConfig` (hoặc manifest của 04) và test S6 của luật | chưa làm |
-| 351 | Bộ nhạc thử `no_speech_prob`: tám file CC0 và hai file public domain trên Wikimedia Commons (Dvořák "Public domain"; Vivaldi "Public Domain Mark" do chủ sở hữu đặt); chỉ bảng kết quả vào repo | CDA, 02 | Điểm cần quyết 8 của 02a, chủ dự án chưa quyết. 02 đã đo với cả mười file (`9d6c7fd`); chỉ nhận CC0 thì bỏ file Vivaldi và chạy lại 02b Task 6 | chưa làm |
+| 350 | Luật câu đệm (02a QĐ24) bỏ cả đoạn có tiếng thật mà chữ sai: đoạn 45 của session `vi` gói Chuẩn ở S6 (đuôi câu chép thành "Cảm ơn"). Chọn giữ `filler_logprob_max` −0,7, hay hạ xuống −1,0 | CDA, 02 | Điểm cần quyết 1 của 02a, chủ dự án đã quyết 2026-10-04: giữ `filler_logprob_max` −0,7, không đổi code. 02 đã làm theo −0,7 (`9d6c7fd`, `gd1_no_speech.md`); đổi thì sửa `FilterConfig` (hoặc manifest của 04) và test S6 của luật | xong |
+| 351 | Bộ nhạc thử `no_speech_prob`: tám file CC0 và hai file public domain trên Wikimedia Commons (Dvořák "Public domain"; Vivaldi "Public Domain Mark" do chủ sở hữu đặt); chỉ bảng kết quả vào repo | CDA, 02 | Điểm cần quyết 8 của 02a, chủ dự án đã quyết 2026-10-04: giữ cả mười file (tám CC0, hai public domain), không đổi code. 02 đã đo với cả mười file (`9d6c7fd`); chỉ nhận CC0 thì bỏ file Vivaldi và chạy lại 02b Task 6 | xong |
 
 ### 4.10 Dịch (§6.5)
 
@@ -799,7 +799,7 @@ Cách đọc:
 | 346 | Hiển thị thời điểm reset: Free là max(00:00 hôm sau, lần reset trước + 20 giờ); gói trả phí là mốc đầu chu kỳ kế tiếp, kèm ghi chú cần có mạng; `expires_at` đến trước mốc đó thì báo ngày hết hạn | 06, 03 | Spec §4.2; 03 không làm; 06: a7 `14e4750`, b4 `d266be5` (`quota_reset_at`, `QuotaView`) | xong |
 | 347 | Giờ máy qua mốc chu kỳ mới khi offline: dùng tiếp bộ đếm của chu kỳ cũ, báo cần kết nối mạng để mở hạn mức mới; có mạng thì gọi `validate` ngay | 06 | Spec §9; 06: a4 `37e7536`, a7 `14e4750` | xong |
 | 348 | Quy ước chung của API: tên trường `snake_case`; lỗi có dạng `{"error": "<mã>", …}`; thời điểm tính bằng giây Unix; `429` kèm `Retry-After`; chỉ nhận HTTPS ngoài môi trường dev; không bật CORS (app gọi từ phía Rust); trạng thái đơn `pending`, `processing`, `paid`, `underpaid`, `cancelled`, `expired`, `failed` (`PAID` mà thiếu tiền là `underpaid`), cộng `paid_needs_review` và `refunded` của server; checkout trả thêm `plan`, `converted_days`; `GET /v1/orders` trả thêm `license_plan`, `grant_kind`; `activate` và `validate` trả token cùng các trường của token | 05, 06 | Spec §6.8 sửa theo 05 QĐ20, QĐ26 và hợp đồng API; 05: Task 11 `29237cb`, Task 12 `9f84646`, Task 13 `b6cb210`; 06: a6 `cfa28fe` | xong |
-| 352 | Chạm hạn mức: câu đang dịch chỉ được dịch trong hạn `mt.stop_grace_ms` (3 giây, như khi bấm Dừng), quá hạn thì `skipped`; hay chờ tới hết thời gian chờ của request (120 giây) | CDA, 02 | Điểm cần quyết 6 của 02a, chủ dự án chưa quyết. 02 đã làm theo hạn 3 giây (02a QĐ26, `aaeca34`) | chưa làm |
+| 352 | Chạm hạn mức: câu đang dịch chỉ được dịch trong hạn `mt.stop_grace_ms` (3 giây, như khi bấm Dừng), quá hạn thì `skipped`; hay chờ tới hết thời gian chờ của request (120 giây) | CDA, 02 | Điểm cần quyết 6 của 02a, chủ dự án đã quyết 2026-10-04: giữ hạn 3 giây (`mt.stop_grace_ms`), không đổi code. 02 đã làm theo hạn 3 giây (02a QĐ26, `aaeca34`) | xong |
 
 ### 4.14 Cài đặt (§6.9)
 
@@ -863,7 +863,7 @@ Cách đọc:
 | 221 | Câu chờ dịch quá 20 giây thì bỏ bước dịch, chỉ hiện câu gốc (`skipped`) | 02 | b1 `4383c00`, b2 `aaeca34` | xong |
 | 222 | Số đo từng phiên (thời gian cắt đoạn, nhận dạng, dịch, tổng thể) lưu trên máy, không gửi đi; xem được trong bảng debug ẩn và trong log | 02, 03 | Đ17; 02: b1 `4383c00`, b2 `aaeca34`, c3 `45ccd02`; 03: a9 `1b4fb11`, b6 `7a2e57e` | xong |
 | 338 | Mọi ngưỡng của §6.3–§6.5 và §7 gom trong `PipelineConfig`, mặc định là số đã chốt; 04 nạp phần muốn đổi từ manifest đã ký; giá trị vô lý bị từ chối; `vadEndSilenceMs` ghi đè ngưỡng im lặng | 02, 04 | 02a QĐ21; 02: a2 `b0eb41f`, c3 `45ccd02`; 04: T1 `855237e`, T9 `8151435` | xong |
-| 353 | Bấm Dừng không chờ luồng nhận dạng và luồng dịch: tiến trình phụ treo giữa request thì phiên mới chờ request cũ hết thời gian chờ (30 giây với `asr-worker`, 120 giây với `llama-server`); hay Dừng kill luôn tiến trình phụ đang treo | CDA, 02 | Điểm cần quyết 7 của 02a, chủ dự án chưa quyết. 02 đã làm theo cách không chờ (02a QĐ10, `aaeca34`) | chưa làm |
+| 353 | Bấm Dừng không chờ luồng nhận dạng và luồng dịch: tiến trình phụ treo giữa request thì phiên mới chờ request cũ hết thời gian chờ (30 giây với `asr-worker`, 120 giây với `llama-server`); hay Dừng kill luôn tiến trình phụ đang treo | CDA, 02 | Điểm cần quyết 7 của 02a, chủ dự án đã quyết 2026-10-04: giữ cách không chờ luồng khi bấm Dừng, không đổi code. 02 đã làm theo cách không chờ (02a QĐ10, `aaeca34`) | xong |
 
 ### 4.19 Hiệu năng và cấu hình máy (§8)
 
@@ -1410,11 +1410,11 @@ Cập nhật ngày 2026-10-01:
 - **P05-5. Email nhận cảnh báo vận hành (`OPERATOR_EMAIL`).** Đề xuất: một hộp thư vận hành riêng của sản phẩm. Cần có trước khi triển khai staging; thiếu thì cảnh báo chỉ nằm trong log.
 - P05-3 (chính sách khóa tạm) đã vào spec §10.2 theo đề xuất của 05.
 - **Điểm cần quyết của 02a** (mục "Điểm cần chủ dự án quyết" của 02a). 02 đã làm theo phương án ghi trong ngoặc ở đó; chủ dự án đổi thì sửa code theo dòng tương ứng:
-  - điểm 1, ngưỡng `filler_logprob_max` của luật câu đệm: dòng 350;
-  - điểm 2, thư viện C oniguruma trong tiến trình chính: dòng 354;
-  - điểm 6, hạn dịch câu đang dịch khi chạm hạn mức: dòng 352;
-  - điểm 7, bấm Dừng không chờ luồng nhận dạng và luồng dịch: dòng 353;
-  - điểm 8, bộ nhạc thử: dòng 351.
+  - điểm 1, ngưỡng `filler_logprob_max` của luật câu đệm: dòng 350 (chủ dự án giữ −0,7, 2026-10-04);
+  - điểm 2, thư viện C oniguruma trong tiến trình chính: dòng 354 (còn mở);
+  - điểm 6, hạn dịch câu đang dịch khi chạm hạn mức: dòng 352 (giữ hạn 3 giây, 2026-10-04);
+  - điểm 7, bấm Dừng không chờ luồng nhận dạng và luồng dịch: dòng 353 (giữ cách không chờ, 2026-10-04);
+  - điểm 8, bộ nhạc thử: dòng 351 (giữ cả mười file, 2026-10-04).
   - Đã quyết (controller, 2026-10-02): điểm 4 (`22fa4fe`), điểm 10 (03 làm, mục 2.3). Điểm 3 do người kiểm ở 02c Task 8; điểm 5 do 08 kiểm lại (dòng 121); điểm 9 chuyển cho 07 (mục 2.7).
 
 ## 9. Quyết định của kế hoạch này
