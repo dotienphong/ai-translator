@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Kiểm chữ ký một token v1 bằng khóa công khai của môi trường trong server/keys/public-keys.json (ô a hoặc b).
+// Kiểm chữ ký một token v1 bằng khóa công khai production trong server/keys/public-keys.json (ô a hoặc b).
 // Viết độc lập với src/token.ts. Script CHỈ kiểm:
 // - định dạng: ba phần "v1.<payload>.<chữ ký>", base64url dạng chuẩn, chữ ký 64 byte, payload là object JSON có
 //   `kid` là chuỗi;
@@ -9,16 +9,17 @@
 // (`expires_at`, `refresh_before`): "OK" chỉ có nghĩa token do đúng khóa ký ra. Kiểm đầy đủ như app (kế hoạch 06)
 // là verifyToken của src/token.ts, theo test/vectors/token-v1.json. Đọc từ stdin một trong hai dạng:
 // - token thô (ví dụ token thật từ activate):
-//     printf '%s' "$TOKEN" | node scripts/verify-token.mjs staging
+//     printf '%s' "$TOKEN" | node scripts/verify-token.mjs
 // - JSON {"slot","kid","token"} của POST /admin/keys/test-sign (QĐ31): kiểm thêm `kid` Worker báo khớp `kid` trong
 //   token, và token nằm đúng ô dự phòng:
-//     cloudflared access curl … /admin/keys/test-sign | node scripts/verify-token.mjs staging
+//     cloudflared access curl … /admin/keys/test-sign | node scripts/verify-token.mjs
 // In "OK <env> <ô> <kid>" và claims; sai thì in "FAIL <lý do>" và thoát mã 1.
 import { readFileSync } from "node:fs";
 import { webcrypto } from "node:crypto";
 
 const args = process.argv.slice(2);
-const envName = args[0];
+// Chỉ có một môi trường (spec 2026-10-04): khối `production` của public-keys.json.
+const envName = "production";
 const keysAt = args.indexOf("--keys");
 const keysFile = keysAt >= 0 ? args[keysAt + 1] : new URL("../keys/public-keys.json", import.meta.url);
 const failWith = (why) => {

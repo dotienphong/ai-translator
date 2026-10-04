@@ -21,7 +21,7 @@ function run(...args) {
 test("stdout vào /dev/null (thiết bị ký tự, không phải pipe): thoát mã 2", () => {
   const devNull = openSync("/dev/null", "w");
   try {
-    const r = spawnSync(process.execPath, [script, "stg-2026-10-1", "--keys", fixture], {
+    const r = spawnSync(process.execPath, [script, "prod-2026-10-1", "--keys", fixture], {
       stdio: ["ignore", devNull, "pipe"],
       encoding: "utf8",
     });
@@ -43,7 +43,7 @@ function parseJwk(stdout) {
 
 test("--keys chỉ tới file không tồn tại: báo lỗi, thoát mã 2, không sinh khóa", () => {
   assert.equal(existsSync(missing), false);
-  const r = run("stg-2026-10-1", "--keys", missing);
+  const r = run("prod-2026-10-1", "--keys", missing);
   assert.equal(r.stdout.length, 0);
   assert.equal(r.status, 2);
   assert.match(r.stderr, /không có file khóa công khai/);
@@ -51,26 +51,26 @@ test("--keys chỉ tới file không tồn tại: báo lỗi, thoát mã 2, khô
 });
 
 test("--keys chỉ tới file có sẵn và kid mới: sinh khóa vào pipe", () => {
-  const r = run("stg-2026-10-1", "--keys", fixture);
+  const r = run("prod-2026-10-1", "--keys", fixture);
   assert.equal(r.status, 0);
   const jwk = parseJwk(r.stdout);
   assert.equal(jwk.kty, "OKP");
   assert.equal(jwk.crv, "Ed25519");
-  assert.equal(jwk.kid, "stg-2026-10-1");
+  assert.equal(jwk.kid, "prod-2026-10-1");
   assert.equal(typeof jwk.d, "string");
   assert.equal(jwk.d.length, 43);
-  assert.ok(r.stderr.includes(`{"kid":"stg-2026-10-1","x":"${jwk.x}"}`));
+  assert.ok(r.stderr.includes(`{"kid":"prod-2026-10-1","x":"${jwk.x}"}`));
 });
 
 test("kid đã dùng rồi bỏ (có trong retired của public-keys.json): từ chối, thoát mã 2, không sinh khóa", () => {
-  const r = run("stg-2026-09-1", "--keys", fixture);
+  const r = run("prod-2026-09-1", "--keys", fixture);
   assert.equal(r.stdout.length, 0);
   assert.equal(r.status, 2);
-  assert.match(r.stderr, /kid stg-2026-09-1 đã dùng rồi bỏ \(retired trong public-keys\.json\)\. Dùng số thứ tự mới\./);
+  assert.match(r.stderr, /kid prod-2026-09-1 đã dùng rồi bỏ \(retired trong public-keys\.json\)\. Dùng số thứ tự mới\./);
 });
 
 test("retired không phải mảng: báo lỗi, thoát mã 2, không sinh khóa", () => {
-  const r = run("stg-2026-10-1", "--keys", badRetired);
+  const r = run("prod-2026-10-1", "--keys", badRetired);
   assert.equal(r.stdout.length, 0);
   assert.equal(r.status, 2);
   assert.match(r.stderr, /retired trong public-keys\.json phải là mảng/);

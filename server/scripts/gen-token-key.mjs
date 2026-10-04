@@ -9,10 +9,10 @@
 //   dùng rồi bỏ: khi bỏ một khóa khỏi ô (Phụ lục A, bước 4), chuyển {kid, x} của nó vào mảng `retired` ở gốc file.
 //   `retired` chỉ có khóa công khai và kid, không có bí mật; app bỏ qua phần này.
 //   File mặc định chưa có thì bỏ qua (trước lần tạo khóa đầu tiên); file chỉ bằng --keys mà không có thì báo lỗi.
-//   Quy ước: <env>-<năm>-<tháng>-<số thứ tự>; mỗi khóa mới, kể cả khóa dự phòng, lấy số thứ tự kế tiếp.
+//   Quy ước: prod-<năm>-<tháng>-<số thứ tự>; mỗi khóa mới, kể cả khóa dự phòng, lấy số thứ tự kế tiếp.
 //
-//   node scripts/gen-token-key.mjs stg-2026-10-1 | pnpm exec wrangler secret put TOKEN_SIGNING_KEY_A --env staging
-//   node scripts/gen-token-key.mjs stg-2026-10-2 | pnpm exec wrangler secret put TOKEN_SIGNING_KEY_B --env staging
+//   node scripts/gen-token-key.mjs prod-2026-10-1 | pnpm exec wrangler secret put TOKEN_SIGNING_KEY_A
+//   node scripts/gen-token-key.mjs prod-2026-10-2 | pnpm exec wrangler secret put TOKEN_SIGNING_KEY_B
 import { existsSync, fstatSync, readFileSync } from "node:fs";
 import { webcrypto } from "node:crypto";
 
@@ -30,7 +30,7 @@ for (let i = 0; i < rest.length; i += 2) {
   } else fail("Tham số sau kid chỉ có thể là --keys <file>.");
 }
 if (!kid || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(kid) || kid.startsWith("test-")) {
-  fail("Cần kid gồm chữ thường, số và '-', tối đa 32 ký tự, không bắt đầu bằng 'test-'. Ví dụ: stg-2026-10-1");
+  fail("Cần kid gồm chữ thường, số và '-', tối đa 32 ký tự, không bắt đầu bằng 'test-'. Ví dụ: prod-2026-10-1");
 }
 const out = fstatSync(1);
 if (!out.isFIFO() && !out.isSocket()) {
