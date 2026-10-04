@@ -69,7 +69,7 @@ export function objectSignatureData(data: Record<string, unknown>): string {
 
 /**
  * Đọc `transactionDateTime` của PayOS. Tài liệu và SDK chỉ có ví dụ dạng "2023-02-04 18:25:00", không ghi múi giờ;
- * coi là giờ Việt Nam (UTC+7, không đổi theo mùa) và kiểm lại ở giao dịch thử trên staging (Task 20).
+ * coi là giờ Việt Nam (UTC+7, không đổi theo mùa) và kiểm lại ở giao dịch thử trên production trước phát hành (kế hoạch 05, Task 21).
  * Dạng ISO 8601 có múi giờ cũng nhận. Không đọc được thì trả null.
  */
 export function parsePayOSTime(value: unknown): number | null {

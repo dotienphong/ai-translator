@@ -34,15 +34,15 @@ describe("cảnh báo cho người vận hành", () => {
     await raiseAlert(env.DB, "license_locked", T + 30);
     expect(await sendAlerts(ops, box.provider, T + 300)).toBe(2);
     expect(box.sent.map((m) => [m.to, m.subject])).toEqual([
-      ["ops@example.com", "[license dev] Cảnh báo: license_locked (1)"],
-      ["ops@example.com", "[license dev] Cảnh báo: webhook_bad_signature (2)"],
+      ["ops@example.com", "[license test] Cảnh báo: license_locked (1)"],
+      ["ops@example.com", "[license test] Cảnh báo: webhook_bad_signature (2)"],
     ]);
     // Sự kiện mới trong cùng giờ: chưa gửi lại.
     await raiseAlert(env.DB, "webhook_bad_signature", T + 400);
     expect(await sendAlerts(ops, box.provider, T + 600)).toBe(0);
     // Qua 1 giờ kể từ lần báo trước: gửi phần còn lại.
     expect(await sendAlerts(ops, box.provider, T + 300 + 3601)).toBe(1);
-    expect(box.sent.at(-1)!.subject).toBe("[license dev] Cảnh báo: webhook_bad_signature (1)");
+    expect(box.sent.at(-1)!.subject).toBe("[license test] Cảnh báo: webhook_bad_signature (1)");
   });
 
   it("thiếu OPERATOR_EMAIL thì chỉ ghi log, không gửi", async () => {
@@ -67,10 +67,10 @@ describe("cảnh báo cho người vận hành", () => {
     };
     await raiseAlert(env.DB, "many_failures", T);
     expect(await sendAlerts(ops, busy, T + 300)).toBe(1);
-    expect(sent[0]!.subject).toBe("[license dev] Cảnh báo: many_failures (1)");
+    expect(sent[0]!.subject).toBe("[license test] Cảnh báo: many_failures (1)");
     const box = mailbox();
     expect(await sendAlerts(ops, box.provider, T + 300 + 3601)).toBe(1);
-    expect(box.sent[0]!.subject).toBe("[license dev] Cảnh báo: many_failures (1)");
+    expect(box.sent[0]!.subject).toBe("[license test] Cảnh báo: many_failures (1)");
   });
 
   it("hai lần cron chạy chồng nhau: chỉ một lần gửi, giữ chỗ trước khi gửi", async () => {
@@ -87,8 +87,8 @@ describe("cảnh báo cho người vận hành", () => {
     const counts = await Promise.all([sendAlerts(ops, slow, T + 300), sendAlerts(ops, slow, T + 300), sendAlerts(ops, slow, T + 301)]);
     expect(counts.reduce((a, b) => a + b, 0)).toBe(2);
     expect(sent.map((m) => m.subject).sort()).toEqual([
-      "[license dev] Cảnh báo: email_failed (1)",
-      "[license dev] Cảnh báo: license_locked (1)",
+      "[license test] Cảnh báo: email_failed (1)",
+      "[license test] Cảnh báo: license_locked (1)",
     ]);
   });
 

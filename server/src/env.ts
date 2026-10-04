@@ -3,7 +3,7 @@
 
 export interface ApiEnv {
   DB: D1Database;
-  /** "dev" | "staging" | "production" */
+  /** "production" (cố định trong wrangler.jsonc) | "test" (chỉ vitest.config.ts) */
   ENVIRONMENT: string;
   /** Bảng gói trả phí (src/plans.ts): hạn mức, số ngày mỗi đơn, giá theo loại tiền. Đọc bằng parsePlans. */
   PLANS?: unknown;
@@ -38,7 +38,7 @@ export interface AdminEnv {
   ENVIRONMENT: string;
   PAYOS_BASE_URL: string;
   EMAIL_FROM: string;
-  /** Audience tag của ứng dụng Access. Bắt buộc khi ENVIRONMENT khác "dev"; trống thì mọi request bị 403. */
+  /** Audience tag của ứng dụng Access. Bắt buộc khi ENVIRONMENT khác "test"; trống thì mọi request bị 403. */
   ACCESS_AUD?: string;
   /** Origin của Worker API cùng môi trường; confirm-webhook chỉ nhận URL webhook trên origin này. */
   API_ORIGIN?: string;

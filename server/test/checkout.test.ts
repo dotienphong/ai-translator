@@ -159,20 +159,9 @@ describe("POST /v1/checkout", () => {
     expect(row).toEqual({ status: "failed" });
   });
 
-  it("staging chỉ dùng số đơn tới 999.999 (QĐ18): vượt thì 503 order_code_exhausted, không đụng dải của production", async () => {
-    await env.DB.exec(reserveSql(999_998));
-    const w = makeWorld({ ENVIRONMENT: "staging" });
-    const last = await w.call("POST", "/v1/checkout", valid);
-    expect(last).toMatchObject({ status: 201, body: { order_code: 999_999 } });
-    const over = await w.call("POST", "/v1/checkout", valid);
-    expect(over).toMatchObject({ status: 503, body: { error: "order_code_exhausted" } });
-    expect(w.payos.requests.filter((r) => r.method === "POST")).toHaveLength(1);
-    expect(await env.DB.prepare("SELECT status FROM orders WHERE order_code = 1000000").first()).toEqual({ status: "failed" });
-  });
-
-  it("production (và dev) không bị trần của staging: số 1.000.000 vẫn tạo đơn được", async () => {
+  it("số đơn không còn dải riêng theo môi trường: 1.000.000 vẫn tạo đơn được ở mọi giá trị ENVIRONMENT", async () => {
     await env.DB.exec(reserveSql(999_999));
-    for (const ENVIRONMENT of ["production", "dev"]) {
+    for (const ENVIRONMENT of ["production", "test"]) {
       const w = makeWorld({ ENVIRONMENT });
       const res = await w.call("POST", "/v1/checkout", valid);
       expect(res.status).toBe(201);

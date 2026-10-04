@@ -58,7 +58,7 @@ describe("webhook PayOS", () => {
     expect(key).toMatch(/^([0-9A-HJKMNP-TV-Z]{4}-){6}[0-9A-HJKMNP-TV-Z]{4}$/);
 
     expect(w.resend.sent).toHaveLength(1);
-    expect(w.resend.sent[0]).toMatchObject({ to: ["buyer@example.com"], idempotencyKey: `dev-order-${orderCode}` });
+    expect(w.resend.sent[0]).toMatchObject({ to: ["buyer@example.com"], idempotencyKey: `test-order-${orderCode}` });
     expect(w.resend.sent[0]!.text).toContain(key);
     const order = await env.DB.prepare("SELECT email_sent_at, amount_paid FROM orders").first();
     expect(order).toEqual({ email_sent_at: T0 + 120, amount_paid: 50000 });

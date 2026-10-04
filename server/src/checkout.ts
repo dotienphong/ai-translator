@@ -13,12 +13,6 @@ import { failureBlock, hit, noteFailure } from "./ratelimit";
 export const CHECKOUT_TTL_SECONDS = 15 * 60;
 /** Một số ngân hàng chỉ nhận mô tả tối đa 9 ký tự (§14 giả định 7): "AT" + tối đa 7 chữ số. */
 export const MAX_ORDER_CODE = 9_999_999;
-/** Staging dùng số đơn 1 … 999.999, production từ 1.000.001 (QĐ18): staging không bao giờ lấn sang dải của production. */
-export const MAX_STAGING_ORDER_CODE = 999_999;
-
-function maxOrderCode(environment: string): number {
-  return environment === "staging" ? MAX_STAGING_ORDER_CODE : MAX_ORDER_CODE;
-}
 const CURRENCY = "VND";
 /** MVP chỉ bán bằng VND qua PayOS; Giai đoạn 2 chọn cổng theo loại tiền. */
 const CHECKOUT_PROVIDER = "payos";
@@ -99,7 +93,7 @@ export function registerCheckout(app: Hono<AppEnv>) {
       .first<{ order_code: number }>();
     if (!row) throw new Error("không tạo được đơn");
     const orderCode = row.order_code;
-    if (orderCode > maxOrderCode(c.env.ENVIRONMENT)) {
+    if (orderCode > MAX_ORDER_CODE) {
       await db.prepare("UPDATE orders SET status = 'failed' WHERE order_code = ?").bind(orderCode).run();
       console.error(JSON.stringify({ event: "order_code_exhausted", order_code: orderCode }));
       return fail(c, 503, "order_code_exhausted");

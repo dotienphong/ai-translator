@@ -37,8 +37,8 @@ export function signingSlots(env: Pick<ApiEnv, "TOKEN_SIGNING_SLOT">): { active:
 export async function loadSigningKey(env: KeyEnv, role: "active" | "next" = "active"): Promise<SigningKey & { slot: string }> {
   const slot = signingSlots(env)[role];
   const key = await importSigningKey(slot === "a" ? env.TOKEN_SIGNING_KEY_A : env.TOKEN_SIGNING_KEY_B);
-  if (env.ENVIRONMENT !== "dev" && key.kid.startsWith("test-")) {
-    throw new Error("khóa test-* chỉ dùng được khi ENVIRONMENT=dev");
+  if (env.ENVIRONMENT !== "test" && key.kid.startsWith("test-")) {
+    throw new Error("khóa test-* chỉ dùng được khi ENVIRONMENT=test");
   }
   return { ...key, slot };
 }

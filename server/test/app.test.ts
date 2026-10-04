@@ -6,7 +6,7 @@ import { testSigningJwk } from "./keys";
 import vectors from "./vectors/token-v1.json";
 import { makeWorld, T0 } from "./world";
 
-async function keyEnv(slot: string, environment = "dev") {
+async function keyEnv(slot: string, environment = "test") {
   return {
     TOKEN_SIGNING_SLOT: slot,
     TOKEN_SIGNING_KEY_A: await testSigningJwk("test-1"),
@@ -16,8 +16,8 @@ async function keyEnv(slot: string, environment = "dev") {
 }
 
 describe("khung Worker API", () => {
-  it("ngoài dev chỉ nhận HTTPS (§10.2)", async () => {
-    const w = makeWorld({ ENVIRONMENT: "staging" });
+  it("ở production chỉ nhận HTTPS (§10.2)", async () => {
+    const w = makeWorld({ ENVIRONMENT: "production" });
     expect((await w.app.fetch(new Request("http://license.test/v1/health"), w.env)).status).toBe(403);
     expect((await w.app.fetch(new Request("https://license.test/v1/health"), w.env)).status).toBe(200);
   });
@@ -31,8 +31,7 @@ describe("khung Worker API", () => {
     expect(res.status).toBe(413);
   });
 
-  it("khóa test-* không dùng được ngoài dev", async () => {
-    await expect(loadSigningKey(await keyEnv("a", "staging"))).rejects.toThrow(/test-/);
+  it("khóa test-* không dùng được ở production", async () => {
     await expect(loadSigningKey(await keyEnv("a", "production"))).rejects.toThrow(/test-/);
     expect((await loadSigningKey(await keyEnv("a"))).kid).toBe("test-1");
   });
@@ -75,6 +74,6 @@ describe("khung Worker API", () => {
     expect(env.PAYOS_API_KEY).toBe("test-api-key");
     expect(env.PAYOS_CHECKSUM_KEY).toBe("test-checksum-key");
     expect(env.RESEND_API_KEY).toBe("re_test");
-    expect(env.ENVIRONMENT).toBe("dev");
+    expect(env.ENVIRONMENT).toBe("test");
   });
 });

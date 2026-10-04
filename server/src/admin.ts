@@ -1,5 +1,5 @@
 // Worker admin (§6.8 "Công cụ hỗ trợ"), chạy riêng và đặt sau Cloudflare Access ("Protect this Worker").
-// Worker tự kiểm lại: request không qua Access thì không có ctx.access và bị từ chối (403); ngoài dev,
+// Worker tự kiểm lại: request không qua Access thì không có ctx.access và bị từ chối (403); ngoài test (tức production),
 // ACCESS_AUD là bắt buộc và phải khớp; không đọc được email người vận hành từ Access thì cũng 403. Request thay đổi
 // dữ liệu phải là JSON cùng origin (chống CSRF).
 // Mọi thao tác, kể cả tra cứu, đều ghi audit_log với actor "admin:<email người vận hành>". Thao tác thất bại có ý nghĩa
@@ -50,7 +50,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
 
   app.use("*", async (c, next) => {
     const access = (c.executionCtx as ExecutionContext).access;
-    const audRequired = c.env.ENVIRONMENT !== "dev";
+    const audRequired = c.env.ENVIRONMENT !== "test";
     if (!access || (audRequired && !c.env.ACCESS_AUD) || (c.env.ACCESS_AUD && access.aud !== c.env.ACCESS_AUD)) {
       return fail(c, 403, "forbidden");
     }

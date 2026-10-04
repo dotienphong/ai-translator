@@ -245,7 +245,7 @@ describe("đối soát mỗi 5 phút", () => {
     expect(await retried(T0 + 1200 + 3600)).toBe(1); // lần 4, thành công
     expect(w.resend.attempts).toBe(4);
     expect(w.resend.sent).toHaveLength(1);
-    expect(w.resend.sent[0]!.idempotencyKey).toBe(`dev-order-${orderCode}`);
+    expect(w.resend.sent[0]!.idempotencyKey).toBe(`test-order-${orderCode}`);
     expect(await retried(T0 + 6 * 3600)).toBe(0);
     const alert = await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'email_failed'").first();
     expect(alert).toEqual({ n: 1 });
@@ -281,7 +281,7 @@ describe("đối soát mỗi 5 phút", () => {
     w.clock.now = T0 + 300;
     expect((await reconcile(w.env, w.deps)).emails_retried).toBe(1);
     expect(w.resend.sent).toHaveLength(1);
-    expect(w.resend.sent[0]!.idempotencyKey).toBe(`dev-order-${orderCode}`);
+    expect(w.resend.sent[0]!.idempotencyKey).toBe(`test-order-${orderCode}`);
   });
 
   it("Resend trả 409 invalid_idempotent_request (khóa đã dùng với nội dung khác): coi là thư đã gửi, thôi gửi lại", async () => {
@@ -486,7 +486,7 @@ describe("đối soát mỗi 5 phút", () => {
     await raiseAlert(env.DB, "license_locked", T0);
     w.clock.now = T0 + 300;
     expect((await reconcile(w.env, w.deps)).alerts_sent).toBe(1);
-    expect(w.resend.sent[0]).toMatchObject({ to: ["ops@example.com"], subject: "[license dev] Cảnh báo: license_locked (1)" });
+    expect(w.resend.sent[0]).toMatchObject({ to: ["ops@example.com"], subject: "[license test] Cảnh báo: license_locked (1)" });
   });
 
   it("Cron Trigger của Worker gọi đối soát (không có đơn nào thì không gọi mạng)", async () => {

@@ -18,7 +18,7 @@ import { DAY, makeWorld, T0 } from "./world";
 beforeEach(resetDb);
 
 const ADMIN = "https://admin.test";
-const API_ORIGIN = "https://mt-license-staging.example.workers.dev";
+const API_ORIGIN = "https://mt-license.example.workers.dev";
 
 interface AdminCall {
   method?: string;
@@ -99,10 +99,10 @@ describe("Access", () => {
     expect((await adminCall("/admin/whoami", { aud: "aud-khac" })).status).toBe(403);
   });
 
-  it("ngoài dev, ACCESS_AUD trống thì mọi request bị 403 (fail closed)", async () => {
-    const { adminCall } = makeAdmin({ ENVIRONMENT: "staging", ACCESS_AUD: "" });
+  it("ở production, ACCESS_AUD trống thì mọi request bị 403 (fail closed)", async () => {
+    const { adminCall } = makeAdmin({ ENVIRONMENT: "production", ACCESS_AUD: "" });
     expect(await adminCall("/admin/whoami")).toMatchObject({ status: 403, body: { error: "forbidden" } });
-    const ok = makeAdmin({ ENVIRONMENT: "staging", ACCESS_AUD: "aud-1" });
+    const ok = makeAdmin({ ENVIRONMENT: "production", ACCESS_AUD: "aud-1" });
     expect((await ok.adminCall("/admin/whoami")).status).toBe(200);
   });
 });
@@ -720,13 +720,13 @@ describe("đăng ký webhook với PayOS", () => {
       "https://evil.example/v1/webhooks/payos",
       `${API_ORIGIN}/v1/webhooks/payos?x=1`,
       `${API_ORIGIN}/v1/webhooks/payos#x`,
-      "https://mt-license-staging.example.workers.dev.evil.com/v1/webhooks/payos",
-      "https://evil.com/mt-license-staging.example.workers.dev/v1/webhooks/payos",
+      "https://mt-license.example.workers.dev.evil.com/v1/webhooks/payos",
+      "https://evil.com/mt-license.example.workers.dev/v1/webhooks/payos",
       `${API_ORIGIN}:8443/v1/webhooks/payos`,
-      "https://user:pass@mt-license-staging.example.workers.dev/v1/webhooks/payos",
-      "https://user@mt-license-staging.example.workers.dev/v1/webhooks/payos",
+      "https://user:pass@mt-license.example.workers.dev/v1/webhooks/payos",
+      "https://user@mt-license.example.workers.dev/v1/webhooks/payos",
       `${API_ORIGIN}/khac`,
-      "http://mt-license-staging.example.workers.dev/v1/webhooks/payos",
+      "http://mt-license.example.workers.dev/v1/webhooks/payos",
       "không phải url",
     ]) {
       expect(await adminCall("/admin/payos/confirm-webhook", { body: { webhook_url: bad } })).toMatchObject({

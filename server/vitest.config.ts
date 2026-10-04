@@ -21,7 +21,9 @@ export default defineConfig(async () => {
     plugins: [
       cloudflareTest({
         wrangler: { configPath: "./wrangler.jsonc" },
-        miniflare: { bindings: { TEST_MIGRATIONS: migrations, ...FAKE_SECRETS } },
+        // ENVIRONMENT = "test" chỉ có ở đây: wrangler*.jsonc luôn đặt "production" (test/node/wrangler-config.test.mjs khóa
+        // điều đó). Giá trị này nới ba chỗ cho test: chỉ HTTPS, khóa ký test-*, ACCESS_AUD bắt buộc.
+        miniflare: { bindings: { TEST_MIGRATIONS: migrations, ...FAKE_SECRETS, ENVIRONMENT: "test" } },
       }),
     ],
     // test/node/: test script Node (scripts/*.mjs), chạy bằng `pnpm test:scripts`, không chạy trong workerd.

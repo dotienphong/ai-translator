@@ -13,8 +13,8 @@ export type AppEnv = { Bindings: ApiEnv; Variables: { deps: Deps } };
 export function createApp(makeDeps: DepsFactory = realDeps) {
   const app = new Hono<AppEnv>();
   app.use("*", async (c, next) => {
-    // Chỉ HTTPS (§10.2). Chạy cục bộ và test (ENVIRONMENT=dev) thì bỏ qua.
-    if (c.env.ENVIRONMENT !== "dev" && new URL(c.req.url).protocol !== "https:") return fail(c, 403, "forbidden");
+    // Chỉ HTTPS (§10.2). Riêng test (ENVIRONMENT=test, chỉ có trong vitest.config.ts) thì bỏ qua.
+    if (c.env.ENVIRONMENT !== "test" && new URL(c.req.url).protocol !== "https:") return fail(c, 403, "forbidden");
     c.set("deps", makeDeps(c.env));
     await next();
   });
