@@ -2,7 +2,7 @@
 //!
 //! Kế hoạch 04 nạp các ngưỡng này từ manifest đã ký: mọi struct đều `#[serde(default)]`, nên manifest chỉ cần ghi khóa
 //! muốn đổi, khóa lạ bị bỏ qua (manifest mới hơn app). Sau khi nạp, gọi [`PipelineConfig::validate`]; lỗi thì giữ mặc
-//! định. `vadEndSilenceMs` của người dùng (200–800 ms) không nằm ở đây: session ghi đè `segmenter.end_silence_ms`.
+//! định. `vadEndSilenceMs` của người dùng (100–800 ms) không nằm ở đây: session ghi đè `segmenter.end_silence_ms`.
 //!
 //! Vài hằng số cố ý để ngoài, vì chúng không đổi hành vi dịch và manifest đổi chúng sai thì khó chẩn đoán:
 //! - chu kỳ kiểm nguồn âm thanh (`WATCH_EVERY`, 500 ms, spec §6.2) và nhịp ghi phút (`TICK_EVERY`) của app;

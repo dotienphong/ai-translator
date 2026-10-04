@@ -163,6 +163,8 @@ mod tests {
 
     #[test]
     fn merge_window_follows_end_silence() {
+        assert_eq!(merge_window_ms(100, &cfg()), 700);
+        assert_eq!(merge_window_ms(150, &cfg()), 700);
         assert_eq!(merge_window_ms(200, &cfg()), 700);
         assert_eq!(merge_window_ms(300, &cfg()), 700);
         assert_eq!(merge_window_ms(301, &cfg()), 701);

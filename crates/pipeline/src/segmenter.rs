@@ -16,7 +16,7 @@ pub const FRAME_MS: u64 = 32;
 pub struct SegmenterConfig {
     pub threshold: f32,
     pub min_speech_ms: u64,
-    /// `vadEndSilenceMs` trong cài đặt, 200–800 ms.
+    /// `vadEndSilenceMs` trong cài đặt, 100–800 ms.
     pub end_silence_ms: u64,
     pub max_segment_ms: u64,
     /// Cắt cưỡng bức tại khung năng lượng thấp nhất trong khoảng này ở cuối đoạn.

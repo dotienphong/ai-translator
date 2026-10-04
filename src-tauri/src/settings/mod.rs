@@ -199,7 +199,7 @@ pub struct Settings {
     pub revision: u64,
 }
 
-pub const VAD_END_SILENCE_MS: std::ops::RangeInclusive<u32> = 200..=800;
+pub const VAD_END_SILENCE_MS: std::ops::RangeInclusive<u32> = 100..=800;
 pub const OVERLAY_FONT_SIZE: std::ops::RangeInclusive<u32> = 14..=48;
 pub const OVERLAY_LINES: std::ops::RangeInclusive<u32> = 1..=3;
 pub const OVERLAY_WIDTH: std::ops::RangeInclusive<f64> = 200.0..=10_000.0;
@@ -222,7 +222,7 @@ impl Settings {
             source_languages: Lang::ALL.to_vec(),
             source_lock: None,
             audio_source: AudioSource::System,
-            vad_end_silence_ms: 300,
+            vad_end_silence_ms: 150,
             overlay: OverlaySettings {
                 font_size: 22,
                 lines: 2,
@@ -376,7 +376,7 @@ mod tests {
         assert_eq!(vi.validate(), Ok(()));
         assert_eq!(vi.target_language, Lang::Vi);
         assert_eq!(vi.source_languages, Lang::ALL.to_vec());
-        assert_eq!(vi.vad_end_silence_ms, 300);
+        assert_eq!(vi.vad_end_silence_ms, 150);
         assert!(!vi.save_history, "lưu lịch sử mặc định tắt (F4)");
         assert!(
             !vi.experimental.translation_context,
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn rejects_out_of_range_values() {
         let mut s = valid();
-        s.vad_end_silence_ms = 199;
+        s.vad_end_silence_ms = 99;
         rejects(s, "vadEndSilenceMs", Reason::OutOfRange);
         let mut s = valid();
         s.vad_end_silence_ms = 801;
@@ -451,7 +451,7 @@ mod tests {
     #[test]
     fn accepts_range_bounds() {
         let mut s = valid();
-        s.vad_end_silence_ms = 200;
+        s.vad_end_silence_ms = 100;
         s.overlay.lines = 3;
         s.overlay.font_size = 48;
         s.overlay.opacity = 0.0;

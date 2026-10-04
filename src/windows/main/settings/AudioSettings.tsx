@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { sourceChoices, sourceFromKey, sourceKey, sourceLabel } from "../../../lib/audioSource";
 import { useApp, useT } from "../appStore";
 
-// Nhóm Cài đặt "Âm thanh" (§4.3): nguồn âm thanh (§6.1) và độ nhạy ngắt câu (200–800 ms, §6.3).
+// Nhóm Cài đặt "Âm thanh" (§4.3): nguồn âm thanh (§6.1) và độ nhạy ngắt câu (100–800 ms, §6.3).
 export function AudioSettings() {
   const t = useT();
   const settings = useApp((s) => s.settings);
@@ -43,7 +43,7 @@ export function AudioSettings() {
         <input
           id="vad-end-silence"
           type="range"
-          min={200}
+          min={100}
           max={800}
           step={50}
           value={pauseMs}
