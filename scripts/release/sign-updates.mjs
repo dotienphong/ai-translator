@@ -26,6 +26,12 @@ export function signerArgs(version, file) {
   return ["tauri", "signer", "sign", "--app-version", version, file];
 }
 
+/** Tham số khi chạy qua shell (Windows: `pnpm` là pnpm.cmd, chỉ chạy được qua shell): tham số có khoảng trắng, như
+ *  `AI Translator.app.tar.gz`, phải nằm trong dấu nháy, nếu không bị tách thành hai tham số. */
+export function shellArgs(args, platform = process.platform) {
+  return platform === "win32" ? args.map((a) => (/\s/.test(a) ? `"${a}"` : a)) : args;
+}
+
 export function main(argv, env = process.env) {
   const i = argv.indexOf("--dir");
   if (i < 0 || !argv[i + 1]) throw new Error("thiếu --dir <thư mục>");
@@ -41,7 +47,7 @@ export function main(argv, env = process.env) {
     return [];
   }
   for (const name of files) {
-    execFileSync("pnpm", signerArgs(conf.version, join(dir, name)), {
+    execFileSync("pnpm", shellArgs(signerArgs(conf.version, join(dir, name))), {
       cwd: root,
       stdio: ["ignore", "ignore", "inherit"],
       env,

@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import { bodyErrors, inputErrors, main as signManifest } from "./sign-manifest-ci.mjs";
-import { main as signUpdates, signerArgs, updateFiles } from "./sign-updates.mjs";
+import { main as signUpdates, shellArgs, signerArgs, updateFiles } from "./sign-updates.mjs";
 import { root } from "./versions.mjs";
 
 function tempDir(t) {
@@ -22,6 +22,12 @@ test("sign-updates: chỉ ký đúng hai loại bộ cài của phiên bản hi�
   assert.deepEqual(updateFiles(present, "AI Translator", "0.1.0"), ["AI Translator.app.tar.gz", "AI Translator_0.1.0_x64-setup.exe"]);
   assert.deepEqual(updateFiles(["x.dmg"], "AI Translator", "0.1.0"), []);
   assert.deepEqual(signerArgs("0.1.0", "/d/f.exe"), ["tauri", "signer", "sign", "--app-version", "0.1.0", "/d/f.exe"]);
+});
+
+test("sign-updates: trên Windows tham số có khoảng trắng được đặt trong dấu nháy (chạy qua shell vì pnpm là pnpm.cmd)", () => {
+  assert.deepEqual(shellArgs(["sign", "C:\\t\\AI Translator.app.tar.gz"], "win32"), ["sign", '"C:\\t\\AI Translator.app.tar.gz"']);
+  assert.deepEqual(shellArgs(["sign", "C:\\t\\a.exe"], "win32"), ["sign", "C:\\t\\a.exe"]);
+  assert.deepEqual(shellArgs(["sign", "/t/AI Translator.app.tar.gz"], "darwin"), ["sign", "/t/AI Translator.app.tar.gz"]);
 });
 
 test("sign-updates: không có khóa thì không ký; có khóa thì tạo .sig gắn phiên bản", (t) => {
