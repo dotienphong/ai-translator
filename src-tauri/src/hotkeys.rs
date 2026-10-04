@@ -1,4 +1,4 @@
-//! Phím tắt toàn cục (F10, spec §3.1): đọc, chuẩn hóa và kiểm trùng ba phím tắt; đăng ký và đổi phím
+//! Phím tắt toàn cục (F10, spec §3.1): đọc, chuẩn hóa và kiểm trùng các phím tắt; đăng ký và đổi phím
 //! tắt qua một `Registrar`. Bản `Registrar` thật bọc `tauri-plugin-global-shortcut` (`hotkey_registry.rs`).
 
 use std::collections::BTreeMap;
@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use tauri_plugin_global_shortcut::{Modifiers, Shortcut};
 
-/// Ba việc có phím tắt toàn cục.
+/// Các việc có phím tắt toàn cục.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum HotkeyAction {
@@ -16,10 +16,20 @@ pub enum HotkeyAction {
     ToggleOverlay,
     /// Khóa hoặc mở khóa thanh phụ đề (click xuyên qua).
     ToggleLock,
+    /// Cuộn phụ đề lên xem câu cũ; dùng được cả khi thanh khóa (§4.4).
+    ScrollUp,
+    /// Cuộn phụ đề xuống câu mới hơn.
+    ScrollDown,
 }
 
 impl HotkeyAction {
-    pub const ALL: [HotkeyAction; 3] = [Self::ToggleSession, Self::ToggleOverlay, Self::ToggleLock];
+    pub const ALL: [HotkeyAction; 5] = [
+        Self::ToggleSession,
+        Self::ToggleOverlay,
+        Self::ToggleLock,
+        Self::ScrollUp,
+        Self::ScrollDown,
+    ];
 
     /// Tên khóa con trong `hotkeys` của cài đặt.
     pub fn key(self) -> &'static str {
@@ -27,6 +37,8 @@ impl HotkeyAction {
             Self::ToggleSession => "toggleSession",
             Self::ToggleOverlay => "toggleOverlay",
             Self::ToggleLock => "toggleLock",
+            Self::ScrollUp => "scrollUp",
+            Self::ScrollDown => "scrollDown",
         }
     }
 }
@@ -292,10 +304,22 @@ mod tests {
         );
     }
 
+    /// Phím mặc định của hai việc cuộn phải đọc được và đã ở dạng chuẩn (cài đặt lưu dạng chuẩn), không trùng ba phím cũ.
+    /// Không dùng Ctrl+Alt+mũi tên: driver Intel trên Windows dùng tổ hợp đó để xoay màn hình.
+    #[test]
+    fn scroll_defaults_are_canonical_and_distinct() {
+        assert_eq!(canonical_of("Ctrl+Alt+PageUp").unwrap(), "Ctrl+Alt+PageUp");
+        assert_eq!(canonical_of("Ctrl+Alt+PageDown").unwrap(), "Ctrl+Alt+PageDown");
+        assert_eq!(check_all(&DEFAULTS), Ok(()));
+    }
+
     #[test]
     fn action_keys_match_settings_fields() {
         let keys: Vec<_> = HotkeyAction::ALL.iter().map(|a| a.key()).collect();
-        assert_eq!(keys, ["toggleSession", "toggleOverlay", "toggleLock"]);
+        assert_eq!(
+            keys,
+            ["toggleSession", "toggleOverlay", "toggleLock", "scrollUp", "scrollDown"]
+        );
         assert_eq!(
             serde_json::to_string(&HotkeyAction::ToggleLock).unwrap(),
             "\"toggleLock\""
@@ -327,10 +351,12 @@ mod tests {
         }
     }
 
-    const DEFAULTS: [(HotkeyAction, &str); 3] = [
+    const DEFAULTS: [(HotkeyAction, &str); 5] = [
         (HotkeyAction::ToggleSession, "Ctrl+Alt+T"),
         (HotkeyAction::ToggleOverlay, "Ctrl+Alt+H"),
         (HotkeyAction::ToggleLock, "Ctrl+Alt+L"),
+        (HotkeyAction::ScrollUp, "Ctrl+Alt+PageUp"),
+        (HotkeyAction::ScrollDown, "Ctrl+Alt+PageDown"),
     ];
 
     fn started(registrar: &FakeRegistrar) -> Bound {

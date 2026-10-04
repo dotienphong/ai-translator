@@ -88,7 +88,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | F7 | Giao diện tiếng Việt và English |
 | F8 | Phân quyền theo gói (Free và ba gói trả phí, §2) bằng license key, dùng được khi offline. Hạn mức dịch theo gói, đếm riêng trên từng máy (§6.8). |
 | F9 | Tự cập nhật app |
-| F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề. Ở Giai đoạn 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
+| F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề, `Ctrl+Alt+PageUp` / `Ctrl+Alt+PageDown` (`⌃⌥PageUp` / `⌃⌥PageDown`) để cuộn phụ đề lên/xuống xem câu cũ (§4.4). Không chọn Ctrl+Alt+mũi tên vì driver Intel trên Windows dùng tổ hợp đó để xoay màn hình. Ở Giai đoạn 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
 
 ### 3.2 Ngoài phạm vi MVP
 

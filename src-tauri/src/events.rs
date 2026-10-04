@@ -23,6 +23,16 @@ pub const SUBTITLE_UPSERT: &str = "subtitle://upsert";
 pub const SUBTITLE_DELTA: &str = "subtitle://delta";
 /// Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch.
 pub const AUDIO_LEVEL: &str = "audio://level";
+/// Phím tắt cuộn phụ đề lên hay xuống (§4.4); chỉ gửi cho thanh phụ đề. Nội dung là `"up"` hay `"down"`.
+pub const OVERLAY_SCROLL: &str = "overlay://scroll";
+
+/// Hướng cuộn của phím tắt cuộn phụ đề. Tên khớp `ScrollDirection` ở `src/lib/overlayScroll.ts`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ScrollDirection {
+    Up,
+    Down,
+}
 
 /// Yêu cầu cửa sổ chính mở một màn hình, ví dụ khi bấm dòng báo lỗi phím tắt ở menu khay.
 #[derive(Clone, Debug, Serialize)]
@@ -55,6 +65,11 @@ pub fn status_changed<R: Runtime>(app: &AppHandle<R>, status: &AppStatus) {
 
 pub fn overlay_view<R: Runtime>(app: &AppHandle<R>, view: &OverlayView) {
     emit(app, overlay::LABEL, OVERLAY_VIEW, view);
+}
+
+/// Báo thanh phụ đề cuộn một trang (§4.4). Thanh khóa vẫn nhận: sự kiện không đi qua chuột.
+pub fn overlay_scroll<R: Runtime>(app: &AppHandle<R>, direction: ScrollDirection) {
+    emit(app, overlay::LABEL, OVERLAY_SCROLL, direction);
 }
 
 pub fn navigate<R: Runtime>(app: &AppHandle<R>, target: Navigate) {

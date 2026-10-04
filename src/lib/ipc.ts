@@ -16,8 +16,14 @@ export type Theme = "system" | "light" | "dark";
 export type UpdateChannel = "stable" | "beta";
 // Mã gói model trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest).
 export type ModelTier = string;
-export type HotkeyAction = "toggleSession" | "toggleOverlay" | "toggleLock";
-export const HOTKEY_ACTIONS: readonly HotkeyAction[] = ["toggleSession", "toggleOverlay", "toggleLock"];
+export type HotkeyAction = "toggleSession" | "toggleOverlay" | "toggleLock" | "scrollUp" | "scrollDown";
+export const HOTKEY_ACTIONS: readonly HotkeyAction[] = [
+  "toggleSession",
+  "toggleOverlay",
+  "toggleLock",
+  "scrollUp",
+  "scrollDown",
+];
 
 // Màu chữ và màu nền của phụ đề (§4.3, `settings::TextColor`, `settings::BackgroundColor`); mã màu ở `subtitleView.ts`.
 export type TextColor = "white" | "yellow" | "green" | "lightBlue" | "orange";

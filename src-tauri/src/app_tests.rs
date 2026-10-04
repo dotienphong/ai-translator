@@ -8,7 +8,8 @@ use tauri::{Listener, Manager};
 
 use crate::actions;
 use crate::errors;
-use crate::events::{AUDIO_LEVEL, NOTICE, SUBTITLE_DELTA, SUBTITLE_UPSERT};
+use crate::events::{AUDIO_LEVEL, NOTICE, OVERLAY_SCROLL, SUBTITLE_DELTA, SUBTITLE_UPSERT};
+use crate::hotkeys::HotkeyAction;
 use crate::login_item::AgentStatus;
 use crate::session::{self, StartOptions};
 use crate::state::{AppState, SessionStatus};
@@ -279,6 +280,32 @@ fn saved_rect(app: &tauri::App<tauri::test::MockRuntime>) -> Option<(f64, f64, f
     let settings = app.state::<AppState>().settings();
     let r = settings.overlay.positions.get("Retina 3840x2160")?;
     Some((r.x, r.y, r.width, r.height))
+}
+
+/// Phím tắt cuộn phụ đề (§4.4): dùng được cả khi thanh khóa (chuột xuyên qua nên không có con lăn). Chỉ thanh phụ đề nhận
+/// `overlay://scroll`, với hướng đúng; cửa sổ chính thì không.
+#[test]
+fn scroll_hotkeys_reach_only_the_overlay() {
+    let app = mock_app();
+    let overlay = window(&app, "overlay");
+    let main = window(&app, "main");
+    let to_overlay = Arc::new(Mutex::new(Vec::<String>::new()));
+    let to_main = Arc::new(Mutex::new(Vec::<String>::new()));
+    let sink = to_overlay.clone();
+    overlay.listen(OVERLAY_SCROLL, move |e| {
+        sink.lock().unwrap().push(e.payload().to_string())
+    });
+    let sink = to_main.clone();
+    main.listen(OVERLAY_SCROLL, move |e| {
+        sink.lock().unwrap().push(e.payload().to_string())
+    });
+    actions::run_hotkey(app.handle(), HotkeyAction::ScrollUp);
+    actions::run_hotkey(app.handle(), HotkeyAction::ScrollDown);
+    wait_until("thanh phụ đề nhận hai lệnh cuộn", || {
+        to_overlay.lock().unwrap().len() == 2
+    });
+    assert_eq!(*to_overlay.lock().unwrap(), ["\"up\"", "\"down\""]);
+    assert!(to_main.lock().unwrap().is_empty(), "cửa sổ chính không nhận lệnh cuộn");
 }
 
 /// Đổi màu chữ, màu nền ở Cài đặt › Phụ đề (§4.3): thanh phụ đề thấy ngay qua `overlay://view`. Mặc định chữ trắng trên

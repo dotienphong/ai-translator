@@ -173,6 +173,8 @@ export const vi: Record<MessageKey, string> = {
   "hotkeys.toggleSession": "Bắt đầu hoặc dừng dịch",
   "hotkeys.toggleOverlay": "Hiện hoặc ẩn phụ đề",
   "hotkeys.toggleLock": "Khóa hoặc mở khóa phụ đề",
+  "hotkeys.scrollUp": "Cuộn phụ đề lên (xem câu cũ)",
+  "hotkeys.scrollDown": "Cuộn phụ đề xuống (câu mới hơn)",
   "hotkeys.change": "Đổi",
   "hotkeys.cancel": "Hủy",
   "hotkeys.press": "Bấm tổ hợp phím mới, hoặc Esc để hủy",

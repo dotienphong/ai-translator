@@ -173,6 +173,8 @@ export const en = {
   "hotkeys.toggleSession": "Start or stop translating",
   "hotkeys.toggleOverlay": "Show or hide subtitles",
   "hotkeys.toggleLock": "Lock or unlock subtitles",
+  "hotkeys.scrollUp": "Scroll subtitles up (older sentences)",
+  "hotkeys.scrollDown": "Scroll subtitles down (newer sentences)",
   "hotkeys.change": "Change",
   "hotkeys.cancel": "Cancel",
   "hotkeys.press": "Press the new shortcut, or Esc to cancel",

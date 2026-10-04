@@ -411,6 +411,20 @@ mod tests {
         assert_eq!(entries["overlay"]["background"], "black");
     }
 
+    /// Bản trước chỉ có ba phím tắt: hai phím cuộn phụ đề lấy mặc định, và không bị coi là khóa hỏng.
+    #[test]
+    fn a_file_with_only_the_first_three_hotkeys_gets_the_scroll_defaults() {
+        let raw = object(json!({
+            "schemaVersion": 1,
+            "hotkeys": { "toggleSession": "Ctrl+Alt+K", "toggleOverlay": "Ctrl+Alt+H", "toggleLock": "Ctrl+Alt+L" },
+        }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.hotkeys.toggle_session, "Ctrl+Alt+K");
+        assert_eq!(loaded.settings.hotkeys.scroll_up, "Ctrl+Alt+PageUp");
+        assert_eq!(loaded.settings.hotkeys.scroll_down, "Ctrl+Alt+PageDown");
+        assert!(loaded.rejected.is_empty());
+    }
+
     #[test]
     fn swapped_hotkeys_are_kept_together() {
         let raw = object(json!({

@@ -6,6 +6,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::errors::{self, CommandError};
+use crate::events::ScrollDirection;
 use crate::hotkeys::HotkeyAction;
 use crate::login_item::LoginItems;
 use crate::settings::{self, Settings, persist};
@@ -136,6 +137,14 @@ pub fn run_hotkey<R: Runtime>(app: &AppHandle<R>, action: HotkeyAction) {
         }
         HotkeyAction::ToggleOverlay => set_overlay_visible(app, !state.status().overlay_visible).map(drop),
         HotkeyAction::ToggleLock => set_overlay_locked(app, !state.settings().overlay.locked).map(drop),
+        HotkeyAction::ScrollUp => {
+            events::overlay_scroll(app, ScrollDirection::Up);
+            Ok(())
+        }
+        HotkeyAction::ScrollDown => {
+            events::overlay_scroll(app, ScrollDirection::Down);
+            Ok(())
+        }
     };
     if let Err(e) = result {
         log::warn!("phím tắt {action:?} lỗi: {e:?}");

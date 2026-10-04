@@ -135,6 +135,9 @@ pub struct Hotkeys {
     pub toggle_session: String,
     pub toggle_overlay: String,
     pub toggle_lock: String,
+    /// Cuộn phụ đề lên và xuống (§4.4). File cài đặt của bản trước chưa có hai khóa này thì lấy mặc định.
+    pub scroll_up: String,
+    pub scroll_down: String,
 }
 
 impl Hotkeys {
@@ -143,6 +146,8 @@ impl Hotkeys {
             HotkeyAction::ToggleSession => &self.toggle_session,
             HotkeyAction::ToggleOverlay => &self.toggle_overlay,
             HotkeyAction::ToggleLock => &self.toggle_lock,
+            HotkeyAction::ScrollUp => &self.scroll_up,
+            HotkeyAction::ScrollDown => &self.scroll_down,
         }
     }
 
@@ -151,10 +156,12 @@ impl Hotkeys {
             HotkeyAction::ToggleSession => self.toggle_session = accelerator,
             HotkeyAction::ToggleOverlay => self.toggle_overlay = accelerator,
             HotkeyAction::ToggleLock => self.toggle_lock = accelerator,
+            HotkeyAction::ScrollUp => self.scroll_up = accelerator,
+            HotkeyAction::ScrollDown => self.scroll_down = accelerator,
         }
     }
 
-    pub fn bindings(&self) -> [(HotkeyAction, &str); 3] {
+    pub fn bindings(&self) -> [(HotkeyAction, &str); 5] {
         HotkeyAction::ALL.map(|action| (action, self.get(action)))
     }
 }
@@ -239,6 +246,9 @@ impl Settings {
                 toggle_session: "Ctrl+Alt+T".into(),
                 toggle_overlay: "Ctrl+Alt+H".into(),
                 toggle_lock: "Ctrl+Alt+L".into(),
+                // Không dùng Ctrl+Alt+mũi tên: driver Intel trên Windows dùng tổ hợp đó để xoay màn hình.
+                scroll_up: "Ctrl+Alt+PageUp".into(),
+                scroll_down: "Ctrl+Alt+PageDown".into(),
             },
             save_history: false,
             launch_at_login: false,
@@ -385,7 +395,13 @@ mod tests {
         assert_eq!(vi.update_channel, UpdateChannel::Stable);
         assert_eq!(
             vi.hotkeys.bindings().map(|(_, a)| a.to_string()),
-            ["Ctrl+Alt+T", "Ctrl+Alt+H", "Ctrl+Alt+L"]
+            [
+                "Ctrl+Alt+T",
+                "Ctrl+Alt+H",
+                "Ctrl+Alt+L",
+                "Ctrl+Alt+PageUp",
+                "Ctrl+Alt+PageDown"
+            ]
         );
         assert_eq!(Settings::defaults(UiLanguage::En).target_language, Lang::En);
     }
