@@ -159,12 +159,14 @@ describe("POST /v1/checkout", () => {
     expect(row).toEqual({ status: "failed" });
   });
 
-  it("số đơn không còn dải riêng theo môi trường: 1.000.000 vẫn tạo đơn được ở mọi giá trị ENVIRONMENT", async () => {
+  it("số đơn 1.000.000 tạo được ở production và test, không có trần riêng theo ENVIRONMENT", async () => {
     await env.DB.exec(reserveSql(999_999));
-    for (const ENVIRONMENT of ["production", "test"]) {
+    // Hai lần tạo đơn liên tiếp trên cùng bộ đếm: đơn đầu là 1.000.000, đơn sau 1.000.001.
+    for (const [index, ENVIRONMENT] of ["production", "test"].entries()) {
       const w = makeWorld({ ENVIRONMENT });
       const res = await w.call("POST", "/v1/checkout", valid);
       expect(res.status).toBe(201);
+      expect(res.body.order_code).toBe(1_000_000 + index);
     }
   });
 

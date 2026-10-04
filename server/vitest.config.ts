@@ -22,7 +22,7 @@ export default defineConfig(async () => {
       cloudflareTest({
         wrangler: { configPath: "./wrangler.jsonc" },
         // ENVIRONMENT = "test" chỉ có ở đây: wrangler*.jsonc luôn đặt "production" (test/node/wrangler-config.test.mjs khóa
-        // điều đó). Giá trị này nới ba chỗ cho test: chỉ HTTPS, khóa ký test-*, ACCESS_AUD bắt buộc.
+        // điều đó). Riêng khi test, giá trị này nới ba chỗ: không ép chỉ HTTPS, cho phép khóa ký test-*, không bắt buộc ACCESS_AUD.
         miniflare: { bindings: { TEST_MIGRATIONS: migrations, ...FAKE_SECRETS, ENVIRONMENT: "test" } },
       }),
     ],
