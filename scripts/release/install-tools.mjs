@@ -11,7 +11,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { readVersions } from "./versions.mjs";
@@ -50,6 +50,13 @@ export function shaErrors(file, actual, expected) {
   return [];
 }
 
+/** `tar` đọc được zip. Windows: gọi thẳng tar.exe (bsdtar) của hệ thống. Bước CI chạy trong Git Bash, nên `tar` tìm theo PATH
+ *  là GNU tar của Git, coi `D:\a\...` là "máy D" và không đọc được zip. */
+export function tarExecutable(platform, env) {
+  if (platform !== "win32") return "tar";
+  return win32.join(env.SystemRoot ?? env.windir ?? "C:\\Windows", "System32", "tar.exe");
+}
+
 async function download(url) {
   const res = await fetch(url, { headers: { "User-Agent": "release-tools" }, redirect: "follow" });
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
@@ -79,8 +86,8 @@ export async function main(argv, { platform = process.platform, arch = process.a
     mkdirSync(dest, { recursive: true });
     const zip = join(dest, asset.file);
     writeFileSync(zip, bytes);
-    // `tar` của macOS và Windows 10+ (bsdtar) đọc được zip.
-    execFileSync("tar", ["-xf", zip, "-C", dest], { stdio: "inherit" });
+    // `tar` của macOS và tar.exe của Windows 10+ (bsdtar) đọc được zip.
+    execFileSync(tarExecutable(platform, process.env), ["-xf", zip, "-C", dest], { stdio: "inherit" });
     const bin = join(dest, "bin");
     exportPath(bin);
     console.log(`protoc ${versions.PROTOC_VERSION}: ${bin}`);

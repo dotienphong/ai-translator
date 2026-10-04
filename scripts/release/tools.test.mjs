@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { shaErrors, toolAsset } from "./install-tools.mjs";
+import { shaErrors, tarExecutable, toolAsset } from "./install-tools.mjs";
 import { parseVersions, readVersions } from "./versions.mjs";
 
 const versions = readVersions();
@@ -31,6 +31,13 @@ test("protoc và Vulkan SDK: đúng URL theo nền tảng; nền tảng khác th
   );
   assert.throws(() => toolAsset("protoc", "linux", "x64", versions), /chưa khóa bản cho linux-x64/);
   assert.throws(() => toolAsset("vulkan-sdk", "darwin", "arm64", versions), /chỉ cần trên Windows/);
+});
+
+test("giải nén zip: Windows dùng tar.exe của hệ thống, không dùng tar của Git Bash trong PATH", () => {
+  // `tar` của Git Bash là GNU tar: đọc `D:\a\...` là "máy D, đường dẫn a\..." ("Cannot connect to D: resolve failed").
+  assert.equal(tarExecutable("darwin", {}), "tar");
+  assert.equal(tarExecutable("win32", { SystemRoot: "D:\\Windows" }), "D:\\Windows\\System32\\tar.exe");
+  assert.equal(tarExecutable("win32", {}), "C:\\Windows\\System32\\tar.exe");
 });
 
 test("SHA-256 sai hay chưa khóa đều dừng", () => {
