@@ -228,6 +228,23 @@ meter {
   flex-wrap: wrap;
 }
 
+input[type="checkbox"] {
+  width: 1.4rem;
+  height: 1.4rem;
+  margin: 0;
+  flex-shrink: 0;
+  vertical-align: middle;
+  cursor: pointer;
+  accent-color: var(--color-accent);
+}
+
+.checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
 kbd {
   font-family: var(--font);
   padding: 0.1rem 0.45rem;
