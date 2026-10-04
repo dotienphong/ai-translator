@@ -41,6 +41,9 @@ plutil -replace CFBundleIdentifier -string "$identifier" "$app/Contents/Info.pli
 plutil -replace CFBundleExecutable -string meeting-translator "$app/Contents/Info.plist"
 plutil -replace CFBundleName -string "AI Translator" "$app/Contents/Info.plist"
 plutil -replace CFBundlePackageType -string APPL "$app/Contents/Info.plist"
+# Icon của gói (Dock, Cmd+Tab): thiếu `CFBundleIconFile` và `icon.icns` thì macOS hiện icon mẫu trống.
+cp src-tauri/icons/icon.icns "$app/Contents/Resources/icon.icns"
+plutil -replace CFBundleIconFile -string icon "$app/Contents/Info.plist"
 for lang in en vi; do
   mkdir -p "$app/Contents/Resources/$lang.lproj"
   cp "src-tauri/macos/$lang.lproj/InfoPlist.strings" "$app/Contents/Resources/$lang.lproj/"
