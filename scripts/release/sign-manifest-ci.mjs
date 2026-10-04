@@ -10,7 +10,7 @@
 // review 04 lần 2; N-2 của review 07a lần 2).
 //
 // Ghi khóa riêng ra file tạm quyền 0600 ngoài repo (sign-manifest.mjs của 04 đòi vậy), chạy sign-manifest.mjs
-// `--env production` với môi trường không còn biến khóa, rồi xóa file khóa dù thành công hay lỗi. Ra:
+// với môi trường không còn biến khóa, rồi xóa file khóa dù thành công hay lỗi. Ra:
 // target/manifest/models.json.
 
 import { spawnSync } from "node:child_process";
@@ -62,7 +62,7 @@ export function main(env = process.env, root = repoRoot) {
     const out = join(root, "target", "manifest", "models.json");
     const r = spawnSync(
       process.execPath,
-      [script, "--env", "production", "--key", keyFile, "--body", join(root, env.BODY), "--out", out],
+      [script, "--key", keyFile, "--body", join(root, env.BODY), "--out", out],
       { cwd: root, env: childEnv, stdio: "inherit" },
     );
     if (r.status !== 0) throw new Error(`sign-manifest.mjs thoát mã ${r.status}`);

@@ -70,7 +70,7 @@ test("sign-manifest --check: PREVIOUS bắt buộc khi đã có khóa production
   mkdirSync(join(dir, "models"));
   writeFileSync(join(dir, "models", "new.json"), "{}");
   writeFileSync(join(dir, "models", "old.json"), "{}");
-  const keys = (production) => writeFileSync(join(dir, "src-tauri/keys/manifest-public-keys.json"), JSON.stringify({ staging: [], production }));
+  const keys = (production) => writeFileSync(join(dir, "src-tauri/keys/manifest-public-keys.json"), JSON.stringify({ production }));
   keys([]);
   assert.deepEqual(inputErrors(dir, "models/new.json", ""), [], "chưa có khóa production: lần đầu");
   keys([{ kid: "prod-2026-11-1", x: "x" }]);
@@ -92,7 +92,7 @@ test("sign-manifest: khóa ghi ra file 0600 ngoài repo, con không thấy biế
     join(fakeRoot, "scripts", "models", "sign-manifest.mjs"),
     `import { readFileSync, statSync, writeFileSync } from "node:fs";
 const a = process.argv.slice(2); const opt = (n) => a[a.indexOf(n) + 1];
-writeFileSync(${JSON.stringify(log)}, JSON.stringify({ env: opt("--env"), key: opt("--key"),
+writeFileSync(${JSON.stringify(log)}, JSON.stringify({ key: opt("--key"),
   mode: (statSync(opt("--key")).mode & 0o777).toString(8), content: readFileSync(opt("--key"), "utf8"),
   sees: process.env.MANIFEST_SIGNING_KEY ?? null }));
 writeFileSync(opt("--out"), "{}");
@@ -104,7 +104,7 @@ process.exit(Number(process.env.STUB_EXIT ?? 0));
   const seen = JSON.parse(readFileSync(log, "utf8"));
   // Windows không có quyền kiểu POSIX (NTFS báo 666): chỉ kiểm 0600 ở nơi có.
   const posixMode = process.platform === "win32" ? seen.mode : "600";
-  assert.deepEqual({ ...seen, key: undefined }, { env: "production", key: undefined, mode: posixMode, content: '{"kid":"thử"}', sees: null });
+  assert.deepEqual({ ...seen, key: undefined }, { key: undefined, mode: posixMode, content: '{"kid":"thử"}', sees: null });
   assert.equal(seen.key.startsWith(dir), true);
   assert.equal(existsSync(seen.key), false, "file khóa đã bị xóa");
   assert.throws(() => signManifest({ ...env, STUB_EXIT: "3" }, fakeRoot), /thoát mã 3/);

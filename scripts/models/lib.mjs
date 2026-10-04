@@ -71,8 +71,8 @@ export async function verifyEnvelope(envelope, keys) {
   return JSON.parse(Buffer.from(envelope.body, "base64url").toString("utf8"));
 }
 
-// Khóa công khai build sẵn vào app, của một môi trường (`staging` hay `production`).
-export function builtInKeys(env, file = KEYS_FILE) {
+// Khóa công khai build sẵn vào app: khối `production` (spec 2026-10-04: chỉ một môi trường).
+export function builtInKeys(file = KEYS_FILE) {
   const all = JSON.parse(readFileSync(file, "utf8"));
-  return all[env] ?? [];
+  return all.production ?? [];
 }

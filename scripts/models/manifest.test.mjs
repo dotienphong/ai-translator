@@ -59,7 +59,7 @@ test("build-manifest tính bytes và sha256 từ file thật", (t) => {
   assert.equal(run("build-manifest.mjs", ["--dir", dir, "--sequence", "0", "--config", config]).status, 2);
 });
 
-test("cấu hình staging trong repo có đủ file cho hai gói", () => {
+test("cấu hình trong repo có đủ file cho hai gói", () => {
   const config = JSON.parse(readFileSync(script("models.config.json"), "utf8"));
   for (const pack of ["standard", "lite"]) {
     const kinds = config.files.filter((f) => f.tier.includes(pack)).map((f) => f.kind);
@@ -72,55 +72,58 @@ test("cấu hình staging trong repo có đủ file cho hai gói", () => {
 test("gen-manifest-key: chỉ ghi khóa riêng ra ngoài repo, quyền 0600, in khóa công khai", (t) => {
   const dir = temp(t);
   const keys = join(dir, "keys.json");
-  writeFileSync(keys, JSON.stringify({ staging: [{ kid: "stg-2026-10-1", x: "x" }], production: [] }));
-  const inside = run("gen-manifest-key.mjs", ["stg-2026-10-2", "--out", resolve(REPO, "k.jwk"), "--keys", keys]);
+  writeFileSync(keys, JSON.stringify({ production: [{ kid: "prod-2026-10-1", x: "x" }] }));
+  const inside = run("gen-manifest-key.mjs", ["prod-2026-10-2", "--out", resolve(REPO, "k.jwk"), "--keys", keys]);
   assert.equal(inside.status, 2);
   assert.match(inside.stderr, /không được nằm trong repo/);
-  assert.equal(run("gen-manifest-key.mjs", ["stg-2026-10-1", "--out", join(dir, "a.jwk"), "--keys", keys]).status, 2, "kid đã có");
-  assert.equal(run("gen-manifest-key.mjs", ["prod-2026-10-1", "--out", join(dir, "b.jwk"), "--keys", keys]).status, 2, "chỉ staging");
-  const ok = run("gen-manifest-key.mjs", ["stg-2026-10-2", "--out", join(dir, "c.jwk"), "--keys", keys]);
+  assert.equal(run("gen-manifest-key.mjs", ["prod-2026-10-1", "--out", join(dir, "a.jwk"), "--keys", keys]).status, 2, "kid đã có");
+  assert.equal(run("gen-manifest-key.mjs", ["stg-2026-10-2", "--out", join(dir, "b.jwk"), "--keys", keys]).status, 2, "chỉ kid prod-");
+  const ok = run("gen-manifest-key.mjs", ["prod-2026-10-2", "--out", join(dir, "c.jwk"), "--keys", keys]);
   assert.equal(ok.status, 0, ok.stderr);
   const pub = JSON.parse(ok.stdout);
-  assert.equal(pub.kid, "stg-2026-10-2");
+  assert.equal(pub.kid, "prod-2026-10-2");
   assert.equal("d" in pub, false, "stdout không có khóa riêng");
+  assert.match(ok.stderr, /khối "production"/);
   assert.equal(statSync(join(dir, "c.jwk")).mode & 0o777, 0o600);
   assert.equal(JSON.parse(readFileSync(join(dir, "c.jwk"), "utf8")).x, pub.x);
-  assert.equal(run("gen-manifest-key.mjs", ["stg-2026-10-3", "--out", join(dir, "c.jwk"), "--keys", keys]).status, 2, "không ghi đè");
+  assert.equal(run("gen-manifest-key.mjs", ["prod-2026-10-3", "--out", join(dir, "c.jwk"), "--keys", keys]).status, 2, "không ghi đè");
 });
 
-test("gen-manifest-key --production: chỉ kid prod-, không trùng kid ở khối nào (kế hoạch 07b)", (t) => {
+test("gen-manifest-key: kid đã có ở bất kỳ khối nào, kể cả khối cũ còn sót, đều bị từ chối", (t) => {
   const dir = temp(t);
   const keys = join(dir, "keys.json");
   writeFileSync(keys, JSON.stringify({ staging: [{ kid: "prod-2026-11-1", x: "x" }], production: [] }));
-  assert.equal(run("gen-manifest-key.mjs", ["stg-2026-11-1", "--production", "--out", join(dir, "a.jwk"), "--keys", keys]).status, 2);
-  assert.equal(run("gen-manifest-key.mjs", ["prod-2026-11-1", "--production", "--out", join(dir, "b.jwk"), "--keys", keys]).status, 2, "kid đã có");
-  const inside = run("gen-manifest-key.mjs", ["prod-2026-11-2", "--production", "--out", resolve(REPO, "p.jwk"), "--keys", keys]);
-  assert.match(inside.stderr, /không được nằm trong repo/);
-  const ok = run("gen-manifest-key.mjs", ["prod-2026-11-2", "--production", "--out", join(dir, "c.jwk"), "--keys", keys]);
-  assert.equal(ok.status, 0, ok.stderr);
-  assert.equal(JSON.parse(ok.stdout).kid, "prod-2026-11-2");
-  assert.match(ok.stderr, /khối "production"/);
-  assert.equal(statSync(join(dir, "c.jwk")).mode & 0o777, 0o600);
+  const dup = run("gen-manifest-key.mjs", ["prod-2026-11-1", "--out", join(dir, "a.jwk"), "--keys", keys]);
+  assert.equal(dup.status, 2);
+  assert.match(dup.stderr, /đã có trong khối staging/);
 });
 
-test("sign-manifest: chỉ ký bằng khóa có trong khối của môi trường, và tự kiểm lại", (t) => {
+test("gen-manifest-key: cờ --production cũ không còn được nhận (chỉ còn một môi trường)", (t) => {
   const dir = temp(t);
   const keys = join(dir, "keys.json");
-  writeFileSync(keys, JSON.stringify({ staging: [], production: [] }));
-  const made = run("gen-manifest-key.mjs", ["stg-2026-10-5", "--out", join(dir, "k.jwk"), "--keys", keys]);
+  writeFileSync(keys, JSON.stringify({ production: [] }));
+  const r = run("gen-manifest-key.mjs", ["prod-2026-11-2", "--production", "--out", join(dir, "a.jwk"), "--keys", keys]);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /Tham số/);
+});
+
+test("sign-manifest: chỉ ký bằng khóa có trong khối production, và tự kiểm lại", (t) => {
+  const dir = temp(t);
+  const keys = join(dir, "keys.json");
+  writeFileSync(keys, JSON.stringify({ production: [] }));
+  const made = run("gen-manifest-key.mjs", ["prod-2026-10-5", "--out", join(dir, "k.jwk"), "--keys", keys]);
   assert.equal(made.status, 0, made.stderr);
   const body = join(dir, "body.json");
   writeFileSync(body, JSON.stringify({ schema: 1, sequence: 2, files: [] }));
   const args = ["--key", join(dir, "k.jwk"), "--body", body, "--out", join(dir, "models.json"), "--keys", keys];
   const unknown = run("sign-manifest.mjs", args);
   assert.equal(unknown.status, 2);
-  assert.match(unknown.stderr, /không có trong khối staging/);
-  writeFileSync(keys, JSON.stringify({ staging: [JSON.parse(made.stdout)], production: [] }));
-  assert.equal(run("sign-manifest.mjs", [...args, "--env", "production"]).status, 2, "khóa staging không ký production");
+  assert.match(unknown.stderr, /không có trong khối production/);
+  writeFileSync(keys, JSON.stringify({ production: [JSON.parse(made.stdout)] }));
   const signed = run("sign-manifest.mjs", args);
   assert.equal(signed.status, 0, signed.stderr);
   const envelope = JSON.parse(readFileSync(join(dir, "models.json"), "utf8"));
-  assert.equal(envelope.kid, "stg-2026-10-5");
+  assert.equal(envelope.kid, "prod-2026-10-5");
   assert.equal(envelope.format, "ai-translator-models");
 });
 
