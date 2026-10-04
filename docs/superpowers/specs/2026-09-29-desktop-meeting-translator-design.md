@@ -1308,7 +1308,7 @@ meeting-translator/
 Đã quyết ngày 2026-10-02: khóa ký manifest model và khóa ký bản cập nhật, mỗi loại một khóa trong secret của CI kèm bản sao offline mã hóa (§10.2); máy chưa được hỗ trợ thì không tải model (§6.7, §8).
 
 Còn mở:
-- **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, production dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Cần tên miền trước khi license server lên production (email gửi từ tên miền đã xác thực, `returnUrl`) và trước bản beta đầu tiên.
+- **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, production dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Không cần tên miền để deploy lần đầu trên `workers.dev`; cần tên miền trước khi nhúng URL production vào bản beta đầu tiên và trước lần phát hành công khai đầu tiên (email gửi từ tên miền đã xác thực, `returnUrl`).
 - **Hộp thư nhận cảnh báo vận hành** (P05-5, `OPERATOR_EMAIL`, §10.2). Cần có trước khi triển khai production.
 - **Pháp lý:** hỏi luật sư về:
   - hồ sơ chuyển dữ liệu cá nhân ra nước ngoài (§10.1);

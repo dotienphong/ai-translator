@@ -71,7 +71,7 @@ hdiutil detach $ram                                  # ổ RAM mất hẳn
 - Kiểm: `node scripts/release/release-ready.mjs --base-url "<RELEASES_BASE_URL>"` in `đủ cấu hình production`. Job `publish`
   chạy đúng lệnh này và dừng nếu còn thiếu.
 - Cổng chống Pro trái phép: `package-macos.sh` và `package-windows.mjs` chạy `node scripts/release/release-check.mjs
-  no-dev-gate <file chạy của app>` sau bước `embedded`. File có chuỗi `AI_TRANSLATOR_DEV_PRO`, `AI_TRANSLATOR_DEV_FREE`
+  no-dev-gate <file chạy của app>` trước khi ký (macOS: trước `codesign`; kiểm lại ở cả bước build và bước sign). File có chuỗi `AI_TRANSLATOR_DEV_PRO`, `AI_TRANSLATOR_DEV_FREE`
   hay `mt-dev-pro-gate-v1` thì job đỏ, không ký, không đăng (spec 2026-10-04, §3). Gặp lỗi này thì bản đang build là bản
   debug hoặc `[profile.release]` đã bật `debug-assertions`: kiểm `Cargo.toml` rồi build lại, đừng tắt cổng.
 
@@ -152,3 +152,169 @@ Thu hồi ở Apple hay nhà cung cấp chứng thư, lấy chứng thư mới, 
 USB `KHOA` giữ: `updater-*.key` (đã mã hóa bằng passphrase của nó), `manifest-*.jwk.enc`. Passphrase ở giấy, cất riêng. Mỗi năm
 một lần, trên máy không nối mạng, thử giải mã cả hai (`openssl enc -d …`, `pnpm tauri signer sign` một file bất kỳ) để chắc USB
 và passphrase còn dùng được.
+
+## 4. Triển khai license server (production)
+
+Chỉ có một môi trường, production (spec 2026-10-04): hai file cấu hình không có khối `env`, nên **không có `--env` ở lệnh nào**.
+Worker API tên `mt-license` (`server/wrangler.jsonc`), Worker admin tên `mt-license-admin` (`server/wrangler.admin.jsonc`), D1
+tên `mt-license-production`. Mọi lệnh chạy trong `server/`, trên máy người vận hành đã `wrangler login`; người làm tự nhập
+secret, không dán secret vào chat hay file. Các bước này thay Task 21 của kế hoạch 05 (Task 19 và Task 21 cũ dùng `--env`
+nên đã lỗi thời; có errata ngay dưới tiêu đề hai task đó).
+
+Ký hiệu: `PROD` là origin của Worker API và `PADMIN` là origin của Worker admin. Khi chưa có tên miền thì
+`PROD=https://mt-license.<subdomain>.workers.dev` và `PADMIN=https://mt-license-admin.<subdomain>.workers.dev`
+(`<subdomain>` là subdomain workers.dev của tài khoản). Có tên miền (Q1) thì `PROD=https://<tên miền license>`: thêm
+`"routes": [{ "pattern": "<tên miền license>", "custom_domain": true }]` và đặt `"workers_dev": false` trong `wrangler.jsonc`,
+rồi làm bước 1 và bước 9a của Task 21 cũ (tên miền gửi email trên Resend, luật rate limit cho webhook; luật WAF cần zone nên
+không đặt được trên `*.workers.dev`). Khi `EMAIL_FROM` còn là `onboarding@resend.dev` thì Resend chỉ gửi được tới email của
+chủ tài khoản Resend: chưa đủ để bán.
+
+1. **Kiểm cấu hình**, rồi tạo D1:
+
+   ```bash
+   cd server && pnpm check
+   pnpm exec wrangler deploy --dry-run
+   pnpm exec wrangler d1 create mt-license-production --location apac --binding DB
+   ```
+
+   Expected: `--dry-run: exiting now.` (bảng binding có `env.PLANS` với giá chính thức 50.000 đ, 150.000 đ, 500.000 đ);
+   `✅ Successfully created DB 'mt-license-production' in region APAC`.
+
+2. **Chép `database_id` vào CẢ HAI file** `wrangler.jsonc` và `wrangler.admin.jsonc` (dòng `mt-license-production`, đang là toàn
+   số 0). Kiểm:
+
+   ```bash
+   grep -n '"mt-license-production"' wrangler.jsonc wrangler.admin.jsonc
+   ```
+
+   Expected: hai dòng, cùng một `database_id`, khác toàn số 0.
+
+3. **Áp migration**:
+
+   ```bash
+   pnpm exec wrangler d1 migrations apply mt-license-production --remote
+   ```
+
+   Expected: bảng `Migrations to be applied:` có `0001_init.sql`, trả lời `y`, rồi ✅.
+
+4. **Giữ chỗ số đơn (QĐ18)**, để đơn đầu tiên là 1.000.001:
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "INSERT INTO orders (order_code, order_token_hash, provider, plan, amount, currency, email_consent_at, status, created_at, expires_at) VALUES (1000000, 'reserved', 'none', 'pro', 0, 'VND', 0, 'failed', 0, 0); DELETE FROM orders WHERE order_code = 1000000;"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS seq, (SELECT COUNT(*) FROM orders) AS orders"
+   ```
+
+   Expected: lệnh đầu chạy không lỗi; lệnh sau in `seq` = `1000000` và `orders` = `0`.
+
+5. **Secret của Worker API** (kênh thanh toán PayOS của production). Lệnh đầu hỏi tạo Worker `mt-license`: trả lời `y`.
+
+   ```bash
+   pnpm exec wrangler secret put PAYOS_CLIENT_ID
+   pnpm exec wrangler secret put PAYOS_API_KEY
+   pnpm exec wrangler secret put PAYOS_CHECKSUM_KEY
+   pnpm exec wrangler secret put RESEND_API_KEY
+   pnpm exec wrangler secret put OPERATOR_EMAIL
+   openssl rand -base64 32 | pnpm exec wrangler secret put RATE_LIMIT_PEPPER
+   ```
+
+   Expected: mỗi lệnh kết thúc bằng `✨ Success! Uploaded secret <TÊN>`. `OPERATOR_EMAIL` không bắt buộc; thiếu thì cảnh báo
+   chỉ nằm trong log.
+
+6. **Hai khóa ký token** (khóa riêng đi thẳng vào secret, không ra terminal, không ra file; nếu đã có CI thì tạo trong một job
+   CI chạy tay thay vì trên máy dev, Q11). `<năm>` và `<tháng>` là hôm nay, ví dụ `prod-2026-10-1`; số thứ tự là số kế tiếp
+   chưa từng dùng (script từ chối `kid` không đúng dạng `prod-<năm>-<tháng>-<n>` hay đã có trong `keys/public-keys.json`):
+
+   ```bash
+   node scripts/gen-token-key.mjs prod-<năm>-<tháng>-1 | pnpm exec wrangler secret put TOKEN_SIGNING_KEY_A
+   node scripts/gen-token-key.mjs prod-<năm>-<tháng>-2 | pnpm exec wrangler secret put TOKEN_SIGNING_KEY_B
+   ```
+
+   Expected: mỗi lệnh in một dòng khóa công khai `{"kid":"prod-…","x":"…"}` (stderr), rồi
+   `✨ Success! Uploaded secret TOKEN_SIGNING_KEY_A` (rồi `_B`). Chép lại hai giá trị `x`.
+
+7. **Khóa công khai.** Tạo `server/keys/public-keys.json` (nếu chưa có) với khối `production`:
+
+   ```json
+   {
+     "production": {
+       "a": { "kid": "prod-<năm>-<tháng>-1", "x": "<x của ô A>" },
+       "b": { "kid": "prod-<năm>-<tháng>-2", "x": "<x của ô B>" }
+     }
+   }
+   ```
+
+   ```bash
+   node -e 'const k=require("./keys/public-keys.json");for(const [r,v] of Object.entries(k.production))console.log(r,v.kid,Buffer.from(v.x,"base64url").length)'
+   ```
+
+   Expected: `a prod-…-1 32` và `b prod-…-2 32`. Ô B được kiểm bằng ký thử ở bước 11, ô A bằng token thật ở bước 12.
+
+8. **Secret của Worker admin** (chỉ bốn secret này; Worker admin gọi Worker API qua service binding `API`):
+
+   ```bash
+   pnpm exec wrangler secret put PAYOS_CLIENT_ID -c wrangler.admin.jsonc
+   pnpm exec wrangler secret put PAYOS_API_KEY -c wrangler.admin.jsonc
+   pnpm exec wrangler secret put PAYOS_CHECKSUM_KEY -c wrangler.admin.jsonc
+   pnpm exec wrangler secret put RESEND_API_KEY -c wrangler.admin.jsonc
+   ```
+
+   Expected: như bước 5, với Worker `mt-license-admin`.
+
+9. **Deploy Worker API trước** (Worker admin có service binding tới nó):
+
+   ```bash
+   pnpm check && pnpm exec wrangler deploy
+   curl -s "$PROD/v1/health"; echo
+   ```
+
+   Expected: `Uploaded mt-license`, `Deployed mt-license triggers`, `schedule: */5 * * * *`; `curl` in `{"ok":true}`. Workers
+   Issues đã bật trong cấu hình; thêm automation nhận cảnh báo nếu có kênh nhận.
+
+10. **Deploy Worker admin, bật Access.**
+
+    ```bash
+    pnpm exec wrangler deploy -c wrangler.admin.jsonc
+    ```
+
+    Expected: URL `https://mt-license-admin.<subdomain>.workers.dev`. Rồi:
+    - Dashboard > Workers & Pages > `mt-license-admin` > tab Access > Protect this Worker behind Access > **All traffic**;
+      Authentication policy chọn "Cloudflare account" (hoặc Email domain của người vận hành) > Apply Access. Mở
+      `$PADMIN/admin/whoami` trong trình duyệt, đăng nhập: trang hiện `{"error":"forbidden"}` (chưa có `ACCESS_AUD`, fail
+      closed, QĐ6).
+    - Zero Trust > Access controls > Applications > ứng dụng của `mt-license-admin` > Configure > Advanced settings > Cookie
+      settings: **SameSite Lax** (không chọn Strict), **HttpOnly bật**, **Binding Cookie bật**; Save. Nếu
+      `cloudflared access curl` hỏng sau đó thì tắt Binding Cookie và ghi là rủi ro chấp nhận (QĐ30).
+    - Chép "Application Audience (AUD) Tag" của ứng dụng đó. Trong `vars` của `wrangler.admin.jsonc`: `ACCESS_AUD` là AUD tag
+      vừa chép, `API_ORIGIN` là `$PROD` (không có `/` ở cuối).
+
+    ```bash
+    pnpm exec wrangler deploy -c wrangler.admin.jsonc
+    curl -s -o /dev/null -w '%{http_code}\n' "$PADMIN/admin/whoami"
+    ```
+
+    Expected: `302`, `401` hoặc `403`, không bao giờ `200`; trong trình duyệt sau khi đăng nhập Access:
+    `{"operator":"<email của bạn>"}`; `cloudflared access login "$PADMIN" && cloudflared access curl "$PADMIN/admin/whoami"`
+    cũng in `{"operator":"<email của bạn>"}`; không có `ERR_TOO_MANY_REDIRECTS`.
+
+11. **Đăng ký webhook với PayOS**, rồi ký thử bằng khóa dự phòng (QĐ31):
+
+    ```bash
+    cloudflared access login "$PADMIN"
+    cloudflared access curl "$PADMIN/admin/payos/confirm-webhook" -X POST -H 'content-type: application/json' \
+      -d "{\"webhook_url\":\"$PROD/v1/webhooks/payos\"}"; echo
+    cloudflared access curl "$PADMIN/admin/keys/test-sign" -X POST -H 'content-type: application/json' -d '{}' | node scripts/verify-token.mjs production
+    ```
+
+    Expected: `{"ok":true,"webhook_url":"…/v1/webhooks/payos"}` và kênh production trên my.payos.vn hiện đúng Webhook URL;
+    `OK production b prod-<năm>-<tháng>-2`.
+
+12. **Giao dịch thật đầu tiên**: chủ dự án mua một gói ở giá thật (Task 20, Step 1 tới 4 với `$PROD`); đơn đầu có
+    `"order_code":1000001`, `"amount"` đúng giá chính thức. Kích hoạt một máy giả rồi kiểm token (lệnh ở Task 21, Step 12 cũ,
+    không có `--env`). Expected: `OK production a prod-<năm>-<tháng>-1`, `kid` bắt đầu bằng `prod-`.
+
+13. **Điền vào app, commit** (khóa công khai và URL công khai, không bí mật nào):
+    - `PRODUCTION_URL` trong `src-tauri/src/license/client.rs` đúng bằng `$PROD` (https, không query, không `/` ở cuối);
+    - chép nguyên `server/keys/public-keys.json` vào `src-tauri/keys/license-public-keys.json` (khối `production`, hai ô
+      `a`, `b`; test `the_app_copy_matches_the_server_file_when_it_exists` đỏ nếu lệch);
+    - `git add server/wrangler.jsonc server/wrangler.admin.jsonc server/keys/public-keys.json src-tauri/src/license/client.rs src-tauri/keys/license-public-keys.json`
+      rồi commit. Đổi khóa ký thì app phải tin cả hai `kid` trước khi server đổi ô ký (spec §10.2).

@@ -9053,6 +9053,8 @@ git commit -m "feat(server): cấu hình staging và production cho Worker API v
 
 ## Task 19 (người): Triển khai staging
 
+> **Errata 2026-10-04 (một môi trường production, spec `2026-10-04-single-production-environment-design.md`): không còn staging. Bỏ qua cả Task 19.** Cấu hình wrangler không còn khối `env.staging`, và không có Worker hay D1 staging để triển khai.
+
 **Cần người thao tác:** toàn bộ task này cần tài khoản thật (Cloudflare, PayOS, Resend) và việc nhập secret từ bàn phím. Agent không tự chạy các lệnh ở đây, không đọc và không dán secret nào. Agent chỉ kiểm file sau mỗi bước khi người làm yêu cầu, và commit ở Step 14. Không dùng kho mật khẩu nào (P05-6): hai khóa ký đi thẳng vào secret của Worker.
 
 Trước khi làm: đã quyết P05-1, P05-2, P05-5; Task 18 đã commit; `cd server && pnpm check` xanh.
@@ -9459,6 +9461,17 @@ Ghi vào kế hoạch 00 (Task 22 của kế hoạch này):
 Không ghi email, key hay token.
 
 ## Task 21 (người): Lên production
+
+> **Errata 2026-10-04 (một môi trường production, spec `2026-10-04-single-production-environment-design.md`). Dùng các sửa sau thay cho chữ cũ của task này; trình tự lệnh đã chỉnh có ở `docs/release/phat-hanh.md`, mục 4 "Triển khai license server (production)".**
+> - `server/wrangler.jsonc` và `server/wrangler.admin.jsonc` không còn khối `env`: không có `env.production`, `env.production.vars` hay `env.staging`. Sửa thẳng `vars` ở gốc (`EMAIL_FROM`, `ACCESS_AUD`, `API_ORIGIN`, `routes`, `workers_dev`); `PLANS` và `TOKEN_SIGNING_SLOT` đã nằm sẵn ở gốc.
+> - **Bỏ `--env production` ở mọi lệnh wrangler** của task này: `d1 create`, `d1 migrations apply`, `d1 execute`, `secret put`, `deploy` (kể cả `deploy --dry-run`). Ví dụ: `pnpm exec wrangler d1 migrations apply mt-license-production --remote`, `pnpm exec wrangler secret put PAYOS_API_KEY`, `pnpm exec wrangler deploy`.
+> - Tên Worker: API là `mt-license` (không phải `mt-license-production`), admin là `mt-license-admin` (không phải `mt-license-admin-production`). Tên D1 giữ `mt-license-production`. Hệ quả: lệnh hỏi tạo Worker ở Step 5 là Worker `mt-license`; Step 8 là Worker `mt-license-admin`; Step 9 in `Uploaded mt-license`; `PADMIN` là `https://mt-license-admin.<subdomain>.workers.dev`; Access ở Step 10 bật cho `mt-license-admin`.
+> - Deploy Worker API: `pnpm exec wrangler deploy`. Deploy Worker admin: `pnpm exec wrangler deploy -c wrangler.admin.jsonc`. Secret của Worker admin: `pnpm exec wrangler secret put <TÊN> -c wrangler.admin.jsonc`. Thứ tự vẫn là API rồi admin.
+> - Step 6: `node scripts/gen-token-key.mjs prod-<năm>-<tháng>-<n> | pnpm exec wrangler secret put TOKEN_SIGNING_KEY_A` (rồi `_B`); script chỉ nhận `kid` dạng `prod-<năm>-<tháng>-<n>`.
+> - Step 7: nếu `server/keys/public-keys.json` chưa có thì tạo với khối `production`; nó là file duy nhất, không còn khối `staging`.
+> - Step 1: "Staging đã qua Task 20" không còn: không có staging. Điều kiện là các mục "Chỉ làm khi đã có" ở dưới.
+> - Điền sau khi xong (spec 2026-10-04, §1): `PRODUCTION_URL` trong `src-tauri/src/license/client.rs` và khối `production` của `src-tauri/keys/license-public-keys.json`. Chưa có tên miền thì `PROD` là URL `workers.dev` của Worker `mt-license`; luật WAF ở Step 9a cần zone nên chỉ đặt được khi đã có tên miền riêng.
+> - Step 13: `git add` chỉ gồm `server/wrangler.jsonc server/wrangler.admin.jsonc server/keys/public-keys.json` (cộng hai file của app ở mục trên khi điền).
 
 **Chỉ làm khi đã có:**
 - tên miền (Q1, phần còn mở; gọi là `<tên miền license>` cho Worker API, ví dụ `license.<tên miền>`), dùng DNS của Cloudflare trên cùng tài khoản;

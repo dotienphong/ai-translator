@@ -42,7 +42,8 @@
 - `genuine.rs`: bản debug vẫn bỏ qua kiểm chữ ký bản cài (bản dev không có chữ ký Developer ID). Đây là khả năng của build, không phải môi trường, nên giữ.
 
 ### 2.3 Chạy bản dev
-- `scripts/run-dev-app.sh` đọc `.env` ở gốc repo nếu có, **không dùng `source`** (không thực thi nội dung file). Chỉ nhận các dòng `KEY=VALUE` có `KEY` nằm trong danh sách cho phép (`AI_TRANSLATOR_DEV_PRO` và các biến `MT_*` đã được chuyển qua `open --env`). Dòng khác bị bỏ qua và báo.
+- `scripts/run-dev-app.sh` đọc `.env` ở gốc repo nếu có, **không dùng `source`** (không thực thi nội dung file). Chỉ nhận các dòng `KEY=VALUE` có `KEY` đúng tên một biến trong danh sách cho phép; hiện danh sách chỉ có `AI_TRANSLATOR_DEV_PRO`. Tên khóa phải khớp `[A-Za-z_][A-Za-z0-9_]*` rồi mới so sát nguyên chữ với danh sách (không so chuỗi con). Dòng khác bị bỏ qua và báo (chỉ tên khóa, không in giá trị). Các biến `MT_*` không đi qua `.env`: chúng vẫn lấy từ shell và `run-dev-app.sh` chuyển qua `open --env` như trước.
+- Khóa cho phép xuất hiện nhiều lần trong `.env` thì **lần cuối thắng** (đúng cái `open --env` dùng), để cảnh báo của script không lệch với app. Giá trị chuyển nguyên văn; riêng `AI_TRANSLATOR_DEV_PRO` có giá trị không phải đúng `true` hay `false` (ví dụ `"true"` có dấu nháy, `1`, `TRUE`) vẫn được chuyển nhưng script báo ở stderr rằng giá trị lạ và coi như tắt (app chỉ bật với đúng `true`).
 - Khi `AI_TRANSLATOR_DEV_PRO=true`, script in cảnh báo to: bản này giả lập Pro, không dùng để đo hạn mức hay thử luồng mua.
 - Thêm `.env.example` chứa `AI_TRANSLATOR_DEV_PRO=false` và chú thích. Thêm `!.env.example` vào `.gitignore` (hiện `.env*` chặn cả file này).
 
