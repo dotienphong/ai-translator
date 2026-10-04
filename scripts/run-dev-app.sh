@@ -11,11 +11,14 @@
 # trong Terminal thì script tắt cả Vite lẫn app. Không chạy script lần hai khi app đang chạy (script sẽ từ chối).
 #
 # Bản dev đọc tiến trình phụ ở `src-tauri/binaries/` (chép bằng `scripts/copy-sidecars.sh`) và giao diện từ Vite.
-# App mở bằng `open` không thừa hưởng biến môi trường của shell (Nhỏ-9 của review 02 lần 3): script chuyển các biến
-# `MT_*` đang đặt qua `open --env` (có từ macOS 13; app cần macOS 14.2 trở lên nên luôn dùng được). Mức log của app đặt cố
-# định trong `logging.rs`, không đọc `RUST_LOG`, nên biến đó không được chuyển.
-# Công tắc Pro của bản dev đặt trong `.env` (xem `.env.example`).
+# Trên macOS hiện tại, `open` chuyển môi trường của tiến trình gọi (shell chạy script này) cho app nó khởi động: kiểm
+# 2026-10-04, app mở bằng script này có đủ biến của shell. Script vẫn chuyển các biến `MT_*` đang đặt qua `open --env`
+# (có từ macOS 13; app cần macOS 14.2 trở lên nên luôn dùng được) để không phụ thuộc hành vi đó (Nhỏ-9 của review 02 lần
+# 3). Mức log của app đặt cố định trong `logging.rs`, không đọc `RUST_LOG`.
+# Công tắc Pro của bản dev chỉ đặt trong `.env` (xem `.env.example`). Vì `open` chuyển môi trường shell, script gỡ
+# `AI_TRANSLATOR_DEV_PRO` khỏi môi trường của chính nó ngay dưới đây; biến đặt trong shell không tới được app.
 set -eu
+unset AI_TRANSLATOR_DEV_PRO
 identity="${MT_DEV_SIGN_IDENTITY:-AI Translator Dev}"
 root=$(cd "$(dirname "$0")/.." && pwd)
 target="${CARGO_TARGET_DIR:-$root/target}"
@@ -70,7 +73,8 @@ for name in $(env | sed -n 's/^\(MT_[A-Za-z0-9_]*\)=.*/\1/p'); do
   set -- "$@" --env "$name=$(printenv "$name")"
 done
 # `.env` ở gốc repo (đã gitignore, mẫu: `.env.example`): chỉ các khóa trong danh sách cho phép, không `source` (spec
-# 2026-10-04, §2.3). Biến `AI_TRANSLATOR_DEV_PRO` đặt trong shell KHÔNG được chuyển; chỉ `.env` mới bật công tắc.
+# 2026-10-04, §2.3). `open` chuyển môi trường shell cho app, nên `AI_TRANSLATOR_DEV_PRO` của shell đã bị `unset` ở đầu
+# script; giá trị trong `.env` được chuyển rõ ràng bằng `open --env`, nên chỉ `.env` mới bật công tắc.
 # `set -f` tắt mở rộng glob: giá trị trong `.env` (vd. `*`) không được thành tên file khi tách `$pairs` theo dòng.
 dev_pro=off
 pairs=$(sh "$root/scripts/read-dev-env.sh" "$root/.env")
