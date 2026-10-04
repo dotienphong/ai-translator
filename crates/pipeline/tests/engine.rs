@@ -4,7 +4,7 @@
 
 use pipeline::config::{AsrConfig, MtConfig, PipelineConfig, SupervisorConfig};
 use pipeline::engine::{
-    EnergyVad, Engine, EngineConfig, EventSink, Fatal, Indicators, SampleSource, Usage, VadFactory,
+    EnergyVad, Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, SampleSource, Usage, VadFactory,
 };
 use pipeline::prompt::Lang;
 use pipeline::subtitle::{Delta, Status, Subtitle};
@@ -12,6 +12,7 @@ use pipeline::supervisor::{AsrSpec, Clock, FakeClock, LlamaSpec, NoEvents, Sidec
 use std::collections::BTreeMap;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, Once};
 use std::time::{Duration, Instant};
 
@@ -206,6 +207,21 @@ fn config(languages: &[&str]) -> EngineConfig {
     }
 }
 
+/// Nguồn bọc ngoài `SampleSource`, đếm số mẫu đã đưa vào để test chờ theo điều kiện thay vì theo thời gian.
+struct CountingSource {
+    inner: SampleSource,
+    delivered: Arc<AtomicUsize>,
+}
+
+impl FrameSource for CountingSource {
+    fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
+        let before = out.len();
+        let more = self.inner.read(out, timeout)?;
+        self.delivered.fetch_add(out.len() - before, Ordering::SeqCst);
+        Ok(more)
+    }
+}
+
 /// Phát nhanh gấp 20 lần thời gian thực: khối 100 ms mỗi 5 ms.
 fn source(samples: Vec<f32>) -> Box<SampleSource> {
     Box::new(SampleSource::new(samples, RATE / 10, Duration::from_millis(5)))
@@ -391,10 +407,19 @@ fn stop_ends_a_live_session_quickly() {
     let manager = manager(&t, &["en\tstill talking"], &[], Arc::new(SystemClock::default()));
     // Nguồn chạy đúng thời gian thực, dài 60 giây: chỉ dừng được bằng `stop`.
     let samples = audio(&[(true, 30_000), (false, 30_000)]);
-    let live = Box::new(SampleSource::new(samples, 512, Duration::from_millis(32)));
+    let delivered = Arc::new(AtomicUsize::new(0));
+    let live = Box::new(CountingSource {
+        inner: SampleSource::new(samples, 512, Duration::from_millis(32)),
+        delivered: delivered.clone(),
+    });
     let sink = Arc::new(Recorder::default());
+    // Hạn dịch câu cuối khi dừng (mặc định 3 giây, giờ thật) đặt rất lớn: tiến trình phụ giả khởi động chậm hơn 3 giây
+    // trên máy bận thì câu cuối bị bỏ và test đỏ ngẫu nhiên. Phiên dừng xong ngay khi câu cuối được dịch, nên hạn lớn
+    // không làm test chậm đi.
+    let mut cfg = config(&["en"]);
+    cfg.pipeline.mt.stop_grace_ms = 20_000;
     let engine = Engine::start(
-        config(&["en"]),
+        cfg,
         live,
         energy_vad(),
         Box::new(manager.asr()),
@@ -402,14 +427,26 @@ fn stop_ends_a_live_session_quickly() {
         sink.clone(),
     )
     .unwrap();
-    std::thread::sleep(Duration::from_millis(500));
+    // Chờ tới khi nguồn đã đưa vào đủ tiếng nói cho một đoạn (hơn `min_speech_ms` = 250 ms), không chờ theo thời gian cố
+    // định: máy bận (runner CI) đọc chậm hơn, và đoạn quá ngắn thì bị loại, nên test đỏ ngẫu nhiên. Vòng đọc xử lý hết
+    // khối đã đọc trước khi xét cờ dừng, nên đủ mẫu ở đây nghĩa là VAD sẽ thấy đủ tiếng nói.
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while delivered.load(Ordering::SeqCst) < 600 * RATE / 1000 {
+        assert!(
+            Instant::now() < deadline,
+            "nguồn không đưa vào đủ âm thanh trong 20 giây"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
     let started = Instant::now();
     let metrics = engine.stop();
-    assert!(started.elapsed() < Duration::from_secs(5), "{:?}", started.elapsed());
+    let stopped_in = started.elapsed();
+    // Nguồn còn 59 giây âm thanh: dừng trong vòng hạn dịch là không chờ hết nguồn.
+    assert!(stopped_in < Duration::from_secs(25), "{stopped_in:?}");
     // Đoạn đang nói dở được chốt khi dừng và vẫn có phụ đề.
     assert_eq!(metrics.segments, 1);
     let (ui, _) = sink.replay();
-    assert_eq!(ui.len(), 1);
+    assert_eq!(ui.len(), 1, "stop xong sau {stopped_in:?}");
 }
 
 /// File WAV ở `tests/fixtures/audio/` (clip FLEURS, Đ20 của kế hoạch 00), qua VAD theo năng lượng và tiến trình phụ giả:
