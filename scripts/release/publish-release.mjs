@@ -16,7 +16,7 @@
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { tagErrors } from "./release-ready.mjs";
@@ -41,9 +41,9 @@ export function contentType(name) {
 export function uploadPlan({ bucket, version, files, channels }) {
   const steps = files.map((name) => ({ key: `${bucket}/${version}/${name}`, file: name, type: contentType(name) }));
   for (const channel of channels) {
-    steps.push({ key: `${bucket}/${channel}/latest.json`, file: join("manifests", channel, "latest.json"), type: "application/json" });
+    steps.push({ key: `${bucket}/${channel}/latest.json`, file: posix.join("manifests", channel, "latest.json"), type: "application/json" });
   }
-  steps.push({ key: `${bucket}/${version}/published.json`, file: join("manifests", "published.json"), type: "application/json" });
+  steps.push({ key: `${bucket}/${version}/published.json`, file: posix.join("manifests", "published.json"), type: "application/json" });
   return steps;
 }
 

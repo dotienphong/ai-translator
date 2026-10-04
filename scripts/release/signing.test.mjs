@@ -32,7 +32,11 @@ test("sign-updates: không có khóa thì không ký; có khóa thì tạo .sig 
   assert.equal(existsSync(join(dir, "AI Translator.app.tar.gz.sig")), false);
   // Khóa tạm, chỉ cho test này.
   const keyFile = join(dir, "test.key");
-  execFileSync("pnpm", ["tauri", "signer", "generate", "--ci", "-p", "test-only", "-w", keyFile], { cwd: root, stdio: "ignore" });
+  execFileSync("pnpm", ["tauri", "signer", "generate", "--ci", "-p", "test-only", "-w", keyFile], {
+    cwd: root,
+    stdio: "ignore",
+    shell: process.platform === "win32", // như sign-updates.mjs: trên Windows `pnpm` là pnpm.cmd
+  });
   const env = { ...process.env, TAURI_SIGNING_PRIVATE_KEY: readFileSync(keyFile, "utf8"), TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "test-only" };
   assert.deepEqual(signUpdates(["--dir", dir], env), ["AI Translator.app.tar.gz", "AI Translator_0.1.0_x64-setup.exe"]);
   const sig = Buffer.from(readFileSync(join(dir, "AI Translator_0.1.0_x64-setup.exe.sig"), "utf8"), "base64").toString();
@@ -92,7 +96,9 @@ process.exit(Number(process.env.STUB_EXIT ?? 0));
   const env = { PATH: process.env.PATH, RUNNER_TEMP: dir, MANIFEST_SIGNING_KEY: '{"kid":"thử"}', BODY: "body.json" };
   assert.equal(signManifest(env, fakeRoot), join(fakeRoot, "target", "manifest", "models.json"));
   const seen = JSON.parse(readFileSync(log, "utf8"));
-  assert.deepEqual({ ...seen, key: undefined }, { env: "production", key: undefined, mode: "600", content: '{"kid":"thử"}', sees: null });
+  // Windows không có quyền kiểu POSIX (NTFS báo 666): chỉ kiểm 0600 ở nơi có.
+  const posixMode = process.platform === "win32" ? seen.mode : "600";
+  assert.deepEqual({ ...seen, key: undefined }, { env: "production", key: undefined, mode: posixMode, content: '{"kid":"thử"}', sees: null });
   assert.equal(seen.key.startsWith(dir), true);
   assert.equal(existsSync(seen.key), false, "file khóa đã bị xóa");
   assert.throws(() => signManifest({ ...env, STUB_EXIT: "3" }, fakeRoot), /thoát mã 3/);
@@ -136,7 +142,10 @@ exit 0
   return { ...r, log, keychain: join(dir, "release.keychain-db"), leftovers: p12 && existsSync(p12) ? [p12] : [] };
 }
 
-test("keychain: nhận đúng chứng thư Developer ID hợp lệ, in lệnh đặt biến, giữ keychain", (t) => {
+// macos-keychain.sh chỉ chạy trên macOS (job ký của release.yml); test dùng `sh` và PATH kiểu POSIX nên bỏ qua trên Windows.
+const posixOnly = { skip: process.platform === "win32" && "script chỉ dành cho macOS" };
+
+test("keychain: nhận đúng chứng thư Developer ID hợp lệ, in lệnh đặt biến, giữ keychain", posixOnly, (t) => {
   const r = runKeychain(t, {
     identities: [
       '  1) AAAA "Apple Development: x (Y)"',
@@ -155,7 +164,7 @@ test("keychain: nhận đúng chứng thư Developer ID hợp lệ, in lệnh đ
   assert.deepEqual(r.leftovers, []);
 });
 
-test("keychain: không có Developer ID, import lỗi, hay tên có dấu nháy đơn thì báo lỗi và xóa keychain", (t) => {
+test("keychain: không có Developer ID, import lỗi, hay tên có dấu nháy đơn thì báo lỗi và xóa keychain", posixOnly, (t) => {
   for (const [opts, message] of [
     [{ identities: ['  1) AAAA "Apple Development: x (Y)"'] }, /không phải Developer ID Application/],
     [{ identities: [], importFails: true }, /^$/],

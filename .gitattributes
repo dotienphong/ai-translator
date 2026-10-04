@@ -1,0 +1,3 @@
+# Mọi file văn bản dùng LF, kể cả khi checkout trên Windows (CI Windows có core.autocrlf=true). Test script phát hành so
+# từng byte và đọc workflow, file Rust bằng regex theo "\n"; CRLF làm chúng đỏ.
+* text=auto eol=lf
