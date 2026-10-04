@@ -14,7 +14,7 @@
 
 - Ma trận ở dòng 7 chỉ kiểm "gõ trong ô chat khi phụ đề cập nhật". Không kiểm "bấm vào thanh phụ đề rồi gõ".
 - Đo riêng bằng TextEdit: sau khi bấm vào thanh phụ đề, chữ gõ không vào app bên dưới (0/3 ở bản gốc, 1/3 ở bản sửa `is_key_window: true`; đối chứng không bấm thì vào đủ). Vi phạm spec §4.4 "không lấy focus của app họp". Chưa tìm ra nguyên nhân, chưa sửa.
-- Lỗi hover/con trỏ của thanh (panel không key nên WebKit coi trang không active) đã sửa bằng `is_key_window: true` ở `src-tauri/src/overlay/macos.rs`. Đã sửa trong code ngày 2026-10-04, chưa commit.
+- Lỗi hover/con trỏ của thanh (panel không key nên WebKit coi trang không active) đã sửa bằng `is_key_window: true` ở `src-tauri/src/overlay/macos.rs`. Đã sửa và commit (`9ce83ab`).
 
 ## Windows (kế hoạch 0-05, Task 4)
 
