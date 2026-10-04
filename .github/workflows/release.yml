@@ -310,6 +310,10 @@ jobs:
     defaults:
       run:
         shell: bash
+    # SQLCipher build OpenSSL từ mã nguồn bằng perl. `perl` trong PATH của Git Bash là bản MSYS, thiếu module
+    # (Locale::Maketext::Simple); openssl-src đọc OPENSSL_SRC_PERL nên trỏ tới Strawberry Perl có sẵn trên runner.
+    env:
+      OPENSSL_SRC_PERL: C:\Strawberry\perl\bin\perl.exe
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
