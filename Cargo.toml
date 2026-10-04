@@ -27,6 +27,8 @@ strip = true
 lto = true
 codegen-units = 1
 panic = "abort"
+# Tường minh (mặc định cũng là false): mã công tắc dev nằm sau cfg(debug_assertions), bản phát hành không được có nó.
+debug-assertions = false
 
 # whisper-rs và whisper-rs-sys đã vá để dùng chung một lượt encode (spec §6.4). Xem third_party/README.md.
 [patch.crates-io]
