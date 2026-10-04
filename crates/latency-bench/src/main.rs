@@ -7,6 +7,9 @@ mod stats;
 
 use clap::Parser;
 
+// Phân tích đúng một lần khi chạy lệnh nên kích thước của enum không đáng kể; trên Windows `LatencyArgs` lớn hơn hẳn các
+// biến thể khác (kích thước của `OsString` khác macOS) và clippy báo lỗi.
+#[allow(clippy::large_enum_variant)]
 #[derive(Parser)]
 enum Command {
     /// Đo độ trễ tổng thể trên một session phát lại theo thời gian thực.
