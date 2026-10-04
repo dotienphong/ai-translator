@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { UiLanguage } from "../i18n";
 import type { ModelsView } from "./models";
+import type { ScrollDirection } from "./overlayScroll";
 
 // Kiểu dữ liệu và tên lệnh, tên sự kiện giữa giao diện và lõi Rust (spec §6.10).
 // Phía Rust là nơi quyết định: kiểu ở đây phải khớp `src-tauri/src/settings/mod.rs`, `state.rs`,
@@ -43,6 +44,7 @@ export interface Settings {
   vadEndSilenceMs: number;
   overlay: {
     fontSize: number;
+    // Không còn dùng: thanh giữ mọi câu và cuộn được (§4.4). Giữ khóa để file cài đặt cũ vẫn đọc được.
     lines: number;
     opacity: number;
     textColor: TextColor;
@@ -127,6 +129,7 @@ export interface AppInfo {
 export interface OverlayView {
   uiLanguage: UiLanguage;
   fontSize: number;
+  // Không còn dùng (xem `Settings.overlay.lines`).
   lines: number;
   opacity: number;
   textColor: TextColor;
@@ -394,6 +397,8 @@ export interface Events {
   "app://navigate": Navigate;
   "app://notice": AppNotice;
   "overlay://view": OverlayView;
+  // Phím tắt cuộn lên hay xuống (§4.4): dùng được cả khi thanh khóa, lúc con lăn chuột xuyên qua thanh.
+  "overlay://scroll": ScrollDirection;
   "license://changed": LicenseView;
   "license://order": OrderOutcome;
   "subtitle://upsert": Subtitle;

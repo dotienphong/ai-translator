@@ -187,7 +187,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Từ điển thuật ngữ (Pro):** thêm, sửa, xóa; nhập và xuất CSV.
 - **Cài đặt:**
   - **Chung:** ngôn ngữ giao diện, khởi động cùng hệ thống, giao diện sáng/tối, kênh cập nhật (stable hoặc beta).
-  - **Phụ đề:** cỡ chữ, số dòng, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen. Đổi là thấy ngay trên thanh phụ đề.
+  - **Phụ đề:** cỡ chữ, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen. Đổi là thấy ngay trên thanh phụ đề.
   - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
@@ -214,7 +214,9 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Kiểu cửa sổ:** cửa sổ riêng, không viền, nền mờ bán trong suốt, **luôn nổi trên cùng**. Không hiện trên taskbar của Windows, và không lấy focus của app họp.
 - **Ẩn lúc mở app**, kể cả khi app khởi động cùng hệ thống. Bắt đầu phiên thì hiện; dừng phiên thì giữ nguyên. Người dùng vẫn ẩn/hiện bằng tay được, qua nút, phím tắt hoặc menu khay.
 - **Nội dung:**
-  - Hiện 1–3 dòng bản dịch gần nhất; tùy chọn hiện câu gốc chữ nhỏ ở phía trên.
+  - **Giữ mọi câu của phiên và cuộn xem lại được.** Thanh không bỏ câu cũ: số dòng nhìn thấy do chiều cao thanh quyết định (kéo cạnh để đổi). Giữ tối đa 1000 câu gần nhất để cuộc họp rất dài không làm đầy bộ nhớ; câu cũ hơn có ở Lịch sử nếu người dùng bật lưu (F4). Phiên mới thì thanh bắt đầu trống.
+  - **Cuộn:** đang ở đáy thì thanh tự theo câu mới. Cuộn lên (con lăn hay trackpad, khi thanh chưa khóa) thì dừng theo, và hiện nút "Mới nhất" ở góc dưới bên phải để về đáy; cuộn xuống tới đáy cũng tiếp tục theo. Thanh khóa thì chuột xuyên qua nên không có con lăn: dùng hai phím tắt cuộn lên/xuống (F10), mỗi lần cuộn khoảng 80% chiều cao thanh, và nút "Mới nhất" chỉ là nhãn báo đang xem câu cũ. Không có thanh cuộn: kéo thanh cuộn bị coi là kéo cả thanh phụ đề.
+  - Tùy chọn hiện câu gốc chữ nhỏ ở phía trên mỗi câu.
   - **Bản dịch hiện dần từng chữ** trong lúc model đang dịch.
   - **Phụ đề tạm:** câu chưa chốt hiện màu nhạt hơn. Nếu người nói nói tiếp ngay (§6.3), phụ đề tạm được thay bằng bản dịch của cả câu đã ghép.
 - **Di chuyển và kích thước:** kéo để di chuyển, kéo cạnh hoặc góc để đổi kích thước (cả macOS lẫn Windows; kích thước tối thiểu 320×80 điểm). App nhớ vị trí và kích thước riêng cho từng màn hình.

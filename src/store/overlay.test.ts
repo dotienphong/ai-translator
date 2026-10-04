@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
 import type { AppStatus, OverlayView, Subtitle } from "../lib/ipc";
-import { appendDelta, createOverlayStore, createResizeDrag, upsertLine } from "./overlay";
+import { MAX_LINES, appendDelta, createOverlayStore, createResizeDrag, upsertLine } from "./overlay";
 
 const sub = (id: number, tgt: string, provisional = false): Subtitle => ({
   id,
@@ -157,11 +157,12 @@ describe("overlay store", () => {
     fake.emit("subtitle://upsert", sub(2, "hai"));
     fake.emit("subtitle://upsert", sub(3, "b"));
     fake.emit("subtitle://delta", { id: 3, text: "a" });
-    expect(store.getState().lines.map((l) => l.id)).toEqual([2, 3]);
-    expect(store.getState().lines[1]?.tgt_text).toBe("ba");
+    // Thanh giữ mọi câu để cuộn xem lại (§4.4), không cắt theo số dòng của cài đặt.
+    expect(store.getState().lines.map((l) => l.id)).toEqual([1, 2, 3]);
+    expect(store.getState().lines[2]?.tgt_text).toBe("ba");
     fake.emit("overlay://view", { ...view, lines: 1, locked: true });
     expect(store.getState().view?.locked).toBe(true);
-    expect(store.getState().lines.map((l) => l.id)).toEqual([3]);
+    expect(store.getState().lines.map((l) => l.id)).toEqual([1, 2, 3]);
     expect(fake.calls.map((c) => c.cmd)).toEqual(["get_overlay_view"]);
   });
 
@@ -178,7 +179,7 @@ describe("overlay store", () => {
     expect(store.getState().view?.fontSize).toBe(30);
   });
 
-  it("đọc xong cài đặt thì cắt các phụ đề đã tới trước đó theo số dòng", async () => {
+  it("đọc xong cài đặt thì giữ mọi phụ đề đã tới trước đó", async () => {
     let release: (v: OverlayView) => void = () => {};
     const fake = fakeIpc({ get_overlay_view: () => new Promise<OverlayView>((resolve) => (release = resolve)) });
     const store = createOverlayStore(fake.ipc);
@@ -187,10 +188,10 @@ describe("overlay store", () => {
     for (const id of [1, 2, 3]) fake.emit("subtitle://upsert", sub(id, `${id}`));
     release(view);
     await ready;
-    expect(store.getState().lines.map((l) => l.id)).toEqual([2, 3]);
+    expect(store.getState().lines.map((l) => l.id)).toEqual([1, 2, 3]);
   });
 
-  it("phụ đề tới trước khi đọc xong cài đặt thì giữ mặc định 3 dòng", async () => {
+  it("phụ đề tới trước khi đọc xong cài đặt vẫn được giữ đủ", async () => {
     let release: (v: OverlayView) => void = () => {};
     const fake = fakeIpc({ get_overlay_view: () => new Promise<OverlayView>((resolve) => (release = resolve)) });
     const store = createOverlayStore(fake.ipc);
@@ -198,9 +199,21 @@ describe("overlay store", () => {
     await vi.waitFor(() => expect(fake.calls.map((c) => c.cmd)).toEqual(["get_overlay_view"]));
     for (const id of [1, 2, 3, 4]) fake.emit("subtitle://upsert", sub(id, `${id}`));
     expect(store.getState().view).toBeNull();
-    expect(store.getState().lines.map((l) => l.id)).toEqual([2, 3, 4]);
+    expect(store.getState().lines.map((l) => l.id)).toEqual([1, 2, 3, 4]);
     release(view);
     await ready;
+  });
+
+  // Cuộc họp rất dài không được làm DOM và bộ nhớ phình mãi: chặn ở MAX_LINES câu gần nhất.
+  it("giữ tối đa MAX_LINES câu gần nhất", async () => {
+    const fake = fakeIpc({ get_overlay_view: () => view });
+    const store = createOverlayStore(fake.ipc);
+    await store.getState().init();
+    for (let id = 1; id <= MAX_LINES + 5; id++) fake.emit("subtitle://upsert", sub(id, `${id}`));
+    const ids = store.getState().lines.map((l) => l.id);
+    expect(ids).toHaveLength(MAX_LINES);
+    expect(ids[0]).toBe(6);
+    expect(ids[MAX_LINES - 1]).toBe(MAX_LINES + 5);
   });
 });
 

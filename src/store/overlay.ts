@@ -4,12 +4,16 @@ import type { AppStatus, Ipc, OverlayView, ResizeEdge, Subtitle, SubtitleDelta }
 // Store của thanh phụ đề. Cửa sổ `overlay` chỉ đọc được phần cài đặt của nó (`get_overlay_view`)
 // và nghe sự kiện (phụ đề, trạng thái, mức âm lượng); không gọi được lệnh nào khác (spec §10.2).
 
-// Giữ tối đa `max` phụ đề gần nhất, xếp theo `id` (id tăng theo thứ tự câu, và không trùng giữa các phiên nhờ `id_base`).
+// Số câu giữ lại tối đa trên thanh (§4.4): thanh giữ mọi câu để người dùng cuộn xem lại, chỉ chặn ở mức này để cuộc họp
+// rất dài không làm DOM và bộ nhớ phình mãi. 1000 câu là vài giờ họp; câu cũ hơn vẫn có ở Lịch sử nếu bật lưu (F4).
+export const MAX_LINES = 1000;
+
+// Giữ tối đa `max` phụ đề gần nhất (mặc định `MAX_LINES`), xếp theo `id` (id tăng theo thứ tự câu, và không trùng giữa các phiên nhờ `id_base`).
 // Phụ đề cùng `id` (phụ đề tạm được thay, §6.3; bản dịch xong) cập nhật tại chỗ; phụ đề đã được gộp vào phụ đề mới
 // (`replaces`, §7) thì bỏ. Phụ đề gộp mang id của câu đầu (nhỏ hơn câu mới đã hiện sau nó), nên nếu nó thay một dòng
 // đang hiện thì vào đúng chỗ dòng đầu tiên bị thay (S1 của review 02 lần 2). Phụ đề khác không có trên thanh mà cũ hơn
-// dòng đầu (bản dịch xong sau khi câu đó đã trôi khỏi thanh) thì bỏ qua; còn lại thì chèn đúng chỗ theo `id`.
-export function upsertLine(lines: readonly Subtitle[], subtitle: Subtitle, max: number): Subtitle[] {
+// dòng đầu (bản dịch xong sau khi câu đó đã bị chặn bởi `max`) thì bỏ qua; còn lại thì chèn đúng chỗ theo `id`.
+export function upsertLine(lines: readonly Subtitle[], subtitle: Subtitle, max: number = MAX_LINES): Subtitle[] {
   const replaced = (l: Subtitle) => subtitle.replaces.includes(l.id);
   const kept = lines.filter((l) => !replaced(l));
   const i = kept.findIndex((l) => l.id === subtitle.id);
@@ -51,10 +55,8 @@ export function createOverlayStore(ipc: Ipc) {
     level: 0,
     async init() {
       const offs = await Promise.all([
-        ipc.listen("overlay://view", (view) => set({ view, lines: get().lines.slice(-view.lines) })),
-        ipc.listen("subtitle://upsert", (subtitle) =>
-          set({ lines: upsertLine(get().lines, subtitle, get().view?.lines ?? 3) }),
-        ),
+        ipc.listen("overlay://view", (view) => set({ view })),
+        ipc.listen("subtitle://upsert", (subtitle) => set({ lines: upsertLine(get().lines, subtitle) })),
         ipc.listen("subtitle://delta", (delta) => set({ lines: appendDelta(get().lines, delta) })),
         ipc.listen("audio://level", (level) => set({ level })),
         // Trạng thái app (cùng `rev` như cửa sổ chính): bỏ trạng thái cũ tới muộn; phiên mới bắt đầu thì xóa phụ đề cũ.
@@ -68,7 +70,7 @@ export function createOverlayStore(ipc: Ipc) {
       ]);
       // Cài đặt mới hơn đã tới qua `overlay://view` trong lúc chờ thì giữ bản đó (N-3 của review 02 lần 2).
       const view = await ipc.invoke("get_overlay_view");
-      if (!get().view) set({ view, lines: get().lines.slice(-view.lines) });
+      if (!get().view) set({ view });
       return () => offs.forEach((off) => off());
     },
   }));

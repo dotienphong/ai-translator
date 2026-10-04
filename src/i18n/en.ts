@@ -130,7 +130,6 @@ export const en = {
   "settings.group.privacy": "Privacy",
   "settings.license.description": "License key, status and expiry date, renew or deactivate.",
   "settings.subtitles.fontSize": "Font size",
-  "settings.subtitles.lines": "Number of lines",
   "settings.subtitles.textColor": "Text color",
   "settings.subtitles.background": "Background color",
   "subtitleColor.white": "White",
@@ -270,6 +269,7 @@ export const en = {
 
   "overlay.waiting": "Subtitles will appear here",
   "overlay.hide": "Hide subtitles",
+  "overlay.latest": "Latest",
   "overlay.listening": "Listening",
   "overlay.hearing": "Listening: sound detected",
   "overlay.note.firstRun": "Preparing for first use…",

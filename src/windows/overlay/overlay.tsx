@@ -1,9 +1,10 @@
 import "./overlay.css";
-import { StrictMode } from "react";
+import { StrictMode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useStore } from "zustand";
 import { translate } from "../../i18n";
 import { type ResizeEdge, tauriIpc as ipc } from "../../lib/ipc";
+import { atBottom, pagedScrollTop } from "../../lib/overlayScroll";
 import {
   HEARING_RMS,
   TEXT_COLORS,
@@ -62,7 +63,10 @@ function ResizeEdges() {
   );
 }
 
-// Thanh phụ đề (§4.4): N dòng gần nhất, bản dịch hiện dần, phụ đề tạm màu nhạt hơn, câu gốc chữ nhỏ ở trên nếu bật.
+// Thanh phụ đề (§4.4): mọi câu của phiên (tối đa `MAX_LINES`) trong một vùng cuộn, bản dịch hiện dần, phụ đề tạm màu nhạt hơn,
+// câu gốc chữ nhỏ ở trên nếu bật. Đang ở đáy thì tự theo câu mới; cuộn lên xem câu cũ thì dừng theo, hiện nút "Mới nhất" để
+// về đáy. Cuộn bằng con lăn hay trackpad (chỉ khi chưa khóa, vì khóa thì chuột xuyên qua) hoặc bằng hai phím tắt cuộn lên
+// xuống (`overlay://scroll`, dùng được cả khi khóa).
 // Chỉ báo nhỏ ở góc trên: chấm "đang nghe" (sáng khi có tiếng), và các lời nhắc (đang nạp model, không có âm thanh,
 // đang trễ, dịch không khả dụng, hết hạn mức, lỗi). Màu chữ, màu nền và độ mờ nền theo Cài đặt › Phụ đề (§4.3).
 // Khi chưa khóa: kéo được cả thanh (`data-tauri-drag-region="deep"`), kéo cạnh để đổi kích thước, và rê chuột vào thì hiện
@@ -73,6 +77,44 @@ function Overlay() {
   const lines = useStore(store, (s) => s.lines);
   const status = useStore(store, (s) => s.status);
   const level = useStore(store, (s) => s.level);
+  const scroller = useRef<HTMLDivElement>(null);
+  // `follow` (ref) để các hàm cuộn đọc ngay; `following` (state) để vẽ nút "Mới nhất".
+  const follow = useRef(true);
+  const [following, setFollowing] = useState(true);
+  const syncFollow = () => {
+    const el = scroller.current;
+    if (!el) return;
+    follow.current = atBottom(el);
+    setFollowing(follow.current);
+  };
+  // Có câu mới hay cỡ chữ đổi mà đang theo thì giữ ở đáy. Ghi `scrollTop` đồng bộ trước khi vẽ, để không thấy giật.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el && follow.current) el.scrollTop = el.scrollHeight;
+  }, [lines, view?.fontSize, view?.showSource]);
+  // Kéo cạnh đổi chiều cao thanh: vẫn giữ ở đáy nếu đang theo.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      if (follow.current) el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [view !== null]);
+  // Phím tắt cuộn từ phía Rust.
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let cancelled = false;
+    void ipc.listen("overlay://scroll", (direction) => {
+      const el = scroller.current;
+      if (el) el.scrollTo({ top: pagedScrollTop(el, direction), behavior: "smooth" });
+    }).then((unlisten) => (cancelled ? unlisten() : (off = unlisten)));
+    return () => {
+      cancelled = true;
+      off?.();
+    };
+  }, []);
   if (!view) return null;
   const t = (key: Parameters<typeof translate>[1]) => translate(view.uiLanguage, key);
   const notes = overlayNotes(status);
@@ -118,20 +160,32 @@ function Overlay() {
           </span>
         ))}
       </div>
-      {lines.length === 0 && notes.length === 0 && <div className="waiting">{t("overlay.waiting")}</div>}
-      {lines.map((l) => {
-        const v = lineView(l, view.showSource);
-        const classes = ["line", v.kind, v.provisional ? "provisional" : ""].filter(Boolean).join(" ");
-        return (
-          <div key={l.id} className={classes}>
-            {v.source && <div className="source">{v.source}</div>}
-            <div className="main">
-              {v.kind === "dropped" ? t("subtitle.dropped") : v.main}
-              {v.kind === "failed" && <span className="tag">{t("subtitle.failed")}</span>}
+      <div className="lines" ref={scroller} onScroll={syncFollow}>
+        {lines.length === 0 && notes.length === 0 && <div className="waiting">{t("overlay.waiting")}</div>}
+        {lines.map((l) => {
+          const v = lineView(l, view.showSource);
+          const classes = ["line", v.kind, v.provisional ? "provisional" : ""].filter(Boolean).join(" ");
+          return (
+            <div key={l.id} className={classes}>
+              {v.source && <div className="source">{v.source}</div>}
+              <div className="main">
+                {v.kind === "dropped" ? t("subtitle.dropped") : v.main}
+                {v.kind === "failed" && <span className="tag">{t("subtitle.failed")}</span>}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {!following && (
+        <button
+          type="button"
+          className="latest"
+          data-tauri-drag-region="false"
+          onClick={() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" })}
+        >
+          ↓ {t("overlay.latest")}
+        </button>
+      )}
       {!view.locked && <ResizeEdges />}
     </div>
   );

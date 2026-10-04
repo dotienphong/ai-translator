@@ -3,7 +3,7 @@ import { BACKGROUND_COLORS, TEXT_COLORS } from "../../../lib/subtitleView";
 import { useApp, useT } from "../appStore";
 import { CommitRange } from "./CommitRange";
 
-// Nhóm Cài đặt "Phụ đề" (§4.3, §6.9): cỡ chữ (14–48), số dòng (1–3), màu chữ, màu nền (bảng màu có sẵn, mặc định chữ
+// Nhóm Cài đặt "Phụ đề" (§4.3, §6.9): cỡ chữ (14–48), màu chữ, màu nền (bảng màu có sẵn, mặc định chữ
 // trắng trên nền đen), độ mờ nền (0–100%), hiện câu gốc. Thanh phụ đề đổi ngay theo (`overlay://view`); nút "Hiện thanh
 // phụ đề" để xem thử khi chưa dịch. Mỗi ô màu là một nút radio, xem trước chữ "A" với màu chữ và màu nền sẽ ra.
 export function SubtitleSettings() {
@@ -27,16 +27,6 @@ export function SubtitleSettings() {
           format={(v) => `${v} px`}
           onCommit={(fontSize) => void update({ overlay: { fontSize } })}
         />
-      </div>
-      <div className="row">
-        <label htmlFor="lines">{t("settings.subtitles.lines")}</label>
-        <select id="lines" value={o.lines} onChange={(e) => void update({ overlay: { lines: Number(e.target.value) } })}>
-          {[1, 2, 3].map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
       </div>
       <fieldset className="row swatches">
         <legend>{t("settings.subtitles.textColor")}</legend>

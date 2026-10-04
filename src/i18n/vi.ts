@@ -130,7 +130,6 @@ export const vi: Record<MessageKey, string> = {
   "settings.group.privacy": "Quyền riêng tư",
   "settings.license.description": "Key bản quyền, trạng thái và ngày hết hạn, gia hạn hoặc gỡ kích hoạt.",
   "settings.subtitles.fontSize": "Cỡ chữ",
-  "settings.subtitles.lines": "Số dòng",
   "settings.subtitles.textColor": "Màu chữ",
   "settings.subtitles.background": "Màu nền",
   "subtitleColor.white": "Trắng",
@@ -270,6 +269,7 @@ export const vi: Record<MessageKey, string> = {
 
   "overlay.waiting": "Phụ đề sẽ hiện ở đây",
   "overlay.hide": "Ẩn thanh phụ đề",
+  "overlay.latest": "Mới nhất",
   "overlay.listening": "Đang nghe",
   "overlay.hearing": "Đang nghe: có tiếng",
   "overlay.note.firstRun": "Đang chuẩn bị lần đầu…",
