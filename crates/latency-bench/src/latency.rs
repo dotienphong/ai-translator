@@ -1357,17 +1357,32 @@ mod tests {
 
     #[test]
     fn llama_args_keep_flags_but_not_absolute_paths() {
-        let root = Some(Path::new("/home/dev/meeting-translator"));
+        // Đường dẫn tuyệt đối đúng kiểu của nền tảng: `/Users/x` không phải đường dẫn tuyệt đối trên Windows (thiếu ổ đĩa).
+        let abs = |p: &str| {
+            if cfg!(windows) {
+                format!("C:{}", p.replace('/', "\\"))
+            } else {
+                p.to_string()
+            }
+        };
+        let repo = abs("/home/dev/meeting-translator");
+        let root = Some(Path::new(&repo));
         assert_eq!(public_args(root, "--no-repack -t 4"), "--no-repack -t 4");
         assert_eq!(public_args(root, ""), "");
         assert_eq!(
-            public_args(root, "--model-draft /Users/somebody/m/draft.gguf -t 4"),
+            public_args(
+                root,
+                &format!("--model-draft {} -t 4", abs("/Users/somebody/m/draft.gguf"))
+            ),
             "--model-draft draft.gguf -t 4"
         );
         assert_eq!(
             public_args(
                 root,
-                "--model-draft=/home/dev/meeting-translator/models/d.gguf --no-repack"
+                &format!(
+                    "--model-draft={} --no-repack",
+                    abs("/home/dev/meeting-translator/models/d.gguf")
+                )
             ),
             "--model-draft=models/d.gguf --no-repack"
         );
