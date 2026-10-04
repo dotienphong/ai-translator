@@ -25,7 +25,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { checkBundle, checkSize, embeddedErrors, sha256File, sidecarTable } from "./release-check.mjs";
+import { checkBundle, checkSize, devGateErrors, embeddedErrors, sha256File, sidecarTable } from "./release-check.mjs";
 import { TRIPLE } from "./build-sidecars-windows.mjs";
 import { root } from "./versions.mjs";
 
@@ -81,6 +81,7 @@ export function main(phase = "all") {
     pnpm(tauriArgs("build", null), process.env);
     if (JSON.stringify(sidecarTable(binaries, TRIPLE)) !== before) errors.push("src-tauri/binaries/ bị đổi trong lúc build");
     errors.push(...embeddedErrors(readFileSync(exe), sidecarTable(binaries, TRIPLE)));
+    errors.push(...devGateErrors(readFileSync(exe)));
     if (phase === "build" || errors.length > 0) return errors;
   } else if (!existsSync(table)) {
     throw new Error(`thiếu ${table}: chạy package-windows.mjs build trước`);
@@ -88,6 +89,7 @@ export function main(phase = "all") {
     // Phần `bundle` nhận file chạy của app từ artifact của job khác: kiểm lại nó nhúng đúng bảng SHA-256 của tiến trình
     // phụ mà job này ký (N-A của review 07a lần 3).
     errors.push(...embeddedErrors(readFileSync(exe), sidecarTable(binaries, TRIPLE)));
+    errors.push(...devGateErrors(readFileSync(exe)));
     if (errors.length > 0) return errors;
   }
   const before = readFileSync(table, "utf8");
