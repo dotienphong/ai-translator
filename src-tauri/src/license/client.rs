@@ -2,8 +2,9 @@
 //! mục "Hợp đồng API cho kế hoạch 06" của kế hoạch 05). Gọi từ phía Rust (server không bật CORS), bằng `reqwest` đồng bộ
 //! trên luồng nền, TLS và proxy của hệ điều hành.
 //!
-//! - Chỉ `https`, không theo redirect. Bản debug cho thêm `http://127.0.0.1` và `http://localhost` (chạy `wrangler dev`
-//!   cục bộ) qua biến `AI_TRANSLATOR_LICENSE_URL`.
+//! - Chỉ `https`, không theo redirect. Mọi bản build, kể cả bản debug, chỉ nói chuyện với server production
+//!   (`PRODUCTION_URL`); không còn biến môi trường nào đổi địa chỉ (spec 2026-10-04, §1). `accept_base` vẫn nhận `http`
+//!   tới máy này, chỉ để test dựng server giả.
 //! - Mọi response (cả lỗi) đưa header `Date` cho nơi gọi, làm mốc "đồng hồ thật" của Free (§6.8).
 //! - `429` mang `Retry-After` (giây); app báo "thử lại sau", không thử lại liên tục. `429` ở `activate` không có nghĩa là
 //!   key sai (§10.2, CGNAT).
@@ -14,12 +15,9 @@ use std::time::Duration;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-/// Địa chỉ license server của từng môi trường. Điền sau khi triển khai (kế hoạch 05, Task 19 cho staging, Task 21 cho
-/// production; tên miền chờ T7). Chưa có thì app chỉ dùng được token đã lưu và gói Free.
-pub const STAGING_URL: Option<&str> = None;
+/// Địa chỉ license server production. Điền sau khi triển khai (kế hoạch 05, Task 21; tên miền chờ T7). Chưa có thì app
+/// chỉ dùng được token đã lưu và gói Free.
 pub const PRODUCTION_URL: Option<&str> = None;
-/// Bản debug: trỏ sang server khác (ví dụ `http://127.0.0.1:8787` của `wrangler dev`).
-pub const URL_ENV: &str = "AI_TRANSLATOR_LICENSE_URL";
 const USER_AGENT: &str = "AI-Translator";
 
 /// Lỗi của một lần gọi server.
@@ -149,17 +147,9 @@ pub fn accept_base(url: &str, allow_http: bool) -> Option<String> {
 }
 
 impl HttpApi {
-    /// Server của bản build này: debug là staging (hay `AI_TRANSLATOR_LICENSE_URL`), phát hành là production.
+    /// Server của mọi bản build, debug lẫn phát hành: production.
     pub fn for_this_build() -> Self {
-        let base = if cfg!(debug_assertions) {
-            std::env::var(URL_ENV)
-                .ok()
-                .and_then(|u| accept_base(&u, true))
-                .or_else(|| STAGING_URL.and_then(|u| accept_base(u, false)))
-        } else {
-            PRODUCTION_URL.and_then(|u| accept_base(u, false))
-        };
-        Self::new(base)
+        Self::new(PRODUCTION_URL.and_then(|u| accept_base(u, false)))
     }
 
     pub fn new(base: Option<String>) -> Self {
@@ -511,6 +501,12 @@ mod tests {
         let none = HttpApi::new(None);
         assert!(!none.configured());
         assert_eq!(none.plans().result, Err(ApiError::NotConfigured));
+    }
+
+    /// Mọi bản build (debug lẫn phát hành) nói chuyện với production và chỉ production (spec 2026-10-04, §2.1).
+    #[test]
+    fn every_build_talks_to_the_production_url_only() {
+        assert_eq!(HttpApi::for_this_build().configured(), PRODUCTION_URL.is_some());
     }
 
     #[test]
