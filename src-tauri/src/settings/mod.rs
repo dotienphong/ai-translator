@@ -229,7 +229,7 @@ impl Settings {
             source_languages: Lang::ALL.to_vec(),
             source_lock: None,
             audio_source: AudioSource::System,
-            vad_end_silence_ms: 100,
+            vad_end_silence_ms: 50,
             overlay: OverlaySettings {
                 font_size: 22,
                 lines: 2,
@@ -386,7 +386,7 @@ mod tests {
         assert_eq!(vi.validate(), Ok(()));
         assert_eq!(vi.target_language, Lang::Vi);
         assert_eq!(vi.source_languages, Lang::ALL.to_vec());
-        assert_eq!(vi.vad_end_silence_ms, 100);
+        assert_eq!(vi.vad_end_silence_ms, 50);
         assert!(!vi.save_history, "lưu lịch sử mặc định tắt (F4)");
         assert!(
             !vi.experimental.translation_context,
