@@ -96,15 +96,21 @@ body {
   text-shadow: none;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.12s,
+    background 0.12s;
   z-index: 2;
 }
 .overlay:hover .hide,
 .overlay .hide:focus-visible {
   opacity: 1;
 }
+/* Rê chuột vào nút: nền đỏ đậm, nút phóng to và có viền sáng, để người dùng biết bấm được. */
 .overlay .hide:hover {
-  background: rgba(163, 38, 27, 0.9);
+  background: rgba(214, 48, 36, 1);
+  transform: scale(1.2);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
 }
 
 .overlay .dot {
@@ -189,4 +195,8 @@ body {
   bottom: 0;
   right: 0;
   cursor: nwse-resize;
+}
+/* Rê chuột vào mép hay góc: sáng lên, để người dùng thấy chỗ kéo được. */
+.overlay .edge:hover {
+  background: rgba(255, 255, 255, 0.65);
 }

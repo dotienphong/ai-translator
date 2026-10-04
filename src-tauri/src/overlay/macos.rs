@@ -15,7 +15,13 @@ tauri_nspanel::tauri_panel! {
     panel!(OverlayPanel {
         config: {
             can_become_key_window: false,
-            is_floating_panel: true
+            is_floating_panel: true,
+            // Panel không bao giờ là key window (để không cướp phím của app họp), nên WebKit coi trang là không active:
+            // con trỏ CSS (`ns-resize` ở mép) không đổi, `:hover` không được vẽ lại và sự kiện chuột rời khỏi trang không
+            // tới (đo trên máy thật: `document.hasFocus()` là `false`, `pointerleave` 0 trên 5 lần vào). Báo `true` để
+            // WebKit coi trang là active. Phím vẫn không vào panel vì `can_become_key_window` là `false`: AppKit chọn cửa
+            // sổ nhận phím theo khả năng đó và theo `NSApp.keyWindow`, không theo `isKeyWindow`.
+            is_key_window: true
         }
     })
 }
