@@ -223,8 +223,8 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Nút ẩn:** khi thanh chưa khóa, rê chuột vào thanh thì hiện nút ✕ ở góc trên bên phải. Bấm nút thì ẩn thanh, như phím tắt ẩn/hiện; không dừng phiên dịch và không thoát app. Khi đã khóa thì không có nút, vì click đi xuyên qua.
 - **Chế độ khóa:** cho click xuyên qua thanh phụ đề, để không cản thao tác trên cửa sổ họp. Mở khóa bằng phím tắt hoặc menu khay. Thanh phụ đề không có nút khóa: khi đã khóa thì click đi xuyên qua, không bấm được gì trên thanh.
 - **Nổi trên app họp đang toàn màn hình:**
-  - macOS: dùng NSPanel kiểu non-activating, đặt window level cao, cho tham gia mọi Space với cờ `canJoinAllSpaces` và `fullScreenAuxiliary`. Chỉ đặt các cờ này trên một NSWindow thường thì thường chưa đủ để nổi trên Space toàn màn hình của app khác. Chờ kết quả S5 (kế hoạch 05, Task 3–4, `results/s5_overlay.md`).
-  - Windows: đặt cửa sổ ở chế độ topmost.
+  - macOS: dùng NSPanel kiểu non-activating, đặt window level cao, cho tham gia mọi Space với cờ `canJoinAllSpaces` và `fullScreenAuxiliary`. Chỉ đặt các cờ này trên một NSWindow thường thì thường chưa đủ để nổi trên Space toàn màn hình của app khác. Đã thử trên macOS (S5, `results/s5_overlay.md`, 2026-10-04): chủ dự án báo thanh nổi trên app toàn màn hình hoạt động tốt. Chưa có kết quả từng dòng của ma trận, và ma trận không kiểm trường hợp bấm vào thanh rồi gõ vào app bên dưới: trường hợp này còn lỗi, chữ gõ không vào app bên dưới sau khi bấm vào thanh, trái với "không lấy focus của app họp" (§4.4). Windows: chờ kết quả S5 (kế hoạch 05, Task 4).
+  - Windows: đặt cửa sổ ở chế độ topmost. Chưa thử (S5 Windows chưa làm).
 - **Icon ở Dock (macOS):** khi app chỉ còn biểu tượng ở menu bar, app không có icon ở Dock (activation policy `accessory`). Khi mở cửa sổ chính, app hiện icon ở Dock (`regular`).
 - **Chỉ báo nhỏ:** đang nghe, không có âm thanh, hoặc đang trễ.
 
@@ -302,7 +302,11 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
   - **Tùy chọn:** chỉ tap một app họp được chọn từ danh sách các app đang phát âm thanh.
   - Khai báo `NSAudioCaptureUsageDescription` trong Info.plist.
   - Gọi API qua `objc2` và `objc2-core-audio`; không dùng `coreaudio-sys`.
-  - Chờ kết quả S1 (kế hoạch 04, Task 6, `results/s1_capture.md`).
+  - Đã kiểm ở S1 (`results/s1_capture.md`, macOS 26.6.2, 2026-10-04), với app ký ad-hoc kèm hardened runtime, không sandbox, không entitlement nào:
+    - Thu được Zoom, Google Meet (Chrome, Safari, Edge), Teams và Zalo PC; tap theo một app (`--pid`) tách được tiếng Zoom khỏi YouTube; tai nghe có dây và AirPods đều thu được, WAV đúng tốc độ. Chỉ lần chạy đầu và lần từ chối quyền có số đo lưu lại; các dòng còn lại do chủ dự án xác nhận bằng tai.
+    - **Từ chối quyền không báo lỗi:** tạo tap và `start()` vẫn thành công, nguồn vẫn báo 48000 Hz 2 kênh, dữ liệu toàn số 0. App chỉ phát hiện thiếu quyền bằng im lặng kéo dài khi biết có app đang phát (§9).
+    - Cảnh báo `tccd` về entitlement `audio-input` của dịch vụ Microphone không ảnh hưởng thu bằng tap (dịch vụ AudioCapture), nên không cần thêm entitlement này.
+    - Chưa kiểm: đổi thiết bị phát giữa chừng (nên khởi tạo lại tap như "Khi thiết bị phát đổi" bên dưới), và chữ ký Developer ID.
 - **Khi thiết bị phát đổi** (cắm tai nghe, kết nối Bluetooth), trên cả hai hệ điều hành:
   - App hỏi định kỳ mỗi 500 ms chữ ký của thiết bị phát mặc định (`audio_capture::default_output_signature`). Chữ ký đổi, hoặc luồng thu chết (`failed()`), thì mở lại nguồn, trong ≤ 2 giây (§9).
   - Không dùng `IMMNotificationClient` trên Windows hay listener của Core Audio trên macOS. Cách hỏi định kỳ cho cùng kết quả, mà không có callback chạy trên luồng của hệ thống (chốt ở kế hoạch Giai đoạn 1 · 02a, QĐ16).
@@ -549,7 +553,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Card rời từ 4 GB tới dưới 6 GB được đề xuất gói Nhẹ. Gói Nhẹ chỉ cần khoảng 2 GB VRAM, nên vẫn chạy hoàn toàn trên GPU. Người dùng vẫn chọn được gói Chuẩn; khi đó `llama-server` tự chuyển bớt lớp sang CPU cho vừa VRAM (§6.5), nên dịch chậm hơn.
     - GPU tích hợp dùng chung RAM nên chưa được tính, kể cả khi Vulkan báo dung lượng lớn.
     - S6 đo trên card rời 4 GB và trên GPU tích hợp. Kết quả dùng để quyết định có hạ ngưỡng, hoặc thêm tổ hợp whisper turbo + Hy-MT2 Q4_K_M cho nhóm máy này không (§14).
-    - Chờ kết quả S6 trên card rời 6 GB, 4 GB và GPU tích hợp (kế hoạch 06, Task 8) để chốt ngưỡng VRAM 6 GB.
+    - S6 trên card rời 6 GB, 4 GB và GPU tích hợp chưa đo vì không có máy. Chủ dự án giữ ngưỡng VRAM 6 GB (2026-10-04) và ghi là chờ đo; đo lại khi có máy (kế hoạch 06, Task 8).
 
   Các máy còn lại được đề xuất gói Nhẹ. Người dùng vẫn đổi được.
 - **Máy chưa được hỗ trợ thì không tải được model** (chủ dự án quyết 2026-10-02): RAM dưới `min_ram_mib` của manifest (6 144 MiB, để máy "8 GB" có GPU tích hợp giữ bớt RAM không bị chặn nhầm), hay CPU x86_64 không có AVX2 (§8, §6.12). App báo rõ lý do và cấu hình tối thiểu, khóa nút tải, và phía Rust cũng từ chối lệnh tải. Ổ không đủ chỗ (dưới đây) cũng không tải được. Bản dev chạy bằng model của Giai đoạn 0 trong `models/` của repo thì vẫn chạy như cũ.
@@ -880,13 +884,13 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
 
 | Hạng máy | macOS | Windows | Gói model |
 |---|---|---|---|
-| Khuyến nghị | Apple Silicon M1 trở lên, RAM 16 GB (riêng M1 cơ bản phải xác nhận ở S6) | Windows 10/11 x64, RAM 16 GB, card đồ họa rời hỗ trợ Vulkan với VRAM riêng ≥ 6 GB (NVIDIA, AMD, Intel Arc) | Chuẩn |
+| Khuyến nghị | Apple Silicon M1 trở lên, RAM 16 GB (riêng M1 cơ bản chưa xác nhận: chưa có máy đo S6) | Windows 10/11 x64, RAM 16 GB, card đồ họa rời hỗ trợ Vulkan với VRAM riêng ≥ 6 GB (NVIDIA, AMD, Intel Arc) | Chuẩn |
 | Tối thiểu | Apple Silicon, RAM 8 GB | RAM 8 GB, CPU 4 nhân có AVX2 | Nhẹ |
 | Chưa hỗ trợ trong MVP | Mac chip Intel | ARM64, CPU không có AVX2, RAM < 8 GB | — |
 
 Máy chưa được hỗ trợ thì app báo rõ lý do và cấu hình tối thiểu, và **không cho tải model** (chủ dự án quyết 2026-10-02; §6.7). App tự kiểm RAM (ngưỡng `min_ram_mib` của manifest, 6 144 MiB) và AVX2 (Đ13 của kế hoạch Giai đoạn 1 · 00); bản build chỉ có arm64 cho macOS và x64 cho Windows.
 
-Chờ kết quả S6 trên các máy tham chiếu (§13; kế hoạch 06, Task 8–9, `results/s6_latency.md`) để chốt hạng máy khuyến nghị. M4 Pro, máy đã đo, không phải máy quyết định.
+S6 trên các máy tham chiếu khác (M1 16 GB, Windows card rời 6 GB và 4 GB, Windows 8 GB chỉ CPU) chưa đo vì không có thiết bị; chủ dự án bỏ qua ngày 2026-10-04. Hạng máy khuyến nghị và điều kiện p50 ≤ 3,5 giây trên máy tối thiểu vì vậy chưa được xác nhận bằng số đo; đo khi có máy (§13; kế hoạch 06, Task 8–9, `results/s6_latency.md`). M4 Pro, máy đã đo, không phải máy quyết định.
 
 **Chất lượng nhận dạng theo gói** (A4, mốc ở §3.3): gói Nhẹ chép kém rõ ở tiếng Việt (WER 0,225, so với 0,087 của gói Chuẩn), tiếng Nhật (CER 0,131 so với 0,045), tiếng Hàn (0,082 so với 0,041) và tiếng Trung (0,096 so với 0,056). Tiếng Anh gần ngang (0,066 so với 0,054). Khi chọn gói (§4.1, §6.7), app phải ghi chú điều này, và khuyến nghị gói Chuẩn cho người dùng nghe chủ yếu tiếng Việt, Nhật, Hàn, Trung.
 
@@ -917,7 +921,7 @@ Mốc thực tế (benchmark 2026-09-29): Hy-MT2 Q8_0 chạy trên CPU 4 luồng
 - Cả 12 session đạt A2. p50 và p90 dư khoảng gấp đôi (lớn nhất 1028 ms và 1341 ms, so với 2,0 và 3,0 giây); chữ dịch đầu tiên dư ít hơn (lớn nhất 686 ms, so với 1,0 giây).
 - Session tiếng Việt dịch sang tiếng Anh; các session khác dịch sang tiếng Việt.
 - Trên M4 Pro, cả hai gói chạy bằng GPU (Metal), nên cột "Gói Nhẹ, chỉ CPU" của bảng ngân sách chưa được đo.
-- Chờ kết quả S6 trên các máy tham chiếu (kế hoạch 06, Task 8–9, `results/s6_latency.md`).
+- S6 trên các máy tham chiếu khác (M1 16 GB, Windows card rời 6 GB và 4 GB, Windows 8 GB chỉ CPU) chưa đo vì không có thiết bị; chủ dự án bỏ qua ngày 2026-10-04; đo khi có máy (kế hoạch 06, Task 8–9, `results/s6_latency.md`).
 
 **Băng thông bộ nhớ là nút thắt của bước dịch.** Mỗi token sinh ra phải đọc gần hết trọng số của model, nên tốc độ sinh không vượt quá băng thông bộ nhớ chia cho kích thước model. Thực tế thường chỉ đạt khoảng 70–80% mức trần này.
 
@@ -929,7 +933,7 @@ Mốc thực tế (benchmark 2026-09-29): Hy-MT2 Q8_0 chạy trên CPU 4 luồng
 | M5 cơ bản | 153 GB/s | khoảng 80 token/giây | khoảng 0,6 s |
 | M1 Pro, card rời tầm trung | khoảng 190–200 GB/s | khoảng 100 token/giây | khoảng 0,5 s |
 
-Nếu S6 xác nhận M1 cơ bản không đạt, có hai phương án:
+Chưa có số đo M1 cơ bản (chủ dự án bỏ qua S6 trên máy này ngày 2026-10-04), nên chưa chọn phương án. Nếu S6 xác nhận M1 cơ bản không đạt, có hai phương án:
 - Nâng hạng máy khuyến nghị lên M2 trở lên, hoặc M1 Pro trở lên.
 - Trên máy băng thông thấp, dùng Q4_K_M (1,13 GB) cho bước dịch nhưng vẫn giữ whisper turbo. Trên M1 cơ bản, bước dịch khi đó còn khoảng 0,85 giây. Đổi lại, COMET giảm: S7 đo được Anh→Việt gần như không đổi (−0,000), giảm nhiều nhất là 0,015 ở Nhật→Việt và Việt→Trung (giả định 6 ở §14).
 
@@ -953,7 +957,7 @@ Nếu S6 xác nhận M1 cơ bản không đạt, có hai phương án:
 - Gói Nhẹ: tổng 1861–1917 MiB (khoảng 1,8–1,9 GiB). `asr-worker` 411–418 MiB, `llama-server` 1446–1501 MiB.
 - Mỗi tiến trình lấy số lớn hơn giữa RSS và `phys_footprint`. RSS của `llama-server` tính cả trang của file model được mmap, còn `phys_footprint` thì không. Với `asr-worker` thì ngược lại: `phys_footprint` lớn hơn RSS vì có bộ nhớ Metal.
 - CPU: 1,8–3,0% của cả máy, vì GPU làm phần nặng. Số này là tổng thời gian CPU của `asr-worker`, `llama-server` và `latency-bench` (đóng vai tiến trình chính) chia cho thời gian thực và cho 12 lõi, không phải CPU đo cho toàn hệ thống. Riêng `llama-server` dùng 17–31% của một lõi.
-- Chờ kết quả S6 trên các máy tham chiếu (kế hoạch 06, Task 8–9), nhất là máy chạy bằng CPU.
+- RAM trên máy chạy bằng CPU chưa đo: máy Windows 8 GB chỉ CPU không có (2026-10-04); đo khi có máy (kế hoạch 06, Task 8–9).
 
 **VRAM ước tính trên Windows (card rời), cần kiểm chứng ở S6:**
 
@@ -964,7 +968,7 @@ Nếu S6 xác nhận M1 cơ bản không đạt, có hai phương án:
 | Phần chừa cho app họp, trình duyệt và Windows (`--fit` mặc định chừa 1 GiB) | khoảng 1 GB | khoảng 1 GB |
 | **Tổng** | **khoảng 4,2–5 GB, nên ngưỡng đề xuất là 6 GB** | **khoảng 2,9 GB, vừa card 4 GB** |
 
-Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, Task 8, file `vram-<máy>-<gói>.csv`).
+VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-10-04); đo khi có máy (kế hoạch 06, Task 8, file `vram-<máy>-<gói>.csv`).
 
 **Mục tiêu tải máy:** CPU trung bình ≤ 30% trên máy khuyến nghị khi người trong cuộc họp nói liên tục, để app họp vẫn chạy mượt.
 
@@ -972,7 +976,7 @@ Chờ kết quả S6 trên Windows để có VRAM đo thật (kế hoạch 06, T
 
 | Tình huống | Cách phát hiện | Cách xử lý |
 |---|---|---|
-| macOS chưa cấp quyền ghi âm thanh hệ thống | Tạo tap bị lỗi, hoặc buffer toàn im lặng kèm trạng thái quyền | Hiện màn hình hướng dẫn, có nút mở System Settings |
+| macOS chưa cấp quyền ghi âm thanh hệ thống | Tạo tap không báo lỗi khi bị từ chối (S1), nên chỉ phát hiện được bằng buffer toàn số 0 kéo dài khi biết có app đang phát âm thanh, kèm trạng thái quyền | Hiện màn hình hướng dẫn, có nút mở System Settings |
 | Đang dịch mà hơn 60 giây không có âm thanh vào | Mức RMS của luồng âm thanh, kể cả phần im lặng được chèn khi Windows không trả gói dữ liệu (§6.1) | Thanh phụ đề hiện "Không nghe thấy âm thanh" kèm gợi ý cách sửa |
 | Thiết bị phát thay đổi (cắm tai nghe, kết nối Bluetooth) | Hỏi định kỳ 500 ms chữ ký thiết bị phát mặc định; luồng thu chết (`AudioSource::failed`) (§6.1) | Tự khởi tạo lại việc thu âm trong ≤ 2 giây |
 | Model thiếu hoặc hỏng | Lúc khởi động chỉ kiểm tra có file và đúng kích thước, vì băm 2,5 GB mỗi lần khởi động tốn vài giây. SHA-256 đầy đủ chỉ kiểm sau khi tải xong (§6.7), và kiểm lại khi nạp model lỗi. | Đề nghị tải lại |
@@ -1259,6 +1263,8 @@ meeting-translator/
 
 **Tiêu chí qua spike:** S1–S5 chạy được; S6 đạt **p50 ≤ 2,0 giây** trên máy khuyến nghị (đo cả trên máy M1 cơ bản 16 GB) và p50 ≤ 3,5 giây trên máy tối thiểu; mốc COMET ở S7 đạt mức sàn của A3. Nếu M1 cơ bản không đạt thì chọn một trong hai phương án ở §8. Nếu cả máy mạnh hơn cũng không đạt thì quay lại sửa spec.
 
+**Kết quả Giai đoạn 0 (2026-10-04, `bench/phase0/REPORT.md`):** chủ dự án duyệt qua cổng **có điều kiện**. Mọi điều kiện đã đo đều đạt (S1, S4, COMET; S6 trên M4 Pro đạt A2 với dư địa khoảng gấp đôi). Chưa đo: S2, S3 và S5 trên Windows; S6 trên M1 16 GB và các máy Windows. Các mục này phải xong trước bản phát hành đầu tiên, cùng chữ ký Developer ID; M1 cơ bản giữ trạng thái chưa xác nhận.
+
 **Giai đoạn 1: MVP.** Làm F1–F10, license server và tích hợp PayOS, bốn gói và hạn mức (§2, §6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Giai đoạn 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
 
 **Giai đoạn 2: mở rộng**, thứ tự tùy phản hồi của người dùng:
@@ -1273,7 +1279,7 @@ meeting-translator/
 
 ## 14. Giả định cần kiểm chứng trong spike
 
-1. Core Audio process tap thu được âm thanh của Zoom, Meet và Teams trên macOS 14.2+. Quyền `NSAudioCaptureUsageDescription` hoạt động với app đã ký nhưng không chạy sandbox. (S1)
+1. Core Audio process tap thu được âm thanh của Zoom, Meet và Teams trên macOS 14.2+. Quyền `NSAudioCaptureUsageDescription` hoạt động với app đã ký nhưng không chạy sandbox. (S1) Kết quả S1: đạt trên macOS 26.6.2 với chữ ký ad-hoc kèm hardened runtime (2026-10-04); chưa kiểm chữ ký Developer ID.
 2. Endpoint loopback thu được Teams trên Windows 10/11, kể cả khi Teams phát tiếng qua thiết bị Communications. (S2)
 3. File GGUF của Hy-MT2 có chat template dùng được với `/v1/chat/completions`. (S4)
 4. Whisper large-v3-turbo chạy kịp thời gian thực trên máy M1 16 GB và trên laptop Windows có card rời 6 GB dùng Vulkan. Đo thêm trên card rời 4 GB và laptop chỉ có GPU tích hợp, để quyết định có nới điều kiện đề xuất gói Chuẩn ở §6.7 không. (S6)
