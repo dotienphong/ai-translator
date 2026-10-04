@@ -128,7 +128,13 @@ fn a_crash_or_a_missing_dll_is_a_crash_with_the_exit_status() {
     let (mut worker, _) = AsrWorker::spawn(&asr_launch(&t, &["crash_on:1"])).unwrap();
     let err = worker.transcribe(request(1)).unwrap_err();
     assert!(err.is_crash(), "{err}");
-    assert!(err.to_string().contains("exit status: 3"), "{err}");
+    // `ExitStatus` in "exit status: 3" trên Unix, "exit code: 3" trên Windows.
+    let status = if cfg!(windows) {
+        "exit code: 3"
+    } else {
+        "exit status: 3"
+    };
+    assert!(err.to_string().contains(status), "{err}");
     // Windows thiếu vulkan-1.dll: tiến trình thoát trước khi nói gì (STATUS_DLL_NOT_FOUND). Mã giả ở đây là 135.
     let err = AsrWorker::spawn(&asr_launch(&t, &["exit_at_start:135"]))
         .map(|_| ())
