@@ -146,7 +146,7 @@ pub fn keys_from_json(text: &str) -> Result<Vec<TrustedKey>, String> {
         .collect()
 }
 
-/// Khóa build sẵn của môi trường đang chạy.
+/// Khóa production build sẵn trong app.
 pub fn trusted_keys() -> Vec<TrustedKey> {
     keys_from_json(KEYS_JSON).unwrap_or_else(|e| {
         log::error!("manifest-public-keys.json hỏng ({e}): không nhận manifest nào");

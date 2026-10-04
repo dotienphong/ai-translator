@@ -59,7 +59,7 @@ pub struct Config {
 }
 
 impl Config {
-    /// Cấu hình thật: `app_local_data_dir/models`, URL và khóa theo loại bản.
+    /// Cấu hình thật: `app_local_data_dir/models`, URL và khóa production (mọi bản build).
     pub fn live<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Self> {
         Ok(Self {
             dir: app.path().app_local_data_dir()?.join("models"),

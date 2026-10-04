@@ -134,7 +134,8 @@ pub struct HttpApi {
     client: reqwest::blocking::Client,
 }
 
-/// URL gốc được nhận: `https://…`, hay (`allow_http`) `http://127.0.0.1…`, `http://localhost…`.
+/// URL gốc được nhận: `https://…` không có query; `http://127.0.0.1…` và `http://localhost…` chỉ khi `allow_http`
+/// (test dựng server giả; `for_this_build` luôn truyền `false`).
 pub fn accept_base(url: &str, allow_http: bool) -> Option<String> {
     let url = url.trim_end_matches('/');
     let parsed = reqwest::Url::parse(url).ok()?;
@@ -487,6 +488,8 @@ mod tests {
         assert_eq!(reqs[1].body["license_key"], "KEY");
     }
 
+    /// `accept_base`: chỉ `https` không query; `http` tới máy này chỉ khi `allow_http` (dành cho test, không phải bản
+    /// build).
     #[test]
     fn only_https_is_accepted_and_http_only_for_this_machine_in_debug() {
         assert_eq!(
@@ -503,7 +506,9 @@ mod tests {
         assert_eq!(none.plans().result, Err(ApiError::NotConfigured));
     }
 
-    /// Mọi bản build (debug lẫn phát hành) nói chuyện với production và chỉ production (spec 2026-10-04, §2.1).
+    /// Mọi bản build (debug lẫn phát hành) chỉ dùng `PRODUCTION_URL` (spec 2026-10-04, §2.1). Test này chỉ bảo đảm
+    /// `PRODUCTION_URL` đã cấu hình thì `accept_base` nhận (https, không query), nên `configured()` khớp; nó không phát
+    /// hiện được biến môi trường ghi đè bị thêm lại khi `PRODUCTION_URL` còn là `None`.
     #[test]
     fn every_build_talks_to_the_production_url_only() {
         assert_eq!(HttpApi::for_this_build().configured(), PRODUCTION_URL.is_some());

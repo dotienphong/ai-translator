@@ -551,7 +551,7 @@ pub(crate) mod tests {
         }
     }
 
-    /// Kiểm phần thân manifest staging trước khi ký và upload (04b Task 13): đọc file ở `MANIFEST_BODY`, kiểm như app
+    /// Kiểm phần thân manifest model trước khi ký và upload (04b Task 13): đọc file ở `MANIFEST_BODY`, kiểm như app
     /// kiểm, in dung lượng từng gói. `MANIFEST_PREVIOUS` (nếu có): phần thân của bản đang phát hành; bản mới không được
     /// đổi `id` của file model (`renamed_ids`). Chạy tay:
     /// `MANIFEST_BODY=<body.json> cargo test -p meeting-translator --lib check_manifest_body -- --ignored --nocapture`

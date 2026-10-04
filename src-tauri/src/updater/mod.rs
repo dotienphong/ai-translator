@@ -1,6 +1,6 @@
 //! Tự cập nhật app (F9, spec §6.11; kế hoạch 07b) bằng `tauri-plugin-updater`.
 //!
-//! - `source`: URL gốc và khóa công khai của bản build này; thiếu một trong hai thì tắt tự cập nhật.
+//! - `source`: URL gốc và khóa công khai của bản build này; thiếu một trong hai thì tắt tự cập nhật (bản debug luôn tắt).
 //! - `backend`: kiểm manifest của kênh, tải và kiểm chữ ký (plugin); test dùng bản giả.
 //! - Ở đây: kiểm sau khi mở app 1 phút rồi mỗi 24 giờ (giờ máy lùi thì kiểm lại), đổi kênh thì kiểm ngay; có bản mới
 //!   thì tải nền vào `app_local_data_dir/updates/`, rồi báo `AppStatus::update_ready`. Cài ở lần thoát kế tiếp do người
@@ -241,11 +241,11 @@ fn unix_now() -> u64 {
         .unwrap_or(0)
 }
 
-/// Bật tự cập nhật khi bản build này có nguồn (URL gốc và khóa), rồi chạy luồng nền. Gọi một lần trong `setup`, sau khi
+/// Bật tự cập nhật khi bản build này có nguồn (URL gốc và khóa; bản debug luôn tắt), rồi chạy luồng nền. Gọi một lần trong `setup`, sau khi
 /// có `AppState`.
 pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let Some(source) = source::for_this_build() else {
-        log::info!("tự cập nhật tắt: bản build này chưa có URL gốc hay khóa công khai");
+        log::info!("tự cập nhật tắt: bản debug, hoặc bản build này chưa có URL gốc hay khóa công khai");
         return Ok(());
     };
     let dir = app.path().app_local_data_dir()?.join("updates");
