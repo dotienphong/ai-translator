@@ -3,7 +3,7 @@
 Quy trình cho người vận hành (kế hoạch 07b; spec §6.11, §10.2, Q17). Mọi khóa riêng chỉ nằm trong secret của environment
 `release` trên GitHub và trong bản sao offline đã mã hóa. Không khóa riêng nào nằm trong repo, trong app, hay trên máy dev.
 
-Ký hiệu: `REPO=dotienphong/ai-live-translator-desktop`. Lệnh `gh` chạy trên máy có mạng, đã `gh auth login` bằng tài khoản có
+Ký hiệu: `REPO=dotienphong/ai-translator`. Lệnh `gh` chạy trên máy có mạng, đã `gh auth login` bằng tài khoản có
 quyền admin của repo.
 
 ## 1. Một lần: khóa production (Q17)
