@@ -5,11 +5,12 @@
 - Đã duyệt ngày 2026-09-29. Kế hoạch nằm ở `docs/superpowers/plans/`.
 - Sửa ngày 2026-10-01 theo quyết định của chủ dự án: chốt tên, bốn gói và hạn mức, cách lưu dữ liệu. Cùng đợt, spec nhận các điểm lệch nhỏ đã chốt ở kế hoạch Giai đoạn 1 · 01, 02 và 05.
 - Các chi tiết hạn mức do controller tự quyết (§6.8, "Hạn mức") còn chờ chủ dự án xem (Q16 của kế hoạch Giai đoạn 1 · 00).
+- Sửa ngày 2026-10-04: chỉ còn một môi trường production (§6.13, spec `2026-10-04-single-production-environment-design.md`); các chỗ nói staging hay dev của server đã được sửa theo.
 **Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS, cùng một license server nhỏ để nhận thanh toán qua PayOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
 **Tên và định danh** (D13):
 - Tên sản phẩm: **AI Translator**. Logo và tên miền chưa có (§15).
 - Bundle identifier: **`com.aitranslator.desktop`**, thay cho `dev.meetingtranslator.spike` của spike. Thư mục dữ liệu, thư mục log và "service" của kho khóa đều lấy theo identifier này (§6.7, §10.2), nên không đổi sau khi đã có người dùng.
-- **Giữ tên cũ ở những chỗ người dùng không thấy:** thư mục repo `meeting-translator/`, tên crate (`meeting-translator`, `meeting_translator_lib`, `asr-worker`, `asr-protocol`, `pipeline`…), tên binary do cargo build ra, và tên Worker của license server (`mt-license-<env>`). Chỉ tên hiển thị (`productName`) và bundle identifier đổi.
+- **Giữ tên cũ ở những chỗ người dùng không thấy:** thư mục repo `meeting-translator/`, tên crate (`meeting-translator`, `meeting_translator_lib`, `asr-worker`, `asr-protocol`, `pipeline`…), tên binary do cargo build ra, và tên Worker của license server (`mt-license`, `mt-license-admin`). Chỉ tên hiển thị (`productName`) và bundle identifier đổi.
 
 ---
 
@@ -532,7 +533,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 - **Manifest `models.json`** đặt trên CDN của thương hiệu (Cloudflare R2 + tên miền riêng), **ký bằng Ed25519**. Khóa công khai được build sẵn vào app (kế hoạch Giai đoạn 1 · 04, QĐ1–QĐ2).
   - **Phong bì:** `{ "format": "ai-translator-models", "version": 1, "kid", "body", "sig" }`. `body` là base64url (không đệm) của các byte JSON phần thân; `sig` là chữ ký Ed25519 trên `"ai-translator-models.v1." + body`. Tiền tố tách chữ ký manifest khỏi chữ ký token bản quyền. Phong bì đọc chặt: khóa lạ, base64url có đệm hay không ở dạng chuẩn, BOM, quá 1 MiB, `kid` lạ hay chữ ký sai đều bị từ chối.
-  - **Khóa:** bản dev chỉ nhận khóa staging, bản phát hành chỉ nhận khóa production (§10.2, "Khóa ký manifest và bản cập nhật"). App nhúng một khóa công khai cho mỗi môi trường; định dạng vẫn có `kid` để đổi khóa ở bản app sau.
+  - **Khóa:** mọi bản build, kể cả bản dev, chỉ nhận khóa production (§10.2, "Khóa ký manifest và bản cập nhật"; §6.13). App nhúng khóa công khai production; định dạng vẫn có `kid` để đổi khóa ở bản app sau.
   - **Phần thân:** `schema` (bản 1), `sequence`, `published_at`, `files`, `packs`, `recommend`, và `pipeline` (không bắt buộc). Khóa lạ bị bỏ qua (manifest mới hơn app); khóa thiếu là lỗi.
     - Mỗi file trong `files`: `id`, `tier` (**danh sách** gói có file này: VAD và giấy phép dùng chung các gói), `kind` (`asr`, `mt`, `vad`, hoặc `license` cho LICENSE, NOTICE), `version`, `file` (tên file trên máy), `url` (tương đối so với URL của manifest, hay `https://` đầy đủ), `bytes`, `sha256`, `license_id`, `min_app_version`. Tên file phải an toàn: không có thư mục con, không trùng file của kho model, không phải tên thiết bị của Windows; hai file không được trùng tên kể cả khác hoa thường.
     - `packs`: mã gói, tên và ghi chú chất lượng theo hai ngôn ngữ giao diện (§8). Mỗi gói có đúng một file `asr`, một `mt`, một `vad`. Gói mới (ví dụ gói lai, §8) thêm bằng manifest, không cần phát hành lại app; cài đặt `modelTier` lưu mã gói.
@@ -586,10 +587,10 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Thuê bao tự gia hạn của cổng quốc tế: mỗi webhook gia hạn cộng thêm một kỳ 30 ngày; khách hủy thì ngừng cộng.
 
 **Gói và bảng giá:**
-- Bốn gói ở §2. Server giữ bảng gói trả phí trong biến cấu hình `PLANS` của từng môi trường: với mỗi mã gói có hạn mức mỗi chu kỳ (`quota_minutes_per_cycle`, `null` là không giới hạn), số ngày mỗi đơn (30), giá theo từng loại tiền. Đổi giá hay hạn mức không cần phát hành lại app.
+- Bốn gói ở §2. Server giữ bảng gói trả phí trong biến cấu hình `PLANS` (một môi trường, production, §6.13): với mỗi mã gói có hạn mức mỗi chu kỳ (`quota_minutes_per_cycle`, `null` là không giới hạn), số ngày mỗi đơn (30), giá theo từng loại tiền. Đổi giá hay hạn mức không cần phát hành lại app.
 - Mã gói và tên hiển thị (`Professional`, `Professional X2`, `Professional X5`) là hợp đồng với app, nên nằm trong code server, không nằm trong `PLANS` (kế hoạch 05, QĐ17). `GET /v1/plans` trả cả hai cùng bảng gói.
 - **Đổi hạn mức trong `PLANS`** có tác dụng ngay với mọi license đang dùng gói đó, ở lần `validate` sau, vì token lấy hạn mức từ bảng hiện hành. Vì vậy người vận hành **không được hạ hạn mức của một gói đang bán**: khách đã trả tiền cho hạn mức cũ. Muốn bán hạn mức thấp hơn thì thêm gói mới.
-- Môi trường chưa cấu hình `PLANS` thì `GET /v1/plans`, checkout, `activate` và `validate` đều trả `503 pricing_not_configured`, để không bao giờ bán sai giá hay cấp token thiếu hạn mức. Staging dùng giá thử nhỏ (kế hoạch 05).
+- Server chưa cấu hình `PLANS` thì `GET /v1/plans`, checkout, `activate` và `validate` đều trả `503 pricing_not_configured`, để không bao giờ bán sai giá hay cấp token thiếu hạn mức.
 - Hạn mức Free (10 phút mỗi ngày) là hằng số phía app, vì Free không có token.
 
 **Mua thêm và đổi gói:**
@@ -617,7 +618,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 **API của license server:**
 - Mọi body là JSON. Tên trường dùng `snake_case` cho cả request lẫn response (`order_code`, `checkout_url`, `qr_code`, `order_token`, `license_key`…); chỉ khi gọi PayOS mới dùng `camelCase` của PayOS.
 - Lỗi có dạng `{"error": "<mã>", …}`. Thời điểm tính bằng giây Unix. `429` luôn kèm header `Retry-After`.
-- Mọi route chỉ nhận HTTPS (ngoài môi trường dev). Server không bật CORS, vì app gọi server từ phía Rust, không gọi từ WebView.
+- Mọi route chỉ nhận HTTPS. Server không bật CORS, vì app gọi server từ phía Rust, không gọi từ WebView.
 
 | Endpoint | Việc làm |
 |---|---|
@@ -639,8 +640,8 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - `GET /v1/orders` trả `status: "paid_needs_review"`, không có key; app báo "đã nhận tiền, đang chờ hỗ trợ xử lý" kèm cách liên hệ;
   - admin xử lý bằng thao tác `resolve` ("Công cụ hỗ trợ" bên dưới). Sau đó đơn thành `paid` (cấp key mới) hoặc `refunded` (đã hoàn tiền).
   - đơn `refunded` (chỉ có sau khi admin ghi đã hoàn tiền): `GET /v1/orders` trả `status: "refunded"`, không có key; app báo "Đơn đã hoàn tiền" và không cấp key.
-- **Dải số đơn theo môi trường:**
-  - staging dùng `order_code` từ 1 tới 999.999; production từ 1.000.001. Hai môi trường không trùng số, kể cả khi dùng chung một kênh PayOS;
+- **Dải số đơn:**
+  - production bắt đầu từ `order_code` 1.000.001 (giữ nguyên từ trước; spec 2026-10-04 bỏ dải 1–999.999 của staging);
   - trần là 9.999.999, để mô tả đơn `AT<order_code>` (`AT` cộng tối đa 7 chữ số) không quá 9 ký tự (§14, giả định 7). Vượt trần thì checkout trả `503`, không gọi PayOS.
 
 **Gửi email:** qua Resend (API HTTP, gọi từ Worker), sau interface `EmailProvider` để đổi dịch vụ được. Khóa API của Resend là secret của Worker. Tên miền gửi phải được xác thực (SPF, DKIM).
@@ -850,6 +851,12 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
     - Silero VAD v6.2.3 chạy bằng `candle-onnx` 0.11.0. Không dùng `ort`, vì crate này chỉ có bản 2.0.0-rc.13 (§6.3).
   - Chỉ nâng cấp khi chủ động quyết định, không để phiên bản tự nhảy.
 - **Bài học từ benchmark 2026-09-29:** với `transformers` 5.x, MADLAD dịch ra ký tự vô nghĩa, trong khi bản 4.57 chạy đúng. Vì vậy dùng bản mới nhất vẫn phải kiểm chứng bằng test chạy thật.
+
+### 6.13 Môi trường
+
+Chỉ có một môi trường, **production** (spec `2026-10-04-single-production-environment-design.md`, thay mọi chỗ của spec này nói tới staging hay dev của server). Mọi bản build của app, kể cả bản debug chạy ở máy dev, nối vào license server, khóa công khai, manifest model và nguồn cập nhật production.
+
+Bản debug chỉ khác ở ba khả năng của build, không phải của môi trường: không kiểm chữ ký bản cài, không tự cập nhật, và có công tắc `AI_TRANSLATOR_DEV_PRO=true` (Pro giả lập, đặt trong `.env` do `scripts/run-dev-app.sh` đọc). Công tắc không có trong bản phát hành, kể cả mã đọc nó; CI chặn nếu nó lọt vào. Mặc định bản dev đi đường thật: dev kích hoạt Pro như người dùng thật.
 
 ## 7. Luồng xử lý, đa luồng và chống nghẽn
 
@@ -1117,11 +1124,11 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 - Cảnh báo đi cùng kênh Resend với thư chứa key, nên khi Resend sập thì chỉ còn log. Giảm rủi ro bằng Workers Issues của Cloudflare (ghi `console.error` và response `5xx`, gửi qua webhook hay chat, không qua Resend).
 
 **Khóa ký token:**
-- **`kid` là duy nhất, có số thứ tự:** dạng `<môi trường>-<năm>-<tháng>-<số thứ tự>`, ví dụ `prod-2026-10-1`. Không bao giờ dùng lại một `kid`, kể cả `kid` đã bị lộ. Công cụ tạo khóa từ chối `kid` đã có trong `server/keys/public-keys.json`, kể cả `kid` đã bỏ: khóa bỏ khỏi ô được chuyển vào mảng `retired` ở gốc file (chỉ có `kid` và khóa công khai, không có bí mật; app bỏ qua mảng này). Mỗi khóa mới, kể cả khóa dự phòng, lấy số kế tiếp (ví dụ `stg-2026-10-1` ở ô A, `stg-2026-10-2` ở ô B).
+- **`kid` là duy nhất, có số thứ tự:** dạng `prod-<năm>-<tháng>-<số thứ tự>`, ví dụ `prod-2026-10-1`. Không bao giờ dùng lại một `kid`, kể cả `kid` đã bị lộ. Công cụ tạo khóa từ chối `kid` đã có trong `server/keys/public-keys.json`, kể cả `kid` đã bỏ: khóa bỏ khỏi ô được chuyển vào mảng `retired` ở gốc file (chỉ có `kid` và khóa công khai, không có bí mật; app bỏ qua mảng này). Mỗi khóa mới, kể cả khóa dự phòng, lấy số kế tiếp (ví dụ `prod-2026-10-1` ở ô A, `prod-2026-10-2` ở ô B).
 - **Hai ô khóa, đặt tên theo ô, không theo vai:** secret `TOKEN_SIGNING_KEY_A` và `TOKEN_SIGNING_KEY_B` của Worker API, mỗi ô là một JWK Ed25519 có `kid`. Biến cấu hình `TOKEN_SIGNING_SLOT` (`a` hoặc `b`, không phải secret) chọn ô đang ký; ô còn lại là khóa dự phòng.
   - Lý do: secret của Worker không đọc lại được, nên không chép được khóa từ secret này sang secret khác. Nếu đặt tên theo vai (khóa chính, khóa dự phòng), thì sau lần đổi khóa đầu tiên tên sẽ sai với vai.
   - Cả hai khóa được tạo bằng một script rồi pipe thẳng vào `wrangler secret put`. Khóa riêng không bao giờ in ra terminal, ghi ra file, hay lưu ở đâu trên máy người vận hành. **Không dùng kho mật khẩu.** Thiếu một trong hai ô thì deploy báo lỗi.
-  - Khóa công khai của cả hai ô nằm trong `server/keys/public-keys.json`, ghi theo môi trường và theo ô, và được build sẵn vào app.
+  - Khóa công khai của cả hai ô nằm trong `server/keys/public-keys.json`, ghi theo ô (khối `production`), và được build sẵn vào app.
   - Kiểm khóa công khai khớp khóa riêng bằng thao tác admin "ký thử bằng khóa dự phòng" (§6.8), rồi kiểm token đó bằng `server/keys/public-keys.json`, kể cả việc token nằm đúng ô Worker báo. Khóa đang ký được kiểm bằng một token thật.
 - **Đổi khóa** (khi khóa đang ký bị lộ, hoặc khi chủ động đổi):
   1. Đổi `TOKEN_SIGNING_SLOT` sang ô dự phòng, rồi deploy. Từ lúc này token mới ký bằng khóa dự phòng; app đã có sẵn khóa công khai của nó.
@@ -1134,7 +1141,6 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 - Mỗi loại một khóa production: một khóa ký manifest model, một khóa ký bản cập nhật Tauri. Không làm hai ô khóa A/B như khóa token.
 - Khóa nằm trong secret của CI (kế hoạch 07 tạo, ngay trong CI hay trên máy không nối mạng rồi nhập thẳng vào secret). Kèm **một bản sao offline**, mã hóa bằng passphrase, cất trên USB; passphrase in ra giấy, cất riêng.
 - Lộ khóa thì phát hành bản app mới mang khóa công khai mới. App nhúng một khóa công khai production cho manifest; định dạng manifest vẫn có `kid` để bản app sau đổi khóa. Đổi khóa manifest có kế hoạch thì một bản phát hành tin cả `kid` cũ lẫn `kid` mới, bản sau bỏ `kid` cũ; lộ khóa thì bản app mới chỉ tin `kid` mới ngay, `kid` đã lộ bị gỡ khỏi app. Giới hạn chấp nhận ở MVP: manifest đã lưu trên máy mà ký bằng `kid` không còn được tin thì không dùng được; lần mở đầu sau khi app đổi khóa này, máy phải có mạng để tải manifest mới trước khi dùng gói đã tải. Không dùng lại bản ghi trong `installed.json` để bỏ qua kiểm chữ ký, vì như vậy tin lại chính khóa vừa bị gỡ.
-- Khóa staging của manifest nằm ngoài repo, trên máy người vận hành (file JWK quyền 0600), vì staging chưa có CI; bản phát hành không bao giờ nhận khóa staging.
 
 **Để Giai đoạn 2**, và chỉ làm khi thấy bị crack nhiều thật: chống debug, làm rối code sâu hơn, kiểm tra toàn vẹn nhiều lớp, phát hiện gian lận phía server bằng phân tích hành vi.
 
@@ -1165,7 +1171,7 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 - **Test giao diện (`vitest`):** i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề. Các hàm xuất file viết và test phía Rust (`transcript/export.rs`, §12), vì webview chặn `blob:` (§10.2).
 - **License server:**
   - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp license khi `PAID`, `amountPaid` ≥ `amount` và `amount` khớp đơn; mua thêm cùng gói (từ max(hiện tại, `expires_at`), giữ `cycle_anchor`, đặt lại khi đã hết hạn); đổi gói (công thức quy đổi, cả hai ví dụ ở §6.8, `cycle_anchor` mới); giới hạn 2 máy, kích hoạt lại cùng máy không tốn suất, gỡ từ xa khi đã đủ máy; khóa tạm (`423`); chặn IP và trường hợp CGNAT; `recover` luôn trả `200`; ký và kiểm tra token Ed25519, có `cycle_anchor`, `quota_minutes_per_cycle`, `quota_epoch`, `activation_created_at`; "hiện tại" của gia hạn và đổi gói là `transactionDateTime` kẹp trong thời hạn link và không muộn hơn lúc xử lý; reset hạn mức của máy tăng `quota_epoch`; `quota_fresh: true` cho mọi token trong 15 phút kể từ lúc tạo activation, lúc cấp token đầu tiên sau khi tăng `quota_epoch`, hay lúc server áp việc đặt lại `cycle_anchor` (không theo giá trị `cycle_anchor`), và `false` sau đó; gỡ (kể cả admin gỡ) không xóa activation, kích hoạt lại cùng `device_id_hash` dùng lại activation và không mở cửa sổ `quota_fresh` mới; parse `transactionDateTime` không có múi giờ theo GMT+7; phân loại lỗi email.
-  - Test tích hợp với PayOS trên môi trường test nếu có; nếu không có thì dùng giao dịch với số tiền nhỏ.
+  - Test tích hợp với PayOS: PayOS không có sandbox, nên thử bằng giao dịch giá thật rồi hoàn tiền tay trên production, trước khi nhúng URL vào app (§6.13).
 - **Test tích hợp:**
   - Chạy pipeline từ file WAV (không cần thu âm thật), kiểm tra phụ đề có xuất hiện, đúng thứ tự, đúng thời gian.
   - Vòng đời hai tiến trình phụ: khởi động đúng thứ tự (`asr-worker` trước `llama-server`), giả lập crash, tự khởi động lại, gửi lại đoạn đang xử lý, chuyển sang CPU sau 2 lần crash khi dùng GPU, tắt sau 10 phút không dịch.
@@ -1288,12 +1294,12 @@ meeting-translator/
 7. PayOS (kiểm tra trước khi làm §6.8):
    - Đăng ký được với loại hình kinh doanh của PHONG.
    - Webhook và cách ký HMAC-SHA256 đúng như tài liệu.
-   - Có môi trường test; nếu không có thì test bằng giao dịch nhỏ. Kiểm ngày 2026-10-01: PayOS không có sandbox, nên test bằng giao dịch nhỏ trên staging.
+   - Có môi trường test; nếu không có thì test bằng giao dịch nhỏ. Kiểm ngày 2026-10-01: PayOS không có sandbox, nên test bằng giao dịch thật trên production trước phát hành (§6.13).
    - Mô tả đơn cần ngắn (với một số ngân hàng tối đa 9 ký tự), nên dùng mã dạng `AT` cộng số đơn (tối đa 7 chữ số, §6.8).
 8. Rút ngắn `audio_ctx` không làm WER tăng quá 10% so với cửa sổ 30 giây đầy đủ. (S7) Kết quả S7: không đạt theo từng ô, xem §6.4 "Rút ngắn cửa sổ mã hóa".
 9. Chi phí nhận diện ngôn ngữ giữ được dưới 20% thời gian nhận dạng của đoạn (§6.4). (S3)
 10. Truyền âm thanh qua stdin/stdout sang `asr-worker` thêm không quá 10 ms mỗi đoạn. (S3)
-11. `transactionDateTime` của PayOS không ghi múi giờ, và tài liệu PayOS không nói. Spec giả định đó là giờ Việt Nam (GMT+7) và parse theo đó (§6.8). Kiểm bằng giao dịch thật trên staging (kế hoạch 05, Task 20): so `transactionDateTime` với giờ chuyển khoản trong app ngân hàng.
+11. `transactionDateTime` của PayOS không ghi múi giờ, và tài liệu PayOS không nói. Spec giả định đó là giờ Việt Nam (GMT+7) và parse theo đó (§6.8). Kiểm bằng giao dịch thật trên production trước phát hành (kế hoạch 05, Task 21): so `transactionDateTime` với giờ chuyển khoản trong app ngân hàng.
 
 ## 15. Việc còn mở (không chặn phần kỹ thuật)
 
@@ -1302,9 +1308,8 @@ meeting-translator/
 Đã quyết ngày 2026-10-02: khóa ký manifest model và khóa ký bản cập nhật, mỗi loại một khóa trong secret của CI kèm bản sao offline mã hóa (§10.2); máy chưa được hỗ trợ thì không tải model (§6.7, §8).
 
 Còn mở:
-- **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, staging dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Cần tên miền trước khi license server lên production (email gửi từ tên miền đã xác thực, `returnUrl`) và trước bản beta đầu tiên.
-- **Kênh PayOS cho staging** (P05-1 của kế hoạch Giai đoạn 1 · 05): mỗi kênh PayOS chỉ có một URL webhook, nên staging cần một kênh riêng. Cần có trước khi triển khai staging.
-- **Hộp thư nhận cảnh báo vận hành** (P05-5, `OPERATOR_EMAIL`, §10.2). Cần có trước khi triển khai staging.
+- **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, production dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Cần tên miền trước khi license server lên production (email gửi từ tên miền đã xác thực, `returnUrl`) và trước bản beta đầu tiên.
+- **Hộp thư nhận cảnh báo vận hành** (P05-5, `OPERATOR_EMAIL`, §10.2). Cần có trước khi triển khai production.
 - **Pháp lý:** hỏi luật sư về:
   - hồ sơ chuyển dữ liệu cá nhân ra nước ngoài (§10.1);
   - việc **giữ dữ liệu cá nhân không thời hạn** (§10.1), xét theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân (hiệu lực từ 1/1/2026);
