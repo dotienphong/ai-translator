@@ -13,7 +13,7 @@
     "test:scripts": "node --test 'test/node/*.test.mjs'",
     "vectors": "node scripts/gen-token-vectors.mjs > test/vectors/token-v1.json",
     "vectors:check": "node scripts/gen-token-vectors.mjs | cmp - test/vectors/token-v1.json",
-    "dry-run": "wrangler deploy --dry-run --env staging && wrangler deploy --dry-run --env production && wrangler deploy --dry-run -c wrangler.admin.jsonc --env staging && wrangler deploy --dry-run -c wrangler.admin.jsonc --env production",
+    "dry-run": "wrangler deploy --dry-run && wrangler deploy --dry-run -c wrangler.admin.jsonc",
     "check": "pnpm typecheck && pnpm vectors:check && pnpm test && pnpm test:scripts && pnpm dry-run"
   },
   "dependencies": {
