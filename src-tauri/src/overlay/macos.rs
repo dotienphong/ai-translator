@@ -2,10 +2,12 @@
 //! toàn màn hình của app khác (spec §4.4). Giữ nguyên cách tạo của spike S5 (kế hoạch 0-05, Task 2):
 //! - panel tạo từ cửa sổ không viền, trong suốt, không focus, `accept_first_mouse`;
 //! - bit NonactivatingPanel được cộng thêm bằng `add_style_mask`; `StyleMask::borderless()` gán đè
-//!   cả mask nên không được dùng, nếu không panel sẽ lấy focus của app họp.
+//!   cả mask nên không được dùng, nếu không panel sẽ lấy focus của app họp;
+//! - cộng bit sau khi cửa sổ đã tạo chỉ đổi `styleMask`, chưa làm hệ điều hành ngừng kích hoạt app khi bấm vào panel
+//!   (xem [`prevent_activation`]).
 
 use tauri::{AppHandle, Runtime, WebviewUrl};
-use tauri_nspanel::{CollectionBehavior, ManagerExt, PanelBuilder, PanelLevel, StyleMask};
+use tauri_nspanel::{CollectionBehavior, ManagerExt, Panel, PanelBuilder, PanelLevel, StyleMask};
 
 use super::placement::Edge;
 use super::{LABEL, MIN_HEIGHT, MIN_WIDTH};
@@ -28,7 +30,7 @@ tauri_nspanel::tauri_panel! {
 
 pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> {
     let handle = app.clone();
-    PanelBuilder::<_, OverlayPanel<R>>::new(app, LABEL)
+    let panel = PanelBuilder::<_, OverlayPanel<R>>::new(app, LABEL)
         .url(WebviewUrl::App("overlay.html".into()))
         .title(title)
         .size(tauri::Size::Logical(tauri::LogicalSize::new(900.0, 160.0)))
@@ -57,7 +59,32 @@ pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> 
         .hides_on_deactivate(false)
         .no_activate(true)
         .build()?;
+    prevent_activation(&*panel);
     Ok(())
+}
+
+/// Bấm vào panel không được kích hoạt app (spec §4.4: thanh phụ đề không lấy focus của app họp).
+///
+/// Cờ "không kích hoạt app khi bấm" của hệ điều hành chỉ được đặt khi cửa sổ **được tạo** với `NonactivatingPanel`.
+/// Panel này tạo từ một cửa sổ có sẵn rồi mới cộng bit bằng `add_style_mask`: `styleMask` có bit, nhưng cờ kia không được
+/// đặt, nên bấm vào thanh làm app của ta thành app phía trước và chữ gõ không còn vào app họp. Đo bằng chương trình thử
+/// riêng (NSPanel tạo ngay với bit: không kích hoạt; đổi lớp rồi cộng bit sau: kích hoạt; thêm `_setPreventsActivation:`:
+/// không kích hoạt). Phải gọi sau `add_style_mask`.
+///
+/// `_setPreventsActivation:` là hàm riêng của AppKit. Máy nào không có hàm này thì bỏ qua và ghi log: thanh vẫn chạy,
+/// chỉ còn lỗi cũ.
+fn prevent_activation<R: Runtime>(panel: &dyn Panel<R>) {
+    let target = panel.as_panel();
+    let selector = objc2::sel!(_setPreventsActivation:);
+    // SAFETY: `target` là một NSPanel còn sống; `_setPreventsActivation:` nhận một BOOL và không trả giá trị.
+    unsafe {
+        let supported: bool = objc2::msg_send![target, respondsToSelector: selector];
+        if supported {
+            let _: () = objc2::msg_send![target, _setPreventsActivation: true];
+        } else {
+            log::warn!("macOS không có _setPreventsActivation:, bấm vào thanh phụ đề có thể kích hoạt app");
+        }
+    }
 }
 
 pub fn set_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> tauri::Result<()> {
