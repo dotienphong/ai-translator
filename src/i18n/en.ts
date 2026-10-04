@@ -314,7 +314,7 @@ export const en = {
   "settings.license.key": "Key",
   "settings.license.expires": "Expires",
   "settings.license.quota": "Translation left",
-  "settings.license.devOverride": "Developer build: Pro without limits.",
+  "settings.license.devOverride": "DEV · Simulated Pro: no limits, not a real licence.",
   "settings.license.notConfigured": "This build is not connected to the license server yet.",
   "settings.license.buy": "Upgrade",
   "settings.license.renew": "Renew or change plan",

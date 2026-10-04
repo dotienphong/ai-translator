@@ -314,7 +314,7 @@ export const vi: Record<MessageKey, string> = {
   "settings.license.key": "Mã key",
   "settings.license.expires": "Hết hạn",
   "settings.license.quota": "Còn dịch được",
-  "settings.license.devOverride": "Bản build cho nhà phát triển: Pro không giới hạn.",
+  "settings.license.devOverride": "DEV · Pro giả lập: không giới hạn, không phải bản quyền thật.",
   "settings.license.notConfigured": "Bản cài này chưa kết nối máy chủ bản quyền.",
   "settings.license.buy": "Nâng cấp",
   "settings.license.renew": "Gia hạn hoặc đổi gói",

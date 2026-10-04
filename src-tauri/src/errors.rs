@@ -70,7 +70,7 @@ pub const UPDATE_NOT_READY: &str = "updateNotReady";
 pub const UPDATE_BUSY: &str = "updateBusy";
 
 // Mã lỗi của quản lý model (kế hoạch 04, spec §6.7, §9).
-/// Bản này chưa có URL manifest (bản dev chưa cấu hình staging; bản phát hành chờ kế hoạch 07).
+/// Bản này chưa có URL manifest production (chờ kế hoạch 07 và tên miền T7).
 pub const MODELS_NO_SOURCE: &str = "modelsNoSource";
 /// Không tải được manifest (mất mạng, server lỗi).
 pub const MODELS_OFFLINE: &str = "modelsOffline";
