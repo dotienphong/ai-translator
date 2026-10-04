@@ -6,7 +6,7 @@ Phạm vi đo: một máy duy nhất, MacBook Pro M4 Pro 24 GB, macOS 26.6.2. Kh
 
 ## Kết luận
 
-- **Cổng §13 chưa thỏa đầy đủ**, vì thiếu số liệu: S2, S3 trên Windows và S5 chưa làm; S6 mới đo trên M4 Pro; điều kiện p50 ≤ 3,5 giây trên máy tối thiểu chưa đo.
+- **Cổng §13 chưa thỏa đầy đủ**, vì thiếu số liệu: S2, S3 và S5 trên Windows chưa làm; S6 mới đo trên M4 Pro; điều kiện p50 ≤ 3,5 giây trên máy tối thiểu chưa đo.
 - **Mọi điều kiện đã đo đều đạt**: S1 và S4 đạt; 12/12 session S6 trên M4 Pro đạt A2 với dư địa khoảng gấp đôi; COMET đạt mức sàn A3 ở cả hai gói. Không có kết quả nào cho thấy phải sửa hướng thiết kế.
 - **PHONG duyệt ngày 2026-10-04: qua cổng có điều kiện.** Giai đoạn 1 bắt đầu, và các mục chưa kiểm ở mục "Việc chưa kiểm" phải được đo khi có thiết bị. Trước khi phát hành bản beta đầu tiên, các mục có đánh dấu **(chặn phát hành)** phải xong. Rủi ro chính của đề xuất này: spec có thể phải sửa lại nếu máy yếu hơn không đạt (mục "Quyết định cần duyệt").
 - **Quyết định cần ghi vào spec:** đã ghi ở Task 2 (commit `e181e1d`, `f5e2853`), gồm chế độ giải mã B làm mặc định, sàn `audio_ctx` 512, LID đoạn ngắn, luật lặp, luật `no_speech`, flash attention tắt, và các mục "chờ kết quả" của Windows và máy tham chiếu.
@@ -15,7 +15,7 @@ Phạm vi đo: một máy duy nhất, MacBook Pro M4 Pro 24 GB, macOS 26.6.2. Kh
 
 | Điều kiện | Kết quả | Bằng chứng |
 |---|---|---|
-| S1–S5 chạy được | **Chưa đủ.** S1 đạt (Mac); S3 đạt trên Mac; S4 đạt; S2, S3 Windows và S5 chưa làm | xem bảng giả định, "Việc chưa kiểm" |
+| S1–S5 chạy được | **Chưa đủ.** S1 đạt (Mac); S3 đạt trên Mac; S4 đạt; S5 đạt trên Mac (người chạy xác nhận); S2, S3 Windows và S5 Windows chưa làm | `results/s5_overlay.md`, xem bảng giả định, "Việc chưa kiểm" |
 | p50 ≤ 2,0 giây trên máy khuyến nghị, kể cả M1 cơ bản 16 GB | **Đạt trên M4 Pro** (p50 lớn nhất 1028 ms). M1 chưa đo | `results/latency/m4pro-chot-*.json` |
 | p50 ≤ 3,5 giây trên máy tối thiểu | **Chưa đo** | không có |
 | COMET Anh→Việt: Q8_0 ≥ 0,83, Q4_K_M ≥ 0,80 | **Đạt**: Q8_0 0,842 (dư 0,012), Q4_K_M 0,841 (dư 0,041) | `results/s7_mt_decisions.md` |
@@ -80,7 +80,7 @@ Các mục này **chưa có số đo**, vì thiếu thiết bị hoặc tài kho
 | Mục | Lý do | Ảnh hưởng | Mức |
 |---|---|---|---|
 | S2 và các task Windows: 01-T2, 03-T14..17, 04-T7..8 | Chưa làm trên máy Windows | Giả định 2, kết luận S3 trên Windows, build Windows | **chặn phát hành** |
-| S5: thanh phụ đề nổi trên app toàn màn hình (05-T2 Step 9, T3, T4) | Chưa thử tay | §4.4, độ tin cậy của thanh phụ đề | **chặn phát hành** |
+| S5 trên Windows: thanh phụ đề nổi trên app toàn màn hình (05-T4) | Chưa làm trên máy Windows. Phần Mac (05-T2 Step 9, T3) đã thử, xem `results/s5_overlay.md` | §4.4 trên Windows | **chặn phát hành** |
 | S6 trên M1 16 GB (06-T8..9) | Không có máy | Hạng máy khuyến nghị trên Mac (§8) | cần trước khi chốt hạng máy |
 | S6 trên Windows card rời 6 GB và 4 GB | Không có máy | Ngưỡng VRAM 6 GB (§6.7, §8), giả định 4 | cần trước khi chốt hạng máy |
 | S6 trên Windows 8 GB chỉ CPU (máy tối thiểu) | Không có máy | Điều kiện p50 ≤ 3,5 giây của cổng §13 | cần trước khi chốt hạng máy |
