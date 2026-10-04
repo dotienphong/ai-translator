@@ -13,7 +13,9 @@
 ### Giới hạn đã biết (từ thử nghiệm riêng ngày 2026-10-04)
 
 - Ma trận ở dòng 7 chỉ kiểm "gõ trong ô chat khi phụ đề cập nhật". Không kiểm "bấm vào thanh phụ đề rồi gõ".
-- Đo riêng bằng TextEdit: sau khi bấm vào thanh phụ đề, chữ gõ không vào app bên dưới (0/3 ở bản gốc, 1/3 ở bản sửa `is_key_window: true`; đối chứng không bấm thì vào đủ). Vi phạm spec §4.4 "không lấy focus của app họp". Chưa tìm ra nguyên nhân, chưa sửa.
+- Đo riêng bằng TextEdit (2026-10-04): sau khi bấm vào thanh phụ đề, chữ gõ không vào app bên dưới (0/3 ở bản gốc, 1/3 ở bản sửa `is_key_window: true`; đối chứng không bấm thì vào đủ). Vi phạm spec §4.4 "không lấy focus của app họp".
+  - Nguyên nhân: bấm vào thanh làm app của ta thành app phía trước (đo cả khi bấm thân thanh lẫn bấm mép). Panel tạo từ cửa sổ có sẵn rồi mới cộng bit `NonactivatingPanel`: `styleMask` có bit nhưng cờ không kích hoạt của hệ điều hành thì không được đặt. Một chương trình thử riêng tách bạch được ba cách tạo.
+  - **Đã sửa** (`c5047a4`): gọi `_setPreventsActivation:` sau khi cộng bit. Kiểm trên bản dev mới: bấm thân hay mép thanh, TextEdit vẫn ở phía trước, chữ gõ sau mỗi lần bấm đều vào; kéo thanh vẫn chạy.
 - Lỗi hover/con trỏ của thanh (panel không key nên WebKit coi trang không active) đã sửa bằng `is_key_window: true` ở `src-tauri/src/overlay/macos.rs`. Đã sửa và commit (`9ce83ab`).
 
 ## Windows (kế hoạch 0-05, Task 4)
