@@ -875,7 +875,7 @@ Cách đọc:
 | 226 | Nếu S6 xác nhận M1 cơ bản không đạt: nâng hạng máy khuyến nghị, hoặc dùng Q4_K_M cho bước dịch và giữ whisper turbo trên máy băng thông thấp | 04, CDA | Chờ C8, Q15; manifest cho phép thêm tổ hợp gói (Đ7); 04: T5 `8a439d3` (test gói lai, thêm bằng manifest); còn CDA (Q15), C8 | chờ |
 | 227 | RAM: thiếu RAM khi chạy `llama-server` bằng CPU thì thử `--no-repack` | 02, 08 | 02 cho phép truyền thêm tham số cho `llama-server`; 08 đo trên máy chỉ có CPU; 02: d1 `8159852`, d3 `4268836` (`extra_args`); còn 08 **Cập nhật 2026-10-04:** đo ngày 2026-10-04 trên M4 Pro chạy CPU (`bench/phase1/results/llama-norepack-ram.md`): `--no-repack` giảm RSS 43% ở Q8_0 (3,6 → 2,1 GB) và 40% ở Q4_K_M, tốc độ không đổi trên máy này; chưa đo trên máy x64 chỉ CPU (không có máy) | đang làm |
 | 228 | VRAM trên Windows: gói Chuẩn khoảng 4,2–5 GB, nên ngưỡng đề xuất 6 GB; gói Nhẹ khoảng 2,9 GB, vừa card 4 GB | 04, 08 | Chờ C7; 04: T2 `1be9efa` (ngưỡng trong manifest); chờ C7, 04b Task 14 (Windows, cần máy Windows và người), 08 | chờ |
-| 229 | Mục tiêu tải máy: CPU trung bình ≤ 30% trên máy khuyến nghị khi người trong cuộc họp nói liên tục | 08 | Mục 6.9 **Cập nhật 2026-10-04:** S6 chốt trên M4 Pro: CPU cả máy 1,8–3,0% (`bench/phase0/results/latency/m4pro-chot-*.json`); phép đo chính thức (soak 2 giờ, `soak.py`) và máy khác chưa chạy | đang làm |
+| 229 | Mục tiêu tải máy: CPU trung bình ≤ 30% trên máy khuyến nghị khi người trong cuộc họp nói liên tục | 08 |  Mục 6.9 **Cập nhật 2026-10-04:** S6 chạy lại 2026-10-04 trên code hiện tại, máy rảnh: CPU cả máy 2–3% ở cả 12 session (`bench/phase1/results/s6-a2-2026-10-04.md`); chỉ có M4 Pro; soak 2 giờ (A5, dòng 306) vẫn do người chạy | xong |
 
 ### 4.20 Xử lý lỗi (§9)
 
@@ -964,7 +964,7 @@ Cách đọc:
 | 294 | License server, tích hợp: PayOS trên môi trường test nếu có, không có thì giao dịch số tiền nhỏ | 05, 05 (người) | R14; chờ 05 Task 20 (người; T5, P05-1, T6) | chờ |
 | 295 | Tích hợp: chạy pipeline từ file WAV, kiểm phụ đề có xuất hiện, đúng thứ tự, đúng thời gian | 02 | Clip ở `tests/fixtures/audio/` (Đ20); b2 `aaeca34`, b3 `a1143b0` | xong |
 | 296 | Tích hợp: vòng đời hai tiến trình phụ (đúng thứ tự, giả lập crash, tự khởi động lại, gửi lại đoạn, chuyển CPU sau 2 lần crash khi dùng GPU, tắt sau 10 phút không dịch) | 02 | d3 `4268836`, thêm test `9aace29` | xong |
-| 297 | Benchmark: đo COMET, chrF++ và độ trễ từng bước cho mỗi gói; chạy trước mỗi lần đổi model hoặc engine; ngưỡng theo A2–A4 | QƯ, 08 | Mục 6.7 **Cập nhật 2026-10-04:** A3 và A4 đã chạy lại trên bản hiện tại (đạt, dòng 28 và 29); còn S6 và cổng A2 trên code hiện tại, cần máy rảnh (`bench/phase0/latency/run_matrix.py`) | đang làm |
+| 297 | Benchmark: đo COMET, chrF++ và độ trễ từng bước cho mỗi gói; chạy trước mỗi lần đổi model hoặc engine; ngưỡng theo A2–A4 | QƯ, 08 |  Mục 6.7 **Cập nhật 2026-10-04:** đủ ba phần trên code hiện tại 2026-10-04: COMET (A3 đạt, dòng 28), chrF++ (thêm vào `score_mt.py`, chạy với `sacrebleu` 2.6.0; chỉ theo dõi, chưa có mốc), độ trễ từng bước (S6 12/12 đạt A2, `a2.json`); chạy lại trước mỗi lần đổi model hay engine (mục 6.7) | xong |
 | 298 | Thủ công: hệ điều hành macOS 14.2+, 15, 26, 27; Windows 10, 11 | 08 (người) | | chưa làm |
 | 299 | Thủ công: app họp Teams, Zoom, Meet (Chrome, Edge, Safari), Zalo PC | 08 (người) | | chưa làm |
 | 300 | Thủ công: thiết bị phát là loa, tai nghe có dây, tai nghe Bluetooth | 08 (người) | | chưa làm |

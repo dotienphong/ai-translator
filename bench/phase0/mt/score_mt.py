@@ -5,6 +5,7 @@ Chấm một lượt mới mà không đụng tới mốc (chống thụt lùi A
     --baseline bench/phase0/results/s7_mt.json
 Kết quả: bench/phase0/results/s7_mt-<nhãn>.json và .md; bảng cuối so từng chiều với mốc (không thấp hơn quá 0,01). Thêm
 `--no-comet` để chỉ tính tỉ lệ token (không cần torch); khi đó không so được với mốc.
+chrF++ (spec §11) tự có thêm khi môi trường có `sacrebleu` (`--with sacrebleu==2.6.0`); chỉ để theo dõi, không có mốc hay ngưỡng.
 
 Ghi lại chính mốc S7 (bench/phase0/results/s7_mt.json và s7_mt.md, từ bench/phase0/data/mt/outputs/) phải nói rõ:
   python bench/phase0/mt/score_mt.py --write-baseline
@@ -57,6 +58,22 @@ def is_failed(r):
     return r.get("finish_reason") == "failed"
 
 
+def chrf_pp(rows, items):
+    """chrF++ toàn chiều (sacrebleu `CHRF(word_order=2)`: n-gram ký tự và từ), thang 0–100 (spec §11).
+
+    `None` khi thiếu `sacrebleu` (thêm `--with sacrebleu==2.6.0` vào lệnh `uv run`) hoặc có dòng không có `ref`. Tính cả
+    dòng `failed` (hyp là câu gốc), giống cách tính COMET ở `summarize`.
+    """
+    try:
+        from sacrebleu.metrics import CHRF
+    except ImportError:
+        return None
+    refs = [items[r["id"]].get("ref") for r in rows]
+    if not rows or any(ref is None for ref in refs):
+        return None
+    return CHRF(word_order=2).corpus_score([r["hyp"] for r in rows], [refs]).score
+
+
 def summarize(rows, scores, items):
     # Bản dịch bị cắt ở số token tối đa (finish_reason "length", chỉ có ở translate.py) là sinh lan man: đếm riêng, không
     # tính vào ngưỡng. Dòng `failed` (mt-eval) cũng đếm riêng: không có tỉ lệ token hay thời gian thật.
@@ -73,6 +90,9 @@ def summarize(rows, scores, items):
            "total_ms_p50": percentile([r["total_ms"] for r in ok], 50) if ok else None}
     if scores:
         out["comet"] = mean(scores[r["id"]] for r in rows)
+    chrf = chrf_pp(rows, items)
+    if chrf is not None:
+        out["chrf"] = chrf
     return out
 
 
@@ -211,14 +231,15 @@ def main():
                   ensure_ascii=False, indent=1)
 
     lines = ["## Mốc theo lượt chạy", "",
-             "| Lượt chạy | Chiều | Số câu | COMET | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | Bị cắt | Lỗi "
-             "| Nghi lẫn mẫu | p50 thời gian (ms) |",
-             "|---|---|---|---|---|---|---|---|---|---|---|"]
+             "| Lượt chạy | Chiều | Số câu | COMET | chrF++ | Mức sàn (A3) | Tỉ lệ token lớn nhất | Ngưỡng đề xuất | Bị cắt "
+             "| Lỗi | Nghi lẫn mẫu | p50 thời gian (ms) |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for name, per_dir in report.items():
         for d, r in per_dir.items():
             comet_s = f"{r['comet']:.3f}" if "comet" in r else "—"
+            chrf_s = f"{r['chrf']:.1f}" if "chrf" in r else "—"
             ms_s = f"{r['total_ms_p50']:.0f}" if r["total_ms_p50"] is not None else "—"
-            lines.append(f"| {name} | {d} | {r['n']} | {comet_s} | {floor_cell(name, d, per_dir)} | "
+            lines.append(f"| {name} | {d} | {r['n']} | {comet_s} | {chrf_s} | {floor_cell(name, d, per_dir)} | "
                          f"{r['token_ratio_max']:.2f} | {r['proposed_threshold']:.1f} | {r['length_capped']} | "
                          f"{r['failed']} | {r['leaked']} | {ms_s} |")
     lines += ["", "## So sánh theo cặp (cùng tập câu)", "",

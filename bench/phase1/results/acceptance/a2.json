@@ -1,0 +1,168 @@
+{
+ "criterion": "A2",
+ "pass": true,
+ "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+ "tier": "khuyennghi",
+ "classes": [
+  "khuyennghi"
+ ],
+ "missing": [],
+ "sessions": [
+  {
+   "label": "m4pro-gd1-khuyennghi-chuan-en",
+   "tier": "khuyennghi",
+   "pack": "chuan",
+   "session": "en",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 1001.4649658203125,
+    "shown_p90_ms": 1156.1888427734375,
+    "first_p50_ms": 659.68603515625
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-chuan-ja",
+   "tier": "khuyennghi",
+   "pack": "chuan",
+   "session": "ja",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 999.4375,
+    "shown_p90_ms": 1305.21728515625,
+    "first_p50_ms": 690.615478515625
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-chuan-ko",
+   "tier": "khuyennghi",
+   "pack": "chuan",
+   "session": "ko",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 1030.8165283203125,
+    "shown_p90_ms": 1360.5997314453125,
+    "first_p50_ms": 667.04443359375
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-chuan-mixed",
+   "tier": "khuyennghi",
+   "pack": "chuan",
+   "session": "mixed",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 957.961181640625,
+    "shown_p90_ms": 1249.605224609375,
+    "first_p50_ms": 652.4398193359375
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-chuan-vi",
+   "tier": "khuyennghi",
+   "pack": "chuan",
+   "session": "vi",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 778.2354736328125,
+    "shown_p90_ms": 961.493896484375,
+    "first_p50_ms": 644.4020385742188
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-chuan-zh",
+   "tier": "khuyennghi",
+   "pack": "chuan",
+   "session": "zh",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 1046.5413818359375,
+    "shown_p90_ms": 1169.6507568359375,
+    "first_p50_ms": 644.57763671875
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-nhe-en",
+   "tier": "khuyennghi",
+   "pack": "nhe",
+   "session": "en",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 796.0809326171875,
+    "shown_p90_ms": 944.0633544921875,
+    "first_p50_ms": 507.4418029785156
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-nhe-ja",
+   "tier": "khuyennghi",
+   "pack": "nhe",
+   "session": "ja",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 804.5604858398438,
+    "shown_p90_ms": 1018.2821044921875,
+    "first_p50_ms": 580.743896484375
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-nhe-ko",
+   "tier": "khuyennghi",
+   "pack": "nhe",
+   "session": "ko",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 829.7706298828125,
+    "shown_p90_ms": 1001.53564453125,
+    "first_p50_ms": 568.060791015625
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-nhe-mixed",
+   "tier": "khuyennghi",
+   "pack": "nhe",
+   "session": "mixed",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 778.9632568359375,
+    "shown_p90_ms": 994.387451171875,
+    "first_p50_ms": 544.9505615234375
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-nhe-vi",
+   "tier": "khuyennghi",
+   "pack": "nhe",
+   "session": "vi",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 598.7946166992188,
+    "shown_p90_ms": 748.5244750976562,
+    "first_p50_ms": 517.95703125
+   },
+   "failed": []
+  },
+  {
+   "label": "m4pro-gd1-khuyennghi-nhe-zh",
+   "tier": "khuyennghi",
+   "pack": "nhe",
+   "session": "zh",
+   "machine": "macOS 26.6.2 Tahoe | Apple M4 Pro | 24.0 GB | 12 lõi",
+   "values": {
+    "shown_p50_ms": 860.009765625,
+    "shown_p90_ms": 1168.355712890625,
+    "first_p50_ms": 539.8540649414062
+   },
+   "failed": []
+  }
+ ]
+}

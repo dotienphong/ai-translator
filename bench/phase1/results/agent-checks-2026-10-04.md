@@ -61,8 +61,16 @@ Máy: Mac M4 Pro 24 GB, macOS 26.6.2, `main` ở `1e66356` (cộng thay đổi c
 
 ## Tải máy (dòng 229)
 
-- S6 chốt trên M4 Pro (`results/latency/m4pro-chot-*.json`): CPU cả máy 1,8–3,0%, dưới nhiều lần ngưỡng 30%. Chỉ có máy này.
-  Phép đo chính thức của 08 (`soak.py`, 2 giờ) và máy khác chưa chạy.
+- S6 chạy lại 2026-10-04 trên code hiện tại, máy rảnh (`s6-a2-2026-10-04.md`): CPU cả máy 2–3% ở cả 12 session, dưới nhiều lần
+  ngưỡng 30%. Chỉ có máy này. Phép đo 2 giờ của A5 (`soak.py`) và máy khác chưa chạy.
+
+## A2 và chrF++ (dòng 297)
+
+- A2: 12/12 session đạt, p50 lớn nhất 1047 ms, p90 lớn nhất 1361 ms; so với mốc `m4pro-chot` chênh p50 trung vị +11 ms
+  (`s6-a2-2026-10-04.md`, `acceptance/a2.json`).
+- chrF++ (spec §11) chưa từng có trong công cụ: thêm `chrf_pp` vào `bench/phase0/mt/score_mt.py` (sacrebleu 2.6.0, bản mới nhất lúc
+  kiểm), có test (`test_score_mt.py`, 9 test đạt; 2 test chrF++ tự bỏ qua khi thiếu sacrebleu). Cột chrF++ có trong
+  `bench/phase0/results/s7_mt-gd1-a3.md`; chưa có mốc nên chỉ để theo dõi.
 
 ## Flash attention (dòng 121)
 
