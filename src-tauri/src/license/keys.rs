@@ -111,7 +111,10 @@ mod tests {
             keys.get("stg-2026-10-1").is_none(),
             "khối `staging` còn sót trong file cũ không bao giờ được tin"
         );
-        assert!(keys.get("prod-2026-09-1").is_none(), "khóa đã bỏ (`retired`) không dùng");
+        assert!(
+            keys.get("prod-2026-09-1").is_none(),
+            "khóa đã bỏ (`retired`) không dùng"
+        );
     }
 
     #[test]
