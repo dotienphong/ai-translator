@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
+  <defs>
+    <mask id="cut">
+      <rect width="44" height="44" fill="#fff"/>
+      <g fill="#000">
+        <rect x="11.5" y="16.5" width="3" height="6" rx="1.5"/>
+        <rect x="16.5" y="13.5" width="3" height="12" rx="1.5"/>
+        <rect x="21" y="11" width="3" height="17" rx="1.5"/>
+        <rect x="25.5" y="13.5" width="3" height="12" rx="1.5"/>
+        <rect x="30.5" y="16.5" width="3" height="6" rx="1.5"/>
+      </g>
+    </mask>
+  </defs>
+  <g fill="#000" mask="url(#cut)">
+    <rect x="5" y="6" width="34" height="27" rx="9"/>
+    <polygon points="12,30 9,39 20,31"/>
+  </g>
+</svg>
