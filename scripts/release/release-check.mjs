@@ -9,6 +9,9 @@
 //   node scripts/release/release-check.mjs embedded <thư mục binaries> <file chạy của app> --target <triple>
 //       File chạy của app mang đúng bảng SHA-256 build sẵn: có SHA-256 của mọi file trong binaries/, và không còn tên bản
 //       dev kèm triple (build.rs ghi tên sau khi đóng gói ở bản phát hành).
+//   node scripts/release/release-check.mjs no-dev-gate <file chạy của app>...
+//       File chạy của app (bản phát hành) không có mã công tắc dev: tên biến AI_TRANSLATOR_DEV_PRO, tên biến cũ
+//       AI_TRANSLATOR_DEV_FREE, chuỗi chim hoàng yến mt-dev-pro-gate-v1 (spec 2026-10-04, §3). Có một chuỗi là lỗi.
 //   node scripts/release/release-check.mjs deps-macos <file>... [--min-os 14.2]
 //       Mọi thư viện mà file Mach-O nạp đều là của hệ thống (/System/Library, /usr/lib), và bản macOS tối thiểu của file
 //       không cao hơn --min-os.
@@ -99,6 +102,16 @@ export function embeddedErrors(binary, table) {
     }
   }
   return errors;
+}
+
+/** Chuỗi chỉ có trong bản debug (công tắc Pro của dev, `src-tauri/src/pro.rs`): tên biến công tắc, tên biến cũ và chuỗi chim hoàng yến. */
+export const DEV_GATE_MARKERS = ["AI_TRANSLATOR_DEV_PRO", "AI_TRANSLATOR_DEV_FREE", "mt-dev-pro-gate-v1"];
+
+/** Lỗi khi file chạy của app (nội dung `binary`) còn mã công tắc dev. Quét cả UTF-8 lẫn UTF-16LE (chuỗi của Windows). */
+export function devGateErrors(binary) {
+  return DEV_GATE_MARKERS.filter(
+    (marker) => binary.includes(Buffer.from(marker)) || binary.includes(Buffer.from(marker, "utf16le")),
+  ).map((marker) => `file chạy của app còn mã dev: có chuỗi ${marker}`);
 }
 
 /** Thư viện trong output của `otool -L <file>` (bỏ dòng đầu là tên file). */
@@ -218,6 +231,15 @@ export function main(argv) {
       const table = sidecarTable(required(args[0], "thư mục binaries"), target);
       errors.push(...embeddedErrors(readFileSync(required(args[1], "file chạy của app")), table));
       if (errors.length === 0) console.log(`${basename(args[1])} mang bảng SHA-256 của ${table.length} file, đúng tên sau khi đóng gói`);
+      break;
+    }
+    case "no-dev-gate": {
+      if (args.length === 0) throw new Error("thiếu file chạy của app");
+      for (const file of args) {
+        const found = devGateErrors(readFileSync(file));
+        errors.push(...found.map((e) => `${basename(file)}: ${e}`));
+        if (found.length === 0) console.log(`${basename(file)}: không có mã công tắc dev`);
+      }
       break;
     }
     case "deps-macos": {

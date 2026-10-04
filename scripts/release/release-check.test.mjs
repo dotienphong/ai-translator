@@ -6,9 +6,11 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import {
+  DEV_GATE_MARKERS,
   bundledName,
   checkBundle,
   checkSize,
+  devGateErrors,
   embeddedErrors,
   macosErrors,
   main,
@@ -107,6 +109,35 @@ test("file chạy của app phải mang SHA-256 của mọi file, với tên sau
     "file chạy của app còn tên bản dev asr-worker-aarch64-apple-darwin: bảng SHA-256 không dùng tên sau khi đóng gói",
     "file chạy của app không có SHA-256 của libggml.0.dylib",
   ]);
+});
+
+test("file chạy của app không được có mã công tắc dev (spec 2026-10-04, §3 lớp 3 và 4)", () => {
+  assert.deepEqual(devGateErrors(Buffer.from("AI Translator 0.1.0, chạy bình thường")), []);
+  assert.deepEqual(devGateErrors(Buffer.from("xx AI_TRANSLATOR_DEV_PRO yy")), [
+    "file chạy của app còn mã dev: có chuỗi AI_TRANSLATOR_DEV_PRO",
+  ]);
+  assert.deepEqual(devGateErrors(Buffer.from("mt-dev-pro-gate-v1: bản debug")), [
+    "file chạy của app còn mã dev: có chuỗi mt-dev-pro-gate-v1",
+  ]);
+  assert.equal(devGateErrors(Buffer.from("AI_TRANSLATOR_DEV_FREE")).length, 1, "tên biến cũ cũng bị chặn");
+  assert.equal(devGateErrors(Buffer.from(DEV_GATE_MARKERS.join(" "))).length, DEV_GATE_MARKERS.length);
+  // Windows có thể giữ chuỗi dạng UTF-16LE.
+  assert.equal(devGateErrors(Buffer.from("AI_TRANSLATOR_DEV_PRO", "utf16le")).length, 1);
+  // Chỉ khớp nguyên chuỗi: một phần tên biến không đủ.
+  assert.deepEqual(devGateErrors(Buffer.from("AI_TRANSLATOR_DEV_")), []);
+});
+
+test("CLI no-dev-gate: file sạch không lỗi, file có chuỗi chim hoàng yến thì lỗi kèm tên file", (t) => {
+  const dir = tempDir(t);
+  const clean = join(dir, "clean");
+  writeFileSync(clean, "abc");
+  const dirty = join(dir, "dirty");
+  writeFileSync(dirty, "...mt-dev-pro-gate-v1...");
+  assert.deepEqual(main(["no-dev-gate", clean]), []);
+  assert.deepEqual(main(["no-dev-gate", clean, dirty]), [
+    "dirty: file chạy của app còn mã dev: có chuỗi mt-dev-pro-gate-v1",
+  ]);
+  assert.throws(() => main(["no-dev-gate"]), /thiếu file/);
 });
 
 const OTOOL_L = `build/bin/llama-server:
