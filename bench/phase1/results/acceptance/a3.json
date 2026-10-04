@@ -1,0 +1,30 @@
+{
+ "criterion": "A3",
+ "pass": true,
+ "regressed": false,
+ "missing": [],
+ "below_floor": [],
+ "table": [
+  "",
+  "## So với mốc (chống thụt lùi A3)",
+  "",
+  "| Lượt chạy | Chiều | Mốc | Lượt này | Chênh | Kết luận |",
+  "|---|---|---|---|---|---|",
+  "| Hy-MT2-1.8B-Q4_K_M-plain | en->vi | 0.841 | 0.841 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q4_K_M-plain | ja->vi | 0.815 | 0.815 | -0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q4_K_M-plain | ko->vi | 0.822 | 0.822 | -0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q4_K_M-plain | vi->en | 0.822 | 0.822 | -0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q4_K_M-plain | vi->ja | 0.845 | 0.845 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q4_K_M-plain | vi->ko | 0.842 | 0.842 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q4_K_M-plain | vi->zh | 0.821 | 0.821 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q4_K_M-plain | zh->vi | 0.831 | 0.831 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q8_0-plain | en->vi | 0.842 | 0.842 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q8_0-plain | ja->vi | 0.830 | 0.830 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q8_0-plain | ko->vi | 0.834 | 0.834 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q8_0-plain | vi->en | 0.821 | 0.821 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q8_0-plain | vi->ja | 0.847 | 0.847 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q8_0-plain | vi->ko | 0.851 | 0.851 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q8_0-plain | vi->zh | 0.836 | 0.836 | +0.000 | đạt |",
+  "| Hy-MT2-1.8B-Q8_0-plain | zh->vi | 0.829 | 0.829 | +0.000 | đạt |"
+ ]
+}

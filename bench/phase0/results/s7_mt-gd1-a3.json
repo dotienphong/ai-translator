@@ -1,0 +1,278 @@
+{
+ "runs": {
+  "Hy-MT2-1.8B-Q4_K_M-plain": {
+   "en->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 3.2857142857142856,
+    "token_ratio_p99": 3.0028571428571444,
+    "proposed_threshold": 4.2,
+    "total_ms_p50": 479.7124,
+    "comet": 0.8410823971033097
+   },
+   "ja->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 2.6666666666666665,
+    "token_ratio_p99": 2.2895238095238115,
+    "proposed_threshold": 3.4,
+    "total_ms_p50": 319.567655,
+    "comet": 0.814815777540207
+   },
+   "ko->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 2.25,
+    "token_ratio_p99": 2.0025000000000013,
+    "proposed_threshold": 2.9,
+    "total_ms_p50": 308.6236,
+    "comet": 0.8215328362584114
+   },
+   "vi->en": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.25,
+    "token_ratio_p99": 1.0025000000000013,
+    "proposed_threshold": 1.6,
+    "total_ms_p50": 281.283125,
+    "comet": 0.821701227426529
+   },
+   "vi->ja": {
+    "n": 40,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.736842105263158,
+    "token_ratio_p99": 1.731140350877193,
+    "proposed_threshold": 2.2,
+    "total_ms_p50": 426.472395,
+    "comet": 0.8452556982636452
+   },
+   "vi->ko": {
+    "n": 40,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.5789473684210527,
+    "token_ratio_p99": 1.5264912280701755,
+    "proposed_threshold": 2.0,
+    "total_ms_p50": 453.901315,
+    "comet": 0.8423713788390159
+   },
+   "vi->zh": {
+    "n": 40,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 0.9473684210526315,
+    "token_ratio_p99": 0.9462280701754385,
+    "proposed_threshold": 1.2,
+    "total_ms_p50": 252.83282,
+    "comet": 0.821122108399868
+   },
+   "zh->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 3.3333333333333335,
+    "token_ratio_p99": 3.2673333333333336,
+    "proposed_threshold": 4.2,
+    "total_ms_p50": 411.043625,
+    "comet": 0.8314447540044785
+   }
+  },
+  "Hy-MT2-1.8B-Q8_0-plain": {
+   "en->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 3.4545454545454546,
+    "token_ratio_p99": 3.287402597402598,
+    "proposed_threshold": 4.4,
+    "total_ms_p50": 465.58412999999996,
+    "comet": 0.8415018406510353
+   },
+   "ja->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 2.7857142857142856,
+    "token_ratio_p99": 2.667857142857143,
+    "proposed_threshold": 3.5,
+    "total_ms_p50": 1114.8877499999999,
+    "comet": 0.8295836299657822
+   },
+   "ko->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 2.7857142857142856,
+    "token_ratio_p99": 2.2553571428571457,
+    "proposed_threshold": 3.5,
+    "total_ms_p50": 790.13235,
+    "comet": 0.833787990808487
+   },
+   "vi->en": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.25,
+    "token_ratio_p99": 1.1015000000000008,
+    "proposed_threshold": 1.6,
+    "total_ms_p50": 249.66884,
+    "comet": 0.8208350050449371
+   },
+   "vi->ja": {
+    "n": 40,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.736842105263158,
+    "token_ratio_p99": 1.731140350877193,
+    "proposed_threshold": 2.2,
+    "total_ms_p50": 393.50816499999996,
+    "comet": 0.8469151094555855
+   },
+   "vi->ko": {
+    "n": 40,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.6842105263157894,
+    "token_ratio_p99": 1.6340350877192982,
+    "proposed_threshold": 2.2,
+    "total_ms_p50": 405.30075,
+    "comet": 0.8505221724510192
+   },
+   "vi->zh": {
+    "n": 40,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 0.9473684210526315,
+    "token_ratio_p99": 0.9462280701754385,
+    "proposed_threshold": 1.2,
+    "total_ms_p50": 224.054205,
+    "comet": 0.8360554978251458
+   },
+   "zh->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 5.25,
+    "token_ratio_p99": 3.517500000000009,
+    "proposed_threshold": 6.6,
+    "total_ms_p50": 1105.8980000000001,
+    "comet": 0.8289184433221817
+   }
+  }
+ },
+ "comparisons": {
+  "Hy-MT2-1.8B-Q4_K_M-plain − Q8_0": {
+   "en->vi": {
+    "n": 100,
+    "ms_change": 0.0303452568282343,
+    "longer_x2": 0,
+    "comet_diff": -0.0004194435477256775,
+    "ci95": [
+     -0.008576993942260741,
+     0.0074141877889633175
+    ]
+   },
+   "ja->vi": {
+    "n": 100,
+    "ms_change": -0.713363381201381,
+    "longer_x2": 0,
+    "comet_diff": -0.014767852425575257,
+    "ci95": [
+     -0.02878942131996155,
+     -0.002099725604057312
+    ]
+   },
+   "ko->vi": {
+    "n": 100,
+    "ms_change": -0.6094026526062374,
+    "longer_x2": 0,
+    "comet_diff": -0.012255154550075531,
+    "ci95": [
+     -0.02337803840637207,
+     -0.001827804148197174
+    ]
+   },
+   "vi->en": {
+    "n": 100,
+    "ms_change": 0.12662487237093734,
+    "longer_x2": 0,
+    "comet_diff": 0.0008662223815917968,
+    "ci95": [
+     -0.004559845328330993,
+     0.006138761043548584
+    ]
+   },
+   "vi->ja": {
+    "n": 40,
+    "ms_change": 0.08377012964902542,
+    "longer_x2": 0,
+    "comet_diff": -0.0016594111919403076,
+    "ci95": [
+     -0.015932944416999818,
+     0.01211506724357605
+    ]
+   },
+   "vi->ko": {
+    "n": 40,
+    "ms_change": 0.11991234903957126,
+    "longer_x2": 0,
+    "comet_diff": -0.008150793612003326,
+    "ci95": [
+     -0.02103505879640579,
+     0.007881487905979156
+    ]
+   },
+   "vi->zh": {
+    "n": 40,
+    "ms_change": 0.12844487788122527,
+    "longer_x2": 0,
+    "comet_diff": -0.01493338942527771,
+    "ci95": [
+     -0.02829766124486923,
+     -0.003246594965457916
+    ]
+   },
+   "zh->vi": {
+    "n": 100,
+    "ms_change": -0.628316874612306,
+    "longer_x2": 0,
+    "comet_diff": 0.002526310682296753,
+    "ci95": [
+     -0.004292838573455811,
+     0.010617272853851318
+    ]
+   }
+  }
+ },
+ "token_ratio_thresholds": {
+  "en->vi": 4.4,
+  "ja->vi": 3.5,
+  "ko->vi": 3.5,
+  "vi->en": 1.6,
+  "vi->ja": 2.2,
+  "vi->ko": 2.2,
+  "vi->zh": 1.2,
+  "zh->vi": 6.6
+ }
+}

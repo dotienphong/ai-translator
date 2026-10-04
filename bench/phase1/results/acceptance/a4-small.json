@@ -1,0 +1,148 @@
+{
+ "criterion": "A4",
+ "pack": "small",
+ "pass": true,
+ "missing": [],
+ "groups": [
+  {
+   "group": "en",
+   "metric": "wer",
+   "baseline": 0.08150470219435736,
+   "result": 0.08150470219435736,
+   "pass": true
+  },
+  {
+   "group": "en-nb",
+   "metric": "wer",
+   "baseline": 0.14814814814814814,
+   "result": 0.14814814814814814,
+   "pass": true
+  },
+  {
+   "group": "en-wb",
+   "metric": "wer",
+   "baseline": 0.06582768635043562,
+   "result": 0.06582768635043562,
+   "pass": true
+  },
+  {
+   "group": "en-wbp",
+   "metric": "wer",
+   "baseline": 0.08847736625514403,
+   "result": 0.08847736625514403,
+   "pass": true
+  },
+  {
+   "group": "ja",
+   "metric": "cer",
+   "baseline": 0.14174490496908632,
+   "result": 0.14174490496908632,
+   "pass": true
+  },
+  {
+   "group": "ja-nb",
+   "metric": "cer",
+   "baseline": 0.1864801864801865,
+   "result": 0.1864801864801865,
+   "pass": true
+  },
+  {
+   "group": "ja-wb",
+   "metric": "cer",
+   "baseline": 0.13080649757765744,
+   "result": 0.13080649757765744,
+   "pass": true
+  },
+  {
+   "group": "ja-wbp",
+   "metric": "cer",
+   "baseline": 0.1317016317016317,
+   "result": 0.1317016317016317,
+   "pass": true
+  },
+  {
+   "group": "ko",
+   "metric": "cer",
+   "baseline": 0.08295655592687241,
+   "result": 0.08295655592687241,
+   "pass": true
+  },
+  {
+   "group": "ko-nb",
+   "metric": "cer",
+   "baseline": 0.08686868686868687,
+   "result": 0.08686868686868687,
+   "pass": true
+  },
+  {
+   "group": "ko-wb",
+   "metric": "cer",
+   "baseline": 0.08201122772760557,
+   "result": 0.08201122772760557,
+   "pass": true
+  },
+  {
+   "group": "ko-wbp",
+   "metric": "cer",
+   "baseline": 0.09696969696969697,
+   "result": 0.09696969696969697,
+   "pass": true
+  },
+  {
+   "group": "vi",
+   "metric": "wer",
+   "baseline": 0.22626409603492179,
+   "result": 0.22626409603492179,
+   "pass": true
+  },
+  {
+   "group": "vi-nb",
+   "metric": "wer",
+   "baseline": 0.22986247544204322,
+   "result": 0.22986247544204322,
+   "pass": true
+  },
+  {
+   "group": "vi-wb",
+   "metric": "wer",
+   "baseline": 0.22544642857142858,
+   "result": 0.22544642857142858,
+   "pass": true
+  },
+  {
+   "group": "vi-wbp",
+   "metric": "wer",
+   "baseline": 0.19646365422396855,
+   "result": 0.19646365422396855,
+   "pass": true
+  },
+  {
+   "group": "zh",
+   "metric": "cer",
+   "baseline": 0.1036165964055913,
+   "result": 0.1036165964055913,
+   "pass": true
+  },
+  {
+   "group": "zh-nb",
+   "metric": "cer",
+   "baseline": 0.1343612334801762,
+   "result": 0.1343612334801762,
+   "pass": true
+  },
+  {
+   "group": "zh-wb",
+   "metric": "cer",
+   "baseline": 0.09585996110030565,
+   "result": 0.09585996110030565,
+   "pass": true
+  },
+  {
+   "group": "zh-wbp",
+   "metric": "cer",
+   "baseline": 0.12004405286343613,
+   "result": 0.12004405286343613,
+   "pass": true
+  }
+ ]
+}
