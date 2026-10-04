@@ -1,7 +1,8 @@
-# Meeting Translator (tên tạm)
+# AI Translator
 
 App desktop (Windows và macOS) hiện phụ đề dịch trực tiếp cho âm thanh cuộc họp, chạy offline.
 
+- **Tên:** AI Translator (`productName` trong `src-tauri/tauri.conf.json`). Thư mục và repo GitHub đặt là `ai-translator`. Tên crate và binary vẫn là `meeting-translator` (tên mã cũ, chưa đổi).
 - **Thiết kế:** `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Đọc file này trước khi làm bất kỳ việc gì.
 - **Mốc benchmark chọn model:** `bench/2026-09-29-mt-benchmark/`.
 
