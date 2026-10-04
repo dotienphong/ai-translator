@@ -29,8 +29,8 @@ for (let i = 0; i < rest.length; i += 2) {
     keysGiven = true;
   } else fail("Tham số sau kid chỉ có thể là --keys <file>.");
 }
-if (!kid || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(kid) || kid.startsWith("test-")) {
-  fail("Cần kid gồm chữ thường, số và '-', tối đa 32 ký tự, không bắt đầu bằng 'test-'. Ví dụ: prod-2026-10-1");
+if (!kid || !/^prod-\d{4}-\d{2}-[1-9]\d{0,3}$/.test(kid)) {
+  fail("kid phải dạng prod-<năm>-<tháng>-<số thứ tự>, ví dụ prod-2026-10-1.");
 }
 const out = fstatSync(1);
 if (!out.isFIFO() && !out.isSocket()) {

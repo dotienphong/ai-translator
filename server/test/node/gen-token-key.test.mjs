@@ -77,7 +77,18 @@ test("retired không phải mảng: báo lỗi, thoát mã 2, không sinh khóa"
 });
 
 test("không có --keys và file mặc định chưa có (trước lần tạo khóa đầu tiên): vẫn sinh khóa", { skip: existsSync(defaultKeys) }, () => {
-  const r = run("node-test-1");
+  const r = run("prod-2026-10-1");
   assert.equal(r.status, 0);
-  assert.equal(parseJwk(r.stdout).kid, "node-test-1");
+  assert.equal(parseJwk(r.stdout).kid, "prod-2026-10-1");
+});
+
+test("kid không theo prod-<năm>-<tháng>-<số thứ tự>: từ chối, thoát mã 2, không sinh khóa", () => {
+  for (const kid of ["node-test-1", "stg-2026-10-1", "test-1", "prod-2026-10-0", "prod-2026-10-01", "prod-26-10-1", "prod-2026-1-1", "Prod-2026-10-1"]) {
+    const r = run(kid, "--keys", fixture);
+    assert.equal(r.stdout.length, 0, kid);
+    assert.equal(r.status, 2, kid);
+    assert.match(r.stderr, /kid phải dạng prod-<năm>-<tháng>-<số thứ tự>/, kid);
+  }
+  const r = run();
+  assert.equal(r.status, 2);
 });

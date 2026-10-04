@@ -43,11 +43,12 @@ test("không chạy nội dung .env như lệnh shell", (t) => {
   const marker = join(dir, "da-chay");
   const r = read(
     t,
-    `AI_TRANSLATOR_DEV_PRO=true; touch ${marker}\n$(touch ${marker})\n\`touch ${marker}\`\nAI_TRANSLATOR_DEV_PRO=$(touch ${marker})\n`,
+    `AI_TRANSLATOR_DEV_PRO=$(touch ${marker})\n$(touch ${marker})\n\`touch ${marker}\`\nAI_TRANSLATOR_DEV_PRO=true; touch ${marker}\n`,
   );
   assert.equal(existsSync(marker), false, "lệnh trong .env đã bị chạy");
-  // Giá trị lạ vẫn được chuyển nguyên văn cho app, và app chỉ coi đúng `true` là bật (pro.rs, switch_on).
+  // Giá trị lạ vẫn được chuyển nguyên văn cho app (lần xuất hiện cuối), và app chỉ coi đúng `true` là bật (pro.rs, switch_on).
   assert.match(r.out, /^AI_TRANSLATOR_DEV_PRO=true; touch /m);
+  assert.equal(r.out.split("\n").filter(Boolean).length, 1);
 });
 
 test("khóa có khoảng trắng hay sai chữ hoa không được nhận; dòng không có dấu = bị bỏ qua", (t) => {
@@ -56,6 +57,46 @@ test("khóa có khoảng trắng hay sai chữ hoa không được nhận; dòng
 });
 
 test("dòng kết thúc CRLF và dòng cuối không có xuống dòng vẫn đọc đúng", (t) => {
-  const r = read(t, "AI_TRANSLATOR_DEV_PRO=true\r\nAI_TRANSLATOR_DEV_PRO=false");
-  assert.equal(r.out, "AI_TRANSLATOR_DEV_PRO=true\nAI_TRANSLATOR_DEV_PRO=false\n");
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_PRO=true\r\n").out, "AI_TRANSLATOR_DEV_PRO=true\n");
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_PRO=true").out, "AI_TRANSLATOR_DEV_PRO=true\n");
+  assert.equal(read(t, "# c\r\nAI_TRANSLATOR_DEV_PRO=false\r\n").out, "AI_TRANSLATOR_DEV_PRO=false\n");
+});
+
+test("khóa cho phép xuất hiện nhiều lần: lần cuối thắng (giống `open --env`)", (t) => {
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_PRO=true\nAI_TRANSLATOR_DEV_PRO=false\n").out, "AI_TRANSLATOR_DEV_PRO=false\n");
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_PRO=false\nAI_TRANSLATOR_DEV_PRO=true\n").out, "AI_TRANSLATOR_DEV_PRO=true\n");
+  assert.equal(
+    read(t, "AI_TRANSLATOR_DEV_PRO=true\nKHAC=1\nAI_TRANSLATOR_DEV_PRO=false\n").out,
+    "AI_TRANSLATOR_DEV_PRO=false\n",
+  );
+});
+
+test("giá trị lạ của AI_TRANSLATOR_DEV_PRO vẫn được chuyển nguyên văn nhưng có cảnh báo ở stderr (không in giá trị)", (t) => {
+  for (const value of ['"true"', "1", "TRUE", "true ", ""]) {
+    const r = read(t, `AI_TRANSLATOR_DEV_PRO=${value}\n`);
+    assert.equal(r.out, `AI_TRANSLATOR_DEV_PRO=${value}\n`);
+    assert.match(r.err, /AI_TRANSLATOR_DEV_PRO có giá trị lạ/);
+    assert.ok(!r.err.includes("TRUE"), "không in giá trị ra stderr");
+  }
+});
+
+test("giá trị true hoặc false thì không cảnh báo", (t) => {
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_PRO=true\n").err, "");
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_PRO=false\n").err, "");
+  // Lần cuối mới tính: lạ rồi đúng thì không cảnh báo.
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_PRO=1\nAI_TRANSLATOR_DEV_PRO=true\n").err, "");
+});
+
+test("tên khóa không hợp lệ (có khoảng trắng, rỗng, `export `) bị từ chối và không lộ giá trị", (t) => {
+  const r = read(
+    t,
+    "export AI_TRANSLATOR_DEV_PRO=true\n=true\nAI_TRANSLATOR DEV_PRO=true\n-AI_TRANSLATOR_DEV_PRO=true\n1AI=bi-mat-xyz\n",
+  );
+  assert.equal(r.out, "");
+  assert.doesNotMatch(r.err, /bi-mat-xyz/);
+});
+
+test("khóa chỉ là một phần của tên cho phép (tiền tố, hậu tố) không được nhận", (t) => {
+  const r = read(t, "AI_TRANSLATOR_DEV_PRO_X=true\nAI_TRANSLATOR_DEV=true\nXAI_TRANSLATOR_DEV_PRO=true\n");
+  assert.equal(r.out, "");
 });

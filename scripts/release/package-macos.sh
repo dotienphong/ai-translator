@@ -91,6 +91,8 @@ elif [ ! -d "$app" ]; then
   exit 1
 fi
 
+# Cổng chống Pro trái phép (spec 2026-10-04, §3): app đã build ở job khác cũng phải sạch mã công tắc dev trước khi ký.
+node "$check" no-dev-gate "$app/Contents/MacOS/meeting-translator"
 echo "== ký app"
 sign --options runtime --entitlements "$root/src-tauri/release/entitlements.plist" "$app"
 codesign --verify --strict --deep "$app"
@@ -99,8 +101,6 @@ node "$check" bundle "$root/src-tauri/binaries" "$app/Contents/MacOS" --target "
 # Phần `sign` nhận `.app` từ artifact của job khác: kiểm lại app nhúng đúng bảng SHA-256 của tiến trình phụ mà job này ký
 # (N-A của review 07a lần 3), để `.app` của một bộ tiến trình phụ khác không đi tiếp tới notarize.
 node "$check" embedded "$root/src-tauri/binaries" "$app/Contents/MacOS/meeting-translator" --target "$triple"
-# Cổng chống Pro trái phép (spec 2026-10-04, §3): app đã build ở job khác cũng phải sạch mã công tắc dev trước khi ký.
-node "$check" no-dev-gate "$app/Contents/MacOS/meeting-translator"
 mkdir -p "$out"
 if [ -n "${APPLE_API_KEY_PATH:-}" ]; then
   ditto -c -k --keepParent "$app" "$out/app-notarize.zip"
