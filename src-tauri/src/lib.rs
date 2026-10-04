@@ -128,8 +128,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         persist::save(&handle, &settings, &loaded.meta)?;
     }
     app.manage(AppState::new(settings.clone(), loaded.meta, launched_at_login));
-    // Điểm kiểm tra Pro duy nhất (Đ6), theo trạng thái bản quyền thật (kế hoạch 06); bản debug không đặt
-    // `AI_TRANSLATOR_DEV_FREE=1` thì Pro không giới hạn.
+    // Điểm kiểm tra Pro duy nhất (Đ6), theo trạng thái bản quyền thật (kế hoạch 06); riêng bản debug đặt
+    // `AI_TRANSLATOR_DEV_PRO=true` thì Pro không giới hạn.
     license::app::install(&handle, had_settings);
     // DB mã hóa của lịch sử và từ điển: chưa mở, chưa đọc kho khóa ở đây (db.rs).
     db::install(&handle)?;

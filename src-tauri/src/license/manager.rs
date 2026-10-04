@@ -147,7 +147,7 @@ pub struct LicenseView {
     pub quota: QuotaView,
     /// Bản build có địa chỉ license server.
     pub server_configured: bool,
-    /// Bản debug chạy Pro không giới hạn (`DevGate`, kế hoạch 03).
+    /// Công tắc dev (`AI_TRANSLATOR_DEV_PRO=true`, chỉ bản debug) đang bật: Pro không giới hạn (`DevGate`).
     pub dev_override: bool,
     /// Giờ máy bị coi là chỉnh lùi (cả ở gói Free): giao diện nhắc chỉnh giờ.
     pub clock_rolled_back: bool,
@@ -277,7 +277,7 @@ pub struct License {
     machine: Machine,
     zone: Zone,
     server_configured: bool,
-    /// Bản debug: Pro không giới hạn (`DevGate`).
+    /// Công tắc dev bật (chỉ bản debug): Pro không giới hạn (`DevGate`).
     dev_unlimited: bool,
     /// Kết quả kiểm chữ ký bản cài: chưa kiểm xong thì chưa mở Pro, nhưng chưa báo "không chính hãng" (N5 của review 06).
     genuine: AtomicU8,

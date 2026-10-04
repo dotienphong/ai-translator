@@ -1,13 +1,13 @@
-//! Nối [`License`] vào app (spec §6.8, §4.2 bước 2): điểm kiểm tra Pro thật (`pro::ProGate`, thay `DevGate` của kế hoạch
-//! 03 ở bản phát hành), kiểm hạn mức trước khi bắt đầu phiên, đếm phút từ `EventSink::usage`, lịch `validate` chạy nền,
+//! Nối [`License`] vào app (spec §6.8, §4.2 bước 2): điểm kiểm tra Pro thật (`pro::ProGate`, thay `DevGate`
+//! ở bản phát hành), kiểm hạn mức trước khi bắt đầu phiên, đếm phút từ `EventSink::usage`, lịch `validate` chạy nền,
 //! và báo giao diện.
 //!
 //! - Giao diện nhận [`LicenseView`] qua sự kiện `license://changed` (chỉ cửa sổ chính) và lệnh `get_license`. View
 //!   không có key đầy đủ hay token (01 QĐ6).
 //! - `AppStatus.quota_warning` (còn từ 5 phút trở xuống) và `AppStatus.quota_reset_at` đi cùng `app://status`, để thanh
 //!   phụ đề nhắc mà không cần lệnh mới.
-//! - Bản debug không đặt `AI_TRANSLATOR_DEV_FREE=1` thì chạy Pro không giới hạn (`DevGate`, kế hoạch 03); đặt biến này
-//!   thì dùng trạng thái bản quyền thật, như bản phát hành.
+//! - Mặc định, kể cả bản debug, dùng trạng thái bản quyền thật. Riêng bản debug đặt `AI_TRANSLATOR_DEV_PRO=true` thì chạy
+//!   Pro không giới hạn (`DevGate`, `pro.rs`), vẫn nối production cho mọi thứ khác.
 
 use std::ops::ControlFlow;
 use std::sync::Arc;
@@ -94,6 +94,14 @@ pub fn install<R: Runtime>(app: &AppHandle<R>, has_prior_data: bool) {
         label: device::label(),
     };
     let dev = pro::dev_override();
+    #[cfg(debug_assertions)]
+    if dev {
+        log::warn!(
+            "{}: bản debug giả lập Pro không giới hạn ({}=true); không dùng để đo hạn mức hay thử luồng mua",
+            pro::DEV_GATE_CANARY,
+            pro::DEV_PRO_ENV
+        );
+    }
     let license = License::new(
         Box::new(api),
         vault,

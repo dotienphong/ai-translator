@@ -3,11 +3,12 @@
 //! - [`require`] cho lệnh của giao diện: không phải Pro thì trả lỗi `proRequired`;
 //! - [`is_pro`] cho việc chạy ngầm: lưu lịch sử khi phiên dừng, đưa thuật ngữ vào prompt.
 //!
-//! Kế hoạch 03 chỉ có bản tạm `DevGate`, **chỉ có trong bản debug** (`cfg(debug_assertions)`): luôn là Pro, trừ khi chạy
-//! app với biến môi trường `AI_TRANSLATOR_DEV_FREE=1` (để thử bằng tay giao diện khi bị khóa Pro). Bản release không cài
-//! gate nào, tức là Free, cho tới khi kế hoạch 06 cài trạng thái bản quyền thật bằng [`install_gate`] (một lần, ở đúng chỗ
-//! của [`install_default_gate`]: `app.manage` không thay được state đã có), gọi [`refresh`] mỗi khi trạng thái bản quyền
-//! đổi, và thêm kiểm tra ở nhiều chỗ theo §10.2.
+//! Mặc định mọi bản build đi đường thật: Free cho tới khi có token bản quyền thật (`license::app::install` cài
+//! `LicenseGate` bằng [`install_gate`] một lần; `app.manage` không thay được state đã có), và [`refresh`] chạy mỗi khi
+//! trạng thái bản quyền đổi. Riêng **bản debug** có công tắc dev (spec 2026-10-04, §2.2): đặt biến môi trường
+//! `AI_TRANSLATOR_DEV_PRO` đúng bằng `true` thì cài `DevGate`, Pro không giới hạn, vẫn nối production cho mọi thứ khác.
+//! Mã đọc công tắc nằm sau `cfg(debug_assertions)`: bản phát hành không có code đó và không có cả chuỗi tên biến
+//! (`release-check.mjs no-dev-gate` chặn nếu nó lọt vào, spec §3).
 //!
 //! Chưa cài `ProGate` nào thì coi là Free: quên cài thì khóa tính năng, không mở cho không.
 //! Xóa toàn bộ dữ liệu (§4.3, Quyền riêng tư) không đi qua đây: người đã về Free vẫn xóa được lịch sử và từ điển cũ.
@@ -18,9 +19,14 @@ use crate::actions;
 use crate::errors::{self, CommandError};
 use crate::state::AppState;
 
-/// Biến môi trường của bản tạm: `1` thì app chạy như gói Free. Chỉ bản debug đọc biến này.
+/// Biến môi trường của công tắc dev: đúng `true` thì bản debug chạy như Pro không giới hạn. Chỉ bản debug có biến này.
 #[cfg(debug_assertions)]
-pub const DEV_FREE_ENV: &str = "AI_TRANSLATOR_DEV_FREE";
+pub const DEV_PRO_ENV: &str = "AI_TRANSLATOR_DEV_PRO";
+
+/// Chuỗi chim hoàng yến, nằm trong lời cảnh báo của `license::app::install`: chỉ có trong bản debug. Binary bản phát hành
+/// mà có chuỗi này là mã dev đã lọt vào (`release-check.mjs no-dev-gate`).
+#[cfg(debug_assertions)]
+pub const DEV_GATE_CANARY: &str = "mt-dev-pro-gate-v1";
 
 /// Nguồn sự thật "đang có gói trả phí còn hạn" (spec §2). Kế hoạch 06 cài bằng trạng thái bản quyền.
 pub trait ProGate: Send + Sync + 'static {
@@ -30,40 +36,31 @@ pub trait ProGate: Send + Sync + 'static {
 /// `ProGate` đang dùng, quản lý bằng `app.manage`.
 pub struct Entitlement(pub Box<dyn ProGate>);
 
-/// Bản tạm của kế hoạch 03, chỉ có trong bản debug: Pro, trừ khi `AI_TRANSLATOR_DEV_FREE=1`.
+/// Công tắc dev bật khi nào: chỉ giá trị đúng `true` (phân biệt hoa thường). `1`, `TRUE`, `yes`, chuỗi rỗng, có khoảng
+/// trắng thừa, hay không đặt biến đều là tắt.
+#[cfg(debug_assertions)]
+fn switch_on(value: Option<&str>) -> bool {
+    value == Some("true")
+}
+
+/// Cổng Pro của bản debug khi công tắc dev bật: luôn là Pro.
 #[cfg(debug_assertions)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct DevGate {
-    pro: bool,
-}
-
-#[cfg(debug_assertions)]
-impl DevGate {
-    /// Theo giá trị của biến `AI_TRANSLATOR_DEV_FREE` (không có thì `None`).
-    pub fn from_value(value: Option<&str>) -> Self {
-        Self {
-            pro: value != Some("1"),
-        }
-    }
-
-    pub fn from_env() -> Self {
-        Self::from_value(std::env::var(DEV_FREE_ENV).ok().as_deref())
-    }
-}
+pub struct DevGate;
 
 #[cfg(debug_assertions)]
 impl ProGate for DevGate {
     fn is_pro(&self) -> bool {
-        self.pro
+        true
     }
 }
 
-/// Gate lúc khởi động: bản debug là `DevGate`; bản release không có gate nào (Free) cho tới khi kế hoạch 06 cài trạng thái
-/// bản quyền thật.
+/// Gate dựng sẵn lúc khởi động: chỉ bản debug có công tắc dev bật mới có `DevGate`; còn lại không có gate nào (Free) cho
+/// tới khi `license::app::install` cài trạng thái bản quyền thật.
 pub fn default_gate() -> Option<Box<dyn ProGate>> {
     #[cfg(debug_assertions)]
     {
-        Some(Box::new(DevGate::from_env()))
+        dev_override().then(|| Box::new(DevGate) as Box<dyn ProGate>)
     }
     #[cfg(not(debug_assertions))]
     {
@@ -71,12 +68,12 @@ pub fn default_gate() -> Option<Box<dyn ProGate>> {
     }
 }
 
-/// Bản debug chạy Pro không giới hạn (`DevGate` là Pro): không đặt `AI_TRANSLATOR_DEV_FREE=1`. Bản phát hành luôn `false`.
-/// Kế hoạch 06 dùng để chọn gate và bỏ hạn mức ở bản debug (`license::app::install`).
+/// Công tắc dev đang bật: chỉ bản debug có `AI_TRANSLATOR_DEV_PRO=true`. Bản phát hành luôn `false`.
+/// `license::app::install` dùng để chọn gate và bỏ hạn mức.
 pub fn dev_override() -> bool {
     #[cfg(debug_assertions)]
     {
-        DevGate::from_env().is_pro()
+        switch_on(std::env::var(DEV_PRO_ENV).ok().as_deref())
     }
     #[cfg(not(debug_assertions))]
     {
@@ -87,7 +84,7 @@ pub fn dev_override() -> bool {
 /// Cài `DevGate` Pro (chỉ bản debug, khi [`dev_override`]). Bản phát hành không làm gì: không có `DevGate`.
 pub fn install_dev_gate<R: Runtime>(app: &AppHandle<R>) {
     #[cfg(debug_assertions)]
-    install_gate(app, Box::new(DevGate::from_value(None)));
+    install_gate(app, Box::new(DevGate));
     #[cfg(not(debug_assertions))]
     let _ = app;
 }
@@ -146,11 +143,11 @@ mod tests {
     use super::*;
     use crate::test_support::{mock_app, set_pro};
 
-    /// Q1 của review 03 lần 1: bản release không có `DevGate`, nên mặc định là Free. Chạy cả với `--release` ở 03b
-    /// Task 7.
+    /// Bản phát hành không có `DevGate`, nên mặc định là Free; bản debug chỉ có khi công tắc dev bật (spec 2026-10-04,
+    /// §2.2). Chạy cả với `--release` (CI: "Test bản quyền ở bản release").
     #[test]
-    fn the_dev_gate_exists_only_in_debug_builds() {
-        assert_eq!(default_gate().is_some(), cfg!(debug_assertions));
+    fn the_dev_gate_exists_only_in_a_debug_build_with_the_switch_on() {
+        assert_eq!(default_gate().is_some(), dev_override());
         let app = tauri::test::mock_app();
         app.manage(AppState::new(
             crate::settings::Settings::defaults(crate::settings::UiLanguage::Vi),
@@ -158,25 +155,35 @@ mod tests {
             false,
         ));
         install_default_gate(app.handle());
-        assert_eq!(is_pro(app.handle()), cfg!(debug_assertions));
-        assert_eq!(app.state::<AppState>().status().pro, cfg!(debug_assertions));
+        assert_eq!(is_pro(app.handle()), dev_override());
+        assert_eq!(app.state::<AppState>().status().pro, dev_override());
     }
 
-    /// Bản phát hành không bao giờ chạy Pro không giới hạn nhờ biến môi trường (QĐ17 của 06); bản debug thì có, trừ khi
-    /// `AI_TRANSLATOR_DEV_FREE=1`. Chạy cả với `--release` ở 06b Task 5.
+    /// Bản phát hành không bao giờ chạy Pro không giới hạn nhờ biến môi trường (QĐ17 của 06); bản debug chỉ khi
+    /// `AI_TRANSLATOR_DEV_PRO=true`. Chạy cả với `--release`.
     #[test]
-    fn only_a_debug_build_runs_unlimited() {
-        let asked_free = std::env::var("AI_TRANSLATOR_DEV_FREE").as_deref() == Ok("1");
-        assert_eq!(dev_override(), cfg!(debug_assertions) && !asked_free);
+    fn only_a_debug_build_with_the_switch_on_runs_unlimited() {
+        let on = std::env::var("AI_TRANSLATOR_DEV_PRO").as_deref() == Ok("true");
+        assert_eq!(dev_override(), cfg!(debug_assertions) && on);
     }
 
     #[cfg(debug_assertions)]
     #[test]
-    fn the_dev_gate_is_pro_unless_asked_to_be_free() {
-        assert!(DevGate::from_value(None).is_pro());
-        assert!(DevGate::from_value(Some("0")).is_pro());
-        assert!(DevGate::from_value(Some("")).is_pro());
-        assert!(!DevGate::from_value(Some("1")).is_pro());
+    fn the_switch_is_on_only_for_the_exact_value_true() {
+        assert!(switch_on(Some("true")));
+        for value in [
+            None,
+            Some(""),
+            Some("1"),
+            Some("TRUE"),
+            Some("True"),
+            Some("yes"),
+            Some(" true"),
+            Some("true "),
+        ] {
+            assert!(!switch_on(value), "{value:?}");
+        }
+        assert!(DevGate.is_pro());
     }
 
     #[test]
