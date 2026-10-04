@@ -1,6 +1,6 @@
 import type { ModelsView, PackView } from "./models";
 
-// Dữ liệu giả của quản lý model cho test (chỉ dùng trong file *.test.ts): hai gói như manifest staging, máy Mac 16 GB.
+// Dữ liệu giả của quản lý model cho test (chỉ dùng trong file *.test.ts): hai gói như manifest production, máy Mac 16 GB.
 
 export function fakePack(id: string, bytes: number, extra: Partial<PackView> = {}): PackView {
   return {

@@ -13,7 +13,7 @@
 //!   luồng đang chờ server (kết nối tối đa 15 giây, mỗi lần đọc tối đa 30 giây), tạm dừng có tác dụng sau lần chờ đó.
 //! - Không có thời hạn cho cả file (file lớn), chỉ có thời hạn kết nối và thời hạn chờ mỗi lần đọc.
 //! - Chỉ theo redirect sang `https` (tối đa 5 bước). Ngoại lệ duy nhất: chuỗi bắt đầu ở `http` tới máy này (server thử
-//!   của test, `AT_MODELS_URL` của bản dev) thì được đi tiếp `http` tới máy này.
+//!   của test) thì được đi tiếp `http` tới máy này.
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};

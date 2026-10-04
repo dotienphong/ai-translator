@@ -1,9 +1,9 @@
 //! Nguồn manifest model (spec §6.7): URL của `models.json`, tải và kiểm, chống quay lui về bản cũ, kiểm tối đa mỗi ngày
 //! một lần.
 //!
-//! - Bản dev đọc URL staging (biến môi trường [`URL_ENV`] đè được, để trỏ tới server thử trên máy); bản phát hành chỉ
-//!   đọc URL production. Chưa có URL thì app báo "chưa có nguồn model" và không gọi mạng.
-//! - URL phải là `https`; riêng bản dev cho `http` tới `127.0.0.1` hay `localhost` (server thử).
+//! - Mọi bản build, kể cả bản debug, chỉ đọc URL production (spec 2026-10-04, §2.1); không còn biến môi trường nào đổi
+//!   URL. Chưa có URL thì app báo "chưa có nguồn model" và không gọi mạng.
+//! - URL phải là `https`.
 //! - Chống quay lui: manifest có `sequence` nhỏ hơn bản đã nhận bị từ chối, kể cả khi chữ ký đúng (kẻ gian phát lại
 //!   manifest cũ có model lỗi). Cùng `sequence` mà khác nội dung cũng bị từ chối.
 
@@ -17,30 +17,20 @@ use super::manifest::FileEntry;
 use super::signed::{self, Signed, SignedError, TrustedKey};
 use super::store::StoreState;
 
-/// URL `models.json` của bucket staging (R2). Task 12 của kế hoạch 04 (cần người) điền sau khi tạo bucket.
-pub const STAGING_URL: Option<&str> = None;
 /// URL `models.json` production: kế hoạch 07 điền khi có tên miền (T7) và manifest ký trong CI (T3).
 pub const PRODUCTION_URL: Option<&str> = None;
-/// Bản dev: biến môi trường này đè URL staging.
-pub const URL_ENV: &str = "AT_MODELS_URL";
 /// Kiểm manifest tối đa mỗi ngày một lần (§6.7).
 pub const CHECK_EVERY_SECS: u64 = 24 * 3600;
 
-/// URL manifest theo loại bản và biến môi trường (hàm thuần, để test).
-pub fn manifest_url_from(dev: bool, env: Option<String>) -> Option<Url> {
-    let text = if dev {
-        env.or_else(|| STAGING_URL.map(String::from))
-    } else {
-        PRODUCTION_URL.map(String::from)
-    }?;
-    let url = Url::parse(&text).ok()?;
-    let ok = url.scheme() == "https" || (dev && url.scheme() == "http" && is_loopback(&url));
-    ok.then_some(url)
+/// URL manifest từ một chuỗi cấu hình (hàm thuần, để test): chỉ `https`.
+pub fn manifest_url_from(text: Option<&str>) -> Option<Url> {
+    let url = Url::parse(text?).ok()?;
+    (url.scheme() == "https").then_some(url)
 }
 
-/// URL manifest của bản đang chạy.
+/// URL manifest của mọi bản build: production.
 pub fn manifest_url() -> Option<Url> {
-    manifest_url_from(tauri::is_dev(), std::env::var(URL_ENV).ok())
+    manifest_url_from(PRODUCTION_URL)
 }
 
 /// URL tuyệt đối của một file trong manifest. File phải cùng giao thức `https`, trừ khi chính manifest ở server thử
@@ -115,20 +105,19 @@ mod tests {
     use crate::models::test_http::{FakeServer, Fault};
 
     #[test]
-    fn dev_builds_read_staging_or_the_env_and_release_builds_production() {
+    fn every_build_reads_the_production_url_and_only_https() {
         assert_eq!(
-            manifest_url_from(true, Some("https://stg.example/models.json".into())).map(String::from),
-            Some("https://stg.example/models.json".into())
+            manifest_url_from(Some("https://cdn.example/models.json")).map(String::from),
+            Some("https://cdn.example/models.json".into())
         );
-        assert!(manifest_url_from(true, Some("http://127.0.0.1:9000/models.json".into())).is_some());
-        assert!(manifest_url_from(true, Some("http://stg.example/models.json".into())).is_none());
-        assert!(manifest_url_from(true, Some("không phải url".into())).is_none());
-        assert_eq!(manifest_url_from(true, None).is_some(), STAGING_URL.is_some());
-        assert_eq!(
-            manifest_url_from(false, Some("https://stg.example/models.json".into())).is_some(),
-            PRODUCTION_URL.is_some(),
-            "bản phát hành bỏ qua biến môi trường"
+        assert!(manifest_url_from(Some("http://cdn.example/models.json")).is_none());
+        assert!(
+            manifest_url_from(Some("http://127.0.0.1:9000/models.json")).is_none(),
+            "không còn ngoại lệ cho máy này"
         );
+        assert!(manifest_url_from(Some("không phải url")).is_none());
+        assert!(manifest_url_from(None).is_none());
+        assert_eq!(manifest_url().is_some(), PRODUCTION_URL.is_some());
     }
 
     #[test]

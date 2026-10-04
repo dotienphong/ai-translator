@@ -2,7 +2,7 @@
 //! công khai build sẵn. Sửa một byte của phần thân, đổi `kid`, hay ký bằng khóa khác đều bị từ chối.
 //!
 //! ```json
-//! { "format": "ai-translator-models", "version": 1, "kid": "stg-2026-10-1", "body": "<b64url>", "sig": "<b64url>" }
+//! { "format": "ai-translator-models", "version": 1, "kid": "prod-2026-10-1", "body": "<b64url>", "sig": "<b64url>" }
 //! ```
 //!
 //! - `body`: base64url không đệm của các byte JSON phần thân ([`super::manifest::Manifest`]). Ký trên chính chuỗi
@@ -10,9 +10,8 @@
 //! - `sig`: chữ ký Ed25519 trên `CONTEXT || body` (chuỗi ASCII của `body`). Tiền tố tách chữ ký manifest khỏi mọi
 //!   chữ ký khác (token bản quyền dùng `v1.<payload>`).
 //! - Phong bì đọc chặt: khóa lạ, base64url có đệm hay không ở dạng chuẩn, BOM, quá 1 MiB đều là `Malformed`.
-//! - Khóa công khai: `src-tauri/keys/manifest-public-keys.json`. Bản dev (`tauri::is_dev()`) chỉ nhận khối
-//!   `staging`, bản phát hành chỉ nhận `production` (mục 6.5 của kế hoạch 00). Khóa `test-*` chỉ có trong test,
-//!   không bao giờ build vào app. Script ký và bộ vector: `scripts/models/`.
+//! - Khóa công khai: `src-tauri/keys/manifest-public-keys.json`, khối `production` cho mọi bản build (spec 2026-10-04,
+//!   §2.1). Khóa `test-*` chỉ có trong test, không bao giờ build vào app. Script ký và bộ vector: `scripts/models/`.
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -28,37 +27,13 @@ pub const CONTEXT: &[u8] = b"ai-translator-models.v1.";
 /// Manifest lớn hơn chừng này thì không đọc.
 pub const MAX_BYTES: usize = 1 << 20;
 
-/// Khóa công khai build sẵn, cả hai môi trường.
+/// Khóa công khai build sẵn.
 const KEYS_JSON: &str = include_str!("../../keys/manifest-public-keys.json");
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TrustedKey {
     pub kid: String,
     pub key: VerifyingKey,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum KeyEnv {
-    Staging,
-    Production,
-}
-
-impl KeyEnv {
-    /// Bản dev nhận khóa staging; bản phát hành chỉ nhận khóa production (Đ8 của kế hoạch 00).
-    pub fn current() -> Self {
-        if tauri::is_dev() {
-            Self::Staging
-        } else {
-            Self::Production
-        }
-    }
-
-    fn key(self) -> &'static str {
-        match self {
-            Self::Staging => "staging",
-            Self::Production => "production",
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -139,9 +114,9 @@ pub fn verify(bytes: &[u8], keys: &[TrustedKey]) -> Result<Signed, SignedError> 
     })
 }
 
-/// Đọc khóa công khai của một môi trường từ file JSON dạng `{ "staging": [{ "kid", "x" }], "production": [...] }`. Khóa
-/// bắt đầu bằng `_` (ghi chú) và các khối khác bị bỏ qua.
-pub fn keys_from_json(text: &str, env: KeyEnv) -> Result<Vec<TrustedKey>, String> {
+/// Đọc khóa công khai production từ file JSON dạng `{ "production": [{ "kid", "x" }] }`. Khóa bắt đầu bằng `_` (ghi
+/// chú) và các khối khác (kể cả `staging` còn sót) bị bỏ qua.
+pub fn keys_from_json(text: &str) -> Result<Vec<TrustedKey>, String> {
     #[derive(Deserialize)]
     #[serde(deny_unknown_fields)]
     struct Entry {
@@ -150,7 +125,7 @@ pub fn keys_from_json(text: &str, env: KeyEnv) -> Result<Vec<TrustedKey>, String
     }
     let root: serde_json::Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
     let list = root
-        .get(env.key())
+        .get("production")
         .cloned()
         .unwrap_or(serde_json::Value::Array(Vec::new()));
     let entries: Vec<Entry> = serde_json::from_value(list).map_err(|e| e.to_string())?;
@@ -173,7 +148,7 @@ pub fn keys_from_json(text: &str, env: KeyEnv) -> Result<Vec<TrustedKey>, String
 
 /// Khóa build sẵn của môi trường đang chạy.
 pub fn trusted_keys() -> Vec<TrustedKey> {
-    keys_from_json(KEYS_JSON, KeyEnv::current()).unwrap_or_else(|e| {
+    keys_from_json(KEYS_JSON).unwrap_or_else(|e| {
         log::error!("manifest-public-keys.json hỏng ({e}): không nhận manifest nào");
         Vec::new()
     })
@@ -195,8 +170,8 @@ pub(crate) mod tests {
             .iter()
             .map(|k| serde_json::json!({ "kid": k["kid"], "x": k["x"] }))
             .collect();
-        let wrapped = serde_json::json!({ "staging": public });
-        keys_from_json(&wrapped.to_string(), KeyEnv::Staging).unwrap()
+        let wrapped = serde_json::json!({ "production": public });
+        keys_from_json(&wrapped.to_string()).unwrap()
     }
 
     /// Một manifest hợp lệ đã ký bằng `test-m1`, với phần thân cho trước, dạng bytes của `models.json`.
@@ -259,40 +234,32 @@ pub(crate) mod tests {
         assert_eq!(kind(&verify(&big, &test_keys())), "malformed");
     }
 
-    /// Khóa build sẵn đọc được; không có khóa test nào; bản dev và bản phát hành dùng hai khối khác nhau.
+    /// Khóa build sẵn đọc được và không có khóa test nào; file chỉ có khối `production` (cùng các khóa ghi chú `_…`).
     #[test]
     fn built_in_keys_parse_and_contain_no_test_key() {
-        for env in [KeyEnv::Staging, KeyEnv::Production] {
-            let keys = keys_from_json(KEYS_JSON, env).unwrap();
-            assert!(keys.iter().all(|k| !k.kid.starts_with("test-")), "{env:?}");
-        }
+        let keys = keys_from_json(KEYS_JSON).unwrap();
+        assert!(keys.iter().all(|k| !k.kid.starts_with("test-")));
         let root: Value = serde_json::from_str(KEYS_JSON).unwrap();
         for (name, _) in root.as_object().unwrap() {
-            assert!(
-                ["staging", "production"].contains(&name.as_str()) || name.starts_with('_'),
-                "khối lạ {name}"
-            );
+            assert!(name == "production" || name.starts_with('_'), "khối lạ {name}");
         }
         assert!(!KEYS_JSON.contains("\"d\""), "không có khóa riêng");
-        assert_eq!(KeyEnv::current(), KeyEnv::Staging, "test chạy bản dev");
     }
 
     #[test]
     fn bad_key_files_are_rejected() {
-        let one = |x: &str| format!(r#"{{ "staging": [{{ "kid": "stg-1", "x": "{x}" }}] }}"#);
-        assert!(keys_from_json(&one("AAAA"), KeyEnv::Staging).is_err(), "khóa ngắn");
-        assert!(keys_from_json(r#"{ "staging": [{ "kid": "STG", "x": "" }] }"#, KeyEnv::Staging).is_err());
-        assert!(
-            keys_from_json(
-                r#"{ "staging": [{ "kid": "a", "x": "b", "d": "c" }] }"#,
-                KeyEnv::Staging
-            )
-            .is_err()
-        );
-        assert_eq!(
-            keys_from_json(r#"{ "_note": "x" }"#, KeyEnv::Production),
-            Ok(Vec::new())
-        );
+        let one = |x: &str| format!(r#"{{ "production": [{{ "kid": "prod-1", "x": "{x}" }}] }}"#);
+        assert!(keys_from_json(&one("AAAA")).is_err(), "khóa ngắn");
+        assert!(keys_from_json(r#"{ "production": [{ "kid": "PROD", "x": "" }] }"#).is_err());
+        assert!(keys_from_json(r#"{ "production": [{ "kid": "a", "x": "b", "d": "c" }] }"#).is_err());
+        assert_eq!(keys_from_json(r#"{ "_note": "x" }"#), Ok(Vec::new()));
+    }
+
+    /// Khối `staging` còn sót trong file cũ bị bỏ qua, không bao giờ được tin (spec 2026-10-04, §2.1).
+    #[test]
+    fn a_leftover_staging_block_is_never_trusted() {
+        let text = r#"{ "staging": [{ "kid": "stg-1", "x": "ElNgklAMnOnhixubC1wYADxWSLwlk4AaNgNzRhIvWm4" }], "production": [] }"#;
+        assert_eq!(keys_from_json(text), Ok(Vec::new()));
     }
 
     /// N-2 của review 04 lần 2: khóa bậc nhỏ (ở đây là điểm đơn vị) cùng chữ ký `R` = đơn vị, `S` = 0 qua được `verify`
