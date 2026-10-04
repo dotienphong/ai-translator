@@ -323,7 +323,7 @@ mod tests {
         assert_eq!(entries[SCHEMA_VERSION_KEY], json!(1));
     }
 
-    /// Mặc định đổi từ 300 xuống 150 ms: người dùng đã lưu 300 thì giữ nguyên, chỉ khóa thiếu hay hỏng mới về 150.
+    /// Mặc định đổi từ 300 xuống 150 rồi 100 ms: người dùng đã lưu 300 thì giữ nguyên, chỉ khóa thiếu hay hỏng mới về 100.
     #[test]
     fn a_saved_pause_is_kept_when_the_default_changes() {
         let raw = object(json!({ "schemaVersion": 1, "vadEndSilenceMs": 300 }));
@@ -354,7 +354,7 @@ mod tests {
         // File đã ở bản 1 thì chỉ chạy bước thứ hai.
         let v1 = object(json!({ "schemaVersion": 1, "vadSilence": 500, "theme": 2 }));
         let loaded = load_with(v1, defaults(), steps);
-        assert_eq!(loaded.settings.vad_end_silence_ms, 150, "bước 0→1 không chạy lại");
+        assert_eq!(loaded.settings.vad_end_silence_ms, 100, "bước 0→1 không chạy lại");
         assert_eq!(loaded.settings.theme, Theme::Dark);
     }
 
@@ -369,7 +369,7 @@ mod tests {
         }));
         let loaded = load(raw, defaults());
         assert_eq!(loaded.settings.ui_language, UiLanguage::En);
-        assert_eq!(loaded.settings.vad_end_silence_ms, 150);
+        assert_eq!(loaded.settings.vad_end_silence_ms, 100);
         assert_eq!(loaded.settings.theme, Theme::Dark);
         assert_eq!(loaded.settings.overlay.font_size, 30, "khóa con hợp lệ vẫn được giữ");
         assert_eq!(loaded.settings.overlay.lines, 2);

@@ -322,12 +322,12 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Tham số mặc định:**
   - Ngưỡng tiếng nói: 0,5.
   - Đoạn tiếng nói ngắn nhất: 250 ms.
-  - **Im lặng 150 ms thì chốt đoạn** (mặc định của app). Người dùng chỉnh được trong khoảng 100–800 ms, bước 50 ms, bằng mục "Độ nhạy ngắt câu". Mặc định này đổi từ 300 ms theo yêu cầu của chủ dự án ngày 2026-10-04; các số đo độ trễ ở A2 và benchmark ở `bench/` dùng 300 ms (mặc định của `SegmenterConfig` trong `pipeline`), chưa đo lại với 150 ms. Người dùng đã lưu giá trị khác thì giữ nguyên.
+  - **Im lặng 100 ms thì chốt đoạn** (mặc định của app). Người dùng chỉnh được trong khoảng 50–800 ms, bước 50 ms, bằng mục "Độ nhạy ngắt câu". Mặc định này đổi từ 300 ms xuống 150 ms rồi 100 ms theo yêu cầu của chủ dự án ngày 2026-10-04; các số đo độ trễ ở A2 và benchmark ở `bench/` dùng 300 ms (mặc định của `SegmenterConfig` trong `pipeline`), chưa đo lại với 100 ms. Khung VAD dài 32 ms nên ngưỡng làm tròn lên 4 khung (128 ms) khi chạy; mức thấp nhất 50 ms làm tròn thành 2 khung (64 ms). Người dùng đã lưu giá trị khác thì giữ nguyên.
   - **Mỗi đoạn dài tối đa 8 giây.** Nếu dài hơn, cắt cưỡng bức tại khung có năng lượng thấp nhất trong 1,5 giây cuối.
   - Thêm 200 ms đệm ở đầu và cuối mỗi đoạn. Code làm tròn lên 7 khung, tức 224 ms mỗi phía; đầu phiên, cuối phiên và phía bị cắt cưỡng bức có ít hơn.
-- **Ghép câu và phụ đề tạm:** ngưỡng im lặng ngắn (mặc định 150 ms) dễ cắt giữa câu, ở những chỗ người nói ngừng nghỉ tự nhiên.
+- **Ghép câu và phụ đề tạm:** ngưỡng im lặng ngắn (mặc định 100 ms) dễ cắt giữa câu, ở những chỗ người nói ngừng nghỉ tự nhiên.
   - Nếu đoạn vừa chốt không kết thúc bằng dấu câu kết thúc (`.` `?` `!` `。` `？` `！`), phụ đề được đánh dấu **tạm**.
-  - **Cửa sổ ghép** = max(700 ms, `vadEndSilenceMs` + 400 ms), tính từ lúc hết tiếng nói của đoạn trước. Với mặc định 150 ms (và với mọi giá trị đến 300 ms), cửa sổ là 700 ms.
+  - **Cửa sổ ghép** = max(700 ms, `vadEndSilenceMs` + 400 ms), tính từ lúc hết tiếng nói của đoạn trước. Với mặc định 100 ms (và với mọi giá trị đến 300 ms), cửa sổ là 700 ms.
   - Nếu tiếng nói tiếp tục trong cửa sổ ghép **và đoạn sau cùng ngôn ngữ với câu đang mở** (ngôn ngữ do §6.4 chọn), đoạn sau được ghép vào: nối chữ của hai đoạn, dịch lại cả câu, rồi thay phụ đề tạm. Tiếng Trung và tiếng Nhật nối chữ không có dấu cách.
   - Đoạn khác ngôn ngữ thì mở một câu mới. Đoạn đã là ngôn ngữ đích (`same_lang`, §6.6) cũng cắt chuỗi ghép; đoạn bị bỏ vì không có tiếng nói (§6.4) thì không.
   - Phụ đề được chốt khi có dấu câu kết thúc, hoặc khi hết cửa sổ ghép mà không có tiếng nói mới.
