@@ -39,7 +39,7 @@ không bao giờ ghi xuống SSD hay USB (xóa file trên APFS/SSD không xóa h
 ```bash
 ram=$(hdiutil attach -nomount ram://32768)          # ổ 16 MB trong RAM
 diskutil erasevolume APFS KHOA-RAM $ram
-node scripts/models/gen-manifest-key.mjs prod-<năm>-<tháng>-1 --production --out /Volumes/KHOA-RAM/manifest.jwk
+node scripts/models/gen-manifest-key.mjs prod-<năm>-<tháng>-1 --out /Volumes/KHOA-RAM/manifest.jwk
 openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in /Volumes/KHOA-RAM/manifest.jwk \
   -out /Volumes/KHOA/manifest-prod-<năm>-<tháng>-1.jwk.enc
 hdiutil detach $ram                                  # ổ RAM mất hẳn
@@ -58,18 +58,22 @@ hdiutil detach $ram                                  # ổ RAM mất hẳn
 
 ### 1.3. Hạ tầng phát hành (R2)
 
-- Hai bucket R2: một cho staging, một cho production (ví dụ `ai-translator-releases`), mỗi bucket có tên miền công khai
-  (production: `releases.<tên miền>` khi có T7, trước đó là URL `r2.dev` của bucket).
+- Một bucket R2 production (ví dụ `ai-translator-releases`) có tên miền công khai (`releases.<tên miền>` khi có T7, trước
+  đó là URL `r2.dev` của bucket). Không có bucket staging (spec 2026-10-04: chỉ một môi trường).
 - Một API token R2 chỉ có quyền "Object Read & Write" trên đúng bucket production. Nhập vào environment `release`:
   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. Biến của repo (không bí mật): `RELEASES_BUCKET` (tên bucket),
   `RELEASES_BASE_URL` (URL công khai, ví dụ `https://releases.<tên miền>`).
 - Điền URL build sẵn trong app, commit:
-  - `src-tauri/src/updater/source.rs`: `PRODUCTION_URL` đúng bằng `RELEASES_BASE_URL`; `STAGING_URL` là URL của bucket staging.
+  - `src-tauri/src/updater/source.rs`: `PRODUCTION_URL` đúng bằng `RELEASES_BASE_URL`.
   - `src-tauri/src/models/source.rs`: `PRODUCTION_URL` là URL của `models.json` đã ký.
   - `src-tauri/src/license/client.rs` và khối `production` của `src-tauri/keys/license-public-keys.json`: kế hoạch 05 Task 21.
   - `src-tauri/src/navigation.rs`: thêm tên miền website vào `EXTERNAL_HOSTS`.
 - Kiểm: `node scripts/release/release-ready.mjs --base-url "<RELEASES_BASE_URL>"` in `đủ cấu hình production`. Job `publish`
   chạy đúng lệnh này và dừng nếu còn thiếu.
+- Cổng chống Pro trái phép: `package-macos.sh` và `package-windows.mjs` chạy `node scripts/release/release-check.mjs
+  no-dev-gate <file chạy của app>` sau bước `embedded`. File có chuỗi `AI_TRANSLATOR_DEV_PRO`, `AI_TRANSLATOR_DEV_FREE`
+  hay `mt-dev-pro-gate-v1` thì job đỏ, không ký, không đăng (spec 2026-10-04, §3). Gặp lỗi này thì bản đang build là bản
+  debug hoặc `[profile.release]` đã bật `debug-assertions`: kiểm `Cargo.toml` rồi build lại, đừng tắt cổng.
 
 ## 2. Mỗi lần phát hành
 
