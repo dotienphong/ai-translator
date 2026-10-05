@@ -48,22 +48,24 @@ Dòng cuối giữ nguyên nguyên tắc "cấu hình sai thì khóa": Team ID �
 - `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`: T1 ghi "chưa có; macOS chạy ad-hoc (spec 2026-10-05)"; A6 ghi Gatekeeper không đạt cho tới khi có Developer ID.
 - `docs/release/phat-hanh.md`: thêm mục phát hành bản ad-hoc, gồm hướng dẫn "Open Anyway" cho khách.
 
-## 4. Đo và xử lý Keychain
+## 4. Kết quả đo Keychain và quyết định
 
-Chữ ký ad-hoc đổi theo từng bản build, nên macOS có thể coi bản mới là app lạ khi đọc các mục Keychain (khóa SQLCipher, token bản quyền, bộ đếm hạn mức, mốc thời gian) và hỏi mật khẩu đăng nhập. Chưa đo, nên làm theo thứ tự:
+Chữ ký ad-hoc đổi theo từng bản build. Đã đo ngày 2026-10-05 trên bản đóng gói thật, hai bản ad-hoc liên tiếp (`bench/phase1/results/gd1_adhoc_keychain.md`):
 
-1. **Đo thật** trên hai bản ad-hoc liên tiếp: cài bản 1, dùng, cập nhật lên bản 2. Ghi vào `bench/phase1/results/` xem macOS có hỏi mật khẩu không, và có hỏi lại quyền thu âm thanh hệ thống không.
-2. **Nếu có hỏi:** thử đặt yêu cầu định danh cố định bằng `codesign -r`, hoặc ký bằng một chứng thư tự cấp cố định. Cả hai miễn phí.
-3. **Phương án cuối, chỉ khi hai cách trên không được:** chuyển các mục này sang file mã hóa trong thư mục dữ liệu của app. Phải sửa spec §10.2 và bị đánh giá yếu hơn; không làm khi chưa đo.
+- Phép tự kiểm đạt, gói Professional và X2 chạy; cài mới không bị hỏi Keychain.
+- **Mỗi lần cập nhật sang một bản ad-hoc khác: 1 lần 5 hộp thoại Keychain (mật khẩu đăng nhập) và 1 hộp thoại quyền thu âm.** Sau khi cấp, các lần mở sau không hỏi nữa. Không mất dữ liệu, gói hay hạn mức.
+- Đã thử đặt yêu cầu định danh cố định bằng `codesign -r 'designated => identifier "…"'`: `codesign` chấp nhận nhưng số hộp thoại không đổi. Nhiều khả năng macOS gắn quyền của app ký ad-hoc với `cdhash` của chữ ký. Chứng thư tự cấp không có Team ID nên cũng khó giúp; chưa thử.
 
-Bước 2 và 3 nằm ngoài phạm vi thiết kế này. Chỉ lập kế hoạch cho chúng nếu bước 1 cho thấy có hỏi.
+**Quyết định của chủ dự án (2026-10-05): chấp nhận 5 hộp thoại Keychain và 1 hộp thoại quyền thu âm mỗi lần cập nhật cho tới khi có Developer ID.** Khi có Team ID, danh tính ổn định giữa các bản và các hộp thoại này không còn, không phải sửa code. Hướng dẫn khách bấm "Always Allow" ghi ở `docs/release/phat-hanh.md` mục 5. Không chuyển Keychain sang file mã hóa (yếu hơn, phải sửa spec §10.2).
+
+Không dùng chứng thư `Apple Development` của Apple ID miễn phí để phát hành: dành cho phát triển, hết hạn sau 1 năm, và cần khóa riêng cá nhân trong CI.
 
 ## 5. Giới hạn chấp nhận
 
 - **Chống sửa yếu hơn Developer ID.** Ai cố ý sửa file rồi ký ad-hoc lại thì qua phép kiểm này. Kẻ biết vá binary vẫn bẻ được phép kiểm dù có Developer ID; phương án này bỏ đi đúng một lớp cản nhỏ. Phần chống sao chép thật sự vẫn là token Ed25519 do server ký, giới hạn 2 máy và khóa tạm (spec §10.2).
 - **Gatekeeper vẫn chặn lần mở đầu.** Khách phải vào System Settings › Privacy & Security › "Open Anyway". Phương án này chỉ làm gói trả phí chạy được sau khi họ đã mở được app.
 - **Không notarize.** Mục A6 (Gatekeeper) và các số đo chính thức A5, A7 trên bản ký Developer ID chờ tới khi có tài khoản.
-- **Có thể bị hỏi lại quyền sau mỗi lần cập nhật** (mục 4).
+- **Mỗi lần cập nhật bị hỏi lại quyền:** 5 hộp thoại Keychain và 1 hộp thoại quyền thu âm, một lần cho mỗi bản cập nhật (mục 4, đã đo).
 
 ## 6. Test
 
@@ -79,5 +81,5 @@ Kiểm tay: dựng bản release bằng `package-macos.sh` không đặt `MT_SIG
 ## 7. Ngoài phạm vi
 
 - Windows và chứng thư OV (T2).
-- Chứng thư tự cấp cố định và chuyển Keychain sang file (mục 4, bước 2 và 3).
+- Chứng thư tự cấp cố định, chứng thư `Apple Development` và chuyển Keychain sang file (mục 4: không làm).
 - Notarize và Developer ID: sẽ làm khi có tài khoản, không cần sửa code app.
