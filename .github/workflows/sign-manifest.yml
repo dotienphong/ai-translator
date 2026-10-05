@@ -61,7 +61,9 @@ jobs:
   sign:
     name: Ký manifest production (secret, không biên dịch)
     needs: check
-    runs-on: macos-26
+    # Chỉ chạy script Node (không biên dịch, không cần macOS): máy Linux rẻ hơn và không bị tắc hàng như macOS arm64
+    # (2026-10-05: job này không được cấp máy macOS sau 5 lần thử, hai lần liền).
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
     steps:
