@@ -18,7 +18,8 @@
 #   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD  khóa ký bản cập nhật (Q17)
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   token R2 chỉ ghi được bucket bản phát hành (kế hoạch 07b, Task 12)
 # Biến cấu hình (Variables, không bí mật):
-#   APPLE_TEAM_ID         Team ID mà app tự kiểm trong chữ ký của mình (kế hoạch 06, AI_TRANSLATOR_TEAM_ID)
+#   APPLE_TEAM_ID         Team ID mà app tự kiểm trong chữ ký của mình (kế hoạch 06, AI_TRANSLATOR_TEAM_ID). Để trống thì
+#                         bản macOS ký ad-hoc và app chỉ kiểm chữ ký còn nguyên vẹn (spec 2026-10-05)
 #   WINDOWS_SIGNER        tên chủ chứng thư ký mã Windows (kế hoạch 06, AI_TRANSLATOR_SIGNER)
 #   MT_WINDOWS_SIGN_CMD   lệnh ký của dịch vụ ký cloud (sign-windows.mjs; chọn ở T2)
 #   RELEASES_BUCKET       tên bucket R2 của bản phát hành; RELEASES_BASE_URL  URL công khai của nó, đúng URL gốc build sẵn
@@ -154,6 +155,8 @@ jobs:
       - name: Build app (Tauri không ký)
         env:
           AI_TRANSLATOR_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          # Chưa có Team ID (chưa có Developer ID) thì bản ký ad-hoc: app chỉ kiểm chữ ký còn nguyên vẹn (spec 2026-10-05).
+          AI_TRANSLATOR_MAC_SIGNING: ${{ vars.APPLE_TEAM_ID == '' && 'adhoc' || '' }}
         run: |
           scripts/release/package-macos.sh build
           tar -C target/release/bundle/macos -cf "$RUNNER_TEMP/app.tar" "AI Translator.app"
@@ -220,6 +223,9 @@ jobs:
           fi
           unset P12 P12_PASSWORD APPLE_API_KEY_P8
           scripts/release/package-macos.sh sign
+          if [ "$HAS_APPLE_CERT" != "true" ]; then
+            echo "Bản macOS ký ad-hoc, chưa notarize (chưa có Developer ID, spec 2026-10-05): khách phải bấm Open Anyway ở lần mở đầu." >> "$GITHUB_STEP_SUMMARY"
+          fi
           node scripts/release/release-check.mjs table src-tauri/binaries --target aarch64-apple-darwin \
             --out "$MT_RELEASE_OUT/sidecar-sha256-macos.json"
           cp THIRD_PARTY_NOTICES.txt "$MT_RELEASE_OUT/THIRD_PARTY_NOTICES-macos.txt"

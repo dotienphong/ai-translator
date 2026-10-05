@@ -38,3 +38,16 @@ test("job publish: một nhóm concurrency cho mọi tag (N-4 của review 07b l
   assert.equal(secret.length, 1);
   assert.match(secret[0], /node scripts\/release\/publish-release\.mjs/);
 });
+
+test("job build app macOS: APPLE_TEAM_ID rỗng thì build ở chế độ ký ad-hoc, có thì chế độ chặt (spec 2026-10-05)", () => {
+  const step = steps(workflows[0][1]).find((s) => s.startsWith("name: Build app (Tauri không ký)"));
+  assert.ok(step, "không thấy bước build app macOS");
+  assert.match(step, /AI_TRANSLATOR_TEAM_ID: \$\{\{ vars\.APPLE_TEAM_ID \}\}/);
+  assert.match(step, /AI_TRANSLATOR_MAC_SIGNING: \$\{\{ vars\.APPLE_TEAM_ID == '' && 'adhoc' \|\| '' \}\}/);
+});
+
+test("job ký macOS: không có chứng thư thì tóm tắt của CI ghi bản ký ad-hoc, chưa notarize", () => {
+  const step = steps(workflows[0][1]).find((s) => s.startsWith("name: Ký app, notarize, .dmg"));
+  assert.ok(step, "không thấy bước ký app macOS");
+  assert.match(step, /if \[ "\$HAS_APPLE_CERT" != "true" \]; then[\s\S]*ký ad-hoc, chưa notarize[\s\S]*>> "\$GITHUB_STEP_SUMMARY"/);
+});
