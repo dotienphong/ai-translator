@@ -506,7 +506,7 @@ Run (agent):
 
 ```bash
 scripts/release/build-sidecars-macos.sh
-node scripts/release/notices.mjs
+node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src target/release-work/llama.cpp
 AI_TRANSLATOR_MAC_SIGNING=adhoc scripts/release/package-macos.sh
 ```
 
@@ -514,6 +514,10 @@ Expected: cuối cùng có `target/release-out/AI Translator_<version>_aarch64.d
 
 Run: `cp -R "target/release/bundle/macos/AI Translator.app" /tmp/at-v1.app && codesign -dv /tmp/at-v1.app 2>&1 | grep -E "Signature|TeamIdentifier|Identifier="`
 Expected: `Signature=adhoc`, `TeamIdentifier=not set`, `Identifier=com.aitranslator.desktop`.
+
+Run (mô phỏng phép tự kiểm của app trên bản đóng gói thật: chữ ký nguyên vẹn kèm code lồng bên trong, và yêu cầu bundle id):
+`codesign --verify --strict --deep -R "=identifier \"com.aitranslator.desktop\"" /tmp/at-v1.app && echo REQ_OK`
+Expected: `REQ_OK`. Cú pháp `-R='=…'` (có dấu `=` dính liền) bị codesign từ chối; phải truyền giá trị thành đối số riêng như trên. Với bundle id sai (`-R '=identifier "com.wrong.id"'`) lệnh phải thất bại (exit 3), để chắc phép kiểm có ý nghĩa.
 
 - [ ] **Step 2: Dựng bản 2 khác nhị phân**
 
