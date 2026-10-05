@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { errorKey } from "../../../i18n";
 import type { PlanOffer } from "../../../lib/ipc";
-import { isRenewal, orderFinished, orderMessageKey, priceVnd } from "../../../lib/license";
+import { defaultPlan, isRenewal, orderFinished, orderMessageKey, priceVnd } from "../../../lib/license";
 import { useT } from "../appStore";
 import { useLicense } from "../licenseStore";
 import { PlanName, when } from "../LicenseText";
@@ -24,7 +24,9 @@ export function UpgradeScreen() {
   const start = useLicense((s) => s.startCheckout);
   const openPage = useLicense((s) => s.openCheckoutPage);
   const cancel = useLicense((s) => s.cancelCheckout);
-  const [plan, setPlan] = useState<PlanOffer["code"]>("pro");
+  // Chưa chọn thì theo `defaultPlan(view)` (view nạp bất đồng bộ); đã bấm chọn thì giữ lựa chọn đó.
+  const [picked, setPicked] = useState<PlanOffer["code"] | null>(null);
+  const plan = picked ?? defaultPlan(view);
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
   useEffect(() => {
@@ -52,7 +54,7 @@ export function UpgradeScreen() {
                   name="plan"
                   checked={plan === p.code}
                   disabled={checkout !== null && !orderFinished(order)}
-                  onChange={() => setPlan(p.code)}
+                  onChange={() => setPicked(p.code)}
                 />
                 <strong>{p.name}</strong>
               </label>

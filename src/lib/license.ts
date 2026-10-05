@@ -62,6 +62,11 @@ export function isRenewal(view: LicenseView | null): boolean {
   return view?.key != null && view.standing !== "revoked";
 }
 
+// Gói chọn sẵn ở màn hình Nâng cấp: gia hạn được thì chọn đúng gói đang dùng (mặc định là gia hạn, không phải hạ gói), còn lại là Professional.
+export function defaultPlan(view: LicenseView | null): PlanOffer["code"] {
+  return isRenewal(view) && view !== null && view.plan !== "free" ? view.plan : "pro";
+}
+
 // Giá theo VND của một gói, hoặc `null` nếu server không bán gói đó bằng VND.
 export function priceVnd(plan: PlanOffer): number | null {
   return plan.prices.VND ?? null;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LicenseView, OrderOutcome, QuotaView } from "./ipc";
-import { deviceName, hoursUsed, isRenewal, licenseNotice, minutesLeft, orderFinished, orderMessageKey, quotaKey } from "./license";
+import { defaultPlan, deviceName, hoursUsed, isRenewal, licenseNotice, minutesLeft, orderFinished, orderMessageKey, quotaKey } from "./license";
 
 const quota = (patch: Partial<QuotaView> = {}): QuotaView => ({
   unlimited: false,
@@ -69,6 +69,19 @@ describe("lời nhắc bản quyền", () => {
     expect(isRenewal(licenseView())).toBe(false);
     expect(isRenewal(licenseView({ key: "••••-RST5", standing: "expired" }))).toBe(true);
     expect(isRenewal(licenseView({ key: "••••-RST5", standing: "revoked" }))).toBe(false);
+  });
+
+  it("gói chọn sẵn ở màn hình Nâng cấp: gia hạn được thì đúng gói đang dùng, còn lại là Professional", () => {
+    const key = "••••-RST5";
+    expect(defaultPlan(null)).toBe("pro");
+    expect(defaultPlan(licenseView())).toBe("pro");
+    expect(defaultPlan(licenseView({ key, standing: "active", plan: "pro" }))).toBe("pro");
+    expect(defaultPlan(licenseView({ key, standing: "active", plan: "pro_x2" }))).toBe("pro_x2");
+    expect(defaultPlan(licenseView({ key, standing: "expired", plan: "pro_x5" }))).toBe("pro_x5");
+    // License đã thu hồi thì mua mới, không gia hạn: về Professional.
+    expect(defaultPlan(licenseView({ key, standing: "revoked", plan: "pro_x2" }))).toBe("pro");
+    // Có key nhưng gói Free thì không có gói trả phí nào để gia hạn.
+    expect(defaultPlan(licenseView({ key, standing: "free", plan: "free" }))).toBe("pro");
   });
 });
 
