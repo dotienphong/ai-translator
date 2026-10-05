@@ -158,8 +158,8 @@
         "en": "Standard"
       },
       "note": {
-        "vi": "Chép lời chính xác nhất. Trên tập thử, lỗi từ tiếng Việt khoảng 9%, lỗi ký tự tiếng Nhật, Hàn, Trung 4–6%. Nên chọn nếu bạn nghe chủ yếu tiếng Việt, Nhật, Hàn hoặc Trung. Cần máy RAM 16 GB.",
-        "en": "Most accurate transcription. On our test set: about 9% word errors in Vietnamese, 4–6% character errors in Japanese, Korean and Chinese. Recommended if you mostly listen to Vietnamese, Japanese, Korean or Chinese. Needs 16 GB of RAM."
+        "vi": "Khả năng dịch chính xác nhất. Trên nhiều file thử nghiệm, lỗi từ tiếng Việt chỉ <9%, lỗi ký tự tiếng Nhật, Hàn, Trung 4–6%. Nên chọn nếu bạn cần dịch chính xác nhất, dịch chuyên sâu và có từ ngữ chuyên ngành. Cần máy có RAM >= 16 GB.",
+        "en": "Most accurate translation. Across many test files, Vietnamese word errors are under 9% and Japanese, Korean and Chinese character errors are 4–6%. Recommended if you need the most accurate, in-depth translation with specialized terminology. Needs a machine with RAM >= 16 GB."
       }
     },
     {
@@ -169,8 +169,8 @@
         "en": "Lite"
       },
       "note": {
-        "vi": "Nhẹ hơn, chạy được trên máy RAM 8 GB. Tiếng Anh gần ngang gói Chuẩn, nhưng chép lời tiếng Việt sai nhiều hơn rõ (khoảng 22% lỗi từ, so với 9%), tiếng Nhật, Hàn, Trung cũng kém hơn. Chất lượng dịch gần ngang gói Chuẩn.",
-        "en": "Lighter, runs with 8 GB of RAM. English is close to Standard, but Vietnamese transcription has clearly more errors (about 22% word errors versus 9%), and Japanese, Korean and Chinese are weaker too. Translation quality is close to Standard."
+        "vi": "Nhẹ hơn gói Chuẩn. Chạy được trên máy RAM 8GB - 16GB, phù hợp với máy yếu và những tác vụ dịch đơn giản. Chất lượng dịch gần ngang gói Chuẩn. Tốc độ dịch nhanh hơn gói Chuẩn.",
+        "en": "Lighter than Standard. Runs on machines with 8 GB - 16 GB of RAM, suited to low-end machines and simple translation tasks. Translation quality is close to Standard. Translation is faster than Standard."
       }
     }
   ],
