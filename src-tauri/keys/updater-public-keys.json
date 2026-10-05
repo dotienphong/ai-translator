@@ -1,4 +1,4 @@
 {
   "_note": "Khóa công khai kiểm bản cập nhật (tauri-plugin-updater, spec §6.11, §10.2; kế hoạch 07b): nội dung file `.key.pub` mà `tauri signer generate` tạo (base64 một dòng). Chỉ có production (spec 2026-10-04); chuỗi rỗng thì tắt tự cập nhật. Không bao giờ có khóa riêng ở đây.",
-  "production": ""
+  "production": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcwNENFNTUwNzkzOUEyRkUKUldUK29qbDVVT1ZNY1BaMFRDZUQyQXlZMWVkVVpJZ2pSTmFWZ0Q1UWxhT28xcFYxVTg5WmRWSjIK"
 }

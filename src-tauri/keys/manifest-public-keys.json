@@ -1,4 +1,9 @@
 {
   "_note": "Khóa công khai kiểm manifest model (spec §6.7, §10.2; spec 2026-10-04: chỉ một môi trường). Mọi bản build chỉ nhận khối production. Không bao giờ có khóa riêng (d) ở đây. Thêm khóa: scripts/models/gen-manifest-key.mjs.",
-  "production": []
+  "production": [
+    {
+      "kid": "prod-2026-10-1",
+      "x": "sn5u2z7s9bI6arPiI_vweT_0NLlRs-RV-dvebNC9oaU"
+    }
+  ]
 }
