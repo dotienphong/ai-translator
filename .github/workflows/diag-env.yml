@@ -1,6 +1,7 @@
 # TẠM THỜI (2026-10-05): chẩn đoán vì job `sign` của sign-manifest.yml báo "repeatedly failed to be acquired" trên cả macOS
 # lẫn Linux, và job chỉ có `environment: release` (không secret) cũng lỗi y hệt. Xóa file này sau khi tìm ra nguyên nhân.
-# `diag-open` là environment mới, không có người duyệt hay secret: nếu job này cũng lỗi thì mọi environment đều hỏng.
+# `diag-open` (không người duyệt, không secret): ĐÃ XANH. `diag-review` (có người duyệt, không secret): tách luật người duyệt
+# khỏi secret để biết environment `release` hỏng ở đâu.
 name: Diag environment
 on:
   workflow_dispatch:
@@ -16,3 +17,8 @@ jobs:
     environment: diag-open
     steps:
       - run: echo "job có environment mới diag-open (không người duyệt, không secret) chạy được"
+  env_review:
+    runs-on: ubuntu-24.04
+    environment: diag-review
+    steps:
+      - run: echo "job có environment diag-review (có người duyệt, không secret) chạy được"
