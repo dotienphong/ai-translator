@@ -1,0 +1,129 @@
+# Sổ tay chạy A5 (soak 2 giờ) và A7 (qua proxy) trên Mac
+
+Rút gọn Task 6 và Task 7 của `docs/superpowers/plans/2026-10-03-giai-doan-1-08b-nghiem-thu-dieu-phoi.md`, điền sẵn tên
+tiến trình, đường dẫn và máy chủ thật của máy này (MacBook Pro M4 Pro, macOS 26). Chạy từ gốc repo:
+
+```bash
+cd ~/Desktop/software_business/ai-translator
+```
+
+## Điều cần biết trước
+
+- **Tên tiến trình trên Mac** (khác kế hoạch, vốn viết `asr-worker`, `llama-server`):
+
+  | Tiến trình | Tên |
+  |---|---|
+  | App | `meeting-translator` |
+  | Nhận dạng | `asr-worker-aarch64-apple-darwin` |
+  | Dịch | `llama-server-aarch64-apple-darwin` |
+  | WebView | `com.apple.WebKit.*` (4 tiến trình) |
+
+  `soak.py pids --app meeting-translator` liệt kê đúng 7 tiến trình này (đã kiểm 2026-10-05).
+- **Bản đo chính thức:** A5 và A7 chỉ tính là đạt trên **bản ứng viên đã ký Developer ID** (build release, không có
+  `debug_assertions`). Bản ký ad-hoc tự nhận là "không chính hãng" và chỉ chạy Free, nên không có `validate` để A7 kiểm.
+  Khi chưa có tài khoản Apple Developer thì chạy **bản dev** (`scripts/run-dev-app.sh`) để thử công cụ (dry-run). Số đo
+  của bản dev (RAM, CPU) **không** dùng làm kết luận A5; kết quả ghi rõ "bản dev".
+- Cắm sạc, tắt Docker và trình duyệt nặng, đóng app đang ngốn CPU. Đừng để máy ngủ.
+- Công cụ lấy mẫu chỉ thấy tiến trình của chính app (qua tiến trình chịu trách nhiệm của hệ điều hành), nên Safari, Mail
+  mở sẵn không làm lệch số.
+
+## A5: soak 2 giờ
+
+1. Mở app (`! scripts/run-dev-app.sh` cho bản dev), vào **Cài đặt › Bản quyền** nhập key để có Professional.
+2. Bấm **Bắt đầu** với một nguồn âm thanh bất kỳ, rồi kiểm công cụ thấy đủ tiến trình:
+   ```bash
+   python3 bench/phase1/acceptance/soak.py pids --app meeting-translator
+   ```
+   Phải có đủ 7 dòng (app, 4 `com.apple.WebKit.*`, hai tiến trình phụ).
+3. Chuẩn bị âm thanh **dài hơn 2 giờ, nói tiếng Anh liên tục**: bài giảng hay buổi họp công khai trên YouTube, phát qua
+   loa ở âm lượng thường (app thu âm thanh hệ thống, không dùng micro). Nếu chỉ thử công cụ, vòng lặp file mẫu 5 giây
+   cũng đủ để có tải (không dùng cho kết luận A5, vì nói lặp lại):
+   ```bash
+   end=$((SECONDS+7320)); while [ $SECONDS -lt $end ]; do afplay public/listen-test-en.wav; done
+   ```
+4. Lấy mẫu 2 giờ 2 phút, `caffeinate` giữ máy thức (lệnh dừng khi chạy xong):
+   ```bash
+   caffeinate -i python3 bench/phase1/acceptance/soak.py sample --app meeting-translator --every 10 --duration 7320 \
+     --out bench/phase1/results/acceptance/a5-mac.csv
+   ```
+   Cuối lệnh in `733 mẫu, ghi …`. Mỗi 30 phút ghi GPU từ **Activity Monitor › Window › GPU History** vào
+   `bench/phase1/results/acceptance/a5-mac.md`.
+5. Tổng hợp, với tên tiến trình của Mac:
+   ```bash
+   python3 bench/phase1/acceptance/soak.py summarize bench/phase1/results/acceptance/a5-mac.csv \
+     --require meeting-translator,asr-worker-aarch64-apple-darwin,llama-server-aarch64-apple-darwin,com.apple.WebKit \
+     --out bench/phase1/results/acceptance/a5-mac.json
+   ```
+   Đúng khi: `Nơi đo: mac, máy …`, không có `THIẾU tiến trình bắt buộc`, `Số mẫu: 733; … (đủ 2 giờ)`,
+   `Biến mất: không; khởi động lại: không`, RAM tăng không quá `+10.0%`, `A5: ĐẠT; tải máy ≤ 30%: ĐẠT`.
+6. Gửi lại kết quả (dán phần in ra). Không commit file nếu đó là lượt dry-run trên bản dev.
+
+Đã thử công cụ ngày 2026-10-05 (30 giây trên bản dev đang rảnh): nhận đủ tiến trình, ghi CSV, tổng hợp chạy; kết luận
+"KHÔNG ĐẠT" của lượt 30 giây là đúng thiết kế vì RAM cần ít nhất vài chục phút để so với giờ đầu.
+
+## A7: kiểm không có lưu lượng ngoài danh sách
+
+Danh sách cho phép đã điền máy chủ thật: `bench/phase1/results/acceptance/a7-allow.json` (license server
+`mt-license.dotienphong1993.workers.dev` và bucket R2 `pub-a4be034c8c474a36b893a65e8f0b8365.r2.dev`). Request nào ra
+ngoài danh sách, hay gọi lúc đang dịch mà không phải việc chạy theo lịch, bị tính là vi phạm.
+
+1. **Kiểm cách mitmproxy khớp tên** (một lần, trước khi cài chứng chỉ). Cửa sổ 1, từng dòng một (Ctrl+C trước dòng sau):
+   ```bash
+   mitmdump --mode local:curl
+   mitmdump --mode local:cur
+   ```
+   Cửa sổ 2, lúc cửa sổ 1 đang chạy: `curl -s -o /dev/null http://example.com/`. Lần đầu macOS hỏi cho phép
+   **network extension** của mitmproxy: chọn cho phép (System Settings › Privacy & Security). Dòng `GET http://example.com/`
+   ở `local:curl` là chế độ chạy được; ở `local:cur` là khớp **một phần** tên. Ghi kết quả vào
+   `bench/phase1/results/acceptance/a7-mac.md`.
+2. **Cài chứng chỉ gốc của mitmproxy** (app dùng `native-tls` nên tin Keychain hệ thống): chạy `mitmdump` một lần để sinh
+   `~/.mitmproxy/mitmproxy-ca-cert.pem`, rồi
+   ```bash
+   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.mitmproxy/mitmproxy-ca-cert.pem
+   ```
+   **Phải gỡ ở bước 6.**
+3. **Proxy theo tiến trình của app** (không đặt proxy hệ thống, không mở trình duyệt). Khớp một phần tên:
+   ```bash
+   mitmdump --mode local:meeting-translator,asr-worker,llama-server --set hardump=$HOME/a7.har
+   ```
+   Khớp nguyên tên (kết quả bước 1 không có dòng `GET` ở `local:cur`):
+   ```bash
+   mitmdump --mode local:meeting-translator,asr-worker-aarch64-apple-darwin,llama-server-aarch64-apple-darwin --set hardump=$HOME/a7.har
+   ```
+   Giới hạn đã chấp nhận: chế độ này không bắt WebView và chỉ ghi luồng HTTP; phần đó kiểm bằng `nettop` ở bước 4.
+4. **Thao tác** (ghi giờ đồng hồ có múi giờ: `date +%Y-%m-%dT%H:%M:%S%z`):
+   1. Mở app (có gói trả phí). **Cài đặt › Bản quyền › Kiểm tra ngay** (để HAR có request **trước** Bắt đầu).
+   2. Bấm **Bắt đầu** và **ghi giờ Bắt đầu**. Trong cửa sổ khác:
+      ```bash
+      python3 bench/phase1/acceptance/soak.py pids --app meeting-translator
+      nettop -P -x -t external -L 0 -s 5 -J bytes_in,bytes_out -p <pid1> -p <pid2> … > "$HOME/a7-nettop.csv"
+      ```
+      (mỗi pid ở lệnh trên là một `-p`). Phát câu mẫu `public/listen-test-en.wav` nhiều lần trong 15 phút (QuickTime),
+      cùng một video tiếng Anh có sẵn trên máy.
+   3. Ngay trước khi bấm Dừng, dừng `nettop` (Ctrl+C). Đúng khi số byte của `com.apple.WebKit.*` và hai tiến trình phụ
+      **không tăng** từ khối đầu tới khối cuối; của app chỉ tăng lúc có request trong HAR.
+   4. Bấm **Dừng** và **ghi giờ Dừng**. Bấm **Kiểm tra ngay** lần nữa (để HAR có request **sau** Dừng). Xuất bản chép lời
+      ra TXT, mở Lịch sử.
+5. **Thoát app, dừng `mitmdump`** (HAR chỉ được ghi khi dừng).
+6. **Gỡ chứng chỉ gốc của mitmproxy:**
+   ```bash
+   sudo security delete-certificate -c mitmproxy -t /Library/Keychains/System.keychain
+   ```
+7. **Từ mồi:** mở file TXT vừa xuất, chép một cụm 3–5 từ của bản dịch tiếng Việt vào mảng `canaries` của
+   `bench/phase1/results/acceptance/a7-allow.json`.
+8. **Kiểm** (thay hai giờ bằng giờ đã ghi, đúng dạng `2026-10-10T09:00:00+07:00`):
+   ```bash
+   python3 bench/phase1/acceptance/netaudit.py "$HOME/a7.har" \
+     --allow bench/phase1/results/acceptance/a7-allow.json \
+     --app-log "$HOME/Library/Logs/com.aitranslator.desktop/app.log" \
+     --start <giờ Bắt đầu> --stop <giờ Dừng> --out bench/phase1/results/acceptance/a7-mac.json
+   ```
+   Đúng khi: `Request ra ngoài: N; trong lúc dịch: M` với N ≥ 3, không dòng `VI PHẠM`, `A7: ĐẠT`. Rồi xóa `$HOME/a7.har`
+   (không commit HAR).
+9. **Log không chứa chữ chép lời** (phải ra `0`):
+   ```bash
+   grep -rli -e "plotting analysis" -e "public website" "$HOME/Library/Logs/com.aitranslator.desktop" | wc -l
+   ```
+
+Gặp vi phạm "máy chủ không có trong danh sách cho phép" với máy chủ của app khác: proxy không lọc đúng tiến trình, làm lại
+bước 3, **không** thêm máy chủ đó vào danh sách.

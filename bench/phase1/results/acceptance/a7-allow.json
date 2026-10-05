@@ -1,0 +1,59 @@
+{
+ "_note": "A7 trên production (2026-10-05). Máy chủ thật: license server mt-license (workers.dev) và bucket R2 công khai (manifest model ở /models/models.json, latest.json ở /stable và /beta; tải file model và bộ cài là việc không chạy lúc dịch). Từ mồi `canaries`: thêm cụm 3-5 từ của bản dịch tiếng Việt chép từ bản chép lời xuất ra sau khi dừng.",
+ "hosts": {
+  "mt-license.dotienphong1993.workers.dev": [
+   {
+    "path": "/v1/licenses/validate",
+    "during_session": true
+   },
+   {
+    "path": "/v1/plans",
+    "during_session": true
+   },
+   {
+    "path": "/v1/licenses/activate",
+    "during_session": false
+   },
+   {
+    "path": "/v1/licenses/deactivate",
+    "during_session": false
+   },
+   {
+    "path": "/v1/licenses/recover",
+    "during_session": false
+   },
+   {
+    "path": "/v1/checkout",
+    "during_session": false
+   },
+   {
+    "path": "/v1/orders/",
+    "during_session": false
+   }
+  ],
+  "pub-a4be034c8c474a36b893a65e8f0b8365.r2.dev": [
+   {
+    "path": "/",
+    "during_session": false
+   },
+   {
+    "path": "/models/models.json",
+    "during_session": true
+   },
+   {
+    "path": "/stable/latest.json",
+    "during_session": true
+   },
+   {
+    "path": "/beta/latest.json",
+    "during_session": true
+   }
+  ]
+ },
+ "max_body_bytes": 4096,
+ "canaries": [
+  "plotting analysis",
+  "public website",
+  "kết quả phân tích"
+ ]
+}

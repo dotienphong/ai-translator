@@ -18,3 +18,5 @@ Gói, hạng, máy, hệ điều hành do công cụ ghi vào nội dung file; `
 Mẫu cho phần người điền: `a1-matrix.template.md` (A1), `a6-checklist.template.md` (A6), `a7-allow.template.json` (A7).
 
 Test: `python3 -m unittest discover -s bench/phase1/acceptance -p 'test_*.py'`.
+
+Sổ tay chạy A5 và A7 trên Mac, điền sẵn tên tiến trình, đường dẫn và máy chủ thật: `RUNBOOK-mac.md`. Danh sách cho phép của A7 trên production: `bench/phase1/results/acceptance/a7-allow.json`.
