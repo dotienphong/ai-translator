@@ -1,0 +1,18 @@
+{
+ "os": "mac",
+ "host": "707254bd1029",
+ "samples": 733,
+ "duration_s": 7320.0,
+ "long_enough": true,
+ "absent": [],
+ "missing": [],
+ "restarts": {},
+ "ram_hour1_mib": 2965.8523185483873,
+ "ram_after_max_mib": 3085.0625,
+ "ram_growth": 0.04019424052441001,
+ "ram_peak_mib": 3100.375,
+ "cpu_avg": 0.047923611111111104,
+ "ncpu": 12,
+ "pass_a5": true,
+ "pass_cpu": true
+}

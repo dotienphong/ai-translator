@@ -19,10 +19,17 @@ cd ~/Desktop/software_business/ai-translator
   | WebView | `com.apple.WebKit.*` (4 tiến trình) |
 
   `soak.py pids --app meeting-translator` liệt kê đúng 7 tiến trình này (đã kiểm 2026-10-05).
-- **Bản đo chính thức:** A5 và A7 chỉ tính là đạt trên **bản ứng viên đã ký Developer ID** (build release, không có
-  `debug_assertions`). Bản ký ad-hoc tự nhận là "không chính hãng" và chỉ chạy Free, nên không có `validate` để A7 kiểm.
-  Khi chưa có tài khoản Apple Developer thì chạy **bản dev** (`scripts/run-dev-app.sh`) để thử công cụ (dry-run). Số đo
-  của bản dev (RAM, CPU) **không** dùng làm kết luận A5; kết quả ghi rõ "bản dev".
+
+  **Đó là tên của bản dev.** Bản release đóng gói (`.app` trong `/Applications`) đặt tên tiến trình phụ là `asr-worker` và
+  `llama-server` (không có hậu tố `-aarch64-apple-darwin`); `summarize` không cần `--require` vì mặc định đã theo tên này
+  (đã chạy A5 trên bản release 2026-10-06). Chỉ bản dev mới cần `--require` với tên dài.
+- **Bản đo chính thức:** A5 và A7 tính trên **bản release** (build release, không có `debug_assertions`), cài vào
+  `/Applications`. Từ spec 2026-10-05 bản release **ký ad-hoc** (khi chưa có Developer ID) vẫn qua phép tự kiểm và chạy
+  gói trả phí, nên đo được như bản Developer ID; ghi rõ cách ký vào báo cáo ("ký ad-hoc, không notarize"). Dựng bản này bằng
+  `AI_TRANSLATOR_MAC_SIGNING=adhoc scripts/release/package-macos.sh`, rồi `ditto` vào `/Applications`. Bản dev
+  (`scripts/run-dev-app.sh`) chỉ để thử công cụ (dry-run); số đo RAM, CPU của bản dev **không** dùng làm kết luận A5.
+  Lần đầu mở bản mới macOS hỏi Keychain (khoảng 5 lần) và quyền thu âm: bấm **Always Allow** và cho phép; bấm Hủy thì app
+  không đọc được bản quyền, phải thoát hẳn rồi mở lại.
 - Cắm sạc, tắt Docker và trình duyệt nặng, đóng app đang ngốn CPU. Đừng để máy ngủ.
 - Công cụ lấy mẫu chỉ thấy tiến trình của chính app (qua tiến trình chịu trách nhiệm của hệ điều hành), nên Safari, Mail
   mở sẵn không làm lệch số.
