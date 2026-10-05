@@ -14,6 +14,7 @@ Người làm: PHONG (nhập secret, bật Access, chuyển tiền); kiểm bở
 | Token thật ký bằng ô A | `OK production a prod-2026-10-1`; `plan: pro`, `quota_minutes_per_cycle: 1800`, `refresh_before - issued_at = 1209600` |
 | Kích hoạt rồi gỡ máy giả | `activated`, `deactivated` trong audit; audit không chứa email |
 | **Múi giờ `transactionDateTime` (giả định 11, QĐ33)** | `paid_at` = 11:37:40 giờ Việt Nam, người chuyển báo 11:37: **PayOS trả giờ Việt Nam, đạt** |
+| **`changes()` trên D1 thật (05 Task 20 Step 11)** | License thử cấp tay qua admin, kích hoạt, `reset-quota`, thu hồi hai lần. `reset-quota` trả `quota_epoch: 1`; thu hồi lần 1 `{"ok":true}`, lần 2 `not_found`; audit đúng 4 dòng (`activated` 1, `license_issued_manually` 1, `license_revoked` **1**, `quota_reset` **1**): D1 thật cho `changes()` đúng như SQLite trong batch. License thử đã thu hồi |
 | App dev (`scripts/run-dev-app.sh`) nhập key thật | Cài đặt › Bản quyền hiện Professional (người chạy xác nhận) |
 
-Chưa làm: 05 Task 20 Step 9 (đổi gói), Step 11 (kiểm `changes()` trên D1 thật), 06b Task 6 Step 2, 4–6 (hạn mức Free, gia hạn, máy thứ hai, mất mạng, đổi giờ, Keychain). `OPERATOR_EMAIL` chưa đặt (cảnh báo chỉ nằm trong log). Chưa có tên miền: dùng `*.workers.dev`, và Resend chỉ gửi được tới email chủ tài khoản.
+Chưa làm: 05 Task 20 Step 9 (đổi gói, tốn tiền thật), 06b Task 6 Step 2, 4–6 (hạn mức Free, gia hạn, máy thứ hai, mất mạng, đổi giờ, Keychain). `OPERATOR_EMAIL` chưa đặt (cảnh báo chỉ nằm trong log). Chưa có tên miền: dùng `*.workers.dev`, và Resend chỉ gửi được tới email chủ tài khoản.
