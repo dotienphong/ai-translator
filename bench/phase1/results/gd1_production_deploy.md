@@ -18,3 +18,23 @@ Người làm: PHONG (nhập secret, bật Access, chuyển tiền); kiểm bở
 | App dev (`scripts/run-dev-app.sh`) nhập key thật | Cài đặt › Bản quyền hiện Professional (người chạy xác nhận) |
 
 Chưa làm: 05 Task 20 Step 9 (đổi gói, tốn tiền thật), 06b Task 6 Step 2, 4–6 (hạn mức Free, gia hạn, máy thứ hai, mất mạng, đổi giờ, Keychain). `OPERATOR_EMAIL` chưa đặt (cảnh báo chỉ nằm trong log). Chưa có tên miền: dùng `*.workers.dev`, và Resend chỉ gửi được tới email chủ tài khoản.
+
+## Khóa, R2 và model (2026-10-05)
+
+| Bước | Kết quả |
+|---|---|
+| Khóa ký bản cập nhật (minisign `704CE5507939A2FE`) | Tạo ngoại tuyến, có passphrase thật (ký bằng passphrase rỗng bị từ chối). Khóa riêng nằm trong secret `TAURI_SIGNING_PRIVATE_KEY` của environment `release` |
+| Khóa ký manifest `prod-2026-10-1` | Tạo ngoại tuyến, bản rõ chỉ nằm trong ổ RAM; file mã hóa AES-256 (`pbkdf2`, 600000 vòng). Nạp lại vào `MANIFEST_SIGNING_KEY` sau khi kiểm giải mã đúng `kid` và `x` |
+| Bản sao khóa | Không dùng USB: thư mục `~/ai-translator-keys` đã chép sang một máy khác, passphrase viết tay (quyết định của chủ dự án) |
+| Bucket R2 `ai-translator-releases` | URL công khai `r2.dev`; token Object Read & Write chỉ cho bucket này (không liệt kê được bucket khác) |
+| `sign-manifest.yml` lần đầu | Thêm cờ `first_release` (`9b1f21e`). Job `sign` lỗi "failed to be acquired" ba lần liền, kể cả sau khi chuyển sang `ubuntu-24.04` (`de86457`). **Nguyên nhân: secret `MANIFEST_SIGNING_KEY` nạp lần đầu bị hỏng** (một secret hỏng làm cả environment `release` không cấp được máy, kể cả job không dùng secret). Tách bằng workflow chẩn đoán: environment mới `diag-open` và `diag-review` xanh. Xóa rồi nạp lại secret thì xanh |
+| `models.json` đã ký | Chữ ký hợp lệ với `prod-2026-10-1`, nội dung giống hệt `scripts/models/released/body-1.json`, 10/10 file đúng dung lượng |
+| Upload lên R2 | `rclone`, 11/11 file, 3,55 GiB trong 1 phút 36 giây. Từ ngoài vào: `models.json` 200, `Range` 206, 10/10 dung lượng đúng |
+
+### Thử trong app (người chạy xác nhận, không có số liệu)
+Đạt: tải model từ R2 (gói Chuẩn, tạm dừng và tiếp tục, rớt mạng), đổi sang gói Nhẹ và xóa gói Chuẩn, nhập key thật hiện Professional, mất mạng, lùi giờ và tiến giờ 1 năm, xóa dữ liệu giữ bản quyền, gỡ kích hoạt, xóa model và dữ liệu.
+
+**Chưa thử** (nên vẫn "chờ" trong bảng đối chiếu): mua gói trong app bằng VietQR, gia hạn, đổi gói, kích hoạt máy thứ hai và thứ ba, hạn mức Free (10 phút) trong app, số lần macOS hỏi Keychain.
+
+### Quyết định của chủ dự án
+Repo public (chủ ý); Cloudflare dùng chung tài khoản với mapsLibVN (chấp nhận); không dùng USB cho bản sao khóa; `OPERATOR_EMAIL` làm ở Giai đoạn 3. Quét 659 commit: không có khóa riêng, khóa API hay file `.env` nào trong lịch sử.
