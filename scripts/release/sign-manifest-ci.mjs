@@ -3,7 +3,7 @@
 // sau job `check` (không secret) đã kiểm phần thân bằng đúng luật của app (`check_manifest_body` của kế hoạch 04).
 //
 //   MANIFEST_SIGNING_KEY=<JWK> BODY=<đường dẫn trong repo> node scripts/release/sign-manifest-ci.mjs
-//   BODY=<…> PREVIOUS=<…> node scripts/release/sign-manifest-ci.mjs --check   # job `check`: chỉ kiểm hai đường dẫn
+//   BODY=<…> PREVIOUS=<…> [FIRST_RELEASE=true] node scripts/release/sign-manifest-ci.mjs --check   # job `check`: chỉ kiểm đầu vào
 //
 // `PREVIOUS` (phần thân của bản đang phát hành) bắt buộc khi khối `production` của manifest-public-keys.json đã có khóa, tức
 // là đã có thể có manifest production đang phát hành: thiếu nó thì `check_manifest_body` không so `id` với bản đó (N-8 của
@@ -33,14 +33,19 @@ export function bodyErrors(root, body, what = "BODY") {
   return [];
 }
 
-/** Lỗi của hai đầu vào của job `check`: BODY như trên; PREVIOUS bắt buộc khi khối production đã có khóa. */
-export function inputErrors(root, body, previous) {
+/**
+ * Lỗi của các đầu vào của job `check`: BODY như trên; PREVIOUS bắt buộc khi khối production đã có khóa, trừ khi người chạy
+ * khai đây là lần phát hành manifest đầu tiên (`first`): khối production có khóa ngay từ trước lần ký đầu (khóa công khai
+ * phải vào app trước khi ký), nên không có bản nào để so. Khai `first` mà vẫn đưa PREVIOUS là mâu thuẫn.
+ */
+export function inputErrors(root, body, previous, first = false) {
   const errors = bodyErrors(root, body);
   const keys = JSON.parse(readFileSync(join(root, "src-tauri/keys/manifest-public-keys.json"), "utf8"));
   const released = Array.isArray(keys.production) && keys.production.length > 0;
-  if (previous) errors.push(...bodyErrors(root, previous, "PREVIOUS"));
-  else if (released) {
-    errors.push("PREVIOUS trống: đã có khóa production nên phải so với phần thân của bản đang phát hành (N-8 của review 04)");
+  if (first && previous) errors.push("FIRST_RELEASE và PREVIOUS không đi cùng nhau: lần đầu thì không có bản trước");
+  else if (previous) errors.push(...bodyErrors(root, previous, "PREVIOUS"));
+  else if (released && !first) {
+    errors.push("PREVIOUS trống: đã có khóa production nên phải so với phần thân của bản đang phát hành (N-8 của review 04); lần ký manifest đầu tiên thì tick first_release");
   }
   return errors;
 }
@@ -76,7 +81,7 @@ export function main(env = process.env, root = repoRoot) {
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   try {
     if (process.argv.includes("--check")) {
-      const errors = inputErrors(repoRoot, process.env.BODY, process.env.PREVIOUS);
+      const errors = inputErrors(repoRoot, process.env.BODY, process.env.PREVIOUS, process.env.FIRST_RELEASE === "true");
       if (errors.length > 0) throw new Error(errors.join("; "));
       console.log("BODY, PREVIOUS hợp lệ");
     } else console.log(`đã ký ${main()}`);

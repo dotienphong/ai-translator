@@ -16,9 +16,14 @@ on:
         required: true
         type: string
       previous:
-        description: Đường dẫn tương đối trong repo tới phần thân của bản đang phát hành (chỉ bỏ trống khi chưa có khóa production)
+        description: Đường dẫn tương đối trong repo tới phần thân của bản đang phát hành (bỏ trống chỉ khi tick first_release)
         required: false
         type: string
+      first_release:
+        description: Tick khi đây là lần ký manifest đầu tiên (chưa có bản nào đã phát hành để so, nên bỏ trống previous)
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -44,6 +49,7 @@ jobs:
         env:
           BODY: ${{ inputs.body }}
           PREVIOUS: ${{ inputs.previous }}
+          FIRST_RELEASE: ${{ inputs.first_release }}
         run: |
           node scripts/release/sign-manifest-ci.mjs --check
           pnpm install --frozen-lockfile

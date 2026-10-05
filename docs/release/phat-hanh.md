@@ -55,6 +55,9 @@ hdiutil detach $ram                                  # ổ RAM mất hẳn
 
 - Kiểm: chạy workflow `Sign model manifest`. Job `sign` tự kiểm chữ ký bằng khóa công khai trong repo; khóa riêng không khớp
   thì job đỏ.
+- Lần ký manifest **đầu tiên**: khóa công khai đã nằm trong repo (phải vậy thì job `sign` mới chạy) nhưng chưa có bản nào đã
+  phát hành để so, nên tick `first_release` và để trống `previous`. Từ lần hai, `previous` là phần thân của bản đang phát hành
+  và `first_release` không tick (job `check` từ chối nếu thiếu `previous`).
 
 ### 1.3. Hạ tầng phát hành (R2)
 

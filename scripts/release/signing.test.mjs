@@ -79,6 +79,10 @@ test("sign-manifest --check: PREVIOUS bắt buộc khi đã có khóa production
   assert.deepEqual(inputErrors(dir, "models/new.json", "../old.json"), ["PREVIOUS không được có '..'"]);
   assert.deepEqual(inputErrors(dir, "models/new.json", "models/none.json"), ["không thấy models/none.json"]);
   assert.deepEqual(inputErrors(dir, "", "models/old.json"), ["BODY trống"]);
+  // Lần ký đầu tiên: khóa công khai đã vào repo nhưng chưa có bản nào để so.
+  assert.deepEqual(inputErrors(dir, "models/new.json", "", true), []);
+  assert.match(inputErrors(dir, "models/new.json", "models/old.json", true)[0], /không đi cùng nhau/);
+  assert.deepEqual(inputErrors(dir, "", "", true), ["BODY trống"]);
 });
 
 test("sign-manifest: khóa ghi ra file 0600 ngoài repo, con không thấy biến khóa, file khóa bị xóa kể cả khi lỗi", (t) => {
