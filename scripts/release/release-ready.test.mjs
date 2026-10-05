@@ -34,7 +34,7 @@ function edit(dir, file, change) {
 }
 
 const jwk = (kid) => ({ kid, x: "q5ZECmVfbTxWLsBMSfgVBX-QhE6PToK-1TGzmPChkSg" });
-const setUrl = (url) => (text) => text.replace(/^pub const PRODUCTION_URL: Option<&str> = None;/m, `pub const PRODUCTION_URL: Option<&str> = Some("${url}");`);
+const setUrl = (url) => (text) => text.replace(/^pub const PRODUCTION_URL: Option<&str> = (?:None|Some\("[^"]*"\));/m, `pub const PRODUCTION_URL: Option<&str> = Some("${url}");`);
 
 /** Điền đủ mọi giá trị production. */
 function fill(dir) {
@@ -59,15 +59,13 @@ test("đọc PRODUCTION_URL của file Rust và khóa công khai của tauri sig
   assert.equal(isUpdaterKey(undefined), false);
 });
 
-// Cập nhật khi điền thêm giá trị production. Đã điền: license server (2026-10-05), khóa công khai của bản cập nhật và của
-// manifest model (2026-10-05). Còn lại: URL bản cập nhật, URL manifest model (chờ R2) và tên miền website (T7).
-test("repo hiện tại chưa đủ: báo đúng ba giá trị còn thiếu", (t) => {
+// Cập nhật khi điền thêm giá trị production. Đã điền (2026-10-05): license server, khóa công khai của bản cập nhật và của
+// manifest model, URL R2 của bản cập nhật và của manifest model. Còn lại: tên miền website (T7).
+test("repo hiện tại chưa đủ: báo đúng một giá trị còn thiếu", (t) => {
   const errors = readinessErrors(copy(t));
-  assert.equal(errors.length, 3, errors.join("\n"));
-  for (const part of ["updater/source.rs", "models/source.rs", "EXTERNAL_HOSTS"]) {
-    assert.ok(errors.some((e) => e.includes(part)), part);
-  }
-  for (const done of ["updater-public-keys", "manifest-public-keys", "license/client.rs", "license-public-keys"]) {
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.ok(errors[0].includes("EXTERNAL_HOSTS"), errors[0]);
+  for (const done of ["updater/source.rs", "models/source.rs", "updater-public-keys", "manifest-public-keys", "license/client.rs", "license-public-keys"]) {
     assert.ok(!errors.some((e) => e.includes(done)), `${done} đã điền, không được báo thiếu`);
   }
 });
@@ -104,5 +102,5 @@ test("--tag: tag phải đúng v<version> của tauri.conf.json, kể cả bản
   main(["--tag", "v0.1.0"], dir);
   assert.deepEqual(lines, ["tag v0.1.0 khớp tauri.conf.json"]);
   assert.throws(() => main(["--tag", "v0.1.1"], dir), /không khớp/);
-  assert.throws(() => main([], dir), /PRODUCTION_URL chưa có/);
+  assert.throws(() => main([], dir), /EXTERNAL_HOSTS chưa có/);
 });

@@ -12,7 +12,7 @@ use reqwest::Url;
 use crate::settings::UpdateChannel;
 
 /// URL gốc production: Task 12 của kế hoạch 07b điền khi có tên miền (T7) hay URL công khai của bucket production.
-pub const PRODUCTION_URL: Option<&str> = None;
+pub const PRODUCTION_URL: Option<&str> = Some("https://pub-a4be034c8c474a36b893a65e8f0b8365.r2.dev");
 
 const KEYS: &str = include_str!("../../keys/updater-public-keys.json");
 
