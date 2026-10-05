@@ -257,7 +257,14 @@ describe("POST /v1/checkout", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");
     const html = await res.text();
-    expect(html).toContain("quay lại app");
+    expect(html).toContain("Thanh toán thành công");
+    expect(html).toContain("Payment successful");
     expect(html).toContain("<title>AI Translator</title>");
+    const cancel = await w.app.fetch(new Request("https://license.test/v1/pay/cancel"), w.env);
+    expect(cancel.status).toBe(200);
+    expect(cancel.headers.get("content-type")).toContain("text/html");
+    const cancelHtml = await cancel.text();
+    expect(cancelHtml).toContain("Đã hủy thanh toán");
+    expect(cancelHtml).toContain("Payment cancelled");
   });
 });
