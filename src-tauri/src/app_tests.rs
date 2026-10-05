@@ -1679,6 +1679,11 @@ fn restart_to_update_needs_a_download_and_an_idle_app() {
         invoke(&main, "get_app_status", json!({})).unwrap()["updateReady"],
         Value::Null
     );
+    // Bản test không có Team ID (ký ad-hoc): chỉ macOS báo trước sẽ bị hỏi lại sau cập nhật.
+    assert_eq!(
+        invoke(&main, "get_app_status", json!({})).unwrap()["updateReprompts"],
+        Value::Bool(cfg!(target_os = "macos"))
+    );
 
     assert!(updater_of(&app).tick(crate::settings::UpdateChannel::Stable));
     crate::updater::publish(app.handle());

@@ -64,6 +64,8 @@ pub struct AppStatus {
     /// Phiên bản app mới đã tải xong, sẽ cài ở lần thoát kế tiếp (§6.11; kế hoạch 07b). Khi app rảnh, cửa sổ chính và menu
     /// khay mời khởi động lại để cập nhật. Đặt bởi `updater::publish`.
     pub update_ready: Option<String>,
+    /// Cập nhật xong macOS sẽ hỏi lại mật khẩu Keychain và quyền thu âm (bản ký ad-hoc, chưa có Team ID): lời mời cập nhật báo trước.
+    pub update_reprompts: bool,
     /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
     /// tới sau sự kiện `app://status` mới hơn).
     pub rev: u64,
@@ -141,6 +143,7 @@ impl AppState {
                 quota_warning: false,
                 quota_reset_at: None,
                 update_ready: None,
+                update_reprompts: crate::license::genuine::this_build_updates_reprompt(),
                 rev: 0,
             }),
             launched_at_login,

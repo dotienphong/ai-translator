@@ -96,6 +96,11 @@ export function updateInvite(state: Pick<AppStoreState, "status" | "updateDismis
   return state.updateDismissed === status.updateReady ? null : status.updateReady;
 }
 
+// Lời mời cập nhật có báo trước macOS sẽ hỏi lại mật khẩu Keychain và quyền thu âm không (bản ký ad-hoc).
+export function updateReprompts(state: Pick<AppStoreState, "status">): boolean {
+  return state.status?.updateReprompts === true;
+}
+
 // Lỗi từ `invoke`: `CommandError` của app, hoặc chuỗi lỗi của Tauri (sai tham số, bị ACL chặn).
 export function toUiError(e: unknown): UiError {
   if (typeof e === "object" && e !== null && typeof (e as CommandError).code === "string") {

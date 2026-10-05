@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
 import type { AppInfo, AppStatus, Ipc, Settings } from "../lib/ipc";
-import { canOpenScreens, createAppStore, levelToMeter, toUiError, updateInvite } from "./app";
+import { canOpenScreens, createAppStore, levelToMeter, toUiError, updateInvite, updateReprompts } from "./app";
 
 const settings: Settings = {
   uiLanguage: "vi",
@@ -52,6 +52,7 @@ const status: AppStatus = {
   quotaWarning: false,
   quotaResetAt: null,
   updateReady: null,
+  updateReprompts: false,
   rev: 1,
 };
 const info: AppInfo = {
@@ -476,6 +477,12 @@ describe("app store", () => {
     expect(updateInvite({ status: { ...ready, session: "starting" }, updateDismissed: null })).toBeNull();
     expect(updateInvite({ status: ready, updateDismissed: "0.2.0" })).toBeNull();
     expect(updateInvite({ status: { ...ready, updateReady: "0.2.1" }, updateDismissed: "0.2.0" })).toBe("0.2.1");
+  });
+
+  it("lời mời cập nhật báo trước macOS hỏi lại mật khẩu chỉ khi trạng thái bảo vậy", () => {
+    expect(updateReprompts({ status: null })).toBe(false);
+    expect(updateReprompts({ status: { ...status, updateReprompts: false } })).toBe(false);
+    expect(updateReprompts({ status: { ...status, updateReprompts: true } })).toBe(true);
   });
 
   it("restartToUpdate gọi lệnh; lỗi hiện ở thanh báo lỗi; dismissUpdate nhớ bản đang mời", async () => {

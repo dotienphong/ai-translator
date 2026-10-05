@@ -55,6 +55,17 @@ pub fn mac_requirement(team_id: Option<&str>, mac_signing: Option<&str>, identif
     }
 }
 
+/// Bản macOS không có Team ID hợp lệ (ký ad-hoc) thì mỗi lần cập nhật macOS hỏi lại mật khẩu Keychain và quyền thu âm
+/// (spec 2026-10-05, mục 4). Có Team ID thì danh tính ổn định, không hỏi lại. Windows: không bao giờ.
+pub fn updates_reprompt(team_id: Option<&str>) -> bool {
+    cfg!(target_os = "macos") && team_id.filter(|t| !t.is_empty()).and_then(team_requirement).is_none()
+}
+
+/// [`updates_reprompt`] cho bản đang chạy.
+pub fn this_build_updates_reprompt() -> bool {
+    updates_reprompt(TEAM_ID)
+}
+
 /// Kiểm bản đang chạy. `identifier` là bundle identifier của app (`app.config().identifier`), chỉ macOS dùng.
 pub fn check_this_build(identifier: &str) -> Genuineness {
     if cfg!(debug_assertions) {
@@ -255,6 +266,16 @@ mod tests {
         // Bundle id sai dạng thì ad-hoc cũng khóa.
         assert!(mac_requirement(None, Some("adhoc"), "a\" or true").is_err());
         assert!(mac_requirement(None, Some("adhoc"), "").is_err());
+    }
+
+    #[test]
+    fn only_a_mac_build_without_a_team_id_reprompts_after_updates() {
+        // Không có Team ID (thiếu, rỗng hay sai dạng): ký ad-hoc, chỉ macOS hỏi lại sau cập nhật.
+        for team in [None, Some(""), Some("abc")] {
+            assert_eq!(updates_reprompt(team), cfg!(target_os = "macos"), "{team:?}");
+        }
+        // Có Team ID hợp lệ: danh tính ổn định, mọi hệ điều hành đều không hỏi lại.
+        assert!(!updates_reprompt(Some("ABCDE12345")));
     }
 
     /// Trên máy thật, không cần quyền gì: `/bin/ls` do Apple ký nên qua yêu cầu `anchor apple`, nhưng không qua yêu cầu

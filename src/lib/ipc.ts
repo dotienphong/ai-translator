@@ -114,6 +114,8 @@ export interface AppStatus {
   quotaResetAt: number | null;
   // Phiên bản app mới đã tải xong, cài ở lần thoát kế tiếp (kế hoạch 07b); `null` khi chưa có.
   updateReady: string | null;
+  // Cập nhật xong macOS sẽ hỏi lại mật khẩu Keychain và quyền thu âm (bản ký ad-hoc): lời mời cập nhật báo trước.
+  updateReprompts: boolean;
   // Tăng mỗi lần trạng thái đổi: trạng thái có `rev` nhỏ hơn trạng thái đang có là cũ, bỏ qua.
   rev: number;
 }

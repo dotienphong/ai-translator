@@ -38,6 +38,7 @@ const status = (patch: Partial<AppStatus>): AppStatus => ({
   quotaWarning: false,
   quotaResetAt: null,
   updateReady: null,
+  updateReprompts: false,
   rev: 1,
   ...patch,
 });

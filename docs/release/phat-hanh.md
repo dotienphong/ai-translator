@@ -334,7 +334,7 @@ Chưa có Developer ID thì để biến `APPLE_TEAM_ID` của repo **rỗng** v
 - **Mỗi bản cập nhật (ký ad-hoc) khiến macOS hỏi lại một lần**: 5 hộp thoại "AI Translator muốn dùng thông tin trong Keychain" (mật khẩu đăng nhập
   Mac) và 1 hộp thoại quyền thu âm thanh hệ thống. Hướng dẫn cho khách (đưa vào ghi chú phát hành): nhập mật khẩu đăng nhập
   rồi bấm **Always Allow** (không bấm Deny); bấm cho phép quyền thu âm khi được hỏi. Sau đó các lần mở sau không hỏi nữa; không mất
-  dữ liệu hay gói (đã đo, `bench/phase1/results/gd1_adhoc_keychain.md`). Chỉ hết khi có Developer ID (Team ID cho danh tính ổn định).
+  dữ liệu hay gói (đã đo, `bench/phase1/results/gd1_adhoc_keychain.md`). Chỉ hết khi có Developer ID (Team ID cho danh tính ổn định). App báo trước điều này ngay trong lời mời cập nhật (chỉ khi bản build không có Team ID).
 - Có Developer ID thì đặt `APPLE_TEAM_ID` và các secret `APPLE_*` (mục 3, "Chứng thư ký mã"); không phải sửa code. Biến
   `APPLE_TEAM_ID` có giá trị thì app về chế độ chặt (yêu cầu đúng Team ID). **Đặt `APPLE_TEAM_ID` mà vẫn ký ad-hoc thì bản đó
   bị coi là không chính hãng và chỉ chạy Free**, nên đặt cùng lúc với secret chứng thư.

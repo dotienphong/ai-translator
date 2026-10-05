@@ -111,6 +111,7 @@ const status = (session: AppStatus["session"], rev: number): AppStatus => ({
   quotaWarning: false,
   quotaResetAt: null,
   updateReady: null,
+  updateReprompts: false,
   rev,
 });
 

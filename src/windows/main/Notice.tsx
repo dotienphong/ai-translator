@@ -1,6 +1,6 @@
 import { errorKey } from "../../i18n";
 import { licenseNotice } from "../../lib/license";
-import { canOpenScreens, updateInvite } from "../../store/app";
+import { canOpenScreens, updateInvite, updateReprompts } from "../../store/app";
 import { useApp, useT } from "./appStore";
 import { useLicense } from "./licenseStore";
 
@@ -27,6 +27,7 @@ export function Notice() {
   const license = useLicense((s) => licenseNotice(s.view));
   const renewable = license === "license.notice.expired" || license === "license.notice.renewSoon";
   const update = useApp(updateInvite);
+  const repromptsAfterUpdate = useApp(updateReprompts);
   const restartToUpdate = useApp((s) => s.restartToUpdate);
   const dismissUpdate = useApp((s) => s.dismissUpdate);
   return (
@@ -34,7 +35,10 @@ export function Notice() {
       <div role="status">
         {update && (
           <div className="notice">
-            <span>{t("notice.updateReady", { version: update })}</span>
+            <span>
+              {t("notice.updateReady", { version: update })}
+              {repromptsAfterUpdate && ` ${t("notice.updateReprompt")}`}
+            </span>
             <button className="primary" onClick={() => void restartToUpdate()}>
               {t("notice.restartToUpdate")}
             </button>
