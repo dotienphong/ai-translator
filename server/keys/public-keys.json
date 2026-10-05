@@ -1,0 +1,8 @@
+{
+  "_note": "Khóa công khai ký token bản quyền của license server (spec §10.2; docs/release/phat-hanh.md mục 4). Khối production → ô khóa (a đang ký, b dự phòng) → {kid, x}; retired là kid đã dùng rồi bỏ. Không bao giờ có khóa riêng ở đây. App giữ bản sao ở src-tauri/keys/license-public-keys.json.",
+  "production": {
+    "a": { "kid": "prod-2026-10-1", "x": "U3EDlpylVKGK7ec-7VoQBZgBVB6h5PNtujUrVJYWQfs" },
+    "b": { "kid": "prod-2026-10-2", "x": "BvrhThjXtFR-MIVT1_PEiO4mXSbeNDefaVeX8ACMcbs" }
+  },
+  "retired": []
+}

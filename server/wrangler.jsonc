@@ -36,7 +36,7 @@
   },
   "d1_databases": [
     // database_id: thay bằng ID do `wrangler d1 create mt-license-production` in ra (Task 21).
-    { "binding": "DB", "database_name": "mt-license-production", "database_id": "00000000-0000-0000-0000-000000000000" }
+    { "binding": "DB", "database_name": "mt-license-production", "database_id": "047c4ba4-4ad2-4ece-937c-2d91eafe2445" }
   ],
   "triggers": { "crons": ["*/5 * * * *"] }
 }

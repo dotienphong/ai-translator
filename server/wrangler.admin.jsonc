@@ -20,13 +20,13 @@
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
     "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
     // Bắt buộc (QĐ6): Audience tag của ứng dụng Access, điền ở Task 21, Step 10. Trống thì Worker trả 403 cho mọi request.
-    "ACCESS_AUD": "",
+    "ACCESS_AUD": "211e8ca91f71c69830df567b4e1a2488d84ec5380dfeb25b473102e111f21de0",
     // Origin của Worker API (https://<tên miền license server>), điền ở Task 21, Step 10; confirm-webhook chỉ nhận URL trên origin này.
-    "API_ORIGIN": ""
+    "API_ORIGIN": "https://mt-license.dotienphong1993.workers.dev"
   },
   "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY"] },
   "d1_databases": [
-    { "binding": "DB", "database_name": "mt-license-production", "database_id": "00000000-0000-0000-0000-000000000000" }
+    { "binding": "DB", "database_name": "mt-license-production", "database_id": "047c4ba4-4ad2-4ece-937c-2d91eafe2445" }
   ],
   "services": [{ "binding": "API", "service": "mt-license", "entrypoint": "AdminRpc" }]
 }
