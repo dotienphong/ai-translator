@@ -12,6 +12,8 @@
 pub const TEAM_ID: Option<&str> = option_env!("AI_TRANSLATOR_TEAM_ID");
 /// Tên chủ chứng thư ký mã trên Windows, đặt lúc build bản phát hành (kế hoạch 07).
 pub const SIGNER: Option<&str> = option_env!("AI_TRANSLATOR_SIGNER");
+/// Chế độ ký ad-hoc của macOS, đặt lúc build khi chưa có Developer ID (spec 2026-10-05): giá trị `adhoc`.
+pub const MAC_SIGNING: Option<&str> = option_env!("AI_TRANSLATOR_MAC_SIGNING");
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Genuineness {
@@ -26,6 +28,27 @@ pub enum Genuineness {
 pub fn team_requirement(team_id: &str) -> Option<String> {
     let ok = team_id.len() == 10 && team_id.bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit());
     ok.then(|| format!("anchor apple generic and certificate leaf[subject.OU] = \"{team_id}\""))
+}
+
+/// Yêu cầu chữ ký chỉ ràng buộc bundle identifier, cho bản ký ad-hoc (không có Team ID để so).
+pub fn identifier_requirement(identifier: &str) -> Option<String> {
+    let ok = !identifier.is_empty()
+        && identifier.len() <= 128
+        && identifier
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-');
+    ok.then(|| format!("identifier \"{identifier}\""))
+}
+
+/// Chọn yêu cầu chữ ký của macOS theo biến lúc build (bảng ở spec 2026-10-05, mục 3.1). `Err` là lý do không chính hãng.
+pub fn mac_requirement(team_id: Option<&str>, mac_signing: Option<&str>, identifier: &str) -> Result<String, String> {
+    match team_id.filter(|t| !t.is_empty()) {
+        Some(team) => team_requirement(team).ok_or_else(|| "Team ID sai dạng".to_string()),
+        None if mac_signing == Some("adhoc") => {
+            identifier_requirement(identifier).ok_or_else(|| "bundle id sai dạng".to_string())
+        }
+        None => Err("bản phát hành thiếu Team ID".to_string()),
+    }
 }
 
 /// Kiểm bản đang chạy.
@@ -184,6 +207,42 @@ mod tests {
             // Bản phát hành build thiếu Team ID (chưa qua CI của 07): không chính hãng, chỉ chạy Free.
             assert!(matches!(check_this_build(), Genuineness::NotGenuine(_)));
         }
+    }
+
+    #[test]
+    fn the_identifier_requirement_only_takes_a_plain_bundle_id() {
+        assert_eq!(
+            identifier_requirement("com.aitranslator.desktop").as_deref(),
+            Some("identifier \"com.aitranslator.desktop\"")
+        );
+        assert_eq!(identifier_requirement("a\" or true"), None);
+        assert_eq!(identifier_requirement("a b"), None);
+        assert_eq!(identifier_requirement(""), None);
+        assert_eq!(identifier_requirement(&"a".repeat(129)), None);
+    }
+
+    #[test]
+    fn the_mac_mode_follows_the_build_variables() {
+        let id = "com.aitranslator.desktop";
+        let strict = team_requirement("ABCDE12345").unwrap();
+        // Chặt: có Team ID hợp lệ thì cờ ad-hoc không có tác dụng.
+        for flag in [None, Some("adhoc"), Some("khác")] {
+            assert_eq!(mac_requirement(Some("ABCDE12345"), flag, id), Ok(strict.clone()));
+        }
+        // Ad-hoc: không có Team ID (hay rỗng) và cờ đúng chữ `adhoc`.
+        let adhoc = Ok("identifier \"com.aitranslator.desktop\"".to_string());
+        assert_eq!(mac_requirement(None, Some("adhoc"), id), adhoc);
+        assert_eq!(mac_requirement(Some(""), Some("adhoc"), id), adhoc);
+        // Khóa: thiếu cấu hình, hoặc cờ lạ.
+        assert!(mac_requirement(None, None, id).is_err());
+        assert!(mac_requirement(Some(""), None, id).is_err());
+        assert!(mac_requirement(None, Some("ADHOC"), id).is_err());
+        assert!(mac_requirement(None, Some(""), id).is_err());
+        // Team ID đặt mà sai dạng không được rơi xuống chế độ lỏng hơn.
+        assert!(mac_requirement(Some("abc"), Some("adhoc"), id).is_err());
+        // Bundle id sai dạng thì ad-hoc cũng khóa.
+        assert!(mac_requirement(None, Some("adhoc"), "a\" or true").is_err());
+        assert!(mac_requirement(None, Some("adhoc"), "").is_err());
     }
 
     /// Trên máy thật, không cần quyền gì: `/bin/ls` do Apple ký nên qua yêu cầu `anchor apple`, nhưng không qua yêu cầu
