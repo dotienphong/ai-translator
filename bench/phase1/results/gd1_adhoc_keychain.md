@@ -28,3 +28,19 @@ Lần đầu bản 1 chưa thoát hẳn khi chép bản 2 đè lên (tiến trì
 - Cài mới lần đầu không bị hỏi Keychain; chỉ có Gatekeeper (Open Anyway) và quyền thu âm.
 - Lưu ý khi mô phỏng: `ditto` kèm `xattr` quarantine vào `/Applications` làm app chạy qua App Translocation; khách thật kéo từ `.dmg` bằng Finder có thể không bị translocation. Chưa đo đường đó.
 - Chưa đo qua bộ cập nhật tự động của app (cần bản đăng lên R2); lần này thay bản bằng tay.
+
+## Thử giảm hỏi lại: yêu cầu định danh cố định bằng `codesign -r` (2026-10-05, buổi tối)
+
+Cách thử: ký lại hai bản `.app` đã dựng bằng `codesign --force --sign - -r "=designated => identifier \"com.aitranslator.desktop\"" --options runtime --entitlements src-tauri/release/entitlements.plist`. `codesign` chấp nhận; yêu cầu định danh của cả hai bản là `designated => identifier "com.aitranslator.desktop"` (trước đó là `cdhash H"…"`), CDHash vẫn khác nhau (`c4812b3f…` và `da359d5c…`), phép tự kiểm của app vẫn đạt. Cài bản 1 rồi bản 2 vào `/Applications` theo đúng quy trình ở trên, không xóa gì giữa hai bản.
+
+| Bước | Quan sát |
+|---|---|
+| Bản 1 (yêu cầu định danh), nhập key X2, bắt đầu dịch | Dịch được (log: 3 đoạn lúc 23:10). Quyền thu âm đã cấp. |
+| Mở bản 2 thay bản 1 (sau khi thoát hẳn) | **5 hộp thoại Keychain** và **quyền thu âm hỏi lại**; còn Pro X2; phụ đề hiện (log 23:13 và 23:14, bản `0.1.0-adhoc2`). |
+| Mở lại bản 2 | Không còn hộp thoại nào. |
+
+**Kết luận: không có tác dụng.** Số hộp thoại giống hệt khi không có yêu cầu định danh. Nhiều khả năng macOS gắn quyền Keychain (partition ID) và quyền thu âm của app ký ad-hoc với mã băm của chính chữ ký (`cdhash`), không dùng yêu cầu định danh ta đặt. Đây là suy luận từ kết quả đo, chưa kiểm trực tiếp bằng công cụ.
+
+Ghi chú về cách đo:
+- `clean.sh` (script đo, nằm ngoài repo) lần đầu xóa cả `quota-paid-*` và `quota-mark-*`, nên app áp luật mất bản ghi bộ đếm (spec §6.8): coi như hết hạn mức cả chu kỳ khi nhập lại key trên cùng máy. Phải nhờ admin `reset-quota` (activation của license X2, `quota_epoch` 0 lên 1), rồi gỡ kích hoạt và nhập lại key để có token `quota_fresh`. Không xóa các mục `quota-*` và `license*` khi đo lại.
+- Máy có sẵn một chứng thư `Apple Development` (Apple ID miễn phí, có Team ID cá nhân). Chưa thử ký bằng nó.
