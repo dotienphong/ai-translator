@@ -4680,6 +4680,12 @@ No known vulnerabilities found
 
 ## Task 13: Bucket R2 staging, khóa staging, manifest staging (cần người)
 
+> **Errata 2026-10-05 (một môi trường production, spec `2026-10-04-single-production-environment-design.md`): làm task này trên production.** Không tạo bucket staging hay khóa `stg-`. Thay đổi so với chữ dưới:
+> - Step 1: dùng bucket production duy nhất (`docs/release/phat-hanh.md` mục 1.3, ví dụ `ai-translator-releases`), thư mục model đặt dưới bucket đó; hoặc một bucket model production riêng nếu muốn tách. Không có bucket `-staging`.
+> - Step 3–4: không tạo khóa trên máy dev. Khóa `prod-` tạo theo `phat-hanh.md` mục 1.2 (máy không mạng, USB `KHOA`), rồi commit `body.json` vào repo và chạy workflow `Sign model manifest` (GitHub Actions) để ký; tải artifact `models.json` về.
+> - Step 6: điền `PRODUCTION_URL` trong `src-tauri/src/models/source.rs` (không còn `STAGING_URL`).
+> - Step 7: chạy `scripts/run-dev-app.sh` (bản dev nối manifest production như người dùng thật).
+
 Dòng 5, 157, 158, 162, 258; Đ8; QĐ10, QĐ12. Tạo bucket, gắn tên miền và tạo API token là bước của người trên dashboard Cloudflare (tài khoản của sản phẩm, T4). Phần còn lại agent làm được, theo đúng thứ tự dưới.
 
 **Files:**

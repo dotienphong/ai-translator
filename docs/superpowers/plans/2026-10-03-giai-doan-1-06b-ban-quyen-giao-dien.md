@@ -2142,6 +2142,8 @@ khớp: 0
 
 ## Task 6: Thử tay trên Mac với staging (cần người)
 
+> **Errata 2026-10-05 (một môi trường production, spec `2026-10-04-single-production-environment-design.md`): làm task này trên production**, sau khi đã triển khai theo `docs/release/phat-hanh.md` mục 4. Step 1 không làm riêng: URL và khóa công khai đã điền ở bước 13 của mục 4 (`PRODUCTION_URL` trong `license/client.rs`, khối `production`). Chạy app bằng `scripts/run-dev-app.sh` **không** đặt `AI_TRANSLATOR_DEV_PRO=true` (biến `AI_TRANSLATOR_DEV_FREE` đã bỏ; mặc định là đường thật). Giá là giá thật; mọi đơn, máy và hạn mức là bản ghi production thật.
+
 Bàn giao "chạy được" của 06 (mục 2.6 của kế hoạch 00) cần staging của 05 và người: giao dịch thật, hộp thoại của Keychain, đổi giờ máy thật. Agent không tự chạy app và không bật hộp thoại quyền (mục 6.8 của kế hoạch 00): agent chuẩn bị, đưa từng bước cho người, ghi kết quả. Dòng 11, 14, 44, 46, 55, 58, 182, 183, 242, 265, 266, 310 (phần người).
 
 **Cần người thao tác:** cả task. **Cần trước:** 05 Task 19 (staging chạy, có cặp khóa ký token của staging, kênh PayOS của staging theo P05-1); Q14 của 05 (tài khoản PayOS). Chạy app bằng `scripts/run-dev-app.sh` với `AI_TRANSLATOR_DEV_FREE=1` (bản debug, dùng trạng thái bản quyền thật và khóa `staging`; QĐ17).

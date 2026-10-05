@@ -9321,6 +9321,8 @@ Expected: hai lần `grep_exit=1`. Diff chỉ có `database_id`, `ACCESS_AUD`, `
 
 ## Task 20 (người): Giao dịch thử trên staging
 
+> **Errata 2026-10-05 (một môi trường production, spec `2026-10-04-single-production-environment-design.md`): làm task này trên production**, sau `docs/release/phat-hanh.md` mục 4 bước 1–11 (đó là bước 12 của mục 4). Thay `STG` bằng `PROD`, `ADMIN` bằng `PADMIN`. Giá là giá thật (gói `pro` 50.000 đ), không sửa `PLANS` (P05-2 bỏ); đơn đầu có `"order_code":1000001`, nội dung chuyển khoản `AT1000001`. Xong thì hoàn tiền tay nếu muốn (spec 2026-10-04 §1 mục 5). Step 9 (đổi gói) tốn thêm tiền thật: chỉ làm nếu chủ dự án muốn. Máy giả ở Step 5 đặt tên khác `staging-test-device`, ví dụ `prod-test-device`. Lệnh `verify-token.mjs` dùng `production`.
+
 **Cần người thao tác:** trả tiền thật (2.000 đ cho gói `pro`, thêm 3.000 đ nếu làm Step 9), đọc email, xem dashboard. Đây là test tích hợp của §11 (dòng 294), vì PayOS không có môi trường test. `STG` và `ADMIN` như Task 19.
 
 - [ ] **Step 1: Tạo đơn**
