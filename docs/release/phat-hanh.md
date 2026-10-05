@@ -321,3 +321,17 @@ chủ tài khoản Resend: chưa đủ để bán.
       `a`, `b`; test `the_app_copy_matches_the_server_file_when_it_exists` đỏ nếu lệch);
     - `git add server/wrangler.jsonc server/wrangler.admin.jsonc server/keys/public-keys.json src-tauri/src/license/client.rs src-tauri/keys/license-public-keys.json`
       rồi commit. Đổi khóa ký thì app phải tin cả hai `kid` trước khi server đổi ô ký (spec §10.2).
+
+## 5. Bản macOS ký ad-hoc (chưa có Developer ID)
+
+Chưa có Developer ID thì để biến `APPLE_TEAM_ID` của repo **rỗng** và không nạp secret `APPLE_*`. CI tự build app với
+`AI_TRANSLATOR_MAC_SIGNING=adhoc` (spec `2026-10-05-macos-adhoc-signing-design.md`), ký ad-hoc, bỏ qua notarize, và ghi dòng
+"Bản macOS ký ad-hoc, chưa notarize" vào tóm tắt của lần chạy.
+
+- App ở chế độ này chỉ kiểm chữ ký còn nguyên vẹn và bundle id; gói trả phí chạy được. Lỗi `NotGenuine` thì xem log của app.
+- Gatekeeper chặn lần mở đầu. Hướng dẫn cho khách: kéo app vào Applications, mở một lần (sẽ bị chặn), rồi vào System Settings ›
+  Privacy & Security, cuối trang, bấm "Open Anyway" cạnh tên app. Từ macOS 15, bấm chuột phải › Open không còn dùng được.
+- Có Developer ID thì đặt `APPLE_TEAM_ID` và các secret `APPLE_*` (mục 3, "Chứng thư ký mã"); không phải sửa code. Biến
+  `APPLE_TEAM_ID` có giá trị thì app về chế độ chặt (yêu cầu đúng Team ID). **Đặt `APPLE_TEAM_ID` mà vẫn ký ad-hoc thì bản đó
+  bị coi là không chính hãng và chỉ chạy Free**, nên đặt cùng lúc với secret chứng thư.
+- Tạm đặt `APPLE_TEAM_ID` sai dạng cũng khóa (không tự hạ xuống chế độ ad-hoc), để lỗi cấu hình lộ ra ngay.

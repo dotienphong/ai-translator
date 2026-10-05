@@ -40,7 +40,7 @@ Dòng cuối giữ nguyên nguyên tắc "cấu hình sai thì khóa": Team ID �
 ### 3.3 Build và phát hành
 - `release.yml`, job build app: đặt `AI_TRANSLATOR_MAC_SIGNING=adhoc` khi `vars.APPLE_TEAM_ID` rỗng.
 - `package-macos.sh` đã ký ad-hoc khi không có `MT_SIGN_IDENTITY` và bỏ qua notarize khi không có khóa; không cần sửa phần ký.
-- Các kiểm tra cấu hình phát hành (`release-check.mjs`, `check-release-config.sh`) chấp nhận chế độ ad-hoc một cách tường minh, và in dòng "bản ký ad-hoc, chưa notarize" vào tóm tắt của CI.
+- `release-check.mjs` và `check-release-config.sh` không đọc Team ID nên không đổi. Bước ký của CI in dòng "bản ký ad-hoc, chưa notarize" vào tóm tắt khi không có chứng thư.
 - Cổng `no-dev-gate` không đổi.
 
 ### 3.4 Tài liệu
