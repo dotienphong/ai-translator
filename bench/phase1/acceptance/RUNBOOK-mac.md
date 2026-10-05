@@ -96,11 +96,11 @@ ngoài danh sách, hay gọi lúc đang dịch mà không phải việc chạy t
    2. Bấm **Bắt đầu** và **ghi giờ Bắt đầu**. Trong cửa sổ khác:
       ```bash
       python3 bench/phase1/acceptance/soak.py pids --app meeting-translator
-      nettop -P -x -t external -L 0 -s 5 -J bytes_in,bytes_out -p <pid1> -p <pid2> … > "$HOME/a7-nettop.csv"
+      nettop -P -x -t external -L 180 -s 5 -J bytes_in,bytes_out -p <pid1> -p <pid2> … > "$HOME/a7-nettop.csv"
       ```
       (mỗi pid ở lệnh trên là một `-p`). Phát câu mẫu `public/listen-test-en.wav` nhiều lần trong 15 phút (QuickTime),
       cùng một video tiếng Anh có sẵn trên máy.
-   3. Ngay trước khi bấm Dừng, dừng `nettop` (Ctrl+C). Đúng khi số byte của `com.apple.WebKit.*` và hai tiến trình phụ
+   3. `nettop` tự thoát sau 180 mẫu (15 phút ở `-s 5`): bấm Dừng ngay sau khi nó thoát. Đừng dừng nó bằng `kill` khi chạy nền: tiến trình nền bỏ qua SIGINT và dữ liệu chỉ ghi ra file lúc `nettop` thoát. Chỉ có hàng tiêu đề trong CSV là bình thường (không luồng ngoài nào đang mở); tiến trình có luồng thì có thêm một hàng. Đúng khi số byte của `com.apple.WebKit.*` và hai tiến trình phụ
       **không tăng** từ khối đầu tới khối cuối; của app chỉ tăng lúc có request trong HAR.
    4. Bấm **Dừng** và **ghi giờ Dừng**. Bấm **Kiểm tra ngay** lần nữa (để HAR có request **sau** Dừng). Xuất bản chép lời
       ra TXT, mở Lịch sử.
@@ -127,3 +127,21 @@ ngoài danh sách, hay gọi lúc đang dịch mà không phải việc chạy t
 
 Gặp vi phạm "máy chủ không có trong danh sách cho phép" với máy chủ của app khác: proxy không lọc đúng tiến trình, làm lại
 bước 3, **không** thêm máy chủ đó vào danh sách.
+
+## Ghi chú từ lượt dry-run A5 và A7 trên bản dev (2026-10-06)
+
+Lượt chạy rút gọn (A5 10 phút, A7 dịch 8 phút) để thử công cụ; không tính là nghiệm thu. Kết quả: `bench/phase1/results/acceptance/a5a7-dryrun-2026-10-06.md`.
+
+- mitmproxy 12.2.3: lần đầu chạy `mitmdump --mode local:…` macOS xếp network extension ở trạng thái `activated waiting for user`
+  (kiểm bằng `systemextensionsctl list | grep -i mitm`) cho tới khi bật **Mitmproxy Redirector** ở System Settings › General ›
+  Login Items & Extensions › Network Extensions. Chưa bật thì request không được bắt và log trống.
+- Khớp tên: `local:cur` và `local:curl` đều bắt được `curl`, nên khớp một phần tên (dùng được `local:meeting-translator,asr-worker,llama-server`).
+- Log trực tiếp của `mitmdump` hiện **IP** thay vì tên máy chủ (HTTP/3 không có tên); trong **HAR** thì URL và header `Host` đúng tên
+  (`mt-license….workers.dev`), nên `netaudit.py` khớp được danh sách cho phép. Chỉ đọc HAR, đừng đọc log trực tiếp.
+- Máy có Tailscale và Microsoft Defender (extension mạng): không cản việc bắt.
+- Thử proxy trước khi mở app: không dùng bản chép của `curl` hệ thống (bị tắt, exit 137). Dùng một chương trình nhỏ dựng bằng
+  `swiftc` đặt tên `meeting-translator-probe`; **bỏ file này và khởi động lại proxy trước khi chạy thật**, vì request thử nằm trong
+  HAR sẽ bị tính là vi phạm.
+- Ghi HAR ra thư mục tạm, không để ở `$HOME`; xóa HAR sau khi kiểm (HAR chứa nội dung request).
+- Bản chép lời xuất từ Lịch sử; từ mồi (cụm "kết quả phân tích") đã có sẵn trong `a7-allow.json` cho câu mẫu `listen-test-en.wav`.
+- Luôn gỡ chứng chỉ (bước 6) rồi kiểm: `security find-certificate -c mitmproxy /Library/Keychains/System.keychain` phải báo không tìm thấy.
