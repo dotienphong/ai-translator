@@ -1,4 +1,13 @@
 {
   "_note": "Khóa công khai kiểm token bản quyền (spec §6.8, §10.2), chép nguyên từ server/keys/public-keys.json (kế hoạch 05, Task 21). Chỉ có một môi trường, production, với hai ô a, b (khóa đang ký và khóa dự phòng). App bỏ qua `retired` và `_note`. Ô trống thì mọi token đều `unknown_kid` (gói Free).",
-  "production": {}
+  "production": {
+    "a": {
+      "kid": "prod-2026-10-1",
+      "x": "U3EDlpylVKGK7ec-7VoQBZgBVB6h5PNtujUrVJYWQfs"
+    },
+    "b": {
+      "kid": "prod-2026-10-2",
+      "x": "BvrhThjXtFR-MIVT1_PEiO4mXSbeNDefaVeX8ACMcbs"
+    }
+  }
 }
