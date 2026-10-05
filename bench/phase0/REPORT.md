@@ -34,7 +34,7 @@ Phạm vi đo: một máy duy nhất, MacBook Pro M4 Pro 24 GB, macOS 26.6.2. Kh
 | 8 | Rút ngắn `audio_ctx` làm WER tăng ≤ 10% | **Không đạt theo từng ô.** Cấu hình mặc định: 5/10 ô vượt (turbo en, vi, zh, ko; small ko); bỏ bản chép hai lần còn 3/10. Với sàn 512: 3/10 ô vượt trên cùng bản build; ba ô này nằm ở clip dài hơn 9 giây, còn đoạn của app dài tối đa 8 giây. Sàn 512 giảm tổng lỗi (turbo −6,4%, small −1,5%) | `results/s7_asr.md`, `results/phase0_review_notes.md` |
 | 9 | Chi phí nhận diện ngôn ngữ < 20% thời gian nhận dạng | **Đạt với chế độ B**: 0–2% thời gian chép lời. Chế độ A không đạt (small 11–19%, turbo 24–36%) | `results/s3_ab.md` |
 | 10 | Truyền âm thanh qua stdin/stdout thêm ≤ 10 ms mỗi đoạn | **Đạt trên M4 Pro**: p50 0,4–0,9 ms, lớn nhất 2,9 ms. Chỉ có số ghi trong spec §6.4, không có file kết quả riêng | spec §6.4 |
-| 11 | `transactionDateTime` của PayOS là giờ Việt Nam | **Chưa kiểm** (cần giao dịch thật trên staging, kế hoạch Giai đoạn 1 · 05 Task 20) | không có |
+| 11 | `transactionDateTime` của PayOS là giờ Việt Nam | **Đạt** ngày 2026-10-05: giao dịch thật 50.000 đ trên production, `paid_at` = 11:37:40 giờ Việt Nam, khớp giờ chuyển khoản | `bench/phase1/results/gd1_production_deploy.md` |
 
 ## Độ trễ và tài nguyên (S6)
 
