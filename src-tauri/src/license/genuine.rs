@@ -51,12 +51,12 @@ pub fn mac_requirement(team_id: Option<&str>, mac_signing: Option<&str>, identif
     }
 }
 
-/// Kiểm bản đang chạy.
-pub fn check_this_build() -> Genuineness {
+/// Kiểm bản đang chạy. `identifier` là bundle identifier của app (`app.config().identifier`), chỉ macOS dùng.
+pub fn check_this_build(identifier: &str) -> Genuineness {
     if cfg!(debug_assertions) {
         return Genuineness::Skipped;
     }
-    platform::check_self()
+    platform::check_self(identifier)
 }
 
 #[cfg(target_os = "macos")]
@@ -67,7 +67,7 @@ pub mod platform {
     use core_foundation::url::CFURL;
     use security_framework::os::macos::code_signing::{Flags, SecCode, SecRequirement, SecStaticCode};
 
-    use super::{Genuineness, TEAM_ID, team_requirement};
+    use super::{Genuineness, MAC_SIGNING, TEAM_ID, mac_requirement};
 
     /// Kiểm chữ ký của code ở `path` (file thực thi hay gói `.app`) theo `requirement` (cú pháp của `codesign`).
     pub fn check_path(path: &Path, requirement: &str) -> Result<(), String> {
@@ -78,9 +78,10 @@ pub mod platform {
             .map_err(|e| e.to_string())
     }
 
-    pub fn check_self() -> Genuineness {
-        let Some(requirement) = TEAM_ID.and_then(team_requirement) else {
-            return Genuineness::NotGenuine("bản phát hành thiếu Team ID".into());
+    pub fn check_self(identifier: &str) -> Genuineness {
+        let requirement = match mac_requirement(TEAM_ID, MAC_SIGNING, identifier) {
+            Ok(requirement) => requirement,
+            Err(why) => return Genuineness::NotGenuine(why),
         };
         let path = match SecCode::for_self(Flags::NONE).and_then(|c| c.path(Flags::NONE)) {
             Ok(url) => url.to_path(),
@@ -164,7 +165,7 @@ pub mod platform {
         }
     }
 
-    pub fn check_self() -> Genuineness {
+    pub fn check_self(_identifier: &str) -> Genuineness {
         let Some(expected) = SIGNER else {
             return Genuineness::NotGenuine("bản phát hành thiếu tên người ký".into());
         };
@@ -184,7 +185,7 @@ pub mod platform {
 pub mod platform {
     use super::Genuineness;
 
-    pub fn check_self() -> Genuineness {
+    pub fn check_self(_identifier: &str) -> Genuineness {
         Genuineness::NotGenuine("chỉ hỗ trợ macOS và Windows".into())
     }
 }
@@ -202,10 +203,17 @@ mod tests {
         assert_eq!(team_requirement("abc\" or true"), None);
         assert_eq!(team_requirement(""), None);
         if cfg!(debug_assertions) {
-            assert_eq!(check_this_build(), Genuineness::Skipped, "bản debug bỏ qua");
-        } else if TEAM_ID.is_none() && SIGNER.is_none() {
-            // Bản phát hành build thiếu Team ID (chưa qua CI của 07): không chính hãng, chỉ chạy Free.
-            assert!(matches!(check_this_build(), Genuineness::NotGenuine(_)));
+            assert_eq!(
+                check_this_build("com.example.test"),
+                Genuineness::Skipped,
+                "bản debug bỏ qua"
+            );
+        } else if TEAM_ID.is_none() && SIGNER.is_none() && MAC_SIGNING.is_none() {
+            // Bản phát hành build thiếu cấu hình ký (chưa qua CI của 07): không chính hãng, chỉ chạy Free.
+            assert!(matches!(
+                check_this_build("com.example.test"),
+                Genuineness::NotGenuine(_)
+            ));
         }
     }
 
@@ -258,5 +266,60 @@ mod tests {
         std::fs::write(&unsigned, b"#!/bin/sh\necho hi\n").unwrap();
         assert!(platform::check_path(&unsigned, "anchor apple").is_err());
         std::fs::remove_file(unsigned).unwrap();
+    }
+
+    /// Dựng một file thực thi nhỏ, ký ad-hoc với `identifier` (cần `cc` và `codesign`, đều có trên Mac đã cài công cụ
+    /// dòng lệnh). Trả (thư mục tạm, đường dẫn file).
+    #[cfg(target_os = "macos")]
+    fn ad_hoc_binary(identifier: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+        use std::process::Command;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static N: AtomicUsize = AtomicUsize::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "mt-adhoc-{}-{}",
+            std::process::id(),
+            N.fetch_add(1, Ordering::SeqCst)
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let source = dir.join("main.c");
+        std::fs::write(&source, "int main(void) { return 0; }\n").unwrap();
+        let bin = dir.join("bin");
+        let built = Command::new("cc").arg(&source).arg("-o").arg(&bin).status().unwrap();
+        assert!(built.success(), "cc không dựng được file thử");
+        let signed = Command::new("codesign")
+            .args(["--force", "--sign", "-", "--identifier", identifier])
+            .arg(&bin)
+            .status()
+            .unwrap();
+        assert!(signed.success(), "codesign ad-hoc lỗi");
+        (dir, bin)
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn an_ad_hoc_signature_is_checked_against_the_bundle_identifier() {
+        let id = "com.aitranslator.desktop.test";
+        let (dir, bin) = ad_hoc_binary(id);
+        platform::check_path(&bin, &identifier_requirement(id).unwrap()).unwrap();
+        assert!(platform::check_path(&bin, &identifier_requirement("com.example.other").unwrap()).is_err());
+        // Chữ ký ad-hoc không phải của một Team ID nào.
+        assert!(platform::check_path(&bin, &team_requirement("ABCDE12345").unwrap()).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_byte_changed_after_signing_fails_the_ad_hoc_check() {
+        let id = "com.aitranslator.desktop.test";
+        let (dir, bin) = ad_hoc_binary(id);
+        let requirement = identifier_requirement(id).unwrap();
+        platform::check_path(&bin, &requirement).unwrap();
+        // Byte cuối của trang đầu (16 KiB) nằm trong vùng mã được băm, và không phải đầu mục nên file vẫn đọc được.
+        let mut bytes = std::fs::read(&bin).unwrap();
+        assert!(bytes.len() > 16_384, "file thử quá nhỏ: {} byte", bytes.len());
+        bytes[16_383] ^= 0xff;
+        std::fs::write(&bin, bytes).unwrap();
+        assert!(platform::check_path(&bin, &requirement).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

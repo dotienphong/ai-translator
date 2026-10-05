@@ -205,7 +205,7 @@ fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
     let app = app.clone();
     std::thread::spawn(move || {
         // Kiểm chữ ký của bản cài trước (§10.2); không chính hãng thì chỉ chạy Free.
-        let genuine = super::genuine::check_this_build();
+        let genuine = super::genuine::check_this_build(&app.config().identifier);
         if let super::genuine::Genuineness::NotGenuine(why) = &genuine {
             log::error!("bản cài không chính hãng: {why}");
         }
