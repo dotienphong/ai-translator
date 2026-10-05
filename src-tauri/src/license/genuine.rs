@@ -1,12 +1,14 @@
 //! App tự kiểm chữ ký số của chính nó lúc khởi động (spec §10.2, "Sửa hoặc ký lại file của app"):
 //! - macOS: `SecStaticCodeCheckValidity` trên gói `.app` đang chạy, kiểm cả code lồng bên trong (tiến trình phụ, dylib),
-//!   với yêu cầu chứng thư Developer ID của đúng Team ID;
+//!   theo một trong hai chế độ: có Team ID hợp lệ thì yêu cầu chứng thư Developer ID của đúng Team ID (cờ ad-hoc bị bỏ
+//!   qua); không có Team ID mà build đặt `AI_TRANSLATOR_MAC_SIGNING=adhoc` (spec 2026-10-05) thì chỉ yêu cầu chữ ký còn
+//!   nguyên vẹn và đúng bundle id;
 //! - Windows: `WinVerifyTrust` trên file `.exe` đang chạy, rồi so tên chủ chứng thư của người ký. Cần Windows để thử.
 //!
 //! Chữ ký không hợp lệ thì app chỉ chạy Free và báo "Bản cài không chính hãng" kèm link tải chính thức. Bản debug bỏ qua
 //! bước này. Team ID và tên chủ chứng thư thật chờ tài khoản (T1, T2): kế hoạch 07 đặt biến môi trường lúc build trong CI
-//! (`AI_TRANSLATOR_TEAM_ID`, `AI_TRANSLATOR_SIGNER`). Bản phát hành build thiếu biến này thì coi là không chính hãng
-//! (quên cấu hình thì khóa, không mở cho không).
+//! (`AI_TRANSLATOR_TEAM_ID`, `AI_TRANSLATOR_SIGNER`, `AI_TRANSLATOR_MAC_SIGNING`). Bản phát hành build thiếu cấu hình ký
+//! (macOS: thiếu cả Team ID lẫn chế độ ad-hoc) thì coi là không chính hãng (quên cấu hình thì khóa, không mở cho không).
 
 /// Team ID của Apple Developer, đặt lúc build bản phát hành (kế hoạch 07).
 pub const TEAM_ID: Option<&str> = option_env!("AI_TRANSLATOR_TEAM_ID");
@@ -47,7 +49,9 @@ pub fn mac_requirement(team_id: Option<&str>, mac_signing: Option<&str>, identif
         None if mac_signing == Some("adhoc") => {
             identifier_requirement(identifier).ok_or_else(|| "bundle id sai dạng".to_string())
         }
-        None => Err("bản phát hành thiếu Team ID".to_string()),
+        None => {
+            Err("bản phát hành thiếu Team ID và không bật chế độ ad-hoc (AI_TRANSLATOR_MAC_SIGNING=adhoc)".to_string())
+        }
     }
 }
 
@@ -314,10 +318,10 @@ mod tests {
         let (dir, bin) = ad_hoc_binary(id);
         let requirement = identifier_requirement(id).unwrap();
         platform::check_path(&bin, &requirement).unwrap();
-        // Byte cuối của trang đầu (16 KiB) nằm trong vùng mã được băm, và không phải đầu mục nên file vẫn đọc được.
+        // Byte ở một phần tư file nằm trong vùng mã được băm (trang đầu), và không phải đầu mục nên file vẫn đọc được.
         let mut bytes = std::fs::read(&bin).unwrap();
-        assert!(bytes.len() > 16_384, "file thử quá nhỏ: {} byte", bytes.len());
-        bytes[16_383] ^= 0xff;
+        let at = bytes.len() / 4;
+        bytes[at] ^= 0xff;
         std::fs::write(&bin, bytes).unwrap();
         assert!(platform::check_path(&bin, &requirement).is_err());
         std::fs::remove_dir_all(dir).unwrap();
