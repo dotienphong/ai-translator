@@ -185,8 +185,8 @@ const PAGE_CSS = `
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;color:var(--text);background:var(--bg)}
 main{width:100%;max-width:26rem;padding:2rem 1.5rem;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:calc(var(--radius)*2);box-shadow:0 8px 30px rgba(20,24,33,.08)}
-.brand{display:inline-flex;align-items:center;gap:.5rem;margin-bottom:1.5rem;font-weight:600;color:var(--muted)}
-.brand svg{width:1.75rem;height:1.75rem}
+.brand{display:inline-flex;align-items:center;gap:.75rem;margin-bottom:1.75rem;font-size:1.5rem;font-weight:700;color:var(--text)}
+.brand svg{width:2.75rem;height:2.75rem}
 .badge{display:grid;place-items:center;width:4.5rem;height:4.5rem;margin:0 auto 1.25rem;border-radius:50%}
 .success .badge{color:var(--ok);background:var(--ok-bg)}
 .cancel .badge{color:var(--warn);background:var(--warn-bg)}
