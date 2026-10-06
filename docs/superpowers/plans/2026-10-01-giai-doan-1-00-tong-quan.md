@@ -1062,7 +1062,7 @@ Cách đọc:
 | T4 | Cloudflare riêng cho sản phẩm | Đã có | 04 (R2), 05 (Workers, D1, Access, Cron Triggers) | Người chạy `wrangler login` và tạo API token phạm vi hẹp khi cần |
 | T5 | PayOS merchant | Đã có. Chỉ cần một kênh thanh toán cho production (P05-1 không còn cần, spec 2026-10-04 §4) | 05 | Người lấy client id, api key, checksum key của kênh production, rồi nhập bằng `wrangler secret put` (`docs/release/phat-hanh.md` mục 4 bước 5, 8) |
 | T6 | Resend | Chưa ghi nhận là có; cần tạo trước 05 Task 19 | 05 | Test dùng `EmailProvider` giả. Trước khi có tên miền đã xác thực, chỉ gửi thử được ở mức hạn chế |
-| T7 | Tên miền | Chưa có; chủ dự án mua sau (Q1) | 04, 05, 07 | Chưa có tên miền thì production dùng tạm `*.workers.dev` và URL `r2.dev` của bucket; cần tên miền trước khi nhúng URL vào bản beta và phát hành công khai (spec §15) |
+| T7 | Tên miền | **Đã có `aitranslator.io.vn`** (2026-10-06); đã chuyển URL: `api.` (license server), `releases.` (R2: bản cập nhật, model), `mail.` (Resend), `support@` (Email Routing); app dùng tên mới từ `c81d9bd` (kiểm ở `bench/phase1/results/gd1_custom_domain.md`) | 04, 05, 07 | Còn giữ `workers.dev` và `r2.dev` làm đường lui cho bản cài cũ; tắt khi không còn bản cài nào dùng URL cũ |
 
 ## 6. Quy ước chung cho mọi kế hoạch Giai đoạn 1
 
@@ -1369,6 +1369,7 @@ Cập nhật ngày 2026-10-01:
 - **08 #3:** duyệt: thêm `python3 -m unittest discover` của `bench/phase1/acceptance` vào job macOS của `ci.yml` (đã làm).
 - **08 #5:** các đơn mua thử trên production đã được chủ dự án **tự hoàn tiền tay**.
 - **Đã giải quyết hôm nay (xem `bench/phase1/results/`):** 07a-2 (macOS ký ad-hoc, chưa có Developer ID), 07a-7 (A3 và A2 đạt), 07b-4 (bản sao khóa không dùng USB), 08 #4, #6, #7 (A7 chạy xong).
+- **Đã chuyển URL sang tên miền riêng** (2026-10-06): xem `bench/phase1/results/gd1_custom_domain.md`.
 - **Còn chờ chủ dự án:** 07a-5 và Q8 (nội dung EULA và chính sách quyền riêng tư; tên pháp lý Đỗ Tiến Phong và email `support@aitranslator.io.vn` đã chốt ngày 2026-10-06).
 
 - **Q3. Nơi đặt repo từ xa và CI.** §10.2 nhắc Dependabot, tức là GitHub. Đã chọn: `dotienphong/ai-translator` (riêng tư; trước là `ai-live-translator-desktop`); CI chạy lần đầu ở 07a Task 14.
