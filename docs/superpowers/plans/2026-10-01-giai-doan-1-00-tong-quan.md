@@ -1358,6 +1358,19 @@ Cập nhật ngày 2026-10-01:
 
 ### 8.3 Còn mở
 
+**Quyết định của chủ dự án ngày 2026-10-06** (các điểm này thay cho đề xuất cũ ở các mục bên dưới; điểm nào bên dưới trùng thì theo khối này):
+
+- **Thứ tự Windows (07a-1, 08 #2):** Giai đoạn 1 vẫn gồm Windows, nhưng **hoàn thiện và nghiệm thu macOS trước, rồi mới làm Windows**. Các dòng Windows của bảng đối chiếu để `chờ` tới khi macOS xong, không `hoãn` ra khỏi Giai đoạn 1. `report.py` vẫn đòi cả Mac lẫn Windows cho A5 và A7.
+- **Tên miền (T7, 07b-1):** chủ dự án có `ai-solutions.io.vn` (zone nằm cùng tài khoản Cloudflare với mapsLibVN). Dùng subdomain một cấp; chưa chốt tên subdomain và chưa đổi URL trong app. Đổi URL nhúng sẵn (license server, nguồn cập nhật, manifest model) làm trước khi phát bản beta cho người khác, vì máy đã cài bản cũ cần một bản cầu nối.
+- **07a-3:** người duyệt environment `release` là chỉ chủ dự án (tắt "prevent self-review").
+- **07a-6:** **không** bật Dependabot (cảnh báo hay cập nhật bảo mật) lúc này.
+- **07b-2, 07b-3, 07b-5:** duyệt theo đề xuất (người dùng tự chọn kênh beta, mặc định stable; chấp nhận máy chưa lên bản chuyển tiếp khóa phải cài lại tay; beta khoảng 2–4 tuần cho vài người quen rồi mới stable đầu tiên).
+- **08 #1:** duyệt: làm 12 ô macOS 26 của ma trận A1 bây giờ; ô Windows 11, Windows 10 làm ở đợt Windows; ô macOS 14.2, 15, 27 chờ có thiết bị.
+- **08 #3:** duyệt: thêm `python3 -m unittest discover` của `bench/phase1/acceptance` vào job macOS của `ci.yml` (đã làm).
+- **08 #5:** các đơn mua thử trên production đã được chủ dự án **tự hoàn tiền tay**.
+- **Đã giải quyết hôm nay (xem `bench/phase1/results/`):** 07a-2 (macOS ký ad-hoc, chưa có Developer ID), 07a-7 (A3 và A2 đạt), 07b-4 (bản sao khóa không dùng USB), 08 #4, #6, #7 (A7 chạy xong).
+- **Còn chờ chủ dự án:** 07a-5 và Q8 (tên pháp lý cho `publisher`, `copyright`, EULA, chính sách quyền riêng tư; tên subdomain; email hỗ trợ).
+
 - **Q3. Nơi đặt repo từ xa và CI.** §10.2 nhắc Dependabot, tức là GitHub. Đã chọn: `dotienphong/ai-translator` (riêng tư; trước là `ai-live-translator-desktop`); CI chạy lần đầu ở 07a Task 14.
   - Đề xuất: repo GitHub riêng tư, tạo sớm (trước 04), để:
     - ký manifest chính thức trong CI (04);
