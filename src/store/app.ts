@@ -41,6 +41,8 @@ export interface AppStoreState {
   screen: Screen;
   settingsGroup: SettingsGroup;
   onboardingStep: number;
+  // Đã tick đồng ý EULA và chính sách ở bước Điều khoản; chỉ trong phiên onboarding, không ghi xuống đĩa.
+  termsAccepted: boolean;
   error: UiError | null;
   notice: AppNotice | null;
   // Lệnh Bắt đầu/Dừng đang chờ phía Rust trả lời: nút bị khóa, bấm thêm không gửi lệnh thứ hai.
@@ -58,6 +60,7 @@ export interface AppStoreState {
   init(): Promise<() => void>;
   navigate(screen: Screen, settingsGroup?: SettingsGroup | null): void;
   setOnboardingStep(step: number): void;
+  setTermsAccepted(accepted: boolean): void;
   updateSettings(patch: SettingsPatch): Promise<boolean>;
   setSourceLanguage(lang: Lang, on: boolean): Promise<void>;
   setHotkey(action: HotkeyAction, accelerator: string): Promise<UiError | null>;
@@ -147,6 +150,7 @@ export function createAppStore(ipc: Ipc) {
       screen: "home",
       settingsGroup: "general",
       onboardingStep: 0,
+      termsAccepted: false,
       error: null,
       notice: null,
       sessionPending: false,
@@ -194,6 +198,10 @@ export function createAppStore(ipc: Ipc) {
 
       setOnboardingStep(onboardingStep) {
         set({ onboardingStep });
+      },
+
+      setTermsAccepted(termsAccepted) {
+        set({ termsAccepted });
       },
 
       updateSettings(patch) {

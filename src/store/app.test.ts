@@ -348,6 +348,15 @@ describe("app store", () => {
     expect(canOpenScreens(store.getState())).toBe(true);
   });
 
+  it("đồng ý điều khoản chỉ nằm trong phiên: đầu tiên chưa đồng ý, đổi được hai chiều", () => {
+    const { store } = setup();
+    expect(store.getState().termsAccepted).toBe(false);
+    store.getState().setTermsAccepted(true);
+    expect(store.getState().termsAccepted).toBe(true);
+    store.getState().setTermsAccepted(false);
+    expect(store.getState().termsAccepted).toBe(false);
+  });
+
   it("xong các bước lần đầu thì lưu onboardingDone và về màn hình chính", async () => {
     const { fake, store } = setup();
     await store.getState().init();
