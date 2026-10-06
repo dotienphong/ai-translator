@@ -28,6 +28,19 @@ describe("Resend", () => {
     });
   });
 
+  it("có replyTo thì gửi thêm reply_to, không có thì không gửi trường đó", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const fetchFn = async (_url: string, init: RequestInit = {}) => {
+      bodies.push(JSON.parse(init.body as string));
+      return new Response("{}");
+    };
+    const message = { to: "b@mt.test", subject: "S", text: "T" };
+    await new ResendEmailProvider({ apiKey: "re_test", from: "a@mt.test", replyTo: "support@mt.test" }, fetchFn).send(message);
+    await new ResendEmailProvider({ apiKey: "re_test", from: "a@mt.test" }, fetchFn).send(message);
+    expect(bodies[0]).toEqual({ from: "a@mt.test", to: ["b@mt.test"], subject: "S", text: "T", reply_to: "support@mt.test" });
+    expect(bodies[1]).not.toHaveProperty("reply_to");
+  });
+
   it("HTTP lỗi thì ném lỗi, không kèm body", async () => {
     const p = new ResendEmailProvider(
       { apiKey: "re_test", from: "a@mt.test" },

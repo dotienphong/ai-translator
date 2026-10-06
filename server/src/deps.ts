@@ -87,7 +87,7 @@ export function realDeps(env: ApiEnv): Deps {
   return {
     now: nowSeconds,
     payments: { payos: payosFromEnv(env) },
-    email: new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM }),
+    email: new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, replyTo: env.EMAIL_REPLY_TO }),
     signingKey: () => (key ??= loadSigningKey(env)),
   };
 }

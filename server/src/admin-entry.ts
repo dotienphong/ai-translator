@@ -11,7 +11,7 @@ const app = createAdminApp((env) => {
     now: nowSeconds,
     payments: { payos },
     payos,
-    email: new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM }),
+    email: new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, replyTo: env.EMAIL_REPLY_TO }),
     plans: () => env.API.plans(),
     keyCheck: () => env.API.signKeyCheck(),
   };

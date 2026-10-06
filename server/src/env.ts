@@ -11,6 +11,8 @@ export interface ApiEnv {
   TOKEN_SIGNING_SLOT: string;
   PAYOS_BASE_URL: string;
   EMAIL_FROM: string;
+  /** Địa chỉ nhận trả lời của thư gửi khách (Reply-To). Không bắt buộc. */
+  EMAIL_REPLY_TO?: string;
   // Secret
   PAYOS_CLIENT_ID: string;
   PAYOS_API_KEY: string;
@@ -38,6 +40,8 @@ export interface AdminEnv {
   ENVIRONMENT: string;
   PAYOS_BASE_URL: string;
   EMAIL_FROM: string;
+  /** Địa chỉ nhận trả lời của thư gửi khách (Reply-To). Không bắt buộc. */
+  EMAIL_REPLY_TO?: string;
   /** Audience tag của ứng dụng Access. Bắt buộc khi ENVIRONMENT khác "test"; trống thì mọi request bị 403. */
   ACCESS_AUD?: string;
   /** Origin của Worker API cùng môi trường; confirm-webhook chỉ nhận URL webhook trên origin này. */

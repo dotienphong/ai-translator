@@ -7,6 +7,8 @@ import { type EmailMessage, type EmailProvider, EmailProviderError } from "./pro
 export interface ResendConfig {
   apiKey: string;
   from: string;
+  /** Địa chỉ nhận trả lời (Reply-To); thiếu thì thư không có Reply-To. */
+  replyTo?: string | undefined;
 }
 
 /** Trường `name` của body lỗi Resend (ví dụ "invalid_idempotent_request"); chỉ nhận chữ thường và gạch dưới. */
@@ -33,10 +35,17 @@ export class ResendEmailProvider implements EmailProvider {
       "user-agent": "license-server/1.0",
     };
     if (message.idempotencyKey) headers["idempotency-key"] = message.idempotencyKey;
+    const body: Record<string, unknown> = {
+      from: this.cfg.from,
+      to: [message.to],
+      subject: message.subject,
+      text: message.text,
+    };
+    if (this.cfg.replyTo) body.reply_to = this.cfg.replyTo;
     const res = await this.fetchFn("https://api.resend.com/emails", {
       method: "POST",
       headers,
-      body: JSON.stringify({ from: this.cfg.from, to: [message.to], subject: message.subject, text: message.text }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
