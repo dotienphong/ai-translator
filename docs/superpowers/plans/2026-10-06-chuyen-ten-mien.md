@@ -71,8 +71,8 @@ Expected: FAIL ở test mới (`bodies[0]` thiếu `reply_to`); các test cũ đ
 export interface ResendConfig {
   apiKey: string;
   from: string;
-  /** Địa chỉ nhận trả lời (Reply-To); thiếu thì thư không có Reply-To. */
-  replyTo?: string;
+  /** Địa chỉ nhận trả lời (Reply-To); thiếu thì thư không có Reply-To. `| undefined` vì tsconfig bật exactOptionalPropertyTypes. */
+  replyTo?: string | undefined;
 }
 ```
 
