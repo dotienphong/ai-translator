@@ -152,3 +152,8 @@ Lượt chạy rút gọn (A5 10 phút, A7 dịch 8 phút) để thử công c�
 - Ghi HAR ra thư mục tạm, không để ở `$HOME`; xóa HAR sau khi kiểm (HAR chứa nội dung request).
 - Bản chép lời xuất từ Lịch sử; từ mồi (cụm "kết quả phân tích") đã có sẵn trong `a7-allow.json` cho câu mẫu `listen-test-en.wav`.
 - Luôn gỡ chứng chỉ (bước 6) rồi kiểm: `security find-certificate -c mitmproxy /Library/Keychains/System.keychain` phải báo không tìm thấy.
+
+Bài học từ A7 chính thức (2026-10-06):
+- **HAR phải có request cả trước lẫn sau phiên dịch**, nếu không `netaudit.py` báo `KHÔNG ĐẠT` (không chứng minh được proxy bắt suốt cửa sổ). Sau khi bấm Dừng, bấm **Kiểm tra ngay** rồi **xác nhận dòng `POST …/validate` mới hiện trong log của `mitmdump` trước khi thoát app**; lần đầu bước này bị sót và phải chạy lại 15 phút.
+- Request `GET /stable/latest.json` (kiểm tra cập nhật theo lịch) có thể rơi vào lúc dịch; nó nằm trong danh sách cho phép (`during_session: true`), nên `trong lúc dịch: 1` là bình thường.
+- Mã máy `host` do `uuid.getnode()` nên đổi giữa các lần chạy trên máy có nhiều giao diện mạng; không dùng nó để so hai kết quả.
