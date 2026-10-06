@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useApp, useT } from "../appStore";
 import { Licenses } from "./Licenses";
 import { DebugPanel } from "../DebugPanel";
+import { LegalDetails } from "../LegalDocument";
 
 // Số lần bấm vào dòng phiên bản để mở bảng debug ẩn (§7).
 const DEBUG_CLICKS = 5;
@@ -23,6 +24,11 @@ export function About() {
           <button onClick={() => void openLogDir()}>{t("about.openLogs")}</button>
         </div>
         <p className="hint">{t("about.logsHint")}</p>
+      </div>
+      <div className="card">
+        <h2>{t("about.legal")}</h2>
+        <LegalDetails kind="eula" />
+        <LegalDetails kind="privacy" />
       </div>
       <div className="card">
         <h2>{t("about.licenses")}</h2>

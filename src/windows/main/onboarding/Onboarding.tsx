@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import type { MessageKey, UiLanguage } from "../../../i18n";
+import { canAdvance, type Step, stepsFor } from "../../../lib/onboardingSteps";
 import { useApp, useT } from "../appStore";
 import { LanguagePicker } from "../LanguagePicker";
+import { LegalDetails } from "../LegalDocument";
 import { Notice } from "../Notice";
 import { ListenTest } from "./ListenTest";
 import { DownloadStep, ModelStep } from "./ModelSteps";
@@ -9,11 +11,11 @@ import { TaskbarGuide } from "./TaskbarGuide";
 
 // Các bước lần đầu mở app (§4.1). Kế hoạch 01 làm khung và các bước 1, 5, 7, 8; bước 2–3 do kế
 // hoạch 04 làm (kiểm tra máy, tải model), bước 4 do 02 (quyền ghi âm thanh hệ thống, chỉ macOS),
-// bước 6 do 03 (nghe thử).
-type Step = "language" | "model" | "download" | "permission" | "languages" | "test" | "privacy" | "tray";
+// bước 6 do 03 (nghe thử). Danh sách bước (`Step`, `stepsFor`) nằm ở lib/onboardingSteps.ts.
 
 const TITLES: Record<Step, MessageKey> = {
   language: "onboarding.language.title",
+  terms: "onboarding.terms.title",
   model: "onboarding.model.title",
   download: "onboarding.download.title",
   permission: "onboarding.permission.title",
@@ -23,17 +25,13 @@ const TITLES: Record<Step, MessageKey> = {
   tray: "onboarding.tray.title",
 };
 
-export function stepsFor(platform: "macos" | "windows"): Step[] {
-  const steps: Step[] = ["language", "model", "download", "permission", "languages", "test", "privacy", "tray"];
-  return platform === "macos" ? steps : steps.filter((s) => s !== "permission");
-}
-
 export function Onboarding() {
   const t = useT();
   const info = useApp((s) => s.info);
   const index = useApp((s) => s.onboardingStep);
   const setStep = useApp((s) => s.setOnboardingStep);
   const finish = useApp((s) => s.finishOnboarding);
+  const accepted = useApp((s) => s.termsAccepted);
   const title = useRef<HTMLHeadingElement>(null);
   const shown = useRef(index);
   // Sang bước khác thì đưa focus về tiêu đề của bước mới (nút vừa bấm có thể đã biến mất hay bị khóa).
@@ -59,7 +57,7 @@ export function Onboarding() {
         <button disabled={current === 0} onClick={() => setStep(current - 1)}>
           {t("onboarding.back")}
         </button>
-        <button className="primary" onClick={() => (last ? void finish() : setStep(current + 1))}>
+        <button className="primary" disabled={!canAdvance(step, accepted)} onClick={() => (last ? void finish() : setStep(current + 1))}>
           {t(last ? "onboarding.finish" : "onboarding.next")}
         </button>
       </div>
@@ -73,6 +71,8 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
   const update = useApp((s) => s.updateSettings);
   const openTaskbarSettings = useApp((s) => s.openTaskbarSettings);
   const openPermission = useApp((s) => s.openAudioPermissionSettings);
+  const accepted = useApp((s) => s.termsAccepted);
+  const setAccepted = useApp((s) => s.setTermsAccepted);
   switch (step) {
     // Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (bước 5 đổi lại được).
     case "language":
@@ -100,6 +100,19 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
           <div className="row">
             <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
           </div>
+        </>
+      );
+    // Bước 1b (spec 2026-10-06 legal-in-app): phải tick đồng ý mới bấm được "Tiếp" (canAdvance).
+    case "terms":
+      return (
+        <>
+          <p>{t("onboarding.terms.intro")}</p>
+          <LegalDetails kind="eula" />
+          <LegalDetails kind="privacy" />
+          <label className="row">
+            <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
+            <span>{t("onboarding.terms.accept")}</span>
+          </label>
         </>
       );
     case "model":

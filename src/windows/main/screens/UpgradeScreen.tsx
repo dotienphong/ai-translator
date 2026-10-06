@@ -4,6 +4,7 @@ import type { PlanOffer } from "../../../lib/ipc";
 import { defaultPlan, isRenewal, orderFinished, orderMessageKey, priceVnd } from "../../../lib/license";
 import { useT } from "../appStore";
 import { useLicense } from "../licenseStore";
+import { LegalDetails } from "../LegalDocument";
 import { PlanName, when } from "../LicenseText";
 
 const vnd = (amount: number) => `${amount.toLocaleString("vi-VN")} đ`;
@@ -89,6 +90,7 @@ export function UpgradeScreen() {
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
             <span>{t("upgrade.consent")}</span>
           </label>
+          <LegalDetails kind="privacy" />
           <button className="primary" type="submit" disabled={busy || !consent || email.trim() === ""}>
             {t("upgrade.pay")}
           </button>
