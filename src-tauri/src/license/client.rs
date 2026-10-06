@@ -15,9 +15,9 @@ use std::time::Duration;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-/// Địa chỉ license server production (Worker `mt-license`, triển khai 2026-10-05; đổi sang tên miền riêng khi có T7). Để `None` thì app
+/// Địa chỉ license server production (Worker `mt-license` trên tên miền riêng, spec 2026-10-06). Để `None` thì app
 /// chỉ dùng được token đã lưu và gói Free.
-pub const PRODUCTION_URL: Option<&str> = Some("https://mt-license.dotienphong1993.workers.dev");
+pub const PRODUCTION_URL: Option<&str> = Some("https://api.aitranslator.io.vn");
 const USER_AGENT: &str = "AI-Translator";
 
 /// Lỗi của một lần gọi server.
