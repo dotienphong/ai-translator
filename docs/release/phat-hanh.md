@@ -339,3 +339,21 @@ Chưa có Developer ID thì để biến `APPLE_TEAM_ID` của repo **rỗng** v
   `APPLE_TEAM_ID` có giá trị thì app về chế độ chặt (yêu cầu đúng Team ID). **Đặt `APPLE_TEAM_ID` mà vẫn ký ad-hoc thì bản đó
   bị coi là không chính hãng và chỉ chạy Free**, nên đặt cùng lúc với secret chứng thư.
 - Tạm đặt `APPLE_TEAM_ID` sai dạng cũng khóa (không tự hạ xuống chế độ ad-hoc), để lỗi cấu hình lộ ra ngay.
+
+## 6. Tên miền riêng `aitranslator.io.vn`
+
+Thiết kế: `docs/superpowers/specs/2026-10-06-custom-domain-design.md`. Kế hoạch: `docs/superpowers/plans/2026-10-06-chuyen-ten-mien.md`.
+
+| Mục đích | Tên | Gắn với |
+|---|---|---|
+| License server (app gọi) | `api.aitranslator.io.vn` | Worker `mt-license`, route `custom_domain` trong `server/wrangler.jsonc` |
+| Bản cập nhật và model | `releases.aitranslator.io.vn` | Bucket R2 `ai-translator-releases`, custom domain |
+| Gửi email | `mail.aitranslator.io.vn` | Resend; From `no-reply@mail…`, Reply-To `support@aitranslator.io.vn` |
+| Nhận email hỗ trợ | `support@aitranslator.io.vn` | Cloudflare Email Routing, chuyển về Gmail |
+| Admin | `mt-license-admin.<subdomain>.workers.dev` | Worker admin sau Access (chưa chuyển sang tên miền) |
+
+- Biến GitHub `RELEASES_BASE_URL` = `https://releases.aitranslator.io.vn` (Settings › Secrets and variables › Actions › Variables); `release-ready.mjs` kiểm khớp với `updater/source.rs`.
+- Luật WAF `webhook-rate-limit` cho `/v1/webhooks/` đặt ở zone này (5 request mỗi 10 giây mỗi IP, 429).
+- Webhook PayOS: `https://api.aitranslator.io.vn/v1/webhooks/payos` (đăng ký bằng `confirm-webhook`; `API_ORIGIN` của Worker admin phải là `https://api.aitranslator.io.vn`).
+- Thư mới từ tên miền mới dễ vào spam lúc đầu: kiểm hộp thư thật sau mỗi thay đổi nội dung thư; DMARC đang `p=none`, siết `quarantine` sau vài tuần báo cáo sạch.
+- Còn giữ `workers_dev` của Worker API và `r2.dev` của bucket làm đường lui cho bản cài cũ. Chỉ tắt khi không còn bản cài nào dùng URL cũ (và nhớ Worker admin vẫn dùng `workers.dev` của nó).

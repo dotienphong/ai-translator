@@ -1,7 +1,7 @@
 {
- "_note": "A7 trên production (2026-10-05). Máy chủ thật: license server mt-license (workers.dev) và bucket R2 công khai (manifest model ở /models/models.json, latest.json ở /stable và /beta; tải file model và bộ cài là việc không chạy lúc dịch). Từ mồi `canaries`: thêm cụm 3-5 từ của bản dịch tiếng Việt chép từ bản chép lời xuất ra sau khi dừng.",
+ "_note": "A7 trên production (2026-10-05). Máy chủ thật: license server api.aitranslator.io.vn và bucket R2 releases.aitranslator.io.vn (manifest model ở /models/models.json, latest.json ở /stable và /beta; tải file model và bộ cài là việc không chạy lúc dịch). Từ mồi `canaries`: thêm cụm 3-5 từ của bản dịch tiếng Việt chép từ bản chép lời xuất ra sau khi dừng.",
  "hosts": {
-  "mt-license.dotienphong1993.workers.dev": [
+  "api.aitranslator.io.vn": [
    {
     "path": "/v1/licenses/validate",
     "during_session": true
@@ -31,7 +31,7 @@
     "during_session": false
    }
   ],
-  "pub-a4be034c8c474a36b893a65e8f0b8365.r2.dev": [
+  "releases.aitranslator.io.vn": [
    {
     "path": "/",
     "during_session": false
