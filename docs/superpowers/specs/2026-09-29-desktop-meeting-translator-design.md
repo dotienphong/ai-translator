@@ -153,6 +153,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 ### 4.1 Lần đầu mở app
 
 1. **Chọn ngôn ngữ giao diện.** Mặc định theo hệ điều hành: tiếng Việt nếu máy dùng tiếng Việt, còn lại là English.
+   - **Bước 1b: Điều khoản.** Hiện Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư (đóng gói trong app, theo ngôn ngữ vừa chọn); phải tick đồng ý mới bấm được "Tiếp" (spec 2026-10-06 legal-in-app).
 2. **Kiểm tra cấu hình** (RAM, GPU, dung lượng trống), rồi đề xuất **gói Chuẩn (khoảng 2,5 GB)** hoặc **gói Nhẹ (khoảng 1,3 GB)**, có ghi rõ dung lượng sẽ tải. Máy chưa được hỗ trợ (§8) thì báo lý do và cấu hình tối thiểu, và không cho tải model (§6.7).
 3. **Tải model.** Có thể tạm dừng rồi tải tiếp. Tải xong là dùng được ngay.
 4. **Cấp quyền trên macOS:** hướng dẫn bật quyền "Ghi âm thanh hệ thống", kèm nút mở System Settings. Windows không cần bước này.
