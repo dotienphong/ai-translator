@@ -86,7 +86,7 @@ export function LegalDetails({ kind }: { kind: LegalKind }) {
   const t = useT();
   const [opened, setOpened] = useState(false);
   return (
-    <details onToggle={(e) => e.currentTarget.open && setOpened(true)}>
+    <details className="legal-details" onToggle={(e) => e.currentTarget.open && setOpened(true)}>
       <summary>{t(kind === "eula" ? "legal.eula" : "legal.privacy")}</summary>
       {opened && <LegalDocument kind={kind} />}
     </details>

@@ -457,3 +457,15 @@ li.plan.current {
   text-align: left;
   vertical-align: top;
 }
+
+/* Văn bản pháp lý gập được (LegalDetails): cách đều nhau và cách ô tick phía trên, nút phía dưới. */
+.legal-details {
+  margin: 0.75rem 0;
+}
+.legal-details > summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+.legal-details + button {
+  margin-top: 0.75rem;
+}
