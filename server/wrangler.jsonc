@@ -7,8 +7,10 @@
   "name": "mt-license",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-26",
-  // Chưa có tên miền đã xác thực (spec §15, Q1): dùng *.workers.dev. Có tên miền thì đổi sang route riêng và tắt workers_dev.
+  // Tên miền riêng (spec 2026-10-06): Worker phục vụ api.aitranslator.io.vn. Giữ workers_dev tạm làm đường lui cho bản cài
+  // cũ; tắt khi không còn bản cài nào dùng URL workers.dev.
   "workers_dev": true,
+  "routes": [{ "pattern": "api.aitranslator.io.vn", "custom_domain": true }],
   "preview_urls": false,
   // Tắt invocation log (log đó lưu cả URL và query của request) và bỏ query khỏi URL trong log và trace (QĐ25).
   // Log JSON do code tự ghi vẫn giữ. Bật Workers Issues để có cảnh báo không phụ thuộc Resend (QĐ27).
@@ -17,8 +19,9 @@
     // Luôn "production" ở đây. Giá trị "test" chỉ có trong vitest.config.ts (test/node/wrangler-config.test.mjs khóa điều này).
     "ENVIRONMENT": "production",
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
-    // Đổi sang địa chỉ trên tên miền đã xác thực SPF, DKIM khi có Q1: Resend chỉ gửi được tới email của chủ tài khoản Resend.
-    "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
+    // Tên miền gửi mail.aitranslator.io.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
+    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
+    "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
     // Giá chính thức (spec §2, chốt 2026-10-01).
     // Không hạ hạn mức của một gói đang bán (spec §6.8, QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ ở đây là
     // hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới (sửa src/plans.ts và app).

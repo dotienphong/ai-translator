@@ -52,3 +52,14 @@ test("secret bắt buộc có đủ và không nằm trong vars", () => {
   for (const name of api.secrets.required) assert.equal(name in api.vars, false, name);
   assert.deepEqual(admin.secrets.required, ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY"]);
 });
+
+test("tên miền riêng aitranslator.io.vn (spec 2026-10-06): route, email gửi và origin của Worker admin", () => {
+  assert.deepEqual(api.routes, [{ pattern: "api.aitranslator.io.vn", custom_domain: true }]);
+  for (const config of [api, admin]) {
+    assert.equal(config.vars.EMAIL_FROM, "AI Translator <no-reply@mail.aitranslator.io.vn>");
+    assert.equal(config.vars.EMAIL_REPLY_TO, "support@aitranslator.io.vn");
+  }
+  assert.equal(admin.vars.API_ORIGIN, `https://${api.routes[0].pattern}`);
+  assert.equal("routes" in admin, false, "admin giữ workers.dev, không có route (spec 2026-10-06, mục 3)");
+  assert.equal(api.workers_dev, true, "giữ workers_dev tạm làm đường lui cho bản cài cũ");
+});

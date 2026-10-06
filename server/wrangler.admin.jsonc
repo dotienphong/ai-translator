@@ -18,11 +18,12 @@
   "vars": {
     "ENVIRONMENT": "production",
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
-    "EMAIL_FROM": "AI Translator <onboarding@resend.dev>",
+    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
+    "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
     // Bắt buộc (QĐ6): Audience tag của ứng dụng Access, điền ở Task 21, Step 10. Trống thì Worker trả 403 cho mọi request.
     "ACCESS_AUD": "211e8ca91f71c69830df567b4e1a2488d84ec5380dfeb25b473102e111f21de0",
-    // Origin của Worker API (https://<tên miền license server>), điền ở Task 21, Step 10; confirm-webhook chỉ nhận URL trên origin này.
-    "API_ORIGIN": "https://mt-license.dotienphong1993.workers.dev"
+    // Origin của Worker API (tên miền riêng, spec 2026-10-06); confirm-webhook chỉ nhận URL trên origin này.
+    "API_ORIGIN": "https://api.aitranslator.io.vn"
   },
   "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY"] },
   "d1_databases": [
