@@ -1,26 +1,22 @@
-# Văn bản pháp lý của AI Translator (bản nháp)
+# Văn bản pháp lý của AI Translator
 
-Soạn ngày 2026-10-06. **Chưa được luật sư xem. Không phải tư vấn pháp lý.** Đây là bản nháp bám sát hành vi thật của sản phẩm để chủ dự án và luật sư rà, thay vì viết từ đầu.
+**Phiên bản 1.0, hiệu lực từ 2026-10-06**, dùng để phát hành (chủ dự án duyệt và yêu cầu bản chính thức ngày 2026-10-06).
+
+> **Chưa được luật sư xem.** Văn bản bám sát hành vi thật của sản phẩm nhưng **không phải tư vấn pháp lý**, và việc phát hành khi chưa có luật sư xem là rủi ro chủ dự án đã chấp nhận. Khuyến nghị: nhờ luật sư rà (các điểm ở dưới) trước khi bán công khai rộng rãi, rồi cập nhật văn bản và ngày hiệu lực.
 
 | File | Nội dung |
 |---|---|
 | `eula.vi.md`, `eula.en.md` | Thỏa thuận cấp phép người dùng cuối (EULA) |
 | `privacy.vi.md`, `privacy.en.md` | Chính sách quyền riêng tư |
 
-Bản tiếng Việt là bản gốc, bản tiếng Anh dịch tương đương (khi khác nhau, ghi rõ bản tiếng Việt ưu tiên). Mỗi văn bản có dòng "BẢN NHÁP" ở đầu: **xóa dòng đó và điền ngày hiệu lực** khi phát hành.
+Bản tiếng Việt là bản gốc; bản tiếng Anh dịch tương đương và ghi rõ bản tiếng Việt ưu tiên khi khác nhau. App đóng gói bốn file này và hiển thị theo ngôn ngữ giao diện (spec `2026-10-06-legal-in-app-design.md`): **sửa file ở đây là sửa nội dung trong app** ở lần build kế tiếp.
 
 ## Thông tin đã chốt và đã dùng trong văn bản
-- Bên cung cấp: **Đỗ Tiến Phong** (cá nhân), email **support@aitranslator.io.vn**, thương hiệu hiển thị "AI Translator".
+- Bên cung cấp: **Đỗ Tiến Phong** (cá nhân), email **support@aitranslator.io.vn**, thương hiệu hiển thị "AI Translator". Không công bố địa chỉ liên hệ.
 - Dữ liệu cá nhân trên máy chủ giữ không thời hạn, chỉ xóa khi khách yêu cầu (chốt 2026-10-01); sau khi xóa vẫn giữ mã băm ID máy, thời điểm đồng ý, và dòng đơn hàng mức kế toán (spec §10.1).
 - Bốn gói, giá và hạn mức; đơn 30 ngày trả trước, không tự gia hạn; đổi gói không hoàn tiền; 2 máy mỗi key; khóa tạm khi đổi máy quá nhiều; ngoại tuyến 14 ngày.
 - Bên xử lý dữ liệu: PayOS (Việt Nam), Cloudflare, Resend (ngoài Việt Nam).
-
-## Điểm cần chủ dự án quyết (đã đặt mặc định trong bản nháp)
-1. **Chính sách hoàn tiền** (EULA mục 3): bản nháp ghi "không hoàn tiền, trừ lỗi do chúng tôi hoặc pháp luật yêu cầu; yêu cầu trong **7 ngày**". Đổi số ngày hoặc cách làm nếu muốn.
-2. **Địa chỉ liên hệ**: có công bố không (hai file ở mục "Liên hệ", chỗ `[…]`). Nếu không, xóa dòng đó.
-3. **Độ tuổi 16** (chính sách mục 8): bản nháp đặt 16 tuổi trở lên vì dữ liệu của trẻ em cần cha mẹ đồng ý; nhờ luật sư xác nhận ngưỡng.
-4. **Trần trách nhiệm** (EULA mục 12): bản nháp đặt bằng số tiền khách đã trả trong 12 tháng.
-5. **Ngày hiệu lực**: ngày phát hành bản beta đầu tiên.
+- **Mặc định đã chọn** (đổi được bằng cách sửa file): hoàn tiền "không hoàn, trừ lỗi do chúng tôi hoặc pháp luật; yêu cầu trong **7 ngày**"; độ tuổi **16 trở lên**; trần trách nhiệm bằng **số tiền đã trả trong 12 tháng**; ngày hiệu lực 2026-10-06.
 
 ## Điểm nên hỏi luật sư hay kế toán (từ spec §10.1 và §15)
 - **Loại hình kinh doanh.** Bán dịch vụ có thu tiền bằng tên cá nhân thường cần xem xét đăng ký hộ kinh doanh hoặc doanh nghiệp, kèm nghĩa vụ thuế và hóa đơn (chưa làm hóa đơn điện tử trong MVP). Loại hình quyết định ai là "bên cung cấp" ghi trong văn bản.
@@ -34,10 +30,7 @@ Bản tiếng Việt là bản gốc, bản tiếng Anh dịch tương đương 
 ## Đã đối chiếu với sản phẩm thật
 Âm thanh chỉ trong RAM và không gửi đi (kiểm A7: HAR và `nettop` không có luồng ngoài lúc dịch, log không chứa chữ chép lời); danh sách kết nối mạng của app (A7: chỉ `api.` và `releases.aitranslator.io.vn`); server chỉ lưu email, đơn, license, mã băm máy, `device_label`, thời điểm kiểm tra (spec §10.1); bảng giá và hạn mức (spec §2); luật quy đổi khi đổi gói (§6.8); giới hạn 2 máy và khóa tạm (§10.2); token ngoại tuyến 14 ngày (`refresh_before - issued_at = 1 209 600 s` ở bản triển khai); giấy phép Hy-MT2 Apache 2.0, Whisper và Silero MIT (§10.1).
 
-## Việc cài vào sản phẩm (chưa làm)
-- **Bộ cài**: trang giấy phép của NSIS (Windows) và DMG (macOS) hiện EULA (vi và en).
-- **Màn hình Giới thiệu**: liên kết tới EULA, chính sách, danh sách giấy phép bên thứ ba.
-- **Màn hình mua**: ô đồng ý xử lý email kèm liên kết chính sách quyền riêng tư.
-- **Nút "Xóa model và dữ liệu"**: liên kết trang hỗ trợ.
-- **Website**: đăng bản chính thức tại `aitranslator.io.vn` (ví dụ `/terms` và `/privacy`), thêm đường dẫn vào `EXTERNAL_HOSTS` đã có.
+## Cài vào sản phẩm
+- **Đã làm (kế hoạch `2026-10-06-dieu-khoan-trong-app.md`):** app đóng gói bốn file; bước "Điều khoản" ở onboarding (ô tick bắt buộc); thẻ "Điều khoản và quyền riêng tư" ở màn hình Giới thiệu; mục gập "Chính sách quyền riêng tư" dưới ô đồng ý email ở màn hình mua.
+- **Chưa làm:** trang giấy phép của bộ cài NSIS (Windows, làm ở đợt Windows); DMG của macOS không có trang giấy phép (đồng ý ở onboarding); website `aitranslator.io.vn` (`/terms`, `/privacy`, cần spec riêng); hỏi lại khi điều khoản đổi phiên bản; lưu bằng chứng đồng ý EULA ở máy.
 - Khi hành vi sản phẩm đổi (thêm analytics, thêm bên xử lý dữ liệu, đổi giá hay gói, đổi thời gian lưu), **cập nhật văn bản này cùng lúc** và ghi ngày hiệu lực mới.

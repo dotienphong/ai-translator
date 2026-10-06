@@ -1,6 +1,6 @@
 # AI Translator End User License Agreement (EULA)
 
-> **DRAFT, not yet reviewed by a lawyer.** Prepared 2026-10-06 from the product's actual behavior (spec §2, §6.8, §10). Open decisions are listed in `docs/legal/README.md`. Effective date: **[date of the first beta release]**. The Vietnamese version (`eula.vi.md`) is the reference text.
+**Version 1.0, effective 6 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 This is an agreement between you and **Do Tien Phong** ("we", "us") for your use of the **AI Translator** application (the "app"). By installing or using the app you agree to it. If you do not agree, please do not install or use the app.
 
@@ -27,7 +27,7 @@ We grant you a **personal, non-exclusive, non-transferable, revocable** right to
 - A paid plan is a **30-day order, paid in advance** in VND by VietQR bank transfer (PayOS). **It does not renew automatically.** When it expires the app returns to the Free plan; buy again when you need it.
 - **Buying more of the same plan** adds 30 days. **Changing plan** while you still have time: the remaining days of the old plan are converted by price into days of the new plan (rounded down), and the new plan starts immediately with a new cycle; the app shows the converted days and the new expiry date beforehand. **Plan changes are not refunded.**
 - Quota is counted **per machine**, by actual translation time. When quota runs out, translation stops until the next reset or until you buy more.
-- **Refunds:** amounts paid are **not refundable**, except (a) where our fault prevents you from using the plan you bought and we cannot fix it within a reasonable time, or (b) where the law requires otherwise. Send a request within **[7] days** of payment to support@aitranslator.io.vn with your order code.
+- **Refunds:** amounts paid are **not refundable**, except (a) where our fault prevents you from using the plan you bought and we cannot fix it within a reasonable time, or (b) where the law requires otherwise. Send a request within **7 days** of payment to support@aitranslator.io.vn with your order code.
 - We may issue or extend licenses manually (for example when you transferred too little and then topped up).
 
 ## 4. License keys and activation
@@ -89,4 +89,4 @@ We may update this agreement; the new version states its effective date and is a
 
 ## 16. Contact
 
-**Do Tien Phong**, support@aitranslator.io.vn. **[Contact address, if the project owner wants to publish one.]**
+**Do Tien Phong**, support@aitranslator.io.vn.

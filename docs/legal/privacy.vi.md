@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư của AI Translator
 
-> **BẢN NHÁP, chưa được luật sư xem.** Soạn ngày 2026-10-06 từ hành vi thật của sản phẩm (spec §10.1). Các điểm cần quyết hoặc xác nhận nằm ở `docs/legal/README.md`. Ngày hiệu lực: **[ngày phát hành bản beta đầu tiên]**.
+**Phiên bản 1.0, hiệu lực từ 06/10/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
@@ -92,4 +92,4 @@ Khi chính sách thay đổi, chúng tôi cập nhật văn bản này và ngày
 
 ## 11. Liên hệ
 
-**Đỗ Tiến Phong**, support@aitranslator.io.vn. **[Địa chỉ liên hệ, nếu chủ dự án muốn công bố.]**
+**Đỗ Tiến Phong**, support@aitranslator.io.vn.

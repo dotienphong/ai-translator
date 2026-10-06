@@ -1,6 +1,6 @@
 # AI Translator Privacy Policy
 
-> **DRAFT, not yet reviewed by a lawyer.** Prepared 2026-10-06 from the product's actual behavior (spec §10.1). Open decisions are listed in `docs/legal/README.md`. Effective date: **[date of the first beta release]**. The Vietnamese version (`privacy.vi.md`) is the reference text.
+**Version 1.0, effective 6 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 ## 1. Who is responsible for your data
 
@@ -92,4 +92,4 @@ When the policy changes we update this text and the effective date, and announce
 
 ## 11. Contact
 
-**Do Tien Phong**, support@aitranslator.io.vn. **[Contact address, if the project owner wants to publish one.]**
+**Do Tien Phong**, support@aitranslator.io.vn.
