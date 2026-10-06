@@ -470,6 +470,8 @@ bằng:
 pub const PRODUCTION_URL: Option<&str> = Some("https://releases.aitranslator.io.vn/models/models.json");
 ```
 
+- [ ] **Step 3b: Cổng `release-ready` còn đòi tên miền website** (bổ sung khi thực thi): `scripts/release/release-ready.mjs` báo lỗi nếu `EXTERNAL_HOSTS` trong `src-tauri/src/navigation.rs` chỉ có `pay.payos.vn`. Thêm `"aitranslator.io.vn"` (kèm chú thích "Website của sản phẩm …") và cập nhật `scripts/release/release-ready.test.mjs`: test "repo hiện tại đủ cấu hình production" và test "thiếu tên miền website trong EXTERNAL_HOSTS thì bị bắt".
+
 - [ ] **Step 4: Kiểm không còn URL cũ trong mã app**
 
 Run: `grep -rn "workers\.dev\|r2\.dev" src-tauri/src | grep -v "^src-tauri/src/.*test"`

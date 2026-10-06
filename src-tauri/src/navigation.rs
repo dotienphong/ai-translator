@@ -19,10 +19,13 @@ use tauri::{AppHandle, Manager, Runtime, Url};
 use crate::system;
 
 /// Tên miền được mở bằng trình duyệt. Kế hoạch 06 thêm trang thanh toán của PayOS, kế hoạch 07 thêm
-/// website của sản phẩm (tên miền chờ Q1). Chỉ so khớp đúng cả tên miền, không nhận tên miền con.
+/// website của sản phẩm (tên miền `aitranslator.io.vn`, spec 2026-10-06). Chỉ so khớp đúng cả tên miền,
+/// không nhận tên miền con.
 pub const EXTERNAL_HOSTS: &[&str] = &[
     // Trang thanh toán của PayOS (`checkout_url` của đơn, kế hoạch 06; spec §6.8 "Mua ngay trong app" bước 2).
     "pay.payos.vn",
+    // Website của sản phẩm (trang chính sách quyền riêng tư, hỗ trợ, tải bản mới); website có spec riêng.
+    "aitranslator.io.vn",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

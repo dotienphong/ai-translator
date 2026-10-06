@@ -59,15 +59,19 @@ test("đọc PRODUCTION_URL của file Rust và khóa công khai của tauri sig
   assert.equal(isUpdaterKey(undefined), false);
 });
 
-// Cập nhật khi điền thêm giá trị production. Đã điền (2026-10-05): license server, khóa công khai của bản cập nhật và của
-// manifest model, URL R2 của bản cập nhật và của manifest model. Còn lại: tên miền website (T7).
-test("repo hiện tại chưa đủ: báo đúng một giá trị còn thiếu", (t) => {
-  const errors = readinessErrors(copy(t));
+// Đã điền đủ (2026-10-06): license server, khóa công khai của bản cập nhật và của manifest model, URL R2 của bản cập nhật
+// và của manifest model (tên miền `api.` và `releases.aitranslator.io.vn`, spec 2026-10-06), tên miền website
+// (`aitranslator.io.vn` trong `EXTERNAL_HOSTS`).
+test("repo hiện tại đủ cấu hình production", (t) => {
+  assert.deepEqual(readinessErrors(copy(t)), []);
+});
+
+test("thiếu tên miền website trong EXTERNAL_HOSTS thì bị bắt", (t) => {
+  const dir = copy(t);
+  edit(dir, "src-tauri/src/navigation.rs", (s) => s.replace(/^\s*\/\/ Website của sản phẩm[^\n]*\n\s*"aitranslator\.io\.vn",\n/m, ""));
+  const errors = readinessErrors(dir);
   assert.equal(errors.length, 1, errors.join("\n"));
   assert.ok(errors[0].includes("EXTERNAL_HOSTS"), errors[0]);
-  for (const done of ["updater/source.rs", "models/source.rs", "updater-public-keys", "manifest-public-keys", "license/client.rs", "license-public-keys"]) {
-    assert.ok(!errors.some((e) => e.includes(done)), `${done} đã điền, không được báo thiếu`);
-  }
 });
 
 test("điền đủ thì qua; từng giá trị thiếu hay sai thì bị bắt", (t) => {
@@ -102,5 +106,8 @@ test("--tag: tag phải đúng v<version> của tauri.conf.json, kể cả bản
   main(["--tag", "v0.1.0"], dir);
   assert.deepEqual(lines, ["tag v0.1.0 khớp tauri.conf.json"]);
   assert.throws(() => main(["--tag", "v0.1.1"], dir), /không khớp/);
-  assert.throws(() => main([], dir), /EXTERNAL_HOSTS chưa có/);
+  const lines2 = [];
+  t.mock.method(console, "log", (line) => lines2.push(line));
+  main([], dir);
+  assert.deepEqual(lines2, ["đủ cấu hình production"]);
 });
