@@ -3,3 +3,10 @@
 allowBuilds:
   esbuild: true
   workerd: true
+
+# sharp < 0.35.5 dính CVE-2026-96889 (GHSA-wq5f-xc86-pv6w, librsvg, mức high) và miniflare ghim cứng sharp 0.35.4, kể cả
+# ở bản mới nhất (5.20261006.0-alpha), nên `pnpm audit` của CI đỏ. sharp chỉ là phụ thuộc gián tiếp của wrangler và
+# miniflare (giả lập Images binding khi chạy cục bộ), không nằm trong Worker đã triển khai. Gỡ mục này khi miniflare
+# nâng sharp lên 0.35.5 trở lên.
+overrides:
+  sharp: 0.35.5
