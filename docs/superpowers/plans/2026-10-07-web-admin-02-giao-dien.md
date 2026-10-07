@@ -1870,7 +1870,7 @@ function Groups({ q }: { q: Queue }) {
     <>
       <Group title="Đã nhận tiền nhưng license đã thu hồi" hint="Mở đơn, chọn Cấp key mới hoặc Ghi đã hoàn tiền." group={q.needs_review} render={orderItem} />
       <Group title="Chuyển thiếu trong 30 ngày" hint="Khách chuyển bù thì mở đơn, bấm Cấp tay." group={q.underpaid} render={orderItem} />
-      <Group title="Đã trả nhưng gửi email key thất bại" hint="Mở license của đơn, bấm Gửi lại email." group={q.email_failed} render={emailItem} />
+      <Group title="Đã trả nhưng khách chưa nhận email key" hint="Mở license của đơn, bấm Gửi lại email; gửi được thì đơn rời nhóm này." group={q.email_failed} render={emailItem} />
       <Group title="License đang khóa tạm" hint="Xác minh với khách rồi bấm Mở khóa." group={q.locked} render={licenseItem} />
       <Group title="License đang xung đột máy" hint="Hỏi khách máy nào đang dùng, gỡ máy còn lại." group={q.conflict} render={licenseItem} />
       <Group title="Cảnh báo vận hành chưa gửi email" hint="Cron gửi email cảnh báo mỗi giờ. Còn ở đây lâu thì kiểm cron." group={q.alerts} render={alertItem} />
