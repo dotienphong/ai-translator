@@ -34,6 +34,10 @@ Dòng 2 và 3 xác nhận cơ chế chèn im lặng theo QPC của `GapFiller` (
 | 9 | Rút tai nghe giữa chừng | Tai nghe |
 | 10 | Windows 10 | Máy Windows 10 |
 
+## Chốt 2026-10-07
+
+Chủ dự án báo đã thử các dòng 4–10 **trên Windows** và đạt (không kèm log). S2 xong.
+
 ## Ghi chú của chủ dự án (2026-10-07)
 
 Chủ dự án báo đã thử Teams, Zoom, Meet, Zalo và tai nghe Bluetooth **trên máy MacBook** và đạt. Đó là bài của macOS (S1, Core Audio tap, đã ghi ở `s1_capture.md`), **không phải** WASAPI loopback trên Windows, nên không thay được dòng 4–10 của S2 và không đổi trạng thái của giả định 2 trên Windows. Các dòng 4–10 vẫn chưa có số đo trên Windows.

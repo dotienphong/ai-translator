@@ -8,6 +8,7 @@ Phạm vi đo: một máy duy nhất, MacBook Pro M4 Pro 24 GB, macOS 26.6.2. Kh
 
 - **Cổng §13 chưa thỏa đầy đủ**, vì thiếu số liệu: S2, S3 và S5 trên Windows chưa làm; S6 mới đo trên M4 Pro; điều kiện p50 ≤ 3,5 giây trên máy tối thiểu chưa đo.
 - **Mọi điều kiện đã đo đều đạt**: S1 và S4 đạt; 12/12 session S6 trên M4 Pro đạt A2 với dư địa khoảng gấp đôi; COMET đạt mức sàn A3 ở cả hai gói. Không có kết quả nào cho thấy phải sửa hướng thiết kế.
+- **Chốt 2026-10-07: Phase 0 xong.** Chủ dự án báo đã thử trên Windows và đạt các mục Windows còn lại (S2 dòng 4–10, S5, S3 Task 16), xem mục "Chốt Phase 0" ở cuối. Chỉ còn chữ ký Developer ID, chủ dự án mua sau.
 - **PHONG duyệt ngày 2026-10-04: qua cổng có điều kiện.** Phase 1 bắt đầu, và các mục chưa kiểm ở mục "Việc chưa kiểm" phải được đo khi có thiết bị. Trước khi phát hành bản beta đầu tiên, các mục có đánh dấu **(chặn phát hành)** phải xong. Rủi ro chính của đề xuất này: spec có thể phải sửa lại nếu máy yếu hơn không đạt (mục "Quyết định cần duyệt").
 - **Quyết định cần ghi vào spec:** đã ghi ở Task 2 (commit `e181e1d`, `f5e2853`), gồm chế độ giải mã B làm mặc định, sàn `audio_ctx` 512, LID đoạn ngắn, luật lặp, luật `no_speech`, flash attention tắt, và các mục "chờ kết quả" của Windows và máy tham chiếu.
 
@@ -123,3 +124,18 @@ Phát hiện mới, cần xử lý trước khi phát hành:
 - **`--probe` trên GPU tích hợp báo `device_local_bytes` bằng cỡ RAM** (17 GB trên máy 32 GB), nên đề xuất gói theo VRAM (§6.7) phải xét `device_type`.
 - **`crates/asr-worker/src/probe.rs` chưa có trong repo** dù `main.rs` và `Cargo.toml` đã trỏ tới nên bản build có feature `vulkan` không biên dịch được. Đã tạo file (chưa commit).
 - **Gói Chuẩn trên Iris Xe không đạt A2** (p50 2,7–5,4 giây; bước dịch là nút thắt). Gói Nhẹ chỉ CPU đạt ngưỡng 3,5 giây ở 5/6 session trên máy mạnh hơn máy tối thiểu, nên điều kiện của cổng §13 vẫn chưa được xác nhận.
+
+## Chốt Phase 0 (2026-10-07)
+
+Chủ dự án báo ngày 2026-10-07: đã tự thử trên máy Windows và **đạt** các mục Windows còn lại. Không kèm log hay ảnh.
+
+| Mục | Trạng thái |
+|---|---|
+| S2 dòng 4–10: Teams, Zoom, Meet (Chrome, Edge), Zalo PC, tai nghe Bluetooth, rút tai nghe, Windows 10 | Đạt (chủ dự án báo). Giả định 2 coi là đạt |
+| S5 trên Windows: thanh phụ đề nổi trên app toàn màn hình (0-05 Task 4) | Đạt (chủ dự án báo) |
+| S3 Task 16: Windows không có Vulkan, `asr-worker-cpu` chạy thay | Đạt (chủ dự án báo) |
+| S1 dòng 10 và mọi việc cần chữ ký Developer ID | **Còn lại duy nhất.** Chưa có tài khoản Apple Developer; chủ dự án mua sau. Tới lúc đó bản macOS ký ad-hoc (`docs/superpowers/specs/2026-10-05-macos-adhoc-signing-design.md`) |
+
+Các mục bỏ qua vì không có máy (S6 trên M1 16 GB, card rời 6 GB và 4 GB, máy 8 GB chỉ CPU; S1 dòng 9) giữ trạng thái chưa đo, không tính là nợ của Phase 0. Lượt fullctx chạy lại (C12) không chặn việc nào nên không làm.
+
+Các phát hiện ở mục "Cập nhật 2026-10-07" đã xử lý: bản vá MSVC `0003` có trong repo, `probe.rs` đã commit, đề xuất gói xét `device_type` (`src-tauri/src/models/machine.rs`), máy chỉ có GPU tích hợp chạy `llama-server` bằng CPU (`69d35f3`).

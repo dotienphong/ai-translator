@@ -225,8 +225,8 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Nút ẩn:** khi thanh chưa khóa, rê chuột vào thanh thì hiện nút ✕ ở góc trên bên phải. Bấm nút thì ẩn thanh, như phím tắt ẩn/hiện; không dừng phiên dịch và không thoát app. Khi đã khóa thì không có nút, vì click đi xuyên qua.
 - **Chế độ khóa:** cho click xuyên qua thanh phụ đề, để không cản thao tác trên cửa sổ họp. Mở khóa bằng phím tắt hoặc menu khay. Thanh phụ đề không có nút khóa: khi đã khóa thì click đi xuyên qua, không bấm được gì trên thanh.
 - **Nổi trên app họp đang toàn màn hình:**
-  - macOS: dùng NSPanel kiểu non-activating, đặt window level cao, cho tham gia mọi Space với cờ `canJoinAllSpaces` và `fullScreenAuxiliary`. Chỉ đặt các cờ này trên một NSWindow thường thì thường chưa đủ để nổi trên Space toàn màn hình của app khác. Đã thử trên macOS (S5, `results/s5_overlay.md`, 2026-10-04): chủ dự án báo thanh nổi trên app toàn màn hình hoạt động tốt. Chưa có kết quả từng dòng của ma trận, và ma trận không kiểm trường hợp bấm vào thanh rồi gõ vào app bên dưới. Trường hợp này đã có lỗi (2026-10-04): cờ "không kích hoạt app khi bấm" của hệ điều hành chỉ được đặt khi cửa sổ được tạo với `NonactivatingPanel`, còn panel được tạo từ cửa sổ có sẵn rồi mới cộng bit, nên bấm vào thanh làm app của ta thành app phía trước và chữ gõ không vào app họp. Đã sửa bằng `_setPreventsActivation:` sau khi cộng bit (hàm riêng của AppKit, thiếu thì bỏ qua) và kiểm trên bản dev: bấm thân hay mép thanh không còn kích hoạt app, chữ gõ vẫn vào TextEdit, kéo thanh vẫn chạy. Windows: chờ kết quả S5 (kế hoạch 05, Task 4).
-  - Windows: đặt cửa sổ ở chế độ topmost. Chưa thử (S5 Windows chưa làm).
+  - macOS: dùng NSPanel kiểu non-activating, đặt window level cao, cho tham gia mọi Space với cờ `canJoinAllSpaces` và `fullScreenAuxiliary`. Chỉ đặt các cờ này trên một NSWindow thường thì thường chưa đủ để nổi trên Space toàn màn hình của app khác. Đã thử trên macOS (S5, `results/s5_overlay.md`, 2026-10-04): chủ dự án báo thanh nổi trên app toàn màn hình hoạt động tốt. Chưa có kết quả từng dòng của ma trận, và ma trận không kiểm trường hợp bấm vào thanh rồi gõ vào app bên dưới. Trường hợp này đã có lỗi (2026-10-04): cờ "không kích hoạt app khi bấm" của hệ điều hành chỉ được đặt khi cửa sổ được tạo với `NonactivatingPanel`, còn panel được tạo từ cửa sổ có sẵn rồi mới cộng bit, nên bấm vào thanh làm app của ta thành app phía trước và chữ gõ không vào app họp. Đã sửa bằng `_setPreventsActivation:` sau khi cộng bit (hàm riêng của AppKit, thiếu thì bỏ qua) và kiểm trên bản dev: bấm thân hay mép thanh không còn kích hoạt app, chữ gõ vẫn vào TextEdit, kéo thanh vẫn chạy. Windows: đạt (S5, chủ dự án báo 2026-10-07).
+  - Windows: đặt cửa sổ ở chế độ topmost. Đã thử trên Windows (S5, 2026-10-07).
 - **Icon ở Dock (macOS):** khi app chỉ còn biểu tượng ở menu bar, app không có icon ở Dock (activation policy `accessory`). Khi mở cửa sổ chính, app hiện icon ở Dock (`regular`).
 - **Chỉ báo nhỏ:** đang nghe, không có âm thanh, hoặc đang trễ.
 
@@ -298,7 +298,7 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
   - Tự khởi tạo lại khi thiết bị thay đổi: xem "Khi thiết bị phát đổi" bên dưới.
   - **Không dùng process loopback** trong MVP, vì đã có báo cáo cách này chỉ nhận được im lặng với Teams.
   - Hệ quả: app thu **mọi** âm thanh của máy, kể cả tiếng thông báo hay video đang mở.
-  - Chờ kết quả S2 trên Windows (kế hoạch 04, Task 7–8, `results/s2_capture.md`): Teams, Zoom, Meet, thiết bị Communications, tai nghe Bluetooth, chèn im lặng.
+  - S2 trên Windows đạt (`results/s2_capture.md`; dòng 1–3 có số đo, dòng 4–10 chủ dự án báo đạt 2026-10-07): Teams, Zoom, Meet, Zalo PC, thiết bị Communications, tai nghe Bluetooth, chèn im lặng.
 - **macOS:** dùng Core Audio process tap (`AudioHardwareCreateProcessTap`, macOS 14.2+), đọc qua aggregate device.
   - **Mặc định:** tap toàn hệ thống, trừ chính app.
   - **Tùy chọn:** chỉ tap một app họp được chọn từ danh sách các app đang phát âm thanh.
@@ -378,7 +378,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Hai bản trên Windows:** `asr-worker-vulkan` (Vulkan và CPU) và `asr-worker-cpu` (chỉ CPU). Bản Vulkan phụ thuộc trực tiếp vào `vulkan-1.dll`, nên không chạy được trên máy không có Vulkan. macOS chỉ có một bản (Metal và CPU).
   - Mỗi lần app khởi động, kể cả ở bước kiểm tra cấu hình lần đầu (§4.1), app chạy nền `asr-worker-vulkan --probe`. Tiến trình này in ra danh sách GPU (loại thiết bị, dung lượng heap `DEVICE_LOCAL`) rồi thoát; kết quả dùng để đề xuất gói model (§6.7). Mọi code đụng tới GPU đều nằm trong tiến trình phụ, nên driver lỗi lúc dò GPU cũng không làm sập app.
   - Khi cần chạy `asr-worker`, app dùng bản Vulkan nếu lần dò tìm thấy GPU dùng được. Bản Vulkan không khởi động được, hoặc crash lúc nạp model, thì app chạy bản CPU.
-  - Chờ kết quả S3 trên Windows (kế hoạch 03, Task 14–16, `results/s3_windows.md`): build hai bản, `--probe`, chép lời bằng Vulkan và CPU, máy không có Vulkan.
+  - S3 trên Windows đạt (`results/s3_windows.md`): build hai bản, `--probe`, chép lời bằng Vulkan và CPU; máy không có Vulkan chủ dự án báo đạt 2026-10-07.
 - **Khi tiến trình phụ lỗi:** tự khởi động lại, chờ lần lượt 1, 2, 5 giây giữa các lần, giống `llama-server` (§6.5).
   - Lần đầu chạy một binary mới, thời gian chờ `Ready` theo cùng quy tắc với `/health` của `llama-server` (§6.5).
   - Đoạn đang xử lý được gửi lại một lần. Lỗi lần nữa thì đánh dấu "[bỏ qua đoạn]" (`dropped`, §6.6).
@@ -426,7 +426,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - So với cửa sổ 30 giây đầy đủ (giả định 8 ở §14), trên cùng một bản build (`s7_asr.md`, lượt sàn 512 so với lượt fullctx), còn 3/10 ô tăng quá 10%: turbo zh +11,1%, turbo ko +45,1%, small ko +15,5%. Xét từng ô thì giả định 8 không đạt.
     - Gần hết phần chênh nằm ở clip dài hơn 9 giây, nơi sàn không đổi `audio_ctx`: turbo zh +20 lỗi ở 38 clip dài, +0 ở 64 clip ngắn; small ko +42 và +3. Đoạn thường của app ngắn hơn 8,96 giây, nên phần chênh này chỉ gặp ở đoạn gộp của hàng đợi (§7).
     - Ô turbo ko do một clip 13,7 giây chép cả câu hai lần. Luật lặp 2 bản của cấu hình chốt bắt được clip này: `a4_m4pro-turbo-final.json` cho CER 0,041, thấp hơn fullctx (0,043).
-    - Lượt fullctx chạy bằng bản build trước luật lặp mới, nên chưa có số so sánh cùng cấu hình. Chờ chạy lại fullctx với bản build chốt (bổ sung cho kế hoạch 03, Task 11).
+    - Lượt fullctx chạy bằng bản build trước luật lặp mới, nên chưa có số so sánh cùng cấu hình. Không chạy lại: không quyết định nào phụ thuộc (chốt Phase 0, 2026-10-07).
   - Không dùng cửa sổ 30 giây làm mặc định: turbo chậm gấp 2,6 lần (p50 334 → 884 ms), vượt ngân sách ở §8.
   - Chế độ A vẫn nhận diện ngôn ngữ trên cửa sổ 3 giây (`audio_ctx` 214), không qua sàn.
 - **Flash attention: tắt** (kiểm lại ngày 2026-10-01: ggml-org/whisper.cpp#3941 vẫn mở; giữ tắt, kế hoạch 08 kiểm lại trước khi phát hành). whisper.cpp 1.8.3, cả v1.9.4 và master, sai khi bật flash attention cùng `audio_ctx` rút ngắn: phần đệm tới bội 256 không có mask. Kết quả là lặp câu, và thay đổi theo đoạn chép trước (ggml-org/whisper.cpp#3941, bản vá chưa được merge). `ASR_FLASH_ATTN=1` chỉ dùng để thử.
@@ -827,7 +827,7 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
     - Node.js phải đúng phiên bản Vite yêu cầu.
   - Trong cùng một tiến trình, không được có hai bản của cùng một thư viện gốc, và không được trùng symbol.
     - Riêng ggml, app cố ý có hai bản nhưng ở hai tiến trình phụ riêng (§5): whisper.cpp trong `asr-worker`, llama.cpp trong `llama-server`. Tiến trình chính không link ggml.
-    - `asr-worker` link tĩnh whisper.cpp và tắt nạp backend động (`GGML_BACKEND_DL`). Nhờ vậy nó không nạp thư viện ggml nào từ đĩa, nên không nạp nhầm thư viện ggml của `llama-server` nằm cùng thư mục. Máy Windows không có Vulkan dùng bản `asr-worker-cpu` (§6.4). Trên Windows, chờ kết quả kế hoạch 03, Task 14 và 16: `dumpbin /dependents` của hai bản `asr-worker` không có DLL ggml nào, và `asr-worker-cpu` chạy được trên máy không có Vulkan.
+    - `asr-worker` link tĩnh whisper.cpp và tắt nạp backend động (`GGML_BACKEND_DL`). Nhờ vậy nó không nạp thư viện ggml nào từ đĩa, nên không nạp nhầm thư viện ggml của `llama-server` nằm cùng thư mục. Máy Windows không có Vulkan dùng bản `asr-worker-cpu` (§6.4). Trên Windows đã kiểm (kế hoạch 03, Task 14 và 16, `results/s3_windows.md`): `dumpbin /dependents` của hai bản `asr-worker` không có DLL ggml nào, và `asr-worker-cpu` chạy được trên máy không có Vulkan.
     - Vì link tĩnh, `asr-worker` không tự chọn được biến thể CPU lúc chạy. Phải build với `GGML_NATIVE=OFF` và mức CPU cố định. Nếu không, bản build trên máy CI đời mới có thể crash trên máy người dùng vì gặp lệnh CPU không hỗ trợ.
       - Mức CPU đặt ở `.cargo/config.toml`, với `force = true` để biến môi trường của shell hay CI không ghi đè được: x64 bật AVX, AVX2, BMI2, FMA, F16C, không bật AVX-512; arm64 dùng `armv8.4-a+fp16`, tức mức Apple M1 (không i8mm, không SME).
       - Bản build native trên M4 Pro bật `MATMUL_INT8` và `SME`, nên có thể crash trên M1. Với mức cố định, `system_info` của `asr-worker` chỉ còn `NEON`, `ARM_FMA`, `FP16_VA`, `DOTPROD`.
@@ -838,7 +838,7 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
     - llama.cpp mới phải nạp và chạy đúng GGUF của Hy-MT2.
     - `whisper-rs` phải đi kèm whisper.cpp có đủ các tính năng cần dùng: `audio_ctx` và API mức thấp để encode và giải mã (§6.4). Bản vá ở `third_party/` phải áp được lên bản mới (§6.4).
   - **Yêu cầu build:** `protoc` (để build `candle-onnx`), CMake (build whisper.cpp), bộ dịch C/C++ (Xcode trên macOS, Visual Studio Build Tools trên Windows), libclang (trên Windows lấy từ LLVM), Vulkan SDK (để build `asr-worker-vulkan`).
-  - **Thư viện C runtime trên Windows:** chờ kết quả `dumpbin /dependents` ở kế hoạch 03, Task 14 (`results/s3_windows.md`). Nếu các file `.exe` phụ thuộc `VCRUNTIME140.dll`, MVP chọn giữa link tĩnh CRT (`-C target-feature=+crt-static`) và kèm bộ cài VC++ Redistributable.
+  - **Thư viện C runtime trên Windows:** bản build thường phụ thuộc `VCRUNTIME140.dll` (`dumpbin /dependents`, `results/s3_windows.md`), nên bản phát hành link tĩnh CRT (`-C target-feature=+crt-static` trong `build-sidecars-windows.mjs`).
 - **Sau mỗi lần cài hoặc nâng cấp:**
   - Build lại toàn bộ và chạy hết test.
   - Chạy `cargo audit`, `cargo deny` và `pnpm audit`.
@@ -1270,7 +1270,9 @@ meeting-translator/
 
 **Tiêu chí qua spike:** S1–S5 chạy được; S6 đạt **p50 ≤ 2,0 giây** trên máy khuyến nghị (đo cả trên máy M1 cơ bản 16 GB) và p50 ≤ 3,5 giây trên máy tối thiểu; mốc COMET ở S7 đạt mức sàn của A3. Nếu M1 cơ bản không đạt thì chọn một trong hai phương án ở §8. Nếu cả máy mạnh hơn cũng không đạt thì quay lại sửa spec.
 
-**Kết quả Phase 0 (2026-10-04, `bench/phase0/REPORT.md`):** chủ dự án duyệt qua cổng **có điều kiện**. Mọi điều kiện đã đo đều đạt (S1, S4, COMET; S6 trên M4 Pro đạt A2 với dư địa khoảng gấp đôi). Chưa đo: S2, S3 và S5 trên Windows; S6 trên M1 16 GB và các máy Windows. Các mục này phải xong trước bản phát hành đầu tiên, cùng chữ ký Developer ID; M1 cơ bản giữ trạng thái chưa xác nhận.
+**Kết quả Phase 0 (2026-10-04, `bench/phase0/REPORT.md`):** chủ dự án duyệt qua cổng **có điều kiện**. Mọi điều kiện đã đo đều đạt (S1, S4, COMET; S6 trên M4 Pro đạt A2 với dư địa khoảng gấp đôi). Chưa đo: S6 trên M1 16 GB và các máy Windows tham chiếu (bỏ qua vì không có máy); M1 cơ bản giữ trạng thái chưa xác nhận.
+
+**Chốt Phase 0 (2026-10-07):** S2, S3 và S5 trên Windows đạt (`results/s2_capture.md`, `s3_windows.md`, `s5_overlay.md`, `s6_windows.md`). Phase 0 xong. Còn lại duy nhất chữ ký Developer ID: chủ dự án mua sau, tới lúc đó bản macOS ký ad-hoc.
 
 **Phase 1: MVP.** Làm F1–F10, license server và tích hợp PayOS, bốn gói và hạn mức (§2, §6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Phase 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
 

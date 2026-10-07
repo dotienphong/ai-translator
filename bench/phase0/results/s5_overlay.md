@@ -20,4 +20,4 @@
 
 ## Windows (kế hoạch 0-05, Task 4)
 
-**Chưa làm.** Cần máy Windows 11 (và Windows 10 nếu có).
+**Đạt** (chủ dự án báo ngày 2026-10-07, không kèm từng dòng hay ảnh).

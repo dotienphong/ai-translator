@@ -1011,6 +1011,8 @@ Cách đọc:
 
 ### 5.1 Các dòng "Chờ …" trong spec
 
+**Chốt Phase 0 (2026-10-07):** chủ dự án báo đã thử trên Windows và đạt S2 (dòng 4–10), S5 Windows và S3 Task 16; Phase 0 xong (`bench/phase0/REPORT.md`, mục "Chốt Phase 0"). Các mã C1–C5, C9–C11, C14, C15 coi là xong; C12 không làm (không chặn việc nào); C6–C8 bỏ qua vì không có máy (chưa đo, không phải nợ); C13 là việc của 08. Còn lại duy nhất của Phase 0: Developer ID (T1), chủ dự án mua sau.
+
 | Chỗ trong spec | Nội dung chờ | Mã |
 |---|---|---|
 | §3.3, mốc A4 | "Chưa đủ điều kiện của A4": clip Bluetooth thật, nghe lại 24 clip | C13 |
@@ -1033,6 +1035,8 @@ Cách đọc:
 | §8, VRAM | "Chờ kết quả S6 trên Windows để có VRAM đo thật" | C7 |
 
 ### 5.2 Việc chờ Phase 0
+
+**Chốt Phase 0 (2026-10-07):** chủ dự án báo đã thử trên Windows và đạt S2 (dòng 4–10), S5 Windows và S3 Task 16; Phase 0 xong (`bench/phase0/REPORT.md`, mục "Chốt Phase 0"). Các mã C1–C5, C9–C11, C14, C15 coi là xong; C12 không làm (không chặn việc nào); C6–C8 bỏ qua vì không có máy (chưa đo, không phải nợ); C13 là việc của 08. Còn lại duy nhất của Phase 0: Developer ID (T1), chủ dự án mua sau.
 
 | Mã | Việc chờ | Nguồn kết quả | Kế hoạch dùng | Cách không bị chặn | Cần |
 |---|---|---|---|---|---|

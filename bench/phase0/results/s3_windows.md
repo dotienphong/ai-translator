@@ -1,6 +1,6 @@
 # S3 trên Windows: `asr-worker` Vulkan và CPU, `--probe`, thư viện nạp, WER/CER, VAD, dung lượng
 
-Ngày 2026-10-06. Kế hoạch: `docs/superpowers/plans/2026-09-29-phase-0-03-s3-nhan-dang.md`, Task 14–15 (Task 16 chưa làm).
+Ngày 2026-10-06. Kế hoạch: `docs/superpowers/plans/2026-09-29-phase-0-03-s3-nhan-dang.md`, Task 14–16 (Task 16: chủ dự án báo đạt ngày 2026-10-07).
 
 ## Máy và công cụ
 
@@ -84,6 +84,6 @@ Hai bản `asr-worker`, `llama-server.exe` và các DLL: **144,6 MB chưa nén; 
 
 ## Chưa làm
 
-- **Task 16: Windows không có Vulkan (máy ảo).** Chưa có máy ảo. Kết quả mong đợi: `asr-worker-vulkan.exe` không chạy được vì thiếu `vulkan-1.dll`, mã thoát `-1073741515` (0xC0000135); `asr-worker-cpu.exe` chạy bình thường. `.cargo/config.toml` đặt `/DEPENDENTLOADFLAG:0x800`, nên không thể giả lập bằng cách đặt DLL thiếu trong PATH trên máy này.
+- **Task 16: Windows không có Vulkan (máy ảo).** Chủ dự án báo đạt ngày 2026-10-07 (không kèm log). Ghi chú lúc chưa làm: Kết quả mong đợi: `asr-worker-vulkan.exe` không chạy được vì thiếu `vulkan-1.dll`, mã thoát `-1073741515` (0xC0000135); `asr-worker-cpu.exe` chạy bình thường. `.cargo/config.toml` đặt `/DEPENDENTLOADFLAG:0x800`, nên không thể giả lập bằng cách đặt DLL thiếu trong PATH trên máy này.
 - **Task 17: `s3_lid.md`** (kết luận S3). Chưa viết; phần Windows ở trên là mảnh còn thiếu để viết.
 - Chưa kiểm trên card rời (NVIDIA, AMD) nên chưa biết `--probe` có đúng với VRAM rời hay không.
