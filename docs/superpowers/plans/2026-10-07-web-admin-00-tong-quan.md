@@ -43,7 +43,7 @@ Bộ lọc sai: `400 {error: "invalid_request", field}`. Tham số rỗng coi nh
 
 **Trang:** mọi GET ngoài `/admin` và `/admin/*` trả trang từ `ASSETS` (route lạ trả `index.html`). Mọi phản hồi có CSP `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`.
 
-**Nhật ký của route đọc:** `list_viewed` (`detail`: `{resource, filters, count}`), `queue_viewed` (`detail`: số dòng mỗi nhóm), `summary_viewed`. Không có email trong `detail`; bộ lọc `actor` dạng `admin:<email>` ghi là `admin:…`.
+**Nhật ký của route đọc:** `list_viewed` (`detail`: `{resource, filters, count}`), `queue_viewed` (`detail`: số dòng mỗi nhóm), `summary_viewed`. Không có email trong `detail` và không có email trong URL: bộ lọc `actor` của `/admin/audit` chỉ nhận `api`, `webhook`, `reconcile`, `admin` (`admin` khớp mọi `admin:<email>`); `action` chỉ nhận `[a-z][a-z0-9_]{0,63}`. Lọc `action` theo một action xem/tra cứu thì tự hiện lượt xem. `from` lớn hơn `to` là `400`. Mọi phản hồi `/admin/*` có `Cache-Control: no-store`.
 
 ## Quy ước chung
 

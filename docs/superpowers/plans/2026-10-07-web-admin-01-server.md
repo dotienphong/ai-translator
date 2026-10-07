@@ -16,7 +16,9 @@
 
 1. **Không có migration `0003`.** Spec §3.3 chỉ thêm index "khi truy vấn danh sách cần". Production mới có vài chục dòng mỗi bảng (đã xóa sạch dữ liệu thử ngày 2026-10-07), quét toàn bảng không đáng kể. Bỏ migration thì đợt triển khai không phải chạy `wrangler d1 migrations apply`. Xét lại ở Phần 2 (Tổng quan).
 2. **`/admin/audit` nhận thêm bộ lọc `order_code`.** Trang chi tiết đơn (spec §4.2) cần nhật ký của đơn, mà `lookup` chỉ trả nhật ký theo license; đơn chưa có license (ví dụ `underpaid`) sẽ không có nhật ký nào nếu thiếu bộ lọc này.
-3. **Bộ lọc `actor` dạng `admin:<email>` ghi vào nhật ký là `admin:…`**, để `detail` của nhật ký không chứa email (spec §3: email không nằm trong `detail`).
+3. **Bộ lọc `actor` của `/admin/audit` chỉ nhận `api`, `webhook`, `reconcile`, `admin`** (`admin` khớp `actor LIKE 'admin:%'`), và `action` chỉ nhận `[a-z][a-z0-9_]{0,63}`, để email không vào URL hay `detail` của nhật ký (spec §3). Lọc `action` theo một action xem/tra cứu thì tự hiện lượt xem; `from` lớn hơn `to` là `400`. Quyết định sau review Task 5 (commit `6d32b15`); mã mẫu của Task 5 bên dưới là bản gốc, mã thật theo `6d32b15`.
+4. **`/admin/trials`: cột `purchased` dùng `device_id_hash IN (SELECT device_id_hash FROM activations)`** thay cho `EXISTS` tương quan (đo trên workerd: ~100 lần ít dòng đọc hơn, ngữ nghĩa như nhau vì `device_id_hash` NOT NULL).
+5. **Mọi phản hồi của Worker admin có `Cache-Control: no-store`** (Task 8): danh sách trả email khách, không để trình duyệt giữ trên đĩa.
 4. **Header bảo mật gắn cho mọi phản hồi của Worker admin** (cả JSON), không chỉ phản hồi của `ASSETS`: một middleware chung, đơn giản hơn và không hại gì cho JSON.
 
 ## Cấu trúc file
@@ -998,7 +1000,7 @@ Trong `server/src/admin-read.ts`, thêm vào cuối thân `registerAdminRead` (s
       return null;
     },
     select:
-      "SELECT t.device_id_hash, t.started_at, t.ends_at, t.last_seen_at, EXISTS (SELECT 1 FROM activations a WHERE a.device_id_hash = t.device_id_hash) AS purchased FROM trials t",
+      "SELECT t.device_id_hash, t.started_at, t.ends_at, t.last_seen_at, t.device_id_hash IN (SELECT device_id_hash FROM activations) AS purchased FROM trials t",
     order: "ORDER BY t.started_at DESC, t.device_id_hash DESC",
     cursor: keysetCursor("t.started_at", "t.device_id_hash"),
     next: (r) => `${r.started_at}_${r.device_id_hash}`,
@@ -1299,6 +1301,15 @@ describe("trang Web Admin (spec Web Admin §2)", () => {
     expect(denied.headers.get("x-frame-options")).toBe("DENY");
   });
 
+  it("mọi phản hồi /admin/* có Cache-Control: no-store (danh sách trả email khách); trang tĩnh thì không ép", async () => {
+    const a = fakeAssets();
+    const { adminFetch } = makeAdmin({ ASSETS: a.fetcher });
+    expect((await adminFetch("/admin/whoami")).headers.get("cache-control")).toBe("no-store");
+    expect((await adminFetch("/admin/whoami", { operator: null })).headers.get("cache-control")).toBe("no-store");
+    expect((await adminFetch("/admin/khong-co")).headers.get("cache-control")).toBe("no-store");
+    expect((await adminFetch("/")).headers.get("cache-control")).toBeNull();
+  });
+
   it("không có binding ASSETS thì trang là 404 JSON", async () => {
     const { adminCall } = makeAdmin();
     expect(await adminCall("/")).toEqual({ status: 404, body: { error: "not_found" } });
@@ -1377,6 +1388,11 @@ import { ADMIN_SECURE_HEADERS, registerAssets } from "./admin-assets";
   const app = new Hono<AdminAppEnv>();
   // Đứng trước lớp kiểm Access để cả phản hồi 403 cũng có header bảo mật.
   app.use("*", secureHeaders(ADMIN_SECURE_HEADERS));
+  // Dữ liệu của /admin/* có email khách: không để trình duyệt hay proxy giữ lại (kể cả 403, 404).
+  app.use("/admin/*", async (c, next) => {
+    await next();
+    c.header("cache-control", "no-store");
+  });
   useAdminAuth(app, makeDeps);
   registerAdminRead(app);
 ```

@@ -2712,6 +2712,15 @@ import { usePaged } from "../hooks";
 
 const EMPTY = { actor: "", action: "", from: "", to: "", includeViews: false };
 
+/** Server chỉ nhận bốn giá trị này (email không vào URL): `admin` khớp mọi `admin:<email>`. */
+const ACTOR_OPTIONS = [
+  ["", "Tất cả"],
+  ["admin", "Người vận hành (admin)"],
+  ["api", "App (api)"],
+  ["webhook", "Webhook PayOS"],
+  ["reconcile", "Đối soát (cron)"],
+] as const;
+
 export function AuditPage() {
   const [draft, setDraft] = useState(EMPTY);
   const [f, setF] = useState(EMPTY);
@@ -2722,7 +2731,7 @@ export function AuditPage() {
   );
   function apply(e: FormEvent) {
     e.preventDefault();
-    setF({ ...draft, actor: draft.actor.trim(), action: draft.action.trim() });
+    setF({ ...draft, action: draft.action.trim() });
   }
   return (
     <>
@@ -2730,11 +2739,17 @@ export function AuditPage() {
       <form className="filters" onSubmit={apply}>
         <label className="field">
           Ai (actor)
-          <input value={draft.actor} placeholder="api, webhook, reconcile, admin:…" onChange={(e) => setDraft({ ...draft, actor: e.target.value })} />
+          <select value={draft.actor} onChange={(e) => setDraft({ ...draft, actor: e.target.value })}>
+            {ACTOR_OPTIONS.map(([v, text]) => (
+              <option key={v} value={v}>
+                {text}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="field">
           Việc (action)
-          <input value={draft.action} placeholder="license_revoked…" onChange={(e) => setDraft({ ...draft, action: e.target.value })} />
+          <input value={draft.action} placeholder="license_revoked… (chữ thường, gạch dưới)" onChange={(e) => setDraft({ ...draft, action: e.target.value })} />
         </label>
         <DateInput label="Từ ngày" value={draft.from} onChange={(from) => setDraft({ ...draft, from })} />
         <DateInput label="Đến ngày" value={draft.to} onChange={(to) => setDraft({ ...draft, to })} />
