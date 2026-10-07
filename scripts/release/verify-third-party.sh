@@ -1,6 +1,6 @@
 #!/bin/sh
 # Kiểm `third_party/` (whisper.cpp 1.8.3 trong whisper-rs-sys, và whisper-rs) đúng bằng hai crate gốc trên crates.io, với
-# SHA-256 đã khóa, cộng hai bản vá trong `third_party/patches/` (spec §10.2: whisper.cpp build từ mã nguồn đã khóa, có
+# SHA-256 đã khóa, cộng ba bản vá trong `third_party/patches/` (spec §10.2: whisper.cpp build từ mã nguồn đã khóa, có
 # kiểm checksum). Dựng lại theo `third_party/README.md` trong thư mục tạm, rồi so từng file mà git theo dõi trong
 # `third_party/whisper-rs-sys` và `third_party/whisper-rs` (bản trong cây làm việc; CI checkout đúng commit đang build).
 #
@@ -47,12 +47,13 @@ sha_of() {
 fetch whisper-rs-sys 0.15.0 "$(sha_of whisper-rs-sys-0.15.0.crate)"
 fetch whisper-rs 0.16.0 "$(sha_of whisper-rs-0.16.0.crate)"
 (cd "$tmp/rebuilt" && git apply --directory=third_party "$root/third_party/patches/0001-whisper-cpp-set-audio-ctx.patch" \
-  && git apply --directory=third_party "$root/third_party/patches/0002-whisper-rs-set-audio-ctx.patch")
+  && git apply --directory=third_party "$root/third_party/patches/0002-whisper-rs-set-audio-ctx.patch" \
+  && git apply --directory=third_party "$root/third_party/patches/0003-whisper-rs-sys-msvc-optimization-flags.patch")
 
 (cd "$root" && git ls-files -z third_party/whisper-rs-sys third_party/whisper-rs | xargs -0 tar -cf -) |
   tar -x -C "$tmp/committed"
 if diff -r "$tmp/rebuilt/third_party" "$tmp/committed/third_party" >"$tmp/diff.txt"; then
-  echo "third_party khớp whisper-rs-sys 0.15.0 và whisper-rs 0.16.0 trên crates.io cộng hai bản vá"
+  echo "third_party khớp whisper-rs-sys 0.15.0 và whisper-rs 0.16.0 trên crates.io cộng ba bản vá"
 else
   head -n 40 "$tmp/diff.txt" >&2
   echo "third_party khác bản dựng lại từ crates.io (xem diff ở trên)" >&2
