@@ -1,6 +1,6 @@
 """S7: chấm COMET từng chiều, so sánh theo cặp và lấy ngưỡng tỉ lệ token cho hậu xử lý (spec A3, §6.5).
 
-Chấm một lượt mới mà không đụng tới mốc (chống thụt lùi A3, kế hoạch Giai đoạn 1 · 00 mục 6.7):
+Chấm một lượt mới mà không đụng tới mốc (chống thụt lùi A3, kế hoạch Phase 1 · 00 mục 6.7):
   python bench/phase0/mt/score_mt.py --outputs bench/phase0/data/mt/outputs-<nhãn> --label <nhãn> \
     --baseline bench/phase0/results/s7_mt.json
 Kết quả: bench/phase0/results/s7_mt-<nhãn>.json và .md; bảng cuối so từng chiều với mốc (không thấp hơn quá 0,01). Thêm

@@ -186,7 +186,7 @@ Thời gian theo độ dài đoạn (p50 của `asr_ms`; công thức = lượt 
 
 - Ảnh hưởng lên số đo: turbo vi 230 → 198 lỗi, turbo ko 252 → 182, small zh 376 → 352 nếu chỉ giữ bản đầu.
 - fullctx không có clip nào chép hai lần ở cả hai model, sàn 512 sửa hầu hết, nên đây là hiện tượng của cửa sổ rút ngắn, không phải của clip hay model. Cả 8 clip của lượt mặc định (6 turbo, 2 small) cũng bị lặp ở chế độ A (Task 10), nơi không có bộ cắt nên chạy tới 220 token, nên đây không phải lỗi riêng của chế độ B.
-- Đề xuất (chủ dự án duyệt): (a) bộ lọc câu lặp của §6.4 (chưa cài ở Giai đoạn 0) phải bắt được bản chép hai lần; 8 clip trên là ca thử; hoặc (b) hạ ngưỡng `cut_loop` xuống 2 bản cho mẫu dài (ví dụ từ 16 token) và nâng `MAX_LOOP_PERIOD`. Cả hai cần thử với lời nói có lặp thật (người nói nhắc lại nguyên câu dài) để kiểm lọc nhầm. Sau đó đo lại mốc A4.
+- Đề xuất (chủ dự án duyệt): (a) bộ lọc câu lặp của §6.4 (chưa cài ở Phase 0) phải bắt được bản chép hai lần; 8 clip trên là ca thử; hoặc (b) hạ ngưỡng `cut_loop` xuống 2 bản cho mẫu dài (ví dụ từ 16 token) và nâng `MAX_LOOP_PERIOD`. Cả hai cần thử với lời nói có lặp thật (người nói nhắc lại nguyên câu dài) để kiểm lọc nhầm. Sau đó đo lại mốc A4.
 
 ## Khóa ngôn ngữ so với tự nhận diện
 

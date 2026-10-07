@@ -5,7 +5,7 @@
 /node_modules/
 /dist/
 
-# Model, công cụ tải về và dữ liệu lớn của Giai đoạn 0 (xem bench/phase0/fetch.py)
+# Model, công cụ tải về và dữ liệu lớn của Phase 0 (xem bench/phase0/fetch.py)
 /models/
 /tools/
 /bench/phase0/data/

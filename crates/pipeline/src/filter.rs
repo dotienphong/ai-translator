@@ -1,6 +1,6 @@
 //! Luật bỏ đoạn ở tiến trình chính (spec §6.4, "Lọc lỗi ảo giác"), và giới hạn độ dài của đoạn gửi cho `asr-worker`.
 //! Chuyển từ `latency-bench` (Đ3 của kế hoạch 00): app và công cụ đo S6 dùng đúng một bản luật. Bộ lọc câu ảo giác quen
-//! thuộc là luật mới của Giai đoạn 1 ("Việc cho MVP" của §6.4).
+//! thuộc là luật mới của Phase 1 ("Việc cho MVP" của §6.4).
 //!
 //! Đoạn bị bỏ không có phụ đề, không vào prompt của đoạn sau, và không làm đổi ngôn ngữ của đoạn trước (§6.4).
 

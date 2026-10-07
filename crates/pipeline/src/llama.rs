@@ -109,7 +109,7 @@ pub struct StreamEnd {
     pub cancelled: bool,
 }
 
-/// Bản dịch đã xong, dạng cũ của Giai đoạn 0 (`latency-bench`).
+/// Bản dịch đã xong, dạng cũ của Phase 0 (`latency-bench`).
 #[derive(Debug, Clone)]
 pub struct Translation {
     pub text: String,
@@ -284,7 +284,7 @@ impl LlamaServer {
         })
     }
 
-    /// Dạng của Giai đoạn 0: repeat penalty 1,05, đọc tới hết, cắt khoảng trắng hai đầu.
+    /// Dạng của Phase 0: repeat penalty 1,05, đọc tới hết, cắt khoảng trắng hai đầu.
     pub fn translate(&self, prompt: &str, max_tokens: u32) -> Result<Translation> {
         let req = ChatRequest {
             prompt,

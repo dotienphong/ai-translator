@@ -4,7 +4,7 @@
 //!   phát hành nằm cạnh file chạy của app, tên không kèm triple (Tauri `externalBin` bỏ triple khi đóng gói; bảng SHA-256
 //!   dùng tên đó, xem `bundled_name`).
 //! - Model: theo kho model của kế hoạch 04 (`app_local_data_dir/models`, `models::store`). Bản dev chưa tải gói nào
-//!   thì dùng file của Giai đoạn 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
+//!   thì dùng file của Phase 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
 
 use std::path::{Path, PathBuf};
 
@@ -63,7 +63,7 @@ pub struct ModelFiles {
     pub vad: PathBuf,
 }
 
-/// Bản dev chưa tải gói nào qua manifest: file model của Giai đoạn 0 trong `models/` của repo, theo tên cố định
+/// Bản dev chưa tải gói nào qua manifest: file model của Phase 0 trong `models/` của repo, theo tên cố định
 /// (§6.7). Gói `lite` dùng bộ của gói Nhẹ, mọi gói khác (kể cả chưa chọn) dùng gói Chuẩn.
 pub fn model_files(dir: &Path, tier: Option<&str>) -> ModelFiles {
     let (asr, mt) = match tier {
@@ -84,7 +84,7 @@ pub fn dev_models_dir() -> PathBuf {
         .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../models"))
 }
 
-/// File model đầu tiên còn thiếu (bản dev, file của Giai đoạn 0 không có trong kho model).
+/// File model đầu tiên còn thiếu (bản dev, file của Phase 0 không có trong kho model).
 pub fn first_missing(files: &ModelFiles) -> Option<&Path> {
     [&files.asr, &files.mt, &files.vad]
         .into_iter()

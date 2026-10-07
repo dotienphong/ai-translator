@@ -38,7 +38,7 @@ pub const MIN_AUDIO_CTX: i32 = 512;
 pub const MAX_FRAME_BYTES: u32 = 16 * 1024 * 1024;
 
 /// Phiên bản giao thức, gửi trong `Response::Ready`. App từ chối worker có phiên bản khác (spec §6.4, "Việc cho MVP").
-/// Tăng số này mỗi khi đổi bất kỳ kiểu nào trong file này. Giai đoạn 0 không có trường này (coi là 1).
+/// Tăng số này mỗi khi đổi bất kỳ kiểu nào trong file này. Phase 0 không có trường này (coi là 1).
 pub const PROTOCOL_VERSION: u32 = 2;
 
 /// Thiết bị `asr-worker` thật sự dùng để chạy model, không phải thiết bị được yêu cầu (spec §6.4, thông điệp `Load`).
@@ -628,7 +628,7 @@ mod tests {
         assert_eq!(PROTOCOL_VERSION, 2);
     }
 
-    /// Worker của Giai đoạn 0 gửi `Ready` với `backend` là chuỗi: app mới đọc thấy phiên bản sai (độ dài chuỗi) hoặc
+    /// Worker của Phase 0 gửi `Ready` với `backend` là chuỗi: app mới đọc thấy phiên bản sai (độ dài chuỗi) hoặc
     /// không giải mã được khung, chứ không nhận nhầm là hợp lệ.
     #[test]
     fn a_phase0_ready_is_not_accepted_as_version_2() {

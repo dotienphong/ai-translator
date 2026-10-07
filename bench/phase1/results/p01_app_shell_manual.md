@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 01 Task 24: thử tay khung app trên macOS
+# Phase 1 · 01 Task 24: thử tay khung app trên macOS
 
 - Máy: MacBook Pro Apple M4 Pro, macOS 26.6.2.
 - Bản chạy: như `bench/phase0/results/gd1_app_mac.md` (`main`, từ `ffaa592` tới `5925d42`), chạy bằng `scripts/run-dev-app.sh`.

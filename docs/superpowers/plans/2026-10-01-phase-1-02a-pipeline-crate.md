@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 02a: Pipeline trong app — giao thức, luật cắt câu và lọc
+# Phase 1 · 02a: Pipeline trong app — giao thức, luật cắt câu và lọc
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -19,13 +19,13 @@ Bản này sửa theo ba review của bản `b221f3c` (ghi chú `review-02a.md`,
 
 **Công nghệ:** Giữ nguyên Rust 1.98.1, whisper-rs 0.16 với whisper.cpp 1.8.3 đã vá, llama.cpp b11146, candle-onnx 0.11, `windows` 0.62.2. Thêm `ferrous-opencc`, `miniz_oxide`, `log`, `libc`, `objc2-app-kit`, `sha2` (bảng "Phiên bản đã chốt").
 
-Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.2, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`.
+Tổng quan: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` (mục 2.2, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`.
 
 Kế hoạch 02 có khoảng 24 000 dòng nên chia bốn file, làm theo thứ tự:
 1. **02a** (file này): giao thức, luật cắt câu, lọc câu ảo giác, phồn thể sang giản thể.
-2. **02d** `docs/superpowers/plans/2026-10-01-giai-doan-1-02d-pipeline-clients.md`: client tiến trình phụ, tiến trình phụ giả, dịch một câu, giám sát. Chữ "d" chỉ vì file này tách ra sau; làm ngay sau 02a.
-3. **02b** `docs/superpowers/plans/2026-10-01-giai-doan-1-02b-pipeline-engine.md`: phụ đề và hàng đợi, engine của một phiên, test từ file WAV, `latency-bench mt-eval`, `audio-capture` cho app, đo và chạy lại A3, A4, S6.
-4. **02c** `docs/superpowers/plans/2026-10-01-giai-doan-1-02c-pipeline-app.md`: nối vào app (phiên dịch, tiến trình phụ, nguồn âm thanh, giao diện), thử tay, đợt Windows, cập nhật kế hoạch 00.
+2. **02d** `docs/superpowers/plans/2026-10-01-phase-1-02d-pipeline-clients.md`: client tiến trình phụ, tiến trình phụ giả, dịch một câu, giám sát. Chữ "d" chỉ vì file này tách ra sau; làm ngay sau 02a.
+3. **02b** `docs/superpowers/plans/2026-10-01-phase-1-02b-pipeline-engine.md`: phụ đề và hàng đợi, engine của một phiên, test từ file WAV, `latency-bench mt-eval`, `audio-capture` cho app, đo và chạy lại A3, A4, S6.
+4. **02c** `docs/superpowers/plans/2026-10-01-phase-1-02c-pipeline-app.md`: nối vào app (phiên dịch, tiến trình phụ, nguồn âm thanh, giao diện), thử tay, đợt Windows, cập nhật kế hoạch 00.
 
 Cả bốn làm sau khi 01 xong hẳn, vì cùng sửa `Cargo.lock`. Bảng phiên bản, bảng dòng của bảng đối chiếu, quyết định (QĐ) và điểm cần chủ dự án quyết nằm ở file này, dùng chung cho cả bốn.
 
@@ -51,7 +51,7 @@ Kiểm bằng `cargo info <crate>` và API của crates.io (bản ổn định m
 
 Ghi chú:
 - Không thêm gói npm nào ở kế hoạch 02 (`pnpm-lock.yaml` giữ nguyên như sau 01). Script đo trong `$W` (venv faster-whisper, tải nhạc CC0) không vào repo.
-- Không crate mới nào kéo ggml hay thư viện C vào tiến trình chính. Riêng `candle-core` 0.11 (có từ Giai đoạn 0) luôn kéo `tokenizers` với feature `onig`, tức thư viện C oniguruma nằm trong tiến trình chính. Điều này có từ trước kế hoạch này, nhưng lần đầu lộ ra khi kiểm code Windows trên Mac (QĐ15); ghi ở điểm cần chủ dự án quyết.
+- Không crate mới nào kéo ggml hay thư viện C vào tiến trình chính. Riêng `candle-core` 0.11 (có từ Phase 0) luôn kéo `tokenizers` với feature `onig`, tức thư viện C oniguruma nằm trong tiến trình chính. Điều này có từ trước kế hoạch này, nhưng lần đầu lộ ra khi kiểm code Windows trên Mac (QĐ15); ghi ở điểm cần chủ dự án quyết.
 - `cargo deny check` sạch sau mỗi task thêm crate; `cargo audit` còn 3 cảnh báo cũ đã được cho phép (`paste`, `proc-macro-error`, `glib`).
 
 ## Cách đọc kế hoạch này
@@ -64,7 +64,7 @@ Ghi chú:
   - "Tạo `<file>`, lúc này mới có phần test": file chỉ có các dòng `//!` đầu và khối `#[cfg(test)] mod tests`; bước sau thêm phần code vào giữa hai phần đó.
 - **Khối Expected.** Mọi khối Expected là output thật, lấy từ một lần chạy lại toàn bộ các task trên một worktree sạch, với target riêng còn trống (2026-10-01). Đường dẫn đã đổi về gốc repo. Thời gian chạy (`finished in …`) và id luồng sẽ khác; số test và tên lỗi phải giống. Có ba chỗ khối Expected là trích, và câu dẫn ghi rõ: bước đỏ chỉ in 6 dòng lỗi khác nhau đầu tiên (output thật có thể dài hơn; mọi dòng in ra đều có thật), bước có `grep`/`head` trong lệnh, và các bảng đo "lúc lập kế hoạch". `Cargo.lock` sinh lại có thể khác chuỗi commit của kế hoạch ở vài cạnh phụ thuộc (ví dụ `cssparser-macros` → `syn` 2 hay 3, `tempfile` → `getrandom` 0.3 hay 0.4: hai crate khai khoảng phiên bản rộng), nhưng không khác ở tập gói; không cần sửa tay.
 - **`node_modules`.** Repo chính có sẵn `node_modules` từ kế hoạch 01. Làm trên một worktree mới thì chạy `pnpm install --frozen-lockfile` một lần trước 02c (lần `pnpm test` đầu tiên là ở 02c Task 2), như 02c Task 7 Step 3 (Nhỏ-8 của review 02 lần 4).
-- **Đường dẫn trong lệnh.** Model và `llama-server` của Giai đoạn 0 nằm ở `models/` và `tools/` (có sẵn trên máy dev, bị `.gitignore` bỏ qua; xem `bench/phase0/fetch.py`). Lệnh `cargo test` chạy test với thư mục làm việc là thư mục của crate, nên biến môi trường trỏ tới model dùng đường dẫn tuyệt đối (`$PWD/models/…`, chạy từ gốc repo).
+- **Đường dẫn trong lệnh.** Model và `llama-server` của Phase 0 nằm ở `models/` và `tools/` (có sẵn trên máy dev, bị `.gitignore` bỏ qua; xem `bench/phase0/fetch.py`). Lệnh `cargo test` chạy test với thư mục làm việc là thư mục của crate, nên biến môi trường trỏ tới model dùng đường dẫn tuyệt đối (`$PWD/models/…`, chạy từ gốc repo).
 - **Không bật hộp thoại quyền** (mục 6.8 của kế hoạch 00): không task nào trong file này chạy tap thu âm thật hay mở System Settings. Test `#[ignore]` của `audio-capture` chỉ đọc thuộc tính của Core Audio HAL, không cần quyền.
 - **Task cần máy rảnh** (mục 6.9): Task 7–9 của 02b chạy lại A3, A4, S6, lâu và nặng, S6 đo thời gian. Agent dừng ở đó, nhờ người đóng app nặng và cắm sạc, chờ xác nhận rồi mới chạy.
 - **Task cần người hoặc Windows:** ghi ở đầu task.
@@ -245,16 +245,16 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 | 82 | Việc cho MVP §5: Job Object (`KILL_ON_JOB_CLOSE`) trên Windows và process group trên macOS, để… | process group và hook panic (macOS), Job Object (Windows) | d1, c3; c9 (Win) |
 | 84 | Interface chung `AudioSource` (`start`, `stop`, `format`) | `AudioSource` thêm `failed()` | b5 |
 | 85 | Windows, chế độ tự động: loopback của thiết bị Console và thiết bị Communications (nếu khác)… | chế độ tự động Console và Communications trong app | b5, c2; c9 (Win), chờ C2 |
-| 86 | Windows: luồng thu đọc theo timer, tự chèn im lặng theo vị trí QPC khi loopback không trả gói… | chèn im lặng (có từ GĐ0); app chèn thêm theo đồng hồ thật khi nguồn chưa chạy | b5, c2; c9 (Win), chờ C2 |
+| 86 | Windows: luồng thu đọc theo timer, tự chèn im lặng theo vị trí QPC khi loopback không trả gói… | chèn im lặng (có từ Phase 0); app chèn thêm theo đồng hồ thật khi nguồn chưa chạy | b5, c2; c9 (Win), chờ C2 |
 | 87 | Windows: người dùng chọn thủ công được một thiết bị | chọn tay một thiết bị: liệt kê thiết bị, mở theo id | b5, c4, c6; c9 (Win) |
 | 88 | Đổi thiết bị phát: hỏi định kỳ 500 ms chữ ký thiết bị phát mặc định và mở lại nguồn khi luồng… | khởi tạo lại khi thiết bị đổi (hỏi định kỳ, QĐ16) | b5, c2; c9 (Win) |
 | 89 | Windows: không dùng process loopback trong MVP; hệ quả là app thu mọi âm thanh của máy | không dùng process loopback | b5 |
 | 90 | macOS: Core Audio process tap đọc qua aggregate device; mặc định tap toàn hệ thống, trừ chính… | tap toàn hệ thống trừ chính app, trong app | c2; chờ C1 |
 | 91 | macOS, tùy chọn: chỉ tap một app họp, chọn từ danh sách app đang phát âm thanh | danh sách app đang phát tiếng, tap một app | b5, c2, c4, c6 |
 | 92 | macOS: khai báo `NSAudioCaptureUsageDescription` trong Info.plist của app | `NSAudioCaptureUsageDescription` | c4; câu tiếng Anh ở 07 |
-| 93 | macOS: gọi API qua `objc2` và `objc2-core-audio`, không dùng `coreaudio-sys` | objc2 (có từ GĐ0) | b5 |
+| 93 | macOS: gọi API qua `objc2` và `objc2-core-audio`, không dùng `coreaudio-sys` | objc2 (có từ Phase 0) | b5 |
 | 94 | Callback thu âm không cấp phát bộ nhớ, không lock, chỉ ghi vào ring buffer lock-free (`rtrb`)… | ring buffer 30 giây trong app | b5, c2 |
-| 95 | Gộp về mono, resample bằng `rubato` từ tần số thiết bị xuống 16 kHz, chia khung 512 mẫu (32… | mono, resample, khung 512 mẫu (có từ GĐ0) trong luồng tiền xử lý | b5, b2 |
+| 95 | Gộp về mono, resample bằng `rubato` từ tần số thiết bị xuống 16 kHz, chia khung 512 mẫu (32… | mono, resample, khung 512 mẫu (có từ Phase 0) trong luồng tiền xử lý | b5, b2 |
 | 96 | Silero VAD: ngưỡng 0,5; tiếng nói ngắn nhất 250 ms; im lặng 300 ms thì chốt đoạn, chỉnh được… | ngưỡng của segmenter vào `PipelineConfig`; độ nhạy ngắt câu từ cài đặt | a2, c3 |
 | 97 | Ghép câu và phụ đề tạm: không có dấu câu kết thúc thì phụ đề là tạm; cửa sổ ghép max(700 ms… | ghép câu và phụ đề tạm chuyển vào `pipeline` | a2 |
 | 98 | Đầu ra `Segment { id, start_ms, end_ms, samples }`, thời gian tính từ lúc bắt đầu phiên theo… | thời gian từ đầu phiên theo đồng hồ thật | b2, c2 |
@@ -270,8 +270,8 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 | 108 | Chế độ giải mã B (`shared`, cần feature `shared-encode` và bản vá ở `third_party/`) là mặc… | app từ chối worker không ở chế độ B | d3 |
 | 109 | Chọn ngôn ngữ: chuẩn hóa xác suất trong tập cho phép; đoạn từ 1,5 giây dưới 0,5 thì giữ ngôn… | giữ ngôn ngữ trước theo `prev_lang` trong yêu cầu | a1 |
 | 110 | Giải mã greedy, không temperature fallback, chặn token không phải tiếng nói; prompt là tối đa… | prompt theo ngôn ngữ, giữ ở tiến trình chính | d1 |
-| 111 | `audio_ctx = min(1500, max(512, 50 × số giây + 64))`, làm tròn lên (`MIN_AUDIO_CTX`… | không đổi (có từ GĐ0) | — |
-| 112 | Flash attention tắt; `ASR_FLASH_ATTN=1` chỉ để thử | không đổi (có từ GĐ0) | — |
+| 111 | `audio_ctx = min(1500, max(512, 50 × số giây + 64))`, làm tròn lên (`MIN_AUDIO_CTX`… | không đổi (có từ Phase 0) | — |
+| 112 | Flash attention tắt; `ASR_FLASH_ATTN=1` chỉ để thử | không đổi (có từ Phase 0) | — |
 | 113 | Làm nóng: sau `Load`, app gửi `Warmup` | app gửi `Warmup` sau `Load` | d3 |
 | 114 | Lọc ảo giác: bỏ đoạn khi `no_speech_prob > 0,6` và `avg_logprob < −1`, và đoạn có chữ rỗng… | luật bỏ đoạn chuyển vào `pipeline` | a2 |
 | 115 | Việc cho MVP §6.4: thử `no_speech_prob` trên im lặng, nhiễu và nhạc, nhất là với turbo | công cụ đo, chạy đo im lặng và nhiễu | b3, b6; nhạc chờ người (Đ12) |
@@ -296,11 +296,11 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 | 134 | Không truyền `-ngl 99`; chạy `llama-server` sau khi `asr-worker` nạp model, để `--fit` tính cả… | không `-ngl 99`; chạy sau `asr-worker` | d1, d3 |
 | 135 | Server lỗi: tự khởi động lại, chờ 1, 2, 5 giây; quá 5 lần trong 10 phút thì báo lỗi, phụ đề… | luật khởi động lại `llama-server` | d3 |
 | 136 | Lần đầu chạy binary mới (sau khi cài hoặc cập nhật): chờ `/health` hay `Ready` tới 180 giây… | chờ lâu hơn ở lần đầu, không tính lỗi; trạng thái "Đang chuẩn bị lần đầu" | d3, c1, c3; số thật chờ T1 |
-| 137 | API `/v1/chat/completions` với `stream: true`, chat template lấy từ GGUF; kết luận S4 chỉ áp… | stream, chat template từ GGUF (có từ GĐ0) | d1; S4 Windows ở c9, chờ C4 |
+| 137 | API `/v1/chat/completions` với `stream: true`, chat template lấy từ GGUF; kết luận S4 chỉ áp… | stream, chat template từ GGUF (có từ Phase 0) | d1; S4 Windows ở c9, chờ C4 |
 | 138 | Phương án dự phòng: render template bằng `minijinja` rồi gọi `/completion`, truyền mảng token… | phương án dự phòng `/completion` | không làm: chỉ khi S4 Windows không đạt (C4) |
-| 139 | Mẫu prompt theo model card Hy-MT2: mẫu tiếng Trung khi câu liên quan tới tiếng Trung, còn lại… | không đổi (có từ GĐ0) | — |
+| 139 | Mẫu prompt theo model card Hy-MT2: mẫu tiếng Trung khi câu liên quan tới tiếng Trung, còn lại… | không đổi (có từ Phase 0) | — |
 | 141 | Đưa câu trước vào làm ngữ cảnh: cờ thử nghiệm `experimental.translationContext`, mặc định tắt | cờ ngữ cảnh câu trước | b2, c3 |
-| 142 | Tham số sinh: temperature 0, repeat penalty 1,05, số token tối đa min(4 × số token câu gốc +… | không đổi (có từ GĐ0) | — |
+| 142 | Tham số sinh: temperature 0, repeat penalty 1,05, số token tối đa min(4 × số token câu gốc +… | không đổi (có từ Phase 0) | — |
 | 143 | Bật `cache_prompt`; gửi một request làm nóng khi bắt đầu phiên | `cache_prompt`; request làm nóng khi bắt đầu phiên | d1, b2 |
 | 144 | Hậu xử lý trong lúc stream: cắt khoảng trắng thừa; giữ vài token đầu tới khi chắc không phải… | hậu xử lý trong lúc stream | d2 |
 | 145 | Bản dịch quá dài, đo bằng token theo từng cặp: Anh→Việt 4,4; Trung→Việt 6,6; Nhật→Việt 3,5… | ngưỡng tỉ lệ token theo cặp | d2 |
@@ -337,16 +337,16 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 | 269 | Bị clone, đổi thương hiệu: đăng ký nhãn hiệu, EULA (pháp lý); logic quan trọng nằm trong Rust… | logic của pipeline nằm trong Rust | a1–a3, d1–d3, c1–c4 |
 | 272 | Thay tiến trình phụ, chèn thư viện giả: kiểm SHA-256 của file thực thi và thư viện ggml theo… | SHA-256 tiến trình phụ và thư viện đi kèm; `SetDefaultDllDirectories` ở app và `asr-worker` | a1, c1, c3; hardened runtime ở 07 |
 | 273 | Lộ nội dung cuộc họp: lịch sử mã hóa bằng SQLCipher, khóa ngẫu nhiên trong kho khóa; log không… | log không có chữ chép lời | a1, b2 |
-| 277 | Unit: resample và gộp kênh; trộn hai thiết bị Windows có lệch đồng hồ | không đổi (có từ GĐ0) | — |
+| 277 | Unit: resample và gộp kênh; trộn hai thiết bị Windows có lệch đồng hồ | không đổi (có từ Phase 0) | — |
 | 278 | Unit: chèn im lặng khi luồng loopback không trả gói dữ liệu | test chèn im lặng theo đồng hồ thật (`ClockFiller`) | b5; test `windows.rs` cần Windows (c9) |
 | 279 | Unit: cắt câu với tín hiệu tổng hợp (im lặng, tiếng nói, nhạc, đoạn bị cắt ở 8 giây) | ca nhạc | chờ clip nhạc có quyền dùng (Đ12) |
-| 280 | Unit: VAD chạy dài không tăng bộ nhớ (`vad_reference` bỏ qua mặc định; `debug_assert!` trong… | không đổi (có từ GĐ0) | — |
+| 280 | Unit: VAD chạy dài không tăng bộ nhớ (`vad_reference` bỏ qua mặc định; `debug_assert!` trong… | không đổi (có từ Phase 0) | — |
 | 281 | Unit: ghép câu tạm (cửa sổ ghép theo `vadEndSilenceMs`, trần 15 giây hoặc 3 đoạn, đoạn khác… | test ghép câu chuyển vào `pipeline` | a2 |
 | 282 | Unit: chọn ngôn ngữ trong tập cho phép, giữ ngôn ngữ đoạn trước, ngưỡng 0,9 cho đoạn ngắn hơn… | test chọn ngôn ngữ với `prev_lang` | a1 |
 | 283 | Unit: giao thức stdin/stdout (đóng gói, giải mã, thông điệp hỏng hoặc bị cắt, khung thừa byte… | test cho trường mới | a1 |
-| 284 | Unit: giải mã của `asr-worker` (công thức `audio_ctx` có sàn 512, luật lặp theo độ dài mẫu… | không đổi (có từ GĐ0) | — |
+| 284 | Unit: giải mã của `asr-worker` (công thức `audio_ctx` có sàn 512, luật lặp theo độ dài mẫu… | không đổi (có từ Phase 0) | — |
 | 285 | Unit: luật bỏ đoạn ở tiến trình chính theo `no_speech_prob` và `avg_logprob` | test luật bỏ đoạn | a2, a3 |
-| 286 | Unit: tạo prompt (nhánh tiếng Trung và không tiếng Trung, tên ngôn ngữ của từng mẫu); khớp… | prompt có từ GĐ0; thuật ngữ ở 03 | — |
+| 286 | Unit: tạo prompt (nhánh tiếng Trung và không tiếng Trung, tên ngôn ngữ của từng mẫu); khớp… | prompt có từ Phase 0; thuật ngữ ở 03 | — |
 | 287 | Unit: hậu xử lý bản dịch khi đang stream (lọc nhãn và ngoặc kép, ngưỡng tỉ lệ token theo cặp… | test hậu xử lý | d2 |
 | 288 | Unit: các trạng thái của phụ đề, kể cả `same_lang`, `skipped`, `dropped` | test trạng thái phụ đề | b1, b2 |
 | 295 | Tích hợp: chạy pipeline từ file WAV, kiểm phụ đề có xuất hiện, đúng thứ tự, đúng thời gian | test từ file WAV (clip FLEURS) với tiến trình phụ giả; bản model thật bị bỏ qua mặc định | b2, b3 |
@@ -357,7 +357,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 | 313 | Bảo mật: thay `asr-worker` hoặc `llama-server` bằng file khác thì app từ chối chạy | test thay tiến trình phụ thì bị từ chối | c1 |
 | 315 | Bảo mật: log của một phiên dịch không chứa nội dung chép lời | test log của phiên không có chữ chép lời | b2 |
 | 318 | Cây thư mục theo §12: `src/windows/{main,overlay}`, `components/`, `store/`, `lib/ipc.ts`… | `session.rs`, `sidecar/`, `capture.rs` | c1–c3 |
-| 319 | `asr-protocol`, `asr-worker`, `audio-capture`, `pipeline` có từ Giai đoạn 0, phần lớn code… | dùng lại các crate | a1–a3, d1–d3, c1–c4 |
+| 319 | `asr-protocol`, `asr-worker`, `audio-capture`, `pipeline` có từ Phase 0, phần lớn code… | dùng lại các crate | a1–a3, d1–d3, c1–c4 |
 | 320 | Việc cho MVP §12: giữ `audio-capture` và `pipeline` là crate riêng; `src-tauri` chỉ còn phần… | đã xong ngày 2026-10-01 | — |
 
 ## Quyết định của kế hoạch này
@@ -367,7 +367,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 - **QĐ1. Luồng riêng và client đồng bộ, không dùng runtime tokio.** Mục 2.2 của kế hoạch 00 giao 02 quyết điểm này; spec §7 đã ghi lại quyết định này.
   - Các luồng: callback thu âm (ở `audio-capture`); luồng VAD, stack 8 MiB vì Silero chạy bằng candle cần hơn 1 MiB ở bản debug; luồng nhận dạng; luồng phụ đề, nơi duy nhất phát sự kiện phụ đề nên thứ tự upsert và delta luôn đúng; luồng dịch.
   - Lý do:
-    - hai client đồng bộ của Giai đoạn 0 (`asr_client`, `llama`) đã chạy qua S6 và giữ nguyên cách gọi;
+    - hai client đồng bộ của Phase 0 (`asr_client`, `llama`) đã chạy qua S6 và giữ nguyên cách gọi;
     - mỗi tiến trình phụ chỉ làm một việc một lúc (`llama-server -np 1`, `asr-worker` đọc tuần tự), nên async không thêm thông lượng;
     - `pipeline` không cần runtime nào, test chạy không cần Tauri.
   - App chỉ dùng runtime của Tauri để đưa việc chặn ra khỏi luồng chính (`spawn_blocking` trong lệnh `toggle_session`, 02c).
@@ -377,7 +377,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
   - Worker chỉ dùng prompt của app khi ngôn ngữ chọn cho đoạn này đúng bằng `prev_lang` (prompt là token của ngôn ngữ đó).
   - `backend` và `decode_mode` thành enum; `Ready.backend` là thiết bị thật (đọc bảng thiết bị ggml theo đúng luật chọn GPU của whisper.cpp 1.8.3).
   - `Error.kind`: `NotLoaded`, `ModelLoad`, `OutOfMemory`, `GpuInit`, `InvalidRequest`, `Internal`. whisper-rs chỉ trả `InitError` hay `GenericError(n)`, còn lý do thật (hết bộ nhớ GPU, Metal hay Vulkan không khởi tạo được) chỉ nằm trong log. Vì vậy worker cài log callback cho whisper.cpp và ggml (`native_log`): mọi dòng vẫn ra stderr, đồng thời giữ 20 dòng cảnh báo và lỗi gần nhất; `classify` xét cả thông báo lỗi lẫn các dòng này (#1 của review 02a).
-  - `latency-bench` (`latency`, `asr-eval`) truyền `prev_lang` bằng ngôn ngữ của đoạn chép lời ngay trước, kể cả đoạn bị bỏ: đúng trạng thái mà worker của Giai đoạn 0 tự giữ, nên số đo S6 và A4 không đổi. App thì chỉ cập nhật `prev_lang` và prompt bằng đoạn được giữ lại. Hai bên cố ý khác nhau: S6 đo theo luật của Giai đoạn 0 để so được với mốc cũ (comment ở `latency.rs`); đổi luật ở công cụ đo thì phải đo lại mốc S6.
+  - `latency-bench` (`latency`, `asr-eval`) truyền `prev_lang` bằng ngôn ngữ của đoạn chép lời ngay trước, kể cả đoạn bị bỏ: đúng trạng thái mà worker của Phase 0 tự giữ, nên số đo S6 và A4 không đổi. App thì chỉ cập nhật `prev_lang` và prompt bằng đoạn được giữ lại. Hai bên cố ý khác nhau: S6 đo theo luật của Phase 0 để so được với mốc cũ (comment ở `latency.rs`); đổi luật ở công cụ đo thì phải đo lại mốc S6.
 - **QĐ3. Prompt không làm hạ trần token** (dòng 116, "Luật lặp khi prompt dài"). App chỉ gửi `min(100, 219 − (16 + 20 × số giây))` token prompt, nên trần token mới của worker luôn là `16 + 20 × số giây`. Đoạn 3 giây vẫn có đủ 100 token prompt; đoạn 8,4 giây còn 35; đoạn gộp 12 giây (§7) không có prompt.
 - **QĐ4. Lọc câu ảo giác quen thuộc** (dòng 118). Danh sách câu nằm trong `FilterConfig::hallucination_phrases` (04 đổi được qua manifest).
   - Câu thường: so khớp sau khi chuẩn hóa (chữ thường, chỉ giữ chữ và số), bỏ cụm dài trước. Đoạn chỉ gồm các câu này, lặp lại, hoặc chỉ có dấu câu và ký hiệu thì bỏ; còn dư dù một hai ký tự thì giữ.
@@ -426,7 +426,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 - **QĐ18. "Lần đầu chạy binary mới"** nhận biết bằng `sidecars-seen.json` trong `app_local_data_dir`, giữ SHA-256 của 8 binary gần nhất đã chạy được tới `Ready` (02c).
 - **QĐ19. Bắt đầu phiên không chạy trên luồng chính** (02c): `toggle_session` là lệnh `async` gọi `spawn_blocking`; phím tắt, khay và Thoát chạy trên luồng riêng. Thanh phụ đề hiện qua `run_on_main_thread` (NSPanel chỉ đổi được từ luồng chính).
 - **QĐ20. Đích của tap macOS** (`audio_capture::macos::TapTarget`): `SystemExceptSelf` (mặc định), `System` (thu cả âm thanh của app, cho bước "Nghe thử" của 03, Đ16; app chọn qua `session::StartOptions { include_self }`), và `Processes(Vec<i32>)` (chỉ một app, gồm mọi tiến trình đang phát tiếng của nó, `initStereoMixdownOfProcesses`). Windows không cần `System`, vì loopback vốn thu mọi âm thanh.
-- **QĐ21. Ngưỡng gom vào `PipelineConfig`** (segmenter, ghép câu, lọc, ASR, MT, hàng đợi, giám sát, âm thanh), mặc định là số đã chốt ở Giai đoạn 0 và spec. Mọi struct `#[serde(default)]`: manifest của 04 chỉ cần ghi khóa muốn đổi, khóa lạ bị bỏ qua. `validate()` từ chối giá trị vô lý (04 giữ mặc định khi lỗi), kể cả các khóa review 02a chỉ ra: `queue.asr_merge_max_ms` (tới 30 giây), `supervisor.idle_shutdown_ms`, `ready_timeout_ms`, `mt.request_timeout_ms`, `audio.silent_rms` (NaN), `merge.window_min_ms`, cùng các khóa mới (`mt.stop_grace_ms`, ngưỡng của luật câu đệm và chuỗi lặp), và chặn dưới cho `queue.mt_skip_after_ms`, `queue.asr_drop_after_ms`, `audio.no_audio_after_ms`, `supervisor.failure_window_ms`, `asr.n_threads`, `mt.max_tokens_per_source_token`, `supervisor.shutdown_grace_ms`, `merge.window_extra_ms` (review 02 lần 2). Vài hằng số cố ý để ngoài, vì chúng không đổi hành vi dịch và manifest đổi sai thì khó chẩn đoán: chu kỳ kiểm nguồn âm thanh (`WATCH_EVERY`, 500 ms), nhịp gọi `tick` (`TICK_EVERY`), thời gian chờ `--probe`, kích thước xoay log của tiến trình phụ (comment đầu `config.rs`). `vadEndSilenceMs` của người dùng không nằm ở đây; app ghi đè `segmenter.end_silence_ms`.
+- **QĐ21. Ngưỡng gom vào `PipelineConfig`** (segmenter, ghép câu, lọc, ASR, MT, hàng đợi, giám sát, âm thanh), mặc định là số đã chốt ở Phase 0 và spec. Mọi struct `#[serde(default)]`: manifest của 04 chỉ cần ghi khóa muốn đổi, khóa lạ bị bỏ qua. `validate()` từ chối giá trị vô lý (04 giữ mặc định khi lỗi), kể cả các khóa review 02a chỉ ra: `queue.asr_merge_max_ms` (tới 30 giây), `supervisor.idle_shutdown_ms`, `ready_timeout_ms`, `mt.request_timeout_ms`, `audio.silent_rms` (NaN), `merge.window_min_ms`, cùng các khóa mới (`mt.stop_grace_ms`, ngưỡng của luật câu đệm và chuỗi lặp), và chặn dưới cho `queue.mt_skip_after_ms`, `queue.asr_drop_after_ms`, `audio.no_audio_after_ms`, `supervisor.failure_window_ms`, `asr.n_threads`, `mt.max_tokens_per_source_token`, `supervisor.shutdown_grace_ms`, `merge.window_extra_ms` (review 02 lần 2). Vài hằng số cố ý để ngoài, vì chúng không đổi hành vi dịch và manifest đổi sai thì khó chẩn đoán: chu kỳ kiểm nguồn âm thanh (`WATCH_EVERY`, 500 ms), nhịp gọi `tick` (`TICK_EVERY`), thời gian chờ `--probe`, kích thước xoay log của tiến trình phụ (comment đầu `config.rs`). `vadEndSilenceMs` của người dùng không nằm ở đây; app ghi đè `segmenter.end_silence_ms`.
 - **QĐ22. Công cụ đo cho Đ12:** test bỏ qua `no_speech.rs` (tín hiệu tổng hợp và file WAV tùy chọn qua `asr-worker` thật, in `no_speech_prob`, `avg_logprob`, xác suất VAD, tỉ lệ nén, kết luận của luật lọc), và `build_ratio_set.py` cùng `ratio_stats.py` (12 chiều không có tiếng Việt và câu gốc rất ngắn, dịch bằng `mt-eval`, tính ngưỡng theo cách của S7). Bộ nhạc thử của 02b Task 6 chỉ gồm file CC0 hoặc public domain trên Wikimedia Commons (danh sách, giấy phép và SHA-1 ở task đó); chỉ commit bảng kết quả, không commit audio. Ngưỡng tỉ lệ mới chỉ vào `MtConfig` sau khi chủ dự án duyệt.
 - **QĐ23. Lấy Expected từ target riêng.** Mọi Expected trong kế hoạch lấy từ một lần chạy lại các task trên worktree sạch với target riêng còn trống. Khi thực thi trên `main` thì không có vấn đề trộn artifact giữa worktree.
 - **QĐ24. Câu đệm nghi ảo giác và chuỗi lặp** (Q11 của review 02b; `FilterConfig`, đổi được qua manifest).
@@ -452,7 +452,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (145 dòng có `02`
 Kế hoạch đã làm theo phương án ghi trong ngoặc; chủ dự án đổi thì sửa kế hoạch trước khi thực thi. Các điểm của bản trước đã được spec chốt (Q4 cách 2, luồng riêng thay tokio, hỏi định kỳ thiết bị phát, trường `replaces`, chờ `/health` 180 giây) hoặc đã làm theo review (pidfile khi Force Quit, tên app, `InfoPlist.strings`; review lần 2: phát hiện tap macOS chết bằng số khung, trước là điểm 6) nên không còn ở đây.
 
 1. **Luật câu đệm bỏ một đoạn có tiếng thật mà chữ sai** (QĐ24). Trên S6, đoạn 45 của session `vi` gói Chuẩn là đuôi câu "… ở Las Cañitas." mà turbo chép thành "Cảm ơn" (`avg_logprob` −0,84). Luật bỏ đoạn này: mất một phụ đề sai, không mất chữ đúng nào. Đoạn bị bỏ còn lại (32 ms, "Thank you.") là ảo giác. Phương án: nhận luật như hiện tại (kế hoạch này); hoặc hạ ngưỡng `filler_logprob_max` xuống −1,0 (khi đó cả hai đoạn S6 đều không bị bỏ, và luật chỉ còn bắt câu đệm bằng hai dấu hiệu kia).
-2. **Thư viện C oniguruma trong tiến trình chính** (qua `candle-core` 0.11 → `tokenizers` feature `onig`, có từ Giai đoạn 0). §6.12 cấm hai bản của cùng một thư viện C; đây chỉ có một bản, nhưng là thư viện C không ai chủ động chọn. Phương án: giữ (kế hoạch này); hoặc 07 thử bỏ feature `onig` khi nâng candle.
+2. **Thư viện C oniguruma trong tiến trình chính** (qua `candle-core` 0.11 → `tokenizers` feature `onig`, có từ Phase 0). §6.12 cấm hai bản của cùng một thư viện C; đây chỉ có một bản, nhưng là thư viện C không ai chủ động chọn. Phương án: giữ (kế hoạch này); hoặc 07 thử bỏ feature `onig` khi nâng candle.
 3. **Trang System Settings cho quyền ghi âm thanh hệ thống**: kế hoạch mở `x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture`. Apple không công bố danh sách neo này; 02c Task 8 nhờ người kiểm cả neo này lẫn `x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AudioCapture`, rồi chọn neo mở đúng trang (`system::AUDIO_PERMISSION_URL`).
 4. **Ngưỡng tỉ lệ token cho cặp không có tiếng Việt và câu gốc dưới 3 token** (dòng 149): **đã quyết** (controller, 2026-10-02): 02b Task 6 đo và đề xuất (`bench/phase0/results/gd1_mt_ratio.md`); ngưỡng của 12 chiều không có tiếng Việt đã thêm vào `DEFAULT_RATIO_THRESHOLDS` ở `22fa4fe` (QĐ12). Câu gốc dưới 3 token giữ hạn mức `4 × số token + 32`: mọi câu như vậy trong bộ đo có 2 token (hạn mức 40), bản dịch dài nhất 10 token.
 5. **Flash attention** (dòng 121): ngày 2026-10-01, ggml-org/whisper.cpp#3941 (che phần đệm khi bật flash attention) vẫn mở, hoạt động cuối ngày 2026-07-16. Kế hoạch giữ tắt; 08 kiểm lại trước khi phát hành.
@@ -484,7 +484,7 @@ Mã theo ba review của bản `b221f3c`, hai review lần 2 của bản `4a1c31
   - Ngưỡng ngoài `PipelineConfig`: `stop_grace_ms` vào `MtConfig`; các hằng còn lại có comment ghi lý do để ngoài (QĐ21).
   - Log xoay cả khi đang chạy: d·T1.
   - Dòng `index` của bản vá 0001: a·T1.
-  - `prev_lang` của `latency-bench` và app: QĐ2 ghi rõ S6 đo theo luật của Giai đoạn 0, kèm comment ở `latency.rs`.
+  - `prev_lang` của `latency-bench` và app: QĐ2 ghi rõ S6 đo theo luật của Phase 0, kèm comment ở `latency.rs`.
   - `/DEPENDENTLOADFLAG:0x800`: a·T1 thêm vào `.cargo/config.toml` cho target Windows (QĐ32; phần cho 07 ở điểm cần quyết 9).
   - Force Quit: như 02c Q8(a).
 
@@ -783,7 +783,7 @@ Sửa `crates/asr-protocol/src/lib.rs` (áp bằng `git apply`):
 +        assert_eq!(PROTOCOL_VERSION, 2);
 +    }
 +
-+    /// Worker của Giai đoạn 0 gửi `Ready` với `backend` là chuỗi: app mới đọc thấy phiên bản sai (độ dài chuỗi) hoặc
++    /// Worker của Phase 0 gửi `Ready` với `backend` là chuỗi: app mới đọc thấy phiên bản sai (độ dài chuỗi) hoặc
 +    /// không giải mã được khung, chứ không nhận nhầm là hợp lệ.
 +    #[test]
 +    fn a_phase0_ready_is_not_accepted_as_version_2() {
@@ -1472,7 +1472,7 @@ Sửa `crates/asr-protocol/src/lib.rs` (áp bằng `git apply`):
  pub const MAX_FRAME_BYTES: u32 = 16 * 1024 * 1024;
 +
 +/// Phiên bản giao thức, gửi trong `Response::Ready`. App từ chối worker có phiên bản khác (spec §6.4, "Việc cho MVP").
-+/// Tăng số này mỗi khi đổi bất kỳ kiểu nào trong file này. Giai đoạn 0 không có trường này (coi là 1).
++/// Tăng số này mỗi khi đổi bất kỳ kiểu nào trong file này. Phase 0 không có trường này (coi là 1).
 +pub const PROTOCOL_VERSION: u32 = 2;
 +
 +/// Thiết bị `asr-worker` thật sự dùng để chạy model, không phải thiết bị được yêu cầu (spec §6.4, thông điệp `Load`).
@@ -2283,7 +2283,7 @@ Sửa `crates/latency-bench/src/asr_eval.rs` (áp bằng `git apply`):
          .with_context(|| format!("không mở được manifest {}", args.manifest.display()))?;
      let mut out =
          BufWriter::new(std::fs::File::create(&part).with_context(|| format!("không tạo được {}", part.display()))?);
-+    // Ngôn ngữ của clip trước: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ, để mốc A4 so được với lượt mới
++    // Ngôn ngữ của clip trước: đúng trạng thái mà `asr-worker` của Phase 0 tự giữ, để mốc A4 so được với lượt mới
 +    // (chỉ có tác dụng ở clip có xác suất ngôn ngữ dưới 0,5, cột `lid_fallback` của score_asr.py).
 +    let mut prev_lang: Option<String> = None;
      for (i, line) in BufReader::new(manifest).lines().enumerate() {
@@ -2331,7 +2331,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
      let merge_window = merge_window_ms(args.end_silence_ms);
      let asr_thread = std::thread::spawn(move || -> Result<()> {
          let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
-+        // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ,
++        // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Phase 0 tự giữ,
 +        // để số đo S6 không đổi khi `prev_lang` chuyển sang `TranscribeRequest`.
 +        let mut prev_lang: Option<String> = None;
          for (segment, closed_at_ms) in seg_rx {
@@ -2617,7 +2617,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
 +        assert_eq!(route(&rec("en", "Hello", 0.0, -0.3)), Ok(Lang::En));
 +        assert_eq!(route(&rec("en", "", 0.0, 0.0)), Err("no_speech".into()));
 +        assert_eq!(route(&rec("en", " \n", 0.0, -0.3)), Err("no_speech".into()));
-+        // Luật `no_speech` của pipeline (cần cả hai điều kiện), đặt tên lý do như Giai đoạn 0.
++        // Luật `no_speech` của pipeline (cần cả hai điều kiện), đặt tên lý do như Phase 0.
 +        assert_eq!(route(&rec("ko", "안녕", 0.9, -1.5)), Err("no_speech".into()));
 +        assert_eq!(route(&rec("ko", "안녕", 0.62, -0.25)), Ok(Lang::Ko));
 +        assert_eq!(route(&rec("vi", "Xin chào", 0.0, -0.3)), Err("same_lang".into()));
@@ -2861,7 +2861,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
 Tạo `crates/pipeline/src/config.rs`, lúc này mới có phần test (phần code thêm ở bước sau):
 
 ```rust
-//! Ngưỡng của pipeline, gom vào một chỗ (spec §6.3–§6.5, §7, §9). Giá trị mặc định là số đã chốt ở Giai đoạn 0.
+//! Ngưỡng của pipeline, gom vào một chỗ (spec §6.3–§6.5, §7, §9). Giá trị mặc định là số đã chốt ở Phase 0.
 //!
 //! Kế hoạch 04 nạp các ngưỡng này từ manifest đã ký: mọi struct đều `#[serde(default)]`, nên manifest chỉ cần ghi khóa
 //! muốn đổi, khóa lạ bị bỏ qua (manifest mới hơn app). Sau khi nạp, gọi [`PipelineConfig::validate`]; lỗi thì giữ mặc
@@ -3448,10 +3448,10 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
 +    let filter_config = config.filter.clone();
      let asr_thread = std::thread::spawn(move || -> Result<()> {
          let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
-         // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ,
+         // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Phase 0 tự giữ,
          // để số đo S6 không đổi khi `prev_lang` chuyển sang `TranscribeRequest`.
 +        // Cố ý khác app: engine của kế hoạch 02b chỉ cập nhật `prev_lang` và prompt bằng đoạn được giữ lại, còn S6 vẫn đo theo
-+        // luật của Giai đoạn 0 để so được với mốc cũ. Đổi luật ở đây thì phải đo lại mốc S6.
++        // luật của Phase 0 để so được với mốc cũ. Đổi luật ở đây thì phải đo lại mốc S6.
          let mut prev_lang: Option<String> = None;
          for (segment, closed_at_ms) in seg_rx {
              let mut rec = SegmentRecord {
@@ -3568,7 +3568,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
 -    }
 -    let o = open.as_ref().expect("vừa ghép hoặc vừa mở câu");
 -    (o.segments, o.text.clone())
-+/// Tên lý do trong file kết quả, giữ như Giai đoạn 0.
++/// Tên lý do trong file kết quả, giữ như Phase 0.
 +fn skip_name(reason: PcmSkip) -> &'static str {
 +    match reason {
 +        PcmSkip::TooShort => SKIP_TOO_SHORT,
@@ -4393,7 +4393,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
 --- a/crates/latency-bench/src/latency.rs
 +++ b/crates/latency-bench/src/latency.rs
 @@ -981,13 +981,42 @@
-         // Luật `no_speech` của pipeline (cần cả hai điều kiện), đặt tên lý do như Giai đoạn 0.
+         // Luật `no_speech` của pipeline (cần cả hai điều kiện), đặt tên lý do như Phase 0.
          assert_eq!(route(&rec("ko", "안녕", 0.9, -1.5)), Err("no_speech".into()));
          assert_eq!(route(&rec("ko", "안녕", 0.62, -0.25)), Ok(Lang::Ko));
 +        assert_eq!(
@@ -4451,7 +4451,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
      /// hình chốt, `bench/phase0/results/latency/m4pro-chot-khuyennghi-*.json`: cùng lý do bỏ đoạn, cùng số đoạn ghép và
      /// cùng chữ nguồn đã gửi dịch, đoạn nào cũng vậy. Nhờ đó số đo S6 của lượt chốt vẫn là số đo của luật hiện tại.
 +    ///
-+    /// Luật mới của Giai đoạn 1 được áp như app: bộ lọc câu ảo giác và luật chuỗi lặp không bỏ đoạn nào của 12 lượt này;
++    /// Luật mới của Phase 1 được áp như app: bộ lọc câu ảo giác và luật chuỗi lặp không bỏ đoạn nào của 12 lượt này;
 +    /// chữ tiếng Trung được đổi sang giản thể, nên chữ nguồn mong đợi là bản ghi cũ sau khi đổi. Luật câu đệm có bỏ 2 đoạn
 +    /// (xem `phase1_filler_rule_drops_only_known_hallucinations_on_s6`), nên lượt chạy lại này tắt luật đó.
      #[test]
@@ -4545,7 +4545,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
 +    /// "Cảm ơn" (xem `gd1_no_speech.md`). Cả 2 bị bỏ vì `avg_logprob` dưới −0,7; bản ghi S6 không có số của VAD, nhưng chỉ
 +    /// 3 đoạn S6 có chữ là câu đệm nên số đó không đổi kết quả. Đoạn 26 của `en` dài 32 ms, nằm ngay sau một câu, có
 +    /// `no_speech_prob` 8e-11: đúng kiểu ảo giác mà luật `no_speech` không bắt được với turbo; với small, đoạn tương ứng đã
-+    /// bị luật `no_speech` bỏ từ Giai đoạn 0. Đoạn 45 của `vi` là tiếng thật, đuôi câu "… ở Las Cañitas.", mà turbo chép
++    /// bị luật `no_speech` bỏ từ Phase 0. Đoạn 45 của `vi` là tiếng thật, đuôi câu "… ở Las Cañitas.", mà turbo chép
 +    /// thành "Cảm ơn": bỏ đoạn này mất một phụ đề sai, không mất chữ đúng nào.
 +    #[test]
 +    fn phase1_filler_rule_drops_only_known_hallucinations_on_s6() {
@@ -4621,7 +4621,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
 +                clips.len()
 +            );
 +            assert_eq!(clips.len(), 548);
-+            // Luật `no_speech` của Giai đoạn 0 bỏ đúng 1 clip của small (chữ bịa); luật mới không bỏ thêm clip nào.
++            // Luật `no_speech` của Phase 0 bỏ đúng 1 clip của small (chữ bịa); luật mới không bỏ thêm clip nào.
 +            let expected: HashMap<String, Vec<String>> = match model {
 +                "small" => [("NoSpeech".to_string(), vec!["en-9810650684898829002_nb".to_string()])].into(),
 +                _ => HashMap::new(),
@@ -5069,7 +5069,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
      no_speech_prob: f32,
      /// Trung bình log-xác suất của các token văn bản, cùng `no_speech_prob` quyết định bỏ đoạn.
      avg_logprob: f32,
-+    /// Xác suất tiếng nói trung bình của VAD (`Segment::mean_prob`). Bản ghi của Giai đoạn 0 không có số này.
++    /// Xác suất tiếng nói trung bình của VAD (`Segment::mean_prob`). Bản ghi của Phase 0 không có số này.
 +    vad_mean_prob: Option<f32>,
      /// Số đoạn trong câu đã dịch ở bước này (1 nếu không ghép; tối đa 3), và chữ nguồn của cả câu ghép (§6.3).
      merged_segments: Option<usize>,
@@ -5081,7 +5081,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
 +    let asr_filter_config = config.filter.clone();
      let asr_thread = std::thread::spawn(move || -> Result<()> {
          let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
-         // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ,
+         // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Phase 0 tự giữ,
 @@ -267,6 +280,7 @@
                  start_ms: segment.start_ms,
                  end_ms: segment.end_ms,
@@ -5243,7 +5243,7 @@ Sửa `crates/pipeline/src/filter.rs` (áp bằng `git apply`):
  //! Luật bỏ đoạn ở tiến trình chính (spec §6.4, "Lọc lỗi ảo giác"), và giới hạn độ dài của đoạn gửi cho `asr-worker`.
 -//! Chuyển từ `latency-bench` (Đ3 của kế hoạch 00): app và công cụ đo S6 dùng đúng một bản luật.
 +//! Chuyển từ `latency-bench` (Đ3 của kế hoạch 00): app và công cụ đo S6 dùng đúng một bản luật. Bộ lọc câu ảo giác quen
-+//! thuộc là luật mới của Giai đoạn 1 ("Việc cho MVP" của §6.4).
++//! thuộc là luật mới của Phase 1 ("Việc cho MVP" của §6.4).
  //!
  //! Đoạn bị bỏ không có phụ đề, không vào prompt của đoạn sau, và không làm đổi ngôn ngữ của đoạn trước (§6.4).
  
@@ -5471,4 +5471,4 @@ git add Cargo.lock \
 git commit -m "feat(pipeline): lọc câu ảo giác quen thuộc, đổi phồn thể sang giản thể (§6.4)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-Phần đầu của 02 xong ở đây. Đi tiếp `docs/superpowers/plans/2026-10-01-giai-doan-1-02d-pipeline-clients.md` (client, dịch một câu, giám sát), rồi mới tới 02b.
+Phần đầu của 02 xong ở đây. Đi tiếp `docs/superpowers/plans/2026-10-01-phase-1-02d-pipeline-clients.md` (client, dịch một câu, giám sát), rồi mới tới 02b.

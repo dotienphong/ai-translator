@@ -1,6 +1,6 @@
 # Bản macOS ký ad-hoc khi chưa có Developer ID
 
-Ngày 2026-10-05. Chủ dự án chọn phương án này vì chưa có ngân sách cho Apple Developer Program (99 USD mỗi năm). Sửa spec gốc §10.2 (dòng "Sửa hoặc ký lại file của app") và các chỗ nhắc T1 trong kế hoạch Giai đoạn 1 · 00.
+Ngày 2026-10-05. Chủ dự án chọn phương án này vì chưa có ngân sách cho Apple Developer Program (99 USD mỗi năm). Sửa spec gốc §10.2 (dòng "Sửa hoặc ký lại file của app") và các chỗ nhắc T1 trong kế hoạch Phase 1 · 00.
 
 ## 1. Vấn đề
 
@@ -45,7 +45,7 @@ Dòng cuối giữ nguyên nguyên tắc "cấu hình sai thì khóa": Team ID �
 
 ### 3.4 Tài liệu
 - Spec gốc §10.2: sửa dòng "Sửa hoặc ký lại file của app", ghi chế độ ad-hoc và rủi ro chấp nhận (mục 5).
-- `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`: T1 ghi "chưa có; macOS chạy ad-hoc (spec 2026-10-05)"; A6 ghi Gatekeeper không đạt cho tới khi có Developer ID.
+- `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`: T1 ghi "chưa có; macOS chạy ad-hoc (spec 2026-10-05)"; A6 ghi Gatekeeper không đạt cho tới khi có Developer ID.
 - `docs/release/phat-hanh.md`: thêm mục phát hành bản ad-hoc, gồm hướng dẫn "Open Anyway" cho khách.
 
 ## 4. Kết quả đo Keychain và quyết định

@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 06b: Bản quyền trong app — giao diện, thử tay, Windows
+# Phase 1 · 06b: Bản quyền trong app — giao diện, thử tay, Windows
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,7 +12,7 @@
 
 **Công nghệ:** Giữ nguyên React 19.3, Zustand 5.0.15, Vite 8.3, TypeScript 7.0, vitest 5.0.3, `@tauri-apps/api` 2.12.1. Không thêm gói npm nào.
 
-Làm sau khi 06a đã xong hẳn (06a Task 11 xanh). Bảng phiên bản, mục "Nối với kế hoạch 04", dòng của bảng đối chiếu, hợp đồng với 05, quyết định (QĐ1–QĐ31), điểm cần chủ dự án quyết, kết quả mutation và bảng task → commit tham chiếu nằm ở 06a: `docs/superpowers/plans/2026-10-03-giai-doan-1-06a-ban-quyen-loi.md`. Cách đọc các khối code, lệnh và Expected cũng như 06a.
+Làm sau khi 06a đã xong hẳn (06a Task 11 xanh). Bảng phiên bản, mục "Nối với kế hoạch 04", dòng của bảng đối chiếu, hợp đồng với 05, quyết định (QĐ1–QĐ31), điểm cần chủ dự án quyết, kết quả mutation và bảng task → commit tham chiếu nằm ở 06a: `docs/superpowers/plans/2026-10-03-phase-1-06a-ban-quyen-loi.md`. Cách đọc các khối code, lệnh và Expected cũng như 06a.
 
 ---
 
@@ -2271,7 +2271,7 @@ git commit -m "test(app): đợt Windows của kế hoạch 06: MachineGuid, Cre
 
 - [ ] **Step 1: Kế hoạch 00**
 
-Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`), cho cả 06a và 06b:
+Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`), cho cả 06a và 06b:
 - Step 1–2: liệt kê các dòng có `06`, đổi trạng thái theo bảng "Dòng của bảng đối chiếu" của 06a và kết quả thật (SHA commit của task). Dòng còn chờ staging (Task 6), Windows (Task 7), 07 hay T1, T2 thì để `đang làm` hoặc `chờ` kèm lý do.
 - Step 3: thêm dòng cho việc phát sinh nếu chủ dự án chưa quyết các điểm ở "Điểm cần chủ dự án quyết" của 06a.
 - Step 4:
@@ -2299,6 +2299,6 @@ Spec có một dòng tóm tắt ở §11 (dòng bắt đầu "gói trả phí b�
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md
-git commit -m "docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 06; spec §6.8 thêm luật dùng bộ đếm đã có" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git add docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md
+git commit -m "docs(plan): cập nhật tổng quan Phase 1 sau kế hoạch 06; spec §6.8 thêm luật dùng bộ đếm đã có" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```

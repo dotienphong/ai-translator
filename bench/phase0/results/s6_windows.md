@@ -1,6 +1,6 @@
 # S6 trên Windows: máy i5-1345U với GPU tích hợp, và cấu hình chỉ CPU
 
-Ngày 2026-10-06 đến 2026-10-07. Kế hoạch: `docs/superpowers/plans/2026-09-29-giai-doan-0-06-s6-do-tre.md`, Task 8 (bước 5 và 6, một phần) và Task 9 (một phần). Số gốc: `bench/phase0/results/latency/igpu-i5-1345u-*.json`, `cpu-i5-1345u-*.json`, `vram-igpu-i5-1345u-*.csv`.
+Ngày 2026-10-06 đến 2026-10-07. Kế hoạch: `docs/superpowers/plans/2026-09-29-phase-0-06-s6-do-tre.md`, Task 8 (bước 5 và 6, một phần) và Task 9 (một phần). Số gốc: `bench/phase0/results/latency/igpu-i5-1345u-*.json`, `cpu-i5-1345u-*.json`, `vram-igpu-i5-1345u-*.csv`.
 
 ## Máy và điều kiện đo
 

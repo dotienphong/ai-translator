@@ -1,4 +1,4 @@
-# Giai đoạn 1 trên Windows: phần tự động (2026-10-07)
+# Phase 1 trên Windows: phần tự động (2026-10-07)
 
 Agent chạy, người chưa thao tác gì. Chỉ gồm các bước build, test và kiểm file; **mọi dòng cần người dùng app (khay, phím tắt, thanh phụ đề, Teams/Zoom, DPI, nhiều màn hình, hộp thoại file, bộ cài, mua thật) chưa làm**, nên các task Windows của 01 Task 25, 02c Task 9, 03b Task 9, 06b Task 7 và 07a Task 16 vẫn mở.
 

@@ -1,6 +1,6 @@
 # S2: thu âm thanh hệ thống bằng WASAPI loopback (Windows), mới làm một phần
 
-Ngày 2026-10-06. Kế hoạch: `docs/superpowers/plans/2026-09-29-giai-doan-0-04-s1-s2-thu-am.md`, Task 7–8.
+Ngày 2026-10-06. Kế hoạch: `docs/superpowers/plans/2026-09-29-phase-0-04-s1-s2-thu-am.md`, Task 7–8.
 
 ## Máy và công cụ
 

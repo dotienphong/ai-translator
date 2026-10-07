@@ -1,4 +1,4 @@
-# Giai đoạn 0 · 01: nền tảng (công cụ, workspace, asr-protocol, tải model)
+# Phase 0 · 01: nền tảng (công cụ, workspace, asr-protocol, tải model)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,7 +8,7 @@
 
 **Công nghệ:** Rust 1.98.1, postcard 1.1.3, serde 1.0.229, thiserror 2.0.21; cargo-audit 0.22.2 và cargo-deny 0.20.2 (kiểm tra phụ thuộc theo §6.12); Python 3 (thư viện chuẩn) cho script tải.
 
-Tổng quan: `docs/superpowers/plans/2026-09-29-giai-doan-0-00-tong-quan.md`.
+Tổng quan: `docs/superpowers/plans/2026-09-29-phase-0-00-tong-quan.md`.
 
 ---
 
@@ -173,7 +173,7 @@ GGML_AVX512 = { value = "OFF", force = true }
 /node_modules/
 /dist/
 
-# Model, công cụ tải về và dữ liệu lớn của Giai đoạn 0 (xem bench/phase0/fetch.py)
+# Model, công cụ tải về và dữ liệu lớn của Phase 0 (xem bench/phase0/fetch.py)
 /models/
 /tools/
 /bench/phase0/data/
@@ -835,7 +835,7 @@ Cách script tải:
 - [ ] **Step 1: Tạo `bench/phase0/fetch.py`**
 
 ```python
-"""Tải model và llama.cpp cho Giai đoạn 0 vào models/ và tools/, kiểm kích thước và SHA-256, ghi models/MANIFEST.json.
+"""Tải model và llama.cpp cho Phase 0 vào models/ và tools/, kiểm kích thước và SHA-256, ghi models/MANIFEST.json.
 
 Dùng:  python3 bench/phase0/fetch.py [--only whisper,mt,vad,llama]
 - Cần Python 3.12 trở lên, vì giải nén an toàn bằng `tarfile` với `filter="data"`. python3 có sẵn của macOS là 3.9,
@@ -918,7 +918,7 @@ def llama_archives():
         return LLAMA["macos-arm64"]
     if system == "Windows" and machine in ("amd64", "x86_64"):
         return LLAMA["windows-x64"]
-    raise SystemExit(f"Giai đoạn 0 chỉ hỗ trợ macOS arm64 và Windows x64, máy này là {system} {machine}")
+    raise SystemExit(f"Phase 0 chỉ hỗ trợ macOS arm64 và Windows x64, máy này là {system} {machine}")
 
 
 def sha256(path):
@@ -1082,9 +1082,9 @@ if __name__ == "__main__":
 - [ ] **Step 2: Tạo `bench/phase0/README.md`**
 
 ```markdown
-# Giai đoạn 0: công cụ đo và kết quả
+# Phase 0: công cụ đo và kết quả
 
-Kế hoạch: `docs/superpowers/plans/2026-09-29-giai-doan-0-00-tong-quan.md`.
+Kế hoạch: `docs/superpowers/plans/2026-09-29-phase-0-00-tong-quan.md`.
 
 - `fetch.py`: tải model và llama.cpp b11146 vào `models/` và `tools/` (không commit), kiểm kích thước và SHA-256 đã ghim trong script. Chạy `python3 bench/phase0/fetch.py`, cần Python 3.12 trở lên, tải khoảng 3,8 GB.
 - `mt/`: S4 (`check_template.py`) và S7 phần dịch (`build_testset.py`, `translate.py`, `score_mt.py`).
@@ -1123,7 +1123,7 @@ Expected: dòng `version: 0.5.0-dev (build 11146, commit 7fe450e19)`.
 mkdir -p bench/phase0/results
 cp models/MANIFEST.json bench/phase0/results/models-manifest.json
 git add bench/phase0/fetch.py bench/phase0/README.md bench/phase0/results/models-manifest.json
-git commit -m "chore(bench): script tải model và llama.cpp b11146 cho Giai đoạn 0"
+git commit -m "chore(bench): script tải model và llama.cpp b11146 cho Phase 0"
 ```
 
 - [ ] **Step 6: Trên Windows** (khi bắt đầu phần Windows), chạy `python bench\phase0\fetch.py`. Script tải bản `win-vulkan-x64` và `win-cpu-x64` của llama.cpp; hai file này cũng đã ghim kích thước và SHA-256 trong script.

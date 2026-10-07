@@ -1,4 +1,4 @@
-# Giai đoạn 1 · thử tay trên Mac, đợt 2026-10-05
+# Phase 1 · thử tay trên Mac, đợt 2026-10-05
 
 - Người thử: chủ dự án (PHONG), bản dev (`scripts/run-dev-app.sh`) nối license server production.
 - Nguồn: chủ dự án báo "đạt" ngày 2026-10-05. Không có log hay ảnh kèm theo, nên cột "Bằng chứng" chỉ là lời báo.

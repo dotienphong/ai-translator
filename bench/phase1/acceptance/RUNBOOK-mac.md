@@ -1,6 +1,6 @@
 # Sổ tay chạy A5 (soak 2 giờ) và A7 (qua proxy) trên Mac
 
-Rút gọn Task 6 và Task 7 của `docs/superpowers/plans/2026-10-03-giai-doan-1-08b-nghiem-thu-dieu-phoi.md`, điền sẵn tên
+Rút gọn Task 6 và Task 7 của `docs/superpowers/plans/2026-10-03-phase-1-08b-nghiem-thu-dieu-phoi.md`, điền sẵn tên
 tiến trình, đường dẫn và máy chủ thật của máy này (MacBook Pro M4 Pro, macOS 26). Chạy từ gốc repo:
 
 ```bash

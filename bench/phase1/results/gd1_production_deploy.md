@@ -37,4 +37,4 @@ Chưa làm: 05 Task 20 Step 9 (đổi gói, tốn tiền thật), 06b Task 6 Ste
 **Chưa thử** (nên vẫn "chờ" trong bảng đối chiếu): mua gói trong app bằng VietQR, gia hạn, đổi gói, kích hoạt máy thứ hai và thứ ba, hạn mức Free (10 phút) trong app, số lần macOS hỏi Keychain.
 
 ### Quyết định của chủ dự án
-Repo public (chủ ý); Cloudflare dùng chung tài khoản với mapsLibVN (chấp nhận); không dùng USB cho bản sao khóa; `OPERATOR_EMAIL` làm ở Giai đoạn 3. Quét 659 commit: không có khóa riêng, khóa API hay file `.env` nào trong lịch sử.
+Repo public (chủ ý); Cloudflare dùng chung tài khoản với mapsLibVN (chấp nhận); không dùng USB cho bản sao khóa; `OPERATOR_EMAIL` làm ở Phase 2. Quét 659 commit: không có khóa riêng, khóa API hay file `.env` nào trong lịch sử.

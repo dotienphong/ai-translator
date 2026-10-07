@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 04a: Quản lý model — manifest ký, tải, kho model, đề xuất gói
+# Phase 1 · 04a: Quản lý model — manifest ký, tải, kho model, đề xuất gói
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -14,11 +14,11 @@ Bản này sửa theo review lần 1 (`meeting-translator-work/review-04-r1.md`,
 
 **Công nghệ:** Rust 1.98.1, Tauri 2.12.1 như `main`. Thêm `ed25519-dalek` 3.0.0, `base64` 0.23.1, `libc` 0.2.189 (dùng trên macOS); bật thêm feature của `reqwest` 0.13.5 và `windows` 0.62.2 (bảng "Phiên bản đã chốt"). Script ký chạy bằng Node 24 (WebCrypto Ed25519), không thêm gói npm.
 
-Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.4, 3, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`.
+Tổng quan: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` (mục 2.4, 3, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`.
 
 Kế hoạch 04 chia hai file, làm theo thứ tự:
 1. **04a** (file này): Task 1–6, phần lõi trong `src-tauri/src/models/` và `scripts/models/`, chưa nối vào app.
-2. **04b** `docs/superpowers/plans/2026-10-02-giai-doan-1-04b-quan-ly-model-app.md`: Task 7–15, nối vào app (cài đặt `modelTier`, dịch vụ model, lệnh, sự kiện, phiên dịch), giao diện (bước 2–3 của lần đầu mở, Cài đặt › Model, nút "Xóa model và dữ liệu"), kiểm tra chuẩn, bước của người (bucket R2 staging), đợt Windows, cập nhật kế hoạch 00.
+2. **04b** `docs/superpowers/plans/2026-10-02-phase-1-04b-quan-ly-model-app.md`: Task 7–15, nối vào app (cài đặt `modelTier`, dịch vụ model, lệnh, sự kiện, phiên dịch), giao diện (bước 2–3 của lần đầu mở, Cài đặt › Model, nút "Xóa model và dữ liệu"), kiểm tra chuẩn, bước của người (bucket R2 staging), đợt Windows, cập nhật kế hoạch 00.
 
 Bảng phiên bản, bảng dòng của bảng đối chiếu, quyết định (QĐ), điểm cần chủ dự án quyết và mục "Nối với kế hoạch 03" nằm ở file này, dùng chung cho cả hai.
 
@@ -132,7 +132,7 @@ Ngoài bảng: ghi chú 8 của review cuối 02 (đổi gói lúc đang dịch;
 - **QĐ8. Máy chưa được hỗ trợ thì không tải được model** (chủ dự án quyết 2026-10-02, đổi so với bản trước): RAM dưới `min_ram_mib` của manifest, hay CPU x86_64 không có AVX2 (Đ13); ổ không đủ chỗ (phần còn phải tải cộng 1 GB) cũng không tải được. Giao diện báo lý do và cấu hình tối thiểu, khóa nút tải; phía Rust cũng từ chối lệnh tải (`modelsUnsupported`, `modelsNoSpace`). AVX2 kiểm trong app (bản build cần nó), không qua manifest. Dung lượng trống trên macOS đo bằng `statfs.f_bavail`, không tính phần "purgeable" mà Finder có tính, nên app có thể báo ít hơn Finder; 04b Task 13 Step 7 so hai số trên máy có iCloud Drive, nếu chặn nhầm thì đổi sang `NSURLVolumeAvailableCapacityForImportantUsageKey` (N-11 của review lần 2). Bản dev chạy bằng `models/` của repo (QĐ11) vẫn chạy như cũ.
 - **QĐ9. Kiểm manifest** khi app khởi động (luồng nền) và khi mở bước 2 hay Cài đặt › Model, cùng một luật: chưa có manifest nào, hoặc đã quá 24 giờ từ lần kiểm thành công gần nhất, hoặc giờ máy lùi về trước lần đó. Lỗi mạng không xóa bản đang có.
 - **QĐ10. Khóa và URL theo loại bản.** Bản dev (`tauri::is_dev()`) chỉ nhận khối `staging` của `src-tauri/keys/manifest-public-keys.json` và URL staging (biến môi trường `AT_MODELS_URL` đè được, cho phép `http` tới `127.0.0.1`); bản phát hành chỉ nhận khối `production` và `PRODUCTION_URL`. Lúc lập kế hoạch cả hai khối khóa rỗng và cả hai URL là `None`: 04b Task 13 (người) thêm khóa và URL staging; 07 thêm khóa và URL production. Khóa riêng staging là file JWK quyền 0600 ngoài repo, kid `stg-…` (Đ8); script từ chối đường dẫn trong repo và kid khác `stg-`. **Q17 (chủ dự án quyết 2026-10-02):** production chỉ có **một** khóa ký manifest (và một khóa ký bản cập nhật), trong secret của CI, kèm bản sao offline mã hóa bằng passphrase; app nhúng một khóa công khai production, định dạng vẫn có `kid` để bản app sau đổi khóa. **Đổi khóa** (controller thống nhất với Q17, 2026-10-03): đổi có kế hoạch thì một bản phát hành tin cả `kid` cũ lẫn `kid` mới, bản sau bỏ `kid` cũ; lộ khóa thì bản app mới chỉ tin `kid` mới ngay, `kid` đã lộ bị gỡ khỏi app. Mốc chống quay lui không phụ thuộc việc giữ `kid` cũ (N-7 của review lần 2). Việc tạo khóa và bản sao thuộc 07 (kế hoạch 00, mục 2.7).
-- **QĐ11. Bản dev chưa tải gói nào qua manifest** thì vẫn chạy bằng file của Giai đoạn 0 trong `models/` của repo như 02 (04b Task 9).
+- **QĐ11. Bản dev chưa tải gói nào qua manifest** thì vẫn chạy bằng file của Phase 0 trong `models/` của repo như 02 (04b Task 9).
 - **QĐ12. NOTICE của sản phẩm.** Hy-MT2 không có file NOTICE; `scripts/models/NOTICE.txt` ghi nguồn, bản và giấy phép của từng model, và ghi rõ không sửa đổi. LICENSE của Whisper, whisper.cpp, Silero VAD lấy từ tag cố định khi dựng bucket (04b Task 13).
 - **QĐ13 – QĐ23:** phần nối vào app, ở mục "Quyết định" của 04b.
 
@@ -1965,7 +1965,7 @@ writeFileSync(outPath, `${JSON.stringify(envelope)}\n`);
 console.error(`Đã ký ${outPath}: kid ${jwk.kid}, sequence ${parsed.sequence}.`);
 ```
 
-Cấu hình manifest staging: hai gói theo §6.7, ghi chú chất lượng theo số đo A4 (§3.3, §8), ngưỡng theo QĐ4 (chủ dự án duyệt 2026-10-02). Phiên bản file theo revision đã ghi trong `models/MANIFEST.json` của Giai đoạn 0 (`bench/phase0/fetch.py`).
+Cấu hình manifest staging: hai gói theo §6.7, ghi chú chất lượng theo số đo A4 (§3.3, §8), ngưỡng theo QĐ4 (chủ dự án duyệt 2026-10-02). Phiên bản file theo revision đã ghi trong `models/MANIFEST.json` của Phase 0 (`bench/phase0/fetch.py`).
 
 Tạo `scripts/models/models.config.json`:
 
@@ -2057,7 +2057,7 @@ Expected:
 advisories ok, bans ok, licenses ok, sources ok
 ```
 
-Lúc lập kế hoạch đã chạy thử cả chuỗi với model thật của Giai đoạn 0 (ngoài repo): `build-manifest.mjs --dir <thư mục có model, LICENSE, NOTICE> --sequence 1` mất khoảng 2,7 giây cho 2,5 GB+1,3 GB; ký bằng một khóa staging tạm (đã xóa); `signed::verify` của Rust nhận và đọc được: gói Chuẩn 2 484 912 654 byte, gói Nhẹ 1 325 509 202 byte (khớp "khoảng 2,5 GB" và "khoảng 1,3 GB" của §6.7), Mac 16 GB được đề xuất gói Chuẩn.
+Lúc lập kế hoạch đã chạy thử cả chuỗi với model thật của Phase 0 (ngoài repo): `build-manifest.mjs --dir <thư mục có model, LICENSE, NOTICE> --sequence 1` mất khoảng 2,7 giây cho 2,5 GB+1,3 GB; ký bằng một khóa staging tạm (đã xóa); `signed::verify` của Rust nhận và đọc được: gói Chuẩn 2 484 912 654 byte, gói Nhẹ 1 325 509 202 byte (khớp "khoảng 2,5 GB" và "khoảng 1,3 GB" của §6.7), Mac 16 GB được đề xuất gói Chuẩn.
 
 - [ ] **Step 10: Commit**
 

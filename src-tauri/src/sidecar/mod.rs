@@ -166,7 +166,7 @@ fn seen_file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
 }
 
 /// File model của gói đang dùng, theo kho model (kế hoạch 04; lúc bắt đầu chỉ kiểm có file và đúng kích thước, §9).
-/// Bản dev chưa tải gói nào qua manifest thì dùng file của Giai đoạn 0 trong `models/` của repo, như trước.
+/// Bản dev chưa tải gói nào qua manifest thì dùng file của Phase 0 trong `models/` của repo, như trước.
 fn resolve_models<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<paths::ModelFiles, CommandError> {
     let pack = settings.model_tier.as_deref();
     let resolved = match app.try_state::<Arc<ModelService>>() {

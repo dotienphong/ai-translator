@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 07b: Tự cập nhật, khóa production và phát hành
+# Phase 1 · 07b: Tự cập nhật, khóa production và phát hành
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -24,7 +24,7 @@ Không làm ở đây: chọn dịch vụ ký Windows và tài khoản Apple (đ
 
 **Công nghệ:** Thêm crate `tauri-plugin-updater` 2.13.1 (bảng dưới). Không thêm gói npm nào: không dùng `@tauri-apps/plugin-updater` (plugin không cấp cho webview). `pnpm-lock.yaml` và `server/pnpm-lock.yaml` giữ nguyên; wrangler 4.145.0 của `server/` dùng để tải lên R2.
 
-Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.7). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md` (§4.3, §6.9, §6.11, §10.2, Q13, Q17). Kế hoạch trước: `2026-10-02-giai-doan-1-07a-ci-dong-goi.md`.
+Tổng quan: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` (mục 2.7). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md` (§4.3, §6.9, §6.11, §10.2, Q13, Q17). Kế hoạch trước: `2026-10-02-phase-1-07a-ci-dong-goi.md`.
 
 ---
 
@@ -4682,7 +4682,7 @@ OSAKit.framework
 
 ## Task 10: Cập nhật kế hoạch 00
 
-Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`), ghi SHA commit thật của từng task:
+Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`), ghi SHA commit thật của từng task:
 - Step 1–2: liệt kê các dòng có `07`. Đổi theo kết quả thật:
   - dòng 23 (F9), 203 (tự cập nhật), 204 (hai kênh): `đang làm`, ghi Task 1–4, 6, 7; còn Task 14 (thử thật);
   - dòng 63 (không chặn thoát khi tự khởi động lại để cập nhật): ghi Task 3 (`request_restart`, `RunEvent::ExitRequested` có mã thoát nên không bị `prevent_exit`); còn Task 14;
@@ -4696,7 +4696,7 @@ Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-
   - mục 2.7: "Còn cho 07b" đánh dấu phần đã làm, trỏ tới Task 11–15 cho phần còn lại;
   - mục 6.5 (bí mật của CI): thêm `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (environment `release`), biến `RELEASES_BUCKET`, `RELEASES_BASE_URL`; trỏ tới `docs/release/phat-hanh.md`;
   - mục 8.3: thêm các điểm ở "Điểm cần chủ dự án quyết" của file này.
-- Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 07b`.
+- Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Phase 1 sau kế hoạch 07b`.
 
 ## Task 11: Khóa production (người, máy không nối mạng)
 
@@ -4775,7 +4775,7 @@ Trên bản `0.1.0-beta.2` đã ký thật, máy chưa từng chạy app:
 - **QĐ13. Tag phải khớp `version`** (kể cả bản beta), kiểm ở bước đầu của hai job tiến trình phụ; job `publish` kiểm đủ bảy giá trị production và `RELEASES_BASE_URL` đúng URL build sẵn trong app, thiếu thì không đăng gì. Chạy tay (`workflow_dispatch`) không đăng.
 - **QĐ14. Bản nháp GitHub Release ở job riêng** không secret, chỉ job này có `contents: write`; nhận artifact qua `take-artifact.mjs` như job có secret. Repo riêng tư nên bản nháp chỉ là kho lưu; người dùng tải từ R2.
 - **QĐ15. Bản sao offline của khóa.** Khóa bản cập nhật: file `.key` của `tauri signer generate` đã mã hóa bằng passphrase. Khóa manifest: JWK mã hóa bằng `openssl enc -aes-256-cbc -pbkdf2 -iter 600000` (LibreSSL của macOS có sẵn), giải mã đi thẳng vào `gh secret set` qua pipe.
-- **QĐ16. Đổi khóa bản cập nhật qua một bản chuyển tiếp** (plugin chỉ tin một khóa, kênh chỉ có một `latest.json`): bản N mang khóa mới nhưng ký bằng khóa cũ; máy chưa lên N trước khi đổi secret phải cài lại tay. Giới hạn chấp nhận ở MVP (điểm cần quyết 3). Hướng của Giai đoạn 2, không cần sửa gì bây giờ: `UpdaterBuilder::pubkey` cho app chọn khóa ở mỗi lần kiểm, nên CI ký mỗi bản hai lần (`<kênh>/latest.json` ký bằng khóa cũ cho bản đang có, `<kênh>/latest-<kid>.json` bằng khóa mới cho bản mang khóa mới); khi đó đổi khóa có kế hoạch không bỏ lại máy nào. Chỉ khi lộ khóa mới buộc cài lại tay.
+- **QĐ16. Đổi khóa bản cập nhật qua một bản chuyển tiếp** (plugin chỉ tin một khóa, kênh chỉ có một `latest.json`): bản N mang khóa mới nhưng ký bằng khóa cũ; máy chưa lên N trước khi đổi secret phải cài lại tay. Giới hạn chấp nhận ở MVP (điểm cần quyết 3). Hướng của Phase 3, không cần sửa gì bây giờ: `UpdaterBuilder::pubkey` cho app chọn khóa ở mỗi lần kiểm, nên CI ký mỗi bản hai lần (`<kênh>/latest.json` ký bằng khóa cũ cho bản đang có, `<kênh>/latest-<kid>.json` bằng khóa mới cho bản mang khóa mới); khi đó đổi khóa có kế hoạch không bỏ lại máy nào. Chỉ khi lộ khóa mới buộc cài lại tay.
 - **QĐ17. `Run` có dấu nháy bằng crate `windows` sẵn có** (`RegGetValueW`, `RegSetKeyValueW`), không thêm `windows-registry`: bản mới nhất 0.100.0 khác bản 0.6.1 mà `auto-launch` dùng, thêm vào là hai bản cùng crate.
 - **QĐ18. Job `publish` và `github-release` chạy trên `macos-26`**: không thêm loại runner mới (07a chỉ khóa `macos-26`, `windows-2025`); hai job ngắn.
 - **QĐ20. Manifest không ký; app đặt bộ so phiên bản theo kênh** (Q-3 của review lần 1; controller quyết giữ manifest không ký). Ai ghi được R2 (token lộ) hay chiếm được tên miền không cài được code tùy ý (chữ ký và `requireSignedVersion` chặn), nhưng vẫn có thể (a) đóng băng cập nhật bằng cách giữ manifest cũ, (b) đẩy một bản mới hơn đã bị rút (chữ ký vẫn đúng). Rủi ro còn lại này chấp nhận ở MVP; giảm bằng: secret R2 chỉ ở environment `release` có người duyệt, token Cloudflare chỉ ghi được bucket production. App chặn được (c) đẩy bản beta vào kênh stable: `version_comparator` của plugin chỉ nhận bản mới hơn theo semver, và kênh stable không nhận bản pre-release (`backend::accepts`). Spec §6.11 sửa câu chữ cho khớp (controller áp).
@@ -4854,7 +4854,7 @@ G1 --production nhận kid stg-: bị giết [ℹ fail 1]
 
 1. **URL của bản cập nhật trước khi có tên miền (T7):** chờ tên miền (`releases.<tên miền>`), hay phát hành beta với URL `r2.dev` của bucket. URL build sẵn trong app; đổi URL sau đó cần một bản phát hành trên URL cũ trỏ sang (bản đó mang URL mới), như đổi khóa (QĐ16). Đề xuất: chờ tên miền cho bản stable; beta nội bộ dùng `r2.dev`.
 2. **Ai được vào kênh beta:** mọi người dùng chọn được beta trong Cài đặt (như spec §6.9 hiện tại), hay chỉ nhóm thử. Kênh beta nhận cả bản stable mới hơn (QĐ8).
-3. **Giới hạn đổi khóa bản cập nhật (QĐ16):** chấp nhận máy chưa lên bản chuyển tiếp phải cài lại tay, hay làm thêm đường dẫn manifest theo thế hệ khóa (mỗi bản ký hai lần) ở Giai đoạn 2.
+3. **Giới hạn đổi khóa bản cập nhật (QĐ16):** chấp nhận máy chưa lên bản chuyển tiếp phải cài lại tay, hay làm thêm đường dẫn manifest theo thế hệ khóa (mỗi bản ký hai lần) ở Phase 3.
 4. **Người giữ khóa offline:** ai giữ USB `KHOA`, ai giữ giấy passphrase, cất ở đâu (Q17 chỉ nói "cất riêng").
 5. **Lịch phát hành stable đầu tiên:** sau khi 08 nghiệm thu đạt, hay sau một số tuần beta.
 

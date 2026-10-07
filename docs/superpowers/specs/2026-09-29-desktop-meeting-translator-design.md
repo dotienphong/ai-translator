@@ -3,8 +3,8 @@
 **Ngày:** 2026-09-29
 **Trạng thái:**
 - Đã duyệt ngày 2026-09-29. Kế hoạch nằm ở `docs/superpowers/plans/`.
-- Sửa ngày 2026-10-01 theo quyết định của chủ dự án: chốt tên, bốn gói và hạn mức, cách lưu dữ liệu. Cùng đợt, spec nhận các điểm lệch nhỏ đã chốt ở kế hoạch Giai đoạn 1 · 01, 02 và 05.
-- Các chi tiết hạn mức do controller tự quyết (§6.8, "Hạn mức") còn chờ chủ dự án xem (Q16 của kế hoạch Giai đoạn 1 · 00).
+- Sửa ngày 2026-10-01 theo quyết định của chủ dự án: chốt tên, bốn gói và hạn mức, cách lưu dữ liệu. Cùng đợt, spec nhận các điểm lệch nhỏ đã chốt ở kế hoạch Phase 1 · 01, 02 và 05.
+- Các chi tiết hạn mức do controller tự quyết (§6.8, "Hạn mức") còn chờ chủ dự án xem (Q16 của kế hoạch Phase 1 · 00).
 - Sửa ngày 2026-10-04: chỉ còn một môi trường production (§6.13, spec `2026-10-04-single-production-environment-design.md`); các chỗ nói staging hay dev của server đã được sửa theo.
 **Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS, cùng một license server nhỏ để nhận thanh toán qua PayOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
 **Tên và định danh** (D13):
@@ -89,7 +89,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | F7 | Giao diện tiếng Việt và English |
 | F8 | Phân quyền theo gói (Free và ba gói trả phí, §2) bằng license key, dùng được khi offline. Hạn mức dịch theo gói, đếm riêng trên từng máy (§6.8). |
 | F9 | Tự cập nhật app |
-| F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề, `Ctrl+Alt+PageUp` / `Ctrl+Alt+PageDown` (`⌃⌥PageUp` / `⌃⌥PageDown`) để cuộn phụ đề lên/xuống xem câu cũ (§4.4). Không chọn Ctrl+Alt+mũi tên vì driver Intel trên Windows dùng tổ hợp đó để xoay màn hình. Ở Giai đoạn 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
+| F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề, `Ctrl+Alt+PageUp` / `Ctrl+Alt+PageDown` (`⌃⌥PageUp` / `⌃⌥PageDown`) để cuộn phụ đề lên/xuống xem câu cũ (§4.4). Không chọn Ctrl+Alt+mũi tên vì driver Intel trên Windows dùng tổ hợp đó để xoay màn hình. Ở Phase 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
 
 ### 3.2 Ngoài phạm vi MVP
 
@@ -111,12 +111,12 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | A1 | **Tương thích:** chạy được với Teams (app), Zoom (app), Google Meet (Chrome và Edge; thêm Safari trên Mac) và Zalo PC, trên cả hai hệ điều hành. Nghe được qua loa, tai nghe có dây và tai nghe Bluetooth. |
 | A2 | **Độ trễ**, tính từ lúc người nói thực sự dừng câu đến lúc bản dịch hiện đủ, kể cả khi đó vẫn là phụ đề tạm (§6.3). Không tính lần nạp model khi bắt đầu phiên (§5). **Máy khuyến nghị: p50 ≤ 2,0 giây, p90 ≤ 3,0 giây**, và chữ dịch đầu tiên hiện trong ≤ 1,0 giây (p50). Máy tối thiểu: p50 ≤ 3,5 giây. |
 | A3 | **Chất lượng dịch**, chấm trên văn bản (không qua bước nhận dạng giọng nói), chạy qua đúng `llama-server` và prompt của app. Bộ test gồm bộ của benchmark 2026-09-29, cộng thêm ba chiều Trung→Việt, Nhật→Việt, Hàn→Việt, mỗi chiều 100 câu, dựng từ WMT24++ giống các chiều đã có. **Mốc:** COMET của Q8_0 (gói Chuẩn) và Q4_K_M (gói Nhẹ), chấm ở S7, ghi ở bảng dưới. **Mức sàn** cho Anh→Việt: gói Chuẩn ≥ 0,83, gói Nhẹ ≥ 0,80; nếu không đạt thì xem lại D5 trước khi làm MVP. Ba chiều Trung/Nhật/Hàn→Việt chưa có mức sàn; chiều nào thấp hơn Anh→Việt quá 0,05 thì xem lại D5 cho chiều đó. **Chống thụt lùi:** sau mỗi lần đổi model, engine hay prompt, COMET của từng chiều không được thấp hơn mốc quá 0,01. |
-| A4 | **Chất lượng nhận dạng giọng nói**, đo trên bộ clip mẫu dựng ở Giai đoạn 0 (S7). Mỗi ngôn ngữ nguồn mặc định có ít nhất 15 phút âm thanh, kèm bản chép chuẩn đã được người kiểm lại, và có cả âm thanh thu qua tai nghe Bluetooth (băng hẹp). Chỉ dùng clip có quyền sử dụng: tự thu, hoặc bộ dữ liệu mở như FLEURS và AMI (CC BY 4.0). Tiếng Anh và tiếng Việt đo WER; tiếng Trung, Nhật, Hàn đo CER theo thông lệ cho các ngôn ngữ này. Lấy mốc cho cả gói Chuẩn và gói Nhẹ; mốc đo ở S7 ghi ở bảng dưới. Sau mỗi lần đổi model hay engine, WER/CER không được xấu hơn mốc quá 10% (tương đối). |
+| A4 | **Chất lượng nhận dạng giọng nói**, đo trên bộ clip mẫu dựng ở Phase 0 (S7). Mỗi ngôn ngữ nguồn mặc định có ít nhất 15 phút âm thanh, kèm bản chép chuẩn đã được người kiểm lại, và có cả âm thanh thu qua tai nghe Bluetooth (băng hẹp). Chỉ dùng clip có quyền sử dụng: tự thu, hoặc bộ dữ liệu mở như FLEURS và AMI (CC BY 4.0). Tiếng Anh và tiếng Việt đo WER; tiếng Trung, Nhật, Hàn đo CER theo thông lệ cho các ngôn ngữ này. Lấy mốc cho cả gói Chuẩn và gói Nhẹ; mốc đo ở S7 ghi ở bảng dưới. Sau mỗi lần đổi model hay engine, WER/CER không được xấu hơn mốc quá 10% (tương đối). |
 | A5 | **Ổn định:** một phiên dịch liên tục 2 giờ không crash. RAM sau giờ đầu không tăng quá 10%. |
 | A6 | **Cài đặt:** bộ cài ký số hợp lệ. Bản macOS đã notarize, mở không bị Gatekeeper chặn. **Gỡ app sạch, người dùng chọn giữ hay xóa model:** trên Windows, bộ gỡ cài đặt có ô "xóa dữ liệu app", xóa được cả model (§6.7). Trên macOS, gỡ app chỉ là kéo vào Thùng rác, không có bước nào để hỏi; vì vậy trong app có nút "Xóa model và dữ liệu" (§4.3), và trang hỗ trợ hướng dẫn bấm nút này trước khi gỡ. |
 | A7 | **Quyền riêng tư:** kiểm tra qua proxy mạng, trong lúc dịch không có request mạng nào, trừ các việc chạy theo lịch: kiểm tra bản quyền, hỏi giờ của license server khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về sau khi giờ máy đặt nhầm tới trước (§6.8, §10.2), kiểm tra cập nhật app và manifest model. Không request nào chứa âm thanh hay nội dung chép lời. |
 
-**Mốc đo ở Giai đoạn 0** (Mac M4 Pro, 2026-09-30; số liệu gốc ở `bench/phase0/results/`):
+**Mốc đo ở Phase 0** (Mac M4 Pro, 2026-09-30; số liệu gốc ở `bench/phase0/results/`):
 
 - **A3** (`s7_mt_decisions.md`): COMET của lượt không có ngữ cảnh, qua `llama-server` b11146 và prompt của app. Anh/Trung/Nhật/Hàn→Việt và Việt→Anh mỗi chiều 100 câu; Việt→Trung/Nhật/Hàn mỗi chiều 40 câu.
 
@@ -311,7 +311,7 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
     - Chưa kiểm: đổi thiết bị phát giữa chừng (nên khởi tạo lại tap như "Khi thiết bị phát đổi" bên dưới), và chữ ký Developer ID.
 - **Khi thiết bị phát đổi** (cắm tai nghe, kết nối Bluetooth), trên cả hai hệ điều hành:
   - App hỏi định kỳ mỗi 500 ms chữ ký của thiết bị phát mặc định (`audio_capture::default_output_signature`). Chữ ký đổi, hoặc luồng thu chết (`failed()`), thì mở lại nguồn, trong ≤ 2 giây (§9).
-  - Không dùng `IMMNotificationClient` trên Windows hay listener của Core Audio trên macOS. Cách hỏi định kỳ cho cùng kết quả, mà không có callback chạy trên luồng của hệ thống (chốt ở kế hoạch Giai đoạn 1 · 02a, QĐ16).
+  - Không dùng `IMMNotificationClient` trên Windows hay listener của Core Audio trên macOS. Cách hỏi định kỳ cho cùng kết quả, mà không có callback chạy trên luồng của hệ thống (chốt ở kế hoạch Phase 1 · 02a, QĐ16).
 - **Ràng buộc realtime:** callback thu âm không cấp phát bộ nhớ và không lock; chỉ ghi vào ring buffer lock-free (crate `rtrb`). Ring buffer chứa được 30 giây âm thanh.
 
 ### 6.2 Tiền xử lý
@@ -351,7 +351,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 ### 6.4 Nhận dạng giọng nói
 
 - **Engine:** whisper.cpp qua `whisper-rs`, chạy trong **tiến trình phụ `asr-worker`**. Đây là một binary Rust nhỏ trong cùng workspace, link tĩnh whisper.cpp (§6.12). Dùng Metal trên macOS và Vulkan trên Windows; lỗi GPU thì tự chuyển sang CPU.
-- **Giao tiếp với tiến trình chính:** qua stdin/stdout, không mở cổng mạng. Kiểu thông điệp nằm trong crate `asr-protocol`, dùng chung cho cả hai bên (§12). MVP dùng **giao thức bản 2** (`PROTOCOL_VERSION = 2`, chốt ở kế hoạch Giai đoạn 1 · 02a, Task 1); Giai đoạn 0 dùng bản 1, chưa có `protocol_version`, `prev_lang`, `Error.kind` và các enum.
+- **Giao tiếp với tiến trình chính:** qua stdin/stdout, không mở cổng mạng. Kiểu thông điệp nằm trong crate `asr-protocol`, dùng chung cho cả hai bên (§12). MVP dùng **giao thức bản 2** (`PROTOCOL_VERSION = 2`, chốt ở kế hoạch Phase 1 · 02a, Task 1); Phase 0 dùng bản 1, chưa có `protocol_version`, `prev_lang`, `Error.kind` và các enum.
   - **Khung:** 4 byte độ dài (`u32` little-endian), theo sau là thông điệp mã hóa bằng postcard. Mỗi khung dài tối đa 16 MiB (`MAX_FRAME_BYTES`).
   - **Thông điệp:** app gửi `Request`, worker trả `Response`. Mỗi yêu cầu có đúng một phản hồi, trừ `Shutdown`.
     - `Load {model_path, use_gpu, n_threads}` → `Ready {protocol_version, backend, decode_mode, whisper_version, system_info}`.
@@ -435,7 +435,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Làm nóng:** sau `Load`, app gửi `Warmup`; `asr-worker` chạy thử một lần trên một đoạn im lặng để nạp sẵn kernel GPU.
 - **Lọc lỗi "ảo giác" của Whisper:**
   - **Bỏ đoạn khi `no_speech_prob > 0,6` và `avg_logprob < −1`.** Đây là luật của OpenAI Whisper, nhưng `avg_logprob` không tính EOT nên dễ bỏ đoạn hơn một chút ở đoạn ngắn. Đoạn có chữ rỗng cũng bị bỏ.
-    - Luật này chạy ở tiến trình chính; `asr-worker` chỉ trả `no_speech_prob` và `avg_logprob`. Đoạn bị bỏ không được đưa vào prompt của đoạn sau, và không làm đổi ngôn ngữ của đoạn trước (`prev_lang`). Công cụ đo của Giai đoạn 0 chưa làm hai điều này.
+    - Luật này chạy ở tiến trình chính; `asr-worker` chỉ trả `no_speech_prob` và `avg_logprob`. Đoạn bị bỏ không được đưa vào prompt của đoạn sau, và không làm đổi ngôn ngữ của đoạn trước (`prev_lang`). Công cụ đo của Phase 0 chưa làm hai điều này.
     - `no_speech_prob` lấy từ logits ngay sau SOT (chế độ B). Với tham số của app, `whisper_full` (chế độ A) luôn trả gần 0, nên bộ lọc chỉ có tác dụng ở chế độ B.
     - Cần cả hai điều kiện. Chỉ dùng `no_speech_prob > 0,6` thì bỏ nhầm câu đúng, ví dụ một câu tiếng Hàn có `no_speech_prob` 0,62 và `avg_logprob` −0,25 (`phase0_review_notes.md`). Chỉ dùng `avg_logprob < −1` thì bỏ nhầm một clip tiếng Nhật thật trên A4.
     - Trên A4, luật bỏ đúng 1 clip, là một bản chép ảo giác của small; với turbo, luật không bỏ clip nào. Trên S6, luật bỏ 1 đoạn: câu ảo giác "Thank you." dài 256 ms, ở gói Nhẹ.
@@ -446,7 +446,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Thử `no_speech_prob` trên im lặng, nhiễu và nhạc, nhất là với turbo, trước khi dựa vào bộ lọc này.
   - Luật lặp: khi prompt dài (đoạn trước cùng ngôn ngữ, tới 100 token), trần token còn khoảng 119, nên câu chép đôi dài từ khoảng 60 token không bị bắt. Xem lại.
   - Chọn ngưỡng giữ ngôn ngữ của đoạn trước theo số ngôn ngữ trong tập, dựa trên đoạn VAD thật (S6) và dữ liệu hội thoại. A4 không dùng được cho việc này: chế độ B nhận đúng 548/548 clip, và clip ngắn nhất dài 3,3 giây.
-  - Cài bộ lọc câu ảo giác quen thuộc ở "Lọc lỗi ảo giác" (Giai đoạn 0 chưa có).
+  - Cài bộ lọc câu ảo giác quen thuộc ở "Lọc lỗi ảo giác" (Phase 0 chưa có).
   - Bật `shared-encode` mặc định cho bản phát hành, và app từ chối worker có `decode_mode` khác `shared`.
   - Với zh, small hay ra chữ phồn thể: chuyển phồn thể sang giản thể ở tầng app.
   - Xem lại flash attention khi upstream có mask cho phần đệm: tự vá, hoặc chờ upstream.
@@ -462,7 +462,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Windows x64: dùng backend Vulkan và CPU, nạp backend lúc chạy, lỗi GPU thì tự chuyển CPU.
 - **Lệnh chạy:** `LLAMA_API_KEY=<ngẫu nhiên> llama-server -m <gguf> --host 127.0.0.1 --port <cổng trống ngẫu nhiên> -c 2048 -np 1 -ngl auto --no-ui`. App gọi `/health` để biết server đã sẵn sàng.
   - API key truyền qua biến môi trường `LLAMA_API_KEY`, không qua `--api-key`, vì tham số dòng lệnh hiện ra trong `ps`. b11146 hỗ trợ cả hai cách.
-  - Giai đoạn 0 (`crates/pipeline/src/llama.rs`) vẫn truyền `--api-key`. MVP đổi sang `LLAMA_API_KEY`, chỉ đặt biến này cho tiến trình `llama-server`.
+  - Phase 0 (`crates/pipeline/src/llama.rs`) vẫn truyền `--api-key`. MVP đổi sang `LLAMA_API_KEY`, chỉ đặt biến này cho tiến trình `llama-server`.
   - Dùng `--no-ui`, không dùng `--no-webui`: b11146 đánh dấu tên cũ là deprecated.
   - `-ngl auto` là mặc định của llama.cpp hiện tại. Khi đó `--fit`, vốn bật sẵn, tự chọn số lớp đặt lên GPU theo VRAM còn trống, và chừa lại 1 GiB.
   - Không truyền `-ngl 99`. Đã đặt tay số lớp thì `--fit` không chỉnh nữa, nên máy ít VRAM dễ hết bộ nhớ lúc nạp model.
@@ -497,8 +497,8 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Ngưỡng tỉ lệ token (token bản dịch chia token câu gốc) đặt riêng cho từng cặp ngôn ngữ. Lấy ở S7: tỉ lệ lớn nhất đo được trên bộ test, cộng biên 25%, làm tròn lên 0,1.
     - Ngưỡng: Anh→Việt 4,4; Trung→Việt 6,6; Nhật→Việt 3,5; Hàn→Việt 3,5; Việt→Anh 1,6; Việt→Trung 1,2; Việt→Nhật 2,2; Việt→Hàn 2,2.
     - Câu gốc rất ngắn làm tỉ lệ dao động mạnh. Ngưỡng Trung→Việt 6,6 chỉ do một câu gốc 4 token có bản dịch đúng dài 21 token. Chỉ tính câu gốc từ 10 token trở lên thì Trung→Việt còn 4,3 và Việt→Anh còn 1,4; sáu chiều còn lại giữ nguyên.
-    - **Chỉ áp ngưỡng tỉ lệ khi câu gốc có từ 10 token trở lên** (chốt 2026-10-01, cách 2 ở Q4 của kế hoạch Giai đoạn 1 · 00). Câu ngắn hơn chỉ chịu hạn mức sinh ở "Tham số sinh" (tối đa 68 token khi câu gốc dưới 10 token). Lý do: không cần hằng số chỉ do một câu (`zh-vi-888`) quyết định, và hạn mức sinh chưa cắt bản dịch nào trong 1240 bản dịch của S7. Ngưỡng giữ nguyên các số ở trên.
-    - Mười hai chiều không có tiếng Việt (chốt 2026-10-02, điểm cần quyết 4 của kế hoạch Giai đoạn 1 · 02a): ngưỡng lấy ở lượt đo Đ12 của kế hoạch Giai đoạn 1 · 00 (`bench/phase0/results/gd1_mt_ratio.md`), cùng cách tính trên câu gốc từ 10 token, lấy số lớn hơn của Q8_0 và Q4_K_M để gói Chuẩn và gói Nhẹ dùng chung một bộ ngưỡng. Ngưỡng: Anh→Nhật 3,3; Anh→Hàn 3,2; Anh→Trung 2,0; Nhật→Anh 1,7; Nhật→Hàn 2,8; Nhật→Trung 1,5; Hàn→Anh 1,9; Hàn→Nhật 2,0; Hàn→Trung 1,3; Trung→Anh 2,7; Trung→Nhật 3,8; Trung→Hàn 3,7.
+    - **Chỉ áp ngưỡng tỉ lệ khi câu gốc có từ 10 token trở lên** (chốt 2026-10-01, cách 2 ở Q4 của kế hoạch Phase 1 · 00). Câu ngắn hơn chỉ chịu hạn mức sinh ở "Tham số sinh" (tối đa 68 token khi câu gốc dưới 10 token). Lý do: không cần hằng số chỉ do một câu (`zh-vi-888`) quyết định, và hạn mức sinh chưa cắt bản dịch nào trong 1240 bản dịch của S7. Ngưỡng giữ nguyên các số ở trên.
+    - Mười hai chiều không có tiếng Việt (chốt 2026-10-02, điểm cần quyết 4 của kế hoạch Phase 1 · 02a): ngưỡng lấy ở lượt đo Đ12 của kế hoạch Phase 1 · 00 (`bench/phase0/results/gd1_mt_ratio.md`), cùng cách tính trên câu gốc từ 10 token, lấy số lớn hơn của Q8_0 và Q4_K_M để gói Chuẩn và gói Nhẹ dùng chung một bộ ngưỡng. Ngưỡng: Anh→Nhật 3,3; Anh→Hàn 3,2; Anh→Trung 2,0; Nhật→Anh 1,7; Nhật→Hàn 2,8; Nhật→Trung 1,5; Hàn→Anh 1,9; Hàn→Nhật 2,0; Hàn→Trung 1,3; Trung→Anh 2,7; Trung→Nhật 3,8; Trung→Hàn 3,7.
     - Cặp không có trong danh sách ngưỡng (ví dụ manifest chỉ ghi vài cặp) thì không bị kiểm tỉ lệ, chỉ chịu hạn mức sinh.
     - Bộ test S7 không có câu gốc dưới 3 token (như "Vâng", "OK"), và không có cặp nào không chứa tiếng Việt; Đ12 đo riêng hai trường hợp này. Câu gốc dưới 3 token giữ hạn mức sinh `4 × số token + 32`: trên lượt đo Đ12, mọi câu như vậy có 2 token (hạn mức 40), bản dịch dài nhất 10 token, không câu nào chạm hạn mức hay phải dịch lại.
   - **Thử lại** một lần với repeat penalty cao hơn (1,15). Với temperature 0, giữ nguyên tham số thì kết quả sẽ y hệt lần trước. Vẫn lỗi thì hiện câu gốc, đánh dấu "chưa dịch được".
@@ -532,7 +532,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 ### 6.7 Quản lý model
 
-- **Manifest `models.json`** đặt trên CDN của thương hiệu (Cloudflare R2 + tên miền riêng), **ký bằng Ed25519**. Khóa công khai được build sẵn vào app (kế hoạch Giai đoạn 1 · 04, QĐ1–QĐ2).
+- **Manifest `models.json`** đặt trên CDN của thương hiệu (Cloudflare R2 + tên miền riêng), **ký bằng Ed25519**. Khóa công khai được build sẵn vào app (kế hoạch Phase 1 · 04, QĐ1–QĐ2).
   - **Phong bì:** `{ "format": "ai-translator-models", "version": 1, "kid", "body", "sig" }`. `body` là base64url (không đệm) của các byte JSON phần thân; `sig` là chữ ký Ed25519 trên `"ai-translator-models.v1." + body`. Tiền tố tách chữ ký manifest khỏi chữ ký token bản quyền. Phong bì đọc chặt: khóa lạ, base64url có đệm hay không ở dạng chuẩn, BOM, quá 1 MiB, `kid` lạ hay chữ ký sai đều bị từ chối.
   - **Khóa:** mọi bản build, kể cả bản dev, chỉ nhận khóa production (§10.2, "Khóa ký manifest và bản cập nhật"; §6.13). App nhúng khóa công khai production; định dạng vẫn có `kid` để đổi khóa ở bản app sau.
   - **Phần thân:** `schema` (bản 1), `sequence`, `published_at`, `files`, `packs`, `recommend`, và `pipeline` (không bắt buộc). Khóa lạ bị bỏ qua (manifest mới hơn app); khóa thiếu là lỗi.
@@ -558,7 +558,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - S6 trên card rời 6 GB, 4 GB và GPU tích hợp chưa đo vì không có máy. Chủ dự án giữ ngưỡng VRAM 6 GB (2026-10-04) và ghi là chờ đo; đo lại khi có máy (kế hoạch 06, Task 8).
 
   Các máy còn lại được đề xuất gói Nhẹ. Người dùng vẫn đổi được.
-- **Máy chưa được hỗ trợ thì không tải được model** (chủ dự án quyết 2026-10-02): RAM dưới `min_ram_mib` của manifest (6 144 MiB, để máy "8 GB" có GPU tích hợp giữ bớt RAM không bị chặn nhầm), hay CPU x86_64 không có AVX2 (§8, §6.12). App báo rõ lý do và cấu hình tối thiểu, khóa nút tải, và phía Rust cũng từ chối lệnh tải. Ổ không đủ chỗ (dưới đây) cũng không tải được. Bản dev chạy bằng model của Giai đoạn 0 trong `models/` của repo thì vẫn chạy như cũ.
+- **Máy chưa được hỗ trợ thì không tải được model** (chủ dự án quyết 2026-10-02): RAM dưới `min_ram_mib` của manifest (6 144 MiB, để máy "8 GB" có GPU tích hợp giữ bớt RAM không bị chặn nhầm), hay CPU x86_64 không có AVX2 (§8, §6.12). App báo rõ lý do và cấu hình tối thiểu, khóa nút tải, và phía Rust cũng từ chối lệnh tải. Ổ không đủ chỗ (dưới đây) cũng không tải được. Bản dev chạy bằng model của Phase 0 trong `models/` của repo thì vẫn chạy như cũ.
 - **Tải model:**
   - Dùng HTTP Range để tải tiếp được khi rớt mạng. Tạm dừng rồi tải tiếp được.
   - Ghi ra file `*.part` (tên kèm 16 ký tự đầu của SHA-256, để bản mới không tải tiếp trên phần dở của bản cũ), kiểm tra SHA-256, rồi mới đổi tên thành file chính thức.
@@ -833,7 +833,7 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
       - Bản build native trên M4 Pro bật `MATMUL_INT8` và `SME`, nên có thể crash trên M1. Với mức cố định, `system_info` của `asr-worker` chỉ còn `NEON`, `ARM_FMA`, `FP16_VA`, `DOTPROD`.
       - Sửa file này thì phải xóa bản build cũ của `whisper-rs-sys` ở cả hai profile, vì build script của nó không tự chạy lại.
     - `llama-server` trên Windows build với `GGML_BACKEND_DL` và `GGML_CPU_ALL_VARIANTS`: có Vulkan thì nạp backend Vulkan, và tự chọn biến thể CPU hợp với máy.
-    - `llama-server` chính thức trên macOS link động: `libllama*.dylib` và `libggml*.dylib` nằm cùng thư mục. Giai đoạn 0 dùng bản này. MVP chọn giữa tự build tĩnh (Metal, `GGML_NATIVE=OFF`) và kèm các file `.dylib` (ký cùng Team ID, §10.2).
+    - `llama-server` chính thức trên macOS link động: `libllama*.dylib` và `libggml*.dylib` nằm cùng thư mục. Phase 0 dùng bản này. MVP chọn giữa tự build tĩnh (Metal, `GGML_NATIVE=OFF`) và kèm các file `.dylib` (ký cùng Team ID, §10.2).
   - Engine mới phải chạy đúng với model:
     - llama.cpp mới phải nạp và chạy đúng GGUF của Hy-MT2.
     - `whisper-rs` phải đi kèm whisper.cpp có đủ các tính năng cần dùng: `audio_ctx` và API mức thấp để encode và giải mã (§6.4). Bản vá ở `third_party/` phải áp được lên bản mới (§6.4).
@@ -869,8 +869,8 @@ Bản debug chỉ khác ở ba khả năng của build, không phải của môi
   5. Luồng phụ đề: nơi duy nhất phát sự kiện phụ đề, nên thứ tự `upsert` và `delta` luôn đúng.
   6. Tiến trình phụ `asr-worker`: mỗi lần xử lý một đoạn, chạy trên GPU hoặc CPU.
   7. Tiến trình phụ `llama-server`.
-- **Luồng riêng và client đồng bộ, không dùng runtime `tokio`** cho pipeline (chốt ở kế hoạch Giai đoạn 1 · 02a, QĐ1). Lý do:
-  - hai client đồng bộ của Giai đoạn 0 đã chạy qua S6;
+- **Luồng riêng và client đồng bộ, không dùng runtime `tokio`** cho pipeline (chốt ở kế hoạch Phase 1 · 02a, QĐ1). Lý do:
+  - hai client đồng bộ của Phase 0 đã chạy qua S6;
   - mỗi tiến trình phụ chỉ làm một việc một lúc (`llama-server -np 1`, `asr-worker` đọc tuần tự), nên async không thêm thông lượng;
   - crate `pipeline` không cần runtime nào, nên test chạy không cần Tauri.
   App chỉ dùng runtime của Tauri để đưa việc chặn (bắt đầu phiên, chạy tiến trình phụ) ra khỏi luồng chính, và cho các việc ngoài pipeline: tải model, bản quyền.
@@ -896,7 +896,7 @@ Bản debug chỉ khác ở ba khả năng của build, không phải của môi
 | Tối thiểu | Apple Silicon, RAM 8 GB | RAM 8 GB, CPU 4 nhân có AVX2 | Nhẹ |
 | Chưa hỗ trợ trong MVP | Mac chip Intel | ARM64, CPU không có AVX2, RAM < 8 GB | — |
 
-Máy chưa được hỗ trợ thì app báo rõ lý do và cấu hình tối thiểu, và **không cho tải model** (chủ dự án quyết 2026-10-02; §6.7). App tự kiểm RAM (ngưỡng `min_ram_mib` của manifest, 6 144 MiB) và AVX2 (Đ13 của kế hoạch Giai đoạn 1 · 00); bản build chỉ có arm64 cho macOS và x64 cho Windows.
+Máy chưa được hỗ trợ thì app báo rõ lý do và cấu hình tối thiểu, và **không cho tải model** (chủ dự án quyết 2026-10-02; §6.7). App tự kiểm RAM (ngưỡng `min_ram_mib` của manifest, 6 144 MiB) và AVX2 (Đ13 của kế hoạch Phase 1 · 00); bản build chỉ có arm64 cho macOS và x64 cho Windows.
 
 S6 trên các máy tham chiếu khác (M1 16 GB, Windows card rời 6 GB và 4 GB, Windows 8 GB chỉ CPU) chưa đo vì không có thiết bị; chủ dự án bỏ qua ngày 2026-10-04. Hạng máy khuyến nghị và điều kiện p50 ≤ 3,5 giây trên máy tối thiểu vì vậy chưa được xác nhận bằng số đo; đo khi có máy (§13; kế hoạch 06, Task 8–9, `results/s6_latency.md`). M4 Pro, máy đã đo, không phải máy quyết định.
 
@@ -1022,7 +1022,7 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 
 - **Âm thanh** chỉ nằm trong RAM: không ghi xuống đĩa, không gửi qua mạng.
 - **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi license server của sản phẩm (khi mua, kích hoạt, kiểm tra bản quyền; và hỏi giờ của server bằng `GET /v1/plans`, không gửi dữ liệu gì của người dùng, tối đa 5 phút một lần, khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về sau khi giờ máy đặt nhầm tới trước). MVP **không có analytics và không gửi báo cáo crash**. Log nằm trên máy; khi cần hỗ trợ, người dùng tự gửi.
-- **Tiến trình phụ:** `llama-server` chỉ nghe trên `127.0.0.1`, với API key ngẫu nhiên tạo mới mỗi lần chạy, truyền qua biến môi trường (§6.5; trạng thái đích cho MVP, Giai đoạn 0 còn dùng `--api-key`). `asr-worker` không mở cổng mạng nào, chỉ giao tiếp qua stdin/stdout.
+- **Tiến trình phụ:** `llama-server` chỉ nghe trên `127.0.0.1`, với API key ngẫu nhiên tạo mới mỗi lần chạy, truyền qua biến môi trường (§6.5; trạng thái đích cho MVP, Phase 0 còn dùng `--api-key`). `asr-worker` không mở cổng mạng nào, chỉ giao tiếp qua stdin/stdout.
 - **Khóa API của PayOS** (client id, api key, checksum key) chỉ nằm trên license server, được lưu dưới dạng secret, không bao giờ có trong app.
 - **Lịch sử chép lời** mặc định tắt, chỉ lưu trên máy, xóa toàn bộ được bằng một nút.
 - **Luật Bảo vệ dữ liệu cá nhân 2025 (Việt Nam):**
@@ -1138,12 +1138,12 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
   4. Bản app cũ vẫn nhận token ký bằng khóa bị lộ cho tới khi được cập nhật. Đây là rủi ro còn lại, chấp nhận.
 - **Đánh đổi:** tài khoản Cloudflare bị chiếm thì mất cả hai khóa. Nhưng khi đó server cũng đã bị chiếm, nên một khóa dự phòng cất ở chỗ khác cũng không cứu được.
 
-**Khóa ký manifest và bản cập nhật** (chủ dự án quyết 2026-10-02, Q17 của kế hoạch Giai đoạn 1 · 00):
+**Khóa ký manifest và bản cập nhật** (chủ dự án quyết 2026-10-02, Q17 của kế hoạch Phase 1 · 00):
 - Mỗi loại một khóa production: một khóa ký manifest model, một khóa ký bản cập nhật Tauri. Không làm hai ô khóa A/B như khóa token.
 - Khóa nằm trong secret của CI (kế hoạch 07 tạo, ngay trong CI hay trên máy không nối mạng rồi nhập thẳng vào secret). Kèm **một bản sao offline**, mã hóa bằng passphrase, cất trên USB; passphrase in ra giấy, cất riêng.
 - Lộ khóa thì phát hành bản app mới mang khóa công khai mới. App nhúng một khóa công khai production cho manifest; định dạng manifest vẫn có `kid` để bản app sau đổi khóa. Đổi khóa manifest có kế hoạch thì một bản phát hành tin cả `kid` cũ lẫn `kid` mới, bản sau bỏ `kid` cũ; lộ khóa thì bản app mới chỉ tin `kid` mới ngay, `kid` đã lộ bị gỡ khỏi app. Giới hạn chấp nhận ở MVP: manifest đã lưu trên máy mà ký bằng `kid` không còn được tin thì không dùng được; lần mở đầu sau khi app đổi khóa này, máy phải có mạng để tải manifest mới trước khi dùng gói đã tải. Không dùng lại bản ghi trong `installed.json` để bỏ qua kiểm chữ ký, vì như vậy tin lại chính khóa vừa bị gỡ.
 
-**Để Giai đoạn 2**, và chỉ làm khi thấy bị crack nhiều thật: chống debug, làm rối code sâu hơn, kiểm tra toàn vẹn nhiều lớp, phát hiện gian lận phía server bằng phân tích hành vi.
+**Để Phase 3**, và chỉ làm khi thấy bị crack nhiều thật: chống debug, làm rối code sâu hơn, kiểm tra toàn vẹn nhiều lớp, phát hiện gian lận phía server bằng phân tích hành vi.
 
 ## 11. Kiểm thử
 
@@ -1176,7 +1176,7 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 - **Test tích hợp:**
   - Chạy pipeline từ file WAV (không cần thu âm thật), kiểm tra phụ đề có xuất hiện, đúng thứ tự, đúng thời gian.
   - Vòng đời hai tiến trình phụ: khởi động đúng thứ tự (`asr-worker` trước `llama-server`), giả lập crash, tự khởi động lại, gửi lại đoạn đang xử lý, chuyển sang CPU sau 2 lần crash khi dùng GPU, tắt sau 10 phút không dịch.
-- **Benchmark (`bench/`):** đo chất lượng (COMET, chrF++) và độ trễ từng bước cho mỗi gói model. Chạy trước mỗi lần đổi model hoặc engine. Ngưỡng theo A2–A4. Kết quả gốc nằm ở `bench/2026-09-29-mt-benchmark/`; mốc của Giai đoạn 0 nằm ở `bench/phase0/results/` (§3.3, §8).
+- **Benchmark (`bench/`):** đo chất lượng (COMET, chrF++) và độ trễ từng bước cho mỗi gói model. Chạy trước mỗi lần đổi model hoặc engine. Ngưỡng theo A2–A4. Kết quả gốc nằm ở `bench/2026-09-29-mt-benchmark/`; mốc của Phase 0 nằm ở `bench/phase0/results/` (§3.3, §8).
 - **Test thủ công theo ma trận:**
   - Hệ điều hành: macOS 14.2+, 15, 26, 27; Windows 10, 11.
   - App họp: Teams, Zoom, Meet (Chrome, Edge, Safari), Zalo PC.
@@ -1232,7 +1232,7 @@ meeting-translator/
 │   ├── asr-protocol/             # Kiểu thông điệp stdin/stdout, dùng chung cho app và asr-worker
 │   ├── audio-capture/            # Thu âm thanh, chèn im lặng, trộn, resample (§6.1, §6.2)
 │   ├── pipeline/                 # VAD, cắt đoạn, client asr-worker, gọi llama-server, prompt, giám sát tiến trình phụ, PipelineConfig (§6.3–§6.5, §7)
-│   └── latency-bench/            # Công cụ đo của Giai đoạn 0 (S3, S6, A4), không vào bộ cài
+│   └── latency-bench/            # Công cụ đo của Phase 0 (S3, S6, A4), không vào bộ cài
 ├── third_party/                  # whisper-rs, whisper-rs-sys đã vá, nối qua [patch.crates-io] (§6.4)
 ├── server/                       # License server: hai Cloudflare Worker (API, admin; nối bằng service binding) + D1. D1 có bảng deactivations: mỗi lần gỡ máy một dòng, vì activation không bị xóa
 │   └── src/
@@ -1244,19 +1244,19 @@ meeting-translator/
 │       └── email/{provider,resend,templates}.ts  # Interface EmailProvider và cài đặt Resend (§6.8)
 ├── bench/                        # Đánh giá chất lượng và độ trễ
 │   ├── 2026-09-29-mt-benchmark/  # Kết quả gốc của lần chọn model
-│   └── phase0/                   # Công cụ đo Giai đoạn 0; kết quả ở results/ (§3.3, §8)
+│   └── phase0/                   # Công cụ đo Phase 0; kết quả ở results/ (§3.3, §8)
 ├── tests/fixtures/audio/         # Vài clip ngắn có quyền dùng cho test tích hợp; bộ clip A4 nằm ở bench/phase0/data/ (không commit)
 └── docs/superpowers/specs/
 ```
 
-- `asr-protocol`, `asr-worker`, `audio-capture` và `pipeline` có từ Giai đoạn 0, và phần lớn code dùng lại được ở MVP.
+- `asr-protocol`, `asr-worker`, `audio-capture` và `pipeline` có từ Phase 0, và phần lớn code dùng lại được ở MVP.
 - **Việc cho MVP:**
-  - Đã chọn (2026-10-01): giữ `audio-capture` và `pipeline` là crate riêng, vì code và test của Giai đoạn 0 dùng lại được nguyên, và test chạy không cần Tauri. `src-tauri` chỉ còn phần nối các crate vào app.
+  - Đã chọn (2026-10-01): giữ `audio-capture` và `pipeline` là crate riêng, vì code và test của Phase 0 dùng lại được nguyên, và test chạy không cần Tauri. `src-tauri` chỉ còn phần nối các crate vào app.
   - Trước khi tạo `server/`: thêm vào `.gitignore` các mẫu `.dev.vars*`, `.env*`, `*.pem`, `*.p12`, `*.pfx`, `*.key` (§10.2).
 
 ## 13. Lộ trình
 
-**Giai đoạn 0: spike, bắt buộc làm trước MVP**
+**Phase 0: spike, bắt buộc làm trước MVP**
 
 | # | Việc cần làm |
 |---|---|
@@ -1270,11 +1270,13 @@ meeting-translator/
 
 **Tiêu chí qua spike:** S1–S5 chạy được; S6 đạt **p50 ≤ 2,0 giây** trên máy khuyến nghị (đo cả trên máy M1 cơ bản 16 GB) và p50 ≤ 3,5 giây trên máy tối thiểu; mốc COMET ở S7 đạt mức sàn của A3. Nếu M1 cơ bản không đạt thì chọn một trong hai phương án ở §8. Nếu cả máy mạnh hơn cũng không đạt thì quay lại sửa spec.
 
-**Kết quả Giai đoạn 0 (2026-10-04, `bench/phase0/REPORT.md`):** chủ dự án duyệt qua cổng **có điều kiện**. Mọi điều kiện đã đo đều đạt (S1, S4, COMET; S6 trên M4 Pro đạt A2 với dư địa khoảng gấp đôi). Chưa đo: S2, S3 và S5 trên Windows; S6 trên M1 16 GB và các máy Windows. Các mục này phải xong trước bản phát hành đầu tiên, cùng chữ ký Developer ID; M1 cơ bản giữ trạng thái chưa xác nhận.
+**Kết quả Phase 0 (2026-10-04, `bench/phase0/REPORT.md`):** chủ dự án duyệt qua cổng **có điều kiện**. Mọi điều kiện đã đo đều đạt (S1, S4, COMET; S6 trên M4 Pro đạt A2 với dư địa khoảng gấp đôi). Chưa đo: S2, S3 và S5 trên Windows; S6 trên M1 16 GB và các máy Windows. Các mục này phải xong trước bản phát hành đầu tiên, cùng chữ ký Developer ID; M1 cơ bản giữ trạng thái chưa xác nhận.
 
-**Giai đoạn 1: MVP.** Làm F1–F10, license server và tích hợp PayOS, bốn gói và hạn mức (§2, §6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Giai đoạn 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
+**Phase 1: MVP.** Làm F1–F10, license server và tích hợp PayOS, bốn gói và hạn mức (§2, §6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Phase 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
 
-**Giai đoạn 2: mở rộng**, thứ tự tùy phản hồi của người dùng:
+**Phase 2.** Các việc đã làm xong vẫn thuộc Phase 2. Việc còn lại: hộp thư nhận cảnh báo vận hành `OPERATOR_EMAIL` (P05-5, §10.2).
+
+**Phase 3: mở rộng**, thứ tự tùy phản hồi của người dùng:
 - Phân biệt ai đang nói.
 - Hỗ trợ Windows ARM64.
 - Thu âm thanh theo từng app trên Windows.
@@ -1304,13 +1306,13 @@ meeting-translator/
 
 ## 15. Việc còn mở (không chặn phần kỹ thuật)
 
-Đã quyết ngày 2026-10-01 và đã đưa vào spec: tên và bundle identifier (D13), bốn gói và giá (P1, §2), hạn mức (§6.8), cách lưu dữ liệu (§10.1), chưa làm hóa đơn điện tử (§10.1), không dùng kho mật khẩu cho khóa ký token (§10.2). Dịch vụ email đã chọn là Resend, nhưng chưa có tài khoản (T6 của kế hoạch Giai đoạn 1 · 00). Tài khoản Cloudflare riêng đã có.
+Đã quyết ngày 2026-10-01 và đã đưa vào spec: tên và bundle identifier (D13), bốn gói và giá (P1, §2), hạn mức (§6.8), cách lưu dữ liệu (§10.1), chưa làm hóa đơn điện tử (§10.1), không dùng kho mật khẩu cho khóa ký token (§10.2). Dịch vụ email đã chọn là Resend, nhưng chưa có tài khoản (T6 của kế hoạch Phase 1 · 00). Tài khoản Cloudflare riêng đã có.
 
 Đã quyết ngày 2026-10-02: khóa ký manifest model và khóa ký bản cập nhật, mỗi loại một khóa trong secret của CI kèm bản sao offline mã hóa (§10.2); máy chưa được hỗ trợ thì không tải model (§6.7, §8).
 
 Còn mở:
 - **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, production dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Không cần tên miền để deploy lần đầu trên `workers.dev`; cần tên miền trước khi nhúng URL production vào bản beta đầu tiên và trước lần phát hành công khai đầu tiên (email gửi từ tên miền đã xác thực, `returnUrl`).
-- **Hộp thư nhận cảnh báo vận hành** (P05-5, `OPERATOR_EMAIL`, §10.2). Cần có trước khi triển khai production.
+- **Hộp thư nhận cảnh báo vận hành** (P05-5, `OPERATOR_EMAIL`, §10.2). Chủ dự án dời sang Phase 2 (quyết định 2026-10-05).
 - **Pháp lý:** hỏi luật sư về:
   - hồ sơ chuyển dữ liệu cá nhân ra nước ngoài (§10.1);
   - việc **giữ dữ liệu cá nhân không thời hạn** (§10.1), xét theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân (hiệu lực từ 1/1/2026);

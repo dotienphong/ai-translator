@@ -1,6 +1,6 @@
 # no_speech_prob và luật lọc trên âm thanh không có tiếng nói (Đ12, Q11 của review 02b)
 
-Sinh từ `crates/pipeline/tests/no_speech.rs` (kế hoạch Giai đoạn 1 · 02b, Task 6): 14 tín hiệu tổng hợp và mười file nhạc
+Sinh từ `crates/pipeline/tests/no_speech.rs` (kế hoạch Phase 1 · 02b, Task 6): 14 tín hiệu tổng hợp và mười file nhạc
 không lời (mỗi file tối đa 10 đoạn 8 giây), qua Silero VAD của app và `asr-worker` thật, rồi luật lọc của app
 (`filter::verdict`). "Hiện thành phụ đề" nghĩa là VAD cắt ra ít nhất một đoạn và luật lọc giữ chữ.
 
@@ -15,7 +15,7 @@ không lời (mỗi file tối đa 10 đoạn 8 giây), qua Silero VAD của app
 ## Điều kiện nhận luật mới (QĐ24)
 
 - A4 (`out-m4pro-{turbo,small}-final.jsonl`, 548 clip mỗi model): luật câu đệm và luật chuỗi lặp không bỏ clip nào;
-  tỉ lệ nén lớn nhất của chữ thật là 1,54 ở cả hai model, dưới ngưỡng 2,4. Luật `no_speech` của Giai đoạn 0 vẫn bỏ
+  tỉ lệ nén lớn nhất của chữ thật là 1,54 ở cả hai model, dưới ngưỡng 2,4. Luật `no_speech` của Phase 0 vẫn bỏ
   đúng một clip của small (`en-9810650684898829002_nb`, chữ bịa) như trước. Test
   `phase1_rules_drop_no_a4_clip`.
 - S6 (12 lượt cấu hình chốt, 528 đoạn): luật câu đệm bỏ thêm 2 đoạn của gói Chuẩn, cả hai có chữ sai: đoạn 26 của `en`

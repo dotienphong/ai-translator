@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 04b: Quản lý model — nối vào app và giao diện
+# Phase 1 · 04b: Quản lý model — nối vào app và giao diện
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -17,7 +17,7 @@
 
 **Công nghệ:** Như 04a (bảng "Phiên bản đã chốt" của 04a). Không thêm crate hay gói npm nào.
 
-Đọc trước 04a (`docs/superpowers/plans/2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`): các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Task → commit tham chiếu", "Dòng của bảng đối chiếu", "Quyết định", "Điểm cần chủ dự án quyết", "Nối với kế hoạch 03", "Đã sửa theo review lần 1" áp cho file này. Làm file này sau khi 04a đã commit hết.
+Đọc trước 04a (`docs/superpowers/plans/2026-10-02-phase-1-04a-quan-ly-model-loi.md`): các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Task → commit tham chiếu", "Dòng của bảng đối chiếu", "Quyết định", "Điểm cần chủ dự án quyết", "Nối với kế hoạch 03", "Đã sửa theo review lần 1" áp cho file này. Làm file này sau khi 04a đã commit hết.
 
 ## Quyết định (tiếp theo QĐ1–QĐ12 của 04a)
 
@@ -229,7 +229,7 @@ index 7d925aec7056de9cdfabed811c33edc991b72df4..f79b26a216ad36331cd86a2474172e6a
 -    let (asr, mt) = match tier.unwrap_or(ModelTier::Standard) {
 -        ModelTier::Standard => ("ggml-large-v3-turbo-q5_0.bin", "Hy-MT2-1.8B-Q8_0.gguf"),
 -        ModelTier::Lite => ("ggml-small-q5_1.bin", "Hy-MT2-1.8B-Q4_K_M.gguf"),
-+/// Bản dev chưa tải gói nào qua manifest: file model của Giai đoạn 0 trong `models/` của repo, theo tên cố định
++/// Bản dev chưa tải gói nào qua manifest: file model của Phase 0 trong `models/` của repo, theo tên cố định
 +/// (§6.7). Gói `lite` dùng bộ của gói Nhẹ, mọi gói khác (kể cả chưa chọn) dùng gói Chuẩn.
 +pub fn model_files(dir: &Path, tier: Option<&str>) -> ModelFiles {
 +    let (asr, mt) = match tier {
@@ -2992,7 +2992,7 @@ index b34964edcbac90458ac999f7f229f71cb0fb9694..733271a15fc4d6ec9b18b1514ef8708d
  }
  
 +/// File model của gói đang dùng, theo kho model (kế hoạch 04; lúc bắt đầu chỉ kiểm có file và đúng kích thước, §9).
-+/// Bản dev chưa tải gói nào qua manifest thì dùng file của Giai đoạn 0 trong `models/` của repo, như trước.
++/// Bản dev chưa tải gói nào qua manifest thì dùng file của Phase 0 trong `models/` của repo, như trước.
 +fn resolve_models<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<paths::ModelFiles, CommandError> {
 +    let pack = settings.model_tier.as_deref();
 +    let resolved = match app.try_state::<Arc<ModelService>>() {
@@ -3070,7 +3070,7 @@ index f79b26a216ad36331cd86a2474172e6a1473658b..c14d9d973df49d9274f5750c6a2cd1ef
 -//! - Model: bản dev đọc `MT_MODELS_DIR`, không đặt thì `<repo>/models`; bản phát hành ở `app_local_data_dir/models`
 -//!   (kế hoạch 04 tải về đó).
 +//! - Model: theo kho model của kế hoạch 04 (`app_local_data_dir/models`, `models::store`). Bản dev chưa tải gói nào
-+//!   thì dùng file của Giai đoạn 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
++//!   thì dùng file của Phase 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
  
  use std::path::{Path, PathBuf};
 @@ -56,5 +56,5 @@ pub fn binaries_dir() -> std::io::Result<PathBuf> {
@@ -3084,7 +3084,7 @@ index f79b26a216ad36331cd86a2474172e6a1473658b..c14d9d973df49d9274f5750c6a2cd1ef
  }
  
 -/// File model đầu tiên còn thiếu (§9: lúc bắt đầu chỉ kiểm có file; kích thước và SHA-256 theo manifest là việc của 04).
-+/// File model đầu tiên còn thiếu (bản dev, file của Giai đoạn 0 không có trong kho model).
++/// File model đầu tiên còn thiếu (bản dev, file của Phase 0 không có trong kho model).
  pub fn first_missing(files: &ModelFiles) -> Option<&Path> {
      [&files.asr, &files.mt, &files.vad]
 ```

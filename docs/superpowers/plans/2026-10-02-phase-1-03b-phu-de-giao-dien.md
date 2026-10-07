@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 03b: Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ — giao diện, thử tay, Windows
+# Phase 1 · 03b: Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ — giao diện, thử tay, Windows
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -13,7 +13,7 @@
 
 **Công nghệ:** Giữ nguyên React 19.3, Zustand 5.0.15, Vite 8.3, TypeScript 7.0, vitest 5.0.3, `@tauri-apps/api` 2.12.1. Không thêm gói npm nào.
 
-Làm sau khi 03a đã xong hẳn (03a Task 13 xanh). Bảng phiên bản, thứ tự với kế hoạch 04 và file giao nhau, dòng của bảng đối chiếu, quyết định (QĐ1–QĐ24), mục "Sửa sau review lần 1", điểm cần chủ dự án quyết, kết quả mutation và bảng task → commit tham chiếu nằm ở 03a: `docs/superpowers/plans/2026-10-02-giai-doan-1-03a-phu-de-du-lieu.md`. Cách đọc các khối code, lệnh và Expected cũng như 03a.
+Làm sau khi 03a đã xong hẳn (03a Task 13 xanh). Bảng phiên bản, thứ tự với kế hoạch 04 và file giao nhau, dòng của bảng đối chiếu, quyết định (QĐ1–QĐ24), mục "Sửa sau review lần 1", điểm cần chủ dự án quyết, kết quả mutation và bảng task → commit tham chiếu nằm ở 03a: `docs/superpowers/plans/2026-10-02-phase-1-03a-phu-de-du-lieu.md`. Cách đọc các khối code, lệnh và Expected cũng như 03a.
 
 
 ---
@@ -4336,7 +4336,7 @@ git commit -m "test(app): đợt Windows của kế hoạch 03: SQLCipher với 
 
 ## Task 10: Cập nhật kế hoạch 00
 
-Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`), cho cả 03a và 03b:
+Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`), cho cả 03a và 03b:
 - Step 1–2: liệt kê 45 dòng có `03`, đổi trạng thái theo bảng "Dòng của bảng đối chiếu" của 03a và kết quả thật (SHA commit của task). Dòng còn phần của 04, 06, 08, còn chờ Task 8 (người) hay Task 9 (Windows), hay chờ T1 thì để `đang làm` hoặc `chờ` kèm lý do.
 - Step 3: thêm dòng cho việc phát sinh nếu chủ dự án chưa quyết các điểm ở "Điểm cần chủ dự án quyết" của 03a (độ bám thuật ngữ của gói Chuẩn ở điểm 1; thuật ngữ gắn ngôn ngữ ở điểm 2).
 - Step 4:
@@ -4349,4 +4349,4 @@ Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-
   - mục 2.7 (07), thêm vào "Nhận từ 03": CI phát hành chạy `cargo test --release -p meeting-translator --lib pro::` (bản release không có `DevGate`, Q1); cập nhật app dùng `AppHandle::request_restart` (đi qua `RunEvent::Exit`, nên `session::save_on_exit` lưu lịch sử), hoặc gọi `save_on_exit` trước `restart` nếu gọi trên luồng chính (Q3).
   - mục 2.4 (04): ghi chú N1 của review cuối 02 đã do 03 làm (03a Task 12); 04 chỉ làm N2. Khối `diff` của 04 dựng lại trên cây cuối của 03.
 - Spec §6.9 đã có hai khóa `textColor`, `background` trong `overlay.{…}` (`31ca0fb`, khớp QĐ23): chỉ kiểm lại, không thêm (N-C của review 03 lần 2).
-- Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 03`.
+- Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Phase 1 sau kế hoạch 03`.

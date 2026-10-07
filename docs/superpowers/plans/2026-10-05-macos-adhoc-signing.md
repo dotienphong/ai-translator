@@ -22,7 +22,7 @@ Spec: `docs/superpowers/specs/2026-10-05-macos-adhoc-signing-design.md`. Mọi l
 | `scripts/release/workflow.test.mjs` | Hai test cho hai thay đổi trên |
 | `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md` | Sửa dòng "Sửa hoặc ký lại file của app" ở §10.2 |
 | `docs/superpowers/specs/2026-10-05-macos-adhoc-signing-design.md` | Sửa §3.3 |
-| `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` | Sửa T1 (dòng 1059) và ghi chú A6 (dòng 553) |
+| `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` | Sửa T1 (dòng 1059) và ghi chú A6 (dòng 553) |
 | `docs/release/phat-hanh.md` | Thêm mục 5 về bản ký ad-hoc |
 | `bench/phase1/results/gd1_adhoc_keychain.md` | Tạo ở Task 6, kết quả đo Keychain |
 
@@ -366,7 +366,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 **Files:**
 - Modify: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md` (dòng 1084)
 - Modify: `docs/superpowers/specs/2026-10-05-macos-adhoc-signing-design.md` (mục 3.3)
-- Modify: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (dòng 553 và 1059)
+- Modify: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` (dòng 553 và 1059)
 - Modify: `docs/release/phat-hanh.md` (thêm cuối file)
 
 - [ ] **Step 1: Spec gốc §10.2**
@@ -399,7 +399,7 @@ Dùng Edit. `old_string`:
 
 - [ ] **Step 3: Kế hoạch 00, T1 và A6**
 
-Dùng Edit trên `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`.
+Dùng Edit trên `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`.
 
 T1. `old_string`:
 
@@ -448,7 +448,7 @@ Chưa có Developer ID thì để biến `APPLE_TEAM_ID` của repo **rỗng** v
 
 - [ ] **Step 5: Kiểm lại các chỗ vừa sửa**
 
-Run: `git diff --stat && grep -n "ad-hoc" docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md docs/release/phat-hanh.md docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md | cut -c1-120`
+Run: `git diff --stat && grep -n "ad-hoc" docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md docs/release/phat-hanh.md docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md | cut -c1-120`
 Expected: bốn file đã đổi; mỗi file có ít nhất một dòng chứa "ad-hoc" mới.
 
 - [ ] **Step 6: Commit**

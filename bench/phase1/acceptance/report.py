@@ -1,4 +1,4 @@
-"""Báo cáo nghiệm thu Giai đoạn 1 (spec §3.3): gom kết quả A1–A7 và bảng đối chiếu thành một file Markdown.
+"""Báo cáo nghiệm thu Phase 1 (spec §3.3): gom kết quả A1–A7 và bảng đối chiếu thành một file Markdown.
 
 Đọc thư mục kết quả (mặc định `bench/phase1/results/acceptance/`):
 - `a1-matrix.md`: bảng ma trận tương thích, có cột `Kết quả` mang `đạt`, `không đạt` hay `chưa thử`;
@@ -133,7 +133,7 @@ def build(results, plan):
 
 def render(rows):
     overall = all(r[1] == PASS for r in rows)
-    lines = ["# Báo cáo nghiệm thu Giai đoạn 1", "",
+    lines = ["# Báo cáo nghiệm thu Phase 1", "",
              f"Kết luận: **{'ĐẠT' if overall else 'CHƯA ĐẠT'}**", "",
              "| Tiêu chí | Kết quả | Chi tiết | Bằng chứng |", "|---|---|---|---|"]
     for name, status, paths, detail in rows:
@@ -143,7 +143,7 @@ def render(rows):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Báo cáo nghiệm thu Giai đoạn 1.")
+    ap = argparse.ArgumentParser(description="Báo cáo nghiệm thu Phase 1.")
     ap.add_argument("--results", default=RESULTS)
     ap.add_argument("--plan", default=mapping.PLAN)
     ap.add_argument("--out", help="ghi báo cáo vào file này (mặc định chỉ in)")

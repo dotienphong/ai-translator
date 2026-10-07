@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 02b: Pipeline trong app — engine, test từ file WAV, công cụ đo, nguồn âm thanh
+# Phase 1 · 02b: Pipeline trong app — engine, test từ file WAV, công cụ đo, nguồn âm thanh
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -14,7 +14,7 @@
 
 **Công nghệ:** Như 02a. Task 5 thêm `objc2-app-kit` và `libc` cho `audio-capture` (macOS), xem bảng phiên bản ở 02a.
 
-Đọc trước 02a: `docs/superpowers/plans/2026-10-01-giai-doan-1-02a-pipeline-crate.md`. Các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Dòng của bảng đối chiếu", "Quyết định" (QĐ) và "Điểm cần chủ dự án quyết" ở đó áp cho file này. Làm file này sau khi 02a và 02d đã commit hết.
+Đọc trước 02a: `docs/superpowers/plans/2026-10-01-phase-1-02a-pipeline-crate.md`. Các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Dòng của bảng đối chiếu", "Quyết định" (QĐ) và "Điểm cần chủ dự án quyết" ở đó áp cho file này. Làm file này sau khi 02a và 02d đã commit hết.
 
 ---
 
@@ -816,7 +816,7 @@ Tạo `crates/pipeline/src/engine.rs`, lúc này mới có phần test (phần c
 //!    (§7), chỉ báo "Đang trễ", số đo của phiên, đếm phút cho hạn mức (§6.8).
 //! 4. Luồng dịch: dịch từng câu (`translate`), gửi từng phần chữ về luồng phụ đề.
 //!
-//! Chọn luồng riêng và client đồng bộ, không dùng runtime tokio (kế hoạch 02, QĐ1): hai client đồng bộ của Giai đoạn 0 đã
+//! Chọn luồng riêng và client đồng bộ, không dùng runtime tokio (kế hoạch 02, QĐ1): hai client đồng bộ của Phase 0 đã
 //! được đo ở S6 và giữ nguyên; mỗi tiến trình phụ chỉ xử lý một yêu cầu một lúc (`-np 1`), nên async không thêm thông
 //! lượng; crate `pipeline` không cần runtime nào, test chạy không cần Tauri.
 //!
@@ -4323,7 +4323,7 @@ error[E0433]: cannot find type `MtConfig` in this scope
 Tạo `bench/phase0/mt/build_ratio_set.py`:
 
 ```python
-"""Bộ câu để đo ngưỡng tỉ lệ token còn thiếu (Đ12 của kế hoạch Giai đoạn 1 · 00, dòng 149 của bảng đối chiếu).
+"""Bộ câu để đo ngưỡng tỉ lệ token còn thiếu (Đ12 của kế hoạch Phase 1 · 00, dòng 149 của bảng đối chiếu).
 
 - 12 chiều không có tiếng Việt (giữa en, zh, ja, ko), mỗi chiều 100 đoạn WMT24++. Dùng cùng bốn file đã ghim của
   `build_testset.py`; các đoạn khác hẳn 340 đoạn mà bộ A3 đã dùng. Câu nguồn và đích là bản dịch chuẩn của cùng một đoạn.
@@ -4476,7 +4476,7 @@ Sửa `bench/phase0/mt/score_mt.py` (áp bằng `git apply`):
 -  python bench/phase0/mt/score_mt.py            # COMET + tỉ lệ token
 -  python bench/phase0/mt/score_mt.py --no-comet # chỉ tỉ lệ token, không cần torch
 -Kết quả: bench/phase0/results/s7_mt.json và s7_mt.md.
-+Chấm một lượt mới mà không đụng tới mốc (chống thụt lùi A3, kế hoạch Giai đoạn 1 · 00 mục 6.7):
++Chấm một lượt mới mà không đụng tới mốc (chống thụt lùi A3, kế hoạch Phase 1 · 00 mục 6.7):
 +  python bench/phase0/mt/score_mt.py --outputs bench/phase0/data/mt/outputs-<nhãn> --label <nhãn> \
 +    --baseline bench/phase0/results/s7_mt.json
 +Kết quả: bench/phase0/results/s7_mt-<nhãn>.json và .md; bảng cuối so từng chiều với mốc (không thấp hơn quá 0,01). Thêm
@@ -4721,7 +4721,7 @@ Sửa `bench/phase0/mt/translate.py` (áp bằng `git apply`):
    python3 bench/phase0/mt/translate.py --model models/Hy-MT2-1.8B-Q8_0.gguf [--variant plain|context] [--limit N]
  Kết quả: bench/phase0/data/mt/outputs/<model>-<variant>.jsonl, chạy lại thì tiếp tục từ câu chưa dịch.
 +Thêm `--label <nhãn>` thì ghi vào outputs-<nhãn>/, không đụng tới kết quả mốc trong outputs/.
-+Từ Giai đoạn 1, A3 dịch bằng `latency-bench mt-eval` (code dịch của app); công cụ này giữ để so sánh.
++Từ Phase 1, A3 dịch bằng `latency-bench mt-eval` (code dịch của app); công cụ này giữ để so sánh.
  """
  import argparse
  import json
@@ -4750,7 +4750,7 @@ Sửa `crates/latency-bench/src/main.rs` (áp bằng `git apply`):
 --- a/crates/latency-bench/src/main.rs
 +++ b/crates/latency-bench/src/main.rs
 @@ -1,4 +1,4 @@
--//! Công cụ đo cho Giai đoạn 0: `latency` (S6) và `asr-eval` (S7, A4).
+-//! Công cụ đo cho Phase 0: `latency` (S6) và `asr-eval` (S7, A4).
 +//! Công cụ đo: `latency` (S6), `asr-eval` (S7, A4), `mt-eval` (A3, qua đúng code dịch của app).
  
  mod asr_eval;
@@ -6687,7 +6687,7 @@ Expected: mỗi model 112 đoạn (14 tín hiệu tổng hợp, 98 đoạn nhạ
 - [ ] **Step 4: Điều kiện nhận luật mới trên A4 và S6** (Q11 của review 02b; QĐ24)
 
 Run: `cargo test -p latency-bench phase1_ -- --include-ignored --nocapture`
-Expected: hai test qua. Trên A4, luật mới không bỏ thêm clip nào trong 548 clip của mỗi model (small vẫn chỉ có 1 clip `NoSpeech` của Giai đoạn 0); trên S6, test kiểm luật câu đệm chỉ bỏ đúng 2 đoạn đã biết là chữ sai (xem `phase1_filler_rule_drops_only_known_hallucinations_on_s6`):
+Expected: hai test qua. Trên A4, luật mới không bỏ thêm clip nào trong 548 clip của mỗi model (small vẫn chỉ có 1 clip `NoSpeech` của Phase 0); trên S6, test kiểm luật câu đệm chỉ bỏ đúng 2 đoạn đã biết là chữ sai (xem `phase1_filler_rule_drops_only_known_hallucinations_on_s6`):
 
 ```text
 turbo: 548 clip, bị bỏ {}, tỉ lệ nén lớn nhất 1.54
@@ -6707,7 +6707,7 @@ from collections import Counter
 music = json.load(open("target/q11/music.json", encoding="utf-8"))
 out = [
     "# no_speech_prob và luật lọc trên âm thanh không có tiếng nói (Đ12, Q11 của review 02b)", "",
-    "Sinh từ `crates/pipeline/tests/no_speech.rs` (kế hoạch Giai đoạn 1 · 02b, Task 6): 14 tín hiệu tổng hợp và mười file nhạc",
+    "Sinh từ `crates/pipeline/tests/no_speech.rs` (kế hoạch Phase 1 · 02b, Task 6): 14 tín hiệu tổng hợp và mười file nhạc",
     "không lời (mỗi file tối đa 10 đoạn 8 giây), qua Silero VAD của app và `asr-worker` thật, rồi luật lọc của app",
     "(`filter::verdict`). \"Hiện thành phụ đề\" nghĩa là VAD cắt ra ít nhất một đoạn và luật lọc giữ chữ.", "",
     "## Kết luận", ""]
@@ -6727,7 +6727,7 @@ out += ["- Không có VAD (cột \"Luật lọc\" của các dòng VAD = 0) thì
         "  của turbo luôn cỡ 1e-10; Silero VAD của app là lớp chặn chính, luật câu đệm và nhãn có ngoặc chặn phần lọt qua.", "",
         "## Điều kiện nhận luật mới (QĐ24)", "",
         "- A4 (`out-m4pro-{turbo,small}-final.jsonl`, 548 clip mỗi model): luật câu đệm và luật chuỗi lặp không bỏ clip nào;",
-        "  tỉ lệ nén lớn nhất của chữ thật là 1,54 ở cả hai model, dưới ngưỡng 2,4. Luật `no_speech` của Giai đoạn 0 vẫn bỏ",
+        "  tỉ lệ nén lớn nhất của chữ thật là 1,54 ở cả hai model, dưới ngưỡng 2,4. Luật `no_speech` của Phase 0 vẫn bỏ",
         "  đúng một clip của small (`en-9810650684898829002_nb`, chữ bịa) như trước. Test",
         "  `phase1_rules_drop_no_a4_clip`.",
         "- S6 (12 lượt cấu hình chốt, 528 đoạn): luật câu đệm bỏ thêm 2 đoạn của gói Chuẩn, cả hai có chữ sai: đoạn 26 của `en`",
@@ -6767,7 +6767,7 @@ Expected: phần đầu của file (phần còn lại là hai bảng 112 dòng):
 ```text
 # no_speech_prob và luật lọc trên âm thanh không có tiếng nói (Đ12, Q11 của review 02b)
 
-Sinh từ `crates/pipeline/tests/no_speech.rs` (kế hoạch Giai đoạn 1 · 02b, Task 6): 14 tín hiệu tổng hợp và mười file nhạc
+Sinh từ `crates/pipeline/tests/no_speech.rs` (kế hoạch Phase 1 · 02b, Task 6): 14 tín hiệu tổng hợp và mười file nhạc
 không lời (mỗi file tối đa 10 đoạn 8 giây), qua Silero VAD của app và `asr-worker` thật, rồi luật lọc của app
 (`filter::verdict`). "Hiện thành phụ đề" nghĩa là VAD cắt ra ít nhất một đoạn và luật lọc giữ chữ.
 
@@ -6979,7 +6979,7 @@ def rel(new, base):
     if base == 0:
         return 0.0 if new == 0 else float("inf")
     return (new - base) / base * 100
-lines = ["# A4 sau Giai đoạn 1 · 02 (giao thức bản 2, prev_lang trong yêu cầu)", "",
+lines = ["# A4 sau Phase 1 · 02 (giao thức bản 2, prev_lang trong yêu cầu)", "",
          "## So với mốc A4 (`-final`): nhóm wb không xấu hơn quá 10% (tương đối)", "",
          "| Model | Nhóm | Chỉ số | Mốc | Lượt này | Chênh | Kết luận |", "|---|---|---|---|---|---|---|"]
 bad = False
@@ -7100,4 +7100,4 @@ git add bench/phase0/results/latency/m4pro-gd1-s6-khuyennghi-*.json bench/phase0
 git commit -m "test(bench): S6 sau phần crate của kế hoạch 02 trên Mac M4 Pro" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-Phần crate của kế hoạch 02 xong ở đây. Đi tiếp `docs/superpowers/plans/2026-10-01-giai-doan-1-02c-pipeline-app.md`; Task 2 của kế hoạch 00 (cập nhật bảng đối chiếu) làm một lần ở cuối 02c cho cả ba file.
+Phần crate của kế hoạch 02 xong ở đây. Đi tiếp `docs/superpowers/plans/2026-10-01-phase-1-02c-pipeline-app.md`; Task 2 của kế hoạch 00 (cập nhật bảng đối chiếu) làm một lần ở cuối 02c cho cả ba file.

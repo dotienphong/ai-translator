@@ -1,4 +1,4 @@
-# Giai đoạn 0: nguồn của các số không có file kết quả riêng
+# Phase 0: nguồn của các số không có file kết quả riêng
 
 Ngày: 2026-10-01. Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`.
 
@@ -9,7 +9,7 @@ Mức tin cậy:
 - **Một nguồn:** chỉ có một câu trong kế hoạch, commit hay comment. Không có log hay dữ liệu thô đã commit.
 - **Ước lượng:** review tự tính lại từ JSON bằng cách gần đúng (script ở cuối file).
 
-Số dòng của kế hoạch 00 (`docs/superpowers/plans/2026-09-29-giai-doan-0-00-tong-quan.md`) tính theo bản ở commit `e181e1d`.
+Số dòng của kế hoạch 00 (`docs/superpowers/plans/2026-09-29-phase-0-00-tong-quan.md`) tính theo bản ở commit `e181e1d`.
 
 ## Các số
 

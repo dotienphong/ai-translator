@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 06a: Bản quyền trong app — lõi Rust
+# Phase 1 · 06a: Bản quyền trong app — lõi Rust
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -11,7 +11,7 @@
 - mua, gia hạn, đổi gói bằng VietQR ngay trong app; 11 lệnh bản quyền cho cửa sổ chính;
 - app tự kiểm chữ ký của bản cài (§10.2).
 
-Giao diện (Cài đặt › Bản quyền, màn hình Nâng cấp, hạn mức ở màn hình chính, lời nhắc), thử tay, đợt Windows và cập nhật kế hoạch 00 nằm ở **06b** (`docs/superpowers/plans/2026-10-03-giai-doan-1-06b-ban-quyen-giao-dien.md`). Làm 06a trước, rồi 06b.
+Giao diện (Cài đặt › Bản quyền, màn hình Nâng cấp, hạn mức ở màn hình chính, lời nhắc), thử tay, đợt Windows và cập nhật kế hoạch 00 nằm ở **06b** (`docs/superpowers/plans/2026-10-03-phase-1-06b-ban-quyen-giao-dien.md`). Làm 06a trước, rồi 06b.
 
 **Kiến trúc:**
 - Mọi logic bản quyền nằm trong Rust, module `src-tauri/src/license/` (§10.2, "Bị clone"); JavaScript chỉ hiển thị `LicenseView` và gọi lệnh. Mỗi file một việc: `token.rs`, `keys.rs`, `key.rs`, `device.rs`, `quota.rs` (phép tính thuần), `store.rs` (kho khóa), `client.rs` (HTTP), `manager.rs` (trạng thái, không phụ thuộc Tauri), `app.rs` (nối vào Tauri), `purchase.rs`, `genuine.rs`.
@@ -21,7 +21,7 @@ Giao diện (Cài đặt › Bản quyền, màn hình Nâng cấp, hạn mức 
 
 **Công nghệ:** Giữ nguyên Rust 1.98.1, Tauri 2.12.1, React 19.3, Vite 8.3, TypeScript 7.0. Dùng `ed25519-dalek`, `base64`, `reqwest`, `libc` mà 04 đã thêm; thêm `chrono`, `qrcode`, `security-framework`, `core-foundation` (macOS), thêm feature của `windows` (bảng "Phiên bản đã chốt"). Không thêm gói npm nào.
 
-Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.6, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Tên file dùng ngày viết `2026-10-03` (Đ1).
+Tổng quan: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` (mục 2.6, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Tên file dùng ngày viết `2026-10-03` (Đ1).
 
 Kế hoạch 06 chia hai file, làm theo thứ tự:
 1. **06a** (file này): Task 1–11.
@@ -237,7 +237,7 @@ Review lần 3 (`$S/review-06-r3.md`, trên `f79fe60`) kết luận "Đạt": 0 
 - **QĐ24. Thiếu ô đồng ý thì không gọi server** (`licenseConsentRequired`); email kiểm sơ bộ (có `@`, có dấu chấm sau `@`, tối đa 254 ký tự), server kiểm kỹ.
 - **QĐ25. Lệnh bản quyền chỉ cho cửa sổ chính** (11 lệnh, ba chỗ `commands.rs`, `build.rs`, `capabilities/main.json`); overlay chỉ nhận `AppStatus.quota_warning`, `quota_reset_at` qua `app://status` như cũ.
 - **QĐ26. Tự kiểm chữ ký lúc khởi động**, trên luồng ticker, trước lần `validate` đầu, nên không làm chậm lúc mở cửa sổ (macOS kiểm cả code lồng bên trong gói; model không nằm trong gói). Bản phát hành thiếu `AI_TRANSLATOR_TEAM_ID` (macOS) hay `AI_TRANSLATOR_SIGNER` (Windows) lúc build thì không chính hãng: quên cấu hình thì khóa, không mở cho không. 07 đặt hai biến trong CI và thêm một test chạy bản phát hành đã ký (Nhận từ 06 ở kế hoạch 00). Chưa kiểm xong thì chưa mở Pro (`genuine` bắt đầu là "chưa biết"), nhưng cũng chưa báo "không chính hãng": vài giây đầu sau khi mở app, người có gói trả phí thấy tính năng Pro khóa rồi mở (N5 của review lần 1). Trong lúc đó hạn mức vẫn theo gói trả phí (bắt đầu phiên, cộng phút vào bộ đếm của gói), chỉ tính năng Pro chờ (N2 của review lần 2).
-- **QĐ27. Mức chống crack** (dòng 262, 263): kiểm ở nhiều chỗ (QĐ20), token ký số, tự kiểm chữ ký; bản phát hành đã có `strip`, `lto`, `codegen-units = 1`, `panic = "abort"` từ GĐ0. **Chưa làm rối chuỗi** liên quan tới bản quyền: lợi ích nhỏ (người crack tìm theo lời gọi hàm, không theo chuỗi), thêm một crate macro. Ghi ở điểm cần quyết 3.
+- **QĐ27. Mức chống crack** (dòng 262, 263): kiểm ở nhiều chỗ (QĐ20), token ký số, tự kiểm chữ ký; bản phát hành đã có `strip`, `lto`, `codegen-units = 1`, `panic = "abort"` từ Phase 0. **Chưa làm rối chuỗi** liên quan tới bản quyền: lợi ích nhỏ (người crack tìm theo lời gọi hàm, không theo chuỗi), thêm một crate macro. Ghi ở điểm cần quyết 3.
 - **QĐ28. Bảng gói lấy từ server** (`GET /v1/plans`: tên, hạn mức, giá); app chỉ giữ mã gói (`pro`, `pro_x2`, `pro_x5`) và gói Free (10 phút mỗi ngày, hằng số của app). Không có mạng thì màn hình Nâng cấp báo cần mạng, không hiện giá cũ.
 - **QĐ29. Bộ đếm Free "ở tương lai"** (giờ máy từng đặt tới trước lúc reset, rồi lùi về; Q2 của review lần 1, QB của review lần 2): `resolve_free` kéo `day`, `reset_at` về hiện tại, giữ `used_ms` và thời gian đơn điệu đã đếm, để trống `server_date_at_reset` (`Date` đầu tiên nhận sau khi kéo về làm mốc, không phải một `Date` cũ; N1 của review lần 3), và đánh dấu `clock_pulled`: giờ máy không tin được tới lần reset sau. Lần reset đó cần sang ngày mới **và** 20 giờ thời gian đơn điệu hay hiệu `Date`; hiệu giờ máy không tính. Nhờ vậy đặt giờ tới trước rồi lùi về, lặp lại với cùng độ lệch hay xa hơn, không mở thêm phút nào (bảng "Mô hình đe dọa của luật đồng hồ"). Người trung thực: có mạng thì reset hôm sau khi đã qua 20 giờ theo giờ của server; offline thì khi app đã chạy đủ 20 giờ. Chỉ "giờ máy lúc reset ở tương lai" mới bị kéo về và đánh dấu; ngày theo giờ máy lùi mà giờ Unix không lùi (đổi múi giờ về phía tây) thì chỉ kéo `day` về, giờ máy vẫn tin được (N2 của review lần 3).
 - **QĐ30. Ở `expires_at`, chờ một lần `validate`** (N4 của review lần 1): có server mà chưa thử `validate` nào từ sau mốc thì gói còn dùng được tối đa 5 phút (`EXPIRY_GRACE_SECS`); ticker gọi `validate` trong vòng 1 phút. Đã gia hạn ở máy khác thì nhận token mới và dùng tiếp, không bị dừng phiên; lần thử lỗi mạng hay server báo `license_expired` thì về Free ngay.

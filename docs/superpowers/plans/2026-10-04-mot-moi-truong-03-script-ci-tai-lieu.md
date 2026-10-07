@@ -528,7 +528,7 @@ Expected: danh sách các dòng dưới đây (số dòng có thể lệch vài 
 | 16 | `Trong lúc chờ, staging dùng `*.workers.dev` và URL tạm của R2` | `Trong lúc chờ, production dùng `*.workers.dev` và URL tạm của R2` |
 
 Ngoài bảng:
-- Xóa cả dòng `- **Kênh PayOS cho staging** (P05-1 của kế hoạch Giai đoạn 1 · 05): …` ở §15.
+- Xóa cả dòng `- **Kênh PayOS cho staging** (P05-1 của kế hoạch Phase 1 · 05): …` ở §15.
 - Dòng `**Hộp thư nhận cảnh báo vận hành** … Cần có trước khi triển khai staging.`: đổi `triển khai staging` thành `triển khai production`.
 
 - [ ] **Step 2: Spec gốc, thêm §6.13**

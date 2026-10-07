@@ -1,4 +1,4 @@
-"""Bảng đối chiếu spec → kế hoạch con (mục 4 của kế hoạch Giai đoạn 1 · 00).
+"""Bảng đối chiếu spec → kế hoạch con (mục 4 của kế hoạch Phase 1 · 00).
 
 Đếm trạng thái, nhóm các dòng chưa xong theo việc đang chặn (mã C, T, Q, P05-…, phần cần người, phần Windows, việc của
 chủ dự án), và kiểm điều kiện phát hành của Task 5 kế hoạch 00: mọi dòng `xong`, hoặc `hoãn` có cụm "chủ dự án duyệt YYYY-MM-DD" trong
@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass
 from datetime import date
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-PLAN = os.path.join(ROOT, "docs", "superpowers", "plans", "2026-10-01-giai-doan-1-00-tong-quan.md")
+PLAN = os.path.join(ROOT, "docs", "superpowers", "plans", "2026-10-01-phase-1-00-tong-quan.md")
 STATUSES = ("chưa làm", "đang làm", "chờ", "xong", "hoãn")
 ROW = re.compile(r"^\| ([0-9]+) \|")
 # Dòng trông như dòng của bảng (số ở cột đầu) mà sai khoảng trắng: báo lỗi, không bỏ qua (N3 của review 08 lần 2).
@@ -107,7 +107,7 @@ def release_problems(rows, problems):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Bảng đối chiếu của kế hoạch Giai đoạn 1 · 00.")
+    ap = argparse.ArgumentParser(description="Bảng đối chiếu của kế hoạch Phase 1 · 00.")
     ap.add_argument("command", choices=["summary", "check"])
     ap.add_argument("--file", default=PLAN)
     ap.add_argument("--json", action="store_true", help="in JSON thay cho Markdown")

@@ -1,4 +1,4 @@
-# Giai đoạn 0 · 05: S5 (thanh phụ đề nổi trên app đang toàn màn hình)
+# Phase 0 · 05: S5 (thanh phụ đề nổi trên app đang toàn màn hình)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -19,7 +19,7 @@ Một luồng nền phát phụ đề mẫu (sự kiện `subtitle://upsert`) m�
 - React 19.3.0, Vite 8.3.1, @vitejs/plugin-react 6.1.1, TypeScript 7.0.2.
 - pnpm 12.6.0, Node 24.21.0.
 
-Tổng quan: `docs/superpowers/plans/2026-09-29-giai-doan-0-00-tong-quan.md`. Cần xong kế hoạch 01. Task 1–3 làm trên Mac, Task 4 làm trên Windows.
+Tổng quan: `docs/superpowers/plans/2026-09-29-phase-0-00-tong-quan.md`. Cần xong kế hoạch 01. Task 1–3 làm trên Mac, Task 4 làm trên Windows.
 
 ---
 

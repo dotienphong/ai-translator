@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 07a: CI, build và đóng gói
+# Phase 1 · 07a: CI, build và đóng gói
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -20,7 +20,7 @@ Không làm ở đây (để 07b, viết sau 06): `tauri-plugin-updater` và hai
 
 **Công nghệ:** Giữ nguyên Rust 1.98.1, Tauri 2.12.1 (CLI 2.12.1), Node 24.21.0, pnpm 12.6.0. Không thêm crate hay gói npm nào: `Cargo.lock`, `pnpm-lock.yaml` và `server/pnpm-lock.yaml` giữ nguyên. Công cụ mới chỉ dùng trong CI và lúc phát hành (bảng "Phiên bản đã chốt").
 
-Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.7, 4.16, 4.22, 6.2). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md` (§6.11, §6.12, §10.1, §10.2, §11, §12, A6).
+Tổng quan: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` (mục 2.7, 4.16, 4.22, 6.2). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md` (§6.11, §6.12, §10.1, §10.2, §11, §12, A6).
 
 ---
 
@@ -42,7 +42,7 @@ Kiểm bằng API công khai của GitHub (release mới nhất, ngày phát hà
 | cargo-about | 0.9.2 | CI, phát hành, máy dev | 2026-08-18. Máy dev: tải bản build sẵn `cargo-about-0.9.2-aarch64-apple-darwin.tar.gz` (SHA-256 `ae72f0df…cc3e`) ở Task 5. Chạy `--frozen`, không dùng mạng |
 | protoc | 36.2 | CI, phát hành | 2026-09-17; SHA-256 lấy từ trường `digest` của release, khóa trong `scripts/release/versions.env` |
 | Vulkan SDK (LunarG) | 1.4.363.0 | phát hành Windows | Bản mới nhất ở `vulkan.lunarg.com/sdk/latest/windows.txt` lúc kiểm. SHA-256 chốt ở lần chạy đầu (QĐ8) |
-| llama.cpp | b11146 = v0.5.0, commit `7fe450e19305b828c199d602c23a8337aaa1f03b` | phát hành | Như Giai đoạn 0 (spec §6.12); nay build từ mã nguồn thay cho bản build sẵn |
+| llama.cpp | b11146 = v0.5.0, commit `7fe450e19305b828c199d602c23a8337aaa1f03b` | phát hành | Như Phase 0 (spec §6.12); nay build từ mã nguồn thay cho bản build sẵn |
 | whisper.cpp | 1.8.3 trong `whisper-rs-sys` 0.15.0 (đã vá, `third_party/`) | phát hành | Không đổi; Task 4 kiểm lại từ crates.io |
 | actionlint | 1.7.12 | máy dev (kiểm workflow) | 2026-03-30; bản build sẵn, SHA-256 `aba9ced2…953f`; không chạy trong CI |
 | shellcheck | 0.11.0 | máy dev (kiểm script sh) | 2025-08-04; bản build sẵn, SHA-256 `339b930f…d26f`; không chạy trong CI |
@@ -121,7 +121,7 @@ Chuỗi commit dựng lúc lập kế hoạch nằm ở repo riêng `$S/p07-repo
 - **QĐ20. Chữ ký bản cập nhật gắn phiên bản** (`tauri signer sign --app-version`), để updater của 07b có thể bật `requireSignedVersion`.
 - **QĐ21. Tiến trình phụ macOS ký với hardened runtime và identifier `com.aitranslator.desktop.<tên>`,** kể cả khi ký ad-hoc, để bản thử nội bộ chạy giống bản phát hành.
 - **QĐ22. Không đổi `.cargo/config.toml`.** Cờ `/DEPENDENTLOADFLAG:0x800` có sẵn; `+crt-static` chỉ áp cho `asr-worker` lúc phát hành (QĐ5), vì app chính đã có VC runtime tĩnh của Tauri và hai cách trộn nhau chưa thử được trên Windows.
-- **QĐ23. Entitlement `com.apple.security.device.audio-input` cho app** (`src-tauri/release/entitlements.plist`; N9 của review lần 1). Hardened runtime chặn đường vào âm thanh nếu app không khai entitlement này, và app đọc tap qua một aggregate device. App không mở micro. S1 của Giai đoạn 0 chưa chạy với app ký hardened runtime, nên thêm ngay thay vì chờ thử; Task 15 thử với âm thanh thật. Tiến trình phụ không có entitlement nào.
+- **QĐ23. Entitlement `com.apple.security.device.audio-input` cho app** (`src-tauri/release/entitlements.plist`; N9 của review lần 1). Hardened runtime chặn đường vào âm thanh nếu app không khai entitlement này, và app đọc tap qua một aggregate device. App không mở micro. S1 của Phase 0 chưa chạy với app ký hardened runtime, nên thêm ngay thay vì chờ thử; Task 15 thử với âm thanh thật. Tiến trình phụ không có entitlement nào.
 - **QĐ24. `cargo fetch --locked` trước khi sinh THIRD_PARTY_NOTICES** (Q2 của review lần 1). cargo-about chạy `--frozen` và đọc file giấy phép trong mã nguồn crate của cả hai target, mà runner chỉ có crate của nền tảng mình. Lúc lập kế hoạch đã tái hiện: `CARGO_HOME` trống, `cargo fetch --locked --target aarch64-apple-darwin`, rồi `notices.mjs` báo `attempting to make an HTTP request, but --frozen was specified`; thêm `cargo fetch --locked` (mọi target) thì ra đủ 139 văn bản, 498 crate như máy dev (cây sau kế hoạch 06).
 - **QĐ25. `--locked` cho mọi lệnh cargo của CI và của bản phát hành** (`tauri build … -- --locked`; N6): `Cargo.toml` lệch `Cargo.lock` thì đỏ, không tự sửa lock.
 - **QĐ26. Ký manifest production qua hai job** (N2): `check` (không secret) chạy `check_manifest_body` của 04 với `MANIFEST_BODY` và `MANIFEST_PREVIOUS` (phần thân của bản đang phát hành, commit trong repo); `sign` (`release`) chỉ ký. Bước ký viết bằng Node (`sign-manifest-ci.mjs`) để test được: đường dẫn phần thân, file khóa 0600, tiến trình con không thấy biến khóa, file khóa bị xóa kể cả khi lỗi (N8).
@@ -437,7 +437,7 @@ index c14d9d973df49d9274f5750c6a2cd1ef17845abc..f0d2f092dd346e4e9bcdc9ac9fd7d967
 +//!   phát hành nằm cạnh file chạy của app, tên không kèm triple (Tauri `externalBin` bỏ triple khi đóng gói; bảng SHA-256
 +//!   dùng tên đó, xem `bundled_name`).
  //! - Model: theo kho model của kế hoạch 04 (`app_local_data_dir/models`, `models::store`). Bản dev chưa tải gói nào
- //!   thì dùng file của Giai đoạn 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
+ //!   thì dùng file của Phase 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
  
 @@ -121,6 +122,20 @@ mod tests {
          assert_eq!(win.llama, Path::new("/b/llama-server.exe"));
@@ -1114,7 +1114,7 @@ Expected (lúc lập kế hoạch):
 ℹ fail 0
 ```
 
-- [ ] **Step 3: Thử với `llama-server` b11146 chính thức** (bản link động của Giai đoạn 0, có sẵn ở `tools/`): phép kiểm phải báo mọi `.dylib` ngoài hệ thống.
+- [ ] **Step 3: Thử với `llama-server` b11146 chính thức** (bản link động của Phase 0, có sẵn ở `tools/`): phép kiểm phải báo mọi `.dylib` ngoài hệ thống.
 
 Run:
 ```bash
@@ -1537,7 +1537,7 @@ CodeDirectory v=20500 size=28742 flags=0x10002(adhoc,runtime)
 version: 0.5.0-dev (build 11146, commit 7fe450e)
 ```
 
-- [ ] **Step 5: So với b11146 chính thức** (cần `models/` của Giai đoạn 0; không cần mạng). Đường GPU phải giống từng chữ; đường CPU được phép khác (QĐ4).
+- [ ] **Step 5: So với b11146 chính thức** (cần `models/` của Phase 0; không cần mạng). Đường GPU phải giống từng chữ; đường CPU được phép khác (QĐ4).
 
 Run:
 ```bash
@@ -1736,7 +1736,7 @@ cargo-about-0.9.2-aarch64-apple-darwin.tar.gz: OK
 cargo-about 0.9.2
 ```
 
-- [ ] **Step 2: Giấy phép của model và của Vulkan-Headers** (văn bản ở cùng các tag mà kế hoạch 04 dùng, và ở tag `vulkan-sdk-1.4.363.0` của KhronosGroup/Vulkan-Headers; file của Hy-MT2 có sẵn trong `models/` từ Giai đoạn 0)
+- [ ] **Step 2: Giấy phép của model và của Vulkan-Headers** (văn bản ở cùng các tag mà kế hoạch 04 dùng, và ở tag `vulkan-sdk-1.4.363.0` của KhronosGroup/Vulkan-Headers; file của Hy-MT2 có sẵn trong `models/` từ Phase 0)
 
 Run:
 ```bash
@@ -5564,7 +5564,7 @@ No known vulnerabilities found
 
 ## Task 12: Cập nhật kế hoạch 00
 
-Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`), ghi SHA commit thật của từng task:
+Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`), ghi SHA commit thật của từng task:
 - Step 1–2: liệt kê các dòng có `07`. Đổi theo kết quả thật:
   - dòng 3 (D3: macOS 14.2, chỉ arm64 và x64): `đang làm`, ghi `minimumSystemVersion` 14.2 và hai runner; còn 08 thử các bản hệ điều hành;
   - dòng 92 (`NSAudioCaptureUsageDescription`), 119 (`shared-encode` bản phát hành), 205 (tiến trình phụ trong bộ cài), 211 (llama-server tĩnh trên macOS, QĐ4), 213 (yêu cầu build trong CI), 214 (CRT tĩnh, QĐ5), 257 (THIRD_PARTY_NOTICES), 259 (rà RTranslator: không có tài sản nào trong danh sách sinh ra), 270 (SHA-256 của bộ cài), 276 (chuỗi cung ứng), 317 (CI chạy audit): `xong` phần của 07a, hoặc `chờ` kèm lý do khi còn phần chạy thật trên runner (Task 14) hay máy Windows (Task 16);
@@ -5573,13 +5573,13 @@ Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-
   - dòng 59 (Giới thiệu và giấy phép), 196, 198, 200–204, 307, 308, 33 (A6): phần còn lại thuộc 07b, 08, hay chờ T1, T2.
 - Step 3: thêm dòng cho việc phát sinh: (a) đường CPU của `llama-server` tự build khác bản chính thức 1/5 câu (QĐ4, chờ Task 13); (b) SQLCipher, OpenSSL, câu mẫu FLEURS vào THIRD_PARTY_NOTICES sau khi 03 vào `main` (07b); (c) giá trị trong `Run` của Windows không có dấu nháy (01, mục 2.7): chưa sửa, 07b.
 - Step 4:
-  - mục 2: bảng kế hoạch con thêm dòng `2026-10-02-giai-doan-1-07a-ci-dong-goi.md` (07a, đã viết); 07 đổi thành "07a: CI, build, đóng gói; 07b: cập nhật, phát hành, ký thật (viết sau 06)";
+  - mục 2: bảng kế hoạch con thêm dòng `2026-10-02-phase-1-07a-ci-dong-goi.md` (07a, đã viết); 07 đổi thành "07a: CI, build, đóng gói; 07b: cập nhật, phát hành, ký thật (viết sau 06)";
   - mục 2.7: "Nhận từ 01/02/04" đánh dấu phần 07a đã làm; thêm "Còn cho 07b" trỏ tới mục cuối của file này;
   - mục 5.3 (T3): repo từ xa đã có (`dotienphong/ai-live-translator-desktop`); CI chạy khi chủ dự án đẩy (Task 14);
   - mục 6.2: thêm `node --test "scripts/release/*.test.mjs"`, `scripts/release/verify-third-party.sh`, `node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --no-llama`, `scripts/release/check-release-config.sh` vào khối lệnh; ghi chú CI chạy đúng khối này (`.github/workflows/ci.yml`);
   - mục 6.5 (bí mật của CI): tên secret ở mục "Secret và biến của CI" của file này;
   - mục 8.3: thêm các điểm ở "Điểm cần chủ dự án quyết" của file này.
-- Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 07a`.
+- Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Phase 1 sau kế hoạch 07a`.
 
 ## Task 13: So `llama-server` tự build với b11146: A3 và S6 (cần máy rảnh)
 

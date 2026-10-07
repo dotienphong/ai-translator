@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 02d: Pipeline trong app — client tiến trình phụ, dịch một câu, giám sát
+# Phase 1 · 02d: Pipeline trong app — client tiến trình phụ, dịch một câu, giám sát
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -11,7 +11,7 @@
 
 **Công nghệ:** Như 02a (bảng "Phiên bản đã chốt").
 
-Đọc trước 02a (`docs/superpowers/plans/2026-10-01-giai-doan-1-02a-pipeline-crate.md`): các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Kiểm bằng mutation lúc lập kế hoạch", "Dòng của bảng đối chiếu", "Quyết định", "Điểm cần chủ dự án quyết" và "Đã sửa theo review" áp cho file này. Làm file này sau khi 02a đã commit hết.
+Đọc trước 02a (`docs/superpowers/plans/2026-10-01-phase-1-02a-pipeline-crate.md`): các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Kiểm bằng mutation lúc lập kế hoạch", "Dòng của bảng đối chiếu", "Quyết định", "Điểm cần chủ dự án quyết" và "Đã sửa theo review" áp cho file này. Làm file này sau khi 02a đã commit hết.
 
 ---
 
@@ -811,7 +811,7 @@ Sửa `crates/latency-bench/src/latency.rs` (áp bằng `git apply`):
 +    let mt_config = config.mt.clone();
      let asr_thread = std::thread::spawn(move || -> Result<()> {
          let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
-         // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ,
+         // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Phase 0 tự giữ,
 @@ -352,7 +363,7 @@
                          };
                          // Tính `max_tokens` theo §6.5, trên cả câu. Lần gọi /tokenize nằm trong thời gian của bước dịch.
@@ -1268,7 +1268,7 @@ Sửa `crates/pipeline/src/llama.rs` (áp bằng `git apply`):
 +    pub cancelled: bool,
 +}
 +
-+/// Bản dịch đã xong, dạng cũ của Giai đoạn 0 (`latency-bench`).
++/// Bản dịch đã xong, dạng cũ của Phase 0 (`latency-bench`).
 +#[derive(Debug, Clone)]
 +pub struct Translation {
 +    pub text: String,
@@ -1450,7 +1450,7 @@ Sửa `crates/pipeline/src/llama.rs` (áp bằng `git apply`):
          })
      }
  
-+    /// Dạng của Giai đoạn 0: repeat penalty 1,05, đọc tới hết, cắt khoảng trắng hai đầu.
++    /// Dạng của Phase 0: repeat penalty 1,05, đọc tới hết, cắt khoảng trắng hai đầu.
 +    pub fn translate(&self, prompt: &str, max_tokens: u32) -> Result<Translation> {
 +        let req = ChatRequest {
 +            prompt,
@@ -4150,7 +4150,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
      Running tests/vad_reference.rs (target/debug/deps/vad_reference-c2808b28efa7e0e7)
 ```
 
-Run (cần `llama-server` b11146 và model của Giai đoạn 0):
+Run (cần `llama-server` b11146 và model của Phase 0):
 ```bash
 MT_LLAMA_SERVER=$PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server \
 MT_LLAMA_MODEL=$PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf \
@@ -6920,4 +6920,4 @@ git add crates/pipeline/src/asr_client.rs \
 git commit -m "feat(pipeline): giám sát hai tiến trình phụ: khởi động lại, chuyển CPU, tắt khi rảnh (Đ2)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-Phần client và giám sát xong ở đây. Đi tiếp `docs/superpowers/plans/2026-10-01-giai-doan-1-02b-pipeline-engine.md`.
+Phần client và giám sát xong ở đây. Đi tiếp `docs/superpowers/plans/2026-10-01-phase-1-02b-pipeline-engine.md`.

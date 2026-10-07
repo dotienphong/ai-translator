@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 08a: Nghiệm thu — công cụ đo và tổng hợp
+# Phase 1 · 08a: Nghiệm thu — công cụ đo và tổng hợp
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -9,13 +9,13 @@
 - `netaudit.py`: kiểm nhật ký mạng qua proxy (A7);
 - `report.py`: báo cáo nghiệm thu từ các file kết quả.
 
-Việc điều phối (người thao tác app họp, tai nghe, máy tham chiếu, proxy, bộ cài đã ký; agent chạy script) nằm ở **08b** (`docs/superpowers/plans/2026-10-03-giai-doan-1-08b-nghiem-thu-dieu-phoi.md`). Làm 08a trước: 08b dùng các script này.
+Việc điều phối (người thao tác app họp, tai nghe, máy tham chiếu, proxy, bộ cài đã ký; agent chạy script) nằm ở **08b** (`docs/superpowers/plans/2026-10-03-phase-1-08b-nghiem-thu-dieu-phoi.md`). Làm 08a trước: 08b dùng các script này.
 
 **Kiến trúc:** Mọi script nằm ở `bench/phase1/acceptance/`, theo quy ước của `bench/phase0/` (Python 3.12 trở lên, chỉ thư viện chuẩn, test bằng `unittest`, chạy từ gốc repo). Mỗi script đọc file kết quả có sẵn (JSON của `latency-bench`, `score_mt.py`, `score_asr.py`; CSV của chính `soak.py`; HAR của proxy), in bảng Markdown, ghi JSON vào `bench/phase1/results/acceptance/` cho `report.py`, và trả mã thoát 1 khi không đạt. Không script nào gọi mạng, mở app hay cần quyền.
 
 **Công nghệ:** Không thêm thư viện nào (Python, npm hay crate). Python trên máy dev là 3.14.6; script chỉ cần 3.12 trở lên (cùng mức `bench/phase0/README.md`). Không đổi `Cargo.lock`, `pnpm-lock.yaml`.
 
-Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.8, 4, 5, 6). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Tên file dùng ngày viết `2026-10-03` (Đ1).
+Tổng quan: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` (mục 2.8, 4, 5, 6). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Tên file dùng ngày viết `2026-10-03` (Đ1).
 
 Kế hoạch 08 chia hai file, làm theo thứ tự:
 1. **08a** (file này): Task 1–6, có code, chạy bằng script.
@@ -55,7 +55,7 @@ Lấy bằng lệnh ở Task 2, Step 1 của kế hoạch 00 (37 dòng có `08`)
 | 229 | CPU trung bình ≤ 30% | đo cùng lượt soak | a3, b6 |
 | 302–305 | Windows không Vulkan; card 4 GB, 6 GB; khoảng lặng dài; khay | ma trận A1, đợt Windows | b2, b8 |
 | 308 | bản cài không chính hãng | thử với bản ký thật | b9 |
-| 322 | Giai đoạn 1 đạt A1–A7 | báo cáo nghiệm thu | a5, b11 |
+| 322 | Phase 1 đạt A1–A7 | báo cáo nghiệm thu | a5, b11 |
 
 Ngoài 37 dòng này, 08b Task 2 điều phối mọi bước còn chờ người hay Windows của 01–07 (các dòng còn lại không ở trạng thái `xong`), và 08b Task 11 đưa cả bảng về `xong` hay `hoãn` có duyệt.
 
@@ -72,7 +72,7 @@ Review lần 1 (`$S/review-08-r1.md`, trên `4f2baac`) kết luận "Cần sửa
 | Q5 | QĐ3; 08b Task 5 | S6 dùng tiến trình phụ của bản ứng viên; thêm số p50/p90 `total` của bảng debug của app thật; đưa lệch kế hoạch 00 vào điểm cần quyết 6 |
 | N1 | 08a Task 1 | `hoãn` cần đúng cụm "chủ dự án duyệt YYYY-MM-DD" (QĐ2). Test `test_postponed_needs_the_owner_approval_with_its_date` |
 | N2 | 08a Task 4 | `--start`, `--stop` bắt buộc; thêm từ mồi tiếng Việt. Test `test_the_session_window_is_required` |
-| N3 | 08b Task 2 | thêm dòng 16: C15 (báo cáo Giai đoạn 0, kết luận S3) |
+| N3 | 08b Task 2 | thêm dòng 16: C15 (báo cáo Phase 0, kết luận S3) |
 | N4 | 08b Task 5 | thêm Mac Apple Silicon 8 GB vào danh sách máy đo A2 (hạng tối thiểu) |
 
 ## Sửa sau review lần 2 (2026-10-03)
@@ -121,7 +121,7 @@ Review lần 3 (`$S/review-08-r3.md`, trên `bca83c4`) kết luận "Cần sửa
 - **QĐ10. Kết quả của 08 commit vào `bench/phase1/results/acceptance/`**: JSON của từng cổng (`a2-<máy>.json`, `a3.json`, `a4-<gói>.json`), CSV và JSON của soak (`a5-<máy>.*`; 2 giờ, mẫu 10 giây, khoảng 5–7 tiến trình gồm WebView: khoảng 4 000–5 000 dòng), ma trận A1, danh sách A6, `report.md`. Tên file chỉ để gom và để người đọc; `report.py` không dựa vào nó. Nhật ký HAR không commit (có thể chứa token, key của lần thử); chỉ commit `a7-<máy>.json`, trong đó có SHA-256 của HAR (hai kết quả cùng mã băm là chép nhầm một lần kiểm thành hai).
 - **QĐ11. Ma trận A1 rút gọn 27 ô**, không phải tích Đề-các (4 bản macOS × 6 app họp × 3 thiết bị × …): mỗi app họp với loa trên macOS 26 và Windows 11, hai loại tai nghe với Zoom (Bluetooth thêm với Teams), toàn màn hình với Zoom và Teams, hai màn hình với Meet, cộng một lượt nhanh trên macOS 14.2, 15, 27 và Windows 10. Thu âm không phụ thuộc app họp (D1, §6.1), nên rủi ro nằm ở từng app, từng loại thiết bị và từng hệ điều hành, không ở tổ hợp. Điểm cần quyết 1.
 - **QĐ13. Công cụ chống sai sót vô ý, không chống giả mạo** (review lần 2): người làm nghiệm thu có thể chép nhầm file, đặt nhầm nhãn, đảo mốc, ghi sai múi giờ; công cụ phải bắt được các lỗi đó từ chính nội dung số đo (model, máy, hệ điều hành, thời gian của nhật ký). Không ký số liệu, không chống người cố ý sửa JSON: kết quả nghiệm thu là commit có review, và số đo gốc (JSON của `latency-bench`, CSV, HAR giữ lại) đối chiếu được.
-- **QĐ12. 08b không viết lại bước của người đã có ở kế hoạch trước** (01 Task 24–25, 02b Task 7–9, 02c Task 8–9, 03b Task 8–9, 04b Task 13–14, 05 Task 19–21, 06b Task 6–7, 07a Task 13–16, 07b Task 11–15, các task GĐ0 còn chờ): 08b sắp thứ tự, nói ai làm, và nơi ghi kết quả; Expected nằm ở kế hoạch gốc.
+- **QĐ12. 08b không viết lại bước của người đã có ở kế hoạch trước** (01 Task 24–25, 02b Task 7–9, 02c Task 8–9, 03b Task 8–9, 04b Task 13–14, 05 Task 19–21, 06b Task 6–7, 07a Task 13–16, 07b Task 11–15, các task Phase 0 còn chờ): 08b sắp thứ tự, nói ai làm, và nơi ghi kết quả; Expected nằm ở kế hoạch gốc.
 
 ## Điểm cần chủ dự án quyết
 
@@ -130,8 +130,8 @@ Review lần 3 (`$S/review-08-r3.md`, trên `bca83c4`) kết luận "Cần sửa
 3. **Thêm test của `bench/phase1/acceptance/` vào CI** (`ci.yml` của 07a). **Đề xuất:** có, một bước `python3 -m unittest discover …` ở job macOS; 08 không sửa `ci.yml` vì 07b đang sửa file này.
 4. **Cài chứng chỉ gốc của proxy lên máy thử cho A7** (QĐ7). **Đề xuất:** dùng máy thử riêng hay tài khoản macOS riêng, gỡ chứng chỉ ngay sau khi thử.
 5. **Mua thật một đơn trên production** (Nhận từ 06; 08b Task 10): số tiền thật nhỏ nhất (Professional 50 000 đ), hoàn tiền tay sau đó hay giữ. Lưu ý: 05 Task 21 Step 12 đã có một giao dịch thật (đơn đầu tiên của production, `1000001`, mua bằng lệnh và kích hoạt máy giả); 08b Task 10 khác ở chỗ mua qua app đã ký (VietQR, app tự kích hoạt, email có key). **Đề xuất:** nếu bản beta đã ký có trước khi làm 05 Task 21 Step 12 thì gộp: mua đơn `1000001` bằng app, ghi kết quả cho cả hai task, chỉ một đơn; nếu 05 đã làm xong thì 08b Task 10 là đơn thứ hai. Giữ cả hai đơn (không hoàn tiền), dùng key cho máy thử.
-6. **A2 đo bằng S6 cộng số của app thật, lệch "08 đo lại A2 bằng app thật" của kế hoạch 00** (QĐ3; controller quyết theo đề xuất của review). **Đề xuất:** duyệt; nếu chủ dự án muốn cổng A2 tính trên số của app thật thì cần thêm mốc "người nói dừng" vào app (việc mới, ngoài Giai đoạn 1).
-7. **Phạm vi của A7** (N7 của review lần 2; QĐ7): proxy theo tiến trình không thấy request của WebView, và HAR bỏ luồng không phải HTTP; 08b Task 7 bù bằng danh sách kết nối của các tiến trình của app trong phiên (thấy máy đích, không thấy nội dung). **Đề xuất:** chấp nhận cho Giai đoạn 1: WebView của app không gọi mạng (giao diện gọi lõi Rust qua IPC, CSP của Tauri), nên kiểm kết nối đủ để phát hiện sai; nếu thấy kết nối lạ thì bắt thêm bằng proxy hệ thống với đúng lần thử đó.
+6. **A2 đo bằng S6 cộng số của app thật, lệch "08 đo lại A2 bằng app thật" của kế hoạch 00** (QĐ3; controller quyết theo đề xuất của review). **Đề xuất:** duyệt; nếu chủ dự án muốn cổng A2 tính trên số của app thật thì cần thêm mốc "người nói dừng" vào app (việc mới, ngoài Phase 1).
+7. **Phạm vi của A7** (N7 của review lần 2; QĐ7): proxy theo tiến trình không thấy request của WebView, và HAR bỏ luồng không phải HTTP; 08b Task 7 bù bằng danh sách kết nối của các tiến trình của app trong phiên (thấy máy đích, không thấy nội dung). **Đề xuất:** chấp nhận cho Phase 1: WebView của app không gọi mạng (giao diện gọi lõi Rust qua IPC, CSP của Tauri), nên kiểm kết nối đủ để phát hiện sai; nếu thấy kết nối lạ thì bắt thêm bằng proxy hệ thống với đúng lần thử đó.
 
 ## Kết quả mutation lúc lập kế hoạch
 
@@ -146,7 +146,7 @@ Script ngoài repo `meeting-translator-work/p08gen/mut8.py`, chạy trên cây c
 | MP5 | `mapping.py` | dòng thiếu cột không bị báo | bị giết |
 | MP6 | `mapping.py` | "(cần người)" trong Ghi chú không được nhận | bị giết |
 | GA1 | `gates.py` | A2: bằng đúng ngưỡng là không đạt | bị giết |
-| GA2 | `summarize.py` (GĐ0, `gates.py` dùng lại) | A2: chữ dịch đầu tiên ≤ 1,1 s thay vì 1,0 s | bị giết |
+| GA2 | `summarize.py` (Phase 0, `gates.py` dùng lại) | A2: chữ dịch đầu tiên ≤ 1,1 s thay vì 1,0 s | bị giết |
 | GA3 | `gates.py` | A2: số đo của nhiều máy trong một lượt cổng vẫn đạt (Q1 của review lần 2) | bị giết |
 | GA4 | `gates.py` | A3: mức sàn áp cả lượt có ngữ cảnh | bị giết |
 | GA5 | `gates.py` | A3: thiếu chiều mà vẫn đạt | bị giết |
@@ -235,7 +235,7 @@ Cây tham chiếu: `meeting-translator-work/p08-repo`, nhánh `plan08` (dựng b
 | 08a Task 3 | `5c3c579` | feat(bench): soak test A5 và tải máy: lấy mẫu RAM, thời gian CPU của app và tiến trình phụ trên macOS và Windows (kế hoạch 08) |
 | 08a Task 4 | `6fabc15` | feat(bench): kiểm nhật ký mạng A7 qua proxy: máy chủ, đường dẫn, request trong lúc dịch, thân request, từ mồi (kế hoạch 08) |
 | 08a Task 5 | `f0e1bcc` | feat(bench): báo cáo nghiệm thu A1–A7 và bảng đối chiếu; mẫu ma trận A1, danh sách A6 (kế hoạch 08) |
-| 08a Task 6 | `424e345` | docs(bench): bảng công cụ nghiệm thu Giai đoạn 1 (kế hoạch 08) |
+| 08a Task 6 | `424e345` | docs(bench): bảng công cụ nghiệm thu Phase 1 (kế hoạch 08) |
 
 08b là điều phối các bước của người, không có commit tham chiếu.
 
@@ -399,7 +399,7 @@ ModuleNotFoundError: No module named 'mapping'
 Tạo `bench/phase1/acceptance/mapping.py`:
 
 ```python
-"""Bảng đối chiếu spec → kế hoạch con (mục 4 của kế hoạch Giai đoạn 1 · 00).
+"""Bảng đối chiếu spec → kế hoạch con (mục 4 của kế hoạch Phase 1 · 00).
 
 Đếm trạng thái, nhóm các dòng chưa xong theo việc đang chặn (mã C, T, Q, P05-…, phần cần người, phần Windows, việc của
 chủ dự án), và kiểm điều kiện phát hành của Task 5 kế hoạch 00: mọi dòng `xong`, hoặc `hoãn` có cụm "chủ dự án duyệt YYYY-MM-DD" trong
@@ -418,7 +418,7 @@ from dataclasses import asdict, dataclass
 from datetime import date
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-PLAN = os.path.join(ROOT, "docs", "superpowers", "plans", "2026-10-01-giai-doan-1-00-tong-quan.md")
+PLAN = os.path.join(ROOT, "docs", "superpowers", "plans", "2026-10-01-phase-1-00-tong-quan.md")
 STATUSES = ("chưa làm", "đang làm", "chờ", "xong", "hoãn")
 ROW = re.compile(r"^\| ([0-9]+) \|")
 # Dòng trông như dòng của bảng (số ở cột đầu) mà sai khoảng trắng: báo lỗi, không bỏ qua (N3 của review 08 lần 2).
@@ -508,7 +508,7 @@ def release_problems(rows, problems):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Bảng đối chiếu của kế hoạch Giai đoạn 1 · 00.")
+    ap = argparse.ArgumentParser(description="Bảng đối chiếu của kế hoạch Phase 1 · 00.")
     ap.add_argument("command", choices=["summary", "check"])
     ap.add_argument("--file", default=PLAN)
     ap.add_argument("--json", action="store_true", help="in JSON thay cho Markdown")
@@ -606,7 +606,7 @@ Spec §3.3 (A2, A3, A4), §8 (ngân sách độ trễ). QĐ3, QĐ4.
 - Số liệu tự khai (Q1, Q2 của review lần 2): gói lấy từ `config.mt_model`, `config.asr_model` của từng file (Q8_0 + turbo là Chuẩn, Q4_K_M + small là Nhẹ; lẫn hai gói là lỗi); máy lấy từ `machine` (hệ điều hành, CPU, RAM, số lõi). Hạng máy trong nhãn (`-khuyennghi-`, `-toithieu-`) chỉ để đối chiếu với máy: trên macOS RAM ≥ 15 GB là khuyến nghị, dưới là tối thiểu; trên Windows khuyến nghị khi RAM ≥ 15 GB và `config.asr_backend` là `vulkan` (card rời), còn lại (CPU) là tối thiểu; nhãn khác là lỗi (N2 của review lần 3). Ngưỡng 15 chứ không 16 vì `latency-bench` ghi RAM của `sysinfo`, trên Windows là RAM dùng được (`ullTotalPhys`): máy 16 GB báo 15,3–15,9 GB (Q1 của review lần 3). Session lấy từ đuôi nhãn phải khớp `utterances[].lang` (một ngôn ngữ đúng session; `mixed` ít nhất hai). Một lượt cổng cần đúng một máy, một hạng, đủ 6 session (`en`, `vi`, `zh`, `ja`, `ko`, `mixed`) của gói đúng hạng (khuyến nghị: Chuẩn; tối thiểu: Nhẹ; §8); trùng session (lượt cũ cùng thư mục lẫn vào) là lỗi. JSON ghi `machine`, `tier` cho `report.py`.
 - `a3`: dùng lại `regression_lines` của `bench/phase0/mt/score_mt.py` (không viết lại luật thụt lùi 0,01), cộng mức sàn Anh→Việt 0,83 (Q8_0), 0,80 (Q4_K_M) cho lượt không có ngữ cảnh (`-plain`). Mọi lượt `-plain` của mốc (cả hai gói) phải có mặt (Q2), và mỗi chiều chấm đủ số câu của mốc (N2 của review lần 2).
 - `a4`: so `a4_<nhãn>.json` của `score_asr.py` với mốc `a4_m4pro-{turbo,small}-final.json` từng nhóm (`en`, `en-nb`, …), WER hay CER theo mốc, xấu hơn quá 10% tương đối là không đạt; thiếu nhóm là không đạt. Kết quả của `score_asr.py` không ghi model, nên gói suy từ chính số đo: nhận cả hai mốc, chọn mốc gần hơn (trung bình |ln(kết quả/mốc)| trên các nhóm), ghi `pack` vào JSON cho `report.py` (Q1 của review lần 2; bỏ cờ `--pack` gõ tay).
-- Chạy thử trên số liệu GĐ0 có sẵn: 12 session S6 đều đạt A2; mốc so với chính nó đạt A3, A4.
+- Chạy thử trên số liệu Phase 0 có sẵn: 12 session S6 đều đạt A2; mốc so với chính nó đạt A3, A4.
 
 **Files:**
 - Create: `bench/phase1/acceptance/gates.py`
@@ -2533,7 +2533,7 @@ Chép thành `bench/phase1/results/acceptance/a6-checklist.md`. Đánh `[x]` khi
 Tạo `bench/phase1/acceptance/report.py`:
 
 ```python
-"""Báo cáo nghiệm thu Giai đoạn 1 (spec §3.3): gom kết quả A1–A7 và bảng đối chiếu thành một file Markdown.
+"""Báo cáo nghiệm thu Phase 1 (spec §3.3): gom kết quả A1–A7 và bảng đối chiếu thành một file Markdown.
 
 Đọc thư mục kết quả (mặc định `bench/phase1/results/acceptance/`):
 - `a1-matrix.md`: bảng ma trận tương thích, có cột `Kết quả` mang `đạt`, `không đạt` hay `chưa thử`;
@@ -2668,7 +2668,7 @@ def build(results, plan):
 
 def render(rows):
     overall = all(r[1] == PASS for r in rows)
-    lines = ["# Báo cáo nghiệm thu Giai đoạn 1", "",
+    lines = ["# Báo cáo nghiệm thu Phase 1", "",
              f"Kết luận: **{'ĐẠT' if overall else 'CHƯA ĐẠT'}**", "",
              "| Tiêu chí | Kết quả | Chi tiết | Bằng chứng |", "|---|---|---|---|"]
     for name, status, paths, detail in rows:
@@ -2678,7 +2678,7 @@ def render(rows):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Báo cáo nghiệm thu Giai đoạn 1.")
+    ap = argparse.ArgumentParser(description="Báo cáo nghiệm thu Phase 1.")
     ap.add_argument("--results", default=RESULTS)
     ap.add_argument("--plan", default=mapping.PLAN)
     ap.add_argument("--out", help="ghi báo cáo vào file này (mặc định chỉ in)")
@@ -2733,7 +2733,7 @@ Expected (lúc lập kế hoạch):
 | §8 Tải máy ≤ 30% | chưa có số liệu | thiếu: mac, win | — |
 | A6 Cài đặt | chưa có số liệu | chưa có danh sách | — |
 | A7 Quyền riêng tư | chưa có số liệu | thiếu: mac, win | — |
-| Bảng đối chiếu (kế hoạch 00, Task 5) | không đạt | 357 dòng, 158 chưa xong | `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` |
+| Bảng đối chiếu (kế hoạch 00, Task 5) | không đạt | 357 dòng, 158 chưa xong | `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` |
 mã thoát: 1
 ```
 
@@ -2760,7 +2760,7 @@ Bảng công cụ cho người thực thi 08b. Chạy cả bộ test của `benc
 Tạo `bench/phase1/acceptance/README.md`:
 
 ```markdown
-# Công cụ nghiệm thu Giai đoạn 1 (kế hoạch 08)
+# Công cụ nghiệm thu Phase 1 (kế hoạch 08)
 
 Python 3.12 trở lên, chỉ dùng thư viện chuẩn. Chạy từ gốc repo. Kết quả của các lần thử ghi vào
 `bench/phase1/results/acceptance/` và được commit.
@@ -2799,10 +2799,10 @@ OK
 
 ```bash
 git add bench/phase1/acceptance/README.md
-git commit -m "docs(bench): bảng công cụ nghiệm thu Giai đoạn 1 (kế hoạch 08)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "docs(bench): bảng công cụ nghiệm thu Phase 1 (kế hoạch 08)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 
 ## Sau 08a
 
-Cả 6 task xanh thì sang 08b (`docs/superpowers/plans/2026-10-03-giai-doan-1-08b-nghiem-thu-dieu-phoi.md`). 08a không có bước của người.
+Cả 6 task xanh thì sang 08b (`docs/superpowers/plans/2026-10-03-phase-1-08b-nghiem-thu-dieu-phoi.md`). 08a không có bước của người.

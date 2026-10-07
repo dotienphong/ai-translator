@@ -1,4 +1,4 @@
-# Công cụ nghiệm thu Giai đoạn 1 (kế hoạch 08)
+# Công cụ nghiệm thu Phase 1 (kế hoạch 08)
 
 Python 3.12 trở lên, chỉ dùng thư viện chuẩn. Chạy từ gốc repo. Kết quả của các lần thử ghi vào
 `bench/phase1/results/acceptance/` và được commit.

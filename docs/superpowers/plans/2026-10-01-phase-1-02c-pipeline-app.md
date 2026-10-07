@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 02c: Pipeline trong app — nối vào app
+# Phase 1 · 02c: Pipeline trong app — nối vào app
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -17,7 +17,7 @@
 
 **Công nghệ:** Như 02a. Thêm `sha2` 0.11.0 và dùng `rtrb` của workspace (bảng "Phiên bản đã chốt" của 02a). Không thêm gói npm.
 
-Đọc trước 02a (`docs/superpowers/plans/2026-10-01-giai-doan-1-02a-pipeline-crate.md`): các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Dòng của bảng đối chiếu", "Quyết định" và "Điểm cần chủ dự án quyết" áp cho file này. Làm file này sau khi 02a, 02d và 02b đã commit hết.
+Đọc trước 02a (`docs/superpowers/plans/2026-10-01-phase-1-02a-pipeline-crate.md`): các mục "Phiên bản đã chốt", "Cách đọc kế hoạch này", "Dòng của bảng đối chiếu", "Quyết định" và "Điểm cần chủ dự án quyết" áp cho file này. Làm file này sau khi 02a, 02d và 02b đã commit hết.
 
 Chỗ nối của 01 mà file này dùng (`main` `f86b1b7`, code như `940c169`: 01 đã xong, kể cả các đợt sửa R và U; tên AI Translator, bundle id `com.aitranslator.desktop`): `session_stub.rs` và chỗ gọi nó trong `actions.rs`, `lib.rs`; trait `overlay::Surface` (hiện, ẩn thanh phụ đề), `SystemOpener` (mở trang ngoài app), `LoginItem` và `SettingsFile`, cùng bản giả trong `test_support.rs` (`mock_app` cài sẵn cả bốn, nên test không đụng LaunchAgent, Login Items, file cài đặt hay System Settings thật); danh sách lệnh cố định của test ACL lấy từ `commands::MAIN_COMMANDS`. Câu mới trong `src/i18n/` nhắc tên app thì dùng "AI Translator". Phần của đợt U được giữ nguyên: nút Bắt đầu/Dừng khóa khi đang gửi lệnh (`sessionPending`, `disabled={pending}` trong `Home.tsx`), test M11 và M12 của `overlay.test.ts`, `init()` gỡ listener khi lỗi và lệnh thành công thì xóa lỗi cũ (`store/app.ts`), các tab của `SettingsScreen.tsx`. `Cargo.toml` của app giữ autostart 2.6.0, single-instance 2.5.1 như `main` lúc lập kế hoạch; nếu `main` đã nâng plugin Tauri thì giữ bản của `main` (02 không nâng plugin).
 
@@ -6976,7 +6976,7 @@ git commit -m "test(app): thử phiên dịch thật trên Windows" -m "Co-Autho
 
 ## Task 10: Cập nhật kế hoạch 00
 
-Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`), cho cả bốn file 02a, 02d, 02b, 02c:
+Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`), cho cả bốn file 02a, 02d, 02b, 02c:
 - Step 1–2: liệt kê 145 dòng có `02`, đổi trạng thái theo bảng "Dòng của bảng đối chiếu" của 02a và kết quả thật (SHA commit của task). Dòng còn phần chờ Windows, C1, Q4, Q6 hay clip nhạc thì để `chờ` kèm mã.
 - Step 3: thêm dòng cho việc phát sinh, nếu chủ dự án chưa quyết các điểm ở "Điểm cần chủ dự án quyết" của 02a (ví dụ ngưỡng `filler_logprob_max` ở điểm 1, bộ nhạc thử ở điểm 8).
 - Step 4:
@@ -6985,4 +6985,4 @@ Làm theo Task 2 của kế hoạch 00 (`docs/superpowers/plans/2026-10-01-giai-
   - mục 6.2: `scripts/check-windows.sh` nay kiểm cả `pipeline` và `audio-capture`; bản dev cần `scripts/copy-sidecars.sh` trước `pnpm tauri dev`;
   - việc chuyển cho 07: điểm cần quyết 9 của 02a (`/DEPENDENTLOADFLAG:0x800` cần VC++ Redistributable hoặc `+crt-static`; mọi DLL, dylib đi kèm phải vào bảng SHA-256);
   - việc chuyển cho 03: ghi chú N8 ở đầu 02c.
-- Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Giai đoạn 1 sau kế hoạch 02`.
+- Step 5–6: kiểm định dạng bảng, rồi commit với thông điệp `docs(plan): cập nhật tổng quan Phase 1 sau kế hoạch 02`.

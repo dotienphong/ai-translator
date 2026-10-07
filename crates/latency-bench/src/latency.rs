@@ -133,7 +133,7 @@ struct SegmentRecord {
     no_speech_prob: f32,
     /// Trung bình log-xác suất của các token văn bản, cùng `no_speech_prob` quyết định bỏ đoạn.
     avg_logprob: f32,
-    /// Xác suất tiếng nói trung bình của VAD (`Segment::mean_prob`). Bản ghi của Giai đoạn 0 không có số này.
+    /// Xác suất tiếng nói trung bình của VAD (`Segment::mean_prob`). Bản ghi của Phase 0 không có số này.
     vad_mean_prob: Option<f32>,
     /// Số đoạn trong câu đã dịch ở bước này (1 nếu không ghép; tối đa 3), và chữ nguồn của cả câu ghép (§6.3).
     merged_segments: Option<usize>,
@@ -280,10 +280,10 @@ pub fn run(args: LatencyArgs) -> Result<()> {
     let mt_config = config.mt.clone();
     let asr_thread = std::thread::spawn(move || -> Result<()> {
         let mut prompts: HashMap<String, Vec<i32>> = HashMap::new();
-        // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ,
+        // Ngôn ngữ của đoạn đã chép lời trước đó, kể cả đoạn bị bỏ: đúng trạng thái mà `asr-worker` của Phase 0 tự giữ,
         // để số đo S6 không đổi khi `prev_lang` chuyển sang `TranscribeRequest`.
         // Cố ý khác app: engine của kế hoạch 02b chỉ cập nhật `prev_lang` và prompt bằng đoạn được giữ lại, còn S6 vẫn đo theo
-        // luật của Giai đoạn 0 để so được với mốc cũ. Đổi luật ở đây thì phải đo lại mốc S6.
+        // luật của Phase 0 để so được với mốc cũ. Đổi luật ở đây thì phải đo lại mốc S6.
         let mut prev_lang: Option<String> = None;
         for (segment, closed_at_ms) in seg_rx {
             let mut rec = SegmentRecord {
@@ -516,7 +516,7 @@ fn kill_process(pid: u32) {
         .output();
 }
 
-/// Tên lý do trong file kết quả, giữ như Giai đoạn 0.
+/// Tên lý do trong file kết quả, giữ như Phase 0.
 fn skip_name(reason: PcmSkip) -> &'static str {
     match reason {
         PcmSkip::TooShort => SKIP_TOO_SHORT,
@@ -1025,7 +1025,7 @@ mod tests {
         assert_eq!(route(&rec("en", "Hello", 0.0, -0.3)), Ok(Lang::En));
         assert_eq!(route(&rec("en", "", 0.0, 0.0)), Err("no_speech".into()));
         assert_eq!(route(&rec("en", " \n", 0.0, -0.3)), Err("no_speech".into()));
-        // Luật `no_speech` của pipeline (cần cả hai điều kiện), đặt tên lý do như Giai đoạn 0.
+        // Luật `no_speech` của pipeline (cần cả hai điều kiện), đặt tên lý do như Phase 0.
         assert_eq!(route(&rec("ko", "안녕", 0.9, -1.5)), Err("no_speech".into()));
         assert_eq!(route(&rec("ko", "안녕", 0.62, -0.25)), Ok(Lang::Ko));
         assert_eq!(
@@ -1402,7 +1402,7 @@ mod tests {
     /// hình chốt, `bench/phase0/results/latency/m4pro-chot-khuyennghi-*.json`: cùng lý do bỏ đoạn, cùng số đoạn ghép và
     /// cùng chữ nguồn đã gửi dịch, đoạn nào cũng vậy. Nhờ đó số đo S6 của lượt chốt vẫn là số đo của luật hiện tại.
     ///
-    /// Luật mới của Giai đoạn 1 được áp như app: bộ lọc câu ảo giác và luật chuỗi lặp không bỏ đoạn nào của 12 lượt này;
+    /// Luật mới của Phase 1 được áp như app: bộ lọc câu ảo giác và luật chuỗi lặp không bỏ đoạn nào của 12 lượt này;
     /// chữ tiếng Trung được đổi sang giản thể, nên chữ nguồn mong đợi là bản ghi cũ sau khi đổi. Luật câu đệm có bỏ 2 đoạn
     /// (xem `phase1_filler_rule_drops_only_known_hallucinations_on_s6`), nên lượt chạy lại này tắt luật đó.
     #[test]
@@ -1495,7 +1495,7 @@ mod tests {
     /// "Cảm ơn" (xem `gd1_no_speech.md`). Cả 2 bị bỏ vì `avg_logprob` dưới −0,7; bản ghi S6 không có số của VAD, nhưng chỉ
     /// 3 đoạn S6 có chữ là câu đệm nên số đó không đổi kết quả. Đoạn 26 của `en` dài 32 ms, nằm ngay sau một câu, có
     /// `no_speech_prob` 8e-11: đúng kiểu ảo giác mà luật `no_speech` không bắt được với turbo; với small, đoạn tương ứng đã
-    /// bị luật `no_speech` bỏ từ Giai đoạn 0. Đoạn 45 của `vi` là tiếng thật, đuôi câu "… ở Las Cañitas.", mà turbo chép
+    /// bị luật `no_speech` bỏ từ Phase 0. Đoạn 45 của `vi` là tiếng thật, đuôi câu "… ở Las Cañitas.", mà turbo chép
     /// thành "Cảm ơn": bỏ đoạn này mất một phụ đề sai, không mất chữ đúng nào.
     #[test]
     fn phase1_filler_rule_drops_only_known_hallucinations_on_s6() {
@@ -1571,7 +1571,7 @@ mod tests {
                 clips.len()
             );
             assert_eq!(clips.len(), 548);
-            // Luật `no_speech` của Giai đoạn 0 bỏ đúng 1 clip của small (chữ bịa); luật mới không bỏ thêm clip nào.
+            // Luật `no_speech` của Phase 0 bỏ đúng 1 clip của small (chữ bịa); luật mới không bỏ thêm clip nào.
             let expected: HashMap<String, Vec<String>> = match model {
                 "small" => [("NoSpeech".to_string(), vec!["en-9810650684898829002_nb".to_string()])].into(),
                 _ => HashMap::new(),

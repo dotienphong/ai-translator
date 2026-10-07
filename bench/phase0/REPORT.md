@@ -1,4 +1,4 @@
-# Báo cáo Giai đoạn 0 (spike S1–S7)
+# Báo cáo Phase 0 (spike S1–S7)
 
 Ngày: 2026-10-04. Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`
 
@@ -8,7 +8,7 @@ Phạm vi đo: một máy duy nhất, MacBook Pro M4 Pro 24 GB, macOS 26.6.2. Kh
 
 - **Cổng §13 chưa thỏa đầy đủ**, vì thiếu số liệu: S2, S3 và S5 trên Windows chưa làm; S6 mới đo trên M4 Pro; điều kiện p50 ≤ 3,5 giây trên máy tối thiểu chưa đo.
 - **Mọi điều kiện đã đo đều đạt**: S1 và S4 đạt; 12/12 session S6 trên M4 Pro đạt A2 với dư địa khoảng gấp đôi; COMET đạt mức sàn A3 ở cả hai gói. Không có kết quả nào cho thấy phải sửa hướng thiết kế.
-- **PHONG duyệt ngày 2026-10-04: qua cổng có điều kiện.** Giai đoạn 1 bắt đầu, và các mục chưa kiểm ở mục "Việc chưa kiểm" phải được đo khi có thiết bị. Trước khi phát hành bản beta đầu tiên, các mục có đánh dấu **(chặn phát hành)** phải xong. Rủi ro chính của đề xuất này: spec có thể phải sửa lại nếu máy yếu hơn không đạt (mục "Quyết định cần duyệt").
+- **PHONG duyệt ngày 2026-10-04: qua cổng có điều kiện.** Phase 1 bắt đầu, và các mục chưa kiểm ở mục "Việc chưa kiểm" phải được đo khi có thiết bị. Trước khi phát hành bản beta đầu tiên, các mục có đánh dấu **(chặn phát hành)** phải xong. Rủi ro chính của đề xuất này: spec có thể phải sửa lại nếu máy yếu hơn không đạt (mục "Quyết định cần duyệt").
 - **Quyết định cần ghi vào spec:** đã ghi ở Task 2 (commit `e181e1d`, `f5e2853`), gồm chế độ giải mã B làm mặc định, sàn `audio_ctx` 512, LID đoạn ngắn, luật lặp, luật `no_speech`, flash attention tắt, và các mục "chờ kết quả" của Windows và máy tham chiếu.
 
 ## Cổng §13
@@ -30,7 +30,7 @@ Phạm vi đo: một máy duy nhất, MacBook Pro M4 Pro 24 GB, macOS 26.6.2. Kh
 | 4 | Whisper turbo kịp thời gian thực trên M1 16 GB và card rời 6 GB | **Chưa kiểm.** Trên M4 Pro (Metal) turbo kịp: nhận dạng p50 229–254 ms | `results/latency/m4pro-chot-*.json` |
 | 5 | Độ trễ đạt ngân sách §8 | **Đạt trên M4 Pro**: p50 764–1028 ms (Chuẩn), 613–844 ms (Nhẹ); p90 lớn nhất 1341 ms; chữ đầu p50 lớn nhất 686 ms. Máy khác chưa đo; spec ước tính M1 cơ bản nhiều khả năng không đạt với Q8_0 | `results/latency/m4pro-chot-*.json` |
 | 6 | Q4_K_M giảm COMET ≤ 0,02 so với Q8_0 | **Đạt**: Anh→Việt −0,0004 [−0,009; +0,007]; không chiều nào giảm quá 0,02 (lớn nhất −0,015 ở ja→vi và vi→zh) | `results/s7_mt_decisions.md` |
-| 7 | PayOS (không thuộc spike kỹ thuật) | **Kiểm một phần** (2026-10-01): PayOS không có sandbox, test bằng giao dịch nhỏ trên staging. Các mục còn lại ở kế hoạch Giai đoạn 1 · 05 | spec §14 mục 7 |
+| 7 | PayOS (không thuộc spike kỹ thuật) | **Kiểm một phần** (2026-10-01): PayOS không có sandbox, test bằng giao dịch nhỏ trên staging. Các mục còn lại ở kế hoạch Phase 1 · 05 | spec §14 mục 7 |
 | 8 | Rút ngắn `audio_ctx` làm WER tăng ≤ 10% | **Không đạt theo từng ô.** Cấu hình mặc định: 5/10 ô vượt (turbo en, vi, zh, ko; small ko); bỏ bản chép hai lần còn 3/10. Với sàn 512: 3/10 ô vượt trên cùng bản build; ba ô này nằm ở clip dài hơn 9 giây, còn đoạn của app dài tối đa 8 giây. Sàn 512 giảm tổng lỗi (turbo −6,4%, small −1,5%) | `results/s7_asr.md`, `results/phase0_review_notes.md` |
 | 9 | Chi phí nhận diện ngôn ngữ < 20% thời gian nhận dạng | **Đạt với chế độ B**: 0–2% thời gian chép lời. Chế độ A không đạt (small 11–19%, turbo 24–36%) | `results/s3_ab.md` |
 | 10 | Truyền âm thanh qua stdin/stdout thêm ≤ 10 ms mỗi đoạn | **Đạt trên M4 Pro**: p50 0,4–0,9 ms, lớn nhất 2,9 ms. Chỉ có số ghi trong spec §6.4, không có file kết quả riêng | spec §6.4 |
@@ -84,13 +84,13 @@ Các mục này **chưa có số đo**, vì thiếu thiết bị hoặc tài kho
 | S6 trên M1 16 GB (06-T8..9) | Không có máy | Hạng máy khuyến nghị trên Mac (§8) | cần trước khi chốt hạng máy |
 | S6 trên Windows card rời 6 GB và 4 GB | Không có máy | Ngưỡng VRAM 6 GB (§6.7, §8), giả định 4 | cần trước khi chốt hạng máy |
 | S6 trên Windows 8 GB chỉ CPU (máy tối thiểu) | Không có máy | Điều kiện p50 ≤ 3,5 giây của cổng §13 | cần trước khi chốt hạng máy |
-| S1 dòng 9: đổi thiết bị phát giữa chừng | Không ghi kết quả quan sát | Cách MVP khởi tạo lại tap (§6.1) | kiểm lại ở Giai đoạn 1 |
+| S1 dòng 9: đổi thiết bị phát giữa chừng | Không ghi kết quả quan sát | Cách MVP khởi tạo lại tap (§6.1) | kiểm lại ở Phase 1 |
 | S1 dòng 10: chữ ký Developer ID | Chưa có tài khoản Apple Developer | Ký, notarize bản phát hành (kế hoạch 1-07a) | **chặn phát hành** |
-| Giả định 11: múi giờ `transactionDateTime` PayOS | Cần giao dịch thật trên staging | §6.8 | Giai đoạn 1 · 05 |
+| Giả định 11: múi giờ `transactionDateTime` PayOS | Cần giao dịch thật trên staging | §6.8 | Phase 1 · 05 |
 
 ## Quyết định (PHONG duyệt 2026-10-04)
 
-1. **Có qua cổng không?** **Qua có điều kiện.** Giai đoạn 1 bắt đầu. Các mục ở "Việc chưa kiểm" được đo khi có thiết bị; mục đánh dấu **(chặn phát hành)** phải xong trước bản beta đầu tiên. Rủi ro đã chấp nhận: spec có thể phải sửa lại nếu máy yếu hơn không đạt.
+1. **Có qua cổng không?** **Qua có điều kiện.** Phase 1 bắt đầu. Các mục ở "Việc chưa kiểm" được đo khi có thiết bị; mục đánh dấu **(chặn phát hành)** phải xong trước bản beta đầu tiên. Rủi ro đã chấp nhận: spec có thể phải sửa lại nếu máy yếu hơn không đạt.
 2. **M1 cơ bản không đạt thì chọn phương án nào ở §8?** **Bỏ qua**, vì không có máy M1 để đo. M1 cơ bản giữ trạng thái "chưa xác nhận" (spec §8). Hai phương án ở §8 (nâng hạng khuyến nghị lên M2 trở lên, hoặc dùng Q4_K_M cho bước dịch trên máy băng thông thấp) chỉ chọn khi có số đo, ví dụ từ người thử beta dùng M1.
 3. **Ngưỡng VRAM 6 GB cho đề xuất gói Chuẩn trên Windows.** **Giữ nguyên 6 GB** như đã duyệt 2026-10-02 (ước tính 4,2–5 GB cho gói Chuẩn). Ghi là "chờ đo" và đo lại khi có máy.
 
@@ -103,7 +103,7 @@ Các mục này **chưa có số đo**, vì thiếu thiết bị hoặc tài kho
 - **Ghép câu zh và ja**: Whisper gần như không đặt dấu câu cuối câu cho hai tiếng này, nên luật ghép nối nhầm khoảng 7/18 lần với zh. Cần dữ liệu hội thoại thật để chọn luật tốt hơn.
 - **Lần đầu chạy một binary mới trên macOS** mất khoảng 15 giây kiểm tra. Thời gian chờ `/health` phải từ 30 giây trở lên, và giao diện báo "đang chuẩn bị lần đầu". Đo lại với bản đã ký và notarize.
 - **Số dùng trong spec chỉ có một nguồn** (flash attention 5–13%, 15 giây kiểm tra, LID đoạn 1 giây, luật lặp, `avg_logprob` −0,25): xem `results/phase0_review_notes.md`.
-- Việc cho Giai đoạn 1: danh sách "việc cho MVP" ở spec (Task 2 của kế hoạch 00), gồm giao thức `asr-protocol`, Job Object và process group cho tiến trình phụ, và các mẫu `.gitignore` cho khóa ký trước khi tạo `server/`.
+- Việc cho Phase 1: danh sách "việc cho MVP" ở spec (Task 2 của kế hoạch 00), gồm giao thức `asr-protocol`, Job Object và process group cho tiến trình phụ, và các mẫu `.gitignore` cho khóa ký trước khi tạo `server/`.
 
 ## Cập nhật 2026-10-07: số đo trên Windows (i5-1345U, Iris Xe, 32 GB)
 

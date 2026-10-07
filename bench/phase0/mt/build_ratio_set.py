@@ -1,4 +1,4 @@
-"""Bộ câu để đo ngưỡng tỉ lệ token còn thiếu (Đ12 của kế hoạch Giai đoạn 1 · 00, dòng 149 của bảng đối chiếu).
+"""Bộ câu để đo ngưỡng tỉ lệ token còn thiếu (Đ12 của kế hoạch Phase 1 · 00, dòng 149 của bảng đối chiếu).
 
 - 12 chiều không có tiếng Việt (giữa en, zh, ja, ko), mỗi chiều 100 đoạn WMT24++. Dùng cùng bốn file đã ghim của
   `build_testset.py`; các đoạn khác hẳn 340 đoạn mà bộ A3 đã dùng. Câu nguồn và đích là bản dịch chuẩn của cùng một đoạn.

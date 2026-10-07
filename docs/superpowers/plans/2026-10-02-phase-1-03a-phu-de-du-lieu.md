@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 03a: Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ — dữ liệu và lõi Rust
+# Phase 1 · 03a: Phụ đề, bản chép lời, lịch sử, từ điển thuật ngữ — dữ liệu và lõi Rust
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -11,7 +11,7 @@
 - lệnh của giao diện cho các việc trên, bảng debug ẩn (§7), và phần phía Rust của thanh phụ đề và bước "Nghe thử" (§4.1 bước 6, §4.4): kéo cạnh trên cả macOS lẫn Windows, nút ✕ ẩn thanh, màu chữ và màu nền (§4.3, §4.4 sửa ngày 2026-10-02, commit `5925d42`);
 - sửa ghi chú N1 của review cuối 02: tắt tiến trình phụ khi rảnh không chen vào lần Bắt đầu.
 
-Giao diện (thanh phụ đề đủ §4.4, các màn hình, nhóm Cài đặt "Phụ đề" và "Quyền riêng tư", bước "Nghe thử"), thử tay, đợt Windows và cập nhật kế hoạch 00 nằm ở **03b** (`docs/superpowers/plans/2026-10-02-giai-doan-1-03b-phu-de-giao-dien.md`). Làm 03a trước, rồi 03b.
+Giao diện (thanh phụ đề đủ §4.4, các màn hình, nhóm Cài đặt "Phụ đề" và "Quyền riêng tư", bước "Nghe thử"), thử tay, đợt Windows và cập nhật kế hoạch 00 nằm ở **03b** (`docs/superpowers/plans/2026-10-02-phase-1-03b-phu-de-giao-dien.md`). Làm 03a trước, rồi 03b.
 
 **Kiến trúc:**
 - Logic nằm trong Rust (§10.2, "Bị clone"): khớp thuật ngữ và mẫu prompt ở crate `pipeline` (`glossary.rs`, `prompt.rs`); DB, lịch sử, xuất file, từ điển ở `src-tauri` (`db.rs`, `glossary.rs`, `transcript/`). JavaScript chỉ hiển thị.
@@ -22,7 +22,7 @@ Giao diện (thanh phụ đề đủ §4.4, các màn hình, nhóm Cài đặt "
 
 **Công nghệ:** Giữ nguyên Rust 1.98.1, Tauri 2.12.1, React 19.3, Vite 8.3, TypeScript 7.0. Thêm `rusqlite` (SQLCipher kèm theo), `getrandom`, `csv`, `unicode-normalization`, `tauri-plugin-dialog` (bảng "Phiên bản đã chốt"). Không thêm gói npm nào.
 
-Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.3, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Tên file dùng ngày viết `2026-10-02` (controller quyết, thay Đ1 của kế hoạch 00 cho kế hoạch này).
+Tổng quan: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` (mục 2.3, 6, 8, 9). Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Tên file dùng ngày viết `2026-10-02` (controller quyết, thay Đ1 của kế hoạch 00 cho kế hoạch này).
 
 Kế hoạch 03 có khoảng 12 000 dòng nên chia hai file, làm theo thứ tự:
 1. **03a** (file này): Task 1–13.
@@ -70,7 +70,7 @@ Ghi chú:
 
 ## Thứ tự với kế hoạch 04 và file giao nhau
 
-Kế hoạch 04 (quản lý model: `2026-10-02-giai-doan-1-04a-quan-ly-model-loi.md`, `…-04b-quan-ly-model-app.md`) được viết cùng lúc, trên `main` `45de838`. Controller đề xuất **03 thực thi trước 04**: 04 dựng trên cây cuối của 03 (sau 03b Task 10). Khối `diff` của 04 viết trên `45de838` không áp thẳng được lên cây của 03, và `git apply --3way` cũng không cứu được nếu khối thiếu dòng `index`, nên **tác giả 04 phải dựng lại các khối `diff` của 04 trên cây cuối của 03** (nhánh `plan03` của cây tham chiếu, xem bảng cuối file này). Hai chỗ cần để ý khi dựng 04 trên 03: `session::engine_config` của 03 nhận thêm tham số từ điển (`SharedGlossary`), 04 thêm `PipelineConfig`, nên hàm nhận cả hai; `wipe_user_data` của 04 gọi `data::clear_all_data` của 03 (hàm này nay xóa cả các bản `data.db.unreadable-*`). Hai kế hoạch cùng đụng các file dưới đây:
+Kế hoạch 04 (quản lý model: `2026-10-02-phase-1-04a-quan-ly-model-loi.md`, `…-04b-quan-ly-model-app.md`) được viết cùng lúc, trên `main` `45de838`. Controller đề xuất **03 thực thi trước 04**: 04 dựng trên cây cuối của 03 (sau 03b Task 10). Khối `diff` của 04 viết trên `45de838` không áp thẳng được lên cây của 03, và `git apply --3way` cũng không cứu được nếu khối thiếu dòng `index`, nên **tác giả 04 phải dựng lại các khối `diff` của 04 trên cây cuối của 03** (nhánh `plan03` của cây tham chiếu, xem bảng cuối file này). Hai chỗ cần để ý khi dựng 04 trên 03: `session::engine_config` của 03 nhận thêm tham số từ điển (`SharedGlossary`), 04 thêm `PipelineConfig`, nên hàm nhận cả hai; `wipe_user_data` của 04 gọi `data::clear_all_data` của 03 (hàm này nay xóa cả các bản `data.db.unreadable-*`). Hai kế hoạch cùng đụng các file dưới đây:
 
 | File | 03 đổi gì | 04 có thể đổi gì |
 |---|---|---|

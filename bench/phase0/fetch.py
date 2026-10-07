@@ -1,4 +1,4 @@
-"""Tải model và llama.cpp cho Giai đoạn 0 vào models/ và tools/, kiểm kích thước và SHA-256, ghi models/MANIFEST.json.
+"""Tải model và llama.cpp cho Phase 0 vào models/ và tools/, kiểm kích thước và SHA-256, ghi models/MANIFEST.json.
 
 Dùng:  python3 bench/phase0/fetch.py [--only whisper,mt,vad,llama]
 - Cần Python 3.12 trở lên, vì giải nén an toàn bằng `tarfile` với `filter="data"`. python3 có sẵn của macOS là 3.9,
@@ -81,7 +81,7 @@ def llama_archives():
         return LLAMA["macos-arm64"]
     if system == "Windows" and machine in ("amd64", "x86_64"):
         return LLAMA["windows-x64"]
-    raise SystemExit(f"Giai đoạn 0 chỉ hỗ trợ macOS arm64 và Windows x64, máy này là {system} {machine}")
+    raise SystemExit(f"Phase 0 chỉ hỗ trợ macOS arm64 và Windows x64, máy này là {system} {machine}")
 
 
 def sha256(path):

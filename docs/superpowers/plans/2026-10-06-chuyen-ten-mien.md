@@ -591,14 +591,14 @@ Expected: dòng đầu không in gì (không còn `workers.dev` hay `r2.dev` k�
 ### Task 13: Ghi nhận và dọn
 
 **Files:**
-- Modify: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`, bộ nhớ dự án
+- Modify: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`, bộ nhớ dự án
 
 - [ ] **Step 1: Bảng đối chiếu và T7.** Trong mục 5.3 của kế hoạch 00, dòng `T7` (Tên miền): đổi "Chưa có" thành "Đã có `aitranslator.io.vn` (2026-10-06), đã chuyển URL (kế hoạch `2026-10-06-chuyen-ten-mien.md`)". Trong khối quyết định ngày 2026-10-06 ở mục 8.3: thêm "Đã chuyển URL sang `api.` và `releases.` (ngày …)".
 - [ ] **Step 2: Bộ nhớ.** Cập nhật `decisions-2026-10-06.md`: tên miền đã chuyển xong, còn lại tắt `workers.dev` và `r2.dev` khi không còn bản cài cũ, website, EULA.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+git add docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md
 git commit -m "docs(plan): ghi nhận đã chuyển URL sang tên miền riêng aitranslator.io.vn
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"

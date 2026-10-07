@@ -1,14 +1,14 @@
-# Giai đoạn 1 · 08b: Nghiệm thu — điều phối và đo
+# Phase 1 · 08b: Nghiệm thu — điều phối và đo
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Mục tiêu:** Nghiệm thu Giai đoạn 1 (mục 2.8 của kế hoạch 00): A1–A7 (spec §3.3), tải máy (§8), ma trận thủ công, soak test, cài đặt, bảo mật (§11), hai điều kiện A4 còn thiếu (C13, Đ11), và đưa bảng đối chiếu của kế hoạch 00 về 100% (`xong`, hoặc `hoãn` có chủ dự án duyệt). Bàn giao: báo cáo nghiệm thu `bench/phase1/results/acceptance/report.md` và số liệu gốc trong `bench/`.
+**Mục tiêu:** Nghiệm thu Phase 1 (mục 2.8 của kế hoạch 00): A1–A7 (spec §3.3), tải máy (§8), ma trận thủ công, soak test, cài đặt, bảo mật (§11), hai điều kiện A4 còn thiếu (C13, Đ11), và đưa bảng đối chiếu của kế hoạch 00 về 100% (`xong`, hoặc `hoãn` có chủ dự án duyệt). Bàn giao: báo cáo nghiệm thu `bench/phase1/results/acceptance/report.md` và số liệu gốc trong `bench/`.
 
 **Cách làm:** Agent chạy script của 08a và tổng hợp; người thao tác app họp, tai nghe, máy tham chiếu, máy Windows, proxy, bộ cài đã ký, giao dịch thật. Mỗi task ghi rõ: **ai làm**, **cần trước**, lệnh hay bước, **Expected**, và **ghi vào** (file kết quả). Bước của người đã viết ở kế hoạch trước thì 08b chỉ trỏ tới, không viết lại (QĐ12 của 08a).
 
-**Công nghệ:** Không thêm thư viện. Dùng script ở `bench/phase1/acceptance/` (08a), `latency-bench`, `bench/phase0/latency/run_matrix.py`, `score_mt.py`, `score_asr.py` (GĐ0, 02b). Proxy cho A7: mitmproxy ở chế độ theo tiến trình (`--mode local:…`; người cài, ví dụ `brew install mitmproxy` hay `uv tool install mitmproxy`).
+**Công nghệ:** Không thêm thư viện. Dùng script ở `bench/phase1/acceptance/` (08a), `latency-bench`, `bench/phase0/latency/run_matrix.py`, `score_mt.py`, `score_asr.py` (Phase 0, 02b). Proxy cho A7: mitmproxy ở chế độ theo tiến trình (`--mode local:…`; người cài, ví dụ `brew install mitmproxy` hay `uv tool install mitmproxy`).
 
-Làm sau 08a (`docs/superpowers/plans/2026-10-03-giai-doan-1-08a-nghiem-thu-cong-cu.md`; dòng của bảng đối chiếu, QĐ, điểm cần chủ dự án quyết nằm ở đó). Thứ tự gợi ý:
+Làm sau 08a (`docs/superpowers/plans/2026-10-03-phase-1-08a-nghiem-thu-cong-cu.md`; dòng của bảng đối chiếu, QĐ, điểm cần chủ dự án quyết nằm ở đó). Thứ tự gợi ý:
 
 ```
 Task 1 (agent) ─► Task 2 (đợt việc người của 01–07, gồm đợt Windows) ─┬─► Task 5 (A2, máy tham chiếu) ─┐
@@ -57,7 +57,7 @@ Expected: `Kết luận: **CHƯA ĐẠT**`.
 
 ```bash
 git add bench/phase1/results/acceptance
-git commit -m "test(bench): chuẩn bị nghiệm thu Giai đoạn 1: bản ứng viên, mẫu ma trận A1 và danh sách A6 (kế hoạch 08)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "test(bench): chuẩn bị nghiệm thu Phase 1: bản ứng viên, mẫu ma trận A1 và danh sách A6 (kế hoạch 08)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ## Task 2: Đợt việc của người và Windows còn lại của 01–07 (cần người, máy Windows, tài khoản)
@@ -83,13 +83,13 @@ Các bước đã viết ở kế hoạch gốc, kèm Expected; làm theo đúng
 | 13 | Khóa production, R2, URL production, tên miền | 07b Task 11–12 (T7) | người | theo 07b |
 | 14 | Lên production license server | 05 Task 21 | người | theo 05 |
 | 15 | Ký thật, bản beta đầu tiên, cập nhật từ bản trước, Gatekeeper, SmartScreen | 07b Task 13–15 (T1, T2) | người, GitHub, Mac, Windows | theo 07b |
-| 16 | C15: báo cáo Giai đoạn 0 và kết luận S3 | 0-00 Task 1, 0-03 Task 17 | agent, sau dòng 12 và Task 5 | `bench/phase0/REPORT.md`, `bench/phase0/results/s3_lid.md` |
+| 16 | C15: báo cáo Phase 0 và kết luận S3 | 0-00 Task 1, 0-03 Task 17 | agent, sau dòng 12 và Task 5 | `bench/phase0/REPORT.md`, `bench/phase0/results/s3_lid.md` |
 
 - [ ] **Step 1: Làm lần lượt các dòng trên**, mỗi dòng theo Expected của kế hoạch gốc.
 - [ ] **Step 2: Sau mỗi dòng, agent cập nhật bảng đối chiếu** (Task 4 của kế hoạch 00) và commit kết quả cùng bảng:
 
 ```bash
-git add bench docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
+git add bench docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md
 git commit -m "test: <việc vừa làm> (kế hoạch 08, Task 2)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
@@ -372,6 +372,6 @@ Expected: `Kết luận: **ĐẠT**`. Còn dòng `chưa có số liệu` hay `kh
 - [ ] **Step 5: Commit, rồi gửi chủ dự án xin duyệt phát hành** (Task 5 Step 6 của kế hoạch 00)
 
 ```bash
-git add bench/phase1/results/acceptance docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md
-git commit -m "docs(plan): nghiệm thu Giai đoạn 1: báo cáo A1–A7, bảng đối chiếu đủ 100% (kế hoạch 08)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git add bench/phase1/results/acceptance docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md
+git commit -m "docs(plan): nghiệm thu Phase 1: báo cáo A1–A7, bảng đối chiếu đủ 100% (kế hoạch 08)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```

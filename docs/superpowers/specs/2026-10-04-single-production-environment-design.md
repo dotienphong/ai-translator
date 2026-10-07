@@ -30,7 +30,7 @@
 ### 2.1 Chọn endpoint
 - `license/client.rs`: bỏ `STAGING_URL`, `URL_ENV` và nhánh `cfg!(debug_assertions)` trong `HttpApi::for_this_build()`. Còn một hằng `PRODUCTION_URL: Option<&str>` (giữ tên này vì `release-ready.mjs` tìm đúng dòng đó) (hiện `None`, điền khi deploy production), chỉ nhận `https` và không có query. `HttpApi::new(Some(base))` vẫn nhận địa chỉ tùy ý để test dựng server giả; chỉ `for_this_build()` bị ràng buộc.
 - `license/keys.rs`: bỏ `LicenseEnv` và hàm `current()`. `license-public-keys.json` chỉ còn khối production (hai ô `a`, `b`). `keys` đọc thẳng khối đó.
-- `models/source.rs`, `models/signed.rs`: bỏ nhánh `tauri::is_dev()` chọn URL và khóa. URL manifest là hằng production, kiểm chữ ký bằng khóa trong `manifest-public-keys.json` (chỉ còn `production`). Bản dev tải model qua manifest production như người dùng thật. Model của Giai đoạn 0 trong `models/` (§6.7 của spec gốc) vẫn dùng được như cũ.
+- `models/source.rs`, `models/signed.rs`: bỏ nhánh `tauri::is_dev()` chọn URL và khóa. URL manifest là hằng production, kiểm chữ ký bằng khóa trong `manifest-public-keys.json` (chỉ còn `production`). Bản dev tải model qua manifest production như người dùng thật. Model của Phase 0 trong `models/` (§6.7 của spec gốc) vẫn dùng được như cũ.
 - `updater/source.rs`: bỏ khối `staging` của `updater-public-keys.json`; còn một khóa production. **Bản debug không tự cập nhật** (tắt bằng `cfg(debug_assertions)`), để bản release không ghi đè bản dev đang code.
 - `errors.rs`: sửa thông báo nhắc "bản dev chưa cấu hình staging".
 

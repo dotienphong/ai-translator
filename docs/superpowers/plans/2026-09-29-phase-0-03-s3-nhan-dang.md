@@ -1,4 +1,4 @@
-# Giai đoạn 0 · 03: S3 (asr-worker, VAD, chọn ngôn ngữ) và S7 phần nhận dạng (A4)
+# Phase 0 · 03: S3 (asr-worker, VAD, chọn ngôn ngữ) và S7 phần nhận dạng (A4)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -28,7 +28,7 @@
 - Python 3.12 qua uv: numpy 2.5.3, scipy 1.18.1, jiwer 4.0.0, onnxruntime 1.30.0.
 - FLEURS (CC BY 4.0).
 
-Tổng quan: `docs/superpowers/plans/2026-09-29-giai-doan-0-00-tong-quan.md`. Cần xong kế hoạch 01. Task 1–13 làm trên Mac, Task 14–17 làm trên Windows.
+Tổng quan: `docs/superpowers/plans/2026-09-29-phase-0-00-tong-quan.md`. Cần xong kế hoạch 01. Task 1–13 làm trên Mac, Task 14–17 làm trên Windows.
 
 ---
 
@@ -778,7 +778,7 @@ Dùng:  uv run --no-project --python 3.12 --with "onnxruntime==1.30.0" --with "n
          python bench/phase0/vad/ref_probs.py <model.onnx> <audio.wav> > ref.json
 
 File thử `bench/phase0/data/vad/en.wav` (không commit) tạo bằng lệnh `say` của macOS, theo Task 2 Step 6 của
-docs/superpowers/plans/2026-09-29-giai-doan-0-03-s3-nhan-dang.md. Máy Windows chép `en.wav` và `en.ref.json` từ Mac.
+docs/superpowers/plans/2026-09-29-phase-0-03-s3-nhan-dang.md. Máy Windows chép `en.wav` và `en.ref.json` từ Mac.
 """
 import json
 import sys
@@ -2291,7 +2291,7 @@ serde_json.workspace = true
 - [ ] **Step 2: Tạo `crates/latency-bench/src/main.rs`**
 
 ```rust
-//! Công cụ đo cho Giai đoạn 0. Bước này mới có `asr-eval` (A4); `latency` (S6) thêm ở kế hoạch 06.
+//! Công cụ đo cho Phase 0. Bước này mới có `asr-eval` (A4); `latency` (S6) thêm ở kế hoạch 06.
 
 mod asr_eval;
 
@@ -3998,7 +3998,7 @@ Expected:
 - Dòng `system_info` có `AVX2 = 1`, `FMA = 1`, `F16C = 1` và không có `AVX512` (mức CPU cố định ở `.cargo/config.toml`).
 - WER/CER gần với lượt `m4pro-turbo-shared` trên Mac, chênh không quá vài phần trăm tương đối.
 - Log của lượt Vulkan (`bench\phase0\data\asr\logs\out-win-turbo-vulkan.log`) có dòng `asr-worker: backend=vulkan flash_attn=off decode_mode=shared`.
-- Flash attention mặc định tắt (xem Task 4). Không bật `ASR_FLASH_ATTN=1` trong Giai đoạn 0: lỗi thiếu mask nằm trong graph của whisper.cpp, nên Vulkan cũng sai.
+- Flash attention mặc định tắt (xem Task 4). Không bật `ASR_FLASH_ATTN=1` trong Phase 0: lỗi thiếu mask nằm trong graph của whisper.cpp, nên Vulkan cũng sai.
 
 Đo thêm VAD đúng nhịp trên máy này (cần `bench\phase0\data\vad\en.wav`, chép từ Mac):
 

@@ -22,7 +22,7 @@
 | 6b | Cuộc gọi Zalo PC | Đạt | Nghe rõ giọng người nói ở máy thứ hai (người chạy xác nhận, chưa lưu log) |
 | 7 | Chỉ tap Zoom (`--pid`), YouTube đang phát ở Chrome | Đạt | WAV chỉ có tiếng Zoom, không lẫn YouTube (người chạy xác nhận, chưa lưu log) |
 | 8 | Tai nghe có dây, rồi AirPods | Đạt | Thu được với cả hai thiết bị phát, WAV đúng tốc độ (người chạy xác nhận, chưa lưu log) |
-| 9 | Đổi thiết bị phát giữa chừng (loa → tai nghe) | Bỏ qua | Người chạy không ghi lại kết quả quan sát. MVP phải tự xử lý: phát hiện đổi thiết bị phát và khởi tạo lại tap (§6.1), rồi kiểm lại ở Giai đoạn 1 |
+| 9 | Đổi thiết bị phát giữa chừng (loa → tai nghe) | Bỏ qua | Người chạy không ghi lại kết quả quan sát. MVP phải tự xử lý: phát hiện đổi thiết bị phát và khởi tạo lại tap (§6.1), rồi kiểm lại ở Phase 1 |
 | 10 | Ký Developer ID | Bỏ qua | Chưa có tài khoản Apple Developer. Mới kiểm với chữ ký ad-hoc kèm hardened runtime; chữ ký Developer ID cần kiểm lại trước khi phát hành (kế hoạch 1-07a) |
 
 ## Ghi chú chung
@@ -38,4 +38,4 @@
 - Tap theo tiến trình (`--pid`) tách được tiếng Zoom khỏi YouTube. Tai nghe có dây và AirPods đều thu được, WAV đúng tốc độ.
 - Chỉ dòng 1 và 2 có số đo lưu lại. Dòng 3–8 chỉ có xác nhận của người chạy bằng tai.
 - Từ chối quyền không báo lỗi, chỉ cho dữ liệu toàn số 0. MVP (§9) phát hiện thiếu quyền bằng im lặng kéo dài khi biết có app đang phát.
-- **Chưa kiểm:** (1) đổi thiết bị phát giữa chừng (dòng 9); (2) chữ ký Developer ID (dòng 10). Cả hai chuyển sang Giai đoạn 1.
+- **Chưa kiểm:** (1) đổi thiết bị phát giữa chừng (dòng 9); (2) chữ ký Developer ID (dòng 10). Cả hai chuyển sang Phase 1.

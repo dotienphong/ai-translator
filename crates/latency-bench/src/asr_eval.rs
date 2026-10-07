@@ -114,7 +114,7 @@ pub fn run(args: AsrEvalArgs) -> Result<()> {
         .with_context(|| format!("không mở được manifest {}", args.manifest.display()))?;
     let mut out =
         BufWriter::new(std::fs::File::create(&part).with_context(|| format!("không tạo được {}", part.display()))?);
-    // Ngôn ngữ của clip trước: đúng trạng thái mà `asr-worker` của Giai đoạn 0 tự giữ, để mốc A4 so được với lượt mới
+    // Ngôn ngữ của clip trước: đúng trạng thái mà `asr-worker` của Phase 0 tự giữ, để mốc A4 so được với lượt mới
     // (chỉ có tác dụng ở clip có xác suất ngôn ngữ dưới 0,5, cột `lid_fallback` của score_asr.py).
     let mut prev_lang: Option<String> = None;
     for (i, line) in BufReader::new(manifest).lines().enumerate() {

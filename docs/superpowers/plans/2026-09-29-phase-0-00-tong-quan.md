@@ -1,8 +1,8 @@
-# Giai đoạn 0 (spike S1–S7): kế hoạch tổng quan
+# Phase 0 (spike S1–S7): kế hoạch tổng quan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Mục tiêu:** Kiểm chứng các giả định ở §14 của spec bằng code chạy thật, đo đủ số liệu để quyết định qua cổng Giai đoạn 0 (§13), rồi cập nhật spec trước khi làm MVP.
+**Mục tiêu:** Kiểm chứng các giả định ở §14 của spec bằng code chạy thật, đo đủ số liệu để quyết định qua cổng Phase 0 (§13), rồi cập nhật spec trước khi làm MVP.
 
 **Kiến trúc:** Mỗi spike là một phần nhỏ chạy độc lập, và phần lớn code dùng lại được ở MVP: `asr-protocol`, `asr-worker`, `audio-capture`, `pipeline`, cùng một app Tauri tối thiểu. Công cụ đo nằm ở `crates/latency-bench` (Rust) và `bench/phase0/` (Python). Kết quả nhỏ được commit vào `bench/phase0/results/`; dữ liệu lớn nằm ở `bench/phase0/data/`, không commit.
 
@@ -16,12 +16,12 @@ Spec: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md` (
 
 | File | Spike | Chạy ở đâu | Cần có trước |
 |---|---|---|---|
-| `2026-09-29-giai-doan-0-01-nen-tang.md` | Nền tảng: công cụ, workspace, `asr-protocol`, tải model | Mac, sau đó Windows | — |
-| `2026-09-29-giai-doan-0-02-s4-s7-dich.md` | S4, S7 phần dịch (A3) | Mac | 01 |
-| `2026-09-29-giai-doan-0-03-s3-nhan-dang.md` | S3, S7 phần nhận dạng (A4) | Mac, sau đó Windows | 01 |
-| `2026-09-29-giai-doan-0-04-s1-s2-thu-am.md` | S1 (macOS), S2 (Windows) | Mac, Windows | 01 |
-| `2026-09-29-giai-doan-0-05-s5-thanh-phu-de.md` | S5 | Mac, Windows | 01 |
-| `2026-09-29-giai-doan-0-06-s6-do-tre.md` | S6 | Mac và các máy tham chiếu | 02, 03 |
+| `2026-09-29-phase-0-01-nen-tang.md` | Nền tảng: công cụ, workspace, `asr-protocol`, tải model | Mac, sau đó Windows | — |
+| `2026-09-29-phase-0-02-s4-s7-dich.md` | S4, S7 phần dịch (A3) | Mac | 01 |
+| `2026-09-29-phase-0-03-s3-nhan-dang.md` | S3, S7 phần nhận dạng (A4) | Mac, sau đó Windows | 01 |
+| `2026-09-29-phase-0-04-s1-s2-thu-am.md` | S1 (macOS), S2 (Windows) | Mac, Windows | 01 |
+| `2026-09-29-phase-0-05-s5-thanh-phu-de.md` | S5 | Mac, Windows | 01 |
+| `2026-09-29-phase-0-06-s6-do-tre.md` | S6 | Mac và các máy tham chiếu | 02, 03 |
 
 Thứ tự đề xuất:
 1. 01 trên Mac.
@@ -91,7 +91,7 @@ Toàn bộ code trong các kế hoạch con đã được biên dịch và chạ
   - Review phát hiện state của LSTM phải `detach()`. Nếu không, RSS tăng khoảng 1 GB mỗi phút và tràn stack sau vài phút; đã sửa, và test chạy dài giữ cho lỗi không quay lại.
 - **Flash attention trong whisper.cpp:**
   - whisper.cpp 1.8.3 (và cả v1.9.4, master) sai khi bật flash attention cùng `audio_ctx` rút ngắn: phần đệm tới bội 256 không có mask. Kết quả lặp câu và thay đổi theo đoạn chép trước. Review 03-T4 đã tái hiện.
-  - Giai đoạn 0 tắt flash attention.
+  - Phase 0 tắt flash attention.
   - Bản vá mask (ggml-org/whisper.cpp#3941, chưa merge) cho kết quả trùng hệt bản tắt flash. Trên M4 Pro, bản vá giúp chép lời nhanh hơn 5–13% và giảm 91–149 MB bộ nhớ đệm mỗi state. Để lại cho MVP.
 - **Toàn chuỗi (gói Nhẹ, chế độ B):**
   - 6 câu Anh/Trung/Nhật: p50 705 ms, p90 760 ms, chữ đầu tiên 528 ms.
@@ -127,7 +127,7 @@ Toàn bộ code trong các kế hoạch con đã được biên dịch và chạ
 - **`llama-server` chính thức trên macOS link động** (`libllama*.dylib`, `libggml*.dylib` nằm cùng thư mục), khác với điều §6.12 ghi là build tĩnh. Phase 0 vẫn dùng bản chính thức; việc tự build tĩnh để lại cho MVP.
 - **CPU baseline:** bản build native trên M4 Pro bật `MATMUL_INT8` và `SME`, nên có thể crash trên M1. `.cargo/config.toml` khóa mức Apple M1, và `system_info` chỉ còn `NEON`, `ARM_FMA`, `FP16_VA`, `DOTPROD`.
 
-## Cổng qua Giai đoạn 0 (§13)
+## Cổng qua Phase 0 (§13)
 
 | Điều kiện | Lấy số liệu ở | Kế hoạch |
 |---|---|---|
@@ -140,7 +140,7 @@ Nếu M1 cơ bản không đạt thì chọn một trong hai phương án ở §
 
 ---
 
-## Task 1: Viết báo cáo Giai đoạn 0
+## Task 1: Viết báo cáo Phase 0
 
 **Files:**
 - Create: `bench/phase0/REPORT.md`
@@ -148,13 +148,13 @@ Nếu M1 cơ bản không đạt thì chọn một trong hai phương án ở §
 - [ ] **Step 1: Tạo báo cáo theo mẫu, điền số liệu từ `bench/phase0/results/`**
 
 ```markdown
-# Báo cáo Giai đoạn 0 (spike S1–S7)
+# Báo cáo Phase 0 (spike S1–S7)
 
 Ngày: <YYYY-MM-DD>. Spec: docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md
 
 ## Kết luận
 
-- Qua cổng Giai đoạn 0: <CÓ / KHÔNG>. Lý do: <một câu>.
+- Qua cổng Phase 0: <CÓ / KHÔNG>. Lý do: <một câu>.
 - Quyết định cần ghi vào spec: <danh sách ngắn>.
 
 ## Giả định ở §14
@@ -182,14 +182,14 @@ Ngày: <YYYY-MM-DD>. Spec: docs/superpowers/specs/2026-09-29-desktop-meeting-tra
 
 ## Việc phát sinh
 
-<lỗi, rủi ro mới, việc cần làm ở Giai đoạn 1>
+<lỗi, rủi ro mới, việc cần làm ở Phase 1>
 ```
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add bench/phase0/REPORT.md
-git commit -m "docs(bench): báo cáo Giai đoạn 0"
+git commit -m "docs(bench): báo cáo Phase 0"
 ```
 
 ## Task 2: Cập nhật spec theo kết quả
@@ -278,7 +278,7 @@ Mỗi mục là một thay đổi riêng trong spec:
   - `cargo deny` dùng `deny.toml` ở gốc repo, kèm danh sách giấy phép được phép.
   - Nâng candle-core hoặc candle-onnx thì chạy `vad_reference` với `--include-ignored`. Test này mặc định bị bỏ qua vì cần model.
 - §12: thêm `crates/{asr-protocol,asr-worker,audio-capture,pipeline,latency-bench}`, `third_party/` và `deny.toml`.
-- Việc cho MVP, rút ra từ review code Giai đoạn 0:
+- Việc cho MVP, rút ra từ review code Phase 0:
   - `asr-protocol`: `backend` và `decode_mode` thành enum. `error` có thêm `kind` (NotLoaded, ModelLoad, OutOfMemory, GpuInit, InvalidRequest, Internal) để bảng lỗi §9 phân biệt được. `ready` có `protocol_version`, để app từ chối worker lệch phiên bản.
   - `asr-worker` giữ riêng stdout cho giao thức: chuyển fd 1 sang stderr, để log lạ của thư viện không lọt vào kênh giao thức.
   - App chính build với `panic = "abort"` nên `Drop` không chạy khi crash. Dùng Job Object (`KILL_ON_JOB_CLOSE`) trên Windows và process group trên macOS, để tiến trình phụ không bị bỏ lại.
@@ -295,10 +295,10 @@ Expected: mọi mục được nhắc tới đều có trong spec.
 
 ```bash
 git add docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md
-git commit -m "docs(spec): cập nhật theo kết quả Giai đoạn 0"
+git commit -m "docs(spec): cập nhật theo kết quả Phase 0"
 ```
 
 ## Task 3: Xin duyệt
 
 - [ ] **Step 1: Gửi PHONG báo cáo và các thay đổi spec**, nêu rõ quyết định cần duyệt: có qua cổng không; nếu M1 cơ bản không đạt thì chọn phương án nào ở §8; ngưỡng VRAM.
-- [ ] **Step 2: Sau khi được duyệt, lập kế hoạch Giai đoạn 1 (MVP).**
+- [ ] **Step 2: Sau khi được duyệt, lập kế hoạch Phase 1 (MVP).**

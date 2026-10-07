@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 05: License server
+# Phase 1 · 05: License server
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -18,7 +18,7 @@
 
 **Công nghệ:** TypeScript 7.0.2 (strict), Hono 4.13.12, Wrangler 4.145.0, Cloudflare Workers + D1 + Cron Triggers + Access + Service Bindings (RPC), `@cloudflare/vitest-plugin` 1.3.4 với Vitest 4.1.11, `@cloudflare/workers-types` 5.20260930.2 (bốn bản này nâng ở commit `940c169`; bản chốt lúc lập kế hoạch ghi ở "Phiên bản đã chốt"), Web Crypto (Ed25519, HMAC-SHA256, SHA-256), PayOS API v2, Resend API.
 
-Tổng quan: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md` (mục 2.5). Spec: §6.8, §9, §10.1, §10.2, §11, §12 và §14 giả định 7 của `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Kế hoạch này chỉ đụng `server/` và `.gitignore` ở gốc repo, nên chạy song song được với 01–04 (Đ18).
+Tổng quan: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md` (mục 2.5). Spec: §6.8, §9, §10.1, §10.2, §11, §12 và §14 giả định 7 của `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`. Kế hoạch này chỉ đụng `server/` và `.gitignore` ở gốc repo, nên chạy song song được với 01–04 (Đ18).
 
 ---
 
@@ -556,7 +556,7 @@ Phiên bản chốt ở đầu kế hoạch. Task 18 thêm các script còn lạ
 `server/pnpm-workspace.yaml`:
 
 ```yaml
-# server/ là dự án pnpm riêng, không thuộc workspace ở gốc repo (xem kế hoạch Giai đoạn 1 · 05).
+# server/ là dự án pnpm riêng, không thuộc workspace ở gốc repo (xem kế hoạch Phase 1 · 05).
 # esbuild và workerd cần chạy script cài đặt để tải binary cho đúng nền tảng.
 allowBuilds:
   esbuild: true
@@ -4668,7 +4668,7 @@ export const CHECKOUT_TTL_SECONDS = 15 * 60;
 /** Một số ngân hàng chỉ nhận mô tả tối đa 9 ký tự (§14 giả định 7): "AT" + tối đa 7 chữ số. */
 export const MAX_ORDER_CODE = 9_999_999;
 const CURRENCY = "VND";
-/** MVP chỉ bán bằng VND qua PayOS; Giai đoạn 2 chọn cổng theo loại tiền. */
+/** MVP chỉ bán bằng VND qua PayOS; Phase 3 chọn cổng theo loại tiền. */
 const CHECKOUT_PROVIDER = "payos";
 
 /** Mô tả chuyển khoản của đơn: "AT" (AI Translator) + số đơn, tối đa 9 ký tự. */
@@ -9703,10 +9703,10 @@ Không ghi email, key hay token.
 
 ## Task 22: Cập nhật kế hoạch 00
 
-Làm theo Task 2 của `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`.
+Làm theo Task 2 của `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`.
 
 **Files:**
-- Modify: `docs/superpowers/plans/2026-10-01-giai-doan-1-00-tong-quan.md`
+- Modify: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`
 
 - [ ] **Step 1: Cập nhật trạng thái các dòng ở mục "Dòng của bảng đối chiếu mà kế hoạch này nhận"**
   - Dòng có test chứng minh thì chuyển `xong`, kèm SHA commit.

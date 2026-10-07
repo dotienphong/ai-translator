@@ -18,7 +18,7 @@ không chạy được (ví dụ thiếu libclang), và thiếu khai báo thì w
 ## Vì sao có bản vá 0003 (cờ tối ưu trên MSVC)
 
 Trên Windows (MSVC), crate `cmake` bỏ mọi cờ `/O*` do `cc` sinh ra rồi đặt `CMAKE_<LANG>_FLAGS_RELEASE` bằng phần còn lại.
-Việc đó ghi đè mặc định `/O2 /Ob2 /DNDEBUG` của CMake, nên ggml-cpu bị biên dịch không tối ưu. Đo ở Giai đoạn 0 trên
+Việc đó ghi đè mặc định `/O2 /Ob2 /DNDEBUG` của CMake, nên ggml-cpu bị biên dịch không tối ưu. Đo ở Phase 0 trên
 i5-1345U: `asr-worker-cpu` chép một clip 11,5 giây mất khoảng 26 giây (small) thay vì khoảng 1,9 giây sau khi sửa.
 Bản Vulkan cũng dính, vì nhận diện ngôn ngữ, tính mel và các phần chạy trên CPU vẫn dùng ggml-cpu. Bản vá thêm
 `/O2 /Ob2 /DNDEBUG` qua `cflag`/`cxxflag`, là đường mà crate `cmake` giữ nguyên. Kiểm sau khi build bằng

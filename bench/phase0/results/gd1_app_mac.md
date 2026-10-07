@@ -1,4 +1,4 @@
-# Giai đoạn 1 · 02c Task 8: thử phiên dịch thật trên Mac
+# Phase 1 · 02c Task 8: thử phiên dịch thật trên Mac
 
 - Máy: MacBook Pro Apple M4 Pro, macOS 26.6.2.
 - Bản chạy: `main`, lần mở gần nhất lúc 21:31 ngày 2026-10-02 (HEAD `5925d42`); các lần mở sớm hơn trong ngày chạy ở `ffaa592` và `84d8ad1` (đã sửa Vite và `run-dev-app.sh` giữa chừng).

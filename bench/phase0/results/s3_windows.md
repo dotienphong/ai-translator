@@ -1,6 +1,6 @@
 # S3 trên Windows: `asr-worker` Vulkan và CPU, `--probe`, thư viện nạp, WER/CER, VAD, dung lượng
 
-Ngày 2026-10-06. Kế hoạch: `docs/superpowers/plans/2026-09-29-giai-doan-0-03-s3-nhan-dang.md`, Task 14–15 (Task 16 chưa làm).
+Ngày 2026-10-06. Kế hoạch: `docs/superpowers/plans/2026-09-29-phase-0-03-s3-nhan-dang.md`, Task 14–15 (Task 16 chưa làm).
 
 ## Máy và công cụ
 

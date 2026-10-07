@@ -14,7 +14,7 @@ export const CHECKOUT_TTL_SECONDS = 15 * 60;
 /** Một số ngân hàng chỉ nhận mô tả tối đa 9 ký tự (§14 giả định 7): "AT" + tối đa 7 chữ số. */
 export const MAX_ORDER_CODE = 9_999_999;
 const CURRENCY = "VND";
-/** MVP chỉ bán bằng VND qua PayOS; Giai đoạn 2 chọn cổng theo loại tiền. */
+/** MVP chỉ bán bằng VND qua PayOS; Phase 3 chọn cổng theo loại tiền. */
 const CHECKOUT_PROVIDER = "payos";
 
 /** Mô tả chuyển khoản của đơn: "AT" (AI Translator) + số đơn, tối đa 9 ký tự. */
