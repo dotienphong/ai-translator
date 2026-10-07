@@ -75,7 +75,7 @@ export function Home() {
             {(status.sessionError === "modelMissing" || status.sessionError === "modelBroken") && (
               <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
             )}
-            {status.sessionError === "trialEnded" && (
+            {(status.sessionError === "trialEnded" || status.sessionError === "licenseExpired") && (
               <button onClick={() => navigate("upgrade")}>{t("settings.license.buy")}</button>
             )}
             {status.sessionError === "licenseConflict" && (

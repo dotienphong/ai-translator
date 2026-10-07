@@ -174,8 +174,10 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
 }
 
 /// Trước khi bắt đầu phiên (§6.8 "Khi chạm hạn mức"; spec 2026-10-07 §3.2, §6): hạn mức còn 0, Free hết dùng thử, Free
-/// chưa đăng ký được dùng thử, hay Free với giờ máy chỉnh lùi thì từ chối với mã tương ứng. Ở Free mà chưa có token dùng
-/// thử thì đăng ký ngay (gọi server): `session::start` chạy trên luồng nền.
+/// chưa đăng ký được dùng thử (mất mạng, server từ chối, không đọc được mã máy), hay giờ máy chỉnh lùi thì từ chối với mã
+/// tương ứng. Khách đã có license mà gói không dùng được (xung đột, cần làm mới, bị thu hồi, hết hạn) và dùng thử không còn
+/// thì nhận lý do của gói, không phải "hết dùng thử". Ở Free mà chưa có token dùng thử thì đăng ký ngay (gọi server):
+/// `session::start` chạy trên luồng nền.
 pub fn check_start<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
     let Some(license) = licensing(app) else {
         return Ok(());
@@ -190,6 +192,11 @@ pub fn check_start<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
         Some(StartBlock::TrialEnded) => (errors::TRIAL_ENDED, "đã hết dùng thử"),
         Some(StartBlock::TrialMissing) => (errors::TRIAL_NEEDS_NETWORK, "chưa đăng ký được dùng thử"),
         Some(StartBlock::ClockRolledBack) => (errors::CLOCK_ROLLED_BACK, "giờ máy bị chỉnh lùi"),
+        Some(StartBlock::TrialUnavailable(code)) => (code, "không đăng ký được dùng thử"),
+        Some(StartBlock::LicenseConflict) => (errors::LICENSE_CONFLICT, "key đang xung đột"),
+        Some(StartBlock::LicenseNeedsRefresh) => (errors::LICENSE_NEEDS_REFRESH, "cần làm mới bản quyền"),
+        Some(StartBlock::LicenseRevoked) => (LicenseError::Revoked.code(), "license đã bị thu hồi"),
+        Some(StartBlock::LicenseExpired) => (LicenseError::Expired(None).code(), "license đã hết hạn"),
     };
     Err(CommandError::new(code, None, message))
 }
@@ -205,22 +212,24 @@ fn lost_code(e: &LicenseError) -> Option<&'static str> {
     }
 }
 
-/// `validate` khi đang có gói trả phí; gói không còn dùng được thì dừng phiên đang chạy (spec 2026-10-07 §4.2).
-fn validate_paid<R: Runtime>(app: &AppHandle<R>, license: &License, t: i64) {
+/// `validate` khi đang có gói trả phí; gói không còn dùng được thì dừng phiên đang chạy (spec 2026-10-07 §4.2). `attempt`:
+/// số của lần bắt đầu phiên lúc nhờ việc này ([`crate::session::attempt`]); kết quả tới muộn, khi phiên đó đã dừng và một
+/// lần bắt đầu khác đã chạy, không được dừng phiên mới.
+fn validate_paid<R: Runtime>(app: &AppHandle<R>, license: &License, t: i64, attempt: u64) {
     let paid = license.has_paid_plan(t);
     let result = license.validate(t);
     refresh(app);
     if let Err(e) = result {
         log::info!("validate chưa được: {}", e.code());
         if let Some(code) = lost_code(&e).filter(|_| paid) {
-            crate::session::abort(app, code, &e.to_string());
+            crate::session::abort(app, attempt, code, &e.to_string());
         }
     }
 }
 
-/// Phiên vừa bắt đầu (`session::start_with`): gói trả phí mà lần `validate` thành công gần nhất đã quá 1 giờ thì kiểm lại
-/// chạy nền, không làm chậm lúc bắt đầu; lỗi mạng thì phiên chạy tiếp (spec 2026-10-07 §4.2).
-pub fn quick_check<R: Runtime>(app: &AppHandle<R>) {
+/// Phiên vừa bắt đầu (`session::start_with`, lần bắt đầu số `attempt`): gói trả phí mà lần `validate` thành công gần nhất đã
+/// quá 1 giờ thì kiểm lại chạy nền, không làm chậm lúc bắt đầu; lỗi mạng thì phiên chạy tiếp (spec 2026-10-07 §4.2).
+pub fn quick_check<R: Runtime>(app: &AppHandle<R>, attempt: u64) {
     let Some(license) = licensing(app) else {
         return;
     };
@@ -228,7 +237,7 @@ pub fn quick_check<R: Runtime>(app: &AppHandle<R>) {
         return;
     }
     let app = app.clone();
-    std::thread::spawn(move || validate_paid(&app, &license, now()));
+    std::thread::spawn(move || validate_paid(&app, &license, now(), attempt));
 }
 
 /// Phút vừa dịch xong (`EventSink::usage`). `Break` khi đã chạm hạn mức.
@@ -251,7 +260,7 @@ pub fn validate_if_due<R: Runtime>(app: &AppHandle<R>) {
     };
     let t = now();
     if license.validate_due(t) {
-        validate_paid(app, &license, t);
+        validate_paid(app, &license, t, crate::session::attempt(app));
     }
 }
 

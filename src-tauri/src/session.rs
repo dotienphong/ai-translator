@@ -314,7 +314,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     }
     // Phiên trả phí mà lần kiểm bản quyền gần nhất đã quá 1 giờ: kiểm lại chạy nền, key xung đột hay bị thu hồi thì dừng
     // phiên ([`abort`]). Gọi sau khi đã sang `Starting`, để kết quả về sớm cũng gặp đúng phiên này.
-    crate::license::app::quick_check(app);
+    crate::license::app::quick_check(app, attempt);
     let current = || session.attempt.load(Ordering::SeqCst) == attempt;
     show_overlay(app);
     changed(app);
@@ -513,14 +513,27 @@ fn fail<R: Runtime>(app: &AppHandle<R>, n: u64, code: &str, message: &str) {
     changed(app);
 }
 
+/// Số của lần bắt đầu hiện tại, để nơi chạy nền (kiểm bản quyền) nhớ "phiên nào" đã nhờ nó ([`abort`]). 0 khi chưa có phiên
+/// nào.
+pub fn attempt<R: Runtime>(app: &AppHandle<R>) -> u64 {
+    app.try_state::<Session>()
+        .map_or(0, |s| s.attempt.load(Ordering::SeqCst))
+}
+
 /// Dừng phiên đang chạy hay đang bắt đầu vì một lý do ngoài engine (bản quyền: key xung đột hay bị thu hồi, spec
-/// 2026-10-07 §4.2), với mã lỗi `code`. Đang bắt đầu thì hủy lần đó (như Hủy) và báo lỗi; không có phiên nào thì thôi.
-pub fn abort<R: Runtime>(app: &AppHandle<R>, code: &str, message: &str) {
+/// 2026-10-07 §4.2), với mã lỗi `code`. Chỉ chạm tới lần bắt đầu số `attempt` (lấy bằng [`attempt`] lúc nhờ việc nền): kết
+/// quả tới muộn của một phiên cũ (đã dừng, hay đã sang lần bắt đầu khác) không được dừng phiên mới. Đang bắt đầu thì hủy lần
+/// đó (như Hủy) và báo lỗi; không có phiên nào thì thôi.
+pub fn abort<R: Runtime>(app: &AppHandle<R>, attempt: u64, code: &str, message: &str) {
     let Some(session) = app.try_state::<Session>() else {
         return;
     };
+    if session.attempt.load(Ordering::SeqCst) != attempt {
+        log::info!("bỏ qua lệnh dừng {code} của lần bắt đầu cũ");
+        return;
+    }
     let cancelled = app.state::<AppState>().update_status(|s| {
-        if s.session != SessionStatus::Starting {
+        if s.session != SessionStatus::Starting || session.attempt.load(Ordering::SeqCst) != attempt {
             return false;
         }
         session.attempt.fetch_add(1, Ordering::SeqCst);

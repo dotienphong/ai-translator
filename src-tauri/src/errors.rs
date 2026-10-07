@@ -62,6 +62,9 @@ pub const CLOCK_ROLLED_BACK: &str = "clockRolledBack";
 pub const LICENSE_CONFLICT: &str = "licenseConflict";
 /// Phiên trả phí dừng vì key bị thu hồi hay máy này bị gỡ khỏi key.
 pub const LICENSE_INVALID: &str = "licenseInvalid";
+/// Không bắt đầu được phiên vì chưa làm mới được bản quyền (quá 14 ngày offline, hay token đã lưu chưa kiểm được) và dùng thử
+/// không còn: cần kết nối mạng.
+pub const LICENSE_NEEDS_REFRESH: &str = "licenseNeedsRefresh";
 // Mã lỗi của kế hoạch 03.
 /// Tính năng Pro (lịch sử, xuất file, từ điển thuật ngữ) khi đang ở gói Free (`pro::require`).
 pub const PRO_REQUIRED: &str = "proRequired";
@@ -213,6 +216,7 @@ mod tests {
                 CLOCK_ROLLED_BACK,
                 LICENSE_CONFLICT,
                 LICENSE_INVALID,
+                LICENSE_NEEDS_REFRESH,
                 PRO_REQUIRED,
                 DATA_UNAVAILABLE,
                 FILE_FAILED,

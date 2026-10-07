@@ -1627,6 +1627,10 @@ fn activating_a_key_in_use_returns_its_devices() {
     assert!(bad.contains("licenseInvalidKey"), "{bad}");
 }
 
+/// Activation của hai máy trong các test xung đột (UUID như server cấp).
+const ACT_1: &str = "5d0e8a47-3b2c-4f6d-8e1a-7c9b0d2e4f60";
+const ACT_2: &str = "9b1f2c3d-4e5a-4b6c-8d7e-0f1a2b3c4d5e";
+
 /// Claims của license Monthly cấp lúc `issued_at` (giờ thật), cho các test bản quyền của app.
 fn monthly_claims(activation_id: &str, issued_at: i64) -> Value {
     json!({
@@ -1743,32 +1747,151 @@ fn activating_anyway_then_removing_the_other_machine() {
     let app = mock_app();
     let main = window(&app, "main");
     let (api, _) = license_for(&app);
-    let crate::license::client::ApiError::Server(mut conflict) = devices_error("license_conflict", &["a1", "a2"])
+    let crate::license::client::ApiError::Server(mut conflict) = devices_error("license_conflict", &[ACT_1, ACT_2])
     else {
         unreachable!()
     };
-    conflict.activation_id = Some("a2".into());
+    conflict.activation_id = Some(ACT_2.into());
     api.replies
         .lock()
         .unwrap()
         .push_back(Err(crate::license::client::ApiError::Server(conflict)));
     let out = invoke(&main, "activate_license", json!({ "key": KEY, "allowConflict": true })).unwrap();
     assert_eq!(out["view"]["standing"], "conflict");
-    assert_eq!(out["view"]["conflict"]["thisActivationId"], "a2");
+    assert_eq!(out["view"]["conflict"]["thisActivationId"], ACT_2);
     let now = crate::license::app::now();
     api.replies
         .lock()
         .unwrap()
-        .push_back(granted(&monthly_claims("a2", now), false));
-    invoke(&main, "deactivate_other_device", json!({ "activationId": "a1" })).unwrap();
+        .push_back(granted(&monthly_claims(ACT_2, now), false));
+    invoke(&main, "deactivate_other_device", json!({ "activationId": ACT_1 })).unwrap();
     let calls = api.calls.lock().unwrap().clone();
     assert!(
-        calls.iter().any(|c| c == "deactivate 0123456789ABCDEFGHJKMNPQRST5 a1"),
+        calls
+            .iter()
+            .any(|c| c == &format!("deactivate 0123456789ABCDEFGHJKMNPQRST5 {ACT_1}")),
         "{calls:?}"
     );
-    assert_eq!(calls.last().unwrap(), "validate 0123456789ABCDEFGHJKMNPQRST5 a2");
+    assert_eq!(
+        calls.last().unwrap(),
+        &format!("validate 0123456789ABCDEFGHJKMNPQRST5 {ACT_2}")
+    );
     let view = invoke(&main, "get_license", json!({})).unwrap();
     assert_eq!(view["standing"], "active");
+}
+
+/// `check_start` nêu lý do của gói trả phí (key xung đột, bị thu hồi) khi dùng thử đã hết, và mã lỗi của lần đăng ký dùng thử
+/// khi server từ chối (Task 8 của 02a).
+#[test]
+fn check_start_names_the_reason_of_the_plan_and_of_a_failed_trial() {
+    use crate::license::client::{ApiError, ServerError};
+    use crate::license::manager::tests::{DEVICE, KEY, granted, server, trial_grant};
+    let now = crate::license::app::now();
+    let ended = || trial_grant(DEVICE, now - 20 * 86_400, now - 10 * 86_400, now - 20 * 86_400);
+    let app = mock_app();
+    let (api, license) = license_for(&app);
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims("act", now), true));
+    license.activate(KEY, now).unwrap();
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(devices_error("license_conflict", &["act", "b"])));
+    let _ = license.validate(now);
+    api.trials.lock().unwrap().push_back(ended());
+    assert_eq!(session::start(app.handle()).unwrap_err().code, errors::LICENSE_CONFLICT);
+    let app = mock_app();
+    let (api, license) = license_for(&app);
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims("act", now), true));
+    license.activate(KEY, now).unwrap();
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(server(403, "license_revoked")));
+    let _ = license.validate(now);
+    api.trials.lock().unwrap().push_back(ended());
+    assert_eq!(session::start(app.handle()).unwrap_err().code, "licenseRevoked");
+    // Free chưa có dùng thử, server từ chối (503) thì báo "thử lại sau", không phải "cần mạng".
+    let app = mock_app();
+    let (api, _) = license_for(&app);
+    api.trials
+        .lock()
+        .unwrap()
+        .push_back(Err(ApiError::Server(Box::new(ServerError {
+            status: 503,
+            code: "trial_not_configured".into(),
+            ..ServerError::default()
+        }))));
+    assert_eq!(session::start(app.handle()).unwrap_err().code, "licenseServer");
+}
+
+/// `abort` chỉ chạm tới lần bắt đầu đã nhờ nó: kết quả kiểm bản quyền tới muộn của phiên cũ không dừng phiên mới.
+#[test]
+fn abort_only_touches_the_attempt_that_asked_for_it() {
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let _main = window(&app, "main");
+    session::start(app.handle()).unwrap();
+    let first = session::attempt(app.handle());
+    session::stop(app.handle());
+    session::start(app.handle()).unwrap();
+    let second = session::attempt(app.handle());
+    assert_ne!(first, second);
+    let state = app.state::<AppState>();
+    session::abort(app.handle(), first, errors::LICENSE_CONFLICT, "kết quả của phiên cũ");
+    assert_eq!(state.status().session, SessionStatus::Running);
+    session::abort(app.handle(), second, errors::LICENSE_CONFLICT, "đúng phiên này");
+    assert_eq!(state.status().session, SessionStatus::Error);
+    assert_eq!(state.status().session_error.as_deref(), Some(errors::LICENSE_CONFLICT));
+}
+
+/// Phiên trả phí S1 có kiểm nhanh đang treo; người dùng dừng S1, gỡ key, bắt đầu S2 ở Free; kết quả kiểm nhanh (xung đột) tới
+/// muộn không được dừng S2.
+#[test]
+fn a_late_quick_check_cannot_stop_a_newer_session() {
+    use crate::license::manager::tests::{KEY, granted};
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let _main = window(&app, "main");
+    let (api, license) = license_for(&app);
+    let then = crate::license::app::now() - 3700;
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims("act", then), true));
+    license.activate(KEY, then).unwrap();
+    let (release, hold) = std::sync::mpsc::channel();
+    *api.validate_hold.lock().unwrap() = Some(hold);
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(devices_error("license_conflict", &["act", "b"])));
+    session::start(app.handle()).unwrap();
+    wait_until("kiểm nhanh đã gọi server", || {
+        api.calls.lock().unwrap().iter().any(|c| c.starts_with("validate "))
+    });
+    session::stop(app.handle());
+    license.deactivate(None).unwrap();
+    session::start(app.handle()).unwrap();
+    let state = app.state::<AppState>();
+    assert_eq!(state.status().session, SessionStatus::Running);
+    release.send(()).unwrap();
+    wait_until("kiểm nhanh trả kết quả", || {
+        api.validate_returned.load(std::sync::atomic::Ordering::SeqCst) == 1
+    });
+    // Nếu `abort` không phân biệt phiên thì S2 bị dừng ngay sau đây: chờ dư để thấy.
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(state.status().session, SessionStatus::Running, "S2 không bị dừng");
+    assert_eq!(state.status().session_error, None);
 }
 
 // Tự cập nhật (kế hoạch 07b): lệnh khởi động lại, đổi kênh, cài ở lúc thoát.
