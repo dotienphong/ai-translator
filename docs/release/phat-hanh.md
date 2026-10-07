@@ -273,6 +273,12 @@ chủ tài khoản Resend: chưa đủ để bán.
    Expected: `Uploaded mt-license`, `Deployed mt-license triggers`, `schedule: */5 * * * *`; `curl` in `{"ok":true}`. Workers
    Issues đã bật trong cấu hình; thêm automation nhận cảnh báo nếu có kênh nhận.
 
+   Kiểm cron chạy thật, vì lịch đã đăng ký vẫn có thể không chạy: `pnpm exec wrangler tail mt-license --format pretty` qua
+   một mốc 5 phút. Expected: một sự kiện cron `*/5 * * * *` có log `{"event":"reconcile",…}`. Không thấy thì chạy
+   `pnpm exec wrangler triggers deploy` rồi kiểm lại. Sự cố 2026-10-07: lịch còn đăng ký từ 06/10 nhưng cron không chạy (bảng
+   `ops_alerts` không được xử lý, không có thư cảnh báo, đối soát đơn và gửi lại thư cũng dừng); `triggers deploy` làm cron
+   chạy lại.
+
 10. **Deploy Worker admin, bật Access.**
 
     ```bash
