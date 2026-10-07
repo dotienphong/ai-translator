@@ -6,6 +6,7 @@
 - Sửa ngày 2026-10-01 theo quyết định của chủ dự án: chốt tên, bốn gói và hạn mức, cách lưu dữ liệu. Cùng đợt, spec nhận các điểm lệch nhỏ đã chốt ở kế hoạch Phase 1 · 01, 02 và 05.
 - Các chi tiết hạn mức do controller tự quyết (§6.8, "Hạn mức") còn chờ chủ dự án xem (Q16 của kế hoạch Phase 1 · 00).
 - Sửa ngày 2026-10-04: chỉ còn một môi trường production (§6.13, spec `2026-10-04-single-production-environment-design.md`); các chỗ nói staging hay dev của server đã được sửa theo.
+- Sửa ngày 2026-10-07: ba gói (Free dùng thử 10 ngày, Monthly, Yearly) và mỗi key một máy (spec `2026-10-07-three-plans-single-device-design.md`); các chỗ nói bốn gói, Free 10 phút và 2 máy mỗi key đã được sửa theo.
 **Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS, cùng một license server nhỏ để nhận thanh toán qua PayOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
 **Tên và định danh** (D13):
 - Tên sản phẩm: **AI Translator**. Logo và tên miền chưa có (§15).
@@ -56,23 +57,22 @@
 | D11 | Thanh toán | **MVP dùng PayOS**: khách chuyển khoản ngân hàng bằng mã VietQR, trả bằng VND. Khi bán ra nước ngoài thì thêm một cổng thanh toán quốc tế (§13). |
 | D12 | Độ trễ mục tiêu | Trên máy khuyến nghị, **p50 ≤ 2,0 giây** (xem A2 và §8) |
 | D13 | Tên và định danh | **AI Translator**, bundle identifier `com.aitranslator.desktop`. Tên miền mua sau. Repo, crate và binary giữ tên `meeting-translator` (đầu spec). |
-| P1 | Kiếm tiền | **Không có quảng cáo.** Bốn gói, xem bảng dưới. Ba gói trả phí có chung các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), chỉ khác hạn mức dịch. Gói trả phí bán theo **đơn 30 ngày, trả trước** bằng VND, không tự gia hạn, vì PayOS không có thanh toán định kỳ. Không có gói 12 tháng hay gói trọn đời. Hạn mức tính riêng cho từng máy (§6.8). "Chỉ bán đơn 30 ngày" và "tính năng Pro dùng chung cho mọi gói trả phí" là controller tự quyết; chủ dự án có thể đổi. |
-| P2 | Bản quyền | License key do **license server riêng** của sản phẩm cấp, sau khi PayOS xác nhận đã nhận tiền. Mỗi key kích hoạt tối đa 2 máy, và mỗi máy có đủ hạn mức của gói. Dùng được offline nhờ token có ký số (ân hạn 14 ngày). Không có tài khoản đăng nhập. Chi tiết ở §6.8. |
+| P1 | Kiếm tiền | **Không có quảng cáo.** Ba gói, xem bảng dưới: Free (dùng thử), Monthly, Yearly. Hai gói trả phí có chung các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), khác hạn mức và thời hạn. Gói trả phí bán theo **đơn trả trước** bằng VND (Monthly 30 ngày, Yearly 365 ngày), không tự gia hạn, vì PayOS không có thanh toán định kỳ. Không có gói trọn đời. Free là dùng thử 10 ngày, mỗi máy một lần (§6.8). Hạn mức tính riêng cho từng máy (§6.8). |
+| P2 | Bản quyền | License key do **license server riêng** của sản phẩm cấp, sau khi PayOS xác nhận đã nhận tiền. Mỗi key chỉ dùng trên 1 máy. Máy thứ hai kích hoạt cùng key (sau khi người dùng xác nhận) thì key bị tạm khóa trên cả hai máy cho tới khi một máy gỡ key (§6.8, "Mỗi key một máy"). Dùng được offline nhờ token có ký số (ân hạn 14 ngày). Không có tài khoản đăng nhập. Chi tiết ở §6.8. |
 
-P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-10-01. Giữ mã P1, P2 để tham chiếu trong các kế hoạch không đổi.
+P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-10-01, rồi đổi ngày 2026-10-07 (ba gói, mỗi key một máy; spec `2026-10-07-three-plans-single-device-design.md`). Giữ mã P1, P2 để tham chiếu trong các kế hoạch không đổi.
 
 **Các gói (P1):**
 
-| Mã gói | Tên hiển thị | Hạn mức dịch, mỗi máy | Giá |
-|---|---|---|---|
-| `free` | Free | 10 phút mỗi ngày | 0 |
-| `pro` | Professional | 30 giờ mỗi chu kỳ 30 ngày | 50.000 đ / 30 ngày |
-| `pro_x2` | Professional X2 | 100 giờ mỗi chu kỳ 30 ngày | 150.000 đ / 30 ngày |
-| `pro_x5` | Professional X5 | không giới hạn | 500.000 đ / 30 ngày |
+| Mã gói | Tên hiển thị | Hạn mức dịch, mỗi máy | Thời hạn | Giá |
+|---|---|---|---|---|
+| `free` | Free | 30 phút mỗi ngày | 10 ngày dùng thử, mỗi máy một lần | 0 |
+| `monthly` | Monthly | 50 giờ (3000 phút) mỗi chu kỳ 30 ngày | 30 ngày mỗi đơn | 50.000 đ |
+| `yearly` | Yearly | không giới hạn | 365 ngày mỗi đơn | 500.000 đ |
 
-- Server đọc giá và hạn mức của gói trả phí từ cấu hình (§6.8); app không ghi cứng giá. Hạn mức Free là một hằng số phía app.
-- **"Pro"** trong spec là tên chung của các tính năng chỉ có ở gói trả phí, và của trạng thái "đang có gói trả phí còn hạn". Đây không phải tên một gói. Mã gói `pro` là gói Professional.
-- Cách đếm phút, chu kỳ 30 ngày và khi hết hạn mức: §6.8, mục "Hạn mức".
+- Server đọc giá, hạn mức và số ngày mỗi đơn của gói trả phí từ cấu hình (§6.8); app không ghi cứng giá. Hạn mức Free (30 phút mỗi ngày) là một hằng số phía app. Số ngày dùng thử là biến cấu hình `TRIAL_DAYS` của server (§6.8).
+- **"Pro"** trong spec là tên chung của các tính năng chỉ có ở gói trả phí, và của trạng thái "đang có gói trả phí còn hạn". Đây không phải tên một gói.
+- Cách đếm phút, chu kỳ 30 ngày, dùng thử Free và khi hết hạn mức: §6.8, mục "Hạn mức".
 
 ## 3. Mục tiêu, phạm vi, tiêu chí thành công
 
@@ -87,7 +87,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | F5 | Từ điển thuật ngữ (tính năng Pro, chỉ có ở gói trả phí), tối đa 500 cặp. Chỉ những thuật ngữ **có xuất hiện trong câu** mới được đưa vào prompt. |
 | F6 | Quản lý model: có gói Chuẩn và gói Nhẹ, tự đề xuất gói theo cấu hình máy, tải tiếp được khi rớt mạng, kiểm tra SHA-256 |
 | F7 | Giao diện tiếng Việt và English |
-| F8 | Phân quyền theo gói (Free và ba gói trả phí, §2) bằng license key, dùng được khi offline. Hạn mức dịch theo gói, đếm riêng trên từng máy (§6.8). |
+| F8 | Phân quyền theo gói (Free dùng thử và hai gói trả phí, §2) bằng license key, dùng được khi offline. Hạn mức dịch theo gói, đếm riêng trên từng máy; mỗi key một máy (§6.8). |
 | F9 | Tự cập nhật app |
 | F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề, `Ctrl+Alt+PageUp` / `Ctrl+Alt+PageDown` (`⌃⌥PageUp` / `⌃⌥PageDown`) để cuộn phụ đề lên/xuống xem câu cũ (§4.4). Không chọn Ctrl+Alt+mũi tên vì driver Intel trên Windows dùng tổ hợp đó để xoay màn hình. Ở Phase 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
 
@@ -114,7 +114,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | A4 | **Chất lượng nhận dạng giọng nói**, đo trên bộ clip mẫu dựng ở Phase 0 (S7). Mỗi ngôn ngữ nguồn mặc định có ít nhất 15 phút âm thanh, kèm bản chép chuẩn đã được người kiểm lại, và có cả âm thanh thu qua tai nghe Bluetooth (băng hẹp). Chỉ dùng clip có quyền sử dụng: tự thu, hoặc bộ dữ liệu mở như FLEURS và AMI (CC BY 4.0). Tiếng Anh và tiếng Việt đo WER; tiếng Trung, Nhật, Hàn đo CER theo thông lệ cho các ngôn ngữ này. Lấy mốc cho cả gói Chuẩn và gói Nhẹ; mốc đo ở S7 ghi ở bảng dưới. Sau mỗi lần đổi model hay engine, WER/CER không được xấu hơn mốc quá 10% (tương đối). |
 | A5 | **Ổn định:** một phiên dịch liên tục 2 giờ không crash. RAM sau giờ đầu không tăng quá 10%. |
 | A6 | **Cài đặt:** bộ cài ký số hợp lệ. Bản macOS đã notarize, mở không bị Gatekeeper chặn. **Gỡ app sạch, người dùng chọn giữ hay xóa model:** trên Windows, bộ gỡ cài đặt có ô "xóa dữ liệu app", xóa được cả model (§6.7). Trên macOS, gỡ app chỉ là kéo vào Thùng rác, không có bước nào để hỏi; vì vậy trong app có nút "Xóa model và dữ liệu" (§4.3), và trang hỗ trợ hướng dẫn bấm nút này trước khi gỡ. |
-| A7 | **Quyền riêng tư:** kiểm tra qua proxy mạng, trong lúc dịch không có request mạng nào, trừ các việc chạy theo lịch: kiểm tra bản quyền, hỏi giờ của license server khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về sau khi giờ máy đặt nhầm tới trước (§6.8, §10.2), kiểm tra cập nhật app và manifest model. Không request nào chứa âm thanh hay nội dung chép lời. |
+| A7 | **Quyền riêng tư:** kiểm tra qua proxy mạng, trong lúc dịch không có request mạng nào, trừ các việc chạy theo lịch: kiểm tra bản quyền (kể cả lần kiểm nhanh lúc bắt đầu phiên, §6.8), đăng ký dùng thử Free khi máy chưa có token dùng thử (§6.8), hỏi giờ của license server khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về sau khi giờ máy đặt nhầm tới trước (§6.8, §10.2), kiểm tra cập nhật app và manifest model. Không request nào chứa âm thanh hay nội dung chép lời. |
 
 **Mốc đo ở Phase 0** (Mac M4 Pro, 2026-09-30; số liệu gốc ở `bench/phase0/results/`):
 
