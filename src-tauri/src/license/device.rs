@@ -1,5 +1,5 @@
 //! Mã máy gửi cho license server (spec §6.8): `device_id_hash` là SHA-256 (64 chữ số hex thường) của ID phần cứng, và
-//! `device_label` là tên máy để người dùng nhận ra máy trong danh sách khi key đã đủ 2 máy (`409 device_limit`).
+//! `device_label` là tên máy để người dùng nhận ra máy trong danh sách `409 key_in_use` hay `409 license_conflict`.
 //!
 //! - macOS: ID phần cứng là IOPlatformUUID, đọc bằng `gethostuuid` (cùng giá trị `ioreg` hiện), dạng chữ hoa có gạch nối.
 //! - Windows: `MachineGuid` ở `HKLM\SOFTWARE\Microsoft\Cryptography` (khung 64 bit), nguyên văn như registry lưu. Cần

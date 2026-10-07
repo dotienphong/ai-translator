@@ -256,7 +256,7 @@ pub fn activate<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<ActivateOut
             view: Some(license.view(now())),
             devices: None,
         }),
-        Err(LicenseError::DeviceLimit(devices)) => Ok(ActivateOutcome {
+        Err(LicenseError::KeyInUse(devices)) => Ok(ActivateOutcome {
             view: None,
             devices: Some(devices),
         }),

@@ -21,6 +21,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
 
+use super::client::Device;
 use super::quota::{FreeCounter, Marker, PaidCounter, PaidKey, PaidState, Seen};
 use crate::security::keystore::Keystore;
 
@@ -73,6 +74,10 @@ pub struct LicenseRecord {
     /// offline. Token mới từ server xóa nó.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub verdict: Option<Verdict>,
+    /// Trạng thái xung đột (`Verdict::Conflict`): các máy đang kích hoạt key, theo lần trả lời gần nhất của server, để
+    /// mở lại app khi offline vẫn hiện được danh sách (spec 2026-10-07 §4.2).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub devices: Vec<Device>,
 }
 
 /// Kết luận của server khi `validate`.
@@ -81,6 +86,8 @@ pub struct LicenseRecord {
 pub enum Verdict {
     Expired,
     Revoked,
+    /// `409 license_conflict`: key đang kích hoạt trên từ 2 máy; token đã bỏ, chờ một máy gỡ key (spec 2026-10-07 §4.2).
+    Conflict,
 }
 
 /// Token dùng thử server đã cấp cho máy này. Giữ khi người dùng xóa dữ liệu, như bản ghi license.
@@ -352,6 +359,7 @@ pub mod tests {
             token: vectors["tokens"][0]["token"].as_str().unwrap().into(),
             validated_at: 1_790_816_400,
             verdict: Some(Verdict::Revoked),
+            devices: Vec::new(),
         };
         write(&ks, LICENSE, &record).unwrap();
         assert_eq!(read::<LicenseRecord>(&ks, LICENSE).unwrap(), Some(record));

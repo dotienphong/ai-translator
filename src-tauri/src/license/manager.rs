@@ -12,6 +12,12 @@
 //!   được. Ba việc sau thử lại mỗi 5 phút. `429` thì chờ đúng `Retry-After`.
 //! - **Kết quả của server:** máy bị gỡ (`activation_not_found`) hay key không còn (`invalid_key`): xóa bản ghi license,
 //!   về Free. Thu hồi, hết hạn: giữ key để gia hạn, về Free. Lỗi mạng: giữ token tới `refresh_before` (§9).
+//! - **Mỗi key một máy** (spec 2026-10-07 §4.2): `409 key_in_use` khi kích hoạt thì trả danh sách máy đang giữ key;
+//!   "Vẫn kích hoạt" ([`License::activate_anyway`]), `activate` hay `validate` nhận `409 license_conflict` thì key vào
+//!   trạng thái xung đột: bỏ token, giữ key và `activation_id` (của `activate`: trường `activation_id` của response), máy
+//!   chạy theo Free, `validate` mỗi 15 phút tới khi một máy gỡ key.
+//!   Bắt đầu phiên trả phí mà lần `validate` thành công gần nhất đã quá 1 giờ thì app kiểm lại chạy nền
+//!   ([`License::quick_check_due`]).
 //! - **Free là dùng thử 10 ngày** (spec 2026-10-07 §3.2): dùng được khi không có gói trả phí hiệu lực, có token dùng thử
 //!   của máy này ([`super::trial`]), giờ tin được còn trước `ends_at` và giờ máy không bị chỉnh lùi, và bộ đếm của ngày
 //!   chưa hết. Bấm Bắt đầu ở Free mà chưa có token thì đăng ký ngay ([`License::start_block`]); ngoài ra ticker đăng ký chạy
@@ -39,6 +45,11 @@ pub const RENEW_WARNING_SECS: i64 = 7 * 86_400;
 const ROUTINE_RETRY_SECS: i64 = 3600;
 const URGENT_RETRY_SECS: i64 = 300;
 const CYCLE_RETRY_SLACK_SECS: i64 = 60;
+/// Đang xung đột: `validate` lại mỗi chừng này (spec 2026-10-07 §4.2).
+pub const CONFLICT_RETRY_SECS: i64 = 15 * 60;
+/// Bắt đầu phiên trả phí mà lần `validate` thành công gần nhất đã quá chừng này thì kiểm lại chạy nền (spec 2026-10-07
+/// §4.2).
+pub const QUICK_CHECK_SECS: i64 = 3600;
 /// Tới `expires_at`, gói còn dùng được trong lúc chờ lần `validate` đầu sau mốc (có thể đã gia hạn ở máy khác), tối đa
 /// chừng này (N4 của review 06 lần 1).
 pub const EXPIRY_GRACE_SECS: i64 = 300;
@@ -101,6 +112,18 @@ pub enum Standing {
     Unverified,
     /// Bản cài không chính hãng (§10.2): chỉ chạy Free.
     NotGenuine,
+    /// Key đang kích hoạt trên từ 2 máy: tạm khóa cho tới khi một máy gỡ key; máy chạy theo Free (spec 2026-10-07 §4.2).
+    Conflict,
+}
+
+/// Trạng thái xung đột cho giao diện.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConflictView {
+    /// Các máy đang kích hoạt key (gồm cả máy này).
+    pub devices: Vec<Device>,
+    /// Activation của máy này trong `devices`.
+    pub this_activation_id: String,
 }
 
 /// Tình trạng dùng thử của Free (spec 2026-10-07 §3.2).
@@ -191,6 +214,8 @@ pub struct LicenseView {
     pub clock_rolled_back: bool,
     /// Dùng thử của Free trên máy này.
     pub trial: TrialView,
+    /// Đang xung đột (`Standing::Conflict`): danh sách máy và máy này.
+    pub conflict: Option<ConflictView>,
 }
 
 /// Lỗi của một thao tác bản quyền; giao diện chọn câu theo [`LicenseError::code`].
@@ -206,8 +231,10 @@ pub enum LicenseError {
     Network,
     #[error("server bảo thử lại sau")]
     RateLimited(Option<u64>),
-    #[error("key đã kích hoạt đủ 2 máy")]
-    DeviceLimit(Vec<Device>),
+    #[error("key đang dùng ở máy khác")]
+    KeyInUse(Vec<Device>),
+    #[error("key đang kích hoạt trên từ 2 máy, đã tạm khóa")]
+    Conflict(Vec<Device>),
     #[error("key đang bị khóa tạm")]
     Locked,
     #[error("license đã bị thu hồi")]
@@ -235,7 +262,8 @@ pub const ERROR_CODES: &[&str] = &[
     "licenseNotConfigured",
     "licenseNetwork",
     "licenseRateLimited",
-    "licenseDeviceLimit",
+    "licenseKeyInUse",
+    "licenseConflict",
     "licenseLocked",
     "licenseRevoked",
     "licenseExpired",
@@ -256,7 +284,8 @@ impl LicenseError {
             Self::NotConfigured => "licenseNotConfigured",
             Self::Network => "licenseNetwork",
             Self::RateLimited(_) => "licenseRateLimited",
-            Self::DeviceLimit(_) => "licenseDeviceLimit",
+            Self::KeyInUse(_) => "licenseKeyInUse",
+            Self::Conflict(_) => "licenseConflict",
             Self::Locked => "licenseLocked",
             Self::Revoked => "licenseRevoked",
             Self::Expired(_) => "licenseExpired",
@@ -276,7 +305,8 @@ pub(crate) fn map_api(e: ApiError) -> LicenseError {
         ApiError::Network(_) => LicenseError::Network,
         ApiError::Decode(m) => LicenseError::Server(m),
         ApiError::Server(s) => match (s.status, s.code.as_str()) {
-            (_, "device_limit") => LicenseError::DeviceLimit(s.devices),
+            (_, "key_in_use") => LicenseError::KeyInUse(s.devices),
+            (_, "license_conflict") => LicenseError::Conflict(s.devices),
             (_, "license_locked") => LicenseError::Locked,
             (_, "license_revoked") => LicenseError::Revoked,
             (_, "license_expired") => LicenseError::Expired(s.expires_at),
@@ -505,6 +535,7 @@ impl License {
         match record.verdict {
             Some(Verdict::Revoked) => return Standing::Revoked,
             Some(Verdict::Expired) => return Standing::Expired,
+            Some(Verdict::Conflict) => return Standing::Conflict,
             None => {}
         }
         let Some(claims) = &inner.claims else {
@@ -581,6 +612,7 @@ impl License {
             token: granted.token,
             validated_at: now,
             verdict: None,
+            devices: Vec::new(),
         };
         store::write(self.vault.as_ref(), store::LICENSE, &record).map_err(|e| LicenseError::Storage(e.to_string()))?;
         let mut inner = self.lock();
@@ -598,15 +630,68 @@ impl License {
         Ok(())
     }
 
-    /// Kích hoạt key người dùng gõ trên máy này.
+    /// Kích hoạt key người dùng gõ trên máy này. `409 key_in_use`: [`LicenseError::KeyInUse`], không đổi gì. Máy này đã
+    /// kích hoạt key mà key đang xung đột: vào trạng thái xung đột ([`LicenseError::Conflict`]).
     pub fn activate(&self, input: &str, now: i64) -> Result<(), LicenseError> {
         let key = key::normalize(input).ok_or(LicenseError::InvalidKey)?;
-        let reply = self
-            .api
-            .activate(&key, &self.machine.id_hash, self.machine.label.as_deref(), false);
+        self.activate_with(key, false, now)
+    }
+
+    /// "Vẫn kích hoạt trên máy này" (spec 2026-10-07 §4.2): kích hoạt với `allow_conflict`. Máy kia đã gỡ key trong lúc
+    /// người dùng đọc hộp thoại thì nhận token như kích hoạt bình thường; còn lại server trả `409 license_conflict` và key
+    /// vào trạng thái xung đột.
+    pub fn activate_anyway(&self, input: &str, now: i64) -> Result<(), LicenseError> {
+        let key = key::normalize(input).ok_or(LicenseError::InvalidKey)?;
+        self.activate_with(key, true, now)
+    }
+
+    /// Gọi `activate`. `409 license_conflict` mang `activation_id` của chính máy này (hợp đồng của kế hoạch 00): vào
+    /// trạng thái xung đột với activation đó; thiếu trường này là response sai hợp đồng, báo lỗi server, không lưu gì.
+    fn activate_with(&self, key: String, allow_conflict: bool, now: i64) -> Result<(), LicenseError> {
+        let reply = self.api.activate(
+            &key,
+            &self.machine.id_hash,
+            self.machine.label.as_deref(),
+            allow_conflict,
+        );
         self.observe(&reply);
-        let granted = reply.result.map_err(map_api)?;
-        self.accept(granted, key, now)
+        match reply.result {
+            Ok(granted) => self.accept(granted, key, now),
+            Err(ApiError::Server(s)) if s.code == "license_conflict" => {
+                let Some(activation_id) = s.activation_id else {
+                    return Err(LicenseError::Server("license_conflict không có activation_id".into()));
+                };
+                Err(self.enter_conflict(key, activation_id, s.devices, now))
+            }
+            Err(e) => Err(map_api(e)),
+        }
+    }
+
+    /// Vào trạng thái xung đột: lưu key, `activation_id` của máy này và danh sách máy, bỏ token. Trả lỗi
+    /// [`LicenseError::Conflict`] để nơi gọi báo.
+    fn enter_conflict(&self, key: String, activation_id: String, devices: Vec<Device>, now: i64) -> LicenseError {
+        let mut inner = self.lock();
+        let validated_at = inner
+            .record
+            .as_ref()
+            .filter(|r| r.key == key)
+            .map_or(now, |r| r.validated_at);
+        let record = LicenseRecord {
+            key,
+            activation_id,
+            token: String::new(),
+            validated_at,
+            verdict: Some(Verdict::Conflict),
+            devices: devices.clone(),
+        };
+        if let Err(e) = store::write(self.vault.as_ref(), store::LICENSE, &record) {
+            log::warn!("không ghi được trạng thái xung đột: {e}");
+        }
+        inner.record = Some(record);
+        inner.claims = None;
+        inner.paid = None;
+        inner.last_attempt = Some(now);
+        LicenseError::Conflict(devices)
     }
 
     /// Làm mới token của key đã kích hoạt.
@@ -619,6 +704,9 @@ impl License {
         self.observe(&reply);
         match reply.result.map_err(map_api) {
             Ok(granted) => self.accept(granted, record.key, now),
+            Err(LicenseError::Conflict(devices)) => {
+                Err(self.enter_conflict(record.key, record.activation_id, devices, now))
+            }
             Err(e) => {
                 let mut inner = self.lock();
                 match &e {
@@ -650,7 +738,15 @@ impl License {
         }
     }
 
-    /// Gỡ kích hoạt. `remote`: gỡ máy khác của key (từ danh sách `409 device_limit`), với key người dùng vừa gõ.
+    /// Gỡ một máy khác của key đã lưu (đang xung đột: "Gỡ máy kia"). Nơi gọi `validate` ngay sau đó để nhận token lại.
+    pub fn deactivate_saved_other(&self, activation_id: &str) -> Result<(), LicenseError> {
+        let key = self.license_key().ok_or(LicenseError::NotActivated)?;
+        let reply = self.api.deactivate(&key, activation_id);
+        self.observe(&reply);
+        reply.result.map_err(map_api)
+    }
+
+    /// Gỡ kích hoạt. `remote`: gỡ máy khác của key (từ danh sách `409 key_in_use`), với key người dùng vừa gõ.
     pub fn deactivate(&self, remote: Option<(&str, &str)>) -> Result<(), LicenseError> {
         if let Some((input, activation_id)) = remote {
             let key = key::normalize(input).ok_or(LicenseError::InvalidKey)?;
@@ -686,6 +782,9 @@ impl License {
             return false;
         }
         let since_attempt = inner.last_attempt.map_or(i64::MAX, |t| now - t);
+        if record.verdict == Some(Verdict::Conflict) {
+            return !(0..CONFLICT_RETRY_SECS).contains(&since_attempt);
+        }
         let trusted = inner.seen.trusted_now(now);
         let urgent = inner.claims.as_ref().is_none_or(|c| {
             trusted >= c.expires_at
@@ -694,6 +793,19 @@ impl License {
             || inner.seen.rolled_back(now);
         let routine = now - record.validated_at >= VALIDATE_EVERY_SECS || now < record.validated_at;
         (urgent && since_attempt >= URGENT_RETRY_SECS) || (routine && since_attempt >= ROUTINE_RETRY_SECS)
+    }
+
+    /// Bắt đầu phiên trả phí lúc `now`: có nên `validate` chạy nền không (lần thành công gần nhất đã quá 1 giờ).
+    pub fn quick_check_due(&self, now: i64) -> bool {
+        let inner = self.lock();
+        let Some(record) = &inner.record else {
+            return false;
+        };
+        self.server_configured
+            && !self.dev_unlimited
+            && inner.blocked_until.is_none_or(|t| now >= t)
+            && self.quota_claims(&inner, now).is_some()
+            && (now - record.validated_at >= QUICK_CHECK_SECS || now < record.validated_at)
     }
 
     /// Gọi định kỳ (mỗi phút): cộng thời gian đơn điệu, reset Free khi sang ngày, ghi giờ máy lớn nhất.
@@ -961,6 +1073,14 @@ impl License {
             dev_override: self.dev_unlimited,
             clock_rolled_back: inner.seen.rolled_back(now),
             trial,
+            conflict: inner
+                .record
+                .as_ref()
+                .filter(|r| r.verdict == Some(Verdict::Conflict))
+                .map(|r| ConflictView {
+                    devices: r.devices.clone(),
+                    this_activation_id: r.activation_id.clone(),
+                }),
         }
     }
 
@@ -1319,12 +1439,7 @@ pub mod tests {
             last_validated_at: Some(T0),
         }];
         api.replies.lock().unwrap().extend([
-            Err(ApiError::Server(Box::new(ServerError {
-                status: 409,
-                code: "device_limit".into(),
-                devices: devices.clone(),
-                ..ServerError::default()
-            }))),
+            Err(conflict_error("key_in_use", &["a1"])),
             Err(server(423, "license_locked")),
             Err(ApiError::Server(Box::new(ServerError {
                 status: 429,
@@ -1333,7 +1448,7 @@ pub mod tests {
                 ..ServerError::default()
             }))),
         ]);
-        assert_eq!(l.activate(KEY, T0), Err(LicenseError::DeviceLimit(devices)));
+        assert_eq!(l.activate(KEY, T0), Err(LicenseError::KeyInUse(devices)));
         assert_eq!(l.activate(KEY, T0), Err(LicenseError::Locked));
         assert_eq!(
             l.activate(KEY, T0),
@@ -2061,5 +2176,187 @@ pub mod tests {
             .push_back(trial_grant(DEVICE, T0 - 20 * DAY, T0 - 10 * DAY, T0));
         assert_eq!(l.start_block(after), Some(StartBlock::TrialEnded));
         assert_eq!(l.start_block(T0 + 60), None, "gói trả phí còn hạn: không cần dùng thử");
+    }
+
+    // ---- Mỗi key một máy (spec 2026-10-07 §4.2) ----
+
+    /// Lỗi `409 key_in_use` hay `409 license_conflict` với các máy `ids`.
+    fn conflict_error(code: &str, ids: &[&str]) -> ApiError {
+        ApiError::Server(Box::new(ServerError {
+            status: 409,
+            code: code.into(),
+            devices: ids
+                .iter()
+                .map(|id| Device {
+                    activation_id: (*id).into(),
+                    device_label: None,
+                    last_validated_at: Some(T0),
+                })
+                .collect(),
+            ..ServerError::default()
+        }))
+    }
+
+    /// `409 license_conflict` của `activate`: các máy `ids`, máy vừa gọi là `own`.
+    fn conflict_reply(ids: &[&str], own: &str) -> ApiError {
+        let ApiError::Server(mut e) = conflict_error("license_conflict", ids) else {
+            unreachable!()
+        };
+        e.activation_id = Some(own.into());
+        ApiError::Server(e)
+    }
+
+    /// Token của activation `id`.
+    fn granted_for(id: &str, issued_at: i64) -> Result<Granted, ApiError> {
+        let mut c = claims(issued_at);
+        c["activation_id"] = json!(id);
+        granted(&c, false)
+    }
+
+    fn ids(v: &LicenseView) -> Vec<String> {
+        v.conflict
+            .as_ref()
+            .map(|c| c.devices.iter().map(|d| d.activation_id.clone()).collect())
+            .unwrap_or_default()
+    }
+
+    /// "Vẫn kích hoạt": kích hoạt với `allow_conflict`. Key vào trạng thái xung đột: không còn gói trả phí, máy chạy theo
+    /// Free; activation của máy này lấy từ `activation_id` của response. Mở lại app vẫn xung đột; `validate` mỗi 15 phút,
+    /// nhận token thì về bình thường.
+    #[test]
+    fn activating_anyway_puts_the_key_in_conflict() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_reply(&["a1", "a2"], "a2")));
+        assert!(matches!(l.activate_anyway(KEY, T0), Err(LicenseError::Conflict(d)) if d.len() == 2));
+        assert_eq!(
+            *api.calls.lock().unwrap(),
+            [format!(
+                "activate 0123456789ABCDEFGHJKMNPQRST5 {DEVICE} Mac allow_conflict"
+            )]
+        );
+        let v = l.view(T0);
+        assert_eq!((v.standing, v.plan.as_str()), (Standing::Conflict, "free"));
+        assert_eq!(ids(&v), ["a1", "a2"]);
+        assert_eq!(v.conflict.unwrap().this_activation_id, "a2");
+        assert!(!l.is_pro(T0) && l.can_start(T0), "Free theo dùng thử");
+        let l = license(&api, &vault, T0 + 60);
+        assert_eq!(l.view(T0 + 60).standing, Standing::Conflict, "mở lại app vẫn xung đột");
+        assert!(l.validate_due(T0 + 60), "mở lại app: thử ngay");
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Network("tắt mạng".into())));
+        let _ = l.validate(T0 + 60);
+        assert_eq!(l.view(T0 + 60).standing, Standing::Conflict, "lỗi mạng: vẫn xung đột");
+        assert!(!l.validate_due(T0 + 60 + 899));
+        assert!(l.validate_due(T0 + 60 + 900));
+        api.replies.lock().unwrap().push_back(granted_for("a2", T0 + 960));
+        l.validate(T0 + 960).unwrap();
+        assert_eq!(
+            api.calls.lock().unwrap().last().unwrap(),
+            "validate 0123456789ABCDEFGHJKMNPQRST5 a2"
+        );
+        assert_eq!(l.view(T0 + 960).standing, Standing::Active);
+    }
+
+    /// Máy kia đã gỡ key trong lúc người dùng đọc hộp thoại: "Vẫn kích hoạt" nhận token như kích hoạt bình thường.
+    #[test]
+    fn activating_anyway_after_the_other_machine_left_gets_a_token() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies.lock().unwrap().push_back(granted(&claims(T0), true));
+        l.activate_anyway(KEY, T0).unwrap();
+        assert_eq!(api.calls.lock().unwrap().len(), 1);
+        assert_eq!(l.view(T0).standing, Standing::Active);
+    }
+
+    /// `validate` trả `license_conflict`: bỏ token, giữ key và `activation_id`; gỡ máy kia bằng key đã lưu, rồi `validate`
+    /// nhận token lại.
+    #[test]
+    fn a_conflict_found_by_validate_drops_the_token_and_keeps_the_key() {
+        let (api, vault, l) = activated(T0, true);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &["act", "other"])));
+        assert!(matches!(l.validate(T0 + 60), Err(LicenseError::Conflict(_))));
+        let v = l.view(T0 + 60);
+        assert_eq!(v.standing, Standing::Conflict);
+        assert_eq!(v.conflict.unwrap().this_activation_id, "act");
+        assert!(!l.is_pro(T0 + 60));
+        let record: LicenseRecord = store::read(vault.as_ref(), store::LICENSE).unwrap().unwrap();
+        assert_eq!((record.token.as_str(), record.activation_id.as_str()), ("", "act"));
+        l.deactivate_saved_other("other").unwrap();
+        assert_eq!(
+            api.calls.lock().unwrap().last().unwrap(),
+            "deactivate 0123456789ABCDEFGHJKMNPQRST5 other"
+        );
+        api.replies.lock().unwrap().push_back(granted_for("act", T0 + 120));
+        l.validate(T0 + 120).unwrap();
+        assert_eq!(l.view(T0 + 120).standing, Standing::Active);
+        assert!(l.view(T0 + 120).conflict.is_none());
+    }
+
+    /// "Gỡ key khỏi máy này" lúc xung đột: gỡ activation của máy này, về Free.
+    #[test]
+    fn leaving_a_conflict_from_this_machine() {
+        let (api, vault, l) = activated(T0, true);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &["act", "other"])));
+        let _ = l.validate(T0 + 60);
+        l.deactivate(None).unwrap();
+        assert_eq!(
+            api.calls.lock().unwrap().last().unwrap(),
+            "deactivate 0123456789ABCDEFGHJKMNPQRST5 act"
+        );
+        assert_eq!(l.view(T0 + 60).standing, Standing::Free);
+        assert!(!vault.items.lock().unwrap().contains_key(store::LICENSE));
+    }
+
+    /// Máy này đã kích hoạt key mà key đang xung đột: `activate` (không `allow_conflict`) cũng vào trạng thái xung đột với
+    /// activation của máy này trong response. Response `license_conflict` không có `activation_id` (sai hợp đồng): báo lỗi
+    /// server, không lưu gì.
+    #[test]
+    fn a_conflict_reply_must_name_this_machine() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_reply(&["a1", "a2"], "a1")));
+        assert!(matches!(l.activate(KEY, T0), Err(LicenseError::Conflict(_))));
+        assert_eq!(l.view(T0).conflict.unwrap().this_activation_id, "a1");
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &["a1", "a2"])));
+        assert!(matches!(l.activate_anyway(KEY, T0), Err(LicenseError::Server(_))));
+        assert_eq!(l.view(T0).standing, Standing::Free);
+        assert!(!vault.items.lock().unwrap().contains_key(store::LICENSE));
+    }
+
+    /// Kiểm nhanh lúc bắt đầu phiên trả phí: chỉ khi lần `validate` thành công gần nhất đã quá 1 giờ (spec 2026-10-07 §4.2).
+    #[test]
+    fn a_paid_session_start_checks_the_key_when_the_last_check_is_over_an_hour_old() {
+        let (api, _, l) = activated(T0, true);
+        assert!(!l.quick_check_due(T0 + 3599));
+        assert!(l.quick_check_due(T0 + 3600));
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &["act", "b"])));
+        let _ = l.validate(T0 + 3600);
+        assert!(!l.quick_check_due(T0 + 7200), "đang xung đột: không phải phiên trả phí");
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let free = license(&api, &vault, T0);
+        assert!(!free.quick_check_due(T0 + 7200));
     }
 }

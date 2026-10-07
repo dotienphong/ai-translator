@@ -1594,9 +1594,10 @@ fn license_commands_touch_the_keystore_off_the_calling_thread() {
     }
 }
 
-/// Key đã đủ 2 máy: lệnh kích hoạt trả danh sách máy để gỡ một máy (§9), không phải lỗi.
+/// Key đang dùng ở máy khác: lệnh kích hoạt trả danh sách máy để gỡ hay "Vẫn kích hoạt" (spec 2026-10-07 §4.2), không
+/// phải lỗi.
 #[test]
-fn activating_a_full_key_returns_its_devices() {
+fn activating_a_key_in_use_returns_its_devices() {
     use crate::license::client::{ApiError, Device, ServerError};
     let app = mock_app();
     let main = window(&app, "main");
@@ -1606,7 +1607,7 @@ fn activating_a_full_key_returns_its_devices() {
         .unwrap()
         .push_back(Err(ApiError::Server(Box::new(ServerError {
             status: 409,
-            code: "device_limit".into(),
+            code: "key_in_use".into(),
             devices: vec![Device {
                 activation_id: "a1".into(),
                 device_label: None,
