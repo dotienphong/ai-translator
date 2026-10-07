@@ -10,19 +10,20 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-07-three-plans-single-device-design.md` mục 2, 3.1, 4.1, 5.1, 9 (phần server). **Hợp đồng server–app:** kế hoạch 00 (`2026-10-07-ba-goi-00-tong-quan.md`), mục "Hợp đồng giữa server và app".
 
-**Cây tham chiếu:** base `d0f9b30`, nhánh `ref-bg01` (worktree `meeting-translator-work/bg01-repo`, cùng kho git với repo chính), mỗi task một commit: Task 1 `c93eb7d`, Task 2 `9014358`, Task 3 `7992242`, Task 4 `d8d4a5a`, Task 5 `01d5cd4`, Task 6 `e4bc58b`, Task 7 `b28c5d2`, Task 8 `6784824`. Mọi patch trong kế hoạch lấy đúng từ các commit này; mọi lệnh test và kết quả mong đợi đã chạy thật trên cây đó.
+**Cây tham chiếu:** base `d0f9b30`, nhánh `ref-bg01` (worktree `meeting-translator-work/bg01-repo`, cùng kho git với repo chính), mỗi task một commit: Task 1 `c93eb7d`, Task 2 `9014358`, Task 3 `7992242`, Task 4 `d8d4a5a`, Task 5 `01d5cd4`, Task 6 `e4bc58b`, Task 7 `b28c5d2`, Task 8 `6784824`, Task 9 `107c807`. Mọi patch trong kế hoạch lấy đúng từ các commit này; mọi lệnh test và kết quả mong đợi đã chạy thật trên cây đó.
 
 ## Điều chỉnh so với spec (đã đối chiếu code)
 
 1. **Migration dựng lại bốn bảng, không phải hai.** `licenses` là bảng cha của `activations`, `deactivations`, `orders`. Xóa bảng cha khi còn bảng con trỏ tới là vi phạm khóa ngoại, và `PRAGMA defer_foreign_keys` không cứu được: bộ đếm vi phạm không giảm khi đổi tên bảng mới về tên cũ (đã thử, D1 báo `FOREIGN KEY constraint failed`). Vì vậy `0002` tạo `licenses_new` và các bảng con `*_new` trỏ tới bảng mới, chép dữ liệu, xóa bảng cũ theo thứ tự con trước cha, rồi đổi tên; SQLite tự sửa `REFERENCES` khi đổi tên. Bộ đếm `AUTOINCREMENT` của `orders` và `deactivations` được giữ (production bắt đầu số đơn từ 1.000.001).
 2. **`/v1/trial` dùng một câu UPSERT** (`INSERT … ON CONFLICT (device_id_hash) DO UPDATE SET last_seen_at = … RETURNING started_at, ends_at`) thay cho "INSERT … DO NOTHING rồi đọc lại". Cùng kết quả (một dòng mỗi máy, `started_at` không đổi), một câu lệnh, nguyên tử.
 3. **Bucket giới hạn tần suất tên `trial_ip`** (theo cách đặt tên `checkout_ip`, `activate_ip`), spec ghi `trial`. Ngưỡng vẫn 10 lần/giờ/IP.
-4. **Luật khóa tạm khi hai máy gỡ qua gỡ lại, ngưỡng 2.** Luật §10.2 đếm số lần gỡ do người dùng trong 30 ngày, **trừ các lần gỡ chính máy đang xin kích hoạt**, và khóa khi số còn lại vượt `MAX_DEACTIVATIONS_IN_WINDOW`. Chủ dự án chốt ngày 2026-10-07 ngưỡng này là **2** (code cũ là 3; Task 8 hạ xuống). Hệ quả cho hai máy giành một key bằng "gỡ máy kia rồi kích hoạt" (gỡ xen kẽ A, B, A, B, A): sau 4 lần gỡ máy xin kích hoạt còn được, sau lần gỡ thứ 5 thì máy kia (B) xin kích hoạt nhận `423`, vì lúc đó máy A đã bị gỡ 3 lần (3 > 2). Nếu thay vì gỡ rồi kích hoạt, mỗi máy vào bằng xác nhận xung đột (`allow_conflict`) rồi mới gỡ máy kia, thì máy vào trước một lượt, nên bị khóa sau 6 lần gỡ. Cả hai hành vi đều có test (Task 5 viết với ngưỡng 3, Task 8 viết lại với ngưỡng 2).
+4. **Luật khóa tạm khi hai máy gỡ qua gỡ lại, ngưỡng 2.** Luật §10.2 đếm số lần gỡ do người dùng trong 30 ngày, **trừ các lần gỡ chính máy đang xin kích hoạt**, và khóa khi số còn lại vượt `MAX_DEACTIVATIONS_IN_WINDOW`. Chủ dự án chốt ngày 2026-10-07 ngưỡng này là **2** (code cũ là 3; Task 8 hạ xuống). Hệ quả cho hai máy giành một key bằng "gỡ máy kia rồi kích hoạt" (gỡ xen kẽ A, B, A, B, A): sau 4 lần gỡ máy xin kích hoạt còn được, sau lần gỡ thứ 5 thì máy kia (B) xin kích hoạt nhận `423`, vì lúc đó máy A đã bị gỡ 3 lần (3 > 2). Nếu mỗi máy vào bằng xác nhận xung đột (`allow_conflict`), luật đếm **mọi** lần gỡ do người dùng, kể cả các lần gỡ chính máy xin (Task 9): lần vào thứ 4 thấy 3 lần gỡ nên bị khóa. Hai máy gỡ xen kẽ như vậy bị khóa sau 3 lần gỡ. Cả hai hành vi đều có test (Task 5 viết với ngưỡng 3, Task 8 viết lại với ngưỡng 2, Task 9 sửa test xác nhận xung đột).
 5. **Danh sách máy nằm ở trường `devices`** đúng hợp đồng 00. Code cũ trả `409 device_limit` với trường `activations`; mã `device_limit` bỏ hẳn. App (kế hoạch 02) đọc `devices`. `409 license_conflict` của `activate` có thêm `activation_id` của chính máy gọi (hợp đồng 00 sửa ngày 2026-10-07, Task 7); của `validate` thì không.
 6. **`validate` khi đang xung đột vẫn ghi `last_validated_at`**, để danh sách máy cho người dùng thấy máy nào vừa dùng. Spec không nói.
 7. **`allow_conflict` không phải boolean** thì `400 invalid_request` với `field: "allow_conflict"`.
 8. **Admin tra cứu:** body nhận thêm `device_id_hash`. Response có thêm `trial` (dòng `trials` hoặc `null`) chỉ khi tra theo máy; mỗi license trong mọi kiểu tra có thêm `conflict: boolean`.
 9. **Bộ test đầy đủ đỏ tạm ở Task 1–2.** Task 1 đổi mã gói trong token, Task 2 đổi `PLANS`, nhưng CHECK của D1 chỉ đổi ở Task 3. Hai task đầu chỉ chạy test của phần mình (ghi rõ trong từng task); `pnpm check` xanh lại từ cuối Task 3 và giữ xanh tới hết.
+10. **Luật khóa tạm khi vào bằng `allow_conflict` (review cuối).** Vào bằng `allow_conflict` đẩy key sang xung đột và khóa cả máy đang giữ key. Nếu vẫn trừ các lần gỡ chính máy xin, một máy lạ có thể vào rồi bị chủ key gỡ lại vô hạn mà không bao giờ bị khóa. Vì vậy khi `activate` có `allow_conflict: true`, luật khóa tạm đếm mọi lần gỡ `by = 'user'` trong 30 ngày kể từ `lock_cleared_at`, kể cả lần gỡ chính máy xin; không có `allow_conflict` thì giữ nguyên cách đếm cũ. Ngưỡng vẫn `> 2`. Spec mục 4.1 và kế hoạch 03 đã ghi điều này (Task 9).
 
 ## Cấu trúc file
 
@@ -3894,29 +3895,432 @@ Co-Authored-By: <model đang chạy> <noreply@anthropic.com>"
 
 ---
 
-## Task 9: Kiểm cuối
+## Task 9: Sửa sau review cuối: email 1 máy, khóa tạm khi vào bằng allow_conflict, ánh xạ mã gói, allow_conflict null
+
+**Commit tham chiếu:** `107c807` (nhánh `ref-bg01`).
+
+**Files:**
+- Modify: `server/migrations/0002_three_plans_trials.sql`
+- Modify: `server/src/email/templates.ts`
+- Modify: `server/src/licenses.ts`
+- Modify: `server/src/plans.ts`
+- Modify: `server/test/email.test.ts`
+- Modify: `server/test/licenses.test.ts`
+- Modify: `server/test/migrations.test.ts`
+- Modify: `server/test/world.ts`
+
+Năm việc sửa từ review cuối server:
+
+1. **Email** (`src/email/templates.ts`): "Mỗi key dùng được trên 2 máy" → "Mỗi key dùng trên 1 máy"; "Each key works on 2 computers" → "Each key works on 1 computer". Test khẳng định hai câu mới và không còn `2 máy|2 computers`. Đã grep toàn bộ `src`, `test`, `scripts`, `migrations`, `wrangler*.jsonc`: các chỗ còn lại nhắc "2 máy"/"hai máy" đều đang nói đúng về trạng thái xung đột (tối đa 2 máy đang kích hoạt) hoặc tên test.
+2. **Khóa tạm khi vào bằng `allow_conflict`** (`src/licenses.ts`, cách (a)): khi request `activate` có `allow_conflict === true`, luật khóa tạm đếm **mọi** lần gỡ `by = 'user'` trong 30 ngày kể từ `lock_cleared_at`, kể cả các lần gỡ chính máy đang xin (bỏ điều kiện `a.device_id_hash <> ?` trong nhánh này). Không có `allow_conflict` thì giữ nguyên (trừ các lần gỡ chính máy xin). Ngưỡng vẫn `> MAX_DEACTIVATIONS_IN_WINDOW` (2). Lý do: vào bằng `allow_conflict` khóa cả máy đang giữ key; một máy lạ vào rồi bị chủ key gỡ lại sẽ không bao giờ bị khóa nếu lần gỡ của chính nó không tính.
+   - Test mới: máy lạ (máy 3) vào bằng `allow_conflict`, bị chủ key gỡ từ xa 3 lần → lần vào thứ 4 nhận `423` (`locked_at = T0 + 4 giờ`, một dòng nhật ký, một cảnh báo), và chủ key `validate` vẫn `200` (máy lạ không còn đang kích hoạt nên không còn xung đột); cùng máy lạ nhưng **không** `allow_conflict`: 4 lần `key_in_use`, rồi (sau khi máy lạ có 3 lần bị gỡ từ nhánh trên và chủ key tự gỡ) vào lại không `allow_conflict` vẫn `200` (lần gỡ của chính máy xin không tính); 2 lần vào bằng `allow_conflict` + 2 lần gỡ, lần vào thứ 3 vẫn được (chưa khóa, key đang xung đột, 2 máy đang kích hoạt); lần gỡ cũ hơn 30 ngày không tính.
+   - Test cũ đổi: hai máy gỡ qua gỡ lại bằng xác nhận xung đột nay bị khóa sau **3** lần gỡ (trước: 6), vì lần vào thứ 4 thấy 3 lần gỡ (1, 2, 1). "Khách B" trong `test/world.ts` còn 2 máy đã gỡ và **2** lần tự gỡ (trước: 3), vì máy 2 vào bằng `allow_conflict` nên mọi lần gỡ đều tính và lần vào lại bằng `allow_conflict` thứ hai sẽ bị `423`; test cách ly "B…" đổi thành A tự gỡ 2 lần rồi kích hoạt máy thứ 3 (nếu lần gỡ của B lọt vào đếm của A thì thấy 4 > 2).
+3. **Migration `0002`** (`CASE plan …` ở `licenses` và `orders`): ánh xạ đủ ba mã cũ (`pro` → `monthly`, `pro_x2` → `monthly`, `pro_x5` → `yearly`), `ELSE plan` giữ nguyên mã khác để CHECK của bảng mới chặn mã lạ (trước: `ELSE 'monthly'` gộp nhầm mọi mã khác). Không thể chạy `0002` trên dữ liệu đã là `monthly`/`yearly` (CHECK của `0001` không cho ghi), nên test mới lấy đúng biểu thức `CASE` từ file migration (có đúng hai chỗ, giống hệt nhau) và chạy trên bảng thăm dò chứa `pro`, `pro_x2`, `pro_x5`, `monthly`, `yearly`, một mã lạ: ba mã cũ đổi đúng, `monthly`/`yearly` không đổi, mã lạ giữ nguyên rồi bị CHECK từ chối.
+4. **`allow_conflict`** có mặt mà không phải boolean, kể cả `null`, → `400 invalid_request`, `field: "allow_conflict"` (trước: `null` bị coi là `false`). Thiếu hoặc `false` như nhau. Test cho chuỗi, `null`, số 1, số 0, mảng; không tạo activation nào.
+5. **`src/plans.ts`**: chú thích `days_per_order` "(30)" → "(30 hay 365, theo gói)".
+
+- [ ] **Step 1: Viết test (red)**
+
+```bash
+git apply <<'PATCH'
+diff --git a/server/test/email.test.ts b/server/test/email.test.ts
+index 52f38db..fb81ac5 100644
+--- a/server/test/email.test.ts
++++ b/server/test/email.test.ts
+@@ -88,6 +88,13 @@ describe("nội dung email", () => {
+     expect(text).toContain("Settings > License");
+   });
+ 
++  it("mỗi key chỉ dùng trên 1 máy (spec 2026-10-07 §1): không còn nhắc 2 máy", () => {
++    const { text } = licenseEmail("purchase", [{ licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Monthly", expiresAt: 0 }]);
++    expect(text).toContain("Mỗi key dùng trên 1 máy.");
++    expect(text).toContain("Each key works on 1 computer.");
++    expect(text).not.toMatch(/2 máy|2 computers/);
++  });
++
+   it("thư đổi gói có tiêu đề riêng; không còn tên tạm", () => {
+     const entry = { licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Monthly", expiresAt: 0 };
+     expect(licenseEmail("plan_change", [entry]).subject).toBe("Đã đổi gói AI Translator / AI Translator plan changed");
+diff --git a/server/test/licenses.test.ts b/server/test/licenses.test.ts
+index 37733c9..810325d 100644
+--- a/server/test/licenses.test.ts
++++ b/server/test/licenses.test.ts
+@@ -138,12 +138,25 @@ describe("activate", () => {
+     expect([x.status, y.status].sort()).toEqual([200, 409]);
+   });
+ 
+-  it("allow_conflict phải là boolean", async () => {
++  it.each([
++    ["chuỗi", "true"],
++    ["null", null],
++    ["số 1", 1],
++    ["số 0", 0],
++    ["mảng", []],
++  ])("allow_conflict có mặt mà không phải boolean (%s) thì 400, không ghi gì", async (_why, value) => {
+     const { activate } = await setup();
+-    expect(await activate(1, "198.51.100.1", { allow_conflict: "true" })).toMatchObject({
++    expect(await activate(1, "198.51.100.1", { allow_conflict: value })).toMatchObject({
+       status: 400,
+       body: { error: "invalid_request", field: "allow_conflict" },
+     });
++    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM activations").first()).toEqual({ n: 0 });
++  });
++
++  it("allow_conflict thiếu hay false: như nhau, không xung đột", async () => {
++    const { activate } = await setup();
++    expect((await activate(1)).status).toBe(200);
++    expect(await activate(2, "198.51.100.2", { allow_conflict: false })).toMatchObject({ status: 409, body: { error: "key_in_use" } });
+   });
+ 
+   it("gỡ hơn 2 máy trong 30 ngày rồi kích hoạt máy mới thì khóa tạm key (423) và có cảnh báo", async () => {
+@@ -421,7 +434,7 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
+     expect((await activate(1)).status).toBe(423);
+   });
+ 
+-  it("hai người dùng chung key gỡ qua gỡ lại bằng xác nhận xung đột: khóa sau 6 lần gỡ (mỗi máy bị gỡ 3 lần)", async () => {
++  it("hai người dùng chung key gỡ qua gỡ lại bằng xác nhận xung đột: khóa sau 3 lần gỡ (vào bằng allow_conflict thì mọi lần gỡ đều tính)", async () => {
+     const { w, activate, activateAnyway, deactivate } = await setup();
+     await activate(1);
+     // Mỗi lượt: máy `inn` xác nhận xung đột rồi gỡ máy `out` từ xa.
+@@ -439,12 +452,91 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
+       await deactivate(await idOf(out));
+       removals++;
+     }
+-    // Luật đếm trừ các lần gỡ chính máy đang xin kích hoạt (§10.2), nên máy xin kích hoạt bị chặn khi máy kia đã bị gỡ
+-    // 3 lần: tổng 6 lần gỡ (nhiều hơn đổi máy ở trên một lần, vì máy vào trước khi máy kia bị gỡ).
+-    expect(lockedAfter).toBe(6);
++    // Vào bằng allow_conflict thì luật khóa tạm đếm mọi lần gỡ, kể cả các lần gỡ chính máy xin (Task 9): lần vào thứ 4
++    // thấy 3 lần gỡ (1, 2, 1) nên bị chặn. Đổi máy bằng "gỡ máy kia rồi kích hoạt" (test ở trên) vẫn trừ lần gỡ của
++    // chính máy xin, nên cần 5 lần gỡ.
++    expect(lockedAfter).toBe(3);
+     expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
+   });
+ 
++  it("máy lạ vào bằng allow_conflict, bị chủ key gỡ từ xa 3 lần: lần allow_conflict thứ 4 nhận 423 (tính cả lần gỡ chính máy xin); chủ key vẫn validate", async () => {
++    const { w, licenseKey, activate, activateAnyway, deactivate } = await setup();
++    const owner = await activate(1);
++    const statuses: number[] = [];
++    for (let i = 0; i < 4; i++) {
++      w.clock.now = T0 + (i + 1) * 3600;
++      const r = await activateAnyway(3);
++      statuses.push(r.status);
++      if (r.status === 423) {
++        expect(r.body).toEqual({ error: "license_locked" });
++        break;
++      }
++      expect(r.body.error).toBe("license_conflict");
++      await deactivate(await idOf(3)); // chủ key gỡ máy lạ từ xa
++    }
++    // Lần vào thứ 4 thấy 3 lần gỡ (cùng của máy lạ), quá 2.
++    expect(statuses).toEqual([409, 409, 409, 423]);
++    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 4 * 3600 });
++    expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
++    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'license_locked'").first()).toEqual({ n: 1 });
++    // Máy lạ không còn đang kích hoạt, nên không còn xung đột: chủ key validate bình thường, kể cả khi key đang bị khóa.
++    expect(await activeCount()).toEqual({ n: 1 });
++    const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: owner.body.activation_id });
++    expect(v.status).toBe(200);
++    expect(v.body.token).toMatch(/^v1\./);
++  });
++
++  it("cùng máy lạ nhưng KHÔNG dùng allow_conflict: các lần gỡ chính máy xin vẫn không tính (giữ cách đếm cũ)", async () => {
++    const { w, activate, activateAnyway, deactivate } = await setup();
++    const owner = await activate(1);
++    // Key đang ở máy chủ: không allow_conflict thì chỉ nhận key_in_use, không có lần gỡ nào.
++    for (let i = 0; i < 4; i++) expect((await activate(3)).status).toBe(409);
++    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: null });
++    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations").first()).toEqual({ n: 0 });
++    // Máy lạ có 3 lần bị gỡ (từ allow_conflict, mỗi lần vẫn còn trong ngưỡng).
++    for (let i = 0; i < 3; i++) {
++      w.clock.now = T0 + (i + 1) * 3600;
++      expect((await activateAnyway(3)).body.error).toBe("license_conflict");
++      await deactivate(await idOf(3));
++    }
++    // Chủ key tự gỡ để nhường chỗ: máy lạ vào lại không allow_conflict. Lần gỡ của chính máy lạ (3) không tính, chỉ còn
++    // lần gỡ của chủ key (1), nên vào được. Cùng trạng thái này mà vào bằng allow_conflict thì thấy 4 lần gỡ và bị 423.
++    w.clock.now = T0 + 4 * 3600;
++    await deactivate(owner.body.activation_id as string);
++    const back = await activate(3);
++    expect(back.status).toBe(200);
++    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: null });
++  });
++
++  it("2 lần vào bằng allow_conflict kèm 2 lần bị gỡ: lần vào thứ 3 vẫn được (chưa quá 2)", async () => {
++    const { w, activate, activateAnyway, deactivate } = await setup();
++    await activate(1);
++    const statuses: number[] = [];
++    for (let i = 0; i < 3; i++) {
++      w.clock.now = T0 + (i + 1) * 3600;
++      const r = await activateAnyway(3);
++      statuses.push(r.status);
++      if (i < 2) await deactivate(await idOf(3));
++    }
++    expect(statuses).toEqual([409, 409, 409]);
++    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: null });
++    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE by = 'user'").first()).toEqual({ n: 2 });
++    expect(await activeCount()).toEqual({ n: 2 });
++  });
++
++  it("allow_conflict: lần gỡ cũ hơn 30 ngày không tính", async () => {
++    const { w, activate, activateAnyway, deactivate } = await setup();
++    await env.DB.prepare("UPDATE licenses SET expires_at = ?").bind(T0 + 90 * DAY).run();
++    await activate(1);
++    for (let i = 0; i < 3; i++) {
++      expect((await activateAnyway(3)).body.error).toBe("license_conflict");
++      await deactivate(await idOf(3));
++    }
++    // 3 lần gỡ ở T0, quá 30 ngày thì không tính nữa.
++    w.clock.now = T0 + 31 * DAY;
++    expect((await activateAnyway(3)).body.error).toBe("license_conflict");
++  });
++
+   it("hai máy cùng xác nhận xung đột một lúc khi key đang ở máy 1: tối đa 2 máy đang kích hoạt", async () => {
+     const { activate, activateAnyway } = await setup();
+     await activate(1);
+@@ -838,11 +930,17 @@ describe("hai khách: không đụng license, máy hay bộ đếm của khách
+     }
+   });
+ 
+-  it("B có 3 lần tự gỡ trong 30 ngày: A kích hoạt máy mới không bị khóa", async () => {
+-    const { w, activate } = await setup();
++  it("B có 2 lần tự gỡ trong 30 ngày: A đã gỡ 2 lần vẫn kích hoạt được máy thứ 3, vì không cộng lần gỡ của B", async () => {
++    const { w, activate, deactivate } = await setup();
+     const b = await w.customerB();
+-    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE license_id = ? AND by = 'user'").bind(b.licenseId).first()).toEqual({ n: 3 });
+-    expect((await activate(1)).status).toBe(200);
++    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE license_id = ? AND by = 'user'").bind(b.licenseId).first()).toEqual({ n: 2 });
++    // Nếu lần gỡ của B lọt vào đếm của A thì máy thứ 3 của A thấy 2 + 2 = 4 lần gỡ và bị khóa.
++    for (const n of [1, 2]) {
++      const r = await activate(n);
++      expect(r.status).toBe(200);
++      await deactivate(r.body.activation_id as string);
++    }
++    expect((await activate(3)).status).toBe(200);
+     expect(await env.DB.prepare("SELECT locked_at FROM licenses WHERE id <> ?").bind(b.licenseId).first()).toEqual({ locked_at: null });
+   });
+ 
+diff --git a/server/test/migrations.test.ts b/server/test/migrations.test.ts
+index a9e1780..233971b 100644
+--- a/server/test/migrations.test.ts
++++ b/server/test/migrations.test.ts
+@@ -91,3 +91,31 @@ it("0002 đổi mã gói, giữ dữ liệu, khóa ngoại, index và bộ đế
+   const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%_new'").all()).results;
+   expect(tables).toEqual([]);
+ });
++
++it("0002 ánh xạ đủ ba mã cũ; mã khác giữ nguyên để CHECK chặn (chạy lại trên dữ liệu đã đổi không đổi gì)", async () => {
++  // Lấy đúng biểu thức CASE trong file migration (có hai chỗ: licenses và orders, phải giống hệt nhau) rồi chạy trên
++  // bảng thăm dò. Không thể chạy 0002 trên license đã là 'monthly'/'yearly': CHECK của 0001 không cho ghi mã đó.
++  const sql = env.TEST_MIGRATIONS.find((m) => m.name === "0002_three_plans_trials.sql")!.queries.join("\n");
++  const cases = sql.match(/CASE plan[\s\S]*?END/g) ?? [];
++  expect(cases).toHaveLength(2);
++  expect(cases[0]).toBe(cases[1]);
++  await db.prepare("CREATE TABLE plan_probe (plan TEXT)").run();
++  const codes = ["pro", "pro_x2", "pro_x5", "monthly", "yearly", "mã_lạ"];
++  await db.batch(codes.map((c) => db.prepare("INSERT INTO plan_probe (plan) VALUES (?)").bind(c)));
++  const mapped = await db.prepare(`SELECT plan, ${cases[0]} AS mapped FROM plan_probe`).all<{ plan: string; mapped: string }>();
++  expect(Object.fromEntries(mapped.results.map((r) => [r.plan, r.mapped]))).toEqual({
++    pro: "monthly",
++    pro_x2: "monthly",
++    pro_x5: "yearly",
++    monthly: "monthly",
++    yearly: "yearly",
++    // Mã lạ không bị gộp vào gói nào: ghi vào bảng mới thì CHECK từ chối, migration dừng thay vì tặng nhầm gói.
++    mã_lạ: "mã_lạ",
++  });
++  await db.prepare("DROP TABLE plan_probe").run();
++  await expect(
++    db
++      .prepare("INSERT INTO licenses (id, license_key, plan, expires_at, cycle_anchor, anchor_applied_at, created_at) VALUES ('Lx', 'Kx', 'mã_lạ', 1, 0, 0, 0)")
++      .run(),
++  ).rejects.toThrow(/CHECK/);
++});
+diff --git a/server/test/world.ts b/server/test/world.ts
+index d5d5008..7b6082f 100644
+--- a/server/test/world.ts
++++ b/server/test/world.ts
+@@ -88,9 +88,9 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
+ 
+   /**
+    * "Khách B" (review cuối, Q1): một khách khác, để test ranh giới giữa các license và email. B mua bằng email riêng, có
+-   * 2 máy đang kích hoạt (đang xung đột, spec 2026-10-07 §4.1: máy 2 xác nhận "Vẫn kích hoạt"), 2 máy đã gỡ, và 3 lần tự
+-   * gỡ trong 30 ngày (hơn ngưỡng 2 của luật khóa tạm). B không bị khóa, vì máy cuối kích hoạt lại là máy B tự gỡ. Mọi
+-   * request của B đi từ IP riêng, không đụng bộ đếm của test.
++   * 2 máy đang kích hoạt (đang xung đột, spec 2026-10-07 §4.1: máy 2 xác nhận "Vẫn kích hoạt"), 2 máy đã gỡ, và 2 lần tự
++   * gỡ trong 30 ngày (đúng ngưỡng 2 của luật khóa tạm, nên B chưa bị khóa; vào bằng allow_conflict thì mọi lần gỡ đều
++   * tính, nên B không thể có nhiều hơn). Mọi request của B đi từ IP riêng, không đụng bộ đếm của test.
+    */
+   async function customerB() {
+     const email = "khach-b@example.com";
+@@ -120,9 +120,6 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
+     }
+     const b1 = await activate(1);
+     const b2 = await activate(2, true);
+-    // Lần gỡ thứ 3 rồi kích hoạt lại đúng máy đó: trừ chính máy này thì còn 2 lần, chưa quá ngưỡng.
+-    await deactivate(b2, 2);
+-    if ((await activate(2, true)) !== b2) throw new Error("khách B: máy 2 không dùng lại activation cũ");
+     return {
+       email,
+       licenseKey,
+PATCH
+```
+
+- [ ] **Step 2: Chạy test, thấy đỏ**
+
+```bash
+pnpm exec vitest run test/licenses.test.ts test/email.test.ts test/migrations.test.ts test/admin.test.ts
+```
+
+Kết quả mong đợi: `Tests  5 failed | 137 passed (142)`: `mỗi key chỉ dùng trên 1 máy…` (email, thiếu câu mới), `allow_conflict có mặt mà không phải boolean (null)…` (`200` thay vì `400`), `hai người dùng chung key gỡ qua gỡ lại bằng xác nhận xung đột: khóa sau 3 lần gỡ…` (`expected 6 to be 3`), `máy lạ vào bằng allow_conflict, bị chủ key gỡ từ xa 3 lần…` (`[409, 409, 409, 409]` thay vì `[409, 409, 409, 423]`), `0002 ánh xạ đủ ba mã cũ…` (mã lạ bị gộp thành `monthly`).
+
+- [ ] **Step 3: Viết code**
+
+```bash
+git apply <<'PATCH'
+diff --git a/server/migrations/0002_three_plans_trials.sql b/server/migrations/0002_three_plans_trials.sql
+index 91ecd7b..9e58219 100644
+--- a/server/migrations/0002_three_plans_trials.sql
++++ b/server/migrations/0002_three_plans_trials.sql
+@@ -1,5 +1,6 @@
+ -- Ba gói (spec 2026-10-07): mã gói 'pro', 'pro_x2', 'pro_x5' đổi thành 'monthly', 'yearly'; thêm bảng dùng thử theo máy.
+--- Đổi mã: 'pro', 'pro_x2' → 'monthly'; 'pro_x5' → 'yearly'. Mọi cột khác giữ nguyên giá trị.
++-- Đổi mã: 'pro', 'pro_x2' → 'monthly'; 'pro_x5' → 'yearly'. Mọi cột khác giữ nguyên giá trị. Mã khác (kể cả
++-- 'monthly', 'yearly' đã đổi sẵn) giữ nguyên: mã lạ bị CHECK của bảng mới từ chối, migration dừng thay vì gộp nhầm gói.
+ --
+ -- SQLite không sửa được CHECK, nên phải dựng lại licenses và orders. licenses là bảng cha của activations,
+ -- deactivations và orders; xóa bảng cha khi còn bảng con trỏ tới là vi phạm khóa ngoại, và PRAGMA defer_foreign_keys
+@@ -27,7 +28,9 @@ CREATE TABLE licenses_new (
+ );
+ INSERT INTO licenses_new (id, license_key, email, plan, expires_at, cycle_anchor, anchor_applied_at, version,
+                           last_order_code, created_at, revoked_at, locked_at, lock_cleared_at)
+-  SELECT id, license_key, email, CASE plan WHEN 'pro_x5' THEN 'yearly' ELSE 'monthly' END, expires_at, cycle_anchor,
++  SELECT id, license_key, email,
++         CASE plan WHEN 'pro' THEN 'monthly' WHEN 'pro_x2' THEN 'monthly' WHEN 'pro_x5' THEN 'yearly' ELSE plan END,
++         expires_at, cycle_anchor,
+          anchor_applied_at, version, last_order_code, created_at, revoked_at, locked_at, lock_cleared_at
+   FROM licenses;
+ 
+@@ -60,7 +63,8 @@ INSERT INTO orders_new (order_code, order_token_hash, provider, provider_ref, pl
+                         email_consent_at, renew_license_id, license_id, grant_kind, status, amount_paid, created_at,
+                         expires_at, paid_at, last_checked_at, email_sent_at, email_attempts, email_retry_at,
+                         email_gave_up_at)
+-  SELECT order_code, order_token_hash, provider, provider_ref, CASE plan WHEN 'pro_x5' THEN 'yearly' ELSE 'monthly' END,
++  SELECT order_code, order_token_hash, provider, provider_ref,
++         CASE plan WHEN 'pro' THEN 'monthly' WHEN 'pro_x2' THEN 'monthly' WHEN 'pro_x5' THEN 'yearly' ELSE plan END,
+          amount, currency, email, email_consent_at, renew_license_id, license_id, grant_kind, status, amount_paid,
+          created_at, expires_at, paid_at, last_checked_at, email_sent_at, email_attempts, email_retry_at,
+          email_gave_up_at
+diff --git a/server/src/email/templates.ts b/server/src/email/templates.ts
+index 872d69b..18400c1 100644
+--- a/server/src/email/templates.ts
++++ b/server/src/email/templates.ts
+@@ -39,12 +39,12 @@ export function licenseEmail(kind: LicenseEmailKind, entries: LicenseEmailEntry[
+     "License key:",
+     ...lines,
+     "",
+-    "Mở app, vào Cài đặt > Bản quyền, dán key để kích hoạt. Mỗi key dùng được trên 2 máy.",
++    "Mở app, vào Cài đặt > Bản quyền, dán key để kích hoạt. Mỗi key dùng trên 1 máy.",
+     "Giữ email này để kích hoạt máy khác hoặc cài lại máy.",
+     "",
+     "---",
+     `Thank you for using ${PRODUCT_NAME}.`,
+-    "Open the app, go to Settings > License and paste the key. Each key works on 2 computers.",
++    "Open the app, go to Settings > License and paste the key. Each key works on 1 computer.",
+     "Keep this email to activate another computer or reinstall.",
+   ].join("\n");
+   return { subject: SUBJECTS[kind], text };
+diff --git a/server/src/licenses.ts b/server/src/licenses.ts
+index 4cec59d..272ac0b 100644
+--- a/server/src/licenses.ts
++++ b/server/src/licenses.ts
+@@ -187,7 +187,8 @@ export function registerLicenses(app: Hono<AppEnv>) {
+     const deviceIdHash = parseDeviceIdHash(body?.device_id_hash);
+     const deviceLabel = parseDeviceLabel(body?.device_label);
+     if (!body || !deviceIdHash || !deviceLabel) return fail(c, 400, "invalid_request");
+-    const allowConflict = body.allow_conflict ?? false;
++    // Thiếu là false; có mặt thì phải là boolean (null, số, chuỗi đều 400).
++    const allowConflict = body.allow_conflict === undefined ? false : body.allow_conflict;
+     if (typeof allowConflict !== "boolean") return fail(c, 400, "invalid_request", { field: "allow_conflict" });
+     const found = await findLicense(db, body.key);
+     if (!found.ok || !found.lic) {
+@@ -215,13 +216,15 @@ export function registerLicenses(app: Hono<AppEnv>) {
+     const since = Math.max(now - DEACTIVATION_WINDOW_SECONDS, lic.lock_cleared_at ?? 0);
+     // Số lần người dùng gỡ trong 30 ngày, trừ các lần gỡ chính máy đang xin kích hoạt:
+     // gỡ rồi kích hoạt lại cùng một máy không bị khóa, còn xoay vòng giữa nhiều máy thì bị.
++    // Riêng khi máy vào bằng allow_conflict (đẩy key sang trạng thái xung đột, khóa cả máy đang giữ key) thì đếm mọi lần
++    // gỡ, kể cả của chính máy xin: một máy lạ cứ vào rồi bị chủ key gỡ lại không được tự do lặp lại.
+     // Đếm trên bảng deactivations, vì kích hoạt lại dùng lại dòng activation cũ (QĐ35).
+     const recent = await db
+       .prepare(
+         `SELECT COUNT(*) AS n FROM deactivations d JOIN activations a ON a.id = d.activation_id
+-         WHERE d.license_id = ? AND d.by = 'user' AND d.at > ? AND a.device_id_hash <> ?`,
++         WHERE d.license_id = ?1 AND d.by = 'user' AND d.at > ?2 AND (?4 = 1 OR a.device_id_hash <> ?3)`,
+       )
+-      .bind(lic.id, since, deviceIdHash)
++      .bind(lic.id, since, deviceIdHash, allowConflict ? 1 : 0)
+       .first<{ n: number }>();
+     if ((recent?.n ?? 0) > MAX_DEACTIVATIONS_IN_WINDOW) {
+       // Chỉ khóa khi chưa khóa: nhiều request cùng lúc thì một request khóa, một dòng nhật ký, một cảnh báo.
+diff --git a/server/src/plans.ts b/server/src/plans.ts
+index 83a4e0b..3db8de1 100644
+--- a/server/src/plans.ts
++++ b/server/src/plans.ts
+@@ -15,7 +15,7 @@ export const DAY_SECONDS = 86400;
+ export interface PlanConfig {
+   /** Hạn mức dịch mỗi chu kỳ 30 ngày, mỗi máy, tính bằng phút; null là không giới hạn. */
+   quota_minutes_per_cycle: number | null;
+-  /** Số ngày mỗi đơn (30). */
++  /** Số ngày mỗi đơn (30 hay 365, theo gói). */
+   days_per_order: number;
+   /** Giá theo loại tiền, số nguyên theo đơn vị nhỏ nhất (VND không có đơn vị lẻ). */
+   prices: Record<string, number>;
+PATCH
+```
+
+- [ ] **Step 4: Chạy test, thấy xanh**
+
+```bash
+pnpm exec vitest run test/licenses.test.ts test/email.test.ts test/migrations.test.ts test/admin.test.ts
+pnpm check
+```
+
+Kết quả mong đợi: Lệnh đầu `Tests  142 passed (142)`. `pnpm check` thoát mã 0: `Test Files  20 passed (20)`, `Tests  418 passed (418)` (11 test mới so với Task 8: 4 cho `allow_conflict` không phải boolean cộng 1 cho "thiếu hay false", 4 cho khóa tạm khi vào bằng `allow_conflict`, 1 email, 1 ánh xạ migration).
+
+- [ ] **Step 5: Kiểm khớp cây tham chiếu rồi commit**
+
+```bash
+git add -A server
+git diff --cached --stat 107c807 -- server   # phải không in gì
+git commit -m "fix(server): sửa sau review cuối: email 1 máy, khóa tạm khi vào bằng allow_conflict, ánh xạ mã gói đủ ba mã, allow_conflict null
+
+Co-Authored-By: <model đang chạy> <noreply@anthropic.com>"
+```
+
+---
+
+## Task 10: Kiểm cuối
 
 - [ ] **Step 1: Không còn mã gói, tên gói hay mã lỗi cũ trong code server**
 
 ```bash
-grep -rnE "pro_x2|pro_x5|Professional|device_limit|MAX_DEVICES = 2" src scripts wrangler.jsonc wrangler.admin.jsonc
+grep -rnE "pro_x2|pro_x5|Professional|device_limit|MAX_DEVICES = 2|2 máy\.|2 computers" src scripts wrangler.jsonc wrangler.admin.jsonc
 ```
 
-Kết quả mong đợi: không in gì. (Mã cũ chỉ còn ở `migrations/0001_init.sql` và phần đổi mã của `0002` như lịch sử, và trong test làm dữ liệu cũ hay input bị từ chối.)
+Kết quả mong đợi: không in gì. (Mã cũ chỉ còn ở `migrations/0001_init.sql` và phần ánh xạ của `0002` như lịch sử, và trong test làm dữ liệu cũ hay input bị từ chối.)
 
 - [ ] **Step 2: Bộ kiểm đầy đủ và khớp cây tham chiếu**
 
 ```bash
 pnpm check
 git status --porcelain server
-git diff --stat 6784824 -- server
+git diff --stat 107c807 -- server
 ```
 
-Kết quả mong đợi: `pnpm check` thoát mã 0 (`Tests  407 passed (407)`); `git status` và `git diff` không in gì.
+Kết quả mong đợi: `pnpm check` thoát mã 0 (`Tests  418 passed (418)`); `git status` và `git diff` không in gì.
 
 - [ ] **Step 3: Báo cho controller**
 
 Báo: đỉnh commit, `pnpm check` xanh, và nhắc ba việc thuộc kế hoạch khác:
 - kế hoạch 02 (app) dùng vector `server/test/vectors/token-v1.json` mới và trường `devices`;
-- kế hoạch 03 chạy migration `0002` và deploy production (chỉ khi chủ dự án cho phép); spec và kế hoạch 03 đã ghi ngưỡng khóa tạm là 2 ("Điều chỉnh" mục 4);
+- kế hoạch 03 chạy migration `0002` và deploy production (chỉ khi chủ dự án cho phép); spec và kế hoạch 03 đã ghi ngưỡng khóa tạm là 2, và (Task 9) khi vào bằng `allow_conflict` thì mọi lần gỡ đều tính ("Điều chỉnh" mục 4 và 10);
 - trước khi chạy `0002` trên production, đếm license đang có 2 máy kích hoạt (spec mục 5.2).
