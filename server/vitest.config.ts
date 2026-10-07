@@ -31,6 +31,10 @@ export default defineConfig(async () => {
       }),
     ],
     // test/node/: test script Node (scripts/*.mjs), chạy bằng `pnpm test:scripts`, không chạy trong workerd.
-    test: { setupFiles: ["./test/apply-migrations.ts"], exclude: [...configDefaults.exclude, "test/node/**"] },
+    // admin-ui/: test của trang Web Admin chạy bằng vitest và jsdom riêng (`pnpm ui:check`), không chạy trong workerd.
+    test: {
+      setupFiles: ["./test/apply-migrations.ts"],
+      exclude: [...configDefaults.exclude, "test/node/**", "admin-ui/**"],
+    },
   };
 });

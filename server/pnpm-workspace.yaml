@@ -1,3 +1,7 @@
+# admin-ui/: trang Web Admin (spec 2026-10-07 Web Admin), build vào admin-ui/dist cho Worker admin.
+packages:
+  - admin-ui
+
 # server/ là dự án pnpm riêng, không thuộc workspace ở gốc repo (xem kế hoạch Phase 1 · 05).
 # esbuild và workerd cần chạy script cài đặt để tải binary cho đúng nền tảng.
 allowBuilds:
