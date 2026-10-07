@@ -4,7 +4,7 @@ Bản sao đã vá của hai crate, nối vào qua `[patch.crates-io]` trong `Ca
 
 | Thư mục | Nguồn | Bản vá |
 |---|---|---|
-| `whisper-rs-sys/` | crates.io `whisper-rs-sys` 0.15.0 (kèm whisper.cpp 1.8.3) | `patches/0001-whisper-cpp-set-audio-ctx.patch` (whisper.cpp và `src/bindings.rs`) |
+| `whisper-rs-sys/` | crates.io `whisper-rs-sys` 0.15.0 (kèm whisper.cpp 1.8.3) | `patches/0001-whisper-cpp-set-audio-ctx.patch` (whisper.cpp và `src/bindings.rs`), `patches/0003-whisper-rs-sys-msvc-optimization-flags.patch` (`build.rs`) |
 | `whisper-rs/` | crates.io `whisper-rs` 0.16.0 | `patches/0002-whisper-rs-set-audio-ctx.patch` |
 
 ## Vì sao phải vá (spec §6.4)
@@ -14,6 +14,15 @@ Bản vá thêm hàm `whisper_set_audio_ctx_with_state` (C) và `WhisperState::s
 dùng chung một lượt encode cho cả nhận diện ngôn ngữ và chép lời (`crates/asr-worker/src/shared.rs`).
 Khai báo của hàm C cũng được thêm vào `whisper-rs-sys/src/bindings.rs`: whisper-rs-sys dùng file này khi bindgen
 không chạy được (ví dụ thiếu libclang), và thiếu khai báo thì whisper-rs đã vá không biên dịch được.
+
+## Vì sao có bản vá 0003 (cờ tối ưu trên MSVC)
+
+Trên Windows (MSVC), crate `cmake` bỏ mọi cờ `/O*` do `cc` sinh ra rồi đặt `CMAKE_<LANG>_FLAGS_RELEASE` bằng phần còn lại.
+Việc đó ghi đè mặc định `/O2 /Ob2 /DNDEBUG` của CMake, nên ggml-cpu bị biên dịch không tối ưu. Đo ở Giai đoạn 0 trên
+i5-1345U: `asr-worker-cpu` chép một clip 11,5 giây mất khoảng 26 giây (small) thay vì khoảng 1,9 giây sau khi sửa.
+Bản Vulkan cũng dính, vì nhận diện ngôn ngữ, tính mel và các phần chạy trên CPU vẫn dùng ggml-cpu. Bản vá thêm
+`/O2 /Ob2 /DNDEBUG` qua `cflag`/`cxxflag`, là đường mà crate `cmake` giữ nguyên. Kiểm sau khi build bằng
+`CMAKE_C_FLAGS_RELEASE` trong `CMakeCache.txt` của thư mục `out/build`: phải có `/O2`.
 
 ## Dựng lại từ đầu
 
@@ -32,6 +41,7 @@ mv third_party/whisper-rs-0.16.0 third_party/whisper-rs
 rm third_party/whisper-rs-sys/.cargo_vcs_info.json third_party/whisper-rs/.cargo_vcs_info.json
 git apply --directory=third_party third_party/patches/0001-whisper-cpp-set-audio-ctx.patch
 git apply --directory=third_party third_party/patches/0002-whisper-rs-set-audio-ctx.patch
+git apply --directory=third_party third_party/patches/0003-whisper-rs-sys-msvc-optimization-flags.patch
 ```
 
 ## Khi sửa bản vá hoặc nâng phiên bản

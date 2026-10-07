@@ -275,6 +275,14 @@ fn main() {
         config.define("CMAKE_BUILD_TYPE", "Release");
     }
 
+    // MSVC: crate `cmake` bỏ mọi cờ `/O*` của `cc`, rồi đặt `CMAKE_<LANG>_FLAGS_<CONFIG>` bằng phần còn lại. Việc đó ghi
+    // đè mặc định `/O2 /Ob2 /DNDEBUG` của CMake, nên ggml-cpu bị biên dịch không tối ưu (chép lời bằng CPU chậm
+    // khoảng 14 lần). Cờ truyền qua `cflag`/`cxxflag` thì crate `cmake` giữ nguyên, nên đặt lại ở đây.
+    if env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+        config.cflag("/O2 /Ob2 /DNDEBUG");
+        config.cxxflag("/O2 /Ob2 /DNDEBUG");
+    }
+
     // Allow passing any WHISPER or CMAKE compile flags
     for (key, value) in env::vars() {
         let is_whisper_flag =
