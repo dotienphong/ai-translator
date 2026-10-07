@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { sha256Hex } from "../src/crypto";
+import { reconcile } from "../src/reconcile";
 import { lastAudit, makeAdmin } from "./admin-harness";
 import { resetDb } from "./db";
 import { DAY, T0 } from "./world";
@@ -22,6 +23,18 @@ const insertOrder = (createdAt: number) =>
 /** Chèn thẳng một dòng nhật ký action `thu`, actor `api`, có `at` cho trước. */
 const insertAudit = (at: number, actor = "api", action = "thu") =>
   env.DB.prepare("INSERT INTO audit_log (at, actor, action) VALUES (?, ?, ?)").bind(at, actor, action);
+
+/** Chèn thẳng một license monthly còn hạn (không qua đơn); `cols` đặt locked_at, revoked_at. */
+const insertLicense = (n: number, email: string, cols: { locked_at?: number; revoked_at?: number } = {}) =>
+  env.DB.prepare(
+    "INSERT INTO licenses (id, license_key, email, plan, expires_at, cycle_anchor, anchor_applied_at, created_at, locked_at, revoked_at) VALUES (?, ?, ?, 'monthly', ?, ?, ?, ?, ?, ?)",
+  ).bind(`lic-${n}`, `L${String(n).padStart(27, "0")}`, email, T0 + DAY, T0, T0, T0, cols.locked_at ?? null, cols.revoked_at ?? null);
+
+/** Chèn thẳng một máy đang kích hoạt (deactivated_at NULL) cho license `lic-${n}`. */
+const insertActivation = (n: number, device: number) =>
+  env.DB.prepare(
+    "INSERT INTO activations (id, license_id, device_id_hash, device_label, created_at, last_validated_at) VALUES (?, ?, ?, ?, ?, ?)",
+  ).bind(`act-${n}-${device}`, `lic-${n}`, `dev-${n}-${device}`, `Máy ${device}`, T0, T0);
 
 const auditTotal = async () => (await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first<{ n: number }>())!.n;
 
@@ -338,27 +351,39 @@ describe("GET /admin/queue", () => {
     expect(await lastAudit()).toMatchObject({ action: "queue_viewed" });
   });
 
-  it("đủ sáu nhóm, đúng điều kiện từng nhóm", async () => {
+  it("đủ sáu nhóm, đúng điều kiện từng nhóm (mỗi điều kiện có một dòng đối chứng nằm ngoài nhóm)", async () => {
     const { w, adminCall } = makeAdmin();
     const b = await w.customerB(); // license xung đột
-    await w.buy({ email: "khoa@example.com" }); // sẽ khóa tạm
+    await w.buy({ email: "khoa@example.com" }); // sẽ khóa tạm; đơn trả từ 2 ngày trước, thư đã gửi: không phải email_failed
     await w.buy({ email: "thu@example.com" }); // sẽ thiếu tiền (gần đây)
     await w.buy({ email: "cu@example.com" }); // sẽ thiếu tiền (quá 30 ngày)
     await w.buy({ email: "mail@example.com" }); // email key bỏ cuộc
-    await w.buy({ email: "review@example.com" }); // paid_needs_review
+    await w.buy({ email: "review@example.com" }); // paid_needs_review, cũng có email_gave_up_at: không phải email_failed
+    await w.buy({ email: "bien@example.com" }); // thiếu tiền, tạo đúng 30 ngày trước: còn trong nhóm
     const db = env.DB;
     await db.prepare("UPDATE licenses SET locked_at = ? WHERE email = 'khoa@example.com'").bind(T0).run();
+    await db.prepare("UPDATE orders SET paid_at = ? WHERE email = 'khoa@example.com'").bind(T0 - 2 * DAY).run();
     await db.prepare("UPDATE orders SET status = 'underpaid', created_at = ? WHERE email = 'thu@example.com'").bind(T0).run();
     await db.prepare("UPDATE orders SET status = 'underpaid', created_at = ? WHERE email = 'cu@example.com'").bind(T0 - 31 * DAY).run();
+    await db.prepare("UPDATE orders SET status = 'underpaid', created_at = ? WHERE email = 'bien@example.com'").bind(T0 - 30 * DAY).run();
     await db.prepare("UPDATE orders SET email_sent_at = NULL, email_gave_up_at = ? WHERE email = 'mail@example.com'").bind(T0).run();
-    await db.prepare("UPDATE orders SET status = 'paid_needs_review' WHERE email = 'review@example.com'").run();
+    await db
+      .prepare("UPDATE orders SET status = 'paid_needs_review', email_sent_at = NULL, email_gave_up_at = ? WHERE email = 'review@example.com'")
+      .bind(T0)
+      .run();
     await db.batch([
+      insertLicense(1, "khoa-thuhoi@example.com", { locked_at: T0, revoked_at: T0 }), // vừa khóa tạm vừa thu hồi: không lên locked
+      insertLicense(2, "thuhoi-2may@example.com", { revoked_at: T0 }), // thu hồi mà còn 2 máy: không lên conflict
+      insertActivation(2, 1),
+      insertActivation(2, 2),
+      insertLicense(3, "mot-may@example.com"), // đúng 1 máy đang kích hoạt: không lên conflict
+      insertActivation(3, 1),
       db.prepare("INSERT INTO ops_alerts (kind, window_start, count, notified_count) VALUES ('webhook_bad_signature', ?, 3, 1)").bind(T0),
       db.prepare("INSERT INTO ops_alerts (kind, window_start, count, notified_count) VALUES ('email_failed', ?, 2, 2)").bind(T0),
     ]);
     const q = (await adminCall("/admin/queue")).body as Record<string, { count: number; items: Record<string, unknown>[] }>;
     expect(q.needs_review!.items.map((o) => o.email)).toEqual(["review@example.com"]);
-    expect(q.underpaid!.items.map((o) => o.email)).toEqual(["thu@example.com"]);
+    expect(q.underpaid!.items.map((o) => o.email)).toEqual(["bien@example.com", "thu@example.com"]);
     expect(q.email_failed!.items.map((o) => o.email)).toEqual(["mail@example.com"]);
     expect(q.locked!.items.map((l) => l.email)).toEqual(["khoa@example.com"]);
     expect(q.conflict!.items.map((l) => [l.email, l.active_devices])).toEqual([[b.email, 2]]);
@@ -367,11 +392,93 @@ describe("GET /admin/queue", () => {
     expect(q.needs_review!.items[0]).not.toHaveProperty("order_token_hash");
     expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toEqual({
       needs_review: 1,
-      underpaid: 1,
+      underpaid: 2,
       email_failed: 1,
       locked: 1,
       conflict: 1,
       alerts: 1,
+    });
+  });
+
+  describe("nhóm email_failed: đơn đã trả mà khách chưa nhận thư key", () => {
+    /** Email các đơn đang ở nhóm email_failed. */
+    const failedEmails = async (adminCall: ReturnType<typeof makeAdmin>["adminCall"]) =>
+      ((await adminCall("/admin/queue")).body as unknown as Record<string, Page>).email_failed!.items.map((o) => o.email);
+    const licenseId = async (email: string) => (await env.DB.prepare("SELECT id FROM licenses WHERE email = ?").bind(email).first<{ id: string }>())!.id;
+
+    it("Resend trả 422 thì lên nhóm; admin gửi lại thất bại (502) vẫn ở nhóm, thành công thì rời nhóm", async () => {
+      const { w, adminCall } = makeAdmin();
+      w.resend.failStatus = 422;
+      await w.buy({ email: "loi@example.com" });
+      w.resend.failStatus = null;
+      await w.buy({ email: "tot@example.com" });
+      const id = await licenseId("loi@example.com");
+      // Lần gửi lại thành công của admin từ trước lúc cron bỏ cuộc (ví dụ cho kỳ mua trước) không làm đơn này rời nhóm.
+      await env.DB.prepare("INSERT INTO audit_log (at, actor, action, license_id, detail) VALUES (?, 'admin:ops@example.com', 'key_resent', ?, '{\"sent\":true}')")
+        .bind(T0 - 1, id)
+        .run();
+      expect(await failedEmails(adminCall)).toEqual(["loi@example.com"]);
+      w.clock.now = T0 + 60;
+      w.resend.down = true;
+      expect((await adminCall(`/admin/licenses/${id}/resend`, { body: {} })).status).toBe(502);
+      expect(await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'key_resent' AND at = ?").bind(T0 + 60).first()).toEqual({ detail: '{"sent":false}' });
+      expect(await failedEmails(adminCall)).toEqual(["loi@example.com"]);
+      w.resend.down = false;
+      expect((await adminCall(`/admin/licenses/${id}/resend`, { body: {} })).status).toBe(200);
+      expect(await failedEmails(adminCall)).toEqual([]);
+      // Gửi lại thành công của license khác không đụng tới đơn này.
+      await env.DB.prepare("DELETE FROM audit_log WHERE action = 'key_resent'").run();
+      expect(await failedEmails(adminCall)).toEqual(["loi@example.com"]);
+      expect((await adminCall(`/admin/licenses/${await licenseId("tot@example.com")}/resend`, { body: {} })).status).toBe(200);
+      expect(await failedEmails(adminCall)).toEqual(["loi@example.com"]);
+    });
+
+    it("lỗi tạm 500 liên tục: giờ 23 sau paid_at chưa lên, quá 24 giờ (cron thôi gửi) thì lên; admin gửi lại thành công thì rời", async () => {
+      const { w, adminCall } = makeAdmin();
+      w.resend.down = true;
+      await w.buy({ email: "tam@example.com" });
+      for (let hours = 1; hours <= 23; hours++) {
+        w.clock.now = T0 + hours * 3600;
+        await reconcile(w.env, w.deps); // cron mỗi giờ: Resend vẫn trả 500
+        expect(await failedEmails(adminCall), `giờ ${hours}`).toEqual([]);
+      }
+      const row = await env.DB.prepare("SELECT email_attempts, email_sent_at, email_gave_up_at FROM orders").first<Record<string, number | null>>();
+      expect(row!.email_attempts).toBeGreaterThan(3); // cron đã thử nhiều lần
+      expect(row).toMatchObject({ email_sent_at: null, email_gave_up_at: null }); // cron không bao giờ đặt email_gave_up_at
+      // Đúng 24 giờ sau paid_at: cron còn được thử lần cuối, chưa phải việc của người vận hành.
+      w.clock.now = T0 + DAY;
+      await env.DB.prepare("UPDATE orders SET email_retry_at = ?").bind(T0 + DAY).run();
+      expect((await reconcile(w.env, w.deps)).emails_retried).toBe(1);
+      expect(await failedEmails(adminCall)).toEqual([]);
+      w.clock.now = T0 + DAY + 1;
+      expect(await failedEmails(adminCall)).toEqual(["tam@example.com"]);
+      w.clock.now = T0 + 30 * 3600; // lần hẹn kế tiếp đã tới hạn mà cron không gửi nữa
+      expect((await reconcile(w.env, w.deps)).emails_retried).toBe(0);
+      expect(await failedEmails(adminCall)).toEqual(["tam@example.com"]);
+      w.resend.down = false;
+      const id = await licenseId("tam@example.com");
+      expect((await adminCall(`/admin/licenses/${id}/resend`, { body: {} })).status).toBe(200);
+      expect(await failedEmails(adminCall)).toEqual([]);
+    });
+
+    it("đơn đã ẩn danh (email NULL) và đơn refunded có email_gave_up_at không lên nhóm", async () => {
+      const { w, adminCall } = makeAdmin();
+      w.resend.failStatus = 422;
+      await w.buy({ email: "an1@example.com" }); // bỏ cuộc ngay
+      w.resend.failStatus = null;
+      w.resend.down = true;
+      await w.buy({ email: "an2@example.com" }); // lỗi tạm, rồi quá 24 giờ
+      await w.buy({ email: "hoan@example.com" });
+      w.resend.down = false;
+      await env.DB.prepare("UPDATE orders SET email_sent_at = NULL, email_gave_up_at = ? WHERE email = 'hoan@example.com'").bind(T0).run();
+      w.clock.now = T0 + DAY + 1;
+      expect(await failedEmails(adminCall)).toEqual(["hoan@example.com", "an2@example.com", "an1@example.com"]);
+      await env.DB.prepare("UPDATE orders SET status = 'refunded' WHERE email = 'hoan@example.com'").run();
+      expect(await failedEmails(adminCall)).toEqual(["an2@example.com", "an1@example.com"]);
+      for (const email of ["an1@example.com", "an2@example.com"]) {
+        expect((await adminCall("/admin/erase", { body: { email, note: "yêu cầu xóa" } })).status).toBe(200);
+      }
+      expect(await failedEmails(adminCall)).toEqual([]);
     });
   });
 
@@ -407,6 +514,31 @@ describe("GET /admin/summary", () => {
       status: 200,
       body: { revenue_today: 500000, currency: "VND", paid_orders_7d: 2, active_licenses: 2 },
     });
-    expect(await lastAudit()).toMatchObject({ action: "summary_viewed" });
+    expect(await lastAudit()).toMatchObject({ action: "summary_viewed", detail: null });
+  });
+
+  it("từng điều kiện: chỉ đơn paid tính doanh thu, ranh giới 00:00 GMT+7, cửa sổ 7 ngày đóng ở đầu, license phải chưa thu hồi và còn hạn", async () => {
+    const { w, adminCall } = makeAdmin();
+    const buyAt = (at: number, email: string, plan = "monthly") => {
+      w.clock.now = at;
+      return w.buy({ email, plan });
+    };
+    await buyAt(START, "dung0@example.com", "yearly"); // đúng 00:00 hôm nay giờ VN: tính vào hôm nay
+    await buyAt(START - 1, "truoc0@example.com"); // một giây trước 00:00: hôm qua
+    await buyAt(T0 - 3600, "homnay@example.com"); // 06:00 hôm nay
+    await buyAt(T0 - 1800, "hoan@example.com"); // trả trong ngày rồi hoàn: không tính doanh thu
+    await buyAt(T0 - 1200, "review@example.com"); // trả trong ngày, chờ xử lý: không tính doanh thu
+    await buyAt(T0 - 7 * DAY, "bien7@example.com"); // đúng 7 ngày trước: còn trong cửa sổ
+    await buyAt(T0 - 7 * DAY - 1, "ngoai7@example.com"); // một giây ngoài cửa sổ
+    await buyAt(T0 - 40 * DAY, "hethan@example.com"); // license đã hết hạn
+    await env.DB.prepare("UPDATE orders SET status = 'refunded' WHERE email = 'hoan@example.com'").run();
+    await env.DB.prepare("UPDATE orders SET status = 'paid_needs_review' WHERE email = 'review@example.com'").run();
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ? WHERE email IN ('hoan@example.com', 'review@example.com')").bind(T0 - 600).run();
+    w.clock.now = T0;
+    expect(await adminCall("/admin/summary")).toEqual({
+      status: 200,
+      // Doanh thu: dung0 (500000) + homnay (50000). 7 ngày: dung0, truoc0, homnay, bien7. License còn hạn: dung0, truoc0, homnay, bien7, ngoai7.
+      body: { revenue_today: 550000, currency: "VND", paid_orders_7d: 4, active_licenses: 5 },
+    });
   });
 });
