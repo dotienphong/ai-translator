@@ -312,6 +312,9 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     if !begun {
         return Ok(state.status());
     }
+    // Phiên trả phí mà lần kiểm bản quyền gần nhất đã quá 1 giờ: kiểm lại chạy nền, key xung đột hay bị thu hồi thì dừng
+    // phiên ([`abort`]). Gọi sau khi đã sang `Starting`, để kết quả về sớm cũng gặp đúng phiên này.
+    crate::license::app::quick_check(app);
     let current = || session.attempt.load(Ordering::SeqCst) == attempt;
     show_overlay(app);
     changed(app);
@@ -508,6 +511,31 @@ fn fail<R: Runtime>(app: &AppHandle<R>, n: u64, code: &str, message: &str) {
         s.loading = None;
     });
     changed(app);
+}
+
+/// Dừng phiên đang chạy hay đang bắt đầu vì một lý do ngoài engine (bản quyền: key xung đột hay bị thu hồi, spec
+/// 2026-10-07 §4.2), với mã lỗi `code`. Đang bắt đầu thì hủy lần đó (như Hủy) và báo lỗi; không có phiên nào thì thôi.
+pub fn abort<R: Runtime>(app: &AppHandle<R>, code: &str, message: &str) {
+    let Some(session) = app.try_state::<Session>() else {
+        return;
+    };
+    let cancelled = app.state::<AppState>().update_status(|s| {
+        if s.session != SessionStatus::Starting {
+            return false;
+        }
+        session.attempt.fetch_add(1, Ordering::SeqCst);
+        s.session = SessionStatus::Error;
+        s.session_error = Some(code.to_string());
+        s.loading = None;
+        true
+    });
+    if cancelled {
+        log::error!("hủy lần bắt đầu phiên vì {code}: {message}");
+        changed(app);
+        return;
+    }
+    let n = session.sessions.load(Ordering::SeqCst);
+    fail(app, n, code, message);
 }
 
 /// Nút, phím tắt, khay: bắt đầu khi chưa dịch; dừng khi đang dịch; đang chuẩn bị thì Hủy (về `idle` ngay).

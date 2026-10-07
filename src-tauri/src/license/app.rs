@@ -19,7 +19,7 @@ use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 use super::client::{Device, HttpApi, PlanOffer};
 use super::device;
 use super::keys::PublicKeys;
-use super::manager::{License, LicenseError, LicenseView, Machine, Zone};
+use super::manager::{License, LicenseError, LicenseView, Machine, StartBlock, Zone};
 use super::purchase::{self, CheckoutView, OrderOutcome};
 use super::store::Vault;
 use crate::errors::{self, CommandError};
@@ -122,6 +122,13 @@ pub fn install<R: Runtime>(app: &AppHandle<R>, has_prior_data: bool) {
 /// Cài một [`License`] đã dựng (test dùng server và kho khóa giả). Không chạy ticker.
 pub fn install_with<R: Runtime>(app: &AppHandle<R>, license: License) {
     let license = Arc::new(license);
+    // Đã xong các bước lần đầu mở (đã đồng ý điều khoản ở lần chạy trước): ticker được đăng ký dùng thử chạy nền.
+    if app
+        .try_state::<AppState>()
+        .is_some_and(|s| s.settings().onboarding_done)
+    {
+        license.allow_trial();
+    }
     app.manage(Licensing::new(license.clone()));
     if license.dev_unlimited() {
         pro::install_dev_gate(app);
@@ -166,12 +173,62 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     let _ = app.emit_to(EventTarget::webview_window(window::MAIN), LICENSE_CHANGED, &view);
 }
 
-/// Trước khi bắt đầu phiên: hạn mức còn 0 thì từ chối với `quotaExhausted` (§6.8, "Khi chạm hạn mức").
+/// Trước khi bắt đầu phiên (§6.8 "Khi chạm hạn mức"; spec 2026-10-07 §3.2, §6): hạn mức còn 0, Free hết dùng thử, Free
+/// chưa đăng ký được dùng thử, hay Free với giờ máy chỉnh lùi thì từ chối với mã tương ứng. Ở Free mà chưa có token dùng
+/// thử thì đăng ký ngay (gọi server): `session::start` chạy trên luồng nền.
 pub fn check_start<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
-    match licensing(app) {
-        Some(l) if !l.can_start(now()) => Err(CommandError::new(errors::QUOTA_EXHAUSTED, None, "hạn mức còn 0")),
-        _ => Ok(()),
+    let Some(license) = licensing(app) else {
+        return Ok(());
+    };
+    let block = license.start_block(now());
+    if block.is_some() {
+        refresh(app);
     }
+    let (code, message) = match block {
+        None => return Ok(()),
+        Some(StartBlock::QuotaExhausted) => (errors::QUOTA_EXHAUSTED, "hạn mức còn 0"),
+        Some(StartBlock::TrialEnded) => (errors::TRIAL_ENDED, "đã hết dùng thử"),
+        Some(StartBlock::TrialMissing) => (errors::TRIAL_NEEDS_NETWORK, "chưa đăng ký được dùng thử"),
+        Some(StartBlock::ClockRolledBack) => (errors::CLOCK_ROLLED_BACK, "giờ máy bị chỉnh lùi"),
+    };
+    Err(CommandError::new(code, None, message))
+}
+
+/// Mã dừng phiên khi `validate` cho thấy gói trả phí không còn dùng được trên máy này; `None` với lỗi khác (lỗi mạng…).
+fn lost_code(e: &LicenseError) -> Option<&'static str> {
+    match e {
+        LicenseError::Conflict(_) => Some(errors::LICENSE_CONFLICT),
+        LicenseError::Revoked | LicenseError::Deactivated | LicenseError::InvalidKey | LicenseError::KeyInUse(_) => {
+            Some(errors::LICENSE_INVALID)
+        }
+        _ => None,
+    }
+}
+
+/// `validate` khi đang có gói trả phí; gói không còn dùng được thì dừng phiên đang chạy (spec 2026-10-07 §4.2).
+fn validate_paid<R: Runtime>(app: &AppHandle<R>, license: &License, t: i64) {
+    let paid = license.has_paid_plan(t);
+    let result = license.validate(t);
+    refresh(app);
+    if let Err(e) = result {
+        log::info!("validate chưa được: {}", e.code());
+        if let Some(code) = lost_code(&e).filter(|_| paid) {
+            crate::session::abort(app, code, &e.to_string());
+        }
+    }
+}
+
+/// Phiên vừa bắt đầu (`session::start_with`): gói trả phí mà lần `validate` thành công gần nhất đã quá 1 giờ thì kiểm lại
+/// chạy nền, không làm chậm lúc bắt đầu; lỗi mạng thì phiên chạy tiếp (spec 2026-10-07 §4.2).
+pub fn quick_check<R: Runtime>(app: &AppHandle<R>) {
+    let Some(license) = licensing(app) else {
+        return;
+    };
+    if !license.quick_check_due(now()) {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || validate_paid(&app, &license, now()));
 }
 
 /// Phút vừa dịch xong (`EventSink::usage`). `Break` khi đã chạm hạn mức.
@@ -194,11 +251,33 @@ pub fn validate_if_due<R: Runtime>(app: &AppHandle<R>) {
     };
     let t = now();
     if license.validate_due(t) {
-        if let Err(e) = license.validate(t) {
-            log::info!("validate chưa được: {}", e.code());
+        validate_paid(app, &license, t);
+    }
+}
+
+/// Đăng ký dùng thử chạy nền nếu tới lịch ([`License::trial_due`]), rồi báo giao diện.
+fn register_trial_if_due<R: Runtime>(app: &AppHandle<R>) {
+    let Some(license) = licensing(app) else {
+        return;
+    };
+    let t = now();
+    if license.trial_due(t) {
+        if let Err(e) = license.register_trial(t) {
+            log::info!("chưa đăng ký được dùng thử: {}", e.code());
         }
         refresh(app);
     }
+}
+
+/// Bước Điều khoản vừa được đồng ý (§4.1 bước 1b): cho phép đăng ký dùng thử, và đăng ký ngay trên luồng nền (spec
+/// 2026-10-07 §3.2). Lỗi mạng không chặn onboarding: ticker thử lại mỗi giờ.
+pub fn start_trial<R: Runtime>(app: &AppHandle<R>) {
+    let Some(license) = licensing(app) else {
+        return;
+    };
+    license.allow_trial();
+    let app = app.clone();
+    std::thread::spawn(move || register_trial_if_due(&app));
 }
 
 fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
@@ -213,8 +292,9 @@ fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
             license.set_genuine(!matches!(genuine, super::genuine::Genuineness::NotGenuine(_)));
         }
         refresh(&app);
-        // Lúc khởi động: kiểm ngay (§6.8, "Kiểm tra định kỳ").
+        // Lúc khởi động: kiểm ngay (§6.8, "Kiểm tra định kỳ"), và đăng ký dùng thử nếu chưa có.
         validate_if_due(&app);
+        register_trial_if_due(&app);
         let mut last = Instant::now();
         loop {
             std::thread::sleep(TICK_EVERY);
@@ -226,6 +306,7 @@ fn spawn_ticker<R: Runtime>(app: &AppHandle<R>) {
                 license.refresh_clock(t);
             }
             validate_if_due(&app);
+            register_trial_if_due(&app);
             refresh(&app);
         }
     });
@@ -239,7 +320,8 @@ fn license_or_error<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<License>, Comm
     licensing(app).ok_or_else(|| command_error(LicenseError::NotConfigured))
 }
 
-/// Kết quả của lệnh kích hoạt: thành công, hay key đã đủ 2 máy (giao diện hiện danh sách để gỡ một máy).
+/// Kết quả của lệnh kích hoạt: thành công hay xung đột (`view`, `standing` cho biết), hay key đang dùng ở máy khác
+/// (`devices`: giao diện hiện danh sách để gỡ máy kia hay "Vẫn kích hoạt").
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivateOutcome {
@@ -247,12 +329,21 @@ pub struct ActivateOutcome {
     pub devices: Option<Vec<Device>>,
 }
 
-pub fn activate<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<ActivateOutcome, CommandError> {
+/// Kích hoạt key vừa gõ. `allow_conflict`: người dùng đã xác nhận "Vẫn kích hoạt trên máy này" (spec 2026-10-07 §4.2).
+pub fn activate<R: Runtime>(
+    app: &AppHandle<R>,
+    key: &str,
+    allow_conflict: bool,
+) -> Result<ActivateOutcome, CommandError> {
     let license = license_or_error(app)?;
-    let result = license.activate(key, now());
+    let result = if allow_conflict {
+        license.activate_anyway(key, now())
+    } else {
+        license.activate(key, now())
+    };
     refresh(app);
     match result {
-        Ok(()) => Ok(ActivateOutcome {
+        Ok(()) | Err(LicenseError::Conflict(_)) => Ok(ActivateOutcome {
             view: Some(license.view(now())),
             devices: None,
         }),
@@ -271,10 +362,23 @@ pub fn deactivate<R: Runtime>(app: &AppHandle<R>) -> Result<Option<LicenseView>,
     result.map(|()| Some(license.view(now()))).map_err(command_error)
 }
 
-pub fn deactivate_other<R: Runtime>(app: &AppHandle<R>, key: &str, activation_id: &str) -> Result<(), CommandError> {
-    license_or_error(app)?
-        .deactivate(Some((key, activation_id)))
-        .map_err(command_error)
+/// Gỡ một máy khác của key. `key`: key người dùng vừa gõ (hộp thoại `key_in_use`); `None`: key đã lưu (đang xung đột,
+/// "Gỡ máy kia"), khi đó `validate` ngay để nhận token lại.
+pub fn deactivate_other<R: Runtime>(
+    app: &AppHandle<R>,
+    key: Option<&str>,
+    activation_id: &str,
+) -> Result<(), CommandError> {
+    let license = license_or_error(app)?;
+    let Some(key) = key else {
+        license.deactivate_saved_other(activation_id).map_err(command_error)?;
+        if let Err(e) = license.validate(now()) {
+            log::info!("validate sau khi gỡ máy kia chưa được: {}", e.code());
+        }
+        refresh(app);
+        return Ok(());
+    };
+    license.deactivate(Some((key, activation_id))).map_err(command_error)
 }
 
 pub fn validate_now<R: Runtime>(app: &AppHandle<R>) -> Result<Option<LicenseView>, CommandError> {

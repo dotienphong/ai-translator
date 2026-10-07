@@ -53,6 +53,7 @@
     "allow-cancel-checkout",
     "allow-open-checkout-page",
     "allow-recover-license",
+    "allow-start-trial",
     "allow-restart-to-update",
     "core:event:allow-listen",
     "core:event:allow-unlisten",

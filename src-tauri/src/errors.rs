@@ -51,6 +51,17 @@ pub const MODEL_BROKEN: &str = "modelBroken";
 pub const VAD_FAILED: &str = "vadFailed";
 /// Chạm hạn mức (§6.8): phiên dừng với lý do `quota_exhausted`. Kế hoạch 06 thêm thời điểm reset và nút nâng gói.
 pub const QUOTA_EXHAUSTED: &str = "quotaExhausted";
+// Mã lỗi của ba gói và mỗi key một máy (spec 2026-10-07 §3.2, §4.2, §6).
+/// Free mà đã hết 10 ngày dùng thử: không bắt đầu phiên, nút Nâng cấp.
+pub const TRIAL_ENDED: &str = "trialEnded";
+/// Free mà chưa có token dùng thử và đăng ký không được: cần kết nối mạng một lần.
+pub const TRIAL_NEEDS_NETWORK: &str = "trialNeedsNetwork";
+/// Free mà giờ máy bị coi là chỉnh lùi: chỉnh lại giờ.
+pub const CLOCK_ROLLED_BACK: &str = "clockRolledBack";
+/// Phiên trả phí dừng vì key đang kích hoạt trên 2 máy (cùng mã với `LicenseError::Conflict`).
+pub const LICENSE_CONFLICT: &str = "licenseConflict";
+/// Phiên trả phí dừng vì key bị thu hồi hay máy này bị gỡ khỏi key.
+pub const LICENSE_INVALID: &str = "licenseInvalid";
 // Mã lỗi của kế hoạch 03.
 /// Tính năng Pro (lịch sử, xuất file, từ điển thuật ngữ) khi đang ở gói Free (`pro::require`).
 pub const PRO_REQUIRED: &str = "proRequired";
@@ -197,6 +208,11 @@ mod tests {
                 APP_NOT_PLAYING,
                 VAD_FAILED,
                 QUOTA_EXHAUSTED,
+                TRIAL_ENDED,
+                TRIAL_NEEDS_NETWORK,
+                CLOCK_ROLLED_BACK,
+                LICENSE_CONFLICT,
+                LICENSE_INVALID,
                 PRO_REQUIRED,
                 DATA_UNAVAILABLE,
                 FILE_FAILED,

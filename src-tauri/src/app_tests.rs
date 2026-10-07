@@ -1627,6 +1627,150 @@ fn activating_a_key_in_use_returns_its_devices() {
     assert!(bad.contains("licenseInvalidKey"), "{bad}");
 }
 
+/// Claims của license Monthly cấp lúc `issued_at` (giờ thật), cho các test bản quyền của app.
+fn monthly_claims(activation_id: &str, issued_at: i64) -> Value {
+    json!({
+        "kid": "test-1", "license_id": "lic", "activation_id": activation_id, "activation_created_at": issued_at,
+        "device_id_hash": crate::license::manager::tests::DEVICE, "plan": "monthly",
+        "expires_at": issued_at + 30 * 86_400, "cycle_anchor": issued_at,
+        "quota_minutes_per_cycle": 3000, "quota_epoch": 0, "quota_fresh": true,
+        "issued_at": issued_at, "refresh_before": issued_at + 14 * 86_400,
+    })
+}
+
+/// Lỗi `409` có danh sách máy.
+fn devices_error(code: &str, ids: &[&str]) -> crate::license::client::ApiError {
+    use crate::license::client::{ApiError, Device, ServerError};
+    ApiError::Server(Box::new(ServerError {
+        status: 409,
+        code: code.into(),
+        devices: ids
+            .iter()
+            .map(|id| Device {
+                activation_id: (*id).into(),
+                device_label: None,
+                last_validated_at: Some(1),
+            })
+            .collect(),
+        ..ServerError::default()
+    }))
+}
+
+/// Free (spec 2026-10-07 §3.2, §6): chưa đăng ký được dùng thử thì báo cần mạng; dùng thử đã hết thì báo hết dùng thử.
+#[test]
+fn a_free_session_needs_a_running_trial() {
+    use crate::license::client::ApiError;
+    use crate::license::manager::tests::{DEVICE, trial_grant};
+    let app = mock_app();
+    let (api, _) = license_for(&app);
+    api.trials
+        .lock()
+        .unwrap()
+        .push_back(Err(ApiError::Network("tắt mạng".into())));
+    let refused = session::start(app.handle()).unwrap_err();
+    assert_eq!(refused.code, errors::TRIAL_NEEDS_NETWORK);
+    let now = crate::license::app::now();
+    api.trials.lock().unwrap().push_back(trial_grant(
+        DEVICE,
+        now - 20 * 86_400,
+        now - 10 * 86_400,
+        now - 20 * 86_400,
+    ));
+    let refused = session::start(app.handle()).unwrap_err();
+    assert_eq!(refused.code, errors::TRIAL_ENDED);
+    assert_eq!(
+        app.state::<AppState>().status().session_error.as_deref(),
+        Some(errors::TRIAL_ENDED)
+    );
+}
+
+/// Bước Điều khoản gọi `start_trial`: app đăng ký dùng thử chạy nền, báo giao diện qua `license://changed`.
+#[test]
+fn the_terms_step_starts_the_trial_in_the_background() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let views = record(&app, crate::license::app::LICENSE_CHANGED);
+    let (api, license) = license_for(&app);
+    invoke(&main, "start_trial", json!({})).unwrap();
+    wait_until("đăng ký dùng thử", || {
+        api.calls.lock().unwrap().iter().any(|c| c.starts_with("trial "))
+    });
+    let now = crate::license::app::now();
+    wait_until("báo giao diện", || {
+        views
+            .lock()
+            .unwrap()
+            .last()
+            .is_some_and(|v| v["trial"]["status"] == "active")
+    });
+    assert!(!license.trial_due(now), "đã có token: ticker không gọi nữa");
+}
+
+/// Bắt đầu phiên trả phí mà lần kiểm gần nhất đã quá 1 giờ: kiểm lại chạy nền; key đang xung đột thì dừng phiên với
+/// `licenseConflict` (spec 2026-10-07 §4.2).
+#[test]
+fn a_conflict_found_when_a_paid_session_starts_stops_it() {
+    use crate::license::manager::tests::{KEY, granted};
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let _main = window(&app, "main");
+    let (api, license) = license_for(&app);
+    let then = crate::license::app::now() - 3700;
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims("act", then), true));
+    license.activate(KEY, then).unwrap();
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(devices_error("license_conflict", &["act", "b"])));
+    session::start(app.handle()).unwrap();
+    let state = app.state::<AppState>();
+    wait_until("phiên dừng vì xung đột", || {
+        state.status().session == SessionStatus::Error
+    });
+    assert_eq!(state.status().session_error.as_deref(), Some(errors::LICENSE_CONFLICT));
+    assert!(!license.is_pro(crate::license::app::now()), "không còn gói trả phí");
+}
+
+/// "Vẫn kích hoạt" rồi "Gỡ máy kia" bằng key đã lưu: hết xung đột, nhận token lại.
+#[test]
+fn activating_anyway_then_removing_the_other_machine() {
+    use crate::license::manager::tests::{KEY, granted};
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, _) = license_for(&app);
+    let crate::license::client::ApiError::Server(mut conflict) = devices_error("license_conflict", &["a1", "a2"])
+    else {
+        unreachable!()
+    };
+    conflict.activation_id = Some("a2".into());
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(crate::license::client::ApiError::Server(conflict)));
+    let out = invoke(&main, "activate_license", json!({ "key": KEY, "allowConflict": true })).unwrap();
+    assert_eq!(out["view"]["standing"], "conflict");
+    assert_eq!(out["view"]["conflict"]["thisActivationId"], "a2");
+    let now = crate::license::app::now();
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims("a2", now), false));
+    invoke(&main, "deactivate_other_device", json!({ "activationId": "a1" })).unwrap();
+    let calls = api.calls.lock().unwrap().clone();
+    assert!(
+        calls.iter().any(|c| c == "deactivate 0123456789ABCDEFGHJKMNPQRST5 a1"),
+        "{calls:?}"
+    );
+    assert_eq!(calls.last().unwrap(), "validate 0123456789ABCDEFGHJKMNPQRST5 a2");
+    let view = invoke(&main, "get_license", json!({})).unwrap();
+    assert_eq!(view["standing"], "active");
+}
+
 // Tự cập nhật (kế hoạch 07b): lệnh khởi động lại, đổi kênh, cài ở lúc thoát.
 
 /// Việc của `kill_all` giả và của bản cập nhật giả, cùng một chỗ để so thứ tự.

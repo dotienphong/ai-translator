@@ -562,6 +562,11 @@ impl License {
             && inner.last_attempt.is_none_or(|t| t < claims.expires_at)
     }
 
+    /// Hạn mức đang theo gói trả phí (kể cả lúc chưa kiểm xong chữ ký bản cài).
+    pub fn has_paid_plan(&self, now: i64) -> bool {
+        self.quota_claims(&self.lock(), now).is_some()
+    }
+
     /// Đang có gói trả phí hiệu lực không (xem đầu module). Bản debug không giới hạn thì luôn có.
     pub fn is_pro(&self, now: i64) -> bool {
         self.dev_unlimited || self.active_claims(&self.lock(), now).is_some()

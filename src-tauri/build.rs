@@ -65,6 +65,7 @@ fn main() {
                 "cancel_checkout",
                 "open_checkout_page",
                 "recover_license",
+                "start_trial",
                 "restart_to_update",
                 "get_overlay_view",
                 "hide_overlay",

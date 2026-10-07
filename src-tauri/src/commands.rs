@@ -236,9 +236,17 @@ pub fn get_license<R: Runtime>(app: AppHandle<R>) -> Option<LicenseView> {
     license_app::view(&app)
 }
 
+/// `allow_conflict`: người dùng đã xác nhận "Vẫn kích hoạt trên máy này" (spec 2026-10-07 §4.2).
 #[tauri::command]
-pub async fn activate_license<R: Runtime>(app: AppHandle<R>, key: String) -> Result<ActivateOutcome, CommandError> {
-    blocking(app, move |app| license_app::activate(app, &key)).await
+pub async fn activate_license<R: Runtime>(
+    app: AppHandle<R>,
+    key: String,
+    allow_conflict: Option<bool>,
+) -> Result<ActivateOutcome, CommandError> {
+    blocking(app, move |app| {
+        license_app::activate(app, &key, allow_conflict.unwrap_or(false))
+    })
+    .await
 }
 
 #[tauri::command]
@@ -246,14 +254,24 @@ pub async fn deactivate_license<R: Runtime>(app: AppHandle<R>) -> Result<Option<
     blocking(app, license_app::deactivate).await
 }
 
-/// Gỡ một máy khác của key (danh sách `409 device_limit`), với key người dùng vừa gõ.
+/// Gỡ một máy khác của key: với key người dùng vừa gõ (danh sách `409 key_in_use`), hay không có `key` thì với key đã lưu
+/// (đang xung đột, spec 2026-10-07 §4.2).
 #[tauri::command]
 pub async fn deactivate_other_device<R: Runtime>(
     app: AppHandle<R>,
-    key: String,
+    key: Option<String>,
     activation_id: String,
 ) -> Result<(), CommandError> {
-    blocking(app, move |app| license_app::deactivate_other(app, &key, &activation_id)).await
+    blocking(app, move |app| {
+        license_app::deactivate_other(app, key.as_deref(), &activation_id)
+    })
+    .await
+}
+
+/// Bước Điều khoản vừa được đồng ý: đăng ký dùng thử chạy nền (spec 2026-10-07 §3.2). Không chờ server.
+#[tauri::command]
+pub fn start_trial<R: Runtime>(app: AppHandle<R>) {
+    license_app::start_trial(&app);
 }
 
 #[tauri::command]
@@ -394,6 +412,7 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "cancel_checkout",
     "open_checkout_page",
     "recover_license",
+    "start_trial",
     "restart_to_update",
 ];
 
@@ -448,6 +467,7 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         cancel_checkout,
         open_checkout_page,
         recover_license,
+        start_trial,
         restart_to_update,
         get_overlay_view,
         hide_overlay,
