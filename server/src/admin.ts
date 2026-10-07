@@ -16,8 +16,6 @@ import { PaymentProviderError } from "./payment/provider";
 import { computeGrant, isPlan, PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
 import type { KeyCheck } from "./token";
 
-export type { AdminDeps } from "./admin-auth";
-
 function parseNote(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const note = v.trim();
