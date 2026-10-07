@@ -12,7 +12,7 @@
 //! 4. bản ghi đánh dấu có mốc cũ hơn mốc hiện tại (sang chu kỳ mới): bắt đầu từ 0;
 //! 5. còn lại là mất bản ghi: coi như đã dùng hết hạn mức của chu kỳ.
 //!
-//! **Free.** Một bộ đếm theo ngày, 10 phút. Reset khi ngày theo giờ máy đã tăng **và** đã qua ít nhất 20 giờ theo "đồng
+//! **Free.** Một bộ đếm theo ngày, 30 phút (spec 2026-10-07 §1), chỉ trong 10 ngày dùng thử (luật dùng thử ở `manager`). Reset khi ngày theo giờ máy đã tăng **và** đã qua ít nhất 20 giờ theo "đồng
 //! hồ thật" (lớn nhất trong: thời gian đơn điệu cộng dồn lúc app chạy; hiệu hai header `Date` của server; hiệu giờ máy,
 //! chỉ khi giờ máy không nhỏ hơn mốc lớn nhất từng thấy quá 10 phút). Bộ đếm Free luôn cộng cả phút dịch lúc ở gói trả
 //! phí, và hết hạn mức gói trả phí thì Free của ngày đó cũng hết.
@@ -24,8 +24,8 @@ use super::token::Claims;
 
 pub const DAY_SECS: i64 = 86_400;
 pub const CYCLE_SECS: i64 = 30 * DAY_SECS;
-/// Hạn mức Free mỗi ngày (spec §2): hằng số phía app, vì Free không có token.
-pub const FREE_DAILY_MS: u64 = 10 * 60_000;
+/// Hạn mức Free mỗi ngày (spec 2026-10-07 §1): hằng số phía app, vì token dùng thử không mang hạn mức.
+pub const FREE_DAILY_MS: u64 = 30 * 60_000;
 /// Free reset cần đã qua ít nhất chừng này theo "đồng hồ thật" kể từ lần reset trước.
 pub const FREE_MIN_GAP_SECS: i64 = 20 * 3600;
 /// Giờ máy nhỏ hơn mốc lớn nhất từng thấy quá chừng này thì coi là đã chỉnh lùi (§10.2).

@@ -1056,16 +1056,16 @@ pub mod tests {
     }
 
     #[test]
-    fn a_first_run_is_free_with_ten_minutes_that_stop_the_session_when_used_up() {
+    fn a_first_run_is_free_with_thirty_minutes_that_stop_the_session_when_used_up() {
         let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
         let l = license(&api, &vault, T0);
         let v = l.view(T0);
         assert_eq!(
             (v.standing, v.plan.as_str(), v.quota.remaining_ms),
-            (Standing::Free, "free", 10 * MIN)
+            (Standing::Free, "free", 30 * MIN)
         );
         assert!(l.can_start(T0) && !l.is_pro(T0));
-        assert!(l.add_usage(9 * MIN, T0).is_continue());
+        assert!(l.add_usage(29 * MIN, T0).is_continue());
         assert!(l.add_usage(MIN, T0).is_break(), "chạm hạn mức thì engine dừng phiên");
         assert!(!l.can_start(T0), "hạn mức còn 0 thì không bắt đầu phiên");
         // Mở lại app cùng ngày: bộ đếm còn nguyên.
@@ -1661,7 +1661,7 @@ pub mod tests {
         let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
         let l = license(&api, &vault, T0);
         assert!(!l.take_warning(T0));
-        let _ = l.add_usage(5 * MIN, T0);
+        let _ = l.add_usage(25 * MIN, T0);
         assert!(l.take_warning(T0));
         assert!(!l.take_warning(T0));
         let _ = l.add_usage(5 * MIN, T0);
