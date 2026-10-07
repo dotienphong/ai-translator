@@ -88,9 +88,9 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
 
   /**
    * "Khách B" (review cuối, Q1): một khách khác, để test ranh giới giữa các license và email. B mua bằng email riêng, có
-   * 2 máy đang kích hoạt (đang xung đột, spec 2026-10-07 §4.1: máy 2 xác nhận "Vẫn kích hoạt"), 2 máy đã gỡ, và 3 lần tự
-   * gỡ trong 30 ngày (hơn ngưỡng 2 của luật khóa tạm). B không bị khóa, vì máy cuối kích hoạt lại là máy B tự gỡ. Mọi
-   * request của B đi từ IP riêng, không đụng bộ đếm của test.
+   * 2 máy đang kích hoạt (đang xung đột, spec 2026-10-07 §4.1: máy 2 xác nhận "Vẫn kích hoạt"), 2 máy đã gỡ, và 2 lần tự
+   * gỡ trong 30 ngày (đúng ngưỡng 2 của luật khóa tạm, nên B chưa bị khóa; vào bằng allow_conflict thì mọi lần gỡ đều
+   * tính, nên B không thể có nhiều hơn). Mọi request của B đi từ IP riêng, không đụng bộ đếm của test.
    */
   async function customerB() {
     const email = "khach-b@example.com";
@@ -120,9 +120,6 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
     }
     const b1 = await activate(1);
     const b2 = await activate(2, true);
-    // Lần gỡ thứ 3 rồi kích hoạt lại đúng máy đó: trừ chính máy này thì còn 2 lần, chưa quá ngưỡng.
-    await deactivate(b2, 2);
-    if ((await activate(2, true)) !== b2) throw new Error("khách B: máy 2 không dùng lại activation cũ");
     return {
       email,
       licenseKey,

@@ -91,3 +91,31 @@ it("0002 đổi mã gói, giữ dữ liệu, khóa ngoại, index và bộ đế
   const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%_new'").all()).results;
   expect(tables).toEqual([]);
 });
+
+it("0002 ánh xạ đủ ba mã cũ; mã khác giữ nguyên để CHECK chặn (chạy lại trên dữ liệu đã đổi không đổi gì)", async () => {
+  // Lấy đúng biểu thức CASE trong file migration (có hai chỗ: licenses và orders, phải giống hệt nhau) rồi chạy trên
+  // bảng thăm dò. Không thể chạy 0002 trên license đã là 'monthly'/'yearly': CHECK của 0001 không cho ghi mã đó.
+  const sql = env.TEST_MIGRATIONS.find((m) => m.name === "0002_three_plans_trials.sql")!.queries.join("\n");
+  const cases = sql.match(/CASE plan[\s\S]*?END/g) ?? [];
+  expect(cases).toHaveLength(2);
+  expect(cases[0]).toBe(cases[1]);
+  await db.prepare("CREATE TABLE plan_probe (plan TEXT)").run();
+  const codes = ["pro", "pro_x2", "pro_x5", "monthly", "yearly", "mã_lạ"];
+  await db.batch(codes.map((c) => db.prepare("INSERT INTO plan_probe (plan) VALUES (?)").bind(c)));
+  const mapped = await db.prepare(`SELECT plan, ${cases[0]} AS mapped FROM plan_probe`).all<{ plan: string; mapped: string }>();
+  expect(Object.fromEntries(mapped.results.map((r) => [r.plan, r.mapped]))).toEqual({
+    pro: "monthly",
+    pro_x2: "monthly",
+    pro_x5: "yearly",
+    monthly: "monthly",
+    yearly: "yearly",
+    // Mã lạ không bị gộp vào gói nào: ghi vào bảng mới thì CHECK từ chối, migration dừng thay vì tặng nhầm gói.
+    mã_lạ: "mã_lạ",
+  });
+  await db.prepare("DROP TABLE plan_probe").run();
+  await expect(
+    db
+      .prepare("INSERT INTO licenses (id, license_key, plan, expires_at, cycle_anchor, anchor_applied_at, created_at) VALUES ('Lx', 'Kx', 'mã_lạ', 1, 0, 0, 0)")
+      .run(),
+  ).rejects.toThrow(/CHECK/);
+});

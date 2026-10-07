@@ -1,5 +1,6 @@
 -- Ba gói (spec 2026-10-07): mã gói 'pro', 'pro_x2', 'pro_x5' đổi thành 'monthly', 'yearly'; thêm bảng dùng thử theo máy.
--- Đổi mã: 'pro', 'pro_x2' → 'monthly'; 'pro_x5' → 'yearly'. Mọi cột khác giữ nguyên giá trị.
+-- Đổi mã: 'pro', 'pro_x2' → 'monthly'; 'pro_x5' → 'yearly'. Mọi cột khác giữ nguyên giá trị. Mã khác (kể cả
+-- 'monthly', 'yearly' đã đổi sẵn) giữ nguyên: mã lạ bị CHECK của bảng mới từ chối, migration dừng thay vì gộp nhầm gói.
 --
 -- SQLite không sửa được CHECK, nên phải dựng lại licenses và orders. licenses là bảng cha của activations,
 -- deactivations và orders; xóa bảng cha khi còn bảng con trỏ tới là vi phạm khóa ngoại, và PRAGMA defer_foreign_keys
@@ -27,7 +28,9 @@ CREATE TABLE licenses_new (
 );
 INSERT INTO licenses_new (id, license_key, email, plan, expires_at, cycle_anchor, anchor_applied_at, version,
                           last_order_code, created_at, revoked_at, locked_at, lock_cleared_at)
-  SELECT id, license_key, email, CASE plan WHEN 'pro_x5' THEN 'yearly' ELSE 'monthly' END, expires_at, cycle_anchor,
+  SELECT id, license_key, email,
+         CASE plan WHEN 'pro' THEN 'monthly' WHEN 'pro_x2' THEN 'monthly' WHEN 'pro_x5' THEN 'yearly' ELSE plan END,
+         expires_at, cycle_anchor,
          anchor_applied_at, version, last_order_code, created_at, revoked_at, locked_at, lock_cleared_at
   FROM licenses;
 
@@ -60,7 +63,8 @@ INSERT INTO orders_new (order_code, order_token_hash, provider, provider_ref, pl
                         email_consent_at, renew_license_id, license_id, grant_kind, status, amount_paid, created_at,
                         expires_at, paid_at, last_checked_at, email_sent_at, email_attempts, email_retry_at,
                         email_gave_up_at)
-  SELECT order_code, order_token_hash, provider, provider_ref, CASE plan WHEN 'pro_x5' THEN 'yearly' ELSE 'monthly' END,
+  SELECT order_code, order_token_hash, provider, provider_ref,
+         CASE plan WHEN 'pro' THEN 'monthly' WHEN 'pro_x2' THEN 'monthly' WHEN 'pro_x5' THEN 'yearly' ELSE plan END,
          amount, currency, email, email_consent_at, renew_license_id, license_id, grant_kind, status, amount_paid,
          created_at, expires_at, paid_at, last_checked_at, email_sent_at, email_attempts, email_retry_at,
          email_gave_up_at

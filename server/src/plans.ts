@@ -15,7 +15,7 @@ export const DAY_SECONDS = 86400;
 export interface PlanConfig {
   /** Hạn mức dịch mỗi chu kỳ 30 ngày, mỗi máy, tính bằng phút; null là không giới hạn. */
   quota_minutes_per_cycle: number | null;
-  /** Số ngày mỗi đơn (30). */
+  /** Số ngày mỗi đơn (30 hay 365, theo gói). */
   days_per_order: number;
   /** Giá theo loại tiền, số nguyên theo đơn vị nhỏ nhất (VND không có đơn vị lẻ). */
   prices: Record<string, number>;

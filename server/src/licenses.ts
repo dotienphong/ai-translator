@@ -187,7 +187,8 @@ export function registerLicenses(app: Hono<AppEnv>) {
     const deviceIdHash = parseDeviceIdHash(body?.device_id_hash);
     const deviceLabel = parseDeviceLabel(body?.device_label);
     if (!body || !deviceIdHash || !deviceLabel) return fail(c, 400, "invalid_request");
-    const allowConflict = body.allow_conflict ?? false;
+    // Thiếu là false; có mặt thì phải là boolean (null, số, chuỗi đều 400).
+    const allowConflict = body.allow_conflict === undefined ? false : body.allow_conflict;
     if (typeof allowConflict !== "boolean") return fail(c, 400, "invalid_request", { field: "allow_conflict" });
     const found = await findLicense(db, body.key);
     if (!found.ok || !found.lic) {
@@ -215,13 +216,15 @@ export function registerLicenses(app: Hono<AppEnv>) {
     const since = Math.max(now - DEACTIVATION_WINDOW_SECONDS, lic.lock_cleared_at ?? 0);
     // Số lần người dùng gỡ trong 30 ngày, trừ các lần gỡ chính máy đang xin kích hoạt:
     // gỡ rồi kích hoạt lại cùng một máy không bị khóa, còn xoay vòng giữa nhiều máy thì bị.
+    // Riêng khi máy vào bằng allow_conflict (đẩy key sang trạng thái xung đột, khóa cả máy đang giữ key) thì đếm mọi lần
+    // gỡ, kể cả của chính máy xin: một máy lạ cứ vào rồi bị chủ key gỡ lại không được tự do lặp lại.
     // Đếm trên bảng deactivations, vì kích hoạt lại dùng lại dòng activation cũ (QĐ35).
     const recent = await db
       .prepare(
         `SELECT COUNT(*) AS n FROM deactivations d JOIN activations a ON a.id = d.activation_id
-         WHERE d.license_id = ? AND d.by = 'user' AND d.at > ? AND a.device_id_hash <> ?`,
+         WHERE d.license_id = ?1 AND d.by = 'user' AND d.at > ?2 AND (?4 = 1 OR a.device_id_hash <> ?3)`,
       )
-      .bind(lic.id, since, deviceIdHash)
+      .bind(lic.id, since, deviceIdHash, allowConflict ? 1 : 0)
       .first<{ n: number }>();
     if ((recent?.n ?? 0) > MAX_DEACTIVATIONS_IN_WINDOW) {
       // Chỉ khóa khi chưa khóa: nhiều request cùng lúc thì một request khóa, một dòng nhật ký, một cảnh báo.

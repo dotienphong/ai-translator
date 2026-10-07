@@ -88,6 +88,13 @@ describe("nội dung email", () => {
     expect(text).toContain("Settings > License");
   });
 
+  it("mỗi key chỉ dùng trên 1 máy (spec 2026-10-07 §1): không còn nhắc 2 máy", () => {
+    const { text } = licenseEmail("purchase", [{ licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Monthly", expiresAt: 0 }]);
+    expect(text).toContain("Mỗi key dùng trên 1 máy.");
+    expect(text).toContain("Each key works on 1 computer.");
+    expect(text).not.toMatch(/2 máy|2 computers/);
+  });
+
   it("thư đổi gói có tiêu đề riêng; không còn tên tạm", () => {
     const entry = { licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Monthly", expiresAt: 0 };
     expect(licenseEmail("plan_change", [entry]).subject).toBe("Đã đổi gói AI Translator / AI Translator plan changed");

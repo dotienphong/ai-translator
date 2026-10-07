@@ -138,12 +138,25 @@ describe("activate", () => {
     expect([x.status, y.status].sort()).toEqual([200, 409]);
   });
 
-  it("allow_conflict phải là boolean", async () => {
+  it.each([
+    ["chuỗi", "true"],
+    ["null", null],
+    ["số 1", 1],
+    ["số 0", 0],
+    ["mảng", []],
+  ])("allow_conflict có mặt mà không phải boolean (%s) thì 400, không ghi gì", async (_why, value) => {
     const { activate } = await setup();
-    expect(await activate(1, "198.51.100.1", { allow_conflict: "true" })).toMatchObject({
+    expect(await activate(1, "198.51.100.1", { allow_conflict: value })).toMatchObject({
       status: 400,
       body: { error: "invalid_request", field: "allow_conflict" },
     });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM activations").first()).toEqual({ n: 0 });
+  });
+
+  it("allow_conflict thiếu hay false: như nhau, không xung đột", async () => {
+    const { activate } = await setup();
+    expect((await activate(1)).status).toBe(200);
+    expect(await activate(2, "198.51.100.2", { allow_conflict: false })).toMatchObject({ status: 409, body: { error: "key_in_use" } });
   });
 
   it("gỡ hơn 2 máy trong 30 ngày rồi kích hoạt máy mới thì khóa tạm key (423) và có cảnh báo", async () => {
@@ -421,7 +434,7 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
     expect((await activate(1)).status).toBe(423);
   });
 
-  it("hai người dùng chung key gỡ qua gỡ lại bằng xác nhận xung đột: khóa sau 6 lần gỡ (mỗi máy bị gỡ 3 lần)", async () => {
+  it("hai người dùng chung key gỡ qua gỡ lại bằng xác nhận xung đột: khóa sau 3 lần gỡ (vào bằng allow_conflict thì mọi lần gỡ đều tính)", async () => {
     const { w, activate, activateAnyway, deactivate } = await setup();
     await activate(1);
     // Mỗi lượt: máy `inn` xác nhận xung đột rồi gỡ máy `out` từ xa.
@@ -439,10 +452,89 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
       await deactivate(await idOf(out));
       removals++;
     }
-    // Luật đếm trừ các lần gỡ chính máy đang xin kích hoạt (§10.2), nên máy xin kích hoạt bị chặn khi máy kia đã bị gỡ
-    // 3 lần: tổng 6 lần gỡ (nhiều hơn đổi máy ở trên một lần, vì máy vào trước khi máy kia bị gỡ).
-    expect(lockedAfter).toBe(6);
+    // Vào bằng allow_conflict thì luật khóa tạm đếm mọi lần gỡ, kể cả các lần gỡ chính máy xin (Task 9): lần vào thứ 4
+    // thấy 3 lần gỡ (1, 2, 1) nên bị chặn. Đổi máy bằng "gỡ máy kia rồi kích hoạt" (test ở trên) vẫn trừ lần gỡ của
+    // chính máy xin, nên cần 5 lần gỡ.
+    expect(lockedAfter).toBe(3);
     expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
+  });
+
+  it("máy lạ vào bằng allow_conflict, bị chủ key gỡ từ xa 3 lần: lần allow_conflict thứ 4 nhận 423 (tính cả lần gỡ chính máy xin); chủ key vẫn validate", async () => {
+    const { w, licenseKey, activate, activateAnyway, deactivate } = await setup();
+    const owner = await activate(1);
+    const statuses: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      w.clock.now = T0 + (i + 1) * 3600;
+      const r = await activateAnyway(3);
+      statuses.push(r.status);
+      if (r.status === 423) {
+        expect(r.body).toEqual({ error: "license_locked" });
+        break;
+      }
+      expect(r.body.error).toBe("license_conflict");
+      await deactivate(await idOf(3)); // chủ key gỡ máy lạ từ xa
+    }
+    // Lần vào thứ 4 thấy 3 lần gỡ (cùng của máy lạ), quá 2.
+    expect(statuses).toEqual([409, 409, 409, 423]);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 4 * 3600 });
+    expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'license_locked'").first()).toEqual({ n: 1 });
+    // Máy lạ không còn đang kích hoạt, nên không còn xung đột: chủ key validate bình thường, kể cả khi key đang bị khóa.
+    expect(await activeCount()).toEqual({ n: 1 });
+    const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: owner.body.activation_id });
+    expect(v.status).toBe(200);
+    expect(v.body.token).toMatch(/^v1\./);
+  });
+
+  it("cùng máy lạ nhưng KHÔNG dùng allow_conflict: các lần gỡ chính máy xin vẫn không tính (giữ cách đếm cũ)", async () => {
+    const { w, activate, activateAnyway, deactivate } = await setup();
+    const owner = await activate(1);
+    // Key đang ở máy chủ: không allow_conflict thì chỉ nhận key_in_use, không có lần gỡ nào.
+    for (let i = 0; i < 4; i++) expect((await activate(3)).status).toBe(409);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: null });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations").first()).toEqual({ n: 0 });
+    // Máy lạ có 3 lần bị gỡ (từ allow_conflict, mỗi lần vẫn còn trong ngưỡng).
+    for (let i = 0; i < 3; i++) {
+      w.clock.now = T0 + (i + 1) * 3600;
+      expect((await activateAnyway(3)).body.error).toBe("license_conflict");
+      await deactivate(await idOf(3));
+    }
+    // Chủ key tự gỡ để nhường chỗ: máy lạ vào lại không allow_conflict. Lần gỡ của chính máy lạ (3) không tính, chỉ còn
+    // lần gỡ của chủ key (1), nên vào được. Cùng trạng thái này mà vào bằng allow_conflict thì thấy 4 lần gỡ và bị 423.
+    w.clock.now = T0 + 4 * 3600;
+    await deactivate(owner.body.activation_id as string);
+    const back = await activate(3);
+    expect(back.status).toBe(200);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: null });
+  });
+
+  it("2 lần vào bằng allow_conflict kèm 2 lần bị gỡ: lần vào thứ 3 vẫn được (chưa quá 2)", async () => {
+    const { w, activate, activateAnyway, deactivate } = await setup();
+    await activate(1);
+    const statuses: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      w.clock.now = T0 + (i + 1) * 3600;
+      const r = await activateAnyway(3);
+      statuses.push(r.status);
+      if (i < 2) await deactivate(await idOf(3));
+    }
+    expect(statuses).toEqual([409, 409, 409]);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: null });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE by = 'user'").first()).toEqual({ n: 2 });
+    expect(await activeCount()).toEqual({ n: 2 });
+  });
+
+  it("allow_conflict: lần gỡ cũ hơn 30 ngày không tính", async () => {
+    const { w, activate, activateAnyway, deactivate } = await setup();
+    await env.DB.prepare("UPDATE licenses SET expires_at = ?").bind(T0 + 90 * DAY).run();
+    await activate(1);
+    for (let i = 0; i < 3; i++) {
+      expect((await activateAnyway(3)).body.error).toBe("license_conflict");
+      await deactivate(await idOf(3));
+    }
+    // 3 lần gỡ ở T0, quá 30 ngày thì không tính nữa.
+    w.clock.now = T0 + 31 * DAY;
+    expect((await activateAnyway(3)).body.error).toBe("license_conflict");
   });
 
   it("hai máy cùng xác nhận xung đột một lúc khi key đang ở máy 1: tối đa 2 máy đang kích hoạt", async () => {
@@ -838,11 +930,17 @@ describe("hai khách: không đụng license, máy hay bộ đếm của khách 
     }
   });
 
-  it("B có 3 lần tự gỡ trong 30 ngày: A kích hoạt máy mới không bị khóa", async () => {
-    const { w, activate } = await setup();
+  it("B có 2 lần tự gỡ trong 30 ngày: A đã gỡ 2 lần vẫn kích hoạt được máy thứ 3, vì không cộng lần gỡ của B", async () => {
+    const { w, activate, deactivate } = await setup();
     const b = await w.customerB();
-    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE license_id = ? AND by = 'user'").bind(b.licenseId).first()).toEqual({ n: 3 });
-    expect((await activate(1)).status).toBe(200);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE license_id = ? AND by = 'user'").bind(b.licenseId).first()).toEqual({ n: 2 });
+    // Nếu lần gỡ của B lọt vào đếm của A thì máy thứ 3 của A thấy 2 + 2 = 4 lần gỡ và bị khóa.
+    for (const n of [1, 2]) {
+      const r = await activate(n);
+      expect(r.status).toBe(200);
+      await deactivate(r.body.activation_id as string);
+    }
+    expect((await activate(3)).status).toBe(200);
     expect(await env.DB.prepare("SELECT locked_at FROM licenses WHERE id <> ?").bind(b.licenseId).first()).toEqual({ locked_at: null });
   });
 

@@ -39,12 +39,12 @@ export function licenseEmail(kind: LicenseEmailKind, entries: LicenseEmailEntry[
     "License key:",
     ...lines,
     "",
-    "Mở app, vào Cài đặt > Bản quyền, dán key để kích hoạt. Mỗi key dùng được trên 2 máy.",
+    "Mở app, vào Cài đặt > Bản quyền, dán key để kích hoạt. Mỗi key dùng trên 1 máy.",
     "Giữ email này để kích hoạt máy khác hoặc cài lại máy.",
     "",
     "---",
     `Thank you for using ${PRODUCT_NAME}.`,
-    "Open the app, go to Settings > License and paste the key. Each key works on 2 computers.",
+    "Open the app, go to Settings > License and paste the key. Each key works on 1 computer.",
     "Keep this email to activate another computer or reinstall.",
   ].join("\n");
   return { subject: SUBJECTS[kind], text };
