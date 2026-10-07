@@ -2044,7 +2044,7 @@ pnpm test
 pnpm build
 ```
 
-Kết quả mong đợi: `cargo fmt` không in gì; clippy kết thúc bằng `Finished`, không có `error:`; mọi dòng `test result` đều `ok` (lib của app `464 passed; 0 failed; 3 ignored`); `Tests  167 passed (167)`; Vite in `✓ built in …`.
+Kết quả mong đợi: `cargo fmt` không in gì; clippy kết thúc bằng `Finished`, không có `error:`; mọi dòng `test result` đều `ok` (lib của app `479 passed; 0 failed; 3 ignored` (sau Task 8 của 02a)); `Tests  167 passed (167)`; Vite in `✓ built in …`.
 
 - [ ] **Step 2: Không còn mã gói, câu chữ cũ**
 

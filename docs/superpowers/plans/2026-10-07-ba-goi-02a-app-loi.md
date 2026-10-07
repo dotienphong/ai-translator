@@ -8,7 +8,7 @@
 - `409 key_in_use`, "Vẫn kích hoạt" (`allow_conflict`), trạng thái xung đột, `validate` lại mỗi 15 phút;
 - lỗi bắt đầu phiên mới (`trialEnded`, `trialNeedsNetwork`, `clockRolledBack`), lệnh `start_trial`, kiểm nhanh lúc bắt đầu phiên trả phí, dừng phiên với `licenseConflict` hay `licenseInvalid`.
 
-Giao diện nằm ở **02b** (`2026-10-07-ba-goi-02b-app-giao-dien.md`). Làm 02a trước, rồi 02b.
+Giao diện nằm ở **02b** (`2026-10-07-ba-goi-02b-app-giao-dien.md`). Làm Task 1–7 của 02a, rồi 02b Task 1–4, rồi Task 8–9 của 02a (khối `Home.tsx` của Task 8 dựa vào 02b Task 3).
 
 **Kiến trúc:** Giữ cách chia module của kế hoạch 06 (`src-tauri/src/license/`). Thêm `trial.rs` (kiểm token dùng thử, dùng chung phần đọc token và kiểm chữ ký với `token.rs`). `manager.rs` (không phụ thuộc Tauri) giữ toàn bộ luật: dùng thử, xung đột, kiểm nhanh; `app.rs` nối vào Tauri: lỗi bắt đầu phiên, lệnh, ticker, dừng phiên qua `session::abort`. Test dùng server giả (`FakeApi`), kho khóa giả và token ký bằng khóa test của bộ vector chung với server.
 
@@ -53,7 +53,8 @@ Giao diện nằm ở **02b** (`2026-10-07-ba-goi-02b-app-giao-dien.md`). Làm 0
 | 5 | `fe8c45b` | Free theo dùng thử 10 ngày |
 | 6 | `3295194` | Mỗi key một máy, xung đột |
 | 7 | `1202bf7` | Nối vào app |
-| 8 | (không commit) | Bộ kiểm cuối |
+| 8 | `afe1577` | Sửa sau review cuối |
+| 9 | (không commit) | Bộ kiểm cuối |
 
 ---
 
@@ -5197,9 +5198,1967 @@ Co-Authored-By: <model đang chạy> <noreply@anthropic.com>"
 
 ---
 
-## Task 8: Bộ kiểm cuối của 02a
+## Task 8: Sửa sau review cuối
 
-Không sửa code. Chạy đủ bộ kiểm; mọi lệnh phải xanh trước khi sang 02b.
+Commit tham chiếu: `afe1577`.
+
+Review cuối 02a (sau khi 02a, 02b đã thực thi trên `main`, đỉnh cây `252fdc1`) cần sửa tám điểm. Task này là **một commit**
+(`afe1577`), làm trên `main` sau 02b. Danh sách sửa:
+
+1. **`start_block` nêu lý do của gói trả phí** (Quan trọng). Trước đây mọi trạng thái không `Active` bị coi là Free và chỉ
+   xét dùng thử, nên khách Monthly đã trả tiền mà dùng thử đã hết nhận "Hết dùng thử, mua gói" ở các trạng thái
+   `ClockRolledBack`, `RefreshNeeded`, `Unverified`, `Conflict`. Nay: dùng thử còn hiệu lực thì Free chạy như trước; dùng thử
+   không còn (hết, hay chưa có) mà khách có bản ghi license không dùng được thì ưu tiên lý do của gói:
+   `ClockRolledBack` → `clockRolledBack`, `Conflict` → `licenseConflict`, `RefreshNeeded`/`Unverified` →
+   `licenseNeedsRefresh` (mã mới), `Revoked` → `licenseRevoked`, `Expired` → `licenseExpired` (hai mã sẵn có). Khách Free thật
+   sự (chưa từng có license, hay đã gỡ key) vẫn nhận `trialEnded`. Test cũ `an_expired_plan_falls_back_to_the_trial` của Task 5
+   đổi kỳ vọng từ `TrialEnded` sang `LicenseExpired` (gói hết hạn và dùng thử hết: nêu lý do của gói để gia hạn); màn hình chính
+   thêm nút Nâng cấp cho `licenseExpired` như đã có cho `trialEnded`.
+2. **`409 key_in_use` mà `devices` rỗng** (race của server: máy kia vừa gỡ key): gọi lại `activate` một lần, không
+   `allow_conflict`; lần hai vẫn rỗng thì báo `licenseServer`.
+3. **`activation_id` của `409 license_conflict` phải là UUID** (36 ký tự, gạch nối ở vị trí 8, 13, 18, 23, còn lại là chữ số
+   hex). Rỗng hay không phải UUID thì coi như thiếu: `licenseServer`, không lưu gì. Các test xung đột cũ dùng id `a1`, `a2`
+   nên đổi sang hai hằng UUID `ACT_1`, `ACT_2`.
+4. **`abort` gắn với phiên đã nhờ nó.** `session::attempt(app)` trả số của lần bắt đầu hiện tại; `quick_check` nhận số đó lúc
+   spawn, `validate_if_due` lấy số lúc gọi, và `session::abort(app, attempt, …)` bỏ qua khi số đã đổi. Kết quả `validate` tới
+   muộn của phiên đã dừng không dừng được phiên mới (kịch bản: S1 trả phí có kiểm nhanh treo, người dùng dừng S1, gỡ key, bắt
+   đầu S2 Free, kết quả tới muộn).
+5. **Đăng ký dùng thử khi bắt đầu phiên:** `register_trial` tôn trọng `Retry-After` của `429` (không gọi server trong lúc
+   chờ, trả số giây còn lại); mỗi lúc chỉ một lần gọi server (`trial_gate`, lần sau chờ rồi dùng kết quả của lần trước); kho
+   khóa không ghi được token thì token vẫn ở bộ nhớ (lần Bắt đầu sau không gọi server lại) và trả `Storage`. `start_block`
+   phân biệt lý do: mất mạng → `trialNeedsNetwork`; lỗi khác (`429` → `licenseRateLimited`, `503` → `licenseServer`, token sai →
+   `licenseBadToken`) → `StartBlock::TrialUnavailable(<mã>)`, dùng lại các mã lỗi đã có.
+6. **`load()` ở trạng thái xung đột** (token rỗng theo thiết kế) không đọc token, nên không log "token đã lưu không đọc được"
+   mỗi lần mở app. Test bắt log theo luồng, kèm đối chứng: token hỏng thật vẫn được log.
+7. **Không đọc được mã máy** (`id_hash` rỗng): không gọi `/v1/trial` (cả ticker lẫn `start_block`), log cảnh báo đúng một
+   lần, báo `licenseNoMachineId` (mã mới, câu báo vi/en) thay cho "cần mạng".
+8. **Kiểm, không sửa:** `enter_conflict`/`accept` ghi đè bản ghi của key khác đang `Active`? Kết quả ở mục "Ghi nhận mục 8: nhập key
+   mới khi đang có key" cuối task.
+
+Số test: lib của app từ 464 lên **479** (+15: 12 trong `manager`, 3 trong `app_tests`); vitest giữ 167.
+
+Phát hiện thêm, **chưa sửa** (ngoài danh sách review): `validate` giữ bản ghi lấy lúc bắt đầu; nếu người dùng gỡ key (`deactivate`)
+trong lúc một `validate` đang chờ response thì response tới muộn ghi lại bản ghi vừa xóa (`accept` hay `enter_conflict`),
+tức là "gỡ kích hoạt" bị hoàn tác. Có từ kế hoạch 06, không do 02. Đề xuất sửa riêng: sau khi nhận response, kiểm bản ghi
+hiện tại còn đúng (`key`, `activation_id`) rồi mới áp kết quả.
+
+**Files:**
+- Test: `src-tauri/src/app_tests.rs`
+- Modify: `src-tauri/src/errors.rs` (`LICENSE_NEEDS_REFRESH`)
+- Modify: `src-tauri/src/license/app.rs` (`check_start` map lý do mới, `quick_check` và `validate_paid` nhận số lần bắt đầu)
+- Modify: `src-tauri/src/license/manager.rs` (StartBlock, start_block, register_trial, activate_with, load, is_uuid, FakeApi)
+- Modify: `src-tauri/src/session.rs` (`attempt`, `abort` theo lần bắt đầu)
+- Modify: `src/i18n/en.ts`
+- Modify: `src/i18n/vi.ts`
+- Modify: `src/windows/main/screens/Home.tsx`
+
+- [ ] **Step 1: Viết test trước**
+
+`src-tauri/src/app_tests.rs`: thay
+
+```rust
+    assert!(bad.contains("licenseInvalidKey"), "{bad}");
+}
+
+/// Claims của license Monthly cấp lúc `issued_at` (giờ thật), cho các test bản quyền của app.
+fn monthly_claims(activation_id: &str, issued_at: i64) -> Value {
+    json!({
+```
+
+bằng
+
+```rust
+    assert!(bad.contains("licenseInvalidKey"), "{bad}");
+}
+
+/// Activation của hai máy trong các test xung đột (UUID như server cấp).
+const ACT_1: &str = "5d0e8a47-3b2c-4f6d-8e1a-7c9b0d2e4f60";
+const ACT_2: &str = "9b1f2c3d-4e5a-4b6c-8d7e-0f1a2b3c4d5e";
+
+/// Claims của license Monthly cấp lúc `issued_at` (giờ thật), cho các test bản quyền của app.
+fn monthly_claims(activation_id: &str, issued_at: i64) -> Value {
+    json!({
+```
+
+`src-tauri/src/app_tests.rs`: thay
+
+```rust
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, _) = license_for(&app);
+    let crate::license::client::ApiError::Server(mut conflict) = devices_error("license_conflict", &["a1", "a2"])
+    else {
+        unreachable!()
+    };
+    conflict.activation_id = Some("a2".into());
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(crate::license::client::ApiError::Server(conflict)));
+    let out = invoke(&main, "activate_license", json!({ "key": KEY, "allowConflict": true })).unwrap();
+    assert_eq!(out["view"]["standing"], "conflict");
+    assert_eq!(out["view"]["conflict"]["thisActivationId"], "a2");
+    let now = crate::license::app::now();
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims("a2", now), false));
+    invoke(&main, "deactivate_other_device", json!({ "activationId": "a1" })).unwrap();
+    let calls = api.calls.lock().unwrap().clone();
+    assert!(
+        calls.iter().any(|c| c == "deactivate 0123456789ABCDEFGHJKMNPQRST5 a1"),
+        "{calls:?}"
+    );
+    assert_eq!(calls.last().unwrap(), "validate 0123456789ABCDEFGHJKMNPQRST5 a2");
+    let view = invoke(&main, "get_license", json!({})).unwrap();
+    assert_eq!(view["standing"], "active");
+}
+
+// Tự cập nhật (kế hoạch 07b): lệnh khởi động lại, đổi kênh, cài ở lúc thoát.
+
+/// Việc của `kill_all` giả và của bản cập nhật giả, cùng một chỗ để so thứ tự.
+```
+
+bằng
+
+```rust
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, _) = license_for(&app);
+    let crate::license::client::ApiError::Server(mut conflict) = devices_error("license_conflict", &[ACT_1, ACT_2])
+    else {
+        unreachable!()
+    };
+    conflict.activation_id = Some(ACT_2.into());
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(crate::license::client::ApiError::Server(conflict)));
+    let out = invoke(&main, "activate_license", json!({ "key": KEY, "allowConflict": true })).unwrap();
+    assert_eq!(out["view"]["standing"], "conflict");
+    assert_eq!(out["view"]["conflict"]["thisActivationId"], ACT_2);
+    let now = crate::license::app::now();
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims(ACT_2, now), false));
+    invoke(&main, "deactivate_other_device", json!({ "activationId": ACT_1 })).unwrap();
+    let calls = api.calls.lock().unwrap().clone();
+    assert!(
+        calls
+            .iter()
+            .any(|c| c == &format!("deactivate 0123456789ABCDEFGHJKMNPQRST5 {ACT_1}")),
+        "{calls:?}"
+    );
+    assert_eq!(
+        calls.last().unwrap(),
+        &format!("validate 0123456789ABCDEFGHJKMNPQRST5 {ACT_2}")
+    );
+    let view = invoke(&main, "get_license", json!({})).unwrap();
+    assert_eq!(view["standing"], "active");
+}
+
+/// `check_start` nêu lý do của gói trả phí (key xung đột, bị thu hồi) khi dùng thử đã hết, và mã lỗi của lần đăng ký dùng thử
+/// khi server từ chối (Task 8 của 02a).
+#[test]
+fn check_start_names_the_reason_of_the_plan_and_of_a_failed_trial() {
+    use crate::license::client::{ApiError, ServerError};
+    use crate::license::manager::tests::{DEVICE, KEY, granted, server, trial_grant};
+    let now = crate::license::app::now();
+    let ended = || trial_grant(DEVICE, now - 20 * 86_400, now - 10 * 86_400, now - 20 * 86_400);
+    let app = mock_app();
+    let (api, license) = license_for(&app);
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims("act", now), true));
+    license.activate(KEY, now).unwrap();
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(devices_error("license_conflict", &["act", "b"])));
+    let _ = license.validate(now);
+    api.trials.lock().unwrap().push_back(ended());
+    assert_eq!(session::start(app.handle()).unwrap_err().code, errors::LICENSE_CONFLICT);
+    let app = mock_app();
+    let (api, license) = license_for(&app);
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims("act", now), true));
+    license.activate(KEY, now).unwrap();
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(server(403, "license_revoked")));
+    let _ = license.validate(now);
+    api.trials.lock().unwrap().push_back(ended());
+    assert_eq!(session::start(app.handle()).unwrap_err().code, "licenseRevoked");
+    // Free chưa có dùng thử, server từ chối (503) thì báo "thử lại sau", không phải "cần mạng".
+    let app = mock_app();
+    let (api, _) = license_for(&app);
+    api.trials
+        .lock()
+        .unwrap()
+        .push_back(Err(ApiError::Server(Box::new(ServerError {
+            status: 503,
+            code: "trial_not_configured".into(),
+            ..ServerError::default()
+        }))));
+    assert_eq!(session::start(app.handle()).unwrap_err().code, "licenseServer");
+}
+
+/// `abort` chỉ chạm tới lần bắt đầu đã nhờ nó: kết quả kiểm bản quyền tới muộn của phiên cũ không dừng phiên mới.
+#[test]
+fn abort_only_touches_the_attempt_that_asked_for_it() {
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let _main = window(&app, "main");
+    session::start(app.handle()).unwrap();
+    let first = session::attempt(app.handle());
+    session::stop(app.handle());
+    session::start(app.handle()).unwrap();
+    let second = session::attempt(app.handle());
+    assert_ne!(first, second);
+    let state = app.state::<AppState>();
+    session::abort(app.handle(), first, errors::LICENSE_CONFLICT, "kết quả của phiên cũ");
+    assert_eq!(state.status().session, SessionStatus::Running);
+    session::abort(app.handle(), second, errors::LICENSE_CONFLICT, "đúng phiên này");
+    assert_eq!(state.status().session, SessionStatus::Error);
+    assert_eq!(state.status().session_error.as_deref(), Some(errors::LICENSE_CONFLICT));
+}
+
+/// Phiên trả phí S1 có kiểm nhanh đang treo; người dùng dừng S1, gỡ key, bắt đầu S2 ở Free; kết quả kiểm nhanh (xung đột) tới
+/// muộn không được dừng S2.
+#[test]
+fn a_late_quick_check_cannot_stop_a_newer_session() {
+    use crate::license::manager::tests::{KEY, granted};
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    });
+    let _main = window(&app, "main");
+    let (api, license) = license_for(&app);
+    let then = crate::license::app::now() - 3700;
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&monthly_claims("act", then), true));
+    license.activate(KEY, then).unwrap();
+    let (release, hold) = std::sync::mpsc::channel();
+    *api.validate_hold.lock().unwrap() = Some(hold);
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(devices_error("license_conflict", &["act", "b"])));
+    session::start(app.handle()).unwrap();
+    wait_until("kiểm nhanh đã gọi server", || {
+        api.calls.lock().unwrap().iter().any(|c| c.starts_with("validate "))
+    });
+    session::stop(app.handle());
+    license.deactivate(None).unwrap();
+    session::start(app.handle()).unwrap();
+    let state = app.state::<AppState>();
+    assert_eq!(state.status().session, SessionStatus::Running);
+    release.send(()).unwrap();
+    wait_until("kiểm nhanh trả kết quả", || {
+        api.validate_returned.load(std::sync::atomic::Ordering::SeqCst) == 1
+    });
+    // Nếu `abort` không phân biệt phiên thì S2 bị dừng ngay sau đây: chờ dư để thấy.
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(state.status().session, SessionStatus::Running, "S2 không bị dừng");
+    assert_eq!(state.status().session_error, None);
+}
+
+// Tự cập nhật (kế hoạch 07b): lệnh khởi động lại, đổi kênh, cài ở lúc thoát.
+
+/// Việc của `kill_all` giả và của bản cập nhật giả, cùng một chỗ để so thứ tự.
+```
+
+`src-tauri/src/errors.rs`: thay
+
+```rust
+                CLOCK_ROLLED_BACK,
+                LICENSE_CONFLICT,
+                LICENSE_INVALID,
+                PRO_REQUIRED,
+                DATA_UNAVAILABLE,
+                FILE_FAILED,
+```
+
+bằng
+
+```rust
+                CLOCK_ROLLED_BACK,
+                LICENSE_CONFLICT,
+                LICENSE_INVALID,
+                LICENSE_NEEDS_REFRESH,
+                PRO_REQUIRED,
+                DATA_UNAVAILABLE,
+                FILE_FAILED,
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+pub mod tests {
+    use std::collections::VecDeque;
+    use std::sync::Arc;
+
+    use base64::Engine;
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+```
+
+bằng
+
+```rust
+pub mod tests {
+    use std::collections::VecDeque;
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicUsize;
+
+    use base64::Engine;
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        pub orders: Mutex<VecDeque<Result<OrderStatus, ApiError>>>,
+        pub calls: Mutex<Vec<String>>,
+        pub date: Mutex<Option<i64>>,
+    }
+
+    impl FakeApi {
+        fn next(&self, call: String) -> Reply<Granted> {
+            self.calls.lock().unwrap().push(call);
+            Reply {
+                result: self
+                    .replies
+```
+
+bằng
+
+```rust
+        pub orders: Mutex<VecDeque<Result<OrderStatus, ApiError>>>,
+        pub calls: Mutex<Vec<String>>,
+        pub date: Mutex<Option<i64>>,
+        /// Có thì lần `validate` kế tiếp chờ tới khi nhận tín hiệu: test mô phỏng response tới muộn.
+        pub validate_hold: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
+        /// Số lần `validate` đã trả kết quả (sau khi hết chờ).
+        pub validate_returned: AtomicUsize,
+        /// Như `validate_hold`, cho lần `trial` kế tiếp.
+        pub trial_hold: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
+    }
+
+    impl FakeApi {
+        fn next(&self, call: String) -> Reply<Granted> {
+            self.calls.lock().unwrap().push(call);
+            self.reply()
+        }
+
+        fn reply(&self) -> Reply<Granted> {
+            Reply {
+                result: self
+                    .replies
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+            self.next(format!("activate {key} {device} {}{anyway}", label.unwrap_or("-")))
+        }
+        fn validate(&self, key: &str, activation_id: &str) -> Reply<Granted> {
+            self.next(format!("validate {key} {activation_id}"))
+        }
+        fn deactivate(&self, key: &str, activation_id: &str) -> Reply<()> {
+            self.calls
+```
+
+bằng
+
+```rust
+            self.next(format!("activate {key} {device} {}{anyway}", label.unwrap_or("-")))
+        }
+        fn validate(&self, key: &str, activation_id: &str) -> Reply<Granted> {
+            self.calls
+                .lock()
+                .unwrap()
+                .push(format!("validate {key} {activation_id}"));
+            let hold = self.validate_hold.lock().unwrap().take();
+            if let Some(release) = hold {
+                let _ = release.recv();
+            }
+            let reply = self.reply();
+            self.validate_returned.fetch_add(1, Ordering::SeqCst);
+            reply
+        }
+        fn deactivate(&self, key: &str, activation_id: &str) -> Reply<()> {
+            self.calls
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        }
+        fn trial(&self, device: &str) -> Reply<TrialGrant> {
+            self.calls.lock().unwrap().push(format!("trial {device}"));
+            Reply {
+                result: self.trials.lock().unwrap().pop_front().unwrap_or_else(|| {
+                    trial_grant(device, TRIAL_FOREVER_START, TRIAL_FOREVER_END, TRIAL_FOREVER_START)
+```
+
+bằng
+
+```rust
+        }
+        fn trial(&self, device: &str) -> Reply<TrialGrant> {
+            self.calls.lock().unwrap().push(format!("trial {device}"));
+            let hold = self.trial_hold.lock().unwrap().take();
+            if let Some(release) = hold {
+                let _ = release.recv();
+            }
+            Reply {
+                result: self.trials.lock().unwrap().pop_front().unwrap_or_else(|| {
+                    trial_grant(device, TRIAL_FOREVER_START, TRIAL_FOREVER_END, TRIAL_FOREVER_START)
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+            .lock()
+            .unwrap()
+            .push_back(trial_grant(DEVICE, T0 - 20 * DAY, T0 - 10 * DAY, T0));
+        assert_eq!(l.start_block(after), Some(StartBlock::TrialEnded));
+        assert_eq!(l.start_block(T0 + 60), None, "gói trả phí còn hạn: không cần dùng thử");
+    }
+
+```
+
+bằng
+
+```rust
+            .lock()
+            .unwrap()
+            .push_back(trial_grant(DEVICE, T0 - 20 * DAY, T0 - 10 * DAY, T0));
+        assert_eq!(
+            l.start_block(after),
+            Some(StartBlock::LicenseExpired),
+            "gói đã hết hạn, dùng thử cũng hết: nêu lý do của gói để gia hạn"
+        );
+        assert_eq!(l.start_block(T0 + 60), None, "gói trả phí còn hạn: không cần dùng thử");
+    }
+
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        ApiError::Server(e)
+    }
+
+    /// Token của activation `id`.
+    fn granted_for(id: &str, issued_at: i64) -> Result<Granted, ApiError> {
+        let mut c = claims(issued_at);
+```
+
+bằng
+
+```rust
+        ApiError::Server(e)
+    }
+
+    /// Activation của hai máy trong các test xung đột (UUID như server cấp).
+    const ACT_1: &str = "5d0e8a47-3b2c-4f6d-8e1a-7c9b0d2e4f60";
+    const ACT_2: &str = "9b1f2c3d-4e5a-4b6c-8d7e-0f1a2b3c4d5e";
+
+    /// Token của activation `id`.
+    fn granted_for(id: &str, issued_at: i64) -> Result<Granted, ApiError> {
+        let mut c = claims(issued_at);
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_reply(&["a1", "a2"], "a2")));
+        assert!(matches!(l.activate_anyway(KEY, T0), Err(LicenseError::Conflict(d)) if d.len() == 2));
+        assert_eq!(
+            *api.calls.lock().unwrap(),
+```
+
+bằng
+
+```rust
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_reply(&[ACT_1, ACT_2], ACT_2)));
+        assert!(matches!(l.activate_anyway(KEY, T0), Err(LicenseError::Conflict(d)) if d.len() == 2));
+        assert_eq!(
+            *api.calls.lock().unwrap(),
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        );
+        let v = l.view(T0);
+        assert_eq!((v.standing, v.plan.as_str()), (Standing::Conflict, "free"));
+        assert_eq!(ids(&v), ["a1", "a2"]);
+        assert_eq!(v.conflict.unwrap().this_activation_id, "a2");
+        assert!(!l.is_pro(T0) && l.can_start(T0), "Free theo dùng thử");
+        let l = license(&api, &vault, T0 + 60);
+        assert_eq!(l.view(T0 + 60).standing, Standing::Conflict, "mở lại app vẫn xung đột");
+```
+
+bằng
+
+```rust
+        );
+        let v = l.view(T0);
+        assert_eq!((v.standing, v.plan.as_str()), (Standing::Conflict, "free"));
+        assert_eq!(ids(&v), [ACT_1, ACT_2]);
+        assert_eq!(v.conflict.unwrap().this_activation_id, ACT_2);
+        assert!(!l.is_pro(T0) && l.can_start(T0), "Free theo dùng thử");
+        let l = license(&api, &vault, T0 + 60);
+        assert_eq!(l.view(T0 + 60).standing, Standing::Conflict, "mở lại app vẫn xung đột");
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        assert_eq!(l.view(T0 + 60).standing, Standing::Conflict, "lỗi mạng: vẫn xung đột");
+        assert!(!l.validate_due(T0 + 60 + 899));
+        assert!(l.validate_due(T0 + 60 + 900));
+        api.replies.lock().unwrap().push_back(granted_for("a2", T0 + 960));
+        l.validate(T0 + 960).unwrap();
+        assert_eq!(
+            api.calls.lock().unwrap().last().unwrap(),
+            "validate 0123456789ABCDEFGHJKMNPQRST5 a2"
+        );
+        assert_eq!(l.view(T0 + 960).standing, Standing::Active);
+    }
+```
+
+bằng
+
+```rust
+        assert_eq!(l.view(T0 + 60).standing, Standing::Conflict, "lỗi mạng: vẫn xung đột");
+        assert!(!l.validate_due(T0 + 60 + 899));
+        assert!(l.validate_due(T0 + 60 + 900));
+        api.replies.lock().unwrap().push_back(granted_for(ACT_2, T0 + 960));
+        l.validate(T0 + 960).unwrap();
+        assert_eq!(
+            api.calls.lock().unwrap().last().unwrap(),
+            &format!("validate 0123456789ABCDEFGHJKMNPQRST5 {ACT_2}")
+        );
+        assert_eq!(l.view(T0 + 960).standing, Standing::Active);
+    }
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_reply(&["a1", "a2"], "a1")));
+        assert!(matches!(l.activate(KEY, T0), Err(LicenseError::Conflict(_))));
+        assert_eq!(l.view(T0).conflict.unwrap().this_activation_id, "a1");
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &["a1", "a2"])));
+        assert!(matches!(l.activate_anyway(KEY, T0), Err(LicenseError::Server(_))));
+        assert_eq!(l.view(T0).standing, Standing::Free);
+        assert!(!vault.items.lock().unwrap().contains_key(store::LICENSE));
+    }
+
+    /// Kiểm nhanh lúc bắt đầu phiên trả phí: chỉ khi lần `validate` thành công gần nhất đã quá 1 giờ (spec 2026-10-07 §4.2).
+    #[test]
+    fn a_paid_session_start_checks_the_key_when_the_last_check_is_over_an_hour_old() {
+```
+
+bằng
+
+```rust
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_reply(&[ACT_1, ACT_2], ACT_1)));
+        assert!(matches!(l.activate(KEY, T0), Err(LicenseError::Conflict(_))));
+        assert_eq!(l.view(T0).conflict.unwrap().this_activation_id, ACT_1);
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &[ACT_1, ACT_2])));
+        assert!(matches!(l.activate_anyway(KEY, T0), Err(LicenseError::Server(_))));
+        assert_eq!(l.view(T0).standing, Standing::Free);
+        assert!(!vault.items.lock().unwrap().contains_key(store::LICENSE));
+    }
+
+    /// `activation_id` của `409 license_conflict` phải là UUID: rỗng hay không phải UUID thì coi như thiếu (review cuối 02a,
+    /// mục 3): báo lỗi server, không lưu gì.
+    #[test]
+    fn a_conflict_activation_id_must_be_a_uuid() {
+        for bad in [
+            "",
+            "a2",
+            "5d0e8a47-3b2c-4f6d-8e1a-7c9b0d2e4f6",
+            "5d0e8a47-3b2c-4f6d-8e1a-7c9b0d2e4f6g",
+            " 5d0e8a47-3b2c-4f6d-8e1a-7c9b0d2e4f60",
+        ] {
+            let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+            let l = license(&api, &vault, T0);
+            api.replies
+                .lock()
+                .unwrap()
+                .push_back(Err(conflict_reply(&[ACT_1, ACT_2], bad)));
+            let got = l.activate_anyway(KEY, T0);
+            assert!(matches!(&got, Err(LicenseError::Server(_))), "{bad:?}: {got:?}");
+            assert_eq!(got.unwrap_err().code(), "licenseServer");
+            assert_eq!(l.view(T0).standing, Standing::Free, "{bad:?}");
+            assert!(!vault.items.lock().unwrap().contains_key(store::LICENSE), "{bad:?}");
+        }
+        // UUID chữ hoa cũng là UUID.
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        let upper = ACT_2.to_uppercase();
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_reply(&[ACT_1, &upper], &upper)));
+        assert!(matches!(l.activate_anyway(KEY, T0), Err(LicenseError::Conflict(_))));
+    }
+
+    /// Kiểm nhanh lúc bắt đầu phiên trả phí: chỉ khi lần `validate` thành công gần nhất đã quá 1 giờ (spec 2026-10-07 §4.2).
+    #[test]
+    fn a_paid_session_start_checks_the_key_when_the_last_check_is_over_an_hour_old() {
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        let free = license(&api, &vault, T0);
+        assert!(!free.quick_check_due(T0 + 7200));
+    }
+}
+```
+
+bằng
+
+```rust
+        let free = license(&api, &vault, T0);
+        assert!(!free.quick_check_due(T0 + 7200));
+    }
+
+    // ---- Sửa sau review cuối 02a (Task 8) ----
+
+    /// Khách Monthly còn hạn mà dùng thử đã hết, và gói đang không dùng được: lý do của gói trả phí, không phải "hết dùng thử,
+    /// mua gói" (review cuối 02a, Quan trọng 1).
+    fn ended_trial(api: &Arc<FakeApi>) {
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(trial_grant(DEVICE, T0 - 20 * DAY, T0 - 10 * DAY, T0));
+    }
+
+    #[test]
+    fn a_paid_customer_with_an_ended_trial_and_a_clock_set_back_hears_about_the_clock() {
+        let (api, _, l) = activated(T0, true);
+        ended_trial(&api);
+        l.tick(T0 + 3600, 0);
+        let back = T0 + 3600 - 601;
+        assert_eq!(l.view(back).standing, Standing::ClockRolledBack);
+        assert_eq!(l.start_block(back), Some(StartBlock::ClockRolledBack));
+    }
+
+    #[test]
+    fn a_paid_customer_with_an_ended_trial_and_a_conflict_hears_about_the_conflict() {
+        let (api, _, l) = activated(T0, true);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &["act", "other"])));
+        let _ = l.validate(T0 + 60);
+        ended_trial(&api);
+        assert_eq!(l.start_block(T0 + 60), Some(StartBlock::LicenseConflict));
+    }
+
+    /// Quá 14 ngày offline (`refresh_before`), và token lưu không đọc được (`Unverified`): cần mạng để làm mới bản quyền.
+    #[test]
+    fn a_paid_customer_with_an_ended_trial_who_needs_a_refresh_hears_about_the_network() {
+        let (api, _, l) = activated(T0, true);
+        ended_trial(&api);
+        let late = T0 + 14 * DAY;
+        assert_eq!(l.view(late).standing, Standing::RefreshNeeded);
+        assert_eq!(l.start_block(late), Some(StartBlock::LicenseNeedsRefresh));
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let record = LicenseRecord {
+            key: "0123456789ABCDEFGHJKMNPQRST5".into(),
+            activation_id: "act".into(),
+            token: "v1.x.y".into(),
+            validated_at: T0,
+            verdict: None,
+            devices: Vec::new(),
+        };
+        store::write(vault.as_ref(), store::LICENSE, &record).unwrap();
+        let l = license(&api, &vault, T0);
+        ended_trial(&api);
+        assert_eq!(l.view(T0).standing, Standing::Unverified);
+        assert_eq!(l.start_block(T0), Some(StartBlock::LicenseNeedsRefresh));
+    }
+
+    #[test]
+    fn a_paid_customer_with_an_ended_trial_whose_license_ended_hears_about_the_license() {
+        let (api, _, l) = activated(T0, true);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(server(403, "license_revoked")));
+        let _ = l.validate(T0 + 60);
+        ended_trial(&api);
+        assert_eq!(l.start_block(T0 + 60), Some(StartBlock::LicenseRevoked));
+        let (api, _, l) = activated(T0, true);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(server(403, "license_expired")));
+        let _ = l.validate(T0 + 60);
+        ended_trial(&api);
+        assert_eq!(l.start_block(T0 + 60), Some(StartBlock::LicenseExpired));
+    }
+
+    /// Còn dùng thử thì Free chạy như trước, dù gói không dùng được. Khách Free thật sự hết dùng thử (chưa từng có license,
+    /// hay đã gỡ key) vẫn nhận `TrialEnded`.
+    #[test]
+    fn the_trial_still_runs_free_for_a_customer_in_trouble_and_ended_free_gets_trial_ended() {
+        let (api, _, l) = activated(T0, true);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &["act", "other"])));
+        let _ = l.validate(T0 + 60);
+        with_trial(&api);
+        assert_eq!(l.start_block(T0 + 60), None);
+        assert!(l.can_start(T0 + 60));
+        let (api, _, l) = activated(T0, true);
+        ended_trial(&api);
+        l.deactivate(None).unwrap();
+        assert_eq!(l.start_block(T0 + 60), Some(StartBlock::TrialEnded));
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        ended_trial(&api);
+        assert_eq!(l.start_block(T0), Some(StartBlock::TrialEnded));
+    }
+
+    // ---- `key_in_use` không có máy nào (race của server) ----
+
+    /// `409 key_in_use` mà danh sách máy rỗng (máy kia vừa gỡ key): gọi lại `activate` một lần, không `allow_conflict`.
+    #[test]
+    fn an_empty_key_in_use_list_is_retried_once_without_allow_conflict() {
+        let key = "0123456789ABCDEFGHJKMNPQRST5";
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies
+            .lock()
+            .unwrap()
+            .extend([Err(conflict_error("key_in_use", &[])), granted(&claims(T0), true)]);
+        l.activate_anyway(KEY, T0).unwrap();
+        assert_eq!(
+            *api.calls.lock().unwrap(),
+            [
+                format!("activate {key} {DEVICE} Mac allow_conflict"),
+                format!("activate {key} {DEVICE} Mac")
+            ]
+        );
+        assert_eq!(l.view(T0).standing, Standing::Active);
+        // Hai lần liền đều rỗng: lỗi server bình thường, không thử lần ba.
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies.lock().unwrap().extend([
+            Err(conflict_error("key_in_use", &[])),
+            Err(conflict_error("key_in_use", &[])),
+        ]);
+        let got = l.activate(KEY, T0);
+        assert!(matches!(&got, Err(LicenseError::Server(_))), "{got:?}");
+        assert_eq!(got.unwrap_err().code(), "licenseServer");
+        assert_eq!(api.calls.lock().unwrap().len(), 2);
+        // Lần hai có danh sách máy: báo như bình thường.
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies.lock().unwrap().extend([
+            Err(conflict_error("key_in_use", &[])),
+            Err(conflict_error("key_in_use", &[ACT_1])),
+        ]);
+        assert!(matches!(l.activate(KEY, T0), Err(LicenseError::KeyInUse(d)) if d.len() == 1));
+    }
+
+    // ---- Đăng ký dùng thử khi bắt đầu phiên (Free) ----
+
+    fn rate_limited(after: u64) -> ApiError {
+        ApiError::Server(Box::new(ServerError {
+            status: 429,
+            code: "rate_limited".into(),
+            retry_after: Some(after),
+            ..ServerError::default()
+        }))
+    }
+
+    fn trial_calls(api: &Arc<FakeApi>) -> usize {
+        api.calls
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|c| c.starts_with("trial "))
+            .count()
+    }
+
+    /// Chưa có token dùng thử: mất mạng thì "cần mạng"; `503` thì "thử lại sau"; `429` thì chờ đúng `Retry-After`, không gọi
+    /// server trong lúc chờ.
+    #[test]
+    fn start_block_names_why_the_trial_could_not_be_registered_and_waits_out_retry_after() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Network("tắt mạng".into())));
+        assert_eq!(l.start_block(T0), Some(StartBlock::TrialMissing));
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(Err(server(503, "trial_not_configured")));
+        assert_eq!(
+            l.start_block(T0 + 1),
+            Some(StartBlock::TrialUnavailable("licenseServer"))
+        );
+        api.trials.lock().unwrap().push_back(Err(rate_limited(7200)));
+        assert_eq!(
+            l.start_block(T0 + 2),
+            Some(StartBlock::TrialUnavailable("licenseRateLimited"))
+        );
+        assert_eq!(trial_calls(&api), 3);
+        assert_eq!(
+            l.start_block(T0 + 600),
+            Some(StartBlock::TrialUnavailable("licenseRateLimited")),
+            "đang chờ Retry-After"
+        );
+        assert_eq!(trial_calls(&api), 3, "không gọi server trong lúc chờ");
+        with_trial(&api);
+        assert_eq!(l.start_block(T0 + 2 + 7200), None);
+        assert_eq!(trial_calls(&api), 4);
+    }
+
+    /// Kho khóa không ghi được token dùng thử: token vẫn nằm trong bộ nhớ, lần Bắt đầu sau không gọi server lại.
+    #[test]
+    fn a_failing_keystore_keeps_the_new_trial_in_memory() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        *vault.fail_writes_of.lock().unwrap() = Some("license-trial".into());
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        assert_eq!(l.start_block(T0), None);
+        assert!(!vault.items.lock().unwrap().contains_key(store::TRIAL));
+        assert_eq!(l.view(T0).trial.status, TrialStatus::Active);
+        assert_eq!(l.start_block(T0 + 60), None);
+        assert_eq!(trial_calls(&api), 1);
+    }
+
+    /// Hai nơi cùng đăng ký dùng thử (ticker, bước Điều khoản, nút Bắt đầu): chỉ một lần gọi server, nơi sau chờ rồi dùng kết
+    /// quả của nơi trước.
+    #[test]
+    fn two_trial_registrations_never_overlap() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = Arc::new(license(&api, &vault, T0));
+        let (release, hold) = std::sync::mpsc::channel();
+        *api.trial_hold.lock().unwrap() = Some(hold);
+        with_trial(&api);
+        let first = {
+            let l = l.clone();
+            std::thread::spawn(move || l.register_trial(T0))
+        };
+        while trial_calls(&api) == 0 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        let second = {
+            let l = l.clone();
+            std::thread::spawn(move || l.register_trial(T0 + 1))
+        };
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        release.send(()).unwrap();
+        assert_eq!(first.join().unwrap(), Ok(()));
+        assert_eq!(second.join().unwrap(), Ok(()));
+        assert_eq!(trial_calls(&api), 1);
+    }
+
+    /// Không đọc được mã máy: không gọi `/v1/trial`, báo đúng lý do (không phải "cần mạng"), log cảnh báo một lần.
+    #[test]
+    fn without_a_machine_id_the_trial_is_not_requested() {
+        capture_logs();
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = License::new(
+            Box::new(api.clone()),
+            Box::new(vault.clone()),
+            test_keys(),
+            Machine {
+                id_hash: String::new(),
+                label: None,
+            },
+            vn(),
+            true,
+            false,
+            false,
+            T0,
+        );
+        l.allow_trial();
+        assert!(!l.trial_due(T0), "ticker không gọi");
+        for t in [T0, T0 + 1, T0 + 2] {
+            assert_eq!(l.register_trial(t), Err(LicenseError::NoMachineId));
+        }
+        assert_eq!(
+            l.start_block(T0 + 3),
+            Some(StartBlock::TrialUnavailable("licenseNoMachineId"))
+        );
+        assert!(api.calls.lock().unwrap().is_empty());
+        let warnings = logs_of_this_thread().iter().filter(|m| m.contains("mã máy")).count();
+        assert_eq!(warnings, 1, "cảnh báo đúng một lần");
+    }
+
+    // ---- Mở app khi đang xung đột ----
+
+    /// Bắt log của mọi luồng, kèm luồng ghi: test chỉ đọc phần của luồng mình.
+    static CAPTURED: Mutex<Vec<(std::thread::ThreadId, String)>> = Mutex::new(Vec::new());
+
+    struct Capture;
+
+    impl log::Log for Capture {
+        fn enabled(&self, _: &log::Metadata) -> bool {
+            true
+        }
+
+        fn log(&self, record: &log::Record) {
+            CAPTURED
+                .lock()
+                .unwrap()
+                .push((std::thread::current().id(), record.args().to_string()));
+        }
+
+        fn flush(&self) {}
+    }
+
+    fn capture_logs() {
+        static ONCE: std::sync::Once = std::sync::Once::new();
+        ONCE.call_once(|| {
+            let _ = log::set_logger(&Capture);
+            log::set_max_level(log::LevelFilter::Warn);
+        });
+    }
+
+    fn logs_of_this_thread() -> Vec<String> {
+        let me = std::thread::current().id();
+        CAPTURED
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(thread, _)| *thread == me)
+            .map(|(_, m)| m.clone())
+            .collect()
+    }
+
+    /// Bản ghi xung đột có token rỗng theo thiết kế: mở lại app không được log "token đã lưu không đọc được" mỗi lần. Đối
+    /// chứng: token hỏng thật vẫn được log.
+    #[test]
+    fn opening_the_app_in_conflict_does_not_warn_about_an_unreadable_token() {
+        capture_logs();
+        let (api, vault, l) = activated(T0, true);
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &["act", "other"])));
+        let _ = l.validate(T0 + 60);
+        let before = logs_of_this_thread().len();
+        let reopened = license(&api, &vault, T0 + 120);
+        assert_eq!(reopened.view(T0 + 120).standing, Standing::Conflict);
+        let new = logs_of_this_thread().split_off(before);
+        assert!(new.iter().all(|m| !m.contains("token đã lưu")), "{new:?}");
+        // Đối chứng.
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let record = LicenseRecord {
+            key: "0123456789ABCDEFGHJKMNPQRST5".into(),
+            activation_id: "act".into(),
+            token: "v1.x.y".into(),
+            validated_at: T0,
+            verdict: None,
+            devices: Vec::new(),
+        };
+        store::write(vault.as_ref(), store::LICENSE, &record).unwrap();
+        let before = logs_of_this_thread().len();
+        let _ = license(&api, &vault, T0);
+        let new = logs_of_this_thread().split_off(before);
+        assert!(new.iter().any(|m| m.contains("token đã lưu không đọc được")), "{new:?}");
+    }
+}
+```
+
+- [ ] **Step 2: Chạy test, thấy đỏ**
+
+```bash
+cargo test -p meeting-translator --lib
+```
+
+Kết quả mong đợi: lỗi biên dịch của lib test (16 lỗi): E0599 `StartBlock::LicenseConflict`, `LicenseExpired`,
+`LicenseNeedsRefresh`, `LicenseRevoked`, `TrialUnavailable` chưa có; E0599 `LicenseError::NoMachineId` chưa có; E0425
+`session::attempt` chưa có; E0061 `session::abort` nhận 3 tham số chứ không phải 4; E0425 `LICENSE_NEEDS_REFRESH` chưa có.
+
+- [ ] **Step 3: Viết code**
+
+`src-tauri/src/errors.rs`: thay
+
+```rust
+pub const LICENSE_CONFLICT: &str = "licenseConflict";
+/// Phiên trả phí dừng vì key bị thu hồi hay máy này bị gỡ khỏi key.
+pub const LICENSE_INVALID: &str = "licenseInvalid";
+// Mã lỗi của kế hoạch 03.
+/// Tính năng Pro (lịch sử, xuất file, từ điển thuật ngữ) khi đang ở gói Free (`pro::require`).
+pub const PRO_REQUIRED: &str = "proRequired";
+```
+
+bằng
+
+```rust
+pub const LICENSE_CONFLICT: &str = "licenseConflict";
+/// Phiên trả phí dừng vì key bị thu hồi hay máy này bị gỡ khỏi key.
+pub const LICENSE_INVALID: &str = "licenseInvalid";
+/// Không bắt đầu được phiên vì chưa làm mới được bản quyền (quá 14 ngày offline, hay token đã lưu chưa kiểm được) và dùng thử
+/// không còn: cần kết nối mạng.
+pub const LICENSE_NEEDS_REFRESH: &str = "licenseNeedsRefresh";
+// Mã lỗi của kế hoạch 03.
+/// Tính năng Pro (lịch sử, xuất file, từ điển thuật ngữ) khi đang ở gói Free (`pro::require`).
+pub const PRO_REQUIRED: &str = "proRequired";
+```
+
+`src-tauri/src/license/app.rs`: thay
+
+```rust
+}
+
+/// Trước khi bắt đầu phiên (§6.8 "Khi chạm hạn mức"; spec 2026-10-07 §3.2, §6): hạn mức còn 0, Free hết dùng thử, Free
+/// chưa đăng ký được dùng thử, hay Free với giờ máy chỉnh lùi thì từ chối với mã tương ứng. Ở Free mà chưa có token dùng
+/// thử thì đăng ký ngay (gọi server): `session::start` chạy trên luồng nền.
+pub fn check_start<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    let Some(license) = licensing(app) else {
+        return Ok(());
+```
+
+bằng
+
+```rust
+}
+
+/// Trước khi bắt đầu phiên (§6.8 "Khi chạm hạn mức"; spec 2026-10-07 §3.2, §6): hạn mức còn 0, Free hết dùng thử, Free
+/// chưa đăng ký được dùng thử (mất mạng, server từ chối, không đọc được mã máy), hay giờ máy chỉnh lùi thì từ chối với mã
+/// tương ứng. Khách đã có license mà gói không dùng được (xung đột, cần làm mới, bị thu hồi, hết hạn) và dùng thử không còn
+/// thì nhận lý do của gói, không phải "hết dùng thử". Ở Free mà chưa có token dùng thử thì đăng ký ngay (gọi server):
+/// `session::start` chạy trên luồng nền.
+pub fn check_start<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    let Some(license) = licensing(app) else {
+        return Ok(());
+```
+
+`src-tauri/src/license/app.rs`: thay
+
+```rust
+        Some(StartBlock::TrialEnded) => (errors::TRIAL_ENDED, "đã hết dùng thử"),
+        Some(StartBlock::TrialMissing) => (errors::TRIAL_NEEDS_NETWORK, "chưa đăng ký được dùng thử"),
+        Some(StartBlock::ClockRolledBack) => (errors::CLOCK_ROLLED_BACK, "giờ máy bị chỉnh lùi"),
+    };
+    Err(CommandError::new(code, None, message))
+}
+```
+
+bằng
+
+```rust
+        Some(StartBlock::TrialEnded) => (errors::TRIAL_ENDED, "đã hết dùng thử"),
+        Some(StartBlock::TrialMissing) => (errors::TRIAL_NEEDS_NETWORK, "chưa đăng ký được dùng thử"),
+        Some(StartBlock::ClockRolledBack) => (errors::CLOCK_ROLLED_BACK, "giờ máy bị chỉnh lùi"),
+        Some(StartBlock::TrialUnavailable(code)) => (code, "không đăng ký được dùng thử"),
+        Some(StartBlock::LicenseConflict) => (errors::LICENSE_CONFLICT, "key đang xung đột"),
+        Some(StartBlock::LicenseNeedsRefresh) => (errors::LICENSE_NEEDS_REFRESH, "cần làm mới bản quyền"),
+        Some(StartBlock::LicenseRevoked) => (LicenseError::Revoked.code(), "license đã bị thu hồi"),
+        Some(StartBlock::LicenseExpired) => (LicenseError::Expired(None).code(), "license đã hết hạn"),
+    };
+    Err(CommandError::new(code, None, message))
+}
+```
+
+`src-tauri/src/license/app.rs`: thay
+
+```rust
+    }
+}
+
+/// `validate` khi đang có gói trả phí; gói không còn dùng được thì dừng phiên đang chạy (spec 2026-10-07 §4.2).
+fn validate_paid<R: Runtime>(app: &AppHandle<R>, license: &License, t: i64) {
+    let paid = license.has_paid_plan(t);
+    let result = license.validate(t);
+    refresh(app);
+    if let Err(e) = result {
+        log::info!("validate chưa được: {}", e.code());
+        if let Some(code) = lost_code(&e).filter(|_| paid) {
+            crate::session::abort(app, code, &e.to_string());
+        }
+    }
+}
+
+/// Phiên vừa bắt đầu (`session::start_with`): gói trả phí mà lần `validate` thành công gần nhất đã quá 1 giờ thì kiểm lại
+/// chạy nền, không làm chậm lúc bắt đầu; lỗi mạng thì phiên chạy tiếp (spec 2026-10-07 §4.2).
+pub fn quick_check<R: Runtime>(app: &AppHandle<R>) {
+    let Some(license) = licensing(app) else {
+        return;
+    };
+```
+
+bằng
+
+```rust
+    }
+}
+
+/// `validate` khi đang có gói trả phí; gói không còn dùng được thì dừng phiên đang chạy (spec 2026-10-07 §4.2). `attempt`:
+/// số của lần bắt đầu phiên lúc nhờ việc này ([`crate::session::attempt`]); kết quả tới muộn, khi phiên đó đã dừng và một
+/// lần bắt đầu khác đã chạy, không được dừng phiên mới.
+fn validate_paid<R: Runtime>(app: &AppHandle<R>, license: &License, t: i64, attempt: u64) {
+    let paid = license.has_paid_plan(t);
+    let result = license.validate(t);
+    refresh(app);
+    if let Err(e) = result {
+        log::info!("validate chưa được: {}", e.code());
+        if let Some(code) = lost_code(&e).filter(|_| paid) {
+            crate::session::abort(app, attempt, code, &e.to_string());
+        }
+    }
+}
+
+/// Phiên vừa bắt đầu (`session::start_with`, lần bắt đầu số `attempt`): gói trả phí mà lần `validate` thành công gần nhất đã
+/// quá 1 giờ thì kiểm lại chạy nền, không làm chậm lúc bắt đầu; lỗi mạng thì phiên chạy tiếp (spec 2026-10-07 §4.2).
+pub fn quick_check<R: Runtime>(app: &AppHandle<R>, attempt: u64) {
+    let Some(license) = licensing(app) else {
+        return;
+    };
+```
+
+`src-tauri/src/license/app.rs`: thay
+
+```rust
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || validate_paid(&app, &license, now()));
+}
+
+/// Phút vừa dịch xong (`EventSink::usage`). `Break` khi đã chạm hạn mức.
+```
+
+bằng
+
+```rust
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || validate_paid(&app, &license, now(), attempt));
+}
+
+/// Phút vừa dịch xong (`EventSink::usage`). `Break` khi đã chạm hạn mức.
+```
+
+`src-tauri/src/license/app.rs`: thay
+
+```rust
+    };
+    let t = now();
+    if license.validate_due(t) {
+        validate_paid(app, &license, t);
+    }
+}
+
+```
+
+bằng
+
+```rust
+    };
+    let t = now();
+    if license.validate_due(t) {
+        validate_paid(app, &license, t, crate::session::attempt(app));
+    }
+}
+
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+    TrialMissing,
+    /// Free mà đã hết 10 ngày dùng thử.
+    TrialEnded,
+    /// Free mà giờ máy bị coi là chỉnh lùi: chỉnh giờ rồi thử lại.
+    ClockRolledBack,
+}
+
+/// Mốc reset hạn mức hiển thị (§4.2 bước 2).
+```
+
+bằng
+
+```rust
+    TrialMissing,
+    /// Free mà đã hết 10 ngày dùng thử.
+    TrialEnded,
+    /// Giờ máy bị coi là chỉnh lùi: chỉnh giờ rồi thử lại.
+    ClockRolledBack,
+    /// Free mà chưa có token dùng thử, và server từ chối hay lỗi (không phải mất mạng): mã lỗi của lần đăng ký
+    /// ([`LicenseError::code`]), ví dụ `licenseRateLimited`, `licenseServer`, `licenseNoMachineId`.
+    TrialUnavailable(&'static str),
+    /// Dùng thử đã hết (hay chưa có) mà khách có license không dùng được ở lúc này: nêu lý do của gói trả phí, không báo
+    /// "hết dùng thử, mua gói" (review cuối 02a, Quan trọng 1). Key đang xung đột.
+    LicenseConflict,
+    /// Quá 14 ngày chưa làm mới được token, hay token lưu chưa kiểm được (`RefreshNeeded`, `Unverified`): cần mạng.
+    LicenseNeedsRefresh,
+    /// License đã bị thu hồi.
+    LicenseRevoked,
+    /// License đã hết hạn.
+    LicenseExpired,
+}
+
+/// Mốc reset hạn mức hiển thị (§4.2 bước 2).
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+    ConsentRequired,
+    #[error("email không hợp lệ")]
+    EmailInvalid,
+}
+
+/// Mọi mã lỗi của bản quyền (test của `errors.rs` kiểm đủ câu báo lỗi).
+```
+
+bằng
+
+```rust
+    ConsentRequired,
+    #[error("email không hợp lệ")]
+    EmailInvalid,
+    #[error("không đọc được mã máy")]
+    NoMachineId,
+}
+
+/// Mọi mã lỗi của bản quyền (test của `errors.rs` kiểm đủ câu báo lỗi).
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+    "licenseServer",
+    "licenseConsentRequired",
+    "licenseEmailInvalid",
+];
+
+impl LicenseError {
+```
+
+bằng
+
+```rust
+    "licenseServer",
+    "licenseConsentRequired",
+    "licenseEmailInvalid",
+    "licenseNoMachineId",
+];
+
+impl LicenseError {
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+            Self::Server(_) => "licenseServer",
+            Self::ConsentRequired => "licenseConsentRequired",
+            Self::EmailInvalid => "licenseEmailInvalid",
+        }
+    }
+}
+```
+
+bằng
+
+```rust
+            Self::Server(_) => "licenseServer",
+            Self::ConsentRequired => "licenseConsentRequired",
+            Self::EmailInvalid => "licenseEmailInvalid",
+            Self::NoMachineId => "licenseNoMachineId",
+        }
+    }
+}
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+    trial_attempt: Option<i64>,
+    /// `429` của `/v1/trial`: không gọi lại trước lúc này.
+    trial_blocked_until: Option<i64>,
+}
+
+/// Dùng thử lúc `now`, theo giờ tin được.
+```
+
+bằng
+
+```rust
+    trial_attempt: Option<i64>,
+    /// `429` của `/v1/trial`: không gọi lại trước lúc này.
+    trial_blocked_until: Option<i64>,
+    /// Đã log cảnh báo "không đọc được mã máy" (chỉ log một lần).
+    warned_no_machine: bool,
+}
+
+/// Dùng thử lúc `now`, theo giờ tin được.
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+    dev_unlimited: bool,
+    /// Kết quả kiểm chữ ký bản cài: chưa kiểm xong thì chưa mở Pro, nhưng chưa báo "không chính hãng" (N5 của review 06).
+    genuine: AtomicU8,
+    inner: Mutex<Inner>,
+}
+
+```
+
+bằng
+
+```rust
+    dev_unlimited: bool,
+    /// Kết quả kiểm chữ ký bản cài: chưa kiểm xong thì chưa mở Pro, nhưng chưa báo "không chính hãng" (N5 của review 06).
+    genuine: AtomicU8,
+    /// Mỗi lúc chỉ một lần gọi `POST /v1/trial` (ticker, bước Điều khoản và nút Bắt đầu có thể chạy cùng lúc): lần sau chờ
+    /// rồi dùng kết quả của lần trước.
+    trial_gate: Mutex<()>,
+    inner: Mutex<Inner>,
+}
+
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+            server_configured,
+            dev_unlimited,
+            genuine: AtomicU8::new(GENUINE_UNKNOWN),
+            inner: Mutex::new(Inner {
+                has_prior_data,
+                ..Inner::default()
+```
+
+bằng
+
+```rust
+            server_configured,
+            dev_unlimited,
+            genuine: AtomicU8::new(GENUINE_UNKNOWN),
+            trial_gate: Mutex::new(()),
+            inner: Mutex::new(Inner {
+                has_prior_data,
+                ..Inner::default()
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        }
+        // Có bản ghi license nghĩa là app đã có dữ liệu từ trước, dù file cài đặt có còn hay không.
+        inner.has_prior_data |= inner.record.is_some();
+        inner.claims = inner
+            .record
+            .as_ref()
+            .and_then(|r| self.read_token(&r.token, &r.activation_id));
+        if let Some(issued_at) = inner.claims.as_ref().map(|c| c.issued_at) {
+            inner.seen.observe_signed(issued_at);
+```
+
+bằng
+
+```rust
+        }
+        // Có bản ghi license nghĩa là app đã có dữ liệu từ trước, dù file cài đặt có còn hay không.
+        inner.has_prior_data |= inner.record.is_some();
+        // Bản ghi xung đột không có token (token rỗng theo thiết kế): không đọc, không log.
+        inner.claims = inner
+            .record
+            .as_ref()
+            .filter(|r| r.verdict != Some(Verdict::Conflict))
+            .and_then(|r| self.read_token(&r.token, &r.activation_id));
+        if let Some(issued_at) = inner.claims.as_ref().map(|c| c.issued_at) {
+            inner.seen.observe_signed(issued_at);
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        self.activate_with(key, true, now)
+    }
+
+    /// Gọi `activate`. `409 license_conflict` mang `activation_id` của chính máy này (hợp đồng của kế hoạch 00): vào
+    /// trạng thái xung đột với activation đó; thiếu trường này là response sai hợp đồng, báo lỗi server, không lưu gì.
+    fn activate_with(&self, key: String, allow_conflict: bool, now: i64) -> Result<(), LicenseError> {
+        let reply = self.api.activate(
+            &key,
+            &self.machine.id_hash,
+            self.machine.label.as_deref(),
+            allow_conflict,
+        );
+        self.observe(&reply);
+        match reply.result {
+            Ok(granted) => self.accept(granted, key, now),
+            Err(ApiError::Server(s)) if s.code == "license_conflict" => {
+                let Some(activation_id) = s.activation_id else {
+                    return Err(LicenseError::Server("license_conflict không có activation_id".into()));
+                };
+                Err(self.enter_conflict(key, activation_id, s.devices, now))
+            }
+            Err(e) => Err(map_api(e)),
+        }
+    }
+
+```
+
+bằng
+
+```rust
+        self.activate_with(key, true, now)
+    }
+
+    /// Gọi `activate`.
+    /// - `409 license_conflict` mang `activation_id` của chính máy này (hợp đồng của kế hoạch 00): vào trạng thái xung đột
+    ///   với activation đó. Thiếu trường này, rỗng hay không phải UUID là response sai hợp đồng: báo lỗi server, không lưu gì.
+    /// - `409 key_in_use` mà danh sách máy rỗng (máy kia vừa gỡ key, race của server): gọi lại một lần, không `allow_conflict`;
+    ///   lần hai vẫn rỗng thì báo lỗi server bình thường.
+    fn activate_with(&self, key: String, mut allow_conflict: bool, now: i64) -> Result<(), LicenseError> {
+        let mut retried = false;
+        loop {
+            let reply = self.api.activate(
+                &key,
+                &self.machine.id_hash,
+                self.machine.label.as_deref(),
+                allow_conflict,
+            );
+            self.observe(&reply);
+            match reply.result {
+                Ok(granted) => return self.accept(granted, key, now),
+                Err(ApiError::Server(s)) if s.code == "license_conflict" => {
+                    let Some(activation_id) = s.activation_id.filter(|id| is_uuid(id)) else {
+                        return Err(LicenseError::Server(
+                            "license_conflict không có activation_id hợp lệ".into(),
+                        ));
+                    };
+                    return Err(self.enter_conflict(key, activation_id, s.devices, now));
+                }
+                Err(ApiError::Server(s)) if s.code == "key_in_use" && s.devices.is_empty() => {
+                    if retried {
+                        return Err(LicenseError::Server(s.code));
+                    }
+                    retried = true;
+                    allow_conflict = false;
+                }
+                Err(e) => return Err(map_api(e)),
+            }
+        }
+    }
+
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+    pub fn trial_due(&self, now: i64) -> bool {
+        let inner = self.lock();
+        self.server_configured
+            && inner.trial_allowed
+            && inner.trial.is_none()
+            && inner.trial_blocked_until.is_none_or(|t| now >= t)
+```
+
+bằng
+
+```rust
+    pub fn trial_due(&self, now: i64) -> bool {
+        let inner = self.lock();
+        self.server_configured
+            && !self.machine.id_hash.is_empty()
+            && inner.trial_allowed
+            && inner.trial.is_none()
+            && inner.trial_blocked_until.is_none_or(|t| now >= t)
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+
+    /// Đăng ký dùng thử của máy này (hay lấy lại token của lần trước, server giữ đúng `started_at` cũ): kiểm token, lưu
+    /// kho khóa.
+    pub fn register_trial(&self, now: i64) -> Result<(), LicenseError> {
+        self.lock().trial_attempt = Some(now);
+        let reply = self.api.trial(&self.machine.id_hash);
+        self.observe(&reply);
+        let grant = reply.result.map_err(map_api).inspect_err(|e| {
+```
+
+bằng
+
+```rust
+
+    /// Đăng ký dùng thử của máy này (hay lấy lại token của lần trước, server giữ đúng `started_at` cũ): kiểm token, lưu
+    /// kho khóa.
+    /// - Không đọc được mã máy: không gọi server, log cảnh báo một lần, trả [`LicenseError::NoMachineId`].
+    /// - Mỗi lúc chỉ một lần gọi server (`trial_gate`); đã có token (do lần gọi trước) thì xong ngay; đang chờ `Retry-After`
+    ///   của `429` thì trả [`LicenseError::RateLimited`] với số giây còn lại, không gọi server.
+    /// - Kho khóa không ghi được token: token vẫn nằm trong bộ nhớ (lần Bắt đầu sau không gọi server lại) và trả
+    ///   [`LicenseError::Storage`]; mở lại app thì đăng ký lại, server trả đúng `started_at` cũ.
+    pub fn register_trial(&self, now: i64) -> Result<(), LicenseError> {
+        if self.machine.id_hash.is_empty() {
+            if !std::mem::replace(&mut self.lock().warned_no_machine, true) {
+                log::error!("không đọc được mã máy: không đăng ký được dùng thử");
+            }
+            return Err(LicenseError::NoMachineId);
+        }
+        let _one_at_a_time = self.trial_gate.lock().unwrap_or_else(|e| e.into_inner());
+        {
+            let mut inner = self.lock();
+            if inner.trial.is_some() {
+                return Ok(());
+            }
+            if let Some(until) = inner.trial_blocked_until.filter(|&t| now < t) {
+                return Err(LicenseError::RateLimited(Some((until - now) as u64)));
+            }
+            inner.trial_attempt = Some(now);
+        }
+        let reply = self.api.trial(&self.machine.id_hash);
+        self.observe(&reply);
+        let grant = reply.result.map_err(map_api).inspect_err(|e| {
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+        })?;
+        let claims = trial::verify(&grant.token, &self.keys, &self.machine.id_hash)
+            .map_err(|e| LicenseError::BadToken(e.to_string()))?;
+        store::write(self.vault.as_ref(), store::TRIAL, &TrialRecord { token: grant.token })
+            .map_err(|e| LicenseError::Storage(e.to_string()))?;
+        let mut inner = self.lock();
+        inner.seen.observe_signed(claims.issued_at);
+        inner.trial = Some(claims);
+        Ok(())
+    }
+
+    /// Vì sao chưa bắt đầu được phiên lúc `now`; `None` là bắt đầu được (spec 2026-10-07 §3.2, §6). Ở Free mà chưa có token
+    /// dùng thử thì đăng ký ngay: có gọi server, nên nơi gọi chạy trên luồng nền.
+    pub fn start_block(&self, now: i64) -> Option<StartBlock> {
+        if self.dev_unlimited {
+            return None;
+```
+
+bằng
+
+```rust
+        })?;
+        let claims = trial::verify(&grant.token, &self.keys, &self.machine.id_hash)
+            .map_err(|e| LicenseError::BadToken(e.to_string()))?;
+        let saved = store::write(self.vault.as_ref(), store::TRIAL, &TrialRecord { token: grant.token });
+        let mut inner = self.lock();
+        inner.seen.observe_signed(claims.issued_at);
+        inner.trial = Some(claims);
+        saved.map_err(|e| {
+            log::warn!("không lưu được token dùng thử: {e}");
+            LicenseError::Storage(e.to_string())
+        })
+    }
+
+    /// Lý do của gói trả phí khiến máy phải chạy Free, khi khách đã có license mà gói không dùng được lúc này; `None` khi
+    /// chưa từng có license (hay bản cài không chính hãng: chỉ chạy Free).
+    fn license_block_locked(&self, inner: &Inner, now: i64) -> Option<StartBlock> {
+        match self.standing_locked(inner, now) {
+            Standing::ClockRolledBack => Some(StartBlock::ClockRolledBack),
+            Standing::Conflict => Some(StartBlock::LicenseConflict),
+            Standing::RefreshNeeded | Standing::Unverified => Some(StartBlock::LicenseNeedsRefresh),
+            Standing::Revoked => Some(StartBlock::LicenseRevoked),
+            Standing::Expired => Some(StartBlock::LicenseExpired),
+            Standing::Free | Standing::Active | Standing::NotGenuine => None,
+        }
+    }
+
+    /// Vì sao chưa bắt đầu được phiên lúc `now`; `None` là bắt đầu được (spec 2026-10-07 §3.2, §6). Ở Free mà chưa có token
+    /// dùng thử thì đăng ký ngay: có gọi server, nên nơi gọi chạy trên luồng nền.
+    ///
+    /// Máy không chạy theo gói trả phí thì chạy Free theo dùng thử. Dùng thử còn hiệu lực thì Free chạy. Không còn dùng thử mà
+    /// khách có license không dùng được (xung đột, cần làm mới, giờ máy lùi, bị thu hồi, hết hạn) thì nêu lý do của gói trả
+    /// phí, không báo "hết dùng thử, mua gói"; chỉ khách Free thật sự mới nhận lý do của dùng thử.
+    pub fn start_block(&self, now: i64) -> Option<StartBlock> {
+        if self.dev_unlimited {
+            return None;
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+            self.quota_claims(&inner, now).is_none()
+        };
+        if free {
+            let missing = self.lock().trial.is_none();
+            if missing
+                && self.server_configured
+                && let Err(e) = self.register_trial(now)
+            {
+                log::info!("chưa đăng ký được dùng thử: {}", e.code());
+            }
+            match self.trial_state_locked(&self.lock(), now) {
+                TrialState::Missing => return Some(StartBlock::TrialMissing),
+                TrialState::Ended => return Some(StartBlock::TrialEnded),
+                TrialState::RolledBack => return Some(StartBlock::ClockRolledBack),
+                TrialState::Active => {}
+            }
+        }
+        (self.remaining_locked(&self.lock(), now) == Some(0)).then_some(StartBlock::QuotaExhausted)
+```
+
+bằng
+
+```rust
+            self.quota_claims(&inner, now).is_none()
+        };
+        if free {
+            let mut registration = None;
+            let missing = self.lock().trial.is_none();
+            if missing
+                && self.server_configured
+                && let Err(e) = self.register_trial(now)
+            {
+                log::info!("chưa đăng ký được dùng thử: {}", e.code());
+                registration = Some(e);
+            }
+            let inner = self.lock();
+            let trial = self.trial_state_locked(&inner, now);
+            if !matches!(trial, TrialState::Active) {
+                if let Some(block) = self.license_block_locked(&inner, now) {
+                    return Some(block);
+                }
+                return Some(match (trial, registration) {
+                    (TrialState::Ended, _) => StartBlock::TrialEnded,
+                    (TrialState::RolledBack, _) => StartBlock::ClockRolledBack,
+                    (_, Some(LicenseError::Network | LicenseError::NotConfigured) | None) => StartBlock::TrialMissing,
+                    (_, Some(e)) => StartBlock::TrialUnavailable(e.code()),
+                });
+            }
+        }
+        (self.remaining_locked(&self.lock(), now) == Some(0)).then_some(StartBlock::QuotaExhausted)
+```
+
+`src-tauri/src/license/manager.rs`: thay
+
+```rust
+    }
+}
+
+pub fn plan_code(plan: Plan) -> &'static str {
+    match plan {
+        Plan::Monthly => "monthly",
+```
+
+bằng
+
+```rust
+    }
+}
+
+/// `activation_id` do server cấp là UUID (36 ký tự, gạch nối ở vị trí 8, 13, 18, 23, còn lại là chữ số hex).
+fn is_uuid(s: &str) -> bool {
+    s.len() == 36
+        && s.bytes().enumerate().all(|(i, b)| match i {
+            8 | 13 | 18 | 23 => b == b'-',
+            _ => b.is_ascii_hexdigit(),
+        })
+}
+
+pub fn plan_code(plan: Plan) -> &'static str {
+    match plan {
+        Plan::Monthly => "monthly",
+```
+
+`src-tauri/src/session.rs`: thay
+
+```rust
+    }
+    // Phiên trả phí mà lần kiểm bản quyền gần nhất đã quá 1 giờ: kiểm lại chạy nền, key xung đột hay bị thu hồi thì dừng
+    // phiên ([`abort`]). Gọi sau khi đã sang `Starting`, để kết quả về sớm cũng gặp đúng phiên này.
+    crate::license::app::quick_check(app);
+    let current = || session.attempt.load(Ordering::SeqCst) == attempt;
+    show_overlay(app);
+    changed(app);
+```
+
+bằng
+
+```rust
+    }
+    // Phiên trả phí mà lần kiểm bản quyền gần nhất đã quá 1 giờ: kiểm lại chạy nền, key xung đột hay bị thu hồi thì dừng
+    // phiên ([`abort`]). Gọi sau khi đã sang `Starting`, để kết quả về sớm cũng gặp đúng phiên này.
+    crate::license::app::quick_check(app, attempt);
+    let current = || session.attempt.load(Ordering::SeqCst) == attempt;
+    show_overlay(app);
+    changed(app);
+```
+
+`src-tauri/src/session.rs`: thay
+
+```rust
+    changed(app);
+}
+
+/// Dừng phiên đang chạy hay đang bắt đầu vì một lý do ngoài engine (bản quyền: key xung đột hay bị thu hồi, spec
+/// 2026-10-07 §4.2), với mã lỗi `code`. Đang bắt đầu thì hủy lần đó (như Hủy) và báo lỗi; không có phiên nào thì thôi.
+pub fn abort<R: Runtime>(app: &AppHandle<R>, code: &str, message: &str) {
+    let Some(session) = app.try_state::<Session>() else {
+        return;
+    };
+    let cancelled = app.state::<AppState>().update_status(|s| {
+        if s.session != SessionStatus::Starting {
+            return false;
+        }
+        session.attempt.fetch_add(1, Ordering::SeqCst);
+```
+
+bằng
+
+```rust
+    changed(app);
+}
+
+/// Số của lần bắt đầu hiện tại, để nơi chạy nền (kiểm bản quyền) nhớ "phiên nào" đã nhờ nó ([`abort`]). 0 khi chưa có phiên
+/// nào.
+pub fn attempt<R: Runtime>(app: &AppHandle<R>) -> u64 {
+    app.try_state::<Session>()
+        .map_or(0, |s| s.attempt.load(Ordering::SeqCst))
+}
+
+/// Dừng phiên đang chạy hay đang bắt đầu vì một lý do ngoài engine (bản quyền: key xung đột hay bị thu hồi, spec
+/// 2026-10-07 §4.2), với mã lỗi `code`. Chỉ chạm tới lần bắt đầu số `attempt` (lấy bằng [`attempt`] lúc nhờ việc nền): kết
+/// quả tới muộn của một phiên cũ (đã dừng, hay đã sang lần bắt đầu khác) không được dừng phiên mới. Đang bắt đầu thì hủy lần
+/// đó (như Hủy) và báo lỗi; không có phiên nào thì thôi.
+pub fn abort<R: Runtime>(app: &AppHandle<R>, attempt: u64, code: &str, message: &str) {
+    let Some(session) = app.try_state::<Session>() else {
+        return;
+    };
+    if session.attempt.load(Ordering::SeqCst) != attempt {
+        log::info!("bỏ qua lệnh dừng {code} của lần bắt đầu cũ");
+        return;
+    }
+    let cancelled = app.state::<AppState>().update_status(|s| {
+        if s.session != SessionStatus::Starting || session.attempt.load(Ordering::SeqCst) != attempt {
+            return false;
+        }
+        session.attempt.fetch_add(1, Ordering::SeqCst);
+```
+
+`src/i18n/en.ts`: thay
+
+```ts
+  "error.trialNeedsNetwork": "Connect to the internet once to start the free trial.",
+  "error.clockRolledBack": "The computer clock looks wrong. Set the correct time, then try again.",
+  "error.licenseInvalid": "This key can no longer be used on this computer (revoked, or this computer was removed).",
+  "error.proRequired": "This is a Pro feature. Upgrade to a paid plan to use it.",
+  "error.dataUnavailable": "Could not open the history and glossary data. If the system asked for keychain access, allow it and try again.",
+  "error.glossaryEmpty": "Fill in both the term and its translation.",
+```
+
+bằng
+
+```ts
+  "error.trialNeedsNetwork": "Connect to the internet once to start the free trial.",
+  "error.clockRolledBack": "The computer clock looks wrong. Set the correct time, then try again.",
+  "error.licenseInvalid": "This key can no longer be used on this computer (revoked, or this computer was removed).",
+  "error.licenseNeedsRefresh": "The license has not been refreshed for a long time. Connect to the internet to refresh it, then try again.",
+  "error.proRequired": "This is a Pro feature. Upgrade to a paid plan to use it.",
+  "error.dataUnavailable": "Could not open the history and glossary data. If the system asked for keychain access, allow it and try again.",
+  "error.glossaryEmpty": "Fill in both the term and its translation.",
+```
+
+`src/i18n/en.ts`: thay
+
+```ts
+  "error.licenseExpired": "This license has expired. Renew it to keep using Pro features.",
+  "error.licenseDeactivated": "This computer was removed from the license. Activate the key again to use it here.",
+  "error.licenseBadToken": "The license server sent an invalid reply. Please try again later.",
+  "error.licenseStorage": "Could not save the license on this computer. If the system asked for keychain access, allow it and try again.",
+  "error.licenseServer": "The license server could not complete the request. Please try again later.",
+  "error.licenseConsentRequired": "Please agree to the processing of your email to continue.",
+```
+
+bằng
+
+```ts
+  "error.licenseExpired": "This license has expired. Renew it to keep using Pro features.",
+  "error.licenseDeactivated": "This computer was removed from the license. Activate the key again to use it here.",
+  "error.licenseBadToken": "The license server sent an invalid reply. Please try again later.",
+  "error.licenseNoMachineId": "The computer's ID could not be read, so the license and the trial cannot be used. Restart the computer; if it still fails, contact support.",
+  "error.licenseStorage": "Could not save the license on this computer. If the system asked for keychain access, allow it and try again.",
+  "error.licenseServer": "The license server could not complete the request. Please try again later.",
+  "error.licenseConsentRequired": "Please agree to the processing of your email to continue.",
+```
+
+`src/i18n/vi.ts`: thay
+
+```ts
+  "error.trialNeedsNetwork": "Cần kết nối mạng một lần để bắt đầu dùng thử.",
+  "error.clockRolledBack": "Giờ của máy có vẻ không đúng. Chỉnh lại giờ rồi thử lại.",
+  "error.licenseInvalid": "Key này không còn dùng được trên máy này (đã bị thu hồi, hay máy này đã bị gỡ).",
+  "error.proRequired": "Đây là tính năng Pro. Nâng cấp lên gói trả phí để dùng.",
+  "error.dataUnavailable": "Không mở được dữ liệu lịch sử và từ điển. Nếu hệ thống hỏi quyền truy cập kho khóa, hãy cho phép rồi thử lại.",
+  "error.glossaryEmpty": "Hãy điền cả thuật ngữ lẫn bản dịch.",
+```
+
+bằng
+
+```ts
+  "error.trialNeedsNetwork": "Cần kết nối mạng một lần để bắt đầu dùng thử.",
+  "error.clockRolledBack": "Giờ của máy có vẻ không đúng. Chỉnh lại giờ rồi thử lại.",
+  "error.licenseInvalid": "Key này không còn dùng được trên máy này (đã bị thu hồi, hay máy này đã bị gỡ).",
+  "error.licenseNeedsRefresh": "Đã lâu chưa làm mới được bản quyền. Hãy kết nối mạng để làm mới rồi thử lại.",
+  "error.proRequired": "Đây là tính năng Pro. Nâng cấp lên gói trả phí để dùng.",
+  "error.dataUnavailable": "Không mở được dữ liệu lịch sử và từ điển. Nếu hệ thống hỏi quyền truy cập kho khóa, hãy cho phép rồi thử lại.",
+  "error.glossaryEmpty": "Hãy điền cả thuật ngữ lẫn bản dịch.",
+```
+
+`src/i18n/vi.ts`: thay
+
+```ts
+  "error.licenseExpired": "License này đã hết hạn. Gia hạn để tiếp tục dùng tính năng Pro.",
+  "error.licenseDeactivated": "Máy này đã bị gỡ khỏi key. Kích hoạt lại key để dùng ở máy này.",
+  "error.licenseBadToken": "Máy chủ bản quyền trả kết quả không hợp lệ. Vui lòng thử lại sau.",
+  "error.licenseStorage": "Không lưu được bản quyền trên máy. Nếu hệ thống hỏi quyền truy cập kho khóa, hãy cho phép rồi thử lại.",
+  "error.licenseServer": "Máy chủ bản quyền chưa xử lý được yêu cầu. Vui lòng thử lại sau.",
+  "error.licenseConsentRequired": "Vui lòng đồng ý cho xử lý email để tiếp tục.",
+```
+
+bằng
+
+```ts
+  "error.licenseExpired": "License này đã hết hạn. Gia hạn để tiếp tục dùng tính năng Pro.",
+  "error.licenseDeactivated": "Máy này đã bị gỡ khỏi key. Kích hoạt lại key để dùng ở máy này.",
+  "error.licenseBadToken": "Máy chủ bản quyền trả kết quả không hợp lệ. Vui lòng thử lại sau.",
+  "error.licenseNoMachineId": "Không đọc được mã máy nên chưa dùng được bản quyền hay dùng thử. Khởi động lại máy; nếu vẫn lỗi, hãy liên hệ hỗ trợ.",
+  "error.licenseStorage": "Không lưu được bản quyền trên máy. Nếu hệ thống hỏi quyền truy cập kho khóa, hãy cho phép rồi thử lại.",
+  "error.licenseServer": "Máy chủ bản quyền chưa xử lý được yêu cầu. Vui lòng thử lại sau.",
+  "error.licenseConsentRequired": "Vui lòng đồng ý cho xử lý email để tiếp tục.",
+```
+
+`src/windows/main/screens/Home.tsx`: thay
+
+```tsx
+            {(status.sessionError === "modelMissing" || status.sessionError === "modelBroken") && (
+              <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
+            )}
+            {status.sessionError === "trialEnded" && (
+              <button onClick={() => navigate("upgrade")}>{t("settings.license.buy")}</button>
+            )}
+            {status.sessionError === "licenseConflict" && (
+```
+
+bằng
+
+```tsx
+            {(status.sessionError === "modelMissing" || status.sessionError === "modelBroken") && (
+              <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
+            )}
+            {(status.sessionError === "trialEnded" || status.sessionError === "licenseExpired") && (
+              <button onClick={() => navigate("upgrade")}>{t("settings.license.buy")}</button>
+            )}
+            {status.sessionError === "licenseConflict" && (
+```
+
+- [ ] **Step 4: Chạy test, thấy xanh**
+
+```bash
+cargo test -p meeting-translator
+```
+
+Kết quả mong đợi: dòng đầu của lib là `test result: ok. 479 passed; 0 failed; 3 ignored`. Chạy thêm hai lần nữa (test có luồng nền): cả ba lần đều xanh.
+
+```bash
+pnpm test
+```
+
+Kết quả mong đợi: `Tests  167 passed (167)`.
+
+- [ ] **Step 5: Định dạng và kiểm tĩnh**
+
+```bash
+cargo fmt --all -- --check
+cargo clippy -p meeting-translator --all-targets -- -D warnings
+```
+
+Kết quả mong đợi: `cargo fmt` không in gì; clippy kết thúc bằng `Finished`, không có `warning:` hay `error:` nào của
+`meeting-translator`.
+
+```bash
+sh scripts/check-windows.sh
+pnpm build
+```
+
+Kết quả mong đợi: `check-windows.sh` kết thúc bằng `Finished`; Vite in `✓ built in …`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src-tauri/src/app_tests.rs src-tauri/src/errors.rs src-tauri/src/license/app.rs src-tauri/src/license/manager.rs src-tauri/src/session.rs src/i18n/en.ts src/i18n/vi.ts src/windows/main/screens/Home.tsx
+git commit -m "fix(license): sửa sau review cuối 02a: lý do của gói khi dùng thử hết, key_in_use rỗng, UUID, abort theo phiên, đăng ký dùng thử
+
+Co-Authored-By: <model đang chạy> <noreply@anthropic.com>"
+```
+
+---
+
+### Ghi nhận mục 8: nhập key mới khi đang có key (không sửa)
+
+`accept` và `enter_conflict` ghi đè bản ghi `license` bất kể bản ghi đang có là key nào. Phía Rust **không** chặn, nhưng:
+
+- **Giao diện chặn.** `src/windows/main/settings/LicenseSettings.tsx` chỉ dựng thẻ "Kích hoạt key" (ô nhập key, danh sách máy
+  của `key_in_use`, "Vẫn kích hoạt") khi `!view.key`. `view.key` là key đã che của **mọi** bản ghi (Active, Expired, Revoked,
+  Conflict), nên đang có key thì không nhập được key mới; phải "Gỡ kích hoạt" trước. Store có cờ `busy` chặn bấm đúp.
+- **Đường duy nhất khác gọi `activate` với key lạ** là `purchase::apply` cho đơn `grant_kind: new` (đơn mới không gắn key
+  hiện có, hay hỗ trợ cấp key mới cho license đã thu hồi). Màn hình Nâng cấp chỉ gắn `license_key` khi `isRenewal(view)` (có key,
+  chưa bị thu hồi), nên khách đang Active chỉ nhận đơn `extend`/`change` (qua `validate`, không ghi đè); đơn `new` ghi đè bản ghi
+  đã `Revoked`, đúng ý.
+- Kết luận: không cần sửa; ghi nhận trong báo cáo. Nếu sau này thêm lối nhập key khác (ví dụ link kích hoạt từ email), cần
+  chặn ở phía Rust (`activate` từ chối khi bản ghi hiện tại là key khác còn hiệu lực).
+
+---
+
+## Task 9: Bộ kiểm cuối của 02a (số cũ: Task 8)
+
+Không sửa code. Chạy đủ bộ kiểm; mọi lệnh phải xanh. Làm sau Task 8, và sau 02b Task 4.
 
 - [ ] **Step 1: Định dạng, clippy toàn workspace, kiểm biên dịch phần Windows**
 
@@ -5219,7 +7178,7 @@ pnpm test
 pnpm build
 ```
 
-Kết quả mong đợi: mọi dòng `test result` đều `ok`, lib của app `464 passed; 0 failed; 3 ignored`; `Tests  162 passed (162)`; Vite in `✓ built in …`.
+Kết quả mong đợi: mọi dòng `test result` đều `ok`, lib của app `479 passed; 0 failed; 3 ignored`; `Tests  167 passed (167)`; Vite in `✓ built in …`.
 
 - [ ] **Step 3: Không còn mã cũ**
 
@@ -5227,7 +7186,7 @@ Kết quả mong đợi: mọi dòng `test result` đều `ok`, lib của app `4
 git grep -nE "pro_x2|pro_x5|ProX|device_limit|DeviceLimit|licenseDeviceLimit" -- src-tauri
 ```
 
-Kết quả mong đợi: không in gì. (`src/` còn `plan.pro*` và mã gói cũ trong kiểu TypeScript tới 02b.)
+Kết quả mong đợi: không in gì.
 
 ---
 
@@ -5248,4 +7207,7 @@ Kết quả mong đợi: không in gì. (`src/` còn `plan.pro*` và mã gói c�
 | §4.2 kiểm nhanh quá 1 giờ, dừng phiên `license_conflict` / `license_invalid`, lỗi mạng bỏ qua | 6 (`quick_check_due`), 7 |
 | §4.2 `KeyInUse`, `Conflict` thay `DeviceLimit` | 6 |
 | §6 bảng lỗi mới | 7 (mã lỗi và câu báo), 02b (giao diện) |
-| §9 test của app (Rust) | 1–7 |
+| §9 test của app (Rust) | 1–8 |
+| §3.2, §6 khách có license mà gói không dùng được, dùng thử đã hết: nêu lý do của gói (giờ máy lùi, xung đột, cần làm mới, thu hồi, hết hạn), không báo "mua gói" | 8 |
+| §4.1 (hợp đồng 00) `activation_id` của `409 license_conflict` phải là UUID; `409 key_in_use` rỗng thì thử lại một lần | 8 |
+| §4.2 dừng phiên vì kiểm bản quyền chỉ khi đúng phiên đã nhờ kiểm; đăng ký dùng thử tôn trọng Retry-After, không chồng, phân biệt lỗi | 8 |
