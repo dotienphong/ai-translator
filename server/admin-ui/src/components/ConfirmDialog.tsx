@@ -28,10 +28,16 @@ export interface ConfirmDialogProps {
 /** Lỗi 5xx mà server biết chắc chưa ghi gì: thử lại được như lỗi thường. */
 const NOT_WRITTEN = new Set(["temporarily_unavailable", "pricing_not_configured", "key_check_failed", "payment_provider_error"]);
 
-/** Lỗi mà ta không chắc thao tác đã chạy chưa: mất kết nối, máy chủ 5xx (trừ mã chắc chắn chưa ghi), hay lỗi không phải ApiError. */
+/**
+ * Lỗi mà ta không chắc thao tác đã chạy chưa: mất kết nối, máy chủ 5xx (trừ mã chắc chắn chưa ghi), server trả 2xx nhưng
+ * JSON hỏng (client.ts đổi thành http_<status>: thao tác có thể đã ghi), hay lỗi không phải ApiError.
+ * Phiên Access hết hạn thì chắc chắn chưa ghi (Access chặn trước khi request tới Worker), dù status là 0 hay 2xx (trang đăng nhập).
+ */
 function isUncertain(err: unknown): boolean {
   if (!(err instanceof ApiError)) return true;
+  if (err.code === "session_expired") return false;
   if (err.status === 0) return true;
+  if (err.status >= 200 && err.status < 300) return true;
   return err.status >= 500 && !NOT_WRITTEN.has(err.code);
 }
 

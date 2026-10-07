@@ -124,6 +124,10 @@ describe("ConfirmDialog: lỗi", () => {
     ["500", new ApiError(500, "internal"), "Lỗi máy chủ"],
     ["503 không rõ mã", new ApiError(503, "http_503"), "Máy chủ trả lỗi 503"],
     ["mạng (status 0)", new ApiError(0, "network"), "Không kết nối được máy chủ"],
+    // Server đã trả thành công nhưng JSON hỏng (client.ts đổi thành http_<status>): thao tác có thể đã ghi.
+    ["2xx nhưng JSON hỏng (200)", new ApiError(200, "http_200"), "Máy chủ trả lỗi 200"],
+    ["2xx nhưng JSON hỏng (201)", new ApiError(201, "http_201"), "Máy chủ trả lỗi 201"],
+    ["2xx nhưng JSON hỏng (299)", new ApiError(299, "http_299"), "Máy chủ trả lỗi 299"],
     ["không phải ApiError", new Error("boom bằng tiếng Anh"), "Lỗi không xác định"],
     ["không phải Error", "chuỗi lạ", "Lỗi không xác định"],
   ] as const;
@@ -185,6 +189,39 @@ describe("ConfirmDialog: lỗi", () => {
     await user.click(button("Hủy"));
     expect(onConflict).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // Access chặn trước khi request tới Worker, nên chắc chắn chưa ghi gì; status tùy cách client.ts phát hiện (0 khi redirect, 200 khi trả trang HTML đăng nhập, 401/403).
+  it.each([0, 200, 401, 403])(
+    "phiên hết hạn (session_expired, status %i): hiện câu lỗi, không cảnh báo không rõ, không tải lại, nút mở lại như lỗi thường",
+    async (status) => {
+      const user = userEvent.setup();
+      const { onConfirm, onClose, onConflict } = setup(new ApiError(status, "session_expired"));
+      await user.click(button("Gia hạn"));
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toBe("Phiên đăng nhập hết hạn. Tải lại trang để đăng nhập lại");
+      expect(alert.textContent).not.toContain("Không chắc");
+      expect(onConflict).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(button("Gia hạn").disabled).toBe(false);
+      await user.click(button("Gia hạn"));
+      expect(onConfirm).toHaveBeenCalledTimes(2);
+      await user.click(button("Hủy"));
+      expect(onConflict).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("ranh giới 2xx: status 300 không phải thành công nên không bị coi là không rõ kết quả", async () => {
+    const user = userEvent.setup();
+    const { onConfirm, onConflict } = setup(new ApiError(300, "http_300"));
+    await user.click(button("Gia hạn"));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Máy chủ trả lỗi 300");
+    expect(onConflict).not.toHaveBeenCalled();
+    expect(button("Gia hạn").disabled).toBe(false);
+    await user.click(button("Gia hạn"));
+    expect(onConfirm).toHaveBeenCalledTimes(2);
   });
 
   it("lỗi 400 chắc chắn chưa ghi: hiện lỗi, không cảnh báo, không tải lại (kể cả khi bấm Hủy), nút mở lại và bấm được lần nữa", async () => {

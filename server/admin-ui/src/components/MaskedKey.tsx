@@ -40,13 +40,13 @@ export function MaskedKey({ value }: { value: string }) {
   );
 }
 
-/** Hộp hiện key mới một lần, sau thao tác cấp key (spec §4.6). */
-export function KeyReveal({ licenseKey, onClose }: { licenseKey: string; onClose(): void }) {
+/** Hộp hiện key một lần, sau thao tác cấp key (spec §4.6). `title` đổi khi key không mới (cấp tay cho đơn gia hạn hay đổi gói). */
+export function KeyReveal({ licenseKey, title = "Key mới", onClose }: { licenseKey: string; title?: string; onClose(): void }) {
   const titleId = useId();
   return (
     <div className="overlay">
       <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <h2 id={titleId}>Key mới</h2>
+        <h2 id={titleId}>{title}</h2>
         <p>
           Server đã thử gửi key qua email cho khách; nếu khách báo không nhận được, dùng Gửi lại email ở trang license. Hộp này chỉ hiện key một
           lần.

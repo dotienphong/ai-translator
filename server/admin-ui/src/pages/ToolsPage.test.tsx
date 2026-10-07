@@ -56,6 +56,15 @@ describe("ToolsPage", () => {
     ]);
   });
 
+  it("ẩn danh: hộp nhắc lý do được ghi vào nhật ký, không ghi email hay thông tin cá nhân của khách", async () => {
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    await user.type(screen.getByLabelText("Email của khách"), "khach@example.com");
+    await user.click(screen.getByRole("button", { name: "Ẩn danh…" }));
+    const text = screen.getByRole("dialog").textContent ?? "";
+    expect(text).toContain("Lý do được ghi vào nhật ký: không ghi email hay thông tin cá nhân của khách vào đây.");
+  });
+
   it("ký thử: hiện token để chép", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);

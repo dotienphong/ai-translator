@@ -94,6 +94,14 @@ describe("KeyReveal", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("nhận tiêu đề riêng; không truyền thì là Key mới", () => {
+    const { rerender } = render(<KeyReveal licenseKey={KEY} onClose={() => {}} title="Key của license" />);
+    expect(screen.getByRole("dialog", { name: "Key của license" })).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Key mới" })).toBeNull();
+    rerender(<KeyReveal licenseKey={KEY} onClose={() => {}} />);
+    expect(screen.getByRole("dialog", { name: "Key mới" })).toBeTruthy();
+  });
+
   it("không khẳng định email đã tới tay khách: nói server đã thử gửi và chỉ cách gửi lại", () => {
     render(<KeyReveal licenseKey={KEY} onClose={() => {}} />);
     const text = screen.getByRole("dialog").textContent ?? "";

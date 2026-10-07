@@ -15,6 +15,13 @@ type Dialog = "grant" | "grant_new" | "refunded" | null;
 
 const GRANT_KINDS: Record<string, string> = { new: "Mua mới", extend: "Mua thêm cùng gói", change: "Đổi gói" };
 
+/** Key vừa cấp và tiêu đề hộp hiện nó: gia hạn hay đổi gói thì server trả lại key CŨ của license, không phải key mới. */
+interface Revealed {
+  key: string;
+  title: string;
+}
+const RENEWED_KEY_TITLE = "Key của license (đơn gia hạn hay đổi gói)";
+
 /** Mô tả hộp Cấp tay theo dữ liệu của đơn: đơn gia hạn hay đổi gói áp vào license cũ; đơn chưa nhận đủ tiền thì có cảnh báo. */
 function grantDescription(order: OrderRow): ReactNode {
   const when = order.renew_license_id
@@ -37,16 +44,16 @@ function grantDescription(order: OrderRow): ReactNode {
 
 /** Hộp key mới nằm ngoài OrderDetail: tải lại đơn bị lỗi thì trang đơn thành ErrorBox, nhưng key (chỉ hiện một lần) vẫn còn đó. */
 export function OrderPage({ code }: { code: number }) {
-  const [revealed, setRevealed] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState<Revealed | null>(null);
   return (
     <>
       <OrderDetail code={code} onKeyIssued={setRevealed} />
-      {revealed && <KeyReveal licenseKey={revealed} onClose={() => setRevealed(null)} />}
+      {revealed && <KeyReveal licenseKey={revealed.key} title={revealed.title} onClose={() => setRevealed(null)} />}
     </>
   );
 }
 
-function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(key: string): void }) {
+function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed: Revealed): void }) {
   const data = useLoad(() => api.lookup({ order_code: code }), [code]);
   const log = useLoad(() => api.audit({ order_code: String(code) }), [code]);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -136,7 +143,7 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(key: str
           needsNote
           onConfirm={async (note) => {
             const r = await api.grantOrder(code, note);
-            onKeyIssued(r.license_key);
+            onKeyIssued({ key: r.license_key, title: r.grant_kind === "extend" || r.grant_kind === "change" ? RENEWED_KEY_TITLE : "Key mới" });
             reload();
           }}
           onConflict={reload}
@@ -151,7 +158,7 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(key: str
           needsNote
           onConfirm={async (note) => {
             const r = await api.resolveOrder(code, "grant_new_license", note);
-            if (r.license_key) onKeyIssued(r.license_key);
+            if (r.license_key) onKeyIssued({ key: r.license_key, title: "Key mới" });
             reload();
           }}
           onConflict={reload}

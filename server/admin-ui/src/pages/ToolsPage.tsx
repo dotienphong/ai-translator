@@ -97,7 +97,7 @@ export function ToolsPage() {
       {dialog === "erase" && (
         <ConfirmDialog
           title={`Ẩn danh dữ liệu của ${email.trim()}?`}
-          description="Bỏ email khỏi mọi đơn và license, bỏ tên máy. Không hoàn tác được."
+          description="Bỏ email khỏi mọi đơn và license, bỏ tên máy. Không hoàn tác được. Lý do được ghi vào nhật ký: không ghi email hay thông tin cá nhân của khách vào đây."
           confirmLabel="Ẩn danh"
           needsNote
           typeToConfirm="AN DANH"

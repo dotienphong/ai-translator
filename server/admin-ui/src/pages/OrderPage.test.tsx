@@ -98,6 +98,48 @@ describe("OrderPage: hộp hiện key mới (chỉ hiện một lần)", () => {
   });
 });
 
+describe("OrderPage: tiêu đề hộp key theo loại cấp (grant_kind)", () => {
+  const RENEW_TITLE = "Key của license (đơn gia hạn hay đổi gói)";
+  const grantReturning = (extra: object) => serveOrder(order, { post: { [`/admin/orders/${CODE}/grant`]: () => json({ ...ISSUED, ...extra }) } });
+
+  it.each(["extend", "change"])("cấp tay trả grant_kind %s: key là của license cũ, tiêu đề không ghi Key mới", async (grant_kind) => {
+    const user = userEvent.setup();
+    grantReturning({ grant_kind, converted_days: 0 });
+    render(<OrderPage code={CODE} />);
+    await grant(user);
+    expect(await screen.findByRole("dialog", { name: RENEW_TITLE })).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Key mới" })).toBeNull();
+    expect(screen.getByText(KEY)).toBeTruthy();
+  });
+
+  it("cấp tay trả grant_kind new: tiêu đề Key mới", async () => {
+    const user = userEvent.setup();
+    grantReturning({ grant_kind: "new" });
+    render(<OrderPage code={CODE} />);
+    await grant(user);
+    expect(await screen.findByRole("dialog", { name: "Key mới" })).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: RENEW_TITLE })).toBeNull();
+  });
+
+  it("cấp tay không có grant_kind: tiêu đề Key mới", async () => {
+    const user = userEvent.setup();
+    serveOrder(order);
+    render(<OrderPage code={CODE} />);
+    await grant(user);
+    expect(await screen.findByRole("dialog", { name: "Key mới" })).toBeTruthy();
+  });
+
+  it("Cấp key mới… (xử lý đơn paid_needs_review) luôn là key mới", async () => {
+    const user = userEvent.setup();
+    serveOrder({ ...order, status: "paid_needs_review", amount_paid: 50000 }, { post: { [`/admin/orders/${CODE}/resolve`]: () => json({ order_code: CODE, status: "paid", license_key: KEY }) } });
+    render(<OrderPage code={CODE} />);
+    await user.click(await screen.findByRole("button", { name: "Cấp key mới…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "license cũ đã thu hồi nhầm");
+    await user.click(screen.getByRole("button", { name: "Cấp key mới" }));
+    expect(await screen.findByRole("dialog", { name: "Key mới" })).toBeTruthy();
+  });
+});
+
 describe("OrderPage: mô tả hộp Cấp tay theo dữ liệu đơn", () => {
   const LIC = "22222222-2222-4222-8222-222222222222";
   const WARNING = "Đơn mới nhận 20.000 đ / 50.000 đ: chỉ cấp khi khách đã chuyển bù hay bạn đã xác minh.";

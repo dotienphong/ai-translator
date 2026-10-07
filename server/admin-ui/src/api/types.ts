@@ -150,6 +150,8 @@ export interface IssuedLicense {
   license_key: string;
   plan: PlanCode;
   expires_at: number;
+  /** Chỉ có ở /admin/orders/:code/grant: `new`, `extend` hay `change`. Hai loại sau trả lại key CŨ của license được gia hạn hay đổi gói. */
+  grant_kind?: string;
 }
 
 /** Phản hồi của /admin/orders/:code/payment-status: trạng thái đơn do cổng thanh toán báo (PaymentStatusResult của server). */
