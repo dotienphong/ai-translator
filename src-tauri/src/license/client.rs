@@ -389,7 +389,7 @@ mod tests {
         let (base, seen) = serve(vec![(
             200,
             vec![],
-            r#"{"token":"v1.a.b","activation_id":"act","activation_created_at":1,"plan":"pro","expires_at":2,"cycle_anchor":1,"quota_minutes_per_cycle":1800,"quota_epoch":0,"quota_fresh":true,"refresh_before":3}"#,
+            r#"{"token":"v1.a.b","activation_id":"act","activation_created_at":1,"plan":"monthly","expires_at":2,"cycle_anchor":1,"quota_minutes_per_cycle":1800,"quota_epoch":0,"quota_fresh":true,"refresh_before":3}"#,
         )]);
         let api = HttpApi::new(accept_base(&base, true));
         let reply = api.activate("KEY", "ab12", Some("Máy của Phong"));
@@ -460,7 +460,7 @@ mod tests {
         let (base, seen) = serve(vec![(
             200,
             vec![],
-            r#"{"order_code":12,"status":"paid","plan":"pro","amount":50000,"currency":"VND","expires_at":9,"license_key":"0123-4567-89AB-CDEF-GHJK-MNPQ-RST5","license_plan":"pro","license_expires_at":99,"grant_kind":"new"}"#,
+            r#"{"order_code":12,"status":"paid","plan":"monthly","amount":50000,"currency":"VND","expires_at":9,"license_key":"0123-4567-89AB-CDEF-GHJK-MNPQ-RST5","license_plan":"monthly","license_expires_at":99,"grant_kind":"new"}"#,
         )]);
         let api = HttpApi::new(accept_base(&base, true));
         let order = api.order(12, "tok-1").result.unwrap();
@@ -475,15 +475,15 @@ mod tests {
 
     #[test]
     fn checkout_sends_consent_and_the_key_only_when_renewing() {
-        let body = r#"{"order_code":7,"order_token":"t","checkout_url":"https://pay.payos.vn/web/x","qr_code":"000201","plan":"pro","amount":50000,"currency":"VND","expires_at":9}"#;
+        let body = r#"{"order_code":7,"order_token":"t","checkout_url":"https://pay.payos.vn/web/x","qr_code":"000201","plan":"monthly","amount":50000,"currency":"VND","expires_at":9}"#;
         let (base, seen) = serve(vec![(201, vec![], body), (201, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        assert_eq!(api.checkout("pro", "a@b.vn", None).result.unwrap().order_code, 7);
-        api.checkout("pro", "a@b.vn", Some("KEY")).result.unwrap();
+        assert_eq!(api.checkout("monthly", "a@b.vn", None).result.unwrap().order_code, 7);
+        api.checkout("monthly", "a@b.vn", Some("KEY")).result.unwrap();
         let reqs = seen.lock().unwrap().clone();
         assert_eq!(
             reqs[0].body,
-            json!({ "plan": "pro", "email": "a@b.vn", "consent": true })
+            json!({ "plan": "monthly", "email": "a@b.vn", "consent": true })
         );
         assert_eq!(reqs[1].body["license_key"], "KEY");
     }

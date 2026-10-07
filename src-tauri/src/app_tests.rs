@@ -1470,15 +1470,15 @@ fn license_events_never_carry_the_key_or_the_token() {
     let now = crate::license::app::now();
     let claims = json!({
         "kid": "test-1", "license_id": "lic", "activation_id": "act", "activation_created_at": now,
-        "device_id_hash": DEVICE, "plan": "pro_x2", "expires_at": now + 30 * 86_400, "cycle_anchor": now,
-        "quota_minutes_per_cycle": 6000, "quota_epoch": 0, "quota_fresh": true,
+        "device_id_hash": DEVICE, "plan": "yearly", "expires_at": now + 365 * 86_400, "cycle_anchor": now,
+        "quota_minutes_per_cycle": null, "quota_epoch": 0, "quota_fresh": true,
         "issued_at": now, "refresh_before": now + 14 * 86_400,
     });
     api.replies.lock().unwrap().push_back(granted(&claims, true));
     license.activate(KEY, now).unwrap();
     crate::license::app::refresh(app.handle());
     let last = views.lock().unwrap().last().cloned().unwrap();
-    assert_eq!(last["plan"], "pro_x2");
+    assert_eq!(last["plan"], "yearly");
     let text = last.to_string();
     assert!(text.contains("••••-••••-••••-••••-••••-••••-RST5"), "{text}");
     assert!(!text.contains(&sign(&claims)[..20]), "không có token");
@@ -1500,7 +1500,7 @@ fn the_checkout_page_opens_only_for_the_pending_payos_order() {
     let mut order = PendingOrder {
         order_code: 7,
         order_token: "tok".into(),
-        plan: "pro".into(),
+        plan: "monthly".into(),
         expires_at: crate::license::app::now() + 900,
         renewal: false,
         checkout_url: "https://pay.payos.vn/web/abc".into(),
@@ -1577,7 +1577,7 @@ fn license_commands_touch_the_keystore_off_the_calling_thread() {
     let order = PendingOrder {
         order_code: 7,
         order_token: "tok".into(),
-        plan: "pro".into(),
+        plan: "monthly".into(),
         expires_at: crate::license::app::now() + 900,
         renewal: false,
         checkout_url: "https://pay.payos.vn/web/abc".into(),

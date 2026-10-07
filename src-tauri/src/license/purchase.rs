@@ -15,8 +15,8 @@ use super::client::{Checkout, OrderStatus, PlanOffer};
 use super::manager::{License, LicenseError};
 use super::store::{self, PendingOrder};
 
-/// Mã gói được bán (spec §2).
-pub const PLANS: [&str; 3] = ["pro", "pro_x2", "pro_x5"];
+/// Mã gói được bán (spec 2026-10-07 §1).
+pub const PLANS: [&str; 2] = ["monthly", "yearly"];
 /// App hỏi trạng thái đơn mỗi chừng này (§6.8 bước 4).
 pub const POLL_EVERY_SECS: u64 = 3;
 /// Đơn đang chờ giữ thêm chừng này sau khi link hết hạn (webhook đến chậm, mở lại app vẫn hỏi lại một lần), rồi bỏ.
@@ -54,7 +54,7 @@ pub enum OrderOutcome {
     Refunded { order_code: i64 },
     /// `cancelled`, `expired`, `failed`, hay link đã hết hạn: cho tạo đơn mới; thôi hỏi.
     Failed { order_code: i64 },
-    /// Đã trả tiền nhưng kích hoạt hay làm mới trên máy này lỗi (ví dụ key mới đã đủ 2 máy): báo lỗi, key vẫn có trong
+    /// Đã trả tiền nhưng kích hoạt hay làm mới trên máy này lỗi (ví dụ key đang dùng ở máy khác): báo lỗi, key vẫn có trong
     /// email.
     PaidButNotApplied { order_code: i64, code: String },
 }
@@ -234,7 +234,7 @@ mod tests {
             order_token: "tok".into(),
             checkout_url: "https://pay.payos.vn/web/abc".into(),
             qr_code: "00020101021238570010A000000727012700069704220113VQRQAA".into(),
-            plan: "pro".into(),
+            plan: "monthly".into(),
             amount: 50_000,
             currency: "VND".into(),
             expires_at: T0 + 900,
@@ -247,10 +247,10 @@ mod tests {
         OrderStatus {
             order_code: 7,
             status: status.into(),
-            plan: "pro".into(),
+            plan: "monthly".into(),
             expires_at: T0 + 900,
             license_key: key.map(String::from),
-            license_plan: Some("pro".into()),
+            license_plan: Some("monthly".into()),
             license_expires_at: Some(T0 + 30 * 86_400),
             grant_kind: kind.map(String::from),
         }
@@ -266,20 +266,20 @@ mod tests {
     fn a_checkout_needs_consent_a_valid_email_and_a_paid_plan() {
         let (api, _, l) = setup();
         assert_eq!(
-            start(&l, "pro", "a@b.vn", false, false),
+            start(&l, "monthly", "a@b.vn", false, false),
             Err(LicenseError::ConsentRequired)
         );
         assert_eq!(
-            start(&l, "pro", "khong-co-a-cong", true, false),
+            start(&l, "monthly", "khong-co-a-cong", true, false),
             Err(LicenseError::EmailInvalid)
         );
         assert_eq!(
-            start(&l, "pro", "a b@c.vn", true, false),
+            start(&l, "monthly", "a b@c.vn", true, false),
             Err(LicenseError::EmailInvalid)
         );
         assert!(start(&l, "free", "a@b.vn", true, false).is_err());
         assert_eq!(
-            start(&l, "pro", "a@b.vn", true, true),
+            start(&l, "monthly", "a@b.vn", true, true),
             Err(LicenseError::NotActivated),
             "gia hạn cần key đã kích hoạt"
         );
@@ -290,8 +290,8 @@ mod tests {
     fn a_new_order_draws_the_qr_and_is_kept_for_polling() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        let view = start(&l, "pro", " a@b.vn ", true, false).unwrap();
-        assert_eq!(api.calls.lock().unwrap()[0], "checkout pro a@b.vn -");
+        let view = start(&l, "monthly", " a@b.vn ", true, false).unwrap();
+        assert_eq!(api.calls.lock().unwrap()[0], "checkout monthly a@b.vn -");
         assert!(view.qr_svg.contains("<svg") && view.qr_svg.contains("</svg>"));
         let kept = pending(&l).unwrap();
         assert_eq!(
@@ -306,7 +306,7 @@ mod tests {
     fn a_paid_new_order_activates_its_key_on_this_machine() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "pro", "a@b.vn", true, false).unwrap();
+        start(&l, "monthly", "a@b.vn", true, false).unwrap();
         api.orders.lock().unwrap().extend([
             Ok(order("pending", None, None)),
             Ok(order("paid", Some("new"), Some(KEY))),
@@ -323,7 +323,7 @@ mod tests {
             poll(&l, T0 + 6),
             Some(OrderOutcome::Paid {
                 order_code: 7,
-                plan: "pro".into()
+                plan: "monthly".into()
             })
         );
         assert!(l.is_pro(T0 + 6));
@@ -351,7 +351,7 @@ mod tests {
             ("new", "activate 1111111111111111111111111Z0V"),
         ] {
             api.checkouts.lock().unwrap().push_back(Ok(checkout(8)));
-            start(&l, "pro_x2", "a@b.vn", true, true).unwrap();
+            start(&l, "yearly", "a@b.vn", true, true).unwrap();
             assert!(
                 api.calls
                     .lock()
@@ -385,7 +385,7 @@ mod tests {
         for (status, outcome, done) in cases {
             let (api, _, l) = setup();
             api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-            start(&l, "pro", "a@b.vn", true, false).unwrap();
+            start(&l, "monthly", "a@b.vn", true, false).unwrap();
             api.orders.lock().unwrap().push_back(Ok(order(status, None, None)));
             assert_eq!(poll(&l, T0 + 3), Some(outcome), "{status}");
             assert_eq!(pending(&l).is_none(), done, "{status}");
@@ -393,13 +393,13 @@ mod tests {
         // Link đã hết hạn mà server vẫn báo `pending`: đơn không thành.
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "pro", "a@b.vn", true, false).unwrap();
+        start(&l, "monthly", "a@b.vn", true, false).unwrap();
         api.orders.lock().unwrap().push_back(Ok(order("pending", None, None)));
         assert_eq!(poll(&l, T0 + 901), Some(OrderOutcome::Failed { order_code: 7 }));
         // Lỗi mạng: hỏi tiếp, tới 24 giờ sau khi link hết hạn.
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "pro", "a@b.vn", true, false).unwrap();
+        start(&l, "monthly", "a@b.vn", true, false).unwrap();
         api.orders.lock().unwrap().push_back(Err(ApiError::Network("x".into())));
         assert!(matches!(poll(&l, T0 + 3600), Some(OrderOutcome::Waiting { .. })));
         api.orders.lock().unwrap().push_back(Err(ApiError::Network("x".into())));
@@ -413,7 +413,7 @@ mod tests {
     fn a_paid_order_whose_key_cannot_be_activated_here_reports_why() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "pro", "a@b.vn", true, false).unwrap();
+        start(&l, "monthly", "a@b.vn", true, false).unwrap();
         api.orders
             .lock()
             .unwrap()

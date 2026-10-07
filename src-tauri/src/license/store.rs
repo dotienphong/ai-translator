@@ -230,7 +230,7 @@ pub mod tests {
             activation_id: "act".into(),
             activation_created_at: 1_790_812_800,
             device_id_hash: "dev".into(),
-            plan: Plan::Pro,
+            plan: Plan::Monthly,
             expires_at: 1_790_812_800 + 30 * 86_400,
             cycle_anchor: 1_790_812_800,
             quota_minutes_per_cycle: Some(1800),

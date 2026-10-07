@@ -113,7 +113,7 @@ pub enum ResetKind {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuotaView {
-    /// Gói không giới hạn (X5) hay bản debug không giới hạn.
+    /// Gói không giới hạn (Yearly) hay bản debug không giới hạn.
     pub unlimited: bool,
     pub limit_ms: u64,
     pub used_ms: u64,
@@ -132,9 +132,9 @@ pub struct QuotaView {
 #[serde(rename_all = "camelCase")]
 pub struct LicenseView {
     pub standing: Standing,
-    /// `free`, `pro`, `pro_x2`, `pro_x5`: gói đang có hiệu lực.
+    /// `free`, `monthly`, `yearly`: gói đang có hiệu lực.
     pub plan: String,
-    /// Gói ghi trong token đã lưu (kể cả khi đã hết hạn), để hiện "Professional đã hết hạn".
+    /// Gói ghi trong token đã lưu (kể cả khi đã hết hạn), để hiện "Monthly đã hết hạn".
     pub licensed_plan: Option<Plan>,
     /// Key đã che, chỉ còn 4 ký tự cuối (`••••-…-RST5`): sự kiện không phải ranh giới quyền, nên không gửi key đầy đủ
     /// (01 QĐ6). Key đầy đủ nằm trong email mua hàng.
@@ -784,7 +784,7 @@ impl License {
         LicenseView {
             standing,
             plan: match (&active, self.dev_unlimited) {
-                (_, true) => "pro_x5".into(),
+                (_, true) => "yearly".into(),
                 (Some(c), _) => plan_code(c.plan).into(),
                 (None, _) => "free".into(),
             },
@@ -845,9 +845,8 @@ impl License {
 
 pub fn plan_code(plan: Plan) -> &'static str {
     match plan {
-        Plan::Pro => "pro",
-        Plan::ProX2 => "pro_x2",
-        Plan::ProX5 => "pro_x5",
+        Plan::Monthly => "monthly",
+        Plan::Yearly => "yearly",
     }
 }
 
@@ -896,11 +895,11 @@ pub mod tests {
         format!("{input}.{}", URL_SAFE_NO_PAD.encode(sig.to_bytes()))
     }
 
-    /// Claims của một license Professional, kích hoạt lúc `T0`, cấp lúc `issued_at`.
+    /// Claims của một license Monthly (hạn mức 1800 phút cho gọn số), kích hoạt lúc `T0`, cấp lúc `issued_at`.
     pub fn claims(issued_at: i64) -> Value {
         json!({
             "kid": "test-1", "license_id": "lic", "activation_id": "act", "activation_created_at": T0,
-            "device_id_hash": DEVICE, "plan": "pro", "expires_at": T0 + 30 * DAY, "cycle_anchor": T0,
+            "device_id_hash": DEVICE, "plan": "monthly", "expires_at": T0 + 30 * DAY, "cycle_anchor": T0,
             "quota_minutes_per_cycle": 1800, "quota_epoch": 0, "quota_fresh": false,
             "issued_at": issued_at, "refresh_before": issued_at + 14 * DAY,
         })
@@ -1107,7 +1106,7 @@ pub mod tests {
         let v = l.view(T0);
         assert_eq!(
             (v.standing, v.plan.as_str(), v.key.as_deref()),
-            (Standing::Active, "pro", Some("••••-••••-••••-••••-••••-••••-RST5"))
+            (Standing::Active, "monthly", Some("••••-••••-••••-••••-••••-••••-RST5"))
         );
         assert_eq!(
             (v.quota.limit_ms, v.quota.remaining_ms, v.quota.lost),

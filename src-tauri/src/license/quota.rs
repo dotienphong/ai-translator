@@ -371,7 +371,7 @@ mod tests {
             activation_id: "act".into(),
             activation_created_at: T0,
             device_id_hash: "dev".into(),
-            plan: Plan::Pro,
+            plan: Plan::Monthly,
             expires_at: T0 + 60 * DAY_SECS,
             cycle_anchor: T0,
             quota_minutes_per_cycle: Some(1800),
@@ -422,7 +422,7 @@ mod tests {
         c.expires_at = T0 + CYCLE_SECS + 6 * DAY_SECS + 1;
         assert_eq!(cycle(&c).limit_ms, Some(234 * MIN), "ceil(1000 × 7 / 30) = 234");
         c.quota_minutes_per_cycle = None;
-        assert_eq!(cycle(&c).limit_ms, None, "X5 không giới hạn");
+        assert_eq!(cycle(&c).limit_ms, None, "Yearly không giới hạn");
     }
 
     #[test]
@@ -520,7 +520,7 @@ mod tests {
     fn changing_plan_starts_a_new_counter_with_or_without_a_marker() {
         let old = claims();
         let mut changed = old.clone();
-        changed.plan = Plan::ProX2;
+        changed.plan = Plan::Yearly;
         changed.quota_minutes_per_cycle = Some(6000);
         changed.cycle_anchor = T0 + 10 * DAY_SECS;
         changed.issued_at = T0 + 10 * DAY_SECS + 60;

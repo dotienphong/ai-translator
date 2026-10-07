@@ -2,10 +2,12 @@
 //! `v1.<base64url(JSON claims)>.<base64url(chữ ký Ed25519 trên chuỗi ASCII "v1.<payload>")>`, base64url không đệm.
 //!
 //! Thứ tự kiểm, giống hệt `server/src/token.ts`: định dạng (đủ trường, đúng kiểu), `kid`, chữ ký, máy, `expires_at`, rồi
-//! `refresh_before`. Token có nhiều lỗi thì trả lỗi đứng trước. Hợp đồng chốt bằng 30 vector ở
+//! `refresh_before`. Token có nhiều lỗi thì trả lỗi đứng trước. Hợp đồng chốt bằng 32 vector ở
 //! `server/test/vectors/token-v1.json`:
 //! - mọi số nguyên phải là số nguyên an toàn của JavaScript (|n| ≤ 2^53 − 1), vì server sinh token bằng JavaScript;
 //! - thiếu trường là `malformed`, kể cả `quota_minutes_per_cycle` (giá trị `null` mới là không giới hạn);
+//! - token bản quyền không có trường `typ`: có `typ` là `malformed`, để token dùng thử (`typ: "trial"`, [`super::trial`])
+//!   không dùng thay được token bản quyền (spec 2026-10-07 §3.1);
 //! - payload là UTF-8 chặt, không có BOM (`serde_json::from_slice` trên byte đã giải mã);
 //! - kiểm đủ định dạng trước khi tra `kid` và kiểm chữ ký.
 //!
@@ -24,21 +26,19 @@ pub const VERSION: &str = "v1";
 /// Số nguyên lớn nhất JavaScript biểu diễn chính xác (`Number.MAX_SAFE_INTEGER`).
 const MAX_SAFE: i64 = (1 << 53) - 1;
 
-/// Gói trả phí trong token (spec §2). Free không có token.
+/// Gói trả phí trong token (spec 2026-10-07 §1): Monthly, Yearly. Free không có token bản quyền.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Plan {
-    Pro,
-    ProX2,
-    ProX5,
+    Monthly,
+    Yearly,
 }
 
 impl Plan {
     fn parse(code: &str) -> Option<Self> {
         match code {
-            "pro" => Some(Self::Pro),
-            "pro_x2" => Some(Self::ProX2),
-            "pro_x5" => Some(Self::ProX5),
+            "monthly" => Some(Self::Monthly),
+            "yearly" => Some(Self::Yearly),
             _ => None,
         }
     }
@@ -55,7 +55,7 @@ pub struct Claims {
     pub plan: Plan,
     pub expires_at: i64,
     pub cycle_anchor: i64,
-    /// Phút mỗi chu kỳ 30 ngày; `None` là không giới hạn (X5).
+    /// Phút mỗi chu kỳ 30 ngày; `None` là không giới hạn (Yearly).
     pub quota_minutes_per_cycle: Option<u32>,
     pub quota_epoch: i64,
     pub quota_fresh: bool,
@@ -139,6 +139,9 @@ fn string(c: &Map<String, Value>, key: &str) -> Option<String> {
 
 fn parse_claims(json: &Value) -> Option<Claims> {
     let c = json.as_object()?;
+    if c.contains_key("typ") {
+        return None;
+    }
     let quota = match c.get("quota_minutes_per_cycle")? {
         Value::Null => None,
         v => {
@@ -185,11 +188,12 @@ mod tests {
         serde_json::to_value(e).unwrap().as_str().unwrap().to_string()
     }
 
-    /// Đúng bản vector đã chốt với server (`d7bdfdb`, Phụ lục C đợt A2 của kế hoạch 05).
+    /// Đúng bản vector đã chốt với server (kế hoạch 2026-10-07 ba gói · 01 Task 1: mã gói `monthly`, `yearly`, khóa
+    /// `trial`).
     #[test]
     fn the_vector_file_is_the_agreed_one() {
         let hash = hex(&Sha256::digest(VECTORS.as_bytes()));
-        assert_eq!(hash, "f7b6b332f25cbe5ebec012a6f106b9d274175279926d07898cc196d7683c8542");
+        assert_eq!(hash, "b18e7b9e961181a2a8ed94bfd2178a54d8cb921116834367c5268f9bc538faa2");
     }
 
     fn hex(bytes: &[u8]) -> String {
@@ -221,9 +225,8 @@ mod tests {
                     assert_eq!(expected, "ok", "{name}");
                     // So đủ mọi trường với `claims` của vector (N3 của review 06 lần 1).
                     let plan = match claims.plan {
-                        Plan::Pro => "pro",
-                        Plan::ProX2 => "pro_x2",
-                        Plan::ProX5 => "pro_x5",
+                        Plan::Monthly => "monthly",
+                        Plan::Yearly => "yearly",
                     };
                     let got = serde_json::json!({
                         "kid": claims.kid,
@@ -249,7 +252,7 @@ mod tests {
             }
             checked += 1;
         }
-        assert_eq!(checked, 30);
+        assert_eq!(checked, 32);
     }
 
     /// Thứ tự lỗi của `VerifyError` đúng `checks_order` của vector.
