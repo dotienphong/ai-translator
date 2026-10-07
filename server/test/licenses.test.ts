@@ -326,6 +326,8 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
       headers: expect.anything(),
       body: {
         error: "license_conflict",
+        // activation của chính máy gọi, để app lưu và sau đó validate hay tự gỡ (hợp đồng 00).
+        activation_id: await idOf(2),
         devices: [
           { activation_id: a1.body.activation_id, device_label: "Máy 1", last_validated_at: T0 },
           { activation_id: await idOf(2), device_label: "Máy 2", last_validated_at: T0 + 100 },
@@ -346,13 +348,19 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
       const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: id });
       expect(v).toMatchObject({ status: 409, body: { error: "license_conflict" } });
       expect(v.body).not.toHaveProperty("token");
+      // validate: máy đã biết activation_id của mình, response không lặp lại.
+      expect(v.body).not.toHaveProperty("activation_id");
     }
     expect((await env.DB.prepare("SELECT last_validated_at FROM activations ORDER BY created_at").all()).results).toEqual([
       { last_validated_at: T0 + DAY },
       { last_validated_at: T0 + DAY },
     ]);
-    expect(await activate(1)).toMatchObject({ status: 409, body: { error: "license_conflict" } });
-    expect(await activateAnyway(2)).toMatchObject({ status: 409, body: { error: "license_conflict" } });
+    // Máy đang kích hoạt gọi lại activate (cài lại app) khi đang xung đột: nhận lại đúng activation của mình.
+    expect(await activate(1)).toMatchObject({
+      status: 409,
+      body: { error: "license_conflict", activation_id: a1.body.activation_id },
+    });
+    expect(await activateAnyway(2)).toMatchObject({ status: 409, body: { error: "license_conflict", activation_id: await idOf(2) } });
     expect(await activeCount()).toEqual({ n: 2 });
   });
 

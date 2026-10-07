@@ -134,10 +134,16 @@ function devicesOf(list: ActivationRow[]) {
   return list.map((a) => ({ activation_id: a.id, device_label: a.device_label, last_validated_at: a.last_validated_at }));
 }
 
-/** Xung đột: license có từ 2 máy đang kích hoạt (spec 2026-10-07 §4.1). Trả response 409, hay null nếu không xung đột. */
-async function conflict(c: Context<AppEnv>, licenseId: string) {
+/**
+ * Xung đột: license có từ 2 máy đang kích hoạt (spec 2026-10-07 §4.1). Trả response 409, hay null nếu không xung đột.
+ * `activationId`: activation của chính máy gọi, chỉ có ở `activate` (máy chưa biết activation của mình); `validate` không
+ * truyền (hợp đồng 00).
+ */
+async function conflict(c: Context<AppEnv>, licenseId: string, activationId?: string) {
   const list = await activeActivations(c.env.DB, licenseId);
-  return list.length > MAX_DEVICES ? fail(c, 409, "license_conflict", { devices: devicesOf(list) }) : null;
+  if (list.length <= MAX_DEVICES) return null;
+  const own = activationId === undefined ? {} : { activation_id: activationId };
+  return fail(c, 409, "license_conflict", { ...own, devices: devicesOf(list) });
 }
 
 async function activeById(db: D1Database, activationId: string, licenseId: string) {
@@ -198,7 +204,7 @@ export function registerLicenses(app: Hono<AppEnv>) {
         .prepare("UPDATE activations SET device_label = ?, last_validated_at = ? WHERE id = ?")
         .bind(deviceLabel, now, row.id)
         .run();
-      return (await conflict(c, lic.id)) ?? c.json(await issueToken(db, deps, plans, lic, row));
+      return (await conflict(c, lic.id, row.id)) ?? c.json(await issueToken(db, deps, plans, lic, row));
     }
 
     // Mọi máy không đang kích hoạt, kể cả máy từng dùng key này, đều qua kiểm khóa tạm (QĐ10).
@@ -266,7 +272,7 @@ export function registerLicenses(app: Hono<AppEnv>) {
     if (changed.meta.changes !== 1) {
       const raced = await rowFor(db, lic.id, deviceIdHash);
       if (raced && raced.deactivated_at === null) {
-        return (await conflict(c, lic.id)) ?? c.json(await issueToken(db, deps, plans, lic, raced));
+        return (await conflict(c, lic.id, raced.id)) ?? c.json(await issueToken(db, deps, plans, lic, raced));
       }
       // Key đang ở máy khác: trả các máy đang giữ key, không đổi gì.
       return fail(c, 409, "key_in_use", { devices: devicesOf(await activeActivations(db, lic.id)) });
@@ -282,7 +288,7 @@ export function registerLicenses(app: Hono<AppEnv>) {
         licenseId: lic.id,
         detail: { activation_id: activationId, devices: list.length },
       });
-      return fail(c, 409, "license_conflict", { devices: devicesOf(list) });
+      return fail(c, 409, "license_conflict", { activation_id: activationId, devices: devicesOf(list) });
     }
     const act = await activeById(db, activationId, lic.id);
     if (!act) throw new Error(`không thấy activation ${activationId} vừa kích hoạt`);
