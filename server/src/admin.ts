@@ -9,8 +9,8 @@ import { type AdminAppEnv, type AdminDeps, crossSite, useAdminAuth } from "./adm
 import { audit, auditIfChanged, auditStatement } from "./audit";
 import { sendLicenseMail } from "./deps";
 import type { AdminEnv } from "./env";
-import { fail, isRecord, parseDeviceIdHash, parseEmail, readJson } from "./http";
-import { formatLicenseKey, generateLicenseKey } from "./license-key";
+import { fail, isRecord, parseDeviceIdHash, parseEmail, parseUuid, readJson } from "./http";
+import { formatLicenseKey, generateLicenseKey, normalizeLicenseKey } from "./license-key";
 import { grantOrder, loadOrder, mailGranted, settledResult } from "./orders";
 import { PaymentProviderError } from "./payment/provider";
 import { computeGrant, isPlan, PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
@@ -20,6 +20,14 @@ function parseNote(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const note = v.trim();
   return note.length > 0 && note.length <= 500 ? note : null;
+}
+
+/** Một license và mọi đơn đã áp hay đang áp vào nó (license_id hoặc renew_license_id), cho `lookup` theo key hay id. */
+async function licenseWithOrders(db: D1Database, id: string) {
+  const orders = (
+    await db.prepare("SELECT * FROM orders WHERE license_id = ?1 OR renew_license_id = ?1 ORDER BY order_code").bind(id).all()
+  ).results;
+  return { licenseIds: [id], orders };
 }
 
 export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
@@ -47,7 +55,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     const body = await readJson(c);
     let licenseIds: string[] = [];
     let orders: Record<string, unknown>[] = [];
-    let by: "email" | "order_code" | "device";
+    let by: "email" | "order_code" | "device" | "license_key" | "license_id";
     let orderCode: number | null = null;
     // Tra theo máy (spec 2026-10-07 §3.1): dùng thử của máy và các license từng kích hoạt trên máy. Chỉ đọc.
     let trial: Record<string, unknown> | null | undefined;
@@ -61,6 +69,18 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
         .bind(d)
         .all<{ license_id: string }>();
       licenseIds = acts.results.map((r) => r.license_id);
+    } else if (body?.license_key !== undefined) {
+      const key = typeof body.license_key === "string" ? normalizeLicenseKey(body.license_key) : null;
+      if (!key) return fail(c, 400, "invalid_request", { field: "license_key" });
+      by = "license_key";
+      const found = await db.prepare("SELECT id FROM licenses WHERE license_key = ?").bind(key).first<{ id: string }>();
+      if (found) ({ licenseIds, orders } = await licenseWithOrders(db, found.id));
+    } else if (body?.license_id !== undefined) {
+      const id = parseUuid(body.license_id);
+      if (!id) return fail(c, 400, "invalid_request", { field: "license_id" });
+      by = "license_id";
+      const found = await db.prepare("SELECT id FROM licenses WHERE id = ?").bind(id).first<{ id: string }>();
+      if (found) ({ licenseIds, orders } = await licenseWithOrders(db, found.id));
     } else if (body?.email !== undefined) {
       const e = parseEmail(body.email);
       if (!e) return fail(c, 400, "invalid_request", { field: "email" });

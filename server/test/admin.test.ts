@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { AdminRpc } from "../src/admin-rpc";
 import { sha256Hex } from "../src/crypto";
 import { signKeyCheck } from "../src/deps";
+import { formatLicenseKey, generateLicenseKey } from "../src/license-key";
 import { verifyToken } from "../src/token";
 import { ADMIN, type AdminCall, API_ORIGIN, apiKeyEnv, auditCount, lastAudit, licenseRow, makeAdmin } from "./admin-harness";
 import { resetDb, withFailingInsert } from "./db";
@@ -186,6 +187,42 @@ describe("tra cứu, gửi lại key", () => {
       status: 400,
       body: { field: "device_id_hash" },
     });
+  });
+
+  it("tra theo license key (có/không gạch nối, chữ thường) và theo license id; nhật ký không có key", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { orderCode, licenseKey } = await w.buy({ email: "buyer@example.com" });
+    const raw = licenseKey.replace(/-/g, "");
+    for (const key of [licenseKey, raw, licenseKey.toLowerCase()]) {
+      const res = await adminCall("/admin/lookup", { body: { license_key: key } });
+      expect(res.status, key).toBe(200);
+      expect((res.body.licenses as Record<string, unknown>[]).map((l) => l.license_key)).toEqual([licenseKey]);
+      expect((res.body.orders as Record<string, unknown>[]).map((o) => o.order_code)).toEqual([orderCode]);
+      const log = await lastAudit();
+      expect(log).toMatchObject({ action: "lookup", order_code: null });
+      expect(JSON.parse((log as { detail: string }).detail)).toEqual({ by: "license_key", licenses: 1, orders: 1 });
+      expect((log as { detail: string }).detail).not.toContain(raw.slice(4, -4));
+    }
+    const id = (await licenseRow())!.id as string;
+    const byId = await adminCall("/admin/lookup", { body: { license_id: id } });
+    expect(byId.body).toMatchObject({ licenses: [{ id, license_key: licenseKey }], orders: [{ order_code: orderCode }] });
+    expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toEqual({ by: "license_id", licenses: 1, orders: 1 });
+  });
+
+  it("tra theo license: có cả đơn gia hạn (renew_license_id); key hay id không có thì rỗng; sai định dạng thì 400", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy({ email: "buyer@example.com" });
+    const renew = await w.call("POST", "/v1/checkout", { plan: "yearly", email: "buyer@example.com", consent: true, license_key: licenseKey });
+    const res = await adminCall("/admin/lookup", { body: { license_key: licenseKey } });
+    expect((res.body.orders as Record<string, unknown>[]).map((o) => o.order_code)).toEqual([1, renew.body.order_code]);
+    expect(await adminCall("/admin/lookup", { body: { license_key: formatLicenseKey(generateLicenseKey()) } })).toEqual({
+      status: 200,
+      body: { licenses: [], orders: [] },
+    });
+    expect((await adminCall("/admin/lookup", { body: { license_id: crypto.randomUUID() } })).body).toEqual({ licenses: [], orders: [] });
+    expect(await adminCall("/admin/lookup", { body: { license_key: "ABCD-1234" } })).toMatchObject({ status: 400, body: { field: "license_key" } });
+    expect(await adminCall("/admin/lookup", { body: { license_key: 42 } })).toMatchObject({ status: 400, body: { field: "license_key" } });
+    expect(await adminCall("/admin/lookup", { body: { license_id: "khong-phai-uuid" } })).toMatchObject({ status: 400, body: { field: "license_id" } });
   });
 
   it("gửi lại key vào email của license và ghi nhật ký", async () => {
