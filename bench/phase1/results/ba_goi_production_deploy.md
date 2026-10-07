@@ -36,3 +36,10 @@ Toàn bộ license, đơn và máy trên production là dữ liệu thử. Chủ
 
 ## Đường lui chưa dùng
 `wrangler rollback --name mt-license` và `--name mt-license-admin`; D1: `wrangler d1 time-travel restore mt-license-production --bookmark=00000063-00000000-000050fd-7d95cadf3e0eaee7c7ba4b66d9e6118b` (lùi Worker trước, D1 sau).
+
+## Thử tay trên Mac (bản dev, 2026-10-07)
+- **Cron:** `wrangler tail` thấy `"*/5 * * * *"` chạy lúc 19:40:56 với log `{"event":"reconcile","checked":0,...}`. Đạt.
+- **Đăng ký dùng thử:** bản dev gọi `/v1/trial` lúc khởi động (log `POST /v1/trial - Ok`). Đạt.
+- **Sự cố tạo mã thanh toán (đã sửa):** đơn đầu sau khi xóa dữ liệu thử lỗi `502 payment_provider_error`. Log: `PayOS lỗi HTTP 200: Đơn thanh toán đã tồn tại` (`checkout_failed`, order_code 1000004). Nguyên nhân: bộ đếm số đơn bị đưa về 1.000.000, trùng các `orderCode` 1000001–1000004 mà PayOS đã nhận trước đó. Ba đơn 1000001–1000003 và đơn 1000004 ở trạng thái `failed`. Bộ đếm tự vượt lên 1000004 sau các lần thử; đơn kế tiếp là 1000005. Bài học ghi ở `docs/release/phat-hanh.md` (mục giữ chỗ số đơn).
+- **Mua Monthly thật qua PayOS:** hiện mã QR, thanh toán thành công, app tự kích hoạt lên gói Monthly (webhook, cấp key và `activate` qua đơn đều chạy). Đạt.
+- **Chưa thử:** đổi sang Yearly (xem số ngày quy đổi), xung đột hai máy (`allow_conflict`), gỡ máy từ xa, dùng thử hết hạn, email nhận key.
