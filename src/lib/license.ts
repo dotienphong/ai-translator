@@ -1,4 +1,4 @@
-import type { Device, LicenseView, OrderOutcome, PlanOffer, QuotaView, Standing } from "./ipc";
+import type { ConflictView, Device, LicenseView, OrderOutcome, PlanOffer, QuotaView, Standing } from "./ipc";
 
 // Hiển thị bản quyền và hạn mức (kế hoạch 06; spec §4.2 bước 2, §4.3 "Bản quyền", "Nâng cấp"). Chỉ đọc kết quả phía Rust
 // trả về; không tự tính gói hay hạn mức.
@@ -33,13 +33,15 @@ export function quotaKey(quota: QuotaView): QuotaKey {
 }
 
 // Có lời nhắc nào cần hiện ở thanh báo của cửa sổ chính (thứ tự ưu tiên): bản không chính hãng, đồng hồ bị chỉnh lùi,
-// lâu không làm mới được token, license hết hạn hay sắp hết hạn, bị thu hồi.
+// lâu không làm mới được token, license hết hạn hay sắp hết hạn, bị thu hồi, key đang xung đột, Free đã hết dùng thử.
 export type LicenseNoticeKey =
   | "license.notice.notGenuine"
   | "license.notice.clockRolledBack"
   | "license.notice.refreshNeeded"
   | "license.notice.expired"
   | "license.notice.revoked"
+  | "license.notice.conflict"
+  | "license.notice.trialEnded"
   | "license.notice.renewSoon";
 
 export function licenseNotice(view: LicenseView | null): LicenseNoticeKey | null {
@@ -50,11 +52,22 @@ export function licenseNotice(view: LicenseView | null): LicenseNoticeKey | null
     refreshNeeded: "license.notice.refreshNeeded",
     expired: "license.notice.expired",
     revoked: "license.notice.revoked",
+    conflict: "license.notice.conflict",
   };
   const key = byStanding[view.standing];
   if (key) return key;
   if (view.clockRolledBack) return "license.notice.clockRolledBack";
+  if (trialKey(view) === "trial.ended") return "license.notice.trialEnded";
   return view.standing === "active" && view.renewSoon ? "license.notice.renewSoon" : null;
+}
+
+// Dòng dùng thử ở màn hình chính, chỉ khi đang ở gói Free (spec 2026-10-07 §3.2): còn N ngày, đã hết, hay chưa đăng ký
+// được (cần mạng).
+export type TrialKey = "trial.active" | "trial.ended" | "trial.none";
+
+export function trialKey(view: LicenseView): TrialKey | null {
+  if (view.plan !== "free" || view.devOverride) return null;
+  return `trial.${view.trial.status}`;
 }
 
 // Mua mới hay gia hạn / đổi gói key đang có. License đã thu hồi thì mua mới (server từ chối gia hạn key đã thu hồi).
@@ -62,9 +75,9 @@ export function isRenewal(view: LicenseView | null): boolean {
   return view?.key != null && view.standing !== "revoked";
 }
 
-// Gói chọn sẵn ở màn hình Nâng cấp: gia hạn được thì chọn đúng gói đang dùng (mặc định là gia hạn, không phải hạ gói), còn lại là Professional.
+// Gói chọn sẵn ở màn hình Nâng cấp: gia hạn được thì chọn đúng gói đang dùng (mặc định là gia hạn, không phải hạ gói), còn lại là Monthly.
 export function defaultPlan(view: LicenseView | null): PlanOffer["code"] {
-  return isRenewal(view) && view !== null && view.plan !== "free" ? view.plan : "pro";
+  return isRenewal(view) && view !== null && view.plan !== "free" ? view.plan : "monthly";
 }
 
 // Giá theo VND của một gói, hoặc `null` nếu server không bán gói đó bằng VND.
@@ -72,9 +85,15 @@ export function priceVnd(plan: PlanOffer): number | null {
   return plan.prices.VND ?? null;
 }
 
-// Tên hiển thị của một máy trong danh sách `409 device_limit`; `device_label` là `null` thì dùng tên thay thế.
+// Tên hiển thị của một máy trong danh sách `409 key_in_use` hay `409 license_conflict`; `device_label` là `null` thì dùng
+// tên thay thế.
 export function deviceName(device: Device, fallback: string): string {
   return device.device_label?.trim() || fallback;
+}
+
+// Máy trong danh sách xung đột có phải máy này không.
+export function isThisMachine(conflict: ConflictView, device: Device): boolean {
+  return device.activation_id === conflict.thisActivationId;
 }
 
 // Câu báo theo trạng thái đơn (bảng "App hiện gì theo `status`" của kế hoạch 05).

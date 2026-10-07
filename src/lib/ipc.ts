@@ -248,7 +248,8 @@ export interface CommandError {
 }
 
 // Bản quyền (kế hoạch 06; `license::manager::LicenseView`). Không có key đầy đủ hay token: `key` đã che.
-export type LicensePlan = "free" | "pro" | "pro_x2" | "pro_x5";
+// Ba gói (spec 2026-10-07 §1): Free dùng thử 10 ngày, Monthly, Yearly.
+export type LicensePlan = "free" | "monthly" | "yearly";
 export type Standing =
   | "free"
   | "active"
@@ -257,7 +258,9 @@ export type Standing =
   | "refreshNeeded"
   | "clockRolledBack"
   | "unverified"
-  | "notGenuine";
+  | "notGenuine"
+  // Key đang kích hoạt trên 2 máy: tạm khóa tới khi một máy gỡ key (spec 2026-10-07 §4.2).
+  | "conflict";
 
 export interface QuotaView {
   unlimited: boolean;
@@ -269,6 +272,19 @@ export interface QuotaView {
   needsNetwork: boolean;
   lost: boolean;
   storageError: boolean;
+}
+
+// Dùng thử của Free trên máy này (`license::manager::TrialView`).
+export interface TrialView {
+  status: "none" | "active" | "ended";
+  endsAt: number | null;
+  daysLeft: number;
+}
+
+// Trạng thái xung đột (`license::manager::ConflictView`): các máy đang kích hoạt key, và activation của máy này.
+export interface ConflictView {
+  devices: Device[];
+  thisActivationId: string;
 }
 
 export interface LicenseView {
@@ -285,9 +301,12 @@ export interface LicenseView {
   devOverride: boolean;
   // Giờ máy bị coi là chỉnh lùi (cả ở gói Free): nhắc chỉnh giờ.
   clockRolledBack: boolean;
+  trial: TrialView;
+  conflict: ConflictView | null;
 }
 
-// Một máy đã kích hoạt, trong `409 device_limit` (`license::client::Device`). `device_label` có thể là `null`.
+// Một máy đang kích hoạt, trong `409 key_in_use` hay `409 license_conflict` (`license::client::Device`). `device_label`
+// có thể là `null`.
 export interface Device {
   activation_id: string;
   device_label: string | null;
@@ -370,9 +389,13 @@ export interface Commands {
   get_debug_sessions: { args: undefined; result: DebugSession[] };
   get_overlay_view: { args: undefined; result: OverlayView };
   get_license: { args: undefined; result: LicenseView | null };
-  activate_license: { args: { key: string }; result: ActivateOutcome };
+  // `allowConflict`: người dùng đã xác nhận "Vẫn kích hoạt trên máy này" (spec 2026-10-07 §4.2).
+  activate_license: { args: { key: string; allowConflict?: boolean }; result: ActivateOutcome };
   deactivate_license: { args: undefined; result: LicenseView | null };
-  deactivate_other_device: { args: { key: string; activationId: string }; result: null };
+  // Không có `key`: dùng key đã lưu (đang xung đột, "Gỡ máy kia"); phía Rust `validate` ngay sau đó.
+  deactivate_other_device: { args: { key?: string; activationId: string }; result: null };
+  // Bước Điều khoản vừa được đồng ý: đăng ký dùng thử chạy nền (spec 2026-10-07 §3.2).
+  start_trial: { args: undefined; result: null };
   validate_license: { args: undefined; result: LicenseView | null };
   get_plans: { args: undefined; result: PlanOffer[] };
   start_checkout: { args: { plan: string; email: string; consent: boolean; renew: boolean }; result: CheckoutView };

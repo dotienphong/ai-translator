@@ -98,6 +98,8 @@ export type OverlayNote =
   | "firstRun"
   | "loading"
   | "quotaExhausted"
+  | "trialEnded"
+  | "licenseConflict"
   | "error"
   | "noAudio"
   | "waitingForApp"
@@ -105,12 +107,18 @@ export type OverlayNote =
   | "lagging"
   | "translationUnavailable";
 
+// Lỗi làm phiên dừng hay không bắt đầu được: hết hạn mức, hết dùng thử, key đang xung đột (spec 2026-10-07 §3.2, §4.2)
+// có lời nhắc riêng; còn lại là lời nhắc chung.
+function sessionErrorNote(code: string | null): OverlayNote {
+  return code === "quotaExhausted" || code === "trialEnded" || code === "licenseConflict" ? code : "error";
+}
+
 export function overlayNotes(status: AppStatus | null): OverlayNote[] {
   if (!status) return [];
   const notes: OverlayNote[] = [];
   if (status.loading === "firstRun") notes.push("firstRun");
   else if (status.loading === "model") notes.push("loading");
-  if (status.session === "error") notes.push(status.sessionError === "quotaExhausted" ? "quotaExhausted" : "error");
+  if (status.session === "error") notes.push(sessionErrorNote(status.sessionError));
   if (status.session === "running") {
     if (status.indicators.noAudio) notes.push("noAudio");
     if (status.waitingForApp) notes.push("waitingForApp");

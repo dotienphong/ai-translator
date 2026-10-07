@@ -39,9 +39,8 @@ describe("từ điển giao diện", () => {
         "settings.group.model",
         // Tên gói là tên riêng (spec §2).
         "plan.free",
-        "plan.pro",
-        "plan.pro_x2",
-        "plan.pro_x5",
+        "plan.monthly",
+        "plan.yearly",
         "license.standing.free",
       ].sort(),
     );

@@ -157,6 +157,8 @@ describe("overlayNotes", () => {
   it("chỉ báo của phiên chỉ hiện khi đang dịch; lỗi và hết hạn mức hiện sau khi dừng", () => {
     expect(overlayNotes(status({ session: "idle", indicators: { lagging: true, noAudio: true, translationUnavailable: false } }))).toEqual([]);
     expect(overlayNotes(status({ session: "error", sessionError: "quotaExhausted" }))).toEqual(["quotaExhausted"]);
+    expect(overlayNotes(status({ session: "error", sessionError: "trialEnded" }))).toEqual(["trialEnded"]);
+    expect(overlayNotes(status({ session: "error", sessionError: "licenseConflict" }))).toEqual(["licenseConflict"]);
     expect(overlayNotes(status({ session: "error", sessionError: "sidecarFailed" }))).toEqual(["error"]);
   });
 });

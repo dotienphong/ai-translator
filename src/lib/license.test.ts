@@ -1,12 +1,24 @@
 import { describe, expect, it } from "vitest";
 import type { LicenseView, OrderOutcome, QuotaView } from "./ipc";
-import { defaultPlan, deviceName, hoursUsed, isRenewal, licenseNotice, minutesLeft, orderFinished, orderMessageKey, quotaKey } from "./license";
+import {
+  defaultPlan,
+  deviceName,
+  hoursUsed,
+  isRenewal,
+  isThisMachine,
+  licenseNotice,
+  minutesLeft,
+  orderFinished,
+  orderMessageKey,
+  quotaKey,
+  trialKey,
+} from "./license";
 
 const quota = (patch: Partial<QuotaView> = {}): QuotaView => ({
   unlimited: false,
-  limitMs: 600_000,
+  limitMs: 1_800_000,
   usedMs: 0,
-  remainingMs: 600_000,
+  remainingMs: 1_800_000,
   resetAt: 1_790_900_000,
   resetKind: "daily",
   needsNetwork: false,
@@ -28,6 +40,8 @@ const licenseView = (patch: Partial<LicenseView> = {}): LicenseView => ({
   serverConfigured: true,
   devOverride: false,
   clockRolledBack: false,
+  trial: { status: "active", endsAt: 1_791_676_800, daysLeft: 10 },
+  conflict: null,
   ...patch,
 });
 
@@ -62,6 +76,21 @@ describe("lời nhắc bản quyền", () => {
     expect(licenseNotice(licenseView({ standing: "active" }))).toBeNull();
     // Gói Free cũng nhắc chỉnh giờ máy (Q2 của review 06 lần 1).
     expect(licenseNotice(licenseView({ standing: "free", clockRolledBack: true }))).toBe("license.notice.clockRolledBack");
+    // Mỗi key một máy và dùng thử 10 ngày (spec 2026-10-07 §3.2, §4.2).
+    expect(licenseNotice(licenseView({ standing: "conflict" }))).toBe("license.notice.conflict");
+    const ended = { status: "ended", endsAt: 1, daysLeft: 0 } as const;
+    expect(licenseNotice(licenseView({ trial: ended }))).toBe("license.notice.trialEnded");
+    expect(licenseNotice(licenseView({ standing: "expired", trial: ended }))).toBe("license.notice.expired");
+    expect(licenseNotice(licenseView({ standing: "active", plan: "monthly", trial: ended }))).toBeNull();
+    expect(licenseNotice(licenseView({ devOverride: true, plan: "yearly", trial: ended }))).toBeNull();
+  });
+
+  it("dòng dùng thử chỉ ở gói Free", () => {
+    expect(trialKey(licenseView())).toBe("trial.active");
+    expect(trialKey(licenseView({ trial: { status: "ended", endsAt: 1, daysLeft: 0 } }))).toBe("trial.ended");
+    expect(trialKey(licenseView({ trial: { status: "none", endsAt: null, daysLeft: 0 } }))).toBe("trial.none");
+    expect(trialKey(licenseView({ standing: "active", plan: "monthly" }))).toBeNull();
+    expect(trialKey(licenseView({ devOverride: true, plan: "yearly" }))).toBeNull();
   });
 
   it("gia hạn khi đã có key chưa bị thu hồi", () => {
@@ -71,17 +100,16 @@ describe("lời nhắc bản quyền", () => {
     expect(isRenewal(licenseView({ key: "••••-RST5", standing: "revoked" }))).toBe(false);
   });
 
-  it("gói chọn sẵn ở màn hình Nâng cấp: gia hạn được thì đúng gói đang dùng, còn lại là Professional", () => {
+  it("gói chọn sẵn ở màn hình Nâng cấp: gia hạn được thì đúng gói đang dùng, còn lại là Monthly", () => {
     const key = "••••-RST5";
-    expect(defaultPlan(null)).toBe("pro");
-    expect(defaultPlan(licenseView())).toBe("pro");
-    expect(defaultPlan(licenseView({ key, standing: "active", plan: "pro" }))).toBe("pro");
-    expect(defaultPlan(licenseView({ key, standing: "active", plan: "pro_x2" }))).toBe("pro_x2");
-    expect(defaultPlan(licenseView({ key, standing: "expired", plan: "pro_x5" }))).toBe("pro_x5");
-    // License đã thu hồi thì mua mới, không gia hạn: về Professional.
-    expect(defaultPlan(licenseView({ key, standing: "revoked", plan: "pro_x2" }))).toBe("pro");
+    expect(defaultPlan(null)).toBe("monthly");
+    expect(defaultPlan(licenseView())).toBe("monthly");
+    expect(defaultPlan(licenseView({ key, standing: "active", plan: "monthly" }))).toBe("monthly");
+    expect(defaultPlan(licenseView({ key, standing: "active", plan: "yearly" }))).toBe("yearly");
+    // License đã thu hồi thì mua mới, không gia hạn: về Monthly.
+    expect(defaultPlan(licenseView({ key, standing: "revoked", plan: "yearly" }))).toBe("monthly");
     // Có key nhưng gói Free thì không có gói trả phí nào để gia hạn.
-    expect(defaultPlan(licenseView({ key, standing: "free", plan: "free" }))).toBe("pro");
+    expect(defaultPlan(licenseView({ key, standing: "free", plan: "free" }))).toBe("monthly");
   });
 });
 
@@ -93,8 +121,14 @@ describe("đơn và máy", () => {
     expect(deviceName({ activation_id: "a", device_label: " Mac ", last_validated_at: null }, "x")).toBe("Mac");
   });
 
+  it("máy này trong danh sách xung đột", () => {
+    const a = { activation_id: "a", device_label: null, last_validated_at: null };
+    expect(isThisMachine({ devices: [a], thisActivationId: "a" }, a)).toBe(true);
+    expect(isThisMachine({ devices: [a], thisActivationId: "b" }, a)).toBe(false);
+  });
+
   it("đơn đã xong thì cho tạo đơn mới; thiếu tiền vẫn chờ chuyển bù", () => {
-    const o = (state: OrderOutcome["state"]) => ({ state, order_code: 1, expires_at: 0, plan: "pro", code: "x" }) as OrderOutcome;
+    const o = (state: OrderOutcome["state"]) => ({ state, order_code: 1, expires_at: 0, plan: "monthly", code: "x" }) as OrderOutcome;
     expect(orderFinished(null)).toBe(false);
     expect(orderFinished(o("waiting"))).toBe(false);
     expect(orderFinished(o("underpaid"))).toBe(false);

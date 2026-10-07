@@ -14,9 +14,9 @@ const licenseView = (patch: Partial<LicenseView> = {}): LicenseView => ({
   renewSoon: false,
   quota: {
     unlimited: false,
-    limitMs: 600_000,
+    limitMs: 1_800_000,
     usedMs: 0,
-    remainingMs: 600_000,
+    remainingMs: 1_800_000,
     resetAt: null,
     resetKind: "daily",
     needsNetwork: false,
@@ -26,12 +26,14 @@ const licenseView = (patch: Partial<LicenseView> = {}): LicenseView => ({
   serverConfigured: true,
   devOverride: false,
   clockRolledBack: false,
+  trial: { status: "active", endsAt: 1_791_676_800, daysLeft: 10 },
+  conflict: null,
   ...patch,
 });
 
 const checkout: CheckoutView = {
   orderCode: 7,
-  plan: "pro",
+  plan: "monthly",
   amount: 50_000,
   currency: "VND",
   expiresAt: 1,
@@ -47,9 +49,9 @@ describe("license store", () => {
     await store.getState().init();
     expect(store.getState().view?.plan).toBe("free");
     expect(store.getState().checkout?.orderCode).toBe(7);
-    fake.emit("license://changed", licenseView({ plan: "pro", standing: "active" }));
-    expect(store.getState().view?.plan).toBe("pro");
-    fake.emit("license://order", { state: "paid", order_code: 7, plan: "pro" });
+    fake.emit("license://changed", licenseView({ plan: "monthly", standing: "active" }));
+    expect(store.getState().view?.plan).toBe("monthly");
+    fake.emit("license://order", { state: "paid", order_code: 7, plan: "monthly" });
     expect(store.getState().order?.state).toBe("paid");
   });
 
@@ -59,7 +61,7 @@ describe("license store", () => {
       activate_license: () =>
         full
           ? { view: null, devices: [{ activation_id: "a1", device_label: null, last_validated_at: 5 }] }
-          : { view: licenseView({ plan: "pro", standing: "active" }), devices: null },
+          : { view: licenseView({ plan: "monthly", standing: "active" }), devices: null },
       deactivate_other_device: () => {
         full = false;
         return null;
@@ -70,7 +72,7 @@ describe("license store", () => {
     expect(store.getState().devices?.[0]?.activation_id).toBe("a1");
     expect(await store.getState().deactivateOther("KEY", "a1")).toBe(true);
     expect(store.getState().devices).toBeNull();
-    expect(store.getState().view?.plan).toBe("pro");
+    expect(store.getState().view?.plan).toBe("monthly");
     expect(fake.calls.map((c) => c.cmd)).toEqual(["activate_license", "deactivate_other_device", "activate_license"]);
     expect(fake.calls[1]?.args).toEqual({ key: "KEY", activationId: "a1" });
   });
@@ -97,8 +99,8 @@ describe("license store", () => {
   it("tạo đơn gửi email, ô đồng ý và gia hạn; hủy đơn thì bỏ mã QR", async () => {
     const fake = fakeIpc({ start_checkout: () => checkout, cancel_checkout: () => null });
     const store = createLicenseStore(fake.ipc);
-    expect(await store.getState().startCheckout("pro_x2", "a@b.vn", true, true)).toBe(true);
-    expect(fake.calls[0]?.args).toEqual({ plan: "pro_x2", email: "a@b.vn", consent: true, renew: true });
+    expect(await store.getState().startCheckout("yearly", "a@b.vn", true, true)).toBe(true);
+    expect(fake.calls[0]?.args).toEqual({ plan: "yearly", email: "a@b.vn", consent: true, renew: true });
     expect(store.getState().checkout?.qrSvg).toBe("<svg/>");
     await store.getState().cancelCheckout();
     expect(store.getState().checkout).toBeNull();
