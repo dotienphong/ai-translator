@@ -154,6 +154,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 
 1. **Chọn ngôn ngữ giao diện.** Mặc định theo hệ điều hành: tiếng Việt nếu máy dùng tiếng Việt, còn lại là English.
    - **Bước 1b: Điều khoản.** Hiện Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư (đóng gói trong app, theo ngôn ngữ vừa chọn); phải tick đồng ý mới bấm được "Tiếp" (spec 2026-10-06 legal-in-app).
+   - Ngay sau khi người dùng đồng ý, app đăng ký dùng thử Free với license server (`POST /v1/trial`, gửi `device_id_hash`), chạy nền. Lỗi mạng không chặn các bước sau; app thử lại theo §6.8 ("Dùng thử Free"). Đăng ký sau bước đồng ý vì request gửi mã băm ID máy (§10.1).
 2. **Kiểm tra cấu hình** (RAM, GPU, dung lượng trống), rồi đề xuất **gói Chuẩn (khoảng 2,5 GB)** hoặc **gói Nhẹ (khoảng 1,3 GB)**, có ghi rõ dung lượng sẽ tải. Máy chưa được hỗ trợ (§8) thì báo lý do và cấu hình tối thiểu, và không cho tải model (§6.7).
 3. **Tải model.** Có thể tạm dừng rồi tải tiếp. Tải xong là dùng được ngay.
 4. **Cấp quyền trên macOS:** hướng dẫn bật quyền "Ghi âm thanh hệ thống", kèm nút mở System Settings. Windows không cần bước này.
@@ -165,14 +166,16 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 ### 4.2 Trong cuộc họp
 
 1. Người dùng bấm **Bắt đầu**, qua nút, phím tắt hoặc menu khay. Thanh phụ đề (ẩn lúc mở app, §4.4) hiện ra, kèm chỉ báo "đang nghe" (mức âm lượng) và chỉ báo độ trễ. Nếu hai tiến trình phụ chưa chạy (§5), thanh phụ đề hiện "Đang nạp model…" trong vài giây đầu.
-2. **Hạn mức** (§6.8), với các gói có hạn mức (Free, Professional, Professional X2):
+2. **Hạn mức** (§6.8), với các gói có hạn mức (Free, Monthly):
    - Khi còn 5 phút thì nhắc.
    - Hết hạn mức thì dừng phiên, với lý do `quota_exhausted`. Thanh phụ đề và cửa sổ chính báo đã hết hạn mức, ghi thời điểm hạn mức được reset, kèm nút nâng gói. Thời điểm reset hiển thị:
      - Free: max(00:00 hôm sau, lần reset trước + 20 giờ) (§6.8);
      - gói trả phí: mốc đầu chu kỳ kế tiếp, kèm ghi chú cần có mạng để mở hạn mức mới. Nếu `expires_at` đến trước mốc đó thì báo ngày hết hạn của gói thay cho thời điểm reset.
    - Hạn mức còn 0 thì không bắt đầu được phiên mới.
    - App không chạy tiếp ở chế độ "chỉ chép lời".
-   - Professional X5 không giới hạn.
+   - Yearly không giới hạn.
+   - Free chỉ dùng được trong 10 ngày dùng thử (§6.8, "Dùng thử Free"). Hết dùng thử thì không bắt đầu được phiên ở Free; app báo đã hết dùng thử, kèm nút Nâng cấp. Đang dịch mà qua lúc hết dùng thử thì phiên đang chạy được chạy hết.
+   - Key đang xung đột (§6.8, "Mỗi key một máy") thì phiên đang chạy ở gói trả phí dừng với lý do `license_conflict`, và cửa sổ chính báo lý do.
 3. Người dùng bấm **Dừng** để kết thúc phiên. Thanh phụ đề giữ nguyên các dòng cuối để người dùng đọc nốt. Sau đó người dùng có thể mở bản chép lời của phiên.
 
 ### 4.3 Các màn hình
@@ -183,7 +186,9 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
   - Ngôn ngữ đích và tập ngôn ngữ nguồn.
   - Nguồn âm thanh: trên Windows là thiết bị phát; trên macOS là toàn hệ thống hoặc một app cụ thể.
   - Mức âm lượng vào.
-  - Hạn mức còn lại: số phút còn lại hôm nay (Free) hoặc trong chu kỳ (Professional, Professional X2), kèm thời điểm reset. Professional X5 ghi "Không giới hạn".
+  - Hạn mức còn lại: số phút còn lại hôm nay (Free) hoặc trong chu kỳ (Monthly), kèm thời điểm reset. Yearly ghi "Không giới hạn".
+  - Ở Free: số ngày dùng thử còn lại, dạng "Dùng thử: còn N ngày · Hôm nay còn X phút" (N = số ngày tới `ends_at`, làm tròn lên). Hết dùng thử thì báo đã hết 10 ngày dùng thử, kèm nút Nâng cấp.
+  - Key đang xung đột: báo "Key đang dùng trên 2 máy nên đã bị tạm khóa", kèm nút mở nhóm Cài đặt "Bản quyền".
 - **Bản chép lời:** mỗi câu gồm giờ, câu gốc và bản dịch. Có tìm kiếm, sao chép, xuất file (Pro).
 - **Lịch sử (Pro):** danh sách các phiên đã lưu, xóa từng phiên hoặc xóa tất cả.
 - **Từ điển thuật ngữ (Pro):** thêm, sửa, xóa; nhập và xuất CSV.
@@ -193,16 +198,16 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
   - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
-  - **Bản quyền:** nhập key; gói đang dùng, trạng thái và ngày hết hạn; hạn mức còn lại của chu kỳ; gia hạn hoặc đổi gói (mở màn hình Nâng cấp); gỡ kích hoạt.
+  - **Bản quyền:** nhập key; gói đang dùng, trạng thái và ngày hết hạn; hạn mức còn lại của chu kỳ; gia hạn hoặc đổi gói (mở màn hình Nâng cấp); gỡ kích hoạt. Kích hoạt mà key đang giữ ở máy khác thì hiện hộp thoại "Gỡ máy kia và dùng máy này" hoặc "Vẫn kích hoạt trên máy này" (§6.8, "Mỗi key một máy"). Key đang xung đột thì liệt kê hai máy (tên máy, lần dùng gần nhất), kèm nút "Gỡ key khỏi máy này", "Gỡ máy kia", "Thử lại".
   - **Quyền riêng tư:**
     - Bật/tắt lưu lịch sử.
     - Nút xóa toàn bộ dữ liệu: xóa lịch sử và từ điển thuật ngữ.
     - Nút "Xóa model và dữ liệu": xóa thêm cả model, dùng trước khi gỡ app trên macOS (A6).
     - Cả hai nút đều giữ lại trạng thái bản quyền và bộ đếm hạn mức (§6.8).
 - **Nâng cấp** (mở từ nút nâng gói, từ nhóm Cài đặt "Bản quyền", hoặc khi hết hạn mức):
-  - Hiện đủ 4 gói (§2): tên, hạn mức, giá mỗi 30 ngày; đánh dấu gói đang dùng. Giá lấy từ license server (`GET /v1/plans`, §6.8); không có mạng thì báo cần mạng để mua.
+  - Hiện đủ ba gói (§2): tên, hạn mức, giá và thời hạn mỗi đơn (Monthly 30 ngày, Yearly 365 ngày); Free ghi số ngày dùng thử còn lại; đánh dấu gói đang dùng. Giá và số ngày lấy từ license server (`GET /v1/plans`, §6.8); không có mạng thì báo cần mạng để mua.
   - Người dùng chọn một gói trả phí, nhập email, tick ô đồng ý xử lý email (§10.1), rồi quét mã VietQR hiện ngay trong app (§6.8).
-  - Đang có license còn hạn: chọn cùng gói là gia hạn thêm 30 ngày; chọn gói khác là đổi gói. Khi đổi gói, app hiện trước số ngày quy đổi và ngày hết hạn mới (§6.8, "Mua thêm và đổi gói"), và ghi rõ không hoàn tiền.
+  - Đang có license còn hạn: chọn cùng gói là gia hạn thêm một đơn (30 ngày với Monthly, 365 ngày với Yearly); chọn gói khác là đổi gói. Khi đổi gói, app hiện trước số ngày quy đổi và ngày hết hạn mới (§6.8, "Mua thêm và đổi gói"), và ghi rõ không hoàn tiền.
   - Ghi rõ MVP chỉ nhận chuyển khoản từ ngân hàng Việt Nam (§6.8).
 - **Giới thiệu và giấy phép mã nguồn mở.**
 - **Đóng cửa sổ chính:**
@@ -275,7 +280,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - Lần đầu phải chờ nạp model vài giây; thanh phụ đề hiện "Đang nạp model…". Thời gian này không tính vào độ trễ ở A2.
 - **Việc cho MVP:** app chính build với `panic = "abort"` (§10.2), nên `Drop` không chạy khi app crash. Dùng Job Object (`KILL_ON_JOB_CLOSE`) trên Windows và process group trên macOS, để tiến trình phụ không bị bỏ lại.
 
-**Thành phần nằm ngoài app:** một license server nhỏ làm việc với PayOS (chi tiết ở §6.8). App chỉ gọi server này khi mua, kích hoạt, kiểm tra bản quyền và hỏi giờ của server khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về (§10.1). Âm thanh và nội dung chép lời không bao giờ đi qua server.
+**Thành phần nằm ngoài app:** một license server nhỏ làm việc với PayOS (chi tiết ở §6.8). App chỉ gọi server này khi mua, kích hoạt, kiểm tra bản quyền, đăng ký dùng thử Free và hỏi giờ của server khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về (§10.1). Âm thanh và nội dung chép lời không bao giờ đi qua server.
 
 ```
 App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhook── PayOS ◄── khách quét VietQR
