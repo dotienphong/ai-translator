@@ -42,3 +42,9 @@ export function normalizeLicenseKey(input: string): string | null {
   for (const ch of key) if (!KEY_ALPHABET.includes(ch)) return null;
   return luhnCheckChar(key.slice(0, BODY_LENGTH)) === key.slice(BODY_LENGTH) ? key : null;
 }
+
+/** Key dạng che cho danh sách của Web Admin: 4 ký tự đầu, "-…-", 4 ký tự cuối. Nhận dạng lưu trữ hay dạng có gạch nối. */
+export function maskLicenseKey(key: string): string {
+  const raw = key.replace(/-/g, "");
+  return `${raw.slice(0, 4)}-…-${raw.slice(-4)}`;
+}

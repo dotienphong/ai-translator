@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatLicenseKey, generateLicenseKey, KEY_ALPHABET, luhnCheckChar, normalizeLicenseKey } from "../src/license-key";
+import {
+  formatLicenseKey,
+  generateLicenseKey,
+  KEY_ALPHABET,
+  luhnCheckChar,
+  maskLicenseKey,
+  normalizeLicenseKey,
+} from "../src/license-key";
 
 describe("license key", () => {
   it("sinh 28 ký tự trong bảng Crockford, ký tự kiểm tra đúng", () => {
@@ -62,5 +69,17 @@ describe("license key", () => {
 
   it("định dạng 7 nhóm 4 ký tự", () => {
     expect(formatLicenseKey("ABCDEFGHJKMNPQRSTVWXYZ012345")).toBe("ABCD-EFGH-JKMN-PQRS-TVWX-YZ01-2345");
+  });
+});
+
+describe("maskLicenseKey (Web Admin §3.2)", () => {
+  it("giữ 4 ký tự đầu và 4 ký tự cuối, che phần giữa", () => {
+    const key = generateLicenseKey();
+    expect(maskLicenseKey(key)).toBe(`${key.slice(0, 4)}-…-${key.slice(-4)}`);
+  });
+
+  it("nhận cả dạng có gạch nối", () => {
+    const key = generateLicenseKey();
+    expect(maskLicenseKey(formatLicenseKey(key))).toBe(maskLicenseKey(key));
   });
 });
