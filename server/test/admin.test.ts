@@ -222,6 +222,40 @@ describe("tra cứu, gửi lại key", () => {
     expect((await adminCall("/admin/lookup", { body: {} })).status).toBe(400);
   });
 
+  it("tra theo máy (device_id_hash): dùng thử của máy và các license từng kích hoạt trên máy, kèm trạng thái xung đột", async () => {
+    const { w, adminCall } = makeAdmin();
+    const d1 = await sha256Hex("tra-may-1");
+    const d2 = await sha256Hex("tra-may-2");
+    await w.call("POST", "/v1/trial", { device_id_hash: d1 });
+    const { licenseKey } = await w.buy({ email: "buyer@example.com" });
+    const activate = (d: string, extra: Record<string, unknown> = {}) =>
+      w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: d, device_label: "Máy", ...extra });
+    expect((await activate(d1)).status).toBe(200);
+    const res = await adminCall("/admin/lookup", { body: { device_id_hash: d1 } });
+    expect(res.status).toBe(200);
+    expect(res.body.trial).toEqual({ started_at: T0, ends_at: T0 + 10 * DAY, last_seen_at: T0 });
+    expect(res.body.orders).toEqual([]);
+    const lics = res.body.licenses as Record<string, unknown>[];
+    expect(lics.map((l) => [l.license_key, l.conflict])).toEqual([[licenseKey, false]]);
+    expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toEqual({ by: "device", licenses: 1, trial: true });
+
+    // Máy 2 xác nhận "Vẫn kích hoạt": tra theo email hay theo máy đều thấy xung đột.
+    expect((await activate(d2, { allow_conflict: true })).body.error).toBe("license_conflict");
+    const byEmail = await adminCall("/admin/lookup", { body: { email: "buyer@example.com" } });
+    expect((byEmail.body.licenses as Record<string, unknown>[])[0]).toMatchObject({ conflict: true });
+    expect(byEmail.body).not.toHaveProperty("trial");
+    const byDevice2 = await adminCall("/admin/lookup", { body: { device_id_hash: d2 } });
+    expect(byDevice2.body).toMatchObject({ trial: null, licenses: [{ conflict: true }] });
+    expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toEqual({ by: "device", licenses: 1, trial: false });
+
+    const unknown = await adminCall("/admin/lookup", { body: { device_id_hash: await sha256Hex("không-có") } });
+    expect(unknown.body).toEqual({ licenses: [], orders: [], trial: null });
+    expect(await adminCall("/admin/lookup", { body: { device_id_hash: "SAI" } })).toMatchObject({
+      status: 400,
+      body: { field: "device_id_hash" },
+    });
+  });
+
   it("gửi lại key vào email của license và ghi nhật ký", async () => {
     const { w, adminCall } = makeAdmin();
     const { licenseKey } = await w.buy();
@@ -477,8 +511,11 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
     const { licenseKey } = await w.buy({ email: "erase@example.com" });
     await w.buy({ email: "keep@example.com" });
     await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "MacBook của An" });
+    await w.call("POST", "/v1/trial", { device_id_hash: await sha256Hex("d1") });
     const res = await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa qua email hỗ trợ ngày 2026-10-01" } });
     expect(res.body).toEqual({ activations: 1, licenses: 1, orders: 1 });
+    // Bảng trials không có email, nên xóa theo email không chạm tới (spec 2026-10-07 §7, §10.1).
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM trials").first()).toEqual({ n: 1 });
     const orders = await env.DB.prepare("SELECT email, amount, plan, status FROM orders ORDER BY order_code").all();
     expect(orders.results).toEqual([
       { email: null, amount: 50000, plan: "monthly", status: "paid" },

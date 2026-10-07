@@ -12,7 +12,7 @@ import { audit, auditIfChanged, auditStatement } from "./audit";
 import { sendLicenseMail } from "./deps";
 import type { EmailProvider } from "./email/provider";
 import type { AdminEnv } from "./env";
-import { fail, isRecord, parseEmail, readJson } from "./http";
+import { fail, isRecord, parseDeviceIdHash, parseEmail, readJson } from "./http";
 import { formatLicenseKey, generateLicenseKey } from "./license-key";
 import { grantOrder, loadOrder, mailGranted, settledResult } from "./orders";
 import type { PayOSProvider } from "./payment/payos";
@@ -98,9 +98,21 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     const body = await readJson(c);
     let licenseIds: string[] = [];
     let orders: Record<string, unknown>[] = [];
-    let by: "email" | "order_code";
+    let by: "email" | "order_code" | "device";
     let orderCode: number | null = null;
-    if (body?.email !== undefined) {
+    // Tra theo máy (spec 2026-10-07 §3.1): dùng thử của máy và các license từng kích hoạt trên máy. Chỉ đọc.
+    let trial: Record<string, unknown> | null | undefined;
+    if (body?.device_id_hash !== undefined) {
+      const d = parseDeviceIdHash(body.device_id_hash);
+      if (!d) return fail(c, 400, "invalid_request", { field: "device_id_hash" });
+      by = "device";
+      trial = await db.prepare("SELECT started_at, ends_at, last_seen_at FROM trials WHERE device_id_hash = ?").bind(d).first();
+      const acts = await db
+        .prepare("SELECT DISTINCT license_id FROM activations WHERE device_id_hash = ? ORDER BY license_id")
+        .bind(d)
+        .all<{ license_id: string }>();
+      licenseIds = acts.results.map((r) => r.license_id);
+    } else if (body?.email !== undefined) {
       const e = parseEmail(body.email);
       if (!e) return fail(c, 400, "invalid_request", { field: "email" });
       by = "email";
@@ -112,7 +124,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       orderCode = body?.order_code as number;
       orders = (await db.prepare("SELECT * FROM orders WHERE order_code = ?").bind(orderCode).all()).results;
     } else {
-      return fail(c, 400, "invalid_request", { field: "email|order_code" });
+      return fail(c, 400, "invalid_request", { field: "email|order_code|device_id_hash" });
     }
     for (const o of orders) {
       for (const k of ["license_id", "renew_license_id"]) {
@@ -133,6 +145,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       licenses.push({
         ...lic,
         license_key: formatLicenseKey(String(lic.license_key)),
+        // Xung đột: từ 2 máy đang kích hoạt (spec 2026-10-07 §4.1). Gỡ máy bằng thao tác gỡ activation sẵn có.
+        conflict: acts.results.filter((a) => a.deactivated_at === null).length > 1,
         activations: acts.results,
         audit: log.results,
       });
@@ -142,9 +156,12 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       actor: c.get("actor"),
       action: "lookup",
       orderCode,
-      detail: { by, licenses: licenses.length, orders: orders.length },
+      detail:
+        trial === undefined
+          ? { by, licenses: licenses.length, orders: orders.length }
+          : { by, licenses: licenses.length, trial: trial !== null },
     });
-    return c.json({ licenses, orders });
+    return c.json(trial === undefined ? { licenses, orders } : { licenses, orders, trial });
   });
 
   // GET nhưng có tác dụng phụ (ghi nhật ký, gọi PayOS): chặn request mà trình duyệt báo là từ trang khác.
