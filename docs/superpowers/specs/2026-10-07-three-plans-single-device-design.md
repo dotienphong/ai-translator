@@ -143,7 +143,7 @@ Gọi "máy đang kích hoạt" là dòng `activations` của license có `deact
 
 **`POST /v1/licenses/deactivate` `{key, activation_id}`:** gỡ một máy đang kích hoạt của key, gọi từ chính máy đó hoặc từ máy khác biết key (gỡ từ xa). Bỏ điều kiện "chỉ gỡ từ xa khi đã đủ máy". Mỗi lần gỡ vẫn ghi vào `deactivations` và tính vào luật khóa tạm như hiện nay. Gỡ xong mà license còn đúng một máy đang kích hoạt thì hết xung đột; `validate` kế tiếp của máy đó nhận token.
 
-**Luật khóa tạm** giữ nguyên câu chữ (đếm lần gỡ do người dùng trong 30 ngày, trừ lần gỡ chính máy đang kích hoạt, `> 3` thì khóa khi một máy chưa kích hoạt xin `activate`). Nó chặn hai người dùng chung key gỡ qua gỡ lại: máy bị gỡ muốn quay lại phải `activate`, và từ lần gỡ thứ 4 trong 30 ngày thì bị `423`.
+**Luật khóa tạm** giữ nguyên câu chữ (đếm lần gỡ do người dùng trong 30 ngày, trừ lần gỡ chính máy đang kích hoạt, `> 3` thì khóa khi một máy chưa kích hoạt xin `activate`). Nó chặn hai người dùng chung key gỡ qua gỡ lại: máy bị gỡ muốn quay lại phải `activate`. Vì luật không đếm các lần gỡ chính máy đang xin kích hoạt, hai máy giành nhau một key bị `423` sau khoảng 8 lần gỡ trong 30 ngày (mỗi máy bị gỡ 4 lần). Controller giữ luật cũ (2026-10-07); chủ dự án có thể yêu cầu chặt hơn.
 
 **Admin:** tra cứu license hiện trạng thái xung đột và danh sách máy đang kích hoạt; gỡ máy bằng thao tác sẵn có.
 
@@ -234,7 +234,7 @@ Dòng "Key đã kích hoạt đủ 2 máy" của §9 spec gốc bỏ; dòng "H�
   - Token: bộ kiểm token bản quyền từ chối payload có `typ`; vector `token-v1.json` sinh lại với mã gói mới, thêm vector token dùng thử.
   - `activate`: `n = 0`; dùng lại dòng cũ của cùng máy; `409 key_in_use` không đổi dữ liệu; `allow_conflict` tạo xung đột và ghi `audit_log`; máy thứ ba nhận `key_in_use`; máy đang kích hoạt trong lúc xung đột nhận `license_conflict`; `423` vẫn chạy trước luật một máy.
   - `validate` khi xung đột; `deactivate` tự gỡ và gỡ từ xa khi xung đột, sau đó máy còn lại nhận token.
-  - Luật khóa tạm với chuỗi gỡ qua gỡ lại giữa hai máy: lần `activate` sau lần gỡ thứ 4 trong 30 ngày nhận `423`.
+  - Luật khóa tạm với chuỗi gỡ qua gỡ lại giữa hai máy: khi mỗi máy đã bị gỡ 4 lần trong 30 ngày (khoảng lần gỡ thứ 8), lần `activate` kế tiếp nhận `423`.
   - Migration `0002` (mục 5.1).
   - Admin: tra theo `device_id_hash`, `grant_new_license` dùng `days_per_order`.
 - **App (Rust):**

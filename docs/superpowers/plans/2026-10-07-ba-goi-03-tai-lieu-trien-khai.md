@@ -582,7 +582,7 @@ Thay bằng:
   - Màn hình chính và nhóm Cài đặt "Bản quyền" báo "Key đang dùng trên 2 máy nên đã bị tạm khóa", liệt kê hai máy, kèm nút "Gỡ key khỏi máy này", "Gỡ máy kia", "Thử lại" (§4.3).
   - Khi có mạng, app gọi `validate` mỗi 15 phút; nhận token thì về trạng thái bình thường.
   - Bộ đếm hạn mức trên máy giữ nguyên.
-- **Mở khóa:** một máy gỡ key, tự gỡ hay gỡ từ xa đều được. Mỗi lần gỡ vẫn tính vào luật khóa tạm (§10.2): máy bị gỡ muốn quay lại phải `activate`, và từ lần gỡ thứ 4 trong 30 ngày thì bị `423`. Nhờ vậy hai người dùng chung key không gỡ qua gỡ lại mãi được.
+- **Mở khóa:** một máy gỡ key, tự gỡ hay gỡ từ xa đều được. Mỗi lần gỡ vẫn tính vào luật khóa tạm (§10.2): máy bị gỡ muốn quay lại phải `activate`; luật không đếm các lần gỡ chính máy đang xin kích hoạt, nên hai máy giành nhau một key bị `423` sau khoảng 8 lần gỡ trong 30 ngày (mỗi máy bị gỡ 4 lần). Nhờ vậy hai người dùng chung key không gỡ qua gỡ lại mãi được.
 - **Kiểm nhanh lúc bắt đầu phiên:** bắt đầu phiên ở gói trả phí mà lần `validate` thành công gần nhất đã quá 1 giờ thì app gọi `validate` chạy nền, song song với phiên, không làm chậm lúc bắt đầu. Kết quả là xung đột, thu hồi hay đã bị gỡ thì app dừng phiên với lý do `license_conflict` (hay `license_invalid`) và báo như trên. Lỗi mạng thì bỏ qua, phiên chạy tiếp.
 
 **Các quy tắc khác:**
