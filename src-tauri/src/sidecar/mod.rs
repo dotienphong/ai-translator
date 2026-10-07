@@ -234,7 +234,11 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
             model: models.mt.clone(),
             log: logs.join("llama-server.log"),
             // Đứng sau `-ngl auto` mà `llama::command` đã truyền; llama.cpp lấy giá trị cuối.
-            extra_args: if llama_cpu { vec!["-ngl".into(), "0".into()] } else { Vec::new() },
+            extra_args: if llama_cpu {
+                vec!["-ngl".into(), "0".into()]
+            } else {
+                Vec::new()
+            },
             first_run: false,
             env: Vec::new(),
         },
