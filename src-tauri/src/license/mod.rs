@@ -11,6 +11,7 @@
 //! - [`manager`]: trạng thái bản quyền và hạn mức của máy này: kích hoạt, làm mới, gỡ, đếm phút, lịch `validate`.
 //! - [`purchase`]: mua, gia hạn, đổi gói ngay trong app (bảng gói, đơn, mã VietQR, hỏi trạng thái đơn).
 //! - [`quota`]: luật hạn mức của gói trả phí và của Free, chống chỉnh đồng hồ, dạng phép tính thuần.
+//! - [`trial`]: token dùng thử của Free (spec 2026-10-07 §3), cùng định dạng và khóa với token bản quyền.
 
 pub mod app;
 pub mod client;
@@ -23,3 +24,4 @@ pub mod purchase;
 pub mod quota;
 pub mod store;
 pub mod token;
+pub mod trial;

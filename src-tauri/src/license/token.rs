@@ -83,6 +83,15 @@ pub enum VerifyError {
 
 /// Đọc và kiểm định dạng, rồi `kid` và chữ ký. Không kiểm máy và thời hạn ([`check`]).
 pub fn decode(token: &str, keys: &PublicKeys) -> Result<Claims, VerifyError> {
+    let (json, payload, sig) = open(token)?;
+    let claims = parse_claims(&json).ok_or(VerifyError::Malformed)?;
+    check_signature(&claims.kid, payload, &sig, keys)?;
+    Ok(claims)
+}
+
+/// Tách token `v1` thành JSON của payload, đoạn payload còn mã hóa (phần được ký) và chữ ký 64 byte. Sai ở bước nào cũng
+/// là `Malformed`. Dùng chung với token dùng thử ([`super::trial`]).
+pub(super) fn open(token: &str) -> Result<(Value, &str, [u8; 64]), VerifyError> {
     let mut parts = token.split('.');
     let (Some(version), Some(payload), Some(sig), None) = (parts.next(), parts.next(), parts.next(), parts.next())
     else {
@@ -93,18 +102,21 @@ pub fn decode(token: &str, keys: &PublicKeys) -> Result<Claims, VerifyError> {
     }
     let bytes = URL_SAFE_NO_PAD.decode(payload).map_err(|_| VerifyError::Malformed)?;
     let json: Value = serde_json::from_slice(&bytes).map_err(|_| VerifyError::Malformed)?;
-    let claims = parse_claims(&json).ok_or(VerifyError::Malformed)?;
     let sig = URL_SAFE_NO_PAD
         .decode(sig)
         .ok()
         .and_then(|b| <[u8; 64]>::try_from(b).ok())
         .ok_or(VerifyError::Malformed)?;
-    let key = keys.get(&claims.kid).ok_or(VerifyError::UnknownKid)?;
+    Ok((json, payload, sig))
+}
+
+/// Tra `kid` rồi kiểm chữ ký Ed25519 (chặt) trên chuỗi ASCII `v1.<payload>`.
+pub(super) fn check_signature(kid: &str, payload: &str, sig: &[u8; 64], keys: &PublicKeys) -> Result<(), VerifyError> {
+    let key = keys.get(kid).ok_or(VerifyError::UnknownKid)?;
     let key = VerifyingKey::from_bytes(key).map_err(|_| VerifyError::BadSignature)?;
     let signing_input = format!("{VERSION}.{payload}");
-    key.verify_strict(signing_input.as_bytes(), &Signature::from_bytes(&sig))
-        .map_err(|_| VerifyError::BadSignature)?;
-    Ok(claims)
+    key.verify_strict(signing_input.as_bytes(), &Signature::from_bytes(sig))
+        .map_err(|_| VerifyError::BadSignature)
 }
 
 /// Kiểm máy và thời hạn của claims đã kiểm chữ ký. Hết hạn khi `now >= expires_at` hoặc `now >= refresh_before`.
@@ -128,12 +140,12 @@ pub fn verify(token: &str, keys: &PublicKeys, now: i64, device_id_hash: &str) ->
     Ok(claims)
 }
 
-fn int(c: &Map<String, Value>, key: &str) -> Option<i64> {
+pub(super) fn int(c: &Map<String, Value>, key: &str) -> Option<i64> {
     let n = c.get(key)?.as_i64()?;
     (-MAX_SAFE..=MAX_SAFE).contains(&n).then_some(n)
 }
 
-fn string(c: &Map<String, Value>, key: &str) -> Option<String> {
+pub(super) fn string(c: &Map<String, Value>, key: &str) -> Option<String> {
     c.get(key)?.as_str().map(String::from)
 }
 
