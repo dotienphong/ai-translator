@@ -791,7 +791,7 @@ Thay bằng:
 
 - [ ] **Step 9b: Ngưỡng khóa tạm hạ từ 3 xuống 2 (chủ dự án chốt 2026-10-07)**
 
-Ba chỗ của spec gốc nhắc ngưỡng cũ. Sửa từng chỗ (Task 7 commit cả ba, dù một chỗ nằm ở §6.8).
+Bốn chỗ của spec gốc nhắc ngưỡng hay cách đếm cũ. Sửa từng chỗ (Task 7 commit cả bốn, dù một chỗ nằm ở §6.8).
 
 Tìm (§6.8, "Gỡ máy rồi kích hoạt máy khác không chuyển bộ đếm"):
 ```text
@@ -809,6 +809,15 @@ Luật khóa tạm bên dưới chỉ giới hạn được phần nào (khoản
 Thay bằng:
 ```text
 Luật khóa tạm bên dưới chỉ giới hạn được phần nào (tối đa 2 lần đổi máy mỗi 30 ngày; lần thứ 3 bị khóa).
+```
+
+Tìm (§10.2, "Khóa tạm key", dòng đầu):
+```text
+và **trừ các lần gỡ chính máy đang kích hoạt**.
+```
+Thay bằng:
+```text
+và **trừ các lần gỡ chính máy đang kích hoạt**. Riêng khi `activate` có `allow_conflict: true` (máy vào bằng xác nhận xung đột), đếm **mọi** lần gỡ do người dùng, kể cả lần gỡ chính máy xin vào: nhờ vậy máy lạ chen vào rồi bị chủ key gỡ lại nhiều lần thì bị khóa, còn chủ key vẫn dùng bình thường.
 ```
 
 Tìm (§10.2, "Khóa tạm key"):
