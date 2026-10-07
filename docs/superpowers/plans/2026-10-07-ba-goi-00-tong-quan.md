@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Mục tiêu:** Thay bốn gói bằng ba gói (Free dùng thử 30 ngày, 20 phút/ngày; Monthly 50.000 đ, 50 giờ mỗi 30 ngày; Yearly 500.000 đ, không giới hạn, 365 ngày), chặn reset dùng thử bằng bảng `trials` trên license server, và đổi luật "mỗi key 2 máy" thành "mỗi key 1 máy, trùng máy thì khóa cả hai".
+**Mục tiêu:** Thay bốn gói bằng ba gói (Free dùng thử 10 ngày, 30 phút/ngày; Monthly 50.000 đ, 50 giờ mỗi 30 ngày; Yearly 500.000 đ, không giới hạn, 365 ngày), chặn reset dùng thử bằng bảng `trials` trên license server, và đổi luật "mỗi key 2 máy" thành "mỗi key 1 máy, trùng máy thì khóa cả hai".
 
 **Kiến trúc:** License server (Hono, D1) có thêm `POST /v1/trial`, bảng `trials`, token dùng thử `typ: "trial"`, mã gói mới, và luật một máy cho `activate`/`validate`/`deactivate`. App (Rust) có thêm token dùng thử trong kho khóa, luật Free bốn điều kiện, trạng thái `conflict`, và kiểm nhanh lúc bắt đầu phiên. Giao diện React hiện ba gói, số ngày dùng thử còn lại, hộp thoại `key_in_use` và trạng thái xung đột.
 
