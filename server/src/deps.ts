@@ -61,7 +61,7 @@ export async function signKeyCheck(env: KeyEnv, now: number): Promise<KeyCheck> 
     activation_id: NO_ID,
     activation_created_at: now,
     device_id_hash: NO_DEVICE,
-    plan: "pro",
+    plan: "monthly",
     expires_at: now,
     cycle_anchor: now,
     quota_minutes_per_cycle: 1,

@@ -37,18 +37,25 @@ const base = {
   activation_id: "5d0e8a47-3b2c-4f6d-8e1a-7c9b0d2e4f60",
   activation_created_at: issuedAt - 3 * 86400,
   device_id_hash: device,
-  plan: "pro",
+  plan: "monthly",
   expires_at: issuedAt + 30 * 86400,
   cycle_anchor: issuedAt - 5 * 86400,
-  quota_minutes_per_cycle: 1800,
+  quota_minutes_per_cycle: 3000,
   quota_epoch: 0,
   quota_fresh: false,
   issued_at: issuedAt,
   refresh_before: issuedAt + 14 * 86400,
 };
-// Gói X5 không giới hạn: quota_minutes_per_cycle là null (không phải thiếu trường). Cấp ngay sau khi admin
+// Gói Yearly không giới hạn: quota_minutes_per_cycle là null (không phải thiếu trường). Cấp ngay sau khi admin
 // tăng quota_epoch lên 2 (trong 15 phút) nên quota_fresh là true.
-const unlimited = { ...base, plan: "pro_x5", quota_minutes_per_cycle: null, quota_epoch: 2, quota_fresh: true };
+const unlimited = {
+  ...base,
+  plan: "yearly",
+  expires_at: issuedAt + 365 * 86400,
+  quota_minutes_per_cycle: null,
+  quota_epoch: 2,
+  quota_fresh: true,
+};
 const valid = await sign(k1, base);
 const [, , validSig] = valid.split(".");
 const tampered = `v1.${b64url(JSON.stringify({ ...base, expires_at: base.expires_at + 365 * 86400 }))}.${validSig}`;
@@ -178,6 +185,21 @@ const tokens = [
     device_id_hash: device,
     expected: "malformed",
   },
+  // Token bản quyền không có `typ`: có `typ` (kể cả "license") là sai loại, malformed.
+  {
+    name: "license_with_typ",
+    token: await sign(k1, { typ: "license", ...base }),
+    now: issuedAt + 3600,
+    device_id_hash: device,
+    expected: "malformed",
+  },
+  {
+    name: "old_plan_code",
+    token: await sign(k1, { ...base, plan: "pro" }),
+    now: issuedAt + 3600,
+    device_id_hash: device,
+    expected: "malformed",
+  },
   {
     name: "quota_zero",
     token: await sign(k1, { ...base, quota_minutes_per_cycle: 0 }),
@@ -268,6 +290,67 @@ const tokens = [
 ];
 if (!tooBigJson.includes("9007199254740993")) throw new Error("không thay được refresh_before");
 
+// Token dùng thử của Free (spec 2026-10-07 §3.1). Thứ tự trường như signTrialToken của src/token.ts.
+const trialBase = {
+  typ: "trial",
+  kid: "test-1",
+  device_id_hash: device,
+  started_at: issuedAt - 2 * 86400,
+  ends_at: issuedAt + 28 * 86400,
+  issued_at: issuedAt,
+};
+const trialValid = await sign(k1, trialBase);
+const [, , trialSig] = trialValid.split(".");
+const { ends_at: _omitEnds, ...trialMissing } = trialBase;
+const { typ: _omitTyp, ...trialNoTyp } = trialBase;
+const trialTokens = [
+  { name: "valid", token: trialValid, device_id_hash: device, expected: "ok", claims: trialBase },
+  {
+    name: "valid_backup_key",
+    token: await sign(k2, { ...trialBase, kid: "test-2" }),
+    device_id_hash: device,
+    expected: "ok",
+    claims: { ...trialBase, kid: "test-2" },
+  },
+  // Dùng thử đã hết vẫn là token hợp lệ: bên kiểm không xét thời hạn, app tự so ends_at.
+  {
+    name: "valid_ended",
+    token: await sign(k1, { ...trialBase, started_at: issuedAt - 40 * 86400, ends_at: issuedAt - 10 * 86400 }),
+    device_id_hash: device,
+    expected: "ok",
+    claims: { ...trialBase, started_at: issuedAt - 40 * 86400, ends_at: issuedAt - 10 * 86400 },
+  },
+  { name: "wrong_device", token: trialValid, device_id_hash: otherDevice, expected: "wrong_device" },
+  {
+    name: "bad_signature",
+    token: `v1.${b64url(JSON.stringify({ ...trialBase, ends_at: trialBase.ends_at + 365 * 86400 }))}.${trialSig}`,
+    device_id_hash: device,
+    expected: "bad_signature",
+  },
+  {
+    name: "unknown_kid",
+    token: await sign(k1, { ...trialBase, kid: "test-9" }),
+    device_id_hash: device,
+    expected: "unknown_kid",
+  },
+  { name: "missing_field", token: await sign(k1, trialMissing), device_id_hash: device, expected: "malformed" },
+  {
+    name: "wrong_typ",
+    token: await sign(k1, { ...trialBase, typ: "license" }),
+    device_id_hash: device,
+    expected: "malformed",
+  },
+  { name: "no_typ", token: await sign(k1, trialNoTyp), device_id_hash: device, expected: "malformed" },
+  // Token bản quyền hợp lệ không phải token dùng thử.
+  { name: "license_token", token: valid, device_id_hash: device, expected: "malformed" },
+  {
+    name: "timestamp_not_integer",
+    token: await sign(k1, { ...trialBase, ends_at: 1.5 }),
+    device_id_hash: device,
+    expected: "malformed",
+  },
+];
+
 // Ký tự kiểm tra Luhn mod 32, viết lại độc lập với src/license-key.ts.
 const KEY_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 function luhn32(body) {
@@ -300,10 +383,16 @@ const out = {
   checks_order: ["malformed", "unknown_kid", "bad_signature", "wrong_device", "license_expired", "refresh_expired"],
   note: "Khóa test-* chỉ dùng cho test. Hết hạn khi now >= expires_at hoặc now >= refresh_before (giây Unix). Token có nhiều lỗi thì trả lỗi đứng trước trong checks_order.",
   claims:
-    "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: pro | pro_x2 | pro_x5; quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Mọi số nguyên phải là số nguyên an toàn (|n| <= 2^53 - 1): 1.5 hay 2^53 + 1 là malformed. Payload phải là UTF-8 hợp lệ, không có BOM. Thiếu trường hay sai kiểu là malformed.",
+    "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: monthly | yearly; không có trường typ (có typ là malformed); quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Mọi số nguyên phải là số nguyên an toàn (|n| <= 2^53 - 1): 1.5 hay 2^53 + 1 là malformed. Payload phải là UTF-8 hợp lệ, không có BOM. Thiếu trường hay sai kiểu là malformed.",
   test_keys: [k1, k2].map(({ kid, seed_b64url, public_b64url }) => ({ kid, seed_b64url, public_b64url })),
   public_keys: { "test-1": k1.public_b64url, "test-2": k2.public_b64url },
   tokens,
+  trial: {
+    checks_order: ["malformed", "unknown_kid", "bad_signature", "wrong_device"],
+    claims:
+      "typ: đúng chuỗi \"trial\"; kid, device_id_hash: chuỗi; started_at, ends_at, issued_at: số nguyên an toàn. Thiếu trường hay sai kiểu là malformed. Bên kiểm không xét thời hạn: app so ends_at với giờ tin được (spec 2026-10-07 §3.2).",
+    tokens: trialTokens,
+  },
   license_key_check:
     "Luhn mod 32 trên ALPHABET = 0123456789ABCDEFGHJKMNPQRSTVWXYZ: từ phải sang trái, nhân 2 các ký tự ở vị trí 1, 3, 5… của 27 ký tự đầu, cộng floor(p/32) + p%32 của mỗi tích, ký tự kiểm tra = ALPHABET[(32 - tổng % 32) % 32]",
   license_keys: licenseKeys,

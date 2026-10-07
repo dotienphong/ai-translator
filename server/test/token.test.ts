@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { b64urlEncode } from "../src/crypto";
 import { normalizeLicenseKey } from "../src/license-key";
-import { importSigningKey, signToken, type TokenClaims, verifyToken } from "../src/token";
+import {
+  importSigningKey,
+  signToken,
+  signTrialToken,
+  type TokenClaims,
+  type TrialClaims,
+  verifyToken,
+  verifyTrialToken,
+} from "../src/token";
 import { testSigningJwk } from "./keys";
 import vectors from "./vectors/token-v1.json";
 
@@ -55,6 +63,35 @@ describe("token Ed25519 theo vector dùng chung (Đ9)", () => {
     expect(await verifyToken(token, vectors.public_keys, { now: v.now, deviceIdHash: v.device_id_hash })).toEqual({
       ok: false,
       error: "unknown_kid",
+    });
+  });
+});
+
+describe("token dùng thử theo vector dùng chung (spec 2026-10-07 §3.1)", () => {
+  for (const v of vectors.trial.tokens) {
+    it(`kiểm vector dùng thử ${v.name} ra ${v.expected}`, async () => {
+      const result = await verifyTrialToken(v.token, vectors.public_keys, { deviceIdHash: v.device_id_hash });
+      if (v.expected === "ok") {
+        expect(result).toEqual({ ok: true, claims: v.claims });
+      } else {
+        expect(result).toEqual({ ok: false, error: v.expected });
+      }
+    });
+  }
+
+  it("signTrialToken sinh lại đúng từng token dùng thử hợp lệ của vector", async () => {
+    for (const v of vectors.trial.tokens.filter((t) => t.expected === "ok")) {
+      const claims = v.claims as TrialClaims;
+      const key = await importSigningKey(await testSigningJwk(claims.kid));
+      expect(await signTrialToken(key, claims)).toBe(v.token);
+    }
+  });
+
+  it("token dùng thử không qua được bộ kiểm token bản quyền", async () => {
+    const v = vectors.trial.tokens[0]!;
+    expect(await verifyToken(v.token, vectors.public_keys, { now: 0, deviceIdHash: v.device_id_hash })).toEqual({
+      ok: false,
+      error: "malformed",
     });
   });
 });

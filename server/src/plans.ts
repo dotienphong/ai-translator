@@ -1,4 +1,5 @@
-// Bốn gói (spec §2, P1) và luật mua thêm, đổi gói (§6.8). Free không bán, chỉ có trong app.
+// Ba gói (spec 2026-10-07 §1) và luật mua thêm, đổi gói (§6.8, §2.3 spec 2026-10-07). Free không bán: là dùng thử
+// theo máy (src/trial.ts).
 // Mã gói và tên hiển thị là hợp đồng với app nên nằm trong code. Hạn mức, số ngày mỗi đơn và giá
 // nằm trong biến PLANS của từng môi trường (wrangler*.jsonc): đổi giá hay hạn mức không cần phát hành lại app.
 
@@ -6,9 +7,8 @@ import { PLAN_CODES, type PlanCode } from "./token";
 
 export { PLAN_CODES, type PlanCode };
 export const PLAN_NAMES: Record<PlanCode, string> = {
-  pro: "Professional",
-  pro_x2: "Professional X2",
-  pro_x5: "Professional X5",
+  monthly: "Monthly",
+  yearly: "Yearly",
 };
 export const DAY_SECONDS = 86400;
 
@@ -30,7 +30,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 
 /**
  * Đọc biến PLANS. Thiếu hay sai bất kỳ chỗ nào thì trả null, để route trả 503 pricing_not_configured
- * thay vì bán sai giá hay ký token sai hạn mức. Bảng phải có đúng ba gói, và mọi gói có cùng các loại tiền
+ * thay vì bán sai giá hay ký token sai hạn mức. Bảng phải có đúng các gói của PLAN_CODES, và mọi gói có cùng các loại tiền
  * (luật đổi gói cần giá của cả gói cũ lẫn gói mới theo loại tiền của đơn).
  */
 export function parsePlans(raw: unknown): PlanTable | null {
