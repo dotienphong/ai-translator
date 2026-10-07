@@ -690,14 +690,20 @@ Mọi thao tác đều được ghi nhật ký kèm email người vận hành, 
   - `activation_created_at`: lúc activation này được tạo, để hiển thị và hỗ trợ;
   - `quota_epoch`: số nguyên của activation, bắt đầu từ 0, tăng khi admin reset hạn mức của máy;
   - `quota_fresh`: `true` cho mọi token cấp trong vòng 15 phút kể từ mốc gần nhất trong ba mốc của "Cửa sổ `quota_fresh`" (§6.8, "Hạn mức"); ngoài cửa sổ đó là `false`. App chỉ tin cờ này trong response vừa nhận (§6.8, "Hạn mức"). `activation_created_at` không dùng cho luật hạn mức, chỉ để hiển thị và hỗ trợ;
-  - `plan`: mã gói trả phí, `pro`, `pro_x2` hoặc `pro_x5`;
+  - `plan`: mã gói trả phí, `monthly` hoặc `yearly`;
   - `expires_at`;
   - `cycle_anchor`: mốc tính chu kỳ hạn mức 30 ngày ("Hạn mức" bên dưới);
-  - `quota_minutes_per_cycle`: hạn mức mỗi chu kỳ, tính bằng phút (Professional 1800, X2 6000); `null` là không giới hạn (X5);
+  - `quota_minutes_per_cycle`: hạn mức mỗi chu kỳ, tính bằng phút (Monthly 3000); `null` là không giới hạn (Yearly);
   - `issued_at`, theo giờ của server, và `refresh_before` (= `issued_at` + 14 ngày).
 - `device_id_hash` là mã băm SHA-256 của ID phần cứng: IOPlatformUUID trên macOS, MachineGuid trên Windows.
 - Quá `refresh_before` mà vẫn chưa làm mới được token (ví dụ vì offline lâu) thì app về Free.
-- Quá `expires_at` thì app gọi `validate` trước, nếu có mạng, vì key có thể đã được gia hạn từ máy khác. App chỉ về Free và nhắc gia hạn khi server xác nhận chưa gia hạn, hoặc khi không có mạng.
+- Quá `expires_at` thì app gọi `validate` trước, nếu có mạng, vì key có thể đã được gia hạn ở nơi khác (đơn tạo trước khi đổi máy, hay admin gia hạn tay). App chỉ về Free (theo luật "Dùng thử Free") và nhắc gia hạn khi server xác nhận chưa gia hạn, hoặc khi không có mạng.
+- Token bản quyền không có trường `typ`. Bộ kiểm token bản quyền (server và app) từ chối payload có `typ`.
+
+**Token dùng thử Free:**
+- Cùng định dạng `v1`, cùng khóa ký và `kid` với token bản quyền. Claims: `typ` (luôn là `"trial"`), `kid`, `device_id_hash`, `started_at`, `ends_at`, `issued_at`.
+- Bộ kiểm token dùng thử đòi `typ` là `"trial"` và đủ năm trường kia. Nhờ vậy không dùng nhầm token dùng thử làm token bản quyền, hay ngược lại.
+- Token dùng thử không có `expires_at` hay `refresh_before`. Hiệu lực của nó là khoảng [`started_at`, `ends_at`), kiểm theo luật "Dùng thử Free" ở mục "Hạn mức".
 
 **Mua ngay trong app:**
 1. Người dùng mở màn hình "Nâng cấp" (§4.3), chọn gói, nhập email, tick ô đồng ý.
@@ -705,10 +711,10 @@ Mọi thao tác đều được ghi nhật ký kèm email người vận hành, 
 3. Người dùng quét mã bằng app ngân hàng.
 4. App hỏi trạng thái đơn mỗi 3 giây, tối đa 15 phút, bằng thời hạn của link thanh toán. Khi đơn đã trả tiền, app **tự kích hoạt trên máy đang dùng**. Với đơn gia hạn hay đổi gói, app gọi `validate` để lấy token có gói và `expires_at` mới, thay vì gọi `activate`.
 5. Nếu app bị đóng khi đơn chưa được xác nhận, lần mở tiếp theo app hỏi lại đơn đó (app lưu `order_code` và `order_token`).
-6. Key cũng được gửi qua email, để kích hoạt máy thứ hai hoặc cài lại máy.
+6. Key cũng được gửi qua email, để cài lại máy hay chuyển key sang máy khác (mỗi key một máy).
 
 **Hạn mức:**
-- **Đếm riêng trên từng máy.** Mỗi máy kích hoạt có đủ hạn mức của gói; hai máy của cùng một key không chia chung. Server không theo dõi số phút đã dùng.
+- **Đếm riêng trên từng máy.** Mỗi key chỉ dùng trên một máy (P2); bộ đếm gắn với activation của máy đó. Server không theo dõi số phút đã dùng.
 - **Cách đếm phút**, áp cho mọi gói:
   - Phút tính bằng **độ dài tiếng nói** `speech_ms` của từng đoạn (§6.3), không gồm phần đệm. Đoạn gộp ở hàng đợi (§7) cộng `speech_ms` của từng đoạn con, không tính khoảng nghỉ ở giữa.
   - Chỉ tính đoạn đã chép lời, **có ngôn ngữ khác ngôn ngữ đích**, và đã được dịch xong: bộ đếm cộng phút khi phụ đề chuyển sang `done`. Mỗi đoạn tính một lần, kể cả khi câu được dịch lại sau khi ghép (§6.3) hay gộp (§7).
@@ -721,7 +727,7 @@ Mọi thao tác đều được ghi nhật ký kèm email người vận hành, 
     2. hiệu hai header `Date` của server: `Date` mới nhất trừ `Date` gần nhất trước lần reset. Chỉ dùng số này khi có cả `Date` từ trước lần reset lẫn `Date` sau đó. Header lấy từ mọi response của server của app (license server, CDN của manifest và bản cập nhật);
     3. hiệu giờ máy: giờ máy hiện tại trừ giờ máy lúc reset. Số này chỉ được tính khi giờ máy hiện tại không nhỏ hơn mốc thời gian lớn nhất từng thấy quá 10 phút, cùng dung sai với §10.2.
   - Vì vậy khi offline, Free dùng giờ máy. Chỉnh giờ tới trước thì lách được (rủi ro chấp nhận, §10.2); chỉnh lùi thì số 3 không được tính, nên vẫn bị chặn.
-  - Bộ đếm Free của ngày luôn cộng cả số phút dịch lúc đang ở gói trả phí. Ngày nào hết hạn mức của gói trả phí thì Free của ngày đó cũng coi là đã hết. Nhờ vậy gói trả phí hết hạn hay hết hạn mức giữa ngày không mở thêm 10 phút Free.
+  - Bộ đếm Free của ngày luôn cộng cả số phút dịch lúc đang ở gói trả phí. Ngày nào hết hạn mức của gói trả phí thì Free của ngày đó cũng coi là đã hết. Nhờ vậy gói trả phí hết hạn hay hết hạn mức giữa ngày không mở thêm 30 phút Free.
 - **Chu kỳ của gói trả phí:** 30 ngày tính từ `cycle_anchor`, không theo tháng dương lịch.
   - Số thứ tự chu kỳ `n = floor((issued_at − cycle_anchor) / 30 ngày)`, với `issued_at` của **token mới nhất** (giờ server), không theo giờ máy. Chu kỳ `n` bắt đầu lúc `cycle_anchor + n × 30 ngày` ("mốc đầu chu kỳ").
   - Nhờ vậy `n` không bao giờ giảm, và chỉnh đồng hồ máy tới hay lùi đều không mở được chu kỳ mới. Giờ máy chỉ dùng để biết khi nào gọi `validate`.
@@ -729,10 +735,23 @@ Mọi thao tác đều được ghi nhật ký kèm email người vận hành, 
   - Offline lúc qua mốc thì app dùng tiếp bộ đếm của chu kỳ cũ, và báo cần có mạng để mở hạn mức mới (§9).
   - **Chu kỳ cuối ngắn hơn 30 ngày** (khi `expires_at` đến trước mốc đầu chu kỳ kế tiếp, ví dụ sau khi đổi gói có ngày quy đổi): hạn mức của chu kỳ đó là `ceil(quota_minutes_per_cycle × số_ngày / 30)`, với `số_ngày` là số ngày từ mốc đầu chu kỳ tới `expires_at`, làm tròn lên. App tự tính từ `expires_at` của token; gia hạn làm `expires_at` lùi ra thì app tính lại.
 - **Lưu bộ đếm:** trong kho khóa của hệ điều hành (Keychain trên macOS, Credential Manager trên Windows; §10.2).
-- **Free** (không có token, nên không dùng `quota_fresh` hay bản ghi đánh dấu):
+- **Free** (không có token bản quyền, nên không dùng `quota_fresh` hay bản ghi đánh dấu):
   - Một bộ đếm theo ngày.
   - Bắt đầu từ 0 ở lần đầu chạy app (chưa có dữ liệu nào: chưa có file cài đặt, chưa có mục nào trong kho khóa), và ở mỗi lần reset ngày hợp lệ (luật "Chu kỳ của Free" ở trên).
-  - **Mất bản ghi:** không còn bộ đếm của ngày trong khi app đã có dữ liệu từ trước (ví dụ file cài đặt). Khi đó coi như đã dùng hết 10 phút của ngày đó.
+  - **Mất bản ghi:** không còn bộ đếm của ngày trong khi app đã có dữ liệu từ trước (ví dụ file cài đặt). Khi đó coi như đã dùng hết 30 phút của ngày đó.
+- **Dùng thử Free** (chủ dự án chốt 2026-10-07):
+  - Free chỉ dùng được trong `TRIAL_DAYS` ngày (production: 10) kể từ lần máy đăng ký dùng thử thành công đầu tiên với server (`started_at`, giờ server). Mỗi máy (`device_id_hash`) dùng thử một lần: server giữ mốc trong bảng `trials` (§10.1), nên gỡ app rồi cài lại, xóa dữ liệu hay xóa kho khóa đều không mở lại được dùng thử. Đổi `TRIAL_DAYS` chỉ áp cho máy đăng ký sau đó; `ends_at` đã ghi không đổi.
+  - **Đăng ký:** ngay sau khi người dùng đồng ý điều khoản ở lần đầu mở app (§4.1, bước 1b), app gọi `POST /v1/trial` chạy nền. Lỗi mạng không chặn onboarding. Chừng nào chưa có token dùng thử hợp lệ cho máy này, app gọi lại lúc khởi động, theo nhịp kiểm định kỳ mỗi giờ, và khi người dùng bấm Bắt đầu ở gói Free. Lần đầu mở app mà offline thì mốc 10 ngày lùi tới lần đăng ký thành công đầu tiên, thường là ngay bước tải model.
+  - **Lưu:** token dùng thử nằm trong kho khóa, mục riêng, không lẫn với token bản quyền. "Xóa toàn bộ dữ liệu" và "Xóa model và dữ liệu" giữ mục này, như giữ trạng thái bản quyền. Token hỏng, sai chữ ký, sai `typ` hay sai máy thì app bỏ và đăng ký lại; server trả lại đúng `started_at` cũ.
+  - **Free dùng được khi** đủ bốn điều kiện:
+    1. không có gói trả phí đang hiệu lực trên máy;
+    2. có token dùng thử hợp lệ của máy này;
+    3. giờ tin được (lớn nhất trong giờ máy, `issued_at` của các token đã ký, header `Date` của server) còn trước `ends_at`, và giờ máy không bị coi là chỉnh lùi (dung sai 10 phút, §10.2);
+    4. bộ đếm của ngày còn dưới 30 phút.
+  - Gói trả phí hết hạn, bị gỡ, bị thu hồi hay đang xung đột thì máy quay về Free theo đúng bốn điều kiện trên: còn trong thời gian dùng thử thì dùng được 30 phút mỗi ngày, hết thì không.
+  - **Hết dùng thử:** không bắt đầu phiên ở Free; app báo đã hết 10 ngày dùng thử, kèm nút Nâng cấp. Đang dịch mà qua `ends_at` thì phiên đang chạy được chạy hết; phiên sau mới bị chặn.
+  - **Chưa có token mà không có mạng:** không bắt đầu phiên ở Free; app báo cần kết nối mạng một lần để bắt đầu dùng thử.
+  - Bản không chính hãng (chỉ chạy chế độ Free, §10.2) cũng chịu luật dùng thử. Công tắc dev `AI_TRANSLATOR_DEV_PRO` (§6.13) vẫn bỏ qua mọi hạn mức như trước.
 - **Gói trả phí:**
   - Khóa của bộ đếm là (`license_id`, `activation_id`, mốc đầu chu kỳ, `quota_epoch`).
     - Dùng mốc đầu chu kỳ thay cho số thứ tự, vì đặt lại `cycle_anchor` (đổi gói, mua lại sau khi hết hạn) làm chu kỳ đếm lại từ 0: chu kỳ đầu sau đó không được dùng chung bộ đếm với chu kỳ đầu trước đó.
@@ -764,6 +783,20 @@ Mọi thao tác đều được ghi nhật ký kèm email người vận hành, 
   - App báo thời điểm hạn mức được reset, kèm nút nâng gói (§4.2). Không chạy tiếp ở chế độ "chỉ chép lời".
   - Các tính năng Pro khác (lịch sử, từ điển, xuất file) vẫn dùng được khi gói còn hạn.
 - MVP chấp nhận rủi ro bị lách ở mức cơ bản; các cách lách đã chặn và rủi ro chấp nhận ghi ở §10.2.
+
+**Mỗi key một máy** (chủ dự án chốt 2026-10-07):
+- Bình thường mỗi key có tối đa một máy đang kích hoạt (dòng `activations` chưa gỡ). Cài lại app trên cùng máy dùng lại đúng activation cũ.
+- **Xung đột:** key có từ 2 máy đang kích hoạt. Server suy ra trạng thái này từ số activation chưa gỡ, không lưu cột riêng. Khi xung đột, `activate` và `validate` của các máy đang kích hoạt đều trả `409 license_conflict`, không cấp token.
+- **Máy thứ hai kích hoạt** khi máy khác đang giữ key thì nhận `409 key_in_use`. App cho chọn:
+  1. "Gỡ máy kia và dùng máy này": gỡ máy kia từ xa (`deactivate`), rồi `activate` lại. Đây là cách đổi máy bình thường.
+  2. "Vẫn kích hoạt trên máy này": app hỏi xác nhận với câu "Key sẽ bị tạm khóa trên cả hai máy cho tới khi một máy gỡ key", rồi gọi `activate` với `allow_conflict: true`. Key vào trạng thái xung đột.
+- **App khi nhận `license_conflict`** (từ `activate` hay `validate`): giữ key và `activation_id` trong kho khóa, xóa token bản quyền đang lưu, chuyển sang trạng thái xung đột.
+  - Gói trả phí và tính năng Pro không dùng được; máy theo luật Free ("Dùng thử Free" ở trên).
+  - Màn hình chính và nhóm Cài đặt "Bản quyền" báo "Key đang dùng trên 2 máy nên đã bị tạm khóa", liệt kê hai máy, kèm nút "Gỡ key khỏi máy này", "Gỡ máy kia", "Thử lại" (§4.3).
+  - Khi có mạng, app gọi `validate` mỗi 15 phút; nhận token thì về trạng thái bình thường.
+  - Bộ đếm hạn mức trên máy giữ nguyên.
+- **Mở khóa:** một máy gỡ key, tự gỡ hay gỡ từ xa đều được. Mỗi lần gỡ vẫn tính vào luật khóa tạm (§10.2): máy bị gỡ muốn quay lại phải `activate`; luật không đếm các lần gỡ chính máy đang xin kích hoạt, nên hai máy giành nhau một key bị `423` ở lần `activate` sau lần gỡ thứ 5 trong 30 ngày (ngưỡng đếm lần gỡ của máy kia là hơn 2). Nhờ vậy hai người dùng chung key không gỡ qua gỡ lại mãi được.
+- **Kiểm nhanh lúc bắt đầu phiên:** bắt đầu phiên ở gói trả phí mà lần `validate` thành công gần nhất đã quá 1 giờ thì app gọi `validate` chạy nền, song song với phiên, không làm chậm lúc bắt đầu. Kết quả là xung đột, thu hồi hay đã bị gỡ thì app dừng phiên với lý do `license_conflict` (hay `license_invalid`) và báo như trên. Lỗi mạng thì bỏ qua, phiên chạy tiếp.
 
 **Các quy tắc khác:**
 - **Gia hạn:** PayOS không tự trừ tiền định kỳ. App nhắc trước 7 ngày và khi đã hết hạn. Nút "Gia hạn" mở màn hình Nâng cấp, tạo đơn mới gắn với key hiện có, cùng gói hoặc đổi gói.
