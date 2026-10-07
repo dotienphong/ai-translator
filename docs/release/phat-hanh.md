@@ -281,10 +281,13 @@ chủ tài khoản Resend: chưa đủ để bán.
    `ops_alerts` không được xử lý, không có thư cảnh báo, đối soát đơn và gửi lại thư cũng dừng); `triggers deploy` làm cron
    chạy lại.
 
-10. **Deploy Worker admin, bật Access.**
+10. **Deploy Worker admin, bật Access.** Worker admin phục vụ cả trang Web Admin (spec `2026-10-07-web-admin-design.md`):
+    `wrangler deploy -c wrangler.admin.jsonc` đọc thư mục `server/admin-ui/dist` (khối `assets` của `wrangler.admin.jsonc`),
+    nên **phải chạy `pnpm ui:build` trước** (trong `server/`); thiếu thư mục này thì lệnh báo lỗi. `pnpm check` ở bước 1 và
+    bước 9 đã tự build UI trước `dry-run`.
 
     ```bash
-    pnpm exec wrangler deploy -c wrangler.admin.jsonc
+    pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
     ```
 
     Expected: URL `https://mt-license-admin.<subdomain>.workers.dev`. Rồi:
@@ -299,13 +302,22 @@ chủ tài khoản Resend: chưa đủ để bán.
       vừa chép, `API_ORIGIN` là `$PROD` (không có `/` ở cuối).
 
     ```bash
-    pnpm exec wrangler deploy -c wrangler.admin.jsonc
+    pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
     curl -s -o /dev/null -w '%{http_code}\n' "$PADMIN/admin/whoami"
+    curl -s -o /dev/null -w '%{http_code}\n' "$PADMIN/"
     ```
 
-    Expected: `302`, `401` hoặc `403`, không bao giờ `200`; trong trình duyệt sau khi đăng nhập Access:
+    Expected: cả hai lệnh `curl` in `302`, `401` hoặc `403`, không bao giờ `200`; trong trình duyệt sau khi đăng nhập Access:
     `{"operator":"<email của bạn>"}`; `cloudflared access login "$PADMIN" && cloudflared access curl "$PADMIN/admin/whoami"`
     cũng in `{"operator":"<email của bạn>"}`; không có `ERR_TOO_MANY_REDIRECTS`.
+
+    Mở `$PADMIN/` trong trình duyệt sau khi đăng nhập Access: trang Web Admin hiện "Việc cần xử lý" và email người vận hành
+    ở góc trên (spec `2026-10-07-web-admin-design.md`). Từ đây các thao tác admin làm được trên trang; `cloudflared access curl`
+    vẫn dùng được như cũ.
+
+    Web Admin chỉ thêm API đọc và trang web: **không có migration D1 mới và không cần deploy lại Worker API**. Sau mỗi lần
+    deploy bản mới, tab Web Admin đang mở có thể báo lỗi tải (tên file đã băm đổi theo bản build); tải lại trang (F5) là đủ.
+    Hoàn tác một lần deploy Worker admin: `pnpm exec wrangler rollback -c wrangler.admin.jsonc`.
 
 11. **Đăng ký webhook với PayOS**, rồi ký thử bằng khóa dự phòng (QĐ31):
 

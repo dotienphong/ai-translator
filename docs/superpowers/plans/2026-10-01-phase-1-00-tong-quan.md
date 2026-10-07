@@ -1300,7 +1300,7 @@ Mỗi điểm có đề xuất. Nếu tới lúc làm mà chưa có quyết đ�
 Cập nhật ngày 2026-10-01:
 - **Đã chốt:** Q1 (trừ tên miền và logo), Q2, Q9, Q10, P05-6. Spec đã sửa theo ở commit `6804a7c`, rồi chặt hơn sau bốn lượt review ở commit `868dcfa`, `dc4ac49`, `d3dc512` và `7458783`.
 - **Theo đề xuất đã áp dụng** (kế hoạch con đã làm theo, spec đã sửa nếu cần): Q4, Q5, Q7, Q11, Q12, Q13, Q14.
-- **Còn mở:** Q3, Q6, Q8, Q15, Q16; P05-4 của kế hoạch 05 (P05-5 xong 2026-10-07) (P05-1, P05-2 bỏ vì không còn staging); điểm cần quyết 1, 2, 6, 7, 8 của 02a (dòng 350–354 của bảng đối chiếu, mục 8.3).
+- **Còn mở:** Q3, Q6, Q8, Q15, Q16 (P05-5 xong 2026-10-07) (P05-1, P05-2 bỏ vì không còn staging); điểm cần quyết 1, 2, 6, 7, 8 của 02a (dòng 350–354 của bảng đối chiếu, mục 8.3).
 
 ### 8.1 Đã chốt
 
@@ -1428,7 +1428,7 @@ Cập nhật ngày 2026-10-01:
   - Việc tạo khóa production và bản sao thuộc 07 (mục 2.7). Spec §10.2, §15 đã ghi.
 - ~~**P05-1 (kế hoạch 05). Kênh PayOS riêng cho staging.**~~ Không còn cần: chỉ một môi trường production (spec 2026-10-04 §4).
 - ~~**P05-2. Giá thử trên staging.**~~ Không còn cần: thử bằng giá thật trên production rồi hoàn tiền tay (spec 2026-10-04 §1 mục 5).
-- **P05-4. Giao diện admin.** 05 chỉ làm JSON API, gọi bằng `cloudflared access curl`. Có cần một trang giao diện nhỏ không?
+- **P05-4. Giao diện admin.** Đã chốt 2026-10-07: có. Trang Web Admin chạy trong chính Worker admin, sau cùng lớp Access (spec `2026-10-07-web-admin-design.md`; kế hoạch `2026-10-07-web-admin-*`). JSON API và `cloudflared access curl` vẫn giữ.
 - **P05-5. Email nhận cảnh báo vận hành (`OPERATOR_EMAIL`).** Đã chốt và đặt ngày 2026-10-07 (Phase 2): `ops@aitranslator.io.vn`, quy tắc Email Routing `ops` chuyển về hộp thư của chủ dự án; secret `OPERATOR_EMAIL` của Worker `mt-license`. Lúc thử thì thấy cron của Worker không chạy từ 06/10 dù lịch vẫn đăng ký; `wrangler triggers deploy` làm cron chạy lại (07:40 UTC, `alerts_sent: 1`), chủ dự án đã nhận thư cảnh báo thử qua `ops@`; bước kiểm cron đã thêm vào `docs/release/phat-hanh.md` mục 4 bước 9.
 - P05-3 (chính sách khóa tạm) đã vào spec §10.2 theo đề xuất của 05.
 - **Điểm cần quyết của 02a** (mục "Điểm cần chủ dự án quyết" của 02a). 02 đã làm theo phương án ghi trong ngoặc ở đó; chủ dự án đổi thì sửa code theo dòng tương ứng:

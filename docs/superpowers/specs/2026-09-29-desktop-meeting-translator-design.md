@@ -677,6 +677,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Ký thử một token bằng khóa dự phòng** (ô không đang ký, §10.2), để kiểm khóa công khai tương ứng trong `server/keys/public-keys.json`, cũng là khóa build sẵn vào app, khớp khóa riêng. Token ký thử hết hạn ngay lúc ký và không gắn máy nào, nên không dùng được làm bản quyền.
 - Worker admin **không giữ khóa nào**: bảng gói và việc ký thử lấy từ Worker API qua service binding (RPC `AdminRpc`, §12).
 - Đăng ký URL webhook với PayOS (`confirm-webhook`).
+- **Giao diện web (Web Admin):** Worker admin phục vụ thêm một trang web cho người vận hành, cùng origin với `/admin/*`, sau cùng lớp Access. Trang có hàng đợi việc cần xử lý, ô tra cứu, các danh sách chỉ đọc và giao diện cho mọi thao tác trên. Thiết kế: `2026-10-07-web-admin-design.md`.
 
 Mọi thao tác đều được ghi nhật ký kèm email người vận hành, kể cả tra cứu và các lần thất bại có ý nghĩa: cổng thanh toán lỗi, ký thử lỗi, URL webhook bị từ chối, và mọi lần trả `409`. Nhật ký không chép câu lỗi gốc, vì câu lỗi có thể chứa dữ liệu nhạy cảm. Không ghi `whoami` (chỉ trả email của chính người vận hành), và không ghi các request sai input hay không tìm thấy khác.
 
