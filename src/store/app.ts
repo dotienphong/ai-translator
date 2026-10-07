@@ -73,6 +73,8 @@ export interface AppStoreState {
   openAudioPermissionSettings(): Promise<void>;
   loadAudioSources(): Promise<void>;
   finishOnboarding(): Promise<void>;
+  // Qua bước Điều khoản (đã đồng ý): đăng ký dùng thử chạy nền (spec 2026-10-07 §3.2). Lỗi không chặn các bước.
+  startTrial(): Promise<void>;
   // Bước "Nghe thử" (§4.1 bước 6): bắt đầu phiên thu toàn hệ thống, kể cả âm thanh của chính app.
   startListenTest(): Promise<void>;
   clearAllData(): Promise<void>;
@@ -302,6 +304,10 @@ export function createAppStore(ipc: Ipc) {
 
       async finishOnboarding() {
         if (await get().updateSettings({ onboardingDone: true })) set({ screen: "home" });
+      },
+
+      async startTrial() {
+        await ipc.invoke("start_trial").catch(() => null);
       },
 
       // Như `toggleSession`: chặn bấm đúp; lỗi bắt đầu nằm trong trạng thái phiên.

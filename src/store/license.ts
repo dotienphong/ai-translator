@@ -7,7 +7,7 @@ import { type UiError, toUiError } from "./app";
 
 export interface LicenseStoreState {
   view: LicenseView | null;
-  // Key người dùng vừa gõ mà đã đủ 2 máy (`409 device_limit`): danh sách máy để gỡ một máy.
+  // Key người dùng vừa gõ đang dùng ở máy khác (`409 key_in_use`): danh sách máy để gỡ máy kia hay "Vẫn kích hoạt".
   devices: Device[] | null;
   plans: PlanOffer[] | null;
   checkout: CheckoutView | null;
@@ -16,8 +16,12 @@ export interface LicenseStoreState {
   busy: boolean;
   init(): Promise<() => void>;
   activate(key: string): Promise<boolean>;
+  // "Vẫn kích hoạt trên máy này" (đã xác nhận): key vào trạng thái xung đột (spec 2026-10-07 §4.2).
+  activateAnyway(key: string): Promise<boolean>;
   // Gỡ một máy khác của key vừa gõ, rồi kích hoạt lại máy này.
   deactivateOther(key: string, activationId: string): Promise<boolean>;
+  // Đang xung đột: gỡ máy kia bằng key đã lưu (phía Rust `validate` ngay sau đó), rồi đọc lại trạng thái.
+  removeOtherMachine(activationId: string): Promise<boolean>;
   deactivate(): Promise<void>;
   validate(): Promise<void>;
   loadPlans(): Promise<void>;
@@ -74,6 +78,21 @@ export function createLicenseStore(ipc: Ipc) {
           const outcome = await ipc.invoke("activate_license", { key });
           setView(outcome.view);
           set({ devices: outcome.devices });
+        });
+      },
+
+      activateAnyway(key) {
+        return run(async () => {
+          const outcome = await ipc.invoke("activate_license", { key, allowConflict: true });
+          setView(outcome.view);
+          set({ devices: outcome.devices });
+        });
+      },
+
+      removeOtherMachine(activationId) {
+        return run(async () => {
+          await ipc.invoke("deactivate_other_device", { activationId });
+          setView(await ipc.invoke("get_license"));
         });
       },
 

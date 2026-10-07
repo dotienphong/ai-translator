@@ -77,6 +77,30 @@ describe("license store", () => {
     expect(fake.calls[1]?.args).toEqual({ key: "KEY", activationId: "a1" });
   });
 
+  it("vẫn kích hoạt khi key đang dùng ở máy khác: gửi allowConflict, nhận trạng thái xung đột", async () => {
+    const conflict = { devices: [{ activation_id: "a1", device_label: null, last_validated_at: 5 }], thisActivationId: "a2" };
+    const fake = fakeIpc({
+      activate_license: () => ({ view: licenseView({ standing: "conflict", conflict }), devices: null }),
+    });
+    const store = createLicenseStore(fake.ipc);
+    expect(await store.getState().activateAnyway("KEY")).toBe(true);
+    expect(fake.calls[0]?.args).toEqual({ key: "KEY", allowConflict: true });
+    expect(store.getState().view?.standing).toBe("conflict");
+    expect(store.getState().devices).toBeNull();
+  });
+
+  it("đang xung đột: gỡ máy kia bằng key đã lưu rồi đọc lại trạng thái", async () => {
+    const fake = fakeIpc({
+      deactivate_other_device: () => null,
+      get_license: () => licenseView({ standing: "active", plan: "monthly" }),
+    });
+    const store = createLicenseStore(fake.ipc);
+    expect(await store.getState().removeOtherMachine("a1")).toBe(true);
+    expect(fake.calls.map((c) => c.cmd)).toEqual(["deactivate_other_device", "get_license"]);
+    expect(fake.calls[0]?.args).toEqual({ activationId: "a1" });
+    expect(store.getState().view?.standing).toBe("active");
+  });
+
   it("lỗi của lệnh hiện mã lỗi; bấm hai lần khi đang chờ chỉ gửi một lệnh", async () => {
     let release: () => void = () => {};
     const fake = fakeIpc({

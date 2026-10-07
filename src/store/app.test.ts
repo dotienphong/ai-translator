@@ -105,6 +105,7 @@ function setup() {
       if (failRestart) throw { code: "updateBusy", field: null, message: "…" };
       return null;
     },
+    start_trial: () => null,
     open_login_items_settings: () => {
       if (failLoginItems) throw { code: "openFailed", field: null, message: "…" };
       return null;
@@ -355,6 +356,15 @@ describe("app store", () => {
     expect(store.getState().termsAccepted).toBe(true);
     store.getState().setTermsAccepted(false);
     expect(store.getState().termsAccepted).toBe(false);
+  });
+
+  it("qua bước Điều khoản thì đăng ký dùng thử chạy nền (spec 2026-10-07 §3.2); lỗi không chặn các bước", async () => {
+    const { fake, store } = setup();
+    await store.getState().startTrial();
+    expect(fake.calls.at(-1)).toEqual({ cmd: "start_trial", args: undefined });
+    const failing = createAppStore(fakeIpc({}).ipc);
+    await failing.getState().startTrial();
+    expect(failing.getState().error).toBeNull();
   });
 
   it("xong các bước lần đầu thì lưu onboardingDone và về màn hình chính", async () => {
