@@ -67,3 +67,13 @@ test("tên miền riêng aitranslator.io.vn (spec 2026-10-06): route, email gử
   assert.equal("routes" in admin, false, "admin giữ workers.dev, không có route (spec 2026-10-06, mục 3)");
   assert.equal(api.workers_dev, true, "giữ workers_dev tạm làm đường lui cho bản cài cũ");
 });
+
+test("Worker admin phục vụ trang Web Admin qua ASSETS, sau lớp kiểm Access (spec Web Admin §2)", () => {
+  assert.deepEqual(admin.assets, {
+    directory: "./admin-ui/dist",
+    binding: "ASSETS",
+    not_found_handling: "single-page-application",
+    run_worker_first: true,
+  });
+  assert.equal("assets" in api, false, "Worker API không phục vụ trang");
+});

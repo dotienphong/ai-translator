@@ -12,6 +12,15 @@
   "compatibility_date": "2026-09-26",
   "workers_dev": true,
   "preview_urls": false,
+  // Trang Web Admin (spec 2026-10-07 Web Admin §2): SPA build từ admin-ui/ (`pnpm ui:build` trước khi deploy).
+  // run_worker_first: mọi request, kể cả file tĩnh, đi qua lớp kiểm Access của Worker (src/admin-auth.ts) trước;
+  // Worker gọi env.ASSETS.fetch sau đó (src/admin-assets.ts). Route lạ trả index.html (SPA), trừ /admin/*.
+  "assets": {
+    "directory": "./admin-ui/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
   // Tắt invocation log (log đó lưu cả URL và query của request) và bỏ query khỏi URL trong log và trace (QĐ25).
   // Log JSON do code tự ghi vẫn giữ. Bật Workers Issues để có cảnh báo không phụ thuộc Resend (QĐ27).
   "observability": { "enabled": true, "redact_query_string": true, "logs": { "invocation_logs": false }, "issues": { "enabled": true } },
