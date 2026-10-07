@@ -143,7 +143,7 @@ Gọi "máy đang kích hoạt" là dòng `activations` của license có `deact
 
 **`POST /v1/licenses/deactivate` `{key, activation_id}`:** gỡ một máy đang kích hoạt của key, gọi từ chính máy đó hoặc từ máy khác biết key (gỡ từ xa). Bỏ điều kiện "chỉ gỡ từ xa khi đã đủ máy". Mỗi lần gỡ vẫn ghi vào `deactivations` và tính vào luật khóa tạm như hiện nay. Gỡ xong mà license còn đúng một máy đang kích hoạt thì hết xung đột; `validate` kế tiếp của máy đó nhận token.
 
-**Luật khóa tạm** giữ nguyên câu chữ (đếm lần gỡ do người dùng trong 30 ngày, trừ lần gỡ chính máy đang kích hoạt, `> 2` thì khóa khi một máy chưa kích hoạt xin `activate`; ngưỡng hạ từ 3 xuống 2 theo yêu cầu của chủ dự án ngày 2026-10-07). Nó chặn hai người dùng chung key gỡ qua gỡ lại: máy bị gỡ muốn quay lại phải `activate`. Luật không đếm các lần gỡ chính máy đang xin kích hoạt, nên hai máy giành nhau một key bị `423` ở lần `activate` sau lần gỡ thứ 5 trong 30 ngày (máy này bị gỡ 3 lần, máy kia 2 lần). Người đổi máy thật bị khóa khi định đổi máy lần thứ 3 trong 30 ngày, và liên hệ hỗ trợ để mở khóa.
+**Luật khóa tạm** giữ nguyên câu chữ (đếm lần gỡ do người dùng trong 30 ngày, trừ lần gỡ chính máy đang kích hoạt, `> 2` thì khóa khi một máy chưa kích hoạt xin `activate`; ngưỡng hạ từ 3 xuống 2 theo yêu cầu của chủ dự án ngày 2026-10-07). Nó chặn hai người dùng chung key gỡ qua gỡ lại: máy bị gỡ muốn quay lại phải `activate`. Luật không đếm các lần gỡ chính máy đang xin kích hoạt, nên hai máy giành nhau một key bị `423` ở lần `activate` sau lần gỡ thứ 5 trong 30 ngày (máy này bị gỡ 3 lần, máy kia 2 lần). Người đổi máy thật bị khóa khi định đổi máy lần thứ 3 trong 30 ngày, và liên hệ hỗ trợ để mở khóa. **Vào bằng xác nhận xung đột (`allow_conflict: true`):** để người có key bị lộ không lặp lại việc chen vào mãi (máy chủ key gỡ ra, họ chen vào lại, máy chủ key không bao giờ bị gỡ nên số đếm bằng 0), nhánh này đếm **mọi** lần gỡ do người dùng trong 30 ngày, kể cả lần gỡ chính máy đang xin vào; lớn hơn 2 thì `423`, máy chủ key vẫn dùng bình thường vì khóa chỉ chặn máy chưa kích hoạt.
 
 **Admin:** tra cứu license hiện trạng thái xung đột và danh sách máy đang kích hoạt; gỡ máy bằng thao tác sẵn có.
 
@@ -167,10 +167,10 @@ Vẫn đếm theo từng activation. Xoay key sang máy khác (gỡ máy A, kíc
 ## 5. Dữ liệu và chuyển đổi
 
 ### 5.1 Migration D1 `0002`
-- SQLite không sửa được CHECK, nên dựng lại hai bảng `licenses` và `orders` với `CHECK (plan IN ('monthly', 'yearly'))`, chép dữ liệu, đổi mã:
+- SQLite không sửa được CHECK, nên dựng lại bốn bảng: `licenses` và `orders` (có CHECK mã gói), cùng `activations` và `deactivations` (khóa ngoại trỏ tới `licenses`), với `CHECK (plan IN ('monthly', 'yearly'))`, chép dữ liệu, đổi mã:
   - `pro`, `pro_x2` → `monthly`;
   - `pro_x5` → `yearly`.
-  `expires_at`, `cycle_anchor` và các cột khác giữ nguyên. Dùng `PRAGMA defer_foreign_keys = true` trong migration vì `orders` và `activations` tham chiếu `licenses`. Giữ lại mọi index.
+  `expires_at`, `cycle_anchor` và các cột khác giữ nguyên. Không dùng `PRAGMA defer_foreign_keys`: đã thử, D1 vẫn báo `FOREIGN KEY constraint failed` khi bảng cha bị thay. Thay vào đó tạo các bảng `*_new` trỏ tới nhau, chép dữ liệu, xóa bảng cũ theo thứ tự con trước cha rồi đổi tên (SQLite tự sửa `REFERENCES` khi đổi tên). Giữ lại mọi index và bộ đếm `AUTOINCREMENT` của `orders` và `deactivations`.
 - Tạo bảng `trials` (mục 3.1).
 - Có test schema: chạy `0001` + dữ liệu mẫu đủ ba mã cũ, rồi `0002`, kiểm mã mới, số dòng, khóa ngoại và index.
 
@@ -221,6 +221,7 @@ Dòng "Key đã kích hoạt đủ 2 máy" của §9 spec gốc bỏ; dòng "H�
 - **Chỉnh giờ khi offline:** đã chặn chỉnh lùi (`rolled_back`). Giữ giờ máy đứng yên (luôn đặt về cùng một ngày, không kết nối mạng) thì kéo dài được dùng thử, vì `trusted_now` không tăng. Chấp nhận, vì app cần mạng để cập nhật và tải model, và phần lợi chỉ là 30 phút mỗi ngày.
 - **Xóa sạch dữ liệu trên máy** vẫn mở lại 30 phút của ngày hôm đó (luật "mất bản ghi" của Free chỉ chạy khi app còn dữ liệu cũ), nhưng không mở lại được 10 ngày dùng thử.
 - **Máy đang giữ key mà offline** thì chưa biết mình bị khóa: vẫn dùng token cũ tới `refresh_before`, tối đa 14 ngày. Có mạng thì khóa có tác dụng trong vòng 1 giờ dùng (mục 4.2) hay 24 giờ (kiểm định kỳ).
+- **`/v1/trial` giới hạn 10 lần/giờ/IP:** nhà mạng Việt Nam hay dùng CGNAT, nên nhiều máy mới cùng một IP có thể bị `429` và phải chờ tới giờ sau mới đăng ký được dùng thử. Chấp nhận; app thử lại theo nhịp mỗi giờ.
 - **Người dùng chung key gỡ máy của chủ key từ xa:** chủ key gỡ lại được; luật khóa tạm dừng việc này sau khoảng 5 lần gỡ qua gỡ lại trong 30 ngày, rồi phải liên hệ hỗ trợ.
 
 ---

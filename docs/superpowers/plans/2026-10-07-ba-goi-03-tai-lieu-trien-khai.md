@@ -1470,6 +1470,18 @@ Expected và cách xử lý:
 - **License có từ 2 máy đang kích hoạt:** mong đợi không có dòng nào. Có dòng nào thì license đó sẽ xung đột ngay sau deploy. Hỏi chủ dự án máy nào giữ key, rồi gỡ máy kia bằng admin (Step 4).
 - **Đơn đang chờ** (`pending`, `processing`, `underpaid`): mong đợi không có dòng nào. Đơn `pending` hay `processing` thì chờ hết hạn (cron đối soát coi là hết hạn sau 24 giờ) hoặc tới khi trả xong, rồi chạy lại Step 3. Đơn `underpaid` thì hỏi chủ dự án xử lý trước (cấp tay hay hoàn tiền). Lý do: migration đổi `pro_x2` (150.000 đ) thành `monthly`, nên đơn cũ còn mở mà được trả sau migration sẽ cấp sai gói.
 
+- [ ] **Step 3b: So cột bảng production với `0001`, ghi mốc Time Travel** **[chủ dự án]**
+
+Migration dựng lại bốn bảng nên cột nào thêm tay ngoài migration sẽ mất. So cột của production với `server/migrations/0001_init.sql`:
+```bash
+for t in licenses activations deactivations orders; do
+  pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT name, type, \"notnull\", dflt_value, pk FROM pragma_table_info('$t')"
+done
+```
+Expected: mỗi bảng đúng các cột của `0001` (không dư, không thiếu). Có cột lạ thì dừng, báo controller. Ghi mốc Time Travel (`wrangler d1 time-travel info mt-license-production`) vào biên bản để khôi phục khi cần (Task 15).
+
+Khuyến nghị (nếu chủ dự án muốn chắc hơn): xuất dữ liệu production (`wrangler d1 export mt-license-production --remote --output <file>`), nhập vào một D1 tạm, chạy `0002` ở đó và so số dòng; xóa D1 tạm sau khi xong. Việc này kiểm được cả bộ đếm `sqlite_sequence` trên D1 thật mà test miniflare không kiểm.
+
 - [ ] **Step 4: Gỡ máy thừa (chỉ khi Step 3 có license ≥ 2 máy)** **[chủ dự án]**
 
 Lấy `activation_id` của máy cần gỡ:
