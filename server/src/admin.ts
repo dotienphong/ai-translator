@@ -1,37 +1,22 @@
-// Worker admin (§6.8 "Công cụ hỗ trợ"), chạy riêng và đặt sau Cloudflare Access ("Protect this Worker").
-// Worker tự kiểm lại: request không qua Access thì không có ctx.access và bị từ chối (403); ngoài test (tức production),
-// ACCESS_AUD là bắt buộc và phải khớp; không đọc được email người vận hành từ Access thì cũng 403. Request thay đổi
-// dữ liệu phải là JSON cùng origin (chống CSRF).
+// Worker admin (§6.8 "Công cụ hỗ trợ"): các thao tác của người vận hành và `lookup`. Lớp kiểm Access, danh tính và chống
+// CSRF ở admin-auth.ts; route chỉ đọc ở admin-read.ts; trang Web Admin ở admin-assets.ts.
 // Mọi thao tác, kể cả tra cứu, đều ghi audit_log với actor "admin:<email người vận hành>". Thao tác thất bại có ý nghĩa
 // (cổng thanh toán lỗi, ký thử lỗi, URL webhook bị từ chối, 409) cũng ghi, không kèm câu lỗi gốc. Không ghi: whoami
 // (chỉ trả email của chính người vận hành), request không qua Access hay chống CSRF, và các request sai input hay không
 // tìm thấy khác (400, 404).
 import { type Context, Hono } from "hono";
-import { bodyLimit } from "hono/body-limit";
+import { type AdminAppEnv, type AdminDeps, crossSite, useAdminAuth } from "./admin-auth";
 import { audit, auditIfChanged, auditStatement } from "./audit";
 import { sendLicenseMail } from "./deps";
-import type { EmailProvider } from "./email/provider";
 import type { AdminEnv } from "./env";
 import { fail, isRecord, parseDeviceIdHash, parseEmail, readJson } from "./http";
 import { formatLicenseKey, generateLicenseKey } from "./license-key";
 import { grantOrder, loadOrder, mailGranted, settledResult } from "./orders";
-import type { PayOSProvider } from "./payment/payos";
-import { type PaymentProvider, PaymentProviderError } from "./payment/provider";
+import { PaymentProviderError } from "./payment/provider";
 import { computeGrant, isPlan, PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
 import type { KeyCheck } from "./token";
 
-export interface AdminDeps {
-  now(): number;
-  payments: Record<string, PaymentProvider>;
-  payos: Pick<PayOSProvider, "confirmWebhook">;
-  email: EmailProvider;
-  /** Bảng gói của Worker API cùng môi trường (qua service binding, QĐ34), chưa kiểm. */
-  plans(): Promise<unknown>;
-  /** Token ký thử bằng khóa dự phòng của Worker API (QĐ31). */
-  keyCheck(): Promise<KeyCheck>;
-}
-
-type AdminAppEnv = { Bindings: AdminEnv; Variables: { deps: AdminDeps; actor: string } };
+export type { AdminDeps } from "./admin-auth";
 
 function parseNote(v: unknown): string | null {
   if (typeof v !== "string") return null;
@@ -39,43 +24,9 @@ function parseNote(v: unknown): string | null {
   return note.length > 0 && note.length <= 500 ? note : null;
 }
 
-/** Trình duyệt báo request đến từ trang khác (Sec-Fetch-Site không phải same-origin hay none). Không có header thì không chặn (cloudflared). */
-function crossSite(c: Context): boolean {
-  const site = c.req.header("sec-fetch-site");
-  return site !== undefined && site !== "same-origin" && site !== "none";
-}
-
 export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
   const app = new Hono<AdminAppEnv>();
-
-  app.use("*", async (c, next) => {
-    const access = (c.executionCtx as ExecutionContext).access;
-    const audRequired = c.env.ENVIRONMENT !== "test";
-    if (!access || (audRequired && !c.env.ACCESS_AUD) || (c.env.ACCESS_AUD && access.aud !== c.env.ACCESS_AUD)) {
-      return fail(c, 403, "forbidden");
-    }
-    if (c.req.method !== "GET" && c.req.method !== "HEAD") {
-      const origin = c.req.header("origin");
-      if (crossSite(c) || (origin && origin !== new URL(c.req.url).origin)) {
-        return fail(c, 403, "forbidden");
-      }
-      if (!/^application\/json\s*(;|$)/i.test(c.req.header("content-type") ?? "")) {
-        return fail(c, 415, "unsupported_media_type");
-      }
-    }
-    // Không đọc được email người vận hành (Access lỗi, service token không có email…) thì từ chối: nhật ký phải có danh tính.
-    let email: unknown;
-    try {
-      email = (await access.getIdentity())?.email;
-    } catch {
-      email = undefined;
-    }
-    if (typeof email !== "string" || email === "") return fail(c, 403, "forbidden");
-    c.set("actor", `admin:${email}`);
-    c.set("deps", makeDeps(c.env));
-    await next();
-  });
-  app.use("*", bodyLimit({ maxSize: 16 * 1024, onError: (c) => fail(c, 413, "invalid_request") }));
+  useAdminAuth(app, makeDeps);
 
   /** Bảng gói lấy từ Worker API; thiếu hay sai thì null (route trả 503 pricing_not_configured). */
   async function plansOf(c: Context<AdminAppEnv>): Promise<PlanTable | null> {
