@@ -1,12 +1,15 @@
 // Trang Web Admin (spec 2026-10-07 Web Admin §2): SPA build từ admin-ui/, phục vụ qua binding ASSETS. wrangler.admin.jsonc
-// đặt run_worker_first: true, nên mọi request, kể cả file tĩnh, đi qua middleware kiểm Access (admin-auth.ts) trước khi tới đây.
+// sẽ đặt run_worker_first: true (việc của kế hoạch 02, chưa có ở commit này), khi đó mọi request, kể cả file tĩnh, đi qua
+// middleware kiểm Access (admin-auth.ts) trước khi tới đây.
 // Header bảo mật gắn cho mọi phản hồi của Worker admin (trang, JSON, 403).
+// Cache-Control: trang HTML đặt no-store, vì trang đã vẽ email khách vào DOM: trình duyệt giữ trang trong bfcache thì sau khi
+// đăng xuất Access, nút Back vẫn hiện lại nguyên DOM đó. File tĩnh băm tên (JS, CSS) không chứa dữ liệu khách nên giữ header của ASSETS.
 import type { Hono } from "hono";
-import { secureHeaders } from "hono/secure-headers";
+import type { secureHeaders } from "hono/secure-headers";
 import type { AdminAppEnv } from "./admin-auth";
 import { fail } from "./http";
 
-export const ADMIN_SECURE_HEADERS: Parameters<typeof secureHeaders>[0] = {
+export const ADMIN_SECURE_HEADERS: NonNullable<Parameters<typeof secureHeaders>[0]> = {
   contentSecurityPolicy: {
     defaultSrc: ["'self'"],
     scriptSrc: ["'self'"],
@@ -28,6 +31,8 @@ export function registerAssets(app: Hono<AdminAppEnv>): void {
     if (path === "/admin" || path.startsWith("/admin/") || !c.env.ASSETS) return fail(c, 404, "not_found");
     const res = await c.env.ASSETS.fetch(c.req.raw);
     // Header của phản hồi từ binding không sửa được; chép sang Response mới để middleware gắn header bảo mật.
-    return new Response(res.body, res);
+    const out = new Response(res.body, res);
+    if ((out.headers.get("content-type") ?? "").startsWith("text/html")) out.headers.set("cache-control", "no-store");
+    return out;
   });
 }
