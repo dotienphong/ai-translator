@@ -1,0 +1,33 @@
+{
+ "files": {
+  "asr-worker-vulkan.exe": 56967168,
+  "asr-worker-cpu.exe": 1426432,
+  "llama-server.exe": 9216,
+  "llama-server-impl.dll": 8916992,
+  "llama-common.dll": 7824896,
+  "llama.dll": 3175936,
+  "mtmd.dll": 1773568,
+  "ggml-base.dll": 795648,
+  "ggml-cpu-alderlake.dll": 1256448,
+  "ggml-cpu-cannonlake.dll": 1474560,
+  "ggml-cpu-cascadelake.dll": 1459712,
+  "ggml-cpu-cooperlake.dll": 1460224,
+  "ggml-cpu-haswell.dll": 1262592,
+  "ggml-cpu-icelake.dll": 1465856,
+  "ggml-cpu-ivybridge.dll": 1153024,
+  "ggml-cpu-piledriver.dll": 1157120,
+  "ggml-cpu-sandybridge.dll": 1133056,
+  "ggml-cpu-sapphirerapids.dll": 1737216,
+  "ggml-cpu-skylakex.dll": 1467904,
+  "ggml-cpu-sse42.dll": 958464,
+  "ggml-cpu-x64.dll": 949248,
+  "ggml-cpu-zen4.dll": 1466880,
+  "ggml-rpc.dll": 168448,
+  "ggml-vulkan.dll": 44263936,
+  "ggml.dll": 79872,
+  "libomp.dll": 768000
+ },
+ "total_bytes": 144572416,
+ "lzma_bytes": 18809660,
+ "zlib_bytes": 48042784
+}

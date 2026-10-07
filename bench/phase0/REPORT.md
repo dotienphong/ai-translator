@@ -104,3 +104,22 @@ Các mục này **chưa có số đo**, vì thiếu thiết bị hoặc tài kho
 - **Lần đầu chạy một binary mới trên macOS** mất khoảng 15 giây kiểm tra. Thời gian chờ `/health` phải từ 30 giây trở lên, và giao diện báo "đang chuẩn bị lần đầu". Đo lại với bản đã ký và notarize.
 - **Số dùng trong spec chỉ có một nguồn** (flash attention 5–13%, 15 giây kiểm tra, LID đoạn 1 giây, luật lặp, `avg_logprob` −0,25): xem `results/phase0_review_notes.md`.
 - Việc cho Giai đoạn 1: danh sách "việc cho MVP" ở spec (Task 2 của kế hoạch 00), gồm giao thức `asr-protocol`, Job Object và process group cho tiến trình phụ, và các mẫu `.gitignore` cho khóa ký trước khi tạo `server/`.
+
+## Cập nhật 2026-10-07: số đo trên Windows (i5-1345U, Iris Xe, 32 GB)
+
+Không đổi quyết định đã duyệt ngày 2026-10-04. Chỉ ghi thêm số đo và các mục còn mở. Máy này là laptop Windows có GPU tích hợp, không phải máy tham chiếu nào trong kế hoạch.
+
+| Mục | Trạng thái | Chi tiết |
+|---|---|---|
+| S3 trên Windows: build hai bản `asr-worker`, `--probe`, thư viện nạp, chép lời Vulkan và CPU, VAD đúng nhịp, dung lượng | **Làm xong trên máy này** | `results/s3_windows.md`. Mới đo trên GPU tích hợp, chưa có card rời. Task 16 (máy không có Vulkan) và Task 17 (`s3_lid.md`) chưa làm |
+| S2 trên Windows | **Một phần** | `results/s2_capture.md`: dòng 1–3 đạt về số đo; dòng 4–10 cần Teams, Zoom, Meet, Zalo và tai nghe Bluetooth **trên Windows**. Chủ dự án báo đã thử các app này trên MacBook (đạt), nhưng đó là S1 của macOS, không thay được S2. Giả định 2 vẫn **chưa kiểm** (chặn phát hành) |
+| S5 trên Windows | **Chưa làm** | Cần người nhìn thanh phụ đề trên app toàn màn hình (chặn phát hành) |
+| S6 trên Windows | **Một phần** | `results/s6_windows.md`: iGPU Chuẩn và Nhẹ, và CPU Nhẹ. Chủ dự án quyết định (2026-10-07) **bỏ qua** máy tối thiểu 8 GB chỉ CPU, card rời 6 GB và 4 GB, M1, vì không tìm được máy; các mục này giữ trạng thái chưa đo, chỉ đo khi có số từ người thử beta |
+
+Phát hiện mới, cần xử lý trước khi phát hành:
+
+- **`asr-worker` build trên Windows (MSVC) không được tối ưu.** Crate `cmake` ghi đè mất `/O2 /Ob2 /DNDEBUG`, làm chép lời bằng CPU chậm khoảng 14 lần (`small`: 26 giây thay vì 1,8 giây cho clip 11,5 giây). Đã sửa bằng bản vá `third_party/patches/0003-whisper-rs-sys-msvc-optimization-flags.patch`; CI phát hành (`build-sidecars-windows.mjs`) cần build lại bằng bản đã sửa, và nên kiểm `CMAKE_C_FLAGS_RELEASE` trong `CMakeCache.txt` có `/O2`. Chưa chạy CI để xác nhận.
+- **Đường dẫn quá dài làm hỏng build CMake** (`FTK1011` ở `target\...\whisper-rs-sys-<hash>\out\build\...`) dù `LongPathsEnabled = 1`. Cần kiểm thư mục làm việc của runner Windows.
+- **`--probe` trên GPU tích hợp báo `device_local_bytes` bằng cỡ RAM** (17 GB trên máy 32 GB), nên đề xuất gói theo VRAM (§6.7) phải xét `device_type`.
+- **`crates/asr-worker/src/probe.rs` chưa có trong repo** dù `main.rs` và `Cargo.toml` đã trỏ tới nên bản build có feature `vulkan` không biên dịch được. Đã tạo file (chưa commit).
+- **Gói Chuẩn trên Iris Xe không đạt A2** (p50 2,7–5,4 giây; bước dịch là nút thắt). Gói Nhẹ chỉ CPU đạt ngưỡng 3,5 giây ở 5/6 session trên máy mạnh hơn máy tối thiểu, nên điều kiện của cổng §13 vẫn chưa được xác nhận.
