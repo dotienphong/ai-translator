@@ -1,6 +1,6 @@
 # Thỏa thuận cấp phép người dùng cuối (EULA) của AI Translator
 
-**Phiên bản 1.0, hiệu lực từ 06/10/2026.**
+**Phiên bản 1.1, hiệu lực từ 07/10/2026.**
 
 Văn bản này là thỏa thuận giữa bạn và **Đỗ Tiến Phong** ("chúng tôi") về việc dùng ứng dụng **AI Translator** ("ứng dụng"). Bằng việc cài đặt hoặc dùng ứng dụng, bạn đồng ý với thỏa thuận này. Nếu không đồng ý, xin đừng cài đặt hay dùng.
 
@@ -10,22 +10,22 @@ AI Translator hiện phụ đề dịch trực tiếp cho âm thanh đang phát 
 
 ## 2. Quyền sử dụng chúng tôi cấp cho bạn
 
-Chúng tôi cấp cho bạn quyền **cá nhân, không độc quyền, không chuyển nhượng, có thể bị thu hồi** để cài đặt và dùng ứng dụng theo thỏa thuận này, trên số máy mà gói của bạn cho phép (mục 4). Ứng dụng được **cấp phép, không bán**: bạn không có quyền sở hữu ứng dụng hay mã nguồn của nó.
+Chúng tôi cấp cho bạn quyền **cá nhân, không độc quyền, không chuyển nhượng, có thể bị thu hồi** để cài đặt và dùng ứng dụng theo thỏa thuận này: gói Free trên máy của bạn trong thời gian dùng thử (mục 3), gói trả phí trên máy đã kích hoạt key (mục 4). Ứng dụng được **cấp phép, không bán**: bạn không có quyền sở hữu ứng dụng hay mã nguồn của nó.
 
 ## 3. Gói dịch vụ, thanh toán và hạn mức
 
-| Gói | Hạn mức, mỗi máy | Giá |
-|---|---|---|
-| Free | 10 phút mỗi ngày | 0 đ |
-| Professional | 30 giờ mỗi chu kỳ 30 ngày | 50.000 đ mỗi 30 ngày |
-| Professional X2 | 100 giờ mỗi chu kỳ 30 ngày | 150.000 đ mỗi 30 ngày |
-| Professional X5 | không giới hạn | 500.000 đ mỗi 30 ngày |
+| Gói | Hạn mức, mỗi máy | Thời hạn | Giá |
+|---|---|---|---|
+| Free | 30 phút mỗi ngày | dùng thử 10 ngày, mỗi máy một lần | 0 đ |
+| Monthly | 50 giờ mỗi chu kỳ 30 ngày | 30 ngày mỗi đơn | 50.000 đ |
+| Yearly | không giới hạn | 365 ngày mỗi đơn | 500.000 đ |
 
 (Giá và hạn mức hiện hành do ứng dụng hiển thị khi bạn mua; chúng tôi có thể bán thêm gói mới. Chúng tôi không hạ hạn mức của gói bạn đã trả tiền trong thời hạn đã mua.)
 
-- Ba gói trả phí cùng có các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời) và chỉ khác hạn mức.
-- Gói trả phí là **đơn 30 ngày, trả trước** bằng VND qua chuyển khoản VietQR (PayOS). **Không tự gia hạn.** Hết hạn thì ứng dụng quay về gói Free; bạn mua tiếp khi cần.
-- **Mua thêm cùng gói** cộng thêm 30 ngày. **Đổi gói** khi còn hạn: số ngày còn lại của gói cũ được quy đổi theo giá sang ngày của gói mới (làm tròn xuống), gói mới bắt đầu ngay với chu kỳ mới; ứng dụng hiện trước số ngày quy đổi và ngày hết hạn mới. **Đổi gói không được hoàn tiền.**
+- **Free là gói dùng thử:** dùng được trong **10 ngày**, tính từ lần đầu ứng dụng đăng ký dùng thử với máy chủ của chúng tôi (thường là lần đầu mở ứng dụng có mạng). **Mỗi máy chỉ dùng thử một lần**: gỡ rồi cài lại ứng dụng, hay xóa dữ liệu, không mở lại thời gian dùng thử. Hết dùng thử thì bạn cần mua gói trả phí để tiếp tục dịch.
+- Hai gói trả phí cùng có các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), khác hạn mức và thời hạn.
+- Gói trả phí là **đơn trả trước** (Monthly 30 ngày, Yearly 365 ngày) bằng VND qua chuyển khoản VietQR (PayOS). **Không tự gia hạn.** Hết hạn thì ứng dụng quay về gói Free nếu máy còn trong thời gian dùng thử; hết dùng thử thì không dịch được cho tới khi bạn mua tiếp.
+- **Mua thêm cùng gói** cộng thêm số ngày của gói (30 ngày với Monthly, 365 ngày với Yearly). **Đổi gói** khi còn hạn: số ngày còn lại của gói cũ được quy đổi theo giá mỗi ngày sang ngày của gói mới (làm tròn xuống), gói mới bắt đầu ngay với chu kỳ mới; ứng dụng hiện trước số ngày quy đổi và ngày hết hạn mới. **Đổi gói không được hoàn tiền.**
 - Hạn mức tính **riêng cho từng máy**, đếm theo thời gian dịch thực tế. Hết hạn mức thì dừng dịch cho tới kỳ reset hoặc khi bạn mua thêm.
 - **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu trong **7 ngày** kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn.
 - Chúng tôi có thể cấp hoặc gia hạn license thủ công (ví dụ khi bạn chuyển thiếu rồi chuyển bù).
@@ -33,8 +33,9 @@ Chúng tôi cấp cho bạn quyền **cá nhân, không độc quyền, không c
 ## 4. License key và kích hoạt
 
 - Sau khi thanh toán, chúng tôi gửi **license key** tới email bạn nhập. Giữ key bí mật; bạn chịu trách nhiệm về việc dùng key của mình.
-- Mỗi key kích hoạt tối đa **2 máy**. Kích hoạt lại trên cùng một máy không tốn thêm suất. Bạn có thể gỡ kích hoạt một máy để dùng máy khác.
-- **Không chia sẻ, bán lại, cho thuê hay đăng công khai key.** Nếu bạn gỡ và kích hoạt máy khác quá nhiều lần trong 30 ngày (khoảng hơn 3 lần), key có thể bị **khóa tạm**; liên hệ chúng tôi để mở khóa.
+- Mỗi key chỉ dùng trên **1 máy**. Kích hoạt lại trên cùng một máy không tính là máy mới. Muốn đổi máy, bạn gỡ key khỏi máy cũ (hoặc gỡ máy cũ từ máy mới) rồi kích hoạt máy mới.
+- Nếu key được kích hoạt trên máy thứ hai trong khi máy kia vẫn giữ key, key bị **tạm khóa trên cả hai máy** cho tới khi một máy gỡ key. Trong thời gian đó, gói trả phí không dùng được trên cả hai máy.
+- **Không chia sẻ, bán lại, cho thuê hay đăng công khai key.** Nếu bạn gỡ và kích hoạt máy khác quá nhiều lần trong 30 ngày (khoảng 5 lần gỡ), key có thể bị **khóa tạm**; liên hệ chúng tôi để mở khóa.
 - Ứng dụng kiểm tra bản quyền định kỳ qua mạng và dùng được ngoại tuyến tới 14 ngày giữa hai lần kiểm tra thành công. Chúng tôi dùng mã băm của ID máy và các cơ chế chống lạm dụng khác (xem chính sách quyền riêng tư).
 - Bạn có thể khôi phục key đã mất qua email đã dùng khi mua.
 
