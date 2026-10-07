@@ -1,4 +1,5 @@
-// /v1/licenses/* (§6.8, §10.2): kích hoạt tối đa 2 máy, làm mới token, gỡ máy, gửi lại key.
+// /v1/licenses/* (§6.8, §10.2, spec 2026-10-07 §4.1): mỗi key một máy, trùng máy thì xung đột; làm mới token, gỡ máy,
+// gửi lại key.
 import type { Context, Hono } from "hono";
 import { alertIfChanged } from "./alerts";
 import type { AppEnv } from "./app";
@@ -10,7 +11,12 @@ import { PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
 import { failureBlock, hit, noteFailure } from "./ratelimit";
 import { REFRESH_WINDOW_SECONDS, signToken } from "./token";
 
-export const MAX_DEVICES = 2;
+/**
+ * Mỗi key dùng trên 1 máy (spec 2026-10-07 §4.1). Máy thứ hai chỉ vào được khi người dùng xác nhận (`allow_conflict`),
+ * và khi đó license có 2 máy đang kích hoạt: trạng thái xung đột, không máy nào nhận token cho tới khi một máy gỡ.
+ */
+export const MAX_DEVICES = 1;
+export const MAX_DEVICES_IN_CONFLICT = 2;
 /** Trong 30 ngày có hơn 3 lần gỡ (kể cả gỡ từ xa) rồi kích hoạt máy khác thì khóa tạm key (§10.2). */
 export const DEACTIVATION_WINDOW_SECONDS = 30 * 86400;
 export const MAX_DEACTIVATIONS_IN_WINDOW = 3;
@@ -123,6 +129,17 @@ async function activeActivations(db: D1Database, licenseId: string): Promise<Act
   return results;
 }
 
+/** Danh sách máy trong `409 key_in_use` và `409 license_conflict` (hợp đồng server–app, kế hoạch 00). */
+function devicesOf(list: ActivationRow[]) {
+  return list.map((a) => ({ activation_id: a.id, device_label: a.device_label, last_validated_at: a.last_validated_at }));
+}
+
+/** Xung đột: license có từ 2 máy đang kích hoạt (spec 2026-10-07 §4.1). Trả response 409, hay null nếu không xung đột. */
+async function conflict(c: Context<AppEnv>, licenseId: string) {
+  const list = await activeActivations(c.env.DB, licenseId);
+  return list.length > MAX_DEVICES ? fail(c, 409, "license_conflict", { devices: devicesOf(list) }) : null;
+}
+
 async function activeById(db: D1Database, activationId: string, licenseId: string) {
   return db
     .prepare(`SELECT ${ACT_COLUMNS} FROM activations WHERE id = ? AND license_id = ? AND deactivated_at IS NULL`)
@@ -161,6 +178,8 @@ export function registerLicenses(app: Hono<AppEnv>) {
     const deviceIdHash = parseDeviceIdHash(body?.device_id_hash);
     const deviceLabel = parseDeviceLabel(body?.device_label);
     if (!body || !deviceIdHash || !deviceLabel) return fail(c, 400, "invalid_request");
+    const allowConflict = body.allow_conflict ?? false;
+    if (typeof allowConflict !== "boolean") return fail(c, 400, "invalid_request", { field: "allow_conflict" });
     const found = await findLicense(db, body.key);
     if (!found.ok || !found.lic) {
       await noteFailure(c.env, ip, now, "activate");
@@ -174,12 +193,12 @@ export function registerLicenses(app: Hono<AppEnv>) {
 
     const row = await rowFor(db, lic.id, deviceIdHash);
     if (row && row.deactivated_at === null) {
-      // Cài lại app trên cùng máy: dùng lại activation, không tốn suất.
+      // Cài lại app trên cùng máy: dùng lại activation, không tốn suất. Đang xung đột thì không cấp token.
       await db
         .prepare("UPDATE activations SET device_label = ?, last_validated_at = ? WHERE id = ?")
         .bind(deviceLabel, now, row.id)
         .run();
-      return c.json(await issueToken(db, deps, plans, lic, row));
+      return (await conflict(c, lic.id)) ?? c.json(await issueToken(db, deps, plans, lic, row));
     }
 
     // Mọi máy không đang kích hoạt, kể cả máy từng dùng key này, đều qua kiểm khóa tạm (QĐ10).
@@ -212,8 +231,10 @@ export function registerLicenses(app: Hono<AppEnv>) {
       return fail(c, 423, "license_locked");
     }
 
-    // Điều kiện đếm suất nằm ngay trong câu lệnh, nên hai máy kích hoạt cùng lúc không vượt được 2 suất.
-    const slotFree = `(SELECT COUNT(*) FROM activations WHERE license_id = ?2 AND deactivated_at IS NULL) < ${MAX_DEVICES}`;
+    // Điều kiện đếm suất nằm ngay trong câu lệnh, nên hai máy kích hoạt cùng lúc không vượt được số máy cho phép:
+    // 1 máy, hay 2 máy khi người dùng đã xác nhận vào trạng thái xung đột (allow_conflict).
+    const limit = allowConflict ? MAX_DEVICES_IN_CONFLICT : MAX_DEVICES;
+    const slotFree = `(SELECT COUNT(*) FROM activations WHERE license_id = ?2 AND deactivated_at IS NULL) < ${limit}`;
     let changed: D1Result;
     let action: string;
     let activationId: string;
@@ -244,17 +265,25 @@ export function registerLicenses(app: Hono<AppEnv>) {
     }
     if (changed.meta.changes !== 1) {
       const raced = await rowFor(db, lic.id, deviceIdHash);
-      if (raced && raced.deactivated_at === null) return c.json(await issueToken(db, deps, plans, lic, raced));
-      const list = await activeActivations(db, lic.id);
-      return fail(c, 409, "device_limit", {
-        activations: list.map((a) => ({
-          activation_id: a.id,
-          device_label: a.device_label,
-          last_validated_at: a.last_validated_at,
-        })),
-      });
+      if (raced && raced.deactivated_at === null) {
+        return (await conflict(c, lic.id)) ?? c.json(await issueToken(db, deps, plans, lic, raced));
+      }
+      // Key đang ở máy khác: trả các máy đang giữ key, không đổi gì.
+      return fail(c, 409, "key_in_use", { devices: devicesOf(await activeActivations(db, lic.id)) });
     }
     await audit(db, { at: now, actor: "api", action, licenseId: lic.id, detail: { activation_id: activationId } });
+    const list = await activeActivations(db, lic.id);
+    if (list.length > MAX_DEVICES) {
+      // Người dùng đã xác nhận kích hoạt khi key đang ở máy khác: cả hai máy bị tạm khóa tới khi một máy gỡ.
+      await audit(db, {
+        at: now,
+        actor: "api",
+        action: "license_conflict",
+        licenseId: lic.id,
+        detail: { activation_id: activationId, devices: list.length },
+      });
+      return fail(c, 409, "license_conflict", { devices: devicesOf(list) });
+    }
     const act = await activeById(db, activationId, lic.id);
     if (!act) throw new Error(`không thấy activation ${activationId} vừa kích hoạt`);
     return c.json(await issueToken(db, deps, plans, lic, act));
@@ -300,8 +329,9 @@ export function registerLicenses(app: Hono<AppEnv>) {
     if (problem) return problem;
     const plans = parsePlans(c.env.PLANS);
     if (!plans) return fail(c, 503, "pricing_not_configured");
+    // Ghi lần kiểm gần nhất cả khi đang xung đột: danh sách máy cho người dùng thấy máy nào vừa dùng.
     await db.prepare("UPDATE activations SET last_validated_at = ? WHERE id = ?").bind(now, act.id).run();
-    return c.json(await issueToken(db, deps, plans, lic, act));
+    return (await conflict(c, lic.id)) ?? c.json(await issueToken(db, deps, plans, lic, act));
   });
 
   app.post("/v1/licenses/deactivate", async (c) => {

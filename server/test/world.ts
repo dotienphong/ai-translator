@@ -88,18 +88,25 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
 
   /**
    * "Khách B" (review cuối, Q1): một khách khác, để test ranh giới giữa các license và email. B mua bằng email riêng, có
-   * 2 máy đang kích hoạt, 3 máy đã gỡ, và 4 lần tự gỡ trong 30 ngày (hơn ngưỡng 3 của luật khóa tạm). B không bị khóa,
-   * vì máy cuối kích hoạt lại là máy B tự gỡ. Mọi request của B đi từ IP riêng, không đụng bộ đếm của test.
+   * 2 máy đang kích hoạt (đang xung đột, spec 2026-10-07 §4.1: máy 2 xác nhận "Vẫn kích hoạt"), 3 máy đã gỡ, và 4 lần tự
+   * gỡ trong 30 ngày (hơn ngưỡng 3 của luật khóa tạm). B không bị khóa, vì máy cuối kích hoạt lại là máy B tự gỡ. Mọi
+   * request của B đi từ IP riêng, không đụng bộ đếm của test.
    */
   async function customerB() {
     const email = "khach-b@example.com";
     const { licenseKey } = await buy({ email, plan: "yearly" });
+    const lic = await testEnv.DB.prepare("SELECT id FROM licenses WHERE email = ?").bind(email).first<{ id: string }>();
     const device = (n: number) => sha256Hex(`khach-b-${n}`);
     const ip = (n: number) => ({ "cf-connecting-ip": `192.0.2.${n}` });
-    const activate = async (n: number) => {
-      const r = await call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await device(n), device_label: `Máy B${n}` }, ip(n));
-      if (r.status !== 200) throw new Error(`khách B kích hoạt máy ${n}: ${r.status} ${JSON.stringify(r.body)}`);
-      return r.body.activation_id as string;
+    const activate = async (n: number, allowConflict = false) => {
+      const body = { key: licenseKey, device_id_hash: await device(n), device_label: `Máy B${n}`, allow_conflict: allowConflict };
+      const r = await call("POST", "/v1/licenses/activate", body, ip(n));
+      const ok = allowConflict ? r.status === 409 && r.body.error === "license_conflict" : r.status === 200;
+      if (!ok) throw new Error(`khách B kích hoạt máy ${n}: ${r.status} ${JSON.stringify(r.body)}`);
+      const row = await testEnv.DB.prepare("SELECT id FROM activations WHERE license_id = ? AND device_id_hash = ?")
+        .bind(lic!.id, await device(n))
+        .first<{ id: string }>();
+      return row!.id;
     };
     const deactivate = async (id: string, n: number) => {
       const r = await call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: id }, ip(n));
@@ -112,11 +119,10 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
       deactivated.push({ id, deviceIdHash: await device(n) });
     }
     const b1 = await activate(1);
-    const b2 = await activate(2);
+    const b2 = await activate(2, true);
     // Lần gỡ thứ 4 rồi kích hoạt lại đúng máy đó: trừ chính máy này thì còn 3 lần, chưa quá ngưỡng.
     await deactivate(b2, 2);
-    if ((await activate(2)) !== b2) throw new Error("khách B: máy 2 không dùng lại activation cũ");
-    const lic = await testEnv.DB.prepare("SELECT id FROM licenses WHERE email = ?").bind(email).first<{ id: string }>();
+    if ((await activate(2, true)) !== b2) throw new Error("khách B: máy 2 không dùng lại activation cũ");
     return {
       email,
       licenseKey,

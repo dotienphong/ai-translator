@@ -15,16 +15,18 @@ const UNKNOWN_KEY = "0123-4567-89AB-CDEF-GHJK-MNPQ-RST5";
 async function setup(plan = "monthly") {
   const w = makeWorld();
   const { licenseKey } = await w.buy({ plan });
-  const activate = async (n: number, ip = `198.51.100.${n}`) =>
+  const activate = async (n: number, ip = `198.51.100.${n}`, extra: Record<string, unknown> = {}) =>
     w.call(
       "POST",
       "/v1/licenses/activate",
-      { key: licenseKey, device_id_hash: await device(n), device_label: `Máy ${n}` },
+      { key: licenseKey, device_id_hash: await device(n), device_label: `Máy ${n}`, ...extra },
       { "cf-connecting-ip": ip },
     );
+  /** Kích hoạt sau khi người dùng xác nhận "Vẫn kích hoạt trên máy này" (spec 2026-10-07 §4.2). */
+  const activateAnyway = (n: number) => activate(n, `198.51.100.${n}`, { allow_conflict: true });
   const deactivate = (activationId: string) =>
     w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: activationId });
-  return { w, licenseKey, activate, deactivate };
+  return { w, licenseKey, activate, activateAnyway, deactivate };
 }
 
 describe("activate", () => {
@@ -106,38 +108,42 @@ describe("activate", () => {
     expect(log.results).toEqual([{ action: "activated" }, { action: "reactivated" }]);
   });
 
-  it("máy cũ kích hoạt lại vẫn chiếm suất: đủ 2 máy thì 409", async () => {
+  it("máy cũ kích hoạt lại khi máy khác đang giữ key: 409 key_in_use", async () => {
     const { activate, deactivate } = await setup();
     const a1 = await activate(1);
     await deactivate(a1.body.activation_id as string);
-    await activate(2);
-    await activate(3);
-    expect(await activate(1)).toMatchObject({ status: 409, body: { error: "device_limit" } });
+    expect((await activate(2)).status).toBe(200);
+    expect(await activate(1)).toMatchObject({ status: 409, body: { error: "key_in_use" } });
   });
 
-  it("máy thứ 3 bị 409 kèm danh sách máy; gỡ từ xa một máy rồi kích hoạt được", async () => {
+  it("máy thứ hai nhận 409 key_in_use kèm máy đang giữ key, không đổi gì; gỡ máy kia từ xa rồi kích hoạt được", async () => {
     const { w, activate, deactivate } = await setup();
     const a1 = await activate(1);
     w.clock.now = T0 + 100;
-    await activate(2);
-    const third = await activate(3);
-    expect(third.status).toBe(409);
-    expect(third.body).toEqual({
-      error: "device_limit",
-      activations: [
-        { activation_id: a1.body.activation_id, device_label: "Máy 1", last_validated_at: T0 },
-        { activation_id: expect.any(String), device_label: "Máy 2", last_validated_at: T0 + 100 },
-      ],
+    const second = await activate(2);
+    expect(second).toMatchObject({
+      status: 409,
+      body: { error: "key_in_use", devices: [{ activation_id: a1.body.activation_id, device_label: "Máy 1", last_validated_at: T0 }] },
     });
+    expect(Object.keys(second.body).sort()).toEqual(["devices", "error"]);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM activations").first()).toEqual({ n: 1 });
     expect((await deactivate(a1.body.activation_id as string)).body).toEqual({ ok: true });
-    expect((await activate(3)).status).toBe(200);
+    expect((await activate(2)).status).toBe(200);
   });
 
-  it("hai máy mới kích hoạt cùng lúc khi còn một suất: chỉ một máy được", async () => {
+  it("hai máy mới kích hoạt cùng lúc khi chưa máy nào giữ key: chỉ một máy được, máy kia key_in_use", async () => {
     const { activate } = await setup();
-    await activate(1);
     const [x, y] = await Promise.all([activate(2), activate(3)]);
+    expect([x.body.error, y.body.error].sort()).toEqual(["key_in_use", undefined].sort());
     expect([x.status, y.status].sort()).toEqual([200, 409]);
+  });
+
+  it("allow_conflict phải là boolean", async () => {
+    const { activate } = await setup();
+    expect(await activate(1, "198.51.100.1", { allow_conflict: "true" })).toMatchObject({
+      status: 400,
+      body: { error: "invalid_request", field: "allow_conflict" },
+    });
   });
 
   it("gỡ hơn 3 máy trong 30 ngày rồi kích hoạt máy mới thì khóa tạm key (423) và có cảnh báo", async () => {
@@ -190,42 +196,40 @@ describe("activate", () => {
     expect((await activate(2)).status).toBe(423);
   });
 
-  it("xoay vòng 2 suất giữa 5 máy: bị khóa sau vài lượt, rồi mọi máy không đang kích hoạt đều bị 423", async () => {
+  it("xoay vòng một suất giữa 5 máy: bị khóa ở lượt 4, rồi mọi máy không đang kích hoạt đều bị 423", async () => {
     const { w, activate, deactivate } = await setup();
-    const active: { n: number; id: string }[] = [];
-    for (const n of [1, 2]) active.push({ n, id: (await activate(n)).body.activation_id as string });
-    const order = [3, 4, 5, 1, 2, 3, 4, 5];
+    let active = { n: 1, id: (await activate(1)).body.activation_id as string };
+    const order = [2, 3, 4, 5, 1, 2];
     let lockedAt = -1;
     for (let i = 0; i < order.length; i++) {
       w.clock.now = T0 + (i + 1) * 3600;
-      const out = active.shift()!;
-      await deactivate(out.id);
+      await deactivate(active.id);
       const r = await activate(order[i]!);
       if (r.status === 423) {
         lockedAt = i;
         break;
       }
       expect(r.status).toBe(200);
-      active.push({ n: order[i]!, id: r.body.activation_id as string });
+      active = { n: order[i]!, id: r.body.activation_id as string };
     }
-    // Lượt 4 (máy 1 quay lại): đã gỡ máy 1, 2, 3, 4; trừ máy 1 còn 3 lần, chưa quá 3.
-    // Lượt 5 (máy 2 quay lại): đã gỡ máy 1, 2, 3, 4, 5; trừ máy 2 còn 4 lần, nên khóa.
-    expect(lockedAt).toBe(4);
-    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 5 * 3600 });
-    // Máy 1 đang kích hoạt vẫn dùng được; các máy khác (từng dùng hay mới) đều bị 423.
-    expect((await activate(1)).status).toBe(200);
-    for (const n of [2, 3, 5, 9]) expect((await activate(n)).status).toBe(423);
+    // Lượt 3 (máy 4): đã gỡ máy 1, 2, 3; trừ máy 4 còn 3 lần, chưa quá 3.
+    // Lượt 4 (máy 5): đã gỡ máy 1, 2, 3, 4; trừ máy 5 còn 4 lần, nên khóa.
+    expect(lockedAt).toBe(3);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 4 * 3600 });
+    // Không còn máy nào đang kích hoạt; mọi máy (từng dùng hay mới) đều bị 423.
+    for (const n of [1, 2, 3, 4, 5, 9]) expect((await activate(n)).status).toBe(423);
   });
 
-  it("key đang bị khóa tạm: máy mới và máy từng kích hoạt đều bị 423; máy đang kích hoạt vẫn dùng được", async () => {
-    const { w, licenseKey, activate, deactivate } = await setup();
-    const a1 = await activate(1);
+  it("key đang bị khóa tạm: máy mới và máy từng kích hoạt đều bị 423, kể cả khi xác nhận xung đột; máy đang kích hoạt vẫn dùng được", async () => {
+    const { w, licenseKey, activate, activateAnyway, deactivate } = await setup();
     const a2 = await activate(2);
     await deactivate(a2.body.activation_id as string);
+    const a1 = await activate(1);
     await env.DB.prepare("UPDATE licenses SET locked_at = ?").bind(T0).run();
     w.clock.now = T0 + 60;
     expect(await activate(3)).toMatchObject({ status: 423, body: { error: "license_locked" } });
     expect(await activate(2)).toMatchObject({ status: 423, body: { error: "license_locked" } });
+    expect(await activateAnyway(3)).toMatchObject({ status: 423, body: { error: "license_locked" } });
     expect((await activate(1)).status).toBe(200);
     const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a1.body.activation_id });
     expect(v.status).toBe(200);
@@ -297,6 +301,124 @@ describe("activate", () => {
     expect(await failures()).toEqual({ n: 2 });
     expect((await activate(1)).status).toBe(200);
     expect(await failures()).toEqual({ n: 2 });
+  });
+});
+
+describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §4.1)", () => {
+  const activeCount = () => env.DB.prepare("SELECT COUNT(*) AS n FROM activations WHERE deactivated_at IS NULL").first();
+  const idOf = async (n: number) =>
+    (await env.DB.prepare("SELECT id FROM activations WHERE device_id_hash = ?").bind(await device(n)).first<{ id: string }>())!.id;
+
+  it("allow_conflict khi chưa máy nào giữ key: kích hoạt bình thường, có token", async () => {
+    const { activateAnyway } = await setup();
+    const res = await activateAnyway(1);
+    expect(res.status).toBe(200);
+    expect(res.body.token).toMatch(/^v1\./);
+  });
+
+  it("allow_conflict khi máy khác giữ key: máy này vào, 409 license_conflict liệt kê cả hai máy, không cấp token, ghi nhật ký", async () => {
+    const { w, activate, activateAnyway } = await setup();
+    const a1 = await activate(1);
+    w.clock.now = T0 + 100;
+    const res = await activateAnyway(2);
+    expect(res).toEqual({
+      status: 409,
+      headers: expect.anything(),
+      body: {
+        error: "license_conflict",
+        devices: [
+          { activation_id: a1.body.activation_id, device_label: "Máy 1", last_validated_at: T0 },
+          { activation_id: await idOf(2), device_label: "Máy 2", last_validated_at: T0 + 100 },
+        ],
+      },
+    });
+    expect(await activeCount()).toEqual({ n: 2 });
+    const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'license_conflict'").all<{ detail: string }>();
+    expect(log.results.map((r) => JSON.parse(r.detail))).toEqual([{ activation_id: await idOf(2), devices: 2 }]);
+  });
+
+  it("đang xung đột: validate của cả hai máy và kích hoạt lại máy đang kích hoạt đều 409 license_conflict; lần kiểm gần nhất vẫn được ghi", async () => {
+    const { w, licenseKey, activate, activateAnyway } = await setup();
+    const a1 = await activate(1);
+    await activateAnyway(2);
+    w.clock.now = T0 + DAY;
+    for (const id of [a1.body.activation_id, await idOf(2)]) {
+      const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: id });
+      expect(v).toMatchObject({ status: 409, body: { error: "license_conflict" } });
+      expect(v.body).not.toHaveProperty("token");
+    }
+    expect((await env.DB.prepare("SELECT last_validated_at FROM activations ORDER BY created_at").all()).results).toEqual([
+      { last_validated_at: T0 + DAY },
+      { last_validated_at: T0 + DAY },
+    ]);
+    expect(await activate(1)).toMatchObject({ status: 409, body: { error: "license_conflict" } });
+    expect(await activateAnyway(2)).toMatchObject({ status: 409, body: { error: "license_conflict" } });
+    expect(await activeCount()).toEqual({ n: 2 });
+  });
+
+  it("máy thứ ba khi đang xung đột: key_in_use liệt kê 2 máy, kể cả khi xác nhận; không tạo dòng nào", async () => {
+    const { activate, activateAnyway } = await setup();
+    await activate(1);
+    await activateAnyway(2);
+    for (const res of [await activate(3), await activateAnyway(3)]) {
+      expect(res).toMatchObject({ status: 409, body: { error: "key_in_use" } });
+      expect((res.body.devices as { device_label: string }[]).map((d) => d.device_label)).toEqual(["Máy 1", "Máy 2"]);
+    }
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM activations").first()).toEqual({ n: 2 });
+  });
+
+  it("một máy tự gỡ thì hết xung đột: máy còn lại validate nhận token", async () => {
+    const { w, licenseKey, activate, activateAnyway, deactivate } = await setup();
+    const a1 = await activate(1);
+    await activateAnyway(2);
+    expect((await deactivate(await idOf(2))).body).toEqual({ ok: true });
+    const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a1.body.activation_id });
+    expect(v.status).toBe(200);
+    expect(v.body.token).toMatch(/^v1\./);
+  });
+
+  it("máy mới gỡ máy cũ từ xa khi đang xung đột: máy mới validate nhận token, máy cũ về 404", async () => {
+    const { w, licenseKey, activate, activateAnyway, deactivate } = await setup();
+    const a1 = await activate(1);
+    await activateAnyway(2);
+    expect((await deactivate(a1.body.activation_id as string)).body).toEqual({ ok: true });
+    expect((await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: await idOf(2) })).status).toBe(200);
+    expect(await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a1.body.activation_id })).toMatchObject({
+      status: 404,
+      body: { error: "activation_not_found" },
+    });
+  });
+
+  it("hai người dùng chung key gỡ qua gỡ lại: luật khóa tạm chặn sau khi mỗi máy bị gỡ 4 lần trong 30 ngày", async () => {
+    const { w, activate, activateAnyway, deactivate } = await setup();
+    await activate(1);
+    // Mỗi lượt: máy `inn` xác nhận xung đột rồi gỡ máy `out` từ xa.
+    let removals = 0;
+    let lockedAfter = -1;
+    for (let i = 0; i < 10; i++) {
+      const [inn, out] = i % 2 === 0 ? [2, 1] : [1, 2];
+      w.clock.now = T0 + (i + 1) * 3600;
+      const r = await activateAnyway(inn);
+      if (r.status === 423) {
+        lockedAfter = removals;
+        break;
+      }
+      expect(r).toMatchObject({ status: 409, body: { error: "license_conflict" } });
+      await deactivate(await idOf(out));
+      removals++;
+    }
+    // Luật đếm trừ các lần gỡ chính máy đang xin kích hoạt (§10.2), nên máy xin kích hoạt bị chặn khi máy kia đã bị gỡ
+    // 4 lần: tổng 8 lần gỡ.
+    expect(lockedAfter).toBe(8);
+    expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
+  });
+
+  it("hai máy cùng xác nhận xung đột một lúc khi key đang ở máy 1: tối đa 2 máy đang kích hoạt", async () => {
+    const { activate, activateAnyway } = await setup();
+    await activate(1);
+    const results = await Promise.all([activateAnyway(2), activateAnyway(3)]);
+    expect(results.map((r) => r.body.error).sort()).toEqual(["key_in_use", "license_conflict"]);
+    expect(await activeCount()).toEqual({ n: 2 });
   });
 });
 
@@ -572,19 +694,23 @@ describe("validate", () => {
   });
 
   it("CGNAT: IP đang bị chặn vẫn validate và deactivate được với key hợp lệ kèm activation đang hoạt động", async () => {
-    const { w, activate, licenseKey } = await setup();
+    const { w, activate, activateAnyway, licenseKey } = await setup();
     const a = await activate(1);
-    const b = await activate(2);
+    await activateAnyway(2);
+    const b = (await env.DB.prepare("SELECT id FROM activations WHERE device_id_hash = ?").bind(await device(2)).first<{ id: string }>())!;
     const ip = { "cf-connecting-ip": "203.0.113.77" };
     for (let i = 0; i < 60; i++) await w.call("POST", "/v1/licenses/validate", { key: `SAI-${i}`, activation_id: a.body.activation_id }, ip);
     expect((await w.call("POST", "/v1/licenses/validate", { key: "SAI", activation_id: a.body.activation_id }, ip)).status).toBe(429);
+    // Qua được lớp chặn IP; key đang xung đột nên 409, không phải 429.
+    const conflicted = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a.body.activation_id }, ip);
+    expect(conflicted).toMatchObject({ status: 409, body: { error: "license_conflict" } });
+    const off = await w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: b.id }, ip);
+    expect(off).toMatchObject({ status: 200, body: { ok: true } });
     const ok = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a.body.activation_id }, ip);
     expect(ok.status).toBe(200);
     expect(ok.body.token).toMatch(/^v1\./);
-    const off = await w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: b.body.activation_id }, ip);
-    expect(off).toMatchObject({ status: 200, body: { ok: true } });
     // Activation vừa gỡ không còn hoạt động: từ IP đang bị chặn thì 429.
-    expect((await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: b.body.activation_id }, ip)).status).toBe(429);
+    expect((await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: b.id }, ip)).status).toBe(429);
     // IP khác không bị ảnh hưởng.
     expect((await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a.body.activation_id })).status).toBe(200);
   });
@@ -606,10 +732,10 @@ describe("deactivate", () => {
 
   it("kích hoạt lại dùng lại dòng cũ nhưng các lần gỡ trước vẫn tính vào luật khóa tạm", async () => {
     const { w, activate, deactivate } = await setup();
-    // Xoay 2 suất giữa 3 máy: mỗi máy quay lại dùng lại dòng của nó.
+    // Xoay một suất giữa 3 máy: mỗi máy quay lại dùng lại dòng của nó.
     const ids = new Map<number, string>();
-    for (const n of [1, 2]) ids.set(n, (await activate(n)).body.activation_id as string);
-    const rotation: [number, number][] = [[1, 3], [2, 1], [3, 2], [1, 3]];
+    ids.set(1, (await activate(1)).body.activation_id as string);
+    const rotation: [number, number][] = [[1, 2], [2, 3], [3, 1], [1, 2]];
     const statuses: number[] = [];
     for (const [i, [out, inn]] of rotation.entries()) {
       w.clock.now = T0 + (i + 1) * 3600;
@@ -618,7 +744,7 @@ describe("deactivate", () => {
       statuses.push(r.status);
       if (r.status === 200) ids.set(inn, r.body.activation_id as string);
     }
-    // Lượt 4 (máy 3 quay lại): đã gỡ máy 1, 2, 3, 1; trừ máy 3 còn 3 lần. Chưa quá 3 nên vẫn được.
+    // Lượt 4 (máy 2 quay lại): đã gỡ máy 1, 2, 3, 1; trừ máy 2 còn 3 lần. Chưa quá 3 nên vẫn được.
     expect(statuses).toEqual([200, 200, 200, 200]);
     w.clock.now = T0 + 5 * 3600;
     await deactivate(ids.get(2)!);
@@ -663,20 +789,21 @@ describe("hai khách: không đụng license, máy hay bộ đếm của khách 
       .all()
       .then((r) => r.results);
 
-  it("B có 2 máy đang kích hoạt: A vẫn kích hoạt được 2 máy; máy thứ 3 của A bị 409 chỉ liệt kê máy của A", async () => {
-    const { w, activate } = await setup();
+  it("B đang xung đột (2 máy): A vẫn kích hoạt được; máy thứ hai của A nhận key_in_use, rồi license_conflict, chỉ liệt kê máy của A", async () => {
+    const { w, activate, activateAnyway } = await setup();
     const b = await w.customerB();
     const a1 = await activate(1);
-    const a2 = await activate(2);
-    expect([a1.status, a2.status]).toEqual([200, 200]);
-    const third = await activate(3);
-    expect(third).toMatchObject({ status: 409, body: { error: "device_limit" } });
-    const listed = (third.body.activations as { activation_id: string; device_label: string }[]).map((a) => [a.activation_id, a.device_label]);
-    expect(listed).toEqual([
-      [a1.body.activation_id, "Máy 1"],
-      [a2.body.activation_id, "Máy 2"],
-    ]);
-    for (const act of [...b.active, ...b.deactivated]) expect(JSON.stringify(third.body)).not.toContain(act.id);
+    expect(a1.status).toBe(200);
+    const second = await activate(2);
+    expect(second).toMatchObject({ status: 409, body: { error: "key_in_use" } });
+    const listed = (second.body.devices as { activation_id: string; device_label: string }[]).map((a) => [a.activation_id, a.device_label]);
+    expect(listed).toEqual([[a1.body.activation_id, "Máy 1"]]);
+    const anyway = await activateAnyway(2);
+    expect(anyway).toMatchObject({ status: 409, body: { error: "license_conflict" } });
+    expect((anyway.body.devices as { device_label: string }[]).map((d) => d.device_label)).toEqual(["Máy 1", "Máy 2"]);
+    for (const res of [second, anyway]) {
+      for (const act of [...b.active, ...b.deactivated]) expect(JSON.stringify(res.body)).not.toContain(act.id);
+    }
   });
 
   it("B có 4 lần tự gỡ trong 30 ngày: A kích hoạt máy mới không bị khóa", async () => {
@@ -698,6 +825,8 @@ describe("hai khách: không đụng license, máy hay bộ đếm của khách 
       expect(ids.has(res.body.activation_id as string)).toBe(false);
       const claims = await verifyToken(res.body.token as string, vectors.public_keys, { now: T0, deviceIdHash: hash });
       expect(claims).toMatchObject({ ok: true, claims: { activation_id: res.body.activation_id } });
+      // Mỗi key một máy: gỡ máy này của A trước khi thử máy kế tiếp.
+      await w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: res.body.activation_id });
     }
     expect(await rowsOf(b.licenseId)).toEqual(before);
     const lic = await env.DB.prepare("SELECT id FROM licenses WHERE id <> ?").bind(b.licenseId).first<{ id: string }>();
