@@ -1215,16 +1215,16 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
   - Các trạng thái của phụ đề, kể cả `same_lang`, `skipped` và `dropped`.
   - Hạn mức (§6.8):
     - cách đếm phút: theo `speech_ms`, không gồm đệm, đoạn gộp cộng từng đoạn con; chỉ cộng khi phụ đề sang `done`; mỗi đoạn một lần; `same_lang`, `skipped`, `failed`, `dropped`, đoạn bị lọc không tính;
-    - Free: bắt đầu từ 0 ở lần đầu chạy app và mỗi lần reset hợp lệ; mất bộ đếm ngày khi đã có dữ liệu thì coi như hết; reset khi ngày tăng và đã qua 20 giờ "đồng hồ thật" (lớn nhất trong ba số; hiệu `Date` chỉ khi có `Date` trước và sau lần reset; hiệu giờ máy bị bỏ khi giờ máy nhỏ hơn mốc lớn nhất từng thấy quá 10 phút); đổi múi giờ qua lại không reset được; phút dịch lúc ở gói trả phí cũng cộng vào Free của ngày; hết hạn mức gói trả phí thì Free của ngày cũng hết;
+    - Free: bắt đầu từ 0 ở lần đầu chạy app và mỗi lần reset hợp lệ; mất bộ đếm ngày khi đã có dữ liệu thì coi như hết; reset khi ngày tăng và đã qua 20 giờ "đồng hồ thật" (lớn nhất trong ba số; hiệu `Date` chỉ khi có `Date` trước và sau lần reset; hiệu giờ máy bị bỏ khi giờ máy nhỏ hơn mốc lớn nhất từng thấy quá 10 phút); đổi múi giờ qua lại không reset được; phút dịch lúc ở gói trả phí cũng cộng vào Free của ngày; hết hạn mức gói trả phí thì Free của ngày cũng hết; dùng thử: bốn điều kiện của Free (§6.8), qua `ends_at` thì không bắt đầu phiên, giờ máy chỉnh lùi thì chặn, token dùng thử sai máy hay sai `typ` bị bỏ rồi đăng ký lại, lỗi mạng khi đăng ký không chặn onboarding;
     - gói trả phí: `n` tính theo `issued_at` của token mới nhất, chỉnh giờ máy tới hay lùi không đổi `n`; hẹn `validate` lại sau (mốc − `issued_at`) + 1 phút; offline qua mốc thì dùng tiếp bộ đếm cũ; chu kỳ cuối ngắn có hạn mức `ceil(hạn_mức × số_ngày / 30)`;
     - khóa bộ đếm (`license_id`, `activation_id`, mốc đầu chu kỳ, `quota_epoch`): đổi gói không dùng lại bộ đếm cũ; epoch mới thì bộ đếm mới; ghi bộ đếm trước, bản ghi đánh dấu sau (tắt app giữa hai lần ghi không thành mất bản ghi);
     - đã có bộ đếm của khóa hiện tại thì dùng nó, trước mọi luật khác; gói trả phí bắt đầu từ 0 chỉ khi response vừa nhận có `quota_fresh: true`, khi epoch của token lớn hơn epoch trong bản ghi đánh dấu, hoặc sang chu kỳ mới khi bản ghi đánh dấu có mốc cũ hơn; trong cửa sổ `fresh`, luật bắt đầu từ 0 đứng trước luật mất bản ghi; token đọc lại từ kho khóa luôn coi là không `fresh`; mất bản ghi theo hai trường hợp của §6.8 (so theo activation này, cả `activation_id` và `quota_epoch`); quá 15 phút, xóa sạch dữ liệu rồi nhập lại key thì coi như hết hạn mức;
-    - chạm hạn mức: không bắt đầu được phiên khi còn 0; bỏ hàng đợi, dịch xong câu đang dịch, dừng với `quota_exhausted`; X5 không giới hạn.
-  - Trạng thái bản quyền: ân hạn, thu hồi, tự làm mới token khi app chạy liên tục quá 24 giờ.
+    - chạm hạn mức: không bắt đầu được phiên khi còn 0; bỏ hàng đợi, dịch xong câu đang dịch, dừng với `quota_exhausted`; Yearly không giới hạn.
+  - Trạng thái bản quyền: ân hạn, thu hồi, tự làm mới token khi app chạy liên tục quá 24 giờ; mỗi key một máy (`key_in_use`, `license_conflict` xóa token và vào trạng thái xung đột, thử lại 15 phút, kiểm nhanh lúc bắt đầu phiên dừng phiên khi xung đột, lỗi mạng không dừng phiên).
   - Manifest và SHA-256.
 - **Test giao diện (`vitest`):** i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề. Các hàm xuất file viết và test phía Rust (`transcript/export.rs`, §12), vì webview chặn `blob:` (§10.2).
 - **License server:**
-  - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp license khi `PAID`, `amountPaid` ≥ `amount` và `amount` khớp đơn; mua thêm cùng gói (từ max(hiện tại, `expires_at`), giữ `cycle_anchor`, đặt lại khi đã hết hạn); đổi gói (công thức quy đổi, cả hai ví dụ ở §6.8, `cycle_anchor` mới); giới hạn 2 máy, kích hoạt lại cùng máy không tốn suất, gỡ từ xa khi đã đủ máy; khóa tạm (`423`); chặn IP và trường hợp CGNAT; `recover` luôn trả `200`; ký và kiểm tra token Ed25519, có `cycle_anchor`, `quota_minutes_per_cycle`, `quota_epoch`, `activation_created_at`; "hiện tại" của gia hạn và đổi gói là `transactionDateTime` kẹp trong thời hạn link và không muộn hơn lúc xử lý; reset hạn mức của máy tăng `quota_epoch`; `quota_fresh: true` cho mọi token trong 15 phút kể từ lúc tạo activation, lúc cấp token đầu tiên sau khi tăng `quota_epoch`, hay lúc server áp việc đặt lại `cycle_anchor` (không theo giá trị `cycle_anchor`), và `false` sau đó; gỡ (kể cả admin gỡ) không xóa activation, kích hoạt lại cùng `device_id_hash` dùng lại activation và không mở cửa sổ `quota_fresh` mới; parse `transactionDateTime` không có múi giờ theo GMT+7; phân loại lỗi email.
+  - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp license khi `PAID`, `amountPaid` ≥ `amount` và `amount` khớp đơn; mua thêm cùng gói (từ max(hiện tại, `expires_at`), giữ `cycle_anchor`, đặt lại khi đã hết hạn); đổi gói (công thức quy đổi theo giá mỗi ngày, cả hai ví dụ ở §6.8, `cycle_anchor` mới); mỗi key một máy (`409 key_in_use` không đổi dữ liệu, `allow_conflict` tạo xung đột, máy thứ ba nhận `key_in_use`, `validate` khi xung đột trả `409 license_conflict`, tự gỡ hay gỡ từ xa làm hết xung đột, chuỗi gỡ qua gỡ lại giữa hai máy bị `423`), kích hoạt lại cùng máy dùng lại activation; dùng thử (`POST /v1/trial` tạo một lần, gọi lại giữ `started_at`, gọi đồng thời ra một dòng, đã hết vẫn trả `200`, `503 trial_not_configured`; bộ kiểm token bản quyền từ chối payload có `typ`); migration `0002` đổi mã gói cũ sang `monthly`, `yearly`; khóa tạm (`423`); chặn IP và trường hợp CGNAT; `recover` luôn trả `200`; ký và kiểm tra token Ed25519, có `cycle_anchor`, `quota_minutes_per_cycle`, `quota_epoch`, `activation_created_at`; "hiện tại" của gia hạn và đổi gói là `transactionDateTime` kẹp trong thời hạn link và không muộn hơn lúc xử lý; reset hạn mức của máy tăng `quota_epoch`; `quota_fresh: true` cho mọi token trong 15 phút kể từ lúc tạo activation, lúc cấp token đầu tiên sau khi tăng `quota_epoch`, hay lúc server áp việc đặt lại `cycle_anchor` (không theo giá trị `cycle_anchor`), và `false` sau đó; gỡ (kể cả admin gỡ) không xóa activation, kích hoạt lại cùng `device_id_hash` dùng lại activation và không mở cửa sổ `quota_fresh` mới; parse `transactionDateTime` không có múi giờ theo GMT+7; phân loại lỗi email.
   - Test tích hợp với PayOS: PayOS không có sandbox, nên thử bằng giao dịch giá thật rồi hoàn tiền tay trên production, trước khi nhúng URL vào app (§6.13).
 - **Test tích hợp:**
   - Chạy pipeline từ file WAV (không cần thu âm thật), kiểm tra phụ đề có xuất hiện, đúng thứ tự, đúng thời gian.
@@ -1246,6 +1246,7 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
   - Các token sau đều bị từ chối: sai chữ ký, của máy khác, đã quá `refresh_before` hoặc `expires_at`, có `kid` lạ.
   - Chỉnh lùi đồng hồ máy: app phát hiện, không reset hạn mức, yêu cầu kiểm tra online. Chỉnh đồng hồ tới trước qua mốc chu kỳ: không mở được chu kỳ mới khi chưa có token mới.
   - Gỡ rồi kích hoạt lại quá ngưỡng: key bị khóa tạm.
+  - Xóa token dùng thử trong kho khóa (hay gỡ app, xóa dữ liệu rồi cài lại) trên cùng máy: dùng thử Free vẫn đúng số ngày còn lại, không mở lại 10 ngày.
   - Cửa sổ `overlay` gọi một lệnh không được cấp, ví dụ lệnh bản quyền: Tauri chặn lại.
   - Thay `asr-worker` hoặc `llama-server` bằng một file khác: app từ chối chạy.
   - Mở file lịch sử bằng công cụ SQLite bên ngoài: không đọc được nếu không có khóa.
@@ -1287,7 +1288,7 @@ meeting-translator/
 │   ├── pipeline/                 # VAD, cắt đoạn, client asr-worker, gọi llama-server, prompt, giám sát tiến trình phụ, PipelineConfig (§6.3–§6.5, §7)
 │   └── latency-bench/            # Công cụ đo của Phase 0 (S3, S6, A4), không vào bộ cài
 ├── third_party/                  # whisper-rs, whisper-rs-sys đã vá, nối qua [patch.crates-io] (§6.4)
-├── server/                       # License server: hai Cloudflare Worker (API, admin; nối bằng service binding) + D1. D1 có bảng deactivations: mỗi lần gỡ máy một dòng, vì activation không bị xóa
+├── server/                       # License server: hai Cloudflare Worker (API, admin; nối bằng service binding) + D1. D1 có bảng deactivations (mỗi lần gỡ máy một dòng, vì activation không bị xóa) và trials (mốc dùng thử Free theo máy)
 │   └── src/
 │       ├── index.ts  admin-entry.ts  # Điểm vào của Worker API và Worker admin (§6.8)
 │       ├── admin-rpc.ts          # AdminRpc: Worker admin gọi qua service binding để lấy bảng gói và ký thử khóa dự phòng; Worker admin không giữ khóa nào
@@ -1327,7 +1328,7 @@ meeting-translator/
 
 **Chốt Phase 0 (2026-10-07):** S2, S3 và S5 trên Windows đạt (`results/s2_capture.md`, `s3_windows.md`, `s5_overlay.md`, `s6_windows.md`). Phase 0 xong. Còn lại duy nhất chữ ký Developer ID: chủ dự án mua sau, tới lúc đó bản macOS ký ad-hoc.
 
-**Phase 1: MVP.** Làm F1–F10, license server và tích hợp PayOS, bốn gói và hạn mức (§2, §6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Phase 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
+**Phase 1: MVP.** Làm F1–F10, license server và tích hợp PayOS, các gói và hạn mức (§2, §6.8; bốn gói, đổi thành ba gói và mỗi key một máy ngày 2026-10-07), đạt A1–A7. Các việc kỹ thuật rút ra từ Phase 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
 
 **Phase 2.** Đã xong. Việc cuối là hộp thư nhận cảnh báo vận hành `OPERATOR_EMAIL` (P05-5, §10.2), đặt ngày 2026-10-07 là `ops@aitranslator.io.vn`.
 
@@ -1365,12 +1366,15 @@ meeting-translator/
 
 Đã quyết ngày 2026-10-02: khóa ký manifest model và khóa ký bản cập nhật, mỗi loại một khóa trong secret của CI kèm bản sao offline mã hóa (§10.2); máy chưa được hỗ trợ thì không tải model (§6.7, §8).
 
+Đã quyết ngày 2026-10-07: ba gói thay bốn gói (Free dùng thử 10 ngày mỗi máy, 30 phút mỗi ngày; Monthly 50.000 đ, 50 giờ mỗi 30 ngày; Yearly 500.000 đ, không giới hạn, 365 ngày), đổi gói quy đổi theo giá mỗi ngày, mỗi key một máy và tạm khóa cả hai máy khi trùng (P1, P2, §2, §6.8; spec `2026-10-07-three-plans-single-device-design.md`).
+
 Còn mở:
 - **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, production dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Không cần tên miền để deploy lần đầu trên `workers.dev`; cần tên miền trước khi nhúng URL production vào bản beta đầu tiên và trước lần phát hành công khai đầu tiên (email gửi từ tên miền đã xác thực, `returnUrl`).
 - **Pháp lý:** hỏi luật sư về:
   - hồ sơ chuyển dữ liệu cá nhân ra nước ngoài (§10.1);
   - việc **giữ dữ liệu cá nhân không thời hạn** (§10.1), xét theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân (hiệu lực từ 1/1/2026);
   - việc giữ `device_id_hash` (đã băm) khi khách yêu cầu xóa (§10.1);
+  - việc lưu `device_id_hash` của mọi máy dùng thử Free (bảng `trials`, không có email), dựa trên việc đồng ý EULA và Chính sách quyền riêng tư ở bước 1b (§4.1, §10.1);
   - thủ tục thông báo website bán hàng với Bộ Công Thương.
 - **PayOS:** liên kết tài khoản ngân hàng nhận tiền theo loại hình đăng ký kinh doanh (doanh nghiệp, hộ kinh doanh hoặc cá nhân).
 - **Thanh toán quốc tế:** PayOS chỉ nhận chuyển khoản từ ngân hàng Việt Nam, nên MVP chỉ bán cho khách ở Việt Nam. Muốn bán ra nước ngoài thì chọn thêm một nhà cung cấp sau MVP (có thể cân nhắc Polar).
