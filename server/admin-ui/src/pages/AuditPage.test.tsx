@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuditPage } from "./AuditPage";
 
 const ACTION_ERROR = "Việc (action) chỉ gồm chữ thường, số và dấu gạch dưới";
+const RANGE_ERROR = "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc";
 
 let urls: string[];
 
@@ -52,5 +53,38 @@ describe("AuditPage: bộ lọc", () => {
     await user.click(screen.getByRole("button", { name: "Lọc" }));
     await screen.findByText("Không có dòng nào");
     expect(urls.at(-1)).toBe("/admin/audit?actor=admin&include_views=1");
+  });
+
+  it("ngày bắt đầu sau ngày kết thúc: không gọi API, hiện thông báo; sửa lại thì gọi và thông báo mất", async () => {
+    const user = userEvent.setup();
+    render(<AuditPage />);
+    await screen.findByText("Không có dòng nào");
+    fireEvent.change(screen.getByLabelText("Từ ngày"), { target: { value: "2026-10-05" } });
+    fireEvent.change(screen.getByLabelText("Đến ngày"), { target: { value: "2026-10-01" } });
+    await user.click(screen.getByRole("button", { name: "Lọc" }));
+    expect(screen.getByRole("alert").textContent).toBe(RANGE_ERROR);
+    expect(urls).toEqual(["/admin/audit"]);
+
+    fireEvent.change(screen.getByLabelText("Đến ngày"), { target: { value: "2026-10-06" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Lọc" }));
+    await screen.findByText("Không có dòng nào");
+    expect(urls).toEqual(["/admin/audit", "/admin/audit?from=2026-10-05&to=2026-10-06"]);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("cùng một ngày thì hợp lệ; chỉ có một đầu thì không so sánh", async () => {
+    const user = userEvent.setup();
+    render(<AuditPage />);
+    await screen.findByText("Không có dòng nào");
+    fireEvent.change(screen.getByLabelText("Từ ngày"), { target: { value: "2026-10-05" } });
+    await user.click(screen.getByRole("button", { name: "Lọc" }));
+    await screen.findByText("Không có dòng nào");
+    expect(urls.at(-1)).toBe("/admin/audit?from=2026-10-05");
+    fireEvent.change(screen.getByLabelText("Đến ngày"), { target: { value: "2026-10-05" } });
+    await user.click(screen.getByRole("button", { name: "Lọc" }));
+    await screen.findByText("Không có dòng nào");
+    expect(urls.at(-1)).toBe("/admin/audit?from=2026-10-05&to=2026-10-05");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

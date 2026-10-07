@@ -93,4 +93,13 @@ describe("KeyReveal", () => {
     await user.click(screen.getByRole("button", { name: "Xong" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("không khẳng định email đã tới tay khách: nói server đã thử gửi và chỉ cách gửi lại", () => {
+    render(<KeyReveal licenseKey={KEY} onClose={() => {}} />);
+    const text = screen.getByRole("dialog").textContent ?? "";
+    expect(text).toContain(
+      "Server đã thử gửi key qua email cho khách; nếu khách báo không nhận được, dùng Gửi lại email ở trang license. Hộp này chỉ hiện key một lần.",
+    );
+    expect(text).not.toContain("Key đã được gửi");
+  });
 });

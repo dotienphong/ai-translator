@@ -47,7 +47,10 @@ export function KeyReveal({ licenseKey, onClose }: { licenseKey: string; onClose
     <div className="overlay">
       <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <h2 id={titleId}>Key mới</h2>
-        <p>Key đã được gửi qua email cho khách. Hộp này chỉ hiện một lần.</p>
+        <p>
+          Server đã thử gửi key qua email cho khách; nếu khách báo không nhận được, dùng Gửi lại email ở trang license. Hộp này chỉ hiện key một
+          lần.
+        </p>
         <p>
           <code className="key-full">{licenseKey}</code> <CopyButton text={licenseKey} />
         </p>

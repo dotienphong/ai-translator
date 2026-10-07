@@ -84,7 +84,8 @@ const emailItem = (o: OrderRow) => (
     ) : (
       <Link to={`/orders/${o.order_code}`}>Đơn #{o.order_code}</Link>
     )}{" "}
-    · {o.email ?? "—"} · thôi gửi lúc {fmtDateTime(o.email_gave_up_at)}
+    · {o.email ?? "—"} ·{" "}
+    {o.email_gave_up_at === null ? "chưa gửi được sau 24 giờ" : `thôi gửi lúc ${fmtDateTime(o.email_gave_up_at)}`}
   </>
 );
 

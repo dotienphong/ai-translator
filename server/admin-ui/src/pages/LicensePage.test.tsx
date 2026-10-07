@@ -37,14 +37,20 @@ function json(body: unknown, status = 200) {
 }
 
 let calls: { url: string; method: string; body: unknown }[];
+/** License trả về cho /admin/lookup; test đổi bằng withLicense. */
+let current: Record<string, unknown>;
+const withLicense = (patch: Record<string, unknown>) => {
+  current = { ...license, ...patch };
+};
 
 beforeEach(() => {
   calls = [];
+  current = license;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init: RequestInit = {}) => {
       calls.push({ url, method: init.method ?? "GET", body: init.body ? JSON.parse(String(init.body)) : undefined });
-      if (url === "/admin/lookup") return json({ licenses: [license], orders: [] });
+      if (url === "/admin/lookup") return json({ licenses: [current], orders: [] });
       if (url === `/admin/licenses/${ID}/revoke`) return json({ ok: true });
       return json({ error: "not_found" }, 404);
     }),
@@ -81,5 +87,18 @@ describe("LicensePage", () => {
       method: "POST",
       body: { note: "khách yêu cầu hoàn tiền" },
     });
+  });
+
+  it("mọi nút mở hộp xác nhận đều có dấu … (Gửi lại email…, Mở khóa…)", async () => {
+    const user = userEvent.setup();
+    withLicense({ locked_at: NOW - 60 });
+    render(<LicensePage id={ID} />);
+    await user.click(await screen.findByRole("button", { name: "Gửi lại email…" }));
+    expect(screen.getByRole("dialog", { name: "Gửi lại email chứa key?" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Hủy" }));
+    await user.click(screen.getByRole("button", { name: "Mở khóa…" }));
+    expect(screen.getByRole("dialog", { name: "Mở khóa license?" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Mở khóa" })).toBeTruthy(); // nút xác nhận trong hộp, không có dấu …
+    expect(screen.queryByRole("button", { name: "Gửi lại email" })).toBeNull();
   });
 });

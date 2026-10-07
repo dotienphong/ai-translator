@@ -23,6 +23,9 @@ export function Select({
   );
 }
 
+/** Thông báo khi khoảng ngày bị ngược (giá trị ISO YYYY-MM-DD nên so sánh chuỗi được). */
+export const RANGE_ERROR = "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc";
+
 export function DateInput({ label, value, onChange }: { label: string; value: string; onChange(v: string): void }) {
   return (
     <label className="field">

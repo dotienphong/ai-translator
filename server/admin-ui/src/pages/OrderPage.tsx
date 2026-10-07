@@ -1,6 +1,7 @@
 // Chi tiết đơn (spec Web Admin §4.2): Cấp tay, Xử lý đơn paid_needs_review, xem trạng thái trên PayOS, nhật ký của đơn.
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { api } from "../api/endpoints";
+import type { OrderRow } from "../api/types";
 import { auditColumns, licenseColumns } from "../components/columns";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DataTable } from "../components/DataTable";
@@ -13,6 +14,26 @@ import { useLoad } from "../hooks";
 type Dialog = "grant" | "grant_new" | "refunded" | null;
 
 const GRANT_KINDS: Record<string, string> = { new: "Mua mới", extend: "Mua thêm cùng gói", change: "Đổi gói" };
+
+/** Mô tả hộp Cấp tay theo dữ liệu của đơn: đơn gia hạn hay đổi gói áp vào license cũ; đơn chưa nhận đủ tiền thì có cảnh báo. */
+function grantDescription(order: OrderRow): ReactNode {
+  const when = order.renew_license_id
+    ? "áp vào license của đơn (gia hạn hay đổi gói) theo luật của đơn, tính từ bây giờ"
+    : "tính từ bây giờ";
+  return (
+    <>
+      Cấp license theo gói của đơn, {when}, rồi gửi key qua email. Dùng khi khách chuyển thiếu rồi chuyển bù, hay đơn đã trả mà chưa được cấp.
+      {order.amount_paid < order.amount && (
+        <>
+          {" "}
+          <strong>
+            Đơn mới nhận {fmtVnd(order.amount_paid)} / {fmtVnd(order.amount)}: chỉ cấp khi khách đã chuyển bù hay bạn đã xác minh.
+          </strong>
+        </>
+      )}
+    </>
+  );
+}
 
 /** Hộp key mới nằm ngoài OrderDetail: tải lại đơn bị lỗi thì trang đơn thành ErrorBox, nhưng key (chỉ hiện một lần) vẫn còn đó. */
 export function OrderPage({ code }: { code: number }) {
@@ -110,7 +131,7 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(key: str
       {dialog === "grant" && (
         <ConfirmDialog
           title={`Cấp tay đơn #${code}?`}
-          description="Cấp license theo gói của đơn, tính từ bây giờ, rồi gửi key qua email. Dùng khi khách chuyển thiếu rồi chuyển bù, hay đơn đã trả mà chưa được cấp."
+          description={grantDescription(order)}
           confirmLabel="Cấp"
           needsNote
           onConfirm={async (note) => {

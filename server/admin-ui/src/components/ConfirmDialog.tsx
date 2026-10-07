@@ -18,13 +18,21 @@ export interface ConfirmDialogProps {
   extraValid?: boolean;
   onConfirm(note: string): Promise<void>;
   onClose(): void;
-  /** Server trả 409 (trạng thái đã đổi): trang tải lại dữ liệu. */
+  /**
+   * Trang tải lại dữ liệu. Gọi ngay khi server trả 409 hay 404 (trạng thái đã đổi); với lỗi không rõ kết quả thì
+   * chỉ gọi khi người vận hành đóng hộp (tải lại ngay mà lỗi thì trang bỏ hộp đi, cảnh báo biến mất).
+   */
   onConflict?(): void;
 }
 
-/** Lỗi mà ta không chắc thao tác đã chạy chưa: mất kết nối, máy chủ 5xx, hay lỗi không phải ApiError. */
+/** Lỗi 5xx mà server biết chắc chưa ghi gì: thử lại được như lỗi thường. */
+const NOT_WRITTEN = new Set(["temporarily_unavailable", "pricing_not_configured", "key_check_failed", "payment_provider_error"]);
+
+/** Lỗi mà ta không chắc thao tác đã chạy chưa: mất kết nối, máy chủ 5xx (trừ mã chắc chắn chưa ghi), hay lỗi không phải ApiError. */
 function isUncertain(err: unknown): boolean {
-  return !(err instanceof ApiError) || err.status === 0 || err.status >= 500;
+  if (!(err instanceof ApiError)) return true;
+  if (err.status === 0) return true;
+  return err.status >= 500 && !NOT_WRITTEN.has(err.code);
 }
 
 export function ConfirmDialog(p: ConfirmDialogProps) {
@@ -50,15 +58,21 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
     first?.focus();
   }, []);
 
+  // Đóng hộp (nút Hủy, Esc): đóng khi đang không rõ kết quả thì trang mới tải lại, để người vận hành đã đọc cảnh báo.
+  function close() {
+    if (uncertain) p.onConflict?.();
+    p.onClose();
+  }
+
   // Esc đóng hộp, trừ lúc đang chờ server (đóng giữa chừng thì không thấy kết quả).
   useEffect(() => {
     if (busy) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") p.onClose();
+      if (e.key === "Escape") close();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [busy, p.onClose]);
+  }, [busy, uncertain, p.onClose, p.onConflict]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -73,11 +87,11 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
       setError(err instanceof ApiError ? err.message : "Lỗi không xác định");
       if (isUncertain(err)) {
         // Không chắc đã chạy chưa (gia hạn, cấp license mới không idempotent): khóa nút xác nhận tới khi đóng hộp.
+        // Chưa tải lại trang ở đây: đợi người vận hành đóng hộp (close).
         setUncertain(true);
-        p.onConflict?.();
       } else {
         inFlight.current = false;
-        if (err instanceof ApiError && err.status === 409) p.onConflict?.();
+        if (err instanceof ApiError && (err.status === 409 || err.status === 404)) p.onConflict?.();
       }
       setBusy(false);
     }
@@ -110,7 +124,7 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
           </div>
         )}
         <div className="dialog-actions">
-          <button type="button" onClick={p.onClose} disabled={busy}>
+          <button type="button" onClick={close} disabled={busy}>
             Hủy
           </button>
           <button type="submit" className={p.typeToConfirm !== undefined ? "danger solid" : "primary"} disabled={!ready}>

@@ -3,7 +3,7 @@ import { type AuditFilters, api } from "../api/endpoints";
 import { auditColumns } from "../components/columns";
 import { DataTable } from "../components/DataTable";
 import { ErrorBox } from "../components/Feedback";
-import { DateInput } from "../components/Field";
+import { DateInput, RANGE_ERROR } from "../components/Field";
 import { usePaged } from "../hooks";
 
 type ActorFilter = NonNullable<AuditFilters["actor"]>;
@@ -37,6 +37,7 @@ export function AuditPage() {
   const [draft, setDraft] = useState(EMPTY);
   const [f, setF] = useState(EMPTY);
   const [actionError, setActionError] = useState(false);
+  const [rangeError, setRangeError] = useState(false);
   const list = usePaged(
     (cursor) =>
       api.audit({
@@ -52,11 +53,11 @@ export function AuditPage() {
   function apply(e: FormEvent) {
     e.preventDefault();
     const action = draft.action.trim();
-    if (action !== "" && !ACTION_PATTERN.test(action)) {
-      setActionError(true);
-      return;
-    }
-    setActionError(false);
+    const badAction = action !== "" && !ACTION_PATTERN.test(action);
+    const badRange = draft.from !== "" && draft.to !== "" && draft.from > draft.to;
+    setActionError(badAction);
+    setRangeError(badRange);
+    if (badAction || badRange) return;
     setF({ ...draft, action });
   }
   return (
@@ -90,8 +91,27 @@ export function AuditPage() {
             </span>
           )}
         </label>
-        <DateInput label="Từ ngày" value={draft.from} onChange={(from) => setDraft({ ...draft, from })} />
-        <DateInput label="Đến ngày" value={draft.to} onChange={(to) => setDraft({ ...draft, to })} />
+        <DateInput
+          label="Từ ngày"
+          value={draft.from}
+          onChange={(from) => {
+            setDraft({ ...draft, from });
+            setRangeError(false);
+          }}
+        />
+        <DateInput
+          label="Đến ngày"
+          value={draft.to}
+          onChange={(to) => {
+            setDraft({ ...draft, to });
+            setRangeError(false);
+          }}
+        />
+        {rangeError && (
+          <span className="error" role="alert">
+            {RANGE_ERROR}
+          </span>
+        )}
         <label className="check">
           <input type="checkbox" checked={draft.includeViews} onChange={(e) => setDraft({ ...draft, includeViews: e.target.checked })} />
           Hiện cả lượt xem và tra cứu

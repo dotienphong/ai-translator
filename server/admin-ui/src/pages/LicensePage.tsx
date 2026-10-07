@@ -86,11 +86,11 @@ export function LicensePage({ id }: { id: string }) {
             Gia hạn…
           </button>
           <button type="button" disabled={!lic.email} onClick={() => setDialog({ kind: "resend" })}>
-            Gửi lại email
+            Gửi lại email…
           </button>
           {lic.locked_at !== null && (
             <button type="button" onClick={() => setDialog({ kind: "unlock" })}>
-              Mở khóa
+              Mở khóa…
             </button>
           )}
           <button type="button" className="danger" onClick={() => setDialog({ kind: "revoke" })}>

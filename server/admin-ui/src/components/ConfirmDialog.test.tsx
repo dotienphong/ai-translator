@@ -120,45 +120,116 @@ describe("ConfirmDialog: lỗi", () => {
     return { onConfirm, onClose, onConflict };
   }
 
-  it.each([
+  const UNCERTAIN_CASES = [
     ["500", new ApiError(500, "internal"), "Lỗi máy chủ"],
-    ["503", new ApiError(503, "http_503"), "Máy chủ trả lỗi 503"],
+    ["503 không rõ mã", new ApiError(503, "http_503"), "Máy chủ trả lỗi 503"],
     ["mạng (status 0)", new ApiError(0, "network"), "Không kết nối được máy chủ"],
     ["không phải ApiError", new Error("boom bằng tiếng Anh"), "Lỗi không xác định"],
     ["không phải Error", "chuỗi lạ", "Lỗi không xác định"],
-  ])("không chắc đã chạy chưa (%s): hiện lỗi và cảnh báo, tải lại trang, khóa nút xác nhận tới khi đóng hộp", async (_name, err, message) => {
+  ] as const;
+
+  /** Mở hộp, bấm xác nhận, đợi tới lúc hiện lỗi không rõ kết quả; kiểm các điểm chung của trạng thái này. */
+  async function reachUncertain(err: unknown, message: string) {
     const user = userEvent.setup();
-    const { onConfirm, onClose, onConflict } = setup(err);
+    const s = setup(err);
     await user.click(button("Gia hạn"));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(message);
     expect(alert.textContent).toContain(UNCERTAIN);
     expect(alert.textContent).not.toContain("boom");
-    expect(onConflict).toHaveBeenCalledTimes(1);
-    expect(onClose).not.toHaveBeenCalled();
+    // Chưa tải lại trang: nếu tải lại lỗi thì trang bỏ hộp đi và cảnh báo biến mất.
+    expect(s.onConflict).not.toHaveBeenCalled();
+    expect(s.onClose).not.toHaveBeenCalled();
     expect(button("Gia hạn").disabled).toBe(true);
     expect(button("Hủy").disabled).toBe(false);
     await user.click(button("Gia hạn"));
     fireEvent.submit(screen.getByRole("dialog"));
-    expect(onConfirm).toHaveBeenCalledTimes(1);
-    await user.click(button("Hủy"));
+    expect(s.onConfirm).toHaveBeenCalledTimes(1);
+    return { user, ...s };
+  }
+
+  it.each(UNCERTAIN_CASES)(
+    "không chắc đã chạy chưa (%s): hiện lỗi và cảnh báo, khóa nút xác nhận, chưa tải lại trang; bấm Hủy thì tải lại đúng một lần rồi đóng",
+    async (_name, err, message) => {
+      const { user, onClose, onConflict } = await reachUncertain(err, message);
+      await user.click(button("Hủy"));
+      expect(onConflict).toHaveBeenCalledTimes(1);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(UNCERTAIN_CASES)("không chắc đã chạy chưa (%s): nhấn Esc cũng tải lại đúng một lần rồi đóng", async (_name, err, message) => {
+    const { user, onClose, onConflict } = await reachUncertain(err, message);
+    await user.keyboard("{Escape}");
+    expect(onConflict).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it.each([
-    ["400", new ApiError(400, "invalid_request", { field: "days" }), "Dữ liệu gửi lên không hợp lệ (trường days)"],
-    ["404", new ApiError(404, "not_found"), "Không tìm thấy, hoặc đã ở trạng thái đó. Tải lại trang để xem trạng thái mới"],
-  ])("lỗi %s chắc chắn chưa ghi: hiện lỗi, không cảnh báo, không tải lại, nút mở lại và bấm được lần nữa", async (_name, err, message) => {
+    ["temporarily_unavailable", new ApiError(502, "temporarily_unavailable"), "Chưa gửi được email, thử lại sau"],
+    ["pricing_not_configured", new ApiError(503, "pricing_not_configured"), "Worker API chưa có cấu hình bảng gói (PLANS)"],
+    ["key_check_failed", new ApiError(503, "key_check_failed"), "Ký thử bằng khóa dự phòng thất bại"],
+    ["payment_provider_error", new ApiError(502, "payment_provider_error"), "Cổng thanh toán lỗi"],
+  ])("lỗi 5xx mà server biết chắc chưa ghi gì (%s): hiện lỗi, không cảnh báo, không tải lại, nút mở lại và bấm được lần nữa", async (_name, err, message) => {
     const user = userEvent.setup();
     const { onConfirm, onClose, onConflict } = setup(err);
     await user.click(button("Gia hạn"));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe(message);
+    expect(alert.textContent).not.toContain("Không chắc");
     expect(onConflict).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
     expect(button("Gia hạn").disabled).toBe(false);
     await user.click(button("Gia hạn"));
     expect(onConfirm).toHaveBeenCalledTimes(2);
+    await user.click(button("Hủy"));
+    expect(onConflict).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("lỗi 400 chắc chắn chưa ghi: hiện lỗi, không cảnh báo, không tải lại (kể cả khi bấm Hủy), nút mở lại và bấm được lần nữa", async () => {
+    const user = userEvent.setup();
+    const { onConfirm, onClose, onConflict } = setup(new ApiError(400, "invalid_request", { field: "days" }));
+    await user.click(button("Gia hạn"));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Dữ liệu gửi lên không hợp lệ (trường days)");
+    expect(onConflict).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(button("Gia hạn").disabled).toBe(false);
+    await user.click(button("Gia hạn"));
+    expect(onConfirm).toHaveBeenCalledTimes(2);
+    await user.click(button("Hủy"));
+    expect(onConflict).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["not_found", "Không tìm thấy, hoặc đã ở trạng thái đó. Tải lại trang để xem trạng thái mới"],
+    ["activation_not_found", "Không tìm thấy máy (có thể đã gỡ)"],
+    ["order_not_found", "Không tìm thấy đơn"],
+  ])("lỗi 404 %s (trạng thái đã đổi): tải lại trang ngay như 409, không cảnh báo, nút mở lại", async (code, message) => {
+    const user = userEvent.setup();
+    const { onConfirm, onClose, onConflict } = setup(new ApiError(404, code));
+    await user.click(button("Gia hạn"));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(message);
+    expect(onConflict).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(button("Gia hạn").disabled).toBe(false);
+    await user.click(button("Gia hạn"));
+    expect(onConfirm).toHaveBeenCalledTimes(2);
+  });
+
+  it("thành công: đóng hộp một lần, không tải lại trang", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onConflict = vi.fn();
+    render(
+      <ConfirmDialog title="Gia hạn?" description="x" confirmLabel="Gia hạn" needsNote={false} onConfirm={async () => {}} onClose={onClose} onConflict={onConflict} />,
+    );
+    await user.click(button("Gia hạn"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConflict).not.toHaveBeenCalled();
   });
 
   it("409: tải lại trang nhưng không phải trường hợp không rõ kết quả; nút mở lại", async () => {
