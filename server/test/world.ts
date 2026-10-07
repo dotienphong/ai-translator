@@ -88,8 +88,8 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
 
   /**
    * "Khách B" (review cuối, Q1): một khách khác, để test ranh giới giữa các license và email. B mua bằng email riêng, có
-   * 2 máy đang kích hoạt (đang xung đột, spec 2026-10-07 §4.1: máy 2 xác nhận "Vẫn kích hoạt"), 3 máy đã gỡ, và 4 lần tự
-   * gỡ trong 30 ngày (hơn ngưỡng 3 của luật khóa tạm). B không bị khóa, vì máy cuối kích hoạt lại là máy B tự gỡ. Mọi
+   * 2 máy đang kích hoạt (đang xung đột, spec 2026-10-07 §4.1: máy 2 xác nhận "Vẫn kích hoạt"), 2 máy đã gỡ, và 3 lần tự
+   * gỡ trong 30 ngày (hơn ngưỡng 2 của luật khóa tạm). B không bị khóa, vì máy cuối kích hoạt lại là máy B tự gỡ. Mọi
    * request của B đi từ IP riêng, không đụng bộ đếm của test.
    */
   async function customerB() {
@@ -113,14 +113,14 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
       if (r.status !== 200) throw new Error(`khách B gỡ máy ${n}: ${r.status}`);
     };
     const deactivated: { id: string; deviceIdHash: string }[] = [];
-    for (const n of [3, 4, 5]) {
+    for (const n of [3, 4]) {
       const id = await activate(n);
       await deactivate(id, n);
       deactivated.push({ id, deviceIdHash: await device(n) });
     }
     const b1 = await activate(1);
     const b2 = await activate(2, true);
-    // Lần gỡ thứ 4 rồi kích hoạt lại đúng máy đó: trừ chính máy này thì còn 3 lần, chưa quá ngưỡng.
+    // Lần gỡ thứ 3 rồi kích hoạt lại đúng máy đó: trừ chính máy này thì còn 2 lần, chưa quá ngưỡng.
     await deactivate(b2, 2);
     if ((await activate(2, true)) !== b2) throw new Error("khách B: máy 2 không dùng lại activation cũ");
     return {

@@ -385,7 +385,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
       return c.json({ ok: true });
     });
   }
-  // Mở khóa: các lần gỡ trước lúc mở khóa không còn tính vào ngưỡng 3 máy/30 ngày.
+  // Mở khóa: các lần gỡ trước lúc mở khóa không còn tính vào ngưỡng 2 lần gỡ/30 ngày.
   // Chỉ khi key đang bị khóa; không thì không có gì để gỡ, không đặt lại lock_cleared_at và không ghi nhật ký.
   licenseAction(
     "unlock",

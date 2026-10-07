@@ -17,9 +17,12 @@ import { REFRESH_WINDOW_SECONDS, signToken } from "./token";
  */
 export const MAX_DEVICES = 1;
 export const MAX_DEVICES_IN_CONFLICT = 2;
-/** Trong 30 ngày có hơn 3 lần gỡ (kể cả gỡ từ xa) rồi kích hoạt máy khác thì khóa tạm key (§10.2). */
+/**
+ * Trong 30 ngày có hơn 2 lần gỡ (kể cả gỡ từ xa) rồi kích hoạt máy khác thì khóa tạm key (§10.2). Chủ dự án chốt
+ * 2026-10-07: hai máy đổi qua đổi lại bị khóa sau khoảng 5 lần gỡ.
+ */
 export const DEACTIVATION_WINDOW_SECONDS = 30 * 86400;
-export const MAX_DEACTIVATIONS_IN_WINDOW = 3;
+export const MAX_DEACTIVATIONS_IN_WINDOW = 2;
 
 interface LicenseRow {
   id: string;

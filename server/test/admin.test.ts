@@ -409,11 +409,11 @@ describe("thay đổi license", () => {
     // Khóa thật rồi mở: lần đầu được.
     const activate = async (n: number) =>
       w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex(`d${n}`), device_label: `M${n}` }, { "cf-connecting-ip": `198.51.100.${n}` });
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 3; i++) {
       const r = await activate(i);
       await w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: r.body.activation_id });
     }
-    expect((await activate(5)).status).toBe(423);
+    expect((await activate(4)).status).toBe(423);
     w.clock.now = T0 + 5;
     expect((await adminCall(`/admin/licenses/${id}/unlock`, { body: { note: "đã xác minh" } })).status).toBe(200);
     expect(await licenseRow()).toMatchObject({ locked_at: null, lock_cleared_at: T0 + 5 });
@@ -458,15 +458,15 @@ describe("thay đổi license", () => {
     const { licenseKey } = await w.buy();
     const activate = async (n: number) =>
       w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex(`d${n}`), device_label: `M${n}` }, { "cf-connecting-ip": `198.51.100.${n}` });
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 3; i++) {
       const r = await activate(i);
       await w.call("POST", "/v1/licenses/deactivate", { key: licenseKey, activation_id: r.body.activation_id });
     }
-    expect((await activate(5)).status).toBe(423);
+    expect((await activate(4)).status).toBe(423);
     const id = (await licenseRow())!.id as string;
     expect((await adminCall(`/admin/licenses/${id}/unlock`, { body: { note: "khách đổi máy nhiều, đã xác minh" } })).status).toBe(200);
     w.clock.now = T0 + 1;
-    expect((await activate(5)).status).toBe(200);
+    expect((await activate(4)).status).toBe(200);
   });
 
   it("admin gỡ 4 máy liền rồi kích hoạt máy khác vẫn được: lần admin gỡ không tính vào luật khóa tạm", async () => {
@@ -807,7 +807,7 @@ describe("hai khách: tra cứu và xóa dữ liệu chỉ đụng đúng email 
         .all()
         .then((r) => r.results.map((x) => x.device_label));
     const before = await labelsOfB();
-    expect(before).toEqual(["Máy B1", "Máy B2", "Máy B3", "Máy B4", "Máy B5"]);
+    expect(before).toEqual(["Máy B1", "Máy B2", "Máy B3", "Máy B4"]);
     const res = await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } });
     expect(res.body).toEqual({ activations: 1, licenses: 1, orders: 1 });
     expect(await labelsOfB()).toEqual(before);

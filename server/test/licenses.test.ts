@@ -146,18 +146,19 @@ describe("activate", () => {
     });
   });
 
-  it("gỡ hơn 3 máy trong 30 ngày rồi kích hoạt máy mới thì khóa tạm key (423) và có cảnh báo", async () => {
+  it("gỡ hơn 2 máy trong 30 ngày rồi kích hoạt máy mới thì khóa tạm key (423) và có cảnh báo", async () => {
     const { w, activate, deactivate } = await setup();
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 3; i++) {
       w.clock.now = T0 + i * DAY;
+      // Máy thứ 3 vào khi 2 máy trước đã bị gỡ: còn trong ngưỡng.
       const r = await activate(i);
       expect(r.status).toBe(200);
       await deactivate(r.body.activation_id as string);
     }
-    w.clock.now = T0 + 5 * DAY;
-    expect(await activate(5)).toMatchObject({ status: 423, body: { error: "license_locked" } });
+    w.clock.now = T0 + 4 * DAY;
+    expect(await activate(4)).toMatchObject({ status: 423, body: { error: "license_locked" } });
     const lic = await env.DB.prepare("SELECT locked_at FROM licenses").first<{ locked_at: number }>();
-    expect(lic?.locked_at).toBe(T0 + 5 * DAY);
+    expect(lic?.locked_at).toBe(T0 + 4 * DAY);
     const log = await env.DB.prepare("SELECT action FROM audit_log WHERE action = 'license_locked'").first();
     expect(log).not.toBeNull();
     expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
@@ -165,20 +166,20 @@ describe("activate", () => {
 
   it("hai máy mới kích hoạt cùng lúc khi vừa quá ngưỡng: khóa một lần, một dòng nhật ký, một cảnh báo", async () => {
     const { w, activate, deactivate } = await setup();
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 3; i++) {
       w.clock.now = T0 + i * DAY;
       const r = await activate(i);
       await deactivate(r.body.activation_id as string);
     }
-    w.clock.now = T0 + 5 * DAY;
-    const results = await Promise.all([activate(5), activate(6), activate(7)]);
+    w.clock.now = T0 + 4 * DAY;
+    const results = await Promise.all([activate(4), activate(5), activate(6)]);
     expect(results.map((r) => r.status)).toEqual([423, 423, 423]);
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'license_locked'").first()).toEqual({ n: 1 });
     expect(await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'license_locked'").first()).toEqual({ n: 1 });
     // Đã khóa thì lần kích hoạt sau không khóa lại, không đổi locked_at.
-    w.clock.now = T0 + 6 * DAY;
-    expect((await activate(8)).status).toBe(423);
-    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 5 * DAY });
+    w.clock.now = T0 + 5 * DAY;
+    expect((await activate(7)).status).toBe(423);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 4 * DAY });
   });
 
   it("gỡ rồi kích hoạt lại cùng một máy nhiều lần: không bị khóa", async () => {
@@ -192,11 +193,11 @@ describe("activate", () => {
     w.clock.now = T0 + 7 * 3600;
     expect((await activate(1)).status).toBe(200);
     expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: null });
-    // Đúng chữ §10.2: hơn 3 lần gỡ rồi kích hoạt một máy khác thì bị khóa.
+    // Đúng chữ §10.2: hơn 2 lần gỡ rồi kích hoạt một máy khác thì bị khóa.
     expect((await activate(2)).status).toBe(423);
   });
 
-  it("xoay vòng một suất giữa 5 máy: bị khóa ở lượt 4, rồi mọi máy không đang kích hoạt đều bị 423", async () => {
+  it("xoay vòng một suất giữa 5 máy: bị khóa ở lượt 2, rồi mọi máy không đang kích hoạt đều bị 423", async () => {
     const { w, activate, deactivate } = await setup();
     let active = { n: 1, id: (await activate(1)).body.activation_id as string };
     const order = [2, 3, 4, 5, 1, 2];
@@ -212,10 +213,10 @@ describe("activate", () => {
       expect(r.status).toBe(200);
       active = { n: order[i]!, id: r.body.activation_id as string };
     }
-    // Lượt 3 (máy 4): đã gỡ máy 1, 2, 3; trừ máy 4 còn 3 lần, chưa quá 3.
-    // Lượt 4 (máy 5): đã gỡ máy 1, 2, 3, 4; trừ máy 5 còn 4 lần, nên khóa.
-    expect(lockedAt).toBe(3);
-    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 4 * 3600 });
+    // Lượt 1 (máy 3): đã gỡ máy 1, 2; trừ máy 3 còn 2 lần, chưa quá 2.
+    // Lượt 2 (máy 4): đã gỡ máy 1, 2, 3; trừ máy 4 còn 3 lần, nên khóa.
+    expect(lockedAt).toBe(2);
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 3 * 3600 });
     // Không còn máy nào đang kích hoạt; mọi máy (từng dùng hay mới) đều bị 423.
     for (const n of [1, 2, 3, 4, 5, 9]) expect((await activate(n)).status).toBe(423);
   });
@@ -244,20 +245,20 @@ describe("activate", () => {
     expect(n?.n).toBe(1);
   });
 
-  it("3 lần gỡ trong 30 ngày vẫn kích hoạt được; lần gỡ cũ hơn 30 ngày không tính", async () => {
+  it("2 lần gỡ trong 30 ngày vẫn kích hoạt được; lần gỡ cũ hơn 30 ngày không tính", async () => {
     const { w, activate, deactivate } = await setup();
     await env.DB.prepare("UPDATE licenses SET expires_at = ?").bind(T0 + 90 * DAY).run();
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 2; i++) {
       const r = await activate(i);
       await deactivate(r.body.activation_id as string);
     }
-    const fourth = await activate(4);
-    expect(fourth.status).toBe(200);
+    const third = await activate(3);
+    expect(third.status).toBe(200);
     w.clock.now = T0 + 10 * DAY;
-    await deactivate(fourth.body.activation_id as string);
-    // Lần gỡ thứ 4 ở T0 + 10 ngày; ba lần đầu (ở T0) đã quá 30 ngày.
+    await deactivate(third.body.activation_id as string);
+    // Lần gỡ thứ 3 ở T0 + 10 ngày; hai lần đầu (ở T0) đã quá 30 ngày. Nếu còn tính thì máy 4 thấy 3 lần gỡ (> 2) và bị khóa.
     w.clock.now = T0 + 31 * DAY;
-    expect((await activate(5)).status).toBe(200);
+    expect((await activate(4)).status).toBe(200);
   });
 
   it("key sai định dạng 400, key không tồn tại 404, đã thu hồi 403, hết hạn 403 kèm expires_at", async () => {
@@ -397,7 +398,30 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
     });
   });
 
-  it("hai người dùng chung key gỡ qua gỡ lại: luật khóa tạm chặn sau khi mỗi máy bị gỡ 4 lần trong 30 ngày", async () => {
+  it("hai người dùng chung key đổi máy qua lại (gỡ máy kia rồi kích hoạt): lần gỡ thứ 4 chưa khóa, lần gỡ thứ 5 thì máy xin kích hoạt bị 423", async () => {
+    const { w, activate, deactivate } = await setup();
+    let holder = (await activate(1)).body.activation_id as string;
+    // Mỗi lượt: máy `inn` gỡ máy đang giữ key (gỡ từ xa), rồi kích hoạt. Các lần gỡ lần lượt là máy 1, 2, 1, 2, 1.
+    const statuses: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      const inn = i % 2 === 0 ? 2 : 1;
+      w.clock.now = T0 + (i + 1) * 3600;
+      await deactivate(holder);
+      const r = await activate(inn);
+      statuses.push(r.status);
+      if (r.status !== 200) break;
+      holder = r.body.activation_id as string;
+    }
+    // Lần gỡ thứ 4 (máy 2): máy 1 vào lại, các lần gỡ máy 2 là 2 (không quá 2), nên chưa khóa.
+    // Lần gỡ thứ 5 (máy 1): máy 2 xin kích hoạt, các lần gỡ máy 1 là 3 (quá 2), nên khóa.
+    expect(statuses).toEqual([200, 200, 200, 200, 423]);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE by = 'user'").first()).toEqual({ n: 5 });
+    expect(await env.DB.prepare("SELECT locked_at FROM licenses").first()).toEqual({ locked_at: T0 + 5 * 3600 });
+    expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
+    expect((await activate(1)).status).toBe(423);
+  });
+
+  it("hai người dùng chung key gỡ qua gỡ lại bằng xác nhận xung đột: khóa sau 6 lần gỡ (mỗi máy bị gỡ 3 lần)", async () => {
     const { w, activate, activateAnyway, deactivate } = await setup();
     await activate(1);
     // Mỗi lượt: máy `inn` xác nhận xung đột rồi gỡ máy `out` từ xa.
@@ -416,8 +440,8 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
       removals++;
     }
     // Luật đếm trừ các lần gỡ chính máy đang xin kích hoạt (§10.2), nên máy xin kích hoạt bị chặn khi máy kia đã bị gỡ
-    // 4 lần: tổng 8 lần gỡ.
-    expect(lockedAfter).toBe(8);
+    // 3 lần: tổng 6 lần gỡ (nhiều hơn đổi máy ở trên một lần, vì máy vào trước khi máy kia bị gỡ).
+    expect(lockedAfter).toBe(6);
     expect(await env.DB.prepare("SELECT kind FROM ops_alerts").first()).toEqual({ kind: "license_locked" });
   });
 
@@ -743,7 +767,7 @@ describe("deactivate", () => {
     // Xoay một suất giữa 3 máy: mỗi máy quay lại dùng lại dòng của nó.
     const ids = new Map<number, string>();
     ids.set(1, (await activate(1)).body.activation_id as string);
-    const rotation: [number, number][] = [[1, 2], [2, 3], [3, 1], [1, 2]];
+    const rotation: [number, number][] = [[1, 2], [2, 3], [3, 1]];
     const statuses: number[] = [];
     for (const [i, [out, inn]] of rotation.entries()) {
       w.clock.now = T0 + (i + 1) * 3600;
@@ -752,11 +776,11 @@ describe("deactivate", () => {
       statuses.push(r.status);
       if (r.status === 200) ids.set(inn, r.body.activation_id as string);
     }
-    // Lượt 4 (máy 2 quay lại): đã gỡ máy 1, 2, 3, 1; trừ máy 2 còn 3 lần. Chưa quá 3 nên vẫn được.
-    expect(statuses).toEqual([200, 200, 200, 200]);
-    w.clock.now = T0 + 5 * 3600;
-    await deactivate(ids.get(2)!);
-    // Máy 1 quay lại: đã gỡ máy 1, 2, 3, 1, 2; trừ máy 1 còn 3. Máy 4 mới: 5 lần, nên khóa.
+    // Lượt 3 (máy 1 quay lại): đã gỡ máy 1, 2, 3; trừ máy 1 còn 2 lần. Chưa quá 2 nên vẫn được.
+    expect(statuses).toEqual([200, 200, 200]);
+    w.clock.now = T0 + 4 * 3600;
+    await deactivate(ids.get(1)!);
+    // Máy 1 quay lại lần nữa: đã gỡ máy 1, 2, 3, 1; trừ máy 1 còn 2. Máy 4 mới: 4 lần, nên khóa.
     expect((await activate(1)).status).toBe(200);
     expect((await activate(4)).status).toBe(423);
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM activations").first()).toEqual({ n: 3 });
@@ -814,10 +838,10 @@ describe("hai khách: không đụng license, máy hay bộ đếm của khách 
     }
   });
 
-  it("B có 4 lần tự gỡ trong 30 ngày: A kích hoạt máy mới không bị khóa", async () => {
+  it("B có 3 lần tự gỡ trong 30 ngày: A kích hoạt máy mới không bị khóa", async () => {
     const { w, activate } = await setup();
     const b = await w.customerB();
-    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE license_id = ? AND by = 'user'").bind(b.licenseId).first()).toEqual({ n: 4 });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM deactivations WHERE license_id = ? AND by = 'user'").bind(b.licenseId).first()).toEqual({ n: 3 });
     expect((await activate(1)).status).toBe(200);
     expect(await env.DB.prepare("SELECT locked_at FROM licenses WHERE id <> ?").bind(b.licenseId).first()).toEqual({ locked_at: null });
   });
