@@ -534,7 +534,7 @@ impl License {
         let key = key::normalize(input).ok_or(LicenseError::InvalidKey)?;
         let reply = self
             .api
-            .activate(&key, &self.machine.id_hash, self.machine.label.as_deref());
+            .activate(&key, &self.machine.id_hash, self.machine.label.as_deref(), false);
         self.observe(&reply);
         let granted = reply.result.map_err(map_api)?;
         self.accept(granted, key, now)
@@ -861,7 +861,7 @@ pub mod tests {
     use serde_json::{Value, json};
 
     use super::*;
-    use crate::license::client::{Checkout, OrderStatus, PlanOffer, ServerError};
+    use crate::license::client::{Checkout, OrderStatus, PlanOffer, ServerError, TrialGrant};
     use crate::license::store::tests::FakeVault;
 
     /// 2026-10-01 00:00:00 UTC.
@@ -913,18 +913,39 @@ pub mod tests {
         })
     }
 
-    pub fn server(status: u16, code: &str) -> ApiError {
-        ApiError::Server(ServerError {
-            status,
-            code: code.into(),
-            ..ServerError::default()
+    /// Token dùng thử như server cấp cho `device`.
+    pub fn trial_grant(device: &str, started_at: i64, ends_at: i64, issued_at: i64) -> Result<TrialGrant, ApiError> {
+        let claims = json!({
+            "typ": "trial", "kid": "test-1", "device_id_hash": device,
+            "started_at": started_at, "ends_at": ends_at, "issued_at": issued_at,
+        });
+        Ok(TrialGrant {
+            token: sign(&claims),
+            started_at,
+            ends_at,
+            issued_at,
         })
     }
 
-    /// Server giả: trả lần lượt các kết quả đã xếp cho `activate`, `validate`, `deactivate`; ghi lại các lần gọi.
+    /// Dùng thử mặc định của server giả khi test không xếp kết quả nào: còn hiệu lực rất lâu, cấp từ trước mọi mốc giờ của
+    /// test, để các test không nói về dùng thử chạy như trước (kể cả test của app dùng giờ thật).
+    pub const TRIAL_FOREVER_START: i64 = T0 - 400 * DAY;
+    pub const TRIAL_FOREVER_END: i64 = T0 + 3650 * DAY;
+
+    pub fn server(status: u16, code: &str) -> ApiError {
+        ApiError::Server(Box::new(ServerError {
+            status,
+            code: code.into(),
+            ..ServerError::default()
+        }))
+    }
+
+    /// Server giả: trả lần lượt các kết quả đã xếp cho `activate`, `validate`, `deactivate`, `trial`; ghi lại các lần gọi.
+    /// Chưa xếp kết quả `trial` nào thì trả dùng thử mặc định ([`TRIAL_FOREVER_START`]).
     #[derive(Default)]
     pub struct FakeApi {
         pub replies: Mutex<VecDeque<Result<Granted, ApiError>>>,
+        pub trials: Mutex<VecDeque<Result<TrialGrant, ApiError>>>,
         pub deactivations: Mutex<VecDeque<Result<(), ApiError>>>,
         pub checkouts: Mutex<VecDeque<Result<Checkout, ApiError>>>,
         pub orders: Mutex<VecDeque<Result<OrderStatus, ApiError>>>,
@@ -982,8 +1003,9 @@ pub mod tests {
                 date: None,
             }
         }
-        fn activate(&self, key: &str, device: &str, label: Option<&str>) -> Reply<Granted> {
-            self.next(format!("activate {key} {device} {}", label.unwrap_or("-")))
+        fn activate(&self, key: &str, device: &str, label: Option<&str>, allow_conflict: bool) -> Reply<Granted> {
+            let anyway = if allow_conflict { " allow_conflict" } else { "" };
+            self.next(format!("activate {key} {device} {}{anyway}", label.unwrap_or("-")))
         }
         fn validate(&self, key: &str, activation_id: &str) -> Reply<Granted> {
             self.next(format!("validate {key} {activation_id}"))
@@ -1002,6 +1024,15 @@ pub mod tests {
             Reply {
                 result: Ok(()),
                 date: None,
+            }
+        }
+        fn trial(&self, device: &str) -> Reply<TrialGrant> {
+            self.calls.lock().unwrap().push(format!("trial {device}"));
+            Reply {
+                result: self.trials.lock().unwrap().pop_front().unwrap_or_else(|| {
+                    trial_grant(device, TRIAL_FOREVER_START, TRIAL_FOREVER_END, TRIAL_FOREVER_START)
+                }),
+                date: *self.date.lock().unwrap(),
             }
         }
     }
@@ -1125,19 +1156,19 @@ pub mod tests {
             last_validated_at: Some(T0),
         }];
         api.replies.lock().unwrap().extend([
-            Err(ApiError::Server(ServerError {
+            Err(ApiError::Server(Box::new(ServerError {
                 status: 409,
                 code: "device_limit".into(),
                 devices: devices.clone(),
                 ..ServerError::default()
-            })),
+            }))),
             Err(server(423, "license_locked")),
-            Err(ApiError::Server(ServerError {
+            Err(ApiError::Server(Box::new(ServerError {
                 status: 429,
                 code: "rate_limited".into(),
                 retry_after: Some(60),
                 ..ServerError::default()
-            })),
+            }))),
         ]);
         assert_eq!(l.activate(KEY, T0), Err(LicenseError::DeviceLimit(devices)));
         assert_eq!(l.activate(KEY, T0), Err(LicenseError::Locked));
@@ -1587,12 +1618,15 @@ pub mod tests {
         );
         assert!(l.validate_due(T0 + VALIDATE_EVERY_SECS + 3600));
         // 429: chờ đúng `Retry-After`.
-        api.replies.lock().unwrap().push_back(Err(ApiError::Server(ServerError {
-            status: 429,
-            code: "rate_limited".into(),
-            retry_after: Some(7200),
-            ..ServerError::default()
-        })));
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Server(Box::new(ServerError {
+                status: 429,
+                code: "rate_limited".into(),
+                retry_after: Some(7200),
+                ..ServerError::default()
+            }))));
         let t = T0 + 2 * DAY;
         let _ = l.validate(t);
         assert!(!l.validate_due(t + 3600));

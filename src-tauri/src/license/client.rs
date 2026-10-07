@@ -27,9 +27,9 @@ pub enum ApiError {
     NotConfigured,
     #[error("lỗi mạng: {0}")]
     Network(String),
-    /// Server trả lỗi `{"error": "<mã>", …}`.
+    /// Server trả lỗi `{"error": "<mã>", …}`. Đóng hộp để `Result<_, ApiError>` gọn (clippy `result_large_err`).
     #[error("server trả {0}")]
-    Server(ServerError),
+    Server(Box<ServerError>),
     #[error("response sai dạng: {0}")]
     Decode(String),
 }
@@ -41,8 +41,10 @@ pub struct ServerError {
     pub code: String,
     /// `429`: số giây phải chờ.
     pub retry_after: Option<u64>,
-    /// `409 device_limit`: các máy đang kích hoạt.
+    /// `409 key_in_use`: các máy khác đang giữ key; `409 license_conflict`: mọi máy đang kích hoạt (spec 2026-10-07 §4.1).
     pub devices: Vec<Device>,
+    /// `409 license_conflict` của `activate`: activation của chính máy vừa gọi (spec 2026-10-07 §4.1).
+    pub activation_id: Option<String>,
     /// `403 license_expired`.
     pub expires_at: Option<i64>,
     /// `400 invalid_request`: trường sai.
@@ -55,8 +57,8 @@ impl std::fmt::Display for ServerError {
     }
 }
 
-/// Một máy đã kích hoạt, trong `409 device_limit`. `device_label` có thể là `null` (ví dụ sau khi admin xóa dữ liệu cá
-/// nhân): giao diện hiện tên thay thế.
+/// Một máy đang kích hoạt, trong `409 key_in_use` hay `409 license_conflict`. `device_label` có thể là `null` (ví dụ sau
+/// khi admin xóa dữ liệu cá nhân): giao diện hiện tên thay thế.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, serde::Serialize)]
 pub struct Device {
     pub activation_id: String,
@@ -71,6 +73,16 @@ pub struct Granted {
     pub token: String,
     pub activation_id: String,
     pub quota_fresh: bool,
+}
+
+/// Token dùng thử server vừa cấp (`POST /v1/trial`, spec 2026-10-07 §3.1). App đọc lại các mốc từ token đã kiểm chữ ký;
+/// các trường ngoài token chỉ để log và test.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+pub struct TrialGrant {
+    pub token: String,
+    pub started_at: i64,
+    pub ends_at: i64,
+    pub issued_at: i64,
 }
 
 /// Một gói đang bán (`GET /v1/plans`).
@@ -122,10 +134,19 @@ pub trait LicenseApi: Send + Sync {
     fn plans(&self) -> Reply<Vec<PlanOffer>>;
     fn checkout(&self, plan: &str, email: &str, license_key: Option<&str>) -> Reply<Checkout>;
     fn order(&self, order_code: i64, order_token: &str) -> Reply<OrderStatus>;
-    fn activate(&self, key: &str, device_id_hash: &str, device_label: Option<&str>) -> Reply<Granted>;
+    /// `allow_conflict`: người dùng đã chọn "Vẫn kích hoạt" khi key đang dùng ở máy khác (spec 2026-10-07 §4.2).
+    fn activate(
+        &self,
+        key: &str,
+        device_id_hash: &str,
+        device_label: Option<&str>,
+        allow_conflict: bool,
+    ) -> Reply<Granted>;
     fn validate(&self, key: &str, activation_id: &str) -> Reply<Granted>;
     fn deactivate(&self, key: &str, activation_id: &str) -> Reply<()>;
     fn recover(&self, email: &str) -> Reply<()>;
+    /// Đăng ký dùng thử của máy này, hay lấy lại token của lần đăng ký trước (spec 2026-10-07 §3.1).
+    fn trial(&self, device_id_hash: &str) -> Reply<TrialGrant>;
 }
 
 /// Client HTTP thật.
@@ -227,7 +248,7 @@ impl HttpApi {
         let result = if (200..300).contains(&status) {
             serde_json::from_slice::<T>(&bytes).map_err(|e| ApiError::Decode(e.to_string()))
         } else {
-            Err(ApiError::Server(server_error(status, retry_after, &bytes)))
+            Err(ApiError::Server(Box::new(server_error(status, retry_after, &bytes))))
         };
         Reply { result, date }
     }
@@ -243,7 +264,7 @@ pub fn parse_http_date(value: &str) -> Option<i64> {
 fn server_error(status: u16, retry_after: Option<u64>, body: &[u8]) -> ServerError {
     let v: Value = serde_json::from_slice(body).unwrap_or(Value::Null);
     let devices = v
-        .get("activations")
+        .get("devices")
         .cloned()
         .and_then(|a| serde_json::from_value::<Vec<Device>>(a).ok())
         .unwrap_or_default();
@@ -255,6 +276,7 @@ fn server_error(status: u16, retry_after: Option<u64>, body: &[u8]) -> ServerErr
             .map_or_else(|| format!("http_{status}"), String::from),
         retry_after,
         devices,
+        activation_id: v.get("activation_id").and_then(Value::as_str).map(String::from),
         expires_at: v.get("expires_at").and_then(Value::as_i64),
         field: v.get("field").and_then(Value::as_str).map(String::from),
     }
@@ -296,8 +318,17 @@ impl LicenseApi for HttpApi {
         self.call("GET", &format!("/v1/orders/{order_code}"), None, Some(order_token))
     }
 
-    fn activate(&self, key: &str, device_id_hash: &str, device_label: Option<&str>) -> Reply<Granted> {
-        let body = json!({ "key": key, "device_id_hash": device_id_hash, "device_label": device_label });
+    fn activate(
+        &self,
+        key: &str,
+        device_id_hash: &str,
+        device_label: Option<&str>,
+        allow_conflict: bool,
+    ) -> Reply<Granted> {
+        let mut body = json!({ "key": key, "device_id_hash": device_id_hash, "device_label": device_label });
+        if allow_conflict {
+            body["allow_conflict"] = json!(true);
+        }
         self.call("POST", "/v1/licenses/activate", Some(body), None)
     }
 
@@ -313,6 +344,15 @@ impl LicenseApi for HttpApi {
 
     fn recover(&self, email: &str) -> Reply<()> {
         unit(self.call::<Ok200>("POST", "/v1/licenses/recover", Some(json!({ "email": email })), None))
+    }
+
+    fn trial(&self, device_id_hash: &str) -> Reply<TrialGrant> {
+        self.call(
+            "POST",
+            "/v1/trial",
+            Some(json!({ "device_id_hash": device_id_hash })),
+            None,
+        )
     }
 }
 
@@ -384,6 +424,47 @@ mod tests {
         (base, seen)
     }
 
+    /// `allow_conflict` chỉ gửi khi người dùng chọn "Vẫn kích hoạt" (spec 2026-10-07 §4.2).
+    #[test]
+    fn activate_sends_allow_conflict_only_when_asked() {
+        let body = r#"{"token":"v1.a.b","activation_id":"act","quota_fresh":false}"#;
+        let (base, seen) = serve(vec![(200, vec![], body), (200, vec![], body)]);
+        let api = HttpApi::new(accept_base(&base, true));
+        api.activate("KEY", "ab12", None, false).result.unwrap();
+        api.activate("KEY", "ab12", None, true).result.unwrap();
+        let reqs = seen.lock().unwrap().clone();
+        assert_eq!(
+            reqs[0].body,
+            json!({ "key": "KEY", "device_id_hash": "ab12", "device_label": null })
+        );
+        assert_eq!(reqs[1].body["allow_conflict"], true);
+    }
+
+    /// Đăng ký dùng thử (spec 2026-10-07 §3.1): gửi `device_id_hash`, đọc token và các mốc.
+    #[test]
+    fn trial_sends_the_device_and_reads_the_token() {
+        let (base, seen) = serve(vec![(
+            200,
+            vec![],
+            r#"{"token":"v1.t.s","started_at":10,"ends_at":20,"issued_at":11}"#,
+        )]);
+        let api = HttpApi::new(accept_base(&base, true));
+        let reply = api.trial("ab12");
+        assert_eq!(
+            reply.result.unwrap(),
+            TrialGrant {
+                token: "v1.t.s".into(),
+                started_at: 10,
+                ends_at: 20,
+                issued_at: 11,
+            }
+        );
+        assert_eq!(reply.date, Some(1_790_812_800));
+        let req = seen.lock().unwrap()[0].clone();
+        assert_eq!((req.method.as_str(), req.path.as_str()), ("POST", "/v1/trial"));
+        assert_eq!(req.body, json!({ "device_id_hash": "ab12" }));
+    }
+
     #[test]
     fn activate_sends_the_device_and_reads_the_token_and_the_server_date() {
         let (base, seen) = serve(vec![(
@@ -392,7 +473,7 @@ mod tests {
             r#"{"token":"v1.a.b","activation_id":"act","activation_created_at":1,"plan":"monthly","expires_at":2,"cycle_anchor":1,"quota_minutes_per_cycle":1800,"quota_epoch":0,"quota_fresh":true,"refresh_before":3}"#,
         )]);
         let api = HttpApi::new(accept_base(&base, true));
-        let reply = api.activate("KEY", "ab12", Some("Máy của Phong"));
+        let reply = api.activate("KEY", "ab12", Some("Máy của Phong"), false);
         let granted = reply.result.unwrap();
         assert_eq!(
             (
@@ -424,19 +505,29 @@ mod tests {
             (
                 409,
                 vec![],
-                r#"{"error":"device_limit","activations":[{"activation_id":"a1","device_label":null,"last_validated_at":5},{"activation_id":"a2","device_label":"Mac","last_validated_at":null}]}"#,
+                r#"{"error":"key_in_use","devices":[{"activation_id":"a1","device_label":null,"last_validated_at":5}]}"#,
+            ),
+            (
+                409,
+                vec![],
+                r#"{"error":"license_conflict","activation_id":"a2","devices":[{"activation_id":"a1","device_label":null,"last_validated_at":5},{"activation_id":"a2","device_label":"Mac","last_validated_at":null}]}"#,
             ),
             (429, vec![("Retry-After", "120")], r#"{"error":"rate_limited"}"#),
             (403, vec![], r#"{"error":"license_expired","expires_at":1790000000}"#),
             (502, vec![], "not json"),
         ]);
         let api = HttpApi::new(accept_base(&base, true));
-        let Err(ApiError::Server(e)) = api.activate("K", "d", None).result else {
+        let Err(ApiError::Server(e)) = api.activate("K", "d", None, false).result else {
             panic!()
         };
-        assert_eq!((e.status, e.code.as_str()), (409, "device_limit"));
-        assert_eq!(e.devices.len(), 2);
+        assert_eq!((e.status, e.code.as_str(), e.devices.len()), (409, "key_in_use", 1));
         assert_eq!(e.devices[0].device_label, None, "`device_label` có thể là null");
+        let Err(ApiError::Server(e)) = api.activate("K", "d", None, true).result else {
+            panic!()
+        };
+        assert_eq!((e.code.as_str(), e.devices.len()), ("license_conflict", 2));
+        assert_eq!(e.devices[1].device_label.as_deref(), Some("Mac"));
+        assert_eq!(e.activation_id.as_deref(), Some("a2"), "activation của chính máy gọi");
         let Err(ApiError::Server(e)) = api.validate("K", "a").result else {
             panic!()
         };

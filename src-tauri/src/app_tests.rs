@@ -1601,16 +1601,19 @@ fn activating_a_full_key_returns_its_devices() {
     let app = mock_app();
     let main = window(&app, "main");
     let (api, _) = license_for(&app);
-    api.replies.lock().unwrap().push_back(Err(ApiError::Server(ServerError {
-        status: 409,
-        code: "device_limit".into(),
-        devices: vec![Device {
-            activation_id: "a1".into(),
-            device_label: None,
-            last_validated_at: Some(1),
-        }],
-        ..ServerError::default()
-    })));
+    api.replies
+        .lock()
+        .unwrap()
+        .push_back(Err(ApiError::Server(Box::new(ServerError {
+            status: 409,
+            code: "device_limit".into(),
+            devices: vec![Device {
+                activation_id: "a1".into(),
+                device_label: None,
+                last_validated_at: Some(1),
+            }],
+            ..ServerError::default()
+        }))));
     let out = invoke(
         &main,
         "activate_license",
