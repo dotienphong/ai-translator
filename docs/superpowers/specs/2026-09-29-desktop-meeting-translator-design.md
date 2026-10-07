@@ -589,15 +589,15 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - Webhook là một route chung `/v1/webhooks/{provider}`; server chọn cổng theo cột `provider` của đơn. Thêm một cổng khác chỉ cần viết thêm một cài đặt. License, token bản quyền và app đều không phải sửa.
 - Bảng đơn hàng lưu thêm `provider` và `currency`. Mỗi gói trả phí có giá riêng theo từng loại tiền.
 - License chỉ quan tâm gói, `expires_at` và `cycle_anchor`, không quan tâm tiền đến từ đâu. Vì vậy cả hai kiểu thanh toán đều dùng chung được:
-  - Gói trả trước của PayOS: mỗi đơn là 30 ngày, theo luật ở "Mua thêm và đổi gói".
-  - Thuê bao tự gia hạn của cổng quốc tế: mỗi webhook gia hạn cộng thêm một kỳ 30 ngày; khách hủy thì ngừng cộng.
+  - Gói trả trước của PayOS: mỗi đơn là số ngày mỗi đơn của gói (`days_per_order`: Monthly 30, Yearly 365), theo luật ở "Mua thêm và đổi gói".
+  - Thuê bao tự gia hạn của cổng quốc tế: mỗi webhook gia hạn cộng thêm một kỳ bằng số ngày mỗi đơn của gói; khách hủy thì ngừng cộng.
 
 **Gói và bảng giá:**
-- Bốn gói ở §2. Server giữ bảng gói trả phí trong biến cấu hình `PLANS` (một môi trường, production, §6.13): với mỗi mã gói có hạn mức mỗi chu kỳ (`quota_minutes_per_cycle`, `null` là không giới hạn), số ngày mỗi đơn (30), giá theo từng loại tiền. Đổi giá hay hạn mức không cần phát hành lại app.
-- Mã gói và tên hiển thị (`Professional`, `Professional X2`, `Professional X5`) là hợp đồng với app, nên nằm trong code server, không nằm trong `PLANS` (kế hoạch 05, QĐ17). `GET /v1/plans` trả cả hai cùng bảng gói.
+- Ba gói ở §2: Free (dùng thử, không bán) và hai gói trả phí. Server giữ bảng gói trả phí trong biến cấu hình `PLANS` (một môi trường, production, §6.13): với mỗi mã gói có hạn mức mỗi chu kỳ (`quota_minutes_per_cycle`, `null` là không giới hạn), số ngày mỗi đơn (`days_per_order`: Monthly 30, Yearly 365), giá theo từng loại tiền. Đổi giá hay hạn mức không cần phát hành lại app.
+- Mã gói (`monthly`, `yearly`) và tên hiển thị (`Monthly`, `Yearly`) là hợp đồng với app, nên nằm trong code server, không nằm trong `PLANS` (kế hoạch 05, QĐ17). `GET /v1/plans` trả cả hai cùng bảng gói.
 - **Đổi hạn mức trong `PLANS`** có tác dụng ngay với mọi license đang dùng gói đó, ở lần `validate` sau, vì token lấy hạn mức từ bảng hiện hành. Vì vậy người vận hành **không được hạ hạn mức của một gói đang bán**: khách đã trả tiền cho hạn mức cũ. Muốn bán hạn mức thấp hơn thì thêm gói mới.
 - Server chưa cấu hình `PLANS` thì `GET /v1/plans`, checkout, `activate` và `validate` đều trả `503 pricing_not_configured`, để không bao giờ bán sai giá hay cấp token thiếu hạn mức.
-- Hạn mức Free (10 phút mỗi ngày) là hằng số phía app, vì Free không có token.
+- Hạn mức Free (30 phút mỗi ngày) là hằng số phía app, vì Free không có token bản quyền. Thời hạn dùng thử Free là biến cấu hình `TRIAL_DAYS` của server (production: 10; "Dùng thử Free" ở mục "Hạn mức").
 
 **Mua thêm và đổi gói:**
 - Server tính khi xác nhận đã nhận tiền (webhook, đối soát, hoặc admin cấp tay), theo gói và hạn của license tại "hiện tại".
@@ -605,21 +605,22 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - `transactionDateTime` có thể là giờ Việt Nam không kèm múi giờ (dạng `2026-10-01 14:30:00`), và tài liệu PayOS không ghi múi giờ. Server parse giá trị không có múi giờ theo GMT+7, và nhận cả ISO 8601 có múi giờ. Đây là giả định cần kiểm (§14, giả định 11).
   - Admin cấp tay dùng thời điểm thao tác, kể cả với đơn `underpaid` mà khách đã chuyển bù.
   - **"Hiện tại" khi áp đơn không được sớm hơn `cycle_anchor` đang có của license.** Luật này dùng khi các đơn được áp không theo thứ tự thanh toán: đơn trả sớm hơn mà được xử lý sau một đơn trả muộn hơn (ví dụ webhook tới không theo thứ tự) thì tính tại `cycle_anchor` của license. Nhờ vậy `cycle_anchor` không bao giờ lùi.
-- **License mới:** `plan` là gói của đơn; `expires_at` = hiện tại + 30 ngày; `cycle_anchor` = hiện tại.
-- **Mua thêm cùng gói:** `expires_at` cộng 30 ngày, tính từ max(hiện tại, `expires_at`). `cycle_anchor` giữ nguyên; nếu license đã hết hạn thì `cycle_anchor` = hiện tại.
+- **License mới:** `plan` là gói của đơn; `expires_at` = hiện tại + số ngày mỗi đơn của gói; `cycle_anchor` = hiện tại.
+- **Mua thêm cùng gói:** `expires_at` cộng số ngày mỗi đơn của gói (30 hay 365), tính từ max(hiện tại, `expires_at`). `cycle_anchor` giữ nguyên; nếu license đã hết hạn thì `cycle_anchor` = hiện tại.
 - **Đổi gói khi license còn hạn** (lên gói hay xuống gói đều làm như nhau):
   - Gói mới bắt đầu ngay: `plan` = gói mới, `cycle_anchor` = hiện tại, hạn mức của chu kỳ mới tính đầy đủ.
-  - Số ngày còn lại của gói cũ được quy ra tiền theo giá gói cũ, rồi đổi sang ngày của gói mới, làm tròn xuống:
-    `ngày_quy_đổi = floor(ngày_còn_lại × giá_cũ / giá_mới)`.
+  - Số ngày còn lại của gói cũ được quy ra tiền theo giá mỗi ngày của gói cũ, rồi đổi sang ngày theo giá mỗi ngày của gói mới, làm tròn xuống (hai gói có số ngày mỗi đơn khác nhau, nên phải so giá mỗi ngày):
+    `ngày_quy_đổi = floor(ngày_còn_lại × (giá_cũ / số_ngày_cũ) / (giá_mới / số_ngày_mới))`.
     - `ngày_còn_lại` = (`expires_at` − hiện tại) / 1 ngày, giữ cả phần lẻ.
-    - `giá_cũ` và `giá_mới` lấy theo bảng giá hiện hành, cùng loại tiền với đơn.
-  - `expires_at` = hiện tại + 30 ngày + `ngày_quy_đổi`.
+    - `giá_cũ`, `giá_mới` lấy theo bảng giá hiện hành, cùng loại tiền với đơn; `số_ngày_cũ`, `số_ngày_mới` là `days_per_order` của hai gói trong bảng hiện hành.
+    - Server tính bằng BigInt trên giây để làm tròn xuống chính xác: `floor(giây_còn_lại × giá_cũ × số_ngày_mới / (giá_mới × số_ngày_cũ × 86400))`.
+  - `expires_at` = hiện tại + số ngày mỗi đơn của gói mới + `ngày_quy_đổi`.
   - Không hoàn tiền.
-  - Ví dụ lên gói: Professional còn 20 ngày, mua X2. Ta có 20 × 50.000 / 150.000 = 6,67, làm tròn xuống 6 ngày. X2 chạy trong 36 ngày.
-  - Ví dụ xuống gói: X2 còn 10 ngày, mua Professional. Ta có 10 × 150.000 / 50.000 = 30 ngày. Professional chạy trong 60 ngày.
+  - Ví dụ lên gói: Monthly còn 20 ngày, mua Yearly. Ta có 20 × (50.000 / 30) / (500.000 / 365) = 24,33, làm tròn xuống 24 ngày. Yearly chạy trong 389 ngày.
+  - Ví dụ xuống gói: Yearly còn 200 ngày, mua Monthly. Ta có 200 × (500.000 / 365) / (50.000 / 30) = 164,38, làm tròn xuống 164 ngày. Monthly chạy trong 194 ngày.
 - **License đã hết hạn mà mua gói khác:** tính như license mới, nhưng giữ key cũ.
 - Đơn gia hạn hay đổi gói: response của checkout có thêm ước tính `license_expires_at`, tính theo thời điểm tạo đơn, để app hiện trước cho người dùng. Số chính thức tính theo thời điểm thanh toán, muộn hơn lúc tạo đơn tối đa 15 phút (thời hạn của link). Vì vậy `expires_at` chính thức muộn hơn ước tính tối đa 15 phút; riêng khi đổi gói, `ngày_quy_đổi` có thể ít hơn ước tính 1 ngày, vì `ngày_còn_lại` giảm và phép làm tròn xuống.
-- Máy thứ hai của cùng key nhận gói mới ở lần `validate` kế tiếp ("Kiểm tra định kỳ" bên dưới); trước đó máy đó vẫn dùng token cũ.
+- Đơn gia hạn hay đổi gói tạo từ máy đang giữ key thì máy đó gọi `validate` ngay khi đơn được trả (bước 4 của "Mua ngay trong app"). Đơn áp vào license theo cách khác (admin cấp tay) thì máy nhận gói mới ở lần `validate` kế tiếp ("Kiểm tra định kỳ" bên dưới).
 
 **API của license server:**
 - Mọi body là JSON. Tên trường dùng `snake_case` cho cả request lẫn response (`order_code`, `checkout_url`, `qr_code`, `order_token`, `license_key`…); chỉ khi gọi PayOS mới dùng `camelCase` của PayOS.
