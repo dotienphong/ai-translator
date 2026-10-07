@@ -1,6 +1,6 @@
 # AI Translator Privacy Policy
 
-**Version 1.0, effective 6 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.1, effective 7 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 ## 1. Who is responsible for your data
 
@@ -10,7 +10,7 @@ AI Translator (the "app") is developed and operated by **Do Tien Phong** (an ind
 
 - Meeting audio is processed **entirely on your computer**. Audio is **never** sent anywhere and is not written to disk.
 - The app has **no sign-in accounts, no advertising, no analytics, and no automatic crash reports**.
-- Our servers only store your **email** (when you buy a plan), order details, your license and a hashed machine identifier, in order to issue keys and check licenses.
+- Our servers only store your **email** (when you buy a plan), order details, your license and a hashed machine identifier, in order to issue keys, check licenses and make sure each machine gets the Free trial only once.
 - Personal data on our servers is **kept until you ask us to delete it** (section 7).
 
 ## 3. Data that stays on your computer (not sent to us)
@@ -20,7 +20,7 @@ AI Translator (the "app") is developed and operated by **Do Tien Phong** (an ind
 | System audio being captured | Held only in RAM while translating; never written to disk or sent over the network |
 | Transcripts and translations | Shown on screen. **History is off by default.** If you turn it on, it is stored on your computer, encrypted, and can be deleted with one button |
 | Glossary, settings | Stored on your computer |
-| History encryption key, license token, usage counters | Stored in the operating system's key store (macOS Keychain, Windows Credential Manager) |
+| History encryption key, license token, trial token, usage counters | Stored in the operating system's key store (macOS Keychain, Windows Credential Manager) |
 | Activity logs | Stored on your computer; they do not contain transcript text. If you want support, you send them to us yourself |
 | Recognition and translation models | Downloaded once, then run entirely on your computer |
 
@@ -31,14 +31,14 @@ The app's helper programs only listen on `127.0.0.1` (your own machine) or open 
 The app connects to the network only to:
 1. **Download models** and check for new model versions (from `releases.aitranslator.io.vn`).
 2. **Check for app updates** (from `releases.aitranslator.io.vn`).
-3. **Talk to our license server** (`api.aitranslator.io.vn`): when you buy a plan, activate or deactivate, recover a key, check your license periodically, and (rarely) ask for the server's time when your computer's clock looks wrong. Asking for the time sends none of your data.
+3. **Talk to our license server** (`api.aitranslator.io.vn`): when registering the Free trial (the first time you open the app, right after you accept the terms; this sends a hash of the machine ID), when you buy a plan, activate or deactivate, recover a key, check your license periodically, and (rarely) ask for the server's time when your computer's clock looks wrong. Asking for the time sends none of your data.
 4. **The payment page** provided by PayOS, opened in your browser when you buy a plan.
 
 There are no other connections, and none carries audio or transcript text.
 
 ## 5. Data we store on our servers
 
-Only if you use a paid plan (or activate a key), our servers store:
+Our servers store the data below. The "Free trial" row applies to every machine that has opened the app with a network connection; the other rows only apply when you buy a plan or activate a key:
 
 | Data | Purpose |
 |---|---|
@@ -46,11 +46,12 @@ Only if you use a paid plan (or activate a key), our servers store:
 | When you consented to us processing your email | Proof that you consented |
 | Orders: order code, plan, amount, payment time, status | Issue and renew licenses; reconciliation; accounting obligations |
 | License: key, plan, expiry date, usage cycle | Grant the paid plan |
-| Activated machines: a **hash** of the machine ID, the computer name (`device_label`) and the last license check | Enforce the 2-machine limit, prevent abuse, help you recognize a machine to remove |
+| Free trial: a **hash** of the machine ID, when the trial started and ends, the app's last call | Each machine gets the 10-day trial only once, even after reinstalling the app |
+| Activated machines: a **hash** of the machine ID, the computer name (`device_label`) and the last license check | Enforce one machine per key, prevent abuse, help you recognize a machine to remove |
 | A change log of licenses (who did what, when) | Support, fraud prevention, incident investigation |
 | Rate-limit counters (only HMAC hashes of IP, key, email; expire after about 3 hours) | Block key guessing and spam |
 
-We do **not** receive your bank account, card or financial details (the transfer is handled by your bank and PayOS). We do **not** send your email to PayOS. If you only use the Free plan and never buy or activate a key, we store **nothing** about you on our servers.
+We do **not** receive your bank account, card or financial details (the transfer is handled by your bank and PayOS). We do **not** send your email to PayOS. If you only use the Free plan and never buy or activate a key, we store only the "Free trial" row above: no email, computer name or any other information about you.
 
 ## 6. Third parties that process data, and transfers abroad
 
@@ -70,7 +71,7 @@ You have the right to know what is stored, to request **deletion** or **anonymiz
 
 When you ask for deletion we will:
 - **remove** your email and computer name;
-- **keep** the hash of the machine ID (pseudonymous data, only to prevent abuse: the 2-machine limit, the temporary lock for excessive machine switching, reusing the correct activation when you re-activate the same machine);
+- **keep** the hash of the machine ID (pseudonymous data, only to prevent abuse: one machine per key, the temporary lock for excessive machine switching, reusing the correct activation when you re-activate the same machine, one Free trial per machine);
 - **keep** the time you consented to email processing (proof of earlier consent);
 - **keep** the order row at the level accounting requires: order code, date, amount.
 
