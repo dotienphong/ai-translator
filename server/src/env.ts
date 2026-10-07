@@ -50,6 +50,8 @@ export interface AdminEnv {
   API_ORIGIN?: string;
   /** Service binding tới entrypoint AdminRpc của Worker API cùng môi trường. */
   API: ApiRpc;
+  /** Trang Web Admin đã build (admin-ui/dist), khối `assets` của wrangler.admin.jsonc. Thiếu (test) thì trang trả 404. */
+  ASSETS?: Fetcher;
   // Secret
   PAYOS_CLIENT_ID: string;
   PAYOS_API_KEY: string;

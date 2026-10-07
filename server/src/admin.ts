@@ -5,6 +5,8 @@
 // (chỉ trả email của chính người vận hành), request không qua Access hay chống CSRF, và các request sai input hay không
 // tìm thấy khác (400, 404).
 import { type Context, Hono } from "hono";
+import { secureHeaders } from "hono/secure-headers";
+import { ADMIN_SECURE_HEADERS, registerAssets } from "./admin-assets";
 import { type AdminAppEnv, type AdminDeps, crossSite, useAdminAuth } from "./admin-auth";
 import { registerAdminRead } from "./admin-read";
 import { audit, auditIfChanged, auditStatement } from "./audit";
@@ -33,6 +35,13 @@ async function licenseWithOrders(db: D1Database, id: string) {
 
 export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
   const app = new Hono<AdminAppEnv>();
+  // Đứng trước lớp kiểm Access để cả phản hồi 403 cũng có header bảo mật.
+  app.use("*", secureHeaders(ADMIN_SECURE_HEADERS));
+  // Dữ liệu của /admin/* có email khách: không để trình duyệt hay proxy giữ lại (kể cả 403, 404).
+  app.use("/admin/*", async (c, next) => {
+    await next();
+    c.header("cache-control", "no-store");
+  });
   useAdminAuth(app, makeDeps);
   registerAdminRead(app);
 
@@ -546,6 +555,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     return c.json({ ok: true, webhook_url: url.href });
   });
 
+  registerAssets(app);
   app.notFound((c) => fail(c, 404, "not_found"));
   app.onError((err, c) => {
     console.error(JSON.stringify({ event: "admin_unhandled", name: err.name, message: err.message }));
