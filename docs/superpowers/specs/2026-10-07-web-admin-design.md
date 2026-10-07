@@ -51,7 +51,7 @@ Trình duyệt ──► Cloudflare Access ──► Worker mt-license-admin (wo
   - `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`.
   - Không script inline, không lấy font hay script từ CDN; mọi thứ đóng gói sẵn.
 - **Thư viện:** chỉ `react`, `react-dom` cho chạy; router và lớp gọi API tự viết (khoảng 10 route). Phiên bản chốt ở bước lập kế hoạch theo §6.12: bản ổn định mới nhất, cùng dòng với app desktop (React 19, Vite, TypeScript) khi được, kiểm tương thích và peer dependency.
-- **Triển khai:** `pnpm --filter admin-ui build` rồi `wrangler deploy -c wrangler.admin.jsonc`. `pnpm check` của `server/` thêm build và test của `admin-ui`; `dry-run` của Worker admin chạy sau khi build để kiểm cả assets.
+- **Triển khai:** `pnpm ui:build` (script của `server/package.json`) rồi `wrangler deploy -c wrangler.admin.jsonc`. `pnpm check` của `server/` thêm build và test của `admin-ui`; `dry-run` của Worker admin chạy sau khi build để kiểm cả assets.
 
 ---
 

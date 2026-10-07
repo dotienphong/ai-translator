@@ -77,3 +77,21 @@ test("Worker admin phục vụ trang Web Admin qua ASSETS, sau lớp kiểm Acce
   });
   assert.equal("assets" in api, false, "Worker API không phục vụ trang");
 });
+
+test("ACCESS_AUD của Worker admin là audience tag thật (64 ký tự hex), không để trống (spec Web Admin §2)", () => {
+  assert.match(admin.vars.ACCESS_AUD, /^[0-9a-f]{64}$/);
+});
+
+test("package.json: ui:build và ui:check báo lỗi khi tên package sai, và check chạy ui:check trước dry-run", () => {
+  const { scripts } = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  // pnpm thoát mã 0 khi --filter không khớp package nào (kể cả sau khi đổi tên package): thiếu cờ này thì
+  // `pnpm check` vẫn xanh dù UI không được build hay test, rồi deploy Worker admin với dist cũ hay trống.
+  for (const name of ["ui:build", "ui:check"]) {
+    assert.match(scripts[name], /--fail-if-no-match/, `${name} thiếu --fail-if-no-match`);
+    assert.match(scripts[name], /--filter mt-license-admin-ui\b/, `${name} sai tên package`);
+  }
+  const steps = scripts.check.split("&&").map((step) => step.trim());
+  const uiCheck = steps.indexOf("pnpm ui:check");
+  assert.notEqual(uiCheck, -1, "check phải chạy ui:check");
+  assert.ok(steps.indexOf("pnpm dry-run") > uiCheck, "dry-run phải chạy sau ui:check để kiểm cả assets đã build");
+});

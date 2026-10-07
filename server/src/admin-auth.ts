@@ -33,8 +33,8 @@ export function crossSite(c: Context): boolean {
 
 /**
  * Gắn cho mọi route của `app`: kiểm Access và danh tính, chống CSRF, giới hạn body 16 KiB.
- * Phải gọi ngay sau `new Hono`, trước mọi `app.get/post/use` và `registerX`: Hono không áp middleware cho route đăng ký
- * trước nó, route đó sẽ mở hoàn toàn mà không báo lỗi.
+ * Phải gọi trước mọi route và `registerX`: Hono không áp middleware cho route đăng ký trước nó, route đó sẽ mở hoàn toàn
+ * mà không báo lỗi. Chỉ các middleware gắn header (không trả dữ liệu) được đứng trước.
  */
 export function useAdminAuth(app: Hono<AdminAppEnv>, makeDeps: (env: AdminEnv) => AdminDeps): void {
   app.use("*", async (c, next) => {

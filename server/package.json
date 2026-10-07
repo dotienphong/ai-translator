@@ -13,8 +13,8 @@
     "test:scripts": "node --test 'test/node/*.test.mjs'",
     "vectors": "node scripts/gen-token-vectors.mjs > test/vectors/token-v1.json",
     "vectors:check": "node scripts/gen-token-vectors.mjs | cmp - test/vectors/token-v1.json",
-    "ui:build": "pnpm --filter mt-license-admin-ui build",
-    "ui:check": "pnpm --filter mt-license-admin-ui check",
+    "ui:build": "pnpm --fail-if-no-match --filter mt-license-admin-ui build",
+    "ui:check": "pnpm --fail-if-no-match --filter mt-license-admin-ui check",
     "dry-run": "wrangler deploy --dry-run && wrangler deploy --dry-run -c wrangler.admin.jsonc",
     "check": "pnpm typecheck && pnpm vectors:check && pnpm test && pnpm test:scripts && pnpm ui:check && pnpm dry-run"
   },

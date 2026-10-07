@@ -1,6 +1,6 @@
 // Trang Web Admin (spec 2026-10-07 Web Admin §2): SPA build từ admin-ui/, phục vụ qua binding ASSETS. wrangler.admin.jsonc
-// sẽ đặt run_worker_first: true (việc của kế hoạch 02, chưa có ở commit này), khi đó mọi request, kể cả file tĩnh, đi qua
-// middleware kiểm Access (admin-auth.ts) trước khi tới đây.
+// đặt run_worker_first: true, nên mọi request, kể cả file tĩnh, đi qua middleware kiểm Access (admin-auth.ts) trước khi
+// tới đây.
 // Header bảo mật gắn cho mọi phản hồi của Worker admin (trang, JSON, 403).
 // Cache-Control: trang HTML đặt no-store, vì trang đã vẽ email khách vào DOM: trình duyệt giữ trang trong bfcache thì sau khi
 // đăng xuất Access, nút Back vẫn hiện lại nguyên DOM đó. File tĩnh băm tên (JS, CSS) không chứa dữ liệu khách nên giữ header của ASSETS.
