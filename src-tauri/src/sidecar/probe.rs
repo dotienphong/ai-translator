@@ -33,6 +33,13 @@ fn any_usable(gpus: &[GpuInfo]) -> bool {
         .any(|g| matches!(g.device_type.as_str(), "discrete" | "integrated"))
 }
 
+/// Máy chỉ có GPU tích hợp, không có card rời. `asr-worker` vẫn chạy GPU (nhanh hơn CPU khoảng 4–5 lần), nhưng
+/// `llama-server` chạy CPU: hai engine dùng chung một iGPU thì tranh nhau, và với Iris Xe, Hy-MT2 Q4_K_M chạy CPU sinh
+/// chữ nhanh hơn (44 so với 27 tok/s). Đo trên i5-1345U, `bench/phase0/results/s6_windows.md` mục "Llama chạy CPU".
+pub fn only_integrated_gpu(gpus: &[GpuInfo]) -> bool {
+    !gpus.iter().any(|g| g.device_type == "discrete") && gpus.iter().any(|g| g.device_type == "integrated")
+}
+
 /// Có GPU chạy được Vulkan không: card rời hoặc GPU tích hợp.
 pub fn usable_gpu(probe_stdout: &str) -> bool {
     any_usable(&parse_gpus(probe_stdout))
@@ -129,6 +136,24 @@ mod tests {
             "đọc hết, không để tiến trình nghẽn"
         );
         assert_eq!(read_capped(&b"[]"[..], PROBE_STDOUT_MAX), "[]");
+    }
+
+    #[test]
+    fn only_an_integrated_gpu_sends_llama_to_the_cpu() {
+        let integrated = parse_gpus(
+            r#"[{"name":"Intel(R) Iris(R) Xe","device_type":"integrated","device_local_bytes":16999974912,"vendor_id":32902}]"#,
+        );
+        let discrete = parse_gpus(
+            r#"[{"name":"NVIDIA GeForce RTX 4050 Laptop GPU","device_type":"discrete","device_local_bytes":6425673728,"vendor_id":4318}]"#,
+        );
+        let both = parse_gpus(
+            r#"[{"name":"Intel(R) UHD","device_type":"integrated","device_local_bytes":268435456,"vendor_id":32902},
+            {"name":"NVIDIA GeForce RTX 4050 Laptop GPU","device_type":"discrete","device_local_bytes":6425673728,"vendor_id":4318}]"#,
+        );
+        assert!(only_integrated_gpu(&integrated));
+        assert!(!only_integrated_gpu(&discrete), "card rời: giữ llama-server trên GPU");
+        assert!(!only_integrated_gpu(&both), "có cả card rời: giữ trên GPU");
+        assert!(!only_integrated_gpu(&[]), "không có GPU: đã chạy CPU sẵn");
     }
 
     #[test]

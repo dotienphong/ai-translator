@@ -40,3 +40,17 @@ VRAM (Windows, `vram_peak.py`): GPU tích hợp không có VRAM riêng (riêng l
 - **Máy tối thiểu (Windows 8 GB, chỉ CPU):** vẫn **chưa đo**. Trên một máy CPU mạnh hơn nhiều, gói Nhẹ chỉ CPU đã chỉ đạt ngưỡng 3,5 s ở 5/6 session, và RAM của hai tiến trình phụ khoảng 2,4 GB. Máy 8 GB thật (CPU 4 nhân, đời cũ hơn) nhiều khả năng chậm hơn, nên điều kiện p50 ≤ 3,5 s của cổng §13 vẫn là **rủi ro chưa giải quyết**, không nên coi kết quả này là đủ để qua cổng.
 - **Chưa đo:** card rời 6 GB và 4 GB (ngưỡng VRAM §6.7), M1 16 GB, máy 8 GB chỉ CPU thật.
 - **Lưu ý khi dùng số cũ:** nếu có số `asr-worker-cpu` nào trên Windows do bản build trước bản vá 0003 sinh ra thì không dùng được (chậm gấp khoảng 14 lần); xem `s3_windows.md`.
+
+## Llama chạy CPU, Whisper chạy iGPU (2026-10-07)
+
+Cùng máy, gói Nhẹ (small + Q4_K_M), session en, ja, mixed, mỗi cấu hình một lượt. Chỉ khác `--llama-args="-ngl 0"` (llama-server chạy CPU, `asr-worker` vẫn Vulkan). Số gốc: `latency/opt-i5-1345u-thu-nhe-*.json` (cả hai Vulkan) và `latency/opt-i5-1345u-thu-nhe-ngl-0-*.json` (llama CPU).
+
+| Cấu hình | p50 (en / ja / mixed) | p90 | Dịch p50 |
+|---|---|---|---|
+| Whisper iGPU + Llama iGPU | 2,39 / 2,28 / 2,06 s | 3,21 / 3,58 / 3,08 s | 1,28 / 1,51 / 1,19 s |
+| Whisper iGPU + **Llama CPU** | **1,84 / 2,02 / 1,82 s** | **2,49 / 2,61 / 2,83 s** | **0,88 / 1,18 / 0,91 s** |
+
+- Đo riêng `llama-server` (3 câu × 2 lượt): CPU sinh 44 tok/s, Vulkan Iris Xe 27 tok/s; xử lý prompt Vulkan nhanh hơn (~205 so với 300–400 ms) nhưng sinh chữ chậm hơn nên tổng mỗi câu CPU 0,84–1,09 s, Vulkan 1,02–1,32 s.
+- Khi hai engine cùng dùng iGPU, log `llama-server` của app ghi những lần xử lý prompt 5–8 token mất 1,6–2,6 s (bình thường ~100 ms): nghi tranh chấp GPU với `asr-worker`.
+- Mỗi cấu hình chỉ một lượt. Độ lặp lại: lượt cả hai Vulkan hôm nay so với lượt hôm qua (`igpu-i5-1345u-thu-nhe-*`) lệch p50 chỉ 0–0,1 s (en 2,49 → 2,39; ja 2,28 → 2,28; mixed 2,06 → 2,06), nhỏ hơn mức cải thiện 0,2–0,55 s của Llama CPU. Vẫn chưa phải kết luận thống kê.
+- Áp dụng vào app: máy Windows chỉ có GPU tích hợp (không có card rời) thì `llama-server` chạy `-ngl 0` (`src-tauri/src/sidecar/mod.rs`, `probe::only_integrated_gpu`). Card rời và macOS giữ nguyên.

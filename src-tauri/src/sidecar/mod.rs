@@ -204,13 +204,16 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
         .collect();
     let data = app.path().app_local_data_dir().map_err(path_error)?;
     let seen_file = data.join("sidecars-seen.json");
-    let gpu_usable = if cfg!(windows) {
+    let (gpu_usable, llama_cpu) = if cfg!(windows) {
         let first = first_run::is_first_run(&seen_file, &verified.hashes[0]);
-        app.state::<GpuProbe>()
-            .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)))
-            .is_some_and(|o| o.usable)
+        let outcome = app
+            .state::<GpuProbe>()
+            .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)));
+        let usable = outcome.as_ref().is_some_and(|o| o.usable);
+        let llama_cpu = outcome.as_ref().is_some_and(|o| probe::only_integrated_gpu(&o.gpus));
+        (usable, llama_cpu)
     } else {
-        true
+        (true, false)
     };
     let key = sidecar_key(app, settings)?;
     let models = &key.models;
@@ -230,7 +233,8 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
             exe: files.llama.clone(),
             model: models.mt.clone(),
             log: logs.join("llama-server.log"),
-            extra_args: Vec::new(),
+            // Đứng sau `-ngl auto` mà `llama::command` đã truyền; llama.cpp lấy giá trị cuối.
+            extra_args: if llama_cpu { vec!["-ngl".into(), "0".into()] } else { Vec::new() },
             first_run: false,
             env: Vec::new(),
         },
