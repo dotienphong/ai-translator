@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LicensesPage } from "./LicensesPage";
@@ -57,5 +57,32 @@ describe("LicensesPage: cấp license mới", () => {
       body: { email: "khach@example.com", plan: "yearly", note: "bù cho khách" },
     });
     await waitFor(() => expect(calls.filter((c) => c.url === "/admin/licenses" && c.method === "GET")).toHaveLength(2));
+  });
+});
+
+describe("LicensesPage: bộ lọc vào query", () => {
+  const gets = () => calls.filter((c) => c.method === "GET").map((c) => c.url);
+
+  it("đổi Trạng thái và Gói: gọi lại /admin/licenses đúng query; về Tất cả thì bỏ tham số đó", async () => {
+    render(<LicensesPage />);
+    await screen.findByText("Không có license nào");
+    expect(gets()).toEqual(["/admin/licenses"]);
+
+    fireEvent.change(screen.getByLabelText("Trạng thái"), { target: { value: "locked" } });
+    await waitFor(() => expect(gets().at(-1)).toBe("/admin/licenses?state=locked"));
+    fireEvent.change(screen.getByLabelText("Gói"), { target: { value: "yearly" } });
+    await waitFor(() => expect(gets().at(-1)).toBe("/admin/licenses?state=locked&plan=yearly"));
+    fireEvent.change(screen.getByLabelText("Trạng thái"), { target: { value: "" } });
+    await waitFor(() => expect(gets().at(-1)).toBe("/admin/licenses?plan=yearly"));
+    fireEvent.change(screen.getByLabelText("Gói"), { target: { value: "" } });
+    await waitFor(() => expect(gets().at(-1)).toBe("/admin/licenses"));
+    expect(gets()).toHaveLength(5);
+  });
+
+  it.each(["active", "expired", "revoked", "locked", "conflict"])("Trạng thái %s đi vào query state", async (state) => {
+    render(<LicensesPage />);
+    await screen.findByText("Không có license nào");
+    fireEvent.change(screen.getByLabelText("Trạng thái"), { target: { value: state } });
+    await waitFor(() => expect(gets().at(-1)).toBe(`/admin/licenses?state=${state}`));
   });
 });

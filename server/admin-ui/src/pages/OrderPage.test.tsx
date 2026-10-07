@@ -137,3 +137,91 @@ describe("OrderPage: mô tả hộp Cấp tay theo dữ liệu đơn", () => {
     expect(text).toContain(WARNING);
   });
 });
+
+describe("OrderPage: điều kiện hiện nút theo trạng thái đơn", () => {
+  const OPEN = ["Cấp tay…", "Cấp key mới…", "Ghi đã hoàn tiền…"];
+  it.each([
+    ["pending", ["Cấp tay…"]],
+    ["processing", ["Cấp tay…"]],
+    ["underpaid", ["Cấp tay…"]],
+    ["cancelled", ["Cấp tay…"]],
+    ["expired", ["Cấp tay…"]],
+    ["failed", ["Cấp tay…"]],
+    ["paid", []],
+    ["refunded", []],
+    ["paid_needs_review", ["Cấp key mới…", "Ghi đã hoàn tiền…"]],
+  ])("đơn %s: hiện đúng các nút ghi", async (status, shown) => {
+    serveOrder({ ...order, status });
+    render(<OrderPage code={CODE} />);
+    await screen.findByRole("heading", { name: /Đơn #1000012/ });
+    for (const name of OPEN) {
+      expect(screen.queryByRole("button", { name }) !== null, `nút ${name}`).toBe(shown.includes(name));
+    }
+    // Nút xem trạng thái trên PayOS (chỉ đọc) luôn có.
+    expect(screen.getByRole("button", { name: "Xem trạng thái trên PayOS" })).toBeTruthy();
+  });
+});
+
+describe("OrderPage: các thao tác ghi gọi đúng route và body", () => {
+  const resolveUrl = `/admin/orders/${CODE}/resolve`;
+  const post = (url: string) => calls.find((c) => c.method === "POST" && c.url === url);
+  /** Các POST ghi (không tính tra cứu). */
+  const writes = () => calls.filter((c) => c.method === "POST" && c.url !== "/admin/lookup");
+  const NEEDS_REVIEW = { ...order, status: "paid_needs_review", amount_paid: 50000 };
+
+  it("Cấp tay…: POST /grant với {note}", async () => {
+    const user = userEvent.setup();
+    serveOrder(order);
+    render(<OrderPage code={CODE} />);
+    await grant(user);
+    expect(await screen.findByText(KEY)).toBeTruthy();
+    expect(post(`/admin/orders/${CODE}/grant`)).toEqual({ url: `/admin/orders/${CODE}/grant`, method: "POST", body: { note: "khách chuyển bù" } });
+    expect(writes()).toHaveLength(1);
+  });
+
+  it("Cấp key mới…: POST /resolve với {action: grant_new_license, note}; hiện key mới", async () => {
+    const user = userEvent.setup();
+    serveOrder(NEEDS_REVIEW, { post: { [resolveUrl]: () => json({ order_code: CODE, status: "paid", license_key: KEY }) } });
+    render(<OrderPage code={CODE} />);
+    await user.click(await screen.findByRole("button", { name: "Cấp key mới…" }));
+    const confirm = screen.getByRole("button", { name: "Cấp key mới" }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    await user.type(screen.getByLabelText(/Lý do/), "license cũ đã thu hồi nhầm");
+    expect(confirm.disabled).toBe(false);
+    await user.click(confirm);
+    expect(await screen.findByText(KEY)).toBeTruthy();
+    expect(post(resolveUrl)).toEqual({
+      url: resolveUrl,
+      method: "POST",
+      body: { action: "grant_new_license", note: "license cũ đã thu hồi nhầm" },
+    });
+    expect(writes()).toHaveLength(1);
+  });
+
+  it("Ghi đã hoàn tiền…: cần lý do và gõ đúng DA HOAN TIEN; POST /resolve với {action: refunded, note}", async () => {
+    const user = userEvent.setup();
+    serveOrder(NEEDS_REVIEW);
+    render(<OrderPage code={CODE} />);
+    await user.click(await screen.findByRole("button", { name: "Ghi đã hoàn tiền…" }));
+    const confirm = screen.getByRole("button", { name: "Ghi đã hoàn tiền" }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    await user.type(screen.getByLabelText(/để xác nhận/), "DA HOAN TIEN");
+    expect(confirm.disabled).toBe(true); // có chữ xác nhận nhưng chưa có lý do
+    await user.type(screen.getByLabelText(/Lý do/), "đã chuyển trả khách ngày 05/10");
+    expect(confirm.disabled).toBe(false);
+    await user.clear(screen.getByLabelText(/để xác nhận/));
+    await user.type(screen.getByLabelText(/để xác nhận/), "da hoan tien");
+    expect(confirm.disabled).toBe(true); // có lý do nhưng sai chữ hoa
+    await user.clear(screen.getByLabelText(/để xác nhận/));
+    await user.type(screen.getByLabelText(/để xác nhận/), "DA HOAN TIEN");
+    await user.click(confirm);
+    expect(await screen.findByText("Đã ghi đơn là đã hoàn tiền.")).toBeTruthy();
+    expect(post(resolveUrl)).toEqual({
+      url: resolveUrl,
+      method: "POST",
+      body: { action: "refunded", note: "đã chuyển trả khách ngày 05/10" },
+    });
+    expect(writes()).toHaveLength(1);
+    expect(screen.queryByText(KEY)).toBeNull();
+  });
+});
