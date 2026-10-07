@@ -19,11 +19,14 @@ export interface Route {
   param?: string;
 }
 
+/** Mã đơn: số nguyên dương tối đa 15 chữ số (server đòi > 0), cho phép số 0 đứng đầu. */
+const ORDER_CODE = "0*[1-9]\\d{0,14}";
+
 const ROUTES: [RouteName, RegExp][] = [
   ["queue", /^\/$/],
   ["search", /^\/search$/],
   ["orders", /^\/orders$/],
-  ["order", /^\/orders\/(\d{1,15})$/],
+  ["order", new RegExp(`^/orders/(${ORDER_CODE})$`)],
   ["licenses", /^\/licenses$/],
   ["license", /^\/licenses\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/],
   ["device", /^\/devices\/([0-9a-f]{64})$/],

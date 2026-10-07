@@ -152,6 +152,16 @@ export interface IssuedLicense {
   expires_at: number;
 }
 
+/** Phản hồi của /admin/orders/:code/payment-status: trạng thái đơn do cổng thanh toán báo (PaymentStatusResult của server). */
+export interface PaymentStatus {
+  orderCode: number;
+  status: string;
+  amount: number;
+  amountPaid: number;
+  /** Thời điểm giao dịch gần nhất cổng báo (giây Unix); null nếu cổng không báo. */
+  paidAt: number | null;
+}
+
 export interface KeyCheck {
   slot: string;
   kid: string;

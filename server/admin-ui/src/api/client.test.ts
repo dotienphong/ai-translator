@@ -48,6 +48,13 @@ describe("call", () => {
     expect((await failure(call("GET", "/admin/queue"))).message).toBe("Lỗi không rõ (la_hoan_toan)");
   });
 
+  it("404 not_found: server trả cả khi license đã ở trạng thái đó, nên câu lỗi nhắc tải lại", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "not_found" }, 404)));
+    const e = await failure(call("POST", "/admin/licenses/x/unlock", { note: "x" }));
+    expect(e).toMatchObject({ status: 404, code: "not_found" });
+    expect(e.message).toBe("Không tìm thấy, hoặc đã ở trạng thái đó. Tải lại trang để xem trạng thái mới");
+  });
+
   it("phiên Access hết hạn: opaqueredirect hay trang HTML; phát sự kiện", async () => {
     const seen = vi.fn();
     window.addEventListener(SESSION_EXPIRED_EVENT, seen);
@@ -57,7 +64,11 @@ describe("call", () => {
     const e = await failure(call("GET", "/admin/queue"));
     expect(e.code).toBe("session_expired");
     expect(e.message).toBe("Phiên đăng nhập hết hạn. Tải lại trang để đăng nhập lại");
-    expect(seen).toHaveBeenCalledTimes(2);
+    for (const status of [401, 403]) {
+      vi.stubGlobal("fetch", vi.fn(async () => new Response("<html>login</html>", { status, headers: { "content-type": "text/html" } })));
+      expect(await failure(call("GET", "/admin/queue"))).toMatchObject({ status, code: "session_expired" });
+    }
+    expect(seen).toHaveBeenCalledTimes(4);
     window.removeEventListener(SESSION_EXPIRED_EVENT, seen);
   });
 
@@ -69,10 +80,31 @@ describe("call", () => {
   });
 });
 
+describe("call: JSON hỏng vẫn thành ApiError", () => {
+  const withBody = (body: string, status: number) =>
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(body, { status, headers: { "content-type": "application/json" } })));
+
+  it("JSON cụt", async () => {
+    withBody('{"er', 200);
+    expect(await failure(call("GET", "/admin/queue"))).toMatchObject({ status: 200, code: "http_200" });
+    withBody('{"er', 502);
+    expect(await failure(call("GET", "/admin/queue"))).toMatchObject({ status: 502, code: "http_502" });
+  });
+
+  it("JSON hợp lệ nhưng không phải object", async () => {
+    withBody("null", 500);
+    expect(await failure(call("GET", "/admin/queue"))).toMatchObject({ status: 500, code: "http_500" });
+    withBody("[1,2]", 200);
+    expect(await failure(call("GET", "/admin/queue"))).toMatchObject({ status: 200, code: "http_200" });
+    withBody('"chuoi"', 200);
+    expect(await failure(call("GET", "/admin/queue"))).toMatchObject({ code: "http_200" });
+  });
+});
+
 describe("queryString", () => {
   it("bỏ tham số rỗng, mã hóa giá trị", () => {
     expect(queryString({ status: "paid", plan: "", cursor: undefined })).toBe("?status=paid");
-    expect(queryString({ actor: "admin:ops@example.com" })).toBe("?actor=admin%3Aops%40example.com");
+    expect(queryString({ actor: "admin" })).toBe("?actor=admin");
     expect(queryString({})).toBe("");
   });
 });

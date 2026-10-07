@@ -8,6 +8,7 @@ const DAY = 86400;
 describe("format", () => {
   it("ngày giờ theo GMT+7", () => {
     expect(fmtDateTime(T0)).toBe("01/10/2026 07:00");
+    expect(fmtDateTime(T0 + 1234)).toBe("01/10/2026 07:20");
     expect(fmtDate(T0 - 8 * 3600)).toBe("30/09/2026");
     expect(fmtDate(T0 - 7 * 3600)).toBe("01/10/2026");
     expect(fmtDateTime(null)).toBe("—");

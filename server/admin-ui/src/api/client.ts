@@ -6,7 +6,7 @@ export const SESSION_EXPIRED_EVENT = "admin:session-expired";
 const MESSAGES: Record<string, string> = {
   invalid_request: "Dữ liệu gửi lên không hợp lệ",
   forbidden: "Không có quyền. Thử tải lại trang",
-  not_found: "Không tìm thấy",
+  not_found: "Không tìm thấy, hoặc đã ở trạng thái đó. Tải lại trang để xem trạng thái mới",
   order_not_found: "Không tìm thấy đơn",
   activation_not_found: "Không tìm thấy máy (có thể đã gỡ)",
   pricing_not_configured: "Worker API chưa có cấu hình bảng gói (PLANS)",
@@ -66,7 +66,15 @@ export async function call<T>(method: "GET" | "POST", path: string, body?: unkno
     throw new ApiError(res.status, "session_expired");
   }
   if (!isJson) throw new ApiError(res.status, `http_${res.status}`);
-  const data = (await res.json()) as Record<string, unknown>;
+  let data: Record<string, unknown>;
+  try {
+    const parsed: unknown = await res.json();
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("không phải object");
+    data = parsed as Record<string, unknown>;
+  } catch {
+    // JSON cụt hay không phải object: coi như lỗi HTTP thường, không để SyntaxError/TypeError lọt ra ngoài.
+    throw new ApiError(res.status, `http_${res.status}`);
+  }
   if (!res.ok) {
     throw new ApiError(res.status, typeof data.error === "string" ? data.error : `http_${res.status}`, data);
   }

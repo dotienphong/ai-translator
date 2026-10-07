@@ -6,13 +6,15 @@ import type { LookupResult } from "./api/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CROCKFORD_28 = /^[0-9A-HJKMNP-TV-Z]{28}$/;
+/** Mã đơn: số nguyên dương tối đa 15 chữ số (server đòi > 0), cho phép số 0 đứng đầu. */
+const ORDER_CODE = /^0*[1-9]\d{0,14}$/;
 
 /** Nhận dạng chuỗi ở ô tra cứu theo thứ tự của spec §4.3. null: không nhận ra. */
 export function detectQuery(raw: string): LookupQuery | null {
   const s = raw.trim();
   if (s === "") return null;
   if (s.includes("@")) return { email: s };
-  if (/^\d{1,15}$/.test(s)) return { order_code: Number(s) };
+  if (ORDER_CODE.test(s)) return { order_code: Number(s) };
   if (UUID.test(s)) return { license_id: s.toLowerCase() };
   if (/^[0-9a-f]{64}$/i.test(s)) return { device_id_hash: s.toLowerCase() };
   // Như normalizeLicenseKey của server: bỏ khoảng trắng và gạch nối, viết hoa, O→0, I và L→1. Server kiểm ký tự kiểm tra.
@@ -51,14 +53,13 @@ export function resetSearch(): void {
   current = null;
 }
 
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 export function useSearch(): SearchState | null {
-  return useSyncExternalStore(
-    (l) => {
-      listeners.add(l);
-      return () => {
-        listeners.delete(l);
-      };
-    },
-    () => current,
-  );
+  return useSyncExternalStore(subscribe, currentSearch);
 }

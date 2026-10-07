@@ -9,6 +9,7 @@ import type {
   LookupResult,
   OrderRow,
   Page,
+  PaymentStatus,
   PlanCode,
   Queue,
   Summary,
@@ -23,6 +24,17 @@ export type LookupQuery =
   | { device_id_hash: string };
 
 export type Filters = Record<string, string | undefined>;
+
+/** Bộ lọc của /admin/audit: `actor` chỉ nhận giá trị cố định (server từ chối email, spec §3.2). */
+export type AuditFilters = {
+  actor?: "api" | "webhook" | "reconcile" | "admin";
+  action?: string;
+  order_code?: string;
+  from?: string;
+  to?: string;
+  include_views?: "1";
+  cursor?: string;
+};
 
 export function queryString(params: Filters): string {
   const p = new URLSearchParams();
@@ -41,8 +53,8 @@ export const api = {
   orders: (f: Filters) => call<Page<OrderRow>>("GET", `/admin/orders${queryString(f)}`),
   licenses: (f: Filters) => call<Page<LicenseRow>>("GET", `/admin/licenses${queryString(f)}`),
   trials: (f: Filters) => call<Page<TrialRow>>("GET", `/admin/trials${queryString(f)}`),
-  audit: (f: Filters) => call<Page<AuditRow>>("GET", `/admin/audit${queryString(f)}`),
-  paymentStatus: (code: number) => call<Record<string, unknown>>("GET", `/admin/orders/${code}/payment-status`),
+  audit: (f: AuditFilters) => call<Page<AuditRow>>("GET", `/admin/audit${queryString(f)}`),
+  paymentStatus: (code: number) => call<PaymentStatus>("GET", `/admin/orders/${code}/payment-status`),
   grantOrder: (code: number, note: string) => call<IssuedLicense>("POST", `/admin/orders/${code}/grant`, { note }),
   resolveOrder: (code: number, action: "grant_new_license" | "refunded", note: string) =>
     call<{ order_code: number; status: string; license_key?: string }>("POST", `/admin/orders/${code}/resolve`, { action, note }),
