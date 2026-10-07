@@ -209,6 +209,8 @@ chủ tài khoản Resend: chưa đủ để bán.
 
    Expected: lệnh đầu chạy không lỗi; lệnh sau in `seq` = `1000000` và `orders` = `0`.
 
+   > **Không bao giờ đưa bộ đếm số đơn về lại 1.000.000 sau khi đã có đơn gửi lên PayOS.** PayOS nhớ mọi `orderCode` đã từng dùng của kênh thanh toán và trả `Đơn thanh toán đã tồn tại` khi gặp lại, nên mọi đơn mới sẽ lỗi `502 payment_provider_error` ("Máy chủ bản quyền chưa xử lý được yêu cầu" trong app) cho tới khi bộ đếm vượt mã cao nhất đã dùng. Xóa dữ liệu thử thì chỉ xóa dòng, **giữ nguyên** `sqlite_sequence` của `orders` (sự cố 2026-10-07: xóa dữ liệu thử rồi reset về 1.000.000, ba đơn đầu lỗi; sửa bằng `UPDATE sqlite_sequence SET seq = <mã cao nhất đã dùng>`).
+
 5. **Secret của Worker API** (kênh thanh toán PayOS của production). Lệnh đầu hỏi tạo Worker `mt-license`: trả lời `y`.
 
    ```bash
