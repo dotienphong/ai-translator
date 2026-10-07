@@ -31,6 +31,7 @@ export function Onboarding() {
   const index = useApp((s) => s.onboardingStep);
   const setStep = useApp((s) => s.setOnboardingStep);
   const finish = useApp((s) => s.finishOnboarding);
+  const startTrial = useApp((s) => s.startTrial);
   const accepted = useApp((s) => s.termsAccepted);
   const title = useRef<HTMLHeadingElement>(null);
   const shown = useRef(index);
@@ -57,7 +58,16 @@ export function Onboarding() {
         <button disabled={current === 0} onClick={() => setStep(current - 1)}>
           {t("onboarding.back")}
         </button>
-        <button className="primary" disabled={!canAdvance(step, accepted)} onClick={() => (last ? void finish() : setStep(current + 1))}>
+        <button
+          className="primary"
+          disabled={!canAdvance(step, accepted)}
+          onClick={() => {
+            // Qua bước Điều khoản (đã đồng ý): đăng ký dùng thử chạy nền, vì request gửi mã băm ID máy (spec 2026-10-07 §3.2).
+            if (step === "terms") void startTrial();
+            if (last) void finish();
+            else setStep(current + 1);
+          }}
+        >
           {t(last ? "onboarding.finish" : "onboarding.next")}
         </button>
       </div>

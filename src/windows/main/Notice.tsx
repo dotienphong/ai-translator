@@ -23,9 +23,12 @@ export function Notice() {
   const openLoginItems = useApp((s) => s.openLoginItemsSettings);
   const canNavigate = useApp(canOpenScreens);
   // Lời nhắc bản quyền (kế hoạch 06): bản không chính hãng, giờ máy chỉnh lùi, lâu chưa kiểm được gói, hết hạn, sắp hết
-  // hạn (7 ngày), bị thu hồi.
+  // hạn (7 ngày), bị thu hồi; key đang xung đột, hết dùng thử (spec 2026-10-07 §3.2, §4.2).
   const license = useLicense((s) => licenseNotice(s.view));
-  const renewable = license === "license.notice.expired" || license === "license.notice.renewSoon";
+  const renewable =
+    license === "license.notice.expired" ||
+    license === "license.notice.renewSoon" ||
+    license === "license.notice.trialEnded";
   const update = useApp(updateInvite);
   const repromptsAfterUpdate = useApp(updateReprompts);
   const restartToUpdate = useApp((s) => s.restartToUpdate);

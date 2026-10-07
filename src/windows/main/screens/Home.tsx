@@ -4,6 +4,7 @@ import type { SessionStatus } from "../../../lib/ipc";
 import { levelToMeter } from "../../../store/app";
 import { useApp, useT } from "../appStore";
 import { useTranscript } from "../dataStores";
+import { trialKey } from "../../../lib/license";
 import { useLicense } from "../licenseStore";
 import { QuotaSummary, when } from "../LicenseText";
 import { LanguagePicker } from "../LanguagePicker";
@@ -26,7 +27,9 @@ const BUTTON: Record<SessionStatus, MessageKey> = {
 };
 
 // Màn hình chính (§4.3): bắt đầu/dừng, trạng thái và lỗi của phiên, ngôn ngữ, nguồn âm thanh, mức âm lượng, hạn mức còn
-// lại kèm thời điểm reset (kế hoạch 06). Hết hạn mức thì báo thời điểm reset và có nút nâng gói (§4.2 bước 2).
+// lại kèm thời điểm reset (kế hoạch 06). Hết hạn mức thì báo thời điểm reset và có nút nâng gói (§4.2 bước 2). Ở Free có
+// thêm số ngày dùng thử còn lại; hết dùng thử hay key đang xung đột thì có nút tới Nâng cấp hay Bản quyền (spec 2026-10-07
+// §3.2, §4.2).
 export function Home() {
   const t = useT();
   const status = useApp((s) => s.status);
@@ -43,6 +46,7 @@ export function Home() {
   const license = useLicense((s) => s.view);
   if (!status || !settings || !info) return null;
   const session = status.session;
+  const trial = license && trialKey(license);
   const notes: MessageKey[] = [];
   if (status.loading) notes.push(status.loading === "firstRun" ? "home.loading.firstRun" : "home.loading.model");
   if (status.cpuFallback) notes.push("home.cpuFallback");
@@ -70,6 +74,12 @@ export function Home() {
             )}
             {(status.sessionError === "modelMissing" || status.sessionError === "modelBroken") && (
               <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
+            )}
+            {status.sessionError === "trialEnded" && (
+              <button onClick={() => navigate("upgrade")}>{t("settings.license.buy")}</button>
+            )}
+            {status.sessionError === "licenseConflict" && (
+              <button onClick={() => navigate("settings", "license")}>{t("notice.openSettings")}</button>
             )}
             {status.sessionError === "quotaExhausted" && (
               <>
@@ -126,7 +136,8 @@ export function Home() {
         {license && (
           <div className="row">
             <span>{t("home.minutesLeft")}</span>
-            <QuotaSummary quota={license.quota} />
+            {trial && <span>{t(trial, { days: license.trial.daysLeft })}</span>}
+            {license.trial.status !== "ended" && <QuotaSummary quota={license.quota} />}
             {!status.pro && <button onClick={() => navigate("upgrade")}>{t("settings.license.buy")}</button>}
           </div>
         )}
