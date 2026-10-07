@@ -7,6 +7,7 @@ import type { ApiEnv } from "./env";
 import { fail } from "./http";
 import { registerLicenses } from "./licenses";
 import { registerOrders } from "./orders";
+import { registerTrial } from "./trial";
 
 export type AppEnv = { Bindings: ApiEnv; Variables: { deps: Deps } };
 
@@ -23,6 +24,7 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
   registerCheckout(app);
   registerOrders(app);
   registerLicenses(app);
+  registerTrial(app);
   app.notFound((c) => fail(c, 404, "not_found"));
   app.onError((err, c) => {
     console.error(JSON.stringify({ event: "unhandled", name: err.name, message: err.message }));

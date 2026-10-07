@@ -13,6 +13,8 @@ export const LIMITS = {
   recover_email: 3,
   recover_ip: 10,
   order_poll: 600,
+  // Đăng ký dùng thử Free (spec 2026-10-07 §3.1). Không tính vào bộ đếm thất bại.
+  trial_ip: 10,
   // Lần thất bại (key sai định dạng hay không tồn tại, activation lạ) của một IP, tính chung mọi endpoint.
   // Chạm ngưỡng thì IP đó bị chặn tới hết giờ, trừ request có key hợp lệ kèm activation đang hoạt động
   // và khớp (nhiều người dùng chung một IP qua CGNAT vẫn validate được), và có cảnh báo cho người vận hành.

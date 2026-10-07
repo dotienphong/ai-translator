@@ -38,6 +38,11 @@ test("Worker API bán đúng bảng gói chính thức (spec 2026-10-07 §2.1), 
   assert.deepEqual(yearly, { quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000 } });
 });
 
+test("dùng thử Free 10 ngày mỗi máy (spec 2026-10-07 §3.1)", () => {
+  assert.equal(api.vars.TRIAL_DAYS, 10);
+  assert.equal("TRIAL_DAYS" in admin.vars, false, "chỉ Worker API cấp token dùng thử");
+});
+
 test("secret bắt buộc có đủ và không nằm trong vars", () => {
   assert.deepEqual(api.secrets.required, [
     "PAYOS_CLIENT_ID",

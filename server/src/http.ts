@@ -14,6 +14,7 @@ export type ErrorCode =
   | "invalid_signature"
   | "rate_limited"
   | "pricing_not_configured"
+  | "trial_not_configured"
   | "payment_provider_error"
   | "temporarily_unavailable"
   | "order_code_exhausted"

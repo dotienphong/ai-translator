@@ -29,6 +29,8 @@
       "monthly": { "quota_minutes_per_cycle": 3000, "days_per_order": 30, "prices": { "VND": 50000 } },
       "yearly": { "quota_minutes_per_cycle": null, "days_per_order": 365, "prices": { "VND": 500000 } }
     },
+    // Số ngày dùng thử Free của mỗi máy (spec 2026-10-07 §3.1). Đổi chỉ áp cho máy đăng ký sau đó.
+    "TRIAL_DAYS": 10,
     // Ô khóa đang ký token: secret TOKEN_SIGNING_KEY_A hay _B (QĐ29). Ô kia là khóa dự phòng.
     // Đổi khóa: đặt sang ô kia rồi deploy (Phụ lục A); giá trị khóa không đi qua máy người vận hành.
     "TOKEN_SIGNING_SLOT": "a"

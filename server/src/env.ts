@@ -7,6 +7,8 @@ export interface ApiEnv {
   ENVIRONMENT: string;
   /** Bảng gói trả phí (src/plans.ts): hạn mức, số ngày mỗi đơn, giá theo loại tiền. Đọc bằng parsePlans. */
   PLANS?: unknown;
+  /** Số ngày dùng thử Free của mỗi máy (spec 2026-10-07 §3.1), số nguyên 1–366. Đọc bằng parseTrialDays. */
+  TRIAL_DAYS?: unknown;
   /** Ô khóa đang ký token: "a" hoặc "b" (QĐ29). Ô còn lại là khóa dự phòng. */
   TOKEN_SIGNING_SLOT: string;
   PAYOS_BASE_URL: string;

@@ -18,6 +18,8 @@ describe("bảo mật license server (§10.2, §11)", () => {
       expect(validate.status).toBe(400);
       const recover = await w.call("POST", "/v1/licenses/recover", { email: bad });
       expect(recover.status).toBe(400);
+      const trial = await w.call("POST", "/v1/trial", { device_id_hash: bad });
+      expect(trial.status).toBe(400);
       const checkout = await w.call("POST", "/v1/checkout", { plan: bad, email: "a@example.com", consent: true });
       expect(checkout.status).toBe(400);
       const order = await w.call("GET", `/v1/orders/${encodeURIComponent(bad)}`, undefined, {
@@ -26,9 +28,9 @@ describe("bảo mật license server (§10.2, §11)", () => {
       expect(order.status).toBe(404);
     }
     const counts = await env.DB.prepare(
-      "SELECT (SELECT COUNT(*) FROM licenses) AS l, (SELECT COUNT(*) FROM orders) AS o",
+      "SELECT (SELECT COUNT(*) FROM licenses) AS l, (SELECT COUNT(*) FROM orders) AS o, (SELECT COUNT(*) FROM trials) AS t",
     ).first();
-    expect(counts).toEqual({ l: 1, o: 1 });
+    expect(counts).toEqual({ l: 1, o: 1, t: 0 });
   });
 
   it("Worker API không có /admin", async () => {
