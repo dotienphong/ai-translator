@@ -12,6 +12,10 @@
 //!   được. Ba việc sau thử lại mỗi 5 phút. `429` thì chờ đúng `Retry-After`.
 //! - **Kết quả của server:** máy bị gỡ (`activation_not_found`) hay key không còn (`invalid_key`): xóa bản ghi license,
 //!   về Free. Thu hồi, hết hạn: giữ key để gia hạn, về Free. Lỗi mạng: giữ token tới `refresh_before` (§9).
+//! - **Free là dùng thử 10 ngày** (spec 2026-10-07 §3.2): dùng được khi không có gói trả phí hiệu lực, có token dùng thử
+//!   của máy này ([`super::trial`]), giờ tin được còn trước `ends_at` và giờ máy không bị chỉnh lùi, và bộ đếm của ngày
+//!   chưa hết. Bấm Bắt đầu ở Free mà chưa có token thì đăng ký ngay ([`License::start_block`]); ngoài ra ticker đăng ký chạy
+//!   nền sau khi người dùng đồng ý điều khoản ([`License::trial_due`]). Phiên đang chạy mà qua `ends_at` thì chạy hết.
 
 use std::ops::ControlFlow;
 use std::sync::Mutex;
@@ -24,8 +28,9 @@ use super::client::{ApiError, Device, Granted, LicenseApi, Reply};
 use super::key;
 use super::keys::PublicKeys;
 use super::quota::{self, FreeCounter, PaidCounter, Seen};
-use super::store::{self, LicenseRecord, Vault, Verdict};
+use super::store::{self, LicenseRecord, TrialRecord, Vault, Verdict};
 use super::token::{self, Claims, Plan};
+use super::trial::{self, TrialClaims};
 
 /// Lần `validate` thành công gần nhất quá chừng này thì gọi lại (§6.8, "Kiểm tra định kỳ").
 pub const VALIDATE_EVERY_SECS: i64 = 24 * 3600;
@@ -98,6 +103,39 @@ pub enum Standing {
     NotGenuine,
 }
 
+/// Tình trạng dùng thử của Free (spec 2026-10-07 §3.2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TrialStatus {
+    /// Chưa có token dùng thử của máy này (chưa đăng ký được).
+    None,
+    Active,
+    /// Giờ tin được đã tới `ends_at`.
+    Ended,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrialView {
+    pub status: TrialStatus,
+    pub ends_at: Option<i64>,
+    /// Số ngày còn lại, ceil((`ends_at` − giờ tin được) / 1 ngày); 0 khi đã hết hay chưa có.
+    pub days_left: i64,
+}
+
+/// Vì sao chưa bắt đầu được phiên ([`License::start_block`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StartBlock {
+    /// Hạn mức còn 0 (§6.8, "Khi chạm hạn mức").
+    QuotaExhausted,
+    /// Free mà chưa có token dùng thử, và đăng ký không được (thường là không có mạng).
+    TrialMissing,
+    /// Free mà đã hết 10 ngày dùng thử.
+    TrialEnded,
+    /// Free mà giờ máy bị coi là chỉnh lùi: chỉnh giờ rồi thử lại.
+    ClockRolledBack,
+}
+
 /// Mốc reset hạn mức hiển thị (§4.2 bước 2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -151,6 +189,8 @@ pub struct LicenseView {
     pub dev_override: bool,
     /// Giờ máy bị coi là chỉnh lùi (cả ở gói Free): giao diện nhắc chỉnh giờ.
     pub clock_rolled_back: bool,
+    /// Dùng thử của Free trên máy này.
+    pub trial: TrialView,
 }
 
 /// Lỗi của một thao tác bản quyền; giao diện chọn câu theo [`LicenseError::code`].
@@ -268,6 +308,22 @@ struct Inner {
     has_prior_data: bool,
     /// Lần hỏi giờ của server gần nhất khi giờ máy bị coi là chỉnh lùi mà chưa có license ([`License::refresh_clock`]).
     clock_check_at: Option<i64>,
+    /// Token dùng thử đã kiểm chữ ký, đúng máy này.
+    trial: Option<TrialClaims>,
+    /// Người dùng đã đồng ý điều khoản: ticker được đăng ký dùng thử chạy nền ([`License::allow_trial`]).
+    trial_allowed: bool,
+    /// Lần gọi `POST /v1/trial` gần nhất.
+    trial_attempt: Option<i64>,
+    /// `429` của `/v1/trial`: không gọi lại trước lúc này.
+    trial_blocked_until: Option<i64>,
+}
+
+/// Dùng thử lúc `now`, theo giờ tin được.
+enum TrialState {
+    Missing,
+    Active,
+    Ended,
+    RolledBack,
 }
 
 pub struct License {
@@ -347,6 +403,19 @@ impl License {
             .as_ref()
             .and_then(|r| self.read_token(&r.token, &r.activation_id));
         if let Some(issued_at) = inner.claims.as_ref().map(|c| c.issued_at) {
+            inner.seen.observe_signed(issued_at);
+        }
+        inner.trial = match store::read::<TrialRecord>(vault, store::TRIAL) {
+            Ok(Some(r)) => trial::verify(&r.token, &self.keys, &self.machine.id_hash)
+                .inspect_err(|e| log::warn!("token dùng thử đã lưu không dùng được: {e}"))
+                .ok(),
+            Ok(None) => None,
+            Err(e) => {
+                log::warn!("không đọc được token dùng thử: {e}");
+                None
+            }
+        };
+        if let Some(issued_at) = inner.trial.as_ref().map(|t| t.issued_at) {
             inner.seen.observe_signed(issued_at);
         }
         self.resolve_free_locked(&mut inner, now);
@@ -675,9 +744,90 @@ impl License {
         Some(inner.free.as_ref().map_or(0, quota::free_remaining))
     }
 
-    /// Có bắt đầu được phiên không: hạn mức còn 0 thì không (§6.8, "Khi chạm hạn mức").
+    fn trial_state_locked(&self, inner: &Inner, now: i64) -> TrialState {
+        let Some(trial) = &inner.trial else {
+            return TrialState::Missing;
+        };
+        if inner.seen.trusted_now(now) >= trial.ends_at {
+            TrialState::Ended
+        } else if inner.seen.rolled_back(now) {
+            TrialState::RolledBack
+        } else {
+            TrialState::Active
+        }
+    }
+
+    /// Người dùng đã đồng ý điều khoản (bước 1b, hay đã xong các bước lần đầu mở ở lần chạy trước): từ giờ ticker được
+    /// đăng ký dùng thử chạy nền, vì request gửi `device_id_hash` (spec 2026-10-07 §3.2).
+    pub fn allow_trial(&self) {
+        self.lock().trial_allowed = true;
+    }
+
+    /// Ticker có nên gọi `POST /v1/trial` lúc `now` không: đã được phép, có server, chưa có token dùng thử, lần thử trước
+    /// đã quá 1 giờ, và không đang chờ `Retry-After`.
+    pub fn trial_due(&self, now: i64) -> bool {
+        let inner = self.lock();
+        self.server_configured
+            && inner.trial_allowed
+            && inner.trial.is_none()
+            && inner.trial_blocked_until.is_none_or(|t| now >= t)
+            && inner
+                .trial_attempt
+                .is_none_or(|t| now - t >= ROUTINE_RETRY_SECS || now < t)
+    }
+
+    /// Đăng ký dùng thử của máy này (hay lấy lại token của lần trước, server giữ đúng `started_at` cũ): kiểm token, lưu
+    /// kho khóa.
+    pub fn register_trial(&self, now: i64) -> Result<(), LicenseError> {
+        self.lock().trial_attempt = Some(now);
+        let reply = self.api.trial(&self.machine.id_hash);
+        self.observe(&reply);
+        let grant = reply.result.map_err(map_api).inspect_err(|e| {
+            if let LicenseError::RateLimited(after) = e {
+                self.lock().trial_blocked_until = Some(now + after.map_or(ROUTINE_RETRY_SECS, |s| s as i64));
+            }
+        })?;
+        let claims = trial::verify(&grant.token, &self.keys, &self.machine.id_hash)
+            .map_err(|e| LicenseError::BadToken(e.to_string()))?;
+        store::write(self.vault.as_ref(), store::TRIAL, &TrialRecord { token: grant.token })
+            .map_err(|e| LicenseError::Storage(e.to_string()))?;
+        let mut inner = self.lock();
+        inner.seen.observe_signed(claims.issued_at);
+        inner.trial = Some(claims);
+        Ok(())
+    }
+
+    /// Vì sao chưa bắt đầu được phiên lúc `now`; `None` là bắt đầu được (spec 2026-10-07 §3.2, §6). Ở Free mà chưa có token
+    /// dùng thử thì đăng ký ngay: có gọi server, nên nơi gọi chạy trên luồng nền.
+    pub fn start_block(&self, now: i64) -> Option<StartBlock> {
+        if self.dev_unlimited {
+            return None;
+        }
+        let free = {
+            let inner = self.lock();
+            self.quota_claims(&inner, now).is_none()
+        };
+        if free {
+            let missing = self.lock().trial.is_none();
+            if missing
+                && self.server_configured
+                && let Err(e) = self.register_trial(now)
+            {
+                log::info!("chưa đăng ký được dùng thử: {}", e.code());
+            }
+            match self.trial_state_locked(&self.lock(), now) {
+                TrialState::Missing => return Some(StartBlock::TrialMissing),
+                TrialState::Ended => return Some(StartBlock::TrialEnded),
+                TrialState::RolledBack => return Some(StartBlock::ClockRolledBack),
+                TrialState::Active => {}
+            }
+        }
+        (self.remaining_locked(&self.lock(), now) == Some(0)).then_some(StartBlock::QuotaExhausted)
+    }
+
+    /// Có bắt đầu được phiên không ([`License::start_block`]).
     pub fn can_start(&self, now: i64) -> bool {
-        self.remaining_locked(&self.lock(), now) != Some(0)
+        self.start_block(now).is_none()
     }
 
     /// Cộng `speech_ms` vừa dịch xong. Trả `Break` khi đã chạm hạn mức: engine dừng phiên (`quota_exhausted`).
@@ -781,6 +931,18 @@ impl License {
             },
         };
         let stored = inner.claims.as_ref();
+        let trusted = inner.seen.trusted_now(now);
+        let trial = TrialView {
+            status: match self.trial_state_locked(&inner, now) {
+                TrialState::Missing => TrialStatus::None,
+                TrialState::Ended => TrialStatus::Ended,
+                TrialState::Active | TrialState::RolledBack => TrialStatus::Active,
+            },
+            ends_at: inner.trial.as_ref().map(|t| t.ends_at),
+            days_left: inner.trial.as_ref().map_or(0, |t| {
+                ((t.ends_at - trusted).max(0) as u64).div_ceil(quota::DAY_SECS as u64) as i64
+            }),
+        };
         LicenseView {
             standing,
             plan: match (&active, self.dev_unlimited) {
@@ -798,6 +960,7 @@ impl License {
             server_configured: self.server_configured,
             dev_override: self.dev_unlimited,
             clock_rolled_back: inner.seen.rolled_back(now),
+            trial,
         }
     }
 
@@ -1730,5 +1893,173 @@ pub mod tests {
         let _ = l.activate(KEY, T0);
         let seen: Seen = store::read(vault.as_ref(), store::SEEN).unwrap().unwrap();
         assert_eq!(seen.latest_server_date, Some(T0 + 5));
+    }
+
+    // ---- Free dùng thử 10 ngày (spec 2026-10-07 §3.2) ----
+
+    const TRIAL_END: i64 = T0 + 10 * DAY;
+
+    /// Server giả trả dùng thử bắt đầu `T0`, hết `TRIAL_END`.
+    fn with_trial(api: &Arc<FakeApi>) {
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(trial_grant(DEVICE, T0, TRIAL_END, T0));
+    }
+
+    /// Bấm Bắt đầu ở Free mà chưa có token dùng thử: đăng ký với server, lưu kho khóa; mở lại app thì đọc lại, không gọi
+    /// server nữa. Số ngày còn lại làm tròn lên.
+    #[test]
+    fn free_registers_the_trial_once_and_keeps_it() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        assert_eq!(l.view(T0).trial.status, TrialStatus::None);
+        assert_eq!(l.start_block(T0), None);
+        assert_eq!(*api.calls.lock().unwrap(), [format!("trial {DEVICE}")]);
+        assert!(vault.items.lock().unwrap().contains_key(store::TRIAL));
+        let reopened = license(&api, &vault, T0 + DAY + 1);
+        let v = reopened.view(T0 + DAY + 1);
+        assert_eq!(
+            (v.trial.status, v.trial.ends_at, v.trial.days_left),
+            (TrialStatus::Active, Some(TRIAL_END), 9)
+        );
+        assert_eq!(reopened.start_block(T0 + DAY + 1), None);
+        assert_eq!(api.calls.lock().unwrap().len(), 1, "đã có token: không gọi server");
+    }
+
+    /// Hết 10 ngày: không bắt đầu được phiên ở Free; phiên đang chạy vẫn cộng phút bình thường (chạy hết phiên).
+    #[test]
+    fn an_ended_trial_blocks_the_next_free_session_only() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        with_trial(&api);
+        let l = license(&api, &vault, TRIAL_END - 60);
+        assert_eq!(l.start_block(TRIAL_END - 60), None);
+        assert!(
+            l.add_usage(MIN, TRIAL_END + 60).is_continue(),
+            "phiên đang chạy chạy tiếp"
+        );
+        assert_eq!(l.start_block(TRIAL_END), Some(StartBlock::TrialEnded));
+        let v = l.view(TRIAL_END);
+        assert_eq!((v.trial.status, v.trial.days_left), (TrialStatus::Ended, 0));
+        assert!(!l.can_start(TRIAL_END));
+    }
+
+    /// Chưa có token và không có mạng: không bắt đầu được ở Free; có mạng lại thì đăng ký được.
+    #[test]
+    fn without_a_trial_and_without_network_free_cannot_start() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Network("tắt mạng".into())));
+        let l = license(&api, &vault, T0);
+        assert_eq!(l.start_block(T0), Some(StartBlock::TrialMissing));
+        assert_eq!(l.view(T0).trial.status, TrialStatus::None);
+        with_trial(&api);
+        assert_eq!(l.start_block(T0 + 60), None);
+    }
+
+    /// Token dùng thử của máy khác, hay token bản quyền đưa vào chỗ token dùng thử: không nhận. Mục kho khóa hỏng thì bỏ qua
+    /// và đăng ký lại.
+    #[test]
+    fn a_trial_token_for_another_machine_is_refused() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(trial_grant("khac", T0, TRIAL_END, T0));
+        let l = license(&api, &vault, T0);
+        assert!(matches!(l.register_trial(T0), Err(LicenseError::BadToken(_))));
+        let license_token = granted(&claims(T0), false).unwrap().token;
+        api.trials.lock().unwrap().push_back(Ok(TrialGrant {
+            token: license_token,
+            started_at: T0,
+            ends_at: TRIAL_END,
+            issued_at: T0,
+        }));
+        assert!(matches!(l.register_trial(T0), Err(LicenseError::BadToken(_))));
+        assert!(!vault.items.lock().unwrap().contains_key(store::TRIAL));
+        vault
+            .items
+            .lock()
+            .unwrap()
+            .insert(store::TRIAL.into(), br#"{"token":"v1.x.y"}"#.to_vec());
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        assert_eq!(l.view(T0).trial.status, TrialStatus::None);
+        assert_eq!(l.start_block(T0), None);
+    }
+
+    /// Giờ máy chỉnh lùi: Free không bắt đầu được, báo chỉnh giờ. Giờ server (header `Date`) đã qua `ends_at` thì hết dùng
+    /// thử, dù giờ máy còn trước.
+    #[test]
+    fn the_trial_follows_the_trusted_clock() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        assert_eq!(l.start_block(T0), None);
+        l.tick(T0 + 5 * DAY, 0);
+        assert_eq!(l.start_block(T0 + 2 * DAY), Some(StartBlock::ClockRolledBack));
+        *api.date.lock().unwrap() = Some(TRIAL_END + 60);
+        l.observe_reply(&api.plans());
+        assert_eq!(l.start_block(TRIAL_END - 300), Some(StartBlock::TrialEnded));
+    }
+
+    /// Đăng ký chạy nền (ticker) chỉ sau khi người dùng đồng ý điều khoản, khi chưa có token, mỗi giờ một lần; `429` thì
+    /// chờ đúng `Retry-After`.
+    #[test]
+    fn background_registration_waits_for_consent_and_retries_hourly() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        assert!(!l.trial_due(T0), "chưa đồng ý điều khoản");
+        l.allow_trial();
+        assert!(l.trial_due(T0));
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Network("tắt mạng".into())));
+        assert_eq!(l.register_trial(T0), Err(LicenseError::Network));
+        assert!(!l.trial_due(T0 + 600));
+        assert!(l.trial_due(T0 + 3600));
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Server(Box::new(ServerError {
+                status: 429,
+                code: "rate_limited".into(),
+                retry_after: Some(7200),
+                ..ServerError::default()
+            }))));
+        let _ = l.register_trial(T0 + 3600);
+        assert!(!l.trial_due(T0 + 2 * 3600));
+        assert!(l.trial_due(T0 + 3 * 3600));
+        with_trial(&api);
+        l.register_trial(T0 + 3 * 3600).unwrap();
+        assert!(!l.trial_due(T0 + 5 * 3600), "đã có token");
+    }
+
+    /// Gói trả phí hết hạn thì về Free theo dùng thử: còn trong 10 ngày thì dùng được, hết thì không.
+    #[test]
+    fn an_expired_plan_falls_back_to_the_trial() {
+        let mut c = claims(T0);
+        c["expires_at"] = json!(T0 + 3600);
+        let after = T0 + 3600 + EXPIRY_GRACE_SECS;
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies.lock().unwrap().push_back(granted(&c, true));
+        l.activate(KEY, T0).unwrap();
+        with_trial(&api);
+        assert_eq!(l.start_block(after), None);
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        api.replies.lock().unwrap().push_back(granted(&c, true));
+        l.activate(KEY, T0).unwrap();
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(trial_grant(DEVICE, T0 - 20 * DAY, T0 - 10 * DAY, T0));
+        assert_eq!(l.start_block(after), Some(StartBlock::TrialEnded));
+        assert_eq!(l.start_block(T0 + 60), None, "gói trả phí còn hạn: không cần dùng thử");
     }
 }

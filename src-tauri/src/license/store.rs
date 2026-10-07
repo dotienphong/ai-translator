@@ -5,6 +5,7 @@
 //! - `license`: key đã kích hoạt, `activation_id`, token mới nhất, lần `validate` thành công gần nhất (giờ máy);
 //! - `license-order`: đơn đang chờ thanh toán (`order_code`, `order_token`), để mở lại app vẫn hỏi tiếp (§6.8 bước 5);
 //! - `license-seen`: giờ máy lớn nhất từng thấy và header `Date` mới nhất của server ([`Seen`]);
+//! - `license-trial`: token dùng thử của máy này ([`TrialRecord`], spec 2026-10-07 §3.2);
 //! - `quota-free`: bộ đếm Free của ngày;
 //! - `quota-paid-<băm>`: bộ đếm của một khóa (`license_id`, `activation_id`, mốc đầu chu kỳ, `quota_epoch`);
 //! - `quota-mark-<băm>`: bản ghi đánh dấu của một activation (`license_id`, `activation_id`).
@@ -26,6 +27,7 @@ use crate::security::keystore::Keystore;
 pub const LICENSE: &str = "license";
 pub const ORDER: &str = "license-order";
 pub const SEEN: &str = "license-seen";
+pub const TRIAL: &str = "license-trial";
 pub const FREE: &str = "quota-free";
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -79,6 +81,12 @@ pub struct LicenseRecord {
 pub enum Verdict {
     Expired,
     Revoked,
+}
+
+/// Token dùng thử server đã cấp cho máy này. Giữ khi người dùng xóa dữ liệu, như bản ghi license.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
+pub struct TrialRecord {
+    pub token: String,
 }
 
 /// Đơn đang chờ thanh toán.
@@ -320,7 +328,7 @@ pub mod tests {
         let db = crate::db::DataStore::new(dir.clone(), Ok(Keystore::with_store(service, keys)));
         db.with(|_| Ok::<_, crate::db::DbError>(())).unwrap();
         assert!(ks.get(crate::db::KEY_NAME).unwrap().is_some());
-        let names = [LICENSE, ORDER, SEEN, FREE, "quota-paid-0123", "quota-mark-0123"];
+        let names = [LICENSE, ORDER, SEEN, TRIAL, FREE, "quota-paid-0123", "quota-mark-0123"];
         for name in names {
             ks.set(name, b"{}").unwrap();
         }
