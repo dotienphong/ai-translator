@@ -182,6 +182,23 @@ function listRoute(app: Hono<AdminAppEnv>, path: string, spec: ListSpec): void {
   });
 }
 
+/** Một nhóm của hàng đợi: tổng số dòng thỏa `where`, và tối đa QUEUE_ITEMS dòng đầu theo `order`. */
+async function queueGroup(
+  db: D1Database,
+  columns: string,
+  from: string,
+  where: string,
+  order: string,
+  binds: Bind[] = [],
+  map: (r: Row) => Row = (r) => r,
+) {
+  const [count, rows] = await db.batch<Row>([
+    db.prepare(`SELECT COUNT(*) AS n FROM ${from} WHERE ${where}`).bind(...binds),
+    db.prepare(`SELECT ${columns} FROM ${from} WHERE ${where} ${order} LIMIT ?`).bind(...binds, QUEUE_ITEMS),
+  ]);
+  return { count: Number(count?.results[0]?.n ?? 0), items: (rows?.results ?? []).map(map) };
+}
+
 export function registerAdminRead(app: Hono<AdminAppEnv>): void {
   listRoute(app, "/admin/orders", {
     resource: "orders",
@@ -258,5 +275,48 @@ export function registerAdminRead(app: Hono<AdminAppEnv>): void {
     cursor: keysetCursor("t.started_at", "t.device_id_hash"),
     next: (r) => `${r.started_at}_${r.device_id_hash}`,
     map: (r) => ({ ...r, purchased: r.purchased === 1 }),
+  });
+
+  // Việc cần xử lý (spec §3.2): sáu nhóm, mỗi nhóm count và tối đa 20 dòng.
+  app.get("/admin/queue", async (c) => {
+    if (crossSite(c)) return fail(c, 403, "forbidden");
+    const db = c.env.DB;
+    const now = c.get("deps").now();
+    const orders = (where: string, binds: Bind[] = []) => queueGroup(db, ORDER_COLUMNS, "orders", where, "ORDER BY order_code DESC", binds);
+    const licenses = (where: string, order: string) => queueGroup(db, LICENSE_COLUMNS, "licenses l", where, order, [], maskLicense);
+    const queue = {
+      needs_review: await orders("status = 'paid_needs_review'"),
+      underpaid: await orders("status = 'underpaid' AND created_at >= ?", [now - 30 * DAY]),
+      email_failed: await orders("status = 'paid' AND email_gave_up_at IS NOT NULL AND email_sent_at IS NULL"),
+      locked: await licenses("l.locked_at IS NOT NULL AND l.revoked_at IS NULL", "ORDER BY l.locked_at DESC"),
+      conflict: await licenses(`l.revoked_at IS NULL AND ${ACTIVE_DEVICES} > 1`, "ORDER BY l.created_at DESC"),
+      alerts: await queueGroup(db, "kind, window_start, count, notified_count", "ops_alerts", "count > notified_count", "ORDER BY window_start DESC"),
+    };
+    const counts = Object.fromEntries(Object.entries(queue).map(([k, g]) => [k, g.count]));
+    await audit(db, { at: now, actor: c.get("actor"), action: "queue_viewed", detail: counts });
+    return c.json(queue);
+  });
+
+  // Ba số nhanh của trang Việc cần xử lý (spec §3.2). Ngày tính theo GMT+7.
+  app.get("/admin/summary", async (c) => {
+    if (crossSite(c)) return fail(c, 403, "forbidden");
+    const db = c.env.DB;
+    const now = c.get("deps").now();
+    const row = await db
+      .prepare(
+        `SELECT
+           (SELECT COALESCE(SUM(amount_paid), 0) FROM orders WHERE status = 'paid' AND paid_at >= ?1) AS revenue_today,
+           (SELECT COUNT(*) FROM orders WHERE status = 'paid' AND paid_at >= ?2) AS paid_orders_7d,
+           (SELECT COUNT(*) FROM licenses WHERE revoked_at IS NULL AND expires_at > ?3) AS active_licenses`,
+      )
+      .bind(vnDayStart(now), now - 7 * DAY, now)
+      .first<{ revenue_today: number; paid_orders_7d: number; active_licenses: number }>();
+    await audit(db, { at: now, actor: c.get("actor"), action: "summary_viewed" });
+    return c.json({
+      revenue_today: row?.revenue_today ?? 0,
+      currency: "VND",
+      paid_orders_7d: row?.paid_orders_7d ?? 0,
+      active_licenses: row?.active_licenses ?? 0,
+    });
   });
 }

@@ -326,3 +326,87 @@ describe("GET /admin/trials", () => {
     expect(await adminCall("/admin/trials?cursor=khong_hop_le!")).toMatchObject({ status: 400, body: { field: "cursor" } });
   });
 });
+
+describe("GET /admin/queue", () => {
+  it("không có việc gì: sáu nhóm đều rỗng; ghi queue_viewed", async () => {
+    const { adminCall } = makeAdmin();
+    const res = await adminCall("/admin/queue");
+    expect(res.status).toBe(200);
+    for (const g of ["needs_review", "underpaid", "email_failed", "locked", "conflict", "alerts"]) {
+      expect(res.body[g], g).toEqual({ count: 0, items: [] });
+    }
+    expect(await lastAudit()).toMatchObject({ action: "queue_viewed" });
+  });
+
+  it("đủ sáu nhóm, đúng điều kiện từng nhóm", async () => {
+    const { w, adminCall } = makeAdmin();
+    const b = await w.customerB(); // license xung đột
+    await w.buy({ email: "khoa@example.com" }); // sẽ khóa tạm
+    await w.buy({ email: "thu@example.com" }); // sẽ thiếu tiền (gần đây)
+    await w.buy({ email: "cu@example.com" }); // sẽ thiếu tiền (quá 30 ngày)
+    await w.buy({ email: "mail@example.com" }); // email key bỏ cuộc
+    await w.buy({ email: "review@example.com" }); // paid_needs_review
+    const db = env.DB;
+    await db.prepare("UPDATE licenses SET locked_at = ? WHERE email = 'khoa@example.com'").bind(T0).run();
+    await db.prepare("UPDATE orders SET status = 'underpaid', created_at = ? WHERE email = 'thu@example.com'").bind(T0).run();
+    await db.prepare("UPDATE orders SET status = 'underpaid', created_at = ? WHERE email = 'cu@example.com'").bind(T0 - 31 * DAY).run();
+    await db.prepare("UPDATE orders SET email_sent_at = NULL, email_gave_up_at = ? WHERE email = 'mail@example.com'").bind(T0).run();
+    await db.prepare("UPDATE orders SET status = 'paid_needs_review' WHERE email = 'review@example.com'").run();
+    await db.batch([
+      db.prepare("INSERT INTO ops_alerts (kind, window_start, count, notified_count) VALUES ('webhook_bad_signature', ?, 3, 1)").bind(T0),
+      db.prepare("INSERT INTO ops_alerts (kind, window_start, count, notified_count) VALUES ('email_failed', ?, 2, 2)").bind(T0),
+    ]);
+    const q = (await adminCall("/admin/queue")).body as Record<string, { count: number; items: Record<string, unknown>[] }>;
+    expect(q.needs_review!.items.map((o) => o.email)).toEqual(["review@example.com"]);
+    expect(q.underpaid!.items.map((o) => o.email)).toEqual(["thu@example.com"]);
+    expect(q.email_failed!.items.map((o) => o.email)).toEqual(["mail@example.com"]);
+    expect(q.locked!.items.map((l) => l.email)).toEqual(["khoa@example.com"]);
+    expect(q.conflict!.items.map((l) => [l.email, l.active_devices])).toEqual([[b.email, 2]]);
+    expect(String(q.conflict!.items[0]!.license_key)).toContain("-…-");
+    expect(q.alerts!.items).toEqual([{ kind: "webhook_bad_signature", window_start: T0, count: 3, notified_count: 1 }]);
+    expect(q.needs_review!.items[0]).not.toHaveProperty("order_token_hash");
+    expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toEqual({
+      needs_review: 1,
+      underpaid: 1,
+      email_failed: 1,
+      locked: 1,
+      conflict: 1,
+      alerts: 1,
+    });
+  });
+
+  it("mỗi nhóm tối đa 20 dòng, count là tổng thật", async () => {
+    const { w, adminCall } = makeAdmin();
+    await checkouts(w, 25);
+    await env.DB.prepare("UPDATE orders SET status = 'paid_needs_review'").run();
+    const q = (await adminCall("/admin/queue")).body as Record<string, { count: number; items: unknown[] }>;
+    expect(q.needs_review!.count).toBe(25);
+    expect(q.needs_review!.items).toHaveLength(20);
+  });
+
+  it("GET từ trang khác thì 403", async () => {
+    const { adminCall } = makeAdmin();
+    expect((await adminCall("/admin/queue", { headers: { "sec-fetch-site": "cross-site" } })).status).toBe(403);
+    expect((await adminCall("/admin/summary", { headers: { "sec-fetch-site": "cross-site" } })).status).toBe(403);
+  });
+});
+
+describe("GET /admin/summary", () => {
+  it("doanh thu hôm nay theo ngày GMT+7, đơn đã trả 7 ngày, license còn hạn; ghi summary_viewed", async () => {
+    const { w, adminCall } = makeAdmin();
+    w.clock.now = T0 - 8 * 3600; // 23:00 ngày 30/09 giờ VN: hôm qua
+    await w.buy({ email: "homqua@example.com" });
+    w.clock.now = T0 - 6 * 3600; // 01:00 ngày 01/10 giờ VN: hôm nay
+    await w.buy({ email: "homnay@example.com", plan: "yearly" });
+    w.clock.now = T0 - 9 * DAY; // ngoài 7 ngày
+    await w.buy({ email: "cu@example.com" });
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ? WHERE email = 'cu@example.com'").bind(T0 - 9 * DAY).run();
+    w.clock.now = T0;
+    const res = await adminCall("/admin/summary");
+    expect(res).toEqual({
+      status: 200,
+      body: { revenue_today: 500000, currency: "VND", paid_orders_7d: 2, active_licenses: 2 },
+    });
+    expect(await lastAudit()).toMatchObject({ action: "summary_viewed" });
+  });
+});
