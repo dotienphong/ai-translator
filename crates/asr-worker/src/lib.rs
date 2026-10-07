@@ -3,5 +3,7 @@ pub mod engine;
 pub mod lid;
 pub mod native_log;
 pub mod platform;
+#[cfg(feature = "vulkan")]
+pub mod probe;
 #[cfg(feature = "shared-encode")]
 pub mod shared;
