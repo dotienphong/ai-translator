@@ -231,12 +231,12 @@ impl Settings {
             audio_source: AudioSource::System,
             vad_end_silence_ms: 50,
             overlay: OverlaySettings {
-                font_size: 22,
+                font_size: 20,
                 lines: 2,
                 opacity: 0.6,
                 text_color: TextColor::White,
                 background: BackgroundColor::Black,
-                show_source: false,
+                show_source: true,
                 locked: false,
                 positions: BTreeMap::new(),
                 last_monitor: None,
@@ -430,7 +430,8 @@ mod tests {
         ] {
             assert!(keys.contains(&key.to_string()), "thiếu khóa {key}");
         }
-        assert_eq!(value["overlay"]["fontSize"], json!(22));
+        assert_eq!(value["overlay"]["fontSize"], json!(20));
+        assert_eq!(value["overlay"]["showSource"], json!(true));
         assert_eq!(value["audioSource"], json!({ "kind": "system" }));
         assert_eq!(value["experimental"], json!({ "translationContext": false }));
         let app = AudioSource::App {

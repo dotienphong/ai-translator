@@ -189,7 +189,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Từ điển thuật ngữ (Pro):** thêm, sửa, xóa; nhập và xuất CSV.
 - **Cài đặt:**
   - **Chung:** ngôn ngữ giao diện, khởi động cùng hệ thống, giao diện sáng/tối, kênh cập nhật (stable hoặc beta).
-  - **Phụ đề:** cỡ chữ, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen. Đổi là thấy ngay trên thanh phụ đề.
+  - **Phụ đề:** cỡ chữ, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen, cỡ chữ 20 px, bật hiện câu gốc. Đổi là thấy ngay trên thanh phụ đề.
   - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**

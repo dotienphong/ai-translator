@@ -38,4 +38,15 @@ describe("overlay.css", () => {
     const edge = /\.overlay\s+\.edge:hover\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
     expect(edge).toMatch(/background:/);
   });
+
+  // Các câu dính sát nhau thì khó đọc khi họp: giữa hai câu phải có khoảng cách theo cỡ chữ (em), và câu gốc tách khỏi
+  // bản dịch bên dưới.
+  it("các câu cách nhau một khoảng theo cỡ chữ, câu gốc tách khỏi bản dịch", async () => {
+    const fs = (await import("node:fs" as string)) as Fs;
+    const css = fs.readFileSync(new URL("./overlay.css", import.meta.url), "utf8");
+    const gap = /\.overlay\s+\.line\s*\+\s*\.line\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(gap).toMatch(/margin-top:\s*[\d.]+em/);
+    const source = /\.overlay\s+\.source\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(source).toMatch(/margin-bottom:\s*[\d.]+em/);
+  });
 });
