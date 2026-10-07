@@ -582,7 +582,7 @@ Thay bằng:
   - Màn hình chính và nhóm Cài đặt "Bản quyền" báo "Key đang dùng trên 2 máy nên đã bị tạm khóa", liệt kê hai máy, kèm nút "Gỡ key khỏi máy này", "Gỡ máy kia", "Thử lại" (§4.3).
   - Khi có mạng, app gọi `validate` mỗi 15 phút; nhận token thì về trạng thái bình thường.
   - Bộ đếm hạn mức trên máy giữ nguyên.
-- **Mở khóa:** một máy gỡ key, tự gỡ hay gỡ từ xa đều được. Mỗi lần gỡ vẫn tính vào luật khóa tạm (§10.2): máy bị gỡ muốn quay lại phải `activate`; luật không đếm các lần gỡ chính máy đang xin kích hoạt, nên hai máy giành nhau một key bị `423` sau khoảng 8 lần gỡ trong 30 ngày (mỗi máy bị gỡ 4 lần). Nhờ vậy hai người dùng chung key không gỡ qua gỡ lại mãi được.
+- **Mở khóa:** một máy gỡ key, tự gỡ hay gỡ từ xa đều được. Mỗi lần gỡ vẫn tính vào luật khóa tạm (§10.2): máy bị gỡ muốn quay lại phải `activate`; luật không đếm các lần gỡ chính máy đang xin kích hoạt, nên hai máy giành nhau một key bị `423` ở lần `activate` sau lần gỡ thứ 5 trong 30 ngày (ngưỡng đếm lần gỡ của máy kia là hơn 2). Nhờ vậy hai người dùng chung key không gỡ qua gỡ lại mãi được.
 - **Kiểm nhanh lúc bắt đầu phiên:** bắt đầu phiên ở gói trả phí mà lần `validate` thành công gần nhất đã quá 1 giờ thì app gọi `validate` chạy nền, song song với phiên, không làm chậm lúc bắt đầu. Kết quả là xung đột, thu hồi hay đã bị gỡ thì app dừng phiên với lý do `license_conflict` (hay `license_invalid`) và báo như trên. Lỗi mạng thì bỏ qua, phiên chạy tiếp.
 
 **Các quy tắc khác:**
@@ -766,7 +766,7 @@ Thay bằng:
 - **Sửa app để gửi `device_id_hash` giả** thì được dùng thử mới. Lớp kiểm app chính hãng (bảng trên) chỉ giới hạn phần nào; bản ký ad-hoc trên Mac yếu hơn (spec 2026-10-05).
 - **Giữ giờ máy đứng yên khi offline** (luôn đặt về cùng một ngày, không kết nối mạng) thì kéo dài được dùng thử, vì giờ tin được không tăng. Chấp nhận: app cần mạng để cập nhật và tải model, và phần lợi chỉ là 30 phút mỗi ngày.
 - **Máy đang giữ key mà offline** thì chưa biết key đã xung đột: vẫn dùng token cũ tới `refresh_before`, tối đa 14 ngày. Có mạng thì xung đột có tác dụng trong vòng 1 giờ dùng (kiểm nhanh lúc bắt đầu phiên) hay 24 giờ (kiểm định kỳ), §6.8.
-- **Người dùng chung key gỡ máy của chủ key từ xa:** chủ key gỡ lại được; luật khóa tạm dừng việc này sau khoảng 3 lần gỡ mỗi 30 ngày, rồi phải liên hệ hỗ trợ.
+- **Người dùng chung key gỡ máy của chủ key từ xa:** chủ key gỡ lại được; luật khóa tạm dừng việc này sau khoảng 5 lần gỡ qua gỡ lại trong 30 ngày, rồi phải liên hệ hỗ trợ.
 ```
 
 Tìm:
@@ -787,6 +787,37 @@ Tìm:
 Thay bằng:
 ```text
 - Key đã khóa thì chặn mọi máy không đang kích hoạt. Các máy đang kích hoạt vẫn gỡ máy được, và vẫn `validate` được khi key không xung đột (§6.8, "Mỗi key một máy").
+```
+
+- [ ] **Step 9b: Ngưỡng khóa tạm hạ từ 3 xuống 2 (chủ dự án chốt 2026-10-07)**
+
+Ba chỗ của spec gốc nhắc ngưỡng cũ. Sửa từng chỗ (Task 7 commit cả ba, dù một chỗ nằm ở §6.8).
+
+Tìm (§6.8, "Gỡ máy rồi kích hoạt máy khác không chuyển bộ đếm"):
+```text
+Luật khóa tạm (§10.2) chỉ giới hạn được phần nào (tối đa khoảng 3 lần đổi máy mỗi 30 ngày).
+```
+Thay bằng:
+```text
+Luật khóa tạm (§10.2) chỉ giới hạn được phần nào (tối đa 2 lần đổi máy mỗi 30 ngày; lần thứ 3 bị khóa).
+```
+
+Tìm (§10.2, "Rủi ro chấp nhận ở MVP"):
+```text
+Luật khóa tạm bên dưới chỉ giới hạn được phần nào (khoảng 3 lần đổi máy mỗi 30 ngày).
+```
+Thay bằng:
+```text
+Luật khóa tạm bên dưới chỉ giới hạn được phần nào (tối đa 2 lần đổi máy mỗi 30 ngày; lần thứ 3 bị khóa).
+```
+
+Tìm (§10.2, "Khóa tạm key"):
+```text
+mà số trên lớn hơn 3, server khóa key,
+```
+Thay bằng:
+```text
+mà số trên lớn hơn 2, server khóa key,
 ```
 
 - [ ] **Step 10: Kiểm**
@@ -1005,6 +1036,17 @@ Thay bằng:
 - Nếu key được kích hoạt trên máy thứ hai trong khi máy kia vẫn giữ key, key bị **tạm khóa trên cả hai máy** cho tới khi một máy gỡ key. Trong thời gian đó, gói trả phí không dùng được trên cả hai máy.
 ```
 
+- [ ] **Step 4b: Mục 4, câu khóa tạm**
+
+Tìm:
+```text
+Nếu bạn gỡ và kích hoạt máy khác quá nhiều lần trong 30 ngày (khoảng hơn 3 lần), key có thể bị **khóa tạm**; liên hệ chúng tôi để mở khóa.
+```
+Thay bằng:
+```text
+Nếu bạn gỡ và kích hoạt máy khác quá nhiều lần trong 30 ngày (khoảng 5 lần gỡ), key có thể bị **khóa tạm**; liên hệ chúng tôi để mở khóa.
+```
+
 - [ ] **Step 5: Kiểm**
 
 Run: `grep -nE "Professional|X2|X5|2 máy|10 phút|đơn 30 ngày" docs/legal/eula.vi.md`
@@ -1090,6 +1132,17 @@ Thay bằng:
 ```text
 - Each key can be used on **1 machine** only. Re-activating the same machine does not count as a new machine. To switch machines, remove the key from the old machine (or remove the old machine from the new one), then activate the new machine.
 - If a key is activated on a second machine while the other machine still holds it, the key is **temporarily locked on both machines** until one of them removes the key. During that time the paid plan cannot be used on either machine.
+```
+
+- [ ] **Step 4b: Section 4, temporary-lock sentence**
+
+Tìm:
+```text
+If you deactivate and activate other machines too often within 30 days (roughly more than 3 times) the key may be **temporarily locked**; contact us to unlock it.
+```
+Thay bằng:
+```text
+If you deactivate and activate other machines too often within 30 days (roughly 5 removals) the key may be **temporarily locked**; contact us to unlock it.
 ```
 
 - [ ] **Step 5: Kiểm**
@@ -1695,7 +1748,7 @@ Expected: lần đầu `{"error":"key_in_use","devices":[…máy Mac…]}`; lầ
 
 Trên app: Cài đặt › Bản quyền › bấm "Thử lại" (hay chờ tối đa 15 phút). Expected: báo "Key đang dùng trên 2 máy nên đã bị tạm khóa", liệt kê Mac và "Máy thử xung đột"; gói trả phí không dùng được, máy theo Free (dòng dùng thử hiện lại). Bắt đầu một phiên khi đang xung đột thì chạy ở Free (30 phút/ngày).
 
-Bấm "Gỡ máy kia". Expected: app về gói trả phí, hết báo xung đột. Lần gỡ này tính 1 vào luật khóa tạm (ngưỡng > 3 lần trong 30 ngày).
+Bấm "Gỡ máy kia". Expected: app về gói trả phí, hết báo xung đột. Lần gỡ này tính 1 vào luật khóa tạm (khóa khi số lần gỡ máy khác lớn hơn 2 trong 30 ngày).
 
 - [ ] **Step 6: Kiểm nhanh lúc bắt đầu phiên (tùy chọn, cần chờ 1 giờ)**
 
