@@ -1034,14 +1034,18 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 | GPU khởi tạo lỗi, hoặc máy Windows không có Vulkan | Log của backend; `asr-worker-vulkan` không khởi động được (§6.4) | Chạy `asr-worker-cpu`, và `llama-server` chạy bằng CPU. Báo "Đang chạy bằng CPU (chậm hơn)". |
 | Thiếu RAM hoặc VRAM | RAM trống thấp, hoặc tiến trình phụ báo hết bộ nhớ, kể cả bộ nhớ GPU | Đề xuất chuyển sang gói Nhẹ |
 | Trễ dồn lại | Độ trễ > 6 giây | Hiện chỉ báo và áp dụng chính sách ở §7 |
-| Hết hạn mức (Free: 10 phút hôm nay; Professional, X2: hạn mức của chu kỳ) | Bộ đếm phút (§6.8, "Hạn mức") | Dừng phiên với lý do `quota_exhausted`. Báo đã hết hạn mức và thời điểm reset, kèm nút nâng gói (§4.2) |
+| Hết hạn mức (Free: 30 phút hôm nay; Monthly: hạn mức của chu kỳ) | Bộ đếm phút (§6.8, "Hạn mức") | Dừng phiên với lý do `quota_exhausted`. Báo đã hết hạn mức và thời điểm reset, kèm nút nâng gói (§4.2) |
 | Giờ máy qua mốc chu kỳ mới của gói trả phí khi đang offline | Giờ máy qua mốc, `validate` lỗi mạng | Dùng tiếp bộ đếm của chu kỳ cũ; báo "Cần kết nối mạng để mở hạn mức của chu kỳ mới". Có mạng thì gọi `validate` ngay |
 | Mất bản ghi bộ đếm (§6.8) | Luật "Mất bản ghi" của Free và của gói trả phí ở §6.8 | Coi như đã hết hạn mức của ngày hoặc của chu kỳ. Báo rõ lý do, hướng dẫn liên hệ hỗ trợ để người vận hành reset hạn mức của máy |
-| License không hợp lệ, hết hạn hoặc bị thu hồi | Kết quả `validate` | Về Free, báo rõ lý do |
+| License không hợp lệ, hết hạn hoặc bị thu hồi | Kết quả `validate` | Về Free (theo luật dùng thử, §6.8), báo rõ lý do |
 | Mất mạng đúng lúc cần kiểm tra license | Lỗi mạng | Giữ gói trả phí trong 14 ngày ân hạn |
 | Key bị khóa tạm vì gỡ máy quá nhiều | `activate` trả `423 license_locked` | Báo key bị khóa tạm, hướng dẫn liên hệ hỗ trợ (§10.2). Máy đang kích hoạt vẫn dùng được |
 | Server trả `429` (giới hạn tần suất, hoặc IP bị chặn tạm) | Mã `429` kèm `Retry-After` | Báo "thử lại sau", không thử lại liên tục. `429` ở `activate` không có nghĩa là key sai (§10.2) |
-| Key đã kích hoạt đủ 2 máy | `activate` trả `409` | Hiện danh sách máy đã kích hoạt (tên máy, lần dùng gần nhất), cho gỡ một máy rồi kích hoạt máy đang dùng. Vượt giới hạn gỡ ở §10.2 thì hướng dẫn liên hệ hỗ trợ. |
+| Key đang dùng ở máy khác | `activate` trả `409 key_in_use` | Hiện máy đang giữ key (tên máy, lần dùng gần nhất), cho chọn "Gỡ máy kia và dùng máy này" hoặc "Vẫn kích hoạt trên máy này" (hỏi xác nhận vì cả hai máy sẽ bị tạm khóa, §6.8). Vượt giới hạn gỡ ở §10.2 thì hướng dẫn liên hệ hỗ trợ. |
+| Key đang xung đột (2 máy cùng kích hoạt) | `activate` hay `validate` trả `409 license_conflict` | Trạng thái xung đột (§6.8, "Mỗi key một máy"): gói trả phí bị tạm khóa, máy theo luật Free; báo lý do, liệt kê hai máy, nút gỡ key. Đang dịch thì dừng phiên với lý do `license_conflict` |
+| Free chưa đăng ký dùng thử, không có mạng | Không có token dùng thử, `POST /v1/trial` lỗi mạng | Không bắt đầu phiên; báo "Cần kết nối mạng một lần để bắt đầu dùng thử" |
+| Hết 10 ngày dùng thử Free | Giờ tin được ≥ `ends_at` của token dùng thử (§6.8) | Không bắt đầu phiên ở Free; báo đã hết dùng thử, kèm nút Nâng cấp |
+| `POST /v1/trial` trả `429` hay `503` | Mã lỗi | Coi như lỗi tạm, thử lại theo nhịp ở §6.8 ("Dùng thử Free"); chỉ báo khi người dùng cần bắt đầu phiên |
 | Khách đã chuyển khoản nhưng webhook của PayOS đến chậm hoặc bị mất | App vẫn đang chờ; server có đơn chưa xác nhận | App hỏi trạng thái đơn mỗi 3 giây. Server tự đối soát bằng `GET /v2/payment-requests/{id}`, theo lịch ở dưới bảng. |
 | Webhook bị gửi trùng | Trùng `order_code` | Xử lý idempotent: mỗi đơn chỉ cấp, gia hạn hoặc đổi gói license một lần |
 | Khách chuyển thiếu tiền, hoặc link thanh toán hết hạn | `amountPaid` < `amount`, hoặc trạng thái đơn trả về từ PayOS | Không cấp license, hiện hướng dẫn liên hệ hỗ trợ. Hỗ trợ cấp tay khi khách đã chuyển bù (§6.8). |
