@@ -66,7 +66,7 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
   /** Mua trọn một đơn: checkout, khách trả đủ tiền, PayOS gửi webhook. Trả về key đã cấp. */
   async function buy(opts: { plan?: string; email?: string; licenseKey?: string } = {}) {
     const req: Record<string, unknown> = {
-      plan: opts.plan ?? "pro",
+      plan: opts.plan ?? "monthly",
       email: opts.email ?? "buyer@example.com",
       consent: true,
     };
@@ -93,7 +93,7 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
    */
   async function customerB() {
     const email = "khach-b@example.com";
-    const { licenseKey } = await buy({ email, plan: "pro_x2" });
+    const { licenseKey } = await buy({ email, plan: "yearly" });
     const device = (n: number) => sha256Hex(`khach-b-${n}`);
     const ip = (n: number) => ({ "cf-connecting-ip": `192.0.2.${n}` });
     const activate = async (n: number) => {

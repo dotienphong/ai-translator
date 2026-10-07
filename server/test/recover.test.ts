@@ -9,7 +9,7 @@ describe("POST /v1/licenses/recover", () => {
   it("gửi mọi key còn hiệu lực của email vào chính email đó", async () => {
     const w = makeWorld();
     const a = await w.buy({ email: "buyer@example.com" });
-    const b = await w.buy({ email: "buyer@example.com", plan: "pro_x2" });
+    const b = await w.buy({ email: "buyer@example.com", plan: "yearly" });
     const revoked = await w.buy({ email: "buyer@example.com" });
     await env.DB.prepare("UPDATE licenses SET revoked_at = 1 WHERE license_key = ?")
       .bind(revoked.licenseKey.replace(/-/g, ""))

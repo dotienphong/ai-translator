@@ -23,7 +23,11 @@ export default defineConfig(async () => {
         wrangler: { configPath: "./wrangler.jsonc" },
         // ENVIRONMENT = "test" chỉ có ở đây: wrangler*.jsonc luôn đặt "production" (test/node/wrangler-config.test.mjs khóa
         // điều đó). Riêng khi test, giá trị này nới ba chỗ: không ép chỉ HTTPS, cho phép khóa ký test-*, không bắt buộc ACCESS_AUD.
-        miniflare: { bindings: { TEST_MIGRATIONS: migrations, ...FAKE_SECRETS, ENVIRONMENT: "test" } },
+        // MIGRATION_DB: D1 trống riêng cho test chuyển dữ liệu của từng migration (test/migrations.test.ts).
+        miniflare: {
+          bindings: { TEST_MIGRATIONS: migrations, ...FAKE_SECRETS, ENVIRONMENT: "test" },
+          d1Databases: ["MIGRATION_DB"],
+        },
       }),
     ],
     // test/node/: test script Node (scripts/*.mjs), chạy bằng `pnpm test:scripts`, không chạy trong workerd.

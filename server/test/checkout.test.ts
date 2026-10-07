@@ -6,23 +6,22 @@ import { DAY, makeWorld, T0 } from "./world";
 
 beforeEach(resetDb);
 
-const valid = { plan: "pro", email: " Buyer@Example.com ", consent: true };
+const valid = { plan: "monthly", email: " Buyer@Example.com ", consent: true };
 
 /** Đúng câu lệnh giữ chỗ số đơn ở Task 21, Step 4 (`wrangler d1 execute … --command`), QĐ18. */
 const reserveSql = (n: number) =>
-  `INSERT INTO orders (order_code, order_token_hash, provider, plan, amount, currency, email_consent_at, status, created_at, expires_at) VALUES (${n}, 'reserved', 'none', 'pro', 0, 'VND', 0, 'failed', 0, 0); DELETE FROM orders WHERE order_code = ${n};`;
+  `INSERT INTO orders (order_code, order_token_hash, provider, plan, amount, currency, email_consent_at, status, created_at, expires_at) VALUES (${n}, 'reserved', 'none', 'monthly', 0, 'VND', 0, 'failed', 0, 0); DELETE FROM orders WHERE order_code = ${n};`;
 
 describe("GET /v1/plans", () => {
-  it("trả ba gói trả phí với tên, hạn mức, số ngày mỗi đơn và giá; không có Free", async () => {
+  it("trả hai gói trả phí với tên, hạn mức, số ngày mỗi đơn và giá; không có Free", async () => {
     const res = await makeWorld().call("GET", "/v1/plans");
     expect(res).toEqual({
       status: 200,
       headers: expect.anything(),
       body: {
         plans: [
-          { code: "pro", name: "Professional", quota_minutes_per_cycle: 1800, days_per_order: 30, prices: { VND: 50000 } },
-          { code: "pro_x2", name: "Professional X2", quota_minutes_per_cycle: 6000, days_per_order: 30, prices: { VND: 150000 } },
-          { code: "pro_x5", name: "Professional X5", quota_minutes_per_cycle: null, days_per_order: 30, prices: { VND: 500000 } },
+          { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000 } },
+          { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000 } },
         ],
       },
     });
@@ -66,7 +65,7 @@ describe("POST /v1/checkout", () => {
     expect(row).toMatchObject({
       provider: "payos",
       provider_ref: "plink1",
-      plan: "pro",
+      plan: "monthly",
       amount: 50000,
       currency: "VND",
       email: "buyer@example.com",
@@ -79,9 +78,8 @@ describe("POST /v1/checkout", () => {
   });
 
   it.each([
-    ["pro", 50000],
-    ["pro_x2", 150000],
-    ["pro_x5", 500000],
+    ["monthly", 50000],
+    ["yearly", 500000],
   ])("gói %s: giá %i đ lấy từ biến PLANS", async (plan, amount) => {
     const res = await makeWorld().call("POST", "/v1/checkout", { ...valid, plan });
     expect(res).toMatchObject({ status: 201, body: { plan, amount, currency: "VND" } });
@@ -90,9 +88,9 @@ describe("POST /v1/checkout", () => {
 
   it("đổi giá trong PLANS là đổi giá bán, không cần sửa code", async () => {
     const plans = structuredClone(env.PLANS) as Record<string, { prices: Record<string, number> }>;
-    plans.pro_x2!.prices.VND = 120000;
-    const res = await makeWorld({ PLANS: plans }).call("POST", "/v1/checkout", { ...valid, plan: "pro_x2" });
-    expect(res.body.amount).toBe(120000);
+    plans.yearly!.prices.VND = 450000;
+    const res = await makeWorld({ PLANS: plans }).call("POST", "/v1/checkout", { ...valid, plan: "yearly" });
+    expect(res.body.amount).toBe(450000);
   });
 
   it.each([
@@ -118,6 +116,9 @@ describe("POST /v1/checkout", () => {
     [{ ...valid, plan: "pro_forever" }, "plan"],
     [{ ...valid, plan: "free" }, "plan"],
     [{ ...valid, plan: "pro_1m" }, "plan"],
+    // Mã gói cũ (trước spec 2026-10-07) không còn bán.
+    [{ ...valid, plan: "pro" }, "plan"],
+    [{ ...valid, plan: "pro_x5" }, "plan"],
     [{ ...valid, license_key: "SAI-KEY" }, "license_key"],
   ])("input sai (%j) thì 400", async (body, field) => {
     const res = await makeWorld().call("POST", "/v1/checkout", body);
@@ -180,7 +181,7 @@ describe("POST /v1/checkout", () => {
         action: "order_created",
         license_id: null,
         order_code: res.body.order_code,
-        detail: JSON.stringify({ plan: "pro", amount: 50000, currency: "VND" }),
+        detail: JSON.stringify({ plan: "monthly", amount: 50000, currency: "VND" }),
       },
     ]);
   });
@@ -232,21 +233,21 @@ describe("POST /v1/checkout", () => {
   });
 
   it("gia hạn hay đổi gói: trả ước tính license_expires_at và số ngày quy đổi, tính lúc tạo đơn", async () => {
-    // License Professional còn 20 ngày (spec §6.8, ví dụ lên gói).
+    // License Monthly còn 20 ngày (spec 2026-10-07 §2.3, ví dụ lên gói).
     await env.DB.prepare(
       `INSERT INTO licenses (id, license_key, email, plan, expires_at, cycle_anchor, anchor_applied_at, created_at)
-       VALUES ('L1', ?, 'a@example.com', 'pro', ?, ?3, ?3, ?3)`,
+       VALUES ('L1', ?, 'a@example.com', 'monthly', ?, ?3, ?3, ?3)`,
     )
       .bind(vectors.license_keys[0]!.normalized, T0 + 20 * DAY, T0 - 10 * DAY)
       .run();
     const w = makeWorld();
     const key = vectors.license_keys[0]!.input;
-    const up = await w.call("POST", "/v1/checkout", { ...valid, plan: "pro_x2", license_key: key });
-    expect(up).toMatchObject({ status: 201, body: { plan: "pro_x2", amount: 150000, license_expires_at: T0 + 36 * DAY, converted_days: 6 } });
-    const same = await w.call("POST", "/v1/checkout", { ...valid, plan: "pro", license_key: key });
+    const up = await w.call("POST", "/v1/checkout", { ...valid, plan: "yearly", license_key: key });
+    expect(up).toMatchObject({ status: 201, body: { plan: "yearly", amount: 500000, license_expires_at: T0 + 389 * DAY, converted_days: 24 } });
+    const same = await w.call("POST", "/v1/checkout", { ...valid, plan: "monthly", license_key: key });
     expect(same.body).toMatchObject({ license_expires_at: T0 + 50 * DAY, converted_days: 0 });
     // Ước tính không đổi license.
-    expect(await env.DB.prepare("SELECT plan, expires_at FROM licenses").first()).toEqual({ plan: "pro", expires_at: T0 + 20 * DAY });
+    expect(await env.DB.prepare("SELECT plan, expires_at FROM licenses").first()).toEqual({ plan: "monthly", expires_at: T0 + 20 * DAY });
     const row = await env.DB.prepare("SELECT renew_license_id FROM orders WHERE order_code = ?").bind(up.body.order_code).first();
     expect(row).toEqual({ renew_license_id: "L1" });
   });

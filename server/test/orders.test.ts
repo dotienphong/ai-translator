@@ -14,7 +14,7 @@ beforeEach(resetDb);
 const UNKNOWN_KEY = "0123-4567-89AB-CDEF-GHJK-MNPQ-RST5";
 
 async function checkout(w: ReturnType<typeof makeWorld>, extra: Record<string, unknown> = {}) {
-  const res = await w.call("POST", "/v1/checkout", { plan: "pro", email: "buyer@example.com", consent: true, ...extra });
+  const res = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "buyer@example.com", consent: true, ...extra });
   return { orderCode: res.body.order_code as number, token: res.body.order_token as string };
 }
 
@@ -34,7 +34,7 @@ describe("webhook PayOS", () => {
     expect(pending.body).toEqual({
       order_code: orderCode,
       status: "pending",
-      plan: "pro",
+      plan: "monthly",
       amount: 50000,
       currency: "VND",
       expires_at: T0 + 900,
@@ -51,7 +51,7 @@ describe("webhook PayOS", () => {
     expect(paid.body).toMatchObject({
       status: "paid",
       grant_kind: "new",
-      license_plan: "pro",
+      license_plan: "monthly",
       license_expires_at: T0 + 120 + 30 * DAY,
     });
     const key = paid.body.license_key as string;
@@ -63,7 +63,7 @@ describe("webhook PayOS", () => {
     const order = await env.DB.prepare("SELECT email_sent_at, amount_paid FROM orders").first();
     expect(order).toEqual({ email_sent_at: T0 + 120, amount_paid: 50000 });
     const lic = await env.DB.prepare("SELECT plan, expires_at, cycle_anchor, version, last_order_code FROM licenses").first();
-    expect(lic).toEqual({ plan: "pro", expires_at: T0 + 120 + 30 * DAY, cycle_anchor: T0 + 120, version: 0, last_order_code: orderCode });
+    expect(lic).toEqual({ plan: "monthly", expires_at: T0 + 120 + 30 * DAY, cycle_anchor: T0 + 120, version: 0, last_order_code: orderCode });
   });
 
   it("webhook gửi trùng cùng lúc: chỉ cấp một lần, một email", async () => {
@@ -228,7 +228,7 @@ describe("webhook PayOS", () => {
 });
 
 describe("checkout gia hạn", () => {
-  const valid = { plan: "pro", email: "buyer@example.com", consent: true };
+  const valid = { plan: "monthly", email: "buyer@example.com", consent: true };
 
   it("gia hạn: gắn đơn với license đang có", async () => {
     const w = makeWorld();
@@ -267,10 +267,10 @@ describe("mua thêm cùng gói (§6.8)", () => {
     const w = makeWorld();
     const { licenseKey } = await w.buy();
     w.clock.now = T0 + 20 * DAY;
-    const order = await renew(w, licenseKey, "pro");
-    expect(order).toMatchObject({ status: "paid", grant_kind: "extend", license_key: licenseKey, license_plan: "pro" });
+    const order = await renew(w, licenseKey, "monthly");
+    expect(order).toMatchObject({ status: "paid", grant_kind: "extend", license_key: licenseKey, license_plan: "monthly" });
     expect(order.license_expires_at).toBe(T0 + 60 * DAY);
-    expect(await license()).toEqual({ plan: "pro", expires_at: T0 + 60 * DAY, cycle_anchor: T0, version: 1 });
+    expect(await license()).toEqual({ plan: "monthly", expires_at: T0 + 60 * DAY, cycle_anchor: T0, version: 1 });
     expect(await licenseCount()).toBe(1);
     expect(w.resend.sent.at(-1)!.subject).toBe("Đã gia hạn AI Translator / AI Translator renewed");
   });
@@ -279,46 +279,46 @@ describe("mua thêm cùng gói (§6.8)", () => {
     const w = makeWorld();
     const { licenseKey } = await w.buy();
     w.clock.now = T0 + 35 * DAY;
-    await renew(w, licenseKey, "pro");
-    expect(await license()).toEqual({ plan: "pro", expires_at: T0 + 65 * DAY, cycle_anchor: T0 + 35 * DAY, version: 1 });
+    await renew(w, licenseKey, "monthly");
+    expect(await license()).toEqual({ plan: "monthly", expires_at: T0 + 65 * DAY, cycle_anchor: T0 + 35 * DAY, version: 1 });
   });
 });
 
 describe("đổi gói (§6.8)", () => {
-  it("lên gói: Professional còn 20 ngày mua X2, quy đổi 6 ngày, X2 chạy 36 ngày từ lúc trả tiền", async () => {
+  it("lên gói: Monthly còn 20 ngày mua Yearly, quy đổi 24 ngày, Yearly chạy 389 ngày từ lúc trả tiền", async () => {
     const w = makeWorld();
     const { licenseKey } = await w.buy();
     w.clock.now = T0 + 10 * DAY;
-    const order = await renew(w, licenseKey, "pro_x2");
-    expect(order).toMatchObject({ grant_kind: "change", license_plan: "pro_x2", license_expires_at: T0 + 46 * DAY });
-    expect(await license()).toEqual({ plan: "pro_x2", expires_at: T0 + 46 * DAY, cycle_anchor: T0 + 10 * DAY, version: 1 });
+    const order = await renew(w, licenseKey, "yearly");
+    expect(order).toMatchObject({ grant_kind: "change", license_plan: "yearly", license_expires_at: T0 + 399 * DAY });
+    expect(await license()).toEqual({ plan: "yearly", expires_at: T0 + 399 * DAY, cycle_anchor: T0 + 10 * DAY, version: 1 });
     expect(w.resend.sent.at(-1)!.subject).toBe("Đã đổi gói AI Translator / AI Translator plan changed");
-    expect(w.resend.sent.at(-1)!.text).toContain("Professional X2, hết hạn");
+    expect(w.resend.sent.at(-1)!.text).toContain("Yearly, hết hạn");
     const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'license_plan_changed'").first<{ detail: string }>();
     expect(JSON.parse(log!.detail)).toMatchObject({
-      plan: "pro_x2",
-      from_plan: "pro",
+      plan: "yearly",
+      from_plan: "monthly",
       from_expires_at: T0 + 30 * DAY,
-      converted_days: 6,
+      converted_days: 24,
       paid_at: T0 + 10 * DAY,
     });
   });
 
-  it("xuống gói: X2 còn 10 ngày mua Professional, quy đổi 30 ngày, chạy 60 ngày", async () => {
+  it("xuống gói: Yearly còn 200 ngày mua Monthly, quy đổi 164 ngày, chạy 194 ngày", async () => {
     const w = makeWorld();
-    const { licenseKey } = await w.buy({ plan: "pro_x2" });
-    w.clock.now = T0 + 20 * DAY;
-    await renew(w, licenseKey, "pro");
-    expect(await license()).toEqual({ plan: "pro", expires_at: T0 + 80 * DAY, cycle_anchor: T0 + 20 * DAY, version: 1 });
+    const { licenseKey } = await w.buy({ plan: "yearly" });
+    w.clock.now = T0 + 165 * DAY;
+    await renew(w, licenseKey, "monthly");
+    expect(await license()).toEqual({ plan: "monthly", expires_at: T0 + 359 * DAY, cycle_anchor: T0 + 165 * DAY, version: 1 });
   });
 
   it("license đã hết hạn mua gói khác: như license mới nhưng giữ key", async () => {
     const w = makeWorld();
-    const { licenseKey } = await w.buy({ plan: "pro_x5" });
-    w.clock.now = T0 + 40 * DAY;
-    const order = await renew(w, licenseKey, "pro");
+    const { licenseKey } = await w.buy({ plan: "yearly" });
+    w.clock.now = T0 + 370 * DAY;
+    const order = await renew(w, licenseKey, "monthly");
     expect(order).toMatchObject({ grant_kind: "change", license_key: licenseKey });
-    expect(await license()).toEqual({ plan: "pro", expires_at: T0 + 70 * DAY, cycle_anchor: T0 + 40 * DAY, version: 1 });
+    expect(await license()).toEqual({ plan: "monthly", expires_at: T0 + 400 * DAY, cycle_anchor: T0 + 370 * DAY, version: 1 });
     expect(await licenseCount()).toBe(1);
   });
 });
@@ -328,20 +328,20 @@ describe("thời điểm tính là lúc khách trả tiền (QĐ33)", () => {
     const w = makeWorld();
     const { licenseKey } = await w.buy();
     w.clock.now = T0 + 10 * DAY;
-    const { orderCode, token } = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
+    const { orderCode, token } = await checkout(w, { plan: "yearly", license_key: licenseKey });
     w.clock.now = T0 + 10 * DAY + 60;
     w.payos.pay(orderCode);
     const body = await w.payos.webhookBody(orderCode);
     w.clock.now = T0 + 11 * DAY;
     await w.call("POST", "/v1/webhooks/payos", body);
-    // Lúc trả tiền còn 20 ngày trừ 60 giây: floor(6,66…) = 6 ngày quy đổi. Gói mới bắt đầu lúc trả tiền.
+    // Lúc trả tiền còn 20 ngày trừ 60 giây: floor(24,32…) = 24 ngày quy đổi. Gói mới bắt đầu lúc trả tiền.
     expect(await license()).toEqual({
-      plan: "pro_x2",
-      expires_at: T0 + 10 * DAY + 60 + 36 * DAY,
+      plan: "yearly",
+      expires_at: T0 + 10 * DAY + 60 + 389 * DAY,
       cycle_anchor: T0 + 10 * DAY + 60,
       version: 1,
     });
-    expect((await w.getOrder(orderCode, token)).body.license_expires_at).toBe(T0 + 46 * DAY + 60);
+    expect((await w.getOrder(orderCode, token)).body.license_expires_at).toBe(T0 + 399 * DAY + 60);
   });
 
   it("đơn license mới mà webhook tới muộn 24 giờ: 30 ngày tính từ lúc trả tiền", async () => {
@@ -369,24 +369,24 @@ describe("thời điểm tính là lúc khách trả tiền (QĐ33)", () => {
     const body = await w.payos.webhookBody(orderCode);
     w.clock.now = T0 + 31 * DAY;
     await w.call("POST", "/v1/webhooks/payos", body);
-    expect(await license()).toEqual({ plan: "pro", expires_at: T0 + 60 * DAY, cycle_anchor: T0, version: 1 });
+    expect(await license()).toEqual({ plan: "monthly", expires_at: T0 + 60 * DAY, cycle_anchor: T0, version: 1 });
   });
 
   it("thời điểm PayOS báo bị kẹp trong thời hạn của link thanh toán", async () => {
     const w = makeWorld();
     const { licenseKey } = await w.buy();
     w.clock.now = T0 + 10 * DAY;
-    const early = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
+    const early = await checkout(w, { plan: "yearly", license_key: licenseKey });
     w.payos.pay(early.orderCode, undefined, T0); // trước lúc tạo link: kẹp về lúc tạo link
     w.clock.now = T0 + 12 * DAY;
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(early.orderCode));
-    expect(await license()).toMatchObject({ cycle_anchor: T0 + 10 * DAY, expires_at: T0 + 46 * DAY });
+    expect(await license()).toMatchObject({ cycle_anchor: T0 + 10 * DAY, expires_at: T0 + 399 * DAY });
 
-    const late = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
+    const late = await checkout(w, { plan: "yearly", license_key: licenseKey });
     w.payos.pay(late.orderCode, undefined, T0 + 30 * DAY); // sau lúc link hết hạn: kẹp về hạn của link
     w.clock.now = T0 + 13 * DAY;
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(late.orderCode));
-    expect(await license()).toMatchObject({ plan: "pro_x2", cycle_anchor: T0 + 10 * DAY, expires_at: T0 + 76 * DAY });
+    expect(await license()).toMatchObject({ plan: "yearly", cycle_anchor: T0 + 10 * DAY, expires_at: T0 + 764 * DAY });
     // Gia hạn cùng gói khi còn hạn thì hạn mới không phụ thuộc thời điểm: kiểm thời điểm đã kẹp ở nhật ký.
     const paidAt = async (orderCode: number) =>
       JSON.parse(
@@ -401,10 +401,10 @@ describe("thời điểm tính là lúc khách trả tiền (QĐ33)", () => {
 describe("hai đơn của cùng license xác nhận cùng lúc (QĐ32)", () => {
   async function twoOrders() {
     const w = makeWorld();
-    const { licenseKey } = await w.buy(); // Professional, hết hạn T0 + 30 ngày
+    const { licenseKey } = await w.buy(); // Monthly, hết hạn T0 + 30 ngày
     w.clock.now = T0 + 10 * DAY; // còn 20 ngày
-    const a = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
-    const b = await checkout(w, { plan: "pro_x5", license_key: licenseKey });
+    const a = await checkout(w, { plan: "yearly", license_key: licenseKey });
+    const b = await checkout(w, { plan: "monthly", license_key: licenseKey });
     w.payos.pay(a.orderCode);
     w.payos.pay(b.orderCode);
     return { w, a: a.orderCode, b: b.orderCode };
@@ -420,40 +420,41 @@ describe("hai đơn của cùng license xác nhận cùng lúc (QĐ32)", () => {
     const granted = await grantOrder(env.DB, plans(), (await loadOrder(env.DB, a))!, {
       now,
       paidAt: now,
-      amountPaid: 150000,
+      amountPaid: 500000,
       actor: "test",
       beforeCommit: async () => {
         if (!chen) return;
         chen = false;
-        await grantOrder(env.DB, plans(), (await loadOrder(env.DB, b))!, { now, paidAt: now, amountPaid: 500000, actor: "test" });
+        await grantOrder(env.DB, plans(), (await loadOrder(env.DB, b))!, { now, paidAt: now, amountPaid: 50000, actor: "test" });
       },
     });
-    // B trước: Professional 20 ngày → X5, quy đổi floor(20 × 50.000 / 500.000) = 2, X5 chạy 32 ngày.
-    // A sau: X5 32 ngày → X2, quy đổi floor(32 × 500.000 / 150.000) = 106, X2 chạy 136 ngày.
-    expect(granted).toMatchObject({ plan: "pro_x2", expiresAt: now + 136 * DAY, convertedDays: 106 });
-    expect(await license()).toEqual({ plan: "pro_x2", expires_at: now + 136 * DAY, cycle_anchor: now, version: 2 });
+    // B trước: Monthly còn 20 ngày, mua thêm Monthly: hết hạn T0 + 60 ngày (còn 50 ngày), giữ cycle_anchor.
+    // A sau: Monthly 50 ngày → Yearly, quy đổi floor(50 × 365 × 50.000 / (30 × 500.000)) = 60, Yearly chạy 425 ngày.
+    expect(granted).toMatchObject({ plan: "yearly", expiresAt: now + 425 * DAY, convertedDays: 60 });
+    expect(await license()).toEqual({ plan: "yearly", expires_at: now + 425 * DAY, cycle_anchor: now, version: 2 });
     expect(await statuses()).toEqual([{ status: "paid" }, { status: "paid" }]);
     // Lần ghi đầu của A bị B chen nên không có tác dụng: không để lại dòng nhật ký nào; mỗi đơn đúng một dòng.
-    expect([await auditCount("license_issued"), await auditCount("license_plan_changed"), await auditCount("license_extended")]).toEqual([1, 2, 0]);
+    expect([await auditCount("license_issued"), await auditCount("license_plan_changed"), await auditCount("license_extended")]).toEqual([1, 1, 1]);
   });
 
   it("hai webhook chạy song song: kết quả bằng đúng việc áp lần lượt hai đơn", async () => {
     const { w, a, b } = await twoOrders();
     await Promise.all([a, b].map(async (n) => w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(n))));
     const now = T0 + 10 * DAY;
-    // A rồi B: X2 36 ngày → X5 quy đổi floor(36 × 150.000 / 500.000) = 10, chạy 40 ngày. B rồi A: X2 136 ngày.
+    // A rồi B: Yearly 389 ngày → Monthly quy đổi floor(389 × 30 × 500.000 / (365 × 50.000)) = 319, chạy 349 ngày.
+    // B rồi A: Yearly 425 ngày (như test trên).
     expect([
-      { plan: "pro_x5", expires_at: now + 40 * DAY, cycle_anchor: now, version: 2 },
-      { plan: "pro_x2", expires_at: now + 136 * DAY, cycle_anchor: now, version: 2 },
+      { plan: "monthly", expires_at: now + 349 * DAY, cycle_anchor: now, version: 2 },
+      { plan: "yearly", expires_at: now + 425 * DAY, cycle_anchor: now, version: 2 },
     ]).toContainEqual(await license());
     expect(await statuses()).toEqual([{ status: "paid" }, { status: "paid" }]);
-    expect(w.resend.sent.filter((m) => m.subject.startsWith("Đã đổi gói"))).toHaveLength(2);
+    expect(w.resend.sent.filter((m) => /^Đã (đổi gói|gia hạn)/.test(m.subject))).toHaveLength(2);
   });
 
   it("đơn đã áp rồi thì grantOrder trả already_settled, không áp lần hai", async () => {
     const { w, a } = await twoOrders();
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(a));
-    const again = await grantOrder(env.DB, plans(), (await loadOrder(env.DB, a))!, { now: T0 + 10 * DAY, amountPaid: 150000, actor: "test" });
+    const again = await grantOrder(env.DB, plans(), (await loadOrder(env.DB, a))!, { now: T0 + 10 * DAY, amountPaid: 500000, actor: "test" });
     expect(again).toBe("already_settled");
     expect(await license()).toMatchObject({ version: 1 });
   });
@@ -464,15 +465,15 @@ describe("nhật ký đổi gói cùng batch với lệnh ghi license", () => {
     const w = makeWorld();
     const { licenseKey } = await w.buy();
     w.clock.now = T0 + 10 * DAY;
-    const { orderCode } = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
+    const { orderCode } = await checkout(w, { plan: "yearly", license_key: licenseKey });
     w.payos.pay(orderCode);
     const body = await w.payos.webhookBody(orderCode);
     const failed = await withFailingInsert("audit_log", "NEW.action = 'license_plan_changed'", () => w.call("POST", "/v1/webhooks/payos", body));
     expect(failed.status).toBe(503);
-    expect(await license()).toEqual({ plan: "pro", expires_at: T0 + 30 * DAY, cycle_anchor: T0, version: 0 });
+    expect(await license()).toEqual({ plan: "monthly", expires_at: T0 + 30 * DAY, cycle_anchor: T0, version: 0 });
     expect(await orderRow(orderCode)).toEqual({ status: "pending", amount_paid: 0 });
     expect((await w.call("POST", "/v1/webhooks/payos", body)).body).toEqual({ ok: true, result: "granted" });
-    expect(await license()).toMatchObject({ plan: "pro_x2", version: 1 });
+    expect(await license()).toMatchObject({ plan: "yearly", version: 1 });
     expect(await auditCount("license_plan_changed")).toBe(1);
   });
 });
@@ -480,10 +481,10 @@ describe("nhật ký đổi gói cùng batch với lệnh ghi license", () => {
 describe("đơn của cùng license áp không theo thứ tự thanh toán", () => {
   it("đơn trả sớm hơn mà xử lý sau: tính tại cycle_anchor đang có, để cycle_anchor không lùi", async () => {
     const w = makeWorld();
-    const { licenseKey } = await w.buy(); // Professional, hết hạn T0 + 30 ngày
+    const { licenseKey } = await w.buy(); // Monthly, hết hạn T0 + 30 ngày
     w.clock.now = T0 + 10 * DAY;
-    const a = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
-    const b = await checkout(w, { plan: "pro_x5", license_key: licenseKey });
+    const a = await checkout(w, { plan: "monthly", license_key: licenseKey });
+    const b = await checkout(w, { plan: "yearly", license_key: licenseKey });
     const t1 = T0 + 10 * DAY;
     const t2 = T0 + 10 * DAY + 300;
     w.payos.pay(a.orderCode, undefined, t1);
@@ -491,15 +492,15 @@ describe("đơn của cùng license áp không theo thứ tự thanh toán", () 
     w.clock.now = T0 + 10 * DAY + 600;
     // Webhook của B (trả muộn hơn) tới trước.
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(b.orderCode));
-    // B: Professional còn 20 ngày trừ 300 giây → X5, floor(1,99…) = 1 ngày quy đổi, chạy 31 ngày từ t2.
-    expect(await license()).toMatchObject({ plan: "pro_x5", cycle_anchor: t2, expires_at: t2 + 31 * DAY });
+    // B: Monthly còn 20 ngày trừ 300 giây → Yearly, floor(24,32…) = 24 ngày quy đổi, chạy 389 ngày từ t2.
+    expect(await license()).toMatchObject({ plan: "yearly", cycle_anchor: t2, expires_at: t2 + 389 * DAY });
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(a.orderCode));
-    // A tính tại t2, không tại t1: X5 còn đúng 31 ngày → X2, floor(103,3) = 103, chạy 133 ngày từ t2.
-    expect(await license()).toEqual({ plan: "pro_x2", expires_at: t2 + 133 * DAY, cycle_anchor: t2, version: 2 });
+    // A tính tại t2, không tại t1: Yearly còn đúng 389 ngày → Monthly, floor(319,7…) = 319, chạy 349 ngày từ t2.
+    expect(await license()).toEqual({ plan: "monthly", expires_at: t2 + 349 * DAY, cycle_anchor: t2, version: 2 });
     const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'license_plan_changed' AND order_code = ?")
       .bind(a.orderCode)
       .first<{ detail: string }>();
-    expect(JSON.parse(log!.detail)).toMatchObject({ paid_at: t2, converted_days: 103 });
+    expect(JSON.parse(log!.detail)).toMatchObject({ paid_at: t2, converted_days: 319 });
   });
 });
 
@@ -508,7 +509,7 @@ describe("license đã thu hồi mà nhận được tiền (QĐ37)", () => {
     const w = makeWorld();
     const { licenseKey } = await w.buy();
     w.clock.now = T0 + 10 * DAY;
-    const { orderCode, token } = await checkout(w, { plan: "pro_x2", license_key: licenseKey });
+    const { orderCode, token } = await checkout(w, { plan: "yearly", license_key: licenseKey });
     w.payos.pay(orderCode);
     w.resend.sent.length = 0;
     return { w, licenseKey, orderCode, token };
@@ -519,16 +520,16 @@ describe("license đã thu hồi mà nhận được tiền (QĐ37)", () => {
     await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 10 * DAY).run();
     const wh = await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
     expect(wh.body).toEqual({ ok: true, result: "needs_review" });
-    expect(await license()).toEqual({ plan: "pro", expires_at: T0 + 30 * DAY, cycle_anchor: T0, version: 0 });
+    expect(await license()).toEqual({ plan: "monthly", expires_at: T0 + 30 * DAY, cycle_anchor: T0, version: 0 });
     expect(await env.DB.prepare("SELECT status, amount_paid, license_id, grant_kind FROM orders WHERE order_code = ?").bind(orderCode).first())
-      .toEqual({ status: "paid_needs_review", amount_paid: 150000, license_id: null, grant_kind: null });
+      .toEqual({ status: "paid_needs_review", amount_paid: 500000, license_id: null, grant_kind: null });
     expect(w.resend.sent).toHaveLength(0);
     expect(await env.DB.prepare("SELECT kind, count FROM ops_alerts").all()).toMatchObject({ results: [{ kind: "order_needs_review", count: 1 }] });
     const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'order_needs_review'").first<{ detail: string }>();
-    expect(JSON.parse(log!.detail)).toMatchObject({ reason: "license_revoked", plan: "pro_x2", amount_paid: 150000 });
+    expect(JSON.parse(log!.detail)).toMatchObject({ reason: "license_revoked", plan: "yearly", amount_paid: 500000 });
     // App thấy trạng thái này, không có key.
     const order = await w.getOrder(orderCode, token);
-    expect(order.body).toMatchObject({ status: "paid_needs_review", plan: "pro_x2" });
+    expect(order.body).toMatchObject({ status: "paid_needs_review", plan: "yearly" });
     expect(order.body).not.toHaveProperty("license_key");
   });
 
@@ -545,11 +546,11 @@ describe("license đã thu hồi mà nhận được tiền (QĐ37)", () => {
     await env.DB.prepare("UPDATE licenses SET revoked_at = NULL").run();
     const again = await grantOrder(env.DB, parsePlans(env.PLANS) as PlanTable, (await loadOrder(env.DB, orderCode))!, {
       now: T0 + 11 * DAY,
-      amountPaid: 150000,
+      amountPaid: 500000,
       actor: "test",
     });
     expect(again).toBe("already_settled");
-    expect(await license()).toMatchObject({ plan: "pro", version: 0 });
+    expect(await license()).toMatchObject({ plan: "monthly", version: 0 });
     expect(await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'order_needs_review'").first()).toEqual({ n: 1 });
     expect(w.resend.sent).toHaveLength(0);
   });
@@ -558,14 +559,14 @@ describe("license đã thu hồi mà nhận được tiền (QĐ37)", () => {
     const { orderCode } = await revokedRenewal();
     const result = await grantOrder(env.DB, parsePlans(env.PLANS) as PlanTable, (await loadOrder(env.DB, orderCode))!, {
       now: T0 + 10 * DAY,
-      amountPaid: 150000,
+      amountPaid: 500000,
       actor: "test",
       beforeCommit: async () => {
         await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 10 * DAY).run();
       },
     });
     expect(result).toBe("needs_review");
-    expect(await license()).toMatchObject({ plan: "pro", version: 0 });
+    expect(await license()).toMatchObject({ plan: "monthly", version: 0 });
     expect(await env.DB.prepare("SELECT status FROM orders WHERE order_code = ?").bind(orderCode).first()).toEqual({ status: "paid_needs_review" });
   });
 
@@ -580,7 +581,7 @@ describe("license đã thu hồi mà nhận được tiền (QĐ37)", () => {
     // Webhook gửi lại (hay đối soát): đơn chuyển trạng thái, có nhật ký và cảnh báo, mỗi thứ một lần.
     expect((await w.call("POST", "/v1/webhooks/payos", body)).body).toEqual({ ok: true, result: "needs_review" });
     expect((await w.call("POST", "/v1/webhooks/payos", body)).body).toEqual({ ok: true, result: "needs_review" });
-    expect(await orderRow(orderCode)).toEqual({ status: "paid_needs_review", amount_paid: 150000 });
+    expect(await orderRow(orderCode)).toEqual({ status: "paid_needs_review", amount_paid: 500000 });
     expect(await auditCount("order_needs_review")).toBe(1);
     expect(await env.DB.prepare("SELECT SUM(count) AS n FROM ops_alerts WHERE kind = 'order_needs_review'").first()).toEqual({ n: 1 });
   });
@@ -588,15 +589,15 @@ describe("license đã thu hồi mà nhận được tiền (QĐ37)", () => {
   it("đơn đã paid, license bị thu hồi sau đó, grantOrder gọi lại: đơn giữ paid, không chuyển sang chờ xử lý", async () => {
     const { w, orderCode } = await revokedRenewal();
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
-    expect(await orderRow(orderCode)).toEqual({ status: "paid", amount_paid: 150000 });
+    expect(await orderRow(orderCode)).toEqual({ status: "paid", amount_paid: 500000 });
     await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 11 * DAY).run();
     const again = await grantOrder(env.DB, parsePlans(env.PLANS) as PlanTable, (await loadOrder(env.DB, orderCode))!, {
       now: T0 + 11 * DAY,
-      amountPaid: 150000,
+      amountPaid: 500000,
       actor: "test",
     });
     expect(again).toBe("already_settled");
-    expect(await orderRow(orderCode)).toEqual({ status: "paid", amount_paid: 150000 });
+    expect(await orderRow(orderCode)).toEqual({ status: "paid", amount_paid: 500000 });
     expect(await auditCount("order_needs_review")).toBe(0);
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM ops_alerts").first()).toEqual({ n: 0 });
   });

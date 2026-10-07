@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 async function newOrder(w: ReturnType<typeof makeWorld>) {
-  const res = await w.call("POST", "/v1/checkout", { plan: "pro", email: "buyer@example.com", consent: true });
+  const res = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "buyer@example.com", consent: true });
   return res.body.order_code as number;
 }
 
@@ -157,11 +157,11 @@ describe("đối soát mỗi 5 phút", () => {
     const { licenseKey } = await w.buy();
     w.resend.sent.length = 0;
     await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0).run();
-    const res = await w.call("POST", "/v1/checkout", { plan: "pro", email: "buyer@example.com", consent: true, license_key: licenseKey });
+    const res = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "buyer@example.com", consent: true, license_key: licenseKey });
     expect(res.status).toBe(403); // checkout từ chối license đã thu hồi
     // Đơn tạo trước lúc thu hồi.
     await env.DB.prepare("UPDATE licenses SET revoked_at = NULL").run();
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "buyer@example.com", consent: true, license_key: licenseKey });
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "buyer@example.com", consent: true, license_key: licenseKey });
     const orderCode = co.body.order_code as number;
     await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0 + 60).run();
     w.payos.pay(orderCode);

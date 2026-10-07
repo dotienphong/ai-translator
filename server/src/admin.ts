@@ -218,7 +218,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
   });
 
   // Xử lý đơn paid_needs_review (license đã thu hồi mà nhận được tiền, QĐ37). Hai cách:
-  // - "grant_new_license": cấp một license mới cho đơn (key mới, gói của đơn, 30 ngày từ lúc thao tác), gửi key qua email;
+  // - "grant_new_license": cấp một license mới cho đơn (key mới, gói của đơn, số ngày của gói từ lúc thao tác), gửi key
+  //   qua email;
   //   license đã thu hồi giữ nguyên;
   // - "refunded": ghi là đã hoàn tiền ngoài hệ thống; đơn thành refunded.
   app.post("/admin/orders/:orderCode/resolve", async (c) => {

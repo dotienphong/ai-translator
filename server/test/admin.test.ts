@@ -234,7 +234,7 @@ describe("tra cứu, gửi lại key", () => {
 
   it("xem trạng thái đơn trực tiếp từ cổng thanh toán của đơn, có ghi nhật ký", async () => {
     const { w, adminCall } = makeAdmin();
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "b@example.com", consent: true });
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true });
     const res = await adminCall(`/admin/orders/${co.body.order_code as number}/payment-status`);
     expect(res.body).toEqual({ orderCode: 1, status: "pending", amount: 50000, amountPaid: 0, paidAt: null });
     expect(await lastAudit()).toMatchObject({ action: "payment_status_viewed", order_code: 1 });
@@ -243,7 +243,7 @@ describe("tra cứu, gửi lại key", () => {
 
   it("xem trạng thái đơn có tác dụng phụ (nhật ký, gọi PayOS): Sec-Fetch-Site khác cùng origin thì 403", async () => {
     const { w, adminCall } = makeAdmin();
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "b@example.com", consent: true });
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true });
     const path = `/admin/orders/${co.body.order_code as number}/payment-status`;
     const asked = () => w.payos.requests.filter((r) => r.method === "GET").length;
     for (const site of ["cross-site", "same-site"]) {
@@ -299,13 +299,13 @@ describe("thay đổi license", () => {
 
   it("chuyển thiếu rồi chuyển bù: cấp tay cho đơn, gửi email, đơn thành paid", async () => {
     const { w, adminCall } = makeAdmin();
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "b@example.com", consent: true });
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true });
     const orderCode = co.body.order_code as number;
     w.payos.pay(orderCode, 1500);
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode, 1500));
     const res = await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "khách chuyển bù 48.500đ, mã GD FT2" } });
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ plan: "pro", expires_at: T0 + 30 * DAY, grant_kind: "new" });
+    expect(res.body).toMatchObject({ plan: "monthly", expires_at: T0 + 30 * DAY, grant_kind: "new" });
     const order = await env.DB.prepare("SELECT status, amount_paid FROM orders").first();
     expect(order).toEqual({ status: "paid", amount_paid: 1500 });
     expect(w.resend.sent).toHaveLength(1);
@@ -318,48 +318,49 @@ describe("thay đổi license", () => {
 
   it("cấp tay đơn gia hạn đổi gói: cùng luật với webhook, tính từ lúc thao tác", async () => {
     const { w, adminCall } = makeAdmin();
-    const { licenseKey } = await w.buy(); // Professional, hết hạn T0 + 30 ngày
+    const { licenseKey } = await w.buy(); // Monthly, hết hạn T0 + 30 ngày
     w.clock.now = T0 + 10 * DAY;
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro_x2", email: "b@example.com", consent: true, license_key: licenseKey });
+    const co = await w.call("POST", "/v1/checkout", { plan: "yearly", email: "b@example.com", consent: true, license_key: licenseKey });
     const orderCode = co.body.order_code as number;
-    w.payos.pay(orderCode, 100000);
-    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode, 100000));
+    w.payos.pay(orderCode, 450000);
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode, 450000));
     w.clock.now = T0 + 12 * DAY; // hai ngày sau khách mới chuyển bù, người vận hành cấp tay
     const res = await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "khách chuyển bù 50.000đ, mã GD FT2" } });
-    // Lúc thao tác còn 18 ngày Professional: floor(18 × 50.000 / 150.000) = 6.
-    expect(res.body).toMatchObject({ plan: "pro_x2", grant_kind: "change", converted_days: 6, expires_at: T0 + 48 * DAY });
-    expect(await licenseRow()).toMatchObject({ plan: "pro_x2", cycle_anchor: T0 + 12 * DAY, anchor_applied_at: T0 + 12 * DAY });
+    // Lúc thao tác còn 18 ngày Monthly: floor(18 × 365 × 50.000 / (30 × 500.000)) = floor(21,9) = 21.
+    expect(res.body).toMatchObject({ plan: "yearly", grant_kind: "change", converted_days: 21, expires_at: T0 + 398 * DAY });
+    expect(await licenseRow()).toMatchObject({ plan: "yearly", cycle_anchor: T0 + 12 * DAY, anchor_applied_at: T0 + 12 * DAY });
     const granted = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'license_plan_changed'").first<{ detail: string }>();
-    expect(JSON.parse(granted!.detail)).toMatchObject({ paid_at: T0 + 12 * DAY, converted_days: 6 });
+    expect(JSON.parse(granted!.detail)).toMatchObject({ paid_at: T0 + 12 * DAY, converted_days: 21 });
   });
 
   it("cấp tay khi không lấy được bảng gói từ Worker API thì 503, không đổi gì", async () => {
     const { w, adminCall } = makeAdmin({}, { plans: async () => null });
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "b@example.com", consent: true });
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true });
     const orderCode = co.body.order_code as number;
     const res = await adminCall(`/admin/orders/${orderCode}/grant`, { body: { note: "x" } });
     expect(res).toMatchObject({ status: 503, body: { error: "pricing_not_configured" } });
     expect(await env.DB.prepare("SELECT status FROM orders").first()).toEqual({ status: "pending" });
-    const created = await adminCall("/admin/licenses", { body: { email: "gift@example.com", plan: "pro", note: "tặng" } });
+    const created = await adminCall("/admin/licenses", { body: { email: "gift@example.com", plan: "monthly", note: "tặng" } });
     expect(created.status).toBe(503);
   });
 
   it("cấp license mới theo mã gói, rồi gia hạn tay", async () => {
     const { w, adminCall } = makeAdmin();
-    for (const plan of ["pro_1m", "free", "pro_12m"]) {
+    for (const plan of ["pro_1m", "free", "pro_12m", "pro", "pro_x5"]) {
       expect((await adminCall("/admin/licenses", { body: { email: "gift@example.com", plan, note: "tặng" } })).status).toBe(400);
     }
-    const created = await adminCall("/admin/licenses", { body: { email: "gift@example.com", plan: "pro_x5", note: "tặng" } });
+    const created = await adminCall("/admin/licenses", { body: { email: "gift@example.com", plan: "yearly", note: "tặng" } });
     expect(created.status).toBe(201);
-    expect(created.body).toMatchObject({ plan: "pro_x5", expires_at: T0 + 30 * DAY });
-    expect(await licenseRow()).toMatchObject({ plan: "pro_x5", cycle_anchor: T0, anchor_applied_at: T0 });
+    // Số ngày theo gói (days_per_order), không cố định 30 ngày.
+    expect(created.body).toMatchObject({ plan: "yearly", expires_at: T0 + 365 * DAY });
+    expect(await licenseRow()).toMatchObject({ plan: "yearly", cycle_anchor: T0, anchor_applied_at: T0 });
     expect(w.resend.sent[0]!.to).toEqual(["gift@example.com"]);
-    expect(w.resend.sent[0]!.text).toContain("Professional X5, hết hạn");
+    expect(w.resend.sent[0]!.text).toContain("Yearly, hết hạn");
     const id = created.body.license_id as string;
     w.clock.now = T0 + DAY;
     const ext = await adminCall(`/admin/licenses/${id}/extend`, { body: { days: 7, note: "bù sự cố" } });
     // Còn hạn: cộng vào hạn cũ, giữ cycle_anchor.
-    expect(ext.body).toEqual({ license_id: id, expires_at: T0 + 37 * DAY, cycle_anchor: T0 });
+    expect(ext.body).toEqual({ license_id: id, expires_at: T0 + 372 * DAY, cycle_anchor: T0 });
     expect((await adminCall(`/admin/licenses/${id}/extend`, { body: { days: 0, note: "x" } })).status).toBe(400);
   });
 
@@ -480,8 +481,8 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
     expect(res.body).toEqual({ activations: 1, licenses: 1, orders: 1 });
     const orders = await env.DB.prepare("SELECT email, amount, plan, status FROM orders ORDER BY order_code").all();
     expect(orders.results).toEqual([
-      { email: null, amount: 50000, plan: "pro", status: "paid" },
-      { email: "keep@example.com", amount: 50000, plan: "pro", status: "paid" },
+      { email: null, amount: 50000, plan: "monthly", status: "paid" },
+      { email: "keep@example.com", amount: 50000, plan: "monthly", status: "paid" },
     ]);
     const act = await env.DB.prepare("SELECT device_label FROM activations").first();
     expect(act).toEqual({ device_label: null });
@@ -534,7 +535,7 @@ describe("đơn paid_needs_review: license đã thu hồi mà nhận được ti
     const ctx = makeAdmin();
     const { w } = ctx;
     const { licenseKey } = await w.buy({ email: "b@example.com" });
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro_x2", email: "b@example.com", consent: true, license_key: licenseKey });
+    const co = await w.call("POST", "/v1/checkout", { plan: "yearly", email: "b@example.com", consent: true, license_key: licenseKey });
     const orderCode = co.body.order_code as number;
     await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0).run();
     w.payos.pay(orderCode);
@@ -556,7 +557,7 @@ describe("đơn paid_needs_review: license đã thu hồi mà nhận được ti
   it("cấp tay một đơn gia hạn mà license đã thu hồi: đơn chuyển sang paid_needs_review, trả 409", async () => {
     const { w, adminCall } = makeAdmin();
     const { licenseKey } = await w.buy();
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "b@example.com", consent: true, license_key: licenseKey });
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true, license_key: licenseKey });
     const orderCode = co.body.order_code as number;
     w.payos.pay(orderCode, 1000);
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode, 1000));
@@ -579,11 +580,12 @@ describe("đơn paid_needs_review: license đã thu hồi mà nhận được ti
     expect((await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "grant_new_license" } })).status).toBe(400);
     expect((await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "x", note: "y" } })).status).toBe(400);
     const res = await adminCall(`/admin/orders/${orderCode}/resolve`, { body: { action: "grant_new_license", note: "khách đã xác minh" } });
-    expect(res).toMatchObject({ status: 200, body: { order_code: orderCode, status: "paid", plan: "pro_x2", expires_at: T0 + 31 * DAY } });
+    // Gói của đơn (Yearly), số ngày của gói tính từ lúc thao tác.
+    expect(res).toMatchObject({ status: 200, body: { order_code: orderCode, status: "paid", plan: "yearly", expires_at: T0 + 366 * DAY } });
     const lics = await env.DB.prepare("SELECT plan, revoked_at FROM licenses ORDER BY created_at").all();
     expect(lics.results).toEqual([
-      { plan: "pro", revoked_at: T0 },
-      { plan: "pro_x2", revoked_at: null },
+      { plan: "monthly", revoked_at: T0 },
+      { plan: "yearly", revoked_at: null },
     ]);
     expect(w.resend.sent).toHaveLength(1);
     expect(w.resend.sent[0]!.text).toContain(res.body.license_key as string);
@@ -795,7 +797,7 @@ describe("nhật ký cho thao tác thất bại có ý nghĩa (review cuối, N6
   it("cấp tay đơn gia hạn mà license đã thu hồi (409 needs_review): ghi order_grant_rejected", async () => {
     const { w, adminCall } = makeAdmin();
     const { licenseKey } = await w.buy();
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "b@example.com", consent: true, license_key: licenseKey });
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true, license_key: licenseKey });
     const orderCode = co.body.order_code as number;
     w.payos.pay(orderCode, 1000);
     await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode, 1000));
@@ -818,7 +820,7 @@ describe("nhật ký cho thao tác thất bại có ý nghĩa (review cuối, N6
   it("ba lần ghi hoàn tiền cùng lúc: một dòng order_refunded_outside, hai dòng order_resolve_rejected", async () => {
     const { w, adminCall } = makeAdmin();
     const { licenseKey } = await w.buy({ email: "b@example.com" });
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro_x2", email: "b@example.com", consent: true, license_key: licenseKey });
+    const co = await w.call("POST", "/v1/checkout", { plan: "yearly", email: "b@example.com", consent: true, license_key: licenseKey });
     const orderCode = co.body.order_code as number;
     await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(T0).run();
     w.payos.pay(orderCode);

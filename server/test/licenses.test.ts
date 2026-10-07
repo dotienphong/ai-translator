@@ -12,7 +12,7 @@ const device = async (n: number) => sha256Hex(`device-${n}`);
 /** Key đúng định dạng (ký tự kiểm tra đúng) nhưng không có trong D1. */
 const UNKNOWN_KEY = "0123-4567-89AB-CDEF-GHJK-MNPQ-RST5";
 
-async function setup(plan = "pro") {
+async function setup(plan = "monthly") {
   const w = makeWorld();
   const { licenseKey } = await w.buy({ plan });
   const activate = async (n: number, ip = `198.51.100.${n}`) =>
@@ -37,10 +37,10 @@ describe("activate", () => {
     const fields = {
       activation_id: res.body.activation_id,
       activation_created_at: T0 + 60,
-      plan: "pro",
+      plan: "monthly",
       expires_at: lic!.expires_at,
       cycle_anchor: T0,
-      quota_minutes_per_cycle: 1800,
+      quota_minutes_per_cycle: 3000,
       quota_epoch: 0,
       quota_fresh: true,
       refresh_before: T0 + 60 + 14 * DAY,
@@ -57,8 +57,8 @@ describe("activate", () => {
   });
 
   it.each([
-    ["pro_x2", 6000],
-    ["pro_x5", null],
+    ["monthly", 3000],
+    ["yearly", null],
   ])("gói %s: token mang hạn mức %s theo bảng gói", async (plan, quota) => {
     const { activate } = await setup(plan);
     expect((await activate(1)).body).toMatchObject({ plan, quota_minutes_per_cycle: quota });
@@ -318,7 +318,7 @@ describe("quota_fresh (QĐ35)", () => {
     const { w, activate, licenseKey } = await setup();
     const a = await activate(1);
     w.clock.now = T0 + 35 * DAY; // hết hạn từ T0 + 30 ngày
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro", email: "buyer@example.com", consent: true, license_key: licenseKey });
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "buyer@example.com", consent: true, license_key: licenseKey });
     const orderCode = co.body.order_code as number;
     w.payos.pay(orderCode);
     const body = await w.payos.webhookBody(orderCode);
@@ -327,7 +327,7 @@ describe("quota_fresh (QĐ35)", () => {
     w.clock.now = T0 + 35 * DAY + 3600 + 14 * 60;
     // Mua lại sau khi hết hạn đặt lại cycle_anchor (lúc trả tiền), nên mốc của cửa sổ là lúc server xử lý đơn.
     expect((await validate(w, licenseKey, a.body.activation_id)).body).toMatchObject({
-      plan: "pro",
+      plan: "monthly",
       cycle_anchor: T0 + 35 * DAY,
       quota_fresh: true,
     });
@@ -351,10 +351,10 @@ describe("quota_fresh (QĐ35)", () => {
     const a = await activate(1);
     w.clock.now = T0 + 10 * DAY;
     expect((await validate(w, licenseKey, a.body.activation_id)).body.quota_fresh).toBe(false);
-    await w.buy({ licenseKey, plan: "pro_x2" });
+    await w.buy({ licenseKey, plan: "yearly" });
     w.clock.now = T0 + 10 * DAY + 14 * 60;
     const v = await validate(w, licenseKey, a.body.activation_id);
-    expect(v.body).toMatchObject({ plan: "pro_x2", cycle_anchor: T0 + 10 * DAY, quota_minutes_per_cycle: 6000, quota_fresh: true });
+    expect(v.body).toMatchObject({ plan: "yearly", cycle_anchor: T0 + 10 * DAY, quota_minutes_per_cycle: null, quota_fresh: true });
     w.clock.now = T0 + 10 * DAY + 16 * 60;
     expect((await validate(w, licenseKey, a.body.activation_id)).body.quota_fresh).toBe(false);
   });
@@ -427,7 +427,7 @@ describe("quota_fresh (QĐ35)", () => {
     const { w, activate, licenseKey } = await setup();
     const a = await activate(1);
     w.clock.now = T0 + 10 * DAY;
-    const co = await w.call("POST", "/v1/checkout", { plan: "pro_x2", email: "buyer@example.com", consent: true, license_key: licenseKey });
+    const co = await w.call("POST", "/v1/checkout", { plan: "yearly", email: "buyer@example.com", consent: true, license_key: licenseKey });
     const orderCode = co.body.order_code as number;
     w.payos.pay(orderCode);
     const body = await w.payos.webhookBody(orderCode);
@@ -436,7 +436,7 @@ describe("quota_fresh (QĐ35)", () => {
     w.clock.now = T0 + 10 * DAY + 3600 + 60;
     const v = await validate(w, licenseKey, a.body.activation_id);
     // cycle_anchor là lúc trả tiền (1 giờ trước), nhưng cửa sổ tính từ lúc xử lý webhook.
-    expect(v.body).toMatchObject({ plan: "pro_x2", cycle_anchor: T0 + 10 * DAY, quota_fresh: true });
+    expect(v.body).toMatchObject({ plan: "yearly", cycle_anchor: T0 + 10 * DAY, quota_fresh: true });
     w.clock.now = T0 + 10 * DAY + 3600 + 16 * 60;
     expect((await validate(w, licenseKey, a.body.activation_id)).body.quota_fresh).toBe(false);
   });
@@ -492,16 +492,16 @@ describe("validate", () => {
     expect(v.body.expires_at).toBe(T0 + 60 * DAY);
   });
 
-  it("đổi gói từ máy khác: máy này nhận gói, cycle_anchor và hạn mức mới ở lần validate kế tiếp", async () => {
+  it("đổi gói: máy đang kích hoạt nhận gói, cycle_anchor và hạn mức mới ở lần validate kế tiếp", async () => {
     const { w, activate, licenseKey } = await setup();
     const a = await activate(1);
     w.clock.now = T0 + 10 * DAY;
-    await w.buy({ licenseKey, plan: "pro_x5" });
+    await w.buy({ licenseKey, plan: "yearly" });
     const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: a.body.activation_id });
     expect(v.body).toMatchObject({
-      plan: "pro_x5",
+      plan: "yearly",
       cycle_anchor: T0 + 10 * DAY,
-      expires_at: T0 + 42 * DAY,
+      expires_at: T0 + 399 * DAY,
       quota_minutes_per_cycle: null,
     });
   });

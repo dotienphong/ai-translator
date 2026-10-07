@@ -38,7 +38,7 @@ describe("bảo mật license server (§10.2, §11)", () => {
   it("lỗi của PayOS không lộ ra response", async () => {
     const w = makeWorld();
     w.payos.down = true;
-    const res = await w.call("POST", "/v1/checkout", { plan: "pro", email: "a@example.com", consent: true });
+    const res = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "a@example.com", consent: true });
     expect(res.body).toEqual({ error: "payment_provider_error" });
   });
 });

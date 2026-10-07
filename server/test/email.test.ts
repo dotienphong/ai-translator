@@ -79,17 +79,17 @@ describe("nội dung email", () => {
   it("có tên sản phẩm, key đã định dạng, gói, ngày hết hạn theo giờ Việt Nam, cả vi lẫn en", () => {
     // 2026-10-31T17:30:00Z là 01/11/2026 ở Việt Nam.
     const { subject, text } = licenseEmail("purchase", [
-      { licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Professional X2", expiresAt: Date.UTC(2026, 9, 31, 17, 30) / 1000 },
+      { licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Yearly", expiresAt: Date.UTC(2026, 9, 31, 17, 30) / 1000 },
     ]);
     expect(subject).toBe("License key AI Translator / Your AI Translator license key");
     expect(text).toContain("Cảm ơn bạn đã dùng AI Translator.");
-    expect(text).toContain("0123-4567-89AB-CDEF-GHJK-MNPQ-RSTR  (Professional X2, hết hạn / expires 01/11/2026)");
+    expect(text).toContain("0123-4567-89AB-CDEF-GHJK-MNPQ-RSTR  (Yearly, hết hạn / expires 01/11/2026)");
     expect(text).toContain("Cài đặt > Bản quyền");
     expect(text).toContain("Settings > License");
   });
 
   it("thư đổi gói có tiêu đề riêng; không còn tên tạm", () => {
-    const entry = { licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Professional", expiresAt: 0 };
+    const entry = { licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Monthly", expiresAt: 0 };
     expect(licenseEmail("plan_change", [entry]).subject).toBe("Đã đổi gói AI Translator / AI Translator plan changed");
     for (const kind of ["purchase", "renewal", "plan_change", "recover", "resend"] as const) {
       const { subject, text } = licenseEmail(kind, [entry]);
