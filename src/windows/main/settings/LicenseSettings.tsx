@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { errorKey } from "../../../i18n";
-import { deviceName, isRenewal } from "../../../lib/license";
+import { deviceName, isRenewal, isThisMachine } from "../../../lib/license";
 import { useApp, useT } from "../appStore";
 import { useLicense } from "../licenseStore";
 import { PlanName, QuotaSummary, when } from "../LicenseText";
 
 // Nhóm Cài đặt "Bản quyền" (§4.3): gói đang dùng, tình trạng, ngày hết hạn, hạn mức còn lại của chu kỳ; nhập key; gia
-// hạn hay đổi gói (mở màn hình Nâng cấp); gỡ kích hoạt. Key đã đủ 2 máy thì hiện danh sách máy để gỡ một máy (§9). Key
-// chỉ hiện dạng đã che; key đầy đủ nằm trong email, có nút gửi lại key qua email.
+// hạn hay đổi gói (mở màn hình Nâng cấp); gỡ kích hoạt. Mỗi key chỉ dùng trên 1 máy (spec 2026-10-07 §4.2): key vừa gõ
+// đang dùng ở máy khác thì hiện máy đó, cho gỡ máy đó hay "Vẫn kích hoạt" (hỏi xác nhận vì sẽ khóa cả hai máy); key đang
+// xung đột thì hiện hai máy, cho gỡ key khỏi máy này, gỡ máy kia, hay thử lại. Key chỉ hiện dạng đã che; key đầy đủ nằm
+// trong email, có nút gửi lại key qua email.
 export function LicenseSettings() {
   const t = useT();
   const navigate = useApp((s) => s.navigate);
@@ -16,7 +18,9 @@ export function LicenseSettings() {
   const error = useLicense((s) => s.error);
   const busy = useLicense((s) => s.busy);
   const activate = useLicense((s) => s.activate);
+  const activateAnyway = useLicense((s) => s.activateAnyway);
   const deactivateOther = useLicense((s) => s.deactivateOther);
+  const removeOtherMachine = useLicense((s) => s.removeOtherMachine);
   const deactivate = useLicense((s) => s.deactivate);
   const validate = useLicense((s) => s.validate);
   const recover = useLicense((s) => s.recover);
@@ -24,7 +28,9 @@ export function LicenseSettings() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [anyway, setAnyway] = useState(false);
   if (!view) return null;
+  const conflict = view.standing === "conflict" ? view.conflict : null;
   return (
     <>
       <div className="card">
@@ -109,8 +115,60 @@ export function LicenseSettings() {
                   </li>
                 ))}
               </ul>
+              <div className="row">
+                {!anyway && <button onClick={() => setAnyway(true)}>{t("settings.license.anyway")}</button>}
+                {anyway && (
+                  <>
+                    <span className="error-text">{t("settings.license.anyway.confirm")}</span>
+                    <button
+                      className="danger"
+                      disabled={busy}
+                      onClick={() => {
+                        setAnyway(false);
+                        void activateAnyway(key);
+                      }}
+                    >
+                      {t("settings.license.anyway.yes")}
+                    </button>
+                    <button onClick={() => setAnyway(false)}>{t("common.cancel")}</button>
+                  </>
+                )}
+              </div>
             </div>
           )}
+        </div>
+      )}
+      {conflict && (
+        <div className="card" role="alert">
+          <p className="error-text">{t("settings.license.conflict")}</p>
+          <ul className="devices">
+            {conflict.devices.map((d) => (
+              <li key={d.activation_id} className="row">
+                <span>
+                  {isThisMachine(conflict, d)
+                    ? t("settings.license.conflict.thisMachine")
+                    : deviceName(d, t("settings.license.devices.unnamed"))}
+                </span>
+                {d.last_validated_at !== null && (
+                  <span className="hint">{t("settings.license.devices.lastUsed", { time: when(d.last_validated_at) })}</span>
+                )}
+                {isThisMachine(conflict, d) ? (
+                  <button disabled={busy} onClick={() => void deactivate()}>
+                    {t("settings.license.conflict.leave")}
+                  </button>
+                ) : (
+                  <button disabled={busy} onClick={() => void removeOtherMachine(d.activation_id)}>
+                    {t("settings.license.conflict.removeOther")}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="row">
+            <button disabled={busy} onClick={() => void validate()}>
+              {t("settings.license.conflict.retry")}
+            </button>
+          </div>
         </div>
       )}
       <div role="alert">{error && <p className="error-text">{t(errorKey(error.code))}</p>}</div>
