@@ -38,3 +38,6 @@ __pycache__/
 
 # Danh sách giấy phép bên thứ ba, sinh lúc build bản phát hành (scripts/release/notices.mjs)
 /THIRD_PARTY_NOTICES.txt
+
+# Mockup của bước brainstorming (visual companion)
+/.superpowers/
