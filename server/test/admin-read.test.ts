@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
+import { sha256Hex } from "../src/crypto";
 import { lastAudit, makeAdmin } from "./admin-harness";
 import { resetDb } from "./db";
 import { DAY, T0 } from "./world";
@@ -237,5 +238,91 @@ describe("GET /admin/audit", () => {
     expect(pages).toBe(2);
     expect(seen).toHaveLength(60);
     expect(new Set(seen.map((a) => a.id)).size).toBe(60);
+  });
+});
+
+describe("GET /admin/licenses", () => {
+  /** Ba license: A còn hạn (monthly), B yearly đang xung đột, C đã thu hồi; thêm D đã hết hạn và E đang khóa. */
+  async function fiveLicenses() {
+    const ctx = makeAdmin();
+    const { w } = ctx;
+    await w.buy({ email: "a@example.com" });
+    w.clock.now = T0 + 10;
+    const b = await w.customerB();
+    w.clock.now = T0 + 20;
+    await w.buy({ email: "c@example.com" });
+    w.clock.now = T0 + 30;
+    await w.buy({ email: "d@example.com" });
+    w.clock.now = T0 + 40;
+    await w.buy({ email: "e@example.com" });
+    const id = async (email: string) => (await env.DB.prepare("SELECT id FROM licenses WHERE email = ?").bind(email).first<{ id: string }>())!.id;
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ? WHERE email = 'c@example.com'").bind(T0 + 50).run();
+    await env.DB.prepare("UPDATE licenses SET expires_at = ? WHERE email = 'd@example.com'").bind(T0 + 50).run();
+    await env.DB.prepare("UPDATE licenses SET locked_at = ? WHERE email = 'e@example.com'").bind(T0 + 50).run();
+    w.clock.now = T0 + 100;
+    return { ...ctx, b, id };
+  }
+
+  it("mới nhất trước, key đã che, kèm số máy đang kích hoạt", async () => {
+    const { adminCall, b } = await fiveLicenses();
+    const page = (await adminCall("/admin/licenses")).body as unknown as Page;
+    expect(page.items.map((l) => l.email)).toEqual(["e@example.com", "d@example.com", "c@example.com", b.email, "a@example.com"]);
+    const lb = page.items[3]!;
+    expect(lb).toMatchObject({ plan: "yearly", active_devices: 2 });
+    const raw = b.licenseKey.replace(/-/g, "");
+    expect(lb.license_key).toBe(`${raw.slice(0, 4)}-…-${raw.slice(-4)}`);
+    expect(JSON.stringify(page)).not.toContain(raw);
+    expect(page.next_cursor).toBeNull();
+  });
+
+  it("lọc theo trạng thái và gói", async () => {
+    const { adminCall, b } = await fiveLicenses();
+    const emails = async (q: string) => ((await adminCall(`/admin/licenses?${q}`)).body as unknown as Page).items.map((l) => l.email);
+    expect(await emails("state=active")).toEqual(["e@example.com", b.email, "a@example.com"]);
+    expect(await emails("state=expired")).toEqual(["d@example.com"]);
+    expect(await emails("state=revoked")).toEqual(["c@example.com"]);
+    expect(await emails("state=locked")).toEqual(["e@example.com"]);
+    expect(await emails("state=conflict")).toEqual([b.email]);
+    expect(await emails("plan=yearly")).toEqual([b.email]);
+    expect(await adminCall("/admin/licenses?state=xyz")).toMatchObject({ status: 400, body: { field: "state" } });
+    expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toEqual({ resource: "licenses", filters: { plan: "yearly" }, count: 1 });
+  });
+
+  it("phân trang theo (created_at, id), kể cả khi nhiều license cùng created_at", async () => {
+    const { adminCall } = makeAdmin();
+    await env.DB.batch(
+      Array.from({ length: 53 }, (_, i) =>
+        env.DB.prepare(
+          "INSERT INTO licenses (id, license_key, email, plan, expires_at, cycle_anchor, anchor_applied_at, created_at) VALUES (?, ?, NULL, 'monthly', ?, ?, ?, ?)",
+        ).bind(crypto.randomUUID(), `K${String(i).padStart(27, "0")}`, T0 + DAY, T0, T0, i < 30 ? T0 : T0 + 1),
+      ),
+    );
+    const { seen, pages } = await allPages(adminCall, "/admin/licenses");
+    expect(pages).toBe(2);
+    expect(new Set(seen.map((l) => l.id)).size).toBe(53);
+  });
+});
+
+describe("GET /admin/trials", () => {
+  it("mới nhất trước, cờ purchased theo activation của máy, lọc đang dùng / đã hết", async () => {
+    const { w, adminCall } = makeAdmin();
+    const d1 = await sha256Hex("trial-1");
+    const d2 = await sha256Hex("trial-2");
+    await w.call("POST", "/v1/trial", { device_id_hash: d1 });
+    w.clock.now = T0 + 11 * DAY;
+    await w.call("POST", "/v1/trial", { device_id_hash: d2 });
+    const { licenseKey } = await w.buy();
+    await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: d1, device_label: "Máy 1" });
+    const page = (await adminCall("/admin/trials")).body as unknown as Page;
+    expect(page.items.map((t) => [t.device_id_hash, t.purchased])).toEqual([
+      [d2, false],
+      [d1, true],
+    ]);
+    expect(page.items[1]).toMatchObject({ started_at: T0, ends_at: T0 + 10 * DAY });
+    const hashes = async (q: string) => ((await adminCall(`/admin/trials?${q}`)).body as unknown as Page).items.map((t) => t.device_id_hash);
+    expect(await hashes("state=active")).toEqual([d2]);
+    expect(await hashes("state=ended")).toEqual([d1]);
+    expect(await adminCall("/admin/trials?state=x")).toMatchObject({ status: 400, body: { field: "state" } });
+    expect(await adminCall("/admin/trials?cursor=khong_hop_le!")).toMatchObject({ status: 400, body: { field: "cursor" } });
   });
 });

@@ -224,4 +224,39 @@ export function registerAdminRead(app: Hono<AdminAppEnv>): void {
     cursor: numberCursor("id"),
     next: (r) => String(r.id),
   });
+
+  listRoute(app, "/admin/licenses", {
+    resource: "licenses",
+    filters(f, now) {
+      const states: Record<string, [string, ...Bind[]]> = {
+        active: ["l.revoked_at IS NULL AND l.expires_at > ?", now],
+        expired: ["l.revoked_at IS NULL AND l.expires_at <= ?", now],
+        revoked: ["l.revoked_at IS NOT NULL"],
+        locked: ["l.locked_at IS NOT NULL AND l.revoked_at IS NULL"],
+        conflict: [`l.revoked_at IS NULL AND ${ACTIVE_DEVICES} > 1`],
+      };
+      if (!f.oneOf("state", Object.keys(states), (s) => states[s]!)) return "state";
+      if (!f.oneOf("plan", PLAN_CODES, (p) => ["l.plan = ?", p])) return "plan";
+      return null;
+    },
+    select: `SELECT ${LICENSE_COLUMNS} FROM licenses l`,
+    order: "ORDER BY l.created_at DESC, l.id DESC",
+    cursor: keysetCursor("l.created_at", "l.id"),
+    next: (r) => `${r.created_at}_${r.id}`,
+    map: maskLicense,
+  });
+
+  listRoute(app, "/admin/trials", {
+    resource: "trials",
+    filters(f, now) {
+      if (!f.oneOf("state", ["active", "ended"], (s) => [s === "active" ? "t.ends_at > ?" : "t.ends_at <= ?", now])) return "state";
+      return null;
+    },
+    select:
+      "SELECT t.device_id_hash, t.started_at, t.ends_at, t.last_seen_at, t.device_id_hash IN (SELECT device_id_hash FROM activations) AS purchased FROM trials t",
+    order: "ORDER BY t.started_at DESC, t.device_id_hash DESC",
+    cursor: keysetCursor("t.started_at", "t.device_id_hash"),
+    next: (r) => `${r.started_at}_${r.device_id_hash}`,
+    map: (r) => ({ ...r, purchased: r.purchased === 1 }),
+  });
 }
