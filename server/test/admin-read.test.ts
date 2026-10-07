@@ -8,6 +8,22 @@ beforeEach(resetDb);
 
 type Page = { items: Record<string, unknown>[]; next_cursor: string | null };
 
+/** 00:00 ngày 01/10/2026 giờ VN (T0 là 07:00 ngày đó), và 00:00 ngày 02/10 giờ VN: ranh giới ngày của bộ lọc from/to. */
+const START = T0 - 7 * 3600;
+const B = START + DAY;
+
+/** Chèn thẳng một đơn pending có `created_at` cho trước (đủ cột NOT NULL của orders). */
+const insertOrder = (createdAt: number) =>
+  env.DB.prepare(
+    "INSERT INTO orders (order_token_hash, provider, plan, amount, currency, email_consent_at, status, created_at, expires_at) VALUES ('h', 'payos', 'monthly', 50000, 'VND', ?, 'pending', ?, ?)",
+  ).bind(createdAt, createdAt, createdAt + 900);
+
+/** Chèn thẳng một dòng nhật ký action `thu`, actor `api`, có `at` cho trước. */
+const insertAudit = (at: number, actor = "api", action = "thu") =>
+  env.DB.prepare("INSERT INTO audit_log (at, actor, action) VALUES (?, ?, ?)").bind(at, actor, action);
+
+const auditTotal = async () => (await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first<{ n: number }>())!.n;
+
 /** Tạo `n` đơn pending (checkout), email khác nhau. */
 async function checkouts(w: ReturnType<typeof makeAdmin>["w"], n: number, plan = "monthly") {
   for (let i = 0; i < n; i++) {
@@ -76,6 +92,23 @@ describe("GET /admin/orders", () => {
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: 0 });
   });
 
+  it("from > to thì 400 field to, không ghi nhật ký; from = to hợp lệ", async () => {
+    const { adminCall } = makeAdmin();
+    expect(await adminCall("/admin/orders?from=2026-10-03&to=2026-10-02")).toMatchObject({ status: 400, body: { error: "invalid_request", field: "to" } });
+    expect(await auditTotal()).toBe(0);
+    expect((await adminCall("/admin/orders?from=2026-10-02&to=2026-10-02")).status).toBe(200);
+  });
+
+  it("ranh giới ngày theo GMT+7: 00:00 ngày 02/10 giờ VN thuộc ngày 02/10, một giây trước thuộc ngày 01/10", async () => {
+    const { adminCall } = makeAdmin();
+    await env.DB.batch([insertOrder(B - 1), insertOrder(B)]); // đơn 1 (B - 1) và đơn 2 (B)
+    const codes = async (q: string) => ((await adminCall(`/admin/orders?${q}`)).body as unknown as Page).items.map((o) => o.order_code);
+    expect(await codes("from=2026-10-02")).toEqual([2]);
+    expect(await codes("to=2026-10-01")).toEqual([1]);
+    expect(await codes("from=2026-10-01&to=2026-10-01")).toEqual([1]);
+    expect(await codes("from=2026-10-02&to=2026-10-02")).toEqual([2]);
+  });
+
   it("ghi một dòng list_viewed, không chép email; GET từ trang khác thì 403; không qua Access thì 403", async () => {
     const { w, adminCall } = makeAdmin();
     await checkouts(w, 2);
@@ -106,23 +139,91 @@ describe("GET /admin/audit", () => {
     expect(all.slice(0, 2)).toEqual(["list_viewed", "lookup"]);
   });
 
-  it("lọc theo action, actor, order_code, ngày; actor admin ghi vào nhật ký là admin:…", async () => {
+  it("lọc theo action, actor (admin = mọi actor bắt đầu admin:), order_code, ngày", async () => {
     const { w, adminCall } = makeAdmin();
     const { orderCode } = await w.buy();
     const id = (await env.DB.prepare("SELECT id FROM licenses").first<{ id: string }>())!.id;
     await adminCall(`/admin/licenses/${id}/extend`, { body: { days: 1, note: "bù" } });
     const page = async (q: string) => ((await adminCall(`/admin/audit?${q}`)).body as unknown as Page).items;
     expect((await page("action=license_extended_manually")).map((a) => a.actor)).toEqual(["admin:ops@example.com"]);
-    expect((await page(`actor=${encodeURIComponent("admin:ops@example.com")}`)).map((a) => a.action)).toEqual(["license_extended_manually"]);
+    expect((await page("actor=admin")).map((a) => a.action)).toEqual(["license_extended_manually"]);
     expect((await page(`order_code=${orderCode}`)).every((a) => a.order_code === orderCode)).toBe(true);
     expect((await page(`order_code=${orderCode}`)).length).toBeGreaterThan(0);
     expect(await page("from=2026-10-02")).toEqual([]);
     expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toMatchObject({ resource: "audit", filters: { from: "2026-10-02" } });
-    await adminCall(`/admin/audit?actor=${encodeURIComponent("admin:ops@example.com")}`);
+    await adminCall("/admin/audit?actor=admin");
     const detail = (await lastAudit() as { detail: string }).detail;
-    expect(JSON.parse(detail)).toMatchObject({ filters: { actor: "admin:…" } });
+    expect(JSON.parse(detail)).toMatchObject({ filters: { actor: "admin" } });
     expect(detail).not.toContain("@");
     expect(await adminCall("/admin/audit?order_code=abc")).toMatchObject({ status: 400, body: { field: "order_code" } });
+  });
+
+  it("actor chỉ nhận api, webhook, reconcile, admin; mỗi giá trị chỉ trả đúng nhóm của nó", async () => {
+    const { adminCall } = makeAdmin();
+    await env.DB.batch([
+      insertAudit(T0, "api"),
+      insertAudit(T0 + 1, "webhook"),
+      insertAudit(T0 + 2, "reconcile"),
+      insertAudit(T0 + 3, "admin:ops@example.com"),
+      insertAudit(T0 + 4, "admin:khac@example.com"),
+    ]);
+    const actors = async (actor: string) =>
+      ((await adminCall(`/admin/audit?action=thu&actor=${actor}`)).body as unknown as Page).items.map((a) => a.actor);
+    expect(await actors("api")).toEqual(["api"]);
+    expect(await actors("webhook")).toEqual(["webhook"]);
+    expect(await actors("reconcile")).toEqual(["reconcile"]);
+    expect(await actors("admin")).toEqual(["admin:khac@example.com", "admin:ops@example.com"]);
+  });
+
+  it("actor ngoài bốn giá trị cố định (kể cả email, dạng admin:<email>) thì 400 field actor, không ghi nhật ký", async () => {
+    const { adminCall } = makeAdmin();
+    await adminCall("/admin/orders"); // có sẵn một dòng list_viewed để thấy số dòng không tăng
+    const before = await auditTotal();
+    for (const actor of ["ops@example.com", encodeURIComponent("admin:ops@example.com"), "khac", "Admin", "admin:"]) {
+      expect(await adminCall(`/admin/audit?actor=${actor}`), actor).toMatchObject({ status: 400, body: { error: "invalid_request", field: "actor" } });
+    }
+    expect(await auditTotal()).toBe(before);
+  });
+
+  it("action phải khớp ^[a-z][a-z0-9_]{0,63}$ (email không khớp), sai thì 400 field action, không ghi nhật ký", async () => {
+    const { adminCall } = makeAdmin();
+    await adminCall("/admin/orders");
+    const before = await auditTotal();
+    for (const action of ["a@b.com", "List_Viewed", "1abc", "a-b", "a".repeat(65), "a".repeat(70)]) {
+      expect(await adminCall(`/admin/audit?action=${action}`), action).toMatchObject({ status: 400, body: { error: "invalid_request", field: "action" } });
+    }
+    expect(await auditTotal()).toBe(before);
+    expect((await adminCall(`/admin/audit?action=${"a".repeat(64)}`)).status).toBe(200);
+  });
+
+  it("lọc đúng một action xem (không include_views) thì không bị ẩn: action=list_viewed trả các dòng đã ghi", async () => {
+    const { adminCall } = makeAdmin();
+    await adminCall("/admin/orders");
+    await adminCall("/admin/orders?status=paid");
+    const page = (await adminCall("/admin/audit?action=list_viewed")).body as unknown as Page;
+    expect(page.items.map((a) => a.action)).toEqual(["list_viewed", "list_viewed"]);
+    expect(JSON.parse(page.items[1]!.detail as string)).toMatchObject({ resource: "orders", filters: {} });
+    expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toMatchObject({ resource: "audit", filters: { action: "list_viewed" } });
+    // Action khác trong nhóm xem cũng vậy; action ngoài nhóm không bị ảnh hưởng.
+    expect(((await adminCall("/admin/audit?action=lookup")).body as unknown as Page).items).toEqual([]);
+    expect(((await adminCall("/admin/audit")).body as unknown as Page).items).toEqual([]);
+  });
+
+  it("from > to thì 400 field to, không ghi nhật ký; from = to hợp lệ", async () => {
+    const { adminCall } = makeAdmin();
+    expect(await adminCall("/admin/audit?from=2026-10-03&to=2026-10-02")).toMatchObject({ status: 400, body: { error: "invalid_request", field: "to" } });
+    expect(await auditTotal()).toBe(0);
+    expect((await adminCall("/admin/audit?from=2026-10-02&to=2026-10-02")).status).toBe(200);
+  });
+
+  it("ranh giới ngày theo GMT+7: 00:00 ngày 02/10 giờ VN thuộc ngày 02/10, một giây trước thuộc ngày 01/10", async () => {
+    const { adminCall } = makeAdmin();
+    await env.DB.batch([insertAudit(B - 1), insertAudit(B)]);
+    const ats = async (q: string) => ((await adminCall(`/admin/audit?action=thu&${q}`)).body as unknown as Page).items.map((a) => a.at);
+    expect(await ats("from=2026-10-02")).toEqual([B]);
+    expect(await ats("to=2026-10-01")).toEqual([B - 1]);
+    expect(await ats("from=2026-10-01&to=2026-10-01")).toEqual([B - 1]);
+    expect(await ats("from=2026-10-02&to=2026-10-02")).toEqual([B]);
   });
 
   it("phân trang theo id", async () => {

@@ -2,6 +2,8 @@
 // Mỗi request ghi một dòng nhật ký (list_viewed, queue_viewed, summary_viewed) không chứa email. Vì có ghi nhật ký,
 // GET ở đây chặn request mà trình duyệt báo là từ trang khác, như payment-status.
 // Danh sách: 50 dòng mỗi trang, mới nhất trước, con trỏ keyset (`next_cursor` của trang trước đưa vào `cursor`).
+// Email không bao giờ nằm trong URL hay trong `detail` của nhật ký: bộ lọc `actor` và `action` của /admin/audit chỉ
+// nhận giá trị cố định (`actor`: api, webhook, reconcile, admin) hoặc tên action dạng [a-z][a-z0-9_]{0,63}.
 import type { Context, Hono } from "hono";
 import { type AdminAppEnv, crossSite } from "./admin-auth";
 import { audit } from "./audit";
@@ -18,7 +20,7 @@ const QUEUE_ITEMS = 20;
 const DAY = 86400;
 const VN_OFFSET = 7 * 3600;
 
-/** Các action xem và tra cứu: /admin/audit ẩn mặc định (spec §3.2). */
+/** Các action xem và tra cứu: /admin/audit ẩn mặc định (spec §3.2), trừ khi lọc đúng một action trong nhóm này. */
 export const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "payment_status_viewed"] as const;
 
 export const ORDER_STATUSES = [
@@ -33,7 +35,10 @@ export const ORDER_STATUSES = [
   "refunded",
 ] as const;
 
-/** Cột đơn trả cho Web Admin: mọi cột trừ order_token_hash, provider_ref và các cột nội bộ của việc gửi email. */
+/**
+ * Cột đơn trả cho Web Admin: mọi cột của orders trừ order_token_hash, provider_ref, email_consent_at, expires_at,
+ * last_checked_at, email_attempts, email_retry_at (hợp đồng ở kế hoạch Web Admin 00, mục "Danh sách").
+ */
 const ORDER_COLUMNS =
   "order_code, provider, plan, amount, amount_paid, currency, email, status, grant_kind, license_id, renew_license_id, created_at, paid_at, email_sent_at, email_gave_up_at";
 
@@ -61,6 +66,12 @@ export function parseVnDate(v: string): number | null {
   return ms / 1000 - VN_OFFSET;
 }
 
+/** Giá trị cố định của bộ lọc `actor` ở /admin/audit; `admin` khớp mọi actor dạng `admin:<email>` mà không cần email. */
+const AUDIT_ACTORS = ["api", "webhook", "reconcile", "admin"] as const;
+
+/** Tên action hợp lệ ở bộ lọc `action`: email không khớp được mẫu này. */
+const ACTION_NAME = /^[a-z][a-z0-9_]{0,63}$/;
+
 /** Bộ lọc của một request danh sách: điều kiện WHERE, giá trị bind, và bộ lọc đã áp để ghi nhật ký. */
 class Filters {
   readonly where: string[] = [];
@@ -74,8 +85,9 @@ class Filters {
     return v === undefined || v === "" ? undefined : v;
   }
 
+  /** Thêm một điều kiện; bọc ngoặc để điều kiện có OR không phá phép AND giữa các điều kiện. */
   add(clause: string, ...binds: Bind[]): void {
-    this.where.push(clause);
+    this.where.push(`(${clause})`);
     this.binds.push(...binds);
   }
 
@@ -90,17 +102,23 @@ class Filters {
     return true;
   }
 
-  /** `from`, `to` (YYYY-MM-DD theo GMT+7; `to` tính hết ngày) trên `column`. Trả tên tham số sai, hoặc null. */
+  /**
+   * `from`, `to` (YYYY-MM-DD theo GMT+7; `to` tính hết ngày) trên `column`. Trả tên tham số sai, hoặc null.
+   * Cả hai hợp lệ mà `from` sau `to` thì tham số sai là `to`.
+   */
   dates(column: string): string | null {
+    const days: Partial<Record<"from" | "to", number>> = {};
     for (const name of ["from", "to"] as const) {
       const raw = this.get(name);
       if (raw === undefined) continue;
       const start = parseVnDate(raw);
       if (start === null) return name;
+      days[name] = start;
       if (name === "from") this.add(`${column} >= ?`, start);
       else this.add(`${column} < ?`, start + DAY);
       this.applied[name] = raw;
     }
+    if (days.from !== undefined && days.to !== undefined && days.from > days.to) return "to";
     return null;
   }
 }
@@ -181,13 +199,13 @@ export function registerAdminRead(app: Hono<AdminAppEnv>): void {
   listRoute(app, "/admin/audit", {
     resource: "audit",
     filters(f) {
-      for (const name of ["actor", "action"] as const) {
-        const v = f.get(name);
-        if (v === undefined) continue;
-        if (v.length > 200) return name;
-        f.add(`${name} = ?`, v);
-        // Không ghi email vào nhật ký (spec §3): actor của người vận hành ghi là "admin:…".
-        f.applied[name] = name === "actor" && v.startsWith("admin:") ? "admin:…" : v;
+      // Chỉ nhận giá trị cố định để email không vào URL hay `detail` (spec §3.2); chỉ có một người vận hành nên `admin` đủ dùng.
+      if (!f.oneOf("actor", AUDIT_ACTORS, (a) => (a === "admin" ? ["actor LIKE 'admin:%'"] : ["actor = ?", a]))) return "actor";
+      const action = f.get("action");
+      if (action !== undefined) {
+        if (!ACTION_NAME.test(action)) return "action";
+        f.add("action = ?", action);
+        f.applied.action = action;
       }
       const orderCode = f.get("order_code");
       if (orderCode !== undefined) {
@@ -195,8 +213,10 @@ export function registerAdminRead(app: Hono<AdminAppEnv>): void {
         f.add("order_code = ?", Number(orderCode));
         f.applied.order_code = orderCode;
       }
+      // Lọc đúng một action xem thì không ẩn nhóm xem (như đã bật include_views), nếu không kết quả luôn rỗng.
+      const viewOnly = action !== undefined && (VIEW_ACTIONS as readonly string[]).includes(action);
       if (f.get("include_views") === "1") f.applied.include_views = "1";
-      else f.add(`action NOT IN (${VIEW_ACTIONS.map(() => "?").join(", ")})`, ...VIEW_ACTIONS);
+      else if (!viewOnly) f.add(`action NOT IN (${VIEW_ACTIONS.map(() => "?").join(", ")})`, ...VIEW_ACTIONS);
       return f.dates("at");
     },
     select: "SELECT id, at, actor, action, license_id, order_code, detail FROM audit_log",
