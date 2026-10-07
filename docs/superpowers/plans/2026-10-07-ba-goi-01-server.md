@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-07-three-plans-single-device-design.md` mục 2, 3.1, 4.1, 5.1, 9 (phần server). **Hợp đồng server–app:** kế hoạch 00 (`2026-10-07-ba-goi-00-tong-quan.md`), mục "Hợp đồng giữa server và app".
 
-**Cây tham chiếu:** base `d0f9b30`, nhánh `ref-bg01` (worktree `meeting-translator-work/bg01-repo`, cùng kho git với repo chính), mỗi task một commit: Task 1 `c93eb7d`, Task 2 `9014358`, Task 3 `7992242`, Task 4 `d8d4a5a`, Task 5 `01d5cd4`, Task 6 `e4bc58b`. Mọi patch trong kế hoạch lấy đúng từ các commit này; mọi lệnh test và kết quả mong đợi đã chạy thật trên cây đó.
+**Cây tham chiếu:** base `d0f9b30`, nhánh `ref-bg01` (worktree `meeting-translator-work/bg01-repo`, cùng kho git với repo chính), mỗi task một commit: Task 1 `c93eb7d`, Task 2 `9014358`, Task 3 `7992242`, Task 4 `d8d4a5a`, Task 5 `01d5cd4`, Task 6 `e4bc58b`, Task 7 `b28c5d2`. Mọi patch trong kế hoạch lấy đúng từ các commit này; mọi lệnh test và kết quả mong đợi đã chạy thật trên cây đó.
 
 ## Điều chỉnh so với spec (đã đối chiếu code)
 
@@ -18,7 +18,7 @@
 2. **`/v1/trial` dùng một câu UPSERT** (`INSERT … ON CONFLICT (device_id_hash) DO UPDATE SET last_seen_at = … RETURNING started_at, ends_at`) thay cho "INSERT … DO NOTHING rồi đọc lại". Cùng kết quả (một dòng mỗi máy, `started_at` không đổi), một câu lệnh, nguyên tử.
 3. **Bucket giới hạn tần suất tên `trial_ip`** (theo cách đặt tên `checkout_ip`, `activate_ip`), spec ghi `trial`. Ngưỡng vẫn 10 lần/giờ/IP.
 4. **Luật khóa tạm khi hai máy gỡ qua gỡ lại.** Spec mục 4.1 viết "từ lần gỡ thứ 4 trong 30 ngày thì bị 423". Luật §10.2 (spec 2026-10-07 giữ nguyên câu chữ) đếm số lần gỡ **trừ các lần gỡ chính máy đang xin kích hoạt**, nên khi chỉ có hai máy giành nhau, máy xin kích hoạt bị `423` khi máy kia đã bị gỡ 4 lần: tổng **8 lần gỡ**. Kế hoạch giữ nguyên luật §10.2 và có test khóa đúng hành vi này (Task 5). Kế hoạch 03 sửa câu trong spec; muốn chặt hơn thì cần chủ dự án quyết.
-5. **Danh sách máy nằm ở trường `devices`** đúng hợp đồng 00. Code cũ trả `409 device_limit` với trường `activations`; mã `device_limit` bỏ hẳn. App (kế hoạch 02) đọc `devices`.
+5. **Danh sách máy nằm ở trường `devices`** đúng hợp đồng 00. Code cũ trả `409 device_limit` với trường `activations`; mã `device_limit` bỏ hẳn. App (kế hoạch 02) đọc `devices`. `409 license_conflict` của `activate` có thêm `activation_id` của chính máy gọi (hợp đồng 00 sửa ngày 2026-10-07, Task 7); của `validate` thì không.
 6. **`validate` khi đang xung đột vẫn ghi `last_validated_at`**, để danh sách máy cho người dùng thấy máy nào vừa dùng. Spec không nói.
 7. **`allow_conflict` không phải boolean** thì `400 invalid_request` với `field: "allow_conflict"`.
 8. **Admin tra cứu:** body nhận thêm `device_id_hash`. Response có thêm `trial` (dòng `trials` hoặc `null`) chỉ khi tra theo máy; mỗi license trong mọi kiểu tra có thêm `conflict: boolean`.
@@ -34,7 +34,7 @@
 | `server/wrangler.jsonc` | `PLANS` hai gói; `TRIAL_DAYS: 10` |
 | `server/migrations/0002_three_plans_trials.sql` (mới) | Dựng lại bảng, đổi mã gói, bảng `trials` |
 | `server/src/trial.ts` (mới) | `POST /v1/trial`, `parseTrialDays` |
-| `server/src/licenses.ts` | Một máy, `key_in_use`, `allow_conflict`, `license_conflict` |
+| `server/src/licenses.ts` | Một máy, `key_in_use`, `allow_conflict`, `license_conflict` (có `activation_id` của máy gọi khi trả từ `activate`) |
 | `server/src/admin.ts` | Tra cứu theo `device_id_hash`, cờ `conflict`; chú thích số ngày của `grant_new_license` |
 | `server/src/{app,env,http,ratelimit,deps}.ts` | Đăng ký route, biến `TRIAL_DAYS`, mã lỗi, bucket `trial_ip`, gói của token ký thử |
 | `server/vitest.config.ts`, `server/test/env.d.ts` | D1 trống `MIGRATION_DB` cho test migration |
@@ -3379,7 +3379,148 @@ Co-Authored-By: <model đang chạy> <noreply@anthropic.com>"
 
 ---
 
-## Task 7: Kiểm cuối
+## Task 7: activate trả activation_id của máy gọi trong 409 license_conflict
+
+**Commit tham chiếu:** `b28c5d2` (nhánh `ref-bg01`).
+
+**Files:**
+- Modify: `server/src/licenses.ts`
+- Modify: `server/test/licenses.test.ts`
+
+Hợp đồng 00 (sửa ngày 2026-10-07): khi `activate` trả `409 license_conflict`, body có thêm `activation_id` của chính máy gọi: `{"error": "license_conflict", "activation_id": "…", "devices": […]}`. Áp cho cả hai nhánh: máy vừa vào nhờ `allow_conflict: true`, và máy đang kích hoạt gọi lại `activate` khi đang xung đột (kể cả nhánh hai request cùng lúc của một máy). App lưu `activation_id` để sau đó `validate` hay tự gỡ. `validate` giữ nguyên, không có `activation_id`.
+
+Hàm `conflict` nhận thêm tham số `activationId` (không truyền thì không có trường này).
+
+- [ ] **Step 1: Viết test (red)**
+
+```bash
+git apply <<'PATCH'
+diff --git a/server/test/licenses.test.ts b/server/test/licenses.test.ts
+index f537f31..375cc6b 100644
+--- a/server/test/licenses.test.ts
++++ b/server/test/licenses.test.ts
+@@ -326,6 +326,8 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
+       headers: expect.anything(),
+       body: {
+         error: "license_conflict",
++        // activation của chính máy gọi, để app lưu và sau đó validate hay tự gỡ (hợp đồng 00).
++        activation_id: await idOf(2),
+         devices: [
+           { activation_id: a1.body.activation_id, device_label: "Máy 1", last_validated_at: T0 },
+           { activation_id: await idOf(2), device_label: "Máy 2", last_validated_at: T0 + 100 },
+@@ -346,13 +348,19 @@ describe("mỗi key một máy, trùng máy thì xung đột (spec 2026-10-07 §
+       const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: id });
+       expect(v).toMatchObject({ status: 409, body: { error: "license_conflict" } });
+       expect(v.body).not.toHaveProperty("token");
++      // validate: máy đã biết activation_id của mình, response không lặp lại.
++      expect(v.body).not.toHaveProperty("activation_id");
+     }
+     expect((await env.DB.prepare("SELECT last_validated_at FROM activations ORDER BY created_at").all()).results).toEqual([
+       { last_validated_at: T0 + DAY },
+       { last_validated_at: T0 + DAY },
+     ]);
+-    expect(await activate(1)).toMatchObject({ status: 409, body: { error: "license_conflict" } });
+-    expect(await activateAnyway(2)).toMatchObject({ status: 409, body: { error: "license_conflict" } });
++    // Máy đang kích hoạt gọi lại activate (cài lại app) khi đang xung đột: nhận lại đúng activation của mình.
++    expect(await activate(1)).toMatchObject({
++      status: 409,
++      body: { error: "license_conflict", activation_id: a1.body.activation_id },
++    });
++    expect(await activateAnyway(2)).toMatchObject({ status: 409, body: { error: "license_conflict", activation_id: await idOf(2) } });
+     expect(await activeCount()).toEqual({ n: 2 });
+   });
+ 
+PATCH
+```
+
+- [ ] **Step 2: Chạy test, thấy đỏ**
+
+```bash
+pnpm exec vitest run test/licenses.test.ts
+```
+
+Kết quả mong đợi: `Tests  2 failed | 56 passed (58)`: `allow_conflict khi máy khác giữ key…` và `đang xung đột: validate của cả hai máy…` (body chưa có `activation_id`).
+
+- [ ] **Step 3: Viết code**
+
+```bash
+git apply <<'PATCH'
+diff --git a/server/src/licenses.ts b/server/src/licenses.ts
+index 8e37676..4a65e6b 100644
+--- a/server/src/licenses.ts
++++ b/server/src/licenses.ts
+@@ -134,10 +134,16 @@ function devicesOf(list: ActivationRow[]) {
+   return list.map((a) => ({ activation_id: a.id, device_label: a.device_label, last_validated_at: a.last_validated_at }));
+ }
+ 
+-/** Xung đột: license có từ 2 máy đang kích hoạt (spec 2026-10-07 §4.1). Trả response 409, hay null nếu không xung đột. */
+-async function conflict(c: Context<AppEnv>, licenseId: string) {
++/**
++ * Xung đột: license có từ 2 máy đang kích hoạt (spec 2026-10-07 §4.1). Trả response 409, hay null nếu không xung đột.
++ * `activationId`: activation của chính máy gọi, chỉ có ở `activate` (máy chưa biết activation của mình); `validate` không
++ * truyền (hợp đồng 00).
++ */
++async function conflict(c: Context<AppEnv>, licenseId: string, activationId?: string) {
+   const list = await activeActivations(c.env.DB, licenseId);
+-  return list.length > MAX_DEVICES ? fail(c, 409, "license_conflict", { devices: devicesOf(list) }) : null;
++  if (list.length <= MAX_DEVICES) return null;
++  const own = activationId === undefined ? {} : { activation_id: activationId };
++  return fail(c, 409, "license_conflict", { ...own, devices: devicesOf(list) });
+ }
+ 
+ async function activeById(db: D1Database, activationId: string, licenseId: string) {
+@@ -198,7 +204,7 @@ export function registerLicenses(app: Hono<AppEnv>) {
+         .prepare("UPDATE activations SET device_label = ?, last_validated_at = ? WHERE id = ?")
+         .bind(deviceLabel, now, row.id)
+         .run();
+-      return (await conflict(c, lic.id)) ?? c.json(await issueToken(db, deps, plans, lic, row));
++      return (await conflict(c, lic.id, row.id)) ?? c.json(await issueToken(db, deps, plans, lic, row));
+     }
+ 
+     // Mọi máy không đang kích hoạt, kể cả máy từng dùng key này, đều qua kiểm khóa tạm (QĐ10).
+@@ -266,7 +272,7 @@ export function registerLicenses(app: Hono<AppEnv>) {
+     if (changed.meta.changes !== 1) {
+       const raced = await rowFor(db, lic.id, deviceIdHash);
+       if (raced && raced.deactivated_at === null) {
+-        return (await conflict(c, lic.id)) ?? c.json(await issueToken(db, deps, plans, lic, raced));
++        return (await conflict(c, lic.id, raced.id)) ?? c.json(await issueToken(db, deps, plans, lic, raced));
+       }
+       // Key đang ở máy khác: trả các máy đang giữ key, không đổi gì.
+       return fail(c, 409, "key_in_use", { devices: devicesOf(await activeActivations(db, lic.id)) });
+@@ -282,7 +288,7 @@ export function registerLicenses(app: Hono<AppEnv>) {
+         licenseId: lic.id,
+         detail: { activation_id: activationId, devices: list.length },
+       });
+-      return fail(c, 409, "license_conflict", { devices: devicesOf(list) });
++      return fail(c, 409, "license_conflict", { activation_id: activationId, devices: devicesOf(list) });
+     }
+     const act = await activeById(db, activationId, lic.id);
+     if (!act) throw new Error(`không thấy activation ${activationId} vừa kích hoạt`);
+PATCH
+```
+
+- [ ] **Step 4: Chạy test, thấy xanh**
+
+```bash
+pnpm exec vitest run test/licenses.test.ts
+pnpm check
+```
+
+Kết quả mong đợi: `Tests  58 passed (58)`. `pnpm check` thoát mã 0: `Tests  406 passed (406)`.
+
+- [ ] **Step 5: Kiểm khớp cây tham chiếu rồi commit**
+
+```bash
+git add -A server
+git diff --cached --stat b28c5d2 -- server   # phải không in gì
+git commit -m "feat(server): activate trả activation_id của máy gọi trong 409 license_conflict
+
+Co-Authored-By: <model đang chạy> <noreply@anthropic.com>"
+```
+
+---
+
+## Task 8: Kiểm cuối
 
 - [ ] **Step 1: Không còn mã gói, tên gói hay mã lỗi cũ trong code server**
 
@@ -3394,7 +3535,7 @@ Kết quả mong đợi: không in gì. (Mã cũ chỉ còn ở `migrations/0001
 ```bash
 pnpm check
 git status --porcelain server
-git diff --stat e4bc58b -- server
+git diff --stat b28c5d2 -- server
 ```
 
 Kết quả mong đợi: `pnpm check` thoát mã 0 (`Tests  406 passed (406)`); `git status` và `git diff` không in gì.

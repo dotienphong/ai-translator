@@ -126,19 +126,19 @@ Gọi "máy đang kích hoạt" là dòng `activations` của license có `deact
 **`POST /v1/licenses/activate` `{key, device_id_hash, device_label, allow_conflict?}`** (thứ tự kiểm):
 1. Các kiểm sẵn có: key, license bị thu hồi hay hết hạn, `503 pricing_not_configured`, giới hạn tần suất, chặn IP.
 2. Máy này **đang kích hoạt** với key này:
-   - license đang xung đột thì trả `409 license_conflict` kèm `devices`;
+   - license đang xung đột thì trả `409 license_conflict` kèm `activation_id` (của máy này) và `devices`;
    - không thì trả token như hiện nay.
 3. Máy này chưa kích hoạt (mới, hoặc đã gỡ): luật khóa tạm (`423 license_locked`) kiểm ở đây như hiện nay.
 4. Đếm số máy khác đang kích hoạt, `n`:
    - `n = 0`: kích hoạt (dòng mới, hoặc dùng lại dòng cũ của cùng máy, giữ `activation_id`, `quota_epoch`), trả token.
    - `n = 1` và không có `allow_conflict: true`: trả `409 key_in_use` kèm `devices` (máy đang giữ key). Không đổi gì.
-   - `n = 1` và `allow_conflict: true`: kích hoạt máy này (như trên), ghi `audit_log` hành động `license_conflict`, rồi trả `409 license_conflict` kèm `devices` (cả hai máy). Không cấp token.
+   - `n = 1` và `allow_conflict: true`: kích hoạt máy này (như trên), ghi `audit_log` hành động `license_conflict`, rồi trả `409 license_conflict` kèm `activation_id` (của máy này, để app lưu rồi `validate` hay tự gỡ) và `devices` (cả hai máy). Không cấp token.
    - `n ≥ 2`: trả `409 key_in_use` kèm `devices`; bỏ qua `allow_conflict`. Muốn dùng thì phải gỡ bớt máy.
 - `devices` có dạng như `409 device_limit` cũ: `activation_id`, `device_label`, thời điểm `validate` gần nhất. Mã `device_limit` bỏ hẳn.
 
 **`POST /v1/licenses/validate` `{key, activation_id}`:**
 - activation đã gỡ: như hiện nay (app về Free).
-- license đang xung đột: `409 license_conflict` kèm `devices`, không cấp token.
+- license đang xung đột: `409 license_conflict` kèm `devices` (không có `activation_id`, máy đã biết activation của mình), không cấp token.
 - còn lại: như hiện nay.
 
 **`POST /v1/licenses/deactivate` `{key, activation_id}`:** gỡ một máy đang kích hoạt của key, gọi từ chính máy đó hoặc từ máy khác biết key (gỡ từ xa). Bỏ điều kiện "chỉ gỡ từ xa khi đã đủ máy". Mỗi lần gỡ vẫn ghi vào `deactivations` và tính vào luật khóa tạm như hiện nay. Gỡ xong mà license còn đúng một máy đang kích hoạt thì hết xung đột; `validate` kế tiếp của máy đó nhận token.

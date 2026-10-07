@@ -15,10 +15,11 @@
 | # | File | Phạm vi | Phụ thuộc |
 |---|---|---|---|
 | 01 | `2026-10-07-ba-goi-01-server.md` | `server/`: mã gói, `PLANS`, `computeGrant`, migration `0002`, `/v1/trial`, token dùng thử, luật một máy, admin, vector token | không |
-| 02 | `2026-10-07-ba-goi-02-app.md` | `src-tauri/` và `src/`: `Plan`, Free dùng thử, `key_in_use`/`license_conflict`, kiểm nhanh lúc bắt đầu phiên, giao diện, i18n | 01 (vector token `server/test/vectors/token-v1.json` do 01 sinh lại) |
+| 02a | `2026-10-07-ba-goi-02a-app-loi.md` | `src-tauri/`: `Plan`, Free dùng thử, `key_in_use`/`license_conflict`, trạng thái xung đột, kiểm nhanh lúc bắt đầu phiên, lệnh `start_trial`, mã lỗi và câu báo lỗi | 01 (vector token `server/test/vectors/token-v1.json` do 01 sinh lại) |
+| 02b | `2026-10-07-ba-goi-02b-app-giao-dien.md` | `src/`: kiểu IPC, Nâng cấp ba gói, dòng dùng thử, hộp thoại `key_in_use`, xung đột, i18n | 02a |
 | 03 | `2026-10-07-ba-goi-03-tai-lieu-trien-khai.md` | Sửa spec gốc, EULA; migration và deploy production (chờ chủ dự án cho phép); thử tay | 01, 02 |
 
-Thực thi 01 xong rồi mới tới 02. 03 phần tài liệu chạy song song với 02 được; phần triển khai chạy sau cùng.
+Thực thi 01 xong rồi mới tới 02a, rồi 02b. 03 phần tài liệu chạy song song với 02 được; phần triển khai chạy sau cùng.
 
 ## Hợp đồng giữa server và app (khóa lại, hai kế hoạch phải theo đúng)
 
@@ -41,11 +42,11 @@ Thực thi 01 xong rồi mới tới 02. 03 phần tài liệu chạy song song 
 **`POST /v1/licenses/activate`**
 - Body thêm `allow_conflict?: boolean` (thiếu là `false`).
 - `409 key_in_use`: `{"error": "key_in_use", "devices": [Device]}`. `devices` là các máy đang kích hoạt khác.
-- `409 license_conflict`: `{"error": "license_conflict", "devices": [Device]}`. `devices` là mọi máy đang kích hoạt.
+- `409 license_conflict`: `{"error": "license_conflict", "activation_id": "<activation của chính máy gọi>", "devices": [Device]}`. `devices` là mọi máy đang kích hoạt. `activation_id` có ở cả hai trường hợp `activate` trả mã này: máy vừa vào nhờ `allow_conflict: true`, và máy đang kích hoạt gọi lại `activate` khi license đang xung đột. App lưu `activation_id` này để sau đó `validate` hay tự gỡ.
 - `Device` = `{"activation_id": string, "device_label": string | null, "last_validated_at": number}`, giống `device_limit` cũ.
 - Mã `device_limit` bỏ hẳn.
 
-**`POST /v1/licenses/validate`**: thêm `409 license_conflict` (cùng body như trên) khi license có từ 2 máy đang kích hoạt.
+**`POST /v1/licenses/validate`**: thêm `409 license_conflict` khi license có từ 2 máy đang kích hoạt: `{"error": "license_conflict", "devices": [Device]}`, **không** có `activation_id` (máy đã biết activation của mình).
 
 **`POST /v1/licenses/deactivate`**: gỡ được mọi máy đang kích hoạt của key, từ chính máy đó hay từ máy khác. Body không đổi.
 
