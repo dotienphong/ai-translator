@@ -1,6 +1,6 @@
 # Văn bản pháp lý của AI Translator
 
-**Phiên bản 1.0, hiệu lực từ 2026-10-06**, dùng để phát hành (chủ dự án duyệt và yêu cầu bản chính thức ngày 2026-10-06).
+**Phiên bản 1.1, hiệu lực từ 2026-10-07**, dùng để phát hành. Bản 1.0 (2026-10-06) do chủ dự án duyệt; bản 1.1 sửa phần gói theo spec `2026-10-07-three-plans-single-device-design.md` (ba gói, dùng thử Free theo máy, mỗi key một máy).
 
 > **Chưa được luật sư xem.** Văn bản bám sát hành vi thật của sản phẩm nhưng **không phải tư vấn pháp lý**, và việc phát hành khi chưa có luật sư xem là rủi ro chủ dự án đã chấp nhận. Khuyến nghị: nhờ luật sư rà (các điểm ở dưới) trước khi bán công khai rộng rãi, rồi cập nhật văn bản và ngày hiệu lực.
 
@@ -14,7 +14,7 @@ Bản tiếng Việt là bản gốc; bản tiếng Anh dịch tương đương 
 ## Thông tin đã chốt và đã dùng trong văn bản
 - Bên cung cấp: **Đỗ Tiến Phong** (cá nhân), email **support@aitranslator.io.vn**, thương hiệu hiển thị "AI Translator". Không công bố địa chỉ liên hệ.
 - Dữ liệu cá nhân trên máy chủ giữ không thời hạn, chỉ xóa khi khách yêu cầu (chốt 2026-10-01); sau khi xóa vẫn giữ mã băm ID máy, thời điểm đồng ý, và dòng đơn hàng mức kế toán (spec §10.1).
-- Bốn gói, giá và hạn mức; đơn 30 ngày trả trước, không tự gia hạn; đổi gói không hoàn tiền; 2 máy mỗi key; khóa tạm khi đổi máy quá nhiều; ngoại tuyến 14 ngày.
+- Ba gói (từ 2026-10-07): Free dùng thử 10 ngày mỗi máy, 30 phút mỗi ngày; Monthly 50.000 đ, 50 giờ mỗi chu kỳ 30 ngày; Yearly 500.000 đ, không giới hạn, 365 ngày. Đơn trả trước, không tự gia hạn; đổi gói quy đổi theo giá mỗi ngày, không hoàn tiền; mỗi key một máy, trùng máy thì tạm khóa cả hai; khóa tạm khi đổi máy quá nhiều; ngoại tuyến 14 ngày.
 - Bên xử lý dữ liệu: PayOS (Việt Nam), Cloudflare, Resend (ngoài Việt Nam).
 - **Mặc định đã chọn** (đổi được bằng cách sửa file): hoàn tiền "không hoàn, trừ lỗi do chúng tôi hoặc pháp luật; yêu cầu trong **7 ngày**"; độ tuổi **16 trở lên**; trần trách nhiệm bằng **số tiền đã trả trong 12 tháng**; ngày hiệu lực 2026-10-06.
 
@@ -28,7 +28,7 @@ Bản tiếng Việt là bản gốc; bản tiếng Anh dịch tương đương 
 - **Thời hạn lưu log thư của Resend**: spec yêu cầu ghi vào chính sách; **chưa kiểm**. Hiện chính sách ghi "theo chính sách lưu của Resend".
 
 ## Đã đối chiếu với sản phẩm thật
-Âm thanh chỉ trong RAM và không gửi đi (kiểm A7: HAR và `nettop` không có luồng ngoài lúc dịch, log không chứa chữ chép lời); danh sách kết nối mạng của app (A7: chỉ `api.` và `releases.aitranslator.io.vn`); server chỉ lưu email, đơn, license, mã băm máy, `device_label`, thời điểm kiểm tra (spec §10.1); bảng giá và hạn mức (spec §2); luật quy đổi khi đổi gói (§6.8); giới hạn 2 máy và khóa tạm (§10.2); token ngoại tuyến 14 ngày (`refresh_before - issued_at = 1 209 600 s` ở bản triển khai); giấy phép Hy-MT2 Apache 2.0, Whisper và Silero MIT (§10.1).
+Âm thanh chỉ trong RAM và không gửi đi (kiểm A7: HAR và `nettop` không có luồng ngoài lúc dịch, log không chứa chữ chép lời); danh sách kết nối mạng của app (A7: chỉ `api.` và `releases.aitranslator.io.vn`); server chỉ lưu email, đơn, license, mã băm máy, `device_label`, thời điểm kiểm tra (spec §10.1); bảng giá và hạn mức (spec §2); luật quy đổi khi đổi gói (§6.8); mỗi key một máy và khóa tạm (§6.8, §10.2); bảng `trials` của dùng thử Free (§10.1); token ngoại tuyến 14 ngày (`refresh_before - issued_at = 1 209 600 s` ở bản triển khai); giấy phép Hy-MT2 Apache 2.0, Whisper và Silero MIT (§10.1).
 
 ## Cài vào sản phẩm
 - **Đã làm (kế hoạch `2026-10-06-dieu-khoan-trong-app.md`):** app đóng gói bốn file; bước "Điều khoản" ở onboarding (ô tick bắt buộc); thẻ "Điều khoản và quyền riêng tư" ở màn hình Giới thiệu; mục gập "Chính sách quyền riêng tư" dưới ô đồng ý email ở màn hình mua.

@@ -36,7 +36,7 @@ cd ~/Desktop/software_business/ai-translator
 
 ## A5: soak 2 giờ
 
-1. Mở app (`! scripts/run-dev-app.sh` cho bản dev), vào **Cài đặt › Bản quyền** nhập key để có Professional.
+1. Mở app (`! scripts/run-dev-app.sh` cho bản dev), vào **Cài đặt › Bản quyền** nhập key để có gói trả phí (Monthly hoặc Yearly).
 2. Bấm **Bắt đầu** với một nguồn âm thanh bất kỳ, rồi kiểm công cụ thấy đủ tiến trình:
    ```bash
    python3 bench/phase1/acceptance/soak.py pids --app meeting-translator

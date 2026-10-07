@@ -203,7 +203,7 @@ chủ tài khoản Resend: chưa đủ để bán.
 4. **Giữ chỗ số đơn (QĐ18)**, để đơn đầu tiên là 1.000.001:
 
    ```bash
-   pnpm exec wrangler d1 execute mt-license-production --remote --command "INSERT INTO orders (order_code, order_token_hash, provider, plan, amount, currency, email_consent_at, status, created_at, expires_at) VALUES (1000000, 'reserved', 'none', 'pro', 0, 'VND', 0, 'failed', 0, 0); DELETE FROM orders WHERE order_code = 1000000;"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "INSERT INTO orders (order_code, order_token_hash, provider, plan, amount, currency, email_consent_at, status, created_at, expires_at) VALUES (1000000, 'reserved', 'none', 'monthly', 0, 'VND', 0, 'failed', 0, 0); DELETE FROM orders WHERE order_code = 1000000;"
    pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS seq, (SELECT COUNT(*) FROM orders) AS orders"
    ```
 
