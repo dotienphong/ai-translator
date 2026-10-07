@@ -1425,7 +1425,7 @@ Cập nhật ngày 2026-10-01:
 - ~~**P05-1 (kế hoạch 05). Kênh PayOS riêng cho staging.**~~ Không còn cần: chỉ một môi trường production (spec 2026-10-04 §4).
 - ~~**P05-2. Giá thử trên staging.**~~ Không còn cần: thử bằng giá thật trên production rồi hoàn tiền tay (spec 2026-10-04 §1 mục 5).
 - **P05-4. Giao diện admin.** 05 chỉ làm JSON API, gọi bằng `cloudflared access curl`. Có cần một trang giao diện nhỏ không?
-- **P05-5. Email nhận cảnh báo vận hành (`OPERATOR_EMAIL`).** Đã chốt và đặt ngày 2026-10-07 (Phase 2): `ops@aitranslator.io.vn`, quy tắc Email Routing `ops` chuyển về hộp thư của chủ dự án; secret `OPERATOR_EMAIL` của Worker `mt-license`. Lúc thử thì thấy cron của Worker không chạy từ 06/10 dù lịch vẫn đăng ký; `wrangler triggers deploy` làm cron chạy lại (07:40 UTC, `alerts_sent: 1`); bước kiểm cron đã thêm vào `docs/release/phat-hanh.md` mục 4 bước 9.
+- **P05-5. Email nhận cảnh báo vận hành (`OPERATOR_EMAIL`).** Đã chốt và đặt ngày 2026-10-07 (Phase 2): `ops@aitranslator.io.vn`, quy tắc Email Routing `ops` chuyển về hộp thư của chủ dự án; secret `OPERATOR_EMAIL` của Worker `mt-license`. Lúc thử thì thấy cron của Worker không chạy từ 06/10 dù lịch vẫn đăng ký; `wrangler triggers deploy` làm cron chạy lại (07:40 UTC, `alerts_sent: 1`), chủ dự án đã nhận thư cảnh báo thử qua `ops@`; bước kiểm cron đã thêm vào `docs/release/phat-hanh.md` mục 4 bước 9.
 - P05-3 (chính sách khóa tạm) đã vào spec §10.2 theo đề xuất của 05.
 - **Điểm cần quyết của 02a** (mục "Điểm cần chủ dự án quyết" của 02a). 02 đã làm theo phương án ghi trong ngoặc ở đó; chủ dự án đổi thì sửa code theo dòng tương ứng:
   - điểm 1, ngưỡng `filler_logprob_max` của luật câu đệm: dòng 350 (chủ dự án giữ −0,7, 2026-10-04);
