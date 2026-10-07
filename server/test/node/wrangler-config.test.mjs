@@ -31,12 +31,11 @@ test("Worker admin gọi đúng Worker API qua service binding", () => {
   assert.deepEqual(admin.services, [{ binding: "API", service: "mt-license", entrypoint: "AdminRpc" }]);
 });
 
-test("Worker API bán đúng bảng gói chính thức (spec §2), không có giá thử", () => {
-  const { pro, pro_x2, pro_x5, ...others } = api.vars.PLANS;
+test("Worker API bán đúng bảng gói chính thức (spec 2026-10-07 §2.1), không có giá thử", () => {
+  const { monthly, yearly, ...others } = api.vars.PLANS;
   assert.deepEqual(others, {});
-  assert.deepEqual(pro, { quota_minutes_per_cycle: 1800, days_per_order: 30, prices: { VND: 50000 } });
-  assert.deepEqual(pro_x2, { quota_minutes_per_cycle: 6000, days_per_order: 30, prices: { VND: 150000 } });
-  assert.deepEqual(pro_x5, { quota_minutes_per_cycle: null, days_per_order: 30, prices: { VND: 500000 } });
+  assert.deepEqual(monthly, { quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000 } });
+  assert.deepEqual(yearly, { quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000 } });
 });
 
 test("secret bắt buộc có đủ và không nằm trong vars", () => {

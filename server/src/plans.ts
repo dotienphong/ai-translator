@@ -77,10 +77,12 @@ export interface GrantTerms extends LicenseTerms {
  * Luật "Mua thêm và đổi gói" (§6.8), tính tại `now`: thời điểm thanh toán (QĐ33), không làm tròn về đầu ngày.
  * - license mới: hạn = now + số ngày; cycle_anchor = now;
  * - cùng gói: hạn cộng số ngày từ max(now, hạn cũ); cycle_anchor giữ nguyên, license đã hết hạn thì = now;
- * - đổi gói khi còn hạn: ngày_quy_đổi = floor(ngày_còn_lại × giá_cũ / giá_mới), ngày_còn_lại giữ cả phần lẻ;
- *   hạn = now + số ngày + ngày_quy_đổi; cycle_anchor = now;
+ * - đổi gói khi còn hạn: quy theo giá mỗi ngày (spec 2026-10-07 §2.3), vì hai gói có số ngày mỗi đơn khác nhau:
+ *   ngày_quy_đổi = floor(ngày_còn_lại × (giá_cũ / số_ngày_cũ) / (giá_mới / số_ngày_mới)), ngày_còn_lại giữ cả phần lẻ;
+ *   hạn = now + số ngày của gói mới + ngày_quy_đổi; cycle_anchor = now;
  * - license đã hết hạn mua gói khác: như license mới, giữ key.
- * Giá lấy theo bảng hiện hành, cùng loại tiền với đơn. Tính bằng BigInt để phép chia làm tròn xuống đúng tuyệt đối.
+ * Giá và số ngày lấy theo bảng hiện hành, giá cùng loại tiền với đơn. Tính bằng BigInt trên giây để phép chia làm tròn
+ * xuống đúng tuyệt đối.
  */
 export function computeGrant(
   plans: PlanTable,
@@ -109,7 +111,11 @@ export function computeGrant(
     const newPrice = plans[plan].prices[currency];
     if (oldPrice === undefined || newPrice === undefined) throw new Error(`thiếu giá ${currency} để đổi gói`);
     const remaining = BigInt(current.expires_at - now);
-    converted = Number((remaining * BigInt(oldPrice)) / (BigInt(newPrice) * BigInt(DAY_SECONDS)));
+    const oldDays = BigInt(plans[current.plan].days_per_order);
+    const newDays = BigInt(plans[plan].days_per_order);
+    converted = Number(
+      (remaining * BigInt(oldPrice) * newDays) / (BigInt(newPrice) * oldDays * BigInt(DAY_SECONDS)),
+    );
   }
   return {
     plan,
