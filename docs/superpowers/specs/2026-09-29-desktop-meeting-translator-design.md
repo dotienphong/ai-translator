@@ -1121,7 +1121,7 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 **Cảnh báo cho người vận hành:**
 - Năm loại sự kiện: `many_failures` (một IP chạm 60 lần thất bại), `webhook_bad_signature`, `email_failed`, `license_locked`, `order_needs_review` (license đã thu hồi nhận được tiền, §6.8).
 - Cron gửi một email cho mỗi loại, **tối đa một lần mỗi giờ**, tới hộp thư vận hành, qua `EmailProvider`. Gửi lỗi thì lần cron sau thử lại.
-- Địa chỉ nhận là dữ liệu cá nhân nên là secret của Worker (`OPERATOR_EMAIL`), không nằm trong repo. Thiếu thì cảnh báo chỉ ghi log. Chủ dự án chưa chọn hộp thư này (§15).
+- Địa chỉ nhận là dữ liệu cá nhân nên là secret của Worker (`OPERATOR_EMAIL`), không nằm trong repo. Thiếu thì cảnh báo chỉ ghi log. Đã đặt ngày 2026-10-07: `ops@aitranslator.io.vn`, Email Routing chuyển về hộp thư của chủ dự án.
 - Cảnh báo đi cùng kênh Resend với thư chứa key, nên khi Resend sập thì chỉ còn log. Giảm rủi ro bằng Workers Issues của Cloudflare (ghi `console.error` và response `5xx`, gửi qua webhook hay chat, không qua Resend).
 
 **Khóa ký token:**
@@ -1274,7 +1274,7 @@ meeting-translator/
 
 **Phase 1: MVP.** Làm F1–F10, license server và tích hợp PayOS, bốn gói và hạn mức (§2, §6.8), đạt A1–A7. Các việc kỹ thuật rút ra từ Phase 0 nằm ở mục "Việc cho MVP" của §5, §6.3, §6.4, §6.5 và §12, cùng các phương án MVP phải chọn ở §6.12, và các điều kiện A4 còn thiếu ở §3.3.
 
-**Phase 2.** Các việc đã làm xong vẫn thuộc Phase 2. Việc còn lại: hộp thư nhận cảnh báo vận hành `OPERATOR_EMAIL` (P05-5, §10.2).
+**Phase 2.** Đã xong. Việc cuối là hộp thư nhận cảnh báo vận hành `OPERATOR_EMAIL` (P05-5, §10.2), đặt ngày 2026-10-07 là `ops@aitranslator.io.vn`.
 
 **Phase 3: mở rộng**, thứ tự tùy phản hồi của người dùng:
 - Phân biệt ai đang nói.
@@ -1312,7 +1312,6 @@ meeting-translator/
 
 Còn mở:
 - **Logo và tên miền.** Tên miền mua sau. Trong lúc chờ, production dùng `*.workers.dev` và URL tạm của R2; mọi URL đọc từ cấu hình. Không cần tên miền để deploy lần đầu trên `workers.dev`; cần tên miền trước khi nhúng URL production vào bản beta đầu tiên và trước lần phát hành công khai đầu tiên (email gửi từ tên miền đã xác thực, `returnUrl`).
-- **Hộp thư nhận cảnh báo vận hành** (P05-5, `OPERATOR_EMAIL`, §10.2). Chủ dự án dời sang Phase 2 (quyết định 2026-10-05).
 - **Pháp lý:** hỏi luật sư về:
   - hồ sơ chuyển dữ liệu cá nhân ra nước ngoài (§10.1);
   - việc **giữ dữ liệu cá nhân không thời hạn** (§10.1), xét theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân (hiệu lực từ 1/1/2026);
