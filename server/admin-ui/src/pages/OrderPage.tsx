@@ -14,11 +14,21 @@ type Dialog = "grant" | "grant_new" | "refunded" | null;
 
 const GRANT_KINDS: Record<string, string> = { new: "Mua mới", extend: "Mua thêm cùng gói", change: "Đổi gói" };
 
+/** Hộp key mới nằm ngoài OrderDetail: tải lại đơn bị lỗi thì trang đơn thành ErrorBox, nhưng key (chỉ hiện một lần) vẫn còn đó. */
 export function OrderPage({ code }: { code: number }) {
+  const [revealed, setRevealed] = useState<string | null>(null);
+  return (
+    <>
+      <OrderDetail code={code} onKeyIssued={setRevealed} />
+      {revealed && <KeyReveal licenseKey={revealed} onClose={() => setRevealed(null)} />}
+    </>
+  );
+}
+
+function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(key: string): void }) {
   const data = useLoad(() => api.lookup({ order_code: code }), [code]);
   const log = useLoad(() => api.audit({ order_code: String(code) }), [code]);
   const [dialog, setDialog] = useState<Dialog>(null);
-  const [revealed, setRevealed] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [payos, setPayos] = useState<string | null>(null);
   const reload = () => {
@@ -105,7 +115,7 @@ export function OrderPage({ code }: { code: number }) {
           needsNote
           onConfirm={async (note) => {
             const r = await api.grantOrder(code, note);
-            setRevealed(r.license_key);
+            onKeyIssued(r.license_key);
             reload();
           }}
           onConflict={reload}
@@ -120,7 +130,7 @@ export function OrderPage({ code }: { code: number }) {
           needsNote
           onConfirm={async (note) => {
             const r = await api.resolveOrder(code, "grant_new_license", note);
-            if (r.license_key) setRevealed(r.license_key);
+            if (r.license_key) onKeyIssued(r.license_key);
             reload();
           }}
           onConflict={reload}
@@ -143,7 +153,6 @@ export function OrderPage({ code }: { code: number }) {
           onClose={() => setDialog(null)}
         />
       )}
-      {revealed && <KeyReveal licenseKey={revealed} onClose={() => setRevealed(null)} />}
     </>
   );
 }

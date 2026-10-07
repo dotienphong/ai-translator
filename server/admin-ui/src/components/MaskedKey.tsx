@@ -1,19 +1,27 @@
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { maskKey } from "../format";
 
+const COPY_LABELS = { idle: "Chép", done: "Đã chép", failed: "Không chép được" };
+
 export function CopyButton({ text }: { text: string }) {
-  const [done, setDone] = useState(false);
+  // Mỗi lần bấm là một đối tượng mới để bộ hẹn giờ 2 giây tính lại từ đầu.
+  const [state, setState] = useState<{ kind: keyof typeof COPY_LABELS }>({ kind: "idle" });
+  useEffect(() => {
+    if (state.kind === "idle") return;
+    const t = setTimeout(() => setState({ kind: "idle" }), 2000);
+    return () => clearTimeout(t);
+  }, [state]);
   async function copy() {
     try {
       await navigator.clipboard.writeText(text);
-      setDone(true);
+      setState({ kind: "done" });
     } catch {
-      setDone(false);
+      setState({ kind: "failed" });
     }
   }
   return (
     <button type="button" className="link" onClick={copy}>
-      {done ? "Đã chép" : "Chép"}
+      {COPY_LABELS[state.kind]}
     </button>
   );
 }
@@ -34,10 +42,11 @@ export function MaskedKey({ value }: { value: string }) {
 
 /** Hộp hiện key mới một lần, sau thao tác cấp key (spec §4.6). */
 export function KeyReveal({ licenseKey, onClose }: { licenseKey: string; onClose(): void }) {
+  const titleId = useId();
   return (
     <div className="overlay">
-      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="key-title">
-        <h2 id="key-title">Key mới</h2>
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <h2 id={titleId}>Key mới</h2>
         <p>Key đã được gửi qua email cho khách. Hộp này chỉ hiện một lần.</p>
         <p>
           <code className="key-full">{licenseKey}</code> <CopyButton text={licenseKey} />
