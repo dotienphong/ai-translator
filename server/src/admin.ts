@@ -6,6 +6,7 @@
 // tìm thấy khác (400, 404).
 import { type Context, Hono } from "hono";
 import { type AdminAppEnv, type AdminDeps, crossSite, useAdminAuth } from "./admin-auth";
+import { registerAdminRead } from "./admin-read";
 import { audit, auditIfChanged, auditStatement } from "./audit";
 import { sendLicenseMail } from "./deps";
 import type { AdminEnv } from "./env";
@@ -33,6 +34,7 @@ async function licenseWithOrders(db: D1Database, id: string) {
 export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
   const app = new Hono<AdminAppEnv>();
   useAdminAuth(app, makeDeps);
+  registerAdminRead(app);
 
   /** Bảng gói lấy từ Worker API; thiếu hay sai thì null (route trả 503 pricing_not_configured). */
   async function plansOf(c: Context<AdminAppEnv>): Promise<PlanTable | null> {
