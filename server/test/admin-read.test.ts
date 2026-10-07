@@ -461,6 +461,18 @@ describe("GET /admin/queue", () => {
       expect(await failedEmails(adminCall)).toEqual([]);
     });
 
+    it("license đã thu hồi thì đơn rời nhóm (UI ẩn mọi nút, kể cả Gửi lại email, nên không còn cách xử lý); chưa thu hồi thì ở lại", async () => {
+      const { w, adminCall } = makeAdmin();
+      w.resend.failStatus = 422;
+      await w.buy({ email: "con@example.com" });
+      await w.buy({ email: "thuhoi@example.com" });
+      w.resend.failStatus = null;
+      expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM orders WHERE status = 'paid' AND email_sent_at IS NULL AND email_gave_up_at IS NOT NULL").first()).toEqual({ n: 2 });
+      expect(await failedEmails(adminCall)).toEqual(["thuhoi@example.com", "con@example.com"]);
+      await env.DB.prepare("UPDATE licenses SET revoked_at = ? WHERE email = 'thuhoi@example.com'").bind(T0).run();
+      expect(await failedEmails(adminCall)).toEqual(["con@example.com"]);
+    });
+
     it("đơn đã ẩn danh (email NULL) và đơn refunded có email_gave_up_at không lên nhóm", async () => {
       const { w, adminCall } = makeAdmin();
       w.resend.failStatus = 422;

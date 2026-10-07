@@ -290,9 +290,11 @@ export function registerAdminRead(app: Hono<AdminAppEnv>): void {
       // Đơn đã trả mà khách chưa nhận thư key: cron thôi gửi (lỗi vĩnh viễn, email_gave_up_at), hoặc quá 24 giờ sau paid_at mà
       // chưa gửi được (cron chỉ thử trong 24 giờ đó và không đặt email_gave_up_at khi hết hạn thử). Hết việc khi admin gửi lại
       // thành công (key_resent với sent = true) sau lúc bỏ cuộc, hoặc sau paid_at nếu cron chưa bỏ cuộc: route resend không
-      // cập nhật email_sent_at.
+      // cập nhật email_sent_at. License đã thu hồi thì rời nhóm: UI ẩn mọi nút của license đó, kể cả "Gửi lại email", nên đơn
+      // sẽ đứng mãi trong hàng đợi mà không còn cách xử lý.
       email_failed: await orders(
         `status = 'paid' AND email IS NOT NULL AND email_sent_at IS NULL AND (email_gave_up_at IS NOT NULL OR paid_at < ?)
+         AND NOT EXISTS (SELECT 1 FROM licenses WHERE licenses.id = orders.license_id AND licenses.revoked_at IS NOT NULL)
          AND NOT EXISTS (SELECT 1 FROM audit_log a WHERE a.license_id = orders.license_id AND a.action = 'key_resent'
                          AND json_extract(a.detail, '$.sent') = 1 AND a.at >= COALESCE(orders.email_gave_up_at, orders.paid_at))`,
         [now - DAY],
