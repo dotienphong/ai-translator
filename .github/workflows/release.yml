@@ -263,6 +263,10 @@ jobs:
         with:
           tool: cargo-about@0.9.2
       - name: asr-worker-vulkan, asr-worker-cpu, llama-server và DLL (chưa ký)
+        # target ngắn: ggml-vulkan cấu hình lồng một dự án CMake (vulkan-shaders-gen), MSBuild FileTracker ghi tlog ở đường
+        # dẫn dài 275 ký tự dưới D:\a\ai-translator\ai-translator\target, vượt MAX_PATH 260 nên compiler bị coi là hỏng.
+        env:
+          CARGO_TARGET_DIR: D:\t
         run: node scripts/release/build-sidecars-windows.mjs
       - name: THIRD_PARTY_NOTICES (tải mã nguồn crate của mọi target trước, vì cargo-about chạy --frozen)
         run: |
