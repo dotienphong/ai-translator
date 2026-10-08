@@ -1,6 +1,6 @@
 import { createExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminRpc } from "../src/admin-rpc";
 import { sha256Hex } from "../src/crypto";
 import { signKeyCheck } from "../src/deps";
@@ -37,6 +37,53 @@ describe("Access", () => {
     expect(await adminCall("/admin/whoami")).toMatchObject({ status: 403, body: { error: "forbidden" } });
     const ok = makeAdmin({ ENVIRONMENT: "production", ACCESS_AUD: "aud-1" });
     expect((await ok.adminCall("/admin/whoami")).status).toBe(200);
+  });
+});
+
+describe("log lý do từ chối (chẩn đoán Access, không lộ ra phản hồi)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** Gọi rồi trả các dòng `admin_denied` đã ghi (đã parse). */
+  async function denied(adminEnv: Parameters<typeof makeAdmin>[0], call: AdminCall = {}) {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { adminCall } = makeAdmin(adminEnv);
+    const res = await adminCall("/admin/whoami", call);
+    const lines = warn.mock.calls.map(([line]) => JSON.parse(String(line))).filter((l) => l.event === "admin_denied");
+    return { res, lines };
+  }
+
+  it("request không qua Access: no_access", async () => {
+    const { res, lines } = await denied({}, { operator: null });
+    expect(res).toMatchObject({ status: 403, body: { error: "forbidden" } });
+    expect(lines).toEqual([{ event: "admin_denied", reason: "no_access" }]);
+  });
+
+  it("production chưa đặt ACCESS_AUD: aud_unset", async () => {
+    const { lines } = await denied({ ENVIRONMENT: "production", ACCESS_AUD: "" });
+    expect(lines).toEqual([{ event: "admin_denied", reason: "aud_unset" }]);
+  });
+
+  it("aud khác: aud_mismatch, chỉ ghi 8 ký tự đầu của hai aud", async () => {
+    const { lines } = await denied({ ACCESS_AUD: "11111111-cau-hinh" }, { aud: "22222222-thuc-te" });
+    expect(lines).toEqual([{ event: "admin_denied", reason: "aud_mismatch", got: "22222222", want: "11111111" }]);
+  });
+
+  it("danh tính không có email: no_email, ghi tên các trường, không ghi giá trị", async () => {
+    const { res, lines } = await denied({}, { getIdentity: async () => ({ name: "Ops Rieng Tu", id: "x" }) });
+    expect(res.status).toBe(403);
+    expect(lines).toEqual([{ event: "admin_denied", reason: "no_email", identity_keys: ["name", "id"] }]);
+    expect(JSON.stringify(lines)).not.toContain("Ops Rieng Tu");
+  });
+
+  it("getIdentity ném lỗi: no_email kèm tên lỗi", async () => {
+    const { lines } = await denied({}, { getIdentity: () => Promise.reject(new Error("Access không trả lời")) });
+    expect(lines).toEqual([{ event: "admin_denied", reason: "no_email", identity_error: "Error: Access không trả lời" }]);
+  });
+
+  it("request hợp lệ không ghi gì; ghi thay đổi từ trang khác: cross_site", async () => {
+    expect((await denied({})).lines).toEqual([]);
+    const { lines } = await denied({}, { method: "POST", body: {}, headers: { "sec-fetch-site": "cross-site" } });
+    expect(lines).toEqual([{ event: "admin_denied", reason: "cross_site" }]);
   });
 });
 
