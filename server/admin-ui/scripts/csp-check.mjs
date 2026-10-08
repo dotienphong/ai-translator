@@ -5,7 +5,7 @@
 //  - kiểm DOM sau khi vẽ có các chuỗi mong đợi (--expect=...);
 //  - in dung lượng (byte, gzip) các file trong dist/assets (--sizes);
 //  - chụp màn hình (--shot=đường-dẫn.png).
-// Dùng:  pnpm build && node scripts/csp-check.mjs --path=/overview --expect=recharts-surface [--mobile] [--dark|--light] [--sizes] [--shot=x.png]
+// Dùng:  pnpm build && node scripts/csp-check.mjs --path=/overview --expect=recharts-surface [--mobile] [--dark|--light] [--height=N] [--sizes] [--shot=x.png]
 //        node scripts/csp-check.mjs --probe     (tự kiểm công cụ: trang cố tình vi phạm CSP, phải báo lỗi)
 // Thoát mã 0 khi không có vi phạm hay lỗi và mọi --expect đều thấy; mã 1 nếu ngược lại; mã 2 nếu thiếu dist/ hay Chrome.
 // Cần Chrome: đường dẫn macOS mặc định hay biến môi trường CHROME_BIN. Không kiểm tooltip (chỉ hiện khi rê chuột).
@@ -128,7 +128,9 @@ function serve(req, res) {
 function runChrome(url, extra) {
   // Chrome headless ép độ rộng cửa sổ tối thiểu 500px (đo thực tế: đặt 390 vẫn innerWidth=500, ảnh bị cắt). 500px vẫn thuộc
   // quy tắc điện thoại của giao diện (max-width: 800px); khổ 390px thật phải xem trên điện thoại khi nghiệm thu.
-  const size = flag("mobile") ? "500,900" : "1280,900";
+  // --height=N: chiều cao cửa sổ (mặc định 900), để chụp cả trang dài.
+  const h = value("height") ?? "900";
+  const size = flag("mobile") ? `500,${h}` : `1280,${h}`;
   // Không đặt cờ thì Chrome theo giao diện của hệ điều hành. Giá trị thử thực tế: 0 là tối, 1 là sáng.
   const scheme = flag("dark") ? ["--blink-settings=preferredColorScheme=0"] : flag("light") ? ["--blink-settings=preferredColorScheme=1"] : [];
   const args = [
