@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
-const DIST = path.resolve(fileURLToPath(new URL("../dist", import.meta.url)));
+const DIST = process.env.WEBSITE_DIST ? path.resolve(process.env.WEBSITE_DIST) : path.resolve(fileURLToPath(new URL("../dist", import.meta.url)));
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json",
   ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".woff2": "font/woff2", ".xml": "application/xml; charset=utf-8",

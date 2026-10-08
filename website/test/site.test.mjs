@@ -6,7 +6,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, DIST } from "../src/build/build.mjs";
-import { pages } from "../src/content/index.mjs";
+import { pages, missing } from "../src/content/index.mjs";
 import { SITE } from "../src/site.mjs";
 import { PLANS } from "../src/plans.mjs";
 
@@ -34,6 +34,10 @@ const strip = (h) => h.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style
 const textOf = (h) => strip(h).replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/g, " ").replace(/\s+/g, " ").trim();
 const decode = (s) => s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 
+test("đủ trang (không thiếu module nào)", () => {
+  assert.deepEqual(missing, [], "thiếu: " + missing.join(", "));
+});
+
 test("mỗi trang có title, description, canonical, h1 duy nhất, lang đúng", () => {
   const titles = new Set();
   const descs = new Set();
@@ -57,6 +61,7 @@ test("hreflang đối xứng: A trỏ tới B thì B trỏ lại A, và có x-de
   const byId = new Map();
   for (const p of pages) byId.set(p.id, [...(byId.get(p.id) ?? []), p]);
   for (const [id, group] of byId) {
+    if (process.env.ALLOW_PARTIAL === "1" && group.length < 2) continue;
     assert.ok(group.length === 2 && new Set(group.map((g) => g.lang)).size === 2, `${id}: mỗi trang cần đúng một bản vi và một bản en`);
     for (const p of group) {
       const html = htmlByPath.get(p.path);

@@ -1,9 +1,47 @@
 // Khối giao diện dùng lại cho mọi trang. Tham số là chữ thuần (được escape) trừ những chỗ ghi rõ là HTML.
+import { readFileSync } from "node:fs";
 import { esc } from "./markdown.mjs";
 import { icon } from "./icons.mjs";
 import { PLANS, vnd } from "../plans.mjs";
 
 export { esc, icon };
+
+// Kích thước ảnh chụp giao diện app lấy từ manifest do công cụ chụp ghi (tools/app-shots). Thiếu manifest thì dùng cỡ mặc định.
+const MANIFEST = (() => {
+  try {
+    return JSON.parse(readFileSync(new URL("../assets/img/app/manifest.json", import.meta.url), "utf8"));
+  } catch {
+    return [];
+  }
+})();
+const dims = (file, d) => MANIFEST.find((m) => m.file === file) ?? d;
+
+/** Ảnh chụp cửa sổ chính của app (có thanh tiêu đề giả bằng CSS). */
+export const appShot = ({ slug, lang, alt, caption, eager = false, title = "AI Translator", dark = false }) => {
+  const file = `${slug}.${lang}${dark ? ".dark" : ""}.webp`;
+  const d = dims(file, { width: 1440, height: 960 });
+  return `<figure class="shot window reveal">
+<div class="bar" aria-hidden="true"><i></i><span>${esc(title)}</span></div>
+<img src="/assets/img/app/${file}" alt="${esc(alt)}" width="${d.width}" height="${d.height}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">
+${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
+</figure>`;
+};
+
+/** Ảnh thanh phụ đề (nền trong suốt) đặt trên nền tối giống màn hình họp. */
+export const overlayShot = ({ slug, lang, alt, caption }) => {
+  const file = `${slug}.${lang}.webp`;
+  const d = dims(file, { width: 1800, height: 400 });
+  return `<figure class="shot stage reveal">
+<div class="backdrop"><img src="/assets/img/app/${file}" alt="${esc(alt)}" width="${d.width}" height="${d.height}" loading="lazy" decoding="async"></div>
+${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
+</figure>`;
+};
+
+/** Bảng thông tin nhanh (dl): dễ cho người đọc và cho trợ lý AI trích dẫn. rows: [[nhãn, HTML]] */
+export const facts = (rows) => `<dl class="facts">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join("")}</dl>`;
+
+/** Chip phím: keys(["⌃","⌥","T"]) */
+export const keys = (list) => `<span class="keys">${list.map((k) => `<kbd>${esc(k)}</kbd>`).join("")}</span>`;
 
 export const crumbs = (items) =>
   `<nav aria-label="Breadcrumb"><ol class="breadcrumb">${items
@@ -96,14 +134,14 @@ export function plansGrid(lang, { ctaLabel, freeLabel, featured = "yearly", deta
   };
   const feats = {
     free: en
-      ? ["Live translated subtitles", "30 minutes per day", "Core features, fully offline"]
-      : ["Phụ đề dịch trực tiếp", "30 phút mỗi ngày", "Tính năng cơ bản, hoàn toàn offline"],
+      ? ["Live translated subtitles in all 5 languages", "30 minutes per day during the 10-day trial", "Subtitle bar, shortcuts and copying the transcript"]
+      : ["Phụ đề dịch trực tiếp, đủ 5 ngôn ngữ", "30 phút mỗi ngày trong 10 ngày dùng thử", "Thanh phụ đề tùy chỉnh, phím tắt, sao chép bản chép lời"],
     monthly: en
-      ? ["50 hours of translation per 30-day cycle", "Glossary, history and export (Pro)", "Renew whenever you need"]
-      : ["50 giờ dịch cho mỗi chu kỳ 30 ngày", "Từ điển thuật ngữ, lịch sử, xuất file (Pro)", "Gia hạn khi cần, không tự trừ tiền"],
+      ? ["50 hours of translation per 30-day cycle", "Pro features: glossary, history, TXT/SRT/Markdown export", "Renew when you need it, never charged automatically"]
+      : ["50 giờ dịch cho mỗi chu kỳ 30 ngày", "Tính năng Pro: từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown", "Gia hạn khi cần, không tự động trừ tiền"],
     yearly: en
-      ? ["Unlimited translation time for 365 days", "Glossary, history and export (Pro)", "About 1.4× the price of 10 months of Monthly"]
-      : ["Không giới hạn thời lượng dịch trong 365 ngày", "Từ điển thuật ngữ, lịch sử, xuất file (Pro)", "Rẻ hơn mua Monthly lẻ: 500.000 ₫ so với 600.000 ₫ cho 12 tháng"],
+      ? ["Unlimited translation time for 365 days", "All Pro features", "One payment for the whole year, about 41,700 ₫ per month"]
+      : ["Không giới hạn thời lượng dịch trong 365 ngày", "Đầy đủ tính năng Pro", "Trả một lần cho cả năm, quy ra khoảng 41.700 ₫ mỗi tháng"],
   };
   void detail;
   return `<div class="plans">${PLANS.map((p) => {
@@ -120,3 +158,14 @@ ${checkList(feats[p.code].map(esc))}
 </div>`;
   }).join("")}</div>`;
 }
+
+/** Bố cục bài hướng dẫn: mục lục dính bên trái (nếu có) + nội dung. toc: [{level:2|3,id,text}]. */
+export const docLayout = ({ toc = [], tocTitle = "Trong bài này", body }) => `<div class="doc-layout${toc.length ? "" : " no-toc"}">
+${toc.length ? `<nav class="toc" aria-label="${esc(tocTitle)}"><b>${esc(tocTitle)}</b>${toc.map((t) => `<a class="${t.level === 3 ? "l3" : ""}" href="#${t.id}">${esc(t.text)}</a>`).join("")}</nav>` : ""}
+<article class="prose">${body}</article>
+</div>`;
+
+/** Liên kết trước/sau cuối bài. links: [{ href, kicker, title }] */
+export const docNav = (links, label = "Bài liên quan") => `<nav class="doc-nav" aria-label="${esc(label)}">${links
+  .map((l) => `<a href="${l.href}"><span>${esc(l.kicker)}</span>${esc(l.title)}</a>`)
+  .join("")}</nav>`;

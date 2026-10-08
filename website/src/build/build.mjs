@@ -13,7 +13,8 @@ import { htmlToText } from "./text.mjs";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
 const ROOT = path.resolve(SRC, "..");
-export const DIST = path.join(ROOT, "dist");
+// WEBSITE_DIST cho phép nhiều tiến trình dựng song song vào thư mục riêng (kiểm thử, agent) mà không đè dist/.
+export const DIST = process.env.WEBSITE_DIST ? path.resolve(process.env.WEBSITE_DIST) : path.join(ROOT, "dist");
 
 const sha = (buf) => createHash("sha256").update(buf).digest("hex").slice(0, 10);
 const abs = (p) => SITE.origin + p;

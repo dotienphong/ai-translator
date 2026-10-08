@@ -256,7 +256,10 @@ kbd { display: inline-block; min-width: 1.9em; padding: .18em .5em; text-align: 
 .feature.accent .ico { background: var(--accent-soft); color: var(--accent); }
 .bento { display: grid; gap: clamp(14px, 1.8vw, 22px); grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
 @media (min-width: 900px) { .bento { grid-template-columns: repeat(6, 1fr); } .bento > .span-2 { grid-column: span 2; } .bento > .span-3 { grid-column: span 3; } .bento > .span-4 { grid-column: span 4; } }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: clamp(16px, 3vw, 32px); margin-top: clamp(32px, 5vw, 56px); padding: clamp(22px, 3vw, 40px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-sm); }
+.center-text { text-align: center; margin-top: 28px; }
 .stat { text-align: center; padding: 8px; }
+.stat span { display: block; margin-top: 8px; line-height: 1.45; }
 .stat b { display: block; font-size: clamp(2rem, 1.4rem + 2vw, 3rem); color: var(--ink); letter-spacing: -.03em; line-height: 1.1; font-weight: 700; }
 .stat span { color: var(--ink-3); font-size: .95rem; }
 
@@ -363,6 +366,18 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .shot img { width: 100%; }
 .shot figcaption { padding: 12px 18px; font-size: .88rem; color: var(--ink-3); border-top: 1px solid var(--line); background: var(--surface); }
 .shot.plain { box-shadow: var(--shadow-md); }
+.shot.window .bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-size: .78rem; color: var(--ink-3); }
+.shot.window .bar i { width: 10px; height: 10px; border-radius: 50%; background: #ff6159; box-shadow: 16px 0 0 #ffbd2e, 32px 0 0 #28c940; margin-right: 38px; }
+.shot.window .bar span { margin-inline: auto; padding-right: 66px; font-weight: 600; letter-spacing: .01em; }
+.shot.stage { background: transparent; border: 0; box-shadow: none; }
+.shot.stage .backdrop { border-radius: var(--r-lg); padding: clamp(28px, 6vw, 64px) clamp(14px, 3vw, 36px); background: radial-gradient(600px 240px at 20% 0%, rgba(77,155,255,.28), transparent 70%), linear-gradient(160deg, #16264a, #0a1428); border: 1px solid rgba(255,255,255,.08); box-shadow: var(--shadow-lg); }
+.shot.stage .backdrop img { width: min(100%, 900px); margin-inline: auto; }
+.shot.stage figcaption { background: transparent; border: 0; padding-inline: 4px; }
+.facts { display: grid; gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.facts > div { background: var(--surface); padding: 16px 20px; }
+.facts dt { font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--brand-ink); margin-bottom: 4px; }
+.facts dd { margin: 0; color: var(--ink); font-weight: 500; line-height: 1.5; }
+.facts dd small { display: block; color: var(--ink-3); font-weight: 400; }
 
 /* ---------- Chips, app strip ---------- */
 .app-strip { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 0; padding: 0; list-style: none; }
