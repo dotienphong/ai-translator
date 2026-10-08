@@ -29,6 +29,7 @@ export function ChartCard({
   stacked = false,
   format = String,
   labelHeader = "Mốc",
+  integer = false,
 }: {
   title: string;
   data: readonly ChartRow[];
@@ -39,6 +40,8 @@ export function ChartCard({
   format?: (n: number) => string;
   /** Tiêu đề cột nhãn của bảng số. */
   labelHeader?: string;
+  /** Biểu đồ đếm (số đơn, số máy): trục dọc chỉ có số nguyên, không chia vạch 0,5. */
+  integer?: boolean;
 }) {
   const empty = data.every((row) => series.every((s) => valueOf(row, s.key) === 0));
   return (
@@ -53,12 +56,14 @@ export function ChartCard({
               <BarChart data={data as ChartRow[]} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tick={{ fill: "var(--muted)", fontSize: 11 }} stroke="var(--line)" interval="preserveStartEnd" />
-                <YAxis tick={{ fill: "var(--muted)", fontSize: 11 }} stroke="var(--line)" tickFormatter={(v) => fmtCompact(Number(v))} width={48} />
+                <YAxis allowDecimals={!integer} tick={{ fill: "var(--muted)", fontSize: 11 }} stroke="var(--line)" tickFormatter={(v) => fmtCompact(Number(v))} width={48} />
                 <Tooltip
+                  // Giữ thứ tự chuỗi của trang (mặc định Recharts xếp tooltip theo tên, chú giải theo giá trị).
+                  itemSorter={(item) => series.findIndex((x) => x.key === item.dataKey)}
                   formatter={(v) => format(Number(v))}
                   contentStyle={{ background: "var(--panel)", border: "1px solid var(--line)", color: "var(--text)" }}
                 />
-                {series.length > 1 && <Legend />}
+                {series.length > 1 && <Legend itemSorter={null} />}
                 {series.map((s, i) => (
                   <Bar
                     key={s.key}

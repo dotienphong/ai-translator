@@ -5,14 +5,17 @@ import { OverviewPage } from "./OverviewPage";
 
 // Recharts thật không chạy trong jsdom: ChartCard giả ghi lại dữ liệu và cấu hình mà trang truyền xuống.
 vi.mock("../components/ChartCard", () => ({
-  ChartCard: (p: { title: string; data: { label: string }[]; series: { label: string }[]; stacked?: boolean }) => (
+  ChartCard: (p: { title: string; data: { label: string }[]; series: { key: string; label: string }[]; stacked?: boolean; integer?: boolean }) => (
     <div
       data-testid="chart"
       data-title={p.title}
       data-rows={p.data.length}
       data-first={p.data[0]?.label}
       data-stacked={String(p.stacked === true)}
+      data-integer={String(p.integer === true)}
       data-series={p.series.map((s) => s.label).join("|")}
+      data-keys={p.series.map((s) => s.key).join("|")}
+      data-json={JSON.stringify(p.data)}
     />
   ),
 }));
@@ -33,7 +36,7 @@ function makeStats(): Stats {
       this_month: 550000,
       last_month: 200000,
       daily: DAYS.map((day, i) => ({ day, revenue: i * 1000, orders: i })),
-      monthly: MONTHS.map((month) => ({ month, monthly: { revenue: 50000, orders: 1 }, yearly: { revenue: 0, orders: 0 } })),
+      monthly: MONTHS.map((month) => ({ month, monthly: { revenue: 50000, orders: 7 }, yearly: { revenue: 0, orders: 3 } })),
     },
     customers: {
       trials_30d: 3,
@@ -46,7 +49,8 @@ function makeStats(): Stats {
         change: { orders: 1, revenue: 500000 },
         other: { orders: 0, revenue: 0 },
       },
-      grants_monthly: MONTHS.map((month) => ({ month, new: 1, extend: 0, change: 0, other: 0 })),
+      // Bốn loại khác số nhau để tráo hay lấy nhầm loại thì lộ ra.
+      grants_monthly: MONTHS.map((month) => ({ month, new: 1, extend: 2, change: 3, other: 4 })),
     },
     health: {
       orders_30d: { pending: 2, processing: 0, paid: 3, underpaid: 1, cancelled: 0, expired: 2, failed: 2, paid_needs_review: 0, refunded: 1 },
@@ -112,6 +116,69 @@ describe("OverviewPage", () => {
     ]);
   });
 
+  /** Biểu đồ giả theo tiêu đề: dữ liệu và khóa chuỗi mà trang truyền cho ChartCard. */
+  const chartOf = async (title: string) => {
+    const el = (await screen.findAllByTestId("chart")).find((c) => c.getAttribute("data-title") === title) as HTMLElement;
+    return {
+      data: JSON.parse(el.getAttribute("data-json") ?? "[]") as Record<string, string | number>[],
+      keys: (el.getAttribute("data-keys") ?? "").split("|"),
+      integer: el.getAttribute("data-integer"),
+    };
+  };
+
+  it("biểu đồ doanh thu 30 ngày: nhãn dd/MM và doanh thu của từng ngày (không phải số đơn)", async () => {
+    serve();
+    render(<OverviewPage />);
+    const c = await chartOf("Doanh thu 30 ngày gần nhất");
+    expect(c.keys).toEqual(["revenue"]);
+    expect(c.data).toEqual(DAYS.map((d, i) => ({ label: `${d.slice(8)}/${d.slice(5, 7)}`, revenue: i * 1000 })));
+    expect(c.data[0]).toEqual({ label: "02/09", revenue: 0 });
+    expect(c.data[29]).toEqual({ label: "01/10", revenue: 29000 });
+  });
+
+  it("biểu đồ theo gói: Monthly và Yearly lấy đúng doanh thu của gói (không tráo, không lấy số đơn)", async () => {
+    serve();
+    render(<OverviewPage />);
+    const c = await chartOf("Doanh thu 12 tháng, theo gói");
+    expect(c.keys).toEqual(["monthly", "yearly"]);
+    expect(c.data).toHaveLength(12);
+    expect(c.data[0]).toEqual({ label: "11/2025", monthly: 50000, yearly: 0 });
+    expect(c.data.every((r) => r.monthly === 50000 && r.yearly === 0)).toBe(true);
+  });
+
+  it("biểu đồ mua mới, gia hạn, đổi gói: đủ bốn khóa, mỗi loại đúng số của mình", async () => {
+    serve();
+    render(<OverviewPage />);
+    const c = await chartOf("Mua mới, gia hạn, đổi gói theo tháng");
+    expect(c.keys).toEqual(["new", "extend", "change", "other"]);
+    expect(c.integer).toBe("true");
+    expect(c.data).toHaveLength(12);
+    expect(c.data[0]).toEqual({ label: "11/2025", new: 1, extend: 2, change: 3, other: 4 });
+    expect(c.data.every((r) => r.new === 1 && r.extend === 2 && r.change === 3 && r.other === 4)).toBe(true);
+  });
+
+  it("biểu đồ máy dùng thử mới: khóa count và số của từng ngày; trục đếm số nguyên", async () => {
+    serve();
+    render(<OverviewPage />);
+    const c = await chartOf("Máy dùng thử mới mỗi ngày");
+    expect(c.keys).toEqual(["count"]);
+    expect(c.integer).toBe("true");
+    expect(c.data).toEqual(DAYS.map((d, i) => ({ label: `${d.slice(8)}/${d.slice(5, 7)}`, count: i % 3 })));
+    expect(c.data.some((r) => r.count !== 0)).toBe(true);
+  });
+
+  it("mọi biểu đồ: mỗi khóa chuỗi có trong dữ liệu của chính biểu đồ đó (gõ sai khóa ở một phía thì lộ ra)", async () => {
+    serve();
+    render(<OverviewPage />);
+    const charts = await screen.findAllByTestId("chart");
+    expect(charts).toHaveLength(4);
+    for (const el of charts) {
+      const rows = JSON.parse(el.getAttribute("data-json") ?? "[]") as Record<string, unknown>[];
+      const keys = (el.getAttribute("data-keys") ?? "").split("|");
+      for (const row of rows) expect(Object.keys(row).sort()).toEqual(["label", ...keys].sort());
+    }
+  });
+
   it("phễu dùng thử: số máy, số đã mua và tỷ lệ; không chia cho 0", async () => {
     serve();
     const { unmount } = render(<OverviewPage />);
@@ -148,6 +215,18 @@ describe("OverviewPage", () => {
     expect(within(list).getByText("Đã trả").closest("li")?.textContent).toBe("Đã trả3");
   });
 
+  it("trạng thái cần xem: paid_needs_review lớn hơn 0 là liên kết; refunded lớn hơn 0 thì không", async () => {
+    const st = makeStats();
+    st.health.orders_30d = { ...st.health.orders_30d, paid_needs_review: 3, refunded: 4, underpaid: 0, failed: 0 };
+    serve(st);
+    render(<OverviewPage />);
+    const list = (await screen.findByText("Đơn 30 ngày theo trạng thái")).closest("section") as HTMLElement;
+    expect(within(list).getByRole("link", { name: /Cần xử lý/ }).getAttribute("href")).toBe("/orders?status=paid_needs_review");
+    expect(within(list).getAllByRole("link")).toHaveLength(1);
+    expect(within(list).queryByRole("link", { name: /Đã hoàn tiền/ })).toBeNull();
+    expect(within(list).getByText("Đã hoàn tiền").closest("li")?.textContent).toBe("Đã hoàn tiền4");
+  });
+
   it("sức khỏe: license sắp hết hạn và tỷ lệ gửi key; không có đơn có email thì báo rõ", async () => {
     serve();
     const { unmount } = render(<OverviewPage />);
@@ -178,6 +257,22 @@ describe("OverviewPage", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/admin/stats");
     fireEvent.click(screen.getByRole("button", { name: "Làm mới" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("đang tải lại thì nút Làm mới bị khóa (không bấm chồng), tải xong thì mở lại", async () => {
+    let n = 0;
+    let finish: (r: Response) => void = () => {};
+    const fetchMock = vi.fn(() => (n++ === 0 ? Promise.resolve(json(makeStats())) : new Promise<Response>((r) => (finish = r))));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<OverviewPage />);
+    const button = (await screen.findByRole("button", { name: "Làm mới" })) as HTMLButtonElement;
+    await screen.findByText("Doanh thu hôm nay");
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(button.disabled).toBe(true);
+    finish(json(makeStats()));
+    await waitFor(() => expect(button.disabled).toBe(false));
   });
 
   it("lỗi: hiện thông báo kèm nút Thử lại; thử lại được thì hiện số liệu", async () => {

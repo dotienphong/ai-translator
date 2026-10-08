@@ -17,9 +17,12 @@ vi.mock("recharts", () => ({
   ),
   CartesianGrid: () => null,
   XAxis: () => null,
-  YAxis: () => null,
-  Tooltip: () => null,
-  Legend: () => <i data-testid="legend" />,
+  YAxis: (p: { allowDecimals?: boolean }) => <i data-testid="yaxis" data-decimals={String(p.allowDecimals)} />,
+  // Tooltip: ghi thứ tự mà bộ sắp xếp của ChartCard cho ba mục thử có dataKey "c", "a", "b".
+  Tooltip: (p: { itemSorter?: (item: { dataKey: string }) => unknown }) => (
+    <i data-testid="tooltip" data-order={["c", "a", "b"].map((k) => String(p.itemSorter?.({ dataKey: k }))).join(",")} />
+  ),
+  Legend: (p: { itemSorter?: unknown }) => <i data-testid="legend" data-sorter={String(p.itemSorter)} />,
 }));
 
 const ONE = [{ key: "revenue", label: "Doanh thu" }];
@@ -53,6 +56,36 @@ describe("ChartCard", () => {
     expect(bars.map((b) => b.getAttribute("data-fill"))).toEqual(["var(--chart-1)", "var(--chart-2)"]);
     expect(new Set(bars.map((b) => b.getAttribute("data-stack")))).toEqual(new Set(["chong"]));
     expect(screen.getByTestId("legend")).toBeTruthy();
+  });
+
+  it("nhiều chuỗi mà một chuỗi toàn 0 (Yearly chưa có đơn): vẫn vẽ biểu đồ, không báo chưa có dữ liệu", () => {
+    const series = [
+      { key: "monthly", label: "Monthly" },
+      { key: "yearly", label: "Yearly" },
+    ];
+    render(<ChartCard title="Theo gói" stacked data={[{ label: "09/2026", monthly: 50000, yearly: 0 }, { label: "10/2026", monthly: 100000, yearly: 0 }]} series={series} />);
+    expect(screen.queryByText("Chưa có dữ liệu trong khoảng này")).toBeNull();
+    expect(screen.getByTestId("bar-chart")).toBeTruthy();
+    expect(screen.getAllByTestId("bar")).toHaveLength(2);
+  });
+
+  it("trục dọc: mặc định cho số lẻ; integer thì không (biểu đồ đếm không có vạch 0,5)", () => {
+    const { unmount } = render(<ChartCard title="Tiền" data={ROWS} series={ONE} />);
+    expect(screen.getByTestId("yaxis").getAttribute("data-decimals")).toBe("true");
+    unmount();
+    render(<ChartCard title="Đếm" integer data={[{ label: "x", revenue: 1 }]} series={ONE} />);
+    expect(screen.getByTestId("yaxis").getAttribute("data-decimals")).toBe("false");
+  });
+
+  it("chú giải và tooltip giữ thứ tự chuỗi của trang, không tự xếp theo tên", () => {
+    const series = [
+      { key: "c", label: "Cuối" },
+      { key: "a", label: "A" },
+      { key: "b", label: "B" },
+    ];
+    render(<ChartCard title="Thứ tự" data={[{ label: "x", a: 1, b: 2, c: 3 }]} series={series} />);
+    expect(screen.getByTestId("legend").getAttribute("data-sorter")).toBe("null");
+    expect(screen.getByTestId("tooltip").getAttribute("data-order")).toBe("0,1,2");
   });
 
   it("không stacked thì các chuỗi không có stackId", () => {

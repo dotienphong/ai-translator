@@ -113,6 +113,7 @@ function Content({ s }: { s: Stats }) {
         <ChartCard
           title="Mua mới, gia hạn, đổi gói theo tháng"
           labelHeader="Tháng"
+          integer
           stacked
           series={GRANT_KINDS.map((k) => ({ key: k, label: GRANT_LABELS[k] }))}
           data={customers.grants_monthly.map((m) => ({ label: fmtMonth(m.month), new: m.new, extend: m.extend, change: m.change, other: m.other }))}
@@ -173,6 +174,7 @@ function Content({ s }: { s: Stats }) {
         <ChartCard
           title="Máy dùng thử mới mỗi ngày"
           labelHeader="Ngày"
+          integer
           series={[{ key: "count", label: "Máy dùng thử mới" }]}
           data={usage.new_trials_daily.map((d) => ({ label: fmtDay(d.day), count: d.count }))}
         />
