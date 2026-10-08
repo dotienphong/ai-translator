@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 824 824" width="512" height="512" role="img" aria-label="AI Translator">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4b9bf5"/>
+      <stop offset="1" stop-color="#1a5cc0"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#bg)"/>
+  <g fill="#ffffff">
+    <rect x="212" y="272" width="600" height="400" rx="120"/>
+    <polygon points="290,640 262,764 430,650"/>
+  </g>
+  <g fill="#1d63c9">
+    <rect x="304" y="417" width="56" height="110" rx="28"/>
+    <rect x="394" y="367" width="56" height="210" rx="28"/>
+    <rect x="484" y="322" width="56" height="300" rx="28"/>
+    <rect x="574" y="367" width="56" height="210" rx="28"/>
+    <rect x="664" y="417" width="56" height="110" rx="28"/>
+  </g>
+</svg>

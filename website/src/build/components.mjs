@@ -1,0 +1,122 @@
+// Khối giao diện dùng lại cho mọi trang. Tham số là chữ thuần (được escape) trừ những chỗ ghi rõ là HTML.
+import { esc } from "./markdown.mjs";
+import { icon } from "./icons.mjs";
+import { PLANS, vnd } from "../plans.mjs";
+
+export { esc, icon };
+
+export const crumbs = (items) =>
+  `<nav aria-label="Breadcrumb"><ol class="breadcrumb">${items
+    .map((it, i) => (i === items.length - 1 ? `<li aria-current="page">${esc(it.name)}</li>` : `<li><a href="${it.path}">${esc(it.name)}</a></li>`))
+    .join("")}</ol></nav>`;
+
+/** Đầu trang con: breadcrumb, h1, đoạn dẫn. */
+export const pageHero = ({ crumbs: c, title, lead, meta }) => `<section class="page-hero"><div class="container">
+${crumbs(c)}
+<h1>${esc(title)}</h1>
+${lead ? `<p class="lead">${esc(lead)}</p>` : ""}
+${meta ? `<div class="meta-line">${meta}</div>` : ""}
+</div></section>`;
+
+export const sectionHead = ({ eyebrow, title, text, center = false }) => `<div class="section-head${center ? " center" : ""} reveal">
+${eyebrow ? `<span class="eyebrow">${esc(eyebrow)}</span>` : ""}
+<h2>${esc(title)}</h2>
+${text ? `<p>${esc(text)}</p>` : ""}
+</div>`;
+
+/** feature: { icon, title, text (HTML), accent? } */
+export const feature = (f, extra = "") => `<div class="card feature${f.accent ? " accent" : ""} reveal${extra}">
+<div class="ico">${icon(f.icon)}</div>
+<h3>${esc(f.title)}</h3>
+<p>${f.text}</p>
+</div>`;
+
+export const linkCard = ({ href, icon: ic, title, text, more }) => `<a class="card card-link feature reveal" href="${href}">
+${ic ? `<div class="ico">${icon(ic)}</div>` : ""}
+<h3>${esc(title)}</h3>
+<p>${esc(text)}</p>
+<span class="more">${esc(more)} ${icon("arrow-right")}</span>
+</a>`;
+
+export const steps = (list, vertical = false) => `<ol class="steps${vertical ? " vertical" : ""}">${list
+  .map((s) => `<li class="reveal"><h3>${esc(s.title)}</h3><p>${s.text}</p></li>`)
+  .join("")}</ol>`;
+
+export const checkList = (items, no = false) => `<ul class="check-list${no ? " no" : ""}">${items.map((i) => `<li>${i}</li>`).join("")}</ul>`;
+
+export const callout = ({ kind = "info", title, text }) => `<div class="callout ${kind === "info" ? "" : kind}">
+${icon(kind === "warn" ? "alert" : kind === "ok" ? "shield" : "info")}
+<div>${title ? `<p><strong>${esc(title)}</strong></p>` : ""}<p>${text}</p></div>
+</div>`;
+
+/** items: [{ q, a (HTML) }] */
+export const faq = (items, { open = false } = {}) => `<div class="faq">${items
+  .map((it, i) => `<details${open && i === 0 ? " open" : ""}><summary>${esc(it.q)}</summary><div class="answer">${it.a}</div></details>`)
+  .join("")}</div>`;
+
+export const ctaBand = ({ title, text, primary, secondary }) => `<section class="section-tight"><div class="container"><div class="cta-band reveal">
+<h2>${esc(title)}</h2>
+<p>${esc(text)}</p>
+<div class="row">
+<a class="btn btn-primary btn-lg" href="${primary.href}">${esc(primary.label)}</a>
+${secondary ? `<a class="btn btn-secondary btn-lg" href="${secondary.href}">${esc(secondary.label)}</a>` : ""}
+</div>
+</div></div></section>`;
+
+export const shot = ({ src, alt, caption, w, h, plain = false, eager = false }) => `<figure class="shot${plain ? " plain" : ""} reveal">
+<img src="${src}" alt="${esc(alt)}" width="${w}" height="${h}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">
+${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
+</figure>`;
+
+/** Minh họa cuộc họp có thanh phụ đề dịch (HTML/CSS thuần, hoạt họa bằng CSS). pairs: [{src, dst}] (đúng 3). */
+export function demo({ title, rec, langs, pairs, note, names, floatA, floatB }) {
+  return `<div class="demo-wrap">
+<div class="demo" role="img" aria-label="${esc(note)}">
+<div class="demo-bar"><i></i><span>${esc(title)}</span><span class="rec">${esc(rec)}</span></div>
+<div class="demo-stage" aria-hidden="true">
+${names.map((n, i) => `<div class="tile av${i + 1}${i === 0 ? " speaking" : ""}" data-name="${esc(n)}"><div class="avatar"></div></div>`).join("")}
+</div>
+<div class="subtitle-bar" aria-hidden="true">
+<span class="lang">${esc(langs)}</span>
+${pairs.map((p) => `<span class="pair"><span class="src">${esc(p.src)}</span><span class="dst">${esc(p.dst)}</span></span>`).join("")}
+</div>
+</div>
+${floatA ? `<span class="floaty a">${icon(floatA.icon)} ${esc(floatA.text)}</span>` : ""}
+${floatB ? `<span class="floaty b">${icon(floatB.icon)} ${esc(floatB.text)}</span>` : ""}
+</div>`;
+}
+
+/** Ba gói giá. lang: "vi" | "en". Trả HTML của .plans. */
+export function plansGrid(lang, { ctaLabel, freeLabel, featured = "yearly", detail = true } = {}) {
+  const en = lang === "en";
+  const L = {
+    free: { for: en ? "Try everything before you pay." : "Dùng thử trước khi quyết định.", per: en ? "10-day trial · once per device" : "Dùng thử 10 ngày · mỗi máy một lần" },
+    monthly: { for: en ? "For regular meetings and short projects." : "Cho người họp thường xuyên, dự án ngắn hạn.", per: en ? "per 30 days · prepaid" : "cho mỗi 30 ngày · trả trước" },
+    yearly: { for: en ? "For daily use. Best value." : "Cho người dùng hằng ngày. Tiết kiệm nhất.", per: en ? "per 365 days · prepaid" : "cho 365 ngày · trả trước" },
+  };
+  const feats = {
+    free: en
+      ? ["Live translated subtitles", "30 minutes per day", "Core features, fully offline"]
+      : ["Phụ đề dịch trực tiếp", "30 phút mỗi ngày", "Tính năng cơ bản, hoàn toàn offline"],
+    monthly: en
+      ? ["50 hours of translation per 30-day cycle", "Glossary, history and export (Pro)", "Renew whenever you need"]
+      : ["50 giờ dịch cho mỗi chu kỳ 30 ngày", "Từ điển thuật ngữ, lịch sử, xuất file (Pro)", "Gia hạn khi cần, không tự trừ tiền"],
+    yearly: en
+      ? ["Unlimited translation time for 365 days", "Glossary, history and export (Pro)", "About 1.4× the price of 10 months of Monthly"]
+      : ["Không giới hạn thời lượng dịch trong 365 ngày", "Từ điển thuật ngữ, lịch sử, xuất file (Pro)", "Rẻ hơn mua Monthly lẻ: 500.000 ₫ so với 600.000 ₫ cho 12 tháng"],
+  };
+  void detail;
+  return `<div class="plans">${PLANS.map((p) => {
+    const f = p.code === featured;
+    const price = p.priceVnd === 0 ? (en ? "Free" : "Miễn phí") : vnd(p.priceVnd, lang);
+    return `<div class="plan${f ? " featured" : ""} reveal">
+${f ? `<span class="tag">${en ? "Best value" : "Tiết kiệm nhất"}</span>` : ""}
+<h3>${esc(en ? p.nameEn : p.nameVi)}</h3>
+<p class="for">${esc(L[p.code].for)}</p>
+<div class="price"><b>${esc(price)}</b></div>
+<p class="per">${esc(L[p.code].per)}</p>
+${checkList(feats[p.code].map(esc))}
+<a class="btn ${f ? "btn-primary" : "btn-secondary"} btn-lg" href="${en ? "/en/download/" : "/tai-xuong/"}">${esc(p.priceVnd === 0 ? freeLabel ?? ctaLabel : ctaLabel)}</a>
+</div>`;
+  }).join("")}</div>`;
+}

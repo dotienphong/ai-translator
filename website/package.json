@@ -1,0 +1,16 @@
+{
+  "name": "ai-translator-website",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "scripts": {
+    "build": "node src/build/build.mjs",
+    "dev": "node src/build/build.mjs && node src/serve.mjs",
+    "test": "node --test test/",
+    "deploy": "node src/build/build.mjs && wrangler deploy && wrangler deploy -c wrangler.www.jsonc"
+  }
+}
