@@ -123,8 +123,16 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 .grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
 .grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
 .grid-4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
-.split { display: grid; gap: clamp(28px, 5vw, 72px); align-items: center; grid-template-columns: 1fr; }
-@media (min-width: 900px) { .split { grid-template-columns: 1fr 1fr; } .split.reverse > :first-child { order: 2; } .split.wide-left { grid-template-columns: 1.15fr .85fr; } .split.wide-right { grid-template-columns: .85fr 1.15fr; } }
+.split { display: grid; gap: clamp(28px, 5vw, 72px); align-items: center; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) {
+  .split { grid-template-columns: 1fr 1fr; }
+  .split.reverse > :first-child { order: 2; }
+  /* wide-left: phần tử ĐẦU rộng hơn; wide-right: phần tử THỨ HAI rộng hơn (kể cả khi reverse đổi chỗ hiển thị). */
+  .split.wide-left { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); }
+  .split.wide-right { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .split.wide-left.reverse { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .split.wide-right.reverse { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); }
+}
 
 /* ---------- Header ---------- */
 .site-header { position: sticky; top: 0; z-index: 50; height: var(--header-h); border-bottom: 1px solid var(--line); }
@@ -189,7 +197,7 @@ kbd { display: inline-block; min-width: 1.9em; padding: .18em .5em; text-align: 
 .hero::before { content: ""; position: absolute; inset: -20% -10% auto -10%; height: 90%; z-index: -1;
   background: radial-gradient(600px 360px at 18% 18%, var(--brand-glow), transparent 70%), radial-gradient(520px 320px at 86% 8%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), radial-gradient(700px 400px at 60% 60%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 70%); }
 .hero-grid { display: grid; gap: clamp(32px, 5vw, 64px); align-items: center; }
-@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); } }
+@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); } }
 .hero h1 { margin-bottom: .45em; }
 .hero h1 em { font-style: normal; background: linear-gradient(100deg, var(--brand) 0%, var(--accent) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .hero .lead { max-width: 34em; margin-bottom: 1.6rem; }
@@ -235,8 +243,8 @@ kbd { display: inline-block; min-width: 1.9em; padding: .18em .5em; text-align: 
 .floaty { position: absolute; z-index: 2; display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px; border-radius: 999px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow-md); font-size: .85rem; font-weight: 600; }
 .floaty .icon { color: var(--brand); }
 .demo-wrap { position: relative; }
-.demo-wrap { padding-top: 22px; }
-.demo-wrap .floaty.a { left: 26px; top: 2px; } .demo-wrap .floaty.b { right: 26px; bottom: -18px; }
+.demo-wrap { padding-top: 30px; }
+.demo-wrap .floaty.a { left: 26px; top: 0; } .demo-wrap .floaty.b { right: 26px; bottom: -18px; }
 @media (max-width: 700px) { .demo-wrap .floaty { display: none; } .demo-stage { grid-template-columns: 1fr 1fr; padding-bottom: 130px; } }
 
 .more-link { margin-top: 18px; }
@@ -250,6 +258,7 @@ kbd { display: inline-block; min-width: 1.9em; padding: .18em .5em; text-align: 
 .card-link .more { display: inline-flex; gap: 6px; align-items: center; color: var(--brand-ink); font-weight: 600; margin-top: .5rem; }
 .card-link:hover .more .icon { transform: translateX(3px); }
 .card-link .more .icon { transition: transform .2s var(--ease); }
+.card-title { display: block; font-size: 1.15rem; font-weight: 700; color: var(--ink); letter-spacing: -.015em; line-height: 1.25; margin-bottom: .35em; }
 .feature .ico { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: var(--brand-soft); color: var(--brand); margin-bottom: 1rem; }
 .feature .ico .icon { width: 24px; height: 24px; }
 .feature p { color: var(--ink-3); }
@@ -371,10 +380,11 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .shot.window .bar i { width: 10px; height: 10px; border-radius: 50%; background: #ff6159; box-shadow: 16px 0 0 #ffbd2e, 32px 0 0 #28c940; margin-right: 38px; }
 .shot.window .bar span { margin-inline: auto; padding-right: 66px; font-weight: 600; letter-spacing: .01em; }
 .shot.stage { background: transparent; border: 0; box-shadow: none; }
-.shot.stage .backdrop { border-radius: var(--r-lg); padding: clamp(28px, 6vw, 64px) clamp(14px, 3vw, 36px); background: radial-gradient(600px 240px at 20% 0%, rgba(77,155,255,.28), transparent 70%), linear-gradient(160deg, #16264a, #0a1428); border: 1px solid rgba(255,255,255,.08); box-shadow: var(--shadow-lg); }
-.shot.stage .backdrop img { width: min(100%, 900px); margin-inline: auto; }
+.shot.stage .backdrop { border-radius: var(--r-lg); padding: clamp(24px, 5vw, 52px) clamp(12px, 2.4vw, 28px); background: radial-gradient(600px 240px at 20% 0%, rgba(77,155,255,.28), transparent 70%), linear-gradient(160deg, #16264a, #0a1428); border: 1px solid rgba(255,255,255,.08); box-shadow: var(--shadow-md); }
+.shot.stage .backdrop img { width: 100%; margin-inline: auto; }
 .shot.stage figcaption { background: transparent; border: 0; padding-inline: 4px; }
 .facts { display: grid; gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.split + .facts, .table-wrap + .facts, .grid + .facts { margin-top: clamp(28px, 4vw, 48px); }
 .facts > div { background: var(--surface); padding: 16px 20px; }
 .facts dt { font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--brand-ink); margin-bottom: 4px; }
 .facts dd { margin: 0; color: var(--ink); font-weight: 500; line-height: 1.5; }

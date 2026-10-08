@@ -18,7 +18,7 @@ const dims = (file, d) => MANIFEST.find((m) => m.file === file) ?? d;
 
 /** Ảnh chụp cửa sổ chính của app (có thanh tiêu đề giả bằng CSS). */
 export const appShot = ({ slug, lang, alt, caption, eager = false, title = "AI Translator", dark = false }) => {
-  const file = `${slug}.${lang}${dark ? ".dark" : ""}.webp`;
+  const file = `${slug}${dark ? ".dark" : ""}.${lang}.webp`;
   const d = dims(file, { width: 1440, height: 960 });
   return `<figure class="shot window reveal">
 <div class="bar" aria-hidden="true"><i></i><span>${esc(title)}</span></div>

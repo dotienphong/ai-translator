@@ -9,7 +9,7 @@ export default {
   id: "features",
   lang: "vi",
   path: "/tinh-nang/",
-  title: "Tính năng AI Translator: phụ đề dịch, từ điển, xuất file",
+  title: "Tính năng: phụ đề dịch, từ điển thuật ngữ, xuất file",
   description:
     "Phụ đề dịch trực tiếp 5 ngôn ngữ, thanh phụ đề tùy chỉnh, từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown, phím tắt. Tất cả chạy offline trên máy của bạn.",
   software: true,
@@ -22,14 +22,14 @@ ${pageHero({ crumbs, title: "Mọi thứ cần để hiểu một cuộc họp b
 
 <section class="section-tight"><div class="container">
 <div class="grid grid-4 reveal">
-<a class="card card-link" href="#dich-truc-tiep"><h3>Dịch trực tiếp</h3><p class="muted">5 ngôn ngữ, tự nhận diện</p></a>
-<a class="card card-link" href="#thanh-phu-de"><h3>Thanh phụ đề</h3><p class="muted">Kéo, khóa, đổi cỡ chữ</p></a>
-<a class="card card-link" href="#ban-chep-loi"><h3>Bản chép lời</h3><p class="muted">Lịch sử, xuất file (Pro)</p></a>
-<a class="card card-link" href="#tu-dien"><h3>Từ điển thuật ngữ</h3><p class="muted">Tên riêng, thuật ngữ (Pro)</p></a>
-<a class="card card-link" href="#nguon-am-thanh"><h3>Nguồn âm thanh</h3><p class="muted">Mọi app họp, không bot</p></a>
-<a class="card card-link" href="#phim-tat"><h3>Phím tắt và khay</h3><p class="muted">Điều khiển không rời cuộc họp</p></a>
-<a class="card card-link" href="#model"><h3>Model và máy</h3><p class="muted">Gói Chuẩn, gói Nhẹ</p></a>
-<a class="card card-link" href="#hieu-nang"><h3>Hiệu năng</h3><p class="muted">Số đo có ghi điều kiện</p></a>
+<a class="card card-link" href="#dich-truc-tiep"><strong class="card-title">Dịch trực tiếp</strong><p class="muted">5 ngôn ngữ, tự nhận diện</p></a>
+<a class="card card-link" href="#thanh-phu-de"><strong class="card-title">Thanh phụ đề</strong><p class="muted">Kéo, khóa, đổi cỡ chữ</p></a>
+<a class="card card-link" href="#ban-chep-loi"><strong class="card-title">Bản chép lời</strong><p class="muted">Lịch sử, xuất file (Pro)</p></a>
+<a class="card card-link" href="#tu-dien"><strong class="card-title">Từ điển thuật ngữ</strong><p class="muted">Tên riêng, thuật ngữ (Pro)</p></a>
+<a class="card card-link" href="#nguon-am-thanh"><strong class="card-title">Nguồn âm thanh</strong><p class="muted">Mọi app họp, không bot</p></a>
+<a class="card card-link" href="#phim-tat"><strong class="card-title">Phím tắt và khay</strong><p class="muted">Điều khiển không rời cuộc họp</p></a>
+<a class="card card-link" href="#model"><strong class="card-title">Model và máy</strong><p class="muted">Gói Chuẩn, gói Nhẹ</p></a>
+<a class="card card-link" href="#hieu-nang"><strong class="card-title">Hiệu năng</strong><p class="muted">Số đo có ghi điều kiện</p></a>
 </div>
 </div></section>
 

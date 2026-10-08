@@ -51,7 +51,7 @@ export default {
   path: "/bang-gia/",
   title: "Bảng giá AI Translator: Free, Monthly 50.000 ₫, Yearly 500.000 ₫",
   description:
-    "Ba gói AI Translator: Free dùng thử 10 ngày, Monthly 50.000 ₫ (50 giờ mỗi 30 ngày), Yearly 500.000 ₫ (không giới hạn 365 ngày). Trả trước bằng VietQR, không tự gia hạn.",
+    "Ba gói AI Translator: Free dùng thử 10 ngày, Monthly 50.000 ₫ (50 giờ/30 ngày), Yearly 500.000 ₫ (không giới hạn 365 ngày). Trả trước bằng VietQR.",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-08",
@@ -62,6 +62,7 @@ export default {
 ${pageHero({ crumbs, title: "Bảng giá đơn giản: trả trước, không tự gia hạn", lead: "Dùng thử miễn phí 10 ngày, rồi chọn Monthly hoặc Yearly khi bạn thấy hữu ích. Thanh toán bằng VietQR ngay trong app, nhận key qua email." })}
 
 <section class="section-tight"><div class="container">
+<h2 class="sr-only">Các gói và giá</h2>
 ${plansGrid("vi", { ctaLabel: "Nhận bản beta", freeLabel: "Dùng thử miễn phí" })}
 <p class="disclaimer">Giá tính bằng đồng Việt Nam (VND), đã là giá thanh toán cuối cùng cho mỗi đơn. Giá và hạn mức do máy chủ cấu hình; gói bạn đã mua không bị hạ hạn mức.</p>
 </div></section>
@@ -107,7 +108,7 @@ ${checkList([
 </div></section>
 
 <section class="section"><div class="container">
-${sectionHead({ eyebrow: "Cách mua", title: "Từ chọn gói tới kích hoạt trong vài phút, ngay trong app", center: true })}
+${sectionHead({ eyebrow: "Cách mua", title: "Từ chọn gói tới kích hoạt, ngay trong app", center: true })}
 ${steps([
   { title: "Chọn gói trong app", text: "Mở <strong>Nâng cấp</strong>, chọn Monthly hoặc Yearly, nhập email nhận key và đồng ý để lưu email này cho việc gửi và khôi phục key." },
   { title: "Quét mã VietQR", text: "App vẽ mã VietQR ngay trong cửa sổ, kèm nút mở trang thanh toán PayOS. Mã dùng được trong 15 phút." },

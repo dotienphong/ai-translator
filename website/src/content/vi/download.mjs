@@ -103,7 +103,7 @@ ${sectionHead({ eyebrow: "Yêu cầu máy", title: "Máy của bạn có chạy 
 <tr><th scope="row">Ổ đĩa</th><td>1,3 GB (gói Nhẹ) hoặc 2,5 GB (gói Chuẩn), cộng 1 GB trống khi tải</td><td>Tương tự</td></tr>
 <tr><th scope="row">Quyền</th><td>Ghi âm thanh hệ thống (không dùng micro)</td><td>Không cần cấp quyền thu âm</td></tr>
 </tbody></table></div>
-<p class="small muted">Máy dưới 8 GB RAM, không có AVX2 hoặc không phải Apple Silicon: app báo lý do và không cho tải model.</p>
+<p class="small muted">Máy dưới 8 GB RAM hoặc (Windows) CPU không có AVX2: app báo lý do và không cho tải model. Mac Intel không chạy được app.</p>
 </div></section>
 
 <section class="section"><div class="container narrow">

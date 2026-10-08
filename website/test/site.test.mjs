@@ -39,22 +39,39 @@ test("đủ trang (không thiếu module nào)", () => {
 });
 
 test("mỗi trang có title, description, canonical, h1 duy nhất, lang đúng", () => {
-  const titles = new Set();
-  const descs = new Set();
+  const errors = [];
+  const titles = new Map();
+  const descs = new Map();
   for (const p of pages) {
     const html = htmlByPath.get(p.path);
     const title = decode(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "");
     const desc = decode(/<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? "");
-    assert.ok(title.length >= 15 && title.length <= 70, `${p.path}: title ${title.length} ký tự: ${title}`);
-    assert.ok(desc.length >= 90 && desc.length <= 165, `${p.path}: description ${desc.length} ký tự`);
-    assert.ok(!titles.has(title), `${p.path}: trùng title`);
-    assert.ok(!descs.has(desc), `${p.path}: trùng description`);
-    titles.add(title);
-    descs.add(desc);
-    assert.equal((html.match(/<h1[ >]/g) ?? []).length, 1, `${p.path}: phải có đúng một h1`);
-    assert.ok(html.includes(`<link rel="canonical" href="${SITE.origin}${p.path}">`), `${p.path}: canonical`);
-    assert.ok(html.startsWith(`<!doctype html>\n<html lang="${p.lang}">`), `${p.path}: lang`);
+    if (title.length < 15 || title.length > 70) errors.push(`${p.path}: title ${title.length} ký tự: ${title}`);
+    if (desc.length < 90 || desc.length > 165) errors.push(`${p.path}: description ${desc.length} ký tự`);
+    if (titles.has(title)) errors.push(`${p.path}: trùng title với ${titles.get(title)}`);
+    if (descs.has(desc)) errors.push(`${p.path}: trùng description với ${descs.get(desc)}`);
+    titles.set(title, p.path);
+    descs.set(desc, p.path);
+    const h1 = (html.match(/<h1[ >]/g) ?? []).length;
+    if (h1 !== 1) errors.push(`${p.path}: ${h1} thẻ h1 (cần đúng 1)`);
+    if (!html.includes(`<link rel="canonical" href="${SITE.origin}${p.path}">`)) errors.push(`${p.path}: canonical`);
+    if (!html.startsWith(`<!doctype html>\n<html lang="${p.lang}">`)) errors.push(`${p.path}: lang`);
   }
+  assert.deepEqual(errors, []);
+});
+
+test("thứ bậc heading không nhảy cấp (h1 → h2 → h3...)", () => {
+  const errors = [];
+  for (const p of pages) {
+    const main = /<main id="main">([\s\S]*)<\/main>/.exec(htmlByPath.get(p.path))?.[1] ?? "";
+    let last = 0;
+    for (const m of main.matchAll(/<h([1-6])[ >]/g)) {
+      const level = Number(m[1]);
+      if (last && level > last + 1) errors.push(`${p.path}: nhảy từ h${last} xuống h${level}`);
+      last = level;
+    }
+  }
+  assert.deepEqual(errors, []);
 });
 
 test("hreflang đối xứng: A trỏ tới B thì B trỏ lại A, và có x-default", () => {

@@ -22,7 +22,8 @@ function alternates(page, ctx) {
 function head(page, ctx) {
   const t = T[page.lang];
   const url = abs(page.path);
-  const fullTitle = page.path === "/" || page.path === "/en/" ? page.title : `${page.title} | ${SITE.name}`;
+  // Không thêm hậu tố thương hiệu khi tiêu đề đã có tên sản phẩm (tránh "AI Translator ... | AI Translator").
+  const fullTitle = page.path === "/" || page.path === "/en/" || page.title.includes(SITE.name) ? page.title : `${page.title} | ${SITE.name}`;
   const image = abs(ogFor(page));
   const imageAlt = page.ogImageAlt ?? t.ogAlt;
   const robots = page.noindex ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
@@ -139,8 +140,24 @@ ${f.map(col).join("")}
 </footer>`;
 }
 
+/** Gắn chữ không được ngắt dòng (nbsp) trong phần chữ thường của HTML: "phụ đề", số + đơn vị, "AI Translator". Không đụng thuộc tính hay script. */
+export function glue(html, lang = "vi") {
+  const NB = "&nbsp;";
+  const L = lang === "vi" ? { col: "Tiêu chí", table: "Bảng dữ liệu, cuộn ngang để xem hết" } : { col: "Criteria", table: "Data table, scroll horizontally to see all" };
+  html = html
+    .replace(/<th scope="col"><\/th>/g, `<th scope="col"><span class="sr-only">${L.col}</span></th>`)
+    .replace(/<div class="table-wrap">/g, `<div class="table-wrap" tabindex="0" role="region" aria-label="${L.table}">`);
+  return html.replace(/>([^<]+)</g, (m, text) => {
+    const fixed = text
+      .replace(/(?<![\p{L}])(phụ|Phụ) (đề)(?![\p{L}])/gu, `$1${NB}$2`)
+      .replace(/\bAI Translator\b/g, `AI${NB}Translator`)
+      .replace(/(\d) ?(GB|MB|KB|ms|px|giây|phút|giờ|ngày|tháng|năm|hours?|minutes?|days?|seconds?|₫|%)(?![\p{L}])/gu, (mm, d, u) => `${d}${NB}${u}`);
+    return `>${fixed}<`;
+  });
+}
+
 export function renderPage(page, ctx) {
-  const body = typeof page.body === "function" ? page.body(ctx) : page.body;
+  const body = glue(typeof page.body === "function" ? page.body(ctx) : page.body, page.lang);
   const t = T[page.lang];
   return `<!doctype html>
 <html lang="${page.lang}">

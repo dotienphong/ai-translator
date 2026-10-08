@@ -94,7 +94,7 @@ ${demo({
 </div></section>
 
 <section class="section section-alt" id="cach-hoat-dong"><div class="container">
-${sectionHead({ eyebrow: "Cách hoạt động", title: "Từ lúc cài đặt tới phụ đề đầu tiên chỉ vài phút", text: "Không cần cấu hình phức tạp, không cần mời bot vào cuộc họp.", center: true })}
+${sectionHead({ eyebrow: "Cách hoạt động", title: "Từ lúc cài đặt tới phụ đề đầu tiên: ba bước", text: "Không cần cấu hình phức tạp, không cần mời bot vào cuộc họp.", center: true })}
 ${steps([
   { title: "Cài app, tải model một lần", text: "Mở app, làm theo phần giới thiệu, cho phép ghi âm thanh hệ thống và tải model về máy (khoảng 1,3 GB hoặc 2,5 GB tùy gói). Sau đó mọi thứ chạy offline." },
   { title: "Bấm Bắt đầu khi họp", text: "Chọn ngôn ngữ bạn muốn đọc, bấm <strong>Bắt đầu</strong> hoặc dùng phím tắt. App nghe âm thanh đang phát trên máy tính, dù là Zoom, Teams, Meet hay video." },
