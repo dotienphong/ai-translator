@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { AUD, makeIssuer, TEAM } from "./access-jwt-helper";
 import { makeAdmin } from "./admin-harness";
 import { resetDb } from "./db";
 
@@ -40,6 +41,22 @@ describe("trang Web Admin (spec Web Admin §2)", () => {
       expect((await adminFetch(path, { operator: null })).status, path).toBe(403);
     }
     expect(a.paths).toEqual([]);
+  });
+
+  it("trang và file tĩnh qua JWT của Access (Worker có assets không nhận ctx.access, đường chạy thật trên production)", async () => {
+    const issuer = await makeIssuer();
+    const a = fakeAssets();
+    const { adminFetch } = makeAdmin({ ASSETS: a.fetcher, ACCESS_AUD: AUD, ACCESS_TEAM_DOMAIN: TEAM }, { accessKeys: issuer.provider() });
+    const headers = { "cf-access-jwt-assertion": await issuer.sign() };
+    for (const path of ["/", "/assets/app-abc123.js", "/licenses/x"]) {
+      expect((await adminFetch(path, { operator: null, headers })).status, path).toBe(200);
+    }
+    expect(a.paths).toEqual(["/", "/assets/app-abc123.js", "/licenses/x"]);
+    // thiếu hay sai JWT thì không hỏi ASSETS
+    const bad = { "cf-access-jwt-assertion": (await issuer.sign({ aud: ["khac"] })) };
+    expect((await adminFetch("/", { operator: null, headers: bad })).status).toBe(403);
+    expect((await adminFetch("/", { operator: null })).status).toBe(403);
+    expect(a.paths).toHaveLength(3);
   });
 
   it("qua Access: trả trang từ ASSETS, giữ header của ASSETS, gắn header bảo mật", async () => {

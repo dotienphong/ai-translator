@@ -1,6 +1,7 @@
 // Bộ dựng test cho Worker admin: app admin dùng đồng hồ, PayOS và Resend giả của makeWorld; Access giả qua ctx.access.
 import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
+import type { AccessKeyProvider } from "../src/access-jwt";
 import { createAdminApp } from "../src/admin";
 import { signKeyCheck } from "../src/deps";
 import type { AdminEnv, ApiEnv } from "../src/env";
@@ -34,6 +35,8 @@ export interface AdminOpts {
   /** Thay cho service binding API.plans() (mặc định: biến PLANS của Worker API trong test). */
   plans?: () => Promise<unknown>;
   keyCheck?: () => Promise<KeyCheck>;
+  /** Nguồn khóa công khai Access giả cho đường xác thực JWT (mặc định: tải thật từ team, không dùng trong test). */
+  accessKeys?: AccessKeyProvider;
 }
 
 export function makeAdmin(adminEnv: Partial<AdminEnv> = {}, opts: AdminOpts = {}) {
@@ -49,7 +52,7 @@ export function makeAdmin(adminEnv: Partial<AdminEnv> = {}, opts: AdminOpts = {}
     email: w.deps.email,
     plans: opts.plans ?? (async () => env.PLANS),
     keyCheck: opts.keyCheck ?? (async () => signKeyCheck(await apiKeyEnv(), w.clock.now)),
-  }));
+  }), opts.accessKeys);
   const fullEnv = { ...env, API_ORIGIN, ...adminEnv } as AdminEnv;
 
   /** Gọi Worker admin, trả Response gốc (để đọc header, trang HTML). */

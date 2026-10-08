@@ -46,6 +46,12 @@ export interface AdminEnv {
   EMAIL_REPLY_TO?: string;
   /** Audience tag của ứng dụng Access. Bắt buộc khi ENVIRONMENT khác "test"; trống thì mọi request bị 403. */
   ACCESS_AUD?: string;
+  /**
+   * Tên miền team Cloudflare Access (`<team>.cloudflareaccess.com`), nơi lấy khóa công khai để xác thực JWT của Access.
+   * Cần vì Worker có Static Assets không nhận `ctx.access`: khi đó danh tính lấy từ header Cf-Access-Jwt-Assertion.
+   * Thiếu thì đường JWT từ chối mọi request.
+   */
+  ACCESS_TEAM_DOMAIN?: string;
   /** Origin của Worker API cùng môi trường; confirm-webhook chỉ nhận URL webhook trên origin này. */
   API_ORIGIN?: string;
   /** Service binding tới entrypoint AdminRpc của Worker API cùng môi trường. */

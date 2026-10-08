@@ -6,6 +6,7 @@
 // tìm thấy khác (400, 404).
 import { type Context, Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
+import type { AccessKeyProvider } from "./access-jwt";
 import { ADMIN_SECURE_HEADERS, registerAssets } from "./admin-assets";
 import { type AdminAppEnv, type AdminDeps, crossSite, useAdminAuth } from "./admin-auth";
 import { registerAdminRead } from "./admin-read";
@@ -33,7 +34,8 @@ async function licenseWithOrders(db: D1Database, id: string) {
   return { licenseIds: [id], orders };
 }
 
-export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
+/** `accessKeys`: nguồn khóa công khai của team Access cho đường JWT (chỉ test truyền vào; mặc định tải từ ACCESS_TEAM_DOMAIN). */
+export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKeys?: AccessKeyProvider) {
   const app = new Hono<AdminAppEnv>();
   // Đứng trước lớp kiểm Access để cả phản hồi 403 cũng có header bảo mật.
   app.use("*", secureHeaders(ADMIN_SECURE_HEADERS));
@@ -42,7 +44,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps) {
     await next();
     c.header("cache-control", "no-store");
   });
-  useAdminAuth(app, makeDeps);
+  useAdminAuth(app, makeDeps, accessKeys);
   registerAdminRead(app);
 
   /** Bảng gói lấy từ Worker API; thiếu hay sai thì null (route trả 503 pricing_not_configured). */

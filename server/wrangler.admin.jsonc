@@ -31,6 +31,10 @@
     "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
     // Bắt buộc (QĐ6): Audience tag của ứng dụng Access, điền ở Task 21, Step 10. Trống thì Worker trả 403 cho mọi request.
     "ACCESS_AUD": "211e8ca91f71c69830df567b4e1a2488d84ec5380dfeb25b473102e111f21de0",
+    // Tên miền team Access (Zero Trust > Settings > Custom pages, hay đoạn đầu của địa chỉ đăng nhập Access). Worker có Static
+    // Assets không nhận ctx.access (router nội bộ không chuyển tiếp), nên xác thực JWT của Access bằng khóa công khai của team
+    // này (src/access-jwt.ts). Sai hay trống thì mọi request bị 403.
+    "ACCESS_TEAM_DOMAIN": "snowy-credit-f444.cloudflareaccess.com",
     // Origin của Worker API (tên miền riêng, spec 2026-10-06); confirm-webhook chỉ nhận URL trên origin này.
     "API_ORIGIN": "https://api.aitranslator.io.vn"
   },

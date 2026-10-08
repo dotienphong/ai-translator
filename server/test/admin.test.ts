@@ -1,11 +1,12 @@
 import { createExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminRpc } from "../src/admin-rpc";
 import { sha256Hex } from "../src/crypto";
 import { signKeyCheck } from "../src/deps";
 import { formatLicenseKey, generateLicenseKey } from "../src/license-key";
 import { verifyToken } from "../src/token";
+import { AUD, corruptSignature, type Issuer, makeIssuer, TEAM } from "./access-jwt-helper";
 import { ADMIN, type AdminCall, API_ORIGIN, apiKeyEnv, auditCount, lastAudit, licenseRow, makeAdmin } from "./admin-harness";
 import { resetDb, withFailingInsert } from "./db";
 import vectors from "./vectors/token-v1.json";
@@ -49,6 +50,7 @@ describe("log lý do từ chối (chẩn đoán Access, không lộ ra phản h�
     const { adminCall } = makeAdmin(adminEnv);
     const res = await adminCall("/admin/whoami", call);
     const lines = warn.mock.calls.map(([line]) => JSON.parse(String(line))).filter((l) => l.event === "admin_denied");
+    warn.mockRestore();
     return { res, lines };
   }
 
@@ -84,6 +86,107 @@ describe("log lý do từ chối (chẩn đoán Access, không lộ ra phản h�
     expect((await denied({})).lines).toEqual([]);
     const { lines } = await denied({}, { method: "POST", body: {}, headers: { "sec-fetch-site": "cross-site" } });
     expect(lines).toEqual([{ event: "admin_denied", reason: "cross_site" }]);
+  });
+});
+
+describe("JWT của Access khi Worker không nhận ctx.access (Worker có Static Assets)", () => {
+  let issuer: Issuer;
+  beforeAll(async () => {
+    issuer = await makeIssuer();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const ENV = { ACCESS_AUD: AUD, ACCESS_TEAM_DOMAIN: TEAM };
+  const JWT = "cf-access-jwt-assertion";
+
+  /** Gọi /admin/whoami không có ctx.access, chỉ có header JWT; trả kết quả và các dòng admin_denied. */
+  async function viaJwt(token: string | undefined, adminEnv: Parameters<typeof makeAdmin>[0] = ENV, opts: AdminCall = {}) {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { adminCall } = makeAdmin(adminEnv, { accessKeys: issuer.provider() });
+    const res = await adminCall("/admin/whoami", { operator: null, headers: token === undefined ? {} : { [JWT]: token }, ...opts });
+    const lines = warn.mock.calls.map(([l]) => JSON.parse(String(l))).filter((l) => l.event === "admin_denied");
+    warn.mockRestore();
+    return { res, lines };
+  }
+
+  it("JWT hợp lệ: vào được, người vận hành là email trong token", async () => {
+    const { res, lines } = await viaJwt(await issuer.sign({ email: "ops@example.com" }));
+    expect(res).toEqual({ status: 200, body: { operator: "ops@example.com" } });
+    expect(lines).toEqual([]);
+  });
+
+  it("thao tác ghi qua JWT: qua kiểm CSRF và ghi nhật ký với actor admin:<email trong token>", async () => {
+    const { adminCall } = makeAdmin(ENV, { accessKeys: issuer.provider() });
+    const token = await issuer.sign({ email: "ops@example.com" });
+    const res = await adminCall("/admin/lookup", { body: { email: "buyer@example.com" }, operator: null, headers: { [JWT]: token } });
+    expect(res.status).toBe(200);
+    expect(await lastAudit()).toMatchObject({ actor: "admin:ops@example.com", action: "lookup" });
+    // thay đổi dữ liệu từ trang khác vẫn bị chặn dù JWT hợp lệ
+    const cross = await adminCall("/admin/lookup", {
+      body: { email: "buyer@example.com" },
+      operator: null,
+      headers: { [JWT]: token, "sec-fetch-site": "cross-site" },
+    });
+    expect(cross.status).toBe(403);
+  });
+
+  it("không có header JWT và không có ctx.access: no_access", async () => {
+    const { res, lines } = await viaJwt(undefined);
+    expect(res).toMatchObject({ status: 403, body: { error: "forbidden" } });
+    expect(lines).toEqual([{ event: "admin_denied", reason: "no_access" }]);
+  });
+
+  it("thiếu ACCESS_AUD hay ACCESS_TEAM_DOMAIN thì không tin JWT nào (đóng)", async () => {
+    const token = await issuer.sign();
+    expect((await viaJwt(token, { ACCESS_TEAM_DOMAIN: TEAM })).lines).toEqual([{ event: "admin_denied", reason: "aud_unset" }]);
+    expect((await viaJwt(token, { ACCESS_AUD: AUD })).lines).toEqual([{ event: "admin_denied", reason: "team_unset" }]);
+    expect((await viaJwt(token, { ACCESS_AUD: "", ACCESS_TEAM_DOMAIN: "" })).res.status).toBe(403);
+    expect((await viaJwt(token, { ACCESS_AUD: AUD, ACCESS_TEAM_DOMAIN: "" })).res.status).toBe(403);
+  });
+
+  it.each([
+    ["aud của ứng dụng khác", () => issuer.sign({ aud: ["app-khac"] }), "jwt_aud"],
+    ["đã hết hạn", () => issuer.sign({ exp: Math.floor(Date.now() / 1000) - 5 }), "jwt_expired"],
+    ["team khác", () => issuer.sign({ iss: "https://team-khac.cloudflareaccess.com" }), "jwt_iss"],
+    ["chữ ký bị sửa", async () => corruptSignature(await issuer.sign()), "jwt_signature"],
+    ["service token, không có email", () => issuer.sign({ email: undefined, common_name: "svc" }), "no_email"],
+    ["alg none", () => issuer.sign({}, { alg: "none" }), "jwt_alg"],
+    ["không phải JWT", async () => "khong-phai-jwt", "jwt_malformed"],
+  ])("JWT %s: 403 forbidden, log đúng lý do, không ghi nhật ký, log không chứa token hay email", async (_why, make, reason) => {
+    const token = await make();
+    const { res, lines } = await viaJwt(token);
+    expect(res).toMatchObject({ status: 403, body: { error: "forbidden" } });
+    expect(lines).toEqual([{ event: "admin_denied", reason }]);
+    expect(JSON.stringify(lines)).not.toContain(token);
+    expect(await auditCount("lookup")).toBe(0);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE actor LIKE 'admin:%'").first()).toEqual({ n: 0 });
+  });
+
+  it("không lấy được khóa công khai của team: 403 jwks_unavailable (đóng)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const keys = {
+      get: async () => {
+        throw new Error("mạng lỗi");
+      },
+    };
+    const { adminCall } = makeAdmin(ENV, { accessKeys: keys });
+    const res = await adminCall("/admin/whoami", { operator: null, headers: { [JWT]: await issuer.sign() } });
+    expect(res.status).toBe(403);
+    expect(warn.mock.calls.map(([l]) => JSON.parse(String(l)))).toEqual([{ event: "admin_denied", reason: "jwks_unavailable" }]);
+  });
+
+  it("có ctx.access thì ctx.access quyết định, JWT hợp lệ không cứu được aud sai của ctx.access", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { adminCall } = makeAdmin(ENV, { accessKeys: issuer.provider() });
+    const res = await adminCall("/admin/whoami", { aud: "aud-khac", headers: { [JWT]: await issuer.sign() } });
+    expect(res.status).toBe(403);
+    expect(warn.mock.calls.map(([l]) => JSON.parse(String(l)).reason)).toEqual(["aud_mismatch"]);
+  });
+
+  it("header JWT tự đặt bởi kẻ gọi (không do Access ký) không vào được", async () => {
+    const forger = await makeIssuer(); // cùng kid mặc định, khóa khác
+    const { res } = await viaJwt(await forger.sign({ email: "ke-xau@example.com" }));
+    expect(res.status).toBe(403);
   });
 });
 

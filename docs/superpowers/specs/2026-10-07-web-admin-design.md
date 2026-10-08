@@ -89,6 +89,7 @@ Phân trang theo con trỏ (keyset): tham số `cursor` (giá trị trả về �
 
 ### 3.3 Mã nguồn server
 - Tách `src/admin.ts` (584 dòng): route đọc mới sang `src/admin-read.ts`; middleware (Access, chống CSRF, giới hạn body) sang `src/admin-auth.ts`, dùng chung cho cả hai; `admin.ts` giữ các thao tác ghi và `lookup`.
+- **Cải chính 2026-10-08 (lỗi gặp khi deploy):** spec ban đầu giả định Worker có Static Assets vẫn nhận `ctx.access`. Sai: Cloudflare chạy Worker có assets sau một router nội bộ và router không chuyển `ctx.access` (developers.cloudflare.com/workers/configuration/cloudflare-access), nên lần deploy đầu mọi request bị `403 forbidden`. `admin-auth.ts` nay có hai đường: dùng `ctx.access` nếu có; không có thì xác thực JWT của Access trong header `Cf-Access-Jwt-Assertion` (`src/access-jwt.ts`: RS256, khóa công khai từ `https://<ACCESS_TEAM_DOMAIN>/cdn-cgi/access/certs`, kiểm `iss`, `aud`, `exp`, `nbf`, có `email`). Mỗi lần từ chối ghi một dòng log `admin_denied` kèm mã lý do (không có email hay token). Test harness giả `ctx.access` nên không bắt được lỗi này; test mới dựng JWT thật để kiểm.
 - Phục vụ trang và header bảo mật trong `src/admin-entry.ts` (hoặc một file nhỏ riêng), sau middleware.
 - **Migration `0003`** chỉ khi truy vấn danh sách cần: thêm index `licenses (created_at)`, `licenses (expires_at)`, `trials (started_at)`, `audit_log (at)`. Chỉ `CREATE INDEX`, không dựng lại bảng, không đụng `sqlite_sequence` (xem `docs/release` về sự cố trùng orderCode của PayOS ngày 2026-10-07).
 

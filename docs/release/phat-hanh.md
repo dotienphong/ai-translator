@@ -300,6 +300,13 @@ chủ tài khoản Resend: chưa đủ để bán.
       `cloudflared access curl` hỏng sau đó thì tắt Binding Cookie và ghi là rủi ro chấp nhận (QĐ30).
     - Chép "Application Audience (AUD) Tag" của ứng dụng đó. Trong `vars` của `wrangler.admin.jsonc`: `ACCESS_AUD` là AUD tag
       vừa chép, `API_ORIGIN` là `$PROD` (không có `/` ở cuối).
+    - `ACCESS_TEAM_DOMAIN` (cũng trong `vars`): tên miền team Access, dạng `<team>.cloudflareaccess.com` (đoạn đầu của địa chỉ
+      trang đăng nhập Access, hay Zero Trust > Settings > Custom pages). **Bắt buộc**: Worker admin có Static Assets không nhận
+      `ctx.access` (router nội bộ của Cloudflare không chuyển tiếp), nên tự xác thực JWT trong header `Cf-Access-Jwt-Assertion`
+      bằng khóa công khai tải từ team này (`src/access-jwt.ts`). Sai hay trống thì mọi request bị 403 (phát hiện 2026-10-08
+      khi deploy Web Admin lần đầu: trang chỉ hiện `{"error":"forbidden"}`). Chẩn đoán: `pnpm exec wrangler tail mt-license-admin`,
+      mỗi lần từ chối có một dòng `{"event":"admin_denied","reason":…}` (`no_access`, `aud_unset`, `team_unset`, `aud_mismatch`,
+      `jwt_*`, `jwks_unavailable`, `no_email`, `cross_site`); phản hồi cho trình duyệt vẫn chỉ là `forbidden`.
 
     ```bash
     pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc

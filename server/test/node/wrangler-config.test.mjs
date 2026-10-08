@@ -82,6 +82,11 @@ test("ACCESS_AUD của Worker admin là audience tag thật (64 ký tự hex), k
   assert.match(admin.vars.ACCESS_AUD, /^[0-9a-f]{64}$/);
 });
 
+test("ACCESS_TEAM_DOMAIN là tên miền team Access (không có https://, không có /), để xác thực JWT khi Worker có assets", () => {
+  assert.match(admin.vars.ACCESS_TEAM_DOMAIN, /^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.cloudflareaccess\.com$/);
+  assert.equal("ACCESS_TEAM_DOMAIN" in api.vars, false, "Worker API không đứng sau Access");
+});
+
 test("package.json: ui:build và ui:check báo lỗi khi tên package sai, và check chạy ui:check trước dry-run", () => {
   const { scripts } = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
   // pnpm thoát mã 0 khi --filter không khớp package nào (kể cả sau khi đổi tên package): thiếu cờ này thì
