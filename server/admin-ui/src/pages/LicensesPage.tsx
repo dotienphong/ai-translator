@@ -23,8 +23,14 @@ const STATE_OPTIONS = [
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Trạng thái lọc ban đầu từ `?state=` (liên kết "và N mục khác" của trang Việc cần xử lý); giá trị ngoài danh sách thì bỏ. */
+function initialState(): string {
+  const v = new URLSearchParams(window.location.search).get("state") ?? "";
+  return STATE_OPTIONS.some(([k]) => k === v) ? v : "";
+}
+
 export function LicensesPage() {
-  const [f, setF] = useState({ state: "", plan: "" });
+  const [f, setF] = useState(() => ({ state: initialState(), plan: "" }));
   const list = usePaged((cursor) => api.licenses({ ...f, cursor }), [f.state, f.plan]);
   const [issuing, setIssuing] = useState(false);
   const [email, setEmail] = useState("");

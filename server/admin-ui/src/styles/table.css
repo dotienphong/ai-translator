@@ -146,31 +146,32 @@ tbody tr:has(td.empty):hover {
 
 /* ---------- Điện thoại: mỗi dòng thành một thẻ ----------
    Cột chính (DataTable: .dt-primary, mặc định cột đầu) là dòng đầu của thẻ, chữ đậm, không nhãn; cột khác là cặp nhãn và
-   giá trị (nhãn 88px, chữ 12px); cột thao tác trải ngang ở cuối thẻ, nút cao 40px. */
+   giá trị (nhãn 88px, chữ 12px); cột thao tác trải ngang ở cuối thẻ, nút cao 40px. Bảng nhỏ ít cột (DataTable mobile="table",
+   lớp .keep-table) giữ dạng bảng. */
 @media (max-width: 800px) {
-  .table-wrap table thead {
+  .table-wrap:not(.keep-table) table thead {
     display: none;
   }
-  .table-wrap table,
-  .table-wrap tbody,
-  .table-wrap tr,
-  .table-wrap td {
+  .table-wrap:not(.keep-table) table,
+  .table-wrap:not(.keep-table) tbody,
+  .table-wrap:not(.keep-table) tr,
+  .table-wrap:not(.keep-table) td {
     display: block;
     width: 100%;
   }
-  .table-wrap tbody tr {
+  .table-wrap:not(.keep-table) tbody tr {
     padding: var(--s-3) var(--s-4);
     border-bottom: 1px solid var(--line);
   }
-  .table-wrap tbody tr:last-child {
+  .table-wrap:not(.keep-table) tbody tr:last-child {
     border-bottom: none;
   }
-  .table-wrap tbody tr:hover {
+  .table-wrap:not(.keep-table) tbody tr:hover {
     background: none;
   }
-  .table-wrap td,
-  .table-wrap td:first-child,
-  .table-wrap td:last-child {
+  .table-wrap:not(.keep-table) td,
+  .table-wrap:not(.keep-table) td:first-child,
+  .table-wrap:not(.keep-table) td:last-child {
     display: flex;
     gap: var(--s-3);
     align-items: baseline;
@@ -180,7 +181,7 @@ tbody tr:has(td.empty):hover {
     overflow-wrap: anywhere;
     text-align: left;
   }
-  .table-wrap td[data-label]::before {
+  .table-wrap:not(.keep-table) td[data-label]::before {
     content: attr(data-label);
     flex: 0 0 88px;
     color: var(--ink-3);
@@ -189,30 +190,30 @@ tbody tr:has(td.empty):hover {
     line-height: 1.75;
   }
   /* Ô không nhãn (cột thao tác) và ô trống: không chừa cột nhãn */
-  .table-wrap td[data-label=""]::before,
-  .table-wrap td.empty::before,
-  .table-wrap td.dt-primary::before {
+  .table-wrap:not(.keep-table) td[data-label=""]::before,
+  .table-wrap:not(.keep-table) td.empty::before,
+  .table-wrap:not(.keep-table) td.dt-primary::before {
     content: none;
   }
-  .table-wrap td.empty {
+  .table-wrap:not(.keep-table) td.empty {
     justify-content: center;
     padding: var(--s-6) 0;
   }
-  .table-wrap tr.dt-empty-row td.empty {
+  .table-wrap:not(.keep-table) tr.dt-empty-row td.empty {
     padding: 0;
   }
 
-  .dt tbody tr {
+  .dt:not(.keep-table) tbody tr {
     padding: var(--s-3) var(--s-4) var(--s-3);
   }
-  .dt tbody tr:focus-within > td:first-child {
+  .dt:not(.keep-table) tbody tr:focus-within > td:first-child {
     box-shadow: none;
   }
-  .dt tbody tr.is-hover,
-.dt tbody tr:focus-within {
+  .dt:not(.keep-table) tbody tr.is-hover,
+  .dt:not(.keep-table) tbody tr:focus-within {
     box-shadow: inset 3px 0 0 var(--brand);
   }
-  .table-wrap td.dt-primary {
+  .table-wrap:not(.keep-table) td.dt-primary {
     order: -1;
     padding: 0 0 var(--s-1);
     font-size: var(--fs-md);
@@ -220,37 +221,37 @@ tbody tr:has(td.empty):hover {
     color: var(--ink);
   }
   /* Link ở cột chính: vùng chạm cao 32px mà không đẩy chữ */
-  .table-wrap td.dt-primary a {
+  .table-wrap:not(.keep-table) td.dt-primary a {
     display: inline-flex;
     align-items: center;
     min-height: 32px;
   }
-  .dt tbody tr:not(.skel-row, .dt-empty-row) {
+  .dt:not(.keep-table) tbody tr:not(.skel-row, .dt-empty-row) {
     display: flex;
     flex-direction: column;
   }
-  .table-wrap td.dt-actions {
+  .table-wrap:not(.keep-table) td.dt-actions {
     width: 100%;
     padding-top: var(--s-2);
   }
-  .table-wrap td.dt-actions > * {
+  .table-wrap:not(.keep-table) td.dt-actions > * {
     justify-content: flex-start;
     flex-wrap: wrap;
   }
   /* Ô không có gì (cột License, Đơn của dòng nhật ký không gắn với license hay đơn): bỏ hẳn dòng nhãn rỗng */
-  .table-wrap td.hide-mobile,
-  .dt td:empty,
-  .dt td:has(> :only-child:empty) {
+  .table-wrap:not(.keep-table) td.hide-mobile,
+  .dt:not(.keep-table) td:empty,
+  .dt:not(.keep-table) td:has(> :only-child:empty) {
     display: none;
   }
-  .table-wrap td.nowrap {
+  .table-wrap:not(.keep-table) td.nowrap {
     white-space: normal;
   }
   /* Dòng chờ: hai thanh mỗi thẻ là đủ (bỏ thanh của các cột sau) */
-  .dt tr.skel-row td:nth-child(n + 3) {
+  .dt:not(.keep-table) tr.skel-row td:nth-child(n + 3) {
     display: none;
   }
-  .dt tr.skel-row td {
+  .dt:not(.keep-table) tr.skel-row td {
     padding: var(--s-1) 0;
   }
   .dt-foot {

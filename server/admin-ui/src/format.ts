@@ -27,8 +27,32 @@ export function fmtDateTime(sec: number | null | undefined): string {
   return `${p.d}/${p.mo}/${p.y} ${p.h}:${p.mi}`;
 }
 
+/** Số nguyên có dấu chấm ngăn nghìn: 1204 thành "1.204". */
+export function fmtInt(n: number): string {
+  return String(Math.trunc(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 export function fmtVnd(n: number): string {
-  return `${String(Math.trunc(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".")} đ`;
+  return `${fmtInt(n)} đ`;
+}
+
+/**
+ * Thời gian tương đối so với `now` (giây): "vừa xong", "5 phút trước", "2 giờ trước", "3 ngày trước"; từ 30 ngày trở lên
+ * (hay ở tương lai quá một phút) thì là ngày đầy đủ dd/MM/yyyy. Đi kèm ngày giờ đầy đủ ở `title`/`<time>` (RelTime).
+ */
+export function fmtAgo(sec: number, now: number): string {
+  const d = now - sec;
+  if (d < -60) return fmtDate(sec);
+  if (d < 60) return "vừa xong";
+  if (d < 3600) return `${Math.floor(d / 60)} phút trước`;
+  if (d < DAY) return `${Math.floor(d / 3600)} giờ trước`;
+  if (d < 30 * DAY) return `${Math.floor(d / DAY)} ngày trước`;
+  return fmtDate(sec);
+}
+
+/** Giây Unix thành chuỗi ISO cho thuộc tính dateTime của <time>. */
+export function isoOf(sec: number): string {
+  return new Date(sec * 1000).toISOString();
 }
 
 export function daysLeft(expiresAt: number, now: number): string {

@@ -48,6 +48,8 @@ export interface DataTableProps<T> {
   skeletonRows?: number;
   /** Nằm trong Card (thân flush): bỏ viền, bóng và bo góc riêng. */
   flush?: boolean;
+  /** Trên điện thoại: "cards" (mặc định) đổi mỗi dòng thành thẻ có nhãn; "table" giữ dạng bảng (bảng nhỏ, ít cột). */
+  mobile?: "cards" | "table";
 }
 
 const ALIGN_CLASS = { left: "", right: "num", center: "center" } as const;
@@ -81,13 +83,14 @@ export function DataTable<T>({
   caption,
   skeletonRows = 5,
   flush = false,
+  mobile = "cards",
 }: DataTableProps<T>) {
   const primaryIndex = Math.max(
     0,
     columns.findIndex((c) => c.primary),
   );
   const firstLoad = Boolean(loading) && rows.length === 0;
-  const wrapCls = ["table-wrap", "dt", maxHeight && `scroll-${maxHeight}`].filter(Boolean).join(" ");
+  const wrapCls = ["table-wrap", "dt", maxHeight && `scroll-${maxHeight}`, mobile === "table" && "keep-table"].filter(Boolean).join(" ");
   const showFoot = Boolean(hasMore) || (summary !== undefined && rows.length > 0);
   return (
     <div className={flush ? "dt-frame flush" : "dt-frame"}>

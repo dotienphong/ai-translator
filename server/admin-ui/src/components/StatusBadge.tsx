@@ -19,7 +19,7 @@ export const ORDER_LABELS: Record<OrderStatus, string> = {
   refunded: "Đã hoàn tiền",
 };
 
-const ORDER_TONES: Record<OrderStatus, Tone> = {
+export const ORDER_TONES: Record<OrderStatus, Tone> = {
   // Đang chờ tiền hay đang xử lý: việc còn dở (xanh thông tin), khác với đơn đã khép (xám).
   pending: "info",
   processing: "info",

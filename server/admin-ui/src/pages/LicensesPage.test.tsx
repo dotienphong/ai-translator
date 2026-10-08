@@ -85,4 +85,19 @@ describe("LicensesPage: bộ lọc vào query", () => {
     fireEvent.change(screen.getByLabelText("Trạng thái"), { target: { value: state } });
     await waitFor(() => expect(gets().at(-1)).toBe(`/admin/licenses?state=${state}`));
   });
+
+  it("?state= trong địa chỉ (liên kết từ Việc cần xử lý) thành bộ lọc ban đầu; giá trị lạ thì bỏ", async () => {
+    window.history.replaceState(null, "", "/licenses?state=conflict");
+    const { unmount } = render(<LicensesPage />);
+    await screen.findByText("Không có license nào");
+    expect(gets()).toEqual(["/admin/licenses?state=conflict"]);
+    expect((screen.getByLabelText("Trạng thái") as HTMLSelectElement).value).toBe("conflict");
+    unmount();
+    calls = [];
+    window.history.replaceState(null, "", "/licenses?state=hack");
+    render(<LicensesPage />);
+    await screen.findByText("Không có license nào");
+    expect(gets()).toEqual(["/admin/licenses"]);
+    window.history.replaceState(null, "", "/");
+  });
 });

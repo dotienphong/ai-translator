@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { daysLeft, fmtBytes, fmtCompact, fmtDate, fmtDateTime, fmtDay, fmtDetail, fmtHm, fmtMonth, fmtVnd, maskKey, shortHash } from "./format";
+import {
+  daysLeft,
+  fmtAgo,
+  fmtBytes,
+  fmtCompact,
+  fmtDate,
+  fmtDateTime,
+  fmtDay,
+  fmtDetail,
+  fmtHm,
+  fmtInt,
+  fmtMonth,
+  fmtVnd,
+  isoOf,
+  maskKey,
+  shortHash,
+} from "./format";
 
 /** 2026-10-01T00:00:00Z = 07:00 ngày 01/10/2026 giờ Việt Nam. */
 const T0 = 1_790_812_800;
@@ -83,5 +99,34 @@ describe("fmtBytes", () => {
   it("số âm hay không hữu hạn thì không ném lỗi", () => {
     expect(fmtBytes(-5)).toBe("0 B");
     expect(fmtBytes(Number.NaN)).toBe("0 B");
+  });
+});
+
+describe("fmtInt, fmtAgo, isoOf", () => {
+  it("số nguyên có dấu chấm ngăn nghìn", () => {
+    expect([0, 7, 999, 1000, 1204, 1_234_567].map(fmtInt)).toEqual(["0", "7", "999", "1.000", "1.204", "1.234.567"]);
+  });
+
+  /** 2026-10-01T00:00:00Z = 07:00 ngày 01/10/2026 GMT+7. */
+  const NOW = 1_790_812_800;
+  it.each([
+    [NOW, "vừa xong"],
+    [NOW - 59, "vừa xong"],
+    [NOW + 30, "vừa xong"],
+    [NOW - 60, "1 phút trước"],
+    [NOW - 59 * 60, "59 phút trước"],
+    [NOW - 3600, "1 giờ trước"],
+    [NOW - 2 * 3600 - 5, "2 giờ trước"],
+    [NOW - 86399, "23 giờ trước"],
+    [NOW - 86400, "1 ngày trước"],
+    [NOW - 29 * 86400, "29 ngày trước"],
+    [NOW - 30 * 86400, "01/09/2026"],
+    [NOW + 2 * 86400, "03/10/2026"],
+  ])("%d so với mốc thành %s", (sec, text) => {
+    expect(fmtAgo(sec, NOW)).toBe(text);
+  });
+
+  it("ISO cho <time dateTime>", () => {
+    expect(isoOf(NOW)).toBe("2026-10-01T00:00:00.000Z");
   });
 });

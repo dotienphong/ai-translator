@@ -4,10 +4,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { SESSION_EXPIRED_EVENT } from "./api/client";
 import { api } from "./api/endpoints";
-import type { Queue } from "./api/types";
 import { ToastProvider } from "./components/Feedback";
 import { IconWarning } from "./components/icons";
-import { LoadingBlock } from "./components/Skeleton";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { useLoad } from "./hooks";
@@ -23,6 +21,8 @@ import { SearchPage } from "./pages/SearchPage";
 import { SystemPage } from "./pages/SystemPage";
 import { ToolsPage } from "./pages/ToolsPage";
 import { TrialsPage } from "./pages/TrialsPage";
+import { OverviewFallback } from "./pages/OverviewSkeleton";
+import { queueTotal, seedQueueCount, useQueueCount } from "./queue-store";
 import { matchRoute, type Route, usePath } from "./router";
 
 // Trang Tổng quan kéo theo Recharts: nạp lười để các trang hỗ trợ khách không nặng thêm (spec Tổng quan, mục 4).
@@ -79,8 +79,6 @@ export function routeTitle(route: Route): string {
   }
 }
 
-const queueTotal = (q: Queue) => q.needs_review.count + q.underpaid.count + q.email_failed.count + q.locked.count + q.conflict.count + q.alerts.count;
-
 function Page({ route }: { route: Route }) {
   const p = route.param ?? "";
   switch (route.name) {
@@ -88,7 +86,8 @@ function Page({ route }: { route: Route }) {
       return <QueuePage />;
     case "overview":
       return (
-        <Suspense fallback={<LoadingBlock />}>
+        // Khung chờ cùng bố cục với trang thật (đầu trang, ô số, biểu đồ) trong lúc tải phần nạp lười.
+        <Suspense fallback={<OverviewFallback />}>
           <OverviewPage />
         </Suspense>
       );
@@ -126,8 +125,13 @@ export function App() {
   const [expired, setExpired] = useState(false);
   const [announce, setAnnounce] = useState("");
   const me = useLoad(() => api.whoami(), []);
-  // Số việc cần xử lý cho huy hiệu ở thanh bên: tải một lần khi mở App; lỗi thì không hiện gì (trang Việc cần xử lý tự báo lỗi).
+  // Số việc cần xử lý cho huy hiệu ở thanh bên: App tải một lần khi mở và gieo vào kho dùng chung; trang Việc cần xử lý đẩy
+  // số mới sau mỗi lần tải hay Làm mới (queue-store.ts). Lỗi thì không hiện gì (trang Việc cần xử lý tự báo lỗi).
   const queue = useLoad(() => api.queue(), []);
+  useEffect(() => {
+    if (queue.data) seedQueueCount(queueTotal(queue.data));
+  }, [queue.data]);
+  const queueCount = useQueueCount();
   const mainRef = useRef<HTMLElement>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   /** Nơi nhận focus khi ngăn kéo vừa đóng (phải đợi phần còn lại hết inert mới focus được). */
@@ -212,7 +216,7 @@ export function App() {
         </a>
         <Sidebar
           current={route.name}
-          queueCount={queue.data ? queueTotal(queue.data) : null}
+          queueCount={queueCount}
           collapsed={collapsed}
           onToggleCollapsed={toggleCollapsed}
           open={menuOpen}
