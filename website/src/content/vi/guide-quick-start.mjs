@@ -17,14 +17,14 @@ const toc = [
 
 // Văn bản thuần cho dữ liệu có cấu trúc HowTo; phần hiển thị nằm trong body.
 const HOWTO_STEPS = [
-  { name: "Cài app và mở lần đầu", text: "Kéo AI Translator vào Applications, mở app, bấm Done ở hộp thoại cảnh báo rồi bấm Open Anyway trong System Settings > Privacy & Security." },
+  { name: "Cài app và mở lần đầu", text: "Trên macOS, kéo AI Translator vào Applications, mở app, bấm Done ở hộp thoại cảnh báo rồi bấm Open Anyway trong System Settings > Privacy & Security. Trên Windows, chạy file .exe; nếu SmartScreen cảnh báo, bấm More info rồi Run anyway." },
   { name: "Chọn ngôn ngữ giao diện", text: "Chọn Tiếng Việt hoặc English rồi bấm Tiếp. Lựa chọn này cũng đặt ngôn ngữ đích mặc định." },
   { name: "Đồng ý điều khoản", text: "Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, tick ô đồng ý rồi bấm Tiếp. Cần mạng một lần để bắt đầu dùng thử Free." },
   { name: "Chọn và tải model", text: "Chọn gói model Chuẩn (khoảng 2,5 GB) hoặc gói model Nhẹ (khoảng 1,3 GB) theo đề xuất của app và chờ tải xong." },
-  { name: "Cho phép ghi âm thanh hệ thống", text: "Khi macOS hỏi quyền Ghi âm thanh hệ thống, chọn cho phép. App không dùng micro." },
+  { name: "Cho phép ghi âm thanh hệ thống (chỉ macOS)", text: "Khi macOS hỏi quyền Ghi âm thanh hệ thống, chọn cho phép. App không dùng micro. Trên Windows không có bước này." },
   { name: "Chọn ngôn ngữ", text: "Chọn ngôn ngữ muốn đọc ở ô Dịch sang và các ngôn ngữ có thể được nói trong cuộc họp." },
   { name: "Nghe thử", text: "Bấm Phát câu mẫu để thấy phụ đề hiện trên thanh phụ đề." },
-  { name: "Đọc ghi chú và hoàn tất", text: "Đọc ghi chú quyền riêng tư và việc app chạy ở menu bar, rồi bấm Bắt đầu dùng AI Translator." },
+  { name: "Đọc ghi chú và hoàn tất", text: "Đọc ghi chú quyền riêng tư và việc app chạy ở menu bar (macOS) hoặc khay hệ thống (Windows), rồi bấm Bắt đầu dùng AI Translator." },
   { name: "Dịch cuộc họp đầu tiên", text: "Mở cuộc họp hoặc video có tiếng, bấm Bắt đầu và đọc phụ đề trên thanh nổi. Bấm Dừng khi xong, rồi mở bản chép lời nếu cần." },
 ];
 
@@ -32,19 +32,19 @@ export default {
   id: "guide-quick-start",
   lang: "vi",
   path: "/huong-dan/bat-dau-nhanh/",
-  title: "Bắt đầu nhanh với AI Translator trên macOS",
+  title: "Bắt đầu nhanh với AI Translator trên macOS và Windows",
   description:
-    "Hướng dẫn bắt đầu nhanh AI Translator trên macOS: cài app, cấp quyền ghi âm, tải model, nghe thử rồi dịch cuộc họp đầu tiên bằng phụ đề trực tiếp.",
+    "Hướng dẫn bắt đầu nhanh AI Translator trên macOS và Windows: cài app, tải model, nghe thử rồi dịch cuộc họp đầu tiên bằng phụ đề trực tiếp.",
   type: "article",
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
   modified: "2026-10-08",
-  llm: "Hướng dẫn từ lúc nhận bản cài đến phụ đề đầu tiên trên macOS: cài app, bảy bước thiết lập lần đầu, bắt đầu dịch, thanh phụ đề, bản chép lời và lỗi thường gặp.",
+  llm: "Hướng dẫn từ lúc nhận bản cài đến phụ đề đầu tiên trên macOS và Windows: cài app, bảy bước thiết lập lần đầu, bắt đầu dịch, thanh phụ đề, bản chép lời và lỗi thường gặp.",
   llmTitle: "Bắt đầu nhanh với AI Translator",
   schema: [
     howTo({
-      name: "Cài AI Translator trên macOS và dịch cuộc họp đầu tiên",
+      name: "Cài AI Translator và dịch cuộc họp đầu tiên",
       description: "Các bước từ file cài đặt tới phụ đề dịch đầu tiên: cài app, thiết lập lần đầu, bắt đầu dịch.",
       steps: HOWTO_STEPS,
     }),
@@ -53,8 +53,8 @@ export default {
 ${pageHero({
   crumbs,
   title: "Bắt đầu nhanh với AI Translator",
-  lead: "Để dùng AI Translator lần đầu trên macOS, bạn cài app, đi qua bảy bước thiết lập một lần (ngôn ngữ, điều khoản, tải model, quyền ghi âm, nghe thử), rồi bấm Bắt đầu khi cuộc họp có tiếng. Phụ đề dịch hiện trên một thanh nổi; nhận dạng giọng nói và dịch đều chạy trên máy bạn.",
-  meta: "<span>Áp dụng cho macOS 14.2 trở lên, Apple Silicon</span> <span>Cập nhật 08/10/2026</span>",
+  lead: "Để dùng AI Translator lần đầu, bạn cài app, đi qua bảy bước thiết lập một lần (ngôn ngữ, điều khoản, tải model, quyền ghi âm trên macOS, nghe thử), rồi bấm Bắt đầu khi cuộc họp có tiếng. Phụ đề dịch hiện trên một thanh nổi; nhận dạng giọng nói và dịch đều chạy trên máy bạn.",
+  meta: "<span>Áp dụng cho macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit</span> <span>Cập nhật 08/10/2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -64,25 +64,32 @@ ${docLayout({
   body: `
 <h2 id="chuan-bi">Bạn cần chuẩn bị gì?</h2>
 ${facts([
-  ["Chip", "Apple Silicon (M1 trở lên)<small>Chưa có bản cho Mac Intel.</small>"],
-  ["Hệ điều hành", "macOS 14.2 trở lên"],
+  ["macOS", "14.2 trở lên, Apple Silicon (M1 trở lên)<small>Chưa có bản cho Mac Intel.</small>"],
+  ["Windows", "Windows 10 hoặc 11, 64-bit (x64), CPU có AVX2<small>Chưa hỗ trợ Windows ARM64.</small>"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
-  ["Bản cài", "File .dmg khoảng 9 MB<small>Chúng tôi gửi liên kết tải qua email khi bạn đăng ký beta ở trang <a href=\"/tai-xuong/\">Tải xuống</a></small>"],
+  ["Bản cài", "macOS: file .dmg khoảng 9 MB · Windows: file .exe dưới 60 MB<small>Chúng tôi gửi liên kết tải qua email khi bạn đăng ký beta ở trang <a href=\"/tai-xuong/\">Tải xuống</a></small>"],
   ["Ổ đĩa", "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)<small>Cộng thêm 1 GB trống khi tải model</small>"],
   ["Mạng", "Cần để tải model và đăng ký dùng thử Free<small>Sau đó nhận dạng và dịch chạy offline</small>"],
 ])}
-${callout({ title: "Bản Windows chưa phát hành.", text: "Bài này chỉ hướng dẫn trên macOS. Windows chưa có ngày phát hành." })}
+${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống nhau trên Windows, trừ vài điểm: cài bằng file .exe (SmartScreen có thể cảnh báo vì bản beta chưa được ký mã), không có bước cấp quyền ghi âm, app nằm ở khay hệ thống thay cho menu bar, và phím tắt dùng Ctrl+Alt thay cho ⌃⌥." })}
 
 <h2 id="cai-va-mo">Cài app và mở lần đầu</h2>
+<p><strong>Trên macOS:</strong></p>
 <ol>
 <li>Mở file <code>.dmg</code> và kéo <strong>AI Translator</strong> vào thư mục <strong>Applications</strong>.</li>
 <li>Mở AI Translator. macOS chặn lần mở đầu vì bản hiện tại ký ad-hoc và chưa được Apple notarize. Bấm <strong>Done</strong>.</li>
 <li>Vào <strong>System Settings › Privacy &amp; Security</strong>, kéo xuống cuối, bấm <strong>Open Anyway</strong> cạnh tên AI Translator, rồi xác nhận bằng mật khẩu hoặc Touch ID.</li>
 </ol>
-<p>Chi tiết, gồm cách kiểm SHA-256: <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt AI Translator trên macOS</a>.</p>
+<p><strong>Trên Windows:</strong></p>
+<ol>
+<li>Nhấp đúp file <code>.exe</code> vừa tải. Bộ cài không cần quyền quản trị.</li>
+<li>Nếu Windows hiện màn hình xanh “Windows protected your PC”, bấm <strong>More info</strong>, kiểm dòng App là đúng tên file cài, rồi bấm <strong>Run anyway</strong>.</li>
+<li>Làm theo bộ cài tới khi xong, rồi mở AI Translator từ menu Start.</li>
+</ol>
+<p>Chi tiết, gồm cách kiểm SHA-256: <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a> và <a href="/huong-dan/cai-dat-windows/">hướng dẫn cài đặt trên Windows</a>.</p>
 
 <h2 id="thiet-lap">Thiết lập lần đầu: bảy bước</h2>
-<p>Lần đầu mở, app hiện trình hướng dẫn 9 màn hình (thanh trên cùng ghi “Bước 1/9”); bài này gộp thành bảy bước. Mỗi màn hình có nút <strong>Quay lại</strong> và <strong>Tiếp</strong>.</p>
+<p>Lần đầu mở, app hiện trình hướng dẫn 9 màn hình (thanh trên cùng ghi “Bước 1/9”); bài này gộp thành bảy bước. Mỗi màn hình có nút <strong>Quay lại</strong> và <strong>Tiếp</strong>. Trên Windows không có màn hình quyền ghi âm nên trình hướng dẫn có 8 màn hình; số bước ghi dưới các ảnh chụp là theo macOS.</p>
 
 <h3>Bước 1. Chọn ngôn ngữ giao diện</h3>
 <p>Chọn <strong>Tiếng Việt</strong> hoặc <strong>English</strong> rồi bấm Tiếp. Lựa chọn này cũng đặt luôn ngôn ngữ bạn muốn đọc phụ đề; bạn đổi lại được ở bước 5.</p>
@@ -93,14 +100,14 @@ ${appShot({ slug: "app-onboarding-1", lang: "vi", alt: "Màn hình đầu tiên 
 ${appShot({ slug: "app-onboarding-2", lang: "vi", alt: "Bước Điều khoản sử dụng với hai văn bản gập được và ô tick đồng ý bắt buộc", caption: "Bước 2/9: điều khoản sử dụng." })}
 
 <h3>Bước 3. Chọn và tải model</h3>
-<p>App hiện RAM và ổ đĩa trống của máy rồi đề xuất một gói: Mac từ khoảng 16 GB RAM được đề xuất gói <strong>Chuẩn</strong> (khoảng 2,5 GB), máy còn lại là gói <strong>Nhẹ</strong> (khoảng 1,3 GB). Chọn gói, app tự tải ở màn hình kế tiếp, có nút Tạm dừng và Tiếp tục. Bạn bấm Tiếp trong lúc tải được; model vẫn tải ở nền. Tải xong, app báo “Đã tải xong. AI Translator đã sẵn sàng để dịch.”</p>
+<p>App hiện RAM và ổ đĩa trống của máy rồi đề xuất một gói: Mac từ khoảng 16 GB RAM (hoặc máy Windows từ 16 GB RAM có card đồ họa rời từ 6 GB VRAM) được đề xuất gói <strong>Chuẩn</strong> (khoảng 2,5 GB), máy còn lại là gói <strong>Nhẹ</strong> (khoảng 1,3 GB). Chọn gói, app tự tải ở màn hình kế tiếp, có nút Tạm dừng và Tiếp tục. Bạn bấm Tiếp trong lúc tải được; model vẫn tải ở nền. Tải xong, app báo “Đã tải xong. AI Translator đã sẵn sàng để dịch.”</p>
 <div class="grid grid-2">
 ${appShot({ slug: "app-onboarding-3", lang: "vi", alt: "Bước kiểm tra máy hiển thị RAM, ổ đĩa trống và gói model được đề xuất", caption: "Bước 3/9: kiểm tra máy, chọn gói." })}
 ${appShot({ slug: "app-onboarding-4", lang: "vi", alt: "Bước tải model với thanh tiến độ và nút tạm dừng", caption: "Bước 4/9: tải model." })}
 </div>
 
-<h3>Bước 4. Cho phép ghi âm thanh hệ thống</h3>
-<p>macOS hỏi quyền <strong>Ghi âm thanh hệ thống</strong> ở lần đầu AI Translator thu âm thanh. Màn hình này chỉ nói trước: hộp thoại của macOS hiện ở bước Nghe thử bên dưới hoặc lần đầu bạn bấm Bắt đầu. Hãy chọn cho phép. Lỡ từ chối thì nút <strong>Mở System Settings</strong> ở màn hình này đưa bạn tới đúng chỗ bật lại. App không dùng micro. Chi tiết: <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền ghi âm thanh hệ thống</a>.</p>
+<h3>Bước 4. Cho phép ghi âm thanh hệ thống (chỉ macOS)</h3>
+<p>macOS hỏi quyền <strong>Ghi âm thanh hệ thống</strong> ở lần đầu AI Translator thu âm thanh. Màn hình này chỉ nói trước: hộp thoại của macOS hiện ở bước Nghe thử bên dưới hoặc lần đầu bạn bấm Bắt đầu. Hãy chọn cho phép. Lỡ từ chối thì nút <strong>Mở System Settings</strong> ở màn hình này đưa bạn tới đúng chỗ bật lại. App không dùng micro. Chi tiết: <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền ghi âm thanh hệ thống</a>. Trên Windows không có bước này.</p>
 ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi âm thanh hệ thống kèm nút Mở System Settings", caption: "Bước 5/9: quyền ghi âm thanh hệ thống (chỉ có trên macOS)." })}
 
 <h3>Bước 5. Chọn ngôn ngữ</h3>
@@ -112,7 +119,7 @@ ${appShot({ slug: "app-onboarding-6", lang: "vi", alt: "Bước Chọn ngôn ng�
 ${appShot({ slug: "app-onboarding-7", lang: "vi", alt: "Bước Nghe thử với nút Phát câu mẫu", caption: "Bước 7/9: nghe thử." })}
 
 <h3>Bước 7. Đọc ghi chú và hoàn tất</h3>
-<p>Âm thanh không rời khỏi máy; nếu pháp luật hoặc quy định công ty yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp là bạn dùng công cụ dịch. Đóng cửa sổ chỉ ẩn app xuống menu bar. Bấm <strong>Bắt đầu dùng AI Translator</strong> để vào màn hình chính.</p>
+<p>Âm thanh không rời khỏi máy; nếu pháp luật hoặc quy định công ty yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp là bạn dùng công cụ dịch. Đóng cửa sổ chỉ ẩn app xuống menu bar (macOS) hoặc khay hệ thống (Windows). Trên Windows, biểu tượng mới có thể bị giấu sau mũi tên ^ trên taskbar; màn hình cuối chỉ cách đưa nó ra. Bấm <strong>Bắt đầu dùng AI Translator</strong> để vào màn hình chính.</p>
 <div class="grid grid-2">
 ${appShot({ slug: "app-onboarding-8", lang: "vi", alt: "Bước Quyền riêng tư nói âm thanh không rời khỏi máy và trách nhiệm thông báo cho người cùng họp", caption: "Bước 8/9: quyền riêng tư." })}
 ${appShot({ slug: "app-onboarding-9", lang: "vi", alt: "Bước cuối nói AI Translator vẫn chạy ở menu bar khi bạn đóng cửa sổ", caption: "Bước 9/9: app vẫn chạy ở menu bar." })}
@@ -121,8 +128,8 @@ ${appShot({ slug: "app-onboarding-9", lang: "vi", alt: "Bước cuối nói AI T
 <h2 id="dich-dau-tien">Dịch cuộc họp đầu tiên</h2>
 <ol>
 <li>Ở thẻ <strong>Ngôn ngữ</strong> của màn hình chính, kiểm tra “Dịch sang” và “Ngôn ngữ nói trong cuộc họp”.</li>
-<li>Thẻ <strong>Nguồn âm thanh</strong> mặc định là “Toàn hệ thống, trừ app này”; muốn chỉ dịch một app, bấm <strong>Đổi</strong>.</li>
-<li>Mở cuộc họp hoặc video có tiếng, rồi bấm <strong>Bắt đầu</strong> (hoặc nhấn ${keys(["⌃", "⌥", "T"])}). Trạng thái chuyển từ “Đang khởi động” sang “Đang dịch”; vài giây đầu thanh phụ đề có thể ghi “Đang nạp model…”.</li>
+<li>Thẻ <strong>Nguồn âm thanh</strong> mặc định là “Toàn hệ thống, trừ app này”; muốn chỉ dịch một app, bấm <strong>Đổi</strong>. Trên Windows, nguồn là thiết bị phát mặc định hoặc một thiết bị bạn chọn; chưa chọn được từng app.</li>
+<li>Mở cuộc họp hoặc video có tiếng, rồi bấm <strong>Bắt đầu</strong> (hoặc nhấn ${keys(["⌃", "⌥", "T"])}, trên Windows là ${keys(["Ctrl", "Alt", "T"])}). Trạng thái chuyển từ “Đang khởi động” sang “Đang dịch”; vài giây đầu thanh phụ đề có thể ghi “Đang nạp model…”.</li>
 <li>Đọc phụ đề trên thanh nổi. Chấm tròn nhỏ ở góc trên bên phải thanh sáng xanh khi có tiếng, và thanh “Mức âm lượng vào” ở màn hình chính nhúc nhích theo; dòng màu nhạt là phụ đề tạm, sẽ được thay bằng câu hoàn chỉnh.</li>
 <li>Bấm <strong>Dừng</strong> khi xong. Thanh giữ các dòng cuối để bạn đọc nốt, và nút <strong>Mở bản chép lời</strong> hiện ra để xem giờ, câu gốc và bản dịch. <strong>Sao chép tất cả</strong> dùng được ở mọi gói.</li>
 </ol>
@@ -133,10 +140,11 @@ ${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề m�
 <h2 id="loi-thuong-gap">Lỗi thường gặp ở lần đầu</h2>
 <ul>
 <li><strong>macOS không cho mở app.</strong> Làm bước Open Anyway ở trên; chi tiết trong <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt</a>.</li>
-<li><strong>Không có phụ đề, màn hình chính báo “Không nghe thấy gì dù có app đang phát tiếng…”.</strong> macOS chưa cho app ghi âm thanh hệ thống; xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền</a>.</li>
+<li><strong>Windows hiện màn hình “Windows protected your PC”.</strong> Bấm More info rồi Run anyway; chi tiết trong <a href="/huong-dan/cai-dat-windows/">hướng dẫn cài đặt trên Windows</a>.</li>
+<li><strong>Không có phụ đề, màn hình chính báo “Không nghe thấy gì dù có app đang phát tiếng…” (macOS).</strong> macOS chưa cho app ghi âm thanh hệ thống; xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền</a>.</li>
 <li><strong>Nghe thử không thấy phụ đề.</strong> Kiểm tra loa không bị tắt tiếng rồi bấm lại.</li>
 <li><strong>Tải model dừng giữa chừng.</strong> Bấm <strong>Tiếp tục</strong> để tải tiếp từ chỗ đã dừng.</li>
-<li><strong>Không thấy thanh phụ đề.</strong> Có thể nó đang ẩn: bấm <strong>Hiện</strong> ở thẻ Thanh phụ đề, hoặc nhấn ${keys(["⌃", "⌥", "H"])}.</li>
+<li><strong>Không thấy thanh phụ đề.</strong> Có thể nó đang ẩn: bấm <strong>Hiện</strong> ở thẻ Thanh phụ đề, hoặc nhấn ${keys(["⌃", "⌥", "H"])} (Windows: ${keys(["Ctrl", "Alt", "H"])}).</li>
 <li><strong>Lần chạy đầu hơi lâu.</strong> Sau khi cài hoặc cập nhật, app có thể ghi “Đang chuẩn bị lần đầu. Việc này có thể mất vài phút.”</li>
 </ul>
 <p>Các lỗi khác có trong bài <a href="/huong-dan/khac-phuc-su-co/">khắc phục sự cố</a>.</p>

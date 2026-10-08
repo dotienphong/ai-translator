@@ -98,11 +98,11 @@ ${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh 
 <p>Vì app thu âm thanh hệ thống, AI Translator chạy với mọi thứ phát ra tiếng: Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar, video, khóa học trực tuyến.</p>
 ${checkList([
   "<strong>macOS:</strong> nghe toàn hệ thống (trừ chính app) hoặc chỉ một app đang phát tiếng để không dịch nhầm tiếng thông báo",
-  "<strong>Windows (khi phát hành):</strong> thiết bị phát mặc định hoặc một thiết bị bạn chọn",
+  "<strong>Windows (beta):</strong> thiết bị phát mặc định hoặc một thiết bị bạn chọn",
   "Tự mở lại nguồn khi bạn đổi thiết bị phát (cắm tai nghe, kết nối Bluetooth)",
   "<strong>Độ nhạy ngắt câu</strong> chỉnh 50–800 ms: ngắn thì phụ đề sớm hơn, dài thì ít cắt câu hơn",
 ])}
-<p>Trên macOS, lần đầu bạn bấm Bắt đầu, hệ điều hành sẽ hỏi quyền <em>ghi âm thanh hệ thống</em>. App không dùng micro. <a href="/huong-dan/cap-quyen-thu-am-macos/">Xem hướng dẫn cấp quyền</a>.</p>
+<p>Trên macOS, lần đầu bạn bấm Bắt đầu, hệ điều hành sẽ hỏi quyền <em>ghi âm thanh hệ thống</em>. App không dùng micro. <a href="/huong-dan/cap-quyen-thu-am-macos/">Xem hướng dẫn cấp quyền</a>. Trên Windows không cần cấp quyền này.</p>
 </div>
 </div>
 </div></section>
@@ -152,7 +152,7 @@ ${checkList([
 <h2>Điều khiển mà không rời cuộc họp</h2>
 <p>Năm phím tắt toàn cục hoạt động ngay cả khi AI Translator không phải cửa sổ đang mở. Bạn đổi được từng phím trong Cài đặt › Phím tắt.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Việc</th><th scope="col">macOS</th><th scope="col">Windows (khi phát hành)</th></tr></thead>
+<thead><tr><th scope="col">Việc</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
 <tbody>
 <tr><th scope="row">Bắt đầu hoặc dừng dịch</th><td>${keys(["⌃", "⌥", "T"])}</td><td>${keys(["Ctrl", "Alt", "T"])}</td></tr>
 <tr><th scope="row">Hiện hoặc ẩn phụ đề</th><td>${keys(["⌃", "⌥", "H"])}</td><td>${keys(["Ctrl", "Alt", "H"])}</td></tr>
@@ -160,8 +160,8 @@ ${checkList([
 <tr><th scope="row">Cuộn phụ đề lên (câu cũ)</th><td>${keys(["⌃", "⌥", "PageUp"])}</td><td>${keys(["Ctrl", "Alt", "PageUp"])}</td></tr>
 <tr><th scope="row">Cuộn phụ đề xuống (câu mới)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
 </tbody></table></div>
-<p class="small muted">Trên macOS, ⌃ là Control và ⌥ là Option. Phím tắt phải có ít nhất một phím Ctrl, Alt hoặc Cmd/Win. Bản Windows chưa phát hành.</p>
-<p>Biểu tượng trên thanh menu (macOS) hoặc khay hệ thống (Windows, khi phát hành) cho phép bắt đầu hoặc dừng dịch, ẩn hiện và khóa phụ đề, mở cửa sổ chính. Đóng cửa sổ chỉ ẩn app xuống khay; muốn thoát hẳn thì chọn <em>Thoát</em>.</p>
+<p class="small muted">Trên macOS, ⌃ là Control và ⌥ là Option. Phím tắt phải có ít nhất một phím Ctrl, Alt hoặc Cmd/Win.</p>
+<p>Biểu tượng trên thanh menu (macOS) hoặc khay hệ thống (Windows) cho phép bắt đầu hoặc dừng dịch, ẩn hiện và khóa phụ đề, mở cửa sổ chính. Đóng cửa sổ chỉ ẩn app xuống khay; muốn thoát hẳn thì chọn <em>Thoát</em>.</p>
 </div>
 <div>
 ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím tắt hiển thị năm phím tắt mặc định trên macOS", caption: "Cài đặt › Phím tắt: bấm Đổi rồi nhấn tổ hợp phím mới." })}
@@ -189,7 +189,7 @@ ${facts([
   ["macOS", "macOS 14.2 trở lên, Apple Silicon (M1 trở lên)<small>Không có bản cho Mac Intel</small>"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
   ["Ổ đĩa", "Trống thêm ít nhất 1 GB so với dung lượng model cần tải"],
-  ["Windows", "Windows 10/11 64-bit, CPU có AVX2: chưa phát hành<small>Khuyến nghị card đồ họa rời, VRAM từ 6 GB cho gói model Chuẩn</small>"],
+  ["Windows (beta)", "Windows 10/11 64-bit (x64), CPU có AVX2<small>Khuyến nghị card đồ họa rời, VRAM từ 6 GB cho gói model Chuẩn. Chưa ký mã nên SmartScreen có thể cảnh báo khi cài; chưa đo độ trễ trên Windows</small>"],
 ])}
 </div></section>
 

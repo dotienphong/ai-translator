@@ -24,7 +24,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Về AI Translator: dịch cuộc họp ngay trên máy bạn",
-  lead: "AI Translator là ứng dụng desktop hiện phụ đề dịch trực tiếp cho âm thanh cuộc họp, chạy offline trên máy tính. Sản phẩm do Đỗ Tiến Phong, một nhà phát triển cá nhân, xây dựng và vận hành. Hiện đang ở giai đoạn beta: macOS trước, Windows sau.",
+  lead: "AI Translator là ứng dụng desktop hiện phụ đề dịch trực tiếp cho âm thanh cuộc họp, chạy offline trên máy tính. Sản phẩm do Đỗ Tiến Phong, một nhà phát triển cá nhân, xây dựng và vận hành. Hiện đang ở giai đoạn beta, trên macOS và Windows.",
   meta: "<span>Cập nhật 08/10/2026</span><span>Bên cung cấp: Đỗ Tiến Phong</span>",
 })}
 
@@ -32,7 +32,7 @@ ${pageHero({
 <div class="reveal">${facts([
   ["Sản phẩm", "Phụ đề dịch trực tiếp cho cuộc họp, webinar và video<small>Nhận dạng giọng nói và dịch chạy trên máy bạn</small>"],
   ["Bên cung cấp", "Đỗ Tiến Phong (cá nhân)<small>Nhà phát triển cá nhân</small>"],
-  ["Trạng thái", "Beta<small>macOS 14.2+ (Apple Silicon) trước, Windows sắp có</small>"],
+  ["Trạng thái", "Beta<small>macOS 14.2+ (Apple Silicon) và Windows 10/11 64-bit</small>"],
   ["Hỗ trợ", `${MAIL}<small>Bạn có thể viết bằng tiếng Việt hoặc English</small>`],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Giao diện app có tiếng Việt và English</small>"],
   ["Giấy phép", "Sản phẩm thương mại, không phải mã nguồn mở<small>Có dùng các thành phần mã nguồn mở của bên thứ ba</small>"],
@@ -54,7 +54,7 @@ ${sectionHead({ eyebrow: "Nguyên tắc", title: "Sáu điều chúng tôi giữ
 <div class="grid grid-3">
 ${feature({ icon: "shield", title: "Riêng tư theo thiết kế", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. Máy chủ chỉ giữ dữ liệu cần cho bản quyền, đơn hàng và dùng thử. Chi tiết ở <a href=\"/bao-mat-du-lieu/\">Dữ liệu và bảo mật</a>.", accent: true })}
 ${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng giọng nói và dịch chạy trên máy. Mạng chỉ cần để tải model, đăng ký dùng thử, mua và kiểm tra bản quyền, cập nhật app." })}
-${feature({ icon: "info", title: "Trung thực về trạng thái", text: "Beta thì ghi là beta. macOS chưa notarize, Windows chưa phát hành, máy nào chưa đo: chúng tôi nói thẳng, trên website và trong app." })}
+${feature({ icon: "info", title: "Trung thực về trạng thái", text: "Beta thì ghi là beta. macOS chưa notarize, Windows chưa ký mã, máy nào chưa đo: chúng tôi nói thẳng, trên website và trong app." })}
 ${feature({ icon: "lock", title: "Không quảng cáo, không analytics", text: "App không có quảng cáo, không có analytics, không tự gửi báo cáo lỗi. Chúng tôi sống nhờ gói trả phí, không nhờ dữ liệu của bạn." })}
 ${feature({ icon: "video", title: "Không bot, không tài khoản", text: "Không mời bot vào cuộc họp, không cài plugin, không đăng nhập. Gói trả phí kích hoạt bằng license key gửi qua email." })}
 ${feature({ icon: "gauge", title: "Số đo kèm điều kiện", text: "Con số về tốc độ hay chất lượng trên website này đều ghi máy đo và điều kiện; chỗ chưa đo thì ghi là chưa đo. Xem <a href=\"/tinh-nang/#hieu-nang\">hiệu năng</a>." })}
@@ -75,8 +75,8 @@ ${sectionHead({ eyebrow: "Hôm nay", title: "AI Translator đang ở đâu?" })}
 <thead><tr><th scope="col">Hạng mục</th><th scope="col">Trạng thái</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>Beta, macOS 14.2 trở lên, Apple Silicon. Chưa có tải công khai: <a href="/tai-xuong/">đăng ký nhận bản cài qua email</a>.</td></tr>
-<tr><th scope="row">Windows</th><td>Sắp có (Windows 10/11, 64-bit). Chưa có ngày phát hành.</td></tr>
-<tr><th scope="row">Ký số</th><td>macOS ký ad-hoc, chưa notarize, nên lần mở đầu cần bấm Open Anyway. Windows chưa có chứng thư ký mã.</td></tr>
+<tr><th scope="row">Windows</th><td>Beta, Windows 10/11 64-bit (x64). Chưa có tải công khai: <a href="/tai-xuong/">đăng ký nhận bản cài qua email</a>. Chưa đo độ trễ trên Windows.</td></tr>
+<tr><th scope="row">Ký số</th><td>macOS ký ad-hoc, chưa notarize, nên lần mở đầu cần bấm Open Anyway. Windows chưa có chứng thư ký mã, nên SmartScreen có thể cảnh báo khi mở bộ cài (<a href="/huong-dan/cai-dat-windows/">cách xử lý</a>).</td></tr>
 <tr><th scope="row">Thanh toán</th><td>VietQR bằng VND qua PayOS. Chưa có thẻ quốc tế, chưa có hóa đơn điện tử.</td></tr>
 <tr><th scope="row">Gói</th><td>Free dùng thử 10 ngày, Monthly, Yearly. Xem <a href="/bang-gia/">bảng giá</a>.</td></tr>
 </tbody></table></div>
@@ -128,6 +128,6 @@ ${linkCard({ href: "/bang-gia/", icon: "wallet", title: "Bảng giá", text: "Fr
 </div>
 </div></section>
 
-${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Đăng ký nhận bản beta cho macOS, dùng thử Free 10 ngày. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/lien-he/", label: "Liên hệ chúng tôi" } })}
+${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Đăng ký nhận bản beta cho macOS hoặc Windows, dùng thử Free 10 ngày. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/lien-he/", label: "Liên hệ chúng tôi" } })}
 `,
 };

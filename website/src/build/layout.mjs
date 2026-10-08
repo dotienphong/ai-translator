@@ -156,13 +156,21 @@ export function glue(html, lang = "vi") {
     .replace(/<pre>/g, '<pre tabindex="0">')
     // Giữa các phím trong tổ hợp có dấu "+" thật (để trích xuất chữ không dính "CtrlAltT").
     .replace(/<\/kbd>\s*<kbd/g, '</kbd> + <kbd');
-  return html.replace(/>([^<]+)</g, (m, text) => {
-    const fixed = text
-      .replace(/(?<![\p{L}])(phụ|Phụ) (đề)(?![\p{L}])/gu, `$1${NB}$2`)
-      .replace(/\bAI Translator\b/g, `AI${NB}Translator`)
-      .replace(/(\d) ?(GB|MB|KB|ms|px|giây|phút|giờ|ngày|tháng|năm|hours?|minutes?|days?|seconds?|₫|%)(?![\p{L}])/gu, (mm, d, u) => `${d}${NB}${u}`);
-    return `>${fixed}<`;
-  });
+  // Không đụng chữ trong <code> (đường dẫn, lệnh): người đọc chép nguyên văn, nbsp sẽ làm hỏng.
+  return html
+    .split(/(<code>[\s\S]*?<\/code>)/)
+    .map((part, i) =>
+      i % 2
+        ? part
+        : part.replace(/(^|>)([^<]+)(?=<|$)/g, (m, open, text) => {
+            const fixed = text
+              .replace(/(?<![\p{L}])(phụ|Phụ) (đề)(?![\p{L}])/gu, `$1${NB}$2`)
+              .replace(/\bAI Translator\b/g, `AI${NB}Translator`)
+              .replace(/(\d) ?(GB|MB|KB|ms|px|giây|phút|giờ|ngày|tháng|năm|hours?|minutes?|days?|seconds?|₫|%)(?![\p{L}])/gu, (mm, d, u) => `${d}${NB}${u}`);
+            return `${open}${fixed}`;
+          }),
+    )
+    .join("");
 }
 
 export function renderPage(page, ctx) {

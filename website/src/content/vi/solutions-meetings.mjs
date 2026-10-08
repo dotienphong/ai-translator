@@ -32,7 +32,7 @@ ${pageHero({
   ["Dùng với", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>Không bot, không plugin; app nào phát tiếng ra máy cũng thu được</small>"],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Một chiều, sang ngôn ngữ bạn chọn</small>"],
   ["Độ trễ", "Trung vị 0,76–1,03 giây<small>Mac M4 Pro, gói model Chuẩn; máy yếu hơn sẽ chậm hơn</small>"],
-  ["Nền tảng", "macOS 14.2+ (Apple Silicon), bản beta<small>Windows 10/11: sắp có</small>"],
+  ["Nền tảng", "macOS 14.2+ (Apple Silicon) và Windows 10/11 x64, bản beta<small>Bản Windows chưa ký mã nên SmartScreen có thể cảnh báo khi cài</small>"],
 ])}</div>
 </div></section>
 
@@ -112,7 +112,7 @@ ${sectionHead({ eyebrow: "Sau cuộc họp", title: "Giữ lại những gì b�
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Đã thử với gì", title: "Những app và thiết bị đã thử" })}
 <p>Bằng một công cụ thử thu âm riêng (chưa phải toàn bộ vòng nhận dạng và dịch của app), chúng tôi đã thử thu âm thanh hệ thống trên macOS 26.6.2 với <strong>Zoom (app)</strong>, <strong>Google Meet</strong> trên Chrome, Safari và Edge, <strong>Microsoft Teams (app mới)</strong> và <strong>Zalo PC</strong>, qua loa, tai nghe có dây và AirPods.</p>
-<p>Đây là thử nghiệm nội bộ, kết quả do người thử nghe xác nhận, chưa phải kiểm thử chính thức trên bản phát hành cho từng app và phiên bản macOS (tối thiểu 14.2). Windows chưa phát hành nên chưa có nghiệm thu.</p>
+<p>Đây là thử nghiệm nội bộ, kết quả do người thử nghe xác nhận, chưa phải kiểm thử chính thức trên bản phát hành cho từng app và phiên bản macOS (tối thiểu 14.2). Trên Windows, chúng tôi mới thử thu âm thanh hệ thống và thanh phụ đề trên Windows 11 trong thử nghiệm nội bộ; chưa thử từng app họp với bản phát hành.</p>
 </div></section>
 
 <section class="section"><div class="container narrow">

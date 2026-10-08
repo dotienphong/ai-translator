@@ -18,7 +18,7 @@ const GROUPS = [
       },
       {
         q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
-        a: `<p>Yes. The app captures system audio, so it does not depend on the meeting app and needs no per-app setup: you just press Start. On macOS you can also choose to listen to a single app only (Settings › Audio) so notification sounds are not translated.</p><p>We have checked system-audio capture on macOS 26 with Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams and Zalo PC: the speaker's audio was captured clearly. That was a check of the capture component, confirmed by the tester, not a formal acceptance test on the release build, and we have not tried every macOS version or every app. These names are used only to describe compatibility, and AI Translator is not affiliated with them. See <a href="/en/solutions/online-meeting-translation/">meeting translation</a>.</p>`,
+        a: `<p>Yes. The app captures system audio, so it does not depend on the meeting app and needs no per-app setup: you just press Start. On macOS you can also choose to listen to a single app only (Settings › Audio) so notification sounds are not translated.</p><p>We have checked system-audio capture on macOS 26 with Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams and Zalo PC: the speaker's audio was captured clearly. That was a check of the capture component, confirmed by the tester, not a formal acceptance test on the release build, and we have not tried every macOS version or every app. On Windows, we have only tried system audio capture in internal testing on Windows 11, not each meeting app with the release build. These names are used only to describe compatibility, and AI Translator is not affiliated with them. See <a href="/en/solutions/online-meeting-translation/">meeting translation</a>.</p>`,
       },
       {
         q: "Do I need a bot, a plugin or an account?",
@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Where do I download AI Translator? Is there a Windows version?",
-        a: `<p>There is no public download yet. AI Translator is in beta: you request the macOS installer (macOS 14.2 or later, Apple Silicon) by email on the <a href="/en/download/">Download page</a>. Windows 10/11 is coming soon, with no release date yet.</p>`,
+        a: `<p>There is no public download yet. AI Translator is in beta: you request the installer for macOS (14.2 or later, Apple Silicon) or Windows (10/11, 64-bit) by email on the <a href="/en/download/">Download page</a>. The Windows build is also a beta and is not code-signed yet, so SmartScreen may warn you when you open the installer.</p>`,
       },
       {
         q: "Is AI Translator open source?",
@@ -108,7 +108,7 @@ const GROUPS = [
     items: [
       {
         q: "Will AI Translator run on my computer?",
-        a: `<p>The beta runs on Apple Silicon Macs (M1 or later) with macOS 14.2 or later; at least 8 GB of RAM, 16 GB recommended. Intel Macs are not supported. Windows 10/11 64-bit (CPU with AVX2) is coming soon; Windows ARM64 is not supported.</p><p>If a machine has less than 8 GB of RAM or does not meet the requirements, the app explains why and does not download models. For a base Mac M1 specifically, we have no measurements yet.</p>`,
+        a: `<p>The beta runs on Apple Silicon Macs (M1 or later) with macOS 14.2 or later; at least 8 GB of RAM, 16 GB recommended. Intel Macs are not supported. The Windows beta runs on Windows 10/11 64-bit (x64) with a CPU that supports AVX2, at least 8 GB of RAM, 16 GB recommended; Windows ARM64 is not supported.</p><p>If a machine has less than 8 GB of RAM or does not meet the requirements, the app explains why and does not download models. For a base Mac M1 and for Windows PCs, we have no latency measurements yet.</p>`,
       },
       {
         q: "How much RAM and disk space does it need?",
@@ -119,12 +119,16 @@ const GROUPS = [
         a: `<p>Because the macOS build is currently ad-hoc signed and not notarized: we do not have an Apple Developer ID yet. macOS therefore blocks the first launch. Open System Settings › Privacy &amp; Security, scroll to the bottom, click Open Anyway next to AI Translator and confirm with your password or Touch ID. From macOS 15, the right-click › Open trick no longer works. See the <a href="/en/guide/install-macos/">macOS installation guide</a>.</p>`,
       },
       {
+        q: "Why does Windows show “Windows protected your PC” when I install it?",
+        a: `<p>Because the Windows build is not code-signed yet: we do not have a Windows code-signing certificate yet. Microsoft Defender SmartScreen may therefore block the installer the first time. If the file came from us and the SHA-256 matches, click More info, check that the App line shows the installer's file name, then click Run anyway. Publisher showing Unknown publisher is normal for an unsigned build. Once we have a certificate, the warnings will decrease over time. See the <a href="/en/guide/install-windows/">Windows installation guide</a>.</p>`,
+      },
+      {
         q: "What permissions does it need on macOS?",
-        a: `<p>Only System Audio Recording permission; AI Translator does not use the microphone. macOS asks the first time you press Start. If you decline, macOS shows no error and the app simply receives silence; the app will prompt you to turn it back on. See the <a href="/en/guide/macos-audio-permission/">audio permission guide</a>.</p>`,
+        a: `<p>Only System Audio Recording permission; AI Translator does not use the microphone. macOS asks the first time you press Start. If you decline, macOS shows no error and the app simply receives silence; the app will prompt you to turn it back on. See the <a href="/en/guide/macos-audio-permission/">audio permission guide</a>. Windows needs no audio-recording permission.</p>`,
       },
       {
         q: "How do I uninstall AI Translator?",
-        a: `<p>On macOS, first choose Settings › Privacy › Delete models and data, then drag the app to the Trash (macOS gives no prompt when you remove an app). On Windows, the uninstaller is designed to include an option to delete app data, which also removes the models. Deleting data or uninstalling does not remove your license or the quota you have left.</p>`,
+        a: `<p>On macOS, first choose Settings › Privacy › Delete models and data, then drag the app to the Trash (macOS gives no prompt when you remove an app). On Windows, uninstall from Settings › Apps › Installed apps; the uninstaller has an option to delete app data, which also removes the models (see the <a href="/en/guide/install-windows/#uninstall">guide</a>). Deleting data or uninstalling does not remove your license or the quota you have left.</p>`,
       },
     ],
   },

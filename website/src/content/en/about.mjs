@@ -24,7 +24,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "About AI Translator: translating meetings on your own computer",
-  lead: "AI Translator is a desktop app that shows live translated subtitles for meeting audio and runs offline on your computer. It is built and run by Đỗ Tiến Phong, an independent developer. It is in beta: macOS first, Windows to follow.",
+  lead: "AI Translator is a desktop app that shows live translated subtitles for meeting audio and runs offline on your computer. It is built and run by Đỗ Tiến Phong, an independent developer. It is in beta on macOS and Windows.",
   meta: "<span>Updated 8 October 2026</span><span>Provider: Đỗ Tiến Phong</span>",
 })}
 
@@ -32,7 +32,7 @@ ${pageHero({
 <div class="reveal">${facts([
   ["Product", "Live translated subtitles for meetings, webinars and videos<small>Speech recognition and translation run on your computer</small>"],
   ["Provider", "Đỗ Tiến Phong (individual)<small>Independent developer</small>"],
-  ["Status", "Beta<small>macOS 14.2+ (Apple Silicon) first, Windows coming soon</small>"],
+  ["Status", "Beta<small>macOS 14.2+ (Apple Silicon) and Windows 10/11 64-bit</small>"],
   ["Support", `${MAIL}<small>You can write in Vietnamese or English</small>`],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>The app interface is in Vietnamese and English</small>"],
   ["License", "Commercial product, not open source<small>Uses open-source components from third parties</small>"],
@@ -54,7 +54,7 @@ ${sectionHead({ eyebrow: "Principles", title: "Six things we hold to when buildi
 <div class="grid grid-3">
 ${feature({ icon: "shield", title: "Private by design", text: "Audio stays in RAM, is never written to disk and never sent anywhere. Our servers keep only what licensing, orders and the trial need. Details on <a href=\"/en/data-security/\">Data and security</a>.", accent: true })}
 ${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech recognition and translation run on your computer. The internet is needed only to download models, register for the trial, buy and verify a license, and update the app." })}
-${feature({ icon: "info", title: "Honest about status", text: "If it is beta, we say beta. macOS is not notarized yet, Windows is not released, some machines are not measured: we say so plainly, on the website and in the app." })}
+${feature({ icon: "info", title: "Honest about status", text: "If it is beta, we say beta. macOS is not notarized yet, Windows is not code-signed yet, some machines are not measured: we say so plainly, on the website and in the app." })}
 ${feature({ icon: "lock", title: "No ads, no analytics", text: "The app has no ads, no analytics and sends no automatic crash reports. We make a living from paid plans, not from your data." })}
 ${feature({ icon: "video", title: "No bot, no account", text: "No bot joins your meeting, no plugin to install, no sign-in. Paid plans are activated with a license key sent by email." })}
 ${feature({ icon: "gauge", title: "Numbers with conditions", text: "Every speed or quality figure on this website comes with the machine and conditions it was measured under; what we have not measured, we say we have not measured. See <a href=\"/en/features/#performance\">features and performance</a>." })}
@@ -75,8 +75,8 @@ ${sectionHead({ eyebrow: "Today", title: "Where is AI Translator right now?" })}
 <thead><tr><th scope="col">Area</th><th scope="col">Status</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>Beta, macOS 14.2 or later, Apple Silicon. No public download yet: <a href="/en/download/">request the installer by email</a>.</td></tr>
-<tr><th scope="row">Windows</th><td>Coming soon (Windows 10/11, 64-bit). No release date yet.</td></tr>
-<tr><th scope="row">Code signing</th><td>macOS is ad-hoc signed and not notarized, so the first launch needs Open Anyway. Windows has no code-signing certificate yet.</td></tr>
+<tr><th scope="row">Windows</th><td>Beta, Windows 10/11 64-bit (x64). No public download yet: <a href="/en/download/">request the installer by email</a>. Latency on Windows has not been measured.</td></tr>
+<tr><th scope="row">Code signing</th><td>macOS is ad-hoc signed and not notarized, so the first launch needs Open Anyway. Windows has no code-signing certificate yet, so SmartScreen may warn when you open the installer (<a href="/en/guide/install-windows/">what to do</a>).</td></tr>
 <tr><th scope="row">Payments</th><td>VietQR in VND through PayOS. No international cards and no e-invoices yet.</td></tr>
 <tr><th scope="row">Plans</th><td>Free 10-day trial, Monthly, Yearly. See <a href="/en/pricing/">pricing</a>.</td></tr>
 </tbody></table></div>
@@ -128,6 +128,6 @@ ${linkCard({ href: "/en/pricing/", icon: "wallet", title: "Pricing", text: "Free
 </div>
 </div></section>
 
-${ctaBand({ title: "Try it on a real meeting", text: "Request the macOS beta and use the 10-day Free trial. No card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/contact/", label: "Contact us" } })}
+${ctaBand({ title: "Try it on a real meeting", text: "Request the macOS or Windows beta and use the 10-day Free trial. No card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/contact/", label: "Contact us" } })}
 `,
 };

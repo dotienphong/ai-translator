@@ -15,7 +15,7 @@ const toc = [
   { level: 2, id: "indicators", text: "Indicators on the bar" },
   { level: 2, id: "shortcuts", text: "Default shortcuts" },
   { level: 2, id: "change-shortcuts", text: "Change a shortcut" },
-  { level: 2, id: "menu-bar", text: "The menu bar menu" },
+  { level: 2, id: "menu-bar", text: "The menu bar and tray menu" },
   { level: 2, id: "closing-the-window", text: "Why closing the window does not quit" },
 ];
 
@@ -38,7 +38,7 @@ ${pageHero({
   crumbs,
   title: "The subtitle bar and shortcuts",
   lead: "The subtitle bar is a floating window that stays on top and shows the translation without taking focus from your meeting app. Drag it to move it, drag an edge to resize it, lock it so the mouse passes through, and control it with five default shortcuts such as ⌃⌥T (start or stop) and ⌃⌥H (show or hide).",
-  meta: "<span>macOS (Windows not released yet)</span> <span>Updated October 8, 2026</span>",
+  meta: "<span>macOS and Windows</span> <span>Updated October 8, 2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -99,7 +99,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <h2 id="shortcuts">Default shortcuts</h2>
 <p>Shortcuts work in every app, even when AI Translator is not the window in front.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Action</th><th scope="col">macOS</th><th scope="col">Windows (when released)</th></tr></thead>
+<thead><tr><th scope="col">Action</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
 <tbody>
 <tr><th scope="row">Start or stop translating</th><td>${keys(["⌃", "⌥", "T"])}</td><td>${keys(["Ctrl", "Alt", "T"])}</td></tr>
 <tr><th scope="row">Show or hide subtitles</th><td>${keys(["⌃", "⌥", "H"])}</td><td>${keys(["Ctrl", "Alt", "H"])}</td></tr>
@@ -107,7 +107,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <tr><th scope="row">Scroll subtitles up (older sentences)</th><td>${keys(["⌃", "⌥", "PageUp"])}</td><td>${keys(["Ctrl", "Alt", "PageUp"])}</td></tr>
 <tr><th scope="row">Scroll subtitles down (newer sentences)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
 </tbody></table></div>
-<p class="small muted">On macOS, ⌃ is the Control key and ⌥ is the Option key (not Command). The Windows version is not released yet.</p>
+<p class="small muted">On macOS, ⌃ is the Control key and ⌥ is the Option key (not Command).</p>
 
 <h2 id="change-shortcuts">Change a shortcut</h2>
 <ol>
@@ -118,8 +118,9 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <p>A new shortcut needs at least one of Ctrl, Alt or Cmd; Shift alone is not enough. The app says “This shortcut is already used for another action.” if you pick one of its own shortcuts, and “The system refused this shortcut; another app may be using it.” if the operating system declines it. We have not checked whether the default keys clash with shortcuts in Zoom, Teams or Meet; if you find a clash, change the shortcut here.</p>
 ${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings listing the five actions with their default macOS key combinations and a Change button", caption: "Settings › Shortcuts." })}
 
-<h2 id="menu-bar">The menu bar menu</h2>
+<h2 id="menu-bar">The menu bar and tray menu</h2>
 <p>The AI Translator icon in the menu bar (a speech bubble with sound waves) lets you control the app without opening the main window. Hover over it to see the status, “Ready” or “Translating”.</p>
+<p>On Windows, the icon (the app's color logo) sits in the system tray at the right end of the taskbar; Windows may hide it behind the <strong>^</strong> arrow. Right-click the icon to open the menu below; left-click it to open the main window.</p>
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Menu item</th><th scope="col">When it appears</th></tr></thead>
 <tbody>
@@ -133,7 +134,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings l
 </tbody></table></div>
 
 <h2 id="closing-the-window">Why closing the window does not quit the app</h2>
-<p>AI Translator is designed to live in the menu bar so its shortcuts and a running session keep working after you close the main window. The close button only hides the window. On a Mac, ⌘Q does not quit either: the app brings the main window back with the note “AI Translator keeps running in the menu bar. To quit, choose Quit from the menu bar icon.” To quit completely, choose <strong>Quit</strong> from the menu bar.</p>
+<p>AI Translator is designed to live in the menu bar (macOS) or the system tray (Windows) so its shortcuts and a running session keep working after you close the main window. The close button only hides the window. On a Mac, ⌘Q does not quit either: the app brings the main window back with the note “AI Translator keeps running in the menu bar. To quit, choose Quit from the menu bar icon.” To quit completely, choose <strong>Quit</strong> from the icon in the menu bar or the system tray.</p>
 <p>Something not working? See <a href="/en/guide/troubleshooting/">troubleshooting</a>. For an overview, see the <a href="/en/features/">features</a> page.</p>
 
 ${docNav(

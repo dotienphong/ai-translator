@@ -102,7 +102,7 @@ ${sectionHead({ eyebrow: "Specialist courses", title: "A glossary for technical 
 ${sectionHead({ eyebrow: "Tips", title: "Make it smoother" })}
 ${checkList([
   "<strong>Pick the source Only {app name} (macOS):</strong> in Settings › Audio, choose your browser or media player so other sounds are not translated. The list only shows apps playing sound, so start the video first, then click <em>Refresh list</em>.",
-  "<strong>Mute system notifications</strong> while you watch, especially on Windows (coming soon), where you cannot pick a single app yet.",
+  "<strong>Mute system notifications</strong> while you watch, especially on Windows, where you cannot pick a single app yet.",
   "<strong>Lock the source language</strong> when the whole event is in one language; keep Detect automatically when speakers switch.",
   "<strong>Press Start before you play:</strong> the app loads its models during the first few seconds.",
 ])}
@@ -115,7 +115,7 @@ ${checkList([
   "<strong>Translations can be wrong,</strong> especially jargon, proper names and unclear speech. Do not rely on them for important decisions without checking.",
   "<strong>Latency</strong> is a median of 0.76–1.03 seconds on a Mac M4 Pro with the Standard pack. Less powerful machines will see higher latency; we have not measured an M1 Mac. With a video you do not need to react to, delay matters less than in a meeting.",
   "<strong>Recognition</strong> is less accurate with the Lite pack in Vietnamese, Japanese, Korean and Chinese, and gets worse when speech is unclear, for example under loud music or noise.",
-  "<strong>macOS only for now</strong> (Apple Silicon, 14.2+); Windows is coming. Translations appear only on the floating bar: they are not added to the video and do not replace the publisher's official subtitles.",
+  "<strong>Runs on macOS</strong> (Apple Silicon, 14.2+) <strong>and Windows 10/11</strong> (x64, beta). Translations appear only on the floating bar: they are not added to the video and do not replace the publisher's official subtitles.",
 ], true)}
 </div></section>
 

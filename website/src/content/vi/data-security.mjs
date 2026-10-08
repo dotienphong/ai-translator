@@ -127,7 +127,7 @@ ${steps(
 <li><strong>Chữ ký số:</strong> bản cập nhật được kiểm chữ ký trước khi ghi file; manifest model ký Ed25519 và từng file kiểm SHA-256; token bản quyền ký Ed25519, kiểm được cả khi offline. App chỉ chứa khóa công khai.</li>
 <li><strong>Phần xử lý AI tách khỏi giao diện:</strong> chỉ giao tiếp nội bộ trên máy, không nhận kết nối từ bên ngoài máy và dùng khóa ngẫu nhiên mỗi lần chạy.</li>
 <li><strong>Khóa nhạy cảm nằm ngoài app:</strong> khóa API thanh toán và khóa ký chỉ nằm trên máy chủ; kết nối tới máy chủ dùng HTTPS.</li>
-<li><strong>Phát hiện app bị sửa:</strong> trên macOS, app kiểm chữ ký ad-hoc còn nguyên và bundle id; bản có chữ ký không khớp chỉ chạy gói Free. Đây là kiểm tra tính nguyên vẹn, không thay được chữ ký Developer ID.</li>
+<li><strong>Phát hiện app bị sửa:</strong> trên macOS, app kiểm chữ ký ad-hoc còn nguyên và bundle id; bản có chữ ký không khớp chỉ chạy gói Free. Đây là kiểm tra tính nguyên vẹn, không thay được chữ ký Developer ID. Trên Windows, bản beta chưa ký mã nên app chưa có bước kiểm này; hãy đối chiếu mã SHA-256 của bộ cài.</li>
 </ul>
 
 <h2 id="ky-so">Trạng thái ký số hôm nay</h2>
@@ -135,9 +135,9 @@ ${steps(
 <thead><tr><th scope="col">Nền tảng</th><th scope="col">Trạng thái</th><th scope="col">Hệ quả cho bạn</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>Ký ad-hoc, <strong>chưa notarize</strong> (chúng tôi chưa có Apple Developer ID)</td><td>macOS chặn lần mở đầu: bạn cần bấm Open Anyway trong System Settings › Privacy &amp; Security. Mỗi lần cập nhật, macOS hỏi lại 5 hộp thoại Keychain và 1 hộp thoại quyền ghi âm.</td></tr>
-<tr><th scope="row">Windows</th><td>Chưa phát hành, <strong>chưa có chứng thư ký mã</strong></td><td>Khi phát hành, SmartScreen có thể cảnh báo lúc đầu.</td></tr>
+<tr><th scope="row">Windows</th><td>Beta, <strong>chưa ký mã</strong> (chúng tôi chưa có chứng thư ký mã Windows)</td><td>Khi mở bộ cài, Microsoft Defender SmartScreen có thể hiện màn hình “Windows protected your PC”: bấm More info rồi Run anyway. Dòng Publisher hiện Unknown publisher.</td></tr>
 </tbody></table></div>
-<p>Chữ ký ad-hoc không cho Apple biết ai là nhà phát triển, nên hãy chỉ lấy bản cài từ chúng tôi và đối chiếu mã SHA-256 gửi kèm. Chúng tôi dự định chuyển sang Developer ID khi có điều kiện, chưa có ngày. Xem <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a>.</p>
+<p>Chữ ký ad-hoc không cho Apple biết ai là nhà phát triển, nên hãy chỉ lấy bản cài từ chúng tôi và đối chiếu mã SHA-256 gửi kèm. Bản Windows chưa ký mã cũng vậy: Windows không xác nhận được ai phát hành file, nên đối chiếu SHA-256 là cách để biết file không bị thay đổi. Chúng tôi dự định chuyển sang Developer ID và chứng thư ký mã Windows khi có điều kiện, chưa có ngày. Xem hướng dẫn cài đặt trên <a href="/huong-dan/cai-dat-macos/">macOS</a> và <a href="/huong-dan/cai-dat-windows/">Windows</a>.</p>
 
 <h2 id="gioi-han">Điều chúng tôi không hứa</h2>
 <ul>

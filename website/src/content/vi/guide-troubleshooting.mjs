@@ -10,7 +10,7 @@ const crumbs = [
 const toc = [
   { level: 2, id: "khong-co-am-thanh", text: "Không có phụ đề hoặc âm thanh" },
   { level: 2, id: "cham-hoac-dung", text: "Phụ đề chậm, thiếu hoặc dừng" },
-  { level: 2, id: "model-macos", text: "Model, cài đặt và macOS" },
+  { level: 2, id: "model-macos", text: "Model, cài đặt, macOS và Windows" },
   { level: 2, id: "ban-quyen", text: "Bản quyền, hạn mức, dùng thử" },
   { level: 2, id: "gui-log", text: "Gửi log và báo lỗi" },
   { level: 2, id: "hoi-nhanh", text: "Hỏi nhanh" },
@@ -19,7 +19,7 @@ const toc = [
 const QUICK = [
   {
     q: "Tôi đóng cửa sổ mà app vẫn chạy. Thoát hẳn thế nào?",
-    a: "<p>Đóng cửa sổ chỉ ẩn app xuống menu bar. Hãy chọn <strong>Thoát</strong> ở biểu tượng AI Translator trên menu bar; ⌘Q không thoát hẳn.</p>",
+    a: "<p>Đóng cửa sổ chỉ ẩn app xuống menu bar (macOS) hoặc khay hệ thống (Windows). Hãy chọn <strong>Thoát</strong> ở biểu tượng AI Translator trên menu bar hoặc trong khay; trên Mac, ⌘Q không thoát hẳn.</p>",
   },
   {
     q: "Cài lại app có làm mất key hoặc mở lại 10 ngày dùng thử không?",
@@ -61,10 +61,10 @@ ${docLayout({
   body: `
 <h2 id="khong-co-am-thanh">Không có phụ đề hoặc không nghe thấy âm thanh</h2>
 <div class="grid grid-2">
-<div class="card"><span class="card-title">“Không nghe thấy gì dù có app đang phát tiếng: có thể AI Translator chưa được phép ghi âm thanh hệ thống.”</span><p><strong>Nguyên nhân:</strong> macOS chưa cấp quyền và không báo lỗi: app chỉ nhận âm thanh im lặng.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Mở System Settings</strong>, bật AI Translator ở Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only, rồi <strong>Bắt đầu</strong> lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền ghi âm</a>.</p></div>
+<div class="card"><span class="card-title">“Không nghe thấy gì dù có app đang phát tiếng: có thể AI Translator chưa được phép ghi âm thanh hệ thống.”</span><p><strong>Nguyên nhân:</strong> macOS chưa cấp quyền và không báo lỗi: app chỉ nhận âm thanh im lặng.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Mở System Settings</strong>, bật AI Translator ở Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only, rồi <strong>Bắt đầu</strong> lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền ghi âm</a>. Trên Windows không có quyền này: nếu không nghe thấy gì, kiểm tra thiết bị phát đang chọn ở Cài đặt › Âm thanh.</p></div>
 <div class="card"><span class="card-title">“Không nghe thấy âm thanh. Kiểm tra âm thanh cuộc họp có đang phát không.” hoặc “Không thu được âm thanh.”</span><p><strong>Nguyên nhân:</strong> Máy không phát tiếng, nguồn âm thanh sai, hoặc app không mở được nguồn.</p><p><strong>Cách xử lý:</strong> Bật tiếng cuộc họp. Ở Cài đặt › Âm thanh, bấm <strong>Làm mới danh sách</strong>, chọn lại nguồn rồi <strong>Bắt đầu</strong> lại. Còn lỗi thì gửi log.</p></div>
 <div class="card"><span class="card-title">“App đã chọn không phát tiếng”</span><p><strong>Nguyên nhân:</strong> Bạn chọn <strong>Chỉ {tên app}</strong> mà app đó đang im.</p><p><strong>Cách xử lý:</strong> Cho app phát tiếng (phiên chạy tiếp ngay), hoặc chọn <strong>Toàn hệ thống, trừ app này</strong> (từ phiên sau).</p></div>
-<div class="card"><span class="card-title">Không thấy thanh phụ đề</span><p><strong>Nguyên nhân:</strong> Thanh ẩn khi mở app cho tới khi bạn bấm Bắt đầu, hoặc đã bị ẩn bằng nút ✕ hay phím tắt.</p><p><strong>Cách xử lý:</strong> Ở Màn hình chính, mục <strong>Thanh phụ đề</strong>, bấm <strong>Hiện</strong>; hoặc nhấn ${keys(["⌃", "⌥", "H"])}; hoặc chọn “Hiện phụ đề” ở menu bar. Thanh khóa thì mở khóa bằng ${keys(["⌃", "⌥", "L"])}.</p></div>
+<div class="card"><span class="card-title">Không thấy thanh phụ đề</span><p><strong>Nguyên nhân:</strong> Thanh ẩn khi mở app cho tới khi bạn bấm Bắt đầu, hoặc đã bị ẩn bằng nút ✕ hay phím tắt.</p><p><strong>Cách xử lý:</strong> Ở Màn hình chính, mục <strong>Thanh phụ đề</strong>, bấm <strong>Hiện</strong>; hoặc nhấn ${keys(["⌃", "⌥", "H"])} (Windows: ${keys(["Ctrl", "Alt", "H"])}); hoặc chọn “Hiện phụ đề” ở menu bar hay khay hệ thống. Thanh khóa thì mở khóa bằng ${keys(["⌃", "⌥", "L"])} (Windows: ${keys(["Ctrl", "Alt", "L"])}).</p></div>
 <div class="card"><span class="card-title">“Có phím tắt không đăng ký được. Mở Cài đặt › Phím tắt để đổi.”</span><p><strong>Nguyên nhân:</strong> App khác đang giữ tổ hợp phím đó.</p><p><strong>Cách xử lý:</strong> Ở Cài đặt › Phím tắt, bấm <strong>Đổi</strong> và nhấn tổ hợp mới, có ít nhất một phím Ctrl, Alt hoặc Cmd/Win (chỉ Shift thì chưa đủ).</p></div>
 </div>
 
@@ -74,14 +74,16 @@ ${docLayout({
 <div class="card"><span class="card-title">“Dịch không khả dụng: chỉ hiện câu gốc”; “Phiên dịch đã dừng vì lỗi. Mở cửa sổ chính để xem chi tiết.”; “Phần nhận dạng giọng nói ngừng chạy…”</span><p><strong>Nguyên nhân:</strong> Bộ dịch hoặc bộ nhận dạng lỗi. App tự khởi động lại chúng; quá 5 lần trong 10 phút thì dừng dịch.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Dừng</strong> rồi <strong>Bắt đầu</strong>. Nếu app báo thiếu hoặc hỏng một phần của app, hãy cài lại AI Translator. Lặp lại thì gửi log.</p></div>
 </div>
 
-<h2 id="model-macos">Model, cài đặt và macOS</h2>
+<h2 id="model-macos">Model, cài đặt, macOS và Windows</h2>
 <div class="grid grid-2">
 <div class="card"><span class="card-title">“Không kết nối được máy chủ model. Kiểm tra kết nối mạng rồi thử lại.”</span><p><strong>Nguyên nhân:</strong> Máy không có mạng, hoặc mạng chặn tải.</p><p><strong>Cách xử lý:</strong> Kiểm tra mạng rồi bấm <strong>Thử lại</strong>.</p></div>
 <div class="card"><span class="card-title">“Tải chưa xong. Bấm Tiếp tục để tải tiếp từ chỗ đã dừng.” hoặc “Một file tải về bị hỏng…”</span><p><strong>Nguyên nhân:</strong> Mạng rớt giữa chừng, hoặc file tải về không khớp mã kiểm tra.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Tiếp tục</strong>. Nếu app báo “Model bị hỏng. Hãy tải lại model.”, bấm <strong>Kiểm tra và tải lại</strong> ở Cài đặt › Model.</p></div>
 <div class="card"><span class="card-title">“Ổ đĩa không đủ chỗ cho gói này…” hoặc “Không ghi được file model xuống ổ đĩa.”</span><p><strong>Nguyên nhân:</strong> Ổ đĩa cần trống bằng dung lượng tải cộng 1 GB (gói model Chuẩn khoảng 2,5 GB, gói model Nhẹ khoảng 1,3 GB).</p><p><strong>Cách xử lý:</strong> Giải phóng ổ đĩa, hoặc chọn gói model Nhẹ.</p></div>
-<div class="card"><span class="card-title">“Máy này chưa đạt cấu hình tối thiểu nên không tải được model.”</span><p><strong>Nguyên nhân:</strong> Máy dưới mức tối thiểu: Mac Apple Silicon, RAM 8 GB.</p><p><strong>Cách xử lý:</strong> Dùng máy đạt cấu hình. Xem yêu cầu ở <a href="/tai-xuong/">trang tải xuống</a>.</p></div>
+<div class="card"><span class="card-title">“Máy này chưa đạt cấu hình tối thiểu nên không tải được model.”</span><p><strong>Nguyên nhân:</strong> Máy dưới mức tối thiểu: Mac Apple Silicon có RAM 8 GB, hoặc máy Windows 10/11 x64 có RAM 8 GB và CPU hỗ trợ AVX2. App nói rõ lý do, ví dụ “Bộ xử lý của máy này không có AVX2…”.</p><p><strong>Cách xử lý:</strong> Dùng máy đạt cấu hình. Xem yêu cầu ở <a href="/tai-xuong/">trang tải xuống</a>.</p></div>
 <div class="card"><span class="card-title">macOS báo không xác minh được nhà phát triển khi mở app lần đầu</span><p><strong>Nguyên nhân:</strong> Bản macOS hiện ký ad-hoc và chưa được Apple notarize.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Done</strong>, mở System Settings › Privacy &amp; Security, kéo xuống cuối, bấm <strong>Open Anyway</strong> cạnh AI Translator. Xem <a href="/huong-dan/cai-dat-macos/">cài đặt trên macOS</a>.</p></div>
 <div class="card"><span class="card-title">Sau khi cập nhật, macOS hỏi mật khẩu vài lần</span><p><strong>Nguyên nhân:</strong> Bình thường với bản ký ad-hoc: mật khẩu vài lần và quyền ghi âm một lần.</p><p><strong>Cách xử lý:</strong> Nhập mật khẩu, bấm <strong>Always Allow</strong> và cho phép quyền ghi âm.</p></div>
+<div class="card"><span class="card-title">Windows hiện “Windows protected your PC” khi mở bộ cài</span><p><strong>Nguyên nhân:</strong> Bản Windows chưa được ký mã nên Microsoft Defender SmartScreen có thể chặn.</p><p><strong>Cách xử lý:</strong> Kiểm mã SHA-256, bấm <strong>More info</strong>, kiểm dòng App là đúng tên file cài, rồi bấm <strong>Run anyway</strong>. Không có nút Run anyway thì có thể do chính sách của máy: hỏi quản trị viên. Xem <a href="/huong-dan/cai-dat-windows/">cài đặt trên Windows</a>.</p></div>
+<div class="card"><span class="card-title">Phần mềm diệt virus chặn hoặc xóa bộ cài Windows</span><p><strong>Nguyên nhân:</strong> Bộ cài chưa ký mã và còn ít người tải, nên có phần mềm xếp nó vào loại đáng ngờ.</p><p><strong>Cách xử lý:</strong> Kiểm lại mã SHA-256. Nếu mã khớp mà vẫn bị chặn, <a href="/lien-he/">liên hệ hỗ trợ</a> và cho biết tên phần mềm diệt virus.</p></div>
 </div>
 
 <h2 id="ban-quyen">Bản quyền, hạn mức và dùng thử</h2>
@@ -104,7 +106,7 @@ ${appShot({
 })}
 <p>Hãy liên hệ khi lỗi lặp lại sau khi làm theo bảng trên, khi key bị khóa tạm hoặc thu hồi, hoặc khi thanh toán có vấn đề. Hãy kèm trong thư:</p>
 <ul>
-<li>Phiên bản app (Giới thiệu › “Phiên bản …”), phiên bản macOS, chip (ví dụ MacBook Air M2) và RAM.</li>
+<li>Phiên bản app (Giới thiệu › “Phiên bản …”), phiên bản macOS hoặc Windows, chip hoặc CPU (ví dụ MacBook Air M2), RAM, và card đồ họa nếu là máy Windows.</li>
 <li>Gói model (Chuẩn hoặc Nhẹ, ở Cài đặt › Model) và gói bản quyền.</li>
 <li>Câu báo lỗi đúng chữ hoặc ảnh chụp, app họp đang dùng, việc bạn vừa làm.</li>
 <li>Mã đơn nếu liên quan thanh toán; <code>app.log</code> nếu bạn đồng ý.</li>

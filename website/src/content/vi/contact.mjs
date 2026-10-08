@@ -13,8 +13,9 @@ const mail = (subject, body) => `mailto:${EMAIL}?subject=${encodeURIComponent(su
 const M = {
   support: mail("Hỗ trợ kỹ thuật AI Translator", [
     "Phiên bản AI Translator (Giới thiệu):",
-    "macOS và chip (ví dụ macOS 15, MacBook Air M2):",
+    "Hệ điều hành và máy (ví dụ macOS 15, MacBook Air M2; hoặc Windows 11, Intel Core i5-1235U):",
     "RAM:",
+    "Card đồ họa (nếu là máy Windows):",
     "Gói model (Chuẩn hay Nhẹ):",
     "App họp đang dùng:",
     "Điều đã xảy ra:",
@@ -66,13 +67,13 @@ ${sectionHead({ eyebrow: "Gửi gì, kèm gì", title: "Bạn cần gì? Gửi t
 
 <div class="card reveal" id="beta">
 <h3>Đăng ký nhận bản beta</h3>
-<p>AI Translator chưa có tải công khai. Hãy gửi email theo mẫu ở trang Tải xuống: dòng Mac và chip, phiên bản macOS, app họp bạn dùng và ngôn ngữ cần dịch. Khi có bản beta phù hợp với máy bạn, chúng tôi gửi bản cài kèm mã SHA-256 để bạn kiểm tra.</p>
+<p>AI Translator chưa có tải công khai. Hãy gửi email theo mẫu ở trang Tải xuống (có mẫu riêng cho macOS và Windows): dòng máy và chip hoặc CPU, phiên bản macOS hoặc Windows, RAM, app họp bạn dùng và ngôn ngữ cần dịch. Khi có bản beta phù hợp với máy bạn, chúng tôi gửi bản cài kèm mã SHA-256 để bạn kiểm tra.</p>
 <p><a class="btn btn-secondary btn-sm" href="/tai-xuong/">Mở trang Tải xuống ${icon("arrow-right")}</a></p>
 </div>
 
 <div class="card reveal" id="ho-tro-ky-thuat">
 <h3>Hỗ trợ kỹ thuật</h3>
-<p>Hãy kèm theo: phiên bản app (màn hình Giới thiệu), phiên bản macOS và chip (menu Apple › About This Mac), dung lượng RAM, gói model đang dùng (Cài đặt › Model: Chuẩn hay Nhẹ), app họp bạn đang dùng, các bước dẫn tới lỗi và nội dung thông báo lỗi.</p>
+<p>Hãy kèm theo: phiên bản app (màn hình Giới thiệu), phiên bản macOS và chip (menu Apple › About This Mac) hoặc phiên bản Windows và CPU (Settings › System › About) cùng card đồ họa, dung lượng RAM, gói model đang dùng (Cài đặt › Model: Chuẩn hay Nhẹ), app họp bạn đang dùng, các bước dẫn tới lỗi và nội dung thông báo lỗi.</p>
 <p>Nếu có thể, đính kèm log: vào Giới thiệu › Mở thư mục log. Log nằm trên máy bạn và không chứa nội dung chép lời; bạn tự quyết định có gửi hay không. Hãy thử <a href="/huong-dan/khac-phuc-su-co/">các bước khắc phục sự cố</a> trước, vì nhiều lỗi thường gặp có cách xử lý nhanh.</p>
 ${btn(M.support, "Gửi thư hỗ trợ kỹ thuật")}
 </div>

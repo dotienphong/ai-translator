@@ -15,7 +15,7 @@ const toc = [
   { level: 2, id: "chi-bao", text: "Chỉ báo trên thanh" },
   { level: 2, id: "phim-tat", text: "Phím tắt mặc định" },
   { level: 2, id: "doi-phim-tat", text: "Đổi phím tắt" },
-  { level: 2, id: "menu-bar", text: "Menu ở menu bar" },
+  { level: 2, id: "menu-bar", text: "Menu ở menu bar và khay hệ thống" },
   { level: 2, id: "dong-cua-so", text: "Vì sao đóng cửa sổ không thoát app" },
 ];
 
@@ -38,7 +38,7 @@ ${pageHero({
   crumbs,
   title: "Thanh phụ đề và phím tắt",
   lead: "Thanh phụ đề là cửa sổ nổi luôn nằm trên cùng, hiện bản dịch mà không lấy focus của app họp. Bạn kéo để di chuyển, kéo cạnh để đổi kích thước, khóa để chuột xuyên qua, và điều khiển bằng năm phím tắt mặc định như ⌃⌥T (bắt đầu hoặc dừng dịch) và ⌃⌥H (ẩn hoặc hiện).",
-  meta: "<span>macOS (Windows chưa phát hành)</span> <span>Cập nhật 08/10/2026</span>",
+  meta: "<span>macOS và Windows</span> <span>Cập nhật 08/10/2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -99,7 +99,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <h2 id="phim-tat">Phím tắt mặc định</h2>
 <p>Phím tắt hoạt động ở mọi app, kể cả khi AI Translator không phải cửa sổ đang mở.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Việc</th><th scope="col">macOS</th><th scope="col">Windows (khi phát hành)</th></tr></thead>
+<thead><tr><th scope="col">Việc</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
 <tbody>
 <tr><th scope="row">Bắt đầu hoặc dừng dịch</th><td>${keys(["⌃", "⌥", "T"])}</td><td>${keys(["Ctrl", "Alt", "T"])}</td></tr>
 <tr><th scope="row">Hiện hoặc ẩn phụ đề</th><td>${keys(["⌃", "⌥", "H"])}</td><td>${keys(["Ctrl", "Alt", "H"])}</td></tr>
@@ -107,7 +107,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <tr><th scope="row">Cuộn phụ đề lên (xem câu cũ)</th><td>${keys(["⌃", "⌥", "PageUp"])}</td><td>${keys(["Ctrl", "Alt", "PageUp"])}</td></tr>
 <tr><th scope="row">Cuộn phụ đề xuống (câu mới hơn)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
 </tbody></table></div>
-<p class="small muted">Trên macOS, ⌃ là phím Control và ⌥ là phím Option (không phải Command). Bản Windows chưa phát hành.</p>
+<p class="small muted">Trên macOS, ⌃ là phím Control và ⌥ là phím Option (không phải Command).</p>
 
 <h2 id="doi-phim-tat">Đổi phím tắt</h2>
 <ol>
@@ -118,8 +118,9 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <p>Tổ hợp mới phải có ít nhất một phím Ctrl, Alt hoặc Cmd; chỉ có Shift thì chưa đủ. App báo “Tổ hợp này đang dùng cho việc khác.” nếu bạn đặt trùng một phím tắt của chính nó, và “Hệ thống không cho dùng tổ hợp này; có thể app khác đang giữ.” nếu hệ điều hành từ chối. Chúng tôi chưa kiểm xem phím mặc định có trùng phím tắt của Zoom, Teams hay Meet hay không; nếu bạn thấy trùng, hãy đổi ở đây.</p>
 ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím tắt liệt kê năm việc cùng tổ hợp phím mặc định trên macOS và nút Đổi", caption: "Cài đặt › Phím tắt." })}
 
-<h2 id="menu-bar">Menu ở menu bar</h2>
+<h2 id="menu-bar">Menu ở menu bar và khay hệ thống</h2>
 <p>Biểu tượng AI Translator (bong bóng thoại có sóng âm) ở menu bar cho bạn điều khiển mà không mở cửa sổ chính. Rê chuột vào biểu tượng để thấy trạng thái “Sẵn sàng” hoặc “Đang dịch”.</p>
+<p>Trên Windows, biểu tượng (logo màu của app) nằm ở khay hệ thống, góc phải taskbar; Windows có thể giấu nó sau mũi tên <strong>^</strong>. Bấm chuột phải vào biểu tượng để mở menu dưới đây; bấm chuột trái để mở cửa sổ chính.</p>
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Mục menu</th><th scope="col">Khi nào có</th></tr></thead>
 <tbody>
@@ -133,7 +134,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím t�
 </tbody></table></div>
 
 <h2 id="dong-cua-so">Vì sao đóng cửa sổ không thoát app?</h2>
-<p>AI Translator được thiết kế để nằm ở menu bar, để phím tắt và phiên dịch vẫn chạy khi cửa sổ chính đã đóng. Bấm nút đóng chỉ ẩn cửa sổ. Trên Mac, ⌘Q cũng không thoát: app hiện lại cửa sổ chính kèm lời nhắc “AI Translator vẫn chạy ở menu bar. Muốn thoát, chọn Thoát ở biểu tượng trên menu bar.” Muốn thoát hẳn, chọn <strong>Thoát</strong> ở menu bar.</p>
+<p>AI Translator được thiết kế để nằm ở menu bar (macOS) hoặc khay hệ thống (Windows), để phím tắt và phiên dịch vẫn chạy khi cửa sổ chính đã đóng. Bấm nút đóng chỉ ẩn cửa sổ. Trên Mac, ⌘Q cũng không thoát: app hiện lại cửa sổ chính kèm lời nhắc “AI Translator vẫn chạy ở menu bar. Muốn thoát, chọn Thoát ở biểu tượng trên menu bar.” Muốn thoát hẳn, chọn <strong>Thoát</strong> ở biểu tượng trên menu bar hoặc trong khay hệ thống.</p>
 <p>Gặp trục trặc? Xem <a href="/huong-dan/khac-phuc-su-co/">khắc phục sự cố</a>. Tổng quan ở trang <a href="/tinh-nang/">tính năng</a>.</p>
 
 ${docNav(

@@ -40,7 +40,7 @@ ${feature({ icon: "captions", title: "A floating subtitle bar", text: "One bar t
 <section class="section-tight"><div class="container">
 ${sectionHead({ eyebrow: "Before you start", title: "What you need", center: true })}
 <div class="reveal">${facts([
-  ["Platform", "macOS 14.2 or later on Apple Silicon (beta)<small>Windows 10/11: coming soon · Intel Macs: not supported</small>"],
+  ["Platform", "macOS 14.2 or later on Apple Silicon and Windows 10/11 x64 (beta)<small>Intel Macs and Windows ARM64: not supported</small>"],
   ["Computer", "At least 8 GB of RAM, 16 GB recommended<small>One-time model download: 1.3 GB (Lite) or 2.5 GB (Standard)</small>"],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>App interface: English and Vietnamese</small>"],
   ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR, no automatic renewal</small>"],
@@ -65,7 +65,7 @@ ${checkList([
   "<strong>You need the other people to hear your translated voice.</strong> AI Translator translates one way only, from the audio playing on your computer into your language. It does not translate your voice and play it into the meeting.",
   "<strong>You need to record the meeting.</strong> The app does not record audio to disk. It keeps a text transcript only, and saving history is a Pro feature that is off by default.",
   "<strong>You need automatic minutes, summaries or speaker labels.</strong> Not available.",
-  "<strong>You use an Intel Mac or Windows.</strong> The beta runs on macOS 14.2 or later on Apple Silicon only. Windows 10/11 is coming, with no release date yet.",
+  "<strong>You use an Intel Mac, Windows ARM64, or a Windows PC whose CPU lacks AVX2.</strong> The beta runs on macOS 14.2 or later on Apple Silicon and on Windows 10/11 64-bit (x64) with a CPU that supports AVX2.",
   "<strong>Your computer has less than 8 GB of RAM,</strong> or you need a language beyond the five above: the app cannot cover that yet.",
   "<strong>You have no Vietnamese bank account.</strong> For now we accept VietQR in VND only, with no international cards.",
 ], true)}

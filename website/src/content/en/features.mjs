@@ -100,11 +100,11 @@ ${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings listing
 <p>Because the app captures system audio, AI Translator works with anything that makes sound: Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars, videos and online courses.</p>
 ${checkList([
   "<strong>macOS:</strong> listen to the whole system (except the app itself) or to a single app that is playing sound, so notification sounds from other apps are not translated by mistake",
-  "<strong>Windows (when released):</strong> the default playback device, or a device you choose",
+  "<strong>Windows (beta):</strong> the default playback device, or a device you choose",
   "The source reopens automatically when you switch playback devices, for example when you plug in headphones or connect Bluetooth",
   "<strong>Pause that ends a sentence</strong> is adjustable from 50 to 800&nbsp;ms: shorter gives you subtitles sooner, longer cuts fewer sentences in half",
 ])}
-<p>On macOS, the first time you press Start the system asks for the <em>system audio recording</em> permission. The app does not use the microphone. <a href="/en/guide/macos-audio-permission/">See how to grant the audio permission</a>.</p>
+<p>On macOS, the first time you press Start the system asks for the <em>system audio recording</em> permission. The app does not use the microphone. <a href="/en/guide/macos-audio-permission/">See how to grant the audio permission</a>. Windows needs no such permission.</p>
 </div>
 </div>
 </div></section>
@@ -156,7 +156,7 @@ ${checkList([
 <h2>Control it without leaving the meeting</h2>
 <p>Five global shortcuts work even when AI Translator is not the window in front. You can change each one in Settings › Shortcuts.</p>
 <div class="table-wrap" role="region" aria-label="Keyboard shortcuts" tabindex="0"><table>
-<thead><tr><th scope="col">Action</th><th scope="col">macOS</th><th scope="col">Windows (when released)</th></tr></thead>
+<thead><tr><th scope="col">Action</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
 <tbody>
 <tr><th scope="row">Start or stop translating</th><td>${keys(["⌃", "⌥", "T"])}</td><td>${keys(["Ctrl", "Alt", "T"])}</td></tr>
 <tr><th scope="row">Show or hide subtitles</th><td>${keys(["⌃", "⌥", "H"])}</td><td>${keys(["Ctrl", "Alt", "H"])}</td></tr>
@@ -164,8 +164,8 @@ ${checkList([
 <tr><th scope="row">Scroll subtitles up (older sentences)</th><td>${keys(["⌃", "⌥", "PageUp"])}</td><td>${keys(["Ctrl", "Alt", "PageUp"])}</td></tr>
 <tr><th scope="row">Scroll subtitles down (newer sentences)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
 </tbody></table></div>
-<p class="small muted">On macOS, ⌃ is Control and ⌥ is Option. A shortcut needs at least one of Ctrl, Alt or Cmd/Win. The Windows version is not released yet.</p>
-<p>The menu bar icon (macOS) or system tray icon (Windows, when released) lets you start or stop translating, show or hide and lock the subtitles, and open the main window. Closing the window only hides the app in the tray; to quit completely, choose <em>Quit</em>.</p>
+<p class="small muted">On macOS, ⌃ is Control and ⌥ is Option. A shortcut needs at least one of Ctrl, Alt or Cmd/Win.</p>
+<p>The menu bar icon (macOS) or system tray icon (Windows) lets you start or stop translating, show or hide and lock the subtitles, and open the main window. Closing the window only hides the app in the tray; to quit completely, choose <em>Quit</em>.</p>
 </div>
 <div>
 ${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings showing the five default shortcuts on macOS", caption: "Settings › Shortcuts: press Change, then the new key combination." })}
@@ -193,7 +193,7 @@ ${facts([
   ["macOS", "macOS 14.2 or later, Apple Silicon (M1 or newer)<small>No version for Intel Macs</small>"],
   ["RAM", "At least 8 GB, 16 GB recommended"],
   ["Disk", "At least 1 GB free on top of the size of the model being downloaded"],
-  ["Windows", "Windows 10/11 64-bit, CPU with AVX2: not released yet<small>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended</small>"],
+  ["Windows (beta)", "Windows 10/11 64-bit (x64), CPU with AVX2<small>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended. Not code-signed yet, so SmartScreen may warn during installation; latency on Windows not measured yet</small>"],
 ])}
 </div></section>
 

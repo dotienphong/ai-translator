@@ -32,7 +32,7 @@ ${pageHero({
   ["Works with", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>No bot, no plugin; any app that plays sound through your computer can be captured</small>"],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>One way, into the language you choose</small>"],
   ["Latency", "Median 0.76–1.03 seconds<small>Mac M4 Pro, Standard pack; slower machines will be slower</small>"],
-  ["Platform", "macOS 14.2+ (Apple Silicon), beta<small>Windows 10/11: coming soon</small>"],
+  ["Platform", "macOS 14.2+ (Apple Silicon) and Windows 10/11 x64, beta<small>The Windows build is not code-signed yet, so SmartScreen may warn during installation</small>"],
 ])}</div>
 </div></section>
 
@@ -112,7 +112,7 @@ ${sectionHead({ eyebrow: "After the meeting", title: "Keep what you need" })}
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "What we tested", title: "Apps and devices tried so far" })}
 <p>Using a separate audio-capture test tool (not the app's full recognition and translation loop), we tested system-audio capture on macOS 26.6.2 with <strong>Zoom (app)</strong>, <strong>Google Meet</strong> in Chrome, Safari and Edge, <strong>Microsoft Teams (new app)</strong> and <strong>Zalo PC</strong>, through the speakers, wired headphones and AirPods.</p>
-<p>This was internal testing, confirmed by ear by the tester. It is not a formal acceptance test on the release build for each app and macOS version (14.2 is the minimum). Windows is not released yet, so there is no Windows result to report.</p>
+<p>This was internal testing, confirmed by ear by the tester. It is not a formal acceptance test on the release build for each app and macOS version (14.2 is the minimum). On Windows, we have only tried system audio capture and the subtitle bar on Windows 11 in internal testing, not each meeting app with the release build.</p>
 </div></section>
 
 <section class="section"><div class="container narrow">

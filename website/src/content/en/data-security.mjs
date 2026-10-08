@@ -127,7 +127,7 @@ ${steps(
 <li><strong>Digital signatures:</strong> app updates are signature-checked before anything is written to disk; the model manifest is signed with Ed25519 and each file is checked against SHA-256; license tokens are signed with Ed25519 and can be verified offline. The app contains only the public key.</li>
 <li><strong>AI processing is separate from the interface:</strong> it only talks to the app inside your computer, accepts no connections from outside the machine and uses a random key on every run.</li>
 <li><strong>Sensitive keys stay out of the app:</strong> the payment API key and signing keys live only on our servers; connections to our servers use HTTPS.</li>
-<li><strong>Detecting a tampered app:</strong> on macOS the app checks that its ad-hoc signature is intact and the bundle id is right; a build whose signature does not match runs only the Free plan. This is an integrity check and does not replace a Developer ID signature.</li>
+<li><strong>Detecting a tampered app:</strong> on macOS the app checks that its ad-hoc signature is intact and the bundle id is right; a build whose signature does not match runs only the Free plan. This is an integrity check and does not replace a Developer ID signature. On Windows the beta is not code-signed yet, so the app has no such check; verify the installer's SHA-256 instead.</li>
 </ul>
 
 <h2 id="signing">Code signing today</h2>
@@ -135,9 +135,9 @@ ${steps(
 <thead><tr><th scope="col">Platform</th><th scope="col">Status</th><th scope="col">What it means for you</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>Ad-hoc signed, <strong>not notarized</strong> (we do not have an Apple Developer ID yet)</td><td>macOS blocks the first launch: you need to click Open Anyway in System Settings › Privacy &amp; Security. After each update, macOS asks again with 5 Keychain dialogs and 1 audio-recording dialog.</td></tr>
-<tr><th scope="row">Windows</th><td>Not released, <strong>no code-signing certificate yet</strong></td><td>At release, SmartScreen may warn at first.</td></tr>
+<tr><th scope="row">Windows</th><td>Beta, <strong>not code-signed</strong> (we do not have a Windows code-signing certificate yet)</td><td>When you open the installer, Microsoft Defender SmartScreen may show “Windows protected your PC”: click More info, then Run anyway. Publisher shows Unknown publisher.</td></tr>
 </tbody></table></div>
-<p>An ad-hoc signature does not tell Apple who the developer is, so get the installer only from us and compare the SHA-256 checksum we send with it. We plan to move to a Developer ID when we can, with no date yet. See the <a href="/en/guide/install-macos/">macOS installation guide</a>.</p>
+<p>An ad-hoc signature does not tell Apple who the developer is, so get the installer only from us and compare the SHA-256 checksum we send with it. The same goes for the unsigned Windows build: Windows cannot confirm who published the file, so comparing the SHA-256 is how you know it has not been altered. We plan to move to a Developer ID and a Windows code-signing certificate when we can, with no date yet. See the installation guides for <a href="/en/guide/install-macos/">macOS</a> and <a href="/en/guide/install-windows/">Windows</a>.</p>
 
 <h2 id="limits">What we do not promise</h2>
 <ul>

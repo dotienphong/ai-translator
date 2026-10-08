@@ -28,7 +28,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Where can I download it right now?",
-    a: `<p>AI Translator is in beta, so there is no public download button yet. Request the macOS beta on the <a href="/en/download/">Download page</a> and we will email you the installer and setup instructions.</p>`,
+    a: `<p>AI Translator is in beta, so there is no public download button yet. Request the macOS or Windows beta on the <a href="/en/download/">Download page</a> and we will email you the installer and setup instructions.</p>`,
   },
 ];
 
@@ -49,11 +49,11 @@ export default {
   body: () => `
 <section class="hero"><div class="container hero-grid">
 <div>
-<p class="pill reveal"><span class="dot"></span> Beta · macOS (Apple Silicon) · Windows coming soon</p>
+<p class="pill reveal"><span class="dot"></span> Beta · macOS (Apple Silicon) · Windows 10/11</p>
 <h1 class="reveal">AI-translated subtitles for <em>every meeting</em>, running on your computer</h1>
 <p class="lead reveal">AI Translator uses AI that runs on your own computer to turn the audio playing on it into translated subtitles on your screen, with low latency. Your audio and meeting content are not sent to the cloud and do not pass through any cloud AI service. Use it with Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars or videos: no bot, no account.</p>
 <div class="hero-actions reveal">
-<a class="btn btn-primary btn-lg" href="/en/download/">Get the macOS beta ${icon("arrow-right")}</a>
+<a class="btn btn-primary btn-lg" href="/en/download/">Get the beta ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-it-works">See how it works</a>
 </div>
 <ul class="trust reveal">
@@ -83,10 +83,10 @@ ${demo({
 
 <section class="section-tight"><div class="container narrow">
 <h2 class="sr-only">What is AI Translator?</h2>
-<p class="lead reveal"><strong>AI Translator</strong> is a desktop app that shows live translated subtitles for the audio playing on your computer. It recognizes the speech, translates it and displays the result on a floating subtitle bar, entirely on your own machine, with no bot joining your meeting and no account to create. A beta for macOS (Apple Silicon) is available on request; the Windows version is still being finished.</p>
+<p class="lead reveal"><strong>AI Translator</strong> is a desktop app that shows live translated subtitles for the audio playing on your computer. It recognizes the speech, translates it and displays the result on a floating subtitle bar, entirely on your own machine, with no bot joining your meeting and no account to create. A beta for macOS (Apple Silicon) and Windows 10/11 is available on request by email.</p>
 <div class="reveal">${facts([
   ["Product type", "Desktop app for live translated subtitles"],
-  ["Platforms", "macOS 14.2 or later (Apple Silicon)<small>Windows 10/11 x64: coming soon</small>"],
+  ["Platforms", "macOS 14.2 or later (Apple Silicon) and Windows 10/11 x64<small>Both are in beta</small>"],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>For both the source audio and the translation. More languages are planned for the future</small>"],
   ["Processing", "100% on your device; audio is never sent out<small>Speech recognition and translation both run on your device</small>"],
   ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid in VND by VietQR from a Vietnamese bank, no auto-renewal</small>"],
@@ -193,7 +193,7 @@ ${plansGrid("en", { ctaLabel: "Get the beta", freeLabel: "Sign up for the free t
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${callout({ kind: "warn", title: "Honest about the beta", text: "AI Translator is in beta. The macOS build is currently signed ad-hoc and not notarized, so macOS blocks the app the first time you open it and you need to allow it in System Settings (we have a <a href=\"/en/guide/install-macos/\">step-by-step installation guide</a>). The Windows version is not released yet. We say this up front so you do not have to guess." })}
+${callout({ kind: "warn", title: "Honest about the beta", text: "AI Translator is in beta. The macOS build is currently signed ad-hoc and not notarized, so macOS blocks the app the first time you open it and you need to allow it in System Settings (we have a <a href=\"/en/guide/install-macos/\">step-by-step installation guide</a>). The Windows build is not code-signed yet, so Windows SmartScreen may warn you when you open the installer (see the <a href=\"/en/guide/install-windows/\">Windows installation guide</a>), and we have not measured latency on Windows yet. We say this up front so you do not have to guess." })}
 </div></section>
 
 <section class="section"><div class="container narrow">
@@ -202,6 +202,6 @@ ${faq(HOME_FAQ, { open: true })}
 <p class="more-link"><a href="/en/faq/">See all questions ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "Ready to understand every meeting?", text: "Get the macOS beta and try it free for 10 days. No card needed.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
+${ctaBand({ title: "Ready to understand every meeting?", text: "Get the macOS or Windows beta and try it free for 10 days. No card needed.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
 `,
 };

@@ -13,29 +13,30 @@ export default {
   path: "/huong-dan/",
   title: "Hướng dẫn sử dụng AI Translator",
   description:
-    "Hướng dẫn sử dụng AI Translator từng bước: cài đặt trên macOS, cấp quyền ghi âm, thanh phụ đề và phím tắt, từ điển, lịch sử, mua key và khắc phục sự cố.",
+    "Hướng dẫn sử dụng AI Translator từng bước: cài đặt trên macOS và Windows, cấp quyền ghi âm, thanh phụ đề và phím tắt, từ điển, lịch sử, mua key và khắc phục sự cố.",
   schemaType: "CollectionPage",
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  llm: "Mục lục tám bài hướng dẫn sử dụng AI Translator: bắt đầu nhanh, cài đặt macOS, cấp quyền ghi âm, thanh phụ đề và phím tắt, từ điển thuật ngữ, lịch sử và xuất file, mua và kích hoạt key, khắc phục sự cố.",
+  llm: "Mục lục chín bài hướng dẫn sử dụng AI Translator: bắt đầu nhanh, cài đặt macOS, cài đặt Windows, cấp quyền ghi âm trên macOS, thanh phụ đề và phím tắt, từ điển thuật ngữ, lịch sử và xuất file, mua và kích hoạt key, khắc phục sự cố.",
   llmTitle: "Hướng dẫn sử dụng AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Hướng dẫn sử dụng AI Translator",
-  lead: "Tám bài hướng dẫn từng bước cho AI Translator, từ cài đặt trên macOS tới mua key và xử lý sự cố. Mỗi bài dùng đúng tên nút và tên mục trong app; phần lớn có ảnh chụp giao diện thật.",
+  lead: "Chín bài hướng dẫn từng bước cho AI Translator, từ cài đặt trên macOS và Windows tới mua key và xử lý sự cố. Mỗi bài dùng đúng tên nút và tên mục trong app; phần lớn có ảnh chụp giao diện thật.",
 })}
 
 <section class="section-tight"><div class="container">
-${callout({ title: "Các hướng dẫn hiện viết cho macOS.", text: "AI Translator đang ở giai đoạn beta cho macOS 14.2 trở lên (Apple Silicon). Bản Windows 10/11 chưa phát hành nên chưa có hướng dẫn riêng. Chưa có bản cài? Xem trang <a href=\"/tai-xuong/\">nhận bản beta</a>." })}
+${callout({ title: "Hướng dẫn dùng cho cả macOS và Windows.", text: "Phần lớn các bước giống nhau trên hai hệ điều hành. Khác biệt chính trên Windows: cài bằng file .exe và có thể phải qua cảnh báo SmartScreen vì bản beta chưa được ký mã, không cần cấp quyền ghi âm, biểu tượng nằm ở khay hệ thống thay cho menu bar, phím tắt dùng Ctrl+Alt thay cho ⌃⌥. Chưa có bản cài? Xem trang <a href=\"/tai-xuong/\">nhận bản beta</a>." })}
 </div></section>
 
 <section class="section-tight"><div class="container">
 ${sectionHead({ eyebrow: "Bắt đầu", title: "Từ file cài đặt tới phụ đề đầu tiên" })}
-<div class="grid grid-3">
+<div class="grid grid-2">
 ${linkCard({ href: "/huong-dan/bat-dau-nhanh/", icon: "play", title: "Bắt đầu nhanh", text: "Bảy bước thiết lập một lần rồi dịch cuộc họp đầu tiên, kèm ảnh các màn hình thiết lập của app.", more: MORE })}
 ${linkCard({ href: "/huong-dan/cai-dat-macos/", icon: "download", title: "Cài đặt trên macOS", text: "Yêu cầu máy, kéo vào Applications, bấm Open Anyway ở lần mở đầu, kiểm mã SHA-256 và gỡ cài đặt.", more: MORE })}
-${linkCard({ href: "/huong-dan/cap-quyen-thu-am-macos/", icon: "mic", title: "Cấp quyền ghi âm thanh", text: "Trả lời hộp thoại Ghi âm thanh hệ thống, bật lại trong System Settings và chọn nguồn âm thanh.", more: MORE })}
+${linkCard({ href: "/huong-dan/cai-dat-windows/", icon: "download", title: "Cài đặt trên Windows", text: "Yêu cầu máy, kiểm mã SHA-256, qua cảnh báo SmartScreen bằng Run anyway, mở lần đầu và gỡ cài đặt.", more: MORE })}
+${linkCard({ href: "/huong-dan/cap-quyen-thu-am-macos/", icon: "mic", title: "Cấp quyền ghi âm thanh (macOS)", text: "Trả lời hộp thoại Ghi âm thanh hệ thống, bật lại trong System Settings và chọn nguồn âm thanh.", more: MORE })}
 </div>
 </div></section>
 
@@ -60,6 +61,7 @@ ${linkCard({ href: "/huong-dan/khac-phuc-su-co/", icon: "support", title: "Khắ
 ${sectionHead({ title: "Tìm nhanh theo tình huống" })}
 ${facts([
   ["macOS chặn app lần đầu mở", "Xem <a href=\"/huong-dan/cai-dat-macos/\">cài đặt trên macOS</a>, mục Mở lần đầu"],
+  ["Windows hiện màn hình “Windows protected your PC”", "Xem <a href=\"/huong-dan/cai-dat-windows/\">cài đặt trên Windows</a>, mục Chạy bộ cài"],
   ["Bấm Bắt đầu mà không có phụ đề", "Xem <a href=\"/huong-dan/cap-quyen-thu-am-macos/\">cấp quyền ghi âm thanh</a> rồi <a href=\"/huong-dan/khac-phuc-su-co/\">khắc phục sự cố</a>"],
   ["Thanh phụ đề biến mất hoặc không bấm được", "Xem <a href=\"/huong-dan/thanh-phu-de-va-phim-tat/\">thanh phụ đề và phím tắt</a>, mục Ẩn và hiện, Khóa"],
   ["Muốn lưu hoặc xuất bản chép lời", "Xem <a href=\"/huong-dan/lich-su-va-xuat-file/\">lịch sử và xuất file</a>"],

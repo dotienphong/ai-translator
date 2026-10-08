@@ -60,7 +60,7 @@ export function softwareApplication(lang) {
     name: SITE.name,
     applicationCategory: "BusinessApplication",
     applicationSubCategory: en ? "Real-time meeting translation and live captions" : "Dịch phụ đề cuộc họp trực tiếp",
-    operatingSystem: "macOS 14.2 or later (Apple Silicon)",
+    operatingSystem: "macOS 14.2 or later (Apple Silicon); Windows 10/11 64-bit (x64)",
     softwareVersion: SITE.version,
     description: en
       ? "Desktop app that shows live translated subtitles for any meeting or video audio on your computer; speech recognition and translation run on-device, so audio never leaves your machine."

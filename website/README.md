@@ -33,7 +33,7 @@ tools/og/               sinh ảnh chia sẻ 1200×630 từ template.html (cần
 3. `pnpm test`: title ≤ 70 ký tự, description 90–165 ký tự, đúng một h1, hreflang đối xứng, liên kết nội bộ không hỏng, không `style=` nội tuyến.
 
 ## Quy tắc
-- **Chỉ nói điều có thật** về sản phẩm (không số liệu, lời chứng thực hay tính năng tưởng tượng). Số đo hiệu năng luôn kèm điều kiện đo. Trạng thái (beta, Windows chưa phát hành, macOS ký ad-hoc) phải đúng với repo.
+- **Chỉ nói điều có thật** về sản phẩm (không số liệu, lời chứng thực hay tính năng tưởng tượng). Số đo hiệu năng luôn kèm điều kiện đo. Trạng thái (beta macOS và Windows nhận qua email, macOS ký ad-hoc chưa notarize, Windows chưa ký mã nên SmartScreen có thể cảnh báo) phải đúng với repo.
 - **Không công bố công nghệ lõi:** không nêu tên model (nhận dạng, dịch, phát hiện tiếng nói), tên engine/thư viện chạy model, định dạng và mức lượng tử hóa, khung ứng dụng, ngôn ngữ lập trình, kiến trúc tiến trình/cổng nội bộ, API hệ điều hành dùng để thu âm, tên model/bộ so sánh trong số đo chất lượng. Chỉ nói "model AI chạy trên máy", "nhận dạng giọng nói", "dịch". Số đo vẫn giữ (kèm điều kiện đo) nhưng không gắn tên model. Thông báo giấy phép bên thứ ba nằm trong app (Giới thiệu › Giấy phép mã nguồn mở). Ảnh chụp app phải cắt bỏ phần lộ tên thư viện (danh sách giấy phép, màn hình Model nếu hiện tên). Test `không lộ công nghệ lõi` chặn các từ khóa này.
 - Đổi giá ở `server/wrangler.jsonc` thì đổi cả `src/plans.mjs` và mọi chỗ nhắc giá trong `src/content/` (test báo lệch giá/hạn mức).
 - Không cookie, không analytics, không script hay font của bên thứ ba (khớp lời hứa quyền riêng tư; CSP `default-src 'self'`).

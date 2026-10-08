@@ -24,7 +24,7 @@ ${pageHero({
   crumbs,
   title: "Phụ đề dịch cho webinar, khóa học và video",
   lead: "AI Translator hiện phụ đề dịch ngay trên màn hình khi bạn xem webinar, hội thảo trực tuyến, khóa học hay video bằng ngoại ngữ. Nó nghe âm thanh phát ra từ máy tính nên không cần cài gì vào trình duyệt hay nền tảng, và việc nhận dạng cùng dịch chạy trên máy bạn.",
-  meta: "<span>Cập nhật 08/10/2026</span><span>Đã thử trên macOS · Windows sắp có</span>",
+  meta: "<span>Cập nhật 08/10/2026</span><span>Đã thử trên macOS · Windows đang beta</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -102,7 +102,7 @@ ${sectionHead({ eyebrow: "Khóa học chuyên ngành", title: "Từ điển thu�
 ${sectionHead({ eyebrow: "Mẹo", title: "Để xem mượt hơn" })}
 ${checkList([
   "<strong>Chọn nguồn Chỉ {tên app} (macOS):</strong> ở Cài đặt › Âm thanh, chọn trình duyệt hay app trình phát để thông báo và âm thanh khác không bị dịch. Danh sách chỉ có app đang phát tiếng nên hãy phát video trước rồi bấm <em>Làm mới danh sách</em>.",
-  "<strong>Tắt tiếng thông báo</strong> của máy khi xem, nhất là trên Windows (sắp có), nơi chưa chọn được từng app.",
+  "<strong>Tắt tiếng thông báo</strong> của máy khi xem, nhất là trên Windows, nơi chưa chọn được từng app.",
   "<strong>Khóa ngôn ngữ nguồn</strong> khi cả buổi chỉ một ngôn ngữ; giữ Tự nhận diện khi diễn giả đổi tiếng.",
   "<strong>Bấm Bắt đầu trước khi phát:</strong> vài giây đầu app nạp model.",
 ])}
@@ -115,7 +115,7 @@ ${checkList([
   "<strong>Bản dịch có thể sai,</strong> nhất là thuật ngữ, tên riêng và tiếng nói không rõ. Đừng dựa vào nó cho quyết định quan trọng khi chưa kiểm tra lại.",
   "<strong>Độ trễ</strong> trung vị 0,76–1,03 giây khi đo trên Mac M4 Pro, gói model Chuẩn. Máy yếu hơn sẽ chậm hơn; chưa đo Mac M1. Với video bạn không cần phản hồi, độ trễ ít quan trọng hơn khi họp.",
   "<strong>Nhận dạng</strong> kém rõ hơn ở gói model Nhẹ với tiếng Việt, Nhật, Hàn, Trung, và kém hơn khi tiếng nói không rõ, ví dụ nhạc nền lớn hay tiếng ồn.",
-  "<strong>Chỉ có cho macOS</strong> (Apple Silicon, 14.2+); Windows sắp có. Bản dịch chỉ hiện trên thanh nổi, không chèn vào video và không thay phụ đề chính thức của nhà phát hành.",
+  "<strong>Chạy trên macOS</strong> (Apple Silicon, 14.2+) <strong>và Windows 10/11</strong> (x64, beta). Bản dịch chỉ hiện trên thanh nổi, không chèn vào video và không thay phụ đề chính thức của nhà phát hành.",
 ], true)}
 </div></section>
 

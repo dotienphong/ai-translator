@@ -18,15 +18,15 @@ const GROUPS = [
       },
       {
         q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
-        a: `<p>Được. App thu âm thanh hệ thống nên không phụ thuộc app họp và không cần cấu hình riêng cho từng app: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã kiểm tra việc thu âm thanh hệ thống trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC: âm thanh người nói được thu rõ. Đó là kiểm tra bộ thu âm do người thử xác nhận, chưa phải kiểm thử chính thức trên bản phát hành, và chúng tôi chưa thử mọi phiên bản macOS hay mọi app. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
+        a: `<p>Được. App thu âm thanh hệ thống nên không phụ thuộc app họp và không cần cấu hình riêng cho từng app: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã kiểm tra việc thu âm thanh hệ thống trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC: âm thanh người nói được thu rõ. Đó là kiểm tra bộ thu âm do người thử xác nhận, chưa phải kiểm thử chính thức trên bản phát hành, và chúng tôi chưa thử mọi phiên bản macOS hay mọi app. Trên Windows, chúng tôi mới thử thu âm thanh hệ thống trong thử nghiệm nội bộ trên Windows 11, chưa thử từng app họp với bản phát hành. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
       },
       {
         q: "Có cần bot, plugin hay tài khoản không?",
         a: `<p>Không cần cả ba. Không có bot tham gia cuộc họp, không cài plugin vào app họp và không có đăng nhập. Gói Free chỉ cần bạn đồng ý điều khoản; gói trả phí được kích hoạt bằng license key gửi qua email.</p>`,
       },
       {
-        q: "Tôi tải AI Translator ở đâu? Có bản Windows chưa?",
-        a: `<p>Chưa có tải công khai. AI Translator đang ở giai đoạn beta: bạn đăng ký nhận bản cài cho macOS (14.2 trở lên, Apple Silicon) bằng email tại trang <a href="/tai-xuong/">Tải xuống</a>. Bản Windows 10/11 sắp có nhưng chưa có ngày phát hành.</p>`,
+        q: "Tôi tải AI Translator ở đâu? Có bản Windows không?",
+        a: `<p>Chưa có tải công khai. AI Translator đang ở giai đoạn beta: bạn đăng ký nhận bản cài cho macOS (14.2 trở lên, Apple Silicon) hoặc Windows (10/11, 64-bit) bằng email tại trang <a href="/tai-xuong/">Tải xuống</a>. Bản Windows cũng là beta và chưa được ký mã, nên SmartScreen có thể cảnh báo khi bạn mở bộ cài.</p>`,
       },
       {
         q: "AI Translator có phải là mã nguồn mở không?",
@@ -108,7 +108,7 @@ const GROUPS = [
     items: [
       {
         q: "Máy của tôi có chạy được AI Translator không?",
-        a: `<p>Bản beta chạy trên Mac Apple Silicon (M1 trở lên) với macOS 14.2 trở lên; RAM tối thiểu 8 GB, khuyến nghị 16 GB. Chưa hỗ trợ Mac Intel. Windows 10/11 64-bit (CPU có AVX2) sắp có; chưa hỗ trợ Windows ARM64.</p><p>Máy dưới 8 GB RAM hoặc không đạt yêu cầu thì app báo lý do và không cho tải model. Riêng Mac M1 cơ bản, chúng tôi chưa có số đo.</p>`,
+        a: `<p>Bản beta chạy trên Mac Apple Silicon (M1 trở lên) với macOS 14.2 trở lên; RAM tối thiểu 8 GB, khuyến nghị 16 GB. Chưa hỗ trợ Mac Intel. Bản beta Windows chạy trên Windows 10/11 64-bit (x64) với CPU có AVX2, RAM tối thiểu 8 GB, khuyến nghị 16 GB; chưa hỗ trợ Windows ARM64.</p><p>Máy dưới 8 GB RAM hoặc không đạt yêu cầu thì app báo lý do và không cho tải model. Riêng Mac M1 cơ bản và máy Windows, chúng tôi chưa có số đo độ trễ.</p>`,
       },
       {
         q: "AI Translator tốn bao nhiêu RAM và ổ đĩa?",
@@ -119,12 +119,16 @@ const GROUPS = [
         a: `<p>Vì bản macOS hiện được ký ad-hoc và chưa notarize: chúng tôi chưa có Apple Developer ID. macOS vì vậy chặn lần mở đầu. Bạn vào System Settings › Privacy &amp; Security, kéo xuống cuối, bấm Open Anyway cạnh tên AI Translator rồi xác nhận bằng mật khẩu hoặc Touch ID. Từ macOS 15, mẹo bấm chuột phải rồi chọn Open không còn dùng được. Xem <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a>.</p>`,
       },
       {
+        q: "Vì sao Windows hiện “Windows protected your PC” khi cài?",
+        a: `<p>Vì bản Windows hiện chưa được ký mã: chúng tôi chưa có chứng thư ký mã Windows. Microsoft Defender SmartScreen vì vậy có thể chặn lần chạy bộ cài. Nếu file đúng nguồn và mã SHA-256 khớp, bấm More info, kiểm dòng App là đúng tên file cài, rồi bấm Run anyway. Dòng Publisher hiện Unknown publisher là bình thường với bản chưa ký mã. Khi có chứng thư ký mã, cảnh báo sẽ giảm dần. Xem <a href="/huong-dan/cai-dat-windows/">hướng dẫn cài đặt trên Windows</a>.</p>`,
+      },
+      {
         q: "Cần cấp quyền gì trên macOS?",
-        a: `<p>Chỉ quyền Ghi âm thanh hệ thống (System Audio Recording); AI Translator không dùng micro. macOS hỏi ở lần đầu bạn bấm Bắt đầu. Nếu bạn từ chối, macOS không báo lỗi mà chỉ cho app nhận im lặng; app sẽ nhắc bạn bật lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền ghi âm</a>.</p>`,
+        a: `<p>Chỉ quyền Ghi âm thanh hệ thống (System Audio Recording); AI Translator không dùng micro. macOS hỏi ở lần đầu bạn bấm Bắt đầu. Nếu bạn từ chối, macOS không báo lỗi mà chỉ cho app nhận im lặng; app sẽ nhắc bạn bật lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền ghi âm</a>. Trên Windows không cần cấp quyền ghi âm.</p>`,
       },
       {
         q: "Gỡ cài đặt AI Translator như thế nào?",
-        a: `<p>Trên macOS, bấm Cài đặt › Quyền riêng tư › Xóa model và dữ liệu trước, rồi kéo app vào Thùng rác (macOS không có bước hỏi khi gỡ). Trên Windows, bộ gỡ được thiết kế có ô “xóa dữ liệu app” để xóa cả model. Xóa dữ liệu hay gỡ app đều không làm mất bản quyền và hạn mức còn lại.</p>`,
+        a: `<p>Trên macOS, bấm Cài đặt › Quyền riêng tư › Xóa model và dữ liệu trước, rồi kéo app vào Thùng rác (macOS không có bước hỏi khi gỡ). Trên Windows, gỡ ở Settings › Apps › Installed apps; bộ gỡ có ô xóa dữ liệu app để xóa cả model (xem <a href="/huong-dan/cai-dat-windows/#go-cai-dat">hướng dẫn</a>). Xóa dữ liệu hay gỡ app đều không làm mất bản quyền và hạn mức còn lại.</p>`,
       },
     ],
   },
