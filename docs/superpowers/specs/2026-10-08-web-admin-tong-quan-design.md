@@ -1,6 +1,6 @@
 # Web Admin phần 2: trang Tổng quan (số liệu)
 
-Ngày: 2026-10-08. Trạng thái: chủ dự án duyệt thiết kế (ba phần) ngày 2026-10-08, chờ duyệt bản viết này.
+Ngày: 2026-10-08. Trạng thái: đã triển khai lên production ngày 2026-10-08 (Worker admin version `596d98e8-ab15-493d-9237-2d722ec419c4`), nghiệm thu đạt theo lời chủ dự án; biên bản `bench/phase1/results/web_admin_tong_quan_production_deploy.md`.
 Thuộc lộ trình ba phần của `2026-10-07-web-admin-design.md` (phần 1 đã chạy trên production). Phần 3 (cấu hình, phát hành, sửa giá) là spec riêng, làm sau khi phần này lên production.
 
 ## 1. Mục tiêu và phạm vi

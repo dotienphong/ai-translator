@@ -19,7 +19,7 @@ Hiện người vận hành gọi JSON API của Worker `mt-license-admin` bằn
 Web Admin được tách làm ba phần, mỗi phần một spec, một kế hoạch, một đợt triển khai:
 
 1. **Đợt này:** nền (khung trang, phục vụ trang qua Access), hỗ trợ khách (giao diện cho mọi thao tác admin đã có), danh sách, việc cần xử lý, nhật ký.
-2. **Tổng quan, số liệu** (spec: `2026-10-08-web-admin-tong-quan-design.md`): doanh thu theo ngày và tháng, đơn theo trạng thái, tỷ lệ dùng thử chuyển sang trả phí, gia hạn so với mua mới. Cần chọn thư viện biểu đồ.
+2. **Tổng quan, số liệu** (spec: `2026-10-08-web-admin-tong-quan-design.md`): doanh thu theo ngày và tháng, đơn theo trạng thái, tỷ lệ dùng thử chuyển sang trả phí, gia hạn so với mua mới. Cần chọn thư viện biểu đồ (đã chạy trên production 2026-10-08, dùng Recharts).
 3. **Cấu hình, phát hành** (spec sau): xem `ops_alerts` đầy đủ, bản phát hành và model trên R2, sửa bảng giá. Sửa bảng giá buộc chuyển `PLANS` từ biến của Worker API sang D1 hoặc KV và phải xét ảnh hưởng tới token đã ký và đơn đang chờ; rủi ro cao nhất nên làm cuối.
 
 ### Không làm trong đợt này
