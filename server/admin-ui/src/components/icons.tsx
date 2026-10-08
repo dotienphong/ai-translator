@@ -242,7 +242,6 @@ export const IconAlert = icon(
 
 export const IconChevronDown = icon("chevron-down", <path d="m6.5 9.5 5.5 5.5 5.5-5.5" />);
 export const IconChevronUp = icon("chevron-up", <path d="m6.5 14.5 5.5-5.5 5.5 5.5" />);
-export const IconChevronLeft = icon("chevron-left", <path d="m14.5 6.5-5.5 5.5 5.5 5.5" />);
 export const IconChevronRight = icon("chevron-right", <path d="m9.5 6.5 5.5 5.5-5.5 5.5" />);
 
 export const IconRefresh = icon(

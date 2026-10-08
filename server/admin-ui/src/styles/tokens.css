@@ -84,6 +84,8 @@
   --shadow-sm: 0 1px 2px rgb(11 19 34 / 0.06), 0 1px 1px rgb(11 19 34 / 0.04);
   --shadow-md: 0 8px 24px -8px rgb(11 19 34 / 0.16), 0 2px 6px rgb(11 19 34 / 0.05);
   --shadow-lg: 0 24px 60px -20px rgb(16 52 120 / 0.32), 0 8px 24px -12px rgb(11 19 34 / 0.18);
+  /* Bóng mép của bảng cuộn ngang được (table.css) */
+  --edge-shadow: rgb(11 19 34 / 0.14);
 
   /* Vòng focus: 2px màu thương hiệu, cách phần tử 2px (đạt 3:1 với mọi nền) */
   --focus: #1d63c9;
@@ -132,15 +134,6 @@
   --chart-grid: #e8edf5;
   --chart-axis: #c6d3e6;
   --chart-cursor: rgb(29 99 201 / 0.07);
-
-  /* Bí danh cũ: các trang và ChartCard chưa viết lại còn dùng; bỏ khi pha 2 đến 5 xong */
-  --panel: var(--surface);
-  --text: var(--ink);
-  --muted: var(--ink-3);
-  --muted-bg: var(--neutral-soft);
-  --ok-bg: var(--ok-soft);
-  --warn-bg: var(--warn-soft);
-  --bad-bg: var(--bad-soft);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -202,6 +195,7 @@
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-md: 0 10px 30px -10px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.03);
     --shadow-lg: 0 30px 80px -24px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.05);
+    --edge-shadow: rgb(0 0 0 / 0.6);
 
     --focus: #4d9bff;
     --focus-ring: 0 0 0 3px rgb(77 155 255 / 0.35);

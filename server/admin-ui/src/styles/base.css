@@ -7,10 +7,14 @@
   box-sizing: border-box;
 }
 
+/* scrollbar-gutter: chừa chỗ thanh cuộn cố định (Windows, thanh cuộn cổ điển), để bố cục không xê dịch 15px khi trang đổi
+   giữa có và không có thanh cuộn (đổi trang, bộ lọc ra ít dòng). macOS và điện thoại có thanh cuộn nổi nên không chừa gì.
+   Nền đặt cả trên html để dải chừa chỗ cùng màu nền trang. */
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scrollbar-gutter: stable;
+  background: var(--bg);
 }
 
 body {

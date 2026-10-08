@@ -248,9 +248,16 @@
     clip: rect(0 0 0 0);
     white-space: nowrap;
   }
+  /* Không cuộn để tooltip tràn ra ngoài thanh; cửa sổ thấp hơn danh sách (dưới khoảng 640px) thì cuộn được, tooltip bị cắt
+     nhưng mục nào cũng tới được (tên mục vẫn đọc được qua nhãn ẩn) */
   .is-collapsed .nav-scroll {
     overflow: visible;
     padding: var(--s-2) var(--s-3) var(--s-4);
+  }
+  @media (max-height: 640px) {
+    .is-collapsed .nav-scroll {
+      overflow-y: auto;
+    }
   }
   .is-collapsed .nav-group-label {
     height: 1px;
@@ -320,10 +327,16 @@
   height: var(--topbar-h);
   flex: none;
   padding: 0 var(--gutter);
-  background: color-mix(in srgb, var(--topbar) 82%, transparent);
-  -webkit-backdrop-filter: saturate(1.6) blur(12px);
-  backdrop-filter: saturate(1.6) blur(12px);
+  /* Nền đặc là mặc định; nền trong mờ chỉ khi trình duyệt làm mờ được phía sau (không thì chữ của trang lộ qua thanh) */
+  background: var(--topbar);
   border-bottom: 1px solid var(--line);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) and (background: color-mix(in srgb, red 50%, transparent)) {
+  .topbar {
+    background: color-mix(in srgb, var(--topbar) 82%, transparent);
+    -webkit-backdrop-filter: saturate(1.6) blur(12px);
+    backdrop-filter: saturate(1.6) blur(12px);
+  }
 }
 .topbar-inner {
   display: flex;
@@ -346,9 +359,6 @@
 .menu-btn {
   display: none;
   margin-left: calc(-1 * var(--s-2));
-}
-.topbar-brand {
-  display: none;
 }
 
 .search {
