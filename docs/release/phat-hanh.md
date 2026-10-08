@@ -166,7 +166,7 @@ nên đã lỗi thời; có errata ngay dưới tiêu đề hai task đó).
 
 Ký hiệu: `PROD` là origin của Worker API và `PADMIN` là origin của Worker admin. Khi chưa có tên miền thì
 `PROD=https://mt-license.<subdomain>.workers.dev` và `PADMIN=https://mt-license-admin.<subdomain>.workers.dev`
-(`<subdomain>` là subdomain workers.dev của tài khoản). Có tên miền (Q1) thì `PROD=https://<tên miền license>`: thêm
+(`<subdomain>` là subdomain workers.dev của tài khoản). **Từ 2026-10-08 `PADMIN=https://admin.aitranslator.io.vn`** (custom domain của Worker admin; địa chỉ `workers.dev` còn giữ tạm làm đường lui). Có tên miền (Q1) thì `PROD=https://<tên miền license>`: thêm
 `"routes": [{ "pattern": "<tên miền license>", "custom_domain": true }]` và đặt `"workers_dev": false` trong `wrangler.jsonc`,
 rồi làm bước 1 và bước 9a của Task 21 cũ (tên miền gửi email trên Resend, luật rate limit cho webhook; luật WAF cần zone nên
 không đặt được trên `*.workers.dev`). Khi `EMAIL_FROM` còn là `onboarding@resend.dev` thì Resend chỉ gửi được tới email của
@@ -307,6 +307,15 @@ chủ tài khoản Resend: chưa đủ để bán.
       khi deploy Web Admin lần đầu: trang chỉ hiện `{"error":"forbidden"}`). Chẩn đoán: `pnpm exec wrangler tail mt-license-admin`,
       mỗi lần từ chối có một dòng `{"event":"admin_denied","reason":…}` (`no_access`, `aud_unset`, `team_unset`, `aud_mismatch`,
       `jwt_*`, `jwks_unavailable`, `no_email`, `cross_site`); phản hồi cho trình duyệt vẫn chỉ là `forbidden`.
+    - **Tên miền riêng của admin** (`admin.aitranslator.io.vn`, khối `routes` trong `wrangler.admin.jsonc`): deploy xong, Cloudflare
+      tự tạo bản ghi DNS và chứng chỉ (1 đến 2 phút). Kiểm từ ngoài: `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://admin.aitranslator.io.vn/`
+      phải in `302` tới `<team>.cloudflareaccess.com/cdn-cgi/access/login/admin.aitranslator.io.vn?kid=<AUD>` với `kid` bằng
+      `ACCESS_AUD`. In `403` (JSON `forbidden`) nghĩa là ứng dụng Access chưa phủ hostname này: Zero Trust > Access controls >
+      Applications > ứng dụng của `mt-license-admin` > thêm hostname `admin.aitranslator.io.vn` vào ứng dụng (giữ cùng AUD), hoặc
+      nếu ứng dụng không cho sửa thì tạo ứng dụng Self-hosted mới cho hostname đó với cùng policy và cùng Cookie settings
+      (SameSite Lax, HttpOnly, Binding Cookie tắt), rồi đặt `ACCESS_AUD` bằng AUD tag của nó và deploy lại. Worker chặn mọi
+      request không có JWT hợp lệ (không lộ dữ liệu), nên thứ tự làm không gây rủi ro. Khi tên miền mới chạy ổn: đặt
+      `"workers_dev": false` cho admin và deploy lại (làm sau).
 
     ```bash
     pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
