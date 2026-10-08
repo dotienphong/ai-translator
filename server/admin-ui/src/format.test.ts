@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysLeft, fmtDate, fmtDateTime, fmtDetail, fmtVnd, maskKey, shortHash } from "./format";
+import { daysLeft, fmtCompact, fmtDate, fmtDateTime, fmtDay, fmtDetail, fmtHm, fmtMonth, fmtVnd, maskKey, shortHash } from "./format";
 
 /** 2026-10-01T00:00:00Z = 07:00 ngày 01/10/2026 giờ Việt Nam. */
 const T0 = 1_790_812_800;
@@ -37,5 +37,27 @@ describe("format", () => {
     expect(fmtDetail('{"filters":{"status":"paid"}}')).toBe('filters: {"status":"paid"}');
     expect(fmtDetail("khong-phai-json")).toBe("khong-phai-json");
     expect(fmtDetail(null)).toBe("");
+  });
+});
+
+describe("format cho biểu đồ", () => {
+  it("nhãn ngày và tháng, giờ phút GMT+7", () => {
+    expect(fmtDay("2026-10-08")).toBe("08/10");
+    expect(fmtMonth("2026-10")).toBe("10/2026");
+    expect(fmtHm(T0)).toBe("07:00");
+    expect(fmtHm(T0 + 61 * 60)).toBe("08:01");
+  });
+
+  it("số gọn cho trục biểu đồ: nghìn là k, triệu là tr, dấu phẩy thập phân", () => {
+    expect([0, 950, 1000, 1500, 50000, 1_000_000, 1_500_000, 12_000_000].map(fmtCompact)).toEqual([
+      "0",
+      "950",
+      "1k",
+      "1,5k",
+      "50k",
+      "1tr",
+      "1,5tr",
+      "12tr",
+    ]);
   });
 });

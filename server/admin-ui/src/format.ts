@@ -65,3 +65,30 @@ export function fmtDetail(detail: string | null): string {
   }
   return detail;
 }
+
+/** "2026-10-08" thành "08/10" (nhãn trục của biểu đồ theo ngày). */
+export function fmtDay(key: string): string {
+  const [, mo = "", d = ""] = key.split("-");
+  return `${d}/${mo}`;
+}
+
+/** "2026-10" thành "10/2026" (nhãn trục của biểu đồ theo tháng). */
+export function fmtMonth(key: string): string {
+  const [y = "", mo = ""] = key.split("-");
+  return `${mo}/${y}`;
+}
+
+/** Giờ và phút GMT+7, "HH:mm". */
+export function fmtHm(sec: number): string {
+  const p = vnParts(sec);
+  return `${p.h}:${p.mi}`;
+}
+
+/** Số gọn cho trục biểu đồ: 1500 thành "1,5k", 1500000 thành "1,5tr". */
+export function fmtCompact(n: number): string {
+  const abs = Math.abs(n);
+  const trim = (x: number) => String(Math.round(x * 10) / 10).replace(".", ",");
+  if (abs >= 1_000_000) return `${trim(n / 1_000_000)}tr`;
+  if (abs >= 1_000) return `${trim(n / 1_000)}k`;
+  return String(n);
+}
