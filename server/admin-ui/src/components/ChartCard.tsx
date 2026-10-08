@@ -1,6 +1,6 @@
 // Một biểu đồ cột của trang Tổng quan (spec Web Admin phần 2, mục 4 và 5). Bọc Recharts: trang không biết kiểu của Recharts,
 // nên đổi sang tự vẽ SVG chỉ phải sửa file này. Mỗi biểu đồ có bảng số đọc được ngay dưới ("Xem bảng số").
-// Màu lấy từ biến CSS --chart-N (styles.css, sáng hay tối theo hệ điều hành).
+// Màu lấy từ biến CSS --chart-N (styles/tokens.css, sáng hay tối theo hệ điều hành).
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fmtCompact } from "../format";
 

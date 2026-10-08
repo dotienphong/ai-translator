@@ -7,10 +7,17 @@ import { fakeAdminApi } from "./dev/fake-api.ts";
 export default defineConfig({
   plugins: [react(), fakeAdminApi()],
   server: { host: "127.0.0.1", port: 5180, strictPort: true },
-  build: { outDir: "dist", emptyOutDir: true },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    // Font luôn là tệp riêng (không nhúng data: URI): CSP không có font-src nên chỉ nhận font từ 'self'.
+    assetsInlineLimit: (file) => (file.endsWith(".woff2") ? false : undefined),
+  },
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./src/test-setup.ts"],
+    // src/styles/contrast.test.ts đọc tokens.css (?raw): mặc định Vitest bỏ nội dung CSS, nên bật riêng tệp này.
+    css: { include: [/tokens\.css/] },
   },
 });

@@ -1,0 +1,11 @@
+/* Mục lục CSS của Web Admin. Không dùng style inline (CSP style-src 'self'); Vite gộp các tệp dưới đây thành một tệp.
+   1. fonts.css       Be Vietnam Pro tự lưu trữ (@font-face, unicode-range)
+   2. tokens.css      biến thiết kế sáng và tối (màu, chữ, khoảng cách, bo góc, bóng, chuyển động, focus)
+   3. base.css        reset, chữ, link, nút, ô nhập, bảng, trợ năng, giảm chuyển động
+   4. shell.css       khung trang: thanh bên, thanh trên, PageHeader, ngăn kéo điện thoại, thanh báo
+   5. components.css  huy hiệu, thẻ, ô số, bảng trong thẻ, bộ lọc, thông báo, hộp xác nhận */
+@import "./fonts.css";
+@import "./tokens.css";
+@import "./base.css";
+@import "./shell.css";
+@import "./components.css";

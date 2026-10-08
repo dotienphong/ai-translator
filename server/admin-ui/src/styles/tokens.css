@@ -1,0 +1,179 @@
+/* Token thiết kế của Web Admin (spec 2026-10-08 giao diện mới, mục 2). Màu theo website (website/src/assets/site.css):
+   xanh thương hiệu #1d63c9 (tối #4d9bff), teal #0a8f83, mực navy #0b1322, nền tối navy #080d18.
+   Sáng/tối theo hệ điều hành. Tương phản của các cặp chữ-nền chính được kiểm bằng phép tính: src/styles/contrast.test.ts
+   đọc chính file này; đổi màu thì chạy lại test đó. Giá trị màu viết dạng #rrggbb để test đọc được. */
+
+:root {
+  color-scheme: light;
+
+  /* Chữ */
+  --font: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 18px;
+  --fs-title: 22px;
+  --fs-stat: 24px;
+  --lh: 1.5;
+  --lh-tight: 1.25;
+
+  /* Nền và bề mặt */
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --surface-2: #f6f9fe;
+  --surface-3: #edf2f9;
+  --sidebar: #ffffff;
+  --topbar: #f4f6fa;
+
+  /* Đường kẻ; --line-input đủ 3:1 với nền để nhận ra ô nhập (WCAG 1.4.11) */
+  --line: #dfe7f2;
+  --line-strong: #c6d3e6;
+  --line-input: #7f8ca4;
+
+  /* Mực */
+  --ink: #0b1322;
+  --ink-2: #33405a;
+  --ink-3: #566178;
+
+  /* Thương hiệu; --brand-ink là màu chữ của link (đậm hơn --brand cho dễ đọc) */
+  --brand: #1d63c9;
+  --brand-hover: #174fa3;
+  --brand-ink: #0f4aa3;
+  --brand-soft: #e7f0ff;
+  --brand-soft-2: #d6e5ff;
+  --on-brand: #ffffff;
+  --accent: #0a8f83;
+  --accent-soft: #dcf5f1;
+
+  /* Ngữ nghĩa: màu chữ trên nền -soft tương ứng và trên --surface đều đạt 4,5:1 */
+  --ok: #0c7a4b;
+  --ok-soft: #e3f6ec;
+  --warn: #8a5a00;
+  --warn-soft: #fff4d9;
+  --warn-line: #e0a12e;
+  --bad: #b42318;
+  --bad-soft: #fdecea;
+  --bad-hover: #8f1c13;
+  --info: #0f4aa3;
+  --info-soft: #e7f0ff;
+  --neutral: #4a5670;
+  --neutral-soft: #edf1f7;
+  --on-bad: #ffffff;
+
+  /* Lớp phủ, bóng */
+  --scrim: rgb(11 19 34 / 0.45);
+  --shadow-sm: 0 1px 2px rgb(11 19 34 / 0.06), 0 1px 1px rgb(11 19 34 / 0.04);
+  --shadow-md: 0 8px 24px -8px rgb(11 19 34 / 0.16), 0 2px 6px rgb(11 19 34 / 0.05);
+  --shadow-lg: 0 24px 60px -20px rgb(16 52 120 / 0.32), 0 8px 24px -12px rgb(11 19 34 / 0.18);
+
+  /* Vòng focus: 2px màu thương hiệu, cách phần tử 2px (đạt 3:1 với mọi nền) */
+  --focus: #1d63c9;
+  --focus-ring: 0 0 0 3px rgb(29 99 201 / 0.28);
+
+  /* Bo góc */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-full: 999px;
+
+  /* Khoảng cách: thang 4px */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+
+  /* Kích thước khung */
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 72px;
+  --topbar-h: 56px;
+  --content-max: 1280px;
+  --gutter: clamp(16px, 3vw, 32px);
+  --control-h: 40px;
+  --control-h-sm: 32px;
+
+  /* Chuyển động (120 đến 200 ms; tắt hết khi người dùng chọn giảm chuyển động: base.css) */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 120ms;
+  --t-med: 160ms;
+  --t-slow: 200ms;
+
+  /* Biểu đồ (pha 3 sẽ tinh chỉnh theo kỹ năng dataviz) */
+  --chart-1: #1d63c9;
+  --chart-2: #0a8f83;
+  --chart-3: #c27a0e;
+  --chart-4: #7c5cd6;
+
+  /* Bí danh cũ: các trang và ChartCard chưa viết lại còn dùng; bỏ khi pha 2 đến 5 xong */
+  --panel: var(--surface);
+  --text: var(--ink);
+  --muted: var(--ink-3);
+  --muted-bg: var(--neutral-soft);
+  --ok-bg: var(--ok-soft);
+  --warn-bg: var(--warn-soft);
+  --bad-bg: var(--bad-soft);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: #080d18;
+    --surface: #0f1729;
+    --surface-2: #152036;
+    --surface-3: #1b2842;
+    --sidebar: #0b1222;
+    --topbar: #080d18;
+
+    --line: #1f2c47;
+    --line-strong: #2b3b5c;
+    --line-input: #5a6a8c;
+
+    --ink: #eef3fb;
+    --ink-2: #c3cde0;
+    --ink-3: #98a5bf;
+
+    --brand: #4d9bff;
+    --brand-hover: #74b0ff;
+    --brand-ink: #8fc0ff;
+    --brand-soft: #12274a;
+    --brand-soft-2: #183463;
+    --on-brand: #04122b;
+    --accent: #2fd0c0;
+    --accent-soft: #0e2b2b;
+
+    --ok: #4fd69b;
+    --ok-soft: #0f2a20;
+    --warn: #f2c15a;
+    --warn-soft: #2a2110;
+    --warn-line: #f2c15a;
+    --bad: #ff8f86;
+    --bad-soft: #3a1517;
+    --bad-hover: #ffb0a9;
+    --info: #8fc0ff;
+    --info-soft: #12274a;
+    --neutral: #b4bfd4;
+    --neutral-soft: #1b2842;
+    --on-bad: #2a0705;
+
+    --scrim: rgb(0 0 0 / 0.62);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 10px 30px -10px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.03);
+    --shadow-lg: 0 30px 80px -24px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.05);
+
+    --focus: #4d9bff;
+    --focus-ring: 0 0 0 3px rgb(77 155 255 / 0.35);
+
+    --chart-1: #4d9bff;
+    --chart-2: #2fd0c0;
+    --chart-3: #f2c15a;
+    --chart-4: #b79af0;
+  }
+}

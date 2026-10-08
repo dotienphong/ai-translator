@@ -137,6 +137,7 @@ const MIME = {
   ".json": "application/json",
   ".png": "image/png",
   ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
 };
 
 function serve(req, res) {

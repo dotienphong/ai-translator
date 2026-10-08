@@ -1,0 +1,406 @@
+/* Nền: reset, chữ, link, phần tử biểu mẫu, nút, bảng, mã; vòng focus; tiện ích trợ năng; giảm chuyển động.
+   Phần tử HTML trần (button, input, table…) được làm đẹp ở đây để các trang chưa viết lại vẫn hợp ngôn ngữ mới. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  line-height: var(--lh);
+  color: var(--ink-2);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- Chữ ---------- */
+h1,
+h2,
+h3,
+h4 {
+  color: var(--ink);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  text-wrap: balance;
+}
+h1 {
+  font-size: var(--fs-title);
+  letter-spacing: -0.015em;
+  margin: 0 0 var(--s-4);
+  display: flex;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  flex-wrap: wrap;
+}
+h2 {
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
+  margin: var(--s-6) 0 var(--s-3);
+}
+h3 {
+  font-size: var(--fs-md);
+  margin: var(--s-4) 0 var(--s-2);
+}
+p {
+  margin: 0 0 var(--s-3);
+  text-wrap: pretty;
+}
+strong,
+b {
+  color: var(--ink);
+  font-weight: 600;
+}
+small {
+  font-size: var(--fs-xs);
+}
+.muted {
+  color: var(--ink-3);
+}
+.num,
+table,
+.tile-value,
+.count {
+  font-variant-numeric: tabular-nums;
+}
+::selection {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--s-6) 0;
+}
+
+/* Mã: key, mã máy, mã hành động */
+code,
+kbd,
+pre {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+}
+code {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+a code {
+  color: inherit;
+}
+p code,
+li code,
+.dialog-desc code,
+label code {
+  background: var(--surface-3);
+  border-radius: var(--r-xs);
+  padding: 1px 5px;
+}
+kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink-3);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+}
+
+/* ---------- Link: không gạch chân mặc định, gạch khi hover và focus ---------- */
+a {
+  color: var(--brand-ink);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  border-radius: 4px;
+  transition: color var(--t-fast) var(--ease);
+}
+a:hover {
+  color: var(--brand-hover);
+  text-decoration: underline;
+}
+a:focus-visible {
+  text-decoration: underline;
+}
+
+/* ---------- Vòng focus: chỉ khi dùng bàn phím ---------- */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Biểu tượng SVG nội tuyến (components/icons.tsx) ---------- */
+.icon {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ---------- Nút ----------
+   Mặc định là nút phụ (viền). Lớp: primary (chính), danger (nguy hiểm, viền), danger solid (nguy hiểm, nền), ghost
+   (không viền), link (như link chữ), small (32px). Vùng chạm 40px, điện thoại 44px. */
+button {
+  font: inherit;
+}
+/* :where() giữ độ ưu tiên bằng 0 để lớp của thành phần (icon-btn, collapse-btn…) ghi đè được mà không cần !important */
+:where(button:not(.bare)) {
+  --btn-bg: var(--surface);
+  --btn-fg: var(--ink);
+  --btn-border: var(--line-strong);
+  --btn-bg-hover: var(--surface-2);
+  --btn-border-hover: var(--line-input);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: var(--control-h);
+  padding: 0 var(--s-4);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--btn-fg);
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease);
+}
+:where(button:not(.bare)):hover:where(:not(:disabled)) {
+  background: var(--btn-bg-hover);
+  border-color: var(--btn-border-hover);
+}
+:where(button:not(.bare)):active:where(:not(:disabled)) {
+  transform: translateY(1px);
+}
+:where(button:not(.bare)):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+button.primary {
+  --btn-bg: var(--brand);
+  --btn-fg: var(--on-brand);
+  --btn-border: var(--brand);
+  --btn-bg-hover: var(--brand-hover);
+  --btn-border-hover: var(--brand-hover);
+}
+button.danger {
+  --btn-fg: var(--bad);
+  --btn-border: color-mix(in srgb, var(--bad) 45%, var(--surface));
+  --btn-bg-hover: var(--bad-soft);
+  --btn-border-hover: var(--bad);
+}
+button.danger.solid {
+  --btn-bg: var(--bad);
+  --btn-fg: var(--on-bad);
+  --btn-border: var(--bad);
+  --btn-bg-hover: var(--bad-hover);
+  --btn-border-hover: var(--bad-hover);
+}
+button.ghost {
+  --btn-bg: transparent;
+  --btn-border: transparent;
+  --btn-bg-hover: var(--surface-3);
+  --btn-border-hover: transparent;
+  box-shadow: none;
+}
+button.small {
+  min-height: var(--control-h-sm);
+  padding: 0 var(--s-3);
+  font-size: var(--fs-sm);
+}
+/* Nút dạng link chữ (Hiện, Chép, Đóng…): vẫn có vùng chạm 32px, nền nhạt khi hover */
+button.link {
+  --btn-bg: transparent;
+  --btn-fg: var(--brand-ink);
+  --btn-border: transparent;
+  --btn-bg-hover: var(--brand-soft);
+  --btn-border-hover: transparent;
+  min-height: var(--control-h-sm);
+  padding: 0 var(--s-2);
+  font-weight: 600;
+  box-shadow: none;
+}
+button.link:active:not(:disabled) {
+  transform: none;
+}
+
+/* ---------- Ô nhập ---------- */
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--ink);
+}
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
+select,
+textarea {
+  min-height: var(--control-h);
+  padding: 0 var(--s-3);
+  font-size: var(--fs-md);
+  background: var(--surface);
+  border: 1px solid var(--line-input);
+  border-radius: var(--r-sm);
+  transition:
+    border-color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
+}
+textarea {
+  padding: var(--s-2) var(--s-3);
+  line-height: var(--lh);
+  resize: vertical;
+}
+input:not([type="checkbox"], [type="radio"]):hover,
+select:hover,
+textarea:hover {
+  border-color: var(--ink-3);
+}
+input:not([type="checkbox"], [type="radio"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+input:not([type="checkbox"], [type="radio"]):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: var(--focus-ring);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* Ô chọn: mũi tên riêng (data: URI, CSP img-src cho phép), hai màu theo chế độ */
+select {
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23566178' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  cursor: pointer;
+}
+@media (prefers-color-scheme: dark) {
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2398a5bf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+}
+input[type="checkbox"],
+input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+input[type="date"] {
+  min-width: 152px;
+}
+
+/* ---------- Bảng ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  text-align: left;
+  padding: 10px var(--s-3);
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+th {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-3);
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+td {
+  color: var(--ink);
+}
+tbody tr {
+  transition: background-color var(--t-fast) var(--ease);
+}
+tbody tr:hover {
+  background: var(--surface-2);
+}
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ---------- Trợ năng ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Điện thoại: vùng chạm 44px ---------- */
+@media (max-width: 800px) {
+  :root {
+    --control-h: 44px;
+  }
+  button.link {
+    min-height: 40px;
+  }
+  /* 16px: iOS không phóng to khi chạm vào ô nhập */
+  input:not([type="checkbox"], [type="radio"]),
+  select,
+  textarea {
+    font-size: var(--fs-lg);
+  }
+}
+
+/* ---------- Giảm chuyển động: tắt hẳn mọi chuyển cảnh và hoạt ảnh ----------
+   Dùng none thay vì thời lượng rất ngắn: thời lượng 0,01ms biến mọi thuộc tính (kể cả visibility kế thừa) thành
+   chuyển cảnh, có lúc chưa kịp xong khi vẽ. Không mã nào chờ sự kiện transitionend hay animationend. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
