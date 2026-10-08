@@ -87,9 +87,43 @@ function statsFixture() {
   };
 }
 const EMPTY = { count: 0, items: [] };
+const alertsFixture = () => ({
+  items: [
+    { kind: "webhook_bad_signature", window_start: NOW - 1800, count: 3, notified_count: 0, notified_at: null },
+    { kind: "reconcile_failed", window_start: NOW - 7200, count: 2, notified_count: 2, notified_at: NOW - 3600 },
+  ],
+  total: 2,
+  pending: 1,
+});
+const releasesFixture = () => ({
+  base_url: "https://releases.example.com",
+  channels: {
+    stable: {
+      status: "ok",
+      version: "0.4.2",
+      pub_date: new Date((NOW - 3 * DAY) * 1000).toISOString(),
+      notes: "Sửa lỗi thanh phụ đề trên macOS.",
+      platforms: ["darwin-aarch64", "windows-x86_64"],
+    },
+    beta: { status: "missing" },
+  },
+  models: {
+    status: "ok",
+    sequence: 7,
+    published_at: new Date((NOW - 10 * DAY) * 1000).toISOString(),
+    kid: "2026-10-a",
+    packs: ["base"],
+    files: [
+      { id: "whisper-small", kind: "asr", version: "1", bytes: 574041195, tier: "free", min_app_version: "0.3.0" },
+      { id: "nllb-600m", kind: "mt", version: "2", bytes: 1288490188, tier: "pro", min_app_version: "0.4.0" },
+    ],
+  },
+});
 const API = {
   "/admin/whoami": () => ({ operator: "ops@aitranslator.io.vn" }),
   "/admin/stats": statsFixture,
+  "/admin/alerts": alertsFixture,
+  "/admin/releases": releasesFixture,
   "/admin/summary": () => ({ revenue_today: 0, currency: "VND", paid_orders_7d: 0, active_licenses: 0 }),
   "/admin/queue": () => ({ needs_review: EMPTY, underpaid: EMPTY, email_failed: EMPTY, locked: EMPTY, conflict: EMPTY, alerts: EMPTY }),
   "/admin/orders": () => ({ items: [], next_cursor: null }),

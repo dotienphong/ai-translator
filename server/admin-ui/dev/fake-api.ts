@@ -5,6 +5,8 @@ import type { Plugin } from "vite";
 import type {
   Activation,
   AlertRow,
+  AlertRowFull,
+  AlertsResponse,
   AuditRow,
   EraseResult,
   IssuedLicense,
@@ -18,6 +20,7 @@ import type {
   PaymentStatus,
   Queue,
   QueueGroup,
+  ReleasesResponse,
   Stats,
   Summary,
   TrialRow,
@@ -119,6 +122,42 @@ const queue: Queue = {
   alerts: group([alert]),
 };
 
+// Trang Hệ thống: cảnh báo đủ hai trạng thái; stable ok, beta chưa có; model ok với vài file (không có số hay khóa thật).
+const alertsFull: AlertsResponse = {
+  items: [
+    { kind: "webhook_bad_signature", window_start: NOW - 1800, count: 3, notified_count: 0, notified_at: null },
+    { kind: "reconcile_failed", window_start: NOW - 7200, count: 2, notified_count: 2, notified_at: NOW - 3600 },
+    { kind: "email_send_failed", window_start: NOW - DAY, count: 5, notified_count: 3, notified_at: NOW - DAY + 600 },
+  ] satisfies AlertRowFull[],
+  total: 3,
+  pending: 2,
+};
+const releasesFull: ReleasesResponse = {
+  base_url: "https://releases.example.com",
+  channels: {
+    stable: {
+      status: "ok",
+      version: "0.4.2",
+      pub_date: new Date((NOW - 3 * DAY) * 1000).toISOString(),
+      notes: "Sửa lỗi thanh phụ đề trên macOS.\nTăng độ ổn định khi mất mạng.",
+      platforms: ["darwin-aarch64", "windows-x86_64"],
+    },
+    beta: { status: "missing" },
+  },
+  models: {
+    status: "ok",
+    sequence: 7,
+    published_at: new Date((NOW - 10 * DAY) * 1000).toISOString(),
+    kid: "2026-10-a",
+    packs: ["base"],
+    files: [
+      { id: "whisper-small", kind: "asr", version: "1", bytes: 574041195, tier: "free", min_app_version: "0.3.0" },
+      { id: "nllb-600m", kind: "mt", version: "2", bytes: 1288490188, tier: "pro", min_app_version: "0.4.0" },
+      { id: "silero-vad", kind: "vad", version: "1", bytes: 2097152, tier: "free", min_app_version: "0.3.0" },
+    ],
+  },
+};
+
 const trial: TrialRow = { device_id_hash: DEVICE_A, started_at: NOW - 12 * DAY, ends_at: NOW - 2 * DAY, last_seen_at: NOW - DAY, purchased: true };
 const auditRow: AuditRow = { id: 2, at: NOW - 3600, actor: "api", action: "license_activated", license_id: LIC, order_code: null, detail: null };
 
@@ -206,6 +245,10 @@ function respond(method: string, url: URL): Reply {
       return ok(stats);
     case "/admin/queue":
       return ok(queue);
+    case "/admin/alerts":
+      return ok(alertsFull);
+    case "/admin/releases":
+      return ok(releasesFull);
     case "/admin/orders":
       return ok(page([order(1000015, "underpaid"), order(1000014, "paid_needs_review"), order(1000012, "paid")]));
     case "/admin/licenses":
