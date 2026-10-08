@@ -5,7 +5,7 @@
 //  - kiểm DOM sau khi vẽ có các chuỗi mong đợi (--expect=...);
 //  - in dung lượng (byte, gzip) các file trong dist/assets (--sizes);
 //  - chụp màn hình (--shot=đường-dẫn.png).
-// Dùng:  pnpm build && node scripts/csp-check.mjs --path=/overview --expect=recharts-surface [--mobile] [--dark] [--sizes] [--shot=x.png]
+// Dùng:  pnpm build && node scripts/csp-check.mjs --path=/overview --expect=recharts-surface [--mobile] [--dark|--light] [--sizes] [--shot=x.png]
 //        node scripts/csp-check.mjs --probe     (tự kiểm công cụ: trang cố tình vi phạm CSP, phải báo lỗi)
 // Thoát mã 0 khi không có vi phạm hay lỗi và mọi --expect đều thấy; mã 1 nếu ngược lại; mã 2 nếu thiếu dist/ hay Chrome.
 // Cần Chrome: đường dẫn macOS mặc định hay biến môi trường CHROME_BIN. Không kiểm tooltip (chỉ hiện khi rê chuột).
@@ -126,8 +126,11 @@ function serve(req, res) {
 }
 
 function runChrome(url, extra) {
-  const size = flag("mobile") ? "390,844" : "1280,900";
-  const dark = flag("dark") ? ["--blink-settings=preferredColorScheme=1"] : [];
+  // Chrome headless ép độ rộng cửa sổ tối thiểu 500px (đo thực tế: đặt 390 vẫn innerWidth=500, ảnh bị cắt). 500px vẫn thuộc
+  // quy tắc điện thoại của giao diện (max-width: 800px); khổ 390px thật phải xem trên điện thoại khi nghiệm thu.
+  const size = flag("mobile") ? "500,900" : "1280,900";
+  // Không đặt cờ thì Chrome theo giao diện của hệ điều hành. Giá trị thử thực tế: 0 là tối, 1 là sáng.
+  const scheme = flag("dark") ? ["--blink-settings=preferredColorScheme=0"] : flag("light") ? ["--blink-settings=preferredColorScheme=1"] : [];
   const args = [
     "--headless=new",
     "--disable-gpu",
@@ -136,7 +139,7 @@ function runChrome(url, extra) {
     "--v=0",
     "--virtual-time-budget=10000",
     `--window-size=${size}`,
-    ...dark,
+    ...scheme,
     ...extra,
     url,
   ];
@@ -190,7 +193,7 @@ try {
   const lines = err.split("\n").filter((l) => l.includes(":CONSOLE"));
   const violations = lines.filter((l) => /Content Security Policy|Refused to/i.test(l));
   const errors = lines.filter((l) => !violations.includes(l) && /Uncaught|TypeError|ReferenceError|Failed to load resource/i.test(l));
-  console.log(`Trang: ${url.replace(/:\d+/, ":<cổng>")}  (${flag("mobile") ? "điện thoại" : "máy tính"}${flag("dark") ? ", tối" : ""})`);
+  console.log(`Trang: ${url.replace(/:\d+/, ":<cổng>")}  (${flag("mobile") ? "điện thoại" : "máy tính"}${flag("dark") ? ", tối" : flag("light") ? ", sáng" : ""})`);
   console.log(`Vi phạm CSP: ${violations.length}`);
   for (const l of violations) console.log(`  ${l.slice(0, 300)}`);
   console.log(`Lỗi console: ${errors.length}`);
