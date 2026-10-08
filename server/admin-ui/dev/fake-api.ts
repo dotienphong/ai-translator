@@ -18,6 +18,7 @@ import type {
   PaymentStatus,
   Queue,
   QueueGroup,
+  Stats,
   Summary,
   TrialRow,
 } from "../src/api/types.ts";
@@ -121,6 +122,62 @@ const queue: Queue = {
 const trial: TrialRow = { device_id_hash: DEVICE_A, started_at: NOW - 12 * DAY, ends_at: NOW - 2 * DAY, last_seen_at: NOW - DAY, purchased: true };
 const auditRow: AuditRow = { id: 2, at: NOW - 3600, actor: "api", action: "license_activated", license_id: LIC, order_code: null, detail: null };
 
+function dayKey(t: number): string {
+  return new Date((t + 7 * 3600) * 1000).toISOString().slice(0, 10);
+}
+
+/** Số liệu mẫu cho trang Tổng quan: 30 ngày, 12 tháng, giá trị tùy ý nhưng đủ để thấy mọi biểu đồ. */
+const stats: Stats = (() => {
+  const days = Array.from({ length: 30 }, (_, i) => dayKey(NOW - (29 - i) * DAY));
+  const d0 = new Date((NOW + 7 * 3600) * 1000);
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const x = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() - (11 - i), 1));
+    return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, "0")}`;
+  });
+  return {
+    generated_at: NOW,
+    currency: "VND",
+    money: {
+      today: 100000,
+      last_7d: 850000,
+      this_month: 1450000,
+      last_month: 2100000,
+      daily: days.map((day, i) => ({ day, revenue: ((i * 7) % 5) * 50000, orders: (i * 7) % 5 })),
+      monthly: months.map((month, i) => ({
+        month,
+        monthly: { revenue: (i % 4) * 150000, orders: (i % 4) * 3 },
+        yearly: { revenue: (i % 3) * 500000, orders: i % 3 },
+      })),
+    },
+    customers: {
+      trials_30d: 12,
+      trials_30d_purchased: 3,
+      trials_total: 40,
+      trials_total_purchased: 7,
+      grants_30d: {
+        new: { orders: 5, revenue: 450000 },
+        extend: { orders: 2, revenue: 100000 },
+        change: { orders: 1, revenue: 500000 },
+        other: { orders: 0, revenue: 0 },
+      },
+      grants_monthly: months.map((month, i) => ({ month, new: i % 4, extend: i % 3, change: i % 2, other: 0 })),
+    },
+    health: {
+      orders_30d: { pending: 2, processing: 0, paid: 8, underpaid: 1, cancelled: 3, expired: 5, failed: 1, paid_needs_review: 0, refunded: 0 },
+      expiring_7d: 2,
+      expiring_30d: 5,
+      email: { paid_with_email_30d: 8, sent: 8 },
+    },
+    usage: {
+      active_licenses: 9,
+      active_devices: 11,
+      devices_7d: 8,
+      trials_active: 4,
+      new_trials_daily: days.map((day, i) => ({ day, count: (i * 3) % 4 })),
+    },
+  };
+})();
+
 interface Reply {
   status: number;
   body: unknown;
@@ -145,6 +202,8 @@ function respond(method: string, url: URL): Reply {
       return ok({ operator: "ops@aitranslator.io.vn" });
     case "/admin/summary":
       return ok(summary);
+    case "/admin/stats":
+      return ok(stats);
     case "/admin/queue":
       return ok(queue);
     case "/admin/orders":
