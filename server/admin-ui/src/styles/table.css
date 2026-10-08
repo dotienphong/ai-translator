@@ -52,6 +52,16 @@
   max-height: 640px;
 }
 
+/* Bảng rộng hơn khung (cửa sổ hẹp): bóng mờ ở mép bên còn nội dung, để biết cuộn ngang được. Lớp nền "local" (cuộn theo
+   nội dung, màu bề mặt) che bóng "scroll" (đứng yên ở mép) khi đã cuộn hết về phía đó. */
+.dt-frame > .table-wrap {
+  background:
+    linear-gradient(to right, var(--surface) 40%, transparent) left / 32px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 40%, transparent) right / 32px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--edge-shadow), transparent) left / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--edge-shadow), transparent) right / 12px 100% no-repeat scroll;
+}
+
 /* ---------- Ô ---------- */
 .table-wrap th:first-child,
 .table-wrap td:first-child {
@@ -146,6 +156,22 @@ tbody tr:has(td.empty):hover {
 }
 .dt-summary {
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Máy tính cửa sổ hẹp (801 đến 1180px, vùng nội dung khoảng 700 đến 900px) ----------
+   Danh sách sáu cột vừa khung mà không cuộn ngang: email cắt ngắn hơn (đầy đủ ở title), "/ số cần trả" xuống dòng dưới số
+   đã nhận, đệm ô hẹp lại. */
+@media (min-width: 801px) and (max-width: 1180px) {
+  .dt .cell-email {
+    max-width: 15ch;
+  }
+  .dt .cell-of {
+    display: block;
+  }
+  .dt th,
+  .dt td {
+    padding-inline: var(--s-2);
+  }
 }
 
 /* ---------- Điện thoại: mỗi dòng thành một thẻ ----------
@@ -285,5 +311,28 @@ tbody tr:has(td.empty):hover {
   .dt-foot.table-more .btn {
     flex: 1;
     min-height: 44px;
+  }
+}
+/* Máy tính bảng, cửa sổ hẹp (561 đến 800px): thẻ rộng nên các cặp nhãn và giá trị chia hai cột, không để nửa phải thẻ trống */
+@media (min-width: 561px) and (max-width: 800px) {
+  .dt:not(.keep-table) tbody tr:not(.skel-row, .dt-empty-row),
+  .dt:not(.keep-table) tbody tr:has(> td.dt-aside) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--s-6);
+  }
+  .dt:not(.keep-table) tbody tr:not(.skel-row, .dt-empty-row) > td,
+  .dt:not(.keep-table) tbody tr:has(> td.dt-aside) > td {
+    grid-column: auto;
+  }
+  .dt:not(.keep-table) tbody tr:not(.skel-row, .dt-empty-row) > td.dt-primary,
+  .dt:not(.keep-table) tbody tr:not(.skel-row, .dt-empty-row) > td.dt-actions {
+    grid-column: 1 / -1;
+  }
+  .dt:not(.keep-table) tbody tr:has(> td.dt-aside) > td.dt-primary {
+    grid-area: 1 / 1;
+  }
+  .dt:not(.keep-table) tbody tr:has(> td.dt-aside) > td.dt-aside {
+    grid-area: 1 / 2;
   }
 }
