@@ -82,6 +82,19 @@ describe("log lý do từ chối (chẩn đoán Access, không lộ ra phản h�
     expect(lines).toEqual([{ event: "admin_denied", reason: "no_email", identity_error: "Error: Access không trả lời" }]);
   });
 
+  it("ENVIRONMENT nào khác 'test' (production, tên lạ, trống) mà thiếu ACCESS_AUD: aud_unset (chỉ 'test' mới được nới)", async () => {
+    for (const environment of ["production", "staging", ""]) {
+      const { lines } = await denied({ ENVIRONMENT: environment, ACCESS_AUD: "" });
+      expect(lines, environment).toEqual([{ event: "admin_denied", reason: "aud_unset" }]);
+    }
+  });
+
+  it("getIdentity ném lỗi dài: log chỉ giữ 200 ký tự đầu", async () => {
+    const { lines } = await denied({}, { getIdentity: () => Promise.reject(new Error("x".repeat(5000))) });
+    expect(lines).toHaveLength(1);
+    expect(String(lines[0].identity_error).length).toBe(200);
+  });
+
   it("request hợp lệ không ghi gì; ghi thay đổi từ trang khác: cross_site", async () => {
     expect((await denied({})).lines).toEqual([]);
     const { lines } = await denied({}, { method: "POST", body: {}, headers: { "sec-fetch-site": "cross-site" } });
@@ -130,6 +143,15 @@ describe("JWT của Access khi Worker không nhận ctx.access (Worker có Stati
     expect(cross.status).toBe(403);
   });
 
+  it("email trong nhật ký luôn chữ thường, ở cả đường JWT lẫn ctx.access", async () => {
+    const viaToken = await viaJwt(await issuer.sign({ email: "Ops@Example.COM" }));
+    expect(viaToken.res).toEqual({ status: 200, body: { operator: "ops@example.com" } });
+    const { adminCall } = makeAdmin();
+    expect(await adminCall("/admin/whoami", { operator: "Ops@Example.COM" })).toEqual({ status: 200, body: { operator: "ops@example.com" } });
+    expect(await adminCall("/admin/lookup", { body: { email: "x@example.com" }, operator: "Ops@Example.COM" })).toMatchObject({ status: 200 });
+    expect(await lastAudit()).toMatchObject({ actor: "admin:ops@example.com" });
+  });
+
   it("không có header JWT và không có ctx.access: no_access", async () => {
     const { res, lines } = await viaJwt(undefined);
     expect(res).toMatchObject({ status: 403, body: { error: "forbidden" } });
@@ -151,6 +173,7 @@ describe("JWT của Access khi Worker không nhận ctx.access (Worker có Stati
     ["chữ ký bị sửa", async () => corruptSignature(await issuer.sign()), "jwt_signature"],
     ["service token, không có email", () => issuer.sign({ email: undefined, common_name: "svc" }), "no_email"],
     ["alg none", () => issuer.sign({}, { alg: "none" }), "jwt_alg"],
+    ["token org (phiên toàn team, không dành cho ứng dụng)", () => issuer.sign({ type: "org" }), "jwt_type"],
     ["không phải JWT", async () => "khong-phai-jwt", "jwt_malformed"],
   ])("JWT %s: 403 forbidden, log đúng lý do, không ghi nhật ký, log không chứa token hay email", async (_why, make, reason) => {
     const token = await make();

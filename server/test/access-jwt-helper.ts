@@ -18,6 +18,8 @@ export interface Issuer {
   jwk: AccessJwk;
   /** Ký JWT. `claims` ghi đè phần mặc định (email, iss, aud, exp…); `header` ghi đè phần đầu (alg, kid). */
   sign(claims?: Record<string, unknown>, header?: Record<string, unknown>): Promise<string>;
+  /** Ký đúng chuỗi JSON payload cho trước (để thử giá trị JSON.stringify không tạo ra được, như 1e400). */
+  signRaw(payloadJson: string, header?: Record<string, unknown>): Promise<string>;
   /** Nguồn khóa công khai giả: chỉ biết các khóa đã nạp. */
   provider(extra?: AccessJwk[]): AccessKeyProvider;
 }
@@ -31,19 +33,24 @@ export async function makeIssuer(kid = "kid-1"): Promise<Issuer> {
   const pub = (await crypto.subtle.exportKey("jwk", pair.publicKey)) as JsonWebKey;
   const jwk: AccessJwk = { kty: "RSA", kid, n: pub.n as string, e: pub.e as string, alg: "RS256", use: "sig" };
 
+  async function signRaw(payloadJson: string, header: Record<string, unknown> = {}) {
+    const head = { alg: "RS256", kid, typ: "JWT", ...header };
+    const input = `${b64url(text(JSON.stringify(head)))}.${b64url(text(payloadJson))}`;
+    const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", pair.privateKey, text(input));
+    return `${input}.${b64url(sig)}`;
+  }
+
   async function sign(claims: Record<string, unknown> = {}, header: Record<string, unknown> = {}) {
     const now = Math.floor(Date.now() / 1000);
     const payload = { email: "ops@example.com", iss: `https://${TEAM}`, aud: [AUD], iat: now, nbf: now, exp: now + 3600, type: "app", ...claims };
-    const head = { alg: "RS256", kid, typ: "JWT", ...header };
-    const input = `${b64url(text(JSON.stringify(head)))}.${b64url(text(JSON.stringify(payload)))}`;
-    const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", pair.privateKey, text(input));
-    return `${input}.${b64url(sig)}`;
+    return signRaw(JSON.stringify(payload), header);
   }
 
   return {
     kid,
     jwk,
     sign,
+    signRaw,
     provider: (extra = []) => ({
       async get(k: string) {
         return [jwk, ...extra].find((key) => key.kid === k);

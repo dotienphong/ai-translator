@@ -306,7 +306,7 @@ chủ tài khoản Resend: chưa đủ để bán.
       bằng khóa công khai tải từ team này (`src/access-jwt.ts`). Sai hay trống thì mọi request bị 403 (phát hiện 2026-10-08
       khi deploy Web Admin lần đầu: trang chỉ hiện `{"error":"forbidden"}`). Chẩn đoán: `pnpm exec wrangler tail mt-license-admin`,
       mỗi lần từ chối có một dòng `{"event":"admin_denied","reason":…}` (`no_access`, `aud_unset`, `team_unset`, `aud_mismatch`,
-      `jwt_*`, `jwks_unavailable`, `no_email`, `cross_site`); phản hồi cho trình duyệt vẫn chỉ là `forbidden`.
+      `jwt_*` gồm `jwt_type` cho token org, `jwks_unavailable`, `no_email`, `cross_site`); phản hồi cho trình duyệt vẫn chỉ là `forbidden`.
     - **Tên miền riêng của admin** (`admin.aitranslator.io.vn`, khối `routes` trong `wrangler.admin.jsonc`): deploy xong, Cloudflare
       tự tạo bản ghi DNS và chứng chỉ (1 đến 2 phút). Kiểm từ ngoài: `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://admin.aitranslator.io.vn/`
       phải in `302` tới `<team>.cloudflareaccess.com/cdn-cgi/access/login/admin.aitranslator.io.vn?kid=<AUD>` với `kid` bằng

@@ -44,8 +44,24 @@ describe("verifyAccessJwt: từ chối", () => {
     expect(await reason(await issuer.sign({ aud: [AUD.toUpperCase()] }))).toBe("jwt_aud");
   });
 
+  it("aud là chuỗi chỉ khớp khi bằng đúng, không khớp chuỗi con", async () => {
+    expect(await reason(await issuer.sign({ aud: `x${AUD}x` }))).toBe("jwt_aud");
+    expect(await reason(await issuer.sign({ aud: AUD.slice(0, -1) }))).toBe("jwt_aud");
+  });
+
   it("aud cần tìm là chuỗi rỗng: không bao giờ khớp", async () => {
     expect(await reason(await issuer.sign({ aud: [""] }), { aud: "" })).toBe("jwt_aud");
+  });
+
+  it("iss phân biệt hoa thường", async () => {
+    expect(await reason(await issuer.sign({ iss: `https://${TEAM.toUpperCase()}` }))).toBe("jwt_iss");
+  });
+
+  it("type: chỉ chấp nhận token của ứng dụng; token org (phiên toàn team) bị từ chối; không có type thì vẫn được", async () => {
+    expect(await reason(await issuer.sign({ type: "org" }))).toBe("jwt_type");
+    expect(await reason(await issuer.sign({ type: 1 }))).toBe("jwt_type");
+    expect(await reason(await issuer.sign({ type: "app" }))).toBe("ok");
+    expect(await reason(await issuer.sign({ type: undefined }))).toBe("ok");
   });
 
   it("iss không phải team này: jwt_iss", async () => {
@@ -61,6 +77,20 @@ describe("verifyAccessJwt: từ chối", () => {
     expect(await reason(await issuer.sign({ exp: now() + 5 }))).toBe("ok");
     expect(await reason(await issuer.sign({ exp: undefined }))).toBe("jwt_malformed");
     expect(await reason(await issuer.sign({ exp: "9999999999" }))).toBe("jwt_malformed");
+  });
+
+  it("exp không hữu hạn (1e400 trong JSON thô, null): jwt_malformed", async () => {
+    const base = `"email":"ops@example.com","iss":"https://${TEAM}","aud":["${AUD}"]`;
+    expect(await reason(await issuer.signRaw(`{${base},"exp":1e400}`))).toBe("jwt_malformed");
+    expect(await reason(await issuer.signRaw(`{${base},"exp":null}`))).toBe("jwt_malformed");
+    expect(await reason(await issuer.signRaw(`{${base},"exp":${now() + 100}}`))).toBe("ok");
+  });
+
+  it("nbf sai kiểu (chuỗi, null, không hữu hạn): jwt_malformed", async () => {
+    expect(await reason(await issuer.sign({ nbf: "0" }))).toBe("jwt_malformed");
+    expect(await reason(await issuer.sign({ nbf: null }))).toBe("jwt_malformed");
+    const base = `"email":"ops@example.com","iss":"https://${TEAM}","aud":["${AUD}"],"exp":${now() + 100}`;
+    expect(await reason(await issuer.signRaw(`{${base},"nbf":-1e400}`))).toBe("jwt_malformed");
   });
 
   it("nbf ở tương lai quá 30 giây: jwt_not_yet; lệch ít hơn thì chấp nhận", async () => {
@@ -157,11 +187,23 @@ describe("createAccessKeyProvider", () => {
     expect(urls).toEqual([`https://${TEAM}/cdn-cgi/access/certs`]);
   });
 
-  it("các lần tra đồng thời dùng chung một lần tải", async () => {
+  it("các lần tra đồng thời không chờ nhau: mỗi lần tự tải (không chia sẻ promise I/O giữa các request)", async () => {
     const { provider, fetchImpl } = setup([() => jwks(rsa("a"))]);
     const all = await Promise.all([provider.get("a"), provider.get("a"), provider.get("a")]);
     expect(all.map((k) => k?.kid)).toEqual(["a", "a", "a"]);
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("một lần tải treo không chặn các lần tra khác; tải quá thời hạn bị hủy và coi là lỗi", async () => {
+    const hang = (_url: string | URL | Request, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal?.reason)));
+    let call = 0;
+    const fetchImpl = vi.fn((url: string | URL | Request, init?: RequestInit) => (call++ === 0 ? hang(url, init) : Promise.resolve(jwks(rsa("a"))))) as unknown as typeof fetch;
+    const provider = createAccessKeyProvider(TEAM, fetchImpl, () => 1_000_000, 20);
+    const first = provider.get("a"); // treo, sẽ bị hủy sau 20 ms
+    const second = await provider.get("a"); // request khác, không được chờ lần tải của request đầu
+    expect(second?.kid).toBe("a");
+    await expect(first).rejects.toThrow();
   });
 
   it("kid lạ: tải lại để thử một lần, nhưng không quá một lần mỗi phút", async () => {
@@ -176,29 +218,50 @@ describe("createAccessKeyProvider", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it("quá một giờ thì tải lại; tải lại lỗi thì không dùng khóa cũ", async () => {
+  it("quá một giờ thì tải lại; tải lại lỗi thì không dùng khóa cũ, và sau đó vẫn không dùng", async () => {
     const { provider, fetchImpl, advance } = setup([() => jwks(rsa("a")), () => new Response("lỗi", { status: 503 })]);
     expect(await provider.get("a")).toBeDefined();
     advance(60 * 60 * 1000 + 1);
-    await expect(provider.get("a")).rejects.toThrow();
+    await expect(provider.get("a")).rejects.toThrow("access_certs_503");
+    await expect(provider.get("a")).rejects.toThrow("access_certs_503"); // vẫn không rơi về khóa cũ
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it("tải lỗi: ném lỗi; thử lại trong vòng một phút thì không tải nữa và không có khóa; sau đó thử lại được", async () => {
+  it("tải lỗi: ném lỗi; thử lại trong 5 giây thì ném lại đúng lỗi đó mà không tải nữa; sau đó thử lại được", async () => {
     const { provider, fetchImpl, advance } = setup([() => new Response("lỗi", { status: 500 }), () => jwks(rsa("a"))]);
-    await expect(provider.get("a")).rejects.toThrow();
-    expect(await provider.get("a")).toBeUndefined();
+    await expect(provider.get("a")).rejects.toThrow("access_certs_500");
+    advance(4_000);
+    await expect(provider.get("a")).rejects.toThrow("access_certs_500");
     expect(fetchImpl).toHaveBeenCalledTimes(1);
-    advance(61_000);
+    advance(2_000);
     expect((await provider.get("a"))?.kid).toBe("a");
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("trả mã lỗi dù thân là JSON hợp lệ có khóa: vẫn là lỗi (không tin trả lời không ok)", async () => {
+    const { provider } = setup([() => new Response(JSON.stringify({ keys: [rsa("a")] }), { status: 500 })]);
+    await expect(provider.get("a")).rejects.toThrow("access_certs_500");
   });
 
   it("chỉ nhận khóa RSA có kid, n, e là chuỗi; trả lời không đúng khuôn dạng là lỗi", async () => {
-    const { provider } = setup([() => jwks(rsa("a"), { kty: "EC", kid: "ec", n: "x", e: "y" }, { kty: "RSA", n: "x", e: "y" }, { kty: "RSA", kid: "thieu-n", e: "AQAB" }, null, 7)]);
+    const { provider } = setup([
+      () =>
+        jwks(
+          rsa("a"),
+          { kty: "EC", kid: "ec", n: "x", e: "y" },
+          { kty: "RSA", n: "x", e: "y" },
+          { kty: "RSA", kid: "thieu-n", e: "AQAB" },
+          { kty: "RSA", kid: "thieu-e", n: "AQAB" },
+          { kty: "RSA", kid: "", n: "AQAB", e: "AQAB" },
+          null,
+          7,
+        ),
+    ]);
     expect((await provider.get("a"))?.kid).toBe("a");
     expect(await provider.get("ec")).toBeUndefined();
     expect(await provider.get("thieu-n")).toBeUndefined();
+    expect(await provider.get("thieu-e")).toBeUndefined();
+    expect(await provider.get("")).toBeUndefined();
 
     const bad = setup([() => new Response("không phải json"), () => jwks()]);
     await expect(bad.provider.get("a")).rejects.toThrow();

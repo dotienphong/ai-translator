@@ -31,6 +31,7 @@ export type AccessJwtFailure =
   | "jwt_aud"
   | "jwt_expired"
   | "jwt_not_yet"
+  | "jwt_type"
   | "no_email";
 
 export type AccessJwtResult = { ok: true; email: string } | { ok: false; reason: AccessJwtFailure };
@@ -40,7 +41,11 @@ const MAX_TOKEN_LENGTH = 8192;
 /** Cho phép đồng hồ lệch tối đa ngần này giây với `nbf`. `exp` không có độ lệch: hết hạn là hết. */
 const NBF_SKEW_SECONDS = 30;
 const KEY_TTL_MS = 60 * 60 * 1000;
+/** Khi cache còn hạn mà gặp `kid` lạ: tải lại tối đa một lần mỗi chừng này. */
 const REFETCH_MIN_MS = 60 * 1000;
+/** Sau một lần tải lỗi: không tải lại (ném lại lỗi đó) trong chừng này, để Access hay mạng lỗi không bị gọi dồn mỗi request. */
+const FAILURE_RETRY_MS = 5 * 1000;
+const FETCH_TIMEOUT_MS = 5 * 1000;
 
 const SEGMENT = /^[A-Za-z0-9_-]+$/;
 
@@ -111,6 +116,9 @@ export async function verifyAccessJwt(
   const aud = payload.aud;
   const audList = typeof aud === "string" ? [aud] : Array.isArray(aud) ? aud : [];
   if (opts.aud === "" || !audList.includes(opts.aud)) return fail("jwt_aud");
+  // `type` là "app" (token của ứng dụng) hay "org" (phiên toàn team, không dành cho ứng dụng nào). Chỉ từ chối khi có và khác
+  // "app": token thật luôn có, nhưng thiếu claim này không đáng làm hỏng đăng nhập.
+  if (payload.type !== undefined && payload.type !== "app") return fail("jwt_type");
   if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) return fail("jwt_malformed");
   if (opts.nowSeconds >= payload.exp) return fail("jwt_expired");
   if (payload.nbf !== undefined) {
@@ -139,21 +147,27 @@ function usableKeys(body: unknown): AccessJwk[] {
 
 /**
  * Nguồn khóa công khai của một team Access: tải `https://<team>/cdn-cgi/access/certs`, nhớ trong 1 giờ (Access xoay khóa
- * chậm, có thời gian chồng lấn). Gặp `kid` lạ thì tải lại để thử, nhưng không quá một lần mỗi phút (chặn kẻ gửi token kid
- * ngẫu nhiên bắt Worker tải liên tục). Hết hạn mà tải lại lỗi thì không dùng khóa cũ: ném lỗi, người gọi từ chối request.
+ * chậm, có thời gian chồng lấn).
+ *  - Cache còn hạn mà gặp `kid` lạ: tải lại để thử, nhưng không quá một lần mỗi phút (chặn kẻ gửi token kid ngẫu nhiên bắt
+ *    Worker tải liên tục).
+ *  - Cache trống hay hết hạn: mỗi request tự tải, KHÔNG chờ chung một promise: lần tải là I/O gắn với request khởi tạo, nếu
+ *    request đó bị hủy (client ngắt) thì runtime hủy cả lần tải, và promise treo vĩnh viễn kéo theo mọi request sau.
+ *  - Tải có thời hạn (5 giây). Tải lỗi thì ném lỗi, và trong 5 giây sau đó các request ném lại đúng lỗi ấy mà không tải nữa.
+ *    Khóa hết hạn không bao giờ được dùng lại: ném lỗi, người gọi từ chối request (đóng).
  */
 export function createAccessKeyProvider(
   teamDomain: string,
   fetchImpl: typeof fetch = fetch,
   now: () => number = Date.now,
+  timeoutMs: number = FETCH_TIMEOUT_MS,
 ): AccessKeyProvider {
   let keys: AccessJwk[] = [];
   let fetchedAt = Number.NEGATIVE_INFINITY;
-  let lastAttempt = Number.NEGATIVE_INFINITY;
-  let inflight: Promise<void> | null = null;
+  let lastRefresh = Number.NEGATIVE_INFINITY;
+  let lastFailure: { at: number; error: Error } | null = null;
 
   async function load(): Promise<void> {
-    const res = await fetchImpl(`https://${teamDomain}/cdn-cgi/access/certs`);
+    const res = await fetchImpl(`https://${teamDomain}/cdn-cgi/access/certs`, { signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) throw new Error(`access_certs_${res.status}`);
     const fresh = usableKeys(await res.json());
     if (fresh.length === 0) throw new Error("access_certs_empty");
@@ -161,23 +175,25 @@ export function createAccessKeyProvider(
     fetchedAt = now();
   }
 
-  function refresh(): Promise<void> {
-    lastAttempt = now();
-    inflight ??= load().finally(() => {
-      inflight = null;
-    });
-    return inflight;
-  }
-
-  const find = (kid: string) => (now() - fetchedAt < KEY_TTL_MS ? keys.find((k) => k.kid === kid) : undefined);
-
   return {
     async get(kid) {
-      const hit = find(kid);
-      if (hit) return hit;
-      if (inflight) await inflight;
-      else if (now() - lastAttempt >= REFETCH_MIN_MS) await refresh();
-      return find(kid);
+      const t = now();
+      if (t - fetchedAt < KEY_TTL_MS) {
+        const hit = keys.find((k) => k.kid === kid);
+        if (hit) return hit;
+        if (t - lastRefresh < REFETCH_MIN_MS) return undefined;
+      } else if (lastFailure && t - lastFailure.at < FAILURE_RETRY_MS) {
+        throw lastFailure.error;
+      }
+      lastRefresh = t;
+      try {
+        await load();
+        lastFailure = null;
+      } catch (err) {
+        lastFailure = { at: now(), error: err instanceof Error ? err : new Error(String(err)) };
+        throw lastFailure.error;
+      }
+      return keys.find((k) => k.kid === kid);
     },
   };
 }

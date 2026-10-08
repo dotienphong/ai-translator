@@ -90,7 +90,7 @@ export function useAdminAuth(app: Hono<AdminAppEnv>, makeDeps: (env: AdminEnv) =
       try {
         identity = await access.getIdentity();
       } catch (err) {
-        identityError = String(err);
+        identityError = String(err).slice(0, 200);
       }
       email = (identity as { email?: unknown } | undefined)?.email;
       if (typeof email !== "string" || email === "") {
@@ -98,7 +98,8 @@ export function useAdminAuth(app: Hono<AdminAppEnv>, makeDeps: (env: AdminEnv) =
         return deny(c, "no_email", identityError !== undefined ? { identity_error: identityError } : { identity_keys: keys });
       }
     }
-    c.set("actor", `admin:${email}`);
+    // Chữ thường: cùng một người luôn có một dạng trong nhật ký, dù IdP trả hoa thường thế nào.
+    c.set("actor", `admin:${(email as string).toLowerCase()}`);
     c.set("deps", makeDeps(c.env));
     await next();
   });
