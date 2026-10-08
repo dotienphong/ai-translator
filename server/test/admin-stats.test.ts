@@ -443,3 +443,73 @@ describe("GET /admin/stats: Sử dụng", () => {
     expect(s.customers.trials_total).toBe(5); // máy ngoài cửa sổ vẫn có trong tổng
   });
 });
+
+describe("GET /admin/stats: hợp đồng", () => {
+  it("cơ sở dữ liệu trống: toàn bộ phản hồi đúng từng trường", async () => {
+    const zero = { revenue: 0, orders: 0 };
+    expect(await getStats()).toEqual({
+      generated_at: NOW,
+      currency: "VND",
+      money: {
+        today: 0,
+        last_7d: 0,
+        this_month: 0,
+        last_month: 0,
+        daily: dayWindow(NOW, 30).keys.map((day) => ({ day, revenue: 0, orders: 0 })),
+        monthly: monthWindow(NOW, 12).keys.map((month) => ({ month, monthly: zero, yearly: zero })),
+      },
+      customers: {
+        trials_30d: 0,
+        trials_30d_purchased: 0,
+        trials_total: 0,
+        trials_total_purchased: 0,
+        grants_30d: { new: zero, extend: zero, change: zero, other: zero },
+        grants_monthly: monthWindow(NOW, 12).keys.map((month) => ({ month, new: 0, extend: 0, change: 0, other: 0 })),
+      },
+      health: {
+        orders_30d: Object.fromEntries(ORDER_STATUSES.map((st) => [st, 0])),
+        expiring_7d: 0,
+        expiring_30d: 0,
+        email: { paid_with_email_30d: 0, sent: 0 },
+      },
+      usage: {
+        active_licenses: 0,
+        active_devices: 0,
+        devices_7d: 0,
+        trials_active: 0,
+        new_trials_daily: dayWindow(NOW, 30).keys.map((day) => ({ day, count: 0 })),
+      },
+    });
+  });
+
+  it("phản hồi chỉ có số: không có email, key hay mã máy của dữ liệu", async () => {
+    const lic = license();
+    await seed(
+      lic.stmt,
+      order({ paidAt: NOW - 60, email: "bi-mat@example.com", emailSentAt: NOW - 30 }),
+      trial("ma-may-bi-mat", NOW - 60),
+      activation(lic.id, { device: "ma-may-bi-mat" }),
+    );
+    const { w, adminCall } = makeAdmin();
+    w.clock.now = NOW;
+    const text = JSON.stringify((await adminCall("/admin/stats")).body);
+    expect(text).not.toMatch(/@|example\.com|bi-mat|ma-may|L0{20}/);
+  });
+
+  it("phản hồi không được lưu đệm: Cache-Control no-store (dữ liệu kinh doanh)", async () => {
+    const { adminFetch } = makeAdmin();
+    const res = await adminFetch("/admin/stats");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("stats_viewed ẩn khỏi /admin/audit mặc định, hiện khi include_views=1 hay lọc đúng action đó", async () => {
+    const { adminCall } = makeAdmin();
+    await adminCall("/admin/stats");
+    const actions = async (q = "") =>
+      ((await adminCall(`/admin/audit${q}`)).body as unknown as { items: { action: string }[] }).items.map((i) => i.action);
+    expect(await actions()).not.toContain("stats_viewed");
+    expect(await actions("?include_views=1")).toContain("stats_viewed");
+    expect(await actions("?action=stats_viewed")).toEqual(["stats_viewed"]);
+  });
+});
