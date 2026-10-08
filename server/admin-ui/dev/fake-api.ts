@@ -1,9 +1,14 @@
 // API giả cho `pnpm dev` (apply: "serve": chỉ dev server). Không có trong bản build, không chạy trên Worker.
 // Dữ liệu mẫu cố định đủ để xem mọi màn hình, hình dạng khớp hợp đồng API thật (src/api/types.ts). Bốn danh sách (đơn,
 // license, máy dùng thử, nhật ký) có vài chục dòng, lọc gần giống server và phân trang 50 dòng bằng next_cursor để thấy
-// "Tải thêm". Thao tác ghi trả thành công giả. Không dùng email, key hay hash thật.
+// "Tải thêm". Tra cứu (/admin/lookup) trả theo body như server: đơn, license, máy có thật trong dữ liệu mẫu, còn lại rỗng.
+// Vài bản ghi trình diễn cho trang chi tiết: đơn 1000012 (đã trả), 1000214 (cần xử lý), 1000210 (chuyển thiếu), 1000208
+// (chưa gửi được email key); license LIC (xung đột máy), LOCKED (khóa tạm), REVOKED (đã thu hồi); máy DEVICE_A (đã mua,
+// dùng thử đã hết), DEVICE_B (đã mua, không dùng thử). Email khach@example.com có hai license. Thao tác ghi trả thành
+// công giả. Không dùng email, key hay hash thật.
 // Xem trạng thái khó tạo: thêm `__fake=slow` (chờ 30 giây), `__fake=error` (lỗi 500) hay `__fake=empty` (danh sách rỗng)
-// vào địa chỉ TRANG (ví dụ /orders?__fake=empty): API giả ghi nó vào cookie khi trả HTML, trang không biết gì.
+// vào địa chỉ TRANG (ví dụ /orders?__fake=empty): API giả ghi nó vào cookie khi trả HTML, trang không biết gì. Áp cho bốn
+// danh sách và cho tra cứu (empty: không tìm thấy). `__fake=bad` làm tra cứu trả 400 (từ khóa sai định dạng).
 import type { Plugin } from "vite";
 import type {
   Activation,
@@ -83,20 +88,74 @@ const activation = (id: string, hash: string, label: string): Activation => ({
   deactivated_by: null,
 });
 
+const LOCKED = "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f";
+const REVOKED = "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b";
+const DEVICE_C = `c7d2${"0".repeat(56)}1a4f`;
+
 const licenseDetail: LicenseDetail = {
   id: LIC,
   license_key: KEY,
   email: EMAIL,
   plan: "yearly",
   expires_at: NOW + 365 * DAY,
-  created_at: NOW - DAY,
+  created_at: NOW - 40 * DAY,
   revoked_at: null,
   locked_at: null,
   conflict: true,
-  activations: [activation("act-1", DEVICE_A, "MacBook-Phong"), activation("act-2", DEVICE_B, "DESKTOP-ABC")],
+  activations: [
+    { ...activation("act-0", DEVICE_C, "Laptop-cu"), created_at: NOW - 39 * DAY, last_validated_at: NOW - 12 * DAY, deactivated_at: NOW - 11 * DAY, deactivated_by: "user" },
+    { ...activation("act-1", DEVICE_A, "MacBook-Phong"), created_at: NOW - 11 * DAY },
+    { ...activation("act-2", DEVICE_B, "DESKTOP-ABC"), created_at: NOW - 3700, last_validated_at: NOW - 120 },
+  ],
   audit: [
-    { at: NOW - 3600, actor: "api", action: "activated", order_code: null, detail: '{"allow_conflict":true}' },
-    { at: NOW - DAY, actor: "webhook", action: "license_issued", order_code: 1000012, detail: null },
+    { at: NOW - 3600, actor: "api", action: "license_conflict", order_code: null, detail: '{"activation_id":"act-2","devices":2}' },
+    { at: NOW - 3650, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-2"}' },
+    { at: NOW - 2 * DAY, actor: "admin:ops@aitranslator.io.vn", action: "key_resent", order_code: null, detail: '{"sent":true}' },
+    { at: NOW - 11 * DAY, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-1"}' },
+    { at: NOW - 11 * DAY - 600, actor: "api", action: "deactivated", order_code: null, detail: '{"activation_id":"act-0"}' },
+    { at: NOW - 39 * DAY, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-0"}' },
+    { at: NOW - 40 * DAY, actor: "webhook", action: "license_issued", order_code: 1000012, detail: null },
+  ],
+};
+
+const lockedDetail: LicenseDetail = {
+  ...licenseDetail,
+  id: LOCKED,
+  license_key: "P3RT-7KQM-2WXA-9HDE-4NBC-6ZTY-Q8LZ",
+  email: "linh.dang@example.com",
+  plan: "monthly",
+  expires_at: NOW + 18 * DAY,
+  created_at: NOW - 12 * DAY,
+  locked_at: NOW - 3 * 3600,
+  conflict: false,
+  activations: [
+    { ...activation("act-7", `e81b${"0".repeat(56)}0d33`, "PC-Ke-Toan"), license_id: LOCKED, created_at: NOW - 4 * 3600 },
+    { ...activation("act-6", `5a90${"0".repeat(56)}b7e1`, null as unknown as string), license_id: LOCKED, device_label: null, deactivated_at: NOW - 5 * 3600, deactivated_by: "user" },
+    { ...activation("act-5", `0f4c${"0".repeat(56)}2e98`, "Laptop-Linh"), license_id: LOCKED, deactivated_at: NOW - 2 * DAY, deactivated_by: "admin" },
+  ],
+  audit: [
+    { at: NOW - 3 * 3600, actor: "api", action: "license_locked", order_code: null, detail: '{"deactivations_30d":3}' },
+    { at: NOW - 4 * 3600, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-7"}' },
+    { at: NOW - 5 * 3600, actor: "api", action: "deactivated", order_code: null, detail: '{"activation_id":"act-6"}' },
+    { at: NOW - 2 * DAY, actor: "admin:ops@aitranslator.io.vn", action: "deactivated_by_admin", order_code: null, detail: '{"activation_id":"act-5","note":"khách đổi máy"}' },
+    { at: NOW - 12 * DAY, actor: "webhook", action: "license_issued", order_code: 1000190, detail: null },
+  ],
+};
+
+const revokedDetail: LicenseDetail = {
+  ...licenseDetail,
+  id: REVOKED,
+  license_key: "R9VB-2MXQ-8TKD-3HZC-7WEF-1NPA-5GHJ",
+  plan: "monthly",
+  expires_at: NOW + 20 * DAY,
+  created_at: NOW - 10 * DAY,
+  revoked_at: NOW - 2 * DAY,
+  conflict: false,
+  activations: [{ ...activation("act-9", DEVICE_A, "MacBook-Phong"), license_id: REVOKED, created_at: NOW - 10 * DAY, last_validated_at: NOW - 2 * DAY }],
+  audit: [
+    { at: NOW - 2 * DAY, actor: "admin:ops@aitranslator.io.vn", action: "license_revoked", order_code: null, detail: '{"note":"khách yêu cầu hoàn tiền, đã chuyển khoản lại"}' },
+    { at: NOW - 10 * DAY, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-9"}' },
+    { at: NOW - 10 * DAY - 300, actor: "webhook", action: "license_issued", order_code: 1000150, detail: null },
   ],
 };
 
@@ -280,6 +339,26 @@ const audits: AuditRow[] = Array.from({ length: 90 }, (_, i) => {
     detail: detail ?? null,
   };
 });
+/** Nhật ký của các đơn trình diễn (trang chi tiết đơn lọc theo order_code). */
+const auditOf = (id: number, at: number, actor: string, action: string, order_code: number, license_id: string | null = null, detail: string | null = null): AuditRow => ({
+  id,
+  at,
+  actor,
+  action,
+  license_id,
+  order_code,
+  detail,
+});
+const ORDER_AUDITS: AuditRow[] = [
+  auditOf(9010, NOW - 20 * 60, "webhook", "order_needs_review", 1000214, null, '{"reason":"license_revoked"}'),
+  auditOf(9009, NOW - 25 * 60, "api", "order_created", 1000214, null, '{"plan":"yearly","amount":500000,"renew":true}'),
+  auditOf(9008, NOW - 40 * 60 + 200, "webhook", "order_underpaid", 1000210, null, '{"amount":50000,"amount_paid":20000}'),
+  auditOf(9007, NOW - 40 * 60, "api", "order_created", 1000210, null, '{"plan":"monthly","amount":50000}'),
+  auditOf(9006, NOW - 2 * DAY, "webhook", "license_issued", 1000208, LIC),
+  auditOf(9005, NOW - 2 * DAY - 3600, "api", "order_created", 1000208, null, '{"plan":"yearly","amount":500000}'),
+  auditOf(9003, NOW - 40 * DAY + 95, "webhook", "license_issued", 1000012, LIC),
+  auditOf(9002, NOW - 40 * DAY, "api", "order_created", 1000012, null, '{"plan":"yearly","amount":500000}'),
+];
 const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed", "alerts_viewed", "releases_viewed"];
 
 /** Trang 50 dòng theo con trỏ (vị trí), như server: next_cursor null ở trang cuối. */
@@ -316,7 +395,14 @@ function listReply(path: string, url: URL): Reply | null {
       const views = q.get("include_views") === "1" || (action !== null && VIEW_ACTIONS.includes(action));
       return ok(
         paged(
-          audits.filter((a) => (!actor || a.actor.split(":")[0] === actor) && is("action", a.action) && (views || !VIEW_ACTIONS.includes(a.action)) && inRange(a.at, q)),
+          [...ORDER_AUDITS, ...audits].filter(
+            (a) =>
+              (!actor || a.actor.split(":")[0] === actor) &&
+              is("action", a.action) &&
+              is("order_code", String(a.order_code)) &&
+              (views || !VIEW_ACTIONS.includes(a.action)) &&
+              inRange(a.at, q),
+          ),
           url,
         ),
       );
@@ -382,16 +468,83 @@ const stats: Stats = (() => {
   };
 })();
 
+/* ---------- Tra cứu: trả theo body như server ---------- */
+
+/** License đầy đủ của một dòng danh sách (key đầy đủ dựng lại từ key che, máy theo số máy đang kích hoạt). */
+function detailOf(row: LicenseRow): LicenseDetail {
+  const [head, tail] = row.license_key.split("-…-");
+  return {
+    ...row,
+    license_key: `${head}-M4XB-9TRD-0HZC-5WEF-8NPA-${tail}`,
+    conflict: row.active_devices > 1,
+    activations: Array.from({ length: row.active_devices }, (_, i) => ({ ...activation(`${row.id.slice(0, 4)}-${i}`, hex(i + 9, 64), `May-${i + 1}`), license_id: row.id })),
+    audit: [{ at: row.created_at, actor: "webhook", action: "license_issued", order_code: null, detail: null }],
+  };
+}
+
+const SHOWCASE_ORDERS: OrderRow[] = [
+  { ...order(1000012, "paid"), created_at: NOW - 40 * DAY, paid_at: NOW - 40 * DAY + 95, email_sent_at: NOW - 40 * DAY + 120 },
+  { ...qOrder(1000214, "paid_needs_review", 25 * 60, { email: "minh.hoang@example.com" }), renew_license_id: REVOKED },
+  ...queue.underpaid.items,
+  ...queue.email_failed.items,
+];
+
+function findOrder(code: number): OrderRow | undefined {
+  return SHOWCASE_ORDERS.find((o) => o.order_code === code) ?? orders.find((o) => o.order_code === code);
+}
+
+function findLicense(id: string): LicenseDetail | undefined {
+  if (id === LIC) return licenseDetail;
+  if (id === LOCKED) return lockedDetail;
+  if (id === REVOKED) return revokedDetail;
+  const row = licenses.find((l) => l.id === id);
+  return row ? detailOf(row) : undefined;
+}
+
+function ordersOf(id: string): OrderRow[] {
+  if (id === LIC) return SHOWCASE_ORDERS.filter((o) => o.license_id === LIC);
+  if (id === REVOKED) return SHOWCASE_ORDERS.filter((o) => o.renew_license_id === REVOKED);
+  return [];
+}
+
+function lookupReply(body: Record<string, unknown>): Reply {
+  const withOrders = (l: LicenseDetail | undefined): LookupResult => (l ? { licenses: [l], orders: ordersOf(l.id) } : { licenses: [], orders: [] });
+  if (typeof body.order_code === "number") {
+    const o = findOrder(body.order_code);
+    if (!o) return ok({ licenses: [], orders: [] });
+    const ids = [o.license_id, o.renew_license_id].filter((x): x is string => typeof x === "string");
+    return ok({ licenses: ids.map(findLicense).filter((l): l is LicenseDetail => l !== undefined), orders: [o] });
+  }
+  if (typeof body.license_id === "string") return ok(withOrders(findLicense(body.license_id)));
+  if (typeof body.license_key === "string") {
+    const k = body.license_key.replace(/[\s-]/g, "").toUpperCase();
+    return ok(withOrders([licenseDetail, lockedDetail, revokedDetail].find((l) => l.license_key.replace(/-/g, "") === k)));
+  }
+  if (typeof body.email === "string") {
+    if (body.email !== EMAIL) return ok({ licenses: [], orders: [] });
+    return ok({ licenses: [licenseDetail, revokedDetail], orders: [...ordersOf(LIC), ...ordersOf(REVOKED)] });
+  }
+  if (typeof body.device_id_hash === "string") {
+    const h = body.device_id_hash;
+    if (h === DEVICE_A) return ok({ licenses: [licenseDetail, revokedDetail], orders: [], trial: lookup.trial });
+    if (h === DEVICE_B || h === DEVICE_C) return ok({ licenses: [licenseDetail], orders: [], trial: null });
+    const t = trials.find((x) => x.device_id_hash === h);
+    const lic = t?.purchased ? { ...licenseDetail, conflict: false, activations: [{ ...activation("act-t", h, "Laptop-Thu"), created_at: t.ends_at - 2 * DAY }] } : undefined;
+    return ok({ licenses: lic ? [lic] : [], orders: [], trial: t ? { started_at: t.started_at, ends_at: t.ends_at, last_seen_at: t.last_seen_at } : null });
+  }
+  return ok({ error: "invalid_request", field: "email|order_code|device_id_hash" }, 400);
+}
+
 interface Reply {
   status: number;
   body: unknown;
 }
 const ok = (body: unknown, status = 200): Reply => ({ status, body });
 
-function respond(method: string, url: URL): Reply {
+function respond(method: string, url: URL, body: Record<string, unknown>): Reply {
   const path = url.pathname;
   if (method === "POST") {
-    if (path === "/admin/lookup") return ok(lookup);
+    if (path === "/admin/lookup") return lookupReply(body);
     if (path === "/admin/keys/test-sign") return ok(keyCheck);
     if (path === "/admin/erase") return ok(erased);
     if (path === "/admin/payos/confirm-webhook") return ok({ ok: true, webhook_url: "https://api.aitranslator.io.vn/v1/webhooks/payos" });
@@ -436,22 +589,35 @@ export function fakeAdminApi(): Plugin {
           }
           return next();
         }
-        // Trạng thái khó tạo, theo `__fake` của trang (cookie ở trên): chỉ cho GET của bốn danh sách.
+        // Trạng thái khó tạo, theo `__fake` của trang (cookie ở trên): cho GET của bốn danh sách và cho tra cứu.
         const mode = /(?:^|;\s*)__fake=([^;]*)/.exec(req.headers.cookie ?? "")?.[1];
-        const list = req.method === "GET" && /^\/admin\/(orders|licenses|trials|audit)$/.test(url.pathname);
-        const reply =
-          list && mode === "error"
-            ? ok({ error: "internal" }, 500)
-            : list && mode === "empty"
-              ? ok({ items: [], next_cursor: null })
-              : respond(req.method ?? "GET", url);
-        const send = () => {
-          res.statusCode = reply.status;
-          res.setHeader("content-type", "application/json");
-          res.end(JSON.stringify(reply.body));
-        };
-        if (list && mode === "slow") setTimeout(send, 30_000);
-        else send();
+        const isLookup = req.method === "POST" && url.pathname === "/admin/lookup";
+        const list = (req.method === "GET" && /^\/admin\/(orders|licenses|trials|audit)$/.test(url.pathname)) || isLookup;
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          let body: Record<string, unknown> = {};
+          try {
+            body = chunks.length ? (JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>) : {};
+          } catch {
+            body = {};
+          }
+          const reply =
+            list && mode === "error"
+              ? ok({ error: "internal" }, 500)
+              : list && mode === "empty"
+                ? ok(isLookup ? { licenses: [], orders: [] } : { items: [], next_cursor: null })
+                : isLookup && mode === "bad"
+                  ? ok({ error: "invalid_request", field: "license_key" }, 400)
+                  : respond(req.method ?? "GET", url, body);
+          const send = () => {
+            res.statusCode = reply.status;
+            res.setHeader("content-type", "application/json");
+            res.end(JSON.stringify(reply.body));
+          };
+          if (list && mode === "slow") setTimeout(send, 30_000);
+          else send();
+        });
       });
     },
   };

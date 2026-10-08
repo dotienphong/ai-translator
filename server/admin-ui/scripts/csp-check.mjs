@@ -237,7 +237,70 @@ function auditFixture() {
     })),
   );
 }
+// Tra cứu (POST, body không đọc): một đơn chuyển thiếu gia hạn license LIC; LIC khóa tạm và xung đột máy, có nhật ký. Đủ để
+// vẽ trang đơn /orders/1000012 và trang license /licenses/<LIC> với thẻ việc cần làm, danh sách máy, khu vực nguy hiểm.
+const LIC = "0b9e7c1e-5f3a-4c1d-9a7e-2f1d3c4b5a69";
+function lookupFixture() {
+  const act = (id, hash, label, over = {}) => ({
+    id,
+    license_id: LIC,
+    device_id_hash: hash,
+    device_label: label,
+    quota_epoch: 0,
+    created_at: NOW - 5 * DAY,
+    last_validated_at: NOW - 300,
+    deactivated_at: null,
+    deactivated_by: null,
+    ...over,
+  });
+  return {
+    licenses: [
+      {
+        id: LIC,
+        license_key: "K7Q2-M4XB-9TRD-0HZC-5WEF-8NPA-9XMB",
+        email: "khach@example.com",
+        plan: "yearly",
+        expires_at: NOW + 200 * DAY,
+        created_at: NOW - 60 * DAY,
+        revoked_at: null,
+        locked_at: NOW - 3600,
+        conflict: true,
+        activations: [
+          act("act-1", `3fa1${"0".repeat(56)}c09e`, "MacBook"),
+          act("act-2", `91be${"0".repeat(56)}77d2`, "DESKTOP-ABC"),
+          act("act-0", `c7d2${"0".repeat(56)}1a4f`, null, { deactivated_at: NOW - 9 * DAY, deactivated_by: "admin" }),
+        ],
+        audit: [
+          { at: NOW - 3600, actor: "api", action: "license_conflict", order_code: null, detail: '{"activation_id":"act-2","devices":2}' },
+          { at: NOW - 9 * DAY, actor: "admin:ops@aitranslator.io.vn", action: "deactivated_by_admin", order_code: null, detail: '{"activation_id":"act-0"}' },
+          { at: NOW - 60 * DAY, actor: "webhook", action: "license_issued", order_code: 1000012, detail: null },
+        ],
+      },
+    ],
+    orders: [
+      {
+        order_code: 1000012,
+        provider: "payos",
+        plan: "yearly",
+        amount: 500000,
+        amount_paid: 200000,
+        currency: "VND",
+        email: "khach@example.com",
+        status: "underpaid",
+        grant_kind: null,
+        license_id: null,
+        renew_license_id: LIC,
+        created_at: NOW - 2 * 3600,
+        paid_at: null,
+        email_sent_at: null,
+        email_gave_up_at: null,
+      },
+    ],
+  };
+}
 const API = {
+  "/admin/lookup": lookupFixture,
+  "/admin/orders/1000012/payment-status": () => ({ orderCode: 1000012, status: "underpaid", amount: 500000, amountPaid: 200000, paidAt: NOW - 3600 }),
   "/admin/whoami": () => ({ operator: "ops@aitranslator.io.vn" }),
   "/admin/stats": statsFixture,
   "/admin/alerts": alertsFixture,
