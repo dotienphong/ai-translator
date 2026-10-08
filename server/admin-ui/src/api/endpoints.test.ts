@@ -26,6 +26,8 @@ const CASES: Case[] = [
   { fn: "queue", run: () => api.queue(), method: "GET", url: "/admin/queue" },
   { fn: "summary", run: () => api.summary(), method: "GET", url: "/admin/summary" },
   { fn: "stats", run: () => api.stats(), method: "GET", url: "/admin/stats" },
+  { fn: "alerts", run: () => api.alerts(), method: "GET", url: "/admin/alerts" },
+  { fn: "releases", run: () => api.releases(), method: "GET", url: "/admin/releases" },
 
   { fn: "lookup", run: () => api.lookup({ email: "khach@example.com" }), method: "POST", url: "/admin/lookup", body: { email: "khach@example.com" } },
   { fn: "lookup", run: () => api.lookup({ order_code: 1000012 }), method: "POST", url: "/admin/lookup", body: { order_code: 1000012 } },
@@ -138,6 +140,6 @@ describe("api: method, URL và body gửi lên", () => {
 
   it("có test cho đủ mọi hàm của api", () => {
     expect(new Set(CASES.map((c) => c.fn))).toEqual(new Set(Object.keys(api)));
-    expect(Object.keys(api)).toHaveLength(22);
+    expect(Object.keys(api)).toHaveLength(24);
   });
 });

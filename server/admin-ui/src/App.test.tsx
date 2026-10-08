@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
@@ -12,6 +12,8 @@ const responses: Record<string, unknown> = {
   "/admin/queue": { needs_review: empty, underpaid: empty, email_failed: empty, locked: empty, conflict: empty, alerts: empty },
   "/admin/summary": { revenue_today: 0, currency: "VND", paid_orders_7d: 0, active_licenses: 0 },
   "/admin/orders": { items: [], next_cursor: null },
+  "/admin/alerts": { items: [], total: 0, pending: 0 },
+  "/admin/releases": { base_url: "https://releases.example.com", channels: { stable: { status: "missing" }, beta: { status: "missing" } }, models: { status: "missing" } },
 };
 
 beforeEach(() => {
@@ -54,6 +56,29 @@ describe("App", () => {
     expect(window.location.pathname).toBe("/overview");
     expect(await screen.findByRole("heading", { name: "Tổng quan" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Tổng quan" }).className).toContain("active");
+  });
+
+  it("mục Hệ thống nằm ngay sau Tổng quan; bấm thì đổi sang /system và hiện trang", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("heading", { name: "Việc cần xử lý" });
+    const nav = within(screen.getByRole("navigation", { name: "Điều hướng" }));
+    expect(nav.getAllByRole("link").map((a) => a.textContent)).toEqual([
+      "Việc cần xử lý",
+      "Tổng quan",
+      "Hệ thống",
+      "Đơn hàng",
+      "License",
+      "Máy & dùng thử",
+      "Nhật ký",
+      "Công cụ",
+    ]);
+    const link = nav.getByRole("link", { name: "Hệ thống" });
+    expect(link.getAttribute("href")).toBe("/system");
+    await user.click(link);
+    expect(window.location.pathname).toBe("/system");
+    expect(await screen.findByRole("heading", { name: "Hệ thống" })).toBeTruthy();
+    expect(nav.getByRole("link", { name: "Hệ thống" }).className).toContain("active");
   });
 
   it("phiên Access hết hạn: hiện thanh báo có nút tải lại", async () => {

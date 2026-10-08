@@ -14,6 +14,7 @@ import { OrderPage } from "./pages/OrderPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { QueuePage } from "./pages/QueuePage";
 import { SearchPage } from "./pages/SearchPage";
+import { SystemPage } from "./pages/SystemPage";
 import { ToolsPage } from "./pages/ToolsPage";
 import { TrialsPage } from "./pages/TrialsPage";
 import { Link, matchRoute, type Route, usePath } from "./router";
@@ -32,6 +33,8 @@ function Page({ route }: { route: Route }) {
           <OverviewPage />
         </Suspense>
       );
+    case "system":
+      return <SystemPage />;
     case "search":
       return <SearchPage />;
     case "orders":

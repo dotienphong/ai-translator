@@ -3,6 +3,7 @@ import { Link, type RouteName } from "../router";
 const NAV: { to: string; label: string; routes: RouteName[] }[] = [
   { to: "/", label: "Việc cần xử lý", routes: ["queue"] },
   { to: "/overview", label: "Tổng quan", routes: ["overview"] },
+  { to: "/system", label: "Hệ thống", routes: ["system"] },
   { to: "/orders", label: "Đơn hàng", routes: ["orders", "order"] },
   { to: "/licenses", label: "License", routes: ["licenses", "license"] },
   { to: "/trials", label: "Máy & dùng thử", routes: ["trials", "device"] },

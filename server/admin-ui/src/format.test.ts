@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysLeft, fmtCompact, fmtDate, fmtDateTime, fmtDay, fmtDetail, fmtHm, fmtMonth, fmtVnd, maskKey, shortHash } from "./format";
+import { daysLeft, fmtBytes, fmtCompact, fmtDate, fmtDateTime, fmtDay, fmtDetail, fmtHm, fmtMonth, fmtVnd, maskKey, shortHash } from "./format";
 
 /** 2026-10-01T00:00:00Z = 07:00 ngày 01/10/2026 giờ Việt Nam. */
 const T0 = 1_790_812_800;
@@ -59,5 +59,29 @@ describe("format cho biểu đồ", () => {
       "1,5tr",
       "12tr",
     ]);
+  });
+});
+
+describe("fmtBytes", () => {
+  it.each([
+    [0, "0 B"],
+    [1, "1 B"],
+    [1023, "1023 B"],
+    [1024, "1 KB"],
+    [1536, "1,5 KB"],
+    [1024 * 1024 - 1, "1 MB"],
+    [1024 * 1024, "1 MB"],
+    [574041195, "547,4 MB"],
+    [1024 ** 3 - 1, "1 GB"],
+    [1024 ** 3, "1 GB"],
+    [3.5 * 1024 ** 3, "3,5 GB"],
+    [1024 ** 4, "1024 GB"],
+  ])("%d byte thành %s", (n, text) => {
+    expect(fmtBytes(n)).toBe(text);
+  });
+
+  it("số âm hay không hữu hạn thì không ném lỗi", () => {
+    expect(fmtBytes(-5)).toBe("0 B");
+    expect(fmtBytes(Number.NaN)).toBe("0 B");
   });
 });

@@ -217,3 +217,58 @@ export interface Stats {
     new_trials_daily: { day: string; count: number }[];
   };
 }
+
+/** Một dòng của GET /admin/alerts (bảng ops_alerts đầy đủ; khác `AlertRow` của hàng đợi ở chỗ có `notified_at`). */
+export interface AlertRowFull {
+  kind: string;
+  window_start: number;
+  count: number;
+  notified_count: number;
+  notified_at: number | null;
+}
+
+export interface AlertsResponse {
+  /** Tối đa 200 dòng mới nhất. */
+  items: AlertRowFull[];
+  /** Tổng số dòng của bảng (có thể lớn hơn `items.length`). */
+  total: number;
+  /** Số dòng có count > notified_count. */
+  pending: number;
+}
+
+export interface ChannelInfo {
+  version: string;
+  /** Chuỗi ISO do bucket trả về, hoặc null khi latest.json không có `pub_date`. */
+  pub_date: string | null;
+  /** Đã cắt tối đa 1000 ký tự; có thể rỗng. */
+  notes: string;
+  platforms: string[];
+}
+
+export interface ModelFile {
+  id: string;
+  kind: string;
+  version: string;
+  bytes: number;
+  /** Nếu manifest ghi nhiều gói thì server đã nối bằng dấu phẩy. */
+  tier: string;
+  min_app_version: string;
+}
+
+export interface ModelsInfo {
+  sequence: number;
+  /** Chuỗi ISO. */
+  published_at: string;
+  kid: string;
+  packs: string[];
+  files: ModelFile[];
+}
+
+/** Một nguồn của GET /admin/releases: đọc được, chưa có (404/403) hay lỗi kèm mã cố định (`timeout`, `network`, `http_<mã>`, `too_large`, `invalid_json`, `invalid_shape`). */
+export type Source<T> = ({ status: "ok" } & T) | { status: "missing" } | { status: "error"; reason: string };
+
+export interface ReleasesResponse {
+  base_url: string;
+  channels: { stable: Source<ChannelInfo>; beta: Source<ChannelInfo> };
+  models: Source<ModelsInfo>;
+}

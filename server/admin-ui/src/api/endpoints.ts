@@ -1,6 +1,7 @@
 // Một hàm có kiểu cho mỗi route của Worker admin.
 import { call } from "./client";
 import type {
+  AlertsResponse,
   AuditRow,
   EraseResult,
   IssuedLicense,
@@ -12,6 +13,7 @@ import type {
   PaymentStatus,
   PlanCode,
   Queue,
+  ReleasesResponse,
   Stats,
   Summary,
   TrialRow,
@@ -52,6 +54,8 @@ export const api = {
   queue: () => call<Queue>("GET", "/admin/queue"),
   summary: () => call<Summary>("GET", "/admin/summary"),
   stats: () => call<Stats>("GET", "/admin/stats"),
+  alerts: () => call<AlertsResponse>("GET", "/admin/alerts"),
+  releases: () => call<ReleasesResponse>("GET", "/admin/releases"),
   orders: (f: Filters) => call<Page<OrderRow>>("GET", `/admin/orders${queryString(f)}`),
   licenses: (f: Filters) => call<Page<LicenseRow>>("GET", `/admin/licenses${queryString(f)}`),
   trials: (f: Filters) => call<Page<TrialRow>>("GET", `/admin/trials${queryString(f)}`),

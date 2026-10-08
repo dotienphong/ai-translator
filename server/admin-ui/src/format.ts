@@ -92,3 +92,18 @@ export function fmtCompact(n: number): string {
   if (abs >= 1_000) return `${trim(n / 1_000)}k`;
   return String(n);
 }
+
+/** Dung lượng: "547,4 MB" (một chữ số thập phân khi cần, dấu phẩy kiểu Việt; B, KB, MB, GB theo bội 1024). Âm hay không hữu hạn thành "0 B". */
+export function fmtBytes(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let v = n;
+  let i = 0;
+  // Làm tròn rồi mới so với 1024: 1048575 byte là "1 MB", không phải "1024 KB".
+  while (i < units.length - 1 && Math.round(v * 10) / 10 >= 1024) {
+    v /= 1024;
+    i++;
+  }
+  const text = i === 0 ? String(Math.round(v)) : String(Math.round(v * 10) / 10).replace(".", ",");
+  return `${text} ${units[i]}`;
+}
