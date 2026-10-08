@@ -263,17 +263,36 @@ function healthSection(db: D1Database, w: Windows): Section<Stats["health"]> {
   };
 }
 
-// Tạm (Task 5 thay).
-function usageSection(_db: D1Database, w: Windows): Section<Stats["usage"]> {
+function usageSection(db: D1Database, w: Windows): Section<Stats["usage"]> {
   return {
-    statements: [],
-    build: () => ({
-      active_licenses: 0,
-      active_devices: 0,
-      devices_7d: 0,
-      trials_active: 0,
-      new_trials_daily: w.days.keys.map((day) => ({ day, count: 0 })),
-    }),
+    statements: [
+      // Cùng định nghĩa "đang hoạt động" với /admin/summary.
+      db.prepare("SELECT COUNT(*) AS n FROM licenses WHERE revoked_at IS NULL AND expires_at > ?1").bind(w.now),
+      db
+        .prepare(
+          `SELECT COUNT(*) AS active_devices, COALESCE(SUM(CASE WHEN a.last_validated_at >= ?2 THEN 1 ELSE 0 END), 0) AS devices_7d
+           FROM activations a JOIN licenses l ON l.id = a.license_id
+           WHERE a.deactivated_at IS NULL AND l.revoked_at IS NULL AND l.expires_at > ?1`,
+        )
+        .bind(w.now, w.now - 7 * DAY),
+      db.prepare("SELECT COUNT(*) AS n FROM trials WHERE ends_at > ?1").bind(w.now),
+      db
+        .prepare(
+          `SELECT strftime('%Y-%m-%d', started_at + ${VN_OFFSET}, 'unixepoch') AS day, COUNT(*) AS n
+           FROM trials WHERE started_at >= ?1 GROUP BY day`,
+        )
+        .bind(w.days.start),
+    ],
+    build([licenses = [], devices = [], trialsActive = [], newTrials = []]) {
+      const d: Row = devices[0] ?? {};
+      return {
+        active_licenses: num(licenses[0]?.n),
+        active_devices: num(d.active_devices),
+        devices_7d: num(d.devices_7d),
+        trials_active: num(trialsActive[0]?.n),
+        new_trials_daily: w.days.keys.map((day) => ({ day, count: num(newTrials.find((x) => x.day === day)?.n) })),
+      };
+    },
   };
 }
 

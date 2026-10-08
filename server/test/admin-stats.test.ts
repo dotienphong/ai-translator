@@ -382,3 +382,64 @@ describe("GET /admin/stats: Sức khỏe", () => {
     expect((await getStats()).health.email).toEqual({ paid_with_email_30d: 2, sent: 1 });
   });
 });
+
+describe("GET /admin/stats: Sử dụng", () => {
+  it("license đang hoạt động: chưa thu hồi và chưa hết hạn, bằng với /admin/summary", async () => {
+    await seed(
+      license({ expiresAt: NOW + 86400 }).stmt,
+      license({ expiresAt: NOW + 365 * 86400, plan: "yearly" }).stmt,
+      license({ expiresAt: NOW }).stmt, // hết hạn đúng lúc này
+      license({ expiresAt: NOW - 86400 }).stmt,
+      license({ expiresAt: NOW + 86400, revokedAt: NOW - 60 }).stmt,
+    );
+    const { w, adminCall } = makeAdmin();
+    w.clock.now = NOW;
+    const stats = (await adminCall("/admin/stats")).body as unknown as Stats;
+    const summary = (await adminCall("/admin/summary")).body as { active_licenses: number };
+    expect(stats.usage.active_licenses).toBe(2);
+    expect(stats.usage.active_licenses).toBe(summary.active_licenses);
+  });
+
+  it("máy đang kích hoạt: chỉ máy chưa gỡ trên license đang hoạt động; 7 ngày tính theo last_validated_at", async () => {
+    const D = 86400;
+    const live = license({ expiresAt: NOW + 30 * D });
+    const expired = license({ expiresAt: NOW - D });
+    const revoked = license({ expiresAt: NOW + 30 * D, revokedAt: NOW - D });
+    await seed(
+      live.stmt,
+      expired.stmt,
+      revoked.stmt,
+      activation(live.id, { lastValidatedAt: NOW }), // tính cả hai
+      activation(live.id, { lastValidatedAt: NOW - 7 * D }), // đúng biên 7 ngày: tính vào devices_7d
+      activation(live.id, { lastValidatedAt: NOW - 7 * D - 1 }), // quá 7 ngày: chỉ active_devices
+      activation(live.id, { deactivatedAt: NOW - D }), // đã gỡ: không tính
+      activation(expired.id), // license hết hạn: không tính
+      activation(revoked.id), // license đã thu hồi: không tính
+    );
+    const u = (await getStats()).usage;
+    expect(u.active_devices).toBe(3);
+    expect(u.devices_7d).toBe(2);
+  });
+
+  it("máy dùng thử còn hạn: ends_at phải lớn hơn bây giờ", async () => {
+    await seed(trial("a", NOW - 86400, NOW + 1), trial("b", NOW - 86400, NOW), trial("c", NOW - 20 * 86400, NOW - 10 * 86400));
+    expect((await getStats()).usage.trials_active).toBe(1);
+  });
+
+  it("máy dùng thử mới theo ngày GMT+7: 23:30 và 00:10 là hai ngày, máy ngoài 30 ngày không có trong dãy", async () => {
+    await seed(
+      trial("d1", vn(2026, 9, 30, 23, 30)),
+      trial("d2", vn(2026, 10, 1, 0, 10)),
+      trial("d3", vn(2026, 10, 1, 6, 0)),
+      trial("d4", vn(2026, 9, 2, 0, 0, 0)), // đúng đầu cửa sổ
+      trial("d5", vn(2026, 9, 1, 23, 59, 59)), // một giây ngoài
+    );
+    const s = await getStats();
+    const daily = s.usage.new_trials_daily;
+    expect(daily.map((d) => d.day)).toEqual(dayWindow(NOW, 30).keys);
+    const count = (key: string) => daily.find((d) => d.day === key)?.count;
+    expect([count("2026-09-30"), count("2026-10-01"), count("2026-09-02")]).toEqual([1, 2, 1]);
+    expect(daily.reduce((n, d) => n + d.count, 0)).toBe(4);
+    expect(s.customers.trials_total).toBe(5); // máy ngoài cửa sổ vẫn có trong tổng
+  });
+});
