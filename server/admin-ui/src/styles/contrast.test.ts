@@ -43,8 +43,11 @@ const PAIRS: [string, string, number][] = [
   // Nút chính, nút nguy hiểm nền đặc, avatar
   ["on-brand", "brand", 4.5],
   ["on-brand", "brand-hover", 4.5],
-  ["on-bad", "bad", 4.5],
-  ["on-bad", "bad-hover", 4.5],
+  ["on-bad", "bad-solid", 4.5],
+  ["on-bad", "bad-solid-hover", 4.5],
+  ["bad-solid", "surface", 3],
+  // Chữ đỏ khi rê chuột (link cần chú ý ở Tổng quan)
+  ["bad-hover", "surface", 4.5],
   // Huy hiệu, thông báo, số đếm: chữ ngữ nghĩa trên nền -soft và trên bề mặt (nút viền nguy hiểm)
   ...["ok", "warn", "bad", "info", "neutral"].flatMap((t): [string, string, number][] => [
     [t, `${t}-soft`, 4.5],
@@ -62,6 +65,34 @@ const PAIRS: [string, string, number][] = [
   ["brand", "brand-soft", 3],
   ["accent", "surface", 3],
   ...["chart-1", "chart-2", "chart-3", "chart-4"].map((c): [string, string, number] => [c, "surface", 3]),
+
+  // ---------- Pha 2: thành phần dùng chung ----------
+  // Nút khóa (mọi kiểu): chữ --ink-3 trên nền --surface-3 phẳng, vẫn đọc được. Nút rê chuột: chữ mực trên --surface-2,
+  // --surface-3 (ghost); nút nguy hiểm viền khi rê chuột: --bad trên --bad-soft (đã có ở trên).
+  ["ink-3", "surface-3", 4.5],
+  ["ink", "surface-2", 4.5],
+  ["ink-2", "surface-3", 4.5],
+  // Notice, ErrorBox, lỗi trong hộp thoại: chữ mực trên nền nhạt của từng tông; dòng phụ --ink-2
+  ...["ok-soft", "info-soft", "warn-soft", "bad-soft"].flatMap((bg): [string, string, number][] => [
+    ["ink", bg, 4.5],
+    ["ink-2", bg, 4.5],
+  ]),
+  // Chip bộ lọc: tên --ink-2, giá trị --brand-ink trên --brand-soft; nút X khi rê chuột: --ink trên --brand-soft-2
+  ["ink-2", "brand-soft", 4.5],
+  ["ink", "brand-soft-2", 4.5],
+  // Ô biểu tượng (Card, Stat, EmptyState, đầu hộp thoại): nét biểu tượng trên nền nhạt cùng tông, ≥ 3:1
+  ["brand", "brand-soft", 3],
+  ["ok", "ok-soft", 3],
+  ["warn", "warn-soft", 3],
+  ["bad", "bad-soft", 3],
+  ["ink-3", "surface-3", 3],
+  // Toast (bề mặt đảo màu): chữ và nút đóng, biểu tượng thành công
+  ["on-inverse", "inverse", 4.5],
+  ["on-inverse-2", "inverse", 4.5],
+  ["inverse-ok", "inverse", 3],
+  // Chấm của Timeline (vòng nét trên nền thẻ), cột biểu đồ trên nền thẻ phụ (bảng số, tooltip)
+  ...["ink-3", "ok", "warn", "bad", "brand"].map((c): [string, string, number] => [c, "surface", 3]),
+  ...["chart-1", "chart-2", "chart-3", "chart-4"].map((c): [string, string, number] => [c, "surface-2", 3]),
 ];
 
 describe("tương phản token màu (WCAG AA)", () => {

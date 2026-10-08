@@ -1,0 +1,420 @@
+/* Thông báo và lớp phủ (spec giao diện mới, mục 2): chữ lỗi trong trang, ErrorBox, Notice, Toast, hộp xác nhận
+   (ConfirmDialog) và hộp hiện key một lần (KeyReveal). */
+
+/* ---------- Chữ lỗi ngay dưới ô (khoảng ngày ngược…) ---------- */
+.error {
+  color: var(--bad);
+  font-weight: 600;
+  margin: 0;
+}
+.error p {
+  margin: 0 0 var(--s-1);
+}
+
+/* ---------- ErrorBox, Notice ---------- */
+.error-box,
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 52px;
+  margin-bottom: var(--s-4);
+  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-4);
+  color: var(--ink);
+  border: 1px solid;
+  border-radius: var(--r-md);
+  animation: fade-in var(--t-med) var(--ease);
+}
+.error-box > .icon,
+.notice > .icon {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+.feedback-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 0;
+  overflow-wrap: anywhere;
+}
+.feedback-text strong {
+  color: inherit;
+}
+.feedback-action {
+  flex: none;
+}
+.error-box {
+  background: var(--bad-soft);
+  border-color: var(--bad-line);
+}
+.error-box > .icon {
+  color: var(--bad);
+}
+.notice {
+  background: var(--ok-soft);
+  border-color: var(--ok-line);
+}
+.notice > .icon {
+  color: var(--ok);
+}
+.notice.tone-info {
+  background: var(--info-soft);
+  border-color: var(--info-line);
+}
+.notice.tone-info > .icon {
+  color: var(--info);
+}
+.notice.tone-warn {
+  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+}
+.notice.tone-warn > .icon {
+  color: var(--warn);
+}
+.feedback-close {
+  align-self: flex-start;
+  margin: 2px -4px 0 auto;
+}
+
+/* ---------- Toast: ngăn xếp nổi góc dưới phải, nền đảo màu ---------- */
+.toasts {
+  position: fixed;
+  right: var(--s-4);
+  bottom: var(--s-4);
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s-2);
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 420px;
+  min-height: 44px;
+  padding: 4px 4px 4px 14px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--on-inverse);
+  background: var(--inverse);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: toast-in var(--t-slow) var(--ease);
+}
+.toast > .icon {
+  color: var(--on-inverse-2);
+}
+.toast.tone-ok > .icon {
+  color: var(--inverse-ok);
+}
+.toast-text {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+}
+.toast-close {
+  --btn-fg: var(--on-inverse-2);
+  --btn-bg-hover: color-mix(in srgb, var(--on-inverse) 12%, transparent);
+}
+:where(.btn).toast-close:is(:hover, .is-hover) {
+  --btn-fg: var(--on-inverse);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+/* ---------- Hộp thoại ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-4);
+  background: var(--scrim);
+  animation: fade-in var(--t-med) var(--ease);
+}
+.dialog {
+  --dialog-accent: var(--brand);
+  --dialog-icon-bg: var(--brand-soft);
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  animation: dialog-in var(--t-slow) var(--ease);
+}
+.dialog.tone-danger {
+  --dialog-accent: var(--bad);
+  --dialog-icon-bg: var(--bad-soft);
+  /* Vạch đỏ trên cùng: tách hộp nguy hiểm khỏi hộp thường ngay từ cái nhìn đầu */
+  box-shadow:
+    inset 0 3px 0 var(--bad),
+    var(--shadow-lg);
+}
+.dialog.tone-ok {
+  --dialog-accent: var(--ok);
+  --dialog-icon-bg: var(--ok-soft);
+}
+.dialog-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  flex: none;
+  padding: var(--s-6) var(--s-6) var(--s-5);
+}
+.dialog-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  color: var(--dialog-accent);
+  background: var(--dialog-icon-bg);
+  border-radius: 50%;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--dialog-icon-bg) 45%, transparent);
+}
+.dialog-heading {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+.dialog h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.dialog p {
+  margin: 0;
+}
+.dialog-desc {
+  margin-top: 6px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.dialog-desc strong {
+  color: var(--ink);
+}
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--s-6) var(--s-6) calc(var(--s-6) + 40px + var(--s-4));
+}
+.dialog-body:empty {
+  display: none;
+}
+/* Ô nhập thêm của trang (Số ngày, Email…) và ô của hộp: nhãn trên, ô trải ngang */
+.dialog-body > label,
+.dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.dialog-field > label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.dialog-body :is(input, select, textarea) {
+  width: 100%;
+  font-weight: 400;
+}
+.dialog-body textarea {
+  min-height: 84px;
+}
+.field-req {
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-3);
+  background: var(--surface-3);
+  border-radius: var(--r-xs);
+}
+.dialog-field .field-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin: 0;
+}
+.field-count {
+  font-variant-numeric: tabular-nums;
+}
+/* Ô gõ chữ xác nhận: chữ mono, có dấu kiểm xanh khi khớp */
+.type-confirm label code {
+  padding: 2px 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--bad);
+  background: var(--bad-soft);
+  border-radius: var(--r-xs);
+}
+.type-confirm-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.type-confirm-input input {
+  padding-right: 40px;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+.type-confirm-input > .icon {
+  position: absolute;
+  right: 12px;
+  color: var(--ok);
+  pointer-events: none;
+}
+.type-confirm.is-match input:not(:focus) {
+  border-color: var(--ok);
+}
+.dialog-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--fs-sm);
+  color: var(--ink);
+  background: var(--bad-soft);
+  border: 1px solid var(--bad-line);
+  border-radius: var(--r-sm);
+}
+.dialog-error > .icon {
+  margin-top: 1px;
+  color: var(--bad);
+}
+.dialog-error p {
+  margin: 0;
+}
+.dialog-error p:first-child {
+  font-weight: 600;
+}
+.dialog-error p + p {
+  margin-top: 2px;
+  color: var(--ink-2);
+}
+.dialog-error.is-uncertain {
+  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+}
+.dialog-error.is-uncertain > .icon {
+  color: var(--warn);
+}
+/* Vùng hành động cố định ở chân: thân hộp cuộn, nút luôn thấy */
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  flex: none;
+  padding: var(--s-4) var(--s-6);
+  background: var(--surface-2);
+  border-top: 1px solid var(--line);
+}
+.dialog-actions .btn {
+  min-width: 96px;
+}
+
+/* Hộp hiện key: key lớn, chữ mono, căn giữa, khung nét đứt; nút chép ngay dưới */
+.key-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-5) var(--s-4) var(--s-4);
+  background: var(--surface-2);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+}
+.key-full {
+  max-width: 100%;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--ink);
+  user-select: all;
+  word-break: break-all;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+/* ---------- Điện thoại: hộp thành tấm trượt từ dưới lên, nút xếp dọc trải ngang ---------- */
+@media (max-width: 600px) {
+  .overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .dialog {
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-bottom: 0;
+    animation-name: sheet-in;
+  }
+  .dialog-head {
+    gap: var(--s-3);
+    padding: var(--s-5) var(--s-4) var(--s-4);
+  }
+  .dialog-icon {
+    width: 36px;
+    height: 36px;
+    box-shadow: none;
+  }
+  .dialog-body {
+    padding: 0 var(--s-4) var(--s-5);
+  }
+  .dialog-actions {
+    flex-direction: column-reverse;
+    padding: var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom));
+  }
+  .dialog-actions .btn {
+    width: 100%;
+  }
+  .toasts {
+    left: var(--s-4);
+    align-items: stretch;
+  }
+  .toast {
+    max-width: none;
+  }
+}

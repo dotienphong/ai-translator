@@ -124,7 +124,8 @@ kbd {
 }
 
 /* ---------- Link: không gạch chân mặc định, gạch khi hover và focus ---------- */
-a {
+/* :where(:not(.btn)): link có dáng nút (thành phần Button với href hay to) lấy màu và gạch chân của nút, không của link */
+a:where(:not(.btn)) {
   color: var(--brand-ink);
   text-decoration: none;
   text-underline-offset: 3px;
@@ -132,11 +133,11 @@ a {
   border-radius: 4px;
   transition: color var(--t-fast) var(--ease);
 }
-a:hover {
+a:where(:not(.btn)):hover {
   color: var(--brand-hover);
   text-decoration: underline;
 }
-a:focus-visible {
+a:where(:not(.btn)):focus-visible {
   text-decoration: underline;
 }
 
@@ -158,17 +159,21 @@ a:focus-visible {
 
 /* ---------- Nút ----------
    Mặc định là nút phụ (viền). Lớp: primary (chính), danger (nguy hiểm, viền), danger solid (nguy hiểm, nền), ghost
-   (không viền), link (như link chữ), small (32px). Vùng chạm 40px, điện thoại 44px. */
-button {
+   (không viền), link (như link chữ), small (32px), large (48px), block (trải ngang). Vùng chạm 40px, điện thoại 44px.
+   Áp cho mọi <button> trần (trang chưa viết lại) và cho thành phần Button (lớp .btn, có thể là thẻ <a>). */
+/* :where(): độ ưu tiên 0, để cỡ và độ đậm của lớp nút bên dưới thắng (font: inherit đặt lại cả độ đậm) */
+:where(button) {
   font: inherit;
 }
 /* :where() giữ độ ưu tiên bằng 0 để lớp của thành phần (icon-btn, collapse-btn…) ghi đè được mà không cần !important */
-:where(button:not(.bare)) {
+:where(button:not(.bare), .btn) {
   --btn-bg: var(--surface);
   --btn-fg: var(--ink);
   --btn-border: var(--line-strong);
   --btn-bg-hover: var(--surface-2);
   --btn-border-hover: var(--line-input);
+  --btn-shadow: var(--shadow-sm);
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -179,13 +184,15 @@ button {
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
+  text-decoration: none;
   color: var(--btn-fg);
   background: var(--btn-bg);
   border: 1px solid var(--btn-border);
   border-radius: var(--r-sm);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--btn-shadow);
   cursor: pointer;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     background-color var(--t-fast) var(--ease),
     border-color var(--t-fast) var(--ease),
@@ -193,63 +200,105 @@ button {
     box-shadow var(--t-fast) var(--ease),
     transform var(--t-fast) var(--ease);
 }
-:where(button:not(.bare)):hover:where(:not(:disabled)) {
+/* .is-hover, .is-active: trạng thái mô phỏng cho trang thử thành phần (src/dev/Gallery.tsx) */
+:where(button:not(.bare), .btn):is(:hover, .is-hover):where(:not(:disabled, [aria-disabled="true"], .is-loading)) {
+  color: var(--btn-fg);
+  text-decoration: none;
   background: var(--btn-bg-hover);
   border-color: var(--btn-border-hover);
 }
-:where(button:not(.bare)):active:where(:not(:disabled)) {
+:where(button:not(.bare), .btn):is(:active, .is-active):where(:not(:disabled, [aria-disabled="true"], .is-loading)) {
   transform: translateY(1px);
-}
-:where(button:not(.bare)):disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
   box-shadow: none;
 }
-button.primary {
+:where(button:not(.bare), .btn).is-focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+:where(.btn) .icon {
+  margin-inline: -2px;
+}
+:where(button:not(.bare), .btn).is-loading {
+  cursor: progress;
+}
+:where(button:not(.bare), .btn).is-loading .spinner {
+  margin-inline: -1px;
+}
+:where(button, .btn).primary {
   --btn-bg: var(--brand);
   --btn-fg: var(--on-brand);
   --btn-border: var(--brand);
   --btn-bg-hover: var(--brand-hover);
   --btn-border-hover: var(--brand-hover);
+  --btn-shadow: var(--shadow-sm), inset 0 1px 0 rgb(255 255 255 / 0.12);
 }
-button.danger {
+:where(button, .btn).danger {
   --btn-fg: var(--bad);
-  --btn-border: color-mix(in srgb, var(--bad) 45%, var(--surface));
+  --btn-border: var(--bad-line);
   --btn-bg-hover: var(--bad-soft);
   --btn-border-hover: var(--bad);
 }
-button.danger.solid {
-  --btn-bg: var(--bad);
+:where(button, .btn).danger.solid {
+  --btn-bg: var(--bad-solid);
   --btn-fg: var(--on-bad);
-  --btn-border: var(--bad);
-  --btn-bg-hover: var(--bad-hover);
-  --btn-border-hover: var(--bad-hover);
+  --btn-border: var(--bad-solid);
+  --btn-bg-hover: var(--bad-solid-hover);
+  --btn-border-hover: var(--bad-solid-hover);
 }
-button.ghost {
+:where(button, .btn).ghost {
   --btn-bg: transparent;
   --btn-border: transparent;
   --btn-bg-hover: var(--surface-3);
   --btn-border-hover: transparent;
-  box-shadow: none;
+  --btn-shadow: none;
 }
-button.small {
+:where(button, .btn).small {
   min-height: var(--control-h-sm);
   padding: 0 var(--s-3);
   font-size: var(--fs-sm);
+  gap: 6px;
+}
+:where(button, .btn).large {
+  min-height: 48px;
+  padding: 0 var(--s-6);
+  font-size: var(--fs-lg);
+  border-radius: 10px;
+}
+:where(button, .btn).block {
+  display: flex;
+  width: 100%;
+}
+/* Khóa: nền xám phẳng, chữ --ink-3 (vẫn đọc được 4,5:1, kiểm trong contrast.test.ts), không bóng; mọi kiểu như nhau để
+   không nhầm nút khóa với nút bấm được. Nút đang xử lý giữ màu của kiểu (đang chạy, không phải bị khóa). */
+:where(button:not(.bare), .btn):is(:disabled, [aria-disabled="true"]):not(.is-loading) {
+  --btn-bg: var(--surface-3);
+  --btn-fg: var(--ink-3);
+  --btn-border: var(--line);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+:where(button, .btn).ghost:is(:disabled, [aria-disabled="true"]):not(.is-loading) {
+  --btn-bg: transparent;
+  --btn-border: transparent;
 }
 /* Nút dạng link chữ (Hiện, Chép, Đóng…): vẫn có vùng chạm 32px, nền nhạt khi hover */
-button.link {
+:where(button, .btn).link {
   --btn-bg: transparent;
   --btn-fg: var(--brand-ink);
   --btn-border: transparent;
   --btn-bg-hover: var(--brand-soft);
   --btn-border-hover: transparent;
+  --btn-shadow: none;
   min-height: var(--control-h-sm);
   padding: 0 var(--s-2);
   font-weight: 600;
-  box-shadow: none;
 }
-button.link:active:not(:disabled) {
+:where(button, .btn).link:is(:disabled, [aria-disabled="true"]):not(.is-loading) {
+  --btn-fg: var(--ink-3);
+  --btn-bg: transparent;
+  --btn-border: transparent;
+}
+:where(button, .btn).link:active:not(:disabled) {
   transform: none;
 }
 
@@ -381,7 +430,7 @@ tbody tr:last-child td {
   :root {
     --control-h: 44px;
   }
-  button.link {
+  :where(button, .btn).link {
     min-height: 40px;
   }
   /* 16px: iOS không phóng to khi chạm vào ô nhập */

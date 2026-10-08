@@ -1,0 +1,176 @@
+/* Biểu đồ (ChartCard, spec giao diện mới mục 2; bảng màu theo kỹ năng dataviz: tokens.css --chart-*). Chữ của chú giải và
+   tooltip là màu mực trung tính; màu chuỗi chỉ nằm ở ô màu nhỏ bên cạnh. */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: var(--s-4);
+}
+.chart-box {
+  width: 100%;
+}
+.chart-box .recharts-surface {
+  overflow: visible;
+}
+.chart-box text {
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+}
+.chart-box .recharts-wrapper:focus,
+.chart-box .recharts-surface:focus {
+  outline: none;
+}
+.chart-box .recharts-tooltip-wrapper {
+  outline: none;
+  z-index: 5;
+}
+
+/* Ô màu của chuỗi: cố định theo thứ tự (s-0 là chuỗi đầu) */
+.chart-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--chart-1);
+}
+.chart-swatch.s-1 {
+  background: var(--chart-2);
+}
+.chart-swatch.s-2 {
+  background: var(--chart-3);
+}
+.chart-swatch.s-3 {
+  background: var(--chart-4);
+}
+
+.chart-key {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-1) var(--s-4);
+  min-height: 18px;
+  margin: 0 0 var(--s-2);
+}
+.chart-unit {
+  flex: none;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--s-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-tooltip {
+  min-width: 168px;
+  padding: 10px 12px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-md);
+}
+.chart-tooltip-label {
+  margin: 0 0 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+.chart-tooltip ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chart-tooltip li {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: var(--s-2);
+}
+.chart-tooltip-value {
+  padding-left: var(--s-3);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.chart-tooltip-total {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin: 6px 0 0;
+  padding-top: 6px;
+  font-weight: 600;
+  color: var(--ink);
+  border-top: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Xem bảng số": mở bảng số liệu thay cho đọc biểu đồ */
+.chart-table {
+  margin-top: var(--s-2);
+}
+.chart-table summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--control-h-sm);
+  padding: 0 var(--s-2);
+  margin-left: calc(-1 * var(--s-2));
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--brand-ink);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  list-style: none;
+  transition: background-color var(--t-fast) var(--ease);
+}
+.chart-table summary::-webkit-details-marker {
+  display: none;
+}
+/* Mũi tên tam giác vẽ bằng viền, xoay khi mở */
+.chart-table summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--t-fast) var(--ease);
+}
+.chart-table[open] summary::before {
+  transform: rotate(45deg) translate(-2px, -1px);
+}
+.chart-table summary:hover {
+  background: var(--brand-soft);
+}
+.chart-table .table-wrap {
+  max-height: 260px;
+  overflow: auto;
+  margin: var(--s-2) 0 0;
+  box-shadow: none;
+}
+.chart-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+@media (max-width: 800px) {
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+}

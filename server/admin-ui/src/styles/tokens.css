@@ -56,11 +56,28 @@
   --bad: #b42318;
   --bad-soft: #fdecea;
   --bad-hover: #8f1c13;
+  --bad-line: #e3a29c;
   --info: #0f4aa3;
   --info-soft: #e7f0ff;
   --neutral: #4a5670;
   --neutral-soft: #edf1f7;
+  /* Nút nguy hiểm nền đặc: nền đỏ đậm, chữ trắng ở cả hai chế độ (đỏ nhạt của chữ tối không đủ "nguy hiểm" khi làm nền) */
+  --bad-solid: #b42318;
+  --bad-solid-hover: #8f1c13;
   --on-bad: #ffffff;
+  /* Ô biểu tượng tông thông tin, thành công (đầu hộp thoại, trạng thái trống): nền nhạt, nét đậm */
+  --ok-line: #9fd8bb;
+  --info-line: #a9c6f0;
+
+  /* Bề mặt đảo màu (thông báo nổi, tooltip): nền đậm trên giao diện sáng */
+  --inverse: #111a2e;
+  --on-inverse: #eef3fb;
+  --on-inverse-2: #b4bfd4;
+  --inverse-ok: #4fd69b;
+
+  /* Khung chờ: thanh nền và vệt sáng lướt qua */
+  --skeleton: #e6ecf5;
+  --skeleton-hi: #f6f8fc;
 
   /* Lớp phủ, bóng */
   --scrim: rgb(11 19 34 / 0.45);
@@ -105,11 +122,16 @@
   --t-med: 160ms;
   --t-slow: 200ms;
 
-  /* Biểu đồ (pha 3 sẽ tinh chỉnh theo kỹ năng dataviz) */
+  /* Biểu đồ: bốn màu chuỗi theo thứ tự cố định (xanh thương hiệu, teal, hổ phách, tím), kiểm bằng validate_palette.js của
+     kỹ năng dataviz trên nền --surface: dải độ sáng, độ bão hòa, cặp kề nhau phân biệt được khi mù màu đỏ-lục (ΔE ≥ 12),
+     mắt thường (ΔE ≥ 18), tương phản ≥ 3:1 (contrast.test.ts). Lưới, trục và vệt rê chuột nhạt để số liệu nổi lên. */
   --chart-1: #1d63c9;
   --chart-2: #0a8f83;
   --chart-3: #c27a0e;
   --chart-4: #7c5cd6;
+  --chart-grid: #e8edf5;
+  --chart-axis: #c6d3e6;
+  --chart-cursor: rgb(29 99 201 / 0.07);
 
   /* Bí danh cũ: các trang và ChartCard chưa viết lại còn dùng; bỏ khi pha 2 đến 5 xong */
   --panel: var(--surface);
@@ -157,11 +179,24 @@
     --bad: #ff8f86;
     --bad-soft: #3a1517;
     --bad-hover: #ffb0a9;
+    --bad-line: #7a3530;
     --info: #8fc0ff;
     --info-soft: #12274a;
     --neutral: #b4bfd4;
     --neutral-soft: #1b2842;
-    --on-bad: #2a0705;
+    --bad-solid: #d13a2e;
+    --bad-solid-hover: #b72f25;
+    --on-bad: #ffffff;
+    --ok-line: #1f5a40;
+    --info-line: #24467c;
+
+    --inverse: #e3eaf6;
+    --on-inverse: #0b1322;
+    --on-inverse-2: #33405a;
+    --inverse-ok: #0c7a4b;
+
+    --skeleton: #18233a;
+    --skeleton-hi: #22304d;
 
     --scrim: rgb(0 0 0 / 0.62);
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
@@ -171,9 +206,13 @@
     --focus: #4d9bff;
     --focus-ring: 0 0 0 3px rgb(77 155 255 / 0.35);
 
-    --chart-1: #4d9bff;
-    --chart-2: #2fd0c0;
-    --chart-3: #f2c15a;
-    --chart-4: #b79af0;
+    /* Bậc riêng cho nền tối (không lật màu sáng): độ sáng OKLCH 0,48 đến 0,67 để cột không chói trên nền navy */
+    --chart-1: #3d8bf0;
+    --chart-2: #13a394;
+    --chart-3: #c98500;
+    --chart-4: #9085e9;
+    --chart-grid: #1a2640;
+    --chart-axis: #2b3b5c;
+    --chart-cursor: rgb(143 192 255 / 0.08);
   }
 }

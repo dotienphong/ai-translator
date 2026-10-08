@@ -1,11 +1,21 @@
 /* Mục lục CSS của Web Admin. Không dùng style inline (CSP style-src 'self'); Vite gộp các tệp dưới đây thành một tệp.
    1. fonts.css       Be Vietnam Pro tự lưu trữ (@font-face, unicode-range)
-   2. tokens.css      biến thiết kế sáng và tối (màu, chữ, khoảng cách, bo góc, bóng, chuyển động, focus)
-   3. base.css        reset, chữ, link, nút, ô nhập, bảng, trợ năng, giảm chuyển động
+   2. tokens.css      biến thiết kế sáng và tối (màu, chữ, khoảng cách, bo góc, bóng, chuyển động, focus, biểu đồ)
+   3. base.css        reset, chữ, link, nút (cả thành phần Button), ô nhập, bảng, trợ năng, giảm chuyển động
    4. shell.css       khung trang: thanh bên, thanh trên, PageHeader, ngăn kéo điện thoại, thanh báo
-   5. components.css  huy hiệu, thẻ, ô số, bảng trong thẻ, bộ lọc, thông báo, hộp xác nhận */
+   5. components.css  lớp riêng của các trang chưa viết lại (ô số .tile, .queue-group, .facts, .panel…)
+   6. controls.css    IconButton, ButtonGroup, vòng quay, ô nhập có nhãn, FilterBar và chip, SegmentedControl, CopyButton
+   7. surfaces.css    huy hiệu, Card, Section, Stat, EmptyState, Skeleton, KeyValue, Timeline
+   8. table.css       khung bảng, DataTable, bảng thành thẻ trên điện thoại
+   9. overlays.css    ErrorBox, Notice, Toast, hộp xác nhận, hộp hiện key
+  10. chart.css       ChartCard: chú giải, tooltip, bảng số */
 @import "./fonts.css";
 @import "./tokens.css";
 @import "./base.css";
 @import "./shell.css";
 @import "./components.css";
+@import "./controls.css";
+@import "./surfaces.css";
+@import "./table.css";
+@import "./overlays.css";
+@import "./chart.css";
