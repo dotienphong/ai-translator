@@ -35,6 +35,8 @@ export interface AdminOpts {
   /** Thay cho service binding API.plans() (mặc định: biến PLANS của Worker API trong test). */
   plans?: () => Promise<unknown>;
   keyCheck?: () => Promise<KeyCheck>;
+  /** Thay cho fetch URL công khai của /admin/releases (mặc định: 404 cho mọi URL, không gọi mạng). */
+  fetchPublic?: (url: string) => Promise<Response>;
   /** Nguồn khóa công khai Access giả cho đường xác thực JWT (mặc định: tải thật từ team, không dùng trong test). */
   accessKeys?: AccessKeyProvider;
 }
@@ -52,6 +54,7 @@ export function makeAdmin(adminEnv: Partial<AdminEnv> = {}, opts: AdminOpts = {}
     email: w.deps.email,
     plans: opts.plans ?? (async () => env.PLANS),
     keyCheck: opts.keyCheck ?? (async () => signKeyCheck(await apiKeyEnv(), w.clock.now)),
+    fetchPublic: opts.fetchPublic ?? (async () => new Response("not found", { status: 404 })),
   }), opts.accessKeys);
   const fullEnv = { ...env, API_ORIGIN, ...adminEnv } as AdminEnv;
 

@@ -88,6 +88,15 @@ test("ACCESS_TEAM_DOMAIN là tên miền team Access (không có https://, khôn
   assert.equal("ACCESS_TEAM_DOMAIN" in api.vars, false, "Worker API không đứng sau Access");
 });
 
+test("RELEASES_BASE_URL của Worker admin: https, không có / cuối, và đúng PRODUCTION_URL trong app (spec Hệ thống §2)", () => {
+  assert.match(admin.vars.RELEASES_BASE_URL, /^https:\/\/[a-z0-9.-]+$/);
+  const source = readFileSync(new URL("../../../src-tauri/src/updater/source.rs", import.meta.url), "utf8");
+  const match = /PRODUCTION_URL: Option<&str> = Some\("([^"]+)"\)/.exec(source);
+  assert.ok(match, "không tìm thấy PRODUCTION_URL trong source.rs");
+  assert.equal(admin.vars.RELEASES_BASE_URL, match[1]);
+  assert.equal("RELEASES_BASE_URL" in api.vars, false, "chỉ Worker admin đọc bucket bản phát hành");
+});
+
 test("package.json: ui:build và ui:check báo lỗi khi tên package sai, và check chạy ui:check trước dry-run", () => {
   const { scripts } = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
   // pnpm thoát mã 0 khi --filter không khớp package nào (kể cả sau khi đổi tên package): thiếu cờ này thì

@@ -16,6 +16,7 @@ export type ErrorCode =
   | "rate_limited"
   | "pricing_not_configured"
   | "trial_not_configured"
+  | "releases_not_configured"
   | "payment_provider_error"
   | "temporarily_unavailable"
   | "order_code_exhausted"

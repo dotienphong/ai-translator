@@ -54,6 +54,8 @@ export interface AdminEnv {
   ACCESS_TEAM_DOMAIN?: string;
   /** Origin của Worker API cùng môi trường; confirm-webhook chỉ nhận URL webhook trên origin này. */
   API_ORIGIN?: string;
+  /** Gốc URL công khai của bucket bản phát hành (https, không có `/` cuối); thiếu thì /admin/releases trả 503. */
+  RELEASES_BASE_URL?: string;
   /** Service binding tới entrypoint AdminRpc của Worker API cùng môi trường. */
   API: ApiRpc;
   /** Trang Web Admin đã build (admin-ui/dist), khối `assets` của wrangler.admin.jsonc. Thiếu (test) thì trang trả 404. */

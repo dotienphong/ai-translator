@@ -25,6 +25,8 @@ export interface AdminDeps {
   plans(): Promise<unknown>;
   /** Token ký thử bằng khóa dự phòng của Worker API (QĐ31). */
   keyCheck(): Promise<KeyCheck>;
+  /** GET một URL công khai (bucket bản phát hành): hạn 5 giây, không theo chuyển hướng. Tiêm được trong test. */
+  fetchPublic(url: string): Promise<Response>;
 }
 
 export type AdminAppEnv = { Bindings: AdminEnv; Variables: { deps: AdminDeps; actor: string } };

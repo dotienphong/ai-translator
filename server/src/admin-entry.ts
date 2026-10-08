@@ -1,6 +1,7 @@
 // Điểm vào của Worker admin (wrangler.admin.jsonc). Dùng chung D1 với Worker API; bảng gói và ký thử khóa dự phòng
 // lấy từ Worker API qua service binding API (QĐ34).
 import { createAdminApp } from "./admin";
+import { defaultFetchPublic } from "./admin-ops";
 import { nowSeconds, payosFromEnv } from "./deps";
 import { ResendEmailProvider } from "./email/resend";
 import type { AdminEnv } from "./env";
@@ -14,6 +15,7 @@ const app = createAdminApp((env) => {
     email: new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, replyTo: env.EMAIL_REPLY_TO }),
     plans: () => env.API.plans(),
     keyCheck: () => env.API.signKeyCheck(),
+    fetchPublic: defaultFetchPublic,
   };
 });
 

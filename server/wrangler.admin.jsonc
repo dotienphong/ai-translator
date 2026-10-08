@@ -41,7 +41,9 @@
     // này (src/access-jwt.ts). Sai hay trống thì mọi request bị 403.
     "ACCESS_TEAM_DOMAIN": "snowy-credit-f444.cloudflareaccess.com",
     // Origin của Worker API (tên miền riêng, spec 2026-10-06); confirm-webhook chỉ nhận URL trên origin này.
-    "API_ORIGIN": "https://api.aitranslator.io.vn"
+    "API_ORIGIN": "https://api.aitranslator.io.vn",
+    // Bucket R2 công khai (bản phát hành và model) cho trang Hệ thống; khớp PRODUCTION_URL của app, không có `/` cuối.
+    "RELEASES_BASE_URL": "https://releases.aitranslator.io.vn"
   },
   "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY"] },
   "d1_databases": [
