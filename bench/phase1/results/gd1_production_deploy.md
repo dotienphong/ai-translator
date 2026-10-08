@@ -23,7 +23,7 @@ Chưa làm: 05 Task 20 Step 9 (đổi gói, tốn tiền thật), 06b Task 6 Ste
 
 | Bước | Kết quả |
 |---|---|
-| Khóa ký bản cập nhật (minisign `704CE5507939A2FE`) | Tạo ngoại tuyến, có passphrase thật (ký bằng passphrase rỗng bị từ chối). Khóa riêng nằm trong secret `TAURI_SIGNING_PRIVATE_KEY` của environment `release` |
+| Khóa ký bản cập nhật (minisign `1EDCDDCD1E7882FF`) | Tạo ngoại tuyến, có passphrase thật (ký bằng passphrase rỗng bị từ chối). Khóa riêng nằm trong secret `TAURI_SIGNING_PRIVATE_KEY` của environment `release`. **Đổi khóa 2026-10-08:** khóa đầu `704CE5507939A2FE` (file `updater-2026-10.key`) không giải mã được bằng passphrase còn nhớ (`Wrong password for that key`, cả ở máy cục bộ lẫn job `Chữ ký bản cập nhật` của CI), nên tạo khóa mới `updater-2026-10b.key` trước khi có bản nào phát hành công khai |
 | Khóa ký manifest `prod-2026-10-1` | Tạo ngoại tuyến, bản rõ chỉ nằm trong ổ RAM; file mã hóa AES-256 (`pbkdf2`, 600000 vòng). Nạp lại vào `MANIFEST_SIGNING_KEY` sau khi kiểm giải mã đúng `kid` và `x` |
 | Bản sao khóa | Không dùng USB: thư mục `~/ai-translator-keys` đã chép sang một máy khác, passphrase viết tay (quyết định của chủ dự án) |
 | Bucket R2 `ai-translator-releases` | URL công khai `r2.dev`; token Object Read & Write chỉ cho bucket này (không liệt kê được bucket khác) |
