@@ -1,0 +1,20 @@
+// Worker phục vụ website marketing tại tên miền gốc (spec 2026-10-08-marketing-website-design.md). Chỉ có tài nguyên tĩnh
+// (dist/ do `pnpm build` sinh), không có mã chạy: lượt tải tài nguyên tĩnh trên Workers là miễn phí.
+// Triển khai: `pnpm deploy` (build + deploy site + deploy Worker chuyển hướng www). Không có `--env`: chỉ một môi trường.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-translator-site",
+  "compatibility_date": "2026-09-26",
+  // Tắt workers.dev và URL xem trước: tránh hai địa chỉ công khai cho cùng một nội dung (trùng lặp nội dung với SEO).
+  "workers_dev": false,
+  "preview_urls": false,
+  // Chỉ tên miền gốc. `custom_domain` tự tạo bản ghi DNS và chứng chỉ; MX/SPF/DMARC của Email Routing ở gốc không bị đụng.
+  "routes": [{ "pattern": "aitranslator.io.vn", "custom_domain": true }],
+  "assets": {
+    "directory": "./dist",
+    // /tinh-nang → 308 → /tinh-nang/ (khớp canonical có dấu gạch cuối) và phục vụ tinh-nang/index.html.
+    "html_handling": "auto-trailing-slash",
+    // Đường dẫn không có thì trả dist/404.html kèm mã 404 (trang có noindex).
+    "not_found_handling": "404-page"
+  }
+}

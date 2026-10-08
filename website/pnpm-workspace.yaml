@@ -1,0 +1,10 @@
+# website/ es un proyecto pnpm riêng (không thuộc workspace ở gốc repo), cùng cách với server/.
+# esbuild và workerd cần chạy script cài đặt để tải binary cho đúng nền tảng (wrangler chỉ dùng để deploy).
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+# Giống server/pnpm-workspace.yaml: miniflare ghim sharp 0.35.4 (CVE-2026-96889, librsvg). sharp chỉ là phụ thuộc gián tiếp
+# phục vụ chạy cục bộ, không nằm trong Worker đã triển khai. Gỡ khi miniflare tự nâng lên 0.35.5 trở lên.
+overrides:
+  sharp: 0.35.5

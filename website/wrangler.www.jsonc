@@ -1,0 +1,11 @@
+// Worker nhỏ chỉ chuyển hướng www.aitranslator.io.vn → aitranslator.io.vn (301, giữ đường dẫn và query).
+// Cùng tên miền gốc một nội dung duy nhất cho công cụ tìm kiếm. Triển khai riêng: `wrangler deploy -c wrangler.www.jsonc`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-translator-www",
+  "main": "src/www-redirect.mjs",
+  "compatibility_date": "2026-09-26",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "www.aitranslator.io.vn", "custom_domain": true }]
+}
