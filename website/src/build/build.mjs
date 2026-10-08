@@ -135,8 +135,23 @@ function headers() {
 /assets/bundle/*
   Cache-Control: public, max-age=31536000, immutable
 
-/assets/*
+/assets/fonts/*
   Cache-Control: public, max-age=2592000
+/assets/img/*
+  Cache-Control: public, max-age=2592000
+/assets/og/*
+  Cache-Control: public, max-age=2592000
+
+# Trang HTML (đường dẫn kết thúc bằng /, sâu tới 3 cấp): no-transform để Cloudflare không tự chèn script đo (RUM/Web
+# Analytics) vào trang; CSP của trang sẽ chặn script đó và gây lỗi console. Giữ đúng giá trị mặc định của Workers Assets.
+/
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+/:a/
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+/:a/:b/
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+/:a/:b/:c/
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
 
 /favicon.svg
   Cache-Control: public, max-age=604800

@@ -33,7 +33,7 @@ function head(page, ctx) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(fullTitle)}</title>
 <meta name="description" content="${esc(page.description)}">
-<link rel="canonical" href="${url}">
+${page.noindex ? "" : `<link rel="canonical" href="${url}">`}
 <meta name="robots" content="${robots}">
 ${page.noindex ? "" : alternates(page, ctx)}
 <meta name="theme-color" content="#fbfcfe" media="(prefers-color-scheme: light)">

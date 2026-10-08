@@ -11,7 +11,7 @@ export default {
   id: "guide",
   lang: "en",
   path: "/en/guide/",
-  title: "AI Translator user guides",
+  title: "AI Translator user guides: install, shortcuts, fixes",
   description:
     "Step-by-step AI Translator guides: install on macOS, grant audio permission, subtitle bar and shortcuts, glossary, history, buying a key and troubleshooting.",
   schemaType: "CollectionPage",

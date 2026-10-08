@@ -202,3 +202,17 @@ test("thư mục dist không chứa file nghi ngờ (bí mật, map, .env)", asy
   await walk(DIST);
   for (const f of all) assert.ok(!/\.(env|map|pem|key)$|\.env/.test(f), `file không nên có: ${f}`);
 });
+
+test("biểu tượng raster không rỗng/cắt hỏng (kích thước tối thiểu) và có favicon.ico", async () => {
+  const min = { "favicon-32.png": 700, "apple-touch-icon.png": 3000, "favicon.ico": 1200, "assets/img/icon-192.png": 4000, "assets/img/logo-512.png": 10000 };
+  for (const [f, bytes] of Object.entries(min)) {
+    const size = (await stat(path.join(DIST, f))).size;
+    assert.ok(size >= bytes, `${f}: ${size} B, nghi ngờ ảnh trống hoặc bị cắt (cần >= ${bytes})`);
+  }
+});
+
+test("_headers: không có hai quy tắc Cache-Control cùng khớp một tài nguyên tĩnh", async () => {
+  const h = await readFile(path.join(DIST, "_headers"), "utf8");
+  assert.ok(!/^\/assets\/\*$/m.test(h), "/assets/* trùng với /assets/bundle/*");
+  assert.ok(h.includes("no-transform"), "HTML cần no-transform (chặn Cloudflare tự chèn script đo)");
+});
