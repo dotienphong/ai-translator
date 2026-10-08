@@ -1,7 +1,7 @@
 // Nhật ký dạng dòng thời gian (spec giao diện mới, mục 2): trang Nhật ký và nhật ký trong trang chi tiết (đơn, license,
-// máy). Mốc nhóm theo ngày (Hôm nay, Hôm qua), tên tiếng Việt và tông từ audit-labels, mã hành động mono.
+// máy). Mốc nhóm theo ngày (Hôm nay, Hôm qua, ngày cũ hơn kèm thứ trong tuần), tên tiếng Việt và tông từ audit-labels, mã hành động mono.
 import { actionLabel, actionTone } from "../audit-labels";
-import { fmtDate, fmtDetail, fmtHm, isoOf } from "../format";
+import { fmtDate, fmtDetail, fmtHm, fmtWeekday, isoOf } from "../format";
 import { ActorBadge, type AnyAudit, AuditLinks } from "./columns";
 import { LoadingBlock, SkeletonLine } from "./Skeleton";
 import { Timeline, type TimelineItem } from "./Timeline";
@@ -16,7 +16,7 @@ export function AuditTimeline({ rows, now, label, omit }: { rows: readonly AnyAu
       key: "id" in a ? String(a.id) : `${a.at}-${i}`,
       time: fmtHm(a.at),
       dateTime: isoOf(a.at),
-      day: d === today ? `Hôm nay · ${d}` : d === yesterday ? `Hôm qua · ${d}` : d,
+      day: d === today ? `Hôm nay · ${d}` : d === yesterday ? `Hôm qua · ${d}` : `${fmtWeekday(a.at)} · ${d}`,
       actor: <ActorBadge actor={a.actor} />,
       action: a.action,
       title: actionLabel(a.action),

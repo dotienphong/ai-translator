@@ -12,6 +12,7 @@ import {
   fmtInt,
   fmtMonth,
   fmtVnd,
+  fmtWeekday,
   isoOf,
   maskKey,
   shortHash,
@@ -75,6 +76,14 @@ describe("format cho biểu đồ", () => {
       "1,5tr",
       "12tr",
     ]);
+    // Doanh thu tháng hàng tỷ: "1,2tỷ", không phải "1200tr"
+    expect([999_000_000, 1_200_000_000, 25_000_000_000].map(fmtCompact)).toEqual(["999tr", "1,2tỷ", "25tỷ"]);
+  });
+  it("fmtWeekday: thứ trong tuần theo giờ Việt Nam", () => {
+    // 2026-10-05 17:30 UTC là 00:30 thứ Ba 06/10 ở Việt Nam
+    expect(fmtWeekday(Date.UTC(2026, 9, 5, 17, 30) / 1000)).toBe("Thứ Ba");
+    expect(fmtWeekday(Date.UTC(2026, 9, 4, 5, 0) / 1000)).toBe("Chủ nhật");
+    expect(fmtWeekday(Date.UTC(2026, 9, 5, 5, 0) / 1000)).toBe("Thứ Hai");
   });
 });
 

@@ -283,6 +283,13 @@ describe("OrderPage: bố cục mới (việc cần làm, số tiền, license, 
     expect(money.textContent).toContain("Đã nhận 40% số cần trả.");
   });
 
+  it("còn thiếu dù chỉ 1.000 đ thì không ghi 100% (99,8% làm tròn lên là sai nghĩa)", async () => {
+    serveOrder({ ...order, amount: 500000, amount_paid: 499000 });
+    render(<OrderPage code={CODE} />);
+    await screen.findByRole("region", { name: "Khách chuyển thiếu 1.000 đ" });
+    expect(region("Số tiền").textContent).toContain("Đã nhận 99% số cần trả.");
+  });
+
   it("đơn cần xử lý: hai nút nằm cùng thẻ việc cần làm, Ghi đã hoàn tiền… tông nguy hiểm", async () => {
     serveOrder({ ...order, status: "paid_needs_review", amount_paid: 50000 });
     render(<OrderPage code={CODE} />);

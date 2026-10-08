@@ -27,6 +27,13 @@ export function fmtDateTime(sec: number | null | undefined): string {
   return `${p.d}/${p.mo}/${p.y} ${p.h}:${p.mi}`;
 }
 
+const WEEKDAYS = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+
+/** Thứ trong tuần theo giờ Việt Nam: "Thứ Hai"… "Chủ nhật". */
+export function fmtWeekday(sec: number): string {
+  return WEEKDAYS[new Date((sec + VN_OFFSET) * 1000).getUTCDay()] ?? "";
+}
+
 /** Số nguyên có dấu chấm ngăn nghìn: 1204 thành "1.204". */
 export function fmtInt(n: number): string {
   return String(Math.trunc(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -108,10 +115,11 @@ export function fmtHm(sec: number): string {
   return `${p.h}:${p.mi}`;
 }
 
-/** Số gọn cho trục biểu đồ: 1500 thành "1,5k", 1500000 thành "1,5tr". */
+/** Số gọn cho trục biểu đồ: 1500 thành "1,5k", 1500000 thành "1,5tr", 2500000000 thành "2,5tỷ". */
 export function fmtCompact(n: number): string {
   const abs = Math.abs(n);
   const trim = (x: number) => String(Math.round(x * 10) / 10).replace(".", ",");
+  if (abs >= 1_000_000_000) return `${trim(n / 1_000_000_000)}tỷ`;
   if (abs >= 1_000_000) return `${trim(n / 1_000_000)}tr`;
   if (abs >= 1_000) return `${trim(n / 1_000)}k`;
   return String(n);

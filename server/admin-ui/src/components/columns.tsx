@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import type { AuditRow, LicenseAuditRow, LicenseDetail, LicenseRow, OrderRow, OrderStatus } from "../api/types";
 import { ACTOR_LABELS, type ActorKind, actionLabel, actionTone, actorKind } from "../audit-labels";
-import { daysLeft, fmtDate, fmtDateTime, fmtDetail, fmtVnd, maskKey } from "../format";
+import { daysLeft, fmtAgo, fmtDate, fmtDateTime, fmtDetail, fmtHm, fmtVnd, maskKey } from "../format";
 import { Link } from "../router";
 import { Badge } from "./Badge";
 import type { Column } from "./DataTable";
@@ -25,9 +25,11 @@ export function Cell2({ main, sub }: { main: ReactNode; sub?: ReactNode }) {
   );
 }
 
-/** Thời gian tương đối, dưới là ngày giờ đầy đủ GMT+7. */
+/** Thời gian tương đối, dưới là ngày giờ đầy đủ GMT+7. Mốc từ 30 ngày trước trở đi thì dòng trên đã là ngày, dòng dưới chỉ
+ *  còn giờ (không lặp ngày hai lần). */
 export function WhenCell({ sec, now }: { sec: number; now: number }) {
-  return <Cell2 main={<RelTime sec={sec} now={now} />} sub={fmtDateTime(sec)} />;
+  const absolute = fmtAgo(sec, now) === fmtDate(sec);
+  return <Cell2 main={<RelTime sec={sec} now={now} />} sub={absolute ? fmtHm(sec) : fmtDateTime(sec)} />;
 }
 
 /** Email cắt bằng dấu chấm lửng (đầy đủ ở title); không có thì ghi rõ. */

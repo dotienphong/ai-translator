@@ -123,7 +123,7 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed
         badges={<OrderStatusBadge status={order.status} />}
         description={
           <p className="page-meta detail-meta">
-            <span>{order.email ?? "Không có email (đã ẩn danh)"}</span>
+            <span title={order.email ?? undefined}>{order.email ?? "Không có email (đã ẩn danh)"}</span>
             <span>Gói {PLAN_LABELS[order.plan] ?? order.plan}</span>
             <span>
               Tạo <RelTime sec={order.created_at} now={now} />
@@ -339,7 +339,10 @@ function NextStep({ order, closed, open }: { order: OrderRow; closed: boolean; o
 function MoneyCard({ order }: { order: OrderRow }) {
   const { amount, amount_paid: paid } = order;
   const short = amount - paid;
-  const pct = amount > 0 ? Math.round((paid / amount) * 100) : 0;
+  // Còn thiếu thì không bao giờ ghi 100% (499.000 / 500.000 làm tròn thành 100% là sai nghĩa); đã nhận ít nhất 1 đồng thì
+  // không ghi 0%.
+  const exact = amount > 0 ? Math.round((paid / amount) * 100) : 0;
+  const pct = short > 0 && paid > 0 ? Math.min(99, Math.max(1, exact)) : exact;
   const tone = paid <= 0 ? "muted" : short > 0 ? "warn" : "ok";
   const note =
     paid <= 0 ? "Chưa nhận khoản nào." : short > 0 ? `Đã nhận ${pct}% số cần trả.` : short < 0 ? `Nhận dư ${fmtVnd(-short)}.` : "Đã nhận đủ.";
