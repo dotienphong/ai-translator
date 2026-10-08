@@ -18,7 +18,7 @@ export default {
   schemaType: "AboutPage",
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  llm: "Câu chuyện hình thành, nguyên tắc sản phẩm, người làm (Đỗ Tiến Phong, nhà phát triển cá nhân), trạng thái beta, các hướng đang cân nhắc (chưa cam kết), công nghệ mã nguồn mở được dùng và thông tin pháp lý.",
+  llm: "Câu chuyện hình thành, nguyên tắc sản phẩm, người làm (Đỗ Tiến Phong, nhà phát triển cá nhân), trạng thái beta, các hướng đang cân nhắc (chưa cam kết), việc dùng thành phần mã nguồn mở của bên thứ ba và thông tin pháp lý.",
   llmTitle: "Về AI Translator",
   body: () => `
 ${pageHero({
@@ -43,9 +43,9 @@ ${pageHero({
 ${sectionHead({ eyebrow: "Câu chuyện", title: "Vì sao có AI Translator" })}
 <div class="prose">
 <p>Ý tưởng ban đầu là chuyển một app dịch offline cho Android (mã nguồn mở) sang dịch cuộc gọi và cuộc họp. Chúng tôi sớm chạm vào một giới hạn của hệ điều hành. Android chỉ cho ứng dụng bên thứ ba thu âm thanh phát ra từ media và trò chơi; âm thanh của cuộc gọi và cuộc gọi VoIP thì không, và khi đang có cuộc gọi, micro của app thường chỉ nhận được im lặng.</p>
-<p>Trên máy tính thì khác. Windows có WASAPI loopback, macOS (từ bản 14.2) có Core Audio process tap, đều cho phép một ứng dụng thu chính âm thanh đang phát ra từ máy. Hướng đi vì thế chuyển sang máy tính: một app nghe âm thanh hệ thống, nhận dạng giọng nói, dịch rồi hiện phụ đề, dùng được với bất kỳ app họp nào mà không cần bot hay plugin.</p>
+<p>Trên máy tính thì khác. Cả Windows lẫn macOS (từ bản 14.2) đều có cách cho phép một ứng dụng thu chính âm thanh đang phát ra từ máy. Hướng đi vì thế chuyển sang máy tính: một app nghe âm thanh hệ thống, nhận dạng giọng nói, dịch rồi hiện phụ đề, dùng được với bất kỳ app họp nào mà không cần bot hay plugin.</p>
 <p>Khi tìm hiểu (tháng 9/2026), chúng tôi thấy phụ đề dịch của các app họp lớn thường nằm ở gói trả phí cao hơn và xử lý trên cloud; công cụ của bên thứ ba phần lớn cũng vậy. Chúng tôi muốn một lựa chọn khác: xử lý hoàn toàn trên máy bạn, dùng được với mọi app họp, chú trọng tiếng Việt, và vì không có máy chủ nào dịch hộ nên chúng tôi không phải trả thêm chi phí hạ tầng cho từng phút bạn dùng. <a href="/so-sanh/dich-offline-va-cloud/">So sánh dịch offline và dịch cloud</a>.</p>
-<p>Model dịch được chọn bằng số đo. Trong thử nghiệm nội bộ ngày 29/09/2026 trên 320 câu văn bản (bộ WMT24++, năm chiều dịch, chạy trên Mac M4 Pro), Hy-MT2-1.8B đạt điểm COMET 0,837, trong khi ba model dịch khác được thử cùng điều kiện đạt từ 0,736 đến 0,833. Đó là phép thử trên văn bản chứ chưa phải giọng nói thật, và chúng tôi không so với bất kỳ dịch vụ cloud nào.</p>
+<p>Model dịch được chọn bằng số đo. Trong thử nghiệm nội bộ ngày 29/09/2026 trên 320 câu văn bản (năm chiều dịch, chạy trên Mac M4 Pro), model được chọn đạt điểm COMET 0,837, trong khi ba model dịch khác được thử cùng điều kiện đạt từ 0,736 đến 0,833. Đó là phép thử trên văn bản chứ chưa phải giọng nói thật, và chúng tôi không so với bất kỳ dịch vụ cloud nào.</p>
 </div>
 </div></section>
 
@@ -102,18 +102,8 @@ ${callout({ kind: "warn", title: "Đây chưa phải cam kết.", text: "Danh s�
 </div></section>
 
 <section class="section section-alt" id="cong-nghe"><div class="container narrow">
-${sectionHead({ eyebrow: "Công nghệ", title: "Dựa trên các dự án mã nguồn mở", text: "AI Translator là sản phẩm thương mại và không phải mã nguồn mở: Thỏa thuận cấp phép không cho sao chép, dịch ngược hay đổi tên thương hiệu. Nhưng nó dùng nhiều thành phần mở của bên thứ ba, và chúng tôi ghi nhận chúng." })}
-<div class="table-wrap reveal" role="region" aria-label="Thành phần mã nguồn mở được dùng" tabindex="0"><table>
-<thead><tr><th scope="col">Thành phần</th><th scope="col">Vai trò trong app</th><th scope="col">Tác giả và giấy phép</th></tr></thead>
-<tbody>
-<tr><th scope="row">Whisper, whisper.cpp</th><td>Nhận dạng giọng nói (large-v3-turbo ở gói model Chuẩn, small ở gói model Nhẹ)</td><td>OpenAI (trọng số Whisper, MIT); whisper.cpp và ggml (MIT)</td></tr>
-<tr><th scope="row">Hy-MT2-1.8B, llama.cpp</th><td>Dịch (Q8_0 ở gói model Chuẩn, Q4_K_M ở gói model Nhẹ)</td><td>Tencent (Apache 2.0); llama.cpp và ggml (MIT)</td></tr>
-<tr><th scope="row">Silero VAD</th><td>Phát hiện đoạn có tiếng nói để cắt câu</td><td>MIT</td></tr>
-<tr><th scope="row">Tauri 2, Rust, React 19</th><td>Khung ứng dụng và giao diện</td><td>Tauri: MIT hoặc Apache-2.0; React: MIT</td></tr>
-<tr><th scope="row">SQLCipher</th><td>Mã hóa lịch sử, khi bạn bật lưu lịch sử</td><td>Giấy phép kiểu BSD</td></tr>
-<tr><th scope="row">OpenCC (ferrous-opencc)</th><td>Đổi chữ Hán phồn thể sang giản thể</td><td>Apache 2.0</td></tr>
-</tbody></table></div>
-<p class="small muted">Model gốc được phân phối lại không sửa đổi, kèm giấy phép. Danh sách giấy phép đầy đủ nằm trong app, ở Giới thiệu › Giấy phép mã nguồn mở. Zoom, Microsoft Teams, Google Meet và Zalo chỉ được nhắc để nói về khả năng tương thích; AI Translator không liên kết với các công ty này.</p>
+${sectionHead({ eyebrow: "Giấy phép", title: "Thành phần mã nguồn mở của bên thứ ba", text: "AI Translator là sản phẩm thương mại và không phải mã nguồn mở: Thỏa thuận cấp phép không cho sao chép, dịch ngược hay đổi tên thương hiệu. Nhưng nó dùng nhiều thành phần mở của bên thứ ba, và chúng tôi ghi nhận chúng." })}
+<p class="small muted">Model gốc được phân phối lại không sửa đổi, kèm giấy phép. Danh sách thành phần và giấy phép đầy đủ nằm trong app, ở Giới thiệu › Giấy phép mã nguồn mở. Zoom, Microsoft Teams, Google Meet và Zalo chỉ được nhắc để nói về khả năng tương thích; AI Translator không liên kết với các công ty này.</p>
 </div></section>
 
 <section class="section" id="phap-ly"><div class="container narrow">

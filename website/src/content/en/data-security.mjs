@@ -60,7 +60,7 @@ ${facts([
 <thead><tr><th scope="col">Data</th><th scope="col">How it is handled</th></tr></thead>
 <tbody>
 <tr><th scope="row">System audio being captured</th><td>Only in RAM while translating. Never written to disk, never sent over the network. AI Translator does not record meetings to a file either.</td></tr>
-<tr><th scope="row">Transcript and translation</th><td>Shown on screen and held in memory for the session. History is off by default; if you turn it on (a Pro feature), it is stored on your computer, encrypted with SQLCipher.</td></tr>
+<tr><th scope="row">Transcript and translation</th><td>Shown on screen and held in memory for the session. History is off by default; if you turn it on (a Pro feature), it is stored on your computer, encrypted.</td></tr>
 <tr><th scope="row">Keys, tokens, quota counters</th><td>The history encryption key, license token, trial token and quota counters live in Keychain (macOS) or Credential Manager (Windows).</td></tr>
 <tr><th scope="row">Logs</th><td>Stored on your computer and free of transcript content. You decide whether to send them to us.</td></tr>
 <tr><th scope="row">Glossary, settings, models</th><td>Stored on your computer. Models are downloaded once and run entirely on your computer.</td></tr>
@@ -81,7 +81,7 @@ ${facts([
 <p>On macOS we ran the app behind a traffic-capturing proxy (mitmproxy), measured in parallel with <code>nettop</code>, and translated a session using a sample English sentence played on repeat. The build was release 0.1.0, ad-hoc signed, on a MacBook Pro M4 Pro with macOS 26.6.2, on 6 October 2026.</p>
 <ul>
 <li><strong>A 15 minute 42 second session</strong> (158 segments, 0 errors): 3 outbound requests, all to our two servers (a license check and an update check). During translation there was only 1 request, the scheduled update check. This run took place before we moved to our own domain; a 5-minute repeat on our own domain gave the same result.</li>
-<li><strong>nettop</strong> watched 7 processes (the app, WebView and both engine processes): no outbound data stream was seen.</li>
+<li><strong>nettop</strong> watched 7 processes of the app (including the AI processing): no outbound data stream was seen.</li>
 <li><strong>Marker words</strong> from the sample sentence: found neither in the app's log nor in the recorded requests.</li>
 </ul>
 ${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on macOS, one machine, one ad-hoc signed build. <strong>Windows has not been measured.</strong> This is an internal check, not an independent audit; the proxy mode cannot see WebView requests or non-HTTP traffic, so we covered that with nettop." })}
@@ -125,7 +125,7 @@ ${steps(
 <h2 id="protections">Other protections</h2>
 <ul>
 <li><strong>Digital signatures:</strong> app updates are signature-checked before anything is written to disk; the model manifest is signed with Ed25519 and each file is checked against SHA-256; license tokens are signed with Ed25519 and can be verified offline. The app contains only the public key.</li>
-<li><strong>Two engines in two separate processes:</strong> speech recognition opens no network port; translation (<code>llama-server</code>) listens only on 127.0.0.1 and uses a random API key on every run.</li>
+<li><strong>AI processing is separate from the interface:</strong> it only talks to the app inside your computer, accepts no connections from outside the machine and uses a random key on every run.</li>
 <li><strong>Sensitive keys stay out of the app:</strong> the payment API key and signing keys live only on our servers; connections to our servers use HTTPS.</li>
 <li><strong>Detecting a tampered app:</strong> on macOS the app checks that its ad-hoc signature is intact and the bundle id is right; a build whose signature does not match runs only the Free plan. This is an integrity check and does not replace a Developer ID signature.</li>
 </ul>

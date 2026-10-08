@@ -99,7 +99,7 @@ ${docLayout({
 ${appShot({
   slug: "app-about",
   lang: "en",
-  alt: "The About screen: the app name, the Version line, the Open log folder button with a note that logs stay on this computer, and the terms and open-source license sections",
+  alt: "The About screen: the app name, the Version line, the Open log folder button with a note that logs stay on this computer, and the terms and privacy section",
   caption: "About: the version and Open log folder.",
 })}
 <p>Contact support when a problem repeats after you followed the tables, when a key is locked or revoked, or when a payment goes wrong. Include:</p>

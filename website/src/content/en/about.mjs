@@ -18,7 +18,7 @@ export default {
   schemaType: "AboutPage",
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  llm: "How AI Translator came about, the product principles, who builds it (Đỗ Tiến Phong, an independent developer), beta status, directions under consideration (not commitments), the open-source technology it uses and short legal information.",
+  llm: "How AI Translator came about, the product principles, who builds it (Đỗ Tiến Phong, an independent developer), beta status, directions under consideration (not commitments), its use of third-party open-source components and short legal information.",
   llmTitle: "About AI Translator",
   body: () => `
 ${pageHero({
@@ -43,9 +43,9 @@ ${pageHero({
 ${sectionHead({ eyebrow: "Our story", title: "Why AI Translator exists" })}
 <div class="prose">
 <p>The first idea was to take an existing offline translation app for Android (an open-source one) and use it for calls and meetings. We hit a hard limit of the operating system almost at once. Android lets third-party apps capture the audio of media and games, but not the audio of phone calls or VoIP calls, and during a call an app's microphone usually hears only silence.</p>
-<p>A computer is different. Windows offers WASAPI loopback and macOS (from version 14.2) offers Core Audio process taps; both let an app capture the sound the computer itself is playing. So the project moved to the desktop: an app that listens to system audio, recognizes speech, translates it and shows subtitles, and works with any meeting app without a bot or a plugin.</p>
+<p>A computer is different. Both Windows and macOS (from version 14.2) provide a way for an app to capture the sound the computer itself is playing. So the project moved to the desktop: an app that listens to system audio, recognizes speech, translates it and shows subtitles, and works with any meeting app without a bot or a plugin.</p>
 <p>While researching (September 2026), we found that translated subtitles in the large meeting apps tend to sit in higher paid tiers and run in the cloud, and most third-party tools do the same. We wanted a different option: everything processed on your machine, any meeting app, a focus on Vietnamese, and, because no server does the translating, no extra infrastructure cost for each minute you use. Here is a <a href="/en/compare/offline-vs-cloud-translation/">comparison of offline and cloud translation</a>.</p>
-<p>We chose the translation model by measurement. In an internal test on 29 September 2026 (320 sentences of text from the WMT24++ set, five translation directions, run on a Mac M4 Pro), Hy-MT2-1.8B scored 0.837 COMET, while the three other translation models tested under the same conditions scored between 0.736 and 0.833. That test used text, not real speech, and we did not compare against any cloud service.</p>
+<p>We chose the translation model by measurement. In an internal test on 29 September 2026 (320 sentences of text, five translation directions, run on a Mac M4 Pro), the model we picked scored 0.837 COMET, while the three other translation models tested under the same conditions scored between 0.736 and 0.833. That test used text, not real speech, and we did not compare against any cloud service.</p>
 </div>
 </div></section>
 
@@ -102,18 +102,8 @@ ${callout({ kind: "warn", title: "This is not a commitment.", text: "The list be
 </div></section>
 
 <section class="section section-alt" id="technology"><div class="container narrow">
-${sectionHead({ eyebrow: "Technology", title: "Built on the shoulders of open-source projects", text: "AI Translator is a commercial product and is not open source: the license agreement does not allow copying, reverse engineering or rebranding it. But it uses many open-source components from third parties, and we credit them." })}
-<div class="table-wrap reveal" role="region" aria-label="Open-source components used" tabindex="0"><table>
-<thead><tr><th scope="col">Component</th><th scope="col">Role in the app</th><th scope="col">Author and license</th></tr></thead>
-<tbody>
-<tr><th scope="row">Whisper, whisper.cpp</th><td>Speech recognition (large-v3-turbo in the Standard pack, small in the Lite pack)</td><td>OpenAI (Whisper weights, MIT); whisper.cpp and ggml (MIT)</td></tr>
-<tr><th scope="row">Hy-MT2-1.8B, llama.cpp</th><td>Translation (Q8_0 in Standard, Q4_K_M in Lite)</td><td>Tencent (Apache 2.0); llama.cpp and ggml (MIT)</td></tr>
-<tr><th scope="row">Silero VAD</th><td>Detects speech segments to cut sentences</td><td>MIT</td></tr>
-<tr><th scope="row">Tauri 2, Rust, React 19</th><td>App framework and interface</td><td>Tauri: MIT or Apache-2.0; React: MIT</td></tr>
-<tr><th scope="row">SQLCipher</th><td>Encrypts your history, if you turn history on</td><td>BSD-style license</td></tr>
-<tr><th scope="row">OpenCC (ferrous-opencc)</th><td>Converts Traditional Chinese characters to Simplified</td><td>Apache 2.0</td></tr>
-</tbody></table></div>
-<p class="small muted">The original models are redistributed unmodified, together with their licenses. The full list of licenses is inside the app, under About › Open-source licenses. Zoom, Microsoft Teams, Google Meet and Zalo are mentioned only to describe compatibility; AI Translator is not affiliated with these companies.</p>
+${sectionHead({ eyebrow: "Licenses", title: "Third-party open-source components", text: "AI Translator is a commercial product and is not open source: the license agreement does not allow copying, reverse engineering or rebranding it. But it uses many open-source components from third parties, and we credit them." })}
+<p class="small muted">The original models are redistributed unmodified, together with their licenses. The full list of components and licenses is inside the app, under About › Open-source licenses. Zoom, Microsoft Teams, Google Meet and Zalo are mentioned only to describe compatibility; AI Translator is not affiliated with these companies.</p>
 </div></section>
 
 <section class="section" id="legal"><div class="container narrow">

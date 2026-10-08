@@ -60,7 +60,7 @@ ${facts([
 <thead><tr><th scope="col">Dữ liệu</th><th scope="col">Cách xử lý</th></tr></thead>
 <tbody>
 <tr><th scope="row">Âm thanh hệ thống đang thu</th><td>Chỉ nằm trong RAM khi dịch. Không ghi đĩa, không gửi qua mạng. AI Translator cũng không ghi âm cuộc họp thành file.</td></tr>
-<tr><th scope="row">Bản chép lời và bản dịch</th><td>Hiện trên màn hình và nằm trong bộ nhớ theo phiên. Lịch sử mặc định tắt; nếu bạn bật (tính năng Pro), lịch sử lưu trên máy, mã hóa bằng SQLCipher.</td></tr>
+<tr><th scope="row">Bản chép lời và bản dịch</th><td>Hiện trên màn hình và nằm trong bộ nhớ theo phiên. Lịch sử mặc định tắt; nếu bạn bật (tính năng Pro), lịch sử lưu trên máy, được mã hóa.</td></tr>
 <tr><th scope="row">Khóa, token, bộ đếm hạn mức</th><td>Khóa mã hóa lịch sử, token bản quyền, token dùng thử và bộ đếm hạn mức nằm trong Keychain (macOS) hoặc Credential Manager (Windows).</td></tr>
 <tr><th scope="row">Log</th><td>Nằm trên máy bạn, không chứa nội dung chép lời. Bạn tự quyết định có gửi cho chúng tôi hay không.</td></tr>
 <tr><th scope="row">Từ điển, cài đặt, model</th><td>Lưu trên máy bạn. Model tải một lần rồi chạy hoàn toàn trên máy.</td></tr>
@@ -81,7 +81,7 @@ ${facts([
 <p>Trên macOS, chúng tôi cho app chạy sau một proxy bắt lưu lượng (mitmproxy), đo song song bằng <code>nettop</code>, rồi dịch một phiên bằng câu mẫu tiếng Anh phát lặp lại. Bản đo là bản release 0.1.0 ký ad-hoc, trên MacBook Pro M4 Pro, macOS 26.6.2, ngày 06/10/2026.</p>
 <ul>
 <li><strong>Phiên 15 phút 42 giây</strong> (158 đoạn, 0 lỗi): 3 request ra ngoài, đều tới hai máy chủ của chúng tôi (kiểm tra bản quyền, kiểm tra bản cập nhật). Trong lúc dịch chỉ có 1 request, là kiểm tra cập nhật theo lịch. Lượt 15 phút này được đo trước khi chúng tôi chuyển sang tên miền riêng; lượt lặp lại 5 phút sau đó trên tên miền riêng cho kết quả tương tự.</li>
-<li><strong>nettop</strong> theo dõi 7 tiến trình (app, WebView, hai tiến trình engine): không thấy luồng dữ liệu ra ngoài nào.</li>
+<li><strong>nettop</strong> theo dõi 7 tiến trình của app (gồm cả phần xử lý AI): không thấy luồng dữ liệu ra ngoài nào.</li>
 <li><strong>Từ đánh dấu</strong> trong câu mẫu: không có trong log của app lẫn trong các request đã ghi.</li>
 </ul>
 ${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đo trên macOS, một máy, một bản dựng ký ad-hoc. <strong>Windows chưa đo.</strong> Đây là kiểm tra nội bộ, chưa qua kiểm toán độc lập; chế độ proxy không bắt được request của WebView và luồng không phải HTTP nên chúng tôi bù bằng nettop." })}
@@ -125,7 +125,7 @@ ${steps(
 <h2 id="bao-ve">Những lớp bảo vệ khác</h2>
 <ul>
 <li><strong>Chữ ký số:</strong> bản cập nhật được kiểm chữ ký trước khi ghi file; manifest model ký Ed25519 và từng file kiểm SHA-256; token bản quyền ký Ed25519, kiểm được cả khi offline. App chỉ chứa khóa công khai.</li>
-<li><strong>Hai engine chạy ở hai tiến trình riêng:</strong> phần nhận dạng giọng nói không mở cổng mạng; phần dịch (<code>llama-server</code>) chỉ nghe ở 127.0.0.1 và dùng API key ngẫu nhiên mỗi lần chạy.</li>
+<li><strong>Phần xử lý AI tách khỏi giao diện:</strong> chỉ giao tiếp nội bộ trên máy, không nhận kết nối từ bên ngoài máy và dùng khóa ngẫu nhiên mỗi lần chạy.</li>
 <li><strong>Khóa nhạy cảm nằm ngoài app:</strong> khóa API thanh toán và khóa ký chỉ nằm trên máy chủ; kết nối tới máy chủ dùng HTTPS.</li>
 <li><strong>Phát hiện app bị sửa:</strong> trên macOS, app kiểm chữ ký ad-hoc còn nguyên và bundle id; bản có chữ ký không khớp chỉ chạy gói Free. Đây là kiểm tra tính nguyên vẹn, không thay được chữ ký Developer ID.</li>
 </ul>

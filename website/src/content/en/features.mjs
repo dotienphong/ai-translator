@@ -38,7 +38,7 @@ ${pageHero({ crumbs, title: "Everything you need to follow a meeting in another 
 ${sectionHead({ eyebrow: "On-device AI", title: "AI translation without putting your meeting in the cloud", text: "Two AI models, one for speech recognition and one for translation, run directly on your computer. No step sends your audio or meeting content to a server or a cloud AI service.", center: true })}
 ${dataFlow("en")}
 <div class="grid grid-3">
-${feature({ icon: "cpu", title: "Two AI models running locally", text: "Whisper recognizes speech and Hy-MT2 translates. Both are downloaded once and then run on your machine using the GPU (Metal on macOS) or the CPU.", accent: true })}
+${feature({ icon: "cpu", title: "Two AI models running locally", text: "One model recognizes speech and one translates. Both are downloaded once and then run on your machine using the GPU or the CPU.", accent: true })}
 ${feature({ icon: "zap", title: "Low latency because there is no detour", text: "There is no round trip to a server, so the translation appears right after the speaker finishes a sentence. Median under 1.1 seconds on a Mac M4 Pro; the test conditions are in the Performance section below." })}
 ${feature({ icon: "lock", title: "Conversation data stays on your computer", text: "Audio lives only in RAM; the transcript and translation stay on your machine. History is off by default and, if you turn it on, is encrypted on your computer." })}
 </div>
@@ -185,9 +185,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings s
 <thead><tr><th scope="col"><span class="sr-only">Detail</span></th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
 <tbody>
 <tr><th scope="row">Download</th><td>about 2.5 GB</td><td>about 1.3 GB</td></tr>
-<tr><th scope="row">Recognition</th><td>Whisper large-v3-turbo</td><td>Whisper small</td></tr>
-<tr><th scope="row">Translation</th><td>Hy-MT2-1.8B (Q8_0)</td><td>Hy-MT2-1.8B (Q4_K_M)</td></tr>
-<tr><th scope="row">Engine RAM (M4 Pro)</th><td>about 2.9 GiB</td><td>about 1.8–1.9 GiB</td></tr>
+<tr><th scope="row">RAM while running (M4 Pro)</th><td>about 2.9 GiB</td><td>about 1.8–1.9 GiB</td></tr>
 <tr><th scope="row">The app recommends it for</th><td>A Mac with 16 GB or more; Windows with 16 GB or more and a discrete card with 6 GB of VRAM</td><td>Computers with 8 GB up to under 16 GB, or Windows without a capable discrete card</td></tr>
 </tbody></table></div>
 <p class="small muted">The Lite pack recognizes speech less clearly than Standard in Vietnamese, Japanese, Korean and Chinese. If you listen to those languages a lot, choose the Standard pack.</p>
@@ -195,26 +193,26 @@ ${facts([
   ["macOS", "macOS 14.2 or later, Apple Silicon (M1 or newer)<small>No version for Intel Macs</small>"],
   ["RAM", "At least 8 GB, 16 GB recommended"],
   ["Disk", "At least 1 GB free on top of the size of the model being downloaded"],
-  ["Windows", "Windows 10/11 64-bit, CPU with AVX2: not released yet<small>For the Standard pack, a discrete Vulkan-capable graphics card with 6 GB or more of VRAM is recommended</small>"],
+  ["Windows", "Windows 10/11 64-bit, CPU with AVX2: not released yet<small>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended</small>"],
 ])}
 </div></section>
 
 <section class="section section-alt" id="performance"><div class="container">
 ${sectionHead({ eyebrow: "Performance", title: "Real measurements, with the conditions", text: "We publish only what we measured, on the machine we measured it on, and we say which machines we have not tested.", center: true })}
 <div class="table-wrap reveal" role="region" aria-label="Measured performance" tabindex="0"><table>
-<thead><tr><th scope="col">Measurement (Mac M4 Pro 24 GB, macOS 26, Metal GPU)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
+<thead><tr><th scope="col">Measurement (Mac M4 Pro 24 GB, macOS 26, Apple GPU)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
 <tbody>
 <tr><th scope="row">Median (p50) delay: from the speaker finishing a sentence to the complete translation appearing</th><td>0.76–1.03 s</td><td>0.61–0.84 s</td></tr>
 <tr><th scope="row">p90 delay</th><td>0.94–1.34 s</td><td>0.73–1.14 s</td></tr>
 <tr><th scope="row">First translated word appears (p50)</th><td>0.63–0.69 s</td><td>0.52–0.57 s</td></tr>
-<tr><th scope="row">RAM of the two engine processes</th><td>2.9 GiB</td><td>1.8–1.9 GiB</td></tr>
+<tr><th scope="row">RAM while running</th><td>2.9 GiB</td><td>1.8–1.9 GiB</td></tr>
 </tbody></table></div>
 <div class="grid grid-2">
-${feature({ icon: "gauge", title: "Long sessions", text: "One continuous session of 5 h 23 min (a lecture video in English, on an ad-hoc-signed release build): 6,019 segments, no errors, median delay 0.48 s. In a 2-hour stability test, no process was restarted." })}
-${feature({ icon: "languages", title: "Translation and recognition quality", text: "In an internal test on 320 sentences in five directions involving Vietnamese, Hy-MT2-1.8B scored 0.837 on COMET: clearly above MADLAD-3B (0.779) and NLLB-600M (0.736), and on par with HY-MT1.5-1.8B (0.833). We only compared open-source models with each other. On clean read speech, Vietnamese recognition in the Standard pack has a word error rate of 8.7%. That is read speech, not real meeting conversation." })}
+${feature({ icon: "gauge", title: "Long sessions", text: "One continuous session of 5 h 23 min (a lecture video in English, on an ad-hoc-signed release build): 6,019 segments, no errors, median delay 0.48 s. In a 2-hour stability test, no component was restarted." })}
+${feature({ icon: "languages", title: "Translation and recognition quality", text: "In an internal test on 320 sentences in five directions involving Vietnamese, the Standard pack's translation model scored 0.837 on COMET. We chose the translation model by comparing several models on this same test set. On clean read speech, Vietnamese recognition in the Standard pack has a word error rate of 8.7%. That is read speech, not real meeting conversation." })}
 </div>
 <h3 class="reveal" id="quality-by-direction">Translation and recognition quality by direction</h3>
-<p class="reveal">COMET scores were measured through the app's own translation path (llama-server with the same prompt), 100 sentences per direction (Vietnamese → Chinese, Japanese, Korean: 40 sentences). COMET is a relative score from 0 to 1, higher is better; <strong>it is not a percentage accuracy</strong>.</p>
+<p class="reveal">COMET scores were measured through the app's own translation path (the same setup as in real use), 100 sentences per direction (Vietnamese → Chinese, Japanese, Korean: 40 sentences). COMET is a relative score from 0 to 1, higher is better; <strong>it is not a percentage accuracy</strong>.</p>
 <div class="table-wrap reveal"><table>
 <thead><tr><th scope="col">Direction (text)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
 <tbody>
@@ -238,18 +236,6 @@ ${feature({ icon: "languages", title: "Translation and recognition quality", tex
 </tbody></table></div>
 <p class="small muted reveal">How to read this: the translation test set leans toward everyday spoken language, so it is only a rough proxy for meeting speech; recognition was measured on clean read speech (about 15 minutes per language), not real meeting conversations, and narrowband Bluetooth headsets raise the error rate. All eight directions above involve Vietnamese; the other 12 directions among English, 中文, 日本語 and 한국어 run but have no quality score yet. The Lite pack is noticeably less accurate at recognizing Vietnamese, Japanese, Korean and Chinese.</p>
 ${callout({ kind: "warn", title: "What we have not measured, and do not promise", text: "All the figures above were measured on a single Mac M4 Pro, with a 300&nbsp;ms pause to end a sentence (the app's current default is 50&nbsp;ms; the 5-hour session used the default). We have not measured: a base Mac M1, 8 GB computers, discrete Windows graphics cards, battery and power use, accuracy on real meeting conversation or over Bluetooth headsets, and translation quality for directions that do not involve Vietnamese (they work, but we have no quality score to publish). A preliminary test on one Windows laptop with integrated graphics showed that the Standard pack did not meet our latency target." })}
-</div></section>
-
-<section class="section" id="technology"><div class="container">
-${sectionHead({ eyebrow: "Technology", title: "Built on open-source components, running on your computer", text: "AI Translator is a commercial product; the components below are third-party open-source projects, listed in full on the About screen of the app.", center: true })}
-<div class="grid grid-3">
-${feature({ icon: "mic", title: "Whisper + whisper.cpp", text: "OpenAI's multilingual speech recognition (MIT license), run through whisper.cpp." })}
-${feature({ icon: "languages", title: "Hy-MT2-1.8B + llama.cpp", text: "Tencent's translation model (Apache 2.0 license) in GGUF format, run through llama.cpp." })}
-${feature({ icon: "captions", title: "Silero VAD", text: "Detects speech so sentences can be cut at the right place. MIT license, runs in pure Rust inside the app." })}
-${feature({ icon: "cpu", title: "Tauri 2, Rust, React", text: "A Rust core with a React interface. The two engines run in separate processes, so a GPU driver failure cannot take the app down." })}
-${feature({ icon: "zap", title: "Metal and Vulkan", text: "GPU acceleration: Metal on macOS, Vulkan on Windows. It falls back to the CPU if the GPU fails." })}
-${feature({ icon: "lock", title: "SQLCipher", text: "History, if you turn it on, is encrypted with SQLCipher; the random key is kept in your operating system's key store." })}
-</div>
 </div></section>
 
 <section class="section section-alt"><div class="container">

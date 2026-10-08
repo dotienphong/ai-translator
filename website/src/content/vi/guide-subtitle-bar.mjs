@@ -88,7 +88,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <thead><tr><th scope="col">Bạn thấy</th><th scope="col">Nghĩa là</th></tr></thead>
 <tbody>
 <tr><th scope="row">Chấm tròn nhỏ sáng xanh</th><td>Có tiếng đang vào. Khi chưa có tiếng, chấm là màu trắng mờ. Chấm chỉ hiện khi phiên đang chạy</td></tr>
-<tr><th scope="row">Đang nạp model…</th><td>Vài giây đầu của phiên, engine đang khởi động</td></tr>
+<tr><th scope="row">Đang nạp model…</th><td>Vài giây đầu của phiên, phần xử lý AI đang khởi động</td></tr>
 <tr><th scope="row">Đang trễ</th><td>Phụ đề chậm hơn lời nói</td></tr>
 <tr><th scope="row">Không nghe thấy âm thanh…</th><td>Một lúc lâu không có tiếng; kiểm tra cuộc họp có đang phát không</td></tr>
 <tr><th scope="row">Còn dưới 5 phút dịch</th><td>Sắp hết hạn mức dịch</td></tr>

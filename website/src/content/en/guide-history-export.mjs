@@ -58,7 +58,7 @@ ${facts([
   ["Every plan", "View, search and copy the session transcript"],
   ["Pro", "Save history, reopen past sessions, export TXT, SRT, Markdown"],
   ["Save history", "Off by default<small>Turn it on in Settings › Privacy</small>"],
-  ["Stored", "On your computer, encrypted with SQLCipher<small>The key lives in Keychain (macOS) or Credential Manager (Windows)</small>"],
+  ["Stored", "On your computer, encrypted<small>The key lives in Keychain (macOS) or Credential Manager (Windows)</small>"],
 ])}
 
 <h2 id="transcript">View, search and copy the transcript</h2>
@@ -99,7 +99,7 @@ ${appShot({
   alt: "The History screen: saved sessions with date and time, length, sentence count, a preview and Open and Delete buttons",
   caption: "History: sessions saved on your computer.",
 })}
-<p>History and the glossary share one SQLite database, encrypted with SQLCipher and kept only on your computer. The key is a random value the app creates on your machine and stores in Keychain (macOS) or Credential Manager (Windows). If you refuse when the system asks for access, the app says “Could not open the history and glossary data…”; allow it and try again. More in <a href="/en/data-security/">data and security</a>.</p>
+<p>History and the glossary share one encrypted database kept only on your computer. The key is a random value the app creates on your machine and stores in Keychain (macOS) or Credential Manager (Windows). If you refuse when the system asks for access, the app says “Could not open the history and glossary data…”; allow it and try again. More in <a href="/en/data-security/">data and security</a>.</p>
 
 <h2 id="export">Export to TXT, SRT or Markdown (Pro)</h2>
 <ol>

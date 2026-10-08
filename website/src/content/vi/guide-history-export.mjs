@@ -58,7 +58,7 @@ ${facts([
   ["Mọi gói", "Xem, tìm, sao chép bản chép lời của phiên"],
   ["Pro", "Lưu lịch sử, mở lại phiên cũ, xuất TXT, SRT, Markdown"],
   ["Lưu lịch sử", "Mặc định tắt<small>Bật ở Cài đặt › Quyền riêng tư</small>"],
-  ["Nơi lưu", "Trên máy bạn, mã hóa SQLCipher<small>Khóa nằm trong Keychain (macOS) hoặc Credential Manager (Windows)</small>"],
+  ["Nơi lưu", "Trên máy bạn, có mã hóa<small>Khóa nằm trong Keychain (macOS) hoặc Credential Manager (Windows)</small>"],
 ])}
 
 <h2 id="ban-chep-loi">Xem, tìm và sao chép bản chép lời</h2>
@@ -99,7 +99,7 @@ ${appShot({
   alt: "Màn hình Lịch sử: danh sách các phiên đã lưu với ngày giờ, số phút, số câu, đoạn xem trước và nút Mở, Xóa",
   caption: "Lịch sử: các phiên đã lưu trên máy bạn.",
 })}
-<p>Lịch sử và từ điển thuật ngữ nằm chung trong một cơ sở dữ liệu SQLite mã hóa bằng SQLCipher, chỉ trên máy bạn. Khóa là chuỗi ngẫu nhiên do app tạo ngay trên máy và cất trong Keychain (macOS) hoặc Credential Manager (Windows). Nếu bạn từ chối khi hệ thống hỏi quyền truy cập, app báo “Không mở được dữ liệu lịch sử và từ điển…”; hãy cho phép rồi thử lại. Chi tiết xem <a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
+<p>Lịch sử và từ điển thuật ngữ nằm chung trong một cơ sở dữ liệu có mã hóa, chỉ trên máy bạn. Khóa là chuỗi ngẫu nhiên do app tạo ngay trên máy và cất trong Keychain (macOS) hoặc Credential Manager (Windows). Nếu bạn từ chối khi hệ thống hỏi quyền truy cập, app báo “Không mở được dữ liệu lịch sử và từ điển…”; hãy cho phép rồi thử lại. Chi tiết xem <a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
 
 <h2 id="xuat-file">Xuất ra TXT, SRT hoặc Markdown (Pro)</h2>
 <ol>

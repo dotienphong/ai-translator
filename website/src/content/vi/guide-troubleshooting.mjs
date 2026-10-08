@@ -99,7 +99,7 @@ ${docLayout({
 ${appShot({
   slug: "app-about",
   lang: "vi",
-  alt: "Màn hình Giới thiệu: tên app, dòng Phiên bản, nút Mở thư mục log kèm lưu ý log chỉ nằm trên máy, và các mục điều khoản, giấy phép mã nguồn mở",
+  alt: "Màn hình Giới thiệu: tên app, dòng Phiên bản, nút Mở thư mục log kèm lưu ý log chỉ nằm trên máy, và mục điều khoản và quyền riêng tư",
   caption: "Giới thiệu: phiên bản và Mở thư mục log.",
 })}
 <p>Hãy liên hệ khi lỗi lặp lại sau khi làm theo bảng trên, khi key bị khóa tạm hoặc thu hồi, hoặc khi thanh toán có vấn đề. Hãy kèm trong thư:</p>

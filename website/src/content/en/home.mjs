@@ -88,7 +88,7 @@ ${demo({
   ["Product type", "Desktop app for live translated subtitles"],
   ["Platforms", "macOS 14.2 or later (Apple Silicon)<small>Windows 10/11 x64: coming soon</small>"],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>For both the source audio and the translation. More languages are planned for the future</small>"],
-  ["Processing", "100% on your device; audio is never sent out<small>Whisper (speech recognition) and Hy-MT2 (translation)</small>"],
+  ["Processing", "100% on your device; audio is never sent out<small>Speech recognition and translation both run on your device</small>"],
   ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid in VND by VietQR from a Vietnamese bank, no auto-renewal</small>"],
   ["Provider", "Đỗ Tiến Phong<small>Support: support@aitranslator.io.vn</small>"],
 ])}</div>

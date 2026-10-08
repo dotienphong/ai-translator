@@ -101,7 +101,7 @@ ${sectionHead({ eyebrow: "System requirements", title: "Will it run on your comp
 <tr><th scope="row">Operating system</th><td>macOS 14.2 or later</td><td>Windows 10 or 11, 64-bit (x64)</td></tr>
 <tr><th scope="row">Processor</th><td>Apple Silicon (M1 or newer). No version for Intel Macs</td><td>CPU with AVX2. Windows ARM64 is not supported yet</td></tr>
 <tr><th scope="row">RAM</th><td>At least 8 GB, 16 GB recommended</td><td>At least 8 GB, 16 GB recommended</td></tr>
-<tr><th scope="row">Graphics</th><td>Apple GPU (Metal)</td><td>For the Standard pack, a discrete Vulkan-capable card with 6 GB or more of VRAM is recommended; without one it runs on the CPU</td></tr>
+<tr><th scope="row">Graphics</th><td>Apple GPU</td><td>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended; without one it runs on the CPU</td></tr>
 <tr><th scope="row">Disk space</th><td>1.3 GB (Lite pack) or 2.5 GB (Standard pack), plus 1 GB free while downloading</td><td>The same</td></tr>
 <tr><th scope="row">Permission</th><td>System audio recording (the microphone is not used)</td><td>No audio-recording permission needed</td></tr>
 </tbody></table></div>

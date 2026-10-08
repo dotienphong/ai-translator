@@ -30,7 +30,7 @@ const GROUPS = [
       },
       {
         q: "Is AI Translator open source?",
-        a: `<p>No. AI Translator is a commercial product used under the license in the <a href="/en/terms/">Terms of use</a>. It does use many open-source components from third parties, such as Whisper, whisper.cpp, llama.cpp, Hy-MT2 and Tauri. The full list of licenses is inside the app (About › Open-source licenses), with a summary on <a href="/en/about/#technology">About AI Translator</a>.</p>`,
+        a: `<p>No. AI Translator is a commercial product used under the license in the <a href="/en/terms/">Terms of use</a>. It does use many open-source components from third parties. The full list of licenses is inside the app (About › Open-source licenses), with a summary on <a href="/en/about/#technology">About AI Translator</a>.</p>`,
       },
     ],
   },
@@ -70,7 +70,7 @@ const GROUPS = [
     items: [
       {
         q: "Does AI Translator use cloud AI or cloud models?",
-        a: `<p>No. Both speech recognition (Whisper) and translation (Hy-MT2) are AI models that run on your own computer. No cloud AI service takes part in recognizing or translating your meeting, so the audio, the transcript and the translation do not pass through any third party. The network is only used for things other than translating: checking your license, payments, downloading models and updating the app.</p>`,
+        a: `<p>No. Both speech recognition and translation are AI models that run on your own computer. No cloud AI service takes part in recognizing or translating your meeting, so the audio, the transcript and the translation do not pass through any third party. The network is only used for things other than translating: checking your license, payments, downloading models and updating the app.</p>`,
       },
       {
         q: "Where is the data from my conversations stored?",
@@ -112,7 +112,7 @@ const GROUPS = [
       },
       {
         q: "How much RAM and disk space does it need?",
-        a: `<p>Models take about 2.5 GB of disk (Standard) or 1.3 GB (Lite), and you need 1 GB more free while downloading. On a Mac M4 Pro, the two engine processes use about 2.9 GiB of RAM (Standard) or 1.8 to 1.9 GiB (Lite), plus roughly 0.3 GB for the app. The engines shut down after 10 minutes without translating, so the app sitting in the menu bar does not hold several GB of RAM. We have not measured other machines.</p>`,
+        a: `<p>Models take about 2.5 GB of disk (Standard) or 1.3 GB (Lite), and you need 1 GB more free while downloading. On a Mac M4 Pro, the AI processing uses about 2.9 GiB of RAM (Standard) or 1.8 to 1.9 GiB (Lite), plus roughly 0.3 GB for the app. The AI processing shuts down after 10 minutes without translating, so the app sitting in the menu bar does not hold several GB of RAM. We have not measured other machines.</p>`,
       },
       {
         q: "Why does macOS say it cannot verify the developer?",

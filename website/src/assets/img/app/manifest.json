@@ -285,9 +285,9 @@
   "lang": "vi",
   "theme": "light",
   "width": 1440,
-  "height": 960,
-  "bytes": 50888,
-  "description": "Màn hình Giới thiệu: phiên bản 0.1.0, Điều khoản và quyền riêng tư, danh sách giấy phép mã nguồn mở."
+  "height": 580,
+  "bytes": 23456,
+  "description": "Màn hình Giới thiệu: phiên bản 0.1.0, nút Mở thư mục log, Điều khoản và quyền riêng tư."
  },
  {
   "file": "app-about.en.webp",
@@ -295,9 +295,9 @@
   "lang": "en",
   "theme": "light",
   "width": 1440,
-  "height": 960,
-  "bytes": 45330,
-  "description": "The About screen: version 0.1.0, Terms and privacy, and the list of open-source licenses."
+  "height": 580,
+  "bytes": 19046,
+  "description": "The About screen: version 0.1.0, the Open log folder button, and Terms and privacy."
  },
  {
   "file": "app-onboarding-1.vi.webp",

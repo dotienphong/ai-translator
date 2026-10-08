@@ -88,7 +88,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <thead><tr><th scope="col">You see</th><th scope="col">It means</th></tr></thead>
 <tbody>
 <tr><th scope="row">A small green dot</th><td>Sound is coming in. With no sound the dot is a faint white. The dot only shows while a session is running</td></tr>
-<tr><th scope="row">Loading models…</th><td>The first seconds of a session while the engines start</td></tr>
+<tr><th scope="row">Loading models…</th><td>The first seconds of a session while the AI processing starts</td></tr>
 <tr><th scope="row">Falling behind</th><td>Subtitles are later than the speech</td></tr>
 <tr><th scope="row">No audio heard…</th><td>No sound for a while; check that the meeting is playing</td></tr>
 <tr><th scope="row">Less than 5 minutes of translation left</th><td>You are close to your quota</td></tr>

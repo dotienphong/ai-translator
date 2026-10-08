@@ -37,7 +37,7 @@ ${pageHero({ crumbs, title: "Mọi thứ cần để hiểu một cuộc họp b
 ${sectionHead({ eyebrow: "AI chạy trên máy", title: "Dịch bằng AI mà không đưa cuộc họp lên cloud", text: "Hai model AI, một để nhận dạng giọng nói, một để dịch, chạy trực tiếp trên máy tính của bạn. Không có bước nào gửi âm thanh hay nội dung cuộc họp tới một máy chủ hay dịch vụ AI trên cloud.", center: true })}
 ${dataFlow("vi")}
 <div class="grid grid-3">
-${feature({ icon: "cpu", title: "Hai model AI chạy tại chỗ", text: "Whisper nhận dạng giọng nói, Hy-MT2 dịch. Cả hai tải về một lần rồi chạy trên máy bạn bằng GPU (Metal trên macOS) hoặc CPU.", accent: true })}
+${feature({ icon: "cpu", title: "Hai model AI chạy tại chỗ", text: "Một model nhận dạng giọng nói, một model dịch. Cả hai tải về một lần rồi chạy trên máy bạn bằng GPU hoặc CPU.", accent: true })}
 ${feature({ icon: "zap", title: "Độ trễ thấp vì không đi vòng", text: "Không có chuyến đi tới máy chủ, nên bản dịch hiện ngay sau khi người nói dừng câu. Trung vị dưới 1,1 giây trên Mac M4 Pro; điều kiện đo ở mục Hiệu năng bên dưới." })}
 ${feature({ icon: "lock", title: "Dữ liệu cuộc hội thoại ở lại trên máy", text: "Âm thanh chỉ nằm trong RAM; bản chép lời và bản dịch ở trên máy bạn. Lịch sử mặc định tắt và, nếu bật, được mã hóa trên máy." })}
 </div>
@@ -179,9 +179,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím t�
 <thead><tr><th scope="col"></th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
 <tbody>
 <tr><th scope="row">Dung lượng tải</th><td>khoảng 2,5 GB</td><td>khoảng 1,3 GB</td></tr>
-<tr><th scope="row">Nhận dạng giọng nói</th><td>Whisper large-v3-turbo</td><td>Whisper small</td></tr>
-<tr><th scope="row">Dịch</th><td>Hy-MT2-1.8B (Q8_0)</td><td>Hy-MT2-1.8B (Q4_K_M)</td></tr>
-<tr><th scope="row">RAM engine (Mac M4 Pro)</th><td>khoảng 2,9 GiB</td><td>khoảng 1,8–1,9 GiB</td></tr>
+<tr><th scope="row">RAM khi chạy (Mac M4 Pro)</th><td>khoảng 2,9 GiB</td><td>khoảng 1,8–1,9 GiB</td></tr>
 <tr><th scope="row">App đề xuất khi</th><td>Mac 16 GB trở lên; Windows 16 GB trở lên có card rời từ 6 GB VRAM</td><td>Máy từ 8 GB đến dưới 16 GB, hoặc Windows không có card rời đủ mạnh</td></tr>
 </tbody></table></div>
 <p class="small muted">Gói model Nhẹ chép lời kém rõ hơn gói model Chuẩn ở tiếng Việt, Nhật, Hàn, Trung. Nếu bạn nghe nhiều các ngôn ngữ này, nên dùng gói model Chuẩn.</p>
@@ -191,26 +189,26 @@ ${facts([
   ["macOS", "macOS 14.2 trở lên, Apple Silicon (M1 trở lên)<small>Không có bản cho Mac Intel</small>"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
   ["Ổ đĩa", "Trống thêm ít nhất 1 GB so với dung lượng model cần tải"],
-  ["Windows", "Windows 10/11 64-bit, CPU có AVX2: chưa phát hành<small>Khuyến nghị card rời Vulkan, VRAM từ 6 GB cho gói model Chuẩn</small>"],
+  ["Windows", "Windows 10/11 64-bit, CPU có AVX2: chưa phát hành<small>Khuyến nghị card đồ họa rời, VRAM từ 6 GB cho gói model Chuẩn</small>"],
 ])}
 </div></section>
 
 <section class="section section-alt" id="hieu-nang"><div class="container">
 ${sectionHead({ eyebrow: "Hiệu năng", title: "Số đo thật, kèm điều kiện đo", text: "Chúng tôi chỉ công bố những gì đã đo, trên đúng máy đã đo, và nói rõ máy nào chưa đo.", center: true })}
 <div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">Số đo (Mac M4 Pro 24 GB, macOS 26, GPU Metal)</th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
+<thead><tr><th scope="col">Số đo (Mac M4 Pro 24 GB, macOS 26, GPU Apple)</th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
 <tbody>
 <tr><th scope="row">Độ trễ trung vị (p50): từ lúc người nói dừng câu tới khi hiện đủ bản dịch</th><td>0,76–1,03 giây</td><td>0,61–0,84 giây</td></tr>
 <tr><th scope="row">Độ trễ p90</th><td>0,94–1,34 giây</td><td>0,73–1,14 giây</td></tr>
 <tr><th scope="row">Chữ dịch đầu tiên hiện (p50)</th><td>0,63–0,69 giây</td><td>0,52–0,57 giây</td></tr>
-<tr><th scope="row">RAM của hai tiến trình engine</th><td>2,9 GiB</td><td>1,8–1,9 GiB</td></tr>
+<tr><th scope="row">RAM khi chạy</th><td>2,9 GiB</td><td>1,8–1,9 GiB</td></tr>
 </tbody></table></div>
 <div class="grid grid-2">
-${feature({ icon: "gauge", title: "Phiên dài", text: "Một phiên dịch liên tục 5 giờ 23 phút (video bài giảng tiếng Anh, bản release ký ad-hoc): 6019 đoạn, không lỗi, độ trễ trung vị 0,48 giây. Thử nghiệm ổn định 2 giờ: không tiến trình nào bị khởi động lại." })}
-${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng", text: "Trên bộ thử nội bộ 320 câu (năm chiều có tiếng Việt), Hy-MT2-1.8B đạt điểm COMET trung bình 0,837: cao hơn rõ rệt MADLAD-3B (0,779) và NLLB-600M (0,736), và ngang HY-MT1.5-1.8B (0,833). Chúng tôi chỉ so các model mã nguồn mở với nhau. Với câu đọc chuẩn, tiếng Việt gói model Chuẩn có tỉ lệ lỗi từ 8,7%. Đây là câu đọc, chưa phải hội thoại họp thật." })}
+${feature({ icon: "gauge", title: "Phiên dài", text: "Một phiên dịch liên tục 5 giờ 23 phút (video bài giảng tiếng Anh, bản release ký ad-hoc): 6019 đoạn, không lỗi, độ trễ trung vị 0,48 giây. Thử nghiệm ổn định 2 giờ: không thành phần nào bị khởi động lại." })}
+${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng", text: "Trên bộ thử nội bộ 320 câu (năm chiều có tiếng Việt), model dịch của gói Chuẩn đạt điểm COMET trung bình 0,837. Chúng tôi chọn model dịch bằng cách so nhiều model với nhau trên cùng bộ thử này. Với câu đọc chuẩn, tiếng Việt gói model Chuẩn có tỉ lệ lỗi từ 8,7%. Đây là câu đọc, chưa phải hội thoại họp thật." })}
 </div>
 <h3 class="reveal" id="chat-luong-theo-chieu">Chất lượng dịch và nhận dạng theo từng chiều</h3>
-<p class="reveal">Điểm COMET đo trên đúng đường chạy của app (llama-server, cùng câu lệnh dịch), mỗi chiều 100 câu (Việt → Trung, Nhật, Hàn: 40 câu). COMET là điểm tương đối từ 0 đến 1, cao hơn là tốt hơn; <strong>không phải tỉ lệ phần trăm chính xác</strong>.</p>
+<p class="reveal">Điểm COMET đo trên đúng đường dịch của app (cùng cấu hình như khi dùng thật), mỗi chiều 100 câu (Việt → Trung, Nhật, Hàn: 40 câu). COMET là điểm tương đối từ 0 đến 1, cao hơn là tốt hơn; <strong>không phải tỉ lệ phần trăm chính xác</strong>.</p>
 <div class="table-wrap reveal"><table>
 <thead><tr><th scope="col">Chiều dịch (văn bản)</th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
 <tbody>
@@ -234,18 +232,6 @@ ${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng"
 </tbody></table></div>
 <p class="small muted reveal">Cách đọc: bộ câu dịch thiên về văn nói đời thường nên chỉ đại diện gần đúng cho lời họp; nhận dạng đo trên câu đọc chuẩn (khoảng 15 phút mỗi ngôn ngữ), không phải hội thoại họp thật, và tai nghe Bluetooth băng hẹp làm lỗi tăng thêm. Tám chiều trên đều có tiếng Việt; 12 chiều còn lại giữa English, 中文, 日本語, 한국어 chạy được nhưng chưa có điểm chất lượng. Gói model Nhẹ kém rõ hơn ở nhận dạng tiếng Việt, Nhật, Hàn, Trung.</p>
 ${callout({ kind: "warn", title: "Điều chưa đo, chúng tôi không hứa", text: "Mọi số trên đo trên một máy Mac M4 Pro, với ngưỡng im lặng chốt đoạn 300 ms (mặc định hiện tại của app là 50 ms; phiên 5 giờ dùng mặc định). Chưa đo: Mac M1, máy 8 GB, card đồ họa rời của Windows, pin và điện năng, độ chính xác với hội thoại họp thật hoặc tai nghe Bluetooth, và chất lượng dịch của các chiều không có tiếng Việt (chạy được nhưng chưa có điểm đo). Thử nghiệm sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói model Chuẩn chưa đạt mục tiêu độ trễ." })}
-</div></section>
-
-<section class="section" id="cong-nghe"><div class="container">
-${sectionHead({ eyebrow: "Công nghệ", title: "Xây trên các thành phần mã nguồn mở, chạy ngay trên máy", text: "AI Translator là sản phẩm thương mại; các thành phần bên dưới là mã nguồn mở của bên thứ ba, được ghi nhận đầy đủ trong màn hình Giới thiệu của app.", center: true })}
-<div class="grid grid-3">
-${feature({ icon: "mic", title: "Whisper + whisper.cpp", text: "Nhận dạng giọng nói đa ngôn ngữ của OpenAI (giấy phép MIT), chạy qua whisper.cpp." })}
-${feature({ icon: "languages", title: "Hy-MT2-1.8B + llama.cpp", text: "Model dịch của Tencent (giấy phép Apache 2.0), định dạng GGUF, chạy qua llama.cpp." })}
-${feature({ icon: "captions", title: "Silero VAD", text: "Phát hiện đoạn có tiếng nói để cắt câu, giấy phép MIT, chạy thuần Rust trong app." })}
-${feature({ icon: "cpu", title: "Tauri 2, Rust, React", text: "Lõi Rust, giao diện React. Hai engine chạy ở hai tiến trình riêng nên lỗi driver GPU không làm sập app." })}
-${feature({ icon: "zap", title: "Metal và Vulkan", text: "Tăng tốc bằng GPU: Metal trên macOS, Vulkan trên Windows. Tự chuyển sang CPU nếu GPU lỗi." })}
-${feature({ icon: "lock", title: "SQLCipher", text: "Lịch sử (nếu bạn bật) được mã hóa bằng SQLCipher, khóa ngẫu nhiên nằm trong kho khóa của hệ điều hành." })}
-</div>
 </div></section>
 
 <section class="section section-alt"><div class="container">

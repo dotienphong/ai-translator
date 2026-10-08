@@ -12,9 +12,9 @@ export const SITE = {
   securityExpires: "2027-10-08T00:00:00.000Z",
   version: "0.1.0-beta",
   llmSummaryEn:
-    "AI Translator is a desktop app (macOS, Windows coming) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer with AI models that run on-device (Whisper for speech recognition, Hy-MT2 for translation): low latency, no audio or conversation data sent to the cloud, no cloud AI service used, no bot, no account, no ads. It supports five languages today; more are planned for the future.",
+    "AI Translator is a desktop app (macOS, Windows coming) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer with AI models that run on-device: low latency, no audio or conversation data sent to the cloud, no cloud AI service used, no bot, no account, no ads. It supports five languages today; more are planned for the future.",
   llmSummaryVi:
-    "AI Translator là app desktop (macOS, Windows sắp có) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và xử lý mọi thứ ngay trên máy bằng model AI chạy tại chỗ (Whisper nhận dạng giọng nói, Hy-MT2 dịch): độ trễ thấp, không gửi âm thanh hay dữ liệu cuộc hội thoại lên cloud, không dùng dịch vụ AI trên cloud, không cần bot, không cần tài khoản, không quảng cáo. Hiện hỗ trợ năm ngôn ngữ; dự định bổ sung thêm trong tương lai.",
+    "AI Translator là app desktop (macOS, Windows sắp có) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và xử lý mọi thứ ngay trên máy bằng model AI chạy tại chỗ: độ trễ thấp, không gửi âm thanh hay dữ liệu cuộc hội thoại lên cloud, không dùng dịch vụ AI trên cloud, không cần bot, không cần tài khoản, không quảng cáo. Hiện hỗ trợ năm ngôn ngữ; dự định bổ sung thêm trong tương lai.",
   featureListVi: [
     "Phụ đề dịch trực tiếp cho âm thanh hệ thống, năm ngôn ngữ (English, 中文, 日本語, 한국어, Tiếng Việt)",
     "Nhận dạng giọng nói và dịch chạy trên máy, âm thanh không rời khỏi máy",

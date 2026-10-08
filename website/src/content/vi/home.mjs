@@ -82,7 +82,7 @@ ${demo({
   ["Loại sản phẩm", "Ứng dụng desktop dịch phụ đề trực tiếp"],
   ["Nền tảng", "macOS 14.2 trở lên (Apple Silicon)<small>Windows 10/11 x64: sắp có</small>"],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Cả âm thanh nguồn lẫn bản dịch. Dự kiến bổ sung thêm ngôn ngữ trong tương lai</small>"],
-  ["Xử lý", "100% trên máy, âm thanh không gửi đi<small>Whisper (nhận dạng) và Hy-MT2 (dịch)</small>"],
+  ["Xử lý", "100% trên máy, âm thanh không gửi đi<small>Nhận dạng giọng nói và dịch đều chạy trên máy</small>"],
   ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
   ["Bên cung cấp", "Đỗ Tiến Phong<small>Hỗ trợ: support@aitranslator.io.vn</small>"],
 ])}</div>

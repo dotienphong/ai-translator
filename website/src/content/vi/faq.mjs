@@ -30,7 +30,7 @@ const GROUPS = [
       },
       {
         q: "AI Translator có phải là mã nguồn mở không?",
-        a: `<p>Không. AI Translator là sản phẩm thương mại, dùng theo giấy phép trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>. Nó dùng nhiều thành phần mã nguồn mở của bên thứ ba như Whisper, whisper.cpp, llama.cpp, Hy-MT2 và Tauri. Danh sách giấy phép đầy đủ nằm trong app (Giới thiệu › Giấy phép mã nguồn mở), phần tóm tắt ở trang <a href="/ve-chung-toi/#cong-nghe">Về AI Translator</a>.</p>`,
+        a: `<p>Không. AI Translator là sản phẩm thương mại, dùng theo giấy phép trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>. Nó dùng nhiều thành phần mã nguồn mở của bên thứ ba. Danh sách giấy phép đầy đủ nằm trong app (Giới thiệu › Giấy phép mã nguồn mở), phần tóm tắt ở trang <a href="/ve-chung-toi/#cong-nghe">Về AI Translator</a>.</p>`,
       },
     ],
   },
@@ -70,7 +70,7 @@ const GROUPS = [
     items: [
       {
         q: "AI Translator có dùng AI hay model trên cloud không?",
-        a: `<p>Không. Cả nhận dạng giọng nói (Whisper) lẫn dịch (Hy-MT2) đều là model AI chạy trên máy bạn. Không có dịch vụ AI nào trên cloud tham gia vào việc nhận dạng hay dịch cuộc họp, nên âm thanh, bản chép lời và bản dịch không đi qua bên thứ ba nào. Mạng chỉ dùng cho những việc ngoài việc dịch: kiểm tra bản quyền, thanh toán, tải model và cập nhật app.</p>`,
+        a: `<p>Không. Cả nhận dạng giọng nói lẫn dịch đều là model AI chạy trên máy bạn. Không có dịch vụ AI nào trên cloud tham gia vào việc nhận dạng hay dịch cuộc họp, nên âm thanh, bản chép lời và bản dịch không đi qua bên thứ ba nào. Mạng chỉ dùng cho những việc ngoài việc dịch: kiểm tra bản quyền, thanh toán, tải model và cập nhật app.</p>`,
       },
       {
         q: "Dữ liệu về cuộc hội thoại của tôi nằm ở đâu?",
@@ -112,7 +112,7 @@ const GROUPS = [
       },
       {
         q: "AI Translator tốn bao nhiêu RAM và ổ đĩa?",
-        a: `<p>Model chiếm khoảng 2,5 GB ổ đĩa (gói model Chuẩn) hoặc 1,3 GB (gói model Nhẹ), và cần trống thêm 1 GB khi tải. Trên Mac M4 Pro, hai tiến trình engine dùng khoảng 2,9 GiB RAM (Chuẩn) hoặc 1,8 đến 1,9 GiB (Nhẹ), cộng ước chừng 0,3 GB cho app. Hai engine tự tắt sau 10 phút không dịch để app nằm ở thanh menu không giữ vài GB RAM. Chúng tôi chưa đo trên máy khác.</p>`,
+        a: `<p>Model chiếm khoảng 2,5 GB ổ đĩa (gói model Chuẩn) hoặc 1,3 GB (gói model Nhẹ), và cần trống thêm 1 GB khi tải. Trên Mac M4 Pro, phần xử lý AI dùng khoảng 2,9 GiB RAM (Chuẩn) hoặc 1,8 đến 1,9 GiB (Nhẹ), cộng ước chừng 0,3 GB cho app. Phần xử lý AI tự tắt sau 10 phút không dịch để app nằm ở thanh menu không giữ vài GB RAM. Chúng tôi chưa đo trên máy khác.</p>`,
       },
       {
         q: "Vì sao macOS báo không xác minh được nhà phát triển?",
