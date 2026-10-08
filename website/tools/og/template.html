@@ -30,7 +30,7 @@ p{position:absolute;left:72px;bottom:70px;width:600px;font-size:28px;line-height
 <script>
 const q = new URLSearchParams(location.search);
 const set = (id, k, d = "") => (document.getElementById(id).textContent = q.get(k) ?? d);
-set("title","t"); set("sub","s"); set("tag","tag"); set("src","src","Let's review the timeline in the next meeting."); set("dst","dst","Hãy xem lại tiến độ trong cuộc họp tiếp theo.");
+set("langs","langs","EN → VI"); set("title","t"); set("sub","s"); set("tag","tag"); set("src","src","Let's review the timeline in the next meeting."); set("dst","dst","Hãy xem lại tiến độ trong cuộc họp tiếp theo.");
 document.documentElement.lang = q.get("lang") ?? "vi";
 </script>
 </body></html>

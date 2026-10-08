@@ -347,7 +347,8 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .prose blockquote { margin: 1.4em 0; padding: .2em 1.2em; border-left: 3px solid var(--brand); color: var(--ink-2); background: var(--surface-2); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 .prose .table-wrap { margin: 1.4em 0; }
 .legal h2 { font-size: 1.4rem; }
-.doc-layout { display: grid; gap: 40px; align-items: start; }
+.doc-layout { display: grid; gap: 40px; align-items: start; grid-template-columns: minmax(0, 1fr); }
+.doc-layout > * { min-width: 0; }
 @media (min-width: 1060px) { .doc-layout { grid-template-columns: 250px minmax(0, 1fr); } .doc-layout.no-toc { grid-template-columns: minmax(0, 1fr); } }
 .toc { position: sticky; top: calc(var(--header-h) + 24px); font-size: .93rem; border-left: 2px solid var(--line); padding-left: 16px; max-height: calc(100vh - var(--header-h) - 48px); overflow: auto; }
 .toc b { display: block; color: var(--ink); margin-bottom: 8px; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; }

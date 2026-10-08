@@ -99,3 +99,13 @@ export function renderMarkdown(source, { slug = (t) => t } = {}) {
   }
   return { html: out.join("\n"), headings };
 }
+
+/** Tạo id neo từ chữ tiêu đề: bỏ dấu tiếng Việt, chữ thường, nối bằng gạch ngang. */
+export const slugify = (text) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");

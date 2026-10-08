@@ -1,6 +1,6 @@
 // Dữ liệu có cấu trúc JSON-LD (schema.org) cho mỗi trang, gộp thành một @graph. Chỉ dùng những gì có thật: không có
 // aggregateRating, review hay giá giả; giá lấy từ plans.mjs (có test đối chiếu với server/wrangler.jsonc).
-import { SITE } from "../site.mjs";
+import { SITE, ogFor } from "../site.mjs";
 import { PLANS } from "../plans.mjs";
 
 const abs = (p) => (p.startsWith("http") ? p : SITE.origin + p);
@@ -97,7 +97,7 @@ export function graph(page, ctx) {
     inLanguage: page.lang,
     isPartOf: { "@id": SITE_ID },
     about: { "@id": ORG_ID },
-    primaryImageOfPage: { "@type": "ImageObject", url: abs(page.ogImage ?? `/assets/og/default-${page.lang}.jpg`) },
+    primaryImageOfPage: { "@type": "ImageObject", url: abs(ogFor(page)) },
     ...(page.modified ? { dateModified: page.modified } : {}),
     ...(page.published ? { datePublished: page.published } : {}),
   };

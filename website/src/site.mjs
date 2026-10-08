@@ -175,3 +175,11 @@ export const FOOTER = {
     },
   ],
 };
+
+// Ảnh chia sẻ theo nhóm trang (tools/og/render.mjs sinh `<nhóm>-<ngôn ngữ>.jpg`).
+const OG_GROUP = {
+  home: "default", features: "features", pricing: "pricing", download: "download", faq: "faq", about: "about", contact: "contact",
+  "data-security": "security", "compare-offline-cloud": "compare", solutions: "solutions", "solutions-meetings": "solutions",
+  "solutions-webinar": "solutions", terms: "legal", privacy: "legal",
+};
+export const ogFor = (page) => page.ogImage ?? `/assets/og/${page.id.startsWith("guide") ? "guide" : (OG_GROUP[page.id] ?? "default")}-${page.lang}.jpg`;

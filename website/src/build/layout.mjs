@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { esc } from "./markdown.mjs";
 import { icon, sprite } from "./icons.mjs";
-import { SITE, T, NAV, FOOTER } from "../site.mjs";
+import { SITE, T, NAV, FOOTER, ogFor } from "../site.mjs";
 import { graph } from "./schema.mjs";
 
 /** Script chạy sớm trong <head> để áp giao diện sáng/tối đã lưu trước khi vẽ trang (tránh nháy). Băm SHA-256 vào CSP. */
@@ -23,7 +23,7 @@ function head(page, ctx) {
   const t = T[page.lang];
   const url = abs(page.path);
   const fullTitle = page.path === "/" || page.path === "/en/" ? page.title : `${page.title} | ${SITE.name}`;
-  const image = abs(page.ogImage ?? `/assets/og/default-${page.lang}.jpg`);
+  const image = abs(ogFor(page));
   const imageAlt = page.ogImageAlt ?? t.ogAlt;
   const robots = page.noindex ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
   const other = (ctx.byId.get(page.id) ?? []).filter((p) => p.lang !== page.lang);

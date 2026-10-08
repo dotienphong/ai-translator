@@ -11,10 +11,27 @@ const out = path.resolve(here, "../../src/assets/og");
 mkdirSync(out, { recursive: true });
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
-const IMAGES = [
-  ["default-vi", { lang: "vi", tag: "Beta · macOS", t: "Phụ đề dịch trực tiếp cho mọi cuộc họp", s: "Chạy offline trên máy bạn. Không bot, không tài khoản." }],
-  ["default-en", { lang: "en", tag: "Beta · macOS", t: "Live translated subtitles for every meeting", s: "Runs offline on your computer. No bot, no account.", src: "Let's review the timeline in the next meeting.", dst: "Let's review the timeline in the next meeting." }],
+const SRC = { vi: ["Let's review the timeline in the next meeting.", "Hãy xem lại tiến độ trong cuộc họp tiếp theo."], en: ["来週までに見積書をお送りします。", "We will send the quotation by next week."] };
+const TAG = { vi: "Beta · macOS", en: "Beta · macOS" };
+// [tên, vi:{t,s}, en:{t,s}] — tiêu đề ngắn (hiện lớn) và dòng phụ.
+const SET = [
+  ["default", { t: "Phụ đề dịch trực tiếp cho mọi cuộc họp", s: "Chạy offline trên máy bạn. Không bot, không tài khoản." }, { t: "Live translated subtitles for every meeting", s: "Runs offline on your computer. No bot, no account." }],
+  ["features", { t: "Mọi thứ để hiểu một cuộc họp bằng ngoại ngữ", s: "Thanh phụ đề, từ điển thuật ngữ, lịch sử, xuất file, 5 ngôn ngữ." }, { t: "Everything to follow a meeting in another language", s: "Subtitle bar, glossary, history, export, 5 languages." }],
+  ["pricing", { t: "Free dùng thử · 50.000 ₫ · 500.000 ₫", s: "Ba gói trả trước bằng VietQR, không tự gia hạn." }, { t: "Free trial · 50,000 ₫ · 500,000 ₫", s: "Three prepaid plans via VietQR, no auto-renewal." }],
+  ["download", { t: "Nhận bản beta cho macOS", s: "Apple Silicon, macOS 14.2+. Dùng thử Free 10 ngày." }, { t: "Get the macOS beta", s: "Apple Silicon, macOS 14.2+. 10-day free trial." }],
+  ["guide", { t: "Hướng dẫn sử dụng AI Translator", s: "Cài đặt, cấp quyền, phím tắt, từ điển, khắc phục sự cố." }, { t: "AI Translator user guides", s: "Install, permissions, shortcuts, glossary, troubleshooting." }],
+  ["solutions", { t: "Phụ đề dịch cho họp, webinar và video", s: "Zoom, Teams, Meet, Zalo PC: không bot, không plugin." }, { t: "Translated subtitles for meetings, webinars and video", s: "Zoom, Teams, Meet, Zalo PC: no bot, no plugin." }],
+  ["compare", { t: "Dịch offline hay dịch cloud?", s: "So sánh cân bằng: riêng tư, internet, ngôn ngữ, phần cứng." }, { t: "Offline or cloud translation?", s: "A balanced comparison: privacy, internet, languages, hardware." }],
+  ["about", { t: "Về AI Translator", s: "Xây cho người họp bằng ngoại ngữ, riêng tư theo thiết kế." }, { t: "About AI Translator", s: "Built for people who meet in another language, private by design." }],
+  ["security", { t: "Dữ liệu và bảo mật", s: "Âm thanh ở lại trên máy. Đây là mọi thứ chúng tôi lưu." }, { t: "Data and security", s: "Audio stays on your device. Here is everything we store." }],
+  ["faq", { t: "Câu hỏi thường gặp", s: "Offline, riêng tư, ngôn ngữ, giá, cài đặt, khắc phục sự cố." }, { t: "Frequently asked questions", s: "Offline, privacy, languages, pricing, install, troubleshooting." }],
+  ["contact", { t: "Liên hệ và hỗ trợ", s: "support@aitranslator.io.vn" }, { t: "Contact and support", s: "support@aitranslator.io.vn" }],
+  ["legal", { t: "Điều khoản và quyền riêng tư", s: "Văn bản đầy đủ của AI Translator." }, { t: "Terms and privacy", s: "The full legal texts of AI Translator." }],
 ];
+const IMAGES = SET.flatMap(([name, vi, en]) => [
+  [`${name}-vi`, { lang: "vi", tag: TAG.vi, langs: "EN → VI", src: SRC.vi[0], dst: SRC.vi[1], ...vi }],
+  [`${name}-en`, { lang: "en", tag: TAG.en, langs: "JA → EN", src: SRC.en[0], dst: SRC.en[1], ...en }],
+]);
 export const list = IMAGES;
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
