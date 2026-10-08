@@ -26,11 +26,11 @@ Chỉ dùng subdomain **một cấp** dưới `aitranslator.io.vn` (chứng ch�
 | Gửi email (Resend) | `mail.aitranslator.io.vn` | Resend: SPF, DKIM, bản ghi bounce | From: `AI Translator <no-reply@mail.aitranslator.io.vn>`; Reply-To: `support@aitranslator.io.vn` |
 | Nhận email hỗ trợ | `support@aitranslator.io.vn` | Cloudflare Email Routing (MX và SPF ở gốc) | Chuyển tiếp tới Gmail của chủ dự án |
 | Website, trang chính sách | `aitranslator.io.vn` (gốc) và `www` | để dành | Website có spec riêng; chưa tạo bản ghi |
-| Admin | `admin.aitranslator.io.vn` (từ 2026-10-08; trước đó `mt-license-admin.dotienphong1993.workers.dev`, còn giữ tạm làm đường lui) | Worker admin sau Cloudflare Access, custom domain | Xem dưới |
+| Admin | `admin.aitranslator.io.vn` (từ 2026-10-08; trước đó `mt-license-admin.dotienphong1993.workers.dev`, `workers.dev` đã tắt) | Worker admin sau Cloudflare Access, custom domain | Xem dưới |
 
 Vì sao tách email gửi ra `mail.`: gốc dùng cho **nhận** thư (Email Routing đặt MX và SPF ở gốc); Resend gửi từ subdomain riêng để không phải gộp SPF của hai hệ thống vào một bản ghi và để uy tín gửi thư không ảnh hưởng thư nhận. Bản ghi DMARC đặt ở gốc: `v=DMARC1; p=none; rua=mailto:support@aitranslator.io.vn`, siết lên `quarantine` sau vài tuần báo cáo sạch.
 
-**Cập nhật 2026-10-08: admin đã chuyển sang `admin.aitranslator.io.vn`** (chủ dự án yêu cầu để địa chỉ gọn; `routes` custom domain trong `wrangler.admin.jsonc`, `workers_dev` giữ tạm). Đoạn dưới là lập luận của đợt đầu.
+**Cập nhật 2026-10-08: admin đã chuyển sang `admin.aitranslator.io.vn`** (chủ dự án yêu cầu để địa chỉ gọn; `routes` custom domain trong `wrangler.admin.jsonc`; `workers_dev` của admin tắt cùng ngày sau khi tên miền chạy ổn). Đoạn dưới là lập luận của đợt đầu.
 
 **Admin không chuyển sang tên miền ở đợt này.** Chỉ chủ dự án dùng; chuyển nó buộc tạo lại ứng dụng Access (làm tay trên dashboard) và đổi `ACCESS_AUD`, mà không mang lại gì cho khách. Chỉ đổi biến `API_ORIGIN` của Worker admin sang origin mới, vì lệnh `confirm-webhook` kiểm URL webhook theo origin đó. Chuyển admin là việc riêng, làm sau nếu cần (khi đó tắt luôn `workers_dev` của admin).
 

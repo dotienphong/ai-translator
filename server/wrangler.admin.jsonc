@@ -10,11 +10,12 @@
   "name": "mt-license-admin",
   "main": "src/admin-entry.ts",
   "compatibility_date": "2026-09-26",
-  "workers_dev": true,
+  // Tắt địa chỉ workers.dev (2026-10-08): admin chỉ còn https://admin.aitranslator.io.vn. Hoàn tác: đặt lại true và deploy.
+  "workers_dev": false,
   "preview_urls": false,
   // Tên miền riêng của admin (2026-10-08): https://admin.aitranslator.io.vn (bản ghi DNS và chứng chỉ do Cloudflare tạo khi deploy).
-  // Ứng dụng Access phải phủ cả hostname này và ACCESS_AUD phải là AUD tag của ứng dụng đó (chưa phủ thì Worker trả 403,
-  // không lộ gì). workers_dev giữ tạm làm đường lui; tắt (`workers_dev: false`) sau khi tên miền mới chạy ổn.
+  // Ứng dụng Access phải phủ hostname này và ACCESS_AUD phải là AUD tag của ứng dụng đó (chưa phủ thì Worker trả 403,
+  // không lộ gì).
   "routes": [{ "pattern": "admin.aitranslator.io.vn", "custom_domain": true }],
   // Trang Web Admin (spec 2026-10-07 Web Admin §2): SPA build từ admin-ui/ (`pnpm ui:build` trước khi deploy).
   // run_worker_first: mọi request, kể cả file tĩnh, đi qua lớp kiểm Access của Worker (src/admin-auth.ts) trước;

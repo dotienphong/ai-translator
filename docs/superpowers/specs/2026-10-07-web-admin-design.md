@@ -25,7 +25,7 @@ Web Admin được tách làm ba phần, mỗi phần một spec, một kế ho�
 ### Không làm trong đợt này
 - Không trang Tổng quan (mục trên thanh bên ghi "sắp có"), không biểu đồ.
 - Không sửa dữ liệu nào ngoài các thao tác admin đã có; không thêm thao tác ghi mới.
-- Không chuyển admin sang tên miền riêng (giữ `mt-license-admin.dotienphong1993.workers.dev`, theo `2026-10-06-custom-domain-design.md`).
+- ~~Không chuyển admin sang tên miền riêng~~ (đã đổi ngày 2026-10-08: admin chạy ở `admin.aitranslator.io.vn`, `workers.dev` tắt; xem `2026-10-06-custom-domain-design.md`).
 - Không dùng công cụ admin bên thứ ba (Retool, Appsmith, Directus…): chúng nối thẳng D1, đi vòng qua luật nghiệp vụ và `audit_log`, và cần đưa token D1 cho bên ngoài.
 
 ---

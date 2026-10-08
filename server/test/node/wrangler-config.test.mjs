@@ -65,7 +65,7 @@ test("tên miền riêng aitranslator.io.vn (spec 2026-10-06): route, email gử
   }
   assert.equal(admin.vars.API_ORIGIN, `https://${api.routes[0].pattern}`);
   assert.deepEqual(admin.routes, [{ pattern: "admin.aitranslator.io.vn", custom_domain: true }], "admin chuyển sang tên miền riêng 2026-10-08");
-  assert.equal(admin.workers_dev, true, "giữ workers_dev của admin tạm làm đường lui");
+  assert.equal(admin.workers_dev, false, "admin chỉ còn tên miền riêng, workers.dev tắt từ 2026-10-08");
   assert.equal(api.workers_dev, true, "giữ workers_dev tạm làm đường lui cho bản cài cũ");
 });
 
