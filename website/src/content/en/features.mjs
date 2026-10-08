@@ -1,4 +1,4 @@
-import { pageHero, sectionHead, feature, checkList, callout, ctaBand, appShot, overlayShot, facts, keys, icon } from "../../build/components.mjs";
+import { dataFlow, pageHero, sectionHead, feature, checkList, callout, ctaBand, appShot, overlayShot, facts, keys, icon } from "../../build/components.mjs";
 
 const crumbs = [
   { name: "Home", path: "/en/" },
@@ -34,6 +34,16 @@ ${pageHero({ crumbs, title: "Everything you need to follow a meeting in another 
 </div>
 </div></section>
 
+<section class="section band-dark" id="on-device-ai"><div class="container">
+${sectionHead({ eyebrow: "On-device AI", title: "AI translation without putting your meeting in the cloud", text: "Two AI models, one for speech recognition and one for translation, run directly on your computer. No step sends your audio or meeting content to a server or a cloud AI service.", center: true })}
+${dataFlow("en")}
+<div class="grid grid-3">
+${feature({ icon: "cpu", title: "Two AI models running locally", text: "Whisper recognizes speech and Hy-MT2 translates. Both are downloaded once and then run on your machine using the GPU (Metal on macOS) or the CPU.", accent: true })}
+${feature({ icon: "zap", title: "Low latency because there is no detour", text: "There is no round trip to a server, so the translation appears right after the speaker finishes a sentence. Median under 1.1 seconds on a Mac M4 Pro; the test conditions are in the Performance section below." })}
+${feature({ icon: "lock", title: "Conversation data stays on your computer", text: "Audio lives only in RAM; the transcript and translation stay on your machine. History is off by default and, if you turn it on, is encrypted on your computer." })}
+</div>
+</div></section>
+
 <section class="section" id="live-translation"><div class="container">
 <div class="split">
 <div class="stack-lg reveal">
@@ -41,7 +51,7 @@ ${pageHero({ crumbs, title: "Everything you need to follow a meeting in another 
 <h2>Listen, recognize, translate and show subtitles in one loop</h2>
 <p>AI Translator captures the audio playing on your computer, splits it into sentences, recognizes the speech, translates it and shows the result on the subtitle bar. On a Mac M4 Pro the full translation appears about a second (median) after the speaker finishes a sentence; other computers may be slower, see the <a href=\"#performance\">measurements</a>.</p>
 ${checkList([
-  "<strong>Five languages</strong> for both the source audio and the translation: English, 中文, 日本語, 한국어, Tiếng Việt",
+  "<strong>Five languages</strong> for both the source audio and the translation: English, 中文, 日本語, 한국어, Tiếng Việt. We plan to add more languages in the future (no schedule yet)",
   "<strong>Automatic detection</strong> of the spoken language among the ones you tick under <em>Languages spoken in the meeting</em>, or <strong>lock</strong> a single one in <em>Source language</em> when you know what will be spoken",
   "A sentence that is already in the language you want to read is shown as it is, not translated again",
   "A sentence that is not final yet appears dimmer, then is replaced by the complete sentence when the speaker carries on",

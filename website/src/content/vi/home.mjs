@@ -1,4 +1,4 @@
-import { demo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
+import { dataFlow, demo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
 export const HOME_FAQ = [
@@ -16,7 +16,7 @@ export const HOME_FAQ = [
   },
   {
     q: "AI Translator hỗ trợ những ngôn ngữ nào?",
-    a: "<p>Năm ngôn ngữ cho cả âm thanh nguồn và bản dịch: English, 中文, 日本語, 한국어 và Tiếng Việt. Giao diện app có tiếng Việt và English.</p>",
+    a: "<p>Năm ngôn ngữ cho cả âm thanh nguồn và bản dịch: English, 中文, 日本語, 한국어 và Tiếng Việt. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai (chưa có lịch cụ thể). Giao diện app có tiếng Việt và English.</p>",
   },
   {
     q: "Tôi có cần tạo tài khoản không?",
@@ -32,9 +32,9 @@ export default {
   id: "home",
   lang: "vi",
   path: "/",
-  title: "AI Translator — Phụ đề dịch trực tiếp cho cuộc họp, chạy offline",
+  title: "AI Translator — Dịch phụ đề cuộc họp bằng AI, chạy trên máy bạn",
   description:
-    "App desktop hiện phụ đề dịch trực tiếp cho Zoom, Teams, Meet và mọi âm thanh trên máy tính. Chạy offline, âm thanh không rời máy, không bot, không tài khoản.",
+    "AI dịch phụ đề cuộc họp trực tiếp, chạy ngay trên máy bạn với độ trễ thấp. Không gửi âm thanh hay dữ liệu lên cloud, không dùng AI trên cloud. Cho Zoom, Teams, Meet.",
   software: true,
   modified: "2026-10-08",
   llm: "Trang chủ: AI Translator là gì, cách hoạt động, tính năng, độ trễ đo được, bảng giá và câu hỏi thường gặp.",
@@ -44,17 +44,17 @@ export default {
 <section class="hero"><div class="container hero-grid">
 <div>
 <p class="pill reveal"><span class="dot"></span> Beta · macOS (Apple Silicon) · Windows sắp có</p>
-<h1 class="reveal">Phụ đề dịch <em>trực tiếp</em> cho mọi cuộc họp, ngay trên máy bạn</h1>
-<p class="lead reveal">AI Translator nghe âm thanh đang phát trên máy tính và hiện bản dịch thành phụ đề nổi trên màn hình. Dùng với Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar hay video: không bot, không tài khoản, âm thanh không rời khỏi máy.</p>
+<h1 class="reveal">Phụ đề dịch <em>bằng&nbsp;AI</em> cho mọi cuộc họp, chạy ngay trên máy bạn</h1>
+<p class="lead reveal">AI Translator dùng AI chạy ngay trên máy tính để dịch âm thanh đang phát thành phụ đề nổi trên màn hình, với độ trễ thấp. Âm thanh và nội dung cuộc họp không được gửi lên cloud, cũng không đi qua dịch vụ AI nào trên cloud. Dùng với Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar hay video: không bot, không tài khoản.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/tai-xuong/">Nhận bản beta cho macOS ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#cach-hoat-dong">Xem cách hoạt động</a>
 </div>
 <ul class="trust reveal">
-<li>${icon("check")} Xử lý 100% trên máy</li>
-<li>${icon("check")} Không bot, không plugin</li>
-<li>${icon("check")} Không quảng cáo</li>
-<li>${icon("check")} 5 ngôn ngữ</li>
+<li>${icon("check")} AI chạy 100% trên máy</li>
+<li>${icon("check")} Dữ liệu cuộc họp không lên cloud</li>
+<li>${icon("check")} Độ trễ thấp</li>
+<li>${icon("check")} Không bot, không tài khoản</li>
 </ul>
 </div>
 <div class="reveal">
@@ -81,7 +81,7 @@ ${demo({
 <div class="reveal">${facts([
   ["Loại sản phẩm", "Ứng dụng desktop dịch phụ đề trực tiếp"],
   ["Nền tảng", "macOS 14.2 trở lên (Apple Silicon)<small>Windows 10/11 x64: sắp có</small>"],
-  ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Cả âm thanh nguồn lẫn bản dịch</small>"],
+  ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Cả âm thanh nguồn lẫn bản dịch. Dự kiến bổ sung thêm ngôn ngữ trong tương lai</small>"],
   ["Xử lý", "100% trên máy, âm thanh không gửi đi<small>Whisper (nhận dạng) và Hy-MT2 (dịch)</small>"],
   ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
   ["Bên cung cấp", "Đỗ Tiến Phong<small>Hỗ trợ: support@aitranslator.io.vn</small>"],
@@ -91,6 +91,17 @@ ${demo({
 <section class="section-tight"><div class="container">
 <ul class="app-strip reveal"><li>Zoom</li><li>Microsoft Teams</li><li>Google Meet</li><li>Zalo PC</li><li>Webinar</li><li>Video trực tuyến</li></ul>
 <p class="disclaimer">Hoạt động với mọi âm thanh phát trên máy tính. Zoom, Microsoft Teams, Google Meet, Zalo là tên sản phẩm của chủ sở hữu tương ứng; AI Translator không liên kết với họ.</p>
+</div></section>
+
+<section class="section band-dark" id="rieng-tu-tren-may"><div class="container">
+${sectionHead({ eyebrow: "Dữ liệu ở lại trên máy bạn", title: "AI chạy ngay trên máy, nên cuộc họp không rời khỏi máy", text: "Nhận dạng giọng nói, dịch và hiện phụ đề đều diễn ra trên máy tính của bạn. AI Translator không gửi âm thanh hay nội dung cuộc họp lên cloud, và không dùng dịch vụ AI nào trên cloud để xử lý nó.", center: true })}
+${dataFlow("vi")}
+<div class="grid grid-3">
+${feature({ icon: "lock", title: "Không gửi lên cloud", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi qua mạng. Bản chép lời và bản dịch hiện trên màn hình và nằm trên máy bạn; lịch sử mặc định tắt, nếu bạn bật thì lưu mã hóa trên máy.", accent: true })}
+${feature({ icon: "zap", title: "Độ trễ thấp", text: "Không phải gửi âm thanh đi rồi chờ máy chủ trả về, nên phụ đề hiện ngay sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn). Máy khác có thể chậm hơn." })}
+${feature({ icon: "shield", title: "Giảm rủi ro lộ thông tin", text: "Hợp đồng, nhân sự, tài chính, kế hoạch sản phẩm: nội dung cuộc họp không đi qua bên thứ ba nào để dịch. Máy chủ của chúng tôi chỉ lưu email (khi mua), đơn hàng, license và thông tin kích hoạt máy (mã băm ID máy, tên máy), không có dữ liệu cuộc hội thoại." })}
+</div>
+<p class="center-text reveal"><a class="btn btn-secondary" href="/bao-mat-du-lieu/">Xem chính xác dữ liệu nào đi đâu ${icon("arrow-right")}</a></p>
 </div></section>
 
 <section class="section section-alt" id="cach-hoat-dong"><div class="container">
@@ -150,7 +161,7 @@ ${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng 
 ${feature({ icon: "video", title: "Mọi app họp, không bot", text: "Không cần mời bot hay cài plugin vào cuộc họp. Mọi âm thanh phát trên máy đều có thể thành phụ đề." })}
 ${feature({ icon: "book", title: "Từ điển thuật ngữ", text: "Thêm tên riêng, tên sản phẩm và thuật ngữ chuyên ngành làm gợi ý cho bộ dịch (không bảo đảm đúng mọi lần). Tối đa 500 thuật ngữ, nhập xuất CSV (tính năng Pro)." })}
 ${feature({ icon: "history", title: "Lịch sử và xuất file", text: "Lưu bản chép lời trên máy, mã hóa, xuất ra TXT, SRT hoặc Markdown. Lịch sử mặc định tắt, bạn quyết định (tính năng Pro)." })}
-${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "English, 中文, 日本語, 한국어 và Tiếng Việt, theo mọi chiều. Giao diện app có tiếng Việt và English." })}
+${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "English, 中文, 日本語, 한국어 và Tiếng Việt, theo mọi chiều. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai. Giao diện app có tiếng Việt và English." })}
 </div>
 <div class="stats reveal">
 <div class="stat"><b>&lt; 1,1 giây</b><span>độ trễ trung vị từ lúc người nói dừng câu tới khi hiện đủ bản dịch (Mac M4 Pro, gói model Chuẩn)</span></div>

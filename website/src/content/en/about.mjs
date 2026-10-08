@@ -94,6 +94,7 @@ ${callout({ kind: "warn", title: "This is not a commitment.", text: "The list be
 <li>Meeting summaries and minutes</li>
 <li>Selling outside Vietnam, with international payments</li>
 <li>A business plan for multiple devices</li>
+<li>More languages for the source audio and the translation (beyond the current five)</li>
 <li>More interface languages</li>
 </ul>
 <p>The order depends on user feedback, so tell us what you need most through the <a href="/en/contact/">Contact page</a>.</p>

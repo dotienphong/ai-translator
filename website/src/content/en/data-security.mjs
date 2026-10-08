@@ -35,7 +35,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Where does your data go when you use AI Translator?",
-  lead: "Meeting audio is processed entirely on your computer and is never sent out. This page walks through each kind of data: what stays on your computer, what crosses the network and what our servers store, plus how we checked it and what we have not checked.",
+  lead: "Meeting audio is processed entirely on your computer and is never sent out: speech recognition and translation use AI models that run on your machine, and no cloud AI service takes part. This page walks through each kind of data: what stays on your computer, what crosses the network and what our servers store, plus how we checked it and what we have not checked.",
   meta: "<span>Updated 8 October 2026</span><span>Matches Privacy policy version 1.1</span>",
 })}
 
@@ -45,6 +45,8 @@ ${docLayout({
   tocTitle: "On this page",
   body: `
 ${facts([
+  ["AI processing", "Speech recognition and translation use AI models running on your computer; no cloud AI"],
+  ["Conversation data", "Only on your computer; our server has none"],
   ["Audio", "Only in RAM, never written to disk, never sent out"],
   ["Network", "Four places; none of them receives audio or transcripts"],
   ["Servers store", "Email (when you buy), orders, licenses, hashed machine ID"],

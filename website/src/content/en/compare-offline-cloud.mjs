@@ -72,6 +72,7 @@ ${docLayout({
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Criterion</th><th scope="col">Cloud translation</th><th scope="col">Offline translation (AI Translator)</th></tr></thead>
 <tbody>
+<tr><th scope="row">Where the AI model runs</th><td>On the provider's cloud</td><td>On your computer (Whisper and Hy-MT2)</td></tr>
 <tr><th scope="row">Where audio is processed</th><td>On the provider's servers</td><td>On your computer</td></tr>
 <tr><th scope="row">Does audio leave your machine?</th><td>Yes</td><td>No, it stays in memory</td></tr>
 <tr><th scope="row">Internet needed while translating</th><td>Yes</td><td>No</td></tr>

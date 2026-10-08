@@ -72,6 +72,7 @@ ${docLayout({
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Tiêu chí</th><th scope="col">Dịch cloud</th><th scope="col">Dịch offline (AI Translator)</th></tr></thead>
 <tbody>
+<tr><th scope="row">Nơi model AI chạy</th><td>Trên cloud của nhà cung cấp</td><td>Trên máy của bạn (Whisper và Hy-MT2)</td></tr>
 <tr><th scope="row">Nơi xử lý âm thanh</th><td>Máy chủ của nhà cung cấp</td><td>Máy của bạn</td></tr>
 <tr><th scope="row">Âm thanh rời máy?</th><td>Có</td><td>Không, chỉ nằm trong RAM</td></tr>
 <tr><th scope="row">Cần internet khi dịch</th><td>Có</td><td>Không</td></tr>

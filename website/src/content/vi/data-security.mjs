@@ -35,7 +35,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Dữ liệu của bạn đi đâu khi dùng AI Translator?",
-  lead: "Âm thanh cuộc họp được xử lý hoàn toàn trên máy bạn và không bị gửi đi. Trang này nêu từng loại dữ liệu: cái nào ở lại trên máy, cái nào đi qua mạng, cái nào lưu trên máy chủ của chúng tôi, kèm cách chúng tôi đã kiểm tra và những gì chưa kiểm.",
+  lead: "Âm thanh cuộc họp được xử lý hoàn toàn trên máy bạn và không bị gửi đi: nhận dạng giọng nói và dịch dùng model AI chạy trên máy, không có dịch vụ AI nào trên cloud tham gia. Trang này nêu từng loại dữ liệu: cái nào ở lại trên máy, cái nào đi qua mạng, cái nào lưu trên máy chủ của chúng tôi, kèm cách chúng tôi đã kiểm tra và những gì chưa kiểm.",
   meta: "<span>Cập nhật 08/10/2026</span><span>Khớp với Chính sách quyền riêng tư phiên bản 1.1</span>",
 })}
 
@@ -45,6 +45,8 @@ ${docLayout({
   tocTitle: "Trong trang này",
   body: `
 ${facts([
+  ["Xử lý AI", "Nhận dạng và dịch bằng model AI chạy trên máy bạn; không dùng AI trên cloud"],
+  ["Dữ liệu cuộc hội thoại", "Chỉ ở trên máy bạn; máy chủ của chúng tôi không có"],
   ["Âm thanh", "Chỉ nằm trong RAM, không ghi đĩa, không gửi đi"],
   ["Kết nối mạng", "Bốn nơi; không nơi nào nhận âm thanh hay chữ chép lời"],
   ["Máy chủ lưu", "Email (khi mua), đơn hàng, license, mã băm ID máy"],

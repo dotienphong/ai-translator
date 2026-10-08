@@ -43,6 +43,10 @@ const GROUPS = [
         a: `<p>Năm ngôn ngữ, cho cả âm thanh nguồn và bản dịch: English, 中文 (Trung), 日本語 (Nhật), 한국어 (Hàn) và Tiếng Việt. Giao diện app có tiếng Việt và English.</p><p>App tự nhận diện ngôn ngữ đang nói trong các ngôn ngữ bạn chọn, hoặc bạn khóa một ngôn ngữ cho chắc. Chất lượng dịch đã được đo cho tám chiều có tiếng Việt (Anh, Trung, Nhật, Hàn sang Việt, và Việt sang Anh, Trung, Nhật, Hàn). Các chiều không có tiếng Việt vẫn chạy được nhưng chúng tôi chưa đo điểm chất lượng.</p>`,
       },
       {
+        q: "Sẽ có thêm ngôn ngữ khác không?",
+        a: `<p>Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai. Hiện chưa có lịch hay danh sách cụ thể, và hiện app chỉ hỗ trợ năm ngôn ngữ: English, 中文, 日本語, 한국어 và Tiếng Việt. Khi có ngôn ngữ mới, chúng tôi sẽ cập nhật ngay trang này và <a href="/tinh-nang/">trang Tính năng</a>.</p>`,
+      },
+      {
         q: "Dịch theo chiều nào? Có dịch giọng của tôi cho người khác không?",
         a: `<p>Một chiều: từ âm thanh đang phát trên máy sang ngôn ngữ của bạn. Hiện app chưa dịch giọng của bạn để phát vào cuộc họp. Nếu cả hai bên cùng cài app, mỗi bên sẽ thấy phụ đề của phía kia.</p>`,
       },
@@ -64,6 +68,14 @@ const GROUPS = [
     id: "rieng-tu-va-du-lieu",
     title: "Riêng tư và dữ liệu",
     items: [
+      {
+        q: "AI Translator có dùng AI hay model trên cloud không?",
+        a: `<p>Không. Cả nhận dạng giọng nói (Whisper) lẫn dịch (Hy-MT2) đều là model AI chạy trên máy bạn. Không có dịch vụ AI nào trên cloud tham gia vào việc nhận dạng hay dịch cuộc họp, nên âm thanh, bản chép lời và bản dịch không đi qua bên thứ ba nào. Mạng chỉ dùng cho những việc ngoài việc dịch: kiểm tra bản quyền, thanh toán, tải model và cập nhật app.</p>`,
+      },
+      {
+        q: "Dữ liệu về cuộc hội thoại của tôi nằm ở đâu?",
+        a: `<p>Hoàn toàn trên máy bạn. Âm thanh chỉ nằm trong RAM khi đang dịch; bản chép lời và bản dịch hiện trên màn hình và nằm trong bộ nhớ của phiên; lịch sử mặc định tắt, nếu bạn bật thì lưu mã hóa trên máy. Máy chủ của chúng tôi không có dữ liệu cuộc hội thoại, chỉ có email (khi mua), đơn hàng, license và thông tin kích hoạt máy (mã băm ID máy, tên máy). Xem <a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
+      },
       {
         q: "AI Translator có chạy offline được không?",
         a: `<p>Có: nhận dạng giọng nói và dịch chạy 100% trên máy, không cần mạng sau khi đã tải model. Bạn vẫn cần mạng thỉnh thoảng cho vài việc: tải model lần đầu (khoảng 1,3 GB hoặc 2,5 GB), đăng ký dùng thử Free lần đầu, mua gói, kiểm tra bản quyền (gói trả phí dùng offline tối đa 14 ngày giữa hai lần kiểm tra) và cập nhật app. Xem <a href="/so-sanh/dich-offline-va-cloud/">so sánh dịch offline và dịch cloud</a>.</p>`,

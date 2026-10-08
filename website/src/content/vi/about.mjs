@@ -94,6 +94,7 @@ ${callout({ kind: "warn", title: "Đây chưa phải cam kết.", text: "Danh s�
 <li>Tóm tắt và biên bản cuộc họp</li>
 <li>Bán ra nước ngoài, kèm thanh toán quốc tế</li>
 <li>Gói doanh nghiệp cho nhiều máy</li>
+<li>Thêm ngôn ngữ cho âm thanh nguồn và bản dịch (ngoài năm ngôn ngữ hiện có)</li>
 <li>Thêm ngôn ngữ giao diện</li>
 </ul>
 <p>Thứ tự tùy vào phản hồi của người dùng, nên hãy cho chúng tôi biết điều bạn cần nhất qua <a href="/lien-he/">trang Liên hệ</a>.</p>

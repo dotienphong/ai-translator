@@ -43,6 +43,10 @@ const GROUPS = [
         a: `<p>Five languages, for both the source audio and the translation: English, 中文 (Chinese), 日本語 (Japanese), 한국어 (Korean) and Tiếng Việt (Vietnamese). The app interface is in Vietnamese and English.</p><p>The app detects the spoken language among the ones you tick, or you can lock a single language. Translation quality has been measured for the eight directions that involve Vietnamese (English, Chinese, Japanese and Korean into Vietnamese, and Vietnamese into English, Chinese, Japanese and Korean). The other directions run, but we have not measured a quality score for them.</p>`,
       },
       {
+        q: "Will more languages be added?",
+        a: `<p>We plan to add more languages in the future. There is no schedule or list yet, and the app currently supports five languages: English, 中文, 日本語, 한국어 and Tiếng Việt. When a new language arrives, we will update this page and the <a href="/en/features/">Features page</a>.</p>`,
+      },
+      {
         q: "Which direction does it translate? Does it translate my own voice?",
         a: `<p>One direction: from the audio playing on your computer into your language. The app does not yet translate your voice to play into the meeting. If both sides install the app, each side sees the other's subtitles.</p>`,
       },
@@ -64,6 +68,14 @@ const GROUPS = [
     id: "privacy-and-data",
     title: "Privacy and data",
     items: [
+      {
+        q: "Does AI Translator use cloud AI or cloud models?",
+        a: `<p>No. Both speech recognition (Whisper) and translation (Hy-MT2) are AI models that run on your own computer. No cloud AI service takes part in recognizing or translating your meeting, so the audio, the transcript and the translation do not pass through any third party. The network is only used for things other than translating: checking your license, payments, downloading models and updating the app.</p>`,
+      },
+      {
+        q: "Where is the data from my conversations stored?",
+        a: `<p>Entirely on your computer. Audio exists only in RAM while translating; the transcript and translation appear on your screen and live in the session's memory; history is off by default, and if you turn it on it is stored encrypted on your machine. Our server holds no conversation data, only your email (when you buy), orders, licenses and device-activation details (a hashed machine ID and device name). See <a href="/en/data-security/">Data and security</a>.</p>`,
+      },
       {
         q: "Does AI Translator work offline?",
         a: `<p>Yes: speech recognition and translation run 100% on your computer and need no internet once the models are downloaded. You still need the internet occasionally for a few things: the first model download (about 1.3 GB or 2.5 GB), the first Free trial registration, buying a plan, license checks (a paid plan works offline for at most 14 days between two checks) and app updates. See <a href="/en/compare/offline-vs-cloud-translation/">offline vs cloud translation</a>.</p>`,

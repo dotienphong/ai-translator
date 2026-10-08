@@ -15,7 +15,7 @@ const SRC = { vi: ["Let's review the timeline in the next meeting.", "Hãy xem l
 const TAG = { vi: "Beta · macOS", en: "Beta · macOS" };
 // [tên, vi:{t,s}, en:{t,s}] — tiêu đề ngắn (hiện lớn) và dòng phụ.
 const SET = [
-  ["default", { t: "Phụ đề dịch trực tiếp cho mọi cuộc họp", s: "Chạy offline trên máy bạn. Không bot, không tài khoản." }, { t: "Live translated subtitles for every meeting", s: "Runs offline on your computer. No bot, no account." }],
+  ["default", { t: "Dịch cuộc họp bằng AI, chạy trên máy bạn", s: "Độ trễ thấp. Không gửi dữ liệu lên cloud." }, { t: "AI meeting translation that runs on your computer", s: "Low latency. No data sent to the cloud." }],
   ["features", { t: "Mọi thứ để hiểu một cuộc họp bằng ngoại ngữ", s: "Thanh phụ đề, từ điển thuật ngữ, lịch sử, xuất file, 5 ngôn ngữ." }, { t: "Everything to follow a meeting in another language", s: "Subtitle bar, glossary, history, export, 5 languages." }],
   ["pricing", { t: "Free dùng thử · 50.000 ₫ · 500.000 ₫", s: "Ba gói trả trước bằng VietQR, không tự gia hạn." }, { t: "Free trial · 50,000 ₫ · 500,000 ₫", s: "Three prepaid plans via VietQR, no auto-renewal." }],
   ["download", { t: "Nhận bản beta cho macOS", s: "Apple Silicon, macOS 14.2+. Dùng thử Free 10 ngày." }, { t: "Get the macOS beta", s: "Apple Silicon, macOS 14.2+. 10-day free trial." }],

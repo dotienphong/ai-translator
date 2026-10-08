@@ -1,4 +1,4 @@
-import { demo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
+import { dataFlow, demo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
 export const HOME_FAQ = [
@@ -16,7 +16,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Which languages does AI Translator support?",
-    a: `<p>Five languages, for both the source audio and the translation: English, 中文, 日本語, 한국어 and Tiếng Việt. The app interface is available in Vietnamese and English.</p>`,
+    a: `<p>Five languages, for both the source audio and the translation: English, 中文, 日本語, 한국어 and Tiếng Việt. We plan to add more languages in the future (no date yet). The app interface is available in Vietnamese and English.</p>`,
   },
   {
     q: "Do I need to create an account?",
@@ -38,9 +38,9 @@ export default {
   id: "home",
   lang: "en",
   path: "/en/",
-  title: "AI Translator: Live Translated Meeting Subtitles, Offline",
+  title: "AI Translator: AI Meeting Subtitles That Run On Your Device",
   description:
-    "Desktop app that shows live translated subtitles for Zoom, Teams, Meet and any computer audio. Runs offline: your audio stays on your device. No bot, no account.",
+    "AI that translates meetings live on your computer, with low latency. No audio or data goes to the cloud and no cloud AI is used. Works with Zoom, Teams, Meet.",
   software: true,
   modified: "2026-10-08",
   llm: "Home page: what AI Translator is, how it works, features, measured latency, pricing and frequently asked questions.",
@@ -50,17 +50,17 @@ export default {
 <section class="hero"><div class="container hero-grid">
 <div>
 <p class="pill reveal"><span class="dot"></span> Beta · macOS (Apple Silicon) · Windows coming soon</p>
-<h1 class="reveal">Live translated subtitles for <em>every meeting</em>, right on your computer</h1>
-<p class="lead reveal">AI Translator listens to the audio playing on your computer and shows the translation as a floating subtitle bar. Use it with Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars or videos: no bot, no account, and your audio never leaves your machine.</p>
+<h1 class="reveal">AI-translated subtitles for <em>every meeting</em>, running on your computer</h1>
+<p class="lead reveal">AI Translator uses AI that runs on your own computer to turn the audio playing on it into translated subtitles on your screen, with low latency. Your audio and meeting content are not sent to the cloud and do not pass through any cloud AI service. Use it with Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars or videos: no bot, no account.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/en/download/">Get the macOS beta ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-it-works">See how it works</a>
 </div>
 <ul class="trust reveal">
-<li>${icon("check")} 100% on-device processing</li>
-<li>${icon("check")} No bot, no plugin</li>
-<li>${icon("check")} No ads</li>
-<li>${icon("check")} 5 languages</li>
+<li>${icon("check")} AI runs 100% on your device</li>
+<li>${icon("check")} Meeting data never goes to the cloud</li>
+<li>${icon("check")} Low latency</li>
+<li>${icon("check")} No bot, no account</li>
 </ul>
 </div>
 <div class="reveal">
@@ -87,7 +87,7 @@ ${demo({
 <div class="reveal">${facts([
   ["Product type", "Desktop app for live translated subtitles"],
   ["Platforms", "macOS 14.2 or later (Apple Silicon)<small>Windows 10/11 x64: coming soon</small>"],
-  ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>For both the source audio and the translation</small>"],
+  ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>For both the source audio and the translation. More languages are planned for the future</small>"],
   ["Processing", "100% on your device; audio is never sent out<small>Whisper (speech recognition) and Hy-MT2 (translation)</small>"],
   ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid in VND by VietQR from a Vietnamese bank, no auto-renewal</small>"],
   ["Provider", "Đỗ Tiến Phong<small>Support: support@aitranslator.io.vn</small>"],
@@ -97,6 +97,17 @@ ${demo({
 <section class="section-tight"><div class="container">
 <ul class="app-strip reveal"><li>Zoom</li><li>Microsoft Teams</li><li>Google Meet</li><li>Zalo PC</li><li>Webinars</li><li>Online video</li></ul>
 <p class="disclaimer">Works with any audio playing on your computer. Zoom, Microsoft Teams, Google Meet and Zalo are product names of their respective owners; AI Translator is not affiliated with them.</p>
+</div></section>
+
+<section class="section band-dark" id="private-on-device"><div class="container">
+${sectionHead({ eyebrow: "Your data stays on your computer", title: "The AI runs on your machine, so your meeting never leaves it", text: "Speech recognition, translation and subtitles all happen on your own computer. AI Translator does not send your meeting audio or content to the cloud, and no cloud AI service is used to process it.", center: true })}
+${dataFlow("en")}
+<div class="grid grid-3">
+${feature({ icon: "lock", title: "Nothing goes to the cloud", text: "Audio lives only in RAM: it is never written to disk and never sent over the network. The transcript and the translation appear on your screen and stay on your computer; history is off by default, and if you turn it on it is stored encrypted on your machine.", accent: true })}
+${feature({ icon: "zap", title: "Low latency", text: "There is no round trip to a server, so subtitles appear right after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack). Other computers may be slower." })}
+${feature({ icon: "shield", title: "Less risk of leaking information", text: "Contracts, HR, finance, product plans: your meeting content is not passed to any third party for translation. Our server only stores your email (when you buy), orders, licenses and device-activation details (a hashed machine ID and device name), never conversation data." })}
+</div>
+<p class="center-text reveal"><a class="btn btn-secondary" href="/en/data-security/">See exactly where your data goes ${icon("arrow-right")}</a></p>
 </div></section>
 
 <section class="section section-alt" id="how-it-works"><div class="container">
@@ -156,7 +167,7 @@ ${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech 
 ${feature({ icon: "video", title: "Any meeting app, no bot", text: "There is no bot to invite and no plugin to install. Anything that plays sound on your computer can become subtitles." })}
 ${feature({ icon: "book", title: "Glossary", text: "Teach it your names, product names and industry terms. Terms are passed to the translator as hints (up to 500, with CSV import and export; a Pro feature)." })}
 ${feature({ icon: "history", title: "History and export", text: "Save transcripts on your computer, encrypted, and export them as TXT, SRT or Markdown. History is off by default, so you decide (a Pro feature)." })}
-${feature({ icon: "languages", title: "Five languages", text: "English, 中文, 日本語, 한국어 and Tiếng Việt, translated between any two of them. The app interface is available in Vietnamese and English." })}
+${feature({ icon: "languages", title: "Five languages", text: "English, 中文, 日本語, 한국어 and Tiếng Việt, translated between any two of them. We plan to add more languages in the future. The app interface is available in Vietnamese and English." })}
 </div>
 <div class="stats reveal">
 <div class="stat"><b>&lt; 1.1 s</b><span>median delay from the moment a speaker finishes a sentence to the full translation appearing (Mac M4 Pro, Standard pack)</span></div>

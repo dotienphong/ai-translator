@@ -169,3 +169,38 @@ ${toc.length ? `<nav class="toc" aria-label="${esc(tocTitle)}"><b>${esc(tocTitle
 export const docNav = (links, label = "Bài liên quan") => `<nav class="doc-nav" aria-label="${esc(label)}">${links
   .map((l) => `<a href="${l.href}"><span>${esc(l.kicker)}</span>${esc(l.title)}</a>`)
   .join("")}</nav>`;
+
+/** Sơ đồ "dữ liệu đi đâu": công cụ dịch qua cloud (đi vòng lên máy chủ) và AI Translator (ở lại trên máy). */
+export function dataFlow(lang) {
+  const en = lang === "en";
+  const L = en
+    ? {
+        cloud: "How most cloud translation tools work",
+        local: "AI Translator",
+        you: "Your computer", audio: "meeting audio", net: "Internet", server: "Provider server", cloudAi: "plus an AI on the cloud",
+        subs: "Subtitles", backTo: "back to you", audioHere: "Audio", onYour: "on your computer", ai: "AI running on your computer", models: "Whisper + Hy-MT2", screen: "Subtitles", onScreen: "on your screen",
+        cloudNote: "The meeting audio leaves your computer and is processed somewhere you do not control.",
+        localNote: "No trip to the cloud: the audio, the transcript and the translation stay on your computer.",
+      }
+    : {
+        cloud: "Cách phần lớn công cụ dịch qua cloud hoạt động",
+        local: "AI Translator",
+        you: "Máy bạn", audio: "âm thanh cuộc họp", net: "Internet", server: "Máy chủ nhà cung cấp", cloudAi: "cùng AI trên cloud",
+        subs: "Phụ đề", backTo: "gửi về máy bạn", audioHere: "Âm thanh", onYour: "trên máy bạn", ai: "AI chạy trên máy bạn", models: "Whisper + Hy-MT2", screen: "Phụ đề", onScreen: "trên màn hình bạn",
+        cloudNote: "Âm thanh cuộc họp rời khỏi máy bạn và được xử lý ở nơi bạn không kiểm soát.",
+        localNote: "Không có chuyến đi nào lên cloud: âm thanh, bản chép lời và bản dịch ở lại trên máy bạn.",
+      };
+  const sep = '<li class="sep" aria-hidden="true">→</li>';
+  return `<div class="dataflow reveal">
+<div class="lane lane-cloud">
+<span class="tag">${esc(L.cloud)}</span>
+<ol class="nodes"><li>${esc(L.you)}<small>${esc(L.audio)}</small></li>${sep}<li class="net">${esc(L.net)}</li>${sep}<li>${esc(L.server)}<small>${esc(L.cloudAi)}</small></li>${sep}<li class="net">${esc(L.net)}</li>${sep}<li>${esc(L.subs)}<small>${esc(L.backTo)}</small></li></ol>
+<p>${esc(L.cloudNote)}</p>
+</div>
+<div class="lane lane-local">
+<span class="tag">${esc(L.local)}</span>
+<ol class="nodes"><li>${esc(L.audioHere)}<small>${esc(L.onYour)}</small></li>${sep}<li class="ai">${esc(L.ai)}<small>${esc(L.models)}</small></li>${sep}<li>${esc(L.screen)}<small>${esc(L.onScreen)}</small></li></ol>
+<p>${esc(L.localNote)}</p>
+</div>
+</div>`;
+}

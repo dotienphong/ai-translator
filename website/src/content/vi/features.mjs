@@ -1,4 +1,4 @@
-import { pageHero, sectionHead, feature, checkList, callout, ctaBand, appShot, overlayShot, facts, keys, icon, linkCard } from "../../build/components.mjs";
+import { dataFlow, pageHero, sectionHead, feature, checkList, callout, ctaBand, appShot, overlayShot, facts, keys, icon, linkCard } from "../../build/components.mjs";
 
 const crumbs = [
   { name: "Trang chủ", path: "/" },
@@ -33,6 +33,16 @@ ${pageHero({ crumbs, title: "Mọi thứ cần để hiểu một cuộc họp b
 </div>
 </div></section>
 
+<section class="section band-dark" id="ai-tren-may"><div class="container">
+${sectionHead({ eyebrow: "AI chạy trên máy", title: "Dịch bằng AI mà không đưa cuộc họp lên cloud", text: "Hai model AI, một để nhận dạng giọng nói, một để dịch, chạy trực tiếp trên máy tính của bạn. Không có bước nào gửi âm thanh hay nội dung cuộc họp tới một máy chủ hay dịch vụ AI trên cloud.", center: true })}
+${dataFlow("vi")}
+<div class="grid grid-3">
+${feature({ icon: "cpu", title: "Hai model AI chạy tại chỗ", text: "Whisper nhận dạng giọng nói, Hy-MT2 dịch. Cả hai tải về một lần rồi chạy trên máy bạn bằng GPU (Metal trên macOS) hoặc CPU.", accent: true })}
+${feature({ icon: "zap", title: "Độ trễ thấp vì không đi vòng", text: "Không có chuyến đi tới máy chủ, nên bản dịch hiện ngay sau khi người nói dừng câu. Trung vị dưới 1,1 giây trên Mac M4 Pro; điều kiện đo ở mục Hiệu năng bên dưới." })}
+${feature({ icon: "lock", title: "Dữ liệu cuộc hội thoại ở lại trên máy", text: "Âm thanh chỉ nằm trong RAM; bản chép lời và bản dịch ở trên máy bạn. Lịch sử mặc định tắt và, nếu bật, được mã hóa trên máy." })}
+</div>
+</div></section>
+
 <section class="section" id="dich-truc-tiep"><div class="container">
 <div class="split">
 <div class="stack-lg reveal">
@@ -40,7 +50,7 @@ ${pageHero({ crumbs, title: "Mọi thứ cần để hiểu một cuộc họp b
 <h2>Nghe, nhận dạng, dịch và hiện phụ đề trong một vòng</h2>
 <p>AI Translator thu âm thanh đang phát trên máy tính, cắt thành từng câu, nhận dạng giọng nói rồi dịch và hiện lên thanh phụ đề. Trên Mac M4 Pro, bản dịch hiện đủ sau khi người nói dừng câu trong khoảng một giây (trung vị); máy khác có thể chậm hơn, xem <a href=\"#hieu-nang\">số đo</a>.</p>
 ${checkList([
-  "<strong>Năm ngôn ngữ</strong> cho cả âm thanh nguồn và bản dịch: English, 中文, 日本語, 한국어, Tiếng Việt",
+  "<strong>Năm ngôn ngữ</strong> cho cả âm thanh nguồn và bản dịch: English, 中文, 日本語, 한국어, Tiếng Việt. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai (chưa có lịch cụ thể)",
   "<strong>Tự nhận diện</strong> ngôn ngữ đang nói trong tập ngôn ngữ bạn chọn, hoặc <strong>khóa</strong> một ngôn ngữ khi bạn biết trước người nói dùng tiếng gì",
   "Câu đã ở đúng ngôn ngữ bạn muốn đọc thì hiện nguyên văn, không dịch lại",
   "Câu chưa chốt hiện màu nhạt rồi được thay bằng câu hoàn chỉnh khi người nói nói tiếp",
