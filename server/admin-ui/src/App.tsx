@@ -5,7 +5,9 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { SESSION_EXPIRED_EVENT } from "./api/client";
 import { api } from "./api/endpoints";
 import type { Queue } from "./api/types";
+import { ToastProvider } from "./components/Feedback";
 import { IconWarning } from "./components/icons";
+import { LoadingBlock } from "./components/Skeleton";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { useLoad } from "./hooks";
@@ -86,7 +88,7 @@ function Page({ route }: { route: Route }) {
       return <QueuePage />;
     case "overview":
       return (
-        <Suspense fallback={<p className="muted">Đang tải…</p>}>
+        <Suspense fallback={<LoadingBlock />}>
           <OverviewPage />
         </Suspense>
       );
@@ -194,59 +196,62 @@ export function App() {
   }, []);
 
   return (
-    <div className={`app${collapsed ? " is-collapsed" : ""}`}>
-      <a
-        href="#noi-dung"
-        className="skip-link"
-        onClick={(e) => {
-          // Không thêm #noi-dung vào địa chỉ: chỉ đưa focus vào nội dung.
-          e.preventDefault();
-          mainRef.current?.focus();
-        }}
-      >
-        Bỏ qua tới nội dung
-      </a>
-      <Sidebar
-        current={route.name}
-        queueCount={queue.data ? queueTotal(queue.data) : null}
-        collapsed={collapsed}
-        onToggleCollapsed={toggleCollapsed}
-        open={menuOpen}
-        onClose={closeMenu}
-      />
-      <div className={`scrim${menuOpen ? " open" : ""}`} aria-hidden="true" onClick={closeMenu} />
-      {/* inert khi ngăn kéo mở: Tab và trình đọc màn hình chỉ đi trong ngăn kéo. */}
-      <div className="app-body" inert={menuOpen}>
-        <Topbar
-          operator={me.data?.operator ?? null}
-          operatorLoading={me.loading}
-          menuOpen={menuOpen}
-          onMenu={() => setMenuOpen(true)}
-          menuButtonRef={menuBtnRef}
+    // ToastProvider: thông báo nổi cho kết quả thao tác nhẹ (Feedback.tsx), vùng thông báo nằm cuối trang.
+    <ToastProvider>
+      <div className={`app${collapsed ? " is-collapsed" : ""}`}>
+        <a
+          href="#noi-dung"
+          className="skip-link"
+          onClick={(e) => {
+            // Không thêm #noi-dung vào địa chỉ: chỉ đưa focus vào nội dung.
+            e.preventDefault();
+            mainRef.current?.focus();
+          }}
+        >
+          Bỏ qua tới nội dung
+        </a>
+        <Sidebar
+          current={route.name}
+          queueCount={queue.data ? queueTotal(queue.data) : null}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          open={menuOpen}
+          onClose={closeMenu}
         />
-        {expired && (
-          <div className="banner-wrap">
-            <div className="banner" role="alert">
-              <IconWarning size={20} />
-              <div className="banner-text">
-                <strong>Phiên đăng nhập hết hạn.</strong>
-                <span>Tải lại trang để đăng nhập lại; thao tác chưa gửi sẽ không được lưu.</span>
+        <div className={`scrim${menuOpen ? " open" : ""}`} aria-hidden="true" onClick={closeMenu} />
+        {/* inert khi ngăn kéo mở: Tab và trình đọc màn hình chỉ đi trong ngăn kéo. */}
+        <div className="app-body" inert={menuOpen}>
+          <Topbar
+            operator={me.data?.operator ?? null}
+            operatorLoading={me.loading}
+            menuOpen={menuOpen}
+            onMenu={() => setMenuOpen(true)}
+            menuButtonRef={menuBtnRef}
+          />
+          {expired && (
+            <div className="banner-wrap">
+              <div className="banner" role="alert">
+                <IconWarning size={20} />
+                <div className="banner-text">
+                  <strong>Phiên đăng nhập hết hạn.</strong>
+                  <span>Tải lại trang để đăng nhập lại; thao tác chưa gửi sẽ không được lưu.</span>
+                </div>
+                <button type="button" className="primary small" onClick={() => window.location.reload()}>
+                  Tải lại trang
+                </button>
               </div>
-              <button type="button" className="primary small" onClick={() => window.location.reload()}>
-                Tải lại trang
-              </button>
             </div>
-          </div>
-        )}
-        <main id="noi-dung" className="main" tabIndex={-1} ref={mainRef}>
-          <div className="content" key={path}>
-            <Page route={route} />
-          </div>
-        </main>
+          )}
+          <main id="noi-dung" className="main" tabIndex={-1} ref={mainRef}>
+            <div className="content" key={path}>
+              <Page route={route} />
+            </div>
+          </main>
+        </div>
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {announce}
+        </div>
       </div>
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {announce}
-      </div>
-    </div>
+    </ToastProvider>
   );
 }

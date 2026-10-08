@@ -1,63 +1,64 @@
-import { useEffect, useId, useState } from "react";
+// Key license che mặc định (spec Web Admin §4.2) và hộp hiện key một lần sau thao tác cấp key (§4.6).
+import { useEffect, useId, useRef, useState } from "react";
 import { maskKey } from "../format";
+import { Button } from "./Button";
+import { CopyButton } from "./CopyButton";
+import { IconEye, IconEyeOff, IconKey } from "./icons";
+import { useFocusTrap } from "./useFocusTrap";
 
-const COPY_LABELS = { idle: "Chép", done: "Đã chép", failed: "Không chép được" };
+export { CopyButton } from "./CopyButton";
 
-export function CopyButton({ text }: { text: string }) {
-  // Mỗi lần bấm là một đối tượng mới để bộ hẹn giờ 2 giây tính lại từ đầu.
-  const [state, setState] = useState<{ kind: keyof typeof COPY_LABELS }>({ kind: "idle" });
-  useEffect(() => {
-    if (state.kind === "idle") return;
-    const t = setTimeout(() => setState({ kind: "idle" }), 2000);
-    return () => clearTimeout(t);
-  }, [state]);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(text);
-      setState({ kind: "done" });
-    } catch {
-      setState({ kind: "failed" });
-    }
-  }
-  return (
-    <button type="button" className="link" onClick={copy}>
-      {COPY_LABELS[state.kind]}
-    </button>
-  );
-}
-
-/** Key che mặc định (spec Web Admin §4.2); bấm Hiện để xem, Chép để chép key đầy đủ. */
+/** Key che mặc định; bấm Hiện để xem, Chép để chép key đầy đủ (nút chép nhận key đầy đủ, chữ trên trang vẫn che). */
 export function MaskedKey({ value }: { value: string }) {
   const [shown, setShown] = useState(false);
   return (
-    <span className="masked-key">
+    <span className={shown ? "masked-key is-shown" : "masked-key"}>
       <code>{shown ? value : maskKey(value)}</code>
-      <button type="button" className="link" onClick={() => setShown((s) => !s)}>
+      <Button variant="ghost" size="sm" className="link" icon={shown ? <IconEyeOff size={16} /> : <IconEye size={16} />} onClick={() => setShown((s) => !s)}>
         {shown ? "Ẩn" : "Hiện"}
-      </button>
+      </Button>
       <CopyButton text={value} />
     </span>
   );
 }
 
-/** Hộp hiện key một lần, sau thao tác cấp key (spec §4.6). `title` đổi khi key không mới (cấp tay cho đơn gia hạn hay đổi gói). */
+/**
+ * Hộp hiện key một lần, sau thao tác cấp key. `title` đổi khi key không mới (cấp tay cho đơn gia hạn hay đổi gói).
+ * Không đóng bằng Esc hay bấm ra ngoài: đóng nhầm là mất key; chỉ nút Xong mới đóng.
+ */
 export function KeyReveal({ licenseKey, title = "Key mới", onClose }: { licenseKey: string; title?: string; onClose(): void }) {
   const titleId = useId();
+  const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref);
+  // Mở hộp: focus vào nút Chép (việc thường làm tiếp theo).
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>(".copy-btn")?.focus();
+  }, []);
   return (
     <div className="overlay">
-      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <h2 id={titleId}>{title}</h2>
-        <p>
-          Server đã thử gửi key qua email cho khách; nếu khách báo không nhận được, dùng Gửi lại email ở trang license. Hộp này chỉ hiện key một
-          lần.
-        </p>
-        <p>
-          <code className="key-full">{licenseKey}</code> <CopyButton text={licenseKey} />
-        </p>
+      <div ref={ref} className="dialog tone-ok" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <div className="dialog-head">
+          <span className="dialog-icon" aria-hidden="true">
+            <IconKey size={20} />
+          </span>
+          <div className="dialog-heading">
+            <h2 id={titleId}>{title}</h2>
+            <p className="dialog-desc">
+              Server đã thử gửi key qua email cho khách; nếu khách báo không nhận được, dùng Gửi lại email ở trang license. Hộp này chỉ hiện key một
+              lần.
+            </p>
+          </div>
+        </div>
+        <div className="dialog-body">
+          <div className="key-box">
+            <code className="key-full">{licenseKey}</code>
+            <CopyButton text={licenseKey} appearance="button" size="md" label="Chép key" />
+          </div>
+        </div>
         <div className="dialog-actions">
-          <button type="button" className="primary" onClick={onClose}>
+          <Button variant="primary" onClick={onClose}>
             Xong
-          </button>
+          </Button>
         </div>
       </div>
     </div>

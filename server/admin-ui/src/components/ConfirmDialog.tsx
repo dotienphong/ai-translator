@@ -2,6 +2,9 @@
 // được (thêm ô gõ chữ xác nhận).
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { ApiError } from "../api/client";
+import { Button } from "./Button";
+import { IconAlert, IconCheck, IconInfo, IconWarning } from "./icons";
+import { useFocusTrap } from "./useFocusTrap";
 
 export interface ConfirmDialogProps {
   title: string;
@@ -23,6 +26,11 @@ export interface ConfirmDialogProps {
    * chỉ gọi khi người vận hành đóng hộp (tải lại ngay mà lỗi thì trang bỏ hộp đi, cảnh báo biến mất).
    */
   onConflict?(): void;
+  /**
+   * Tông của hộp: danger thêm biểu tượng cảnh báo đỏ và nút xác nhận nền đỏ. Mặc định: danger khi có typeToConfirm
+   * (thao tác không hoàn tác được), thường thì default.
+   */
+  tone?: "default" | "danger";
 }
 
 /** Lỗi 5xx mà server biết chắc chưa ghi gì: thử lại được như lỗi thường. */
@@ -43,6 +51,9 @@ function isUncertain(err: unknown): boolean {
 
 export function ConfirmDialog(p: ConfirmDialogProps) {
   const titleId = useId();
+  const descId = useId();
+  const noteId = useId();
+  const typedId = useId();
   const [note, setNote] = useState("");
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
@@ -57,6 +68,9 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
   const noteOk = !p.needsNote || (trimmed.length >= 1 && trimmed.length <= 500);
   const typedOk = p.typeToConfirm === undefined || typed === p.typeToConfirm;
   const ready = noteOk && typedOk && p.extraValid !== false && !busy && !uncertain;
+
+  // Bẫy focus trong hộp và trả focus về nút đã mở hộp khi đóng. Gọi trước hiệu ứng focus bên dưới để nhớ đúng nút đó.
+  useFocusTrap(formRef);
 
   // Mở hộp: focus vào ô nhập đầu tiên (Lý do, rồi ô gõ chữ xác nhận, rồi ô nhập thêm của trang), không vào nút xác nhận.
   useEffect(() => {
@@ -103,39 +117,89 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
     }
   }
 
+  const danger = (p.tone ?? (p.typeToConfirm !== undefined ? "danger" : "default")) === "danger";
   return (
     <div className="overlay">
-      <form ref={formRef} className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onSubmit={submit}>
-        <h2 id={titleId}>{p.title}</h2>
-        <div className="dialog-desc">{p.description}</div>
-        {p.children}
-        {p.needsNote && (
-          <label>
-            Lý do (bắt buộc, ghi vào nhật ký)
-            <textarea ref={noteRef} value={note} maxLength={500} rows={2} onChange={(e) => setNote(e.target.value)} />
-          </label>
-        )}
-        {p.typeToConfirm !== undefined && (
-          <label>
-            <span>
-              Gõ <code>{p.typeToConfirm}</code> để xác nhận
-            </span>
-            <input ref={typedRef} value={typed} autoComplete="off" onChange={(e) => setTyped(e.target.value)} />
-          </label>
-        )}
-        {error && (
-          <div className="error" role="alert">
-            <p>{error}</p>
-            {uncertain && <p>Không chắc thao tác đã chạy chưa. Đóng hộp, tải lại trang và xem Nhật ký trước khi thử lại.</p>}
+      <form
+        ref={formRef}
+        className={danger ? "dialog tone-danger" : "dialog"}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        onSubmit={submit}
+      >
+        <div className="dialog-head">
+          <span className="dialog-icon" aria-hidden="true">
+            {danger ? <IconWarning size={20} /> : <IconInfo size={20} />}
+          </span>
+          <div className="dialog-heading">
+            <h2 id={titleId}>{p.title}</h2>
+            <div className="dialog-desc" id={descId}>
+              {p.description}
+            </div>
           </div>
-        )}
+        </div>
+        <div className="dialog-body">
+          {p.children}
+          {p.needsNote && (
+            <div className="dialog-field">
+              <label htmlFor={noteId}>
+                Lý do <span className="field-req">bắt buộc</span>
+              </label>
+              <textarea
+                id={noteId}
+                ref={noteRef}
+                value={note}
+                maxLength={500}
+                rows={3}
+                aria-describedby={`${noteId}-hint`}
+                onChange={(e) => setNote(e.target.value)}
+              />
+              <p className="field-hint" id={`${noteId}-hint`}>
+                <span>Ghi vào nhật ký cùng thao tác.</span>
+                <span className="field-count" aria-hidden="true">
+                  {note.length}/500
+                </span>
+              </p>
+            </div>
+          )}
+          {p.typeToConfirm !== undefined && (
+            <div className={typedOk ? "dialog-field type-confirm is-match" : "dialog-field type-confirm"}>
+              <label htmlFor={typedId}>
+                Gõ <code>{p.typeToConfirm}</code> để xác nhận
+              </label>
+              <div className="type-confirm-input">
+                <input
+                  id={typedId}
+                  ref={typedRef}
+                  value={typed}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  onChange={(e) => setTyped(e.target.value)}
+                />
+                {typedOk && <IconCheck size={18} strokeWidth={2.25} />}
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className={uncertain ? "dialog-error is-uncertain" : "dialog-error"} role="alert">
+              {uncertain ? <IconWarning size={18} /> : <IconAlert size={18} />}
+              <div>
+                <p>{error}</p>
+                {uncertain && <p>Không chắc thao tác đã chạy chưa. Đóng hộp, tải lại trang và xem Nhật ký trước khi thử lại.</p>}
+              </div>
+            </div>
+          )}
+        </div>
         <div className="dialog-actions">
-          <button type="button" onClick={close} disabled={busy}>
+          <Button onClick={close} disabled={busy}>
             Hủy
-          </button>
-          <button type="submit" className={p.typeToConfirm !== undefined ? "danger solid" : "primary"} disabled={!ready}>
+          </Button>
+          <Button type="submit" variant={danger ? "danger-solid" : "primary"} disabled={!ready} loading={busy}>
             {busy ? "Đang làm…" : p.confirmLabel}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

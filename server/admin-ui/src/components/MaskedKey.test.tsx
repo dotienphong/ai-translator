@@ -27,7 +27,8 @@ describe("CopyButton", () => {
     vi.useRealTimers();
   });
 
-  it("chép được: hiện Đã chép, sau 2 giây trở lại Chép", async () => {
+  // Spec giao diện mới (mục 2): chữ "Đã chép" giữ 1,5 giây (trước là 2 giây).
+  it("chép được: hiện Đã chép, sau 1,5 giây trở lại Chép", async () => {
     vi.useFakeTimers();
     const writeText = vi.fn(async () => {});
     stubClipboard(writeText);
@@ -37,7 +38,7 @@ describe("CopyButton", () => {
     expect(writeText).toHaveBeenCalledWith("abc");
     expect(screen.getByRole("button", { name: "Đã chép" })).toBeTruthy();
     act(() => {
-      vi.advanceTimersByTime(1999);
+      vi.advanceTimersByTime(1499);
     });
     expect(screen.getByRole("button", { name: "Đã chép" })).toBeTruthy();
     act(() => {
@@ -46,7 +47,7 @@ describe("CopyButton", () => {
     expect(screen.getByRole("button", { name: "Chép" })).toBeTruthy();
   });
 
-  it("chép lỗi: hiện Không chép được (không báo Đã chép), sau 2 giây trở lại Chép", async () => {
+  it("chép lỗi: hiện Không chép được (không báo Đã chép), sau 1,5 giây trở lại Chép", async () => {
     vi.useFakeTimers();
     stubClipboard(async () => {
       throw new Error("bị chặn");
@@ -57,7 +58,7 @@ describe("CopyButton", () => {
     expect(screen.getByRole("button", { name: "Không chép được" })).toBeTruthy();
     expect(screen.queryByText("Đã chép")).toBeNull();
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(1500);
     });
     expect(screen.getByRole("button", { name: "Chép" })).toBeTruthy();
   });
@@ -71,7 +72,7 @@ describe("CopyButton", () => {
     expect(screen.getByRole("button", { name: "Không chép được" })).toBeTruthy();
   });
 
-  it("bỏ khỏi trang trước 2 giây: không còn bộ hẹn giờ nào", async () => {
+  it("bỏ khỏi trang trước 1,5 giây: không còn bộ hẹn giờ nào", async () => {
     vi.useFakeTimers();
     stubClipboard(async () => {});
     const { unmount } = render(<CopyButton text="abc" />);

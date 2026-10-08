@@ -7,11 +7,13 @@ import { LicenseBadges, OrderStatusBadge, PLAN_LABELS } from "./StatusBadge";
 
 export const orderColumns: Column<OrderRow>[] = [
   { header: "Mã đơn", cell: (o) => <Link to={`/orders/${o.order_code}`}>#{o.order_code}</Link> },
-  { header: "Tạo lúc", cell: (o) => fmtDateTime(o.created_at) },
+  { header: "Tạo lúc", cell: (o) => fmtDateTime(o.created_at), nowrap: true },
   { header: "Email", cell: (o) => o.email ?? "—" },
   { header: "Gói", cell: (o) => PLAN_LABELS[o.plan] },
   {
     header: "Số tiền",
+    align: "right",
+    nowrap: true,
     cell: (o) => (o.amount_paid === o.amount ? fmtVnd(o.amount) : `${fmtVnd(o.amount_paid)} / ${fmtVnd(o.amount)}`),
   },
   { header: "Trạng thái", cell: (o) => <OrderStatusBadge status={o.status} /> },
@@ -36,7 +38,7 @@ export function licenseColumns(now: number): Column<LicenseLike>[] {
     { header: "Email", cell: (l) => l.email ?? "—" },
     { header: "Gói", cell: (l) => PLAN_LABELS[l.plan] },
     { header: "Hết hạn", cell: (l) => `${fmtDate(l.expires_at)} (${daysLeft(l.expires_at, now)})` },
-    { header: "Máy", cell: (l) => String(activeDevices(l)) },
+    { header: "Máy", align: "right", cell: (l) => String(activeDevices(l)) },
     {
       header: "Trạng thái",
       cell: (l) => (
@@ -52,7 +54,7 @@ export function licenseColumns(now: number): Column<LicenseLike>[] {
 export type AnyAudit = AuditRow | LicenseAuditRow;
 
 export const auditColumns: Column<AnyAudit>[] = [
-  { header: "Thời điểm", cell: (a) => fmtDateTime(a.at) },
+  { header: "Thời điểm", cell: (a) => fmtDateTime(a.at), nowrap: true },
   { header: "Ai", cell: (a) => a.actor },
   { header: "Việc", cell: (a) => <code>{a.action}</code> },
   {
