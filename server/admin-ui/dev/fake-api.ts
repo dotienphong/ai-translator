@@ -1,6 +1,9 @@
 // API giả cho `pnpm dev` (apply: "serve": chỉ dev server). Không có trong bản build, không chạy trên Worker.
-// Dữ liệu mẫu cố định đủ để xem mọi màn hình, hình dạng khớp hợp đồng API thật (src/api/types.ts); bộ lọc và
-// phân trang của server không được giả lập. Thao tác ghi trả thành công giả. Không dùng email, key hay hash thật.
+// Dữ liệu mẫu cố định đủ để xem mọi màn hình, hình dạng khớp hợp đồng API thật (src/api/types.ts). Bốn danh sách (đơn,
+// license, máy dùng thử, nhật ký) có vài chục dòng, lọc gần giống server và phân trang 50 dòng bằng next_cursor để thấy
+// "Tải thêm". Thao tác ghi trả thành công giả. Không dùng email, key hay hash thật.
+// Xem trạng thái khó tạo: thêm `__fake=slow` (chờ 30 giây), `__fake=error` (lỗi 500) hay `__fake=empty` (danh sách rỗng)
+// vào địa chỉ TRANG (ví dụ /orders?__fake=empty): API giả ghi nó vào cookie khi trả HTML, trang không biết gì.
 import type { Plugin } from "vite";
 import type {
   Activation,
@@ -92,7 +95,7 @@ const licenseDetail: LicenseDetail = {
   conflict: true,
   activations: [activation("act-1", DEVICE_A, "MacBook-Phong"), activation("act-2", DEVICE_B, "DESKTOP-ABC")],
   audit: [
-    { at: NOW - 3600, actor: "api", action: "license_activated", order_code: null, detail: '{"allow_conflict":true}' },
+    { at: NOW - 3600, actor: "api", action: "activated", order_code: null, detail: '{"allow_conflict":true}' },
     { at: NOW - DAY, actor: "webhook", action: "license_issued", order_code: 1000012, detail: null },
   ],
 };
@@ -110,7 +113,6 @@ const summary: Summary = { revenue_today: 12450000, currency: "VND", paid_orders
 const payment: PaymentStatus = { orderCode: 1000012, status: "paid", amount: 500000, amountPaid: 500000, paidAt: NOW - DAY };
 
 const group = <T>(items: T[]): QueueGroup<T> => ({ count: items.length, items });
-const page = <T>(items: T[]): Page<T> => ({ items, next_cursor: null });
 
 // Hàng đợi giàu dữ liệu để xem mọi nhóm: nhiều tông, thời gian tương đối khác nhau, email dài, một nhóm có hơn 20 việc
 // (server chỉ trả 20 dòng mỗi nhóm) để thấy "và N mục khác".
@@ -193,8 +195,136 @@ const releasesFull: ReleasesResponse = {
   },
 };
 
-const trial: TrialRow = { device_id_hash: DEVICE_A, started_at: NOW - 12 * DAY, ends_at: NOW - 2 * DAY, last_seen_at: NOW - DAY, purchased: true };
-const auditRow: AuditRow = { id: 2, at: NOW - 3600, actor: "api", action: "license_activated", license_id: LIC, order_code: null, detail: null };
+/* ---------- Bốn danh sách: dữ liệu đa dạng, lọc và phân trang giả ---------- */
+
+const EMAILS = ["an.nguyen@example.com", "binh.tran@example.com", LONG_EMAIL, "chi.le@example.com", null, "dung.pham@example.com", "minh.hoang@example.com"];
+const hex = (i: number, n: number) => Array.from({ length: n }, (_, k) => ((i * 7 + k * 13 + (i * k) % 5) % 16).toString(16)).join("");
+const keyOf = (i: number) => {
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const c = (k: number) => a[(i * 11 + k * 7) % a.length];
+  return `${c(1)}${c(2)}${c(3)}${c(4)}-…-${c(5)}${c(6)}${c(7)}${c(8)}`;
+};
+const uuidOf = (i: number) => `${hex(i, 8)}-${hex(i + 1, 4)}-4${hex(i + 2, 3)}-8${hex(i + 3, 3)}-${hex(i + 4, 12)}`;
+
+const ORDER_MIX: OrderStatus[] = ["paid", "paid", "pending", "underpaid", "paid", "expired", "paid_needs_review", "paid", "cancelled", "failed", "paid", "processing", "refunded", "paid"];
+const orders: OrderRow[] = Array.from({ length: 73 }, (_, i) => {
+  const status = ORDER_MIX[i % ORDER_MIX.length] ?? "paid";
+  const monthly = i % 3 === 1;
+  const amount = monthly ? 50000 : 500000;
+  const paid = ["paid", "paid_needs_review", "refunded", "processing"].includes(status);
+  const ago = 600 + i * 4.3 * 3600;
+  return {
+    ...order(1000300 - i, status),
+    plan: monthly ? "monthly" : "yearly",
+    amount,
+    amount_paid: paid ? amount : status === "underpaid" ? [20000, 200000, 499000][i % 3] ?? 20000 : 0,
+    email: EMAILS[i % EMAILS.length] ?? null,
+    created_at: Math.round(NOW - ago),
+    paid_at: paid ? Math.round(NOW - ago + 90) : null,
+  };
+});
+
+const licenses: LicenseRow[] = Array.from({ length: 64 }, (_, i) => {
+  const expiresIn = [300, 4, 25, -3, 180, 2, 340, -40, 12, 60][i % 10] ?? 30;
+  return {
+    id: i === 0 ? LIC : uuidOf(i),
+    license_key: i === 0 ? "K7Q2-…-9XMB" : keyOf(i),
+    email: EMAILS[(i + 2) % EMAILS.length] ?? null,
+    plan: i % 3 === 1 ? "monthly" : "yearly",
+    expires_at: NOW + expiresIn * DAY,
+    created_at: NOW - (i * 1.7 + 0.2) * DAY,
+    revoked_at: i % 13 === 5 ? NOW - 2 * DAY : null,
+    locked_at: i % 11 === 3 ? NOW - 5 * 3600 : null,
+    active_devices: [1, 1, 2, 0, 1, 1, 3, 1][i % 8] ?? 1,
+  };
+});
+
+const trials: TrialRow[] = Array.from({ length: 58 }, (_, i) => {
+  const started = NOW - Math.round((i * 0.9 + 0.1) * DAY);
+  return {
+    device_id_hash: i === 0 ? DEVICE_A : i === 1 ? DEVICE_B : hex(i * 3 + 1, 64),
+    started_at: started,
+    ends_at: started + 10 * DAY,
+    last_seen_at: Math.min(NOW - 120, started + Math.round(((i * 37) % 11) * 0.9 * DAY) + 3600),
+    purchased: i % 4 === 2,
+  };
+});
+
+const AUDIT_MIX: [string, string, ("lic" | "order" | "both")?, string?][] = [
+  ["api", "activated", "lic", '{"activation_id":"act-1"}'],
+  ["webhook", "license_issued", "both"],
+  ["admin:ops@aitranslator.io.vn", "list_viewed", undefined, '{"list":"orders"}'],
+  ["api", "order_created", "order", '{"plan":"yearly","amount":500000}'],
+  ["reconcile", "license_extended", "both"],
+  ["admin:ops@aitranslator.io.vn", "license_revoked", "lic", '{"note":"khách yêu cầu hoàn tiền, đã chuyển khoản lại ngày 06/10"}'],
+  ["webhook", "order_underpaid", "order", '{"amount":500000,"amount_paid":200000}'],
+  ["api", "license_conflict", "lic", '{"activation_id":"act-2","devices":2}'],
+  ["admin:ops@aitranslator.io.vn", "license_extended_manually", "lic", '{"days":30,"note":"bù 30 ngày do lỗi cập nhật"}'],
+  ["api", "deactivated", "lic", '{"activation_id":"act-1"}'],
+  ["admin:ops@aitranslator.io.vn", "lookup", undefined, '{"by":"email"}'],
+  ["api", "license_locked", "lic", '{"deactivations_30d":3}'],
+  ["webhook", "order_needs_review", "order"],
+  ["admin:ops@aitranslator.io.vn", "key_resent", "lic", '{"sent":true}'],
+  ["api", "reactivated", "lic", '{"activation_id":"act-3"}'],
+  ["admin:ops@aitranslator.io.vn", "queue_viewed", undefined, '{"needs_review":2,"underpaid":23}'],
+];
+const audits: AuditRow[] = Array.from({ length: 90 }, (_, i) => {
+  const [actor, action, rel, detail] = AUDIT_MIX[i % AUDIT_MIX.length] ?? ["api", "activated"];
+  return {
+    id: 5000 - i,
+    at: Math.round(NOW - 300 - i * 2.6 * 3600),
+    actor,
+    action,
+    license_id: rel === "lic" || rel === "both" ? (licenses[i % licenses.length]?.id ?? LIC) : null,
+    order_code: rel === "order" || rel === "both" ? (orders[i % orders.length]?.order_code ?? 1000012) : null,
+    detail: detail ?? null,
+  };
+});
+const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed", "alerts_viewed", "releases_viewed"];
+
+/** Trang 50 dòng theo con trỏ (vị trí), như server: next_cursor null ở trang cuối. */
+function paged<T>(rows: T[], url: URL): Page<T> {
+  const start = Number(url.searchParams.get("cursor") ?? 0) || 0;
+  const items = rows.slice(start, start + 50);
+  return { items, next_cursor: start + 50 < rows.length ? String(start + 50) : null };
+}
+/** Lọc theo ngày tạo kiểu server (from/to là ngày GMT+7, gồm cả hai đầu). */
+function inRange(at: number, q: URLSearchParams): boolean {
+  const d = dayKey(at);
+  const from = q.get("from");
+  const to = q.get("to");
+  return (!from || d >= from) && (!to || d <= to);
+}
+function listReply(path: string, url: URL): Reply | null {
+  const q = url.searchParams;
+  const is = (k: string, v: string) => !q.get(k) || q.get(k) === v;
+  switch (path) {
+    case "/admin/orders":
+      return ok(paged(orders.filter((o) => is("status", o.status) && is("plan", o.plan) && inRange(o.created_at, q)), url));
+    case "/admin/licenses": {
+      const state = (l: LicenseRow) =>
+        l.revoked_at !== null ? ["revoked"] : [l.expires_at > NOW ? "active" : "expired", ...(l.locked_at ? ["locked"] : []), ...(l.active_devices > 1 ? ["conflict"] : [])];
+      return ok(paged(licenses.filter((l) => (!q.get("state") || state(l).includes(q.get("state") ?? "")) && is("plan", l.plan)), url));
+    }
+    case "/admin/trials":
+      return ok(paged(trials.filter((t) => !q.get("state") || (q.get("state") === "active") === t.ends_at > NOW), url));
+    case "/admin/audit": {
+      // Giả lập một lỗi lọc để xem giao diện lỗi: thử `actor=bad`.
+      const actor = q.get("actor");
+      if (actor && !ACTORS.includes(actor)) return ok({ error: "invalid_request", field: "actor" }, 400);
+      const action = q.get("action");
+      const views = q.get("include_views") === "1" || (action !== null && VIEW_ACTIONS.includes(action));
+      return ok(
+        paged(
+          audits.filter((a) => (!actor || a.actor.split(":")[0] === actor) && is("action", a.action) && (views || !VIEW_ACTIONS.includes(a.action)) && inRange(a.at, q)),
+          url,
+        ),
+      );
+    }
+    default:
+      return null;
+  }
+}
 
 function dayKey(t: number): string {
   return new Date((t + 7 * 3600) * 1000).toISOString().slice(0, 10);
@@ -284,19 +414,8 @@ function respond(method: string, url: URL): Reply {
       return ok(alertsFull);
     case "/admin/releases":
       return ok(releasesFull);
-    case "/admin/orders":
-      return ok(page([order(1000015, "underpaid"), order(1000014, "paid_needs_review"), order(1000012, "paid")]));
-    case "/admin/licenses":
-      return ok(page([licenseRow]));
-    case "/admin/trials":
-      return ok(page([trial]));
-    case "/admin/audit": {
-      // Giả lập một lỗi lọc để xem giao diện lỗi: thử `actor=bad`.
-      const actor = url.searchParams.get("actor");
-      if (actor && !ACTORS.includes(actor)) return ok({ error: "invalid_request", field: "actor" }, 400);
-      return ok(page([auditRow]));
-    }
     default:
+      if (/^\/admin\/(orders|licenses|trials|audit)$/.test(path)) return listReply(path, url) ?? ok({ error: "not_found" }, 404);
       if (/^\/admin\/orders\/\d+\/payment-status$/.test(path)) return ok(payment);
       return ok({ error: "not_found" }, 404);
   }
@@ -309,11 +428,30 @@ export function fakeAdminApi(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url ?? "/", "http://dev");
-        if (!url.pathname.startsWith("/admin/")) return next();
-        const { status, body } = respond(req.method ?? "GET", url);
-        res.statusCode = status;
-        res.setHeader("content-type", "application/json");
-        res.end(JSON.stringify(body));
+        if (!url.pathname.startsWith("/admin/")) {
+          // Mở trang (HTML): ghi `__fake` của địa chỉ trang vào cookie để các lần gọi API sau đọc; không có thì xóa.
+          if (req.headers.accept?.includes("text/html")) {
+            const m = url.searchParams.get("__fake");
+            res.setHeader("set-cookie", m ? `__fake=${encodeURIComponent(m)}; Path=/; SameSite=Strict` : "__fake=; Path=/; Max-Age=0");
+          }
+          return next();
+        }
+        // Trạng thái khó tạo, theo `__fake` của trang (cookie ở trên): chỉ cho GET của bốn danh sách.
+        const mode = /(?:^|;\s*)__fake=([^;]*)/.exec(req.headers.cookie ?? "")?.[1];
+        const list = req.method === "GET" && /^\/admin\/(orders|licenses|trials|audit)$/.test(url.pathname);
+        const reply =
+          list && mode === "error"
+            ? ok({ error: "internal" }, 500)
+            : list && mode === "empty"
+              ? ok({ items: [], next_cursor: null })
+              : respond(req.method ?? "GET", url);
+        const send = () => {
+          res.statusCode = reply.status;
+          res.setHeader("content-type", "application/json");
+          res.end(JSON.stringify(reply.body));
+        };
+        if (list && mode === "slow") setTimeout(send, 30_000);
+        else send();
       });
     },
   };

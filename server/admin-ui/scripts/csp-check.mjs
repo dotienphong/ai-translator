@@ -157,6 +157,86 @@ function queueFixture() {
     alerts: { count: 3, items: [{ kind: "webhook_bad_signature", window_start: NOW - 1800, count: 3, notified_count: 0 }] },
   };
 }
+// Bốn danh sách: vài dòng đủ trạng thái (chuyển thiếu, cần xử lý, khóa tạm, xung đột, hết hạn…), email dài, còn trang sau
+// (next_cursor) để thấy "Tải thêm". Bộ lọc không được giả lập.
+const LONG_EMAIL = "nguyen.thi.thanh.huong.phong.ke.toan@congty-xuat-nhap-khau-thanh-dat.com.vn";
+const listPage = (items) => ({ items, next_cursor: "c50" });
+function ordersFixture() {
+  const mix = ["paid", "underpaid", "pending", "paid_needs_review", "failed", "expired", "refunded", "cancelled"];
+  return listPage(
+    mix.map((status, i) => ({
+      order_code: 1000300 - i,
+      provider: "payos",
+      plan: i % 2 ? "monthly" : "yearly",
+      amount: i % 2 ? 50000 : 500000,
+      amount_paid: status === "underpaid" ? 20000 : ["paid", "paid_needs_review", "refunded"].includes(status) ? (i % 2 ? 50000 : 500000) : 0,
+      currency: "VND",
+      email: i === 2 ? LONG_EMAIL : i === 4 ? null : `khach${i}@example.com`,
+      status,
+      grant_kind: null,
+      license_id: null,
+      renew_license_id: null,
+      created_at: NOW - (i + 1) * 5000,
+      paid_at: null,
+      email_sent_at: null,
+      email_gave_up_at: null,
+    })),
+  );
+}
+function licensesFixture() {
+  const lic = (i, over) => ({
+    id: `0b9e7c1e-5f3a-4c1d-9a7e-2f1d3c4b5a${String(60 + i)}`,
+    license_key: "K7Q2-…-9XMB",
+    email: i === 1 ? LONG_EMAIL : `khach${i}@example.com`,
+    plan: i % 2 ? "monthly" : "yearly",
+    expires_at: NOW + 200 * DAY,
+    created_at: NOW - i * DAY,
+    revoked_at: null,
+    locked_at: null,
+    active_devices: 1,
+    ...over,
+  });
+  return listPage([
+    lic(0, {}),
+    lic(1, { expires_at: NOW + 3 * DAY }),
+    lic(2, { active_devices: 2 }),
+    lic(3, { locked_at: NOW - 3600 }),
+    lic(4, { revoked_at: NOW - DAY }),
+    lic(5, { expires_at: NOW - 2 * DAY, active_devices: 0 }),
+  ]);
+}
+function trialsFixture() {
+  return listPage(
+    [0, 1, 2, 3].map((i) => ({
+      device_id_hash: `${"3fa1"}${String(i).repeat(56)}c09e`,
+      started_at: NOW - (i * 4 + 1) * DAY,
+      ends_at: NOW + (9 - i * 4) * DAY,
+      last_seen_at: NOW - 3600 * (i + 1),
+      purchased: i === 1,
+    })),
+  );
+}
+function auditFixture() {
+  const rows = [
+    ["api", "activated", "lic", '{"activation_id":"act-1"}'],
+    ["webhook", "license_issued", "both", null],
+    ["admin:ops@aitranslator.io.vn", "license_revoked", "lic", '{"note":"khách yêu cầu hoàn tiền"}'],
+    ["webhook", "order_underpaid", "order", '{"amount":500000,"amount_paid":200000}'],
+    ["reconcile", "license_extended", "both", null],
+    ["api", "license_conflict", "lic", '{"devices":2}'],
+  ];
+  return listPage(
+    rows.map(([actor, action, rel, detail], i) => ({
+      id: 900 - i,
+      at: NOW - 600 - i * 9 * 3600,
+      actor,
+      action,
+      license_id: rel === "order" ? null : "0b9e7c1e-5f3a-4c1d-9a7e-2f1d3c4b5a69",
+      order_code: rel === "lic" ? null : 1000300 - i,
+      detail,
+    })),
+  );
+}
 const API = {
   "/admin/whoami": () => ({ operator: "ops@aitranslator.io.vn" }),
   "/admin/stats": statsFixture,
@@ -164,7 +244,10 @@ const API = {
   "/admin/releases": releasesFixture,
   "/admin/summary": () => ({ revenue_today: 0, currency: "VND", paid_orders_7d: 0, active_licenses: 0 }),
   "/admin/queue": queueFixture,
-  "/admin/orders": () => ({ items: [], next_cursor: null }),
+  "/admin/orders": ordersFixture,
+  "/admin/licenses": licensesFixture,
+  "/admin/trials": trialsFixture,
+  "/admin/audit": auditFixture,
 };
 
 const MIME = {
