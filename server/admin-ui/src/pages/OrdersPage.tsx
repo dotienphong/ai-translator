@@ -11,8 +11,14 @@ import { usePaged } from "../hooks";
 const STATUS_OPTIONS = [["", "Tất cả"], ...(Object.entries(ORDER_LABELS) as [OrderStatus, string][])] as const;
 export const PLAN_OPTIONS = [["", "Tất cả"], ...Object.entries(PLAN_LABELS)] as const;
 
+/** Trạng thái lọc ban đầu từ `?status=` (liên kết từ trang Tổng quan); giá trị ngoài danh sách thì bỏ. */
+function initialStatus(): string {
+  const v = new URLSearchParams(window.location.search).get("status") ?? "";
+  return Object.hasOwn(ORDER_LABELS, v) ? v : "";
+}
+
 export function OrdersPage() {
-  const [f, setF] = useState({ status: "", plan: "", from: "", to: "" });
+  const [f, setF] = useState(() => ({ status: initialStatus(), plan: "", from: "", to: "" }));
   // Khoảng ngày ngược thì không gọi API, chỉ báo lỗi.
   const rangeInvalid = f.from !== "" && f.to !== "" && f.from > f.to;
   const list = usePaged(

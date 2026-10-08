@@ -86,3 +86,28 @@ describe("OrdersPage: bộ lọc vào query", () => {
     expect(await screen.findByText("Không có đơn nào")).toBeTruthy();
   });
 });
+
+describe("OrdersPage: bộ lọc trạng thái từ URL", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("?status=underpaid: lần gọi đầu đã lọc và ô chọn hiện đúng trạng thái", async () => {
+    window.history.replaceState(null, "", "/orders?status=underpaid");
+    render(<OrdersPage />);
+    await screen.findByText("Không có đơn nào");
+    expect(urls).toEqual(["/admin/orders?status=underpaid"]);
+    expect((screen.getByLabelText("Trạng thái") as HTMLSelectElement).value).toBe("underpaid");
+  });
+
+  it("giá trị lạ hay rỗng thì bỏ qua, không lọc", async () => {
+    for (const q of ["?status=khong-co", "?status=", "?plan=yearly", "?status=constructor", "?status=__proto__"]) {
+      urls.length = 0;
+      window.history.replaceState(null, "", `/orders${q}`);
+      const { unmount } = render(<OrdersPage />);
+      await screen.findByText("Không có đơn nào");
+      expect(urls, q).toEqual(["/admin/orders"]);
+      unmount();
+    }
+  });
+});
