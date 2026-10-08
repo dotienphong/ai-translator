@@ -616,7 +616,7 @@ a.ov-status-row:hover .ov-status-label {
     grid-column: auto;
   }
   .ov-stats > .stat:last-child:nth-child(odd),
-  .ov-stats > .stat.is-long {
+  .ov-stats:has(> .stat.is-long) > .stat {
     grid-column: 1 / -1;
   }
 }

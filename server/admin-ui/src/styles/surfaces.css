@@ -836,9 +836,9 @@ td .skel-line {
   .stat {
     padding: var(--s-3) var(--s-4);
   }
-  /* Số ô lẻ: ô cuối trải hết hàng, không để một ô lẻ loi. Số rất dài (Stat thêm lớp is-long): ô chiếm cả hàng */
+  /* Số ô lẻ: ô cuối trải hết hàng, không để một ô lẻ loi. Có số rất dài (Stat thêm lớp is-long): mọi ô một cột, không để ô lẻ loi */
   .stat-grid > .stat:last-child:nth-child(odd),
-  .stat-grid > .stat.is-long {
+  .stat-grid:has(> .stat.is-long) > .stat {
     grid-column: 1 / -1;
   }
   .stat-value {
