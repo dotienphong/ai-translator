@@ -54,7 +54,7 @@ ${pageHero({
   crumbs,
   title: "AI Translator quick start",
   lead: "To use AI Translator for the first time on macOS, install the app, step through a one-time setup (language, terms, model download, audio permission, a sample sentence), then press Start when your meeting has sound. Translated subtitles appear on a floating bar, and both speech recognition and translation run on your own Mac.",
-  meta: "<span>For macOS 14.2 or later, Apple Silicon</span><span>Updated October 8, 2026</span>",
+  meta: "<span>For macOS 14.2 or later, Apple Silicon</span> <span>Updated October 8, 2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -67,7 +67,7 @@ ${facts([
   ["Chip", "Apple Silicon (M1 or later)<small>There is no Intel Mac build yet.</small>"],
   ["Operating system", "macOS 14.2 or later"],
   ["Memory", "8 GB minimum, 16 GB recommended"],
-  ["Installer", "A .dmg file of about 9 MB<small>Sent by email when you sign up for the beta on the <a href=\"/en/download/\">Download</a> page</small>"],
+  ["Installer", "A .dmg file of about 9 MB<small>We email you a download link when you sign up for the beta on the <a href=\"/en/download/\">Download</a> page</small>"],
   ["Disk space", "1.3 GB (Lite pack) or 2.5 GB (Standard pack)<small>Plus 1 GB free while downloading the model</small>"],
   ["Internet", "Needed to download the model and register the Free trial<small>After that, recognition and translation run offline</small>"],
 ])}
@@ -100,7 +100,7 @@ ${appShot({ slug: "app-onboarding-4", lang: "en", alt: "Model download step with
 </div>
 
 <h3>Step 4. Allow system audio recording</h3>
-<p>macOS asks for <strong>System Audio Recording</strong> permission the first time AI Translator captures audio. Allow it. If you refused by mistake, the <strong>Open System Settings</strong> button on this screen takes you to the right place. The app does not use the microphone. More in <a href="/en/guide/macos-audio-permission/">granting system audio recording permission</a>.</p>
+<p>macOS asks for <strong>System Audio Recording</strong> permission the first time AI Translator captures audio. This screen only warns you in advance: the macOS prompt appears at the Try it step below or the first time you click Start. Allow it. If you refused by mistake, the <strong>Open System Settings</strong> button on this screen takes you to the right place. The app does not use the microphone. More in <a href="/en/guide/macos-audio-permission/">granting system audio recording permission</a>.</p>
 ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recording step with an Open System Settings button", caption: "Step 5 of 9: system audio recording permission (macOS only)." })}
 
 <h3>Step 5. Choose your languages</h3>
@@ -108,7 +108,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recor
 ${appShot({ slug: "app-onboarding-6", lang: "en", alt: "Choose your languages step with the Translate into menu, five spoken-language checkboxes and the Source language menu", caption: "Step 6 of 9: choose your languages." })}
 
 <h3>Step 6. Try it</h3>
-<p>Click <strong>Play a sample sentence</strong>. The app plays an English sentence through your speakers and its subtitle appears on the subtitle bar, followed by “It works. Translation: …”. Turn the volume up if your Mac is muted. If macOS asks for the audio recording permission now, allow it.</p>
+<p>Click <strong>Play a sample sentence</strong>. The app plays an English sentence through your speakers, its subtitle appears on the subtitle bar, and this screen reads “It works. Translation: …”. Turn the volume up if your Mac is muted. If macOS asks for the audio recording permission now, allow it.</p>
 ${appShot({ slug: "app-onboarding-7", lang: "en", alt: "Try it step with a Play a sample sentence button", caption: "Step 7 of 9: try it." })}
 
 <h3>Step 7. Read the notes and finish</h3>
@@ -121,9 +121,9 @@ ${appShot({ slug: "app-onboarding-9", lang: "en", alt: "Last step saying AI Tran
 <h2 id="first-meeting">Translate your first meeting</h2>
 <ol>
 <li>On the main screen, check “Translate into” and “Languages spoken in the meeting” in the <strong>Languages</strong> card.</li>
-<li>The <strong>Audio source</strong> card defaults to “Whole system, except this app”. To translate just one app, click <strong>Change</strong>. The “Input level” bar moves when your Mac plays sound.</li>
+<li>The <strong>Audio source</strong> card defaults to “Whole system, except this app”. To translate just one app, click <strong>Change</strong>.</li>
 <li>Open a meeting or a video with sound and click <strong>Start</strong> (or press ${keys(["⌃", "⌥", "T"])}). The status goes from “Starting” to “Translating”; for the first few seconds the bar may read “Loading models…”.</li>
-<li>Read the subtitles on the floating bar. The “Listening” dot turns green when sound arrives; a lighter line is a provisional subtitle that will be replaced by the finished sentence.</li>
+<li>Read the subtitles on the floating bar. A small dot in the top-right corner of the bar turns green when sound arrives, and the “Input level” bar on the main screen moves with it; a lighter line is a provisional subtitle that will be replaced by the finished sentence.</li>
 <li>Click <strong>Stop</strong> when you are done. The bar keeps its last lines so you can finish reading, and <strong>Open the transcript</strong> appears, showing time, original text and translation. <strong>Copy all</strong> works on every plan.</li>
 </ol>
 ${appShot({ slug: "app-home-running", lang: "en", alt: "Main screen while translating: Translating status, a Stop button, the Languages card and the input level bar", caption: "The main screen while translating." })}

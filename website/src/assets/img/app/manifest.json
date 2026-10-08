@@ -1,562 +1,542 @@
 [
-  {
-    "file": "app-home-running.vi.webp",
-    "slug": "app-home-running",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 34354,
-    "description": "Màn hình chính của AI Translator khi đang dịch trực tiếp: nút Dừng, nguồn âm thanh là Zoom, thanh mức âm lượng đang nhảy và số phút dịch còn lại của gói Monthly."
-  },
-  {
-    "file": "app-home-running.en.webp",
-    "slug": "app-home-running",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 31450,
-    "description": "The AI Translator Home screen while translating live: a Stop button, Zoom as the audio source, a moving input level meter and the minutes left on a Monthly plan."
-  },
-  {
-    "file": "app-home-running.dark.vi.webp",
-    "slug": "app-home-running.dark",
-    "lang": "vi",
-    "theme": "dark",
-    "width": 1440,
-    "height": 960,
-    "bytes": 33388,
-    "description": "Màn hình chính của AI Translator ở giao diện tối khi đang dịch trực tiếp, nguồn âm thanh là Zoom và gói Monthly còn nhiều phút dịch."
-  },
-  {
-    "file": "app-home-running.dark.en.webp",
-    "slug": "app-home-running.dark",
-    "lang": "en",
-    "theme": "dark",
-    "width": 1440,
-    "height": 960,
-    "bytes": 30786,
-    "description": "The AI Translator Home screen in dark mode while translating live, with Zoom as the audio source and plenty of minutes left on a Monthly plan."
-  },
-  {
-    "file": "app-home-free.vi.webp",
-    "slug": "app-home-free",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 37180,
-    "description": "Màn hình chính của AI Translator ở trạng thái Sẵn sàng với gói Free dùng thử: còn 7 ngày, còn 24 phút hôm nay, có nút Bắt đầu và nút Nâng cấp."
-  },
-  {
-    "file": "app-home-free.en.webp",
-    "slug": "app-home-free",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 33402,
-    "description": "The AI Translator Home screen in the Ready state on the Free trial: 7 days left, 24 minutes left today, with Start and Upgrade buttons."
-  },
-  {
-    "file": "app-transcript.vi.webp",
-    "slug": "app-transcript",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 67536,
-    "description": "Bản chép lời của một phiên dịch: mỗi dòng có giờ, câu gốc tiếng Anh hoặc tiếng Trung và bản dịch tiếng Việt in đậm, kèm ô tìm, nút sao chép tất cả và xuất file SRT."
-  },
-  {
-    "file": "app-transcript.en.webp",
-    "slug": "app-transcript",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 64860,
-    "description": "The transcript of a translation session: each row has a time, the Japanese or Chinese original and the English translation in bold, with a search box, Copy all and SRT export."
-  },
-  {
-    "file": "app-history.vi.webp",
-    "slug": "app-history",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 31422,
-    "description": "Màn hình Lịch sử liệt kê các phiên đã lưu, mỗi phiên có ngày giờ, số phút, số câu, câu đầu tiên và nút Mở, Xóa."
-  },
-  {
-    "file": "app-history.en.webp",
-    "slug": "app-history",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 32310,
-    "description": "The History screen listing saved sessions, each with its date and time, minutes, sentence count, first sentence and Open and Delete buttons."
-  },
-  {
-    "file": "app-glossary.vi.webp",
-    "slug": "app-glossary",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 51102,
-    "description": "Từ điển thuật ngữ với tám cặp thuật ngữ và bản dịch, có ô thêm mới và nút nhập, xuất CSV."
-  },
-  {
-    "file": "app-glossary.en.webp",
-    "slug": "app-glossary",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 45222,
-    "description": "The Glossary screen with eight term and translation pairs, a form to add terms and Import and Export CSV buttons."
-  },
-  {
-    "file": "app-settings-subtitles.vi.webp",
-    "slug": "app-settings-subtitles",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 35784,
-    "description": "Cài đặt phụ đề: chỉnh cỡ chữ, màu chữ, màu nền, độ mờ nền và bật hiện câu gốc phía trên bản dịch."
-  },
-  {
-    "file": "app-settings-subtitles.en.webp",
-    "slug": "app-settings-subtitles",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 35884,
-    "description": "Subtitle settings: font size, text color, background color, background opacity and showing the original text above the translation."
-  },
-  {
-    "file": "app-settings-subtitles.dark.vi.webp",
-    "slug": "app-settings-subtitles.dark",
-    "lang": "vi",
-    "theme": "dark",
-    "width": 1440,
-    "height": 960,
-    "bytes": 34190,
-    "description": "Cài đặt phụ đề ở giao diện tối: cỡ chữ 26 px, chữ vàng, nền xanh navy, độ mờ nền 80%."
-  },
-  {
-    "file": "app-settings-subtitles.dark.en.webp",
-    "slug": "app-settings-subtitles.dark",
-    "lang": "en",
-    "theme": "dark",
-    "width": 1440,
-    "height": 960,
-    "bytes": 34014,
-    "description": "Subtitle settings in dark mode: 26 px font, yellow text, navy background and 80% background opacity."
-  },
-  {
-    "file": "app-settings-audio.vi.webp",
-    "slug": "app-settings-audio",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 37358,
-    "description": "Cài đặt âm thanh: chọn nguồn thu là một app đang phát tiếng như Zoom và chỉnh độ nhạy ngắt câu."
-  },
-  {
-    "file": "app-settings-audio.en.webp",
-    "slug": "app-settings-audio",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 35560,
-    "description": "Audio settings: choosing a single app that is playing sound, such as Zoom, as the source and adjusting the pause that ends a sentence."
-  },
-  {
-    "file": "app-settings-model.vi.webp",
-    "slug": "app-settings-model",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 50214,
-    "description": "Cài đặt model: gói Chuẩn đang dùng và đề xuất cho máy này, gói Nhẹ 1,3 GB có thể tải thêm."
-  },
-  {
-    "file": "app-settings-model.en.webp",
-    "slug": "app-settings-model",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 52336,
-    "description": "Model settings: the Standard pack in use and recommended for this computer, and the 1.3 GB Lite pack available to download."
-  },
-  {
-    "file": "app-settings-hotkeys.vi.webp",
-    "slug": "app-settings-hotkeys",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 33550,
-    "description": "Cài đặt phím tắt trên macOS: năm phím tắt toàn cục, ví dụ ⌃⌥T để bắt đầu hoặc dừng dịch."
-  },
-  {
-    "file": "app-settings-hotkeys.en.webp",
-    "slug": "app-settings-hotkeys",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 32284,
-    "description": "Shortcut settings on macOS: five global shortcuts, for example ⌃⌥T to start or stop translating."
-  },
-  {
-    "file": "app-settings-license.vi.webp",
-    "slug": "app-settings-license",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 44070,
-    "description": "Cài đặt bản quyền: gói Monthly còn hạn với key đã che, số phút còn lại, nút Gia hạn hoặc đổi gói, Kiểm tra ngay, Gỡ kích hoạt và mục Mất key."
-  },
-  {
-    "file": "app-settings-license.en.webp",
-    "slug": "app-settings-license",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 42354,
-    "description": "License settings: an active Monthly plan with a masked key, minutes left, Renew or change plan, Check now, Deactivate this computer and the Lost your key section."
-  },
-  {
-    "file": "app-settings-privacy.vi.webp",
-    "slug": "app-settings-privacy",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 39234,
-    "description": "Cài đặt quyền riêng tư: lưu lịch sử chép lời mặc định tắt, cùng nút xóa toàn bộ dữ liệu và xóa model."
-  },
-  {
-    "file": "app-settings-privacy.en.webp",
-    "slug": "app-settings-privacy",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 36930,
-    "description": "Privacy settings: saving transcript history is off by default, with buttons to delete all data and to delete models."
-  },
-  {
-    "file": "app-upgrade.vi.webp",
-    "slug": "app-upgrade",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 34910,
-    "description": "Màn hình Nâng cấp với ba gói: Free 30 phút mỗi ngày dùng thử 10 ngày, Monthly 50 giờ giá 50.000 đ, Yearly không giới hạn giá 500.000 đ."
-  },
-  {
-    "file": "app-upgrade.en.webp",
-    "slug": "app-upgrade",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 33112,
-    "description": "The Upgrade screen with three plans: Free with 30 minutes a day for a 10-day trial, Monthly with 50 hours for 50.000 đ and Yearly with unlimited use for 500.000 đ."
-  },
-  {
-    "file": "app-upgrade-qr.vi.webp",
-    "slug": "app-upgrade-qr",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 47242,
-    "description": "Thanh toán gói Monthly 50.000 đ ngay trong app bằng mã VietQR (mã minh họa), kèm mã đơn, hạn dùng của mã và nút Mở trang thanh toán."
-  },
-  {
-    "file": "app-upgrade-qr.en.webp",
-    "slug": "app-upgrade-qr",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 45594,
-    "description": "Paying for the Monthly plan, 50.000 đ, inside the app with a VietQR code (illustrative code), with the order number, code expiry and an Open payment page button."
-  },
-  {
-    "file": "app-about.vi.webp",
-    "slug": "app-about",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 50888,
-    "description": "Màn hình Giới thiệu: phiên bản 0.1.0, Điều khoản và quyền riêng tư, danh sách giấy phép mã nguồn mở."
-  },
-  {
-    "file": "app-about.en.webp",
-    "slug": "app-about",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 45330,
-    "description": "The About screen: version 0.1.0, Terms and privacy, and the list of open-source licenses."
-  },
-  {
-    "file": "app-onboarding-1.vi.webp",
-    "slug": "app-onboarding-1",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 9454,
-    "description": "Bước 1 trong 9 khi mở app lần đầu: chọn ngôn ngữ giao diện Tiếng Việt hoặc English."
-  },
-  {
-    "file": "app-onboarding-1.en.webp",
-    "slug": "app-onboarding-1",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 10114,
-    "description": "Step 1 of 9 on first launch: choosing the interface language, Tiếng Việt or English."
-  },
-  {
-    "file": "app-onboarding-2.vi.webp",
-    "slug": "app-onboarding-2",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 20916,
-    "description": "Bước 2: điều khoản sử dụng, có ô đồng ý với Thỏa thuận cấp phép và Chính sách quyền riêng tư."
-  },
-  {
-    "file": "app-onboarding-2.en.webp",
-    "slug": "app-onboarding-2",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 18350,
-    "description": "Step 2: terms of use, with a checkbox to accept the License Agreement and the Privacy Policy."
-  },
-  {
-    "file": "app-onboarding-3.vi.webp",
-    "slug": "app-onboarding-3",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 40530,
-    "description": "Bước 3: kiểm tra máy và chọn gói model, gói Chuẩn 2,5 GB được đề xuất, gói Nhẹ 1,3 GB."
-  },
-  {
-    "file": "app-onboarding-3.en.webp",
-    "slug": "app-onboarding-3",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 43946,
-    "description": "Step 3: checking this computer and choosing a model pack, with the 2.5 GB Standard pack recommended and the 1.3 GB Lite pack."
-  },
-  {
-    "file": "app-onboarding-4.vi.webp",
-    "slug": "app-onboarding-4",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 11910,
-    "description": "Bước 4: tải model, thanh tiến độ đang ở 1,1 GB trên 2,5 GB, có nút Tạm dừng và có thể đi tiếp."
-  },
-  {
-    "file": "app-onboarding-4.en.webp",
-    "slug": "app-onboarding-4",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 14414,
-    "description": "Step 4: downloading the model, the progress bar at 1.1 GB of 2.5 GB, with a Pause button and the option to continue meanwhile."
-  },
-  {
-    "file": "app-onboarding-5.vi.webp",
-    "slug": "app-onboarding-5",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 22890,
-    "description": "Bước 5: hướng dẫn cho phép ghi âm thanh hệ thống trên macOS, có nút Mở System Settings."
-  },
-  {
-    "file": "app-onboarding-5.en.webp",
-    "slug": "app-onboarding-5",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 22784,
-    "description": "Step 5: how to allow system audio recording on macOS, with an Open System Settings button."
-  },
-  {
-    "file": "app-onboarding-6.vi.webp",
-    "slug": "app-onboarding-6",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 16086,
-    "description": "Bước 6: chọn ngôn ngữ dịch sang, các ngôn ngữ nói trong cuộc họp và ngôn ngữ nguồn."
-  },
-  {
-    "file": "app-onboarding-6.en.webp",
-    "slug": "app-onboarding-6",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 18096,
-    "description": "Step 6: choosing the language to translate into, the languages spoken in the meeting and the source language."
-  },
-  {
-    "file": "app-onboarding-7.vi.webp",
-    "slug": "app-onboarding-7",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 21312,
-    "description": "Bước 7: nghe thử, app phát một câu tiếng Anh mẫu và hiện bản dịch tiếng Việt của câu đó."
-  },
-  {
-    "file": "app-onboarding-7.en.webp",
-    "slug": "app-onboarding-7",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 22988,
-    "description": "Step 7: trying it out, the app plays an English sample sentence and shows its Vietnamese translation."
-  },
-  {
-    "file": "app-onboarding-8.vi.webp",
-    "slug": "app-onboarding-8",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 19476,
-    "description": "Bước 8: quyền riêng tư, âm thanh không rời khỏi máy vì nhận dạng và dịch chạy ngay trên máy."
-  },
-  {
-    "file": "app-onboarding-8.en.webp",
-    "slug": "app-onboarding-8",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 18360,
-    "description": "Step 8: privacy, audio never leaves the computer because speech recognition and translation run on it."
-  },
-  {
-    "file": "app-onboarding-9.vi.webp",
-    "slug": "app-onboarding-9",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 18898,
-    "description": "Bước 9: AI Translator vẫn chạy ở menu bar khi đóng cửa sổ, kèm nút Bắt đầu dùng AI Translator."
-  },
-  {
-    "file": "app-onboarding-9.en.webp",
-    "slug": "app-onboarding-9",
-    "lang": "en",
-    "theme": "light",
-    "width": 1440,
-    "height": 960,
-    "bytes": 18100,
-    "description": "Step 9: AI Translator keeps running in the menu bar when the window is closed, with the Start using AI Translator button."
-  },
-  {
-    "file": "overlay-default.vi.webp",
-    "slug": "overlay-default",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1800,
-    "height": 448,
-    "bytes": 127510,
-    "description": "Thanh phụ đề nổi mặc định, chữ trắng trên nền đen mờ, hiện câu gốc tiếng Anh và tiếng Trung phía trên bản dịch tiếng Việt."
-  },
-  {
-    "file": "overlay-default.en.webp",
-    "slug": "overlay-default",
-    "lang": "en",
-    "theme": "light",
-    "width": 1800,
-    "height": 448,
-    "bytes": 105768,
-    "description": "The default floating subtitle bar, white text on a translucent black background, showing the Japanese and Chinese original above the English translation."
-  },
-  {
-    "file": "overlay-custom.vi.webp",
-    "slug": "overlay-custom",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1800,
-    "height": 400,
-    "bytes": 94764,
-    "description": "Thanh phụ đề tùy chỉnh: chữ vàng cỡ 26 trên nền xanh navy độ mờ 80%, câu gốc tiếng Trung và tiếng Anh phía trên bản dịch tiếng Việt."
-  },
-  {
-    "file": "overlay-custom.en.webp",
-    "slug": "overlay-custom",
-    "lang": "en",
-    "theme": "light",
-    "width": 1800,
-    "height": 400,
-    "bytes": 99062,
-    "description": "A customized subtitle bar: size 26 yellow text on an 80% navy background, with the Chinese and Japanese original above the English translation."
-  },
-  {
-    "file": "overlay-locked.vi.webp",
-    "slug": "overlay-locked",
-    "lang": "vi",
-    "theme": "light",
-    "width": 1800,
-    "height": 448,
-    "bytes": 101392,
-    "description": "Thanh phụ đề ở chế độ khóa, click xuyên qua: không viền, không nút, ba câu họp được dịch sang tiếng Việt."
-  },
-  {
-    "file": "overlay-locked.en.webp",
-    "slug": "overlay-locked",
-    "lang": "en",
-    "theme": "light",
-    "width": 1800,
-    "height": 448,
-    "bytes": 102870,
-    "description": "The subtitle bar in locked, click-through mode: no outline and no buttons, with three meeting sentences translated into English."
-  }
+ {
+  "file": "app-home-running.vi.webp",
+  "slug": "app-home-running",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 34354,
+  "description": "Màn hình chính của AI Translator khi đang dịch trực tiếp: nút Dừng, nguồn âm thanh là Zoom, thanh mức âm lượng đang nhảy và số phút dịch còn lại của gói Monthly."
+ },
+ {
+  "file": "app-home-running.en.webp",
+  "slug": "app-home-running",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 31450,
+  "description": "The AI Translator Home screen while translating live: a Stop button, Zoom as the audio source, a moving input level meter and the minutes left on a Monthly plan."
+ },
+ {
+  "file": "app-home-running.dark.vi.webp",
+  "slug": "app-home-running.dark",
+  "lang": "vi",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 33388,
+  "description": "Màn hình chính của AI Translator ở giao diện tối khi đang dịch trực tiếp, nguồn âm thanh là Zoom và gói Monthly còn nhiều phút dịch."
+ },
+ {
+  "file": "app-home-running.dark.en.webp",
+  "slug": "app-home-running.dark",
+  "lang": "en",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 30786,
+  "description": "The AI Translator Home screen in dark mode while translating live, with Zoom as the audio source and plenty of minutes left on a Monthly plan."
+ },
+ {
+  "file": "app-home-free.vi.webp",
+  "slug": "app-home-free",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 37180,
+  "description": "Màn hình chính của AI Translator ở trạng thái Sẵn sàng với gói Free dùng thử: còn 7 ngày, còn 24 phút hôm nay, có nút Bắt đầu và nút Nâng cấp."
+ },
+ {
+  "file": "app-home-free.en.webp",
+  "slug": "app-home-free",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 33402,
+  "description": "The AI Translator Home screen in the Ready state on the Free trial: 7 days left, 24 minutes left today, with Start and Upgrade buttons."
+ },
+ {
+  "file": "app-transcript.vi.webp",
+  "slug": "app-transcript",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 67536,
+  "description": "Bản chép lời của một phiên dịch: mỗi dòng có giờ, câu gốc tiếng Anh hoặc tiếng Trung và bản dịch tiếng Việt in đậm, kèm ô tìm, nút sao chép tất cả và xuất file SRT."
+ },
+ {
+  "file": "app-transcript.en.webp",
+  "slug": "app-transcript",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 64860,
+  "description": "The transcript of a translation session: each row has a time, the Japanese or Chinese original and the English translation in bold, with a search box, Copy all and SRT export."
+ },
+ {
+  "file": "app-history.vi.webp",
+  "slug": "app-history",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 31422,
+  "description": "Màn hình Lịch sử liệt kê các phiên đã lưu, mỗi phiên có ngày giờ, số phút, số câu, câu đầu tiên và nút Mở, Xóa."
+ },
+ {
+  "file": "app-history.en.webp",
+  "slug": "app-history",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 32310,
+  "description": "The History screen listing saved sessions, each with its date and time, minutes, sentence count, first sentence and Open and Delete buttons."
+ },
+ {
+  "file": "app-glossary.vi.webp",
+  "slug": "app-glossary",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 51102,
+  "description": "Từ điển thuật ngữ với tám cặp thuật ngữ và bản dịch, có ô thêm mới và nút nhập, xuất CSV."
+ },
+ {
+  "file": "app-glossary.en.webp",
+  "slug": "app-glossary",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 45222,
+  "description": "The Glossary screen with eight term and translation pairs, a form to add terms and Import and Export CSV buttons."
+ },
+ {
+  "file": "app-settings-subtitles.vi.webp",
+  "slug": "app-settings-subtitles",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 35784,
+  "description": "Cài đặt phụ đề: chỉnh cỡ chữ, màu chữ, màu nền, độ mờ nền và bật hiện câu gốc phía trên bản dịch."
+ },
+ {
+  "file": "app-settings-subtitles.en.webp",
+  "slug": "app-settings-subtitles",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 35884,
+  "description": "Subtitle settings: font size, text color, background color, background opacity and showing the original text above the translation."
+ },
+ {
+  "file": "app-settings-subtitles.dark.vi.webp",
+  "slug": "app-settings-subtitles.dark",
+  "lang": "vi",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 34190,
+  "description": "Cài đặt phụ đề ở giao diện tối: cỡ chữ 26 px, chữ vàng, nền xanh navy, độ mờ nền 80%."
+ },
+ {
+  "file": "app-settings-subtitles.dark.en.webp",
+  "slug": "app-settings-subtitles.dark",
+  "lang": "en",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 34014,
+  "description": "Subtitle settings in dark mode: 26 px font, yellow text, navy background and 80% background opacity."
+ },
+ {
+  "file": "app-settings-audio.vi.webp",
+  "slug": "app-settings-audio",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 37358,
+  "description": "Cài đặt âm thanh: chọn nguồn thu là một app đang phát tiếng như Zoom và chỉnh độ nhạy ngắt câu."
+ },
+ {
+  "file": "app-settings-audio.en.webp",
+  "slug": "app-settings-audio",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 35560,
+  "description": "Audio settings: choosing a single app that is playing sound, such as Zoom, as the source and adjusting the pause that ends a sentence."
+ },
+ {
+  "file": "app-settings-hotkeys.vi.webp",
+  "slug": "app-settings-hotkeys",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 33550,
+  "description": "Cài đặt phím tắt trên macOS: năm phím tắt toàn cục, ví dụ ⌃⌥T để bắt đầu hoặc dừng dịch."
+ },
+ {
+  "file": "app-settings-hotkeys.en.webp",
+  "slug": "app-settings-hotkeys",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 32284,
+  "description": "Shortcut settings on macOS: five global shortcuts, for example ⌃⌥T to start or stop translating."
+ },
+ {
+  "file": "app-settings-license.vi.webp",
+  "slug": "app-settings-license",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 44070,
+  "description": "Cài đặt bản quyền: gói Monthly còn hạn với key đã che, số phút còn lại, nút Gia hạn hoặc đổi gói, Kiểm tra ngay, Gỡ kích hoạt và mục Mất key."
+ },
+ {
+  "file": "app-settings-license.en.webp",
+  "slug": "app-settings-license",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 42354,
+  "description": "License settings: an active Monthly plan with a masked key, minutes left, Renew or change plan, Check now, Deactivate this computer and the Lost your key section."
+ },
+ {
+  "file": "app-settings-privacy.vi.webp",
+  "slug": "app-settings-privacy",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 39234,
+  "description": "Cài đặt quyền riêng tư: lưu lịch sử chép lời mặc định tắt, cùng nút xóa toàn bộ dữ liệu và xóa model."
+ },
+ {
+  "file": "app-settings-privacy.en.webp",
+  "slug": "app-settings-privacy",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 36930,
+  "description": "Privacy settings: saving transcript history is off by default, with buttons to delete all data and to delete models."
+ },
+ {
+  "file": "app-upgrade.vi.webp",
+  "slug": "app-upgrade",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 34910,
+  "description": "Màn hình Nâng cấp với ba gói: Free 30 phút mỗi ngày dùng thử 10 ngày, Monthly 50 giờ giá 50.000 đ, Yearly không giới hạn giá 500.000 đ."
+ },
+ {
+  "file": "app-upgrade.en.webp",
+  "slug": "app-upgrade",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 33112,
+  "description": "The Upgrade screen with three plans: Free with 30 minutes a day for a 10-day trial, Monthly with 50 hours for 50.000 đ and Yearly with unlimited use for 500.000 đ."
+ },
+ {
+  "file": "app-upgrade-qr.vi.webp",
+  "slug": "app-upgrade-qr",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 47242,
+  "description": "Thanh toán gói Monthly 50.000 đ ngay trong app bằng mã VietQR (mã minh họa), kèm mã đơn, hạn dùng của mã và nút Mở trang thanh toán."
+ },
+ {
+  "file": "app-upgrade-qr.en.webp",
+  "slug": "app-upgrade-qr",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 45594,
+  "description": "Paying for the Monthly plan, 50.000 đ, inside the app with a VietQR code (illustrative code), with the order number, code expiry and an Open payment page button."
+ },
+ {
+  "file": "app-about.vi.webp",
+  "slug": "app-about",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 50888,
+  "description": "Màn hình Giới thiệu: phiên bản 0.1.0, Điều khoản và quyền riêng tư, danh sách giấy phép mã nguồn mở."
+ },
+ {
+  "file": "app-about.en.webp",
+  "slug": "app-about",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 45330,
+  "description": "The About screen: version 0.1.0, Terms and privacy, and the list of open-source licenses."
+ },
+ {
+  "file": "app-onboarding-1.vi.webp",
+  "slug": "app-onboarding-1",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 9454,
+  "description": "Bước 1 trong 9 khi mở app lần đầu: chọn ngôn ngữ giao diện Tiếng Việt hoặc English."
+ },
+ {
+  "file": "app-onboarding-1.en.webp",
+  "slug": "app-onboarding-1",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 10114,
+  "description": "Step 1 of 9 on first launch: choosing the interface language, Tiếng Việt or English."
+ },
+ {
+  "file": "app-onboarding-2.vi.webp",
+  "slug": "app-onboarding-2",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 20916,
+  "description": "Bước 2: điều khoản sử dụng, có ô đồng ý với Thỏa thuận cấp phép và Chính sách quyền riêng tư."
+ },
+ {
+  "file": "app-onboarding-2.en.webp",
+  "slug": "app-onboarding-2",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 18350,
+  "description": "Step 2: terms of use, with a checkbox to accept the License Agreement and the Privacy Policy."
+ },
+ {
+  "file": "app-onboarding-3.vi.webp",
+  "slug": "app-onboarding-3",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 40530,
+  "description": "Bước 3: kiểm tra máy và chọn gói model, gói Chuẩn 2,5 GB được đề xuất, gói Nhẹ 1,3 GB."
+ },
+ {
+  "file": "app-onboarding-3.en.webp",
+  "slug": "app-onboarding-3",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 43946,
+  "description": "Step 3: checking this computer and choosing a model pack, with the 2.5 GB Standard pack recommended and the 1.3 GB Lite pack."
+ },
+ {
+  "file": "app-onboarding-4.vi.webp",
+  "slug": "app-onboarding-4",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 11910,
+  "description": "Bước 4: tải model, thanh tiến độ đang ở 1,1 GB trên 2,5 GB, có nút Tạm dừng và có thể đi tiếp."
+ },
+ {
+  "file": "app-onboarding-4.en.webp",
+  "slug": "app-onboarding-4",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 14414,
+  "description": "Step 4: downloading the model, the progress bar at 1.1 GB of 2.5 GB, with a Pause button and the option to continue meanwhile."
+ },
+ {
+  "file": "app-onboarding-5.vi.webp",
+  "slug": "app-onboarding-5",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 22890,
+  "description": "Bước 5: hướng dẫn cho phép ghi âm thanh hệ thống trên macOS, có nút Mở System Settings."
+ },
+ {
+  "file": "app-onboarding-5.en.webp",
+  "slug": "app-onboarding-5",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 22784,
+  "description": "Step 5: how to allow system audio recording on macOS, with an Open System Settings button."
+ },
+ {
+  "file": "app-onboarding-6.vi.webp",
+  "slug": "app-onboarding-6",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 16086,
+  "description": "Bước 6: chọn ngôn ngữ dịch sang, các ngôn ngữ nói trong cuộc họp và ngôn ngữ nguồn."
+ },
+ {
+  "file": "app-onboarding-6.en.webp",
+  "slug": "app-onboarding-6",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 18096,
+  "description": "Step 6: choosing the language to translate into, the languages spoken in the meeting and the source language."
+ },
+ {
+  "file": "app-onboarding-7.vi.webp",
+  "slug": "app-onboarding-7",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 21312,
+  "description": "Bước 7: nghe thử, app phát một câu tiếng Anh mẫu và hiện bản dịch tiếng Việt của câu đó."
+ },
+ {
+  "file": "app-onboarding-7.en.webp",
+  "slug": "app-onboarding-7",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 22988,
+  "description": "Step 7: trying it out, the app plays an English sample sentence and shows its Vietnamese translation."
+ },
+ {
+  "file": "app-onboarding-8.vi.webp",
+  "slug": "app-onboarding-8",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 19476,
+  "description": "Bước 8: quyền riêng tư, âm thanh không rời khỏi máy vì nhận dạng và dịch chạy ngay trên máy."
+ },
+ {
+  "file": "app-onboarding-8.en.webp",
+  "slug": "app-onboarding-8",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 18360,
+  "description": "Step 8: privacy, audio never leaves the computer because speech recognition and translation run on it."
+ },
+ {
+  "file": "app-onboarding-9.vi.webp",
+  "slug": "app-onboarding-9",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 18898,
+  "description": "Bước 9: AI Translator vẫn chạy ở menu bar khi đóng cửa sổ, kèm nút Bắt đầu dùng AI Translator."
+ },
+ {
+  "file": "app-onboarding-9.en.webp",
+  "slug": "app-onboarding-9",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 18100,
+  "description": "Step 9: AI Translator keeps running in the menu bar when the window is closed, with the Start using AI Translator button."
+ },
+ {
+  "file": "overlay-default.vi.webp",
+  "slug": "overlay-default",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 127510,
+  "description": "Thanh phụ đề nổi mặc định, chữ trắng trên nền đen mờ, hiện câu gốc tiếng Anh và tiếng Trung phía trên bản dịch tiếng Việt."
+ },
+ {
+  "file": "overlay-default.en.webp",
+  "slug": "overlay-default",
+  "lang": "en",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 105768,
+  "description": "The default floating subtitle bar, white text on a translucent black background, showing the Japanese and Chinese original above the English translation."
+ },
+ {
+  "file": "overlay-custom.vi.webp",
+  "slug": "overlay-custom",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1800,
+  "height": 400,
+  "bytes": 94764,
+  "description": "Thanh phụ đề tùy chỉnh: chữ vàng cỡ 26 trên nền xanh navy độ mờ 80%, câu gốc tiếng Trung và tiếng Anh phía trên bản dịch tiếng Việt."
+ },
+ {
+  "file": "overlay-custom.en.webp",
+  "slug": "overlay-custom",
+  "lang": "en",
+  "theme": "light",
+  "width": 1800,
+  "height": 400,
+  "bytes": 99062,
+  "description": "A customized subtitle bar: size 26 yellow text on an 80% navy background, with the Chinese and Japanese original above the English translation."
+ },
+ {
+  "file": "overlay-locked.vi.webp",
+  "slug": "overlay-locked",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 101392,
+  "description": "Thanh phụ đề ở chế độ khóa, click xuyên qua: không viền, không nút, ba câu họp được dịch sang tiếng Việt."
+ },
+ {
+  "file": "overlay-locked.en.webp",
+  "slug": "overlay-locked",
+  "lang": "en",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 102870,
+  "description": "The subtitle bar in locked, click-through mode: no outline and no buttons, with three meeting sentences translated into English."
+ }
 ]

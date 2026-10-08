@@ -23,7 +23,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Hướng dẫn sử dụng AI Translator",
-  lead: "Tám bài hướng dẫn từng bước cho AI Translator, từ cài đặt trên macOS tới mua key và xử lý sự cố. Mỗi bài dùng đúng tên nút và tên mục trong app, có ảnh chụp giao diện thật.",
+  lead: "Tám bài hướng dẫn từng bước cho AI Translator, từ cài đặt trên macOS tới mua key và xử lý sự cố. Mỗi bài dùng đúng tên nút và tên mục trong app; phần lớn có ảnh chụp giao diện thật.",
 })}
 
 <section class="section-tight"><div class="container">
@@ -33,7 +33,7 @@ ${callout({ title: "Các hướng dẫn hiện viết cho macOS.", text: "AI Tra
 <section class="section-tight"><div class="container">
 ${sectionHead({ eyebrow: "Bắt đầu", title: "Từ file cài đặt tới phụ đề đầu tiên" })}
 <div class="grid grid-3">
-${linkCard({ href: "/huong-dan/bat-dau-nhanh/", icon: "play", title: "Bắt đầu nhanh", text: "Bảy bước thiết lập một lần rồi dịch cuộc họp đầu tiên, kèm ảnh từng màn hình của app.", more: MORE })}
+${linkCard({ href: "/huong-dan/bat-dau-nhanh/", icon: "play", title: "Bắt đầu nhanh", text: "Bảy bước thiết lập một lần rồi dịch cuộc họp đầu tiên, kèm ảnh các màn hình thiết lập của app.", more: MORE })}
 ${linkCard({ href: "/huong-dan/cai-dat-macos/", icon: "download", title: "Cài đặt trên macOS", text: "Yêu cầu máy, kéo vào Applications, bấm Open Anyway ở lần mở đầu, kiểm mã SHA-256 và gỡ cài đặt.", more: MORE })}
 ${linkCard({ href: "/huong-dan/cap-quyen-thu-am-macos/", icon: "mic", title: "Cấp quyền ghi âm thanh", text: "Trả lời hộp thoại Ghi âm thanh hệ thống, bật lại trong System Settings và chọn nguồn âm thanh.", more: MORE })}
 </div>
@@ -43,15 +43,15 @@ ${linkCard({ href: "/huong-dan/cap-quyen-thu-am-macos/", icon: "mic", title: "C�
 ${sectionHead({ eyebrow: "Dùng hằng ngày", title: "Làm chủ thanh phụ đề, từ điển và bản chép lời" })}
 <div class="grid grid-3">
 ${linkCard({ href: "/huong-dan/thanh-phu-de-va-phim-tat/", icon: "captions", title: "Thanh phụ đề và phím tắt", text: "Kéo, khóa, ẩn và cuộn thanh phụ đề, chỉnh cỡ chữ và màu, bảng phím tắt và menu ở menu bar.", more: MORE })}
-${linkCard({ href: "/huong-dan/tu-dien-thuat-ngu/", icon: "book", title: "Từ điển thuật ngữ", text: "Thêm tên riêng và thuật ngữ, nhập xuất CSV, và hiểu vì sao từ điển chỉ là gợi ý cho bộ dịch.", more: MORE })}
-${linkCard({ href: "/huong-dan/lich-su-va-xuat-file/", icon: "history", title: "Lịch sử và xuất file", text: "Bật lưu lịch sử, xem lại các phiên, sao chép bản chép lời và xuất TXT, SRT hoặc Markdown.", more: MORE })}
+${linkCard({ href: "/huong-dan/tu-dien-thuat-ngu/", icon: "book", title: "Dùng từ điển thuật ngữ", text: "Thêm tên riêng và thuật ngữ, nhập xuất CSV, và hiểu vì sao từ điển chỉ là gợi ý cho bộ dịch.", more: MORE })}
+${linkCard({ href: "/huong-dan/lich-su-va-xuat-file/", icon: "history", title: "Lịch sử và xuất bản chép lời", text: "Bật lưu lịch sử, xem lại các phiên, sao chép bản chép lời và xuất TXT, SRT hoặc Markdown.", more: MORE })}
 </div>
 </div></section>
 
 <section class="section-tight"><div class="container">
 ${sectionHead({ eyebrow: "Mua gói và hỗ trợ", title: "Gói, key và khi có trục trặc" })}
 <div class="grid grid-2">
-${linkCard({ href: "/huong-dan/mua-va-kich-hoat-key/", icon: "key", title: "Mua và kích hoạt key", text: "Mua Monthly hoặc Yearly bằng VietQR trong app, nhập key, đổi máy, gia hạn và lấy lại key đã mất.", more: MORE })}
+${linkCard({ href: "/huong-dan/mua-va-kich-hoat-key/", icon: "key", title: "Mua gói, kích hoạt key và đổi máy", text: "Mua Monthly hoặc Yearly bằng VietQR trong app, nhập key, đổi máy, gia hạn và lấy lại key đã mất.", more: MORE })}
 ${linkCard({ href: "/huong-dan/khac-phuc-su-co/", icon: "support", title: "Khắc phục sự cố", text: "Không có phụ đề, hết hạn mức, key bị khóa, tải model lỗi: nguyên nhân và cách xử lý từng trường hợp.", more: MORE })}
 </div>
 </div></section>
@@ -71,7 +71,7 @@ ${facts([
 <section class="section-tight"><div class="container narrow">
 <div class="card reveal">
 <h2>Cần trợ giúp?</h2>
-<p>Không thấy câu trả lời trong các bài trên? Xem <a href="/cau-hoi-thuong-gap/">câu hỏi thường gặp</a> hoặc nhắn cho chúng tôi ở trang <a href="/lien-he/">liên hệ</a>. Chúng tôi đọc và trả lời từng thư gửi tới <strong>support@aitranslator.io.vn</strong>.</p>
+<p>Không thấy câu trả lời trong các bài trên? Xem <a href="/cau-hoi-thuong-gap/">câu hỏi thường gặp</a> hoặc nhắn cho chúng tôi ở trang <a href="/lien-he/">liên hệ</a>. Bạn có thể gửi thư tới <strong>support@aitranslator.io.vn</strong>.</p>
 <p class="more-link"><a class="btn btn-secondary" href="/lien-he/">Liên hệ hỗ trợ ${icon("arrow-right")}</a> <a class="btn btn-ghost" href="/cau-hoi-thuong-gap/">Câu hỏi thường gặp</a></p>
 </div>
 </div></section>

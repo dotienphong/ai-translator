@@ -18,7 +18,7 @@ const GROUPS = [
       },
       {
         q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
-        a: `<p>Được. App thu âm thanh hệ thống nên chạy với mọi ứng dụng phát tiếng, không cần cấu hình riêng cho từng app họp: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã thử trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC; chưa thử trên mọi phiên bản macOS và mọi app. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
+        a: `<p>Được. App thu âm thanh hệ thống nên không phụ thuộc app họp và không cần cấu hình riêng cho từng app: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã kiểm tra việc thu âm thanh hệ thống trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC: âm thanh người nói được thu rõ. Đó là kiểm tra bộ thu âm do người thử xác nhận, chưa phải nghiệm thu chính thức trên bản phát hành, và chúng tôi chưa thử mọi phiên bản macOS hay mọi app. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
       },
       {
         q: "Có cần bot, plugin hay tài khoản không?",
@@ -48,15 +48,15 @@ const GROUPS = [
       },
       {
         q: "Bản dịch có chính xác không?",
-        a: `<p>Chưa hoàn hảo: bản dịch có thể sai, thiếu hoặc không hợp ngữ cảnh, nhất là với thuật ngữ chuyên ngành, tên riêng và tiếng nói không rõ. Đừng dựa vào nó cho quyết định quan trọng.</p><p>Từ điển thuật ngữ (tính năng Pro) giúp bộ dịch dùng đúng tên riêng và thuật ngữ, nhưng không bảo đảm mọi lần. Chúng tôi không đưa ra tỉ lệ chính xác chung vì chưa đo trên hội thoại họp thật; số đo hiện có kèm điều kiện nằm ở trang <a href="/tinh-nang/#hieu-nang">Tính năng</a>.</p>`,
+        a: `<p>Chưa hoàn hảo: bản dịch có thể sai, thiếu hoặc không hợp ngữ cảnh, nhất là với thuật ngữ chuyên ngành, tên riêng và tiếng nói không rõ. Đừng dựa vào nó cho quyết định quan trọng.</p><p>Từ điển thuật ngữ (tính năng Pro) gợi ý tên riêng và thuật ngữ cho bộ dịch, nhưng không bảo đảm bộ dịch dùng đúng mọi lần. Chúng tôi không đưa ra tỉ lệ chính xác chung vì chưa đo trên hội thoại họp thật; số đo hiện có kèm điều kiện nằm ở trang <a href="/tinh-nang/#hieu-nang">Tính năng</a>.</p>`,
       },
       {
         q: "Gói model Chuẩn và gói Nhẹ khác nhau thế nào?",
-        a: `<p>Gói Chuẩn (khoảng 2,5 GB) nhận dạng giọng nói tốt hơn, nhất là tiếng Việt, Nhật, Hàn, Trung. Gói Nhẹ (khoảng 1,3 GB) nhỏ hơn, hợp máy 8 GB. App đề xuất gói theo RAM và card đồ họa của máy bạn.</p><p>Trên bộ clip đọc chuẩn, tỉ lệ lỗi từ của tiếng Việt là 8,7% ở gói Chuẩn và 22,5% ở gói Nhẹ (Mac M4 Pro, câu đọc chứ chưa phải hội thoại họp thật). Nếu bạn nghe nhiều các ngôn ngữ này, hãy dùng gói Chuẩn.</p>`,
+        a: `<p>Gói Chuẩn (khoảng 2,5 GB) nhận dạng giọng nói ít lỗi hơn, nhất là tiếng Việt, Nhật, Hàn, Trung. Gói Nhẹ (khoảng 1,3 GB) nhỏ hơn, dành cho máy có ít RAM hơn (tối thiểu 8 GB). App đề xuất gói theo RAM và card đồ họa của máy bạn.</p><p>Trên bộ clip đọc chuẩn, tỉ lệ lỗi từ của tiếng Việt là 8,7% ở gói Chuẩn và 22,5% ở gói Nhẹ (Mac M4 Pro, câu đọc chứ chưa phải hội thoại họp thật). Nếu bạn nghe nhiều các ngôn ngữ này và máy đủ RAM (khuyến nghị 16 GB), hãy dùng gói Chuẩn.</p>`,
       },
       {
         q: "Độ trễ của phụ đề là bao nhiêu?",
-        a: `<p>Trên Mac M4 Pro, độ trễ trung vị dưới khoảng 1,1 giây kể từ lúc người nói dừng câu tới khi hiện đủ bản dịch; chữ dịch đầu tiên hiện sau khoảng 0,5 đến 0,7 giây. Đây là số đo trên một máy cụ thể.</p><p>Chúng tôi chưa đo Mac M1, máy 8 GB hay card đồ họa rời của Windows. Thử sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói Chuẩn chưa đạt mục tiêu độ trễ. Chi tiết và điều kiện đo ở trang <a href="/tinh-nang/#hieu-nang">Tính năng</a>.</p>`,
+        a: `<p>Trên Mac M4 Pro, độ trễ trung vị dưới khoảng 1,1 giây kể từ lúc người nói dừng câu tới khi hiện đủ bản dịch; chữ dịch đầu tiên hiện sau khoảng 0,5 đến 0,7 giây, ở cả hai gói model. Đây là số đo trên một máy cụ thể, bằng âm thanh phát lại theo thời gian thực.</p><p>Chúng tôi chưa đo Mac M1, máy 8 GB hay card đồ họa rời của Windows. Thử sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói Chuẩn chưa đạt mục tiêu độ trễ. Chi tiết và điều kiện đo ở trang <a href="/tinh-nang/#hieu-nang">Tính năng</a>.</p>`,
       },
     ],
   },
@@ -74,7 +74,7 @@ const GROUPS = [
       },
       {
         q: "Có quảng cáo hay thu thập dữ liệu không?",
-        a: `<p>Không có quảng cáo, không có analytics, và app không tự gửi báo cáo lỗi. Máy chủ chỉ lưu email (khi bạn mua), đơn hàng, license, mã băm ID máy và mốc dùng thử Free, để cấp key và bảo đảm mỗi key một máy, mỗi máy dùng thử một lần. Chúng tôi không bán hay chia sẻ dữ liệu cho mục đích quảng cáo.</p>`,
+        a: `<p>Không có quảng cáo, không có analytics, và app không tự gửi báo cáo lỗi. Máy chủ chỉ lưu email (khi bạn mua), đơn hàng, license, mã băm ID máy, tên máy (khi bạn kích hoạt key), mốc dùng thử Free và nhật ký thay đổi license, để cấp key và bảo đảm mỗi key một máy, mỗi máy dùng thử một lần. Chúng tôi không bán hay chia sẻ dữ liệu cho mục đích quảng cáo.</p>`,
       },
       {
         q: "Bản chép lời có được lưu lại không?",
@@ -82,7 +82,7 @@ const GROUPS = [
       },
       {
         q: "Tôi có cần báo cho người cùng họp không? Dùng thế này có hợp pháp không?",
-        a: `<p>Chúng tôi không đưa ra tư vấn pháp lý. Điều chúng tôi nói được: AI Translator không ghi âm cuộc họp xuống đĩa, chỉ hiện phụ đề dịch và (tùy chọn) lưu bản chép lời.</p><p>Nếu pháp luật hoặc quy định công ty của bạn yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp là bạn dùng công cụ dịch. App nhắc điều này ở bước cài đặt đầu tiên, và <a href="/dieu-khoan/">Điều khoản sử dụng</a> ghi rõ.</p>`,
+        a: `<p>Chúng tôi không đưa ra tư vấn pháp lý. Điều chúng tôi nói được: AI Translator không ghi âm cuộc họp xuống đĩa, chỉ hiện phụ đề dịch và (tùy chọn) lưu bản chép lời.</p><p>Nếu pháp luật hoặc quy định công ty của bạn yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp là bạn dùng công cụ dịch. App nhắc điều này ở bước Quyền riêng tư khi bạn thiết lập lần đầu, và <a href="/dieu-khoan/">Điều khoản sử dụng</a> ghi rõ, kèm yêu cầu tuân thủ quy định bảo mật của tổ chức bạn và không dùng app để nghe lén.</p>`,
       },
       {
         q: "Làm sao để xóa dữ liệu của tôi?",
@@ -100,7 +100,7 @@ const GROUPS = [
       },
       {
         q: "AI Translator tốn bao nhiêu RAM và ổ đĩa?",
-        a: `<p>Model chiếm khoảng 2,5 GB ổ đĩa (gói Chuẩn) hoặc 1,3 GB (gói Nhẹ), và cần trống thêm 1 GB khi tải. Trên Mac M4 Pro, hai tiến trình engine dùng khoảng 2,9 GiB RAM (Chuẩn) hoặc 1,8 đến 1,9 GiB (Nhẹ), cộng ước chừng 0,3 GB cho app. Hai engine tự tắt sau 10 phút không dịch để app nằm ở thanh menu không chiếm RAM. Chúng tôi chưa đo trên máy khác.</p>`,
+        a: `<p>Model chiếm khoảng 2,5 GB ổ đĩa (gói Chuẩn) hoặc 1,3 GB (gói Nhẹ), và cần trống thêm 1 GB khi tải. Trên Mac M4 Pro, hai tiến trình engine dùng khoảng 2,9 GiB RAM (Chuẩn) hoặc 1,8 đến 1,9 GiB (Nhẹ), cộng ước chừng 0,3 GB cho app. Hai engine tự tắt sau 10 phút không dịch để app nằm ở thanh menu không giữ vài GB RAM. Chúng tôi chưa đo trên máy khác.</p>`,
       },
       {
         q: "Vì sao macOS báo không xác minh được nhà phát triển?",
@@ -112,7 +112,7 @@ const GROUPS = [
       },
       {
         q: "Gỡ cài đặt AI Translator như thế nào?",
-        a: `<p>Trên macOS, bấm Cài đặt › Quyền riêng tư › Xóa model và dữ liệu trước, rồi kéo app vào Thùng rác (macOS không có bước hỏi khi gỡ). Trên Windows, khi phát hành, bộ gỡ có ô “xóa dữ liệu app” để xóa cả model. Xóa dữ liệu hay gỡ app đều không làm mất bản quyền và hạn mức còn lại.</p>`,
+        a: `<p>Trên macOS, bấm Cài đặt › Quyền riêng tư › Xóa model và dữ liệu trước, rồi kéo app vào Thùng rác (macOS không có bước hỏi khi gỡ). Trên Windows, bộ gỡ được thiết kế có ô “xóa dữ liệu app” để xóa cả model. Xóa dữ liệu hay gỡ app đều không làm mất bản quyền và hạn mức còn lại.</p>`,
       },
     ],
   },
@@ -156,7 +156,7 @@ const GROUPS = [
     items: [
       {
         q: "Thanh phụ đề có che màn hình họp không? Chỉnh được không?",
-        a: `<p>Chỉnh được hoàn toàn. Thanh luôn nằm trên cùng và không lấy focus của app họp. Bạn kéo để di chuyển, kéo cạnh để đổi kích thước, chọn cỡ chữ 14 đến 48 px, màu chữ, màu nền và độ mờ nền. Bật Khóa để chuột xuyên qua thanh; ẩn nhanh bằng phím tắt hoặc nút ✕ khi rê chuột vào. Xem <a href="/huong-dan/thanh-phu-de-va-phim-tat/">hướng dẫn thanh phụ đề và phím tắt</a>.</p>`,
+        a: `<p>Chỉnh được nhiều thứ. Thanh luôn nằm trên cùng và không lấy focus của app họp. Bạn kéo để di chuyển, kéo cạnh để đổi kích thước, chọn cỡ chữ 14 đến 48 px, màu chữ, màu nền và độ mờ nền. Bật Khóa để chuột xuyên qua thanh; ẩn nhanh bằng phím tắt hoặc nút ✕ khi rê chuột vào. Xem <a href="/huong-dan/thanh-phu-de-va-phim-tat/">hướng dẫn thanh phụ đề và phím tắt</a>.</p>`,
       },
       {
         q: "Phím tắt mặc định là gì?",
@@ -203,7 +203,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Câu hỏi thường gặp về AI Translator",
-  lead: "Đây là những câu hỏi chúng tôi nhận nhiều nhất, từ cách dùng với Zoom, Teams, Meet đến quyền riêng tư, yêu cầu máy và thanh toán. Mỗi câu trả lời mở đầu bằng đáp án ngắn, phần còn lại là chi tiết và điều kiện.",
+  lead: "Những câu hỏi thường đặt ra khi tìm hiểu AI Translator, từ cách dùng với Zoom, Teams, Meet đến quyền riêng tư, yêu cầu máy và thanh toán. Mỗi câu trả lời mở đầu bằng đáp án ngắn, phần còn lại là chi tiết và điều kiện.",
   meta: `<span>${ALL.length} câu hỏi trong ${GROUPS.length} nhóm</span><span>Cập nhật 08/10/2026</span>`,
 })}
 
@@ -213,10 +213,10 @@ ${docLayout({
   tocTitle: "Các nhóm câu hỏi",
   body: `<p>Chọn một nhóm trong mục lục, hoặc cuộn xuống và mở từng câu hỏi.</p>
 ${GROUPS.map((g) => `<h2 id="${g.id}">${g.title}</h2>\n${faq(g.items)}`).join("\n")}
-${callout({ title: "Chưa thấy câu trả lời?", text: `Hãy gửi email tới <a href="mailto:support@aitranslator.io.vn">support@aitranslator.io.vn</a> hoặc xem <a href="/lien-he/">trang Liên hệ</a> để biết nên kèm thông tin gì. Chúng tôi đọc mọi thư.` })}`,
+${callout({ title: "Chưa thấy câu trả lời?", text: `Hãy gửi email tới <a href="mailto:support@aitranslator.io.vn">support@aitranslator.io.vn</a> hoặc xem <a href="/lien-he/">trang Liên hệ</a> để biết nên kèm thông tin gì.` })}`,
 })}
 </div></section>
 
-${ctaBand({ title: "Còn thắc mắc? Hãy hỏi chúng tôi", text: "Gửi một email ngắn, chúng tôi đọc mọi thư. Hoặc nhận bản beta và tự thử trên cuộc họp của bạn.", primary: { href: "/lien-he/", label: "Liên hệ và hỗ trợ" }, secondary: { href: "/tai-xuong/", label: "Nhận bản beta" } })}
+${ctaBand({ title: "Còn thắc mắc? Hãy hỏi chúng tôi", text: "Gửi một email ngắn cho chúng tôi. Hoặc nhận bản beta và tự thử trên cuộc họp của bạn.", primary: { href: "/lien-he/", label: "Liên hệ và hỗ trợ" }, secondary: { href: "/tai-xuong/", label: "Nhận bản beta" } })}
 `,
 };

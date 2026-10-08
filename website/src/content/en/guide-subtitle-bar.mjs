@@ -38,7 +38,7 @@ ${pageHero({
   crumbs,
   title: "The subtitle bar and shortcuts",
   lead: "The subtitle bar is a floating window that stays on top and shows the translation without taking focus from your meeting app. Drag it to move it, drag an edge to resize it, lock it so the mouse passes through, and control it with five default shortcuts such as ⌃⌥T (start or stop) and ⌃⌥H (show or hide).",
-  meta: "<span>macOS (Windows not released yet)</span><span>Updated October 8, 2026</span>",
+  meta: "<span>macOS (Windows not released yet)</span> <span>Updated October 8, 2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -74,7 +74,7 @@ ${callout({ title: "You cannot click a locked bar.", text: "To unlock it, use th
 <tr><th scope="row">Font size</th><td>14 to 48 px</td><td>20 px</td></tr>
 <tr><th scope="row">Text color</th><td>White, Yellow, Green, Light blue, Orange</td><td>White</td></tr>
 <tr><th scope="row">Background color</th><td>Black, Dark gray, Navy, Dark brown, Dark purple</td><td>Black</td></tr>
-<tr><th scope="row">Background opacity</th><td>0 to 100%</td><td>60%</td></tr>
+<tr><th scope="row">Background opacity</th><td>0 to 100% (0% is a transparent background, 100% is solid)</td><td>60%</td></tr>
 <tr><th scope="row">Show the original text above the translation</th><td>On or off</td><td>On</td></tr>
 </tbody></table></div>
 <div class="grid grid-2">
@@ -87,7 +87,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">You see</th><th scope="col">It means</th></tr></thead>
 <tbody>
-<tr><th scope="row">A green “Listening” dot</th><td>Sound is coming in (“Listening: sound detected”)</td></tr>
+<tr><th scope="row">A small green dot</th><td>Sound is coming in. With no sound the dot is a faint white. The dot only shows while a session is running</td></tr>
 <tr><th scope="row">Loading models…</th><td>The first seconds of a session while the engines start</td></tr>
 <tr><th scope="row">Falling behind</th><td>Subtitles are later than the speech</td></tr>
 <tr><th scope="row">No audio heard…</th><td>No sound for a while; check that the meeting is playing</td></tr>
@@ -139,7 +139,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings l
 ${docNav(
   [
     { href: "/en/guide/macos-audio-permission/", kicker: "Previous", title: "Grant system audio recording permission on macOS" },
-    { href: "/en/guide/glossary/", kicker: "Next", title: "The glossary" },
+    { href: "/en/guide/glossary/", kicker: "Next", title: "Use the glossary" },
     { href: "/en/guide/troubleshooting/", kicker: "Related", title: "Troubleshooting" },
   ],
   "Related guides",

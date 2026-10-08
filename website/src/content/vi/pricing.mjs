@@ -64,7 +64,7 @@ ${pageHero({ crumbs, title: "Bảng giá đơn giản: trả trước, không t�
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">Các gói và giá</h2>
 ${plansGrid("vi", { ctaLabel: "Nhận bản beta", freeLabel: "Dùng thử miễn phí" })}
-<p class="disclaimer">Giá tính bằng đồng Việt Nam (VND), đã là giá thanh toán cuối cùng cho mỗi đơn. Giá và hạn mức do máy chủ cấu hình; gói bạn đã mua không bị hạ hạn mức.</p>
+<p class="disclaimer">Giá tính bằng đồng Việt Nam (VND) cho mỗi đơn, đúng bằng số tiền trong mã VietQR. Giá và hạn mức do máy chủ cấu hình; gói bạn đã mua không bị hạ hạn mức.</p>
 </div></section>
 
 <section class="section"><div class="container">
@@ -82,9 +82,9 @@ ${sectionHead({ eyebrow: "So sánh", title: "Mỗi gói gồm những gì", cent
 <tr><th scope="row">Lịch sử các phiên (Pro)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Xuất TXT, SRT, Markdown (Pro)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Số máy cho mỗi key</th><td>Theo máy</td><td>1 máy</td><td>1 máy</td></tr>
-<tr><th scope="row">Quy ra mỗi tháng</th><td>0 ₫</td><td>50.000 ₫</td><td>khoảng 41.700 ₫</td></tr>
+<tr><th scope="row">Quy ra mỗi tháng (giá ÷ 12)</th><td>0 ₫</td><td>50.000 ₫</td><td>khoảng 41.700 ₫</td></tr>
 </tbody></table></div>
-<p class="small muted">Mua Monthly liên tục cho đủ 365 ngày tốn khoảng 608.000 ₫ (365 ÷ 30 × 50.000 ₫), so với 500.000 ₫ của một đơn Yearly.</p>
+<p class="small muted">Mua 12 đơn Monthly liên tiếp (360 ngày) tốn 600.000 ₫, so với 500.000 ₫ cho 365 ngày của một đơn Yearly. Monthly giới hạn 50 giờ dịch mỗi 30 ngày, Yearly không giới hạn.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container">
@@ -110,7 +110,7 @@ ${checkList([
 <section class="section"><div class="container">
 ${sectionHead({ eyebrow: "Cách mua", title: "Từ chọn gói tới kích hoạt, ngay trong app", center: true })}
 ${steps([
-  { title: "Chọn gói trong app", text: "Mở <strong>Nâng cấp</strong>, chọn Monthly hoặc Yearly, nhập email nhận key và đồng ý để lưu email này cho việc gửi và khôi phục key." },
+  { title: "Chọn gói trong app", text: "Mở <strong>Nâng cấp Pro</strong>, chọn Monthly hoặc Yearly, nhập email nhận key và đồng ý để lưu email này cho việc gửi và khôi phục key." },
   { title: "Quét mã VietQR", text: "App vẽ mã VietQR ngay trong cửa sổ, kèm nút mở trang thanh toán PayOS. Mã dùng được trong 15 phút." },
   { title: "Tự kích hoạt", text: "Khi PayOS xác nhận đã nhận tiền (app hỏi mỗi 3 giây), gói có hiệu lực ngay trên máy bạn và key được gửi vào email." },
 ])}
@@ -121,7 +121,7 @@ ${steps([
 ${sectionHead({ eyebrow: "Gia hạn và đổi gói", title: "Linh hoạt, tính theo giá mỗi ngày", center: true })}
 <div class="grid grid-2">
 <div class="card reveal"><h3>Gia hạn cùng gói</h3><p>Mua thêm cùng gói thì được cộng 30 ngày (Monthly) hoặc 365 ngày (Yearly), tính từ ngày hết hạn nếu gói còn hạn. App nhắc bạn trước 7 ngày và khi đã hết hạn. Không có tự động trừ tiền.</p></div>
-<div class="card reveal"><h3>Đổi gói khi còn hạn</h3><p>Gói mới bắt đầu ngay; số ngày còn lại của gói cũ được quy đổi theo <strong>giá mỗi ngày</strong> và làm tròn xuống. Ví dụ: Monthly còn 20 ngày, mua Yearly thì được cộng 24 ngày (Yearly chạy 389 ngày). App hiện sẵn số ngày quy đổi và ngày hết hạn mới trước khi bạn trả tiền. Đổi gói không hoàn tiền.</p></div>
+<div class="card reveal"><h3>Đổi gói khi còn hạn</h3><p>Gói mới bắt đầu ngay; số ngày còn lại của gói cũ được quy đổi theo <strong>giá mỗi ngày</strong> và làm tròn xuống. Ví dụ: Monthly còn 20 ngày, mua Yearly thì được cộng 24 ngày (Yearly chạy 389 ngày). App hiện sẵn số ngày quy đổi và ngày hết hạn mới (ước tính) trước khi bạn trả tiền. Đổi gói không hoàn tiền.</p></div>
 </div>
 ${callout({ title: "Khi hết hạn", text: "Máy quay về Free nếu còn trong 10 ngày dùng thử; hết dùng thử thì cần mua gói để dịch tiếp. Tính năng Pro (lịch sử, từ điển, xuất file) bị khóa khi không còn gói trả phí." })}
 </div></section>

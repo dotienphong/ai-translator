@@ -18,7 +18,7 @@ const GROUPS = [
       },
       {
         q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
-        a: `<p>Yes. The app captures system audio, so it works with any app that plays sound and needs no per-app setup: you just press Start. On macOS you can also choose to listen to a single app only (Settings › Audio) so notification sounds are not translated.</p><p>We have tried it on macOS 26 with Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams and Zalo PC; we have not tried every macOS version and every app. These names are used only to describe compatibility, and AI Translator is not affiliated with them. See <a href="/en/solutions/online-meeting-translation/">meeting translation</a>.</p>`,
+        a: `<p>Yes. The app captures system audio, so it does not depend on the meeting app and needs no per-app setup: you just press Start. On macOS you can also choose to listen to a single app only (Settings › Audio) so notification sounds are not translated.</p><p>We have checked system-audio capture on macOS 26 with Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams and Zalo PC: the speaker's audio was captured clearly. That was a check of the capture component, confirmed by the tester, not a formal acceptance test on the release build, and we have not tried every macOS version or every app. These names are used only to describe compatibility, and AI Translator is not affiliated with them. See <a href="/en/solutions/online-meeting-translation/">meeting translation</a>.</p>`,
       },
       {
         q: "Do I need a bot, a plugin or an account?",
@@ -48,15 +48,15 @@ const GROUPS = [
       },
       {
         q: "Are the translations accurate?",
-        a: `<p>Not perfectly: translations can be wrong, incomplete or out of context, especially with technical terms, proper names and unclear speech. Do not rely on them for important decisions.</p><p>The glossary (a Pro feature) helps the translator use the right names and terms, but does not guarantee it every time. We do not publish an overall accuracy rate because we have not measured it on real meeting conversations; the measurements we have, with their conditions, are on the <a href="/en/features/">Features page</a>.</p>`,
+        a: `<p>Not perfectly: translations can be wrong, incomplete or out of context, especially with technical terms, proper names and unclear speech. Do not rely on them for important decisions.</p><p>The glossary (a Pro feature) hints your names and terms to the translator, but does not guarantee it uses them correctly every time. We do not publish an overall accuracy rate because we have not measured it on real meeting conversations; the measurements we have, with their conditions, are on the <a href="/en/features/">Features page</a>.</p>`,
       },
       {
         q: "What is the difference between the Standard and Lite model packs?",
-        a: `<p>The Standard pack (about 2.5 GB) recognizes speech better, especially Vietnamese, Japanese, Korean and Chinese. The Lite pack (about 1.3 GB) is smaller and suits 8 GB machines. The app recommends a pack based on your RAM and graphics card.</p><p>On a standard set of read-aloud clips, the word error rate for Vietnamese is 8.7% with Standard and 22.5% with Lite (Mac M4 Pro, read speech rather than real meetings). If you listen to these languages a lot, use Standard.</p>`,
+        a: `<p>The Standard pack (about 2.5 GB) makes fewer recognition errors, especially in Vietnamese, Japanese, Korean and Chinese. The Lite pack (about 1.3 GB) is smaller and meant for machines with less RAM (8 GB minimum). The app recommends a pack based on your RAM and graphics card.</p><p>On a standard set of read-aloud clips, the word error rate for Vietnamese is 8.7% with Standard and 22.5% with Lite (Mac M4 Pro, read speech rather than real meetings). If you listen to these languages a lot and your machine has enough RAM (16 GB recommended), use Standard.</p>`,
       },
       {
         q: "How long is the subtitle delay?",
-        a: `<p>On a Mac M4 Pro, the median delay is under about 1.1 seconds from the moment a speaker finishes a sentence to the full translation appearing; the first translated words show after about 0.5 to 0.7 seconds. That is a measurement on one specific machine.</p><p>We have not measured a base Mac M1, 8 GB machines or Windows discrete graphics cards. A preliminary test on a Windows laptop with integrated graphics showed that the Standard pack does not meet our delay target. Details and conditions are on the <a href="/en/features/">Features page</a>.</p>`,
+        a: `<p>On a Mac M4 Pro, the median delay is under about 1.1 seconds from the moment a speaker finishes a sentence to the full translation appearing; the first translated words show after about 0.5 to 0.7 seconds, with either model pack. That is a measurement on one specific machine, using audio played back in real time.</p><p>We have not measured a base Mac M1, 8 GB machines or Windows discrete graphics cards. A preliminary test on a Windows laptop with integrated graphics showed that the Standard pack does not meet our delay target. Details and conditions are on the <a href="/en/features/">Features page</a>.</p>`,
       },
     ],
   },
@@ -74,7 +74,7 @@ const GROUPS = [
       },
       {
         q: "Are there ads or data collection?",
-        a: `<p>There are no ads and no analytics, and the app sends no automatic crash reports. Our servers store only your email (when you buy), orders, licenses, a hashed machine ID and the Free trial dates, so we can issue keys and keep to one device per key and one trial per device. We do not sell your data or share it for advertising.</p>`,
+        a: `<p>There are no ads and no analytics, and the app sends no automatic crash reports. Our servers store only your email (when you buy), orders, licenses, a hashed machine ID, the device name (when you activate a key), the Free trial dates and a license change log, so we can issue keys and keep to one device per key and one trial per device. We do not sell your data or share it for advertising.</p>`,
       },
       {
         q: "Are transcripts saved?",
@@ -82,7 +82,7 @@ const GROUPS = [
       },
       {
         q: "Do I need to tell the other people in the meeting? Is this legal?",
-        a: `<p>We do not give legal advice. What we can say: AI Translator does not record meetings to disk; it only shows translated subtitles and, optionally, saves a transcript.</p><p>If the law or your company policy requires it, you are responsible for telling the other people in the meeting that you use a translation tool. The app reminds you at first-run setup, and the <a href="/en/terms/">Terms of use</a> say so explicitly.</p>`,
+        a: `<p>We do not give legal advice. What we can say: AI Translator does not record meetings to disk; it only shows translated subtitles and, optionally, saves a transcript.</p><p>If the law or your company policy requires it, you are responsible for telling the other people in the meeting that you use a translation tool. The app reminds you at the Privacy step of first-run setup, and the <a href="/en/terms/">Terms of use</a> say so explicitly, together with the requirement to follow your organization's security rules and not to use the app to eavesdrop.</p>`,
       },
       {
         q: "How do I delete my data?",
@@ -100,7 +100,7 @@ const GROUPS = [
       },
       {
         q: "How much RAM and disk space does it need?",
-        a: `<p>Models take about 2.5 GB of disk (Standard) or 1.3 GB (Lite), and you need 1 GB more free while downloading. On a Mac M4 Pro, the two engine processes use about 2.9 GiB of RAM (Standard) or 1.8 to 1.9 GiB (Lite), plus roughly 0.3 GB for the app. The engines shut down after 10 minutes without translating, so the app sitting in the menu bar does not hold that RAM. We have not measured other machines.</p>`,
+        a: `<p>Models take about 2.5 GB of disk (Standard) or 1.3 GB (Lite), and you need 1 GB more free while downloading. On a Mac M4 Pro, the two engine processes use about 2.9 GiB of RAM (Standard) or 1.8 to 1.9 GiB (Lite), plus roughly 0.3 GB for the app. The engines shut down after 10 minutes without translating, so the app sitting in the menu bar does not hold several GB of RAM. We have not measured other machines.</p>`,
       },
       {
         q: "Why does macOS say it cannot verify the developer?",
@@ -112,7 +112,7 @@ const GROUPS = [
       },
       {
         q: "How do I uninstall AI Translator?",
-        a: `<p>On macOS, first choose Settings › Privacy › Delete models and data, then drag the app to the Trash (macOS gives no prompt when you remove an app). On Windows, once released, the uninstaller has an option to delete app data, which also removes the models. Deleting data or uninstalling does not remove your license or the quota you have left.</p>`,
+        a: `<p>On macOS, first choose Settings › Privacy › Delete models and data, then drag the app to the Trash (macOS gives no prompt when you remove an app). On Windows, the uninstaller is designed to include an option to delete app data, which also removes the models. Deleting data or uninstalling does not remove your license or the quota you have left.</p>`,
       },
     ],
   },
@@ -156,7 +156,7 @@ const GROUPS = [
     items: [
       {
         q: "Does the subtitle bar cover my meeting? Can I adjust it?",
-        a: `<p>You can adjust all of it. The bar always stays on top and does not take focus from your meeting app. Drag it to move it, drag an edge to resize it, and choose the font size (14 to 48 px), text color, background color and background opacity. Turn on Lock so the mouse passes through the bar; hide it quickly with the shortcut or the ✕ button when you hover over it. See the <a href="/en/guide/subtitle-bar-and-shortcuts/">subtitle bar and shortcuts guide</a>.</p>`,
+        a: `<p>You can adjust a lot. The bar always stays on top and does not take focus from your meeting app. Drag it to move it, drag an edge to resize it, and choose the font size (14 to 48 px), text color, background color and background opacity. Turn on Lock so the mouse passes through the bar; hide it quickly with the shortcut or the ✕ button when you hover over it. See the <a href="/en/guide/subtitle-bar-and-shortcuts/">subtitle bar and shortcuts guide</a>.</p>`,
       },
       {
         q: "What are the default shortcuts?",
@@ -203,7 +203,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Frequently asked questions about AI Translator",
-  lead: "These are the questions we get most, from using it with Zoom, Teams and Meet to privacy, system requirements and payment. Each answer starts with the short version; the rest is detail and conditions.",
+  lead: "The questions people usually ask when getting to know AI Translator, from using it with Zoom, Teams and Meet to privacy, system requirements and payment. Each answer starts with the short version; the rest is detail and conditions.",
   meta: `<span>${ALL.length} questions in ${GROUPS.length} groups</span><span>Updated 8 October 2026</span>`,
 })}
 
@@ -213,10 +213,10 @@ ${docLayout({
   tocTitle: "Question groups",
   body: `<p>Pick a group from the contents, or scroll down and open any question.</p>
 ${GROUPS.map((g) => `<h2 id="${g.id}">${g.title}</h2>\n${faq(g.items)}`).join("\n")}
-${callout({ title: "Did not find your answer?", text: `Email <a href="mailto:support@aitranslator.io.vn">support@aitranslator.io.vn</a> or see the <a href="/en/contact/">Contact page</a> for what to include. We read every message.` })}`,
+${callout({ title: "Did not find your answer?", text: `Email <a href="mailto:support@aitranslator.io.vn">support@aitranslator.io.vn</a> or see the <a href="/en/contact/">Contact page</a> for what to include.` })}`,
 })}
 </div></section>
 
-${ctaBand({ title: "Still have a question? Ask us", text: "Send a short email; we read every message. Or get the beta and try it on your own meeting.", primary: { href: "/en/contact/", label: "Contact and support" }, secondary: { href: "/en/download/", label: "Get the beta" } })}
+${ctaBand({ title: "Still have a question? Ask us", text: "Send us a short email. Or get the beta and try it on your own meeting.", primary: { href: "/en/contact/", label: "Contact and support" }, secondary: { href: "/en/download/", label: "Get the beta" } })}
 `,
 };

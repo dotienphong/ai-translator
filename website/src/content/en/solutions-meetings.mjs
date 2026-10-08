@@ -29,7 +29,7 @@ ${pageHero({
 
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
-  ["Works with", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>No bot, no plugin; any app that plays sound works</small>"],
+  ["Works with", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>No bot, no plugin; any app that plays sound through your computer can be captured</small>"],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>One way, into the language you choose</small>"],
   ["Latency", "Median 0.76–1.03 seconds<small>Mac M4 Pro, Standard pack; slower machines will be slower</small>"],
   ["Platform", "macOS 14.2+ (Apple Silicon), beta<small>Windows 10/11: coming soon</small>"],
@@ -38,7 +38,7 @@ ${pageHero({
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "The problem", title: "Why are meetings in another language so tiring?" })}
-<p>In a meeting held in a foreign language you listen and translate in your head at the same time, and it is easy to lose a point when someone speaks fast or uses a lot of jargon. The big meeting platforms offer built-in translated captions, but they are usually part of higher paid plans and process your audio in the cloud, and most third-party tools run in the cloud too. If your organisation's plan does not include that feature, or you do not want meeting audio to leave your computer, you need another way.</p>
+<p>In a meeting held in a foreign language you listen and translate in your head at the same time, and it is easy to lose a point when someone speaks fast or uses a lot of jargon. The big meeting platforms offer built-in translated captions, but they are usually part of higher paid plans and process your audio in the cloud, and most third-party tools run in the cloud too. If your organization's plan does not include that feature, or you do not want meeting audio to leave your computer, you need another way.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container">
@@ -51,7 +51,7 @@ ${appShot({ slug: "app-home-running", lang: "en", alt: "AI Translator main scree
 <h2>AI Translator runs on the listener's side</h2>
 ${checkList([
   "It captures the sound playing on your computer (on macOS you allow <em>System Audio Recording</em>; the microphone is not used; see <a href=\"/en/guide/macos-audio-permission/\">how to grant the permission</a>)",
-  "It splits the audio into sentences, then recognises and translates the speech with models running on your machine",
+  "It splits the audio into sentences, then recognizes and translates the speech with models running on your machine",
   "It shows the translation on a floating subtitle bar that never takes focus from the meeting app, so you can keep typing in chat",
   "Nobody else has to do anything: no bot in the room, no captions for the host to enable",
 ])}
@@ -70,8 +70,8 @@ ${steps(
   [
     { title: "Lock the source language if you know it", text: "On the Languages card, set <em>Source language</em> to the language of the meeting instead of <em>Detect automatically</em>; the app is less likely to guess wrong on short sentences. If several languages will be spoken, keep Detect automatically and tick only the ones that may come up." },
     { title: "Add proper names to the glossary (Pro)", text: "Enter partner names, product names and abbreviations with the translation you want, up to 500 entries. They are hints to the translator, not a guarantee. See the <a href=\"/en/guide/glossary/\">glossary guide</a>." },
-    { title: "Place the subtitle bar and lock it", text: "Drag it where it does not cover the speaker, usually just under the video; set the font size (14–48 px), colours and opacity in Settings › Subtitles. Click <em>Lock (click-through)</em> so the mouse passes through the bar." },
-    { title: "Pick the source Only Zoom (macOS)", text: "The list in Settings › Audio only shows apps that are playing sound, so join the call, then click <em>Refresh list</em>. Choose <em>Only Zoom</em> so notification sounds and other videos are not translated. For Meet in a browser, choose the browser (its other tabs are still heard). It takes effect from the next session." },
+    { title: "Place the subtitle bar and lock it", text: "Drag it where it does not cover the speaker, usually just under the video; set the font size (14–48 px), colors and opacity in Settings › Subtitles. Click <em>Lock (click-through)</em> so the mouse passes through the bar." },
+    { title: "Listen to Zoom only (macOS)", text: "The list in Settings › Audio only shows apps that are playing sound, so join the call, then click <em>Refresh list</em>. Choose the Zoom entry (it reads <em>Only {app name}</em>) so notification sounds and other videos are not translated. For Meet in a browser, choose the browser (its other tabs are still heard). It takes effect from the next session." },
   ],
   true,
 )}
@@ -80,8 +80,8 @@ ${steps(
 </div></section>
 
 <section class="section section-alt"><div class="container">
-${sectionHead({ eyebrow: "During the meeting", title: "Stay in control without leaving the call", text: "Press Start a few minutes early so the models finish loading; silence does not count against your quota.", center: true })}
-${overlayShot({ slug: "overlay-default", lang: "en", alt: "The AI Translator subtitle bar on a dark background: each sentence shows the original English or Chinese in small type above its Vietnamese translation", caption: "The subtitle bar: original text in small type above, translation below." })}
+${sectionHead({ eyebrow: "During the meeting", title: "Stay in control without leaving the call", text: "Press Start before the meeting begins so the models finish loading (it takes a few seconds); silence does not count against your quota.", center: true })}
+${overlayShot({ slug: "overlay-default", lang: "en", alt: "The AI Translator subtitle bar on a dark background: each sentence shows the original Japanese or Chinese in small type above its English translation", caption: "The subtitle bar: original text in small type above, translation below." })}
 <div class="split">
 <div class="table-wrap reveal"><table>
 <thead><tr><th scope="col">Action</th><th scope="col">macOS</th></tr></thead>
@@ -95,7 +95,7 @@ ${overlayShot({ slug: "overlay-default", lang: "en", alt: "The AI Translator sub
 <div class="stack reveal">
 ${checkList([
   "<strong>Missed a sentence:</strong> scroll up to read it again (the last 1000 sentences are kept); the <em>Latest</em> button brings you back, and the scroll keys work even when the bar is locked.",
-  "<strong>Faded text</strong> is a provisional subtitle that is replaced when the speaker carries on. Turn on <em>Show the original text above the translation</em> to double-check names and numbers.",
+  "<strong>Faded text</strong> is a provisional subtitle that is replaced when the speaker carries on. Keep <em>Show the original text above the translation</em> on (it is on by default) to double-check names and numbers.",
   "<strong>Hide it fast</strong> with the shortcut, or with the ✕ button when you hover over an unlocked bar.",
 ])}
 </div>
@@ -111,14 +111,14 @@ ${sectionHead({ eyebrow: "After the meeting", title: "Keep what you need" })}
 
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "What we tested", title: "Apps and devices tried so far" })}
-<p>We tested system-audio capture on macOS 26.6.2 with <strong>Zoom (app)</strong>, <strong>Google Meet</strong> in Chrome, Safari and Edge, <strong>Microsoft Teams (new app)</strong> and <strong>Zalo PC</strong>, through the speakers, wired headphones and AirPods.</p>
+<p>Using a separate audio-capture test tool (not the app's full recognition and translation loop), we tested system-audio capture on macOS 26.6.2 with <strong>Zoom (app)</strong>, <strong>Google Meet</strong> in Chrome, Safari and Edge, <strong>Microsoft Teams (new app)</strong> and <strong>Zalo PC</strong>, through the speakers, wired headphones and AirPods.</p>
 <p>This was internal testing, confirmed by ear by the tester. It is not a formal acceptance test on the release build for each app and macOS version (14.2 is the minimum). Windows is not released yet, so there is no Windows result to report.</p>
 </div></section>
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "Privacy", title: "Privacy and notifying other participants" })}
 <p>AI Translator captures the sound playing on your computer, which includes other people's voices. The audio stays in memory: it is not written to disk and not sent over the network (we checked with a proxy on macOS). The app does not record meetings. See <a href="/en/data-security/">data and security</a>.</p>
-${callout({ title: "Other participants will not be told.", text: "Because there is no bot, the meeting platform does not know you are using AI Translator and shows nothing to anyone else. If the law or your company's rules require it, you are responsible for telling the other participants that you use a translation tool. The <a href=\"/en/terms/\">Terms of use</a> (section 6) say the same. We do not give legal advice." })}
+${callout({ title: "Other participants will not be told.", text: "Because there is no bot and the app does not connect to the meeting platform, the other participants see no notice that you are using AI Translator. If the law or your company's rules require it, you are responsible for telling the other participants that you use a translation tool. The <a href=\"/en/terms/\">Terms of use</a> (section 6) say the same. We do not give legal advice." })}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

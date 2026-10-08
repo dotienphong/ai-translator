@@ -23,7 +23,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "AI Translator user guides",
-  lead: "Eight step-by-step guides for AI Translator, from installing on macOS to buying a key and fixing problems. Each one uses the exact button and menu names you see in the app, with screenshots of the real interface.",
+  lead: "Eight step-by-step guides for AI Translator, from installing on macOS to buying a key and fixing problems. Each one uses the exact button and menu names you see in the app, and most include screenshots of the real interface.",
 })}
 
 <section class="section-tight"><div class="container">
@@ -33,7 +33,7 @@ ${callout({ title: "These guides are written for macOS.", text: "AI Translator i
 <section class="section-tight"><div class="container">
 ${sectionHead({ eyebrow: "Get started", title: "From installer to your first subtitles" })}
 <div class="grid grid-3">
-${linkCard({ href: "/en/guide/quick-start/", icon: "play", title: "Quick start", text: "Seven one-time setup steps, then translate your first meeting, with a screenshot of every app screen.", more: MORE })}
+${linkCard({ href: "/en/guide/quick-start/", icon: "play", title: "Quick start", text: "Seven one-time setup steps, then translate your first meeting, with screenshots of the app’s setup screens.", more: MORE })}
 ${linkCard({ href: "/en/guide/install-macos/", icon: "download", title: "Install on macOS", text: "Requirements, drag to Applications, click Open Anyway on first launch, verify the SHA-256 and uninstall.", more: MORE })}
 ${linkCard({ href: "/en/guide/macos-audio-permission/", icon: "mic", title: "Audio permission", text: "Answer the System Audio Recording prompt, turn it back on in System Settings and choose the audio source.", more: MORE })}
 </div>
@@ -43,15 +43,15 @@ ${linkCard({ href: "/en/guide/macos-audio-permission/", icon: "mic", title: "Aud
 ${sectionHead({ eyebrow: "Everyday use", title: "Get the most from the bar, glossary and transcript" })}
 <div class="grid grid-3">
 ${linkCard({ href: "/en/guide/subtitle-bar-and-shortcuts/", icon: "captions", title: "Subtitle bar and shortcuts", text: "Move, lock, hide and scroll the bar, change font size and colors, the shortcut table and the menu bar menu.", more: MORE })}
-${linkCard({ href: "/en/guide/glossary/", icon: "book", title: "Glossary", text: "Add names and terms, import and export CSV, and see why the glossary is a hint to the translator, not a guarantee.", more: MORE })}
-${linkCard({ href: "/en/guide/history-and-export/", icon: "history", title: "History and export", text: "Turn on saved history, review past sessions, copy the transcript and export TXT, SRT or Markdown.", more: MORE })}
+${linkCard({ href: "/en/guide/glossary/", icon: "book", title: "Use the glossary", text: "Add names and terms, import and export CSV, and see why the glossary is a hint to the translator, not a guarantee.", more: MORE })}
+${linkCard({ href: "/en/guide/history-and-export/", icon: "history", title: "History and exporting transcripts", text: "Turn on saved history, review past sessions, copy the transcript and export TXT, SRT or Markdown.", more: MORE })}
 </div>
 </div></section>
 
 <section class="section-tight"><div class="container">
 ${sectionHead({ eyebrow: "Plans and support", title: "Plans, keys and when something goes wrong" })}
 <div class="grid grid-2">
-${linkCard({ href: "/en/guide/buy-and-activate/", icon: "key", title: "Buy and activate a key", text: "Buy Monthly or Yearly with VietQR inside the app, enter your key, switch computers, renew and recover a lost key.", more: MORE })}
+${linkCard({ href: "/en/guide/buy-and-activate/", icon: "key", title: "Buy a plan, activate your key and switch computers", text: "Buy Monthly or Yearly with VietQR inside the app, enter your key, switch computers, renew and recover a lost key.", more: MORE })}
 ${linkCard({ href: "/en/guide/troubleshooting/", icon: "support", title: "Troubleshooting", text: "No subtitles, quota used up, a locked key, a failed model download: the cause and the fix for each.", more: MORE })}
 </div>
 </div></section>
@@ -71,7 +71,7 @@ ${facts([
 <section class="section-tight"><div class="container narrow">
 <div class="card reveal">
 <h2>Need help?</h2>
-<p>Did not find your answer in the guides? Read the <a href="/en/faq/">frequently asked questions</a> or write to us on the <a href="/en/contact/">contact</a> page. We read and answer every message sent to <strong>support@aitranslator.io.vn</strong>.</p>
+<p>Did not find your answer in the guides? Read the <a href="/en/faq/">frequently asked questions</a> or write to us on the <a href="/en/contact/">contact</a> page. You can write to <strong>support@aitranslator.io.vn</strong>.</p>
 <p class="more-link"><a class="btn btn-secondary" href="/en/contact/">Contact support ${icon("arrow-right")}</a> <a class="btn btn-ghost" href="/en/faq/">FAQ</a></p>
 </div>
 </div></section>

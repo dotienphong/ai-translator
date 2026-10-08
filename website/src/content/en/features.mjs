@@ -39,14 +39,14 @@ ${pageHero({ crumbs, title: "Everything you need to follow a meeting in another 
 <div class="stack-lg reveal">
 <span class="eyebrow">Live translation</span>
 <h2>Listen, recognize, translate and show subtitles in one loop</h2>
-<p>AI Translator captures the audio playing on your computer, splits it into sentences, recognizes the speech, translates it and shows the result on the subtitle bar. When the speaker finishes a sentence, the translation appears almost immediately.</p>
+<p>AI Translator captures the audio playing on your computer, splits it into sentences, recognizes the speech, translates it and shows the result on the subtitle bar. On a Mac M4 Pro the full translation appears about a second (median) after the speaker finishes a sentence; other computers may be slower, see the <a href=\"#performance\">measurements</a>.</p>
 ${checkList([
   "<strong>Five languages</strong> for both the source audio and the translation: English, 中文, 日本語, 한국어, Tiếng Việt",
-  "<strong>Automatic detection</strong> of the spoken language among the ones you tick under <em>Languages spoken in the meeting</em>, or <strong>lock</strong> a single one in <em>Source language</em>",
+  "<strong>Automatic detection</strong> of the spoken language among the ones you tick under <em>Languages spoken in the meeting</em>, or <strong>lock</strong> a single one in <em>Source language</em> when you know what will be spoken",
   "A sentence that is already in the language you want to read is shown as it is, not translated again",
   "A sentence that is not final yet appears dimmer, then is replaced by the complete sentence when the speaker carries on",
   "Filters out the \"phantom\" sentences that speech recognition tends to invent over music or silence",
-  "Chinese is normalized to Simplified characters",
+  "Recognized Chinese text is converted to Simplified characters",
 ])}
 </div>
 <div>
@@ -67,7 +67,7 @@ ${checkList([
   "<strong>Text size</strong> 14–48 px, <strong>5 text colors</strong> (white, yellow, green, light blue, orange), <strong>5 background colors</strong>, background opacity 0–100%",
   "<strong>Lock</strong>: mouse clicks pass through the bar and no buttons get in the way; unlock it with a shortcut or from the tray menu",
   "Keeps the last 1,000 sentences; <strong>scroll back</strong> with the mouse wheel or a shortcut, and the <em>Latest</em> button takes you back to the current sentence",
-  "Optional <strong>original text</strong> in small type above the translation",
+  "The <strong>original text</strong> in small type above the translation (on by default, can be turned off)",
   "Small indicators in the corner: listening with sound detected, loading models, falling behind, less than 5 minutes of translation left",
 ])}
 <p class="more-link"><a href="/en/guide/subtitle-bar-and-shortcuts/">Learn how to use the subtitle bar and shortcuts ${icon("arrow-right")}</a></p>
@@ -126,7 +126,7 @@ ${appShot({ slug: "app-glossary", lang: "en", alt: "Glossary with pairs of sourc
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Glossary <span class="badge badge-pro">Pro</span></span>
-<h2>Names and terms, translated consistently</h2>
+<h2>Hints for names and terms, passed to the translator</h2>
 <p>Add source → target pairs for product names, partner names and industry terms. When a sentence contains one of them, the app passes it to the translator as a hint.</p>
 ${checkList([
   "Up to <strong>500</strong> terms, with CSV import and export (two columns, UTF-8)",
@@ -164,10 +164,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings s
 </div></section>
 
 <section class="section" id="models"><div class="container stack-lg">
-<div class="split wide-left">
-<div>
-${appShot({ slug: "app-settings-model", lang: "en", alt: "Model settings showing the Standard and Lite packs with their sizes and the recommendation for this computer", caption: "Settings › Model: the Standard and Lite packs, with a recommendation for your computer." })}
-</div>
+<div class="model-intro">
 <div class="stack-lg reveal">
 <span class="eyebrow">Models and your computer</span>
 <h2>Two model packs, and the app recommends the one that fits</h2>
@@ -181,7 +178,7 @@ ${appShot({ slug: "app-settings-model", lang: "en", alt: "Model settings showing
 <tr><th scope="row">Recognition</th><td>Whisper large-v3-turbo</td><td>Whisper small</td></tr>
 <tr><th scope="row">Translation</th><td>Hy-MT2-1.8B (Q8_0)</td><td>Hy-MT2-1.8B (Q4_K_M)</td></tr>
 <tr><th scope="row">Engine RAM (M4 Pro)</th><td>about 2.9 GiB</td><td>about 1.8–1.9 GiB</td></tr>
-<tr><th scope="row">Best for</th><td>Computers with 16 GB or more, when quality matters most</td><td>Computers with 8 GB, or when you want something lighter</td></tr>
+<tr><th scope="row">The app recommends it for</th><td>A Mac with 16 GB or more; Windows with 16 GB or more and a discrete card with 6 GB of VRAM</td><td>Computers with 8 GB up to under 16 GB, or Windows without a capable discrete card</td></tr>
 </tbody></table></div>
 <p class="small muted">The Lite pack recognizes speech less clearly than Standard in Vietnamese, Japanese, Korean and Chinese. If you listen to those languages a lot, choose the Standard pack.</p>
 ${facts([
@@ -204,7 +201,7 @@ ${sectionHead({ eyebrow: "Performance", title: "Real measurements, with the cond
 </tbody></table></div>
 <div class="grid grid-2">
 ${feature({ icon: "gauge", title: "Long sessions", text: "One continuous session of 5 h 23 min (a lecture video in English, on an ad-hoc-signed release build): 6,019 segments, no errors, median delay 0.48 s. In a 2-hour stability test, no process was restarted." })}
-${feature({ icon: "languages", title: "Translation and recognition quality", text: "In an internal test on 320 sentences in five directions involving Vietnamese, Hy-MT2-1.8B had the highest COMET score (0.837) of the four open-source models compared. On clean read speech, Vietnamese recognition in the Standard pack has a word error rate of 8.7%. That is read speech, not real meeting conversation." })}
+${feature({ icon: "languages", title: "Translation and recognition quality", text: "In an internal test on 320 sentences in five directions involving Vietnamese, Hy-MT2-1.8B scored 0.837 on COMET: clearly above MADLAD-3B (0.779) and NLLB-600M (0.736), and on par with HY-MT1.5-1.8B (0.833). We only compared open-source models with each other. On clean read speech, Vietnamese recognition in the Standard pack has a word error rate of 8.7%. That is read speech, not real meeting conversation." })}
 </div>
 ${callout({ kind: "warn", title: "What we have not measured, and do not promise", text: "All the figures above were measured on a single Mac M4 Pro, with a 300&nbsp;ms pause to end a sentence (the app's current default is 50&nbsp;ms; the 5-hour session used the default). We have not measured: a base Mac M1, 8 GB computers, discrete Windows graphics cards, battery and power use, accuracy on real meeting conversation or over Bluetooth headsets, and translation quality for directions that do not involve Vietnamese (they work, but we have no quality score to publish). A preliminary test on one Windows laptop with integrated graphics showed that the Standard pack did not meet our latency target." })}
 </div></section>

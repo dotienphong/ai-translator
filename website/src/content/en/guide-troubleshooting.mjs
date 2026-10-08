@@ -51,7 +51,7 @@ ${pageHero({
   crumbs,
   title: "Troubleshooting",
   lead: "Most AI Translator problems fall into four groups: recording permission, audio source, models and license. Find the message exactly as the app shows it in the tables below, follow the fix, and if it still fails, send your logs to support.",
-  meta: `<span>Updated 8 Oct 2026</span>`,
+  meta: `<span>Updated October 8, 2026</span>`,
 })}
 
 <section class="section-tight"><div class="container">
@@ -60,50 +60,42 @@ ${docLayout({
   tocTitle: "On this page",
   body: `
 <h2 id="no-audio">No subtitles, or no audio heard</h2>
-<div class="table-wrap"><table>
-<thead><tr><th scope="col">You see</th><th scope="col">Cause</th><th scope="col">Fix</th></tr></thead>
-<tbody>
-<tr><th scope="row">“Nothing is heard although an app is playing sound: AI Translator may not be allowed to record system audio.”</th><td>macOS has not granted the permission, and gives no error: the app just receives silence.</td><td>Click <strong>Open System Settings</strong>, turn on AI Translator under Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only, then click <strong>Start</strong> again. See <a href="/en/guide/macos-audio-permission/">the audio permission guide</a>.</td></tr>
-<tr><th scope="row">“No audio heard. Check that the meeting sound is playing.” or “Could not capture audio.”</th><td>Nothing is playing, the audio source is wrong, or the app could not open the source.</td><td>Turn the meeting sound on. In Settings › Audio click <strong>Refresh list</strong>, choose the source again and click <strong>Start</strong> again. If it persists, send your logs.</td></tr>
-<tr><th scope="row">“The chosen app is not playing sound”</th><td>You chose <strong>Only {app name}</strong> and that app is silent.</td><td>Make the app play sound (translation resumes at once), or choose <strong>Whole system, except this app</strong> (from the next session).</td></tr>
-<tr><th scope="row">The subtitle bar is not visible</th><td>The bar stays hidden when the app opens until you click Start, or you hid it with the ✕ button or the shortcut.</td><td>On the Home screen, under <strong>Subtitle bar</strong>, click <strong>Show</strong>; or press ${keys(["⌃", "⌥", "H"])}; or choose “Show subtitles” in the menu bar. If it is locked, unlock it with ${keys(["⌃", "⌥", "L"])}.</td></tr>
-<tr><th scope="row">“Some shortcuts could not be registered. Open Settings › Shortcuts to change them.”</th><td>Another app already holds that key combination.</td><td>In Settings › Shortcuts click <strong>Change</strong> and press a new combination with at least one of Ctrl, Alt or Cmd/Win (Shift alone is not enough).</td></tr>
-</tbody></table></div>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">“Nothing is heard although an app is playing sound: AI Translator may not be allowed to record system audio.”</span><p><strong>Cause:</strong> macOS has not granted the permission, and gives no error: the app just receives silence.</p><p><strong>Fix:</strong> Click <strong>Open System Settings</strong>, turn on AI Translator under Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only, then click <strong>Start</strong> again. See <a href="/en/guide/macos-audio-permission/">the audio permission guide</a>.</p></div>
+<div class="card"><span class="card-title">“No audio heard. Check that the meeting sound is playing.” or “Could not capture audio.”</span><p><strong>Cause:</strong> Nothing is playing, the audio source is wrong, or the app could not open the source.</p><p><strong>Fix:</strong> Turn the meeting sound on. In Settings › Audio click <strong>Refresh list</strong>, choose the source again and click <strong>Start</strong> again. If it persists, send your logs.</p></div>
+<div class="card"><span class="card-title">“The chosen app is not playing sound”</span><p><strong>Cause:</strong> You chose <strong>Only {app name}</strong> and that app is silent.</p><p><strong>Fix:</strong> Make the app play sound (translation resumes at once), or choose <strong>Whole system, except this app</strong> (from the next session).</p></div>
+<div class="card"><span class="card-title">The subtitle bar is not visible</span><p><strong>Cause:</strong> The bar stays hidden when the app opens until you click Start, or you hid it with the ✕ button or the shortcut.</p><p><strong>Fix:</strong> On the Home screen, under <strong>Subtitle bar</strong>, click <strong>Show</strong>; or press ${keys(["⌃", "⌥", "H"])}; or choose “Show subtitles” in the menu bar. If it is locked, unlock it with ${keys(["⌃", "⌥", "L"])}.</p></div>
+<div class="card"><span class="card-title">“Some shortcuts could not be registered. Open Settings › Shortcuts to change them.”</span><p><strong>Cause:</strong> Another app already holds that key combination.</p><p><strong>Fix:</strong> In Settings › Shortcuts click <strong>Change</strong> and press a new combination with at least one of Ctrl, Alt or Cmd/Win (Shift alone is not enough).</p></div>
+</div>
 
 <h2 id="slow-or-stopped">Subtitles late, missing or stopped</h2>
-<div class="table-wrap"><table>
-<thead><tr><th scope="col">You see</th><th scope="col">Cause</th><th scope="col">Fix</th></tr></thead>
-<tbody>
-<tr><th scope="row">“Falling behind”; “Running on the CPU (slower).”; “This computer ran out of memory. The Lite model pack is recommended.”</th><td>The computer cannot keep up with the speech, or the GPU failed so the app moved to the CPU.</td><td>Close heavy apps. In Settings › Model click <strong>Use this pack</strong> on the Lite pack (from the next session).</td></tr>
-<tr><th scope="row">“Translation unavailable: original text only”; “Translation stopped because of an error. Open the main window for details.”; “Speech recognition stopped working…”</th><td>The translator or the recognizer failed. The app restarts them on its own; after more than 5 failures in 10 minutes it stops translating.</td><td>Click <strong>Stop</strong>, then <strong>Start</strong>. If the app says part of it is missing or damaged, reinstall AI Translator. If it repeats, send your logs.</td></tr>
-</tbody></table></div>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">“Falling behind”; “Running on the CPU (slower).”; “This computer ran out of memory. The Lite model pack is recommended.”</span><p><strong>Cause:</strong> The computer cannot keep up with the speech, or the GPU failed so the app moved to the CPU.</p><p><strong>Fix:</strong> Close heavy apps. In Settings › Model select the Lite pack and click <strong>Use this pack</strong> (if it is not downloaded yet, click <strong>Download and use</strong>); the new pack is used from the next session.</p></div>
+<div class="card"><span class="card-title">“Translation unavailable: original text only”; “Translation stopped because of an error. Open the main window for details.”; “Speech recognition stopped working…”</span><p><strong>Cause:</strong> The translator or the recognizer failed. The app restarts them on its own; after more than 5 failures in 10 minutes it stops translating.</p><p><strong>Fix:</strong> Click <strong>Stop</strong>, then <strong>Start</strong>. If the app says part of it is missing or damaged, reinstall AI Translator. If it repeats, send your logs.</p></div>
+</div>
 
 <h2 id="models-macos">Models, install and macOS</h2>
-<div class="table-wrap"><table>
-<thead><tr><th scope="col">You see</th><th scope="col">Cause</th><th scope="col">Fix</th></tr></thead>
-<tbody>
-<tr><th scope="row">“Could not reach the model server. Check your internet connection and try again.”</th><td>No connection, or the network blocks the download.</td><td>Check your network, then click <strong>Try again</strong>.</td></tr>
-<tr><th scope="row">“The download did not finish. Press Resume to continue where it stopped.” or “A downloaded file was damaged…”</th><td>The connection dropped, or a file failed its integrity check.</td><td>Click <strong>Resume</strong>. If the app says “The model is damaged. Please download it again.”, click <strong>Check and download again</strong> in Settings › Model.</td></tr>
-<tr><th scope="row">“Not enough free disk space for this pack…” or “Could not write the model files to disk.”</th><td>The disk needs the download size plus 1 GB free (about 2.5 GB for Standard, 1.3 GB for Lite).</td><td>Free up disk space, or choose the Lite pack.</td></tr>
-<tr><th scope="row">“This computer does not meet the minimum requirements, so models cannot be downloaded.”</th><td>Below the minimum: a Mac with Apple Silicon and 8 GB of RAM.</td><td>Use a computer that meets it. See the requirements on the <a href="/en/download/">download page</a>.</td></tr>
-<tr><th scope="row">macOS says it cannot verify the developer when you first open the app</th><td>The macOS build is ad-hoc signed and not yet notarized by Apple.</td><td>Click <strong>Done</strong>, open System Settings › Privacy &amp; Security, scroll to the bottom and click <strong>Open Anyway</strong> next to AI Translator. See <a href="/en/guide/install-macos/">installing on macOS</a>.</td></tr>
-<tr><th scope="row">macOS asks for your password several times after an update</th><td>Normal for the ad-hoc signed build: your login password a few times and recording permission once.</td><td>Enter your password, click <strong>Always Allow</strong> and allow the recording permission.</td></tr>
-</tbody></table></div>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">“Could not reach the model server. Check your internet connection and try again.”</span><p><strong>Cause:</strong> No connection, or the network blocks the download.</p><p><strong>Fix:</strong> Check your network, then click <strong>Try again</strong>.</p></div>
+<div class="card"><span class="card-title">“The download did not finish. Press Resume to continue where it stopped.” or “A downloaded file was damaged…”</span><p><strong>Cause:</strong> The connection dropped, or a file failed its integrity check.</p><p><strong>Fix:</strong> Click <strong>Resume</strong>. If the app says “The model is damaged. Please download it again.”, click <strong>Check and download again</strong> in Settings › Model.</p></div>
+<div class="card"><span class="card-title">“Not enough free disk space for this pack…” or “Could not write the model files to disk.”</span><p><strong>Cause:</strong> The disk needs the download size plus 1 GB free (about 2.5 GB for Standard, 1.3 GB for Lite).</p><p><strong>Fix:</strong> Free up disk space, or choose the Lite pack.</p></div>
+<div class="card"><span class="card-title">“This computer does not meet the minimum requirements, so models cannot be downloaded.”</span><p><strong>Cause:</strong> Below the minimum: a Mac with Apple Silicon and 8 GB of RAM.</p><p><strong>Fix:</strong> Use a computer that meets it. See the requirements on the <a href="/en/download/">download page</a>.</p></div>
+<div class="card"><span class="card-title">macOS says it cannot verify the developer when you first open the app</span><p><strong>Cause:</strong> The macOS build is ad-hoc signed and not yet notarized by Apple.</p><p><strong>Fix:</strong> Click <strong>Done</strong>, open System Settings › Privacy &amp; Security, scroll to the bottom and click <strong>Open Anyway</strong> next to AI Translator. See <a href="/en/guide/install-macos/">installing on macOS</a>.</p></div>
+<div class="card"><span class="card-title">macOS asks for your password several times after an update</span><p><strong>Cause:</strong> Normal for the ad-hoc signed build: your login password a few times and recording permission once.</p><p><strong>Fix:</strong> Enter your password, click <strong>Always Allow</strong> and allow the recording permission.</p></div>
+</div>
 
 <h2 id="license-quota">License, quota and trial</h2>
-<div class="table-wrap"><table>
-<thead><tr><th scope="col">You see</th><th scope="col">Cause</th><th scope="col">Fix</th></tr></thead>
-<tbody>
-<tr><th scope="row">“Translation quota used up · resets …”</th><td>You used the 30 minutes for today (Free) or the 50 hours of the cycle (Monthly).</td><td>Wait until the reset time on screen, or <a href="/en/guide/buy-and-activate/">renew or change plan</a>.</td></tr>
-<tr><th scope="row">“Your 10-day trial has ended”</th><td>Free is a 10-day trial per computer; reinstalling does not restart it.</td><td>Buy Monthly or Yearly to keep translating.</td></tr>
-<tr><th scope="row">“Connect to the internet once to start the free trial” or “Your plan could not be checked for 14 days, so Free is used. Connect to the internet.”</th><td>The trial could not register without a connection, or a paid plan went over 14 days without a license check.</td><td>Connect to the internet, then click <strong>Check now</strong> in Settings › License (paid plans).</td></tr>
-<tr><th scope="row">“This key is in use on 2 computers, so it is locked…”</th><td>The key is held by two computers.</td><td>Remove the key from one computer, then click <strong>Try again</strong>: see <a href="/en/guide/buy-and-activate/#switch-computers">how to switch computers</a>.</td></tr>
-<tr><th scope="row">“The computer clock looks wrong. Set the correct time, then try again.” or “This computer’s clock was moved back…”</th><td>The system clock was set backwards.</td><td>Set the correct time (preferably automatic) and connect to the internet so the app can check it.</td></tr>
-<tr><th scope="row">“This key is not valid…”; “This key is temporarily locked because computers were changed too often…”; “This copy of AI Translator is not genuine…”</th><td>A mistyped key; too many computer changes; or an installer that is not the official one.</td><td>Paste the key from your email again; contact support if the key is locked; download the official build from aitranslator.io.vn.</td></tr>
-</tbody></table></div>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">“Translation quota used up · resets …”</span><p><strong>Cause:</strong> You used the 30 minutes for today (Free) or the 50 hours of the cycle (Monthly).</p><p><strong>Fix:</strong> Wait until the reset time on screen, or <a href="/en/guide/buy-and-activate/">renew or change plan</a>.</p></div>
+<div class="card"><span class="card-title">“Your 10-day trial has ended”</span><p><strong>Cause:</strong> Free is a 10-day trial per computer; reinstalling does not restart it.</p><p><strong>Fix:</strong> Buy Monthly or Yearly to keep translating.</p></div>
+<div class="card"><span class="card-title">“Connect to the internet once to start the free trial” or “Your plan could not be checked for 14 days, so Free is used. Connect to the internet.”</span><p><strong>Cause:</strong> The trial could not register without a connection, or a paid plan went over 14 days without a license check.</p><p><strong>Fix:</strong> Connect to the internet. If this computer has not registered its trial yet, click <strong>Start</strong> again so the app registers it. For a paid plan, click <strong>Check now</strong> in Settings › License.</p></div>
+<div class="card"><span class="card-title">“This key is in use on 2 computers, so it is locked…”</span><p><strong>Cause:</strong> The key is held by two computers.</p><p><strong>Fix:</strong> Remove the key from one computer, then click <strong>Try again</strong>: see <a href="/en/guide/buy-and-activate/#switch-computers">how to switch computers</a>.</p></div>
+<div class="card"><span class="card-title">“The computer clock looks wrong. Set the correct time, then try again.” or “This computer’s clock was moved back…”</span><p><strong>Cause:</strong> The system clock was set backwards.</p><p><strong>Fix:</strong> Set the correct time (preferably automatic) and connect to the internet so the app can check it.</p></div>
+<div class="card"><span class="card-title">“This key is not valid…”; “This key is temporarily locked because computers were changed too often…”; “This copy of AI Translator is not genuine…”</span><p><strong>Cause:</strong> A mistyped key; too many computer changes; or an installer that is not the official one.</p><p><strong>Fix:</strong> Paste the key from your email again; contact support if the key is locked; download the official build again from the link we sent you or from aitranslator.io.vn.</p></div>
+</div>
 
 <h2 id="send-logs">Send logs and report a problem</h2>
-<p>Open <strong>About › Open log folder</strong> to find <code>app.log</code> (on macOS: <code>~/Library/Logs/com.aitranslator.desktop/</code>). Logs stay on your computer and contain no audio, no transcript text and no full license key. The app never sends anything by itself: you decide whether to send them to <a href="/en/contact/">support</a> (support@aitranslator.io.vn).</p>
+<p>Open <strong>About › Open log folder</strong> to find <code>app.log</code> (on macOS: the <code>com.aitranslator.desktop</code> folder inside <code>~/Library/Logs/</code>). Logs stay on your computer and contain no audio, no transcript text and no full license key. The app never sends anything by itself: you decide whether to send them to <a href="/en/contact/">support</a> (support@aitranslator.io.vn).</p>
 ${appShot({
   slug: "app-about",
   lang: "en",

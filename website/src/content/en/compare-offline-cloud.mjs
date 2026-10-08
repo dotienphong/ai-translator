@@ -14,11 +14,11 @@ export const COMPARE_FAQ = [
   },
   {
     q: "Does offline translation really need no internet?",
-    a: "<p>Not while it is translating. You need a connection to download the models the first time, start the trial, buy a plan, check your licence (a paid plan works offline for at most 14 days between checks) and update the app.</p>",
+    a: "<p>Not while it is translating. You need a connection to download the models the first time, start the trial, buy a plan, check your license (a paid plan works offline for at most 14 days between checks) and update the app.</p>",
   },
   {
     q: "Is offline translation suitable for sensitive meetings?",
-    a: "<p>The audio never leaves your computer, so no third party processes it. But overall safety also depends on your machine and your organisation's rules, so ask your security team. The app does not record meetings, and transcript history is off by default.</p>",
+    a: "<p>The audio never leaves your computer, so no third party processes it. But overall safety also depends on your machine and your organization's rules, so ask your security team. The app does not record meetings, and transcript history is off by default.</p>",
   },
   {
     q: "What computer do I need for offline translation?",
@@ -85,15 +85,15 @@ ${docLayout({
 </tbody></table></div>
 
 <h2 id="privacy">Privacy and where processing happens</h2>
-<p>With cloud translation your audio is sent to the provider's servers. Many providers have contracts and security certifications, so cloud is not automatically less safe, but you have to trust their policies and weigh them against your organisation's rules.</p>
+<p>With cloud translation your audio is sent to the provider's servers. Many providers have contracts and security certifications, so cloud is not automatically less safe, but you have to trust their policies and weigh them against your organization's rules.</p>
 <p>With AI Translator, speech recognition and translation run on your machine: audio stays in memory, is not written to disk and is not sent anywhere. A proxy check on macOS showed no audio or transcript text leaving the computer while it translated (Windows has not been measured). See <a href="/en/data-security/">data and security</a>.</p>
 
 <h2 id="internet-and-bots">Internet, bots and the meeting host</h2>
-<p>Cloud translation needs a steady connection during the meeting. AI Translator keeps translating on a flaky connection or inside a closed network; it only needs the internet to download models, activate, buy a plan, check the licence and update.</p>
+<p>Cloud translation needs a steady connection during the meeting. AI Translator keeps translating on a flaky connection or when the connection drops. It only needs the internet to download models, start the trial, activate, buy a plan, check the license (a paid plan needs a check at least every 14 days) and update, so a network that is completely cut off from the internet is not a good fit.</p>
 <p>Built-in captions may need the host or an administrator to enable them, and third-party tools may need a bot to join the room. AI Translator runs on your side, so nobody has to do anything; in return, the other participants are not told. If rules require it, you tell them yourself (see <a href="/en/solutions/online-meeting-translation/">the online meeting solution</a>).</p>
 
 <h2 id="cost">Cost and quota</h2>
-<p>With cloud, every minute of translation uses the provider's server resources, which is why the feature usually comes with higher plans or usage limits. With offline translation the computing happens on your machine, so one more minute costs us no extra infrastructure. AI Translator's quotas (30 minutes a day during the trial, 50 hours per 30 days on Monthly, unlimited on Yearly) are a pricing policy, not a technical limit.</p>
+<p>With cloud, every minute of translation uses the provider's server resources. Translated captions built into the big meeting platforms are usually offered only on higher paid plans. With offline translation the computing happens on your machine, so one more minute costs us no extra infrastructure. AI Translator's quotas (30 minutes a day during the trial, 50 hours per 30 days on Monthly, unlimited on Yearly) are a pricing policy, not a technical limit.</p>
 <p>The cost moves to your machine: RAM, disk and power (we have not measured battery use). See <a href="/en/pricing/">pricing</a>.</p>
 
 <h2 id="latency-hardware-languages">Latency, hardware requirements and languages</h2>
@@ -114,7 +114,7 @@ ${docLayout({
 <h3>AI Translator (offline) is the better fit when</h3>
 <ul>
 <li>Audio must not leave your machine because of sensitive content or internal rules</li>
-<li>Your connection is unreliable or you meet inside a closed network</li>
+<li>Your connection is unreliable or often drops (the app still needs the internet now and then to check the license)</li>
 <li>You meet on several different apps, or watch webinars and videos</li>
 <li>Your platform plan has no translated captions and you do not want a bot in the room</li>
 </ul>

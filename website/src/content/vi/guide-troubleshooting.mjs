@@ -60,50 +60,42 @@ ${docLayout({
   tocTitle: "Trong bài này",
   body: `
 <h2 id="khong-co-am-thanh">Không có phụ đề hoặc không nghe thấy âm thanh</h2>
-<div class="table-wrap"><table>
-<thead><tr><th scope="col">Bạn thấy</th><th scope="col">Nguyên nhân</th><th scope="col">Cách xử lý</th></tr></thead>
-<tbody>
-<tr><th scope="row">“Không nghe thấy gì dù có app đang phát tiếng: có thể AI Translator chưa được phép ghi âm thanh hệ thống.”</th><td>macOS chưa cấp quyền và không báo lỗi: app chỉ nhận âm thanh im lặng.</td><td>Bấm <strong>Mở System Settings</strong>, bật AI Translator ở Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only, rồi <strong>Bắt đầu</strong> lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền thu âm</a>.</td></tr>
-<tr><th scope="row">“Không nghe thấy âm thanh. Kiểm tra âm thanh cuộc họp có đang phát không.” hoặc “Không thu được âm thanh.”</th><td>Máy không phát tiếng, nguồn âm thanh sai, hoặc app không mở được nguồn.</td><td>Bật tiếng cuộc họp. Ở Cài đặt › Âm thanh, bấm <strong>Làm mới danh sách</strong>, chọn lại nguồn rồi <strong>Bắt đầu</strong> lại. Còn lỗi thì gửi log.</td></tr>
-<tr><th scope="row">“App đã chọn không phát tiếng”</th><td>Bạn chọn <strong>Chỉ {tên app}</strong> mà app đó đang im.</td><td>Cho app phát tiếng (phiên chạy tiếp ngay), hoặc chọn <strong>Toàn hệ thống, trừ app này</strong> (từ phiên sau).</td></tr>
-<tr><th scope="row">Không thấy thanh phụ đề</th><td>Thanh ẩn khi mở app cho tới khi bạn bấm Bắt đầu, hoặc đã bị ẩn bằng nút ✕ hay phím tắt.</td><td>Ở Màn hình chính, mục <strong>Thanh phụ đề</strong>, bấm <strong>Hiện</strong>; hoặc nhấn ${keys(["⌃", "⌥", "H"])}; hoặc chọn “Hiện phụ đề” ở menu bar. Thanh khóa thì mở khóa bằng ${keys(["⌃", "⌥", "L"])}.</td></tr>
-<tr><th scope="row">“Có phím tắt không đăng ký được. Mở Cài đặt › Phím tắt để đổi.”</th><td>App khác đang giữ tổ hợp phím đó.</td><td>Ở Cài đặt › Phím tắt, bấm <strong>Đổi</strong> và nhấn tổ hợp mới, có ít nhất một phím Ctrl, Alt hoặc Cmd/Win (chỉ Shift thì chưa đủ).</td></tr>
-</tbody></table></div>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">“Không nghe thấy gì dù có app đang phát tiếng: có thể AI Translator chưa được phép ghi âm thanh hệ thống.”</span><p><strong>Nguyên nhân:</strong> macOS chưa cấp quyền và không báo lỗi: app chỉ nhận âm thanh im lặng.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Mở System Settings</strong>, bật AI Translator ở Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only, rồi <strong>Bắt đầu</strong> lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền thu âm</a>.</p></div>
+<div class="card"><span class="card-title">“Không nghe thấy âm thanh. Kiểm tra âm thanh cuộc họp có đang phát không.” hoặc “Không thu được âm thanh.”</span><p><strong>Nguyên nhân:</strong> Máy không phát tiếng, nguồn âm thanh sai, hoặc app không mở được nguồn.</p><p><strong>Cách xử lý:</strong> Bật tiếng cuộc họp. Ở Cài đặt › Âm thanh, bấm <strong>Làm mới danh sách</strong>, chọn lại nguồn rồi <strong>Bắt đầu</strong> lại. Còn lỗi thì gửi log.</p></div>
+<div class="card"><span class="card-title">“App đã chọn không phát tiếng”</span><p><strong>Nguyên nhân:</strong> Bạn chọn <strong>Chỉ {tên app}</strong> mà app đó đang im.</p><p><strong>Cách xử lý:</strong> Cho app phát tiếng (phiên chạy tiếp ngay), hoặc chọn <strong>Toàn hệ thống, trừ app này</strong> (từ phiên sau).</p></div>
+<div class="card"><span class="card-title">Không thấy thanh phụ đề</span><p><strong>Nguyên nhân:</strong> Thanh ẩn khi mở app cho tới khi bạn bấm Bắt đầu, hoặc đã bị ẩn bằng nút ✕ hay phím tắt.</p><p><strong>Cách xử lý:</strong> Ở Màn hình chính, mục <strong>Thanh phụ đề</strong>, bấm <strong>Hiện</strong>; hoặc nhấn ${keys(["⌃", "⌥", "H"])}; hoặc chọn “Hiện phụ đề” ở menu bar. Thanh khóa thì mở khóa bằng ${keys(["⌃", "⌥", "L"])}.</p></div>
+<div class="card"><span class="card-title">“Có phím tắt không đăng ký được. Mở Cài đặt › Phím tắt để đổi.”</span><p><strong>Nguyên nhân:</strong> App khác đang giữ tổ hợp phím đó.</p><p><strong>Cách xử lý:</strong> Ở Cài đặt › Phím tắt, bấm <strong>Đổi</strong> và nhấn tổ hợp mới, có ít nhất một phím Ctrl, Alt hoặc Cmd/Win (chỉ Shift thì chưa đủ).</p></div>
+</div>
 
 <h2 id="cham-hoac-dung">Phụ đề chậm, thiếu hoặc dừng</h2>
-<div class="table-wrap"><table>
-<thead><tr><th scope="col">Bạn thấy</th><th scope="col">Nguyên nhân</th><th scope="col">Cách xử lý</th></tr></thead>
-<tbody>
-<tr><th scope="row">“Đang trễ”; “Đang chạy bằng CPU (chậm hơn).”; “Máy không đủ bộ nhớ. Nên dùng gói Nhẹ.”</th><td>Máy không theo kịp tốc độ nói, hoặc GPU lỗi nên app chuyển sang CPU.</td><td>Đóng bớt app nặng. Ở Cài đặt › Model, bấm <strong>Dùng gói này</strong> cho gói Nhẹ (từ phiên sau).</td></tr>
-<tr><th scope="row">“Dịch không khả dụng: chỉ hiện câu gốc”; “Phiên dịch đã dừng vì lỗi. Mở cửa sổ chính để xem chi tiết.”; “Phần nhận dạng giọng nói ngừng chạy…”</th><td>Bộ dịch hoặc bộ nhận dạng lỗi. App tự khởi động lại chúng; quá 5 lần trong 10 phút thì dừng dịch.</td><td>Bấm <strong>Dừng</strong> rồi <strong>Bắt đầu</strong>. Nếu app báo thiếu hoặc hỏng một phần của app, hãy cài lại AI Translator. Lặp lại thì gửi log.</td></tr>
-</tbody></table></div>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">“Đang trễ”; “Đang chạy bằng CPU (chậm hơn).”; “Máy không đủ bộ nhớ. Nên dùng gói Nhẹ.”</span><p><strong>Nguyên nhân:</strong> Máy không theo kịp tốc độ nói, hoặc GPU lỗi nên app chuyển sang CPU.</p><p><strong>Cách xử lý:</strong> Đóng bớt app nặng. Ở Cài đặt › Model, chọn gói Nhẹ rồi bấm <strong>Dùng gói này</strong> (nếu chưa tải gói đó thì bấm <strong>Tải và dùng</strong>); gói mới được dùng từ phiên dịch sau.</p></div>
+<div class="card"><span class="card-title">“Dịch không khả dụng: chỉ hiện câu gốc”; “Phiên dịch đã dừng vì lỗi. Mở cửa sổ chính để xem chi tiết.”; “Phần nhận dạng giọng nói ngừng chạy…”</span><p><strong>Nguyên nhân:</strong> Bộ dịch hoặc bộ nhận dạng lỗi. App tự khởi động lại chúng; quá 5 lần trong 10 phút thì dừng dịch.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Dừng</strong> rồi <strong>Bắt đầu</strong>. Nếu app báo thiếu hoặc hỏng một phần của app, hãy cài lại AI Translator. Lặp lại thì gửi log.</p></div>
+</div>
 
 <h2 id="model-macos">Model, cài đặt và macOS</h2>
-<div class="table-wrap"><table>
-<thead><tr><th scope="col">Bạn thấy</th><th scope="col">Nguyên nhân</th><th scope="col">Cách xử lý</th></tr></thead>
-<tbody>
-<tr><th scope="row">“Không kết nối được máy chủ model. Kiểm tra kết nối mạng rồi thử lại.”</th><td>Máy không có mạng, hoặc mạng chặn tải.</td><td>Kiểm tra mạng rồi bấm <strong>Thử lại</strong>.</td></tr>
-<tr><th scope="row">“Tải chưa xong. Bấm Tiếp tục để tải tiếp từ chỗ đã dừng.” hoặc “Một file tải về bị hỏng…”</th><td>Mạng rớt giữa chừng, hoặc file tải về không khớp mã kiểm tra.</td><td>Bấm <strong>Tiếp tục</strong>. Nếu app báo “Model bị hỏng. Hãy tải lại model.”, bấm <strong>Kiểm tra và tải lại</strong> ở Cài đặt › Model.</td></tr>
-<tr><th scope="row">“Ổ đĩa không đủ chỗ cho gói này…” hoặc “Không ghi được file model xuống ổ đĩa.”</th><td>Ổ đĩa cần trống bằng dung lượng tải cộng 1 GB (gói Chuẩn khoảng 2,5 GB, gói Nhẹ khoảng 1,3 GB).</td><td>Giải phóng ổ đĩa, hoặc chọn gói Nhẹ.</td></tr>
-<tr><th scope="row">“Máy này chưa đạt cấu hình tối thiểu nên không tải được model.”</th><td>Máy dưới mức tối thiểu: Mac Apple Silicon, RAM 8 GB.</td><td>Dùng máy đạt cấu hình. Xem yêu cầu ở <a href="/tai-xuong/">trang tải xuống</a>.</td></tr>
-<tr><th scope="row">macOS báo không xác minh được nhà phát triển khi mở app lần đầu</th><td>Bản macOS hiện ký ad-hoc và chưa được Apple notarize.</td><td>Bấm <strong>Done</strong>, mở System Settings › Privacy &amp; Security, kéo xuống cuối, bấm <strong>Open Anyway</strong> cạnh AI Translator. Xem <a href="/huong-dan/cai-dat-macos/">cài đặt trên macOS</a>.</td></tr>
-<tr><th scope="row">Sau khi cập nhật, macOS hỏi mật khẩu vài lần</th><td>Bình thường với bản ký ad-hoc: mật khẩu vài lần và quyền thu âm một lần.</td><td>Nhập mật khẩu, bấm <strong>Always Allow</strong> và cho phép quyền thu âm.</td></tr>
-</tbody></table></div>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">“Không kết nối được máy chủ model. Kiểm tra kết nối mạng rồi thử lại.”</span><p><strong>Nguyên nhân:</strong> Máy không có mạng, hoặc mạng chặn tải.</p><p><strong>Cách xử lý:</strong> Kiểm tra mạng rồi bấm <strong>Thử lại</strong>.</p></div>
+<div class="card"><span class="card-title">“Tải chưa xong. Bấm Tiếp tục để tải tiếp từ chỗ đã dừng.” hoặc “Một file tải về bị hỏng…”</span><p><strong>Nguyên nhân:</strong> Mạng rớt giữa chừng, hoặc file tải về không khớp mã kiểm tra.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Tiếp tục</strong>. Nếu app báo “Model bị hỏng. Hãy tải lại model.”, bấm <strong>Kiểm tra và tải lại</strong> ở Cài đặt › Model.</p></div>
+<div class="card"><span class="card-title">“Ổ đĩa không đủ chỗ cho gói này…” hoặc “Không ghi được file model xuống ổ đĩa.”</span><p><strong>Nguyên nhân:</strong> Ổ đĩa cần trống bằng dung lượng tải cộng 1 GB (gói Chuẩn khoảng 2,5 GB, gói Nhẹ khoảng 1,3 GB).</p><p><strong>Cách xử lý:</strong> Giải phóng ổ đĩa, hoặc chọn gói Nhẹ.</p></div>
+<div class="card"><span class="card-title">“Máy này chưa đạt cấu hình tối thiểu nên không tải được model.”</span><p><strong>Nguyên nhân:</strong> Máy dưới mức tối thiểu: Mac Apple Silicon, RAM 8 GB.</p><p><strong>Cách xử lý:</strong> Dùng máy đạt cấu hình. Xem yêu cầu ở <a href="/tai-xuong/">trang tải xuống</a>.</p></div>
+<div class="card"><span class="card-title">macOS báo không xác minh được nhà phát triển khi mở app lần đầu</span><p><strong>Nguyên nhân:</strong> Bản macOS hiện ký ad-hoc và chưa được Apple notarize.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Done</strong>, mở System Settings › Privacy &amp; Security, kéo xuống cuối, bấm <strong>Open Anyway</strong> cạnh AI Translator. Xem <a href="/huong-dan/cai-dat-macos/">cài đặt trên macOS</a>.</p></div>
+<div class="card"><span class="card-title">Sau khi cập nhật, macOS hỏi mật khẩu vài lần</span><p><strong>Nguyên nhân:</strong> Bình thường với bản ký ad-hoc: mật khẩu vài lần và quyền thu âm một lần.</p><p><strong>Cách xử lý:</strong> Nhập mật khẩu, bấm <strong>Always Allow</strong> và cho phép quyền thu âm.</p></div>
+</div>
 
 <h2 id="ban-quyen">Bản quyền, hạn mức và dùng thử</h2>
-<div class="table-wrap"><table>
-<thead><tr><th scope="col">Bạn thấy</th><th scope="col">Nguyên nhân</th><th scope="col">Cách xử lý</th></tr></thead>
-<tbody>
-<tr><th scope="row">“Đã hết hạn mức dịch · mở lại lúc …”</th><td>Đã dùng hết 30 phút hôm nay (Free) hoặc 50 giờ của chu kỳ (Monthly).</td><td>Đợi tới giờ mở lại ghi trên màn hình, hoặc <a href="/huong-dan/mua-va-kich-hoat-key/">gia hạn, đổi gói</a>.</td></tr>
-<tr><th scope="row">“Đã hết 10 ngày dùng thử”</th><td>Free chỉ dùng thử 10 ngày mỗi máy; gỡ cài lại không mở lại.</td><td>Mua Monthly hoặc Yearly để dịch tiếp.</td></tr>
-<tr><th scope="row">“Key đang dùng trên 2 máy nên đã bị tạm khóa…”</th><td>Key đang giữ ở hai máy.</td><td>Gỡ key khỏi một máy rồi bấm <strong>Thử lại</strong>: xem <a href="/huong-dan/mua-va-kich-hoat-key/#doi-may">cách đổi máy</a>.</td></tr>
-<tr><th scope="row">“Cần kết nối mạng một lần để bắt đầu dùng thử” hoặc “Đã 14 ngày chưa kiểm được gói nên đang dùng Free. Hãy kết nối mạng.”</th><td>Máy chưa đăng ký dùng thử được vì chưa có mạng, hoặc gói trả phí quá 14 ngày chưa kiểm tra bản quyền.</td><td>Kết nối mạng, rồi bấm <strong>Kiểm tra ngay</strong> ở Cài đặt › Bản quyền (gói trả phí).</td></tr>
-<tr><th scope="row">“Giờ của máy có vẻ không đúng. Chỉnh lại giờ rồi thử lại.” hoặc “Giờ máy đã bị chỉnh lùi…”</th><td>Đồng hồ máy bị chỉnh lùi.</td><td>Đặt lại giờ đúng (nên bật đặt giờ tự động), kết nối mạng để app kiểm lại.</td></tr>
-<tr><th scope="row">“Key này không đúng…”; “Key này đang bị khóa tạm vì đổi máy quá nhiều lần…”; “Bản cài AI Translator này không chính hãng…”</th><td>Gõ sai key; đổi máy quá nhiều; hoặc bản cài không phải bản chính thức.</td><td>Dán lại key từ email; liên hệ hỗ trợ nếu key bị khóa; tải bản chính thức từ aitranslator.io.vn.</td></tr>
-</tbody></table></div>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">“Đã hết hạn mức dịch · mở lại lúc …”</span><p><strong>Nguyên nhân:</strong> Đã dùng hết 30 phút hôm nay (Free) hoặc 50 giờ của chu kỳ (Monthly).</p><p><strong>Cách xử lý:</strong> Đợi tới giờ mở lại ghi trên màn hình, hoặc <a href="/huong-dan/mua-va-kich-hoat-key/">gia hạn, đổi gói</a>.</p></div>
+<div class="card"><span class="card-title">“Đã hết 10 ngày dùng thử”</span><p><strong>Nguyên nhân:</strong> Free chỉ dùng thử 10 ngày mỗi máy; gỡ cài lại không mở lại.</p><p><strong>Cách xử lý:</strong> Mua Monthly hoặc Yearly để dịch tiếp.</p></div>
+<div class="card"><span class="card-title">“Key đang dùng trên 2 máy nên đã bị tạm khóa…”</span><p><strong>Nguyên nhân:</strong> Key đang giữ ở hai máy.</p><p><strong>Cách xử lý:</strong> Gỡ key khỏi một máy rồi bấm <strong>Thử lại</strong>: xem <a href="/huong-dan/mua-va-kich-hoat-key/#doi-may">cách đổi máy</a>.</p></div>
+<div class="card"><span class="card-title">“Cần kết nối mạng một lần để bắt đầu dùng thử” hoặc “Đã 14 ngày chưa kiểm được gói nên đang dùng Free. Hãy kết nối mạng.”</span><p><strong>Nguyên nhân:</strong> Máy chưa đăng ký dùng thử được vì chưa có mạng, hoặc gói trả phí quá 14 ngày chưa kiểm tra bản quyền.</p><p><strong>Cách xử lý:</strong> Kết nối mạng. Nếu máy chưa đăng ký dùng thử, bấm <strong>Bắt đầu</strong> lại để app đăng ký. Với gói trả phí, bấm <strong>Kiểm tra ngay</strong> ở Cài đặt › Bản quyền.</p></div>
+<div class="card"><span class="card-title">“Giờ của máy có vẻ không đúng. Chỉnh lại giờ rồi thử lại.” hoặc “Giờ máy đã bị chỉnh lùi…”</span><p><strong>Nguyên nhân:</strong> Đồng hồ máy bị chỉnh lùi.</p><p><strong>Cách xử lý:</strong> Đặt lại giờ đúng (nên bật đặt giờ tự động), kết nối mạng để app kiểm lại.</p></div>
+<div class="card"><span class="card-title">“Key này không đúng…”; “Key này đang bị khóa tạm vì đổi máy quá nhiều lần…”; “Bản cài AI Translator này không chính hãng…”</span><p><strong>Nguyên nhân:</strong> Gõ sai key; đổi máy quá nhiều; hoặc bản cài không phải bản chính thức.</p><p><strong>Cách xử lý:</strong> Dán lại key từ email; liên hệ hỗ trợ nếu key bị khóa; tải lại bản cài chính thức từ liên kết do chúng tôi gửi hoặc từ aitranslator.io.vn.</p></div>
+</div>
 
 <h2 id="gui-log">Gửi log và báo lỗi cho hỗ trợ</h2>
-<p>Mở <strong>Giới thiệu › Mở thư mục log</strong> để thấy file <code>app.log</code> (trên macOS: <code>~/Library/Logs/com.aitranslator.desktop/</code>). Log chỉ nằm trên máy bạn và không chứa âm thanh, nội dung chép lời hay key đầy đủ. App không tự gửi gì: bạn tự quyết có gửi cho <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.io.vn) hay không.</p>
+<p>Mở <strong>Giới thiệu › Mở thư mục log</strong> để thấy file <code>app.log</code> (trên macOS: thư mục con <code>com.aitranslator.desktop</code> trong <code>~/Library/Logs/</code>). Log chỉ nằm trên máy bạn và không chứa âm thanh, nội dung chép lời hay key đầy đủ. App không tự gửi gì: bạn tự quyết có gửi cho <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.io.vn) hay không.</p>
 ${appShot({
   slug: "app-about",
   lang: "vi",

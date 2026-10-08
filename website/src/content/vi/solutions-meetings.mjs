@@ -29,7 +29,7 @@ ${pageHero({
 
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
-  ["Dùng với", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>Không bot, không plugin; mọi app phát tiếng đều dùng được</small>"],
+  ["Dùng với", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>Không bot, không plugin; app nào phát tiếng ra máy cũng thu được</small>"],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Một chiều, sang ngôn ngữ bạn chọn</small>"],
   ["Độ trễ", "Trung vị 0,76–1,03 giây<small>Mac M4 Pro, gói Chuẩn; máy yếu hơn sẽ chậm hơn</small>"],
   ["Nền tảng", "macOS 14.2+ (Apple Silicon), bản beta<small>Windows 10/11: sắp có</small>"],
@@ -71,7 +71,7 @@ ${steps(
     { title: "Khóa ngôn ngữ nguồn nếu biết trước", text: "Ở thẻ Ngôn ngữ, đặt <em>Ngôn ngữ nguồn</em> đúng ngôn ngữ cuộc họp thay vì <em>Tự nhận diện</em>; app ít nhầm hơn ở câu ngắn. Họp nhiều thứ tiếng thì giữ Tự nhận diện và chỉ tick các ngôn ngữ có thể xuất hiện." },
     { title: "Thêm tên riêng vào từ điển (Pro)", text: "Nhập tên đối tác, sản phẩm, từ viết tắt kèm cách dịch, tối đa 500 mục. Đây là gợi ý cho bộ dịch, không bảo đảm đúng mọi lần. Xem <a href=\"/huong-dan/tu-dien-thuat-ngu/\">hướng dẫn từ điển</a>." },
     { title: "Đặt thanh phụ đề và khóa", text: "Kéo thanh tới chỗ không che người nói, thường sát dưới khung video; chỉnh cỡ chữ 14–48 px, màu, độ mờ ở Cài đặt › Phụ đề. Bấm <em>Khóa (click xuyên qua)</em> để chuột đi xuyên thanh." },
-    { title: "Chọn nguồn Chỉ Zoom (macOS)", text: "Danh sách ở Cài đặt › Âm thanh chỉ có app đang phát tiếng, nên vào họp rồi bấm <em>Làm mới danh sách</em>. Chọn <em>Chỉ Zoom</em> để tiếng thông báo hay video khác không bị dịch. Meet trong trình duyệt thì chọn trình duyệt đó (các tab khác của nó vẫn được nghe). Có tác dụng từ phiên sau." },
+    { title: "Chỉ nghe Zoom (macOS)", text: "Danh sách ở Cài đặt › Âm thanh chỉ có app đang phát tiếng, nên vào họp rồi bấm <em>Làm mới danh sách</em>. Chọn mục của Zoom (dạng <em>Chỉ {tên app}</em>) để tiếng thông báo hay video khác không bị dịch. Meet trong trình duyệt thì chọn trình duyệt đó (các tab khác của nó vẫn được nghe). Có tác dụng từ phiên sau." },
   ],
   true,
 )}
@@ -80,7 +80,7 @@ ${steps(
 </div></section>
 
 <section class="section section-alt"><div class="container">
-${sectionHead({ eyebrow: "Trong cuộc họp", title: "Điều khiển mà không rời cuộc họp", text: "Bấm Bắt đầu trước giờ họp vài phút để model nạp xong; im lặng không tính vào hạn mức.", center: true })}
+${sectionHead({ eyebrow: "Trong cuộc họp", title: "Điều khiển mà không rời cuộc họp", text: "Bấm Bắt đầu trước khi họp bắt đầu để model nạp xong (vài giây đầu); im lặng không tính vào hạn mức.", center: true })}
 ${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề của AI Translator trên nền tối: mỗi câu có câu gốc tiếng Anh hoặc tiếng Trung chữ nhỏ ở trên và bản dịch tiếng Việt ở dưới", caption: "Thanh phụ đề: câu gốc chữ nhỏ ở trên, bản dịch ở dưới." })}
 <div class="split">
 <div class="table-wrap reveal"><table>
@@ -95,7 +95,7 @@ ${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề c�
 <div class="stack reveal">
 ${checkList([
   "<strong>Lỡ một câu:</strong> cuộn lên xem lại (giữ 1000 câu gần nhất), nút <em>Mới nhất</em> đưa bạn về hiện tại; phím cuộn dùng được cả khi đã khóa.",
-  "<strong>Câu màu nhạt</strong> là phụ đề tạm, sẽ được thay khi người nói nói tiếp. Bật <em>Hiện câu gốc phía trên bản dịch</em> để đối chiếu tên và số liệu.",
+  "<strong>Câu màu nhạt</strong> là phụ đề tạm, sẽ được thay khi người nói nói tiếp. Giữ bật <em>Hiện câu gốc phía trên bản dịch</em> (mặc định đã bật) để đối chiếu tên và số liệu.",
   "<strong>Ẩn nhanh</strong> bằng phím tắt hoặc nút ✕ khi rê chuột vào thanh chưa khóa.",
 ])}
 </div>
@@ -111,14 +111,14 @@ ${sectionHead({ eyebrow: "Sau cuộc họp", title: "Giữ lại những gì b�
 
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Đã thử với gì", title: "Những app và thiết bị đã thử" })}
-<p>Chúng tôi đã thử thu âm thanh hệ thống trên macOS 26.6.2 với <strong>Zoom (app)</strong>, <strong>Google Meet</strong> trên Chrome, Safari và Edge, <strong>Microsoft Teams (app mới)</strong> và <strong>Zalo PC</strong>, qua loa, tai nghe có dây và AirPods.</p>
+<p>Bằng một công cụ thử thu âm riêng (chưa phải toàn bộ vòng nhận dạng và dịch của app), chúng tôi đã thử thu âm thanh hệ thống trên macOS 26.6.2 với <strong>Zoom (app)</strong>, <strong>Google Meet</strong> trên Chrome, Safari và Edge, <strong>Microsoft Teams (app mới)</strong> và <strong>Zalo PC</strong>, qua loa, tai nghe có dây và AirPods.</p>
 <p>Đây là thử nghiệm nội bộ, kết quả do người thử nghe xác nhận, chưa phải nghiệm thu chính thức trên bản phát hành cho từng app và phiên bản macOS (tối thiểu 14.2). Windows chưa phát hành nên chưa có nghiệm thu.</p>
 </div></section>
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "Riêng tư", title: "Lưu ý quyền riêng tư và thông báo" })}
 <p>AI Translator thu âm thanh phát ra từ máy bạn, trong đó có giọng người khác. Âm thanh chỉ nằm trong RAM, không ghi xuống đĩa và không gửi qua mạng (đã kiểm bằng proxy trên macOS). App không ghi âm cuộc họp. Xem <a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
-${callout({ title: "Người cùng họp sẽ không được báo.", text: "Vì không có bot, nền tảng họp không biết bạn đang dùng AI Translator và không hiển thị gì cho người khác. Nếu pháp luật hoặc quy định công ty yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp rằng bạn dùng công cụ dịch. <a href=\"/dieu-khoan/\">Điều khoản sử dụng</a> (mục 6) cũng nêu như vậy. Chúng tôi không đưa ra tư vấn pháp lý." })}
+${callout({ title: "Người cùng họp sẽ không được báo.", text: "Vì không có bot và app không kết nối với nền tảng họp, người cùng họp không thấy thông báo nào về việc bạn dùng AI Translator. Nếu pháp luật hoặc quy định công ty yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp rằng bạn dùng công cụ dịch. <a href=\"/dieu-khoan/\">Điều khoản sử dụng</a> (mục 6) cũng nêu như vậy. Chúng tôi không đưa ra tư vấn pháp lý." })}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

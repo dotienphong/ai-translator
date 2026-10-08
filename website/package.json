@@ -10,7 +10,7 @@
   "scripts": {
     "build": "node src/build/build.mjs",
     "dev": "node src/build/build.mjs && node src/serve.mjs",
-    "test": "node --test test/",
+    "test": "node --test \"test/*.test.mjs\"",
     "deploy": "node src/build/build.mjs && wrangler deploy && wrangler deploy -c wrangler.www.jsonc"
   },
   "devDependencies": {

@@ -89,11 +89,11 @@ ${docLayout({
 <p>Với AI Translator, nhận dạng giọng nói và dịch chạy trên máy: âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. Kiểm bằng proxy trên macOS cho thấy khi dịch không có âm thanh hay chữ chép lời rời máy (Windows chưa đo). Xem <a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
 
 <h2 id="mang-va-bot">Internet, bot và phía chủ họp</h2>
-<p>Dịch cloud cần mạng ổn định khi họp. AI Translator dịch được cả khi mạng chập chờn hay trong mạng nội bộ; nó chỉ cần mạng để tải model, kích hoạt, mua gói, kiểm tra bản quyền và cập nhật.</p>
+<p>Dịch cloud cần mạng ổn định khi họp. AI Translator vẫn dịch được khi mạng chập chờn hoặc mất mạng. Nó chỉ cần mạng để tải model, đăng ký dùng thử, kích hoạt, mua gói, kiểm tra bản quyền (gói trả phí cần kiểm tra ít nhất 14 ngày một lần) và cập nhật, nên một mạng nội bộ hoàn toàn không ra được internet thì chưa phù hợp.</p>
 <p>Phụ đề tích hợp có thể cần chủ họp hoặc quản trị viên bật, còn công cụ bên thứ ba có thể cần bot vào phòng. AI Translator chạy ở phía bạn nên không cần ai làm gì; đổi lại, người cùng họp không được báo. Nếu quy định đòi hỏi, bạn tự thông báo (xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>).</p>
 
 <h2 id="chi-phi">Chi phí và hạn mức</h2>
-<p>Với cloud, mỗi phút dịch tốn tài nguyên máy chủ của nhà cung cấp, nên tính năng này thường đi kèm gói cao hoặc giới hạn sử dụng. Với dịch offline, phần tính toán chạy trên máy bạn, nên thêm một phút dịch không tốn chi phí hạ tầng cho chúng tôi. Hạn mức của AI Translator (30 phút mỗi ngày khi dùng thử, 50 giờ mỗi 30 ngày ở Monthly, không giới hạn ở Yearly) là chính sách giá, không phải giới hạn kỹ thuật.</p>
+<p>Với cloud, mỗi phút dịch dùng tài nguyên máy chủ của nhà cung cấp. Phụ đề dịch tích hợp trong các nền tảng họp lớn thường chỉ có ở gói trả phí cao hơn. Với dịch offline, phần tính toán chạy trên máy bạn, nên thêm một phút dịch không tốn chi phí hạ tầng cho chúng tôi. Hạn mức của AI Translator (30 phút mỗi ngày khi dùng thử, 50 giờ mỗi 30 ngày ở Monthly, không giới hạn ở Yearly) là chính sách giá, không phải giới hạn kỹ thuật.</p>
 <p>Chi phí chuyển sang máy bạn: RAM, ổ đĩa, điện năng (chưa đo pin). Xem <a href="/bang-gia/">bảng giá</a>.</p>
 
 <h2 id="tre-may-ngon-ngu">Độ trễ, yêu cầu máy và số ngôn ngữ</h2>
@@ -114,7 +114,7 @@ ${docLayout({
 <h3>AI Translator (offline) hợp hơn khi</h3>
 <ul>
 <li>Âm thanh không được rời máy vì nội dung nhạy cảm hay quy định nội bộ</li>
-<li>Mạng chập chờn hoặc bạn họp trong mạng nội bộ</li>
+<li>Mạng chập chờn hoặc hay mất kết nối (app vẫn cần mạng thỉnh thoảng để kiểm tra bản quyền)</li>
 <li>Bạn họp trên nhiều app khác nhau, hoặc xem webinar và video</li>
 <li>Gói nền tảng không có phụ đề dịch, và bạn không muốn bot trong phòng</li>
 </ul>

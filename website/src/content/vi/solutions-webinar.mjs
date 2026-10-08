@@ -12,7 +12,7 @@ export default {
   path: "/giai-phap/dich-webinar-va-video/",
   title: "Phụ đề dịch cho webinar, khóa học và video",
   description:
-    "Đọc phụ đề dịch khi xem webinar, khóa học, video bằng ngoại ngữ với AI Translator: không cài gì vào trình duyệt, chạy offline, xuất bản chép lời để học lại.",
+    "Đọc phụ đề dịch khi xem webinar, khóa học, video bằng ngoại ngữ với AI Translator: không cài gì vào trình duyệt, chạy offline, có bản chép lời để học lại.",
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
@@ -30,7 +30,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["Dùng với", "Bất cứ thứ gì phát tiếng trên máy<small>Trình duyệt, app trình phát, nền tảng khóa học, webinar</small>"],
-  ["Cần cài thêm", "Không gì cả<small>Không tiện ích trình duyệt, không plugin, không tài khoản đăng nhập</small>"],
+  ["Cần cài thêm", "Không gì ngoài chính app<small>Không tiện ích trình duyệt, không plugin, không tài khoản đăng nhập</small>"],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Chọn ngôn ngữ bạn muốn đọc</small>"],
   ["Phiên dài", "Đã chạy liên tục 5 giờ 23 phút không lỗi<small>Mac M4 Pro, macOS, bản release ký ad-hoc, một lần thử</small>"],
 ])}</div>
@@ -46,7 +46,7 @@ ${feature({ icon: "play", title: "Người xem video chuyên ngành", text: "Vid
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${sectionHead({ eyebrow: "Không cần cài gì", title: "Hoạt động với mọi trình phát" })}
+${sectionHead({ eyebrow: "Không cần cài thêm", title: "Không phụ thuộc trình phát hay nền tảng" })}
 <p>Vì AI Translator thu âm thanh đang phát trên máy tính, nó không phụ thuộc vào trang web hay nền tảng bạn xem. Bạn bấm <strong>Bắt đầu</strong>, rồi phát video; phụ đề dịch hiện trên thanh nổi phía trên cửa sổ trình phát. Chúng tôi đã thử với video trên trình duyệt, nhưng chưa thử riêng từng nền tảng khóa học hay webinar.</p>
 <p>Trên macOS, bạn cấp quyền <em>Ghi âm thanh hệ thống</em> một lần; app không dùng micro. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cách cấp quyền thu âm</a>.</p>
 </div></section>
@@ -56,7 +56,7 @@ ${sectionHead({ eyebrow: "Không cần cài gì", title: "Hoạt động với m
 <div class="stack-lg reveal">
 <span class="eyebrow">Đọc cả hai</span>
 <h2>Câu gốc và bản dịch cùng lúc</h2>
-<p>Bật <em>Hiện câu gốc phía trên bản dịch</em> ở Cài đặt › Phụ đề để đọc câu gốc chữ nhỏ ngay trên bản dịch. Cách này hợp với người đang học ngoại ngữ hoặc muốn đối chiếu thuật ngữ.</p>
+<p>Mục <em>Hiện câu gốc phía trên bản dịch</em> ở Cài đặt › Phụ đề (mặc định đã bật) cho bạn đọc câu gốc chữ nhỏ ngay trên bản dịch. Cách này hợp với người đang học ngoại ngữ hoặc muốn đối chiếu thuật ngữ.</p>
 ${checkList([
   "Cỡ chữ 14–48 px, 5 màu chữ, 5 màu nền, độ mờ tùy chỉnh",
   "Cuộn lên xem lại câu cũ bằng con lăn hoặc phím tắt, nút <em>Mới nhất</em> đưa về hiện tại",

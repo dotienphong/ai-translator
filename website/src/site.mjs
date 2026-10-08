@@ -12,9 +12,9 @@ export const SITE = {
   securityExpires: "2027-10-08T00:00:00.000Z",
   version: "0.1.0",
   llmSummaryEn:
-    "AI Translator is a desktop app (macOS, Windows coming) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and runs fully offline: audio never leaves your machine, no bot, no account, no ads.",
+    "AI Translator is a desktop app (macOS, Windows coming) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer: speech recognition and translation run on-device, audio never leaves your machine, no bot, no account, no ads.",
   llmSummaryVi:
-    "AI Translator là app desktop (macOS, Windows sắp có) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và chạy hoàn toàn offline: âm thanh không rời khỏi máy, không cần bot, không cần tài khoản, không quảng cáo.",
+    "AI Translator là app desktop (macOS, Windows sắp có) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và xử lý mọi thứ ngay trên máy: nhận dạng giọng nói và dịch chạy trên máy, âm thanh không rời khỏi máy, không cần bot, không cần tài khoản, không quảng cáo.",
   featureListVi: [],
   featureListEn: [],
 };
@@ -47,7 +47,7 @@ export const T = {
     theme: "Toggle light/dark theme",
     skip: "Skip to main content",
     cta: { label: "Get the beta", href: "/en/download/" },
-    ogAlt: "AI Translator — live translated subtitles for meetings, fully offline on your computer",
+    ogAlt: "AI Translator — live translated subtitles for meetings, running on your computer",
     footerAbout:
       "Live translated subtitles for any meeting audio on your computer. Fully offline, no bot, no account, no ads.",
     provider: "Provider",

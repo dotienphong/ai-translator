@@ -23,13 +23,13 @@ export default {
   path: "/huong-dan/mua-va-kich-hoat-key/",
   title: "Mua gói, kích hoạt key, đổi máy: hướng dẫn",
   description:
-    "Cách mua Monthly hoặc Yearly bằng VietQR trong app, nhập key từ email, đổi máy, gia hạn và đổi gói, hoàn tiền trong 7 ngày và xử lý khi key bị khóa.",
+    "Cách mua Monthly hoặc Yearly bằng VietQR trong app, nhập key từ email, đổi máy, gia hạn và đổi gói, điều kiện hoàn tiền và cách xử lý khi key bị khóa.",
   breadcrumbs: crumbs,
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
   modified: "2026-10-08",
-  llm: "Hướng dẫn mua gói Monthly hoặc Yearly bằng VietQR trong app, nhận và nhập key, mất key, mỗi key một máy và cách đổi máy, ngoại tuyến 14 ngày, gia hạn, đổi gói, hoàn tiền.",
+  llm: "Hướng dẫn mua gói Monthly hoặc Yearly bằng VietQR trong app, nhận và nhập key, mất key, mỗi key một máy và cách đổi máy, ngoại tuyến 14 ngày, gia hạn, đổi gói, điều kiện hoàn tiền.",
   llmTitle: "Mua gói, kích hoạt key và đổi máy trong AI Translator",
   schema: [
     howTo({
@@ -62,7 +62,7 @@ ${facts([
   ["Thanh toán", "VietQR, ngân hàng Việt Nam, VND<small>Không thẻ quốc tế, không tự gia hạn</small>"],
   ["Số máy", "Mỗi key một máy"],
   ["Ngoại tuyến", "Tối đa 14 ngày giữa hai lần kiểm tra bản quyền"],
-  ["Hoàn tiền", "Theo Điều khoản, yêu cầu trong 7 ngày"],
+  ["Hoàn tiền", "Đã thanh toán thì không hoàn lại, trừ các trường hợp trong Điều khoản<small>Gửi yêu cầu trong 7 ngày kể từ ngày thanh toán</small>"],
 ])}
 
 <h2 id="mua-goi">Mua gói trong app</h2>
@@ -98,8 +98,8 @@ ${appShot({
 ${appShot({
   slug: "app-settings-license",
   lang: "vi",
-  alt: "Nhóm Bản quyền trong Cài đặt: gói đang dùng và trạng thái, ngày hết hạn, hạn mức còn lại, ô nhập license key và mục Mất key?",
-  caption: "Cài đặt › Bản quyền.",
+  alt: "Nhóm Bản quyền trong Cài đặt sau khi kích hoạt: gói Monthly đang dùng, key đã che chỉ lộ nhóm cuối, ngày hết hạn, số phút còn lại, các nút Gia hạn hoặc đổi gói, Kiểm tra ngay, Gỡ kích hoạt máy này và mục Mất key?",
+  caption: "Cài đặt › Bản quyền sau khi kích hoạt.",
 })}
 <h3 id="mat-key">Mất key</h3>
 <p>Vào <strong>Cài đặt › Bản quyền › Mất key?</strong>, nhập <strong>Email đã dùng để mua</strong> rồi bấm <strong>Gửi lại key</strong>. Mọi key còn hiệu lực của email đó được gửi vào chính email đó. App luôn hiện “Nếu email này có key, thư đang được gửi.”, dù email có key hay không. Vẫn không thấy thì viết tới support@aitranslator.io.vn.</p>
@@ -137,7 +137,7 @@ ${callout({
 <li>“Số tiền nhận được ít hơn giá gói. Chuyển bù cho đơn … trong 24 giờ, hoặc liên hệ hỗ trợ kèm mã đơn này.” Chuyển bù phần thiếu, hoặc liên hệ.</li>
 <li>“Đã nhận tiền nhưng chưa kích hoạt được key trên máy này…” Nhập key trong email ở Cài đặt › Bản quyền.</li>
 </ul>
-<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi từ phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.io.vn kèm <strong>mã đơn</strong> (hiện ở màn hình Nâng cấp dạng “Đơn …”); đổi gói không được hoàn tiền. Chưa có hóa đơn điện tử; cần chứng từ thì liên hệ hỗ trợ. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a> và <a href="/lien-he/">trang liên hệ</a>.</p>
+<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi từ phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.io.vn kèm <strong>mã đơn</strong> (hiện ở màn hình Nâng cấp dạng “Đơn …”); đổi gói không được hoàn tiền. Chưa có hóa đơn điện tử; nếu bạn cần chứng từ, hãy liên hệ hỗ trợ để trao đổi. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a> và <a href="/lien-he/">trang liên hệ</a>.</p>
 `,
 })}
 ${docNav(

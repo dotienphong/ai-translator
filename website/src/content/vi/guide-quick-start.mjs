@@ -54,7 +54,7 @@ ${pageHero({
   crumbs,
   title: "Bắt đầu nhanh với AI Translator",
   lead: "Để dùng AI Translator lần đầu trên macOS, bạn cài app, đi qua bảy bước thiết lập một lần (ngôn ngữ, điều khoản, tải model, quyền ghi âm, nghe thử), rồi bấm Bắt đầu khi cuộc họp có tiếng. Phụ đề dịch hiện trên một thanh nổi; nhận dạng giọng nói và dịch đều chạy trên máy bạn.",
-  meta: "<span>Áp dụng cho macOS 14.2 trở lên, Apple Silicon</span><span>Cập nhật 08/10/2026</span>",
+  meta: "<span>Áp dụng cho macOS 14.2 trở lên, Apple Silicon</span> <span>Cập nhật 08/10/2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -67,7 +67,7 @@ ${facts([
   ["Chip", "Apple Silicon (M1 trở lên)<small>Chưa có bản cho Mac Intel.</small>"],
   ["Hệ điều hành", "macOS 14.2 trở lên"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
-  ["Bản cài", "File .dmg khoảng 9 MB<small>Gửi qua email khi bạn đăng ký beta ở trang <a href=\"/tai-xuong/\">Tải xuống</a></small>"],
+  ["Bản cài", "File .dmg khoảng 9 MB<small>Chúng tôi gửi liên kết tải qua email khi bạn đăng ký beta ở trang <a href=\"/tai-xuong/\">Tải xuống</a></small>"],
   ["Ổ đĩa", "1,3 GB (gói Nhẹ) hoặc 2,5 GB (gói Chuẩn)<small>Cộng thêm 1 GB trống khi tải model</small>"],
   ["Mạng", "Cần để tải model và đăng ký dùng thử Free<small>Sau đó nhận dạng và dịch chạy offline</small>"],
 ])}
@@ -100,7 +100,7 @@ ${appShot({ slug: "app-onboarding-4", lang: "vi", alt: "Bước tải model vớ
 </div>
 
 <h3>Bước 4. Cho phép ghi âm thanh hệ thống</h3>
-<p>macOS hỏi quyền <strong>Ghi âm thanh hệ thống</strong> ở lần đầu AI Translator thu âm thanh. Hãy chọn cho phép. Lỡ từ chối thì nút <strong>Mở System Settings</strong> ở màn hình này đưa bạn tới đúng chỗ bật lại. App không dùng micro. Chi tiết: <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền ghi âm thanh hệ thống</a>.</p>
+<p>macOS hỏi quyền <strong>Ghi âm thanh hệ thống</strong> ở lần đầu AI Translator thu âm thanh. Màn hình này chỉ nói trước: hộp thoại của macOS hiện ở bước Nghe thử bên dưới hoặc lần đầu bạn bấm Bắt đầu. Hãy chọn cho phép. Lỡ từ chối thì nút <strong>Mở System Settings</strong> ở màn hình này đưa bạn tới đúng chỗ bật lại. App không dùng micro. Chi tiết: <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền ghi âm thanh hệ thống</a>.</p>
 ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi âm thanh hệ thống kèm nút Mở System Settings", caption: "Bước 5/9: quyền ghi âm thanh hệ thống (chỉ có trên macOS)." })}
 
 <h3>Bước 5. Chọn ngôn ngữ</h3>
@@ -108,7 +108,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi â
 ${appShot({ slug: "app-onboarding-6", lang: "vi", alt: "Bước Chọn ngôn ngữ với ô Dịch sang, năm ô tick ngôn ngữ nói và ô Ngôn ngữ nguồn", caption: "Bước 6/9: chọn ngôn ngữ." })}
 
 <h3>Bước 6. Nghe thử</h3>
-<p>Bấm <strong>Phát câu mẫu</strong>: app phát một câu tiếng Anh qua loa, phụ đề của câu đó hiện trên thanh phụ đề kèm dòng “Đã chạy. Bản dịch: …”. Tăng âm lượng nếu máy đang tắt tiếng. Nếu macOS hỏi quyền ghi âm lúc này, chọn cho phép.</p>
+<p>Bấm <strong>Phát câu mẫu</strong>: app phát một câu tiếng Anh qua loa, phụ đề của câu đó hiện trên thanh phụ đề, và màn hình này ghi “Đã chạy. Bản dịch: …”. Tăng âm lượng nếu máy đang tắt tiếng. Nếu macOS hỏi quyền ghi âm lúc này, chọn cho phép.</p>
 ${appShot({ slug: "app-onboarding-7", lang: "vi", alt: "Bước Nghe thử với nút Phát câu mẫu", caption: "Bước 7/9: nghe thử." })}
 
 <h3>Bước 7. Đọc ghi chú và hoàn tất</h3>
@@ -121,9 +121,9 @@ ${appShot({ slug: "app-onboarding-9", lang: "vi", alt: "Bước cuối nói AI T
 <h2 id="dich-dau-tien">Dịch cuộc họp đầu tiên</h2>
 <ol>
 <li>Ở thẻ <strong>Ngôn ngữ</strong> của màn hình chính, kiểm tra “Dịch sang” và “Ngôn ngữ nói trong cuộc họp”.</li>
-<li>Thẻ <strong>Nguồn âm thanh</strong> mặc định là “Toàn hệ thống, trừ app này”; muốn chỉ dịch một app, bấm <strong>Đổi</strong>. Thanh “Mức âm lượng vào” nhúc nhích khi máy đang phát tiếng.</li>
+<li>Thẻ <strong>Nguồn âm thanh</strong> mặc định là “Toàn hệ thống, trừ app này”; muốn chỉ dịch một app, bấm <strong>Đổi</strong>.</li>
 <li>Mở cuộc họp hoặc video có tiếng, rồi bấm <strong>Bắt đầu</strong> (hoặc nhấn ${keys(["⌃", "⌥", "T"])}). Trạng thái chuyển từ “Đang khởi động” sang “Đang dịch”; vài giây đầu thanh phụ đề có thể ghi “Đang nạp model…”.</li>
-<li>Đọc phụ đề trên thanh nổi. Chấm “Đang nghe” sáng xanh khi có tiếng; dòng màu nhạt là phụ đề tạm, sẽ được thay bằng câu hoàn chỉnh.</li>
+<li>Đọc phụ đề trên thanh nổi. Chấm tròn nhỏ ở góc trên bên phải thanh sáng xanh khi có tiếng, và thanh “Mức âm lượng vào” ở màn hình chính nhúc nhích theo; dòng màu nhạt là phụ đề tạm, sẽ được thay bằng câu hoàn chỉnh.</li>
 <li>Bấm <strong>Dừng</strong> khi xong. Thanh giữ các dòng cuối để bạn đọc nốt, và nút <strong>Mở bản chép lời</strong> hiện ra để xem giờ, câu gốc và bản dịch. <strong>Sao chép tất cả</strong> dùng được ở mọi gói.</li>
 </ol>
 ${appShot({ slug: "app-home-running", lang: "vi", alt: "Màn hình chính khi đang dịch: trạng thái Đang dịch, nút Dừng, thẻ ngôn ngữ và thanh mức âm lượng", caption: "Màn hình chính khi đang dịch." })}

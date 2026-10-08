@@ -30,7 +30,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["Works with", "Anything that plays sound on your computer<small>Browsers, media players, course platforms, webinar tools</small>"],
-  ["Extra installs", "None<small>No browser extension, no plugin, no sign-in account</small>"],
+  ["Extra installs", "None besides the app itself<small>No browser extension, no plugin, no sign-in account</small>"],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>You choose the language you want to read</small>"],
   ["Long sessions", "Ran for 5 hours 23 minutes without an error<small>Mac M4 Pro, macOS, ad-hoc signed release build, tested once</small>"],
 ])}</div>
@@ -46,7 +46,7 @@ ${feature({ icon: "play", title: "Video watchers", text: "Technical videos, talk
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${sectionHead({ eyebrow: "Nothing to install", title: "It works with any player" })}
+${sectionHead({ eyebrow: "Nothing extra to install", title: "It does not depend on the player or platform" })}
 <p>Because AI Translator captures the sound playing on your computer, it does not depend on the website or platform you are watching. Press <strong>Start</strong>, then play the video; translated subtitles appear on a floating bar above the player window. We have tested it with videos in a browser, but not with each individual course or webinar platform.</p>
 <p>On macOS you grant the <em>System Audio Recording</em> permission once; the microphone is not used. See <a href="/en/guide/macos-audio-permission/">how to grant the permission</a>.</p>
 </div></section>
@@ -56,15 +56,15 @@ ${sectionHead({ eyebrow: "Nothing to install", title: "It works with any player"
 <div class="stack-lg reveal">
 <span class="eyebrow">Read both</span>
 <h2>The original and the translation at once</h2>
-<p>Turn on <em>Show the original text above the translation</em> in Settings › Subtitles to see the source sentence in small type right above the translation. It suits language learners and anyone who wants to double-check a term.</p>
+<p>The <em>Show the original text above the translation</em> option in Settings › Subtitles (on by default) puts the source sentence in small type right above the translation. It suits language learners and anyone who wants to double-check a term.</p>
 ${checkList([
-  "Font size 14–48 px, 5 text colours, 5 background colours, adjustable opacity",
+  "Font size 14–48 px, 5 text colors, 5 background colors, adjustable opacity",
   "Scroll up to reread earlier sentences with the mouse wheel or a shortcut; the <em>Latest</em> button returns you to the live line",
   "<em>Pause that ends a sentence</em> ranges from 50 to 800 ms: when you are watching a video and do not need instant feedback, raise it so sentences get cut less often",
 ])}
 </div>
 <div>
-${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customised subtitle bar: yellow text on a navy background, with the original sentence in small type above the Vietnamese translation", caption: "The same bar restyled: yellow text on a navy background." })}
+${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle bar: yellow text on a navy background, with the original Chinese or Japanese in small type above the English translation", caption: "The same bar restyled: yellow text on a navy background." })}
 </div>
 </div>
 </div></section>

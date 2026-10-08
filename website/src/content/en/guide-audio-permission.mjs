@@ -50,7 +50,7 @@ ${pageHero({
   crumbs,
   title: "Grant system audio recording permission on macOS",
   lead: "AI Translator needs exactly one macOS permission: System Audio Recording, so it can hear the audio your Mac is playing. It does not use the microphone. If you refused it by mistake, turn it back on in System Settings › Privacy & Security › Screen & System Audio Recording.",
-  meta: "<span>macOS 14.2 or later only</span><span>Updated October 8, 2026</span>",
+  meta: "<span>macOS 14.2 or later only</span> <span>Updated October 8, 2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -69,7 +69,7 @@ ${facts([
 <h2 id="permission-prompt">The macOS permission prompt</h2>
 <p>The first time AI Translator captures audio, macOS shows a permission prompt with an explanation that we wrote, in your Mac's language. The English version reads:</p>
 <blockquote>AI Translator captures the audio your Mac is playing to show translated subtitles. The audio never leaves your Mac.</blockquote>
-<p>The Vietnamese version reads “AI Translator thu âm thanh máy đang phát để hiện phụ đề dịch. Âm thanh không rời khỏi máy.” Choose to allow it. The app also tells you about it in step 5 of 9 of the first-time setup (see the <a href="/en/guide/quick-start/">quick start guide</a>).</p>
+<p>The Vietnamese version reads “AI Translator thu âm thanh máy đang phát để hiện phụ đề dịch. Âm thanh không rời khỏi máy.” Allow it. The app also tells you about it in step 5 of 9 of the first-time setup (see the <a href="/en/guide/quick-start/">quick start guide</a>).</p>
 ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recording step of the setup wizard, with an Open System Settings button", caption: "Step 5 of 9: the app explains the permission and offers an Open System Settings button." })}
 
 <h2 id="if-you-refused">If you refused it: turn it back on in System Settings</h2>
@@ -79,7 +79,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recor
 <li>Find <strong>System Audio Recording Only</strong> and switch on <strong>AI Translator</strong>.</li>
 <li>Go back to the app, click <strong>Start</strong> and play something with sound.</li>
 </ol>
-<p>If subtitles still do not appear, quit AI Translator completely (choose <strong>Quit</strong> from its menu bar icon) and open it again. If you do not see AI Translator in the list yet, click Start or Play a sample sentence once so the app tries to capture audio, then check again.</p>
+<p>If subtitles still do not appear, quit AI Translator completely (choose <strong>Quit</strong> from its menu bar icon) and open it again. If you do not see AI Translator in the list yet, go back to the app and click Start once (or Play a sample sentence if you are in the setup wizard) so macOS asks for the permission; the app usually appears in the list afterwards, then check again. The names of the items in System Settings may differ a little between macOS versions.</p>
 
 <h2 id="signs-of-missing-permission">Signs the permission is missing</h2>
 <p>Without the permission, no subtitles appear even though the meeting has sound, and the “Input level” bar on the main screen stays flat. After a stretch of silence while another app is known to be playing sound, the <strong>main screen</strong> says:</p>
@@ -90,7 +90,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recor
 <p>When permission is denied, macOS still lets the app create the capture source and still reports it as running, but every sample it delivers is silence. With no error to report, AI Translator can only detect a missing permission by waiting for a long silence while another app is playing sound. That is why the warning appears after a while rather than immediately.</p>
 
 <h2 id="after-updates">After every update, macOS may ask again</h2>
-<p>The current macOS build is ad-hoc signed, so after each update macOS asks once more for this recording permission (along with 5 Keychain dialogs). Allow it; you lose no data, plan or quota. Details in the <a href="/en/guide/install-macos/">macOS installation guide</a>.</p>
+<p>The current macOS build is ad-hoc signed, so after each update macOS usually asks once more for this recording permission (along with about 5 Keychain dialogs). Allow it; you lose no data, plan or quota. Details in the <a href="/en/guide/install-macos/">macOS installation guide</a>.</p>
 
 <h2 id="audio-source">Choosing the audio source: whole system or one app</h2>
 <p>The permission covers both modes. Choose the mode in <strong>Settings › Audio › Audio source</strong>:</p>

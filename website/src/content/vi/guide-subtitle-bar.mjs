@@ -38,7 +38,7 @@ ${pageHero({
   crumbs,
   title: "Thanh phụ đề và phím tắt",
   lead: "Thanh phụ đề là cửa sổ nổi luôn nằm trên cùng, hiện bản dịch mà không lấy focus của app họp. Bạn kéo để di chuyển, kéo cạnh để đổi kích thước, khóa để chuột xuyên qua, và điều khiển bằng năm phím tắt mặc định như ⌃⌥T (bắt đầu hoặc dừng dịch) và ⌃⌥H (ẩn hoặc hiện).",
-  meta: "<span>macOS (Windows chưa phát hành)</span><span>Cập nhật 08/10/2026</span>",
+  meta: "<span>macOS (Windows chưa phát hành)</span> <span>Cập nhật 08/10/2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -74,7 +74,7 @@ ${callout({ title: "Đã khóa thì không bấm được vào thanh.", text: "M
 <tr><th scope="row">Cỡ chữ</th><td>14 đến 48 px</td><td>20 px</td></tr>
 <tr><th scope="row">Màu chữ</th><td>Trắng, Vàng, Xanh lá, Xanh dương nhạt, Cam</td><td>Trắng</td></tr>
 <tr><th scope="row">Màu nền</th><td>Đen, Xám đậm, Xanh navy, Nâu đậm, Tím đậm</td><td>Đen</td></tr>
-<tr><th scope="row">Độ mờ nền</th><td>0 đến 100%</td><td>60%</td></tr>
+<tr><th scope="row">Độ mờ nền</th><td>0 đến 100% (0% là nền trong suốt, 100% là nền đặc)</td><td>60%</td></tr>
 <tr><th scope="row">Hiện câu gốc phía trên bản dịch</th><td>Bật hoặc tắt</td><td>Bật</td></tr>
 </tbody></table></div>
 <div class="grid grid-2">
@@ -87,7 +87,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Bạn thấy</th><th scope="col">Nghĩa là</th></tr></thead>
 <tbody>
-<tr><th scope="row">Chấm “Đang nghe” sáng xanh</th><td>Có tiếng đang vào (“Đang nghe: có tiếng”)</td></tr>
+<tr><th scope="row">Chấm tròn nhỏ sáng xanh</th><td>Có tiếng đang vào. Khi chưa có tiếng, chấm là màu trắng mờ. Chấm chỉ hiện khi phiên đang chạy</td></tr>
 <tr><th scope="row">Đang nạp model…</th><td>Vài giây đầu của phiên, engine đang khởi động</td></tr>
 <tr><th scope="row">Đang trễ</th><td>Phụ đề chậm hơn lời nói</td></tr>
 <tr><th scope="row">Không nghe thấy âm thanh…</th><td>Một lúc lâu không có tiếng; kiểm tra cuộc họp có đang phát không</td></tr>
@@ -139,7 +139,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím t�
 ${docNav(
   [
     { href: "/huong-dan/cap-quyen-thu-am-macos/", kicker: "Bài trước", title: "Cấp quyền ghi âm thanh hệ thống trên macOS" },
-    { href: "/huong-dan/tu-dien-thuat-ngu/", kicker: "Bài sau", title: "Từ điển thuật ngữ" },
+    { href: "/huong-dan/tu-dien-thuat-ngu/", kicker: "Bài sau", title: "Dùng từ điển thuật ngữ" },
     { href: "/huong-dan/khac-phuc-su-co/", kicker: "Liên quan", title: "Khắc phục sự cố" },
   ],
   "Bài liên quan",

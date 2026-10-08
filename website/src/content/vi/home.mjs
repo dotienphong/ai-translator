@@ -12,7 +12,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
-    a: "<p>Được. App thu âm thanh hệ thống của máy tính nên chạy với mọi ứng dụng họp, webinar hay video, không cần bot hay plugin. Trên macOS bạn cũng có thể chọn chỉ nghe một app cụ thể.</p>",
+    a: "<p>Được. App thu âm thanh hệ thống của máy tính nên không phụ thuộc ứng dụng họp, webinar hay video bạn dùng, và không cần bot hay plugin. Chúng tôi đã thử thu âm thanh trên macOS với Zoom, Google Meet, Microsoft Teams và Zalo PC (thử nghiệm nội bộ, không phải chứng nhận của các bên đó). Trên macOS bạn cũng có thể chọn chỉ nghe một app cụ thể.</p>",
   },
   {
     q: "AI Translator hỗ trợ những ngôn ngữ nào?",
@@ -77,7 +77,7 @@ ${demo({
 
 <section class="section-tight"><div class="container narrow">
 <h2 class="sr-only">AI Translator là gì</h2>
-<p class="lead reveal"><strong>AI Translator</strong> là ứng dụng desktop dịch phụ đề trực tiếp cho âm thanh đang phát trên máy tính. Nó nhận dạng giọng nói, dịch và hiện bản dịch thành thanh phụ đề nổi, hoàn toàn trên máy bạn, không cần bot tham gia cuộc họp và không cần tài khoản. Bản beta hiện có cho macOS (Apple Silicon); bản Windows đang hoàn thiện.</p>
+<p class="lead reveal"><strong>AI Translator</strong> là ứng dụng desktop dịch phụ đề trực tiếp cho âm thanh đang phát trên máy tính. Nó nhận dạng giọng nói, dịch và hiện bản dịch thành thanh phụ đề nổi, hoàn toàn trên máy bạn, không cần bot tham gia cuộc họp và không cần tài khoản. Bản beta cho macOS (Apple Silicon) nhận được theo đăng ký; bản Windows đang hoàn thiện.</p>
 <div class="reveal">${facts([
   ["Loại sản phẩm", "Ứng dụng desktop dịch phụ đề trực tiếp"],
   ["Nền tảng", "macOS 14.2 trở lên (Apple Silicon)<small>Windows 10/11 x64: sắp có</small>"],
@@ -98,7 +98,7 @@ ${sectionHead({ eyebrow: "Cách hoạt động", title: "Từ lúc cài đặt t
 ${steps([
   { title: "Cài app, tải model một lần", text: "Mở app, làm theo phần giới thiệu, cho phép ghi âm thanh hệ thống và tải model về máy (khoảng 1,3 GB hoặc 2,5 GB tùy gói). Sau đó mọi thứ chạy offline." },
   { title: "Bấm Bắt đầu khi họp", text: "Chọn ngôn ngữ bạn muốn đọc, bấm <strong>Bắt đầu</strong> hoặc dùng phím tắt. App nghe âm thanh đang phát trên máy tính, dù là Zoom, Teams, Meet hay video." },
-  { title: "Đọc phụ đề nổi trên màn hình", text: "Thanh phụ đề hiện bản dịch gần như ngay khi người nói dừng câu, kèm câu gốc nếu bạn muốn. Kéo, đổi cỡ chữ, khóa vị trí theo ý mình." },
+  { title: "Đọc phụ đề nổi trên màn hình", text: "Thanh phụ đề hiện bản dịch ngay sau khi người nói dừng câu (trên Mac M4 Pro, độ trễ trung vị dưới 1,1 giây; máy khác có thể chậm hơn), kèm câu gốc chữ nhỏ ở trên (bạn tắt được). Kéo, đổi cỡ chữ, khóa vị trí theo ý mình." },
 ])}
 <p class="center-text reveal"><a class="btn btn-ghost" href="/huong-dan/bat-dau-nhanh/">Xem hướng dẫn bắt đầu nhanh ${icon("arrow-right")}</a></p>
 </div></section>
@@ -108,7 +108,7 @@ ${steps([
 <div class="stack-lg reveal">
 <span class="eyebrow">Thanh phụ đề</span>
 <h2>Phụ đề nổi, đọc được trên mọi nền</h2>
-<p class="lead">Một thanh luôn nằm trên cùng, không lấy focus của app họp. Bản dịch hiện dần từng chữ, câu chưa chốt có màu nhạt hơn, câu gốc hiện chữ nhỏ phía trên nếu bạn bật.</p>
+<p class="lead">Một thanh luôn nằm trên cùng, không lấy focus của app họp. Bản dịch hiện dần từng chữ, câu chưa chốt có màu nhạt hơn, câu gốc hiện chữ nhỏ phía trên (mặc định bật, bạn tắt được).</p>
 ${checkList([
   "Kéo để di chuyển, kéo cạnh để đổi kích thước, nhớ vị trí riêng cho từng màn hình",
   "Cỡ chữ 14–48 px, năm màu chữ, năm màu nền, độ mờ nền tùy chỉnh",
@@ -131,10 +131,10 @@ ${appShot({ slug: "app-home-running", lang: "vi", alt: "Màn hình chính của 
 <div class="stack-lg reveal">
 <span class="eyebrow">Điều khiển gọn</span>
 <h2>Một màn hình, đủ mọi thứ cần thiết</h2>
-<p class="lead">Chọn ngôn ngữ cần đọc, chọn nguồn âm thanh, bấm Bắt đầu. Số phút còn lại luôn hiện rõ, nên bạn không bao giờ bị bất ngờ.</p>
+<p class="lead">Chọn ngôn ngữ cần đọc, chọn nguồn âm thanh, bấm Bắt đầu. Số phút dịch còn lại hiện ngay trên màn hình chính.</p>
 ${checkList([
   "Năm ngôn ngữ nói và dịch: English, 中文, 日本語, 한국어, Tiếng Việt",
-  "Tự nhận diện ngôn ngữ đang nói, hoặc khóa một ngôn ngữ cho chính xác hơn",
+  "Tự nhận diện ngôn ngữ đang nói, hoặc khóa một ngôn ngữ khi bạn biết trước người nói dùng tiếng gì",
   "Phím tắt toàn cục để bắt đầu, ẩn hiện, khóa và cuộn phụ đề mà không rời app họp",
   "Biểu tượng trên thanh menu: app vẫn chạy khi bạn đóng cửa sổ",
 ])}
@@ -146,9 +146,9 @@ ${checkList([
 ${sectionHead({ eyebrow: "Vì sao AI Translator", title: "Dịch cuộc họp theo cách khác với phần mềm cloud", text: "Phần lớn công cụ dịch cuộc họp gửi âm thanh lên máy chủ. AI Translator làm ngược lại: mọi thứ ở trên máy bạn.", center: true })}
 <div class="grid grid-3">
 ${feature({ icon: "shield", title: "Riêng tư theo thiết kế", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. App không có analytics và không gửi báo cáo lỗi tự động.", accent: true })}
-${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng giọng nói và dịch chạy trên máy, nên dùng được cả khi mạng chập chờn hoặc trong mạng nội bộ." })}
+${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng giọng nói và dịch chạy trên máy, nên vẫn dịch được khi mạng chập chờn hoặc mất mạng. App chỉ cần mạng thỉnh thoảng cho vài việc như kiểm tra bản quyền." })}
 ${feature({ icon: "video", title: "Mọi app họp, không bot", text: "Không cần mời bot hay cài plugin vào cuộc họp. Mọi âm thanh phát trên máy đều có thể thành phụ đề." })}
-${feature({ icon: "book", title: "Từ điển thuật ngữ", text: "Thêm cách dịch cho tên riêng, tên sản phẩm và thuật ngữ chuyên ngành. Tối đa 500 thuật ngữ, nhập xuất CSV (tính năng Pro)." })}
+${feature({ icon: "book", title: "Từ điển thuật ngữ", text: "Thêm tên riêng, tên sản phẩm và thuật ngữ chuyên ngành làm gợi ý cho bộ dịch (không bảo đảm đúng mọi lần). Tối đa 500 thuật ngữ, nhập xuất CSV (tính năng Pro)." })}
 ${feature({ icon: "history", title: "Lịch sử và xuất file", text: "Lưu bản chép lời trên máy, mã hóa, xuất ra TXT, SRT hoặc Markdown. Lịch sử mặc định tắt, bạn quyết định (tính năng Pro)." })}
 ${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "English, 中文, 日本語, 한국어 và Tiếng Việt, theo mọi chiều. Giao diện app có tiếng Việt và English." })}
 </div>

@@ -54,7 +54,7 @@ ${sectionHead({ eyebrow: "Chọn nhanh", title: "Tình huống nào, thiết l�
 <tbody>
 <tr><th scope="row">Họp Zoom, Teams, Meet với đối tác</th><td>Khóa ngôn ngữ nguồn, thêm tên riêng vào từ điển (Pro), đặt thanh phụ đề sát dưới khung video</td></tr>
 <tr><th scope="row">Cuộc gọi Zalo PC</th><td>Giữ Tự nhận diện, hoặc khóa ngôn ngữ nếu biết trước</td></tr>
-<tr><th scope="row">Webinar, hội thảo</th><td>Bật hiện câu gốc, chọn nguồn chỉ nghe trình phát (macOS)</td></tr>
+<tr><th scope="row">Webinar, hội thảo</th><td>Giữ hiện câu gốc (mặc định bật), chọn nguồn chỉ nghe trình phát (macOS)</td></tr>
 <tr><th scope="row">Khóa học, video bài giảng</th><td>Xuất bản chép lời để học lại (Pro), thêm thuật ngữ chuyên ngành vào từ điển (Pro)</td></tr>
 </tbody></table></div>
 </div></section>

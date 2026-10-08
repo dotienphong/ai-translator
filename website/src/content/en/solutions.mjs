@@ -54,7 +54,7 @@ ${sectionHead({ eyebrow: "Quick pick", title: "Which situation, which setup?" })
 <tbody>
 <tr><th scope="row">Zoom, Teams or Meet call with a partner</th><td>Lock the source language, add proper names to the glossary (Pro), place the subtitle bar just under the video</td></tr>
 <tr><th scope="row">Zalo PC call</th><td>Keep Detect automatically, or lock the language if you know it</td></tr>
-<tr><th scope="row">Webinar or conference talk</th><td>Show the original text, and listen to the player only (macOS)</td></tr>
+<tr><th scope="row">Webinar or conference talk</th><td>Keep the original text showing (on by default), and listen to the player only (macOS)</td></tr>
 <tr><th scope="row">Course or lecture video</th><td>Export the transcript to study it again (Pro), add field-specific terms to the glossary (Pro)</td></tr>
 </tbody></table></div>
 </div></section>

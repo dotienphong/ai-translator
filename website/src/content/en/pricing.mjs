@@ -66,7 +66,7 @@ ${pageHero({ crumbs, title: "Simple pricing: prepaid, no auto-renewal", lead: "T
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">The three plans</h2>
 ${plansGrid("en", { ctaLabel: "Get the beta", freeLabel: "Try it free for 10 days" })}
-<p class="disclaimer">Prices are in Vietnamese dong (VND) and are the final price for each order. Prices and allowances are set on our server; a plan you have already bought never has its allowance reduced.</p>
+<p class="disclaimer">Prices are in Vietnamese dong (VND) per order, and equal the amount in the VietQR code. Prices and allowances are set on our server; a plan you have already bought never has its allowance reduced.</p>
 ${callout({ kind: "warn", title: "Paying from outside Vietnam", text: "For now we accept only bank transfers from Vietnamese banks, made through VietQR and charged in VND. International cards, PayPal and other currencies are not supported yet, so if you do not have a Vietnamese bank account you cannot buy a paid plan today. The Free trial needs no payment method. If this blocks you, <a href=\"/en/contact/\">contact us</a>." })}
 </div></section>
 
@@ -85,9 +85,9 @@ ${sectionHead({ eyebrow: "Compare", title: "What each plan includes", center: tr
 <tr><th scope="row">Session history (Pro)</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
 <tr><th scope="row">Export to TXT, SRT, Markdown (Pro)</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
 <tr><th scope="row">Computers per key</th><td>Per computer</td><td>1 computer</td><td>1 computer</td></tr>
-<tr><th scope="row">Equivalent per month</th><td>0 ₫</td><td>50,000 ₫</td><td>about 41,700 ₫</td></tr>
+<tr><th scope="row">Equivalent per month (price ÷ 12)</th><td>0 ₫</td><td>50,000 ₫</td><td>about 41,700 ₫</td></tr>
 </tbody></table></div>
-<p class="small muted">Buying Monthly back to back for a full 365 days would cost about 608,000 ₫ (365 ÷ 30 × 50,000 ₫), compared with 500,000 ₫ for a single Yearly order. Details of each Pro feature are on the <a href="/en/features/">features page</a>.</p>
+<p class="small muted">Buying 12 Monthly orders back to back (360 days) would cost 600,000 ₫, compared with 500,000 ₫ for 365 days from a single Yearly order. Monthly is limited to 50 hours of translation per 30 days; Yearly is unlimited. Details of each Pro feature are on the <a href="/en/features/">features page</a>.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container">
@@ -125,7 +125,7 @@ ${steps([
 ${sectionHead({ eyebrow: "Renewing and changing plans", title: "Flexible, and priced by the day", center: true })}
 <div class="grid grid-2">
 <div class="card reveal"><h3>Renew the same plan</h3><p>Buy the same plan again to add 30 days (Monthly) or 365 days (Yearly), counted from the expiry date if the plan is still active. The app reminds you 7 days before the end and again after it expires. Nothing is ever charged automatically.</p></div>
-<div class="card reveal"><h3>Change plan while it is active</h3><p>The new plan starts immediately, and the days left on the old plan are converted at the <strong>price per day</strong>, rounded down. For example, with 20 days left on Monthly, buying Yearly adds 24 days (Yearly then runs for 389 days). The app shows the converted days and the new expiry date before you pay. Changing plans is not refundable.</p></div>
+<div class="card reveal"><h3>Change plan while it is active</h3><p>The new plan starts immediately, and the days left on the old plan are converted at the <strong>price per day</strong>, rounded down. For example, with 20 days left on Monthly, buying Yearly adds 24 days (Yearly then runs for 389 days). The app shows the converted days and the new expiry date (an estimate) before you pay. Changing plans is not refundable.</p></div>
 </div>
 ${callout({ title: "When a plan expires", text: "The computer goes back to Free if it is still within its 10-day trial; once the trial is over, it needs a paid plan to keep translating. Pro features (history, glossary, export) are locked when there is no paid plan." })}
 </div></section>

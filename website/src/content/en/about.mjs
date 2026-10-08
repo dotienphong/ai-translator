@@ -14,27 +14,27 @@ export default {
   path: "/en/about/",
   title: "About AI Translator: story, principles, who builds it",
   description:
-    "AI Translator shows live translated subtitles for meetings and runs offline. Built by Đỗ Tiến Phong, an independent developer in Vietnam. Story, principles, status.",
+    "AI Translator shows live translated subtitles for meetings and runs offline. Built by Đỗ Tiến Phong, an independent developer. Story, principles, beta status.",
   schemaType: "AboutPage",
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  llm: "How AI Translator came about, the product principles, who builds it (Đỗ Tiến Phong, an independent developer in Vietnam), beta status, directions under consideration (not commitments), the open-source technology it uses and short legal information.",
+  llm: "How AI Translator came about, the product principles, who builds it (Đỗ Tiến Phong, an independent developer), beta status, directions under consideration (not commitments), the open-source technology it uses and short legal information.",
   llmTitle: "About AI Translator",
   schema: [{ "@type": "Person", "@id": `${SITE.origin}/en/about/#person`, name: SITE.owner, url: `${SITE.origin}/en/about/` }],
   body: () => `
 ${pageHero({
   crumbs,
   title: "About AI Translator: translating meetings on your own computer",
-  lead: "AI Translator is a desktop app that shows live translated subtitles for meeting audio and runs offline on your computer. It is built and run by Đỗ Tiến Phong, an independent developer in Vietnam. It is in beta: macOS first, Windows to follow.",
+  lead: "AI Translator is a desktop app that shows live translated subtitles for meeting audio and runs offline on your computer. It is built and run by Đỗ Tiến Phong, an independent developer. It is in beta: macOS first, Windows to follow.",
   meta: "<span>Updated 8 October 2026</span><span>Provider: Đỗ Tiến Phong</span>",
 })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
   ["Product", "Live translated subtitles for meetings, webinars and videos<small>Speech recognition and translation run on your computer</small>"],
-  ["Provider", "Đỗ Tiến Phong (individual)<small>Independent developer in Vietnam</small>"],
+  ["Provider", "Đỗ Tiến Phong (individual)<small>Independent developer</small>"],
   ["Status", "Beta<small>macOS 14.2+ (Apple Silicon) first, Windows coming soon</small>"],
-  ["Support", `${MAIL}<small>Vietnamese and English</small>`],
+  ["Support", `${MAIL}<small>You can write in Vietnamese or English</small>`],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>The app interface is in Vietnamese and English</small>"],
   ["License", "Commercial product, not open source<small>Uses open-source components from third parties</small>"],
 ])}</div>
@@ -43,36 +43,36 @@ ${pageHero({
 <section class="section" id="story"><div class="container narrow">
 ${sectionHead({ eyebrow: "Our story", title: "Why AI Translator exists" })}
 <div class="prose">
-<p>The first idea was an Android app that translates calls and meetings. We hit a hard limit of the operating system almost at once. Android lets third-party apps capture the audio of media and games, but not the audio of phone calls or VoIP calls, and during a call an app's microphone usually hears only silence.</p>
+<p>The first idea was to take an existing offline translation app for Android (an open-source one) and use it for calls and meetings. We hit a hard limit of the operating system almost at once. Android lets third-party apps capture the audio of media and games, but not the audio of phone calls or VoIP calls, and during a call an app's microphone usually hears only silence.</p>
 <p>A computer is different. Windows offers WASAPI loopback and macOS (from version 14.2) offers Core Audio process taps; both let an app capture the sound the computer itself is playing. So the project moved to the desktop: an app that listens to system audio, recognizes speech, translates it and shows subtitles, and works with any meeting app without a bot or a plugin.</p>
-<p>While researching, we found that live-translation subtitles in the large meeting apps tend to sit in higher paid tiers and run in the cloud, and most third-party tools do the same. We wanted a different option: everything processed on your machine, any meeting app, good Vietnamese, and, because no server does the translating, no extra infrastructure cost for each minute you use. Here is a <a href="/en/compare/offline-vs-cloud-translation/">comparison of offline and cloud translation</a>.</p>
-<p>We chose the translation model by measurement. In an internal test on 29 September 2026 (320 sentences of text from the WMT24++ set, five translation directions, run on a Mac M4 Pro), Hy-MT2-1.8B scored 0.837 COMET, while the three other open-source models scored between 0.736 and 0.833. That test used text, not real speech, and we did not compare against any cloud service.</p>
+<p>While researching (September 2026), we found that translated subtitles in the large meeting apps tend to sit in higher paid tiers and run in the cloud, and most third-party tools do the same. We wanted a different option: everything processed on your machine, any meeting app, a focus on Vietnamese, and, because no server does the translating, no extra infrastructure cost for each minute you use. Here is a <a href="/en/compare/offline-vs-cloud-translation/">comparison of offline and cloud translation</a>.</p>
+<p>We chose the translation model by measurement. In an internal test on 29 September 2026 (320 sentences of text from the WMT24++ set, five translation directions, run on a Mac M4 Pro), Hy-MT2-1.8B scored 0.837 COMET, while the three other translation models tested under the same conditions scored between 0.736 and 0.833. That test used text, not real speech, and we did not compare against any cloud service.</p>
 </div>
 </div></section>
 
 <section class="section section-alt" id="principles"><div class="container">
 ${sectionHead({ eyebrow: "Principles", title: "Six things we hold to when building the product", center: true })}
 <div class="grid grid-3">
-${feature({ icon: "shield", title: "Private by design", text: "Audio stays in RAM, is never written to disk and never sent anywhere. Our servers keep only what licensing needs. Details on <a href=\"/en/data-security/\">Data and security</a>.", accent: true })}
-${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech recognition and translation run on your computer. The internet is needed only to download models, buy and verify a license, and update the app." })}
+${feature({ icon: "shield", title: "Private by design", text: "Audio stays in RAM, is never written to disk and never sent anywhere. Our servers keep only what licensing, orders and the trial need. Details on <a href=\"/en/data-security/\">Data and security</a>.", accent: true })}
+${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech recognition and translation run on your computer. The internet is needed only to download models, register for the trial, buy and verify a license, and update the app." })}
 ${feature({ icon: "info", title: "Honest about status", text: "If it is beta, we say beta. macOS is not notarized yet, Windows is not released, some machines are not measured: we say so plainly, on the website and in the app." })}
 ${feature({ icon: "lock", title: "No ads, no analytics", text: "The app has no ads, no analytics and sends no automatic crash reports. We make a living from paid plans, not from your data." })}
 ${feature({ icon: "video", title: "No bot, no account", text: "No bot joins your meeting, no plugin to install, no sign-in. Paid plans are activated with a license key sent by email." })}
-${feature({ icon: "gauge", title: "Numbers with conditions", text: "Every speed or quality figure comes with the machine and conditions it was measured under; what we have not measured, we say we have not measured. See <a href=\"/en/features/\">features and performance</a>." })}
+${feature({ icon: "gauge", title: "Numbers with conditions", text: "Every speed or quality figure on this website comes with the machine and conditions it was measured under; what we have not measured, we say we have not measured. See <a href=\"/en/features/#performance\">features and performance</a>." })}
 </div>
 </div></section>
 
 <section class="section" id="who"><div class="container narrow">
 ${sectionHead({ eyebrow: "Who builds it", title: "Who is behind AI Translator?" })}
 <div class="prose">
-<p>AI Translator is developed and operated by <strong>Đỗ Tiến Phong</strong>, an independent developer in Vietnam, from the desktop app to the license server. This website says “we” for brevity, but this is one person's product.</p>
-<p>We do not publish a long biography, testimonials or customer logos here. The product is in beta and we only publish what can be verified: measurements with their conditions, known limits and clear terms. Questions, feedback and bug reports go to ${MAIL}; we read every message. See also the <a href="/en/contact/">Contact page</a>.</p>
+<p>AI Translator is developed and operated by <strong>Đỗ Tiến Phong</strong>, an independent developer, from the desktop app to the license server. This website says “we” for brevity, but this is one person's product.</p>
+<p>We do not publish a long biography, testimonials or customer logos here. The product is in beta and we only publish what can be verified: measurements with their conditions, known limits and clear terms. Questions, feedback and bug reports go to ${MAIL}. See also the <a href="/en/contact/">Contact page</a>.</p>
 </div>
 </div></section>
 
 <section class="section section-alt" id="status"><div class="container narrow">
 ${sectionHead({ eyebrow: "Today", title: "Where is AI Translator right now?" })}
-<div class="table-wrap reveal"><table>
+<div class="table-wrap reveal" role="region" aria-label="Current status of AI Translator" tabindex="0"><table>
 <thead><tr><th scope="col">Area</th><th scope="col">Status</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>Beta, macOS 14.2 or later, Apple Silicon. No public download yet: <a href="/en/download/">request the installer by email</a>.</td></tr>
@@ -97,13 +97,13 @@ ${callout({ kind: "warn", title: "This is not a commitment.", text: "The list be
 <li>A business plan for multiple devices</li>
 <li>More interface languages</li>
 </ul>
-<p>What you need most will decide the order. Tell us through the <a href="/en/contact/">Contact page</a>.</p>
+<p>The order depends on user feedback, so tell us what you need most through the <a href="/en/contact/">Contact page</a>.</p>
 </div>
 </div></section>
 
 <section class="section section-alt" id="technology"><div class="container narrow">
 ${sectionHead({ eyebrow: "Technology", title: "Built on the shoulders of open-source projects", text: "AI Translator is a commercial product and is not open source: the license agreement does not allow copying, reverse engineering or rebranding it. But it uses many open-source components from third parties, and we credit them." })}
-<div class="table-wrap reveal"><table>
+<div class="table-wrap reveal" role="region" aria-label="Open-source components used" tabindex="0"><table>
 <thead><tr><th scope="col">Component</th><th scope="col">Role in the app</th><th scope="col">Author and license</th></tr></thead>
 <tbody>
 <tr><th scope="row">Whisper, whisper.cpp</th><td>Speech recognition (large-v3-turbo in the Standard pack, small in the Lite pack)</td><td>OpenAI (Whisper weights, MIT); whisper.cpp and ggml (MIT)</td></tr>
@@ -121,6 +121,7 @@ ${sectionHead({ eyebrow: "Legal", title: "Short legal information" })}
 <div class="reveal">${facts([
   ["Provider", "Đỗ Tiến Phong (individual)"],
   ["Brand", "AI Translator"],
+  ["Governing law", "Vietnamese law<small>Disputes go to the competent courts in Vietnam (Terms of use, section 14)</small>"],
   ["Terms of use", `<a href="/en/terms/">License agreement (EULA)</a><small>Version 1.1, effective 7 October 2026</small>`],
   ["Privacy", `<a href="/en/privacy/">Privacy policy</a><small>Version 1.1, effective 7 October 2026</small>`],
   ["Language of the texts", "The Vietnamese version is the original and prevails<small>The English version is a translation for reference</small>"],

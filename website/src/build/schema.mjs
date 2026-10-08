@@ -48,8 +48,8 @@ export function softwareApplication(lang) {
     operatingSystem: "macOS 14.2 or later (Apple Silicon)",
     softwareVersion: SITE.version,
     description: en
-      ? "Desktop app that shows live translated subtitles for any meeting or video audio on your computer, processed fully offline."
-      : "App desktop hiện phụ đề dịch trực tiếp cho mọi âm thanh cuộc họp hoặc video trên máy tính, xử lý hoàn toàn offline.",
+      ? "Desktop app that shows live translated subtitles for any meeting or video audio on your computer; speech recognition and translation run on-device, so audio never leaves your machine."
+      : "App desktop hiện phụ đề dịch trực tiếp cho mọi âm thanh cuộc họp hoặc video trên máy tính; nhận dạng giọng nói và dịch chạy trên máy nên âm thanh không rời khỏi máy.",
     url: SITE.origin + (en ? "/en/" : "/"),
     inLanguage: ["vi", "en"],
     publisher: { "@id": ORG_ID },

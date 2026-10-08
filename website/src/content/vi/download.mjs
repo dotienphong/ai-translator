@@ -38,7 +38,7 @@ const DL_FAQ = [
   },
   {
     q: "Khi nào có bản Windows?",
-    a: "<p>Bản Windows 10/11 64-bit đang được hoàn thiện nhưng chưa có ngày phát hành. Bạn có thể ghi chú \"Windows\" trong email đăng ký để được báo khi có bản thử.</p>",
+    a: "<p>Bản Windows 10/11 64-bit đang được hoàn thiện nhưng chưa có ngày phát hành. Bạn có thể ghi chú \"Windows\" trong email đăng ký để chúng tôi biết nhu cầu của bạn.</p>",
   },
   {
     q: "Bản beta có tự cập nhật không?",
@@ -65,7 +65,7 @@ ${pageHero({ crumbs, title: "Nhận bản beta AI Translator cho macOS", lead: "
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
   ["Trạng thái", "Beta, chưa có tải công khai"],
-  ["Phiên bản", "0.1.0 (beta)"],
+  ["Phiên bản", "0.1.0-beta<small>Số phiên bản chính xác ghi trong email gửi bản cài</small>"],
   ["macOS", "14.2 trở lên, Apple Silicon (M1+)<small>Bộ cài .dmg khoảng 9 MB; model tải thêm 1,3 hoặc 2,5 GB</small>"],
   ["Windows", "Sắp có<small>Windows 10/11 64-bit, chưa có ngày phát hành</small>"],
   ["Dùng thử", "Free 10 ngày, 30 phút mỗi ngày<small>Không cần thẻ, không cần tài khoản</small>"],
@@ -111,7 +111,7 @@ ${sectionHead({ eyebrow: "Câu hỏi thường gặp", title: "Về bản beta v
 ${faq(DL_FAQ, { open: true })}
 </div></section>
 
-${ctaBand({ title: "Cho chúng tôi biết bạn cần gì", text: "Một email ngắn là đủ. Chúng tôi đọc và trả lời từng thư.", primary: { href: MAILTO, label: "Gửi email đăng ký beta" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
+${ctaBand({ title: "Cho chúng tôi biết bạn cần gì", text: "Một email ngắn là đủ. Chúng tôi sẽ trả lời bạn qua email.", primary: { href: MAILTO, label: "Gửi email đăng ký beta" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
 `,
 };
 void feature;

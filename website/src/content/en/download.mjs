@@ -38,7 +38,7 @@ const DL_FAQ = [
   },
   {
     q: "When will the Windows version be available?",
-    a: `<p>The Windows 10/11 64-bit version is being finished, but there is no release date yet. Mention "Windows" in your request email and we will tell you when a test build is ready.</p>`,
+    a: `<p>The Windows 10/11 64-bit version is being finished, but there is no release date yet. Mention "Windows" in your request email so we know you are interested.</p>`,
   },
   {
     q: "Does the beta update itself?",
@@ -67,7 +67,7 @@ ${pageHero({ crumbs, title: "Get the AI Translator beta for macOS", lead: "We ar
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
   ["Status", "Beta, no public download yet"],
-  ["Version", "0.1.0 (beta)"],
+  ["Version", "0.1.0-beta<small>The exact version number is in the email that comes with the installer</small>"],
   ["macOS", "14.2 or later, Apple Silicon (M1+)<small>The .dmg installer is about 9 MB; the models are an extra 1.3 or 2.5 GB download</small>"],
   ["Windows", "Coming soon<small>Windows 10/11 64-bit, no release date yet</small>"],
   ["Free trial", "10 days, 30 minutes per day<small>No card, no account</small>"],
@@ -113,6 +113,6 @@ ${sectionHead({ eyebrow: "Frequently asked questions", title: "About the beta an
 ${faq(DL_FAQ, { open: true })}
 </div></section>
 
-${ctaBand({ title: "Tell us what you need", text: "One short email is enough. We read and reply to every message.", primary: { href: MAILTO, label: "Email us to request the beta" }, secondary: { href: "/en/pricing/", label: "See pricing" } })}
+${ctaBand({ title: "Tell us what you need", text: "One short email is enough. We will reply to you by email.", primary: { href: MAILTO, label: "Email us to request the beta" }, secondary: { href: "/en/pricing/", label: "See pricing" } })}
 `,
 };

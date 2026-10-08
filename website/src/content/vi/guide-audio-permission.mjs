@@ -50,7 +50,7 @@ ${pageHero({
   crumbs,
   title: "Cấp quyền ghi âm thanh hệ thống trên macOS",
   lead: "AI Translator cần đúng một quyền trên macOS: Ghi âm thanh hệ thống (System Audio Recording), để nghe âm thanh mà máy Mac đang phát. App không dùng micro. Nếu bạn lỡ từ chối, hãy bật lại ở System Settings › Privacy & Security › Screen & System Audio Recording.",
-  meta: "<span>Chỉ áp dụng cho macOS 14.2 trở lên</span><span>Cập nhật 08/10/2026</span>",
+  meta: "<span>Chỉ áp dụng cho macOS 14.2 trở lên</span> <span>Cập nhật 08/10/2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -79,7 +79,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi â
 <li>Tìm mục <strong>System Audio Recording Only</strong> và bật công tắc của <strong>AI Translator</strong>.</li>
 <li>Quay lại app, bấm <strong>Bắt đầu</strong> và phát một đoạn có tiếng.</li>
 </ol>
-<p>Nếu phụ đề vẫn không hiện, thoát hẳn AI Translator (chọn <strong>Thoát</strong> ở biểu tượng trên menu bar) rồi mở lại. Nếu chưa thấy AI Translator trong danh sách, hãy bấm Bắt đầu hoặc Phát câu mẫu một lần để app thử thu âm, rồi kiểm tra lại.</p>
+<p>Nếu phụ đề vẫn không hiện, thoát hẳn AI Translator (chọn <strong>Thoát</strong> ở biểu tượng trên menu bar) rồi mở lại. Nếu chưa thấy AI Translator trong danh sách, hãy quay lại app và bấm Bắt đầu một lần (hoặc Phát câu mẫu nếu bạn đang ở trình hướng dẫn) để macOS hỏi quyền; sau đó app thường xuất hiện trong danh sách, rồi bạn kiểm tra lại. Tên các mục trong System Settings có thể khác đôi chút giữa các bản macOS.</p>
 
 <h2 id="dau-hieu">Dấu hiệu quyền chưa có</h2>
 <p>Khi thiếu quyền, bạn thấy phụ đề không hiện dù cuộc họp có tiếng, và thanh “Mức âm lượng vào” trên màn hình chính đứng yên. Sau một lúc im lặng kéo dài mà app biết có app khác đang phát tiếng, <strong>màn hình chính</strong> báo:</p>
@@ -90,7 +90,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi â
 <p>Khi bị từ chối, macOS vẫn cho app tạo nguồn thu âm và vẫn báo nguồn đang chạy bình thường, nhưng dữ liệu nhận về toàn là im lặng. Vì không có lỗi nào để báo, AI Translator chỉ phát hiện được thiếu quyền bằng cách chờ im lặng kéo dài khi có app đang phát tiếng. Do đó dòng cảnh báo hiện sau một lúc chứ không hiện ngay.</p>
 
 <h2 id="sau-cap-nhat">Sau mỗi lần cập nhật, macOS có thể hỏi lại</h2>
-<p>Bản macOS hiện được ký ad-hoc, nên sau mỗi lần cập nhật macOS hỏi lại 1 hộp thoại quyền ghi âm (cùng 5 hộp thoại Keychain). Chọn cho phép; bạn không mất dữ liệu, gói hay hạn mức. Chi tiết trong <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a>.</p>
+<p>Bản macOS hiện được ký ad-hoc, nên sau mỗi lần cập nhật macOS thường hỏi lại 1 hộp thoại quyền ghi âm (cùng khoảng 5 hộp thoại Keychain). Chọn cho phép; bạn không mất dữ liệu, gói hay hạn mức. Chi tiết trong <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a>.</p>
 
 <h2 id="nguon-am-thanh">Chọn nguồn âm thanh: toàn hệ thống hay một app</h2>
 <p>Quyền ghi âm áp dụng cho cả hai chế độ. Chọn chế độ ở <strong>Cài đặt › Âm thanh › Nguồn âm thanh</strong>:</p>

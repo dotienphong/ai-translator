@@ -46,14 +46,14 @@ export default {
 ${pageHero({
   crumbs,
   title: "Liên hệ và hỗ trợ",
-  lead: "Cách liên hệ AI Translator là gửi email tới support@aitranslator.io.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ. Chúng tôi đọc mọi thư.",
+  lead: "Cách liên hệ AI Translator là gửi email tới support@aitranslator.io.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ.",
 })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
-  ["Email", `<a href="mailto:${EMAIL}">${EMAIL}</a><small>Tiếng Việt hoặc English</small>`],
+  ["Email", `<a href="mailto:${EMAIL}">${EMAIL}</a><small>Bạn có thể viết bằng tiếng Việt hoặc English</small>`],
   ["Kênh khác", "Không có<small>Không có form trên web, không có điện thoại</small>"],
-  ["Phản hồi", "Chúng tôi đọc mọi thư<small>Sản phẩm do một người vận hành nên chưa cam kết thời gian trả lời cụ thể</small>"],
+  ["Phản hồi", "Chưa cam kết thời gian trả lời<small>Sản phẩm do một người vận hành nên chúng tôi chưa hứa một thời hạn cụ thể</small>"],
   ["Báo lỗi bảo mật", `<a href="/.well-known/security.txt">/.well-known/security.txt</a><small>Hoặc gửi email với tiêu đề bắt đầu bằng [Bảo mật]</small>`],
 ])}</div>
 <p class="center-text reveal"><a class="btn btn-primary btn-lg" href="mailto:${EMAIL}">${icon("mail")} Gửi email cho chúng tôi</a></p>
@@ -66,7 +66,7 @@ ${sectionHead({ eyebrow: "Gửi gì, kèm gì", title: "Bạn cần gì? Gửi t
 
 <div class="card reveal" id="beta">
 <h3>Đăng ký nhận bản beta</h3>
-<p>AI Translator chưa có tải công khai. Hãy gửi email theo mẫu ở trang Tải xuống: dòng Mac và chip, phiên bản macOS, app họp bạn dùng và ngôn ngữ cần dịch. Chúng tôi gửi lại bản cài kèm mã SHA-256 để bạn kiểm tra.</p>
+<p>AI Translator chưa có tải công khai. Hãy gửi email theo mẫu ở trang Tải xuống: dòng Mac và chip, phiên bản macOS, app họp bạn dùng và ngôn ngữ cần dịch. Khi có bản beta phù hợp với máy bạn, chúng tôi gửi bản cài kèm mã SHA-256 để bạn kiểm tra.</p>
 <p><a class="btn btn-secondary btn-sm" href="/tai-xuong/">Mở trang Tải xuống ${icon("arrow-right")}</a></p>
 </div>
 
@@ -97,7 +97,7 @@ ${btn(M.refund, "Gửi yêu cầu hoàn tiền")}
 
 <div class="card reveal" id="xoa-du-lieu">
 <h3>Xóa hoặc ẩn danh dữ liệu cá nhân</h3>
-<p>Hãy gửi yêu cầu <strong>từ chính email đã dùng khi mua</strong> để chúng tôi xác nhận là bạn. Chúng tôi sẽ bỏ email và tên máy của bạn; một số dữ liệu tối thiểu vẫn được giữ lại (mã băm ID máy, thời điểm đồng ý, dòng đơn hàng mức kế toán). Danh sách đầy đủ ở <a href="/bao-mat-du-lieu/#xoa-du-lieu">Dữ liệu và bảo mật</a>. Dữ liệu trên máy bạn thì tự xóa được ngay trong app.</p>
+<p>Hãy gửi yêu cầu <strong>từ chính email đã dùng khi mua</strong> để chúng tôi xác nhận là bạn. Chúng tôi sẽ bỏ email và tên máy của bạn; một số dữ liệu tối thiểu vẫn được giữ lại (mã băm ID máy, thời điểm đồng ý, dòng đơn hàng mức kế toán), và license vẫn dùng được nhưng không khôi phục qua email nữa. Danh sách đầy đủ ở <a href="/bao-mat-du-lieu/#xoa-du-lieu">Dữ liệu và bảo mật</a>. Dữ liệu trên máy bạn thì tự xóa được ngay trong app.</p>
 ${btn(M.erase, "Gửi yêu cầu xóa dữ liệu")}
 </div>
 
@@ -109,7 +109,7 @@ ${btn(M.security, "Gửi báo cáo bảo mật")}
 
 <div class="card reveal" id="gop-y">
 <h3>Góp ý và nhu cầu mới</h3>
-<p>Bạn cần thêm ngôn ngữ, cần dùng trên nhiều máy hay có ý tưởng khác? Phản hồi của người dùng quyết định thứ tự những việc chúng tôi cân nhắc ở <a href="/ve-chung-toi/#dang-can-nhac">giai đoạn kế tiếp</a>. Hãy cho chúng tôi biết bạn dùng AI Translator vào việc gì.</p>
+<p>Bạn cần thêm ngôn ngữ, cần dùng trên nhiều máy hay có ý tưởng khác? Thứ tự những việc chúng tôi cân nhắc ở <a href="/ve-chung-toi/#dang-can-nhac">giai đoạn kế tiếp</a> tùy vào phản hồi của người dùng (chưa phải cam kết). Hãy cho chúng tôi biết bạn dùng AI Translator vào việc gì.</p>
 ${btn(M.feedback, "Gửi góp ý")}
 </div>
 

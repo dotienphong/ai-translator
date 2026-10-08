@@ -38,14 +38,14 @@ ${pageHero({ crumbs, title: "Mọi thứ cần để hiểu một cuộc họp b
 <div class="stack-lg reveal">
 <span class="eyebrow">Dịch trực tiếp</span>
 <h2>Nghe, nhận dạng, dịch và hiện phụ đề trong một vòng</h2>
-<p>AI Translator thu âm thanh đang phát trên máy tính, cắt thành từng câu, nhận dạng giọng nói rồi dịch và hiện lên thanh phụ đề. Người nói dừng câu, bản dịch hiện gần như ngay.</p>
+<p>AI Translator thu âm thanh đang phát trên máy tính, cắt thành từng câu, nhận dạng giọng nói rồi dịch và hiện lên thanh phụ đề. Trên Mac M4 Pro, bản dịch hiện đủ sau khi người nói dừng câu trong khoảng một giây (trung vị); máy khác có thể chậm hơn, xem <a href=\"#hieu-nang\">số đo</a>.</p>
 ${checkList([
   "<strong>Năm ngôn ngữ</strong> cho cả âm thanh nguồn và bản dịch: English, 中文, 日本語, 한국어, Tiếng Việt",
-  "<strong>Tự nhận diện</strong> ngôn ngữ đang nói trong tập ngôn ngữ bạn chọn, hoặc <strong>khóa</strong> một ngôn ngữ để chính xác hơn",
+  "<strong>Tự nhận diện</strong> ngôn ngữ đang nói trong tập ngôn ngữ bạn chọn, hoặc <strong>khóa</strong> một ngôn ngữ khi bạn biết trước người nói dùng tiếng gì",
   "Câu đã ở đúng ngôn ngữ bạn muốn đọc thì hiện nguyên văn, không dịch lại",
   "Câu chưa chốt hiện màu nhạt rồi được thay bằng câu hoàn chỉnh khi người nói nói tiếp",
   "Lọc các câu \"ảo giác\" thường gặp khi chỉ có nhạc hoặc im lặng",
-  "Tiếng Trung được chuẩn hóa sang chữ giản thể",
+  "Chữ tiếng Trung nhận dạng được sẽ đổi sang giản thể",
 ])}
 </div>
 <div>
@@ -66,7 +66,7 @@ ${checkList([
   "<strong>Cỡ chữ</strong> 14–48 px, <strong>5 màu chữ</strong> (trắng, vàng, xanh lá, xanh dương nhạt, cam), <strong>5 màu nền</strong>, độ mờ nền 0–100%",
   "<strong>Khóa</strong>: chuột xuyên qua thanh, không có nút nào cản; mở khóa bằng phím tắt hoặc menu khay",
   "Giữ tối đa 1000 câu gần nhất, <strong>cuộn xem lại</strong> bằng con lăn hoặc phím tắt, nút <em>Mới nhất</em> đưa bạn về câu hiện tại",
-  "Hiện <strong>câu gốc</strong> chữ nhỏ phía trên bản dịch (tùy chọn)",
+  "Hiện <strong>câu gốc</strong> chữ nhỏ phía trên bản dịch (mặc định bật, tắt được)",
   "Chỉ báo nhỏ ở góc: đang nghe có tiếng, đang nạp model, đang trễ, còn dưới 5 phút dịch",
 ])}
 </div>
@@ -123,7 +123,7 @@ ${appShot({ slug: "app-glossary", lang: "vi", alt: "Từ điển thuật ngữ v
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Từ điển thuật ngữ <span class="badge badge-pro">Pro</span></span>
-<h2>Tên riêng và thuật ngữ được dịch nhất quán</h2>
+<h2>Gợi ý tên riêng và thuật ngữ cho bộ dịch</h2>
 <p>Thêm cặp thuật ngữ nguồn → đích cho tên sản phẩm, tên đối tác, thuật ngữ ngành. Khi câu có chứa thuật ngữ, app đưa nó cho bộ dịch như một gợi ý.</p>
 ${checkList([
   "Tối đa <strong>500</strong> thuật ngữ, nhập và xuất CSV (hai cột, UTF-8)",
@@ -160,10 +160,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím t�
 </div></section>
 
 <section class="section" id="model"><div class="container">
-<div class="split wide-left">
-<div>
-${appShot({ slug: "app-settings-model", lang: "vi", alt: "Cài đặt Model hiển thị gói Chuẩn và gói Nhẹ cùng dung lượng và đề xuất cho máy này", caption: "Cài đặt › Model: gói Chuẩn và gói Nhẹ, app đề xuất theo máy của bạn." })}
-</div>
+<div class="model-intro">
 <div class="stack-lg reveal">
 <span class="eyebrow">Model và cấu hình máy</span>
 <h2>Hai gói model, app đề xuất gói hợp với máy bạn</h2>
@@ -175,7 +172,7 @@ ${appShot({ slug: "app-settings-model", lang: "vi", alt: "Cài đặt Model hi�
 <tr><th scope="row">Nhận dạng giọng nói</th><td>Whisper large-v3-turbo</td><td>Whisper small</td></tr>
 <tr><th scope="row">Dịch</th><td>Hy-MT2-1.8B (Q8_0)</td><td>Hy-MT2-1.8B (Q4_K_M)</td></tr>
 <tr><th scope="row">RAM engine (Mac M4 Pro)</th><td>khoảng 2,9 GiB</td><td>khoảng 1,8–1,9 GiB</td></tr>
-<tr><th scope="row">Phù hợp</th><td>Máy 16 GB trở lên, ưu tiên chất lượng</td><td>Máy 8 GB, hoặc cần nhẹ hơn</td></tr>
+<tr><th scope="row">App đề xuất khi</th><td>Mac 16 GB trở lên; Windows 16 GB trở lên có card rời từ 6 GB VRAM</td><td>Máy từ 8 GB đến dưới 16 GB, hoặc Windows không có card rời đủ mạnh</td></tr>
 </tbody></table></div>
 <p class="small muted">Gói Nhẹ chép lời kém rõ hơn gói Chuẩn ở tiếng Việt, Nhật, Hàn, Trung. Nếu bạn nghe nhiều các ngôn ngữ này, nên dùng gói Chuẩn.</p>
 </div>
@@ -200,9 +197,9 @@ ${sectionHead({ eyebrow: "Hiệu năng", title: "Số đo thật, kèm điều k
 </tbody></table></div>
 <div class="grid grid-2">
 ${feature({ icon: "gauge", title: "Phiên dài", text: "Một phiên dịch liên tục 5 giờ 23 phút (video bài giảng tiếng Anh, bản release ký ad-hoc): 6019 đoạn, không lỗi, độ trễ trung vị 0,48 giây. Thử nghiệm ổn định 2 giờ: không tiến trình nào bị khởi động lại." })}
-${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng", text: "Trên bộ thử nội bộ, Hy-MT2-1.8B đạt điểm COMET cao nhất (0,837) trong bốn model mã nguồn mở được so. Với câu đọc chuẩn, tiếng Việt gói Chuẩn có tỉ lệ lỗi từ 8,7%. Đây là câu đọc, chưa phải hội thoại họp thật." })}
+${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng", text: "Trên bộ thử nội bộ 320 câu (năm chiều có tiếng Việt), Hy-MT2-1.8B đạt điểm COMET trung bình 0,837: cao hơn rõ rệt MADLAD-3B (0,779) và NLLB-600M (0,736), và ngang HY-MT1.5-1.8B (0,833). Chúng tôi chỉ so các model mã nguồn mở với nhau. Với câu đọc chuẩn, tiếng Việt gói Chuẩn có tỉ lệ lỗi từ 8,7%. Đây là câu đọc, chưa phải hội thoại họp thật." })}
 </div>
-${callout({ kind: "warn", title: "Điều chưa đo, chúng tôi không hứa", text: "Mọi số trên đo trên một máy Mac M4 Pro, với ngưỡng im lặng chốt đoạn 300 ms (mặc định hiện tại của app là 50 ms; phiên 5 giờ dùng mặc định). Chưa đo: Mac M1, máy 8 GB, card đồ họa rời của Windows, pin và điện năng, độ chính xác với hội thoại họp thật hoặc tai nghe Bluetooth. Thử nghiệm sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói Chuẩn chưa đạt mục tiêu độ trễ." })}
+${callout({ kind: "warn", title: "Điều chưa đo, chúng tôi không hứa", text: "Mọi số trên đo trên một máy Mac M4 Pro, với ngưỡng im lặng chốt đoạn 300 ms (mặc định hiện tại của app là 50 ms; phiên 5 giờ dùng mặc định). Chưa đo: Mac M1, máy 8 GB, card đồ họa rời của Windows, pin và điện năng, độ chính xác với hội thoại họp thật hoặc tai nghe Bluetooth, và chất lượng dịch của các chiều không có tiếng Việt (chạy được nhưng chưa có điểm đo). Thử nghiệm sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói Chuẩn chưa đạt mục tiêu độ trễ." })}
 </div></section>
 
 <section class="section" id="cong-nghe"><div class="container">

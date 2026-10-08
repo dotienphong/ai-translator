@@ -46,14 +46,14 @@ export default {
 ${pageHero({
   crumbs,
   title: "Contact and support",
-  lead: "The way to reach AI Translator is to email support@aitranslator.io.vn. It is our only support channel: this website has no contact form, and we have no support phone line. We read every message.",
+  lead: "The way to reach AI Translator is to email support@aitranslator.io.vn. It is our only support channel: this website has no contact form, and we have no support phone line.",
 })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
-  ["Email", `<a href="mailto:${EMAIL}">${EMAIL}</a><small>Vietnamese or English</small>`],
+  ["Email", `<a href="mailto:${EMAIL}">${EMAIL}</a><small>You can write in Vietnamese or English</small>`],
   ["Other channels", "None<small>No web form, no phone</small>"],
-  ["Replies", "We read every message<small>One person runs the product, so we do not promise a specific reply time</small>"],
+  ["Replies", "No promised reply time<small>One person runs the product, so we do not commit to a specific response time</small>"],
   ["Security reports", `<a href="/.well-known/security.txt">/.well-known/security.txt</a><small>Or email us with a subject starting with [Security]</small>`],
 ])}</div>
 <p class="center-text reveal"><a class="btn btn-primary btn-lg" href="mailto:${EMAIL}">${icon("mail")} Email us</a></p>
@@ -66,7 +66,7 @@ ${sectionHead({ eyebrow: "What to send", title: "What do you need? Email us with
 
 <div class="card reveal" id="beta">
 <h3>Get the beta</h3>
-<p>AI Translator has no public download yet. Email us using the template on the Download page: your Mac model and chip, macOS version, the meeting app you use and the languages you need. We reply with the installer and its SHA-256 checksum so you can verify it.</p>
+<p>AI Translator has no public download yet. Email us using the template on the Download page: your Mac model and chip, macOS version, the meeting app you use and the languages you need. When a beta that fits your Mac is available, we send the installer with its SHA-256 checksum so you can verify it.</p>
 <p><a class="btn btn-secondary btn-sm" href="/en/download/">Open the Download page ${icon("arrow-right")}</a></p>
 </div>
 
@@ -97,7 +97,7 @@ ${btn(M.refund, "Send a refund request")}
 
 <div class="card reveal" id="delete-data">
 <h3>Delete or anonymize personal data</h3>
-<p>Send the request <strong>from the same email you used to buy</strong>, so we can confirm it is you. We will remove your email and device name; a minimum of data is still kept (the hashed machine ID, the time you consented and the accounting-level order row). The full list is on <a href="/en/data-security/#delete-data">Data and security</a>. Data on your own computer you can delete right away inside the app.</p>
+<p>Send the request <strong>from the same email you used to buy</strong>, so we can confirm it is you. We will remove your email and device name; a minimum of data is still kept (the hashed machine ID, the time you consented and the accounting-level order row), and your license still works but can no longer be recovered by email. The full list is on <a href="/en/data-security/#delete-data">Data and security</a>. Data on your own computer you can delete right away inside the app.</p>
 ${btn(M.erase, "Request data deletion")}
 </div>
 
@@ -109,7 +109,7 @@ ${btn(M.security, "Send a security report")}
 
 <div class="card reveal" id="feedback">
 <h3>Feedback and new needs</h3>
-<p>Need another language, need to use it on several computers, or have a different idea? User feedback decides the order of what we weigh for the <a href="/en/about/#under-consideration">next stage</a>. Tell us what you use AI Translator for.</p>
+<p>Need another language, need to use it on several computers, or have a different idea? The order of what we weigh for the <a href="/en/about/#under-consideration">next stage</a> depends on user feedback (it is not a commitment). Tell us what you use AI Translator for.</p>
 ${btn(M.feedback, "Send feedback")}
 </div>
 

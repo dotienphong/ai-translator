@@ -51,7 +51,7 @@ ${pageHero({
   crumbs,
   title: "Install AI Translator on macOS",
   lead: "To install AI Translator on macOS, open the .dmg file, drag the app into your Applications folder, then open it for the first time by allowing it in System Settings › Privacy & Security (the Open Anyway button). That extra step is needed because the current build is ad-hoc signed and has not been notarized by Apple.",
-  meta: "<span>For macOS 14.2 or later, Apple Silicon</span><span>Updated October 8, 2026</span>",
+  meta: "<span>For macOS 14.2 or later, Apple Silicon</span> <span>Updated October 8, 2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -75,12 +75,12 @@ ${callout({ kind: "warn", title: "Only download the installer from an official s
 <p>Every installer comes with a SHA-256 checksum that we send you. Compare it before installing:</p>
 <ol>
 <li>Open <strong>Terminal</strong> (Applications › Utilities).</li>
-<li>Type the command below, or type <code>shasum -a 256</code> followed by a space and drag the .dmg file into the Terminal window to fill in its path, then press Enter.</li>
+<li>Type <code>shasum -a 256</code> followed by a space, drag the .dmg file from Finder into the Terminal window to fill in its path (spaces in the file name included), then press Enter. Or type the command below; if the file name contains spaces, keep it in double quotes as in the example.</li>
 </ol>
-<div class="table-wrap"><pre><code>shasum -a 256 ~/Downloads/&lt;file-name&gt;.dmg</code></pre></div>
+<div class="table-wrap"><pre><code>shasum -a 256 ~/Downloads/"&lt;file-name&gt;.dmg"</code></pre></div>
 <ol start="3">
 <li>Compare the 64-character string it prints with the one we sent. They must be identical.</li>
-<li>If they differ, do not open the file. Download it again; if it still differs, <a href="/en/contact/">tell us</a>.</li>
+<li>If they differ, do not open the file. Download it again; if it still differs, <a href="/en/contact/">contact support</a>.</li>
 </ol>
 
 <h2 id="drag-to-applications">Drag AI Translator to Applications</h2>
@@ -92,22 +92,22 @@ ${callout({ kind: "warn", title: "Only download the installer from an official s
 <h2 id="first-launch">First launch: why macOS blocks it and how to allow it</h2>
 <p>macOS uses Gatekeeper to check apps downloaded from the internet. The current AI Translator build is ad-hoc signed and not yet notarized by Apple, because we do not have an Apple Developer ID yet. So macOS blocks the first launch and says it cannot verify the developer. If the file came from us and the SHA-256 matches, this is the normal path for this build.</p>
 <ol>
-<li>Open AI Translator from Applications. When macOS says it cannot verify the developer, click <strong>Done</strong>.</li>
+<li>Open AI Translator from Applications. When macOS says it cannot verify the developer, click <strong>Done</strong> (the button that closes the dialog; its label may differ slightly between macOS versions).</li>
 <li>Open <strong>System Settings › Privacy &amp; Security</strong>.</li>
 <li>Scroll to the bottom of the page and click <strong>Open Anyway</strong> next to AI Translator.</li>
 <li>Confirm with your login password or Touch ID.</li>
 <li>The app opens and shows the first-time setup. Continue with the <a href="/en/guide/quick-start/">quick start guide</a>.</li>
 </ol>
-${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick no longer works.", text: "Go through Privacy &amp; Security as above. The Open Anyway button only appears after macOS has blocked an attempt to open the app; if you do not see it, open the app once more and come back." })}
-<p>You only need to do this when you open a downloaded installer for the first time. Once we have a Developer ID and notarize the app, this step will go away.</p>
+${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick no longer works.", text: "Go through Privacy &amp; Security as above. The Open Anyway button usually appears only after macOS has blocked an attempt to open the app; if you do not see it, open the app once more and come back." })}
+<p>This step applies to a downloaded .dmg: you need it the first time you open any build. If you install a newly downloaded .dmg, macOS may block it again. Once we have a Developer ID and notarize the app, this step will go away.</p>
 
 <h2 id="updates">Every update, macOS asks a few things again</h2>
-<p>This is a consequence of ad-hoc signing. After each update to a new build you will see, once:</p>
+<p>This is a consequence of ad-hoc signing. After each update to a new build you will usually see, once:</p>
 <ul>
-<li><strong>5 Keychain dialogs</strong> asking for your Mac login password: enter it and choose <strong>Always Allow</strong>. Do not choose Deny.</li>
-<li><strong>1 system audio recording permission dialog</strong>: allow it.</li>
+<li><strong>About 5 Keychain dialogs</strong> asking for your Mac login password (we measured 5 on one Mac running macOS 26): enter it and choose <strong>Always Allow</strong>. Do not choose Deny: the app will not be able to read your license and quota. If you chose it by mistake, quit the app completely, reopen it and choose Always Allow.</li>
+<li><strong>1 system audio recording permission dialog</strong> (also what we measured): allow it.</li>
 </ul>
-<p>After that, later launches do not ask again. You do not lose data, your plan or your quota. A fresh install is not asked about the Keychain. The app warns you in the update prompt: “After updating, macOS will ask for your login password a few times and for audio-recording permission once…”. This goes away once we have a Developer ID. A .dmg we send by hand during the beta may not update itself; in that case you download the new .dmg.</p>
+<p>After that, later launches do not ask again. You do not lose data, your plan or your quota. On a fresh install we measured no Keychain dialogs (only Open Anyway and the recording permission); if macOS asks anyway, choose Always Allow. The app warns you in the update prompt: “After updating, macOS will ask for your login password a few times and for audio-recording permission once…”. This goes away once we have a Developer ID. A .dmg we send by hand during the beta may not update itself; in that case you download the new .dmg.</p>
 
 <h2 id="uninstall">Uninstall properly</h2>
 <p>macOS gives the app no chance to clean up when you delete it, so remove the models and data first, then trash the app:</p>
@@ -117,7 +117,7 @@ ${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick 
 <li>Choose <strong>Quit</strong> from the AI Translator icon in the menu bar.</li>
 <li>Drag <strong>AI Translator</strong> from Applications to the Trash.</li>
 </ol>
-<p>Your license and remaining quota are kept, so reinstalling does not lose a plan you bought. The Free trial is tied to your Mac, so reinstalling does not reopen the 10 days. If you already deleted the app without deleting the models, they live in <code>~/Library/Application Support/com.aitranslator.desktop/models</code>.</p>
+<p>Your license and remaining quota are kept, so reinstalling should not lose a plan you bought. The Free trial is tied to your Mac, so reinstalling does not reopen the 10 days. If you already deleted the app without deleting the models, they live in <code>~/Library/Application Support/com.aitranslator.desktop/models</code>.</p>
 
 <h2 id="common-problems">Common installation problems</h2>
 <ul>

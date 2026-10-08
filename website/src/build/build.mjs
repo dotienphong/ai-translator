@@ -92,15 +92,19 @@ ${doc("vi")}
 
 ## Optional
 
-- [Full text of key pages (English and Vietnamese)](${abs("/llms-full.txt")}): everything above as plain text in one file.
+- [Full text of key pages, English](${abs("/llms-full.txt")}): home, features, pricing, FAQ, data and security, comparison, about, as plain text.
+- [Toàn văn các trang chính, tiếng Việt](${abs("/llms-full.vi.txt")}): trang chủ, tính năng, giá, hỏi đáp, bảo mật, so sánh, về chúng tôi, dạng chữ thuần.
 `;
 }
 
-function llmsFull(list, ctx) {
-  const parts = [`# ${SITE.name} — full text\n\n> ${SITE.llmSummaryEn}\n\n${SITE.llmSummaryVi}\n`];
-  for (const p of list.filter((x) => !x.noindex && x.llm && x.full !== false)) {
+// Toàn văn các trang chính (không gồm hướng dẫn từng bước và pháp lý: đã có liên kết trong llms.txt), tách theo ngôn ngữ để
+// mỗi tệp đủ nhỏ cho trợ lý AI đọc một lần.
+function llmsFull(list, ctx, lang) {
+  const head = lang === "en" ? SITE.llmSummaryEn : SITE.llmSummaryVi;
+  const parts = [`# ${SITE.name} — full text (${lang === "en" ? "English" : "Tiếng Việt"})\n\n> ${head}\n`];
+  for (const p of list.filter((x) => x.lang === lang && !x.noindex && x.llm && x.full !== false && !x.id.startsWith("guide"))) {
     const body = typeof p.body === "function" ? p.body(ctx) : p.body;
-    parts.push(`\n---\n\n# ${p.title}\n\nURL: ${abs(p.path)}\nLanguage: ${p.lang}\nUpdated: ${p.modified ?? SITE.updated}\n\n${htmlToText(body)}`);
+    parts.push(`\n---\n\n# ${p.title}\n\nURL: ${abs(p.path)}\nUpdated: ${p.modified ?? SITE.updated}\n\n${htmlToText(body)}`);
   }
   return parts.join("\n") + "\n";
 }
@@ -147,6 +151,8 @@ function headers() {
   Cache-Control: public, max-age=3600
 /llms-full.txt
   Cache-Control: public, max-age=3600
+/llms-full.vi.txt
+  Cache-Control: public, max-age=3600
 `;
 }
 
@@ -191,7 +197,8 @@ export async function build() {
   await writeOut("sitemap.xml", sitemap(list, byId));
   await writeOut("robots.txt", robots());
   await writeOut("llms.txt", llmsTxt(list));
-  await writeOut("llms-full.txt", llmsFull(list, ctx));
+  await writeOut("llms-full.txt", llmsFull(list, ctx, "en"));
+  await writeOut("llms-full.vi.txt", llmsFull(list, ctx, "vi"));
   await writeOut("_headers", headers());
   await writeOut(
     ".well-known/security.txt",

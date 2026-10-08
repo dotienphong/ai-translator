@@ -143,10 +143,13 @@ ${f.map(col).join("")}
 /** Gắn chữ không được ngắt dòng (nbsp) trong phần chữ thường của HTML: "phụ đề", số + đơn vị, "AI Translator". Không đụng thuộc tính hay script. */
 export function glue(html, lang = "vi") {
   const NB = "&nbsp;";
-  const L = lang === "vi" ? { col: "Tiêu chí", table: "Bảng dữ liệu, cuộn ngang để xem hết" } : { col: "Criteria", table: "Data table, scroll horizontally to see all" };
+  let tableNo = 0;
+  const L = lang === "vi" ? { col: "Tiêu chí", table: "Bảng dữ liệu" } : { col: "Criteria", table: "Data table" };
   html = html
     .replace(/<th scope="col"><\/th>/g, `<th scope="col"><span class="sr-only">${L.col}</span></th>`)
-    .replace(/<div class="table-wrap">/g, `<div class="table-wrap" tabindex="0" role="region" aria-label="${L.table}">`);
+    // Nhãn khác nhau cho từng bảng (axe landmark-unique): "Bảng dữ liệu 1", "Bảng dữ liệu 2"...
+    .replace(/<div class="(table-wrap(?: [^"]*)?)">/g, (m, cls) => `<div class="${cls}" tabindex="0" role="region" aria-label="${L.table} ${++tableNo}">`)
+    .replace(/<pre>/g, '<pre tabindex="0">');
   return html.replace(/>([^<]+)</g, (m, text) => {
     const fixed = text
       .replace(/(?<![\p{L}])(phụ|Phụ) (đề)(?![\p{L}])/gu, `$1${NB}$2`)

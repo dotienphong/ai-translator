@@ -46,7 +46,7 @@ ${pageHero({
   crumbs,
   title: "History and exporting transcripts",
   lead: "The AI Translator transcript lists the time, the original sentence and the translation of every sentence in a session. Every plan can view, search and copy it. Saving your session history (encrypted, on your own computer) and exporting to TXT, SRT or Markdown are Pro features; saving history is off by default.",
-  meta: `<span><span class="badge badge-pro">Pro</span> export and history</span><span>Updated 8 Oct 2026</span>`,
+  meta: `<span><span class="badge badge-pro">Pro</span> export and history</span><span>Updated October 8, 2026</span>`,
 })}
 
 <section class="section-tight"><div class="container">
@@ -92,7 +92,7 @@ ${appShot({
   alt: "Privacy settings: the Save transcript history switch, the Delete all data button and the Delete models and data button",
   caption: "Settings › Privacy: turn on history and delete data.",
 })}
-<p>Each session in <strong>History</strong> shows the date and time, its length and sentence count (“12 min · 340 sentences”), a preview, and <strong>Open</strong> and <strong>Delete</strong> buttons, newest first. <strong>Open</strong> lets you view, search, copy and export it just like the Transcript; <strong>Back to the list</strong> returns. If saving is off, the screen says “Saving history is off, so new sessions are not saved.”</p>
+<p>Each session in <strong>History</strong> shows the date and time, its length and sentence count (“47 min · 186 sentences”), a preview, and <strong>Open</strong> and <strong>Delete</strong> buttons, newest first. <strong>Open</strong> lets you view, search, copy and export it just like the Transcript; <strong>Back to the list</strong> returns. If saving is off, the screen says “Saving history is off, so new sessions are not saved.”</p>
 ${appShot({
   slug: "app-history",
   lang: "en",
@@ -104,16 +104,16 @@ ${appShot({
 <h2 id="export">Export to TXT, SRT or Markdown (Pro)</h2>
 <ol>
 <li>Open <strong>Transcript</strong>, or open a session in <strong>History</strong>.</li>
-<li>Under <strong>Export as</strong>, pick <strong>TXT</strong>, <strong>SRT</strong> or <strong>Markdown</strong>. For SRT, also pick <strong>Text of the SRT file</strong>: <strong>Translation</strong> or <strong>Original</strong>.</li>
+<li>Under <strong>Export as</strong>, pick <strong>TXT</strong>, <strong>SRT</strong> or <strong>Markdown</strong>. For SRT, a second menu appears next to it for the text in the file: <strong>Translation</strong> or <strong>Original</strong>.</li>
 <li>Click <strong>Export…</strong> and choose where to save. The app suggests a name like <code>transcript-2026-10-02-1405.txt</code> (the date and time the session started). When done it says “Saved to …”.</li>
 </ol>
 <p>On the Free trial the <strong>Export…</strong> button is locked, with the note “Exporting to a file is a Pro feature. Copying works on every plan.” and an <strong>Upgrade to Pro</strong> button.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Format</th><th scope="col">Content</th><th scope="col">Time on each line</th></tr></thead>
+<thead><tr><th scope="col">Format</th><th scope="col">Content and time on each line</th></tr></thead>
 <tbody>
-<tr><th scope="row">TXT</th><td>One block per sentence: <code>[time] original</code>, then <code>→ translation</code> on the next line, separated by a blank line.</td><td>Your computer’s clock time when the sentence began (HH:MM:SS).</td></tr>
-<tr><th scope="row">SRT</th><td>A number, “start --&gt; end”, then one line of text: the translation or the original, as you chose.</td><td>Counted from the start of the session (HH:MM:SS,mmm).</td></tr>
-<tr><th scope="row">Markdown</th><td>A heading with the start date and time, then a three-column table: time, original, translation.</td><td>Your computer’s clock time.</td></tr>
+<tr><th scope="row">TXT</th><td>One block per sentence: <code>[time] original</code>, then <code>→ translation</code> on the next line, separated by a blank line. The time is your computer’s clock time when the sentence began (HH:MM:SS).</td></tr>
+<tr><th scope="row">SRT</th><td>A number, “start --&gt; end”, then one line of text: the translation or the original, as you chose. Times are counted from the start of the session (HH:MM:SS,mmm).</td></tr>
+<tr><th scope="row">Markdown</th><td>A heading with the start date and time, then a three-column table: time, original, translation. Times are your computer’s clock time.</td></tr>
 </tbody></table></div>
 <h3>Using an SRT file with a video</h3>
 <p>The time on each SRT line is counted from the start of the session, so 00:00:00 is the session start, not automatically the start of your video. AI Translator does not record the meeting, so it cannot know when your video began; if the video is offset from the session, shift the times in your player or subtitle editor. In a Translation SRT, a sentence with no translation (already in your language, or not translated) shows the original text.</p>

@@ -128,7 +128,7 @@ ${floatB ? `<span class="floaty b">${icon(floatB.icon)} ${esc(floatB.text)}</spa
 export function plansGrid(lang, { ctaLabel, freeLabel, featured = "yearly", detail = true } = {}) {
   const en = lang === "en";
   const L = {
-    free: { for: en ? "Try everything before you pay." : "Dùng thử trước khi quyết định.", per: en ? "10-day trial · once per device" : "Dùng thử 10 ngày · mỗi máy một lần" },
+    free: { for: en ? "Try it before you decide." : "Dùng thử trước khi quyết định.", per: en ? "10-day trial · once per device" : "Dùng thử 10 ngày · mỗi máy một lần" },
     monthly: { for: en ? "For regular meetings and short projects." : "Cho người họp thường xuyên, dự án ngắn hạn.", per: en ? "per 30 days · prepaid" : "cho mỗi 30 ngày · trả trước" },
     yearly: { for: en ? "For daily use. Best value." : "Cho người dùng hằng ngày. Tiết kiệm nhất.", per: en ? "per 365 days · prepaid" : "cho 365 ngày · trả trước" },
   };

@@ -12,7 +12,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
-    a: `<p>Yes. The app captures your computer's system audio, so it works with any meeting app, webinar or video, with no bot and no plugin. On macOS you can also choose to listen to one specific app only.</p>`,
+    a: `<p>Yes. The app captures your computer's system audio, so it does not depend on which meeting app, webinar or video you use, and it needs no bot and no plugin. We tested audio capture on macOS with Zoom, Google Meet, Microsoft Teams and Zalo PC (internal testing, not a certification by those companies). On macOS you can also choose to listen to one specific app only.</p>`,
   },
   {
     q: "Which languages does AI Translator support?",
@@ -104,7 +104,7 @@ ${sectionHead({ eyebrow: "How it works", title: "From installation to your first
 ${steps([
   { title: "Install the app and download the models once", text: "Open the app, follow the welcome steps, allow system audio recording (macOS) and download the models to your computer (about 1.3 GB or 2.5 GB, depending on the pack). After that, everything runs offline." },
   { title: "Press Start when your meeting begins", text: "Choose the language to <strong>Translate into</strong>, then press <strong>Start</strong> or use the shortcut. The app listens to whatever is playing on your computer, whether it is Zoom, Teams, Meet or a video." },
-  { title: "Read the floating subtitles", text: "The subtitle bar shows the translation almost as soon as the speaker finishes a sentence, with the original text above it if you like. Drag it, resize it, change the text size or lock it in place." },
+  { title: "Read the floating subtitles", text: "The subtitle bar shows the translation soon after the speaker finishes a sentence (on a Mac M4 Pro the median delay is under 1.1 seconds; other computers may be slower), with the original text in small type above it (you can turn that off). Drag it, resize it, change the text size or lock it in place." },
 ])}
 <p class="center-text reveal"><a class="btn btn-ghost" href="/en/guide/quick-start/">Read the quick-start guide ${icon("arrow-right")}</a></p>
 </div></section>
@@ -114,7 +114,7 @@ ${steps([
 <div class="stack-lg reveal">
 <span class="eyebrow">Subtitle bar</span>
 <h2>Floating subtitles you can read on any background</h2>
-<p class="lead">One bar that stays on top and never takes focus from your meeting app. The translation appears word by word, sentences that are not final yet are dimmer, and the original text can sit in small type above if you turn it on.</p>
+<p class="lead">One bar that stays on top and never takes focus from your meeting app. The translation appears word by word, sentences that are not final yet are dimmer, and the original text sits in small type above (on by default, and you can turn it off).</p>
 ${checkList([
   "Drag it to move it, drag an edge to resize it; its place is remembered for each screen",
   "Text size 14–48 px, five text colors, five background colors and adjustable background opacity",
@@ -137,7 +137,7 @@ ${appShot({ slug: "app-home-running", lang: "en", alt: "AI Translator main scree
 <div class="stack-lg reveal">
 <span class="eyebrow">Simple controls</span>
 <h2>One screen, everything you need</h2>
-<p class="lead">Choose the language you want to read, pick the audio source and press Start. The translation time you have left is always on screen, so there are no surprises.</p>
+<p class="lead">Choose the language you want to read, pick the audio source and press Start. The translation time you have left is shown right on the main screen.</p>
 ${checkList([
   "Five spoken and translated languages: English, 中文, 日本語, 한국어, Tiếng Việt",
   "Detects the spoken language automatically, or lock a single language when you know what will be spoken",
@@ -152,7 +152,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "Why AI Translator", title: "Meeting translation that works differently from cloud tools", text: "Many meeting-translation tools process your audio on a remote server. AI Translator does the opposite: everything happens on your computer.", center: true })}
 <div class="grid grid-3">
 ${feature({ icon: "shield", title: "Private by design", text: "Audio lives only in RAM: it is never written to disk and never sent anywhere. The app has no analytics and sends no automatic crash reports.", accent: true })}
-${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech recognition and translation run on your device, so subtitles keep coming even when your connection is flaky or drops." })}
+${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech recognition and translation run on your device, so subtitles keep coming even when your connection is flaky or drops. The app only needs the internet now and then for a few things, such as checking your license." })}
 ${feature({ icon: "video", title: "Any meeting app, no bot", text: "There is no bot to invite and no plugin to install. Anything that plays sound on your computer can become subtitles." })}
 ${feature({ icon: "book", title: "Glossary", text: "Teach it your names, product names and industry terms. Terms are passed to the translator as hints (up to 500, with CSV import and export; a Pro feature)." })}
 ${feature({ icon: "history", title: "History and export", text: "Save transcripts on your computer, encrypted, and export them as TXT, SRT or Markdown. History is off by default, so you decide (a Pro feature)." })}

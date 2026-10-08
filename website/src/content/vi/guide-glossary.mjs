@@ -38,7 +38,7 @@ export default {
         { name: "Mở Từ điển thuật ngữ", text: "Bấm Từ điển thuật ngữ ở thanh bên trái của cửa sổ chính. Tính năng này cần gói Monthly hoặc Yearly." },
         { name: "Nhập thuật ngữ và bản dịch", text: "Gõ thuật ngữ vào ô Thuật ngữ và bản dịch mong muốn vào ô Bản dịch. Mỗi ô tối đa 200 ký tự." },
         { name: "Bấm Thêm", text: "Cặp mới hiện trong danh sách. Các câu dịch sau đó dùng thuật ngữ ngay, kể cả khi phiên đang chạy." },
-        { name: "Nhập CSV (tùy chọn)", text: "Bấm Nhập CSV… và chọn file CSV hai cột, mã UTF-8, nhỏ hơn 1 MB. App báo số thuật ngữ đã thêm, cập nhật, bỏ qua và vượt giới hạn." },
+        { name: "Nhập CSV (tùy chọn)", text: "Bấm Nhập CSV… và chọn file CSV hai cột, mã UTF-8, tối đa 1 MB. App báo số thuật ngữ đã thêm, cập nhật, bỏ qua và vượt giới hạn." },
       ],
     }),
   ],
@@ -80,12 +80,12 @@ ${callout({
 
 <h2 id="them-sua-xoa">Thêm, sửa và xóa thuật ngữ</h2>
 <ol>
-<li>Bấm <strong>Từ điển thuật ngữ</strong> ở thanh bên trái. Dòng đầu cho biết số thuật ngữ hiện có, dạng “12/500 thuật ngữ”.</li>
+<li>Bấm <strong>Từ điển thuật ngữ</strong> ở thanh bên trái. Dưới dòng gợi ý đầu trang là số thuật ngữ hiện có, dạng “8/500 thuật ngữ”.</li>
 <li>Gõ chữ nguồn vào ô <strong>Thuật ngữ</strong>, đúng như người nói sẽ nói, và bản dịch bạn muốn thấy vào ô <strong>Bản dịch</strong>. Mỗi ô tối đa 200 ký tự, không xuống dòng hay dùng tab.</li>
 <li>Bấm <strong>Thêm</strong>. Cặp mới hiện trong danh sách dạng “thuật ngữ → bản dịch”.</li>
 <li>Muốn đổi, bấm <strong>Sửa</strong>, chỉnh hai ô rồi bấm <strong>Lưu</strong> (hoặc <strong>Hủy</strong>). Muốn bỏ, bấm <strong>Xóa</strong>.</li>
 </ol>
-<p>Lỗi hiện ngay dưới dòng nhập: “Hãy điền cả thuật ngữ lẫn bản dịch.”, “Dùng tối đa 200 ký tự.”, “Thuật ngữ này đã có trong từ điển.” (trùng được tính không phân biệt hoa thường) hoặc “Từ điển đã đủ 500 thuật ngữ. Hãy xóa bớt trước khi thêm.”</p>
+<p>Lỗi hiện ngay dưới dòng nhập: “Hãy điền cả thuật ngữ lẫn bản dịch.”, “Dùng tối đa 200 ký tự.” hoặc “Thuật ngữ này đã có trong từ điển.” (trùng được tính không phân biệt hoa thường). Khi từ điển đã đủ 500 thuật ngữ, ô nhập ẩn đi và app ghi “Từ điển đã đủ 500 thuật ngữ. Hãy xóa bớt trước khi thêm.”</p>
 ${appShot({
   slug: "app-glossary",
   lang: "vi",
@@ -128,16 +128,16 @@ ${appShot({
 </ul>
 
 <h2 id="vi-du">Ví dụ</h2>
-<p>Các cặp dưới đây có thể nằm chung một từ điển: app chỉ dùng cặp nào có chữ nguồn xuất hiện trong câu đang dịch.</p>
+<p>Cột đầu là chiều dịch (ngôn ngữ người nói → ngôn ngữ bạn đọc). Mọi cặp có thể nằm chung một từ điển: app chỉ dùng cặp nào có thuật ngữ xuất hiện trong câu đang dịch.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Người nói</th><th scope="col">Thuật ngữ</th><th scope="col">Bản dịch</th><th scope="col">Lý do thêm</th></tr></thead>
+<thead><tr><th scope="col">Chiều dịch</th><th scope="col">Thuật ngữ</th><th scope="col">Bản dịch</th></tr></thead>
 <tbody>
-<tr><td>Tiếng Anh, bạn đọc tiếng Việt</td><td>API gateway</td><td>cổng API</td><td>Thuật ngữ kỹ thuật</td></tr>
-<tr><td>Tiếng Anh, bạn đọc tiếng Việt</td><td>Acme Holdings</td><td>Acme Holdings</td><td>Giữ nguyên tên công ty</td></tr>
-<tr><td>Tiếng Trung, bạn đọc tiếng Việt</td><td>增值税</td><td>thuế giá trị gia tăng</td><td>Thuật ngữ thuế</td></tr>
-<tr><td>Tiếng Hàn, bạn đọc tiếng Việt</td><td>회의록</td><td>biên bản họp</td><td>Từ dùng trong công việc</td></tr>
-<tr><td>Tiếng Việt, bạn đọc tiếng Anh</td><td>biên bản nghiệm thu</td><td>acceptance report</td><td>Thuật ngữ dự án</td></tr>
-<tr><td>Tiếng Việt, bạn đọc tiếng Anh</td><td>Đà Nẵng</td><td>Da Nang</td><td>Địa danh</td></tr>
+<tr><td>Anh → Việt</td><td>API gateway</td><td>cổng API</td></tr>
+<tr><td>Anh → Việt</td><td>Acme Holdings</td><td>Acme Holdings (giữ nguyên tên)</td></tr>
+<tr><td>Trung → Việt</td><td>增值税</td><td>thuế giá trị gia tăng</td></tr>
+<tr><td>Hàn → Việt</td><td>회의록</td><td>biên bản họp</td></tr>
+<tr><td>Việt → Anh</td><td>biên bản nghiệm thu</td><td>acceptance report</td></tr>
+<tr><td>Việt → Anh</td><td>Đà Nẵng</td><td>Da Nang</td></tr>
 </tbody></table></div>
 <p>Muốn xem lại những gì đã được dịch, hãy mở <a href="/huong-dan/lich-su-va-xuat-file/">bản chép lời và lịch sử</a>. Nếu từ điển không như mong đợi, xem <a href="/huong-dan/khac-phuc-su-co/">khắc phục sự cố</a>.</p>
 `,

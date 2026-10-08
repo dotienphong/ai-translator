@@ -23,13 +23,13 @@ export default {
   path: "/en/guide/buy-and-activate/",
   title: "Buy a plan, activate your key, switch computers",
   description:
-    "Buy Monthly or Yearly with VietQR in the app, enter your emailed key, switch computers, renew or change plan, request a refund within 7 days and fix a locked key.",
+    "Buy Monthly or Yearly with VietQR in the app, enter your emailed key, switch computers, renew or change plan, check the refund terms and fix a locked key.",
   breadcrumbs: crumbs,
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
   modified: "2026-10-08",
-  llm: "How to buy a Monthly or Yearly plan with VietQR inside the app, receive and enter the key, recover a lost key, one key per computer and how to switch computers, 14-day offline use, renewing, changing plan and refunds.",
+  llm: "How to buy a Monthly or Yearly plan with VietQR inside the app, receive and enter the key, recover a lost key, one key per computer and how to switch computers, 14-day offline use, renewing, changing plan and the refund terms.",
   llmTitle: "Buy a plan, activate your key and switch computers in AI Translator",
   schema: [
     howTo({
@@ -49,7 +49,7 @@ ${pageHero({
   crumbs,
   title: "Buy a plan, activate your key and switch computers",
   lead: "You buy an AI Translator plan inside the app: choose Monthly or Yearly, scan a VietQR code, and your key arrives by email while the app activates the plan on the computer you are using. Each key works on one computer. To move to another computer, deactivate the old one and enter the key on the new one.",
-  meta: `<span>Updated 8 Oct 2026</span>`,
+  meta: `<span>Updated October 8, 2026</span>`,
 })}
 
 <section class="section-tight"><div class="container">
@@ -62,7 +62,7 @@ ${facts([
   ["Payment", "VietQR, Vietnamese banks, VND<small>No international cards, no auto-renewal</small>"],
   ["Computers", "One computer per key"],
   ["Offline", "Up to 14 days between license checks"],
-  ["Refunds", "Under the Terms; request within 7 days"],
+  ["Refunds", "Payments are not refundable except in the cases set out in the Terms<small>Send a request within 7 days of payment</small>"],
 ])}
 
 <h2 id="buy">Buy a plan in the app</h2>
@@ -98,8 +98,8 @@ ${appShot({
 ${appShot({
   slug: "app-settings-license",
   lang: "en",
-  alt: "The License group in Settings: the current plan and its status, the expiry date, the quota left, the License key box and the Lost your key? section",
-  caption: "Settings › License.",
+  alt: "The License group in Settings after activation: the Monthly plan in use, the key masked with only the last group visible, the expiry date, the minutes left, the Renew or change plan, Check now and Deactivate this computer buttons, and the Lost your key? section",
+  caption: "Settings › License after activation.",
 })}
 <h3 id="lost-key">Lost your key</h3>
 <p>Go to <strong>Settings › License › Lost your key?</strong>, enter the <strong>Email used to buy</strong> and click <strong>Send my keys</strong>. Every valid key of that email is sent to that same address. The app always says “If this email has a key, it is on its way.”, whether or not it has one. Still nothing? Write to support@aitranslator.io.vn.</p>
@@ -137,7 +137,7 @@ ${callout({
 <li>“The amount received is less than the price. Transfer the rest for order … within 24 hours, or contact support with this order number.” Transfer the difference, or contact support.</li>
 <li>“Payment received, but the key could not be activated here…” Enter the key from your email in Settings › License.</li>
 </ul>
-<p>Payments are not refundable, except where our fault leaves you unable to use the plan you bought and we cannot fix it within a reasonable time, or where the law says otherwise. Send a request within 7 days of the payment date to support@aitranslator.io.vn with your <strong>order number</strong> (shown on the Upgrade screen as “Order …”); changing plan is not refundable. E-invoices are not available yet; if you need a document, contact support. Details are in the <a href="/en/terms/">Terms of use</a> and on the <a href="/en/contact/">contact page</a>.</p>
+<p>Payments are not refundable, except where our fault leaves you unable to use the plan you bought and we cannot fix it within a reasonable time, or where the law says otherwise. Send a request within 7 days of the payment date to support@aitranslator.io.vn with your <strong>order number</strong> (shown on the Upgrade screen as “Order …”); changing plan is not refundable. E-invoices are not available yet; if you need a document, contact support to discuss it. Details are in the <a href="/en/terms/">Terms of use</a> and on the <a href="/en/contact/">contact page</a>.</p>
 `,
 })}
 ${docNav(
