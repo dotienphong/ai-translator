@@ -1,5 +1,5 @@
 // Router tự viết trên History API (spec Web Admin §4.5): khoảng mười route, không cần thư viện.
-import { type MouseEvent, type ReactNode, useSyncExternalStore } from "react";
+import { type AnchorHTMLAttributes, type MouseEvent, type ReactNode, useSyncExternalStore } from "react";
 
 export type RouteName =
   | "queue"
@@ -69,25 +69,23 @@ export function usePath(): string {
   return useSyncExternalStore(subscribe, () => window.location.pathname);
 }
 
-export function Link({
-  to,
-  children,
-  className,
-  current,
-}: {
+export interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   to: string;
   children: ReactNode;
-  className?: string;
   /** Trang đang mở: thêm aria-current="page" cho trình đọc màn hình. */
   current?: boolean;
-}) {
+}
+
+/** Link nội bộ: bấm thường thì đổi trang không tải lại; bấm kèm phím (mở tab mới…) thì để trình duyệt lo. Thuộc tính khác của thẻ a đi thẳng xuống. */
+export function Link({ to, children, current, onClick: onClickProp, ...rest }: LinkProps) {
   function onClick(e: MouseEvent<HTMLAnchorElement>) {
+    onClickProp?.(e);
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     navigate(to);
   }
   return (
-    <a href={to} className={className} aria-current={current ? "page" : undefined} onClick={onClick}>
+    <a {...rest} href={to} aria-current={current ? "page" : rest["aria-current"]} onClick={onClick}>
       {children}
     </a>
   );

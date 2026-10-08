@@ -262,6 +262,167 @@ export const IconExternal = icon(
   </>,
 );
 
+export const IconPlus = icon(
+  "plus",
+  <>
+    <path d="M12 5v14" />
+    <path d="M5 12h14" />
+  </>,
+);
+
+/** Bộ lọc: phễu. */
+export const IconFilter = icon("filter", <path d="M4 5.5h16l-6.25 7.4v5.35l-3.5 1.75v-7.1Z" />);
+
+/** Chế độ bảng: lưới ô. */
+export const IconTable = icon(
+  "table",
+  <>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+    <path d="M3.5 9.5h17" />
+    <path d="M3.5 14.5h17" />
+    <path d="M9.5 9.5v10" />
+  </>,
+);
+
+/** Chế độ dòng thời gian: trục dọc có ba mốc. */
+export const IconTimeline = icon(
+  "timeline",
+  <>
+    <circle cx="6" cy="6" r="1.75" />
+    <circle cx="6" cy="12" r="1.75" />
+    <circle cx="6" cy="18" r="1.75" />
+    <path d="M6 7.75v2.5" />
+    <path d="M6 13.75v2.5" />
+    <path d="M10.5 6h9" />
+    <path d="M10.5 12h7" />
+    <path d="M10.5 18h8" />
+  </>,
+);
+
+export const IconClock = icon(
+  "clock",
+  <>
+    <circle cx="12" cy="12" r="8.75" />
+    <path d="M12 7.5V12l3 2" />
+  </>,
+);
+
+export const IconCalendar = icon(
+  "calendar",
+  <>
+    <rect x="3.75" y="5.25" width="16.5" height="15" rx="2.25" />
+    <path d="M3.75 10h16.5" />
+    <path d="M8 3.5v3.5" />
+    <path d="M16 3.5v3.5" />
+  </>,
+);
+
+export const IconMail = icon(
+  "mail",
+  <>
+    <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+    <path d="m4 7 8 6 8-6" />
+  </>,
+);
+
+export const IconLock = icon(
+  "lock",
+  <>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2" />
+    <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+  </>,
+);
+
+export const IconUnlock = icon(
+  "unlock",
+  <>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2" />
+    <path d="M8 10.5V8a4 4 0 0 1 7.75-1.4" />
+  </>,
+);
+
+/** Thu hồi, chặn: vòng tròn có gạch chéo. */
+export const IconBan = icon(
+  "ban",
+  <>
+    <circle cx="12" cy="12" r="8.75" />
+    <path d="m5.8 5.8 12.4 12.4" />
+  </>,
+);
+
+export const IconEye = icon(
+  "eye",
+  <>
+    <path d="M2.75 12S6 5.5 12 5.5 21.25 12 21.25 12 18 18.5 12 18.5 2.75 12 2.75 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </>,
+);
+
+export const IconEyeOff = icon(
+  "eye-off",
+  <>
+    <path d="M10.6 5.65A9.6 9.6 0 0 1 12 5.5c6 0 9.25 6.5 9.25 6.5a16.6 16.6 0 0 1-2.4 3.3" />
+    <path d="M6.6 6.6C4.1 8.3 2.75 12 2.75 12S6 18.5 12 18.5a9 9 0 0 0 5.4-1.8" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    <path d="m3.5 3.5 17 17" />
+  </>,
+);
+
+export const IconTrendUp = icon(
+  "trend-up",
+  <>
+    <path d="m3.5 16.5 6-6 4 4 7-7" />
+    <path d="M15 7.5h5.5V13" />
+  </>,
+);
+
+export const IconTrendDown = icon(
+  "trend-down",
+  <>
+    <path d="m3.5 7.5 6 6 4-4 7 7" />
+    <path d="M15 16.5h5.5V11" />
+  </>,
+);
+
+/** Tiền: chồng xu. */
+export const IconCoins = icon(
+  "coins",
+  <>
+    <ellipse cx="9" cy="7" rx="5.5" ry="2.5" />
+    <path d="M3.5 7v4c0 1.4 2.46 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7" />
+    <path d="M9.5 16.45V17c0 1.4 2.46 2.5 5.5 2.5s5.5-1.1 5.5-2.5v-4c0-1.3-2.1-2.36-4.85-2.48" />
+    <path d="M9.5 13v4" />
+  </>,
+);
+
+/** Trống: hộp mở. */
+export const IconBox = icon(
+  "box",
+  <>
+    <path d="M3.5 8.5 12 4l8.5 4.5v7L12 20l-8.5-4.5Z" />
+    <path d="M3.5 8.5 12 13l8.5-4.5" />
+    <path d="M12 13v7" />
+  </>,
+);
+
+/** Vòng quay đang xử lý: cung 3/4 quay bằng CSS (.spinner). aria-hidden: nút đang xử lý tự có chữ hay aria-busy. */
+export function Spinner({ size = 16, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      className={className ? `spinner ${className}` : "spinner"}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2.5" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /**
  * Biểu tượng thương hiệu (cùng hình với website/src/assets/img/logo.svg): ô vuông bo góc xanh chuyển màu, bong bóng lời
  * thoại trắng có năm vạch sóng âm. Mã gradient lấy từ useId để nhiều bản trên một trang không trùng nhau.
