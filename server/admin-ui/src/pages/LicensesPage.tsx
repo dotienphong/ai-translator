@@ -8,7 +8,7 @@ import { Card } from "../components/Card";
 import { licenseColumns } from "../components/columns";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DataTable } from "../components/DataTable";
-import { ErrorBox } from "../components/Feedback";
+import { ErrorBox, NoticeRegion, useNotice } from "../components/Feedback";
 import { Field, Select } from "../components/Field";
 import { type FilterChip, FilterBar } from "../components/FilterBar";
 import { IconPlus } from "../components/icons";
@@ -45,7 +45,9 @@ export function LicensesPage() {
   const [email, setEmail] = useState("");
   const [emailTouched, setEmailTouched] = useState(false);
   const [plan, setPlan] = useState<PlanCode>("monthly");
-  const [revealed, setRevealed] = useState<string | null>(null);
+  // Key vừa cấp (hiện một lần) và email đã cấp cho: câu kết quả hiện ở trang khi bấm Xong (hiện sớm hơn thì giành focus của hộp).
+  const [revealed, setRevealed] = useState<{ key: string; email: string } | null>(null);
+  const notice = useNotice();
   const emailOk = EMAIL.test(email.trim());
 
   const chips: FilterChip[] = [];
@@ -70,6 +72,7 @@ export function LicensesPage() {
           ),
         }}
       />
+      <NoticeRegion handle={notice} />
       <FilterBar chips={chips} onClear={clear} count={list.error && list.rows.length === 0 ? undefined : <ResultCount n={list.rows.length} unit="license" hasMore={list.hasMore} view={view} />}>
         <SegmentField label="Trạng thái" value={f.state} options={STATE_OPTIONS} onChange={(state) => setF({ ...f, state })} />
         <Select label="Gói" value={f.plan} options={PLAN_OPTIONS} onChange={(p) => setF({ ...f, plan: p })} />
@@ -107,7 +110,7 @@ export function LicensesPage() {
           extraValid={emailOk}
           onConfirm={async (note) => {
             const r = await api.issueLicense(email.trim(), plan, note);
-            setRevealed(r.license_key);
+            setRevealed({ key: r.license_key, email: email.trim() });
             setEmail("");
             setEmailTouched(false);
             list.reload();
@@ -140,7 +143,15 @@ export function LicensesPage() {
           </Field>
         </ConfirmDialog>
       )}
-      {revealed && <KeyReveal licenseKey={revealed} onClose={() => setRevealed(null)} />}
+      {revealed && (
+        <KeyReveal
+          licenseKey={revealed.key}
+          onClose={() => {
+            setRevealed(null);
+            notice.show(`Đã cấp license mới cho ${revealed.email}.`);
+          }}
+        />
+      )}
     </>
   );
 }

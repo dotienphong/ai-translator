@@ -1,9 +1,11 @@
-// Thông báo (spec giao diện mới, mục 2). ErrorBox: lỗi tải dữ liệu, có nút Thử lại. Notice: kết quả thao tác quan trọng,
-// đứng yên tới khi người vận hành đóng. Toast: kết quả thao tác nhẹ (chép, lưu nháp), nổi ở góc dưới phải, tự đóng.
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+// Thông báo (spec giao diện mới, mục 2). ErrorBox: lỗi tải dữ liệu, có nút Thử lại. Notice: kết quả thao tác ghi, đứng yên
+// tới khi người vận hành đóng, luôn nằm trong một vùng aria-live có sẵn trên trang (NoticeRegion) để trình đọc màn hình đọc
+// chắc chắn; thông báo mới thì cuộn tới và nhận focus (nút đã mở hộp thường biến mất sau khi trang tải lại).
+import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from "react";
 import type { ApiError } from "../api/client";
 import { Button, IconButton } from "./Button";
 import { IconAlert, IconCheckCircle, IconClose, IconInfo, IconWarning } from "./icons";
+import { focusPageTitle, revealAndFocus } from "./useFocusTrap";
 
 export function ErrorBox({ error, onRetry, title }: { error: ApiError; onRetry?: () => void; title?: string }) {
   return (
@@ -30,9 +32,13 @@ const NOTICE_ICON: Record<NoticeTone, ReactNode> = {
   warn: <IconWarning size={20} />,
 };
 
-export function Notice({ text, onClose, tone = "ok" }: { text: ReactNode; onClose(): void; tone?: NoticeTone }) {
+/**
+ * Một thông báo kết quả. Không tự mang role: vùng live (NoticeRegion) bọc ngoài, có sẵn trước khi chữ xuất hiện, mới chắc
+ * được đọc. tabIndex -1: nhận focus bằng mã sau thao tác (data-notice: đích trả focus của useFocusTrap).
+ */
+export function Notice({ text, onClose, tone = "ok", ref }: { text: ReactNode; onClose(): void; tone?: NoticeTone; ref?: Ref<HTMLDivElement> }) {
   return (
-    <div className={`notice tone-${tone}`} role="status">
+    <div ref={ref} className={`notice tone-${tone}`} tabIndex={-1} data-notice="">
       {NOTICE_ICON[tone]}
       <div className="feedback-text">
         <span>{text}</span>
@@ -42,86 +48,75 @@ export function Notice({ text, onClose, tone = "ok" }: { text: ReactNode; onClos
   );
 }
 
-/* ---------- Toast ---------- */
-
-export type ToastTone = "ok" | "info" | "warn" | "bad";
-
-interface ToastItem {
+export interface NoticeMessage {
+  /** Tăng mỗi lần show(): cùng chữ mà bấm lại vẫn là thông báo mới (cuộn tới, nhận focus, được đọc lại). */
   id: number;
-  text: string;
-  tone: ToastTone;
+  text: ReactNode;
+  tone: NoticeTone;
 }
 
-interface ToastApi {
-  /** Hiện một thông báo nổi, tự đóng sau `ms` (mặc định 4 giây). */
-  show(text: string, opts?: { tone?: ToastTone; ms?: number }): void;
+export interface NoticeHandle {
+  notice: NoticeMessage | null;
+  show(text: ReactNode, tone?: NoticeTone): void;
+  clear(): void;
 }
 
-const ToastContext = createContext<ToastApi | null>(null);
-
-/** Gửi thông báo nổi. Ngoài ToastProvider (test, trang lẻ) thì không làm gì. */
-export function useToast(): ToastApi {
-  return useContext(ToastContext) ?? NOOP_TOAST;
-}
-const NOOP_TOAST: ToastApi = { show: () => {} };
-
-export const TOAST_MS = 4000;
-/** Tối đa bấy nhiêu thông báo cùng lúc; cái cũ nhất bị bỏ trước. */
-const TOAST_MAX = 3;
-
-const TOAST_ICON: Record<ToastTone, ReactNode> = {
-  ok: <IconCheckCircle size={18} />,
-  info: <IconInfo size={18} />,
-  warn: <IconWarning size={18} />,
-  bad: <IconAlert size={18} />,
-};
-
-export function ToastProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<ToastItem[]>([]);
-  const nextId = useRef(1);
-  const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
-
-  const dismiss = useCallback((id: number) => {
-    const t = timers.current.get(id);
-    if (t) clearTimeout(t);
-    timers.current.delete(id);
-    setItems((list) => list.filter((x) => x.id !== id));
+/** Trạng thái thông báo kết quả của một trang; trang đặt <NoticeRegion> ở chỗ thông báo hiện (ngay dưới đầu trang). */
+export function useNotice(): NoticeHandle {
+  const [notice, setNotice] = useState<NoticeMessage | null>(null);
+  const seq = useRef(0);
+  const show = useCallback((text: ReactNode, tone: NoticeTone = "ok") => {
+    seq.current += 1;
+    setNotice({ id: seq.current, text, tone });
   }, []);
+  const clear = useCallback(() => setNotice(null), []);
+  return { notice, show, clear };
+}
 
-  const show = useCallback(
-    (text: string, opts?: { tone?: ToastTone; ms?: number }) => {
-      const id = nextId.current++;
-      setItems((list) => [...list, { id, text, tone: opts?.tone ?? "ok" }].slice(-TOAST_MAX));
-      timers.current.set(
-        id,
-        setTimeout(() => dismiss(id), opts?.ms ?? TOAST_MS),
-      );
-    },
-    [dismiss],
-  );
-
+/**
+ * Vùng thông báo luôn có trong DOM (rỗng khi không có gì): role="status" aria-live="polite" aria-atomic. Thông báo mới thì
+ * cuộn vào tầm nhìn (khối gần nhất, không cuộn mượt khi người dùng giảm chuyển động) và nhận focus. Đóng thông báo thì
+ * focus về đầu trang (nút Đóng biến mất cùng thông báo).
+ * Trang có nhánh lỗi (tải lại thất bại) cũng đặt vùng này đúng vị trí đó để thông báo không mất khi trang đổi nhánh.
+ */
+export function NoticeRegion({ handle }: { handle: NoticeHandle }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const id = handle.notice?.id;
   useEffect(() => {
-    const map = timers.current;
-    return () => {
-      for (const t of map.values()) clearTimeout(t);
-      map.clear();
-    };
-  }, []);
-
-  const api = useMemo(() => ({ show }), [show]);
+    if (id !== undefined) revealAndFocus(ref.current);
+  }, [id]);
+  const n = handle.notice;
   return (
-    <ToastContext.Provider value={api}>
+    <div className="notice-region" role="status" aria-live="polite" aria-atomic="true">
+      {n && (
+        <Notice
+          key={n.id}
+          ref={ref}
+          text={n.text}
+          tone={n.tone}
+          onClose={() => {
+            // Nút Đóng đang có focus sắp biến mất cùng thông báo: chuyển focus lên tiêu đề trang trước (không rơi về body).
+            focusPageTitle();
+            handle.clear();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Vùng kết quả luôn có trong DOM của một công cụ (trang Công cụ): như NoticeRegion nhưng nội dung do trang vẽ. `resultKey`
+ * đổi (kết quả mới) thì cuộn tới và đưa focus vào phần tử con đầu tiên (phải có tabIndex -1).
+ */
+export function ResultRegion({ resultKey, children }: { resultKey: number | null; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (resultKey !== null) revealAndFocus(ref.current?.firstElementChild as HTMLElement | null);
+  }, [resultKey]);
+  return (
+    <div ref={ref} className="result-region" role="status" aria-live="polite" aria-atomic="true">
       {children}
-      {/* Vùng luôn có trên trang (rỗng khi không có gì) để trình đọc màn hình đọc thông báo mới. */}
-      <div className="toasts" role="status" aria-live="polite">
-        {items.map((t) => (
-          <div key={t.id} className={`toast tone-${t.tone}`}>
-            {TOAST_ICON[t.tone]}
-            <span className="toast-text">{t.text}</span>
-            <IconButton label="Đóng thông báo" icon={<IconClose size={16} />} size="sm" onClick={() => dismiss(t.id)} className="toast-close" />
-          </div>
-        ))}
-      </div>
-    </ToastContext.Provider>
+    </div>
   );
 }

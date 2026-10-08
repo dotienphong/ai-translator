@@ -13,7 +13,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CopyButton } from "../components/CopyButton";
 import { DataTable } from "../components/DataTable";
 import { EmptyState } from "../components/EmptyState";
-import { ErrorBox, Notice } from "../components/Feedback";
+import { ErrorBox, NoticeRegion, useNotice } from "../components/Feedback";
 import { Field } from "../components/Field";
 import { IconBan, IconCalendar, IconCart, IconInfo, IconLock, IconLog, IconMail, IconMonitor, IconUnlock } from "../components/icons";
 import { KeyValue } from "../components/KeyValue";
@@ -41,7 +41,7 @@ const ORDER_COLUMNS_HIDDEN = new Set(["Email", "Gói"]);
 export function LicensePage({ id }: { id: string }) {
   const data = useLoad(() => api.lookup({ license_id: id }), [id]);
   const [dialog, setDialog] = useState<Dialog>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const notice = useNotice();
   const [days, setDays] = useState("30");
   const [shown, setShown] = useState(false);
 
@@ -49,6 +49,8 @@ export function LicensePage({ id }: { id: string }) {
     return (
       <>
         <PageHeader breadcrumb={[LIST_CRUMB, { label: "Chi tiết" }]} title="License" />
+        {/* Cùng vị trí với nhánh chính: tải lại sau thao tác mà lỗi thì thông báo kết quả vẫn còn. */}
+        <NoticeRegion handle={notice} />
         <ErrorBox error={data.error} onRetry={data.reload} title="Không tải được license" />
       </>
     );
@@ -123,7 +125,7 @@ export function LicensePage({ id }: { id: string }) {
           )
         }
       />
-      {notice && <Notice text={notice} onClose={() => setNotice(null)} />}
+      <NoticeRegion handle={notice} />
       {revoked && lic.revoked_at !== null && (
         <Callout tone="danger" icon={<IconBan size={18} />} title="License đã bị thu hồi">
           Thu hồi lúc {fmtDateTime(lic.revoked_at)}. Mọi máy dùng key này về Free ở lần kiểm tra kế tiếp; trang không còn thao tác nào.
@@ -271,7 +273,7 @@ export function LicensePage({ id }: { id: string }) {
           extraValid={daysOk}
           onConfirm={async (note) => {
             const r = await api.extend(id, daysNum, note);
-            setNotice(`Đã gia hạn tới ${fmtDate(r.expires_at)}.`);
+            notice.show(`Đã gia hạn tới ${fmtDate(r.expires_at)}.`);
             data.reload();
           }}
           onConflict={data.reload}
@@ -290,7 +292,7 @@ export function LicensePage({ id }: { id: string }) {
           needsNote={false}
           onConfirm={async () => {
             await api.resend(id);
-            setNotice("Đã gửi lại email.");
+            notice.show("Đã gửi lại email.");
             data.reload();
           }}
           onConflict={data.reload}
@@ -305,7 +307,7 @@ export function LicensePage({ id }: { id: string }) {
           needsNote
           onConfirm={async (note) => {
             await api.unlock(id, note);
-            setNotice("Đã mở khóa.");
+            notice.show("Đã mở khóa.");
             data.reload();
           }}
           onConflict={data.reload}
@@ -321,7 +323,7 @@ export function LicensePage({ id }: { id: string }) {
           typeToConfirm="THU HOI"
           onConfirm={async (note) => {
             await api.revoke(id, note);
-            setNotice("Đã thu hồi license.");
+            notice.show("Đã thu hồi license.");
             data.reload();
           }}
           onConflict={data.reload}
@@ -336,7 +338,7 @@ export function LicensePage({ id }: { id: string }) {
           needsNote
           onConfirm={async (note) => {
             await api.deactivate(dialog.activation.id, note);
-            setNotice("Đã gỡ máy.");
+            notice.show("Đã gỡ máy.");
             data.reload();
           }}
           onConflict={data.reload}
@@ -351,7 +353,7 @@ export function LicensePage({ id }: { id: string }) {
           needsNote
           onConfirm={async (note) => {
             await api.resetQuota(dialog.activation.id, note);
-            setNotice("Đã reset hạn mức của máy.");
+            notice.show("Đã reset hạn mức của máy.");
             data.reload();
           }}
           onConflict={data.reload}

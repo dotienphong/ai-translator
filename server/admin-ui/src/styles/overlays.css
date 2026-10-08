@@ -1,4 +1,4 @@
-/* Thông báo và lớp phủ (spec giao diện mới, mục 2): chữ lỗi trong trang, ErrorBox, Notice, Toast, hộp xác nhận
+/* Thông báo và lớp phủ (spec giao diện mới, mục 2): chữ lỗi trong trang, ErrorBox, Notice, hộp xác nhận
    (ConfirmDialog) và hộp hiện key một lần (KeyReveal). */
 
 /* ---------- Chữ lỗi ngay dưới ô (khoảng ngày ngược…) ---------- */
@@ -77,60 +77,13 @@
   align-self: flex-start;
   margin: 2px -4px 0 auto;
 }
+/* Thông báo kết quả nhận focus và được cuộn tới sau thao tác (NoticeRegion): chừa chỗ cho thanh trên dính. */
+.notice,
+.tool-result {
+  scroll-margin-top: calc(var(--topbar-h) + var(--s-4));
+  scroll-margin-bottom: var(--s-4);
+}
 
-/* ---------- Toast: ngăn xếp nổi góc dưới phải, nền đảo màu ---------- */
-.toasts {
-  position: fixed;
-  right: var(--s-4);
-  bottom: var(--s-4);
-  z-index: 80;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--s-2);
-  max-width: calc(100vw - 32px);
-  pointer-events: none;
-}
-.toast {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 420px;
-  min-height: 44px;
-  padding: 4px 4px 4px 14px;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--on-inverse);
-  background: var(--inverse);
-  border-radius: 10px;
-  box-shadow: var(--shadow-lg);
-  pointer-events: auto;
-  animation: toast-in var(--t-slow) var(--ease);
-}
-.toast > .icon {
-  color: var(--on-inverse-2);
-}
-.toast.tone-ok > .icon {
-  color: var(--inverse-ok);
-}
-.toast-text {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 0;
-}
-.toast-close {
-  --btn-fg: var(--on-inverse-2);
-  --btn-bg-hover: color-mix(in srgb, var(--on-inverse) 12%, transparent);
-}
-:where(.btn).toast-close:is(:hover, .is-hover) {
-  --btn-fg: var(--on-inverse);
-}
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
-  }
-}
 
 /* ---------- Hộp thoại ---------- */
 .overlay {
@@ -418,12 +371,5 @@
   }
   .dialog-actions .btn {
     width: 100%;
-  }
-  .toasts {
-    left: var(--s-4);
-    align-items: stretch;
-  }
-  .toast {
-    max-width: none;
   }
 }

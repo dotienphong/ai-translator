@@ -621,6 +621,10 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* Tiêu đề chỉ nhận focus bằng mã (đích trả focus khi nút vừa bấm biến mất): không vẽ vòng focus như một nút. */
+.page-title:focus {
+  outline: none;
+}
 .page-badges {
   display: flex;
   flex-wrap: wrap;

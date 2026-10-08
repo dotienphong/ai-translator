@@ -1,8 +1,8 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/client";
-import { ErrorBox, Notice, TOAST_MS, ToastProvider, useToast } from "./Feedback";
+import { ErrorBox, Notice, NoticeRegion, ResultRegion, useNotice } from "./Feedback";
 
 describe("ErrorBox", () => {
   it("alert có câu lỗi và nút Thử lại", async () => {
@@ -27,94 +27,119 @@ describe("ErrorBox", () => {
 });
 
 describe("Notice", () => {
-  it("status có chữ và nút Đóng; tông thành lớp", async () => {
+  it("chữ và nút Đóng; tông thành lớp; nhận được focus bằng mã, không tự mang role (vùng live bọc ngoài)", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    const { rerender } = render(<Notice text="Đã gia hạn." onClose={onClose} />);
-    const status = screen.getByRole("status");
-    expect(status.className).toBe("notice tone-ok");
-    expect(status.textContent).toBe("Đã gia hạn.");
+    const { container, rerender } = render(<Notice text="Đã gia hạn." onClose={onClose} />);
+    const box = container.querySelector(".notice") as HTMLElement;
+    expect(box.className).toBe("notice tone-ok");
+    expect(box.textContent).toBe("Đã gia hạn.");
+    expect(box.getAttribute("role")).toBeNull();
+    expect(box.tabIndex).toBe(-1);
     await user.click(screen.getByRole("button", { name: "Đóng" }));
     expect(onClose).toHaveBeenCalledTimes(1);
     rerender(<Notice text="x" tone="warn" onClose={onClose} />);
-    expect(screen.getByRole("status").className).toBe("notice tone-warn");
+    expect((container.querySelector(".notice") as HTMLElement).className).toBe("notice tone-warn");
   });
 });
 
-function Trigger({ text, tone }: { text: string; tone?: "ok" | "bad" }) {
-  const toast = useToast();
+/** Trang giả: tiêu đề, vùng thông báo, nút tạo thông báo. */
+function NoticePage() {
+  const notice = useNotice();
   return (
-    <button type="button" onClick={() => toast.show(text, { tone })}>
-      Bấm
-    </button>
+    <>
+      <h1 className="page-title" tabIndex={-1}>
+        Trang
+      </h1>
+      <NoticeRegion handle={notice} />
+      <button type="button" onClick={() => notice.show("Đã thu hồi license.")}>
+        Làm
+      </button>
+    </>
   );
 }
 
-describe("Toast", () => {
+describe("NoticeRegion (vùng thông báo kết quả của trang)", () => {
   afterEach(() => {
-    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
-  it("vùng status luôn có sẵn; hiện thông báo, tự đóng sau 4 giây", () => {
-    vi.useFakeTimers();
-    render(
-      <ToastProvider>
-        <Trigger text="Đã chép email" />
-      </ToastProvider>,
-    );
+  it("vùng status luôn có trong DOM (rỗng lúc đầu), aria-live polite, aria-atomic; thông báo hiện BÊN TRONG vùng có sẵn", async () => {
+    const user = userEvent.setup();
+    render(<NoticePage />);
     const region = screen.getByRole("status");
     expect(region.getAttribute("aria-live")).toBe("polite");
+    expect(region.getAttribute("aria-atomic")).toBe("true");
     expect(region.textContent).toBe("");
-    fireEvent.click(screen.getByRole("button", { name: "Bấm" }));
-    expect(region.textContent).toBe("Đã chép email");
-    expect(region.querySelector(".toast")?.className).toBe("toast tone-ok");
-    act(() => {
-      vi.advanceTimersByTime(TOAST_MS - 1);
-    });
-    expect(region.textContent).toBe("Đã chép email");
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(region.textContent).toBe("");
+    await user.click(screen.getByRole("button", { name: "Làm" }));
+    // Cùng một nút DOM: vùng không bị tạo lại cùng lúc với chữ (trình đọc màn hình mới chắc đọc).
+    expect(screen.getByRole("status")).toBe(region);
+    expect(region.textContent).toBe("Đã thu hồi license.");
   });
 
-  it("nút đóng bỏ thông báo ngay và hủy hẹn giờ", () => {
-    vi.useFakeTimers();
-    render(
-      <ToastProvider>
-        <Trigger text="Đã lưu" tone="bad" />
-      </ToastProvider>,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Bấm" }));
-    expect(vi.getTimerCount()).toBe(1);
-    fireEvent.click(screen.getByRole("button", { name: "Đóng thông báo" }));
+  it("thông báo mới: cuộn tới (khối gần nhất) và nhận focus; bấm lại cùng chữ vẫn là thông báo mới", async () => {
+    const user = userEvent.setup();
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    render(<NoticePage />);
+    await user.click(screen.getByRole("button", { name: "Làm" }));
+    const box = document.querySelector(".notice") as HTMLElement;
+    expect(document.activeElement).toBe(box);
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(scroll.mock.calls[0]?.[0]).toMatchObject({ block: "nearest" });
+    await user.click(screen.getByRole("button", { name: "Làm" }));
+    expect(scroll).toHaveBeenCalledTimes(2);
+    expect(document.activeElement).toBe(document.querySelector(".notice"));
+    // @ts-expect-error: jsdom không có scrollIntoView; trả lại như cũ.
+    delete Element.prototype.scrollIntoView;
+  });
+
+  it("người dùng giảm chuyển động: cuộn không mượt; không thì cuộn mượt", async () => {
+    const user = userEvent.setup();
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    for (const reduce of [true, false]) {
+      window.matchMedia = vi.fn((q: string) => ({ matches: reduce && q.includes("reduce") }) as MediaQueryList);
+      const { unmount } = render(<NoticePage />);
+      await user.click(screen.getByRole("button", { name: "Làm" }));
+      expect(scroll.mock.lastCall?.[0]).toEqual({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+      unmount();
+    }
+    // @ts-expect-error: dọn những gì jsdom vốn không có.
+    delete window.matchMedia;
+    // @ts-expect-error: như trên.
+    delete Element.prototype.scrollIntoView;
+  });
+
+  it("đóng thông báo: vùng còn đó và rỗng, focus về tiêu đề trang (không rơi về body)", async () => {
+    const user = userEvent.setup();
+    render(<NoticePage />);
+    await user.click(screen.getByRole("button", { name: "Làm" }));
+    await user.click(screen.getByRole("button", { name: "Đóng" }));
     expect(screen.getByRole("status").textContent).toBe("");
-    expect(vi.getTimerCount()).toBe(0);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Trang" }));
   });
+});
 
-  it("tối đa ba thông báo, cái cũ nhất bị bỏ trước", () => {
-    vi.useFakeTimers();
-    let n = 0;
-    function Many() {
-      const toast = useToast();
+describe("ResultRegion (kết quả của công cụ)", () => {
+  it("vùng luôn có; kết quả mới (khóa đổi) thì phần tử con đầu nhận focus", () => {
+    function Tool({ at }: { at: number | null }) {
       return (
-        <button type="button" onClick={() => toast.show(`T${++n}`)}>
-          Thêm
-        </button>
+        <ResultRegion resultKey={at}>
+          {at !== null && (
+            <div tabIndex={-1} className="r">
+              Kết quả {at}
+            </div>
+          )}
+        </ResultRegion>
       );
     }
-    render(
-      <ToastProvider>
-        <Many />
-      </ToastProvider>,
-    );
-    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByRole("button", { name: "Thêm" }));
-    expect([...document.querySelectorAll(".toast-text")].map((e) => e.textContent)).toEqual(["T2", "T3", "T4"]);
-  });
-
-  it("ngoài ToastProvider: useToast không làm gì, không lỗi", () => {
-    render(<Trigger text="x" />);
-    fireEvent.click(screen.getByRole("button", { name: "Bấm" }));
-    expect(screen.queryByRole("status")).toBeNull();
+    const { rerender } = render(<Tool at={null} />);
+    const region = screen.getByRole("status");
+    expect(region.textContent).toBe("");
+    expect(document.activeElement).toBe(document.body);
+    act(() => rerender(<Tool at={1} />));
+    expect(screen.getByRole("status")).toBe(region);
+    expect(document.activeElement).toBe(region.querySelector(".r"));
   });
 });

@@ -44,7 +44,10 @@ export function PageHeader({ title, breadcrumb, titleAside, badges, description,
         <div className="page-header-text">
           {/* Huy hiệu nằm ngoài h1 để tên tiêu đề (trình đọc màn hình, test) chỉ là chữ tiêu đề. */}
           <div className="page-title-row">
-            <h1 className="page-title">{title}</h1>
+            {/* tabIndex -1: đích focus khi nút vừa bấm biến mất (useFocusTrap) hay thông báo vừa đóng. */}
+            <h1 className="page-title" tabIndex={-1}>
+              {title}
+            </h1>
             {titleAside && <div className="page-title-aside">{titleAside}</div>}
             {badges && <div className="page-badges">{badges}</div>}
           </div>

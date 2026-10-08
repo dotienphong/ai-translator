@@ -67,15 +67,6 @@
   gap: var(--s-4);
   margin-bottom: var(--s-4);
 }
-.g-toast-static {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-}
-.g-toast-static .toast {
-  animation: none;
-  padding-right: 14px;
-}
 .g-foot {
   display: flex;
   align-items: center;

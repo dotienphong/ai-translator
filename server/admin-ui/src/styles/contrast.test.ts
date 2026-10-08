@@ -97,10 +97,6 @@ const PAIRS: [string, string, number][] = [
   ["warn", "warn-soft", 3],
   ["bad", "bad-soft", 3],
   ["ink-3", "surface-3", 3],
-  // Toast (bề mặt đảo màu): chữ và nút đóng, biểu tượng thành công
-  ["on-inverse", "inverse", 4.5],
-  ["on-inverse-2", "inverse", 4.5],
-  ["inverse-ok", "inverse", 3],
   // Chấm của Timeline (vòng nét trên nền thẻ), cột biểu đồ trên nền thẻ phụ (bảng số, tooltip)
   ...["ink-3", "ok", "warn", "bad", "brand"].map((c): [string, string, number] => [c, "surface", 3]),
   ...["chart-1", "chart-2", "chart-3", "chart-4"].map((c): [string, string, number] => [c, "surface-2", 3]),

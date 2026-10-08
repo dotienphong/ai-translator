@@ -14,7 +14,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CopyButton } from "../components/CopyButton";
 import { type Column, countText, DataTable } from "../components/DataTable";
 import { EmptyState } from "../components/EmptyState";
-import { ErrorBox, Notice, ToastProvider, useToast } from "../components/Feedback";
+import { ErrorBox, Notice } from "../components/Feedback";
 import { DateInput, Field, SearchInput, Select } from "../components/Field";
 import { FilterBar } from "../components/FilterBar";
 import {
@@ -564,36 +564,14 @@ function Tables() {
   );
 }
 
-function ToastDemo() {
-  const toast = useToast();
-  return (
-    <Button size="sm" onClick={() => toast.show("Đã chép email vào bộ nhớ tạm")}>
-      Hiện toast
-    </Button>
-  );
-}
-
 function Feedbacks() {
   return (
-    <GalleryBlock id="feedback" title="ErrorBox, Notice, Toast" note="Notice đứng yên tới khi đóng; Toast tự đóng sau 4 giây">
+    <GalleryBlock id="feedback" title="ErrorBox, Notice" note="Notice đứng yên tới khi đóng, nằm trong vùng aria-live của trang (NoticeRegion)">
       <ErrorBox error={new ApiError(500, "internal")} onRetry={() => {}} />
       <ErrorBox error={new ApiError(0, "network")} title="Không tải được danh sách đơn" onRetry={() => {}} />
       <Notice text="Đã gia hạn tới 08/11/2027." onClose={() => {}} />
       <Notice tone="info" text="Đã gửi lại email. Khách thường nhận trong vài phút." onClose={() => {}} />
       <Notice tone="warn" text="License đang khóa tạm: xác minh với khách trước khi mở khóa." onClose={() => {}} />
-      <Row label="toast">
-        <ToastDemo />
-        <div className="g-toast-static">
-          <div className="toast tone-ok">
-            <IconCheck size={18} />
-            <span className="toast-text">Đã chép email vào bộ nhớ tạm</span>
-          </div>
-          <div className="toast tone-warn">
-            <IconWarning size={18} />
-            <span className="toast-text">Đã lưu nháp, chưa gửi</span>
-          </div>
-        </div>
-      </Row>
     </GalleryBlock>
   );
 }
@@ -747,44 +725,42 @@ export function Gallery() {
   }, []);
   const show = (id: string) => !only || only === id;
   return (
-    <ToastProvider>
-      <div className="gallery">
-        <header className="g-head">
-          <p className="g-kicker">{GALLERY_MARKER}</p>
-          <h1>Thành phần dùng chung</h1>
-          <nav aria-label="Mục" className="g-nav">
-            {SECTIONS.map(([id, label]) => (
-              <a key={id} href={`?only=${id}`}>
-                {label}
-              </a>
-            ))}
-            <a href="/__gallery">Tất cả</a>
-            <span className="g-sep" />
-            {["confirm", "extra", "danger", "uncertain", "error", "reveal"].map((d) => (
-              <a key={d} href={`?dialog=${d}`}>
-                hộp {d}
-              </a>
-            ))}
-          </nav>
-        </header>
-        {show("button") && <Buttons />}
-        {show("badge") && <Badges />}
-        {show("card") && <Cards />}
-        {show("stat") && <Stats />}
-        {show("empty") && <Empties />}
-        {show("skeleton") && <Skeletons />}
-        {show("copy") && <Copies />}
-        {show("kv") && <KeyValues />}
-        {show("timeline") && <Timelines />}
-        {show("filter") && <Filters />}
-        {show("table") && <Tables />}
-        {show("feedback") && <Feedbacks />}
-        {show("chart") && <Charts />}
-        {dialog && <Dialogs kind={dialog} />}
-        <p className="g-foot">
-          <IconTool size={14} /> Chỉ có ở dev server (pnpm dev), không có trong bản build.
-        </p>
-      </div>
-    </ToastProvider>
+    <div className="gallery">
+      <header className="g-head">
+        <p className="g-kicker">{GALLERY_MARKER}</p>
+        <h1>Thành phần dùng chung</h1>
+        <nav aria-label="Mục" className="g-nav">
+          {SECTIONS.map(([id, label]) => (
+            <a key={id} href={`?only=${id}`}>
+              {label}
+            </a>
+          ))}
+          <a href="/__gallery">Tất cả</a>
+          <span className="g-sep" />
+          {["confirm", "extra", "danger", "uncertain", "error", "reveal"].map((d) => (
+            <a key={d} href={`?dialog=${d}`}>
+              hộp {d}
+            </a>
+          ))}
+        </nav>
+      </header>
+      {show("button") && <Buttons />}
+      {show("badge") && <Badges />}
+      {show("card") && <Cards />}
+      {show("stat") && <Stats />}
+      {show("empty") && <Empties />}
+      {show("skeleton") && <Skeletons />}
+      {show("copy") && <Copies />}
+      {show("kv") && <KeyValues />}
+      {show("timeline") && <Timelines />}
+      {show("filter") && <Filters />}
+      {show("table") && <Tables />}
+      {show("feedback") && <Feedbacks />}
+      {show("chart") && <Charts />}
+      {dialog && <Dialogs kind={dialog} />}
+      <p className="g-foot">
+        <IconTool size={14} /> Chỉ có ở dev server (pnpm dev), không có trong bản build.
+      </p>
+    </div>
   );
 }

@@ -12,7 +12,7 @@ import { Button, IconButton } from "../components/Button";
 import { Card } from "../components/Card";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
-import { ErrorBox, Notice } from "../components/Feedback";
+import { ErrorBox, type NoticeHandle, NoticeRegion, useNotice } from "../components/Feedback";
 import { IconAlert, IconBan, IconClock, IconClose, IconCoins, IconInfo, IconKey, IconLog, IconMail, IconWarning } from "../components/icons";
 import { KeyValue } from "../components/KeyValue";
 import { KeyReveal } from "../components/MaskedKey";
@@ -28,10 +28,14 @@ type Dialog = "grant" | "grant_new" | "refunded" | null;
 
 const GRANT_KINDS: Record<string, string> = { new: "Mua mới", extend: "Mua thêm cùng gói", change: "Đổi gói" };
 
-/** Key vừa cấp và tiêu đề hộp hiện nó: gia hạn hay đổi gói thì server trả lại key CŨ của license, không phải key mới. */
+/**
+ * Key vừa cấp và tiêu đề hộp hiện nó: gia hạn hay đổi gói thì server trả lại key CŨ của license, không phải key mới.
+ * `done`: câu kết quả hiện ở trang (Notice) khi người vận hành bấm Xong.
+ */
 interface Revealed {
   key: string;
   title: string;
+  done: string;
 }
 const RENEWED_KEY_TITLE = "Key của license (đơn gia hạn hay đổi gói)";
 
@@ -57,13 +61,26 @@ function grantDescription(order: OrderRow): ReactNode {
 
 const crumbs = (code: number) => [{ label: "Đơn hàng", to: "/orders" }, { label: `#${code}` }];
 
-/** Hộp key mới nằm ngoài OrderDetail: tải lại đơn bị lỗi thì trang đơn thành ErrorBox, nhưng key (chỉ hiện một lần) vẫn còn đó. */
+/**
+ * Hộp key mới nằm ngoài OrderDetail: tải lại đơn bị lỗi thì trang đơn thành ErrorBox, nhưng key (chỉ hiện một lần) vẫn còn đó.
+ * Thông báo kết quả cũng ở đây: hiện khi đóng hộp key (hiện sớm hơn thì nó giành focus của hộp).
+ */
 export function OrderPage({ code }: { code: number }) {
   const [revealed, setRevealed] = useState<Revealed | null>(null);
+  const notice = useNotice();
   return (
     <>
-      <OrderDetail code={code} onKeyIssued={setRevealed} />
-      {revealed && <KeyReveal licenseKey={revealed.key} title={revealed.title} onClose={() => setRevealed(null)} />}
+      <OrderDetail code={code} notice={notice} onKeyIssued={setRevealed} />
+      {revealed && (
+        <KeyReveal
+          licenseKey={revealed.key}
+          title={revealed.title}
+          onClose={() => {
+            setRevealed(null);
+            notice.show(revealed.done);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -71,11 +88,10 @@ export function OrderPage({ code }: { code: number }) {
 /** Kết quả lần xem trạng thái trên PayOS gần nhất (chỉ trong bộ nhớ của trang). */
 type Payos = { at: number; data: PaymentStatus; error?: undefined } | { at: number; error: ApiError; data?: undefined };
 
-function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed: Revealed): void }) {
+function OrderDetail({ code, notice, onKeyIssued }: { code: number; notice: NoticeHandle; onKeyIssued(revealed: Revealed): void }) {
   const data = useLoad(() => api.lookup({ order_code: code }), [code]);
   const log = useLoad(() => api.audit({ order_code: String(code) }), [code]);
   const [dialog, setDialog] = useState<Dialog>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [payos, setPayos] = useState<Payos | null>(null);
   const reload = () => {
     data.reload();
@@ -86,6 +102,8 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed
     return (
       <>
         <PageHeader breadcrumb={crumbs(code)} title={`Đơn #${code}`} />
+        {/* Cùng vị trí với nhánh chính: tải lại sau thao tác mà lỗi thì thông báo kết quả vẫn còn. */}
+        <NoticeRegion handle={notice} />
         <ErrorBox error={data.error} onRetry={data.reload} title="Không tải được đơn" />
       </>
     );
@@ -136,7 +154,7 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed
           </Button>
         }
       />
-      {notice && <Notice text={notice} onClose={() => setNotice(null)} />}
+      <NoticeRegion handle={notice} />
       <NextStep order={order} closed={closed} open={open} />
       <DetailLayout
         side={
@@ -187,7 +205,11 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed
           needsNote
           onConfirm={async (note) => {
             const r = await api.grantOrder(code, note);
-            onKeyIssued({ key: r.license_key, title: r.grant_kind === "extend" || r.grant_kind === "change" ? RENEWED_KEY_TITLE : "Key mới" });
+            onKeyIssued({
+              key: r.license_key,
+              title: r.grant_kind === "extend" || r.grant_kind === "change" ? RENEWED_KEY_TITLE : "Key mới",
+              done: `Đã cấp tay đơn #${code}.`,
+            });
             reload();
           }}
           onConflict={reload}
@@ -202,7 +224,9 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed
           needsNote
           onConfirm={async (note) => {
             const r = await api.resolveOrder(code, "grant_new_license", note);
-            if (r.license_key) onKeyIssued({ key: r.license_key, title: "Key mới" });
+            const done = `Đã cấp key mới cho đơn #${code}.`;
+            if (r.license_key) onKeyIssued({ key: r.license_key, title: "Key mới", done });
+            else notice.show(done);
             reload();
           }}
           onConflict={reload}
@@ -218,7 +242,7 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed
           typeToConfirm="DA HOAN TIEN"
           onConfirm={async (note) => {
             await api.resolveOrder(code, "refunded", note);
-            setNotice("Đã ghi đơn là đã hoàn tiền.");
+            notice.show("Đã ghi đơn là đã hoàn tiền.");
             reload();
           }}
           onConflict={reload}

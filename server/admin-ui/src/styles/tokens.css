@@ -69,12 +69,6 @@
   --ok-line: #9fd8bb;
   --info-line: #a9c6f0;
 
-  /* Bề mặt đảo màu (thông báo nổi, tooltip): nền đậm trên giao diện sáng */
-  --inverse: #111a2e;
-  --on-inverse: #eef3fb;
-  --on-inverse-2: #b4bfd4;
-  --inverse-ok: #4fd69b;
-
   /* Khung chờ: thanh nền và vệt sáng lướt qua */
   --skeleton: #e6ecf5;
   --skeleton-hi: #f6f8fc;
@@ -182,11 +176,6 @@
     --on-bad: #ffffff;
     --ok-line: #1f5a40;
     --info-line: #24467c;
-
-    --inverse: #e3eaf6;
-    --on-inverse: #0b1322;
-    --on-inverse-2: #33405a;
-    --inverse-ok: #0c7a4b;
 
     --skeleton: #18233a;
     --skeleton-hi: #22304d;

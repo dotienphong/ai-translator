@@ -6,7 +6,7 @@
    5. controls.css    IconButton, ButtonGroup, vòng quay, ô nhập có nhãn, FilterBar và chip, SegmentedControl, CopyButton
    6. surfaces.css    huy hiệu, Card, Section, Stat, EmptyState, Skeleton, KeyValue, Timeline
    7. table.css       khung bảng, DataTable, bảng thành thẻ trên điện thoại
-   8. overlays.css    ErrorBox, Notice, Toast, hộp xác nhận, hộp hiện key
+   8. overlays.css    ErrorBox, Notice, hộp xác nhận, hộp hiện key
    9. chart.css       ChartCard: chú giải, tooltip, bảng số
   10. pages.css       bố cục riêng của từng trang */
 @import "./fonts.css";

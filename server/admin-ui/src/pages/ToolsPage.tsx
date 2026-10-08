@@ -1,13 +1,14 @@
 // Công cụ (spec Web Admin §4.2; giao diện mới mục 2): lưới thẻ (ký thử khóa dự phòng, xác nhận webhook PayOS) và thẻ Khu
 // vực nguy hiểm riêng cho ẩn danh theo email. Kết quả của mỗi công cụ hiện ngay trong thẻ của nó. Nút mở hộp xác nhận bị
 // khóa khi ô nhập chưa hợp lệ, có câu giải thích dưới ô.
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { api } from "../api/endpoints";
 import type { KeyCheck } from "../api/types";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CopyButton } from "../components/CopyButton";
+import { ResultRegion } from "../components/Feedback";
 import { Field } from "../components/Field";
 import { IconCheckCircle, IconCoins, IconKey, IconUser, IconWarning } from "../components/icons";
 import { KeyValue } from "../components/KeyValue";
@@ -28,10 +29,13 @@ function httpsUrl(s: string): boolean {
   }
 }
 
-/** Kết quả của một công cụ: dấu kiểm, câu kết quả, giờ chạy. */
+/**
+ * Kết quả của một công cụ: dấu kiểm, câu kết quả, giờ chạy. Nằm trong ResultRegion (vùng live có sẵn của thẻ): kết quả mới
+ * thì được đọc, cuộn tới và nhận focus (tabIndex -1).
+ */
 function Result({ at, children }: { at: number; children: ReactNode }) {
   return (
-    <div className="tool-result" role="status">
+    <div className="tool-result" tabIndex={-1}>
       <IconCheckCircle size={18} />
       <div className="tool-result-body">{children}</div>
       <span className="tool-result-at">lúc {fmtHm(at)}</span>
@@ -41,9 +45,12 @@ function Result({ at, children }: { at: number; children: ReactNode }) {
 
 export function ToolsPage() {
   const [dialog, setDialog] = useState<Dialog>(null);
-  const [signed, setSigned] = useState<{ at: number; r: KeyCheck } | null>(null);
-  const [hooked, setHooked] = useState<{ at: number; url: string } | null>(null);
-  const [erased, setErased] = useState<{ at: number; text: string } | null>(null);
+  // seq: số thứ tự của lần chạy (hai lần trong cùng một giây vẫn là kết quả mới: được đọc, cuộn tới, nhận focus).
+  const [signed, setSigned] = useState<{ seq: number; at: number; r: KeyCheck } | null>(null);
+  const [hooked, setHooked] = useState<{ seq: number; at: number; url: string } | null>(null);
+  const [erased, setErased] = useState<{ seq: number; at: number; text: string } | null>(null);
+  const runs = useRef(0);
+  const next = () => ++runs.current;
   const [url, setUrl] = useState(WEBHOOK_URL);
   const [urlTouched, setUrlTouched] = useState(false);
   const [email, setEmail] = useState("");
@@ -69,26 +76,28 @@ export function ToolsPage() {
           <div className="tool-actions">
             <Button onClick={() => setDialog("sign")}>Ký thử…</Button>
           </div>
-          {signed && (
-            <Result at={signed.at}>
-              <KeyValue
-                items={[
-                  { label: "Ô khóa", value: signed.r.slot, mono: true },
-                  { label: "kid", value: signed.r.kid, mono: true, copy: signed.r.kid, copyWhat: "kid" },
-                ]}
-              />
-              <div className="code-block">
-                <pre>{signedJson}</pre>
-                <CopyButton text={signedJson} label="Chép JSON" />
-              </div>
-              <div className="tool-hint">
-                <span>
-                  Kiểm token: chép khối trên rồi chạy trong <code>server/</code>
-                </span>
-                <code className="cmd">pbpaste | node scripts/verify-token.mjs production</code>
-              </div>
-            </Result>
-          )}
+          <ResultRegion resultKey={signed?.seq ?? null}>
+            {signed && (
+              <Result at={signed.at}>
+                <KeyValue
+                  items={[
+                    { label: "Ô khóa", value: signed.r.slot, mono: true },
+                    { label: "kid", value: signed.r.kid, mono: true, copy: signed.r.kid, copyWhat: "kid" },
+                  ]}
+                />
+                <div className="code-block">
+                  <pre>{signedJson}</pre>
+                  <CopyButton text={signedJson} label="Chép JSON" />
+                </div>
+                <div className="tool-hint">
+                  <span>
+                    Kiểm token: chép khối trên rồi chạy trong <code>server/</code>
+                  </span>
+                  <code className="cmd">pbpaste | node scripts/verify-token.mjs production</code>
+                </div>
+              </Result>
+            )}
+          </ResultRegion>
         </Card>
 
         <Card
@@ -114,11 +123,13 @@ export function ToolsPage() {
             </Button>
             {!urlOk && !urlError && <span className="tool-why">Nhập URL https để bật nút.</span>}
           </div>
-          {hooked && (
-            <Result at={hooked.at}>
-              <span className="tool-result-text">{`Đã đăng ký webhook: ${hooked.url}`}</span>
-            </Result>
-          )}
+          <ResultRegion resultKey={hooked?.seq ?? null}>
+            {hooked && (
+              <Result at={hooked.at}>
+                <span className="tool-result-text">{`Đã đăng ký webhook: ${hooked.url}`}</span>
+              </Result>
+            )}
+          </ResultRegion>
         </Card>
       </div>
 
@@ -157,11 +168,13 @@ export function ToolsPage() {
             </Button>
           </div>
         </div>
-        {erased && (
-          <Result at={erased.at}>
-            <span className="tool-result-text">{erased.text}</span>
-          </Result>
-        )}
+        <ResultRegion resultKey={erased?.seq ?? null}>
+          {erased && (
+            <Result at={erased.at}>
+              <span className="tool-result-text">{erased.text}</span>
+            </Result>
+          )}
+        </ResultRegion>
       </Card>
 
       {dialog === "sign" && (
@@ -170,7 +183,10 @@ export function ToolsPage() {
           description="Worker API ký một token thử. Không đổi dữ liệu nào."
           confirmLabel="Ký thử"
           needsNote={false}
-          onConfirm={async () => setSigned({ at: nowSec(), r: await api.testSign() })}
+          onConfirm={async () => {
+            const r = await api.testSign();
+            setSigned({ seq: next(), at: nowSec(), r });
+          }}
           onClose={close}
         />
       )}
@@ -182,7 +198,7 @@ export function ToolsPage() {
           needsNote={false}
           onConfirm={async () => {
             const r = await api.confirmWebhook(url.trim());
-            setHooked({ at: nowSec(), url: r.webhook_url });
+            setHooked({ seq: next(), at: nowSec(), url: r.webhook_url });
           }}
           onClose={close}
         />
@@ -196,7 +212,7 @@ export function ToolsPage() {
           typeToConfirm="AN DANH"
           onConfirm={async (note) => {
             const r = await api.erase(email.trim(), note);
-            setErased({ at: nowSec(), text: `Đã ẩn danh: ${r.orders} đơn, ${r.licenses} license, ${r.activations} máy.` });
+            setErased({ seq: next(), at: nowSec(), text: `Đã ẩn danh: ${r.orders} đơn, ${r.licenses} license, ${r.activations} máy.` });
             setEmail("");
             setEmailTouched(false);
           }}
