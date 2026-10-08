@@ -1,7 +1,8 @@
 # Build bản phát hành từ tag đã commit (spec §10.2): `.dmg` cho macOS arm64 và bộ cài NSIS `.exe` cho Windows x64, cùng
 # SHA-256 của bộ cài, bảng SHA-256 của tiến trình phụ (Đ15) và chữ ký bản cập nhật. Kế hoạch 07a; 07b thêm phần đăng bản:
 # từ tag `v*`, job `publish` đăng bản lên R2 và cập nhật `latest.json` của kênh (stable, hay beta với tag `vX.Y.Z-beta.N`),
-# rồi job `github-release` tạo bản nháp GitHub Release. Chạy tay (workflow_dispatch) thì không đăng gì.
+# rồi job `github-release` tạo bản nháp GitHub Release. Chạy tay (workflow_dispatch) mặc định không đăng gì; tick ô `publish`
+# (chỉ trên nhánh `main`) thì đăng như khi đẩy tag, với tag `v<version trong tauri.conf.json>` (Stable khi version là X.Y.Z).
 #
 # Tách job theo secret (Q1 của review 07a lần 1): job biên dịch code (của repo và của bên thứ ba: crate, CMake, npm) không
 # có secret nào; job có secret (environment `release`) chạy trên runner mới, checkout lại đúng commit, không biên dịch gì,
@@ -33,6 +34,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Đăng bản lên R2 và tạo bản nháp GitHub Release (tag v<version trong tauri.conf.json>; chỉ nhánh main)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -482,10 +488,12 @@ jobs:
   publish:
     name: "Đăng bản lên R2 (secret, không biên dịch)"
     needs: update-signatures
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main')
     runs-on: macos-26
     timeout-minutes: 20
     environment: release
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     # Mọi tag dùng chung một nhóm: hai bản được duyệt gần nhau không đọc cùng latest.json cũ rồi ghi đè nhau (N-4 của review
     # 07b lần 1). Không hủy lần đang chạy.
     concurrency:
@@ -499,6 +507,13 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
+      # Đẩy tag thì tag là tên tag; chạy tay có tick `publish` thì tag là v<version>, publish-release.mjs vẫn kiểm nó khớp
+      # tauri.conf.json và từ chối version đã đăng.
+      - name: Tag của bản
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then tag="$GITHUB_REF_NAME"; else tag="v$(node -p 'require("./src-tauri/tauri.conf.json").version')"; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       # Như mọi job có secret: tải vào thư mục trống ngoài checkout, chỉ nhận file đúng tên (07a QĐ29).
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -518,8 +533,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           RELEASES_BUCKET: ${{ vars.RELEASES_BUCKET }}
           RELEASES_BASE_URL: ${{ vars.RELEASES_BASE_URL }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          node scripts/release/publish-release.mjs --tag "$GITHUB_REF_NAME" --dir target/release-out \
+          node scripts/release/publish-release.mjs --tag "$TAG" --dir target/release-out \
             --bucket "$RELEASES_BUCKET" --base-url "$RELEASES_BASE_URL"
 
   github-release:
@@ -545,8 +561,11 @@ jobs:
       - name: Bản nháp với đủ file của bản (bản beta đánh dấu pre-release)
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.publish.outputs.tag }}
         run: |
           pre=()
-          case "$GITHUB_REF_NAME" in *-beta.*) pre=(--prerelease) ;; esac
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag "${pre[@]}" \
-            --title "AI Translator ${GITHUB_REF_NAME#v}" --notes "" target/release-out/*
+          case "$TAG" in *-beta.*) pre=(--prerelease) ;; esac
+          # Đẩy tag thì tag đã có; chạy tay thì chưa, bản nháp trỏ vào commit đã build, tag tạo khi bấm Publish release.
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then where=(--verify-tag); else where=(--target "$GITHUB_SHA"); fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft "${where[@]}" "${pre[@]}" \
+            --title "AI Translator ${TAG#v}" --notes "" target/release-out/*
