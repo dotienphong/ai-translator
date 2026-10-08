@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { fmtVnd } from "../format";
-import { ChartCard } from "./ChartCard";
+import { ChartCard, ChartTooltip } from "./ChartCard";
 
 // Recharts thật cần kích thước và ResizeObserver mà jsdom không có: thay bằng khung thử ghi lại các thuộc tính ChartCard truyền xuống.
 // Chất lượng vẽ thật do công cụ scripts/csp-check.mjs (Chrome headless) kiểm.
@@ -22,8 +22,12 @@ vi.mock("recharts", () => ({
   Tooltip: (p: { itemSorter?: (item: { dataKey: string }) => unknown }) => (
     <i data-testid="tooltip" data-order={["c", "a", "b"].map((k) => String(p.itemSorter?.({ dataKey: k }))).join(",")} />
   ),
-  Legend: (p: { itemSorter?: unknown }) => <i data-testid="legend" data-sorter={String(p.itemSorter)} />,
 }));
+
+// Chú giải là danh sách HTML ngoài Recharts (giao diện mới: vùng vẽ của các thẻ đặt cạnh nhau cao bằng nhau), nên test đọc
+// thẳng danh sách "Chú giải" thay cho thành phần Legend của Recharts như trước.
+const legend = () => screen.queryByRole("list", { name: "Chú giải" });
+const legendItems = () => [...(legend()?.querySelectorAll("li") ?? [])].map((li) => li.textContent);
 
 const ONE = [{ key: "revenue", label: "Doanh thu" }];
 const ROWS = [
@@ -43,7 +47,7 @@ describe("ChartCard", () => {
     expect(bars[0]?.getAttribute("data-key")).toBe("revenue");
     expect(bars[0]?.getAttribute("data-name")).toBe("Doanh thu");
     expect(bars[0]?.getAttribute("data-stack")).toBe("");
-    expect(screen.queryByTestId("legend")).toBeNull();
+    expect(legend()).toBeNull();
   });
 
   it("nhiều chuỗi: có chú giải, màu theo thứ tự biến CSS; stacked thì cùng stackId", () => {
@@ -55,7 +59,7 @@ describe("ChartCard", () => {
     const bars = screen.getAllByTestId("bar");
     expect(bars.map((b) => b.getAttribute("data-fill"))).toEqual(["var(--chart-1)", "var(--chart-2)"]);
     expect(new Set(bars.map((b) => b.getAttribute("data-stack")))).toEqual(new Set(["chong"]));
-    expect(screen.getByTestId("legend")).toBeTruthy();
+    expect(legendItems()).toEqual(["Monthly", "Yearly"]);
   });
 
   it("nhiều chuỗi mà một chuỗi toàn 0 (Yearly chưa có đơn): vẫn vẽ biểu đồ, không báo chưa có dữ liệu", () => {
@@ -84,7 +88,7 @@ describe("ChartCard", () => {
       { key: "b", label: "B" },
     ];
     render(<ChartCard title="Thứ tự" data={[{ label: "x", a: 1, b: 2, c: 3 }]} series={series} />);
-    expect(screen.getByTestId("legend").getAttribute("data-sorter")).toBe("null");
+    expect(legendItems()).toEqual(["Cuối", "A", "B"]);
     expect(screen.getByTestId("tooltip").getAttribute("data-order")).toBe("0,1,2");
   });
 
@@ -118,5 +122,57 @@ describe("ChartCard", () => {
     expect(screen.getByText("Chưa có dữ liệu trong khoảng này")).toBeTruthy();
     expect(screen.queryByTestId("bar-chart")).toBeNull();
     expect(container.querySelector("table")).toBeNull();
+  });
+
+  it("mô tả và đơn vị: hiện dưới tiêu đề và ở góc vùng vẽ", () => {
+    render(<ChartCard title="Doanh thu" description="Theo ngày, giờ Việt Nam" unit="Đơn vị: đồng" data={ROWS} series={ONE} />);
+    expect(screen.getByText("Theo ngày, giờ Việt Nam")).toBeTruthy();
+    expect(screen.getByText("Đơn vị: đồng")).toBeTruthy();
+  });
+
+  it("thẻ là một vùng có tên là tiêu đề", () => {
+    render(<ChartCard title="Doanh thu 30 ngày" data={ROWS} series={ONE} />);
+    expect(screen.getByRole("region", { name: "Doanh thu 30 ngày" })).toBeTruthy();
+  });
+
+  it("màu chuỗi cố định theo thứ tự, không xoay vòng: ô màu của chú giải khớp cột", () => {
+    const series = ["a", "b", "c", "d"].map((k) => ({ key: k, label: k.toUpperCase() }));
+    const { container } = render(<ChartCard title="Bốn" data={[{ label: "x", a: 1, b: 1, c: 1, d: 1 }]} series={series} />);
+    expect(screen.getAllByTestId("bar").map((b) => b.getAttribute("data-fill"))).toEqual(["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"]);
+    expect([...container.querySelectorAll(".chart-legend .chart-swatch")].map((e) => e.className)).toEqual([
+      "chart-swatch s-0",
+      "chart-swatch s-1",
+      "chart-swatch s-2",
+      "chart-swatch s-3",
+    ]);
+  });
+});
+
+describe("ChartTooltip", () => {
+  const series = [
+    { key: "monthly", label: "Monthly" },
+    { key: "yearly", label: "Yearly" },
+  ];
+  const payload = [
+    { dataKey: "monthly", name: "Monthly", value: 450000 },
+    { dataKey: "yearly", name: "Yearly", value: 1000000 },
+  ];
+
+  it("không hoạt động hay không có dữ liệu: không vẽ gì", () => {
+    const { container } = render(<ChartTooltip active={false} payload={payload} label="x" series={series} format={fmtVnd} stacked />);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("tên mốc, mỗi chuỗi một dòng với giá trị đã định dạng, dòng Tổng khi cột chồng", () => {
+    const { container } = render(<ChartTooltip active payload={payload} label="10/2026" series={series} format={fmtVnd} stacked />);
+    expect(screen.getByText("10/2026")).toBeTruthy();
+    const rows = [...container.querySelectorAll("li")].map((li) => li.textContent);
+    expect(rows).toEqual(["Monthly450.000 đ", "Yearly1.000.000 đ"]);
+    expect(container.querySelector(".chart-tooltip-total")?.textContent).toBe("Tổng1.450.000 đ");
+  });
+
+  it("không chồng: không có dòng Tổng", () => {
+    const { container } = render(<ChartTooltip active payload={payload} label="x" series={series} format={fmtVnd} stacked={false} />);
+    expect(container.querySelector(".chart-tooltip-total")).toBeNull();
   });
 });
