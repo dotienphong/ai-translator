@@ -259,12 +259,13 @@ describe("QueuePage", () => {
     );
     render(<QueuePage />);
     await screen.findByText("6 việc đang chờ");
-    expect(getQueueCount()).toBe(6);
+    // Số vào kho qua effect (chạy sau lần vẽ): phải đợi, không đọc ngay (CI chậm hơn máy dev).
+    await waitFor(() => expect(getQueueCount()).toBe(6));
     const reload = screen.getByRole("button", { name: "Làm mới" });
     await waitFor(() => expect(reload.getAttribute("aria-busy")).toBeNull());
     fireEvent.click(reload);
     await screen.findByText("Không có việc gì cần xử lý");
-    expect(getQueueCount()).toBe(0);
+    await waitFor(() => expect(getQueueCount()).toBe(0));
   });
 
   it("lỗi hàng đợi: hộp lỗi có Thử lại; số nhanh vẫn hiện", async () => {
