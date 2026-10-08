@@ -1,5 +1,5 @@
 // Khung trang (spec Web Admin §4.1, bố cục A): thanh trên có ô tra cứu, thanh bên trái, nội dung theo route.
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { SESSION_EXPIRED_EVENT } from "./api/client";
 import { api } from "./api/endpoints";
 import { SearchBox } from "./components/SearchBox";
@@ -18,11 +18,20 @@ import { ToolsPage } from "./pages/ToolsPage";
 import { TrialsPage } from "./pages/TrialsPage";
 import { Link, matchRoute, type Route, usePath } from "./router";
 
+// Trang Tổng quan kéo theo Recharts: nạp lười để các trang hỗ trợ khách không nặng thêm (spec Tổng quan, mục 4).
+const OverviewPage = lazy(() => import("./pages/OverviewPage").then((m) => ({ default: m.OverviewPage })));
+
 function Page({ route }: { route: Route }) {
   const p = route.param ?? "";
   switch (route.name) {
     case "queue":
       return <QueuePage />;
+    case "overview":
+      return (
+        <Suspense fallback={<p className="muted">Đang tải…</p>}>
+          <OverviewPage />
+        </Suspense>
+      );
     case "search":
       return <SearchPage />;
     case "orders":

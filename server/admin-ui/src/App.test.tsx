@@ -3,6 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
+// Recharts thật không chạy trong jsdom; trang Tổng quan chỉ cần ChartCard giả để kiểm khung.
+vi.mock("./components/ChartCard", () => ({ ChartCard: ({ title }: { title: string }) => <div>{title}</div> }));
+
 const empty = { count: 0, items: [] };
 const responses: Record<string, unknown> = {
   "/admin/whoami": { operator: "ops@example.com" },
@@ -38,7 +41,19 @@ describe("App", () => {
     await user.click(screen.getByRole("link", { name: "Đơn hàng" }));
     expect(window.location.pathname).toBe("/orders");
     expect(await screen.findByRole("heading", { name: "Đơn hàng" })).toBeTruthy();
-    expect(screen.getByText("Tổng quan").closest("[aria-disabled]")?.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("mục Tổng quan bấm được: đổi sang /overview, nạp trang tải lười và đánh dấu mục đang chọn", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("heading", { name: "Việc cần xử lý" });
+    const link = screen.getByRole("link", { name: "Tổng quan" });
+    expect(link.getAttribute("href")).toBe("/overview");
+    expect(screen.queryByText("sắp có")).toBeNull();
+    await user.click(link);
+    expect(window.location.pathname).toBe("/overview");
+    expect(await screen.findByRole("heading", { name: "Tổng quan" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Tổng quan" }).className).toContain("active");
   });
 
   it("phiên Access hết hạn: hiện thanh báo có nút tải lại", async () => {

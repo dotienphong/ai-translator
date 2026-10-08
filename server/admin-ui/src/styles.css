@@ -75,8 +75,6 @@ button.link { border: none; background: none; color: var(--accent); padding: 0 4
 .sidebar { width: 200px; flex-shrink: 0; padding: 12px 8px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
 .nav-item { padding: 6px 10px; border-radius: 6px; color: var(--text); text-decoration: none; }
 .nav-item.active { background: var(--muted-bg); font-weight: 600; }
-.nav-item.disabled { color: var(--muted); cursor: default; }
-.nav-item small { font-size: 11px; }
 .main { flex: 1; min-width: 0; padding: 16px 20px 40px; max-width: 1200px; }
 
 /* Nội dung */

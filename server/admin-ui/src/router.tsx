@@ -3,6 +3,7 @@ import { type MouseEvent, type ReactNode, useSyncExternalStore } from "react";
 
 export type RouteName =
   | "queue"
+  | "overview"
   | "search"
   | "orders"
   | "order"
@@ -24,6 +25,7 @@ const ORDER_CODE = "0*[1-9]\\d{0,14}";
 
 const ROUTES: [RouteName, RegExp][] = [
   ["queue", /^\/$/],
+  ["overview", /^\/overview$/],
   ["search", /^\/search$/],
   ["orders", /^\/orders$/],
   ["order", new RegExp(`^/orders/(${ORDER_CODE})$`)],
