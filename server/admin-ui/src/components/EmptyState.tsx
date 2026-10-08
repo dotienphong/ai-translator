@@ -35,7 +35,7 @@ export function EmptyState({ title, hint, action, variant = "empty", icon, compa
         {icon ?? DEFAULT_ICON[variant]}
       </span>
       <p className="empty-title">{title}</p>
-      {hint && <p className="empty-hint">{hint}</p>}
+      {hint && <div className="empty-hint">{hint}</div>}
       {action && <div className="empty-action">{action}</div>}
     </div>
   );

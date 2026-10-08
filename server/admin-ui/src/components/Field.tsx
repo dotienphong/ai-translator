@@ -1,6 +1,6 @@
 // Ô nhập có nhãn (spec giao diện mới, mục 2): ô chọn, ô ngày, ô tìm kiếm. Nhãn nhỏ nằm trên ô; cùng kiểu dùng trong FilterBar
 // và hộp thoại. Ô tìm có biểu tượng kính lúp và nút xóa nhanh.
-import { type ReactNode, useId } from "react";
+import { cloneElement, type ReactElement, type ReactNode, useId } from "react";
 import { IconButton } from "./Button";
 import { IconClose, IconSearch } from "./icons";
 
@@ -87,18 +87,38 @@ export function SearchInput({
   );
 }
 
-/** Ô có nhãn tự do (bọc input hay select của trang): cùng khung với Select và DateInput; `hint`, `error` dưới ô. */
-export function Field({ label, children, hint, error, className }: { label: ReactNode; children: ReactNode; hint?: ReactNode; error?: ReactNode; className?: string }) {
+/**
+ * Ô có nhãn tự do (bọc một input hay select của trang): cùng khung với Select và DateInput; `hint`, `error` dưới ô. Dòng gợi
+ * ý hay lỗi nằm ngoài <label> và nối vào ô bằng aria-describedby: tên đọc của ô chỉ là nhãn, câu lỗi đọc như mô tả.
+ */
+export function Field({ label, children, hint, error, className }: { label: ReactNode; children: ReactElement<FieldChildProps>; hint?: ReactNode; error?: ReactNode; className?: string }) {
+  const auto = useId();
+  const id = children.props.id ?? auto;
+  const msgId = `${id}-msg`;
+  const msg = error || hint;
+  const described = [children.props["aria-describedby"], msg ? msgId : undefined].filter(Boolean).join(" ") || undefined;
   return (
-    <label className={className ? `field ${className}` : "field"}>
-      <span className="field-label">{label}</span>
-      {children}
-      {hint && !error && <span className="field-hint">{hint}</span>}
-      {error && (
-        <span className="field-error" role="alert">
+    <div className={className ? `field ${className}` : "field"}>
+      <label className="field-label" htmlFor={id}>
+        {label}
+      </label>
+      {cloneElement(children, { id, "aria-describedby": described })}
+      {error ? (
+        <span className="field-error" id={msgId} role="alert">
           {error}
         </span>
+      ) : (
+        hint && (
+          <span className="field-hint" id={msgId}>
+            {hint}
+          </span>
+        )
       )}
-    </label>
+    </div>
   );
+}
+
+interface FieldChildProps {
+  id?: string;
+  "aria-describedby"?: string;
 }

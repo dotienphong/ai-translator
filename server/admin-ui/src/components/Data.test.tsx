@@ -299,4 +299,28 @@ describe("Ô nhập có nhãn", () => {
     expect(screen.getByRole("alert").textContent).toBe("Email không hợp lệ");
     expect(screen.getByLabelText(/Email/)).toBeTruthy();
   });
+
+  it("Field: tên đọc của ô chỉ là nhãn; gợi ý hay lỗi nối vào ô bằng aria-describedby", () => {
+    const { rerender } = render(
+      <Field label="Email" hint="Email của khách">
+        <input aria-describedby="ngoai" />
+      </Field>,
+    );
+    const input = screen.getByRole("textbox", { name: "Email" });
+    expect(input.getAttribute("aria-describedby")?.split(" ")).toEqual(["ngoai", expect.stringMatching(/-msg$/)]);
+    rerender(
+      <Field label="Email" hint="Email của khách" error="Email không hợp lệ">
+        <input />
+      </Field>,
+    );
+    // Lỗi không lọt vào tên của ô (trước đây nằm trong <label>), mà là mô tả.
+    expect(screen.getByRole("textbox", { name: "Email" })).toBe(screen.getByLabelText("Email"));
+    expect(screen.getByRole("textbox").getAttribute("aria-describedby")).toBe(screen.getByRole("alert").id);
+    rerender(
+      <Field label="Email">
+        <input />
+      </Field>,
+    );
+    expect(screen.getByRole("textbox").hasAttribute("aria-describedby")).toBe(false);
+  });
 });

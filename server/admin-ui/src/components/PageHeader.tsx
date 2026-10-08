@@ -13,6 +13,8 @@ export interface Crumb {
 export interface PageHeaderProps {
   title: ReactNode;
   breadcrumb?: readonly Crumb[];
+  /** Nút nhỏ ngay sau tiêu đề, ngoài h1 (Hiện và Chép của key che). */
+  titleAside?: ReactNode;
   /** Huy hiệu trạng thái, nằm cạnh tiêu đề. */
   badges?: ReactNode;
   description?: ReactNode;
@@ -20,7 +22,7 @@ export interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-export function PageHeader({ title, breadcrumb, badges, description, actions }: PageHeaderProps) {
+export function PageHeader({ title, breadcrumb, titleAside, badges, description, actions }: PageHeaderProps) {
   return (
     <header className="page-header">
       {breadcrumb && breadcrumb.length > 0 && (
@@ -43,6 +45,7 @@ export function PageHeader({ title, breadcrumb, badges, description, actions }: 
           {/* Huy hiệu nằm ngoài h1 để tên tiêu đề (trình đọc màn hình, test) chỉ là chữ tiêu đề. */}
           <div className="page-title-row">
             <h1 className="page-title">{title}</h1>
+            {titleAside && <div className="page-title-aside">{titleAside}</div>}
             {badges && <div className="page-badges">{badges}</div>}
           </div>
           {description && <div className="page-desc">{description}</div>}

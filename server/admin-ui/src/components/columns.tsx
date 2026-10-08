@@ -182,8 +182,8 @@ export function ActionCell({ action }: { action: string }) {
   );
 }
 
-/** Liên kết tới license và đơn của dòng nhật ký. */
-export function AuditLinks({ a }: { a: AnyAudit }) {
+/** Liên kết tới license và đơn của dòng nhật ký. `omit`: bỏ liên kết tới chính trang đang xem (nhật ký trong trang đơn). */
+export function AuditLinks({ a, omit }: { a: AnyAudit; omit?: "order" }) {
   return (
     <span className="cell-links">
       {"license_id" in a && a.license_id && (
@@ -191,7 +191,7 @@ export function AuditLinks({ a }: { a: AnyAudit }) {
           <span className="link-kind">License</span> <span className="mono">{a.license_id.slice(0, 8)}</span>
         </Link>
       )}
-      {a.order_code !== null && (
+      {a.order_code !== null && omit !== "order" && (
         <Link to={`/orders/${a.order_code}`}>
           <span className="link-kind">Đơn</span> <span className="mono">#{a.order_code}</span>
         </Link>

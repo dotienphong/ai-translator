@@ -8,15 +8,22 @@ import { useFocusTrap } from "./useFocusTrap";
 
 export { CopyButton } from "./CopyButton";
 
+/** Nút Hiện / Ẩn của key che (trang tự giữ trạng thái khi chữ key nằm chỗ khác, ví dụ tiêu đề trang license). */
+export function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle(): void }) {
+  return (
+    <Button variant="ghost" size="sm" className="link" icon={shown ? <IconEyeOff size={16} /> : <IconEye size={16} />} onClick={onToggle}>
+      {shown ? "Ẩn" : "Hiện"}
+    </Button>
+  );
+}
+
 /** Key che mặc định; bấm Hiện để xem, Chép để chép key đầy đủ (nút chép nhận key đầy đủ, chữ trên trang vẫn che). */
 export function MaskedKey({ value }: { value: string }) {
   const [shown, setShown] = useState(false);
   return (
     <span className={shown ? "masked-key is-shown" : "masked-key"}>
       <code>{shown ? value : maskKey(value)}</code>
-      <Button variant="ghost" size="sm" className="link" icon={shown ? <IconEyeOff size={16} /> : <IconEye size={16} />} onClick={() => setShown((s) => !s)}>
-        {shown ? "Ẩn" : "Hiện"}
-      </Button>
+      <RevealToggle shown={shown} onToggle={() => setShown((s) => !s)} />
       <CopyButton text={value} />
     </span>
   );

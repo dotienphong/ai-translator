@@ -20,6 +20,7 @@ import {
   IconRefresh,
 } from "../components/icons";
 import { PageHeader } from "../components/PageHeader";
+import { RatioBar } from "../components/RatioBar";
 import { Stat, StatGrid, type StatTone } from "../components/Stat";
 import { ORDER_LABELS, ORDER_TONES, PLAN_LABELS } from "../components/StatusBadge";
 import { fmtDay, fmtHm, fmtInt, fmtMonth, fmtVnd } from "../format";
@@ -197,19 +198,6 @@ function Content({ s }: { s: Stats }) {
         </div>
       </Section>
     </>
-  );
-}
-
-/* ---------- Thanh tỷ lệ (SVG) ---------- */
-
-function RatioBar({ value, className }: { value: number; className?: string }) {
-  // Có giá trị thì luôn thấy một mẩu (tối thiểu 1,5%), 0 thì chỉ có rãnh.
-  const w = value <= 0 ? 0 : Math.max(1.5, Math.min(100, value));
-  return (
-    <svg className={className ? `ratio-bar ${className}` : "ratio-bar"} width="100%" height="8" aria-hidden="true" focusable="false">
-      <rect className="ratio-track" x="0" y="0" width="100%" height="8" rx="4" />
-      {w > 0 && <rect className="ratio-fill" x="0" y="0" width={`${w}%`} height="8" rx="4" />}
-    </svg>
   );
 }
 

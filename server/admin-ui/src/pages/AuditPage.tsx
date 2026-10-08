@@ -4,10 +4,11 @@
 import { type FormEvent, useId, useState } from "react";
 import { type AuditFilters, api } from "../api/endpoints";
 import type { AuditRow } from "../api/types";
-import { ACTOR_LABELS, actionLabel, actionTone, KNOWN_ACTIONS } from "../audit-labels";
+import { ACTOR_LABELS, actionLabel, KNOWN_ACTIONS } from "../audit-labels";
+import { AuditTimeline, TimelineSkeleton } from "../components/AuditTimeline";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
-import { ActorBadge, AuditLinks, auditColumns } from "../components/columns";
+import { auditColumns } from "../components/columns";
 import { DataTable, MoreFoot } from "../components/DataTable";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBox } from "../components/Feedback";
@@ -15,9 +16,6 @@ import { DateInput, Field, RANGE_ERROR } from "../components/Field";
 import { type FilterChip, FilterBar } from "../components/FilterBar";
 import { IconFilter, IconTable, IconTimeline } from "../components/icons";
 import { SegmentedControl } from "../components/SegmentedControl";
-import { LoadingBlock, SkeletonLine } from "../components/Skeleton";
-import { Timeline, type TimelineItem } from "../components/Timeline";
-import { fmtDate, fmtDetail, fmtHm, isoOf } from "../format";
 import { usePaged } from "../hooks";
 import { emptyProps, isoDay, ListHeader, ResultCount, SegmentField, useListView } from "./list-kit";
 
@@ -254,13 +252,13 @@ export function AuditPage() {
               skeletonRows={8}
             />
           ) : rows.length === 0 && list.loading ? (
-            <TimelineSkeleton />
+            <TimelineSkeleton label="Đang tải nhật ký…" className="audit-tl" />
           ) : rows.length === 0 ? (
             <EmptyState title="Không có dòng nào" variant={empty.emptyVariant} hint={empty.emptyHint} action={empty.emptyAction} />
           ) : (
             <>
               <div className={view.stale ? "audit-tl is-stale" : "audit-tl"} aria-busy={view.stale || undefined}>
-                <AuditTimeline rows={rows} now={view.now} />
+                <AuditTimeline rows={rows} now={view.now} label="Nhật ký theo thời gian" />
               </div>
               {list.hasMore && <MoreFoot hasMore loading={list.loading} onMore={list.more} />}
             </>
@@ -268,51 +266,5 @@ export function AuditPage() {
         </Card>
       )}
     </>
-  );
-}
-
-function AuditTimeline({ rows, now }: { rows: AuditRow[]; now: number }) {
-  const today = fmtDate(now);
-  const yesterday = fmtDate(now - 86400);
-  const items: TimelineItem[] = rows.map((a) => {
-    const d = fmtDate(a.at);
-    return {
-      key: String(a.id),
-      time: fmtHm(a.at),
-      dateTime: isoOf(a.at),
-      day: d === today ? `Hôm nay · ${d}` : d === yesterday ? `Hôm qua · ${d}` : d,
-      actor: <ActorBadge actor={a.actor} />,
-      action: a.action,
-      title: actionLabel(a.action),
-      detail: fmtDetail(a.detail) || undefined,
-      links: a.license_id || a.order_code !== null ? <AuditLinks a={a} /> : undefined,
-      tone: actionTone(a.action),
-    };
-  });
-  return <Timeline items={items} label="Nhật ký theo thời gian" />;
-}
-
-/** Khung chờ cùng dáng dòng thời gian: tiêu đề ngày và sáu mốc. */
-function TimelineSkeleton() {
-  return (
-    <LoadingBlock label="Đang tải nhật ký…" className="audit-tl">
-      <ol className="timeline" aria-hidden="true">
-        <li className="tl-day">
-          <SkeletonLine width="sm" size="xs" />
-        </li>
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <li key={i} className="tl-item">
-            <span className="tl-dot" />
-            <div className="tl-main">
-              <span className="tl-time">
-                <SkeletonLine width="full" size="sm" />
-              </span>
-              <SkeletonLine width={i % 2 ? "lg" : "md"} />
-              <SkeletonLine width={i % 3 ? "xl" : "lg"} size="sm" />
-            </div>
-          </li>
-        ))}
-      </ol>
-    </LoadingBlock>
   );
 }

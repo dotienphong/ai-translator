@@ -19,6 +19,14 @@ function isTyping(el: Element | null): boolean {
 /** Có hộp thoại (hộp xác nhận, ngăn kéo điện thoại) đang mở: không cướp focus ra khỏi nó. */
 const dialogOpen = () => document.querySelector('[aria-modal="true"]') !== null;
 
+/** Đưa focus vào ô tra cứu ở thanh trên (nút "Mở ô tra cứu" của trang 404, trang tra cứu, trang không tìm thấy). */
+export function focusSearch(): void {
+  const el = document.getElementById(SEARCH_ID);
+  el?.focus();
+  if (el instanceof HTMLInputElement) el.select();
+}
+const SEARCH_ID = "o-tra-cuu";
+
 export function SearchBox() {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +76,7 @@ export function SearchBox() {
         <IconSearch />
         <input
           ref={input}
+          id={SEARCH_ID}
           type="search"
           aria-label="Tra cứu"
           aria-keyshortcuts="/ Control+K Meta+K"
