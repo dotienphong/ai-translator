@@ -171,20 +171,58 @@ function moneySection(db: D1Database, w: Windows): Section<Stats["money"]> {
   };
 }
 
-const zeroTotals = (): Totals => ({ revenue: 0, orders: 0 });
+/** Loại cấp quyền; mọi giá trị ngoài ba loại đã biết (kể cả rỗng) vào "other" để không tính nhầm là mua mới. */
+const KIND = "CASE WHEN grant_kind IN ('new', 'extend', 'change') THEN grant_kind ELSE 'other' END";
 
-// Tạm (Task 3 thay): đủ hình dạng, toàn số 0, chưa có câu SQL nào.
-function customersSection(_db: D1Database, w: Windows): Section<Stats["customers"]> {
+/** Máy dùng thử đã gắn vào một license ở bất kỳ lúc nào: cùng định nghĩa cờ `purchased` của /admin/trials. */
+const PURCHASED = "device_id_hash IN (SELECT device_id_hash FROM activations)";
+
+function customersSection(db: D1Database, w: Windows): Section<Stats["customers"]> {
   return {
-    statements: [],
-    build: () => ({
-      trials_30d: 0,
-      trials_30d_purchased: 0,
-      trials_total: 0,
-      trials_total_purchased: 0,
-      grants_30d: { new: zeroTotals(), extend: zeroTotals(), change: zeroTotals(), other: zeroTotals() },
-      grants_monthly: w.months.keys.map((month) => ({ month, new: 0, extend: 0, change: 0, other: 0 })),
-    }),
+    statements: [
+      db
+        .prepare(
+          `SELECT
+             COUNT(*) AS trials_total,
+             COALESCE(SUM(CASE WHEN ${PURCHASED} THEN 1 ELSE 0 END), 0) AS trials_total_purchased,
+             COALESCE(SUM(CASE WHEN started_at >= ?1 THEN 1 ELSE 0 END), 0) AS trials_30d,
+             COALESCE(SUM(CASE WHEN started_at >= ?1 AND ${PURCHASED} THEN 1 ELSE 0 END), 0) AS trials_30d_purchased
+           FROM trials`,
+        )
+        .bind(w.days.start),
+      db
+        .prepare(
+          `SELECT ${KIND} AS kind, COUNT(*) AS orders, COALESCE(SUM(amount_paid), 0) AS revenue
+           FROM orders WHERE status = 'paid' AND paid_at >= ?1 GROUP BY kind`,
+        )
+        .bind(w.days.start),
+      db
+        .prepare(
+          `SELECT strftime('%Y-%m', paid_at + ${VN_OFFSET}, 'unixepoch') AS month, ${KIND} AS kind, COUNT(*) AS orders
+           FROM orders WHERE status = 'paid' AND paid_at >= ?1 GROUP BY month, kind`,
+        )
+        .bind(w.months.start),
+    ],
+    build([trials = [], grants = [], monthly = []]) {
+      const t: Row = trials[0] ?? {};
+      const grants30 = {} as Record<GrantKind, Totals>;
+      for (const kind of GRANT_KINDS) {
+        const r = grants.find((x) => x.kind === kind);
+        grants30[kind] = { orders: num(r?.orders), revenue: num(r?.revenue) };
+      }
+      return {
+        trials_30d: num(t.trials_30d),
+        trials_30d_purchased: num(t.trials_30d_purchased),
+        trials_total: num(t.trials_total),
+        trials_total_purchased: num(t.trials_total_purchased),
+        grants_30d: grants30,
+        grants_monthly: w.months.keys.map((month) => {
+          const row = { month } as { month: string } & Record<GrantKind, number>;
+          for (const kind of GRANT_KINDS) row[kind] = num(monthly.find((x) => x.month === month && x.kind === kind)?.orders);
+          return row;
+        }),
+      };
+    },
   };
 }
 

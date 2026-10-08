@@ -55,6 +55,41 @@ function order(o: OrderSeed = {}): D1PreparedStatement {
 
 const seed = (...stmts: D1PreparedStatement[]) => env.DB.batch(stmts);
 
+let licSeq = 0;
+let actSeq = 0;
+beforeEach(() => {
+  licSeq = 0;
+  actSeq = 0;
+});
+
+interface LicenseSeed {
+  expiresAt?: number;
+  revokedAt?: number | null;
+  plan?: "monthly" | "yearly";
+}
+
+/** Chèn thẳng một license (id `lic-N`); trả id và câu lệnh. */
+function license(o: LicenseSeed = {}): { id: string; stmt: D1PreparedStatement } {
+  const n = ++licSeq;
+  const id = `lic-${n}`;
+  const stmt = env.DB.prepare(
+    "INSERT INTO licenses (id, license_key, email, plan, expires_at, cycle_anchor, anchor_applied_at, created_at, revoked_at) VALUES (?, ?, 'khach@example.com', ?, ?, ?, ?, ?, ?)",
+  ).bind(id, `L${String(n).padStart(27, "0")}`, o.plan ?? "monthly", o.expiresAt ?? NOW + 30 * 86400, NOW, NOW, NOW, o.revokedAt ?? null);
+  return { id, stmt };
+}
+
+/** Chèn thẳng một máy (activation) của license `licenseId`. */
+function activation(licenseId: string, o: { device?: string; lastValidatedAt?: number; deactivatedAt?: number | null } = {}): D1PreparedStatement {
+  const n = ++actSeq;
+  return env.DB.prepare(
+    "INSERT INTO activations (id, license_id, device_id_hash, created_at, last_validated_at, deactivated_at) VALUES (?, ?, ?, ?, ?, ?)",
+  ).bind(`act-${n}`, licenseId, o.device ?? `dev-act-${n}`, NOW, o.lastValidatedAt ?? NOW, o.deactivatedAt ?? null);
+}
+
+/** Chèn thẳng một dòng dùng thử; `endsAt` mặc định cách `startedAt` 10 ngày. */
+const trial = (device: string, startedAt: number, endsAt = startedAt + 10 * 86400): D1PreparedStatement =>
+  env.DB.prepare("INSERT INTO trials (device_id_hash, started_at, ends_at, last_seen_at) VALUES (?, ?, ?, ?)").bind(device, startedAt, endsAt, startedAt);
+
 /** Gọi route với đồng hồ giả ở `now`; kiểm 200 và trả phản hồi đã gõ kiểu. */
 async function getStats(now = NOW): Promise<Stats> {
   const { w, adminCall } = makeAdmin();
@@ -226,5 +261,64 @@ describe("GET /admin/stats: Tiền", () => {
     expect(s.money.last_month).toBe(100000);
     expect(s.money.this_month).toBe(50000);
     expect(monthOf(s, "2028-02")?.monthly.orders).toBe(2);
+  });
+});
+
+describe("GET /admin/stats: Khách hàng", () => {
+  it("phễu dùng thử: máy bắt đầu trong 30 ngày và tổng, trong đó máy đã gắn vào một license (kể cả đã gỡ)", async () => {
+    const lic = license();
+    await seed(
+      lic.stmt,
+      trial("t1", NOW - 5 * 86400), // trong cửa sổ, đã mua
+      trial("t2", NOW - 5 * 86400), // trong cửa sổ, chưa mua
+      trial("t3", NOW - 40 * 86400), // ngoài cửa sổ, đã mua (activation đã gỡ vẫn tính)
+      trial("t4", NOW - 40 * 86400), // ngoài cửa sổ, chưa mua
+      trial("t5", vn(2026, 9, 2, 0, 0, 0)), // đúng đầu cửa sổ: trong
+      trial("t6", vn(2026, 9, 1, 23, 59, 59)), // một giây ngoài cửa sổ
+      activation(lic.id, { device: "t1" }),
+      activation(lic.id, { device: "t3", deactivatedAt: NOW - 86400 }),
+      activation(lic.id, { device: "may-khong-dung-thu" }),
+    );
+    const s = await getStats();
+    expect(s.customers.trials_total).toBe(6);
+    expect(s.customers.trials_total_purchased).toBe(2);
+    expect(s.customers.trials_30d).toBe(3);
+    expect(s.customers.trials_30d_purchased).toBe(1);
+  });
+
+  it("mua mới, gia hạn, đổi gói: đếm và doanh thu 30 ngày; grant_kind rỗng hay lạ vào other; đơn không paid không tính", async () => {
+    await seed(
+      order({ paidAt: NOW - 86400, grantKind: "new", amountPaid: 50000 }),
+      order({ paidAt: NOW - 2 * 86400, grantKind: "new", amountPaid: 50000 }),
+      order({ paidAt: NOW - 3 * 86400, grantKind: "extend", amountPaid: 50000 }),
+      order({ paidAt: NOW - 4 * 86400, grantKind: "change", plan: "yearly", amountPaid: 500000 }),
+      order({ paidAt: NOW - 5 * 86400, grantKind: null, amountPaid: 50000 }),
+      order({ paidAt: NOW - 6 * 86400, grantKind: "la-hoac-cu", amountPaid: 50000 }),
+      order({ status: "refunded", createdAt: NOW - 86400, paidAt: NOW - 86400, grantKind: "new", amountPaid: 50000 }),
+      order({ paidAt: NOW - 40 * 86400, grantKind: "new", amountPaid: 50000 }), // ngoài 30 ngày
+    );
+    const s = await getStats();
+    expect(s.customers.grants_30d).toEqual({
+      new: { orders: 2, revenue: 100000 },
+      extend: { orders: 1, revenue: 50000 },
+      change: { orders: 1, revenue: 500000 },
+      other: { orders: 2, revenue: 100000 },
+    });
+  });
+
+  it("grants_monthly: đủ 12 tháng, đếm theo tháng của paid_at, đơn 40 ngày trước nằm đúng tháng 8", async () => {
+    await seed(
+      order({ paidAt: NOW - 86400, grantKind: "new" }), // 30/09
+      order({ paidAt: vn(2026, 10, 1, 1), grantKind: "extend" }),
+      order({ paidAt: vn(2026, 10, 1, 2), grantKind: "extend" }),
+      order({ paidAt: NOW - 40 * 86400, grantKind: "change" }), // 22/08
+    );
+    const s = await getStats();
+    expect(s.customers.grants_monthly.map((m) => m.month)).toEqual(monthWindow(NOW, 12).keys);
+    const m = (key: string) => s.customers.grants_monthly.find((x) => x.month === key);
+    expect(m("2026-10")).toEqual({ month: "2026-10", new: 0, extend: 2, change: 0, other: 0 });
+    expect(m("2026-09")).toEqual({ month: "2026-09", new: 1, extend: 0, change: 0, other: 0 });
+    expect(m("2026-08")).toEqual({ month: "2026-08", new: 0, extend: 0, change: 1, other: 0 });
+    expect(m("2026-07")).toEqual({ month: "2026-07", new: 0, extend: 0, change: 0, other: 0 });
   });
 });
