@@ -723,7 +723,7 @@ td .skel-line {
 }
 .tl-item.tone-warn .tl-dot {
   border-color: var(--warn);
-  background: var(--warn-soft);
+  background: var(--warn);
 }
 .tl-item.tone-bad .tl-dot {
   border-color: var(--bad);

@@ -188,14 +188,15 @@ export function AuditPage() {
               setActionError(false);
             }}
           />
-          <datalist id={actionsId}>
-            {KNOWN_ACTIONS.map((a) => (
-              <option key={a} value={a}>
-                {actionLabel(a)}
-              </option>
-            ))}
-          </datalist>
         </Field>
+        {/* Gợi ý mã hành động đã biết; nằm ngoài <label> để chữ gợi ý không lẫn vào tên của ô. */}
+        <datalist id={actionsId}>
+          {KNOWN_ACTIONS.map((a) => (
+            <option key={a} value={a}>
+              {actionLabel(a)}
+            </option>
+          ))}
+        </datalist>
         <DateInput
           label="Từ ngày"
           value={draft.from}

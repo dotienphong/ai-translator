@@ -17,7 +17,7 @@ import { fmtHm, nowSec } from "../format";
 import type { Paged } from "../hooks";
 
 export interface ListView {
-  /** Mốc giây của lần tải xong gần nhất; null khi chưa tải xong lần nào. */
+  /** Mốc giây của lần tải xong gần nhất; null khi chưa tải xong lần nào hay lần gần nhất lỗi. */
   loadedAt: number | null;
   /** Mốc cho thời gian tương đối trong bảng. */
   now: number;
@@ -35,7 +35,8 @@ export function useListView<T>(list: Paged<T>, filterKey: string): ListView {
     if (!list.loading) setShown({ key: filterKey, at: nowSec() });
   }, [list.loading]);
   const firstLoad = list.loading && list.rows.length === 0 && shown === null;
-  return { loadedAt: shown?.at ?? null, now: shown?.at ?? nowSec(), firstLoad, stale: shown !== null && shown.key !== filterKey };
+  // Lần tải gần nhất lỗi thì không ghi "Cập nhật lúc" (dữ liệu trên trang không mới tới mốc đó).
+  return { loadedAt: list.error ? null : (shown?.at ?? null), now: shown?.at ?? nowSec(), firstLoad, stale: shown !== null && shown.key !== filterKey };
 }
 
 export function ListHeader({

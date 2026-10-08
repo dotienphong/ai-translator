@@ -216,3 +216,21 @@ describe("OrdersPage: chip lọc, trạng thái rỗng, đếm, Tải thêm", ()
     expect(urls).toEqual(["/admin/orders", "/admin/orders"]);
   });
 });
+
+describe("OrdersPage: giờ cập nhật", () => {
+  it("tải xong thì có 'Cập nhật lúc'", async () => {
+    render(<OrdersPage />);
+    await screen.findByText("Không có đơn nào");
+    expect(await screen.findByText(/^Cập nhật lúc \d\d:\d\d$/)).toBeTruthy();
+  });
+
+  it("lần tải lỗi: không ghi giờ cập nhật", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ error: "internal" }), { status: 500, headers: { "content-type": "application/json" } })),
+    );
+    render(<OrdersPage />);
+    await screen.findByRole("alert");
+    expect(screen.queryByText(/Cập nhật lúc/)).toBeNull();
+  });
+});
