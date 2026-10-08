@@ -31,7 +31,7 @@ ${pageHero({
 <div class="reveal">${facts([
   ["Dùng với", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>Không bot, không plugin; app nào phát tiếng ra máy cũng thu được</small>"],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Một chiều, sang ngôn ngữ bạn chọn</small>"],
-  ["Độ trễ", "Trung vị 0,76–1,03 giây<small>Mac M4 Pro, gói Chuẩn; máy yếu hơn sẽ chậm hơn</small>"],
+  ["Độ trễ", "Trung vị 0,76–1,03 giây<small>Mac M4 Pro, gói model Chuẩn; máy yếu hơn sẽ chậm hơn</small>"],
   ["Nền tảng", "macOS 14.2+ (Apple Silicon), bản beta<small>Windows 10/11: sắp có</small>"],
 ])}</div>
 </div></section>
@@ -112,20 +112,20 @@ ${sectionHead({ eyebrow: "Sau cuộc họp", title: "Giữ lại những gì b�
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Đã thử với gì", title: "Những app và thiết bị đã thử" })}
 <p>Bằng một công cụ thử thu âm riêng (chưa phải toàn bộ vòng nhận dạng và dịch của app), chúng tôi đã thử thu âm thanh hệ thống trên macOS 26.6.2 với <strong>Zoom (app)</strong>, <strong>Google Meet</strong> trên Chrome, Safari và Edge, <strong>Microsoft Teams (app mới)</strong> và <strong>Zalo PC</strong>, qua loa, tai nghe có dây và AirPods.</p>
-<p>Đây là thử nghiệm nội bộ, kết quả do người thử nghe xác nhận, chưa phải nghiệm thu chính thức trên bản phát hành cho từng app và phiên bản macOS (tối thiểu 14.2). Windows chưa phát hành nên chưa có nghiệm thu.</p>
+<p>Đây là thử nghiệm nội bộ, kết quả do người thử nghe xác nhận, chưa phải kiểm thử chính thức trên bản phát hành cho từng app và phiên bản macOS (tối thiểu 14.2). Windows chưa phát hành nên chưa có nghiệm thu.</p>
 </div></section>
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "Riêng tư", title: "Lưu ý quyền riêng tư và thông báo" })}
-<p>AI Translator thu âm thanh phát ra từ máy bạn, trong đó có giọng người khác. Âm thanh chỉ nằm trong RAM, không ghi xuống đĩa và không gửi qua mạng (đã kiểm bằng proxy trên macOS). App không ghi âm cuộc họp. Xem <a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
+<p>AI Translator thu âm thanh phát ra từ máy bạn, trong đó có giọng người khác. Âm thanh chỉ nằm trong RAM, không ghi xuống đĩa và không gửi qua mạng (đã kiểm tra bằng proxy trên macOS). App không ghi âm cuộc họp. Xem <a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
 ${callout({ title: "Người cùng họp sẽ không được báo.", text: "Vì không có bot và app không kết nối với nền tảng họp, người cùng họp không thấy thông báo nào về việc bạn dùng AI Translator. Nếu pháp luật hoặc quy định công ty yêu cầu, bạn tự chịu trách nhiệm thông báo cho người cùng họp rằng bạn dùng công cụ dịch. <a href=\"/dieu-khoan/\">Điều khoản sử dụng</a> (mục 6) cũng nêu như vậy. Chúng tôi không đưa ra tư vấn pháp lý." })}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Trung thực", title: "Giới hạn bạn nên biết" })}
 ${checkList([
-  "<strong>Độ trễ:</strong> trung vị 0,76–1,03 giây, p90 0,94–1,34 giây, đo trên Mac M4 Pro 24 GB, gói Chuẩn. Máy yếu hơn sẽ chậm hơn: chưa đo Mac M1; gói Chuẩn trên một laptop Windows dùng GPU tích hợp chưa đạt mục tiêu. Xem <a href=\"/tinh-nang/#hieu-nang\">điều kiện đo</a>.",
-  "<strong>Chất lượng khác nhau</strong> theo ngôn ngữ và độ rõ của âm thanh. Gói Nhẹ chép lời kém hơn gói Chuẩn ở tiếng Việt, Nhật, Hàn, Trung. Chưa đo qua tai nghe Bluetooth thật.",
+  "<strong>Độ trễ:</strong> trung vị 0,76–1,03 giây, p90 0,94–1,34 giây, đo trên Mac M4 Pro 24 GB, gói model Chuẩn. Máy yếu hơn sẽ chậm hơn: chưa đo Mac M1; gói model Chuẩn trên một laptop Windows dùng GPU tích hợp chưa đạt mục tiêu. Xem <a href=\"/tinh-nang/#hieu-nang\">điều kiện đo</a>.",
+  "<strong>Chất lượng khác nhau</strong> theo ngôn ngữ và độ rõ của âm thanh. Gói model Nhẹ chép lời kém hơn gói model Chuẩn ở tiếng Việt, Nhật, Hàn, Trung. Chưa đo qua tai nghe Bluetooth thật.",
   "<strong>Bản dịch có thể sai</strong>, nhất là thuật ngữ và tên riêng. Đừng dựa vào nó cho quyết định quan trọng khi chưa kiểm tra lại với người có chuyên môn.",
 ], true)}
 </div></section>

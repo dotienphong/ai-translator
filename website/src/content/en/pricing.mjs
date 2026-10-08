@@ -65,7 +65,7 @@ ${pageHero({ crumbs, title: "Simple pricing: prepaid, no auto-renewal", lead: "T
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">The three plans</h2>
-${plansGrid("en", { ctaLabel: "Get the beta", freeLabel: "Try it free for 10 days" })}
+${plansGrid("en", { ctaLabel: "Get the beta", freeLabel: "Sign up for the free trial" })}
 <p class="disclaimer">Prices are in Vietnamese dong (VND) per order, and equal the amount in the VietQR code. Prices and allowances are set on our server; a plan you have already bought never has its allowance reduced.</p>
 ${callout({ kind: "warn", title: "Paying from outside Vietnam", text: "For now we accept only bank transfers from Vietnamese banks, made through VietQR and charged in VND. International cards, PayPal and other currencies are not supported yet, so if you do not have a Vietnamese bank account you cannot buy a paid plan today. The Free trial needs no payment method. If this blocks you, <a href=\"/en/contact/\">contact us</a>." })}
 </div></section>
@@ -84,8 +84,8 @@ ${sectionHead({ eyebrow: "Compare", title: "What each plan includes", center: tr
 <tr><th scope="row">Glossary (Pro)</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
 <tr><th scope="row">Session history (Pro)</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
 <tr><th scope="row">Export to TXT, SRT, Markdown (Pro)</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
-<tr><th scope="row">Computers per key</th><td>Per computer</td><td>1 computer</td><td>1 computer</td></tr>
-<tr><th scope="row">Equivalent per month (price ÷ 12)</th><td>0 ₫</td><td>50,000 ₫</td><td>about 41,700 ₫</td></tr>
+<tr><th scope="row">Computers per key</th><td>No key needed</td><td>1 computer</td><td>1 computer</td></tr>
+<tr><th scope="row">Equivalent per month</th><td>0 ₫</td><td>50,000 ₫</td><td>about 41,700 ₫</td></tr>
 </tbody></table></div>
 <p class="small muted">Buying 12 Monthly orders back to back (360 days) would cost 600,000 ₫, compared with 500,000 ₫ for 365 days from a single Yearly order. Monthly is limited to 50 hours of translation per 30 days; Yearly is unlimited. Details of each Pro feature are on the <a href="/en/features/">features page</a>.</p>
 </div></section>

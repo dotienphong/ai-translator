@@ -48,7 +48,7 @@ ${feature({ icon: "play", title: "Người xem video chuyên ngành", text: "Vid
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Không cần cài thêm", title: "Không phụ thuộc trình phát hay nền tảng" })}
 <p>Vì AI Translator thu âm thanh đang phát trên máy tính, nó không phụ thuộc vào trang web hay nền tảng bạn xem. Bạn bấm <strong>Bắt đầu</strong>, rồi phát video; phụ đề dịch hiện trên thanh nổi phía trên cửa sổ trình phát. Chúng tôi đã thử với video trên trình duyệt, nhưng chưa thử riêng từng nền tảng khóa học hay webinar.</p>
-<p>Trên macOS, bạn cấp quyền <em>Ghi âm thanh hệ thống</em> một lần; app không dùng micro. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cách cấp quyền thu âm</a>.</p>
+<p>Trên macOS, bạn cấp quyền <em>Ghi âm thanh hệ thống</em> một lần; app không dùng micro. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cách cấp quyền ghi âm</a>.</p>
 </div></section>
 
 <section class="section"><div class="container">
@@ -71,7 +71,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề tùy
 
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Phiên dài", title: "Xem hết một buổi dài, không gián đoạn" })}
-<p>Một phiên dịch liên tục <strong>5 giờ 23 phút</strong> (video bài giảng tiếng Anh phát trên trình duyệt) đã chạy xong với 6019 đoạn, không lỗi, độ trễ trung vị 0,48 giây. Điều kiện: Mac M4 Pro, macOS, bản release ký ad-hoc, thử một lần; không phải nghiệm thu chính thức. Thử nghiệm ổn định 2 giờ cũng không có tiến trình nào phải khởi động lại.</p>
+<p>Một phiên dịch liên tục <strong>5 giờ 23 phút</strong> (video bài giảng tiếng Anh phát trên trình duyệt) đã chạy xong với 6019 đoạn, không lỗi, độ trễ trung vị 0,48 giây. Điều kiện: Mac M4 Pro, macOS, bản release ký ad-hoc, thử một lần; không phải kiểm thử chính thức. Thử nghiệm ổn định 2 giờ cũng không có tiến trình nào phải khởi động lại.</p>
 ${callout({ title: "Hạn mức cho buổi dài.", text: "Phút chỉ tính theo tiếng nói đã dịch, không tính im lặng; câu đã ở đúng ngôn ngữ bạn muốn đọc không bị tính, nhưng đoạn bạn tua lại nghe lần hai thì có. Free chỉ có 30 phút mỗi ngày trong 10 ngày dùng thử, nên một webinar dài cần Monthly (50 giờ mỗi 30 ngày) hoặc Yearly (không giới hạn). Xem <a href=\"/bang-gia/\">bảng giá</a>." })}
 </div></section>
 
@@ -113,8 +113,8 @@ ${checkList([
 ${sectionHead({ eyebrow: "Trung thực", title: "Giới hạn bạn nên biết" })}
 ${checkList([
   "<strong>Bản dịch có thể sai,</strong> nhất là thuật ngữ, tên riêng và tiếng nói không rõ. Đừng dựa vào nó cho quyết định quan trọng khi chưa kiểm tra lại.",
-  "<strong>Độ trễ</strong> trung vị 0,76–1,03 giây khi đo trên Mac M4 Pro, gói Chuẩn. Máy yếu hơn sẽ chậm hơn; chưa đo Mac M1. Với video bạn không cần phản hồi, độ trễ ít quan trọng hơn khi họp.",
-  "<strong>Nhận dạng</strong> kém rõ hơn ở gói Nhẹ với tiếng Việt, Nhật, Hàn, Trung, và kém hơn khi tiếng nói không rõ, ví dụ nhạc nền lớn hay tiếng ồn.",
+  "<strong>Độ trễ</strong> trung vị 0,76–1,03 giây khi đo trên Mac M4 Pro, gói model Chuẩn. Máy yếu hơn sẽ chậm hơn; chưa đo Mac M1. Với video bạn không cần phản hồi, độ trễ ít quan trọng hơn khi họp.",
+  "<strong>Nhận dạng</strong> kém rõ hơn ở gói model Nhẹ với tiếng Việt, Nhật, Hàn, Trung, và kém hơn khi tiếng nói không rõ, ví dụ nhạc nền lớn hay tiếng ồn.",
   "<strong>Chỉ có cho macOS</strong> (Apple Silicon, 14.2+); Windows sắp có. Bản dịch chỉ hiện trên thanh nổi, không chèn vào video và không thay phụ đề chính thức của nhà phát hành.",
 ], true)}
 </div></section>

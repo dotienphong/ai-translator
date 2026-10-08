@@ -10,13 +10,27 @@ export const SITE = {
   year: 2026,
   updated: "2026-10-08",
   securityExpires: "2027-10-08T00:00:00.000Z",
-  version: "0.1.0",
+  version: "0.1.0-beta",
   llmSummaryEn:
     "AI Translator is a desktop app (macOS, Windows coming) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer: speech recognition and translation run on-device, audio never leaves your machine, no bot, no account, no ads.",
   llmSummaryVi:
     "AI Translator là app desktop (macOS, Windows sắp có) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và xử lý mọi thứ ngay trên máy: nhận dạng giọng nói và dịch chạy trên máy, âm thanh không rời khỏi máy, không cần bot, không cần tài khoản, không quảng cáo.",
-  featureListVi: [],
-  featureListEn: [],
+  featureListVi: [
+    "Phụ đề dịch trực tiếp cho âm thanh hệ thống, năm ngôn ngữ (English, 中文, 日本語, 한국어, Tiếng Việt)",
+    "Nhận dạng giọng nói và dịch chạy trên máy, âm thanh không rời khỏi máy",
+    "Thanh phụ đề nổi tùy chỉnh: kéo, đổi kích thước, khóa click xuyên qua, cỡ chữ và màu",
+    "Dùng với mọi app họp, webinar và video, không cần bot hay plugin",
+    "Từ điển thuật ngữ, lịch sử các phiên, xuất TXT, SRT, Markdown (gói trả phí)",
+    "Phím tắt toàn cục và biểu tượng trên thanh menu",
+  ],
+  featureListEn: [
+    "Live translated subtitles for system audio in five languages (English, 中文, 日本語, 한국어, Tiếng Việt)",
+    "Speech recognition and translation run on-device; audio never leaves the machine",
+    "Customizable floating subtitle bar: drag, resize, click-through lock, text size and colors",
+    "Works with any meeting app, webinar or video, with no bot or plugin",
+    "Glossary, session history, TXT, SRT and Markdown export (paid plans)",
+    "Global keyboard shortcuts and a menu bar icon",
+  ],
 };
 
 export const T = {
@@ -34,6 +48,7 @@ export const T = {
     footerAbout:
       "Phụ đề dịch trực tiếp cho mọi âm thanh cuộc họp trên máy tính. Chạy offline, không bot, không tài khoản, không quảng cáo.",
     provider: "Bên cung cấp",
+    updated: "Cập nhật",
     trademark:
       "Zoom, Microsoft Teams, Google Meet, Zalo và các tên sản phẩm khác thuộc về chủ sở hữu tương ứng; AI Translator không liên kết với họ.",
   },
@@ -51,6 +66,7 @@ export const T = {
     footerAbout:
       "Live translated subtitles for any meeting audio on your computer. Fully offline, no bot, no account, no ads.",
     provider: "Provider",
+    updated: "Updated",
     trademark:
       "Zoom, Microsoft Teams, Google Meet, Zalo and other product names belong to their respective owners; AI Translator is not affiliated with them.",
   },

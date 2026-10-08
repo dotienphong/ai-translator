@@ -99,9 +99,9 @@ ${sectionHead({ eyebrow: "Yêu cầu máy", title: "Máy của bạn có chạy 
 <tr><th scope="row">Hệ điều hành</th><td>macOS 14.2 trở lên</td><td>Windows 10 hoặc 11, 64-bit (x64)</td></tr>
 <tr><th scope="row">Chip</th><td>Apple Silicon (M1 trở lên). Chưa có bản cho Mac Intel</td><td>CPU có AVX2. Chưa hỗ trợ Windows ARM64</td></tr>
 <tr><th scope="row">RAM</th><td>Tối thiểu 8 GB, khuyến nghị 16 GB</td><td>Tối thiểu 8 GB, khuyến nghị 16 GB</td></tr>
-<tr><th scope="row">Đồ họa</th><td>GPU Apple (Metal)</td><td>Khuyến nghị card rời hỗ trợ Vulkan, VRAM từ 6 GB cho gói Chuẩn; không có thì chạy bằng CPU</td></tr>
-<tr><th scope="row">Ổ đĩa</th><td>1,3 GB (gói Nhẹ) hoặc 2,5 GB (gói Chuẩn), cộng 1 GB trống khi tải</td><td>Tương tự</td></tr>
-<tr><th scope="row">Quyền</th><td>Ghi âm thanh hệ thống (không dùng micro)</td><td>Không cần cấp quyền thu âm</td></tr>
+<tr><th scope="row">Đồ họa</th><td>GPU Apple (Metal)</td><td>Khuyến nghị card rời hỗ trợ Vulkan, VRAM từ 6 GB cho gói model Chuẩn; không có thì chạy bằng CPU</td></tr>
+<tr><th scope="row">Ổ đĩa</th><td>1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn), cộng 1 GB trống khi tải</td><td>Tương tự</td></tr>
+<tr><th scope="row">Quyền</th><td>Ghi âm thanh hệ thống (không dùng micro)</td><td>Không cần cấp quyền ghi âm</td></tr>
 </tbody></table></div>
 <p class="small muted">Máy dưới 8 GB RAM hoặc (Windows) CPU không có AVX2: app báo lý do và không cho tải model. Mac Intel không chạy được app.</p>
 </div></section>

@@ -28,7 +28,7 @@ ${pageHero({ crumbs, title: "Mọi thứ cần để hiểu một cuộc họp b
 <a class="card card-link" href="#tu-dien"><strong class="card-title">Từ điển thuật ngữ</strong><p class="muted">Tên riêng, thuật ngữ (Pro)</p></a>
 <a class="card card-link" href="#nguon-am-thanh"><strong class="card-title">Nguồn âm thanh</strong><p class="muted">Mọi app họp, không bot</p></a>
 <a class="card card-link" href="#phim-tat"><strong class="card-title">Phím tắt và khay</strong><p class="muted">Điều khiển không rời cuộc họp</p></a>
-<a class="card card-link" href="#model"><strong class="card-title">Model và máy</strong><p class="muted">Gói Chuẩn, gói Nhẹ</p></a>
+<a class="card card-link" href="#model"><strong class="card-title">Model và máy</strong><p class="muted">Gói model Chuẩn, gói model Nhẹ</p></a>
 <a class="card card-link" href="#hieu-nang"><strong class="card-title">Hiệu năng</strong><p class="muted">Số đo có ghi điều kiện</p></a>
 </div>
 </div></section>
@@ -142,7 +142,7 @@ ${checkList([
 <h2>Điều khiển mà không rời cuộc họp</h2>
 <p>Năm phím tắt toàn cục hoạt động ngay cả khi AI Translator không phải cửa sổ đang mở. Bạn đổi được từng phím trong Cài đặt › Phím tắt.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Việc</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
+<thead><tr><th scope="col">Việc</th><th scope="col">macOS</th><th scope="col">Windows (khi phát hành)</th></tr></thead>
 <tbody>
 <tr><th scope="row">Bắt đầu hoặc dừng dịch</th><td>${keys(["⌃", "⌥", "T"])}</td><td>${keys(["Ctrl", "Alt", "T"])}</td></tr>
 <tr><th scope="row">Hiện hoặc ẩn phụ đề</th><td>${keys(["⌃", "⌥", "H"])}</td><td>${keys(["Ctrl", "Alt", "H"])}</td></tr>
@@ -151,7 +151,7 @@ ${checkList([
 <tr><th scope="row">Cuộn phụ đề xuống (câu mới)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
 </tbody></table></div>
 <p class="small muted">Trên macOS, ⌃ là Control và ⌥ là Option. Phím tắt phải có ít nhất một phím Ctrl, Alt hoặc Cmd/Win. Bản Windows chưa phát hành.</p>
-<p>Biểu tượng trên thanh menu (macOS) hoặc khay hệ thống (Windows) cho phép bắt đầu hoặc dừng dịch, ẩn hiện và khóa phụ đề, mở cửa sổ chính. Đóng cửa sổ chỉ ẩn app xuống khay; muốn thoát hẳn thì chọn <em>Thoát</em>.</p>
+<p>Biểu tượng trên thanh menu (macOS) hoặc khay hệ thống (Windows, khi phát hành) cho phép bắt đầu hoặc dừng dịch, ẩn hiện và khóa phụ đề, mở cửa sổ chính. Đóng cửa sổ chỉ ẩn app xuống khay; muốn thoát hẳn thì chọn <em>Thoát</em>.</p>
 </div>
 <div>
 ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím tắt hiển thị năm phím tắt mặc định trên macOS", caption: "Cài đặt › Phím tắt: bấm Đổi rồi nhấn tổ hợp phím mới." })}
@@ -166,7 +166,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím t�
 <h2>Hai gói model, app đề xuất gói hợp với máy bạn</h2>
 <p>Model nhận dạng và dịch tải về một lần, sau đó chạy hoàn toàn trên máy. App kiểm tra RAM, ổ đĩa và card đồ họa để đề xuất gói.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col"></th><th scope="col">Gói Chuẩn</th><th scope="col">Gói Nhẹ</th></tr></thead>
+<thead><tr><th scope="col"></th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
 <tbody>
 <tr><th scope="row">Dung lượng tải</th><td>khoảng 2,5 GB</td><td>khoảng 1,3 GB</td></tr>
 <tr><th scope="row">Nhận dạng giọng nói</th><td>Whisper large-v3-turbo</td><td>Whisper small</td></tr>
@@ -174,21 +174,21 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím t�
 <tr><th scope="row">RAM engine (Mac M4 Pro)</th><td>khoảng 2,9 GiB</td><td>khoảng 1,8–1,9 GiB</td></tr>
 <tr><th scope="row">App đề xuất khi</th><td>Mac 16 GB trở lên; Windows 16 GB trở lên có card rời từ 6 GB VRAM</td><td>Máy từ 8 GB đến dưới 16 GB, hoặc Windows không có card rời đủ mạnh</td></tr>
 </tbody></table></div>
-<p class="small muted">Gói Nhẹ chép lời kém rõ hơn gói Chuẩn ở tiếng Việt, Nhật, Hàn, Trung. Nếu bạn nghe nhiều các ngôn ngữ này, nên dùng gói Chuẩn.</p>
+<p class="small muted">Gói model Nhẹ chép lời kém rõ hơn gói model Chuẩn ở tiếng Việt, Nhật, Hàn, Trung. Nếu bạn nghe nhiều các ngôn ngữ này, nên dùng gói model Chuẩn.</p>
 </div>
 </div>
 ${facts([
   ["macOS", "macOS 14.2 trở lên, Apple Silicon (M1 trở lên)<small>Không có bản cho Mac Intel</small>"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
   ["Ổ đĩa", "Trống thêm ít nhất 1 GB so với dung lượng model cần tải"],
-  ["Windows", "Windows 10/11 64-bit, CPU có AVX2: chưa phát hành<small>Khuyến nghị card rời Vulkan, VRAM từ 6 GB cho gói Chuẩn</small>"],
+  ["Windows", "Windows 10/11 64-bit, CPU có AVX2: chưa phát hành<small>Khuyến nghị card rời Vulkan, VRAM từ 6 GB cho gói model Chuẩn</small>"],
 ])}
 </div></section>
 
 <section class="section section-alt" id="hieu-nang"><div class="container">
 ${sectionHead({ eyebrow: "Hiệu năng", title: "Số đo thật, kèm điều kiện đo", text: "Chúng tôi chỉ công bố những gì đã đo, trên đúng máy đã đo, và nói rõ máy nào chưa đo.", center: true })}
 <div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">Số đo (Mac M4 Pro 24 GB, macOS 26, GPU Metal)</th><th scope="col">Gói Chuẩn</th><th scope="col">Gói Nhẹ</th></tr></thead>
+<thead><tr><th scope="col">Số đo (Mac M4 Pro 24 GB, macOS 26, GPU Metal)</th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
 <tbody>
 <tr><th scope="row">Độ trễ trung vị (p50): từ lúc người nói dừng câu tới khi hiện đủ bản dịch</th><td>0,76–1,03 giây</td><td>0,61–0,84 giây</td></tr>
 <tr><th scope="row">Độ trễ p90</th><td>0,94–1,34 giây</td><td>0,73–1,14 giây</td></tr>
@@ -197,9 +197,33 @@ ${sectionHead({ eyebrow: "Hiệu năng", title: "Số đo thật, kèm điều k
 </tbody></table></div>
 <div class="grid grid-2">
 ${feature({ icon: "gauge", title: "Phiên dài", text: "Một phiên dịch liên tục 5 giờ 23 phút (video bài giảng tiếng Anh, bản release ký ad-hoc): 6019 đoạn, không lỗi, độ trễ trung vị 0,48 giây. Thử nghiệm ổn định 2 giờ: không tiến trình nào bị khởi động lại." })}
-${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng", text: "Trên bộ thử nội bộ 320 câu (năm chiều có tiếng Việt), Hy-MT2-1.8B đạt điểm COMET trung bình 0,837: cao hơn rõ rệt MADLAD-3B (0,779) và NLLB-600M (0,736), và ngang HY-MT1.5-1.8B (0,833). Chúng tôi chỉ so các model mã nguồn mở với nhau. Với câu đọc chuẩn, tiếng Việt gói Chuẩn có tỉ lệ lỗi từ 8,7%. Đây là câu đọc, chưa phải hội thoại họp thật." })}
+${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng", text: "Trên bộ thử nội bộ 320 câu (năm chiều có tiếng Việt), Hy-MT2-1.8B đạt điểm COMET trung bình 0,837: cao hơn rõ rệt MADLAD-3B (0,779) và NLLB-600M (0,736), và ngang HY-MT1.5-1.8B (0,833). Chúng tôi chỉ so các model mã nguồn mở với nhau. Với câu đọc chuẩn, tiếng Việt gói model Chuẩn có tỉ lệ lỗi từ 8,7%. Đây là câu đọc, chưa phải hội thoại họp thật." })}
 </div>
-${callout({ kind: "warn", title: "Điều chưa đo, chúng tôi không hứa", text: "Mọi số trên đo trên một máy Mac M4 Pro, với ngưỡng im lặng chốt đoạn 300 ms (mặc định hiện tại của app là 50 ms; phiên 5 giờ dùng mặc định). Chưa đo: Mac M1, máy 8 GB, card đồ họa rời của Windows, pin và điện năng, độ chính xác với hội thoại họp thật hoặc tai nghe Bluetooth, và chất lượng dịch của các chiều không có tiếng Việt (chạy được nhưng chưa có điểm đo). Thử nghiệm sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói Chuẩn chưa đạt mục tiêu độ trễ." })}
+<h3 class="reveal" id="chat-luong-theo-chieu">Chất lượng dịch và nhận dạng theo từng chiều</h3>
+<p class="reveal">Điểm COMET đo trên đúng đường chạy của app (llama-server, cùng câu lệnh dịch), mỗi chiều 100 câu (Việt → Trung, Nhật, Hàn: 40 câu). COMET là điểm tương đối từ 0 đến 1, cao hơn là tốt hơn; <strong>không phải tỉ lệ phần trăm chính xác</strong>.</p>
+<div class="table-wrap reveal"><table>
+<thead><tr><th scope="col">Chiều dịch (văn bản)</th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
+<tbody>
+<tr><th scope="row">English → Tiếng Việt</th><td>0,842</td><td>0,841</td></tr>
+<tr><th scope="row">中文 → Tiếng Việt</th><td>0,829</td><td>0,831</td></tr>
+<tr><th scope="row">日本語 → Tiếng Việt</th><td>0,830</td><td>0,815</td></tr>
+<tr><th scope="row">한국어 → Tiếng Việt</th><td>0,834</td><td>0,822</td></tr>
+<tr><th scope="row">Tiếng Việt → English</th><td>0,821</td><td>0,822</td></tr>
+<tr><th scope="row">Tiếng Việt → 中文</th><td>0,836</td><td>0,821</td></tr>
+<tr><th scope="row">Tiếng Việt → 日本語</th><td>0,847</td><td>0,845</td></tr>
+<tr><th scope="row">Tiếng Việt → 한국어</th><td>0,851</td><td>0,842</td></tr>
+</tbody></table></div>
+<div class="table-wrap reveal"><table>
+<thead><tr><th scope="col">Nhận dạng giọng nói (tỉ lệ lỗi, thấp hơn là tốt hơn)</th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
+<tbody>
+<tr><th scope="row">English (lỗi từ)</th><td>5,4%</td><td>6,6%</td></tr>
+<tr><th scope="row">Tiếng Việt (lỗi từ)</th><td>8,7%</td><td>22,5%</td></tr>
+<tr><th scope="row">中文 (lỗi ký tự)</th><td>5,6%</td><td>9,6%</td></tr>
+<tr><th scope="row">日本語 (lỗi ký tự)</th><td>4,5%</td><td>13,1%</td></tr>
+<tr><th scope="row">한국어 (lỗi ký tự)</th><td>4,1%</td><td>8,2%</td></tr>
+</tbody></table></div>
+<p class="small muted reveal">Cách đọc: bộ câu dịch thiên về văn nói đời thường nên chỉ đại diện gần đúng cho lời họp; nhận dạng đo trên câu đọc chuẩn (khoảng 15 phút mỗi ngôn ngữ), không phải hội thoại họp thật, và tai nghe Bluetooth băng hẹp làm lỗi tăng thêm. Tám chiều trên đều có tiếng Việt; 12 chiều còn lại giữa English, 中文, 日本語, 한국어 chạy được nhưng chưa có điểm chất lượng. Gói model Nhẹ kém rõ hơn ở nhận dạng tiếng Việt, Nhật, Hàn, Trung.</p>
+${callout({ kind: "warn", title: "Điều chưa đo, chúng tôi không hứa", text: "Mọi số trên đo trên một máy Mac M4 Pro, với ngưỡng im lặng chốt đoạn 300 ms (mặc định hiện tại của app là 50 ms; phiên 5 giờ dùng mặc định). Chưa đo: Mac M1, máy 8 GB, card đồ họa rời của Windows, pin và điện năng, độ chính xác với hội thoại họp thật hoặc tai nghe Bluetooth, và chất lượng dịch của các chiều không có tiếng Việt (chạy được nhưng chưa có điểm đo). Thử nghiệm sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói model Chuẩn chưa đạt mục tiêu độ trễ." })}
 </div></section>
 
 <section class="section" id="cong-nghe"><div class="container">

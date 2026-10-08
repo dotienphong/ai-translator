@@ -18,7 +18,7 @@ const GROUPS = [
       },
       {
         q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
-        a: `<p>Được. App thu âm thanh hệ thống nên không phụ thuộc app họp và không cần cấu hình riêng cho từng app: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã kiểm tra việc thu âm thanh hệ thống trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC: âm thanh người nói được thu rõ. Đó là kiểm tra bộ thu âm do người thử xác nhận, chưa phải nghiệm thu chính thức trên bản phát hành, và chúng tôi chưa thử mọi phiên bản macOS hay mọi app. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
+        a: `<p>Được. App thu âm thanh hệ thống nên không phụ thuộc app họp và không cần cấu hình riêng cho từng app: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã kiểm tra việc thu âm thanh hệ thống trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC: âm thanh người nói được thu rõ. Đó là kiểm tra bộ thu âm do người thử xác nhận, chưa phải kiểm thử chính thức trên bản phát hành, và chúng tôi chưa thử mọi phiên bản macOS hay mọi app. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
       },
       {
         q: "Có cần bot, plugin hay tài khoản không?",
@@ -51,12 +51,12 @@ const GROUPS = [
         a: `<p>Chưa hoàn hảo: bản dịch có thể sai, thiếu hoặc không hợp ngữ cảnh, nhất là với thuật ngữ chuyên ngành, tên riêng và tiếng nói không rõ. Đừng dựa vào nó cho quyết định quan trọng.</p><p>Từ điển thuật ngữ (tính năng Pro) gợi ý tên riêng và thuật ngữ cho bộ dịch, nhưng không bảo đảm bộ dịch dùng đúng mọi lần. Chúng tôi không đưa ra tỉ lệ chính xác chung vì chưa đo trên hội thoại họp thật; số đo hiện có kèm điều kiện nằm ở trang <a href="/tinh-nang/#hieu-nang">Tính năng</a>.</p>`,
       },
       {
-        q: "Gói model Chuẩn và gói Nhẹ khác nhau thế nào?",
-        a: `<p>Gói Chuẩn (khoảng 2,5 GB) nhận dạng giọng nói ít lỗi hơn, nhất là tiếng Việt, Nhật, Hàn, Trung. Gói Nhẹ (khoảng 1,3 GB) nhỏ hơn, dành cho máy có ít RAM hơn (tối thiểu 8 GB). App đề xuất gói theo RAM và card đồ họa của máy bạn.</p><p>Trên bộ clip đọc chuẩn, tỉ lệ lỗi từ của tiếng Việt là 8,7% ở gói Chuẩn và 22,5% ở gói Nhẹ (Mac M4 Pro, câu đọc chứ chưa phải hội thoại họp thật). Nếu bạn nghe nhiều các ngôn ngữ này và máy đủ RAM (khuyến nghị 16 GB), hãy dùng gói Chuẩn.</p>`,
+        q: "Gói model Chuẩn và gói model Nhẹ khác nhau thế nào?",
+        a: `<p>Gói model Chuẩn (khoảng 2,5 GB) nhận dạng giọng nói ít lỗi hơn, nhất là tiếng Việt, Nhật, Hàn, Trung. Gói model Nhẹ (khoảng 1,3 GB) nhỏ hơn, dành cho máy có ít RAM hơn (tối thiểu 8 GB). App đề xuất gói theo RAM và card đồ họa của máy bạn.</p><p>Trên bộ clip đọc chuẩn, tỉ lệ lỗi từ của tiếng Việt là 8,7% ở gói model Chuẩn và 22,5% ở gói model Nhẹ (Mac M4 Pro, câu đọc chứ chưa phải hội thoại họp thật). Nếu bạn nghe nhiều các ngôn ngữ này và máy đủ RAM (khuyến nghị 16 GB), hãy dùng gói model Chuẩn.</p>`,
       },
       {
         q: "Độ trễ của phụ đề là bao nhiêu?",
-        a: `<p>Trên Mac M4 Pro, độ trễ trung vị dưới khoảng 1,1 giây kể từ lúc người nói dừng câu tới khi hiện đủ bản dịch; chữ dịch đầu tiên hiện sau khoảng 0,5 đến 0,7 giây, ở cả hai gói model. Đây là số đo trên một máy cụ thể, bằng âm thanh phát lại theo thời gian thực.</p><p>Chúng tôi chưa đo Mac M1, máy 8 GB hay card đồ họa rời của Windows. Thử sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói Chuẩn chưa đạt mục tiêu độ trễ. Chi tiết và điều kiện đo ở trang <a href="/tinh-nang/#hieu-nang">Tính năng</a>.</p>`,
+        a: `<p>Trên Mac M4 Pro, độ trễ trung vị dưới khoảng 1,1 giây kể từ lúc người nói dừng câu tới khi hiện đủ bản dịch; chữ dịch đầu tiên hiện sau khoảng 0,5 đến 0,7 giây, ở cả hai gói model. Đây là số đo trên một máy cụ thể, bằng âm thanh phát lại theo thời gian thực.</p><p>Chúng tôi chưa đo Mac M1, máy 8 GB hay card đồ họa rời của Windows. Thử sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói model Chuẩn chưa đạt mục tiêu độ trễ. Chi tiết và điều kiện đo ở trang <a href="/tinh-nang/#hieu-nang">Tính năng</a>.</p>`,
       },
     ],
   },
@@ -70,7 +70,7 @@ const GROUPS = [
       },
       {
         q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
-        a: `<p>Không. Âm thanh chỉ nằm trong RAM, không ghi đĩa và không gửi qua mạng. Chúng tôi đã kiểm bằng proxy và nettop trên macOS: trong lúc dịch, app không gửi âm thanh hay chữ chép lời ra ngoài. Windows chưa được đo. Chi tiết ở <a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
+        a: `<p>Không. Âm thanh chỉ nằm trong RAM, không ghi đĩa và không gửi qua mạng. Chúng tôi đã kiểm tra bằng proxy và nettop trên macOS: trong lúc dịch, app không gửi âm thanh hay chữ chép lời ra ngoài. Windows chưa được đo. Chi tiết ở <a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
       },
       {
         q: "Có quảng cáo hay thu thập dữ liệu không?",
@@ -100,7 +100,7 @@ const GROUPS = [
       },
       {
         q: "AI Translator tốn bao nhiêu RAM và ổ đĩa?",
-        a: `<p>Model chiếm khoảng 2,5 GB ổ đĩa (gói Chuẩn) hoặc 1,3 GB (gói Nhẹ), và cần trống thêm 1 GB khi tải. Trên Mac M4 Pro, hai tiến trình engine dùng khoảng 2,9 GiB RAM (Chuẩn) hoặc 1,8 đến 1,9 GiB (Nhẹ), cộng ước chừng 0,3 GB cho app. Hai engine tự tắt sau 10 phút không dịch để app nằm ở thanh menu không giữ vài GB RAM. Chúng tôi chưa đo trên máy khác.</p>`,
+        a: `<p>Model chiếm khoảng 2,5 GB ổ đĩa (gói model Chuẩn) hoặc 1,3 GB (gói model Nhẹ), và cần trống thêm 1 GB khi tải. Trên Mac M4 Pro, hai tiến trình engine dùng khoảng 2,9 GiB RAM (Chuẩn) hoặc 1,8 đến 1,9 GiB (Nhẹ), cộng ước chừng 0,3 GB cho app. Hai engine tự tắt sau 10 phút không dịch để app nằm ở thanh menu không giữ vài GB RAM. Chúng tôi chưa đo trên máy khác.</p>`,
       },
       {
         q: "Vì sao macOS báo không xác minh được nhà phát triển?",
@@ -108,7 +108,7 @@ const GROUPS = [
       },
       {
         q: "Cần cấp quyền gì trên macOS?",
-        a: `<p>Chỉ quyền Ghi âm thanh hệ thống (System Audio Recording); AI Translator không dùng micro. macOS hỏi ở lần đầu bạn bấm Bắt đầu. Nếu bạn từ chối, macOS không báo lỗi mà chỉ cho app nhận im lặng; app sẽ nhắc bạn bật lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền thu âm</a>.</p>`,
+        a: `<p>Chỉ quyền Ghi âm thanh hệ thống (System Audio Recording); AI Translator không dùng micro. macOS hỏi ở lần đầu bạn bấm Bắt đầu. Nếu bạn từ chối, macOS không báo lỗi mà chỉ cho app nhận im lặng; app sẽ nhắc bạn bật lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền ghi âm</a>.</p>`,
       },
       {
         q: "Gỡ cài đặt AI Translator như thế nào?",

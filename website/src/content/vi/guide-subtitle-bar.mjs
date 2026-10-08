@@ -99,7 +99,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <h2 id="phim-tat">Phím tắt mặc định</h2>
 <p>Phím tắt hoạt động ở mọi app, kể cả khi AI Translator không phải cửa sổ đang mở.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Việc</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
+<thead><tr><th scope="col">Việc</th><th scope="col">macOS</th><th scope="col">Windows (khi phát hành)</th></tr></thead>
 <tbody>
 <tr><th scope="row">Bắt đầu hoặc dừng dịch</th><td>${keys(["⌃", "⌥", "T"])}</td><td>${keys(["Ctrl", "Alt", "T"])}</td></tr>
 <tr><th scope="row">Hiện hoặc ẩn phụ đề</th><td>${keys(["⌃", "⌥", "H"])}</td><td>${keys(["Ctrl", "Alt", "H"])}</td></tr>

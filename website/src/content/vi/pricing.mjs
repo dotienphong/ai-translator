@@ -63,8 +63,8 @@ ${pageHero({ crumbs, title: "Bảng giá đơn giản: trả trước, không t�
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">Các gói và giá</h2>
-${plansGrid("vi", { ctaLabel: "Nhận bản beta", freeLabel: "Dùng thử miễn phí" })}
-<p class="disclaimer">Giá tính bằng đồng Việt Nam (VND) cho mỗi đơn, đúng bằng số tiền trong mã VietQR. Giá và hạn mức do máy chủ cấu hình; gói bạn đã mua không bị hạ hạn mức.</p>
+${plansGrid("vi", { ctaLabel: "Nhận bản beta", freeLabel: "Đăng ký dùng thử" })}
+<p class="disclaimer">Giá tính bằng đồng Việt Nam (VND) cho mỗi đơn, đúng bằng số tiền trong mã VietQR. Giá có thể thay đổi; gói bạn đã mua giữ nguyên hạn mức.</p>
 </div></section>
 
 <section class="section"><div class="container">
@@ -81,8 +81,8 @@ ${sectionHead({ eyebrow: "So sánh", title: "Mỗi gói gồm những gì", cent
 <tr><th scope="row">Từ điển thuật ngữ (Pro)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Lịch sử các phiên (Pro)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Xuất TXT, SRT, Markdown (Pro)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
-<tr><th scope="row">Số máy cho mỗi key</th><td>Theo máy</td><td>1 máy</td><td>1 máy</td></tr>
-<tr><th scope="row">Quy ra mỗi tháng (giá ÷ 12)</th><td>0 ₫</td><td>50.000 ₫</td><td>khoảng 41.700 ₫</td></tr>
+<tr><th scope="row">Số máy cho mỗi key</th><td>Không cần key</td><td>1 máy</td><td>1 máy</td></tr>
+<tr><th scope="row">Quy ra mỗi tháng</th><td>0 ₫</td><td>50.000 ₫</td><td>khoảng 41.700 ₫</td></tr>
 </tbody></table></div>
 <p class="small muted">Mua 12 đơn Monthly liên tiếp (360 ngày) tốn 600.000 ₫, so với 500.000 ₫ cho 365 ngày của một đơn Yearly. Monthly giới hạn 50 giờ dịch mỗi 30 ngày, Yearly không giới hạn.</p>
 </div></section>
@@ -94,11 +94,11 @@ ${appShot({ slug: "app-upgrade", lang: "vi", alt: "Màn hình Nâng cấp trong 
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Thời lượng dịch</span>
-<h2>Bạn chỉ trả cho phần đã dịch</h2>
+<h2>Hạn mức chỉ tính phần đã dịch</h2>
 ${checkList([
   "Thời lượng tính theo <strong>độ dài tiếng nói</strong> của các đoạn đã dịch xong, không tính đệm hay lúc im lặng",
   "Câu <strong>đã ở đúng ngôn ngữ</strong> bạn muốn đọc, đoạn bị bỏ hoặc chưa dịch được <strong>không bị tính</strong>",
-  "<strong>Free:</strong> hạn mức 30 phút reset mỗi ngày lúc 00:00 giờ máy",
+  "<strong>Free:</strong> hạn mức 30 phút đặt lại mỗi ngày lúc 00:00 giờ máy",
   "<strong>Monthly:</strong> chu kỳ 30 ngày tính từ ngày thanh toán, không theo tháng dương lịch",
   "Còn dưới 5 phút thì app nhắc; hết hạn mức thì dừng phiên và báo thời điểm mở lại",
   "Hạn mức tính riêng cho từng máy",
@@ -112,7 +112,7 @@ ${sectionHead({ eyebrow: "Cách mua", title: "Từ chọn gói tới kích hoạ
 ${steps([
   { title: "Chọn gói trong app", text: "Mở <strong>Nâng cấp Pro</strong>, chọn Monthly hoặc Yearly, nhập email nhận key và đồng ý để lưu email này cho việc gửi và khôi phục key." },
   { title: "Quét mã VietQR", text: "App vẽ mã VietQR ngay trong cửa sổ, kèm nút mở trang thanh toán PayOS. Mã dùng được trong 15 phút." },
-  { title: "Tự kích hoạt", text: "Khi PayOS xác nhận đã nhận tiền (app hỏi mỗi 3 giây), gói có hiệu lực ngay trên máy bạn và key được gửi vào email." },
+  { title: "Tự kích hoạt", text: "Khi PayOS xác nhận đã nhận tiền , gói có hiệu lực ngay trên máy bạn và key được gửi vào email." },
 ])}
 <p class="disclaimer">Chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng VND qua PayOS. Chúng tôi không nhận số thẻ hay thông tin tài khoản ngân hàng của bạn và không gửi email của bạn sang PayOS.</p>
 </div></section>

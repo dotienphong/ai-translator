@@ -146,7 +146,7 @@ ${checkList([
 <h2>Control it without leaving the meeting</h2>
 <p>Five global shortcuts work even when AI Translator is not the window in front. You can change each one in Settings › Shortcuts.</p>
 <div class="table-wrap" role="region" aria-label="Keyboard shortcuts" tabindex="0"><table>
-<thead><tr><th scope="col">Action</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
+<thead><tr><th scope="col">Action</th><th scope="col">macOS</th><th scope="col">Windows (when released)</th></tr></thead>
 <tbody>
 <tr><th scope="row">Start or stop translating</th><td>${keys(["⌃", "⌥", "T"])}</td><td>${keys(["Ctrl", "Alt", "T"])}</td></tr>
 <tr><th scope="row">Show or hide subtitles</th><td>${keys(["⌃", "⌥", "H"])}</td><td>${keys(["Ctrl", "Alt", "H"])}</td></tr>
@@ -155,7 +155,7 @@ ${checkList([
 <tr><th scope="row">Scroll subtitles down (newer sentences)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
 </tbody></table></div>
 <p class="small muted">On macOS, ⌃ is Control and ⌥ is Option. A shortcut needs at least one of Ctrl, Alt or Cmd/Win. The Windows version is not released yet.</p>
-<p>The menu bar icon (macOS) or system tray icon (Windows) lets you start or stop translating, show or hide and lock the subtitles, and open the main window. Closing the window only hides the app in the tray; to quit completely, choose <em>Quit</em>.</p>
+<p>The menu bar icon (macOS) or system tray icon (Windows, when released) lets you start or stop translating, show or hide and lock the subtitles, and open the main window. Closing the window only hides the app in the tray; to quit completely, choose <em>Quit</em>.</p>
 </div>
 <div>
 ${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings showing the five default shortcuts on macOS", caption: "Settings › Shortcuts: press Change, then the new key combination." })}
@@ -203,6 +203,30 @@ ${sectionHead({ eyebrow: "Performance", title: "Real measurements, with the cond
 ${feature({ icon: "gauge", title: "Long sessions", text: "One continuous session of 5 h 23 min (a lecture video in English, on an ad-hoc-signed release build): 6,019 segments, no errors, median delay 0.48 s. In a 2-hour stability test, no process was restarted." })}
 ${feature({ icon: "languages", title: "Translation and recognition quality", text: "In an internal test on 320 sentences in five directions involving Vietnamese, Hy-MT2-1.8B scored 0.837 on COMET: clearly above MADLAD-3B (0.779) and NLLB-600M (0.736), and on par with HY-MT1.5-1.8B (0.833). We only compared open-source models with each other. On clean read speech, Vietnamese recognition in the Standard pack has a word error rate of 8.7%. That is read speech, not real meeting conversation." })}
 </div>
+<h3 class="reveal" id="quality-by-direction">Translation and recognition quality by direction</h3>
+<p class="reveal">COMET scores were measured through the app's own translation path (llama-server with the same prompt), 100 sentences per direction (Vietnamese → Chinese, Japanese, Korean: 40 sentences). COMET is a relative score from 0 to 1, higher is better; <strong>it is not a percentage accuracy</strong>.</p>
+<div class="table-wrap reveal"><table>
+<thead><tr><th scope="col">Direction (text)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
+<tbody>
+<tr><th scope="row">English → Vietnamese</th><td>0.842</td><td>0.841</td></tr>
+<tr><th scope="row">中文 → Vietnamese</th><td>0.829</td><td>0.831</td></tr>
+<tr><th scope="row">日本語 → Vietnamese</th><td>0.830</td><td>0.815</td></tr>
+<tr><th scope="row">한국어 → Vietnamese</th><td>0.834</td><td>0.822</td></tr>
+<tr><th scope="row">Vietnamese → English</th><td>0.821</td><td>0.822</td></tr>
+<tr><th scope="row">Vietnamese → 中文</th><td>0.836</td><td>0.821</td></tr>
+<tr><th scope="row">Vietnamese → 日本語</th><td>0.847</td><td>0.845</td></tr>
+<tr><th scope="row">Vietnamese → 한국어</th><td>0.851</td><td>0.842</td></tr>
+</tbody></table></div>
+<div class="table-wrap reveal"><table>
+<thead><tr><th scope="col">Speech recognition (error rate, lower is better)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
+<tbody>
+<tr><th scope="row">English (word errors)</th><td>5.4%</td><td>6.6%</td></tr>
+<tr><th scope="row">Vietnamese (word errors)</th><td>8.7%</td><td>22.5%</td></tr>
+<tr><th scope="row">中文 (character errors)</th><td>5.6%</td><td>9.6%</td></tr>
+<tr><th scope="row">日本語 (character errors)</th><td>4.5%</td><td>13.1%</td></tr>
+<tr><th scope="row">한국어 (character errors)</th><td>4.1%</td><td>8.2%</td></tr>
+</tbody></table></div>
+<p class="small muted reveal">How to read this: the translation test set leans toward everyday spoken language, so it is only a rough proxy for meeting speech; recognition was measured on clean read speech (about 15 minutes per language), not real meeting conversations, and narrowband Bluetooth headsets raise the error rate. All eight directions above involve Vietnamese; the other 12 directions among English, 中文, 日本語 and 한국어 run but have no quality score yet. The Lite pack is noticeably less accurate at recognizing Vietnamese, Japanese, Korean and Chinese.</p>
 ${callout({ kind: "warn", title: "What we have not measured, and do not promise", text: "All the figures above were measured on a single Mac M4 Pro, with a 300&nbsp;ms pause to end a sentence (the app's current default is 50&nbsp;ms; the 5-hour session used the default). We have not measured: a base Mac M1, 8 GB computers, discrete Windows graphics cards, battery and power use, accuracy on real meeting conversation or over Bluetooth headsets, and translation quality for directions that do not involve Vietnamese (they work, but we have no quality score to publish). A preliminary test on one Windows laptop with integrated graphics showed that the Standard pack did not meet our latency target." })}
 </div></section>
 

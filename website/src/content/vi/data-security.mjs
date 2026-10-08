@@ -9,7 +9,7 @@ const crumbs = [
 const TOC = [
   { level: 2, id: "tren-may", text: "Dữ liệu nào ở lại trên máy bạn?" },
   { level: 2, id: "ket-noi-mang", text: "App kết nối mạng tới đâu?" },
-  { level: 2, id: "da-kiem", text: "Chúng tôi đã kiểm điều đó thế nào?" },
+  { level: 2, id: "da-kiem", text: "Chúng tôi đã kiểm tra điều đó thế nào?" },
   { level: 2, id: "may-chu", text: "Máy chủ lưu gì và giữ bao lâu?" },
   { level: 2, id: "xoa-du-lieu", text: "Làm sao để xóa dữ liệu của bạn?" },
   { level: 2, id: "ben-xu-ly", text: "Bên nào khác xử lý dữ liệu?" },
@@ -29,13 +29,13 @@ export default {
     "AI Translator xử lý âm thanh trên máy bạn, không gửi đi. Xem dữ liệu nào ở lại trên máy, app kết nối tới đâu, máy chủ lưu gì, giữ bao lâu và cách yêu cầu xóa.",
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  llm: "Dữ liệu ở lại trên máy, bốn nơi app kết nối mạng, cách đã kiểm bằng proxy trên macOS (Windows chưa đo), dữ liệu máy chủ lưu và thời gian giữ, bên xử lý, lớp bảo vệ, trạng thái ký số và cách yêu cầu xóa dữ liệu.",
+  llm: "Dữ liệu ở lại trên máy, bốn nơi app kết nối mạng, cách đã kiểm tra bằng proxy trên macOS (Windows chưa đo), dữ liệu máy chủ lưu và thời gian giữ, bên xử lý, lớp bảo vệ, trạng thái ký số và cách yêu cầu xóa dữ liệu.",
   llmTitle: "Dữ liệu và bảo mật của AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Dữ liệu của bạn đi đâu khi dùng AI Translator?",
-  lead: "Âm thanh cuộc họp được xử lý hoàn toàn trên máy bạn và không bị gửi đi. Trang này nêu từng loại dữ liệu: cái nào ở lại trên máy, cái nào đi qua mạng, cái nào lưu trên máy chủ của chúng tôi, kèm cách chúng tôi đã kiểm và những gì chưa kiểm.",
+  lead: "Âm thanh cuộc họp được xử lý hoàn toàn trên máy bạn và không bị gửi đi. Trang này nêu từng loại dữ liệu: cái nào ở lại trên máy, cái nào đi qua mạng, cái nào lưu trên máy chủ của chúng tôi, kèm cách chúng tôi đã kiểm tra và những gì chưa kiểm.",
   meta: "<span>Cập nhật 08/10/2026</span><span>Khớp với Chính sách quyền riêng tư phiên bản 1.1</span>",
 })}
 
@@ -75,10 +75,10 @@ ${facts([
 <tr><th scope="row">aitranslator.io.vn (website này)</th><td>Liên kết ngoài (chính sách, hỗ trợ, trang tải) mở bằng trình duyệt hệ thống</td><td>App không gửi gì</td></tr>
 </tbody></table></div>
 
-<h2 id="da-kiem">Chúng tôi đã kiểm điều đó thế nào?</h2>
+<h2 id="da-kiem">Chúng tôi đã kiểm tra điều đó thế nào?</h2>
 <p>Trên macOS, chúng tôi cho app chạy sau một proxy bắt lưu lượng (mitmproxy), đo song song bằng <code>nettop</code>, rồi dịch một phiên bằng câu mẫu tiếng Anh phát lặp lại. Bản đo là bản release 0.1.0 ký ad-hoc, trên MacBook Pro M4 Pro, macOS 26.6.2, ngày 06/10/2026.</p>
 <ul>
-<li><strong>Phiên 15 phút 42 giây</strong> (158 đoạn, 0 lỗi): 3 request ra ngoài, đều tới hai máy chủ của chúng tôi (kiểm tra bản quyền, kiểm tra bản cập nhật). Trong lúc dịch chỉ có 1 request, là kiểm tra cập nhật theo lịch. Lượt này chạy trước khi chuyển sang tên miền riêng; lượt lặp lại 5 phút trên tên miền riêng cho cùng kết quả.</li>
+<li><strong>Phiên 15 phút 42 giây</strong> (158 đoạn, 0 lỗi): 3 request ra ngoài, đều tới hai máy chủ của chúng tôi (kiểm tra bản quyền, kiểm tra bản cập nhật). Trong lúc dịch chỉ có 1 request, là kiểm tra cập nhật theo lịch. Lượt 15 phút này được đo trước khi chúng tôi chuyển sang tên miền riêng; lượt lặp lại 5 phút sau đó trên tên miền riêng cho kết quả tương tự.</li>
 <li><strong>nettop</strong> theo dõi 7 tiến trình (app, WebView, hai tiến trình engine): không thấy luồng dữ liệu ra ngoài nào.</li>
 <li><strong>Từ đánh dấu</strong> trong câu mẫu: không có trong log của app lẫn trong các request đã ghi.</li>
 </ul>

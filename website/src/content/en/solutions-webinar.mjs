@@ -113,7 +113,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "Honest limits", title: "What to keep in mind" })}
 ${checkList([
   "<strong>Translations can be wrong,</strong> especially jargon, proper names and unclear speech. Do not rely on them for important decisions without checking.",
-  "<strong>Latency</strong> is a median of 0.76–1.03 seconds on a Mac M4 Pro with the Standard pack. Slower machines will be slower; we have not measured an M1 Mac. With a video you do not need to react to, delay matters less than in a meeting.",
+  "<strong>Latency</strong> is a median of 0.76–1.03 seconds on a Mac M4 Pro with the Standard pack. Less powerful machines will see higher latency; we have not measured an M1 Mac. With a video you do not need to react to, delay matters less than in a meeting.",
   "<strong>Recognition</strong> is less accurate with the Lite pack in Vietnamese, Japanese, Korean and Chinese, and gets worse when speech is unclear, for example under loud music or noise.",
   "<strong>macOS only for now</strong> (Apple Silicon, 14.2+); Windows is coming. Translations appear only on the floating bar: they are not added to the video and do not replace the publisher's official subtitles.",
 ], true)}

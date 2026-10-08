@@ -20,7 +20,6 @@ export default {
   modified: "2026-10-08",
   llm: "Câu chuyện hình thành, nguyên tắc sản phẩm, người làm (Đỗ Tiến Phong, nhà phát triển cá nhân), trạng thái beta, các hướng đang cân nhắc (chưa cam kết), công nghệ mã nguồn mở được dùng và thông tin pháp lý.",
   llmTitle: "Về AI Translator",
-  schema: [{ "@type": "Person", "@id": `${SITE.origin}/ve-chung-toi/#person`, name: SITE.owner, url: `${SITE.origin}/ve-chung-toi/` }],
   body: () => `
 ${pageHero({
   crumbs,
@@ -102,12 +101,12 @@ ${callout({ kind: "warn", title: "Đây chưa phải cam kết.", text: "Danh s�
 </div></section>
 
 <section class="section section-alt" id="cong-nghe"><div class="container narrow">
-${sectionHead({ eyebrow: "Công nghệ", title: "Xây trên vai các dự án mã nguồn mở", text: "AI Translator là sản phẩm thương mại và không phải mã nguồn mở: Thỏa thuận cấp phép không cho sao chép, dịch ngược hay đổi tên thương hiệu. Nhưng nó dùng nhiều thành phần mở của bên thứ ba, và chúng tôi ghi nhận chúng." })}
+${sectionHead({ eyebrow: "Công nghệ", title: "Dựa trên các dự án mã nguồn mở", text: "AI Translator là sản phẩm thương mại và không phải mã nguồn mở: Thỏa thuận cấp phép không cho sao chép, dịch ngược hay đổi tên thương hiệu. Nhưng nó dùng nhiều thành phần mở của bên thứ ba, và chúng tôi ghi nhận chúng." })}
 <div class="table-wrap reveal" role="region" aria-label="Thành phần mã nguồn mở được dùng" tabindex="0"><table>
 <thead><tr><th scope="col">Thành phần</th><th scope="col">Vai trò trong app</th><th scope="col">Tác giả và giấy phép</th></tr></thead>
 <tbody>
-<tr><th scope="row">Whisper, whisper.cpp</th><td>Nhận dạng giọng nói (large-v3-turbo ở gói Chuẩn, small ở gói Nhẹ)</td><td>OpenAI (trọng số Whisper, MIT); whisper.cpp và ggml (MIT)</td></tr>
-<tr><th scope="row">Hy-MT2-1.8B, llama.cpp</th><td>Dịch (Q8_0 ở gói Chuẩn, Q4_K_M ở gói Nhẹ)</td><td>Tencent (Apache 2.0); llama.cpp và ggml (MIT)</td></tr>
+<tr><th scope="row">Whisper, whisper.cpp</th><td>Nhận dạng giọng nói (large-v3-turbo ở gói model Chuẩn, small ở gói model Nhẹ)</td><td>OpenAI (trọng số Whisper, MIT); whisper.cpp và ggml (MIT)</td></tr>
+<tr><th scope="row">Hy-MT2-1.8B, llama.cpp</th><td>Dịch (Q8_0 ở gói model Chuẩn, Q4_K_M ở gói model Nhẹ)</td><td>Tencent (Apache 2.0); llama.cpp và ggml (MIT)</td></tr>
 <tr><th scope="row">Silero VAD</th><td>Phát hiện đoạn có tiếng nói để cắt câu</td><td>MIT</td></tr>
 <tr><th scope="row">Tauri 2, Rust, React 19</th><td>Khung ứng dụng và giao diện</td><td>Tauri: MIT hoặc Apache-2.0; React: MIT</td></tr>
 <tr><th scope="row">SQLCipher</th><td>Mã hóa lịch sử, khi bạn bật lưu lịch sử</td><td>Giấy phép kiểu BSD</td></tr>

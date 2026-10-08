@@ -3,6 +3,7 @@ const ENT = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'
 
 export function htmlToText(html) {
   let s = html
+    .replace(/<!--llm-skip-->[\s\S]*?<!--\/llm-skip-->/g, "")
     .replace(/<script[\s\S]*?<\/script>/g, "")
     .replace(/<style[\s\S]*?<\/style>/g, "")
     .replace(/<svg[\s\S]*?<\/svg>/g, "")

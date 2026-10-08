@@ -41,7 +41,7 @@ ${feature({ icon: "captions", title: "Thanh phụ đề nổi", text: "Một tha
 ${sectionHead({ eyebrow: "Trước khi bắt đầu", title: "Cần chuẩn bị gì?", center: true })}
 <div class="reveal">${facts([
   ["Nền tảng", "macOS 14.2+ trên Apple Silicon (beta)<small>Windows 10/11: sắp có · Mac Intel: chưa hỗ trợ</small>"],
-  ["Máy", "RAM tối thiểu 8 GB, khuyến nghị 16 GB<small>Tải model một lần: 1,3 GB (gói Nhẹ) hoặc 2,5 GB (gói Chuẩn)</small>"],
+  ["Máy", "RAM tối thiểu 8 GB, khuyến nghị 16 GB<small>Tải model một lần: 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)</small>"],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Giao diện app: Tiếng Việt và English</small>"],
   ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
 ])}</div>
@@ -76,7 +76,7 @@ ${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", tex
 ${sectionHead({ eyebrow: "Đọc tiếp", title: "Muốn hiểu sâu hơn?", center: true })}
 <div class="grid grid-3">
 ${linkCard({ href: "/so-sanh/dich-offline-va-cloud/", icon: "layers", title: "Dịch offline và dịch cloud", text: "So sánh cân bằng: riêng tư, chi phí, độ trễ, phần cứng và khi nào chọn cách nào.", more: "Đọc bài so sánh" })}
-${linkCard({ href: "/huong-dan/bat-dau-nhanh/", icon: "zap", title: "Bắt đầu nhanh", text: "Từ cài đặt tới phụ đề đầu tiên, kèm quyền thu âm trên macOS.", more: "Xem hướng dẫn" })}
+${linkCard({ href: "/huong-dan/bat-dau-nhanh/", icon: "zap", title: "Bắt đầu nhanh", text: "Từ cài đặt tới phụ đề đầu tiên, kèm quyền ghi âm trên macOS.", more: "Xem hướng dẫn" })}
 ${linkCard({ href: "/bang-gia/", icon: "wallet", title: "Bảng giá", text: "Free dùng thử 10 ngày, Monthly 50.000 ₫, Yearly 500.000 ₫.", more: "Xem bảng giá" })}
 </div>
 </div></section>

@@ -20,7 +20,6 @@ export default {
   modified: "2026-10-08",
   llm: "How AI Translator came about, the product principles, who builds it (Đỗ Tiến Phong, an independent developer), beta status, directions under consideration (not commitments), the open-source technology it uses and short legal information.",
   llmTitle: "About AI Translator",
-  schema: [{ "@type": "Person", "@id": `${SITE.origin}/en/about/#person`, name: SITE.owner, url: `${SITE.origin}/en/about/` }],
   body: () => `
 ${pageHero({
   crumbs,

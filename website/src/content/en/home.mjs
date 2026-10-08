@@ -103,7 +103,7 @@ ${demo({
 ${sectionHead({ eyebrow: "How it works", title: "From installation to your first subtitles in three steps", text: "No complicated setup, and no bot to invite to your meeting.", center: true })}
 ${steps([
   { title: "Install the app and download the models once", text: "Open the app, follow the welcome steps, allow system audio recording (macOS) and download the models to your computer (about 1.3 GB or 2.5 GB, depending on the pack). After that, everything runs offline." },
-  { title: "Press Start when your meeting begins", text: "Choose the language to <strong>Translate into</strong>, then press <strong>Start</strong> or use the shortcut. The app listens to whatever is playing on your computer, whether it is Zoom, Teams, Meet or a video." },
+  { title: "Press Start when your meeting begins", text: "Choose the language you want to read (<strong>Translate into</strong>), then press <strong>Start</strong> or use the shortcut. The app listens to whatever is playing on your computer, whether it is Zoom, Teams, Meet or a video." },
   { title: "Read the floating subtitles", text: "The subtitle bar shows the translation soon after the speaker finishes a sentence (on a Mac M4 Pro the median delay is under 1.1 seconds; other computers may be slower), with the original text in small type above it (you can turn that off). Drag it, resize it, change the text size or lock it in place." },
 ])}
 <p class="center-text reveal"><a class="btn btn-ghost" href="/en/guide/quick-start/">Read the quick-start guide ${icon("arrow-right")}</a></p>
@@ -176,7 +176,7 @@ ${linkCard({ href: "/en/solutions/webinar-and-video-translation/", icon: "play",
 
 <section class="section" id="pricing"><div class="container">
 ${sectionHead({ eyebrow: "Pricing", title: "Three simple plans, prepaid with VietQR", text: "No auto-renewal, no recurring billing, no surprises on your bill.", center: true })}
-${plansGrid("en", { ctaLabel: "Get the beta", freeLabel: "Try it free for 10 days" })}
+${plansGrid("en", { ctaLabel: "Get the beta", freeLabel: "Sign up for the free trial" })}
 <p class="disclaimer">Prices are in Vietnamese dong (VND). Payment is by bank transfer from a Vietnamese bank (VietQR) only; international cards are not accepted yet.</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/en/pricing/">Compare the plans in detail ${icon("arrow-right")}</a></p>
 </div></section>

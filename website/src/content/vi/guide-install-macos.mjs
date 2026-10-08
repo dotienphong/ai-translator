@@ -65,10 +65,10 @@ ${facts([
   ["Hệ điều hành", "macOS 14.2 trở lên"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB<small>Máy dưới 8 GB: app báo lý do và không cho tải model.</small>"],
   ["Bộ cài", "File .dmg khoảng 9 MB"],
-  ["Ổ đĩa cho model", "1,3 GB (gói Nhẹ) hoặc 2,5 GB (gói Chuẩn)<small>Cộng thêm 1 GB trống khi tải.</small>"],
+  ["Ổ đĩa cho model", "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)<small>Cộng thêm 1 GB trống khi tải.</small>"],
   ["Mạng", "Cần để tải model và đăng ký dùng thử Free<small>Sau đó dịch offline.</small>"],
 ])}
-<p class="small muted">Chúng tôi chưa đo hiệu năng trên Mac M1 cơ bản nên chưa cam kết độ trễ ở máy đó. Với máy 8 GB, gói Nhẹ là lựa chọn phù hợp.</p>
+<p class="small muted">Chúng tôi chưa đo hiệu năng trên Mac M1 cơ bản nên chưa cam kết độ trễ ở máy đó. Với máy 8 GB, gói model Nhẹ là lựa chọn phù hợp.</p>
 
 <h2 id="kiem-tra-file">Kiểm tra file cài đặt (SHA-256)</h2>
 ${callout({ kind: "warn", title: "Chỉ tải bản cài từ nguồn chính thức.", text: "File .dmg đúng là file chúng tôi gửi từ <strong>support@aitranslator.io.vn</strong> hoặc liên kết trên <strong>aitranslator.io.vn</strong>. File từ nơi khác có thể là bản giả hoặc bị sửa đổi. Đừng mở nó, dù nó mang tên AI Translator." })}
@@ -107,7 +107,7 @@ ${callout({ kind: "warn", title: "Từ macOS 15, mẹo bấm chuột phải › 
 <li><strong>Khoảng 5 hộp thoại Keychain</strong> (hỏi mật khẩu đăng nhập Mac; chúng tôi đo được 5 hộp thoại trên một Mac chạy macOS 26): nhập mật khẩu rồi chọn <strong>Always Allow</strong>. Đừng chọn Deny: app sẽ không đọc được bản quyền và hạn mức. Nếu lỡ chọn, hãy thoát hẳn app, mở lại và chọn Always Allow.</li>
 <li><strong>1 hộp thoại quyền ghi âm thanh hệ thống</strong> (cũng là kết quả đo của chúng tôi): chọn cho phép.</li>
 </ul>
-<p>Sau đó các lần mở sau không hỏi nữa. Bạn không mất dữ liệu, gói hay hạn mức. Khi cài mới lần đầu, chúng tôi đo được không có hộp thoại Keychain (chỉ có Open Anyway và quyền thu âm); nếu macOS vẫn hỏi, hãy chọn Always Allow. App báo trước điều này khi mời cập nhật: “Sau khi cập nhật, macOS sẽ hỏi mật khẩu đăng nhập vài lần và quyền thu âm một lần…”. Việc này sẽ hết khi chúng tôi có Developer ID. Bản .dmg gửi tay trong giai đoạn beta có thể chưa tự cập nhật; khi đó bạn tải file .dmg mới.</p>
+<p>Sau đó các lần mở sau không hỏi nữa. Bạn không mất dữ liệu, gói hay hạn mức. Khi cài mới lần đầu, chúng tôi đo được không có hộp thoại Keychain (chỉ có Open Anyway và quyền ghi âm); nếu macOS vẫn hỏi, hãy chọn Always Allow. App báo trước điều này khi mời cập nhật: “Sau khi cập nhật, macOS sẽ hỏi mật khẩu đăng nhập vài lần và quyền ghi âm một lần…”. Việc này sẽ hết khi chúng tôi có Developer ID. Bản .dmg gửi tay trong giai đoạn beta có thể chưa tự cập nhật; khi đó bạn tải file .dmg mới.</p>
 
 <h2 id="go-cai-dat">Gỡ cài đặt đúng cách</h2>
 <p>macOS không có bước nào hỏi khi bạn xóa app, nên hãy xóa model và dữ liệu trước khi kéo app vào Thùng rác:</p>

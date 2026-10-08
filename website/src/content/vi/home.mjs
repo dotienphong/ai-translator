@@ -8,7 +8,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
-    a: "<p>Không. Âm thanh chỉ nằm trong bộ nhớ RAM trong lúc dịch, không ghi xuống đĩa và không gửi qua mạng. Chúng tôi đã kiểm bằng proxy trên macOS: trong lúc dịch, app không gửi dữ liệu âm thanh hay chữ chép lời ra ngoài.</p>",
+    a: "<p>Không. Âm thanh chỉ nằm trong bộ nhớ RAM trong lúc dịch, không ghi xuống đĩa và không gửi qua mạng. Chúng tôi đã kiểm tra bằng proxy trên macOS: trong lúc dịch, app không gửi dữ liệu âm thanh hay chữ chép lời ra ngoài.</p>",
   },
   {
     q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
@@ -153,8 +153,8 @@ ${feature({ icon: "history", title: "Lịch sử và xuất file", text: "Lưu b
 ${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "English, 中文, 日本語, 한국어 và Tiếng Việt, theo mọi chiều. Giao diện app có tiếng Việt và English." })}
 </div>
 <div class="stats reveal">
-<div class="stat"><b>&lt; 1,1 giây</b><span>độ trễ trung vị từ lúc người nói dừng câu tới khi hiện đủ bản dịch (Mac M4 Pro, gói Chuẩn)</span></div>
-<div class="stat"><b>0</b><span>dữ liệu âm thanh hay chữ chép lời rời khỏi máy khi dịch (đã kiểm bằng proxy trên macOS)</span></div>
+<div class="stat"><b>&lt; 1,1 giây</b><span>độ trễ trung vị từ lúc người nói dừng câu tới khi hiện đủ bản dịch (Mac M4 Pro, gói model Chuẩn)</span></div>
+<div class="stat"><b>0</b><span>dữ liệu âm thanh hay chữ chép lời rời khỏi máy khi dịch (đã kiểm tra bằng proxy trên macOS)</span></div>
 <div class="stat"><b>5 giờ 23 phút</b><span>một phiên dịch liên tục không lỗi trong thử nghiệm nội bộ trên macOS</span></div>
 </div>
 <p class="disclaimer">Số đo trên một máy cụ thể (Mac M4 Pro 24 GB, macOS 26). Máy khác có thể chậm hơn; xem <a href="/tinh-nang/#hieu-nang">chi tiết hiệu năng và điều kiện đo</a>.</p>
@@ -170,7 +170,7 @@ ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "We
 
 <section class="section" id="gia"><div class="container">
 ${sectionHead({ eyebrow: "Bảng giá", title: "Ba gói đơn giản, trả trước bằng VietQR", text: "Không tự động gia hạn, không thanh toán định kỳ, không bất ngờ trên hóa đơn.", center: true })}
-${plansGrid("vi", { ctaLabel: "Nhận bản beta", freeLabel: "Dùng thử miễn phí" })}
+${plansGrid("vi", { ctaLabel: "Nhận bản beta", freeLabel: "Đăng ký dùng thử" })}
 <p class="center-text reveal"><a class="btn btn-ghost" href="/bang-gia/">So sánh chi tiết các gói ${icon("arrow-right")}</a></p>
 </div></section>
 
@@ -184,6 +184,6 @@ ${faq(HOME_FAQ, { open: true })}
 <p class="more-link"><a href="/cau-hoi-thuong-gap/">Xem tất cả câu hỏi ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "Sẵn sàng hiểu mọi cuộc họp?", text: "Nhận bản beta cho macOS, dùng thử miễn phí 10 ngày, không cần thẻ.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Xem hướng dẫn" } })}
+${ctaBand({ title: "Thử trên cuộc họp tiếp theo của bạn", text: "Nhận bản beta cho macOS, dùng thử miễn phí 10 ngày, không cần thẻ.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Xem hướng dẫn" } })}
 `,
 };

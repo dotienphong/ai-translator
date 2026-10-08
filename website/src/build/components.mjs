@@ -38,7 +38,7 @@ ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
 };
 
 /** Bảng thông tin nhanh (dl): dễ cho người đọc và cho trợ lý AI trích dẫn. rows: [[nhãn, HTML]] */
-export const facts = (rows) => `<dl class="facts">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join("")}</dl>`;
+export const facts = (rows) => `<dl class="facts">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v.replace(/<small>/g, "<br><small>")}</dd></div>`).join("")}</dl>`;
 
 /** Chip phím: keys(["⌃","⌥","T"]) */
 export const keys = (list) => `<span class="keys">${list.map((k) => `<kbd>${esc(k)}</kbd>`).join("")}</span>`;
@@ -108,7 +108,7 @@ ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
 
 /** Minh họa cuộc họp có thanh phụ đề dịch (HTML/CSS thuần, hoạt họa bằng CSS). pairs: [{src, dst}] (đúng 3). */
 export function demo({ title, rec, langs, pairs, note, names, floatA, floatB }) {
-  return `<div class="demo-wrap">
+  return `<!--llm-skip--><div class="demo-wrap">
 <div class="demo" role="img" aria-label="${esc(note)}">
 <div class="demo-bar"><i></i><span>${esc(title)}</span><span class="rec">${esc(rec)}</span></div>
 <div class="demo-stage" aria-hidden="true">
@@ -121,7 +121,7 @@ ${pairs.map((p) => `<span class="pair"><span class="src">${esc(p.src)}</span><sp
 </div>
 ${floatA ? `<span class="floaty a">${icon(floatA.icon)} ${esc(floatA.text)}</span>` : ""}
 ${floatB ? `<span class="floaty b">${icon(floatB.icon)} ${esc(floatB.text)}</span>` : ""}
-</div>`;
+</div><!--/llm-skip-->`;
 }
 
 /** Ba gói giá. lang: "vi" | "en". Trả HTML của .plans. */

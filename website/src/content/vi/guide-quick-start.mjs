@@ -20,7 +20,7 @@ const HOWTO_STEPS = [
   { name: "Cài app và mở lần đầu", text: "Kéo AI Translator vào Applications, mở app, bấm Done ở hộp thoại cảnh báo rồi bấm Open Anyway trong System Settings > Privacy & Security." },
   { name: "Chọn ngôn ngữ giao diện", text: "Chọn Tiếng Việt hoặc English rồi bấm Tiếp. Lựa chọn này cũng đặt ngôn ngữ đích mặc định." },
   { name: "Đồng ý điều khoản", text: "Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, tick ô đồng ý rồi bấm Tiếp. Cần mạng một lần để bắt đầu dùng thử Free." },
-  { name: "Chọn và tải model", text: "Chọn gói Chuẩn (khoảng 2,5 GB) hoặc gói Nhẹ (khoảng 1,3 GB) theo đề xuất của app và chờ tải xong." },
+  { name: "Chọn và tải model", text: "Chọn gói model Chuẩn (khoảng 2,5 GB) hoặc gói model Nhẹ (khoảng 1,3 GB) theo đề xuất của app và chờ tải xong." },
   { name: "Cho phép ghi âm thanh hệ thống", text: "Khi macOS hỏi quyền Ghi âm thanh hệ thống, chọn cho phép. App không dùng micro." },
   { name: "Chọn ngôn ngữ", text: "Chọn ngôn ngữ muốn đọc ở ô Dịch sang và các ngôn ngữ có thể được nói trong cuộc họp." },
   { name: "Nghe thử", text: "Bấm Phát câu mẫu để thấy phụ đề hiện trên thanh phụ đề." },
@@ -68,7 +68,7 @@ ${facts([
   ["Hệ điều hành", "macOS 14.2 trở lên"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
   ["Bản cài", "File .dmg khoảng 9 MB<small>Chúng tôi gửi liên kết tải qua email khi bạn đăng ký beta ở trang <a href=\"/tai-xuong/\">Tải xuống</a></small>"],
-  ["Ổ đĩa", "1,3 GB (gói Nhẹ) hoặc 2,5 GB (gói Chuẩn)<small>Cộng thêm 1 GB trống khi tải model</small>"],
+  ["Ổ đĩa", "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)<small>Cộng thêm 1 GB trống khi tải model</small>"],
   ["Mạng", "Cần để tải model và đăng ký dùng thử Free<small>Sau đó nhận dạng và dịch chạy offline</small>"],
 ])}
 ${callout({ title: "Bản Windows chưa phát hành.", text: "Bài này chỉ hướng dẫn trên macOS. Windows chưa có ngày phát hành." })}

@@ -147,12 +147,16 @@ function headers() {
   Cache-Control: public, max-age=3600
 /robots.txt
   Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
 /llms.txt
   Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
 /llms-full.txt
   Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
 /llms-full.vi.txt
   Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
 `;
 }
 

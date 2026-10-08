@@ -124,7 +124,7 @@ ${callout({ title: "Other participants will not be told.", text: "Because there 
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Honest limits", title: "What to keep in mind" })}
 ${checkList([
-  "<strong>Latency:</strong> median 0.76–1.03 seconds and p90 0.94–1.34 seconds, measured on a Mac M4 Pro with 24 GB, Standard pack. Slower machines will be slower: we have not measured an M1 Mac, and on one Windows laptop with integrated graphics the Standard pack missed our target. See <a href=\"/en/features/\">the measurement conditions</a>.",
+  "<strong>Latency:</strong> median 0.76–1.03 seconds and p90 0.94–1.34 seconds, measured on a Mac M4 Pro with 24 GB, Standard pack. Less powerful machines will see higher latency: we have not measured an M1 Mac, and on one Windows laptop with integrated graphics the Standard pack missed our target. See <a href=\"/en/features/\">the measurement conditions</a>.",
   "<strong>Quality varies</strong> with the language and how clear the audio is. The Lite pack transcribes less accurately than Standard in Vietnamese, Japanese, Korean and Chinese. We have not measured accuracy over real Bluetooth headsets.",
   "<strong>Translations can be wrong,</strong> especially jargon and proper names. Do not rely on them for important decisions without checking with a qualified person.",
 ], true)}

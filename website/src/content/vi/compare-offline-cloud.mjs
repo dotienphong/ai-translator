@@ -22,7 +22,7 @@ export const COMPARE_FAQ = [
   },
   {
     q: "Máy cần cấu hình gì để dịch offline?",
-    a: "<p>RAM tối thiểu 8 GB (khuyến nghị 16 GB), Mac Apple Silicon với macOS 14.2 trở lên, và khoảng 1,3 GB (gói Nhẹ) hoặc 2,5 GB (gói Chuẩn) ổ đĩa cho model. Windows sắp có; Mac Intel chưa hỗ trợ.</p>",
+    a: "<p>RAM tối thiểu 8 GB (khuyến nghị 16 GB), Mac Apple Silicon với macOS 14.2 trở lên, và khoảng 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn) ổ đĩa cho model. Windows sắp có; Mac Intel chưa hỗ trợ.</p>",
   },
   {
     q: "Dịch offline có dịch giọng của tôi cho người khác nghe không?",
@@ -76,7 +76,7 @@ ${docLayout({
 <tr><th scope="row">Âm thanh rời máy?</th><td>Có</td><td>Không, chỉ nằm trong RAM</td></tr>
 <tr><th scope="row">Cần internet khi dịch</th><td>Có</td><td>Không</td></tr>
 <tr><th scope="row">Bot hoặc plugin</th><td>Tính năng tích hợp thì không; công cụ ngoài có thể cần</td><td>Không, dùng với mọi app phát tiếng</td></tr>
-<tr><th scope="row">Chi phí của thêm một phút dịch</th><td>Tốn tài nguyên máy chủ của nhà cung cấp</td><td>Không tốn hạ tầng của nhà cung cấp; dùng máy bạn</td></tr>
+<tr><th scope="row">Chi phí khi dịch thêm một phút</th><td>Tốn tài nguyên máy chủ của nhà cung cấp</td><td>Không tốn hạ tầng của nhà cung cấp; dùng máy bạn</td></tr>
 <tr><th scope="row">Độ trễ</th><td>Phụ thuộc đường truyền và tải máy chủ</td><td>Phụ thuộc phần cứng của bạn</td></tr>
 <tr><th scope="row">Số ngôn ngữ</th><td>Thường nhiều hơn</td><td>5 ngôn ngữ</td></tr>
 <tr><th scope="row">Yêu cầu máy</th><td>Thấp</td><td>RAM từ 8 GB, tải model 1,3–2,5 GB</td></tr>
@@ -97,8 +97,8 @@ ${docLayout({
 <p>Chi phí chuyển sang máy bạn: RAM, ổ đĩa, điện năng (chưa đo pin). Xem <a href="/bang-gia/">bảng giá</a>.</p>
 
 <h2 id="tre-may-ngon-ngu">Độ trễ, yêu cầu máy và số ngôn ngữ</h2>
-<p>Cloud đẩy việc nặng sang máy chủ nên chạy được cả trên máy yếu, nhưng độ trễ còn phụ thuộc đường truyền. Dịch offline cần máy đủ mạnh: AI Translator cần RAM tối thiểu 8 GB (khuyến nghị 16 GB), Mac Apple Silicon với macOS 14.2 trở lên, và tải model một lần 1,3 GB (gói Nhẹ) hoặc 2,5 GB (gói Chuẩn).</p>
-<p>Trên Mac M4 Pro, độ trễ trung vị là 0,76–1,03 giây với gói Chuẩn. Máy yếu hơn sẽ chậm hơn; chưa đo Mac M1. Dịch vụ cloud thường hỗ trợ nhiều ngôn ngữ hơn năm ngôn ngữ của AI Translator (English, 中文, 日本語, 한국어, Tiếng Việt). Chúng tôi không so chất lượng dịch vì chưa có phép đo chung.</p>
+<p>Cloud đẩy việc nặng sang máy chủ nên chạy được cả trên máy yếu, nhưng độ trễ còn phụ thuộc đường truyền. Dịch offline cần máy đủ mạnh: AI Translator cần RAM tối thiểu 8 GB (khuyến nghị 16 GB), Mac Apple Silicon với macOS 14.2 trở lên, và tải model một lần 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn).</p>
+<p>Trên Mac M4 Pro, độ trễ trung vị là 0,76–1,03 giây với gói model Chuẩn. Máy yếu hơn sẽ chậm hơn; chưa đo Mac M1. Dịch vụ cloud thường hỗ trợ nhiều ngôn ngữ hơn năm ngôn ngữ của AI Translator (English, 中文, 日本語, 한국어, Tiếng Việt). Chúng tôi không so chất lượng dịch vì chưa có phép đo chung.</p>
 
 <h2 id="cap-nhat-tich-hop">Cập nhật model và độ tích hợp</h2>
 <p>Cloud được nhà cung cấp cập nhật phía máy chủ nên bạn nhận bản mới mà không phải làm gì. Model offline giữ nguyên trên máy cho tới khi bạn tải bản mới; app hỏi trước khi tải.</p>

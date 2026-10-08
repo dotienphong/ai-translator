@@ -120,6 +120,9 @@ ${langSwitch}
 
 function footer(page) {
   const t = T[page.lang];
+  const iso = page.modified ?? SITE.updated;
+  const [y, m, d] = iso.split("-");
+  const shown = page.lang === "vi" ? `${d}/${m}/${y}` : new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
   const f = FOOTER[page.lang];
   const col = (c) => `<div><p class="footer-title">${esc(c.title)}</p><ul>${c.links.map((l) => `<li><a href="${l.href}">${esc(l.label)}</a></li>`).join("")}</ul></div>`;
   return `<footer class="site-footer">
@@ -133,7 +136,7 @@ function footer(page) {
 ${f.map(col).join("")}
 </div>
 <div class="footer-bottom">
-<span>© ${SITE.year} ${SITE.name} · ${esc(t.provider)}: ${esc(SITE.owner)}</span>
+<span>© ${SITE.year} ${SITE.name} · ${esc(t.provider)}: ${esc(SITE.owner)} · ${esc(t.updated)} <time datetime="${iso}">${shown}</time></span>
 <span>${esc(t.trademark)}</span>
 </div>
 </div>
@@ -149,7 +152,9 @@ export function glue(html, lang = "vi") {
     .replace(/<th scope="col"><\/th>/g, `<th scope="col"><span class="sr-only">${L.col}</span></th>`)
     // Nhãn khác nhau cho từng bảng (axe landmark-unique): "Bảng dữ liệu 1", "Bảng dữ liệu 2"...
     .replace(/<div class="(table-wrap(?: [^"]*)?)">/g, (m, cls) => `<div class="${cls}" tabindex="0" role="region" aria-label="${L.table} ${++tableNo}">`)
-    .replace(/<pre>/g, '<pre tabindex="0">');
+    .replace(/<pre>/g, '<pre tabindex="0">')
+    // Giữa các phím trong tổ hợp có dấu "+" thật (để trích xuất chữ không dính "CtrlAltT").
+    .replace(/<\/kbd>\s*<kbd/g, '</kbd> + <kbd');
   return html.replace(/>([^<]+)</g, (m, text) => {
     const fixed = text
       .replace(/(?<![\p{L}])(phụ|Phụ) (đề)(?![\p{L}])/gu, `$1${NB}$2`)

@@ -99,7 +99,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <h2 id="shortcuts">Default shortcuts</h2>
 <p>Shortcuts work in every app, even when AI Translator is not the window in front.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Action</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
+<thead><tr><th scope="col">Action</th><th scope="col">macOS</th><th scope="col">Windows (when released)</th></tr></thead>
 <tbody>
 <tr><th scope="row">Start or stop translating</th><td>${keys(["⌃", "⌥", "T"])}</td><td>${keys(["Ctrl", "Alt", "T"])}</td></tr>
 <tr><th scope="row">Show or hide subtitles</th><td>${keys(["⌃", "⌥", "H"])}</td><td>${keys(["Ctrl", "Alt", "H"])}</td></tr>
