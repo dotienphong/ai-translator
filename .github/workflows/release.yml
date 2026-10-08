@@ -9,8 +9,9 @@
 # trình phụ đã ký, mỗi nền tảng có bốn job: build tiến trình phụ → ký chúng → build app → ký và đóng gói. Chữ ký bản cập
 # nhật ký ở một job riêng cuối cùng, để khóa ký bản cập nhật không nằm chung job với chứng thư hay dịch vụ ký.
 #
-# Environment `release` phải có Required reviewers và chỉ cho tag `v*` (cùng nhánh `main` cho lần chạy tay) TRƯỚC khi
-# nhập secret đầu tiên (kế hoạch 07a, Task 14). Mỗi job có secret chờ người duyệt.
+# Environment `release` chỉ cho tag `v*` (cùng nhánh `main` cho lần chạy tay) TRƯỚC khi nhập secret đầu tiên (kế hoạch 07a,
+# Task 14). Từ 2026-10-09 không còn Required reviewers (chủ dự án chọn, vì chỉ một người và mỗi lần chạy phải bấm duyệt
+# sáu lần): luật giới hạn nhánh/tag là lớp chặn duy nhất, đừng bỏ nó. Tag `v*` đẩy lên là tự đăng bản lên R2.
 #
 # Secret của environment `release`:
 #   APPLE_CERTIFICATE_P12, APPLE_CERTIFICATE_PASSWORD   chứng thư Developer ID Application (.p12, base64) và mật khẩu
