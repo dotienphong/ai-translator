@@ -38,7 +38,7 @@ Dùng được nhưng chung chung: mọi trang là tiêu đề và các hộp tr
 - CSP giữ nguyên (`default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; ...`): không style inline trong HTML, không thẻ `<style>`, không script inline, không tải font hay ảnh từ nơi khác. Font nằm trong bản build (Vite phát tệp băm tên cùng origin). Biểu tượng là SVG nội tuyến trong JSX hay `data:` URI.
 - Không thêm thư viện giao diện hay biểu tượng (React 19.3.0, Recharts 3.10.1 đã có). Thêm thư viện chỉ khi thật cần, theo quy tắc phiên bản của dự án.
 - Giữ nguyên ngữ nghĩa (vai trò ARIA, nhãn, chữ của nút) để test và trình đọc màn hình không vỡ; khi đổi chữ hay cấu trúc thì sửa test cho khớp thiết kế mới và giải thích.
-- Dung lượng: gói chính không tăng quá 60 KB gzip tính cả font; font tải theo nhu cầu (`font-display: swap`).
+- Dung lượng: gói chính không tăng quá 90 KB gzip tính cả font (so với giao diện cũ `4fe54dd`); font tải theo nhu cầu (`font-display: swap`). Quyết định 2026-10-08: ngưỡng ban đầu 60 KB được nới lên 90 KB vì riêng bốn tệp font (400 và 600, latin và tiếng Việt) đã khoảng 36 KB, phần còn lại (biểu tượng SVG nội tuyến, thành phần dùng chung, CSS hai chế độ màu) không bỏ được mà không mất nhận diện hay trợ năng; trang Tổng quan (Recharts) vẫn tải lười, không tính vào gói chính.
 - Hiệu năng cảm nhận: không chặn vẽ lần đầu vì font; skeleton thay vì chữ.
 - Giao diện chỉ tiếng Việt, giờ GMT+7 như cũ.
 

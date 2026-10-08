@@ -2,8 +2,8 @@
    (CSP default-src 'self', không có font-src riêng). Mỗi độ đậm tách hai tệp theo unicode-range: trình duyệt chỉ tải tệp
    tiếng Việt khi trang có dấu tiếng Việt; font-display: swap để chữ hiện ngay bằng font hệ thống trong lúc tải.
    Chỉ hai độ đậm 400 và 600 (khoảng 36 KB cả bốn tệp): thêm 700 là thêm 18 KB, vượt ngân sách dung lượng của spec mục 3
-   (gói chính tăng không quá 60 KB gzip tính cả font). Vì vậy giao diện không dùng font-weight 700; nếu có chỗ xin 700,
-   trình duyệt dùng mặt 600 (không tự tô đậm giả). */
+   (gói chính tăng không quá 90 KB gzip tính cả font so với giao diện cũ; ngưỡng 60 KB ban đầu đã nới vì font chiếm khoảng
+   36 KB). Vì vậy giao diện không dùng font-weight 700; nếu có chỗ xin 700, trình duyệt dùng mặt 600 (không tự tô đậm giả). */
 
 @font-face {
   font-family: "Be Vietnam Pro";

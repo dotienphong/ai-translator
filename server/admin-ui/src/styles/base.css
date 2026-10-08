@@ -236,7 +236,7 @@ a:where(:not(.btn)):focus-visible {
 }
 :where(button, .btn).danger {
   --btn-fg: var(--bad);
-  --btn-border: var(--bad-line);
+  --btn-border: var(--bad-border);
   --btn-bg-hover: var(--bad-soft);
   --btn-border-hover: var(--bad);
 }

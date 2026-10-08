@@ -55,6 +55,12 @@ const PAIRS: [string, string, number][] = [
   ["on-bad", "bad-solid", 4.5],
   ["on-bad", "bad-solid-hover", 4.5],
   ["bad-solid", "surface", 3],
+  // Viền nút nguy hiểm dạng viền (WCAG 1.4.11): ≥ 3:1 với nền thẻ, nền trang và nền phụ. Viền nút phụ (--line-strong) cố ý
+  // nhẹ: chữ trên nút đã đủ nhận ra nút (1.4.11 không đòi viền khi chữ đã xác định thành phần); nút nguy hiểm thì cần ranh
+  // giới rõ để khó bấm nhầm.
+  ["bad-border", "surface", 3],
+  ["bad-border", "bg", 3],
+  ["bad-border", "surface-2", 3],
   // Chữ đỏ khi rê chuột (link cần chú ý ở Tổng quan)
   ["bad-hover", "surface", 4.5],
   // Huy hiệu, thông báo, số đếm: chữ ngữ nghĩa trên nền -soft và trên bề mặt (nút viền nguy hiểm)

@@ -57,6 +57,8 @@
   --bad-soft: #fdecea;
   --bad-hover: #8f1c13;
   --bad-line: #e3a29c;
+  /* Viền nút nguy hiểm dạng viền (Gỡ…, Thu hồi…): ≥ 3:1 với mọi nền mà nút đứng trên (WCAG 1.4.11) */
+  --bad-border: #ca655d;
   --info: #0f4aa3;
   --info-soft: #e7f0ff;
   --neutral: #4a5670;
@@ -167,6 +169,7 @@
     --bad-soft: #3a1517;
     --bad-hover: #ffb0a9;
     --bad-line: #7a3530;
+    --bad-border: #9f5f61;
     --info: #8fc0ff;
     --info-soft: #12274a;
     --neutral: #b4bfd4;
