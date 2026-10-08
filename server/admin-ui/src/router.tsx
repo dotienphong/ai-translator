@@ -69,14 +69,25 @@ export function usePath(): string {
   return useSyncExternalStore(subscribe, () => window.location.pathname);
 }
 
-export function Link({ to, children, className }: { to: string; children: ReactNode; className?: string }) {
+export function Link({
+  to,
+  children,
+  className,
+  current,
+}: {
+  to: string;
+  children: ReactNode;
+  className?: string;
+  /** Trang đang mở: thêm aria-current="page" cho trình đọc màn hình. */
+  current?: boolean;
+}) {
   function onClick(e: MouseEvent<HTMLAnchorElement>) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     navigate(to);
   }
   return (
-    <a href={to} className={className} onClick={onClick}>
+    <a href={to} className={className} aria-current={current ? "page" : undefined} onClick={onClick}>
       {children}
     </a>
   );
