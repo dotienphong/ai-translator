@@ -14,12 +14,12 @@ import { ErrorBox } from "../components/Feedback";
 import { IconAlert, IconBox, IconChevronDown, IconChevronUp, IconClock, IconInfo, IconRefresh, IconServer, IconWarning } from "../components/icons";
 import { PageHeader } from "../components/PageHeader";
 import { LoadingBlock, SkeletonLine } from "../components/Skeleton";
-import { fmtAgo, fmtBytes, fmtDateTime, fmtHm, fmtInt, nowSec } from "../format";
+import { fmtAgo, fmtBytes, fmtDateTime, fmtHm, fmtInt, nowSec, parseIsoUtc } from "../format";
 import { type Loaded, useLoad } from "../hooks";
 
 /** Chuỗi ngày giờ ISO của bucket thành GMT+7; không parse được thì hiện nguyên chuỗi gốc. */
 function fmtIso(iso: string): string {
-  const ms = Date.parse(iso);
+  const ms = parseIsoUtc(iso);
   return Number.isNaN(ms) ? iso : fmtDateTime(Math.floor(ms / 1000));
 }
 
@@ -203,7 +203,7 @@ function ChannelPanel({ name, source }: { name: string; source: Source<ChannelIn
 }
 
 function ChannelBody({ c }: { c: ChannelInfo }) {
-  const ms = c.pub_date === null ? Number.NaN : Date.parse(c.pub_date);
+  const ms = c.pub_date === null ? Number.NaN : parseIsoUtc(c.pub_date);
   return (
     <>
       <p className="sys-version">

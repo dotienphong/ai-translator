@@ -64,6 +64,7 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const typedRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   const trimmed = note.trim();
   const noteOk = !p.needsNote || (trimmed.length >= 1 && trimmed.length <= 500);
   const typedOk = p.typeToConfirm === undefined || typed === p.typeToConfirm;
@@ -79,6 +80,12 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
     if (first) first.focus();
     else formRef.current?.focus();
   }, []);
+
+  // Có lỗi (nhất là cảnh báo "không chắc kết quả"): cuộn khối lỗi vào tầm nhìn trong thân hộp. Cửa sổ thấp hay phóng to
+  // 200% thì thân hộp cuộn được và khối lỗi nằm cuối, dễ bị khuất dưới các ô nhập.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [error, uncertain]);
 
   // Đóng hộp (nút Hủy, Esc): đóng khi đang không rõ kết quả thì trang mới tải lại, để người vận hành đã đọc cảnh báo.
   function close() {
@@ -187,7 +194,7 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
             </div>
           )}
           {error && (
-            <div className={uncertain ? "dialog-error is-uncertain" : "dialog-error"} role="alert">
+            <div ref={errorRef} className={uncertain ? "dialog-error is-uncertain" : "dialog-error"} role="alert">
               {uncertain ? <IconWarning size={18} /> : <IconAlert size={18} />}
               <div>
                 <p>{error}</p>

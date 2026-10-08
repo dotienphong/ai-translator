@@ -62,6 +62,8 @@ describe("Sidebar", () => {
   it("thu gọn: nút đổi thành Mở rộng thanh bên", () => {
     setup({ collapsed: true });
     expect(screen.getByRole("button", { name: "Mở rộng thanh bên" })).toBeTruthy();
+    // Trạng thái của thanh bên cho trình đọc màn hình: thu gọn là aria-expanded false.
+    expect(screen.getByRole("button", { name: "Mở rộng thanh bên" }).getAttribute("aria-expanded")).toBe("false");
   });
 
   it("ngăn kéo đóng: không phải hộp thoại; mở: hộp thoại Menu, Esc gọi onClose", async () => {

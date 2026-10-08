@@ -91,7 +91,13 @@ export function DevicePage({ hash }: { hash: string }) {
     if (!a) return null;
     return (
       <p className="lic-here">
-        {a.deactivated_at === null ? (
+        {a.deactivated_at === null && l.revoked_at !== null ? (
+          // Máy chưa gỡ nhưng license đã thu hồi: không phải "đang kích hoạt" (máy về Free ở lần kiểm kế tiếp).
+          <>
+            <span className="lic-here-dot is-revoked" aria-hidden="true" />
+            Trên máy này: kích hoạt từ {fmtDate(a.created_at)}, license đã thu hồi
+          </>
+        ) : a.deactivated_at === null ? (
           <>
             <span className="lic-here-dot is-on" aria-hidden="true" />
             Trên máy này: đang kích hoạt từ {fmtDate(a.created_at)}

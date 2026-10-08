@@ -16,7 +16,7 @@ import { PageHeader } from "../components/PageHeader";
 import { RelTime } from "../components/RelTime";
 import { focusSearch } from "../components/SearchBox";
 import { SkeletonTable } from "../components/Skeleton";
-import { fmtDate, maskKey, nowSec, shortHash } from "../format";
+import { fmtDateTime, maskKey, nowSec, shortHash } from "../format";
 import { api } from "../api/endpoints";
 import { useLoad } from "../hooks";
 import { Link, navigate } from "../router";
@@ -64,15 +64,21 @@ function OpenSearch({ label = "Mở ô tra cứu" }: { label?: string }) {
 interface DeviceHit {
   a: Activation;
   key: string;
+  /** License của lần kích hoạt này đã bị thu hồi. */
+  revoked: boolean;
 }
 
-/** Máy từng kích hoạt các license tìm được (một dòng mỗi máy, lần kích hoạt mới nhất). */
+/** Thứ hạng khi chọn lần kích hoạt đại diện của một máy: đang dùng trên license còn hiệu lực trước, rồi license đã thu hồi, rồi đã gỡ. */
+const rank = (h: DeviceHit) => (h.a.deactivated_at !== null ? 0 : h.revoked ? 1 : 2);
+
+/** Máy từng kích hoạt các license tìm được (một dòng mỗi máy): lần kích hoạt còn hiệu lực trước, cùng hạng thì mới nhất. */
 function devicesOf(r: LookupResult): DeviceHit[] {
   const by = new Map<string, DeviceHit>();
   for (const l of r.licenses) {
     for (const a of l.activations) {
+      const hit = { a, key: l.license_key, revoked: l.revoked_at !== null };
       const old = by.get(a.device_id_hash);
-      if (!old || old.a.created_at < a.created_at) by.set(a.device_id_hash, { a, key: l.license_key });
+      if (!old || rank(old) < rank(hit) || (rank(old) === rank(hit) && old.a.created_at < a.created_at)) by.set(a.device_id_hash, hit);
     }
   }
   return [...by.values()].sort((x, y) => y.a.last_validated_at - x.a.last_validated_at);
@@ -94,11 +100,18 @@ function deviceColumns(now: number): Column<DeviceHit>[] {
       ),
     },
     { header: "License", cell: ({ key }) => <code>{maskKey(key)}</code> },
-    { header: "Lần kiểm cuối", nowrap: true, cell: ({ a }) => <Cell2 main={<RelTime sec={a.last_validated_at} now={now} />} sub={fmtDate(a.last_validated_at)} /> },
+    { header: "Lần kiểm cuối", nowrap: true, cell: ({ a }) => <Cell2 main={<RelTime sec={a.last_validated_at} now={now} />} sub={fmtDateTime(a.last_validated_at)} /> },
     {
       header: "Trạng thái",
       aside: true,
-      cell: ({ a }) => (a.deactivated_at === null ? <Badge tone="ok">Đang kích hoạt</Badge> : <Badge tone="muted">Đã gỡ</Badge>),
+      cell: ({ a, revoked }) =>
+        a.deactivated_at !== null ? (
+          <Badge tone="muted">Đã gỡ</Badge>
+        ) : revoked ? (
+          <Badge tone="bad">License đã thu hồi</Badge>
+        ) : (
+          <Badge tone="ok">Đang kích hoạt</Badge>
+        ),
     },
   ];
 }

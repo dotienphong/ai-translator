@@ -251,8 +251,9 @@ code.q-id {
   grid-area: when;
   align-self: start;
 }
+/* Giờ chính xác luôn hiện (điện thoại không rê chuột để xem title): dòng phụ nhỏ dưới thời gian tương đối */
 .q-when .q-sub {
-  display: none;
+  white-space: nowrap;
 }
 .q-meta {
   grid-area: meta;
@@ -274,10 +275,6 @@ code.q-id {
     grid-template-areas: "main meta when act";
     gap: 0 var(--s-6);
     padding: 10px var(--s-5);
-  }
-  .q-when .q-sub {
-    display: block;
-    white-space: nowrap;
   }
   .q-meta {
     align-items: flex-end;
@@ -1401,6 +1398,10 @@ a.lic-key::after {
 .lic-here-dot.is-on {
   background: var(--ok);
   box-shadow: none;
+}
+.lic-here-dot.is-revoked {
+  background: var(--bad-soft);
+  box-shadow: inset 0 0 0 2px var(--bad);
 }
 .lic-go {
   grid-column: 2;

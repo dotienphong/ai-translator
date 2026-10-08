@@ -367,3 +367,29 @@ describe("ConfirmDialog: lý do tối đa 500 ký tự (T-2, C10)", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 });
+
+describe("ConfirmDialog: khối lỗi không bị khuất", () => {
+  it("lỗi không chắc kết quả: khối cảnh báo được cuộn vào tầm nhìn (cửa sổ thấp, phóng to 200%)", async () => {
+    const user = userEvent.setup();
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    render(
+      <ConfirmDialog
+        title="Gia hạn?"
+        description="x"
+        confirmLabel="Gia hạn"
+        needsNote={false}
+        onConfirm={async () => {
+          throw new ApiError(0, "network");
+        }}
+        onClose={() => {}}
+      />,
+    );
+    await user.click(button("Gia hạn"));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Không chắc thao tác đã chạy chưa");
+    expect(scroll.mock.instances).toContain(alert);
+    // @ts-expect-error: jsdom không có scrollIntoView; trả lại như cũ.
+    delete Element.prototype.scrollIntoView;
+  });
+});

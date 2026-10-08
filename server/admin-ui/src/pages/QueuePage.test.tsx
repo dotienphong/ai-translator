@@ -284,3 +284,12 @@ describe("QueuePage", () => {
     expect(await screen.findByText("Không có việc gì cần xử lý")).toBeTruthy();
   });
 });
+
+describe("QueuePage: số có dấu ngăn nghìn", () => {
+  it("số lần của cảnh báo: 1234 thành 1.234 lần", async () => {
+    serve({ ...NONE, alerts: { count: 1, items: [{ kind: "cron_stalled", window_start: 1_790_812_800, count: 1234, notified_count: 1 }] } });
+    render(<QueuePage />);
+    expect(await screen.findByText("1.234 lần")).toBeTruthy();
+    expect(screen.queryByText("1234 lần")).toBeNull();
+  });
+});

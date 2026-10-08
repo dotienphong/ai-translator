@@ -125,8 +125,9 @@ export function App() {
   const [announce, setAnnounce] = useState("");
   const me = useLoad(() => api.whoami(), []);
   // Số việc cần xử lý cho huy hiệu ở thanh bên: App tải một lần khi mở và gieo vào kho dùng chung; trang Việc cần xử lý đẩy
-  // số mới sau mỗi lần tải hay Làm mới (queue-store.ts). Lỗi thì không hiện gì (trang Việc cần xử lý tự báo lỗi).
-  const queue = useLoad(() => api.queue(), []);
+  // số mới sau mỗi lần tải hay Làm mới (queue-store.ts). Mở thẳng trang Việc cần xử lý thì App không tải (trang tự tải và
+  // gieo số): một lần truy vấn, một dòng queue_viewed. Lỗi thì không hiện gì (trang Việc cần xử lý tự báo lỗi).
+  const queue = useLoad(() => (route.name === "queue" ? Promise.resolve(null) : api.queue()), []);
   useEffect(() => {
     if (queue.data) seedQueueCount(queueTotal(queue.data));
   }, [queue.data]);

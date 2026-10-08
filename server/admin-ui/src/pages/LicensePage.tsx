@@ -21,8 +21,9 @@ import { RevealToggle } from "../components/MaskedKey";
 import { PageHeader } from "../components/PageHeader";
 import { RelTime } from "../components/RelTime";
 import { LicenseBadges, PLAN_LABELS } from "../components/StatusBadge";
-import { daysLeft, fmtDate, fmtDateTime, maskKey, nowSec, shortHash } from "../format";
+import { daysLeft, fmtDate, fmtDateTime, fmtWhen, maskKey, nowSec, shortHash } from "../format";
 import { useLoad } from "../hooks";
+import { refreshQueueCount } from "../queue-store";
 import { Link } from "../router";
 import { Callout, DangerZone, EmailText, DetailLayout, DetailNotFound, DetailSkeleton } from "./detail-kit";
 
@@ -35,8 +36,11 @@ const LIST_CRUMB = { label: "License", to: "/licenses" };
 
 const deviceName = (a: Activation) => a.device_label ?? shortHash(a.device_id_hash);
 
-/** Trong trang license, đơn nào cũng của license này: bỏ cột Email và Gói cho bảng gọn. */
-const ORDER_COLUMNS_HIDDEN = new Set(["Email", "Gói"]);
+/**
+ * Trong trang license, đơn nào cũng của license này: bỏ cột Email cho bảng gọn. Giữ cột Gói: đơn đổi gói trên cùng license
+ * có gói khác nhau (mua Monthly rồi đổi sang Yearly).
+ */
+const ORDER_COLUMNS_HIDDEN = new Set(["Email"]);
 
 export function LicensePage({ id }: { id: string }) {
   const data = useLoad(() => api.lookup({ license_id: id }), [id]);
@@ -206,10 +210,11 @@ export function LicensePage({ id }: { id: string }) {
                         </div>
                         <p className="dev-meta">
                           <code>{shortHash(a.device_id_hash)}</code>
+                          {/* Giờ chính xác ngay trong chữ: điện thoại không xem được title của thời gian tương đối. */}
                           <span>
-                            kiểm <RelTime sec={a.last_validated_at} now={now} />
+                            kiểm <RelTime sec={a.last_validated_at} now={now} /> ({fmtWhen(a.last_validated_at, now)})
                           </span>
-                          <span>kích hoạt {fmtDate(a.created_at)}</span>
+                          <span>kích hoạt {fmtDateTime(a.created_at)}</span>
                         </p>
                       </div>
                       {a.deactivated_at === null && !revoked && (
@@ -275,6 +280,7 @@ export function LicensePage({ id }: { id: string }) {
             const r = await api.extend(id, daysNum, note);
             notice.show(`Đã gia hạn tới ${fmtDate(r.expires_at)}.`);
             data.reload();
+            refreshQueueCount();
           }}
           onConflict={data.reload}
           onClose={close}
@@ -294,6 +300,7 @@ export function LicensePage({ id }: { id: string }) {
             await api.resend(id);
             notice.show("Đã gửi lại email.");
             data.reload();
+            refreshQueueCount();
           }}
           onConflict={data.reload}
           onClose={close}
@@ -309,6 +316,7 @@ export function LicensePage({ id }: { id: string }) {
             await api.unlock(id, note);
             notice.show("Đã mở khóa.");
             data.reload();
+            refreshQueueCount();
           }}
           onConflict={data.reload}
           onClose={close}
@@ -325,6 +333,7 @@ export function LicensePage({ id }: { id: string }) {
             await api.revoke(id, note);
             notice.show("Đã thu hồi license.");
             data.reload();
+            refreshQueueCount();
           }}
           onConflict={data.reload}
           onClose={close}
@@ -340,6 +349,7 @@ export function LicensePage({ id }: { id: string }) {
             await api.deactivate(dialog.activation.id, note);
             notice.show("Đã gỡ máy.");
             data.reload();
+            refreshQueueCount();
           }}
           onConflict={data.reload}
           onClose={close}
@@ -355,6 +365,7 @@ export function LicensePage({ id }: { id: string }) {
             await api.resetQuota(dialog.activation.id, note);
             notice.show("Đã reset hạn mức của máy.");
             data.reload();
+            refreshQueueCount();
           }}
           onConflict={data.reload}
           onClose={close}

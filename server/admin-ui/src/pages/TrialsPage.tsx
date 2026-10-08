@@ -9,7 +9,7 @@ import { Cell2, WhenCell } from "../components/columns";
 import { type Column, DataTable } from "../components/DataTable";
 import { ErrorBox } from "../components/Feedback";
 import { FilterBar } from "../components/FilterBar";
-import { daysLeft, fmtDate, shortHash } from "../format";
+import { daysLeft, fmtDateTime, shortHash } from "../format";
 import { usePaged } from "../hooks";
 import { Link } from "../router";
 import { emptyProps, ListHeader, ResultCount, SegmentField, useListView } from "./list-kit";
@@ -38,7 +38,7 @@ function columns(now: number): Column<TrialRow>[] {
       nowrap: true,
       cell: (t) => {
         const ended = t.ends_at <= now;
-        return <Cell2 main={<span className={ended ? "cell-none" : undefined}>{daysLeft(t.ends_at, now)}</span>} sub={`${ended ? "kết thúc" : "đến"} ${fmtDate(t.ends_at)}`} />;
+        return <Cell2 main={<span className={ended ? "cell-none" : undefined}>{daysLeft(t.ends_at, now)}</span>} sub={`${ended ? "kết thúc" : "đến"} ${fmtDateTime(t.ends_at)}`} />;
       },
     },
     { header: "Lần thấy cuối", nowrap: true, cell: (t) => <WhenCell sec={t.last_seen_at} now={now} /> },

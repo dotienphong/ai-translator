@@ -279,3 +279,26 @@ describe("khung trang", () => {
     expect(window.location.hash).toBe("");
   });
 });
+
+describe("số việc cần xử lý: không tải trùng", () => {
+  const queueCalls = () => vi.mocked(fetch).mock.calls.filter((c) => String(c[0]) === "/admin/queue").length;
+
+  it("mở thẳng trang Việc cần xử lý: chỉ một lần gọi /admin/queue (trang tự tải và gieo số; App không tải thêm)", async () => {
+    render(<App />);
+    await screen.findByText("Không có việc gì cần xử lý");
+    await screen.findByText("ops@example.com");
+    expect(queueCalls()).toBe(1);
+  });
+
+  it("mở trang khác: App tải đúng một lần cho huy hiệu; đổi trang không tải lại", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/orders");
+    render(<App />);
+    await screen.findByRole("heading", { name: "Đơn hàng" });
+    await screen.findByText("ops@example.com");
+    expect(queueCalls()).toBe(1);
+    await user.click(screen.getByRole("link", { name: "Nhật ký" }));
+    await screen.findByRole("heading", { name: "Nhật ký" });
+    expect(queueCalls()).toBe(1);
+  });
+});

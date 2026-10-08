@@ -183,3 +183,44 @@ describe("SearchPage: nhóm kết quả, tóm tắt, URL", () => {
     expect(screen.getAllByRole("button", { name: "Tra cứu khác" }).length).toBeGreaterThan(0);
   });
 });
+
+describe("SearchPage: máy dùng license đã thu hồi", () => {
+  const actOf = (id: string, licenseId: string, hash: string, over: object = {}) => ({
+    id,
+    license_id: licenseId,
+    device_id_hash: hash,
+    device_label: "MacBook",
+    quota_epoch: 0,
+    created_at: NOW - 100,
+    last_validated_at: NOW - 50,
+    deactivated_at: null,
+    deactivated_by: null,
+    ...over,
+  });
+  const row = (name: string) => within(screen.getByRole("region", { name: "Máy" })).getByRole("link", { name }).closest("tr") as HTMLElement;
+
+  it("máy có lần kích hoạt mới hơn trên license đã thu hồi và một lần trên license còn hiệu lực: đại diện là license còn hiệu lực, tông xanh", async () => {
+    const h = "c".repeat(64);
+    const revoked = { ...licenseOf(ID_A, KEY_A), revoked_at: NOW - 10, activations: [actOf("a1", ID_A, h, { created_at: NOW - 100 })] };
+    const live = { ...licenseOf(ID_B, KEY_B), activations: [actOf("b1", ID_B, h, { created_at: NOW - 5000 })] };
+    serve({ licenses: [revoked, live], orders: [] });
+    setSearch({ email: "khach@example.com" });
+    render(<SearchPage />);
+    await screen.findByRole("region", { name: "Máy" });
+    const r = row("MacBook");
+    expect(within(r).getByText("AAAA-…-GGGG")).toBeTruthy();
+    expect(within(r).getByText("Đang kích hoạt").className).toContain("badge-ok");
+  });
+
+  it("máy chỉ có trên license đã thu hồi (chưa gỡ): nhãn License đã thu hồi tông đỏ, không phải Đang kích hoạt", async () => {
+    const h = "d".repeat(64);
+    const revoked = { ...licenseOf(ID_A, KEY_A), revoked_at: NOW - 10, activations: [actOf("a1", ID_A, h)] };
+    serve({ licenses: [revoked, licenseOf(ID_B, KEY_B)], orders: [] });
+    setSearch({ email: "khach@example.com" });
+    render(<SearchPage />);
+    await screen.findByRole("region", { name: "Máy" });
+    const r = row("MacBook");
+    expect(within(r).queryByText("Đang kích hoạt")).toBeNull();
+    expect(within(r).getByText("License đã thu hồi").className).toContain("badge-bad");
+  });
+});

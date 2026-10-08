@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fmtDateTime, fmtWhen } from "../format";
+import { getQueueCount } from "../queue-store";
 import { LicensePage } from "./LicensePage";
 
 const ID = "0b9e7c1e-5f3a-4c1d-9a7e-2f1d3c4b5a69";
@@ -37,6 +39,9 @@ function json(body: unknown, status = 200) {
 }
 
 let calls: { url: string; method: string; body: unknown }[];
+const g = (count: number) => ({ count, items: [] });
+/** Hàng đợi sau thao tác (huy hiệu thanh bên): tổng 3. */
+const QUEUE = { needs_review: g(0), underpaid: g(1), email_failed: g(0), locked: g(0), conflict: g(2), alerts: g(0) };
 /** License trả về cho /admin/lookup; test đổi bằng withLicense. */
 let current: Record<string, unknown>;
 const withLicense = (patch: Record<string, unknown>) => {
@@ -54,6 +59,7 @@ beforeEach(() => {
     vi.fn(async (url: string, init: RequestInit = {}) => {
       calls.push({ url, method: init.method ?? "GET", body: init.body ? JSON.parse(String(init.body)) : undefined });
       if (url === "/admin/lookup") return json({ licenses: [current], orders: [] });
+      if (url === "/admin/queue") return json(QUEUE);
       if (url === `/admin/licenses/${ID}/revoke`) return json({ ok: true });
       if (url === `/admin/licenses/${ID}/extend`) return extendResponse();
       if (url === `/admin/licenses/${ID}/unlock` || url === `/admin/licenses/${ID}/resend`) return json({ ok: true });
@@ -399,7 +405,9 @@ describe("LicensePage: kết quả thao tác (vùng thông báo có sẵn, focus
     await user.click(await screen.findByRole("button", { name: "Gửi lại email…" }));
     const region = document.querySelector(".notice-region") as HTMLElement;
     // Từ đây: gửi lại được, nhưng lần tra cứu tải lại trang bị lỗi máy chủ.
-    vi.mocked(fetch).mockImplementation(async (url) => (String(url) === "/admin/lookup" ? json({ error: "internal" }, 500) : json({ ok: true })));
+    vi.mocked(fetch).mockImplementation(async (url) =>
+      String(url) === "/admin/lookup" ? json({ error: "internal" }, 500) : String(url) === "/admin/queue" ? json(QUEUE) : json({ ok: true }),
+    );
     await user.click(screen.getByRole("button", { name: "Gửi" }));
     expect(await screen.findByText("Không tải được license")).toBeTruthy();
     expect(document.querySelector(".notice-region")).toBe(region);
@@ -437,5 +445,60 @@ describe("LicensePage: key đầy đủ không lọt ra ngoài trang (T-2)", () 
     await user.click(screen.getByRole("button", { name: "Chép" }));
     expect(await navigator.clipboard.readText()).toBe(KEY);
     expect(screen.getByRole("heading", { level: 1, name: "K7Q2-…-9XMB" })).toBeTruthy();
+  });
+});
+
+describe("LicensePage: huy hiệu Việc cần xử lý sau thao tác ghi", () => {
+  const queueCalls = () => calls.filter((c) => c.url === "/admin/queue").length;
+
+  it("mở trang không tải hàng đợi; mỗi thao tác ghi thành công tải lại đúng một lần và cập nhật số", async () => {
+    const user = userEvent.setup();
+    render(<LicensePage id={ID} />);
+    await user.click(await screen.findByRole("button", { name: "Gỡ…" }));
+    expect(queueCalls()).toBe(0);
+    await user.type(screen.getByLabelText(/Lý do/), "khách đổi máy");
+    await user.click(screen.getByRole("button", { name: "Gỡ" }));
+    await waitFor(() => expect(getQueueCount()).toBe(3));
+    expect(queueCalls()).toBe(1);
+  });
+
+  it("thao tác lỗi: không tải hàng đợi", async () => {
+    const user = userEvent.setup();
+    extendResponse = () => json({ error: "conflict" }, 409);
+    render(<LicensePage id={ID} />);
+    await user.click(await screen.findByRole("button", { name: "Gia hạn…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "thử");
+    await user.click(screen.getByRole("button", { name: "Gia hạn" }));
+    await waitFor(() => expect(calls.filter((c) => c.url === "/admin/lookup")).toHaveLength(2));
+    expect(queueCalls()).toBe(0);
+  });
+});
+
+describe("LicensePage: bảng đơn của license", () => {
+  it("giữ cột Gói (đơn đổi gói có gói khác nhau trên cùng license), bỏ cột Email", async () => {
+    const orderOf = (code: number, plan: string) => ({
+      order_code: code, provider: "payos", plan, amount: 50000, amount_paid: 50000, currency: "VND", email: "khach@example.com", status: "paid",
+      grant_kind: code === 1 ? "new" : "change", license_id: ID, renew_license_id: code === 1 ? null : ID, created_at: NOW - 86400 * code,
+      paid_at: NOW - 86400 * code, email_sent_at: null, email_gave_up_at: null,
+    });
+    vi.mocked(fetch).mockImplementation(async () => json({ licenses: [license], orders: [orderOf(1, "monthly"), orderOf(2, "yearly")] }));
+    render(<LicensePage id={ID} />);
+    const table = await screen.findByRole("table", { name: "Đơn của license" });
+    const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toContain("Gói");
+    expect(headers).not.toContain("Email");
+    expect(within(table).getByText("Monthly")).toBeTruthy();
+    expect(within(table).getByText("Yearly")).toBeTruthy();
+  });
+});
+
+describe("LicensePage: giờ chính xác của máy hiện trong chữ (điện thoại không xem được title)", () => {
+  it("lần kiểm: tương đối kèm giờ ngắn; kích hoạt: ngày và giờ", async () => {
+    render(<LicensePage id={ID} />);
+    const row = (await screen.findByText("MacBook")).closest("li") as HTMLElement;
+    const meta = row.querySelector(".dev-meta")?.textContent ?? "";
+    const a = license.activations[0] as { last_validated_at: number; created_at: number };
+    expect(meta).toContain(`(${fmtWhen(a.last_validated_at, NOW)})`);
+    expect(meta).toContain(`kích hoạt ${fmtDateTime(a.created_at)}`);
   });
 });

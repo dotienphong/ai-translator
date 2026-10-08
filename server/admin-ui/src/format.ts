@@ -57,6 +57,16 @@ export function fmtAgo(sec: number, now: number): string {
   return fmtDate(sec);
 }
 
+/**
+ * Đọc chuỗi ngày giờ ISO của server thành mili giây (NaN nếu không đọc được). Chuỗi có ngày giờ mà không có múi giờ (không
+ * có Z hay +07:00) được coi là UTC: Date.parse coi nó là giờ địa phương của máy đang mở trang, sai lệch theo máy.
+ */
+export function parseIsoUtc(s: string): number {
+  const t = s.trim();
+  const noZone = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(t);
+  return Date.parse(noZone ? `${t.replace(" ", "T")}Z` : t);
+}
+
 /** Giây Unix thành chuỗi ISO cho thuộc tính dateTime của <time>. */
 export function isoOf(sec: number): string {
   return new Date(sec * 1000).toISOString();
@@ -64,7 +74,7 @@ export function isoOf(sec: number): string {
 
 export function daysLeft(expiresAt: number, now: number): string {
   if (expiresAt <= now) return "đã hết hạn";
-  return `còn ${Math.ceil((expiresAt - now) / DAY)} ngày`;
+  return `còn ${fmtInt(Math.ceil((expiresAt - now) / DAY))} ngày`;
 }
 
 export function nowSec(): number {
@@ -113,6 +123,14 @@ export function fmtMonth(key: string): string {
 export function fmtHm(sec: number): string {
   const p = vnParts(sec);
   return `${p.h}:${p.mi}`;
+}
+
+/**
+ * Giờ chính xác dạng ngắn để đứng cạnh thời gian tương đối (điện thoại không xem được title): cùng ngày (GMT+7) với `now`
+ * thì "HH:mm", khác ngày thì "dd/MM/yyyy HH:mm".
+ */
+export function fmtWhen(sec: number, now: number): string {
+  return fmtDate(sec) === fmtDate(now) ? fmtHm(sec) : fmtDateTime(sec);
 }
 
 /** Số gọn cho trục biểu đồ: 1500 thành "1,5k", 1500000 thành "1,5tr", 2500000000 thành "2,5tỷ". */

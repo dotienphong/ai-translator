@@ -397,7 +397,7 @@ function AlertItem({ a, now }: { a: AlertRow; now: number }) {
         <span className="q-sub">{`từ ${fmtDateTime(a.window_start)}`}</span>
       </span>
       <span className="q-meta">
-        <span className="q-devices">{`${a.count} lần`}</span>
+        <span className="q-devices">{`${fmtInt(a.count)} lần`}</span>
         <span className="q-sub">{`đã báo ${a.notified_count}`}</span>
       </span>
       <span className="q-when">

@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getQueueCount } from "../queue-store";
 import { OrderPage } from "./OrderPage";
 
 const KEY = "K7Q2-M4XB-9TRD-0HZC-5WEF-8NPA-9XMB";
@@ -29,6 +30,7 @@ function json(body: unknown, status = 200) {
 }
 
 type Call = { url: string; method: string; body: unknown };
+const g = (count: number) => ({ count, items: [] });
 let calls: Call[] = [];
 
 const ISSUED = { license_id: "11111111-1111-4111-8111-111111111111", license_key: KEY, plan: "monthly", expires_at: 1_800_000_000 };
@@ -49,6 +51,7 @@ function serveOrder(o: object, opts: { lookup?: (n: number) => Response; post?: 
         return opts.lookup ? opts.lookup(lookups) : json({ licenses: opts.licenses ?? [], orders: [o] });
       }
       if (url.startsWith("/admin/audit")) return json({ items: opts.audit ?? [], next_cursor: null });
+      if (url === "/admin/queue") return json({ needs_review: g(0), underpaid: g(0), email_failed: g(1), locked: g(0), conflict: g(0), alerts: g(0) });
       const post = opts.post?.[url];
       if (post) return post();
       if (url === `/admin/orders/${CODE}/grant`) return json(ISSUED);
@@ -471,5 +474,20 @@ describe("OrderPage: kết quả thao tác (vùng thông báo có sẵn, focus k
     await user.click(screen.getByRole("button", { name: "Xong" }));
     expect(region.textContent).toBe("Đã cấp key mới cho đơn #1000012.");
     expect(document.activeElement).toBe(region.querySelector(".notice"));
+  });
+});
+
+describe("OrderPage: huy hiệu Việc cần xử lý sau thao tác ghi", () => {
+  it("Ghi đã hoàn tiền xong: tải hàng đợi đúng một lần, huy hiệu theo số mới", async () => {
+    const user = userEvent.setup();
+    serveOrder({ ...order, status: "paid_needs_review", amount_paid: 50000 });
+    render(<OrderPage code={CODE} />);
+    await user.click(await screen.findByRole("button", { name: "Ghi đã hoàn tiền…" }));
+    expect(calls.filter((c) => c.url === "/admin/queue")).toHaveLength(0);
+    await user.type(screen.getByLabelText(/Lý do/), "đã chuyển trả");
+    await user.type(screen.getByLabelText(/để xác nhận/), "DA HOAN TIEN");
+    await user.click(screen.getByRole("button", { name: "Ghi đã hoàn tiền" }));
+    await waitFor(() => expect(getQueueCount()).toBe(1));
+    expect(calls.filter((c) => c.url === "/admin/queue")).toHaveLength(1);
   });
 });

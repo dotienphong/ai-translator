@@ -13,8 +13,10 @@ import {
   fmtMonth,
   fmtVnd,
   fmtWeekday,
+  fmtWhen,
   isoOf,
   maskKey,
+  parseIsoUtc,
   shortHash,
 } from "./format";
 
@@ -137,5 +139,37 @@ describe("fmtInt, fmtAgo, isoOf", () => {
 
   it("ISO cho <time dateTime>", () => {
     expect(isoOf(NOW)).toBe("2026-10-01T00:00:00.000Z");
+  });
+});
+
+describe("giờ chính xác ngắn và số ngày lớn", () => {
+  it("fmtWhen: cùng ngày giờ Việt Nam thì chỉ HH:mm; khác ngày thì đủ ngày giờ", () => {
+    // T0 = 07:00 ngày 01/10/2026 (GMT+7).
+    expect(fmtWhen(T0 + 3600, T0 + 7200)).toBe("08:00");
+    expect(fmtWhen(T0 - 8 * 3600, T0)).toBe("30/09/2026 23:00");
+    expect(fmtWhen(T0 - 2 * DAY, T0)).toBe("29/09/2026 07:00");
+  });
+
+  it("daysLeft có dấu ngăn nghìn", () => {
+    expect(daysLeft(T0 + 3650 * DAY, T0)).toBe("còn 3.650 ngày");
+  });
+});
+
+describe("parseIsoUtc (chuỗi ISO của server)", () => {
+  const UTC_5H = Date.UTC(2026, 9, 8, 5, 0, 0);
+  it.each([
+    ["2026-10-08T05:00:00Z", UTC_5H],
+    ["2026-10-08T05:00:00", UTC_5H],
+    ["2026-10-08 05:00:00", UTC_5H],
+    ["2026-10-08T05:00", UTC_5H],
+    ["2026-10-08T05:00:00.000", UTC_5H],
+    ["2026-10-08T12:00:00+07:00", UTC_5H],
+    ["Thu, 08 Oct 2026 05:00:00 GMT", UTC_5H],
+  ])("%s", (s, ms) => {
+    expect(parseIsoUtc(s)).toBe(ms);
+  });
+
+  it("không đọc được thì NaN", () => {
+    expect(parseIsoUtc("không phải ngày")).toBeNaN();
   });
 });

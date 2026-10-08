@@ -148,3 +148,14 @@ describe("DevicePage: bố cục mới", () => {
     expect(within(log).queryByText("Cấp license")).toBeNull();
   });
 });
+
+describe("DevicePage: license đã thu hồi mà máy chưa gỡ", () => {
+  it("không ghi đang kích hoạt (chấm xanh); ghi license đã thu hồi, chấm tông đỏ nhạt", async () => {
+    const a = { id: "act-1", license_id: ID, device_id_hash: HASH, device_label: "MacBook", quota_epoch: 0, created_at: NOW - 86400, last_validated_at: NOW - 60, deactivated_at: null, deactivated_by: null };
+    serve({ licenses: [{ ...license, revoked_at: NOW - 600, activations: [a] }], orders: [], trial: null });
+    render(<DevicePage hash={HASH} />);
+    const line = await screen.findByText(/Trên máy này: kích hoạt từ .*, license đã thu hồi/);
+    expect(screen.queryByText(/Trên máy này: đang kích hoạt/)).toBeNull();
+    expect(line.querySelector(".lic-here-dot")?.className).toBe("lic-here-dot is-revoked");
+  });
+});

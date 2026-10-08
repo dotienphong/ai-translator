@@ -166,7 +166,7 @@ export function Sidebar({ current, queueCount, collapsed, onToggleCollapsed, ope
       </nav>
 
       <div className="sidebar-foot">
-        <button type="button" className="ghost collapse-btn" aria-controls="thanh-ben" onClick={onToggleCollapsed}>
+        <button type="button" className="ghost collapse-btn" aria-controls="thanh-ben" aria-expanded={!collapsed} onClick={onToggleCollapsed}>
           {collapsed ? <IconSidebarExpand /> : <IconSidebarCollapse />}
           <span className="collapse-label">{collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}</span>
         </button>

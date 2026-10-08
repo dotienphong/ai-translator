@@ -22,6 +22,7 @@ import { RelTime } from "../components/RelTime";
 import { OrderStatusBadge, PLAN_LABELS } from "../components/StatusBadge";
 import { fmtDateTime, fmtHm, fmtVnd, nowSec } from "../format";
 import { useLoad } from "../hooks";
+import { refreshQueueCount } from "../queue-store";
 import { ago, Callout, DetailLayout, EmailText, DetailNotFound, DetailSkeleton, LicenseList } from "./detail-kit";
 
 type Dialog = "grant" | "grant_new" | "refunded" | null;
@@ -211,6 +212,7 @@ function OrderDetail({ code, notice, onKeyIssued }: { code: number; notice: Noti
               done: `Đã cấp tay đơn #${code}.`,
             });
             reload();
+            refreshQueueCount();
           }}
           onConflict={reload}
           onClose={() => setDialog(null)}
@@ -228,6 +230,7 @@ function OrderDetail({ code, notice, onKeyIssued }: { code: number; notice: Noti
             if (r.license_key) onKeyIssued({ key: r.license_key, title: "Key mới", done });
             else notice.show(done);
             reload();
+            refreshQueueCount();
           }}
           onConflict={reload}
           onClose={() => setDialog(null)}
@@ -244,6 +247,7 @@ function OrderDetail({ code, notice, onKeyIssued }: { code: number; notice: Noti
             await api.resolveOrder(code, "refunded", note);
             notice.show("Đã ghi đơn là đã hoàn tiền.");
             reload();
+            refreshQueueCount();
           }}
           onConflict={reload}
           onClose={() => setDialog(null)}
