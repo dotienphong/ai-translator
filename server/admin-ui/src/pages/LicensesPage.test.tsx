@@ -160,3 +160,55 @@ describe("LicensesPage: ô email của hộp cấp license", () => {
     expect(within(dialog).queryByText(/Email chưa đúng dạng/)).toBeNull();
   });
 });
+
+describe("LicensesPage: sau khi cấp license mới (T-2, I-1)", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+
+  async function issue(user: ReturnType<typeof userEvent.setup>, email: string) {
+    await user.click(await screen.findByRole("button", { name: "Cấp license mới…" }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Email của khách"), email);
+    await user.type(within(dialog).getByLabelText(/Lý do/), "bù cho khách");
+    await user.click(within(dialog).getByRole("button", { name: "Cấp" }));
+    expect(await screen.findByText(KEY)).toBeTruthy();
+  }
+
+  it("email có khoảng trắng hai đầu: gửi email đã bỏ khoảng trắng", async () => {
+    const user = userEvent.setup();
+    render(<LicensesPage />);
+    await issue(user, "  khach@example.com  ");
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({ email: "khach@example.com", plan: "monthly", note: "bù cho khách" });
+  });
+
+  it("key vừa cấp không vào URL, history.state, localStorage hay sessionStorage", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/licenses");
+    render(<LicensesPage />);
+    await issue(user, "khach@example.com");
+    for (const s of [window.location.href, JSON.stringify(window.history.state), JSON.stringify({ ...window.localStorage }), JSON.stringify({ ...window.sessionStorage })]) {
+      expect(s).not.toContain(KEY);
+    }
+    await user.click(screen.getByRole("button", { name: "Xong" }));
+    expect(window.location.href).not.toContain(KEY);
+  });
+
+  it("bấm Xong: hộp key đóng, câu kết quả hiện trong vùng thông báo có sẵn và nhận focus", async () => {
+    const user = userEvent.setup();
+    render(<LicensesPage />);
+    await screen.findByRole("button", { name: "Cấp license mới…" });
+    const region = document.querySelector(".notice-region") as HTMLElement;
+    expect(region.getAttribute("role")).toBe("status");
+    expect(region.textContent).toBe("");
+    await issue(user, "khach@example.com");
+    // Lúc hộp key còn mở thì chưa có thông báo (thông báo giành focus của hộp).
+    expect(region.textContent).toBe("");
+    await user.click(screen.getByRole("button", { name: "Xong" }));
+    expect(screen.queryByText(KEY)).toBeNull();
+    expect(region.textContent).toBe("Đã cấp license mới cho khach@example.com.");
+    expect(document.activeElement).toBe(region.querySelector(".notice"));
+  });
+});

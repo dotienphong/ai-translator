@@ -149,3 +149,35 @@ describe("ToolsPage: bố cục mới", () => {
     expect(screen.getByRole("textbox", { name: "Email của khách" })).toBe(input);
   });
 });
+
+describe("ToolsPage: kết quả thao tác (T-2, I-1, I-2)", () => {
+  async function erase(user: ReturnType<typeof userEvent.setup>, email: string) {
+    await user.type(screen.getByLabelText("Email của khách"), email);
+    await user.click(screen.getByRole("button", { name: "Ẩn danh…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "khách yêu cầu xóa dữ liệu");
+    await user.type(screen.getByLabelText(/để xác nhận/), "AN DANH");
+    await user.click(screen.getByRole("button", { name: "Ẩn danh" }));
+  }
+
+  it("ẩn danh: email có khoảng trắng hai đầu thì gửi email đã bỏ khoảng trắng", async () => {
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    await erase(user, "  khach@example.com ");
+    expect(await screen.findByText("Đã ẩn danh: 2 đơn, 1 license, 1 máy.")).toBeTruthy();
+    expect(calls[0]?.body).toEqual({ email: "khach@example.com", note: "khách yêu cầu xóa dữ liệu" });
+  });
+
+  it("ẩn danh xong: kết quả nằm trong vùng status có sẵn của thẻ và nhận focus (nút Ẩn danh… bị khóa vì ô email đã xóa)", async () => {
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    const zone = screen.getByRole("region", { name: "Khu vực nguy hiểm" });
+    const region = zone.querySelector(".result-region") as HTMLElement;
+    expect(region.getAttribute("role")).toBe("status");
+    expect(region.textContent).toBe("");
+    await erase(user, "khach@example.com");
+    await screen.findByText("Đã ẩn danh: 2 đơn, 1 license, 1 máy.");
+    expect(zone.querySelector(".result-region")).toBe(region);
+    expect((screen.getByRole("button", { name: "Ẩn danh…" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(document.activeElement).toBe(region.querySelector(".tool-result"));
+  });
+});

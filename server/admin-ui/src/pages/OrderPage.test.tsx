@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OrderPage } from "./OrderPage";
@@ -361,5 +361,115 @@ describe("OrderPage: bố cục mới (việc cần làm, số tiền, license, 
     const { container } = render(<OrderPage code={CODE} />);
     expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();
     expect(screen.queryByRole("heading", { name: /Đơn #1000012/ })).toBeNull();
+  });
+});
+
+describe("OrderPage: tải lại đơn và nhật ký sau mỗi thao tác (T-1)", () => {
+  const resolveUrl = `/admin/orders/${CODE}/resolve`;
+  const NEEDS_REVIEW = { ...order, status: "paid_needs_review", amount_paid: 50000 };
+  const lookups = () => calls.filter((c) => c.url === "/admin/lookup").length;
+  const audits = () => calls.filter((c) => c.url.startsWith("/admin/audit")).length;
+
+  async function loaded() {
+    await screen.findByRole("heading", { name: /Đơn #1000012/ });
+    await waitFor(() => expect(audits()).toBe(1));
+    expect(lookups()).toBe(1);
+  }
+
+  it("Ghi đã hoàn tiền xong: tải lại đơn và nhật ký, mỗi thứ đúng một lần", async () => {
+    const user = userEvent.setup();
+    serveOrder(NEEDS_REVIEW);
+    render(<OrderPage code={CODE} />);
+    await loaded();
+    await user.click(screen.getByRole("button", { name: "Ghi đã hoàn tiền…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "đã chuyển trả");
+    await user.type(screen.getByLabelText(/để xác nhận/), "DA HOAN TIEN");
+    await user.click(screen.getByRole("button", { name: "Ghi đã hoàn tiền" }));
+    await waitFor(() => expect(lookups()).toBe(2));
+    await waitFor(() => expect(audits()).toBe(2));
+  });
+
+  it("Cấp key mới xong: tải lại đơn và nhật ký, mỗi thứ đúng một lần", async () => {
+    const user = userEvent.setup();
+    serveOrder(NEEDS_REVIEW, { post: { [resolveUrl]: () => json({ order_code: CODE, status: "paid", license_key: KEY }) } });
+    render(<OrderPage code={CODE} />);
+    await loaded();
+    await user.click(screen.getByRole("button", { name: "Cấp key mới…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "license cũ thu hồi nhầm");
+    await user.click(screen.getByRole("button", { name: "Cấp key mới" }));
+    expect(await screen.findByText(KEY)).toBeTruthy();
+    await waitFor(() => expect(lookups()).toBe(2));
+    await waitFor(() => expect(audits()).toBe(2));
+  });
+
+  it("Cấp tay xong: tải lại cả nhật ký của đơn (không chỉ đơn)", async () => {
+    const user = userEvent.setup();
+    serveOrder(order);
+    render(<OrderPage code={CODE} />);
+    await loaded();
+    await grant(user);
+    expect(await screen.findByText(KEY)).toBeTruthy();
+    await waitFor(() => expect(lookups()).toBe(2));
+    await waitFor(() => expect(audits()).toBe(2));
+  });
+
+  it.each([
+    [409, "conflict"],
+    [404, "not_found"],
+  ])("server trả %i (trạng thái đơn đã đổi): hộp còn mở, báo lỗi, tải lại đơn và nhật ký", async (status, error) => {
+    const user = userEvent.setup();
+    serveOrder(NEEDS_REVIEW, { post: { [resolveUrl]: () => json({ error }, status) } });
+    render(<OrderPage code={CODE} />);
+    await loaded();
+    await user.click(screen.getByRole("button", { name: "Cấp key mới…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "thử");
+    await user.click(screen.getByRole("button", { name: "Cấp key mới" }));
+    await waitFor(() => expect(lookups()).toBe(2));
+    await waitFor(() => expect(audits()).toBe(2));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByRole("alert")).toBeTruthy();
+  });
+});
+
+describe("OrderPage: kết quả thao tác (vùng thông báo có sẵn, focus không rơi về body)", () => {
+  const resolveUrl = `/admin/orders/${CODE}/resolve`;
+  const NEEDS_REVIEW = { ...order, status: "paid_needs_review", amount_paid: 50000 };
+  const after = (o: object) => (n: number) => json({ licenses: [], orders: [n === 1 ? NEEDS_REVIEW : o] });
+
+  it("Ghi đã hoàn tiền xong (đơn thành refunded, hai nút biến mất): câu kết quả trong vùng status có sẵn, có focus", async () => {
+    const user = userEvent.setup();
+    serveOrder(NEEDS_REVIEW, { lookup: after({ ...NEEDS_REVIEW, status: "refunded" }) });
+    render(<OrderPage code={CODE} />);
+    await screen.findByRole("button", { name: "Ghi đã hoàn tiền…" });
+    const region = document.querySelector(".notice-region") as HTMLElement;
+    expect(region.getAttribute("role")).toBe("status");
+    expect(region.textContent).toBe("");
+    await user.click(screen.getByRole("button", { name: "Ghi đã hoàn tiền…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "đã chuyển trả");
+    await user.type(screen.getByLabelText(/để xác nhận/), "DA HOAN TIEN");
+    await user.click(screen.getByRole("button", { name: "Ghi đã hoàn tiền" }));
+    await screen.findByText("Đơn đã ghi là hoàn tiền");
+    expect(screen.queryByRole("button", { name: "Ghi đã hoàn tiền…" })).toBeNull();
+    expect(region.textContent).toBe("Đã ghi đơn là đã hoàn tiền.");
+    expect(document.activeElement).toBe(region.querySelector(".notice"));
+  });
+
+  it("Cấp key mới: thông báo chỉ hiện khi bấm Xong; nút Cấp key mới… đã biến mất nên focus vào thông báo", async () => {
+    const user = userEvent.setup();
+    serveOrder(NEEDS_REVIEW, {
+      lookup: after({ ...NEEDS_REVIEW, status: "paid" }),
+      post: { [resolveUrl]: () => json({ order_code: CODE, status: "paid", license_key: KEY }) },
+    });
+    render(<OrderPage code={CODE} />);
+    await user.click(await screen.findByRole("button", { name: "Cấp key mới…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "license cũ thu hồi nhầm");
+    await user.click(screen.getByRole("button", { name: "Cấp key mới" }));
+    expect(await screen.findByText(KEY)).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Cấp key mới…" })).toBeNull());
+    const region = document.querySelector(".notice-region") as HTMLElement;
+    expect(region.textContent).toBe("");
+    await user.click(screen.getByRole("button", { name: "Xong" }));
+    expect(region.textContent).toBe("Đã cấp key mới cho đơn #1000012.");
+    expect(document.activeElement).toBe(region.querySelector(".notice"));
   });
 });

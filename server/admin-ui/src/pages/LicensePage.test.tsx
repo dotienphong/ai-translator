@@ -348,3 +348,94 @@ describe("LicensePage: bố cục mới (tiêu đề key, việc cần làm, khu
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeTruthy();
   });
 });
+
+describe("LicensePage: kết quả thao tác (vùng thông báo có sẵn, focus không rơi về body)", () => {
+  it("vùng status có sẵn trước khi thao tác; thu hồi xong: câu kết quả nằm trong vùng đó, có focus; trang tải lại mất nút Thu hồi… mà focus vẫn ở thông báo", async () => {
+    const user = userEvent.setup();
+    render(<LicensePage id={ID} />);
+    await screen.findByRole("button", { name: "Thu hồi…" });
+    const region = document.querySelector(".notice-region") as HTMLElement;
+    expect(region.getAttribute("role")).toBe("status");
+    expect(region.getAttribute("aria-live")).toBe("polite");
+    expect(region.textContent).toBe("");
+    await user.click(screen.getByRole("button", { name: "Thu hồi…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "khách yêu cầu");
+    await user.type(screen.getByLabelText(/để xác nhận/), "THU HOI");
+    // Lần tra cứu sau thao tác trả license đã thu hồi: nút Thu hồi… (nút đã mở hộp) biến mất.
+    withLicense({ revoked_at: NOW });
+    await user.click(screen.getByRole("button", { name: "Thu hồi" }));
+    await screen.findByText("License đã bị thu hồi");
+    expect(btn("Thu hồi…")).toBeNull();
+    expect(document.querySelector(".notice-region")).toBe(region);
+    expect(region.textContent).toBe("Đã thu hồi license.");
+    expect(document.activeElement).toBe(region.querySelector(".notice"));
+  });
+
+  it("gỡ máy xong (máy thành đã gỡ, nút Gỡ… biến mất): focus ở thông báo Đã gỡ máy.", async () => {
+    const user = userEvent.setup();
+    render(<LicensePage id={ID} />);
+    await user.click(await screen.findByRole("button", { name: "Gỡ…" }));
+    await user.type(screen.getByLabelText(/Lý do/), "khách đổi máy");
+    withLicense({ activations: [{ ...(license.activations[0] as object), deactivated_at: NOW, deactivated_by: "admin" }] });
+    await user.click(screen.getByRole("button", { name: "Gỡ" }));
+    await waitFor(() => expect(btn("Gỡ…")).toBeNull());
+    expect(document.activeElement?.textContent).toBe("Đã gỡ máy.");
+  });
+
+  it("đóng thông báo: focus về tiêu đề trang", async () => {
+    const user = userEvent.setup();
+    render(<LicensePage id={ID} />);
+    await user.click(await screen.findByRole("button", { name: "Gửi lại email…" }));
+    await user.click(screen.getByRole("button", { name: "Gửi" }));
+    expect(await screen.findByText("Đã gửi lại email.")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Đóng" }));
+    expect(screen.queryByText("Đã gửi lại email.")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
+  });
+
+  it("tải lại sau thao tác bị lỗi: trang thành hộp lỗi nhưng câu kết quả vẫn còn trong cùng vùng thông báo", async () => {
+    const user = userEvent.setup();
+    render(<LicensePage id={ID} />);
+    await user.click(await screen.findByRole("button", { name: "Gửi lại email…" }));
+    const region = document.querySelector(".notice-region") as HTMLElement;
+    // Từ đây: gửi lại được, nhưng lần tra cứu tải lại trang bị lỗi máy chủ.
+    vi.mocked(fetch).mockImplementation(async (url) => (String(url) === "/admin/lookup" ? json({ error: "internal" }, 500) : json({ ok: true })));
+    await user.click(screen.getByRole("button", { name: "Gửi" }));
+    expect(await screen.findByText("Không tải được license")).toBeTruthy();
+    expect(document.querySelector(".notice-region")).toBe(region);
+    expect(region.textContent).toBe("Đã gửi lại email.");
+  });
+});
+
+describe("LicensePage: key đầy đủ không lọt ra ngoài trang (T-2)", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+
+  it("bấm Hiện: key đầy đủ không vào URL, history.state, localStorage hay sessionStorage", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/licenses/${ID}`);
+    render(<LicensePage id={ID} />);
+    await user.click(await screen.findByRole("button", { name: "Hiện" }));
+    expect(screen.getByRole("heading", { level: 1, name: KEY })).toBeTruthy();
+    const leaked = [
+      window.location.href,
+      JSON.stringify(window.history.state),
+      JSON.stringify({ ...window.localStorage }),
+      JSON.stringify({ ...window.sessionStorage }),
+    ];
+    for (const s of leaked) expect(s).not.toContain(KEY);
+    expect(window.location.pathname).toBe(`/licenses/${ID}`);
+  });
+
+  it("nút Chép ở đầu trang chép key ĐẦY ĐỦ (dù chữ trên trang đang che)", async () => {
+    const user = userEvent.setup();
+    render(<LicensePage id={ID} />);
+    await screen.findByRole("heading", { level: 1, name: "K7Q2-…-9XMB" });
+    await user.click(screen.getByRole("button", { name: "Chép" }));
+    expect(await navigator.clipboard.readText()).toBe(KEY);
+    expect(screen.getByRole("heading", { level: 1, name: "K7Q2-…-9XMB" })).toBeTruthy();
+  });
+});

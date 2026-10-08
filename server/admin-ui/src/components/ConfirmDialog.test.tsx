@@ -342,3 +342,28 @@ describe("ConfirmDialog: bàn phím và nhãn", () => {
     expect(one.getAttribute("aria-labelledby")).not.toBe(two.getAttribute("aria-labelledby"));
   });
 });
+
+describe("ConfirmDialog: lý do tối đa 500 ký tự (T-2, C10)", () => {
+  it("ô Lý do có maxLength 500 và bộ đếm /500", () => {
+    render(<ConfirmDialog title="Gỡ?" description="x" confirmLabel="Gỡ" needsNote onConfirm={async () => {}} onClose={() => {}} />);
+    const note = screen.getByLabelText(/Lý do/) as HTMLTextAreaElement;
+    expect(note.maxLength).toBe(500);
+    expect(screen.getByText("0/500")).toBeTruthy();
+  });
+
+  it("ngưỡng logic: 500 ký tự (sau khi bỏ khoảng trắng) thì bấm được, 501 thì không (kể cả khi maxLength bị vượt, ví dụ dán bằng mã)", () => {
+    const onConfirm = vi.fn(async () => {});
+    render(<ConfirmDialog title="Gỡ?" description="x" confirmLabel="Gỡ" needsNote onConfirm={onConfirm} onClose={() => {}} />);
+    const note = screen.getByLabelText(/Lý do/) as HTMLTextAreaElement;
+    fireEvent.change(note, { target: { value: "a".repeat(500) } });
+    expect(button("Gỡ").disabled).toBe(false);
+    fireEvent.change(note, { target: { value: "a".repeat(501) } });
+    expect(button("Gỡ").disabled).toBe(true);
+    fireEvent.change(note, { target: { value: `  ${"a".repeat(500)}  ` } });
+    expect(button("Gỡ").disabled).toBe(false);
+    fireEvent.change(note, { target: { value: "a".repeat(5000) } });
+    expect(button("Gỡ").disabled).toBe(true);
+    fireEvent.submit(note.closest("form") as HTMLFormElement);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+});

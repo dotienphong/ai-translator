@@ -20,6 +20,21 @@ describe("SearchBox", () => {
     expect(currentSearch()?.query).toEqual({ email: "khach@example.com" });
   });
 
+  it("từ khóa (email, key) không vào localStorage hay sessionStorage", async () => {
+    const user = userEvent.setup();
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    render(<SearchBox />);
+    const box = screen.getByLabelText("Tra cứu");
+    await user.type(box, "khach@example.com{Enter}");
+    await user.clear(box);
+    await user.type(box, "K7Q2-M4XB-9TRD-0HZC-5WEF-8NPA-9XMB{Enter}");
+    const stored = JSON.stringify({ ...window.localStorage }) + JSON.stringify({ ...window.sessionStorage });
+    expect(stored).not.toContain("khach");
+    expect(stored).not.toContain("K7Q2");
+    expect(window.location.href).not.toContain("K7Q2");
+  });
+
   it("mã đơn, license id, mã máy: mở thẳng trang chi tiết", async () => {
     const user = userEvent.setup();
     render(<SearchBox />);

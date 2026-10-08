@@ -112,3 +112,29 @@ describe("KeyReveal", () => {
     expect(text).not.toContain("Key đã được gửi");
   });
 });
+
+describe("MaskedKey và KeyReveal: an toàn của key (T-2)", () => {
+  it("MaskedKey: nút Chép chép đúng giá trị truyền vào (key đầy đủ), kể cả khi chữ đang che", async () => {
+    const user = userEvent.setup();
+    render(<MaskedKey value={KEY} />);
+    expect(screen.queryByText(KEY)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Chép" }));
+    expect(await navigator.clipboard.readText()).toBe(KEY);
+  });
+
+  it("KeyReveal: bấm ra lớp phủ hay nhấn Esc KHÔNG đóng hộp (đóng nhầm là mất key); chỉ Xong mới đóng", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<KeyReveal licenseKey={KEY} onClose={onClose} />);
+    const overlay = screen.getByRole("dialog").parentElement as HTMLElement;
+    expect(overlay.className).toBe("overlay");
+    await user.pointer({ keys: "[MouseLeft]", target: overlay });
+    fireEvent.click(overlay);
+    fireEvent.mouseDown(overlay);
+    await user.keyboard("{Escape}");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText(KEY)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Xong" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});

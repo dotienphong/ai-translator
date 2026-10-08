@@ -241,13 +241,18 @@ describe("QueuePage", () => {
     expect(count("/admin/summary")).toBe(2);
   });
 
-  it("đẩy tổng số việc vào kho dùng chung sau mỗi lần tải (huy hiệu ở thanh bên)", async () => {
+  // Nút Làm mới bỏ qua lần bấm khi hàng đợi HAY số nhanh còn đang tải (loading của cả hai): phải đợi nút hết bận rồi mới
+  // bấm, không thì lần bấm bị bỏ và test chập chờn theo tốc độ máy. Ca summaryDelay 30ms tái hiện chắc chắn điều đó.
+  it.each([0, 30])("đẩy tổng số việc vào kho dùng chung sau mỗi lần tải (huy hiệu ở thanh bên); số nhanh về sau %ims", async (summaryDelay) => {
     let n = 0;
     const order = { order_code: 1, email: null, amount: 1, amount_paid: 1, created_at: 1 };
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
-        if (url === "/admin/summary") return json(summary);
+        if (url === "/admin/summary") {
+          if (summaryDelay) await new Promise((r) => setTimeout(r, summaryDelay));
+          return json(summary);
+        }
         n++;
         return json(n === 1 ? { ...NONE, underpaid: { count: 4, items: [order] }, alerts: { count: 2, items: [] } } : NONE);
       }),
@@ -255,7 +260,9 @@ describe("QueuePage", () => {
     render(<QueuePage />);
     await screen.findByText("6 việc đang chờ");
     expect(getQueueCount()).toBe(6);
-    fireEvent.click(screen.getByRole("button", { name: "Làm mới" }));
+    const reload = screen.getByRole("button", { name: "Làm mới" });
+    await waitFor(() => expect(reload.getAttribute("aria-busy")).toBeNull());
+    fireEvent.click(reload);
     await screen.findByText("Không có việc gì cần xử lý");
     expect(getQueueCount()).toBe(0);
   });
