@@ -1,6 +1,7 @@
 // @vitest-environment node
 // Trang thử thành phần (src/dev/Gallery.tsx) chỉ có ở dev server: dựng bản build thật (trong bộ nhớ, không ghi dist/) rồi
 // kiểm không tệp nào có tên gallery hay chứa chuỗi đặc trưng của trang thử, đường dẫn /__gallery, CSS riêng của nó.
+// Cùng bản build: index.html tải trước đủ bốn tệp font (font-preload.ts).
 import { build } from "vite";
 import { describe, expect, it } from "vitest";
 import { GALLERY_MARKER } from "./Gallery";
@@ -39,6 +40,15 @@ describe("bản build không có trang thử thành phần", () => {
       expect(names.some((n) => n.endsWith(".js"))).toBe(true);
       expect(names.some((n) => n.endsWith(".css"))).toBe(true);
       expect(names.filter((n) => /gallery/i.test(n))).toEqual([]);
+      // Font tải trước (font-preload.ts): index.html có một <link rel="preload" as="font" crossorigin> cho mỗi tệp .woff2
+      // phát ra, đúng tên có băm, cùng origin.
+      const html = outputs.find((o) => o.fileName === "index.html");
+      const htmlText = typeof html?.source === "string" ? html.source : "";
+      const fonts = names.filter((n) => n.endsWith(".woff2"));
+      expect(fonts).toHaveLength(4);
+      for (const f of fonts) {
+        expect(htmlText, f).toContain(`<link rel="preload" href="/${f}" as="font" type="font/woff2" crossorigin>`);
+      }
       for (const o of outputs) {
         const text = o.code ?? (typeof o.source === "string" ? o.source : "");
         expect(text.includes(GALLERY_MARKER), o.fileName).toBe(false);

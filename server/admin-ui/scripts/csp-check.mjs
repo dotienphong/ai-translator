@@ -5,7 +5,7 @@
 //  - kiểm DOM sau khi vẽ có các chuỗi mong đợi (--expect=...);
 //  - in dung lượng (byte, gzip) các file trong dist/assets (--sizes);
 //  - chụp màn hình (--shot=đường-dẫn.png).
-// Dùng:  pnpm build && node scripts/csp-check.mjs --path=/overview --expect=recharts-surface [--mobile] [--dark|--light] [--height=N] [--sizes] [--shot=x.png]
+// Dùng:  pnpm build && node scripts/csp-check.mjs --path=/overview --expect=recharts-surface [--mobile] [--dark|--light] [--height=N] [--sizes] [--shot=x.png] [--console]
 //        node scripts/csp-check.mjs --probe     (tự kiểm công cụ: trang cố tình vi phạm CSP, phải báo lỗi)
 // Thoát mã 0 khi không có vi phạm hay lỗi và mọi --expect đều thấy; mã 1 nếu ngược lại; mã 2 nếu thiếu dist/ hay Chrome.
 // Cần Chrome: đường dẫn macOS mặc định hay biến môi trường CHROME_BIN. Không kiểm tooltip (chỉ hiện khi rê chuột).
@@ -419,6 +419,12 @@ try {
   for (const l of violations) console.log(`  ${l.slice(0, 300)}`);
   console.log(`Lỗi console: ${errors.length}`);
   for (const l of errors) console.log(`  ${l.slice(0, 300)}`);
+  // --console: in mọi dòng console của trang (cảnh báo như font tải trước mà không dùng, React key…), không tính là lỗi.
+  if (flag("console")) {
+    const rest = lines.filter((l) => !violations.includes(l) && !errors.includes(l));
+    console.log(`Dòng console khác: ${rest.length}`);
+    for (const l of rest) console.log(`  ${l.slice(0, 300)}`);
+  }
   for (const text of expects) {
     const found = out.includes(text);
     console.log(`Mong đợi trong DOM ${JSON.stringify(text)}: ${found ? "có" : "KHÔNG THẤY"}`);

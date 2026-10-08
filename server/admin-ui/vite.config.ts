@@ -1,11 +1,13 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 import { fakeAdminApi } from "./dev/fake-api.ts";
+import { preloadFonts } from "./font-preload.ts";
 
 // Trang Web Admin (spec 2026-10-07 Web Admin §2). Build ra dist/; Worker mt-license-admin phục vụ qua binding ASSETS.
 // `pnpm dev`: xem giao diện với API giả (dev/fake-api.ts, chỉ có ở dev server, không vào bản build).
 export default defineConfig({
-  plugins: [react(), fakeAdminApi()],
+  // preloadFonts: font-preload.ts (chỉ khi build).
+  plugins: [react(), fakeAdminApi(), preloadFonts()],
   server: { host: "127.0.0.1", port: 5180, strictPort: true },
   build: {
     outDir: "dist",
