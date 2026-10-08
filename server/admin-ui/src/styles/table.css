@@ -76,6 +76,10 @@ td.center {
 td.nowrap {
   white-space: nowrap;
 }
+/* Thanh chờ của cột số nằm sát phải như số thật */
+td.num > .skel-line {
+  margin-left: auto;
+}
 /* Tiêu đề dính khi bảng cuộn trong khung; viền dưới vẽ bằng bóng vì border của ô dính bị cuộn mất */
 .dt thead th {
   position: sticky;
@@ -230,6 +234,27 @@ tbody tr:has(td.empty):hover {
     display: flex;
     flex-direction: column;
   }
+  /* Cột "aside" (huy hiệu trạng thái) cùng dòng đầu với cột chính, bên phải */
+  .dt:not(.keep-table) tbody tr:has(> td.dt-aside) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--s-3);
+  }
+  .dt:not(.keep-table) tbody tr:has(> td.dt-aside) > td {
+    grid-column: 1 / -1;
+  }
+  .dt:not(.keep-table) tbody tr:has(> td.dt-aside) > td.dt-primary {
+    grid-area: 1 / 1;
+  }
+  .table-wrap:not(.keep-table) td.dt-aside {
+    grid-area: 1 / 2;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0 0 var(--s-1);
+  }
+  .table-wrap:not(.keep-table) td.dt-aside::before {
+    content: none;
+  }
   .table-wrap:not(.keep-table) td.dt-actions {
     width: 100%;
     padding-top: var(--s-2);
@@ -241,7 +266,7 @@ tbody tr:has(td.empty):hover {
   /* Ô không có gì (cột License, Đơn của dòng nhật ký không gắn với license hay đơn): bỏ hẳn dòng nhãn rỗng */
   .table-wrap:not(.keep-table) td.hide-mobile,
   .dt:not(.keep-table) td:empty,
-  .dt:not(.keep-table) td:has(> :only-child:empty) {
+  .dt:not(.keep-table) tr:not(.skel-row) > td:has(> :only-child:empty) {
     display: none;
   }
   .table-wrap:not(.keep-table) td.nowrap {

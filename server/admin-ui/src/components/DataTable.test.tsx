@@ -141,6 +141,45 @@ describe("DataTable: giao diện mới", () => {
 describe("countText", () => {
   it("đếm có dấu chấm nghìn; còn trang sau thì nói rõ", () => {
     expect(countText(12, "đơn", false)).toBe("12 đơn");
-    expect(countText(1200, "dòng", true)).toBe("1.200 dòng đầu, còn nữa");
+    expect(countText(1200, "dòng", true)).toBe("1.200+ dòng");
+  });
+});
+
+describe("DataTable: hàng mở được (rowHref)", () => {
+  const cols: Column<string>[] = [
+    { header: "Mã", cell: (r) => <a href={`/x/${r}`}>{r}</a> },
+    { header: "Ghi chú", cell: (r) => <span>ghi chú {r}</span> },
+  ];
+
+  it("bấm ô thường thì đổi trang; Ctrl hay Cmd thì mở thẻ mới; bấm vào liên kết trong hàng thì để liên kết lo", async () => {
+    const user = userEvent.setup();
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<DataTable columns={cols} rows={["a"]} rowKey={rowKey} empty="trống" rowHref={(r) => `/orders/${r}`} />);
+    const row = screen.getByText("ghi chú a").closest("tr") as HTMLElement;
+    expect(row.className).toBe("is-link");
+
+    await user.keyboard("{Control>}");
+    await user.click(screen.getByText("ghi chú a"));
+    await user.keyboard("{/Control}");
+    expect(open).toHaveBeenCalledWith("/orders/a", "_blank", "noopener");
+    expect(window.location.pathname).toBe("/");
+
+    const link = screen.getByRole("link", { name: "a" });
+    link.addEventListener("click", (e) => e.preventDefault());
+    await user.click(link);
+    expect(window.location.pathname).toBe("/");
+
+    await user.click(screen.getByText("ghi chú a"));
+    expect(window.location.pathname).toBe("/orders/a");
+    window.history.replaceState(null, "", "/");
+    open.mockRestore();
+  });
+
+  it("không có rowHref: hàng không bấm được; stale: làm mờ và aria-busy", () => {
+    const { container } = render(<DataTable columns={cols} rows={["a"]} rowKey={rowKey} empty="trống" stale />);
+    expect(container.querySelector("tr.is-link")).toBeNull();
+    const wrap = container.querySelector(".table-wrap") as HTMLElement;
+    expect(wrap.className).toContain("is-stale");
+    expect(wrap.getAttribute("aria-busy")).toBe("true");
   });
 });

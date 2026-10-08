@@ -2,7 +2,11 @@
 // bên trong, cột số căn phải, dòng chờ đúng kích thước khi tải lần đầu, trạng thái rỗng bằng EmptyState, "Tải thêm" ở chân.
 // Màn hẹp (≤ 800px): CSS đổi mỗi dòng thành một thẻ; cột chính thành dòng tiêu đề, cột khác là cặp nhãn và giá trị
 // (nhãn lấy từ data-label).
-import type { ReactNode } from "react";
+// Hàng mở được (rowHref): bấm chuột vào chỗ nào trên hàng cũng mở trang của dòng; liên kết thật trong ô định danh vẫn là
+// lối vào cho bàn phím và trình đọc màn hình (hàng không nhận focus riêng). Bôi chọn chữ, bấm vào liên kết hay nút khác
+// trong hàng thì không mở; giữ Ctrl, Cmd hay Shift thì mở thẻ mới.
+import type { MouseEvent, ReactNode } from "react";
+import { navigate } from "../router";
 import { Button } from "./Button";
 import { EmptyState, type EmptyVariant } from "./EmptyState";
 import { IconChevronDown } from "./icons";
@@ -17,6 +21,8 @@ export interface Column<T> {
   mobileLabel?: string;
   /** Cột chính: trên điện thoại là dòng đầu của thẻ, chữ đậm, không nhãn. Không cột nào đánh dấu thì cột đầu là cột chính. */
   primary?: boolean;
+  /** Trên điện thoại: nằm cùng dòng đầu với cột chính, bên phải (huy hiệu trạng thái). */
+  aside?: boolean;
   /** Ẩn trên điện thoại (thông tin phụ đã có ở chỗ khác). */
   hideOnMobile?: boolean;
   /** Không xuống dòng (ngày giờ, số tiền). */
@@ -50,6 +56,17 @@ export interface DataTableProps<T> {
   flush?: boolean;
   /** Trên điện thoại: "cards" (mặc định) đổi mỗi dòng thành thẻ có nhãn; "table" giữ dạng bảng (bảng nhỏ, ít cột). */
   mobile?: "cards" | "table";
+  /** Đường dẫn trang của dòng: cả hàng bấm được (xem đầu tệp). */
+  rowHref?(row: T): string;
+  /** Các dòng đang hiện là của bộ lọc cũ, kết quả mới đang về: làm mờ và đặt aria-busy. */
+  stale?: boolean;
+}
+
+function openRow(e: MouseEvent<HTMLTableRowElement>, href: string) {
+  if (e.button !== 0 || (e.target as Element).closest("a, button, input, select, textarea, label")) return;
+  if (window.getSelection()?.toString()) return;
+  if (e.metaKey || e.ctrlKey || e.shiftKey) window.open(href, "_blank", "noopener");
+  else navigate(href);
 }
 
 const ALIGN_CLASS = { left: "", right: "num", center: "center" } as const;
@@ -60,6 +77,7 @@ function cellClass<T>(c: Column<T>, primary: boolean): string | undefined {
     c.nowrap && "nowrap",
     primary && "dt-primary",
     c.header === "" && "dt-actions",
+    c.aside && "dt-aside",
     c.hideOnMobile && "hide-mobile",
   ]
     .filter(Boolean)
@@ -84,18 +102,20 @@ export function DataTable<T>({
   skeletonRows = 5,
   flush = false,
   mobile = "cards",
+  rowHref,
+  stale = false,
 }: DataTableProps<T>) {
   const primaryIndex = Math.max(
     0,
     columns.findIndex((c) => c.primary),
   );
   const firstLoad = Boolean(loading) && rows.length === 0;
-  const wrapCls = ["table-wrap", "dt", maxHeight && `scroll-${maxHeight}`, mobile === "table" && "keep-table"].filter(Boolean).join(" ");
+  const wrapCls = ["table-wrap", "dt", maxHeight && `scroll-${maxHeight}`, mobile === "table" && "keep-table", stale && "is-stale"].filter(Boolean).join(" ");
   const showFoot = Boolean(hasMore) || (summary !== undefined && rows.length > 0);
   return (
     <div className={flush ? "dt-frame flush" : "dt-frame"}>
       {/* Khung có giới hạn chiều cao thì cuộn được bằng bàn phím (tabIndex). */}
-      <div className={wrapCls} aria-busy={firstLoad || undefined} tabIndex={maxHeight ? 0 : undefined}>
+      <div className={wrapCls} aria-busy={firstLoad || stale || undefined} tabIndex={maxHeight ? 0 : undefined}>
         <table>
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead>
@@ -109,7 +129,7 @@ export function DataTable<T>({
           </thead>
           <tbody>
             {firstLoad ? (
-              <SkeletonRows rows={skeletonRows} columns={columns.length} />
+              <SkeletonRows rows={skeletonRows} columns={columns.length} cellClass={columns.map((c) => ALIGN_CLASS[c.align ?? "left"] || undefined)} />
             ) : rows.length === 0 ? (
               <tr className="dt-empty-row">
                 <td colSpan={columns.length} className="empty">
@@ -117,15 +137,18 @@ export function DataTable<T>({
                 </td>
               </tr>
             ) : (
-              rows.map((r, ri) => (
-                <tr key={rowKey(r, ri)}>
+              rows.map((r, ri) => {
+                const href = rowHref?.(r);
+                return (
+                <tr key={rowKey(r, ri)} className={href ? "is-link" : undefined} onClick={href ? (e) => openRow(e, href) : undefined}>
                   {columns.map((c, i) => (
                     <td key={`${i}-${c.header}`} data-label={c.mobileLabel ?? c.header} className={cellClass(c, i === primaryIndex)}>
                       {c.cell(r)}
                     </td>
                   ))}
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -135,22 +158,27 @@ export function DataTable<T>({
           </span>
         )}
       </div>
-      {showFoot && (
-        <div className={hasMore ? "dt-foot table-more" : "dt-foot"}>
-          {summary !== undefined && rows.length > 0 ? <span className="dt-summary">{summary}</span> : <span />}
-          {hasMore && (
-            <Button size="sm" icon={<IconChevronDown size={16} />} onClick={onMore} disabled={loading} loading={loading}>
-              {loading ? "Đang tải…" : "Tải thêm"}
-            </Button>
-          )}
-        </div>
+      {showFoot && <MoreFoot summary={rows.length > 0 ? summary : undefined} hasMore={hasMore} loading={loading} onMore={onMore} />}
+    </div>
+  );
+}
+
+/** Chân danh sách: dòng đếm bên trái, nút "Tải thêm" (trang kế theo con trỏ). Dùng chung cho bảng và dòng thời gian. */
+export function MoreFoot({ summary, hasMore, loading, onMore }: { summary?: ReactNode; hasMore?: boolean; loading?: boolean; onMore?(): void }) {
+  return (
+    <div className={hasMore ? "dt-foot table-more" : "dt-foot"}>
+      {summary !== undefined ? <span className="dt-summary">{summary}</span> : <span />}
+      {hasMore && (
+        <Button size="sm" icon={<IconChevronDown size={16} />} onClick={onMore} disabled={loading} loading={loading}>
+          {loading ? "Đang tải…" : "Tải thêm"}
+        </Button>
       )}
     </div>
   );
 }
 
-/** Chữ đếm dòng cho chân bảng hay FilterBar: "12 đơn" khi đã hết, "50 đơn đầu, còn nữa" khi còn trang sau. */
+/** Chữ đếm dòng cho chân bảng hay FilterBar: "12 đơn" khi đã hết, "50+ đơn" khi còn trang sau (server không trả tổng). */
 export function countText(n: number, unit: string, hasMore: boolean): string {
   const num = String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return hasMore ? `${num} ${unit} đầu, còn nữa` : `${num} ${unit}`;
+  return `${num}${hasMore ? "+" : ""} ${unit}`;
 }

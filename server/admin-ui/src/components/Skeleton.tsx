@@ -40,14 +40,14 @@ export function SkeletonStat({ note = true }: { note?: boolean }) {
 
 const ROW_WIDTHS: readonly SkeletonWidth[] = ["md", "lg", "sm", "xl", "md", "sm"];
 
-/** Các dòng <tr> chờ cho thân bảng (cùng chiều cao dòng thật). Dùng trong <tbody>. */
-export function SkeletonRows({ rows = 5, columns }: { rows?: number; columns: number }) {
+/** Các dòng <tr> chờ cho thân bảng (cùng chiều cao dòng thật). Dùng trong <tbody>. `cellClass`: lớp căn lề của từng cột. */
+export function SkeletonRows({ rows = 5, columns, cellClass }: { rows?: number; columns: number; cellClass?: readonly (string | undefined)[] }) {
   return (
     <>
       {Array.from({ length: rows }, (_, r) => (
         <tr key={r} className="skel-row" aria-hidden="true">
           {Array.from({ length: columns }, (_, c) => (
-            <td key={c}>
+            <td key={c} className={cellClass?.[c]}>
               <SkeletonLine width={ROW_WIDTHS[(r + c) % ROW_WIDTHS.length]} />
             </td>
           ))}

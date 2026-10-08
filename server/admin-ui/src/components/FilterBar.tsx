@@ -25,12 +25,14 @@ export interface FilterBarProps {
   actions?: ReactNode;
   /** Có thì thanh là <form>: Enter trong ô nhập gửi form. */
   onSubmit?(e: FormEvent<HTMLFormElement>): void;
+  /** Lỗi của bộ lọc (khoảng ngày ngược…): dòng đỏ dưới hàng ô lọc, role="alert". */
+  error?: ReactNode;
   /** Tên vùng cho trình đọc màn hình. Mặc định "Bộ lọc". */
   label?: string;
   className?: string;
 }
 
-export function FilterBar({ children, chips = [], onClear, count, actions, onSubmit, label = "Bộ lọc", className }: FilterBarProps) {
+export function FilterBar({ children, chips = [], onClear, count, actions, error, onSubmit, label = "Bộ lọc", className }: FilterBarProps) {
   const cls = className ? `filterbar ${className}` : "filterbar";
   const body = (
     <>
@@ -38,6 +40,11 @@ export function FilterBar({ children, chips = [], onClear, count, actions, onSub
         <div className="filterbar-controls">{children}</div>
         {actions && <div className="filterbar-actions">{actions}</div>}
       </div>
+      {error && (
+        <p className="field-error filterbar-error" role="alert">
+          {error}
+        </p>
+      )}
       {(chips.length > 0 || count !== undefined) && (
         <div className="filterbar-meta">
           {chips.length > 0 ? (

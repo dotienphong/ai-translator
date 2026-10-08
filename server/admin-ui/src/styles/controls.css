@@ -396,3 +396,47 @@ textarea[aria-invalid="true"]:focus {
     height: 38px;
   }
 }
+
+/* ---------- Công tắc bật tắt (checkbox role="switch") ---------- */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--control-h);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.switch input {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  background: var(--line-input);
+  border-radius: var(--r-full);
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease);
+}
+.switch input::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--t-fast) var(--ease);
+}
+.switch input:checked {
+  background: var(--brand);
+}
+.switch input:checked::before {
+  transform: translateX(16px);
+}
+.switch input:focus-visible {
+  box-shadow: var(--focus-ring);
+}
