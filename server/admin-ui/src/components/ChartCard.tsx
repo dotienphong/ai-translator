@@ -4,7 +4,7 @@
 // được khi mù màu đỏ-lục, tương phản ≥ 3:1 với nền thẻ ở cả hai chế độ). Chữ của chú giải và tooltip luôn là màu mực trung
 // tính; màu chuỗi chỉ ở ô màu bên cạnh.
 import type { ReactNode } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, type BarShapeProps, CartesianGrid, Rectangle, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fmtCompact } from "../format";
 import { Card } from "./Card";
 import { EmptyState } from "./EmptyState";
@@ -29,6 +29,19 @@ const valueOf = (row: ChartRow, key: string): number => {
   const v = row[key];
   return typeof v === "number" ? v : 0;
 };
+
+/** Đầu cột bo 3px. */
+const TOP_RADIUS: [number, number, number, number] = [3, 3, 0, 0];
+
+/** Chuỗi nằm trên cùng của cột chồng ở một mốc: chuỗi cuối có giá trị khác 0 (chuỗi sau bằng 0 thì không vẽ đoạn nào). */
+export function topSeries(row: ChartRow | undefined, series: readonly ChartSeries[]): string | undefined {
+  if (!row) return undefined;
+  for (let i = series.length - 1; i >= 0; i--) {
+    const s = series[i] as ChartSeries;
+    if (valueOf(row, s.key) !== 0) return s.key;
+  }
+  return undefined;
+}
 
 interface TooltipEntry {
   dataKey?: unknown;
@@ -136,7 +149,6 @@ export function ChartCard({
   unit?: string;
 }) {
   const empty = data.every((row) => series.every((s) => valueOf(row, s.key) === 0));
-  const last = series.length - 1;
   return (
     <Card title={title} description={description} actions={actions} level={3} className="chart-card">
       {empty ? (
@@ -146,7 +158,14 @@ export function ChartCard({
           <ChartKey series={series} unit={unit} />
           <div className="chart-box" role="img" aria-label={title}>
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={data as ChartRow[]} margin={{ top: 8, right: 4, bottom: 0, left: -4 }} barCategoryGap="22%">
+              {/* accessibilityLayer tắt: Recharts mặc định biến <svg> thành role="application" nhận Tab (không có vòng focus) nằm
+                  trong khung role="img"; người dùng bàn phím đọc số liệu bằng bảng "Xem bảng số" ngay dưới. */}
+              <BarChart
+                data={data as ChartRow[]}
+                margin={{ top: 8, right: 4, bottom: 0, left: -4 }}
+                barCategoryGap="22%"
+                accessibilityLayer={false}
+              >
                 <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                 <XAxis
                   dataKey="label"
@@ -181,8 +200,14 @@ export function ChartCard({
                     name={s.label}
                     stackId={stacked ? "chong" : undefined}
                     fill={COLORS[i % COLORS.length]}
-                    // Đầu cột bo 3px (chỉ đoạn trên cùng khi chồng); khe 1px màu nền thẻ giữa các đoạn chồng và giữa các cột.
-                    radius={!stacked || i === last ? [3, 3, 0, 0] : 0}
+                    // Đầu cột bo 3px. Cột chồng: chỉ đoạn trên cùng của từng mốc được bo (tháng có chuỗi cuối bằng 0 thì đoạn của
+                    // chuỗi bên dưới là đỉnh cột). Khe 1px màu nền thẻ giữa các đoạn chồng.
+                    radius={stacked ? undefined : TOP_RADIUS}
+                    shape={
+                      stacked
+                        ? (p: BarShapeProps) => <Rectangle {...p} radius={topSeries(p.payload as ChartRow | undefined, series) === s.key ? TOP_RADIUS : 0} />
+                        : undefined
+                    }
                     stroke="var(--surface)"
                     strokeWidth={stacked ? 1 : 0}
                     maxBarSize={28}

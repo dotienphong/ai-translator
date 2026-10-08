@@ -105,6 +105,18 @@ describe("Stat", () => {
     expect(container.querySelector(".stat-icon svg")).toBeTruthy();
   });
 
+  it("số rất dài (hàng tỷ) thêm lớp is-long để trên điện thoại ô chiếm cả hàng; số thường thì không", () => {
+    const { container } = render(
+      <>
+        <Stat label="a" value="46.350.000.000 đ" />
+        <Stat label="b" value="12.450.000 đ" />
+      </>,
+    );
+    const [long, short] = [...container.querySelectorAll(".stat")];
+    expect(long?.classList.contains("is-long")).toBe(true);
+    expect(short?.classList.contains("is-long")).toBe(false);
+  });
+
   it.each([
     [{ label: "+12%", direction: "up" } as const, "is-good"],
     [{ label: "−3%", direction: "down" } as const, "is-bad"],

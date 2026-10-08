@@ -261,7 +261,8 @@ describe("OverviewPage", () => {
     expect(metric("Sắp hết hạn trong 7 ngày").el.className).toContain("tone-warn");
     expect(metric("Sắp hết hạn trong 30 ngày").value).toBe("3");
     const mail = metric("Email key đã gửi");
-    expect(mail.value).toBe("1/2");
+    // Có dấu cách quanh "/": số hàng nghìn ("94.000 / 96.000") xuống dòng ở đó thay vì giữa số (pha 6)
+    expect(mail.value).toBe("1 / 2");
     expect(mail.text).toContain("50% số đơn đã trả có email");
     expect(mail.el.className).toContain("tone-warn"); // chưa gửi hết
     unmount();

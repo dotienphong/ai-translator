@@ -1,9 +1,21 @@
 /* Biểu đồ (ChartCard, spec giao diện mới mục 2; bảng màu theo kỹ năng dataviz: tokens.css --chart-*). Chữ của chú giải và
    tooltip là màu mực trung tính; màu chuỗi chỉ nằm ở ô màu nhỏ bên cạnh. */
+/* Tối đa hai cột: cột không hẹp hơn 360px và không hẹp hơn nửa hàng, nên màn rất rộng không mọc cột thứ ba (ô trải hết hàng
+   như biểu đồ theo tháng sẽ kéo ra một cột trống) */
 .chart-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(360px, calc((100% - var(--s-4)) / 2))), 1fr));
   gap: var(--s-4);
+}
+/* Thẻ biểu đồ cao bằng thẻ bên cạnh: thân giãn hết chiều cao, trạng thái "chưa có dữ liệu" nằm giữa thay vì dính trên */
+.chart-card > .ui-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.chart-card > .ui-card-body > .empty-state {
+  flex: 1;
+  justify-content: center;
 }
 .chart-box {
   width: 100%;

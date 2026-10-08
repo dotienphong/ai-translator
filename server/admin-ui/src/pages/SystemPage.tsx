@@ -107,6 +107,8 @@ const ALERT_COLUMNS: Column<AlertRowFull>[] = [
   { header: "Đã báo", align: "right", cell: (r) => fmtInt(r.notified_count) },
   {
     header: "Trạng thái",
+    // Điện thoại: huy hiệu cùng dòng với tên cảnh báo, như các danh sách khác
+    aside: true,
     cell: (r) => (r.count > r.notified_count ? <Badge tone="warn">Chưa báo</Badge> : <Badge tone="ok">Đã báo</Badge>),
   },
 ];

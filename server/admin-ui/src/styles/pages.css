@@ -68,24 +68,25 @@
   background: var(--warn-soft);
 }
 
-/* Danh sách: lưới bốn cột chung cho mọi dòng (subgrid), nên số tiền và thời gian của các dòng thẳng cột; cột cố định nên
-   các thẻ khác nhau cũng thẳng cột với nhau */
+/* Dòng việc: mặc định (thẻ hẹp: điện thoại, cửa sổ nhỏ, hay trình duyệt chưa có container query) mỗi dòng hai hàng, thông
+   tin chính và thời gian ở trên, số tiền và nút ở dưới. Thẻ rộng: bốn cột cố định (khối @container bên dưới), nên số tiền
+   và thời gian thẳng cột giữa các dòng và giữa các thẻ mà không cần subgrid. */
 .q-list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 224px 156px 120px;
-  column-gap: var(--s-6);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .q-row {
   position: relative;
-  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: subgrid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main when"
+    "meta act";
+  gap: var(--s-2) var(--s-3);
   align-items: center;
   min-height: 60px;
-  padding: 10px var(--s-5);
+  padding: var(--s-3) var(--s-4);
   border-top: 1px solid var(--line);
   transition: background-color var(--t-fast) var(--ease);
 }
@@ -228,7 +229,7 @@ code.q-id {
 .q-skel .q-when .skel-line {
   margin-left: auto;
 }
-@container (min-width: 621px) {
+@container (min-width: 840px) {
   .q-skel .q-meta .skel-line {
     margin-left: auto;
   }
@@ -242,42 +243,54 @@ code.q-id {
   padding-block: var(--s-12);
 }
 
-/* Thẻ hẹp (điện thoại, cửa sổ nhỏ): mỗi dòng hai hàng; thông tin chính và thời gian ở trên, số tiền và nút ở dưới */
-@container (max-width: 620px) {
-  .q-list {
-    display: block;
-  }
+/* Thẻ hẹp (mặc định): vị trí từng phần trong hai hàng */
+.q-main {
+  grid-area: main;
+}
+.q-when {
+  grid-area: when;
+  align-self: start;
+}
+.q-when .q-sub {
+  display: none;
+}
+.q-meta {
+  grid-area: meta;
+  align-self: center;
+  align-items: flex-start;
+  text-align: left;
+}
+.q-act {
+  grid-area: act;
+  align-self: end;
+}
+.q-rel {
+  font-size: var(--fs-sm);
+}
+/* Thẻ rộng: bốn cột cố định; cột đầu còn ít nhất khoảng 220px cho email */
+@container (min-width: 840px) {
   .q-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "main when"
-      "meta act";
-    gap: var(--s-2) var(--s-3);
-    padding: var(--s-3) var(--s-4);
-  }
-  .q-main {
-    grid-area: main;
-  }
-  .q-when {
-    grid-area: when;
-    align-self: start;
+    grid-template-columns: minmax(0, 1fr) 216px 168px 120px;
+    grid-template-areas: "main meta when act";
+    gap: 0 var(--s-6);
+    padding: 10px var(--s-5);
   }
   .q-when .q-sub {
-    display: none;
+    display: block;
+    white-space: nowrap;
   }
   .q-meta {
-    grid-area: meta;
+    align-items: flex-end;
+    text-align: right;
+  }
+  .q-when {
     align-self: center;
-    align-items: flex-start;
-    text-align: left;
   }
   .q-act {
-    grid-area: act;
-    align-self: end;
+    align-self: center;
   }
   .q-rel {
-    font-size: var(--fs-sm);
+    font-size: inherit;
   }
 }
 
@@ -424,7 +437,8 @@ code.q-id {
 }
 .ov-status-row {
   display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) minmax(48px, 120px) 4ch 16px;
+  /* Cột số 7ch: đủ "196.000" mà các dòng vẫn thẳng cột */
+  grid-template-columns: 8px minmax(0, 1fr) minmax(48px, 120px) 7ch 16px;
   align-items: center;
   column-gap: var(--s-3);
   min-height: 38px;
@@ -494,43 +508,48 @@ a.ov-status-row:hover .ov-status-label {
   place-items: center;
 }
 
-/* Danh sách chỉ số (Cần chú ý, Máy): ô biểu tượng theo tông, tên và gợi ý, số lớn căn phải */
+/* Danh sách chỉ số (Cần chú ý, Máy): mỗi chỉ số là một ô nền nhạt (ô biểu tượng theo tông, tên và gợi ý, số lớn căn phải).
+   Thẻ cao bằng thẻ bên cạnh: các ô chia đều chiều cao nên trông như một cột ô số có chủ ý, không phải danh sách bị kéo giãn. */
 .metric-list {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: var(--s-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
+/* Cột số tối đa nửa ô: số rất lớn ("94.000 / 96.000") xuống dòng ở dấu cách thay vì ép tên chỉ số thành cột hẹp */
 .metric {
   flex: 1;
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) fit-content(50%);
   align-items: center;
-  column-gap: var(--s-3);
-  min-height: 60px;
-  padding: var(--s-2) 0;
-}
-.metric + .metric {
-  border-top: 1px solid var(--line);
+  column-gap: var(--s-4);
+  min-height: 72px;
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
 }
 .metric-icon {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   color: var(--ink-3);
-  background: var(--surface-3);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
   border-radius: var(--r-sm);
 }
 .metric-icon .icon {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
 }
 .metric-text {
   display: flex;
   flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
 .metric-label {
@@ -538,14 +557,20 @@ a.ov-status-row:hover .ov-status-label {
   color: var(--ink);
 }
 .metric-hint {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--ink-3);
 }
 .metric-value {
-  font-size: var(--fs-xl);
+  text-align: right;
+  font-size: var(--fs-stat);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+.metric:not(.tone-default) .metric-icon {
+  box-shadow: none;
 }
 .metric.tone-ok .metric-icon {
   color: var(--ok);
@@ -567,6 +592,16 @@ a.ov-status-row:hover .ov-status-label {
   background: var(--brand-soft);
 }
 
+/* Hai cột lệch chỉ khi nhóm đủ rộng (theo bề rộng vùng nội dung, không theo màn hình: thanh bên mở hay thu gọn khác nhau):
+   hẹp hơn thì một cột, cùng lúc với lưới biểu đồ ở trên (hai cột 360px) cũng về một cột, thẻ chỉ số không bị ép hẹp */
+.ui-section:has(> .ov-split) {
+  container-type: inline-size;
+}
+@container (max-width: 860px) {
+  .ov-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 1000px) {
   .ov-split {
     grid-template-columns: minmax(0, 1fr);
@@ -580,7 +615,8 @@ a.ov-status-row:hover .ov-status-label {
   .ov-stats > .stat:nth-child(n + 4) {
     grid-column: auto;
   }
-  .ov-stats > .stat:last-child:nth-child(odd) {
+  .ov-stats > .stat:last-child:nth-child(odd),
+  .ov-stats > .stat.is-long {
     grid-column: 1 / -1;
   }
 }
@@ -1010,6 +1046,14 @@ a.row-id:hover {
     justify-content: center;
     height: 40px;
   }
+}
+/* Máy tính bảng: đủ chỗ cho mọi lựa chọn trên một hàng */
+@media (min-width: 561px) and (max-width: 800px) {
+  .seg-fill .segment {
+    flex: 1 1 0;
+  }
+}
+@media (max-width: 800px) {
   .filterbar-controls > .audit-action,
   .filterbar-controls > .audit-submit {
     flex-basis: 100%;
@@ -1052,17 +1096,26 @@ a.row-id:hover {
   content: "·";
   margin-right: var(--s-2);
 }
-.detail-meta > span:first-child {
-  overflow-wrap: anywhere;
+/* Một dòng: email rất dài bị cắt bằng dấu chấm lửng (đầy đủ ở title và ở thẻ Thông tin), các mẩu sau không rớt xuống dòng
+   với dấu chấm giữa đứng đầu dòng */
+.detail-meta {
+  flex-wrap: nowrap;
 }
-/* Mô tả xuống dòng trên màn hẹp: mỗi mẩu một dòng, không để dấu chấm giữa đứng đầu dòng */
+.detail-meta > span {
+  flex: none;
+  white-space: nowrap;
+}
+.detail-meta > span:first-child {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Điện thoại: chỉ giữ mẩu đầu (email). Các mẩu sau (hạn dùng, ngày tạo, gói) có đủ trong thẻ Thông tin, thẻ này đứng ngay
+   dưới đầu trang khi trang một cột; đầu trang gọn còn một dòng thay vì ba */
 @media (max-width: 800px) {
-  .detail-meta {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .detail-meta > span + span::before {
-    content: none;
+  .detail-meta > span + span {
+    display: none;
   }
 }
 .page-title .skel-line {
@@ -1148,6 +1201,10 @@ a.row-id:hover {
   background: var(--surface-3);
 }
 @media (max-width: 800px) {
+  /* Chữ đứng cạnh ô biểu tượng (không rớt xuống hàng dưới biểu tượng); nút xuống hàng riêng */
+  .callout .ui-card-heading {
+    flex-basis: calc(100% - 44px);
+  }
   .callout .ui-card-actions {
     flex-basis: 100%;
     justify-content: flex-start;
@@ -1312,12 +1369,16 @@ a.lic-key::after {
   color: var(--ink-3);
   overflow-wrap: anywhere;
 }
+/* Chấm và câu luôn cùng dòng: câu dài xuống dòng bên cạnh chấm, chấm không đứng lẻ một hàng */
 .lic-here {
-  align-items: center;
+  flex-wrap: nowrap;
+  align-items: flex-start;
   gap: var(--s-2);
   color: var(--ink-2);
 }
 .lic-here-dot {
+  flex: none;
+  margin-top: 6px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -1578,8 +1639,12 @@ a.dev-name:hover {
 .format-hints span {
   color: var(--ink-3);
 }
+/* Mẫu từ khóa: chữ mono nhẹ, không nền (nền xám của mã trong đoạn văn làm năm dòng thành năm khối nặng) */
 .format-hints code {
+  justify-self: start;
+  padding: 0;
   color: var(--ink-2);
+  background: none;
 }
 
 /* ---------- 404 ---------- */
@@ -1631,6 +1696,13 @@ a.dev-name:hover {
 @media (max-width: 800px) {
   .key-title {
     font-size: var(--fs-lg);
+  }
+  /* Ô nhập chiếm cả hàng, nút xuống dưới: không cần bù chiều cao nhãn */
+  .danger-form > .btn {
+    margin-top: 0;
+  }
+  .metric-value {
+    font-size: var(--fs-xl);
   }
   .lic-item {
     padding: var(--s-3) var(--s-4);

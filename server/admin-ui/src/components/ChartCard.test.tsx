@@ -1,14 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { fmtVnd } from "../format";
-import { ChartCard, ChartTooltip } from "./ChartCard";
+import { ChartCard, ChartTooltip, topSeries } from "./ChartCard";
 
 // Recharts thật cần kích thước và ResizeObserver mà jsdom không có: thay bằng khung thử ghi lại các thuộc tính ChartCard truyền xuống.
 // Chất lượng vẽ thật do công cụ scripts/csp-check.mjs (Chrome headless) kiểm.
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children?: unknown }) => <div data-testid="container">{children as never}</div>,
-  BarChart: ({ children, data }: { children?: unknown; data: unknown[] }) => (
-    <div data-testid="bar-chart" data-rows={data.length}>
+  BarChart: ({ children, data, accessibilityLayer }: { children?: unknown; data: unknown[]; accessibilityLayer?: boolean }) => (
+    <div data-testid="bar-chart" data-rows={data.length} data-a11y={String(accessibilityLayer)}>
       {children as never}
     </div>
   ),
@@ -48,6 +48,21 @@ describe("ChartCard", () => {
     expect(bars[0]?.getAttribute("data-name")).toBe("Doanh thu");
     expect(bars[0]?.getAttribute("data-stack")).toBe("");
     expect(legend()).toBeNull();
+    // SVG của Recharts không nhận Tab (không có vòng focus, nằm trong khung role="img"); số liệu đọc bằng bảng số.
+    expect(screen.getByTestId("bar-chart").getAttribute("data-a11y")).toBe("false");
+  });
+
+  it("cột chồng: đoạn được bo đầu là chuỗi cuối khác 0 của từng mốc (tháng chuỗi cuối bằng 0 vẫn có đỉnh bo)", () => {
+    const series = [
+      { key: "new", label: "Mua mới" },
+      { key: "extend", label: "Gia hạn" },
+      { key: "other", label: "Khác" },
+    ];
+    expect(topSeries({ label: "a", new: 3, extend: 2, other: 1 }, series)).toBe("other");
+    expect(topSeries({ label: "b", new: 3, extend: 2, other: 0 }, series)).toBe("extend");
+    expect(topSeries({ label: "c", new: 3, extend: 0, other: 0 }, series)).toBe("new");
+    expect(topSeries({ label: "d", new: 0, extend: 0, other: 0 }, series)).toBeUndefined();
+    expect(topSeries(undefined, series)).toBeUndefined();
   });
 
   it("nhiều chuỗi: có chú giải, màu theo thứ tự biến CSS; stacked thì cùng stackId", () => {

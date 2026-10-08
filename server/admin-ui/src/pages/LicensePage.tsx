@@ -98,7 +98,7 @@ export function LicensePage({ id }: { id: string }) {
         }
         description={
           <p className="page-meta detail-meta">
-            <span>{lic.email ?? "Không có email (đã ẩn danh)"}</span>
+            <span title={lic.email ?? undefined}>{lic.email ?? "Không có email (đã ẩn danh)"}</span>
             <span>{revoked ? `hết hạn ${fmtDate(lic.expires_at)}` : `${daysLeft(lic.expires_at, now)}, hết hạn ${fmtDate(lic.expires_at)}`}</span>
             <span>
               tạo <RelTime sec={lic.created_at} now={now} />
@@ -231,7 +231,6 @@ export function LicensePage({ id }: { id: string }) {
               <DataTable
                 flush
                 caption="Đơn của license"
-                mobile="table"
                 columns={orderColumns(now).filter((c) => !ORDER_COLUMNS_HIDDEN.has(c.header))}
                 rows={data.data.orders}
                 rowKey={(o) => String(o.order_code)}

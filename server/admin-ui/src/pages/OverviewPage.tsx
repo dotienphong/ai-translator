@@ -167,7 +167,7 @@ function Content({ s }: { s: Stats }) {
                   tone={health.email.sent < health.email.paid_with_email_30d ? "warn" : "ok"}
                   label="Email key đã gửi"
                   hint={`${pct(health.email.sent, health.email.paid_with_email_30d)}% số đơn đã trả có email`}
-                  value={`${fmtInt(health.email.sent)}/${fmtInt(health.email.paid_with_email_30d)}`}
+                  value={`${fmtInt(health.email.sent)} / ${fmtInt(health.email.paid_with_email_30d)}`}
                 />
               ) : (
                 <Metric icon={<IconMail />} label="Email key đã gửi" hint="Chưa có đơn nào có email trong 30 ngày" value="—" />

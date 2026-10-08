@@ -24,8 +24,12 @@ export interface StatProps {
   className?: string;
 }
 
+/** Giá trị dài hơn mức này (số tiền hàng tỷ: "46.350.000.000 đ") thì trên điện thoại ô chiếm cả hàng, số không bị bẻ giữa chừng. */
+const LONG_VALUE = 13;
+
 export function Stat({ label, value, note, icon, tone = "default", delta, className }: StatProps) {
-  const cls = ["stat", tone !== "default" && `tone-${tone}`, className].filter(Boolean).join(" ");
+  const long = typeof value === "string" && value.length > LONG_VALUE;
+  const cls = ["stat", tone !== "default" && `tone-${tone}`, long && "is-long", className].filter(Boolean).join(" ");
   let deltaEl: ReactNode = null;
   if (delta) {
     const good = delta.direction === "flat" ? null : (delta.direction === "up") === (delta.upIsGood ?? true);

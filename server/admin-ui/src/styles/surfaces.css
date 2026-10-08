@@ -83,6 +83,8 @@
 /* ---------- Thẻ ---------- */
 .ui-card {
   --card-accent: transparent;
+  /* Đầu thẻ đổi bố cục theo bề rộng của chính thẻ (khối @container bên dưới) */
+  container-type: inline-size;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -225,6 +227,28 @@
 .ui-card.tone-danger .ui-card-foot {
   background: color-mix(in srgb, var(--bad-soft) 55%, var(--surface));
   border-top-color: var(--bad-line);
+}
+
+/* Thẻ hẹp (điện thoại, cột phụ) có mô tả dài và huy hiệu hay nút ở góc: huy hiệu, nút xuống dòng dưới chữ, thẳng với tiêu
+   đề, để tiêu đề và mô tả không bị ép thành một cột hẹp. Nút chỉ có biểu tượng (Đóng) thì vẫn ở góc. Trình duyệt chưa có
+   container query: giữ bố cục một hàng như cũ. */
+@container (max-width: 420px) {
+  .ui-card-head:has(> .ui-card-heading .ui-card-desc):has(> .ui-card-actions > :not(.icon-only)) {
+    flex-wrap: wrap;
+  }
+  .ui-card-head:has(> .ui-card-heading .ui-card-desc) > .ui-card-actions:has(> :not(.icon-only)) {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    margin: 0;
+  }
+  .ui-card-head:has(> .ui-card-heading .ui-card-desc) > .ui-card-icon ~ .ui-card-actions:has(> :not(.icon-only)) {
+    padding-left: 44px;
+  }
+  /* Nút không viền: chữ thẳng với chữ tiêu đề (bù phần đệm của nút) */
+  .ui-card-head:has(> .ui-card-heading .ui-card-desc) > .ui-card-actions > .btn.ghost:first-child {
+    margin-left: calc(-1 * var(--s-3));
+  }
 }
 
 /* ---------- Nhóm có tiêu đề nhỏ ---------- */
@@ -695,9 +719,10 @@ td .skel-line {
   background: var(--line);
   border-radius: 1px;
 }
+/* Khoảng trên tiêu đề ngày cộng với khoảng dưới mốc trước (16px) là 24px: nhóm ngày tách rõ mà không hở */
 .tl-day {
   position: relative;
-  padding: var(--s-4) 0 var(--s-2) 28px;
+  padding: var(--s-2) 0 var(--s-2) 28px;
   font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -811,8 +836,9 @@ td .skel-line {
   .stat {
     padding: var(--s-3) var(--s-4);
   }
-  /* Số ô lẻ: ô cuối trải hết hàng, không để một ô lẻ loi */
-  .stat-grid > .stat:last-child:nth-child(odd) {
+  /* Số ô lẻ: ô cuối trải hết hàng, không để một ô lẻ loi. Số rất dài (Stat thêm lớp is-long): ô chiếm cả hàng */
+  .stat-grid > .stat:last-child:nth-child(odd),
+  .stat-grid > .stat.is-long {
     grid-column: 1 / -1;
   }
   .stat-value {
@@ -835,5 +861,11 @@ td .skel-line {
   }
   .empty-state {
     padding: var(--s-8) var(--s-4);
+  }
+}
+/* Điện thoại nhỏ (hai ô một hàng, mỗi ô khoảng 170px): bỏ ô biểu tượng trang trí để nhãn ("Doanh thu hôm nay") đủ một dòng */
+@media (max-width: 440px) {
+  .stat-icon {
+    display: none;
   }
 }
