@@ -30,7 +30,16 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-const SURFACES = ["bg", "surface", "surface-2", "surface-3", "sidebar", "topbar"];
+/** color-mix(in srgb, a p, b): trộn từng kênh sRGB (chưa tuyến tính hóa), như trình duyệt. */
+function mix(a: string, b: string, p: number): string {
+  const ch = (h: string, i: number) => Number.parseInt(h.slice(i, i + 2), 16);
+  return `#${[1, 3, 5]
+    .map((i) => Math.round(ch(a, i) * p + ch(b, i) * (1 - p)))
+    .map((v) => v.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+const SURFACES =["bg", "surface", "surface-2", "surface-3", "sidebar", "topbar"];
 
 /** [chữ hay phần tử, nền, ngưỡng] */
 const PAIRS: [string, string, number][] = [
@@ -152,6 +161,14 @@ describe("tương phản token màu (WCAG AA)", () => {
     it.each(PAIRS)(`chế độ ${mode}: --%s trên --%s đạt %s:1`, (fg, bg, min) => {
       const ratio = contrast(tokens[fg] as string, tokens[bg] as string);
       expect(ratio, `--${fg} ${tokens[fg]} trên --${bg} ${tokens[bg]}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(min);
+    });
+
+    // Pha 6: nền pha trộn. Chân thẻ tông nguy hiểm (surfaces.css) là color-mix(--bad-soft 55%, --surface): chữ chân thẻ
+    // (--ink-3), nút gấp và "và N mục khác" (--ink-2), liên kết (--brand-ink) đều phải đọc được trên nền đó.
+    it.each(["ink-3", "ink-2", "brand-ink"])(`chế độ ${mode}: --%s trên chân thẻ nguy hiểm đạt 4.5:1`, (fg) => {
+      const bg = mix(tokens["bad-soft"] as string, tokens.surface as string, 0.55);
+      const ratio = contrast(tokens[fg] as string, bg);
+      expect(ratio, `--${fg} trên ${bg}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
     });
   }
 });

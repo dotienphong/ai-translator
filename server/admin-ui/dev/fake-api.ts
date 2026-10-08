@@ -9,6 +9,8 @@
 // Xem trạng thái khó tạo: thêm `__fake=slow` (chờ 30 giây), `__fake=error` (lỗi 500) hay `__fake=empty` (danh sách rỗng)
 // vào địa chỉ TRANG (ví dụ /orders?__fake=empty): API giả ghi nó vào cookie khi trả HTML, trang không biết gì. Áp cho bốn
 // danh sách và cho tra cứu (empty: không tìm thấy). `__fake=bad` làm tra cứu trả 400 (từ khóa sai định dạng).
+// Hàng đợi, số nhanh và Tổng quan: `__fake=empty` là không có việc nào, số liệu bằng 0; `__fake=huge` là số hàng tỷ, hàng
+// triệu (kiểm chữ số dài không tràn ô).
 import type { Plugin } from "vite";
 import type {
   Activation,
@@ -468,6 +470,57 @@ const stats: Stats = (() => {
   };
 })();
 
+/** Hàng đợi, số nhanh, Tổng quan cho `__fake=empty` (mọi số bằng 0) và `__fake=huge` (số rất lớn). */
+function dashboardReply(path: string, mode: string): Reply | null {
+  const zeroGroup = { count: 0, items: [] };
+  const scale = (n: number) => (mode === "huge" ? n * 1000 : 0);
+  if (path === "/admin/queue") {
+    if (mode !== "empty") return null;
+    return ok({ needs_review: zeroGroup, underpaid: zeroGroup, email_failed: zeroGroup, locked: zeroGroup, conflict: zeroGroup, alerts: zeroGroup });
+  }
+  if (path === "/admin/summary") {
+    return ok({ ...summary, revenue_today: scale(summary.revenue_today), paid_orders_7d: scale(summary.paid_orders_7d), active_licenses: scale(summary.active_licenses) });
+  }
+  if (path === "/admin/stats") {
+    const m = stats.money;
+    const c = stats.customers;
+    const z = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, scale(v)]));
+    return ok({
+      ...stats,
+      money: {
+        today: scale(m.today),
+        last_7d: scale(m.last_7d),
+        this_month: scale(m.this_month),
+        last_month: scale(m.last_month),
+        daily: m.daily.map((d) => ({ ...d, revenue: scale(d.revenue), orders: scale(d.orders) })),
+        monthly: m.monthly.map((x) => ({ month: x.month, monthly: z(x.monthly), yearly: z(x.yearly) })),
+      },
+      customers: {
+        trials_30d: scale(c.trials_30d),
+        trials_30d_purchased: scale(c.trials_30d_purchased),
+        trials_total: scale(c.trials_total),
+        trials_total_purchased: scale(c.trials_total_purchased),
+        grants_30d: Object.fromEntries(Object.entries(c.grants_30d).map(([k, v]) => [k, z(v)])),
+        grants_monthly: c.grants_monthly.map((x) => ({ ...z({ new: x.new, extend: x.extend, change: x.change, other: x.other }), month: x.month })),
+      },
+      health: {
+        orders_30d: z(stats.health.orders_30d),
+        expiring_7d: scale(stats.health.expiring_7d),
+        expiring_30d: scale(stats.health.expiring_30d),
+        email: z(stats.health.email),
+      },
+      usage: {
+        active_licenses: scale(stats.usage.active_licenses),
+        active_devices: scale(stats.usage.active_devices),
+        devices_7d: scale(stats.usage.devices_7d),
+        trials_active: scale(stats.usage.trials_active),
+        new_trials_daily: stats.usage.new_trials_daily.map((d) => ({ ...d, count: scale(d.count) })),
+      },
+    });
+  }
+  return null;
+}
+
 /* ---------- Tra cứu: trả theo body như server ---------- */
 
 /** License đầy đủ của một dòng danh sách (key đầy đủ dựng lại từ key che, máy theo số máy đang kích hoạt). */
@@ -602,8 +655,10 @@ export function fakeAdminApi(): Plugin {
           } catch {
             body = {};
           }
-          const reply =
-            list && mode === "error"
+          const dash = req.method === "GET" && (mode === "empty" || mode === "huge") ? dashboardReply(url.pathname, mode) : null;
+          const reply = dash
+            ? dash
+            : list && mode === "error"
               ? ok({ error: "internal" }, 500)
               : list && mode === "empty"
                 ? ok(isLookup ? { licenses: [], orders: [] } : { items: [], next_cursor: null })
