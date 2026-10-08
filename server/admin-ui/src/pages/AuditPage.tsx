@@ -155,6 +155,7 @@ export function AuditPage() {
       <FilterBar
         onSubmit={apply}
         className="audit-filters"
+        collapsible
         chips={chips}
         onClear={clear}
         count={list.error && rows.length === 0 ? undefined : <ResultCount n={rows.length} unit="dòng" hasMore={list.hasMore} view={view} />}

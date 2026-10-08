@@ -427,13 +427,45 @@ tbody tr:last-child td {
   border: 0;
 }
 
-/* ---------- Điện thoại: vùng chạm 44px ---------- */
+/* ---------- Điện thoại: vùng chạm 44px ----------
+   Mọi nút (kể cả cỡ nhỏ, nút chữ, nút chỉ có biểu tượng) cao và rộng tối thiểu 44px. Nút chép nhỏ nằm trong dòng chữ
+   (KeyValue, mã máy) giữ ô 28px để dòng không cao thêm, vùng chạm mở rộng ra 44 × 44 bằng một lớp trong suốt (::after).
+   Liên kết chữ trong dòng (đường dẫn phụ, liên kết của nhật ký, tên máy, "và N mục khác"): vùng chạm cao 44px theo cách
+   tương tự, chữ không to thêm. */
 @media (max-width: 800px) {
   :root {
     --control-h: 44px;
+    --control-h-sm: 44px;
   }
   :where(button, .btn).link {
-    min-height: 40px;
+    min-height: 44px;
+  }
+  .copy-btn.icon-only::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  .breadcrumb a,
+  .cell-links a,
+  a.dev-name,
+  .q-more {
+    position: relative;
+  }
+  .breadcrumb a::after,
+  .cell-links a::after,
+  a.dev-name::after,
+  .q-more::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -4px;
+    right: -4px;
+    height: 44px;
+    transform: translateY(-50%);
   }
   /* 16px: iOS không phóng to khi chạm vào ô nhập */
   input:not([type="checkbox"], [type="radio"]),

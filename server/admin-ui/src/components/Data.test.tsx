@@ -324,3 +324,38 @@ describe("Ô nhập có nhãn", () => {
     expect(screen.getByRole("textbox").hasAttribute("aria-describedby")).toBe(false);
   });
 });
+
+describe("FilterBar collapsible (điện thoại: gấp hàng ô lọc)", () => {
+  it("nút Bộ lọc có aria-expanded và aria-controls trỏ vào hàng ô lọc; bấm thì mở, bấm lại thì gấp; ô lọc luôn trong DOM", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <FilterBar collapsible chips={[{ key: "a", name: "Tác nhân", value: "App", onRemove: () => {} }]} count="38 dòng">
+        <label>
+          Mã <input />
+        </label>
+      </FilterBar>,
+    );
+    const toggle = screen.getByRole("button", { name: "Bộ lọc (1 đang bật)" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    const row = document.getElementById(toggle.getAttribute("aria-controls") ?? "") as HTMLElement;
+    expect(row.className).toBe("filterbar-row");
+    expect(row.querySelector("input")).toBeTruthy();
+    const bar = container.querySelector(".filterbar") as HTMLElement;
+    expect(bar.classList.contains("is-collapsible")).toBe(true);
+    expect(bar.classList.contains("is-open")).toBe(false);
+    await user.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(bar.classList.contains("is-open")).toBe(true);
+    // Chip của bộ lọc đang bật vẫn hiện dù hàng ô lọc gấp hay mở.
+    expect(screen.getByRole("list", { name: "Bộ lọc đang bật" })).toBeTruthy();
+  });
+
+  it("không collapsible: không có nút Bộ lọc", () => {
+    render(
+      <FilterBar>
+        <input aria-label="x" />
+      </FilterBar>,
+    );
+    expect(screen.queryByRole("button", { name: /Bộ lọc/ })).toBeNull();
+  });
+});

@@ -1,8 +1,9 @@
 // Thanh lọc của trang danh sách (spec giao diện mới, mục 2): hàng ô lọc (Select, DateInput, SearchInput), hành động bên phải,
 // dưới là chip cho mỗi bộ lọc đang bật (bấm X để bỏ từng cái), nút "Xóa lọc" và dòng đếm kết quả bên phải.
-import type { FormEvent, ReactNode } from "react";
+// collapsible: trên điện thoại hàng ô lọc gấp lại sau nút "Bộ lọc" (chip và dòng đếm vẫn hiện); máy tính không đổi.
+import { type FormEvent, type ReactNode, useId, useState } from "react";
 import { Button } from "./Button";
-import { IconClose, IconFilter } from "./icons";
+import { IconChevronDown, IconClose, IconFilter } from "./icons";
 
 export interface FilterChip {
   key: string;
@@ -30,13 +31,32 @@ export interface FilterBarProps {
   /** Tên vùng cho trình đọc màn hình. Mặc định "Bộ lọc". */
   label?: string;
   className?: string;
+  /**
+   * Điện thoại (≤ 800px): gấp hàng ô lọc sau nút "Bộ lọc" (aria-expanded), để kết quả không bị đẩy khỏi màn hình đầu.
+   * Ô lọc vẫn nằm trong DOM (giữ giá trị đang gõ); chip của bộ lọc đang bật và dòng đếm luôn hiện.
+   */
+  collapsible?: boolean;
 }
 
-export function FilterBar({ children, chips = [], onClear, count, actions, error, onSubmit, label = "Bộ lọc", className }: FilterBarProps) {
-  const cls = className ? `filterbar ${className}` : "filterbar";
+export function FilterBar({ children, chips = [], onClear, count, actions, error, onSubmit, label = "Bộ lọc", className, collapsible }: FilterBarProps) {
+  const [open, setOpen] = useState(false);
+  const rowId = useId();
+  const cls = ["filterbar", collapsible && "is-collapsible", collapsible && open && "is-open", className].filter(Boolean).join(" ");
   const body = (
     <>
-      <div className="filterbar-row">
+      {collapsible && (
+        <Button
+          className="filterbar-toggle"
+          icon={<IconFilter size={16} />}
+          iconEnd={<IconChevronDown size={16} className="filterbar-chevron" />}
+          aria-expanded={open}
+          aria-controls={rowId}
+          onClick={() => setOpen((o) => !o)}
+        >
+          {chips.length > 0 ? `Bộ lọc (${chips.length} đang bật)` : "Bộ lọc"}
+        </Button>
+      )}
+      <div className="filterbar-row" id={rowId}>
         <div className="filterbar-controls">{children}</div>
         {actions && <div className="filterbar-actions">{actions}</div>}
       </div>

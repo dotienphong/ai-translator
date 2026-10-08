@@ -446,6 +446,11 @@ code.q-id {
   margin: 0 calc(-1 * var(--s-2));
   border-radius: var(--r-xs);
 }
+@media (max-width: 800px) {
+  .ov-status-row {
+    min-height: 44px;
+  }
+}
 .ov-dot {
   width: 8px;
   height: 8px;
@@ -1044,7 +1049,7 @@ a.row-id:hover {
   .seg-fill .segment {
     flex: 1 1 30%;
     justify-content: center;
-    height: 40px;
+    height: 44px;
   }
 }
 /* Máy tính bảng: đủ chỗ cho mọi lựa chọn trên một hàng */
@@ -1071,11 +1076,9 @@ a.row-id:hover {
   .filterbar-clear {
     margin-left: calc(-1 * var(--s-3));
   }
+  /* Thẻ hàng: chấm nằm trong lề trái của thẻ (đệm 16px), mã đơn vẫn thẳng với mã của các thẻ khác */
   .row-flag {
-    position: static;
-    display: inline-block;
-    margin-right: var(--s-2);
-    vertical-align: 1px;
+    left: -12px;
   }
   .audit-tl {
     padding: var(--s-4);
@@ -1088,22 +1091,30 @@ a.row-id:hover {
 /* ======================================================================
    Chi tiết (Đơn, License, Máy), Công cụ, Tra cứu, 404 (pha 5)
    ====================================================================== */
-/* Dòng mô tả của đầu trang chi tiết: các mẩu cách nhau bằng chấm giữa */
-.detail-meta {
-  gap: 2px var(--s-2);
+/* Dòng mô tả của đầu trang chi tiết: các mẩu cách nhau bằng chấm giữa. Không đủ chỗ thì mẩu sau xuống dòng (email không
+   bị bóp còn vài chữ). Không dòng nào mở đầu bằng "·": mỗi mẩu mang chấm của nó ở phần đệm trái, cả dòng lùi trái đúng bằng
+   phần đệm đó, khung ngoài cắt phần thừa nên chấm của mẩu đứng đầu dòng nằm ngoài khung. Email dài hơn cả một dòng thì cắt
+   bằng dấu chấm lửng (đầy đủ ở title và ở thẻ Thông tin). */
+.page-desc:has(> .detail-meta) {
+  overflow: hidden;
 }
-.detail-meta > span + span::before {
-  content: "·";
-  margin-right: var(--s-2);
-}
-/* Một dòng: email rất dài bị cắt bằng dấu chấm lửng (đầy đủ ở title và ở thẻ Thông tin), các mẩu sau không rớt xuống dòng
-   với dấu chấm giữa đứng đầu dòng */
 .detail-meta {
-  flex-wrap: nowrap;
+  --meta-sep: 20px;
+  gap: 2px 0;
+  margin-left: calc(-1 * var(--meta-sep));
 }
 .detail-meta > span {
+  position: relative;
   flex: none;
+  padding-left: var(--meta-sep);
   white-space: nowrap;
+}
+.detail-meta > span::before {
+  content: "·";
+  position: absolute;
+  left: 0;
+  width: var(--meta-sep);
+  text-align: center;
 }
 .detail-meta > span:first-child {
   flex: 0 1 auto;
@@ -1144,6 +1155,7 @@ a.row-id:hover {
   word-break: break-all;
 }
 .hash-line .copy-btn {
+  flex: none;
   width: 28px;
   min-height: 28px;
   margin-top: -2px;
@@ -1276,6 +1288,8 @@ a.row-id:hover {
   font-weight: 600;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+  /* Số và "đ" không bị tách dòng */
+  white-space: nowrap;
 }
 .figs .is-warn dd {
   color: var(--warn);
@@ -1724,5 +1738,27 @@ a.dev-name:hover {
   }
   .nf-code {
     font-size: 64px;
+  }
+}
+/* Điện thoại hẹp (360px): ba cột số (tiền, ngày của dùng thử) chia đều chỗ bằng khoảng cách cột thay cho đệm hai bên
+   mỗi cột, đủ cho "500.000 đ" hay "06/10/2026" trên một dòng; vạch chia vẽ giữa khoảng cách */
+@media (max-width: 400px) {
+  .figs {
+    column-gap: 10px;
+  }
+  .figs > div {
+    position: relative;
+    padding: 0;
+  }
+  .figs > div + div {
+    border-left: 0;
+  }
+  .figs > div + div::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -5px;
+    border-left: 1px solid var(--line);
   }
 }

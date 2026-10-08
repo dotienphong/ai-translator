@@ -30,8 +30,9 @@ export function Topbar({ operator, operatorLoading, menuOpen, onMenu, menuButton
         </button>
         <SearchBox />
         <div className="topbar-end">
-          {/* Chỉ có một môi trường (production): nhắc rằng mọi thao tác chạm dữ liệu thật. */}
-          <span className="env-badge" title="Dữ liệu thật: mọi thao tác ghi đều có hiệu lực ngay">
+          {/* Chỉ có một môi trường (production): nhắc rằng mọi thao tác chạm dữ liệu thật. Điện thoại hẹp chỉ còn chấm: chữ
+              Production vẫn có cho trình đọc màn hình (ẩn bằng clip), title nói đủ tên môi trường khi giữ hay rê lên chấm. */}
+          <span className="env-badge" title="Production: dữ liệu thật, mọi thao tác ghi đều có hiệu lực ngay">
             <span className="env-dot" aria-hidden="true" />
             <span className="env-badge-text">Production</span>
           </span>

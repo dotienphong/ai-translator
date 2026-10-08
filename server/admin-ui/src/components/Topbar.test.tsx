@@ -15,6 +15,8 @@ describe("Topbar", () => {
   it("nhãn môi trường Production; ô tra cứu nằm trong thanh trên", () => {
     render(<Topbar operator={null} operatorLoading={false} menuOpen={false} onMenu={() => {}} />);
     expect(screen.getByText("Production")).toBeTruthy();
+    // Điện thoại hẹp chỉ còn chấm: title vẫn nói tên môi trường.
+    expect(document.querySelector(".env-badge")?.getAttribute("title")).toMatch(/^Production: dữ liệu thật/);
     expect(screen.getByRole("search")).toBeTruthy();
     expect(screen.getByLabelText("Tra cứu")).toBeTruthy();
   });

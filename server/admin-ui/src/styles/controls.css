@@ -156,6 +156,27 @@ textarea[aria-invalid="true"]:focus {
   gap: var(--s-3);
   margin-bottom: var(--s-4);
 }
+/* Nút gấp hàng ô lọc (FilterBar collapsible): chỉ có trên điện thoại */
+.filterbar-toggle {
+  display: none;
+}
+@media (max-width: 800px) {
+  :where(.btn).filterbar-toggle {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .filterbar-toggle .filterbar-chevron {
+    margin-left: auto;
+    transition: transform var(--t-fast) var(--ease);
+  }
+  .filterbar-toggle[aria-expanded="true"] .filterbar-chevron {
+    transform: rotate(180deg);
+  }
+  .filterbar.is-collapsible:not(.is-open) > .filterbar-row {
+    display: none;
+  }
+}
 .filterbar-row {
   display: flex;
   flex-wrap: wrap;
@@ -389,11 +410,22 @@ textarea[aria-invalid="true"]:focus {
     height: 34px;
   }
   .chip-remove {
+    position: relative;
     width: 30px;
     height: 30px;
   }
+  /* Nút bỏ lọc giữ vòng 30px trong chip; vùng chạm 44 × 44 */
+  .chip-remove::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
   .segment {
-    height: 38px;
+    height: 44px;
   }
 }
 
