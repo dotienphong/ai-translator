@@ -249,7 +249,7 @@ function healthSection(db: D1Database, w: Windows): Section<Stats["health"]> {
       const orders = Object.fromEntries(ORDER_STATUSES.map((s) => [s, 0])) as Stats["health"]["orders_30d"];
       for (const r of statuses) {
         const status = r.status as OrderStatus;
-        if (status in orders) orders[status] = num(r.n);
+        if (Object.hasOwn(orders, status)) orders[status] = num(r.n);
       }
       const e: Row = email[0] ?? {};
       const x: Row = expiring[0] ?? {};

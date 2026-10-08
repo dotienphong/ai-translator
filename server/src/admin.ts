@@ -1,5 +1,5 @@
 // Worker admin (§6.8 "Công cụ hỗ trợ"): các thao tác của người vận hành và `lookup`. Lớp kiểm Access, danh tính và chống
-// CSRF ở admin-auth.ts; route chỉ đọc ở admin-read.ts; trang Web Admin ở admin-assets.ts.
+// CSRF ở admin-auth.ts; route chỉ đọc ở admin-read.ts; route số liệu trang Tổng quan ở admin-stats.ts; trang Web Admin ở admin-assets.ts.
 // Mọi thao tác, kể cả tra cứu, đều ghi audit_log với actor "admin:<email người vận hành>". Thao tác thất bại có ý nghĩa
 // (cổng thanh toán lỗi, ký thử lỗi, URL webhook bị từ chối, 409) cũng ghi, không kèm câu lỗi gốc. Không ghi: whoami
 // (chỉ trả email của chính người vận hành), request không qua Access hay chống CSRF, và các request sai input hay không

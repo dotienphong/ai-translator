@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ORDER_STATUSES } from "../src/admin-read";
 import { dayWindow, monthWindow, type Stats, vnDayKey } from "../src/admin-stats";
 import { lastAudit, makeAdmin } from "./admin-harness";
-import { resetDb } from "./db";
+import { resetDb, wrapDb } from "./db";
 import { T0 } from "./world";
 
 beforeEach(resetDb);
@@ -148,6 +148,14 @@ describe("GET /admin/stats: route", () => {
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: 1 });
   });
 
+  it("D1 lỗi khi tính số liệu: 500 và KHÔNG ghi stats_viewed (chỉ ghi nhật ký sau khi tính xong)", async () => {
+    const { db } = wrapDb(env.DB, (q) => q.includes("trials_total"));
+    const { adminFetch } = makeAdmin({ DB: db });
+    const res = await adminFetch("/admin/stats");
+    expect(res.status).toBe(500);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: 0 });
+  });
+
   it("403 khi request từ trang khác hay không qua Access, và không ghi nhật ký", async () => {
     const { adminCall } = makeAdmin();
     expect(await adminCall("/admin/stats", { headers: { "sec-fetch-site": "cross-site" } })).toMatchObject({ status: 403, body: { error: "forbidden" } });
@@ -274,17 +282,18 @@ describe("GET /admin/stats: Khách hàng", () => {
       trial("t2", NOW - 5 * 86400), // trong cửa sổ, chưa mua
       trial("t3", NOW - 40 * 86400), // ngoài cửa sổ, đã mua (activation đã gỡ vẫn tính)
       trial("t4", NOW - 40 * 86400), // ngoài cửa sổ, chưa mua
-      trial("t5", vn(2026, 9, 2, 0, 0, 0)), // đúng đầu cửa sổ: trong
+      trial("t5", vn(2026, 9, 2, 0, 0, 0)), // đúng đầu cửa sổ: trong, đã mua
       trial("t6", vn(2026, 9, 1, 23, 59, 59)), // một giây ngoài cửa sổ
       activation(lic.id, { device: "t1" }),
       activation(lic.id, { device: "t3", deactivatedAt: NOW - 86400 }),
+      activation(lic.id, { device: "t5" }),
       activation(lic.id, { device: "may-khong-dung-thu" }),
     );
     const s = await getStats();
     expect(s.customers.trials_total).toBe(6);
-    expect(s.customers.trials_total_purchased).toBe(2);
+    expect(s.customers.trials_total_purchased).toBe(3);
     expect(s.customers.trials_30d).toBe(3);
-    expect(s.customers.trials_30d_purchased).toBe(1);
+    expect(s.customers.trials_30d_purchased).toBe(2); // t1 và t5 (t5 đúng đầu cửa sổ)
   });
 
   it("mua mới, gia hạn, đổi gói: đếm và doanh thu 30 ngày; grant_kind rỗng hay lạ vào other; đơn không paid không tính", async () => {
@@ -297,11 +306,12 @@ describe("GET /admin/stats: Khách hàng", () => {
       order({ paidAt: NOW - 6 * 86400, grantKind: "la-hoac-cu", amountPaid: 50000 }),
       order({ status: "refunded", createdAt: NOW - 86400, paidAt: NOW - 86400, grantKind: "new", amountPaid: 50000 }),
       order({ paidAt: NOW - 40 * 86400, grantKind: "new", amountPaid: 50000 }), // ngoài 30 ngày
+      order({ paidAt: vn(2026, 9, 2, 0, 0, 0), grantKind: "extend", amountPaid: 50000 }), // đúng đầu cửa sổ: tính
     );
     const s = await getStats();
     expect(s.customers.grants_30d).toEqual({
       new: { orders: 2, revenue: 100000 },
-      extend: { orders: 1, revenue: 50000 },
+      extend: { orders: 2, revenue: 100000 },
       change: { orders: 1, revenue: 500000 },
       other: { orders: 2, revenue: 100000 },
     });
@@ -324,6 +334,52 @@ describe("GET /admin/stats: Khách hàng", () => {
   });
 });
 
+describe("GET /admin/stats: Khách hàng (theo tháng, theo số tiền thực thu)", () => {
+  it("grants_monthly: một tháng có nhiều loại, đơn không paid bị bỏ, đơn đúng 00:00:00 ngày 1 của tháng đầu cửa sổ có mặt", async () => {
+    await seed(
+      order({ paidAt: vn(2026, 9, 5, 12), grantKind: "new" }),
+      order({ paidAt: vn(2026, 9, 6, 12), grantKind: "new" }),
+      order({ paidAt: vn(2026, 9, 7, 12), grantKind: "extend" }),
+      order({ paidAt: vn(2026, 9, 8, 12), grantKind: "change" }),
+      order({ paidAt: vn(2026, 9, 9, 12), grantKind: null }),
+      order({ status: "refunded", createdAt: vn(2026, 9, 10, 12), paidAt: vn(2026, 9, 10, 12), grantKind: "new" }), // không paid: bỏ
+      order({ paidAt: vn(2025, 11, 1, 0, 0, 0), grantKind: "change" }), // đúng đầu cửa sổ 12 tháng
+      order({ paidAt: vn(2025, 10, 31, 23, 59, 59), grantKind: "change" }), // một giây ngoài
+    );
+    const g = (await getStats()).customers.grants_monthly;
+    expect(g[0]).toEqual({ month: "2025-11", new: 0, extend: 0, change: 1, other: 0 });
+    expect(g.find((x) => x.month === "2026-09")).toEqual({ month: "2026-09", new: 2, extend: 1, change: 1, other: 1 });
+    expect(g.reduce((n, x) => n + x.new + x.extend + x.change + x.other, 0)).toBe(6);
+  });
+
+  it("doanh thu theo amount_paid (số tiền thực thu), không theo giá gói: hôm nay, ngày, tháng theo gói, 30 ngày theo loại", async () => {
+    await seed(
+      order({ paidAt: NOW - 3600, plan: "monthly", amountPaid: 30000, grantKind: "extend" }), // thực thu 30.000, giá gói 50.000
+      order({ paidAt: NOW - 1800, plan: "yearly", amountPaid: 700000, grantKind: "new" }), // thực thu 700.000, giá gói 500.000
+      order({ paidAt: vn(2026, 9, 15, 12), plan: "monthly", amountPaid: 20000, grantKind: "new" }), // tháng trước
+    );
+    const s = await getStats();
+    expect(s.money.today).toBe(730000);
+    expect(s.money.last_7d).toBe(730000);
+    expect(s.money.this_month).toBe(730000);
+    expect(s.money.last_month).toBe(20000);
+    expect(dayOf(s, "2026-10-01")).toEqual({ day: "2026-10-01", revenue: 730000, orders: 2 });
+    expect(dayOf(s, "2026-09-15")).toEqual({ day: "2026-09-15", revenue: 20000, orders: 1 });
+    expect(monthOf(s, "2026-10")).toEqual({ month: "2026-10", monthly: { revenue: 30000, orders: 1 }, yearly: { revenue: 700000, orders: 1 } });
+    expect(monthOf(s, "2026-09")?.monthly).toEqual({ revenue: 20000, orders: 1 });
+    expect(s.customers.grants_30d.new).toEqual({ orders: 2, revenue: 720000 });
+    expect(s.customers.grants_30d.extend).toEqual({ orders: 1, revenue: 30000 });
+  });
+
+  it("đếm đơn không phụ thuộc cột email: đơn paid đã ẩn danh (email null) vẫn được đếm theo ngày và tháng", async () => {
+    await seed(order({ paidAt: NOW - 3600, email: null }), order({ paidAt: NOW - 1800, email: "a@example.com" }));
+    const s = await getStats();
+    expect(dayOf(s, "2026-10-01")).toEqual({ day: "2026-10-01", revenue: 100000, orders: 2 });
+    expect(monthOf(s, "2026-10")?.monthly).toEqual({ revenue: 100000, orders: 2 });
+    expect(s.customers.grants_30d.new.orders).toBe(2);
+  });
+});
+
 describe("GET /admin/stats: Sức khỏe", () => {
   it("đơn 30 ngày theo trạng thái (theo created_at): đủ chín khóa, đúng thứ tự, đơn ngoài cửa sổ bị bỏ", async () => {
     await seed(
@@ -339,6 +395,7 @@ describe("GET /admin/stats: Sức khỏe", () => {
       order({ status: "refunded", createdAt: NOW - 86400, paidAt: NOW - 86400 }),
       order({ status: "failed", createdAt: vn(2026, 9, 2, 0, 0, 0) }), // đúng đầu cửa sổ: tính
       order({ status: "failed", createdAt: vn(2026, 9, 1, 23, 59, 59) }), // một giây ngoài: bỏ
+      order({ createdAt: NOW - 40 * 86400, paidAt: NOW - 86400 }), // tạo ngoài cửa sổ, trả trong cửa sổ: tính theo created_at nên bỏ
     );
     const o = (await getStats()).health.orders_30d;
     expect(Object.keys(o)).toEqual([...ORDER_STATUSES]);
@@ -371,15 +428,18 @@ describe("GET /admin/stats: Sức khỏe", () => {
     expect(h.expiring_30d).toBe(3);
   });
 
-  it("gửi key: chỉ đơn paid trong 30 ngày có email; đơn đã ẩn danh, đơn cũ và đơn chưa trả không tính", async () => {
+  it("gửi key: chỉ đơn paid trong 30 ngày có email; đơn đã ẩn danh, đơn cũ, đơn chưa trả và đơn hoàn tiền không tính", async () => {
     await seed(
       order({ paidAt: NOW - 86400, email: "a@example.com", emailSentAt: NOW - 86400 + 60 }), // đã gửi
-      order({ paidAt: NOW - 2 * 86400, email: "b@example.com", emailSentAt: null }), // chưa gửi
-      order({ paidAt: NOW - 3 * 86400, email: null, emailSentAt: null }), // đã ẩn danh: không tính
+      order({ paidAt: NOW - 2 * 86400, email: "b@example.com", emailSentAt: NOW - 2 * 86400 + 60 }), // đã gửi
+      order({ paidAt: NOW - 3 * 86400, email: "e@example.com", emailSentAt: null }), // chưa gửi
+      order({ paidAt: vn(2026, 9, 2, 0, 0, 0), email: "f@example.com", emailSentAt: vn(2026, 9, 2, 0, 1) }), // đúng đầu cửa sổ: tính
+      order({ paidAt: NOW - 4 * 86400, email: null, emailSentAt: null }), // đã ẩn danh: không tính
       order({ paidAt: NOW - 40 * 86400, email: "c@example.com", emailSentAt: null }), // ngoài 30 ngày
       order({ status: "pending", createdAt: NOW - 86400, email: "d@example.com" }), // chưa trả
+      order({ status: "refunded", createdAt: NOW - 86400, paidAt: NOW - 86400, email: "g@example.com", emailSentAt: NOW - 86400 + 60 }), // hoàn tiền: không tính
     );
-    expect((await getStats()).health.email).toEqual({ paid_with_email_30d: 2, sent: 1 });
+    expect((await getStats()).health.email).toEqual({ paid_with_email_30d: 4, sent: 3 });
   });
 });
 
@@ -405,16 +465,19 @@ describe("GET /admin/stats: Sử dụng", () => {
     const live = license({ expiresAt: NOW + 30 * D });
     const expired = license({ expiresAt: NOW - D });
     const revoked = license({ expiresAt: NOW + 30 * D, revokedAt: NOW - D });
+    const expiredNow = license({ expiresAt: NOW }); // hết hạn đúng lúc này
     await seed(
       live.stmt,
       expired.stmt,
       revoked.stmt,
+      expiredNow.stmt,
       activation(live.id, { lastValidatedAt: NOW }), // tính cả hai
       activation(live.id, { lastValidatedAt: NOW - 7 * D }), // đúng biên 7 ngày: tính vào devices_7d
       activation(live.id, { lastValidatedAt: NOW - 7 * D - 1 }), // quá 7 ngày: chỉ active_devices
       activation(live.id, { deactivatedAt: NOW - D }), // đã gỡ: không tính
       activation(expired.id), // license hết hạn: không tính
       activation(revoked.id), // license đã thu hồi: không tính
+      activation(expiredNow.id), // license hết hạn đúng lúc này: không tính
     );
     const u = (await getStats()).usage;
     expect(u.active_devices).toBe(3);
