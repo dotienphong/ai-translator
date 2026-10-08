@@ -725,6 +725,10 @@
   .page-header {
     margin-bottom: var(--s-5);
   }
+  /* Một hai nút gọn (Làm mới) đứng cạnh tiêu đề thay vì chiếm riêng một hàng; nhiều nút thì vẫn xuống dòng */
+  .page-header-text {
+    flex-basis: 240px;
+  }
 }
 @media (max-width: 440px) {
   .env-badge {

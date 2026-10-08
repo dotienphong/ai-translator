@@ -166,10 +166,14 @@
 .dialog.tone-danger {
   --dialog-accent: var(--bad);
   --dialog-icon-bg: var(--bad-soft);
-  /* Vạch đỏ trên cùng: tách hộp nguy hiểm khỏi hộp thường ngay từ cái nhìn đầu */
-  box-shadow:
-    inset 0 3px 0 var(--bad),
-    var(--shadow-lg);
+}
+/* Vạch đỏ trên cùng: tách hộp nguy hiểm khỏi hộp thường ngay từ cái nhìn đầu. Là một dải riêng (phần tử đầu của hộp, bị
+   bo góc của hộp cắt), dày đều từ mép này sang mép kia; bóng trong theo bo góc thì mỏng dần ở hai góc. */
+.dialog.tone-danger::before {
+  content: "";
+  flex: none;
+  height: 3px;
+  background: var(--bad);
 }
 .dialog.tone-ok {
   --dialog-accent: var(--ok);

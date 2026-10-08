@@ -185,11 +185,16 @@
   border-top: 1px solid var(--line);
   border-radius: 0 0 calc(var(--r-md) - 1px) calc(var(--r-md) - 1px);
 }
-/* Tông: vạch nhấn 3px ở mép trái (bóng trong, theo bo góc), ô biểu tượng cùng tông */
-.ui-card[class*="tone-"] {
-  box-shadow:
-    inset 3px 0 0 var(--card-accent),
-    var(--shadow-sm);
+/* Tông: vạch nhấn 3px ở mép trái (bóng trong, theo bo góc), ô biểu tượng cùng tông. Vẽ trên một lớp phủ (::after) chứ
+   không trên chính thẻ: nền của đầu bảng, chân thẻ hay dòng đang rê chuột không che mất đoạn vạch nào. */
+.ui-card[class*="tone-"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: calc(var(--r-md) - 1px);
+  box-shadow: inset 3px 0 0 var(--card-accent);
+  pointer-events: none;
 }
 .ui-card.tone-info {
   --card-accent: var(--brand);
@@ -556,6 +561,10 @@ td .skel-line {
 .stat.is-skeleton .stat-label,
 .stat.is-skeleton .stat-value {
   display: block;
+}
+/* Cao bằng dòng nhãn có ô biểu tượng (28px, lề âm 3px): ô số hiện ra không đẩy bố cục */
+.stat.is-skeleton .stat-label {
+  min-height: 22px;
 }
 
 /* ---------- Lưới nhãn và giá trị ---------- */
