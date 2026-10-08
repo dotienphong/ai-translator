@@ -106,20 +106,55 @@ const lookup: LookupResult = {
 const issued: IssuedLicense = { license_id: LIC, license_key: KEY, plan: "yearly", expires_at: NOW + 365 * DAY };
 const keyCheck: KeyCheck = { slot: "b", kid: "2026-10-b", token: "v1.eyJ0ZXN0Ijp0cnVlfQ.c2ln" };
 const erased: EraseResult = { activations: 2, licenses: 1, orders: 1 };
-const summary: Summary = { revenue_today: 550000, currency: "VND", paid_orders_7d: 12, active_licenses: 87 };
+const summary: Summary = { revenue_today: 12450000, currency: "VND", paid_orders_7d: 1204, active_licenses: 3187 };
 const payment: PaymentStatus = { orderCode: 1000012, status: "paid", amount: 500000, amountPaid: 500000, paidAt: NOW - DAY };
 
 const group = <T>(items: T[]): QueueGroup<T> => ({ count: items.length, items });
 const page = <T>(items: T[]): Page<T> => ({ items, next_cursor: null });
 
-const alert: AlertRow = { kind: "webhook_bad_signature", window_start: NOW - 1800, count: 3, notified_count: 0 };
+// Hàng đợi giàu dữ liệu để xem mọi nhóm: nhiều tông, thời gian tương đối khác nhau, email dài, một nhóm có hơn 20 việc
+// (server chỉ trả 20 dòng mỗi nhóm) để thấy "và N mục khác".
+const LONG_EMAIL = "nguyen.thi.thanh.huong.phong.ke.toan@congty-xuat-nhap-khau-thanh-dat.com.vn";
+const qOrder = (code: number, status: OrderStatus, ago: number, over: Partial<OrderRow> = {}): OrderRow => ({
+  ...order(code, status),
+  created_at: NOW - ago,
+  paid_at: status === "underpaid" ? null : NOW - ago + 60,
+  ...over,
+});
+const qLicense = (id: string, key: string, over: Partial<LicenseRow> = {}): LicenseRow => ({ ...licenseRow, id, license_key: key, ...over });
+const UNDERPAID_EMAILS = ["an.nguyen@example.com", "binh.tran@example.com", LONG_EMAIL, "chi.le@example.com", "dung.pham@example.com"];
 const queue: Queue = {
-  needs_review: group([order(1000014, "paid_needs_review")]),
-  underpaid: group([order(1000015, "underpaid")]),
-  email_failed: group([]),
-  locked: group([]),
-  conflict: group([licenseRow]),
-  alerts: group([alert]),
+  needs_review: group([
+    qOrder(1000214, "paid_needs_review", 25 * 60, { email: "minh.hoang@example.com" }),
+    qOrder(1000197, "paid_needs_review", 26 * 3600, { plan: "monthly", amount: 50000, amount_paid: 50000, email: null }),
+  ]),
+  underpaid: {
+    count: 23,
+    items: Array.from({ length: 20 }, (_, i) =>
+      qOrder(1000210 - i * 3, "underpaid", 40 * 60 + i * 5 * 3600, {
+        email: UNDERPAID_EMAILS[i % UNDERPAID_EMAILS.length] ?? EMAIL,
+        plan: i % 3 === 0 ? "monthly" : "yearly",
+        amount: i % 3 === 0 ? 50000 : 500000,
+        amount_paid: i % 3 === 0 ? 20000 : [200000, 450000, 499000][i % 3] ?? 200000,
+      }),
+    ),
+  },
+  email_failed: group([
+    qOrder(1000208, "paid", 2 * DAY + 3600, { license_id: LIC, email: "khanh.vu@example.com", email_sent_at: null }),
+    qOrder(1000181, "paid", 6 * DAY, { license_id: null, email: LONG_EMAIL, email_sent_at: null, email_gave_up_at: NOW - 4 * DAY }),
+  ]),
+  locked: group([qLicense("1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f", "P3RT-…-Q8LZ", { locked_at: NOW - 3 * 3600, active_devices: 3, email: "linh.dang@example.com" })]),
+  conflict: group([
+    licenseRow,
+    qLicense("7f6e5d4c-3b2a-4190-8f7e-6d5c4b3a2910", "Z9WX-…-4KTB", { plan: "monthly", expires_at: NOW + 12 * DAY, active_devices: 2, email: LONG_EMAIL }),
+  ]),
+  alerts: {
+    count: 7,
+    items: [
+      { kind: "webhook_bad_signature", window_start: NOW - 1800, count: 3, notified_count: 0 },
+      { kind: "email_send_failed", window_start: NOW - 5 * 3600, count: 5, notified_count: 3 },
+    ] satisfies AlertRow[],
+  },
 };
 
 // Trang Hệ thống: cảnh báo đủ hai trạng thái; stable ok, beta chưa có; model ok với vài file (không có số hay khóa thật).
@@ -177,42 +212,42 @@ const stats: Stats = (() => {
     generated_at: NOW,
     currency: "VND",
     money: {
-      today: 100000,
-      last_7d: 850000,
-      this_month: 1450000,
-      last_month: 2100000,
-      daily: days.map((day, i) => ({ day, revenue: ((i * 7) % 5) * 50000, orders: (i * 7) % 5 })),
+      today: 2450000,
+      last_7d: 18900000,
+      this_month: 46350000,
+      last_month: 52100000,
+      daily: days.map((day, i) => ({ day, revenue: (2 + ((i * 7) % 5)) * 550000 + (i % 3) * 450000, orders: 4 + ((i * 7) % 5) * 2 })),
       monthly: months.map((month, i) => ({
         month,
-        monthly: { revenue: (i % 4) * 150000, orders: (i % 4) * 3 },
-        yearly: { revenue: (i % 3) * 500000, orders: i % 3 },
+        monthly: { revenue: (18 + ((i * 5) % 9)) * 1000000, orders: (18 + ((i * 5) % 9)) * 20 },
+        yearly: { revenue: (10 + ((i * 7) % 11)) * 2500000, orders: (10 + ((i * 7) % 11)) * 5 },
       })),
     },
     customers: {
-      trials_30d: 12,
-      trials_30d_purchased: 3,
-      trials_total: 40,
-      trials_total_purchased: 7,
+      trials_30d: 412,
+      trials_30d_purchased: 87,
+      trials_total: 3904,
+      trials_total_purchased: 716,
       grants_30d: {
-        new: { orders: 5, revenue: 450000 },
-        extend: { orders: 2, revenue: 100000 },
-        change: { orders: 1, revenue: 500000 },
-        other: { orders: 0, revenue: 0 },
+        new: { orders: 58, revenue: 19400000 },
+        extend: { orders: 31, revenue: 9850000 },
+        change: { orders: 6, revenue: 3000000 },
+        other: { orders: 1, revenue: 0 },
       },
-      grants_monthly: months.map((month, i) => ({ month, new: i % 4, extend: i % 3, change: i % 2, other: 0 })),
+      grants_monthly: months.map((month, i) => ({ month, new: 40 + ((i * 7) % 23), extend: 18 + ((i * 5) % 15), change: 3 + (i % 5), other: i % 4 === 0 ? 1 : 0 })),
     },
     health: {
-      orders_30d: { pending: 2, processing: 0, paid: 8, underpaid: 1, cancelled: 3, expired: 5, failed: 1, paid_needs_review: 0, refunded: 0 },
-      expiring_7d: 2,
-      expiring_30d: 5,
-      email: { paid_with_email_30d: 8, sent: 8 },
+      orders_30d: { pending: 12, processing: 1, paid: 96, underpaid: 23, cancelled: 18, expired: 41, failed: 2, paid_needs_review: 2, refunded: 1 },
+      expiring_7d: 14,
+      expiring_30d: 63,
+      email: { paid_with_email_30d: 96, sent: 94 },
     },
     usage: {
-      active_licenses: 9,
-      active_devices: 11,
-      devices_7d: 8,
-      trials_active: 4,
-      new_trials_daily: days.map((day, i) => ({ day, count: (i * 3) % 4 })),
+      active_licenses: 3187,
+      active_devices: 3402,
+      devices_7d: 2875,
+      trials_active: 268,
+      new_trials_daily: days.map((day, i) => ({ day, count: 8 + ((i * 7) % 13) })),
     },
   };
 })();

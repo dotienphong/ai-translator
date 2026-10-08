@@ -86,7 +86,6 @@ function statsFixture() {
     },
   };
 }
-const EMPTY = { count: 0, items: [] };
 const alertsFixture = () => ({
   items: [
     { kind: "webhook_bad_signature", window_start: NOW - 1800, count: 3, notified_count: 0, notified_at: null },
@@ -119,13 +118,52 @@ const releasesFixture = () => ({
     ],
   },
 });
+// Hàng đợi có việc ở mọi kiểu dòng (đơn, email, license, cảnh báo) và một nhóm dài (gấp gọn, "và N mục khác").
+function queueFixture() {
+  const order = (code, ago, paid = 500000) => ({
+    order_code: code,
+    provider: "payos",
+    plan: "yearly",
+    amount: 500000,
+    amount_paid: paid,
+    currency: "VND",
+    email: `khach${code % 7}@example.com`,
+    status: paid < 500000 ? "underpaid" : "paid_needs_review",
+    grant_kind: null,
+    license_id: null,
+    renew_license_id: null,
+    created_at: NOW - ago,
+    paid_at: null,
+    email_sent_at: null,
+    email_gave_up_at: null,
+  });
+  const lic = (id, locked) => ({
+    id,
+    license_key: "K7Q2-…-9XMB",
+    email: "khach@example.com",
+    plan: "yearly",
+    expires_at: NOW + 300 * DAY,
+    created_at: NOW - 60 * DAY,
+    revoked_at: null,
+    locked_at: locked ? NOW - 3600 : null,
+    active_devices: 2,
+  });
+  return {
+    needs_review: { count: 1, items: [order(1000214, 1500)] },
+    underpaid: { count: 23, items: Array.from({ length: 20 }, (_, i) => order(1000200 - i, 3600 * (i + 1), 200000)) },
+    email_failed: { count: 1, items: [{ ...order(1000150, 2 * DAY), license_id: "0b9e7c1e-5f3a-4c1d-9a7e-2f1d3c4b5a69", email_gave_up_at: NOW - DAY }] },
+    locked: { count: 1, items: [lic("1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f", true)] },
+    conflict: { count: 1, items: [lic("7f6e5d4c-3b2a-4190-8f7e-6d5c4b3a2910", false)] },
+    alerts: { count: 3, items: [{ kind: "webhook_bad_signature", window_start: NOW - 1800, count: 3, notified_count: 0 }] },
+  };
+}
 const API = {
   "/admin/whoami": () => ({ operator: "ops@aitranslator.io.vn" }),
   "/admin/stats": statsFixture,
   "/admin/alerts": alertsFixture,
   "/admin/releases": releasesFixture,
   "/admin/summary": () => ({ revenue_today: 0, currency: "VND", paid_orders_7d: 0, active_licenses: 0 }),
-  "/admin/queue": () => ({ needs_review: EMPTY, underpaid: EMPTY, email_failed: EMPTY, locked: EMPTY, conflict: EMPTY, alerts: EMPTY }),
+  "/admin/queue": queueFixture,
   "/admin/orders": () => ({ items: [], next_cursor: null }),
 };
 
