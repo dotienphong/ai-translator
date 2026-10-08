@@ -1,11 +1,9 @@
-import type { ReactNode } from "react";
+// Nhãn trạng thái theo nghiệp vụ (đơn, license) và nhãn tiếng Việt; huy hiệu chung nằm ở Badge.tsx.
 import type { OrderStatus, PlanCode } from "../api/types";
+import { Badge, type Tone } from "./Badge";
+import { IconLock } from "./icons";
 
-export type Tone = "ok" | "warn" | "bad" | "muted";
-
-export function Badge({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return <span className={`badge badge-${tone}`}>{children}</span>;
-}
+export { Badge, type Tone };
 
 export const PLAN_LABELS: Record<PlanCode, string> = { monthly: "Monthly", yearly: "Yearly" };
 
@@ -22,8 +20,9 @@ export const ORDER_LABELS: Record<OrderStatus, string> = {
 };
 
 const ORDER_TONES: Record<OrderStatus, Tone> = {
-  pending: "muted",
-  processing: "muted",
+  // Đang chờ tiền hay đang xử lý: việc còn dở (xanh thông tin), khác với đơn đã khép (xám).
+  pending: "info",
+  processing: "info",
   paid: "ok",
   underpaid: "warn",
   cancelled: "muted",
@@ -56,7 +55,11 @@ export function LicenseBadges({ license, now }: { license: LicenseState; now: nu
       ) : (
         <Badge tone="ok">Còn hạn</Badge>
       )}
-      {!revoked && license.locked_at !== null && <Badge tone="warn">Khóa tạm</Badge>}
+      {!revoked && license.locked_at !== null && (
+        <Badge tone="warn" icon={<IconLock size={12} strokeWidth={2.25} />}>
+          Khóa tạm
+        </Badge>
+      )}
       {!revoked && license.conflict && <Badge tone="warn">Xung đột máy</Badge>}
     </>
   );
