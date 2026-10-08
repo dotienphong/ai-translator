@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
+import { ORDER_STATUSES } from "../src/admin-read";
 import { dayWindow, monthWindow, type Stats, vnDayKey } from "../src/admin-stats";
 import { lastAudit, makeAdmin } from "./admin-harness";
 import { resetDb } from "./db";
@@ -320,5 +321,64 @@ describe("GET /admin/stats: Khách hàng", () => {
     expect(m("2026-09")).toEqual({ month: "2026-09", new: 1, extend: 0, change: 0, other: 0 });
     expect(m("2026-08")).toEqual({ month: "2026-08", new: 0, extend: 0, change: 1, other: 0 });
     expect(m("2026-07")).toEqual({ month: "2026-07", new: 0, extend: 0, change: 0, other: 0 });
+  });
+});
+
+describe("GET /admin/stats: Sức khỏe", () => {
+  it("đơn 30 ngày theo trạng thái (theo created_at): đủ chín khóa, đúng thứ tự, đơn ngoài cửa sổ bị bỏ", async () => {
+    await seed(
+      order({ status: "pending", createdAt: NOW - 3600 }),
+      order({ status: "pending", createdAt: NOW - 7200 }),
+      order({ paidAt: NOW - 86400 }),
+      order({ paidAt: NOW - 2 * 86400 }),
+      order({ paidAt: NOW - 3 * 86400 }),
+      order({ status: "underpaid", createdAt: NOW - 86400 }),
+      order({ status: "failed", createdAt: NOW - 86400 }),
+      order({ status: "expired", createdAt: NOW - 86400 }),
+      order({ status: "expired", createdAt: NOW - 86400 }),
+      order({ status: "refunded", createdAt: NOW - 86400, paidAt: NOW - 86400 }),
+      order({ status: "failed", createdAt: vn(2026, 9, 2, 0, 0, 0) }), // đúng đầu cửa sổ: tính
+      order({ status: "failed", createdAt: vn(2026, 9, 1, 23, 59, 59) }), // một giây ngoài: bỏ
+    );
+    const o = (await getStats()).health.orders_30d;
+    expect(Object.keys(o)).toEqual([...ORDER_STATUSES]);
+    expect(o).toEqual({
+      pending: 2,
+      processing: 0,
+      paid: 3,
+      underpaid: 1,
+      cancelled: 0,
+      expired: 2,
+      failed: 2,
+      paid_needs_review: 0,
+      refunded: 1,
+    });
+  });
+
+  it("license sắp hết hạn: biên 7 và 30 ngày, loại license đã thu hồi và đã hết hạn", async () => {
+    const D = 86400;
+    await seed(
+      license({ expiresAt: NOW + 7 * D }).stmt, // 7 và 30 ngày
+      license({ expiresAt: NOW + 7 * D + 1 }).stmt, // chỉ 30 ngày
+      license({ expiresAt: NOW + 30 * D }).stmt, // 30 ngày
+      license({ expiresAt: NOW + 30 * D + 1 }).stmt, // ngoài cả hai
+      license({ expiresAt: NOW }).stmt, // hết hạn đúng lúc này: không còn hiệu lực
+      license({ expiresAt: NOW - D }).stmt, // đã hết hạn
+      license({ expiresAt: NOW + 3 * D, revokedAt: NOW - D }).stmt, // đã thu hồi
+    );
+    const h = (await getStats()).health;
+    expect(h.expiring_7d).toBe(1);
+    expect(h.expiring_30d).toBe(3);
+  });
+
+  it("gửi key: chỉ đơn paid trong 30 ngày có email; đơn đã ẩn danh, đơn cũ và đơn chưa trả không tính", async () => {
+    await seed(
+      order({ paidAt: NOW - 86400, email: "a@example.com", emailSentAt: NOW - 86400 + 60 }), // đã gửi
+      order({ paidAt: NOW - 2 * 86400, email: "b@example.com", emailSentAt: null }), // chưa gửi
+      order({ paidAt: NOW - 3 * 86400, email: null, emailSentAt: null }), // đã ẩn danh: không tính
+      order({ paidAt: NOW - 40 * 86400, email: "c@example.com", emailSentAt: null }), // ngoài 30 ngày
+      order({ status: "pending", createdAt: NOW - 86400, email: "d@example.com" }), // chưa trả
+    );
+    expect((await getStats()).health.email).toEqual({ paid_with_email_30d: 2, sent: 1 });
   });
 });

@@ -226,16 +226,40 @@ function customersSection(db: D1Database, w: Windows): Section<Stats["customers"
   };
 }
 
-// Tạm (Task 4 thay).
-function healthSection(_db: D1Database, _w: Windows): Section<Stats["health"]> {
+function healthSection(db: D1Database, w: Windows): Section<Stats["health"]> {
   return {
-    statements: [],
-    build: () => ({
-      orders_30d: Object.fromEntries(ORDER_STATUSES.map((s) => [s, 0])) as Stats["health"]["orders_30d"],
-      expiring_7d: 0,
-      expiring_30d: 0,
-      email: { paid_with_email_30d: 0, sent: 0 },
-    }),
+    statements: [
+      db.prepare("SELECT status, COUNT(*) AS n FROM orders WHERE created_at >= ?1 GROUP BY status").bind(w.days.start),
+      db
+        .prepare(
+          `SELECT COUNT(*) AS paid_with_email, COALESCE(SUM(CASE WHEN email_sent_at IS NOT NULL THEN 1 ELSE 0 END), 0) AS sent
+           FROM orders WHERE status = 'paid' AND paid_at >= ?1 AND email IS NOT NULL`,
+        )
+        .bind(w.days.start),
+      db
+        .prepare(
+          `SELECT
+             COALESCE(SUM(CASE WHEN expires_at <= ?2 THEN 1 ELSE 0 END), 0) AS expiring_7d,
+             COALESCE(SUM(CASE WHEN expires_at <= ?3 THEN 1 ELSE 0 END), 0) AS expiring_30d
+           FROM licenses WHERE revoked_at IS NULL AND expires_at > ?1`,
+        )
+        .bind(w.now, w.now + 7 * DAY, w.now + 30 * DAY),
+    ],
+    build([statuses = [], email = [], expiring = []]) {
+      const orders = Object.fromEntries(ORDER_STATUSES.map((s) => [s, 0])) as Stats["health"]["orders_30d"];
+      for (const r of statuses) {
+        const status = r.status as OrderStatus;
+        if (status in orders) orders[status] = num(r.n);
+      }
+      const e: Row = email[0] ?? {};
+      const x: Row = expiring[0] ?? {};
+      return {
+        orders_30d: orders,
+        expiring_7d: num(x.expiring_7d),
+        expiring_30d: num(x.expiring_30d),
+        email: { paid_with_email_30d: num(e.paid_with_email), sent: num(e.sent) },
+      };
+    },
   };
 }
 
