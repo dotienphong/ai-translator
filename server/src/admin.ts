@@ -10,6 +10,7 @@ import type { AccessKeyProvider } from "./access-jwt";
 import { ADMIN_SECURE_HEADERS, registerAssets } from "./admin-assets";
 import { type AdminAppEnv, type AdminDeps, crossSite, useAdminAuth } from "./admin-auth";
 import { registerAdminRead } from "./admin-read";
+import { registerAdminStats } from "./admin-stats";
 import { audit, auditIfChanged, auditStatement } from "./audit";
 import { sendLicenseMail } from "./deps";
 import type { AdminEnv } from "./env";
@@ -46,6 +47,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
   });
   useAdminAuth(app, makeDeps, accessKeys);
   registerAdminRead(app);
+  registerAdminStats(app);
 
   /** Bảng gói lấy từ Worker API; thiếu hay sai thì null (route trả 503 pricing_not_configured). */
   async function plansOf(c: Context<AdminAppEnv>): Promise<PlanTable | null> {

@@ -1,11 +1,71 @@
+import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
-import { dayWindow, monthWindow, vnDayKey } from "../src/admin-stats";
+import { dayWindow, monthWindow, type Stats, vnDayKey } from "../src/admin-stats";
+import { lastAudit, makeAdmin } from "./admin-harness";
 import { resetDb } from "./db";
+import { T0 } from "./world";
 
 beforeEach(resetDb);
 
 /** Giây Unix của một thời điểm theo giờ GMT+7. */
 const vn = (y: number, mo: number, d: number, h = 0, mi = 0, s = 0) => Date.UTC(y, mo - 1, d, h, mi, s) / 1000 - 7 * 3600;
+
+/** "Bây giờ" của phần lớn test: 07:00 ngày 01/10/2026 GMT+7 (đúng bằng T0 của harness). */
+const NOW = vn(2026, 10, 1, 7);
+
+interface OrderSeed {
+  status?: string;
+  plan?: "monthly" | "yearly";
+  /** Mặc định 50000 nếu status là paid, 0 nếu không. */
+  amountPaid?: number;
+  /** Mặc định bằng paidAt (nếu có) hoặc NOW. */
+  createdAt?: number;
+  /** Mặc định bằng createdAt nếu status là paid, null nếu không. */
+  paidAt?: number | null;
+  /** Mặc định "new". */
+  grantKind?: string | null;
+  /** Mặc định có email; null là đơn đã ẩn danh. */
+  email?: string | null;
+  emailSentAt?: number | null;
+}
+
+/** Chèn thẳng một đơn (đủ cột NOT NULL của orders). */
+function order(o: OrderSeed = {}): D1PreparedStatement {
+  const status = o.status ?? "paid";
+  const createdAt = o.createdAt ?? o.paidAt ?? NOW;
+  const paidAt = o.paidAt !== undefined ? o.paidAt : status === "paid" ? createdAt : null;
+  const amountPaid = o.amountPaid ?? (status === "paid" ? 50000 : 0);
+  return env.DB.prepare(
+    `INSERT INTO orders (order_token_hash, provider, plan, amount, currency, email, email_consent_at, status, amount_paid, grant_kind, created_at, expires_at, paid_at, email_sent_at)
+     VALUES ('h', 'payos', ?, ?, 'VND', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(
+    o.plan ?? "monthly",
+    o.plan === "yearly" ? 500000 : 50000,
+    o.email !== undefined ? o.email : "khach@example.com",
+    createdAt,
+    status,
+    amountPaid,
+    o.grantKind !== undefined ? o.grantKind : "new",
+    createdAt,
+    createdAt + 900,
+    paidAt,
+    o.emailSentAt !== undefined ? o.emailSentAt : null,
+  );
+}
+
+const seed = (...stmts: D1PreparedStatement[]) => env.DB.batch(stmts);
+
+/** Gọi route với đồng hồ giả ở `now`; kiểm 200 và trả phản hồi đã gõ kiểu. */
+async function getStats(now = NOW): Promise<Stats> {
+  const { w, adminCall } = makeAdmin();
+  w.clock.now = now;
+  const res = await adminCall("/admin/stats");
+  expect(res.status).toBe(200);
+  return res.body as unknown as Stats;
+}
+
+const dayOf = (s: Stats, key: string) => s.money.daily.find((d) => d.day === key);
+const monthOf = (s: Stats, key: string) => s.money.monthly.find((m) => m.month === key);
 
 describe("cửa sổ ngày và tháng GMT+7", () => {
   it("vnDayKey: 23:59:59 và 00:00:00 GMT+7 là hai ngày khác nhau, dù cùng ngày UTC", () => {
@@ -41,5 +101,130 @@ describe("cửa sổ ngày và tháng GMT+7", () => {
     const w = monthWindow(vn(2026, 10, 1, 0, 30), 2);
     expect(w.keys).toEqual(["2026-09", "2026-10"]);
     expect(w.thisStart).toBe(vn(2026, 10, 1));
+  });
+});
+
+describe("GET /admin/stats: route", () => {
+  it("ghi đúng một dòng nhật ký stats_viewed, không có detail", async () => {
+    const { adminCall } = makeAdmin();
+    expect((await adminCall("/admin/stats")).status).toBe(200);
+    expect(await lastAudit()).toMatchObject({ actor: "admin:ops@example.com", action: "stats_viewed", detail: null });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: 1 });
+  });
+
+  it("403 khi request từ trang khác hay không qua Access, và không ghi nhật ký", async () => {
+    const { adminCall } = makeAdmin();
+    expect(await adminCall("/admin/stats", { headers: { "sec-fetch-site": "cross-site" } })).toMatchObject({ status: 403, body: { error: "forbidden" } });
+    expect((await adminCall("/admin/stats", { operator: null })).status).toBe(403);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: 0 });
+  });
+});
+
+describe("GET /admin/stats: Tiền", () => {
+  it("cơ sở dữ liệu trống: đủ 30 ngày và 12 tháng, mọi số bằng 0", async () => {
+    expect(NOW).toBe(T0);
+    const s = await getStats();
+    expect(s.generated_at).toBe(NOW);
+    expect(s.currency).toBe("VND");
+    expect([s.money.today, s.money.last_7d, s.money.this_month, s.money.last_month]).toEqual([0, 0, 0, 0]);
+    expect(s.money.daily.map((d) => d.day)).toEqual(dayWindow(NOW, 30).keys);
+    expect(s.money.daily[0]?.day).toBe("2026-09-02");
+    expect(s.money.daily[29]?.day).toBe("2026-10-01");
+    expect(s.money.daily.every((d) => d.revenue === 0 && d.orders === 0)).toBe(true);
+    expect(s.money.monthly.map((m) => m.month)).toEqual(monthWindow(NOW, 12).keys);
+    expect(s.money.monthly[0]?.month).toBe("2025-11");
+    expect(s.money.monthly[11]?.month).toBe("2026-10");
+    expect(vnDayKey(NOW)).toBe("2026-10-01");
+  });
+
+  it("ranh giới ngày GMT+7: 23:59:59 và 00:00:00 là hai ngày khác nhau dù cùng ngày UTC", async () => {
+    await seed(
+      order({ paidAt: vn(2026, 9, 30, 23, 30) }),
+      order({ paidAt: vn(2026, 9, 30, 23, 59, 59) }),
+      order({ paidAt: vn(2026, 10, 1, 0, 0, 0) }),
+      order({ paidAt: vn(2026, 10, 1, 0, 10), plan: "yearly", amountPaid: 500000 }),
+    );
+    const s = await getStats();
+    expect(dayOf(s, "2026-09-30")).toEqual({ day: "2026-09-30", revenue: 100000, orders: 2 });
+    expect(dayOf(s, "2026-10-01")).toEqual({ day: "2026-10-01", revenue: 550000, orders: 2 });
+    expect(s.money.today).toBe(550000);
+    expect(s.money.last_7d).toBe(650000);
+  });
+
+  it("cửa sổ 30 ngày: đơn lúc 00:00 ngày đầu cửa sổ có mặt, một giây trước thì không", async () => {
+    await seed(order({ paidAt: vn(2026, 9, 2, 0, 0, 0) }), order({ paidAt: vn(2026, 9, 1, 23, 59, 59) }));
+    const s = await getStats();
+    expect(s.money.daily[0]).toEqual({ day: "2026-09-02", revenue: 50000, orders: 1 });
+    expect(s.money.daily.reduce((n, d) => n + d.orders, 0)).toBe(1);
+    expect(s.money.last_month).toBe(100000); // cả hai thuộc tháng 9
+    expect(monthOf(s, "2026-09")?.monthly).toEqual({ revenue: 100000, orders: 2 });
+  });
+
+  it("7 ngày gần nhất gồm hôm nay và 6 ngày trước", async () => {
+    await seed(
+      order({ paidAt: vn(2026, 9, 25, 0, 0, 0) }), // đúng đầu cửa sổ 7 ngày
+      order({ paidAt: vn(2026, 9, 24, 23, 59, 59) }), // một giây ngoài
+    );
+    expect((await getStats()).money.last_7d).toBe(50000);
+  });
+
+  it("chỉ đơn paid tính doanh thu; đơn trạng thái khác không vào ngày, tháng hay tổng", async () => {
+    await seed(
+      order({ paidAt: NOW - 3600 }),
+      order({ status: "underpaid", createdAt: NOW - 3600, amountPaid: 20000 }),
+      order({ status: "refunded", createdAt: NOW - 3600, amountPaid: 50000, paidAt: NOW - 3600 }),
+      order({ status: "paid_needs_review", createdAt: NOW - 3600, amountPaid: 50000, paidAt: NOW - 3600 }),
+      order({ status: "pending", createdAt: NOW - 3600 }),
+    );
+    const s = await getStats();
+    expect(s.money.today).toBe(50000);
+    expect(s.money.this_month).toBe(50000);
+    expect(dayOf(s, "2026-10-01")).toEqual({ day: "2026-10-01", revenue: 50000, orders: 1 });
+    expect(monthOf(s, "2026-10")?.monthly).toEqual({ revenue: 50000, orders: 1 });
+  });
+
+  it("tháng tách Monthly và Yearly; tháng không có đơn là 0", async () => {
+    await seed(
+      order({ paidAt: vn(2026, 9, 10, 12) }),
+      order({ paidAt: vn(2026, 9, 11, 12), plan: "yearly", amountPaid: 500000 }),
+      order({ paidAt: vn(2026, 9, 12, 12), plan: "yearly", amountPaid: 500000 }),
+      order({ paidAt: vn(2026, 10, 1, 1), plan: "yearly", amountPaid: 500000 }),
+    );
+    const s = await getStats();
+    expect(monthOf(s, "2026-09")).toEqual({ month: "2026-09", monthly: { revenue: 50000, orders: 1 }, yearly: { revenue: 1000000, orders: 2 } });
+    expect(monthOf(s, "2026-10")).toEqual({ month: "2026-10", monthly: { revenue: 0, orders: 0 }, yearly: { revenue: 500000, orders: 1 } });
+    expect(monthOf(s, "2026-08")).toEqual({ month: "2026-08", monthly: { revenue: 0, orders: 0 }, yearly: { revenue: 0, orders: 0 } });
+  });
+
+  it("ranh giới tháng: tháng 2 có 28 ngày, qua năm, đơn ngoài cửa sổ 12 tháng bị bỏ", async () => {
+    await seed(
+      order({ paidAt: vn(2026, 1, 31, 23, 59, 59) }), // ngoài cửa sổ (cửa sổ bắt đầu 2026-02)
+      order({ paidAt: vn(2026, 2, 1, 0, 0, 0) }),
+      order({ paidAt: vn(2026, 2, 28, 23, 59, 59) }),
+      order({ paidAt: vn(2026, 3, 1, 0, 0, 0) }),
+      order({ paidAt: vn(2026, 12, 31, 23, 59, 59) }),
+      order({ paidAt: vn(2027, 1, 1, 0, 0, 0) }),
+    );
+    const s = await getStats(vn(2027, 1, 15, 12));
+    expect(s.money.monthly.map((m) => m.month)).toEqual([
+      "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07",
+      "2026-08", "2026-09", "2026-10", "2026-11", "2026-12", "2027-01",
+    ]);
+    const orders = (k: string) => monthOf(s, k)?.monthly.orders;
+    expect([orders("2026-02"), orders("2026-03"), orders("2026-12"), orders("2027-01")]).toEqual([2, 1, 1, 1]);
+    expect(s.money.last_month).toBe(50000); // tháng 12/2026
+    expect(s.money.this_month).toBe(50000); // tháng 1/2027
+  });
+
+  it("năm nhuận: 29/02 thuộc tháng 2, và last_month của tháng 3 gồm cả ngày đó", async () => {
+    await seed(
+      order({ paidAt: vn(2028, 2, 1, 0, 0, 0) }),
+      order({ paidAt: vn(2028, 2, 29, 23, 59, 59) }),
+      order({ paidAt: vn(2028, 3, 1, 0, 0, 0) }),
+    );
+    const s = await getStats(vn(2028, 3, 5, 10));
+    expect(s.money.last_month).toBe(100000);
+    expect(s.money.this_month).toBe(50000);
+    expect(monthOf(s, "2028-02")?.monthly.orders).toBe(2);
   });
 });

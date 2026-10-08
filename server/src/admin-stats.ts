@@ -1,7 +1,11 @@
 // Số liệu của trang Tổng quan (spec Web Admin phần 2, 2026-10-08-web-admin-tong-quan-design.md). Chỉ đọc.
 // Ngày và tháng theo GMT+7 (Việt Nam không có giờ mùa hè). Doanh thu chỉ tính đơn status = 'paid'.
-import { DAY, type ORDER_STATUSES, VN_OFFSET, vnDayStart } from "./admin-read";
-import type { PlanCode } from "./plans";
+import type { Hono } from "hono";
+import { type AdminAppEnv, crossSite } from "./admin-auth";
+import { DAY, ORDER_STATUSES, VN_OFFSET, vnDayStart } from "./admin-read";
+import { audit } from "./audit";
+import { fail } from "./http";
+import { PLAN_CODES, type PlanCode } from "./plans";
 
 type OrderStatus = (typeof ORDER_STATUSES)[number];
 export type GrantKind = "new" | "extend" | "change" | "other";
@@ -85,4 +89,164 @@ export function monthWindow(now: number, months: number): MonthWindow {
     return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}`;
   });
   return { keys, start: startOf(months - 1), thisStart: startOf(0), lastStart: startOf(1) };
+}
+
+type Row = Record<string, unknown>;
+
+const num = (v: unknown): number => (typeof v === "number" ? v : 0);
+
+const GRANT_KINDS: readonly GrantKind[] = ["new", "extend", "change", "other"];
+
+interface Windows {
+  now: number;
+  /** 00:00 GMT+7 hôm nay. */
+  today: number;
+  /** Đầu cửa sổ 7 ngày: hôm nay và 6 ngày trước. */
+  last7Start: number;
+  days: DayWindow;
+  months: MonthWindow;
+}
+
+function windows(now: number): Windows {
+  const today = vnDayStart(now);
+  return { now, today, last7Start: today - 6 * DAY, days: dayWindow(now, 30), months: monthWindow(now, 12) };
+}
+
+/**
+ * Một mục của phản hồi: các câu SQL (đã bind) và hàm ghép kết quả. `build` nhận kết quả của đúng các câu của mục này,
+ * theo thứ tự `statements`, mỗi phần tử là mảng dòng.
+ */
+interface Section<T> {
+  statements: D1PreparedStatement[];
+  build(rows: Row[][]): T;
+}
+
+function moneySection(db: D1Database, w: Windows): Section<Stats["money"]> {
+  return {
+    statements: [
+      db
+        .prepare(
+          `SELECT
+             COALESCE(SUM(CASE WHEN paid_at >= ?1 THEN amount_paid END), 0) AS today,
+             COALESCE(SUM(CASE WHEN paid_at >= ?2 THEN amount_paid END), 0) AS last_7d,
+             COALESCE(SUM(CASE WHEN paid_at >= ?3 THEN amount_paid END), 0) AS this_month,
+             COALESCE(SUM(CASE WHEN paid_at >= ?4 AND paid_at < ?3 THEN amount_paid END), 0) AS last_month
+           FROM orders WHERE status = 'paid' AND paid_at >= ?4`,
+        )
+        .bind(w.today, w.last7Start, w.months.thisStart, w.months.lastStart),
+      db
+        .prepare(
+          `SELECT strftime('%Y-%m-%d', paid_at + ${VN_OFFSET}, 'unixepoch') AS day, COALESCE(SUM(amount_paid), 0) AS revenue, COUNT(*) AS orders
+           FROM orders WHERE status = 'paid' AND paid_at >= ?1 GROUP BY day`,
+        )
+        .bind(w.days.start),
+      db
+        .prepare(
+          `SELECT strftime('%Y-%m', paid_at + ${VN_OFFSET}, 'unixepoch') AS month, plan, COALESCE(SUM(amount_paid), 0) AS revenue, COUNT(*) AS orders
+           FROM orders WHERE status = 'paid' AND paid_at >= ?1 GROUP BY month, plan`,
+        )
+        .bind(w.months.start),
+    ],
+    build([totals = [], daily = [], monthly = []]) {
+      const t: Row = totals[0] ?? {};
+      return {
+        today: num(t.today),
+        last_7d: num(t.last_7d),
+        this_month: num(t.this_month),
+        last_month: num(t.last_month),
+        daily: w.days.keys.map((day) => {
+          const r = daily.find((x) => x.day === day);
+          return { day, revenue: num(r?.revenue), orders: num(r?.orders) };
+        }),
+        monthly: w.months.keys.map((month) => {
+          const row = { month } as { month: string } & Record<PlanCode, Totals>;
+          for (const plan of PLAN_CODES) {
+            const r = monthly.find((x) => x.month === month && x.plan === plan);
+            row[plan] = { revenue: num(r?.revenue), orders: num(r?.orders) };
+          }
+          return row;
+        }),
+      };
+    },
+  };
+}
+
+const zeroTotals = (): Totals => ({ revenue: 0, orders: 0 });
+
+// Tạm (Task 3 thay): đủ hình dạng, toàn số 0, chưa có câu SQL nào.
+function customersSection(_db: D1Database, w: Windows): Section<Stats["customers"]> {
+  return {
+    statements: [],
+    build: () => ({
+      trials_30d: 0,
+      trials_30d_purchased: 0,
+      trials_total: 0,
+      trials_total_purchased: 0,
+      grants_30d: { new: zeroTotals(), extend: zeroTotals(), change: zeroTotals(), other: zeroTotals() },
+      grants_monthly: w.months.keys.map((month) => ({ month, new: 0, extend: 0, change: 0, other: 0 })),
+    }),
+  };
+}
+
+// Tạm (Task 4 thay).
+function healthSection(_db: D1Database, _w: Windows): Section<Stats["health"]> {
+  return {
+    statements: [],
+    build: () => ({
+      orders_30d: Object.fromEntries(ORDER_STATUSES.map((s) => [s, 0])) as Stats["health"]["orders_30d"],
+      expiring_7d: 0,
+      expiring_30d: 0,
+      email: { paid_with_email_30d: 0, sent: 0 },
+    }),
+  };
+}
+
+// Tạm (Task 5 thay).
+function usageSection(_db: D1Database, w: Windows): Section<Stats["usage"]> {
+  return {
+    statements: [],
+    build: () => ({
+      active_licenses: 0,
+      active_devices: 0,
+      devices_7d: 0,
+      trials_active: 0,
+      new_trials_daily: w.days.keys.map((day) => ({ day, count: 0 })),
+    }),
+  };
+}
+
+/** Mọi câu SQL của một lần xem chạy trong MỘT db.batch: các con số nhất quán với nhau. */
+export async function computeStats(db: D1Database, now: number): Promise<Stats> {
+  const w = windows(now);
+  const money = moneySection(db, w);
+  const customers = customersSection(db, w);
+  const health = healthSection(db, w);
+  const usage = usageSection(db, w);
+  const results = await db.batch([...money.statements, ...customers.statements, ...health.statements, ...usage.statements]);
+  let at = 0;
+  const take = (s: Section<unknown>): Row[][] => {
+    const part = results.slice(at, at + s.statements.length).map((r) => (r.results ?? []) as Row[]);
+    at += s.statements.length;
+    return part;
+  };
+  // Literal đánh giá từ trái sang phải: thứ tự `take` phải đúng thứ tự gom câu SQL ở trên (money, customers, health, usage).
+  return {
+    generated_at: now,
+    currency: "VND",
+    money: money.build(take(money)),
+    customers: customers.build(take(customers)),
+    health: health.build(take(health)),
+    usage: usage.build(take(usage)),
+  };
+}
+
+export function registerAdminStats(app: Hono<AdminAppEnv>): void {
+  app.get("/admin/stats", async (c) => {
+    if (crossSite(c)) return fail(c, 403, "forbidden");
+    const db = c.env.DB;
+    const now = c.get("deps").now();
+    const stats = await computeStats(db, now);
+    await audit(db, { at: now, actor: c.get("actor"), action: "stats_viewed" });
+    return c.json(stats);
+  });
 }
