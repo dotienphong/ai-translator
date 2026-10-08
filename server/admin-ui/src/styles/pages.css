@@ -1448,7 +1448,6 @@ a.dev-name:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
   gap: var(--s-4);
-  align-items: start;
   margin-bottom: var(--s-6);
 }
 .tool-card > .ui-card-body {
