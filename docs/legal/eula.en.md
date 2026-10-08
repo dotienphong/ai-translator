@@ -62,7 +62,7 @@ The app may check for and download updates (installed when you quit or restart).
 
 ## 9. Third-party software and models
 
-The app uses open-source software and models, each under its own license (for example Hy-MT2 under Apache 2.0; the Whisper weights, whisper.cpp, llama.cpp, ggml and Silero VAD under MIT; Tauri, React and other libraries). The full list and license texts are on the app's "About" screen and in the `THIRD_PARTY_NOTICES` file. This agreement does not change your rights in those components under their licenses.
+The app uses third-party open-source software and models, each under its own license. The full list and license texts are on the app's "About" screen and in the `THIRD_PARTY_NOTICES` file. This agreement does not change your rights in those components under their licenses.
 
 ## 10. Intellectual property and trademarks
 

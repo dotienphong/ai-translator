@@ -218,16 +218,14 @@ test("_headers: không có hai quy tắc Cache-Control cùng khớp một tài n
 });
 
 // Công nghệ lõi không được công bố: tên model, engine/thư viện chạy model, định dạng, khung app, kiến trúc nội bộ.
-// Ngoại lệ: hai trang pháp lý sinh từ docs/legal (EULA mục 9 liệt kê thành phần bên thứ ba) — chờ chủ dự án quyết định.
 const CORE_TECH = /whisper|hy-?mt|tencent|openai|madlad|nllb|llama|ggml|gguf|silero|tauri|\brust\b|cargo|\bmetal\b|vulkan|sqlcipher|sqlite|opencc|wasapi|core audio|process tap|\bengines?\b|quantiz|q8_0|q4_k|large-v3|\bWMT/i;
-const LEGAL_EXEMPT = new Set(["/dieu-khoan/", "/en/terms/"]);
 
 test("không lộ công nghệ lõi (tên model, engine, thư viện, kiến trúc) trong trang, llms.txt hay JSON-LD", async () => {
   const hits = [];
   const scan = (name, text) => {
     for (const m of text.matchAll(new RegExp(CORE_TECH.source, "gi"))) hits.push(`${name}: “${m[0]}” …${text.slice(Math.max(0, m.index - 40), m.index + 40).replace(/\s+/g, " ")}…`);
   };
-  for (const p of pages) if (!LEGAL_EXEMPT.has(p.path)) scan(p.path, htmlByPath.get(p.path));
+  for (const p of pages) scan(p.path, htmlByPath.get(p.path));
   for (const f of ["llms.txt", "llms-full.txt"]) if (await exists(path.join(DIST, f))) scan(f, await readFile(path.join(DIST, f), "utf8"));
   assert.deepEqual(hits.slice(0, 10), [], `lộ công nghệ lõi (${hits.length} chỗ)`);
 });

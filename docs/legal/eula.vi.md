@@ -62,7 +62,7 @@ Bản dịch do mô hình máy tạo ra và **có thể sai, thiếu hoặc khô
 
 ## 9. Phần mềm và model bên thứ ba
 
-Ứng dụng dùng phần mềm và model nguồn mở, mỗi thành phần theo giấy phép riêng (ví dụ Hy-MT2 theo Apache 2.0; trọng số Whisper, whisper.cpp, llama.cpp, ggml và Silero VAD theo MIT; Tauri, React và các thư viện khác). Danh sách và văn bản giấy phép đầy đủ nằm ở màn hình "Giới thiệu" của ứng dụng và file `THIRD_PARTY_NOTICES`. Thỏa thuận này không thay đổi quyền của bạn đối với các thành phần đó theo giấy phép của chúng.
+Ứng dụng dùng phần mềm và model nguồn mở của bên thứ ba, mỗi thành phần theo giấy phép riêng. Danh sách và văn bản giấy phép đầy đủ nằm ở màn hình "Giới thiệu" của ứng dụng và file `THIRD_PARTY_NOTICES`. Thỏa thuận này không thay đổi quyền của bạn đối với các thành phần đó theo giấy phép của chúng.
 
 ## 10. Sở hữu trí tuệ và nhãn hiệu
 
