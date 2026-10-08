@@ -64,6 +64,14 @@ describe("ConfirmDialog: giao diện", () => {
     expect(container.querySelector(".type-confirm.is-match .icon-check")).toBeTruthy();
   });
 
+  it("không có ô nhập: focus vào chính hộp (đọc tên hộp), Tab đi tiếp vào nút Hủy", async () => {
+    const user = userEvent.setup();
+    render(<ConfirmDialog title="Gửi lại?" description="x" confirmLabel="Gửi" needsNote={false} onConfirm={async () => {}} onClose={() => {}} />);
+    expect(document.activeElement).toBe(screen.getByRole("dialog", { name: "Gửi lại?" }));
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Hủy" }));
+  });
+
   it("bấm lớp phủ không đóng hộp (giữ hành vi cũ)", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

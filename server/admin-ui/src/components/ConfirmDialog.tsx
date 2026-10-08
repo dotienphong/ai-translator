@@ -75,7 +75,9 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
   // Mở hộp: focus vào ô nhập đầu tiên (Lý do, rồi ô gõ chữ xác nhận, rồi ô nhập thêm của trang), không vào nút xác nhận.
   useEffect(() => {
     const first = noteRef.current ?? typedRef.current ?? formRef.current?.querySelector<HTMLElement>("input, textarea, select");
-    first?.focus();
+    // Không có ô nhập: focus vào chính hộp (trình đọc màn hình đọc tên và mô tả), vẫn không vào nút xác nhận.
+    if (first) first.focus();
+    else formRef.current?.focus();
   }, []);
 
   // Đóng hộp (nút Hủy, Esc): đóng khi đang không rõ kết quả thì trang mới tải lại, để người vận hành đã đọc cảnh báo.
@@ -127,6 +129,7 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
+        tabIndex={-1}
         onSubmit={submit}
       >
         <div className="dialog-head">

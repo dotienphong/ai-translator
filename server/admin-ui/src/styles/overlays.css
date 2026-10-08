@@ -158,6 +158,11 @@
   box-shadow: var(--shadow-lg);
   animation: dialog-in var(--t-slow) var(--ease);
 }
+/* Hộp không có ô nhập nhận focus chính nó (để trình đọc màn hình đọc tên): không vẽ vòng focus quanh cả hộp */
+.dialog:focus,
+.dialog:focus-visible {
+  outline: none;
+}
 .dialog.tone-danger {
   --dialog-accent: var(--bad);
   --dialog-icon-bg: var(--bad-soft);

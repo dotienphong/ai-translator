@@ -304,6 +304,13 @@ textarea[aria-invalid="true"]:focus {
 .segment.is-on .icon {
   color: var(--brand);
 }
+/* Tối: lựa chọn đang bật sáng hơn nền nhóm (nổi lên), không tối hơn (lõm xuống) */
+@media (prefers-color-scheme: dark) {
+  .segment.is-on {
+    background: var(--line-strong);
+    box-shadow: none;
+  }
+}
 .segment:focus-visible {
   outline-offset: 0;
 }

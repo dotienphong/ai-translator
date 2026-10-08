@@ -72,6 +72,8 @@ const PAIRS: [string, string, number][] = [
   ["ink-3", "surface-3", 4.5],
   ["ink", "surface-2", 4.5],
   ["ink-2", "surface-3", 4.5],
+  // Lựa chọn đang bật của SegmentedControl ở chế độ tối nằm trên --line-strong
+  ["ink", "line-strong", 4.5],
   // Notice, ErrorBox, lỗi trong hộp thoại: chữ mực trên nền nhạt của từng tông; dòng phụ --ink-2
   ...["ok-soft", "info-soft", "warn-soft", "bad-soft"].flatMap((bg): [string, string, number][] => [
     ["ink", bg, 4.5],
