@@ -51,3 +51,21 @@ test("job ký macOS: không có chứng thư thì tóm tắt của CI ghi bản 
   assert.ok(step, "không thấy bước ký app macOS");
   assert.match(step, /if \[ "\$HAS_APPLE_CERT" != "true" \]; then[\s\S]*ký ad-hoc, chưa notarize[\s\S]*>> "\$GITHUB_STEP_SUMMARY"/);
 });
+
+test("job build app Windows: WINDOWS_SIGNER rỗng thì build ở chế độ chưa ký, có thì chế độ chặt (spec 2026-10-08)", () => {
+  const step = steps(workflows[0][1]).find((s) => s.startsWith("name: Build app (chưa đóng gói)"));
+  assert.ok(step, "không thấy bước build app Windows");
+  assert.match(step, /AI_TRANSLATOR_SIGNER: \$\{\{ vars\.WINDOWS_SIGNER \}\}/);
+  assert.match(step, /AI_TRANSLATOR_WIN_SIGNING: \$\{\{ vars\.WINDOWS_SIGNER == '' && 'unsigned' \|\| '' \}\}/);
+});
+
+test("job bộ cài Windows: có tên chủ chứng thư mà không có lệnh ký thì dừng; chưa ký thì tóm tắt của CI ghi rõ", () => {
+  const step = steps(workflows[0][1]).find((s) => s.startsWith("name: Bộ cài NSIS, ký, kiểm, SHA-256"));
+  assert.ok(step, "không thấy bước bộ cài Windows");
+  assert.match(step, /WINDOWS_SIGNER: \$\{\{ vars\.WINDOWS_SIGNER \}\}/);
+  const guard = step.indexOf('if [ -n "$WINDOWS_SIGNER" ] && [ -z "$MT_WINDOWS_SIGN_CMD" ]; then');
+  assert.ok(guard >= 0, "thiếu bước chặn WINDOWS_SIGNER không có lệnh ký");
+  assert.ok(guard < step.indexOf("package-windows.mjs bundle"), "phải chặn trước khi đóng gói");
+  assert.match(step, /exit 1/);
+  assert.match(step, /if \[ -z "\$MT_WINDOWS_SIGN_CMD" \]; then[\s\S]*Bản Windows chưa ký[\s\S]*>> "\$GITHUB_STEP_SUMMARY"/);
+});

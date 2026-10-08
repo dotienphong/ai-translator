@@ -393,3 +393,23 @@ Thiết kế: `docs/superpowers/specs/2026-10-06-custom-domain-design.md`. Kế 
 - Webhook PayOS: `https://api.aitranslator.io.vn/v1/webhooks/payos` (đăng ký bằng `confirm-webhook`; `API_ORIGIN` của Worker admin phải là `https://api.aitranslator.io.vn`).
 - Thư mới từ tên miền mới dễ vào spam lúc đầu: kiểm hộp thư thật sau mỗi thay đổi nội dung thư; DMARC đang `p=none`, siết `quarantine` sau vài tuần báo cáo sạch.
 - Còn giữ `workers_dev` của Worker API và `r2.dev` của bucket làm đường lui cho bản cài cũ. Chỉ tắt khi không còn bản cài nào dùng URL cũ (và nhớ Worker admin vẫn dùng `workers.dev` của nó).
+
+## 7. Bản Windows chưa ký (chưa có chứng thư ký mã)
+
+Chưa có chứng thư ký mã Windows (T2) thì để biến `WINDOWS_SIGNER` và `MT_WINDOWS_SIGN_CMD` của repo **rỗng**. CI tự build app
+với `AI_TRANSLATOR_WIN_SIGNING=unsigned` (spec `2026-10-08-windows-unsigned-design.md`), không ký tiến trình phụ và bộ cài,
+và ghi dòng "Bản Windows chưa ký" vào tóm tắt của lần chạy. Chữ ký bản cập nhật (minisign) vẫn bắt buộc như mọi bản.
+
+- App ở chế độ này không kiểm chữ ký Authenticode; gói trả phí chạy được. Lỗi `NotGenuine` thì xem log của app
+  (`%LOCALAPPDATA%\com.aitranslator.desktop\logs\app.log`).
+- SmartScreen có thể chặn lần chạy bộ cài ("Windows protected your PC"). Hướng dẫn cho khách (trang
+  `/huong-dan/cai-dat-windows/` của website): bấm **More info**, kiểm tên file, Publisher hiện "Unknown publisher", rồi bấm
+  **Run anyway**. Trình duyệt có thể cảnh báo file ít người tải (Edge: Keep › Show more › Keep anyway). Luôn gửi kèm mã
+  SHA-256 (`SHA256SUMS-windows.txt`) vì khách không có tên nhà phát hành để kiểm.
+- Bộ cài cài theo từng người dùng, không hỏi quyền admin.
+- Có chứng thư thì đặt cùng lúc `WINDOWS_SIGNER` (tên chủ chứng thư, đúng như Windows hiển thị) và `MT_WINDOWS_SIGN_CMD`
+  (mục 3, "Chứng thư ký mã"); không phải sửa code. `WINDOWS_SIGNER` có giá trị thì app về chế độ chặt (yêu cầu đúng người
+  ký). **Đặt `WINDOWS_SIGNER` mà không có `MT_WINDOWS_SIGN_CMD` thì job bộ cài dừng**, vì bản đó sẽ bị coi là không chính
+  hãng và chỉ chạy Free.
+- Website: khi có chứng thư, sửa các chỗ nói "chưa có chứng thư ký mã" (trang cài đặt Windows, Tải xuống, Giới thiệu, Dữ
+  liệu và bảo mật).

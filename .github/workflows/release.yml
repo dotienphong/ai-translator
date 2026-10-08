@@ -20,7 +20,9 @@
 # Biến cấu hình (Variables, không bí mật):
 #   APPLE_TEAM_ID         Team ID mà app tự kiểm trong chữ ký của mình (kế hoạch 06, AI_TRANSLATOR_TEAM_ID). Để trống thì
 #                         bản macOS ký ad-hoc và app chỉ kiểm chữ ký còn nguyên vẹn (spec 2026-10-05)
-#   WINDOWS_SIGNER        tên chủ chứng thư ký mã Windows (kế hoạch 06, AI_TRANSLATOR_SIGNER)
+#   WINDOWS_SIGNER        tên chủ chứng thư ký mã Windows (kế hoạch 06, AI_TRANSLATOR_SIGNER). Để trống thì bản Windows
+#                         không ký và app không kiểm chữ ký Authenticode (spec 2026-10-08); đặt thì phải đặt cả
+#                         MT_WINDOWS_SIGN_CMD, không thì job bộ cài dừng
 #   MT_WINDOWS_SIGN_CMD   lệnh ký của dịch vụ ký cloud (sign-windows.mjs; chọn ở T2)
 #   RELEASES_BUCKET       tên bucket R2 của bản phát hành; RELEASES_BASE_URL  URL công khai của nó, đúng URL gốc build sẵn
 #                         trong app (`updater/source.rs`, PRODUCTION_URL)
@@ -351,6 +353,8 @@ jobs:
       - name: Build app (chưa đóng gói)
         env:
           AI_TRANSLATOR_SIGNER: ${{ vars.WINDOWS_SIGNER }}
+          # Chưa có tên chủ chứng thư (chưa có chứng thư ký mã) thì bản chưa ký: app không kiểm chữ ký (spec 2026-10-08).
+          AI_TRANSLATOR_WIN_SIGNING: ${{ vars.WINDOWS_SIGNER == '' && 'unsigned' || '' }}
         run: node scripts/release/package-windows.mjs build
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -404,9 +408,18 @@ jobs:
       - name: Bộ cài NSIS, ký, kiểm, SHA-256
         env:
           MT_WINDOWS_SIGN_CMD: ${{ vars.MT_WINDOWS_SIGN_CMD }}
+          WINDOWS_SIGNER: ${{ vars.WINDOWS_SIGNER }}
         run: |
+          # App build với tên chủ chứng thư thì chỉ chạy Free nếu file không được ký: dừng thay vì phát hành bản khóa.
+          if [ -n "$WINDOWS_SIGNER" ] && [ -z "$MT_WINDOWS_SIGN_CMD" ]; then
+            echo "LỖI: đã đặt WINDOWS_SIGNER mà chưa đặt MT_WINDOWS_SIGN_CMD: bản này sẽ bị app coi là không chính hãng" >&2
+            exit 1
+          fi
           cp target/release-work/unsigned/THIRD_PARTY_NOTICES.txt .
           node scripts/release/package-windows.mjs bundle
+          if [ -z "$MT_WINDOWS_SIGN_CMD" ]; then
+            echo "Bản Windows chưa ký (chưa có chứng thư ký mã, spec 2026-10-08): SmartScreen có thể cảnh báo, khách bấm More info › Run anyway." >> "$GITHUB_STEP_SUMMARY"
+          fi
           cp target/release/bundle/nsis/*-setup.exe "$MT_RELEASE_OUT/"
           node scripts/release/release-check.mjs table src-tauri/binaries --target x86_64-pc-windows-msvc \
             --out "$MT_RELEASE_OUT/sidecar-sha256-windows.json"

@@ -3,12 +3,14 @@
 //!   theo một trong hai chế độ: có Team ID hợp lệ thì yêu cầu chứng thư Developer ID của đúng Team ID (cờ ad-hoc bị bỏ
 //!   qua); không có Team ID mà build đặt `AI_TRANSLATOR_MAC_SIGNING=adhoc` (spec 2026-10-05) thì chỉ yêu cầu chữ ký còn
 //!   nguyên vẹn và đúng bundle id;
-//! - Windows: `WinVerifyTrust` trên file `.exe` đang chạy, rồi so tên chủ chứng thư của người ký. Cần Windows để thử.
+//! - Windows: có tên chủ chứng thư thì `WinVerifyTrust` trên file `.exe` đang chạy, rồi so tên người ký; không có tên
+//!   chủ chứng thư mà build đặt `AI_TRANSLATOR_WIN_SIGNING=unsigned` (spec 2026-10-08) thì không kiểm chữ ký Authenticode.
 //!
 //! Chữ ký không hợp lệ thì app chỉ chạy Free và báo "Bản cài không chính hãng" kèm link tải chính thức. Bản debug bỏ qua
 //! bước này. Team ID và tên chủ chứng thư thật chờ tài khoản (T1, T2): kế hoạch 07 đặt biến môi trường lúc build trong CI
-//! (`AI_TRANSLATOR_TEAM_ID`, `AI_TRANSLATOR_SIGNER`, `AI_TRANSLATOR_MAC_SIGNING`). Bản phát hành build thiếu cấu hình ký
-//! (macOS: thiếu cả Team ID lẫn chế độ ad-hoc) thì coi là không chính hãng (quên cấu hình thì khóa, không mở cho không).
+//! (`AI_TRANSLATOR_TEAM_ID`, `AI_TRANSLATOR_SIGNER`, `AI_TRANSLATOR_MAC_SIGNING`, `AI_TRANSLATOR_WIN_SIGNING`). Bản phát
+//! hành build thiếu cấu hình ký (macOS: thiếu cả Team ID lẫn chế độ ad-hoc; Windows: thiếu cả tên chủ chứng thư lẫn chế độ
+//! chưa ký) thì coi là không chính hãng (quên cấu hình thì khóa, không mở cho không).
 
 /// Team ID của Apple Developer, đặt lúc build bản phát hành (kế hoạch 07).
 pub const TEAM_ID: Option<&str> = option_env!("AI_TRANSLATOR_TEAM_ID");
@@ -16,6 +18,8 @@ pub const TEAM_ID: Option<&str> = option_env!("AI_TRANSLATOR_TEAM_ID");
 pub const SIGNER: Option<&str> = option_env!("AI_TRANSLATOR_SIGNER");
 /// Chế độ ký ad-hoc của macOS, đặt lúc build khi chưa có Developer ID (spec 2026-10-05): giá trị `adhoc`.
 pub const MAC_SIGNING: Option<&str> = option_env!("AI_TRANSLATOR_MAC_SIGNING");
+/// Chế độ chưa ký của Windows, đặt lúc build khi chưa có chứng thư ký mã (spec 2026-10-08): giá trị `unsigned`.
+pub const WIN_SIGNING: Option<&str> = option_env!("AI_TRANSLATOR_WIN_SIGNING");
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Genuineness {
@@ -52,6 +56,27 @@ pub fn mac_requirement(team_id: Option<&str>, mac_signing: Option<&str>, identif
         None => {
             Err("bản phát hành thiếu Team ID và không bật chế độ ad-hoc (AI_TRANSLATOR_MAC_SIGNING=adhoc)".to_string())
         }
+    }
+}
+
+/// Phép kiểm của Windows.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WindowsCheck {
+    /// Chữ ký Authenticode hợp lệ của đúng chủ chứng thư này.
+    Signer(String),
+    /// Bản chưa ký: không kiểm chữ ký (spec 2026-10-08).
+    Unsigned,
+}
+
+/// Chọn phép kiểm của Windows theo biến lúc build (bảng ở spec 2026-10-08, mục 3.1). `Err` là lý do không chính hãng.
+pub fn windows_check(signer: Option<&str>, win_signing: Option<&str>) -> Result<WindowsCheck, String> {
+    match signer.filter(|s| !s.is_empty()) {
+        Some(name) => Ok(WindowsCheck::Signer(name.to_string())),
+        None if win_signing == Some("unsigned") => Ok(WindowsCheck::Unsigned),
+        None => Err(
+            "bản phát hành thiếu tên người ký và không bật chế độ chưa ký (AI_TRANSLATOR_WIN_SIGNING=unsigned)"
+                .to_string(),
+        ),
     }
 }
 
@@ -123,7 +148,7 @@ pub mod platform {
     };
     use windows::core::PCWSTR;
 
-    use super::{Genuineness, SIGNER};
+    use super::{Genuineness, SIGNER, WIN_SIGNING, WindowsCheck, windows_check};
 
     /// Kiểm chữ ký Authenticode của file và trả tên chủ chứng thư của người ký.
     pub fn signer_of(path: &std::path::Path) -> Result<String, String> {
@@ -181,8 +206,13 @@ pub mod platform {
     }
 
     pub fn check_self(_identifier: &str) -> Genuineness {
-        let Some(expected) = SIGNER else {
-            return Genuineness::NotGenuine("bản phát hành thiếu tên người ký".into());
+        let expected = match windows_check(SIGNER, WIN_SIGNING) {
+            Ok(WindowsCheck::Signer(name)) => name,
+            Ok(WindowsCheck::Unsigned) => {
+                log::info!("bản Windows chưa ký (AI_TRANSLATOR_WIN_SIGNING=unsigned): không kiểm chữ ký Authenticode");
+                return Genuineness::Genuine;
+            }
+            Err(why) => return Genuineness::NotGenuine(why),
         };
         let exe = match std::env::current_exe() {
             Ok(p) => p,
@@ -223,12 +253,15 @@ mod tests {
                 Genuineness::Skipped,
                 "bản debug bỏ qua"
             );
-        } else if TEAM_ID.is_none() && SIGNER.is_none() && MAC_SIGNING.is_none() {
+        } else if TEAM_ID.is_none() && SIGNER.is_none() && MAC_SIGNING.is_none() && WIN_SIGNING.is_none() {
             // Bản phát hành build thiếu cấu hình ký (chưa qua CI của 07): không chính hãng, chỉ chạy Free.
             assert!(matches!(
                 check_this_build("com.example.test"),
                 Genuineness::NotGenuine(_)
             ));
+        } else if cfg!(windows) && SIGNER.filter(|s| !s.is_empty()).is_none() && WIN_SIGNING == Some("unsigned") {
+            // Bản Windows chưa ký (spec 2026-10-08): không kiểm chữ ký, gói trả phí chạy được.
+            assert_eq!(check_this_build("com.example.test"), Genuineness::Genuine);
         }
     }
 
@@ -266,6 +299,40 @@ mod tests {
         // Bundle id sai dạng thì ad-hoc cũng khóa.
         assert!(mac_requirement(None, Some("adhoc"), "a\" or true").is_err());
         assert!(mac_requirement(None, Some("adhoc"), "").is_err());
+    }
+
+    #[test]
+    fn the_windows_check_follows_the_build_variables() {
+        let signer = Ok(WindowsCheck::Signer("Example Co".to_string()));
+        // Chặt: có tên chủ chứng thư thì cờ chưa ký không có tác dụng.
+        for flag in [None, Some("unsigned"), Some("khác")] {
+            assert_eq!(windows_check(Some("Example Co"), flag), signer);
+        }
+        // Chưa ký: không có tên chủ chứng thư (hay rỗng, như `vars.X` chưa đặt trong workflow) và cờ đúng chữ `unsigned`.
+        assert_eq!(windows_check(None, Some("unsigned")), Ok(WindowsCheck::Unsigned));
+        assert_eq!(windows_check(Some(""), Some("unsigned")), Ok(WindowsCheck::Unsigned));
+        // Khóa: thiếu cấu hình, hoặc cờ lạ (kể cả cờ ad-hoc của macOS).
+        for flag in [None, Some(""), Some("UNSIGNED"), Some("adhoc")] {
+            assert!(windows_check(None, flag).is_err(), "{flag:?}");
+            assert!(windows_check(Some(""), flag).is_err(), "{flag:?}");
+        }
+    }
+
+    /// Trên máy thật: file `.exe` của Windows do Microsoft ký thì đọc được tên người ký; file không ký thì lỗi.
+    #[cfg(windows)]
+    #[test]
+    fn windows_signatures_name_their_signer() {
+        let system = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_string());
+        let notepad = std::path::Path::new(&system).join("System32").join("notepad.exe");
+        // notepad.exe có thể ký bằng catalog (không nhúng chữ ký); khi đó WinVerifyTrust theo file báo lỗi, nên chỉ kiểm
+        // tên khi đọc được.
+        if let Ok(name) = platform::signer_of(&notepad) {
+            assert!(name.contains("Microsoft"), "{name}");
+        }
+        let unsigned = std::env::temp_dir().join(format!("mt-unsigned-{}.exe", std::process::id()));
+        std::fs::write(&unsigned, b"MZ not a real program").unwrap();
+        assert!(platform::signer_of(&unsigned).is_err());
+        std::fs::remove_file(unsigned).unwrap();
     }
 
     #[test]
