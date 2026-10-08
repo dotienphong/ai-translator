@@ -1,15 +1,28 @@
-// Chi tiết đơn (spec Web Admin §4.2): Cấp tay, Xử lý đơn paid_needs_review, xem trạng thái trên PayOS, nhật ký của đơn.
+// Chi tiết đơn (spec Web Admin §4.2; giao diện mới mục 2): việc cần làm theo trạng thái (Cấp tay đơn chưa cấp, Xử lý đơn
+// paid_needs_review), số tiền, license của đơn, nhật ký của đơn; bên phải là thẻ Thông tin và kết quả xem trạng thái trên
+// PayOS. Quy tắc nút: Cấp tay… khi đơn chưa khép (khác paid, refunded, paid_needs_review); Cấp key mới… và Ghi đã hoàn
+// tiền… chỉ khi paid_needs_review; Xem trạng thái trên PayOS (chỉ đọc) luôn có.
 import { type ReactNode, useState } from "react";
+import type { ApiError } from "../api/client";
 import { api } from "../api/endpoints";
-import type { OrderRow } from "../api/types";
-import { auditColumns, licenseColumns } from "../components/columns";
+import type { OrderRow, OrderStatus, PaymentStatus } from "../api/types";
+import { AuditTimeline, TimelineSkeleton } from "../components/AuditTimeline";
+import { Badge } from "../components/Badge";
+import { Button, IconButton } from "../components/Button";
+import { Card } from "../components/Card";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { DataTable } from "../components/DataTable";
+import { EmptyState } from "../components/EmptyState";
 import { ErrorBox, Notice } from "../components/Feedback";
+import { IconAlert, IconBan, IconClock, IconClose, IconCoins, IconInfo, IconKey, IconLog, IconMail, IconWarning } from "../components/icons";
+import { KeyValue } from "../components/KeyValue";
 import { KeyReveal } from "../components/MaskedKey";
+import { PageHeader } from "../components/PageHeader";
+import { RatioBar } from "../components/RatioBar";
+import { RelTime } from "../components/RelTime";
 import { OrderStatusBadge, PLAN_LABELS } from "../components/StatusBadge";
-import { fmtDateTime, fmtVnd, nowSec } from "../format";
+import { fmtDateTime, fmtHm, fmtVnd, nowSec } from "../format";
 import { useLoad } from "../hooks";
+import { ago, Callout, DetailLayout, EmailText, DetailNotFound, DetailSkeleton, LicenseList } from "./detail-kit";
 
 type Dialog = "grant" | "grant_new" | "refunded" | null;
 
@@ -42,6 +55,8 @@ function grantDescription(order: OrderRow): ReactNode {
   );
 }
 
+const crumbs = (code: number) => [{ label: "Đơn hàng", to: "/orders" }, { label: `#${code}` }];
+
 /** Hộp key mới nằm ngoài OrderDetail: tải lại đơn bị lỗi thì trang đơn thành ErrorBox, nhưng key (chỉ hiện một lần) vẫn còn đó. */
 export function OrderPage({ code }: { code: number }) {
   const [revealed, setRevealed] = useState<Revealed | null>(null);
@@ -53,87 +68,116 @@ export function OrderPage({ code }: { code: number }) {
   );
 }
 
+/** Kết quả lần xem trạng thái trên PayOS gần nhất (chỉ trong bộ nhớ của trang). */
+type Payos = { at: number; data: PaymentStatus; error?: undefined } | { at: number; error: ApiError; data?: undefined };
+
 function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed: Revealed): void }) {
   const data = useLoad(() => api.lookup({ order_code: code }), [code]);
   const log = useLoad(() => api.audit({ order_code: String(code) }), [code]);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [payos, setPayos] = useState<string | null>(null);
+  const [payos, setPayos] = useState<Payos | null>(null);
   const reload = () => {
     data.reload();
     log.reload();
   };
 
-  if (data.error) return <ErrorBox error={data.error} onRetry={data.reload} />;
-  if (!data.data) return <p className="muted">Đang tải…</p>;
+  if (data.error) {
+    return (
+      <>
+        <PageHeader breadcrumb={crumbs(code)} title={`Đơn #${code}`} />
+        <ErrorBox error={data.error} onRetry={data.reload} title="Không tải được đơn" />
+      </>
+    );
+  }
+  if (!data.data) return <DetailSkeleton breadcrumb={crumbs(code)} label="Đang tải đơn…" />;
   const order = data.data.orders.find((o) => o.order_code === code);
-  if (!order) return <p>Không có đơn #{code}.</p>;
+  if (!order) {
+    return (
+      <DetailNotFound
+        breadcrumb={crumbs(code)}
+        title={`Đơn #${code}`}
+        heading="Không có đơn này"
+        hint="Máy chủ không có đơn mang mã này. Kiểm lại mã (có thể gõ nhầm một chữ số), hay tra cứu theo email của khách."
+        back={{ to: "/orders", label: "Về danh sách đơn" }}
+      />
+    );
+  }
+  const now = nowSec();
   const closed = order.status === "paid" || order.status === "refunded" || order.status === "paid_needs_review";
+  const open = (d: Dialog) => () => setDialog(d);
 
   async function showPayos() {
     try {
-      setPayos(JSON.stringify(await api.paymentStatus(code), null, 2));
+      setPayos({ at: nowSec(), data: await api.paymentStatus(code) });
     } catch (e) {
-      setPayos(e instanceof Error ? e.message : String(e));
+      setPayos({ at: nowSec(), error: e as ApiError });
     }
   }
 
   return (
     <>
-      <h1>
-        Đơn #{order.order_code} <OrderStatusBadge status={order.status} />
-      </h1>
+      <PageHeader
+        breadcrumb={crumbs(code)}
+        title={`Đơn #${order.order_code}`}
+        badges={<OrderStatusBadge status={order.status} />}
+        description={
+          <p className="page-meta detail-meta">
+            <span>{order.email ?? "Không có email (đã ẩn danh)"}</span>
+            <span>Gói {PLAN_LABELS[order.plan] ?? order.plan}</span>
+            <span>
+              Tạo <RelTime sec={order.created_at} now={now} />
+            </span>
+          </p>
+        }
+        actions={
+          <Button icon={<IconCoins size={16} />} onClick={showPayos}>
+            Xem trạng thái trên PayOS
+          </Button>
+        }
+      />
       {notice && <Notice text={notice} onClose={() => setNotice(null)} />}
-      <dl className="facts">
-        <dt>Email</dt>
-        <dd>{order.email ?? "— (đã ẩn danh)"}</dd>
-        <dt>Gói</dt>
-        <dd>{PLAN_LABELS[order.plan]}</dd>
-        <dt>Số tiền</dt>
-        <dd>
-          đã trả {fmtVnd(order.amount_paid)} / {fmtVnd(order.amount)}
-        </dd>
-        <dt>Tạo lúc</dt>
-        <dd>{fmtDateTime(order.created_at)}</dd>
-        <dt>Trả lúc</dt>
-        <dd>{fmtDateTime(order.paid_at)}</dd>
-        <dt>Loại</dt>
-        <dd>{order.grant_kind ? (GRANT_KINDS[order.grant_kind] ?? order.grant_kind) : order.renew_license_id ? "Gia hạn hay đổi gói" : "Mua mới"}</dd>
-        <dt>Email key</dt>
-        <dd>
-          {order.email_sent_at
-            ? `đã gửi ${fmtDateTime(order.email_sent_at)}`
-            : order.email_gave_up_at
-              ? "gửi thất bại, đã thôi gửi"
-              : "chưa gửi"}
-        </dd>
-      </dl>
-      <div className="actions">
-        {!closed && (
-          <button type="button" onClick={() => setDialog("grant")}>
-            Cấp tay…
-          </button>
-        )}
-        {order.status === "paid_needs_review" && (
+      <NextStep order={order} closed={closed} open={open} />
+      <DetailLayout
+        side={
           <>
-            <button type="button" onClick={() => setDialog("grant_new")}>
-              Cấp key mới…
-            </button>
-            <button type="button" className="danger" onClick={() => setDialog("refunded")}>
-              Ghi đã hoàn tiền…
-            </button>
+            {payos && <PayosCard payos={payos} order={order} onClose={() => setPayos(null)} />}
+            <Card title="Thông tin" icon={<IconInfo size={18} />}>
+              <OrderFacts order={order} now={now} />
+            </Card>
           </>
-        )}
-        <button type="button" onClick={showPayos}>
-          Xem trạng thái trên PayOS
-        </button>
-      </div>
-      {payos && <pre className="json">{payos}</pre>}
-      <h2>License</h2>
-      <DataTable columns={licenseColumns(nowSec())} rows={data.data.licenses} rowKey={(l) => l.id} rowHref={(l) => `/licenses/${l.id}`} empty="Đơn chưa áp vào license nào" />
-      <h2>Nhật ký của đơn</h2>
-      {log.error && <ErrorBox error={log.error} onRetry={log.reload} />}
-      <DataTable columns={auditColumns(nowSec())} rows={log.data?.items ?? []} rowKey={(a, i) => `${a.at}-${i}`} empty="Chưa có dòng nào" loading={log.loading} />
+        }
+        main={
+          <>
+            <MoneyCard order={order} />
+            <Card
+              title="License của đơn"
+              icon={<IconKey size={18} />}
+              description={order.renew_license_id ? "Đơn gia hạn hay đổi gói: áp vào license đã có." : undefined}
+              flush={data.data.licenses.length > 0}
+            >
+              {data.data.licenses.length > 0 ? (
+                <LicenseList licenses={data.data.licenses} now={now} />
+              ) : (
+                <EmptyState compact title="Đơn chưa áp vào license nào" hint="License có khi đơn được cấp: webhook PayOS tự cấp, hay bạn bấm Cấp tay." />
+              )}
+            </Card>
+            <Card title="Nhật ký của đơn" icon={<IconLog size={18} />} description="Mới nhất ở trên.">
+              {log.error ? (
+                <ErrorBox error={log.error} onRetry={log.reload} />
+              ) : log.data ? (
+                log.data.items.length > 0 ? (
+                  <AuditTimeline rows={log.data.items} now={now} label="Nhật ký của đơn" omit="order" />
+                ) : (
+                  <EmptyState compact title="Chưa có dòng nào" />
+                )
+              ) : (
+                <TimelineSkeleton label="Đang tải nhật ký…" rows={3} />
+              )}
+            </Card>
+          </>
+        }
+      />
 
       {dialog === "grant" && (
         <ConfirmDialog
@@ -182,5 +226,219 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed
         />
       )}
     </>
+  );
+}
+
+/* ---------- Việc cần làm theo trạng thái ---------- */
+
+/** Lời dẫn cho đơn chưa khép: vì sao đơn chưa có license, khi nào thì Cấp tay. */
+const OPEN_STEPS: Partial<Record<OrderStatus, { title: string; text: string; tone: "info" | "default" | "danger" }>> = {
+  pending: {
+    tone: "info",
+    title: "Đơn đang chờ khách trả",
+    text: "Thường không cần làm gì: khi khách trả, webhook PayOS tự cấp license. Chỉ cấp tay khi tiền đã về mà đơn chưa được cấp (xem trạng thái trên PayOS trước).",
+  },
+  processing: {
+    tone: "info",
+    title: "Đơn đang được xử lý",
+    text: "Server đang cấp license cho đơn. Nếu đơn đứng ở đây lâu, xem trạng thái trên PayOS và nhật ký trước khi cấp tay.",
+  },
+  expired: {
+    tone: "default",
+    title: "Link thanh toán đã hết hạn",
+    text: "Chỉ cấp tay khi khách đã chuyển tiền cho đơn này và bạn đã xác minh khoản tiền.",
+  },
+  cancelled: {
+    tone: "default",
+    title: "Đơn đã hủy",
+    text: "Chỉ cấp tay khi khách đã chuyển tiền cho đơn này và bạn đã xác minh khoản tiền.",
+  },
+  failed: {
+    tone: "danger",
+    title: "Đơn gặp lỗi khi xử lý",
+    text: "Xem nhật ký của đơn và trạng thái trên PayOS. Khách đã trả thì cấp tay.",
+  },
+};
+
+function NextStep({ order, closed, open }: { order: OrderRow; closed: boolean; open(d: Dialog): () => void }) {
+  if (order.status === "paid_needs_review") {
+    return (
+      <Callout
+        tone="danger"
+        icon={<IconAlert size={18} />}
+        title="Đã nhận tiền nhưng license của đơn đã bị thu hồi"
+        actions={
+          <>
+            <Button variant="primary" icon={<IconKey size={16} />} onClick={open("grant_new")}>
+              Cấp key mới…
+            </Button>
+            <Button variant="danger" onClick={open("refunded")}>
+              Ghi đã hoàn tiền…
+            </Button>
+          </>
+        }
+      >
+        Chọn một cách: cấp cho khách một license mới, hay ghi nhận bạn đã hoàn tiền cho khách ngoài hệ thống.
+      </Callout>
+    );
+  }
+  if (!closed) {
+    const short = order.amount - order.amount_paid;
+    const step =
+      order.status === "underpaid"
+        ? {
+            tone: "warn" as const,
+            title: `Khách chuyển thiếu ${fmtVnd(Math.max(short, 0))}`,
+            text: "Khi khách chuyển bù, hay bạn đã xác minh khoản bù, bấm Cấp tay để cấp license và gửi key qua email.",
+          }
+        : (OPEN_STEPS[order.status] ?? { tone: "default" as const, title: "Đơn chưa được cấp license", text: "Chỉ cấp tay khi đã xác minh khách đã trả." });
+    return (
+      <Callout
+        tone={step.tone}
+        icon={step.tone === "warn" ? <IconWarning size={18} /> : step.tone === "danger" ? <IconAlert size={18} /> : <IconClock size={18} />}
+        title={step.title}
+        actions={
+          <Button variant={order.status === "underpaid" ? "primary" : "secondary"} icon={<IconKey size={16} />} onClick={open("grant")}>
+            Cấp tay…
+          </Button>
+        }
+      >
+        {step.text}
+      </Callout>
+    );
+  }
+  // Đơn đã trả mà khách chưa nhận email key: việc nằm ở trang license (Gửi lại email).
+  if (order.status === "paid" && order.email_sent_at === null && order.license_id) {
+    return (
+      <Callout
+        tone="warn"
+        icon={<IconMail size={18} />}
+        title={order.email_gave_up_at ? "Gửi email key thất bại, server đã thôi gửi" : "Khách chưa nhận email key"}
+        actions={
+          <Button to={`/licenses/${order.license_id}`} variant="primary">
+            Mở license
+          </Button>
+        }
+      >
+        Mở license của đơn, bấm Gửi lại email. Gửi được thì đơn rời nhóm này ở Việc cần xử lý.
+      </Callout>
+    );
+  }
+  if (order.status === "refunded") {
+    return (
+      <Callout tone="default" icon={<IconBan size={18} />} title="Đơn đã ghi là hoàn tiền">
+        Tiền đã được chuyển trả cho khách ngoài hệ thống; đơn không cấp gì. Xem lý do trong nhật ký của đơn.
+      </Callout>
+    );
+  }
+  return null;
+}
+
+/* ---------- Số tiền ---------- */
+
+function MoneyCard({ order }: { order: OrderRow }) {
+  const { amount, amount_paid: paid } = order;
+  const short = amount - paid;
+  const pct = amount > 0 ? Math.round((paid / amount) * 100) : 0;
+  const tone = paid <= 0 ? "muted" : short > 0 ? "warn" : "ok";
+  const note =
+    paid <= 0 ? "Chưa nhận khoản nào." : short > 0 ? `Đã nhận ${pct}% số cần trả.` : short < 0 ? `Nhận dư ${fmtVnd(-short)}.` : "Đã nhận đủ.";
+  return (
+    <Card title="Số tiền" icon={<IconCoins size={18} />}>
+      <dl className="figs">
+        <div>
+          <dt>Cần trả</dt>
+          <dd>{fmtVnd(amount)}</dd>
+        </div>
+        <div>
+          <dt>Đã nhận</dt>
+          <dd>{fmtVnd(paid)}</dd>
+        </div>
+        <div className={short > 0 ? "is-warn" : "is-zero"}>
+          <dt>Còn thiếu</dt>
+          <dd>{fmtVnd(Math.max(short, 0))}</dd>
+        </div>
+      </dl>
+      <div className="money-bar">
+        <RatioBar value={pct} className={`tone-${tone}`} />
+        <p className={short > 0 && paid > 0 ? "money-note text-warn" : "money-note"}>{note}</p>
+      </div>
+    </Card>
+  );
+}
+
+/* ---------- Thông tin ---------- */
+
+function OrderFacts({ order, now }: { order: OrderRow; now: number }) {
+  const kind = order.grant_kind ? (GRANT_KINDS[order.grant_kind] ?? order.grant_kind) : order.renew_license_id ? "Gia hạn hay đổi gói" : "Mua mới";
+  const sent = order.email_sent_at;
+  return (
+    <KeyValue
+      items={[
+        { label: "Mã đơn", value: `#${order.order_code}`, copy: String(order.order_code), copyWhat: "mã đơn" },
+        {
+          label: "Email",
+          value: order.email ? <EmailText email={order.email} /> : <span className="cell-none">Không có email (đã ẩn danh)</span>,
+          copy: order.email ?? undefined,
+        },
+        { label: "Gói", value: PLAN_LABELS[order.plan] ?? order.plan },
+        { label: "Loại", value: kind },
+        { label: "Tạo lúc", value: fmtDateTime(order.created_at), hint: ago(order.created_at, now) },
+        { label: "Trả lúc", value: order.paid_at ? fmtDateTime(order.paid_at) : null, hint: order.paid_at ? ago(order.paid_at, now) : undefined },
+        {
+          label: "Email key",
+          value:
+            sent !== null ? (
+              <Badge tone="ok">Đã gửi</Badge>
+            ) : order.email_gave_up_at !== null ? (
+              <Badge tone="bad">Gửi thất bại, đã thôi gửi</Badge>
+            ) : (
+              <Badge tone={order.status === "paid" ? "warn" : "neutral"}>Chưa gửi</Badge>
+            ),
+          hint: sent !== null ? fmtDateTime(sent) : order.email_gave_up_at !== null ? `thôi gửi lúc ${fmtDateTime(order.email_gave_up_at)}` : undefined,
+        },
+        { label: "Cổng", value: order.provider === "payos" ? "PayOS" : order.provider },
+      ]}
+    />
+  );
+}
+
+/* ---------- Trạng thái trên PayOS ---------- */
+
+/** PayOS báo cùng trạng thái với đơn? Đơn cần xử lý hay đã hoàn tiền thì PayOS vẫn báo đã trả: vẫn là khớp. */
+function payosMatches(p: PaymentStatus, o: OrderRow): boolean {
+  const same = p.status === o.status || (p.status === "paid" && (o.status === "paid_needs_review" || o.status === "refunded"));
+  return same && p.amountPaid === o.amount_paid;
+}
+
+function PayosCard({ payos, order, onClose }: { payos: Payos; order: OrderRow; onClose(): void }) {
+  const p = payos.data;
+  return (
+    <Card
+      title="Trạng thái trên PayOS"
+      icon={<IconCoins size={18} />}
+      description={`Xem lúc ${fmtHm(payos.at)}`}
+      tone={p && !payosMatches(p, order) ? "warn" : undefined}
+      actions={<IconButton label="Đóng kết quả PayOS" icon={<IconClose size={16} />} size="sm" onClick={onClose} />}
+      className="payos-card"
+    >
+      {payos.error ? (
+        <ErrorBox error={payos.error} />
+      ) : p ? (
+        <>
+          <KeyValue
+            items={[
+              { label: "Trạng thái", value: <OrderStatusBadge status={p.status as OrderStatus} /> },
+              { label: "Số tiền", value: fmtVnd(p.amount) },
+              { label: "Đã nhận", value: fmtVnd(p.amountPaid) },
+              { label: "Giao dịch", value: p.paidAt ? fmtDateTime(p.paidAt) : null },
+            ]}
+          />
+          <p className={payosMatches(p, order) ? "payos-verdict is-ok" : "payos-verdict is-warn"}>
+            {payosMatches(p, order) ? "Khớp với đơn." : "Khác với đơn: so số tiền và trạng thái trước khi cấp tay."}
+          </p>
+        </>
+      ) : null}
+    </Card>
   );
 }

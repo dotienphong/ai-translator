@@ -119,6 +119,17 @@ const PAIRS: [string, string, number][] = [
   ["line-input", "bg", 3],
   ["surface", "line-input", 3],
   ["brand", "bg", 3],
+
+  // ---------- Pha 5: trang chi tiết, Công cụ, Tra cứu, 404 ----------
+  // Kết quả công cụ (nền --ok-soft): giờ chạy --ink-3, nút "Chép JSON" --brand-ink, dấu kiểm --ok (3:1, có ở trên)
+  ["ink-3", "ok-soft", 4.5],
+  ["brand-ink", "ok-soft", 4.5],
+  // Khu vực nguy hiểm: dòng "Không hoàn tác được" --bad trên --surface (có ở trên); biểu tượng --bad trên --bad-soft (có)
+  // Thẻ việc cần làm tông trung tính: biểu tượng --ink-2 trên --surface-3
+  ["ink-2", "surface-3", 3],
+  // Dòng license và dòng máy khi rê chuột (--surface-2): chữ phụ --ink-3 (có ở trên), liên kết --brand-ink (có)
+  // Số 404 (chữ lớn, chuyển màu --brand sang --accent) trên nền trang
+  ["accent", "bg", 3],
 ];
 
 describe("tương phản token màu (WCAG AA)", () => {

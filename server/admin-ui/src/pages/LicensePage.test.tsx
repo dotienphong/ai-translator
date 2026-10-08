@@ -71,7 +71,8 @@ afterEach(() => {
 describe("LicensePage", () => {
   it("tra theo license_id, che key mặc định, có bảng máy", async () => {
     render(<LicensePage id={ID} />);
-    expect(await screen.findByText("K7Q2-…-9XMB")).toBeTruthy();
+    // Key che là tiêu đề trang (và mục cuối của đường dẫn), nên tìm theo h1 thay vì theo chữ (chữ có ở hai chỗ).
+    expect(await screen.findByRole("heading", { level: 1, name: "K7Q2-…-9XMB" })).toBeTruthy();
     expect(screen.queryByText(KEY)).toBeNull();
     expect(calls[0]).toEqual({ url: "/admin/lookup", method: "POST", body: { license_id: ID } });
     expect(screen.getByText("MacBook")).toBeTruthy();
@@ -173,7 +174,8 @@ describe("LicensePage: nút theo trạng thái license", () => {
     withLicense({ activations: [...(license.activations as unknown[]), deactivated] });
     render(<LicensePage id={ID} />);
     await screen.findByText("MacBook");
-    const rowOf = (label: string) => screen.getByText(label).closest("tr") as HTMLElement;
+    // Máy là danh sách hàng (li) thay cho bảng: mỗi hàng có tên, trạng thái và nút của chính máy đó.
+    const rowOf = (label: string) => screen.getByText(label).closest("li") as HTMLElement;
     expect(within(rowOf("Laptop cũ")).queryByRole("button")).toBeNull();
     expect(within(rowOf("Laptop cũ")).getByText(/Đã gỡ \(admin\)/)).toBeTruthy();
     expect(within(rowOf("MacBook")).getByRole("button", { name: "Gỡ…" })).toBeTruthy();
@@ -279,5 +281,70 @@ describe("LicensePage: mỗi thao tác gọi đúng route với đúng body", ()
     expect(await screen.findByText("Đã gửi lại email.")).toBeTruthy();
     expect(writes()).toEqual([{ url: `/admin/licenses/${ID}/resend`, method: "POST", body: {} }]);
     await waitFor(() => expect(lookups()).toBe(2));
+  });
+});
+
+describe("LicensePage: bố cục mới (tiêu đề key, việc cần làm, khu vực nguy hiểm, không tìm thấy)", () => {
+  const region = (name: string) => screen.queryByRole("region", { name });
+
+  it("Hiện trong đầu trang đổi tiêu đề sang key đầy đủ, Ẩn che lại; Chép có sẵn", async () => {
+    const user = userEvent.setup();
+    render(<LicensePage id={ID} />);
+    await screen.findByRole("heading", { level: 1, name: "K7Q2-…-9XMB" });
+    await user.click(screen.getByRole("button", { name: "Hiện" }));
+    expect(screen.getByRole("heading", { level: 1, name: KEY })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Ẩn" }));
+    expect(screen.queryByText(KEY)).toBeNull();
+    expect(screen.getByRole("button", { name: "Chép" })).toBeTruthy();
+  });
+
+  it("Thu hồi… nằm trong Khu vực nguy hiểm, tách khỏi nhóm thao tác chính ở đầu trang", async () => {
+    render(<LicensePage id={ID} />);
+    await screen.findByText("MacBook");
+    const danger = region("Khu vực nguy hiểm") as HTMLElement;
+    expect(within(danger).getByRole("button", { name: "Thu hồi…" })).toBeTruthy();
+    const main = screen.getByRole("group", { name: "Thao tác với license" });
+    expect(within(main).queryByRole("button", { name: "Thu hồi…" })).toBeNull();
+    expect(within(main).getByRole("button", { name: "Gia hạn…" })).toBeTruthy();
+  });
+
+  it("license đã thu hồi: có thẻ báo đã thu hồi, không có Khu vực nguy hiểm hay nhóm thao tác", async () => {
+    withLicense({ revoked_at: NOW - 600 });
+    render(<LicensePage id={ID} />);
+    expect(await screen.findByRole("region", { name: "License đã bị thu hồi" })).toBeTruthy();
+    expect(region("Khu vực nguy hiểm")).toBeNull();
+    expect(screen.queryByRole("group", { name: "Thao tác với license" })).toBeNull();
+  });
+
+  it("khóa tạm: Mở khóa… nằm trong thẻ việc cần làm License đang khóa tạm", async () => {
+    withLicense({ locked_at: NOW - 60 });
+    render(<LicensePage id={ID} />);
+    const step = await screen.findByRole("region", { name: "License đang khóa tạm" });
+    expect(within(step).getByRole("button", { name: "Mở khóa…" })).toBeTruthy();
+  });
+
+  it("xung đột máy: thẻ Máy có câu hướng dẫn gỡ máy còn lại", async () => {
+    withLicense({ conflict: true, activations: [...(license.activations as unknown[]), { ...deactivated, id: "act-3", deactivated_at: null, deactivated_by: null, device_label: "PC" }] });
+    render(<LicensePage id={ID} />);
+    await screen.findByText("MacBook");
+    const devices = region("Máy") as HTMLElement;
+    expect(devices.textContent).toContain("Key đang kích hoạt trên 2 máy cùng lúc. Hỏi khách máy nào đang dùng, gỡ các máy còn lại.");
+    expect(devices.className).toContain("tone-warn");
+  });
+
+  it("không có license này: trạng thái không tìm thấy, không có nút ghi", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ licenses: [], orders: [] })));
+    render(<LicensePage id={ID} />);
+    expect(await screen.findByText("Không có license này")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Về danh sách license" }).getAttribute("href")).toBe("/licenses");
+    expect(btn("Gia hạn…")).toBeNull();
+    expect(btn("Thu hồi…")).toBeNull();
+  });
+
+  it("lỗi tải: câu lỗi và nút Thử lại", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "internal" }, 500)));
+    render(<LicensePage id={ID} />);
+    expect((await screen.findByRole("alert")).textContent).toContain("Lỗi máy chủ");
+    expect(screen.getByRole("button", { name: "Thử lại" })).toBeTruthy();
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DevicePage } from "./DevicePage";
 
@@ -71,8 +71,8 @@ describe("DevicePage", () => {
     expect(screen.queryByText("Máy chưa đăng ký dùng thử.")).toBeNull();
   });
 
-  it("máy chưa đăng ký dùng thử (trial null)", async () => {
-    serve({ licenses: [], orders: [], trial: null });
+  it("máy chưa đăng ký dùng thử (trial null) nhưng có license", async () => {
+    serve({ licenses: [license], orders: [], trial: null });
     render(<DevicePage hash={HASH} />);
     expect(await screen.findByText("Máy chưa đăng ký dùng thử.")).toBeTruthy();
     expect(screen.queryByText("Bắt đầu")).toBeNull();
@@ -86,7 +86,7 @@ describe("DevicePage", () => {
     expect((await screen.findByRole("link", { name: "K7Q2-…-9XMB" })).getAttribute("href")).toBe(`/licenses/${ID}`);
     expect(screen.queryByText("Chưa có license nào")).toBeNull();
     first.unmount();
-    serve({ licenses: [], orders: [], trial: null });
+    serve({ licenses: [], orders: [], trial: { started_at: NOW - 3 * 86400, ends_at: NOW + 7 * 86400, last_seen_at: NOW - 60 } });
     render(<DevicePage hash={HASH} />);
     expect(await screen.findByText("Chưa có license nào")).toBeTruthy();
   });
@@ -96,5 +96,55 @@ describe("DevicePage", () => {
     vi.stubGlobal("fetch", vi.fn(async () => json({ error: "internal" }, 500)));
     render(<DevicePage hash={HASH} />);
     expect((await screen.findByRole("alert")).textContent).toContain("Lỗi máy chủ");
+  });
+});
+
+describe("DevicePage: bố cục mới", () => {
+  const act = (id: string, hash: string, over: object = {}) => ({
+    id,
+    license_id: ID,
+    device_id_hash: hash,
+    device_label: "MacBook-Phong",
+    quota_epoch: 0,
+    created_at: NOW - 5 * 86400,
+    last_validated_at: NOW - 60,
+    deactivated_at: null,
+    deactivated_by: null,
+    ...over,
+  });
+
+  it("máy server không biết (không dùng thử, không license): trạng thái không tìm thấy, vẫn có mã máy đầy đủ", async () => {
+    serve({ licenses: [], orders: [], trial: null });
+    render(<DevicePage hash={HASH} />);
+    expect(await screen.findByText("Không có dữ liệu về máy này")).toBeTruthy();
+    expect(screen.getByText(HASH)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Về Máy & dùng thử" }).getAttribute("href")).toBe("/trials");
+  });
+
+  it("tên máy làm tiêu đề, huy hiệu Đã mua, trạng thái trên chính máy này, nhật ký lọc theo máy", async () => {
+    const other = "b".repeat(64);
+    serve({
+      licenses: [
+        {
+          ...license,
+          activations: [act("act-1", HASH), act("act-2", other, { device_label: "Máy khác" })],
+          audit: [
+            { at: NOW - 100, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-2"}' },
+            { at: NOW - 200, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-1"}' },
+            { at: NOW - 300, actor: "webhook", action: "license_issued", order_code: 1000001, detail: null },
+          ],
+        },
+      ],
+      orders: [],
+      trial: null,
+    });
+    render(<DevicePage hash={HASH} />);
+    expect(await screen.findByRole("heading", { level: 1, name: "MacBook-Phong" })).toBeTruthy();
+    expect(screen.getByText("Đã mua")).toBeTruthy();
+    expect(screen.getByText(/Trên máy này: đang kích hoạt/)).toBeTruthy();
+    const log = screen.getByRole("list", { name: "Nhật ký của máy" });
+    // Chỉ dòng của act-1 (máy này): không có dòng của máy khác hay dòng không gắn máy.
+    expect(within(log).getAllByText("Kích hoạt máy")).toHaveLength(1);
+    expect(within(log).queryByText("Cấp license")).toBeNull();
   });
 });

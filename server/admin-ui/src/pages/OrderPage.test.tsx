@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OrderPage } from "./OrderPage";
@@ -37,7 +37,7 @@ const ISSUED = { license_id: "11111111-1111-4111-8111-111111111111", license_key
  * Mock fetch theo URL, ghi mọi lời gọi vào `calls`. `lookup(n)`: phản hồi của lần tra cứu thứ n (từ 1; mặc định trả đơn `o`).
  * `post`: phản hồi của các POST ghi theo URL (mặc định cả grant lẫn resolve đều thành công).
  */
-function serveOrder(o: object, opts: { lookup?: (n: number) => Response; post?: Record<string, () => Response> } = {}) {
+function serveOrder(o: object, opts: { lookup?: (n: number) => Response; post?: Record<string, () => Response>; audit?: unknown[]; licenses?: unknown[] } = {}) {
   calls = [];
   let lookups = 0;
   vi.stubGlobal(
@@ -46,9 +46,9 @@ function serveOrder(o: object, opts: { lookup?: (n: number) => Response; post?: 
       calls.push({ url, method: init.method ?? "GET", body: init.body ? JSON.parse(String(init.body)) : undefined });
       if (url === "/admin/lookup") {
         lookups++;
-        return opts.lookup ? opts.lookup(lookups) : json({ licenses: [], orders: [o] });
+        return opts.lookup ? opts.lookup(lookups) : json({ licenses: opts.licenses ?? [], orders: [o] });
       }
-      if (url.startsWith("/admin/audit")) return json({ items: [], next_cursor: null });
+      if (url.startsWith("/admin/audit")) return json({ items: opts.audit ?? [], next_cursor: null });
       const post = opts.post?.[url];
       if (post) return post();
       if (url === `/admin/orders/${CODE}/grant`) return json(ISSUED);
@@ -265,5 +265,94 @@ describe("OrderPage: các thao tác ghi gọi đúng route và body", () => {
     });
     expect(writes()).toHaveLength(1);
     expect(screen.queryByText(KEY)).toBeNull();
+  });
+});
+
+describe("OrderPage: bố cục mới (việc cần làm, số tiền, license, nhật ký, PayOS, không tìm thấy)", () => {
+  const LIC = "22222222-2222-4222-8222-222222222222";
+  const region = (name: string) => screen.getByRole("region", { name });
+
+  it("đơn chuyển thiếu: thẻ việc cần làm nói số tiền thiếu và chứa nút Cấp tay…", async () => {
+    serveOrder(order);
+    render(<OrderPage code={CODE} />);
+    const step = await screen.findByRole("region", { name: "Khách chuyển thiếu 30.000 đ" });
+    expect(within(step).getByRole("button", { name: "Cấp tay…" })).toBeTruthy();
+    // Số tiền: cần trả, đã nhận, còn thiếu.
+    const money = region("Số tiền");
+    expect(money.textContent).toContain("50.000 đ");
+    expect(money.textContent).toContain("Đã nhận 40% số cần trả.");
+  });
+
+  it("đơn cần xử lý: hai nút nằm cùng thẻ việc cần làm, Ghi đã hoàn tiền… tông nguy hiểm", async () => {
+    serveOrder({ ...order, status: "paid_needs_review", amount_paid: 50000 });
+    render(<OrderPage code={CODE} />);
+    const step = await screen.findByRole("region", { name: "Đã nhận tiền nhưng license của đơn đã bị thu hồi" });
+    expect(within(step).getByRole("button", { name: "Cấp key mới…" })).toBeTruthy();
+    expect(within(step).getByRole("button", { name: "Ghi đã hoàn tiền…" }).className).toContain("danger");
+  });
+
+  it("license của đơn là thẻ có liên kết mở license; nhật ký có tên tiếng Việt và không lặp liên kết tới chính đơn", async () => {
+    const license = {
+      id: LIC,
+      license_key: KEY,
+      email: "khach@example.com",
+      plan: "monthly",
+      expires_at: 1_900_000_000,
+      created_at: 1_790_812_800,
+      revoked_at: null,
+      locked_at: null,
+      conflict: false,
+      activations: [],
+      audit: [],
+    };
+    const audit = [{ id: 1, at: 1_790_812_900, actor: "api", action: "order_created", license_id: null, order_code: CODE, detail: null }];
+    serveOrder({ ...order, status: "paid", amount_paid: 50000, license_id: LIC }, { licenses: [license], audit });
+    render(<OrderPage code={CODE} />);
+    const link = await screen.findByRole("link", { name: "K7Q2-…-9XMB" });
+    expect(link.getAttribute("href")).toBe(`/licenses/${LIC}`);
+    expect(screen.queryByText(KEY)).toBeNull();
+    const log = await screen.findByRole("list", { name: "Nhật ký của đơn" });
+    expect(within(log).getByText("Tạo đơn")).toBeTruthy();
+    expect(within(log).queryByRole("link", { name: /#1000012/ })).toBeNull();
+  });
+
+  it("Xem trạng thái trên PayOS: kết quả nằm trong thẻ riêng, so với đơn; đóng được", async () => {
+    const user = userEvent.setup();
+    const status = { orderCode: CODE, status: "paid", amount: 50000, amountPaid: 50000, paidAt: 1_790_813_000 };
+    serveOrder(order, { post: { [`/admin/orders/${CODE}/payment-status`]: () => json(status) } });
+    render(<OrderPage code={CODE} />);
+    await user.click(await screen.findByRole("button", { name: "Xem trạng thái trên PayOS" }));
+    const card = await screen.findByRole("region", { name: "Trạng thái trên PayOS" });
+    expect(within(card).getByText("Khác với đơn: so số tiền và trạng thái trước khi cấp tay.")).toBeTruthy();
+    expect(calls.filter((c) => c.url.endsWith("/payment-status"))).toEqual([{ url: `/admin/orders/${CODE}/payment-status`, method: "GET", body: undefined }]);
+    await user.click(within(card).getByRole("button", { name: "Đóng kết quả PayOS" }));
+    expect(screen.queryByRole("region", { name: "Trạng thái trên PayOS" })).toBeNull();
+  });
+
+  it("PayOS lỗi: câu lỗi nằm trong thẻ, trang đơn vẫn còn", async () => {
+    const user = userEvent.setup();
+    serveOrder(order, { post: { [`/admin/orders/${CODE}/payment-status`]: () => json({ error: "payment_provider_error" }, 502) } });
+    render(<OrderPage code={CODE} />);
+    await user.click(await screen.findByRole("button", { name: "Xem trạng thái trên PayOS" }));
+    const card = await screen.findByRole("region", { name: "Trạng thái trên PayOS" });
+    expect(within(card).getByRole("alert").textContent).toContain("Cổng thanh toán lỗi");
+    expect(screen.getByRole("button", { name: "Cấp tay…" })).toBeTruthy();
+  });
+
+  it("đơn không có: trạng thái không tìm thấy có lối về danh sách đơn, không có nút ghi nào", async () => {
+    serveOrder(order, { lookup: () => json({ licenses: [], orders: [] }) });
+    render(<OrderPage code={CODE} />);
+    expect(await screen.findByText("Không có đơn này")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Về danh sách đơn" }).getAttribute("href")).toBe("/orders");
+    for (const name of ["Cấp tay…", "Cấp key mới…", "Ghi đã hoàn tiền…", "Xem trạng thái trên PayOS"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+  });
+
+  it("đang tải: khung chờ báo bận, tiêu đề chưa là tên đơn", async () => {
+    serveOrder(order, { lookup: () => new Promise(() => {}) as unknown as Response });
+    const { container } = render(<OrderPage code={CODE} />);
+    expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /Đơn #1000012/ })).toBeNull();
   });
 });
