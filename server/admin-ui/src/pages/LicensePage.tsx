@@ -103,9 +103,9 @@ export function LicensePage({ id }: { id: string }) {
       </h2>
       <DataTable columns={deviceColumns} rows={lic.activations} rowKey={(a) => a.id} empty="Chưa kích hoạt trên máy nào" />
       <h2>Đơn hàng</h2>
-      <DataTable columns={orderColumns} rows={data.data.orders} rowKey={(o) => String(o.order_code)} empty="Không có đơn (license cấp tay)" />
+      <DataTable columns={orderColumns(now)} rows={data.data.orders} rowKey={(o) => String(o.order_code)} rowHref={(o) => `/orders/${o.order_code}`} empty="Không có đơn (license cấp tay)" />
       <h2>Nhật ký (50 dòng gần nhất)</h2>
-      <DataTable columns={auditColumns} rows={lic.audit} rowKey={(a, i) => `${a.at}-${i}`} empty="Chưa có dòng nào" />
+      <DataTable columns={auditColumns(now)} rows={lic.audit} rowKey={(a, i) => `${a.at}-${i}`} empty="Chưa có dòng nào" />
 
       {dialog?.kind === "extend" && (
         <ConfirmDialog

@@ -110,6 +110,15 @@ const PAIRS: [string, string, number][] = [
   ["info", "info-soft", 3],
   // Khung kênh phát hành (nền --surface-2): chữ của chip và ghi chú trên --surface, nhãn --ink-3 trên --surface-2
   ["ink-3", "surface-2", 4.5],
+
+  // ---------- Pha 4: các trang danh sách ----------
+  // Chấm tông đầu hàng và chấm hành động khi hàng sáng lên (nền --surface-2): đủ 3:1 như trên nền thẻ
+  ...["ok", "brand", "warn", "bad"].map((c): [string, string, number] => [c, "surface-2", 3]),
+  // Mã đơn, key, mã máy khi rê lên hàng: --brand-ink trên --surface-2 (đã có ở trên); số tiền thiếu, hạn sắp hết: --warn trên
+  // --surface và --surface-2 (đã có). Công tắc "Hiện cả lượt xem": rãnh tắt --line-input trên nền trang, núm --surface trên rãnh
+  ["line-input", "bg", 3],
+  ["surface", "line-input", 3],
+  ["brand", "bg", 3],
 ];
 
 describe("tương phản token màu (WCAG AA)", () => {

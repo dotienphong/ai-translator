@@ -269,7 +269,7 @@ function Cards() {
       </div>
       <Section title="Section: nhóm nhỏ" description="Tiêu đề chữ hoa, mô tả và hành động tùy chọn" actions={<Button size="sm" variant="ghost" iconEnd={<IconArrowRight size={16} />}>Xem tất cả</Button>}>
         <Card title="Bảng trong thẻ (thân flush)" description="Đầu thẻ có đường kẻ, bảng sát mép" flush actions={<Badge tone="info">6 đơn</Badge>}>
-          <DataTable flush columns={orderColumns} rows={ORDERS.slice(0, 3)} rowKey={(o) => String(o.order_code)} empty="Không có đơn nào" />
+          <DataTable flush columns={orderColumns(NOW)} rows={ORDERS.slice(0, 3)} rowKey={(o) => String(o.order_code)} empty="Không có đơn nào" />
         </Card>
       </Section>
     </GalleryBlock>
@@ -537,7 +537,7 @@ function Tables() {
   return (
     <GalleryBlock id="table" title="DataTable" note="Số căn phải, tiêu đề dính, hover và focus-within, đếm dòng, Tải thêm, rỗng, đang tải">
       <DataTable
-        columns={orderColumns}
+        columns={orderColumns(NOW)}
         rows={ORDERS}
         rowKey={(o) => String(o.order_code)}
         empty="Không có đơn nào"
@@ -548,9 +548,9 @@ function Tables() {
       />
       <DataTable columns={deviceColumns} rows={devices} rowKey={(d) => d.hash} empty="Chưa kích hoạt trên máy nào" />
       <div className="g-grid">
-        <DataTable columns={orderColumns.slice(0, 3)} rows={[]} rowKey={() => ""} empty="Không có đơn nào" loading skeletonRows={3} />
+        <DataTable columns={orderColumns(NOW).slice(0, 3)} rows={[]} rowKey={() => ""} empty="Không có đơn nào" loading skeletonRows={3} />
         <DataTable
-          columns={orderColumns.slice(0, 3)}
+          columns={orderColumns(NOW).slice(0, 3)}
           rows={[]}
           rowKey={() => ""}
           empty="Không có đơn nào khớp bộ lọc"
@@ -559,7 +559,7 @@ function Tables() {
           emptyAction={<Button size="sm">Xóa lọc</Button>}
         />
       </div>
-      <DataTable columns={orderColumns} rows={[...ORDERS, ...ORDERS.map((o) => ({ ...o, order_code: o.order_code - 100 }))]} rowKey={(o) => String(o.order_code)} empty="" maxHeight="sm" summary="12 đơn" hasMore loading onMore={() => {}} />
+      <DataTable columns={orderColumns(NOW)} rows={[...ORDERS, ...ORDERS.map((o) => ({ ...o, order_code: o.order_code - 100 }))]} rowKey={(o) => String(o.order_code)} empty="" maxHeight="sm" summary="12 đơn" hasMore loading onMore={() => {}} />
     </GalleryBlock>
   );
 }

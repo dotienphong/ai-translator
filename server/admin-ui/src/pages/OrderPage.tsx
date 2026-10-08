@@ -130,10 +130,10 @@ function OrderDetail({ code, onKeyIssued }: { code: number; onKeyIssued(revealed
       </div>
       {payos && <pre className="json">{payos}</pre>}
       <h2>License</h2>
-      <DataTable columns={licenseColumns(nowSec())} rows={data.data.licenses} rowKey={(l) => l.id} empty="Đơn chưa áp vào license nào" />
+      <DataTable columns={licenseColumns(nowSec())} rows={data.data.licenses} rowKey={(l) => l.id} rowHref={(l) => `/licenses/${l.id}`} empty="Đơn chưa áp vào license nào" />
       <h2>Nhật ký của đơn</h2>
       {log.error && <ErrorBox error={log.error} onRetry={log.reload} />}
-      <DataTable columns={auditColumns} rows={log.data?.items ?? []} rowKey={(a, i) => `${a.at}-${i}`} empty="Chưa có dòng nào" loading={log.loading} />
+      <DataTable columns={auditColumns(nowSec())} rows={log.data?.items ?? []} rowKey={(a, i) => `${a.at}-${i}`} empty="Chưa có dòng nào" loading={log.loading} />
 
       {dialog === "grant" && (
         <ConfirmDialog

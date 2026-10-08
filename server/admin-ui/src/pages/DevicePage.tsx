@@ -34,7 +34,7 @@ export function DevicePage({ hash }: { hash: string }) {
         <p className="muted">Máy chưa đăng ký dùng thử.</p>
       )}
       <h2>License từng kích hoạt trên máy</h2>
-      <DataTable columns={licenseColumns(now)} rows={data.data.licenses} rowKey={(l) => l.id} empty="Chưa có license nào" />
+      <DataTable columns={licenseColumns(now)} rows={data.data.licenses} rowKey={(l) => l.id} rowHref={(l) => `/licenses/${l.id}`} empty="Chưa có license nào" />
     </>
   );
 }

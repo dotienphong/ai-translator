@@ -783,3 +783,249 @@ a.ov-status-row:hover .ov-status-label {
     border-top: 1px solid var(--line);
   }
 }
+
+/* ======================================================================
+   Danh sách: Đơn hàng, License, Máy & dùng thử, Nhật ký (pha 4)
+   ====================================================================== */
+/* Ô hai dòng: giá trị chính, dòng phụ nhỏ (ngày giờ đầy đủ, số còn thiếu) */
+.cell-2 {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+.num .cell-2 {
+  align-items: flex-end;
+}
+.cell-sub {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.cell-none,
+.cell-of,
+.link-kind {
+  color: var(--ink-3);
+}
+.text-warn {
+  font-weight: 600;
+  color: var(--warn);
+}
+.mono {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+}
+.cell-email {
+  display: block;
+  max-width: 30ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cell-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+/* Định danh của hàng (mã đơn, key, mã máy): chữ đậm màu mực; cả hàng bấm được nên gạch chân khi rê lên hàng */
+a.row-id {
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.dt tbody tr.is-link:hover a.row-id,
+a.row-id:hover {
+  color: var(--brand-ink);
+  text-decoration: underline;
+}
+/* Chấm tông của hàng cần để mắt: nằm trong lề trái của ô, mã vẫn thẳng cột với tiêu đề */
+.cell-id {
+  position: relative;
+}
+.row-flag {
+  position: absolute;
+  left: -13px;
+  top: calc(50% - 4px);
+}
+.row-flag,
+.act-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.tone-warn:is(.row-flag, .act-dot) {
+  background: var(--warn);
+}
+.tone-bad:is(.row-flag, .act-dot) {
+  background: var(--bad);
+}
+.act-dot.tone-ok {
+  background: var(--ok);
+}
+.act-dot.tone-info {
+  background: var(--brand);
+}
+.act-dot.tone-default {
+  box-shadow: inset 0 0 0 2px var(--ink-3);
+}
+/* Hành động: chấm tông, tên dễ đọc, mã mono nhỏ bên dưới */
+.cell-action {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  min-width: 0;
+}
+.cell-action > .act-dot {
+  transform: translateY(-1px);
+}
+.cell-action code {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cell-action .cell-2 > span:first-child > code {
+  font-size: var(--fs-sm);
+  color: var(--ink);
+}
+.cell-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+.cell-detail {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  max-width: 40ch;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+/* Cả hàng bấm được (DataTable rowHref) */
+.dt tbody tr.is-link {
+  cursor: pointer;
+}
+/* Kết quả của bộ lọc cũ trong lúc chờ kết quả mới */
+.is-stale {
+  opacity: 0.5;
+  transition: opacity var(--t-med) var(--ease);
+}
+.count-wait {
+  display: inline-block;
+  width: 64px;
+  vertical-align: middle;
+}
+.filterbar-error {
+  display: flex;
+  flex-direction: column;
+  margin: calc(-1 * var(--s-1)) 0 0;
+}
+/* Dòng chờ cao bằng dòng thật (ô hai dòng): không nhảy bố cục khi dữ liệu về */
+@media (min-width: 801px) {
+  .list-card .skel-row td {
+    height: 57px;
+  }
+}
+.seg-field .segmented {
+  align-self: flex-start;
+}
+/* Không có chip: dòng đếm đứng trái, ngay trên bảng (như chú thích của bảng) */
+.filterbar-meta > span:empty {
+  display: none;
+}
+.filterbar-meta > span:empty + .filterbar-count {
+  margin-left: 0;
+}
+/* Ép xuống hàng mới trong hàng ô lọc (Nhật ký: tác nhân và công tắc ở hàng trên) */
+.filterbar-break {
+  flex-basis: 100%;
+  height: 0;
+  margin-top: calc(-1 * var(--s-3));
+}
+.tl-links .cell-links {
+  flex-direction: row;
+  gap: var(--s-3);
+}
+
+/* Chú giải màu chấm của Nhật ký */
+.tone-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-4);
+  margin: 0;
+  padding: var(--s-3) var(--s-5);
+  list-style: none;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line);
+}
+.tone-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.audit-tl {
+  padding: var(--s-5);
+}
+.audit-tl + .dt-foot {
+  border-top: 1px solid var(--line);
+}
+.audit-action input {
+  width: 220px;
+}
+
+@media (max-width: 800px) {
+  .cell-email {
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .cell-detail {
+    max-width: none;
+  }
+  .num .cell-2 {
+    align-items: flex-start;
+  }
+  .cell-links {
+    flex-direction: row;
+    gap: var(--s-3);
+  }
+  .filterbar-controls > .seg-field {
+    flex-basis: 100%;
+  }
+  .seg-field .segmented {
+    align-self: stretch;
+  }
+  /* Nhiều lựa chọn: tối đa ba ô mỗi hàng, hàng cuối tự giãn cho đầy (không chừa ô trống) */
+  .seg-fill {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .seg-fill .segment {
+    flex: 1 1 30%;
+    justify-content: center;
+  }
+  .filterbar-controls > .audit-action,
+  .filterbar-controls > .audit-submit {
+    flex-basis: 100%;
+  }
+  .audit-action input {
+    width: 100%;
+  }
+  .row-flag {
+    position: static;
+    display: inline-block;
+    margin-right: var(--s-2);
+    vertical-align: 1px;
+  }
+  .audit-tl {
+    padding: var(--s-4);
+  }
+  .tone-legend {
+    padding: var(--s-3) var(--s-4);
+  }
+}

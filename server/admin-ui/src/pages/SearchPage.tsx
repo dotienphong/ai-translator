@@ -30,13 +30,13 @@ export function SearchPage() {
           {res.data.licenses.length > 0 && (
             <>
               <h2>License</h2>
-              <DataTable columns={licenseColumns(now)} rows={res.data.licenses} rowKey={(l) => l.id} empty="" />
+              <DataTable columns={licenseColumns(now)} rows={res.data.licenses} rowKey={(l) => l.id} rowHref={(l) => `/licenses/${l.id}`} empty="" />
             </>
           )}
           {res.data.orders.length > 0 && (
             <>
               <h2>Đơn hàng</h2>
-              <DataTable columns={orderColumns} rows={res.data.orders} rowKey={(o) => String(o.order_code)} empty="" />
+              <DataTable columns={orderColumns(now)} rows={res.data.orders} rowKey={(o) => String(o.order_code)} rowHref={(o) => `/orders/${o.order_code}`} empty="" />
             </>
           )}
         </>
