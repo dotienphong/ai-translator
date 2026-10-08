@@ -17,11 +17,11 @@ type AdminContext = Context<AdminAppEnv>;
 
 const PAGE = 50;
 const QUEUE_ITEMS = 20;
-const DAY = 86400;
-const VN_OFFSET = 7 * 3600;
+export const DAY = 86400;
+export const VN_OFFSET = 7 * 3600;
 
 /** Các action xem và tra cứu: /admin/audit ẩn mặc định (spec §3.2), trừ khi lọc đúng một action trong nhóm này. */
-export const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "payment_status_viewed"] as const;
+export const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed"] as const;
 
 export const ORDER_STATUSES = [
   "pending",
