@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetSearch, setSearch } from "../search";
 import { SearchPage } from "./SearchPage";
@@ -135,5 +135,51 @@ describe("SearchPage", () => {
     expect(await screen.findByText("Không tìm thấy gì.")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "License" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Đơn hàng" })).toBeNull();
+  });
+});
+
+describe("SearchPage: nhóm kết quả, tóm tắt, URL", () => {
+  it("nhóm có tiêu đề và số lượng; máy lấy từ các license; tóm tắt loại từ khóa; URL không chứa từ khóa", async () => {
+    const withDevice = {
+      ...licenseOf(ID_A, KEY_A),
+      activations: [
+        { id: "a1", license_id: ID_A, device_id_hash: "c".repeat(64), device_label: "MacBook", quota_epoch: 0, created_at: NOW - 100, last_validated_at: NOW - 50, deactivated_at: null, deactivated_by: null },
+      ],
+    };
+    serve({ licenses: [withDevice, licenseOf(ID_B, KEY_B)], orders: [orderOf(1000001, ID_A)] });
+    const push = vi.spyOn(window.history, "pushState");
+    setSearch({ email: "khach@example.com" });
+    render(<SearchPage />);
+    const lic = await screen.findByRole("region", { name: "License" });
+    expect(within(lic).getByText("2 license")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Đơn hàng" })).getByText("1 đơn")).toBeTruthy();
+    const dev = screen.getByRole("region", { name: "Máy" });
+    expect(within(dev).getByRole("link", { name: "MacBook" }).getAttribute("href")).toBe(`/devices/${"c".repeat(64)}`);
+    expect(screen.getByText(/Tìm theo email:/)).toBeTruthy();
+    expect(window.location.pathname).toBe("/search");
+    expect(window.location.search).toBe("");
+    expect(window.location.hash).toBe("");
+    expect(window.location.href).not.toContain("khach");
+    expect(window.history.state).toBeNull();
+    expect(push).not.toHaveBeenCalled();
+    // Tra cứu theo email đi qua POST (email nằm trong body).
+    expect(calls).toEqual([{ url: "/admin/lookup", method: "POST", body: { email: "khach@example.com" } }]);
+  });
+
+  it("máy chủ không nhận từ khóa (400 invalid_request): báo rõ sai định dạng, có gợi ý định dạng", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "invalid_request", field: "license_key" }, 400)));
+    setSearch({ license_key: KEY_A });
+    render(<SearchPage />);
+    expect(await screen.findByText("Máy chủ không nhận license key này")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Các loại từ khóa" })).toBeTruthy();
+  });
+
+  it("không có kết quả: gợi ý các định dạng đúng và nút tra cứu khác", async () => {
+    serve({ licenses: [], orders: [] });
+    setSearch({ email: "khong-co@example.com" });
+    render(<SearchPage />);
+    await screen.findByText("Không tìm thấy gì.");
+    expect(screen.getByRole("list", { name: "Các loại từ khóa" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Tra cứu khác" }).length).toBeGreaterThan(0);
   });
 });

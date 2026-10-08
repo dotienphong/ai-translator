@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToolsPage } from "./ToolsPage";
@@ -99,5 +99,53 @@ describe("ToolsPage", () => {
     expect(calls).toEqual([
       { url: "/admin/payos/confirm-webhook", method: "POST", body: { webhook_url: "https://api.aitranslator.io.vn/v1/webhooks/payos" } },
     ]);
+  });
+});
+
+describe("ToolsPage: bố cục mới", () => {
+  it("kết quả mỗi công cụ nằm trong thẻ của nó; ẩn danh nằm trong Khu vực nguy hiểm", async () => {
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    const sign = screen.getByRole("region", { name: "Ký thử bằng khóa dự phòng" });
+    await user.click(within(sign).getByRole("button", { name: "Ký thử…" }));
+    await user.click(screen.getByRole("button", { name: "Ký thử" }));
+    expect(await within(sign).findByText(JSON.stringify(SIGNED))).toBeTruthy();
+
+    const hook = screen.getByRole("region", { name: "Xác nhận webhook PayOS" });
+    await user.click(within(hook).getByRole("button", { name: "Xác nhận…" }));
+    await user.click(screen.getByRole("button", { name: "Xác nhận" }));
+    expect(await within(hook).findByText("Đã đăng ký webhook: https://api.aitranslator.io.vn/v1/webhooks/payos")).toBeTruthy();
+
+    const danger = screen.getByRole("region", { name: "Khu vực nguy hiểm" });
+    expect(within(danger).getByLabelText("Email của khách")).toBeTruthy();
+    expect(within(danger).getByRole("button", { name: "Ẩn danh…" }).className).toContain("danger");
+  });
+
+  it("URL webhook không phải https: nút Xác nhận… khóa, có câu giải thích; rời ô thì báo lỗi dưới ô", async () => {
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    const input = screen.getByLabelText("URL webhook");
+    const open = () => screen.getByRole("button", { name: "Xác nhận…" }) as HTMLButtonElement;
+    expect(open().disabled).toBe(false);
+    await user.clear(input);
+    await user.type(input, "http://sai");
+    expect(open().disabled).toBe(true);
+    expect(screen.getByText("Nhập URL https để bật nút.")).toBeTruthy();
+    await user.tab();
+    const err = screen.getByRole("alert");
+    expect(err.textContent).toContain("Cần một URL https đầy đủ");
+    expect(input.getAttribute("aria-describedby")).toBe(err.id);
+    expect(calls).toEqual([]);
+  });
+
+  it("email ẩn danh sai dạng: lỗi chỉ hiện sau khi rời ô, nối vào ô bằng aria-describedby", async () => {
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    const input = screen.getByLabelText("Email của khách");
+    await user.type(input, "khong-phai-email");
+    expect(screen.queryByRole("alert")).toBeNull();
+    await user.tab();
+    expect(screen.getByRole("alert").textContent).toBe("Email chưa đúng dạng (ví dụ ten@example.com).");
+    expect(screen.getByRole("textbox", { name: "Email của khách" })).toBe(input);
   });
 });
