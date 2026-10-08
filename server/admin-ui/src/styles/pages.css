@@ -1008,6 +1008,7 @@ a.row-id:hover {
   .seg-fill .segment {
     flex: 1 1 30%;
     justify-content: center;
+    height: 40px;
   }
   .filterbar-controls > .audit-action,
   .filterbar-controls > .audit-submit {
@@ -1015,6 +1016,16 @@ a.row-id:hover {
   }
   .audit-action input {
     width: 100%;
+  }
+  /* Chip xuống dòng trên màn hẹp: bỏ biểu tượng phễu đứng lẻ một mình; "Xóa lọc" và dòng đếm chung một hàng */
+  .filterbar-chips > .icon {
+    display: none;
+  }
+  .filterbar-chips {
+    display: contents;
+  }
+  .filterbar-clear {
+    margin-left: calc(-1 * var(--s-3));
   }
   .row-flag {
     position: static;
