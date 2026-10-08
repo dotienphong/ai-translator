@@ -70,9 +70,7 @@ small {
   color: var(--ink-3);
 }
 .num,
-table,
-.tile-value,
-.count {
+table {
   font-variant-numeric: tabular-nums;
 }
 ::selection {

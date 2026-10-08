@@ -125,6 +125,29 @@ describe("khung trang", () => {
     expect(nav.getByText("3", { selector: ".nav-count" }).getAttribute("aria-hidden")).toBe("true");
   });
 
+  it("Làm mới ở trang Việc cần xử lý cập nhật huy hiệu thanh bên (không cần mở lại App)", async () => {
+    let body: unknown = queueWithWork;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const path = url.split("?")[0] ?? "";
+        const b = path === "/admin/queue" ? body : responses[path];
+        return new Response(JSON.stringify(b ?? { error: "not_found" }), { status: b ? 200 : 404, headers: { "content-type": "application/json" } });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    const nav = within(screen.getByRole("navigation", { name: "Điều hướng" }));
+    expect(await nav.findByRole("link", { name: "Việc cần xử lý, 3 việc" })).toBeTruthy();
+    body = { ...queueWithWork, conflict: { count: 4, items: [] } };
+    await user.click(await screen.findByRole("button", { name: "Làm mới" }));
+    expect(await nav.findByRole("link", { name: "Việc cần xử lý, 7 việc" })).toBeTruthy();
+    body = responses["/admin/queue"];
+    await user.click(screen.getByRole("button", { name: "Làm mới" }));
+    expect(await nav.findByRole("link", { name: "Việc cần xử lý" })).toBeTruthy();
+    expect(document.querySelector(".nav-count")).toBeNull();
+  });
+
   it("tải số việc lỗi: không hiện huy hiệu, không hiện hộp lỗi ở thanh bên", async () => {
     stubQueue({ error: "internal" }, 500);
     render(<App />);

@@ -3,12 +3,13 @@
    2. tokens.css      biến thiết kế sáng và tối (màu, chữ, khoảng cách, bo góc, bóng, chuyển động, focus, biểu đồ)
    3. base.css        reset, chữ, link, nút (cả thành phần Button), ô nhập, bảng, trợ năng, giảm chuyển động
    4. shell.css       khung trang: thanh bên, thanh trên, PageHeader, ngăn kéo điện thoại, thanh báo
-   5. components.css  lớp riêng của các trang chưa viết lại (ô số .tile, .queue-group, .facts, .panel…)
+   5. components.css  lớp riêng của các trang chưa viết lại (.card, .facts, .actions…)
    6. controls.css    IconButton, ButtonGroup, vòng quay, ô nhập có nhãn, FilterBar và chip, SegmentedControl, CopyButton
    7. surfaces.css    huy hiệu, Card, Section, Stat, EmptyState, Skeleton, KeyValue, Timeline
    8. table.css       khung bảng, DataTable, bảng thành thẻ trên điện thoại
    9. overlays.css    ErrorBox, Notice, Toast, hộp xác nhận, hộp hiện key
-  10. chart.css       ChartCard: chú giải, tooltip, bảng số */
+  10. chart.css       ChartCard: chú giải, tooltip, bảng số
+  11. pages.css       bố cục riêng của các trang đã viết lại (Việc cần xử lý, Tổng quan, Hệ thống) */
 @import "./fonts.css";
 @import "./tokens.css";
 @import "./base.css";
@@ -19,3 +20,4 @@
 @import "./table.css";
 @import "./overlays.css";
 @import "./chart.css";
+@import "./pages.css";

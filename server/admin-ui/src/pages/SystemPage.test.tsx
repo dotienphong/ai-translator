@@ -81,7 +81,10 @@ function serve(a: Reply | AlertsResponse = alerts(), r: Reply | ReleasesResponse
 }
 
 const section = (heading: string) => screen.getByRole("heading", { name: heading }).closest("section") as HTMLElement;
-const card = (name: string) => screen.getByRole("heading", { name }).closest(".panel") as HTMLElement;
+// Đổi chủ ý: mỗi kênh (Stable, Beta) là một khung trong thẻ "Bản phát hành app" (.sys-channel), không còn .panel.
+const card = (name: string) => screen.getByRole("heading", { name }).closest(".sys-channel") as HTMLElement;
+/** Ô chỉ số của thẻ Model theo nhãn: giá trị (dd). */
+const metricValue = (s: HTMLElement, label: string) => within(s).getByText(label).closest(".sys-metric")?.querySelector("dd") as HTMLElement;
 
 describe("SystemPage: khung và cảnh báo vận hành", () => {
   it("tiêu đề, ba mục, gọi đúng hai API", async () => {
@@ -122,7 +125,7 @@ describe("SystemPage: khung và cảnh báo vận hành", () => {
       }),
     );
     render(<SystemPage />);
-    await screen.findByText("2 chưa báo", { exact: false });
+    await screen.findByText("3 dòng, 2 chưa báo");
     const s = section("Cảnh báo vận hành");
     expect(within(s).getByText("3 dòng, 2 chưa báo")).toBeTruthy();
     const heads = within(s)
@@ -141,6 +144,19 @@ describe("SystemPage: khung và cảnh báo vận hành", () => {
     expect(within(rows[0] as HTMLElement).getByText("Chưa báo").className).toContain("badge-warn");
     expect(within(rows[2] as HTMLElement).getByText("Đã báo").className).toContain("badge-ok");
     expect(within(s).queryByText("hiện", { exact: false })).toBeNull();
+    // Còn dòng chưa báo: thẻ tông cảnh báo, huy hiệu đếm ở đầu thẻ; cột số căn phải.
+    expect(s.className).toContain("tone-warn");
+    expect(within(s).getByText("2 chưa báo").className).toContain("badge-warn");
+    expect(within(rows[0] as HTMLElement).getAllByRole("cell")[2]?.className).toContain("num");
+  });
+
+  it("không còn dòng chưa báo: thẻ tông thường, huy hiệu Đã báo hết", async () => {
+    serve(alerts({ items: [alertRow()], total: 1, pending: 0 }));
+    render(<SystemPage />);
+    await screen.findByText("1 dòng, 0 chưa báo");
+    const s = section("Cảnh báo vận hành");
+    expect(s.className).not.toContain("tone-warn");
+    expect(within(s).getByText("Đã báo hết")).toBeTruthy();
   });
 
   it("total lớn hơn số dòng trả về: ghi rõ chỉ hiện các dòng mới nhất", async () => {
@@ -158,16 +174,37 @@ describe("SystemPage: khung và cảnh báo vận hành", () => {
 });
 
 describe("SystemPage: bản phát hành app", () => {
-  it("stable ok: phiên bản, ngày GMT+7, nền tảng nối dấu phẩy, ghi chú", async () => {
+  // Đổi chủ ý: nền tảng là danh sách chip thay cho chuỗi nối dấu phẩy.
+  it("stable ok: phiên bản, ngày GMT+7, nền tảng thành chip, ghi chú, huy hiệu Đang phát hành", async () => {
     serve(alerts(), releases());
     render(<SystemPage />);
     await screen.findByText("0.4.2");
     const c = card("Stable");
     expect(within(c).getByText("0.4.2")).toBeTruthy();
     expect(within(c).getByText("01/10/2026 07:00")).toBeTruthy();
-    expect(within(c).getByText("darwin-aarch64, windows-x86_64")).toBeTruthy();
+    const chips = within(within(c).getByRole("list", { name: "Nền tảng" })).getAllByRole("listitem");
+    expect(chips.map((li) => li.textContent)).toEqual(["darwin-aarch64", "windows-x86_64"]);
     expect(within(c).getByText("Sửa lỗi thanh phụ đề")).toBeTruthy();
+    expect(within(c).getByText("Đang phát hành")).toBeTruthy();
     expect(within(card("Beta")).getByText("0.5.0-beta.1")).toBeTruthy();
+    // Ghi chú ngắn: không có nút gấp.
+    expect(within(c).queryByRole("button", { name: "Xem đầy đủ" })).toBeNull();
+  });
+
+  it("ghi chú dài thì gấp gọn, Xem đầy đủ mở ra (chữ luôn có trong trang)", async () => {
+    const notes = Array.from({ length: 8 }, (_, i) => `Dòng ${i + 1}`).join("\n");
+    serve(alerts(), releases({ channels: { stable: { status: "ok", ...stable, notes }, beta: { status: "missing" } } }));
+    render(<SystemPage />);
+    await screen.findByText("0.4.2");
+    const c = card("Stable");
+    const body = c.querySelector(".sys-notes-body") as HTMLElement;
+    expect(body.textContent).toBe(notes);
+    expect(body.className).toContain("is-folded");
+    const toggle = within(c).getByRole("button", { name: "Xem đầy đủ" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(toggle);
+    expect(body.className).not.toContain("is-folded");
+    expect(within(c).getByRole("button", { name: "Thu gọn" }).getAttribute("aria-expanded")).toBe("true");
   });
 
   it("stable ok và beta missing: 'Chưa có bản nào' chỉ ở Beta", async () => {
@@ -175,6 +212,7 @@ describe("SystemPage: bản phát hành app", () => {
     render(<SystemPage />);
     await screen.findByText("0.4.2");
     expect(within(card("Beta")).getByText("Chưa có bản nào")).toBeTruthy();
+    expect(within(card("Beta")).getByText("Chưa có")).toBeTruthy();
     expect(within(card("Stable")).queryByText("Chưa có bản nào")).toBeNull();
   });
 
@@ -183,6 +221,7 @@ describe("SystemPage: bản phát hành app", () => {
     render(<SystemPage />);
     await screen.findByText("0.4.2");
     expect(within(card("Beta")).getByText("Không đọc được (http_500)")).toBeTruthy();
+    expect(within(card("Beta")).getByText("Lỗi đọc").className).toContain("badge-bad");
   });
 
   it("network là một lý do hợp lệ", async () => {
@@ -217,7 +256,8 @@ describe("SystemPage: bản phát hành app", () => {
 });
 
 describe("SystemPage: model", () => {
-  it("ok: tóm tắt (sequence, ngày đăng GMT+7, kid trong code, số file, tổng dung lượng) và bảng file", async () => {
+  // Đổi chủ ý: số file, tổng dung lượng, khóa ký thành dải chỉ số (nhãn và giá trị) thay cho một câu.
+  it("ok: tóm tắt (sequence, ngày đăng GMT+7, kid trong code có nút chép, số file, tổng dung lượng) và bảng file", async () => {
     serve(alerts(), releases());
     render(<SystemPage />);
     await screen.findByText("whisper-small");
@@ -225,9 +265,10 @@ describe("SystemPage: model", () => {
     expect(within(s).getByText(/Bản manifest số 7/)).toBeTruthy();
     expect(within(s).getByText(/đăng lúc 01\/10\/2026 07:00/)).toBeTruthy();
     expect(within(s).getByText("k2026-1").tagName).toBe("CODE");
-    expect(within(s).getByText(/2 file/)).toBeTruthy();
+    expect(within(s).getByRole("button", { name: "Chép khóa ký" })).toBeTruthy();
+    expect(metricValue(s, "Số file").textContent).toBe("2");
     // 574041195 + 1048576 = 575089771 byte
-    expect(within(s).getByText(/tổng 548,4 MB/)).toBeTruthy();
+    expect(metricValue(s, "Tổng dung lượng").textContent).toBe("548,4 MB");
     const heads = within(s)
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
@@ -248,9 +289,10 @@ describe("SystemPage: model", () => {
   it("không có file: tổng 0 B, không có bảng", async () => {
     serve(alerts(), releases({ models: { status: "ok", ...models, files: [] } }));
     render(<SystemPage />);
-    await screen.findByText(/0 file/);
+    await screen.findByText("Manifest chưa có file nào");
     const s = section("Model");
-    expect(within(s).getByText(/tổng 0 B/)).toBeTruthy();
+    expect(metricValue(s, "Số file").textContent).toBe("0");
+    expect(metricValue(s, "Tổng dung lượng").textContent).toBe("0 B");
     expect(within(s).queryByRole("table")).toBeNull();
   });
 
@@ -326,13 +368,18 @@ describe("SystemPage: lỗi và Làm mới", () => {
     });
   });
 
-  it("đang tải thì báo và nút Làm mới bị khóa, tải xong thì mở", async () => {
-    serve();
-    render(<SystemPage />);
-    expect(screen.getAllByText("Đang tải…").length).toBeGreaterThan(0);
-    const button = screen.getByRole("button", { name: "Làm mới" }) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
+  // Đổi chủ ý: khung chờ (aria-busy) thay chữ "Đang tải…"; nút đang tải giữ focus (aria-busy) thay vì disabled.
+  it("đang tải thì khung chờ ở cả ba thẻ và nút Làm mới đang xử lý (bấm chồng không gọi thêm), tải xong thì mở", async () => {
+    const { count } = serve();
+    const { container } = render(<SystemPage />);
+    expect(container.querySelectorAll('[aria-busy="true"]').length).toBeGreaterThanOrEqual(3);
+    const button = screen.getByRole("button", { name: "Làm mới" });
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    fireEvent.click(button);
     await screen.findByText("whisper-small");
-    await waitFor(() => expect(button.disabled).toBe(false));
+    expect(count("/admin/alerts")).toBe(1);
+    expect(count("/admin/releases")).toBe(1);
+    await waitFor(() => expect(button.getAttribute("aria-busy")).toBeNull());
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
   });
 });

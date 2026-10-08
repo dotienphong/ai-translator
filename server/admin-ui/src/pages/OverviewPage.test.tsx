@@ -82,7 +82,13 @@ function serve(stats: Stats = makeStats()) {
   return fetchMock;
 }
 
-const tile = (label: string) => screen.getByText(label).closest(".tile") as HTMLElement;
+// Đổi chủ ý: ô số cũ (.tile) thành thành phần Stat (.stat) có biểu tượng và tông.
+const tile = (label: string) => screen.getByText(label).closest(".stat") as HTMLElement;
+/** Dòng chỉ số (Cần chú ý, Máy): nhãn và giá trị nằm trong cùng một dòng .metric. */
+const metric = (label: string) => {
+  const el = screen.getByText(label).closest(".metric") as HTMLElement;
+  return { value: el.querySelector(".metric-value")?.textContent, text: el.textContent ?? "", el };
+};
 
 describe("OverviewPage", () => {
   it("năm ô số: tiền theo VND, tháng trước làm chú thích, license và máy", async () => {
@@ -95,6 +101,9 @@ describe("OverviewPage", () => {
     expect(within(tile("Doanh thu tháng này")).getByText("Tháng trước: 200.000 đ")).toBeTruthy();
     expect(within(tile("License đang hoạt động")).getByText("2")).toBeTruthy();
     expect(within(tile("Máy đang kích hoạt")).getByText("3")).toBeTruthy();
+    expect(within(tile("Máy đang kích hoạt")).getByText("2 máy có hoạt động trong 7 ngày")).toBeTruthy();
+    expect(tile("Doanh thu hôm nay").className).toContain("tone-brand");
+    expect(tile("License đang hoạt động").className).toContain("tone-ok");
   });
 
   it("bốn biểu đồ với đúng dữ liệu, kiểu chồng và chuỗi", async () => {
@@ -191,6 +200,21 @@ describe("OverviewPage", () => {
     serve(zero);
     render(<OverviewPage />);
     expect(await screen.findByText("30 ngày gần nhất: 0 máy dùng thử, đã mua 0")).toBeTruthy();
+    // Phần nhìn (ẩn với trình đọc màn hình): không có máy thì "—" và câu báo rõ, không có thanh đầy.
+    const vis = screen.getByText("30 ngày gần nhất").closest(".ov-ratio-vis") as HTMLElement;
+    expect(vis.getAttribute("aria-hidden")).toBe("true");
+    expect(within(vis).getByText("—")).toBeTruthy();
+    expect(within(vis).getByText("Chưa có máy dùng thử")).toBeTruthy();
+    expect(vis.querySelector(".ratio-fill")).toBeNull();
+  });
+
+  it("phễu dùng thử, phần nhìn: tỷ lệ lớn và thanh có bề rộng theo tỷ lệ (thuộc tính SVG, không style inline)", async () => {
+    serve();
+    render(<OverviewPage />);
+    const vis = (await screen.findByText("Từ trước đến nay")).closest(".ov-ratio-vis") as HTMLElement;
+    expect(within(vis).getByText("33%")).toBeTruthy();
+    expect(vis.querySelector(".ratio-fill")?.getAttribute("width")).toBe("33%");
+    expect(document.querySelector("[style]")).toBeNull();
   });
 
   it("bảng mua mới, gia hạn, đổi gói trong 30 ngày: số đơn và doanh thu từng loại", async () => {
@@ -201,6 +225,7 @@ describe("OverviewPage", () => {
     expect(await row("Gia hạn")).toBe("Gia hạn150.000 đ");
     expect(await row("Đổi gói")).toBe("Đổi gói1500.000 đ");
     expect(await row("Khác")).toBe("Khác00 đ");
+    expect(await row("Tổng")).toBe("Tổng4650.000 đ");
   });
 
   it("đơn theo trạng thái: đủ chín nhãn; trạng thái có vấn đề và lớn hơn 0 là liên kết sang danh sách đã lọc", async () => {
@@ -227,39 +252,54 @@ describe("OverviewPage", () => {
     expect(within(list).getByText("Đã hoàn tiền").closest("li")?.textContent).toBe("Đã hoàn tiền4");
   });
 
+  // Đổi chủ ý: câu "Nhãn: số" thành dòng chỉ số (nhãn, gợi ý, số lớn căn phải) có tông.
   it("sức khỏe: license sắp hết hạn và tỷ lệ gửi key; không có đơn có email thì báo rõ", async () => {
     serve();
     const { unmount } = render(<OverviewPage />);
-    expect(await screen.findByText("Sắp hết hạn trong 7 ngày: 1")).toBeTruthy();
-    expect(screen.getByText("Sắp hết hạn trong 30 ngày: 3")).toBeTruthy();
-    expect(screen.getByText("Email key đã gửi: 1/2")).toBeTruthy();
+    await screen.findByText("Sắp hết hạn trong 7 ngày");
+    expect(metric("Sắp hết hạn trong 7 ngày").value).toBe("1");
+    expect(metric("Sắp hết hạn trong 7 ngày").el.className).toContain("tone-warn");
+    expect(metric("Sắp hết hạn trong 30 ngày").value).toBe("3");
+    const mail = metric("Email key đã gửi");
+    expect(mail.value).toBe("1/2");
+    expect(mail.text).toContain("50% số đơn đã trả có email");
+    expect(mail.el.className).toContain("tone-warn"); // chưa gửi hết
     unmount();
     const none = makeStats();
     none.health.email = { paid_with_email_30d: 0, sent: 0 };
+    none.health.expiring_7d = 0;
     serve(none);
     render(<OverviewPage />);
     expect(await screen.findByText("Chưa có đơn nào có email trong 30 ngày")).toBeTruthy();
+    expect(metric("Email key đã gửi").value).toBe("—");
+    expect(metric("Sắp hết hạn trong 7 ngày").el.className).not.toContain("tone-warn");
   });
 
   it("sử dụng: máy hoạt động 7 ngày và dùng thử còn hạn", async () => {
     serve();
     render(<OverviewPage />);
-    expect(await screen.findByText("Hoạt động trong 7 ngày gần nhất: 2")).toBeTruthy();
-    expect(screen.getByText("Dùng thử còn hạn: 1")).toBeTruthy();
+    await screen.findByText("Hoạt động trong 7 ngày gần nhất");
+    expect(metric("Hoạt động trong 7 ngày gần nhất").value).toBe("2");
+    expect(metric("Dùng thử còn hạn").value).toBe("1");
+    expect(metric("Đang kích hoạt").value).toBe("3");
   });
 
-  it("giờ cập nhật theo GMT+7; đang tải thì báo; Làm mới gọi lại API", async () => {
+  it("giờ cập nhật theo GMT+7; đang tải thì khung chờ (aria-busy); Làm mới gọi lại API", async () => {
     const fetchMock = serve();
-    render(<OverviewPage />);
-    expect(screen.getByText("Đang tải…")).toBeTruthy();
+    const { container } = render(<OverviewPage />);
+    // Đổi chủ ý: chữ "Đang tải…" chỉ còn cho trình đọc màn hình; nhìn thấy là khung chờ cùng bố cục.
+    expect(screen.getByText("Đang tải số liệu…")).toBeTruthy();
+    expect(container.querySelector('[aria-busy="true"] .stat.is-skeleton')).toBeTruthy();
     expect(await screen.findByText("Cập nhật lúc 07:00")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/admin/stats");
     fireEvent.click(screen.getByRole("button", { name: "Làm mới" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
   });
 
-  it("đang tải lại thì nút Làm mới bị khóa (không bấm chồng), tải xong thì mở lại", async () => {
+  // Đổi chủ ý: nút đang tải giữ focus (thành phần Button: aria-busy, vòng quay, bỏ qua lần bấm) thay vì disabled.
+  it("đang tải lại thì nút Làm mới ở trạng thái đang xử lý và bấm chồng không gọi thêm, tải xong thì mở lại", async () => {
     let n = 0;
     let finish: (r: Response) => void = () => {};
     const fetchMock = vi.fn(() => (n++ === 0 ? Promise.resolve(json(makeStats())) : new Promise<Response>((r) => (finish = r))));
@@ -267,12 +307,17 @@ describe("OverviewPage", () => {
     render(<OverviewPage />);
     const button = (await screen.findByRole("button", { name: "Làm mới" })) as HTMLButtonElement;
     await screen.findByText("Doanh thu hôm nay");
-    expect(button.disabled).toBe(false);
+    await waitFor(() => expect(button.getAttribute("aria-busy")).toBeNull());
     fireEvent.click(button);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Số liệu cũ vẫn hiện trong lúc tải lại (không nháy khung chờ).
+    expect(screen.getByText("Doanh thu hôm nay")).toBeTruthy();
     finish(json(makeStats()));
-    await waitFor(() => expect(button.disabled).toBe(false));
+    await waitFor(() => expect(button.getAttribute("aria-busy")).toBeNull());
   });
 
   it("lỗi: hiện thông báo kèm nút Thử lại; thử lại được thì hiện số liệu", async () => {

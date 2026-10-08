@@ -1,0 +1,785 @@
+/* Lớp riêng của các trang đã viết lại bằng thành phần dùng chung (pha 3: Việc cần xử lý, Tổng quan, Hệ thống). Thành phần
+   chung nằm ở surfaces, table, controls…; ở đây chỉ có bố cục và chi tiết của từng trang. */
+
+/* ---------- Dòng mô tả của đầu trang: câu ngắn và giờ cập nhật ---------- */
+.page-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--s-4);
+  margin: 0;
+}
+.page-meta-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.page-meta-note {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+.page-meta-note > .icon {
+  margin-top: 2px;
+  color: var(--info);
+}
+
+/* ======================================================================
+   Việc cần xử lý
+   ====================================================================== */
+.q-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+/* Thẻ nhóm: dòng việc đổi bố cục theo bề rộng của chính thẻ (không theo màn hình) */
+.q-group {
+  container-type: inline-size;
+}
+.q-title {
+  display: inline;
+}
+.q-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 22px;
+  margin-left: var(--s-2);
+  padding: 0 7px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  vertical-align: 1px;
+  border-radius: var(--r-full);
+  font-variant-numeric: tabular-nums;
+}
+.q-count.tone-danger {
+  color: var(--bad);
+  background: var(--bad-soft);
+}
+.q-count.tone-warn {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+/* Danh sách: lưới bốn cột chung cho mọi dòng (subgrid), nên số tiền và thời gian của các dòng thẳng cột; cột cố định nên
+   các thẻ khác nhau cũng thẳng cột với nhau */
+.q-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 224px 156px 120px;
+  column-gap: var(--s-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.q-row {
+  position: relative;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 60px;
+  padding: 10px var(--s-5);
+  border-top: 1px solid var(--line);
+  transition: background-color var(--t-fast) var(--ease);
+}
+.q-row:first-child {
+  border-top: 0;
+}
+.q-row:has(.q-go):hover,
+.q-row:focus-within {
+  background: var(--surface-2);
+}
+.q-main,
+.q-meta,
+.q-when {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.q-meta,
+.q-when {
+  align-items: flex-end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.q-id {
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+code.q-id {
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.02em;
+}
+.q-sub {
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.q-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-amount {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.q-of {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.q-short {
+  font-weight: 600;
+  color: var(--warn);
+}
+.q-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--bad);
+}
+.q-devices {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.q-rel {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.q-act {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+/* Nút mở: link thật; vùng bấm của nó (::after) phủ cả dòng, nên bấm đâu trên dòng cũng mở */
+.q-go {
+  position: static;
+  margin-right: -6px;
+}
+.q-go::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.q-row:hover .q-go {
+  background: var(--surface-3);
+}
+.q-go:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.q-go .icon {
+  transition: transform var(--t-fast) var(--ease);
+}
+.q-row:hover .q-go .icon {
+  transform: translateX(2px);
+}
+
+/* Chân thẻ: nút gấp bên trái, "và N mục khác" bên phải */
+.q-group .ui-card-foot {
+  justify-content: space-between;
+  min-height: 52px;
+  padding-block: var(--s-2);
+}
+.q-fold {
+  margin-left: calc(-1 * var(--s-3));
+  color: var(--ink-2);
+}
+/* "và N mục khác" */
+.q-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  font-weight: 600;
+}
+.q-more-text {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+/* Khung chờ */
+.q-skel-icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin-top: -2px;
+  border-radius: var(--r-sm);
+}
+.q-skel-btn {
+  width: 92px;
+  height: 32px;
+  border-radius: var(--r-sm);
+}
+.q-skel .q-when .skel-line {
+  margin-left: auto;
+}
+@container (min-width: 621px) {
+  .q-skel .q-meta .skel-line {
+    margin-left: auto;
+  }
+}
+.q-skel .ui-card-head {
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.q-clear .empty-state {
+  padding-block: var(--s-12);
+}
+
+/* Thẻ hẹp (điện thoại, cửa sổ nhỏ): mỗi dòng hai hàng; thông tin chính và thời gian ở trên, số tiền và nút ở dưới */
+@container (max-width: 620px) {
+  .q-list {
+    display: block;
+  }
+  .q-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "main when"
+      "meta act";
+    gap: var(--s-2) var(--s-3);
+    padding: var(--s-3) var(--s-4);
+  }
+  .q-main {
+    grid-area: main;
+  }
+  .q-when {
+    grid-area: when;
+    align-self: start;
+  }
+  .q-when .q-sub {
+    display: none;
+  }
+  .q-meta {
+    grid-area: meta;
+    align-self: center;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .q-act {
+    grid-area: act;
+    align-self: end;
+  }
+  .q-rel {
+    font-size: var(--fs-sm);
+  }
+}
+
+/* ======================================================================
+   Tổng quan
+   ====================================================================== */
+/* Năm ô số: ba ô tiền một hàng, hai ô đếm hàng dưới (số tiền hàng chục triệu cần chỗ); màn rất rộng thì một hàng */
+.ov-stats {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.ov-stats > .stat {
+  grid-column: span 2;
+}
+.ov-stats > .stat:nth-child(n + 4) {
+  grid-column: span 3;
+}
+@media (min-width: 1560px) {
+  .ov-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .ov-stats > .stat,
+  .ov-stats > .stat:nth-child(n + 4) {
+    grid-column: auto;
+  }
+}
+/* Ô trải hết hàng của lưới biểu đồ (biểu đồ theo tháng dưới hai thẻ) */
+.chart-grid > .ov-span {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Hai cột lệch (danh sách dài bên trái, thẻ chỉ số bên phải) */
+.ov-split {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: var(--s-4);
+}
+/* Thẻ chỉ số cao bằng thẻ bên cạnh: các dòng chia đều chiều cao, không để khoảng trống dưới đáy */
+.ov-fill > .ui-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.ov-skel-section {
+  margin-top: var(--s-8);
+}
+.skel-line.ov-skel-title {
+  width: 72px;
+}
+.skel-line.ov-skel-desc {
+  width: min(360px, 80vw);
+  margin-top: 4px;
+}
+
+/* Thanh tỷ lệ SVG: rãnh và phần đầy, màu theo tông */
+.ratio-bar {
+  display: block;
+  overflow: visible;
+}
+.ratio-track {
+  fill: var(--surface-3);
+}
+.ratio-fill {
+  fill: var(--chart-1);
+}
+.ratio-bar.tone-ok .ratio-fill {
+  fill: var(--ok);
+}
+.ratio-bar.tone-warn .ratio-fill {
+  fill: var(--warn);
+}
+.ratio-bar.tone-bad .ratio-fill {
+  fill: var(--bad);
+}
+.ratio-bar.tone-info .ratio-fill {
+  fill: var(--brand);
+}
+.ratio-bar.tone-muted .ratio-fill {
+  fill: var(--ink-3);
+}
+
+/* Phễu dùng thử */
+/* Hai dòng chia đều chiều cao của thẻ (thẻ cao bằng bảng bên cạnh) */
+.ov-ratios {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: var(--s-6);
+  padding-top: var(--s-1);
+}
+.ov-ratio-vis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.ov-ratio-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.ov-ratio-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.ov-ratio-pct {
+  font-size: var(--fs-stat);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ov-ratio-note {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bảng đơn theo loại: ô màu khớp biểu đồ; dòng tổng ở chân */
+.ov-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+/* Dòng tổng: đậm, nền nhạt, kẻ trên đậm hơn */
+.ov-grants .dt tbody tr:last-child td {
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-2);
+  border-top: 1px solid var(--line-strong);
+}
+
+/* Đơn theo trạng thái: chấm màu, tên, thanh tỷ lệ, số căn phải; trạng thái có vấn đề nổi bật và là liên kết */
+.ov-status-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ov-status + .ov-status {
+  border-top: 1px solid var(--line);
+}
+.ov-status-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) minmax(48px, 120px) 4ch 16px;
+  align-items: center;
+  column-gap: var(--s-3);
+  min-height: 38px;
+  padding: 0 var(--s-2);
+  margin: 0 calc(-1 * var(--s-2));
+  border-radius: var(--r-xs);
+}
+.ov-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neutral);
+}
+.ov-dot.tone-ok {
+  background: var(--ok);
+}
+.ov-dot.tone-warn {
+  background: var(--warn);
+}
+.ov-dot.tone-bad {
+  background: var(--bad);
+}
+.ov-dot.tone-info {
+  background: var(--brand);
+}
+.ov-status-label {
+  color: var(--ink);
+}
+.ov-status-n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ov-status.is-zero .ov-status-label,
+.ov-status.is-zero .ov-status-n {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.ov-status.is-zero .ov-dot {
+  opacity: 0.45;
+}
+.ov-status.is-attention + .ov-status,
+.ov-status + .ov-status.is-attention {
+  border-top-color: transparent;
+}
+a.ov-status-row {
+  color: var(--bad);
+  background: var(--bad-soft);
+  text-decoration: none;
+  transition: background-color var(--t-fast) var(--ease);
+}
+a.ov-status-row .ov-status-label,
+a.ov-status-row .ov-status-n {
+  color: var(--bad);
+  font-weight: 600;
+}
+a.ov-status-row:hover {
+  color: var(--bad);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1px var(--bad-line);
+}
+a.ov-status-row:hover .ov-status-label {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ov-status-go {
+  display: grid;
+  place-items: center;
+}
+
+/* Danh sách chỉ số (Cần chú ý, Máy): ô biểu tượng theo tông, tên và gợi ý, số lớn căn phải */
+.metric-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.metric {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--s-3);
+  min-height: 60px;
+  padding: var(--s-2) 0;
+}
+.metric + .metric {
+  border-top: 1px solid var(--line);
+}
+.metric-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--ink-3);
+  background: var(--surface-3);
+  border-radius: var(--r-sm);
+}
+.metric-icon .icon {
+  width: 16px;
+  height: 16px;
+}
+.metric-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.metric-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+.metric-hint {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.metric-value {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.metric.tone-ok .metric-icon {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+.metric.tone-warn .metric-icon {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+.metric.tone-warn .metric-value {
+  color: var(--warn);
+}
+.metric.tone-info .metric-icon {
+  color: var(--info);
+  background: var(--info-soft);
+}
+.metric.tone-brand .metric-icon {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+@media (max-width: 1000px) {
+  .ov-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 800px) {
+  .ov-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ov-stats > .stat,
+  .ov-stats > .stat:nth-child(n + 4) {
+    grid-column: auto;
+  }
+  .ov-stats > .stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ======================================================================
+   Hệ thống
+   ====================================================================== */
+.sys-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+.sys-foot-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Hai kênh phát hành cạnh nhau, mỗi kênh một khung nhạt */
+.sys-channels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: var(--s-4);
+}
+.sys-channel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+.sys-channel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.sys-channel-name {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.sys-channel .empty-state {
+  flex: 1;
+  justify-content: center;
+  padding-block: var(--s-6);
+}
+.sys-version {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.sys-version strong {
+  font-weight: 600;
+}
+/* Cột nhãn rộng theo nhãn dài nhất (các cặp nhãn và giá trị nằm thẳng trong lưới của dl) */
+.sys-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--s-2) var(--s-4);
+  margin: var(--s-1) 0 0;
+}
+.sys-facts > div {
+  display: contents;
+}
+.sys-facts dt {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+.sys-facts dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--s-2);
+  margin: 0;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.sys-ago {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.sys-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sys-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--s-2);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xs);
+}
+.sys-notes {
+  margin-top: var(--s-2);
+}
+.sys-notes-label {
+  margin: 0 0 var(--s-1);
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+.sys-notes-body {
+  padding: var(--s-3);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+}
+/* Gấp gọn: bốn dòng, mờ dần ở đáy */
+.sys-notes-body.is-folded {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+.sys-notes-toggle {
+  margin: var(--s-1) 0 0 calc(-1 * var(--s-3));
+}
+.sys-notes-empty {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+/* Model: dải chỉ số trên bảng file */
+.sys-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+.ui-card-body.flush > .sys-metrics {
+  border-bottom: 1px solid var(--line);
+}
+.sys-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--s-4) var(--s-5);
+}
+.sys-metric + .sys-metric {
+  border-left: 1px solid var(--line);
+}
+.sys-metric dt {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.sys-metric dd {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.sys-metric-kid code {
+  padding: 2px 8px;
+  font-size: var(--fs-md);
+  background: var(--surface-3);
+  border-radius: var(--r-xs);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 800px) {
+  .sys-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sys-metric {
+    padding: var(--s-3) var(--s-4);
+  }
+  .sys-metric + .sys-metric-kid {
+    grid-column: 1 / -1;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}

@@ -95,6 +95,21 @@ const PAIRS: [string, string, number][] = [
   // Chấm của Timeline (vòng nét trên nền thẻ), cột biểu đồ trên nền thẻ phụ (bảng số, tooltip)
   ...["ink-3", "ok", "warn", "bad", "brand"].map((c): [string, string, number] => [c, "surface", 3]),
   ...["chart-1", "chart-2", "chart-3", "chart-4"].map((c): [string, string, number] => [c, "surface-2", 3]),
+
+  // ---------- Pha 3: Việc cần xử lý, Tổng quan, Hệ thống ----------
+  // Dòng việc khi rê chuột hay có focus (nền --surface-2): số còn thiếu (--warn), trạng thái email (--bad), giờ (--ink-2)
+  ["warn", "surface-2", 4.5],
+  ["bad", "surface-2", 4.5],
+  // Chấm số lượng cạnh tiêu đề nhóm: đã có (--bad trên --bad-soft, --warn trên --warn-soft)
+  // Thanh tỷ lệ (phễu dùng thử, đơn theo trạng thái): phần đầy trên rãnh --surface-3, ≥ 3:1
+  ...["chart-1", "ok", "warn", "bad", "brand", "ink-3"].map((c): [string, string, number] => [c, "surface-3", 3]),
+  // Chấm trạng thái đơn và biểu tượng chú thích ở đầu trang (--info trên nền trang)
+  ...["ok", "warn", "bad", "brand", "neutral"].map((c): [string, string, number] => [c, "surface", 3]),
+  ["info", "bg", 3],
+  // Ô biểu tượng của dòng chỉ số tông thông tin
+  ["info", "info-soft", 3],
+  // Khung kênh phát hành (nền --surface-2): chữ của chip và ghi chú trên --surface, nhãn --ink-3 trên --surface-2
+  ["ink-3", "surface-2", 4.5],
 ];
 
 describe("tương phản token màu (WCAG AA)", () => {

@@ -1,27 +1,9 @@
-/* Lớp riêng của các trang chưa viết lại (ô số .tile, nhóm việc .queue-group, .facts, .panel…). Pha 1 đổi kiểu cho hợp ngôn
-   ngữ mới, giữ nguyên tên; các pha 3 đến 5 thay dần bằng thành phần dùng chung (controls, surfaces, table, overlays,
-   chart.css) rồi xóa phần còn thừa ở đây. */
-
-/* Số đếm nhỏ cạnh tiêu đề nhóm */
-.count {
-  display: inline-grid;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 7px;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--warn);
-  background: var(--warn-soft);
-  border-radius: var(--r-full);
-  vertical-align: middle;
-}
+/* Lớp riêng của các trang chưa viết lại (.card, .facts, .actions…). Pha 1 đổi kiểu cho hợp ngôn ngữ mới, giữ nguyên tên;
+   các pha 3 đến 5 thay dần bằng thành phần dùng chung (controls, surfaces, table, overlays, chart.css) rồi xóa phần còn
+   thừa ở đây. Pha 3 đã bỏ .tile, .queue-group, .all-clear, .panel, .overview-bar, .status-list, ul.plain, .release-notes. */
 
 /* ---------- Bề mặt: thẻ, khung ---------- */
 .card,
-.panel,
-.queue-group,
-.tile,
 .facts {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -49,17 +31,6 @@
   max-width: 560px;
 }
 
-.panel {
-  padding: var(--s-5);
-  min-width: 0;
-}
-.panel h3 {
-  font-size: var(--fs-md);
-  margin: 0 0 var(--s-3);
-}
-.panel h3:not(:first-child) {
-  margin-top: var(--s-5);
-}
 .group-title {
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -68,113 +39,6 @@
   color: var(--ink-3);
   margin: var(--s-8) 0 var(--s-3);
 }
-.overview-bar {
-  display: flex;
-  gap: var(--s-3);
-  align-items: center;
-  flex-wrap: wrap;
-  margin: calc(-1 * var(--s-1)) 0 var(--s-5);
-}
-
-/* ---------- Ô số ---------- */
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr));
-  gap: var(--s-4);
-  margin-bottom: var(--s-6);
-}
-.tile {
-  padding: var(--s-4) var(--s-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  min-width: 0;
-}
-/* Nhãn dài xuống hai dòng ở ô này mà không ở ô bên cạnh: subgrid giữ nhãn, số, ghi chú của mọi ô cùng hàng thẳng nhau */
-@supports (grid-template-rows: subgrid) {
-  .tile {
-    display: grid;
-    grid-row: span 3;
-    grid-template-rows: subgrid;
-    align-content: start;
-    row-gap: var(--s-1);
-  }
-  .tile-value {
-    align-self: end;
-  }
-}
-.tile-label {
-  color: var(--ink-3);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-.tile-value {
-  /* Năm ô một hàng ở 1280px vẫn đủ chỗ cho "1.450.000 đ" mà không xuống dòng */
-  font-size: clamp(20px, 1.6vw, var(--fs-stat));
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  color: var(--ink);
-  overflow-wrap: anywhere;
-}
-.tile-note {
-  color: var(--ink-3);
-  font-size: var(--fs-xs);
-}
-
-/* ---------- Nhóm việc cần xử lý ---------- */
-.queue-group {
-  position: relative;
-  padding: var(--s-4) var(--s-5) var(--s-4) calc(var(--s-5) + 4px);
-  margin-bottom: var(--s-4);
-  overflow: hidden;
-}
-.queue-group::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--warn-line);
-}
-.queue-group h2 {
-  margin: 0 0 var(--s-1);
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  flex-wrap: wrap;
-}
-.queue-group p {
-  margin: 0 0 var(--s-2);
-}
-.queue-group ul {
-  margin: var(--s-2) 0 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--line);
-}
-.queue-group li {
-  padding: var(--s-2) 0;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink-2);
-}
-.queue-group li:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-.queue-group li a {
-  font-weight: 600;
-}
-.all-clear {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  background: var(--ok-soft);
-  color: var(--ok);
-  font-weight: 600;
-  border-radius: var(--r-md);
-  padding: var(--s-4) var(--s-5);
-}
-
 .check {
   display: inline-flex;
   gap: var(--s-2);
@@ -249,70 +113,10 @@ pre.json {
   margin: 0;
   align-self: stretch;
 }
-.release-notes {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-ul.plain {
-  list-style: none;
-  margin: 0 0 var(--s-2);
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-.status-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.status-list li {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--s-3);
-  min-height: 36px;
-  align-items: center;
-  border-bottom: 1px solid var(--line);
-  font-variant-numeric: tabular-nums;
-}
-.status-list li:last-child {
-  border-bottom: none;
-}
-.status-list a.attention {
-  color: var(--bad);
-  font-weight: 600;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  min-height: 36px;
-}
-.status-list a.attention:hover {
-  color: var(--bad-hover);
-}
-
 /* ---------- Điện thoại ---------- */
 @media (max-width: 800px) {
-  .tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--s-3);
-  }
-  .tile {
-    padding: var(--s-3) var(--s-4);
-  }
-  /* Số ô lẻ: ô cuối trải hết hàng, không để một ô lẻ loi */
-  .tile:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-  .tile-value {
-    font-size: var(--fs-xl);
-  }
-  .card,
-  .panel {
+  .card {
     padding: var(--s-4);
-  }
-  .queue-group {
-    padding: var(--s-4) var(--s-4) var(--s-4) calc(var(--s-4) + 4px);
   }
   .facts {
     grid-template-columns: 1fr;
