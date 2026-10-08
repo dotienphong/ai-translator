@@ -12,6 +12,7 @@ import type {
   PaymentStatus,
   PlanCode,
   Queue,
+  Stats,
   Summary,
   TrialRow,
 } from "./types";
@@ -50,6 +51,7 @@ export const api = {
   lookup: (q: LookupQuery) => call<LookupResult>("POST", "/admin/lookup", q),
   queue: () => call<Queue>("GET", "/admin/queue"),
   summary: () => call<Summary>("GET", "/admin/summary"),
+  stats: () => call<Stats>("GET", "/admin/stats"),
   orders: (f: Filters) => call<Page<OrderRow>>("GET", `/admin/orders${queryString(f)}`),
   licenses: (f: Filters) => call<Page<LicenseRow>>("GET", `/admin/licenses${queryString(f)}`),
   trials: (f: Filters) => call<Page<TrialRow>>("GET", `/admin/trials${queryString(f)}`),

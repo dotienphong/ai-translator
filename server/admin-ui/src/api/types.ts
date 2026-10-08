@@ -175,3 +175,45 @@ export interface EraseResult {
   licenses: number;
   orders: number;
 }
+
+/** GET /admin/stats (server/src/admin-stats.ts): chỉ có số; mảng tăng dần; ngày YYYY-MM-DD, tháng YYYY-MM theo GMT+7. */
+export type GrantKind = "new" | "extend" | "change" | "other";
+
+export interface Totals {
+  revenue: number;
+  orders: number;
+}
+
+export interface Stats {
+  generated_at: number;
+  currency: "VND";
+  money: {
+    today: number;
+    last_7d: number;
+    this_month: number;
+    last_month: number;
+    daily: { day: string; revenue: number; orders: number }[];
+    monthly: ({ month: string } & Record<PlanCode, Totals>)[];
+  };
+  customers: {
+    trials_30d: number;
+    trials_30d_purchased: number;
+    trials_total: number;
+    trials_total_purchased: number;
+    grants_30d: Record<GrantKind, Totals>;
+    grants_monthly: ({ month: string } & Record<GrantKind, number>)[];
+  };
+  health: {
+    orders_30d: Record<OrderStatus, number>;
+    expiring_7d: number;
+    expiring_30d: number;
+    email: { paid_with_email_30d: number; sent: number };
+  };
+  usage: {
+    active_licenses: number;
+    active_devices: number;
+    devices_7d: number;
+    trials_active: number;
+    new_trials_daily: { day: string; count: number }[];
+  };
+}
