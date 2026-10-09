@@ -304,7 +304,7 @@ export const en = {
   "notice.loginItemsApproval": "AI Translator is turned off in System Settings › General › Login Items & Extensions (Login Items on macOS 14), so it will not open when you log in. Turn it on there.",
   "notice.openLoginItems": "Open Login Items",
   "notice.updateReady": "Version {version} has been downloaded and will be installed when you quit. Restart now to update?",
-  "notice.updateReprompt": "After updating, macOS will ask for your login password a few times and for audio-recording permission once: enter your password and click “Always Allow”, and allow the recording permission.",
+  "notice.updateReprompt": "After updating, macOS will ask for your login password once and for audio-recording permission once: enter your password and click “Always Allow”, and allow the recording permission.",
   "notice.restartToUpdate": "Restart",
   "notice.updateLater": "Later",
 

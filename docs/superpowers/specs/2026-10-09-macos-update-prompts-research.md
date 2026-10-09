@@ -1,6 +1,6 @@
 # Giảm hộp thoại Keychain và quyền ghi âm sau mỗi lần cập nhật macOS (nghiên cứu)
 
-Ngày 2026-10-09. Câu hỏi của chủ dự án: bản ad-hoc hiện làm macOS hỏi 5 hộp thoại Keychain + 1 quyền ghi âm sau mỗi lần cập nhật (spec 2026-10-05 §4, đã chốt chấp nhận); có cách giảm xuống 1–2, hay tắt hẳn, không? Chưa đổi mã hay cấu hình nào: tài liệu này là số đo và các lựa chọn.
+Ngày 2026-10-09. Câu hỏi của chủ dự án: bản ad-hoc hiện làm macOS hỏi 5 hộp thoại Keychain + 1 quyền ghi âm sau mỗi lần cập nhật (spec 2026-10-05 §4, đã chốt chấp nhận); có cách giảm xuống 1–2, hay tắt hẳn, không? Số đo và các lựa chọn. **Chủ dự án chọn B (2026-10-09); đã cài đặt, xem mục 5.**
 
 ## 1. Vì sao hỏi
 
@@ -33,6 +33,17 @@ Ngày 2026-10-09. Câu hỏi của chủ dự án: bản ad-hoc hiện làm macO
 
 **D. Không khả thi (đã đo hoặc đã loại):** chứng thư tự cấp; ACL "mọi app"; `-r designated`; chuyển Keychain sang file (chủ dự án đã quyết KHÔNG, 2026-10-05).
 
-## 4. Khuyến nghị
+## 4. Khuyến nghị (trước khi chọn)
 
 Nếu chấp nhận rủi ro điều khoản: A (một cấu hình, không sửa mã, hết hỏi) rồi chuyển C khi có ngân sách. Nếu không: B (còn 2 hộp thoại mỗi lần cập nhật). B và A không loại trừ nhau, nhưng B không còn cần khi đã có A hay C. Chưa thực hiện lựa chọn nào; cần chủ dự án quyết.
+
+## 5. Đã làm: lựa chọn B (gộp một mục Keychain)
+
+`src-tauri/src/security/keystore.rs`: trên macOS `Keystore::os` ở chế độ gộp. Mọi giá trị (JSON, base64) nằm trong một mục Keychain tên `vault` của service `com.aitranslator.desktop`; Windows giữ từng mục riêng.
+
+- **Di trú lười:** khi đọc một tên chưa có trong `vault`, app đọc mục riêng cũ cùng tên (macOS hỏi một lần cho mục đó, như trước), chép vào `vault`. Không xóa mục riêng cũ (xóa có thể bật thêm hộp thoại): tên đã xử lý được ghi vào `legacy_done` nên mục cũ còn sót không bao giờ được đọc lại hay "sống lại" sau khi xóa.
+- **Ghi:** ghi vào `vault` (đọc-sửa-ghi nguyên khối) dưới một khóa chung cho cả tiến trình, vì `db.rs` và `license/app.rs` mỗi nơi một `Keystore::os`. Mục chung hỏng (JSON sai) là lỗi, không bị ghi đè.
+- **Kỳ vọng:** cập nhật từ bản cũ lên bản gộp: tới 5 hộp thoại Keychain (đọc 5 mục riêng) + 1 quyền thu âm, một lần. Từ đó mỗi lần cập nhật: **1 hộp thoại Keychain + 1 quyền thu âm**. Windows không đổi.
+- **Test:** 12 test mới (`aggregated_*`: vòng đọc ghi xóa, chỉ một mục, di trú, không sống lại, ghi đè mục cũ, tách service, lỗi nền tảng không làm mất dữ liệu, mục hỏng không bị ghi đè, 8 luồng ghi cùng lúc không mất dữ liệu); 2 test chạy tay trên Keychain thật (`os_keystore_roundtrip`, `os_keystore_one_item`: ghi 5 giá trị, `security find-generic-password` chỉ thấy `vault`). 493 test Rust, clippy sạch.
+- **Chưa đo trên chuỗi cập nhật thật** (cần hai bản phát hành liên tiếp có chữ ký khác nhau): làm khi phát hành bản có thay đổi này rồi bản kế tiếp, đếm hộp thoại. Chỉ sau số đo đó mới sửa website (các trang đang ghi "5 hộp thoại").
+- Lời mời cập nhật trong app đổi từ "vài lần" sang "một lần" (`notice.updateReprompt`, vi/en).

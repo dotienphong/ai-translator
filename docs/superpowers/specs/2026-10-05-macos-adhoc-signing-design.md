@@ -83,3 +83,5 @@ Kiểm tay: dựng bản release bằng `package-macos.sh` không đặt `MT_SIG
 - Windows và chứng thư OV (T2).
 - Chứng thư tự cấp cố định, chứng thư `Apple Development` và chuyển Keychain sang file (mục 4: không làm).
 - Notarize và Developer ID: sẽ làm khi có tài khoản, không cần sửa code app.
+
+> **Cập nhật 2026-10-09:** chủ dự án chọn gộp mọi mục Keychain thành một (spec `2026-10-09-macos-update-prompts-research.md`, lựa chọn B). Mỗi lần cập nhật còn 1 hộp thoại Keychain (thay vì 5) cộng 1 quyền thu âm; lần đầu từ bản cũ lên bản gộp vẫn tới 5. Các số 5 ở trên là của bản chưa gộp.
