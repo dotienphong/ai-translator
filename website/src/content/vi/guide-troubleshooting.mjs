@@ -42,7 +42,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-09",
   schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Bảng triệu chứng, nguyên nhân và cách xử lý theo đúng câu báo lỗi của app (âm thanh, quyền ghi âm, model, bản quyền, hạn mức, phím tắt), cách mở và gửi log, thông tin nên kèm khi báo lỗi.",
   llmTitle: "Khắc phục sự cố AI Translator",
@@ -64,7 +64,7 @@ ${docLayout({
 <div class="card"><span class="card-title">“Không nghe thấy gì dù có app đang phát tiếng: có thể AI Translator chưa được phép ghi âm thanh hệ thống.”</span><p><strong>Nguyên nhân:</strong> macOS chưa cấp quyền và không báo lỗi: app chỉ nhận âm thanh im lặng.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Mở System Settings</strong>, bật AI Translator ở Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only, rồi <strong>Bắt đầu</strong> lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền ghi âm</a>. Trên Windows không có quyền này: nếu không nghe thấy gì, kiểm tra thiết bị phát đang chọn ở Cài đặt › Âm thanh.</p></div>
 <div class="card"><span class="card-title">“Không nghe thấy âm thanh. Kiểm tra âm thanh cuộc họp có đang phát không.” hoặc “Không thu được âm thanh.”</span><p><strong>Nguyên nhân:</strong> Máy không phát tiếng, nguồn âm thanh sai, hoặc app không mở được nguồn.</p><p><strong>Cách xử lý:</strong> Bật tiếng cuộc họp. Ở Cài đặt › Âm thanh, bấm <strong>Làm mới danh sách</strong>, chọn lại nguồn rồi <strong>Bắt đầu</strong> lại. Còn lỗi thì gửi log.</p></div>
 <div class="card"><span class="card-title">“App đã chọn không phát tiếng”</span><p><strong>Nguyên nhân:</strong> Bạn chọn <strong>Chỉ {tên app}</strong> mà app đó đang im.</p><p><strong>Cách xử lý:</strong> Cho app phát tiếng (phiên chạy tiếp ngay), hoặc chọn <strong>Toàn hệ thống, trừ app này</strong> (từ phiên sau).</p></div>
-<div class="card"><span class="card-title">Không thấy thanh phụ đề</span><p><strong>Nguyên nhân:</strong> Thanh ẩn khi mở app cho tới khi bạn bấm Bắt đầu, hoặc đã bị ẩn bằng nút ✕ hay phím tắt.</p><p><strong>Cách xử lý:</strong> Ở Màn hình chính, mục <strong>Thanh phụ đề</strong>, bấm <strong>Hiện</strong>; hoặc nhấn ${keys(["⌃", "⌥", "H"])} (Windows: ${keys(["Ctrl", "Alt", "H"])}); hoặc chọn “Hiện phụ đề” ở menu bar hay khay hệ thống. Thanh khóa thì mở khóa bằng ${keys(["⌃", "⌥", "L"])} (Windows: ${keys(["Ctrl", "Alt", "L"])}).</p></div>
+<div class="card"><span class="card-title">Không thấy thanh phụ đề</span><p><strong>Nguyên nhân:</strong> Thanh ẩn khi mở app cho tới khi bạn bấm Bắt đầu, hoặc đã bị ẩn bằng phím tắt hay nút ✕ (nút ✕ dừng cả phiên dịch).</p><p><strong>Cách xử lý:</strong> Nếu đã bấm nút ✕, bấm <strong>Bắt đầu</strong> để dịch lại, thanh sẽ hiện. Còn lại, ở Màn hình chính, mục <strong>Thanh phụ đề</strong>, bấm <strong>Hiện</strong>; hoặc nhấn ${keys(["⌃", "⌥", "H"])} (Windows: ${keys(["Ctrl", "Alt", "H"])}); hoặc chọn “Hiện phụ đề” ở menu bar hay khay hệ thống. Thanh khóa thì mở khóa bằng ${keys(["⌃", "⌥", "L"])} (Windows: ${keys(["Ctrl", "Alt", "L"])}).</p></div>
 <div class="card"><span class="card-title">“Có phím tắt không đăng ký được. Mở Cài đặt › Phím tắt để đổi.”</span><p><strong>Nguyên nhân:</strong> App khác đang giữ tổ hợp phím đó.</p><p><strong>Cách xử lý:</strong> Ở Cài đặt › Phím tắt, bấm <strong>Đổi</strong> và nhấn tổ hợp mới, có ít nhất một phím Ctrl, Alt hoặc Cmd/Win (chỉ Shift thì chưa đủ).</p></div>
 </div>
 

@@ -30,7 +30,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-09",
   llm: "Dùng thanh phụ đề: kéo, đổi kích thước, khóa click xuyên qua, ẩn/hiện, cuộn câu cũ; chỉnh cỡ chữ, màu, độ mờ; bảng phím tắt mặc định macOS và Windows; đổi phím tắt; menu menu bar.",
   llmTitle: "Thanh phụ đề và phím tắt",
   body: () => `
@@ -61,7 +61,7 @@ ${overlayShot({ slug: "overlay-locked", lang: "vi", alt: "Thanh phụ đề đã
 ${callout({ title: "Đã khóa thì không bấm được vào thanh.", text: "Muốn mở khóa hãy dùng phím tắt, menu ở menu bar hoặc nút trên màn hình chính." })}
 
 <h2 id="an-hien">Ẩn và hiện</h2>
-<p>Rê chuột vào thanh chưa khóa sẽ thấy nút <strong>✕</strong> ở góc trên bên phải (“Ẩn thanh phụ đề”). Ẩn thanh không dừng phiên dịch và không thoát app. Bạn cũng ẩn hoặc hiện bằng ${keys(["⌃", "⌥", "H"])}, nút <strong>Ẩn</strong> hoặc <strong>Hiện</strong> ở màn hình chính, hoặc menu ở menu bar. Thanh ẩn khi bạn mở app, hiện khi bạn bấm Bắt đầu, và giữ nguyên các dòng cuối khi bạn bấm Dừng.</p>
+<p>Rê chuột vào thanh chưa khóa sẽ thấy nút <strong>✕</strong> ở góc trên bên phải (“Tắt phụ đề và dừng dịch”). Bấm nút này thì thanh ẩn và phiên dịch dừng luôn, không cần bấm Dừng nữa; app không thoát. Muốn ẩn thanh mà vẫn dịch, dùng ${keys(["⌃", "⌥", "H"])}, nút <strong>Ẩn</strong> ở màn hình chính, hoặc menu ở menu bar; các cách này cũng dùng để hiện lại thanh. Thanh ẩn khi bạn mở app, hiện khi bạn bấm Bắt đầu, và giữ nguyên các dòng cuối khi bạn bấm Dừng.</p>
 
 <h2 id="cuon">Cuộn xem câu cũ</h2>
 <p>Thanh giữ tối đa 1000 câu gần nhất của phiên. Khi đang ở cuối, thanh tự theo câu mới. Cuộn lên bằng con lăn hoặc trackpad (khi chưa khóa) thì thanh ngừng theo và hiện nút <strong>↓ Mới nhất</strong> ở góc dưới bên phải; bấm nút này để về câu hiện tại. Khi đã khóa, chuột xuyên qua nên dùng ${keys(["⌃", "⌥", "PageUp"])} và ${keys(["⌃", "⌥", "PageDown"])}, mỗi lần cuộn khoảng 80% chiều cao thanh; lúc đó nút “Mới nhất” chỉ là nhãn báo bạn đang xem câu cũ. Bàn phím MacBook không có phím Page Up và Page Down riêng; nếu khó bấm, hãy đổi hai phím này.</p>

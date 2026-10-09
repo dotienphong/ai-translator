@@ -30,7 +30,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-09",
   llm: "Using the subtitle bar: move, resize, lock (click-through), show/hide, scroll back; font size, colors and opacity; default macOS and Windows shortcuts; changing shortcuts; the menu bar menu.",
   llmTitle: "The subtitle bar and shortcuts",
   body: () => `
@@ -61,7 +61,7 @@ ${overlayShot({ slug: "overlay-locked", lang: "en", alt: "Locked subtitle bar wi
 ${callout({ title: "You cannot click a locked bar.", text: "To unlock it, use the shortcut, the menu bar menu or the button on the Home screen." })}
 
 <h2 id="show-hide">Show and hide</h2>
-<p>Hover over an unlocked bar to reveal the <strong>✕</strong> button in the top-right corner (“Hide subtitles”). Hiding the bar does not stop the translation and does not quit the app. You can also hide or show it with ${keys(["⌃", "⌥", "H"])}, with the <strong>Hide</strong> or <strong>Show</strong> button on the Home screen, or from the menu bar menu. The bar starts hidden when you open the app, appears when you click Start, and keeps its last lines when you click Stop.</p>
+<p>Hover over an unlocked bar to reveal the <strong>✕</strong> button in the top-right corner (“Close subtitles and stop translating”). Clicking it hides the bar and stops the translation in one go, so you do not also need to click Stop; the app does not quit. To hide the bar and keep translating, use ${keys(["⌃", "⌥", "H"])}, the <strong>Hide</strong> button on the Home screen, or the menu bar menu; the same options bring the bar back. The bar starts hidden when you open the app, appears when you click Start, and keeps its last lines when you click Stop.</p>
 
 <h2 id="scroll">Scroll back through sentences</h2>
 <p>The bar keeps up to the last 1000 sentences of the session. While you are at the bottom, it follows new sentences by itself. Scroll up with the mouse wheel or trackpad (while unlocked) and it stops following and shows a <strong>↓ Latest</strong> button in the bottom-right corner; click it to return to the current sentence. When the bar is locked the mouse passes through, so use ${keys(["⌃", "⌥", "PageUp"])} and ${keys(["⌃", "⌥", "PageDown"])}, which scroll by about 80% of the bar's height; then the Latest label only signals that you are looking at older sentences. MacBook keyboards have no dedicated Page Up and Page Down keys; if they are awkward, change these two shortcuts.</p>

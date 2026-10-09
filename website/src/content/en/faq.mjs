@@ -192,7 +192,7 @@ const GROUPS = [
     items: [
       {
         q: "Does the subtitle bar cover my meeting? Can I adjust it?",
-        a: `<p>You can adjust a lot. The bar always stays on top and does not take focus from your meeting app. Drag it to move it, drag an edge to resize it, and choose the font size (14 to 48 px), text color, background color and background opacity. Turn on Lock so the mouse passes through the bar; hide it quickly with the shortcut or the ✕ button when you hover over it. See the <a href="/en/guide/subtitle-bar-and-shortcuts/">subtitle bar and shortcuts guide</a>.</p>`,
+        a: `<p>You can adjust a lot. The bar always stays on top and does not take focus from your meeting app. Drag it to move it, drag an edge to resize it, and choose the font size (14 to 48 px), text color, background color and background opacity. Turn on Lock so the mouse passes through the bar; hide it quickly with the shortcut (translation keeps going), or click the ✕ button that appears on hover to close the subtitles and stop translating. See the <a href="/en/guide/subtitle-bar-and-shortcuts/">subtitle bar and shortcuts guide</a>.</p>`,
       },
       {
         q: "What are the default shortcuts?",
@@ -231,7 +231,7 @@ export default {
   description:
     "Short answers about AI Translator: using it with Zoom, Teams and Meet, languages, working offline, privacy, system requirements, plans, payment and everyday use.",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-09",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Frequently asked questions: overview, languages and quality, privacy and data, install and system requirements, plans and payment, everyday use.",
   llmTitle: "AI Translator frequently asked questions",

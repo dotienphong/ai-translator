@@ -192,7 +192,7 @@ const GROUPS = [
     items: [
       {
         q: "Thanh phụ đề có che màn hình họp không? Chỉnh được không?",
-        a: `<p>Chỉnh được nhiều thứ. Thanh luôn nằm trên cùng và không lấy focus của app họp. Bạn kéo để di chuyển, kéo cạnh để đổi kích thước, chọn cỡ chữ 14 đến 48 px, màu chữ, màu nền và độ mờ nền. Bật Khóa để chuột xuyên qua thanh; ẩn nhanh bằng phím tắt hoặc nút ✕ khi rê chuột vào. Xem <a href="/huong-dan/thanh-phu-de-va-phim-tat/">hướng dẫn thanh phụ đề và phím tắt</a>.</p>`,
+        a: `<p>Chỉnh được nhiều thứ. Thanh luôn nằm trên cùng và không lấy focus của app họp. Bạn kéo để di chuyển, kéo cạnh để đổi kích thước, chọn cỡ chữ 14 đến 48 px, màu chữ, màu nền và độ mờ nền. Bật Khóa để chuột xuyên qua thanh; ẩn nhanh bằng phím tắt (vẫn dịch), hoặc bấm nút ✕ khi rê chuột vào để tắt phụ đề và dừng dịch luôn. Xem <a href="/huong-dan/thanh-phu-de-va-phim-tat/">hướng dẫn thanh phụ đề và phím tắt</a>.</p>`,
       },
       {
         q: "Phím tắt mặc định là gì?",
@@ -231,7 +231,7 @@ export default {
   description:
     "Giải đáp ngắn gọn về AI Translator: dùng với Zoom, Teams, Meet, ngôn ngữ, chạy offline, quyền riêng tư, yêu cầu máy, các gói, thanh toán và việc dùng hằng ngày.",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-09",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Các câu hỏi thường gặp: tổng quan, ngôn ngữ và chất lượng, riêng tư và dữ liệu, cài đặt và yêu cầu máy, gói và thanh toán, dùng hằng ngày.",
   llmTitle: "Câu hỏi thường gặp về AI Translator",

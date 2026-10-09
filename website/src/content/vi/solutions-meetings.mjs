@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-09",
   llm: "Cách dùng AI Translator để có phụ đề dịch khi họp Zoom, Teams, Google Meet, Zalo: chuẩn bị trước họp, phím tắt khi họp, bản chép lời sau họp, app đã thử, quyền riêng tư và giới hạn.",
   llmTitle: "Phụ đề dịch cho họp trực tuyến (Zoom, Teams, Meet, Zalo)",
   body: () => `
@@ -96,7 +96,7 @@ ${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề c�
 ${checkList([
   "<strong>Lỡ một câu:</strong> cuộn lên xem lại (giữ 1000 câu gần nhất), nút <em>Mới nhất</em> đưa bạn về hiện tại; phím cuộn dùng được cả khi đã khóa.",
   "<strong>Câu màu nhạt</strong> là phụ đề tạm, sẽ được thay khi người nói nói tiếp. Giữ bật <em>Hiện câu gốc phía trên bản dịch</em> (mặc định đã bật) để đối chiếu tên và số liệu.",
-  "<strong>Ẩn nhanh</strong> bằng phím tắt hoặc nút ✕ khi rê chuột vào thanh chưa khóa.",
+  "<strong>Ẩn nhanh</strong> bằng phím tắt (vẫn dịch), hoặc bấm nút ✕ khi rê chuột vào thanh chưa khóa để tắt phụ đề và dừng dịch luôn.",
 ])}
 </div>
 </div>

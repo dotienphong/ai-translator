@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-09",
   llm: "How to use AI Translator for translated subtitles in Zoom, Teams, Google Meet and Zalo calls: preparing before the call, shortcuts during it, the transcript afterwards, apps tested, privacy notes and limits.",
   llmTitle: "Translated subtitles for online meetings (Zoom, Teams, Meet, Zalo)",
   body: () => `
@@ -96,7 +96,7 @@ ${overlayShot({ slug: "overlay-default", lang: "en", alt: "The AI Translator sub
 ${checkList([
   "<strong>Missed a sentence:</strong> scroll up to read it again (the last 1000 sentences are kept); the <em>Latest</em> button brings you back, and the scroll keys work even when the bar is locked.",
   "<strong>Faded text</strong> is a provisional subtitle that is replaced when the speaker carries on. Keep <em>Show the original text above the translation</em> on (it is on by default) to double-check names and numbers.",
-  "<strong>Hide it fast</strong> with the shortcut, or with the ✕ button when you hover over an unlocked bar.",
+  "<strong>Hide it fast</strong> with the shortcut (translation keeps going), or click the ✕ button on an unlocked bar to close the subtitles and stop translating.",
 ])}
 </div>
 </div>
