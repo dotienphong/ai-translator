@@ -133,7 +133,6 @@ ${flow([
   },
   { title: "Wait for the app to open", text: "<p>About a minute: the command downloads the latest version, checks its SHA-256, runs the installer silently for your account only and opens AI Translator. Windows asks for no recording permission; the app downloads its models once and is then ready to translate.</p>" },
 ])}
-${callout({ kind: "warn", title: "The Windows install command is new", text: "We have tested it on only a few PCs. If it fails, send us the message it shows on the <a href=\"/en/contact/\">Contact page</a>, or get the .exe by email (last item below)." })}
 <div class="panel-more">
 <h3>Options and troubleshooting</h3>
 ${faq(

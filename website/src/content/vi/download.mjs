@@ -131,7 +131,6 @@ ${flow([
   },
   { title: "Chờ app mở", text: "<p>Khoảng một phút: lệnh tải bản mới nhất, kiểm mã SHA-256, chạy bộ cài im lặng cho riêng tài khoản của bạn rồi mở AI Translator. Windows không hỏi quyền ghi âm; app tải model một lần rồi sẵn sàng dịch.</p>" },
 ])}
-${callout({ kind: "warn", title: "Lệnh cài Windows còn mới", text: "Chúng tôi mới thử lệnh này trên ít máy. Nếu gặp lỗi, hãy gửi nội dung thông báo cho chúng tôi ở <a href=\"/lien-he/\">trang Liên hệ</a>, hoặc nhận file .exe qua email (mục cuối bên dưới)." })}
 <div class="panel-more">
 <h3>Tùy chọn và xử lý sự cố</h3>
 ${faq(

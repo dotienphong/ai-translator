@@ -48,4 +48,4 @@ Máy Windows 10 hoặc 11 x64 sạch, một tài khoản thường:
 6. Máy tiếng Việt: thông báo tiếng Việt, không lỗi hiển thị dấu.
 7. Sau khi trang web được deploy: `irm https://aitranslator.io.vn/install.ps1 | iex` từ URL công khai; `curl.exe -sI https://aitranslator.io.vn/install.ps1` trả `content-type: text/plain`.
 
-Kết quả (chưa có):
+Kết quả (2026-10-09): chủ dự án chạy lệnh trên máy Windows thật và báo chạy ổn. Một khách Windows gặp lỗi `Cannot find drive '"C'` ở bước tìm file chạy sau khi cài (InstallLocation trong registry có nháy kép); đã sửa ở commit e309441 kèm test hồi quy. Chưa ghi nhận riêng: cài đè khi app đang chạy, máy bật Smart App Control chế độ chặn, máy tiếng Việt.
