@@ -30,7 +30,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["Works with", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>No bot, no plugin; any app that plays sound through your computer can be captured</small>"],
-  ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>One way, into the language you choose</small>"],
+  ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>One way, into the language you choose</small>"],
   ["Latency", "Median 0.76–1.03 seconds<small>Mac M4 Pro, Standard pack; slower machines will be slower</small>"],
   ["Platform", "macOS 14.2+ (Apple Silicon) and Windows 10/11 x64<small>The Windows build is not code-signed yet, so SmartScreen may warn during installation</small>"],
 ])}</div>
@@ -38,7 +38,7 @@ ${pageHero({
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "The problem", title: "Why are meetings in another language so tiring?" })}
-<p>In a meeting held in a foreign language you listen and translate in your head at the same time, and it is easy to lose a point when someone speaks fast or uses a lot of jargon. The big meeting platforms offer built-in translated captions, but they are usually part of higher paid plans and process your audio in the cloud, and most third-party tools run in the cloud too. If your organization's plan does not include that feature, or you do not want meeting audio to leave your computer, you need another way.</p>
+<p>In a meeting held in a foreign language you listen and translate in your head at the same time, and it is easy to lose a point when someone speaks fast or uses a lot of jargon. The big meeting platforms offer built-in translated captions, but they are usually part of higher paid plans and process your audio in the cloud, and many third-party tools run in the cloud too. If your organization's plan does not include that feature, or you do not want meeting audio to leave your computer, you need another way.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container">

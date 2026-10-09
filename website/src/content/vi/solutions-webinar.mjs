@@ -31,7 +31,7 @@ ${pageHero({
 <div class="reveal">${facts([
   ["Dùng với", "Bất cứ thứ gì phát tiếng trên máy<small>Trình duyệt, app trình phát, nền tảng khóa học, webinar</small>"],
   ["Cần cài thêm", "Không gì ngoài chính app<small>Không tiện ích trình duyệt, không plugin, không tài khoản đăng nhập</small>"],
-  ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Chọn ngôn ngữ bạn muốn đọc</small>"],
+  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Chọn ngôn ngữ bạn muốn đọc</small>"],
   ["Phiên dài", "Đã chạy liên tục 5 giờ 23 phút không lỗi<small>Mac M4 Pro, macOS, bản release ký ad-hoc, một lần thử</small>"],
 ])}</div>
 </div></section>

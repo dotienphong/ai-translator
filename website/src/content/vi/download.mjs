@@ -1,3 +1,4 @@
+import { RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, steps, callout, facts, ctaBand, feature, icon, faq, cmdBlock, chips, flow, osTabs } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
@@ -212,6 +213,7 @@ ${osTabs({
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Thông tin nhanh", title: "Dùng thử và giá", center: true })}
 <div class="reveal">${facts([
+  ["Phiên bản hiện tại", RELEASE.vi],
   ["Trạng thái", "Đã phát hành. macOS và Windows đều cài bằng một dòng lệnh"],
   ["Dùng thử", "Free 10 ngày, 30 phút mỗi ngày<small>Không cần thẻ, không cần tài khoản</small>"],
   ["Giá sau đó", "Monthly 50.000 ₫ · Yearly 500.000 ₫"],

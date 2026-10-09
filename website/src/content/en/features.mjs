@@ -18,7 +18,7 @@ export default {
   llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, glossary, history, export, shortcuts, models), with performance figures and the conditions they were measured under.",
   llmTitle: "AI Translator features",
   body: () => `
-${pageHero({ crumbs, title: "Everything you need to follow a meeting in another language", lead: "This is what AI Translator can do today, exactly as it works in the app. Anything that is only in the paid plans is marked clearly." })}
+${pageHero({ crumbs, title: "Live meeting translation features, running on your computer", lead: "This is what AI Translator can do today, exactly as it works in the app. Anything that is only in the paid plans is marked clearly." })}
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">Features at a glance</h2>
@@ -51,7 +51,7 @@ ${feature({ icon: "lock", title: "Conversation data stays on your computer", tex
 <h2>Listen, recognize, translate and show subtitles in one loop</h2>
 <p>AI Translator captures the audio playing on your computer, splits it into sentences, recognizes the speech, translates it and shows the result on the subtitle bar. On a Mac M4 Pro the full translation appears about a second (median) after the speaker finishes a sentence; other computers may be slower, see the <a href=\"#performance\">measurements</a>.</p>
 ${checkList([
-  "<strong>Five languages</strong> for both the source audio and the translation: English, 中文, 日本語, 한국어, Tiếng Việt. We plan to add more languages in the future (no schedule yet)",
+  "<strong>Five languages</strong> for both the source audio and the translation: English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt). We plan to add more languages in the future (no schedule yet)",
   "<strong>Automatic detection</strong> of the spoken language among the ones you tick under <em>Languages spoken in the meeting</em>, or <strong>lock</strong> a single one in <em>Source language</em> when you know what will be spoken",
   "A sentence that is already in the language you want to read is shown as it is, not translated again",
   "A sentence that is not final yet appears dimmer, then is replaced by the complete sentence when the speaker carries on",

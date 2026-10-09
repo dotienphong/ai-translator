@@ -1,3 +1,4 @@
+import { RELEASE } from "../../site.mjs";
 import { dataFlow, demo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
@@ -5,6 +6,18 @@ export const HOME_FAQ = [
   {
     q: "AI Translator có cần internet không?",
     a: "<p>Khi đang dịch thì không. Nhận dạng giọng nói, dịch và hiện phụ đề đều chạy trên máy bạn. Internet chỉ cần cho vài việc: tải app và model lần đầu (khoảng 1,3 GB hoặc 2,5 GB), đăng ký dùng thử Free, mua gói, kiểm tra bản quyền (gói trả phí dùng offline tối đa 14 ngày giữa hai lần kiểm tra) và cập nhật app.</p>",
+  },
+  {
+    q: "Có app nào dịch phụ đề cuộc họp offline, chạy ngay trên máy không?",
+    a: "<p>Có. AI Translator (aitranslator.io.vn) là app desktop cho macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit (x64), hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy. Nhận dạng giọng nói và dịch đều chạy trên máy, nên khi dịch không cần internet và âm thanh không rời máy. Hỗ trợ tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn và tiếng Việt; dùng thử Free 10 ngày.</p>",
+  },
+  {
+    q: "Làm sao dịch cuộc họp Zoom sang tiếng Việt mà không cần bot?",
+    a: "<p>Mở AI Translator, chọn tiếng Việt là ngôn ngữ muốn đọc rồi bấm Bắt đầu. App nghe âm thanh Zoom phát ra trên máy bạn và hiện phụ đề tiếng Việt trên một thanh nổi. Không có bot nào vào phòng và chủ họp không cần bật gì. Người cùng họp không được thông báo, nên nếu quy định yêu cầu thì bạn tự báo họ.</p>",
+  },
+  {
+    q: "Có cách dịch phụ đề họp sang tiếng Việt miễn phí không?",
+    a: "<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản. Sau đó cần gói trả trước: Monthly 50.000 ₫ (50 giờ mỗi 30 ngày) hoặc Yearly 500.000 ₫ (không giới hạn trong 365 ngày). Gói Free là dùng thử, không phải miễn phí vĩnh viễn.</p>",
   },
   {
     q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
@@ -16,7 +29,7 @@ export const HOME_FAQ = [
   },
   {
     q: "AI Translator hỗ trợ những ngôn ngữ nào?",
-    a: "<p>Năm ngôn ngữ cho cả âm thanh nguồn và bản dịch: English, 中文, 日本語, 한국어 và Tiếng Việt. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai (chưa có lịch cụ thể). Giao diện app có tiếng Việt và English.</p>",
+    a: "<p>Năm ngôn ngữ cho cả âm thanh nguồn và bản dịch: tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어) và tiếng Việt. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai (chưa có lịch cụ thể). Giao diện app có tiếng Việt và English.</p>",
   },
   {
     q: "Tôi có cần tạo tài khoản không?",
@@ -36,9 +49,9 @@ export default {
   id: "home",
   lang: "vi",
   path: "/",
-  title: "AI Translator — Dịch phụ đề cuộc họp bằng AI, chạy trên máy bạn",
+  title: "Phần mềm dịch phụ đề cuộc họp trực tiếp, chạy offline | AI Translator",
   description:
-    "AI dịch phụ đề cuộc họp trực tiếp, chạy ngay trên máy bạn với độ trễ thấp. Không gửi âm thanh hay dữ liệu lên cloud, không dùng AI trên cloud. Cho Zoom, Teams, Meet.",
+    "Phụ đề dịch trực tiếp khi họp Zoom, Teams, Google Meet, Zalo: tiếng Anh, Trung, Nhật, Hàn sang tiếng Việt. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,
   modified: "2026-10-08",
   llm: "Trang chủ: AI Translator là gì, cách hoạt động, tính năng, độ trễ đo được, bảng giá và câu hỏi thường gặp.",
@@ -84,8 +97,9 @@ ${demo({
 <p class="lead reveal"><strong>AI Translator</strong> là ứng dụng desktop dịch phụ đề trực tiếp cho âm thanh đang phát trên máy tính. Nó nhận dạng giọng nói, dịch và hiện bản dịch thành thanh phụ đề nổi, hoàn toàn trên máy bạn, không cần bot tham gia cuộc họp và không cần tài khoản. Bản macOS (Apple Silicon) cài được bằng một dòng lệnh; bản Windows 10/11 cũng cài được bằng một dòng lệnh PowerShell.</p>
 <div class="reveal">${facts([
   ["Loại sản phẩm", "Ứng dụng desktop dịch phụ đề trực tiếp"],
+  ["Phiên bản hiện tại", RELEASE.vi],
   ["Nền tảng", "macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 x64<small>Cả hai cài bằng một dòng lệnh</small>"],
-  ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Cả âm thanh nguồn lẫn bản dịch. Dự kiến bổ sung thêm ngôn ngữ trong tương lai</small>"],
+  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Cả âm thanh nguồn lẫn bản dịch. Dự kiến bổ sung thêm ngôn ngữ trong tương lai</small>"],
   ["Xử lý", "100% trên máy, âm thanh không gửi đi<small>Nhận dạng giọng nói và dịch đều chạy trên máy</small>"],
   ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
   ["Bên cung cấp", "Đỗ Tiến Phong<small>Hỗ trợ: support@aitranslator.io.vn</small>"],
@@ -148,7 +162,7 @@ ${appShot({ slug: "app-home-running", lang: "vi", alt: "Màn hình chính của 
 <h2>Một màn hình, đủ mọi thứ cần thiết</h2>
 <p class="lead">Chọn ngôn ngữ cần đọc, chọn nguồn âm thanh, bấm Bắt đầu. Số phút dịch còn lại hiện ngay trên màn hình chính.</p>
 ${checkList([
-  "Năm ngôn ngữ nói và dịch: English, 中文, 日本語, 한국어, Tiếng Việt",
+  "Năm ngôn ngữ nói và dịch: tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt",
   "Tự nhận diện ngôn ngữ đang nói, hoặc khóa một ngôn ngữ khi bạn biết trước người nói dùng tiếng gì",
   "Phím tắt toàn cục để bắt đầu, ẩn hiện, khóa và cuộn phụ đề mà không rời app họp",
   "Biểu tượng trên thanh menu: app vẫn chạy khi bạn đóng cửa sổ",
@@ -158,14 +172,14 @@ ${checkList([
 </div></section>
 
 <section class="section"><div class="container">
-${sectionHead({ eyebrow: "Vì sao AI Translator", title: "Dịch cuộc họp theo cách khác với phần mềm cloud", text: "Phần lớn công cụ dịch cuộc họp gửi âm thanh lên máy chủ. AI Translator làm ngược lại: mọi thứ ở trên máy bạn.", center: true })}
+${sectionHead({ eyebrow: "Vì sao AI Translator", title: "Dịch cuộc họp theo cách khác với phần mềm cloud", text: "Nhiều công cụ dịch cuộc họp xử lý âm thanh trên máy chủ. AI Translator làm ngược lại: mọi thứ ở trên máy bạn.", center: true })}
 <div class="grid grid-3">
 ${feature({ icon: "shield", title: "Riêng tư theo thiết kế", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. App không có analytics và không gửi báo cáo lỗi tự động.", accent: true })}
 ${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng giọng nói và dịch chạy trên máy, nên vẫn dịch được khi mạng chập chờn hoặc mất mạng. App chỉ cần mạng thỉnh thoảng cho vài việc như kiểm tra bản quyền." })}
 ${feature({ icon: "video", title: "Mọi app họp, không bot", text: "Không cần mời bot hay cài plugin vào cuộc họp. Mọi âm thanh phát trên máy đều có thể thành phụ đề." })}
 ${feature({ icon: "book", title: "Từ điển thuật ngữ", text: "Thêm tên riêng, tên sản phẩm và thuật ngữ chuyên ngành làm gợi ý cho bộ dịch (không bảo đảm đúng mọi lần). Tối đa 500 thuật ngữ, nhập xuất CSV (tính năng Pro)." })}
 ${feature({ icon: "history", title: "Lịch sử và xuất file", text: "Lưu bản chép lời trên máy, mã hóa, xuất ra TXT, SRT hoặc Markdown. Lịch sử mặc định tắt, bạn quyết định (tính năng Pro)." })}
-${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "English, 中文, 日本語, 한국어 và Tiếng Việt, theo mọi chiều. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai. Giao diện app có tiếng Việt và English." })}
+${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어) và tiếng Việt, theo mọi chiều. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai. Giao diện app có tiếng Việt và English." })}
 </div>
 <div class="stats reveal">
 <div class="stat"><b>&lt; 1,1 giây</b><span>độ trễ trung vị từ lúc người nói dừng câu tới khi hiện đủ bản dịch (Mac M4 Pro, gói model Chuẩn)</span></div>
@@ -178,7 +192,7 @@ ${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "English, 中文
 <section class="section section-alt"><div class="container">
 ${sectionHead({ eyebrow: "Dùng vào việc gì", title: "Hiểu nội dung, không bị rào cản ngôn ngữ", center: true })}
 <div class="grid grid-2">
-${linkCard({ href: "/giai-phap/dich-hop-truc-tuyen/", icon: "users", title: "Họp trực tuyến", text: "Phụ đề dịch cho Zoom, Teams, Google Meet và Zalo PC mà không cần ai cài thêm gì.", more: "Xem giải pháp" })}
+${linkCard({ href: "/giai-phap/dich-hop-truc-tuyen/", icon: "users", title: "Họp trực tuyến", text: "Phụ đề dịch cho Zoom, Teams, Google Meet và Zalo PC mà người cùng họp không phải cài gì.", more: "Xem giải pháp" })}
 ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "Webinar và video", text: "Theo dõi hội thảo, khóa học, video bằng ngoại ngữ với phụ đề dịch ngay trên màn hình.", more: "Xem giải pháp" })}
 </div>
 </div></section>

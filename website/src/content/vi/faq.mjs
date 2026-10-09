@@ -17,6 +17,26 @@ const GROUPS = [
         a: `<p>AI Translator là ứng dụng desktop hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy tính, như cuộc họp, webinar hoặc video. App nhận dạng giọng nói và dịch ngay trên máy bạn, rồi hiện bản dịch thành một thanh phụ đề nổi. Xem <a href="/tinh-nang/">đầy đủ tính năng</a>.</p>`,
       },
       {
+        q: "Có app nào dịch phụ đề cuộc họp offline, chạy ngay trên máy không?",
+        a: `<p>Có. AI Translator (aitranslator.io.vn) là app desktop cho macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit (x64), hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy. Nhận dạng giọng nói và dịch đều chạy trên máy, nên khi dịch không cần internet và âm thanh không rời máy. Hỗ trợ tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn và tiếng Việt; dùng thử Free 10 ngày.</p>`,
+      },
+      {
+        q: "Làm sao dịch cuộc họp Zoom sang tiếng Việt mà không cần bot?",
+        a: `<p>Mở AI Translator, chọn tiếng Việt là ngôn ngữ muốn đọc rồi bấm Bắt đầu. App nghe âm thanh Zoom phát ra trên máy bạn và hiện phụ đề tiếng Việt trên một thanh nổi. Không có bot nào vào phòng và chủ họp không cần bật gì. Người cùng họp không được thông báo, nên nếu quy định yêu cầu thì bạn tự báo họ.</p>`,
+      },
+      {
+        q: "Có cách dịch phụ đề họp sang tiếng Việt miễn phí không?",
+        a: `<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản. Sau đó cần gói trả trước: Monthly 50.000 ₫ (50 giờ mỗi 30 ngày) hoặc Yearly 500.000 ₫ (không giới hạn trong 365 ngày). Gói Free là dùng thử, không phải miễn phí vĩnh viễn.</p>`,
+      },
+      {
+        q: "AI Translator có phụ đề song ngữ (câu gốc và bản dịch) không?",
+        a: `<p>Có. Tùy chọn “Hiện câu gốc phía trên bản dịch” trong Cài đặt › Phụ đề (mặc định bật) hiện câu gốc chữ nhỏ ngay trên bản dịch; bạn tắt được nếu chỉ muốn đọc bản dịch.</p>`,
+      },
+      {
+        q: "Dịch video tiếng Anh trên trình duyệt sang tiếng Việt được không?",
+        a: `<p>Được. App nghe âm thanh đang phát trên máy nên dùng được với video phát trong trình duyệt mà không cần tiện ích nào. Chúng tôi đã thử thu âm thanh từ Google Meet chạy trên Chrome, Safari và Edge (macOS 26.6.2); chưa thử riêng từng nền tảng video.</p>`,
+      },
+      {
         q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
         a: `<p>Được. App thu âm thanh hệ thống nên không phụ thuộc app họp và không cần cấu hình riêng cho từng app: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã kiểm tra việc thu âm thanh hệ thống trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC: âm thanh người nói được thu rõ. Đó là kiểm tra bộ thu âm do người thử xác nhận, chưa phải kiểm thử chính thức trên bản phát hành, và chúng tôi chưa thử mọi phiên bản macOS hay mọi app. Trên Windows, chúng tôi mới thử thu âm thanh hệ thống trong thử nghiệm nội bộ trên Windows 11, chưa thử từng app họp với bản phát hành. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
       },
@@ -44,7 +64,7 @@ const GROUPS = [
       },
       {
         q: "Sẽ có thêm ngôn ngữ khác không?",
-        a: `<p>Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai. Hiện chưa có lịch hay danh sách cụ thể, và hiện app chỉ hỗ trợ năm ngôn ngữ: English, 中文, 日本語, 한국어 và Tiếng Việt. Khi có ngôn ngữ mới, chúng tôi sẽ cập nhật ngay trang này và <a href="/tinh-nang/">trang Tính năng</a>.</p>`,
+        a: `<p>Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai. Hiện chưa có lịch hay danh sách cụ thể, và hiện app chỉ hỗ trợ năm ngôn ngữ: tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어) và tiếng Việt. Khi có ngôn ngữ mới, chúng tôi sẽ cập nhật ngay trang này và <a href="/tinh-nang/">trang Tính năng</a>.</p>`,
       },
       {
         q: "Dịch theo chiều nào? Có dịch giọng của tôi cho người khác không?",

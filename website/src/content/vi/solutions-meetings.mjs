@@ -30,7 +30,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["Dùng với", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>Không bot, không plugin; app nào phát tiếng ra máy cũng thu được</small>"],
-  ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Một chiều, sang ngôn ngữ bạn chọn</small>"],
+  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Một chiều, sang ngôn ngữ bạn chọn</small>"],
   ["Độ trễ", "Trung vị 0,76–1,03 giây<small>Mac M4 Pro, gói model Chuẩn; máy yếu hơn sẽ chậm hơn</small>"],
   ["Nền tảng", "macOS 14.2+ (Apple Silicon) và Windows 10/11 x64<small>Bản Windows chưa ký mã nên SmartScreen có thể cảnh báo khi cài</small>"],
 ])}</div>
@@ -38,7 +38,7 @@ ${pageHero({
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "Bài toán", title: "Vì sao họp bằng ngoại ngữ vẫn mệt?" })}
-<p>Họp bằng ngoại ngữ, bạn vừa nghe vừa dịch trong đầu và dễ lỡ ý khi người nói nhanh hay nhiều thuật ngữ. Các nền tảng họp lớn có phụ đề dịch tích hợp, nhưng thường chỉ ở gói trả phí cao và xử lý âm thanh trên cloud; phần lớn công cụ bên thứ ba cũng chạy cloud. Nếu gói của tổ chức bạn không có tính năng đó, hoặc bạn không muốn âm thanh rời khỏi máy, bạn cần một cách khác.</p>
+<p>Họp bằng ngoại ngữ, bạn vừa nghe vừa dịch trong đầu và dễ lỡ ý khi người nói nhanh hay nhiều thuật ngữ. Các nền tảng họp lớn có phụ đề dịch tích hợp, nhưng thường chỉ ở gói trả phí cao và xử lý âm thanh trên cloud; nhiều công cụ bên thứ ba cũng chạy cloud. Nếu gói của tổ chức bạn không có tính năng đó, hoặc bạn không muốn âm thanh rời khỏi máy, bạn cần một cách khác.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container">

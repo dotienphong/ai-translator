@@ -1,3 +1,4 @@
+import { RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, feature, linkCard, callout, facts, ctaBand } from "../../build/components.mjs";
 import { SITE } from "../../site.mjs";
 
@@ -32,9 +33,9 @@ ${pageHero({
 <div class="reveal">${facts([
   ["Product", "Live translated subtitles for meetings, webinars and videos<small>Speech recognition and translation run on your computer</small>"],
   ["Provider", "Đỗ Tiến Phong (individual)<small>Independent developer</small>"],
-  ["Status", "Released<small>macOS 14.2+ (Apple Silicon) and Windows 10/11 64-bit</small>"],
+  ["Status", `${RELEASE.en}<small>macOS 14.2+ (Apple Silicon) and Windows 10/11 64-bit</small>`],
   ["Support", `${MAIL}<small>You can write in Vietnamese or English</small>`],
-  ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>The app interface is in Vietnamese and English</small>"],
+  ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>The app interface is in Vietnamese and English</small>"],
   ["License", "Commercial product, not open source<small>Uses open-source components from third parties</small>"],
 ])}</div>
 </div></section>
@@ -44,7 +45,7 @@ ${sectionHead({ eyebrow: "Our story", title: "Why AI Translator exists" })}
 <div class="prose">
 <p>The first idea was to take an existing offline translation app for Android (an open-source one) and use it for calls and meetings. We hit a hard limit of the operating system almost at once. Android lets third-party apps capture the audio of media and games, but not the audio of phone calls or VoIP calls, and during a call an app's microphone usually hears only silence.</p>
 <p>A computer is different. Both Windows and macOS (from version 14.2) provide a way for an app to capture the sound the computer itself is playing. So the project moved to the desktop: an app that listens to system audio, recognizes speech, translates it and shows subtitles, and works with any meeting app without a bot or a plugin.</p>
-<p>While researching (September 2026), we found that translated subtitles in the large meeting apps tend to sit in higher paid tiers and run in the cloud, and most third-party tools do the same. We wanted a different option: everything processed on your machine, any meeting app, a focus on Vietnamese, and, because no server does the translating, no extra infrastructure cost for each minute you use. Here is a <a href="/en/compare/offline-vs-cloud-translation/">comparison of offline and cloud translation</a>.</p>
+<p>While researching (September 2026), we found that translated subtitles in the large meeting apps tend to sit in higher paid tiers and run in the cloud, and many third-party tools do the same. We wanted a different option: everything processed on your machine, any meeting app, a focus on Vietnamese, and, because no server does the translating, no extra infrastructure cost for each minute you use. Here is a <a href="/en/compare/offline-vs-cloud-translation/">comparison of offline and cloud translation</a>.</p>
 <p>We chose the translation model by measurement. In an internal test on 29 September 2026 (320 sentences of text, five translation directions, run on a Mac M4 Pro), the model we picked scored 0.837 on an automatic translation-quality score, while the three other translation models tested under the same conditions scored between 0.736 and 0.833. That test used text, not real speech, and we did not compare against any cloud service.</p>
 </div>
 </div></section>

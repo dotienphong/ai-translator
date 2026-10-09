@@ -9,7 +9,7 @@ export default {
   id: "features",
   lang: "vi",
   path: "/tinh-nang/",
-  title: "Tính năng: phụ đề dịch, từ điển thuật ngữ, xuất file",
+  title: "Tính năng phụ đề dịch trực tiếp, từ điển, xuất SRT | AI Translator",
   description:
     "Phụ đề dịch trực tiếp 5 ngôn ngữ, thanh phụ đề tùy chỉnh, từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown, phím tắt. Tất cả chạy offline trên máy của bạn.",
   software: true,
@@ -18,7 +18,7 @@ export default {
   llm: "Danh sách đầy đủ tính năng đã có trong app (phụ đề dịch, thanh phụ đề, từ điển thuật ngữ, lịch sử, xuất file, phím tắt, model) cùng số đo hiệu năng có ghi điều kiện.",
   llmTitle: "Tính năng của AI Translator",
   body: () => `
-${pageHero({ crumbs, title: "Mọi thứ cần để hiểu một cuộc họp bằng ngoại ngữ", lead: "Dưới đây là những gì AI Translator làm được hôm nay, đúng như trong app. Tính năng nào chỉ có ở gói trả phí đều được ghi rõ." })}
+${pageHero({ crumbs, title: "Tính năng phụ đề dịch trực tiếp cho cuộc họp, chạy trên máy bạn", lead: "Dưới đây là những gì AI Translator làm được hôm nay, đúng như trong app. Tính năng nào chỉ có ở gói trả phí đều được ghi rõ." })}
 
 <section class="section-tight"><div class="container">
 <div class="grid grid-4 reveal">
@@ -50,7 +50,7 @@ ${feature({ icon: "lock", title: "Dữ liệu cuộc hội thoại ở lại tr�
 <h2>Nghe, nhận dạng, dịch và hiện phụ đề trong một vòng</h2>
 <p>AI Translator thu âm thanh đang phát trên máy tính, cắt thành từng câu, nhận dạng giọng nói rồi dịch và hiện lên thanh phụ đề. Trên Mac M4 Pro, bản dịch hiện đủ sau khi người nói dừng câu trong khoảng một giây (trung vị); máy khác có thể chậm hơn, xem <a href=\"#hieu-nang\">số đo</a>.</p>
 ${checkList([
-  "<strong>Năm ngôn ngữ</strong> cho cả âm thanh nguồn và bản dịch: English, 中文, 日本語, 한국어, Tiếng Việt. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai (chưa có lịch cụ thể)",
+  "<strong>Năm ngôn ngữ</strong> cho cả âm thanh nguồn và bản dịch: tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai (chưa có lịch cụ thể)",
   "<strong>Tự nhận diện</strong> ngôn ngữ đang nói trong tập ngôn ngữ bạn chọn, hoặc <strong>khóa</strong> một ngôn ngữ khi bạn biết trước người nói dùng tiếng gì",
   "Câu đã ở đúng ngôn ngữ bạn muốn đọc thì hiện nguyên văn, không dịch lại",
   "Câu chưa chốt hiện màu nhạt rồi được thay bằng câu hoàn chỉnh khi người nói nói tiếp",

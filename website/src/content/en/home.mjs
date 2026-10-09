@@ -1,3 +1,4 @@
+import { RELEASE } from "../../site.mjs";
 import { dataFlow, demo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
@@ -5,6 +6,18 @@ export const HOME_FAQ = [
   {
     q: "Does AI Translator need an internet connection?",
     a: `<p>Not while it is translating. Speech recognition, translation and subtitles all run on your computer. You only need the internet to download the app and the models the first time (about 1.3 GB or 2.5 GB), to register the free trial, to buy a plan, to verify your license (paid plans work offline for up to 14 days between checks) and to update the app.</p>`,
+  },
+  {
+    q: "Is there an offline app that translates meeting subtitles on my computer?",
+    a: "<p>Yes. AI Translator (aitranslator.io.vn) is a desktop app for macOS 14.2 or later (Apple Silicon) and Windows 10/11 64-bit (x64) that shows live translated subtitles for any audio playing on your computer. Speech recognition and translation run on the device, so no internet is needed while translating and the audio never leaves your machine. It supports English, Chinese, Japanese, Korean and Vietnamese, with a 10-day free trial.</p>",
+  },
+  {
+    q: "How do I translate a Zoom meeting into my language without a bot?",
+    a: "<p>Open AI Translator, choose the language you want to read and press Start. The app listens to the Zoom audio playing on your computer and shows translated subtitles in a floating bar. No bot joins the meeting and the host does not need to enable anything; other participants are not notified, so tell them yourself if your rules require it.</p>",
+  },
+  {
+    q: "Can I get translated meeting subtitles for free?",
+    a: "<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. After that you need a prepaid plan: Monthly 50,000 ₫ (50 hours per 30 days) or Yearly 500,000 ₫ (unlimited for 365 days). Free is a trial, not a permanent free plan.</p>",
   },
   {
     q: "Is my meeting audio sent anywhere?",
@@ -16,7 +29,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Which languages does AI Translator support?",
-    a: `<p>Five languages, for both the source audio and the translation: English, 中文, 日本語, 한국어 and Tiếng Việt. We plan to add more languages in the future (no date yet). The app interface is available in Vietnamese and English.</p>`,
+    a: `<p>Five languages, for both the source audio and the translation: English, Chinese (中文), Japanese (日本語), Korean (한국어) and Vietnamese (Tiếng Việt). We plan to add more languages in the future (no date yet). The app interface is available in Vietnamese and English.</p>`,
   },
   {
     q: "Do I need to create an account?",
@@ -38,9 +51,9 @@ export default {
   id: "home",
   lang: "en",
   path: "/en/",
-  title: "AI Translator: AI Meeting Subtitles That Run On Your Device",
+  title: "Live translated subtitles for meetings, offline | AI Translator",
   description:
-    "AI that translates meetings live on your computer, with low latency. No audio or data goes to the cloud and no cloud AI is used. Works with Zoom, Teams, Meet.",
+    "Read live translated subtitles in Zoom, Teams, Google Meet or any app. English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
   software: true,
   modified: "2026-10-08",
   llm: "Home page: what AI Translator is, how it works, features, measured latency, pricing and frequently asked questions.",
@@ -86,8 +99,9 @@ ${demo({
 <p class="lead reveal"><strong>AI Translator</strong> is a desktop app that shows live translated subtitles for the audio playing on your computer. It recognizes the speech, translates it and displays the result on a floating subtitle bar, entirely on your own machine, with no bot joining your meeting and no account to create. The macOS build (Apple Silicon) installs with one command; the Windows 10/11 build also installs with one PowerShell command.</p>
 <div class="reveal">${facts([
   ["Product type", "Desktop app for live translated subtitles"],
+  ["Current version", RELEASE.en],
   ["Platforms", "macOS 14.2 or later (Apple Silicon) and Windows 10/11 x64<small>Both install with one command</small>"],
-  ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>For both the source audio and the translation. More languages are planned for the future</small>"],
+  ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>For both the source audio and the translation. More languages are planned for the future</small>"],
   ["Processing", "100% on your device; audio is never sent out<small>Speech recognition and translation both run on your device</small>"],
   ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid in VND by VietQR from a Vietnamese bank, no auto-renewal</small>"],
   ["Provider", "Đỗ Tiến Phong<small>Support: support@aitranslator.io.vn</small>"],
@@ -150,7 +164,7 @@ ${appShot({ slug: "app-home-running", lang: "en", alt: "AI Translator main scree
 <h2>One screen, everything you need</h2>
 <p class="lead">Choose the language you want to read, pick the audio source and press Start. The translation time you have left is shown right on the main screen.</p>
 ${checkList([
-  "Five spoken and translated languages: English, 中文, 日本語, 한국어, Tiếng Việt",
+  "Five spoken and translated languages: English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)",
   "Detects the spoken language automatically, or lock a single language when you know what will be spoken",
   "Global shortcuts to start, show or hide, lock and scroll the subtitles without leaving your meeting app",
   "A menu bar icon keeps the app running when you close the window",
@@ -167,7 +181,7 @@ ${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech 
 ${feature({ icon: "video", title: "Any meeting app, no bot", text: "There is no bot to invite and no plugin to install. Anything that plays sound on your computer can become subtitles." })}
 ${feature({ icon: "book", title: "Glossary", text: "Teach it your names, product names and industry terms. Terms are passed to the translator as hints (up to 500, with CSV import and export; a Pro feature)." })}
 ${feature({ icon: "history", title: "History and export", text: "Save transcripts on your computer, encrypted, and export them as TXT, SRT or Markdown. History is off by default, so you decide (a Pro feature)." })}
-${feature({ icon: "languages", title: "Five languages", text: "English, 中文, 日本語, 한국어 and Tiếng Việt, translated between any two of them. We plan to add more languages in the future. The app interface is available in Vietnamese and English." })}
+${feature({ icon: "languages", title: "Five languages", text: "English, Chinese (中文), Japanese (日本語), Korean (한국어) and Vietnamese (Tiếng Việt), translated between any two of them. We plan to add more languages in the future. The app interface is available in Vietnamese and English." })}
 </div>
 <div class="stats reveal">
 <div class="stat"><b>&lt; 1.1 s</b><span>median delay from the moment a speaker finishes a sentence to the full translation appearing (Mac M4 Pro, Standard pack)</span></div>

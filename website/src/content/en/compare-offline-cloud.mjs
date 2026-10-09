@@ -98,8 +98,8 @@ ${docLayout({
 <p>The cost moves to your machine: RAM, disk and power (we have not measured battery use). See <a href="/en/pricing/">pricing</a>.</p>
 
 <h2 id="latency-hardware-languages">Latency, hardware requirements and languages</h2>
-<p>Cloud pushes the heavy work to servers, so it can run on weak machines, but latency also depends on your connection. Offline translation needs a capable computer: AI Translator needs at least 8 GB of RAM (16 GB recommended), a Mac with Apple Silicon on macOS 14.2 or later, and a one-time model download of 1.3 GB (Lite) or 2.5 GB (Standard).</p>
-<p>On a Mac M4 Pro the median latency is 0.76–1.03 seconds with the Standard pack. Less powerful machines will see higher latency; we have not measured an M1 Mac. Cloud services usually support more languages than AI Translator's five (English, 中文, 日本語, 한국어, Tiếng Việt). We do not compare translation quality, because there is no shared measurement.</p>
+<p>Cloud pushes the heavy work to servers, so it can run on weak machines, but latency also depends on your connection. Offline translation needs a capable computer: AI Translator needs at least 8 GB of RAM (16 GB recommended), a Mac with Apple Silicon on macOS 14.2 or later (or Windows 10/11 64-bit with an AVX2 CPU), and a one-time model download of 1.3 GB (Lite) or 2.5 GB (Standard).</p>
+<p>On a Mac M4 Pro the median latency is 0.76–1.03 seconds with the Standard pack. Less powerful machines will see higher latency; we have not measured an M1 Mac. Cloud services usually support more languages than AI Translator's five (English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)). We do not compare translation quality, because there is no shared measurement.</p>
 
 <h2 id="updates-integration">Model updates and integration</h2>
 <p>A cloud service is updated by its provider on the server, so you get improvements without doing anything. An offline model stays as it is on your machine until you download a new one; the app asks before downloading.</p>

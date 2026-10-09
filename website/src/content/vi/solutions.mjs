@@ -32,7 +32,7 @@ ${sectionHead({ eyebrow: "Điểm chung", title: "Điều gì giống nhau ở m
 <div class="grid grid-2">
 ${feature({ icon: "speaker", title: "Nghe âm thanh hệ thống", text: "App thu âm thanh đang phát trên máy tính, nên chạy với mọi app và trang web phát tiếng. Không cần bot, plugin hay tài khoản trên nền tảng." })}
 ${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng giọng nói và dịch chạy trên máy bạn. Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. Xem <a href=\"/bao-mat-du-lieu/\">dữ liệu và bảo mật</a>." })}
-${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "English, 中文, 日本語, 한국어 và Tiếng Việt, cho cả âm thanh nguồn lẫn bản dịch. Bạn chọn ngôn ngữ muốn đọc." })}
+${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어) và tiếng Việt, cho cả âm thanh nguồn lẫn bản dịch. Bạn chọn ngôn ngữ muốn đọc." })}
 ${feature({ icon: "captions", title: "Thanh phụ đề nổi", text: "Một thanh luôn nằm trên cùng, không lấy focus của app đang mở. Kéo, đổi cỡ chữ, khóa để chuột xuyên qua. Xem <a href=\"/tinh-nang/\">tất cả tính năng</a>." })}
 </div>
 </div></section>
@@ -42,7 +42,7 @@ ${sectionHead({ eyebrow: "Trước khi bắt đầu", title: "Cần chuẩn bị
 <div class="reveal">${facts([
   ["Nền tảng", "macOS 14.2+ trên Apple Silicon và Windows 10/11 x64<small>Mac Intel và Windows ARM64: chưa hỗ trợ</small>"],
   ["Máy", "RAM tối thiểu 8 GB, khuyến nghị 16 GB<small>Tải model một lần: 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)</small>"],
-  ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Giao diện app: Tiếng Việt và English</small>"],
+  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Giao diện app: Tiếng Việt và English</small>"],
   ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
 ])}</div>
 </div></section>

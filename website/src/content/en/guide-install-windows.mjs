@@ -34,7 +34,7 @@ export default {
   path: "/en/guide/install-windows/",
   title: "Install AI Translator on Windows",
   description:
-    "Install AI Translator on Windows 10/11 with one PowerShell command, no SmartScreen; or from the .exe, with SHA-256 check, Smart App Control, updates, uninstall.",
+    "One PowerShell command downloads, verifies and installs the app for your account only, with no SmartScreen screen. Also: the .exe route, updates, uninstall.",
   type: "article",
   schemaType: "TechArticle",
   breadcrumbs: crumbs,

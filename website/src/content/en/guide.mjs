@@ -13,7 +13,7 @@ export default {
   path: "/en/guide/",
   title: "AI Translator user guides: install, shortcuts, fixes",
   description:
-    "Step-by-step AI Translator guides: install on macOS or Windows, audio permission, subtitle bar and shortcuts, glossary, history, buying a key and troubleshooting.",
+    "Nine step-by-step guides: install on macOS or Windows, recording permission, subtitle bar and shortcuts, glossary, history and export, buying a key, troubleshooting.",
   schemaType: "CollectionPage",
   breadcrumbs: crumbs,
   modified: "2026-10-08",

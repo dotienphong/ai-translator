@@ -31,7 +31,7 @@ ${pageHero({
 <div class="reveal">${facts([
   ["Works with", "Anything that plays sound on your computer<small>Browsers, media players, course platforms, webinar tools</small>"],
   ["Extra installs", "None besides the app itself<small>No browser extension, no plugin, no sign-in account</small>"],
-  ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>You choose the language you want to read</small>"],
+  ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>You choose the language you want to read</small>"],
   ["Long sessions", "Ran for 5 hours 23 minutes without an error<small>Mac M4 Pro, macOS, ad-hoc signed release build, tested once</small>"],
 ])}</div>
 </div></section>

@@ -33,7 +33,7 @@ export default {
   path: "/en/guide/install-macos/",
   title: "Install AI Translator on macOS",
   description:
-    "Install AI Translator on macOS with one Terminal command and open it right away, no Open Anyway; or from the .dmg, with SHA-256 check, updates and uninstalling.",
+    "One Terminal command downloads, verifies and opens the app, no Open Anyway step. Also: install from the .dmg, check SHA-256, update and uninstall.",
   type: "article",
   schemaType: "TechArticle",
   breadcrumbs: crumbs,

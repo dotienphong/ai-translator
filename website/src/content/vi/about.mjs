@@ -1,3 +1,4 @@
+import { RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, feature, linkCard, callout, facts, ctaBand } from "../../build/components.mjs";
 import { SITE } from "../../site.mjs";
 
@@ -32,9 +33,9 @@ ${pageHero({
 <div class="reveal">${facts([
   ["Sản phẩm", "Phụ đề dịch trực tiếp cho cuộc họp, webinar và video<small>Nhận dạng giọng nói và dịch chạy trên máy bạn</small>"],
   ["Bên cung cấp", "Đỗ Tiến Phong (cá nhân)<small>Nhà phát triển cá nhân</small>"],
-  ["Trạng thái", "Đã phát hành<small>macOS 14.2+ (Apple Silicon) và Windows 10/11 64-bit</small>"],
+  ["Trạng thái", `${RELEASE.vi}<small>macOS 14.2+ (Apple Silicon) và Windows 10/11 64-bit</small>`],
   ["Hỗ trợ", `${MAIL}<small>Bạn có thể viết bằng tiếng Việt hoặc English</small>`],
-  ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Giao diện app có tiếng Việt và English</small>"],
+  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Giao diện app có tiếng Việt và English</small>"],
   ["Giấy phép", "Sản phẩm thương mại, không phải mã nguồn mở<small>Có dùng các thành phần mã nguồn mở của bên thứ ba</small>"],
 ])}</div>
 </div></section>
@@ -44,7 +45,7 @@ ${sectionHead({ eyebrow: "Câu chuyện", title: "Vì sao có AI Translator" })}
 <div class="prose">
 <p>Ý tưởng ban đầu là chuyển một app dịch offline cho Android (mã nguồn mở) sang dịch cuộc gọi và cuộc họp. Chúng tôi sớm chạm vào một giới hạn của hệ điều hành. Android chỉ cho ứng dụng bên thứ ba thu âm thanh phát ra từ media và trò chơi; âm thanh của cuộc gọi và cuộc gọi VoIP thì không, và khi đang có cuộc gọi, micro của app thường chỉ nhận được im lặng.</p>
 <p>Trên máy tính thì khác. Cả Windows lẫn macOS (từ bản 14.2) đều có cách cho phép một ứng dụng thu chính âm thanh đang phát ra từ máy. Hướng đi vì thế chuyển sang máy tính: một app nghe âm thanh hệ thống, nhận dạng giọng nói, dịch rồi hiện phụ đề, dùng được với bất kỳ app họp nào mà không cần bot hay plugin.</p>
-<p>Khi tìm hiểu (tháng 9/2026), chúng tôi thấy phụ đề dịch của các app họp lớn thường nằm ở gói trả phí cao hơn và xử lý trên cloud; công cụ của bên thứ ba phần lớn cũng vậy. Chúng tôi muốn một lựa chọn khác: xử lý hoàn toàn trên máy bạn, dùng được với mọi app họp, chú trọng tiếng Việt, và vì không có máy chủ nào dịch hộ nên chúng tôi không phải trả thêm chi phí hạ tầng cho từng phút bạn dùng. <a href="/so-sanh/dich-offline-va-cloud/">So sánh dịch offline và dịch cloud</a>.</p>
+<p>Khi tìm hiểu (tháng 9/2026), chúng tôi thấy phụ đề dịch của các app họp lớn thường nằm ở gói trả phí cao hơn và xử lý trên cloud; công cụ của bên thứ ba nhiều công cụ khác cũng vậy. Chúng tôi muốn một lựa chọn khác: xử lý hoàn toàn trên máy bạn, dùng được với mọi app họp, chú trọng tiếng Việt, và vì không có máy chủ nào dịch hộ nên chúng tôi không phải trả thêm chi phí hạ tầng cho từng phút bạn dùng. <a href="/so-sanh/dich-offline-va-cloud/">So sánh dịch offline và dịch cloud</a>.</p>
 <p>Model dịch được chọn bằng số đo. Trong thử nghiệm nội bộ ngày 29/09/2026 trên 320 câu văn bản (năm chiều dịch, chạy trên Mac M4 Pro), model được chọn đạt điểm chất lượng dịch tự động 0,837, trong khi ba model dịch khác được thử cùng điều kiện đạt từ 0,736 đến 0,833. Đó là phép thử trên văn bản chứ chưa phải giọng nói thật, và chúng tôi không so với bất kỳ dịch vụ cloud nào.</p>
 </div>
 </div></section>

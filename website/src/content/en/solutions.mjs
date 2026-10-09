@@ -32,7 +32,7 @@ ${sectionHead({ eyebrow: "What they share", title: "What stays the same in every
 <div class="grid grid-2">
 ${feature({ icon: "speaker", title: "It listens to system audio", text: "The app captures the sound playing on your computer, so it works with any app or web page that makes noise. No bot, no plugin and no account on the meeting or video platform." })}
 ${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech recognition and translation run on your machine. Audio stays in memory: it is not written to disk and not sent anywhere. See <a href=\"/en/data-security/\">data and security</a>." })}
-${feature({ icon: "languages", title: "Five languages", text: "English, 中文, 日本語, 한국어 and Tiếng Việt, for both the spoken audio and the translation. You choose the language you want to read." })}
+${feature({ icon: "languages", title: "Five languages", text: "English, Chinese (中文), Japanese (日本語), Korean (한국어) and Vietnamese (Tiếng Việt), for both the spoken audio and the translation. You choose the language you want to read." })}
 ${feature({ icon: "captions", title: "A floating subtitle bar", text: "One bar that always stays on top and never takes focus from the app you are using. Drag it, resize the text, lock it so the mouse passes through. See <a href=\"/en/features/\">all features</a>." })}
 </div>
 </div></section>
@@ -42,7 +42,7 @@ ${sectionHead({ eyebrow: "Before you start", title: "What you need", center: tru
 <div class="reveal">${facts([
   ["Platform", "macOS 14.2 or later on Apple Silicon and Windows 10/11 x64<small>Intel Macs and Windows ARM64: not supported</small>"],
   ["Computer", "At least 8 GB of RAM, 16 GB recommended<small>One-time model download: 1.3 GB (Lite) or 2.5 GB (Standard)</small>"],
-  ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>App interface: English and Vietnamese</small>"],
+  ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>App interface: English and Vietnamese</small>"],
   ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR, no automatic renewal</small>"],
 ])}</div>
 </div></section>

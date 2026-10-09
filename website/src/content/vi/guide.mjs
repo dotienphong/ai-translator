@@ -13,7 +13,7 @@ export default {
   path: "/huong-dan/",
   title: "Hướng dẫn sử dụng AI Translator",
   description:
-    "Hướng dẫn sử dụng AI Translator từng bước: cài đặt trên macOS và Windows, cấp quyền ghi âm, thanh phụ đề và phím tắt, từ điển, lịch sử, mua key và khắc phục sự cố.",
+    "Chín bài hướng dẫn từng bước: cài trên macOS và Windows, cấp quyền ghi âm, phím tắt, từ điển thuật ngữ, xuất bản chép lời, mua key và sửa lỗi thường gặp.",
   schemaType: "CollectionPage",
   breadcrumbs: crumbs,
   modified: "2026-10-08",

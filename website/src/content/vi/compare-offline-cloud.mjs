@@ -45,9 +45,9 @@ export default {
   id: "compare-offline-cloud",
   lang: "vi",
   path: "/so-sanh/dich-offline-va-cloud/",
-  title: "Dịch offline và dịch cloud: khác nhau thế nào?",
+  title: "Dịch cuộc họp offline hay cloud: khác nhau thế nào?",
   description:
-    "So sánh cân bằng dịch cuộc họp offline và cloud: quyền riêng tư, internet, bot, chi phí, độ trễ, phần cứng, số ngôn ngữ, và khi nào nên chọn cách nào.",
+    "Tổng quan dịch họp offline và online (cloud): quyền riêng tư, cần mạng hay không, bot, chi phí, độ trễ, cấu hình máy, số ngôn ngữ và khi nào chọn cách nào.",
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
@@ -98,8 +98,8 @@ ${docLayout({
 <p>Chi phí chuyển sang máy bạn: RAM, ổ đĩa, điện năng (chưa đo pin). Xem <a href="/bang-gia/">bảng giá</a>.</p>
 
 <h2 id="tre-may-ngon-ngu">Độ trễ, yêu cầu máy và số ngôn ngữ</h2>
-<p>Cloud đẩy việc nặng sang máy chủ nên chạy được cả trên máy yếu, nhưng độ trễ còn phụ thuộc đường truyền. Dịch offline cần máy đủ mạnh: AI Translator cần RAM tối thiểu 8 GB (khuyến nghị 16 GB), Mac Apple Silicon với macOS 14.2 trở lên, và tải model một lần 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn).</p>
-<p>Trên Mac M4 Pro, độ trễ trung vị là 0,76–1,03 giây với gói model Chuẩn. Máy yếu hơn sẽ chậm hơn; chưa đo Mac M1. Dịch vụ cloud thường hỗ trợ nhiều ngôn ngữ hơn năm ngôn ngữ của AI Translator (English, 中文, 日本語, 한국어, Tiếng Việt). Chúng tôi không so chất lượng dịch vì chưa có phép đo chung.</p>
+<p>Cloud đẩy việc nặng sang máy chủ nên chạy được cả trên máy yếu, nhưng độ trễ còn phụ thuộc đường truyền. Dịch offline cần máy đủ mạnh: AI Translator cần RAM tối thiểu 8 GB (khuyến nghị 16 GB), Mac Apple Silicon với macOS 14.2 trở lên (hoặc Windows 10/11 64-bit có CPU hỗ trợ AVX2), và tải model một lần 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn).</p>
+<p>Trên Mac M4 Pro, độ trễ trung vị là 0,76–1,03 giây với gói model Chuẩn. Máy yếu hơn sẽ chậm hơn; chưa đo Mac M1. Dịch vụ cloud thường hỗ trợ nhiều ngôn ngữ hơn năm ngôn ngữ của AI Translator (tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt). Chúng tôi không so chất lượng dịch vì chưa có phép đo chung.</p>
 
 <h2 id="cap-nhat-tich-hop">Cập nhật model và độ tích hợp</h2>
 <p>Cloud được nhà cung cấp cập nhật phía máy chủ nên bạn nhận bản mới mà không phải làm gì. Model offline giữ nguyên trên máy cho tới khi bạn tải bản mới; app hỏi trước khi tải.</p>

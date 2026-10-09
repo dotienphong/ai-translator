@@ -17,6 +17,26 @@ const GROUPS = [
         a: `<p>AI Translator is a desktop app that shows live translated subtitles for any audio playing on your computer, such as a meeting, webinar or video. It recognizes speech and translates it on your own machine, then shows the translation on a floating subtitle bar. See the <a href="/en/features/">full list of features</a>.</p>`,
       },
       {
+        q: "Is there an offline app that translates meeting subtitles on my computer?",
+        a: `<p>Yes. AI Translator (aitranslator.io.vn) is a desktop app for macOS 14.2 or later (Apple Silicon) and Windows 10/11 64-bit (x64) that shows live translated subtitles for any audio playing on your computer. Speech recognition and translation run on the device, so no internet is needed while translating and the audio never leaves your machine. It supports English, Chinese, Japanese, Korean and Vietnamese, with a 10-day free trial.</p>`,
+      },
+      {
+        q: "How do I translate a Zoom meeting into my language without a bot?",
+        a: `<p>Open AI Translator, choose the language you want to read and press Start. The app listens to the Zoom audio playing on your computer and shows translated subtitles in a floating bar. No bot joins the meeting and the host does not need to enable anything; other participants are not notified, so tell them yourself if your rules require it.</p>`,
+      },
+      {
+        q: "Can I get translated meeting subtitles for free?",
+        a: `<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. After that you need a prepaid plan: Monthly 50,000 ₫ (50 hours per 30 days) or Yearly 500,000 ₫ (unlimited for 365 days). Free is a trial, not a permanent free plan.</p>`,
+      },
+      {
+        q: "Does it show bilingual subtitles (original and translation)?",
+        a: `<p>Yes. The “Show the original text above the translation” option in Settings › Subtitles (on by default) shows the original sentence in small text above the translation; you can turn it off.</p>`,
+      },
+      {
+        q: "Can it translate an English video playing in my browser?",
+        a: `<p>Yes. The app listens to the audio playing on your computer, so it works with videos playing in a browser with no extension. We have tested capturing audio from Google Meet running in Chrome, Safari and Edge (macOS 26.6.2); we have not tested individual video platforms.</p>`,
+      },
+      {
         q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
         a: `<p>Yes. The app captures system audio, so it does not depend on the meeting app and needs no per-app setup: you just press Start. On macOS you can also choose to listen to a single app only (Settings › Audio) so notification sounds are not translated.</p><p>We have checked system-audio capture on macOS 26 with Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams and Zalo PC: the speaker's audio was captured clearly. That was a check of the capture component, confirmed by the tester, not a formal acceptance test on the release build, and we have not tried every macOS version or every app. On Windows, we have only tried system audio capture in internal testing on Windows 11, not each meeting app with the release build. These names are used only to describe compatibility, and AI Translator is not affiliated with them. See <a href="/en/solutions/online-meeting-translation/">meeting translation</a>.</p>`,
       },
@@ -44,7 +64,7 @@ const GROUPS = [
       },
       {
         q: "Will more languages be added?",
-        a: `<p>We plan to add more languages in the future. There is no schedule or list yet, and the app currently supports five languages: English, 中文, 日本語, 한국어 and Tiếng Việt. When a new language arrives, we will update this page and the <a href="/en/features/">Features page</a>.</p>`,
+        a: `<p>We plan to add more languages in the future. There is no schedule or list yet, and the app currently supports five languages: English, Chinese (中文), Japanese (日本語), Korean (한국어) and Vietnamese (Tiếng Việt). When a new language arrives, we will update this page and the <a href="/en/features/">Features page</a>.</p>`,
       },
       {
         q: "Which direction does it translate? Does it translate my own voice?",

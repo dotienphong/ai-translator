@@ -35,7 +35,7 @@ export default {
   path: "/huong-dan/cai-dat-windows/",
   title: "Cài đặt AI Translator trên Windows",
   description:
-    "Cài AI Translator trên Windows 10/11 bằng một dòng lệnh PowerShell, không qua SmartScreen; hoặc từ file .exe, kiểm SHA-256, Smart App Control, cập nhật, gỡ.",
+    "Một dòng lệnh PowerShell tải, kiểm SHA-256 và cài app cho riêng tài khoản của bạn, không qua SmartScreen. Kèm cách cài từ .exe, cập nhật và gỡ.",
   type: "article",
   schemaType: "TechArticle",
   breadcrumbs: crumbs,

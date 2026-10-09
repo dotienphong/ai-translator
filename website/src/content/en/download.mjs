@@ -1,3 +1,4 @@
+import { RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, steps, callout, facts, ctaBand, feature, icon, faq, cmdBlock, chips, flow, osTabs } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
@@ -176,7 +177,7 @@ export default {
   id: "download",
   lang: "en",
   path: "/en/download/",
-  title: "Get AI Translator: one-line install for macOS and Windows",
+  title: "Download AI Translator for macOS and Windows: one-line install",
   description:
     "Get AI Translator: install on macOS 14.2+ (Apple Silicon) or Windows 10/11 with one command, opens right away, no Open Anyway. 10-day free trial.",
   software: true,
@@ -214,6 +215,7 @@ ${osTabs({
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "At a glance", title: "Free trial and pricing", center: true })}
 <div class="reveal">${facts([
+  ["Current version", RELEASE.en],
   ["Status", "Released. Both macOS and Windows install with one command"],
   ["Free trial", "10 days, 30 minutes per day<small>No card, no account</small>"],
   ["Price afterwards", "Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Paid in VND by bank transfer from a Vietnamese bank (VietQR)</small>"],

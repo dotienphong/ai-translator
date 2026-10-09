@@ -17,7 +17,7 @@ export const SITE = {
   llmSummaryVi:
     "AI Translator là app desktop (macOS và Windows) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và xử lý mọi thứ ngay trên máy bằng model AI chạy tại chỗ: độ trễ thấp, không gửi âm thanh hay dữ liệu cuộc hội thoại lên cloud, không dùng dịch vụ AI trên cloud, không cần bot, không cần tài khoản, không quảng cáo. Hiện hỗ trợ năm ngôn ngữ; dự định bổ sung thêm trong tương lai.",
   featureListVi: [
-    "Phụ đề dịch trực tiếp cho âm thanh hệ thống, năm ngôn ngữ (English, 中文, 日本語, 한국어, Tiếng Việt)",
+    "Phụ đề dịch trực tiếp cho âm thanh hệ thống, năm ngôn ngữ (tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt)",
     "Nhận dạng giọng nói và dịch chạy trên máy, âm thanh không rời khỏi máy",
     "Thanh phụ đề nổi tùy chỉnh: kéo, đổi kích thước, khóa click xuyên qua, cỡ chữ và màu",
     "Dùng với mọi app họp, webinar và video, không cần bot hay plugin",
@@ -25,7 +25,7 @@ export const SITE = {
     "Phím tắt toàn cục và biểu tượng trên thanh menu (macOS) hoặc khay hệ thống (Windows)",
   ],
   featureListEn: [
-    "Live translated subtitles for system audio in five languages (English, 中文, 日本語, 한국어, Tiếng Việt)",
+    "Live translated subtitles for system audio in five languages (tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt)",
     "Speech recognition and translation run on-device; audio never leaves the machine",
     "Customizable floating subtitle bar: drag, resize, click-through lock, text size and colors",
     "Works with any meeting app, webinar or video, with no bot or plugin",
@@ -200,3 +200,11 @@ const OG_GROUP = {
   "solutions-webinar": "solutions", terms: "legal", privacy: "legal",
 };
 export const ogFor = (page) => page.ogImage ?? `/assets/og/${page.id.startsWith("guide") ? "guide" : (OG_GROUP[page.id] ?? "default")}-${page.lang}.jpg`;
+
+// Dòng "phiên bản hiện tại" dùng ở trang chủ, Tải xuống, Giới thiệu: sinh từ SITE để không lệch số phiên bản và ngày phát hành.
+const dmy = (iso) => iso.split("-").reverse().join("/");
+const longEn = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+export const RELEASE = {
+  vi: `Phiên bản ${SITE.version}, phát hành ${dmy(SITE.releaseDate)} cho macOS và Windows`,
+  en: `Version ${SITE.version}, released ${longEn(SITE.releaseDate)} for macOS and Windows`,
+};
