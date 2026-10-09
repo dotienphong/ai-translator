@@ -14,6 +14,7 @@ import {
   embeddedErrors,
   macosErrors,
   main,
+  isVcRuntime,
   parseDumpbinDependents,
   parseOtoolLibraries,
   parseOtoolMinOs,
@@ -208,7 +209,7 @@ test("đọc dumpbin /dependents, kể cả phần delay load", () => {
   assert.deepEqual(parseDumpbinDependents("File Type: EXECUTABLE IMAGE"), []);
 });
 
-test("Windows: C runtime của Visual C++ luôn là lỗi; DLL cạnh file là lỗi khi --no-local-libs", () => {
+test("Windows: C runtime của Visual C++ phải nằm cạnh file (trừ asr-worker: luôn là lỗi); DLL cạnh file là lỗi khi --no-local-libs", () => {
   const dlls = parseDumpbinDependents(DUMPBIN);
   assert.deepEqual(windowsErrors("asr-worker-vulkan.exe", dlls, ["ggml-base.dll", "llama.dll"], true), [
     "asr-worker-vulkan.exe cần C runtime của Visual C++: VCRUNTIME140.dll",
@@ -221,6 +222,27 @@ test("Windows: C runtime của Visual C++ luôn là lỗi; DLL cạnh file là l
     "llama-server.exe cần C runtime của Visual C++: vcomp140.dll",
   ]);
   assert.deepEqual(windowsErrors("x.exe", ["KERNEL32.dll", "api-ms-win-crt-heap-l1-1-0.dll"], [], true), []);
+  // Đóng kèm cạnh file thì được; bản debug hay asr-worker thì không.
+  assert.deepEqual(
+    windowsErrors("llama.dll", ["VCRUNTIME140.dll", "MSVCP140.dll"], ["vcruntime140.dll", "msvcp140.dll"], false),
+    [],
+  );
+  assert.deepEqual(windowsErrors("llama.dll", ["MSVCP140D.dll"], ["msvcp140d.dll"], false), [
+    "llama.dll cần C runtime của Visual C++: MSVCP140D.dll",
+  ]);
+  assert.deepEqual(windowsErrors("asr-worker-cpu.exe", ["VCRUNTIME140.dll"], ["vcruntime140.dll"], true), [
+    "asr-worker-cpu.exe cần C runtime của Visual C++: VCRUNTIME140.dll",
+    "asr-worker-cpu.exe nạp DLL nằm cạnh nó: VCRUNTIME140.dll",
+  ]);
+});
+
+test("isVcRuntime nhận C runtime của Visual C++, không nhận DLL của hệ thống hay của ggml", () => {
+  for (const name of ["vcruntime140.dll", "VCRUNTIME140_1.dll", "msvcp140.dll", "MSVCP140_1.dll", "vcomp140.dll", "concrt140.dll"]) {
+    assert.ok(isVcRuntime(name), name);
+  }
+  for (const name of ["KERNEL32.dll", "ggml.dll", "llama.dll", "api-ms-win-crt-heap-l1-1-0.dll", "ucrtbase.dll"]) {
+    assert.ok(!isVcRuntime(name), name);
+  }
 });
 
 test("ngưỡng dung lượng tính bằng byte, bằng ngưỡng vẫn đạt", () => {

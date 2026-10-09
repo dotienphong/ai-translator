@@ -16,8 +16,10 @@
 //       Mọi thư viện mà file Mach-O nạp đều là của hệ thống (/System/Library, /usr/lib), và bản macOS tối thiểu của file
 //       không cao hơn --min-os.
 //   node scripts/release/release-check.mjs deps-windows <file>... [--no-local-libs]
-//       Đọc `dumpbin /dependents`: không file nào cần C runtime của Visual C++ (VCRUNTIME, MSVCP, VCOMP; C9 của kế hoạch 00);
-//       với --no-local-libs (asr-worker), không DLL nào nằm cạnh file, nên không có DLL ggml (C11).
+//       Đọc `dumpbin /dependents`: file nào cần C runtime của Visual C++ (VCRUNTIME, MSVCP, VCOMP; C9 của kế hoạch 00) thì
+//       DLL đó phải nằm cạnh file (đóng kèm, bản không phải debug), không được trông vào máy khách; với --no-local-libs
+//       (asr-worker, link CRT tĩnh), không file nào được cần C runtime và không DLL nào nằm cạnh file, nên không có DLL
+//       ggml (C11).
 //   node scripts/release/release-check.mjs size <file> --max-bytes <số>
 //       Dung lượng bộ cài không vượt ngưỡng (spec §6.11: 60 MB, tính 60 000 000 byte).
 //   node scripts/release/release-check.mjs sha256sums <file>... --out <file>
@@ -171,12 +173,24 @@ export function parseDumpbinDependents(text) {
 
 const VC_RUNTIME = /^(vcruntime|msvcp|vcomp|concrt|vccorlib|ucrtbased)\d*.*\.dll$/i;
 
-/** Lỗi của một file PE: cần C runtime của Visual C++; với `noLocalLibs`, có DLL nằm cạnh file (trong `localDlls`). */
+/** DLL là C runtime của Visual C++ (bản phát hành hay debug). */
+export function isVcRuntime(name) {
+  return VC_RUNTIME.test(name);
+}
+
+/**
+ * Lỗi của một file PE. C runtime của Visual C++ mà file cần chỉ chấp nhận khi DLL đó nằm cạnh file (đóng kèm trong bản cài,
+ * không trông vào máy khách) và không phải bản debug; với `noLocalLibs` (asr-worker, CRT tĩnh) thì luôn là lỗi, và có DLL
+ * nằm cạnh file (trong `localDlls`) cũng là lỗi.
+ */
 export function windowsErrors(file, dlls, localDlls, noLocalLibs) {
   const errors = [];
   const local = new Set(localDlls.map((name) => name.toLowerCase()));
   for (const dll of dlls) {
-    if (VC_RUNTIME.test(dll)) errors.push(`${file} cần C runtime của Visual C++: ${dll}`);
+    if (VC_RUNTIME.test(dll)) {
+      const bundled = !noLocalLibs && local.has(dll.toLowerCase()) && !/d\.dll$/i.test(dll);
+      if (!bundled) errors.push(`${file} cần C runtime của Visual C++: ${dll}`);
+    }
     if (noLocalLibs && local.has(dll.toLowerCase())) errors.push(`${file} nạp DLL nằm cạnh nó: ${dll}`);
   }
   return errors;

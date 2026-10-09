@@ -155,6 +155,12 @@ export function nativeComponents(llamaSrc, llamaTag) {
       files: [join(root, "licenses/native/Vulkan-Headers-LICENSE.md"), join(root, "licenses/native/Vulkan-Headers-MIT.txt")],
     },
     {
+      title: "Microsoft Visual C++ runtime (Windows) - in llama-server and its DLLs",
+      text:
+        "vcruntime140.dll, vcruntime140_1.dll and msvcp140.dll are redistributed unmodified, as shipped in the Redist folder of\n" +
+        'Microsoft Visual Studio, under the "Distributable Code" terms of the Visual Studio license. They are signed by Microsoft.\n',
+    },
+    {
       title: "FLEURS sample sentence of the listen test (CC BY 4.0), Google",
       files: [join(root, "public/listen-test-en.LICENSE.txt")],
     },

@@ -5,9 +5,14 @@
 //     `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded` cho whisper.cpp), vì cờ /DEPENDENTLOADFLAG:0x800 chỉ cho DLL import thẳng
 //     nằm trong System32 (02a QĐ32; C9 của kế hoạch 00);
 //   - llama-server: llama.cpp ở commit khóa trong versions.env, `GGML_BACKEND_DL` và `GGML_CPU_ALL_VARIANTS` (dòng 210),
-//     Vulkan, CRT tĩnh, không OpenMP (vcomp140.dll là C runtime), không web UI, không HTTPS; mọi DLL đi cùng thư mục.
-// Rồi kiểm bằng dumpbin: không file nào cần C runtime của Visual C++, hai bản asr-worker không nạp DLL nào nằm cạnh nó
-// (không có DLL ggml, C11), và in bảng SHA-256.
+//     Vulkan, không OpenMP (vcomp140.dll là C runtime), không web UI, không HTTPS; mọi DLL đi cùng thư mục. CRT ĐỘNG
+//     (`/MD`), kèm vcruntime140.dll, vcruntime140_1.dll, msvcp140.dll… chép từ bộ Redist của Visual Studio vào cùng thư
+//     mục: llama.cpp là nhiều DLL (llama, ggml-base, backend) trao đổi con trỏ `FILE*` và bộ nhớ với nhau, mà mỗi DLL link
+//     CRT tĩnh có một CRT riêng, nên bản `/MT` chết ngay khi nạp model (0xc0000409, FAST_FAIL_INVALID_ARG trong llama.dll;
+//     bản 0.1.1). Bản chính thức của llama.cpp cũng build `/MD`.
+// Rồi kiểm bằng dumpbin: C runtime của Visual C++ chỉ được nằm cạnh file cần nó (đã đóng kèm), hai bản asr-worker không cần
+// C runtime nào và không nạp DLL nào nằm cạnh nó (không có DLL ggml, C11), và in bảng SHA-256. CI còn chạy
+// `smoke-llama-windows.mjs`: nạp một model nhỏ và dịch thử một câu bằng đúng các file này.
 //
 //   node scripts/release/build-sidecars-windows.mjs              # trên Windows, cần Vulkan SDK (install-tools.mjs vulkan-sdk)
 //   node scripts/release/build-sidecars-windows.mjs --sign-only  # chỉ ký file đã có trong binaries/ rồi kiểm
@@ -19,9 +24,10 @@
 
 import { execFileSync, execSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { isVcRuntime, parseDumpbinDependents } from "./release-check.mjs";
 import { readVersions, root } from "./versions.mjs";
 
 export const TRIPLE = "x86_64-pc-windows-msvc";
@@ -48,7 +54,10 @@ export function mergeEnv(base, ...extras) {
   return out;
 }
 
-/** Các bước build, theo thứ tự: { run: [lệnh, ...tham số], env?, cwd? } hoặc { copy: [từ, tới] } hoặc { dlls: [từ, tới] }. */
+/**
+ * Các bước build, theo thứ tự: { run: [lệnh, ...tham số], env?, cwd? } hoặc { copy: [từ, tới] } hoặc { dlls: [từ, tới] }
+ * hoặc { vcRuntime: thư mục } (chép C runtime của Visual C++ mà các file trong thư mục đó cần).
+ */
 export function steps({ work, target, out, versions }) {
   // RUSTFLAGS thay hẳn rustflags của .cargo/config.toml, nên nhắc lại cờ DEPENDENTLOADFLAG ở đây.
   const crt = {
@@ -80,7 +89,7 @@ export function steps({ work, target, out, versions }) {
         "Ninja",
         "-DCMAKE_BUILD_TYPE=Release",
         "-DBUILD_SHARED_LIBS=ON",
-        "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded",
+        "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL",
         "-DGGML_NATIVE=OFF",
         "-DGGML_BACKEND_DL=ON",
         "-DGGML_CPU_ALL_VARIANTS=ON",
@@ -102,6 +111,7 @@ export function steps({ work, target, out, versions }) {
     { run: ["cmake", "--build", build, "--config", "Release"] },
     { copy: [join(build, "bin", "llama-server.exe"), join(out, `llama-server-${TRIPLE}.exe`)] },
     { dlls: [join(build, "bin"), out] },
+    { vcRuntime: out },
   ];
 }
 
@@ -111,11 +121,50 @@ function show(step) {
     return `${env}${step.run.map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(" ")}`;
   }
   if (step.copy) return `copy ${step.copy[0]} -> ${step.copy[1]}`;
+  if (step.vcRuntime) return `copy C runtime của Visual C++ (Redist) mà file trong ${step.vcRuntime} cần -> ${step.vcRuntime}`;
   return `copy ${step.dlls[0]}\\*.dll -> ${step.dlls[1]}`;
 }
 
+/** Thư mục chứa C runtime của Visual C++ (bản x64, đúng bộ công cụ vừa build): `$VCToolsRedistDir/x64/Microsoft.VC*.CRT`. */
+export function redistCrtDir(msvc) {
+  const redist = msvc.VCToolsRedistDir ?? msvc.VCTOOLSREDISTDIR;
+  if (!redist) throw new Error("vcvars64.bat không đặt VCToolsRedistDir: thiếu thành phần Redist của Visual Studio");
+  const x64 = join(redist, "x64");
+  const dir = readdirSync(x64).find((name) => /^Microsoft\.VC\d+\.CRT$/i.test(name));
+  if (!dir) throw new Error(`không thấy Microsoft.VC*.CRT trong ${x64}`);
+  return join(x64, dir);
+}
+
+/**
+ * Chép C runtime của Visual C++ mà các file trong `out` cần (kể cả cái mà chính các DLL runtime đó cần) từ bộ Redist của
+ * Visual Studio vào `out`. Redist của bộ công cụ dùng để build luôn mới hơn hay bằng bản mọi máy đã có; DLL cạnh file thì
+ * được nạp trước DLL của System32. Thiếu DLL trong Redist là lỗi, không để máy khách tự tìm.
+ */
+export function bundleVcRuntime(out, msvc) {
+  const crtDir = redistCrtDir(msvc);
+  const available = new Map(readdirSync(crtDir).map((name) => [name.toLowerCase(), name]));
+  const copied = new Set();
+  const queue = readdirSync(out)
+    .filter((name) => /\.(exe|dll)$/i.test(name))
+    .map((name) => join(out, name));
+  while (queue.length > 0) {
+    const file = queue.shift();
+    const text = execFileSync("dumpbin", ["/nologo", "/dependents", file], { encoding: "utf8", env: mergeEnv(process.env, msvc) });
+    for (const dll of parseDumpbinDependents(text).filter(isVcRuntime)) {
+      const key = dll.toLowerCase();
+      if (copied.has(key)) continue;
+      const name = available.get(key);
+      if (!name || /d\.dll$/i.test(dll)) throw new Error(`${basename(file)} cần ${dll}, không có trong ${crtDir}`);
+      copyFileSync(join(crtDir, name), join(out, name));
+      copied.add(key);
+      queue.push(join(out, name));
+    }
+  }
+  console.log(`đã đóng kèm C runtime của Visual C++: ${[...copied].sort().join(", ") || "(không cần)"}`);
+}
+
 /** Môi trường của Visual Studio (vcvars64.bat), để có cl, link, dumpbin trong PATH. */
-function msvcEnv() {
+export function msvcEnv() {
   const vswhere = join(process.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)", "Microsoft Visual Studio", "Installer", "vswhere.exe");
   const vs = execFileSync(
     vswhere,
@@ -169,6 +218,8 @@ export function main(argv) {
       execFileSync(cmd, args, { stdio: "inherit", cwd: step.cwd, env: mergeEnv(process.env, msvc, step.env) });
     } else if (step.copy) {
       copyFileSync(step.copy[0], step.copy[1]);
+    } else if (step.vcRuntime) {
+      bundleVcRuntime(step.vcRuntime, msvc);
     } else {
       for (const name of readdirSync(step.dlls[0]).filter((n) => n.toLowerCase().endsWith(".dll"))) {
         copyFileSync(join(step.dlls[0], name), join(step.dlls[1], name));
@@ -178,11 +229,12 @@ export function main(argv) {
   signAndCheck(out, msvc);
 }
 
-/** Ký (khi có MT_WINDOWS_SIGN_CMD) mọi file trong binaries/, rồi kiểm bằng dumpbin và in bảng SHA-256. */
+/** Ký (khi có MT_WINDOWS_SIGN_CMD) mọi file trong binaries/ trừ C runtime của Microsoft, rồi kiểm bằng dumpbin và in bảng SHA-256. */
 function signAndCheck(out, msvc) {
   const files = readdirSync(out).map((name) => join(out, name));
   if (process.env.MT_WINDOWS_SIGN_CMD) {
-    for (const file of files) execFileSync("node", [join(root, "scripts/release/sign-windows.mjs"), file], { stdio: "inherit" });
+    // DLL của Microsoft đã có chữ ký của Microsoft: ký đè bằng chứng thư của dự án là sai.
+    for (const file of files.filter((f) => !isVcRuntime(basename(f)))) execFileSync("node", [join(root, "scripts/release/sign-windows.mjs"), file], { stdio: "inherit" });
   } else {
     console.log("chưa đặt MT_WINDOWS_SIGN_CMD: không ký tiến trình phụ");
   }

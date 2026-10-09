@@ -41,7 +41,7 @@ use crate::sentence::{OpenSentence, Piece, merge_window_ms};
 use crate::subtitle::{Delta, Status, Subtitle};
 use crate::supervisor::{Asr, AsrFailure};
 use crate::text::display_text;
-use crate::translate::{Event, Job, Mt, Outcome, translate};
+use crate::translate::{Event, Job, Mt, MtError, Outcome, translate};
 use crate::vad::SileroVad;
 use anyhow::Result;
 use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
@@ -272,6 +272,8 @@ enum Msg {
     },
     /// Luồng dịch dừng bất thường.
     MtGone,
+    /// Lần làm nóng đầu phiên cho thấy `llama-server` không dùng được: báo ngay, không chờ câu đầu tiên.
+    MtUnavailable(String),
 }
 
 struct MtJob {
@@ -735,8 +737,9 @@ fn mt_loop(
     hurry: &AtomicBool,
     glossary: &SharedGlossary,
 ) {
-    // Làm nóng khi bắt đầu phiên (§6.5); lỗi ở đây không quan trọng, request thật sẽ báo lỗi của nó. Bấm Dừng thì bỏ
-    // ngang lần làm nóng.
+    // Làm nóng khi bắt đầu phiên (§6.5); lỗi request ở đây không quan trọng, request thật sẽ báo lỗi của nó. Server không
+    // dùng được (khởi động không nổi, §6.5) thì báo ngay để thanh phụ đề hiện "Dịch không khả dụng" từ đầu phiên, thay vì
+    // chỉ hiện câu gốc đến khi câu đầu tiên xong. Bấm Dừng thì bỏ ngang lần làm nóng.
     let warmup = translation_prompt("Hello.", Lang::En, target);
     let req = crate::llama::ChatRequest {
         prompt: &warmup,
@@ -753,6 +756,9 @@ fn mt_loop(
         })
     {
         log::warn!("làm nóng llama-server lỗi: {e}");
+        if let MtError::Unavailable(reason) = e {
+            let _ = tx.send(Msg::MtUnavailable(reason));
+        }
     }
     for job in jobs {
         let (sub_id, version) = (job.sub_id, job.version);
@@ -962,6 +968,10 @@ impl Composer {
                 if let Some(f) = self.in_flight.take() {
                     self.settle(f.sub_id, Status::Failed, String::new());
                 }
+            }
+            Msg::MtUnavailable(reason) => {
+                log::error!("llama-server không dùng được ngay từ lần làm nóng: {reason}");
+                self.set_mt_unavailable();
             }
         }
     }
@@ -1806,6 +1816,25 @@ mod tests {
         h.feed(Msg::MtGone);
         assert_eq!(h.last(1).status, Status::Failed);
         assert!(h.c.in_flight.is_none());
+    }
+
+    /// Lần làm nóng đầu phiên báo `llama-server` không dùng được: chỉ báo bật ngay, câu đầu tiên không được gửi đi dịch.
+    #[test]
+    fn an_unavailable_server_at_warmup_raises_the_indicator_before_any_sentence() {
+        let mut h = harness();
+        h.feed(Msg::MtUnavailable("quá 5 lần lỗi".into()));
+        assert!(
+            h.sink
+                .indicators
+                .lock()
+                .unwrap()
+                .last()
+                .unwrap()
+                .translation_unavailable
+        );
+        h.said(1, 0, 1_000, "en", "One.");
+        h.no_job();
+        assert_eq!(h.statuses(1), [Status::AsrDone, Status::Failed]);
     }
 
     /// Câu được ghép thêm đoạn khi đang dịch: hủy bản dịch cũ, dịch lại cả câu; phút tính đủ hai đoạn, mỗi đoạn một lần.

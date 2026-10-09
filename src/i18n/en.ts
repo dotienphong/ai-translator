@@ -28,7 +28,7 @@ export const en = {
   "home.lagging": "Falling behind: subtitles are late.",
   "home.noAudio": "No audio heard for a while. Check that the meeting sound is playing.",
   "home.waitingForApp": "The chosen app is not playing sound any more. Translation goes on as soon as it plays again.",
-  "home.translationUnavailable": "Translation is unavailable: only the original text is shown.",
+  "home.translationUnavailable": "Translation is unavailable: only the original text is shown. Update the app; if it keeps failing, send the logs to support.",
   "home.audioSource.app": "Only {app}",
   "home.audioSource.webkit": "Safari and web pages inside other apps",
   "home.audioSource.change": "Change",

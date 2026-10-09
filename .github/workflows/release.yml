@@ -275,6 +275,9 @@ jobs:
         env:
           CARGO_TARGET_DIR: D:\t
         run: node scripts/release/build-sidecars-windows.mjs
+      - name: Kiểm llama-server vừa build nạp được model và trả lời (model thử ~1,2 MB, kiểm SHA-256)
+        # Bản 0.1.1 chết ngay khi nạp model (CRT tĩnh giữa các DLL của llama.cpp) mà CI vẫn xanh vì chưa từng nạp model.
+        run: node scripts/release/smoke-llama-windows.mjs src-tauri/binaries
       - name: THIRD_PARTY_NOTICES (tải mã nguồn crate của mọi target trước, vì cargo-about chạy --frozen)
         run: |
           pnpm install --frozen-lockfile --ignore-scripts

@@ -28,7 +28,7 @@ export const vi: Record<MessageKey, string> = {
   "home.lagging": "Đang trễ: phụ đề chậm hơn lời nói.",
   "home.noAudio": "Một lúc lâu không nghe thấy âm thanh. Hãy kiểm tra âm thanh cuộc họp có đang phát không.",
   "home.waitingForApp": "App đã chọn không còn phát tiếng. Phiên dịch chạy tiếp ngay khi app phát tiếng lại.",
-  "home.translationUnavailable": "Không dịch được: chỉ hiện câu gốc.",
+  "home.translationUnavailable": "Không dịch được: chỉ hiện câu gốc. Hãy cập nhật app; nếu vẫn lỗi, gửi log cho bộ phận hỗ trợ.",
   "home.audioSource.app": "Chỉ {app}",
   "home.audioSource.webkit": "Safari và trang web trong các app khác",
   "home.audioSource.change": "Đổi",
