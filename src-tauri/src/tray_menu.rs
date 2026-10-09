@@ -10,17 +10,19 @@ pub enum TrayItem {
     Overlay,
     Lock,
     OpenMain,
+    CheckForUpdates,
     RestartToUpdate,
     Quit,
 }
 
 impl TrayItem {
-    pub const ALL: [TrayItem; 7] = [
+    pub const ALL: [TrayItem; 8] = [
         Self::HotkeyWarning,
         Self::Session,
         Self::Overlay,
         Self::Lock,
         Self::OpenMain,
+        Self::CheckForUpdates,
         Self::RestartToUpdate,
         Self::Quit,
     ];
@@ -32,6 +34,7 @@ impl TrayItem {
             Self::Overlay => "overlay-visible",
             Self::Lock => "overlay-lock",
             Self::OpenMain => "open-main",
+            Self::CheckForUpdates => "check-updates",
             Self::RestartToUpdate => "restart-to-update",
             Self::Quit => "quit",
         }
@@ -82,6 +85,7 @@ pub fn menu_lines(strings: &Strings, model: TrayModel) -> Vec<Option<(TrayItem, 
     lines.push(Some((TrayItem::Lock, lock)));
     lines.push(None);
     lines.push(Some((TrayItem::OpenMain, strings.tray_open_main)));
+    lines.push(Some((TrayItem::CheckForUpdates, strings.tray_check_updates)));
     lines.push(None);
     if model.update_ready && !model.running {
         lines.push(Some((TrayItem::RestartToUpdate, strings.tray_restart_to_update)));
@@ -120,6 +124,7 @@ mod tests {
                 ("overlay-lock", "Khóa phụ đề (click xuyên qua)"),
                 ("---", "---"),
                 ("open-main", "Mở cửa sổ chính"),
+                ("check-updates", "Kiểm tra cập nhật…"),
                 ("---", "---"),
                 ("quit", "Thoát")
             ]
@@ -145,6 +150,7 @@ mod tests {
                 ("overlay-lock", "Unlock subtitles"),
                 ("---", "---"),
                 ("open-main", "Open main window"),
+                ("check-updates", "Check for updates…"),
                 ("---", "---"),
                 ("quit", "Quit")
             ]
@@ -170,12 +176,13 @@ mod tests {
                 TrayItem::Overlay => 2,
                 TrayItem::Lock => 3,
                 TrayItem::OpenMain => 4,
-                TrayItem::RestartToUpdate => 5,
-                TrayItem::Quit => 6,
+                TrayItem::CheckForUpdates => 5,
+                TrayItem::RestartToUpdate => 6,
+                TrayItem::Quit => 7,
             };
             assert_eq!(position, index, "{item:?}");
         }
-        assert_eq!(TrayItem::ALL.len(), 7);
+        assert_eq!(TrayItem::ALL.len(), 8);
     }
 
     #[test]
@@ -191,6 +198,7 @@ mod tests {
             lines(&menu_lines(&i18n::VI, model(false)))[4..],
             [
                 ("open-main", "Mở cửa sổ chính"),
+                ("check-updates", "Kiểm tra cập nhật…"),
                 ("---", "---"),
                 ("restart-to-update", "Khởi động lại để cập nhật"),
                 ("quit", "Thoát")

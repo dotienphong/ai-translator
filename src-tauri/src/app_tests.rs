@@ -1996,6 +1996,35 @@ fn restart_to_update_needs_a_download_and_an_idle_app() {
     );
 }
 
+/// Nút "Kiểm tra cập nhật" (Cài đặt › Chung, menu khay): kiểm ngay, tải bản mới rồi mời khởi động lại; bản build không tự
+/// cập nhật thì báo `unavailable`.
+#[test]
+fn checking_for_updates_downloads_the_new_version_or_says_it_is_unavailable() {
+    let plain = mock_app();
+    let status = invoke(&window(&plain, "main"), "check_for_updates", json!({})).unwrap();
+    assert_eq!(status["updateCheck"], "unavailable");
+
+    let log = crate::updater::tests::Log::default();
+    let app = app_with_update(log.clone());
+    let main = window(&app, "main");
+    assert_eq!(
+        invoke(&main, "get_app_status", json!({})).unwrap()["updateCheck"],
+        "idle"
+    );
+    let status = invoke(&main, "check_for_updates", json!({})).unwrap();
+    assert_eq!(
+        (&status["updateReady"], &status["updateCheck"]),
+        (&json!("0.2.0"), &json!("idle"))
+    );
+    assert!(log.lock().unwrap().contains(&"download 0.2.0".to_string()));
+    // Manifest không còn báo bản nào mới hơn: đã là bản mới nhất, bản đã tải bị bỏ.
+    let status = invoke(&main, "check_for_updates", json!({})).unwrap();
+    assert_eq!(
+        (&status["updateReady"], &status["updateCheck"]),
+        (&Value::Null, &json!("upToDate"))
+    );
+}
+
 /// Thoát ở menu khay cũng cài bản đã tải, sau khi kill tiến trình phụ và lưu lịch sử; bộ cài Windows không mở lại app.
 /// `RunEvent::Exit` mà người dùng không yêu cầu (tắt máy, đăng xuất) thì không cài.
 #[test]

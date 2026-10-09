@@ -18,6 +18,8 @@ pub struct Strings {
     pub tray_quit: &'static str,
     /// Có bản cập nhật đã tải và app rảnh (kế hoạch 07b).
     pub tray_restart_to_update: &'static str,
+    /// Kiểm tra cập nhật ngay: mở Cài đặt › Chung, nơi hiện kết quả.
+    pub tray_check_updates: &'static str,
     /// Dòng báo trong menu khay khi có phím tắt không đăng ký được.
     pub tray_hotkey_failed: &'static str,
     /// Chú thích icon khay: `{app}` là tên app, `{status}` là trạng thái.
@@ -44,6 +46,7 @@ pub const EN: Strings = Strings {
     tray_open_main: "Open main window",
     tray_quit: "Quit",
     tray_restart_to_update: "Restart to update",
+    tray_check_updates: "Check for updates…",
     tray_hotkey_failed: "Some shortcuts could not be registered",
     tray_tooltip: "{app}: {status}",
     status_idle: "Ready",
@@ -67,6 +70,7 @@ pub const VI: Strings = Strings {
     tray_open_main: "Mở cửa sổ chính",
     tray_quit: "Thoát",
     tray_restart_to_update: "Khởi động lại để cập nhật",
+    tray_check_updates: "Kiểm tra cập nhật…",
     tray_hotkey_failed: "Có phím tắt không đăng ký được",
     tray_tooltip: "{app}: {status}",
     status_idle: "Sẵn sàng",
@@ -94,6 +98,7 @@ impl Strings {
             tray_open_main,
             tray_quit,
             tray_restart_to_update,
+            tray_check_updates,
             tray_hotkey_failed,
             tray_tooltip,
             status_idle,
@@ -116,6 +121,7 @@ impl Strings {
             ("tray_open_main", tray_open_main),
             ("tray_quit", tray_quit),
             ("tray_restart_to_update", tray_restart_to_update),
+            ("tray_check_updates", tray_check_updates),
             ("tray_hotkey_failed", tray_hotkey_failed),
             ("tray_tooltip", tray_tooltip),
             ("status_idle", status_idle),

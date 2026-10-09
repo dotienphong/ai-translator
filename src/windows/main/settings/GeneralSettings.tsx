@@ -50,6 +50,39 @@ export function GeneralSettings() {
           <option value="beta">{t("channel.beta")}</option>
         </select>
       </div>
+      <AppUpdate />
+    </div>
+  );
+}
+
+// Phiên bản đang chạy và nút "Kiểm tra cập nhật": kiểm ngay, có bản mới thì tải rồi mời khởi động lại (kế hoạch 07b).
+// Menu khay có cùng mục, mở tới đây. Đang dịch thì không khởi động lại được (`updateBusy`), nên chỉ nhắc dừng dịch.
+function AppUpdate() {
+  const t = useT();
+  const version = useApp((s) => s.info?.version);
+  const check = useApp((s) => s.status?.updateCheck ?? "idle");
+  const ready = useApp((s) => s.status?.updateReady ?? null);
+  const running = useApp((s) => s.status?.session === "running" || s.status?.session === "starting");
+  const checkForUpdates = useApp((s) => s.checkForUpdates);
+  const restartToUpdate = useApp((s) => s.restartToUpdate);
+  const busy = check === "checking" || check === "downloading";
+  const message =
+    check === "idle"
+      ? ready && t(running ? "settings.general.update.readyRunning" : "settings.general.update.ready", { version: ready })
+      : t(`settings.general.update.${check}`);
+  return (
+    <div className="row" role="status">
+      <span>{version && t("settings.general.version", { version })}</span>
+      {ready && !running && !busy ? (
+        <button className="primary" onClick={() => void restartToUpdate()}>
+          {t("settings.general.restartToUpdate")}
+        </button>
+      ) : (
+        <button disabled={busy} onClick={() => void checkForUpdates()}>
+          {t("settings.general.checkUpdates")}
+        </button>
+      )}
+      {message && <span className="hint">{message}</span>}
     </div>
   );
 }

@@ -112,6 +112,7 @@ const status = (session: AppStatus["session"], rev: number): AppStatus => ({
   quotaResetAt: null,
   updateReady: null,
   updateReprompts: false,
+  updateCheck: "idle",
   rev,
 });
 

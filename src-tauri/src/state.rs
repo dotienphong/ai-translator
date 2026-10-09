@@ -32,6 +32,24 @@ pub enum Loading {
     FirstRun,
 }
 
+/// Lần kiểm tra cập nhật do người dùng bấm (Cài đặt › Chung, menu khay). Lần kiểm tự động mỗi 24 giờ không đổi trạng thái
+/// này. Bản mới tải xong thì báo qua `AppStatus::update_ready`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateCheck {
+    /// Chưa kiểm lần nào trong lần chạy này, hay vừa tải xong bản mới.
+    #[default]
+    Idle,
+    Checking,
+    /// Có bản mới, đang tải.
+    Downloading,
+    UpToDate,
+    /// Lỗi mạng hay lỗi tải.
+    Failed,
+    /// Bản build này không tự cập nhật (bản debug, hay thiếu URL gốc hoặc khóa công khai).
+    Unavailable,
+}
+
 /// Trạng thái lúc chạy, không lưu xuống đĩa. Cửa sổ chính nhận qua sự kiện `app://status`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -66,6 +84,7 @@ pub struct AppStatus {
     pub update_ready: Option<String>,
     /// Cập nhật xong macOS sẽ hỏi lại mật khẩu Keychain và quyền thu âm (bản ký ad-hoc, chưa có Team ID): lời mời cập nhật báo trước.
     pub update_reprompts: bool,
+    pub update_check: UpdateCheck,
     /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
     /// tới sau sự kiện `app://status` mới hơn).
     pub rev: u64,
@@ -144,6 +163,7 @@ impl AppState {
                 quota_reset_at: None,
                 update_ready: None,
                 update_reprompts: crate::license::genuine::this_build_updates_reprompt(),
+                update_check: UpdateCheck::Idle,
                 rev: 0,
             }),
             launched_at_login,

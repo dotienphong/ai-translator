@@ -357,6 +357,14 @@ pub fn end_overlay_resize<R: Runtime>(app: AppHandle<R>) {
     overlay::end_resize(&app);
 }
 
+/// Nút "Kiểm tra cập nhật" ở Cài đặt › Chung (`updater::check_now`). Có thể chờ tới khi tải xong bản mới.
+#[tauri::command]
+pub async fn check_for_updates<R: Runtime>(app: AppHandle<R>) -> Result<AppStatus, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || crate::updater::check_now(&app))
+        .await
+        .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))
+}
+
 /// Khởi động lại để cài bản cập nhật đã tải (kế hoạch 07b): chỉ khi app rảnh.
 #[tauri::command]
 pub fn restart_to_update<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
@@ -415,6 +423,7 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "open_checkout_page",
     "recover_license",
     "start_trial",
+    "check_for_updates",
     "restart_to_update",
 ];
 
@@ -470,6 +479,7 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         open_checkout_page,
         recover_license,
         start_trial,
+        check_for_updates,
         restart_to_update,
         get_overlay_view,
         hide_overlay,

@@ -81,6 +81,8 @@ export interface AppStoreState {
   loadDebugSessions(): Promise<void>;
   dismissError(): void;
   dismissNotice(): void;
+  // "Kiểm tra cập nhật" ở Cài đặt › Chung: kiểm ngay, tải nếu có bản mới. Tiến trình và kết quả ở `status.updateCheck`.
+  checkForUpdates(): Promise<void>;
   // Khởi động lại để cài bản cập nhật đã tải (kế hoạch 07b). Lỗi (đang dịch, đang tải model) hiện ở thanh báo lỗi.
   restartToUpdate(): Promise<void>;
   dismissUpdate(): void;
@@ -349,6 +351,15 @@ export function createAppStore(ipc: Ipc) {
 
       dismissNotice() {
         set({ notice: null });
+      },
+
+      async checkForUpdates() {
+        // Người dùng chủ động hỏi: lời mời khởi động lại hiện lại, kể cả khi đã bấm "Để sau" cho bản đó.
+        set({ updateDismissed: null });
+        await run(
+          () => ipc.invoke("check_for_updates"),
+          (status) => setStatus(status),
+        );
       },
 
       async restartToUpdate() {

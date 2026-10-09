@@ -54,6 +54,7 @@
     "allow-open-checkout-page",
     "allow-recover-license",
     "allow-start-trial",
+    "allow-check-for-updates",
     "allow-restart-to-update",
     "core:event:allow-listen",
     "core:event:allow-unlisten",

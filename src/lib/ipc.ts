@@ -14,6 +14,9 @@ export const LANGS: readonly Lang[] = ["en", "zh", "ja", "ko", "vi"];
 export type AudioSource = { kind: "system" } | { kind: "device"; id: string } | { kind: "app"; bundleId: string };
 export type Theme = "system" | "light" | "dark";
 export type UpdateChannel = "stable" | "beta";
+// Lần kiểm tra cập nhật do người dùng bấm (`state::UpdateCheck`): bản mới tải xong thì báo qua `updateReady`;
+// "unavailable" là bản build không tự cập nhật (bản dev).
+export type UpdateCheck = "idle" | "checking" | "downloading" | "upToDate" | "failed" | "unavailable";
 // Mã gói model trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest).
 export type ModelTier = string;
 export type HotkeyAction = "toggleSession" | "toggleOverlay" | "toggleLock" | "scrollUp" | "scrollDown";
@@ -116,6 +119,7 @@ export interface AppStatus {
   updateReady: string | null;
   // Cập nhật xong macOS sẽ hỏi lại mật khẩu Keychain và quyền thu âm (bản ký ad-hoc): lời mời cập nhật báo trước.
   updateReprompts: boolean;
+  updateCheck: UpdateCheck;
   // Tăng mỗi lần trạng thái đổi: trạng thái có `rev` nhỏ hơn trạng thái đang có là cũ, bỏ qua.
   rev: number;
 }
@@ -403,6 +407,7 @@ export interface Commands {
   cancel_checkout: { args: undefined; result: null };
   open_checkout_page: { args: undefined; result: null };
   recover_license: { args: { email: string }; result: null };
+  check_for_updates: { args: undefined; result: AppStatus };
   restart_to_update: { args: undefined; result: null };
   hide_overlay: { args: undefined; result: null };
   begin_overlay_resize: { args: { edge: ResizeEdge }; result: null };

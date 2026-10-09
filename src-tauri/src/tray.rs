@@ -102,6 +102,20 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
         Some(TrayItem::Overlay) => actions::run_hotkey(app, HotkeyAction::ToggleOverlay),
         Some(TrayItem::Lock) => actions::run_hotkey(app, HotkeyAction::ToggleLock),
         Some(TrayItem::OpenMain) => window::show_main(app),
+        // Mở Cài đặt › Chung, nơi hiện kết quả, rồi kiểm trên luồng riêng (có thể phải tải bản mới).
+        Some(TrayItem::CheckForUpdates) => {
+            actions::open_main_at(
+                app,
+                events::Navigate {
+                    screen: "settings",
+                    settings_group: Some("general"),
+                },
+            );
+            let app = app.clone();
+            std::thread::spawn(move || {
+                updater::check_now(&app);
+            });
+        }
         Some(TrayItem::RestartToUpdate) => {
             if let Err(e) = updater::restart_to_update(app, |app| app.request_restart()) {
                 log::warn!("không khởi động lại để cập nhật được: {}", e.message);

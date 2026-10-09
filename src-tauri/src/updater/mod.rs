@@ -11,6 +11,9 @@
 //! - Trước khi cài, so SHA-256 của file trên đĩa với SHA-256 của đúng các byte đã kiểm chữ ký lúc tải: plugin không kiểm
 //!   chữ ký lúc cài, nên file bị thay trong lúc chờ (vài giờ, vài ngày) thì không cài, xóa.
 //! - Lỗi mạng hay lỗi tải thì thử lại ở lần thức kế tiếp (mỗi giờ), không hiện gì.
+//! - Người dùng bấm "Kiểm tra cập nhật" (Cài đặt › Chung, menu khay): [`check_now`] kiểm ngay dù chưa tới 24 giờ, tải nếu
+//!   có bản mới, và báo kết quả qua `AppStatus::update_check`. Mỗi lúc chỉ một lần kiểm chạy (`Updater::running`), nên lần
+//!   bấm tay không tải trùng với luồng nền.
 //! - Plugin chỉ dùng từ Rust: không cửa sổ nào được cấp lệnh của plugin (`acl_tests`).
 //! - `requireSignedVersion` bật trong `tauri.conf.json`: chữ ký phải gắn đúng phiên bản mà manifest báo, để manifest
 //!   bị sửa không ghép được số phiên bản mới với bộ cài cũ.
@@ -28,7 +31,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use crate::errors::{self, CommandError};
 use crate::models::service::ModelService;
 use crate::settings::UpdateChannel;
-use crate::state::{AppState, SessionStatus};
+use crate::state::{AppState, AppStatus, SessionStatus, UpdateCheck};
 use crate::{actions, overlay, session};
 use backend::{Backend, Downloaded, Install, PluginBackend};
 use sha2::{Digest, Sha256};
@@ -50,6 +53,17 @@ pub fn plugin<R: Runtime>() -> TauriPlugin<R, tauri_plugin_updater::Config> {
 /// Đã tới lúc kiểm chưa: chưa kiểm được lần nào, đã qua 24 giờ, hay giờ máy lùi về trước lần kiểm.
 pub fn due(last: Option<u64>, now: u64) -> bool {
     last.is_none_or(|last| now < last || now - last >= CHECK_EVERY_SECS)
+}
+
+/// Kết quả của một lần kiểm.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Checked {
+    /// Không có bản nào mới hơn bản đang chạy.
+    UpToDate,
+    /// Có bản mới, đã tải xong (lần này hay lần trước), chờ cài.
+    Ready,
+    /// Lỗi mạng hay lỗi tải.
+    Failed,
 }
 
 /// Bản đã tải, chữ ký đúng, chờ cài.
@@ -83,6 +97,8 @@ pub struct Updater {
     now: Box<dyn Fn() -> u64 + Send + Sync>,
     inner: Mutex<Inner>,
     wake: Condvar,
+    /// Giữ trong suốt một lần kiểm (cả lúc tải): luồng nền và lần bấm tay không chạy chồng nhau.
+    running: Mutex<()>,
 }
 
 impl Updater {
@@ -102,6 +118,7 @@ impl Updater {
             now,
             inner: Mutex::new(Inner::default()),
             wake: Condvar::new(),
+            running: Mutex::new(()),
         }
     }
 
@@ -112,6 +129,19 @@ impl Updater {
 
     /// Một lượt của luồng nền với kênh đang chọn. Trả `true` khi bản chờ cài đổi (phải báo lại giao diện).
     pub fn tick(&self, channel: UpdateChannel) -> bool {
+        self.run(channel, false, &|_| {}).0
+    }
+
+    /// Người dùng bấm "Kiểm tra cập nhật": kiểm ngay dù chưa tới 24 giờ. `downloading` được gọi với số phiên bản trước khi
+    /// tải. Trả `true` khi bản chờ cài đổi, và kết quả của lần kiểm. Đang có lần kiểm khác (luồng nền) thì chờ nó xong.
+    pub fn check_now(&self, channel: UpdateChannel, downloading: &dyn Fn(&str)) -> (bool, Checked) {
+        let (changed, checked) = self.run(channel, true, downloading);
+        (changed, checked.unwrap_or(Checked::Failed))
+    }
+
+    /// Một lần kiểm. `force`: kiểm cả khi chưa tới hạn. Kết quả `None` khi chưa tới hạn nên không kiểm.
+    fn run(&self, channel: UpdateChannel, force: bool, downloading: &dyn Fn(&str)) -> (bool, Option<Checked>) {
+        let _running = self.running.lock().unwrap();
         let mut changed = false;
         {
             let mut inner = self.inner.lock().unwrap();
@@ -120,8 +150,8 @@ impl Updater {
                 drop_pending(&mut inner);
                 changed = true;
             }
-            if inner.checked_channel == Some(channel) && !due(inner.last_check, (self.now)()) {
-                return changed;
+            if !force && inner.checked_channel == Some(channel) && !due(inner.last_check, (self.now)()) {
+                return (changed, None);
             }
         }
         let endpoint = source::endpoint(&self.source.base, channel);
@@ -129,7 +159,7 @@ impl Updater {
             Ok(found) => found,
             Err(e) => {
                 log::warn!("không kiểm được bản cập nhật ({endpoint}): {e}");
-                return changed;
+                return (changed, Some(Checked::Failed));
             }
         };
         let Some(found) = found else {
@@ -141,14 +171,15 @@ impl Updater {
                 drop_pending(&mut inner);
                 changed = true;
             }
-            return changed;
+            return (changed, Some(Checked::UpToDate));
         };
         let version = found.version().to_string();
         if self.ready().as_deref() == Some(version.as_str()) {
             self.checked(channel);
-            return changed;
+            return (changed, Some(Checked::Ready));
         }
         log::info!("có bản cập nhật {version}, đang tải");
+        downloading(&version);
         let file = self.dir.join(format!("{version}.bin"));
         match found.download(&file) {
             Ok(Downloaded { installer, sha256 }) => {
@@ -162,11 +193,11 @@ impl Updater {
                     installer,
                     sha256,
                 });
-                true
+                (true, Some(Checked::Ready))
             }
             Err(e) => {
                 log::warn!("không tải được bản cập nhật {version}: {e}");
-                changed
+                (changed, Some(Checked::Failed))
             }
         }
     }
@@ -277,11 +308,59 @@ pub fn publish<R: Runtime>(app: &AppHandle<R>) {
     actions::status_changed(app);
 }
 
-/// Người dùng vừa đổi kênh cập nhật: kiểm ngay.
+/// Người dùng vừa đổi kênh cập nhật: kiểm ngay. Kết quả của lần bấm tay trước là của kênh cũ, nên bỏ.
 pub fn channel_changed<R: Runtime>(app: &AppHandle<R>) {
     if let Some(updater) = app.try_state::<Arc<Updater>>() {
         updater.wake();
     }
+    let cleared = app.state::<AppState>().update_status(|s| {
+        let stale = matches!(s.update_check, UpdateCheck::UpToDate | UpdateCheck::Failed);
+        if stale {
+            s.update_check = UpdateCheck::Idle;
+        }
+        stale
+    });
+    if cleared {
+        actions::status_changed(app);
+    }
+}
+
+/// "Kiểm tra cập nhật" ở Cài đặt › Chung và menu khay: kiểm ngay, tải nếu có bản mới, báo từng bước qua
+/// `AppStatus::update_check`. Bản mới tải xong thì đặt `update_ready`: cửa sổ chính và menu khay mời khởi động lại. Đang
+/// có một lần bấm tay chưa xong thì không chạy thêm. Chặn tới khi kiểm (và tải) xong: không gọi từ luồng chính.
+pub fn check_now<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
+    let state = app.state::<AppState>();
+    let Some(updater) = app.try_state::<Arc<Updater>>().map(|u| u.inner().clone()) else {
+        state.update_status(|s| s.update_check = UpdateCheck::Unavailable);
+        return actions::status_changed(app);
+    };
+    let started = state.update_status(|s| {
+        if matches!(s.update_check, UpdateCheck::Checking | UpdateCheck::Downloading) {
+            return false;
+        }
+        s.update_check = UpdateCheck::Checking;
+        true
+    });
+    if !started {
+        return state.status();
+    }
+    actions::status_changed(app);
+    let channel = state.settings().update_channel;
+    log::info!("kiểm tra cập nhật theo yêu cầu (kênh {channel:?})");
+    let (_, checked) = updater.check_now(channel, &|_| {
+        state.update_status(|s| s.update_check = UpdateCheck::Downloading);
+        actions::status_changed(app);
+    });
+    let ready = updater.ready();
+    state.update_status(|s| {
+        s.update_ready = ready;
+        s.update_check = match checked {
+            Checked::UpToDate => UpdateCheck::UpToDate,
+            Checked::Ready => UpdateCheck::Idle,
+            Checked::Failed => UpdateCheck::Failed,
+        };
+    });
+    actions::status_changed(app)
 }
 
 /// Người dùng chọn Thoát (menu khay): cho phép cài bản đã tải lúc thoát.
@@ -593,6 +672,42 @@ pub(crate) mod tests {
         );
         assert_eq!(again.ready(), None);
         assert!(!dir.exists());
+    }
+
+    #[test]
+    fn checking_now_ignores_the_daily_schedule_and_reports_the_outcome() {
+        let clock = Arc::new(AtomicU64::new(NOW));
+        let (u, log, _dir) = fake(
+            vec![
+                Answer::UpToDate,
+                Answer::UpToDate,
+                Answer::Offline,
+                Answer::Newer("0.2.0"),
+                Answer::Newer("0.2.0"),
+            ],
+            clock,
+        );
+        assert!(!u.tick(UpdateChannel::Stable));
+        let downloads = Mutex::new(Vec::new());
+        let downloading = |v: &str| downloads.lock().unwrap().push(v.to_string());
+        assert_eq!(
+            u.check_now(UpdateChannel::Stable, &downloading),
+            (false, Checked::UpToDate),
+            "vừa kiểm xong vẫn kiểm lại khi người dùng bấm"
+        );
+        assert_eq!(
+            u.check_now(UpdateChannel::Stable, &downloading),
+            (false, Checked::Failed)
+        );
+        assert_eq!(u.check_now(UpdateChannel::Stable, &downloading), (true, Checked::Ready));
+        assert_eq!(u.ready().as_deref(), Some("0.2.0"));
+        assert_eq!(
+            u.check_now(UpdateChannel::Stable, &downloading),
+            (false, Checked::Ready),
+            "bản đã tải: không tải lại"
+        );
+        assert_eq!(*downloads.lock().unwrap(), ["0.2.0"]);
+        assert_eq!(take(&log), [STABLE, STABLE, STABLE, STABLE, "download 0.2.0", STABLE]);
     }
 
     #[test]

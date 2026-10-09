@@ -53,6 +53,7 @@ const status: AppStatus = {
   quotaResetAt: null,
   updateReady: null,
   updateReprompts: false,
+  updateCheck: "idle",
   rev: 1,
 };
 const info: AppInfo = {
@@ -101,6 +102,7 @@ function setup() {
     get_debug_sessions: () => [],
     open_audio_permission_settings: () => null,
     set_overlay_locked: ({ locked }) => ({ ...settings, overlay: { ...settings.overlay, locked } }),
+    check_for_updates: () => ({ ...status, updateReady: "0.2.0", updateCheck: "idle", rev: 7 }),
     restart_to_update: () => {
       if (failRestart) throw { code: "updateBusy", field: null, message: "…" };
       return null;
@@ -517,5 +519,17 @@ describe("app store", () => {
     store.getState().dismissUpdate();
     expect(store.getState().updateDismissed).toBe("0.2.0");
     expect(updateInvite(store.getState())).toBeNull();
+  });
+
+  it("checkForUpdates gọi lệnh, nhận trạng thái mới và mời lại bản đã bấm Để sau", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    fake.emit("app://status", { ...status, updateReady: "0.2.0", rev: 5 });
+    store.getState().dismissUpdate();
+    expect(updateInvite(store.getState())).toBeNull();
+    await store.getState().checkForUpdates();
+    expect(fake.calls.at(-1)).toEqual({ cmd: "check_for_updates", args: undefined });
+    expect(store.getState().status?.rev).toBe(7);
+    expect(updateInvite(store.getState())).toBe("0.2.0");
   });
 });
