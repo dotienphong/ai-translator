@@ -86,9 +86,6 @@
     const tabs = [...root.querySelectorAll('[role="tab"]')];
     const panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));
     if (!list || tabs.length === 0 || panels.some((p) => !p)) return;
-    const note = root.querySelector("[data-note]");
-    const noteText = root.querySelector("[data-note-text]");
-    const copyLink = root.querySelector("[data-copy-link]");
     const detectChip = document.getElementById("os-detect");
     const keyOf = (t) => t.dataset.os;
     const KEY = "dl-os";
@@ -96,6 +93,7 @@
     const mine = tabs.find((t) => keyOf(t) === detected.os);
 
     const select = (tab, { focus = false, remember = false, hash = true } = {}) => {
+      if (!root.classList.contains("is-enhanced")) { root.classList.add("is-enhanced"); list.hidden = false; }
       tabs.forEach((t, i) => {
         const on = t === tab;
         t.setAttribute("aria-selected", String(on));
@@ -111,16 +109,27 @@
       return tabs.find((t) => t.getAttribute("aria-controls") === id);
     };
 
-    root.classList.add("is-enhanced");
-    list.hidden = false;
-    if (mine) mine.querySelector(".ostab-badge").hidden = false;
+    // Điện thoại, máy tính bảng, hệ điều hành chưa hỗ trợ: không có "tab đúng", nên hiện cả hai hướng dẫn nối nhau (người đọc
+    // và trình thu thập đều thấy đủ), chỉ thêm lời nhắn. Neo # vẫn mở đúng một tab.
+    const showAll = !mine && !byHash();
+    const note = root.querySelector("[data-note]");
+    const noteText = root.querySelector("[data-note-text]");
+    const copyLink = root.querySelector("[data-copy-link]");
+    if (showAll) root.classList.add("is-flat");
+    else {
+      root.classList.add("is-enhanced");
+      list.hidden = false;
+      if (mine) mine.querySelector(".ostab-badge").hidden = false;
+    }
 
     // Ưu tiên: neo # trên URL > lựa chọn tay trước đó (cùng phiên) > hệ điều hành nhận diện > tab đầu tiên
     let saved = null;
     try { saved = sessionStorage.getItem(KEY); } catch { /* chế độ riêng tư */ }
-    const first = byHash() || tabs.find((t) => keyOf(t) === saved) || mine || tabs[0];
-    select(first, { hash: Boolean(byHash()) });
-    if (byHash()) requestAnimationFrame(() => root.scrollIntoView({ block: "start" }));
+    if (!showAll) {
+      const first = byHash() || tabs.find((t) => keyOf(t) === saved) || mine || tabs[0];
+      select(first, { hash: Boolean(byHash()) });
+      if (byHash()) requestAnimationFrame(() => root.scrollIntoView({ block: "start" }));
+    }
 
     tabs.forEach((t) => t.addEventListener("click", () => select(t, { remember: true })));
     list.addEventListener("keydown", (e) => {

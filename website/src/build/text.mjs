@@ -15,6 +15,7 @@ export function htmlToText(html) {
     .replace(/<\/b>(?=<a[ >])/g, "</b>\n")
     .replace(/<\/(p|div|section|article|tr|ul|ol|table|details|summary|figure|figcaption|blockquote)>/g, "\n")
     .replace(/<br\s*\/?>/g, "\n")
+    .replace(/<small>/g, " ")
     .replace(/<\/t[dh]>/g, " | ")
     .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g, (_, href, text) => (/^https?:|^mailto:/.test(href) ? `${text} (${href})` : text))
     .replace(/<[^>]+>/g, "");
@@ -22,6 +23,7 @@ export function htmlToText(html) {
   return s
     .split("\n")
     .map((l) => l.replace(/[ \t]+/g, " ").trim())
+    .filter((l) => !/^(-|→|\|)$/.test(l))
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();

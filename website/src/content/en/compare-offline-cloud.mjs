@@ -52,7 +52,7 @@ export default {
   published: "2026-10-08",
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  schema: [faqPage(COMPARE_FAQ.map((f) => ({ q: f.q, a: f.a.replace(/<[^>]+>/g, "") })))],
+  schema: [faqPage(COMPARE_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "A balanced comparison of offline meeting translation (processed on your computer) and cloud translation (processed on a server): privacy, internet, bots, cost, latency, hardware, languages, updates, integration and when to choose which.",
   llmTitle: "Offline vs cloud meeting translation: the differences",
   body: () => `
@@ -60,7 +60,7 @@ ${pageHero({
   crumbs,
   title: "Offline vs cloud translation: what is the difference?",
   lead: "Cloud translation sends your audio to the provider's servers to be processed; offline translation processes it on your own computer, as AI Translator does. Offline keeps the audio on your machine, keeps working without a connection and needs no bot, but it needs a capable computer and currently covers five languages. Cloud is light on your machine, usually covers more languages and can be built into the meeting platform, but your audio has to leave your computer.",
-  meta: "<span>Updated 8 Oct 2026</span>",
+  meta: "<span>Updated {{updated}}</span>",
 })}
 
 <section class="section"><div class="container">

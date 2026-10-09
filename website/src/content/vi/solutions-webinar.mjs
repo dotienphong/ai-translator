@@ -24,7 +24,7 @@ ${pageHero({
   crumbs,
   title: "Phụ đề dịch cho webinar, khóa học và video",
   lead: "AI Translator hiện phụ đề dịch ngay trên màn hình khi bạn xem webinar, hội thảo trực tuyến, khóa học hay video bằng ngoại ngữ. Nó nghe âm thanh phát ra từ máy tính nên không cần cài gì vào trình duyệt hay nền tảng, và việc nhận dạng cùng dịch chạy trên máy bạn.",
-  meta: "<span>Cập nhật 08/10/2026</span><span>Đã thử trên macOS · Windows mới đo sơ bộ độ trễ</span>",
+  meta: "<span>Cập nhật {{updated}}</span><span>Đã thử trên macOS · Windows mới đo sơ bộ độ trễ</span>",
 })}
 
 <section class="section-tight"><div class="container">

@@ -38,7 +38,7 @@ ${pageHero({
   crumbs,
   title: "Thanh phụ đề và phím tắt",
   lead: "Thanh phụ đề là cửa sổ nổi luôn nằm trên cùng, hiện bản dịch mà không lấy focus của app họp. Bạn kéo để di chuyển, kéo cạnh để đổi kích thước, khóa để chuột xuyên qua, và điều khiển bằng năm phím tắt mặc định như ⌃⌥T (bắt đầu hoặc dừng dịch) và ⌃⌥H (ẩn hoặc hiện).",
-  meta: "<span>macOS và Windows</span> <span>Cập nhật 08/10/2026</span>",
+  meta: "<span>macOS và Windows</span> <span>Cập nhật {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

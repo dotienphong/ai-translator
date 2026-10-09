@@ -43,7 +43,7 @@ export default {
   schemaType: "TechArticle",
   published: "2026-10-08",
   modified: "2026-10-08",
-  schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a.replace(/<[^>]+>/g, "") })))],
+  schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Bảng triệu chứng, nguyên nhân và cách xử lý theo đúng câu báo lỗi của app (âm thanh, quyền ghi âm, model, bản quyền, hạn mức, phím tắt), cách mở và gửi log, thông tin nên kèm khi báo lỗi.",
   llmTitle: "Khắc phục sự cố AI Translator",
   body: () => `
@@ -51,7 +51,7 @@ ${pageHero({
   crumbs,
   title: "Khắc phục sự cố",
   lead: "Hầu hết sự cố của AI Translator thuộc bốn nhóm: quyền ghi âm, nguồn âm thanh, model và bản quyền. Tìm câu báo lỗi đúng chữ như app hiển thị trong các bảng dưới đây, làm theo cách xử lý, và nếu vẫn lỗi thì gửi log cho hỗ trợ.",
-  meta: `<span>Cập nhật 08/10/2026</span>`,
+  meta: `<span>Cập nhật {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">

@@ -52,7 +52,7 @@ export default {
   published: "2026-10-08",
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  schema: [faqPage(COMPARE_FAQ.map((f) => ({ q: f.q, a: f.a.replace(/<[^>]+>/g, "") })))],
+  schema: [faqPage(COMPARE_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "So sánh cân bằng dịch cuộc họp offline (xử lý trên máy) và cloud (xử lý trên máy chủ): quyền riêng tư, internet, bot, chi phí, độ trễ, phần cứng, ngôn ngữ, cập nhật, tích hợp và khi nào chọn cách nào.",
   llmTitle: "Dịch offline và dịch cloud: khác nhau thế nào?",
   body: () => `
@@ -60,7 +60,7 @@ ${pageHero({
   crumbs,
   title: "Dịch offline và dịch cloud: khác nhau thế nào?",
   lead: "Dịch cloud gửi âm thanh lên máy chủ của nhà cung cấp để xử lý; dịch offline xử lý ngay trên máy bạn, như AI Translator. Offline giữ âm thanh ở lại máy, chạy được khi mất mạng và không cần bot, nhưng đòi hỏi máy đủ mạnh và hiện chỉ có năm ngôn ngữ. Cloud nhẹ máy, thường nhiều ngôn ngữ hơn và có thể tích hợp sẵn trong nền tảng họp, nhưng âm thanh phải rời máy bạn.",
-  meta: "<span>Cập nhật 08/10/2026</span>",
+  meta: "<span>Cập nhật {{updated}}</span>",
 })}
 
 <section class="section"><div class="container">

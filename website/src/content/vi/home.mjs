@@ -43,7 +43,7 @@ export default {
   modified: "2026-10-08",
   llm: "Trang chủ: AI Translator là gì, cách hoạt động, tính năng, độ trễ đo được, bảng giá và câu hỏi thường gặp.",
   llmTitle: "AI Translator: trang chủ",
-  schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a.replace(/<[^>]+>/g, "") })))],
+  schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 <section class="hero"><div class="container hero-grid">
 <div>

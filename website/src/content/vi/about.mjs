@@ -25,7 +25,7 @@ ${pageHero({
   crumbs,
   title: "Về AI Translator: dịch cuộc họp ngay trên máy bạn",
   lead: "AI Translator là ứng dụng desktop hiện phụ đề dịch trực tiếp cho âm thanh cuộc họp, chạy offline trên máy tính. Sản phẩm do Đỗ Tiến Phong, một nhà phát triển cá nhân, xây dựng và vận hành. Hiện có cho macOS và Windows.",
-  meta: "<span>Cập nhật 08/10/2026</span><span>Bên cung cấp: Đỗ Tiến Phong</span>",
+  meta: "<span>Cập nhật {{updated}}</span><span>Bên cung cấp: Đỗ Tiến Phong</span>",
 })}
 
 <section class="section-tight"><div class="container narrow">

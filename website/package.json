@@ -11,7 +11,7 @@
     "build": "node src/build/build.mjs",
     "dev": "node src/build/build.mjs && node src/serve.mjs",
     "test": "node --test \"test/*.test.mjs\"",
-    "deploy": "node src/build/build.mjs && wrangler deploy && wrangler deploy -c wrangler.www.jsonc"
+    "deploy": "node src/build/build.mjs && wrangler deploy && wrangler deploy -c wrangler.www.jsonc && node tools/indexnow.mjs"
   },
   "devDependencies": {
     "wrangler": "4.148.0"

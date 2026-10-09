@@ -24,7 +24,7 @@ ${pageHero({
   crumbs,
   title: "Phụ đề dịch cho họp trực tuyến (Zoom, Teams, Meet, Zalo)",
   lead: "AI Translator hiện phụ đề dịch trực tiếp cho cuộc họp Zoom, Microsoft Teams, Google Meet và Zalo PC bằng cách nghe âm thanh phát ra từ máy tính của bạn. Không cần bot vào phòng, không cần chủ họp bật tính năng nào, và việc nhận dạng cùng dịch chạy ngay trên máy bạn.",
-  meta: "<span>Cập nhật 08/10/2026</span>",
+  meta: "<span>Cập nhật {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

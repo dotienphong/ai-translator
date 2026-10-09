@@ -55,7 +55,7 @@ ${pageHero({
   crumbs,
   title: "Cài đặt AI Translator trên Windows",
   lead: "Cách nhanh nhất để cài AI Translator trên Windows là dán một dòng lệnh vào PowerShell: bộ cài được tải, kiểm tra và chạy cho riêng tài khoản của bạn (không cần quyền quản trị), rồi app mở lên mà không qua màn hình SmartScreen. Nếu bạn đã có file .exe tải bằng trình duyệt, bạn vẫn cài được bằng cách nhấp đúp, nhưng SmartScreen có thể cảnh báo vì bản Windows chưa được ký mã: bấm More info rồi Run anyway.",
-  meta: "<span>Áp dụng cho Windows 10 và 11, 64-bit (x64)</span> <span>Cập nhật 09/10/2026</span>",
+  meta: "<span>Áp dụng cho Windows 10 và 11, 64-bit (x64)</span> <span>Cập nhật {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

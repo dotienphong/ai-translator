@@ -49,7 +49,7 @@ ${pageHero({
   crumbs,
   title: "Buy a plan, activate your key and switch computers",
   lead: "You buy an AI Translator plan inside the app: choose Monthly or Yearly, scan a VietQR code, and your key arrives by email while the app activates the plan on the computer you are using. Each key works on one computer. To move to another computer, deactivate the old one and enter the key on the new one.",
-  meta: `<span>Updated October 8, 2026</span>`,
+  meta: `<span>Updated {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">

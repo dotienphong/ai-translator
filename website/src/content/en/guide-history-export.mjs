@@ -46,7 +46,7 @@ ${pageHero({
   crumbs,
   title: "History and exporting transcripts",
   lead: "The AI Translator transcript lists the time, the original sentence and the translation of every sentence in a session. Every plan can view, search and copy it. Saving your session history (encrypted, on your own computer) and exporting to TXT, SRT or Markdown are Pro features; saving history is off by default.",
-  meta: `<span><span class="badge badge-pro">Pro</span> export and history</span><span>Updated October 8, 2026</span>`,
+  meta: `<span><span class="badge badge-pro">Pro</span> export and history</span><span>Updated {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">

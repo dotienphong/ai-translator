@@ -53,7 +53,7 @@ ${pageHero({
   crumbs,
   title: "Install AI Translator on macOS",
   lead: "The fastest way to install AI Translator on macOS is to paste one command into Terminal: the app is downloaded, verified and opened right away, with no trip to System Settings to click Open Anyway. If you already have a .dmg downloaded in a browser you can still install it by dragging it to Applications, but macOS will block the first launch because the current build is ad-hoc signed and has not been notarized by Apple.",
-  meta: "<span>For macOS 14.2 or later, Apple Silicon</span> <span>Updated October 9, 2026</span>",
+  meta: "<span>For macOS 14.2 or later, Apple Silicon</span> <span>Updated {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

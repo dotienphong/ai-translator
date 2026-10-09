@@ -225,8 +225,73 @@ test("biểu tượng raster không rỗng/cắt hỏng (kích thước tối th
 test("_headers: không có hai quy tắc Cache-Control cùng khớp một tài nguyên tĩnh", async () => {
   const h = await readFile(path.join(DIST, "_headers"), "utf8");
   assert.ok(!/^\/assets\/\*$/m.test(h), "/assets/* trùng với /assets/bundle/*");
-  assert.ok(h.includes("no-transform"), "HTML cần no-transform (chặn Cloudflare tự chèn script đo)");
+  // Không no-transform ở quy tắc HTML: có nó thì Cloudflare không nén HTML (46 KB thay vì ~10 KB).
+  const rules = h.split("\n").filter((l) => /^\s+Cache-Control:/.test(l));
+  assert.ok(!rules.some((l) => l.includes("no-transform")), "không đặt no-transform trên HTML (làm mất nén br/gzip)");
+  assert.match(h, /^\/404\n\s+X-Robots-Tag: noindex/m, "/404 phải noindex");
 });
+
+test("robots.txt: Content-Signal nằm trong nhóm User-agent: *, sitemap khai báo, bot AI được phép", async () => {
+  const r = await readFile(path.join(DIST, "robots.txt"), "utf8");
+  assert.match(r, /User-agent: \*\nContent-Signal: [^\n]+\nAllow: \//);
+  assert.ok(!/^Content-Signal/m.test(r.split("User-agent: *")[0]), "Content-Signal không được đứng ngoài nhóm");
+  for (const bot of ["OAI-SearchBot", "Claude-SearchBot", "PerplexityBot", "Bingbot", "Google-Extended"]) assert.ok(r.includes(`User-agent: ${bot}`), bot);
+  assert.ok(r.includes("Sitemap: https://aitranslator.io.vn/sitemap.xml"));
+});
+
+test("_redirects: mỗi trang có quy tắc 301 cho URL thiếu dấu / cuối, đích là trang có thật", async () => {
+  const lines = (await readFile(path.join(DIST, "_redirects"), "utf8")).split("\n").filter((l) => l && !l.startsWith("#"));
+  const targets = new Set(pages.map((p) => p.path));
+  const from = new Set();
+  for (const l of lines) {
+    const [src, dst, code] = l.split(" ");
+    assert.equal(code, "301", l);
+    assert.ok(!from.has(src), `trùng nguồn: ${src}`);
+    from.add(src);
+    assert.ok(dst === "/en/" || targets.has(dst), `đích không tồn tại: ${dst}`);
+  }
+  for (const p of pages.filter((x) => x.path.endsWith("/") && x.path !== "/" && x.path !== "/en/")) assert.ok(from.has(p.path.slice(0, -1)), `thiếu quy tắc cho ${p.path}`);
+  assert.ok(lines.length <= 1000, "quá giới hạn quy tắc tĩnh của Workers");
+});
+
+test("sitemap lastmod: định dạng ngày hợp lệ, không ở tương lai, khớp ngày sửa của từng trang", async () => {
+  const x = await readFile(path.join(DIST, "sitemap.xml"), "utf8");
+  const today = new Date().toISOString().slice(0, 10);
+  const re = /<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g;
+  const got = new Map([...x.matchAll(re)].map((m) => [m[1], m[2]]));
+  for (const p of pages) {
+    const lm = got.get(SITE.origin + p.path);
+    assert.ok(lm, `${p.path}: thiếu lastmod`);
+    assert.match(lm, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(lm <= today, `${p.path}: lastmod ở tương lai`);
+    assert.equal(lm, p.modified ?? SITE.updated, p.path);
+  }
+});
+
+test("JSON-LD: câu trả lời FAQ không dính câu, tham chiếu @id đều có định nghĩa, bài viết tách khỏi WebPage, version khớp bản phát hành", async () => {
+  const conf = JSON.parse(await readFile(path.join(ROOT, "..", "src-tauri/tauri.conf.json"), "utf8"));
+  assert.equal(SITE.version, conf.version, "SITE.version phải bằng version trong tauri.conf.json");
+  for (const p of pages) {
+    const html = htmlByPath.get(p.path);
+    const g = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+    const ids = new Set(g["@graph"].map((n) => n["@id"]).filter(Boolean));
+    for (const n of g["@graph"]) {
+      if (n["@type"] === "FAQPage") {
+        for (const q of n.mainEntity) assert.ok(!/[.!?…][A-ZÀ-ỴĐ]/.test(q.acceptedAnswer.text), `${p.path}: câu trả lời FAQ dính câu: ${q.acceptedAnswer.text.match(/.{0,25}[.!?…][A-ZÀ-ỴĐ].{0,25}/)?.[0]}`);
+      }
+      for (const k of ["mainEntity", "mainEntityOfPage", "breadcrumb", "isPartOf", "about", "publisher", "author", "worksFor", "founder"]) {
+        for (const ref of [].concat(n[k] ?? [])) {
+          if (ref && typeof ref === "object" && Object.keys(ref).length === 1 && ref["@id"]) assert.ok(ids.has(ref["@id"]), `${p.path}: ${k} trỏ tới ${ref["@id"]} không có định nghĩa`);
+        }
+      }
+    }
+    const web = g["@graph"].find((n) => n["@id"] === SITE.origin + p.path + "#webpage");
+    assert.ok(web, `${p.path}: thiếu node #webpage`);
+    assert.ok(!/Article/.test(web["@type"]), `${p.path}: node #webpage không được là Article/TechArticle`);
+    assert.ok(!/</.test(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]), `${p.path}: JSON-LD chứa "<" chưa escape`);
+  }
+});
+
 
 // Công nghệ lõi không được công bố: tên model, engine/thư viện chạy model, định dạng, khung app, kiến trúc nội bộ.
 const CORE_TECH = /whisper|hy-?mt|tencent|openai|madlad|nllb|llama|ggml|gguf|silero|tauri|\brust\b|cargo|\bmetal\b|vulkan|sqlcipher|sqlite|opencc|wasapi|core audio|process tap|\bengines?\b|quantiz|q8_0|q4_k|large-v3|\bWMT/i;

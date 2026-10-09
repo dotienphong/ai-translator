@@ -1,6 +1,10 @@
 // Danh mục toàn bộ trang. Mỗi trang là một module `export default { id, lang, path, title, description, body, ... }`
 // (xem build/layout.mjs và README.md). Cặp bản vi/en cùng `id`. Thiếu file thì bỏ qua và báo (chỉ khi ALLOW_PARTIAL=1,
 // dùng lúc đang viết dở); bình thường thiếu file là lỗi.
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { SITE } from "../site.mjs";
+
 const IDS = [
   "home", "features", "pricing", "download", "faq", "about", "contact", "data-security", "compare-offline-cloud",
   "solutions", "solutions-meetings", "solutions-webinar",
@@ -36,6 +40,25 @@ async function load(lang, id) {
 }
 
 export const pages = (await Promise.all(IDS.flatMap((id) => ["vi", "en"].map((lang) => load(lang, id))))).filter(Boolean);
+
+// Ngày sửa lần cuối của từng trang (cho sitemap lastmod, dateModified của JSON-LD và dòng "Cập nhật"): lấy từ git để không
+// phải sửa tay và không bao giờ lỗi thời. File đang có thay đổi chưa commit tính là hôm nay. Không có git (hay không phải
+// repo) thì dùng `modified` viết tay trong trang. Luôn lấy ngày muộn hơn giữa hai nguồn.
+const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+function gitDate(file) {
+  try {
+    const run = (args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    if (run(["status", "--porcelain", "--", file])) return new Date().toISOString().slice(0, 10);
+    return run(["log", "-1", "--format=%cs", "--", file]) || null;
+  } catch {
+    return null;
+  }
+}
+for (const p of pages) {
+  const d = gitDate(`website/src/content/${p.lang}/${FILE[p.id]}.mjs`);
+  if (d && (!p.modified || d > p.modified)) p.modified = d;
+}
+SITE.updated = pages.reduce((m, p) => (p.modified && p.modified > m ? p.modified : m), SITE.updated);
 
 export const notFound = {
   id: "404",

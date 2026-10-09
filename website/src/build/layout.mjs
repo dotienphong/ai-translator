@@ -50,7 +50,7 @@ ${page.noindex ? "" : alternates(page, ctx)}
 <meta property="og:image:alt" content="${esc(imageAlt)}">
 <meta property="og:locale" content="${t.ogLocale}">
 ${other.map((p) => `<meta property="og:locale:alternate" content="${T[p.lang].ogLocale}">`).join("\n")}
-${page.type === "article" && page.published ? `<meta property="article:published_time" content="${page.published}">\n<meta property="article:modified_time" content="${page.modified ?? page.published}">\n<meta property="article:author" content="${esc(SITE.owner)}">` : ""}
+${page.type === "article" && page.published ? `<meta property="article:published_time" content="${page.published}">\n<meta property="article:modified_time" content="${page.modified ?? page.published}">\n<meta property="article:author" content="${abs(T[page.lang] && page.lang === "en" ? "/en/about/" : "/ve-chung-toi/")}">` : ""}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(fullTitle)}">
 <meta name="twitter:description" content="${esc(page.description)}">
@@ -61,12 +61,13 @@ ${page.type === "article" && page.published ? `<meta property="article:published
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="/assets/fonts/be-vietnam-pro-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/be-vietnam-pro-600-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/be-vietnam-pro-700-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/be-vietnam-pro-400-vietnamese.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/be-vietnam-pro-700-vietnamese.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${ctx.assets.css}">
 <script>${THEME_INIT}</script>
-<script type="application/ld+json">${JSON.stringify(graph(page, ctx))}</script>`;
+<script type="application/ld+json">${JSON.stringify(graph(page, ctx)).replace(/</g, "\\u003c")}</script>`;
 }
 
 function navItem(item, page) {
@@ -119,11 +120,16 @@ ${langSwitch}
 </header>`;
 }
 
+/** Ngày hiển thị cho người đọc: vi 09/10/2026, en 9 October 2026. */
+export function formatDate(iso, lang) {
+  const [y, m, d] = iso.split("-");
+  return lang === "vi" ? `${d}/${m}/${y}` : new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+}
+
 function footer(page) {
   const t = T[page.lang];
   const iso = page.modified ?? SITE.updated;
-  const [y, m, d] = iso.split("-");
-  const shown = page.lang === "vi" ? `${d}/${m}/${y}` : new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+  const shown = formatDate(iso, page.lang);
   const f = FOOTER[page.lang];
   const col = (c) => `<div><p class="footer-title">${esc(c.title)}</p><ul>${c.links.map((l) => `<li><a href="${l.href}">${esc(l.label)}</a></li>`).join("")}</ul></div>`;
   return `<footer class="site-footer">
@@ -174,7 +180,8 @@ export function glue(html, lang = "vi") {
 }
 
 export function renderPage(page, ctx) {
-  const body = glue(typeof page.body === "function" ? page.body(ctx) : page.body, page.lang);
+  // `{{updated}}` trong nội dung trang = ngày sửa lần cuối của chính trang đó (từ git), để dòng "Cập nhật" không lỗi thời.
+  const body = glue(typeof page.body === "function" ? page.body(ctx) : page.body, page.lang).replaceAll("{{updated}}", formatDate(page.modified ?? SITE.updated, page.lang));
   const t = T[page.lang];
   return `<!doctype html>
 <html lang="${page.lang}">

@@ -46,7 +46,7 @@ ${pageHero({
   crumbs,
   title: "Lịch sử và xuất bản chép lời",
   lead: "Bản chép lời của AI Translator gồm giờ, câu gốc và bản dịch của từng câu trong phiên. Mọi gói đều xem, tìm và sao chép được. Lưu lịch sử các phiên (mã hóa, ngay trên máy bạn) và xuất ra TXT, SRT hoặc Markdown là tính năng Pro; lưu lịch sử mặc định tắt.",
-  meta: `<span><span class="badge badge-pro">Pro</span> xuất file và lịch sử</span><span>Cập nhật 08/10/2026</span>`,
+  meta: `<span><span class="badge badge-pro">Pro</span> xuất file và lịch sử</span><span>Cập nhật {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">

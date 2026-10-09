@@ -220,7 +220,7 @@ ${pageHero({
   crumbs,
   title: "Frequently asked questions about AI Translator",
   lead: "The questions people usually ask when getting to know AI Translator, from using it with Zoom, Teams and Meet to privacy, system requirements and payment. Each answer starts with the short version; the rest is detail and conditions.",
-  meta: `<span>${ALL.length} questions in ${GROUPS.length} groups</span><span>Updated 8 October 2026</span>`,
+  meta: `<span>${ALL.length} questions in ${GROUPS.length} groups</span><span>Updated {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">

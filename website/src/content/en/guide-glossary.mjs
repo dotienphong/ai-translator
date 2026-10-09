@@ -47,7 +47,7 @@ ${pageHero({
   crumbs,
   title: "Use the glossary",
   lead: "The AI Translator glossary stores up to 500 “term → translation” pairs for names, abbreviations and industry terms. When a sentence being translated contains one of your terms, the app passes that pair to the translator as a hint. The glossary is a Pro feature, included in the Monthly and Yearly plans.",
-  meta: `<span><span class="badge badge-pro">Pro</span></span><span>Updated October 8, 2026</span>`,
+  meta: `<span><span class="badge badge-pro">Pro</span></span><span>Updated {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">

@@ -43,7 +43,7 @@ export default {
   schemaType: "TechArticle",
   published: "2026-10-08",
   modified: "2026-10-08",
-  schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a.replace(/<[^>]+>/g, "") })))],
+  schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Symptom, cause and fix tables using the exact wording of the app's messages (audio, recording permission, models, license, quota, shortcuts), how to open and send logs, and what to include in a bug report.",
   llmTitle: "Troubleshooting AI Translator",
   body: () => `
@@ -51,7 +51,7 @@ ${pageHero({
   crumbs,
   title: "Troubleshooting",
   lead: "Most AI Translator problems fall into four groups: recording permission, audio source, models and license. Find the message exactly as the app shows it in the tables below, follow the fix, and if it still fails, send your logs to support.",
-  meta: `<span>Updated October 8, 2026</span>`,
+  meta: `<span>Updated {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">

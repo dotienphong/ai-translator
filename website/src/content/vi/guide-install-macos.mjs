@@ -53,7 +53,7 @@ ${pageHero({
   crumbs,
   title: "Cài đặt AI Translator trên macOS",
   lead: "Cách nhanh nhất để cài AI Translator trên macOS là dán một dòng lệnh vào Terminal: app được tải, kiểm tra và mở lên ngay, không cần vào System Settings bấm Open Anyway. Nếu bạn đã có file .dmg tải bằng trình duyệt, bạn vẫn cài được bằng cách kéo vào Applications, nhưng lần mở đầu macOS sẽ chặn vì bản hiện tại ký ad-hoc và chưa được Apple notarize.",
-  meta: "<span>Áp dụng cho macOS 14.2 trở lên, Apple Silicon</span> <span>Cập nhật 09/10/2026</span>",
+  meta: "<span>Áp dụng cho macOS 14.2 trở lên, Apple Silicon</span> <span>Cập nhật {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

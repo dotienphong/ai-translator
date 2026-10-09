@@ -11,6 +11,7 @@ export const SITE = {
   updated: "2026-10-08",
   securityExpires: "2027-10-08T00:00:00.000Z",
   version: "0.1.1",
+  releaseDate: "2026-10-09",
   llmSummaryEn:
     "AI Translator is a desktop app (macOS and Windows) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer with AI models that run on-device: low latency, no audio or conversation data sent to the cloud, no cloud AI service used, no bot, no account, no ads. It supports five languages today; more are planned for the future.",
   llmSummaryVi:

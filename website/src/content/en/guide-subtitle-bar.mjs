@@ -38,7 +38,7 @@ ${pageHero({
   crumbs,
   title: "The subtitle bar and shortcuts",
   lead: "The subtitle bar is a floating window that stays on top and shows the translation without taking focus from your meeting app. Drag it to move it, drag an edge to resize it, lock it so the mouse passes through, and control it with five default shortcuts such as ⌃⌥T (start or stop) and ⌃⌥H (show or hide).",
-  meta: "<span>macOS and Windows</span> <span>Updated October 8, 2026</span>",
+  meta: "<span>macOS and Windows</span> <span>Updated {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

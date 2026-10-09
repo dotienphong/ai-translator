@@ -474,6 +474,9 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .ostabs { margin-block: 0; }
 .ostabs-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: calc(var(--r-lg) + 6px); }
 .ostabs-list[hidden] { display: none; }
+/* Có JS nhưng script chưa chạy: giữ chỗ cho thanh tab (không hiện) để lúc hiện không đẩy nội dung xuống (CLS). */
+.js .ostabs:not(.is-enhanced) .ostabs-list[hidden] { display: grid; visibility: hidden; }
+.js .ostabs.is-flat .ostabs-list[hidden], .ostabs.is-flat .ostabs-list { display: none; }
 .ostab { position: relative; display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1px solid transparent; border-radius: var(--r-lg); background: transparent; color: var(--ink-3); font: inherit; text-align: left; cursor: pointer; transition: background .2s var(--ease), color .2s, box-shadow .2s, border-color .2s; }
 .ostab:hover { color: var(--ink); background: color-mix(in srgb, var(--surface) 60%, transparent); }
 .ostab[aria-selected="true"] { background: var(--surface); color: var(--ink); border-color: var(--line-strong); box-shadow: var(--shadow-md); }
@@ -541,3 +544,7 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
   .subtitle-bar .pair:first-of-type { opacity: 1; }
 }
 @media print { .site-header, .site-footer, .cta-band, .nav-toggle, .skip { display: none !important; } body { background: #fff; color: #000; } a { color: #000; } }
+
+/* Mục tiêu chạm đủ lớn trên điện thoại (WCAG 2.2 AA, khuyến nghị 44px) */
+.footer-grid a { display: inline-block; padding-block: .5rem; }
+.lang-switch a, .lang-switch span { padding: 10px 11px; }

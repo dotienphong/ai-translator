@@ -24,7 +24,7 @@ ${pageHero({
   crumbs,
   title: "Translated subtitles for online meetings (Zoom, Teams, Meet, Zalo)",
   lead: "AI Translator shows live translated subtitles for Zoom, Microsoft Teams, Google Meet and Zalo PC calls by listening to the audio playing on your computer. There is no bot to invite, nothing for the host to switch on, and both speech recognition and translation run on your own machine.",
-  meta: "<span>Updated 8 Oct 2026</span>",
+  meta: "<span>Updated {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

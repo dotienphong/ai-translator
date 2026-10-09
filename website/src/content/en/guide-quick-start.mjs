@@ -54,7 +54,7 @@ ${pageHero({
   crumbs,
   title: "AI Translator quick start",
   lead: "To use AI Translator for the first time, install the app, step through a one-time setup (language, terms, model download, audio permission on macOS, a sample sentence), then press Start when your meeting has sound. Translated subtitles appear on a floating bar, and both speech recognition and translation run on your own computer.",
-  meta: "<span>For macOS 14.2 or later (Apple Silicon) and Windows 10/11 64-bit</span> <span>Updated October 8, 2026</span>",
+  meta: "<span>For macOS 14.2 or later (Apple Silicon) and Windows 10/11 64-bit</span> <span>Updated {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

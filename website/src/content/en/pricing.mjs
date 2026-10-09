@@ -57,7 +57,7 @@ export default {
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: plain(f.a) })))],
+  schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Pricing for the three plans (Free 10-day trial, Monthly 50,000 VND, Yearly 500,000 VND), how translation time is counted, how to buy with VietQR, changing plans, refunds and pricing questions.",
   llmTitle: "AI Translator pricing",
   body: () => `

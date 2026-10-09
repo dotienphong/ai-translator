@@ -47,7 +47,7 @@ ${pageHero({
   crumbs,
   title: "Dùng từ điển thuật ngữ",
   lead: "Từ điển thuật ngữ của AI Translator lưu tối đa 500 cặp “thuật ngữ → bản dịch” cho tên riêng, từ viết tắt và thuật ngữ ngành. Khi câu đang dịch có chứa thuật ngữ, app đưa cặp đó cho bộ dịch như một gợi ý. Đây là tính năng Pro, có trong gói Monthly và Yearly.",
-  meta: `<span><span class="badge badge-pro">Pro</span></span><span>Cập nhật 08/10/2026</span>`,
+  meta: `<span><span class="badge badge-pro">Pro</span></span><span>Cập nhật {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">

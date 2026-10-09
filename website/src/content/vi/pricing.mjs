@@ -55,7 +55,7 @@ export default {
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a.replace(/<[^>]+>/g, "") })))],
+  schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Bảng giá ba gói (Free dùng thử 10 ngày, Monthly 50.000 đ, Yearly 500.000 đ), cách tính thời lượng, cách mua bằng VietQR, đổi gói, hoàn tiền và câu hỏi về giá.",
   llmTitle: "Bảng giá AI Translator",
   body: () => `

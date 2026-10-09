@@ -24,7 +24,7 @@ ${pageHero({
   crumbs,
   title: "Translated subtitles for webinars, courses and video",
   lead: "AI Translator shows translated subtitles on your screen while you watch a webinar, an online conference, a course or a video in another language. It listens to the audio playing on your computer, so there is nothing to install in your browser or on the platform, and both recognition and translation run on your machine.",
-  meta: "<span>Updated 8 Oct 2026</span>",
+  meta: "<span>Updated {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

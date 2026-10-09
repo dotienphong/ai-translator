@@ -85,32 +85,24 @@ for (const page of PAGES) {
     await p.close();
   });
 
-  test(`${page.lang}: điện thoại và máy tính bảng thấy lời nhắn mở trang trên máy tính, có nút sao chép liên kết`, { skip }, async () => {
-    for (const [name, o] of [
-      ["iPhone", { width: 390, height: 844, mobile: true, ua: UA.iphone }],
-      ["Android", { width: 390, height: 844, mobile: true, ua: UA.android }],
-      ["iPad (giao diện máy tính, có cảm ứng)", { width: 1024, height: 768, mobile: false, touch: true, ua: UA.ipad }],
+  test(`${page.lang}: điện thoại, máy tính bảng, Linux: lời nhắn rõ ràng, hiện cả hai hướng dẫn nối nhau (không tab nào là "của bạn")`, { skip }, async () => {
+    for (const [name, o, copyLink] of [
+      ["iPhone", { width: 390, height: 844, mobile: true, ua: UA.iphone }, true],
+      ["Android", { width: 390, height: 844, mobile: true, ua: UA.android }, true],
+      ["iPad (giao diện máy tính, có cảm ứng)", { width: 1024, height: 768, mobile: false, touch: true, ua: UA.ipad }, true],
+      ["Linux", { width: 1280, height: 900, ua: UA.linux }, false],
     ]) {
       const p = await open(page, o);
       const s = await state(p);
       assert.ok(s.note, `${name}: thiếu lời nhắn`);
-      assert.equal(s.copyLink, true, `${name}: thiếu nút sao chép liên kết`);
+      assert.equal(s.copyLink, copyLink, `${name}: nút sao chép liên kết`);
       assert.equal(s.chip, null, `${name}: không được báo "nhận ra máy"`);
       assert.deepEqual(s.badges, [], `${name}: không có tab nào là "máy của bạn"`);
-      assert.equal(s.visible.length, 1, `${name}: vẫn hiện đúng một hướng dẫn`);
+      assert.deepEqual(s.visible, [page.mac, page.win], `${name}: phải thấy đủ cả hai hướng dẫn`);
+      assert.equal(await p.eval(`getComputedStyle(document.querySelector('[role="tablist"]')).display`), "none", `${name}: không thanh tab`);
       assert.deepEqual(p.errors, [], name);
       await p.close();
     }
-  });
-
-  test(`${page.lang}: Linux/ChromeOS: báo chưa hỗ trợ, không nút sao chép liên kết, vẫn xem được hướng dẫn`, { skip }, async () => {
-    const p = await open(page, { ua: UA.linux });
-    const s = await state(p);
-    assert.ok(s.note);
-    assert.equal(s.copyLink, false);
-    assert.deepEqual(s.badges, []);
-    assert.equal(s.visible.length, 1);
-    await p.close();
   });
 
   test(`${page.lang}: neo # thắng nhận diện; bấm tab đổi hướng dẫn, đổi URL và được nhớ trong phiên`, { skip }, async () => {
@@ -176,7 +168,7 @@ for (const page of PAGES) {
   test(`${page.lang}: không tràn ngang ở các cỡ màn hình, cả hai tab, sáng và tối`, { skip }, async () => {
     for (const [w, mobile] of [[320, true], [375, true], [768, false], [1280, false]]) {
       for (const dark of [false, true]) {
-        const p = await open(page, { width: w, height: 800, mobile, dark, ua: mobile ? UA.android : UA.mac });
+        const p = await open(page, { width: w, height: 800, mobile, dark, touch: false, ua: UA.mac });
         for (const os of ["macos", "windows"]) {
           await p.click(`[role="tab"][data-os="${os}"]`);
           // mở hết các mục xổ xuống trong panel để kiểm cả nội dung bên trong

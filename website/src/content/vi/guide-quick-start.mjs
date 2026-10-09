@@ -54,7 +54,7 @@ ${pageHero({
   crumbs,
   title: "Bắt đầu nhanh với AI Translator",
   lead: "Để dùng AI Translator lần đầu, bạn cài app, đi qua bảy bước thiết lập một lần (ngôn ngữ, điều khoản, tải model, quyền ghi âm trên macOS, nghe thử), rồi bấm Bắt đầu khi cuộc họp có tiếng. Phụ đề dịch hiện trên một thanh nổi; nhận dạng giọng nói và dịch đều chạy trên máy bạn.",
-  meta: "<span>Áp dụng cho macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit</span> <span>Cập nhật 08/10/2026</span>",
+  meta: "<span>Áp dụng cho macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit</span> <span>Cập nhật {{updated}}</span>",
 })}
 
 <section class="section-tight"><div class="container">

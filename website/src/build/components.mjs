@@ -220,7 +220,7 @@ export function dataFlow(lang) {
   const en = lang === "en";
   const L = en
     ? {
-        cloud: "How most cloud translation tools work",
+        cloud: "How many cloud translation tools work",
         local: "AI Translator",
         you: "Your computer", audio: "meeting audio", net: "Internet", server: "Provider server", cloudAi: "plus an AI on the cloud",
         subs: "Subtitles", backTo: "back to you", audioHere: "Audio", onYour: "on your computer", ai: "AI running on your computer", models: "recognition + translation", screen: "Subtitles", onScreen: "on your screen",
@@ -228,7 +228,7 @@ export function dataFlow(lang) {
         localNote: "No trip to the cloud: the audio, the transcript and the translation stay on your computer.",
       }
     : {
-        cloud: "Cách phần lớn công cụ dịch qua cloud hoạt động",
+        cloud: "Cách nhiều công cụ dịch qua cloud hoạt động",
         local: "AI Translator",
         you: "Máy bạn", audio: "âm thanh cuộc họp", net: "Internet", server: "Máy chủ nhà cung cấp", cloudAi: "cùng AI trên cloud",
         subs: "Phụ đề", backTo: "gửi về máy bạn", audioHere: "Âm thanh", onYour: "trên máy bạn", ai: "AI chạy trên máy bạn", models: "nhận dạng + dịch", screen: "Phụ đề", onScreen: "trên màn hình bạn",

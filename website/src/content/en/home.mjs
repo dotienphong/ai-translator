@@ -45,7 +45,7 @@ export default {
   modified: "2026-10-08",
   llm: "Home page: what AI Translator is, how it works, features, measured latency, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
-  schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: plain(f.a) })))],
+  schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 <section class="hero"><div class="container hero-grid">
 <div>

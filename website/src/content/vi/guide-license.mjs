@@ -49,7 +49,7 @@ ${pageHero({
   crumbs,
   title: "Mua gói, kích hoạt key và đổi máy",
   lead: "Bạn mua gói AI Translator ngay trong app: chọn Monthly hoặc Yearly, quét mã VietQR, rồi nhận key qua email; app cũng tự kích hoạt gói trên máy đang dùng. Mỗi key chỉ dùng trên một máy; muốn chuyển máy, hãy gỡ kích hoạt ở máy cũ rồi nhập key ở máy mới.",
-  meta: `<span>Cập nhật 08/10/2026</span>`,
+  meta: `<span>Cập nhật {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">

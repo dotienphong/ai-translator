@@ -25,7 +25,7 @@ ${pageHero({
   crumbs,
   title: "About AI Translator: translating meetings on your own computer",
   lead: "AI Translator is a desktop app that shows live translated subtitles for meeting audio and runs offline on your computer. It is built and run by Đỗ Tiến Phong, an independent developer. It is available for macOS and Windows.",
-  meta: "<span>Updated 8 October 2026</span><span>Provider: Đỗ Tiến Phong</span>",
+  meta: "<span>Updated {{updated}}</span><span>Provider: Đỗ Tiến Phong</span>",
 })}
 
 <section class="section-tight"><div class="container narrow">

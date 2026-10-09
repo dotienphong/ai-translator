@@ -10,6 +10,7 @@ import { SITE, T } from "../site.mjs";
 import { renderPage, THEME_INIT_HASH } from "./layout.mjs";
 import { pages, notFound } from "../content/index.mjs";
 import { htmlToText } from "./text.mjs";
+import { PLANS, vnd } from "../plans.mjs";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
 const ROOT = path.resolve(SRC, "..");
@@ -58,14 +59,30 @@ function robots() {
   return `# ${SITE.name} — ${SITE.origin}
 # Cho phép mọi trình thu thập, kể cả trình thu thập của công cụ tìm kiếm AI, để nội dung được trích dẫn đúng.
 # Muốn chặn huấn luyện AI: đổi ai-train=yes thành ai-train=no (và Disallow các bot huấn luyện bên dưới).
-Content-Signal: search=yes, ai-input=yes, ai-train=yes
-
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 
 ${bots.map((b) => `User-agent: ${b}\nAllow: /\n`).join("\n")}
 Sitemap: ${abs("/sitemap.xml")}
 `;
+}
+
+/** Khối dữ kiện chính cho trợ lý AI: sinh từ SITE và PLANS để không lệch giá/phiên bản. Chỉ nêu điều có thật. */
+function keyFacts() {
+  const [free, monthly, yearly] = PLANS;
+  return [
+    `- Product: ${SITE.name} (aitranslator.io.vn), desktop app that shows live translated subtitles for meeting audio; speech recognition and translation run on the device`,
+    `- Provider: ${SITE.owner} (independent developer, Vietnam); ${SITE.email}`,
+    `- Current version: ${SITE.version} (released ${SITE.releaseDate}), official release for macOS and Windows`,
+    `- Platforms: macOS 14.2+ on Apple Silicon (M1 or later); Windows 10/11 64-bit (x64) with AVX2. Not supported: Intel Macs, Windows ARM64`,
+    `- Requirements: 8 GB RAM minimum (16 GB recommended); models download once, 1.3 GB (Lite pack) or 2.5 GB (Standard pack)`,
+    `- Languages (speech and translation): English, Chinese, Japanese, Korean, Vietnamese (tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn, tiếng Việt); interface in Vietnamese and English`,
+    `- Measured latency: median 0.76–1.03 s with the Standard pack on a Mac M4 Pro 24 GB (macOS 26); preliminary Windows test on one laptop with integrated graphics: median 1.3–2.6 s (Lite), 2.7–5.4 s (Standard)`,
+    `- Pricing: ${free.nameEn} trial ${free.days} days (${free.minutesPerDay} min/day, ${vnd(0)}); ${monthly.nameEn} ${vnd(monthly.priceVnd)} (${monthly.minutesPerCycle / 60} h per ${monthly.days} days); ${yearly.nameEn} ${vnd(yearly.priceVnd)} (unlimited, ${yearly.days} days); prepaid by VietQR in VND, no auto-renewal; payment only from Vietnamese bank accounts`,
+    `- Install: macOS \`curl -fsSL ${SITE.origin}/install.sh | bash\`; Windows \`irm ${SITE.origin}/install.ps1 | iex\``,
+    `- Privacy: no bot, no account, no ads, no analytics or cookies on the website; the app sends no audio or transcripts to any server; not open source`,
+  ].join("\n");
 }
 
 function llmsTxt(list) {
@@ -82,6 +99,10 @@ ${SITE.llmSummaryVi}
 
 Provider / Bên cung cấp: ${SITE.owner}. Contact / Liên hệ: ${SITE.email}. Website: ${SITE.origin}/
 
+## Key facts / Dữ kiện chính
+
+${keyFacts()}
+
 ## English
 
 ${doc("en")}
@@ -92,8 +113,8 @@ ${doc("vi")}
 
 ## Optional
 
-- [Full text of key pages, English](${abs("/llms-full.txt")}): home, features, pricing, FAQ, data and security, comparison, about, as plain text.
-- [Toàn văn các trang chính, tiếng Việt](${abs("/llms-full.vi.txt")}): trang chủ, tính năng, giá, hỏi đáp, bảo mật, so sánh, về chúng tôi, dạng chữ thuần.
+- [Full text of the main pages, English](${abs("/llms-full.txt")}): home, features, pricing, download, FAQ, data and security, comparison, solutions, about, contact, as plain text (step-by-step guides and legal texts are linked above).
+- [Toàn văn các trang chính, tiếng Việt](${abs("/llms-full.vi.txt")}): trang chủ, tính năng, giá, tải xuống, hỏi đáp, bảo mật, so sánh, giải pháp, về chúng tôi, liên hệ, dạng chữ thuần (các bài hướng dẫn và văn bản pháp lý có liên kết ở trên).
 `;
 }
 
@@ -142,21 +163,37 @@ function headers() {
 /assets/og/*
   Cache-Control: public, max-age=2592000
 
-# Trang HTML (đường dẫn kết thúc bằng /, sâu tới 3 cấp): no-transform để Cloudflare không tự chèn script đo (RUM/Web
-# Analytics) vào trang; CSP của trang sẽ chặn script đó và gây lỗi console. Giữ đúng giá trị mặc định của Workers Assets.
+# Trang HTML (đường dẫn kết thúc bằng /, sâu tới 3 cấp). Không đặt no-transform: có nó thì Cloudflare không nén (br/gzip)
+# HTML (đo ngày 2026-10-09: 46 KB không nén so với khoảng 10 KB). Cloudflare Web Analytics tự chèn phải để TẮT ở zone, vì CSP
+# của trang chặn script đo và sẽ gây lỗi console; sau mỗi lần deploy kiểm: curl -s <url> | grep -c cloudflareinsights phải ra 0.
 /
-  Cache-Control: public, max-age=0, must-revalidate, no-transform
+  Cache-Control: public, max-age=0, must-revalidate
 /:a/
-  Cache-Control: public, max-age=0, must-revalidate, no-transform
+  Cache-Control: public, max-age=0, must-revalidate
 /:a/:b/
-  Cache-Control: public, max-age=0, must-revalidate, no-transform
+  Cache-Control: public, max-age=0, must-revalidate
 /:a/:b/:c/
-  Cache-Control: public, max-age=0, must-revalidate, no-transform
+  Cache-Control: public, max-age=0, must-revalidate
 
 /favicon.svg
   Cache-Control: public, max-age=604800
+/favicon.ico
+  Cache-Control: public, max-age=604800
+/favicon-32.png
+  Cache-Control: public, max-age=604800
 /apple-touch-icon.png
   Cache-Control: public, max-age=604800
+/site.webmanifest
+  Cache-Control: public, max-age=604800
+
+# Trang 404 phục vụ ở /404 (và /404.html chuyển tới đó): không cho lập chỉ mục.
+/404
+  X-Robots-Tag: noindex
+/404.html
+  X-Robots-Tag: noindex
+
+/.well-known/security.txt
+  Content-Type: text/plain; charset=utf-8
 
 /sitemap.xml
   Cache-Control: public, max-age=3600
@@ -230,6 +267,13 @@ export async function build() {
   await writeOut("llms-full.txt", llmsFull(list, ctx, "en"));
   await writeOut("llms-full.vi.txt", llmsFull(list, ctx, "vi"));
   await writeOut("_headers", headers());
+  // Đường dẫn thiếu dấu "/" cuối: Workers Static Assets tự chuyển bằng 307 (tạm thời); khai báo 301 cho từng trang để backlink
+  // viết thiếu dấu "/" được gộp về URL chuẩn. Giữ các quy tắc có sẵn ở public/_redirects.
+  const base = await readFile(path.join(SRC, "public", "_redirects"), "utf8").catch(() => "");
+  const rules = list
+    .filter((p) => p.path.endsWith("/") && p.path !== "/" && p.path !== "/en/")
+    .map((p) => `${p.path.slice(0, -1)} ${p.path} 301`);
+  await writeOut("_redirects", `${base.trimEnd()}\n\n# Sinh tự động từ danh mục trang (build.mjs)\n/en /en/ 301\n${rules.join("\n")}\n`);
   await writeOut(
     ".well-known/security.txt",
     `Contact: mailto:${SITE.email}\nExpires: ${SITE.securityExpires}\nPreferred-Languages: vi, en\nCanonical: ${abs("/.well-known/security.txt")}\n`,

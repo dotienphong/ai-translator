@@ -220,7 +220,7 @@ ${pageHero({
   crumbs,
   title: "Câu hỏi thường gặp về AI Translator",
   lead: "Những câu hỏi thường đặt ra khi tìm hiểu AI Translator, từ cách dùng với Zoom, Teams, Meet đến quyền riêng tư, yêu cầu máy và thanh toán. Mỗi câu trả lời mở đầu bằng đáp án ngắn, phần còn lại là chi tiết và điều kiện.",
-  meta: `<span>${ALL.length} câu hỏi trong ${GROUPS.length} nhóm</span><span>Cập nhật 08/10/2026</span>`,
+  meta: `<span>${ALL.length} câu hỏi trong ${GROUPS.length} nhóm</span><span>Cập nhật {{updated}}</span>`,
 })}
 
 <section class="section-tight"><div class="container">
