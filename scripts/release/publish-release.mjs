@@ -16,7 +16,7 @@
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join, posix } from "node:path";
+import { join, posix, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { tagErrors } from "./release-ready.mjs";
@@ -122,7 +122,8 @@ export async function main(argv, { repo = root, fetch = globalThis.fetch, run = 
   writeFileSync(join(dir, "manifests", "published.json"), `${JSON.stringify({ version, tag, channels })}\n`);
 
   for (const step of uploadPlan({ bucket, version, files, channels })) {
-    const cmd = ["-C", "server", "exec", "wrangler", "r2", "object", "put", step.key, "--file", join(dir, step.file)];
+    // `pnpm -C server exec` chạy wrangler ở server/, nên --file phải tuyệt đối (dir có thể là `target/release-out`).
+    const cmd = ["-C", "server", "exec", "wrangler", "r2", "object", "put", step.key, "--file", resolve(dir, step.file)];
     cmd.push("--content-type", step.type, "--remote");
     if (step.key.endsWith(".json") && step.file.startsWith("manifests")) cmd.push("--cache-control", "no-cache");
     console.log(`${dryRun ? "(dry-run) " : ""}pnpm ${cmd.join(" ")}`);

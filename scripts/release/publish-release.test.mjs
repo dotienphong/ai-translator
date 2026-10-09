@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { test } from "node:test";
 
 import { contentType, main, uploadPlan } from "./publish-release.mjs";
@@ -132,4 +132,18 @@ test("bản đã rút (latest.json về bản trước) vẫn không đăng lạ
   const fetch = fakeFetch({ stable: "0.2.0", beta: "0.2.0" }, [], ["0.3.0"]);
   await assert.rejects(main(base, { repo, fetch, run: (cmd) => runs.push(cmd[7]) }), /0.3.0 đã được đăng.*published\.json/);
   assert.deepEqual(runs, [], "không tải gì");
+});
+
+test("--dir tương đối: đường dẫn --file đưa cho wrangler phải tuyệt đối, vì `pnpm -C server exec` chạy ở server/ (lỗi pipeline 37857845056)", async (t) => {
+  const { repo, out } = fixture(t, "0.4.0");
+  t.mock.method(console, "log", () => {});
+  const dir = relative(process.cwd(), out); // như workflow: `--dir target/release-out` so với thư mục hiện tại
+  assert.equal(isAbsolute(dir), false);
+  const files = [];
+  const run = (cmd) => files.push(cmd[cmd.indexOf("--file") + 1]);
+  const base = ["--tag", "v0.4.0", "--dir", dir, "--bucket", "rel", "--base-url", "https://cdn.example/r"];
+  await main(base, { repo, fetch: fakeFetch({ stable: "0.3.0", beta: "0.3.0" }), run });
+  assert.ok(files.length > 0);
+  for (const file of files) assert.equal(isAbsolute(file), true, `${file} phải tuyệt đối`);
+  assert.equal(files[0], resolve(out, "AI Translator.app.tar.gz"));
 });
