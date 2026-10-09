@@ -79,10 +79,10 @@ const DL_FAQ = [
 const macPanel = () => `
 ${chips([["command", "macOS 14.2 trở lên"], ["cpu", "Apple Silicon (M1 trở lên)"], ["download", "Bộ cài khoảng 9 MB"], ["shield", "Không cần mật khẩu quản trị"]])}
 ${flow([
-  { title: "Mở Terminal", text: "<p>Nhấn <kbd>⌘</kbd> + <kbd>Space</kbd>, gõ <strong>Terminal</strong> rồi nhấn Enter.</p>" },
+  { title: "Mở Terminal", text: "<p>Nhấn <span class='nowrap'><kbd>⌘</kbd> + <kbd>Space</kbd></span>, gõ <strong>Terminal</strong> rồi nhấn Enter.</p>" },
   {
     title: "Dán lệnh này và nhấn Enter",
-    text: `<p>Bấm <strong>Sao chép</strong>, rồi dán vào Terminal bằng <kbd>⌘</kbd> + <kbd>V</kbd>.</p>${cmdBlock({ cmd: INSTALL_CMD, ...COPY, label: "Lệnh cài AI Translator trên macOS", term: "Terminal" })}<p class="small">Không cần mật khẩu. Chạy lại đúng lệnh này bất cứ lúc nào để cập nhật lên bản mới nhất.</p>`,
+    text: `<p>Bấm <strong>Sao chép</strong>, rồi dán vào Terminal bằng <span class='nowrap'><kbd>⌘</kbd> + <kbd>V</kbd></span>.</p>${cmdBlock({ cmd: INSTALL_CMD, ...COPY, label: "Lệnh cài AI Translator trên macOS", term: "Terminal" })}<p class="small">Không cần mật khẩu. Chạy lại đúng lệnh này bất cứ lúc nào để cập nhật lên bản mới nhất.</p>`,
   },
   { title: "Chờ app mở", text: "<p>Khoảng một phút: lệnh tải bản mới nhất, kiểm mã SHA-256, chép AI Translator vào Applications rồi mở app. Lần đầu bạn bấm <strong>Bắt đầu</strong>, macOS hỏi quyền ghi âm thanh hệ thống: chọn cho phép.</p>" },
 ])}
@@ -127,7 +127,7 @@ ${flow([
   { title: "Mở PowerShell", text: "<p>Nhấn phím <kbd>Windows</kbd>, gõ <strong>PowerShell</strong> rồi nhấn Enter. Không cần chạy bằng quyền quản trị.</p>" },
   {
     title: "Dán lệnh này và nhấn Enter",
-    text: `<p>Bấm <strong>Sao chép</strong>, rồi dán vào PowerShell (bấm chuột phải hoặc <kbd>Ctrl</kbd> + <kbd>V</kbd>).</p>${cmdBlock({ cmd: WIN_CMD, ...COPY, label: "Lệnh cài AI Translator trên Windows", term: "Windows PowerShell", prompt: "PS>" })}<p class="small">Chạy lại đúng lệnh này bất cứ lúc nào để cập nhật lên bản mới nhất (bộ cài đóng app đang chạy rồi thay bản cũ).</p>`,
+    text: `<p>Bấm <strong>Sao chép</strong>, rồi dán vào PowerShell (bấm chuột phải hoặc <span class='nowrap'><kbd>Ctrl</kbd> + <kbd>V</kbd></span>).</p>${cmdBlock({ cmd: WIN_CMD, ...COPY, label: "Lệnh cài AI Translator trên Windows", term: "Windows PowerShell", prompt: "PS>" })}<p class="small">Chạy lại đúng lệnh này bất cứ lúc nào để cập nhật lên bản mới nhất (bộ cài đóng app đang chạy rồi thay bản cũ).</p>`,
   },
   { title: "Chờ app mở", text: "<p>Khoảng một phút: lệnh tải bản mới nhất, kiểm mã SHA-256, chạy bộ cài im lặng cho riêng tài khoản của bạn rồi mở AI Translator. Windows không hỏi quyền ghi âm; app tải model một lần rồi sẵn sàng dịch.</p>" },
 ])}
@@ -192,7 +192,7 @@ ${pageHero({
   meta: '<span id="os-detect" class="os-detect" hidden></span>',
 })}
 
-<section class="section-tight" id="cai-dat"><div class="container narrow">
+<section class="section-tight" id="cai-dat"><div class="container dl">
 ${osTabs({
   labels: {
     list: "Chọn hệ điều hành",

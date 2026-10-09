@@ -81,10 +81,10 @@ const DL_FAQ = [
 const macPanel = () => `
 ${chips([["command", "macOS 14.2 or later"], ["cpu", "Apple Silicon (M1 or newer)"], ["download", "About 9 MB installer"], ["shield", "No administrator password"]])}
 ${flow([
-  { title: "Open Terminal", text: "<p>Press <kbd>⌘</kbd> + <kbd>Space</kbd>, type <strong>Terminal</strong> and press Enter.</p>" },
+  { title: "Open Terminal", text: "<p>Press <span class='nowrap'><kbd>⌘</kbd> + <kbd>Space</kbd></span>, type <strong>Terminal</strong> and press Enter.</p>" },
   {
     title: "Paste this command and press Enter",
-    text: `<p>Click <strong>Copy</strong>, then paste into Terminal with <kbd>⌘</kbd> + <kbd>V</kbd>.</p>${cmdBlock({ cmd: INSTALL_CMD, ...COPY, label: "Command that installs AI Translator on macOS", term: "Terminal" })}<p class="small">No password needed. Run the same command again at any time to update to the latest version.</p>`,
+    text: `<p>Click <strong>Copy</strong>, then paste into Terminal with <span class='nowrap'><kbd>⌘</kbd> + <kbd>V</kbd></span>.</p>${cmdBlock({ cmd: INSTALL_CMD, ...COPY, label: "Command that installs AI Translator on macOS", term: "Terminal" })}<p class="small">No password needed. Run the same command again at any time to update to the latest version.</p>`,
   },
   { title: "Wait for the app to open", text: "<p>About a minute: the command downloads the latest version, checks its SHA-256, copies AI Translator to Applications and opens it. The first time you click <strong>Start</strong>, macOS asks for system audio recording permission: choose Allow.</p>" },
 ])}
@@ -129,7 +129,7 @@ ${flow([
   { title: "Open PowerShell", text: "<p>Press the <kbd>Windows</kbd> key, type <strong>PowerShell</strong> and press Enter. You do not need to run it as administrator.</p>" },
   {
     title: "Paste this command and press Enter",
-    text: `<p>Click <strong>Copy</strong>, then paste into PowerShell (right-click or <kbd>Ctrl</kbd> + <kbd>V</kbd>).</p>${cmdBlock({ cmd: WIN_CMD, ...COPY, label: "Command that installs AI Translator on Windows", term: "Windows PowerShell", prompt: "PS>" })}<p class="small">Run the same command again at any time to update to the latest version (the installer closes a running app and replaces the old one).</p>`,
+    text: `<p>Click <strong>Copy</strong>, then paste into PowerShell (right-click or <span class='nowrap'><kbd>Ctrl</kbd> + <kbd>V</kbd></span>).</p>${cmdBlock({ cmd: WIN_CMD, ...COPY, label: "Command that installs AI Translator on Windows", term: "Windows PowerShell", prompt: "PS>" })}<p class="small">Run the same command again at any time to update to the latest version (the installer closes a running app and replaces the old one).</p>`,
   },
   { title: "Wait for the app to open", text: "<p>About a minute: the command downloads the latest version, checks its SHA-256, runs the installer silently for your account only and opens AI Translator. Windows asks for no recording permission; the app downloads its models once and is then ready to translate.</p>" },
 ])}
@@ -194,7 +194,7 @@ ${pageHero({
   meta: '<span id="os-detect" class="os-detect" hidden></span>',
 })}
 
-<section class="section-tight" id="install"><div class="container narrow">
+<section class="section-tight" id="install"><div class="container dl">
 ${osTabs({
   labels: {
     list: "Choose your operating system",

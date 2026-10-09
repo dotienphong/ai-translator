@@ -215,6 +215,25 @@ for (const page of PAGES) {
   });
 }
 
+for (const page of PAGES) {
+  test(`${page.lang}: ở màn hình máy tính, câu hướng dẫn dán lệnh nằm gọn một dòng ở cả hai tab`, { skip }, async () => {
+    const p = await open(page, { width: 1280, height: 900, ua: UA.mac });
+    for (const os of ["macos", "windows"]) {
+      await p.click(`[role="tab"][data-os="${os}"]`);
+      const id = os === "macos" ? page.mac : page.win;
+      const lines = await p.eval(`(() => {
+        const para = document.querySelector("#${id} .flow > li:nth-child(2) .flow-body > p");
+        const lh = parseFloat(getComputedStyle(para).lineHeight);
+        return Math.round(para.getBoundingClientRect().height / lh);
+      })()`);
+      assert.equal(lines, 1, `${page.lang} ${os}: câu hướng dẫn dán lệnh bị xuống ${lines} dòng`);
+      const width = await p.eval(`Math.round(document.querySelector("#${id}").getBoundingClientRect().width)`);
+      assert.ok(width >= 900, `${page.lang} ${os}: khung tab quá hẹp (${width}px)`);
+    }
+    await p.close();
+  });
+}
+
 test("neo cũ từ các trang khác (#cai-macos, #cai-windows, #install-macos, #install-windows) đều mở đúng tab", { skip }, async () => {
   for (const page of PAGES) {
     for (const [os, id] of [["macos", page.mac], ["windows", page.win]]) {

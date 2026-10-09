@@ -468,6 +468,8 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .os-detect { display: inline-flex; align-items: center; gap: 8px; margin: 1.1rem 0 0; padding: 7px 14px 7px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: .92rem; font-weight: 600; }
 .os-detect::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
 .os-detect[hidden] { display: none; }
+.container.dl { max-width: calc(1000px + var(--gutter) * 2); }
+.nowrap { white-space: nowrap; }
 .ostabs, #cai-dat, #install { scroll-margin-top: calc(var(--header-h) + 16px); }
 .ostabs { margin-block: 0; }
 .ostabs-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: calc(var(--r-lg) + 6px); }
