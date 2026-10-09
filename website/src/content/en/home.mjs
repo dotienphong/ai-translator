@@ -104,8 +104,8 @@ ${sectionHead({ eyebrow: "Your data stays on your computer", title: "The AI runs
 ${dataFlow("en")}
 <div class="grid grid-3">
 ${feature({ icon: "lock", title: "Nothing goes to the cloud", text: "Audio lives only in RAM: it is never written to disk and never sent over the network. The transcript and the translation appear on your screen and stay on your computer; history is off by default, and if you turn it on it is stored encrypted on your machine.", accent: true })}
-${feature({ icon: "zap", title: "Low latency", text: "There is no round trip to a server, so subtitles appear right after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack). Other computers may be slower." })}
-${feature({ icon: "shield", title: "Less risk of leaking information", text: "Contracts, HR, finance, product plans: your meeting content is not passed to any third party for translation. Our server only stores your email (when you buy), orders, licenses and device-activation details (a hashed machine ID and device name), never conversation data." })}
+${feature({ icon: "zap", title: "Low latency", text: "There is no round trip to a server, so subtitles appear right after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack). Other computers are slower: a preliminary test on one Windows laptop with integrated graphics gave a median of 1.3–5.4 seconds (see Performance on the Features page)." })}
+${feature({ icon: "shield", title: "Less risk of leaking information", text: "Contracts, HR, finance, product plans: your meeting content is not passed to any third party for translation. Our server only stores your email (when you buy), orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID) and a log of license changes, never conversation data." })}
 </div>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/en/data-security/">See exactly where your data goes ${icon("arrow-right")}</a></p>
 </div></section>
@@ -187,13 +187,13 @@ ${linkCard({ href: "/en/solutions/webinar-and-video-translation/", icon: "play",
 
 <section class="section" id="pricing"><div class="container">
 ${sectionHead({ eyebrow: "Pricing", title: "Three simple plans, prepaid with VietQR", text: "No auto-renewal, no recurring billing, no surprises on your bill.", center: true })}
-${plansGrid("en", { ctaLabel: "Download", freeLabel: "Sign up for the free trial" })}
+${plansGrid("en", { ctaLabel: "Download", freeLabel: "Install and try free" })}
 <p class="disclaimer">Prices are in Vietnamese dong (VND). Payment is by bank transfer from a Vietnamese bank (VietQR) only; international cards are not accepted yet.</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/en/pricing/">Compare the plans in detail ${icon("arrow-right")}</a></p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${callout({ kind: "warn", title: "What we say plainly", text: "The macOS build is currently signed ad-hoc and not notarized: installed with the Terminal command it opens directly, but a .dmg downloaded in a browser is blocked by macOS on first launch and you need to allow it in System Settings (we have a <a href=\"/en/guide/install-macos/\">step-by-step installation guide</a>). The Windows build is not code-signed yet: installed with the PowerShell command SmartScreen does not ask, while an .exe downloaded in a browser may be warned about, and Smart App Control in blocking mode blocks it (see the <a href=\"/en/guide/install-windows/\">Windows installation guide</a>), and we have not measured latency on Windows yet. We say this up front so you do not have to guess." })}
+${callout({ kind: "warn", title: "What we say plainly", text: "The macOS build is currently signed ad-hoc and not notarized: installed with the Terminal command it opens directly, but a .dmg downloaded in a browser is blocked by macOS on first launch and you need to allow it in System Settings (we have a <a href=\"/en/guide/install-macos/\">step-by-step installation guide</a>). The Windows build is not code-signed yet: installed with the PowerShell command SmartScreen does not ask, while an .exe downloaded in a browser may be warned about, and Smart App Control in blocking mode blocks it (see the <a href=\"/en/guide/install-windows/\">Windows installation guide</a>), and latency on Windows has only had a preliminary test on one laptop with integrated graphics, and is slower than on a Mac M4 Pro. We say this up front so you do not have to guess." })}
 </div></section>
 
 <section class="section"><div class="container narrow">

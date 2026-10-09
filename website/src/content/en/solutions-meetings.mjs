@@ -80,7 +80,7 @@ ${steps(
 </div></section>
 
 <section class="section section-alt"><div class="container">
-${sectionHead({ eyebrow: "During the meeting", title: "Stay in control without leaving the call", text: "Press Start before the meeting begins so the models finish loading (it takes a few seconds); silence does not count against your quota.", center: true })}
+${sectionHead({ eyebrow: "During the meeting", title: "Stay in control without leaving the call", text: "Press Start before the meeting begins so the models finish loading (a few seconds on later runs; the first run after installing or updating can take longer, up to a few minutes); silence does not count against your quota.", center: true })}
 ${overlayShot({ slug: "overlay-default", lang: "en", alt: "The AI Translator subtitle bar on a dark background: each sentence shows the original Japanese or Chinese in small type above its English translation", caption: "The subtitle bar: original text in small type above, translation below." })}
 <div class="split">
 <div class="table-wrap reveal"><table>

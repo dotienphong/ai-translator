@@ -158,7 +158,7 @@ const GROUPS = [
       },
       {
         q: "How many devices can I use a key on? How do I move to another one?",
-        a: `<p>One key works on one device; reinstalling the app on the same device does not count as a new one. To move, on the old device go to Settings › License › Deactivate this computer; or on the new device enter the key and choose “Remove that computer and use this one”.</p><p>If two devices activate at once, the key is locked on both until one of them removes it. Changing devices too often within 30 days locks the key temporarily and you will need to contact support. The Free trial is per device, so it cannot be moved. See the <a href="/en/guide/buy-and-activate/">guide to buying and activating a key</a>.</p>`,
+        a: `<p>One key works on one device; reinstalling the app on the same device does not count as a new one. To move, on the old device go to Settings › License › Deactivate this computer; or on the new device enter the key and choose “Remove that computer and use this one”.</p><p>While a key is in use on another device, the second one is blocked by default; only if you deliberately choose “Activate on this computer anyway” and confirm is the key locked on both until one of them removes it. Changing devices too often within 30 days locks the key temporarily and you will need to contact support. The Free trial is per device, so it cannot be moved. See the <a href="/en/guide/buy-and-activate/">guide to buying and activating a key</a>.</p>`,
       },
       {
         q: "I lost my key. What do I do?",

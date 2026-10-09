@@ -74,7 +74,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recor
 
 <h2 id="if-you-refused">If you refused it: turn it back on in System Settings</h2>
 <ol>
-<li>In AI Translator, click <strong>Open System Settings</strong> (it is on step 5 of the setup and on the main screen when the app reports a missing permission). Or open System Settings yourself.</li>
+<li>In AI Translator, click <strong>Open System Settings</strong> (it is on step 5 of the setup and on the Home screen when the app reports a missing permission). Or open System Settings yourself.</li>
 <li>Choose <strong>Privacy &amp; Security</strong>, then <strong>Screen &amp; System Audio Recording</strong>.</li>
 <li>Find <strong>System Audio Recording Only</strong> and switch on <strong>AI Translator</strong>.</li>
 <li>Go back to the app, click <strong>Start</strong> and play something with sound.</li>
@@ -82,9 +82,9 @@ ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recor
 <p>If subtitles still do not appear, quit AI Translator completely (choose <strong>Quit</strong> from its menu bar icon) and open it again. If you do not see AI Translator in the list yet, go back to the app and click Start once (or Play a sample sentence if you are in the setup wizard) so macOS asks for the permission; the app usually appears in the list afterwards, then check again. The names of the items in System Settings may differ a little between macOS versions.</p>
 
 <h2 id="signs-of-missing-permission">Signs the permission is missing</h2>
-<p>Without the permission, no subtitles appear even though the meeting has sound, and the “Input level” bar on the main screen stays flat. After a stretch of silence while another app is known to be playing sound, the <strong>main screen</strong> says:</p>
+<p>Without the permission, no subtitles appear even though the meeting has sound, and the “Input level” bar on the Home screen stays flat. After a stretch of silence while another app is known to be playing sound, the <strong>Home screen</strong> says:</p>
 <blockquote>Nothing is heard although an app is playing sound: AI Translator may not be allowed to record system audio.</blockquote>
-<p>It comes with an <strong>Open System Settings</strong> button. If the session stops because of the missing permission, the main screen says “AI Translator is not allowed to record system audio.” with the same button. Do not confuse these with the general reminder on the subtitle bar, “No audio heard. Check that the meeting sound is playing.”: that only means there has been no sound for a while, which can simply be a quiet meeting.</p>
+<p>It comes with an <strong>Open System Settings</strong> button. If the session stops because of the missing permission, the Home screen says “AI Translator is not allowed to record system audio.” with the same button. Do not confuse these with the general reminder on the subtitle bar, “No audio heard. Check that the meeting sound is playing.”: that only means there has been no sound for a while, which can simply be a quiet meeting.</p>
 
 <h2 id="why-no-error">Why macOS shows no error when you refuse</h2>
 <p>When permission is denied, macOS still lets the app create the capture source and still reports it as running, but every sample it delivers is silence. With no error to report, AI Translator can only detect a missing permission by waiting for a long silence while another app is playing sound. That is why the warning appears after a while rather than immediately.</p>

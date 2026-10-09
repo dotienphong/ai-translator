@@ -23,6 +23,10 @@ export const HOME_FAQ = [
     a: "<p>Không. App không có đăng nhập. Gói Free chỉ cần đồng ý điều khoản; gói trả phí được kích hoạt bằng license key gửi qua email sau khi thanh toán.</p>",
   },
   {
+    q: "Tôi ở ngoài Việt Nam có mua được không?",
+    a: "<p>Chưa. Hiện chỉ nhận chuyển khoản từ ngân hàng Việt Nam qua VietQR, tính bằng đồng Việt Nam. Chưa hỗ trợ thẻ quốc tế hay PayPal, nên nếu không có tài khoản ngân hàng Việt Nam thì hiện bạn chưa mua được gói trả phí. Gói Free dùng thử không cần phương thức thanh toán.</p>",
+  },
+  {
     q: "Hiện tôi tải app ở đâu?",
     a: "<p>Trên macOS bạn cài bằng một dòng lệnh dán vào Terminal, lệnh nằm ở trang <a href=\"/tai-xuong/\">Tải xuống</a>; app mở thẳng, không cần Open Anyway. Bản Windows cũng cài bằng một dòng lệnh dán vào PowerShell ở cùng trang.</p>",
   },
@@ -98,8 +102,8 @@ ${sectionHead({ eyebrow: "Dữ liệu ở lại trên máy bạn", title: "AI ch
 ${dataFlow("vi")}
 <div class="grid grid-3">
 ${feature({ icon: "lock", title: "Không gửi lên cloud", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi qua mạng. Bản chép lời và bản dịch hiện trên màn hình và nằm trên máy bạn; lịch sử mặc định tắt, nếu bạn bật thì lưu mã hóa trên máy.", accent: true })}
-${feature({ icon: "zap", title: "Độ trễ thấp", text: "Không phải gửi âm thanh đi rồi chờ máy chủ trả về, nên phụ đề hiện ngay sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn). Máy khác có thể chậm hơn." })}
-${feature({ icon: "shield", title: "Giảm rủi ro lộ thông tin", text: "Hợp đồng, nhân sự, tài chính, kế hoạch sản phẩm: nội dung cuộc họp không đi qua bên thứ ba nào để dịch. Máy chủ của chúng tôi chỉ lưu email (khi mua), đơn hàng, license và thông tin kích hoạt máy (mã băm ID máy, tên máy), không có dữ liệu cuộc hội thoại." })}
+${feature({ icon: "zap", title: "Độ trễ thấp", text: "Không phải gửi âm thanh đi rồi chờ máy chủ trả về, nên phụ đề hiện ngay sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn). Máy khác chậm hơn: đo sơ bộ trên một laptop Windows có GPU tích hợp cho trung vị 1,3–5,4 giây (xem mục Hiệu năng ở trang Tính năng)." })}
+${feature({ icon: "shield", title: "Giảm rủi ro lộ thông tin", text: "Hợp đồng, nhân sự, tài chính, kế hoạch sản phẩm: nội dung cuộc họp không đi qua bên thứ ba nào để dịch. Máy chủ của chúng tôi chỉ lưu email (khi mua), đơn hàng, license, thông tin kích hoạt máy (mã băm ID máy, tên máy), mốc dùng thử Free (mã băm ID máy) và nhật ký thay đổi license, không có dữ liệu cuộc hội thoại." })}
 </div>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/bao-mat-du-lieu/">Xem chính xác dữ liệu nào đi đâu ${icon("arrow-right")}</a></p>
 </div></section>
@@ -107,7 +111,7 @@ ${feature({ icon: "shield", title: "Giảm rủi ro lộ thông tin", text: "H�
 <section class="section section-alt" id="cach-hoat-dong"><div class="container">
 ${sectionHead({ eyebrow: "Cách hoạt động", title: "Từ lúc cài đặt tới phụ đề đầu tiên: ba bước", text: "Không cần cấu hình phức tạp, không cần mời bot vào cuộc họp.", center: true })}
 ${steps([
-  { title: "Cài app, tải model một lần", text: "Mở app, làm theo phần giới thiệu, cho phép ghi âm thanh hệ thống và tải model về máy (khoảng 1,3 GB hoặc 2,5 GB tùy gói). Sau đó mọi thứ chạy offline." },
+  { title: "Cài app, tải model một lần", text: "Mở app, làm theo phần giới thiệu, cho phép ghi âm thanh hệ thống (trên macOS) và tải model về máy (khoảng 1,3 GB hoặc 2,5 GB tùy gói). Sau đó mọi thứ chạy offline." },
   { title: "Bấm Bắt đầu khi họp", text: "Chọn ngôn ngữ bạn muốn đọc, bấm <strong>Bắt đầu</strong> hoặc dùng phím tắt. App nghe âm thanh đang phát trên máy tính, dù là Zoom, Teams, Meet hay video." },
   { title: "Đọc phụ đề nổi trên màn hình", text: "Thanh phụ đề hiện bản dịch ngay sau khi người nói dừng câu (trên Mac M4 Pro, độ trễ trung vị dưới 1,1 giây; máy khác có thể chậm hơn), kèm câu gốc chữ nhỏ ở trên (bạn tắt được). Kéo, đổi cỡ chữ, khóa vị trí theo ý mình." },
 ])}
@@ -181,12 +185,13 @@ ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "We
 
 <section class="section" id="gia"><div class="container">
 ${sectionHead({ eyebrow: "Bảng giá", title: "Ba gói đơn giản, trả trước bằng VietQR", text: "Không tự động gia hạn, không thanh toán định kỳ, không bất ngờ trên hóa đơn.", center: true })}
-${plansGrid("vi", { ctaLabel: "Tải xuống", freeLabel: "Đăng ký dùng thử" })}
+${plansGrid("vi", { ctaLabel: "Tải xuống", freeLabel: "Cài và dùng thử miễn phí" })}
+<p class="disclaimer">Giá tính bằng đồng Việt Nam (VND). Chỉ nhận chuyển khoản từ ngân hàng Việt Nam qua VietQR; chưa nhận thẻ quốc tế.</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/bang-gia/">So sánh chi tiết các gói ${icon("arrow-right")}</a></p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${callout({ kind: "warn", title: "Những điều chúng tôi nói thẳng", text: "Bản macOS hiện ký ad-hoc, chưa notarize: cài bằng dòng lệnh trong Terminal thì mở thẳng, còn file .dmg tải bằng trình duyệt sẽ bị macOS chặn lần mở đầu và cần cho phép trong System Settings (chúng tôi có <a href=\"/huong-dan/cai-dat-macos/\">hướng dẫn từng bước</a>). Bản Windows chưa được ký mã: cài bằng dòng lệnh PowerShell thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị cảnh báo, và Smart App Control ở chế độ chặn sẽ chặn (xem <a href=\"/huong-dan/cai-dat-windows/\">hướng dẫn cài trên Windows</a>), và chúng tôi chưa đo độ trễ trên Windows. Chúng tôi nói rõ để bạn không phải đoán." })}
+${callout({ kind: "warn", title: "Những điều chúng tôi nói thẳng", text: "Bản macOS hiện ký ad-hoc, chưa notarize: cài bằng dòng lệnh trong Terminal thì mở thẳng, còn file .dmg tải bằng trình duyệt sẽ bị macOS chặn lần mở đầu và cần cho phép trong System Settings (chúng tôi có <a href=\"/huong-dan/cai-dat-macos/\">hướng dẫn từng bước</a>). Bản Windows chưa được ký mã: cài bằng dòng lệnh PowerShell thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị cảnh báo, và Smart App Control ở chế độ chặn sẽ chặn (xem <a href=\"/huong-dan/cai-dat-windows/\">hướng dẫn cài trên Windows</a>), và độ trễ trên Windows mới đo sơ bộ trên một laptop có GPU tích hợp và chậm hơn Mac M4 Pro. Chúng tôi nói rõ để bạn không phải đoán." })}
 </div></section>
 
 <section class="section"><div class="container narrow">

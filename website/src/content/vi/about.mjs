@@ -45,7 +45,7 @@ ${sectionHead({ eyebrow: "Câu chuyện", title: "Vì sao có AI Translator" })}
 <p>Ý tưởng ban đầu là chuyển một app dịch offline cho Android (mã nguồn mở) sang dịch cuộc gọi và cuộc họp. Chúng tôi sớm chạm vào một giới hạn của hệ điều hành. Android chỉ cho ứng dụng bên thứ ba thu âm thanh phát ra từ media và trò chơi; âm thanh của cuộc gọi và cuộc gọi VoIP thì không, và khi đang có cuộc gọi, micro của app thường chỉ nhận được im lặng.</p>
 <p>Trên máy tính thì khác. Cả Windows lẫn macOS (từ bản 14.2) đều có cách cho phép một ứng dụng thu chính âm thanh đang phát ra từ máy. Hướng đi vì thế chuyển sang máy tính: một app nghe âm thanh hệ thống, nhận dạng giọng nói, dịch rồi hiện phụ đề, dùng được với bất kỳ app họp nào mà không cần bot hay plugin.</p>
 <p>Khi tìm hiểu (tháng 9/2026), chúng tôi thấy phụ đề dịch của các app họp lớn thường nằm ở gói trả phí cao hơn và xử lý trên cloud; công cụ của bên thứ ba phần lớn cũng vậy. Chúng tôi muốn một lựa chọn khác: xử lý hoàn toàn trên máy bạn, dùng được với mọi app họp, chú trọng tiếng Việt, và vì không có máy chủ nào dịch hộ nên chúng tôi không phải trả thêm chi phí hạ tầng cho từng phút bạn dùng. <a href="/so-sanh/dich-offline-va-cloud/">So sánh dịch offline và dịch cloud</a>.</p>
-<p>Model dịch được chọn bằng số đo. Trong thử nghiệm nội bộ ngày 29/09/2026 trên 320 câu văn bản (năm chiều dịch, chạy trên Mac M4 Pro), model được chọn đạt điểm COMET 0,837, trong khi ba model dịch khác được thử cùng điều kiện đạt từ 0,736 đến 0,833. Đó là phép thử trên văn bản chứ chưa phải giọng nói thật, và chúng tôi không so với bất kỳ dịch vụ cloud nào.</p>
+<p>Model dịch được chọn bằng số đo. Trong thử nghiệm nội bộ ngày 29/09/2026 trên 320 câu văn bản (năm chiều dịch, chạy trên Mac M4 Pro), model được chọn đạt điểm chất lượng dịch tự động 0,837, trong khi ba model dịch khác được thử cùng điều kiện đạt từ 0,736 đến 0,833. Đó là phép thử trên văn bản chứ chưa phải giọng nói thật, và chúng tôi không so với bất kỳ dịch vụ cloud nào.</p>
 </div>
 </div></section>
 
@@ -75,7 +75,7 @@ ${sectionHead({ eyebrow: "Hôm nay", title: "AI Translator đang ở đâu?" })}
 <thead><tr><th scope="col">Hạng mục</th><th scope="col">Trạng thái</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>macOS 14.2 trở lên, Apple Silicon. <a href="/tai-xuong/#cai-macos">Cài bằng một dòng lệnh trong Terminal</a>.</td></tr>
-<tr><th scope="row">Windows</th><td>Windows 10/11 64-bit (x64). <a href="/tai-xuong/#cai-windows">Cài bằng một dòng lệnh trong PowerShell</a>. Chưa đo độ trễ trên Windows.</td></tr>
+<tr><th scope="row">Windows</th><td>Windows 10/11 64-bit (x64). <a href="/tai-xuong/#cai-windows">Cài bằng một dòng lệnh trong PowerShell</a>. Độ trễ trên Windows mới đo sơ bộ trên một laptop có GPU tích hợp (chậm hơn Mac M4 Pro).</td></tr>
 <tr><th scope="row">Ký số</th><td>macOS ký ad-hoc, chưa notarize: cài bằng dòng lệnh thì mở thẳng, còn file .dmg tải bằng trình duyệt thì lần mở đầu cần bấm Open Anyway. Windows chưa có chứng thư ký mã: cài bằng dòng lệnh thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo (Smart App Control chế độ chặn sẽ chặn cả hai) (<a href="/huong-dan/cai-dat-windows/">cách xử lý</a>).</td></tr>
 <tr><th scope="row">Thanh toán</th><td>VietQR bằng VND qua PayOS. Chưa có thẻ quốc tế, chưa có hóa đơn điện tử.</td></tr>
 <tr><th scope="row">Gói</th><td>Free dùng thử 10 ngày, Monthly, Yearly. Xem <a href="/bang-gia/">bảng giá</a>.</td></tr>

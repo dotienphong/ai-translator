@@ -121,7 +121,7 @@ ${callout({
 })}
 
 <h2 id="ngoai-tuyen">Ngoại tuyến và kiểm tra bản quyền</h2>
-<p>Nhận dạng và dịch không cần mạng. Gói trả phí chỉ cần kiểm tra bản quyền qua mạng ít nhất mỗi 14 ngày. Quá 14 ngày chưa kiểm được thì app dùng Free và báo “Đã 14 ngày chưa kiểm được gói nên đang dùng Free. Hãy kết nối mạng.” Kết nối mạng rồi bấm <strong>Kiểm tra ngay</strong> ở Cài đặt › Bản quyền. Giờ máy bị chỉnh lùi cũng làm app báo lỗi; xem <a href="/huong-dan/khac-phuc-su-co/">khắc phục sự cố</a>.</p>
+<p>Nhận dạng và dịch không cần mạng. Gói trả phí chỉ cần kiểm tra bản quyền qua mạng ít nhất mỗi 14 ngày. Quá 14 ngày chưa kiểm được thì app chuyển về Free (nếu máy còn trong 10 ngày dùng thử; hết dùng thử thì chưa dịch được cho tới khi kiểm lại được bản quyền) và báo “Đã 14 ngày chưa kiểm được gói nên đang dùng Free. Hãy kết nối mạng.” Kết nối mạng rồi bấm <strong>Kiểm tra ngay</strong> ở Cài đặt › Bản quyền. Giờ máy bị chỉnh lùi cũng làm app báo lỗi; xem <a href="/huong-dan/khac-phuc-su-co/">khắc phục sự cố</a>.</p>
 
 <h2 id="gia-han-doi-goi">Gia hạn, đổi gói và hết hạn</h2>
 <ul>

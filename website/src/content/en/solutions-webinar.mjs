@@ -104,7 +104,7 @@ ${checkList([
   "<strong>Pick the source Only {app name} (macOS):</strong> in Settings › Audio, choose your browser or media player so other sounds are not translated. The list only shows apps playing sound, so start the video first, then click <em>Refresh list</em>.",
   "<strong>Mute system notifications</strong> while you watch, especially on Windows, where you cannot pick a single app yet.",
   "<strong>Lock the source language</strong> when the whole event is in one language; keep Detect automatically when speakers switch.",
-  "<strong>Press Start before you play:</strong> the app loads its models during the first few seconds.",
+  "<strong>Press Start before you play:</strong> the app loads its models in the first few seconds (the first run after installing or updating can take longer, up to a few minutes).",
 ])}
 <p>All five languages work in every direction. We have only measured translation quality for pairs that include Vietnamese; other pairs (for example English to Japanese) run, but have no quality score yet.</p>
 </div></section>

@@ -80,7 +80,7 @@ ${steps(
 </div></section>
 
 <section class="section section-alt"><div class="container">
-${sectionHead({ eyebrow: "Trong cuộc họp", title: "Điều khiển mà không rời cuộc họp", text: "Bấm Bắt đầu trước khi họp bắt đầu để model nạp xong (vài giây đầu); im lặng không tính vào hạn mức.", center: true })}
+${sectionHead({ eyebrow: "Trong cuộc họp", title: "Điều khiển mà không rời cuộc họp", text: "Bấm Bắt đầu trước khi họp bắt đầu để model nạp xong (vài giây ở các lần sau; lần đầu sau khi cài hoặc cập nhật có thể lâu hơn, tới vài phút); im lặng không tính vào hạn mức.", center: true })}
 ${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề của AI Translator trên nền tối: mỗi câu có câu gốc tiếng Anh hoặc tiếng Trung chữ nhỏ ở trên và bản dịch tiếng Việt ở dưới", caption: "Thanh phụ đề: câu gốc chữ nhỏ ở trên, bản dịch ở dưới." })}
 <div class="split">
 <div class="table-wrap reveal"><table>

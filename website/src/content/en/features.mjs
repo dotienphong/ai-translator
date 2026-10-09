@@ -121,7 +121,7 @@ ${checkList([
   "<strong>Export</strong> to TXT, SRT or Markdown; for SRT you choose whether the text is the translation or the original <span class=\"badge badge-pro\">Pro</span>",
   "<strong>Session history:</strong> review, open and delete sessions one by one, or all at once <span class=\"badge badge-pro\">Pro</span>",
   "History is <strong>off by default</strong>. When you turn it on, it is stored on your computer, encrypted, with the key kept in the Keychain (macOS) or Credential Manager (Windows)",
-  "<strong>Delete all data</strong> with one button (after a confirmation), on every plan",
+  "<strong>Delete history and glossary</strong> from this computer with one button (after a confirmation; a separate button also deletes the models), on every plan",
 ])}
 <p class="more-link"><a href="/en/guide/history-and-export/">Read the guide to history and export ${icon("arrow-right")}</a></p>
 ${appShot({ slug: "app-history", lang: "en", alt: "History screen listing saved sessions with date and time, minutes, number of sentences and a preview", caption: "History: sessions saved on your computer." })}
@@ -193,7 +193,7 @@ ${facts([
   ["macOS", "macOS 14.2 or later, Apple Silicon (M1 or newer)<small>No version for Intel Macs</small>"],
   ["RAM", "At least 8 GB, 16 GB recommended"],
   ["Disk", "At least 1 GB free on top of the size of the model being downloaded"],
-  ["Windows", "Windows 10/11 64-bit (x64), CPU with AVX2<small>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended. Not code-signed yet, so SmartScreen may warn during installation; latency on Windows not measured yet</small>"],
+  ["Windows", "Windows 10/11 64-bit (x64), CPU with AVX2<small>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended. Not code-signed yet, so SmartScreen may warn during installation; latency on Windows has only had a preliminary test on one laptop with integrated graphics, slower than on a Mac M4 Pro (see Performance)</small>"],
 ])}
 </div></section>
 
@@ -209,10 +209,10 @@ ${sectionHead({ eyebrow: "Performance", title: "Real measurements, with the cond
 </tbody></table></div>
 <div class="grid grid-2">
 ${feature({ icon: "gauge", title: "Long sessions", text: "One continuous session of 5 h 23 min (a lecture video in English, on an ad-hoc-signed release build): 6,019 segments, no errors, median delay 0.48 s. In a 2-hour stability test, no component was restarted." })}
-${feature({ icon: "languages", title: "Translation and recognition quality", text: "In an internal test on 320 sentences in five directions involving Vietnamese, the Standard pack's translation model scored 0.837 on COMET. We chose the translation model by comparing several models on this same test set. On clean read speech, Vietnamese recognition in the Standard pack has a word error rate of 8.7%. That is read speech, not real meeting conversation." })}
+${feature({ icon: "languages", title: "Translation and recognition quality", text: "In an internal test across eight directions involving Vietnamese, run through the app's own translation path, the Standard pack's translation model scored an average of about 0.84 on an automatic translation-quality score (scale 0 to 1, table below). We chose the translation model by comparing several models on a separate test set. On clean read speech, Vietnamese recognition in the Standard pack has a word error rate of 8.7%. That is read speech, not real meeting conversation." })}
 </div>
 <h3 class="reveal" id="quality-by-direction">Translation and recognition quality by direction</h3>
-<p class="reveal">COMET scores were measured through the app's own translation path (the same setup as in real use), 100 sentences per direction (Vietnamese → Chinese, Japanese, Korean: 40 sentences). COMET is a relative score from 0 to 1, higher is better; <strong>it is not a percentage accuracy</strong>.</p>
+<p class="reveal">Automatic translation-quality scores were measured through the app's own translation path (the same setup as in real use), 100 sentences per direction (Vietnamese → Chinese, Japanese, Korean: 40 sentences). It is a relative score from 0 to 1, higher is better; <strong>it is not a percentage accuracy</strong>.</p>
 <div class="table-wrap reveal"><table>
 <thead><tr><th scope="col">Direction (text)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
 <tbody>
@@ -234,8 +234,8 @@ ${feature({ icon: "languages", title: "Translation and recognition quality", tex
 <tr><th scope="row">日本語 (character errors)</th><td>4.5%</td><td>13.1%</td></tr>
 <tr><th scope="row">한국어 (character errors)</th><td>4.1%</td><td>8.2%</td></tr>
 </tbody></table></div>
-<p class="small muted reveal">How to read this: the translation test set leans toward everyday spoken language, so it is only a rough proxy for meeting speech; recognition was measured on clean read speech (about 15 minutes per language), not real meeting conversations, and narrowband Bluetooth headsets raise the error rate. All eight directions above involve Vietnamese; the other 12 directions among English, 中文, 日本語 and 한국어 run but have no quality score yet. The Lite pack is noticeably less accurate at recognizing Vietnamese, Japanese, Korean and Chinese.</p>
-${callout({ kind: "warn", title: "What we have not measured, and do not promise", text: "All the figures above were measured on a single Mac M4 Pro, with a 300&nbsp;ms pause to end a sentence (the app's current default is 50&nbsp;ms; the 5-hour session used the default). We have not measured: a base Mac M1, 8 GB computers, discrete Windows graphics cards, battery and power use, accuracy on real meeting conversation or over Bluetooth headsets, and translation quality for directions that do not involve Vietnamese (they work, but we have no quality score to publish). A preliminary test on one Windows laptop with integrated graphics showed that the Standard pack did not meet our latency target." })}
+<p class="small muted reveal">How to read this: the translation test set leans toward everyday spoken language, so it is only a rough proxy for meeting speech; recognition was measured on clean read speech (about 15 minutes per language), not real meeting conversations, and in a simulated narrowband-audio test (like a Bluetooth headset in call mode) the error rate rose; we have not tested real headsets. All eight directions above involve Vietnamese; the other 12 directions among English, 中文, 日本語 and 한국어 run but have no quality score yet. The Lite pack is noticeably less accurate at recognizing Vietnamese, Japanese, Korean and Chinese.</p>
+${callout({ kind: "warn", title: "What we have not measured, and do not promise", text: "All the figures above were measured on a single Mac M4 Pro, with a 300&nbsp;ms pause to end a sentence (the app's current default is 50&nbsp;ms; the 5-hour session used the default). We have not measured: an M1 Mac, 8 GB computers, discrete Windows graphics cards, battery and power use, accuracy on real meeting conversation or over Bluetooth headsets, and translation quality for directions that do not involve Vietnamese (they work, but we have no quality score to publish). A preliminary test on one Windows laptop (Core i5-1345U, integrated graphics, 32 GB of RAM, Windows 11; 6 sessions of 17–23 sentences per setup) gave a median latency of 1.3–2.6 seconds for the Lite pack and 2.7–5.4 seconds for the Standard pack, which did not meet our latency target. That laptop is stronger than our minimum machine, so these are not figures for a weak PC." })}
 </div></section>
 
 <section class="section section-alt"><div class="container">

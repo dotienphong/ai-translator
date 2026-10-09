@@ -121,7 +121,7 @@ ${callout({
 })}
 
 <h2 id="offline">Offline use and license checks</h2>
-<p>Speech recognition and translation need no connection. A paid plan only needs to be checked online at least every 14 days. After 14 days without a successful check the app falls back to Free and says “Your plan could not be checked for 14 days, so Free is used. Connect to the internet.” Connect, then click <strong>Check now</strong> in Settings › License. A clock moved backwards also triggers an error; see <a href="/en/guide/troubleshooting/">troubleshooting</a>.</p>
+<p>Speech recognition and translation need no connection. A paid plan only needs to be checked online at least every 14 days. After 14 days without a successful check the app falls back to Free (if the computer is still within its 10-day trial; after the trial it cannot translate until the license can be checked again) and says “Your plan could not be checked for 14 days, so Free is used. Connect to the internet.” Connect, then click <strong>Check now</strong> in Settings › License. A clock moved backwards also triggers an error; see <a href="/en/guide/troubleshooting/">troubleshooting</a>.</p>
 
 <h2 id="renew-change">Renew, change plan and expiry</h2>
 <ul>

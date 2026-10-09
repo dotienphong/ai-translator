@@ -25,7 +25,7 @@ export const PRICING_FAQ = [
   },
   {
     q: "How many computers can I use a key on?",
-    a: `<p>One. Each key works on a single computer. To move to another computer, deactivate the old one in Settings › License, or choose "Remove that computer and use this one" on the new one. If a key is activated on two computers at the same time, it is temporarily locked on both until one of them removes it.</p>`,
+    a: `<p>One. Each key works on a single computer. To move to another computer, deactivate the old one in Settings › License, or choose "Remove that computer and use this one" on the new one. While a key is in use on another computer, the second one is blocked by default; only if you deliberately choose "Activate on this computer anyway" and confirm is the key temporarily locked on both until one of them removes it.</p>`,
   },
   {
     q: "Can I get a refund?",
@@ -65,7 +65,7 @@ ${pageHero({ crumbs, title: "Simple pricing: prepaid, no auto-renewal", lead: "T
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">The three plans</h2>
-${plansGrid("en", { ctaLabel: "Download", freeLabel: "Sign up for the free trial" })}
+${plansGrid("en", { ctaLabel: "Download", freeLabel: "Install and try free" })}
 <p class="disclaimer">Prices are in Vietnamese dong (VND) per order, and equal the amount in the VietQR code. Prices and allowances are set on our server; a plan you have already bought never has its allowance reduced.</p>
 ${callout({ kind: "warn", title: "Paying from outside Vietnam", text: "For now we accept only bank transfers from Vietnamese banks, made through VietQR and charged in VND. International cards, PayPal and other currencies are not supported yet, so if you do not have a Vietnamese bank account you cannot buy a paid plan today. The Free trial needs no payment method. If this blocks you, <a href=\"/en/contact/\">contact us</a>." })}
 </div></section>
@@ -101,7 +101,7 @@ ${appShot({ slug: "app-upgrade", lang: "en", alt: "The Upgrade screen in the app
 ${checkList([
   "Time is measured by the <strong>length of the speech</strong> in the segments that have been translated, not by padding or silence",
   "Sentences <strong>already in the language</strong> you want to read, and segments that are skipped or could not be translated, <strong>do not count</strong>",
-  "<strong>Free:</strong> the 30-minute allowance resets every day at 00:00 on your computer's clock",
+  "<strong>Free:</strong> the 30-minute allowance resets every day, usually at 00:00 on your computer's clock (at least 20 hours after the previous reset; the app shows the exact time it opens again)",
   "<strong>Monthly:</strong> a 30-day cycle that starts on the payment date, not on the calendar month",
   "The app warns you when less than 5 minutes are left; when the allowance runs out, it stops the session and tells you when translation opens again",
   "The allowance is tracked separately for each computer",

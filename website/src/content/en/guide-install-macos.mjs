@@ -121,9 +121,10 @@ ${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick 
 <p>This step applies only to a .dmg downloaded in a browser; installing with the <a href="#install-command">one-line command</a> does not need it. Once we have a Developer ID and notarize the app, this step will go away for every way of installing.</p>
 
 <h2 id="updates">Every update, macOS asks one thing again</h2>
-<p>This is a consequence of ad-hoc signing: every new build has a different signature, so macOS asks again for Keychain access. Since version 0.1.1 AI Translator keeps all its sensitive data (the history encryption key, license token, quota counters) in <strong>one</strong> Keychain item, so after each update you will see:</p>
+<p>First, how updating works: The app checks for a new version about a minute after it opens and then every 24 hours, and downloads it in the background; when it is ready the app asks “Restart” or “Later” (the tray menu also has “Restart to update”), and the new version is installed when you restart or choose Quit. The update channel (Stable or Beta) is chosen in Settings › General; changing it checks right away.</p>
+<p>The rest is a consequence of ad-hoc signing: every new build has a different signature, so macOS asks again for Keychain access. Since version 0.1.1 AI Translator keeps all its sensitive data (the history encryption key, license token, quota counters) in <strong>one</strong> Keychain item, so after each update you will see:</p>
 <ul>
-<li><strong>1 Keychain dialog</strong> asking for your Mac login password (we measured on one Mac running macOS 26; two updates in a row each gave only 1 dialog): enter it and choose <strong>Always Allow</strong>. Do not choose Deny: the app will not be able to read your license and quota. If you chose it by mistake, quit the app completely, reopen it and choose Always Allow.</li>
+<li><strong>1 Keychain dialog</strong> asking for your Mac login password (we measured on one Mac running macOS 26: after re-signing the app twice to simulate a new build, each time there was only 1 dialog): enter it and choose <strong>Always Allow</strong>. Do not choose Deny: the app will not be able to read your license and quota. If you chose it by mistake, quit the app completely, reopen it and choose Always Allow.</li>
 <li>The <strong>system audio recording</strong> permission may be asked for again once (our earlier measurement recorded 1 dialog): allow it.</li>
 </ul>
 <p><strong>Only the first update from 0.1.0 to 0.1.1</strong> is different: the app has to copy the 5 old Keychain items into the new one, so you see 5 Keychain dialogs once (we measured exactly 5, plus 1 dialog to allow recording); later updates give just 1.</p>
@@ -141,7 +142,7 @@ ${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick 
 
 <h2 id="common-problems">Common installation problems</h2>
 <ul>
-<li><strong>The install command says it could not read latest.json.</strong> Your Mac has no network, or a proxy/VPN is blocking <code>releases.aitranslator.io.vn</code>. Check your connection and run it again.</li>
+<li><strong>The install command says it could not read https://releases.aitranslator.io.vn/stable/latest.json….</strong> Your Mac has no network, or a proxy/VPN is blocking <code>releases.aitranslator.io.vn</code>. Check your connection and run it again.</li>
 <li><strong>The install command says the SHA-256 does not match.</strong> The download was corrupted or tampered with on the way. The script installs nothing; run it again, and if it still differs write to <a href="/en/contact/">support</a>.</li>
 <li><strong>The install command says the app is still running.</strong> Quit AI Translator completely (AI Translator menu in the menu bar › Quit) and run the command again.</li>
 <li><strong>The install command says it needs Apple Silicon or macOS 14.2.</strong> Your Mac does not meet the requirements; there is no build for Intel Macs.</li>

@@ -158,7 +158,7 @@ const GROUPS = [
       },
       {
         q: "Tôi dùng được key trên mấy máy? Chuyển sang máy khác thế nào?",
-        a: `<p>Mỗi key dùng trên một máy; cài lại app trên cùng máy không tính là máy mới. Để chuyển, ở máy cũ vào Cài đặt › Bản quyền › Gỡ kích hoạt máy này; hoặc ở máy mới nhập key rồi chọn “Gỡ máy kia và dùng máy này”.</p><p>Nếu hai máy cùng kích hoạt, key bị tạm khóa trên cả hai cho tới khi một máy gỡ key. Đổi máy quá nhiều trong 30 ngày thì key bị khóa tạm và bạn cần liên hệ hỗ trợ. Dùng thử Free tính theo máy nên không chuyển được. Xem <a href="/huong-dan/mua-va-kich-hoat-key/">hướng dẫn mua và kích hoạt key</a>.</p>`,
+        a: `<p>Mỗi key dùng trên một máy; cài lại app trên cùng máy không tính là máy mới. Để chuyển, ở máy cũ vào Cài đặt › Bản quyền › Gỡ kích hoạt máy này; hoặc ở máy mới nhập key rồi chọn “Gỡ máy kia và dùng máy này”.</p><p>Khi key đang dùng ở máy khác, máy thứ hai mặc định bị chặn; chỉ khi bạn chủ động chọn “Vẫn kích hoạt trên máy này” và xác nhận, key mới bị tạm khóa trên cả hai máy cho tới khi một máy gỡ key. Đổi máy quá nhiều trong 30 ngày thì key bị khóa tạm và bạn cần liên hệ hỗ trợ. Dùng thử Free tính theo máy nên không chuyển được. Xem <a href="/huong-dan/mua-va-kich-hoat-key/">hướng dẫn mua và kích hoạt key</a>.</p>`,
       },
       {
         q: "Tôi bị mất key thì làm sao?",

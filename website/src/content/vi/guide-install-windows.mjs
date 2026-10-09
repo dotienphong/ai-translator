@@ -73,7 +73,7 @@ ${facts([
   ["Ổ đĩa cho model", "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)<small>Cộng thêm 1 GB trống khi tải.</small>"],
   ["Mạng", "Cần để tải model và đăng ký dùng thử Free<small>Có thể cần cả lúc cài (xem bên dưới). Sau đó dịch offline.</small>"],
 ])}
-<p class="small muted">Trong giai đoạn thử nghiệm nội bộ, chúng tôi đã thử thu âm thanh hệ thống và thanh phụ đề trên Windows 11. Chúng tôi chưa đo trên Windows: độ trễ, kiểm tra kết nối mạng bằng proxy, từng app họp cụ thể với bản phát hành, màn hình DPI cao và nhiều màn hình. Vì vậy chúng tôi chưa cam kết độ trễ nào trên Windows. Máy không có card rời đủ mạnh nên dùng gói model Nhẹ.</p>
+<p class="small muted">Chúng tôi đã thử thu âm thanh hệ thống và thanh phụ đề trên Windows 11, và đo sơ bộ độ trễ trên một laptop có GPU tích hợp (chậm hơn Mac M4 Pro). Chưa đo: kiểm tra kết nối mạng bằng proxy trên Windows, từng app họp cụ thể với bản phát hành, màn hình DPI cao và nhiều màn hình. Vì vậy chúng tôi chưa cam kết độ trễ nào trên Windows. Máy không có card rời đủ mạnh nên dùng gói model Nhẹ.</p>
 
 <h2 id="cai-bang-lenh">Cách nhanh: cài bằng một dòng lệnh</h2>
 <ol>
@@ -82,12 +82,12 @@ ${facts([
 </ol>
 ${cmdBlock({ cmd: INSTALL_CMD, copy: "Sao chép lệnh", copied: "Đã chép", label: "Lệnh cài AI Translator trên Windows", term: "Windows PowerShell", prompt: "PS>" })}
 <ol start="3">
-<li>Chờ khoảng một phút. Lệnh tải bản mới nhất, đối chiếu mã SHA-256, chạy bộ cài im lặng (cài vào <code>%LOCALAPPDATA%\AI Translator\</code>, không UAC) rồi mở app.</li>
+<li>Chờ khoảng một phút. Lệnh tải bản mới nhất, đối chiếu mã SHA-256, chạy bộ cài im lặng (cài vào <code>%LOCALAPPDATA%\\AI Translator\\</code>, không UAC) rồi mở app.</li>
 <li>Làm tiếp theo <a href="/huong-dan/bat-dau-nhanh/">hướng dẫn bắt đầu nhanh</a>.</li>
 </ol>
 <p><strong>Vì sao không qua màn hình SmartScreen?</strong> SmartScreen chỉ kiểm file mang dấu “tải từ internet” (do trình duyệt gắn) khi bạn mở nó từ File Explorer. File tải bằng PowerShell không có dấu đó và bộ cài được chạy từ PowerShell, nên không có cảnh báo, dù bản này chưa được ký mã.</p>
-${callout({ kind: "warn", title: "Hãy hiểu những gì lệnh này làm.", text: "Lệnh tải một script từ <strong>aitranslator.io.vn</strong>, script tải bộ cài từ <strong>releases.aitranslator.io.vn</strong>, đối chiếu SHA-256 rồi cài. Không cần quyền quản trị, không gửi dữ liệu đi. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu chống file hỏng; bạn vẫn đang tin nguồn <strong>aitranslator.io.vn</strong>. Muốn đọc script trước, dùng lệnh in script ra rồi mới chạy: <code>$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s</code>. Chạy lại đúng lệnh cài bất cứ lúc nào để cập nhật; bộ cài tự đóng app đang chạy. Kênh beta: <code>&amp; ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta</code>." })}
-<p>Gặp lỗi? Script dừng và báo lý do bằng tiếng Việt (máy không đạt yêu cầu, mất mạng, SHA-256 không khớp…). Xem <a href="#loi-thuong-gap">lỗi thường gặp khi cài</a>.</p>
+${callout({ kind: "warn", title: "Hãy hiểu những gì lệnh này làm.", text: "Lệnh tải một script từ <strong>aitranslator.io.vn</strong>, script tải bộ cài từ <strong>releases.aitranslator.io.vn</strong>, đối chiếu SHA-256 rồi cài. Không cần quyền quản trị, không gửi dữ liệu đi. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu chống file hỏng; bạn vẫn đang tin nguồn <strong>aitranslator.io.vn</strong>. Muốn đọc script trước, dùng lệnh in script ra rồi mới chạy: <code>$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s</code>. Chạy lại đúng lệnh cài bất cứ lúc nào để cập nhật; bộ cài tự đóng app đang chạy." })}
+<p>Gặp lỗi? Script dừng và báo lý do bằng tiếng Việt, hoặc tiếng Anh nếu máy không đặt tiếng Việt (máy không đạt yêu cầu, mất mạng, SHA-256 không khớp…). Xem <a href="#loi-thuong-gap">lỗi thường gặp khi cài</a>.</p>
 
 <h2 id="cai-bang-exe">Cách khác: cài từ file .exe</h2>
 <p>Dùng cách này nếu bạn nhận file .exe qua email hoặc không muốn dùng PowerShell. File tải bằng trình duyệt mang dấu “tải từ internet” nên SmartScreen có thể cảnh báo.</p>
@@ -136,7 +136,7 @@ ${callout({ kind: "warn", title: "Vì sao Windows cảnh báo?", text: "SmartScr
 <p>AI Translator nằm ở khay hệ thống. Đóng cửa sổ chỉ ẩn app đi; muốn thoát hẳn thì chọn <strong>Thoát</strong> ở biểu tượng trong khay. Windows có thể giấu biểu tượng mới sau mũi tên <strong>^</strong> trên taskbar: kéo biểu tượng ra taskbar, hoặc bật nó trong cài đặt Taskbar. Phím tắt trên Windows dùng Ctrl+Alt (xem <a href="/huong-dan/thanh-phu-de-va-phim-tat/">thanh phụ đề và phím tắt</a>).</p>
 
 <h2 id="cap-nhat">Cập nhật</h2>
-<p>App tự kiểm tra bản mới (Cài đặt › Chung). Bạn cũng có thể chạy lại đúng lệnh cài bất cứ lúc nào để lên bản mới nhất. Nếu bạn cài từ file .exe gửi qua email và bản đó chưa tự cập nhật, chúng tôi sẽ gửi bản mới kèm mã SHA-256; SmartScreen có thể cảnh báo lại với file mới.</p>
+<p>App tự kiểm tra bản mới sau khi mở khoảng 1 phút rồi mỗi 24 giờ và tải ngầm; khi tải xong, app hỏi “Khởi động lại” hoặc “Để sau” (menu ở khay hệ thống cũng có “Khởi động lại để cập nhật”), và bản mới được cài khi bạn khởi động lại hoặc chọn Thoát. Kênh nhận bản (Ổn định hoặc Beta) chọn ở Cài đặt › Chung; đổi kênh thì app kiểm ngay. Bạn cũng có thể chạy lại đúng lệnh cài bất cứ lúc nào để lên bản mới nhất. Nếu bạn cài từ file .exe gửi qua email và bản đó chưa tự cập nhật, chúng tôi sẽ gửi bản mới kèm mã SHA-256; SmartScreen có thể cảnh báo lại với file mới.</p>
 
 <h2 id="go-cai-dat">Gỡ cài đặt đúng cách</h2>
 <ol>
@@ -145,13 +145,13 @@ ${callout({ kind: "warn", title: "Vì sao Windows cảnh báo?", text: "SmartScr
 <li>Chọn <strong>Thoát</strong> ở biểu tượng AI Translator trong khay hệ thống.</li>
 <li>Mở <strong>Settings › Apps › Installed apps</strong>, tìm <strong>AI Translator</strong>, bấm <strong>Uninstall</strong>.</li>
 </ol>
-<p>Bộ gỡ có ô xóa dữ liệu app: đánh dấu ô này thì model cũng bị xóa, kể cả khi bạn bỏ qua bước 1–2. Bản quyền và hạn mức còn lại được giữ, nên cài lại thường không làm mất gói đã mua. Dùng thử Free tính theo máy, nên cài lại không mở lại 10 ngày dùng thử. Dữ liệu và model nằm ở <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\</code> (model ở thư mục con <code>models</code>); khóa, token và bộ đếm hạn mức nằm trong Credential Manager.</p>
+<p>Bộ gỡ có ô xóa dữ liệu app: đánh dấu ô này thì model cũng bị xóa, kể cả khi bạn bỏ qua bước 1–2. Bản quyền và hạn mức còn lại được giữ, nên cài lại thường không làm mất gói đã mua. Dùng thử Free tính theo máy, nên cài lại không mở lại 10 ngày dùng thử. Model, lịch sử, từ điển và log nằm ở <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\</code> (model ở thư mục con <code>models</code>, log ở <code>logs\\app.log</code>); file cài đặt <code>settings.json</code> nằm ở <code>%APPDATA%\\com.aitranslator.desktop\\</code>; khóa, token và bộ đếm hạn mức nằm trong Credential Manager.</p>
 
 <h2 id="loi-thuong-gap">Lỗi thường gặp khi cài</h2>
 <ul>
-<li><strong>Lệnh cài báo “không đọc được latest.json”.</strong> Máy mất mạng, hoặc proxy/VPN chặn <code>releases.aitranslator.io.vn</code>. Kiểm tra mạng rồi chạy lại.</li>
+<li><strong>Lệnh cài báo “không đọc được https://releases.aitranslator.io.vn/stable/latest.json…”.</strong> Máy mất mạng, hoặc proxy/VPN chặn <code>releases.aitranslator.io.vn</code>. Kiểm tra mạng rồi chạy lại.</li>
 <li><strong>Lệnh cài báo “SHA-256 của file tải về không khớp”.</strong> File tải bị lỗi hoặc bị can thiệp trên đường truyền. Script không cài gì; chạy lại, nếu vẫn lệch thì báo <a href="/lien-he/">hỗ trợ</a>.</li>
-<li><strong>Lệnh cài không chạy: “cannot be loaded” hoặc báo ngôn ngữ bị giới hạn (Constrained Language).</strong> Máy do công ty quản lý có thể chặn script. Dùng cách cài từ file .exe hoặc hỏi quản trị viên.</li>
+<li><strong>Lệnh cài không chạy và báo ngôn ngữ bị giới hạn (Constrained Language Mode).</strong> Máy do công ty quản lý có thể chặn script. Dùng cách cài từ file .exe hoặc hỏi quản trị viên.</li>
 <li><strong>Ứng dụng bị chặn, không có nút bỏ qua.</strong> Xem mục Smart App Control ở trên.</li>
 <li><strong>SmartScreen không có nút Run anyway.</strong> (Chỉ gặp khi cài từ file .exe tải bằng trình duyệt.) Có thể do chính sách của máy (ví dụ máy do công ty hoặc trường học quản lý) không cho chạy app chưa ký mã. Hãy hỏi quản trị viên của máy.</li>
 <li><strong>Phần mềm diệt virus chặn hoặc xóa bộ cài.</strong> Kiểm lại mã SHA-256. Nếu mã khớp mà vẫn bị chặn, <a href="/lien-he/">liên hệ hỗ trợ</a> và cho chúng tôi biết tên phần mềm diệt virus.</li>

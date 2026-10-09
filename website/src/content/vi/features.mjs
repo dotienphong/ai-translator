@@ -119,7 +119,7 @@ ${checkList([
   "<strong>Xuất file</strong> TXT, SRT hoặc Markdown; với SRT chọn chữ là bản dịch hay câu gốc <span class=\"badge badge-pro\">Pro</span>",
   "<strong>Lịch sử các phiên:</strong> xem lại, mở, xóa từng phiên hoặc xóa tất cả <span class=\"badge badge-pro\">Pro</span>",
   "Lịch sử <strong>mặc định tắt</strong>. Bật thì lưu trên máy, mã hóa, khóa nằm trong Keychain (macOS) hoặc Credential Manager (Windows)",
-  "<strong>Xóa toàn bộ dữ liệu</strong> bằng một nút, dùng được ở mọi gói",
+  "<strong>Xóa lịch sử và từ điển thuật ngữ</strong> trên máy bằng một nút (có nút riêng để xóa cả model), dùng được ở mọi gói",
 ])}
 ${appShot({ slug: "app-history", lang: "vi", alt: "Màn hình Lịch sử liệt kê các phiên đã lưu với ngày giờ, số phút, số câu và đoạn xem trước", caption: "Lịch sử các phiên đã lưu trên máy." })}
 </div>
@@ -189,7 +189,7 @@ ${facts([
   ["macOS", "macOS 14.2 trở lên, Apple Silicon (M1 trở lên)<small>Không có bản cho Mac Intel</small>"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
   ["Ổ đĩa", "Trống thêm ít nhất 1 GB so với dung lượng model cần tải"],
-  ["Windows", "Windows 10/11 64-bit (x64), CPU có AVX2<small>Khuyến nghị card đồ họa rời, VRAM từ 6 GB cho gói model Chuẩn. Chưa ký mã nên SmartScreen có thể cảnh báo khi cài; chưa đo độ trễ trên Windows</small>"],
+  ["Windows", "Windows 10/11 64-bit (x64), CPU có AVX2<small>Khuyến nghị card đồ họa rời, VRAM từ 6 GB cho gói model Chuẩn. Chưa ký mã nên SmartScreen có thể cảnh báo khi cài; độ trễ trên Windows mới đo sơ bộ trên một laptop có GPU tích hợp, chậm hơn Mac M4 Pro (xem mục Hiệu năng)</small>"],
 ])}
 </div></section>
 
@@ -198,17 +198,17 @@ ${sectionHead({ eyebrow: "Hiệu năng", title: "Số đo thật, kèm điều k
 <div class="table-wrap reveal"><table>
 <thead><tr><th scope="col">Số đo (Mac M4 Pro 24 GB, macOS 26, GPU Apple)</th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
 <tbody>
-<tr><th scope="row">Độ trễ trung vị (p50): từ lúc người nói dừng câu tới khi hiện đủ bản dịch</th><td>0,76–1,03 giây</td><td>0,61–0,84 giây</td></tr>
+<tr><th scope="row">Độ trễ trung vị (p50): từ lúc người nói dừng câu tới khi hiện đủ bản dịch (6 phiên, mỗi phiên khoảng 20 câu)</th><td>0,76–1,03 giây</td><td>0,61–0,84 giây</td></tr>
 <tr><th scope="row">Độ trễ p90</th><td>0,94–1,34 giây</td><td>0,73–1,14 giây</td></tr>
 <tr><th scope="row">Chữ dịch đầu tiên hiện (p50)</th><td>0,63–0,69 giây</td><td>0,52–0,57 giây</td></tr>
 <tr><th scope="row">RAM khi chạy</th><td>2,9 GiB</td><td>1,8–1,9 GiB</td></tr>
 </tbody></table></div>
 <div class="grid grid-2">
 ${feature({ icon: "gauge", title: "Phiên dài", text: "Một phiên dịch liên tục 5 giờ 23 phút (video bài giảng tiếng Anh, bản release ký ad-hoc): 6019 đoạn, không lỗi, độ trễ trung vị 0,48 giây. Thử nghiệm ổn định 2 giờ: không thành phần nào bị khởi động lại." })}
-${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng", text: "Trên bộ thử nội bộ 320 câu (năm chiều có tiếng Việt), model dịch của gói Chuẩn đạt điểm COMET trung bình 0,837. Chúng tôi chọn model dịch bằng cách so nhiều model với nhau trên cùng bộ thử này. Với câu đọc chuẩn, tiếng Việt gói model Chuẩn có tỉ lệ lỗi từ 8,7%. Đây là câu đọc, chưa phải hội thoại họp thật." })}
+${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng", text: "Trên bộ thử nội bộ tám chiều có tiếng Việt, đo trên đúng đường dịch của app, model dịch của gói Chuẩn đạt điểm chất lượng dịch tự động trung bình khoảng 0,84 (thang 0 đến 1, bảng bên dưới). Chúng tôi chọn model dịch bằng cách so nhiều model với nhau trên một bộ thử riêng. Với câu đọc chuẩn, tiếng Việt gói model Chuẩn có tỉ lệ lỗi từ 8,7%. Đây là câu đọc, chưa phải hội thoại họp thật." })}
 </div>
 <h3 class="reveal" id="chat-luong-theo-chieu">Chất lượng dịch và nhận dạng theo từng chiều</h3>
-<p class="reveal">Điểm COMET đo trên đúng đường dịch của app (cùng cấu hình như khi dùng thật), mỗi chiều 100 câu (Việt → Trung, Nhật, Hàn: 40 câu). COMET là điểm tương đối từ 0 đến 1, cao hơn là tốt hơn; <strong>không phải tỉ lệ phần trăm chính xác</strong>.</p>
+<p class="reveal">Điểm chất lượng dịch tự động đo trên đúng đường dịch của app (cùng cấu hình như khi dùng thật), mỗi chiều 100 câu (Việt → Trung, Nhật, Hàn: 40 câu). Đây là điểm tương đối từ 0 đến 1, cao hơn là tốt hơn; <strong>không phải tỉ lệ phần trăm chính xác</strong>.</p>
 <div class="table-wrap reveal"><table>
 <thead><tr><th scope="col">Chiều dịch (văn bản)</th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>
 <tbody>
@@ -230,8 +230,8 @@ ${feature({ icon: "languages", title: "Chất lượng dịch và nhận dạng"
 <tr><th scope="row">日本語 (lỗi ký tự)</th><td>4,5%</td><td>13,1%</td></tr>
 <tr><th scope="row">한국어 (lỗi ký tự)</th><td>4,1%</td><td>8,2%</td></tr>
 </tbody></table></div>
-<p class="small muted reveal">Cách đọc: bộ câu dịch thiên về văn nói đời thường nên chỉ đại diện gần đúng cho lời họp; nhận dạng đo trên câu đọc chuẩn (khoảng 15 phút mỗi ngôn ngữ), không phải hội thoại họp thật, và tai nghe Bluetooth băng hẹp làm lỗi tăng thêm. Tám chiều trên đều có tiếng Việt; 12 chiều còn lại giữa English, 中文, 日本語, 한국어 chạy được nhưng chưa có điểm chất lượng. Gói model Nhẹ kém rõ hơn ở nhận dạng tiếng Việt, Nhật, Hàn, Trung.</p>
-${callout({ kind: "warn", title: "Điều chưa đo, chúng tôi không hứa", text: "Mọi số trên đo trên một máy Mac M4 Pro, với ngưỡng im lặng chốt đoạn 300 ms (mặc định hiện tại của app là 50 ms; phiên 5 giờ dùng mặc định). Chưa đo: Mac M1, máy 8 GB, card đồ họa rời của Windows, pin và điện năng, độ chính xác với hội thoại họp thật hoặc tai nghe Bluetooth, và chất lượng dịch của các chiều không có tiếng Việt (chạy được nhưng chưa có điểm đo). Thử nghiệm sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói model Chuẩn chưa đạt mục tiêu độ trễ." })}
+<p class="small muted reveal">Cách đọc: bộ câu dịch thiên về văn nói đời thường nên chỉ đại diện gần đúng cho lời họp; nhận dạng đo trên câu đọc chuẩn (khoảng 15 phút mỗi ngôn ngữ), không phải hội thoại họp thật, và trong thử nghiệm mô phỏng âm thanh băng hẹp (kiểu tai nghe Bluetooth chế độ đàm thoại) lỗi tăng thêm; chúng tôi chưa thử với tai nghe thật. Tám chiều trên đều có tiếng Việt; 12 chiều còn lại giữa English, 中文, 日本語, 한국어 chạy được nhưng chưa có điểm chất lượng. Gói model Nhẹ kém rõ hơn ở nhận dạng tiếng Việt, Nhật, Hàn, Trung.</p>
+${callout({ kind: "warn", title: "Điều chưa đo, chúng tôi không hứa", text: "Mọi số trên đo trên một máy Mac M4 Pro, với ngưỡng im lặng chốt đoạn 300 ms (mặc định hiện tại của app là 50 ms; phiên 5 giờ dùng mặc định). Chưa đo: Mac M1, máy 8 GB, card đồ họa rời của Windows, pin và điện năng, độ chính xác với hội thoại họp thật hoặc tai nghe Bluetooth, và chất lượng dịch của các chiều không có tiếng Việt (chạy được nhưng chưa có điểm đo). Thử nghiệm sơ bộ trên một laptop Windows (Core i5-1345U, GPU tích hợp, 32 GB RAM, Windows 11; mỗi cấu hình 6 phiên, 17–23 câu mỗi phiên): gói model Nhẹ có độ trễ trung vị 1,3–2,6 giây, gói model Chuẩn 2,7–5,4 giây và chưa đạt mục tiêu độ trễ. Máy này mạnh hơn máy tối thiểu nên đây không phải con số của máy yếu." })}
 </div></section>
 
 <section class="section section-alt"><div class="container">

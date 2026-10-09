@@ -80,7 +80,7 @@ ${facts([
 <h2 id="verified">How did we check that?</h2>
 <p>On macOS we ran the app behind a traffic-capturing proxy (mitmproxy), measured in parallel with <code>nettop</code>, and translated a session using a sample English sentence played on repeat. The build was release 0.1.0, ad-hoc signed, on a MacBook Pro M4 Pro with macOS 26.6.2, on 6 October 2026.</p>
 <ul>
-<li><strong>A 15 minute 42 second session</strong> (158 segments, 0 errors): 3 outbound requests, all to our two servers (a license check and an update check). During translation there was only 1 request, the scheduled update check. This run took place before we moved to our own domain; a 5-minute repeat on our own domain gave the same result.</li>
+<li><strong>A 15 minute 42 second session</strong> (158 segments, 0 errors): 3 outbound requests, all to our two servers (a license check and an update check). During translation there was only 1 request, the scheduled update check. This run took place before we moved to our own domain; a later repeat on our own domain (a session of about 9 minutes, nettop for 5 minutes) gave the same result.</li>
 <li><strong>nettop</strong> watched 7 processes of the app (including the AI processing): no outbound data stream was seen.</li>
 <li><strong>Marker words</strong> from the sample sentence: found neither in the app's log nor in the recorded requests.</li>
 </ul>

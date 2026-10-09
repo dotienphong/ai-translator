@@ -70,7 +70,7 @@ const DL_FAQ = [
   },
   {
     q: "Which Windows PCs can run it?",
-    a: `<p>Windows 10 or 11, 64-bit (x64), with a CPU that supports AVX2 and at least 8 GB of RAM. Windows ARM64 is not supported yet. Without AVX2 or with less than 8 GB of RAM, the app explains why and does not let you download the models. We have not measured latency on Windows, so we make no promise about it.</p>`,
+    a: `<p>Windows 10 or 11, 64-bit (x64), with a CPU that supports AVX2 and at least 8 GB of RAM. Windows ARM64 is not supported yet. Without AVX2 or with less than 8 GB of RAM, the app explains why and does not let you download the models. Latency on Windows has only had a preliminary test on one laptop with integrated graphics and is slower than on a Mac M4 Pro, so we make no promise about it.</p>`,
   },
   {
     q: "Does the app update itself?",

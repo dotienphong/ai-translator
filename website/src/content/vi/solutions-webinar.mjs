@@ -24,7 +24,7 @@ ${pageHero({
   crumbs,
   title: "Phụ đề dịch cho webinar, khóa học và video",
   lead: "AI Translator hiện phụ đề dịch ngay trên màn hình khi bạn xem webinar, hội thảo trực tuyến, khóa học hay video bằng ngoại ngữ. Nó nghe âm thanh phát ra từ máy tính nên không cần cài gì vào trình duyệt hay nền tảng, và việc nhận dạng cùng dịch chạy trên máy bạn.",
-  meta: "<span>Cập nhật 08/10/2026</span><span>Đã thử trên macOS · Windows chưa đo độ trễ</span>",
+  meta: "<span>Cập nhật 08/10/2026</span><span>Đã thử trên macOS · Windows mới đo sơ bộ độ trễ</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -104,7 +104,7 @@ ${checkList([
   "<strong>Chọn nguồn Chỉ {tên app} (macOS):</strong> ở Cài đặt › Âm thanh, chọn trình duyệt hay app trình phát để thông báo và âm thanh khác không bị dịch. Danh sách chỉ có app đang phát tiếng nên hãy phát video trước rồi bấm <em>Làm mới danh sách</em>.",
   "<strong>Tắt tiếng thông báo</strong> của máy khi xem, nhất là trên Windows, nơi chưa chọn được từng app.",
   "<strong>Khóa ngôn ngữ nguồn</strong> khi cả buổi chỉ một ngôn ngữ; giữ Tự nhận diện khi diễn giả đổi tiếng.",
-  "<strong>Bấm Bắt đầu trước khi phát:</strong> vài giây đầu app nạp model.",
+  "<strong>Bấm Bắt đầu trước khi phát:</strong> app nạp model trong vài giây đầu (lần đầu sau khi cài hoặc cập nhật có thể lâu hơn, tới vài phút).",
 ])}
 <p>Năm ngôn ngữ dùng được theo mọi chiều. Chúng tôi chỉ đo chất lượng dịch cho các chiều có tiếng Việt; các cặp khác (ví dụ Anh sang Nhật) chạy được nhưng chưa có điểm đo.</p>
 </div></section>

@@ -72,7 +72,7 @@ ${facts([
   ["Disk space for models", "1.3 GB (Lite pack) or 2.5 GB (Standard pack)<small>Plus 1 GB free while downloading.</small>"],
   ["Internet", "Needed to download the model and register the Free trial<small>Possibly also during installation (see below). After that, translation runs offline.</small>"],
 ])}
-<p class="small muted">During internal testing we tried system audio capture and the subtitle bar on Windows 11. We have not measured on Windows: latency, a proxy check of network traffic, specific meeting apps with the release build, high-DPI screens or multiple monitors. So we make no latency promise on Windows. On a PC without a capable discrete card, use the Lite pack.</p>
+<p class="small muted">We have tried system audio capture and the subtitle bar on Windows 11, and run a preliminary latency test on one laptop with integrated graphics (slower than a Mac M4 Pro). We have not measured: a proxy check of network traffic on Windows, specific meeting apps with the release build, high-DPI screens or multiple monitors. So we make no latency promise on Windows. On a PC without a capable discrete card, use the Lite pack.</p>
 
 <h2 id="install-command">Quick way: install with one command</h2>
 <ol>
@@ -81,11 +81,11 @@ ${facts([
 </ol>
 ${cmdBlock({ cmd: INSTALL_CMD, copy: "Copy command", copied: "Copied", label: "Command that installs AI Translator on Windows", term: "Windows PowerShell", prompt: "PS>" })}
 <ol start="3">
-<li>Wait about a minute. The command downloads the latest version, compares its SHA-256, runs the installer silently (into <code>%LOCALAPPDATA%\AI Translator\</code>, no UAC prompt) and opens the app.</li>
+<li>Wait about a minute. The command downloads the latest version, compares its SHA-256, runs the installer silently (into <code>%LOCALAPPDATA%\\AI Translator\\</code>, no UAC prompt) and opens the app.</li>
 <li>Continue with the <a href="/en/guide/quick-start/">quick start guide</a>.</li>
 </ol>
 <p><strong>Why no SmartScreen screen?</strong> SmartScreen only checks a file that carries the “downloaded from the internet” tag (added by browsers) when you open it from File Explorer. A file downloaded by PowerShell has no such tag and the installer is run from PowerShell, so there is no warning even though this build is not code-signed.</p>
-${callout({ kind: "warn", title: "Understand what this command does.", text: "The command downloads a script from <strong>aitranslator.io.vn</strong>; the script downloads the installer from <strong>releases.aitranslator.io.vn</strong>, compares its SHA-256 and installs it. It needs no administrator rights and sends no data. The SHA-256 is served from the same place as the file, so it mainly protects against a corrupted download; you are still trusting <strong>aitranslator.io.vn</strong>. To read the script first, use the command that prints it and only then runs it: <code>$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s</code>. Run the same command again at any time to update; the installer closes a running app itself. Beta channel: <code>&amp; ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta</code>." })}
+${callout({ kind: "warn", title: "Understand what this command does.", text: "The command downloads a script from <strong>aitranslator.io.vn</strong>; the script downloads the installer from <strong>releases.aitranslator.io.vn</strong>, compares its SHA-256 and installs it. It needs no administrator rights and sends no data. The SHA-256 is served from the same place as the file, so it mainly protects against a corrupted download; you are still trusting <strong>aitranslator.io.vn</strong>. To read the script first, use the command that prints it and only then runs it: <code>$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s</code>. Run the same command again at any time to update; the installer closes a running app itself." })}
 <p>Something went wrong? The script stops and says why (PC not supported, no network, SHA-256 mismatch…). See <a href="#common-problems">common installation problems</a>.</p>
 
 <h2 id="install-exe">Alternative: install from the .exe file</h2>
@@ -135,7 +135,7 @@ ${callout({ kind: "warn", title: "Why does Windows warn you?", text: "SmartScree
 <p>AI Translator lives in the system tray. Closing the window only hides the app; to quit completely, choose <strong>Quit</strong> from the tray icon. Windows may hide new icons behind the <strong>^</strong> arrow on the taskbar: drag the icon onto the taskbar, or turn it on in Taskbar settings. Shortcuts on Windows use Ctrl+Alt (see <a href="/en/guide/subtitle-bar-and-shortcuts/">the subtitle bar and shortcuts</a>).</p>
 
 <h2 id="updates">Updates</h2>
-<p>The app checks for new versions itself (Settings › General). You can also run the same install command at any time to get the latest version. If you installed from an .exe we emailed you and that build does not update itself, we send you the new one with its SHA-256; SmartScreen may warn again for the new file.</p>
+<p>The app checks for a new version about a minute after it opens and then every 24 hours, and downloads it in the background; when it is ready the app asks “Restart” or “Later” (the tray menu also has “Restart to update”), and the new version is installed when you restart or choose Quit. The update channel (Stable or Beta) is chosen in Settings › General; changing it checks right away. You can also run the same install command at any time to get the latest version. If you installed from an .exe we emailed you and that build does not update itself, we send you the new one with its SHA-256; SmartScreen may warn again for the new file.</p>
 
 <h2 id="uninstall">Uninstall properly</h2>
 <ol>
@@ -144,13 +144,13 @@ ${callout({ kind: "warn", title: "Why does Windows warn you?", text: "SmartScree
 <li>Choose <strong>Quit</strong> from the AI Translator icon in the system tray.</li>
 <li>Open <strong>Settings › Apps › Installed apps</strong>, find <strong>AI Translator</strong> and click <strong>Uninstall</strong>.</li>
 </ol>
-<p>The uninstaller has an option to delete the app data: tick it and the models are removed too, even if you skipped steps 1–2. Your license and remaining quota are kept, so reinstalling should not lose a plan you bought. The Free trial is tied to your PC, so reinstalling does not reopen the 10 days. Data and models live in <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\</code> (models in the <code>models</code> subfolder); keys, tokens and quota counters are kept in Credential Manager.</p>
+<p>The uninstaller has an option to delete the app data: tick it and the models are removed too, even if you skipped steps 1–2. Your license and remaining quota are kept, so reinstalling should not lose a plan you bought. The Free trial is tied to your PC, so reinstalling does not reopen the 10 days. Models, history, glossary and logs live in <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\</code> (models in the <code>models</code> subfolder, the log in <code>logs\\app.log</code>); the settings file <code>settings.json</code> lives in <code>%APPDATA%\\com.aitranslator.desktop\\</code>; keys, tokens and quota counters are kept in Credential Manager.</p>
 
 <h2 id="common-problems">Common installation problems</h2>
 <ul>
-<li><strong>The install command says it could not read latest.json.</strong> Your PC has no network, or a proxy/VPN is blocking <code>releases.aitranslator.io.vn</code>. Check your connection and run it again.</li>
+<li><strong>The install command says it could not read https://releases.aitranslator.io.vn/stable/latest.json….</strong> Your PC has no network, or a proxy/VPN is blocking <code>releases.aitranslator.io.vn</code>. Check your connection and run it again.</li>
 <li><strong>The install command says the SHA-256 does not match.</strong> The download was corrupted or tampered with on the way. The script installs nothing; run it again, and if it still differs write to <a href="/en/contact/">support</a>.</li>
-<li><strong>The install command will not run (“cannot be loaded”, or Constrained Language mode).</strong> A company-managed PC may block scripts. Use the .exe route or ask the administrator.</li>
+<li><strong>The install command will not run (it reports Constrained Language mode).</strong> A company-managed PC may block scripts. Use the .exe route or ask the administrator.</li>
 <li><strong>The app is blocked with no way past it.</strong> See the Smart App Control section above.</li>
 <li><strong>SmartScreen has no Run anyway button.</strong> (Only when installing from an .exe downloaded in a browser.) A policy on your PC (for example on a computer managed by your company or school) may block apps that are not code-signed. Ask the person who manages the computer.</li>
 <li><strong>Antivirus software blocks or removes the installer.</strong> Check the SHA-256 again. If it matches and the installer is still blocked, <a href="/en/contact/">contact support</a> and tell us which antivirus you use.</li>

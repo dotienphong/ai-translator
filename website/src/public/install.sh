@@ -180,8 +180,8 @@ main() {
 
   say "Đã cài $PRODUCT $version tại $dest." "Installed $PRODUCT $version at $dest."
   if [ "$upgrading" -eq 1 ]; then
-    say "Vì đây là bản cập nhật, macOS có thể hỏi mật khẩu đăng nhập vài lần (Keychain): nhập mật khẩu rồi chọn Always Allow." \
-      "Because this is an update, macOS may ask for your login password a few times (Keychain): enter it and choose Always Allow."
+    say "Vì đây là bản cập nhật, macOS có thể hỏi mật khẩu đăng nhập (Keychain): nhập mật khẩu rồi chọn Always Allow." \
+      "Because this is an update, macOS may ask for your login password (Keychain): enter it and choose Always Allow."
   fi
 
   # --- 5. Mở app ---

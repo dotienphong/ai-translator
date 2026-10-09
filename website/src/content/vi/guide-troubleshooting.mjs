@@ -70,7 +70,7 @@ ${docLayout({
 
 <h2 id="cham-hoac-dung">Phụ đề chậm, thiếu hoặc dừng</h2>
 <div class="grid grid-2">
-<div class="card"><span class="card-title">“Đang trễ”; “Đang chạy bằng CPU (chậm hơn).”; “Máy không đủ bộ nhớ. Nên dùng gói model Nhẹ.”</span><p><strong>Nguyên nhân:</strong> Máy không theo kịp tốc độ nói, hoặc GPU lỗi nên app chuyển sang CPU.</p><p><strong>Cách xử lý:</strong> Đóng bớt app nặng. Ở Cài đặt › Model, chọn gói model Nhẹ rồi bấm <strong>Dùng gói này</strong> (nếu chưa tải gói đó thì bấm <strong>Tải và dùng</strong>); gói mới được dùng từ phiên dịch sau.</p></div>
+<div class="card"><span class="card-title">“Đang trễ”; “Đang chạy bằng CPU (chậm hơn).”; “Máy không đủ bộ nhớ. Nên dùng gói Nhẹ.”</span><p><strong>Nguyên nhân:</strong> Máy không theo kịp tốc độ nói, hoặc GPU lỗi nên app chuyển sang CPU.</p><p><strong>Cách xử lý:</strong> Đóng bớt app nặng. Ở Cài đặt › Model, chọn gói model Nhẹ rồi bấm <strong>Dùng gói này</strong> (nếu chưa tải gói đó thì bấm <strong>Tải và dùng</strong>); gói mới được dùng từ phiên dịch sau.</p></div>
 <div class="card"><span class="card-title">“Dịch không khả dụng: chỉ hiện câu gốc”; “Phiên dịch đã dừng vì lỗi. Mở cửa sổ chính để xem chi tiết.”; “Phần nhận dạng giọng nói ngừng chạy…”</span><p><strong>Nguyên nhân:</strong> Bộ dịch hoặc bộ nhận dạng lỗi. App tự khởi động lại chúng; quá 5 lần trong 10 phút thì dừng dịch.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Dừng</strong> rồi <strong>Bắt đầu</strong>. Nếu app báo thiếu hoặc hỏng một phần của app, hãy cài lại AI Translator. Lặp lại thì gửi log.</p></div>
 </div>
 
@@ -97,7 +97,7 @@ ${docLayout({
 </div>
 
 <h2 id="gui-log">Gửi log và báo lỗi cho hỗ trợ</h2>
-<p>Mở <strong>Giới thiệu › Mở thư mục log</strong> để thấy file <code>app.log</code> (trên macOS: thư mục con <code>com.aitranslator.desktop</code> trong <code>~/Library/Logs/</code>). Log chỉ nằm trên máy bạn và không chứa âm thanh, nội dung chép lời hay key đầy đủ. App không tự gửi gì: bạn tự quyết có gửi cho <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.io.vn) hay không.</p>
+<p>Mở <strong>Giới thiệu › Mở thư mục log</strong> để thấy file <code>app.log</code> (trên macOS: thư mục con <code>com.aitranslator.desktop</code> trong <code>~/Library/Logs/</code>; trên Windows: <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>). Log chỉ nằm trên máy bạn và không chứa âm thanh, nội dung chép lời hay key đầy đủ. App không tự gửi gì: bạn tự quyết có gửi cho <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.io.vn) hay không.</p>
 ${appShot({
   slug: "app-about",
   lang: "vi",

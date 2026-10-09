@@ -84,7 +84,7 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "Sao chép lệnh", copied: "Đã chép", l
 </ol>
 <p><strong>Vì sao không phải bấm Open Anyway?</strong> macOS chỉ chặn app khi file mang nhãn “tải từ internet” (do trình duyệt gắn). File tải bằng <code>curl</code> trong Terminal không có nhãn đó, nên app mở thẳng dù chưa được Apple notarize.</p>
 ${callout({ kind: "warn", title: "Hãy hiểu những gì lệnh này làm.", text: "Lệnh tải một script từ <strong>aitranslator.io.vn</strong>, script tải bản cài từ <strong>releases.aitranslator.io.vn</strong>, đối chiếu SHA-256 rồi cài. Không dùng sudo, không gửi dữ liệu đi. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu chống file hỏng; bạn vẫn đang tin nguồn <strong>aitranslator.io.vn</strong>. Muốn đọc script trước: <code>curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>. Chạy lại đúng lệnh cài bất cứ lúc nào để cập nhật lên bản mới nhất; script tự đóng app đang chạy." })}
-<p>Gặp lỗi? Script dừng và báo lý do bằng tiếng Việt (máy không đạt yêu cầu, mất mạng, SHA-256 không khớp…). Xem thêm ở <a href="#loi-thuong-gap">lỗi thường gặp khi cài</a>.</p>
+<p>Gặp lỗi? Script dừng và báo lý do bằng tiếng Việt, hoặc tiếng Anh nếu máy không đặt tiếng Việt (máy không đạt yêu cầu, mất mạng, SHA-256 không khớp…). Xem thêm ở <a href="#loi-thuong-gap">lỗi thường gặp khi cài</a>.</p>
 
 <h2 id="cai-bang-dmg">Cách khác: cài từ file .dmg</h2>
 <p>Dùng cách này nếu bạn nhận file .dmg qua email hoặc không muốn dùng Terminal. File tải bằng trình duyệt bị macOS gắn nhãn “tải từ internet”, nên lần mở đầu cần thêm bước Open Anyway.</p>
@@ -121,9 +121,10 @@ ${callout({ kind: "warn", title: "Từ macOS 15, mẹo bấm chuột phải › 
 <p>Bước này chỉ áp dụng cho file .dmg tải bằng trình duyệt; cài bằng <a href="#cai-bang-lenh">dòng lệnh</a> thì không cần. Khi chúng tôi có Developer ID và notarize app, bước này sẽ biến mất cho mọi cách cài.</p>
 
 <h2 id="cap-nhat">Mỗi lần cập nhật, macOS hỏi lại một hộp thoại</h2>
-<p>Đây là hệ quả của việc ký ad-hoc: mỗi bản mới có chữ ký khác, nên macOS hỏi lại quyền truy cập Keychain. Từ bản 0.1.1, AI Translator cất mọi dữ liệu nhạy cảm của nó (khóa mã hóa lịch sử, token bản quyền, bộ đếm hạn mức) trong <strong>một</strong> mục Keychain, nên sau mỗi lần cập nhật bạn chỉ gặp:</p>
+<p>Trước hết, cách cập nhật: App tự kiểm tra bản mới sau khi mở khoảng 1 phút rồi mỗi 24 giờ và tải ngầm; khi tải xong, app hỏi “Khởi động lại” hoặc “Để sau” (menu ở khay hệ thống cũng có “Khởi động lại để cập nhật”), và bản mới được cài khi bạn khởi động lại hoặc chọn Thoát. Kênh nhận bản (Ổn định hoặc Beta) chọn ở Cài đặt › Chung; đổi kênh thì app kiểm ngay.</p>
+<p>Phần dưới là hệ quả của việc ký ad-hoc: mỗi bản mới có chữ ký khác, nên macOS hỏi lại quyền truy cập Keychain. Từ bản 0.1.1, AI Translator cất mọi dữ liệu nhạy cảm của nó (khóa mã hóa lịch sử, token bản quyền, bộ đếm hạn mức) trong <strong>một</strong> mục Keychain, nên sau mỗi lần cập nhật bạn chỉ gặp:</p>
 <ul>
-<li><strong>1 hộp thoại Keychain</strong> (hỏi mật khẩu đăng nhập Mac; chúng tôi đo trên một Mac chạy macOS 26, hai lần cập nhật liên tiếp đều chỉ có 1 hộp thoại): nhập mật khẩu rồi chọn <strong>Always Allow</strong>. Đừng chọn Deny: app sẽ không đọc được bản quyền và hạn mức. Nếu lỡ chọn, hãy thoát hẳn app, mở lại và chọn Always Allow.</li>
+<li><strong>1 hộp thoại Keychain</strong> (hỏi mật khẩu đăng nhập Mac; chúng tôi đo trên một Mac chạy macOS 26: sau hai lần ký lại app để giả lập bản mới, mỗi lần chỉ có 1 hộp thoại): nhập mật khẩu rồi chọn <strong>Always Allow</strong>. Đừng chọn Deny: app sẽ không đọc được bản quyền và hạn mức. Nếu lỡ chọn, hãy thoát hẳn app, mở lại và chọn Always Allow.</li>
 <li>Quyền <strong>ghi âm thanh hệ thống</strong> có thể được hỏi lại một lần (lần đo trước của chúng tôi ghi nhận 1 hộp thoại): chọn cho phép.</li>
 </ul>
 <p><strong>Riêng lần cập nhật đầu tiên từ bản 0.1.0 lên 0.1.1</strong>, app phải chép 5 mục Keychain cũ sang mục mới, nên bạn gặp 5 hộp thoại Keychain một lần (chúng tôi đo được đúng 5, kèm 1 hộp thoại cho phép ghi âm); từ các lần sau chỉ còn 1.</p>
@@ -141,7 +142,7 @@ ${callout({ kind: "warn", title: "Từ macOS 15, mẹo bấm chuột phải › 
 
 <h2 id="loi-thuong-gap">Lỗi thường gặp khi cài</h2>
 <ul>
-<li><strong>Lệnh cài báo “không đọc được latest.json”.</strong> Máy mất mạng, hoặc đang đặt proxy/VPN chặn <code>releases.aitranslator.io.vn</code>. Kiểm tra mạng rồi chạy lại.</li>
+<li><strong>Lệnh cài báo “không đọc được https://releases.aitranslator.io.vn/stable/latest.json…”.</strong> Máy mất mạng, hoặc đang đặt proxy/VPN chặn <code>releases.aitranslator.io.vn</code>. Kiểm tra mạng rồi chạy lại.</li>
 <li><strong>Lệnh cài báo “SHA-256 của file tải về không khớp”.</strong> File tải bị lỗi hoặc bị can thiệp trên đường truyền. Script không cài gì; chạy lại, nếu vẫn lệch thì báo <a href="/lien-he/">hỗ trợ</a>.</li>
 <li><strong>Lệnh cài báo “vẫn đang chạy”.</strong> Thoát hẳn AI Translator (menu AI Translator trên thanh menu › Thoát) rồi chạy lại lệnh.</li>
 <li><strong>Lệnh cài báo cần Apple Silicon hoặc macOS 14.2.</strong> Máy chưa đạt yêu cầu; không có bản cho Mac Intel.</li>

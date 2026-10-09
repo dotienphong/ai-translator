@@ -80,7 +80,7 @@ ${facts([
 <h2 id="da-kiem">Chúng tôi đã kiểm tra điều đó thế nào?</h2>
 <p>Trên macOS, chúng tôi cho app chạy sau một proxy bắt lưu lượng (mitmproxy), đo song song bằng <code>nettop</code>, rồi dịch một phiên bằng câu mẫu tiếng Anh phát lặp lại. Bản đo là bản release 0.1.0 ký ad-hoc, trên MacBook Pro M4 Pro, macOS 26.6.2, ngày 06/10/2026.</p>
 <ul>
-<li><strong>Phiên 15 phút 42 giây</strong> (158 đoạn, 0 lỗi): 3 request ra ngoài, đều tới hai máy chủ của chúng tôi (kiểm tra bản quyền, kiểm tra bản cập nhật). Trong lúc dịch chỉ có 1 request, là kiểm tra cập nhật theo lịch. Lượt 15 phút này được đo trước khi chúng tôi chuyển sang tên miền riêng; lượt lặp lại 5 phút sau đó trên tên miền riêng cho kết quả tương tự.</li>
+<li><strong>Phiên 15 phút 42 giây</strong> (158 đoạn, 0 lỗi): 3 request ra ngoài, đều tới hai máy chủ của chúng tôi (kiểm tra bản quyền, kiểm tra bản cập nhật). Trong lúc dịch chỉ có 1 request, là kiểm tra cập nhật theo lịch. Lượt 15 phút này được đo trước khi chúng tôi chuyển sang tên miền riêng; lượt lặp lại sau đó trên tên miền riêng (phiên khoảng 9 phút, nettop 5 phút) cho kết quả tương tự.</li>
 <li><strong>nettop</strong> theo dõi 7 tiến trình của app (gồm cả phần xử lý AI): không thấy luồng dữ liệu ra ngoài nào.</li>
 <li><strong>Từ đánh dấu</strong> trong câu mẫu: không có trong log của app lẫn trong các request đã ghi.</li>
 </ul>

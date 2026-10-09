@@ -17,7 +17,7 @@ export const PRICING_FAQ = [
   },
   {
     q: "Tôi có thể trả bằng thẻ Visa, PayPal không?",
-    a: "<p>Chưa. Hiện chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng mã VietQR, tính bằng VND, qua cổng PayOS. Chưa có thẻ quốc tế hay thanh toán định kỳ.</p>",
+    a: "<p>Chưa. Hiện chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng mã VietQR, tính bằng VND, qua cổng PayOS. Chưa có thẻ quốc tế hay thanh toán định kỳ. Nếu bạn ở nước ngoài và không có tài khoản ngân hàng Việt Nam, hiện bạn chưa mua được gói trả phí; gói Free dùng thử không cần phương thức thanh toán.</p>",
   },
   {
     q: "Gói có tự động gia hạn không?",
@@ -25,7 +25,7 @@ export const PRICING_FAQ = [
   },
   {
     q: "Tôi dùng được key trên mấy máy?",
-    a: "<p>Mỗi key dùng trên một máy. Muốn chuyển sang máy khác, bạn gỡ kích hoạt ở máy cũ trong Cài đặt › Bản quyền, hoặc ở máy mới chọn \"Gỡ máy kia và dùng máy này\". Nếu cùng lúc kích hoạt trên hai máy, key bị tạm khóa trên cả hai cho tới khi một máy gỡ key.</p>",
+    a: "<p>Mỗi key dùng trên một máy. Muốn chuyển sang máy khác, bạn gỡ kích hoạt ở máy cũ trong Cài đặt › Bản quyền, hoặc ở máy mới chọn \"Gỡ máy kia và dùng máy này\". Khi key đang dùng ở máy khác, máy thứ hai mặc định bị chặn; chỉ khi bạn chủ động chọn “Vẫn kích hoạt trên máy này” và xác nhận, key mới bị tạm khóa trên cả hai máy cho tới khi một máy gỡ key.</p>",
   },
   {
     q: "Có hoàn tiền không?",
@@ -63,8 +63,9 @@ ${pageHero({ crumbs, title: "Bảng giá đơn giản: trả trước, không t�
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">Các gói và giá</h2>
-${plansGrid("vi", { ctaLabel: "Tải xuống", freeLabel: "Đăng ký dùng thử" })}
+${plansGrid("vi", { ctaLabel: "Tải xuống", freeLabel: "Cài và dùng thử miễn phí" })}
 <p class="disclaimer">Giá tính bằng đồng Việt Nam (VND) cho mỗi đơn, đúng bằng số tiền trong mã VietQR. Giá có thể thay đổi; gói bạn đã mua giữ nguyên hạn mức.</p>
+${callout({ kind: "warn", title: "Thanh toán từ nước ngoài", text: "Hiện chúng tôi chỉ nhận chuyển khoản từ ngân hàng Việt Nam qua VietQR, tính bằng VND. Chưa hỗ trợ thẻ quốc tế, PayPal hay tiền tệ khác, nên nếu không có tài khoản ngân hàng Việt Nam thì hiện bạn chưa mua được gói trả phí. Gói Free dùng thử không cần phương thức thanh toán. Nếu điều này cản trở bạn, hãy <a href=\"/lien-he/\">liên hệ chúng tôi</a>." })}
 </div></section>
 
 <section class="section"><div class="container">
@@ -98,7 +99,7 @@ ${appShot({ slug: "app-upgrade", lang: "vi", alt: "Màn hình Nâng cấp trong 
 ${checkList([
   "Thời lượng tính theo <strong>độ dài tiếng nói</strong> của các đoạn đã dịch xong, không tính đệm hay lúc im lặng",
   "Câu <strong>đã ở đúng ngôn ngữ</strong> bạn muốn đọc, đoạn bị bỏ hoặc chưa dịch được <strong>không bị tính</strong>",
-  "<strong>Free:</strong> hạn mức 30 phút đặt lại mỗi ngày lúc 00:00 giờ máy",
+  "<strong>Free:</strong> hạn mức 30 phút đặt lại mỗi ngày, thường lúc 00:00 giờ máy (cách lần đặt lại trước ít nhất 20 giờ; app báo giờ mở lại cụ thể)",
   "<strong>Monthly:</strong> chu kỳ 30 ngày tính từ ngày thanh toán, không theo tháng dương lịch",
   "Còn dưới 5 phút thì app nhắc; hết hạn mức thì dừng phiên và báo thời điểm mở lại",
   "Hạn mức tính riêng cho từng máy",
@@ -112,7 +113,7 @@ ${sectionHead({ eyebrow: "Cách mua", title: "Từ chọn gói tới kích hoạ
 ${steps([
   { title: "Chọn gói trong app", text: "Mở <strong>Nâng cấp Pro</strong>, chọn Monthly hoặc Yearly, nhập email nhận key và đồng ý để lưu email này cho việc gửi và khôi phục key." },
   { title: "Quét mã VietQR", text: "App vẽ mã VietQR ngay trong cửa sổ, kèm nút mở trang thanh toán PayOS. Mã dùng được trong 15 phút." },
-  { title: "Tự kích hoạt", text: "Khi PayOS xác nhận đã nhận tiền , gói có hiệu lực ngay trên máy bạn và key được gửi vào email." },
+  { title: "Tự kích hoạt", text: "Khi PayOS xác nhận đã nhận tiền (app hỏi trạng thái mỗi 3 giây), gói có hiệu lực ngay trên máy bạn và key được gửi vào email." },
 ])}
 <p class="disclaimer">Chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng VND qua PayOS. Chúng tôi không nhận số thẻ hay thông tin tài khoản ngân hàng của bạn và không gửi email của bạn sang PayOS.</p>
 </div></section>

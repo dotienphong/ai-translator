@@ -68,7 +68,7 @@ const DL_FAQ = [
   },
   {
     q: "Máy Windows nào dùng được?",
-    a: "<p>Windows 10 hoặc 11 bản 64-bit (x64), CPU có AVX2, RAM tối thiểu 8 GB. Chưa hỗ trợ Windows ARM64. Máy không có AVX2 hoặc dưới 8 GB RAM: app báo lý do và không cho tải model. Chúng tôi chưa đo độ trễ trên Windows nên chưa cam kết con số nào.</p>",
+    a: "<p>Windows 10 hoặc 11 bản 64-bit (x64), CPU có AVX2, RAM tối thiểu 8 GB. Chưa hỗ trợ Windows ARM64. Máy không có AVX2 hoặc dưới 8 GB RAM: app báo lý do và không cho tải model. Độ trễ trên Windows mới đo sơ bộ trên một laptop có GPU tích hợp và chậm hơn Mac M4 Pro, nên chúng tôi chưa cam kết con số nào.</p>",
   },
   {
     q: "App có tự cập nhật không?",

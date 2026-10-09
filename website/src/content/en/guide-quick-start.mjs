@@ -98,7 +98,7 @@ ${callout({ title: "Using Windows?", text: "The steps below are the same on Wind
 ${appShot({ slug: "app-onboarding-1", lang: "en", alt: "First screen of the setup wizard with two options, Tiếng Việt and English, for the interface language", caption: "Step 1 of 9: interface language." })}
 
 <h3>Step 2. Accept the terms</h3>
-<p>Read the License Agreement (EULA) and the Privacy Policy, then tick “I have read and agree…”. Until you do, Next stays disabled. When you click Next, the app registers your Mac's Free trial with the server, so you need an internet connection once.</p>
+<p>Read the License Agreement (EULA) and the Privacy Policy, then tick “I have read and agree…”. Until you do, Next stays disabled. When you click Next, the app registers this computer's Free trial with the server, so you need an internet connection once.</p>
 ${appShot({ slug: "app-onboarding-2", lang: "en", alt: "Terms of use step with two collapsible documents and the required consent checkbox", caption: "Step 2 of 9: terms of use." })}
 
 <h3>Step 3. Choose and download a model</h3>
@@ -121,7 +121,7 @@ ${appShot({ slug: "app-onboarding-6", lang: "en", alt: "Choose your languages st
 ${appShot({ slug: "app-onboarding-7", lang: "en", alt: "Try it step with a Play a sample sentence button", caption: "Step 7 of 9: try it." })}
 
 <h3>Step 7. Read the notes and finish</h3>
-<p>Audio never leaves your Mac. If the law or your company requires it, you are responsible for telling other participants that you use a translation tool. Closing the window only hides the app in the menu bar (macOS) or the system tray (Windows). On Windows, a new icon may be hidden behind the ^ arrow on the taskbar; the last screen shows how to bring it out. Click <strong>Start using AI Translator</strong> to reach the main screen.</p>
+<p>Audio never leaves this computer. If the law or your company requires it, you are responsible for telling other participants that you use a translation tool. Closing the window only hides the app in the menu bar (macOS) or the system tray (Windows). On Windows, a new icon may be hidden behind the ^ arrow on the taskbar; the last screen shows how to bring it out. Click <strong>Start using AI Translator</strong> to reach the Home screen.</p>
 <div class="grid grid-2">
 ${appShot({ slug: "app-onboarding-8", lang: "en", alt: "Your privacy step saying audio never leaves the computer and that you must inform other participants if required", caption: "Step 8 of 9: your privacy." })}
 ${appShot({ slug: "app-onboarding-9", lang: "en", alt: "Last step saying AI Translator keeps running in the menu bar when you close the window", caption: "Step 9 of 9: it keeps running in the menu bar." })}
@@ -129,13 +129,13 @@ ${appShot({ slug: "app-onboarding-9", lang: "en", alt: "Last step saying AI Tran
 
 <h2 id="first-meeting">Translate your first meeting</h2>
 <ol>
-<li>On the main screen, check “Translate into” and “Languages spoken in the meeting” in the <strong>Languages</strong> card.</li>
+<li>On the Home screen, check “Translate into” and “Languages spoken in the meeting” in the <strong>Languages</strong> card.</li>
 <li>The <strong>Audio source</strong> card defaults to “Whole system, except this app”. To translate just one app, click <strong>Change</strong>. On Windows, the source is the default playback device or a device you choose; picking a single app is not available yet.</li>
 <li>Open a meeting or a video with sound and click <strong>Start</strong> (or press ${keys(["⌃", "⌥", "T"])}; on Windows ${keys(["Ctrl", "Alt", "T"])}). The status goes from “Starting” to “Translating”; for the first few seconds the bar may read “Loading models…”.</li>
-<li>Read the subtitles on the floating bar. A small dot in the top-right corner of the bar turns green when sound arrives, and the “Input level” bar on the main screen moves with it; a lighter line is a provisional subtitle that will be replaced by the finished sentence.</li>
+<li>Read the subtitles on the floating bar. A small dot in the top-right corner of the bar turns green when sound arrives, and the “Input level” bar on the Home screen moves with it; a lighter line is a provisional subtitle that will be replaced by the finished sentence.</li>
 <li>Click <strong>Stop</strong> when you are done. The bar keeps its last lines so you can finish reading, and <strong>Open the transcript</strong> appears, showing time, original text and translation. <strong>Copy all</strong> works on every plan.</li>
 </ol>
-${appShot({ slug: "app-home-running", lang: "en", alt: "Main screen while translating: Translating status, a Stop button, the Languages card and the input level bar", caption: "The main screen while translating." })}
+${appShot({ slug: "app-home-running", lang: "en", alt: "Main screen while translating: Translating status, a Stop button, the Languages card and the input level bar", caption: "The Home screen while translating." })}
 <p>How to drag, lock, hide and restyle the bar is covered in <a href="/en/guide/subtitle-bar-and-shortcuts/">the subtitle bar and shortcuts guide</a>. The Free plan gives you 30 minutes of translation a day during the 10-day trial.</p>
 ${overlayShot({ slug: "overlay-default", lang: "en", alt: "Default subtitle bar showing the original sentence in small type above the translation over a meeting background", caption: "The default subtitle bar: original in small type, translation below." })}
 
@@ -143,7 +143,7 @@ ${overlayShot({ slug: "overlay-default", lang: "en", alt: "Default subtitle bar 
 <ul>
 <li><strong>macOS will not open the app.</strong> Run the install command in Terminal (the app opens directly) or do the Open Anyway step above; details in the <a href="/en/guide/install-macos/">installation guide</a>.</li>
 <li><strong>Windows shows “Windows protected your PC”.</strong> Click More info, then Run anyway; details in the <a href="/en/guide/install-windows/">Windows installation guide</a>.</li>
-<li><strong>No subtitles, and the main screen says “Nothing is heard although an app is playing sound…” (macOS).</strong> macOS has not allowed system audio recording; see the <a href="/en/guide/macos-audio-permission/">permission guide</a>.</li>
+<li><strong>No subtitles, and the Home screen says “Nothing is heard although an app is playing sound…” (macOS).</strong> macOS has not allowed system audio recording; see the <a href="/en/guide/macos-audio-permission/">permission guide</a>.</li>
 <li><strong>The sample sentence shows no subtitle.</strong> Check that your speakers are not muted and try again.</li>
 <li><strong>The model download stops halfway.</strong> Click <strong>Resume</strong> to continue from where it stopped.</li>
 <li><strong>You cannot see the subtitle bar.</strong> It may be hidden: click <strong>Show</strong> in the Subtitle bar card, or press ${keys(["⌃", "⌥", "H"])} (Windows: ${keys(["Ctrl", "Alt", "H"])}).</li>
