@@ -147,6 +147,7 @@ ${steps([
   { title: "Chờ app mở", text: "Lệnh tải bản mới nhất, kiểm mã SHA-256, chạy bộ cài im lặng rồi mở AI Translator. Windows không hỏi quyền ghi âm; app tải model một lần rồi sẵn sàng dịch." },
 ])}
 <p class="small muted">Lệnh không dùng quyền quản trị. Chạy lại đúng lệnh này bất cứ lúc nào để cập nhật lên bản mới nhất (bộ cài đóng app đang chạy rồi thay bản cũ). Cần Windows 10 hoặc 11 bản 64-bit (x64).</p>
+<p class="small muted"><strong>Lệnh cài Windows còn mới</strong> và chúng tôi mới thử trên ít máy. Nếu gặp lỗi, hãy gửi cho chúng tôi nội dung thông báo ở <a href="/lien-he/">trang Liên hệ</a> hoặc nhận file .exe qua email (xem cuối mục này).</p>
 ${callout({ kind: "ok", title: "Vì sao không bị SmartScreen cảnh báo?", text: "Bản Windows chưa được ký mã (chúng tôi chưa mua chứng thư ký mã Windows). SmartScreen chỉ kiểm file mang dấu “tải từ internet”, loại dấu mà trình duyệt gắn khi bạn tải file. File tải bằng PowerShell không có dấu đó, nên bộ cài chạy thẳng. Bạn vẫn phải tin nguồn của lệnh: xem phần dưới." })}
 ${callout({ kind: "warn", title: "Máy bật Smart App Control vẫn có thể chặn", text: "Windows 11 có tính năng <strong>Smart App Control</strong>. Khi nó ở chế độ chặn, nó chặn mọi ứng dụng chưa ký mã và chưa có uy tín, dù cài bằng cách nào, và không có nút bỏ qua. Nếu bạn gặp trường hợp này, bạn cần tắt Smart App Control trong Windows Security › App &amp; browser control › Smart App Control settings, hoặc chờ khi chúng tôi có chứng thư ký mã. <a href=\"/huong-dan/cai-dat-windows/#smart-app-control\">Xem chi tiết</a>." })}
 
