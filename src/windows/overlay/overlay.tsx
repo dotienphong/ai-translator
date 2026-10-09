@@ -70,7 +70,7 @@ function ResizeEdges() {
 // Chỉ báo nhỏ ở góc trên: chấm "đang nghe" (sáng khi có tiếng), và các lời nhắc (đang nạp model, không có âm thanh,
 // đang trễ, dịch không khả dụng, hết hạn mức, lỗi). Màu chữ, màu nền và độ mờ nền theo Cài đặt › Phụ đề (§4.3).
 // Khi chưa khóa: kéo được cả thanh (`data-tauri-drag-region="deep"`), kéo cạnh để đổi kích thước, và rê chuột vào thì hiện
-// nút ✕ ở góc trên bên phải (ẩn thanh như phím tắt, phiên dịch vẫn chạy). Khi khóa thì click xuyên qua (phía Rust đặt),
+// nút ✕ ở góc trên bên phải (ẩn thanh và dừng phiên dịch). Khi khóa thì click xuyên qua (phía Rust đặt),
 // không có nút nào (§4.4). Nâng gói, xem lỗi ở cửa sổ chính.
 function Overlay() {
   const view = useStore(store, (s) => s.view);

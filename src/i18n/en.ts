@@ -278,7 +278,7 @@ export const en = {
   "onboarding.tray.openTaskbarSettings": "Open Taskbar settings",
 
   "overlay.waiting": "Subtitles will appear here",
-  "overlay.hide": "Hide subtitles",
+  "overlay.hide": "Close subtitles and stop translating",
   "overlay.latest": "Latest",
   "overlay.listening": "Listening",
   "overlay.hearing": "Listening: sound detected",

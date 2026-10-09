@@ -553,9 +553,34 @@ pub fn abort<R: Runtime>(app: &AppHandle<R>, attempt: u64, code: &str, message: 
 
 /// Nút, phím tắt, khay: bắt đầu khi chưa dịch; dừng khi đang dịch; đang chuẩn bị thì Hủy (về `idle` ngay).
 pub fn toggle<R: Runtime>(app: &AppHandle<R>) -> Result<AppStatus, CommandError> {
-    let session = app.state::<Session>();
+    if cancel_start(app) {
+        return Ok(changed(app));
+    }
     let state = app.state::<AppState>();
-    let cancelled = state.update_status(|s| {
+    match state.status().session {
+        SessionStatus::Idle | SessionStatus::Error => start(app),
+        SessionStatus::Running => Ok(stop(app)),
+        SessionStatus::Starting => Ok(state.status()),
+    }
+}
+
+/// Nút ✕ của thanh phụ đề (§4.4): dừng khi đang dịch, đang chuẩn bị thì Hủy; chưa dịch thì không làm gì (khác [`toggle`],
+/// không bao giờ bắt đầu phiên).
+pub fn end<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
+    if cancel_start(app) {
+        return changed(app);
+    }
+    let state = app.state::<AppState>();
+    match state.status().session {
+        SessionStatus::Running => stop(app),
+        _ => state.status(),
+    }
+}
+
+/// Đang chuẩn bị thì hủy lần bắt đầu đó (về `idle` ngay), trả về `true`. Người gọi báo trạng thái mới.
+fn cancel_start<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let session = app.state::<Session>();
+    let cancelled = app.state::<AppState>().update_status(|s| {
         if s.session != SessionStatus::Starting {
             return false;
         }
@@ -566,13 +591,8 @@ pub fn toggle<R: Runtime>(app: &AppHandle<R>) -> Result<AppStatus, CommandError>
     });
     if cancelled {
         log::info!("hủy lần bắt đầu phiên");
-        return Ok(changed(app));
     }
-    match state.status().session {
-        SessionStatus::Idle | SessionStatus::Error => start(app),
-        SessionStatus::Running => Ok(stop(app)),
-        SessionStatus::Starting => Ok(state.status()),
-    }
+    cancelled
 }
 
 /// Mở cửa sổ chính: chạy sẵn hai tiến trình phụ trên luồng nền (§5, Đ19). Đang có một lần chạy sẵn thì thôi.

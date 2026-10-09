@@ -278,7 +278,7 @@ export const vi: Record<MessageKey, string> = {
   "onboarding.tray.openTaskbarSettings": "Mở cài đặt Taskbar",
 
   "overlay.waiting": "Phụ đề sẽ hiện ở đây",
-  "overlay.hide": "Ẩn thanh phụ đề",
+  "overlay.hide": "Tắt phụ đề và dừng dịch",
   "overlay.latest": "Mới nhất",
   "overlay.listening": "Đang nghe",
   "overlay.hearing": "Đang nghe: có tiếng",

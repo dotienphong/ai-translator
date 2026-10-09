@@ -419,9 +419,9 @@ fn on_windows_the_system_resizes_the_overlay() {
     assert!(invoke(&overlay, "begin_overlay_resize", json!({ "edge": "up" })).is_err());
 }
 
-/// Nút ✕ (§4.4): ẩn thanh như phím tắt, phiên dịch vẫn chạy; vị trí được nhớ lúc ẩn (QĐ19, M17 của review 03).
+/// Nút ✕ (§4.4): ẩn thanh và dừng phiên dịch trong một lần bấm; vị trí được nhớ lúc ẩn (QĐ19, M17 của review 03).
 #[test]
-fn the_hide_button_hides_the_overlay_keeps_the_session_and_remembers_the_position() {
+fn the_close_button_hides_the_overlay_stops_the_session_and_remembers_the_position() {
     let app = mock_app_with(FakeDeps {
         audio: FakeAudio::Tone,
         ..FakeDeps::default()
@@ -433,10 +433,21 @@ fn the_hide_button_hides_the_overlay_keeps_the_session_and_remembers_the_positio
     invoke(&overlay, "hide_overlay", json!({})).unwrap();
     let status = app.state::<AppState>().status();
     assert!(!status.overlay_visible);
-    assert_eq!(status.session, SessionStatus::Running, "ẩn thanh không dừng phiên");
+    assert_eq!(status.session, SessionStatus::Idle, "bấm ✕ thì dừng phiên");
     assert_eq!(overlay_calls(&app).last().map(String::as_str), Some("hide"));
     assert_eq!(saved_rect(&app), Some((100.0, 800.0, 900.0, 160.0)));
-    session::stop(app.handle());
+}
+
+/// Nút ✕ khi chưa dịch chỉ ẩn thanh, không bắt đầu phiên (khác `toggle_session`).
+#[test]
+fn the_close_button_never_starts_a_session() {
+    let app = mock_app();
+    let overlay = window(&app, "overlay");
+    overlay_on_a_retina_screen(&app);
+    invoke(&overlay, "hide_overlay", json!({})).unwrap();
+    let status = app.state::<AppState>().status();
+    assert!(!status.overlay_visible);
+    assert_eq!(status.session, SessionStatus::Idle);
 }
 
 /// Ẩn bằng phím tắt, menu khay hay nút ở cửa sổ chính cũng nhớ vị trí (QĐ19, M17 của review 03).

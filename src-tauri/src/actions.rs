@@ -114,6 +114,13 @@ pub fn set_overlay_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> Res
     Ok(status_changed(app))
 }
 
+/// Nút ✕ của thanh phụ đề (§4.4): ẩn thanh rồi dừng phiên dịch (đang chuẩn bị thì hủy), để người dùng không phải tắt hai
+/// lần. Ẩn trước để thanh biến mất ngay; dừng phiên có thể chờ tới 2 giây (câu đang dịch): không gọi từ luồng chính.
+pub fn close_overlay<R: Runtime>(app: &AppHandle<R>) -> Result<AppStatus, CommandError> {
+    set_overlay_visible(app, false)?;
+    Ok(session::end(app))
+}
+
 pub fn set_overlay_locked<R: Runtime>(app: &AppHandle<R>, locked: bool) -> Result<Settings, CommandError> {
     overlay::set_locked(app, locked).map_err(|e| CommandError::new(errors::OVERLAY_FAILED, None, e.to_string()))?;
     let mut next = app.state::<AppState>().settings();

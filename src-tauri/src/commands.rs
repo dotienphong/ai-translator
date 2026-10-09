@@ -333,10 +333,12 @@ pub fn get_overlay_view(state: State<'_, AppState>) -> OverlayView {
     OverlayView::from_settings(&state.settings())
 }
 
-/// Nút ✕ của thanh phụ đề (§4.4): ẩn thanh như phím tắt ẩn/hiện; phiên dịch vẫn chạy, app không thoát.
+/// Nút ✕ của thanh phụ đề (§4.4): ẩn thanh và dừng phiên dịch (`actions::close_overlay`); app không thoát.
 #[tauri::command]
-pub fn hide_overlay<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
-    actions::set_overlay_visible(&app, false).map(|_| ())
+pub async fn hide_overlay<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    tauri::async_runtime::spawn_blocking(move || actions::close_overlay(&app).map(drop))
+        .await
+        .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
 }
 
 /// Bấm giữ ở cạnh hay góc của thanh phụ đề để đổi kích thước (§4.4). Vị trí con trỏ đọc ở phía Rust.
