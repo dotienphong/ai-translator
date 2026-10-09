@@ -11,6 +11,10 @@ import { bodyErrors, inputErrors, main as signManifest } from "./sign-manifest-c
 import { main as signUpdates, shellArgs, signerArgs, updateFiles } from "./sign-updates.mjs";
 import { root } from "./versions.mjs";
 
+// Version của bản đang build (tauri.conf.json), để test không phải sửa mỗi lần phát hành.
+const VERSION = JSON.parse(readFileSync(join(root, "src-tauri/tauri.conf.json"), "utf8")).version;
+const VERSION_RE = VERSION.replace(/\./g, "\\.");
+
 function tempDir(t) {
   const dir = mkdtempSync(join(tmpdir(), "signing-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -33,7 +37,7 @@ test("sign-updates: trên Windows tham số có khoảng trắng được đặt
 test("sign-updates: không có khóa thì không ký; có khóa thì tạo .sig gắn phiên bản", (t) => {
   const dir = tempDir(t);
   writeFileSync(join(dir, "AI Translator.app.tar.gz"), "app");
-  writeFileSync(join(dir, "AI Translator_0.1.0_x64-setup.exe"), "exe");
+  writeFileSync(join(dir, `AI Translator_${VERSION}_x64-setup.exe`), "exe");
   assert.deepEqual(signUpdates(["--dir", dir], { PATH: process.env.PATH }), []);
   assert.equal(existsSync(join(dir, "AI Translator.app.tar.gz.sig")), false);
   // Khóa tạm, chỉ cho test này.
@@ -44,10 +48,10 @@ test("sign-updates: không có khóa thì không ký; có khóa thì tạo .sig 
     shell: process.platform === "win32", // như sign-updates.mjs: trên Windows `pnpm` là pnpm.cmd
   });
   const env = { ...process.env, TAURI_SIGNING_PRIVATE_KEY: readFileSync(keyFile, "utf8"), TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "test-only" };
-  assert.deepEqual(signUpdates(["--dir", dir], env), ["AI Translator.app.tar.gz", "AI Translator_0.1.0_x64-setup.exe"]);
-  const sig = Buffer.from(readFileSync(join(dir, "AI Translator_0.1.0_x64-setup.exe.sig"), "utf8"), "base64").toString();
-  assert.match(sig, /trusted comment: .*file:AI Translator_0\.1\.0_x64-setup\.exe/);
-  assert.match(sig, /version:0\.1\.0/);
+  assert.deepEqual(signUpdates(["--dir", dir], env), ["AI Translator.app.tar.gz", `AI Translator_${VERSION}_x64-setup.exe`]);
+  const sig = Buffer.from(readFileSync(join(dir, `AI Translator_${VERSION}_x64-setup.exe.sig`), "utf8"), "base64").toString();
+  assert.match(sig, new RegExp(`trusted comment: .*file:AI Translator_${VERSION_RE}_x64-setup\\.exe`));
+  assert.match(sig, new RegExp(`version:${VERSION_RE}`));
   assert.throws(() => signUpdates(["--dir", tempDir(t)], env), /không có bản cập nhật nào/);
 });
 

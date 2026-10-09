@@ -103,9 +103,11 @@ test("--tag: tag phải đúng v<version> của tauri.conf.json, kể cả bản
   const dir = copy(t);
   const lines = [];
   t.mock.method(console, "log", (line) => lines.push(line));
-  main(["--tag", "v0.1.0"], dir);
-  assert.deepEqual(lines, ["tag v0.1.0 khớp tauri.conf.json"]);
-  assert.throws(() => main(["--tag", "v0.1.1"], dir), /không khớp/);
+  const version = JSON.parse(readFileSync(join(dir, "src-tauri/tauri.conf.json"), "utf8")).version;
+  const wrong = version.replace(/\d+$/, (n) => String(Number(n) + 1)); // luôn khác version thật
+  main(["--tag", `v${version}`], dir);
+  assert.deepEqual(lines, [`tag v${version} khớp tauri.conf.json`]);
+  assert.throws(() => main(["--tag", `v${wrong}`], dir), /không khớp/);
   const lines2 = [];
   t.mock.method(console, "log", (line) => lines2.push(line));
   main([], dir);
