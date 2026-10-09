@@ -71,7 +71,7 @@ ${facts([
   ["Disk space", "1.3 GB (Lite pack) or 2.5 GB (Standard pack)<small>Plus 1 GB free while downloading the model</small>"],
   ["Internet", "Needed to download the model and register the Free trial<small>After that, recognition and translation run offline</small>"],
 ])}
-${callout({ title: "Using Windows?", text: "The steps below are the same on Windows, with a few differences: you install with a PowerShell command (or an .exe file, which may trigger a SmartScreen warning because the beta is not code-signed yet), there is no audio permission step, the app sits in the system tray instead of the menu bar, and shortcuts use Ctrl+Alt instead of ⌃⌥." })}
+${callout({ title: "Using Windows?", text: "The steps below are the same on Windows, with a few differences: you install with a PowerShell command (or an .exe file, which may trigger a SmartScreen warning because the Windows build is not code-signed yet), there is no audio permission step, the app sits in the system tray instead of the menu bar, and shortcuts use Ctrl+Alt instead of ⌃⌥." })}
 
 <h2 id="install-and-open">Install and open the app</h2>
 <p><strong>On macOS:</strong></p>

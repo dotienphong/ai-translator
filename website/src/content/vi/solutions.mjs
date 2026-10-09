@@ -40,7 +40,7 @@ ${feature({ icon: "captions", title: "Thanh phụ đề nổi", text: "Một tha
 <section class="section-tight"><div class="container">
 ${sectionHead({ eyebrow: "Trước khi bắt đầu", title: "Cần chuẩn bị gì?", center: true })}
 <div class="reveal">${facts([
-  ["Nền tảng", "macOS 14.2+ trên Apple Silicon và Windows 10/11 x64 (beta)<small>Mac Intel và Windows ARM64: chưa hỗ trợ</small>"],
+  ["Nền tảng", "macOS 14.2+ trên Apple Silicon và Windows 10/11 x64<small>Mac Intel và Windows ARM64: chưa hỗ trợ</small>"],
   ["Máy", "RAM tối thiểu 8 GB, khuyến nghị 16 GB<small>Tải model một lần: 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)</small>"],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Giao diện app: Tiếng Việt và English</small>"],
   ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
@@ -65,7 +65,7 @@ ${checkList([
   "<strong>Bạn cần người cùng họp nghe giọng bạn đã được dịch.</strong> AI Translator chỉ dịch một chiều, từ âm thanh phát trên máy sang ngôn ngữ của bạn. Chưa có dịch giọng bạn để phát vào cuộc họp.",
   "<strong>Bạn cần ghi âm cuộc họp.</strong> App không ghi âm xuống đĩa. Nó chỉ có bản chép lời bằng chữ; lưu lịch sử là tính năng Pro và mặc định tắt.",
   "<strong>Bạn cần biên bản, tóm tắt tự động hoặc biết ai đang nói.</strong> Chưa có.",
-  "<strong>Bạn dùng Mac Intel, Windows ARM64 hoặc máy Windows có CPU không hỗ trợ AVX2.</strong> Bản beta chạy trên macOS 14.2 trở lên với Apple Silicon và Windows 10/11 64-bit (x64) có CPU hỗ trợ AVX2.",
+  "<strong>Bạn dùng Mac Intel, Windows ARM64 hoặc máy Windows có CPU không hỗ trợ AVX2.</strong> AI Translator chạy trên macOS 14.2 trở lên với Apple Silicon và Windows 10/11 64-bit (x64) có CPU hỗ trợ AVX2.",
   "<strong>Máy có dưới 8 GB RAM,</strong> hoặc bạn cần ngôn ngữ ngoài năm ngôn ngữ trên: app chưa đáp ứng.",
   "<strong>Bạn không có tài khoản ngân hàng Việt Nam.</strong> Hiện chỉ nhận VietQR bằng VND, chưa có thẻ quốc tế.",
 ], true)}
@@ -81,6 +81,6 @@ ${linkCard({ href: "/bang-gia/", icon: "wallet", title: "Bảng giá", text: "Fr
 </div>
 </div></section>
 
-${ctaBand({ title: "Thử trên cuộc họp hoặc video thật của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
+${ctaBand({ title: "Thử trên cuộc họp hoặc video thật của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
 `,
 };

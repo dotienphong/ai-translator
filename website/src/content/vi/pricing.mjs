@@ -63,7 +63,7 @@ ${pageHero({ crumbs, title: "Bảng giá đơn giản: trả trước, không t�
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">Các gói và giá</h2>
-${plansGrid("vi", { ctaLabel: "Nhận bản beta", freeLabel: "Đăng ký dùng thử" })}
+${plansGrid("vi", { ctaLabel: "Tải xuống", freeLabel: "Đăng ký dùng thử" })}
 <p class="disclaimer">Giá tính bằng đồng Việt Nam (VND) cho mỗi đơn, đúng bằng số tiền trong mã VietQR. Giá có thể thay đổi; gói bạn đã mua giữ nguyên hạn mức.</p>
 </div></section>
 
@@ -131,7 +131,7 @@ ${sectionHead({ eyebrow: "Câu hỏi về giá", title: "Điều bạn có thể
 ${faq(PRICING_FAQ)}
 </div></section>
 
-${ctaBand({ title: "Bắt đầu với 10 ngày dùng thử", text: "Mỗi ngày 30 phút, đủ để thử trên cuộc họp thật. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/cau-hoi-thuong-gap/", label: "Xem hỏi đáp" } })}
+${ctaBand({ title: "Bắt đầu với 10 ngày dùng thử", text: "Mỗi ngày 30 phút, đủ để thử trên cuộc họp thật. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/cau-hoi-thuong-gap/", label: "Xem hỏi đáp" } })}
 `,
 };
 void icon;

@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Where do I download AI Translator? Is there a Windows version?",
-        a: `<p>On macOS (14.2 or later, Apple Silicon) you install with one command pasted into Terminal; it is on the <a href="/en/download/">Download page</a> and the app opens directly, with no Open Anyway. There is no .dmg download button yet. The Windows build (10/11, 64-bit) also installs with one command pasted into PowerShell on the same page. The Windows build is also a beta and is not code-signed yet: installed with the command SmartScreen does not ask, while an .exe downloaded in a browser may be warned about.</p>`,
+        a: `<p>On macOS (14.2 or later, Apple Silicon) you install with one command pasted into Terminal; it is on the <a href="/en/download/">Download page</a> and the app opens directly, with no Open Anyway. There is no .dmg download button yet. The Windows build (10/11, 64-bit) also installs with one command pasted into PowerShell on the same page. The Windows build is not code-signed yet: installed with the command SmartScreen does not ask, while an .exe downloaded in a browser may be warned about.</p>`,
       },
       {
         q: "Is AI Translator open source?",
@@ -108,7 +108,7 @@ const GROUPS = [
     items: [
       {
         q: "Will AI Translator run on my computer?",
-        a: `<p>The beta runs on Apple Silicon Macs (M1 or later) with macOS 14.2 or later; at least 8 GB of RAM, 16 GB recommended. Intel Macs are not supported. The Windows beta runs on Windows 10/11 64-bit (x64) with a CPU that supports AVX2, at least 8 GB of RAM, 16 GB recommended; Windows ARM64 is not supported.</p><p>If a machine has less than 8 GB of RAM or does not meet the requirements, the app explains why and does not download models. For a base Mac M1 and for Windows PCs, we have no latency measurements yet.</p>`,
+        a: `<p>AI Translator runs on Apple Silicon Macs (M1 or later) with macOS 14.2 or later; at least 8 GB of RAM, 16 GB recommended. Intel Macs are not supported. The Windows build runs on Windows 10/11 64-bit (x64) with a CPU that supports AVX2, at least 8 GB of RAM, 16 GB recommended; Windows ARM64 is not supported.</p><p>If a machine has less than 8 GB of RAM or does not meet the requirements, the app explains why and does not download models. For a base Mac M1 and for Windows PCs, we have no latency measurements yet.</p>`,
       },
       {
         q: "How much RAM and disk space does it need?",
@@ -233,6 +233,6 @@ ${callout({ title: "Did not find your answer?", text: `Email <a href="mailto:sup
 })}
 </div></section>
 
-${ctaBand({ title: "Still have a question? Ask us", text: "Send us a short email. Or get the beta and try it on your own meeting.", primary: { href: "/en/contact/", label: "Contact and support" }, secondary: { href: "/en/download/", label: "Get the beta" } })}
+${ctaBand({ title: "Still have a question? Ask us", text: "Send us a short email. Or download the app and try it on your own meeting.", primary: { href: "/en/contact/", label: "Contact and support" }, secondary: { href: "/en/download/", label: "Download" } })}
 `,
 };

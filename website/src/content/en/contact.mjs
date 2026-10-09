@@ -37,11 +37,11 @@ export default {
   path: "/en/contact/",
   title: "Contact and support for AI Translator",
   description:
-    "Contact AI Translator by email at support@aitranslator.io.vn: beta access, technical support, lost keys, payment issues, refunds, data deletion and security reports.",
+    "Contact AI Translator at support@aitranslator.io.vn: installer, technical support, lost keys, payment issues, refunds, data deletion and security reports.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  llm: "How to reach us and get support: email support@aitranslator.io.vn, what to send there (beta, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
+  llm: "How to reach us and get support: email support@aitranslator.io.vn, what to send there (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
   llmTitle: "Contact and support for AI Translator",
   body: () => `
 ${pageHero({
@@ -65,8 +65,8 @@ ${pageHero({
 ${sectionHead({ eyebrow: "What to send", title: "What do you need? Email us with this information", text: "Each button below opens your email app with a subject and a template filled in. If it does not open, write to the address above by hand.", center: true })}
 <div class="grid grid-2">
 
-<div class="card reveal" id="beta">
-<h3>Get the beta</h3>
+<div class="card reveal" id="installer">
+<h3>Get the installer by email</h3>
 <p>Both macOS and Windows install with one command on the Download page, no email needed. If you would rather receive the macOS .dmg or the Windows .exe by email: email us using the template on the Download page (there is one for macOS and one for Windows): your computer model and chip or processor, your macOS or Windows version, RAM, the meeting app you use and the languages you need. We send the installer with its SHA-256 checksum so you can verify it.</p>
 <p><a class="btn btn-secondary btn-sm" href="/en/download/">Open the Download page ${icon("arrow-right")}</a></p>
 </div>

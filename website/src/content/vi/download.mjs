@@ -9,10 +9,10 @@ const crumbs = [
 const mailto = (subject, body) =>
   `mailto:support@aitranslator.io.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
 
-const MAILTO_MAC = mailto("Đăng ký bản beta AI Translator (macOS)", [
+const MAILTO_MAC = mailto("Nhận bản cài AI Translator (macOS)", [
   "Xin chào AI Translator,",
   "",
-  "Tôi muốn nhận bản beta cho macOS.",
+  "Tôi muốn nhận file .dmg cài đặt cho macOS.",
   "",
   "- Họ tên:",
   "- Dòng Mac và chip (ví dụ MacBook Air M2):",
@@ -24,10 +24,10 @@ const MAILTO_MAC = mailto("Đăng ký bản beta AI Translator (macOS)", [
   "Cảm ơn!",
 ]);
 
-const MAILTO_WIN = mailto("Đăng ký bản beta AI Translator (Windows)", [
+const MAILTO_WIN = mailto("Nhận bản cài AI Translator (Windows)", [
   "Xin chào AI Translator,",
   "",
-  "Tôi muốn nhận bản beta cho Windows.",
+  "Tôi muốn nhận file .exe cài đặt cho Windows.",
   "",
   "- Họ tên:",
   "- Dòng máy và CPU (ví dụ laptop Dell, Intel Core i5-1235U):",
@@ -56,7 +56,7 @@ const DL_FAQ = [
   },
   {
     q: "Vì sao không có nút tải file .dmg hay .exe?",
-    a: "<p>Bản beta chưa được ký bởi Apple hay Microsoft (chúng tôi chưa có Apple Developer ID và chứng thư ký mã Windows). File tải bằng trình duyệt bị gắn nhãn “tải từ internet”, nên macOS chặn lần mở đầu của file .dmg (Open Anyway) và Windows SmartScreen có thể cảnh báo file .exe. File tải bằng lệnh trong Terminal hay PowerShell không bị gắn nhãn đó, nên app cài và mở thẳng. Khi có chứng thư, chúng tôi sẽ thêm nút tải trực tiếp.</p>",
+    a: "<p>Bản hiện tại chưa được ký bởi Apple hay Microsoft (chúng tôi chưa có Apple Developer ID và chứng thư ký mã Windows). File tải bằng trình duyệt bị gắn nhãn “tải từ internet”, nên macOS chặn lần mở đầu của file .dmg (Open Anyway) và Windows SmartScreen có thể cảnh báo file .exe. File tải bằng lệnh trong Terminal hay PowerShell không bị gắn nhãn đó, nên app cài và mở thẳng. Khi có chứng thư, chúng tôi sẽ thêm nút tải trực tiếp.</p>",
   },
   {
     q: "Cập nhật và gỡ cài đặt thế nào?",
@@ -71,7 +71,7 @@ const DL_FAQ = [
     a: "<p>Windows 10 hoặc 11 bản 64-bit (x64), CPU có AVX2, RAM tối thiểu 8 GB. Chưa hỗ trợ Windows ARM64. Máy không có AVX2 hoặc dưới 8 GB RAM: app báo lý do và không cho tải model. Chúng tôi chưa đo độ trễ trên Windows nên chưa cam kết con số nào.</p>",
   },
   {
-    q: "Bản beta có tự cập nhật không?",
+    q: "App có tự cập nhật không?",
     a: "<p>Có kênh cập nhật <em>Ổn định</em> và <em>Beta</em> trong Cài đặt › Chung. App kiểm tra bản mới khi khởi động và mỗi 24 giờ; đổi kênh thì kiểm ngay. Trên macOS mỗi lần cập nhật hỏi lại 1 hộp thoại Keychain; trên Windows không hỏi gì thêm.</p>",
   },
 ];
@@ -99,8 +99,8 @@ ${faq(
       a: `<p>Script nằm ở <a href="/install.sh">aitranslator.io.vn/install.sh</a> (khoảng 200 dòng, có chú thích). Lệnh sau tải về, cho bạn đọc, rồi mới chạy:</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "Lệnh tải script về đọc trước khi chạy", term: "Terminal" })}`,
     },
     {
-      q: "Cài bản beta mới hơn (kênh beta)",
-      a: `<p>Mặc định lệnh cài bản ổn định. Muốn nhận bản beta mới hơn (nếu có), thêm <code>-s -- --beta</code> sau <code>bash</code>:</p>${cmdBlock({ cmd: INSTALL_CMD_BETA, ...COPY, label: "Lệnh cài kênh beta", term: "Terminal" })}`,
+      q: "Thử các bản mới sớm hơn (kênh Beta)",
+      a: `<p>Mặc định lệnh cài bản ổn định. Muốn thử các bản mới sớm hơn khi chúng được phát hành (kênh Beta), thêm <code>-s -- --beta</code> sau <code>bash</code>:</p>${cmdBlock({ cmd: INSTALL_CMD_BETA, ...COPY, label: "Lệnh cài kênh beta", term: "Terminal" })}`,
     },
     {
       q: "Tôi đã tải file .dmg bằng trình duyệt và macOS chặn",
@@ -145,8 +145,8 @@ ${faq(
       a: `<p>Script nằm ở <a href="/install.ps1">aitranslator.io.vn/install.ps1</a> (có chú thích). Lệnh sau in script ra để bạn đọc rồi mới chạy:</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "Lệnh in script ra đọc trước khi chạy", term: "Windows PowerShell", prompt: "PS>" })}`,
     },
     {
-      q: "Cài bản beta mới hơn (kênh beta)",
-      a: `<p>Mặc định lệnh cài bản ổn định. Muốn nhận bản beta mới hơn (nếu có), dùng lệnh sau:</p>${cmdBlock({ cmd: WIN_CMD_BETA, ...COPY, label: "Lệnh cài kênh beta trên Windows", term: "Windows PowerShell", prompt: "PS>" })}`,
+      q: "Thử các bản mới sớm hơn (kênh Beta)",
+      a: `<p>Mặc định lệnh cài bản ổn định. Muốn thử các bản mới sớm hơn khi chúng được phát hành (kênh Beta), dùng lệnh sau:</p>${cmdBlock({ cmd: WIN_CMD_BETA, ...COPY, label: "Lệnh cài kênh beta trên Windows", term: "Windows PowerShell", prompt: "PS>" })}`,
     },
     {
       q: "Windows 11 báo ứng dụng bị chặn và không có nút bỏ qua",
@@ -175,20 +175,20 @@ export default {
   id: "download",
   lang: "vi",
   path: "/tai-xuong/",
-  title: "Tải AI Translator beta: cài macOS và Windows bằng một dòng lệnh",
+  title: "Tải AI Translator: cài macOS và Windows bằng một dòng lệnh",
   description:
-    "Tải AI Translator beta: cài trên macOS 14.2+ (Apple Silicon) hoặc Windows 10/11 bằng một dòng lệnh, mở thẳng không cần Open Anyway. Dùng thử Free 10 ngày.",
+    "Tải AI Translator: cài trên macOS 14.2+ (Apple Silicon) hoặc Windows 10/11 bằng một dòng lệnh, mở thẳng không cần Open Anyway. Dùng thử Free 10 ngày.",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-09",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a.replace(/<[^>]+>/g, "") })))],
-  llm: "Tải AI Translator beta: trang tự nhận ra hệ điều hành và mở đúng hướng dẫn. macOS cài bằng một dòng lệnh Terminal (curl ... install.sh | bash): tải bản cài, kiểm SHA-256 rồi mở app, không cần Open Anyway. Windows cài bằng một dòng lệnh PowerShell (irm ... install.ps1 | iex); file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo vì bản chưa ký mã, Smart App Control có thể chặn. Yêu cầu máy.",
-  llmTitle: "Tải AI Translator beta",
+  llm: "Tải AI Translator: trang tự nhận ra hệ điều hành và mở đúng hướng dẫn. macOS cài bằng một dòng lệnh Terminal (curl ... install.sh | bash): tải bản cài, kiểm SHA-256 rồi mở app, không cần Open Anyway. Windows cài bằng một dòng lệnh PowerShell (irm ... install.ps1 | iex); file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo vì bản chưa ký mã, Smart App Control có thể chặn. Yêu cầu máy.",
+  llmTitle: "Tải AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
-  title: "Tải AI Translator beta cho macOS và Windows",
-  lead: "Chọn hệ điều hành của bạn, dán một dòng lệnh vào Terminal hoặc PowerShell: app được tải, kiểm tra và mở lên ngay. Beta, dùng thử Free 10 ngày, không cần thẻ.",
+  title: "Tải AI Translator cho macOS và Windows",
+  lead: "Chọn hệ điều hành của bạn, dán một dòng lệnh vào Terminal hoặc PowerShell: app được tải, kiểm tra và mở lên ngay. Dùng thử Free 10 ngày, không cần thẻ.",
   meta: '<span id="os-detect" class="os-detect" hidden></span>',
 })}
 
@@ -211,9 +211,9 @@ ${osTabs({
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${sectionHead({ eyebrow: "Thông tin nhanh", title: "Bản beta và dùng thử", center: true })}
+${sectionHead({ eyebrow: "Thông tin nhanh", title: "Dùng thử và giá", center: true })}
 <div class="reveal">${facts([
-  ["Trạng thái", "Beta. macOS và Windows đều cài bằng một dòng lệnh"],
+  ["Trạng thái", "Đã phát hành. macOS và Windows đều cài bằng một dòng lệnh"],
   ["Dùng thử", "Free 10 ngày, 30 phút mỗi ngày<small>Không cần thẻ, không cần tài khoản</small>"],
   ["Giá sau đó", "Monthly 50.000 ₫ · Yearly 500.000 ₫"],
   ["Model", "Tải một lần, 1,3 hoặc 2,5 GB<small>Sau đó nhận dạng và dịch chạy offline trên máy bạn</small>"],
@@ -224,7 +224,7 @@ ${callout({ kind: "ok", title: "Chỉ lấy bản cài từ chúng tôi", text: 
 <section class="section"><div class="container">
 ${sectionHead({ eyebrow: "Yêu cầu máy", title: "Máy của bạn có chạy được không?", center: true })}
 <div class="table-wrap reveal"><table>
-<thead><tr><th scope="col"></th><th scope="col">macOS (beta)</th><th scope="col">Windows (beta)</th></tr></thead>
+<thead><tr><th scope="col"></th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
 <tbody>
 <tr><th scope="row">Hệ điều hành</th><td>macOS 14.2 trở lên</td><td>Windows 10 hoặc 11, 64-bit (x64)</td></tr>
 <tr><th scope="row">Chip</th><td>Apple Silicon (M1 trở lên). Chưa có bản cho Mac Intel</td><td>CPU có AVX2. Chưa hỗ trợ Windows ARM64</td></tr>
@@ -239,7 +239,7 @@ ${sectionHead({ eyebrow: "Yêu cầu máy", title: "Máy của bạn có chạy 
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${sectionHead({ eyebrow: "Câu hỏi thường gặp", title: "Về bản beta và việc cài đặt" })}
+${sectionHead({ eyebrow: "Câu hỏi thường gặp", title: "Về việc cài đặt" })}
 ${faq(DL_FAQ, { open: true })}
 </div></section>
 

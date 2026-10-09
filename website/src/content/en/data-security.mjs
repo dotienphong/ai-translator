@@ -127,7 +127,7 @@ ${steps(
 <li><strong>Digital signatures:</strong> app updates are signature-checked before anything is written to disk; the model manifest is signed with Ed25519 and each file is checked against SHA-256; license tokens are signed with Ed25519 and can be verified offline. The app contains only the public key.</li>
 <li><strong>AI processing is separate from the interface:</strong> it only talks to the app inside your computer, accepts no connections from outside the machine and uses a random key on every run.</li>
 <li><strong>Sensitive keys stay out of the app:</strong> the payment API key and signing keys live only on our servers; connections to our servers use HTTPS.</li>
-<li><strong>Detecting a tampered app:</strong> on macOS the app checks that its ad-hoc signature is intact and the bundle id is right; a build whose signature does not match runs only the Free plan. This is an integrity check and does not replace a Developer ID signature. On Windows the beta is not code-signed yet, so the app has no such check; verify the installer's SHA-256 instead.</li>
+<li><strong>Detecting a tampered app:</strong> on macOS the app checks that its ad-hoc signature is intact and the bundle id is right; a build whose signature does not match runs only the Free plan. This is an integrity check and does not replace a Developer ID signature. On Windows the current build is not code-signed yet, so the app has no such check; verify the installer's SHA-256 instead.</li>
 </ul>
 
 <h2 id="signing">Code signing today</h2>
@@ -135,7 +135,7 @@ ${steps(
 <thead><tr><th scope="col">Platform</th><th scope="col">Status</th><th scope="col">What it means for you</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>Ad-hoc signed, <strong>not notarized</strong> (we do not have an Apple Developer ID yet)</td><td>A .dmg downloaded in a browser is blocked by macOS on first launch (you need to click Open Anyway in System Settings › Privacy &amp; Security); installing with the Terminal command opens directly. After each update, macOS asks again with 1 Keychain dialog and may ask again for the audio-recording permission.</td></tr>
-<tr><th scope="row">Windows</th><td>Beta, <strong>not code-signed</strong> (we do not have a Windows code-signing certificate yet)</td><td>Installing with the PowerShell command does not trigger SmartScreen (a file downloaded by PowerShell has no “downloaded from the internet” tag). An .exe downloaded in a browser may show “Windows protected your PC”: click More info, then Run anyway; Publisher shows Unknown publisher. Smart App Control in blocking mode blocks an unsigned build.</td></tr>
+<tr><th scope="row">Windows</th><td><strong>Not code-signed</strong> (we do not have a Windows code-signing certificate yet)</td><td>Installing with the PowerShell command does not trigger SmartScreen (a file downloaded by PowerShell has no “downloaded from the internet” tag). An .exe downloaded in a browser may show “Windows protected your PC”: click More info, then Run anyway; Publisher shows Unknown publisher. Smart App Control in blocking mode blocks an unsigned build.</td></tr>
 </tbody></table></div>
 <p>An ad-hoc signature does not tell Apple who the developer is, so install only with the command on the <a href="/en/download/">Download page</a> or from a file we send you, and compare the SHA-256 checksum. The same goes for the unsigned Windows build (install with the command on the Download page, or from a file we send you): Windows cannot confirm who published the file, so comparing the SHA-256 is how you know it has not been altered. We plan to move to a Developer ID and a Windows code-signing certificate when we can, with no date yet. See the installation guides for <a href="/en/guide/install-macos/">macOS</a> and <a href="/en/guide/install-windows/">Windows</a>.</p>
 
@@ -158,6 +158,6 @@ ${docNav(
 )}
 </div></section>
 
-${ctaBand({ title: "Try it with control in your hands", text: "Translate right on your computer, with audio that never leaves it. 10-day Free trial, no card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/contact/", label: "Ask us" } })}
+${ctaBand({ title: "Try it with control in your hands", text: "Translate right on your computer, with audio that never leaves it. 10-day Free trial, no card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/contact/", label: "Ask us" } })}
 `,
 };

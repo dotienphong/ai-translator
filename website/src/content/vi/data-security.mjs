@@ -127,7 +127,7 @@ ${steps(
 <li><strong>Chữ ký số:</strong> bản cập nhật được kiểm chữ ký trước khi ghi file; manifest model ký Ed25519 và từng file kiểm SHA-256; token bản quyền ký Ed25519, kiểm được cả khi offline. App chỉ chứa khóa công khai.</li>
 <li><strong>Phần xử lý AI tách khỏi giao diện:</strong> chỉ giao tiếp nội bộ trên máy, không nhận kết nối từ bên ngoài máy và dùng khóa ngẫu nhiên mỗi lần chạy.</li>
 <li><strong>Khóa nhạy cảm nằm ngoài app:</strong> khóa API thanh toán và khóa ký chỉ nằm trên máy chủ; kết nối tới máy chủ dùng HTTPS.</li>
-<li><strong>Phát hiện app bị sửa:</strong> trên macOS, app kiểm chữ ký ad-hoc còn nguyên và bundle id; bản có chữ ký không khớp chỉ chạy gói Free. Đây là kiểm tra tính nguyên vẹn, không thay được chữ ký Developer ID. Trên Windows, bản beta chưa ký mã nên app chưa có bước kiểm này; hãy đối chiếu mã SHA-256 của bộ cài.</li>
+<li><strong>Phát hiện app bị sửa:</strong> trên macOS, app kiểm chữ ký ad-hoc còn nguyên và bundle id; bản có chữ ký không khớp chỉ chạy gói Free. Đây là kiểm tra tính nguyên vẹn, không thay được chữ ký Developer ID. Trên Windows, bản hiện tại chưa ký mã nên app chưa có bước kiểm này; hãy đối chiếu mã SHA-256 của bộ cài.</li>
 </ul>
 
 <h2 id="ky-so">Trạng thái ký số hôm nay</h2>
@@ -135,7 +135,7 @@ ${steps(
 <thead><tr><th scope="col">Nền tảng</th><th scope="col">Trạng thái</th><th scope="col">Hệ quả cho bạn</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>Ký ad-hoc, <strong>chưa notarize</strong> (chúng tôi chưa có Apple Developer ID)</td><td>File .dmg tải bằng trình duyệt bị macOS chặn lần mở đầu (cần bấm Open Anyway trong System Settings › Privacy &amp; Security); cài bằng dòng lệnh trong Terminal thì mở thẳng. Mỗi lần cập nhật, macOS hỏi lại 1 hộp thoại Keychain và có thể hỏi lại quyền ghi âm.</td></tr>
-<tr><th scope="row">Windows</th><td>Beta, <strong>chưa ký mã</strong> (chúng tôi chưa có chứng thư ký mã Windows)</td><td>Cài bằng dòng lệnh PowerShell thì SmartScreen không hỏi (file tải bằng PowerShell không mang dấu “tải từ internet”). File .exe tải bằng trình duyệt có thể hiện “Windows protected your PC”: bấm More info rồi Run anyway; Publisher hiện Unknown publisher. Smart App Control ở chế độ chặn sẽ chặn bản chưa ký.</td></tr>
+<tr><th scope="row">Windows</th><td><strong>Chưa ký mã</strong> (chúng tôi chưa có chứng thư ký mã Windows)</td><td>Cài bằng dòng lệnh PowerShell thì SmartScreen không hỏi (file tải bằng PowerShell không mang dấu “tải từ internet”). File .exe tải bằng trình duyệt có thể hiện “Windows protected your PC”: bấm More info rồi Run anyway; Publisher hiện Unknown publisher. Smart App Control ở chế độ chặn sẽ chặn bản chưa ký.</td></tr>
 </tbody></table></div>
 <p>Chữ ký ad-hoc không cho Apple biết ai là nhà phát triển, nên hãy chỉ cài bằng lệnh trên trang <a href="/tai-xuong/">Tải xuống</a> hoặc từ file do chúng tôi gửi, và đối chiếu mã SHA-256. Bản Windows chưa ký mã cũng vậy (cài bằng lệnh trên trang Tải xuống, hoặc từ file do chúng tôi gửi): Windows không xác nhận được ai phát hành file, nên đối chiếu SHA-256 là cách để biết file không bị thay đổi. Chúng tôi dự định chuyển sang Developer ID và chứng thư ký mã Windows khi có điều kiện, chưa có ngày. Xem hướng dẫn cài đặt trên <a href="/huong-dan/cai-dat-macos/">macOS</a> và <a href="/huong-dan/cai-dat-windows/">Windows</a>.</p>
 
@@ -158,6 +158,6 @@ ${docNav(
 )}
 </div></section>
 
-${ctaBand({ title: "Thử với quyền kiểm soát trong tay bạn", text: "Dịch ngay trên máy, âm thanh không rời khỏi máy. Dùng thử Free 10 ngày, không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/lien-he/", label: "Hỏi chúng tôi" } })}
+${ctaBand({ title: "Thử với quyền kiểm soát trong tay bạn", text: "Dịch ngay trên máy, âm thanh không rời khỏi máy. Dùng thử Free 10 ngày, không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/lien-he/", label: "Hỏi chúng tôi" } })}
 `,
 };

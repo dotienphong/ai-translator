@@ -27,7 +27,7 @@ ${pageHero({
 })}
 
 <section class="section-tight"><div class="container">
-${callout({ title: "Hướng dẫn dùng cho cả macOS và Windows.", text: "Phần lớn các bước giống nhau trên hai hệ điều hành. Khác biệt chính trên Windows: cài bằng dòng lệnh PowerShell (hoặc file .exe, có thể bị SmartScreen cảnh báo vì bản beta chưa được ký mã), không cần cấp quyền ghi âm, biểu tượng nằm ở khay hệ thống thay cho menu bar, phím tắt dùng Ctrl+Alt thay cho ⌃⌥. Chưa có bản cài? Xem trang <a href=\"/tai-xuong/\">tải xuống</a>." })}
+${callout({ title: "Hướng dẫn dùng cho cả macOS và Windows.", text: "Phần lớn các bước giống nhau trên hai hệ điều hành. Khác biệt chính trên Windows: cài bằng dòng lệnh PowerShell (hoặc file .exe, có thể bị SmartScreen cảnh báo vì bản Windows chưa được ký mã), không cần cấp quyền ghi âm, biểu tượng nằm ở khay hệ thống thay cho menu bar, phím tắt dùng Ctrl+Alt thay cho ⌃⌥. Chưa có bản cài? Xem trang <a href=\"/tai-xuong/\">tải xuống</a>." })}
 </div></section>
 
 <section class="section-tight"><div class="container">

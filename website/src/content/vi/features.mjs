@@ -98,7 +98,7 @@ ${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh 
 <p>Vì app thu âm thanh hệ thống, AI Translator chạy với mọi thứ phát ra tiếng: Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar, video, khóa học trực tuyến.</p>
 ${checkList([
   "<strong>macOS:</strong> nghe toàn hệ thống (trừ chính app) hoặc chỉ một app đang phát tiếng để không dịch nhầm tiếng thông báo",
-  "<strong>Windows (beta):</strong> thiết bị phát mặc định hoặc một thiết bị bạn chọn",
+  "<strong>Windows:</strong> thiết bị phát mặc định hoặc một thiết bị bạn chọn",
   "Tự mở lại nguồn khi bạn đổi thiết bị phát (cắm tai nghe, kết nối Bluetooth)",
   "<strong>Độ nhạy ngắt câu</strong> chỉnh 50–800 ms: ngắn thì phụ đề sớm hơn, dài thì ít cắt câu hơn",
 ])}
@@ -189,7 +189,7 @@ ${facts([
   ["macOS", "macOS 14.2 trở lên, Apple Silicon (M1 trở lên)<small>Không có bản cho Mac Intel</small>"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
   ["Ổ đĩa", "Trống thêm ít nhất 1 GB so với dung lượng model cần tải"],
-  ["Windows (beta)", "Windows 10/11 64-bit (x64), CPU có AVX2<small>Khuyến nghị card đồ họa rời, VRAM từ 6 GB cho gói model Chuẩn. Chưa ký mã nên SmartScreen có thể cảnh báo khi cài; chưa đo độ trễ trên Windows</small>"],
+  ["Windows", "Windows 10/11 64-bit (x64), CPU có AVX2<small>Khuyến nghị card đồ họa rời, VRAM từ 6 GB cho gói model Chuẩn. Chưa ký mã nên SmartScreen có thể cảnh báo khi cài; chưa đo độ trễ trên Windows</small>"],
 ])}
 </div></section>
 
@@ -251,7 +251,7 @@ ${sectionHead({ eyebrow: "Theo gói", title: "Tính năng nào ở gói nào", c
 <p class="center-text reveal"><a class="btn btn-primary" href="/bang-gia/">Xem chi tiết bảng giá ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Hướng dẫn bắt đầu nhanh" } })}
+${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Hướng dẫn bắt đầu nhanh" } })}
 `,
 };
 void linkCard;

@@ -22,7 +22,7 @@ export const COMPARE_FAQ = [
   },
   {
     q: "Máy cần cấu hình gì để dịch offline?",
-    a: "<p>RAM tối thiểu 8 GB (khuyến nghị 16 GB), Mac Apple Silicon với macOS 14.2 trở lên, và khoảng 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn) ổ đĩa cho model. Bản beta Windows cần Windows 10/11 64-bit (x64) với CPU có AVX2; Mac Intel và Windows ARM64 chưa hỗ trợ.</p>",
+    a: "<p>RAM tối thiểu 8 GB (khuyến nghị 16 GB), Mac Apple Silicon với macOS 14.2 trở lên, và khoảng 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn) ổ đĩa cho model. Bản Windows cần Windows 10/11 64-bit (x64) với CPU có AVX2; Mac Intel và Windows ARM64 chưa hỗ trợ.</p>",
   },
   {
     q: "Dịch offline có dịch giọng của tôi cho người khác nghe không?",
@@ -127,6 +127,6 @@ ${faq(COMPARE_FAQ)}
 })}
 </div></section>
 
-${ctaBand({ title: "Thử dịch offline trên cuộc họp của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/bao-mat-du-lieu/", label: "Xem cách xử lý dữ liệu" } })}
+${ctaBand({ title: "Thử dịch offline trên cuộc họp của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bao-mat-du-lieu/", label: "Xem cách xử lý dữ liệu" } })}
 `,
 };

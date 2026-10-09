@@ -22,7 +22,7 @@ export const COMPARE_FAQ = [
   },
   {
     q: "What computer do I need for offline translation?",
-    a: "<p>At least 8 GB of RAM (16 GB recommended), a Mac with Apple Silicon running macOS 14.2 or later, and about 1.3 GB (Lite pack) or 2.5 GB (Standard pack) of disk space for the models. The Windows beta needs Windows 10/11 64-bit (x64) with a CPU that supports AVX2; Intel Macs and Windows ARM64 are not supported.</p>",
+    a: "<p>At least 8 GB of RAM (16 GB recommended), a Mac with Apple Silicon running macOS 14.2 or later, and about 1.3 GB (Lite pack) or 2.5 GB (Standard pack) of disk space for the models. The Windows build needs Windows 10/11 64-bit (x64) with a CPU that supports AVX2; Intel Macs and Windows ARM64 are not supported.</p>",
   },
   {
     q: "Can offline translation translate my voice for the other people?",
@@ -127,6 +127,6 @@ ${faq(COMPARE_FAQ)}
 })}
 </div></section>
 
-${ctaBand({ title: "Try offline translation on your own meeting", text: "Start with the free 10-day trial, 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/data-security/", label: "How we handle data" } })}
+${ctaBand({ title: "Try offline translation on your own meeting", text: "Start with the free 10-day trial, 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/data-security/", label: "How we handle data" } })}
 `,
 };

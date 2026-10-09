@@ -10,11 +10,11 @@ export const SITE = {
   year: 2026,
   updated: "2026-10-08",
   securityExpires: "2027-10-08T00:00:00.000Z",
-  version: "0.1.0-beta",
+  version: "0.1.1",
   llmSummaryEn:
-    "AI Translator is a desktop app (macOS and Windows, in beta) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer with AI models that run on-device: low latency, no audio or conversation data sent to the cloud, no cloud AI service used, no bot, no account, no ads. It supports five languages today; more are planned for the future.",
+    "AI Translator is a desktop app (macOS and Windows) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer with AI models that run on-device: low latency, no audio or conversation data sent to the cloud, no cloud AI service used, no bot, no account, no ads. It supports five languages today; more are planned for the future.",
   llmSummaryVi:
-    "AI Translator là app desktop (macOS và Windows, đang beta) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và xử lý mọi thứ ngay trên máy bằng model AI chạy tại chỗ: độ trễ thấp, không gửi âm thanh hay dữ liệu cuộc hội thoại lên cloud, không dùng dịch vụ AI trên cloud, không cần bot, không cần tài khoản, không quảng cáo. Hiện hỗ trợ năm ngôn ngữ; dự định bổ sung thêm trong tương lai.",
+    "AI Translator là app desktop (macOS và Windows) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và xử lý mọi thứ ngay trên máy bằng model AI chạy tại chỗ: độ trễ thấp, không gửi âm thanh hay dữ liệu cuộc hội thoại lên cloud, không dùng dịch vụ AI trên cloud, không cần bot, không cần tài khoản, không quảng cáo. Hiện hỗ trợ năm ngôn ngữ; dự định bổ sung thêm trong tương lai.",
   featureListVi: [
     "Phụ đề dịch trực tiếp cho âm thanh hệ thống, năm ngôn ngữ (English, 中文, 日本語, 한국어, Tiếng Việt)",
     "Nhận dạng giọng nói và dịch chạy trên máy, âm thanh không rời khỏi máy",
@@ -43,7 +43,7 @@ export const T = {
     menu: "Mở menu",
     theme: "Đổi giao diện sáng/tối",
     skip: "Bỏ qua tới nội dung chính",
-    cta: { label: "Nhận bản beta", href: "/tai-xuong/" },
+    cta: { label: "Tải xuống", href: "/tai-xuong/" },
     ogAlt: "AI Translator — phụ đề dịch trực tiếp cho cuộc họp, chạy offline trên máy tính",
     footerAbout:
       "Phụ đề dịch bằng AI chạy trên máy bạn, không gửi dữ liệu cuộc họp lên cloud. Không bot, không tài khoản, không quảng cáo.",
@@ -61,7 +61,7 @@ export const T = {
     menu: "Open menu",
     theme: "Toggle light/dark theme",
     skip: "Skip to main content",
-    cta: { label: "Get the beta", href: "/en/download/" },
+    cta: { label: "Download", href: "/en/download/" },
     ogAlt: "AI Translator — live translated subtitles for meetings, running on your computer",
     footerAbout:
       "AI-translated subtitles that run on your computer, with no meeting data sent to the cloud. No bot, no account, no ads.",
@@ -124,7 +124,7 @@ export const FOOTER = {
       links: [
         { label: "Tính năng", href: "/tinh-nang/" },
         { label: "Bảng giá", href: "/bang-gia/" },
-        { label: "Nhận bản beta", href: "/tai-xuong/" },
+        { label: "Tải xuống", href: "/tai-xuong/" },
         { label: "Dịch offline và dịch cloud", href: "/so-sanh/dich-offline-va-cloud/" },
       ],
     },
@@ -160,7 +160,7 @@ export const FOOTER = {
       links: [
         { label: "Features", href: "/en/features/" },
         { label: "Pricing", href: "/en/pricing/" },
-        { label: "Get the beta", href: "/en/download/" },
+        { label: "Download", href: "/en/download/" },
         { label: "Offline vs cloud translation", href: "/en/compare/offline-vs-cloud-translation/" },
       ],
     },

@@ -24,7 +24,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Hiện tôi tải app ở đâu?",
-    a: "<p>AI Translator đang ở giai đoạn beta. Trên macOS bạn cài bằng một dòng lệnh dán vào Terminal, lệnh nằm ở trang <a href=\"/tai-xuong/\">Tải xuống</a>; app mở thẳng, không cần Open Anyway. Bản Windows cũng cài bằng một dòng lệnh dán vào PowerShell ở cùng trang.</p>",
+    a: "<p>Trên macOS bạn cài bằng một dòng lệnh dán vào Terminal, lệnh nằm ở trang <a href=\"/tai-xuong/\">Tải xuống</a>; app mở thẳng, không cần Open Anyway. Bản Windows cũng cài bằng một dòng lệnh dán vào PowerShell ở cùng trang.</p>",
   },
 ];
 
@@ -43,11 +43,11 @@ export default {
   body: () => `
 <section class="hero"><div class="container hero-grid">
 <div>
-<p class="pill reveal"><span class="dot"></span> Beta · macOS (Apple Silicon) · Windows 10/11</p>
+<p class="pill reveal"><span class="dot"></span> macOS (Apple Silicon) · Windows 10/11 · Dùng thử Free 10 ngày</p>
 <h1 class="reveal">Phụ đề dịch <em>bằng&nbsp;AI</em> cho mọi cuộc họp, chạy ngay trên máy bạn</h1>
 <p class="lead reveal">AI Translator dùng AI chạy ngay trên máy tính để dịch âm thanh đang phát thành phụ đề nổi trên màn hình, với độ trễ thấp. Âm thanh và nội dung cuộc họp không được gửi lên cloud, cũng không đi qua dịch vụ AI nào trên cloud. Dùng với Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar hay video: không bot, không tài khoản.</p>
 <div class="hero-actions reveal">
-<a class="btn btn-primary btn-lg" href="/tai-xuong/">Nhận bản beta ${icon("arrow-right")}</a>
+<a class="btn btn-primary btn-lg" href="/tai-xuong/">Tải xuống ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#cach-hoat-dong">Xem cách hoạt động</a>
 </div>
 <ul class="trust reveal">
@@ -77,10 +77,10 @@ ${demo({
 
 <section class="section-tight"><div class="container narrow">
 <h2 class="sr-only">AI Translator là gì</h2>
-<p class="lead reveal"><strong>AI Translator</strong> là ứng dụng desktop dịch phụ đề trực tiếp cho âm thanh đang phát trên máy tính. Nó nhận dạng giọng nói, dịch và hiện bản dịch thành thanh phụ đề nổi, hoàn toàn trên máy bạn, không cần bot tham gia cuộc họp và không cần tài khoản. Bản beta cho macOS (Apple Silicon) cài được bằng một dòng lệnh; bản Windows 10/11 cũng cài được bằng một dòng lệnh PowerShell.</p>
+<p class="lead reveal"><strong>AI Translator</strong> là ứng dụng desktop dịch phụ đề trực tiếp cho âm thanh đang phát trên máy tính. Nó nhận dạng giọng nói, dịch và hiện bản dịch thành thanh phụ đề nổi, hoàn toàn trên máy bạn, không cần bot tham gia cuộc họp và không cần tài khoản. Bản macOS (Apple Silicon) cài được bằng một dòng lệnh; bản Windows 10/11 cũng cài được bằng một dòng lệnh PowerShell.</p>
 <div class="reveal">${facts([
   ["Loại sản phẩm", "Ứng dụng desktop dịch phụ đề trực tiếp"],
-  ["Nền tảng", "macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 x64<small>Cả hai đang ở giai đoạn beta</small>"],
+  ["Nền tảng", "macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 x64<small>Cả hai cài bằng một dòng lệnh</small>"],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Cả âm thanh nguồn lẫn bản dịch. Dự kiến bổ sung thêm ngôn ngữ trong tương lai</small>"],
   ["Xử lý", "100% trên máy, âm thanh không gửi đi<small>Nhận dạng giọng nói và dịch đều chạy trên máy</small>"],
   ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
@@ -181,12 +181,12 @@ ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "We
 
 <section class="section" id="gia"><div class="container">
 ${sectionHead({ eyebrow: "Bảng giá", title: "Ba gói đơn giản, trả trước bằng VietQR", text: "Không tự động gia hạn, không thanh toán định kỳ, không bất ngờ trên hóa đơn.", center: true })}
-${plansGrid("vi", { ctaLabel: "Nhận bản beta", freeLabel: "Đăng ký dùng thử" })}
+${plansGrid("vi", { ctaLabel: "Tải xuống", freeLabel: "Đăng ký dùng thử" })}
 <p class="center-text reveal"><a class="btn btn-ghost" href="/bang-gia/">So sánh chi tiết các gói ${icon("arrow-right")}</a></p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${callout({ kind: "warn", title: "Trung thực về giai đoạn beta", text: "AI Translator đang ở giai đoạn beta. Bản macOS hiện ký ad-hoc, chưa notarize: cài bằng dòng lệnh trong Terminal thì mở thẳng, còn file .dmg tải bằng trình duyệt sẽ bị macOS chặn lần mở đầu và cần cho phép trong System Settings (chúng tôi có <a href=\"/huong-dan/cai-dat-macos/\">hướng dẫn từng bước</a>). Bản Windows chưa được ký mã: cài bằng dòng lệnh PowerShell thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị cảnh báo, và Smart App Control ở chế độ chặn sẽ chặn (xem <a href=\"/huong-dan/cai-dat-windows/\">hướng dẫn cài trên Windows</a>), và chúng tôi chưa đo độ trễ trên Windows. Chúng tôi nói rõ để bạn không phải đoán." })}
+${callout({ kind: "warn", title: "Những điều chúng tôi nói thẳng", text: "Bản macOS hiện ký ad-hoc, chưa notarize: cài bằng dòng lệnh trong Terminal thì mở thẳng, còn file .dmg tải bằng trình duyệt sẽ bị macOS chặn lần mở đầu và cần cho phép trong System Settings (chúng tôi có <a href=\"/huong-dan/cai-dat-macos/\">hướng dẫn từng bước</a>). Bản Windows chưa được ký mã: cài bằng dòng lệnh PowerShell thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị cảnh báo, và Smart App Control ở chế độ chặn sẽ chặn (xem <a href=\"/huong-dan/cai-dat-windows/\">hướng dẫn cài trên Windows</a>), và chúng tôi chưa đo độ trễ trên Windows. Chúng tôi nói rõ để bạn không phải đoán." })}
 </div></section>
 
 <section class="section"><div class="container narrow">
@@ -195,6 +195,6 @@ ${faq(HOME_FAQ, { open: true })}
 <p class="more-link"><a href="/cau-hoi-thuong-gap/">Xem tất cả câu hỏi ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "Thử trên cuộc họp tiếp theo của bạn", text: "Cài bản beta cho macOS bằng một dòng lệnh (Terminal trên Mac, PowerShell trên Windows), dùng thử miễn phí 10 ngày, không cần thẻ.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Xem hướng dẫn" } })}
+${ctaBand({ title: "Thử trên cuộc họp tiếp theo của bạn", text: "Cài bằng một dòng lệnh (Terminal trên Mac, PowerShell trên Windows), dùng thử miễn phí 10 ngày, không cần thẻ.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Xem hướng dẫn" } })}
 `,
 };

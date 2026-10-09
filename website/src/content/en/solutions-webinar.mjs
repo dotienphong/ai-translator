@@ -115,7 +115,7 @@ ${checkList([
   "<strong>Translations can be wrong,</strong> especially jargon, proper names and unclear speech. Do not rely on them for important decisions without checking.",
   "<strong>Latency</strong> is a median of 0.76–1.03 seconds on a Mac M4 Pro with the Standard pack. Less powerful machines will see higher latency; we have not measured an M1 Mac. With a video you do not need to react to, delay matters less than in a meeting.",
   "<strong>Recognition</strong> is less accurate with the Lite pack in Vietnamese, Japanese, Korean and Chinese, and gets worse when speech is unclear, for example under loud music or noise.",
-  "<strong>Runs on macOS</strong> (Apple Silicon, 14.2+) <strong>and Windows 10/11</strong> (x64, beta). Translations appear only on the floating bar: they are not added to the video and do not replace the publisher's official subtitles.",
+  "<strong>Runs on macOS</strong> (Apple Silicon, 14.2+) <strong>and Windows 10/11</strong> (x64). Translations appear only on the floating bar: they are not added to the video and do not replace the publisher's official subtitles.",
 ], true)}
 </div></section>
 
@@ -129,6 +129,6 @@ ${linkCard({ href: "/en/features/", icon: "sliders", title: "Features", text: "E
 <p class="center-text reveal">Wondering where your content goes? Read <a href="/en/data-security/">data and security</a>.</p>
 </div></section>
 
-${ctaBand({ title: "Try it on a video of your own", text: "Start with the free 10-day trial, 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/pricing/", label: "See pricing" } })}
+${ctaBand({ title: "Try it on a video of your own", text: "Start with the free 10-day trial, 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/pricing/", label: "See pricing" } })}
 `,
 };

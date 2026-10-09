@@ -100,7 +100,7 @@ ${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings listing
 <p>Because the app captures system audio, AI Translator works with anything that makes sound: Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars, videos and online courses.</p>
 ${checkList([
   "<strong>macOS:</strong> listen to the whole system (except the app itself) or to a single app that is playing sound, so notification sounds from other apps are not translated by mistake",
-  "<strong>Windows (beta):</strong> the default playback device, or a device you choose",
+  "<strong>Windows:</strong> the default playback device, or a device you choose",
   "The source reopens automatically when you switch playback devices, for example when you plug in headphones or connect Bluetooth",
   "<strong>Pause that ends a sentence</strong> is adjustable from 50 to 800&nbsp;ms: shorter gives you subtitles sooner, longer cuts fewer sentences in half",
 ])}
@@ -193,7 +193,7 @@ ${facts([
   ["macOS", "macOS 14.2 or later, Apple Silicon (M1 or newer)<small>No version for Intel Macs</small>"],
   ["RAM", "At least 8 GB, 16 GB recommended"],
   ["Disk", "At least 1 GB free on top of the size of the model being downloaded"],
-  ["Windows (beta)", "Windows 10/11 64-bit (x64), CPU with AVX2<small>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended. Not code-signed yet, so SmartScreen may warn during installation; latency on Windows not measured yet</small>"],
+  ["Windows", "Windows 10/11 64-bit (x64), CPU with AVX2<small>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended. Not code-signed yet, so SmartScreen may warn during installation; latency on Windows not measured yet</small>"],
 ])}
 </div></section>
 
@@ -255,6 +255,6 @@ ${sectionHead({ eyebrow: "By plan", title: "Which feature is in which plan", cen
 <p class="center-text reveal"><a class="btn btn-primary" href="/en/pricing/">See the full pricing details ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "Try it on your real meetings", text: "A free 10-day trial with 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
+${ctaBand({ title: "Try it on your real meetings", text: "A free 10-day trial with 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
 `,
 };

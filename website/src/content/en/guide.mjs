@@ -27,7 +27,7 @@ ${pageHero({
 })}
 
 <section class="section-tight"><div class="container">
-${callout({ title: "These guides cover both macOS and Windows.", text: "Most steps are the same on both systems. The main differences on Windows: you install with a PowerShell command (or an .exe file, which may trigger a SmartScreen warning because the beta is not code-signed yet), there is no audio permission to grant, the icon sits in the system tray instead of the menu bar, and shortcuts use Ctrl+Alt instead of ⌃⌥. No installer yet? See the <a href=\"/en/download/\">Download page</a>." })}
+${callout({ title: "These guides cover both macOS and Windows.", text: "Most steps are the same on both systems. The main differences on Windows: you install with a PowerShell command (or an .exe file, which may trigger a SmartScreen warning because the Windows build is not code-signed yet), there is no audio permission to grant, the icon sits in the system tray instead of the menu bar, and shortcuts use Ctrl+Alt instead of ⌃⌥. No installer yet? See the <a href=\"/en/download/\">Download page</a>." })}
 </div></section>
 
 <section class="section-tight"><div class="container">

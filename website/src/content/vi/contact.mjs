@@ -37,11 +37,11 @@ export default {
   path: "/lien-he/",
   title: "Liên hệ và hỗ trợ AI Translator",
   description:
-    "Liên hệ AI Translator qua email support@aitranslator.io.vn: đăng ký beta, hỗ trợ kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu và báo lỗi bảo mật.",
+    "Liên hệ AI Translator qua email support@aitranslator.io.vn: nhận bản cài, hỗ trợ kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu và báo lỗi bảo mật.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-08",
-  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.io.vn, việc nên gửi tới đó (beta, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
+  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.io.vn, việc nên gửi tới đó (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
   llmTitle: "Liên hệ và hỗ trợ AI Translator",
   body: () => `
 ${pageHero({
@@ -65,8 +65,8 @@ ${pageHero({
 ${sectionHead({ eyebrow: "Gửi gì, kèm gì", title: "Bạn cần gì? Gửi thư kèm những thông tin này", text: "Mỗi nút dưới đây mở app email của bạn với tiêu đề và mẫu nội dung có sẵn. Nếu không mở được, hãy soạn thư thủ công tới địa chỉ trên.", center: true })}
 <div class="grid grid-2">
 
-<div class="card reveal" id="beta">
-<h3>Đăng ký nhận bản beta</h3>
+<div class="card reveal" id="ban-cai">
+<h3>Nhận bản cài qua email</h3>
 <p>Cả macOS và Windows đều cài bằng một dòng lệnh ở trang Tải xuống, không cần email. Nếu bạn muốn nhận file .dmg (macOS) hoặc .exe (Windows) qua email thay vì dùng lệnh: hãy gửi email theo mẫu ở trang Tải xuống (có mẫu riêng cho macOS và Windows): dòng máy và chip hoặc CPU, phiên bản macOS hoặc Windows, RAM, app họp bạn dùng và ngôn ngữ cần dịch. Chúng tôi gửi bản cài kèm mã SHA-256 để bạn kiểm tra.</p>
 <p><a class="btn btn-secondary btn-sm" href="/tai-xuong/">Mở trang Tải xuống ${icon("arrow-right")}</a></p>
 </div>

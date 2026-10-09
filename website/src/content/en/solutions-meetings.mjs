@@ -32,7 +32,7 @@ ${pageHero({
   ["Works with", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>No bot, no plugin; any app that plays sound through your computer can be captured</small>"],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>One way, into the language you choose</small>"],
   ["Latency", "Median 0.76–1.03 seconds<small>Mac M4 Pro, Standard pack; slower machines will be slower</small>"],
-  ["Platform", "macOS 14.2+ (Apple Silicon) and Windows 10/11 x64, beta<small>The Windows build is not code-signed yet, so SmartScreen may warn during installation</small>"],
+  ["Platform", "macOS 14.2+ (Apple Silicon) and Windows 10/11 x64<small>The Windows build is not code-signed yet, so SmartScreen may warn during installation</small>"],
 ])}</div>
 </div></section>
 
@@ -139,6 +139,6 @@ ${linkCard({ href: "/en/solutions/webinar-and-video-translation/", icon: "play",
 </div>
 </div></section>
 
-${ctaBand({ title: "Try it on your own call", text: "Start with the free 10-day trial, 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/guide/quick-start/", label: "Quick start guide" } })}
+${ctaBand({ title: "Try it on your own call", text: "Start with the free 10-day trial, 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/guide/quick-start/", label: "Quick start guide" } })}
 `,
 };

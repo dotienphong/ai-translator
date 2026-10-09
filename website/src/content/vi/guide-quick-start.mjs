@@ -71,7 +71,7 @@ ${facts([
   ["Ổ đĩa", "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)<small>Cộng thêm 1 GB trống khi tải model</small>"],
   ["Mạng", "Cần để tải model và đăng ký dùng thử Free<small>Sau đó nhận dạng và dịch chạy offline</small>"],
 ])}
-${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống nhau trên Windows, trừ vài điểm: cài bằng dòng lệnh PowerShell (hoặc file .exe, SmartScreen có thể cảnh báo vì bản beta chưa được ký mã), không có bước cấp quyền ghi âm, app nằm ở khay hệ thống thay cho menu bar, và phím tắt dùng Ctrl+Alt thay cho ⌃⌥." })}
+${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống nhau trên Windows, trừ vài điểm: cài bằng dòng lệnh PowerShell (hoặc file .exe, SmartScreen có thể cảnh báo vì bản Windows chưa được ký mã), không có bước cấp quyền ghi âm, app nằm ở khay hệ thống thay cho menu bar, và phím tắt dùng Ctrl+Alt thay cho ⌃⌥." })}
 
 <h2 id="cai-va-mo">Cài app và mở lần đầu</h2>
 <p><strong>Trên macOS:</strong></p>

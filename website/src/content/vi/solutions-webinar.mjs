@@ -24,7 +24,7 @@ ${pageHero({
   crumbs,
   title: "Phụ đề dịch cho webinar, khóa học và video",
   lead: "AI Translator hiện phụ đề dịch ngay trên màn hình khi bạn xem webinar, hội thảo trực tuyến, khóa học hay video bằng ngoại ngữ. Nó nghe âm thanh phát ra từ máy tính nên không cần cài gì vào trình duyệt hay nền tảng, và việc nhận dạng cùng dịch chạy trên máy bạn.",
-  meta: "<span>Cập nhật 08/10/2026</span><span>Đã thử trên macOS · Windows đang beta</span>",
+  meta: "<span>Cập nhật 08/10/2026</span><span>Đã thử trên macOS · Windows chưa đo độ trễ</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -115,7 +115,7 @@ ${checkList([
   "<strong>Bản dịch có thể sai,</strong> nhất là thuật ngữ, tên riêng và tiếng nói không rõ. Đừng dựa vào nó cho quyết định quan trọng khi chưa kiểm tra lại.",
   "<strong>Độ trễ</strong> trung vị 0,76–1,03 giây khi đo trên Mac M4 Pro, gói model Chuẩn. Máy yếu hơn sẽ chậm hơn; chưa đo Mac M1. Với video bạn không cần phản hồi, độ trễ ít quan trọng hơn khi họp.",
   "<strong>Nhận dạng</strong> kém rõ hơn ở gói model Nhẹ với tiếng Việt, Nhật, Hàn, Trung, và kém hơn khi tiếng nói không rõ, ví dụ nhạc nền lớn hay tiếng ồn.",
-  "<strong>Chạy trên macOS</strong> (Apple Silicon, 14.2+) <strong>và Windows 10/11</strong> (x64, beta). Bản dịch chỉ hiện trên thanh nổi, không chèn vào video và không thay phụ đề chính thức của nhà phát hành.",
+  "<strong>Chạy trên macOS</strong> (Apple Silicon, 14.2+) <strong>và Windows 10/11</strong> (x64). Bản dịch chỉ hiện trên thanh nổi, không chèn vào video và không thay phụ đề chính thức của nhà phát hành.",
 ], true)}
 </div></section>
 
@@ -129,6 +129,6 @@ ${linkCard({ href: "/tinh-nang/", icon: "sliders", title: "Tính năng", text: "
 <p class="center-text reveal">Cần biết nội dung của bạn có bị gửi đi đâu không? Xem <a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
 </div></section>
 
-${ctaBand({ title: "Xem thử một video của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
+${ctaBand({ title: "Xem thử một video của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
 `,
 };

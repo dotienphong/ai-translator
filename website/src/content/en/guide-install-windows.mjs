@@ -53,7 +53,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Install AI Translator on Windows",
-  lead: "The fastest way to install AI Translator on Windows is to paste one command into PowerShell: the installer is downloaded, checked and run for your account only (no administrator rights), and the app opens without going through the SmartScreen screen. If you already have an .exe downloaded in a browser you can still install it by double-clicking, but SmartScreen may warn because the beta is not code-signed: click More info, then Run anyway.",
+  lead: "The fastest way to install AI Translator on Windows is to paste one command into PowerShell: the installer is downloaded, checked and run for your account only (no administrator rights), and the app opens without going through the SmartScreen screen. If you already have an .exe downloaded in a browser you can still install it by double-clicking, but SmartScreen may warn because the Windows build is not code-signed: click More info, then Run anyway.",
   meta: "<span>For Windows 10 and 11, 64-bit (x64)</span> <span>Updated October 9, 2026</span>",
 })}
 

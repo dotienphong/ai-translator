@@ -28,7 +28,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Where can I download it right now?",
-    a: `<p>AI Translator is in beta. On macOS you install with one command pasted into Terminal; it is on the <a href="/en/download/">Download page</a>, and the app opens directly with no Open Anyway. The Windows build also installs with one command pasted into PowerShell on the same page.</p>`,
+    a: `<p>On macOS you install with one command pasted into Terminal; it is on the <a href="/en/download/">Download page</a>, and the app opens directly with no Open Anyway. The Windows build also installs with one command pasted into PowerShell on the same page.</p>`,
   },
 ];
 
@@ -49,11 +49,11 @@ export default {
   body: () => `
 <section class="hero"><div class="container hero-grid">
 <div>
-<p class="pill reveal"><span class="dot"></span> Beta · macOS (Apple Silicon) · Windows 10/11</p>
+<p class="pill reveal"><span class="dot"></span> macOS (Apple Silicon) · Windows 10/11 · 10-day free trial</p>
 <h1 class="reveal">AI-translated subtitles for <em>every meeting</em>, running on your computer</h1>
 <p class="lead reveal">AI Translator uses AI that runs on your own computer to turn the audio playing on it into translated subtitles on your screen, with low latency. Your audio and meeting content are not sent to the cloud and do not pass through any cloud AI service. Use it with Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars or videos: no bot, no account.</p>
 <div class="hero-actions reveal">
-<a class="btn btn-primary btn-lg" href="/en/download/">Get the beta ${icon("arrow-right")}</a>
+<a class="btn btn-primary btn-lg" href="/en/download/">Download ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-it-works">See how it works</a>
 </div>
 <ul class="trust reveal">
@@ -83,10 +83,10 @@ ${demo({
 
 <section class="section-tight"><div class="container narrow">
 <h2 class="sr-only">What is AI Translator?</h2>
-<p class="lead reveal"><strong>AI Translator</strong> is a desktop app that shows live translated subtitles for the audio playing on your computer. It recognizes the speech, translates it and displays the result on a floating subtitle bar, entirely on your own machine, with no bot joining your meeting and no account to create. The macOS beta (Apple Silicon) installs with one command; the Windows 10/11 beta also installs with one PowerShell command.</p>
+<p class="lead reveal"><strong>AI Translator</strong> is a desktop app that shows live translated subtitles for the audio playing on your computer. It recognizes the speech, translates it and displays the result on a floating subtitle bar, entirely on your own machine, with no bot joining your meeting and no account to create. The macOS build (Apple Silicon) installs with one command; the Windows 10/11 build also installs with one PowerShell command.</p>
 <div class="reveal">${facts([
   ["Product type", "Desktop app for live translated subtitles"],
-  ["Platforms", "macOS 14.2 or later (Apple Silicon) and Windows 10/11 x64<small>Both are in beta</small>"],
+  ["Platforms", "macOS 14.2 or later (Apple Silicon) and Windows 10/11 x64<small>Both install with one command</small>"],
   ["Languages", "English, 中文, 日本語, 한국어, Tiếng Việt<small>For both the source audio and the translation. More languages are planned for the future</small>"],
   ["Processing", "100% on your device; audio is never sent out<small>Speech recognition and translation both run on your device</small>"],
   ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid in VND by VietQR from a Vietnamese bank, no auto-renewal</small>"],
@@ -187,13 +187,13 @@ ${linkCard({ href: "/en/solutions/webinar-and-video-translation/", icon: "play",
 
 <section class="section" id="pricing"><div class="container">
 ${sectionHead({ eyebrow: "Pricing", title: "Three simple plans, prepaid with VietQR", text: "No auto-renewal, no recurring billing, no surprises on your bill.", center: true })}
-${plansGrid("en", { ctaLabel: "Get the beta", freeLabel: "Sign up for the free trial" })}
+${plansGrid("en", { ctaLabel: "Download", freeLabel: "Sign up for the free trial" })}
 <p class="disclaimer">Prices are in Vietnamese dong (VND). Payment is by bank transfer from a Vietnamese bank (VietQR) only; international cards are not accepted yet.</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/en/pricing/">Compare the plans in detail ${icon("arrow-right")}</a></p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${callout({ kind: "warn", title: "Honest about the beta", text: "AI Translator is in beta. The macOS build is currently signed ad-hoc and not notarized: installed with the Terminal command it opens directly, but a .dmg downloaded in a browser is blocked by macOS on first launch and you need to allow it in System Settings (we have a <a href=\"/en/guide/install-macos/\">step-by-step installation guide</a>). The Windows build is not code-signed yet: installed with the PowerShell command SmartScreen does not ask, while an .exe downloaded in a browser may be warned about, and Smart App Control in blocking mode blocks it (see the <a href=\"/en/guide/install-windows/\">Windows installation guide</a>), and we have not measured latency on Windows yet. We say this up front so you do not have to guess." })}
+${callout({ kind: "warn", title: "What we say plainly", text: "The macOS build is currently signed ad-hoc and not notarized: installed with the Terminal command it opens directly, but a .dmg downloaded in a browser is blocked by macOS on first launch and you need to allow it in System Settings (we have a <a href=\"/en/guide/install-macos/\">step-by-step installation guide</a>). The Windows build is not code-signed yet: installed with the PowerShell command SmartScreen does not ask, while an .exe downloaded in a browser may be warned about, and Smart App Control in blocking mode blocks it (see the <a href=\"/en/guide/install-windows/\">Windows installation guide</a>), and we have not measured latency on Windows yet. We say this up front so you do not have to guess." })}
 </div></section>
 
 <section class="section"><div class="container narrow">
@@ -202,6 +202,6 @@ ${faq(HOME_FAQ, { open: true })}
 <p class="more-link"><a href="/en/faq/">See all questions ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "Ready to understand every meeting?", text: "Install the macOS beta with one command (Terminal on a Mac, PowerShell on Windows) and try it free for 10 days. No card needed.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
+${ctaBand({ title: "Ready to understand every meeting?", text: "Install with one command (Terminal on a Mac, PowerShell on Windows) and try it free for 10 days. No card needed.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
 `,
 };

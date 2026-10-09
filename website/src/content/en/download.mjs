@@ -9,10 +9,10 @@ const crumbs = [
 const mailto = (subject, body) =>
   `mailto:support@aitranslator.io.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
 
-const MAILTO_MAC = mailto("AI Translator beta request (macOS)", [
+const MAILTO_MAC = mailto("AI Translator installer request (macOS)", [
   "Hello AI Translator team,",
   "",
-  "I would like to receive the macOS beta.",
+  "I would like to receive the macOS installer (.dmg).",
   "",
   "- Full name:",
   "- Mac model and chip (for example MacBook Air M2):",
@@ -24,10 +24,10 @@ const MAILTO_MAC = mailto("AI Translator beta request (macOS)", [
   "Thank you!",
 ]);
 
-const MAILTO_WIN = mailto("AI Translator beta request (Windows)", [
+const MAILTO_WIN = mailto("AI Translator installer request (Windows)", [
   "Hello AI Translator team,",
   "",
-  "I would like to receive the Windows beta.",
+  "I would like to receive the Windows installer (.exe).",
   "",
   "- Full name:",
   "- PC model and processor (for example a Dell laptop, Intel Core i5-1235U):",
@@ -58,7 +58,7 @@ const DL_FAQ = [
   },
   {
     q: "Why is there no .dmg or .exe download button?",
-    a: `<p>The beta is not yet signed by Apple or Microsoft (we do not have an Apple Developer ID or a Windows code-signing certificate). A file downloaded in a browser is tagged “downloaded from the internet”, so macOS blocks the first launch of a .dmg (Open Anyway) and Windows SmartScreen may warn about an .exe. A file downloaded by a command in Terminal or PowerShell does not get that tag, so the app installs and opens directly. Once we have the certificates we will add a direct download button.</p>`,
+    a: `<p>The current build is not yet signed by Apple or Microsoft (we do not have an Apple Developer ID or a Windows code-signing certificate). A file downloaded in a browser is tagged “downloaded from the internet”, so macOS blocks the first launch of a .dmg (Open Anyway) and Windows SmartScreen may warn about an .exe. A file downloaded by a command in Terminal or PowerShell does not get that tag, so the app installs and opens directly. Once we have the certificates we will add a direct download button.</p>`,
   },
   {
     q: "How do I update or uninstall?",
@@ -73,7 +73,7 @@ const DL_FAQ = [
     a: `<p>Windows 10 or 11, 64-bit (x64), with a CPU that supports AVX2 and at least 8 GB of RAM. Windows ARM64 is not supported yet. Without AVX2 or with less than 8 GB of RAM, the app explains why and does not let you download the models. We have not measured latency on Windows, so we make no promise about it.</p>`,
   },
   {
-    q: "Does the beta update itself?",
+    q: "Does the app update itself?",
     a: `<p>There are Stable and Beta update channels under Settings › General › Update channel. The app checks at launch and every 24 hours; changing channel checks right away. On macOS each update asks again for 1 Keychain approval; on Windows nothing extra is asked.</p>`,
   },
 ];
@@ -101,8 +101,8 @@ ${faq(
       a: `<p>The script is at <a href="/install.sh">aitranslator.io.vn/install.sh</a> (about 200 lines, commented). This command downloads it, lets you read it, and only then runs it:</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "Command that downloads the script for review before running it", term: "Terminal" })}`,
     },
     {
-      q: "Install a newer beta (beta channel)",
-      a: `<p>By default the command installs the stable version. To get a newer beta (when there is one), add <code>-s -- --beta</code> after <code>bash</code>:</p>${cmdBlock({ cmd: INSTALL_CMD_BETA, ...COPY, label: "Command that installs from the beta channel", term: "Terminal" })}`,
+      q: "Try newer builds early (Beta channel)",
+      a: `<p>By default the command installs the stable version. To try newer builds early, when there are any (Beta channel), add <code>-s -- --beta</code> after <code>bash</code>:</p>${cmdBlock({ cmd: INSTALL_CMD_BETA, ...COPY, label: "Command that installs from the beta channel", term: "Terminal" })}`,
     },
     {
       q: "I downloaded the .dmg in a browser and macOS blocked it",
@@ -147,8 +147,8 @@ ${faq(
       a: `<p>The script is at <a href="/install.ps1">aitranslator.io.vn/install.ps1</a> (commented). This command prints it so you can read it, and only then runs it:</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "Command that prints the script for review before running it", term: "Windows PowerShell", prompt: "PS>" })}`,
     },
     {
-      q: "Install a newer beta (beta channel)",
-      a: `<p>By default the command installs the stable version. To get a newer beta (when there is one), use this command:</p>${cmdBlock({ cmd: WIN_CMD_BETA, ...COPY, label: "Command that installs from the beta channel on Windows", term: "Windows PowerShell", prompt: "PS>" })}`,
+      q: "Try newer builds early (Beta channel)",
+      a: `<p>By default the command installs the stable version. To try newer builds early, when there are any (Beta channel), use this command:</p>${cmdBlock({ cmd: WIN_CMD_BETA, ...COPY, label: "Command that installs from the beta channel on Windows", term: "Windows PowerShell", prompt: "PS>" })}`,
     },
     {
       q: "Windows 11 says an app is blocked and offers no way past it",
@@ -177,20 +177,20 @@ export default {
   id: "download",
   lang: "en",
   path: "/en/download/",
-  title: "Get the AI Translator beta: one-line install for macOS and Windows",
+  title: "Get AI Translator: one-line install for macOS and Windows",
   description:
-    "Get the AI Translator beta: install on macOS 14.2+ (Apple Silicon) or Windows 10/11 with one command, opens right away, no Open Anyway. 10-day free trial.",
+    "Get AI Translator: install on macOS 14.2+ (Apple Silicon) or Windows 10/11 with one command, opens right away, no Open Anyway. 10-day free trial.",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-09",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: plain(f.a) })))],
-  llm: "Get the AI Translator beta: the page detects your operating system and opens the right guide. macOS installs with one Terminal command (curl ... install.sh | bash): it downloads the installer, checks its SHA-256 and opens the app, with no Open Anyway step. Windows installs with one PowerShell command (irm ... install.ps1 | iex); an .exe downloaded in a browser may trigger a SmartScreen warning because the build is not code-signed, and Smart App Control can block it. System requirements.",
-  llmTitle: "Get the AI Translator beta",
+  llm: "Get AI Translator: the page detects your operating system and opens the right guide. macOS installs with one Terminal command (curl ... install.sh | bash): it downloads the installer, checks its SHA-256 and opens the app, with no Open Anyway step. Windows installs with one PowerShell command (irm ... install.ps1 | iex); an .exe downloaded in a browser may trigger a SmartScreen warning because the build is not code-signed, and Smart App Control can block it. System requirements.",
+  llmTitle: "Get AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
-  title: "Get the AI Translator beta for macOS and Windows",
-  lead: "Pick your operating system and paste one command into Terminal or PowerShell: the app is downloaded, checked and opened right away. Beta, 10-day free trial, no card needed.",
+  title: "Get AI Translator for macOS and Windows",
+  lead: "Pick your operating system and paste one command into Terminal or PowerShell: the app is downloaded, checked and opened right away. 10-day free trial, no card needed.",
   meta: '<span id="os-detect" class="os-detect" hidden></span>',
 })}
 
@@ -213,9 +213,9 @@ ${osTabs({
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${sectionHead({ eyebrow: "At a glance", title: "The beta and the free trial", center: true })}
+${sectionHead({ eyebrow: "At a glance", title: "Free trial and pricing", center: true })}
 <div class="reveal">${facts([
-  ["Status", "Beta. Both macOS and Windows install with one command"],
+  ["Status", "Released. Both macOS and Windows install with one command"],
   ["Free trial", "10 days, 30 minutes per day<small>No card, no account</small>"],
   ["Price afterwards", "Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Paid in VND by bank transfer from a Vietnamese bank (VietQR)</small>"],
   ["Models", "Downloaded once, 1.3 or 2.5 GB<small>After that, recognition and translation run offline on your machine</small>"],
@@ -226,7 +226,7 @@ ${callout({ kind: "ok", title: "Only get the installer from us", text: "Install 
 <section class="section"><div class="container">
 ${sectionHead({ eyebrow: "System requirements", title: "Will it run on your computer?", center: true })}
 <div class="table-wrap reveal" role="region" aria-label="System requirements" tabindex="0"><table>
-<thead><tr><th scope="col"><span class="sr-only">Requirement</span></th><th scope="col">macOS (beta)</th><th scope="col">Windows (beta)</th></tr></thead>
+<thead><tr><th scope="col"><span class="sr-only">Requirement</span></th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
 <tbody>
 <tr><th scope="row">Operating system</th><td>macOS 14.2 or later</td><td>Windows 10 or 11, 64-bit (x64)</td></tr>
 <tr><th scope="row">Processor</th><td>Apple Silicon (M1 or newer). No version for Intel Macs</td><td>CPU with AVX2. Windows ARM64 is not supported yet</td></tr>
@@ -241,7 +241,7 @@ ${sectionHead({ eyebrow: "System requirements", title: "Will it run on your comp
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${sectionHead({ eyebrow: "Frequently asked questions", title: "About the beta and installing it" })}
+${sectionHead({ eyebrow: "Frequently asked questions", title: "About installing it" })}
 ${faq(DL_FAQ, { open: true })}
 </div></section>
 

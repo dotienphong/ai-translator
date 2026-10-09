@@ -166,6 +166,17 @@ test("CSP trong _headers băm đúng script nội tuyến và không cho phép u
   assert.ok(h.includes(hash), "băm CSP không khớp script nội tuyến");
 });
 
+test("sản phẩm đã phát hành chính thức: không trang nào còn nói 'bản beta' hay 'đang beta' (chỉ còn tên kênh cập nhật Beta và cờ --beta)", () => {
+  // Cho phép: tên kênh cập nhật có thật trong app, lệnh có --beta/-Beta.
+  const ALLOWED = /(kênh|channel|channels|Ổn định hoặc|Ổn định và|Stable or|Stable and|--|-)\s*beta\b|\bbeta\s*(channel|channels)\b|<em>beta<\/em>/gi;
+  for (const p of pages) {
+    const text = textOf(htmlByPath.get(p.path)) + " " + `${p.title} ${p.description} ${p.llm ?? ""}`;
+    const left = text.replace(ALLOWED, " ");
+    const m = left.match(/.{0,40}\bbeta\b.{0,40}/i);
+    assert.ok(!m, `${p.path}: còn chữ "beta" ngoài tên kênh: …${m?.[0]}…`);
+  }
+});
+
 test("giá và hạn mức trên website khớp server/wrangler.jsonc", async () => {
   const raw = await readFile(path.join(ROOT, "..", "server", "wrangler.jsonc"), "utf8");
   const json = JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ""));

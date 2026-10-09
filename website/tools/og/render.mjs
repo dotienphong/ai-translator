@@ -12,13 +12,13 @@ mkdirSync(out, { recursive: true });
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const SRC = { vi: ["Let's review the timeline in the next meeting.", "Hãy xem lại tiến độ trong cuộc họp tiếp theo."], en: ["来週までに見積書をお送りします。", "We will send the quotation by next week."] };
-const TAG = { vi: "Beta · macOS", en: "Beta · macOS" };
+const TAG = { vi: "macOS · Windows", en: "macOS · Windows" };
 // [tên, vi:{t,s}, en:{t,s}] — tiêu đề ngắn (hiện lớn) và dòng phụ.
 const SET = [
   ["default", { t: "Dịch cuộc họp bằng AI, chạy trên máy bạn", s: "Độ trễ thấp. Không gửi dữ liệu lên cloud." }, { t: "AI meeting translation that runs on your computer", s: "Low latency. No data sent to the cloud." }],
   ["features", { t: "Mọi thứ để hiểu một cuộc họp bằng ngoại ngữ", s: "Thanh phụ đề, từ điển thuật ngữ, lịch sử, xuất file, 5 ngôn ngữ." }, { t: "Everything to follow a meeting in another language", s: "Subtitle bar, glossary, history, export, 5 languages." }],
   ["pricing", { t: "Free dùng thử · 50.000 ₫ · 500.000 ₫", s: "Ba gói trả trước bằng VietQR, không tự gia hạn." }, { t: "Free trial · 50,000 ₫ · 500,000 ₫", s: "Three prepaid plans via VietQR, no auto-renewal." }],
-  ["download", { t: "Nhận bản beta cho macOS", s: "Apple Silicon, macOS 14.2+. Dùng thử Free 10 ngày." }, { t: "Get the macOS beta", s: "Apple Silicon, macOS 14.2+. 10-day free trial." }],
+  ["download", { t: "Tải AI Translator cho macOS và Windows", s: "Cài bằng một dòng lệnh. Dùng thử Free 10 ngày." }, { t: "Get AI Translator for macOS and Windows", s: "Install with one command. 10-day free trial." }],
   ["guide", { t: "Hướng dẫn sử dụng AI Translator", s: "Cài đặt, cấp quyền, phím tắt, từ điển, khắc phục sự cố." }, { t: "AI Translator user guides", s: "Install, permissions, shortcuts, glossary, troubleshooting." }],
   ["solutions", { t: "Phụ đề dịch cho họp, webinar và video", s: "Zoom, Teams, Meet, Zalo PC: không bot, không plugin." }, { t: "Translated subtitles for meetings, webinars and video", s: "Zoom, Teams, Meet, Zalo PC: no bot, no plugin." }],
   ["compare", { t: "Dịch offline hay dịch cloud?", s: "So sánh cân bằng: riêng tư, internet, ngôn ngữ, phần cứng." }, { t: "Offline or cloud translation?", s: "A balanced comparison: privacy, internet, languages, hardware." }],

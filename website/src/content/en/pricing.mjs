@@ -65,7 +65,7 @@ ${pageHero({ crumbs, title: "Simple pricing: prepaid, no auto-renewal", lead: "T
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">The three plans</h2>
-${plansGrid("en", { ctaLabel: "Get the beta", freeLabel: "Sign up for the free trial" })}
+${plansGrid("en", { ctaLabel: "Download", freeLabel: "Sign up for the free trial" })}
 <p class="disclaimer">Prices are in Vietnamese dong (VND) per order, and equal the amount in the VietQR code. Prices and allowances are set on our server; a plan you have already bought never has its allowance reduced.</p>
 ${callout({ kind: "warn", title: "Paying from outside Vietnam", text: "For now we accept only bank transfers from Vietnamese banks, made through VietQR and charged in VND. International cards, PayPal and other currencies are not supported yet, so if you do not have a Vietnamese bank account you cannot buy a paid plan today. The Free trial needs no payment method. If this blocks you, <a href=\"/en/contact/\">contact us</a>." })}
 </div></section>
@@ -135,6 +135,6 @@ ${sectionHead({ eyebrow: "Pricing questions", title: "What you may want to ask b
 ${faq(PRICING_FAQ)}
 </div></section>
 
-${ctaBand({ title: "Start with the 10-day trial", text: "30 minutes a day is enough to test it on a real meeting. No card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/faq/", label: "Read the FAQ" } })}
+${ctaBand({ title: "Start with the 10-day trial", text: "30 minutes a day is enough to test it on a real meeting. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/faq/", label: "Read the FAQ" } })}
 `,
 };

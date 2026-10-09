@@ -32,7 +32,7 @@ ${pageHero({
   ["Dùng với", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>Không bot, không plugin; app nào phát tiếng ra máy cũng thu được</small>"],
   ["Ngôn ngữ", "English, 中文, 日本語, 한국어, Tiếng Việt<small>Một chiều, sang ngôn ngữ bạn chọn</small>"],
   ["Độ trễ", "Trung vị 0,76–1,03 giây<small>Mac M4 Pro, gói model Chuẩn; máy yếu hơn sẽ chậm hơn</small>"],
-  ["Nền tảng", "macOS 14.2+ (Apple Silicon) và Windows 10/11 x64, bản beta<small>Bản Windows chưa ký mã nên SmartScreen có thể cảnh báo khi cài</small>"],
+  ["Nền tảng", "macOS 14.2+ (Apple Silicon) và Windows 10/11 x64<small>Bản Windows chưa ký mã nên SmartScreen có thể cảnh báo khi cài</small>"],
 ])}</div>
 </div></section>
 
@@ -139,6 +139,6 @@ ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "We
 </div>
 </div></section>
 
-${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Hướng dẫn bắt đầu nhanh" } })}
+${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Hướng dẫn bắt đầu nhanh" } })}
 `,
 };

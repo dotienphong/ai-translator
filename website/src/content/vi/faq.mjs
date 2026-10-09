@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Tôi tải AI Translator ở đâu? Có bản Windows không?",
-        a: `<p>Trên macOS (14.2 trở lên, Apple Silicon), bạn cài bằng một dòng lệnh dán vào Terminal; lệnh nằm ở trang <a href="/tai-xuong/">Tải xuống</a> và app mở thẳng, không cần Open Anyway. Chưa có nút tải file .dmg. Bản Windows (10/11, 64-bit) cũng cài bằng một dòng lệnh dán vào PowerShell ở cùng trang đó. Bản Windows cũng là beta và chưa được ký mã: cài bằng lệnh thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị cảnh báo.</p>`,
+        a: `<p>Trên macOS (14.2 trở lên, Apple Silicon), bạn cài bằng một dòng lệnh dán vào Terminal; lệnh nằm ở trang <a href="/tai-xuong/">Tải xuống</a> và app mở thẳng, không cần Open Anyway. Chưa có nút tải file .dmg. Bản Windows (10/11, 64-bit) cũng cài bằng một dòng lệnh dán vào PowerShell ở cùng trang đó. Bản Windows chưa được ký mã: cài bằng lệnh thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị cảnh báo.</p>`,
       },
       {
         q: "AI Translator có phải là mã nguồn mở không?",
@@ -108,7 +108,7 @@ const GROUPS = [
     items: [
       {
         q: "Máy của tôi có chạy được AI Translator không?",
-        a: `<p>Bản beta chạy trên Mac Apple Silicon (M1 trở lên) với macOS 14.2 trở lên; RAM tối thiểu 8 GB, khuyến nghị 16 GB. Chưa hỗ trợ Mac Intel. Bản beta Windows chạy trên Windows 10/11 64-bit (x64) với CPU có AVX2, RAM tối thiểu 8 GB, khuyến nghị 16 GB; chưa hỗ trợ Windows ARM64.</p><p>Máy dưới 8 GB RAM hoặc không đạt yêu cầu thì app báo lý do và không cho tải model. Riêng Mac M1 cơ bản và máy Windows, chúng tôi chưa có số đo độ trễ.</p>`,
+        a: `<p>AI Translator chạy trên Mac Apple Silicon (M1 trở lên) với macOS 14.2 trở lên; RAM tối thiểu 8 GB, khuyến nghị 16 GB. Chưa hỗ trợ Mac Intel. Bản Windows chạy trên Windows 10/11 64-bit (x64) với CPU có AVX2, RAM tối thiểu 8 GB, khuyến nghị 16 GB; chưa hỗ trợ Windows ARM64.</p><p>Máy dưới 8 GB RAM hoặc không đạt yêu cầu thì app báo lý do và không cho tải model. Riêng Mac M1 cơ bản và máy Windows, chúng tôi chưa có số đo độ trễ.</p>`,
       },
       {
         q: "AI Translator tốn bao nhiêu RAM và ổ đĩa?",
@@ -233,6 +233,6 @@ ${callout({ title: "Chưa thấy câu trả lời?", text: `Hãy gửi email t�
 })}
 </div></section>
 
-${ctaBand({ title: "Còn thắc mắc? Hãy hỏi chúng tôi", text: "Gửi một email ngắn cho chúng tôi. Hoặc nhận bản beta và tự thử trên cuộc họp của bạn.", primary: { href: "/lien-he/", label: "Liên hệ và hỗ trợ" }, secondary: { href: "/tai-xuong/", label: "Nhận bản beta" } })}
+${ctaBand({ title: "Còn thắc mắc? Hãy hỏi chúng tôi", text: "Gửi một email ngắn cho chúng tôi. Hoặc tải app và tự thử trên cuộc họp của bạn.", primary: { href: "/lien-he/", label: "Liên hệ và hỗ trợ" }, secondary: { href: "/tai-xuong/", label: "Tải xuống" } })}
 `,
 };
