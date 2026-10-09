@@ -41,12 +41,48 @@ ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
 export const facts = (rows) => `<dl class="facts">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v.replace(/<small>/g, "<br><small>")}</dd></div>`).join("")}</dl>`;
 
 /**
- * Khối lệnh Terminal một dòng kèm nút Sao chép (nâng cấp bằng site.js; tắt JS thì nút ẩn, vẫn chọn và chép tay được).
- * cmd là chuỗi thuần (không HTML); copy/copied là nhãn nút trước và sau khi chép.
+ * Khối lệnh dạng cửa sổ terminal, có nút Sao chép (nâng cấp bằng site.js; tắt JS thì nút ẩn, vẫn chọn và chép tay được).
+ * cmd là chuỗi thuần (không HTML); copy/copied là nhãn nút trước và sau khi chép; term là tên hiện trên thanh tiêu đề
+ * ("Terminal", "PowerShell"); prompt là ký tự dấu nhắc vẽ bằng CSS (không nằm trong nội dung chép). Không dùng `.reveal`:
+ * khối này nằm trong tab bị ẩn, IntersectionObserver sẽ không bao giờ hiện nó.
  */
-export const cmdBlock = ({ cmd, copy, copied, label }) => `<div class="cmd reveal">
-<pre><code${label ? ` aria-label="${esc(label)}"` : ""}>${esc(cmd)}</code></pre>
-<button class="btn btn-primary cmd-copy" type="button" hidden data-copy="${esc(cmd)}" data-copied="${esc(copied)}" data-label="${esc(copy)}">${icon("code")}<span>${esc(copy)}</span></button>
+export const cmdBlock = ({ cmd, copy, copied, label, term = "Terminal", prompt = "$" }) => `<div class="cmd">
+<div class="cmd-bar"><span class="cmd-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cmd-title">${esc(term)}</span><button class="cmd-copy" type="button" hidden data-copy="${esc(cmd)}" data-copied="${esc(copied)}" data-label="${esc(copy)}">${icon("copy")}<span>${esc(copy)}</span></button></div>
+<pre data-prompt="${esc(prompt)}"><code${label ? ` aria-label="${esc(label)}"` : ""}>${esc(cmd)}</code></pre>
+</div>`;
+
+/** Hàng chip thông tin ngắn: chips([["laptop","macOS 14.2+"], ...]). */
+export const chips = (list) => `<ul class="chips">${list.map(([ic, t]) => `<li>${ic ? icon(ic) : ""}<span>${esc(t)}</span></li>`).join("")}</ul>`;
+
+/**
+ * Các bước nối nhau theo chiều dọc. list: [{ title, text (HTML, có thể chứa cmdBlock) }].
+ */
+export const flow = (list) => `<ol class="flow">${list
+  .map((it) => `<li><div class="flow-body"><h3>${esc(it.title)}</h3>${it.text}</div></li>`)
+  .join("")}</ol>`;
+
+/**
+ * Hai tab hệ điều hành. Không có JS: mọi panel hiện lần lượt (thanh tab ẩn), đủ nội dung cho người đọc và công cụ tìm kiếm.
+ * Có JS (site.js): nhận diện hệ điều hành, chọn tab đúng, hỗ trợ #hash, bàn phím, ghi nhớ lựa chọn tay.
+ * tabs: [{ key, id (neo của panel), icon, title, sub, body (HTML) }]; labels: { list, mine, detected, mobile, other, copyLink, copied }.
+ */
+export const osTabs = ({ tabs, labels }) => `<div class="ostabs" data-ostabs data-msg-detected="${esc(labels.detected)}" data-msg-mobile="${esc(labels.mobile)}" data-msg-other="${esc(labels.other)}">
+<div class="ostabs-list" role="tablist" aria-label="${esc(labels.list)}" hidden>
+${tabs
+  .map(
+    (t) => `<button class="ostab" type="button" role="tab" id="tab-${t.key}" aria-controls="${t.id}" aria-selected="false" tabindex="-1" data-os="${t.key}"><span class="ostab-ico">${icon(t.icon)}</span><span class="ostab-txt"><strong>${esc(t.title)}</strong><small>${esc(t.sub)}</small></span><span class="ostab-badge" hidden>${esc(labels.mine)}</span></button>`,
+  )
+  .join("\n")}
+</div>
+<div class="ostabs-note" data-note hidden role="status"><span class="note-ico">${icon("info")}</span><p data-note-text></p><button class="btn btn-secondary btn-sm" type="button" data-copy-link hidden data-copied="${esc(labels.copied)}" data-label="${esc(labels.copyLink)}">${icon("copy")}<span>${esc(labels.copyLink)}</span></button></div>
+${tabs
+  .map(
+    (t) => `<section class="ostabs-panel" id="${t.id}" role="tabpanel" aria-labelledby="tab-${t.key}" data-os="${t.key}" tabindex="0">
+<h2 class="panel-title">${icon(t.icon)}<span>${esc(t.title)}</span></h2>
+${t.body}
+</section>`,
+  )
+  .join("\n")}
 </div>`;
 
 /** Chip phím: keys(["⌃","⌥","T"]) */

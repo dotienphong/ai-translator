@@ -79,7 +79,7 @@ ${facts([
 <li>Open <strong>PowerShell</strong>: press the <kbd>Windows</kbd> key, type <strong>PowerShell</strong>, press Enter. You do not need to run it as administrator.</li>
 <li>Paste the command below and press Enter.</li>
 </ol>
-${cmdBlock({ cmd: INSTALL_CMD, copy: "Copy command", copied: "Copied", label: "Command that installs AI Translator on Windows" })}
+${cmdBlock({ cmd: INSTALL_CMD, copy: "Copy command", copied: "Copied", label: "Command that installs AI Translator on Windows", term: "Windows PowerShell", prompt: "PS>" })}
 <ol start="3">
 <li>Wait about a minute. The command downloads the latest version, compares its SHA-256, runs the installer silently (into <code>%LOCALAPPDATA%\AI Translator\</code>, no UAC prompt) and opens the app.</li>
 <li>Continue with the <a href="/en/guide/quick-start/">quick start guide</a>.</li>

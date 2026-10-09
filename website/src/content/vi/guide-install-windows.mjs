@@ -80,7 +80,7 @@ ${facts([
 <li>Mở <strong>PowerShell</strong>: nhấn phím <kbd>Windows</kbd>, gõ <strong>PowerShell</strong>, nhấn Enter. Không cần chạy bằng quyền quản trị.</li>
 <li>Dán lệnh dưới đây rồi nhấn Enter.</li>
 </ol>
-${cmdBlock({ cmd: INSTALL_CMD, copy: "Sao chép lệnh", copied: "Đã chép", label: "Lệnh cài AI Translator trên Windows" })}
+${cmdBlock({ cmd: INSTALL_CMD, copy: "Sao chép lệnh", copied: "Đã chép", label: "Lệnh cài AI Translator trên Windows", term: "Windows PowerShell", prompt: "PS>" })}
 <ol start="3">
 <li>Chờ khoảng một phút. Lệnh tải bản mới nhất, đối chiếu mã SHA-256, chạy bộ cài im lặng (cài vào <code>%LOCALAPPDATA%\AI Translator\</code>, không UAC) rồi mở app.</li>
 <li>Làm tiếp theo <a href="/huong-dan/bat-dau-nhanh/">hướng dẫn bắt đầu nhanh</a>.</li>
