@@ -1,6 +1,6 @@
 // Test của publish-release.mjs: `node --test "scripts/release/*.test.mjs"`. Chỉ chạy `--dry-run`: không gọi mạng.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { test } from "node:test";
@@ -137,7 +137,12 @@ test("bản đã rút (latest.json về bản trước) vẫn không đăng lạ
 test("--dir tương đối: đường dẫn --file đưa cho wrangler phải tuyệt đối, vì `pnpm -C server exec` chạy ở server/ (lỗi pipeline 37857845056)", async (t) => {
   const { repo, out } = fixture(t, "0.4.0");
   t.mock.method(console, "log", () => {});
-  const dir = relative(process.cwd(), out); // như workflow: `--dir target/release-out` so với thư mục hiện tại
+  // Như workflow: `--dir target/release-out` so với thư mục hiện tại. Thư mục tạm của hệ điều hành có thể nằm ổ khác với repo
+  // (runner Windows: C: và D:), khi đó không có đường dẫn tương đối nào; nên đặt bản sao ngay trong thư mục hiện tại.
+  const local = mkdtempSync(join(process.cwd(), ".release-test-"));
+  t.after(() => rmSync(local, { recursive: true, force: true }));
+  cpSync(out, local, { recursive: true });
+  const dir = relative(process.cwd(), local);
   assert.equal(isAbsolute(dir), false);
   const files = [];
   const run = (cmd) => files.push(cmd[cmd.indexOf("--file") + 1]);
@@ -145,5 +150,5 @@ test("--dir tương đối: đường dẫn --file đưa cho wrangler phải tuy
   await main(base, { repo, fetch: fakeFetch({ stable: "0.3.0", beta: "0.3.0" }), run });
   assert.ok(files.length > 0);
   for (const file of files) assert.equal(isAbsolute(file), true, `${file} phải tuyệt đối`);
-  assert.equal(files[0], resolve(out, "AI Translator.app.tar.gz"));
+  assert.equal(files[0], resolve(local, "AI Translator.app.tar.gz"));
 });
