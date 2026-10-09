@@ -75,7 +75,7 @@ const DL_FAQ = [
   },
   {
     q: "Does the app update itself?",
-    a: `<p>There are Stable and Beta update channels under Settings › General › Update channel. The app checks at launch and every 24 hours; changing channel checks right away. On macOS each update asks again for 1 Keychain approval; on Windows nothing extra is asked.</p>`,
+    a: `<p>There are Stable and Beta update channels under Settings › General › Update channel. The app checks at launch and every 24 hours; changing channel checks right away. To check right away, click <strong>Check for updates</strong> in Settings › General or choose “Check for updates…” from the app icon menu. On macOS each update asks again for 1 Keychain approval; on Windows nothing extra is asked.</p>`,
   },
 ];
 

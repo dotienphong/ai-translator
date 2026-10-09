@@ -204,7 +204,7 @@ const GROUPS = [
       },
       {
         q: "Does the app update itself?",
-        a: `<p>Yes, through the Stable or Beta channel (Settings › General › Update channel). The app checks at launch and every 24 hours, verifies the signature before writing any file, and then invites you to restart when it is idle. The Windows build has the same two channels; you can also run the install command again to update. On the ad-hoc signed macOS build, each update makes macOS ask again with 1 Keychain dialog and possibly the audio-recording permission; the app warns you in advance.</p>`,
+        a: `<p>Yes, through the Stable or Beta channel (Settings › General › Update channel). The app checks at launch and every 24 hours, verifies the signature before writing any file, and then invites you to restart when it is idle. To check right away, click <strong>Check for updates</strong> in Settings › General or choose “Check for updates…” from the app icon menu. The Windows build has the same two channels; you can also run the install command again to update. On the ad-hoc signed macOS build, each update makes macOS ask again with 1 Keychain dialog and possibly the audio-recording permission; the app warns you in advance.</p>`,
       },
     ],
   },

@@ -128,6 +128,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím t�
 <tr><th scope="row">Hiện phụ đề / Ẩn phụ đề</th><td>Đổi theo trạng thái</td></tr>
 <tr><th scope="row">Khóa phụ đề (click xuyên qua) / Mở khóa phụ đề</th><td>Đổi theo trạng thái</td></tr>
 <tr><th scope="row">Mở cửa sổ chính</th><td>Luôn có</td></tr>
+<tr><th scope="row">Kiểm tra cập nhật…</th><td>Luôn có; mở Cài đặt › Chung và kiểm ngay</td></tr>
 <tr><th scope="row">Khởi động lại để cập nhật</th><td>Khi có bản cập nhật đã tải xong và app không đang dịch</td></tr>
 <tr><th scope="row">Thoát</th><td>Luôn có; dừng phiên đang chạy rồi thoát hẳn</td></tr>
 <tr><th scope="row">Có phím tắt không đăng ký được</th><td>Chỉ khi có phím tắt bị lỗi</td></tr>

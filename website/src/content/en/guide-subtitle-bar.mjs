@@ -128,6 +128,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings l
 <tr><th scope="row">Show subtitles / Hide subtitles</th><td>Changes with the state</td></tr>
 <tr><th scope="row">Lock subtitles (click-through) / Unlock subtitles</th><td>Changes with the state</td></tr>
 <tr><th scope="row">Open main window</th><td>Always</td></tr>
+<tr><th scope="row">Check for updates…</th><td>Always; opens Settings › General and checks right away</td></tr>
 <tr><th scope="row">Restart to update</th><td>When an update has been downloaded and the app is not translating</td></tr>
 <tr><th scope="row">Quit</th><td>Always; stops a running session, then quits for good</td></tr>
 <tr><th scope="row">Some shortcuts could not be registered</th><td>Only when a shortcut failed</td></tr>
