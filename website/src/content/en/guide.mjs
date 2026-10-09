@@ -27,7 +27,7 @@ ${pageHero({
 })}
 
 <section class="section-tight"><div class="container">
-${callout({ title: "These guides cover both macOS and Windows.", text: "Most steps are the same on both systems. The main differences on Windows: you install from an .exe file and may need to get past a SmartScreen warning because the beta is not code-signed yet, there is no audio permission to grant, the icon sits in the system tray instead of the menu bar, and shortcuts use Ctrl+Alt instead of ⌃⌥. No installer yet? See <a href=\"/en/download/\">how to get the beta</a>." })}
+${callout({ title: "These guides cover both macOS and Windows.", text: "Most steps are the same on both systems. The main differences on Windows: you install with a PowerShell command (or an .exe file, which may trigger a SmartScreen warning because the beta is not code-signed yet), there is no audio permission to grant, the icon sits in the system tray instead of the menu bar, and shortcuts use Ctrl+Alt instead of ⌃⌥. No installer yet? See the <a href=\"/en/download/\">Download page</a>." })}
 </div></section>
 
 <section class="section-tight"><div class="container">
@@ -35,7 +35,7 @@ ${sectionHead({ eyebrow: "Get started", title: "From installer to your first sub
 <div class="grid grid-2">
 ${linkCard({ href: "/en/guide/quick-start/", icon: "play", title: "Quick start", text: "Seven one-time setup steps, then translate your first meeting, with screenshots of the app’s setup screens.", more: MORE })}
 ${linkCard({ href: "/en/guide/install-macos/", icon: "download", title: "Install on macOS", text: "Install with one command, or from the .dmg (drag to Applications, Open Anyway), verify the SHA-256 and uninstall.", more: MORE })}
-${linkCard({ href: "/en/guide/install-windows/", icon: "download", title: "Install on Windows", text: "Requirements, verify the SHA-256, get past SmartScreen with Run anyway, first launch and uninstall.", more: MORE })}
+${linkCard({ href: "/en/guide/install-windows/", icon: "download", title: "Install on Windows", text: "Install with one PowerShell command, or from the .exe (SHA-256, SmartScreen), Smart App Control and uninstall.", more: MORE })}
 ${linkCard({ href: "/en/guide/macos-audio-permission/", icon: "mic", title: "Audio permission (macOS)", text: "Answer the System Audio Recording prompt, turn it back on in System Settings and choose the audio source.", more: MORE })}
 </div>
 </div></section>

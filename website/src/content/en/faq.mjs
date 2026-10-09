@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Where do I download AI Translator? Is there a Windows version?",
-        a: `<p>On macOS (14.2 or later, Apple Silicon) you install with one command pasted into Terminal; it is on the <a href="/en/download/">Download page</a> and the app opens directly, with no Open Anyway. There is no .dmg download button yet. The Windows build (10/11, 64-bit) is requested by email on the same page. The Windows build is also a beta and is not code-signed yet, so SmartScreen may warn you when you open the installer.</p>`,
+        a: `<p>On macOS (14.2 or later, Apple Silicon) you install with one command pasted into Terminal; it is on the <a href="/en/download/">Download page</a> and the app opens directly, with no Open Anyway. There is no .dmg download button yet. The Windows build (10/11, 64-bit) also installs with one command pasted into PowerShell on the same page. The Windows build is also a beta and is not code-signed yet: installed with the command SmartScreen does not ask, while an .exe downloaded in a browser may be warned about.</p>`,
       },
       {
         q: "Is AI Translator open source?",
@@ -120,7 +120,7 @@ const GROUPS = [
       },
       {
         q: "Why does Windows show “Windows protected your PC” when I install it?",
-        a: `<p>Because the Windows build is not code-signed yet: we do not have a Windows code-signing certificate yet. Microsoft Defender SmartScreen may therefore block the installer the first time. If the file came from us and the SHA-256 matches, click More info, check that the App line shows the installer's file name, then click Run anyway. Publisher showing Unknown publisher is normal for an unsigned build. Once we have a certificate, the warnings will decrease over time. See the <a href="/en/guide/install-windows/">Windows installation guide</a>.</p>`,
+        a: `<p>Only if you download the .exe in a browser: the Windows build is not code-signed yet (we do not have a Windows code-signing certificate), so Microsoft Defender SmartScreen may block the installer the first time. Installing with the <a href="/en/download/#install-windows">command in PowerShell</a> is not asked about. If you already downloaded the .exe: If the file came from us and the SHA-256 matches, click More info, check that the App line shows the installer's file name, then click Run anyway. Publisher showing Unknown publisher is normal for an unsigned build. Once we have a certificate, the warnings will decrease over time. If Windows 11 says an app is blocked and offers no way past it, that is Smart App Control (see the guide). See the <a href="/en/guide/install-windows/">Windows installation guide</a>.</p>`,
       },
       {
         q: "What permissions does it need on macOS?",
@@ -184,7 +184,7 @@ const GROUPS = [
       },
       {
         q: "Does the app update itself?",
-        a: `<p>Yes, through the Stable or Beta channel (Settings › General › Update channel). The app checks at launch and every 24 hours, verifies the signature before writing any file, and then invites you to restart when it is idle. The Windows installer sent by email at the start may not auto-update yet. On the ad-hoc signed macOS build, each update makes macOS ask again for Keychain access and audio recording; the app warns you in advance.</p>`,
+        a: `<p>Yes, through the Stable or Beta channel (Settings › General › Update channel). The app checks at launch and every 24 hours, verifies the signature before writing any file, and then invites you to restart when it is idle. The Windows build has the same two channels; you can also run the install command again to update. On the ad-hoc signed macOS build, each update makes macOS ask again for Keychain access and audio recording; the app warns you in advance.</p>`,
       },
     ],
   },

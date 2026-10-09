@@ -23,7 +23,7 @@ src/content/{vi,en}/    mỗi trang một module: { id, lang, path, title, descr
 src/content/legal.mjs   trang điều khoản/chính sách sinh từ docs/legal/*.md (nguồn duy nhất)
 src/build/              bộ sinh: build, layout (head SEO), schema (JSON-LD), components, icons, markdown, text
 src/assets/             site.css, site.js, font Be Vietnam Pro (OFL), ảnh (img/, og/, app/)
-src/public/             favicon, manifest, install.sh (script cài macOS) (chép nguyên vào gốc dist/)
+src/public/             favicon, manifest, install.sh và install.ps1 (script cài macOS và Windows) (chép nguyên vào gốc dist/)
 tools/og/               sinh ảnh chia sẻ 1200×630 từ template.html (cần Google Chrome)
 ```
 
@@ -41,6 +41,9 @@ tools/og/               sinh ảnh chia sẻ 1200×630 từ template.html (cần
 
 ## Script cài macOS (`src/public/install.sh`)
 Trang Tải xuống và hướng dẫn cài macOS đưa lệnh `curl -fsSL https://aitranslator.io.vn/install.sh | bash`. Script đọc `releases.aitranslator.io.vn/<kênh>/latest.json`, tải `AI Translator_<version>_aarch64.dmg` và `SHA256SUMS-macos.txt` của bản đó, đối chiếu SHA-256, kiểm chữ ký và mã định danh của app, chép vào Applications rồi mở. File tải bằng `curl` không mang cờ quarantine nên Gatekeeper không chặn bản chưa notarize. Script **phụ thuộc cấu trúc R2 do `scripts/release/publish-release.mjs` đăng** (tên file, `latest.json`); `test/install-script.test.mjs` khóa hợp đồng đó và chạy script thật (curl giả, .dmg giả; chỉ trên Mac Apple Silicon). Sửa `install.sh` thì chạy `pnpm test`, rồi `pnpm deploy`: script là file tĩnh nên có hiệu lực ngay sau deploy (cache 5 phút). Thiết kế: `docs/superpowers/specs/2026-10-09-macos-curl-install-design.md`.
+
+## Script cài Windows (`src/public/install.ps1`)
+Lệnh `irm https://aitranslator.io.vn/install.ps1 | iex` (PowerShell). Script đọc `<kênh>/latest.json`, tải `AI Translator_<version>_x64-setup.exe` và `SHA256SUMS-windows.txt`, đối chiếu SHA-256, chạy bộ cài NSIS im lặng (`/S`, cài cho riêng người dùng) rồi mở app. Tải bằng PowerShell nên file không mang dấu "tải từ internet" và SmartScreen không kiểm; Smart App Control chế độ chặn vẫn chặn bản chưa ký. Không BOM (BOM làm `iex` lỗi), không `exit`. `test/install-ps1.test.mjs` khóa hợp đồng với release và chạy các hàm thuần bằng PowerShell 7 (đặt `PWSH=<đường dẫn pwsh>` hoặc để `pwsh` trong PATH; không có thì bỏ qua). **Phần chạy thật (cài bộ NSIS) chỉ kiểm được trên Windows:** xem mục "Kiểm tay" của spec `2026-10-09-windows-iwr-install-design.md`.
 
 ## Triển khai
 `pnpm deploy` bằng phiên đăng nhập wrangler của chủ dự án (`wrangler login`; cần quyền workers, routes). Tên miền gốc `aitranslator.io.vn` gắn Worker bằng `custom_domain` (tự tạo DNS và chứng chỉ). MX/SPF/DMARC của Email Routing ở gốc không bị đụng. Sau deploy kiểm: gốc 200, `www` → 301, `curl -A GPTBot` không bị chặn (Cloudflare có thể chặn bot AI mặc định ở cấp zone: tắt trong dashboard nếu cần), `api.` và `releases.` không đổi.

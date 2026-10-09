@@ -173,9 +173,13 @@ function headers() {
   Cache-Control: public, max-age=3600
   Content-Type: text/plain; charset=utf-8
 
-# Script cài macOS (public/install.sh): hiện dạng chữ thuần để người dùng đọc được trong trình duyệt; cache ngắn để bản
+# Script cài macOS và Windows (public/install.sh, install.ps1): hiện dạng chữ thuần để người dùng đọc được trong trình duyệt; cache ngắn để bản
 # sửa có hiệu lực nhanh; không cho công cụ tìm kiếm lập chỉ mục một file script.
 /install.sh
+  Cache-Control: public, max-age=300
+  Content-Type: text/plain; charset=utf-8
+  X-Robots-Tag: noindex
+/install.ps1
   Cache-Control: public, max-age=300
   Content-Type: text/plain; charset=utf-8
   X-Robots-Tag: noindex

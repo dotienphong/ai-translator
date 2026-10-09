@@ -17,7 +17,7 @@ const toc = [
 
 // Văn bản thuần cho dữ liệu có cấu trúc HowTo; phần hiển thị nằm trong body.
 const HOWTO_STEPS = [
-  { name: "Cài app và mở lần đầu", text: "Trên macOS, dán dòng lệnh cài (curl -fsSL https://aitranslator.io.vn/install.sh | bash) vào Terminal: app được tải, kiểm tra và mở thẳng, không cần Open Anyway. Trên Windows, chạy file .exe; nếu SmartScreen cảnh báo, bấm More info rồi Run anyway." },
+  { name: "Cài app và mở lần đầu", text: "Trên macOS, dán dòng lệnh cài (curl -fsSL https://aitranslator.io.vn/install.sh | bash) vào Terminal: app được tải, kiểm tra và mở thẳng, không cần Open Anyway. Trên Windows, dán lệnh cài (irm https://aitranslator.io.vn/install.ps1 | iex) vào PowerShell; nếu bạn dùng file .exe tải bằng trình duyệt và SmartScreen cảnh báo, bấm More info rồi Run anyway." },
   { name: "Chọn ngôn ngữ giao diện", text: "Chọn Tiếng Việt hoặc English rồi bấm Tiếp. Lựa chọn này cũng đặt ngôn ngữ đích mặc định." },
   { name: "Đồng ý điều khoản", text: "Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, tick ô đồng ý rồi bấm Tiếp. Cần mạng một lần để bắt đầu dùng thử Free." },
   { name: "Chọn và tải model", text: "Chọn gói model Chuẩn (khoảng 2,5 GB) hoặc gói model Nhẹ (khoảng 1,3 GB) theo đề xuất của app và chờ tải xong." },
@@ -67,11 +67,11 @@ ${facts([
   ["macOS", "14.2 trở lên, Apple Silicon (M1 trở lên)<small>Chưa có bản cho Mac Intel.</small>"],
   ["Windows", "Windows 10 hoặc 11, 64-bit (x64), CPU có AVX2<small>Chưa hỗ trợ Windows ARM64.</small>"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
-  ["Bản cài", "macOS: file .dmg khoảng 9 MB · Windows: file .exe dưới 60 MB<small>macOS cài bằng một dòng lệnh; Windows nhận liên kết tải qua email, cả hai ở trang <a href=\"/tai-xuong/\">Tải xuống</a></small>"],
+  ["Bản cài", "macOS: file .dmg khoảng 9 MB · Windows: file .exe khoảng 22 MB<small>Cả hai cài bằng một dòng lệnh ở trang <a href=\"/tai-xuong/\">Tải xuống</a></small>"],
   ["Ổ đĩa", "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)<small>Cộng thêm 1 GB trống khi tải model</small>"],
   ["Mạng", "Cần để tải model và đăng ký dùng thử Free<small>Sau đó nhận dạng và dịch chạy offline</small>"],
 ])}
-${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống nhau trên Windows, trừ vài điểm: cài bằng file .exe (SmartScreen có thể cảnh báo vì bản beta chưa được ký mã), không có bước cấp quyền ghi âm, app nằm ở khay hệ thống thay cho menu bar, và phím tắt dùng Ctrl+Alt thay cho ⌃⌥." })}
+${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống nhau trên Windows, trừ vài điểm: cài bằng dòng lệnh PowerShell (hoặc file .exe, SmartScreen có thể cảnh báo vì bản beta chưa được ký mã), không có bước cấp quyền ghi âm, app nằm ở khay hệ thống thay cho menu bar, và phím tắt dùng Ctrl+Alt thay cho ⌃⌥." })}
 
 <h2 id="cai-va-mo">Cài app và mở lần đầu</h2>
 <p><strong>Trên macOS:</strong></p>
@@ -83,10 +83,11 @@ ${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống n
 <p>Nếu bạn đã tải file <code>.dmg</code> bằng trình duyệt: kéo <strong>AI Translator</strong> vào <strong>Applications</strong>, mở app (macOS sẽ chặn lần đầu vì bản hiện tại ký ad-hoc và chưa được Apple notarize), bấm <strong>Done</strong>, rồi vào <strong>System Settings › Privacy &amp; Security</strong>, kéo xuống cuối, bấm <strong>Open Anyway</strong> và xác nhận bằng mật khẩu hoặc Touch ID.</p>
 <p><strong>Trên Windows:</strong></p>
 <ol>
-<li>Nhấp đúp file <code>.exe</code> vừa tải. Bộ cài không cần quyền quản trị.</li>
-<li>Nếu Windows hiện màn hình xanh “Windows protected your PC”, bấm <strong>More info</strong>, kiểm dòng App là đúng tên file cài, rồi bấm <strong>Run anyway</strong>.</li>
-<li>Làm theo bộ cài tới khi xong, rồi mở AI Translator từ menu Start.</li>
+<li>Mở <strong>PowerShell</strong> (nhấn phím <kbd>Windows</kbd>, gõ PowerShell, nhấn Enter).</li>
+<li>Dán lệnh cài ở trang <a href="/tai-xuong/#cai-windows">Tải xuống</a> rồi nhấn Enter: <code>irm https://aitranslator.io.vn/install.ps1 | iex</code>. Không cần quyền quản trị.</li>
+<li>Chờ khoảng một phút. Bộ cài chạy im lặng rồi AI Translator tự mở.</li>
 </ol>
+<p>Nếu bạn đã tải file <code>.exe</code> bằng trình duyệt: nhấp đúp để chạy; nếu Windows hiện màn hình xanh “Windows protected your PC”, bấm <strong>More info</strong>, kiểm dòng App là đúng tên file cài, rồi bấm <strong>Run anyway</strong>.</p>
 <p>Chi tiết, gồm cách kiểm SHA-256: <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a> và <a href="/huong-dan/cai-dat-windows/">hướng dẫn cài đặt trên Windows</a>.</p>
 
 <h2 id="thiet-lap">Thiết lập lần đầu: bảy bước</h2>

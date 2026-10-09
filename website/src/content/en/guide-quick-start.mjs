@@ -17,7 +17,7 @@ const toc = [
 
 // Plain text for the HowTo structured data; the visible version is in body.
 const HOWTO_STEPS = [
-  { name: "Install the app and open it", text: "On macOS, paste the install command (curl -fsSL https://aitranslator.io.vn/install.sh | bash) into Terminal: the app is downloaded, verified and opened directly, with no Open Anyway. On Windows, run the .exe; if SmartScreen warns you, click More info, then Run anyway." },
+  { name: "Install the app and open it", text: "On macOS, paste the install command (curl -fsSL https://aitranslator.io.vn/install.sh | bash) into Terminal: the app is downloaded, verified and opened directly, with no Open Anyway. On Windows, paste the install command (irm https://aitranslator.io.vn/install.ps1 | iex) into PowerShell; if you use an .exe downloaded in a browser and SmartScreen warns you, click More info, then Run anyway." },
   { name: "Choose the interface language", text: "Choose Tiếng Việt or English and click Next. This also sets your default translation language." },
   { name: "Accept the terms", text: "Read the License Agreement (EULA) and the Privacy Policy, tick the box and click Next. One internet connection is needed to start the Free trial." },
   { name: "Choose and download a model", text: "Pick the Standard pack (about 2.5 GB) or the Lite pack (about 1.3 GB) as the app recommends, and wait for the download." },
@@ -67,11 +67,11 @@ ${facts([
   ["macOS", "14.2 or later, Apple Silicon (M1 or later)<small>There is no Intel Mac build yet.</small>"],
   ["Windows", "Windows 10 or 11, 64-bit (x64), CPU with AVX2<small>Windows ARM64 is not supported yet.</small>"],
   ["Memory", "8 GB minimum, 16 GB recommended"],
-  ["Installer", "macOS: a .dmg file of about 9 MB · Windows: an .exe file under 60 MB<small>macOS installs with one command; for Windows we email you a download link; both are on the <a href=\"/en/download/\">Download</a> page</small>"],
+  ["Installer", "macOS: a .dmg file of about 9 MB · Windows: an .exe file of about 22 MB<small>Both install with one command, on the <a href=\"/en/download/\">Download</a> page</small>"],
   ["Disk space", "1.3 GB (Lite pack) or 2.5 GB (Standard pack)<small>Plus 1 GB free while downloading the model</small>"],
   ["Internet", "Needed to download the model and register the Free trial<small>After that, recognition and translation run offline</small>"],
 ])}
-${callout({ title: "Using Windows?", text: "The steps below are the same on Windows, with a few differences: you install from an .exe file (SmartScreen may warn you because the beta is not code-signed yet), there is no audio permission step, the app sits in the system tray instead of the menu bar, and shortcuts use Ctrl+Alt instead of ⌃⌥." })}
+${callout({ title: "Using Windows?", text: "The steps below are the same on Windows, with a few differences: you install with a PowerShell command (or an .exe file, which may trigger a SmartScreen warning because the beta is not code-signed yet), there is no audio permission step, the app sits in the system tray instead of the menu bar, and shortcuts use Ctrl+Alt instead of ⌃⌥." })}
 
 <h2 id="install-and-open">Install and open the app</h2>
 <p><strong>On macOS:</strong></p>
@@ -83,10 +83,11 @@ ${callout({ title: "Using Windows?", text: "The steps below are the same on Wind
 <p>If you already downloaded the <code>.dmg</code> in a browser: drag <strong>AI Translator</strong> into <strong>Applications</strong>, open it (macOS blocks the first launch because the current build is ad-hoc signed and not yet notarized by Apple), click <strong>Done</strong>, then go to <strong>System Settings › Privacy &amp; Security</strong>, scroll to the bottom, click <strong>Open Anyway</strong> and confirm with your password or Touch ID.</p>
 <p><strong>On Windows:</strong></p>
 <ol>
-<li>Double-click the <code>.exe</code> file you downloaded. The installer needs no administrator rights.</li>
-<li>If Windows shows the blue “Windows protected your PC” screen, click <strong>More info</strong>, check that the App line shows the installer's file name, then click <strong>Run anyway</strong>.</li>
-<li>Follow the installer to the end, then open AI Translator from the Start menu.</li>
+<li>Open <strong>PowerShell</strong> (press the <kbd>Windows</kbd> key, type PowerShell, press Enter).</li>
+<li>Paste the install command from the <a href="/en/download/#install-windows">Download</a> page and press Enter: <code>irm https://aitranslator.io.vn/install.ps1 | iex</code>. No administrator rights are needed.</li>
+<li>Wait about a minute. The installer runs silently and AI Translator opens by itself.</li>
 </ol>
+<p>If you already downloaded the <code>.exe</code> in a browser: double-click it; if Windows shows the blue “Windows protected your PC” screen, click <strong>More info</strong>, check that the App line shows the installer's file name, then click <strong>Run anyway</strong>.</p>
 <p>For the details, including how to check the installer's SHA-256, see the guides to installing on <a href="/en/guide/install-macos/">macOS</a> and on <a href="/en/guide/install-windows/">Windows</a>.</p>
 
 <h2 id="first-time-setup">First-time setup in seven steps</h2>

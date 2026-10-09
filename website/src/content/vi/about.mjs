@@ -75,8 +75,8 @@ ${sectionHead({ eyebrow: "Hôm nay", title: "AI Translator đang ở đâu?" })}
 <thead><tr><th scope="col">Hạng mục</th><th scope="col">Trạng thái</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>Beta, macOS 14.2 trở lên, Apple Silicon. <a href="/tai-xuong/#cai-macos">Cài bằng một dòng lệnh trong Terminal</a>.</td></tr>
-<tr><th scope="row">Windows</th><td>Beta, Windows 10/11 64-bit (x64). Chưa có tải công khai: <a href="/tai-xuong/">đăng ký nhận bản cài qua email</a>. Chưa đo độ trễ trên Windows.</td></tr>
-<tr><th scope="row">Ký số</th><td>macOS ký ad-hoc, chưa notarize: cài bằng dòng lệnh thì mở thẳng, còn file .dmg tải bằng trình duyệt thì lần mở đầu cần bấm Open Anyway. Windows chưa có chứng thư ký mã, nên SmartScreen có thể cảnh báo khi mở bộ cài (<a href="/huong-dan/cai-dat-windows/">cách xử lý</a>).</td></tr>
+<tr><th scope="row">Windows</th><td>Beta, Windows 10/11 64-bit (x64). <a href="/tai-xuong/#cai-windows">Cài bằng một dòng lệnh trong PowerShell</a>. Chưa đo độ trễ trên Windows.</td></tr>
+<tr><th scope="row">Ký số</th><td>macOS ký ad-hoc, chưa notarize: cài bằng dòng lệnh thì mở thẳng, còn file .dmg tải bằng trình duyệt thì lần mở đầu cần bấm Open Anyway. Windows chưa có chứng thư ký mã: cài bằng dòng lệnh thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo (Smart App Control chế độ chặn sẽ chặn cả hai) (<a href="/huong-dan/cai-dat-windows/">cách xử lý</a>).</td></tr>
 <tr><th scope="row">Thanh toán</th><td>VietQR bằng VND qua PayOS. Chưa có thẻ quốc tế, chưa có hóa đơn điện tử.</td></tr>
 <tr><th scope="row">Gói</th><td>Free dùng thử 10 ngày, Monthly, Yearly. Xem <a href="/bang-gia/">bảng giá</a>.</td></tr>
 </tbody></table></div>
@@ -128,6 +128,6 @@ ${linkCard({ href: "/bang-gia/", icon: "wallet", title: "Bảng giá", text: "Fr
 </div>
 </div></section>
 
-${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Đăng ký nhận bản beta cho macOS hoặc Windows, dùng thử Free 10 ngày. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/lien-he/", label: "Liên hệ chúng tôi" } })}
+${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Cài bản beta cho macOS hoặc Windows bằng một dòng lệnh, dùng thử Free 10 ngày. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/lien-he/", label: "Liên hệ chúng tôi" } })}
 `,
 };

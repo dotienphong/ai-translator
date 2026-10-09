@@ -24,7 +24,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Hiện tôi tải app ở đâu?",
-    a: "<p>AI Translator đang ở giai đoạn beta. Trên macOS bạn cài bằng một dòng lệnh dán vào Terminal, lệnh nằm ở trang <a href=\"/tai-xuong/\">Tải xuống</a>; app mở thẳng, không cần Open Anyway. Bản Windows nhận qua email ở cùng trang.</p>",
+    a: "<p>AI Translator đang ở giai đoạn beta. Trên macOS bạn cài bằng một dòng lệnh dán vào Terminal, lệnh nằm ở trang <a href=\"/tai-xuong/\">Tải xuống</a>; app mở thẳng, không cần Open Anyway. Bản Windows cũng cài bằng một dòng lệnh dán vào PowerShell ở cùng trang.</p>",
   },
 ];
 
@@ -77,7 +77,7 @@ ${demo({
 
 <section class="section-tight"><div class="container narrow">
 <h2 class="sr-only">AI Translator là gì</h2>
-<p class="lead reveal"><strong>AI Translator</strong> là ứng dụng desktop dịch phụ đề trực tiếp cho âm thanh đang phát trên máy tính. Nó nhận dạng giọng nói, dịch và hiện bản dịch thành thanh phụ đề nổi, hoàn toàn trên máy bạn, không cần bot tham gia cuộc họp và không cần tài khoản. Bản beta cho macOS (Apple Silicon) cài được bằng một dòng lệnh; bản Windows 10/11 nhận được theo đăng ký qua email.</p>
+<p class="lead reveal"><strong>AI Translator</strong> là ứng dụng desktop dịch phụ đề trực tiếp cho âm thanh đang phát trên máy tính. Nó nhận dạng giọng nói, dịch và hiện bản dịch thành thanh phụ đề nổi, hoàn toàn trên máy bạn, không cần bot tham gia cuộc họp và không cần tài khoản. Bản beta cho macOS (Apple Silicon) cài được bằng một dòng lệnh; bản Windows 10/11 cũng cài được bằng một dòng lệnh PowerShell.</p>
 <div class="reveal">${facts([
   ["Loại sản phẩm", "Ứng dụng desktop dịch phụ đề trực tiếp"],
   ["Nền tảng", "macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 x64<small>Cả hai đang ở giai đoạn beta</small>"],
@@ -186,7 +186,7 @@ ${plansGrid("vi", { ctaLabel: "Nhận bản beta", freeLabel: "Đăng ký dùng 
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${callout({ kind: "warn", title: "Trung thực về giai đoạn beta", text: "AI Translator đang ở giai đoạn beta. Bản macOS hiện ký ad-hoc, chưa notarize: cài bằng dòng lệnh trong Terminal thì mở thẳng, còn file .dmg tải bằng trình duyệt sẽ bị macOS chặn lần mở đầu và cần cho phép trong System Settings (chúng tôi có <a href=\"/huong-dan/cai-dat-macos/\">hướng dẫn từng bước</a>). Bản Windows chưa được ký mã, nên Windows SmartScreen có thể cảnh báo khi bạn mở bộ cài (xem <a href=\"/huong-dan/cai-dat-windows/\">hướng dẫn cài trên Windows</a>), và chúng tôi chưa đo độ trễ trên Windows. Chúng tôi nói rõ để bạn không phải đoán." })}
+${callout({ kind: "warn", title: "Trung thực về giai đoạn beta", text: "AI Translator đang ở giai đoạn beta. Bản macOS hiện ký ad-hoc, chưa notarize: cài bằng dòng lệnh trong Terminal thì mở thẳng, còn file .dmg tải bằng trình duyệt sẽ bị macOS chặn lần mở đầu và cần cho phép trong System Settings (chúng tôi có <a href=\"/huong-dan/cai-dat-macos/\">hướng dẫn từng bước</a>). Bản Windows chưa được ký mã: cài bằng dòng lệnh PowerShell thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị cảnh báo, và Smart App Control ở chế độ chặn sẽ chặn (xem <a href=\"/huong-dan/cai-dat-windows/\">hướng dẫn cài trên Windows</a>), và chúng tôi chưa đo độ trễ trên Windows. Chúng tôi nói rõ để bạn không phải đoán." })}
 </div></section>
 
 <section class="section"><div class="container narrow">
@@ -195,6 +195,6 @@ ${faq(HOME_FAQ, { open: true })}
 <p class="more-link"><a href="/cau-hoi-thuong-gap/">Xem tất cả câu hỏi ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "Thử trên cuộc họp tiếp theo của bạn", text: "Cài bản beta cho macOS bằng một dòng lệnh (hoặc nhận bản Windows qua email), dùng thử miễn phí 10 ngày, không cần thẻ.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Xem hướng dẫn" } })}
+${ctaBand({ title: "Thử trên cuộc họp tiếp theo của bạn", text: "Cài bản beta cho macOS bằng một dòng lệnh (Terminal trên Mac, PowerShell trên Windows), dùng thử miễn phí 10 ngày, không cần thẻ.", primary: { href: "/tai-xuong/", label: "Nhận bản beta" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Xem hướng dẫn" } })}
 `,
 };

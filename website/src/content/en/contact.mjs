@@ -67,7 +67,7 @@ ${sectionHead({ eyebrow: "What to send", title: "What do you need? Email us with
 
 <div class="card reveal" id="beta">
 <h3>Get the beta</h3>
-<p>The macOS build installs with one command on the Download page, no email needed. The Windows build (and the macOS .dmg if you would like it by email) has no public download yet: email us using the template on the Download page (there is one for macOS and one for Windows): your computer model and chip or processor, your macOS or Windows version, RAM, the meeting app you use and the languages you need. When a beta that fits your computer is available, we send the installer with its SHA-256 checksum so you can verify it.</p>
+<p>Both macOS and Windows install with one command on the Download page, no email needed. If you would rather receive the macOS .dmg or the Windows .exe by email: email us using the template on the Download page (there is one for macOS and one for Windows): your computer model and chip or processor, your macOS or Windows version, RAM, the meeting app you use and the languages you need. We send the installer with its SHA-256 checksum so you can verify it.</p>
 <p><a class="btn btn-secondary btn-sm" href="/en/download/">Open the Download page ${icon("arrow-right")}</a></p>
 </div>
 

@@ -99,6 +99,9 @@ path=$(printf '%s' "\${url#https://releases.aitranslator.io.vn/}" | sed 's/%20/ 
 if [ -n "$out" ]; then cp "${site}/$path" "$out"; else cat "${site}/$path"; fi
 `);
   chmodSync(join(bin, "curl"), 0o755);
+  // osascript giả: test không bao giờ được hỏi hay đóng AI Translator thật đang chạy trên máy (cùng mã định danh).
+  writeFileSync(join(bin, "osascript"), "#!/bin/sh\necho false\n");
+  chmodSync(join(bin, "osascript"), 0o755);
 
   const run = (args = [], extra = {}) =>
     spawnSync("bash", [SCRIPT, ...args], {

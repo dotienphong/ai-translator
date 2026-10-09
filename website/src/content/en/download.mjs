@@ -42,6 +42,9 @@ const MAILTO_WIN = mailto("AI Translator beta request (Windows)", [
 
 const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
 const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.io.vn/install.sh | bash -s -- --beta";
+const WIN_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
+const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta";
+const WIN_CMD_REVIEW = "$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s";
 const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh";
 
 const DL_FAQ = [
@@ -62,8 +65,16 @@ const DL_FAQ = [
     a: `<p>The app checks for new versions itself (Settings › General). You can also run the same install command at any time to install the latest version; the script quits the running app and replaces the old one. To uninstall, delete the models and data inside the app first, then drag the app to the Trash; see the <a href="/en/guide/install-macos/#uninstall">uninstall guide</a>.</p>`,
   },
   {
-    q: "Why does Windows warn me when I open the installer?",
-    a: `<p>The Windows build is not code-signed yet, because we do not have a Windows code-signing certificate yet. So Microsoft Defender SmartScreen may show the “Windows protected your PC” screen. If the file came from us and the SHA-256 matches, click More info, then Run anyway. Once we have a certificate, the warnings will decrease over time; SmartScreen needs time to build a reputation for a new file, so we do not promise they will disappear right away. <a href="/en/guide/install-windows/">See the step-by-step guide</a>.</p>`,
+    q: "What does the PowerShell command do, and why does Windows not warn me?",
+    a: `<p>The command downloads a small script from <strong>aitranslator.io.vn</strong>. The script checks your PC (Windows 10 or 11, x64), reads the latest version number, downloads the .exe installer and its SHA-256 checksum from <strong>releases.aitranslator.io.vn</strong>, compares the checksum, runs the installer silently (for your account only, no administrator rights) and opens the app. It sends no data. The SHA-256 is served from the same place as the file, so it mainly protects against a corrupted download; you are still trusting <strong>aitranslator.io.vn</strong>.</p><p>The Windows build is not code-signed yet (we do not have a Windows code-signing certificate). SmartScreen only checks files tagged “downloaded from the internet”; a file downloaded by PowerShell has no such tag, so the installer runs directly.</p>`,
+  },
+  {
+    q: "I already downloaded the .exe in my browser. Now what?",
+    a: `<p>Microsoft Defender SmartScreen may show “Windows protected your PC”. If the file came from us and the SHA-256 matches, click More info, then Run anyway. Or run the install command above: it installs the latest version without going through SmartScreen. <a href="/en/guide/install-windows/">See the step-by-step guide</a>.</p>`,
+  },
+  {
+    q: "Windows 11 says the app is blocked and offers no way past it. What now?",
+    a: `<p>That is <strong>Smart App Control</strong>. In blocking mode it does not let unsigned apps with no reputation run, however they were installed. You can turn it off in Windows Security › App &amp; browser control › Smart App Control settings. Once we have a Windows code-signing certificate this will stop being an issue. <a href="/en/guide/install-windows/#smart-app-control">Details</a>.</p>`,
   },
   {
     q: "Can I use a Mac with an Intel chip?",
@@ -75,7 +86,7 @@ const DL_FAQ = [
   },
   {
     q: "Does the beta update itself?",
-    a: `<p>There are Stable and Beta update channels under Settings › General › Update channel. The app checks for new versions at launch and every 24 hours. The Windows installer we email you at first may not update itself yet; we will say so when we send it.</p>`,
+    a: `<p>There are Stable and Beta update channels under Settings › General › Update channel. The app checks for new versions at launch and every 24 hours. The Windows build also has the Stable and Beta channels, and you can run the install command again to update.</p>`,
   },
 ];
 
@@ -85,24 +96,24 @@ export default {
   id: "download",
   lang: "en",
   path: "/en/download/",
-  title: "Get the AI Translator beta: one-line install for macOS",
+  title: "Get the AI Translator beta: one-line install for macOS and Windows",
   description:
-    "Install the AI Translator beta on macOS 14.2+ (Apple Silicon) with one Terminal command and open it right away, no Open Anyway. Windows by email. 10-day free trial.",
+    "Install the AI Translator beta on macOS 14.2+ (Apple Silicon) with one Terminal command, no Open Anyway. Windows with one PowerShell command. 10-day free trial.",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-09",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: plain(f.a) })))],
-  llm: "Install the AI Translator beta on macOS with one Terminal command (curl ... install.sh | bash): it downloads the installer, checks its SHA-256 and opens the app, with no Open Anyway step. The Windows installer comes by email; More info › Run anyway if SmartScreen warns because the build is not code-signed. System requirements.",
+  llm: "Install the AI Translator beta on macOS with one Terminal command (curl ... install.sh | bash): it downloads the installer, checks its SHA-256 and opens the app, with no Open Anyway step. Windows installs with one PowerShell command (irm ... install.ps1 | iex); an .exe downloaded in a browser may trigger a SmartScreen warning because the build is not code-signed, and Smart App Control can block it. System requirements.",
   llmTitle: "Get the AI Translator beta",
   body: () => `
-${pageHero({ crumbs, title: "Get the AI Translator beta for macOS and Windows", lead: "On macOS you paste one command into Terminal: the app is downloaded, checked and opened right away, with no trip to System Settings to click Open Anyway. The Windows beta is sent by email for now." })}
+${pageHero({ crumbs, title: "Get the AI Translator beta for macOS and Windows", lead: "On macOS you paste one command into Terminal, on Windows into PowerShell: the app is downloaded, checked and opened right away, with no trip to System Settings to click Open Anyway and no SmartScreen screen." })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
-  ["Status", "Beta. macOS installs with one command; the Windows installer comes by email"],
+  ["Status", "Beta. Both macOS and Windows install with one command"],
   ["Version", "0.1.0 (beta)<small>The install command always fetches the latest version of the channel</small>"],
   ["macOS", "14.2 or later, Apple Silicon (M1+)<small>The .dmg installer is about 9 MB; the models are an extra 1.3 or 2.5 GB download</small>"],
-  ["Windows", "Windows 10/11 64-bit (x64), CPU with AVX2<small>The .exe installer is under 60 MB; the models are an extra 1.3 or 2.5 GB download</small>"],
+  ["Windows", "Windows 10/11 64-bit (x64), CPU with AVX2<small>The .exe installer is about 22 MB; the models are an extra 1.3 or 2.5 GB download</small>"],
   ["Free trial", "10 days, 30 minutes per day<small>No card, no account</small>"],
   ["Price afterwards", "Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Paid in VND by bank transfer from a Vietnamese bank (VietQR)</small>"],
 ])}</div>
@@ -126,17 +137,29 @@ ${cmdBlock({ cmd: INSTALL_CMD_REVIEW, copy: "Copy command", copied: "Copied", la
 <p>By default the command installs the stable version. To get a newer beta (when there is one), add <code>-s -- --beta</code> after <code>bash</code>:</p>
 ${cmdBlock({ cmd: INSTALL_CMD_BETA, copy: "Copy command", copied: "Copied", label: "Command that installs from the beta channel" })}
 <div class="row center center-text reveal"><a class="btn btn-secondary" href="/en/guide/install-macos/">Read the macOS installation guide ${icon("arrow-right")}</a> <a class="btn btn-secondary" href="/en/guide/quick-start/">Quick start ${icon("arrow-right")}</a></div>
+<p class="disclaimer">Prefer to receive the macOS .dmg by email instead of using the command? <a href="${MAILTO_MAC}">Send a request</a>; a .dmg downloaded in a browser needs the Open Anyway step on first launch.</p>
 </div></section>
 
 <section class="section" id="install-windows"><div class="container narrow">
-${sectionHead({ eyebrow: "Windows", title: "Windows: get the installer by email", text: "We are sending the Windows beta to testers one by one, with instructions and a SHA-256 checksum." })}
+${sectionHead({ eyebrow: "Windows", title: "Install on Windows with one command", text: "Paste one line into PowerShell: the installer is downloaded, checked and installed for your account only (no administrator rights), then the app opens." })}
+${cmdBlock({ cmd: WIN_CMD, copy: "Copy command", copied: "Copied", label: "Command that installs AI Translator on Windows" })}
 ${steps([
-  { title: "Email us", text: "Tell us about your computer (model, processor, Windows version, RAM) and which meeting apps you plan to use it with." },
-  { title: "Receive the installer and the SHA-256 checksum", text: "We send you a link to the .exe file together with its SHA-256 checksum, so you can check that the file has not been altered." },
-  { title: "Install and open it", text: "Run the installer and click More info › Run anyway if SmartScreen warns you. No audio permission is needed. The app downloads its models once and is then ready to translate." },
+  { title: "Open PowerShell", text: "Press the <kbd>Windows</kbd> key, type <strong>PowerShell</strong> and press Enter. You do not need to run it as administrator." },
+  { title: "Paste the command above and press Enter", text: "Click Copy command, then paste into PowerShell (right-click or <kbd>Ctrl</kbd> + <kbd>V</kbd>)." },
+  { title: "Wait for the app to open", text: "The command downloads the latest version, checks its SHA-256, runs the installer silently and opens AI Translator. Windows asks for no recording permission; the app downloads its models once and is then ready to translate." },
 ])}
-<div class="row center center-text reveal"><a class="btn btn-primary btn-lg" href="${MAILTO_WIN}">${icon("mail")} Request the Windows beta</a> <a class="btn btn-secondary" href="/en/guide/install-windows/">Read the Windows installation guide ${icon("arrow-right")}</a></div>
-<p class="disclaimer">The button opens your email app with a ready-made message. If it does not open, write to <strong>support@aitranslator.io.vn</strong> yourself. Prefer to receive the macOS .dmg by email instead of using the command? <a href="${MAILTO_MAC}">Send a request</a>; a .dmg downloaded in a browser needs the Open Anyway step on first launch.</p>
+<p class="small muted">The command uses no administrator rights. Run the same command again at any time to update to the latest version (the installer closes a running app and replaces the old one). Needs 64-bit (x64) Windows 10 or 11.</p>
+${callout({ kind: "ok", title: "Why is there no SmartScreen warning?", text: "The Windows build is not code-signed yet (we have not bought a Windows code-signing certificate). SmartScreen only checks files tagged “downloaded from the internet”, the tag a browser adds when you download a file. A file downloaded by PowerShell has no such tag, so the installer runs directly. You still have to trust the command's source: see below." })}
+${callout({ kind: "warn", title: "Smart App Control can still block it", text: "Windows 11 has a feature called <strong>Smart App Control</strong>. When it is in blocking mode it blocks every app that is unsigned and has no reputation, however it was installed, and offers no way to bypass it. If you hit that, turn Smart App Control off in Windows Security › App &amp; browser control › Smart App Control settings, or wait until we have a code-signing certificate. <a href=\"/en/guide/install-windows/#smart-app-control\">Details</a>." })}
+
+<h3>Want to read the script first?</h3>
+<p>The script is at <a href="/install.ps1">aitranslator.io.vn/install.ps1</a> (commented). This command prints it so you can read it, and only then runs it:</p>
+${cmdBlock({ cmd: WIN_CMD_REVIEW, copy: "Copy command", copied: "Copied", label: "Command that prints the script for review before running it" })}
+<h3>Beta channel</h3>
+<p>By default the command installs the stable version. To get a newer beta (when there is one), use this command:</p>
+${cmdBlock({ cmd: WIN_CMD_BETA, copy: "Copy command", copied: "Copied", label: "Command that installs from the beta channel on Windows" })}
+<div class="row center center-text reveal"><a class="btn btn-secondary" href="/en/guide/install-windows/">Read the Windows installation guide ${icon("arrow-right")}</a></div>
+<p class="disclaimer">Prefer to receive the .exe by email instead of using the command? <a href="${MAILTO_WIN}">Send a request</a>. An .exe downloaded in a browser may trigger a SmartScreen warning: click More info › Run anyway.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
@@ -155,8 +178,8 @@ ${sectionHead({ eyebrow: "System requirements", title: "Will it run on your comp
 <tr><th scope="row">RAM</th><td>At least 8 GB, 16 GB recommended</td><td>At least 8 GB, 16 GB recommended</td></tr>
 <tr><th scope="row">Graphics</th><td>Apple GPU</td><td>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended; without one it runs on the CPU</td></tr>
 <tr><th scope="row">Disk space</th><td>1.3 GB (Lite pack) or 2.5 GB (Standard pack), plus 1 GB free while downloading</td><td>The same</td></tr>
-<tr><th scope="row">Installer</th><td>A .dmg file of about 9 MB (the install command downloads it for you)</td><td>An .exe file under 60 MB that installs for your account only, with no administrator rights</td></tr>
-<tr><th scope="row">Code signing</th><td>Ad-hoc signed, not notarized: opens directly when installed with the command; a .dmg downloaded in a browser needs Open Anyway on first launch</td><td>Not code-signed: SmartScreen may warn when you open the installer</td></tr>
+<tr><th scope="row">Installer</th><td>A .dmg file of about 9 MB (the install command downloads it for you)</td><td>An .exe file of about 22 MB that installs for your account only, with no administrator rights</td></tr>
+<tr><th scope="row">Code signing</th><td>Ad-hoc signed, not notarized: opens directly when installed with the command; a .dmg downloaded in a browser needs Open Anyway on first launch</td><td>Not code-signed: installed with the command, SmartScreen does not ask; an .exe downloaded in a browser may be warned about; Smart App Control in blocking mode blocks it</td></tr>
 <tr><th scope="row">Permission</th><td>System audio recording (the microphone is not used)</td><td>No audio-recording permission needed</td></tr>
 </tbody></table></div>
 <p class="small muted">If a computer has less than 8 GB of RAM or a processor without AVX2, the app explains why and does not let you download the models. There is no build for Intel Macs.</p>
@@ -167,6 +190,6 @@ ${sectionHead({ eyebrow: "Frequently asked questions", title: "About the beta an
 ${faq(DL_FAQ, { open: true })}
 </div></section>
 
-${ctaBand({ title: "Install AI Translator on your Mac now", text: "One command in Terminal. 10-day free trial, no card needed.", primary: { href: "#install-macos", label: "See the macOS command" }, secondary: { href: MAILTO_WIN, label: "Request the Windows beta" } })}
+${ctaBand({ title: "Install AI Translator now", text: "One command on a Mac or on Windows. 10-day free trial, no card needed.", primary: { href: "#install-macos", label: "macOS command" }, secondary: { href: "#install-windows", label: "Windows command" } })}
 `,
 };

@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Tôi tải AI Translator ở đâu? Có bản Windows không?",
-        a: `<p>Trên macOS (14.2 trở lên, Apple Silicon), bạn cài bằng một dòng lệnh dán vào Terminal; lệnh nằm ở trang <a href="/tai-xuong/">Tải xuống</a> và app mở thẳng, không cần Open Anyway. Chưa có nút tải file .dmg. Bản Windows (10/11, 64-bit) nhận qua email cùng trang đó. Bản Windows cũng là beta và chưa được ký mã, nên SmartScreen có thể cảnh báo khi bạn mở bộ cài.</p>`,
+        a: `<p>Trên macOS (14.2 trở lên, Apple Silicon), bạn cài bằng một dòng lệnh dán vào Terminal; lệnh nằm ở trang <a href="/tai-xuong/">Tải xuống</a> và app mở thẳng, không cần Open Anyway. Chưa có nút tải file .dmg. Bản Windows (10/11, 64-bit) cũng cài bằng một dòng lệnh dán vào PowerShell ở cùng trang đó. Bản Windows cũng là beta và chưa được ký mã: cài bằng lệnh thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị cảnh báo.</p>`,
       },
       {
         q: "AI Translator có phải là mã nguồn mở không?",
@@ -120,7 +120,7 @@ const GROUPS = [
       },
       {
         q: "Vì sao Windows hiện “Windows protected your PC” khi cài?",
-        a: `<p>Vì bản Windows hiện chưa được ký mã: chúng tôi chưa có chứng thư ký mã Windows. Microsoft Defender SmartScreen vì vậy có thể chặn lần chạy bộ cài. Nếu file đúng nguồn và mã SHA-256 khớp, bấm More info, kiểm dòng App là đúng tên file cài, rồi bấm Run anyway. Dòng Publisher hiện Unknown publisher là bình thường với bản chưa ký mã. Khi có chứng thư ký mã, cảnh báo sẽ giảm dần. Xem <a href="/huong-dan/cai-dat-windows/">hướng dẫn cài đặt trên Windows</a>.</p>`,
+        a: `<p>Chỉ khi bạn tải file .exe bằng trình duyệt: bản Windows hiện chưa được ký mã (chúng tôi chưa có chứng thư ký mã Windows), nên Microsoft Defender SmartScreen có thể chặn lần chạy bộ cài. Cài bằng <a href="/tai-xuong/#cai-windows">dòng lệnh trong PowerShell</a> thì không bị hỏi. Nếu bạn đã tải .exe: Nếu file đúng nguồn và mã SHA-256 khớp, bấm More info, kiểm dòng App là đúng tên file cài, rồi bấm Run anyway. Dòng Publisher hiện Unknown publisher là bình thường với bản chưa ký mã. Khi có chứng thư ký mã, cảnh báo sẽ giảm dần. Nếu Windows 11 báo ứng dụng bị chặn và không có nút bỏ qua thì đó là Smart App Control (xem hướng dẫn). Xem <a href="/huong-dan/cai-dat-windows/">hướng dẫn cài đặt trên Windows</a>.</p>`,
       },
       {
         q: "Cần cấp quyền gì trên macOS?",
@@ -184,7 +184,7 @@ const GROUPS = [
       },
       {
         q: "App có tự cập nhật không?",
-        a: `<p>Có, qua kênh Ổn định hoặc Beta (Cài đặt › Chung › Kênh cập nhật). App kiểm tra khi khởi động và mỗi 24 giờ, kiểm chữ ký trước khi ghi file rồi mời bạn khởi động lại khi app rảnh. Bản Windows gửi qua email lúc đầu có thể chưa tự cập nhật. Trên macOS bản ký ad-hoc, mỗi lần cập nhật macOS hỏi lại Keychain và quyền ghi âm; app báo trước.</p>`,
+        a: `<p>Có, qua kênh Ổn định hoặc Beta (Cài đặt › Chung › Kênh cập nhật). App kiểm tra khi khởi động và mỗi 24 giờ, kiểm chữ ký trước khi ghi file rồi mời bạn khởi động lại khi app rảnh. Bản Windows cũng có hai kênh này; bạn có thể chạy lại lệnh cài để cập nhật. Trên macOS bản ký ad-hoc, mỗi lần cập nhật macOS hỏi lại Keychain và quyền ghi âm; app báo trước.</p>`,
       },
     ],
   },

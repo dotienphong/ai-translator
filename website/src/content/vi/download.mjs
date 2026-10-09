@@ -42,6 +42,9 @@ const MAILTO_WIN = mailto("Đăng ký bản beta AI Translator (Windows)", [
 
 const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
 const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.io.vn/install.sh | bash -s -- --beta";
+const WIN_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
+const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta";
+const WIN_CMD_REVIEW = "$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s";
 const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh";
 
 const DL_FAQ = [
@@ -62,8 +65,16 @@ const DL_FAQ = [
     a: "<p>App tự kiểm tra bản mới (Cài đặt › Chung). Bạn cũng có thể chạy lại đúng lệnh cài bất cứ lúc nào để cài bản mới nhất; script đóng app đang chạy rồi thay bản cũ. Gỡ cài đặt: xóa model và dữ liệu trong app trước rồi kéo app vào Thùng rác, xem <a href=\"/huong-dan/cai-dat-macos/#go-cai-dat\">hướng dẫn gỡ cài đặt</a>.</p>",
   },
   {
-    q: "Vì sao Windows cảnh báo khi tôi mở bộ cài?",
-    a: "<p>Bản Windows hiện chưa được ký mã vì chúng tôi chưa có chứng thư ký mã Windows. Vì vậy Microsoft Defender SmartScreen có thể hiện màn hình “Windows protected your PC”. Nếu file đúng nguồn và mã SHA-256 khớp, bấm More info rồi Run anyway. Khi có chứng thư ký mã, cảnh báo sẽ giảm dần; SmartScreen cần thời gian để ghi nhận uy tín của một file mới nên chúng tôi không hứa nó biến mất ngay. <a href=\"/huong-dan/cai-dat-windows/\">Xem hướng dẫn từng bước</a>.</p>",
+    q: "Lệnh PowerShell làm gì, và vì sao Windows không cảnh báo?",
+    a: "<p>Lệnh tải một script từ <strong>aitranslator.io.vn</strong>. Script kiểm máy (Windows 10 hoặc 11, x64), đọc số phiên bản mới nhất, tải bộ cài .exe và mã SHA-256 từ <strong>releases.aitranslator.io.vn</strong>, đối chiếu mã, chạy bộ cài im lặng (cài cho riêng tài khoản của bạn, không cần quyền quản trị) rồi mở app. Script không gửi dữ liệu đi. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu chống file hỏng, bạn vẫn đang tin nguồn <strong>aitranslator.io.vn</strong>.</p><p>Bản Windows chưa được ký mã (chúng tôi chưa có chứng thư ký mã Windows). SmartScreen chỉ kiểm file mang dấu “tải từ internet”; file tải bằng PowerShell không có dấu đó nên bộ cài chạy thẳng.</p>",
+  },
+  {
+    q: "Tôi đã tải file .exe bằng trình duyệt thì sao?",
+    a: "<p>Windows Defender SmartScreen có thể hiện màn hình “Windows protected your PC”. Nếu file đúng nguồn và mã SHA-256 khớp, bấm More info rồi Run anyway. Hoặc chạy lệnh cài ở trên: nó cài bản mới nhất mà không qua SmartScreen. <a href=\"/huong-dan/cai-dat-windows/\">Xem hướng dẫn từng bước</a>.</p>",
+  },
+  {
+    q: "Windows 11 báo ứng dụng bị chặn và không có nút bỏ qua. Làm sao?",
+    a: "<p>Đó là <strong>Smart App Control</strong>. Ở chế độ chặn, nó không cho chạy ứng dụng chưa ký mã và chưa có uy tín, dù cài bằng cách nào. Bạn có thể tắt nó trong Windows Security › App &amp; browser control › Smart App Control settings. Khi chúng tôi có chứng thư ký mã Windows, vấn đề này sẽ hết. <a href=\"/huong-dan/cai-dat-windows/#smart-app-control\">Xem chi tiết</a>.</p>",
   },
   {
     q: "Máy Mac Intel có dùng được không?",
@@ -75,7 +86,7 @@ const DL_FAQ = [
   },
   {
     q: "Bản beta có tự cập nhật không?",
-    a: "<p>Có kênh cập nhật <em>Ổn định</em> và <em>Beta</em> trong Cài đặt › Chung. App kiểm tra bản mới khi khởi động và mỗi 24 giờ. Bản Windows gửi qua email ban đầu có thể chưa tự cập nhật; chúng tôi sẽ nói rõ khi gửi bản cài.</p>",
+    a: "<p>Có kênh cập nhật <em>Ổn định</em> và <em>Beta</em> trong Cài đặt › Chung. App kiểm tra bản mới khi khởi động và mỗi 24 giờ. Bản Windows cũng nhận kênh Ổn định và Beta; bạn cũng có thể chạy lại lệnh cài để cập nhật.</p>",
   },
 ];
 
@@ -83,24 +94,24 @@ export default {
   id: "download",
   lang: "vi",
   path: "/tai-xuong/",
-  title: "Tải AI Translator beta: macOS bằng một dòng lệnh",
+  title: "Tải AI Translator beta: cài macOS và Windows bằng một dòng lệnh",
   description:
-    "Cài AI Translator beta trên macOS 14.2+ (Apple Silicon) bằng một dòng lệnh Terminal, mở thẳng không cần Open Anyway. Windows nhận qua email. Dùng thử Free 10 ngày.",
+    "Cài AI Translator beta trên macOS 14.2+ (Apple Silicon) bằng một dòng lệnh Terminal, mở thẳng không cần Open Anyway. Windows bằng PowerShell. Dùng thử Free 10 ngày.",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-09",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a.replace(/<[^>]+>/g, "") })))],
-  llm: "Cài AI Translator beta trên macOS bằng một dòng lệnh Terminal (curl ... install.sh | bash): tải bản cài, kiểm SHA-256 rồi mở app, không cần Open Anyway. Windows nhận bản cài qua email, More info › Run anyway nếu SmartScreen cảnh báo vì bản chưa ký mã. Yêu cầu máy.",
+  llm: "Cài AI Translator beta trên macOS bằng một dòng lệnh Terminal (curl ... install.sh | bash): tải bản cài, kiểm SHA-256 rồi mở app, không cần Open Anyway. Windows cài bằng một dòng lệnh PowerShell (irm ... install.ps1 | iex); file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo vì bản chưa ký mã, Smart App Control có thể chặn. Yêu cầu máy.",
   llmTitle: "Tải AI Translator beta",
   body: () => `
-${pageHero({ crumbs, title: "Tải AI Translator beta cho macOS và Windows", lead: "Trên macOS, bạn dán một dòng lệnh vào Terminal: app được tải, kiểm tra và mở lên ngay, không phải vào System Settings bấm Open Anyway. Bản Windows hiện nhận qua email." })}
+${pageHero({ crumbs, title: "Tải AI Translator beta cho macOS và Windows", lead: "Trên macOS bạn dán một dòng lệnh vào Terminal, trên Windows vào PowerShell: app được tải, kiểm tra và mở lên ngay, không phải vào System Settings bấm Open Anyway hay qua màn hình SmartScreen." })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
-  ["Trạng thái", "Beta. macOS cài bằng một dòng lệnh; Windows nhận bản cài qua email"],
+  ["Trạng thái", "Beta. macOS và Windows đều cài bằng một dòng lệnh"],
   ["Phiên bản", "0.1.0 (beta)<small>Lệnh cài luôn lấy bản mới nhất của kênh</small>"],
   ["macOS", "14.2 trở lên, Apple Silicon (M1+)<small>Bộ cài .dmg khoảng 9 MB; model tải thêm 1,3 hoặc 2,5 GB</small>"],
-  ["Windows", "Windows 10/11 64-bit (x64), CPU có AVX2<small>Bộ cài .exe dưới 60 MB; model tải thêm 1,3 hoặc 2,5 GB</small>"],
+  ["Windows", "Windows 10/11 64-bit (x64), CPU có AVX2<small>Bộ cài .exe khoảng 22 MB; model tải thêm 1,3 hoặc 2,5 GB</small>"],
   ["Dùng thử", "Free 10 ngày, 30 phút mỗi ngày<small>Không cần thẻ, không cần tài khoản</small>"],
   ["Giá sau đó", "Monthly 50.000 ₫ · Yearly 500.000 ₫"],
 ])}</div>
@@ -124,17 +135,29 @@ ${cmdBlock({ cmd: INSTALL_CMD_REVIEW, copy: "Sao chép lệnh", copied: "Đã ch
 <p>Mặc định lệnh cài bản ổn định. Muốn nhận bản beta mới hơn (nếu có), thêm <code>-s -- --beta</code> sau <code>bash</code>:</p>
 ${cmdBlock({ cmd: INSTALL_CMD_BETA, copy: "Sao chép lệnh", copied: "Đã chép", label: "Lệnh cài kênh beta" })}
 <div class="row center center-text reveal"><a class="btn btn-secondary" href="/huong-dan/cai-dat-macos/">Hướng dẫn cài đặt trên macOS ${icon("arrow-right")}</a> <a class="btn btn-secondary" href="/huong-dan/bat-dau-nhanh/">Bắt đầu nhanh ${icon("arrow-right")}</a></div>
+<p class="disclaimer">Muốn nhận file .dmg macOS qua email thay vì dùng lệnh? <a href="${MAILTO_MAC}">Gửi email đăng ký</a>; file .dmg tải bằng trình duyệt cần bước Open Anyway ở lần mở đầu.</p>
 </div></section>
 
 <section class="section" id="cai-windows"><div class="container narrow">
-${sectionHead({ eyebrow: "Windows", title: "Bản Windows: nhận bản cài qua email", text: "Chúng tôi đang gửi bản beta Windows tới từng người dùng thử, kèm hướng dẫn và mã kiểm tra SHA-256." })}
+${sectionHead({ eyebrow: "Windows", title: "Cài trên Windows bằng một dòng lệnh", text: "Dán một dòng vào PowerShell: bộ cài được tải, kiểm tra, cài cho riêng tài khoản của bạn (không cần quyền quản trị) rồi app mở lên." })}
+${cmdBlock({ cmd: WIN_CMD, copy: "Sao chép lệnh", copied: "Đã chép", label: "Lệnh cài AI Translator trên Windows" })}
 ${steps([
-  { title: "Gửi email đăng ký", text: "Cho chúng tôi biết máy của bạn (dòng máy, CPU, phiên bản Windows, RAM) và bạn định dùng với app họp nào." },
-  { title: "Nhận bộ cài và mã SHA-256", text: "Chúng tôi gửi liên kết tải file .exe kèm mã SHA-256 để bạn kiểm tra file không bị thay đổi." },
-  { title: "Cài và mở", text: "Chạy bộ cài; bấm More info › Run anyway nếu SmartScreen cảnh báo. Không cần cấp quyền ghi âm. App tải model một lần rồi sẵn sàng dịch." },
+  { title: "Mở PowerShell", text: "Nhấn phím <kbd>Windows</kbd>, gõ <strong>PowerShell</strong> rồi nhấn Enter. Không cần chạy bằng quyền quản trị." },
+  { title: "Dán lệnh ở trên và nhấn Enter", text: "Bấm Sao chép lệnh rồi dán vào PowerShell (nhấn chuột phải hoặc <kbd>Ctrl</kbd> + <kbd>V</kbd>)." },
+  { title: "Chờ app mở", text: "Lệnh tải bản mới nhất, kiểm mã SHA-256, chạy bộ cài im lặng rồi mở AI Translator. Windows không hỏi quyền ghi âm; app tải model một lần rồi sẵn sàng dịch." },
 ])}
-<div class="row center center-text reveal"><a class="btn btn-primary btn-lg" href="${MAILTO_WIN}">${icon("mail")} Đăng ký bản Windows</a> <a class="btn btn-secondary" href="/huong-dan/cai-dat-windows/">Hướng dẫn cài đặt trên Windows ${icon("arrow-right")}</a></div>
-<p class="disclaimer">Nút mở ứng dụng email của bạn với nội dung có sẵn. Nếu không mở được, hãy gửi thư thủ công tới <strong>support@aitranslator.io.vn</strong>. Muốn nhận file .dmg macOS qua email thay vì dùng lệnh? <a href="${MAILTO_MAC}">Gửi email đăng ký</a>; file .dmg tải bằng trình duyệt cần bước Open Anyway ở lần mở đầu.</p>
+<p class="small muted">Lệnh không dùng quyền quản trị. Chạy lại đúng lệnh này bất cứ lúc nào để cập nhật lên bản mới nhất (bộ cài đóng app đang chạy rồi thay bản cũ). Cần Windows 10 hoặc 11 bản 64-bit (x64).</p>
+${callout({ kind: "ok", title: "Vì sao không bị SmartScreen cảnh báo?", text: "Bản Windows chưa được ký mã (chúng tôi chưa mua chứng thư ký mã Windows). SmartScreen chỉ kiểm file mang dấu “tải từ internet”, loại dấu mà trình duyệt gắn khi bạn tải file. File tải bằng PowerShell không có dấu đó, nên bộ cài chạy thẳng. Bạn vẫn phải tin nguồn của lệnh: xem phần dưới." })}
+${callout({ kind: "warn", title: "Máy bật Smart App Control vẫn có thể chặn", text: "Windows 11 có tính năng <strong>Smart App Control</strong>. Khi nó ở chế độ chặn, nó chặn mọi ứng dụng chưa ký mã và chưa có uy tín, dù cài bằng cách nào, và không có nút bỏ qua. Nếu bạn gặp trường hợp này, bạn cần tắt Smart App Control trong Windows Security › App &amp; browser control › Smart App Control settings, hoặc chờ khi chúng tôi có chứng thư ký mã. <a href=\"/huong-dan/cai-dat-windows/#smart-app-control\">Xem chi tiết</a>." })}
+
+<h3>Muốn đọc script trước khi chạy?</h3>
+<p>Script nằm ở <a href="/install.ps1">aitranslator.io.vn/install.ps1</a> (có chú thích). Lệnh sau in script ra để bạn đọc rồi mới chạy:</p>
+${cmdBlock({ cmd: WIN_CMD_REVIEW, copy: "Sao chép lệnh", copied: "Đã chép", label: "Lệnh in script ra đọc trước khi chạy" })}
+<h3>Kênh beta</h3>
+<p>Mặc định lệnh cài bản ổn định. Muốn nhận bản beta mới hơn (nếu có), dùng lệnh sau:</p>
+${cmdBlock({ cmd: WIN_CMD_BETA, copy: "Sao chép lệnh", copied: "Đã chép", label: "Lệnh cài kênh beta trên Windows" })}
+<div class="row center center-text reveal"><a class="btn btn-secondary" href="/huong-dan/cai-dat-windows/">Hướng dẫn cài đặt trên Windows ${icon("arrow-right")}</a></div>
+<p class="disclaimer">Muốn nhận file .exe qua email thay vì dùng lệnh? <a href="${MAILTO_WIN}">Gửi email đăng ký</a>. File .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo: bấm More info › Run anyway.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
@@ -153,8 +176,8 @@ ${sectionHead({ eyebrow: "Yêu cầu máy", title: "Máy của bạn có chạy 
 <tr><th scope="row">RAM</th><td>Tối thiểu 8 GB, khuyến nghị 16 GB</td><td>Tối thiểu 8 GB, khuyến nghị 16 GB</td></tr>
 <tr><th scope="row">Đồ họa</th><td>GPU Apple</td><td>Khuyến nghị card đồ họa rời, VRAM từ 6 GB cho gói model Chuẩn; không có thì chạy bằng CPU</td></tr>
 <tr><th scope="row">Ổ đĩa</th><td>1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn), cộng 1 GB trống khi tải</td><td>Tương tự</td></tr>
-<tr><th scope="row">Bộ cài</th><td>File .dmg khoảng 9 MB (lệnh cài tự tải)</td><td>File .exe dưới 60 MB, cài cho riêng tài khoản của bạn, không cần quyền quản trị</td></tr>
-<tr><th scope="row">Ký mã</th><td>Ký ad-hoc, chưa notarize: cài bằng lệnh thì mở thẳng; tải .dmg bằng trình duyệt thì lần mở đầu cần bấm Open Anyway</td><td>Chưa ký mã: SmartScreen có thể cảnh báo khi mở bộ cài</td></tr>
+<tr><th scope="row">Bộ cài</th><td>File .dmg khoảng 9 MB (lệnh cài tự tải)</td><td>File .exe khoảng 22 MB, cài cho riêng tài khoản của bạn, không cần quyền quản trị</td></tr>
+<tr><th scope="row">Ký mã</th><td>Ký ad-hoc, chưa notarize: cài bằng lệnh thì mở thẳng; tải .dmg bằng trình duyệt thì lần mở đầu cần bấm Open Anyway</td><td>Chưa ký mã: cài bằng lệnh thì SmartScreen không hỏi; file .exe tải bằng trình duyệt có thể bị cảnh báo; Smart App Control chế độ chặn sẽ chặn</td></tr>
 <tr><th scope="row">Quyền</th><td>Ghi âm thanh hệ thống (không dùng micro)</td><td>Không cần cấp quyền ghi âm</td></tr>
 </tbody></table></div>
 <p class="small muted">Máy dưới 8 GB RAM hoặc (Windows) CPU không có AVX2: app báo lý do và không cho tải model. Mac Intel không chạy được app.</p>
@@ -165,7 +188,7 @@ ${sectionHead({ eyebrow: "Câu hỏi thường gặp", title: "Về bản beta v
 ${faq(DL_FAQ, { open: true })}
 </div></section>
 
-${ctaBand({ title: "Cài AI Translator trên Mac ngay bây giờ", text: "Một dòng lệnh trong Terminal. Dùng thử Free 10 ngày, không cần thẻ.", primary: { href: "#cai-macos", label: "Xem lệnh cài macOS" }, secondary: { href: MAILTO_WIN, label: "Đăng ký bản Windows" } })}
+${ctaBand({ title: "Cài AI Translator ngay bây giờ", text: "Một dòng lệnh trên Mac hoặc Windows. Dùng thử Free 10 ngày, không cần thẻ.", primary: { href: "#cai-macos", label: "Lệnh cài macOS" }, secondary: { href: "#cai-windows", label: "Lệnh cài Windows" } })}
 `,
 };
 void feature;

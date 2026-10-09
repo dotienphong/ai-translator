@@ -75,8 +75,8 @@ ${sectionHead({ eyebrow: "Today", title: "Where is AI Translator right now?" })}
 <thead><tr><th scope="col">Area</th><th scope="col">Status</th></tr></thead>
 <tbody>
 <tr><th scope="row">macOS</th><td>Beta, macOS 14.2 or later, Apple Silicon. <a href="/en/download/#install-macos">Install with one command in Terminal</a>.</td></tr>
-<tr><th scope="row">Windows</th><td>Beta, Windows 10/11 64-bit (x64). No public download yet: <a href="/en/download/">request the installer by email</a>. Latency on Windows has not been measured.</td></tr>
-<tr><th scope="row">Code signing</th><td>macOS is ad-hoc signed and not notarized: it opens directly when installed with the command, but a .dmg downloaded in a browser needs Open Anyway on first launch. Windows has no code-signing certificate yet, so SmartScreen may warn when you open the installer (<a href="/en/guide/install-windows/">what to do</a>).</td></tr>
+<tr><th scope="row">Windows</th><td>Beta, Windows 10/11 64-bit (x64). <a href="/en/download/#install-windows">Install with one command in PowerShell</a>. Latency on Windows has not been measured.</td></tr>
+<tr><th scope="row">Code signing</th><td>macOS is ad-hoc signed and not notarized: it opens directly when installed with the command, but a .dmg downloaded in a browser needs Open Anyway on first launch. Windows has no code-signing certificate yet: installed with the command, SmartScreen does not ask, while an .exe downloaded in a browser may be warned about (Smart App Control in blocking mode blocks both) (<a href="/en/guide/install-windows/">what to do</a>).</td></tr>
 <tr><th scope="row">Payments</th><td>VietQR in VND through PayOS. No international cards and no e-invoices yet.</td></tr>
 <tr><th scope="row">Plans</th><td>Free 10-day trial, Monthly, Yearly. See <a href="/en/pricing/">pricing</a>.</td></tr>
 </tbody></table></div>
@@ -128,6 +128,6 @@ ${linkCard({ href: "/en/pricing/", icon: "wallet", title: "Pricing", text: "Free
 </div>
 </div></section>
 
-${ctaBand({ title: "Try it on a real meeting", text: "Request the macOS or Windows beta and use the 10-day Free trial. No card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/contact/", label: "Contact us" } })}
+${ctaBand({ title: "Try it on a real meeting", text: "Install the macOS or Windows beta with one command and use the 10-day Free trial. No card, no account.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/contact/", label: "Contact us" } })}
 `,
 };

@@ -27,7 +27,7 @@ ${pageHero({
 })}
 
 <section class="section-tight"><div class="container">
-${callout({ title: "Hướng dẫn dùng cho cả macOS và Windows.", text: "Phần lớn các bước giống nhau trên hai hệ điều hành. Khác biệt chính trên Windows: cài bằng file .exe và có thể phải qua cảnh báo SmartScreen vì bản beta chưa được ký mã, không cần cấp quyền ghi âm, biểu tượng nằm ở khay hệ thống thay cho menu bar, phím tắt dùng Ctrl+Alt thay cho ⌃⌥. Chưa có bản cài? Xem trang <a href=\"/tai-xuong/\">nhận bản beta</a>." })}
+${callout({ title: "Hướng dẫn dùng cho cả macOS và Windows.", text: "Phần lớn các bước giống nhau trên hai hệ điều hành. Khác biệt chính trên Windows: cài bằng dòng lệnh PowerShell (hoặc file .exe, có thể bị SmartScreen cảnh báo vì bản beta chưa được ký mã), không cần cấp quyền ghi âm, biểu tượng nằm ở khay hệ thống thay cho menu bar, phím tắt dùng Ctrl+Alt thay cho ⌃⌥. Chưa có bản cài? Xem trang <a href=\"/tai-xuong/\">tải xuống</a>." })}
 </div></section>
 
 <section class="section-tight"><div class="container">
@@ -35,7 +35,7 @@ ${sectionHead({ eyebrow: "Bắt đầu", title: "Từ file cài đặt tới ph�
 <div class="grid grid-2">
 ${linkCard({ href: "/huong-dan/bat-dau-nhanh/", icon: "play", title: "Bắt đầu nhanh", text: "Bảy bước thiết lập một lần rồi dịch cuộc họp đầu tiên, kèm ảnh các màn hình thiết lập của app.", more: MORE })}
 ${linkCard({ href: "/huong-dan/cai-dat-macos/", icon: "download", title: "Cài đặt trên macOS", text: "Cài bằng một dòng lệnh, hoặc từ file .dmg (kéo vào Applications, Open Anyway), kiểm mã SHA-256 và gỡ cài đặt.", more: MORE })}
-${linkCard({ href: "/huong-dan/cai-dat-windows/", icon: "download", title: "Cài đặt trên Windows", text: "Yêu cầu máy, kiểm mã SHA-256, qua cảnh báo SmartScreen bằng Run anyway, mở lần đầu và gỡ cài đặt.", more: MORE })}
+${linkCard({ href: "/huong-dan/cai-dat-windows/", icon: "download", title: "Cài đặt trên Windows", text: "Cài bằng một dòng lệnh PowerShell, hoặc từ file .exe (kiểm SHA-256, SmartScreen), Smart App Control và gỡ cài đặt.", more: MORE })}
 ${linkCard({ href: "/huong-dan/cap-quyen-thu-am-macos/", icon: "mic", title: "Cấp quyền ghi âm thanh (macOS)", text: "Trả lời hộp thoại Ghi âm thanh hệ thống, bật lại trong System Settings và chọn nguồn âm thanh.", more: MORE })}
 </div>
 </div></section>
