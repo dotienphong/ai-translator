@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Where do I download AI Translator? Is there a Windows version?",
-        a: `<p>There is no public download yet. AI Translator is in beta: you request the installer for macOS (14.2 or later, Apple Silicon) or Windows (10/11, 64-bit) by email on the <a href="/en/download/">Download page</a>. The Windows build is also a beta and is not code-signed yet, so SmartScreen may warn you when you open the installer.</p>`,
+        a: `<p>On macOS (14.2 or later, Apple Silicon) you install with one command pasted into Terminal; it is on the <a href="/en/download/">Download page</a> and the app opens directly, with no Open Anyway. There is no .dmg download button yet. The Windows build (10/11, 64-bit) is requested by email on the same page. The Windows build is also a beta and is not code-signed yet, so SmartScreen may warn you when you open the installer.</p>`,
       },
       {
         q: "Is AI Translator open source?",
@@ -116,7 +116,7 @@ const GROUPS = [
       },
       {
         q: "Why does macOS say it cannot verify the developer?",
-        a: `<p>Because the macOS build is currently ad-hoc signed and not notarized: we do not have an Apple Developer ID yet. macOS therefore blocks the first launch. Open System Settings › Privacy &amp; Security, scroll to the bottom, click Open Anyway next to AI Translator and confirm with your password or Touch ID. From macOS 15, the right-click › Open trick no longer works. See the <a href="/en/guide/install-macos/">macOS installation guide</a>.</p>`,
+        a: `<p>Only if you download the .dmg in a browser: the macOS build is currently ad-hoc signed and not notarized (we do not have an Apple Developer ID yet), so macOS blocks the first launch of a file from the internet. Installing with the <a href="/en/download/#install-macos">command in Terminal</a> is not blocked. If you already downloaded the .dmg, open System Settings › Privacy &amp; Security, scroll to the bottom, click Open Anyway next to AI Translator and confirm with your password or Touch ID. From macOS 15, the right-click › Open trick no longer works. See the <a href="/en/guide/install-macos/">macOS installation guide</a>.</p>`,
       },
       {
         q: "Why does Windows show “Windows protected your PC” when I install it?",
@@ -184,7 +184,7 @@ const GROUPS = [
       },
       {
         q: "Does the app update itself?",
-        a: `<p>Yes, through the Stable or Beta channel (Settings › General › Update channel). The app checks at launch and every 24 hours, verifies the signature before writing any file, and then invites you to restart when it is idle. An installer sent by email at the start may not auto-update yet. On the ad-hoc signed macOS build, each update makes macOS ask again for Keychain access and audio recording; the app warns you in advance.</p>`,
+        a: `<p>Yes, through the Stable or Beta channel (Settings › General › Update channel). The app checks at launch and every 24 hours, verifies the signature before writing any file, and then invites you to restart when it is idle. The Windows installer sent by email at the start may not auto-update yet. On the ad-hoc signed macOS build, each update makes macOS ask again for Keychain access and audio recording; the app warns you in advance.</p>`,
       },
     ],
   },

@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Tôi tải AI Translator ở đâu? Có bản Windows không?",
-        a: `<p>Chưa có tải công khai. AI Translator đang ở giai đoạn beta: bạn đăng ký nhận bản cài cho macOS (14.2 trở lên, Apple Silicon) hoặc Windows (10/11, 64-bit) bằng email tại trang <a href="/tai-xuong/">Tải xuống</a>. Bản Windows cũng là beta và chưa được ký mã, nên SmartScreen có thể cảnh báo khi bạn mở bộ cài.</p>`,
+        a: `<p>Trên macOS (14.2 trở lên, Apple Silicon), bạn cài bằng một dòng lệnh dán vào Terminal; lệnh nằm ở trang <a href="/tai-xuong/">Tải xuống</a> và app mở thẳng, không cần Open Anyway. Chưa có nút tải file .dmg. Bản Windows (10/11, 64-bit) nhận qua email cùng trang đó. Bản Windows cũng là beta và chưa được ký mã, nên SmartScreen có thể cảnh báo khi bạn mở bộ cài.</p>`,
       },
       {
         q: "AI Translator có phải là mã nguồn mở không?",
@@ -116,7 +116,7 @@ const GROUPS = [
       },
       {
         q: "Vì sao macOS báo không xác minh được nhà phát triển?",
-        a: `<p>Vì bản macOS hiện được ký ad-hoc và chưa notarize: chúng tôi chưa có Apple Developer ID. macOS vì vậy chặn lần mở đầu. Bạn vào System Settings › Privacy &amp; Security, kéo xuống cuối, bấm Open Anyway cạnh tên AI Translator rồi xác nhận bằng mật khẩu hoặc Touch ID. Từ macOS 15, mẹo bấm chuột phải rồi chọn Open không còn dùng được. Xem <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a>.</p>`,
+        a: `<p>Chỉ khi bạn tải file .dmg bằng trình duyệt: bản macOS hiện được ký ad-hoc và chưa notarize (chúng tôi chưa có Apple Developer ID), nên macOS chặn lần mở đầu của file tải từ internet. Cài bằng <a href="/tai-xuong/#cai-macos">dòng lệnh trong Terminal</a> thì không bị chặn. Nếu đã tải .dmg, bạn vào System Settings › Privacy &amp; Security, kéo xuống cuối, bấm Open Anyway cạnh tên AI Translator rồi xác nhận bằng mật khẩu hoặc Touch ID. Từ macOS 15, mẹo bấm chuột phải rồi chọn Open không còn dùng được. Xem <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a>.</p>`,
       },
       {
         q: "Vì sao Windows hiện “Windows protected your PC” khi cài?",
@@ -184,7 +184,7 @@ const GROUPS = [
       },
       {
         q: "App có tự cập nhật không?",
-        a: `<p>Có, qua kênh Ổn định hoặc Beta (Cài đặt › Chung › Kênh cập nhật). App kiểm tra khi khởi động và mỗi 24 giờ, kiểm chữ ký trước khi ghi file rồi mời bạn khởi động lại khi app rảnh. Bản cài thử gửi qua email lúc đầu có thể chưa tự cập nhật. Trên macOS bản ký ad-hoc, mỗi lần cập nhật macOS hỏi lại Keychain và quyền ghi âm; app báo trước.</p>`,
+        a: `<p>Có, qua kênh Ổn định hoặc Beta (Cài đặt › Chung › Kênh cập nhật). App kiểm tra khi khởi động và mỗi 24 giờ, kiểm chữ ký trước khi ghi file rồi mời bạn khởi động lại khi app rảnh. Bản Windows gửi qua email lúc đầu có thể chưa tự cập nhật. Trên macOS bản ký ad-hoc, mỗi lần cập nhật macOS hỏi lại Keychain và quyền ghi âm; app báo trước.</p>`,
       },
     ],
   },

@@ -34,7 +34,7 @@ ${callout({ title: "Hướng dẫn dùng cho cả macOS và Windows.", text: "Ph
 ${sectionHead({ eyebrow: "Bắt đầu", title: "Từ file cài đặt tới phụ đề đầu tiên" })}
 <div class="grid grid-2">
 ${linkCard({ href: "/huong-dan/bat-dau-nhanh/", icon: "play", title: "Bắt đầu nhanh", text: "Bảy bước thiết lập một lần rồi dịch cuộc họp đầu tiên, kèm ảnh các màn hình thiết lập của app.", more: MORE })}
-${linkCard({ href: "/huong-dan/cai-dat-macos/", icon: "download", title: "Cài đặt trên macOS", text: "Yêu cầu máy, kéo vào Applications, bấm Open Anyway ở lần mở đầu, kiểm mã SHA-256 và gỡ cài đặt.", more: MORE })}
+${linkCard({ href: "/huong-dan/cai-dat-macos/", icon: "download", title: "Cài đặt trên macOS", text: "Cài bằng một dòng lệnh, hoặc từ file .dmg (kéo vào Applications, Open Anyway), kiểm mã SHA-256 và gỡ cài đặt.", more: MORE })}
 ${linkCard({ href: "/huong-dan/cai-dat-windows/", icon: "download", title: "Cài đặt trên Windows", text: "Yêu cầu máy, kiểm mã SHA-256, qua cảnh báo SmartScreen bằng Run anyway, mở lần đầu và gỡ cài đặt.", more: MORE })}
 ${linkCard({ href: "/huong-dan/cap-quyen-thu-am-macos/", icon: "mic", title: "Cấp quyền ghi âm thanh (macOS)", text: "Trả lời hộp thoại Ghi âm thanh hệ thống, bật lại trong System Settings và chọn nguồn âm thanh.", more: MORE })}
 </div>
@@ -60,7 +60,7 @@ ${linkCard({ href: "/huong-dan/khac-phuc-su-co/", icon: "support", title: "Khắ
 <section class="section-tight"><div class="container narrow">
 ${sectionHead({ title: "Tìm nhanh theo tình huống" })}
 ${facts([
-  ["macOS chặn app lần đầu mở", "Xem <a href=\"/huong-dan/cai-dat-macos/\">cài đặt trên macOS</a>, mục Mở lần đầu"],
+  ["macOS chặn app lần đầu mở", "Xem <a href=\"/huong-dan/cai-dat-macos/\">cài đặt trên macOS</a>: cài bằng một dòng lệnh để mở thẳng, hoặc mục Mở lần đầu nếu dùng file .dmg"],
   ["Windows hiện màn hình “Windows protected your PC”", "Xem <a href=\"/huong-dan/cai-dat-windows/\">cài đặt trên Windows</a>, mục Chạy bộ cài"],
   ["Bấm Bắt đầu mà không có phụ đề", "Xem <a href=\"/huong-dan/cap-quyen-thu-am-macos/\">cấp quyền ghi âm thanh</a> rồi <a href=\"/huong-dan/khac-phuc-su-co/\">khắc phục sự cố</a>"],
   ["Thanh phụ đề biến mất hoặc không bấm được", "Xem <a href=\"/huong-dan/thanh-phu-de-va-phim-tat/\">thanh phụ đề và phím tắt</a>, mục Ẩn và hiện, Khóa"],

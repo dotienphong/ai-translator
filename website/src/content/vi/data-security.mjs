@@ -134,10 +134,10 @@ ${steps(
 <div class="table-wrap" role="region" aria-label="Trạng thái ký số" tabindex="0"><table>
 <thead><tr><th scope="col">Nền tảng</th><th scope="col">Trạng thái</th><th scope="col">Hệ quả cho bạn</th></tr></thead>
 <tbody>
-<tr><th scope="row">macOS</th><td>Ký ad-hoc, <strong>chưa notarize</strong> (chúng tôi chưa có Apple Developer ID)</td><td>macOS chặn lần mở đầu: bạn cần bấm Open Anyway trong System Settings › Privacy &amp; Security. Mỗi lần cập nhật, macOS hỏi lại 5 hộp thoại Keychain và 1 hộp thoại quyền ghi âm.</td></tr>
+<tr><th scope="row">macOS</th><td>Ký ad-hoc, <strong>chưa notarize</strong> (chúng tôi chưa có Apple Developer ID)</td><td>File .dmg tải bằng trình duyệt bị macOS chặn lần mở đầu (cần bấm Open Anyway trong System Settings › Privacy &amp; Security); cài bằng dòng lệnh trong Terminal thì mở thẳng. Mỗi lần cập nhật, macOS hỏi lại 5 hộp thoại Keychain và 1 hộp thoại quyền ghi âm.</td></tr>
 <tr><th scope="row">Windows</th><td>Beta, <strong>chưa ký mã</strong> (chúng tôi chưa có chứng thư ký mã Windows)</td><td>Khi mở bộ cài, Microsoft Defender SmartScreen có thể hiện màn hình “Windows protected your PC”: bấm More info rồi Run anyway. Dòng Publisher hiện Unknown publisher.</td></tr>
 </tbody></table></div>
-<p>Chữ ký ad-hoc không cho Apple biết ai là nhà phát triển, nên hãy chỉ lấy bản cài từ chúng tôi và đối chiếu mã SHA-256 gửi kèm. Bản Windows chưa ký mã cũng vậy: Windows không xác nhận được ai phát hành file, nên đối chiếu SHA-256 là cách để biết file không bị thay đổi. Chúng tôi dự định chuyển sang Developer ID và chứng thư ký mã Windows khi có điều kiện, chưa có ngày. Xem hướng dẫn cài đặt trên <a href="/huong-dan/cai-dat-macos/">macOS</a> và <a href="/huong-dan/cai-dat-windows/">Windows</a>.</p>
+<p>Chữ ký ad-hoc không cho Apple biết ai là nhà phát triển, nên hãy chỉ cài bằng lệnh trên trang <a href="/tai-xuong/">Tải xuống</a> hoặc từ file do chúng tôi gửi, và đối chiếu mã SHA-256. Bản Windows chưa ký mã cũng vậy: Windows không xác nhận được ai phát hành file, nên đối chiếu SHA-256 là cách để biết file không bị thay đổi. Chúng tôi dự định chuyển sang Developer ID và chứng thư ký mã Windows khi có điều kiện, chưa có ngày. Xem hướng dẫn cài đặt trên <a href="/huong-dan/cai-dat-macos/">macOS</a> và <a href="/huong-dan/cai-dat-windows/">Windows</a>.</p>
 
 <h2 id="gioi-han">Điều chúng tôi không hứa</h2>
 <ul>

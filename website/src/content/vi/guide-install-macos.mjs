@@ -1,4 +1,4 @@
-import { pageHero, callout, facts, docLayout, docNav } from "../../build/components.mjs";
+import { pageHero, callout, facts, docLayout, docNav, cmdBlock } from "../../build/components.mjs";
 import { howTo } from "../../build/schema.mjs";
 
 const crumbs = [
@@ -9,20 +9,22 @@ const crumbs = [
 
 const toc = [
   { level: 2, id: "yeu-cau", text: "Máy của bạn có chạy được không?" },
-  { level: 2, id: "kiem-tra-file", text: "Kiểm tra file cài đặt (SHA-256)" },
-  { level: 2, id: "keo-vao-applications", text: "Kéo AI Translator vào Applications" },
-  { level: 2, id: "mo-lan-dau", text: "Mở lần đầu: vì sao bị chặn" },
+  { level: 2, id: "cai-bang-lenh", text: "Cách nhanh: cài bằng một dòng lệnh" },
+  { level: 2, id: "cai-bang-dmg", text: "Cách khác: cài từ file .dmg" },
+  { level: 3, id: "kiem-tra-file", text: "Kiểm tra file cài đặt (SHA-256)" },
+  { level: 3, id: "keo-vao-applications", text: "Kéo AI Translator vào Applications" },
+  { level: 3, id: "mo-lan-dau", text: "Mở lần đầu: vì sao bị chặn" },
   { level: 2, id: "cap-nhat", text: "Mỗi lần cập nhật" },
   { level: 2, id: "go-cai-dat", text: "Gỡ cài đặt đúng cách" },
   { level: 2, id: "loi-thuong-gap", text: "Lỗi thường gặp khi cài" },
 ];
 
+const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
+
 const HOWTO_STEPS = [
-  { name: "Kiểm tra mã SHA-256 của file .dmg", text: "Chạy shasum -a 256 trên file .dmg trong Terminal và so với mã SHA-256 chúng tôi gửi kèm bản cài." },
-  { name: "Kéo app vào Applications", text: "Mở file .dmg rồi kéo AI Translator vào thư mục Applications." },
-  { name: "Mở app và bấm Done", text: "Mở AI Translator. Khi macOS báo không xác minh được nhà phát triển, bấm Done." },
-  { name: "Bấm Open Anyway", text: "Vào System Settings > Privacy & Security, kéo xuống cuối, bấm Open Anyway cạnh tên AI Translator." },
-  { name: "Xác nhận", text: "Xác nhận bằng mật khẩu đăng nhập hoặc Touch ID để app mở ra." },
+  { name: "Mở Terminal", text: "Nhấn Command + Space, gõ Terminal rồi nhấn Enter." },
+  { name: "Dán lệnh cài và nhấn Enter", text: "Dán lệnh curl -fsSL https://aitranslator.io.vn/install.sh | bash vào Terminal rồi nhấn Enter. Không cần mật khẩu." },
+  { name: "Chờ app mở", text: "Lệnh tải bản mới nhất, kiểm SHA-256, chép AI Translator vào Applications và mở app. Khi macOS hỏi quyền ghi âm thanh hệ thống, chọn cho phép." },
 ];
 
 export default {
@@ -31,18 +33,18 @@ export default {
   path: "/huong-dan/cai-dat-macos/",
   title: "Cài đặt AI Translator trên macOS",
   description:
-    "Cách cài AI Translator trên macOS: yêu cầu máy, kéo vào Applications, mở lần đầu bằng Open Anyway, kiểm tra SHA-256, việc cần làm khi cập nhật và gỡ cài đặt.",
+    "Cài AI Translator trên macOS bằng một dòng lệnh, mở thẳng không cần Open Anyway; cách cài từ file .dmg, kiểm SHA-256, việc cần làm khi cập nhật và gỡ cài đặt.",
   type: "article",
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-08",
-  llm: "Cài AI Translator trên macOS: yêu cầu máy, kiểm SHA-256, kéo vào Applications, bấm Open Anyway vì bản ký ad-hoc chưa notarize, hộp thoại Keychain khi cập nhật và gỡ cài đặt.",
+  modified: "2026-10-09",
+  llm: "Cài AI Translator trên macOS bằng một dòng lệnh Terminal (curl ... install.sh | bash), mở thẳng không cần Open Anyway. Cách khác: cài từ file .dmg (kiểm SHA-256, kéo vào Applications, bấm Open Anyway vì bản ký ad-hoc chưa notarize), hộp thoại Keychain khi cập nhật và gỡ cài đặt.",
   llmTitle: "Cài đặt AI Translator trên macOS",
   schema: [
     howTo({
-      name: "Cài và mở AI Translator trên macOS lần đầu",
-      description: "Kiểm tra file cài, kéo AI Translator vào Applications và cho phép mở app bằng Open Anyway.",
+      name: "Cài và mở AI Translator trên macOS bằng một dòng lệnh",
+      description: "Dán một dòng lệnh vào Terminal để tải, kiểm tra và cài AI Translator, rồi app mở thẳng, không cần Open Anyway.",
       steps: HOWTO_STEPS,
     }),
   ],
@@ -50,8 +52,8 @@ export default {
 ${pageHero({
   crumbs,
   title: "Cài đặt AI Translator trên macOS",
-  lead: "Để cài AI Translator trên macOS, bạn mở file .dmg, kéo app vào thư mục Applications, rồi mở app lần đầu bằng cách cho phép nó trong System Settings › Privacy & Security (nút Open Anyway). Bước thêm này cần vì bản hiện tại được ký ad-hoc và chưa được Apple notarize.",
-  meta: "<span>Áp dụng cho macOS 14.2 trở lên, Apple Silicon</span> <span>Cập nhật 08/10/2026</span>",
+  lead: "Cách nhanh nhất để cài AI Translator trên macOS là dán một dòng lệnh vào Terminal: app được tải, kiểm tra và mở lên ngay, không cần vào System Settings bấm Open Anyway. Nếu bạn đã có file .dmg tải bằng trình duyệt, bạn vẫn cài được bằng cách kéo vào Applications, nhưng lần mở đầu macOS sẽ chặn vì bản hiện tại ký ad-hoc và chưa được Apple notarize.",
+  meta: "<span>Áp dụng cho macOS 14.2 trở lên, Apple Silicon</span> <span>Cập nhật 09/10/2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -70,9 +72,26 @@ ${facts([
 ])}
 <p class="small muted">Chúng tôi chưa đo hiệu năng trên Mac M1 cơ bản nên chưa cam kết độ trễ ở máy đó. Với máy 8 GB, gói model Nhẹ là lựa chọn phù hợp.</p>
 
-<h2 id="kiem-tra-file">Kiểm tra file cài đặt (SHA-256)</h2>
+<h2 id="cai-bang-lenh">Cách nhanh: cài bằng một dòng lệnh</h2>
+<ol>
+<li>Mở <strong>Terminal</strong>: nhấn <kbd>⌘</kbd> + <kbd>Space</kbd>, gõ <strong>Terminal</strong>, nhấn Enter.</li>
+<li>Dán lệnh dưới đây rồi nhấn Enter. Không cần mật khẩu.</li>
+</ol>
+${cmdBlock({ cmd: INSTALL_CMD, copy: "Sao chép lệnh", copied: "Đã chép", label: "Lệnh cài AI Translator trên macOS" })}
+<ol start="3">
+<li>Chờ khoảng một phút. Lệnh tải bản mới nhất của AI Translator, đối chiếu mã SHA-256, kiểm chữ ký của app, chép app vào <code>/Applications</code> (không ghi được thì vào <code>~/Applications</code>) rồi mở app.</li>
+<li>Khi macOS hỏi quyền <strong>ghi âm thanh hệ thống</strong>, chọn cho phép. Rồi làm tiếp theo <a href="/huong-dan/bat-dau-nhanh/">hướng dẫn bắt đầu nhanh</a>.</li>
+</ol>
+<p><strong>Vì sao không phải bấm Open Anyway?</strong> macOS chỉ chặn app khi file mang nhãn “tải từ internet” (do trình duyệt gắn). File tải bằng <code>curl</code> trong Terminal không có nhãn đó, nên app mở thẳng dù chưa được Apple notarize.</p>
+${callout({ kind: "warn", title: "Hãy hiểu những gì lệnh này làm.", text: "Lệnh tải một script từ <strong>aitranslator.io.vn</strong>, script tải bản cài từ <strong>releases.aitranslator.io.vn</strong>, đối chiếu SHA-256 rồi cài. Không dùng sudo, không gửi dữ liệu đi. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu chống file hỏng; bạn vẫn đang tin nguồn <strong>aitranslator.io.vn</strong>. Muốn đọc script trước: <code>curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>. Chạy lại đúng lệnh cài bất cứ lúc nào để cập nhật lên bản mới nhất; script tự đóng app đang chạy." })}
+<p>Gặp lỗi? Script dừng và báo lý do bằng tiếng Việt (máy không đạt yêu cầu, mất mạng, SHA-256 không khớp…). Xem thêm ở <a href="#loi-thuong-gap">lỗi thường gặp khi cài</a>.</p>
+
+<h2 id="cai-bang-dmg">Cách khác: cài từ file .dmg</h2>
+<p>Dùng cách này nếu bạn nhận file .dmg qua email hoặc không muốn dùng Terminal. File tải bằng trình duyệt bị macOS gắn nhãn “tải từ internet”, nên lần mở đầu cần thêm bước Open Anyway.</p>
+
+<h3 id="kiem-tra-file">Kiểm tra file cài đặt (SHA-256)</h3>
 ${callout({ kind: "warn", title: "Chỉ tải bản cài từ nguồn chính thức.", text: "File .dmg đúng là file chúng tôi gửi từ <strong>support@aitranslator.io.vn</strong> hoặc liên kết trên <strong>aitranslator.io.vn</strong>. File từ nơi khác có thể là bản giả hoặc bị sửa đổi. Đừng mở nó, dù nó mang tên AI Translator." })}
-<p>Mỗi bản cài đi kèm một mã SHA-256 do chúng tôi gửi. Đối chiếu mã đó trước khi cài:</p>
+<p>Mỗi bản cài gửi qua email đi kèm một mã SHA-256 do chúng tôi gửi. Đối chiếu mã đó trước khi cài:</p>
 <ol>
 <li>Mở <strong>Terminal</strong> (trong Applications › Utilities).</li>
 <li>Gõ <code>shasum -a 256</code> kèm một dấu cách, rồi kéo file .dmg từ Finder vào cửa sổ Terminal để tự điền đường dẫn (kể cả dấu cách trong tên file), rồi nhấn Enter. Hoặc gõ lệnh dưới đây; tên file có dấu cách thì phải để trong dấu nháy kép như ví dụ.</li>
@@ -83,13 +102,13 @@ ${callout({ kind: "warn", title: "Chỉ tải bản cài từ nguồn chính th�
 <li>Nếu khác, đừng mở file. Tải lại; nếu vẫn khác, <a href="/lien-he/">liên hệ hỗ trợ</a>.</li>
 </ol>
 
-<h2 id="keo-vao-applications">Kéo AI Translator vào Applications</h2>
+<h3 id="keo-vao-applications">Kéo AI Translator vào Applications</h3>
 <ol>
 <li>Nhấp đúp file <code>.dmg</code> để mở.</li>
 <li>Kéo <strong>AI Translator</strong> vào thư mục <strong>Applications</strong> trong cửa sổ vừa hiện.</li>
 </ol>
 
-<h2 id="mo-lan-dau">Mở lần đầu: vì sao macOS chặn và cách cho phép</h2>
+<h3 id="mo-lan-dau">Mở lần đầu: vì sao macOS chặn và cách cho phép</h3>
 <p>macOS dùng Gatekeeper để kiểm các app tải từ internet. Bản AI Translator hiện tại được ký ad-hoc và chưa được Apple notarize, vì chúng tôi chưa có Apple Developer ID. Vì vậy macOS chặn lần mở đầu và báo không xác minh được nhà phát triển. Với file đúng nguồn và SHA-256 khớp, đây là bước bình thường của bản này.</p>
 <ol>
 <li>Mở AI Translator từ Applications. Khi macOS báo không xác minh được nhà phát triển, bấm <strong>Done</strong> (nút đóng hộp thoại; tên nút có thể khác đôi chút giữa các bản macOS).</li>
@@ -99,7 +118,7 @@ ${callout({ kind: "warn", title: "Chỉ tải bản cài từ nguồn chính th�
 <li>App mở ra và hiện trình hướng dẫn lần đầu. Làm tiếp theo <a href="/huong-dan/bat-dau-nhanh/">hướng dẫn bắt đầu nhanh</a>.</li>
 </ol>
 ${callout({ kind: "warn", title: "Từ macOS 15, mẹo bấm chuột phải › Open không còn dùng được.", text: "Hãy đi qua Privacy &amp; Security như các bước trên. Nút Open Anyway thường chỉ hiện sau khi macOS đã chặn một lần thử mở app; không thấy nút đó thì mở app thêm một lần rồi quay lại." })}
-<p>Bước này áp dụng cho file .dmg tải về: lần đầu mở bản cài nào bạn cũng cần làm. Nếu bạn cài một file .dmg mới tải về, macOS có thể chặn lại. Khi chúng tôi có Developer ID và notarize app, bước này sẽ biến mất.</p>
+<p>Bước này chỉ áp dụng cho file .dmg tải bằng trình duyệt; cài bằng <a href="#cai-bang-lenh">dòng lệnh</a> thì không cần. Khi chúng tôi có Developer ID và notarize app, bước này sẽ biến mất cho mọi cách cài.</p>
 
 <h2 id="cap-nhat">Mỗi lần cập nhật, macOS hỏi lại một số hộp thoại</h2>
 <p>Đây là hệ quả của việc ký ad-hoc. Sau mỗi lần cập nhật sang bản mới, bạn thường gặp một lần:</p>
@@ -107,7 +126,7 @@ ${callout({ kind: "warn", title: "Từ macOS 15, mẹo bấm chuột phải › 
 <li><strong>Khoảng 5 hộp thoại Keychain</strong> (hỏi mật khẩu đăng nhập Mac; chúng tôi đo được 5 hộp thoại trên một Mac chạy macOS 26): nhập mật khẩu rồi chọn <strong>Always Allow</strong>. Đừng chọn Deny: app sẽ không đọc được bản quyền và hạn mức. Nếu lỡ chọn, hãy thoát hẳn app, mở lại và chọn Always Allow.</li>
 <li><strong>1 hộp thoại quyền ghi âm thanh hệ thống</strong> (cũng là kết quả đo của chúng tôi): chọn cho phép.</li>
 </ul>
-<p>Sau đó các lần mở sau không hỏi nữa. Bạn không mất dữ liệu, gói hay hạn mức. Khi cài mới lần đầu, chúng tôi đo được không có hộp thoại Keychain (chỉ có Open Anyway và quyền ghi âm); nếu macOS vẫn hỏi, hãy chọn Always Allow. App báo trước điều này khi mời cập nhật: “Sau khi cập nhật, macOS sẽ hỏi mật khẩu đăng nhập vài lần và quyền ghi âm một lần…”. Việc này sẽ hết khi chúng tôi có Developer ID. Bản .dmg gửi tay trong giai đoạn beta có thể chưa tự cập nhật; khi đó bạn tải file .dmg mới.</p>
+<p>Sau đó các lần mở sau không hỏi nữa. Bạn không mất dữ liệu, gói hay hạn mức. Khi cài mới lần đầu, chúng tôi đo được không có hộp thoại Keychain (chỉ có Open Anyway và quyền ghi âm); nếu macOS vẫn hỏi, hãy chọn Always Allow. App báo trước điều này khi mời cập nhật: “Sau khi cập nhật, macOS sẽ hỏi mật khẩu đăng nhập vài lần và quyền ghi âm một lần…”. Việc này sẽ hết khi chúng tôi có Developer ID. Bạn cũng có thể chạy lại đúng lệnh cài để cập nhật; hộp thoại Keychain vẫn hiện vì cùng lý do.</p>
 
 <h2 id="go-cai-dat">Gỡ cài đặt đúng cách</h2>
 <p>macOS không có bước nào hỏi khi bạn xóa app, nên hãy xóa model và dữ liệu trước khi kéo app vào Thùng rác:</p>
@@ -121,7 +140,11 @@ ${callout({ kind: "warn", title: "Từ macOS 15, mẹo bấm chuột phải › 
 
 <h2 id="loi-thuong-gap">Lỗi thường gặp khi cài</h2>
 <ul>
-<li><strong>Không thấy nút Open Anyway.</strong> Mở app thêm một lần để macOS ghi nhận lần chặn, rồi vào lại Privacy &amp; Security.</li>
+<li><strong>Lệnh cài báo “không đọc được latest.json”.</strong> Máy mất mạng, hoặc đang đặt proxy/VPN chặn <code>releases.aitranslator.io.vn</code>. Kiểm tra mạng rồi chạy lại.</li>
+<li><strong>Lệnh cài báo “SHA-256 của file tải về không khớp”.</strong> File tải bị lỗi hoặc bị can thiệp trên đường truyền. Script không cài gì; chạy lại, nếu vẫn lệch thì báo <a href="/lien-he/">hỗ trợ</a>.</li>
+<li><strong>Lệnh cài báo “vẫn đang chạy”.</strong> Thoát hẳn AI Translator (menu AI Translator trên thanh menu › Thoát) rồi chạy lại lệnh.</li>
+<li><strong>Lệnh cài báo cần Apple Silicon hoặc macOS 14.2.</strong> Máy chưa đạt yêu cầu; không có bản cho Mac Intel.</li>
+<li><strong>Không thấy nút Open Anyway.</strong> (Chỉ gặp khi cài từ file .dmg tải bằng trình duyệt.) Mở app thêm một lần để macOS ghi nhận lần chặn, rồi vào lại Privacy &amp; Security.</li>
 <li><strong>Mac Intel không cài được.</strong> AI Translator chỉ có bản cho Apple Silicon.</li>
 <li><strong>App báo “Máy này có RAM dưới 8 GB, AI Translator chưa hỗ trợ.”</strong> Máy dưới 8 GB RAM không tải được model.</li>
 <li><strong>App báo “Bản cài AI Translator này không chính hãng nên chỉ dùng được Free.”</strong> Bản cài đã bị thay đổi hoặc không đúng nguồn. Tải lại từ nguồn chính thức.</li>

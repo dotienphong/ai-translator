@@ -40,6 +40,15 @@ ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
 /** Bảng thông tin nhanh (dl): dễ cho người đọc và cho trợ lý AI trích dẫn. rows: [[nhãn, HTML]] */
 export const facts = (rows) => `<dl class="facts">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v.replace(/<small>/g, "<br><small>")}</dd></div>`).join("")}</dl>`;
 
+/**
+ * Khối lệnh Terminal một dòng kèm nút Sao chép (nâng cấp bằng site.js; tắt JS thì nút ẩn, vẫn chọn và chép tay được).
+ * cmd là chuỗi thuần (không HTML); copy/copied là nhãn nút trước và sau khi chép.
+ */
+export const cmdBlock = ({ cmd, copy, copied, label }) => `<div class="cmd reveal">
+<pre><code${label ? ` aria-label="${esc(label)}"` : ""}>${esc(cmd)}</code></pre>
+<button class="btn btn-primary cmd-copy" type="button" hidden data-copy="${esc(cmd)}" data-copied="${esc(copied)}" data-label="${esc(copy)}">${icon("code")}<span>${esc(copy)}</span></button>
+</div>`;
+
 /** Chip phím: keys(["⌃","⌥","T"]) */
 export const keys = (list) => `<span class="keys">${list.map((k) => `<kbd>${esc(k)}</kbd>`).join("")}</span>`;
 

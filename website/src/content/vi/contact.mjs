@@ -67,7 +67,7 @@ ${sectionHead({ eyebrow: "Gửi gì, kèm gì", title: "Bạn cần gì? Gửi t
 
 <div class="card reveal" id="beta">
 <h3>Đăng ký nhận bản beta</h3>
-<p>AI Translator chưa có tải công khai. Hãy gửi email theo mẫu ở trang Tải xuống (có mẫu riêng cho macOS và Windows): dòng máy và chip hoặc CPU, phiên bản macOS hoặc Windows, RAM, app họp bạn dùng và ngôn ngữ cần dịch. Khi có bản beta phù hợp với máy bạn, chúng tôi gửi bản cài kèm mã SHA-256 để bạn kiểm tra.</p>
+<p>Bản macOS cài bằng một dòng lệnh ở trang Tải xuống, không cần email. Bản Windows (và file .dmg macOS nếu bạn muốn nhận qua email) chưa có tải công khai: hãy gửi email theo mẫu ở trang Tải xuống (có mẫu riêng cho macOS và Windows): dòng máy và chip hoặc CPU, phiên bản macOS hoặc Windows, RAM, app họp bạn dùng và ngôn ngữ cần dịch. Khi có bản beta phù hợp với máy bạn, chúng tôi gửi bản cài kèm mã SHA-256 để bạn kiểm tra.</p>
 <p><a class="btn btn-secondary btn-sm" href="/tai-xuong/">Mở trang Tải xuống ${icon("arrow-right")}</a></p>
 </div>
 

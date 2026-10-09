@@ -17,7 +17,7 @@ const toc = [
 
 // Plain text for the HowTo structured data; the visible version is in body.
 const HOWTO_STEPS = [
-  { name: "Install the app and open it", text: "On macOS, drag AI Translator into Applications, open it, click Done on the warning dialog, then click Open Anyway in System Settings > Privacy & Security. On Windows, run the .exe; if SmartScreen warns you, click More info, then Run anyway." },
+  { name: "Install the app and open it", text: "On macOS, paste the install command (curl -fsSL https://aitranslator.io.vn/install.sh | bash) into Terminal: the app is downloaded, verified and opened directly, with no Open Anyway. On Windows, run the .exe; if SmartScreen warns you, click More info, then Run anyway." },
   { name: "Choose the interface language", text: "Choose Tiếng Việt or English and click Next. This also sets your default translation language." },
   { name: "Accept the terms", text: "Read the License Agreement (EULA) and the Privacy Policy, tick the box and click Next. One internet connection is needed to start the Free trial." },
   { name: "Choose and download a model", text: "Pick the Standard pack (about 2.5 GB) or the Lite pack (about 1.3 GB) as the app recommends, and wait for the download." },
@@ -67,7 +67,7 @@ ${facts([
   ["macOS", "14.2 or later, Apple Silicon (M1 or later)<small>There is no Intel Mac build yet.</small>"],
   ["Windows", "Windows 10 or 11, 64-bit (x64), CPU with AVX2<small>Windows ARM64 is not supported yet.</small>"],
   ["Memory", "8 GB minimum, 16 GB recommended"],
-  ["Installer", "macOS: a .dmg file of about 9 MB · Windows: an .exe file under 60 MB<small>We email you a download link when you sign up for the beta on the <a href=\"/en/download/\">Download</a> page</small>"],
+  ["Installer", "macOS: a .dmg file of about 9 MB · Windows: an .exe file under 60 MB<small>macOS installs with one command; for Windows we email you a download link; both are on the <a href=\"/en/download/\">Download</a> page</small>"],
   ["Disk space", "1.3 GB (Lite pack) or 2.5 GB (Standard pack)<small>Plus 1 GB free while downloading the model</small>"],
   ["Internet", "Needed to download the model and register the Free trial<small>After that, recognition and translation run offline</small>"],
 ])}
@@ -76,10 +76,11 @@ ${callout({ title: "Using Windows?", text: "The steps below are the same on Wind
 <h2 id="install-and-open">Install and open the app</h2>
 <p><strong>On macOS:</strong></p>
 <ol>
-<li>Open the <code>.dmg</code> file and drag <strong>AI Translator</strong> into the <strong>Applications</strong> folder.</li>
-<li>Open AI Translator. macOS blocks the first launch because the current build is ad-hoc signed and not yet notarized by Apple. Click <strong>Done</strong>.</li>
-<li>Go to <strong>System Settings › Privacy &amp; Security</strong>, scroll to the bottom, click <strong>Open Anyway</strong> next to AI Translator, then confirm with your password or Touch ID.</li>
+<li>Open <strong>Terminal</strong> (press <kbd>⌘</kbd> + <kbd>Space</kbd>, type Terminal, press Enter).</li>
+<li>Paste the install command from the <a href="/en/download/#install-macos">Download</a> page and press Enter: <code>curl -fsSL https://aitranslator.io.vn/install.sh | bash</code>.</li>
+<li>Wait about a minute. The app is downloaded, verified, copied to Applications and opened directly. If macOS asks for system audio recording permission, choose Allow.</li>
 </ol>
+<p>If you already downloaded the <code>.dmg</code> in a browser: drag <strong>AI Translator</strong> into <strong>Applications</strong>, open it (macOS blocks the first launch because the current build is ad-hoc signed and not yet notarized by Apple), click <strong>Done</strong>, then go to <strong>System Settings › Privacy &amp; Security</strong>, scroll to the bottom, click <strong>Open Anyway</strong> and confirm with your password or Touch ID.</p>
 <p><strong>On Windows:</strong></p>
 <ol>
 <li>Double-click the <code>.exe</code> file you downloaded. The installer needs no administrator rights.</li>
@@ -139,7 +140,7 @@ ${overlayShot({ slug: "overlay-default", lang: "en", alt: "Default subtitle bar 
 
 <h2 id="common-problems">Common first-run problems</h2>
 <ul>
-<li><strong>macOS will not open the app.</strong> Do the Open Anyway step above; details in the <a href="/en/guide/install-macos/">installation guide</a>.</li>
+<li><strong>macOS will not open the app.</strong> Run the install command in Terminal (the app opens directly) or do the Open Anyway step above; details in the <a href="/en/guide/install-macos/">installation guide</a>.</li>
 <li><strong>Windows shows “Windows protected your PC”.</strong> Click More info, then Run anyway; details in the <a href="/en/guide/install-windows/">Windows installation guide</a>.</li>
 <li><strong>No subtitles, and the main screen says “Nothing is heard although an app is playing sound…” (macOS).</strong> macOS has not allowed system audio recording; see the <a href="/en/guide/macos-audio-permission/">permission guide</a>.</li>
 <li><strong>The sample sentence shows no subtitle.</strong> Check that your speakers are not muted and try again.</li>

@@ -37,6 +37,20 @@
   document.querySelectorAll(".mobile-nav a").forEach((a) => a.addEventListener("click", () => { const m = a.closest(".mnav"); if (m) m.open = false; }));
   matchMedia("(min-width: 980px)").addEventListener?.("change", (e) => { if (e.matches) document.querySelector(".mnav")?.removeAttribute("open"); });
 
+  // Nút Sao chép của khối lệnh: chỉ hiện khi có JS và trình duyệt cho ghi clipboard
+  document.querySelectorAll(".cmd-copy").forEach((btn) => {
+    if (!navigator.clipboard?.writeText) return;
+    btn.hidden = false;
+    const label = btn.querySelector("span");
+    let timer = 0;
+    btn.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(btn.dataset.copy); } catch { return; }
+      label.textContent = btn.dataset.copied;
+      clearTimeout(timer);
+      timer = setTimeout(() => { label.textContent = btn.dataset.label; }, 2500);
+    });
+  });
+
   // Hiện dần khi cuộn tới
   const items = document.querySelectorAll(".reveal");
   if (!("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches) {

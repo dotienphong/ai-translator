@@ -17,7 +17,7 @@ const toc = [
 
 // Văn bản thuần cho dữ liệu có cấu trúc HowTo; phần hiển thị nằm trong body.
 const HOWTO_STEPS = [
-  { name: "Cài app và mở lần đầu", text: "Trên macOS, kéo AI Translator vào Applications, mở app, bấm Done ở hộp thoại cảnh báo rồi bấm Open Anyway trong System Settings > Privacy & Security. Trên Windows, chạy file .exe; nếu SmartScreen cảnh báo, bấm More info rồi Run anyway." },
+  { name: "Cài app và mở lần đầu", text: "Trên macOS, dán dòng lệnh cài (curl -fsSL https://aitranslator.io.vn/install.sh | bash) vào Terminal: app được tải, kiểm tra và mở thẳng, không cần Open Anyway. Trên Windows, chạy file .exe; nếu SmartScreen cảnh báo, bấm More info rồi Run anyway." },
   { name: "Chọn ngôn ngữ giao diện", text: "Chọn Tiếng Việt hoặc English rồi bấm Tiếp. Lựa chọn này cũng đặt ngôn ngữ đích mặc định." },
   { name: "Đồng ý điều khoản", text: "Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, tick ô đồng ý rồi bấm Tiếp. Cần mạng một lần để bắt đầu dùng thử Free." },
   { name: "Chọn và tải model", text: "Chọn gói model Chuẩn (khoảng 2,5 GB) hoặc gói model Nhẹ (khoảng 1,3 GB) theo đề xuất của app và chờ tải xong." },
@@ -67,7 +67,7 @@ ${facts([
   ["macOS", "14.2 trở lên, Apple Silicon (M1 trở lên)<small>Chưa có bản cho Mac Intel.</small>"],
   ["Windows", "Windows 10 hoặc 11, 64-bit (x64), CPU có AVX2<small>Chưa hỗ trợ Windows ARM64.</small>"],
   ["RAM", "Tối thiểu 8 GB, khuyến nghị 16 GB"],
-  ["Bản cài", "macOS: file .dmg khoảng 9 MB · Windows: file .exe dưới 60 MB<small>Chúng tôi gửi liên kết tải qua email khi bạn đăng ký beta ở trang <a href=\"/tai-xuong/\">Tải xuống</a></small>"],
+  ["Bản cài", "macOS: file .dmg khoảng 9 MB · Windows: file .exe dưới 60 MB<small>macOS cài bằng một dòng lệnh; Windows nhận liên kết tải qua email, cả hai ở trang <a href=\"/tai-xuong/\">Tải xuống</a></small>"],
   ["Ổ đĩa", "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)<small>Cộng thêm 1 GB trống khi tải model</small>"],
   ["Mạng", "Cần để tải model và đăng ký dùng thử Free<small>Sau đó nhận dạng và dịch chạy offline</small>"],
 ])}
@@ -76,10 +76,11 @@ ${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống n
 <h2 id="cai-va-mo">Cài app và mở lần đầu</h2>
 <p><strong>Trên macOS:</strong></p>
 <ol>
-<li>Mở file <code>.dmg</code> và kéo <strong>AI Translator</strong> vào thư mục <strong>Applications</strong>.</li>
-<li>Mở AI Translator. macOS chặn lần mở đầu vì bản hiện tại ký ad-hoc và chưa được Apple notarize. Bấm <strong>Done</strong>.</li>
-<li>Vào <strong>System Settings › Privacy &amp; Security</strong>, kéo xuống cuối, bấm <strong>Open Anyway</strong> cạnh tên AI Translator, rồi xác nhận bằng mật khẩu hoặc Touch ID.</li>
+<li>Mở <strong>Terminal</strong> (nhấn <kbd>⌘</kbd> + <kbd>Space</kbd>, gõ Terminal, nhấn Enter).</li>
+<li>Dán lệnh cài ở trang <a href="/tai-xuong/#cai-macos">Tải xuống</a> rồi nhấn Enter: <code>curl -fsSL https://aitranslator.io.vn/install.sh | bash</code>.</li>
+<li>Chờ khoảng một phút. App được tải, kiểm tra, chép vào Applications và mở thẳng. Nếu macOS hỏi quyền ghi âm thanh hệ thống, chọn cho phép.</li>
 </ol>
+<p>Nếu bạn đã tải file <code>.dmg</code> bằng trình duyệt: kéo <strong>AI Translator</strong> vào <strong>Applications</strong>, mở app (macOS sẽ chặn lần đầu vì bản hiện tại ký ad-hoc và chưa được Apple notarize), bấm <strong>Done</strong>, rồi vào <strong>System Settings › Privacy &amp; Security</strong>, kéo xuống cuối, bấm <strong>Open Anyway</strong> và xác nhận bằng mật khẩu hoặc Touch ID.</p>
 <p><strong>Trên Windows:</strong></p>
 <ol>
 <li>Nhấp đúp file <code>.exe</code> vừa tải. Bộ cài không cần quyền quản trị.</li>
@@ -139,7 +140,7 @@ ${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề m�
 
 <h2 id="loi-thuong-gap">Lỗi thường gặp ở lần đầu</h2>
 <ul>
-<li><strong>macOS không cho mở app.</strong> Làm bước Open Anyway ở trên; chi tiết trong <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt</a>.</li>
+<li><strong>macOS không cho mở app.</strong> Chạy lệnh cài trong Terminal (app mở thẳng) hoặc làm bước Open Anyway ở trên; chi tiết trong <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt</a>.</li>
 <li><strong>Windows hiện màn hình “Windows protected your PC”.</strong> Bấm More info rồi Run anyway; chi tiết trong <a href="/huong-dan/cai-dat-windows/">hướng dẫn cài đặt trên Windows</a>.</li>
 <li><strong>Không có phụ đề, màn hình chính báo “Không nghe thấy gì dù có app đang phát tiếng…” (macOS).</strong> macOS chưa cho app ghi âm thanh hệ thống; xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền</a>.</li>
 <li><strong>Nghe thử không thấy phụ đề.</strong> Kiểm tra loa không bị tắt tiếng rồi bấm lại.</li>

@@ -34,7 +34,7 @@ ${callout({ title: "These guides cover both macOS and Windows.", text: "Most ste
 ${sectionHead({ eyebrow: "Get started", title: "From installer to your first subtitles" })}
 <div class="grid grid-2">
 ${linkCard({ href: "/en/guide/quick-start/", icon: "play", title: "Quick start", text: "Seven one-time setup steps, then translate your first meeting, with screenshots of the app’s setup screens.", more: MORE })}
-${linkCard({ href: "/en/guide/install-macos/", icon: "download", title: "Install on macOS", text: "Requirements, drag to Applications, click Open Anyway on first launch, verify the SHA-256 and uninstall.", more: MORE })}
+${linkCard({ href: "/en/guide/install-macos/", icon: "download", title: "Install on macOS", text: "Install with one command, or from the .dmg (drag to Applications, Open Anyway), verify the SHA-256 and uninstall.", more: MORE })}
 ${linkCard({ href: "/en/guide/install-windows/", icon: "download", title: "Install on Windows", text: "Requirements, verify the SHA-256, get past SmartScreen with Run anyway, first launch and uninstall.", more: MORE })}
 ${linkCard({ href: "/en/guide/macos-audio-permission/", icon: "mic", title: "Audio permission (macOS)", text: "Answer the System Audio Recording prompt, turn it back on in System Settings and choose the audio source.", more: MORE })}
 </div>

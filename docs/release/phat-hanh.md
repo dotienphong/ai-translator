@@ -365,7 +365,8 @@ Chưa có Developer ID thì để biến `APPLE_TEAM_ID` của repo **rỗng** v
 "Bản macOS ký ad-hoc, chưa notarize" vào tóm tắt của lần chạy.
 
 - App ở chế độ này chỉ kiểm chữ ký còn nguyên vẹn và bundle id; gói trả phí chạy được. Lỗi `NotGenuine` thì xem log của app.
-- Gatekeeper chặn lần mở đầu. Hướng dẫn cho khách: kéo app vào Applications, mở một lần (sẽ bị chặn), rồi vào System Settings ›
+- **Cách cài khuyến nghị cho khách: một dòng lệnh** `curl -fsSL https://aitranslator.io.vn/install.sh | bash` (spec `2026-10-09-macos-curl-install-design.md`, script `website/src/public/install.sh`). File tải bằng `curl` không mang cờ quarantine nên app mở thẳng, không cần Open Anyway. Script đọc `<kênh>/latest.json` rồi tải `<version>/AI Translator_<version>_aarch64.dmg` và `<version>/SHA256SUMS-macos.txt` từ R2, nên **một bản phát hành phải đăng đủ ba thứ đó** (job `publish` đã làm vậy) và không được đổi tên file; `website/test/install-script.test.mjs` khóa hợp đồng này. Sau mỗi lần đăng bản mới, kiểm: `curl -fsSL https://aitranslator.io.vn/install.sh | AI_TRANSLATOR_NO_OPEN=1 bash` trên một Mac sạch (hay chạy với `AI_TRANSLATOR_INSTALL_DIR=/tmp/x`). Có Developer ID + notarize thì lệnh vẫn chạy, nhưng có thể thêm nút tải .dmg trực tiếp.
+- File .dmg tải bằng trình duyệt (hay gửi qua email) vẫn bị Gatekeeper chặn lần mở đầu. Hướng dẫn cho khách: kéo app vào Applications, mở một lần (sẽ bị chặn), rồi vào System Settings ›
   Privacy & Security, cuối trang, bấm "Open Anyway" cạnh tên app. Từ macOS 15, bấm chuột phải › Open không còn dùng được.
 - **Mỗi bản cập nhật (ký ad-hoc) khiến macOS hỏi lại một lần**: 5 hộp thoại "AI Translator muốn dùng thông tin trong Keychain" (mật khẩu đăng nhập
   Mac) và 1 hộp thoại quyền thu âm thanh hệ thống. Hướng dẫn cho khách (đưa vào ghi chú phát hành): nhập mật khẩu đăng nhập

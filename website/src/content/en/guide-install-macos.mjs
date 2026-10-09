@@ -1,4 +1,4 @@
-import { pageHero, callout, facts, docLayout, docNav } from "../../build/components.mjs";
+import { pageHero, callout, facts, docLayout, docNav, cmdBlock } from "../../build/components.mjs";
 import { howTo } from "../../build/schema.mjs";
 
 const crumbs = [
@@ -9,20 +9,22 @@ const crumbs = [
 
 const toc = [
   { level: 2, id: "requirements", text: "Will it run on your Mac?" },
-  { level: 2, id: "verify-the-file", text: "Verify the installer (SHA-256)" },
-  { level: 2, id: "drag-to-applications", text: "Drag AI Translator to Applications" },
-  { level: 2, id: "first-launch", text: "First launch: why macOS blocks it" },
+  { level: 2, id: "install-command", text: "Quick way: install with one command" },
+  { level: 2, id: "install-dmg", text: "Alternative: install from the .dmg file" },
+  { level: 3, id: "verify-the-file", text: "Verify the installer (SHA-256)" },
+  { level: 3, id: "drag-to-applications", text: "Drag AI Translator to Applications" },
+  { level: 3, id: "first-launch", text: "First launch: why macOS blocks it" },
   { level: 2, id: "updates", text: "Every update" },
   { level: 2, id: "uninstall", text: "Uninstall properly" },
   { level: 2, id: "common-problems", text: "Common installation problems" },
 ];
 
+const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
+
 const HOWTO_STEPS = [
-  { name: "Check the SHA-256 of the .dmg file", text: "Run shasum -a 256 on the .dmg in Terminal and compare it with the SHA-256 we sent with the installer." },
-  { name: "Drag the app to Applications", text: "Open the .dmg and drag AI Translator into the Applications folder." },
-  { name: "Open the app and click Done", text: "Open AI Translator. When macOS says it cannot verify the developer, click Done." },
-  { name: "Click Open Anyway", text: "Go to System Settings > Privacy & Security, scroll to the bottom and click Open Anyway next to AI Translator." },
-  { name: "Confirm", text: "Confirm with your login password or Touch ID so the app opens." },
+  { name: "Open Terminal", text: "Press Command + Space, type Terminal and press Enter." },
+  { name: "Paste the install command and press Enter", text: "Paste curl -fsSL https://aitranslator.io.vn/install.sh | bash into Terminal and press Enter. No password is needed." },
+  { name: "Wait for the app to open", text: "The command downloads the latest version, checks its SHA-256, copies AI Translator to Applications and opens it. When macOS asks for system audio recording permission, choose Allow." },
 ];
 
 export default {
@@ -31,18 +33,18 @@ export default {
   path: "/en/guide/install-macos/",
   title: "Install AI Translator on macOS",
   description:
-    "How to install AI Translator on macOS: system requirements, drag to Applications, open it the first time with Open Anyway, verify SHA-256, updates and uninstalling.",
+    "Install AI Translator on macOS with one Terminal command and open it right away, no Open Anyway; or from the .dmg, with SHA-256 check, updates and uninstalling.",
   type: "article",
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-08",
-  llm: "Installing AI Translator on macOS: requirements, SHA-256 check, drag to Applications, Open Anyway because the build is ad-hoc signed and not notarized, Keychain prompts on updates, and uninstalling.",
+  modified: "2026-10-09",
+  llm: "Installing AI Translator on macOS with one Terminal command (curl ... install.sh | bash), which opens the app directly with no Open Anyway. Alternative: install from the .dmg (SHA-256 check, drag to Applications, Open Anyway because the build is ad-hoc signed and not notarized), Keychain prompts on updates, and uninstalling.",
   llmTitle: "Install AI Translator on macOS",
   schema: [
     howTo({
-      name: "Install and first-launch AI Translator on macOS",
-      description: "Verify the installer, drag AI Translator into Applications and allow the app to open with Open Anyway.",
+      name: "Install and open AI Translator on macOS with one command",
+      description: "Paste one command into Terminal to download, verify and install AI Translator; the app then opens directly, with no Open Anyway step.",
       steps: HOWTO_STEPS,
     }),
   ],
@@ -50,8 +52,8 @@ export default {
 ${pageHero({
   crumbs,
   title: "Install AI Translator on macOS",
-  lead: "To install AI Translator on macOS, open the .dmg file, drag the app into your Applications folder, then open it for the first time by allowing it in System Settings › Privacy & Security (the Open Anyway button). That extra step is needed because the current build is ad-hoc signed and has not been notarized by Apple.",
-  meta: "<span>For macOS 14.2 or later, Apple Silicon</span> <span>Updated October 8, 2026</span>",
+  lead: "The fastest way to install AI Translator on macOS is to paste one command into Terminal: the app is downloaded, verified and opened right away, with no trip to System Settings to click Open Anyway. If you already have a .dmg downloaded in a browser you can still install it by dragging it to Applications, but macOS will block the first launch because the current build is ad-hoc signed and has not been notarized by Apple.",
+  meta: "<span>For macOS 14.2 or later, Apple Silicon</span> <span>Updated October 9, 2026</span>",
 })}
 
 <section class="section-tight"><div class="container">
@@ -70,9 +72,26 @@ ${facts([
 ])}
 <p class="small muted">We have not measured performance on a base-model M1 Mac, so we cannot promise latency there. On an 8 GB Mac, the Lite pack is the sensible choice.</p>
 
-<h2 id="verify-the-file">Verify the installer (SHA-256)</h2>
+<h2 id="install-command">Quick way: install with one command</h2>
+<ol>
+<li>Open <strong>Terminal</strong>: press <kbd>⌘</kbd> + <kbd>Space</kbd>, type <strong>Terminal</strong>, press Enter.</li>
+<li>Paste the command below and press Enter. No password is needed.</li>
+</ol>
+${cmdBlock({ cmd: INSTALL_CMD, copy: "Copy command", copied: "Copied", label: "Command that installs AI Translator on macOS" })}
+<ol start="3">
+<li>Wait about a minute. The command downloads the latest AI Translator, compares its SHA-256, checks the app's signature, copies the app to <code>/Applications</code> (or <code>~/Applications</code> if that is not writable) and opens it.</li>
+<li>When macOS asks for <strong>system audio recording</strong> permission, choose Allow. Then continue with the <a href="/en/guide/quick-start/">quick start guide</a>.</li>
+</ol>
+<p><strong>Why is there no Open Anyway step?</strong> macOS only blocks an app whose file carries the “downloaded from the internet” tag (which browsers add). A file downloaded by <code>curl</code> in Terminal has no such tag, so the app opens directly even though Apple has not notarized it.</p>
+${callout({ kind: "warn", title: "Understand what this command does.", text: "The command downloads a script from <strong>aitranslator.io.vn</strong>; the script downloads the installer from <strong>releases.aitranslator.io.vn</strong>, compares its SHA-256 and installs it. It does not use sudo and sends no data. The SHA-256 is served from the same place as the file, so it mainly protects against a corrupted download; you are still trusting <strong>aitranslator.io.vn</strong>. To read the script first: <code>curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>. Run the same command again at any time to update to the latest version; the script quits the running app itself." })}
+<p>Something went wrong? The script stops and says why (Mac not supported, no network, SHA-256 mismatch…). See <a href="#common-problems">common installation problems</a>.</p>
+
+<h2 id="install-dmg">Alternative: install from the .dmg file</h2>
+<p>Use this if you received the .dmg by email or prefer not to use Terminal. A file downloaded in a browser gets the “downloaded from the internet” tag from macOS, so the first launch needs the extra Open Anyway step.</p>
+
+<h3 id="verify-the-file">Verify the installer (SHA-256)</h3>
 ${callout({ kind: "warn", title: "Only download the installer from an official source.", text: "The genuine .dmg is the one we send from <strong>support@aitranslator.io.vn</strong> or link to on <strong>aitranslator.io.vn</strong>. A file from anywhere else could be fake or tampered with. Do not open it, even if it is named AI Translator." })}
-<p>Every installer comes with a SHA-256 checksum that we send you. Compare it before installing:</p>
+<p>Every installer we send by email comes with a SHA-256 checksum. Compare it before installing:</p>
 <ol>
 <li>Open <strong>Terminal</strong> (Applications › Utilities).</li>
 <li>Type <code>shasum -a 256</code> followed by a space, drag the .dmg file from Finder into the Terminal window to fill in its path (spaces in the file name included), then press Enter. Or type the command below; if the file name contains spaces, keep it in double quotes as in the example.</li>
@@ -83,13 +102,13 @@ ${callout({ kind: "warn", title: "Only download the installer from an official s
 <li>If they differ, do not open the file. Download it again; if it still differs, <a href="/en/contact/">contact support</a>.</li>
 </ol>
 
-<h2 id="drag-to-applications">Drag AI Translator to Applications</h2>
+<h3 id="drag-to-applications">Drag AI Translator to Applications</h3>
 <ol>
 <li>Double-click the <code>.dmg</code> file to open it.</li>
 <li>Drag <strong>AI Translator</strong> into the <strong>Applications</strong> folder in the window that appears.</li>
 </ol>
 
-<h2 id="first-launch">First launch: why macOS blocks it and how to allow it</h2>
+<h3 id="first-launch">First launch: why macOS blocks it and how to allow it</h3>
 <p>macOS uses Gatekeeper to check apps downloaded from the internet. The current AI Translator build is ad-hoc signed and not yet notarized by Apple, because we do not have an Apple Developer ID yet. So macOS blocks the first launch and says it cannot verify the developer. If the file came from us and the SHA-256 matches, this is the normal path for this build.</p>
 <ol>
 <li>Open AI Translator from Applications. When macOS says it cannot verify the developer, click <strong>Done</strong> (the button that closes the dialog; its label may differ slightly between macOS versions).</li>
@@ -99,7 +118,7 @@ ${callout({ kind: "warn", title: "Only download the installer from an official s
 <li>The app opens and shows the first-time setup. Continue with the <a href="/en/guide/quick-start/">quick start guide</a>.</li>
 </ol>
 ${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick no longer works.", text: "Go through Privacy &amp; Security as above. The Open Anyway button usually appears only after macOS has blocked an attempt to open the app; if you do not see it, open the app once more and come back." })}
-<p>This step applies to a downloaded .dmg: you need it the first time you open any build. If you install a newly downloaded .dmg, macOS may block it again. Once we have a Developer ID and notarize the app, this step will go away.</p>
+<p>This step applies only to a .dmg downloaded in a browser; installing with the <a href="#install-command">one-line command</a> does not need it. Once we have a Developer ID and notarize the app, this step will go away for every way of installing.</p>
 
 <h2 id="updates">Every update, macOS asks a few things again</h2>
 <p>This is a consequence of ad-hoc signing. After each update to a new build you will usually see, once:</p>
@@ -107,7 +126,7 @@ ${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick 
 <li><strong>About 5 Keychain dialogs</strong> asking for your Mac login password (we measured 5 on one Mac running macOS 26): enter it and choose <strong>Always Allow</strong>. Do not choose Deny: the app will not be able to read your license and quota. If you chose it by mistake, quit the app completely, reopen it and choose Always Allow.</li>
 <li><strong>1 system audio recording permission dialog</strong> (also what we measured): allow it.</li>
 </ul>
-<p>After that, later launches do not ask again. You do not lose data, your plan or your quota. On a fresh install we measured no Keychain dialogs (only Open Anyway and the recording permission); if macOS asks anyway, choose Always Allow. The app warns you in the update prompt: “After updating, macOS will ask for your login password a few times and for audio-recording permission once…”. This goes away once we have a Developer ID. A .dmg we send by hand during the beta may not update itself; in that case you download the new .dmg.</p>
+<p>After that, later launches do not ask again. You do not lose data, your plan or your quota. On a fresh install we measured no Keychain dialogs (only Open Anyway and the recording permission); if macOS asks anyway, choose Always Allow. The app warns you in the update prompt: “After updating, macOS will ask for your login password a few times and for audio-recording permission once…”. This goes away once we have a Developer ID. You can also run the same install command to update; the Keychain dialogs appear for the same reason.</p>
 
 <h2 id="uninstall">Uninstall properly</h2>
 <p>macOS gives the app no chance to clean up when you delete it, so remove the models and data first, then trash the app:</p>
@@ -121,7 +140,11 @@ ${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick 
 
 <h2 id="common-problems">Common installation problems</h2>
 <ul>
-<li><strong>No Open Anyway button.</strong> Open the app once more so macOS records the block, then return to Privacy &amp; Security.</li>
+<li><strong>The install command says it could not read latest.json.</strong> Your Mac has no network, or a proxy/VPN is blocking <code>releases.aitranslator.io.vn</code>. Check your connection and run it again.</li>
+<li><strong>The install command says the SHA-256 does not match.</strong> The download was corrupted or tampered with on the way. The script installs nothing; run it again, and if it still differs write to <a href="/en/contact/">support</a>.</li>
+<li><strong>The install command says the app is still running.</strong> Quit AI Translator completely (AI Translator menu in the menu bar › Quit) and run the command again.</li>
+<li><strong>The install command says it needs Apple Silicon or macOS 14.2.</strong> Your Mac does not meet the requirements; there is no build for Intel Macs.</li>
+<li><strong>No Open Anyway button.</strong> (Only when installing from a .dmg downloaded in a browser.) Open the app once more so macOS records the block, then return to Privacy &amp; Security.</li>
 <li><strong>It will not install on an Intel Mac.</strong> AI Translator is built for Apple Silicon only.</li>
 <li><strong>The app says “This computer has less than 8 GB of RAM, which AI Translator does not support yet.”</strong> Macs under 8 GB cannot download a model.</li>
 <li><strong>The app says “This copy of AI Translator is not genuine, so only Free works.”</strong> The installation was altered or came from the wrong source. Download it again from an official source.</li>

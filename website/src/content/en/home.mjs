@@ -28,7 +28,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Where can I download it right now?",
-    a: `<p>AI Translator is in beta, so there is no public download button yet. Request the macOS or Windows beta on the <a href="/en/download/">Download page</a> and we will email you the installer and setup instructions.</p>`,
+    a: `<p>AI Translator is in beta. On macOS you install with one command pasted into Terminal; it is on the <a href="/en/download/">Download page</a>, and the app opens directly with no Open Anyway. The Windows build is requested by email on the same page.</p>`,
   },
 ];
 
@@ -83,7 +83,7 @@ ${demo({
 
 <section class="section-tight"><div class="container narrow">
 <h2 class="sr-only">What is AI Translator?</h2>
-<p class="lead reveal"><strong>AI Translator</strong> is a desktop app that shows live translated subtitles for the audio playing on your computer. It recognizes the speech, translates it and displays the result on a floating subtitle bar, entirely on your own machine, with no bot joining your meeting and no account to create. A beta for macOS (Apple Silicon) and Windows 10/11 is available on request by email.</p>
+<p class="lead reveal"><strong>AI Translator</strong> is a desktop app that shows live translated subtitles for the audio playing on your computer. It recognizes the speech, translates it and displays the result on a floating subtitle bar, entirely on your own machine, with no bot joining your meeting and no account to create. The macOS beta (Apple Silicon) installs with one command; the Windows 10/11 beta is available on request by email.</p>
 <div class="reveal">${facts([
   ["Product type", "Desktop app for live translated subtitles"],
   ["Platforms", "macOS 14.2 or later (Apple Silicon) and Windows 10/11 x64<small>Both are in beta</small>"],
@@ -193,7 +193,7 @@ ${plansGrid("en", { ctaLabel: "Get the beta", freeLabel: "Sign up for the free t
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${callout({ kind: "warn", title: "Honest about the beta", text: "AI Translator is in beta. The macOS build is currently signed ad-hoc and not notarized, so macOS blocks the app the first time you open it and you need to allow it in System Settings (we have a <a href=\"/en/guide/install-macos/\">step-by-step installation guide</a>). The Windows build is not code-signed yet, so Windows SmartScreen may warn you when you open the installer (see the <a href=\"/en/guide/install-windows/\">Windows installation guide</a>), and we have not measured latency on Windows yet. We say this up front so you do not have to guess." })}
+${callout({ kind: "warn", title: "Honest about the beta", text: "AI Translator is in beta. The macOS build is currently signed ad-hoc and not notarized: installed with the Terminal command it opens directly, but a .dmg downloaded in a browser is blocked by macOS on first launch and you need to allow it in System Settings (we have a <a href=\"/en/guide/install-macos/\">step-by-step installation guide</a>). The Windows build is not code-signed yet, so Windows SmartScreen may warn you when you open the installer (see the <a href=\"/en/guide/install-windows/\">Windows installation guide</a>), and we have not measured latency on Windows yet. We say this up front so you do not have to guess." })}
 </div></section>
 
 <section class="section"><div class="container narrow">
@@ -202,6 +202,6 @@ ${faq(HOME_FAQ, { open: true })}
 <p class="more-link"><a href="/en/faq/">See all questions ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "Ready to understand every meeting?", text: "Get the macOS or Windows beta and try it free for 10 days. No card needed.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
+${ctaBand({ title: "Ready to understand every meeting?", text: "Install the macOS beta with one command (or request the Windows beta by email) and try it free for 10 days. No card needed.", primary: { href: "/en/download/", label: "Get the beta" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
 `,
 };
