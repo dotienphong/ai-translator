@@ -52,6 +52,12 @@ test("script không có BOM (BOM làm iex lỗi)", () => {
   assert.notDeepEqual([...raw.subarray(0, 3)], [0xef, 0xbb, 0xbf], "script không được có BOM UTF-8");
 });
 
+test("hồi quy lỗi của khách (2026-10-09): InstallLocation trong registry có nháy kép, không được đưa thẳng vào Join-Path", () => {
+  assert.ok(script.includes("Get-InstallDirCandidates $registryDir"), "đường dẫn từ registry phải đi qua Get-InstallDirCandidates (bỏ nháy kép)");
+  assert.ok(!/Join-Path\s+\$(installDir|registryDir)\b/.test(script), "không Join-Path với giá trị registry chưa làm sạch");
+  assert.ok(script.includes("Test-Path -LiteralPath $try"), "phải kiểm file chạy có thật trước khi mở");
+});
+
 test("PowerShell phân tích cú pháp được; các hàm thuần đạt", { skip }, () => {
   const r = spawnSync(pwsh, ["-NoProfile", "-File", HELPERS, "-Script", SCRIPT], { encoding: "utf8" });
   assert.equal(r.status, 0, r.stdout + r.stderr);

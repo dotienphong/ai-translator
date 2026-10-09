@@ -54,6 +54,17 @@ function Install-AiTranslator {
     function Get-InstallerUrl([string]$Base, [string]$Version, [string]$Name) {
         return ('{0}/{1}/{2}' -f $Base, $Version, ($Name -replace ' ', '%20'))
     }
+    # Bộ cài NSIS của Tauri ghi InstallLocation vào registry KÈM dấu nháy kép ("C:\Users\...\AI Translator"). Bỏ nháy và khoảng
+    # trắng, rồi trả danh sách thư mục ứng viên theo thứ tự thử: giá trị registry (nếu hợp lệ), rồi thư mục mặc định.
+    function Get-InstallDirCandidates([string]$Registry, [string]$LocalAppData, [string]$ProductName) {
+        $list = @()
+        if ($Registry) {
+            $clean = $Registry.Trim().Trim('"').Trim()
+            if ($clean) { $list += $clean }
+        }
+        if ($LocalAppData) { $list += ($LocalAppData.TrimEnd('\', '/') + '\' + $ProductName) } # nối chuỗi, không Join-Path: tránh PowerShell tìm "ổ đĩa" trong chuỗi lạ
+        return $list
+    }
     function Select-Language([string]$Forced, [string]$UiCulture, [string]$Region) {
         if ($Forced -eq 'vi' -or $Forced -eq 'en') { return $Forced }
         if ($UiCulture -like 'vi*' -or $Region -eq 'VN') { return 'vi' }
@@ -150,11 +161,15 @@ function Install-AiTranslator {
         $proc = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
         if ($proc.ExitCode -ne 0) { Fail "bộ cài báo lỗi (mã $($proc.ExitCode))." "the installer failed (exit code $($proc.ExitCode))." }
 
+        $registryDir = $null
+        try { $registryDir = (Get-ItemProperty -LiteralPath "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$Product" -Name InstallLocation).InstallLocation } catch { }
         $installDir = $null
-        try { $installDir = (Get-ItemProperty -LiteralPath "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$Product" -Name InstallLocation).InstallLocation } catch { }
-        if (-not $installDir) { $installDir = Join-Path $env:LOCALAPPDATA $Product }
-        $exe = Join-Path $installDir $MainExe
-        if (-not (Test-Path -LiteralPath $exe)) { Fail "bộ cài chạy xong nhưng không thấy $exe." "the installer finished but $exe was not found." }
+        $exe = $null
+        foreach ($candidate in (Get-InstallDirCandidates $registryDir $env:LOCALAPPDATA $Product)) {
+            $try = $candidate.TrimEnd('\', '/') + '\' + $MainExe
+            if (Test-Path -LiteralPath $try) { $installDir = $candidate; $exe = $try; break }
+        }
+        if (-not $exe) { Fail "bộ cài chạy xong nhưng không thấy $MainExe (đã tìm ở $registryDir và %LOCALAPPDATA%\$Product)." "the installer finished but $MainExe was not found (looked in $registryDir and %LOCALAPPDATA%\$Product)." }
         Say "Đã cài $Product $version tại $installDir." "Installed $Product $version at $installDir."
 
         # --- 5. Mở app ---
