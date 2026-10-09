@@ -45,5 +45,13 @@ Nếu chấp nhận rủi ro điều khoản: A (một cấu hình, không sửa
 - **Ghi:** ghi vào `vault` (đọc-sửa-ghi nguyên khối) dưới một khóa chung cho cả tiến trình, vì `db.rs` và `license/app.rs` mỗi nơi một `Keystore::os`. Mục chung hỏng (JSON sai) là lỗi, không bị ghi đè.
 - **Kỳ vọng:** cập nhật từ bản cũ lên bản gộp: tới 5 hộp thoại Keychain (đọc 5 mục riêng) + 1 quyền thu âm, một lần. Từ đó mỗi lần cập nhật: **1 hộp thoại Keychain + 1 quyền thu âm**. Windows không đổi.
 - **Test:** 12 test mới (`aggregated_*`: vòng đọc ghi xóa, chỉ một mục, di trú, không sống lại, ghi đè mục cũ, tách service, lỗi nền tảng không làm mất dữ liệu, mục hỏng không bị ghi đè, 8 luồng ghi cùng lúc không mất dữ liệu); 2 test chạy tay trên Keychain thật (`os_keystore_roundtrip`, `os_keystore_one_item`: ghi 5 giá trị, `security find-generic-password` chỉ thấy `vault`). 493 test Rust, clippy sạch.
-- **Chưa đo trên chuỗi cập nhật thật** (cần hai bản phát hành liên tiếp có chữ ký khác nhau): làm khi phát hành bản có thay đổi này rồi bản kế tiếp, đếm hộp thoại. Chỉ sau số đo đó mới sửa website (các trang đang ghi "5 hộp thoại").
+- **Đã đo trên máy thật (2026-10-09, MacBook Pro M4 Pro, macOS 26.6.2, do chủ dự án đếm):**
+
+  | Lần đo | Keychain | Quyền ghi âm |
+  |---|---|---|
+  | cập nhật 0.1.0 → 0.1.1 trong app (di trú 5 mục cũ) | **5** | 1 |
+  | ký lại app (đổi cdhash, giả bản mới) lần 1 | **1** | không ghi nhận |
+  | ký lại lần 2 | **1** | không ghi nhận |
+
+  Khớp kỳ vọng: 5 → 1 hộp thoại Keychain. Quyền ghi âm ở hai lần ký lại: chủ dự án chỉ báo "còn 1 hộp thoại Keychain", chưa nói rõ có hộp thoại ghi âm hay không; website ghi "có thể hỏi lại". Lưu ý: ký lại bằng `codesign` giả lập việc đổi chữ ký, chưa phải một bản phát hành thứ hai thật. Website đã sửa theo số đo (nhưng chưa deploy).
 - Lời mời cập nhật trong app đổi từ "vài lần" sang "một lần" (`notice.updateReprompt`, vi/en).

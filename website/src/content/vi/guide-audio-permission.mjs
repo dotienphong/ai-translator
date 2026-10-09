@@ -90,7 +90,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi â
 <p>Khi bị từ chối, macOS vẫn cho app tạo nguồn thu âm và vẫn báo nguồn đang chạy bình thường, nhưng dữ liệu nhận về toàn là im lặng. Vì không có lỗi nào để báo, AI Translator chỉ phát hiện được thiếu quyền bằng cách chờ im lặng kéo dài khi có app đang phát tiếng. Do đó dòng cảnh báo hiện sau một lúc chứ không hiện ngay.</p>
 
 <h2 id="sau-cap-nhat">Sau mỗi lần cập nhật, macOS có thể hỏi lại</h2>
-<p>Bản macOS hiện được ký ad-hoc, nên sau mỗi lần cập nhật macOS thường hỏi lại 1 hộp thoại quyền ghi âm (cùng khoảng 5 hộp thoại Keychain). Chọn cho phép; bạn không mất dữ liệu, gói hay hạn mức. Chi tiết trong <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a>.</p>
+<p>Bản macOS hiện được ký ad-hoc, nên sau mỗi lần cập nhật macOS có thể hỏi lại quyền ghi âm này một lần (cùng 1 hộp thoại Keychain). Chọn cho phép; bạn không mất dữ liệu, gói hay hạn mức. Chi tiết trong <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a>.</p>
 
 <h2 id="nguon-am-thanh">Chọn nguồn âm thanh: toàn hệ thống hay một app</h2>
 <p>Quyền ghi âm áp dụng cho cả hai chế độ. Chọn chế độ ở <strong>Cài đặt › Âm thanh › Nguồn âm thanh</strong>:</p>

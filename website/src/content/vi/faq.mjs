@@ -184,7 +184,7 @@ const GROUPS = [
       },
       {
         q: "App có tự cập nhật không?",
-        a: `<p>Có, qua kênh Ổn định hoặc Beta (Cài đặt › Chung › Kênh cập nhật). App kiểm tra khi khởi động và mỗi 24 giờ, kiểm chữ ký trước khi ghi file rồi mời bạn khởi động lại khi app rảnh. Bản Windows cũng có hai kênh này; bạn có thể chạy lại lệnh cài để cập nhật. Trên macOS bản ký ad-hoc, mỗi lần cập nhật macOS hỏi lại Keychain và quyền ghi âm; app báo trước.</p>`,
+        a: `<p>Có, qua kênh Ổn định hoặc Beta (Cài đặt › Chung › Kênh cập nhật). App kiểm tra khi khởi động và mỗi 24 giờ, kiểm chữ ký trước khi ghi file rồi mời bạn khởi động lại khi app rảnh. Bản Windows cũng có hai kênh này; bạn có thể chạy lại lệnh cài để cập nhật. Trên macOS bản ký ad-hoc, mỗi lần cập nhật macOS hỏi lại 1 hộp thoại Keychain và có thể hỏi lại quyền ghi âm; app báo trước.</p>`,
       },
     ],
   },

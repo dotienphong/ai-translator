@@ -120,13 +120,14 @@ ${callout({ kind: "warn", title: "Chỉ tải bản cài từ nguồn chính th�
 ${callout({ kind: "warn", title: "Từ macOS 15, mẹo bấm chuột phải › Open không còn dùng được.", text: "Hãy đi qua Privacy &amp; Security như các bước trên. Nút Open Anyway thường chỉ hiện sau khi macOS đã chặn một lần thử mở app; không thấy nút đó thì mở app thêm một lần rồi quay lại." })}
 <p>Bước này chỉ áp dụng cho file .dmg tải bằng trình duyệt; cài bằng <a href="#cai-bang-lenh">dòng lệnh</a> thì không cần. Khi chúng tôi có Developer ID và notarize app, bước này sẽ biến mất cho mọi cách cài.</p>
 
-<h2 id="cap-nhat">Mỗi lần cập nhật, macOS hỏi lại một số hộp thoại</h2>
-<p>Đây là hệ quả của việc ký ad-hoc. Sau mỗi lần cập nhật sang bản mới, bạn thường gặp một lần:</p>
+<h2 id="cap-nhat">Mỗi lần cập nhật, macOS hỏi lại một hộp thoại</h2>
+<p>Đây là hệ quả của việc ký ad-hoc: mỗi bản mới có chữ ký khác, nên macOS hỏi lại quyền truy cập Keychain. Từ bản 0.1.1, AI Translator cất mọi dữ liệu nhạy cảm của nó (khóa mã hóa lịch sử, token bản quyền, bộ đếm hạn mức) trong <strong>một</strong> mục Keychain, nên sau mỗi lần cập nhật bạn chỉ gặp:</p>
 <ul>
-<li><strong>Khoảng 5 hộp thoại Keychain</strong> (hỏi mật khẩu đăng nhập Mac; chúng tôi đo được 5 hộp thoại trên một Mac chạy macOS 26): nhập mật khẩu rồi chọn <strong>Always Allow</strong>. Đừng chọn Deny: app sẽ không đọc được bản quyền và hạn mức. Nếu lỡ chọn, hãy thoát hẳn app, mở lại và chọn Always Allow.</li>
-<li><strong>1 hộp thoại quyền ghi âm thanh hệ thống</strong> (cũng là kết quả đo của chúng tôi): chọn cho phép.</li>
+<li><strong>1 hộp thoại Keychain</strong> (hỏi mật khẩu đăng nhập Mac; chúng tôi đo trên một Mac chạy macOS 26, hai lần cập nhật liên tiếp đều chỉ có 1 hộp thoại): nhập mật khẩu rồi chọn <strong>Always Allow</strong>. Đừng chọn Deny: app sẽ không đọc được bản quyền và hạn mức. Nếu lỡ chọn, hãy thoát hẳn app, mở lại và chọn Always Allow.</li>
+<li>Quyền <strong>ghi âm thanh hệ thống</strong> có thể được hỏi lại một lần (lần đo trước của chúng tôi ghi nhận 1 hộp thoại): chọn cho phép.</li>
 </ul>
-<p>Sau đó các lần mở sau không hỏi nữa. Bạn không mất dữ liệu, gói hay hạn mức. Khi cài mới lần đầu, chúng tôi đo được không có hộp thoại Keychain (chỉ có Open Anyway và quyền ghi âm); nếu macOS vẫn hỏi, hãy chọn Always Allow. App báo trước điều này khi mời cập nhật: “Sau khi cập nhật, macOS sẽ hỏi mật khẩu đăng nhập vài lần và quyền ghi âm một lần…”. Việc này sẽ hết khi chúng tôi có Developer ID. Bạn cũng có thể chạy lại đúng lệnh cài để cập nhật; hộp thoại Keychain vẫn hiện vì cùng lý do.</p>
+<p><strong>Riêng lần cập nhật đầu tiên từ bản 0.1.0 lên 0.1.1</strong>, app phải chép 5 mục Keychain cũ sang mục mới, nên bạn gặp 5 hộp thoại Keychain một lần (chúng tôi đo được đúng 5, kèm 1 hộp thoại cho phép ghi âm); từ các lần sau chỉ còn 1.</p>
+<p>Sau khi chọn Always Allow, các lần mở sau không hỏi nữa. Bạn không mất dữ liệu, gói hay hạn mức. Khi cài mới lần đầu, chúng tôi đo được không có hộp thoại Keychain (chỉ có quyền ghi âm; thêm Open Anyway nếu cài từ file .dmg tải bằng trình duyệt); nếu macOS vẫn hỏi, hãy chọn Always Allow. App báo trước điều này khi mời cập nhật. Việc này sẽ hết khi chúng tôi có Developer ID. Bạn cũng có thể chạy lại đúng lệnh cài để cập nhật; hộp thoại Keychain vẫn hiện vì cùng lý do.</p>
 
 <h2 id="go-cai-dat">Gỡ cài đặt đúng cách</h2>
 <p>macOS không có bước nào hỏi khi bạn xóa app, nên hãy xóa model và dữ liệu trước khi kéo app vào Thùng rác:</p>

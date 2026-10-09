@@ -120,13 +120,14 @@ ${callout({ kind: "warn", title: "Only download the installer from an official s
 ${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick no longer works.", text: "Go through Privacy &amp; Security as above. The Open Anyway button usually appears only after macOS has blocked an attempt to open the app; if you do not see it, open the app once more and come back." })}
 <p>This step applies only to a .dmg downloaded in a browser; installing with the <a href="#install-command">one-line command</a> does not need it. Once we have a Developer ID and notarize the app, this step will go away for every way of installing.</p>
 
-<h2 id="updates">Every update, macOS asks a few things again</h2>
-<p>This is a consequence of ad-hoc signing. After each update to a new build you will usually see, once:</p>
+<h2 id="updates">Every update, macOS asks one thing again</h2>
+<p>This is a consequence of ad-hoc signing: every new build has a different signature, so macOS asks again for Keychain access. Since version 0.1.1 AI Translator keeps all its sensitive data (the history encryption key, license token, quota counters) in <strong>one</strong> Keychain item, so after each update you will see:</p>
 <ul>
-<li><strong>About 5 Keychain dialogs</strong> asking for your Mac login password (we measured 5 on one Mac running macOS 26): enter it and choose <strong>Always Allow</strong>. Do not choose Deny: the app will not be able to read your license and quota. If you chose it by mistake, quit the app completely, reopen it and choose Always Allow.</li>
-<li><strong>1 system audio recording permission dialog</strong> (also what we measured): allow it.</li>
+<li><strong>1 Keychain dialog</strong> asking for your Mac login password (we measured on one Mac running macOS 26; two updates in a row each gave only 1 dialog): enter it and choose <strong>Always Allow</strong>. Do not choose Deny: the app will not be able to read your license and quota. If you chose it by mistake, quit the app completely, reopen it and choose Always Allow.</li>
+<li>The <strong>system audio recording</strong> permission may be asked for again once (our earlier measurement recorded 1 dialog): allow it.</li>
 </ul>
-<p>After that, later launches do not ask again. You do not lose data, your plan or your quota. On a fresh install we measured no Keychain dialogs (only Open Anyway and the recording permission); if macOS asks anyway, choose Always Allow. The app warns you in the update prompt: “After updating, macOS will ask for your login password a few times and for audio-recording permission once…”. This goes away once we have a Developer ID. You can also run the same install command to update; the Keychain dialogs appear for the same reason.</p>
+<p><strong>Only the first update from 0.1.0 to 0.1.1</strong> is different: the app has to copy the 5 old Keychain items into the new one, so you see 5 Keychain dialogs once (we measured exactly 5, plus 1 dialog to allow recording); later updates give just 1.</p>
+<p>After you choose Always Allow, later launches do not ask again. You do not lose data, your plan or your quota. On a fresh install we measured no Keychain dialogs (only the recording permission, plus Open Anyway if you install from a .dmg downloaded in a browser); if macOS asks anyway, choose Always Allow. The app warns you in the update prompt. This goes away once we have a Developer ID. You can also run the same install command to update; the Keychain dialog appears for the same reason.</p>
 
 <h2 id="uninstall">Uninstall properly</h2>
 <p>macOS gives the app no chance to clean up when you delete it, so remove the models and data first, then trash the app:</p>

@@ -90,7 +90,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recor
 <p>When permission is denied, macOS still lets the app create the capture source and still reports it as running, but every sample it delivers is silence. With no error to report, AI Translator can only detect a missing permission by waiting for a long silence while another app is playing sound. That is why the warning appears after a while rather than immediately.</p>
 
 <h2 id="after-updates">After every update, macOS may ask again</h2>
-<p>The current macOS build is ad-hoc signed, so after each update macOS usually asks once more for this recording permission (along with about 5 Keychain dialogs). Allow it; you lose no data, plan or quota. Details in the <a href="/en/guide/install-macos/">macOS installation guide</a>.</p>
+<p>The current macOS build is ad-hoc signed, so after each update macOS may ask once more for this recording permission (along with 1 Keychain dialog). Allow it; you lose no data, plan or quota. Details in the <a href="/en/guide/install-macos/">macOS installation guide</a>.</p>
 
 <h2 id="audio-source">Choosing the audio source: whole system or one app</h2>
 <p>The permission covers both modes. Choose the mode in <strong>Settings › Audio › Audio source</strong>:</p>
