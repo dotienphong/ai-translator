@@ -382,7 +382,10 @@ mod tests {
             ks.set(name, value).unwrap();
         }
         for name in ["db-key", "license", "quota-free"] {
-            assert!(matches!(raw(&store, name), Err(Error::NoEntry)), "{name} không được có mục riêng");
+            assert!(
+                matches!(raw(&store, name), Err(Error::NoEntry)),
+                "{name} không được có mục riêng"
+            );
         }
         assert!(raw(&store, VAULT_ENTRY).is_ok(), "chỉ có một mục chung");
     }
@@ -436,7 +439,9 @@ mod tests {
     #[test]
     fn aggregated_old_items_of_another_service_are_not_adopted() {
         let store = keyring_core::mock::Store::new().unwrap();
-        Keystore::with_store("other.app", store.clone()).set("license", b"x").unwrap();
+        Keystore::with_store("other.app", store.clone())
+            .set("license", b"x")
+            .unwrap();
         assert_eq!(aggregated(&store).get("license").unwrap(), None);
     }
 
@@ -445,11 +450,20 @@ mod tests {
         let store = keyring_core::mock::Store::new().unwrap();
         let ks = aggregated(&store);
         for name in ["", "Db-Key", "db key", "khóa", &"a".repeat(65)] {
-            assert!(matches!(ks.set(name, b"x"), Err(KeystoreError::InvalidName(_))), "{name:?}");
+            assert!(
+                matches!(ks.set(name, b"x"), Err(KeystoreError::InvalidName(_))),
+                "{name:?}"
+            );
             assert!(matches!(ks.get(name), Err(KeystoreError::InvalidName(_))), "{name:?}");
-            assert!(matches!(ks.delete(name), Err(KeystoreError::InvalidName(_))), "{name:?}");
+            assert!(
+                matches!(ks.delete(name), Err(KeystoreError::InvalidName(_))),
+                "{name:?}"
+            );
         }
-        assert!(matches!(ks.set("big", &[0; MAX_SECRET_BYTES + 1]), Err(KeystoreError::TooLarge(2049))));
+        assert!(matches!(
+            ks.set("big", &[0; MAX_SECRET_BYTES + 1]),
+            Err(KeystoreError::TooLarge(2049))
+        ));
         ks.set("big", &[0; MAX_SECRET_BYTES]).unwrap();
         assert_eq!(ks.get("big").unwrap().unwrap().len(), MAX_SECRET_BYTES);
         assert!(raw(&store, VAULT_ENTRY).is_ok());
@@ -477,7 +491,11 @@ mod tests {
         assert!(matches!(ks.get("license"), Err(KeystoreError::Access(_))));
         mock.set_error(Error::NoStorageAccess("bị khóa".into()));
         assert!(matches!(ks.set("quota", b"x"), Err(KeystoreError::Access(_))));
-        assert_eq!(ks.get("license").unwrap(), Some(b"giu".to_vec()), "lỗi tạm không làm mất dữ liệu");
+        assert_eq!(
+            ks.get("license").unwrap(),
+            Some(b"giu".to_vec()),
+            "lỗi tạm không làm mất dữ liệu"
+        );
         assert_eq!(ks.get("quota").unwrap(), None, "lần ghi lỗi không để lại gì");
     }
 
@@ -485,7 +503,11 @@ mod tests {
     fn aggregated_a_corrupt_shared_item_is_an_error_and_is_not_overwritten() {
         let store = keyring_core::mock::Store::new().unwrap();
         let ks = aggregated(&store);
-        store.build(SERVICE, VAULT_ENTRY, None).unwrap().set_secret(b"khong phai json").unwrap();
+        store
+            .build(SERVICE, VAULT_ENTRY, None)
+            .unwrap()
+            .set_secret(b"khong phai json")
+            .unwrap();
         assert!(matches!(ks.get("license"), Err(KeystoreError::Platform(_))));
         assert!(matches!(ks.set("license", b"x"), Err(KeystoreError::Platform(_))));
         assert_eq!(raw(&store, VAULT_ENTRY).unwrap(), b"khong phai json".to_vec());
@@ -512,7 +534,11 @@ mod tests {
         let ks = aggregated(&store);
         for t in 0..8 {
             for i in 0..15 {
-                assert_eq!(ks.get(&format!("t{t}-{i}")).unwrap(), Some(format!("{t}:{i}").into_bytes()), "t{t}-{i}");
+                assert_eq!(
+                    ks.get(&format!("t{t}-{i}")).unwrap(),
+                    Some(format!("{t}:{i}").into_bytes()),
+                    "t{t}-{i}"
+                );
             }
         }
     }
