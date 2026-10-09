@@ -315,7 +315,12 @@ chủ tài khoản Resend: chưa đủ để bán.
       nếu ứng dụng không cho sửa thì tạo ứng dụng Self-hosted mới cho hostname đó với cùng policy và cùng Cookie settings
       (SameSite Lax, HttpOnly, Binding Cookie tắt), rồi đặt `ACCESS_AUD` bằng AUD tag của nó và deploy lại. Worker chặn mọi
       request không có JWT hợp lệ (không lộ dữ liệu), nên thứ tự làm không gây rủi ro. Khi tên miền mới chạy ổn: đặt
-      `"workers_dev": false` cho admin và deploy lại (đã làm 2026-10-08).
+      `"workers_dev": false` cho admin và deploy lại (đã làm 2026-10-08). **Tắt `workers_dev` thì phải xóa luôn destination
+      `mt-license-admin.<subdomain>.workers.dev` (và preview URL) khỏi ứng dụng Access** (Applications > ứng dụng của
+      `mt-license-admin` > Configure > Destinations; nút "Protect this Worker behind Access" đã tạo sẵn các destination đó). Nếu còn,
+      Access chuyển về địa chỉ đó sau khi đăng nhập (`/cdn-cgi/access/authorized`) và trình duyệt hiện "There is nothing here yet"
+      khi phiên 24 giờ hết hạn (gặp 2026-10-09, sửa bằng cách xóa destination, giữ AUD, không phải deploy lại). Kiểm bằng cửa sổ ẩn
+      danh: đăng nhập xong địa chỉ cuối phải vẫn là `admin.aitranslator.io.vn`.
 
     ```bash
     pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
