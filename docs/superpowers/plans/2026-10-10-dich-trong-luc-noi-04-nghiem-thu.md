@@ -12,12 +12,13 @@
 
 **Không merge** khi chủ dự án chưa cho phép.
 
-**Kiến trúc:**
-- Một script kiểm tiêu chí, `bench/2026-10-10-do-tre/check_acceptance.py` (chỉ thư viện chuẩn, có unittest). Script đọc các file kết quả rút gọn mà `run_sessions.py` (kế hoạch 01, Task 2) ghi vào `bench/2026-10-10-do-tre/results/`, so với §10.2, rồi in bảng ĐẠT/KHÔNG ĐẠT.
+**Kiến trúc:** không có code mới.
+- Phán quyết theo §10.2 dùng đúng bảng `summarize_sessions.py --targets` của kế hoạch 02 (Task 17), tức cách cổng duyệt đã dùng, để cổng và nghiệm thu không vênh nhau.
+- Thêm một phép kiểm `streaming_auto_off`, vì bảng đó không kiểm khóa này.
 - Phần còn lại là chạy đo, thử tay, sửa tài liệu và báo cáo.
 
 **Công nghệ:**
-- Python 3 (chỉ thư viện chuẩn).
+- Python 3 (chỉ thư viện chuẩn), các script của `bench/2026-10-10-do-tre/` mà kế hoạch 01 và 02 đã viết.
 - `latency-bench session` (kế hoạch 01 dựng, kế hoạch 02 thêm `--streaming`), app dev (`scripts/run-dev-app.sh`).
 - `git bundle` để chuyển nhánh sang máy Windows mà không push.
 
@@ -27,7 +28,7 @@
 
 **Kế hoạch trước:**
 - 01: `run_sessions.py`, `summarize_sessions.py`, mốc `buoc1-moc` và `buoc1-sau`.
-- 02: cổng, các tham số đã chốt, cờ `--streaming`.
+- 02: cổng (Task 20), các tham số đã chốt (Task 21), cờ `--streaming`, bảng `--targets` (Task 17).
 - 03: app và giao diện.
 
 ---
@@ -45,26 +46,20 @@
 
 ## Tiêu chí (spec §10.2), cách áp dụng của kế hoạch này
 
-Áp dụng cho từng session S6 của gói Chuẩn khi bật chế độ này. Session `mixed` có cả năm tiếng nên dùng ngưỡng của zh, ja cho "chữ ổn định".
+Phán quyết lấy từ bảng `--targets` của `summarize_sessions.py` (kế hoạch 02, Task 17), áp cho nhóm lượt chạy gói Chuẩn bật chế độ này (`nghiem-thu-chuan`). Bảng đó tính:
+- **trễ theo từ:** gộp mọi từ theo tiếng nguồn, trên cả 6 session; ngưỡng chữ tạm 1200 ms; chữ ổn định 2000 ms với en, vi, ko và 3000 ms với zh, ja;
+- **từ đầu câu tới chữ dịch đầu tiên:** p90 gộp, ngưỡng 2000 ms;
+- **độ nháy tầng ổn định:** gộp theo đơn vị, ngưỡng 10%;
+- **A2 và CPU:** lấy session tệ nhất; ngưỡng A2 p50 2000, p90 3000, chữ đầu p50 1000 ms; CPU 30%.
 
-| Khóa `summary` | Ngưỡng | Ghi chú |
-|---|---|---|
-| `word_lag_tentative_p50_ms` | ≤ 1200 | |
-| `word_lag_stable_p50_ms` | ≤ 2000 với en, vi, ko; ≤ 3000 với zh, ja, mixed | |
-| `first_from_start_p90_ms` | ≤ 2000 | |
-| `stable_flicker_ratio` | ≤ 0,10 | |
-| `a2_p50_ms`, `a2_p90_ms`, `a2_first_p50_ms` | ≤ 2000, ≤ 3000, ≤ 1000 | A2 của spec chính |
-| `cpu_percent` | ≤ 30 | §8 spec chính |
-| `streaming_auto_off` | `false` | M4 Pro không được tự tắt |
+Kế hoạch này kiểm thêm: **không session nào của M4 Pro có `streaming_auto_off` là `true`** (Task 2, Step 5).
 
-Gói Nhẹ chỉ báo cáo, không đặt ngưỡng; script in số nhưng không tính ĐẠT/KHÔNG ĐẠT.
+Gói Nhẹ chỉ báo cáo (§10.2). Bảng vẫn in ✓/✗ cho gói Nhẹ, nhưng không tính vào kết luận.
 
 ## File sẽ tạo hoặc sửa
 
 | File | Việc |
 |---|---|
-| `bench/2026-10-10-do-tre/check_acceptance.py` (tạo) | Đọc kết quả rút gọn, so ngưỡng §10.2, in bảng, mã thoát 1 nếu có ô không đạt |
-| `bench/2026-10-10-do-tre/test_check_acceptance.py` (tạo) | unittest của script trên |
 | `bench/2026-10-10-do-tre/results/nghiem-thu-*.json` (tạo) | Kết quả đo nghiệm thu (rút gọn) |
 | `bench/2026-10-10-do-tre/results/nghiem-thu.md` (tạo) | Biên bản nghiệm thu |
 | `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md` | Sửa theo §12 của spec mới |
@@ -76,12 +71,11 @@ Gói Nhẹ chỉ báo cáo, không đặt ngưỡng; script in số nhưng khôn
 | Task | Việc | Commit |
 |---|---|---|
 | 1 | Kiểm đầu vào: nhánh, các commit của 01–03, bộ kiểm như CI | không |
-| 2 | `check_acceptance.py` và test | `bench(do-tre): …` |
-| 3 | Đo nghiệm thu trên M4 Pro, hai gói, bật và tắt chế độ này | `bench(do-tre): …` |
-| 4 | Thử tay trên app dev (Mac) | `bench(do-tre): …` |
-| 5 | Nghiệm thu trên máy Windows i5 (chủ dự án chạy) | `bench(do-tre): …` |
-| 6 | Sửa spec chính theo §12 và dòng trạng thái | `docs(spec): …` |
-| 7 | Báo cáo, hỏi chủ dự án trước khi merge | không |
+| 2 | Đo nghiệm thu trên M4 Pro, hai gói, bật và tắt chế độ này | `bench(do-tre): …` |
+| 3 | Thử tay trên app dev (Mac) | `bench(do-tre): …` |
+| 4 | Nghiệm thu trên máy Windows i5 (chủ dự án chạy) | `bench(do-tre): …` |
+| 5 | Sửa spec chính theo §12 và dòng trạng thái | `docs(spec): …` |
+| 6 | Báo cáo, hỏi chủ dự án trước khi merge | không |
 
 ---
 
@@ -149,237 +143,7 @@ Kỳ vọng: có `asr-worker-aarch64-apple-darwin` và `llama-server-aarch64-app
 
 ---
 
-## Task 2: `check_acceptance.py`
-
-**Files:**
-- Create: `bench/2026-10-10-do-tre/test_check_acceptance.py`
-- Create: `bench/2026-10-10-do-tre/check_acceptance.py`
-
-- [ ] **Step 1: Viết test**
-
-Tạo `bench/2026-10-10-do-tre/test_check_acceptance.py`:
-
-```python
-"""Test của `check_acceptance.py` (kế hoạch 04 của "dịch trong lúc người nói chưa dừng")."""
-import json
-import os
-import sys
-import tempfile
-import unittest
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import check_acceptance as C  # noqa: E402
-
-
-def summary(**over):
-    base = {
-        "word_lag_tentative_p50_ms": 900.0,
-        "word_lag_stable_p50_ms": 1500.0,
-        "first_from_start_p90_ms": 1800.0,
-        "stable_flicker_ratio": 0.05,
-        "a2_p50_ms": 800.0,
-        "a2_p90_ms": 1200.0,
-        "a2_first_p50_ms": 500.0,
-        "cpu_percent": 4.0,
-        "streaming_auto_off": False,
-    }
-    base.update(over)
-    return base
-
-
-class ParseName(unittest.TestCase):
-    def test_label_with_dashes(self):
-        self.assertEqual(C.parse_name("nghiem-thu-chuan-mixed.json"), ("nghiem-thu", "chuan", "mixed"))
-
-    def test_rejects_unknown_pack_or_session(self):
-        self.assertIsNone(C.parse_name("nghiem-thu-lai-en.json"))
-        self.assertIsNone(C.parse_name("nghiem-thu-chuan-fr.json"))
-
-
-class Check(unittest.TestCase):
-    def test_all_pass(self):
-        rows = C.check_session("chuan", "en", summary())
-        self.assertTrue(all(r.ok for r in rows))
-
-    def test_stable_threshold_depends_on_language(self):
-        s = summary(word_lag_stable_p50_ms=2500.0)
-        en = {r.key: r.ok for r in C.check_session("chuan", "en", s)}
-        zh = {r.key: r.ok for r in C.check_session("chuan", "zh", s)}
-        mixed = {r.key: r.ok for r in C.check_session("chuan", "mixed", s)}
-        self.assertFalse(en["word_lag_stable_p50_ms"])
-        self.assertTrue(zh["word_lag_stable_p50_ms"])
-        self.assertTrue(mixed["word_lag_stable_p50_ms"])
-
-    def test_missing_value_fails(self):
-        rows = {r.key: r.ok for r in C.check_session("chuan", "vi", summary(word_lag_tentative_p50_ms=None))}
-        self.assertFalse(rows["word_lag_tentative_p50_ms"])
-
-    def test_auto_off_fails_on_reference_machine(self):
-        rows = {r.key: r.ok for r in C.check_session("chuan", "ko", summary(streaming_auto_off=True))}
-        self.assertFalse(rows["streaming_auto_off"])
-
-    def test_light_pack_is_report_only(self):
-        rows = C.check_session("nhe", "en", summary(word_lag_tentative_p50_ms=5000.0))
-        self.assertTrue(all(r.ok is None for r in rows))
-
-
-def write_json(path, data):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f)
-
-
-class Main(unittest.TestCase):
-    def test_exit_code_and_table(self):
-        with tempfile.TemporaryDirectory() as d:
-            good = os.path.join(d, "nt-chuan-en.json")
-            bad = os.path.join(d, "nt-chuan-zh.json")
-            light = os.path.join(d, "nt-nhe-en.json")
-            write_json(good, {"summary": summary()})
-            write_json(bad, {"summary": summary(cpu_percent=45.0)})
-            write_json(light, {"summary": summary()})
-            out = []
-            code = C.main([good, light], write=out.append)
-            self.assertEqual(code, 0)
-            self.assertIn("| chuan | en |", "\n".join(out))
-            out.clear()
-            code = C.main([good, bad], write=out.append)
-            self.assertEqual(code, 1)
-            self.assertIn("KHÔNG ĐẠT", "\n".join(out))
-
-
-if __name__ == "__main__":
-    unittest.main()
-```
-
-- [ ] **Step 2: Chạy, thấy đỏ**
-
-```bash
-cd /Users/dtphong/Desktop/software_business/meeting-translator-work/dich-trong-luc-noi
-python3 -m unittest bench/2026-10-10-do-tre/test_check_acceptance.py -v
-```
-
-Kỳ vọng: lỗi `ModuleNotFoundError: No module named 'check_acceptance'`.
-
-- [ ] **Step 3: Viết script**
-
-Tạo `bench/2026-10-10-do-tre/check_acceptance.py`:
-
-```python
-#!/usr/bin/env python3
-"""So kết quả `latency-bench session` (bản rút gọn của `run_sessions.py`) với tiêu chí nghiệm thu §10.2 của spec
-`docs/superpowers/specs/2026-10-10-dich-trong-luc-noi-design.md`.
-
-Dùng:  python3 bench/2026-10-10-do-tre/check_acceptance.py bench/2026-10-10-do-tre/results/nghiem-thu-*.json
-
-Tên file phải có dạng `<nhãn>-<gói>-<session>.json` (gói: chuan, nhe; session: en, zh, ja, ko, vi, mixed). Gói Chuẩn
-được tính ĐẠT/KHÔNG ĐẠT; gói Nhẹ chỉ in số (§10.2: báo cáo, không đặt ngưỡng). Mã thoát 1 khi có ô KHÔNG ĐẠT.
-Chỉ dùng thư viện chuẩn.
-"""
-import json
-import os
-import re
-import sys
-from dataclasses import dataclass
-
-NAME = re.compile(r"^(?P<label>.+)-(?P<pack>chuan|nhe)-(?P<session>en|zh|ja|ko|vi|mixed)\.json$")
-# Ngưỡng "chữ ổn định": en, vi, ko 2 s; zh, ja 3 s; mixed có cả zh và ja nên dùng 3 s.
-STABLE_MS = {"en": 2000, "vi": 2000, "ko": 2000, "zh": 3000, "ja": 3000, "mixed": 3000}
-
-
-@dataclass
-class Row:
-    key: str
-    value: object
-    limit: str
-    ok: object  # True / False; None khi chỉ báo cáo
-
-
-def parse_name(path):
-    m = NAME.match(os.path.basename(path))
-    return (m["label"], m["pack"], m["session"]) if m else None
-
-
-def _le(value, limit):
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and value <= limit
-
-
-def check_session(pack, session, s):
-    rules = [
-        ("word_lag_tentative_p50_ms", "≤ 1200", lambda v: _le(v, 1200)),
-        ("word_lag_stable_p50_ms", f"≤ {STABLE_MS[session]}", lambda v: _le(v, STABLE_MS[session])),
-        ("first_from_start_p90_ms", "≤ 2000", lambda v: _le(v, 2000)),
-        ("stable_flicker_ratio", "≤ 0.10", lambda v: _le(v, 0.10)),
-        ("a2_p50_ms", "≤ 2000", lambda v: _le(v, 2000)),
-        ("a2_p90_ms", "≤ 3000", lambda v: _le(v, 3000)),
-        ("a2_first_p50_ms", "≤ 1000", lambda v: _le(v, 1000)),
-        ("cpu_percent", "≤ 30", lambda v: _le(v, 30)),
-        ("streaming_auto_off", "false", lambda v: v is False),
-    ]
-    rows = []
-    for key, limit, ok in rules:
-        value = s.get(key)
-        rows.append(Row(key, value, limit, ok(value) if pack == "chuan" else None))
-    return rows
-
-
-def _fmt(value):
-    if isinstance(value, bool) or value is None:
-        return str(value).lower() if isinstance(value, bool) else "—"
-    return f"{value:.3f}" if isinstance(value, float) and value < 1 else f"{value:.0f}"
-
-
-def main(argv, write=print):
-    failed = False
-    write("| Gói | Session | Khóa | Giá trị | Ngưỡng | Kết quả |")
-    write("|---|---|---|---|---|---|")
-    for path in argv:
-        parsed = parse_name(path)
-        if parsed is None:
-            write(f"| ? | ? | {os.path.basename(path)} | tên file sai dạng | | KHÔNG ĐẠT |")
-            failed = True
-            continue
-        _, pack, session = parsed
-        with open(path, encoding="utf-8") as f:
-            summary = json.load(f).get("summary", {})
-        for r in check_session(pack, session, summary):
-            verdict = "ĐẠT" if r.ok else ("chỉ báo cáo" if r.ok is None else "KHÔNG ĐẠT")
-            failed = failed or r.ok is False
-            write(f"| {pack} | {session} | `{r.key}` | {_fmt(r.value)} | {r.limit} | {verdict} |")
-    return 1 if failed else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
-```
-
-- [ ] **Step 4: Chạy, thấy xanh**
-
-```bash
-cd /Users/dtphong/Desktop/software_business/meeting-translator-work/dich-trong-luc-noi
-python3 -m unittest bench/2026-10-10-do-tre/test_check_acceptance.py -v
-```
-
-Kỳ vọng: `Ran 8 tests … OK`.
-
-- [ ] **Step 5: Commit**
-
-```bash
-W=/Users/dtphong/Desktop/software_business/meeting-translator-work/dich-trong-luc-noi
-test "$(git -C "$W" branch --show-current)" = "dich-trong-luc-noi" || { echo "SAI NHÁNH"; exit 1; }
-git -C "$W" add bench/2026-10-10-do-tre/check_acceptance.py bench/2026-10-10-do-tre/test_check_acceptance.py
-git -C "$W" commit -F - <<'EOF'
-bench(do-tre): script kiểm tiêu chí nghiệm thu §10.2 của dịch trong lúc nói
-
-Đọc kết quả rút gọn của run_sessions.py, so ngưỡng theo từng session (chữ ổn định 2 s với en/vi/ko,
-3 s với zh/ja/mixed), gói Nhẹ chỉ báo cáo; mã thoát 1 khi có ô không đạt.
-
-Co-Authored-By: <model đang chạy> <noreply@anthropic.com>
-EOF
-```
-
----
-
-## Task 3: Đo nghiệm thu trên M4 Pro
+## Task 2: Đo nghiệm thu trên M4 Pro
 
 **Files:**
 - Create: `bench/2026-10-10-do-tre/results/nghiem-thu-{chuan,nhe}-{en,zh,ja,ko,vi,mixed}.json`
@@ -432,14 +196,15 @@ python3 bench/2026-10-10-do-tre/run_sessions.py --pack chuan --label nghiem-thu-
 ```bash
 cd /Users/dtphong/Desktop/software_business/meeting-translator-work/dich-trong-luc-noi
 R=bench/2026-10-10-do-tre/results
-python3 bench/2026-10-10-do-tre/check_acceptance.py $R/nghiem-thu-chuan-*.json $R/nghiem-thu-nhe-*.json | tee target/do-tre/nghiem-thu-check.md; echo "exit=$?"
-python3 bench/2026-10-10-do-tre/summarize_sessions.py $R/nghiem-thu-chuan-*.json $R/nghiem-thu-nhe-*.json > target/do-tre/nghiem-thu-bang.md
+python3 bench/2026-10-10-do-tre/summarize_sessions.py --targets $R/nghiem-thu-chuan-*.json $R/nghiem-thu-nhe-*.json | tee target/do-tre/nghiem-thu-bang.md
+grep -l '"streaming_auto_off": true' $R/nghiem-thu-chuan-*.json $R/nghiem-thu-nhe-*.json && echo "CÓ SESSION TỰ TẮT" || echo "không session nào tự tắt"
 python3 bench/2026-10-10-do-tre/summarize_sessions.py --compare buoc1-sau nghiem-thu $R/buoc1-sau-*.json $R/nghiem-thu-*.json > target/do-tre/nghiem-thu-so.md
 python3 bench/2026-10-10-do-tre/summarize_sessions.py --compare buoc1-sau nghiem-thu-thuong $R/buoc1-sau-chuan-*.json $R/nghiem-thu-thuong-chuan-*.json > target/do-tre/nghiem-thu-thuong-so.md
 ```
 
-- `exit` là mã thoát của `check_acceptance.py`; xem `exit=` trên dòng cuối.
-- Có ô KHÔNG ĐẠT thì vẫn ghi biên bản (Step 6) với kết quả thật, rồi báo chủ dự án ở Task 7. Không chỉnh tham số ở kế hoạch này, vì tham số đã chốt ở cổng.
+- Kết luận lấy từ dòng tóm của nhóm `nghiem-thu-chuan` và các dòng theo tiếng của nhóm đó trong bảng mục tiêu (✓/✗), cộng dòng kiểm tự tắt.
+- `grep` cần in `không session nào tự tắt`. Nếu in `CÓ SESSION TỰ TẮT`, ghi tên file vào biên bản; đó là ô không đạt.
+- Có ô không đạt thì vẫn ghi biên bản (Step 6) với kết quả thật, rồi báo chủ dự án ở Task 6. Không chỉnh tham số ở kế hoạch này, vì tham số đã chốt ở cổng.
 
 - [ ] **Step 6: Biên bản**
 
@@ -461,17 +226,15 @@ Tham số chốt ở cổng: `streaming.end_silence_ms` = ‹giá trị›, (n, 
 python3 bench/2026-10-10-do-tre/run_sessions.py --pack chuan --label nghiem-thu -- --streaming
 python3 bench/2026-10-10-do-tre/run_sessions.py --pack nhe --label nghiem-thu -- --streaming
 python3 bench/2026-10-10-do-tre/run_sessions.py --pack chuan --label nghiem-thu-thuong
-python3 bench/2026-10-10-do-tre/check_acceptance.py …
+python3 bench/2026-10-10-do-tre/summarize_sessions.py --targets …
 
-## Kết quả theo tiêu chí (gói Chuẩn)
-
-‹bảng của target/do-tre/nghiem-thu-check.md›
-
-Kết luận: ‹ĐẠT cả N/N ô, hoặc liệt kê ô KHÔNG ĐẠT kèm số›.
-
-## Số đo đầy đủ
+## Kết quả theo tiêu chí (bảng `--targets`, gói Chuẩn quyết định)
 
 ‹bảng của target/do-tre/nghiem-thu-bang.md›
+
+Tự tắt trên M4 Pro: ‹không session nào / tên file›.
+
+Kết luận: ‹ĐẠT mọi ô của nhóm `nghiem-thu-chuan`, hoặc liệt kê ô ✗ kèm số›.
 
 ## So với sau bước 1 (chế độ thường, `buoc1-sau`)
 
@@ -484,7 +247,7 @@ Kết luận: ‹ĐẠT cả N/N ô, hoặc liệt kê ô KHÔNG ĐẠT kèm s�
 ## Giới hạn
 
 - Câu đọc (FLEURS), không phải hội thoại thật; thời điểm nói của từ là xấp xỉ chia đều (§10.1).
-- Một máy (M4 Pro). Máy Windows: Task 5.
+- Một máy (M4 Pro). Máy Windows: Task 4.
 ```
 
 - [ ] **Step 7: Commit**
@@ -503,7 +266,7 @@ EOF
 
 ---
 
-## Task 4: Thử tay trên app dev (Mac)
+## Task 3: Thử tay trên app dev (Mac)
 
 **Files:**
 - Modify: `bench/2026-10-10-do-tre/results/nghiem-thu.md`, thêm mục "Thử tay trên app".
@@ -585,7 +348,7 @@ EOF
 
 ---
 
-## Task 5: Nghiệm thu trên máy Windows i5 (chủ dự án chạy)
+## Task 4: Nghiệm thu trên máy Windows i5 (chủ dự án chạy)
 
 Tiêu chí (spec §10.2): trên máy Windows yếu (i5-1345U, GPU tích hợp và chỉ CPU), chế độ này tự tắt từ đầu phiên, và số đo không kém mốc S6 trên Windows (`bench/phase0/results/s6_windows.md`).
 
@@ -690,7 +453,7 @@ EOF
 
 ---
 
-## Task 6: Sửa spec chính theo §12 và dòng trạng thái
+## Task 5: Sửa spec chính theo §12 và dòng trạng thái
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`
@@ -811,7 +574,7 @@ Kỳ vọng: lệnh `grep` in `sạch`. Nếu còn `‹` thì điền nốt trư
 
 ---
 
-## Task 7: Báo cáo, hỏi chủ dự án trước khi merge
+## Task 6: Báo cáo, hỏi chủ dự án trước khi merge
 
 **Files:** không sửa file nào.
 
@@ -835,15 +598,19 @@ Kết thúc kế hoạch ở đây. Merge là việc riêng, chỉ làm sau khi 
 
 | Mục của spec | Task |
 |---|---|
-| §9 bước 4: nghiệm thu theo §10.2 | 2 (script), 3 (đo M4 Pro), 5 (Windows) |
-| §10.2: chữ tạm, chữ ổn định, chữ đầu từ lúc bắt đầu nói, độ nháy | 2 (`check_session`), 3 Step 5 |
-| §10.2: bản cuối (A2, CPU ≤ 30%, A3/A4 không phải chấm lại trừ khi A5 bật) | 2 (A2, CPU), 3 Step 4 (tắt chế độ); A4 đã chấm ở kế hoạch 01 Task 11 |
-| §10.2: gói Nhẹ chỉ báo cáo | 2 (`ok is None`), 3 Step 3 |
-| §10.2: máy Windows yếu tự tắt, không kém mốc S6 Windows | 5 |
-| §11: đo bằng A1 ở bước 4 | 3 |
-| §6, QĐ5 trên app thật | 4 (dòng 1–8, 10) |
-| §12: sửa spec chính | 6 |
-| QĐ8: không merge khi chưa cho phép | 7 |
+| §9 bước 4: nghiệm thu theo §10.2 | 2 (đo M4 Pro, bảng `--targets`), 4 (Windows) |
+| §10.2: chữ tạm, chữ ổn định, chữ đầu từ lúc bắt đầu nói, độ nháy | 2 Step 5 (`--targets` của kế hoạch 02 Task 17, cùng cách với cổng) |
+| §10.2: bản cuối (A2, CPU ≤ 30%; A3/A4 không phải chấm lại, trừ khi A5 bật) | 2 Step 5 (A2, CPU), 2 Step 4 (tắt chế độ); A4 đã chấm ở kế hoạch 01 Task 11 |
+| §10.2: gói Nhẹ chỉ báo cáo | 2 Step 3, phần "Tiêu chí" |
+| §5: M4 Pro không tự tắt | 2 Step 5 (`grep streaming_auto_off`) |
+| §10.2: máy Windows yếu tự tắt, không kém mốc S6 Windows | 4 |
+| §11: đo bằng A1 ở bước 4 | 2 |
+| §6, QĐ5 trên app thật | 3 (dòng 1–8, 10) |
+| §12: sửa spec chính | 5 |
+| QĐ8: không merge khi chưa cho phép | 6 |
 
-- **Tên dùng chung:** khóa `summary` của H7; tên file `<nhãn>-<gói>-<session>.json` của `run_sessions.py` (kế hoạch 01, Task 2); cờ `--streaming` của H9 (kế hoạch 02).
-- **Chỗ trống `‹…›`:** chỉ có ở biên bản và đoạn sửa spec. Đó là số đo hay quyết định chỉ có lúc chạy, và mỗi chỗ ghi rõ lấy từ đâu. Task 6 Step 12 kiểm không còn chỗ nào.
+- **Tên dùng chung:**
+  - khóa `summary` của H7;
+  - tên file `<nhãn>-<gói>-<session>.json` của `run_sessions.py` (kế hoạch 01, Task 2);
+  - cờ `--streaming` (H9) và bảng `--targets` (kế hoạch 02, Task 16–17).
+- **Chỗ trống `‹…›`:** chỉ có ở biên bản và đoạn sửa spec. Đó là số đo hay quyết định chỉ có lúc chạy, và mỗi chỗ ghi rõ lấy từ đâu. Task 5 Step 12 kiểm không còn chỗ nào.
