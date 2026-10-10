@@ -12,7 +12,9 @@
 #
 # Environment `release` chỉ cho tag `v*` (cùng nhánh `main` cho lần chạy tay) TRƯỚC khi nhập secret đầu tiên (kế hoạch 07a,
 # Task 14). Từ 2026-10-09 không còn Required reviewers (chủ dự án chọn, vì chỉ một người và mỗi lần chạy phải bấm duyệt
-# sáu lần): luật giới hạn nhánh/tag là lớp chặn duy nhất, đừng bỏ nó. Tag `v*` đẩy lên là tự đăng bản lên R2.
+# sáu lần): luật giới hạn nhánh/tag là lớp chặn chính, đừng bỏ nó. Tag `v*` đẩy lên là tự đăng bản lên R2. Job `gate` chặn
+# thêm: commit của tag phải nằm trên `main` (đẩy `main` trước rồi mới đẩy tag), và nếu đặt Required reviewers cho
+# environment `release-gate` thì mỗi lần phát hành chỉ phải duyệt một lần.
 #
 # Secret của environment `release`:
 #   APPLE_CERTIFICATE_P12, APPLE_CERTIFICATE_PASSWORD   chứng thư Developer ID Application (.p12, base64) và mật khẩu
@@ -52,8 +54,31 @@ env:
   CARGO_INCREMENTAL: "0"
 
 jobs:
+  # Cổng của mọi job khác (kiểm toán bảo mật 2026-10-09): tag `v*` không bắt buộc trỏ vào commit của `main`, nên một
+  # credential ghi được repo có thể gắn tag vào commit ở nhánh khác (sửa script ký hay đăng bản) mà vẫn chạy được các job có
+  # secret. Job này dừng cả pipeline khi commit không nằm trên `main`. Environment `release-gate` không có secret; thêm
+  # Required reviewers cho nó ở Settings › Environments thì mỗi lần phát hành chỉ phải duyệt một lần (thay cho sáu lần khi
+  # đặt reviewers ở `release`). Mọi job có secret đều đứng sau job này qua chuỗi `needs`.
+  gate:
+    name: "0: cổng phát hành (commit thuộc main)"
+    runs-on: macos-26
+    timeout-minutes: 10
+    environment: release-gate
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Commit phải nằm trên nhánh main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
+            echo "::error::Commit $GITHUB_SHA không nằm trên main: đẩy main trước rồi mới đẩy tag."
+            exit 1
+          fi
+
   macos-sidecars:
     name: "macOS 1/4: tiến trình phụ (không secret)"
+    needs: gate
     runs-on: macos-26
     timeout-minutes: 60
     steps:
@@ -246,6 +271,7 @@ jobs:
 
   windows-sidecars:
     name: "Windows 1/4: tiến trình phụ (không secret)"
+    needs: gate
     runs-on: windows-2025
     timeout-minutes: 120
     defaults:
