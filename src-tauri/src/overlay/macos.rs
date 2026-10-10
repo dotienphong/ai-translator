@@ -87,18 +87,29 @@ fn prevent_activation<R: Runtime>(panel: &dyn Panel<R>) {
     }
 }
 
+/// Chạy `f` trên luồng chính. NSPanel chỉ được đổi từ luồng chính: `tauri_nspanel` gọi thẳng AppKit (`orderOut:`…) trên
+/// luồng của người gọi, và AppKit dừng app ("Must only be used from the main thread") khi bị gọi từ luồng khác. Nút ✕
+/// của thanh phụ đề ẩn thanh từ luồng của `spawn_blocking` (dừng phiên có thể chờ vài giây) nên đã làm app crash ở bản
+/// 0.1.3–0.1.5. Đang ở luồng chính thì `run_on_main_thread` chạy `f` ngay, nên người gọi trên luồng chính không đổi gì.
+fn on_main_thread<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&AppHandle<R>) + Send + 'static) -> tauri::Result<()> {
+    let handle = app.clone();
+    app.run_on_main_thread(move || f(&handle))
+}
+
 pub fn set_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) -> tauri::Result<()> {
-    if let Ok(panel) = app.get_webview_panel(LABEL) {
-        if visible { panel.show() } else { panel.hide() }
-    }
-    Ok(())
+    on_main_thread(app, move |app| {
+        if let Ok(panel) = app.get_webview_panel(LABEL) {
+            if visible { panel.show() } else { panel.hide() }
+        }
+    })
 }
 
 pub fn set_ignore_mouse<R: Runtime>(app: &AppHandle<R>, ignore: bool) -> tauri::Result<()> {
-    if let Ok(panel) = app.get_webview_panel(LABEL) {
-        panel.set_ignores_mouse_events(ignore);
-    }
-    Ok(())
+    on_main_thread(app, move |app| {
+        if let Ok(panel) = app.get_webview_panel(LABEL) {
+            panel.set_ignores_mouse_events(ignore);
+        }
+    })
 }
 
 /// tao trên macOS không có `drag_resize_window`: app tự đổi kích thước theo con trỏ.
