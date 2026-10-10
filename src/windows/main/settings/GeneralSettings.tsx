@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import type { UiLanguage } from "../../../i18n";
 import type { Theme, UpdateChannel } from "../../../lib/ipc";
 import { useApp, useT } from "../appStore";
@@ -59,7 +60,9 @@ export function GeneralSettings() {
 
 // Phiên bản đang chạy và nút "Kiểm tra cập nhật": kiểm ngay, có bản mới thì tải rồi mời khởi động lại (kế hoạch 07b).
 // Menu khay có cùng mục, mở tới đây. Đang dịch thì không khởi động lại được (`updateBusy`), nên chỉ nhắc dừng dịch.
-// Khối riêng ở đầu nhóm Chung, nền màu nhấn, để người dùng thấy ngay bản đang dùng và chỗ cập nhật.
+// Khối riêng ở đầu nhóm Chung, nền màu nhấn, để người dùng thấy ngay bản đang dùng và chỗ cập nhật. Mỗi lần kiểm xong
+// ghi kèm giờ (có giây): kết quả giống lần trước (vẫn "mới nhất", hay bản dev không tự cập nhật) thì người dùng vẫn thấy
+// lần bấm đã chạy.
 function AppUpdate() {
   const t = useT();
   const version = useApp((s) => s.info?.version);
@@ -68,7 +71,18 @@ function AppUpdate() {
   const running = useApp((s) => s.status?.session === "running" || s.status?.session === "starting");
   const checkForUpdates = useApp((s) => s.checkForUpdates);
   const restartToUpdate = useApp((s) => s.restartToUpdate);
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null);
   const busy = check === "checking" || check === "downloading";
+  // Lần kiểm từ menu khay cũng ghi giờ: lúc trạng thái rời "đang kiểm/đang tải".
+  const wasBusy = useRef(busy);
+  useEffect(() => {
+    if (wasBusy.current && !busy) setCheckedAt(new Date());
+    wasBusy.current = busy;
+  }, [busy]);
+  const onCheck = async () => {
+    await checkForUpdates();
+    setCheckedAt(new Date());
+  };
   const message =
     check === "idle"
       ? ready && t(running ? "settings.general.update.readyRunning" : "settings.general.update.ready", { version: ready })
@@ -90,15 +104,23 @@ function AppUpdate() {
             {t("settings.general.restartToUpdate")}
           </button>
         ) : (
-          <button className="primary" disabled={busy} aria-busy={busy} onClick={() => void checkForUpdates()}>
-            {t("settings.general.checkUpdates")}
+          <button className="primary" disabled={busy} aria-busy={busy} onClick={() => void onCheck()}>
+            {t(busy ? "settings.general.update.checking" : "settings.general.checkUpdates")}
           </button>
         )}
       </div>
       {/* Luôn có trong DOM để trình đọc màn hình đọc thông báo mới (live region). */}
       <p className={`update-status ${tone}`.trim()} role="status">
         {message || ""}
+        {message && checkedAt && !busy && (
+          <span className="update-time"> · {t("settings.general.update.checkedAt", { time: clock(checkedAt) })}</span>
+        )}
       </p>
     </section>
   );
+}
+
+/** Giờ:phút:giây 24 giờ, giống nhau ở mọi ngôn ngữ giao diện. */
+function clock(d: Date): string {
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join(":");
 }

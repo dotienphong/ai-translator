@@ -166,6 +166,7 @@ export const vi: Record<MessageKey, string> = {
   "settings.general.updateChannel": "Kênh cập nhật",
   "settings.general.version": "Phiên bản {version}",
   "settings.general.checkUpdates": "Kiểm tra cập nhật",
+  "settings.general.update.checkedAt": "Kiểm tra lúc {time}",
   "settings.general.update.checking": "Đang kiểm tra…",
   "settings.general.update.downloading": "Có bản mới, đang tải…",
   "settings.general.update.upToDate": "Bạn đang dùng bản mới nhất.",

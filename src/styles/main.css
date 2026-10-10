@@ -525,3 +525,8 @@ li.plan.current {
   color: var(--color-accent);
   font-weight: 600;
 }
+
+.update-time {
+  color: var(--color-muted);
+  font-weight: 400;
+}

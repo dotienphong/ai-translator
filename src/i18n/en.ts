@@ -166,6 +166,7 @@ export const en = {
   "settings.general.updateChannel": "Update channel",
   "settings.general.version": "Version {version}",
   "settings.general.checkUpdates": "Check for updates",
+  "settings.general.update.checkedAt": "Checked at {time}",
   "settings.general.update.checking": "Checking…",
   "settings.general.update.downloading": "A new version is available, downloading…",
   "settings.general.update.upToDate": "You have the latest version.",
