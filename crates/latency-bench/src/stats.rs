@@ -26,6 +26,9 @@ pub struct Utterance {
     /// của Segmenter cũng dừng theo VAD, nên độ lệch mốc kiểm so với mốc này. Truth cũ không có thì dùng `end_ms`.
     #[serde(default)]
     pub vad_end_ms: Option<u64>,
+    /// Chữ của câu. Không có trong file mốc của `tests/fixtures/audio/` (trường `ref`), nên mặc định rỗng: công cụ đo không
+    /// dùng chữ này.
+    #[serde(default)]
     pub text: String,
 }
 

@@ -1,8 +1,12 @@
-//! Công cụ đo: `latency` (S6), `asr-eval` (S7, A4), `mt-eval` (A3, qua đúng code dịch của app).
+//! Công cụ đo: `latency` (S6), `asr-eval` (S7, A4), `mt-eval` (A3, qua đúng code dịch của app), `session` (đo bằng
+//! `pipeline::Engine` thật, spec 2026-10-10 §10.1).
 
 mod asr_eval;
 mod latency;
 mod mt_eval;
+mod session;
+mod session_metrics;
+mod session_replay;
 mod stats;
 
 use clap::Parser;
@@ -18,6 +22,8 @@ enum Command {
     AsrEval(asr_eval::AsrEvalArgs),
     /// Dịch bộ test A3 bằng code dịch của app, để score_mt.py chấm COMET.
     MtEval(mt_eval::MtEvalArgs),
+    /// Đo độ trễ bằng `pipeline::Engine` thật trên một session phát lại theo thời gian thực (spec 2026-10-10 §10.1).
+    Session(session::SessionArgs),
 }
 
 /// Stack của luồng chạy lệnh. `SileroVad` (candle-onnx) cần hơn 1 MiB ở bản debug (`cargo run`), mà luồng chính của Windows
@@ -34,6 +40,7 @@ fn main() -> anyhow::Result<()> {
             Command::Latency(args) => latency::run(args),
             Command::AsrEval(args) => asr_eval::run(args),
             Command::MtEval(args) => mt_eval::run(args),
+            Command::Session(args) => session::run(args),
         })?;
     worker.join().map_err(|_| anyhow::anyhow!("luồng chạy lệnh bị panic"))?
 }

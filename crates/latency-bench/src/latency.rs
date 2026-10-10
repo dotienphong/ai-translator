@@ -185,15 +185,15 @@ struct UtteranceLatency {
 }
 
 #[derive(Serialize, Default)]
-struct ProcessUsage {
-    peak_rss_mb: f64,
+pub(crate) struct ProcessUsage {
+    pub(crate) peak_rss_mb: f64,
     /// macOS: `phys_footprint` (số Activity Monitor hiển thị), tính cả bộ nhớ Metal mà RSS bỏ sót, nhưng không
     /// tính trang của file model được mmap. Là đỉnh từ lúc tiến trình khởi động, nên gồm cả lúc nạp model (`peak_rss_mb`
     /// thì chỉ từ lúc bắt đầu lấy mẫu). Nền tảng khác để 0; VRAM trên Windows đo bằng `vram-sample.ps1`.
-    peak_footprint_mb: f64,
+    pub(crate) peak_footprint_mb: f64,
     /// CPU trung bình trong lúc phát lại, phần trăm của một lõi: thời gian CPU tích lũy chia thời gian thực.
-    avg_cpu_percent: f64,
-    samples: usize,
+    pub(crate) avg_cpu_percent: f64,
+    pub(crate) samples: usize,
 }
 
 #[derive(Serialize)]
@@ -760,7 +760,7 @@ fn build_summary(utterances: &[UtteranceLatency], segments: &[SegmentRecord]) ->
 }
 
 /// Gốc repo, suy ra từ vị trí crate lúc build (`<repo>/crates/latency-bench`).
-fn repo_root() -> Option<PathBuf> {
+pub(crate) fn repo_root() -> Option<PathBuf> {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .ancestors()
         .nth(2)?
@@ -784,7 +784,7 @@ fn relative_to(root: Option<&Path>, path: &Path) -> String {
     }
 }
 
-fn public_path(path: &Path) -> String {
+pub(crate) fn public_path(path: &Path) -> String {
     public_path_in(repo_root().as_deref(), path)
 }
 
@@ -814,7 +814,7 @@ fn public_args(root: Option<&Path>, args: &str) -> String {
     args.split_whitespace().map(public).collect::<Vec<_>>().join(" ")
 }
 
-fn read_wav_16k_mono(path: &PathBuf) -> Result<Vec<f32>> {
+pub(crate) fn read_wav_16k_mono(path: &PathBuf) -> Result<Vec<f32>> {
     let mut reader = hound::WavReader::open(path).with_context(|| format!("không mở được {}", path.display()))?;
     let spec = reader.spec();
     if spec.sample_rate != 16_000 || spec.channels != 1 || spec.bits_per_sample != 16 {
@@ -843,7 +843,7 @@ struct CpuSample {
     cpu_ms: u64,
 }
 
-fn spawn_sampler(
+pub(crate) fn spawn_sampler(
     pids: HashMap<String, u32>,
     stop: Arc<AtomicBool>,
 ) -> std::thread::JoinHandle<HashMap<String, ProcessUsage>> {
@@ -905,7 +905,7 @@ fn peak_footprint_mb(pid: u32) -> Option<f64> {
     Some(info.ri_phys_footprint.max(info.ri_lifetime_max_phys_footprint) as f64 / 1_048_576.0)
 }
 
-fn machine_info() -> HashMap<String, String> {
+pub(crate) fn machine_info() -> HashMap<String, String> {
     let mut sys = System::new();
     sys.refresh_cpu_all();
     sys.refresh_memory();
