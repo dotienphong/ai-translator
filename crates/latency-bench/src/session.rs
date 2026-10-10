@@ -25,6 +25,7 @@ use pipeline::translate::{Mt, MtError};
 use pipeline::vad::SileroVad;
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
+use std::io::Write;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -304,6 +305,13 @@ fn machine_cpu_percent(usage: &HashMap<String, ProcessUsage>, logical_cores: usi
         .then(|| usage.values().map(|u| u.avg_cpu_percent).sum::<f64>() / logical_cores as f64)
 }
 
+/// Số câu truth không được `pieces_of` (`session_metrics`) gán phần nguồn nào (`UtteranceResult::units == 0`): một
+/// đoạn VAD đã phủ qua ranh giới hai câu (hay gặp khi ngưỡng đóng đoạn lớn), câu trước mất hết phần và bị loại khỏi
+/// mọi số đo mà không ai biết (rà soát chất lượng sau Task 1, A1).
+fn count_utterances_without_pieces(utterances: &[UtteranceResult]) -> usize {
+    utterances.iter().filter(|u| u.units == 0).count()
+}
+
 fn vad_model() -> PathBuf {
     repo_root()
         .unwrap_or_default()
@@ -341,6 +349,17 @@ struct RunInfo {
     measured: usize,
     words: usize,
     words_untranslated: usize,
+    /// Số câu truth bị loại khỏi mọi số đo vì không được gán phần nguồn nào (`count_utterances_without_pieces`).
+    utterances_without_pieces: usize,
+    /// Bộ đếm của engine theo trạng thái cuối mỗi đoạn/câu (`pipeline::metrics::SessionMetrics`): bị lọc (không tiếng
+    /// nói, ảo giác), mất giữa chừng (hàng đợi quá tải), cùng ngôn ngữ đích (không dịch), dịch xong, lỗi, bị huỷ vì câu
+    /// đổi trước khi dịch xong.
+    filtered: usize,
+    dropped: usize,
+    same_lang: usize,
+    translated: usize,
+    failed: usize,
+    skipped: usize,
     feed_lag_max_ms: f64,
     sidecar_restarts: usize,
 }
@@ -413,10 +432,17 @@ pub fn run(args: SessionArgs) -> Result<()> {
     manager.end_session();
     stop_sampler.store(true, Ordering::Relaxed);
     let usage = sampler.join().map_err(|_| anyhow!("luồng đo tài nguyên panic"))?;
+    // Tắt tường minh, không chỉ dựa vào `Drop for SidecarManager` (gọi `stop(false)`, chạy khi đây là bản sao `Arc`
+    // cuối cùng — đúng hôm nay vì `engine.join()` đã join hết các luồng giữ `Arc` khác). Nếu sau này một luồng khác
+    // còn giữ bản sao lúc này, `drop(manager)` sẽ không phải lần cuối, không tắt được tiến trình phụ, để sót
+    // `llama-server` mồ côi. `idle=false`: lượt đo đã xong hẳn (không phải tạm rảnh chờ phiên sau như
+    // `release_models`), đúng nhánh "app thoát" mà `Drop` vẫn dùng.
+    manager.stop(false);
     drop(manager); // tắt hai tiến trình phụ
 
     let (events, fatal) = recorder.take();
     let utterances = evaluate(&truth, &events);
+    let utterances_without_pieces = count_utterances_without_pieces(&utterances);
     let machine_map = machine_info();
     let cores = machine_map
         .get("logical_cores")
@@ -432,6 +458,13 @@ pub fn run(args: SessionArgs) -> Result<()> {
         measured: utterances.iter().filter(|u| u.a2_shown_ms.is_some()).count(),
         words: utterances.iter().map(|u| u.units).sum(),
         words_untranslated: utterances.iter().map(|u| u.units - u.word_lag_tentative_ms.len()).sum(),
+        utterances_without_pieces,
+        filtered: metrics.filtered,
+        dropped: metrics.dropped,
+        same_lang: metrics.same_lang,
+        translated: metrics.translated,
+        failed: metrics.failed,
+        skipped: metrics.skipped,
         feed_lag_max_ms: ms(lag_max.load(Ordering::Relaxed) as f64 / 1000.0),
         sidecar_restarts: sidecars.restarts(),
     };
@@ -458,7 +491,9 @@ pub fn run(args: SessionArgs) -> Result<()> {
     };
     // Ghi file trước khi báo lỗi: lượt đo hỏng vẫn còn sự kiện để xem.
     let file = std::fs::File::create(&args.out).with_context(|| format!("không tạo được {}", args.out.display()))?;
-    serde_json::to_writer(std::io::BufWriter::new(file), &report)?;
+    let mut writer = std::io::BufWriter::new(file);
+    serde_json::to_writer(&mut writer, &report)?;
+    writer.flush()?;
     let name = args.out.file_stem().unwrap_or_default().to_string_lossy();
     print_summary(&name, &report.summary);
     if report.run.feed_lag_max_ms > FEED_LAG_WARN_MS {
@@ -471,6 +506,19 @@ pub fn run(args: SessionArgs) -> Result<()> {
         println!(
             "  CẢNH BÁO: tiến trình phụ khởi động lại {} lần trong lượt đo",
             report.run.sidecar_restarts
+        );
+    }
+    if report.run.utterances_without_pieces > 0 {
+        println!(
+            "  CẢNH BÁO: {} câu không được gán phần chữ nguồn nào (đoạn VAD có thể đã phủ qua ranh giới câu, thường \
+             gặp khi ngưỡng im lặng lớn); số đo bị lệch",
+            report.run.utterances_without_pieces
+        );
+    }
+    if report.run.failed + report.run.skipped > 0 {
+        println!(
+            "  CẢNH BÁO: {} câu dịch thất bại hoặc bị bỏ qua trong lượt đo",
+            report.run.failed + report.run.skipped
         );
     }
     if !fatal.is_empty() {
@@ -627,5 +675,19 @@ mod tests {
         );
         assert_eq!(worker_flags(&dir.join("khong-co.log")), None);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// N-2 của rà soát chất lượng sau Task 1 (A1): một đoạn VAD phủ qua ranh giới hai câu truth làm câu trước mất hết
+    /// phần (`units == 0`) và bị loại khỏi mọi số đo; đếm được để tự báo, không âm thầm làm méo số liệu.
+    #[test]
+    fn utterances_without_pieces_are_the_ones_with_zero_units() {
+        let u = |units: usize| UtteranceResult {
+            units,
+            ..UtteranceResult::default()
+        };
+        let utterances = [u(0), u(3), u(0), u(1)];
+        assert_eq!(count_utterances_without_pieces(&utterances), 2);
+        assert_eq!(count_utterances_without_pieces(&[]), 0);
+        assert_eq!(count_utterances_without_pieces(&[u(5)]), 0);
     }
 }
