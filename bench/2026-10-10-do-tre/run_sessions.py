@@ -1,0 +1,124 @@
+"""Chạy `latency-bench session` trên 6 session S6 với một gói model (spec 2026-10-10 §9, §10.1; H7 của kế hoạch 00).
+
+Dùng (từ gốc worktree, sau Task 0 của kế hoạch 01: `cargo build --release -p latency-bench` và `scripts/copy-sidecars.sh`):
+  python3 bench/2026-10-10-do-tre/run_sessions.py --pack chuan --label buoc1-moc
+  python3 bench/2026-10-10-do-tre/run_sessions.py --pack nhe --label thu --sessions en,vi -- --streaming
+Tham số sau `--` được chuyển nguyên cho `latency-bench session` (kế hoạch 02 thêm các cờ của chế độ dịch trong lúc nói).
+
+Gói: `chuan` = whisper turbo q5_0 + Hy-MT2 Q8_0; `nhe` = whisper small q5_1 + Hy-MT2 Q4_K_M. Tiến trình phụ là bản app dùng
+(`src-tauri/binaries/`, do `scripts/copy-sidecars.sh` dựng). Ngôn ngữ và ngôn ngữ đích lấy từ
+`bench/phase0/data/latency/sessions.json`, như `bench/phase0/latency/run_matrix.py`: session tiếng Việt dịch sang tiếng Anh,
+các session khác sang tiếng Việt.
+
+Mỗi session ghi:
+- bản đầy đủ (có `events`) vào `target/do-tre/sessions/<label>-<pack>-<session>.json`, không commit; log của hai tiến
+  trình phụ nằm cạnh đó (`<…>.asr-worker.log`, `<…>.llama-server.log`);
+- bản rút gọn (bỏ `events`) vào `bench/2026-10-10-do-tre/results/<label>-<pack>-<session>.json`, để commit.
+
+Trước mỗi session, dừng nếu còn `asr-worker` hay `llama-server` chạy từ thư mục này (lượt trước chết mà chưa dọn, vì bản
+release đặt `panic = "abort"`). Chỉ xét tiến trình có đường dẫn nằm trong worktree: app AI Translator đã cài có thể đang
+chạy tiến trình phụ của nó, không được đụng tới.
+"""
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+DATA = os.path.join(ROOT, "bench", "phase0", "data", "latency")
+FULL = os.path.join(ROOT, "target", "do-tre", "sessions")
+RESULTS = os.path.join(HERE, "results")
+PACKS = {
+    "chuan": ("ggml-large-v3-turbo-q5_0.bin", "Hy-MT2-1.8B-Q8_0.gguf"),
+    "nhe": ("ggml-small-q5_1.bin", "Hy-MT2-1.8B-Q4_K_M.gguf"),
+}
+SIDECARS = ("asr-worker", "llama-server")
+
+
+def strays(ps_output, roots):
+    """[(pid, lệnh)] của `asr-worker`, `llama-server` chạy từ một thư mục trong `roots`, từ đầu ra của
+    `ps -axo pid=,command=`."""
+    found = []
+    for line in ps_output.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) != 2 or not parts[0].isdigit():
+            continue
+        exe = parts[1].split()[0]
+        if os.path.basename(exe).startswith(SIDECARS) and any(exe.startswith(r + os.sep) for r in roots):
+            found.append((int(parts[0]), parts[1]))
+    return found
+
+
+def running_strays():
+    ps = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True, check=True).stdout
+    return strays(ps, {ROOT, os.path.realpath(ROOT)})
+
+
+def slim(report):
+    """Bản để commit: bỏ `events` (bản đầy đủ nằm ở `target/do-tre/sessions/`)."""
+    return {k: v for k, v in report.items() if k != "events"}
+
+
+def main(argv):
+    extra = argv[argv.index("--") + 1:] if "--" in argv else []
+    argv = argv[:argv.index("--")] if "--" in argv else argv
+    ap = argparse.ArgumentParser(description="Chạy latency-bench session trên các session S6.")
+    ap.add_argument("--pack", required=True, choices=list(PACKS))
+    ap.add_argument("--label", required=True, help="tên lượt, ví dụ buoc1-moc; file là <label>-<pack>-<session>.json")
+    ap.add_argument("--sessions", default="", help="danh sách cách nhau bằng dấu phẩy; mặc định cả 6 session")
+    ap.add_argument("--end-silence-ms", type=int, default=50)
+    ap.add_argument("--asr-worker", default=os.path.join("src-tauri", "binaries", "asr-worker-aarch64-apple-darwin"))
+    ap.add_argument("--llama-server", default=os.path.join("src-tauri", "binaries", "llama-server-aarch64-apple-darwin"))
+    args = ap.parse_args(argv)
+
+    with open(os.path.join(DATA, "sessions.json"), encoding="utf-8") as f:
+        index = json.load(f)
+    names = [n.strip() for n in args.sessions.split(",") if n.strip()] or list(index)
+    unknown = [n for n in names if n not in index]
+    if unknown:
+        ap.error(f"không có session {', '.join(unknown)}; có: {', '.join(index)}")
+    bench = os.path.join(ROOT, "target", "release", "latency-bench")
+    asr_model, mt_model = PACKS[args.pack]
+    paths = [bench, os.path.join(ROOT, args.asr_worker), os.path.join(ROOT, args.llama_server),
+             os.path.join(ROOT, "models", asr_model), os.path.join(ROOT, "models", mt_model)]
+    missing = [p for p in paths if not os.path.exists(p)]
+    if missing:
+        raise SystemExit(f"thiếu {', '.join(missing)} (xem Task 0 của kế hoạch 01)")
+    for d in (FULL, RESULTS):
+        os.makedirs(d, exist_ok=True)
+    for name in names:
+        left = running_strays()
+        if left:
+            listing = ", ".join(f"pid {pid} ({cmd.split()[0]})" for pid, cmd in left)
+            raise SystemExit(f"dừng trước session {name}: còn tiến trình phụ của lượt trước: {listing}. "
+                             "Tắt đúng các pid này bằng `kill <pid>` rồi chạy lại.")
+        info = index[name]
+        out_name = f"{args.label}-{args.pack}-{name}"
+        full = os.path.join(FULL, out_name + ".json")
+        cmd = [bench, "session",
+               "--wav", os.path.join(DATA, f"{name}.wav"),
+               "--truth", os.path.join(DATA, f"{name}.truth.json"),
+               "--asr-worker", os.path.join(ROOT, args.asr_worker),
+               "--asr-model", os.path.join(ROOT, "models", asr_model),
+               "--llama-server", os.path.join(ROOT, args.llama_server),
+               "--mt-model", os.path.join(ROOT, "models", mt_model),
+               "--languages", info["languages"], "--target", info["target"],
+               "--end-silence-ms", str(args.end_silence_ms),
+               "--out", full, *extra]
+        print(f"== {out_name} ({info['seconds']} giây, {info['utterances']} câu)", flush=True)
+        code = subprocess.run(cmd, cwd=ROOT).returncode
+        if code != 0:
+            left = running_strays()
+            more = f" Còn tiến trình phụ: {', '.join(str(pid) for pid, _ in left)}." if left else ""
+            raise SystemExit(f"{out_name}: latency-bench thoát với mã {code}.{more}")
+        with open(full, encoding="utf-8") as f:
+            report = json.load(f)
+        with open(os.path.join(RESULTS, out_name + ".json"), "w", encoding="utf-8") as f:
+            json.dump(slim(report), f, ensure_ascii=False, indent=1)
+            f.write("\n")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
