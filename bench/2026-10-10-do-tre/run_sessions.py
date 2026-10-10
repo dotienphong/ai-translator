@@ -96,8 +96,8 @@ def main(argv):
     paths += [os.path.join(DATA, f"{name}.{ext}") for name in names for ext in ("wav", "truth.json")]
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:
-        raise SystemExit(f"thiếu {', '.join(missing)} (binary/model: xem Task 0 của kế hoạch 01; "
-                          "wav/truth: chạy bench/phase0/latency/build_sessions.py trước)")
+        raise SystemExit(f"thiếu {', '.join(missing)} (binary/model/symlink dữ liệu: xem Task 0 của kế hoạch 01; "
+                          "dữ liệu gốc thiếu file: chạy bench/phase0/latency/build_sessions.py ở thư mục chính)")
     for d in (FULL, RESULTS):
         os.makedirs(d, exist_ok=True)
     overwrite = existing_results(args.label, args.pack, names, RESULTS)
@@ -130,7 +130,8 @@ def main(argv):
         except subprocess.TimeoutExpired:
             error = (f"{out_name}: quá giờ sau {timeout_s} giây (session dài {info['seconds']} giây + 1800 giây "
                      "dự phòng). Đã kill tiến trình latency-bench (cha); asr-worker thường tự thoát theo vì stdin "
-                     "đóng, nhưng llama-server chạy trong process group riêng (stdin null) nên có thể còn sống sót.")
+                     "đóng, nhưng llama-server không đọc stdin (stdin null) và không ai dọn nó khi latency-bench "
+                     "bị kill, nên có thể còn sống sót.")
         else:
             if code != 0:
                 error = f"{out_name}: latency-bench thoát với mã {code}."
