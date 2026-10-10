@@ -1,3 +1,4 @@
+import { Icon } from "../../components/Icon";
 import { errorKey } from "../../i18n";
 import { licenseNotice } from "../../lib/license";
 import { canOpenScreens, updateInvite, updateReprompts } from "../../store/app";
@@ -38,6 +39,7 @@ export function Notice() {
       <div role="status">
         {update && (
           <div className="notice">
+            <Icon name="download" />
             <span>
               {t("notice.updateReady", { version: update })}
               {repromptsAfterUpdate && ` ${t("notice.updateReprompt")}`}
@@ -50,19 +52,22 @@ export function Notice() {
         )}
         {notice?.kind === "quitFromTray" && (
           <div className="notice">
+            <Icon name="info" />
             <span>{t("notice.quitFromTray")}</span>
             <button onClick={dismissNotice}>{t("common.dismiss")}</button>
           </div>
         )}
         {notice?.kind === "loginItemsApproval" && (
-          <div className="notice">
+          <div className="notice warning">
+            <Icon name="alert" />
             <span>{t("notice.loginItemsApproval")}</span>
             <button onClick={() => void openLoginItems()}>{t("notice.openLoginItems")}</button>
             <button onClick={dismissNotice}>{t("common.dismiss")}</button>
           </div>
         )}
         {license && (
-          <div className="notice">
+          <div className="notice warning">
+            <Icon name="alert" />
             <span>{t(license)}</span>
             {canNavigate && (
               <button onClick={() => (renewable ? navigate("upgrade") : navigate("settings", "license"))}>
@@ -72,7 +77,8 @@ export function Notice() {
           </div>
         )}
         {failures > 0 && (
-          <div className="notice">
+          <div className="notice warning">
+            <Icon name="keyboard" />
             <span>{t(canNavigate ? "notice.hotkeysFailed" : "notice.hotkeysFailedLater")}</span>
             {canNavigate && <button onClick={() => navigate("settings", "hotkeys")}>{t("notice.openSettings")}</button>}
           </div>
@@ -81,6 +87,7 @@ export function Notice() {
       <div role="alert">
         {error && (
           <div className="notice error">
+            <Icon name="alert" />
             <span>{t(errorKey(error.code))}</span>
             <button onClick={dismiss}>{t("common.dismiss")}</button>
           </div>

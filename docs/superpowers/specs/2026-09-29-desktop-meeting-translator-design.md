@@ -194,7 +194,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Từ điển thuật ngữ (Pro):** thêm, sửa, xóa; nhập và xuất CSV.
 - **Cài đặt:**
   - **Chung:** ngôn ngữ giao diện, khởi động cùng hệ thống, giao diện sáng/tối, kênh cập nhật (stable hoặc beta).
-  - **Phụ đề:** cỡ chữ, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen, cỡ chữ 20 px, bật hiện câu gốc. Đổi là thấy ngay trên thanh phụ đề.
+  - **Phụ đề:** cỡ chữ, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen, cỡ chữ 20 px, bật hiện câu gốc. Đổi là thấy ngay trên thanh phụ đề, và trên khung xem trước ở đầu nhóm (một câu mẫu vẽ theo đúng cài đặt, đổi ngay cả khi đang kéo thanh trượt; thêm 2026-10-10).
   - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
@@ -831,6 +831,7 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
 - **Hai cửa sổ `main` và `overlay`,** mỗi cửa sổ có entry HTML riêng. Giao tiếp với lõi Rust qua `invoke` (lệnh) và sự kiện Tauri; store Zustand đăng ký nhận sự kiện.
 - **Nhận diện thương hiệu mới**, không dùng lại nhận diện của AI Live Translator.
 - **Trợ năng:** chữ phóng to được, đủ tương phản cho phụ đề.
+- **Hệ thống giao diện (làm lại 2026-10-10):** token màu, chữ, khoảng cách ở `src/styles/tokens.css` (sáng và tối; màu nhấn theo biểu tượng app, chữ 14 px như app desktop, font của hệ điều hành kể cả Segoe UI Variable trên Windows); thành phần chung ở `src/styles/main.css`. Điều khiển tự vẽ để giống nhau trên macOS và Windows: nút, ô nhập và danh sách chọn cao 32 px (danh sách chọn có mũi tên, danh sách xổ vẫn của hệ điều hành), ô tick, nút radio, công tắc gạt (cài đặt bật/tắt, vẫn là ô tick), thanh trượt, thanh mức. Thanh điều hướng có biểu tượng (`src/components/Icon.tsx`, vẽ riêng, chỉ trang trí) và chỉ còn biểu tượng khi cửa sổ hẹp. Cài đặt theo kiểu bảng cài đặt của hệ điều hành: mỗi dòng nhãn và mô tả bên trái, điều khiển bên phải (`src/components/Field.tsx`). Thao tác không hoàn tác được (xóa, gỡ kích hoạt) hỏi lại trong một khung đỏ nhạt. Xem và chụp giao diện không cần Tauri: `scripts/ui-preview/` (IPC giả; ảnh cho website).
 
 ### 6.11 Đóng gói, ký số, cập nhật
 
@@ -849,7 +850,7 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
   - File manifest cập nhật (`latest.json` của từng kênh) đặt trên CDN và không ký, theo mô hình của Tauri. App chỉ nhận bản mới hơn bản đang chạy, và kênh stable không nhận bản beta.
   - **Rủi ro còn lại, chấp nhận ở MVP:** ai ghi được CDN có thể giữ manifest cũ (đóng băng cập nhật) hay đẩy một bản mới hơn đã bị rút, nhưng không cài được bản không do khóa cập nhật ký. Giảm bằng: chỉ job phát hành dưới environment `release` (có người duyệt) có token ghi CDN, và token chỉ ghi được bucket bản phát hành.
   - Kiểm tra lúc khởi động và mỗi 24 giờ. Cài bản mới ở lần kế tiếp người dùng chủ động thoát app (Thoát ở menu khay); không cài khi máy tắt, khởi động lại hay đăng xuất. App thường nằm ở khay nhiều ngày nên ít khi thoát. Vì vậy khi có bản mới và app đang rảnh (không dịch, không tải model), app hiện lời mời khởi động lại để cập nhật.
-  - **Kiểm tra bằng tay** (chủ dự án yêu cầu 2026-10-09): Cài đặt › Chung có dòng phiên bản đang chạy và nút "Kiểm tra cập nhật"; menu khay (macOS và Windows) có mục "Kiểm tra cập nhật…", mở cửa sổ chính ở đúng chỗ đó rồi kiểm. Bấm thì kiểm ngay, không chờ hạn 24 giờ; có bản mới thì tải, xong thì nút đổi thành "Khởi động lại để cập nhật" (đang dịch thì nhắc dừng dịch trước). Dòng trạng thái báo đang kiểm, đang tải, đã là bản mới nhất, hay không kiểm được (lỗi mạng). Bản build không tự cập nhật (bản dev) thì báo vậy. Lần bấm tay và lần kiểm nền không chạy chồng nhau.
+  - **Kiểm tra bằng tay** (chủ dự án yêu cầu 2026-10-09): Cài đặt › Chung có dòng phiên bản đang chạy và nút "Kiểm tra cập nhật"; menu khay (macOS và Windows) có mục "Kiểm tra cập nhật…", mở cửa sổ chính ở đúng chỗ đó rồi kiểm. Bấm thì kiểm ngay, không chờ hạn 24 giờ; có bản mới thì tải, xong thì nút đổi thành "Khởi động lại để cập nhật" (đang dịch thì nhắc dừng dịch trước). Dòng trạng thái báo đang kiểm, đang tải, đã là bản mới nhất, hay không kiểm được (lỗi mạng). Bản build không tự cập nhật (bản dev) thì báo vậy. Mỗi lần kiểm xong, dòng trạng thái ghi kèm giờ kiểm (có giây), để bấm lại mà kết quả giống lần trước vẫn thấy lần bấm đã chạy (2026-10-10). Lần bấm tay và lần kiểm nền không chạy chồng nhau.
   - Có hai kênh: stable và beta, chọn trong Cài đặt (§6.9).
 - **File đi kèm:** các tiến trình phụ đặt ở `src-tauri/binaries/`, tên kèm target triple:
   - `asr-worker` trên macOS; `asr-worker-vulkan` và `asr-worker-cpu` trên Windows (§6.4).

@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import logo from "../../../../app-icon.svg";
+import { Icon } from "../../../components/Icon";
 import type { MessageKey, UiLanguage } from "../../../i18n";
 import { canAdvance, type Step, stepsFor } from "../../../lib/onboardingSteps";
 import { useApp, useT } from "../appStore";
@@ -48,28 +50,44 @@ export function Onboarding() {
   const last = current === steps.length - 1;
   return (
     <main className="onboarding">
-      <Notice />
-      <p className="hint">{t("onboarding.step", { n: current + 1, total: steps.length })}</p>
-      <h1 id="onboarding-title" ref={title} tabIndex={-1}>
-        {t(TITLES[step])}
-      </h1>
-      <StepBody step={step} platform={info.platform} />
-      <div className="actions">
-        <button disabled={current === 0} onClick={() => setStep(current - 1)}>
-          {t("onboarding.back")}
-        </button>
-        <button
-          className="primary"
-          disabled={!canAdvance(step, accepted)}
-          onClick={() => {
-            // Qua bước Điều khoản (đã đồng ý): đăng ký dùng thử chạy nền, vì request gửi mã băm ID máy (spec 2026-10-07 §3.2).
-            if (step === "terms") void startTrial();
-            if (last) void finish();
-            else setStep(current + 1);
-          }}
-        >
-          {t(last ? "onboarding.finish" : "onboarding.next")}
-        </button>
+      <div className="onboarding-card">
+        <Notice />
+        <div className="onboarding-top">
+          <img src={logo} alt="" />
+          <div className="steps">
+            <div className="steps-label">{t("onboarding.step", { n: current + 1, total: steps.length })}</div>
+            <div className="steps-bar" aria-hidden="true">
+              {steps.map((s, i) => (
+                <span key={s} className={i <= current ? "done" : undefined} />
+              ))}
+            </div>
+          </div>
+        </div>
+        <h1 id="onboarding-title" ref={title} tabIndex={-1}>
+          {t(TITLES[step])}
+        </h1>
+        <div className="onboarding-body">
+          <StepBody step={step} platform={info.platform} />
+        </div>
+        <div className="onboarding-actions">
+          <button disabled={current === 0} onClick={() => setStep(current - 1)}>
+            <Icon name="chevronLeft" size={16} />
+            {t("onboarding.back")}
+          </button>
+          <button
+            className="primary"
+            disabled={!canAdvance(step, accepted)}
+            onClick={() => {
+              // Qua bước Điều khoản (đã đồng ý): đăng ký dùng thử chạy nền, vì request gửi mã băm ID máy (spec 2026-10-07 §3.2).
+              if (step === "terms") void startTrial();
+              if (last) void finish();
+              else setStep(current + 1);
+            }}
+          >
+            {t(last ? "onboarding.finish" : "onboarding.next")}
+            {!last && <Icon name="chevronRight" size={16} />}
+          </button>
+        </div>
       </div>
     </main>
   );
@@ -87,16 +105,16 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
     // Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (bước 5 đổi lại được).
     case "language":
       return (
-        <div className="checks" role="radiogroup" aria-labelledby="onboarding-title">
+        <div className="choices cols" role="radiogroup" aria-labelledby="onboarding-title">
           {(["vi", "en"] as UiLanguage[]).map((lang) => (
-            <label key={lang}>
+            <label key={lang} className="choice">
               <input
                 type="radio"
                 name="ui-language"
                 checked={settings?.uiLanguage === lang}
                 onChange={() => void update({ uiLanguage: lang, targetLanguage: lang })}
-              />{" "}
-              {t(`lang.${lang}`)}
+              />
+              <span className="choice-title">{t(`lang.${lang}`)}</span>
             </label>
           ))}
         </div>
@@ -107,8 +125,11 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
       return (
         <>
           <p>{t("onboarding.permission.body")}</p>
-          <div className="row">
-            <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
+          <div className="actions">
+            <button onClick={() => void openPermission()}>
+              <Icon name="external" size={16} />
+              {t("common.openPermissionSettings")}
+            </button>
           </div>
         </>
       );
@@ -117,9 +138,11 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
       return (
         <>
           <p>{t("onboarding.terms.intro")}</p>
-          <LegalDetails kind="eula" />
-          <LegalDetails kind="privacy" />
-          <label className="row">
+          <div className="legal-box">
+            <LegalDetails kind="eula" />
+            <LegalDetails kind="privacy" />
+          </div>
+          <label className="consent">
             <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
             <span>{t("onboarding.terms.accept")}</span>
           </label>
@@ -130,15 +153,25 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
     case "download":
       return <DownloadStep />;
     case "languages":
-      return <LanguagePicker />;
+      return (
+        <div className="card list">
+          <LanguagePicker />
+        </div>
+      );
     case "test":
       return <ListenTest />;
     case "privacy":
       return (
-        <>
-          <p>{t("onboarding.privacy.local")}</p>
-          <p>{t("onboarding.privacy.notify")}</p>
-        </>
+        <ul className="points">
+          <li>
+            <Icon name="shield" />
+            <span>{t("onboarding.privacy.local")}</span>
+          </li>
+          <li>
+            <Icon name="info" />
+            <span>{t("onboarding.privacy.notify")}</span>
+          </li>
+        </ul>
       );
     case "tray":
       return platform === "macos" ? (
@@ -148,8 +181,11 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
           <p>{t("onboarding.tray.windows")}</p>
           <p>{t("onboarding.tray.windowsPin")}</p>
           <TaskbarGuide label={t("onboarding.tray.windowsPin")} />
-          <div className="row">
-            <button onClick={() => void openTaskbarSettings()}>{t("onboarding.tray.openTaskbarSettings")}</button>
+          <div className="actions">
+            <button onClick={() => void openTaskbarSettings()}>
+              <Icon name="external" size={16} />
+              {t("onboarding.tray.openTaskbarSettings")}
+            </button>
           </div>
         </>
       );

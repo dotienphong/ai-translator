@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { sourceChoices, sourceFromKey, sourceKey, sourceLabel } from "../../../lib/audioSource";
+import { Field } from "../../../components/Field";
+import { Icon } from "../../../components/Icon";
 import { useApp, useT } from "../appStore";
 
 // Nhóm Cài đặt "Âm thanh" (§4.3): nguồn âm thanh (§6.1) và độ nhạy ngắt câu (50–800 ms, §6.3).
@@ -21,9 +23,13 @@ export function AudioSettings() {
     setPause(null);
   };
   return (
-    <div className="card">
-      <div className="row">
-        <label htmlFor="audio-source">{t("settings.audio.source")}</label>
+    <div className="card list">
+      <Field
+        label={t("settings.audio.source")}
+        htmlFor="audio-source"
+        hint={t(info.platform === "macos" ? "settings.audio.hint.macos" : "settings.audio.hint.windows")}
+        wide
+      >
         <select
           id="audio-source"
           value={sourceKey(settings.audioSource)}
@@ -35,26 +41,28 @@ export function AudioSettings() {
             </option>
           ))}
         </select>
-        <button onClick={() => void load()}>{t("settings.audio.refresh")}</button>
-      </div>
-      <p className="hint">{t(info.platform === "macos" ? "settings.audio.hint.macos" : "settings.audio.hint.windows")}</p>
-      <div className="row">
-        <label htmlFor="vad-end-silence">{t("settings.audio.pause")}</label>
-        <input
-          id="vad-end-silence"
-          type="range"
-          min={50}
-          max={800}
-          step={50}
-          value={pauseMs}
-          onChange={(e) => setPause(Number(e.target.value))}
-          onPointerUp={commitPause}
-          onKeyUp={commitPause}
-          onBlur={commitPause}
-        />
-        <span>{pauseMs} ms</span>
-      </div>
-      <p className="hint">{t("settings.audio.pause.hint")}</p>
+        <button onClick={() => void load()}>
+          <Icon name="refresh" size={16} />
+          {t("settings.audio.refresh")}
+        </button>
+      </Field>
+      <Field label={t("settings.audio.pause")} htmlFor="vad-end-silence" hint={t("settings.audio.pause.hint")} wide>
+        <span className="range">
+          <input
+            id="vad-end-silence"
+            type="range"
+            min={50}
+            max={800}
+            step={50}
+            value={pauseMs}
+            onChange={(e) => setPause(Number(e.target.value))}
+            onPointerUp={commitPause}
+            onKeyUp={commitPause}
+            onBlur={commitPause}
+          />
+          <span className="value">{pauseMs} ms</span>
+        </span>
+      </Field>
     </div>
   );
 }

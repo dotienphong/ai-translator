@@ -72,6 +72,9 @@ export interface AppStoreState {
   openLoginItemsSettings(): Promise<void>;
   openAudioPermissionSettings(): Promise<void>;
   loadAudioSources(): Promise<void>;
+  // Màn hình chính: đọc danh sách nguồn một lần mỗi lần mở app, chỉ để có tên hiển thị của nguồn đang chọn (tên app,
+  // tên thiết bị). Lặng lẽ: lỗi không hiện ở thanh báo lỗi, thành công không xóa lỗi đang hiện.
+  loadAudioSourceNames(): Promise<void>;
   finishOnboarding(): Promise<void>;
   // Qua bước Điều khoản (đã đồng ý): đăng ký dùng thử chạy nền (spec 2026-10-07 §3.2). Lỗi không chặn các bước.
   startTrial(): Promise<void>;
@@ -146,6 +149,9 @@ export function createAppStore(ipc: Ipc) {
       if (current && settings.revision < current.revision) return;
       set({ settings });
     }
+
+    // `loadAudioSourceNames` đã gửi lệnh trong lần mở app này chưa.
+    let sourceNamesRequested = false;
 
     return {
       settings: null,
@@ -295,6 +301,17 @@ export function createAppStore(ipc: Ipc) {
           () => ipc.invoke("open_audio_permission_settings"),
           () => {},
         );
+      },
+
+      async loadAudioSourceNames() {
+        if (sourceNamesRequested || get().audioSources !== null) return;
+        sourceNamesRequested = true;
+        try {
+          const audioSources = await ipc.invoke("list_audio_sources");
+          if (get().audioSources === null) set({ audioSources });
+        } catch {
+          // Không có tên thì màn hình chính hiện mã nguồn; Cài đặt › Âm thanh vẫn đọc lại và báo lỗi như cũ.
+        }
       },
 
       async loadAudioSources() {

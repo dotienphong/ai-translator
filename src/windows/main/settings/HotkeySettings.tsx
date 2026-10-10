@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { Field } from "../../../components/Field";
 import { errorKey } from "../../../i18n";
 import { formatAccelerator, recorderStep } from "../../../lib/hotkeys";
 import { HOTKEY_ACTIONS, type HotkeyAction } from "../../../lib/ipc";
@@ -67,7 +68,7 @@ export function HotkeySettings() {
 
   if (!settings || !status || !info) return null;
   return (
-    <div className="card">
+    <div className="card list">
       <p className="hint">{t("hotkeys.hint", { super: info.platform === "macos" ? "Cmd" : "Win" })}</p>
       {HOTKEY_ACTIONS.map((action) => {
         const error = errors[action];
@@ -75,12 +76,11 @@ export function HotkeySettings() {
         const errorId = `hotkey-error-${action}`;
         const hasError = Boolean(error) || failed;
         return (
-          <div key={action}>
-            <div className="row">
-              <span>{t(`hotkeys.${action}`)}</span>
+          <Fragment key={action}>
+            <Field label={t(`hotkeys.${action}`)}>
               {editing === action ? (
                 <>
-                  <span className="hint" id={`hotkey-press-${action}`}>
+                  <span className="badge accent" id={`hotkey-press-${action}`}>
                     {t("hotkeys.press")}
                   </span>
                   <button
@@ -108,18 +108,18 @@ export function HotkeySettings() {
                   </button>
                 </>
               )}
-            </div>
+            </Field>
             {error && (
-              <p className="error-text" id={errorId}>
+              <p className="error-text field-error" id={errorId}>
                 {t(errorKey(error.code))}
               </p>
             )}
             {!error && failed && (
-              <p className="error-text" id={errorId}>
+              <p className="error-text field-error" id={errorId}>
                 {t("hotkeys.failed")}
               </p>
             )}
-          </div>
+          </Fragment>
         );
       })}
     </div>

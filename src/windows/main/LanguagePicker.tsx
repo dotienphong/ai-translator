@@ -1,3 +1,4 @@
+import { Field, FieldSet } from "../../components/Field";
 import { LANGS, type Lang } from "../../lib/ipc";
 import { useApp, useT } from "./appStore";
 
@@ -12,8 +13,7 @@ export function LanguagePicker() {
   if (!settings) return null;
   return (
     <>
-      <div className="row">
-        <label htmlFor="target">{t("languages.target")}</label>
+      <Field label={t("languages.target")} htmlFor="target">
         <select id="target" value={settings.targetLanguage} onChange={(e) => void update({ targetLanguage: e.target.value as Lang })}>
           {LANGS.map((l) => (
             <option key={l} value={l}>
@@ -21,9 +21,8 @@ export function LanguagePicker() {
             </option>
           ))}
         </select>
-      </div>
-      <fieldset className="row">
-        <legend>{t("languages.sources")}</legend>
+      </Field>
+      <FieldSet legend={t("languages.sources")}>
         <div className="checks">
           {LANGS.map((l) => {
             const checked = settings.sourceLanguages.includes(l);
@@ -34,15 +33,14 @@ export function LanguagePicker() {
                   checked={checked}
                   disabled={checked && settings.sourceLanguages.length === 1}
                   onChange={(e) => void setSource(l, e.target.checked)}
-                />{" "}
+                />
                 {t(`lang.${l}`)}
               </label>
             );
           })}
         </div>
-      </fieldset>
-      <div className="row">
-        <label htmlFor="lock">{t("languages.lock")}</label>
+      </FieldSet>
+      <Field label={t("languages.lock")} htmlFor="lock">
         <select
           id="lock"
           value={settings.sourceLock ?? ""}
@@ -55,7 +53,7 @@ export function LanguagePicker() {
             </option>
           ))}
         </select>
-      </div>
+      </Field>
     </>
   );
 }

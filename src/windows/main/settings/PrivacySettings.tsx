@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Field } from "../../../components/Field";
+import { Icon } from "../../../components/Icon";
 import { useApp, useT } from "../appStore";
 import { DeleteModelsAndData } from "./DeleteModelsAndData";
 
@@ -16,32 +18,45 @@ export function PrivacySettings() {
   if (!settings) return null;
   return (
     <>
-      <div className="card">
-        <div className="row">
-          <label htmlFor="save-history">{t("settings.privacy.saveHistory")}</label>
+      <div className="card list">
+        <Field
+          label={t("settings.privacy.saveHistory")}
+          htmlFor="save-history"
+          hint={t(pro ? "settings.privacy.saveHistory.hint" : "settings.privacy.saveHistory.pro")}
+          hintId="save-history-hint"
+        >
           <input
             id="save-history"
+            className="switch"
             type="checkbox"
             checked={settings.saveHistory}
             disabled={!pro && !settings.saveHistory}
             aria-describedby="save-history-hint"
             onChange={(e) => void update({ saveHistory: e.target.checked })}
           />
-        </div>
-        <p id="save-history-hint" className="hint">
-          {t(pro ? "settings.privacy.saveHistory.hint" : "settings.privacy.saveHistory.pro")}
-        </p>
+        </Field>
       </div>
       <div className="card">
         <h2>{t("settings.privacy.clear")}</h2>
         <p className="hint">{t("settings.privacy.clear.hint")}</p>
-        <div className="row" role="status">
+        <div role="status">
           {!confirming && (
-            <button onClick={() => setConfirming(true)}>{t("settings.privacy.clear")}</button>
+            <div className="actions">
+              <button onClick={() => setConfirming(true)}>
+                <Icon name="trash" size={16} />
+                {t("settings.privacy.clear")}
+              </button>
+              {cleared && (
+                <span className="note">
+                  <Icon name="check" size={16} />
+                  <span>{t("settings.privacy.cleared")}</span>
+                </span>
+              )}
+            </div>
           )}
           {confirming && (
-            <>
-              <span className="error-text">{t("settings.privacy.clear.confirm")}</span>
+            <div className="confirm">
+              <span>{t("settings.privacy.clear.confirm")}</span>
               <button
                 className="danger"
                 onClick={() => {
@@ -52,9 +67,8 @@ export function PrivacySettings() {
                 {t("settings.privacy.clear.yes")}
               </button>
               <button onClick={() => setConfirming(false)}>{t("common.cancel")}</button>
-            </>
+            </div>
           )}
-          {!confirming && cleared && <span>{t("settings.privacy.cleared")}</span>}
         </div>
       </div>
       <DeleteModelsAndData />

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Field } from "../../../components/Field";
+import { Icon } from "../../../components/Icon";
 import { errorKey } from "../../../i18n";
 import { deviceName, isRenewal, isThisMachine } from "../../../lib/license";
 import { useApp, useT } from "../appStore";
@@ -34,12 +36,19 @@ export function LicenseSettings() {
   return (
     <>
       <div className="card">
-        <div className="row">
-          <span>{t("settings.license.plan")}</span>
-          <strong>
-            <PlanName plan={view.plan} />
-          </strong>
-          <span className={`badge ${view.standing}`}>{t(`license.standing.${view.standing}`)}</span>
+        <div className="license-head">
+          <span className="badge-icon">
+            <Icon name="key" size={20} />
+          </span>
+          <div>
+            <span className="hint">{t("settings.license.plan")}</span>
+            <div className="license-plan">
+              <PlanName plan={view.plan} />
+              {view.standing !== "free" && (
+                <span className={`badge ${view.standing}`}>{t(`license.standing.${view.standing}`)}</span>
+              )}
+            </div>
+          </div>
         </div>
         {view.licensedPlan && view.plan === "free" && (
           <p className="hint">
@@ -47,29 +56,28 @@ export function LicenseSettings() {
           </p>
         )}
         {view.key && (
-          <div className="row">
-            <span>{t("settings.license.key")}</span>
-            <code>{view.key}</code>
-          </div>
+          <Field label={t("settings.license.key")}>
+            <code className="key">{view.key}</code>
+          </Field>
         )}
         {view.expiresAt !== null && (
-          <div className="row">
-            <span>{t("settings.license.expires")}</span>
-            <span>{when(view.expiresAt)}</span>
-          </div>
+          <Field label={t("settings.license.expires")}>
+            <span className="num">{when(view.expiresAt)}</span>
+          </Field>
         )}
-        <div className="row">
-          <span>{t("settings.license.quota")}</span>
+        <Field label={t("settings.license.quota")}>
           <QuotaSummary quota={view.quota} />
-        </div>
+        </Field>
         {view.devOverride && <p className="hint">{t("settings.license.devOverride")}</p>}
         {!view.serverConfigured && <p className="hint">{t("settings.license.notConfigured")}</p>}
-        <div className="row">
+        <div className="actions">
           <button className="primary" onClick={() => navigate("upgrade")}>
+            <Icon name="upgrade" size={16} />
             {t(isRenewal(view) ? "settings.license.renew" : "settings.license.buy")}
           </button>
           {view.key && (
             <button disabled={busy} onClick={() => void validate()}>
+              <Icon name="refresh" size={16} />
               {t("settings.license.check")}
             </button>
           )}
@@ -78,17 +86,20 @@ export function LicenseSettings() {
       {!view.key && (
         <div className="card">
           <h2>{t("settings.license.activate")}</h2>
+          <label className="field-label form-label" htmlFor="license-key">
+            {t("settings.license.keyInput")}
+          </label>
           <form
-            className="row"
+            className="entry-form"
             onSubmit={(e) => {
               e.preventDefault();
               void activate(key);
             }}
           >
-            <label htmlFor="license-key">{t("settings.license.keyInput")}</label>
             <input
               id="license-key"
               type="text"
+              className="key-input"
               autoComplete="off"
               spellCheck={false}
               value={key}
@@ -100,58 +111,71 @@ export function LicenseSettings() {
             </button>
           </form>
           {devices && (
-            <div role="alert">
+            <div role="alert" className="devices-block">
               <p>{t("settings.license.devices")}</p>
               <ul className="devices">
                 {devices.map((d) => (
-                  <li key={d.activation_id} className="row">
-                    <span>{deviceName(d, t("settings.license.devices.unnamed"))}</span>
-                    {d.last_validated_at !== null && (
-                      <span className="hint">{t("settings.license.devices.lastUsed", { time: when(d.last_validated_at) })}</span>
-                    )}
+                  <li key={d.activation_id}>
+                    <Icon name="cpu" size={18} />
+                    <span className="device-name">
+                      {deviceName(d, t("settings.license.devices.unnamed"))}
+                      {d.last_validated_at !== null && (
+                        <span className="hint block">
+                          {t("settings.license.devices.lastUsed", { time: when(d.last_validated_at) })}
+                        </span>
+                      )}
+                    </span>
                     <button disabled={busy} onClick={() => void deactivateOther(key, d.activation_id)}>
                       {t("settings.license.devices.remove")}
                     </button>
                   </li>
                 ))}
               </ul>
-              <div className="row">
-                {!anyway && <button onClick={() => setAnyway(true)}>{t("settings.license.anyway")}</button>}
-                {anyway && (
-                  <>
-                    <span className="error-text">{t("settings.license.anyway.confirm")}</span>
-                    <button
-                      className="danger"
-                      disabled={busy}
-                      onClick={() => {
-                        setAnyway(false);
-                        void activateAnyway(key);
-                      }}
-                    >
-                      {t("settings.license.anyway.yes")}
-                    </button>
-                    <button onClick={() => setAnyway(false)}>{t("common.cancel")}</button>
-                  </>
-                )}
-              </div>
+              {!anyway && (
+                <div className="actions">
+                  <button onClick={() => setAnyway(true)}>{t("settings.license.anyway")}</button>
+                </div>
+              )}
+              {anyway && (
+                <div className="confirm">
+                  <span>{t("settings.license.anyway.confirm")}</span>
+                  <button
+                    className="danger"
+                    disabled={busy}
+                    onClick={() => {
+                      setAnyway(false);
+                      void activateAnyway(key);
+                    }}
+                  >
+                    {t("settings.license.anyway.yes")}
+                  </button>
+                  <button onClick={() => setAnyway(false)}>{t("common.cancel")}</button>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
       {conflict && (
         <div className="card" role="alert">
-          <p className="error-text">{t("settings.license.conflict")}</p>
+          <p className="note error">
+            <Icon name="alert" size={16} />
+            <span>{t("settings.license.conflict")}</span>
+          </p>
           <ul className="devices">
             {conflict.devices.map((d) => (
-              <li key={d.activation_id} className="row">
-                <span>
+              <li key={d.activation_id}>
+                <Icon name="cpu" size={18} />
+                <span className="device-name">
                   {isThisMachine(conflict, d)
                     ? t("settings.license.conflict.thisMachine")
                     : deviceName(d, t("settings.license.devices.unnamed"))}
+                  {d.last_validated_at !== null && (
+                    <span className="hint block">
+                      {t("settings.license.devices.lastUsed", { time: when(d.last_validated_at) })}
+                    </span>
+                  )}
                 </span>
-                {d.last_validated_at !== null && (
-                  <span className="hint">{t("settings.license.devices.lastUsed", { time: when(d.last_validated_at) })}</span>
-                )}
                 {isThisMachine(conflict, d) ? (
                   <button disabled={busy} onClick={() => void deactivate()}>
                     {t("settings.license.conflict.leave")}
@@ -164,23 +188,35 @@ export function LicenseSettings() {
               </li>
             ))}
           </ul>
-          <div className="row">
+          <div className="actions">
             <button disabled={busy} onClick={() => void validate()}>
+              <Icon name="refresh" size={16} />
               {t("settings.license.conflict.retry")}
             </button>
           </div>
         </div>
       )}
-      <div role="alert">{error && <p className="error-text">{t(errorKey(error.code))}</p>}</div>
+      <div role="alert">
+        {error && (
+          <div className="notice error">
+            <Icon name="alert" />
+            <span>{t(errorKey(error.code))}</span>
+          </div>
+        )}
+      </div>
       {view.key && (
         <div className="card">
           <h2>{t("settings.license.deactivate")}</h2>
           <p className="hint">{t("settings.license.deactivate.hint")}</p>
-          <div className="row" role="status">
-            {!confirming && <button onClick={() => setConfirming(true)}>{t("settings.license.deactivate")}</button>}
+          <div role="status">
+            {!confirming && (
+              <div className="actions">
+                <button onClick={() => setConfirming(true)}>{t("settings.license.deactivate")}</button>
+              </div>
+            )}
             {confirming && (
-              <>
-                <span className="error-text">{t("settings.license.deactivate.confirm")}</span>
+              <div className="confirm">
+                <span>{t("settings.license.deactivate.confirm")}</span>
                 <button
                   className="danger"
                   disabled={busy}
@@ -192,28 +228,37 @@ export function LicenseSettings() {
                   {t("settings.license.deactivate.yes")}
                 </button>
                 <button onClick={() => setConfirming(false)}>{t("common.cancel")}</button>
-              </>
+              </div>
             )}
           </div>
         </div>
       )}
       <div className="card">
         <h2>{t("settings.license.recover")}</h2>
+        <label className="field-label form-label" htmlFor="license-email">
+          {t("settings.license.recover.email")}
+        </label>
         <form
-          className="row"
+          className="entry-form"
           onSubmit={(e) => {
             e.preventDefault();
             void recover(email).then((ok) => setSent(ok));
           }}
         >
-          <label htmlFor="license-email">{t("settings.license.recover.email")}</label>
-          <input id="license-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input
+            id="license-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
           <button type="submit" disabled={busy || email.trim() === ""}>
+            <Icon name="external" size={16} />
             {t("settings.license.recover.button")}
           </button>
         </form>
-        <p className="hint" role="status">
-          {sent ? t("settings.license.recover.sent") : t("settings.license.recover.hint")}
+        <p className={sent ? "note" : "hint"} role="status">
+          {sent && <Icon name="check" size={16} />}
+          <span>{sent ? t("settings.license.recover.sent") : t("settings.license.recover.hint")}</span>
         </p>
       </div>
     </>

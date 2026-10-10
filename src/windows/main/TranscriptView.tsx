@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { EmptyState } from "../../components/EmptyState";
+import { Icon } from "../../components/Icon";
 import { errorKey } from "../../i18n";
 import type { ExportFormat, SrtText, Transcript, TranscriptRef } from "../../lib/ipc";
 import { clockTime, lineView, localOffsetMinutes } from "../../lib/subtitleView";
@@ -26,21 +28,30 @@ export function TranscriptView({ transcript, source }: { transcript: Transcript;
   return (
     <>
       <div className="card">
-        <div className="row">
-          <label htmlFor="transcript-search">{t("transcript.search")}</label>
-          <input
-            id="transcript-search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("transcript.search.placeholder")}
-          />
+        <div className="toolbar">
+          <div className="search">
+            <Icon name="search" size={16} />
+            <label className="sr-only" htmlFor="transcript-search">
+              {t("transcript.search")}
+            </label>
+            <input
+              id="transcript-search"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("transcript.search.placeholder")}
+            />
+          </div>
+          <span className="spacer" />
           <button onClick={() => void copy(source, transcript.startedAt)} disabled={transcript.lines.length === 0}>
+            <Icon name="copy" size={16} />
             {t("transcript.copy")}
           </button>
         </div>
-        <div className="row">
-          <label htmlFor="export-format">{t("transcript.export")}</label>
+        <div className="toolbar">
+          <label className="toolbar-label" htmlFor="export-format">
+            {t("transcript.export")}
+          </label>
           <select id="export-format" value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
             <option value="txt">TXT</option>
             <option value="srt">SRT</option>
@@ -60,6 +71,7 @@ export function TranscriptView({ transcript, source }: { transcript: Transcript;
             disabled={!pro || transcript.lines.length === 0}
             onClick={() => void exportTo(source, format, srtText, transcript.startedAt)}
           >
+            <Icon name="download" size={16} />
             {t("transcript.export.button")}
           </button>
           {!pro && (
@@ -70,20 +82,31 @@ export function TranscriptView({ transcript, source }: { transcript: Transcript;
         </div>
         {!pro && <p className="hint">{t("transcript.export.pro")}</p>}
         <div role="status">
-          {notice?.kind === "copied" && <p className="hint">{t("transcript.copied")}</p>}
-          {notice?.kind === "exported" && <p className="hint">{t("transcript.exported", { path: notice.path })}</p>}
+          {notice?.kind === "copied" && (
+            <p className="note">
+              <Icon name="check" size={16} />
+              <span>{t("transcript.copied")}</span>
+            </p>
+          )}
+          {notice?.kind === "exported" && (
+            <p className="note">
+              <Icon name="check" size={16} />
+              <span>{t("transcript.exported", { path: notice.path })}</span>
+            </p>
+          )}
         </div>
         <div role="alert">
           {error && (
             <div className="notice error">
+              <Icon name="alert" />
               <span>{t(errorKey(error.code))}</span>
               <button onClick={dismiss}>{t("common.dismiss")}</button>
             </div>
           )}
         </div>
       </div>
-      {transcript.lines.length > 0 && lines.length === 0 && <p className="empty">{t("transcript.noMatch")}</p>}
-      <ol className="transcript">
+      {transcript.lines.length > 0 && lines.length === 0 && <EmptyState icon="search" text={t("transcript.noMatch")} />}
+      {lines.length > 0 && <ol className="transcript">
         {lines.map((l) => {
           const v = lineView(l, true);
           const translation =
@@ -100,7 +123,7 @@ export function TranscriptView({ transcript, source }: { transcript: Transcript;
             </li>
           );
         })}
-      </ol>
+      </ol>}
     </>
   );
 }

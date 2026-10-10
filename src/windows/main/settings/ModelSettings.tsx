@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { defaultChoice, downloadBlock, formatBytes, localized, packById } from "../../../lib/models";
+import { Field } from "../../../components/Field";
+import { Icon } from "../../../components/Icon";
 import { useApp, useT } from "../appStore";
 import { BlockNote } from "../models/BlockNote";
 import { DownloadPanel } from "../models/DownloadPanel";
@@ -33,24 +35,33 @@ export function ModelSettings() {
     <>
       <ModelsError />
       <UpdateNotice />
-      <div className="card">
-        <div className="row">
-          <span>{t("models.current")}</span>
-          <strong>{inUse?.usable ? localized(inUse.name, lang) : t("models.none")}</strong>
+      <div className="card list">
+        <Field
+          label={
+            <>
+              {t("models.current")}: <strong>{inUse?.usable ? localized(inUse.name, lang) : t("models.none")}</strong>
+            </>
+          }
+          hint={t("models.used", { size: formatBytes(view.usedBytes, lang) })}
+        >
           {inUse && (
             <button disabled={downloading} onClick={() => void repair(inUse.id)}>
+              <Icon name="refresh" size={16} />
               {t("models.redownload")}
             </button>
           )}
+        </Field>
+        <div className="field">
+          <div className="field-text">
+            <MachineInfo />
+          </div>
         </div>
-        <p className="hint">{t("models.used", { size: formatBytes(view.usedBytes, lang) })}</p>
-        <MachineInfo />
       </div>
       <DownloadPanel />
       <PackList view={view} choice={chosen?.id ?? null} onChoose={choose} />
       {chosen && <BlockNote view={view} pack={chosen} />}
       {chosen && (
-        <div className="row">
+        <div className="actions">
           {chosen.usable && chosen.id !== current && (
             <button className="primary" onClick={() => void select(chosen.id)}>
               {t("models.use")}
@@ -67,6 +78,7 @@ export function ModelSettings() {
           )}
           {chosen.usable && (
             <button disabled={downloading} onClick={() => void remove(chosen.id)}>
+              <Icon name="trash" size={16} />
               {t("models.delete")}
             </button>
           )}

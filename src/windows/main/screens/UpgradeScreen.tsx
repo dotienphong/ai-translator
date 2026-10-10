@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon } from "../../../components/Icon";
 import { errorKey } from "../../../i18n";
 import type { PlanOffer } from "../../../lib/ipc";
 import { defaultPlan, isRenewal, orderFinished, orderMessageKey, priceVnd } from "../../../lib/license";
@@ -38,42 +39,51 @@ export function UpgradeScreen() {
   const current = view?.plan ?? "free";
   return (
     <>
-      <div className="card">
-        <ul className="plans">
-          <li className={current === "free" ? "plan current" : "plan"}>
-            <strong>
-              <PlanName plan="free" />
-            </strong>
-            <span>{t("upgrade.free.quota")}</span>
-            <span>{vnd(0)}</span>
-            {current === "free" && <span className="badge active">{t("upgrade.current")}</span>}
-          </li>
-          {plans?.map((p) => (
-            <li key={p.code} className={current === p.code ? "plan current" : "plan"}>
-              <label>
-                <input
-                  type="radio"
-                  name="plan"
-                  checked={plan === p.code}
-                  disabled={checkout !== null && !orderFinished(order)}
-                  onChange={() => setPicked(p.code)}
-                />
-                <strong>{p.name}</strong>
-              </label>
-              <span>
-                {p.quota_minutes_per_cycle === null
-                  ? t("upgrade.unlimited")
-                  : t("upgrade.hours", { hours: p.quota_minutes_per_cycle / 60 })}
+      <ul className="plans">
+        <li className="plan">
+          <span className="plan-name">
+            <PlanName plan="free" />
+          </span>
+          <span className="plan-price">{vnd(0)}</span>
+          <span className="plan-quota">{t("upgrade.free.quota")}</span>
+          {current === "free" && <span className="badge active">{t("upgrade.current")}</span>}
+        </li>
+        {plans?.map((p) => (
+          <li key={p.code} className="plan">
+            <label>
+              <input
+                type="radio"
+                name="plan"
+                checked={plan === p.code}
+                disabled={checkout !== null && !orderFinished(order)}
+                onChange={() => setPicked(p.code)}
+              />
+              <span className="plan-name">{p.name}</span>
+            </label>
+            {priceVnd(p) !== null && (
+              <span className="plan-price">
+                {vnd(priceVnd(p) ?? 0)} <small>{t("upgrade.perDays", { days: p.days_per_order })}</small>
               </span>
-              <span>{priceVnd(p) === null ? "" : t("upgrade.price", { price: vnd(priceVnd(p) ?? 0), days: p.days_per_order })}</span>
-              {current === p.code && <span className="badge active">{t("upgrade.current")}</span>}
-            </li>
-          ))}
-        </ul>
-        {plans === null && !error && <p className="hint">{t("upgrade.loading")}</p>}
-        <p className="hint">{t("upgrade.bankOnly")}</p>
+            )}
+            <span className="plan-quota">
+              {p.quota_minutes_per_cycle === null
+                ? t("upgrade.unlimited")
+                : t("upgrade.hours", { hours: p.quota_minutes_per_cycle / 60 })}
+            </span>
+            {current === p.code && <span className="badge active">{t("upgrade.current")}</span>}
+          </li>
+        ))}
+      </ul>
+      {plans === null && !error && <p className="hint">{t("upgrade.loading")}</p>}
+      <p className="hint">{t("upgrade.bankOnly")}</p>
+      <div role="alert">
+        {error && (
+          <div className="notice error">
+            <Icon name="alert" />
+            <span>{t(errorKey(error.code))}</span>
+          </div>
+        )}
       </div>
-      <div role="alert">{error && <p className="error-text">{t(errorKey(error.code))}</p>}</div>
       {plans && (checkout === null || orderFinished(order)) && (
         <form
           className="card"
@@ -82,44 +92,57 @@ export function UpgradeScreen() {
             void start(plan, email, consent, renew);
           }}
         >
-          {renew && <p>{t("upgrade.renewing")}</p>}
-          <div className="row">
-            <label htmlFor="upgrade-email">{t("upgrade.email")}</label>
-            <input id="upgrade-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <label className="row">
+          {renew && (
+            <p className="note">
+              <Icon name="info" size={16} />
+              <span>{t("upgrade.renewing")}</span>
+            </p>
+          )}
+          <label className="field-label form-label" htmlFor="upgrade-email">
+            {t("upgrade.email")}
+          </label>
+          <input id="upgrade-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <label className="consent">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
             <span>{t("upgrade.consent")}</span>
           </label>
           <LegalDetails kind="privacy" />
-          <button className="primary" type="submit" disabled={busy || !consent || email.trim() === ""}>
-            {t("upgrade.pay")}
-          </button>
+          <div className="actions">
+            <button className="primary lg" type="submit" disabled={busy || !consent || email.trim() === ""}>
+              {t("upgrade.pay")}
+            </button>
+          </div>
         </form>
       )}
       {checkout && (
-        <div className="card">
-          <h2>{t("upgrade.scan")}</h2>
+        <div className="card checkout">
           {/* SVG do phía Rust vẽ (license::purchase::qr_svg), không lấy từ server hay người dùng. */}
           <div className="qr" role="img" aria-label={t("upgrade.qr")} dangerouslySetInnerHTML={{ __html: checkout.qrSvg }} />
-          <p>
-            {t("upgrade.order", { code: checkout.orderCode })}
-            {checkout.amount > 0 && ` · ${vnd(checkout.amount)}`}
-          </p>
-          {checkout.licenseExpiresAt !== null && (
-            <p className="hint">
-              {t("upgrade.newExpiry", { time: when(checkout.licenseExpiresAt) })}
-              {(checkout.convertedDays ?? 0) > 0 && ` ${t("upgrade.converted", { days: checkout.convertedDays ?? 0 })}`}
-              {checkout.convertedDays !== null && ` ${t("upgrade.noRefund")}`}
+          <div>
+            <h2 className="card-title">{t("upgrade.scan")}</h2>
+            <p className="order-code">
+              {t("upgrade.order", { code: checkout.orderCode })}
+              {checkout.amount > 0 && ` · ${vnd(checkout.amount)}`}
             </p>
-          )}
-          <p className="hint">{t("upgrade.linkExpires", { time: when(checkout.expiresAt) })}</p>
-          <p role="status">{order ? t(orderMessageKey(order), { code: checkout.orderCode }) : t("upgrade.order.waiting")}</p>
-          <div className="row">
-            <button onClick={() => void openPage()} disabled={orderFinished(order)}>
-              {t("upgrade.openPage")}
-            </button>
-            <button onClick={() => void cancel()}>{t(orderFinished(order) ? "upgrade.newOrder" : "common.cancel")}</button>
+            {checkout.licenseExpiresAt !== null && (
+              <p className="hint">
+                {t("upgrade.newExpiry", { time: when(checkout.licenseExpiresAt) })}
+                {(checkout.convertedDays ?? 0) > 0 && ` ${t("upgrade.converted", { days: checkout.convertedDays ?? 0 })}`}
+                {checkout.convertedDays !== null && ` ${t("upgrade.noRefund")}`}
+              </p>
+            )}
+            <p className="hint">{t("upgrade.linkExpires", { time: when(checkout.expiresAt) })}</p>
+            <p className={order && order.state === "paid" ? "note order-status ok" : "note order-status"} role="status">
+              <Icon name={order && order.state === "paid" ? "check" : "info"} size={16} />
+              <span>{order ? t(orderMessageKey(order), { code: checkout.orderCode }) : t("upgrade.order.waiting")}</span>
+            </p>
+            <div className="actions">
+              <button onClick={() => void openPage()} disabled={orderFinished(order)}>
+                <Icon name="external" size={16} />
+                {t("upgrade.openPage")}
+              </button>
+              <button onClick={() => void cancel()}>{t(orderFinished(order) ? "upgrade.newOrder" : "common.cancel")}</button>
+            </div>
           </div>
         </div>
       )}

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import logo from "../../../../app-icon.svg";
+import { Icon } from "../../../components/Icon";
 import { useApp, useT } from "../appStore";
 import { Licenses } from "./Licenses";
 import { DebugPanel } from "../DebugPanel";
@@ -18,12 +20,20 @@ export function About() {
   return (
     <>
       <div className="card">
-        <h2>{info.name}</h2>
-        <p onClick={() => setClicks((n) => n + 1)}>{t("about.version", { version: info.version })}</p>
-        <div className="row">
-          <button onClick={() => void openLogDir()}>{t("about.openLogs")}</button>
+        <div className="about-head">
+          <img src={logo} alt="" />
+          <div>
+            <h2>{info.name}</h2>
+            <p onClick={() => setClicks((n) => n + 1)}>{t("about.version", { version: info.version })}</p>
+          </div>
         </div>
-        <p className="hint">{t("about.logsHint")}</p>
+        <div className="about-logs">
+          <p className="hint">{t("about.logsHint")}</p>
+          <button onClick={() => void openLogDir()}>
+            <Icon name="external" size={16} />
+            {t("about.openLogs")}
+          </button>
+        </div>
       </div>
       <div className="card">
         <h2>{t("about.legal")}</h2>
@@ -34,7 +44,7 @@ export function About() {
         <h2>{t("about.licenses")}</h2>
         <Licenses />
       </div>
-      <p className="hint">{t("about.trademark")}</p>
+      <p className="trademark">{t("about.trademark")}</p>
       {clicks >= DEBUG_CLICKS && <DebugPanel />}
     </>
   );

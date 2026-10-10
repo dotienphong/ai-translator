@@ -24,11 +24,7 @@ export function Licenses() {
   return (
     <>
       <p className="hint">{t("about.licensesIntro")}</p>
-      <pre
-        tabIndex={0}
-        aria-label={t("about.licenses")}
-        style={{ maxHeight: "40vh", overflow: "auto", whiteSpace: "pre-wrap", fontSize: "0.8em" }}
-      >
+      <pre className="notices" tabIndex={0} aria-label={t("about.licenses")}>
         {text}
       </pre>
     </>

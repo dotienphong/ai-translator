@@ -18,13 +18,13 @@ export function DownloadPanel() {
   const amounts = { done: formatBytes(job.doneBytes, lang), total: formatBytes(job.totalBytes, lang) };
   return (
     <div className="card" role="status">
-      {job.state === "downloading" && <p>{t("models.downloading", { pack: name })}</p>}
-      {job.state === "paused" && <p>{t("models.paused")}</p>}
-      {job.state === "done" && <p>{t("models.done")}</p>}
+      {job.state === "downloading" && <p className="card-title">{t("models.downloading", { pack: name })}</p>}
+      {job.state === "paused" && <p className="card-title">{t("models.paused")}</p>}
+      {job.state === "done" && <p className="card-title">{t("models.done")}</p>}
       {job.state === "failed" && job.error && <p className="error-text">{t(errorKey(job.error))}</p>}
-      <div className="row">
+      <div className="progress">
         <meter min={0} max={1} value={progress(job)} aria-label={t("models.progress", amounts)} />
-        <span className="hint">{t("models.progress", amounts)}</span>
+        <span className="hint num">{t("models.progress", amounts)}</span>
         {job.state === "downloading" && <button onClick={() => void pause()}>{t("models.pause")}</button>}
         {(job.state === "paused" || job.state === "failed") && (
           <button className="primary" onClick={() => void download(job.pack ?? "")}>

@@ -23,31 +23,37 @@ export function PackList({
   const lang = useApp((s) => s.settings?.uiLanguage ?? "en");
   const current = useApp((s) => s.settings?.modelTier ?? null);
   return (
-    <div className="packs" role="radiogroup" aria-label={t("onboarding.model.title")}>
+    <div className="choices" role="radiogroup" aria-label={t("onboarding.model.title")}>
       {view.packs.map((pack) => (
-        <div key={pack.id} className="card">
-          <div className="row">
-            <label>
-              <input
-                type="radio"
-                name="model-pack"
-                checked={choice === pack.id}
-                disabled={pack.appTooOld}
-                onChange={() => onChoose(pack.id)}
-              />{" "}
-              <strong>{localized(pack.name, lang)}</strong>
-            </label>
-            <span className="hint">
-              {t("models.size", { size: formatBytes(pack.usable ? remainingBytes(pack) : pack.bytes, lang) })}
-            </span>
-            {packBadges(view, pack, current).map((b) => (
-              <span key={b} className="badge">
-                {t(BADGES[b])}
+        <label key={pack.id} className="choice">
+          <input
+            type="radio"
+            name="model-pack"
+            checked={choice === pack.id}
+            disabled={pack.appTooOld}
+            aria-labelledby={`pack-${pack.id}-name`}
+            aria-describedby={`pack-${pack.id}-note`}
+            onChange={() => onChoose(pack.id)}
+          />
+          <span className="choice-body">
+            <span className="choice-head">
+              <span className="choice-title" id={`pack-${pack.id}-name`}>
+                {localized(pack.name, lang)}
               </span>
-            ))}
-          </div>
-          <p className="hint">{localized(pack.note, lang)}</p>
-        </div>
+              {packBadges(view, pack, current).map((b) => (
+                <span key={b} className={b === "recommended" ? "badge recommended" : b === "inUse" ? "badge active" : "badge"}>
+                  {t(BADGES[b])}
+                </span>
+              ))}
+              <span className="hint size">
+                {t("models.size", { size: formatBytes(pack.usable ? remainingBytes(pack) : pack.bytes, lang) })}
+              </span>
+            </span>
+            <span className="hint block" id={`pack-${pack.id}-note`}>
+              {localized(pack.note, lang)}
+            </span>
+          </span>
+        </label>
       ))}
     </div>
   );

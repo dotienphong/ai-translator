@@ -7,6 +7,6 @@ import { TranscriptView } from "../TranscriptView";
 export function TranscriptScreen() {
   const t = useT();
   const transcript = useTranscript((s) => s.transcript);
-  if (!transcript || transcript.lines.length === 0) return <EmptyState text={t("transcript.empty")} />;
+  if (!transcript || transcript.lines.length === 0) return <EmptyState icon="captions" text={t("transcript.empty")} />;
   return <TranscriptView transcript={transcript} source={{ kind: "current" }} />;
 }

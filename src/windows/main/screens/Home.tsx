@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { Field } from "../../../components/Field";
+import { Icon } from "../../../components/Icon";
 import { errorKey, type MessageKey } from "../../../i18n";
 import { sourceLabel } from "../../../lib/audioSource";
 import type { SessionStatus } from "../../../lib/ipc";
@@ -30,12 +33,15 @@ const BUTTON: Record<SessionStatus, MessageKey> = {
 // lại kèm thời điểm reset (kế hoạch 06). Hết hạn mức thì báo thời điểm reset và có nút nâng gói (§4.2 bước 2). Ở Free có
 // thêm số ngày dùng thử còn lại; hết dùng thử hay key đang xung đột thì có nút tới Nâng cấp hay Bản quyền (spec 2026-10-07
 // §3.2, §4.2).
+// Khối trên cùng gom trạng thái, nút Bắt đầu/Dừng và mức âm lượng; các thẻ bên dưới là ngôn ngữ, nguồn âm thanh, hạn mức và
+// thanh phụ đề.
 export function Home() {
   const t = useT();
   const status = useApp((s) => s.status);
   const settings = useApp((s) => s.settings);
   const info = useApp((s) => s.info);
   const audioSources = useApp((s) => s.audioSources);
+  const loadAudioSourceNames = useApp((s) => s.loadAudioSourceNames);
   const toggleSession = useApp((s) => s.toggleSession);
   const pending = useApp((s) => s.sessionPending);
   const setVisible = useApp((s) => s.setOverlayVisible);
@@ -44,6 +50,12 @@ export function Home() {
   const openPermission = useApp((s) => s.openAudioPermissionSettings);
   const hasTranscript = useTranscript((s) => (s.transcript?.lines.length ?? 0) > 0);
   const license = useLicense((s) => s.view);
+  // Tên của nguồn đang chọn (tên app trên macOS, tên thiết bị trên Windows) nằm trong danh sách nguồn: đọc lặng lẽ một
+  // lần khi chưa có, để màn hình chính không hiện bundle ID hay id thiết bị.
+  const needsNames = settings !== null && settings.audioSource.kind !== "system" && audioSources === null;
+  useEffect(() => {
+    if (needsNames) void loadAudioSourceNames();
+  }, [needsNames, loadAudioSourceNames]);
   if (!status || !settings || !info) return null;
   const session = status.session;
   const trial = license && trialKey(license);
@@ -57,18 +69,33 @@ export function Home() {
     if (status.waitingForApp) notes.push("home.waitingForApp");
     if (status.indicators.translationUnavailable) notes.push("home.translationUnavailable");
   }
+  const source = sourceLabel(settings.audioSource, info.platform, audioSources, t);
+  const buttonClass = session === "running" ? "lg danger" : session === "starting" ? "lg" : "lg primary";
   return (
     <>
-      <div className="card">
-        <div className="row">
-          <span className={`badge ${session}`}>{t(BADGE[session])}</span>
-          <button className="primary" disabled={pending} onClick={() => void toggleSession()}>
-            {t(BUTTON[session])}
-          </button>
+      <div className="card hero">
+        <div className="hero-status">
+          <div className="hero-state">
+            <span className={`status-dot ${session}`} aria-hidden="true" />
+            <span>{t(BADGE[session])}</span>
+          </div>
+          <p className="hero-sub">
+            {source} <span aria-hidden="true">→</span> {t(`lang.${settings.targetLanguage}`)}
+          </p>
+          <div className="hero-level">
+            <Icon name="mic" size={16} />
+            <span>{t("home.inputLevel")}</span>
+            <LevelMeter label={t("home.inputLevel")} />
+          </div>
         </div>
+        <button className={buttonClass} disabled={pending} onClick={() => void toggleSession()}>
+          <Icon name={session === "running" ? "stop" : session === "starting" ? "x" : "play"} size={16} />
+          {t(BUTTON[session])}
+        </button>
         {session === "error" && status.sessionError && (
-          <div className="row" role="alert">
-            <span className="error-text">{t(errorKey(status.sessionError))}</span>
+          <div className="hero-alert" role="alert">
+            <Icon name="alert" />
+            <span>{t(errorKey(status.sessionError))}</span>
             {status.sessionError === "audioPermission" && info.platform === "macos" && (
               <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
             )}
@@ -92,29 +119,41 @@ export function Home() {
           </div>
         )}
         {session === "running" && status.permissionSuspected && info.platform === "macos" && (
-          <div className="row" role="alert">
-            <span className="error-text">{t("home.permissionSuspected")}</span>
+          <div className="hero-alert" role="alert">
+            <Icon name="alert" />
+            <span>{t("home.permissionSuspected")}</span>
             <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
           </div>
         )}
-        {session === "running" && status.quotaWarning && (
-          <p className="hint" role="status">
-            {t("home.quotaLow")}
-          </p>
-        )}
-        {notes.map((key) => (
-          <p key={key} className="hint" role="status">
-            {t(key)}
-          </p>
-        ))}
-        {/* Dừng xong thì mở được bản chép lời của phiên (§4.2 bước 3). */}
-        {session !== "running" && session !== "starting" && hasTranscript && (
-          <div className="row">
-            <button onClick={() => navigate("transcript")}>{t("home.openTranscript")}</button>
+        {(notes.length > 0 || (session === "running" && status.quotaWarning)) && (
+          <div className="hero-notes">
+            {session === "running" && status.quotaWarning && (
+              <p className="note error" role="status">
+                <Icon name="alert" size={16} />
+                <span>{t("home.quotaLow")}</span>
+              </p>
+            )}
+            {notes.map((key) => (
+              <p key={key} className="note" role="status">
+                <Icon name="info" size={16} />
+                <span>{t(key)}</span>
+              </p>
+            ))}
           </div>
         )}
-        {status.suggestLite && (
-          <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
+        {/* Dừng xong thì mở được bản chép lời của phiên (§4.2 bước 3). */}
+        {((session !== "running" && session !== "starting" && hasTranscript) || status.suggestLite) && (
+          <div className="actions">
+            {session !== "running" && session !== "starting" && hasTranscript && (
+              <button onClick={() => navigate("transcript")}>
+                <Icon name="transcript" size={16} />
+                {t("home.openTranscript")}
+              </button>
+            )}
+            {status.suggestLite && (
+              <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
+            )}
+          </div>
         )}
       </div>
       <UpdateNotice />
@@ -123,35 +162,43 @@ export function Home() {
         <h2>{t("home.languages")}</h2>
         <LanguagePicker />
       </div>
-      <div className="card">
-        <div className="row">
-          <span>{t("home.audioSource")}</span>
-          <span>{sourceLabel(settings.audioSource, info.platform, audioSources, t)}</span>
+      <div className="card list">
+        <Field label={t("home.audioSource")} hint={source}>
           <button onClick={() => navigate("settings", "audio")}>{t("home.audioSource.change")}</button>
-        </div>
-        <div className="row">
-          <span>{t("home.inputLevel")}</span>
-          <LevelMeter label={t("home.inputLevel")} />
-        </div>
+        </Field>
         {license && (
-          <div className="row">
-            <span>{t("home.minutesLeft")}</span>
-            {trial && <span>{t(trial, { days: license.trial.daysLeft })}</span>}
-            {license.trial.status !== "ended" && <QuotaSummary quota={license.quota} />}
-            {!status.pro && <button onClick={() => navigate("upgrade")}>{t("settings.license.buy")}</button>}
-          </div>
+          <Field
+            label={t("home.minutesLeft")}
+            hint={
+              <>
+                {trial && (
+                  <>
+                    {t(trial, { days: license.trial.daysLeft })}
+                    {license.trial.status !== "ended" && " · "}
+                  </>
+                )}
+                {license.trial.status !== "ended" && <QuotaSummary quota={license.quota} />}
+              </>
+            }
+          >
+            {!status.pro && (
+              <button className="primary" onClick={() => navigate("upgrade")}>
+                <Icon name="upgrade" size={16} />
+                {t("settings.license.buy")}
+              </button>
+            )}
+          </Field>
         )}
-      </div>
-      <div className="card">
-        <div className="row">
-          <span>{t("home.overlay")}</span>
+        <Field label={t("home.overlay")}>
           <button onClick={() => void setVisible(!status.overlayVisible)}>
+            <Icon name={status.overlayVisible ? "eyeOff" : "eye"} size={16} />
             {t(status.overlayVisible ? "home.overlay.hide" : "home.overlay.show")}
           </button>
           <button onClick={() => void setLocked(!settings.overlay.locked)}>
+            <Icon name={settings.overlay.locked ? "unlock" : "lock"} size={16} />
             {t(settings.overlay.locked ? "home.overlay.unlock" : "home.overlay.lock")}
           </button>
-        </div>
+        </Field>
       </div>
     </>
   );
@@ -161,5 +208,5 @@ export function Home() {
 function LevelMeter({ label }: { label: string }) {
   const running = useApp((s) => s.status?.session === "running");
   const level = useApp((s) => s.level);
-  return <meter min={0} max={1} value={running ? levelToMeter(level) : 0} aria-label={label} />;
+  return <meter className="level" min={0} max={1} value={running ? levelToMeter(level) : 0} aria-label={label} />;
 }

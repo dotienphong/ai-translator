@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import logo from "../../../../app-icon.svg";
+import { Field } from "../../../components/Field";
+import { Icon } from "../../../components/Icon";
 import type { UiLanguage } from "../../../i18n";
 import type { Theme, UpdateChannel } from "../../../lib/ipc";
 import { useApp, useT } from "../appStore";
@@ -12,9 +15,8 @@ export function GeneralSettings() {
   return (
     <>
       <AppUpdate />
-      <div className="card">
-        <div className="row">
-          <label htmlFor="ui-language">{t("settings.general.uiLanguage")}</label>
+      <div className="card list">
+        <Field label={t("settings.general.uiLanguage")} htmlFor="ui-language">
           <select
             id="ui-language"
             value={settings.uiLanguage}
@@ -23,27 +25,28 @@ export function GeneralSettings() {
             <option value="en">{t("lang.en")}</option>
             <option value="vi">{t("lang.vi")}</option>
           </select>
-        </div>
-        <div className="row">
-          <label htmlFor="launch-at-login">{t("settings.general.launchAtLogin")}</label>
+        </Field>
+        <Field
+          label={t("settings.general.launchAtLogin")}
+          htmlFor="launch-at-login"
+          hint={t("settings.general.launchAtLogin.hint")}
+        >
           <input
             id="launch-at-login"
+            className="switch"
             type="checkbox"
             checked={settings.launchAtLogin}
             onChange={(e) => void update({ launchAtLogin: e.target.checked })}
           />
-          <span className="hint">{t("settings.general.launchAtLogin.hint")}</span>
-        </div>
-        <div className="row">
-          <label htmlFor="theme">{t("settings.general.theme")}</label>
+        </Field>
+        <Field label={t("settings.general.theme")} htmlFor="theme">
           <select id="theme" value={settings.theme} onChange={(e) => void update({ theme: e.target.value as Theme })}>
             <option value="system">{t("theme.system")}</option>
             <option value="light">{t("theme.light")}</option>
             <option value="dark">{t("theme.dark")}</option>
           </select>
-        </div>
-        <div className="row">
-          <label htmlFor="channel">{t("settings.general.updateChannel")}</label>
+        </Field>
+        <Field label={t("settings.general.updateChannel")} htmlFor="channel">
           <select
             id="channel"
             value={settings.updateChannel}
@@ -52,7 +55,7 @@ export function GeneralSettings() {
             <option value="stable">{t("channel.stable")}</option>
             <option value="beta">{t("channel.beta")}</option>
           </select>
-        </div>
+        </Field>
       </div>
     </>
   );
@@ -94,28 +97,29 @@ function AppUpdate() {
     : "";
   return (
     <section className="card update-card" aria-labelledby="update-title">
-      <div className="update-head">
-        <div>
-          <h2 id="update-title">{t("app.name")}</h2>
-          <p className="update-version">{version && t("settings.general.version", { version })}</p>
-        </div>
-        {ready && !running && !busy ? (
-          <button className="primary" onClick={() => void restartToUpdate()}>
-            {t("settings.general.restartToUpdate")}
-          </button>
-        ) : (
-          <button className="primary" disabled={busy} aria-busy={busy} onClick={() => void onCheck()}>
-            {t(busy ? "settings.general.update.checking" : "settings.general.checkUpdates")}
-          </button>
-        )}
+      <img src={logo} alt="" />
+      <div className="update-body">
+        <h2 id="update-title">{t("app.name")}</h2>
+        <p className="update-version">{version && t("settings.general.version", { version })}</p>
+        {/* Luôn có trong DOM để trình đọc màn hình đọc thông báo mới (live region). */}
+        <p className={`update-status ${tone}`.trim()} role="status">
+          {message || ""}
+          {message && checkedAt && !busy && (
+            <span className="update-time"> · {t("settings.general.update.checkedAt", { time: clock(checkedAt) })}</span>
+          )}
+        </p>
       </div>
-      {/* Luôn có trong DOM để trình đọc màn hình đọc thông báo mới (live region). */}
-      <p className={`update-status ${tone}`.trim()} role="status">
-        {message || ""}
-        {message && checkedAt && !busy && (
-          <span className="update-time"> · {t("settings.general.update.checkedAt", { time: clock(checkedAt) })}</span>
-        )}
-      </p>
+      {ready && !running && !busy ? (
+        <button className="primary" onClick={() => void restartToUpdate()}>
+          <Icon name="download" size={16} />
+          {t("settings.general.restartToUpdate")}
+        </button>
+      ) : (
+        <button className="primary" disabled={busy} aria-busy={busy} onClick={() => void onCheck()}>
+          <Icon name="refresh" size={16} />
+          {t(busy ? "settings.general.update.checking" : "settings.general.checkUpdates")}
+        </button>
+      )}
     </section>
   );
 }

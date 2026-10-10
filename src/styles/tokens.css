@@ -1,47 +1,105 @@
-/* Token màu và chữ tạm của thương hiệu mới (spec §6.10, D2: không dùng nhận diện của AI Live
-   Translator). Tên, logo và màu thật chờ Q1. Cỡ chữ tính bằng rem để phóng to được (⌘+ / Ctrl+). */
+/* Token màu, chữ, khoảng cách của cửa sổ chính (spec §6.10). Màu nhấn theo biểu tượng app (#1d63c9). Cỡ chữ tính bằng rem
+   để phóng to được (⌘+ / Ctrl+); 1rem = 14px (cỡ chữ chuẩn của app desktop trên macOS và Windows). */
 :root {
-  --color-bg: #f5f7fa;
-  --color-surface: #ffffff;
-  --color-border: #d6dbe3;
-  --color-text: #141821;
-  --color-muted: #566072;
-  --color-accent: #1d63c9;
-  --color-accent-text: #ffffff;
-  --color-danger: #a3261b;
-  --color-danger-bg: #fdecea;
-  --color-running: #127a3e;
-  --radius: 0.5rem;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --bg: #f3f5f8;
+  --sidebar: #eceff3;
+  --surface: #ffffff;
+  --surface-2: #f6f7f9;
+  --surface-hover: #eef1f5;
+  --border: #e2e6ec;
+  --border-strong: #cbd2dc;
+  --text: #121826;
+  --muted: #5a6475;
+  --faint: #8b94a3;
+  --accent: #1d63c9;
+  --accent-hover: #1855ad;
+  --accent-fg: #1a5bb9;
+  --accent-soft: #e8f0fc;
+  --on-accent: #ffffff;
+  --success: #12753a;
+  --success-soft: #e6f4ec;
+  --warning: #9a5b00;
+  --warning-soft: #fdf3e1;
+  --danger: #c0281b;
+  --danger-hover: #a52216;
+  --danger-fill: #c0281b;
+  --danger-soft: #fdecea;
+  --focus: rgba(29, 99, 201, 0.45);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.12);
+
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --control-h: 2.2857rem; /* 32px */
+  --font:
+    -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue",
+    sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg: #11141a;
-    --color-surface: #1a1f28;
-    --color-border: #2e3542;
-    --color-text: #e8ebf0;
-    --color-muted: #9aa4b5;
-    --color-accent: #5b9bf0;
-    --color-accent-text: #0b1220;
-    --color-danger: #ff8a7f;
-    --color-danger-bg: #3a1c1a;
-    --color-running: #4cc38a;
+    --bg: #15181d;
+    --sidebar: #1a1d23;
+    --surface: #1f2329;
+    --surface-2: #252a31;
+    --surface-hover: #2b3038;
+    --border: #2e333b;
+    --border-strong: #3d444f;
+    --text: #e8ecf1;
+    --muted: #9ea7b5;
+    --faint: #727c8b;
+    --accent: #2f78e4;
+    --accent-hover: #4287ea;
+    --accent-fg: #73aaf5;
+    --accent-soft: rgba(80, 145, 240, 0.16);
+    --on-accent: #ffffff;
+    --success: #4cc38a;
+    --success-soft: rgba(76, 195, 138, 0.14);
+    --warning: #f0b45a;
+    --warning-soft: rgba(240, 180, 90, 0.14);
+    --danger: #ff8478;
+    --danger-hover: #ff9a90;
+    --danger-fill: #d23f33;
+    --danger-soft: rgba(255, 112, 98, 0.14);
+    --focus: rgba(115, 170, 245, 0.55);
+    --shadow-sm: none;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --color-bg: #11141a;
-  --color-surface: #1a1f28;
-  --color-border: #2e3542;
-  --color-text: #e8ebf0;
-  --color-muted: #9aa4b5;
-  --color-accent: #5b9bf0;
-  --color-accent-text: #0b1220;
-  --color-danger: #ff8a7f;
-  --color-danger-bg: #3a1c1a;
-  --color-running: #4cc38a;
+  --bg: #15181d;
+  --sidebar: #1a1d23;
+  --surface: #1f2329;
+  --surface-2: #252a31;
+  --surface-hover: #2b3038;
+  --border: #2e333b;
+  --border-strong: #3d444f;
+  --text: #e8ecf1;
+  --muted: #9ea7b5;
+  --faint: #727c8b;
+  --accent: #2f78e4;
+  --accent-hover: #4287ea;
+  --accent-fg: #73aaf5;
+  --accent-soft: rgba(80, 145, 240, 0.16);
+  --on-accent: #ffffff;
+  --success: #4cc38a;
+  --success-soft: rgba(76, 195, 138, 0.14);
+  --warning: #f0b45a;
+  --warning-soft: rgba(240, 180, 90, 0.14);
+  --danger: #ff8478;
+  --danger-hover: #ff9a90;
+  --danger-fill: #d23f33;
+  --danger-soft: rgba(255, 112, 98, 0.14);
+  --focus: rgba(115, 170, 245, 0.55);
+  --shadow-sm: none;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
   color-scheme: dark;
 }

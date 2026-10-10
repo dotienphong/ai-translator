@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "../../../components/Icon";
 import { errorKey } from "../../../i18n";
 import { afterListenTestStart, playSample } from "../../../lib/listenTest";
 import { appStore, useApp, useT } from "../appStore";
@@ -81,18 +82,27 @@ export function ListenTest() {
           timer.current = window.setTimeout(stop, SETTLE_MS);
         }}
       />
-      <div className="row">
+      <div className="actions">
         <button className="primary" disabled={pending || running} onClick={() => void play()}>
+          <Icon name="speaker" size={16} />
           {t("onboarding.test.play")}
         </button>
-        {running && ours.current && <button onClick={stop}>{t("home.stop")}</button>}
+        {running && ours.current && (
+          <button onClick={stop}>
+            <Icon name="stop" size={16} />
+            {t("home.stop")}
+          </button>
+        )}
         {status?.loading && <span className="hint">{t("overlay.note.loading")}</span>}
       </div>
       <div role="status">
         {done && (
-          <p>
-            {t("onboarding.test.ok")} <strong>{done.tgt_text}</strong>
-          </p>
+          <div className="notice success test-result">
+            <Icon name="check" />
+            <span>
+              {t("onboarding.test.ok")} <strong>{done.tgt_text}</strong>
+            </span>
+          </div>
         )}
         {played && !done && !running && <p className="hint">{t("onboarding.test.nothing")}</p>}
       </div>

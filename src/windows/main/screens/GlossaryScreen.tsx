@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon } from "../../../components/Icon";
 import { ProLocked } from "../../../components/ProLocked";
 import { errorKey } from "../../../i18n";
 import type { GlossaryEntry } from "../../../lib/ipc";
@@ -27,7 +28,7 @@ function EntryForm({
   const errorId = `glossary-error-${initial.source || "new"}`;
   return (
     <form
-      className="row"
+      className="entry-form"
       onSubmit={(e) => {
         e.preventDefault();
         if (sending) return;
@@ -63,6 +64,7 @@ function EntryForm({
         onChange={(e) => setTarget(e.target.value)}
       />
       <button type="submit" className="primary" disabled={sending}>
+        {!onCancel && <Icon name="check" size={16} />}
         {submitLabel}
       </button>
       {onCancel && (
@@ -107,27 +109,35 @@ export function GlossaryScreen() {
     <>
       <div className="card">
         <p className="hint">{t("glossary.hint")}</p>
-        <p>{t("glossary.count", { n: list.length, max: MAX_GLOSSARY })}</p>
+        <div className="row split">
+          <span className="count">{t("glossary.count", { n: list.length, max: MAX_GLOSSARY })}</span>
+          <span className="toolbar">
+            <button onClick={() => void importCsv()}>
+              <Icon name="upload" size={16} />
+              {t("glossary.import")}
+            </button>
+            <button onClick={() => void exportCsv()} disabled={list.length === 0}>
+              <Icon name="download" size={16} />
+              {t("glossary.export")}
+            </button>
+          </span>
+        </div>
         {!full && (
           <EntryForm initial={{ source: "", target: "" }} submitLabel={t("glossary.add")} onSubmit={add} />
         )}
         {full && <p className="hint">{t("error.glossaryFull")}</p>}
-        <div className="row">
-          <button onClick={() => void importCsv()}>{t("glossary.import")}</button>
-          <button onClick={() => void exportCsv()} disabled={list.length === 0}>
-            {t("glossary.export")}
-          </button>
-        </div>
         <p className="hint">{t("glossary.csvHint")}</p>
         <div role="status">
           {report && (
-            <div className="notice">
+            <div className="notice success">
+              <Icon name="check" />
               <span>{t("glossary.imported", { ...report })}</span>
               <button onClick={dismiss}>{t("common.dismiss")}</button>
             </div>
           )}
           {exported && (
-            <div className="notice">
+            <div className="notice success">
+              <Icon name="check" />
               <span>{t("transcript.exported", { path: exported })}</span>
               <button onClick={dismiss}>{t("common.dismiss")}</button>
             </div>
@@ -136,6 +146,7 @@ export function GlossaryScreen() {
         <div role="alert">
           {error && (
             <div className="notice error">
+              <Icon name="alert" />
               <span>{t(errorKey(error.code))}</span>
               <button onClick={dismiss}>{t("common.dismiss")}</button>
             </div>
@@ -145,7 +156,7 @@ export function GlossaryScreen() {
       <ul className="glossary">
         {list.map((e) =>
           editing === e.id ? (
-            <li key={e.id}>
+            <li key={e.id} className="editing">
               <EntryForm
                 initial={e}
                 submitLabel={t("glossary.save")}
@@ -158,12 +169,22 @@ export function GlossaryScreen() {
               />
             </li>
           ) : (
-            <li key={e.id} className="row">
+            <li key={e.id}>
               <span className="term">{e.source}</span>
-              <span aria-hidden="true">→</span>
-              <span className="term">{e.target}</span>
-              <button onClick={() => setEditing(e.id)}>{t("glossary.edit")}</button>
-              <button onClick={() => void remove(e.id)}>{t("history.delete")}</button>
+              <span className="arrow" aria-hidden="true">
+                <Icon name="arrowRight" size={16} />
+              </span>
+              <span className="term target">{e.target}</span>
+              <span className="row-actions">
+                <button className="ghost sm" onClick={() => setEditing(e.id)}>
+                  <Icon name="edit" size={15} />
+                  {t("glossary.edit")}
+                </button>
+                <button className="ghost sm danger-text" onClick={() => void remove(e.id)}>
+                  <Icon name="trash" size={15} />
+                  {t("history.delete")}
+                </button>
+              </span>
             </li>
           ),
         )}

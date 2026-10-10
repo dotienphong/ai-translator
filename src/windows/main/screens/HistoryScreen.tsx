@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { EmptyState } from "../../../components/EmptyState";
+import { Icon } from "../../../components/Icon";
 import { ProLocked } from "../../../components/ProLocked";
 import { errorKey } from "../../../i18n";
 import { dateTime, localOffsetMinutes } from "../../../lib/subtitleView";
@@ -31,8 +32,11 @@ export function HistoryScreen() {
     return (
       <>
         <div className="row">
-          <button onClick={close}>{t("history.back")}</button>
-          <span>{dateTime(open.transcript.startedAt, localOffsetMinutes(open.transcript.startedAt))}</span>
+          <button onClick={close}>
+            <Icon name="chevronLeft" size={16} />
+            {t("history.back")}
+          </button>
+          <strong>{dateTime(open.transcript.startedAt, localOffsetMinutes(open.transcript.startedAt))}</strong>
         </div>
         <TranscriptView transcript={open.transcript} source={{ kind: "history", id: open.id }} />
       </>
@@ -40,38 +44,59 @@ export function HistoryScreen() {
   }
   return (
     <>
-      <div role="alert">{error && <p className="error-text">{t(errorKey(error.code))}</p>}</div>
+      <div role="alert">
+        {error && (
+          <div className="notice error">
+            <Icon name="alert" />
+            <span>{t(errorKey(error.code))}</span>
+          </div>
+        )}
+      </div>
       {!saveHistory && (
-        <div className="notice">
+        <div className="notice warning">
+          <Icon name="info" />
           <span>{t("history.off")}</span>
           <button onClick={() => navigate("settings", "privacy")}>{t("notice.openSettings")}</button>
         </div>
       )}
-      {sessions && sessions.length === 0 && <EmptyState text={t("history.empty")} />}
+      {sessions && sessions.length === 0 && <EmptyState icon="history" text={t("history.empty")} />}
       {sessions && sessions.length > 0 && (
         <>
           <ul className="history">
             {sessions.map((s) => (
               <li key={s.id} className="card">
-                <div className="row">
-                  <strong>{dateTime(s.startedAt, localOffsetMinutes(s.startedAt))}</strong>
+                <div className="history-head">
+                  <strong className="num">{dateTime(s.startedAt, localOffsetMinutes(s.startedAt))}</strong>
                   <span className="hint">
                     {t("history.meta", { minutes: Math.max(1, Math.round((s.endedAt - s.startedAt) / 60_000)), lines: s.lines })}
                   </span>
                 </div>
-                <p>{s.preview}</p>
-                <div className="row">
-                  <button onClick={() => void openSession(s.id)}>{t("history.open")}</button>
-                  <button onClick={() => void remove(s.id)}>{t("history.delete")}</button>
+                <p className="history-preview">{s.preview}</p>
+                <div className="actions">
+                  <button onClick={() => void openSession(s.id)}>
+                    <Icon name="transcript" size={16} />
+                    {t("history.open")}
+                  </button>
+                  <button className="ghost danger-text" onClick={() => void remove(s.id)}>
+                    <Icon name="trash" size={16} />
+                    {t("history.delete")}
+                  </button>
                 </div>
               </li>
             ))}
           </ul>
-          <div className="row" role="status">
-            {!confirming && <button onClick={() => setConfirming(true)}>{t("history.clear")}</button>}
+          <div role="status">
+            {!confirming && (
+              <div className="actions">
+                <button onClick={() => setConfirming(true)}>
+                  <Icon name="trash" size={16} />
+                  {t("history.clear")}
+                </button>
+              </div>
+            )}
             {confirming && (
-              <>
-                <span className="error-text">{t("history.clear.confirm")}</span>
+              <div className="confirm">
+                <span>{t("history.clear.confirm")}</span>
                 <button
                   className="danger"
                   onClick={() => {
@@ -82,7 +107,7 @@ export function HistoryScreen() {
                   {t("settings.privacy.clear.yes")}
                 </button>
                 <button onClick={() => setConfirming(false)}>{t("common.cancel")}</button>
-              </>
+              </div>
             )}
           </div>
         </>

@@ -294,6 +294,37 @@ describe("app store", () => {
     expect(store.getState().error).toBeNull();
   });
 
+  it("tên nguồn cho màn hình chính: đọc một lần, lặng lẽ (không hiện lỗi, không xóa lỗi đang có)", async () => {
+    let fail = true;
+    let calls = 0;
+    const fake = fakeIpc({
+      get_settings: () => settings,
+      get_app_status: () => status,
+      get_app_info: () => info,
+      list_audio_sources: () => {
+        calls += 1;
+        if (fail) throw { code: "captureFailed", field: null, message: "…" };
+        return [{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }];
+      },
+    });
+    const store = createAppStore(fake.ipc);
+    await store.getState().init();
+    store.setState({ error: { code: "network", field: null } });
+    await store.getState().loadAudioSourceNames();
+    expect(store.getState().error).toEqual({ code: "network", field: null });
+    expect(store.getState().audioSources).toBeNull();
+    await store.getState().loadAudioSourceNames();
+    expect(calls).toBe(1);
+    // Lần mở app khác (store mới) thì đọc lại; thành công vẫn không xóa lỗi đang hiện.
+    fail = false;
+    const again = createAppStore(fake.ipc);
+    await again.getState().init();
+    again.setState({ error: { code: "network", field: null } });
+    await again.getState().loadAudioSourceNames();
+    expect(again.getState().audioSources).toEqual([{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }]);
+    expect(again.getState().error).toEqual({ code: "network", field: null });
+  });
+
   it("nghe thử bắt đầu phiên riêng; xóa toàn bộ dữ liệu báo lại; đọc bảng debug", async () => {
     const { fake, store } = setup();
     await store.getState().init();
