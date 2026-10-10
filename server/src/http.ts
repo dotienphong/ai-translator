@@ -35,8 +35,40 @@ export function tooMany(c: Context, retryAfter: number) {
   return fail(c, 429, "rate_limited");
 }
 
+/**
+ * Chủ thể của giới hạn tần suất theo IP. IPv4 giữ nguyên địa chỉ; IPv6 gộp về prefix /64, vì một máy (VPS, mạng nhà)
+ * thường có cả dải /64 và đổi địa chỉ trong dải là vượt được mọi giới hạn đếm theo địa chỉ đầy đủ (kiểm toán bảo mật
+ * 2026-10-09). `CF-Connecting-IP` do Cloudflare ghi, client không giả được.
+ */
 export function clientIp(c: Context): string {
-  return c.req.header("cf-connecting-ip") ?? "unknown";
+  const ip = c.req.header("cf-connecting-ip");
+  return ip === undefined ? "unknown" : ipBucket(ip);
+}
+
+/** IPv6 → `xxxx:xxxx:xxxx:xxxx::/64` (chữ thường, bỏ số 0 đầu); IPv4 hay chuỗi không đọc được thì giữ nguyên. */
+export function ipBucket(ip: string): string {
+  if (!ip.includes(":") || ip.includes(".")) return ip;
+  const halves = ip.toLowerCase().split("::");
+  if (halves.length > 2) return ip;
+  const head = halves[0] ? halves[0].split(":") : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const missing = 8 - head.length - tail.length;
+  if (halves.length === 2 ? missing < 1 : missing !== 0) return ip;
+  const groups = [...head, ...Array<string>(missing).fill("0"), ...tail];
+  if (!groups.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return ip;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => parseInt(g, 16).toString(16))
+    .join(":")}::/64`;
+}
+
+/**
+ * Request ghi của API công khai phải là `application/json` (cho phép `; charset=…`). Không bắt buộc thì một trang web bất
+ * kỳ gửi được "simple request" (`text/plain`, không preflight) từ trình duyệt của người truy cập: làm IP của họ bị chặn
+ * vì sai key, hay mượn IP của họ để spam (kiểm toán bảo mật 2026-10-09). App gửi `application/json` từ bản đầu tiên.
+ */
+export function isJsonContentType(value: string | undefined): boolean {
+  return /^application\/json\s*(;|$)/i.test(value ?? "");
 }
 
 export function isRecord(v: unknown): v is Record<string, unknown> {

@@ -4,7 +4,7 @@ import { bodyLimit } from "hono/body-limit";
 import { registerCheckout } from "./checkout";
 import { type Deps, type DepsFactory, realDeps } from "./deps";
 import type { ApiEnv } from "./env";
-import { fail } from "./http";
+import { fail, isJsonContentType } from "./http";
 import { registerLicenses } from "./licenses";
 import { registerOrders } from "./orders";
 import { registerTrial } from "./trial";
@@ -20,6 +20,14 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
     await next();
   });
   app.use("/v1/*", bodyLimit({ maxSize: 16 * 1024, onError: (c) => fail(c, 413, "invalid_request") }));
+  // Webhook do cổng thanh toán gửi, có chữ ký riêng: không đòi content-type, để cổng đổi header cũng không làm mất đơn.
+  app.use("/v1/*", async (c, next) => {
+    const write = ["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method);
+    if (write && !c.req.path.startsWith("/v1/webhooks/") && !isJsonContentType(c.req.header("content-type"))) {
+      return fail(c, 415, "unsupported_media_type");
+    }
+    await next();
+  });
   app.get("/v1/health", (c) => c.json({ ok: true }));
   registerCheckout(app);
   registerOrders(app);

@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { loadSigningKey, signKeyCheck } from "../src/deps";
+import { ipBucket } from "../src/http";
 import { verifyToken } from "../src/token";
 import { testSigningJwk } from "./keys";
 import vectors from "./vectors/token-v1.json";
@@ -29,6 +30,43 @@ describe("khung Worker API", () => {
   it("body quá 16 KiB thì 413", async () => {
     const res = await makeWorld().call("POST", "/v1/nope", { pad: "x".repeat(20_000) });
     expect(res.status).toBe(413);
+  });
+
+  it("request ghi không phải application/json thì 415, không đụng tới giới hạn tần suất hay D1", async () => {
+    const w = makeWorld();
+    const body = { email: "a@example.com" };
+    for (const ct of ["text/plain", "application/x-www-form-urlencoded", "multipart/form-data; boundary=x", "", "application/jsonx", "text/json"]) {
+      const res = await w.call("POST", "/v1/licenses/recover", body, { "content-type": ct });
+      expect(res, ct).toMatchObject({ status: 415, body: { error: "unsupported_media_type" } });
+    }
+    expect((await w.call("POST", "/v1/licenses/recover", body, { "content-type": "application/json; charset=utf-8" })).status).toBe(200);
+    expect((await w.call("POST", "/v1/licenses/recover", body, { "content-type": "Application/JSON" })).status).toBe(200);
+    expect((await w.call("GET", "/v1/plans", undefined, { "content-type": "text/plain" })).status).toBe(200);
+    // Webhook có chữ ký riêng: content-type lạ vẫn tới được route (chữ ký sai thì 400 như thường).
+    expect((await w.call("POST", "/v1/webhooks/payos", { data: {}, signature: "x" }, { "content-type": "text/plain" })).status).not.toBe(415);
+  });
+
+  it("giới hạn tần suất theo IP gộp IPv6 về /64", async () => {
+    expect(ipBucket("203.0.113.10")).toBe("203.0.113.10");
+    expect(ipBucket("2001:db8:1:2:aaaa:bbbb:cccc:dddd")).toBe("2001:db8:1:2::/64");
+    expect(ipBucket("2001:0DB8:0001:0002::1")).toBe("2001:db8:1:2::/64");
+    expect(ipBucket("2001:db8::1")).toBe("2001:db8:0:0::/64");
+    expect(ipBucket("::1")).toBe("0:0:0:0::/64");
+    expect(ipBucket("2001:db8:1:2:3:4:5:6")).toBe(ipBucket("2001:db8:1:2:ffff::"));
+    expect(ipBucket("2001:db8:1:3::1")).not.toBe(ipBucket("2001:db8:1:2::1"));
+    for (const odd of ["::ffff:192.0.2.1", "1:2:3", "1::2::3", "zz::1", "1:2:3:4:5:6:7:8:9", "unknown"]) {
+      expect(ipBucket(odd), odd).toBe(odd);
+    }
+    // Các địa chỉ cùng /64 dùng chung bộ đếm recover_ip (10 lần/giờ): lần thứ 11 bị chặn dù mỗi lần một địa chỉ khác.
+    const w = makeWorld();
+    const statuses: number[] = [];
+    for (let i = 1; i <= 11; i++) {
+      const res = await w.call("POST", "/v1/licenses/recover", { email: `u${i}@example.com` }, { "cf-connecting-ip": `2001:db8:5:6::${i}` });
+      statuses.push(res.status);
+    }
+    expect(statuses).toEqual([...Array<number>(10).fill(200), 429]);
+    // Dải /64 khác không bị ảnh hưởng.
+    expect((await w.call("POST", "/v1/licenses/recover", { email: "v@example.com" }, { "cf-connecting-ip": "2001:db8:5:7::1" })).status).toBe(200);
   });
 
   it("khóa test-* không dùng được ở production", async () => {
