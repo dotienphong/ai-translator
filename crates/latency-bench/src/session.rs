@@ -351,9 +351,10 @@ struct RunInfo {
     words_untranslated: usize,
     /// Số câu truth bị loại khỏi mọi số đo vì không được gán phần nguồn nào (`count_utterances_without_pieces`).
     utterances_without_pieces: usize,
-    /// Bộ đếm của engine theo trạng thái cuối mỗi đoạn/câu (`pipeline::metrics::SessionMetrics`): bị lọc (không tiếng
-    /// nói, ảo giác), mất giữa chừng (hàng đợi quá tải), cùng ngôn ngữ đích (không dịch), dịch xong, lỗi, bị huỷ vì câu
-    /// đổi trước khi dịch xong.
+    /// Bộ đếm của engine (`pipeline::metrics::SessionMetrics`), theo lần xảy ra: đoạn bị luật lọc (không tiếng nói, ảo
+    /// giác, lặp, câu đệm); đoạn bị bỏ ở bước nhận dạng (chờ quá `queue.asr_drop_after_ms` hoặc worker báo lỗi); đoạn
+    /// cùng ngôn ngữ đích (không dịch); lần dịch xong; lần dịch lỗi; câu bị bỏ bước dịch (chờ quá
+    /// `queue.mt_skip_after_ms`, chỉ hiện câu gốc — KHÔNG phải câu đổi trong lúc đang dịch, trường hợp đó được dịch lại).
     filtered: usize,
     dropped: usize,
     same_lang: usize,
@@ -438,7 +439,7 @@ pub fn run(args: SessionArgs) -> Result<()> {
     // `llama-server` mồ côi. `idle=false`: lượt đo đã xong hẳn (không phải tạm rảnh chờ phiên sau như
     // `release_models`), đúng nhánh "app thoát" mà `Drop` vẫn dùng.
     manager.stop(false);
-    drop(manager); // tắt hai tiến trình phụ
+    drop(manager); // đã tắt ở dòng trên; chỉ còn nhả bản sao Arc cuối cùng
 
     let (events, fatal) = recorder.take();
     let utterances = evaluate(&truth, &events);
