@@ -99,7 +99,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recor
 <li><strong>“Only” plus an app name</strong>: pick your meeting app. Other sounds, such as notifications, are not translated. Safari and web pages inside other apps are grouped as “Safari and web pages inside other apps”.</li>
 </ul>
 <p>The list only shows apps that are <em>playing sound right now</em>; click <strong>Refresh list</strong> after your meeting starts. A new source applies from the next session. If the chosen app stops playing sound, the app says “The chosen app is not playing sound” and carries on as soon as it plays again.</p>
-${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings with the audio source list, a Refresh list button and the pause-that-ends-a-sentence slider", caption: "Settings › Audio: source and sentence-pause sensitivity." })}
+${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings with the audio source picker (set to Zoom only), a Refresh list button and the pause-that-ends-a-sentence slider", caption: "Settings › Audio: source and sentence-pause sensitivity." })}
 
 ${docNav(
   [

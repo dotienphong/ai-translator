@@ -91,7 +91,7 @@ ${callout({ title: "Using Windows?", text: "The steps below are the same on Wind
 <p>For the details, including how to check the installer's SHA-256, see the guides to installing on <a href="/en/guide/install-macos/">macOS</a> and on <a href="/en/guide/install-windows/">Windows</a>.</p>
 
 <h2 id="first-time-setup">First-time setup in seven steps</h2>
-<p>On first launch the app shows a setup wizard of 9 screens (the top line reads “Step 1 of 9”). This guide groups them into seven steps. Every screen has <strong>Back</strong> and <strong>Next</strong> buttons. Windows has no audio permission screen, so its wizard has 8 screens; the step numbers under the screenshots below follow macOS.</p>
+<p>On first launch the app shows a setup wizard of 9 screens in a card in the middle of the window: the top shows the logo, “Step 1 of 9” and a progress bar, and the bottom has <strong>Back</strong> and <strong>Next</strong>. This guide groups them into seven steps. Windows has no audio permission screen, so its wizard has 8 screens; the step numbers under the screenshots below follow macOS.</p>
 
 <h3>Step 1. Choose the interface language</h3>
 <p>Choose <strong>Tiếng Việt</strong> or <strong>English</strong> and click Next. This also sets the language you read subtitles in; you can change it again in step 5.</p>
@@ -114,7 +114,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recor
 
 <h3>Step 5. Choose your languages</h3>
 <p>In <strong>Translate into</strong>, pick the language you want to read. Tick the languages that may be spoken in the meeting (all five by default). Leave <strong>Source language</strong> on “Detect automatically”, or lock one language if you know the meeting uses only that one.</p>
-${appShot({ slug: "app-onboarding-6", lang: "en", alt: "Choose your languages step with the Translate into menu, five spoken-language checkboxes and the Source language menu", caption: "Step 6 of 9: choose your languages." })}
+${appShot({ slug: "app-onboarding-6", lang: "en", alt: "Choose your languages step with the Translate into menu, five rounded chips for the spoken languages and the Source language menu", caption: "Step 6 of 9: choose your languages." })}
 
 <h3>Step 6. Try it</h3>
 <p>Click <strong>Play a sample sentence</strong>. The app plays an English sentence through your speakers, its subtitle appears on the subtitle bar, and this screen reads “It works. Translation: …”. Turn the volume up if your Mac is muted. If macOS asks for the audio recording permission now, allow it.</p>
@@ -128,6 +128,7 @@ ${appShot({ slug: "app-onboarding-9", lang: "en", alt: "Last step saying AI Tran
 </div>
 
 <h2 id="first-meeting">Translate your first meeting</h2>
+<p>Each screen in the left sidebar of the main window has an icon; in a narrow window only the icons show, and hovering shows the name.</p>
 <ol>
 <li>On the Home screen, check “Translate into” and “Languages spoken in the meeting” in the <strong>Languages</strong> card.</li>
 <li>The <strong>Audio source</strong> card defaults to “Whole system, except this app”. To translate just one app, click <strong>Change</strong>. On Windows, the source is the default playback device or a device you choose; picking a single app is not available yet.</li>

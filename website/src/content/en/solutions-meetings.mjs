@@ -63,7 +63,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "Before the meeting", title: "Five minutes of preparation", center: true })}
 <div class="split wide-right">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings listing the apps that are playing sound so you can pick one as the source", caption: "Settings › Audio: listen to the whole system or to one app." })}
+${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings: the audio source picker (set to Zoom only) and a Refresh list button for the apps playing sound", caption: "Settings › Audio: listen to the whole system or to one app." })}
 </div>
 <div>
 ${steps(
@@ -105,7 +105,7 @@ ${checkList([
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "After the meeting", title: "Keep what you need" })}
-<p>After you press <strong>Stop</strong>, press <strong>Open the transcript</strong> to see every line with its time, original text and translation; there is a <em>Search</em> box and a <em>Copy all</em> button on every plan.</p>
+<p>After you press <strong>Stop</strong>, press <strong>Open the transcript</strong> to see every line with its time, original text and translation; there is a search box (magnifier icon) and a <em>Copy all</em> button on every plan.</p>
 <p>Exporting to TXT, SRT or Markdown and History are Pro features (see <a href="/en/pricing/">pricing</a>). History is off by default; turn it on in Settings › Privacy and each session is saved on your computer, encrypted. The app does not save the transcript to disk on its own, and it is a text transcript, not meeting minutes. See <a href="/en/guide/history-and-export/">history and export</a>.</p>
 </div></section>
 

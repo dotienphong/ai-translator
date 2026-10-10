@@ -95,7 +95,7 @@ function licenseView(): LicenseView {
     standing: param("notice") === "license" ? "expired" : free ? "free" : "active",
     plan,
     licensedPlan: null,
-    key: free ? null : "ATR-7K2M-••••-••••-••••-••••-Q9XD",
+    key: free ? null : "••••-••••-••••-••••-••••-••••-Q9XD",
     expiresAt: free ? null : sec(now + (plan === "yearly" ? 300 : 20) * DAY),
     refreshBefore: null,
     validatedAt: sec(now - 3_600_000),

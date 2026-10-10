@@ -47,27 +47,27 @@ ${docLayout({
   tocTitle: "Trong bài này",
   body: `
 <h2 id="keo-va-doi-kich-thuoc">Kéo và đổi kích thước</h2>
-<p>Khi thanh chưa khóa, kéo bất kỳ chỗ nào trên thanh để di chuyển nó. Kéo một cạnh hoặc góc để đổi kích thước; thanh nhỏ nhất là 320 × 80. App nhớ vị trí và kích thước riêng cho từng màn hình. Thanh mặc định nằm giữa màn hình, gần mép dưới.</p>
-${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề mặc định, chữ trắng trên nền đen mờ, câu gốc chữ nhỏ phía trên bản dịch", caption: "Thanh phụ đề mặc định (chưa khóa có viền nét đứt)." })}
+<p>Khi thanh chưa khóa, kéo bất kỳ chỗ nào trên thanh để di chuyển nó; tay nắm nhỏ ở giữa mép trên báo thanh đang kéo được. Kéo một cạnh hoặc góc để đổi kích thước; thanh nhỏ nhất là 320 × 80. App nhớ vị trí và kích thước riêng cho từng màn hình. Thanh mặc định nằm giữa màn hình, gần mép dưới.</p>
+${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề mặc định, chữ trắng trên nền đen mờ, câu gốc chữ nhỏ phía trên bản dịch", caption: "Thanh phụ đề mặc định. Khi chưa khóa, thanh có tay nắm nhỏ ở giữa mép trên và viền sáng hơn." })}
 
 <h2 id="khoa">Khóa và mở khóa (click xuyên qua)</h2>
-<p>Khóa thanh để chuột đi xuyên qua nó, nhờ đó thanh không cản các nút và ô chat của cuộc họp. Khi khóa, thanh không còn viền và không có nút nào.</p>
+<p>Khóa thanh để chuột đi xuyên qua nó, nhờ đó thanh không cản các nút và ô chat của cuộc họp. Khi khóa, tay nắm ở mép trên biến mất, viền mờ hẳn đi và thanh không có nút nào.</p>
 <ul>
 <li>Màn hình chính, thẻ <strong>Thanh phụ đề</strong>: bấm <strong>Khóa (click xuyên qua)</strong> hoặc <strong>Mở khóa</strong>.</li>
 <li>Phím tắt ${keys(["⌃", "⌥", "L"])}.</li>
 <li>Menu ở menu bar: <strong>Khóa phụ đề (click xuyên qua)</strong> hoặc <strong>Mở khóa phụ đề</strong>.</li>
 </ul>
-${overlayShot({ slug: "overlay-locked", lang: "vi", alt: "Thanh phụ đề đã khóa, không viền, không có nút nào, hiện bản dịch trên nền cuộc họp", caption: "Thanh đã khóa: sạch, không có nút, chuột đi xuyên qua." })}
+${overlayShot({ slug: "overlay-locked", lang: "vi", alt: "Thanh phụ đề đã khóa, không tay nắm, không có nút nào, hiện bản dịch trên nền cuộc họp", caption: "Thanh đã khóa: sạch, không có nút, chuột đi xuyên qua." })}
 ${callout({ title: "Đã khóa thì không bấm được vào thanh.", text: "Muốn mở khóa hãy dùng phím tắt, menu ở menu bar hoặc nút trên màn hình chính." })}
 
 <h2 id="an-hien">Ẩn và hiện</h2>
-<p>Rê chuột vào thanh chưa khóa sẽ thấy nút <strong>✕</strong> ở góc trên bên phải (“Tắt phụ đề và dừng dịch”). Bấm nút này thì thanh ẩn và phiên dịch dừng luôn, không cần bấm Dừng nữa; app không thoát. Muốn ẩn thanh mà vẫn dịch, dùng ${keys(["⌃", "⌥", "H"])}, nút <strong>Ẩn</strong> ở màn hình chính, hoặc menu ở menu bar; các cách này cũng dùng để hiện lại thanh. Thanh ẩn khi bạn mở app, hiện khi bạn bấm Bắt đầu, và giữ nguyên các dòng cuối khi bạn bấm Dừng.</p>
+<p>Rê chuột vào thanh chưa khóa sẽ thấy nút <strong>✕</strong> ở góc trên bên phải (“Tắt phụ đề và dừng dịch”; nút chuyển nền đỏ khi bạn rê chuột vào). Bấm nút này thì thanh ẩn và phiên dịch dừng luôn, không cần bấm Dừng nữa; app không thoát. Muốn ẩn thanh mà vẫn dịch, dùng ${keys(["⌃", "⌥", "H"])}, nút <strong>Ẩn</strong> ở màn hình chính, hoặc menu ở menu bar; các cách này cũng dùng để hiện lại thanh. Thanh ẩn khi bạn mở app, hiện khi bạn bấm Bắt đầu, và giữ nguyên các dòng cuối khi bạn bấm Dừng.</p>
 
 <h2 id="cuon">Cuộn xem câu cũ</h2>
 <p>Thanh giữ tối đa 1000 câu gần nhất của phiên. Khi đang ở cuối, thanh tự theo câu mới. Cuộn lên bằng con lăn hoặc trackpad (khi chưa khóa) thì thanh ngừng theo và hiện nút <strong>↓ Mới nhất</strong> ở góc dưới bên phải; bấm nút này để về câu hiện tại. Khi đã khóa, chuột xuyên qua nên dùng ${keys(["⌃", "⌥", "PageUp"])} và ${keys(["⌃", "⌥", "PageDown"])}, mỗi lần cuộn khoảng 80% chiều cao thanh; lúc đó nút “Mới nhất” chỉ là nhãn báo bạn đang xem câu cũ. Bàn phím MacBook không có phím Page Up và Page Down riêng; nếu khó bấm, hãy đổi hai phím này.</p>
 
 <h2 id="tuy-chinh">Chỉnh cỡ chữ, màu, độ mờ</h2>
-<p>Mở <strong>Cài đặt › Phụ đề</strong>. Mọi thay đổi hiện ngay trên thanh; bấm <strong>Hiện</strong> ở dòng Thanh phụ đề để xem thử khi chưa dịch.</p>
+<p>Mở <strong>Cài đặt › Phụ đề</strong>. Khung <strong>Xem trước</strong> ở đầu trang vẽ một câu mẫu theo màu chữ, màu nền, độ mờ và cỡ chữ bạn chọn, và đổi ngay cả khi bạn đang kéo thanh trượt. Thanh phụ đề thật cũng đổi ngay theo; muốn xem trên thanh thật khi chưa dịch, bấm <strong>Hiện</strong> ở dòng Thanh phụ đề.</p>
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Mục</th><th scope="col">Lựa chọn</th><th scope="col">Mặc định</th></tr></thead>
 <tbody>
@@ -78,7 +78,7 @@ ${callout({ title: "Đã khóa thì không bấm được vào thanh.", text: "M
 <tr><th scope="row">Hiện câu gốc phía trên bản dịch</th><td>Bật hoặc tắt</td><td>Bật</td></tr>
 </tbody></table></div>
 <div class="grid grid-2">
-${appShot({ slug: "app-settings-subtitles", lang: "vi", alt: "Cài đặt Phụ đề với thanh cỡ chữ, hai hàng ô màu, thanh độ mờ nền và ô hiện câu gốc", caption: "Cài đặt › Phụ đề." })}
+${appShot({ slug: "app-settings-subtitles", lang: "vi", alt: "Cài đặt Phụ đề: khung xem trước câu mẫu ở đầu, thanh cỡ chữ, hai hàng ô màu, thanh độ mờ nền và công tắc hiện câu gốc", caption: "Cài đặt › Phụ đề." })}
 ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã tùy chỉnh với chữ vàng trên nền xanh navy và cỡ chữ lớn", caption: "Ví dụ: chữ vàng, nền navy, cỡ chữ lớn." })}
 </div>
 

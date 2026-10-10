@@ -47,27 +47,27 @@ ${docLayout({
   tocTitle: "In this guide",
   body: `
 <h2 id="move-and-resize">Move and resize</h2>
-<p>While the bar is unlocked, drag anywhere on it to move it. Drag an edge or a corner to resize it; the smallest size is 320 × 80. The app remembers the position and size separately for each screen. By default the bar sits in the middle of the screen, near the bottom edge.</p>
-${overlayShot({ slug: "overlay-default", lang: "en", alt: "Default subtitle bar: white text on a translucent black background, original sentence in small type above the translation", caption: "The default subtitle bar (a dashed outline shows while it is unlocked)." })}
+<p>While the bar is unlocked, drag anywhere on it to move it; the small handle at the middle of the top edge shows that it can be moved. Drag an edge or a corner to resize it; the smallest size is 320 × 80. The app remembers the position and size separately for each screen. By default the bar sits in the middle of the screen, near the bottom edge.</p>
+${overlayShot({ slug: "overlay-default", lang: "en", alt: "Default subtitle bar: white text on a translucent black background, original sentence in small type above the translation", caption: "The default subtitle bar. While it is unlocked, a small handle shows at the middle of the top edge and the outline is brighter." })}
 
 <h2 id="lock">Lock and unlock (click-through)</h2>
-<p>Lock the bar so the mouse passes straight through it and it never blocks the buttons or the chat box of your meeting. When locked, the bar has no outline and no buttons.</p>
+<p>Lock the bar so the mouse passes straight through it and it never blocks the buttons or the chat box of your meeting. When locked, the top handle disappears, the outline fades and the bar has no buttons.</p>
 <ul>
 <li>On the Home screen, in the <strong>Subtitle bar</strong> card: click <strong>Lock (click-through)</strong> or <strong>Unlock</strong>.</li>
 <li>The shortcut ${keys(["⌃", "⌥", "L"])}.</li>
 <li>The menu bar menu: <strong>Lock subtitles (click-through)</strong> or <strong>Unlock subtitles</strong>.</li>
 </ul>
-${overlayShot({ slug: "overlay-locked", lang: "en", alt: "Locked subtitle bar with no outline and no buttons, showing the translation over a meeting background", caption: "A locked bar: clean, no buttons, clicks pass through." })}
+${overlayShot({ slug: "overlay-locked", lang: "en", alt: "Locked subtitle bar with no handle and no buttons, showing the translation over a meeting background", caption: "A locked bar: clean, no buttons, clicks pass through." })}
 ${callout({ title: "You cannot click a locked bar.", text: "To unlock it, use the shortcut, the menu bar menu or the button on the Home screen." })}
 
 <h2 id="show-hide">Show and hide</h2>
-<p>Hover over an unlocked bar to reveal the <strong>✕</strong> button in the top-right corner (“Close subtitles and stop translating”). Clicking it hides the bar and stops the translation in one go, so you do not also need to click Stop; the app does not quit. To hide the bar and keep translating, use ${keys(["⌃", "⌥", "H"])}, the <strong>Hide</strong> button on the Home screen, or the menu bar menu; the same options bring the bar back. The bar starts hidden when you open the app, appears when you click Start, and keeps its last lines when you click Stop.</p>
+<p>Hover over an unlocked bar to reveal the <strong>✕</strong> button in the top-right corner (“Close subtitles and stop translating”; it turns red when you hover over it). Clicking it hides the bar and stops the translation in one go, so you do not also need to click Stop; the app does not quit. To hide the bar and keep translating, use ${keys(["⌃", "⌥", "H"])}, the <strong>Hide</strong> button on the Home screen, or the menu bar menu; the same options bring the bar back. The bar starts hidden when you open the app, appears when you click Start, and keeps its last lines when you click Stop.</p>
 
 <h2 id="scroll">Scroll back through sentences</h2>
 <p>The bar keeps up to the last 1000 sentences of the session. While you are at the bottom, it follows new sentences by itself. Scroll up with the mouse wheel or trackpad (while unlocked) and it stops following and shows a <strong>↓ Latest</strong> button in the bottom-right corner; click it to return to the current sentence. When the bar is locked the mouse passes through, so use ${keys(["⌃", "⌥", "PageUp"])} and ${keys(["⌃", "⌥", "PageDown"])}, which scroll by about 80% of the bar's height; then the Latest label only signals that you are looking at older sentences. MacBook keyboards have no dedicated Page Up and Page Down keys; if they are awkward, change these two shortcuts.</p>
 
 <h2 id="style">Font size, colors, opacity</h2>
-<p>Open <strong>Settings › Subtitles</strong>. Every change shows on the bar at once; click <strong>Show</strong> on the Subtitle bar line to preview it when you are not translating.</p>
+<p>Open <strong>Settings › Subtitles</strong>. The <strong>Preview</strong> at the top draws a sample sentence with your text color, background, opacity and font size, and updates even while you drag a slider. The real bar changes at once too; to see it on the real bar when you are not translating, click <strong>Show</strong> on the Subtitle bar line.</p>
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Setting</th><th scope="col">Choices</th><th scope="col">Default</th></tr></thead>
 <tbody>
@@ -78,7 +78,7 @@ ${callout({ title: "You cannot click a locked bar.", text: "To unlock it, use th
 <tr><th scope="row">Show the original text above the translation</th><td>On or off</td><td>On</td></tr>
 </tbody></table></div>
 <div class="grid grid-2">
-${appShot({ slug: "app-settings-subtitles", lang: "en", alt: "Subtitles settings with a font size slider, two rows of color swatches, a background opacity slider and the show-original checkbox", caption: "Settings › Subtitles." })}
+${appShot({ slug: "app-settings-subtitles", lang: "en", alt: "Subtitles settings: a sample-sentence preview at the top, a font size slider, two rows of color swatches, a background opacity slider and the show-original switch", caption: "Settings › Subtitles." })}
 ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle bar with yellow text on a navy background in a larger font", caption: "Example: yellow text, navy background, larger font." })}
 </div>
 

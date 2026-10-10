@@ -68,7 +68,7 @@ ${facts([
 <h2 id="buy">Buy a plan in the app</h2>
 <ol>
 <li>Click <strong>Upgrade to Pro</strong> in the sidebar. The screen lists all three plans; yours is marked “Current”. Buying needs an internet connection.</li>
-<li>Choose <strong>Monthly</strong> or <strong>Yearly</strong>.</li>
+<li>Click the <strong>Monthly</strong> or <strong>Yearly</strong> card (the price is in large type, e.g. “50.000 đ / 30 days”); the selected card gets a blue outline.</li>
 <li>Enter your <strong>Email to receive your key</strong>, tick the box that lets the app store this email to send and recover your key, then click <strong>Create payment QR code</strong>.</li>
 <li>Scan the VietQR code with your banking app, or click <strong>Open payment page</strong> (PayOS, in your browser). The code works for 15 minutes; its expiry time is on screen.</li>
 <li>Wait for the app to confirm (it checks the order every 3 seconds): “Payment received. Your plan is active on this computer, and the key is in your email.”</li>
@@ -109,7 +109,7 @@ ${appShot({
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Situation</th><th scope="col">What to do</th></tr></thead>
 <tbody>
-<tr><th scope="row">You can still use the old computer</th><td>On the old one, open <strong>Settings › License › Deactivate this computer</strong> and confirm with <strong>Deactivate</strong>. That computer goes back to Free. Then enter the key on the new one.</td></tr>
+<tr><th scope="row">You can still use the old computer</th><td>On the old one, open <strong>Settings › License › Deactivate this computer</strong> and confirm with <strong>Deactivate</strong> (the red button in the light-red confirmation box). That computer goes back to Free. Then enter the key on the new one.</td></tr>
 <tr><th scope="row">The old computer is broken or out of reach</th><td>On the new one, enter the key. The app shows the computer holding it and a <strong>Remove that computer and use this one</strong> button.</td></tr>
 <tr><th scope="row">You click <strong>Activate on this computer anyway</strong></th><td>The key is locked on both computers until one removes it. The app asks you to confirm first.</td></tr>
 </tbody></table></div>

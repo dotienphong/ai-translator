@@ -106,7 +106,7 @@ ${appShot({
 })}
 <p>Hãy liên hệ khi lỗi lặp lại sau khi làm theo bảng trên, khi key bị khóa tạm hoặc thu hồi, hoặc khi thanh toán có vấn đề. Hãy kèm trong thư:</p>
 <ul>
-<li>Phiên bản app (Giới thiệu › “Phiên bản …”), phiên bản macOS hoặc Windows, chip hoặc CPU (ví dụ MacBook Air M2), RAM, và card đồ họa nếu là máy Windows.</li>
+<li>Phiên bản app (Giới thiệu › “Phiên bản …”, hoặc chân thanh bên trái của cửa sổ chính, dạng “Monthly · v0.1.6”), phiên bản macOS hoặc Windows, chip hoặc CPU (ví dụ MacBook Air M2), RAM, và card đồ họa nếu là máy Windows.</li>
 <li>Gói model (Chuẩn hoặc Nhẹ, ở Cài đặt › Model) và gói bản quyền.</li>
 <li>Câu báo lỗi đúng chữ hoặc ảnh chụp, app họp đang dùng, việc bạn vừa làm.</li>
 <li>Mã đơn nếu liên quan thanh toán; <code>app.log</code> nếu bạn đồng ý.</li>

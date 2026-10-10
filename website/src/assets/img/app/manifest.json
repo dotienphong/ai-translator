@@ -127,7 +127,7 @@
   "width": 1440,
   "height": 960,
   "bytes": 66238,
-  "description": "Cài đặt phụ đề: chỉnh cỡ chữ, màu chữ, màu nền, độ mờ nền và bật hiện câu gốc phía trên bản dịch."
+  "description": "Cài đặt phụ đề: khung xem trước câu mẫu ở đầu, chỉnh cỡ chữ, màu chữ, màu nền, độ mờ nền và bật hiện câu gốc phía trên bản dịch."
  },
  {
   "file": "app-settings-subtitles.en.webp",
@@ -137,7 +137,7 @@
   "width": 1440,
   "height": 960,
   "bytes": 65792,
-  "description": "Subtitle settings: font size, text color, background color, background opacity and showing the original text above the translation."
+  "description": "Subtitle settings: a sample-sentence preview at the top, font size, text color, background color, background opacity and showing the original text above the translation."
  },
  {
   "file": "app-settings-subtitles.dark.vi.webp",
@@ -206,7 +206,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 52296,
+  "bytes": 52092,
   "description": "Cài đặt bản quyền: gói Monthly còn hạn với key đã che, số phút còn lại, nút Gia hạn hoặc đổi gói, Kiểm tra ngay, Gỡ kích hoạt và mục Mất key."
  },
  {
@@ -216,7 +216,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 51272,
+  "bytes": 50966,
   "description": "License settings: an active Monthly plan with a masked key, minutes left, Renew or change plan, Check now, Deactivate this computer and the Lost your key section."
  },
  {
@@ -527,7 +527,7 @@
   "width": 1800,
   "height": 448,
   "bytes": 118950,
-  "description": "Thanh phụ đề ở chế độ khóa, click xuyên qua: không viền, không nút, ba câu họp được dịch sang tiếng Việt."
+  "description": "Thanh phụ đề ở chế độ khóa, click xuyên qua: không tay nắm, không nút, ba câu họp được dịch sang tiếng Việt."
  },
  {
   "file": "overlay-locked.en.webp",
@@ -537,6 +537,6 @@
   "width": 1800,
   "height": 448,
   "bytes": 102376,
-  "description": "The subtitle bar in locked, click-through mode: no outline and no buttons, with three meeting sentences translated into English."
+  "description": "The subtitle bar in locked, click-through mode: no handle and no buttons, with three meeting sentences translated into English."
  }
 ]

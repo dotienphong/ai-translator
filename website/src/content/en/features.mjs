@@ -84,7 +84,7 @@ ${checkList([
 </div>
 <div class="stack-lg">
 ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Subtitle bar with yellow text on a navy background at a large font size", caption: "The same bar with yellow text, a navy background and a size of 26." })}
-${appShot({ slug: "app-settings-subtitles", lang: "en", alt: "Subtitles settings: font size, text color, background color, background opacity and the option to show the original text", caption: "Settings › Subtitles: every change shows on the bar immediately." })}
+${appShot({ slug: "app-settings-subtitles", lang: "en", alt: "Subtitles settings: a sample-sentence preview, font size, text color, background color, background opacity and the option to show the original text", caption: "Settings › Subtitles: the preview and the bar update immediately." })}
 </div>
 </div>
 </div></section>
@@ -92,7 +92,7 @@ ${appShot({ slug: "app-settings-subtitles", lang: "en", alt: "Subtitles settings
 <section class="section" id="audio-source"><div class="container">
 <div class="split wide-left">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings listing the apps that are playing sound so you can choose one as the source", caption: "Settings › Audio: listen to the whole system or to just one app (macOS)." })}
+${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings: the audio source picker (set to Zoom only) and a Refresh list button for the apps playing sound", caption: "Settings › Audio: listen to the whole system or to just one app (macOS)." })}
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Audio source</span>

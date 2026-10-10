@@ -34,7 +34,7 @@ export default {
       description: "Bật lưu lịch sử, dịch một phiên rồi xuất bản chép lời ra file TXT, SRT hoặc Markdown.",
       totalTime: "PT5M",
       steps: [
-        { name: "Bật lưu lịch sử", text: "Mở Cài đặt › Quyền riêng tư và bật ô Lưu lịch sử chép lời. Cần gói Monthly hoặc Yearly." },
+        { name: "Bật lưu lịch sử", text: "Mở Cài đặt › Quyền riêng tư và gạt công tắc Lưu lịch sử chép lời sang bật. Cần gói Monthly hoặc Yearly." },
         { name: "Dịch một phiên rồi bấm Dừng", text: "Khi bạn bấm Dừng, app lưu bản chép lời của phiên vào lịch sử, mã hóa, trên máy bạn." },
         { name: "Mở bản chép lời", text: "Mở Bản chép lời, hoặc mở một phiên đã lưu trong Lịch sử bằng nút Mở." },
         { name: "Chọn định dạng và xuất", text: "Ở mục Xuất ra chọn TXT, SRT hoặc Markdown (với SRT chọn Bản dịch hoặc Câu gốc), bấm Xuất… rồi chọn nơi lưu." },
@@ -64,7 +64,7 @@ ${facts([
 <h2 id="ban-chep-loi">Xem, tìm và sao chép bản chép lời</h2>
 <p>Mở <strong>Bản chép lời</strong> ở thanh bên, hoặc bấm <strong>Mở bản chép lời</strong> ở Màn hình chính. Mỗi dòng có giờ, câu gốc và bản dịch. Đoạn bị bỏ hiện “[bỏ qua đoạn]”, câu chưa dịch được ghi “chưa dịch được”.</p>
 <ul>
-<li><strong>Tìm:</strong> gõ vào ô <strong>Tìm</strong> (“Chữ trong câu gốc hoặc bản dịch”). Không có kết quả thì app báo “Không có câu nào khớp.”</li>
+<li><strong>Tìm:</strong> gõ vào ô tìm có biểu tượng kính lúp ở đầu màn hình (chữ mờ “Chữ trong câu gốc hoặc bản dịch”); nút <strong>Sao chép tất cả</strong> nằm cùng hàng bên phải. Không có kết quả thì app báo “Không có câu nào khớp.”</li>
 <li><strong>Sao chép tất cả:</strong> đưa cả bản chép lời vào clipboard dưới dạng văn bản (cùng kiểu với TXT bên dưới) và báo “Đã sao chép vào clipboard.”</li>
 </ul>
 ${callout({
@@ -75,21 +75,21 @@ ${callout({
 ${appShot({
   slug: "app-transcript",
   lang: "vi",
-  alt: "Màn hình Bản chép lời: ô Tìm, nút Sao chép tất cả, chọn định dạng xuất và danh sách các dòng gồm giờ, câu gốc và bản dịch",
+  alt: "Màn hình Bản chép lời: ô tìm có kính lúp, nút Sao chép tất cả, chọn định dạng xuất và danh sách các dòng gồm giờ, câu gốc và bản dịch",
   caption: "Bản chép lời: tìm, sao chép và chọn định dạng xuất.",
 })}
 
 <h2 id="luu-lich-su">Bật lưu lịch sử (Pro)</h2>
 <ol>
 <li>Mở <strong>Cài đặt › Quyền riêng tư</strong>.</li>
-<li>Bật ô <strong>Lưu lịch sử chép lời</strong>. Gói Free thấy ô này bị khóa kèm câu “Lưu lịch sử là tính năng Pro.”</li>
+<li>Gạt công tắc <strong>Lưu lịch sử chép lời</strong> sang bật. Ở gói Free, công tắc này bị khóa kèm câu “Lưu lịch sử là tính năng Pro.”</li>
 <li>Dịch như bình thường rồi bấm <strong>Dừng</strong>. App lưu bản chép lời của phiên; phiên không có câu nào thì không lưu. Thoát app, tắt máy hay đăng xuất giữa phiên cũng được lưu như khi bấm Dừng, còn tắt đột ngột (Force Quit, mất điện) thì phiên đó mất.</li>
 <li>Mở <strong>Lịch sử</strong> ở thanh bên.</li>
 </ol>
 ${appShot({
   slug: "app-settings-privacy",
   lang: "vi",
-  alt: "Cài đặt Quyền riêng tư: ô Lưu lịch sử chép lời, nút Xóa toàn bộ dữ liệu và nút Xóa model và dữ liệu",
+  alt: "Cài đặt Quyền riêng tư: công tắc Lưu lịch sử chép lời (đang tắt), nút Xóa toàn bộ dữ liệu và nút Xóa model và dữ liệu",
   caption: "Cài đặt › Quyền riêng tư: bật lưu lịch sử và xóa dữ liệu.",
 })}
 <p>Mỗi phiên trong <strong>Lịch sử</strong> có ngày giờ, số phút và số câu (“47 phút · 186 câu”), đoạn xem trước và hai nút <strong>Mở</strong>, <strong>Xóa</strong>; phiên mới nhất ở trên. <strong>Mở</strong> cho bạn xem, tìm, sao chép và xuất như ở Bản chép lời; <strong>Về danh sách</strong> để quay lại. Nếu lưu lịch sử đang tắt, màn hình báo “Lưu lịch sử đang tắt, nên phiên mới không được lưu.”</p>

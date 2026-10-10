@@ -106,7 +106,7 @@ ${appShot({
 })}
 <p>Contact support when a problem repeats after you followed the tables, when a key is locked or revoked, or when a payment goes wrong. Include:</p>
 <ul>
-<li>The app version (About › “Version …”), the macOS or Windows version, the chip or processor (for example MacBook Air M2), the RAM, and the graphics card on a Windows PC.</li>
+<li>The app version (About › “Version …”, or the foot of the left sidebar, e.g. “Monthly · v0.1.6”), the macOS or Windows version, the chip or processor (for example MacBook Air M2), the RAM, and the graphics card on a Windows PC.</li>
 <li>The model pack (Standard or Lite, in Settings › Model) and your license plan.</li>
 <li>The message exactly as shown, or a screenshot, the meeting app you use and what you just did.</li>
 <li>The order number for payment issues; <code>app.log</code> if you agree.</li>

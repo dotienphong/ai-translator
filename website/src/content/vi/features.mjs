@@ -70,7 +70,7 @@ ${callout({ title: "Một chiều, từ cuộc họp sang bạn.", text: "AI Tra
 <div class="stack-lg reveal">
 <span class="eyebrow">Thanh phụ đề</span>
 <h2>Thanh nổi tùy chỉnh, không cản app họp</h2>
-<p>Thanh phụ đề là một cửa sổ riêng, không viền, nền mờ, luôn ở trên cùng và không lấy focus của app họp, nên bạn gõ chat hay bấm nút trong cuộc họp bình thường.</p>
+<p>Thanh phụ đề là một cửa sổ riêng không có khung cửa sổ, góc bo, nền mờ, luôn ở trên cùng và không lấy focus của app họp, nên bạn gõ chat hay bấm nút trong cuộc họp bình thường.</p>
 ${checkList([
   "<strong>Kéo</strong> để di chuyển, kéo cạnh hoặc góc để đổi kích thước; nhớ vị trí và kích thước riêng cho từng màn hình",
   "<strong>Cỡ chữ</strong> 14–48 px, <strong>5 màu chữ</strong> (trắng, vàng, xanh lá, xanh dương nhạt, cam), <strong>5 màu nền</strong>, độ mờ nền 0–100%",
@@ -82,7 +82,7 @@ ${checkList([
 </div>
 <div class="stack-lg">
 ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề với chữ vàng trên nền xanh navy, cỡ chữ lớn", caption: "Cùng một thanh, đổi sang chữ vàng, nền navy, cỡ chữ 26." })}
-${appShot({ slug: "app-settings-subtitles", lang: "vi", alt: "Cài đặt Phụ đề: cỡ chữ, màu chữ, màu nền, độ mờ nền và tùy chọn hiện câu gốc", caption: "Cài đặt › Phụ đề: mọi thay đổi hiện ngay trên thanh." })}
+${appShot({ slug: "app-settings-subtitles", lang: "vi", alt: "Cài đặt Phụ đề: khung xem trước câu mẫu, cỡ chữ, màu chữ, màu nền, độ mờ nền và tùy chọn hiện câu gốc", caption: "Cài đặt › Phụ đề: khung xem trước và thanh phụ đề đổi ngay theo." })}
 </div>
 </div>
 </div></section>
@@ -90,7 +90,7 @@ ${appShot({ slug: "app-settings-subtitles", lang: "vi", alt: "Cài đặt Phụ 
 <section class="section" id="nguon-am-thanh"><div class="container">
 <div class="split wide-left">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh liệt kê các app đang phát tiếng để chọn làm nguồn", caption: "Cài đặt › Âm thanh: nghe toàn hệ thống hoặc chỉ một app (macOS)." })}
+${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh: ô chọn nguồn âm thanh (đang là Chỉ Zoom) và nút Làm mới danh sách các app đang phát tiếng", caption: "Cài đặt › Âm thanh: nghe toàn hệ thống hoặc chỉ một app (macOS)." })}
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Nguồn âm thanh</span>

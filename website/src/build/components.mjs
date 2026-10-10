@@ -1,4 +1,5 @@
 // Khối giao diện dùng lại cho mọi trang. Tham số là chữ thuần (được escape) trừ những chỗ ghi rõ là HTML.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { esc } from "./markdown.mjs";
 import { icon } from "./icons.mjs";
@@ -6,7 +7,7 @@ import { PLANS, vnd } from "../plans.mjs";
 
 export { esc, icon };
 
-// Kích thước ảnh chụp giao diện app lấy từ manifest do công cụ chụp ghi (tools/app-shots). Thiếu manifest thì dùng cỡ mặc định.
+// Kích thước ảnh chụp giao diện app lấy từ manifest do công cụ chụp ghi (scripts/ui-preview/shoot.mjs ở gốc repo). Thiếu manifest thì dùng cỡ mặc định.
 const MANIFEST = (() => {
   try {
     return JSON.parse(readFileSync(new URL("../assets/img/app/manifest.json", import.meta.url), "utf8"));
@@ -16,13 +17,24 @@ const MANIFEST = (() => {
 })();
 const dims = (file, d) => MANIFEST.find((m) => m.file === file) ?? d;
 
+// Đường dẫn ảnh kèm mã băm nội dung: ảnh nằm trong cache trình duyệt 30 ngày (_headers), nên chụp lại ảnh (cùng tên file)
+// mà không đổi đường dẫn thì người đã vào trang vẫn thấy ảnh cũ. Thiếu file thì để đường dẫn trơn.
+const appImg = (file) => {
+  try {
+    const hash = createHash("sha256").update(readFileSync(new URL(`../assets/img/app/${file}`, import.meta.url))).digest("hex");
+    return `/assets/img/app/${file}?v=${hash.slice(0, 10)}`;
+  } catch {
+    return `/assets/img/app/${file}`;
+  }
+};
+
 /** Ảnh chụp cửa sổ chính của app (có thanh tiêu đề giả bằng CSS). */
 export const appShot = ({ slug, lang, alt, caption, eager = false, title = "AI Translator", dark = false }) => {
   const file = `${slug}${dark ? ".dark" : ""}.${lang}.webp`;
   const d = dims(file, { width: 1440, height: 960 });
   return `<figure class="shot window reveal">
 <div class="bar" aria-hidden="true"><i></i><span>${esc(title)}</span></div>
-<img src="/assets/img/app/${file}" alt="${esc(alt)}" width="${d.width}" height="${d.height}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">
+<img src="${appImg(file)}" alt="${esc(alt)}" width="${d.width}" height="${d.height}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">
 ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
 </figure>`;
 };
@@ -32,7 +44,7 @@ export const overlayShot = ({ slug, lang, alt, caption }) => {
   const file = `${slug}.${lang}.webp`;
   const d = dims(file, { width: 1800, height: 400 });
   return `<figure class="shot stage reveal">
-<div class="backdrop"><img src="/assets/img/app/${file}" alt="${esc(alt)}" width="${d.width}" height="${d.height}" loading="lazy" decoding="async"></div>
+<div class="backdrop"><img src="${appImg(file)}" alt="${esc(alt)}" width="${d.width}" height="${d.height}" loading="lazy" decoding="async"></div>
 ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
 </figure>`;
 };

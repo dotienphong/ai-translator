@@ -64,7 +64,7 @@ ${facts([
 <h2 id="transcript">View, search and copy the transcript</h2>
 <p>Open <strong>Transcript</strong> in the sidebar, or click <strong>Open the transcript</strong> on the Home screen. Each line has the time, the original sentence and the translation. A skipped segment shows “[segment skipped]” and a sentence that could not be translated is marked “not translated”.</p>
 <ul>
-<li><strong>Search:</strong> type in the <strong>Search</strong> box (“Words in the original or the translation”). With no match the app says “No sentence matches your search.”</li>
+<li><strong>Search:</strong> type in the search box with the magnifier icon at the top (placeholder “Words in the original or the translation”); <strong>Copy all</strong> sits on the same row, on the right. With no match the app says “No sentence matches your search.”</li>
 <li><strong>Copy all:</strong> puts the whole transcript on the clipboard as plain text (the same layout as the TXT export below) and says “Copied to the clipboard.”</li>
 </ul>
 ${callout({
@@ -75,7 +75,7 @@ ${callout({
 ${appShot({
   slug: "app-transcript",
   lang: "en",
-  alt: "The Transcript screen: a Search box, a Copy all button, the export format picker and a list of lines with time, original sentence and translation",
+  alt: "The Transcript screen: a search box with a magnifier icon, a Copy all button, the export format picker and a list of lines with time, original sentence and translation",
   caption: "Transcript: search, copy and pick an export format.",
 })}
 
@@ -89,7 +89,7 @@ ${appShot({
 ${appShot({
   slug: "app-settings-privacy",
   lang: "en",
-  alt: "Privacy settings: the Save transcript history switch, the Delete all data button and the Delete models and data button",
+  alt: "Privacy settings: the Save transcript history switch (off), the Delete all data button and the Delete models and data button",
   caption: "Settings › Privacy: turn on history and delete data.",
 })}
 <p>Each session in <strong>History</strong> shows the date and time, its length and sentence count (“47 min · 186 sentences”), a preview, and <strong>Open</strong> and <strong>Delete</strong> buttons, newest first. <strong>Open</strong> lets you view, search, copy and export it just like the Transcript; <strong>Back to the list</strong> returns. If saving is off, the screen says “Saving history is off, so new sessions are not saved.”</p>

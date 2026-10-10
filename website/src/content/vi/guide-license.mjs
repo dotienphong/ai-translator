@@ -68,7 +68,7 @@ ${facts([
 <h2 id="mua-goi">Mua gói trong app</h2>
 <ol>
 <li>Bấm <strong>Nâng cấp Pro</strong> ở thanh bên. Màn hình hiện đủ ba gói, gói đang dùng có nhãn “Đang dùng”. Mua gói cần kết nối mạng.</li>
-<li>Chọn <strong>Monthly</strong> hoặc <strong>Yearly</strong>.</li>
+<li>Bấm vào thẻ <strong>Monthly</strong> hoặc <strong>Yearly</strong> (giá ghi chữ lớn, như “50.000 đ / 30 ngày”); thẻ đã chọn có viền xanh.</li>
 <li>Nhập <strong>Email nhận key</strong>, tick ô đồng ý để app lưu email này nhằm gửi và khôi phục key, rồi bấm <strong>Tạo mã thanh toán</strong>.</li>
 <li>Quét mã VietQR bằng app ngân hàng, hoặc bấm <strong>Mở trang thanh toán</strong> (PayOS, mở trong trình duyệt). Mã dùng được 15 phút; giờ hết hạn ghi trên màn hình.</li>
 <li>Chờ app xác nhận (app hỏi trạng thái đơn mỗi 3 giây): “Đã nhận tiền. Gói đã có hiệu lực trên máy này; key đã gửi vào email.”</li>
@@ -109,7 +109,7 @@ ${appShot({
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Tình huống</th><th scope="col">Cách làm</th></tr></thead>
 <tbody>
-<tr><th scope="row">Bạn còn dùng được máy cũ</th><td>Ở máy cũ, mở <strong>Cài đặt › Bản quyền › Gỡ kích hoạt máy này</strong> và xác nhận bằng <strong>Gỡ kích hoạt</strong>. Máy cũ về Free. Rồi nhập key ở máy mới.</td></tr>
+<tr><th scope="row">Bạn còn dùng được máy cũ</th><td>Ở máy cũ, mở <strong>Cài đặt › Bản quyền › Gỡ kích hoạt máy này</strong> và xác nhận bằng <strong>Gỡ kích hoạt</strong> (nút đỏ trong khung hỏi lại màu đỏ nhạt). Máy cũ về Free. Rồi nhập key ở máy mới.</td></tr>
 <tr><th scope="row">Máy cũ hỏng hoặc không với tới</th><td>Ở máy mới, nhập key. App hiện máy đang giữ key và nút <strong>Gỡ máy kia và dùng máy này</strong>.</td></tr>
 <tr><th scope="row">Bạn bấm <strong>Vẫn kích hoạt trên máy này</strong></th><td>Key bị tạm khóa trên cả hai máy cho tới khi một máy gỡ key. App hỏi xác nhận trước.</td></tr>
 </tbody></table></div>

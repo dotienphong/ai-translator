@@ -117,7 +117,8 @@ test("liên kết nội bộ và neo (#) đều tồn tại", async () => {
     for (const m of html.matchAll(/<(?:a|link|img|script)\b[^>]*?\s(?:href|src)="([^"]+)"/g)) {
       const url = m[1];
       if (/^(https?:|mailto:|tel:|data:)/.test(url)) continue;
-      const [target, hash] = url.split("#");
+      // Bỏ query (`?v=<mã băm>` của ảnh app) trước khi tìm file.
+      const [target, hash] = url.replace(/\?[^#]*/, "").split("#");
       const t = target === "" ? p.path : target;
       if (t.startsWith("#")) continue;
       const known = htmlByPath.has(t) || (await exists(path.join(DIST, t.endsWith("/") ? t + "index.html" : t)));
@@ -304,4 +305,20 @@ test("không lộ công nghệ lõi (tên model, engine, thư viện, kiến tr�
   for (const p of pages) scan(p.path, htmlByPath.get(p.path));
   for (const f of ["llms.txt", "llms-full.txt"]) if (await exists(path.join(DIST, f))) scan(f, await readFile(path.join(DIST, f), "utf8"));
   assert.deepEqual(hits.slice(0, 10), [], `lộ công nghệ lõi (${hits.length} chỗ)`);
+});
+
+// Ảnh chụp app nằm trong cache trình duyệt 30 ngày: đường dẫn phải kèm mã băm nội dung, để chụp lại ảnh (cùng tên file)
+// thì người đã vào trang thấy ảnh mới ngay.
+test("ảnh chụp app có mã băm nội dung trong đường dẫn", async () => {
+  const { createHash } = await import("node:crypto");
+  let checked = 0;
+  for (const html of htmlByPath.values()) {
+    for (const m of html.matchAll(/src="(\/assets\/img\/app\/([^"?]+))(\?v=([0-9a-f]+))?"/g)) {
+      assert.ok(m[4], `thiếu ?v= ở ${m[1]}`);
+      const hash = createHash("sha256").update(await readFile(path.join(ROOT, "src/assets/img/app", m[2]))).digest("hex");
+      assert.ok(hash.startsWith(m[4]), `mã băm cũ ở ${m[1]}`);
+      checked += 1;
+    }
+  }
+  assert.ok(checked > 0, "không thấy ảnh app nào");
 });

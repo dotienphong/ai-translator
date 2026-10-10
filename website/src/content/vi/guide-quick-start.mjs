@@ -91,7 +91,7 @@ ${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống n
 <p>Chi tiết, gồm cách kiểm SHA-256: <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a> và <a href="/huong-dan/cai-dat-windows/">hướng dẫn cài đặt trên Windows</a>.</p>
 
 <h2 id="thiet-lap">Thiết lập lần đầu: bảy bước</h2>
-<p>Lần đầu mở, app hiện trình hướng dẫn 9 màn hình (thanh trên cùng ghi “Bước 1/9”); bài này gộp thành bảy bước. Mỗi màn hình có nút <strong>Quay lại</strong> và <strong>Tiếp</strong>. Trên Windows không có màn hình quyền ghi âm nên trình hướng dẫn có 8 màn hình; số bước ghi dưới các ảnh chụp là theo macOS.</p>
+<p>Lần đầu mở, app hiện trình hướng dẫn 9 màn hình trong một thẻ ở giữa cửa sổ: đầu thẻ có logo, dòng “Bước 1/9” và thanh tiến trình, chân thẻ có nút <strong>Quay lại</strong> và <strong>Tiếp</strong>. Bài này gộp thành bảy bước. Trên Windows không có màn hình quyền ghi âm nên trình hướng dẫn có 8 màn hình; số bước ghi dưới các ảnh chụp là theo macOS.</p>
 
 <h3>Bước 1. Chọn ngôn ngữ giao diện</h3>
 <p>Chọn <strong>Tiếng Việt</strong> hoặc <strong>English</strong> rồi bấm Tiếp. Lựa chọn này cũng đặt luôn ngôn ngữ bạn muốn đọc phụ đề; bạn đổi lại được ở bước 5.</p>
@@ -114,7 +114,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi â
 
 <h3>Bước 5. Chọn ngôn ngữ</h3>
 <p>Ở ô <strong>Dịch sang</strong>, chọn ngôn ngữ bạn muốn đọc. Tick các ngôn ngữ có thể được nói trong cuộc họp (mặc định cả năm). Để <strong>Ngôn ngữ nguồn</strong> ở “Tự nhận diện”, hoặc khóa một ngôn ngữ nếu bạn biết chắc cuộc họp chỉ nói một thứ tiếng.</p>
-${appShot({ slug: "app-onboarding-6", lang: "vi", alt: "Bước Chọn ngôn ngữ với ô Dịch sang, năm ô tick ngôn ngữ nói và ô Ngôn ngữ nguồn", caption: "Bước 6/9: chọn ngôn ngữ." })}
+${appShot({ slug: "app-onboarding-6", lang: "vi", alt: "Bước Chọn ngôn ngữ với ô Dịch sang, năm thẻ chọn bo tròn cho ngôn ngữ nói và ô Ngôn ngữ nguồn", caption: "Bước 6/9: chọn ngôn ngữ." })}
 
 <h3>Bước 6. Nghe thử</h3>
 <p>Bấm <strong>Phát câu mẫu</strong>: app phát một câu tiếng Anh qua loa, phụ đề của câu đó hiện trên thanh phụ đề, và màn hình này ghi “Đã chạy. Bản dịch: …”. Tăng âm lượng nếu máy đang tắt tiếng. Nếu macOS hỏi quyền ghi âm lúc này, chọn cho phép.</p>
@@ -128,6 +128,7 @@ ${appShot({ slug: "app-onboarding-9", lang: "vi", alt: "Bước cuối nói AI T
 </div>
 
 <h2 id="dich-dau-tien">Dịch cuộc họp đầu tiên</h2>
+<p>Thanh bên trái của cửa sổ chính có biểu tượng cho từng màn hình; khi cửa sổ hẹp, thanh chỉ còn biểu tượng, rê chuột để thấy tên.</p>
 <ol>
 <li>Ở thẻ <strong>Ngôn ngữ</strong> của màn hình chính, kiểm tra “Dịch sang” và “Ngôn ngữ nói trong cuộc họp”.</li>
 <li>Thẻ <strong>Nguồn âm thanh</strong> mặc định là “Toàn hệ thống, trừ app này”; muốn chỉ dịch một app, bấm <strong>Đổi</strong>. Trên Windows, nguồn là thiết bị phát mặc định hoặc một thiết bị bạn chọn; chưa chọn được từng app.</li>

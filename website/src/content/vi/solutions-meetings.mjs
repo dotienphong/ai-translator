@@ -63,7 +63,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "Trước cuộc họp", title: "Chuẩn bị trong năm phút", center: true })}
 <div class="split wide-right">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh liệt kê các app đang phát tiếng để chọn làm nguồn", caption: "Cài đặt › Âm thanh: chọn nghe toàn hệ thống hoặc chỉ một app." })}
+${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh: ô chọn nguồn âm thanh (đang là Chỉ Zoom) và nút Làm mới danh sách các app đang phát tiếng", caption: "Cài đặt › Âm thanh: chọn nghe toàn hệ thống hoặc chỉ một app." })}
 </div>
 <div>
 ${steps(
@@ -105,7 +105,7 @@ ${checkList([
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "Sau cuộc họp", title: "Giữ lại những gì bạn cần" })}
-<p>Sau khi bấm <strong>Dừng</strong>, bấm <strong>Mở bản chép lời</strong> để thấy từng dòng với giờ, câu gốc và bản dịch; có ô <em>Tìm</em> và nút <em>Sao chép tất cả</em> ở mọi gói.</p>
+<p>Sau khi bấm <strong>Dừng</strong>, bấm <strong>Mở bản chép lời</strong> để thấy từng dòng với giờ, câu gốc và bản dịch; có ô tìm (biểu tượng kính lúp) và nút <em>Sao chép tất cả</em> ở mọi gói.</p>
 <p>Xuất TXT, SRT, Markdown và Lịch sử là tính năng Pro (xem <a href="/bang-gia/">bảng giá</a>). Lịch sử mặc định tắt; bật ở Cài đặt › Quyền riêng tư thì phiên được lưu trên máy, có mã hóa. App không tự lưu bản chép lời xuống đĩa; đây là bản chép chữ, không phải biên bản. Xem <a href="/huong-dan/lich-su-va-xuat-file/">lịch sử và xuất file</a>.</p>
 </div></section>
 

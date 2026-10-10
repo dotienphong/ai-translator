@@ -73,7 +73,7 @@ const DL_FAQ = [
   },
   {
     q: "App có tự cập nhật không?",
-    a: "<p>Có kênh cập nhật <em>Ổn định</em> và <em>Beta</em> trong Cài đặt › Chung. App kiểm tra bản mới khi khởi động và mỗi 24 giờ; đổi kênh thì kiểm ngay. Muốn kiểm ngay, bấm <strong>Kiểm tra cập nhật</strong> ở Cài đặt › Chung hoặc chọn “Kiểm tra cập nhật…” ở menu của biểu tượng app. Trên macOS mỗi lần cập nhật hỏi lại 1 hộp thoại Keychain; trên Windows không hỏi gì thêm.</p>",
+    a: "<p>Có kênh cập nhật <em>Ổn định</em> và <em>Beta</em> trong Cài đặt › Chung. App kiểm tra bản mới khi khởi động và mỗi 24 giờ; đổi kênh thì kiểm ngay. Muốn kiểm ngay, bấm <strong>Kiểm tra cập nhật</strong> ở khối đầu trang Cài đặt › Chung, cạnh dòng “Phiên bản …” (mỗi lần kiểm xong app ghi “Kiểm tra lúc HH:MM:SS”), hoặc chọn “Kiểm tra cập nhật…” ở menu của biểu tượng app. Trên macOS mỗi lần cập nhật hỏi lại 1 hộp thoại Keychain; trên Windows không hỏi gì thêm.</p>",
   },
 ];
 
