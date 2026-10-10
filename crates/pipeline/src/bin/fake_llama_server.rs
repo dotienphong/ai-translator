@@ -201,6 +201,9 @@ fn main() {
     let host = arg("--host").expect("--host");
     let port = arg("--port").expect("--port");
     let listener = TcpListener::bind(format!("{host}:{port}")).expect("mở cổng");
+    // Như llama-server b11146: báo cổng thật (cả khi `--port 0`) trên stderr, app đọc cổng từ dòng này.
+    let bound = listener.local_addr().expect("cổng đã mở").port();
+    eprintln!("srv  llama_server: listening on http://{host}:{bound}");
     let mut chats = 0u32;
     for stream in listener.incoming() {
         let Ok(stream) = stream else { continue };

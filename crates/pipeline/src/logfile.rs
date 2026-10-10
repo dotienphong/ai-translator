@@ -144,7 +144,18 @@ impl Tail {
 
 /// Luồng đọc stderr của tiến trình phụ từng dòng tới khi gặp EOF (tiến trình phụ thoát): che mọi chuỗi trong `secrets`,
 /// ghi vào `log`, giữ [`TAIL_LINES`] dòng cuối. Ghi file lỗi thì vẫn đọc tiếp, để pipe không đầy làm tiến trình phụ treo.
-pub fn pump(source: impl Read + Send + 'static, mut log: RotatingLog, secrets: Vec<String>) -> (JoinHandle<()>, Tail) {
+pub fn pump(source: impl Read + Send + 'static, log: RotatingLog, secrets: Vec<String>) -> (JoinHandle<()>, Tail) {
+    pump_observed(source, log, secrets, |_| {})
+}
+
+/// Như [`pump`]; `observe` nhận từng dòng (đã che bí mật, còn ký tự xuống dòng) ngay sau khi ghi, ví dụ để đọc cổng mà
+/// `llama-server` báo đã mở.
+pub fn pump_observed(
+    source: impl Read + Send + 'static,
+    mut log: RotatingLog,
+    secrets: Vec<String>,
+    mut observe: impl FnMut(&str) + Send + 'static,
+) -> (JoinHandle<()>, Tail) {
     let tail = Tail::default();
     let keep = tail.clone();
     let handle = std::thread::spawn(move || {
@@ -181,6 +192,7 @@ pub fn pump(source: impl Read + Send + 'static, mut log: RotatingLog, secrets: V
                 warned = true;
                 log::warn!("không ghi được {}: {e}", log.path().display());
             }
+            observe(&line);
             keep.push(line.trim_end().to_string());
         }
     });

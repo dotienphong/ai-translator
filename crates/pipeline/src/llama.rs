@@ -15,10 +15,10 @@ use anyhow::{Context, Result, bail};
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
 use std::io::{BufRead, BufReader};
-use std::net::TcpListener;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
+use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 /// Tên biến môi trường mang API key (b11146 nhận cả `--api-key` lẫn biến này).
@@ -58,10 +58,23 @@ impl LlamaLaunch {
     }
 }
 
+/// Tiền tố của các biến môi trường mà `llama-server` (và ggml bên trong) đọc để đổi hành vi: `LLAMA_ARG_*` (mọi tham số,
+/// kể cả `LLAMA_ARG_TOOLS`, `LLAMA_ARG_LOG_FILE`), `LLAMA_API_KEY*`, `GGML_*` (`GGML_BACKEND_PATH` nạp thư viện bất kỳ),
+/// `AIP_*` (`AIP_MODE` đổi cổng). Không kế thừa từ môi trường của app: chỉ app đặt các biến này cho server.
+const STRIPPED_ENV_PREFIXES: [&str; 3] = ["LLAMA_", "GGML_", "AIP_"];
+
 /// Lệnh chạy theo §6.5. Tách riêng để test kiểm được tham số và biến môi trường mà không cần chạy server.
 ///
 /// **Không bao giờ log lệnh này** (`{cmd:?}`, `log::debug!("{:?}", cmd)`…): `Debug` của `Command` in cả biến môi trường,
 /// tức in luôn API key. Thư mục làm việc là thư mục chứa binary, để không thư viện nào được tìm ở thư mục làm việc của app.
+///
+/// `port` 0: server tự chọn cổng trống lúc mở cổng và báo lại qua stderr ([`listening_port`]), nên không có khoảng hở
+/// giữa lúc app chọn cổng và lúc server mở cổng để tiến trình khác chiếm trước.
+///
+/// File cấu hình của llama.cpp (`common_params_apply_system_config`, đọc trước mọi tham số): bỏ `PROGRAMDATA` để server
+/// không đọc `%PROGRAMDATA%\llama.cpp\config.ini` (Windows: người dùng khác trên cùng máy tạo được file này, bật được
+/// `tools` hay thêm API key của họ). File cấp người dùng trỏ về thư mục log của app (`XDG_CONFIG_HOME`, macOS), để cấu
+/// hình llama.cpp riêng của người dùng không đổi hành vi của app. `/etc/llama.cpp/config.ini` (macOS) cần quyền root.
 pub fn command(launch: &LlamaLaunch, port: u16, api_key: &str) -> Command {
     let mut cmd = Command::new(&launch.exe);
     cmd.arg("-m")
@@ -69,9 +82,25 @@ pub fn command(launch: &LlamaLaunch, port: u16, api_key: &str) -> Command {
         .args(["--host", "127.0.0.1", "--port", &port.to_string()])
         .args(["-c", "2048", "-np", "1"])
         .args(["-ngl", if launch.use_gpu { "auto" } else { "0" }])
+        .arg("--no-slots")
         .arg("--no-ui")
-        .args(&launch.extra_args)
-        .envs(launch.env.iter().map(|(k, v)| (k, v)))
+        .args(&launch.extra_args);
+    for (key, _) in std::env::vars_os() {
+        let name = key.to_string_lossy();
+        if name.eq_ignore_ascii_case("PROGRAMDATA")
+            || STRIPPED_ENV_PREFIXES
+                .iter()
+                .any(|p| name.get(..p.len()).is_some_and(|head| head.eq_ignore_ascii_case(p)))
+        {
+            cmd.env_remove(&key);
+        }
+    }
+    if !cfg!(windows)
+        && let Some(dir) = launch.log.parent().filter(|d| !d.as_os_str().is_empty())
+    {
+        cmd.env("XDG_CONFIG_HOME", dir);
+    }
+    cmd.envs(launch.env.iter().map(|(k, v)| (k, v)))
         .env(API_KEY_ENV, api_key)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -174,27 +203,35 @@ impl LlamaServer {
             .pool_max_idle_per_host(0)
             .timeout(launch.request_timeout)
             .build()?;
-        let port = TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
         let api_key = random_key();
         let log = logfile::RotatingLog::open(&launch.log, logfile::MAX_BYTES, logfile::KEEP)
             .with_context(|| format!("không mở được {}", launch.log.display()))?;
-        let mut child = process::spawn(&mut command(launch, port, &api_key), &launch.exe)
+        let mut child = process::spawn(&mut command(launch, 0, &api_key), &launch.exe)
             .with_context(|| format!("không chạy được {}", launch.exe.display()))?;
         let stderr = child.stderr.take().expect("stderr là pipe");
-        let (pump, tail) = logfile::pump(stderr, log, vec![api_key.clone()]);
+        // Cổng chỉ lấy từ stderr của chính tiến trình con (pipe riêng), không dò qua mạng: tiến trình khác không giả được.
+        let (port_tx, port_rx) = mpsc::channel();
+        let mut port_tx = Some(port_tx);
+        let (pump, tail) = logfile::pump_observed(stderr, log, vec![api_key.clone()], move |line| {
+            if let Some(port) = listening_port(line)
+                && let Some(tx) = port_tx.take()
+            {
+                let _ = tx.send(port);
+            }
+        });
         let mut server = Self {
             pid: child.id(),
             child: std::sync::Arc::new(std::sync::Mutex::new(child)),
             pump: Some(pump),
             tail,
-            base_url: format!("http://127.0.0.1:{port}"),
+            base_url: String::new(),
             api_key,
             http,
             log_path: launch.log.clone(),
             request_timeout: launch.request_timeout,
         };
         on_spawn(server.killer());
-        if let Err(e) = server.wait_healthy(launch.ready_timeout) {
+        if let Err(e) = server.wait_healthy(launch.ready_timeout, &port_rx) {
             // Kill rồi chờ luồng chép log đọc hết, để lỗi mang đủ các dòng cuối (hết bộ nhớ, lỗi GPU…).
             let tail = server.tail.clone();
             drop(server);
@@ -244,11 +281,21 @@ impl LlamaServer {
             .is_ok_and(|r| r.status().is_success())
     }
 
-    fn wait_healthy(&mut self, timeout: Duration) -> Result<()> {
+    /// Chờ server báo cổng đã mở (dòng `listening on` trên stderr, in sau khi nạp xong model), rồi chờ `/health` trả 200.
+    fn wait_healthy(&mut self, timeout: Duration, port: &mpsc::Receiver<u16>) -> Result<()> {
         let started = Instant::now();
         while started.elapsed() < timeout {
             if let Some(status) = self.child().try_wait()? {
                 bail!("llama-server thoát sớm ({status}), xem log {}", self.log_path.display());
+            }
+            if self.base_url.is_empty() {
+                match port.recv_timeout(Duration::from_millis(200)) {
+                    Ok(p) => self.base_url = format!("http://127.0.0.1:{p}"),
+                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+                    // Luồng chép log đã dừng (stderr đóng) mà chưa thấy cổng: vòng sau sẽ thấy tiến trình đã thoát.
+                    Err(mpsc::RecvTimeoutError::Disconnected) => std::thread::sleep(Duration::from_millis(200)),
+                }
+                continue;
             }
             // Mỗi lần hỏi chỉ chờ 2 giây, để tổng thời gian chờ không vượt `timeout` quá nhiều.
             if self.healthy() {
@@ -405,6 +452,16 @@ impl Drop for LlamaServer {
             let _ = pump.join();
         }
     }
+}
+
+/// Cổng trong dòng `llama_server: listening on http://127.0.0.1:<cổng>` mà b11146 in ra stderr sau khi nạp xong model
+/// (`tools/server/server.cpp`). Chỉ nhận đúng host 127.0.0.1 mà app truyền.
+fn listening_port(line: &str) -> Option<u16> {
+    let (_, rest) = line.split_once("listening on http://127.0.0.1:")?;
+    let digits = rest
+        .find(|c: char| !c.is_ascii_digit())
+        .map_or(rest, |end| &rest[..end]);
+    digits.parse().ok().filter(|&p| p != 0)
 }
 
 /// Khóa ngẫu nhiên 128 bit cho `LLAMA_API_KEY`. `RandomState` lấy seed từ bộ sinh số ngẫu nhiên của hệ điều hành.
@@ -566,11 +623,60 @@ mod tests {
             "key không được nằm trong tham số: {args:?}"
         );
         assert!(!args.iter().any(|a| a == "--api-key"));
-        let env: Vec<_> = cmd.get_envs().collect();
+        let env: Vec<_> = cmd
+            .get_envs()
+            .filter(|(k, v)| v.is_some() && *k != "XDG_CONFIG_HOME")
+            .collect();
         assert_eq!(
             env,
             [(std::ffi::OsStr::new(API_KEY_ENV), Some(std::ffi::OsStr::new(key)))]
         );
+    }
+
+    #[test]
+    fn config_files_and_inherited_llama_variables_are_ignored() {
+        let cmd = command(&launch(), 0, "k");
+        let env: std::collections::HashMap<_, _> = cmd.get_envs().collect();
+        // Biến đặt sẵn trong môi trường của tiến trình test (CI, máy dev) bị gỡ; biến không có thì không cần gỡ.
+        for (key, _) in std::env::vars_os() {
+            let name = key.to_string_lossy().to_ascii_uppercase();
+            if name == "PROGRAMDATA" || name.starts_with("GGML_") || name.starts_with("AIP_") {
+                assert_eq!(env.get(key.as_os_str()), Some(&None), "{name} phải bị gỡ");
+            }
+            if name.starts_with("LLAMA_") && name != API_KEY_ENV {
+                assert_eq!(env.get(key.as_os_str()), Some(&None), "{name} phải bị gỡ");
+            }
+        }
+        if cfg!(windows) {
+            assert!(!env.contains_key(std::ffi::OsStr::new("XDG_CONFIG_HOME")));
+        } else {
+            assert_eq!(
+                env.get(std::ffi::OsStr::new("XDG_CONFIG_HOME")),
+                Some(&Some(std::ffi::OsStr::new("/logs"))),
+                "config.ini cấp người dùng đọc từ thư mục log của app"
+            );
+        }
+    }
+
+    #[test]
+    fn listening_port_is_read_from_the_server_log_line() {
+        assert_eq!(
+            listening_port("0.00.888.930 I srv  llama_server: listening on http://127.0.0.1:63107\n"),
+            Some(63107)
+        );
+        assert_eq!(
+            listening_port("srv  main: listening on http://127.0.0.1:8080"),
+            Some(8080)
+        );
+        assert_eq!(
+            listening_port("listening on http://0.0.0.0:8080"),
+            None,
+            "chỉ nhận 127.0.0.1"
+        );
+        assert_eq!(listening_port("listening on http://127.0.0.1:0"), None);
+        assert_eq!(listening_port("listening on http://127.0.0.1:99999"), None);
+        assert_eq!(listening_port("listening on unix:///tmp/x.sock"), None);
+        assert_eq!(listening_port("model loaded"), None);
     }
 
     #[test]
@@ -596,6 +702,7 @@ mod tests {
                 "1",
                 "-ngl",
                 "auto",
+                "--no-slots",
                 "--no-ui"
             ]
         );
