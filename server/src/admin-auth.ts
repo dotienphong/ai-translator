@@ -5,7 +5,7 @@
 //    của Cloudflare không chuyển tiếp;
 //  - không có `ctx.access` thì xác thực JWT trong header `Cf-Access-Jwt-Assertion` bằng khóa công khai của team (access-jwt.ts).
 // Không có đường nào thì 403; ngoài test (tức production), ACCESS_AUD là bắt buộc và phải khớp; không đọc được email người
-// vận hành thì cũng 403. Request thay đổi dữ liệu phải là JSON cùng origin (chống CSRF).
+// vận hành, hay email không nằm trong ADMIN_EMAILS (bắt buộc ngoài test), thì cũng 403. Request thay đổi dữ liệu phải là JSON cùng origin (chống CSRF).
 import type { Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { type AccessKeyProvider, sharedAccessKeys, verifyAccessJwt } from "./access-jwt";
@@ -44,6 +44,15 @@ export function crossSite(c: Context): boolean {
 function deny(c: Context, reason: string, extra: Record<string, unknown> = {}) {
   console.warn(JSON.stringify({ event: "admin_denied", reason, ...extra }));
   return fail(c, 403, "forbidden");
+}
+
+/** Danh sách trong ADMIN_EMAILS (chữ thường, bỏ khoảng trắng và mục rỗng); không đặt hay rỗng thì null. */
+export function adminEmails(raw: string | undefined): string[] | null {
+  const list = (raw ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e !== "");
+  return list.length > 0 ? list : null;
 }
 
 /**
@@ -101,7 +110,16 @@ export function useAdminAuth(app: Hono<AdminAppEnv>, makeDeps: (env: AdminEnv) =
       }
     }
     // Chữ thường: cùng một người luôn có một dạng trong nhật ký, dù IdP trả hoa thường thế nào.
-    c.set("actor", `admin:${(email as string).toLowerCase()}`);
+    const actorEmail = (email as string).toLowerCase();
+    // Danh sách email admin (kiểm toán bảo mật 2026-10-09): không trông hoàn toàn vào policy của Access. Ngoài test thì bắt
+    // buộc; test chỉ kiểm khi có đặt.
+    const admins = adminEmails(c.env.ADMIN_EMAILS);
+    if (admins === null) {
+      if (c.env.ENVIRONMENT !== "test") return deny(c, "admins_unset");
+    } else if (!admins.includes(actorEmail)) {
+      return deny(c, "not_admin");
+    }
+    c.set("actor", `admin:${actorEmail}`);
     c.set("deps", makeDeps(c.env));
     await next();
   });

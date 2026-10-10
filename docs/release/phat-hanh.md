@@ -254,14 +254,18 @@ chủ tài khoản Resend: chưa đủ để bán.
 
    Expected: `a prod-…-1 32` và `b prod-…-2 32`. Ô B được kiểm bằng ký thử ở bước 11, ô A bằng token thật ở bước 12.
 
-8. **Secret của Worker admin** (chỉ bốn secret này; Worker admin gọi Worker API qua service binding `API`):
+8. **Secret của Worker admin** (chỉ năm secret này; Worker admin gọi Worker API qua service binding `API`):
 
    ```bash
    pnpm exec wrangler secret put PAYOS_CLIENT_ID -c wrangler.admin.jsonc
    pnpm exec wrangler secret put PAYOS_API_KEY -c wrangler.admin.jsonc
    pnpm exec wrangler secret put PAYOS_CHECKSUM_KEY -c wrangler.admin.jsonc
    pnpm exec wrangler secret put RESEND_API_KEY -c wrangler.admin.jsonc
+   pnpm exec wrangler secret put ADMIN_EMAILS -c wrangler.admin.jsonc
    ```
+
+   `ADMIN_EMAILS`: email đăng nhập Access của người vận hành, nhiều email thì cách nhau bằng dấu phẩy. Thiếu thì Worker admin
+   trả 403 cho mọi request (log `admin_denied` lý do `admins_unset`), kể cả khi đã qua Access.
 
    Expected: như bước 5, với Worker `mt-license-admin`.
 
@@ -292,7 +296,8 @@ chủ tài khoản Resend: chưa đủ để bán.
 
     Expected: URL `https://mt-license-admin.<subdomain>.workers.dev`. Rồi:
     - Dashboard > Workers & Pages > `mt-license-admin` > tab Access > Protect this Worker behind Access > **All traffic**;
-      Authentication policy chọn "Cloudflare account" (hoặc Email domain của người vận hành) > Apply Access. Mở
+      Authentication policy: Include **Emails** = đúng email của người vận hành (không chọn "Cloudflare account" hay "Email
+      domain": tài khoản Cloudflare dùng chung, và tên miền email công cộng như gmail.com mở cho mọi người) > Apply Access. Mở
       `$PADMIN/admin/whoami` trong trình duyệt, đăng nhập: trang hiện `{"error":"forbidden"}` (chưa có `ACCESS_AUD`, fail
       closed, QĐ6).
     - Zero Trust > Access controls > Applications > ứng dụng của `mt-license-admin` > Configure > Advanced settings > Cookie

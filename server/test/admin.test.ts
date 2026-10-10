@@ -36,8 +36,27 @@ describe("Access", () => {
   it("ở production, ACCESS_AUD trống thì mọi request bị 403 (fail closed)", async () => {
     const { adminCall } = makeAdmin({ ENVIRONMENT: "production", ACCESS_AUD: "" });
     expect(await adminCall("/admin/whoami")).toMatchObject({ status: 403, body: { error: "forbidden" } });
-    const ok = makeAdmin({ ENVIRONMENT: "production", ACCESS_AUD: "aud-1" });
+    const ok = makeAdmin({ ENVIRONMENT: "production", ACCESS_AUD: "aud-1", ADMIN_EMAILS: "ops@example.com" });
     expect((await ok.adminCall("/admin/whoami")).status).toBe(200);
+  });
+
+  it("ở production, ADMIN_EMAILS trống thì mọi request bị 403 (fail closed), dù đã qua Access", async () => {
+    for (const ADMIN_EMAILS of [undefined, "", " , "]) {
+      const { adminCall } = makeAdmin({ ENVIRONMENT: "production", ACCESS_AUD: "aud-1", ...(ADMIN_EMAILS === undefined ? {} : { ADMIN_EMAILS }) });
+      expect(await adminCall("/admin/whoami"), String(ADMIN_EMAILS)).toMatchObject({ status: 403, body: { error: "forbidden" } });
+    }
+  });
+
+  it("ADMIN_EMAILS: chỉ email trong danh sách vào được (không phân biệt hoa thường, bỏ khoảng trắng); email khác bị 403", async () => {
+    const { adminCall } = makeAdmin({ ENVIRONMENT: "production", ACCESS_AUD: "aud-1", ADMIN_EMAILS: " Ops@Example.com , boss@example.com" });
+    expect((await adminCall("/admin/whoami")).status).toBe(200);
+    expect((await adminCall("/admin/whoami", { operator: "BOSS@example.com" })).status).toBe(200);
+    for (const operator of ["ke-la@example.com", "ops@example.com.evil.test", "x-ops@example.com", "ops@example.co"]) {
+      expect(await adminCall("/admin/whoami", { operator }), operator).toMatchObject({ status: 403, body: { error: "forbidden" } });
+    }
+    // Thao tác ghi cũng bị chặn, không đổi gì.
+    const write = await adminCall("/admin/lookup", { operator: "ke-la@example.com", body: { email: "a@example.com" } });
+    expect(write.status).toBe(403);
   });
 });
 
@@ -63,6 +82,12 @@ describe("log lý do từ chối (chẩn đoán Access, không lộ ra phản h�
   it("production chưa đặt ACCESS_AUD: aud_unset", async () => {
     const { lines } = await denied({ ENVIRONMENT: "production", ACCESS_AUD: "" });
     expect(lines).toEqual([{ event: "admin_denied", reason: "aud_unset" }]);
+  });
+
+  it("production chưa đặt ADMIN_EMAILS: admins_unset; email không trong danh sách: not_admin, không ghi email", async () => {
+    expect((await denied({ ENVIRONMENT: "production", ACCESS_AUD: "aud-1" })).lines).toEqual([{ event: "admin_denied", reason: "admins_unset" }]);
+    const other = await denied({ ACCESS_AUD: "aud-1", ADMIN_EMAILS: "boss@example.com" });
+    expect(other.lines).toEqual([{ event: "admin_denied", reason: "not_admin" }]);
   });
 
   it("aud khác: aud_mismatch, chỉ ghi 8 ký tự đầu của hai aud", async () => {

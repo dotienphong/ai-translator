@@ -116,9 +116,10 @@ export async function verifyAccessJwt(
   const aud = payload.aud;
   const audList = typeof aud === "string" ? [aud] : Array.isArray(aud) ? aud : [];
   if (opts.aud === "" || !audList.includes(opts.aud)) return fail("jwt_aud");
-  // `type` là "app" (token của ứng dụng) hay "org" (phiên toàn team, không dành cho ứng dụng nào). Chỉ từ chối khi có và khác
-  // "app": token thật luôn có, nhưng thiếu claim này không đáng làm hỏng đăng nhập.
-  if (payload.type !== undefined && payload.type !== "app") return fail("jwt_type");
+  // `type` phải là "app" (token của ứng dụng; token thật của Access luôn có). "org" (phiên toàn team) và "meta" (token công
+  // khai trên trang đăng nhập Access: chữ ký thật, đúng aud, chỉ thiếu iss) bị từ chối; thiếu claim cũng bị từ chối, để
+  // một token như "meta" không còn chỉ trông vào việc thiếu iss (kiểm toán bảo mật 2026-10-09).
+  if (payload.type !== "app") return fail("jwt_type");
   if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) return fail("jwt_malformed");
   if (opts.nowSeconds >= payload.exp) return fail("jwt_expired");
   if (payload.nbf !== undefined) {

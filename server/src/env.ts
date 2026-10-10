@@ -65,4 +65,10 @@ export interface AdminEnv {
   PAYOS_API_KEY: string;
   PAYOS_CHECKSUM_KEY: string;
   RESEND_API_KEY: string;
+  /**
+   * Email được làm admin, cách nhau bằng dấu phẩy (không phân biệt hoa thường). Lớp thứ hai sau policy của Cloudflare
+   * Access: policy lỡ rộng (cả tài khoản Cloudflare, cả một tên miền email) thì người khác qua được Access vẫn bị 403.
+   * Bắt buộc khi ENVIRONMENT khác "test"; trống thì mọi request bị 403. Để là secret để email không nằm trong repo public.
+   */
+  ADMIN_EMAILS?: string;
 }

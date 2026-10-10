@@ -54,7 +54,8 @@ test("secret bắt buộc có đủ và không nằm trong vars", () => {
     "RATE_LIMIT_PEPPER",
   ]);
   for (const name of api.secrets.required) assert.equal(name in api.vars, false, name);
-  assert.deepEqual(admin.secrets.required, ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY"]);
+  assert.deepEqual(admin.secrets.required, ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY", "ADMIN_EMAILS"]);
+  for (const name of admin.secrets.required) assert.equal(name in admin.vars, false, name);
 });
 
 test("tên miền riêng aitranslator.io.vn (spec 2026-10-06): route, email gửi và origin của Worker admin, tên miền của admin", () => {

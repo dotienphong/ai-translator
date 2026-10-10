@@ -45,7 +45,9 @@
     // Bucket R2 công khai (bản phát hành và model) cho trang Hệ thống; khớp PRODUCTION_URL của app, không có `/` cuối.
     "RELEASES_BASE_URL": "https://releases.aitranslator.io.vn"
   },
-  "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY"] },
+  // ADMIN_EMAILS (kiểm toán bảo mật 2026-10-09): email được làm admin, cách nhau bằng dấu phẩy; thiếu thì mọi request bị
+  // 403. Đặt TRƯỚC khi deploy bản có kiểm này: `wrangler secret put ADMIN_EMAILS -c wrangler.admin.jsonc`.
+  "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY", "ADMIN_EMAILS"] },
   "d1_databases": [
     { "binding": "DB", "database_name": "mt-license-production", "database_id": "047c4ba4-4ad2-4ece-937c-2d91eafe2445" }
   ],

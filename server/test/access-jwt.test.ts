@@ -57,11 +57,12 @@ describe("verifyAccessJwt: từ chối", () => {
     expect(await reason(await issuer.sign({ iss: `https://${TEAM.toUpperCase()}` }))).toBe("jwt_iss");
   });
 
-  it("type: chỉ chấp nhận token của ứng dụng; token org (phiên toàn team) bị từ chối; không có type thì vẫn được", async () => {
+  it("type: chỉ chấp nhận token của ứng dụng; token org, meta hay thiếu type đều bị từ chối", async () => {
     expect(await reason(await issuer.sign({ type: "org" }))).toBe("jwt_type");
+    expect(await reason(await issuer.sign({ type: "meta" }))).toBe("jwt_type");
     expect(await reason(await issuer.sign({ type: 1 }))).toBe("jwt_type");
     expect(await reason(await issuer.sign({ type: "app" }))).toBe("ok");
-    expect(await reason(await issuer.sign({ type: undefined }))).toBe("ok");
+    expect(await reason(await issuer.sign({ type: undefined }))).toBe("jwt_type");
   });
 
   it("iss không phải team này: jwt_iss", async () => {
@@ -80,7 +81,7 @@ describe("verifyAccessJwt: từ chối", () => {
   });
 
   it("exp không hữu hạn (1e400 trong JSON thô, null): jwt_malformed", async () => {
-    const base = `"email":"ops@example.com","iss":"https://${TEAM}","aud":["${AUD}"]`;
+    const base = `"email":"ops@example.com","iss":"https://${TEAM}","aud":["${AUD}"],"type":"app"`;
     expect(await reason(await issuer.signRaw(`{${base},"exp":1e400}`))).toBe("jwt_malformed");
     expect(await reason(await issuer.signRaw(`{${base},"exp":null}`))).toBe("jwt_malformed");
     expect(await reason(await issuer.signRaw(`{${base},"exp":${now() + 100}}`))).toBe("ok");
@@ -89,7 +90,7 @@ describe("verifyAccessJwt: từ chối", () => {
   it("nbf sai kiểu (chuỗi, null, không hữu hạn): jwt_malformed", async () => {
     expect(await reason(await issuer.sign({ nbf: "0" }))).toBe("jwt_malformed");
     expect(await reason(await issuer.sign({ nbf: null }))).toBe("jwt_malformed");
-    const base = `"email":"ops@example.com","iss":"https://${TEAM}","aud":["${AUD}"],"exp":${now() + 100}`;
+    const base = `"email":"ops@example.com","iss":"https://${TEAM}","aud":["${AUD}"],"type":"app","exp":${now() + 100}`;
     expect(await reason(await issuer.signRaw(`{${base},"nbf":-1e400}`))).toBe("jwt_malformed");
   });
 
