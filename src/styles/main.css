@@ -469,3 +469,59 @@ li.plan.current {
 .legal-details + button {
   margin-top: 0.75rem;
 }
+
+/* Phiên bản và kiểm tra cập nhật (Cài đặt › Chung): khối riêng ở đầu nhóm, nền pha màu nhấn để dễ thấy. */
+.update-card {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+}
+
+.update-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.update-card h2 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.update-version {
+  margin: 0.1rem 0 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.update-card button {
+  padding: 0.55rem 1.25rem;
+  font-weight: 600;
+}
+
+.update-status {
+  margin: 0.6rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+
+.update-status:empty {
+  margin: 0;
+}
+
+.update-status.ok {
+  color: var(--color-running);
+}
+
+.update-status.error {
+  color: var(--color-danger);
+}
+
+.update-status.ready {
+  color: var(--color-accent);
+  font-weight: 600;
+}
