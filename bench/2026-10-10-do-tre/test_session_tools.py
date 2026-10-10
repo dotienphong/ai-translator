@@ -2,6 +2,8 @@
 
 Chạy:  python3 -m unittest discover -s bench/2026-10-10-do-tre -p 'test_*.py' -v
 """
+import os
+import tempfile
 import unittest
 
 import run_sessions
@@ -23,6 +25,17 @@ class RunSessionsTest(unittest.TestCase):
     def test_the_committed_copy_drops_only_the_events(self):
         report = {"args": {}, "machine": {}, "summary": {"a2_p50_ms": 1.0}, "utterances": [], "events": [{"t_ms": 1}]}
         self.assertEqual(sorted(run_sessions.slim(report)), ["args", "machine", "summary", "utterances"])
+
+    def test_existing_results_flags_only_sessions_that_already_have_a_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            open(os.path.join(d, "buoc1-moc-chuan-en.json"), "w", encoding="utf-8").close()
+            self.assertEqual(
+                run_sessions.existing_results("buoc1-moc", "chuan", ["en", "vi"], results_dir=d),
+                ["buoc1-moc-chuan-en"])
+
+    def test_existing_results_empty_when_nothing_was_run_yet(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(run_sessions.existing_results("buoc1-moc", "chuan", ["en", "vi"], results_dir=d), [])
 
 
 class SummarizeSessionsTest(unittest.TestCase):

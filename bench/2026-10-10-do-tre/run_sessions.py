@@ -61,6 +61,16 @@ def slim(report):
     return {k: v for k, v in report.items() if k != "events"}
 
 
+def existing_results(label, pack, names, results_dir):
+    """out_name (`<label>-<pack>-<name>`) của những session trong `names` đã có file trong `results_dir`:
+    chạy lại với cùng `label`/`pack` sẽ ghi đè các file này.
+
+    `results_dir` là tham số bắt buộc (không mặc định `RESULTS`): giá trị mặc định sẽ bị chốt lúc định nghĩa hàm,
+    không đọc lại module global mỗi lần gọi — khác với `running_strays()` đọc `ROOT` tươi mỗi lần."""
+    return [f"{label}-{pack}-{name}" for name in names
+            if os.path.exists(os.path.join(results_dir, f"{label}-{pack}-{name}.json"))]
+
+
 def main(argv):
     extra = argv[argv.index("--") + 1:] if "--" in argv else []
     argv = argv[:argv.index("--")] if "--" in argv else argv
@@ -83,11 +93,16 @@ def main(argv):
     asr_model, mt_model = PACKS[args.pack]
     paths = [bench, os.path.join(ROOT, args.asr_worker), os.path.join(ROOT, args.llama_server),
              os.path.join(ROOT, "models", asr_model), os.path.join(ROOT, "models", mt_model)]
+    paths += [os.path.join(DATA, f"{name}.{ext}") for name in names for ext in ("wav", "truth.json")]
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:
-        raise SystemExit(f"thiếu {', '.join(missing)} (xem Task 0 của kế hoạch 01)")
+        raise SystemExit(f"thiếu {', '.join(missing)} (binary/model: xem Task 0 của kế hoạch 01; "
+                          "wav/truth: chạy bench/phase0/latency/build_sessions.py trước)")
     for d in (FULL, RESULTS):
         os.makedirs(d, exist_ok=True)
+    overwrite = existing_results(args.label, args.pack, names, RESULTS)
+    if overwrite:
+        print(f"CẢNH BÁO: sẽ ghi đè kết quả cũ: {', '.join(overwrite)}", flush=True)
     for name in names:
         left = running_strays()
         if left:
@@ -108,11 +123,21 @@ def main(argv):
                "--end-silence-ms", str(args.end_silence_ms),
                "--out", full, *extra]
         print(f"== {out_name} ({info['seconds']} giây, {info['utterances']} câu)", flush=True)
-        code = subprocess.run(cmd, cwd=ROOT).returncode
-        if code != 0:
+        timeout_s = info["seconds"] + 1800
+        error = None
+        try:
+            code = subprocess.run(cmd, cwd=ROOT, timeout=timeout_s).returncode
+        except subprocess.TimeoutExpired:
+            error = (f"{out_name}: quá giờ sau {timeout_s} giây (session dài {info['seconds']} giây + 1800 giây "
+                     "dự phòng). Đã kill tiến trình latency-bench (cha); asr-worker thường tự thoát theo vì stdin "
+                     "đóng, nhưng llama-server chạy trong process group riêng (stdin null) nên có thể còn sống sót.")
+        else:
+            if code != 0:
+                error = f"{out_name}: latency-bench thoát với mã {code}."
+        if error:
             left = running_strays()
             more = f" Còn tiến trình phụ: {', '.join(str(pid) for pid, _ in left)}." if left else ""
-            raise SystemExit(f"{out_name}: latency-bench thoát với mã {code}.{more}")
+            raise SystemExit(error + more)
         with open(full, encoding="utf-8") as f:
             report = json.load(f)
         with open(os.path.join(RESULTS, out_name + ".json"), "w", encoding="utf-8") as f:
