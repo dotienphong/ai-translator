@@ -63,6 +63,9 @@ impl LlamaLaunch {
 /// `AIP_*` (`AIP_MODE` đổi cổng). Không kế thừa từ môi trường của app: chỉ app đặt các biến này cho server.
 const STRIPPED_ENV_PREFIXES: [&str; 3] = ["LLAMA_", "GGML_", "AIP_"];
 
+/// Biến chứa thư mục cấu hình cấp người dùng của llama.cpp (`fs_get_config_directory`).
+const USER_CONFIG_ENV: &str = if cfg!(windows) { "APPDATA" } else { "XDG_CONFIG_HOME" };
+
 /// Lệnh chạy theo §6.5. Tách riêng để test kiểm được tham số và biến môi trường mà không cần chạy server.
 ///
 /// **Không bao giờ log lệnh này** (`{cmd:?}`, `log::debug!("{:?}", cmd)`…): `Debug` của `Command` in cả biến môi trường,
@@ -73,8 +76,10 @@ const STRIPPED_ENV_PREFIXES: [&str; 3] = ["LLAMA_", "GGML_", "AIP_"];
 ///
 /// File cấu hình của llama.cpp (`common_params_apply_system_config`, đọc trước mọi tham số): bỏ `PROGRAMDATA` để server
 /// không đọc `%PROGRAMDATA%\llama.cpp\config.ini` (Windows: người dùng khác trên cùng máy tạo được file này, bật được
-/// `tools` hay thêm API key của họ). File cấp người dùng trỏ về thư mục log của app (`XDG_CONFIG_HOME`, macOS), để cấu
-/// hình llama.cpp riêng của người dùng không đổi hành vi của app. `/etc/llama.cpp/config.ini` (macOS) cần quyền root.
+/// `tools` hay thêm API key của họ). File cấp người dùng trỏ về thư mục log của app (`APPDATA` trên Windows,
+/// `XDG_CONFIG_HOME` trên macOS; llama.cpp chỉ dùng hai biến này để tìm thư mục cấu hình), để cấu hình llama.cpp riêng
+/// của người dùng không đổi hành vi của app: `log-disable` hay `log-verbosity` thấp làm mất dòng `listening on`, app
+/// không biết cổng. `/etc/llama.cpp/config.ini` (macOS) cần quyền root.
 pub fn command(launch: &LlamaLaunch, port: u16, api_key: &str) -> Command {
     let mut cmd = Command::new(&launch.exe);
     cmd.arg("-m")
@@ -95,10 +100,8 @@ pub fn command(launch: &LlamaLaunch, port: u16, api_key: &str) -> Command {
             cmd.env_remove(&key);
         }
     }
-    if !cfg!(windows)
-        && let Some(dir) = launch.log.parent().filter(|d| !d.as_os_str().is_empty())
-    {
-        cmd.env("XDG_CONFIG_HOME", dir);
+    if let Some(dir) = launch.log.parent().filter(|d| !d.as_os_str().is_empty()) {
+        cmd.env(USER_CONFIG_ENV, dir);
     }
     cmd.envs(launch.env.iter().map(|(k, v)| (k, v)))
         .env(API_KEY_ENV, api_key)
@@ -625,7 +628,7 @@ mod tests {
         assert!(!args.iter().any(|a| a == "--api-key"));
         let env: Vec<_> = cmd
             .get_envs()
-            .filter(|(k, v)| v.is_some() && *k != "XDG_CONFIG_HOME")
+            .filter(|(k, v)| v.is_some() && *k != USER_CONFIG_ENV)
             .collect();
         assert_eq!(
             env,
@@ -647,15 +650,11 @@ mod tests {
                 assert_eq!(env.get(key.as_os_str()), Some(&None), "{name} phải bị gỡ");
             }
         }
-        if cfg!(windows) {
-            assert!(!env.contains_key(std::ffi::OsStr::new("XDG_CONFIG_HOME")));
-        } else {
-            assert_eq!(
-                env.get(std::ffi::OsStr::new("XDG_CONFIG_HOME")),
-                Some(&Some(std::ffi::OsStr::new("/logs"))),
-                "config.ini cấp người dùng đọc từ thư mục log của app"
-            );
-        }
+        assert_eq!(
+            env.get(std::ffi::OsStr::new(USER_CONFIG_ENV)),
+            Some(&Some(std::ffi::OsStr::new("/logs"))),
+            "config.ini cấp người dùng đọc từ thư mục log của app"
+        );
     }
 
     #[test]
