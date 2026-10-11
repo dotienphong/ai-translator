@@ -723,6 +723,35 @@ mod tests {
         assert_eq!(run(&mut seg, &[(0.0, 0.0, 1)]).len(), 1);
     }
 
+    /// Ảnh chụp ở khung im lặng thứ hai (lúc có lần chép khi vừa hết tiếng nói): `speech_ms` và `mean_prob` chỉ tính các
+    /// khung tiếng nói, đúng như `Segment` khi đóng; âm thanh gồm cả hai khung im lặng. Debug không in âm thanh.
+    #[test]
+    fn a_snapshot_after_speech_ends_counts_only_the_speech_frames() {
+        let mut f = Feed::new();
+        f.run(&[(0.9, 0.5, 10), (0.4, 0.3, 10), (0.0, 0.0, 2)]);
+        let snap = f.seg.open_snapshot().unwrap();
+        assert_eq!(snap.speech_ms, 20 * FRAME_MS);
+        assert!((snap.mean_prob - 0.65).abs() < 1e-5, "{}", snap.mean_prob);
+        assert!(snap.samples == f.stream[0..22].concat());
+        assert!(format!("{snap:?}").contains("samples: <11264 mẫu>"));
+        f.run(&[(0.0, 0.0, 8)]);
+        assert_eq!(
+            (f.out[0].speech_ms, f.out[0].mean_prob),
+            (snap.speech_ms, snap.mean_prob)
+        );
+    }
+
+    /// Cắt cưỡng bức rơi vào chỗ im lặng: phần còn lại mở với 0 ms tiếng nói (sẽ bị bỏ khi đóng). Ảnh chụp vẫn hợp lệ,
+    /// `mean_prob` là 0 chứ không phải NaN.
+    #[test]
+    fn a_snapshot_of_a_rest_without_speech_has_a_zero_mean() {
+        let mut f = Feed::new();
+        f.run(&[(0.9, 0.5, 245), (0.0, 0.0, 5)]);
+        assert_eq!(f.out.len(), 1);
+        let snap = f.seg.open_snapshot().unwrap();
+        assert_eq!((snap.id, snap.speech_ms, snap.mean_prob), (1, 0, 0.0));
+    }
+
     #[test]
     fn flush_keeps_the_same_tail_padding_as_a_normal_close() {
         let mut f = Feed::new();

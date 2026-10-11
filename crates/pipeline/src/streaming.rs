@@ -703,6 +703,72 @@ mod tests {
         );
     }
 
+    /// Lần chép khi vừa hết tiếng nói chỉ ở đúng khung im lặng thứ hai (spec §4.1 "vừa thấy 2 khung"): bị chặn ở khung đó
+    /// (có đoạn đóng chờ) thì chỗ ngừng này không có, khung thứ ba không bù. Khi cả hai luật cùng đúng, loại là `SpeechEnd`.
+    #[test]
+    fn the_speech_end_partial_is_only_at_the_second_silent_frame() {
+        let mut s = PartialScheduler::new(&StreamingConfig::default(), 250, 400);
+        assert_eq!(s.decide(open(0, 512, 64), 600, 1_000, true), None);
+        assert_eq!(
+            s.decide(open(0, 512, 96), 632, 1_000, false),
+            None,
+            "khung thứ ba không bù"
+        );
+        assert_eq!(
+            s.decide(open(1, 1_024, 64), 2_000, 1_000, false),
+            Some(PartialKind::SpeechEnd),
+            "cả hai luật cùng đúng"
+        );
+    }
+
+    /// Sàn 250 ms của lần chép khi vừa hết tiếng nói (spec §4.1) giữ cả khi `segmenter.min_speech_ms` nhỏ hơn (`validate`
+    /// không chặn khóa đó); biên là 8 khung (256 ms), như `min_speech_boundary_is_8_frames` của segmenter.
+    #[test]
+    fn the_speech_end_floor_is_250_ms_below_the_segmenter_minimum_too() {
+        let mut s = PartialScheduler::new(&StreamingConfig::default(), 100, 400);
+        assert_eq!(s.decide(open(0, 224, 64), 300, 1_000, false), None, "7 khung");
+        assert_eq!(
+            s.decide(open(1, 256, 64), 600, 1_000, false),
+            Some(PartialKind::SpeechEnd),
+            "8 khung"
+        );
+    }
+
+    /// Các biên "ít nhất" của §4.1 tính cả dấu bằng (xảy ra khi ngưỡng là bội của 32 ms). Ngưỡng đóng đoạn đúng 2 khung
+    /// (64 ms) chưa có lần chép khi vừa hết tiếng nói; 65 ms (3 khung) thì có.
+    #[test]
+    fn partial_thresholds_include_equality() {
+        let cfg = StreamingConfig {
+            min_partial_speech_ms: 1_024,
+            min_new_speech_ms: 320,
+            ..Default::default()
+        };
+        let mut s = PartialScheduler::new(&cfg, 256, 400);
+        assert_eq!(
+            s.decide(open(0, 1_024, 0), 1_100, 1_000, false),
+            Some(PartialKind::Periodic)
+        );
+        assert_eq!(s.decide(open(0, 1_344, 0), 2_099, 1_000, false), None, "chưa đủ T");
+        assert_eq!(
+            s.decide(open(0, 1_344, 0), 2_100, 1_000, false),
+            Some(PartialKind::Periodic)
+        );
+        assert_eq!(
+            s.decide(open(1, 256, 64), 2_200, 1_000, false),
+            Some(PartialKind::SpeechEnd)
+        );
+        let mut s = PartialScheduler::new(&StreamingConfig::default(), 250, 64);
+        assert_eq!(s.decide(open(0, 512, 64), 600, 1_000, false), None, "64 ms = 2 khung");
+        s.set_end_silence_ms(65);
+        assert_eq!(
+            s.decide(open(0, 512, 64), 632, 1_000, false),
+            Some(PartialKind::SpeechEnd),
+            "65 ms = 3 khung"
+        );
+        s.set_end_silence_ms(64);
+        assert_eq!(s.decide(open(1, 512, 64), 700, 1_000, false), None);
+    }
+
     #[test]
     fn empty_and_punctuation_only_results_show_nothing() {
         let mut s = Stabilizer::new("en", 2, 1);
