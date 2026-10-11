@@ -164,6 +164,7 @@ pub fn translate(
             prompt: &prompt,
             max_tokens,
             repeat_penalty,
+            prefill: None,
         };
         let result = mt.stream(&req, &mut |chunk| {
             // Kiểm ở mọi gói, cả khi hậu xử lý còn giữ chữ (nhãn chưa rõ, ngoặc mở): không chờ gói được hiện tiếp theo.

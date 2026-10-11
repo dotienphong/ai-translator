@@ -121,6 +121,26 @@ pub struct ChatRequest<'a> {
     pub prompt: &'a str,
     pub max_tokens: u32,
     pub repeat_penalty: f64,
+    /// Phần đầu của câu trả lời (bản dịch tạm, spec 2026-10-10 §4.3): phần dịch đã chốt. `None` với lượt cuối.
+    pub prefill: Option<&'a str>,
+}
+
+/// Thân request `/v1/chat/completions` (§6.5). Có `prefill` thì thêm một tin nhắn assistant cuối: `llama-server` b11146
+/// (`--prefill-assistant`, mặc định bật) sinh tiếp sau phần đó và stream lại cả phần đó. Khoảng trắng cuối của prefill bị
+/// bỏ, vì làm lệch token (`bench/2026-10-10-do-tre/README.md` §2); prefill chỉ có khoảng trắng thì không gửi.
+fn chat_body(req: &ChatRequest) -> serde_json::Value {
+    let mut messages = vec![serde_json::json!({ "role": "user", "content": req.prompt })];
+    if let Some(prefill) = req.prefill.map(str::trim_end).filter(|p| !p.is_empty()) {
+        messages.push(serde_json::json!({ "role": "assistant", "content": prefill }));
+    }
+    serde_json::json!({
+        "messages": messages,
+        "stream": true,
+        "temperature": 0.0,
+        "repeat_penalty": req.repeat_penalty,
+        "max_tokens": req.max_tokens,
+        "cache_prompt": true,
+    })
 }
 
 /// Kết thúc một stream.
@@ -316,14 +336,7 @@ impl LlamaServer {
     /// Dịch một prompt với tham số sinh của §6.5, stream tới hết. `on_delta` nhận từng gói chữ; trả `Break` để dừng
     /// (đóng kết nối, server thôi sinh token).
     pub fn stream(&self, req: &ChatRequest, on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>) -> Result<StreamEnd> {
-        let body = serde_json::json!({
-            "messages": [{ "role": "user", "content": req.prompt }],
-            "stream": true,
-            "temperature": 0.0,
-            "repeat_penalty": req.repeat_penalty,
-            "max_tokens": req.max_tokens,
-            "cache_prompt": true,
-        });
+        let body = chat_body(req);
         let started = Instant::now();
         let resp = self.post("/v1/chat/completions", &body)?;
         read_stream(BufReader::new(resp), started, on_delta).with_context(|| {
@@ -340,6 +353,7 @@ impl LlamaServer {
             prompt,
             max_tokens,
             repeat_penalty: 1.05,
+            prefill: None,
         };
         let end = self.stream(&req, &mut |_| ControlFlow::Continue(()))?;
         Ok(Translation {
@@ -588,6 +602,40 @@ mod tests {
         // Không có chữ nào: mốc "chữ đầu" rơi về lúc kết thúc, không phải lúc gói trắng đầu tiên tới.
         assert_eq!(end.first_token_ms, end.total_ms);
         assert!(end.total_ms >= 20.0);
+    }
+
+    fn chat(prefill: Option<&str>) -> ChatRequest<'_> {
+        ChatRequest {
+            prompt: "Dịch.\n\nHello",
+            max_tokens: 40,
+            repeat_penalty: 1.05,
+            prefill,
+        }
+    }
+
+    /// Không có prefill: thân request giữ đúng như trước (§6.5).
+    #[test]
+    fn the_body_without_prefill_is_unchanged() {
+        assert_eq!(
+            chat_body(&chat(None)),
+            serde_json::json!({
+                "messages": [{ "role": "user", "content": "Dịch.\n\nHello" }],
+                "stream": true, "temperature": 0.0, "repeat_penalty": 1.05, "max_tokens": 40, "cache_prompt": true,
+            })
+        );
+    }
+
+    /// Prefill (spec 2026-10-10 §4.3) là tin nhắn assistant cuối, không có khoảng trắng cuối; chỉ có khoảng trắng thì không
+    /// gửi.
+    #[test]
+    fn the_prefill_is_the_last_assistant_message_without_trailing_space() {
+        let body = chat_body(&chat(Some("Xin chào ")));
+        assert_eq!(body["messages"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            body["messages"][1],
+            serde_json::json!({ "role": "assistant", "content": "Xin chào" })
+        );
+        assert_eq!(chat_body(&chat(Some(" \n"))), chat_body(&chat(None)));
     }
 
     #[test]

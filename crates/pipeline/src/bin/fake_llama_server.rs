@@ -19,7 +19,12 @@
 //!     stream dù báo `Keep-Alive: timeout=5, max=100`; client gửi request kế tiếp trên kết nối cũ trước khi thấy kết nối
 //!     bị đóng thì nhận "connection closed before message completed". Server giả chờ request kế tiếp rồi mới đóng, để
 //!     cuộc đua này xảy ra chắc chắn.
-//! - `FAKE_LLAMA_LOG`: file ghi nối tiếp các sự kiện (`start ngl=…`, `chat <n> repeat=<p> max=<m>`). Không ghi API key.
+//! - `FAKE_LLAMA_LOG`: file ghi nối tiếp các sự kiện (`start ngl=…`, `chat <n> repeat=<p> max=<m>`, thêm ` prefill=<số ký
+//!   tự>` khi request có prefill). Không ghi API key.
+//!
+//! Prefill (tin nhắn cuối của `messages` có `role` là `assistant`): như `llama-server` b11146 với `--prefill-assistant` (mặc
+//! định bật), server stream lại nguyên phần prefill thành gói đầu, rồi sinh tiếp: bản dịch giả bỏ đi chừng ấy từ đầu (đếm
+//! theo khoảng trắng) và gửi phần còn lại, mỗi từ một gói.
 //! - `FAKE_LLAMA_KEY_FILE`: file nhận đúng API key, chỉ để test kiểm rằng key không lộ ở chỗ khác.
 
 use std::io::{BufRead, BufReader, Read, Write};
@@ -244,8 +249,20 @@ fn main() {
             }
             "/v1/chat/completions" => {
                 chats += 1;
+                let prefill = body["messages"]
+                    .as_array()
+                    .and_then(|m| m.last())
+                    .filter(|m| m["role"] == "assistant")
+                    .and_then(|m| m["content"].as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let prefill_note = if prefill.is_empty() {
+                    String::new()
+                } else {
+                    format!(" prefill={}", prefill.chars().count())
+                };
                 log(&format!(
-                    "chat {chats} repeat={} max={}",
+                    "chat {chats} repeat={} max={}{prefill_note}",
                     body["repeat_penalty"], body["max_tokens"]
                 ));
                 if plan.crash_on == Some(chats) {
@@ -272,15 +289,23 @@ fn main() {
                 let max = body["max_tokens"].as_u64().unwrap_or(512) as usize;
                 let finish = if words.len() > max { "length" } else { "stop" };
                 words.truncate(max);
+                let mut pieces: Vec<String> = words
+                    .iter()
+                    .enumerate()
+                    .map(|(i, w)| if i == 0 { w.clone() } else { format!(" {w}") })
+                    .collect();
+                if !prefill.is_empty() {
+                    let skip = prefill.split_whitespace().count().min(pieces.len());
+                    pieces.splice(..skip, [prefill.clone()]);
+                }
                 let mut sse = String::new();
-                for (i, w) in words.iter().enumerate() {
-                    let piece = if i == 0 { w.clone() } else { format!(" {w}") };
+                for piece in &pieces {
                     let chunk = serde_json::json!({ "choices": [{ "index": 0, "delta": { "content": piece } }] });
                     sse.push_str(&format!("data: {chunk}\n\n"));
                 }
                 let last = serde_json::json!({
                     "choices": [{ "index": 0, "delta": {}, "finish_reason": finish }],
-                    "timings": { "predicted_n": words.len() },
+                    "timings": { "predicted_n": pieces.len() },
                 });
                 sse.push_str(&format!("data: {last}\n\ndata: [DONE]\n\n"));
                 if plan.close_after_stream {

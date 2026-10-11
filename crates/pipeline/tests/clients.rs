@@ -198,6 +198,7 @@ fn llama_server_streams_deltas_with_the_key_from_the_environment() {
         prompt: "Translate the following text into Vietnamese.\n\nGood morning everyone",
         max_tokens: 64,
         repeat_penalty: 1.05,
+        prefill: None,
     };
     let end = server
         .stream(&req, &mut |d| {
@@ -214,6 +215,32 @@ fn llama_server_streams_deltas_with_the_key_from_the_environment() {
     drop(server);
     let events = std::fs::read_to_string(t.path("llama-events")).unwrap();
     assert_eq!(events, "start ngl=auto extra=\nchat 1 repeat=1.05 max=64\n");
+}
+
+/// Prefill (spec 2026-10-10 §4.3): server giả làm như `llama-server` b11146, stream lại nguyên phần prefill rồi sinh tiếp
+/// sau nó, nên chữ stream về là cả bản dịch.
+#[test]
+fn llama_server_streams_the_prefill_back_then_continues() {
+    let t = Temp::new("llama-prefill");
+    let server = LlamaServer::spawn(&llama_launch(&t, &["ok"])).unwrap();
+    let mut deltas = Vec::new();
+    let req = ChatRequest {
+        prompt: "Translate the following text into Vietnamese.\n\nGood morning everyone",
+        max_tokens: 64,
+        repeat_penalty: 1.05,
+        prefill: Some("VI: Good"),
+    };
+    let end = server
+        .stream(&req, &mut |d| {
+            deltas.push(d.to_string());
+            ControlFlow::Continue(())
+        })
+        .unwrap();
+    assert_eq!(deltas, ["VI: Good", " morning", " everyone"]);
+    assert_eq!(end.text, "VI: Good morning everyone");
+    drop(server);
+    let events = std::fs::read_to_string(t.path("llama-events")).unwrap();
+    assert_eq!(events, "start ngl=auto extra=\nchat 1 repeat=1.05 max=64 prefill=8\n");
 }
 
 /// API key không lộ ra `Debug`, log của app, `llama-server.log` (kể cả khi server in key ra stderr) hay log sự kiện.

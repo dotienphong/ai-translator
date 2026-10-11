@@ -747,6 +747,7 @@ fn mt_loop(
         prompt: &warmup,
         max_tokens: 32,
         repeat_penalty: cfg.repeat_penalty,
+        prefill: None,
     };
     if !hurry.load(Ordering::SeqCst)
         && let Err(e) = mt.stream(&req, &mut |_| {
