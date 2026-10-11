@@ -99,8 +99,13 @@ mod tests {
                 "tgt_stable": "chúng tôi", "tgt_tail": " đã đi", "tgt_src_units": 3
             })
         );
-        let fresh = serde_json::to_value(LiveLine::default()).unwrap();
-        assert_eq!(fresh.get("extends"), Some(&serde_json::Value::Null));
+        assert_eq!(
+            serde_json::to_value(LiveLine::default()).unwrap(),
+            serde_json::json!({
+                "id": 0, "extends": null, "src_lang": "", "src_stable": "", "src_tail": "",
+                "tgt_stable": "", "tgt_tail": "", "tgt_src_units": 0
+            })
+        );
         assert_eq!(
             serde_json::to_value(LiveEnd { id: 12 }).unwrap(),
             serde_json::json!({ "id": 12 })
