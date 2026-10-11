@@ -36,9 +36,9 @@ use crate::metrics::SessionMetrics;
 use crate::prompt::{Lang, translation_prompt};
 use crate::prompt_history::PromptHistory;
 use crate::queue::{AsrQueue, MtItem, MtQueue, PartialRequest, PendingSegment, Popped, Ready};
-use crate::segmenter::{FRAME_MS, FRAME_SAMPLES, Segmenter};
+use crate::segmenter::{FRAME_MS, FRAME_SAMPLES, Segmenter, SegmenterConfig};
 use crate::sentence::{OpenSentence, Piece, joiner, merge_window_ms};
-use crate::streaming::{Split, Stabilizer, uses_char_units};
+use crate::streaming::{PartialScheduler, Split, Stabilizer, uses_char_units};
 use crate::subtitle::{Delta, LiveEnd, LiveLine, Status, Subtitle};
 use crate::supervisor::{Asr, AsrFailure};
 use crate::text::display_text;
@@ -282,6 +282,8 @@ enum Msg {
         speech_since: Option<u64>,
     },
     NoAudio(bool),
+    /// Ngưỡng im lặng đóng đoạn mà luồng VAD đang dùng: lúc bắt đầu, và mỗi khi đổi (chỉ khi không có đoạn mở; H6).
+    Threshold(u64),
     Asr(AsrOutcome),
     AsrDone,
     MtDelta {
@@ -340,6 +342,21 @@ impl SharedQueue {
         self.ready.notify_one();
     }
 
+    /// Đặt yêu cầu chép từng phần, thay yêu cầu đang chờ (spec 2026-10-10 §4.1). Hàng đã đóng thì bỏ.
+    fn push_partial(&self, partial: PartialRequest) {
+        let mut state = self.lock();
+        if !state.1 {
+            state.0.set_partial(partial);
+        }
+        drop(state);
+        self.ready.notify_one();
+    }
+
+    /// Còn đoạn đóng chờ nhận dạng.
+    fn has_waiting_segments(&self) -> bool {
+        self.lock().0.has_waiting_segments()
+    }
+
     fn close(&self) {
         self.lock().1 = true;
         self.ready.notify_all();
@@ -383,6 +400,8 @@ struct Streaming {
     enabled: AtomicBool,
     /// Đã tự tắt vì máy không theo kịp (§5), tới hết phiên.
     auto_off: AtomicBool,
+    /// Nhịp T hiện tại (ms): luồng phụ đề tính (`Cadence`), luồng VAD đọc.
+    cadence_ms: AtomicU64,
 }
 
 impl Streaming {
@@ -415,6 +434,10 @@ impl Flags {
             .supported
             .store(cfg.streaming_supported, Ordering::SeqCst);
         flags.streaming.enabled.store(cfg.streaming_enabled, Ordering::SeqCst);
+        flags
+            .streaming
+            .cadence_ms
+            .store(cfg.pipeline.streaming.initial_cadence_ms, Ordering::SeqCst);
         flags
     }
 }
@@ -489,6 +512,7 @@ impl Engine {
         };
         let vad_thread = {
             let (stop, now_ms, queue2, sink) = (flags.stop.clone(), now_ms.clone(), queue.clone(), sink.clone());
+            let streaming = flags.streaming.clone();
             std::thread::Builder::new()
                 .name("vad".into())
                 .stack_size(VAD_STACK_BYTES)
@@ -497,7 +521,17 @@ impl Engine {
                         queue: queue2.clone(),
                         sink: sink.clone(),
                     };
-                    vad_loop(source, vad, &vad_pipeline, &queue2, &tx, &*sink, &now_ms, &stop)
+                    vad_loop(
+                        source,
+                        vad,
+                        &vad_pipeline,
+                        &queue2,
+                        &tx,
+                        &*sink,
+                        &now_ms,
+                        &stop,
+                        &streaming,
+                    )
                 })
                 .map_err(|e| fail(e, &flags, &queue))?
         };
@@ -621,6 +655,16 @@ impl Drop for ComposerGuard {
     }
 }
 
+/// Ngưỡng im lặng đóng đoạn đang dùng (H6, spec 2026-10-10 §4.7): ở chế độ dịch trong lúc nói là giá trị lớn hơn của
+/// `segmenter.end_silence_ms` (`vadEndSilenceMs` của người dùng) và `streaming.end_silence_ms`; chế độ thường giữ nguyên.
+fn end_silence_for(cfg: &PipelineConfig, streaming: bool) -> u64 {
+    if streaming {
+        cfg.segmenter.end_silence_ms.max(cfg.streaming.end_silence_ms)
+    } else {
+        cfg.segmenter.end_silence_ms
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn vad_loop(
     mut source: Box<dyn FrameSource>,
@@ -631,6 +675,7 @@ fn vad_loop(
     sink: &dyn EventSink,
     now_ms: &AtomicU64,
     stop: &AtomicBool,
+    streaming: &Streaming,
 ) {
     let mut vad = match vad() {
         Ok(v) => v,
@@ -640,7 +685,16 @@ fn vad_loop(
             return;
         }
     };
-    let mut segmenter = Segmenter::new(cfg.segmenter.clone());
+    // Chế độ dịch trong lúc nói và ngưỡng đóng đoạn được chốt cho từng đoạn, ở các khung chưa có đoạn mở (H6; QĐ2 của kế
+    // hoạch 02): đổi công tắc giữa phiên có tác dụng từ đoạn kế tiếp.
+    let mut seg_streaming = streaming.active();
+    let mut end_silence = end_silence_for(cfg, seg_streaming);
+    let mut segmenter = Segmenter::new(SegmenterConfig {
+        end_silence_ms: end_silence,
+        ..cfg.segmenter.clone()
+    });
+    let mut scheduler = PartialScheduler::new(&cfg.streaming, cfg.segmenter.min_speech_ms, end_silence);
+    let _ = tx.send(Msg::Threshold(end_silence));
     let mut silence = SilenceMonitor::new(cfg.audio.clone());
     let level_frames = (cfg.audio.level_interval_ms / FRAME_MS).max(1);
     let (mut buf, mut frames, mut no_audio) = (Vec::new(), 0u64, false);
@@ -692,6 +746,39 @@ fn vad_loop(
             };
             for seg in segmenter.push(frame, prob) {
                 send_segment(seg, now);
+            }
+            match segmenter.open_progress() {
+                None => {
+                    seg_streaming = streaming.active();
+                    let wanted = end_silence_for(cfg, seg_streaming);
+                    if wanted != end_silence {
+                        end_silence = wanted;
+                        segmenter.set_end_silence_ms(wanted);
+                        scheduler.set_end_silence_ms(wanted);
+                        let _ = tx.send(Msg::Threshold(wanted));
+                    }
+                }
+                // Chép từng phần đoạn đang mở (spec 2026-10-10 §4.1): theo nhịp T, và khi vừa hết tiếng nói. Tự tắt thì dừng
+                // ngay, kể cả giữa đoạn (§5).
+                Some(open) if seg_streaming && !streaming.auto_off.load(Ordering::SeqCst) => {
+                    let cadence_ms = streaming.cadence_ms.load(Ordering::SeqCst);
+                    if scheduler
+                        .decide(open, now, cadence_ms, queue.has_waiting_segments())
+                        .is_some()
+                        && let Some(snap) = segmenter.open_snapshot()
+                    {
+                        queue.push_partial(PartialRequest {
+                            id: snap.id,
+                            start_ms: snap.start_ms,
+                            upto_ms: now,
+                            speech_ms: snap.speech_ms,
+                            mean_prob: snap.mean_prob,
+                            samples: snap.samples,
+                            requested: Instant::now(),
+                        });
+                    }
+                }
+                Some(_) => {}
             }
             if frames.is_multiple_of(CLOCK_EVERY_FRAMES) {
                 let _ = tx.send(Msg::Clock {
@@ -1176,6 +1263,10 @@ impl Composer {
             Msg::NoAudio(no_audio) => {
                 self.indicators.no_audio = no_audio;
                 self.sink.indicators(&self.indicators);
+            }
+            Msg::Threshold(end_silence_ms) => {
+                // Cửa sổ ghép theo ngưỡng đã cắt các đoạn từ giờ (H6; spec 2026-10-10 §4.7).
+                self.window_ms = merge_window_ms(end_silence_ms, &self.cfg.pipeline.merge);
             }
             Msg::Asr(outcome) => self.on_asr(outcome),
             Msg::AsrDone => {
@@ -3188,6 +3279,32 @@ mod tests {
         assert_eq!(sink.live_ends.lock().unwrap().clone(), [1, 2]);
     }
 
+    /// Ngưỡng đóng đoạn đang dùng (H6, spec 2026-10-10 §4.7): ở chế độ này là giá trị lớn hơn của ngưỡng người dùng và
+    /// `streaming.end_silence_ms`; chế độ thường giữ ngưỡng người dùng.
+    #[test]
+    fn the_end_silence_follows_the_mode() {
+        let mut p = PipelineConfig::default();
+        p.segmenter.end_silence_ms = 300;
+        // Đặt rõ, không dựa vào mặc định (Task 21 đổi mặc định theo quyết định ở cổng).
+        p.streaming.end_silence_ms = 400;
+        assert_eq!((end_silence_for(&p, false), end_silence_for(&p, true)), (300, 400));
+        p.segmenter.end_silence_ms = 800;
+        assert_eq!(end_silence_for(&p, true), 800, "lấy giá trị lớn hơn");
+    }
+
+    /// Cửa sổ ghép theo ngưỡng mà luồng VAD báo (H6): ngưỡng 400 ms cho cửa sổ 800 ms, nên đoạn bắt đầu 750 ms sau đoạn trước
+    /// vẫn được ghép; ngưỡng 300 ms (cửa sổ 700 ms) thì không.
+    #[test]
+    fn the_merge_window_follows_the_threshold_of_the_vad_thread() {
+        for (threshold, merges) in [(300, 0), (400, 1)] {
+            let mut h = harness();
+            h.feed(Msg::Threshold(threshold));
+            h.said(1, 0, 1_000, "en", "so we went");
+            h.said(2, 1_750, 2_500, "en", "home");
+            assert_eq!(h.c.metrics.merges, merges, "ngưỡng {threshold} ms");
+        }
+    }
+
     // ---- Luồng nhận dạng: chép từng phần (spec 2026-10-10 §4.1). ----
 
     /// Mọi yêu cầu đã gửi: (id, số mẫu, ngôn ngữ cho phép, ngôn ngữ đoạn trước, số token prompt).
@@ -3513,6 +3630,54 @@ mod tests {
         Box::new(Live {
             samples: SampleSource::new(samples, 1_600, Duration::ZERO),
         })
+    }
+
+    /// Chép lời mọi đoạn thành "so we went home"; ghi (id đoạn, số mẫu) của mọi yêu cầu.
+    struct RecordingAsr(Arc<Mutex<Vec<(u64, usize)>>>);
+
+    impl Asr for RecordingAsr {
+        fn transcribe(&mut self, req: TranscribeRequest) -> Result<TranscribeResult, AsrFailure> {
+            self.0.lock().unwrap().push((req.segment_id, req.pcm.len()));
+            ConstAsr("so we went home").transcribe(req)
+        }
+    }
+
+    /// Luồng VAD (spec 2026-10-10 §4.1): chế độ có hiệu lực thì gửi lần chép từng phần của đoạn đang mở (cùng id mà đoạn
+    /// nhận khi đóng, âm thanh ngắn hơn) trước lượt cuối, và dòng đang nói được gỡ khi phụ đề chốt; chế độ tắt thì không có
+    /// lần nào và không có dòng nào.
+    #[test]
+    fn the_vad_thread_sends_partials_of_the_open_segment() {
+        for enabled in [true, false] {
+            let seen = Arc::new(Mutex::new(Vec::new()));
+            let config = EngineConfig {
+                streaming_enabled: enabled,
+                ..cfg()
+            };
+            // 2 giây tiếng rồi 1,5 giây im lặng, phát nhanh gấp 20 lần thời gian thực.
+            let mut samples = speech_then_silence(0);
+            samples.extend(speech_then_silence(1_500));
+            let source = Box::new(SampleSource::new(samples, 1_600, Duration::from_millis(5)));
+            let (engine, sink) = start(
+                source,
+                energy(),
+                Box::new(RecordingAsr(seen.clone())),
+                quick_mt(),
+                config,
+            );
+            engine.join();
+            let seen = seen.lock().unwrap().clone();
+            if !enabled {
+                assert_eq!(seen.len(), 1, "chỉ lượt cuối: {seen:?}");
+                assert!(sink.lives.lock().unwrap().is_empty());
+                continue;
+            }
+            assert!(seen.len() >= 2, "{seen:?}");
+            let (id, final_len) = *seen.last().unwrap();
+            assert!(seen.iter().all(|&(i, _)| i == id), "{seen:?}");
+            assert!(seen[..seen.len() - 1].iter().all(|&(_, n)| n < final_len), "{seen:?}");
+            assert!(!sink.lives.lock().unwrap().is_empty());
+            assert_eq!(sink.live_ends.lock().unwrap().clone(), [id]);
+        }
     }
 
     /// Q5 của review 02b: VAD không nạp được thì báo lỗi, engine kết thúc.
