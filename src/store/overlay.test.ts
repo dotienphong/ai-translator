@@ -89,6 +89,19 @@ describe("gộp câu và chữ dịch tới dần", () => {
     ]);
   });
 
+  // A4 (spec 2026-10-10 §8): dòng nào không đổi thì giữ nguyên đối tượng, để `OverlayLine` (memo) không vẽ lại nó.
+  it("delta và upsert chỉ thay đối tượng của đúng một dòng", () => {
+    const lines = [sub(1, "a"), sub(2, "b"), sub(3, "c")];
+    const afterDelta = appendDelta(lines, { id: 2, text: " nữa" });
+    expect(afterDelta[0]).toBe(lines[0]);
+    expect(afterDelta[1]).not.toBe(lines[1]);
+    expect(afterDelta[2]).toBe(lines[2]);
+    const afterUpsert = upsertLine(lines, sub(3, "c đã xong"), 3);
+    expect(afterUpsert[0]).toBe(lines[0]);
+    expect(afterUpsert[1]).toBe(lines[1]);
+    expect(afterUpsert[2]).not.toBe(lines[2]);
+  });
+
   it("delta nối vào chữ dịch của đúng phụ đề, phụ đề đã trôi khỏi thanh thì bỏ qua", () => {
     const lines = [sub(1, "Xin"), sub(2, "")];
     const next = appendDelta(appendDelta(lines, { id: 1, text: " chào" }), { id: 9, text: "x" });

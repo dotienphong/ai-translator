@@ -9,12 +9,12 @@ import {
   HEARING_RMS,
   TEXT_COLORS,
   dateTime,
-  lineView,
   localOffsetMinutes,
   overlayBackground,
   overlayNotes,
 } from "../../lib/subtitleView";
 import { createOverlayStore, createResizeDrag } from "../../store/overlay";
+import { OverlayLine } from "./OverlayLine";
 
 const store = createOverlayStore(ipc);
 // Thuộc tính `lang` của trang theo ngôn ngữ giao diện, để trình đọc màn hình đọc đúng giọng.
@@ -162,19 +162,9 @@ function Overlay() {
       </div>
       <div className="lines" ref={scroller} onScroll={syncFollow}>
         {lines.length === 0 && notes.length === 0 && <div className="waiting">{t("overlay.waiting")}</div>}
-        {lines.map((l) => {
-          const v = lineView(l, view.showSource);
-          const classes = ["line", v.kind, v.provisional ? "provisional" : ""].filter(Boolean).join(" ");
-          return (
-            <div key={l.id} className={classes}>
-              {v.source && <div className="source">{v.source}</div>}
-              <div className="main">
-                {v.kind === "dropped" ? t("subtitle.dropped") : v.main}
-                {v.kind === "failed" && <span className="tag">{t("subtitle.failed")}</span>}
-              </div>
-            </div>
-          );
-        })}
+        {lines.map((l) => (
+          <OverlayLine key={l.id} line={l} showSource={view.showSource} uiLanguage={view.uiLanguage} />
+        ))}
       </div>
       {!following && (
         <button
