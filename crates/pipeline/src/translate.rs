@@ -1,6 +1,7 @@
 //! Dịch một câu theo §6.5: dựng prompt, tính số token tối đa, stream qua hậu xử lý, thử lại một lần với repeat penalty
 //! cao hơn khi bản dịch lỗi, rồi mới báo "chưa dịch được". App (luồng dịch của `engine`) và `latency-bench mt-eval` (A3,
-//! Đ4 của kế hoạch 00) dùng đúng hàm này.
+//! Đ4 của kế hoạch 00) dùng đúng hàm này. `translate_live` dịch bản tạm của dòng đang nói (spec 2026-10-10 §4.3) bằng
+//! cùng luật, một lần thử, có prefill.
 
 use crate::config::MtConfig;
 use crate::glossary::Term;
@@ -109,6 +110,60 @@ fn describe(v: Violation) -> &'static str {
     }
 }
 
+/// Prompt theo §6.5: có thuật ngữ thì mẫu "terminology" (bỏ ngữ cảnh), có ngữ cảnh thì mẫu nền, còn lại mẫu mặc định.
+fn prompt_for(job: &Job) -> String {
+    match job.context {
+        _ if !job.terms.is_empty() => terminology_prompt(job.text, job.terms, job.src, job.tgt),
+        Some(context) => context_prompt(job.text, context, job.src, job.tgt),
+        None => translation_prompt(job.text, job.src, job.tgt),
+    }
+}
+
+/// Số gói tối đa trước khi coi là quá dài (ngưỡng tỉ lệ token của cặp, §6.5). Cách 2 của Q4: chỉ áp tỉ lệ khi câu gốc đủ
+/// dài; câu ngắn hơn chỉ chịu hạn mức sinh.
+fn max_chunks_for(job: &Job, cfg: &MtConfig, source_tokens: usize) -> Option<usize> {
+    cfg.ratio_for(job.src.code(), job.tgt.code())
+        .filter(|_| source_tokens >= cfg.ratio_min_source_tokens)
+        .map(|ratio| (ratio as f64 * source_tokens as f64).floor() as usize)
+}
+
+/// Một lần stream qua hậu xử lý (§6.5). Cờ hủy được kiểm ở mọi gói, cả khi hậu xử lý còn giữ chữ (nhãn chưa rõ, ngoặc
+/// mở): không chờ gói được hiện tiếp theo (H1). Trả kết quả của stream, vi phạm (nếu có), và việc đã dừng vì bị hủy.
+fn stream_once(
+    mt: &mut dyn Mt,
+    req: &ChatRequest,
+    pp: &mut PostProcessor,
+    job: &Job,
+    started: Instant,
+    first_delta_ms: &mut Option<f32>,
+    on_event: &mut dyn FnMut(Event) -> ControlFlow<()>,
+) -> (Result<StreamEnd, MtError>, Option<Violation>, bool) {
+    let (mut violation, mut cancelled) = (None, false);
+    let result = mt.stream(req, &mut |chunk| {
+        if job.cancel.is_some_and(|c| c.load(Ordering::SeqCst)) {
+            cancelled = true;
+            return ControlFlow::Break(());
+        }
+        match pp.push(chunk) {
+            Step::Emit(delta) => {
+                first_delta_ms.get_or_insert_with(|| started.elapsed().as_secs_f32() * 1000.0);
+                if on_event(Event::Delta(&delta)).is_break() {
+                    cancelled = true;
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            }
+            Step::Hold => ControlFlow::Continue(()),
+            Step::Stop(v) => {
+                violation = Some(v);
+                ControlFlow::Break(())
+            }
+        }
+    });
+    (result, violation, cancelled)
+}
+
 pub fn translate(
     mt: &mut dyn Mt,
     job: &Job,
@@ -120,11 +175,7 @@ pub fn translate(
     if is_cancelled() {
         return Outcome::Cancelled;
     }
-    let prompt = match job.context {
-        _ if !job.terms.is_empty() => terminology_prompt(job.text, job.terms, job.src, job.tgt),
-        Some(context) => context_prompt(job.text, context, job.src, job.tgt),
-        None => translation_prompt(job.text, job.src, job.tgt),
-    };
+    let prompt = prompt_for(job);
     let source_tokens = match mt.count_tokens(job.text) {
         Ok(n) => n,
         Err(MtError::Unavailable(e)) => return Outcome::Unavailable(e),
@@ -138,11 +189,7 @@ pub fn translate(
         }
     };
     let max_tokens = cfg.max_tokens_for(source_tokens);
-    // Cách 2 của Q4: chỉ áp tỉ lệ khi câu gốc đủ dài; câu ngắn hơn chỉ chịu hạn mức sinh.
-    let max_chunks = cfg
-        .ratio_for(job.src.code(), job.tgt.code())
-        .filter(|_| source_tokens >= cfg.ratio_min_source_tokens)
-        .map(|ratio| (ratio as f64 * source_tokens as f64).floor() as usize);
+    let max_chunks = max_chunks_for(job, cfg, source_tokens);
     let mut reason = String::new();
     let mut completion_tokens = None;
     let mut first_delta_ms = None;
@@ -158,37 +205,14 @@ pub fn translate(
             return Outcome::Cancelled;
         }
         let mut pp = PostProcessor::new(job.text, max_chunks);
-        let mut violation = None;
-        let mut cancelled = false;
         let req = ChatRequest {
             prompt: &prompt,
             max_tokens,
             repeat_penalty,
             prefill: None,
         };
-        let result = mt.stream(&req, &mut |chunk| {
-            // Kiểm ở mọi gói, cả khi hậu xử lý còn giữ chữ (nhãn chưa rõ, ngoặc mở): không chờ gói được hiện tiếp theo.
-            if is_cancelled() {
-                cancelled = true;
-                return ControlFlow::Break(());
-            }
-            match pp.push(chunk) {
-                Step::Emit(delta) => {
-                    first_delta_ms.get_or_insert_with(|| started.elapsed().as_secs_f32() * 1000.0);
-                    if on_event(Event::Delta(&delta)).is_break() {
-                        cancelled = true;
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(())
-                    }
-                }
-                Step::Hold => ControlFlow::Continue(()),
-                Step::Stop(v) => {
-                    violation = Some(v);
-                    ControlFlow::Break(())
-                }
-            }
-        });
+        let (result, violation, cancelled) =
+            stream_once(mt, &req, &mut pp, job, started, &mut first_delta_ms, on_event);
         let end = match result {
             Ok(end) => end,
             Err(MtError::Unavailable(e)) => return Outcome::Unavailable(e),
@@ -224,6 +248,85 @@ pub fn translate(
         attempts: 2,
         source_tokens,
         completion_tokens,
+    }
+}
+
+/// Dịch bản tạm của dòng đang nói (spec 2026-10-10 §4.3): như `translate` (mẫu prompt, thuật ngữ, `max_tokens`, hậu xử
+/// lý, cờ hủy H1) nhưng chỉ một lần thử, không thử lại với repeat penalty cao hơn, và có thể kèm `prefill` (phần dịch đã
+/// chốt, không có khoảng trắng cuối). `llama-server` b11146 stream lại cả phần prefill, nên chữ stream về là cả bản dịch.
+/// Vi phạm luật hậu xử lý, bị cắt ở `max_tokens` hay request lỗi: `Outcome::Failed`; bên gọi giữ chữ đang hiện (§7).
+pub fn translate_live(
+    mt: &mut dyn Mt,
+    job: &Job,
+    prefill: Option<&str>,
+    cfg: &MtConfig,
+    on_event: &mut dyn FnMut(Event) -> ControlFlow<()>,
+) -> Outcome {
+    let started = Instant::now();
+    let is_cancelled = || job.cancel.is_some_and(|c| c.load(Ordering::SeqCst));
+    if is_cancelled() {
+        return Outcome::Cancelled;
+    }
+    let prompt = prompt_for(job);
+    let source_tokens = match mt.count_tokens(job.text) {
+        Ok(n) => n,
+        Err(MtError::Unavailable(e)) => return Outcome::Unavailable(e),
+        Err(MtError::Failed(e)) => {
+            return Outcome::Failed {
+                reason: e,
+                attempts: 0,
+                source_tokens: 0,
+                completion_tokens: None,
+            };
+        }
+    };
+    if is_cancelled() {
+        return Outcome::Cancelled;
+    }
+    let mut pp = PostProcessor::new(job.text, max_chunks_for(job, cfg, source_tokens));
+    let req = ChatRequest {
+        prompt: &prompt,
+        max_tokens: cfg.max_tokens_for(source_tokens),
+        repeat_penalty: cfg.repeat_penalty,
+        prefill,
+    };
+    let mut first_delta_ms = None;
+    let (result, violation, cancelled) = stream_once(mt, &req, &mut pp, job, started, &mut first_delta_ms, on_event);
+    let end = match result {
+        Ok(end) => end,
+        Err(MtError::Unavailable(e)) => return Outcome::Unavailable(e),
+        Err(MtError::Failed(e)) => {
+            return Outcome::Failed {
+                reason: e,
+                attempts: 1,
+                source_tokens,
+                completion_tokens: None,
+            };
+        }
+    };
+    if cancelled {
+        return Outcome::Cancelled;
+    }
+    let completion_tokens = end.completion_tokens.or(Some(end.chunks));
+    let finished = match violation {
+        Some(v) => Err(v),
+        None => pp.finish(end.finish_reason.as_deref()),
+    };
+    match finished {
+        Ok(text) => Outcome::Done(Translated {
+            text,
+            attempts: 1,
+            source_tokens,
+            completion_tokens,
+            first_delta_ms,
+            total_ms: started.elapsed().as_secs_f32() * 1000.0,
+        }),
+        Err(v) => Outcome::Failed {
+            reason: describe(v).to_string(),
+            attempts: 1,
+            source_tokens,
+            completion_tokens,
+        },
     }
 }
 
@@ -500,6 +603,165 @@ mod tests {
         });
         assert_eq!(outcome, Outcome::Cancelled);
         assert_eq!(mt.streams, 1);
+    }
+
+    /// Server giả ghi cả prefill của mỗi request (bản tạm, spec 2026-10-10 §4.3).
+    struct Prefilled {
+        replies: Vec<Result<(Vec<&'static str>, &'static str), MtError>>,
+        requests: Vec<(String, u32, f64, Option<String>)>,
+    }
+
+    impl Prefilled {
+        fn new(replies: Vec<Result<(Vec<&'static str>, &'static str), MtError>>) -> Self {
+            Self {
+                replies,
+                requests: Vec::new(),
+            }
+        }
+    }
+
+    impl Mt for Prefilled {
+        fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
+            Ok(text.split_whitespace().count())
+        }
+
+        fn stream(
+            &mut self,
+            req: &ChatRequest,
+            on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
+        ) -> Result<StreamEnd, MtError> {
+            self.requests.push((
+                req.prompt.to_string(),
+                req.max_tokens,
+                req.repeat_penalty,
+                req.prefill.map(String::from),
+            ));
+            let (chunks, finish) = self.replies.remove(0)?;
+            let mut end = StreamEnd::default();
+            for c in chunks {
+                end.chunks += 1;
+                end.text.push_str(c);
+                if on_delta(c).is_break() {
+                    end.cancelled = true;
+                    return Ok(end);
+                }
+            }
+            end.finish_reason = Some(finish.into());
+            Ok(end)
+        }
+    }
+
+    fn live(mt: &mut Prefilled, job: &Job, prefill: Option<&str>) -> (Vec<String>, Outcome) {
+        let mut events = Vec::new();
+        let outcome = translate_live(mt, job, prefill, &MtConfig::default(), &mut |e| {
+            events.push(match e {
+                Event::Delta(d) => d.to_string(),
+                Event::Retry => "<retry>".into(),
+            });
+            ControlFlow::Continue(())
+        });
+        (events, outcome)
+    }
+
+    /// Bản tạm (spec 2026-10-10 §4.3): một lần thử; prefill đi kèm request; tham số sinh như lượt cuối (4 token nguồn →
+    /// `max_tokens` 48); chữ stream về (gồm phần prefill được stream lại) là cả bản dịch.
+    #[test]
+    fn a_live_translation_is_one_attempt_with_the_prefill() {
+        let mut mt = Prefilled::new(vec![Ok((vec!["chúng tôi", " đi", " về"], "stop"))]);
+        let (events, outcome) = live(&mut mt, &job("so we went home"), Some("chúng tôi"));
+        assert_eq!(events, ["chúng tôi", " đi", " về"]);
+        let Outcome::Done(t) = outcome else {
+            panic!("{outcome:?}")
+        };
+        assert_eq!((t.text.as_str(), t.attempts), ("chúng tôi đi về", 1));
+        assert_eq!(
+            mt.requests,
+            [(
+                translation_prompt("so we went home", Lang::En, Lang::Vi),
+                48,
+                1.05,
+                Some("chúng tôi".to_string())
+            )]
+        );
+    }
+
+    /// Bản tạm vi phạm luật độ dài, bị cắt ở `max_tokens` hay request lỗi: bỏ, không thử lại (spec §4.3, §7).
+    #[test]
+    fn a_bad_live_translation_fails_without_a_retry() {
+        let long: Vec<&str> = std::iter::repeat_n(" x", 60).collect();
+        let mut mt = Prefilled::new(vec![Ok((long, "stop"))]);
+        let (events, outcome) = live(&mut mt, &job("one two three four five six seven eight nine ten"), None);
+        assert!(
+            matches!(&outcome, Outcome::Failed { attempts: 1, reason, .. } if reason == "quá ngưỡng tỉ lệ token"),
+            "{outcome:?}"
+        );
+        assert!(!events.iter().any(|e| e == "<retry>"));
+        assert_eq!(mt.requests.len(), 1);
+        let mut mt = Prefilled::new(vec![Ok((vec!["Chào", " bạn"], "length"))]);
+        let (_, outcome) = live(&mut mt, &job("Hello"), None);
+        assert!(
+            matches!(&outcome, Outcome::Failed { reason, .. } if reason == "bị cắt ở max_tokens"),
+            "{outcome:?}"
+        );
+        let mut mt = Prefilled::new(vec![Err(MtError::Failed("mất kết nối".into()))]);
+        let (_, outcome) = live(&mut mt, &job("Hello"), None);
+        assert!(matches!(&outcome, Outcome::Failed { attempts: 1, .. }), "{outcome:?}");
+        assert_eq!(mt.requests.len(), 1, "không gửi lại");
+        let mut mt = Prefilled::new(vec![Err(MtError::Unavailable("quá 5 lần".into()))]);
+        assert_eq!(
+            live(&mut mt, &job("Hello"), None).1,
+            Outcome::Unavailable("quá 5 lần".into())
+        );
+    }
+
+    /// Cờ hủy (H1) cũng áp cho bản tạm: hủy trước khi bắt đầu thì không gửi request nào; hủy giữa chừng thì dừng ngay ở gói
+    /// đó, kể cả khi hậu xử lý còn giữ chữ.
+    #[test]
+    fn a_live_translation_honours_the_cancel_flag() {
+        let flag = AtomicBool::new(true);
+        let mut mt = Cancelling::new(vec!["Chào"], usize::MAX, &flag);
+        let cancelled = Job {
+            cancel: Some(&flag),
+            ..job("Hello")
+        };
+        let outcome = translate_live(&mut mt, &cancelled, None, &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert_eq!(outcome, Outcome::Cancelled);
+        assert_eq!((mt.tokenized, mt.streams), (0, 0));
+        let flag = AtomicBool::new(false);
+        let mut mt = Cancelling::new(vec!["Trans", "lation", ":", " Xin"], 1, &flag);
+        let running = Job {
+            cancel: Some(&flag),
+            ..job("Hello")
+        };
+        let outcome = translate_live(&mut mt, &running, Some("Xin"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert_eq!(outcome, Outcome::Cancelled);
+        assert_eq!(mt.sent, 2);
+    }
+
+    /// Bản tạm dùng đúng mẫu prompt của lượt cuối (thuật ngữ có trong câu).
+    #[test]
+    fn a_live_translation_uses_the_same_templates() {
+        let terms = [Term {
+            source: "sprint".into(),
+            target: "đợt chạy".into(),
+        }];
+        let mut mt = Prefilled::new(vec![Ok((vec!["Đợt"], "stop"))]);
+        live(
+            &mut mt,
+            &Job {
+                terms: &terms,
+                ..job("The sprint")
+            },
+            None,
+        );
+        assert_eq!(
+            mt.requests[0].0,
+            terminology_prompt("The sprint", &terms, Lang::En, Lang::Vi)
+        );
     }
 
     #[test]
