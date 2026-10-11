@@ -8,7 +8,8 @@ use crate::resample::{MonoResampler, TARGET_RATE};
 use anyhow::{Result, bail};
 
 /// Ring buffer của mỗi nguồn chứa được 30 giây âm thanh 48 kHz stereo (spec §6.1). Thiết bị có tần số hay số kênh lớn
-/// hơn thì ring chứa được ít giây hơn; luồng tiền xử lý đọc ring mỗi 20 ms nên vẫn dư nhiều.
+/// hơn thì ring chứa được ít giây hơn; luồng đọc lấy mẫu ngay khi có (`drain_when_ready`, tối đa mỗi 20 ms) nên vẫn dư
+/// nhiều.
 pub const RING_SAMPLES: usize = 48_000 * 2 * 30;
 
 /// Lệch tối đa giữa hai nguồn trước khi phần dư được phát riêng: 100 ms ở 16 kHz (như công cụ `capture`).
@@ -75,6 +76,25 @@ impl Preprocessor {
             _ => unreachable!("đã kiểm ở `new`"),
         }
         Ok(())
+    }
+}
+
+/// Đọc mẫu ngay khi có (spec 2026-10-10 §8, A3), thay cho ngủ cố định 20 ms trước mỗi lần đọc: gọi `drain` (ghi thêm mẫu
+/// vào `buf`); chưa có mẫu nào thì ngủ `step` rồi thử lại, tới khi có mẫu hoặc hết `timeout`. Trả lỗi đầu tiên của `drain`.
+pub fn drain_when_ready(
+    buf: &mut Vec<f32>,
+    timeout: std::time::Duration,
+    step: std::time::Duration,
+    mut drain: impl FnMut(&mut Vec<f32>) -> Result<()>,
+) -> Result<()> {
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        drain(buf)?;
+        let now = std::time::Instant::now();
+        if !buf.is_empty() || now >= deadline {
+            return Ok(());
+        }
+        std::thread::sleep(step.min(deadline - now));
     }
 }
 
@@ -236,6 +256,68 @@ mod tests {
             0,
             "2,1 giây: quá trần, đồng bộ lại"
         );
+    }
+
+    #[test]
+    fn reading_returns_as_soon_as_samples_arrive() {
+        use std::time::{Duration, Instant};
+        let mut calls = 0;
+        let mut buf = Vec::new();
+        let started = Instant::now();
+        drain_when_ready(&mut buf, Duration::from_secs(5), Duration::from_millis(1), |b| {
+            calls += 1;
+            if calls == 3 {
+                b.extend_from_slice(&[0.1; 160]);
+            }
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!((calls, buf.len()), (3, 160));
+        assert!(started.elapsed() < Duration::from_secs(1), "{:?}", started.elapsed());
+    }
+
+    #[test]
+    fn samples_already_waiting_are_read_without_sleeping() {
+        use std::time::{Duration, Instant};
+        let mut buf = Vec::new();
+        let started = Instant::now();
+        drain_when_ready(&mut buf, Duration::from_secs(5), Duration::from_secs(5), |b| {
+            b.push(0.5);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(buf, [0.5]);
+        assert!(started.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn without_samples_the_read_waits_at_most_the_timeout() {
+        use std::time::{Duration, Instant};
+        let mut buf = Vec::new();
+        let started = Instant::now();
+        drain_when_ready(
+            &mut buf,
+            Duration::from_millis(30),
+            Duration::from_millis(5),
+            |_| Ok(()),
+        )
+        .unwrap();
+        let waited = started.elapsed();
+        assert!(buf.is_empty());
+        assert!(
+            waited >= Duration::from_millis(30) && waited < Duration::from_secs(1),
+            "{waited:?}"
+        );
+    }
+
+    #[test]
+    fn a_drain_error_is_returned() {
+        use std::time::Duration;
+        let mut buf = Vec::new();
+        let err = drain_when_ready(&mut buf, Duration::from_secs(1), Duration::from_millis(1), |_| {
+            anyhow::bail!("ring hỏng")
+        });
+        assert_eq!(err.unwrap_err().to_string(), "ring hỏng");
     }
 
     #[test]

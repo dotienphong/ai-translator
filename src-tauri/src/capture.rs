@@ -29,7 +29,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use audio_capture::preprocess::{ClockFiller, Preprocessor, RING_SAMPLES};
+use audio_capture::preprocess::{ClockFiller, Preprocessor, RING_SAMPLES, drain_when_ready};
 use audio_capture::{AudioSource as Source, CaptureStats};
 use pipeline::engine::FrameSource;
 
@@ -57,6 +57,10 @@ const PIDS_EVERY: Duration = Duration::from_secs(2);
 const STATS_EVERY: Duration = Duration::from_secs(60);
 /// `LiveCapture` bị hủy thì chờ luồng thu tối đa chừng này, để tap cũ không còn chạy song song với phiên mới.
 const JOIN_WITHIN: Duration = Duration::from_millis(500);
+/// Bước chờ giữa hai lần xem luồng thu đã có mẫu chưa (spec 2026-10-10 §8, A3). Thiết bị thường trả mẫu mỗi 10 ms: chờ
+/// 5 ms mỗi bước thì mẫu được đọc trễ trung bình khoảng 2,5 ms (trước là ngủ cố định 20 ms trước mỗi lần đọc, trễ trung
+/// bình khoảng 10 ms), và lúc không có mẫu nào thì chỉ thức dậy 200 lần mỗi giây.
+const POLL_STEP: Duration = Duration::from_millis(5);
 
 /// Việc nguồn âm thanh báo cho phiên.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -592,11 +596,14 @@ impl LiveCapture {
 
 impl FrameSource for LiveCapture {
     fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
-        std::thread::sleep(timeout.min(Duration::from_millis(20)));
         self.buf.clear();
-        if let Some(p) = self.shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
-            p.drain(&mut self.buf)?;
-        }
+        let shared = &self.shared;
+        drain_when_ready(&mut self.buf, timeout, POLL_STEP, |buf| {
+            match shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+                Some(p) => p.drain(buf),
+                None => Ok(()),
+            }
+        })?;
         if cfg!(target_os = "macos")
             && let Some(suspected) = self
                 .zeros
