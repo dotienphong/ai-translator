@@ -4046,6 +4046,30 @@ mod tests {
         thread.join().unwrap();
     }
 
+    /// [review] Đóng băng làm `extends` đổi từ `None` sang `Some` (lần chép từng phần khóa tiếng Pháp nên không nối tiếp câu
+    /// 1, lượt cuối nhận là tiếng Anh nên được ghép vào câu 1): phần dịch tạm (dịch riêng chữ của đoạn) không còn khớp chữ
+    /// nguồn mới của dòng (câu 1 nối chữ của đoạn), phải bị xóa.
+    #[test]
+    fn review_freezing_from_none_to_some_extends_clears_the_translation() {
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.finish(&j1, done("chúng tôi đã đi"));
+        h.partial(2, 1_300, 2_000, "fr", Some("à la maison"));
+        let l = h.live_job();
+        assert_eq!(l.text, "à la maison", "không nối tiếp câu 1 (khác ngôn ngữ)");
+        h.live_done(&l, done("về nhà"), 300);
+        let shown = h.last_live(2);
+        assert_eq!((shown.extends, shown.tgt_tail.as_str()), (None, "về nhà"));
+        h.said(2, 1_300, 2_100, "en", "home.");
+        assert_eq!(h.last(1).src_text, "so we went home.", "lượt cuối được ghép vào câu 1");
+        let l = h.last_live(2);
+        assert_eq!(
+            (l.extends, l.tgt_stable.as_str(), l.tgt_tail.as_str(), l.tgt_src_units),
+            (Some(1), "", "", 0)
+        );
+    }
+
     /// `llama-server` không dùng được (§7): báo chỉ báo, dòng đang nói chỉ còn câu gốc, không gửi bản tạm nào nữa.
     #[test]
     fn an_unavailable_server_leaves_live_lines_with_the_source_only() {
