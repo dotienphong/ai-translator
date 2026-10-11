@@ -3736,6 +3736,13 @@ Chưa có bản dịch tạm (Task 13); luồng VAD chưa tạo yêu cầu chép
 
 Các hàm `on_asr`, `grow`, `settle` được ghi nguyên bản mới; `grow` và `settle` đã gồm phần H2 của kế hoạch 01 (đối chiếu trước khi thay).
 
+**Sửa sau khi làm (commit `9d3b871`):** khối code của task này lặp chữ nguồn lúc đóng băng khi đoạn được ghép vào câu đang mở: `grow` ghi chữ mới của câu (đã gồm chữ của đoạn) rồi mới gọi `freeze_lives`, và `emit_live` nối phần ổn định/tạm của đoạn sau chữ đó ("so we went home." + " home"). Code hiện tại khác các khối dưới ở chỗ:
+- `freeze_lives(segs, sub_id, before)`: dòng giữ chữ đang hiện của đoạn (spec §4.5), nối sau `before`, chữ của câu trước khi ghép các đoạn đó (`grow` truyền chữ cũ, phụ đề mới truyền `None`); phần nguồn dựng một lần lúc đóng băng, giữ trong `Live.line`;
+- `emit_live` chỉ dựng lại phần nguồn cho dòng chưa đóng băng; cách nối nằm ở hàm chung `live_source` (sau `impl Live`);
+- thêm ba test: `a_merged_final_freezes_the_shown_source_without_repeating_it`, `each_freeze_of_a_three_segment_sentence_keeps_its_shown_source`, `a_freeze_that_changes_extends_keeps_the_segment_text_after_the_new_prefix`.
+
+Task 13 dưới đây đã theo bản sửa (khối `struct Live` và `freeze_lives`).
+
 **Files:**
 - Modify: `crates/pipeline/src/engine.rs`: import; `AsrOutcome`; `asr_loop`; hàm mới `to_pcm`, `transcribe_partial` (trước `mt_loop`); struct mới `Live`; `Composer` (trường, `new`, `finish`, `on_asr`, `grow`, `enqueue`, `settle`, hàm mới); test (`Sink`, `Harness`, `live_harness`, test mới)
 
@@ -6236,7 +6243,8 @@ Thay **toàn bộ `struct Live` và `impl Live`** (của Task 11, từ doc comme
 ```rust
 /// Dòng đang nói của một đoạn VAD đang mở (spec 2026-10-10 §4.2–§4.5).
 struct Live {
-    /// Trạng thái của dòng (id đã cộng `id_base`, `extends`, ngôn ngữ, chữ dịch). Phần nguồn được dựng lúc phát (QĐ6).
+    /// Trạng thái của dòng (id đã cộng `id_base`, `extends`, ngôn ngữ, chữ dịch). Phần nguồn được dựng lúc phát (QĐ6); dòng
+    /// đã đóng băng thì phần nguồn dựng một lần lúc đóng băng, giữ ở đây.
     line: LiveLine,
     /// Bản đã phát gần nhất.
     emitted: Option<LiveLine>,
@@ -6578,14 +6586,18 @@ Thay **toàn bộ hàm `refresh_extends`** (Task 11) bằng:
     }
 ```
 
-Thay **toàn bộ hàm `freeze_lives`** và **toàn bộ hàm `end_lives`** (Task 11) bằng:
+Thay **toàn bộ hàm `freeze_lives`** và **toàn bộ hàm `end_lives`** (Task 11, bản sau commit sửa `9d3b871`: `freeze_lives` có tham số `before`) bằng:
 
 ```rust
     /// Kết quả nhận dạng lượt cuối của các đoạn `segs` vừa thành phụ đề `sub_id` (phụ đề mới, hay câu được ghép thêm): dòng
     /// đang nói của các đoạn đó đóng băng, được phát lại một lần với `extends` là phụ đề đó (`None` nếu đó chính là id của
     /// dòng), và chờ phụ đề đó chốt để gỡ (QĐ5). Bản tạm của các đoạn đó không còn cần. Gọi ngay sau upsert tạo ra phần chữ
     /// của các đoạn đó.
-    fn freeze_lives(&mut self, segs: &[u64], sub_id: u64) {
+    ///
+    /// Dòng giữ chữ đang hiện của đoạn (spec §4.5): phần ổn định và phần tạm của lần chép từng phần cuối, nối sau `before`,
+    /// chữ của câu `sub_id` trước khi ghép các đoạn đó (`None` với phụ đề mới). Không dựng từ chữ hiện tại của câu: chữ đó
+    /// đã gồm lượt cuối của chính các đoạn này, chữ của đoạn sẽ bị lặp.
+    fn freeze_lives(&mut self, segs: &[u64], sub_id: u64, before: Option<&str>) {
         for &seg in segs {
             self.forget_live_work(seg);
             let Some(live) = self.lives.get_mut(&seg) else {
@@ -6593,6 +6605,7 @@ Thay **toàn bộ hàm `freeze_lives`** và **toàn bộ hàm `end_lives`** (Tas
             };
             live.frozen = true;
             live.line.extends = (live.line.id != sub_id).then_some(sub_id);
+            (live.line.src_stable, live.line.src_tail) = live_source(live, live.line.extends.and(before));
             self.live_waiting.entry(sub_id).or_default().push(seg);
             self.emit_live(seg, true);
         }
