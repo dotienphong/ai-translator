@@ -372,6 +372,7 @@ pub fn summarize(truth: &[Utterance], events: &[Timed]) -> Summary;
 3. **Mặc định tạm `streaming.end_silence_ms = 400`** cho tới cổng của kế hoạch 02. Nhiệm vụ cuối của kế hoạch 02 đặt lại theo quyết định của chủ dự án (QĐ4), và sửa spec theo.
 4. **Đo vòng cập nhật bằng giờ thật** (`Instant`), từ lúc luồng VAD tạo yêu cầu chép từng phần tới lúc bản dịch tạm của nó xong. Trong test, thời điểm được truyền vào nên chạy tất định.
 5. **Cửa sổ ghép** tính lại theo ngưỡng đang có hiệu lực (H6), vì spec §4.7 giữ công thức max(700, ngưỡng + 400).
+6. **`PartialScheduler` (kế hoạch 02 Task 6):** hai hằng số của luật "vừa hết tiếng nói" viết cứng trong `streaming.rs` thay vì vào `StreamingConfig`, dù spec §5 ghi "mọi ngưỡng ở mục này và ở §4 nằm trong `PipelineConfig.streaming`": `SPEECH_END_SILENCE_MS = 2 khung` là định nghĩa rời rạc của chính luật (không phải ngưỡng liên tục cần dò), còn `SPEECH_END_MIN_MS = 250` không nằm trong lưới đo (Task 19-20 chỉ quét `end_silence_ms` và `(n,k)`) nên không có nhu cầu tinh chỉnh thực tế — nhưng đây vẫn là lệch chữ spec, báo chủ dự án biết khi trình cổng Task 20. Cùng Task 6: lần chép khi vừa hết tiếng nói cũng bị `closed_waiting` chặn (spec chỉ ghi điều kiện này cho luật theo nhịp), và "lần đầu của đoạn không chờ T" được hiểu là lần đầu của CÙNG đoạn (spec viết "lần chép từng phần trước", không nói rõ cùng đoạn hay không).
 
 ## Quy ước chung
 
