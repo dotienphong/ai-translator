@@ -21,11 +21,14 @@
 //!     cuộc đua này xảy ra chắc chắn.
 //! - `FAKE_LLAMA_LOG`: file ghi nối tiếp các sự kiện (`start ngl=…`, `chat <n> repeat=<p> max=<m>`, thêm ` prefill=<số ký
 //!   tự>` khi request có prefill). Không ghi API key.
-//!
-//! Prefill (tin nhắn cuối của `messages` có `role` là `assistant`): như `llama-server` b11146 với `--prefill-assistant` (mặc
-//! định bật), server stream lại nguyên phần prefill thành gói đầu, rồi sinh tiếp: bản dịch giả bỏ đi chừng ấy từ đầu (đếm
-//! theo khoảng trắng) và gửi phần còn lại, mỗi từ một gói.
 //! - `FAKE_LLAMA_KEY_FILE`: file nhận đúng API key, chỉ để test kiểm rằng key không lộ ở chỗ khác.
+//!
+//! Prefill (tin nhắn cuối của `messages` có `role` là `assistant`): server giả bỏ đi chừng ấy từ đầu bản dịch giả (đếm theo
+//! khoảng trắng của prefill, kẹp theo số từ còn), rồi gửi prefill thành MỘT GÓI RIÊNG ở đầu, tiếp theo là phần còn lại, mỗi
+//! từ một gói. `llama-server` b11146 thật (`--prefill-assistant`, mặc định bật) cũng stream lại nguyên phần prefill, nhưng
+//! gộp nó vào gói của token sinh đầu tiên (không tách gói riêng), và không tính prefill vào `max_tokens` hay
+//! `completion_tokens`/`predicted_n` — server giả ở đây tính cả phần prefill vào hai số đó, chặt hơn bản thật. Khác biệt
+//! này chưa ảnh hưởng gì (chữ ghép lại giống nhau), xem lại trước khi Task 15 dùng số đếm token của server giả.
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
