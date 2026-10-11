@@ -15,7 +15,9 @@
 //!   - `wrong_id_on:<n>`: kết quả của `Transcribe` thứ `n` mang id đoạn cộng 1000;
 //!   - `slow_ms:<ms>`: chờ chừng này trước khi trả mỗi kết quả `Transcribe` (để test hàng đợi tất định);
 //!   - `error_on:<n>[:<OutOfMemory|Internal>]`: trả `Error` (mặc định `Internal`) cho `Transcribe` thứ `n`, vẫn sống;
-//!   - `load_delay_ms:<ms>`: chờ chừng này trước khi trả lời `Load` (nạp model chậm, như lần đầu chạy trên macOS).
+//!   - `load_delay_ms:<ms>`: chờ chừng này trước khi trả lời `Load` (nạp model chậm, như lần đầu chạy trên macOS);
+//!   - `words_per_sec:<n>`: chữ trả về chỉ gồm `n` từ đầu của dòng mỗi giây âm thanh của yêu cầu (ít nhất 1 từ), như bản
+//!     chép từng phần của một đoạn đang mở (spec 2026-10-10 §4.1).
 //! - `FAKE_ASR_LOG`: file ghi nối tiếp các sự kiện (`start use_gpu=…`, `transcribe <id> prev=<ngôn ngữ> prompt=<số token>`).
 //! - `FAKE_ASR_TEXTS`: file, mỗi dòng `<ngôn ngữ>\t<chữ>`; đoạn có id `i` trả dòng `i % số dòng`. Thêm `\t!nospeech` ở cuối
 //!   dòng thì trả `no_speech_prob` 0,9 và `avg_logprob` −1,5. Không đặt thì trả `đoạn <id>` bằng ngôn ngữ đầu tiên được phép.
@@ -38,6 +40,7 @@ struct Plan {
     error_on: Option<u32>,
     error_kind: ErrorKind,
     load_delay_ms: u64,
+    words_per_sec: Option<f32>,
 }
 
 fn next_plan_line() -> String {
@@ -66,6 +69,7 @@ fn parse(line: &str) -> Plan {
         error_on: None,
         error_kind: ErrorKind::Internal,
         load_delay_ms: 0,
+        words_per_sec: None,
     };
     for word in line.split_whitespace() {
         let (key, value) = word.split_once(':').unwrap_or((word, ""));
@@ -101,6 +105,7 @@ fn parse(line: &str) -> Plan {
                 };
             }
             "load_delay_ms" => plan.load_delay_ms = value.parse().expect("số ms"),
+            "words_per_sec" => plan.words_per_sec = Some(value.parse().expect("số từ mỗi giây")),
             other => panic!("lệnh kịch bản lạ: {other}"),
         }
     }
@@ -215,6 +220,15 @@ fn main() {
                         (req.languages[0].clone(), format!("đoạn {}", req.segment_id), false)
                     } else {
                         texts[req.segment_id as usize % texts.len()].clone()
+                    };
+                    // Chữ dài theo âm thanh: lần chép từng phần (âm thanh ngắn hơn) ra phần đầu của câu.
+                    let text = match plan.words_per_sec {
+                        Some(rate) => {
+                            let seconds = req.pcm.len() as f32 / 16_000.0;
+                            let n = ((seconds * rate) as usize).max(1);
+                            text.split_whitespace().take(n).collect::<Vec<_>>().join(" ")
+                        }
+                        None => text,
                     };
                     let tokens: Vec<i32> = (1..=text.split_whitespace().count() as i32).collect();
                     Response::Result(TranscribeResult {
