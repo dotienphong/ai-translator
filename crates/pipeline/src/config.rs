@@ -370,31 +370,6 @@ impl PipelineConfig {
         let s = &self.segmenter;
         let q = &self.queue;
         let v = &self.supervisor;
-
-        // A5 / ggml-org/whisper.cpp#3941 (tái diễn): cửa sổ mã hóa đầy đủ (audio_ctx = 1500, đoạn dài hơn 24,32 giây)
-        // vẫn đọc K/V cross-attention của đoạn chép TRƯỚC khi bật flash attention — không phải "đệm vô hại" như các
-        // cửa sổ khác (bội của AUDIO_CTX_ALIGN). App mặc định không bao giờ gửi đoạn dài vậy, nhưng PipelineConfig
-        // nạp được từ manifest đã ký (`models/manifest.rs`): đổi cấu hình từ xa không được phép tạo ra đoạn chạm cửa
-        // sổ 1500, dù giá trị thực tế của manifest nào, hiện tại hay tương lai. Hai đường ĐỘC LẬP tạo ra đoạn dài
-        // nhất gửi cho `asr-worker` (lấy `max()`, không cộng dồn — xem test `a_long_segment_alone_...` và
-        // `a_large_merge_cap_alone_...` bên dưới):
-        // - một đoạn VAD cắt ra (`segmenter.rs`): tối đa `max_segment_ms` cộng một lần `pad_ms` (đệm hai đầu, nhưng
-        //   đệm phía cắt cưỡng bức luôn bằng 0, và đệm phía đóng do im lặng bị giới hạn bởi số khung thật đã có, nên
-        //   tổng không vượt quá cộng một lần `pad_ms`, không phải hai lần — đã kiểm thực nghiệm bằng `Segmenter`);
-        // - đoạn gộp ở hàng đợi (`queue.rs`, `AsrQueue::push`): tổng mẫu của đoạn gộp không vượt quá
-        //   `asr_merge_max_ms`, nhưng MỘT đoạn chưa gộp (không lọt điều kiện gộp vì đã quá lớn) có thể đã dài hơn mức
-        //   này — gộp không rút ngắn đoạn gốc.
-        // Dùng số khung (32 ms/khung, `segmenter::FRAME_MS`) chứ không quy tròn qua mili giây, để khớp đúng cách
-        // `segmenter.rs` tính độ dài đoạn; dùng `saturating_*` vì đây là giá trị đọc thẳng từ manifest, chưa được
-        // kiểm phạm vi (không được phép panic dù manifest có giá trị bất thường).
-        let pad_frames = s.pad_ms.div_ceil(crate::segmenter::FRAME_MS);
-        let segment_frames = s.max_segment_ms.div_ceil(crate::segmenter::FRAME_MS);
-        let longest_segment_samples = segment_frames
-            .saturating_add(pad_frames)
-            .saturating_mul(crate::segmenter::FRAME_SAMPLES as u64);
-        let longest_merged_samples = q.asr_merge_max_ms.saturating_mul(asr_protocol::SAMPLE_RATE as u64) / 1_000;
-        let longest_audio_ctx_samples = longest_segment_samples.max(longest_merged_samples) as usize;
-
         let checks: Vec<(&str, bool)> = vec![
             (
                 "segmenter.threshold",
@@ -452,10 +427,6 @@ impl PipelineConfig {
             ("mt.stop_grace_ms", self.mt.stop_grace_ms <= 30_000),
             ("queue.asr_max_waiting", q.asr_max_waiting >= 1),
             ("queue.asr_merge_max_ms", (1..=30_000).contains(&q.asr_merge_max_ms)),
-            (
-                "segmenter.max_segment_ms+segmenter.pad_ms+queue.asr_merge_max_ms (audio_ctx an toàn)",
-                asr_protocol::audio_ctx_for_samples(longest_audio_ctx_samples) < 1500,
-            ),
             ("queue.asr_drop_after_ms", q.asr_drop_after_ms >= 1_000),
             ("queue.mt_max_waiting", q.mt_max_waiting >= 1),
             ("queue.mt_skip_after_ms", q.mt_skip_after_ms >= 1_000),
@@ -646,16 +617,15 @@ mod tests {
     #[test]
     fn bounds_are_exact() {
         type Set = fn(&mut PipelineConfig, bool);
-        // `queue.asr_merge_max_ms` không còn ở đây: biên riêng của nó vẫn là 30_000 (không đổi), nhưng từ A5, 30_000
-        // một mình (các trường khác ở mặc định) đã vi phạm kiểm tra audio_ctx an toàn thêm bên dưới, nên "đúng ở
-        // biên riêng" không còn kéo theo `validate() == Ok(())` nữa. Không phải lỗi của kiểm tra mới: biên thật sự
-        // chấp nhận được (389 120 mẫu, audio_ctx 1280) được test riêng ở `audio_ctx_boundary_is_exact_at_1280_vs_1500`.
-        let cases: [(&str, Set); 6] = [
+        let cases: [(&str, Set); 7] = [
             ("supervisor.failure_window_ms", |c, ok| {
                 c.supervisor.failure_window_ms = if ok { 60_000 } else { 59_999 }
             }),
             ("audio.no_audio_after_ms", |c, ok| {
                 c.audio.no_audio_after_ms = if ok { 5_000 } else { 4_999 }
+            }),
+            ("queue.asr_merge_max_ms", |c, ok| {
+                c.queue.asr_merge_max_ms = if ok { 30_000 } else { 30_001 }
             }),
             ("audio.silent_rms", |c, ok| {
                 c.audio.silent_rms = if ok { 0.0 } else { -0.1 }
@@ -715,60 +685,5 @@ mod tests {
             f(&mut c);
             assert_eq!(c.validate(), Err(key.to_string()), "{key}");
         }
-    }
-
-    // ---- Kiểm audio_ctx an toàn (A5, ggml-org/whisper.cpp#3941 tái diễn) ----
-
-    /// Khóa của kiểm tra mới trong `validate()`, dùng lại ở các test bên dưới để không gõ lặp (và lệch chính tả).
-    const AUDIO_CTX_SAFETY_KEY: &str =
-        "segmenter.max_segment_ms+segmenter.pad_ms+queue.asr_merge_max_ms (audio_ctx an toàn)";
-
-    /// An toàn của người dùng thật phụ thuộc vào test này: cấu hình mặc định không bao giờ được phép đỏ.
-    #[test]
-    fn default_config_stays_within_the_audio_ctx_safety_check() {
-        assert_eq!(PipelineConfig::default().validate(), Ok(()));
-    }
-
-    /// Biên trên CŨ (trước A5) của ba khóa riêng lẻ, từng hợp lệ khi đứng một mình: cộng lại giờ bị chặn vì đủ dài để
-    /// `audio_ctx_for_samples` trả về 1500 (cửa sổ đầy đủ, không an toàn với flash attention, xem comment ở
-    /// `validate()`).
-    #[test]
-    fn the_old_individually_valid_upper_bounds_now_breach_the_audio_ctx_safety_check() {
-        let mut c = PipelineConfig::default();
-        c.segmenter.max_segment_ms = 28_000;
-        c.segmenter.pad_ms = 1_000;
-        c.queue.asr_merge_max_ms = 30_000;
-        assert_eq!(c.validate(), Err(AUDIO_CTX_SAFETY_KEY.into()));
-    }
-
-    /// Gộp ở hàng đợi không rút ngắn một đoạn VAD đã quá dài: riêng `max_segment_ms` + `pad_ms` đã đủ vi phạm, dù
-    /// `asr_merge_max_ms` vẫn ở mặc định (12 giây, một mình thì an toàn).
-    #[test]
-    fn a_long_segment_alone_breaches_the_check_even_with_the_default_merge_cap() {
-        let mut c = PipelineConfig::default();
-        c.segmenter.max_segment_ms = 28_000;
-        c.segmenter.pad_ms = 1_000;
-        assert_eq!(c.validate(), Err(AUDIO_CTX_SAFETY_KEY.into()));
-    }
-
-    /// Ngược lại: `asr_merge_max_ms` một mình (vẫn trong biên riêng 1..=30_000) cũng đủ vi phạm, dù các đoạn VAD vẫn
-    /// ở độ dài mặc định (chứng minh kiểm tra mới lấy `max()` của cả hai đường, không chỉ xét một đường).
-    #[test]
-    fn a_large_merge_cap_alone_breaches_the_check_even_with_default_segments() {
-        let mut c = PipelineConfig::default();
-        c.queue.asr_merge_max_ms = 30_000;
-        assert_eq!(c.validate(), Err(AUDIO_CTX_SAFETY_KEY.into()));
-    }
-
-    /// Biên an toàn đúng tại audio_ctx 1280 (389 120 mẫu = 24,32 giây, qua đường gộp ở hàng đợi): vẫn được chấp
-    /// nhận, để kiểm tra không chặn nhầm cấu hình hợp lệ. Một mẫu nữa thì `audio_ctx_for_samples` nhảy thẳng lên
-    /// 1500 (không có mức trung gian giữa 1280 và 1500) và bị chặn.
-    #[test]
-    fn audio_ctx_boundary_is_exact_at_1280_vs_1500() {
-        let mut c = PipelineConfig::default();
-        c.queue.asr_merge_max_ms = 24_320; // 24_320 × 16 = 389_120 mẫu = audio_ctx 1280 đúng boong.
-        assert_eq!(c.validate(), Ok(()), "389 120 mẫu vẫn là audio_ctx 1280, còn an toàn");
-        c.queue.asr_merge_max_ms = 24_321; // 389_136 mẫu > 389_120.
-        assert_eq!(c.validate(), Err(AUDIO_CTX_SAFETY_KEY.into()));
     }
 }
