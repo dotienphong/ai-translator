@@ -247,7 +247,7 @@ mod tests {
         s.push("so we went home");
         assert_eq!(s.push("so they went home today"), split("so we", " went home today"));
         assert_eq!(s.stable_text(), "so we");
-        s.push("so we went home today");
+        assert_eq!(s.push("so we went home today"), split("so we", " went home today"));
         assert_eq!(
             s.push("so we went home today and"),
             split("so we went home", " today and")
@@ -311,6 +311,39 @@ mod tests {
         assert_eq!(s.push(""), Split::default());
         assert_eq!(s.push("..."), Split::default());
         assert_eq!(s.stable_len(), 0);
+    }
+
+    /// Kết quả mới ngắn hơn phần ổn định mà khớp phần đầu: phần ổn định không rút lại, phần tạm rỗng, không panic; bản cũ
+    /// dài hơn bản mới cũng không làm lệch phần chung.
+    #[test]
+    fn a_shorter_result_never_shrinks_the_stable_part() {
+        let mut s = Stabilizer::new("en", 2, 0);
+        s.push("a b c d e");
+        assert_eq!(s.push("a b c d e f"), split("a b c d e", " f"));
+        assert_eq!(s.push("a b c"), split("a b c d e", ""));
+        assert_eq!(s.push("a b c"), split("a b c d e", ""));
+        assert_eq!(s.preview("a b"), split("a b c d e", ""));
+        assert_eq!(s.push("a b c d e f g"), split("a b c d e", " f g"));
+        assert_eq!(s.push("a b c d e f g h"), split("a b c d e f g", " h"));
+    }
+
+    /// Đồng thuận theo khóa: hoa thường hay dấu câu của phần đã chốt đổi thì phần ổn định vẫn dài thêm và lấy chữ của kết
+    /// quả mới nhất (H4); đồng thuận lại ở cùng độ dài thì giữ nguyên chữ đang có.
+    #[test]
+    fn the_stable_part_grows_by_key_and_takes_the_newest_spelling() {
+        let mut s = Stabilizer::new("en", 2, 0);
+        s.push("hello world");
+        assert_eq!(s.push("Hello, world"), split("Hello, world", ""));
+        assert_eq!(s.push("hello world again"), split("Hello, world", " again"));
+        assert_eq!(s.push("HELLO WORLD again"), split("HELLO WORLD again", ""));
+    }
+
+    /// `agree_n` = 0 được coi là 1, không panic.
+    #[test]
+    fn agree_n_zero_counts_as_one() {
+        let mut s = Stabilizer::new("en", 0, 1);
+        assert_eq!(s.push("a b"), split("a", " b"));
+        assert_eq!(s.push("x y z"), split("a", " y z"));
     }
 
     /// Dấu kết câu ở cuối bản dịch tạm không hiện (spec §4.3): bỏ đúng một dấu, và khoảng trắng hai bên nó.
