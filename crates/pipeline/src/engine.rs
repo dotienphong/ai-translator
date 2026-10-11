@@ -3680,6 +3680,188 @@ mod tests {
         }
     }
 
+    /// Nguồn phát từng khung theo kịch bản (`true`: tiếng nói, sóng vuông biên độ 0,3; `false`: im lặng). Trước khi phát khung
+    /// thứ `i` (đếm từ 0), và một lần cuối trước khi hết luồng, gọi `before(i)`: lúc đó luồng VAD đã xử lý xong khung `i - 1`.
+    struct Scripted<F> {
+        frames: Vec<bool>,
+        next: usize,
+        before: F,
+    }
+
+    impl<F: FnMut(u64) + Send> FrameSource for Scripted<F> {
+        fn read(&mut self, out: &mut Vec<f32>, _: Duration) -> Result<bool> {
+            (self.before)(self.next as u64);
+            let Some(&speech) = self.frames.get(self.next) else {
+                return Ok(false);
+            };
+            self.next += 1;
+            let v = if speech { 0.3 } else { 0.0 };
+            out.extend((0..FRAME_SAMPLES).map(|i| if i % 40 < 20 { v } else { -v }));
+            Ok(true)
+        }
+    }
+
+    /// Mỗi cặp (n, m): n khung tiếng nói rồi m khung im lặng.
+    fn script(parts: &[(usize, usize)]) -> Vec<bool> {
+        parts
+            .iter()
+            .flat_map(|&(n, m)| std::iter::repeat_n(true, n).chain(std::iter::repeat_n(false, m)))
+            .collect()
+    }
+
+    /// Một lần chạy `vad_loop` ngay trên luồng test (không có luồng nhận dạng): các ngưỡng đã báo, các đoạn đóng (id, im lặng
+    /// từ hết tiếng nói tới lúc đóng, ms) và các lần chép từng phần (id, start_ms, upto_ms, số mẫu).
+    struct VadRun {
+        thresholds: Vec<u64>,
+        closed: Vec<(u64, u64)>,
+        partials: Vec<(u64, u64, u64, usize)>,
+    }
+
+    /// Chạy `vad_loop` trên `frames` với ngưỡng người dùng 50 ms (như app) và `streaming.end_silence_ms` 400 (13 khung).
+    /// Trước khung `i`: nếu `drain(i)` thì lấy hết hàng đợi như luồng nhận dạng rảnh (ghi lại các lần chép từng phần), rồi gọi
+    /// `at(i, chế độ)` để đổi công tắc hay tự tắt.
+    fn run_vad(
+        frames: Vec<bool>,
+        start_on: bool,
+        queue: Arc<SharedQueue>,
+        drain: impl Fn(u64) -> bool + Send + 'static,
+        at: impl Fn(u64, &Streaming) + Send + 'static,
+    ) -> VadRun {
+        let mut p = PipelineConfig::default();
+        p.segmenter.end_silence_ms = 50;
+        p.streaming.end_silence_ms = 400;
+        let streaming = Arc::new(Streaming::default());
+        streaming.supported.store(true, Ordering::SeqCst);
+        streaming.enabled.store(start_on, Ordering::SeqCst);
+        streaming
+            .cadence_ms
+            .store(p.streaming.initial_cadence_ms, Ordering::SeqCst);
+        let partials = Arc::new(Mutex::new(Vec::new()));
+        let before = {
+            let (streaming, queue, partials) = (streaming.clone(), queue.clone(), partials.clone());
+            move |i: u64| {
+                if drain(i) {
+                    while let Some(popped) = queue.lock().0.pop(0) {
+                        if let Popped::Partial(r) = popped {
+                            partials
+                                .lock()
+                                .unwrap()
+                                .push((r.id, r.start_ms, r.upto_ms, r.samples.len()));
+                        }
+                    }
+                }
+                at(i, &streaming);
+            }
+        };
+        let source = Box::new(Scripted {
+            frames,
+            next: 0,
+            before,
+        });
+        let (tx, rx) = mpsc::channel();
+        let (now_ms, stop) = (AtomicU64::new(0), AtomicBool::new(false));
+        vad_loop(
+            source,
+            energy(),
+            &p,
+            &queue,
+            &tx,
+            &Sink::default(),
+            &now_ms,
+            &stop,
+            &streaming,
+        );
+        drop(tx);
+        let (mut thresholds, mut closed) = (Vec::new(), Vec::new());
+        for msg in rx {
+            match msg {
+                Msg::Threshold(ms) => thresholds.push(ms),
+                Msg::Queued {
+                    id, end_ms, closed_ms, ..
+                } => closed.push((id, closed_ms - end_ms)),
+                _ => {}
+            }
+        }
+        let partials = partials.lock().unwrap().clone();
+        VadRun {
+            thresholds,
+            closed,
+            partials,
+        }
+    }
+
+    fn empty_queue() -> Arc<SharedQueue> {
+        Arc::new(SharedQueue::new(AsrQueue::new(PipelineConfig::default().queue)))
+    }
+
+    /// QĐ2 của kế hoạch 02 (H6; spec 2026-10-10 §4.1, §4.7, §5, §6.3): chế độ và ngưỡng đóng đoạn được chốt cho cả đoạn đang
+    /// mở. Đổi công tắc giữa một đoạn chỉ có tác dụng từ đoạn kế tiếp (ngưỡng, `Threshold`, chép từng phần); tự tắt dừng chép
+    /// từng phần ngay, nhưng đoạn đang mở vẫn đóng theo ngưỡng của nó. Ngưỡng người dùng 50 ms (2 khung) không có lần chép khi
+    /// vừa hết tiếng nói, nên bật chế độ giữa phiên phải báo ngưỡng mới cho `PartialScheduler`.
+    #[test]
+    fn the_mode_and_the_threshold_hold_for_the_whole_open_segment() {
+        // Mỗi đoạn: 60 khung tiếng nói (1 920 ms) rồi 30 khung im lặng. Lần chép theo nhịp đầu tiên ở khung tiếng nói thứ 32
+        // (1 024 ms tiếng nói), lần chép khi vừa hết tiếng nói ở khung im lặng thứ hai; đệm trước 7 khung (trừ đầu phiên).
+        // Bật lúc bắt đầu; tắt giữa đoạn 0, bật lại giữa đoạn 1, tự tắt giữa đoạn 2 sau lần chép theo nhịp đầu tiên.
+        let at = |i, s: &Streaming| match i {
+            30 => s.enabled.store(false, Ordering::SeqCst),
+            120 => s.enabled.store(true, Ordering::SeqCst),
+            215 => s.auto_off.store(true, Ordering::SeqCst),
+            _ => {}
+        };
+        let run = run_vad(
+            script(&[(60, 30), (60, 30), (60, 30)]),
+            true,
+            empty_queue(),
+            |_| true,
+            at,
+        );
+        assert_eq!(run.thresholds, [400, 50, 400, 50], "lúc bắt đầu, rồi mỗi khi đổi");
+        // 400 ms là 13 khung (416 ms), 50 ms là 2 khung (64 ms).
+        assert_eq!(run.closed, [(0, 416), (1, 64), (2, 416)]);
+        assert_eq!(
+            run.partials,
+            [
+                (0, 0, 1_024, 32 * 512),
+                (0, 0, 1_984, 62 * 512),
+                (2, 5_760, 6_784, (7 + 32) * 512)
+            ]
+        );
+
+        // Tắt lúc bắt đầu, bật giữa đoạn 0: đoạn 0 không chép từng phần và đóng sau 64 ms; đoạn 1 có cả hai loại lần chép.
+        let at = |i, s: &Streaming| {
+            if i == 30 {
+                s.enabled.store(true, Ordering::SeqCst);
+            }
+        };
+        let run = run_vad(script(&[(60, 30), (60, 30)]), false, empty_queue(), |_| true, at);
+        assert_eq!(run.thresholds, [50, 400]);
+        assert_eq!(run.closed, [(0, 64), (1, 416)]);
+        assert_eq!(
+            run.partials,
+            [(1, 2_880, 3_904, (7 + 32) * 512), (1, 2_880, 4_864, (7 + 62) * 512)]
+        );
+    }
+
+    /// Spec 2026-10-10 §4.1: còn đoạn đóng chờ nhận dạng thì luồng VAD không chép từng phần; hàng vừa trống thì chép ngay.
+    #[test]
+    fn no_partial_is_scheduled_while_a_closed_segment_waits() {
+        let queue = empty_queue();
+        queue.push(PendingSegment::from(crate::segmenter::Segment {
+            id: 99,
+            start_ms: 0,
+            end_ms: 0,
+            speech_ms: 0,
+            mean_prob: 0.9,
+            speech_ratio: 1.0,
+            samples: vec![0.0; FRAME_SAMPLES],
+        }));
+        // Luồng nhận dạng bận tới trước khung 40 (đoạn đóng 99 còn chờ), rồi lấy hết hàng đợi.
+        let run = run_vad(script(&[(60, 0)]), true, queue, |i| i >= 40, |_, _| {});
+        // Đủ điều kiện từ khung 31 (1 024 ms tiếng nói) nhưng phải chờ hàng trống: chép ở khung 40.
+        assert_eq!(run.partials, [(0, 0, 1_312, 41 * 512)]);
+    }
+
     /// Q5 của review 02b: VAD không nạp được thì báo lỗi, engine kết thúc.
     #[test]
     fn a_vad_that_does_not_load_is_fatal() {
