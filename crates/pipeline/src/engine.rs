@@ -2313,26 +2313,52 @@ mod tests {
         thread.join().unwrap();
     }
 
-    /// H6: máy chưa đủ sức thì chỉ báo "dịch sau mỗi câu" bật ngay đầu phiên; máy đủ sức thì không có sự kiện nào.
+    /// H6: máy chưa đủ sức thì chỉ báo "dịch sau mỗi câu" bật ngay đầu phiên, công tắc bật hay tắt cũng vậy (công tắc
+    /// mặc định bật, spec 2026-10-10 §6.3); máy đủ sức thì không có sự kiện nào.
     #[test]
     fn an_unsupported_machine_reports_streaming_unavailable_at_the_start() {
-        let h = harness_with(
+        for enabled in [false, true] {
+            let h = harness_with(
+                EngineConfig {
+                    streaming_supported: false,
+                    streaming_enabled: enabled,
+                    ..cfg()
+                },
+                Sink::default(),
+            );
+            let indicators = h.sink.indicators.lock().unwrap().clone();
+            assert_eq!(
+                indicators,
+                [Indicators {
+                    streaming_unavailable: true,
+                    ..Indicators::default()
+                }],
+                "công tắc {enabled}"
+            );
+            assert!(!h.flags.streaming.active(), "công tắc {enabled}");
+        }
+        assert!(harness().sink.indicators.lock().unwrap().is_empty());
+    }
+
+    /// Cờ "dịch sau mỗi câu" giữ suốt phiên: chỉ báo phát sau vẫn mang nó, vì app thay cả `Indicators` mỗi lần nhận.
+    #[test]
+    fn streaming_unavailable_stays_on_in_later_indicators() {
+        let mut h = harness_with(
             EngineConfig {
                 streaming_supported: false,
                 ..cfg()
             },
             Sink::default(),
         );
-        let indicators = h.sink.indicators.lock().unwrap().clone();
+        h.c.handle(Msg::NoAudio(true));
         assert_eq!(
-            indicators,
-            [Indicators {
+            h.sink.indicators.lock().unwrap().last(),
+            Some(&Indicators {
+                no_audio: true,
                 streaming_unavailable: true,
                 ..Indicators::default()
-            }]
+            })
         );
-        assert!(!h.flags.streaming.active());
-        assert!(harness().sink.indicators.lock().unwrap().is_empty());
     }
 
     /// Spec 2026-10-10 §6.3: công tắc đổi được giữa phiên; tự tắt thì bật lại cũng không có hiệu lực (§5).
@@ -2350,7 +2376,28 @@ mod tests {
         assert!(engine.flags.streaming.active());
         engine.flags.streaming.auto_off.store(true, Ordering::SeqCst);
         assert!(!engine.flags.streaming.active());
+        engine.set_streaming_enabled(false);
+        engine.set_streaming_enabled(true);
+        assert!(!engine.flags.streaming.active(), "đã tự tắt thì tới hết phiên");
         engine.stop();
+    }
+
+    /// H6: chế độ có hiệu lực = máy đủ sức && công tắc && chưa tự tắt. Hai cờ khác nhau, nên nhầm `streaming_supported`
+    /// với `streaming_enabled` (ở `Flags::new`, `Streaming::active` hay `set_streaming_enabled`) lộ ra.
+    #[test]
+    fn the_switch_takes_effect_only_on_a_supported_machine() {
+        for (supported, enabled) in [(false, true), (false, false), (true, false)] {
+            let config = EngineConfig {
+                streaming_supported: supported,
+                streaming_enabled: enabled,
+                ..cfg()
+            };
+            let (engine, _sink) = start(live(Vec::new()), energy(), Box::new(ConstAsr("x")), quick_mt(), config);
+            assert!(!engine.flags.streaming.active(), "{supported} {enabled}");
+            engine.set_streaming_enabled(true);
+            assert_eq!(engine.flags.streaming.active(), supported, "{supported} {enabled}");
+            engine.stop();
+        }
     }
 
     #[test]

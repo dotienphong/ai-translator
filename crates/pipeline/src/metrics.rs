@@ -120,6 +120,13 @@ mod tests {
             m.summary()
         );
         assert!(!SessionMetrics::default().summary().contains("chép từng phần"));
+        // Một lần đã đủ để nhắc; chưa tự tắt thì không ghi "đã tự tắt".
+        let one = SessionMetrics {
+            partials: 1,
+            ..Default::default()
+        }
+        .summary();
+        assert!(one.ends_with("; 1 lần chép từng phần;"), "{one}");
     }
 
     #[test]
