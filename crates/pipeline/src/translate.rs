@@ -764,6 +764,195 @@ mod tests {
         );
     }
 
+    /// Server giả bật cờ hủy trong lúc `/tokenize` đang chạy (luồng phụ đề hủy đúng lúc đó); đếm số request dịch.
+    struct CancelOnTokenize<'a> {
+        flag: &'a AtomicBool,
+        streams: usize,
+    }
+
+    impl Mt for CancelOnTokenize<'_> {
+        fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
+            self.flag.store(true, Ordering::SeqCst);
+            Ok(text.split_whitespace().count())
+        }
+
+        fn stream(
+            &mut self,
+            _: &ChatRequest,
+            _: &mut dyn FnMut(&str) -> ControlFlow<()>,
+        ) -> Result<StreamEnd, MtError> {
+            self.streams += 1;
+            Ok(StreamEnd::default())
+        }
+    }
+
+    /// H1: cờ bật trong lúc `/tokenize` thì không gửi request dịch, ở lượt cuối lẫn bản tạm.
+    #[test]
+    fn a_cancel_during_tokenize_sends_no_translation_request() {
+        let flag = AtomicBool::new(false);
+        let cancellable = Job {
+            cancel: Some(&flag),
+            ..job("Hello")
+        };
+        let mut mt = CancelOnTokenize {
+            flag: &flag,
+            streams: 0,
+        };
+        let outcome = translate(&mut mt, &cancellable, &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert_eq!((outcome, mt.streams), (Outcome::Cancelled, 0));
+        flag.store(false, Ordering::SeqCst);
+        let mut mt = CancelOnTokenize {
+            flag: &flag,
+            streams: 0,
+        };
+        let outcome = translate_live(&mut mt, &cancellable, Some("Xin"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert_eq!((outcome, mt.streams), (Outcome::Cancelled, 0));
+    }
+
+    /// Server giả: `/tokenize` lỗi; đếm số request dịch.
+    struct TokenizeFails {
+        error: MtError,
+        streams: usize,
+    }
+
+    impl Mt for TokenizeFails {
+        fn count_tokens(&mut self, _: &str) -> Result<usize, MtError> {
+            Err(self.error.clone())
+        }
+
+        fn stream(
+            &mut self,
+            _: &ChatRequest,
+            _: &mut dyn FnMut(&str) -> ControlFlow<()>,
+        ) -> Result<StreamEnd, MtError> {
+            self.streams += 1;
+            Ok(StreamEnd::default())
+        }
+    }
+
+    /// `/tokenize` lỗi thì không gửi request dịch: request hỏng là `Failed` chưa thử lần nào, server không dùng được là
+    /// `Unavailable` (luồng phụ đề tắt dịch khi gặp nó, nên không được lẫn hai loại). Như nhau ở lượt cuối và bản tạm.
+    #[test]
+    fn a_tokenize_error_sends_no_translation_request() {
+        let cfg = MtConfig::default();
+        for (error, expected) in [
+            (
+                MtError::Failed("mất kết nối".into()),
+                Outcome::Failed {
+                    reason: "mất kết nối".into(),
+                    attempts: 0,
+                    source_tokens: 0,
+                    completion_tokens: None,
+                },
+            ),
+            (
+                MtError::Unavailable("quá 5 lần".into()),
+                Outcome::Unavailable("quá 5 lần".into()),
+            ),
+        ] {
+            let mut mt = TokenizeFails {
+                error: error.clone(),
+                streams: 0,
+            };
+            let outcome = translate(&mut mt, &job("Hello"), &cfg, &mut |_| ControlFlow::Continue(()));
+            assert_eq!((&outcome, mt.streams), (&expected, 0));
+            let mut mt = TokenizeFails { error, streams: 0 };
+            let outcome = translate_live(&mut mt, &job("Hello"), Some("Xin"), &cfg, &mut |_| {
+                ControlFlow::Continue(())
+            });
+            assert_eq!((&outcome, mt.streams), (&expected, 0));
+        }
+    }
+
+    /// Bản tạm chọn mẫu như lượt cuối: có ngữ cảnh thì mẫu nền; có cả thuật ngữ thì mẫu "terminology", bỏ ngữ cảnh.
+    #[test]
+    fn a_live_translation_picks_the_template_like_the_final_pass() {
+        let terms = [Term {
+            source: "sprint".into(),
+            target: "đợt chạy".into(),
+        }];
+        let mut mt = Prefilled::new(vec![Ok((vec!["B"], "stop")), Ok((vec!["Đợt"], "stop"))]);
+        live(
+            &mut mt,
+            &Job {
+                context: Some("câu trước"),
+                ..job("next")
+            },
+            None,
+        );
+        live(
+            &mut mt,
+            &Job {
+                context: Some("câu trước"),
+                terms: &terms,
+                ..job("The sprint")
+            },
+            None,
+        );
+        assert_eq!(
+            mt.requests[0].0,
+            context_prompt("next", "câu trước", Lang::En, Lang::Vi)
+        );
+        assert_eq!(
+            mt.requests[1].0,
+            terminology_prompt("The sprint", &terms, Lang::En, Lang::Vi)
+        );
+    }
+
+    /// Vi phạm thì dừng stream ngay ở gói vi phạm (gói thứ 45 khi tối đa 44 gói), không đọc tiếp: với `-np 1`, bản tạm
+    /// lan man mà chạy tới `max_tokens` sẽ giữ `llama-server` và làm chậm lượt cuối. 44 gói thì vẫn được.
+    #[test]
+    fn a_live_violation_stops_the_stream_at_the_offending_chunk() {
+        let flag = AtomicBool::new(false);
+        let source = job("one two three four five six seven eight nine ten");
+        let mut mt = Cancelling::new(std::iter::repeat_n(" x", 60).collect(), usize::MAX, &flag);
+        let outcome = translate_live(&mut mt, &source, None, &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(
+            matches!(&outcome, Outcome::Failed { attempts: 1, reason, .. } if reason == "quá ngưỡng tỉ lệ token"),
+            "{outcome:?}"
+        );
+        assert_eq!(mt.sent, 45);
+        let mut mt = Cancelling::new(std::iter::repeat_n(" x", 44).collect(), usize::MAX, &flag);
+        let outcome = translate_live(&mut mt, &source, None, &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(matches!(&outcome, Outcome::Done(t) if t.attempts == 1), "{outcome:?}");
+    }
+
+    /// Số đo của bản tạm: số token nguồn, và số token sinh lấy theo server (dự phòng là số gói).
+    #[test]
+    fn a_live_translation_reports_its_token_counts() {
+        let mut mt = Prefilled::new(vec![Ok((vec!["chúng tôi", " đi", " về"], "stop"))]);
+        let (_, outcome) = live(&mut mt, &job("so we went home"), Some("chúng tôi"));
+        assert!(
+            matches!(&outcome, Outcome::Done(t) if (t.source_tokens, t.completion_tokens) == (4, Some(3))),
+            "{outcome:?}"
+        );
+    }
+
+    /// Đủ ba loại vi phạm spec §4.3 liệt kê cho bản tạm: lời giải thích và rỗng cũng là `Failed` một lần thử, đúng lý do.
+    #[test]
+    fn a_live_explanation_or_empty_reply_fails_with_its_reason() {
+        for (chunks, why) in [
+            (vec!["Chào", "\n", "Giải thích"], "có lời giải thích"),
+            (vec!["  ", " "], "rỗng"),
+        ] {
+            let mut mt = Prefilled::new(vec![Ok((chunks, "stop"))]);
+            let (_, outcome) = live(&mut mt, &job("Hello"), None);
+            assert!(
+                matches!(&outcome, Outcome::Failed { attempts: 1, reason, .. } if reason == why),
+                "{outcome:?}"
+            );
+            assert_eq!(mt.requests.len(), 1);
+        }
+    }
+
     #[test]
     fn context_uses_the_background_template() {
         let mut mt = Scripted {
