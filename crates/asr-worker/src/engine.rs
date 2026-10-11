@@ -73,8 +73,9 @@ fn primer_requested(value: Option<&str>) -> bool {
 
 /// Flash attention của whisper.cpp (spec §6.4; spec 2026-10-10 §8, A5). `audio_ctx` luôn là bội của 256
 /// ([`effective_audio_ctx`]), nên whisper.cpp không còn đọc phần đệm chứa dữ liệu của đoạn trước (ggml-org/whisper.cpp#3941).
-/// Bật mặc định trên macOS (Metal) khi chạy GPU (`default_on`), nơi đã qua cổng tất định và A4; Windows (Vulkan) giữ tắt
-/// tới khi đo trên máy Windows. Biến môi trường `ASR_FLASH_ATTN`: `0` tắt, `1` bật (để so sánh). Chạy CPU thì luôn tắt.
+/// Bật mặc định trên macOS (Metal) khi chạy GPU (`default_on`); còn phải qua cổng tất định và A4 (Task 11, chưa chạy ở
+/// commit này) mới coi là đã xác nhận. Windows (Vulkan) giữ tắt tới khi đo trên máy Windows. Biến môi trường
+/// `ASR_FLASH_ATTN`: `0` tắt, `1` bật (để so sánh). Chạy CPU thì luôn tắt.
 fn flash_attn_wanted(use_gpu: bool, env: Option<&str>, default_on: bool) -> bool {
     use_gpu
         && match env {
@@ -183,7 +184,7 @@ impl Engine {
         #[cfg(not(feature = "shared-encode"))]
         let split_mode = true;
         let lid_state = if split_mode {
-            Some(create_lid_state(&ctx, n_threads)?)
+            Some(create_lid_state(&ctx, n_threads, flash_attn)?)
         } else {
             None
         };
@@ -421,10 +422,13 @@ pub fn classify_with(default: ErrorKind, err: &anyhow::Error, log: &[String]) ->
 /// State nhận diện ngôn ngữ của chế độ A. `lang_detect` dùng lại `audio_ctx` mà lần `whisper_full` gần nhất đã đặt cho
 /// state. Giao thức không bắt buộc gửi `Warmup`, nên chạy `whisper_full` một lần ngay lúc nạp, trên 3 giây im lặng. Nếu
 /// bỏ qua, đoạn đầu tiên sẽ nhận diện ngôn ngữ trên cửa sổ 30 giây đầy đủ: chậm hơn nhiều và cho xác suất khác.
-fn create_lid_state(ctx: &WhisperContext, n_threads: usize) -> Result<WhisperState> {
+///
+/// `audio_ctx` đi qua [`effective_audio_ctx`] giống state chép lời: Task 10 áp bội số 256 của flash attention cho mọi
+/// bên gọi `whisper_full`, không riêng state chép lời, nên state nhận diện ngôn ngữ cũng phải qua đây.
+fn create_lid_state(ctx: &WhisperContext, n_threads: usize, flash_attn: bool) -> Result<WhisperState> {
     let mut state = ctx.create_state().context("tạo state nhận diện ngôn ngữ")?;
     let silence = vec![0.0f32; LID_SAMPLES];
-    let params = full_params(n_threads, "en", LID_AUDIO_CTX);
+    let params = full_params(n_threads, "en", effective_audio_ctx(flash_attn, LID_AUDIO_CTX));
     state
         .full(params, &silence)
         .context("đặt audio_ctx cho state nhận diện ngôn ngữ")?;
