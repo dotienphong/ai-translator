@@ -14,6 +14,7 @@ pub mod queue;
 pub mod segmenter;
 pub mod sentence;
 pub mod sse;
+pub mod streaming;
 pub mod subtitle;
 pub mod supervisor;
 pub mod text;
