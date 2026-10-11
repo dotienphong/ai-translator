@@ -2,7 +2,9 @@
 //! so khớp, chốt dần bằng LocalAgreement (`Stabilizer`), nhịp và tự tắt (`Cadence`), lịch chép từng phần
 //! (`PartialScheduler`). Không có luồng, khóa hay giờ thật: luồng VAD và luồng phụ đề của `engine` gọi vào đây.
 
+use crate::config::StreamingConfig;
 use crate::glossary::normalize;
+use crate::metrics::percentile;
 use crate::sentence::SENTENCE_END;
 use std::collections::VecDeque;
 use unicode_normalization::UnicodeNormalization;
@@ -166,6 +168,68 @@ impl Stabilizer {
     }
 }
 
+/// Nhịp T và tự tắt (spec §5): giữ tối đa `cycle_window` vòng cập nhật gần nhất (ms). Một vòng là từ lúc tạo lần chép từng
+/// phần tới lúc bản dịch tạm của nó xong; vòng bị hủy không được ghi.
+#[derive(Clone, Debug)]
+pub struct Cadence {
+    cycles: VecDeque<f32>,
+    window: usize,
+    factor: f32,
+    min_ms: u64,
+    max_ms: u64,
+    initial_ms: u64,
+    warmup: usize,
+    auto_off_ms: u64,
+}
+
+impl Cadence {
+    pub fn new(cfg: &StreamingConfig) -> Self {
+        Self {
+            cycles: VecDeque::new(),
+            window: cfg.cycle_window.max(1),
+            factor: cfg.cadence_factor,
+            min_ms: cfg.min_cadence_ms,
+            // `validate` đã bảo đảm max ≥ min; giữ lại ở đây để `clamp` không bao giờ panic.
+            max_ms: cfg.max_cadence_ms.max(cfg.min_cadence_ms),
+            initial_ms: cfg.initial_cadence_ms,
+            warmup: cfg.warmup_cycles,
+            auto_off_ms: cfg.auto_off_cycle_ms,
+        }
+    }
+
+    /// Một vòng cập nhật xong. Số âm hay không hữu hạn thì bỏ.
+    pub fn record(&mut self, cycle_ms: f32) {
+        if !(cycle_ms.is_finite() && cycle_ms >= 0.0) {
+            return;
+        }
+        self.cycles.push_back(cycle_ms);
+        while self.cycles.len() > self.window {
+            self.cycles.pop_front();
+        }
+    }
+
+    fn median(&self) -> Option<f32> {
+        let cycles: Vec<f32> = self.cycles.iter().copied().collect();
+        percentile(&cycles, 50.0)
+    }
+
+    /// T (ms): `initial_cadence_ms` khi chưa đủ `warmup_cycles` vòng; sau đó `cadence_factor` × trung vị, kẹp
+    /// [`min_cadence_ms`, `max_cadence_ms`].
+    pub fn cadence_ms(&self) -> u64 {
+        match self.median() {
+            Some(median) if self.cycles.len() >= self.warmup => {
+                ((median * self.factor).round() as u64).clamp(self.min_ms, self.max_ms)
+            }
+            _ => self.initial_ms,
+        }
+    }
+
+    /// Đủ `cycle_window` vòng và trung vị lớn hơn `auto_off_cycle_ms`: máy không theo kịp (spec §5).
+    pub fn too_slow(&self) -> bool {
+        self.cycles.len() >= self.window && self.median().is_some_and(|m| m > self.auto_off_ms as f32)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -303,6 +367,82 @@ mod tests {
         assert_eq!(s.preview("so we"), split("so we", ""));
         assert_eq!(s.preview("so we will"), split("so we", " will"));
         assert_eq!(s.push("so we went home now"), split("so we went", " home now"));
+    }
+
+    /// Nhịp T (spec §5): 1 000 ms khi chưa đủ 3 vòng; sau đó 1,5 × trung vị.
+    #[test]
+    fn the_cadence_starts_at_one_second_then_follows_the_median() {
+        let mut c = Cadence::new(&StreamingConfig::default());
+        assert_eq!(c.cadence_ms(), 1_000);
+        c.record(500.0);
+        c.record(700.0);
+        assert_eq!(c.cadence_ms(), 1_000, "chưa đủ 3 vòng");
+        c.record(600.0);
+        assert_eq!(c.cadence_ms(), 900, "1,5 × trung vị 600");
+        c.record(800.0);
+        assert_eq!(c.cadence_ms(), 975, "1,5 × trung vị 650");
+    }
+
+    #[test]
+    fn the_cadence_is_clamped_between_700_and_2000_ms() {
+        let mut c = Cadence::new(&StreamingConfig::default());
+        for _ in 0..3 {
+            c.record(100.0);
+        }
+        assert_eq!(c.cadence_ms(), 700);
+        for _ in 0..8 {
+            c.record(1_900.0);
+        }
+        assert_eq!(c.cadence_ms(), 2_000);
+    }
+
+    /// Chỉ `cycle_window` (8) vòng gần nhất được tính.
+    #[test]
+    fn only_the_last_eight_cycles_count() {
+        let mut c = Cadence::new(&StreamingConfig::default());
+        for _ in 0..8 {
+            c.record(3_000.0);
+        }
+        for _ in 0..5 {
+            c.record(400.0);
+        }
+        // Còn 3 vòng 3 000 ms và 5 vòng 400 ms: trung vị 400, T = 600 kẹp lên 700.
+        assert_eq!(c.cadence_ms(), 700);
+        assert!(!c.too_slow());
+    }
+
+    /// Tự tắt (spec §5): đủ 8 vòng và trung vị lớn hơn 1 300 ms.
+    #[test]
+    fn the_mode_turns_off_only_with_a_full_window_over_the_limit() {
+        let mut c = Cadence::new(&StreamingConfig::default());
+        for _ in 0..7 {
+            c.record(5_000.0);
+        }
+        assert!(!c.too_slow(), "mới 7 vòng");
+        c.record(5_000.0);
+        assert!(c.too_slow());
+        let mut c = Cadence::new(&StreamingConfig::default());
+        for _ in 0..8 {
+            c.record(1_300.0);
+        }
+        assert!(!c.too_slow(), "đúng 1 300 ms chưa tắt");
+        for _ in 0..8 {
+            c.record(1_301.0);
+        }
+        assert!(c.too_slow());
+    }
+
+    #[test]
+    fn bad_cycle_values_are_ignored() {
+        let mut c = Cadence::new(&StreamingConfig::default());
+        for bad in [f32::NAN, -1.0, f32::INFINITY] {
+            c.record(bad);
+        }
+        assert_eq!(c.cadence_ms(), 1_000);
+        for _ in 0..8 {
+            c.record(f32::NAN);
+        }
+        assert!(!c.too_slow());
     }
 
     #[test]
