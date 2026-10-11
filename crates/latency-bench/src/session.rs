@@ -408,6 +408,9 @@ pub fn run(args: SessionArgs) -> Result<()> {
         translation_context: false,
         id_base: 0,
         glossary: Default::default(),
+        // Cờ `--streaming` (Task 16 của kế hoạch 02) nối hai trường này.
+        streaming_supported: false,
+        streaming_enabled: false,
     };
     let asr_busy = Arc::new(AtomicU64::new(0));
     let mt_busy = Arc::new(AtomicU64::new(0));

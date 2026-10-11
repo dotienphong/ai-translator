@@ -204,6 +204,8 @@ fn config(languages: &[&str]) -> EngineConfig {
         translation_context: false,
         id_base: 1_000,
         glossary: Default::default(),
+        streaming_supported: false,
+        streaming_enabled: false,
     }
 }
 

@@ -28,6 +28,14 @@ pub struct SessionMetrics {
     /// `speech_ms` (không gồm đệm; đoạn gộp cộng từng đoạn con) khi phụ đề sang `done`, mỗi đoạn một lần kể cả khi câu
     /// được dịch lại sau khi ghép hay gộp. Không tính `same_lang`, `failed`, `skipped`, `dropped`, đoạn bị lọc.
     pub translated_speech_ms: u64,
+    /// Chế độ dịch trong lúc nói (spec 2026-10-10 §4–§5): số lần chép từng phần có kết quả, thời gian mỗi lần (`asr_ms` của
+    /// worker), các vòng cập nhật đã xong (từ lúc tạo yêu cầu chép từng phần tới lúc bản dịch tạm xong), nhịp T sau mỗi vòng,
+    /// và việc chế độ đã tự tắt. Không có chữ nào.
+    pub partials: usize,
+    pub partial_asr_ms: Vec<f32>,
+    pub live_cycle_ms: Vec<f32>,
+    pub cadence_ms: Vec<f32>,
+    pub streaming_auto_off: bool,
 }
 
 /// Phân vị `p` (0–100), nội suy tuyến tính như numpy. Rỗng thì `None`.
@@ -49,7 +57,7 @@ impl SessionMetrics {
             (Some(p50), Some(p90)) => format!(" {name} p50 {p50:.0} ms, p90 {p90:.0} ms;"),
             _ => String::new(),
         };
-        format!(
+        let mut out = format!(
             "{} đoạn (lọc {}, bỏ {}), {} câu dịch, {} lỗi, {} bỏ bước dịch, {} cùng ngôn ngữ, {} lần ghép;{}{}{}{} tiếng nói đã dịch {} ms",
             self.segments,
             self.filtered,
@@ -64,7 +72,20 @@ impl SessionMetrics {
             stat("dịch", &self.mt_ms),
             stat("tổng", &self.latency_ms),
             self.translated_speech_ms
-        )
+        );
+        if self.partials > 0 {
+            out.push_str(&format!(
+                "; {} lần chép từng phần;{}{}{}",
+                self.partials,
+                stat("chép từng phần", &self.partial_asr_ms),
+                stat("vòng cập nhật", &self.live_cycle_ms),
+                stat("nhịp", &self.cadence_ms)
+            ));
+            if self.streaming_auto_off {
+                out.push_str(" đã tự tắt");
+            }
+        }
+        out
     }
 }
 
@@ -77,6 +98,28 @@ mod tests {
         assert_eq!(percentile(&[], 50.0), None);
         assert_eq!(percentile(&[3.0, 1.0, 2.0], 50.0), Some(2.0));
         assert_eq!(percentile(&[0.0, 400.0], 90.0), Some(360.0));
+    }
+
+    /// Chế độ dịch trong lúc nói (spec 2026-10-10 §5): chỉ ghi khi có lần chép từng phần, và chỉ có số.
+    #[test]
+    fn the_summary_reports_the_live_mode_only_when_it_ran() {
+        let m = SessionMetrics {
+            partials: 12,
+            partial_asr_ms: vec![200.0, 220.0],
+            live_cycle_ms: vec![500.0, 700.0],
+            cadence_ms: vec![1_000.0],
+            streaming_auto_off: true,
+            ..Default::default()
+        };
+        assert!(
+            m.summary().ends_with(
+                "; 12 lần chép từng phần; chép từng phần p50 210 ms, p90 218 ms; vòng cập nhật p50 600 ms, p90 680 ms; \
+                 nhịp p50 1000 ms, p90 1000 ms; đã tự tắt"
+            ),
+            "{}",
+            m.summary()
+        );
+        assert!(!SessionMetrics::default().summary().contains("chép từng phần"));
     }
 
     #[test]

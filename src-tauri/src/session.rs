@@ -179,6 +179,10 @@ pub fn engine_config(
         translation_context: settings.experimental.translation_context,
         id_base,
         glossary,
+        // Dịch trong lúc người nói chưa dừng (spec 2026-10-10): kế hoạch 03 nối cài đặt `translateWhileSpeaking` và việc
+        // quyết máy đủ sức. Tới đó chế độ này không chạy trong app.
+        streaming_supported: false,
+        streaming_enabled: false,
     }
 }
 

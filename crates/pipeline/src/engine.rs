@@ -38,7 +38,7 @@ use crate::prompt_history::PromptHistory;
 use crate::queue::{AsrQueue, MtItem, MtQueue, PendingSegment, Popped, Ready};
 use crate::segmenter::{FRAME_MS, FRAME_SAMPLES, Segmenter};
 use crate::sentence::{OpenSentence, Piece, merge_window_ms};
-use crate::subtitle::{Delta, Status, Subtitle};
+use crate::subtitle::{Delta, LiveEnd, LiveLine, Status, Subtitle};
 use crate::supervisor::{Asr, AsrFailure};
 use crate::text::display_text;
 use crate::translate::{Event, Job, Mt, MtError, Outcome, translate};
@@ -72,6 +72,10 @@ pub struct EngineConfig {
     /// Từ điển thuật ngữ (F5, §6.5). Luồng dịch đọc bản mới nhất ở mỗi câu, nên app sửa từ điển giữa phiên thì câu sau
     /// dùng ngay. Gói Free: app đưa từ điển rỗng.
     pub glossary: SharedGlossary,
+    /// Máy đủ sức cho chế độ dịch trong lúc nói (app quyết lúc bắt đầu phiên, spec 2026-10-10 §5 "Tắt ngay từ đầu phiên").
+    pub streaming_supported: bool,
+    /// Công tắc của người dùng lúc bắt đầu phiên (`translateWhileSpeaking`); đổi giữa phiên bằng `set_streaming_enabled`.
+    pub streaming_enabled: bool,
 }
 
 /// Nguồn âm thanh 16 kHz mono.
@@ -154,6 +158,9 @@ pub struct Indicators {
     pub no_audio: bool,
     /// `llama-server` không dùng được: phụ đề chỉ hiện câu gốc.
     pub translation_unavailable: bool,
+    /// Phiên này dịch sau mỗi câu vì máy chưa đủ nhanh (bị tắt từ đầu, hay tự tắt) — spec 2026-10-10 §6.3. Serde:
+    /// `streamingUnavailable`.
+    pub streaming_unavailable: bool,
 }
 
 /// Lý do phiên phải dừng.
@@ -194,6 +201,10 @@ pub trait EventSink: Send + Sync {
     fn usage(&self, _usage: &Usage) -> ControlFlow<()> {
         ControlFlow::Continue(())
     }
+    /// Dòng đang nói đổi (spec 2026-10-10 §6.2). Mặc định bỏ qua.
+    fn live(&self, _line: &LiveLine) {}
+    /// Gỡ dòng đang nói (lượt cuối đã chốt, đoạn bị lọc hay bỏ, chế độ tự tắt, dừng phiên). Mặc định bỏ qua.
+    fn live_end(&self, _end: &LiveEnd) {}
 }
 
 /// Đếm thời gian im lặng liên tục (RMS dưới ngưỡng), kể cả phần im lặng được chèn khi Windows không trả gói dữ liệu (§9).
@@ -345,6 +356,27 @@ impl SharedQueue {
     }
 }
 
+/// Chế độ dịch trong lúc người nói chưa dừng (spec 2026-10-10 §5, §6.3; H6): dùng chung giữa `Engine`, luồng VAD và luồng
+/// phụ đề.
+#[derive(Debug, Default)]
+struct Streaming {
+    /// Máy đủ sức (`EngineConfig::streaming_supported`).
+    supported: AtomicBool,
+    /// Công tắc của người dùng (`EngineConfig::streaming_enabled`, `Engine::set_streaming_enabled`).
+    enabled: AtomicBool,
+    /// Đã tự tắt vì máy không theo kịp (§5), tới hết phiên.
+    auto_off: AtomicBool,
+}
+
+impl Streaming {
+    /// Chế độ đang có hiệu lực (H6) = máy đủ sức, công tắc bật, chưa tự tắt.
+    fn active(&self) -> bool {
+        self.supported.load(Ordering::SeqCst)
+            && self.enabled.load(Ordering::SeqCst)
+            && !self.auto_off.load(Ordering::SeqCst)
+    }
+}
+
 /// Cờ dùng chung giữa `Engine` và các luồng.
 #[derive(Clone, Default)]
 struct Flags {
@@ -354,6 +386,20 @@ struct Flags {
     hurry: Arc<AtomicBool>,
     /// Hết hạn mức.
     quota: Arc<AtomicBool>,
+    /// Chế độ dịch trong lúc nói.
+    streaming: Arc<Streaming>,
+}
+
+impl Flags {
+    fn new(cfg: &EngineConfig) -> Self {
+        let flags = Self::default();
+        flags
+            .streaming
+            .supported
+            .store(cfg.streaming_supported, Ordering::SeqCst);
+        flags.streaming.enabled.store(cfg.streaming_enabled, Ordering::SeqCst);
+        flags
+    }
 }
 
 pub struct Engine {
@@ -375,7 +421,7 @@ impl Engine {
         mt: Box<dyn Mt>,
         sink: Arc<dyn EventSink>,
     ) -> Result<Self> {
-        let flags = Flags::default();
+        let flags = Flags::new(&cfg);
         let now_ms = Arc::new(AtomicU64::new(0));
         let queue = Arc::new(SharedQueue::new(AsrQueue::new(cfg.pipeline.queue.clone())));
         let (tx, rx) = mpsc::channel::<Msg>();
@@ -458,6 +504,12 @@ impl Engine {
     /// Hết hạn mức (§6.8): bỏ hàng đợi, dịch xong câu đang dịch, rồi báo [`Fatal::QuotaExhausted`]. Không chặn.
     pub fn exhaust_quota(&self) {
         self.flags.quota.store(true, Ordering::SeqCst);
+    }
+
+    /// Bật/tắt chế độ dịch trong lúc nói giữa phiên (công tắc `translateWhileSpeaking`, spec 2026-10-10 §6.3): có tác dụng
+    /// từ đoạn kế tiếp, vì luồng VAD chỉ đọc cờ này khi chưa có đoạn mở (H6). Đã tự tắt (§5) thì bật lại không có tác dụng.
+    pub fn set_streaming_enabled(&self, on: bool) {
+        self.flags.streaming.enabled.store(on, Ordering::SeqCst);
     }
 
     /// Chờ tới khi nguồn âm thanh tự hết và mọi đoạn đã xử lý xong (phát file WAV).
@@ -860,6 +912,20 @@ impl Composer {
         let window_ms = merge_window_ms(cfg.pipeline.segmenter.end_silence_ms, &cfg.pipeline.merge);
         let queue = MtQueue::new(cfg.pipeline.queue.clone());
         let stop_grace = Duration::from_millis(cfg.pipeline.mt.stop_grace_ms);
+        // Máy chưa đủ sức cho chế độ dịch trong lúc nói: báo ngay đầu phiên (H6; spec 2026-10-10 §5, §6.3).
+        let indicators = Indicators {
+            streaming_unavailable: !cfg.streaming_supported,
+            ..Indicators::default()
+        };
+        if indicators.streaming_unavailable {
+            sink.indicators(&indicators);
+        }
+        // Chỉ ghi chế độ (không có chữ nào), để log của phiên cho biết số đo thuộc chế độ nào.
+        log::info!(
+            "dịch trong lúc nói: {} lúc bắt đầu phiên (máy đủ sức: {})",
+            if flags.streaming.active() { "bật" } else { "tắt" },
+            cfg.streaming_supported
+        );
         Self {
             cfg,
             sink,
@@ -876,7 +942,7 @@ impl Composer {
             queue,
             in_flight: None,
             mt_unavailable: false,
-            indicators: Indicators::default(),
+            indicators,
             previous: HashMap::new(),
             metrics: SessionMetrics::default(),
             asr_done: false,
@@ -1641,6 +1707,7 @@ mod tests {
         asr_queue: Arc<SharedQueue>,
     }
 
+    /// Máy đủ sức nhưng công tắc tắt: chế độ dịch trong lúc nói không có hiệu lực, engine chạy như chế độ thường.
     fn cfg() -> EngineConfig {
         EngineConfig {
             pipeline: PipelineConfig::default(),
@@ -1649,13 +1716,15 @@ mod tests {
             translation_context: false,
             id_base: 0,
             glossary: SharedGlossary::default(),
+            streaming_supported: true,
+            streaming_enabled: false,
         }
     }
 
     fn harness_with(cfg: EngineConfig, sink: Sink) -> Harness {
         let sink = Arc::new(sink);
         let (jobs_tx, jobs) = mpsc::channel();
-        let flags = Flags::default();
+        let flags = Flags::new(&cfg);
         let asr_queue = Arc::new(SharedQueue::new(AsrQueue::new(cfg.pipeline.queue.clone())));
         let c = Composer::new(cfg, sink.clone(), jobs_tx, flags.clone(), asr_queue.clone());
         Harness {
@@ -2242,6 +2311,60 @@ mod tests {
         assert!(sent.load(Ordering::SeqCst) < 10_000);
         drop(jobs_tx);
         thread.join().unwrap();
+    }
+
+    /// H6: máy chưa đủ sức thì chỉ báo "dịch sau mỗi câu" bật ngay đầu phiên; máy đủ sức thì không có sự kiện nào.
+    #[test]
+    fn an_unsupported_machine_reports_streaming_unavailable_at_the_start() {
+        let h = harness_with(
+            EngineConfig {
+                streaming_supported: false,
+                ..cfg()
+            },
+            Sink::default(),
+        );
+        let indicators = h.sink.indicators.lock().unwrap().clone();
+        assert_eq!(
+            indicators,
+            [Indicators {
+                streaming_unavailable: true,
+                ..Indicators::default()
+            }]
+        );
+        assert!(!h.flags.streaming.active());
+        assert!(harness().sink.indicators.lock().unwrap().is_empty());
+    }
+
+    /// Spec 2026-10-10 §6.3: công tắc đổi được giữa phiên; tự tắt thì bật lại cũng không có hiệu lực (§5).
+    #[test]
+    fn the_streaming_switch_can_change_mid_session() {
+        let config = EngineConfig {
+            streaming_enabled: true,
+            ..cfg()
+        };
+        let (engine, _sink) = start(live(Vec::new()), energy(), Box::new(ConstAsr("x")), quick_mt(), config);
+        assert!(engine.flags.streaming.active());
+        engine.set_streaming_enabled(false);
+        assert!(!engine.flags.streaming.active());
+        engine.set_streaming_enabled(true);
+        assert!(engine.flags.streaming.active());
+        engine.flags.streaming.auto_off.store(true, Ordering::SeqCst);
+        assert!(!engine.flags.streaming.active());
+        engine.stop();
+    }
+
+    #[test]
+    fn indicators_name_streaming_unavailable_in_camel_case() {
+        let i = Indicators {
+            streaming_unavailable: true,
+            ..Indicators::default()
+        };
+        assert_eq!(
+            serde_json::to_value(&i).unwrap(),
+            serde_json::json!({
+                "lagging": false, "noAudio": false, "translationUnavailable": false, "streamingUnavailable": true
+            })
+        );
     }
 
     /// "Đang trễ" khi đoạn cũ nhất còn đang xử lý trễ quá 6 giây, tắt khi bắt kịp (§7).
