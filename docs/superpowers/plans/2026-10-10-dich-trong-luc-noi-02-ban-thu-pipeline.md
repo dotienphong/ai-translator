@@ -7557,7 +7557,8 @@ bằng
     }
 
     /// Ba cờ của chế độ dịch trong lúc nói đặt `PipelineConfig.streaming`; ngưỡng người dùng giữ nguyên; giá trị vô lý bị từ
-    /// chối; không có cờ thì cấu hình mặc định.
+    /// chối (n ngoài khoảng, hay mã tiếng ngoài 5 mã của `Lang::from_code` — Task 1, commit `e388300`); không có cờ thì
+    /// cấu hình mặc định.
     #[test]
     fn the_streaming_flags_set_the_streaming_config() {
         let a = args(&[
@@ -7565,7 +7566,7 @@ bằng
             "--streaming-end-silence-ms",
             "200",
             "--tgt-agree",
-            "ja:3:3,fr:2:0",
+            "ja:3:3,ko:2:0",
         ]);
         assert!(a.streaming);
         let mut p = PipelineConfig::default();
@@ -7575,7 +7576,7 @@ bằng
         assert_eq!(
             (
                 p.streaming.agree_for("ja"),
-                p.streaming.agree_for("fr"),
+                p.streaming.agree_for("ko"),
                 p.streaming.agree_for("en")
             ),
             ((3, 3), (2, 0), (2, 1))
@@ -7585,6 +7586,11 @@ bằng
         assert!(
             apply_streaming(&bad, &mut PipelineConfig::default()).is_err(),
             "n ngoài 2..=5"
+        );
+        let unknown_lang = args(&["--tgt-agree", "fr:2:0"]);
+        assert!(
+            apply_streaming(&unknown_lang, &mut PipelineConfig::default()).is_err(),
+            "\"fr\" không phải 1 trong 5 mã của Lang::from_code"
         );
         let plain = args(&[]);
         assert!(!plain.streaming);

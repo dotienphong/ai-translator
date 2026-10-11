@@ -144,7 +144,7 @@ impl StreamingConfig {
 | `streaming.end_silence_ms` | 50..=2000 |
 | `streaming.src_holdback_words` | ≤ 10 |
 | `streaming.src_holdback_chars` | ≤ 10 |
-| `streaming.tgt_agree` | mọi mục có `n` trong 2..=5 và `k` ≤ 10 |
+| `streaming.tgt_agree` | mọi mục có `n` trong 2..=5, `k` ≤ 10, `lang` thuộc 5 mã của `Lang::from_code` và không trùng nhau giữa các mục |
 | `streaming.tgt_agree_fallback` | `n` trong 2..=5 và `k` ≤ 10 |
 | `streaming.cycle_window` | 1..=32 |
 | `streaming.cadence_factor` | 1.0..=4.0 |
@@ -152,7 +152,7 @@ impl StreamingConfig {
 | `streaming.max_cadence_ms` | ≥ `min_cadence_ms` và ≤ 10000 |
 | `streaming.initial_cadence_ms` | trong [`min_cadence_ms`, `max_cadence_ms`] |
 | `streaming.warmup_cycles` | ≤ `cycle_window` |
-| `streaming.auto_off_cycle_ms` | ≥ 200 |
+| `streaming.auto_off_cycle_ms` | 200..=`max_cadence_ms` |
 
 ### H4. Module `streaming` (kế hoạch 02)
 
