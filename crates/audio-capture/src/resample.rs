@@ -6,7 +6,18 @@ use rubato::audioadapter_buffers::direct::InterleavedSlice;
 use rubato::{Fft, FixedSync, Resampler, WindowFunction};
 
 pub const TARGET_RATE: u32 = 16_000;
-const CHUNK: usize = 1024;
+
+/// Số khung vào của mỗi khối resample: 10 ms âm thanh vào (spec 2026-10-10 §8, A3; trước là 1024 khung, khoảng 21 ms ở
+/// 48 kHz).
+/// - Khối 10 ms khớp chu kỳ thường gặp của thiết bị (CoreAudio, WASAPI), nên mỗi lần đọc là ra mẫu ngay, không chờ đủ
+///   khối 21 ms.
+/// - Khối FFT ra 160 mẫu ở mọi tần số vào thường gặp (48; 44,1; 96 kHz), nên bộ lọc chống alias như nhau: phẳng tới
+///   7 kHz (lệch dưới 0,2 dB), −18 dB ở 7,5 kHz, chặn từ 60 dB trên 8 kHz (test bên dưới). Trước đó phẳng tới 7,5 kHz.
+/// - Trễ của bộ lọc còn 5 ms (trước 10,7 ms ở 48 kHz, 15 ms ở 44,1 kHz).
+/// - Tốn CPU không hơn: 60 giây 48 kHz stereo hết khoảng 12 ms, khối 1024 hết 17–19 ms (`cpu_cost_of_10_ms_blocks`).
+pub fn block_frames(input_rate: u32) -> usize {
+    (input_rate as usize / 100).max(1)
+}
 
 pub struct MonoResampler {
     channels: usize,
@@ -19,6 +30,11 @@ pub struct MonoResampler {
 
 impl MonoResampler {
     pub fn new(input_rate: u32, channels: u16) -> Result<Self> {
+        Self::with_block(input_rate, channels, block_frames(input_rate))
+    }
+
+    /// Như `new`, với khối `block` khung vào (test so với khối cũ 1024).
+    fn with_block(input_rate: u32, channels: u16, block: usize) -> Result<Self> {
         let inner = if input_rate == TARGET_RATE {
             None
         } else {
@@ -27,7 +43,7 @@ impl MonoResampler {
                 Fft::<f32>::new_custom(
                     input_rate as usize,
                     TARGET_RATE as usize,
-                    CHUNK,
+                    block,
                     1,
                     1,
                     WindowFunction::BlackmanHarris2,
@@ -124,6 +140,80 @@ mod tests {
         let crossings = steady.windows(2).filter(|w| w[0] < 0.0 && w[1] >= 0.0).count() as f32;
         let hz = crossings / (steady.len() as f32 / 16_000.0);
         assert!((hz - 440.0).abs() < 5.0, "hz = {hz}");
+    }
+
+    /// Mức (dB) của sóng sin `freq` sau khi resample từ `rate` stereo, so với mức vào; bỏ phần khởi động của bộ lọc.
+    fn gain_db(rate: u32, freq: f32) -> f32 {
+        let mut r = MonoResampler::new(rate, 2).unwrap();
+        let mut out = Vec::new();
+        r.process(&sine(rate, 2, freq, 1.0), &mut out).unwrap();
+        let steady = &out[4_000..out.len() - 100];
+        20.0 * (rms(steady) / (0.5 / 2f32.sqrt())).log10()
+    }
+
+    #[test]
+    fn blocks_are_10_ms_of_input() {
+        assert_eq!(block_frames(48_000), 480);
+        assert_eq!(block_frames(44_100), 441);
+        assert_eq!(block_frames(96_000), 960);
+        assert_eq!(block_frames(8_000), 80);
+        assert_eq!(block_frames(50), 1);
+    }
+
+    /// A3: khối 10 ms vẫn giữ nguyên dải tiếng nói và chặn alias, ở các tần số vào thường gặp.
+    #[test]
+    fn speech_band_is_flat_and_aliases_are_rejected() {
+        for rate in [48_000, 44_100, 96_000] {
+            for freq in [1_000.0, 6_000.0, 7_000.0] {
+                let db = gain_db(rate, freq);
+                assert!(db.abs() < 0.3, "{rate} Hz, {freq} Hz: {db:.2} dB");
+            }
+            for freq in [9_000.0, 12_000.0] {
+                let db = gain_db(rate, freq);
+                assert!(db < -55.0, "{rate} Hz, {freq} Hz: {db:.2} dB");
+            }
+        }
+    }
+
+    /// A3: trễ của bộ lọc khoảng 5 ms (đỉnh xung lệch 80 mẫu 16 kHz), trước là 171 mẫu (10,7 ms) ở 48 kHz.
+    #[test]
+    fn the_filter_delay_is_about_5_ms() {
+        for rate in [48_000u32, 44_100] {
+            let mut r = MonoResampler::new(rate, 1).unwrap();
+            let mut input = vec![0.0f32; rate as usize];
+            input[rate as usize / 2] = 1.0;
+            let mut out = Vec::new();
+            r.process(&input, &mut out).unwrap();
+            let peak = out
+                .iter()
+                .enumerate()
+                .max_by(|a, b| a.1.abs().total_cmp(&b.1.abs()))
+                .unwrap()
+                .0;
+            let delay = peak as i64 - 8_000;
+            assert!((76..=84).contains(&delay), "{rate} Hz: trễ {delay} mẫu");
+        }
+    }
+
+    /// A3, điều kiện "CPU không tăng đáng kể": in thời gian resample 60 giây 48 kHz stereo với khối 10 ms và khối cũ
+    /// 1024, theo các lần đọc 10 ms như thiết bị. Chạy tay ở bản release:
+    /// `cargo test --release -p audio-capture cpu_cost_of_10_ms_blocks -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "đo thời gian, chạy tay ở bản release"]
+    fn cpu_cost_of_10_ms_blocks() {
+        let input = sine(48_000, 2, 440.0, 60.0);
+        let time = |block: usize| {
+            let mut r = MonoResampler::with_block(48_000, 2, block).unwrap();
+            let mut out = Vec::new();
+            let started = std::time::Instant::now();
+            for piece in input.chunks(960) {
+                r.process(piece, &mut out).unwrap();
+            }
+            started.elapsed()
+        };
+        let (new, old) = (time(block_frames(48_000)), time(1024));
+        println!("60 giây 48 kHz stereo: khối 10 ms {new:?}, khối 1024 {old:?}");
+        assert!(new < old * 2, "khối 10 ms tốn hơn gấp đôi khối 1024");
     }
 
     #[test]
