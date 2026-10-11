@@ -219,19 +219,19 @@ fn partials_become_live_lines_with_a_prefill_and_the_final_replaces_them() {
         lives.iter().any(|l| !l.tgt_stable.is_empty()),
         "có phần dịch ổn định: {lives:?}"
     );
-    // Bản dịch giả là "VI: <chữ nguồn>". Có prefill thì server giả stream lại nó trước: chữ hiện vẫn bắt đầu đúng một lần
-    // bằng "VI: one" (client coi chữ stream về là cả bản dịch).
+    // Bản dịch giả là "VI: " rồi đúng các từ nguồn: chữ dịch đang hiện phải là tiền tố THEO TỪ của bản dịch đầy đủ (kể cả
+    // "VI:" của gói SSE đầu khi chưa có prefill, QĐ7), và không bao giờ ngắn lại (QĐ7; chữ nguồn chỉ dài thêm).
+    const SRC: &str = "one two three four five six seven eight nine ten eleven twelve";
+    let tgt_full = format!("VI: {SRC}");
+    let word_prefix = |full: &str, s: &str| s.is_empty() || full == s || full.starts_with(&format!("{s} "));
+    let mut shown = 0;
     for l in &lives {
         let tgt = format!("{}{}", l.tgt_stable, l.tgt_tail);
-        // Gói SSE đầu tiên của bản dịch không có prefill chỉ là "VI:" (nhãn của server giả, đứng một mình); vài phần tạm
-        // đầu tiên có thể dừng ở trạng thái đang tích lũy đó trước khi " one" kịp tới — đây là streaming bình thường.
-        assert!(
-            tgt.is_empty()
-                || "VI: one".starts_with(&tgt)
-                || (tgt.starts_with("VI: one") && tgt.matches("VI:").count() == 1),
-            "{tgt:?}"
-        );
-        assert!(format!("{}{}", l.src_stable, l.src_tail).starts_with("one"), "{l:?}");
+        assert!(word_prefix(&tgt_full, &tgt), "{tgt:?}");
+        assert!(tgt.chars().count() >= shown, "chữ dịch đang hiện ngắn lại: {tgt:?}");
+        shown = tgt.chars().count();
+        let src = format!("{}{}", l.src_stable, l.src_tail);
+        assert!(!src.is_empty() && word_prefix(SRC, &src), "{l:?}");
     }
     let llama_events = std::fs::read_to_string(t.path("llama-events")).unwrap();
     assert!(
@@ -254,10 +254,11 @@ fn partials_become_live_lines_with_a_prefill_and_the_final_replaces_them() {
         unreachable!()
     };
     assert!(fin.tgt_text.starts_with("VI: one"), "{fin:?}");
+    assert_eq!(fin.tgt_text, format!("VI: {}", fin.src_text), "{fin:?}");
 
     // Log của cả phiên không có chữ chép lời hay bản dịch nào, kể cả bản tạm.
     let log = LOG.0.lock().unwrap().join("\n");
-    for secret in ["three", "seven", "VI: one"] {
+    for secret in ["one two", "three", "seven", "VI:"] {
         assert!(!log.contains(secret), "log lộ \"{secret}\":\n{log}");
     }
 }
