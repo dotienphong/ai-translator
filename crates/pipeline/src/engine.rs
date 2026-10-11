@@ -2133,8 +2133,10 @@ impl Composer {
             return;
         }
         let Some(want) = self.live_want.take() else { return };
-        // Câu được nối tiếp có thể đã đổi từ lần chép đó (đã chốt, hay vừa được ghép thêm đoạn trước).
+        // Câu được nối tiếp có thể đã đổi từ lần chép đó (đã chốt, hay vừa được ghép thêm đoạn trước): phát lại ngay nếu
+        // refresh_extends vừa đổi extends hay xóa phần dịch cũ (reset_target), để thanh phụ đề không giữ chỗ cũ.
         self.refresh_extends(want.seg);
+        self.emit_live(want.seg, false);
         let Some(live) = self.lives.get(&want.seg).filter(|l| !l.frozen && !l.same_lang()) else {
             return;
         };
