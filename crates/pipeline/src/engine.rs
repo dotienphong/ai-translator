@@ -2097,6 +2097,66 @@ mod tests {
         assert_eq!((last.status, last.tgt_text.as_str()), (Status::Done, "về"));
     }
 
+    /// A2: `settle` bỏ hẳn `held`: câu đang giữ mà dịch hỏng, rồi được ghép tiếp, thì chữ mới đi bằng delta ngay.
+    #[test]
+    fn a_failed_held_sentence_that_grows_again_streams_at_once() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.finish(&j1, done("chúng tôi đã đi"));
+        h.said(2, 1_300, 2_000, "en", "home");
+        let j2 = h.job();
+        h.finish(
+            &j2,
+            Outcome::Failed {
+                reason: "x".into(),
+                attempts: 2,
+                source_tokens: 1,
+                completion_tokens: None,
+            },
+        );
+        h.said(3, 2_300, 3_000, "en", "now.");
+        let j3 = h.job();
+        h.delta(&j3, "về");
+        let last = h.sink.deltas.lock().unwrap().last().cloned();
+        assert_eq!(last.map(|d| (d.id, d.text)), Some((1, "về".to_string())));
+    }
+
+    /// A2: ghép lần hai khi bản mới còn dở: chữ dở bị bỏ, tin của job đã hủy bị bỏ, bản giữ vẫn là bản gốc.
+    #[test]
+    fn a_sentence_growing_twice_while_holding_drops_the_stale_fresh_text() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.finish(&j1, done("chúng tôi đã đi"));
+        h.said(2, 1_300, 2_000, "en", "home");
+        let j2 = h.job();
+        h.delta(&j2, "chúng tôi");
+        h.said(3, 2_300, 3_000, "en", "now");
+        h.delta(&j2, " về nhà bây giờ rồi đó");
+        h.finish(&j2, done("chúng tôi về nhà bây giờ rồi đó"));
+        let j3 = h.job();
+        assert_eq!((j3.version, h.last(1).tgt_text.as_str()), (3, "chúng tôi đã đi"));
+        h.delta(&j3, "giờ chúng tôi về");
+        assert_eq!(h.last(1).tgt_text, "giờ chúng tôi về");
+    }
+
+    /// A2: bản mới (xong) ngắn hơn bản đang giữ: bản cũ còn hiện tới lúc xong, rồi trạng thái cuối là bản mới.
+    #[test]
+    fn a_shorter_new_translation_replaces_the_held_one_when_done() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.finish(&j1, done("vậy là chúng tôi đã đi"));
+        h.said(2, 1_300, 2_000, "en", "home.");
+        let j2 = h.job();
+        h.delta(&j2, "về nhà.");
+        assert_eq!(h.last(1).tgt_text, "vậy là chúng tôi đã đi");
+        h.finish(&j2, done("về nhà."));
+        let last = h.last(1);
+        assert_eq!((last.status, last.tgt_text.as_str()), (Status::Done, "về nhà."));
+    }
+
     /// H1: luồng dịch truyền cờ hủy của câu cho `translate`, nên câu bị hủy dừng ngay cả khi hậu xử lý chưa hiện chữ nào
     /// (server chỉ trả khoảng trắng).
     #[test]
