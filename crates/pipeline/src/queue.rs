@@ -499,10 +499,12 @@ mod tests {
         let mut q = AsrQueue::new(QueueConfig::default());
         q.set_partial(partial(5, 1_000));
         q.set_partial(partial(5, 2_000));
-        assert!(matches!(q.pop(0), Some(Popped::Partial(p)) if p.upto_ms == 2_000));
-        assert!(q.pop(0).is_none(), "chỉ giữ một yêu cầu");
+        // Xét lúc yêu cầu còn chờ: `len`, `is_empty` và `has_waiting_segments` chỉ đếm đoạn đóng.
         assert!(q.is_empty());
         assert_eq!(q.len(), 0, "len chỉ đếm đoạn đóng");
+        assert!(!q.has_waiting_segments());
+        assert!(matches!(q.pop(0), Some(Popped::Partial(p)) if p.upto_ms == 2_000));
+        assert!(q.pop(0).is_none(), "chỉ giữ một yêu cầu");
     }
 
     /// Đoạn đã đóng thì yêu cầu chép từng phần đang chờ của nó (hay của đoạn trước) không còn cần: lượt cuối đã thay.
@@ -522,10 +524,58 @@ mod tests {
         assert!(q.pop(0).is_none());
     }
 
+    /// Đoạn đóng bỏ yêu cầu mang id không lớn hơn id cuối của nó: của chính nó (kể cả khi còn đoạn khác chờ), của đoạn
+    /// trước; đoạn mang nhiều id thì xét id cuối.
+    #[test]
+    fn closing_a_segment_drops_partials_up_to_its_last_id() {
+        let mut q = AsrQueue::new(QueueConfig::default());
+        q.push(seg(3, 0, 900, 1));
+        assert!(q.has_waiting_segments(), "một đoạn đóng chờ");
+        q.set_partial(partial(4, 1_000));
+        q.push(seg(4, 1_000, 2_000, 1));
+        assert!(matches!(q.pop(0), Some(Popped::Segment(s)) if s.ids == [3]));
+        assert!(matches!(q.pop(0), Some(Popped::Segment(s)) if s.ids == [4]));
+        assert!(q.pop(0).is_none(), "yêu cầu của đoạn 4 bị bỏ dù đoạn 3 còn chờ");
+
+        q.set_partial(partial(5, 1_000));
+        q.push(seg(6, 3_000, 4_000, 1));
+        assert!(matches!(q.pop(0), Some(Popped::Segment(s)) if s.ids == [6]));
+        assert!(q.pop(0).is_none(), "yêu cầu của đoạn trước (5) bị bỏ khi đoạn 6 đóng");
+
+        q.set_partial(partial(8, 1_000));
+        q.push(PendingSegment {
+            ids: vec![7, 8],
+            ..seg(7, 5_000, 6_000, 1)
+        });
+        assert!(matches!(q.pop(0), Some(Popped::Segment(s)) if s.ids == [7, 8]));
+        assert!(q.pop(0).is_none(), "đoạn mang id 7 và 8: yêu cầu của đoạn 8 bị bỏ");
+    }
+
+    /// Spec 2026-10-10 §4.1: luật gộp và bỏ đoạn chỉ áp cho đoạn đóng. Yêu cầu đang chờ không làm hàng đầy sớm, và trễ bao
+    /// nhiêu cũng không bị bỏ.
+    #[test]
+    fn the_merge_and_drop_rules_ignore_the_partial() {
+        let mut q = AsrQueue::new(QueueConfig::default());
+        q.set_partial(partial(9, 1_000));
+        for i in 0..3 {
+            q.push(seg(i, i * 5_000, i * 5_000 + 3_000, 3));
+        }
+        assert_eq!(q.len(), 3, "ba đoạn đóng chờ, chưa gộp");
+        for want in 0..3 {
+            assert!(matches!(q.pop(0), Some(Popped::Segment(s)) if s.ids == [want]));
+        }
+        assert!(matches!(q.pop(60_000), Some(Popped::Partial(p)) if p.id == 9));
+    }
+
     #[test]
     fn the_partial_request_debug_has_no_audio() {
-        let text = format!("{:?}", partial(5, 1_000));
+        let p = PartialRequest {
+            samples: vec![0.123; 16],
+            ..partial(5, 1_000)
+        };
+        let text = format!("{p:?}");
         assert!(text.contains("<16 mẫu>") && text.contains("id: 5"), "{text}");
+        assert!(!text.contains("0.123"), "không in mẫu âm thanh: {text}");
     }
 
     /// Đoạn gộp lấy trung bình xác suất VAD theo độ dài tiếng nói.
