@@ -38,11 +38,13 @@ use crate::prompt_history::PromptHistory;
 use crate::queue::{AsrQueue, MtItem, MtQueue, PartialRequest, PendingSegment, Popped, Ready};
 use crate::segmenter::{FRAME_MS, FRAME_SAMPLES, Segmenter, SegmenterConfig};
 use crate::sentence::{OpenSentence, Piece, joiner, merge_window_ms};
-use crate::streaming::{PartialScheduler, Split, Stabilizer, uses_char_units};
+use crate::streaming::{
+    Cadence, PartialScheduler, Split, Stabilizer, split_units, strip_terminal_punct, uses_char_units,
+};
 use crate::subtitle::{Delta, LiveEnd, LiveLine, Status, Subtitle};
 use crate::supervisor::{Asr, AsrFailure};
 use crate::text::display_text;
-use crate::translate::{Event, Job, Mt, MtError, Outcome, translate};
+use crate::translate::{Event, Job, Mt, MtError, Outcome, translate, translate_live};
 use crate::vad::SileroVad;
 use anyhow::Result;
 use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
@@ -268,6 +270,8 @@ struct PartialText {
     text: Option<String>,
     /// `asr_ms` + `lid_ms` của worker.
     asr_ms: f32,
+    /// Lúc luồng VAD tạo yêu cầu (giờ thật): mốc đầu của vòng cập nhật (§5).
+    requested: Instant,
 }
 
 enum Msg {
@@ -300,6 +304,17 @@ enum Msg {
         version: u32,
         outcome: Outcome,
     },
+    /// Một gói chữ của bản tạm `job` (spec 2026-10-10 §4.3), đã qua hậu xử lý.
+    LiveDelta {
+        job: u64,
+        text: String,
+    },
+    /// Bản tạm `job` kết thúc; `finished`: lúc xong (giờ thật), cho vòng cập nhật (§5).
+    LiveDone {
+        job: u64,
+        outcome: Outcome,
+        finished: Instant,
+    },
     /// Luồng dịch dừng bất thường.
     MtGone,
     /// Lần làm nóng đầu phiên cho thấy `llama-server` không dùng được: báo ngay, không chờ câu đầu tiên.
@@ -313,6 +328,25 @@ struct MtJob {
     text: String,
     context: Option<String>,
     cancel: Arc<AtomicBool>,
+}
+
+/// Bản tạm của dòng đang nói (spec 2026-10-10 §4.3).
+struct LiveJob {
+    /// Số thứ tự của việc: luồng phụ đề chỉ nhận tin nhắn của việc đang chạy.
+    job: u64,
+    src: Lang,
+    /// Chữ nguồn đem dịch: chữ của lần chép mới nhất, nối sau câu được nối tiếp (nếu có).
+    text: String,
+    context: Option<String>,
+    /// Phần dịch đã chốt (§4.4), không có khoảng trắng cuối.
+    prefill: Option<String>,
+    cancel: Arc<AtomicBool>,
+}
+
+/// Việc cho luồng dịch (QĐ4 của kế hoạch 02): một câu của lượt cuối, hay một bản tạm.
+enum Work {
+    Final(MtJob),
+    Live(LiveJob),
 }
 
 /// Hàng đợi nhận dạng dùng chung giữa luồng VAD và luồng nhận dạng.
@@ -465,7 +499,7 @@ impl Engine {
         let now_ms = Arc::new(AtomicU64::new(0));
         let queue = Arc::new(SharedQueue::new(AsrQueue::new(cfg.pipeline.queue.clone())));
         let (tx, rx) = mpsc::channel::<Msg>();
-        let (jobs_tx, jobs_rx) = mpsc::channel::<MtJob>();
+        let (jobs_tx, jobs_rx) = mpsc::channel::<Work>();
         let fail = |e: std::io::Error, flags: &Flags, queue: &SharedQueue| {
             flags.stop.store(true, Ordering::SeqCst);
             flags.hurry.store(true, Ordering::SeqCst);
@@ -957,6 +991,7 @@ fn transcribe_partial(
                 lang: r.lang,
                 text: kept.then_some(text),
                 asr_ms: r.asr_ms + r.lid_ms,
+                requested: p.requested,
             })));
             ControlFlow::Continue(())
         }
@@ -973,7 +1008,7 @@ fn transcribe_partial(
 
 fn mt_loop(
     mut mt: Box<dyn Mt>,
-    jobs: Receiver<MtJob>,
+    jobs: Receiver<Work>,
     tx: &Sender<Msg>,
     cfg: &MtConfig,
     target: Lang,
@@ -1004,39 +1039,91 @@ fn mt_loop(
             let _ = tx.send(Msg::MtUnavailable(reason));
         }
     }
-    for job in jobs {
-        let (sub_id, version) = (job.sub_id, job.version);
-        // Thuật ngữ có trong câu, theo bản từ điển lúc bắt đầu dịch câu này (§6.5).
-        let terms = glossary.read().map(|g| g.matches(&job.text)).unwrap_or_default();
-        let request = Job {
-            text: &job.text,
-            src: job.src,
-            tgt: target,
-            context: job.context.as_deref(),
-            terms: &terms,
-            // Luồng phụ đề bật cờ khi câu được ghép thêm hay khi hết hạn dừng: `translate` kiểm ở mọi gói (H1).
-            cancel: Some(job.cancel.as_ref()),
-        };
-        let outcome = translate(&mut *mt, &request, cfg, &mut |event| {
-            let msg = match event {
-                Event::Delta(text) => Msg::MtDelta {
-                    sub_id,
-                    version,
-                    text: text.to_string(),
-                },
-                Event::Retry => Msg::MtRetry { sub_id, version },
-            };
-            match tx.send(msg) {
-                Ok(()) => ControlFlow::Continue(()),
-                Err(_) => ControlFlow::Break(()),
-            }
-        });
-        let _ = tx.send(Msg::MtDone {
-            sub_id,
-            version,
-            outcome,
-        });
+    for work in jobs {
+        match work {
+            Work::Final(job) => translate_final(&mut *mt, &job, tx, cfg, target, glossary),
+            Work::Live(job) => translate_live_job(&mut *mt, &job, tx, cfg, target, glossary),
+        }
     }
+}
+
+/// Một câu của lượt cuối (§6.5): gửi từng phần chữ về luồng phụ đề.
+fn translate_final(
+    mt: &mut dyn Mt,
+    job: &MtJob,
+    tx: &Sender<Msg>,
+    cfg: &MtConfig,
+    target: Lang,
+    glossary: &SharedGlossary,
+) {
+    let (sub_id, version) = (job.sub_id, job.version);
+    // Thuật ngữ có trong câu, theo bản từ điển lúc bắt đầu dịch câu này (§6.5).
+    let terms = glossary.read().map(|g| g.matches(&job.text)).unwrap_or_default();
+    let request = Job {
+        text: &job.text,
+        src: job.src,
+        tgt: target,
+        context: job.context.as_deref(),
+        terms: &terms,
+        // Luồng phụ đề bật cờ khi câu được ghép thêm hay khi hết hạn dừng: `translate` kiểm ở mọi gói (H1).
+        cancel: Some(job.cancel.as_ref()),
+    };
+    let outcome = translate(mt, &request, cfg, &mut |event| {
+        let msg = match event {
+            Event::Delta(text) => Msg::MtDelta {
+                sub_id,
+                version,
+                text: text.to_string(),
+            },
+            Event::Retry => Msg::MtRetry { sub_id, version },
+        };
+        match tx.send(msg) {
+            Ok(()) => ControlFlow::Continue(()),
+            Err(_) => ControlFlow::Break(()),
+        }
+    });
+    let _ = tx.send(Msg::MtDone {
+        sub_id,
+        version,
+        outcome,
+    });
+}
+
+/// Bản tạm của dòng đang nói (spec 2026-10-10 §4.3): `translate_live` kèm prefill; gửi từng gói và lúc xong về luồng phụ đề.
+/// Luồng phụ đề bật cờ hủy khi có lần chép mới hơn hay khi việc của lượt cuối cần chạy (§4.6).
+fn translate_live_job(
+    mt: &mut dyn Mt,
+    job: &LiveJob,
+    tx: &Sender<Msg>,
+    cfg: &MtConfig,
+    target: Lang,
+    glossary: &SharedGlossary,
+) {
+    let id = job.job;
+    let terms = glossary.read().map(|g| g.matches(&job.text)).unwrap_or_default();
+    let request = Job {
+        text: &job.text,
+        src: job.src,
+        tgt: target,
+        context: job.context.as_deref(),
+        terms: &terms,
+        cancel: Some(job.cancel.as_ref()),
+    };
+    let outcome = translate_live(mt, &request, job.prefill.as_deref(), cfg, &mut |event| match event {
+        Event::Delta(text) => match tx.send(Msg::LiveDelta {
+            job: id,
+            text: text.to_string(),
+        }) {
+            Ok(()) => ControlFlow::Continue(()),
+            Err(_) => ControlFlow::Break(()),
+        },
+        Event::Retry => ControlFlow::Continue(()),
+    });
+    let _ = tx.send(Msg::LiveDone {
+        job: id,
+        outcome,
+        finished: Instant::now(),
+    });
 }
 
 struct SubState {
@@ -1071,16 +1158,25 @@ struct Live {
     /// Chốt chữ nguồn của riêng đoạn: LocalAgreement-2, giữ lại `src_holdback_*` đơn vị cuối (§4.2).
     src: Stabilizer,
     src_split: Split,
+    /// Chốt phần dịch: LocalAgreement-n, giữ lại k đơn vị cuối, (n, k) theo tiếng nguồn (§4.4).
+    tgt: Stabilizer,
+    target: &'static str,
+    agree: (usize, usize),
     /// Chữ của lần chép từng phần mới nhất, và mốc của nó.
     text: String,
     start_ms: u64,
     upto_ms: u64,
+    /// Số lần chép từng phần đã nhận.
+    generation: u64,
+    /// Bản tạm đang stream: chữ đã nhận (gồm phần prefill được stream lại), và đã thay chữ đang hiện chưa (QĐ7).
+    streaming: String,
+    switched: bool,
     /// Kết quả nhận dạng lượt cuối của đoạn đã tới: không nhận gì thêm, chờ phụ đề chốt (QĐ5).
     frozen: bool,
 }
 
 impl Live {
-    fn new(id: u64, lang: &str, holdback: usize) -> Self {
+    fn new(id: u64, lang: &str, holdback: usize, target: &'static str, agree: (usize, usize)) -> Self {
         Self {
             line: LiveLine {
                 id,
@@ -1090,12 +1186,54 @@ impl Live {
             emitted: None,
             src: Stabilizer::new(lang, 2, holdback),
             src_split: Split::default(),
+            tgt: Stabilizer::new(target, agree.0, agree.1),
+            target,
+            agree,
             text: String::new(),
             start_ms: 0,
             upto_ms: 0,
+            generation: 0,
+            streaming: String::new(),
+            switched: false,
             frozen: false,
         }
     }
+
+    /// Câu đã là ngôn ngữ đích: không dịch, dòng chỉ hiện câu gốc (§4.3).
+    fn same_lang(&self) -> bool {
+        self.line.src_lang == self.target
+    }
+
+    /// Chữ nguồn đem dịch đã khác hẳn (đổi câu được nối tiếp), hay dịch không còn dùng được: phần dịch chốt lại từ đầu.
+    fn reset_target(&mut self) {
+        self.tgt = Stabilizer::new(self.target, self.agree.0, self.agree.1);
+        self.line.tgt_stable.clear();
+        self.line.tgt_tail.clear();
+        self.line.tgt_src_units = 0;
+        self.streaming.clear();
+        self.switched = false;
+    }
+}
+
+/// Bản tạm đang dịch (tối đa một, spec §4.6).
+struct LiveFlight {
+    job: u64,
+    seg: u64,
+    /// Lần chép từng phần (đếm theo đoạn) mà bản tạm này dịch, và câu được nối tiếp lúc gửi.
+    generation: u64,
+    extends: Option<u64>,
+    cancel: Arc<AtomicBool>,
+    /// Lúc luồng VAD tạo yêu cầu chép từng phần đó: mốc đầu của vòng cập nhật (§5).
+    requested: Instant,
+    /// Số đơn vị của chữ nguồn đem dịch (`LiveLine::tgt_src_units`).
+    src_units: u32,
+}
+
+/// Bản tạm chờ gửi đi dịch: lần chép mới nhất của một đoạn (yêu cầu mới thắng, §4.6).
+struct LiveWant {
+    seg: u64,
+    generation: u64,
+    requested: Instant,
 }
 
 /// Phần nguồn (ổn định, tạm) của dòng `live`: chữ của riêng đoạn (§4.2) nối sau `base` như khi ghép (QĐ6 của kế hoạch
@@ -1121,7 +1259,7 @@ fn live_source(live: &Live, base: Option<&str>) -> (String, String) {
 struct Composer {
     cfg: EngineConfig,
     sink: Arc<dyn EventSink>,
-    jobs: Option<Sender<MtJob>>,
+    jobs: Option<Sender<Work>>,
     flags: Flags,
     asr_queue: Arc<SharedQueue>,
     window_ms: u64,
@@ -1151,19 +1289,26 @@ struct Composer {
     live_waiting: HashMap<u64, Vec<u64>>,
     /// Đoạn lớn nhất đã có kết quả nhận dạng lượt cuối: bản chép từng phần của đoạn không lớn hơn số này tới muộn, bỏ.
     last_final_seg: Option<u64>,
+    live_flight: Option<LiveFlight>,
+    live_want: Option<LiveWant>,
+    /// Số bản tạm đã gửi (đánh số `LiveJob::job`).
+    live_jobs: u64,
+    /// Nhịp T và tự tắt (§5).
+    cadence: Cadence,
 }
 
 impl Composer {
     fn new(
         cfg: EngineConfig,
         sink: Arc<dyn EventSink>,
-        jobs: Sender<MtJob>,
+        jobs: Sender<Work>,
         flags: Flags,
         asr_queue: Arc<SharedQueue>,
     ) -> Self {
         let window_ms = merge_window_ms(cfg.pipeline.segmenter.end_silence_ms, &cfg.pipeline.merge);
         let queue = MtQueue::new(cfg.pipeline.queue.clone());
         let stop_grace = Duration::from_millis(cfg.pipeline.mt.stop_grace_ms);
+        let cadence = Cadence::new(&cfg.pipeline.streaming);
         // Máy chưa đủ sức cho chế độ dịch trong lúc nói: báo ngay đầu phiên (H6; spec 2026-10-10 §5, §6.3).
         let indicators = Indicators {
             streaming_unavailable: !cfg.streaming_supported,
@@ -1204,6 +1349,10 @@ impl Composer {
             lives: BTreeMap::new(),
             live_waiting: HashMap::new(),
             last_final_seg: None,
+            live_flight: None,
+            live_want: None,
+            live_jobs: 0,
+            cadence,
         }
     }
 
@@ -1225,6 +1374,7 @@ impl Composer {
     fn step(&mut self) -> bool {
         self.check_flags();
         self.dispatch();
+        self.dispatch_live();
         self.abandoned
             || (self.asr_done && self.in_flight.is_none() && self.queue.is_empty())
             || (self.quota_hit && self.in_flight.is_none())
@@ -1309,9 +1459,12 @@ impl Composer {
                 version,
                 outcome,
             } => self.on_mt_done(sub_id, version, outcome),
+            Msg::LiveDelta { job, text } => self.on_live_delta(job, &text),
+            Msg::LiveDone { job, outcome, finished } => self.on_live_done(job, outcome, finished),
             Msg::MtGone => {
                 log::error!("luồng dịch dừng bất thường");
                 self.jobs = None;
+                self.live_flight = None;
                 self.set_mt_unavailable();
                 if let Some(f) = self.in_flight.take() {
                     self.settle(f.sub_id, Status::Failed, String::new());
@@ -1686,6 +1839,11 @@ impl Composer {
                 state.sub.tgt_text.clear();
             }
             self.sink.subtitle(&state.sub);
+            // Việc của lượt cuối luôn đi trước (spec 2026-10-10 §4.6): bản tạm đang dịch dừng ngay, luồng dịch làm câu này
+            // ngay sau đó.
+            if let Some(f) = &self.live_flight {
+                f.cancel.store(true, Ordering::SeqCst);
+            }
             let cancel = Arc::new(AtomicBool::new(false));
             let job = MtJob {
                 sub_id: item.sub_id,
@@ -1700,7 +1858,7 @@ impl Composer {
                 version: item.version,
                 cancel,
             });
-            let sent = self.jobs.as_ref().is_some_and(|j| j.send(job).is_ok());
+            let sent = self.jobs.as_ref().is_some_and(|j| j.send(Work::Final(job)).is_ok());
             if !sent {
                 self.in_flight = None;
                 self.set_mt_unavailable();
@@ -1783,8 +1941,9 @@ impl Composer {
         }
     }
 
-    /// Một lần chép từng phần có kết quả (spec 2026-10-10 §4.1–§4.3): cập nhật dòng đang nói của đoạn. Bỏ khi bị lọc, khi lượt
-    /// cuối của đoạn đã có, khi chế độ đã tự tắt, khi đang dừng, hết hạn mức hay hết hạn dừng.
+    /// Một lần chép từng phần có kết quả (spec 2026-10-10 §4.1–§4.3): cập nhật dòng đang nói của đoạn, rồi xin dịch lần chép
+    /// này (yêu cầu mới thắng, §4.6). Bỏ khi bị lọc, khi lượt cuối của đoạn đã có, khi chế độ đã tự tắt, khi đang dừng, hết
+    /// hạn mức hay hết hạn dừng.
     fn on_partial(&mut self, p: PartialText) {
         self.metrics.partials += 1;
         self.metrics.partial_asr_ms.push(p.asr_ms);
@@ -1804,23 +1963,38 @@ impl Composer {
         } else {
             streaming.src_holdback_words
         };
+        let agree = streaming.agree_for(&p.lang);
+        let target = self.cfg.target.code();
         let id = self.cfg.id_base + p.seg;
         let live = self
             .lives
             .entry(p.seg)
-            .or_insert_with(|| Live::new(id, &p.lang, holdback));
+            .or_insert_with(|| Live::new(id, &p.lang, holdback, target, agree));
         if live.frozen {
             return;
         }
         if live.line.src_lang != p.lang {
             // Ngôn ngữ chỉ đổi được khi lần chép trước bị lọc (QĐ8): bắt đầu lại dòng với ngôn ngữ mới.
-            *live = Live::new(id, &p.lang, holdback);
+            *live = Live::new(id, &p.lang, holdback, target, agree);
         }
+        live.generation += 1;
         live.src_split = live.src.push(&text);
         live.text = text;
         live.start_ms = p.start_ms;
         live.upto_ms = p.upto_ms;
+        let (generation, same_lang) = (live.generation, live.same_lang());
         self.refresh_extends(p.seg);
+        if !same_lang && !self.mt_unavailable {
+            // Yêu cầu mới thắng (§4.6): hủy bản tạm đang dịch; lần chép mới nhất được gửi đi khi rảnh (`dispatch_live`).
+            if let Some(f) = &self.live_flight {
+                f.cancel.store(true, Ordering::SeqCst);
+            }
+            self.live_want = Some(LiveWant {
+                seg: p.seg,
+                generation,
+                requested: p.requested,
+            });
+        }
         self.emit_live(p.seg, false);
     }
 
@@ -1844,6 +2018,7 @@ impl Composer {
     }
 
     /// Xét lại phụ đề tạm mà dòng của đoạn `seg` nối tiếp (câu đang mở có thể đã chốt, hay vừa được ghép thêm đoạn trước).
+    /// Đổi thì chữ nguồn đem dịch đã khác: phần dịch chốt lại từ đầu.
     fn refresh_extends(&mut self, seg: u64) {
         let Some(live) = self.lives.get(&seg).filter(|l| !l.frozen) else {
             return;
@@ -1853,6 +2028,7 @@ impl Composer {
             && live.line.extends != extends
         {
             live.line.extends = extends;
+            live.reset_target();
         }
     }
 
@@ -1879,27 +2055,37 @@ impl Composer {
 
     /// Kết quả nhận dạng lượt cuối của các đoạn `segs` vừa thành phụ đề `sub_id` (phụ đề mới, hay câu được ghép thêm): dòng
     /// đang nói của các đoạn đó đóng băng, được phát lại một lần với `extends` là phụ đề đó (`None` nếu đó chính là id của
-    /// dòng), và chờ phụ đề đó chốt để gỡ (QĐ5). Gọi ngay sau upsert tạo ra phần chữ của các đoạn đó.
+    /// dòng), và chờ phụ đề đó chốt để gỡ (QĐ5). Bản tạm của các đoạn đó không còn cần. Gọi ngay sau upsert tạo ra phần chữ
+    /// của các đoạn đó.
     ///
     /// Dòng giữ chữ đang hiện của đoạn (spec §4.5): phần ổn định và phần tạm của lần chép từng phần cuối, nối sau `before`,
     /// chữ của câu `sub_id` trước khi ghép các đoạn đó (`None` với phụ đề mới). Không dựng từ chữ hiện tại của câu: chữ đó
     /// đã gồm lượt cuối của chính các đoạn này, chữ của đoạn sẽ bị lặp.
+    ///
+    /// `extends` đổi so với lúc dịch bản tạm gần nhất (hiếm: câu đang mở vừa chốt vì quá trần, hay LID đổi) thì phần dịch
+    /// không còn khớp chữ nguồn mới — chốt lại từ đầu, cùng luật với `refresh_extends`.
     fn freeze_lives(&mut self, segs: &[u64], sub_id: u64, before: Option<&str>) {
         for &seg in segs {
+            self.forget_live_work(seg);
             let Some(live) = self.lives.get_mut(&seg) else {
                 continue;
             };
             live.frozen = true;
-            live.line.extends = (live.line.id != sub_id).then_some(sub_id);
+            let extends = (live.line.id != sub_id).then_some(sub_id);
+            if live.line.extends != extends {
+                live.reset_target();
+            }
+            live.line.extends = extends;
             (live.line.src_stable, live.line.src_tail) = live_source(live, live.line.extends.and(before));
             self.live_waiting.entry(sub_id).or_default().push(seg);
             self.emit_live(seg, true);
         }
     }
 
-    /// Gỡ dòng đang nói của các đoạn `segs`, nếu có (spec §4.5, §6.2).
+    /// Gỡ dòng đang nói của các đoạn `segs`, nếu có (spec §4.5, §6.2); bản tạm của chúng không còn cần.
     fn end_lives(&mut self, segs: &[u64]) {
         for &seg in segs {
+            self.forget_live_work(seg);
             if self.lives.remove(&seg).is_some() {
                 self.sink.live_end(&LiveEnd {
                     id: self.cfg.id_base + seg,
@@ -1920,6 +2106,186 @@ impl Composer {
         self.live_waiting.clear();
         let segs: Vec<u64> = self.lives.keys().copied().collect();
         self.end_lives(&segs);
+    }
+
+    /// Đoạn `seg` không còn cần bản tạm: hủy bản tạm đang dịch của nó, bỏ yêu cầu đang chờ.
+    fn forget_live_work(&mut self, seg: u64) {
+        if let Some(f) = self.live_flight.as_ref().filter(|f| f.seg == seg) {
+            f.cancel.store(true, Ordering::SeqCst);
+        }
+        if self.live_want.as_ref().is_some_and(|w| w.seg == seg) {
+            self.live_want = None;
+        }
+    }
+
+    /// Gửi bản tạm mới nhất đi dịch (spec 2026-10-10 §4.6): tối đa một bản tạm một lúc; chỉ khi không có việc của lượt cuối
+    /// đang chạy hay đang chờ; không gửi khi dịch không khả dụng, đang dừng, hết hạn mức hay chế độ đã tự tắt.
+    fn dispatch_live(&mut self) {
+        if self.live_flight.is_some()
+            || self.in_flight.is_some()
+            || !self.queue.is_empty()
+            || self.mt_unavailable
+            || self.quota_hit
+            || self.abandoned
+            || self.hurry_since.is_some()
+            || self.flags.streaming.auto_off.load(Ordering::SeqCst)
+        {
+            return;
+        }
+        let Some(want) = self.live_want.take() else { return };
+        // Câu được nối tiếp có thể đã đổi từ lần chép đó (đã chốt, hay vừa được ghép thêm đoạn trước).
+        self.refresh_extends(want.seg);
+        let Some(live) = self.lives.get(&want.seg).filter(|l| !l.frozen && !l.same_lang()) else {
+            return;
+        };
+        let lang = live.line.src_lang.clone();
+        let extended = live.line.extends.and_then(|id| self.subs.get(&id));
+        let text = match extended {
+            Some(state) => format!("{}{}{}", state.sub.src_text.trim_end(), joiner(&lang), live.text.trim()),
+            None => live.text.trim().to_string(),
+        };
+        // Ngữ cảnh như lượt cuối (cờ `translationContext`): của câu được nối tiếp, hay câu chốt gần nhất cùng ngôn ngữ.
+        let context = match extended {
+            Some(state) => state.context.clone(),
+            None => self
+                .cfg
+                .translation_context
+                .then(|| self.previous.get(&lang).cloned())
+                .flatten(),
+        };
+        let prefill = Some(live.tgt.stable_text()).filter(|p| !p.is_empty());
+        let src_units = split_units(&text, &lang).len() as u32;
+        let extends = live.line.extends;
+        self.live_jobs += 1;
+        let cancel = Arc::new(AtomicBool::new(false));
+        let job = LiveJob {
+            job: self.live_jobs,
+            src: Lang::from_code(&lang).unwrap_or(Lang::En),
+            text,
+            context,
+            prefill,
+            cancel: cancel.clone(),
+        };
+        if self.jobs.as_ref().is_some_and(|j| j.send(Work::Live(job)).is_ok()) {
+            self.live_flight = Some(LiveFlight {
+                job: self.live_jobs,
+                seg: want.seg,
+                generation: want.generation,
+                extends,
+                cancel,
+                requested: want.requested,
+                src_units,
+            });
+            self.clear_live_stream(want.seg);
+        } else {
+            self.set_mt_unavailable();
+        }
+    }
+
+    /// Một gói của bản tạm đang dịch (QĐ7 của kế hoạch 02): bản mới chỉ thay chữ đang hiện khi phần đã nhận dài ít nhất bằng
+    /// chữ đang hiện (đếm ký tự); từ đó hiện dần. Dấu kết câu ở cuối không hiện (§4.3).
+    fn on_live_delta(&mut self, job: u64, text: &str) {
+        let Some(flight) = self.live_flight.as_ref().filter(|f| f.job == job) else {
+            return;
+        };
+        let (seg, src_units, extends) = (flight.seg, flight.src_units, flight.extends);
+        let Some(live) = self
+            .lives
+            .get_mut(&seg)
+            .filter(|l| !l.frozen && l.line.extends == extends)
+        else {
+            return;
+        };
+        live.streaming.push_str(text);
+        let incoming = strip_terminal_punct(&live.streaming);
+        let shown = live.line.tgt_stable.chars().count() + live.line.tgt_tail.chars().count();
+        if !live.switched && incoming.chars().count() < shown {
+            return;
+        }
+        let split = live.tgt.preview(incoming);
+        live.switched = true;
+        live.line.tgt_stable = split.stable;
+        live.line.tgt_tail = split.tail;
+        live.line.tgt_src_units = src_units;
+        self.emit_live(seg, false);
+    }
+
+    /// Bản tạm kết thúc. Xong thì chốt phần dịch (LocalAgreement-n, §4.4), hiện, và tính một vòng cập nhật (§5); bị hủy hay
+    /// lỗi thì giữ chữ đang hiện và không tính vòng (§7); bị hủy mà chưa có lần chép mới hơn thì dịch lại lần chép đó khi
+    /// rảnh. Kết quả dịch theo câu nối tiếp cũ (đã đổi) không được hiện.
+    fn on_live_done(&mut self, job: u64, outcome: Outcome, finished: Instant) {
+        let Some(flight) = self.live_flight.take_if(|f| f.job == job) else {
+            return;
+        };
+        let current = self
+            .lives
+            .get(&flight.seg)
+            .is_some_and(|l| !l.frozen && l.line.extends == flight.extends);
+        match outcome {
+            Outcome::Done(t) => {
+                if current && let Some(live) = self.lives.get_mut(&flight.seg) {
+                    let split = live.tgt.push(strip_terminal_punct(&t.text));
+                    live.line.tgt_stable = split.stable;
+                    live.line.tgt_tail = split.tail;
+                    live.line.tgt_src_units = flight.src_units;
+                    live.streaming.clear();
+                    live.switched = false;
+                    self.emit_live(flight.seg, false);
+                }
+                // Vòng cập nhật: từ lúc luồng VAD tạo yêu cầu chép từng phần tới lúc bản tạm của nó xong (§5).
+                let cycle_ms = finished.saturating_duration_since(flight.requested).as_secs_f32() * 1000.0;
+                self.record_cycle(cycle_ms);
+            }
+            Outcome::Cancelled => {
+                let latest = self
+                    .lives
+                    .get(&flight.seg)
+                    .is_some_and(|l| l.generation == flight.generation);
+                if current && latest && self.live_want.is_none() {
+                    self.live_want = Some(LiveWant {
+                        seg: flight.seg,
+                        generation: flight.generation,
+                        requested: flight.requested,
+                    });
+                }
+                self.clear_live_stream(flight.seg);
+            }
+            Outcome::Failed { .. } => self.clear_live_stream(flight.seg),
+            Outcome::Unavailable(reason) => {
+                log::error!("llama-server không dùng được: {reason}");
+                self.set_mt_unavailable();
+                // Dòng đang nói chỉ hiện câu gốc (spec §7).
+                let segs: Vec<u64> = self
+                    .lives
+                    .iter()
+                    .filter(|(_, l)| !l.frozen)
+                    .map(|(&seg, _)| seg)
+                    .collect();
+                for seg in segs {
+                    if let Some(live) = self.lives.get_mut(&seg) {
+                        live.reset_target();
+                    }
+                    self.emit_live(seg, false);
+                }
+            }
+        }
+    }
+
+    /// Bỏ phần đang stream của bản tạm (không thành, hay vừa gửi bản mới), giữ chữ đang hiện (§7).
+    fn clear_live_stream(&mut self, seg: u64) {
+        if let Some(live) = self.lives.get_mut(&seg) {
+            live.streaming.clear();
+            live.switched = false;
+        }
+    }
+
+    /// Một vòng cập nhật xong (spec §5): nhịp T mới cho luồng VAD, ghi số đo.
+    fn record_cycle(&mut self, cycle_ms: f32) {
+        self.cadence.record(cycle_ms);
+        let cadence_ms = self.cadence.cadence_ms();
+        self.flags.streaming.cadence_ms.store(cadence_ms, Ordering::SeqCst);
+        self.metrics.live_cycle_ms.push(cycle_ms);
+        self.metrics.cadence_ms.push(cadence_ms as f32);
     }
 }
 
@@ -1997,7 +2363,7 @@ mod tests {
         };
         let prompts = Arc::new(Mutex::new(Vec::new()));
         let glossary: SharedGlossary = Arc::new(RwLock::new(Glossary::new([term("sprint", "đợt chạy")])));
-        let (jobs_tx, jobs_rx) = mpsc::channel::<MtJob>();
+        let (jobs_tx, jobs_rx) = mpsc::channel::<Work>();
         let (tx, rx) = mpsc::channel::<Msg>();
         let thread = {
             let (mt, glossary) = (Box::new(Recording(prompts.clone())), glossary.clone());
@@ -2016,14 +2382,14 @@ mod tests {
         let translate_one = |sub_id: u64, text: &str| {
             let cancel = Arc::new(AtomicBool::new(false));
             jobs_tx
-                .send(MtJob {
+                .send(Work::Final(MtJob {
                     sub_id,
                     version: 0,
                     src: Lang::En,
                     text: text.into(),
                     context: None,
                     cancel,
-                })
+                }))
                 .unwrap();
             loop {
                 if let Msg::MtDone { sub_id: done, .. } = rx.recv().unwrap()
@@ -2131,10 +2497,12 @@ mod tests {
 
     struct Harness {
         c: Composer,
-        jobs: Receiver<MtJob>,
+        jobs: Receiver<Work>,
         sink: Arc<Sink>,
         flags: Flags,
         asr_queue: Arc<SharedQueue>,
+        /// Mốc giờ thật của test: lúc "luồng VAD" tạo mọi yêu cầu chép từng phần.
+        t0: Instant,
     }
 
     /// Máy đủ sức nhưng công tắc tắt: chế độ dịch trong lúc nói không có hiệu lực, engine chạy như chế độ thường.
@@ -2163,6 +2531,7 @@ mod tests {
             sink,
             flags,
             asr_queue,
+            t0: Instant::now(),
         }
     }
 
@@ -2221,6 +2590,7 @@ mod tests {
                 lang: lang.into(),
                 text: text.map(String::from),
                 asr_ms: 200.0,
+                requested: self.t0,
             })))
         }
 
@@ -2248,12 +2618,53 @@ mod tests {
             self.sink.trail.lock().unwrap().clone()
         }
 
+        /// Câu kế tiếp của lượt cuối được gửi đi dịch; bản tạm gửi trước nó (nếu có) bị bỏ qua.
         fn job(&self) -> MtJob {
-            self.jobs.try_recv().expect("phải có câu được gửi đi dịch")
+            loop {
+                match self.jobs.try_recv() {
+                    Ok(Work::Final(j)) => return j,
+                    Ok(Work::Live(_)) => continue,
+                    Err(_) => panic!("phải có câu được gửi đi dịch"),
+                }
+            }
         }
 
+        /// Không có câu nào của lượt cuối được gửi đi dịch (bản tạm không tính).
         fn no_job(&self) {
-            assert!(self.jobs.try_recv().is_err(), "không được gửi thêm câu nào đi dịch");
+            while let Ok(work) = self.jobs.try_recv() {
+                assert!(matches!(work, Work::Live(_)), "không được gửi thêm câu nào đi dịch");
+            }
+        }
+
+        /// Bản tạm kế tiếp được gửi đi dịch.
+        fn live_job(&self) -> LiveJob {
+            match self.jobs.try_recv() {
+                Ok(Work::Live(j)) => j,
+                Ok(Work::Final(j)) => panic!("cần bản tạm, có câu {} của lượt cuối", j.sub_id),
+                Err(_) => panic!("phải có bản tạm được gửi đi dịch"),
+            }
+        }
+
+        /// Không có việc nào (lượt cuối hay bản tạm) được gửi đi dịch.
+        fn nothing_sent(&self) {
+            assert!(self.jobs.try_recv().is_err(), "không được gửi việc nào đi dịch");
+        }
+
+        /// Luồng dịch gửi một gói của bản tạm `job`.
+        fn live_delta(&mut self, job: &LiveJob, text: &str) -> bool {
+            self.feed(Msg::LiveDelta {
+                job: job.job,
+                text: text.into(),
+            })
+        }
+
+        /// Bản tạm `job` kết thúc `after_ms` sau lúc tạo yêu cầu chép từng phần (`t0`).
+        fn live_done(&mut self, job: &LiveJob, outcome: Outcome, after_ms: u64) -> bool {
+            self.feed(Msg::LiveDone {
+                job: job.job,
+                outcome,
+                finished: self.t0 + Duration::from_millis(after_ms),
+            })
         }
 
         /// Luồng dịch gửi một phần chữ của `job`.
@@ -2741,7 +3152,7 @@ mod tests {
             }
         }
         let sent = Arc::new(AtomicU64::new(0));
-        let (jobs_tx, jobs_rx) = mpsc::channel::<MtJob>();
+        let (jobs_tx, jobs_rx) = mpsc::channel::<Work>();
         let (tx, rx) = mpsc::channel::<Msg>();
         let mt = Box::new(Blank {
             calls: 0,
@@ -2760,14 +3171,14 @@ mod tests {
         });
         let cancel = Arc::new(AtomicBool::new(false));
         jobs_tx
-            .send(MtJob {
+            .send(Work::Final(MtJob {
                 sub_id: 1,
                 version: 1,
                 src: Lang::En,
                 text: "Hello there".into(),
                 context: None,
                 cancel: cancel.clone(),
-            })
+            }))
             .unwrap();
         let deadline = Instant::now() + Duration::from_secs(5);
         while sent.load(Ordering::SeqCst) < 5 {
@@ -3303,6 +3714,336 @@ mod tests {
             h.said(2, 1_750, 2_500, "en", "home");
             assert_eq!(h.c.metrics.merges, merges, "ngưỡng {threshold} ms");
         }
+    }
+
+    // ---- Dịch trong lúc người nói chưa dừng: bản dịch tạm (spec 2026-10-10 §4.3–§4.6, §5). ----
+
+    /// Bản tạm (§4.3–§4.4): chữ nguồn là lần chép mới nhất; phần dịch ổn định (LocalAgreement-2, giữ lại 1 từ với nguồn
+    /// tiếng Anh) là prefill của lần sau; dấu kết câu ở cuối không hiện; `tgt_src_units` là số đơn vị nguồn đã dịch.
+    #[test]
+    fn live_translations_are_stabilized_and_prefilled() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let j1 = h.live_job();
+        assert_eq!(
+            (j1.text.as_str(), j1.prefill.as_deref(), j1.src),
+            ("so we", None, Lang::En)
+        );
+        h.live_done(&j1, done("chúng tôi."), 600);
+        let l = h.last_live(1);
+        assert_eq!(
+            (l.tgt_stable.as_str(), l.tgt_tail.as_str(), l.tgt_src_units),
+            ("", "chúng tôi", 2)
+        );
+        h.partial(1, 0, 2_000, "en", Some("so we went"));
+        let j2 = h.live_job();
+        assert_eq!(j2.prefill, None, "một bản dịch xong chưa đủ để chốt");
+        h.live_done(&j2, done("chúng tôi đã đi"), 700);
+        let l = h.last_live(1);
+        assert_eq!(
+            (l.tgt_stable.as_str(), l.tgt_tail.as_str(), l.tgt_src_units),
+            ("chúng", " tôi đã đi", 3)
+        );
+        h.partial(1, 0, 3_000, "en", Some("so we went home"));
+        let j3 = h.live_job();
+        assert_eq!(
+            (j3.text.as_str(), j3.prefill.as_deref()),
+            ("so we went home", Some("chúng"))
+        );
+    }
+
+    /// Bản tạm đang stream chỉ thay chữ đang hiện khi đã dài ít nhất bằng nó (QĐ7), rồi hiện dần từng gói.
+    #[test]
+    fn a_streaming_live_translation_takes_over_once_it_is_as_long() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let j1 = h.live_job();
+        h.live_done(&j1, done("chúng tôi"), 500);
+        h.partial(1, 0, 2_000, "en", Some("so we went"));
+        let j2 = h.live_job();
+        h.live_delta(&j2, "chúng");
+        assert_eq!(h.last_live(1).tgt_tail, "chúng tôi", "bản mới còn ngắn hơn");
+        h.live_delta(&j2, " tôi");
+        assert_eq!(h.last_live(1).tgt_tail, "chúng tôi");
+        h.live_delta(&j2, " đã");
+        assert_eq!(h.last_live(1).tgt_tail, "chúng tôi đã");
+        h.live_delta(&j2, " đi.");
+        assert_eq!(h.last_live(1).tgt_tail, "chúng tôi đã đi", "dấu chấm cuối không hiện");
+    }
+
+    /// Việc của lượt cuối luôn đi trước (§4.6): bản tạm đang dịch bị hủy; không gửi bản tạm nào khi lượt cuối còn việc; bản
+    /// tạm bị hủy được dịch lại (bằng lần chép mới nhất) khi rảnh; vòng bị hủy không tính.
+    #[test]
+    fn final_translations_go_first() {
+        let mut h = live_harness();
+        h.partial(2, 3_000, 4_000, "en", Some("and then we"));
+        let l1 = h.live_job();
+        h.said(1, 0, 1_000, "en", "One.");
+        assert!(l1.cancel.load(Ordering::SeqCst), "bản tạm bị hủy");
+        let j1 = h.job();
+        h.live_done(&l1, Outcome::Cancelled, 100);
+        h.nothing_sent();
+        h.partial(2, 3_000, 5_000, "en", Some("and then we went"));
+        h.nothing_sent();
+        h.finish(&j1, done("Một."));
+        let l2 = h.live_job();
+        assert_eq!(l2.text, "and then we went", "lần chép mới nhất");
+        assert!(h.c.metrics.live_cycle_ms.is_empty(), "vòng bị hủy không tính");
+    }
+
+    /// Yêu cầu mới thắng (§4.6): lần chép mới tới khi bản tạm đang dịch thì hủy bản đó; xong thì gửi lần mới nhất.
+    #[test]
+    fn the_newest_partial_wins() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let l1 = h.live_job();
+        h.partial(1, 0, 1_500, "en", Some("so we went"));
+        assert!(l1.cancel.load(Ordering::SeqCst));
+        h.nothing_sent();
+        h.partial(1, 0, 1_800, "en", Some("so we went home"));
+        h.live_done(&l1, Outcome::Cancelled, 50);
+        assert_eq!(h.live_job().text, "so we went home");
+        h.nothing_sent();
+    }
+
+    /// Bản tạm lỗi: giữ chữ đang hiện, không thử lại, không tính vòng (§7).
+    #[test]
+    fn a_failed_live_translation_keeps_the_shown_text() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let l1 = h.live_job();
+        h.live_done(&l1, done("chúng tôi"), 400);
+        h.partial(1, 0, 2_000, "en", Some("so we went"));
+        let l2 = h.live_job();
+        h.live_delta(&l2, "chúng tôi đã");
+        h.live_done(
+            &l2,
+            Outcome::Failed {
+                reason: "x".into(),
+                attempts: 1,
+                source_tokens: 3,
+                completion_tokens: None,
+            },
+            500,
+        );
+        assert_eq!(h.last_live(1).tgt_tail, "chúng tôi đã", "giữ chữ đang hiện");
+        h.nothing_sent();
+        assert_eq!(h.c.metrics.live_cycle_ms, [400.0]);
+    }
+
+    /// Nhịp T (§5): sau 3 vòng, T = 1,5 × trung vị, ghi vào cờ dùng chung cho luồng VAD.
+    #[test]
+    fn completed_cycles_set_the_cadence() {
+        let mut h = live_harness();
+        assert_eq!(h.flags.streaming.cadence_ms.load(Ordering::SeqCst), 1_000);
+        for (i, (text, cycle)) in [("so", 500u64), ("so we", 700), ("so we went", 600)]
+            .into_iter()
+            .enumerate()
+        {
+            h.partial(1, 0, 1_000 + i as u64 * 500, "en", Some(text));
+            let job = h.live_job();
+            h.live_done(&job, done("chúng tôi"), cycle);
+        }
+        assert_eq!(h.flags.streaming.cadence_ms.load(Ordering::SeqCst), 900);
+        assert_eq!(h.c.metrics.live_cycle_ms, [500.0, 700.0, 600.0]);
+        assert_eq!(h.c.metrics.cadence_ms, [1_000.0, 1_000.0, 900.0]);
+    }
+
+    /// Dòng nối tiếp câu A (§4.3, QĐ6): chữ nguồn đem dịch là A nối với chữ của đoạn; `tgt_src_units` đếm cả câu nối.
+    #[test]
+    fn a_live_job_for_an_extended_sentence_translates_the_joined_text() {
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.finish(&j1, done("chúng tôi đã đi"));
+        h.partial(2, 1_300, 2_000, "en", Some("home and"));
+        let l = h.live_job();
+        assert_eq!(
+            (l.text.as_str(), l.prefill.as_deref(), l.src),
+            ("so we went home and", None, Lang::En)
+        );
+        h.live_done(&l, done("chúng tôi đã về nhà và"), 300);
+        let line = h.last_live(2);
+        assert_eq!(
+            (line.extends, line.tgt_tail.as_str(), line.tgt_src_units),
+            (Some(1), "chúng tôi đã về nhà và", 5)
+        );
+    }
+
+    /// Đóng băng làm đổi `extends` (câu đang mở không nhận lượt cuối vì quá trần 15 giây: phụ đề mới, `extends` thành `None`):
+    /// phần dịch tạm đã dịch theo chữ nguồn có câu cũ ở đầu, không còn khớp chữ nguồn mới của dòng, nên bị xóa (chốt lại từ
+    /// đầu, cùng luật với `refresh_extends`). Đóng băng không đổi `extends` (đoạn được ghép vào câu đang mở) thì dòng giữ
+    /// nguyên phần dịch đang hiện.
+    #[test]
+    fn freezing_with_a_changed_extends_clears_the_stale_translation() {
+        let mut h = live_harness();
+        h.said(1, 0, 8_000, "en", "a long one");
+        let j1 = h.job();
+        h.finish(&j1, done("một câu dài"));
+        h.partial(2, 8_100, 9_000, "en", Some("and more"));
+        let l1 = h.live_job();
+        assert_eq!(l1.text, "a long one and more");
+        h.live_done(&l1, done("một câu dài và hơn"), 300);
+        h.partial(2, 8_100, 9_500, "en", Some("and more stuff"));
+        let l2 = h.live_job();
+        assert_eq!(l2.text, "a long one and more stuff");
+        h.live_done(&l2, done("một câu dài và hơn nữa"), 300);
+        let shown = h.last_live(2);
+        assert_eq!(
+            (
+                shown.extends,
+                shown.tgt_stable.as_str(),
+                shown.tgt_tail.as_str(),
+                shown.tgt_src_units
+            ),
+            (Some(1), "một câu dài và", " hơn nữa", 6)
+        );
+        h.said(2, 8_100, 16_000, "en", "and more stuff");
+        assert_eq!(h.last(2).src_text, "and more stuff", "phụ đề mới");
+        let l = h.last_live(2);
+        assert_eq!(
+            (
+                l.extends,
+                l.src_stable.as_str(),
+                l.src_tail.as_str(),
+                l.tgt_stable.as_str(),
+                l.tgt_tail.as_str(),
+                l.tgt_src_units
+            ),
+            (None, "and", " more stuff", "", "", 0),
+            "bản dịch cũ (có \"một câu dài\" ở đầu) không còn hiện"
+        );
+
+        // `extends` không đổi lúc đóng băng: giữ phần dịch đang hiện.
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.finish(&j1, done("chúng tôi đã đi"));
+        h.partial(2, 1_300, 2_000, "en", Some("home and"));
+        let l = h.live_job();
+        h.live_done(&l, done("chúng tôi đã về nhà và"), 300);
+        let shown = h.last_live(2);
+        assert_eq!(
+            (shown.extends, shown.tgt_tail.as_str()),
+            (Some(1), "chúng tôi đã về nhà và")
+        );
+        h.said(2, 1_300, 2_100, "en", "home and.");
+        assert_eq!(h.last(1).src_text, "so we went home and.");
+        assert_eq!(h.last_live(2), shown);
+    }
+
+    /// `llama-server` không dùng được (§7): báo chỉ báo, dòng đang nói chỉ còn câu gốc, không gửi bản tạm nào nữa.
+    #[test]
+    fn an_unavailable_server_leaves_live_lines_with_the_source_only() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let l1 = h.live_job();
+        h.live_done(&l1, done("chúng tôi"), 300);
+        h.partial(1, 0, 2_000, "en", Some("so we went"));
+        let l2 = h.live_job();
+        h.live_done(&l2, Outcome::Unavailable("quá 5 lần".into()), 300);
+        let l = h.last_live(1);
+        assert_eq!((l.tgt_stable.as_str(), l.tgt_tail.as_str()), ("", ""));
+        assert!(
+            h.sink
+                .indicators
+                .lock()
+                .unwrap()
+                .last()
+                .unwrap()
+                .translation_unavailable
+        );
+        h.partial(1, 0, 3_000, "en", Some("so we went home"));
+        h.nothing_sent();
+    }
+
+    /// Luồng dịch chạy bản tạm bằng `translate_live`: prefill đi kèm request, chữ về bằng `LiveDelta`, kết thúc bằng
+    /// `LiveDone` có thời điểm xong.
+    #[test]
+    fn the_translation_thread_runs_live_jobs_with_the_prefill() {
+        struct Echo(Arc<Mutex<Vec<Option<String>>>>);
+        impl Mt for Echo {
+            fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
+                Ok(text.split_whitespace().count())
+            }
+            fn stream(
+                &mut self,
+                req: &ChatRequest,
+                on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
+            ) -> Result<StreamEnd, MtError> {
+                self.0.lock().unwrap().push(req.prefill.map(String::from));
+                let mut text = String::new();
+                for chunk in [req.prefill.unwrap_or("chúng"), " tôi"] {
+                    text.push_str(chunk);
+                    if on_delta(chunk).is_break() {
+                        return Ok(StreamEnd {
+                            text,
+                            cancelled: true,
+                            ..StreamEnd::default()
+                        });
+                    }
+                }
+                Ok(StreamEnd {
+                    text,
+                    finish_reason: Some("stop".into()),
+                    chunks: 2,
+                    ..StreamEnd::default()
+                })
+            }
+        }
+        let prefills = Arc::new(Mutex::new(Vec::new()));
+        let (jobs_tx, jobs_rx) = mpsc::channel::<Work>();
+        let (tx, rx) = mpsc::channel::<Msg>();
+        let thread = {
+            let mt = Box::new(Echo(prefills.clone()));
+            std::thread::spawn(move || {
+                mt_loop(
+                    mt,
+                    jobs_rx,
+                    &tx,
+                    &MtConfig::default(),
+                    Lang::Vi,
+                    &AtomicBool::new(false),
+                    &SharedGlossary::default(),
+                )
+            })
+        };
+        let before = Instant::now();
+        jobs_tx
+            .send(Work::Live(LiveJob {
+                job: 7,
+                src: Lang::En,
+                text: "so we went".into(),
+                context: None,
+                prefill: Some("chúng".into()),
+                cancel: Arc::default(),
+            }))
+            .unwrap();
+        let mut deltas = Vec::new();
+        let (outcome, finished) = loop {
+            match rx.recv_timeout(Duration::from_secs(5)).expect("phải có kết quả") {
+                Msg::LiveDelta { job: 7, text } => deltas.push(text),
+                Msg::LiveDone {
+                    job: 7,
+                    outcome,
+                    finished,
+                } => break (outcome, finished),
+                _ => {}
+            }
+        };
+        assert_eq!(deltas, ["chúng", " tôi"]);
+        assert!(
+            matches!(outcome, Outcome::Done(ref t) if t.text == "chúng tôi"),
+            "{outcome:?}"
+        );
+        assert!(finished >= before);
+        drop(jobs_tx);
+        thread.join().unwrap();
+        assert_eq!(
+            *prefills.lock().unwrap(),
+            [None, Some("chúng".to_string())],
+            "lần làm nóng rồi bản tạm"
+        );
     }
 
     // ---- Luồng nhận dạng: chép từng phần (spec 2026-10-10 §4.1). ----
