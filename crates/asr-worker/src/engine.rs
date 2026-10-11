@@ -16,7 +16,7 @@ use crate::lid::{min_prob_for, pick_language};
 use anyhow::{Context, Result, bail};
 use asr_protocol::{
     DecodeMode, ErrorKind, MAX_PCM_SAMPLES, MAX_PROMPT_TOKENS, MIN_PCM_SAMPLES, SAMPLE_RATE, TranscribeRequest,
-    TranscribeResult, align_audio_ctx, audio_ctx_for_samples,
+    TranscribeResult, audio_ctx_for_samples,
 };
 use std::time::Instant;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState};
@@ -66,32 +66,9 @@ pub struct Primers {
     ja: Vec<i32>,
 }
 
-/// Mồi chỉ bật khi biến môi trường `ASR_PRIMER` đúng bằng "1".
+/// Mồi chỉ bật khi biến môi trường `ASR_PRIMER` đúng bằng "1" (giống `ASR_FLASH_ATTN`).
 fn primer_requested(value: Option<&str>) -> bool {
     value == Some("1")
-}
-
-/// Flash attention của whisper.cpp (spec §6.4; spec 2026-10-10 §8, A5). `audio_ctx` luôn là bội của 256
-/// ([`effective_audio_ctx`]), nên whisper.cpp không còn đọc phần đệm chứa dữ liệu của đoạn trước (ggml-org/whisper.cpp#3941).
-/// Bật mặc định trên macOS (Metal) khi chạy GPU (`default_on`), nơi đã qua cổng tất định và A4; Windows (Vulkan) giữ tắt
-/// tới khi đo trên máy Windows. Biến môi trường `ASR_FLASH_ATTN`: `0` tắt, `1` bật (để so sánh). Chạy CPU thì luôn tắt.
-fn flash_attn_wanted(use_gpu: bool, env: Option<&str>, default_on: bool) -> bool {
-    use_gpu
-        && match env {
-            Some("0") => false,
-            Some("1") => true,
-            _ => default_on,
-        }
-}
-
-/// `audio_ctx` thật sự dùng. Bật flash attention thì làm tròn lên bội của 256 (`asr_protocol::align_audio_ctx`): app đã
-/// gửi bội của 256 (`audio_ctx_for_samples`), nhưng bên gọi khác có thể gửi số khác (`latency-bench --min-ctx`).
-fn effective_audio_ctx(flash_attn: bool, requested: i32) -> i32 {
-    if flash_attn {
-        align_audio_ctx(requested)
-    } else {
-        requested
-    }
 }
 
 impl Primers {
@@ -160,11 +137,10 @@ pub struct Engine {
 
 impl Engine {
     pub fn load(model_path: &str, use_gpu: bool, n_threads: u32) -> Result<Self> {
-        let flash_attn = flash_attn_wanted(
-            use_gpu,
-            std::env::var("ASR_FLASH_ATTN").ok().as_deref(),
-            cfg!(target_os = "macos"),
-        );
+        // Flash attention mặc định TẮT: whisper.cpp 1.8.3 đọc K/V của encoder và cross-attention tới GGML_PAD(audio_ctx, 256)
+        // mà không có mask, nên với audio_ctx rút ngắn kết quả sai và phụ thuộc các đoạn trước (ggml-org/whisper.cpp#3941).
+        // Chỉ đặt `ASR_FLASH_ATTN=1` khi whisper.cpp đã có bản vá đó (spec §6.4, "Flash attention: tắt").
+        let flash_attn = use_gpu && std::env::var("ASR_FLASH_ATTN").as_deref() == Ok("1");
         let n_threads = clamp_threads(n_threads);
         let params = WhisperContextParameters {
             use_gpu,
@@ -208,7 +184,7 @@ impl Engine {
         DecodeMode::Split
     }
 
-    /// Flash attention có đang bật không, xem [`flash_attn_wanted`].
+    /// Flash attention có đang bật không. Mặc định tắt, xem `load`.
     pub fn flash_attn(&self) -> bool {
         self.flash_attn
     }
@@ -242,7 +218,6 @@ impl Engine {
     fn run(&mut self, req: &TranscribeRequest, allowed: &[i32], prev_lang: Option<i32>) -> Result<TranscribeResult> {
         let eot = self.ctx.token_eot();
         let pcm: Vec<f32> = req.pcm.iter().map(|&s| s as f32 / 32768.0).collect();
-        let audio_ctx = effective_audio_ctx(self.flash_attn, req.audio_ctx);
 
         #[cfg(feature = "shared-encode")]
         if let Some(decoder) = &self.shared {
@@ -251,7 +226,7 @@ impl Engine {
                 &self.ctx,
                 &mut self.asr_state,
                 &pcm,
-                audio_ctx,
+                req.audio_ctx,
                 allowed,
                 prev_lang,
                 &req.prompt_tokens,
@@ -294,7 +269,7 @@ impl Engine {
         let lang = whisper_rs::get_lang_str(lang_id).context("lang id không hợp lệ")?;
 
         let asr_started = Instant::now();
-        let mut params = full_params(self.n_threads, lang, audio_ctx);
+        let mut params = full_params(self.n_threads, lang, req.audio_ctx);
         let context = self
             .primers
             .context_for(lang, prompt_for(lang_id, prev_lang, &req.prompt_tokens));
@@ -497,28 +472,6 @@ mod tests {
         for v in ["", "0", "true", "on", "yes", " 1"] {
             assert!(!primer_requested(Some(v)), "{v:?}");
         }
-    }
-
-    #[test]
-    fn flash_attention_is_on_by_default_only_where_it_was_gated() {
-        assert!(flash_attn_wanted(true, None, true), "macOS, GPU: bật");
-        assert!(
-            !flash_attn_wanted(true, None, false),
-            "Windows: tắt tới khi đo trên máy Windows"
-        );
-        assert!(!flash_attn_wanted(false, None, true), "CPU: luôn tắt");
-        assert!(!flash_attn_wanted(true, Some("0"), true));
-        assert!(flash_attn_wanted(true, Some("1"), false));
-        assert!(!flash_attn_wanted(false, Some("1"), true));
-        assert!(flash_attn_wanted(true, Some("yes"), true), "giá trị lạ: theo mặc định");
-    }
-
-    #[test]
-    fn with_flash_attention_the_window_is_a_multiple_of_256() {
-        assert_eq!(effective_audio_ctx(true, 600), 768);
-        assert_eq!(effective_audio_ctx(true, 512), 512);
-        assert_eq!(effective_audio_ctx(true, 0), 0, "0 là cửa sổ đầy đủ");
-        assert_eq!(effective_audio_ctx(false, 600), 600);
     }
 
     #[test]
