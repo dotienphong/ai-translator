@@ -57,8 +57,9 @@ pub struct Job<'a> {
     /// Thuật ngữ có trong câu (`Glossary::matches`, §6.5). Có thuật ngữ thì dùng mẫu "terminology" và bỏ ngữ cảnh: model
     /// card không có mẫu gộp hai thứ, và cờ ngữ cảnh chỉ là thử nghiệm, mặc định tắt.
     pub terms: &'a [Term],
-    /// Cờ hủy (spec 2026-10-10 §4.6, A2): `translate` kiểm trước khi gửi request và ở mỗi gói chữ stream về, kể cả gói
-    /// đang bị hậu xử lý giữ lại. Đây là hủy hợp tác, chỉ xem cờ ở các điểm đó, không ngắt request đang chờ hồi đáp:
+    /// Cờ hủy (spec 2026-10-10 §4.6, A2): `translate` và `translate_live` đều kiểm trước khi gửi request và ở mỗi gói
+    /// chữ stream về, kể cả gói đang bị hậu xử lý giữ lại. Đây là hủy hợp tác, chỉ xem cờ ở các điểm đó, không ngắt
+    /// request đang chờ hồi đáp:
     /// cờ bật ngay sau gói cuối vẫn có thể nhận `Outcome::Done`/`Failed` như bình thường — bên gọi tự bỏ kết quả của
     /// việc đã hủy (ví dụ qua phiên bản câu, `is_current`).
     pub cancel: Option<&'a AtomicBool>,
@@ -88,7 +89,8 @@ pub struct Translated {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Outcome {
     Done(Translated),
-    /// Cả hai lần đều lỗi: hiện câu gốc, đánh dấu "chưa dịch được".
+    /// Hết số lần thử mà vẫn lỗi (2 lần với `translate`, 1 lần với `translate_live`): hiện câu gốc, đánh dấu "chưa dịch
+    /// được".
     Failed {
         reason: String,
         attempts: u8,
