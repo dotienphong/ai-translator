@@ -12,6 +12,7 @@ use crate::config::QueueConfig;
 use crate::sentence::joiner;
 use asr_protocol::SAMPLE_RATE;
 use std::collections::VecDeque;
+use std::time::Instant;
 
 /// Một đoạn chờ nhận dạng. Đoạn gộp mang id của mọi đoạn đã gộp, theo thứ tự.
 #[derive(Clone, PartialEq)]
@@ -70,16 +71,48 @@ impl std::fmt::Debug for PendingSegment {
     }
 }
 
+/// Một lần chép từng phần của đoạn đang mở (spec 2026-10-10 §4.1). Luồng VAD tạo; hàng đợi chỉ giữ yêu cầu mới nhất.
+#[derive(Clone, PartialEq)]
+pub struct PartialRequest {
+    /// Id mà đoạn sẽ nhận khi đóng (`Segmenter::open_snapshot`).
+    pub id: u64,
+    /// Mốc đầu tiếng nói của đoạn, và giờ âm thanh lúc chụp.
+    pub start_ms: u64,
+    pub upto_ms: u64,
+    pub speech_ms: u64,
+    pub mean_prob: f32,
+    pub samples: Vec<f32>,
+    /// Lúc luồng VAD tạo yêu cầu (giờ thật): mốc đầu của vòng cập nhật (spec §5).
+    pub requested: Instant,
+}
+
+// Debug viết tay: không in âm thanh.
+impl std::fmt::Debug for PartialRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PartialRequest")
+            .field("id", &self.id)
+            .field("start_ms", &self.start_ms)
+            .field("upto_ms", &self.upto_ms)
+            .field("speech_ms", &self.speech_ms)
+            .field("samples", &format_args!("<{} mẫu>", self.samples.len()))
+            .finish()
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Popped {
     Segment(PendingSegment),
     /// Trễ quá `asr_drop_after_ms`: bỏ, không nhận dạng.
     Dropped(PendingSegment),
+    /// Lần chép từng phần: chỉ ra khi không còn đoạn đóng nào chờ (spec 2026-10-10 §4.1).
+    Partial(PartialRequest),
 }
 
+/// `len`, `is_empty` và luật gộp, bỏ đoạn chỉ xét đoạn đóng; ô chép từng phần nằm riêng.
 #[derive(Debug)]
 pub struct AsrQueue {
     items: VecDeque<PendingSegment>,
+    partial: Option<PartialRequest>,
     cfg: QueueConfig,
 }
 
@@ -87,8 +120,19 @@ impl AsrQueue {
     pub fn new(cfg: QueueConfig) -> Self {
         Self {
             items: VecDeque::new(),
+            partial: None,
             cfg,
         }
+    }
+
+    /// Đặt yêu cầu chép từng phần, thay yêu cầu đang chờ (nếu có).
+    pub fn set_partial(&mut self, partial: PartialRequest) {
+        self.partial = Some(partial);
+    }
+
+    /// Còn đoạn đóng chờ nhận dạng: luồng VAD chưa tạo lần chép từng phần theo nhịp (spec 2026-10-10 §4.1).
+    pub fn has_waiting_segments(&self) -> bool {
+        !self.items.is_empty()
     }
 
     pub fn len(&self) -> usize {
@@ -107,6 +151,12 @@ impl AsrQueue {
     /// Thêm một đoạn. Hàng đợi đã đủ `asr_max_waiting` đoạn thì trước đó gộp hai đoạn chờ lâu nhất, nếu tổng âm thanh
     /// (gồm đệm) không quá `asr_merge_max_ms`. Không gộp được thì vẫn thêm: chỉ độ trễ mới làm bỏ đoạn.
     pub fn push(&mut self, segment: PendingSegment) {
+        // Đoạn đã đóng: lần chép từng phần đang chờ của nó (hay của đoạn trước) không còn cần.
+        if let Some(&last) = segment.ids.last()
+            && self.partial.as_ref().is_some_and(|p| p.id <= last)
+        {
+            self.partial = None;
+        }
         if self.items.len() >= self.cfg.asr_max_waiting && self.items.len() >= 2 {
             let max_samples = self.cfg.asr_merge_max_ms as usize * SAMPLE_RATE as usize / 1000;
             if self.items[0].samples.len() + self.items[1].samples.len() <= max_samples {
@@ -117,9 +167,12 @@ impl AsrQueue {
         self.items.push_back(segment);
     }
 
-    /// Lấy đoạn kế tiếp. Đoạn đã trễ quá `asr_drop_after_ms` (tính từ `end_ms`) thì trả `Dropped`.
+    /// Lấy đoạn kế tiếp. Đoạn đã trễ quá `asr_drop_after_ms` (tính từ `end_ms`) thì trả `Dropped`. Hết đoạn đóng thì trả lần
+    /// chép từng phần đang chờ, nếu có.
     pub fn pop(&mut self, now_ms: u64) -> Option<Popped> {
-        let segment = self.items.pop_front()?;
+        let Some(segment) = self.items.pop_front() else {
+            return self.partial.take().map(Popped::Partial);
+        };
         Some(if now_ms.saturating_sub(segment.end_ms) > self.cfg.asr_drop_after_ms {
             Popped::Dropped(segment)
         } else {
@@ -412,6 +465,67 @@ mod tests {
         q.push(item(2, "en", "Two.", 5_000));
         assert!(matches!(q.pop(21_001), Some(Ready::Skip(i)) if i.sub_id == 1));
         assert!(matches!(q.pop(21_001), Some(Ready::Translate(i)) if i.sub_id == 2));
+    }
+
+    fn partial(id: u64, upto_ms: u64) -> PartialRequest {
+        PartialRequest {
+            id,
+            start_ms: 0,
+            upto_ms,
+            speech_ms: upto_ms,
+            mean_prob: 0.9,
+            samples: vec![0.0; 16],
+            requested: Instant::now(),
+        }
+    }
+
+    /// Spec 2026-10-10 §4.1: đoạn đóng luôn được nhận dạng trước lần chép từng phần.
+    #[test]
+    fn closed_segments_always_go_before_the_partial() {
+        let mut q = AsrQueue::new(QueueConfig::default());
+        q.set_partial(partial(5, 1_000));
+        q.push(seg(3, 0, 1_000, 1));
+        q.push(seg(4, 2_000, 3_000, 1));
+        assert!(q.has_waiting_segments());
+        assert!(matches!(q.pop(0), Some(Popped::Segment(s)) if s.ids == [3]));
+        assert!(matches!(q.pop(0), Some(Popped::Segment(s)) if s.ids == [4]));
+        assert!(!q.has_waiting_segments());
+        assert!(matches!(q.pop(0), Some(Popped::Partial(p)) if p.id == 5));
+        assert!(q.pop(0).is_none());
+    }
+
+    #[test]
+    fn a_new_partial_replaces_the_waiting_one() {
+        let mut q = AsrQueue::new(QueueConfig::default());
+        q.set_partial(partial(5, 1_000));
+        q.set_partial(partial(5, 2_000));
+        assert!(matches!(q.pop(0), Some(Popped::Partial(p)) if p.upto_ms == 2_000));
+        assert!(q.pop(0).is_none(), "chỉ giữ một yêu cầu");
+        assert!(q.is_empty());
+        assert_eq!(q.len(), 0, "len chỉ đếm đoạn đóng");
+    }
+
+    /// Đoạn đã đóng thì yêu cầu chép từng phần đang chờ của nó (hay của đoạn trước) không còn cần: lượt cuối đã thay.
+    #[test]
+    fn closing_a_segment_drops_its_waiting_partial() {
+        let mut q = AsrQueue::new(QueueConfig::default());
+        q.set_partial(partial(5, 1_000));
+        q.push(seg(4, 0, 900, 1));
+        assert!(matches!(q.pop(0), Some(Popped::Segment(_))));
+        assert!(
+            matches!(q.pop(0), Some(Popped::Partial(_))),
+            "đoạn 4 đóng không đụng yêu cầu của đoạn 5"
+        );
+        q.set_partial(partial(5, 1_500));
+        q.push(seg(5, 0, 1_600, 1));
+        assert!(matches!(q.pop(0), Some(Popped::Segment(s)) if s.ids == [5]));
+        assert!(q.pop(0).is_none());
+    }
+
+    #[test]
+    fn the_partial_request_debug_has_no_audio() {
+        let text = format!("{:?}", partial(5, 1_000));
+        assert!(text.contains("<16 mẫu>") && text.contains("id: 5"), "{text}");
     }
 
     /// Đoạn gộp lấy trung bình xác suất VAD theo độ dài tiếng nói.

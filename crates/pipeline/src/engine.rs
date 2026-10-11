@@ -665,6 +665,8 @@ fn asr_loop(
                 }));
                 continue;
             }
+            // Chép từng phần: Task 11 của kế hoạch 02 thêm đường đi; tới đó luồng VAD chưa tạo yêu cầu này.
+            Popped::Partial(_) => continue,
         };
         if pcm_skip(segment.samples.len()).is_some() {
             let _ = tx.send(Msg::Asr(AsrOutcome::Filtered { ids: segment.ids }));
