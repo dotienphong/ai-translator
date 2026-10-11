@@ -6260,7 +6260,7 @@ struct Live {
     start_ms: u64,
     upto_ms: u64,
     /// Số lần chép từng phần đã nhận.
-    gen: u64,
+    generation: u64,
     /// Bản tạm đang stream: chữ đã nhận (gồm phần prefill được stream lại), và đã thay chữ đang hiện chưa (QĐ7).
     streaming: String,
     switched: bool,
@@ -6285,7 +6285,7 @@ impl Live {
             text: String::new(),
             start_ms: 0,
             upto_ms: 0,
-            gen: 0,
+            generation: 0,
             streaming: String::new(),
             switched: false,
             frozen: false,
@@ -6313,7 +6313,7 @@ struct LiveFlight {
     job: u64,
     seg: u64,
     /// Lần chép từng phần (đếm theo đoạn) mà bản tạm này dịch, và câu được nối tiếp lúc gửi.
-    gen: u64,
+    generation: u64,
     extends: Option<u64>,
     cancel: Arc<AtomicBool>,
     /// Lúc luồng VAD tạo yêu cầu chép từng phần đó: mốc đầu của vòng cập nhật (§5).
@@ -6325,7 +6325,7 @@ struct LiveFlight {
 /// Bản tạm chờ gửi đi dịch: lần chép mới nhất của một đoạn (yêu cầu mới thắng, §4.6).
 struct LiveWant {
     seg: u64,
-    gen: u64,
+    generation: u64,
     requested: Instant,
 }
 ```
@@ -6545,12 +6545,12 @@ Thay **toàn bộ hàm `on_partial`** (Task 11) bằng:
             // Ngôn ngữ chỉ đổi được khi lần chép trước bị lọc (QĐ8): bắt đầu lại dòng với ngôn ngữ mới.
             *live = Live::new(id, &p.lang, holdback, target, agree);
         }
-        live.gen += 1;
+        live.generation += 1;
         live.src_split = live.src.push(&text);
         live.text = text;
         live.start_ms = p.start_ms;
         live.upto_ms = p.upto_ms;
-        let (gen, same_lang) = (live.gen, live.same_lang());
+        let (generation, same_lang) = (live.generation, live.same_lang());
         self.refresh_extends(p.seg);
         if !same_lang && !self.mt_unavailable {
             // Yêu cầu mới thắng (§4.6): hủy bản tạm đang dịch; lần chép mới nhất được gửi đi khi rảnh (`dispatch_live`).
@@ -6559,7 +6559,7 @@ Thay **toàn bộ hàm `on_partial`** (Task 11) bằng:
             }
             self.live_want = Some(LiveWant {
                 seg: p.seg,
-                gen,
+                generation,
                 requested: p.requested,
             });
         }
@@ -6597,6 +6597,9 @@ Thay **toàn bộ hàm `freeze_lives`** và **toàn bộ hàm `end_lives`** (Tas
     /// Dòng giữ chữ đang hiện của đoạn (spec §4.5): phần ổn định và phần tạm của lần chép từng phần cuối, nối sau `before`,
     /// chữ của câu `sub_id` trước khi ghép các đoạn đó (`None` với phụ đề mới). Không dựng từ chữ hiện tại của câu: chữ đó
     /// đã gồm lượt cuối của chính các đoạn này, chữ của đoạn sẽ bị lặp.
+    ///
+    /// `extends` đổi so với lúc dịch bản tạm gần nhất (hiếm: câu đang mở vừa chốt vì quá trần, hay LID đổi) thì phần dịch
+    /// không còn khớp chữ nguồn mới — chốt lại từ đầu, cùng luật với `refresh_extends`.
     fn freeze_lives(&mut self, segs: &[u64], sub_id: u64, before: Option<&str>) {
         for &seg in segs {
             self.forget_live_work(seg);
@@ -6604,7 +6607,11 @@ Thay **toàn bộ hàm `freeze_lives`** và **toàn bộ hàm `end_lives`** (Tas
                 continue;
             };
             live.frozen = true;
-            live.line.extends = (live.line.id != sub_id).then_some(sub_id);
+            let extends = (live.line.id != sub_id).then_some(sub_id);
+            if live.line.extends != extends {
+                live.reset_target();
+            }
+            live.line.extends = extends;
             (live.line.src_stable, live.line.src_tail) = live_source(live, live.line.extends.and(before));
             self.live_waiting.entry(sub_id).or_default().push(seg);
             self.emit_live(seg, true);
@@ -6716,7 +6723,7 @@ bằng
             self.live_flight = Some(LiveFlight {
                 job: self.live_jobs,
                 seg: want.seg,
-                gen: want.gen,
+                generation: want.generation,
                 extends,
                 cancel,
                 requested: want.requested,
@@ -6783,11 +6790,11 @@ bằng
                 self.record_cycle(cycle_ms);
             }
             Outcome::Cancelled => {
-                let latest = self.lives.get(&flight.seg).is_some_and(|l| l.gen == flight.gen);
+                let latest = self.lives.get(&flight.seg).is_some_and(|l| l.generation == flight.generation);
                 if current && latest && self.live_want.is_none() {
                     self.live_want = Some(LiveWant {
                         seg: flight.seg,
-                        gen: flight.gen,
+                        generation: flight.generation,
                         requested: flight.requested,
                     });
                 }
