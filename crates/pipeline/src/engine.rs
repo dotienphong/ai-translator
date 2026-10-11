@@ -35,9 +35,10 @@ use crate::glossary::SharedGlossary;
 use crate::metrics::SessionMetrics;
 use crate::prompt::{Lang, translation_prompt};
 use crate::prompt_history::PromptHistory;
-use crate::queue::{AsrQueue, MtItem, MtQueue, PendingSegment, Popped, Ready};
+use crate::queue::{AsrQueue, MtItem, MtQueue, PartialRequest, PendingSegment, Popped, Ready};
 use crate::segmenter::{FRAME_MS, FRAME_SAMPLES, Segmenter};
-use crate::sentence::{OpenSentence, Piece, merge_window_ms};
+use crate::sentence::{OpenSentence, Piece, joiner, merge_window_ms};
+use crate::streaming::{Split, Stabilizer, uses_char_units};
 use crate::subtitle::{Delta, LiveEnd, LiveLine, Status, Subtitle};
 use crate::supervisor::{Asr, AsrFailure};
 use crate::text::display_text;
@@ -250,7 +251,23 @@ enum AsrOutcome {
         start_ms: u64,
         end_ms: u64,
     },
+    /// Một lần chép từng phần của đoạn đang mở (spec 2026-10-10 §4.1).
+    Partial(PartialText),
     Unavailable(String),
+}
+
+/// Kết quả một lần chép từng phần (spec 2026-10-10 §4.1).
+struct PartialText {
+    /// Id đoạn (chưa cộng `id_base`): id mà đoạn nhận khi đóng.
+    seg: u64,
+    start_ms: u64,
+    /// Giờ âm thanh lúc chụp (cuối phần âm thanh đã chép).
+    upto_ms: u64,
+    lang: String,
+    /// `None`: bị bộ lọc ảo giác loại (§4.1), không cập nhật dòng đang nói.
+    text: Option<String>,
+    /// `asr_ms` + `lid_ms` của worker.
+    asr_ms: f32,
 }
 
 enum Msg {
@@ -706,6 +723,8 @@ fn asr_loop(
     let mut history = PromptHistory::new(max_prompt_tokens);
     // Ngôn ngữ của đoạn được giữ lại gần nhất (§6.4). Khóa ngôn ngữ thì luôn là ngôn ngữ đó.
     let mut prev_lang = (languages.len() == 1).then(|| languages[0].clone());
+    // Ngôn ngữ của đoạn đang mở, từ lần chép từng phần được giữ đầu tiên (QĐ8 của kế hoạch 02): (id đoạn, ngôn ngữ).
+    let mut partial_lang: Option<(u64, String)> = None;
     while let Some(popped) = queue.pop(now_ms) {
         let segment = match popped {
             Popped::Segment(s) => s,
@@ -717,18 +736,28 @@ fn asr_loop(
                 }));
                 continue;
             }
-            // Chép từng phần: Task 11 của kế hoạch 02 thêm đường đi; tới đó luồng VAD chưa tạo yêu cầu này.
-            Popped::Partial(_) => continue,
+            Popped::Partial(p) => {
+                let next = transcribe_partial(
+                    &mut *asr,
+                    p,
+                    tx,
+                    filter,
+                    &languages,
+                    &history,
+                    prev_lang.as_deref(),
+                    &mut partial_lang,
+                );
+                if next.is_break() {
+                    break;
+                }
+                continue;
+            }
         };
         if pcm_skip(segment.samples.len()).is_some() {
             let _ = tx.send(Msg::Asr(AsrOutcome::Filtered { ids: segment.ids }));
             continue;
         }
-        let pcm: Vec<i16> = segment
-            .samples
-            .iter()
-            .map(|s| (s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)
-            .collect();
+        let pcm = to_pcm(&segment.samples);
         let req = TranscribeRequest {
             segment_id: segment.ids[0],
             audio_ctx: audio_ctx_for_samples(pcm.len()),
@@ -779,6 +808,79 @@ fn asr_loop(
             }
         };
         let _ = tx.send(Msg::Asr(outcome));
+    }
+}
+
+/// Âm thanh 16 kHz mono sang PCM 16 bit cho `asr-worker`.
+fn to_pcm(samples: &[f32]) -> Vec<i16> {
+    samples
+        .iter()
+        .map(|s| (s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)
+        .collect()
+}
+
+/// Một lần chép từng phần (spec 2026-10-10 §4.1): đúng `TranscribeRequest` của lượt cuối (`audio_ctx`, `prompt_tokens`,
+/// `prev_lang` tính như lượt cuối); ngôn ngữ cho phép ở lần đầu của đoạn, rồi khóa vào ngôn ngữ của lần được giữ đầu tiên
+/// (QĐ8 của kế hoạch 02); kết quả qua đúng bộ lọc ảo giác. Không đổi lịch sử prompt hay ngôn ngữ của đoạn trước (chỉ lượt
+/// cuối đổi). Lỗi thì bỏ, không gửi lại (QĐ9). `Break` khi `asr-worker` không dùng được nữa. Log chỉ có id.
+#[allow(clippy::too_many_arguments)]
+fn transcribe_partial(
+    asr: &mut dyn Asr,
+    p: PartialRequest,
+    tx: &Sender<Msg>,
+    filter: &FilterConfig,
+    languages: &[String],
+    history: &PromptHistory,
+    prev_lang: Option<&str>,
+    partial_lang: &mut Option<(u64, String)>,
+) -> ControlFlow<()> {
+    if pcm_skip(p.samples.len()).is_some() {
+        return ControlFlow::Continue(());
+    }
+    let pcm = to_pcm(&p.samples);
+    let locked = partial_lang
+        .as_ref()
+        .filter(|(id, _)| *id == p.id)
+        .map(|(_, lang)| vec![lang.clone()]);
+    let req = TranscribeRequest {
+        segment_id: p.id,
+        audio_ctx: audio_ctx_for_samples(pcm.len()),
+        prompt_tokens: history.prompt_for(prev_lang, pcm.len()),
+        pcm,
+        languages: locked.unwrap_or_else(|| languages.to_vec()),
+        prev_lang: prev_lang.map(str::to_string),
+    };
+    match asr.transcribe(req) {
+        Ok(r) => {
+            let text = display_text(&r.lang, &r.text, filter);
+            let evidence = Evidence {
+                no_speech_prob: r.no_speech_prob,
+                avg_logprob: r.avg_logprob,
+                vad_mean_prob: p.mean_prob,
+                speech_ms: p.speech_ms,
+            };
+            let kept = verdict(&evidence, &text, filter) == Verdict::Speech;
+            if kept && partial_lang.as_ref().is_none_or(|(id, _)| *id != p.id) {
+                *partial_lang = Some((p.id, r.lang.clone()));
+            }
+            let _ = tx.send(Msg::Asr(AsrOutcome::Partial(PartialText {
+                seg: p.id,
+                start_ms: p.start_ms,
+                upto_ms: p.upto_ms,
+                lang: r.lang,
+                text: kept.then_some(text),
+                asr_ms: r.asr_ms + r.lid_ms,
+            })));
+            ControlFlow::Continue(())
+        }
+        Err(AsrFailure::Dropped(reason)) => {
+            log::warn!("bỏ lần chép từng phần của đoạn {}: {reason}", p.id);
+            ControlFlow::Continue(())
+        }
+        Err(AsrFailure::Unavailable(reason)) => {
+            let _ = tx.send(Msg::Asr(AsrOutcome::Unavailable(reason)));
+            ControlFlow::Break(())
+        }
     }
 }
 
@@ -872,6 +974,42 @@ struct InFlight {
     cancel: Arc<AtomicBool>,
 }
 
+/// Dòng đang nói của một đoạn VAD đang mở (spec 2026-10-10 §4.2–§4.5).
+struct Live {
+    /// Trạng thái của dòng (id đã cộng `id_base`, `extends`, ngôn ngữ, chữ dịch). Phần nguồn được dựng lúc phát (QĐ6).
+    line: LiveLine,
+    /// Bản đã phát gần nhất.
+    emitted: Option<LiveLine>,
+    /// Chốt chữ nguồn của riêng đoạn: LocalAgreement-2, giữ lại `src_holdback_*` đơn vị cuối (§4.2).
+    src: Stabilizer,
+    src_split: Split,
+    /// Chữ của lần chép từng phần mới nhất, và mốc của nó.
+    text: String,
+    start_ms: u64,
+    upto_ms: u64,
+    /// Kết quả nhận dạng lượt cuối của đoạn đã tới: không nhận gì thêm, chờ phụ đề chốt (QĐ5).
+    frozen: bool,
+}
+
+impl Live {
+    fn new(id: u64, lang: &str, holdback: usize) -> Self {
+        Self {
+            line: LiveLine {
+                id,
+                src_lang: lang.to_string(),
+                ..LiveLine::default()
+            },
+            emitted: None,
+            src: Stabilizer::new(lang, 2, holdback),
+            src_split: Split::default(),
+            text: String::new(),
+            start_ms: 0,
+            upto_ms: 0,
+            frozen: false,
+        }
+    }
+}
+
 struct Composer {
     cfg: EngineConfig,
     sink: Arc<dyn EventSink>,
@@ -899,6 +1037,12 @@ struct Composer {
     quota_hit: bool,
     /// Hết hạn dừng: luồng phụ đề thoát ngay, không chờ luồng nhận dạng hay luồng dịch.
     abandoned: bool,
+    /// Dòng đang nói theo id đoạn (chưa cộng `id_base`).
+    lives: BTreeMap<u64, Live>,
+    /// Phụ đề → các đoạn có dòng đang nói chờ phụ đề đó chốt để gỡ (QĐ5 của kế hoạch 02).
+    live_waiting: HashMap<u64, Vec<u64>>,
+    /// Đoạn lớn nhất đã có kết quả nhận dạng lượt cuối: bản chép từng phần của đoạn không lớn hơn số này tới muộn, bỏ.
+    last_final_seg: Option<u64>,
 }
 
 impl Composer {
@@ -949,6 +1093,9 @@ impl Composer {
             hurry_since: None,
             quota_hit: false,
             abandoned: false,
+            lives: BTreeMap::new(),
+            live_waiting: HashMap::new(),
+            last_final_seg: None,
         }
     }
 
@@ -977,6 +1124,8 @@ impl Composer {
 
     fn finish(mut self) -> SessionMetrics {
         self.finish_open();
+        // Dừng phiên: gỡ mọi dòng đang nói còn lại (spec 2026-10-10 §6.2).
+        self.end_all_lives();
         drop(self.jobs.take()); // luồng dịch thoát
         if self.quota_hit {
             self.sink.fatal(Fatal::QuotaExhausted, "đã dùng hết hạn mức");
@@ -1097,6 +1246,7 @@ impl Composer {
                 for id in &ids {
                     self.pending.remove(id);
                 }
+                self.last_final_seg = self.last_final_seg.max(ids.last().copied());
                 self.metrics.asr_ms.push(asr_ms);
                 let piece = Piece {
                     start_ms,
@@ -1119,6 +1269,8 @@ impl Composer {
                         replaces: Vec::new(),
                     };
                     self.sink.subtitle(&sub);
+                    // Câu đã là ngôn ngữ đích: phụ đề cuối hiện ngay, gỡ dòng đang nói (spec 2026-10-10 §4.5).
+                    self.end_lives(&ids);
                     return;
                 }
                 let window = self.window_ms;
@@ -1126,7 +1278,7 @@ impl Composer {
                     open.push(&piece);
                     let (sub_id, closed, joined) = (*sub_id, open.is_closed(), open.text().to_string());
                     self.metrics.merges += 1;
-                    self.grow(sub_id, &joined, end_ms, speech_ms, closed);
+                    self.grow(sub_id, &ids, &joined, end_ms, speech_ms, closed);
                     if closed {
                         self.finish_open();
                     }
@@ -1146,7 +1298,6 @@ impl Composer {
                         provisional: !closed,
                         replaces: Vec::new(),
                     };
-                    self.sink.subtitle(&sub);
                     // Ngữ cảnh là câu chốt trước câu này, chụp ngay lúc mở câu (§6.5).
                     let context = self
                         .cfg
@@ -1166,6 +1317,11 @@ impl Composer {
                             fresh: String::new(),
                         },
                     );
+                    if let Some(state) = self.subs.get(&sub_id) {
+                        self.sink.subtitle(&state.sub);
+                    }
+                    // Dòng đang nói của các đoạn này giờ thay chỗ phụ đề mới tới khi nó chốt; phát ngay sau upsert (QĐ5).
+                    self.freeze_lives(&ids, sub_id);
                     self.enqueue(sub_id, 1, false);
                     if closed {
                         self.remember_previous(&lang, &text);
@@ -1179,12 +1335,15 @@ impl Composer {
                 for id in &ids {
                     self.pending.remove(id);
                 }
+                self.last_final_seg = self.last_final_seg.max(ids.last().copied());
+                self.end_lives(&ids);
             }
             AsrOutcome::Dropped { ids, start_ms, end_ms } => {
                 self.metrics.dropped += 1;
                 for id in &ids {
                     self.pending.remove(id);
                 }
+                self.last_final_seg = self.last_final_seg.max(ids.last().copied());
                 // Mất âm thanh giữa chừng thì không ghép câu qua chỗ đó.
                 self.finish_open();
                 self.sink.subtitle(&Subtitle {
@@ -1198,7 +1357,9 @@ impl Composer {
                     provisional: false,
                     replaces: Vec::new(),
                 });
+                self.end_lives(&ids);
             }
+            AsrOutcome::Partial(p) => self.on_partial(p),
             AsrOutcome::Unavailable(reason) => {
                 log::error!("asr-worker không dùng được: {reason}");
                 self.sink.fatal(Fatal::Asr, &reason);
@@ -1206,8 +1367,9 @@ impl Composer {
         }
     }
 
-    /// Câu đang mở vừa được ghép thêm một đoạn: gửi lại phụ đề (tạm), và dịch lại cả câu.
-    fn grow(&mut self, sub_id: u64, text: &str, end_ms: u64, speech_ms: u64, closed: bool) {
+    /// Câu đang mở vừa được ghép thêm các đoạn `segs`: gửi lại phụ đề (tạm) mà vẫn giữ bản dịch đang hiện (A2, H2), rồi dịch
+    /// lại cả câu. Dòng đang nói của các đoạn đó đóng băng ngay sau upsert, chờ câu chốt (QĐ5 của kế hoạch 02).
+    fn grow(&mut self, sub_id: u64, segs: &[u64], text: &str, end_ms: u64, speech_ms: u64, closed: bool) {
         let Some(state) = self.subs.get_mut(&sub_id) else {
             return;
         };
@@ -1224,8 +1386,9 @@ impl Composer {
         state.fresh.clear();
         state.sub.status = Status::AsrDone;
         state.sub.provisional = !closed;
-        let version = state.version;
+        let (version, total) = (state.version, state.speech_ms);
         self.sink.subtitle(&state.sub);
+        self.freeze_lives(segs, sub_id);
         let in_flight = self.in_flight.as_ref().is_some_and(|f| f.sub_id == sub_id);
         if in_flight {
             // Bản dịch của câu cũ không còn đúng: hủy, đưa câu mới lên đầu hàng. Câu đã ghép thêm một lần trong lúc bản cũ
@@ -1233,15 +1396,11 @@ impl Composer {
             if let Some(f) = &self.in_flight {
                 f.cancel.store(true, Ordering::SeqCst);
             }
-            let total = state.speech_ms;
             if !self.queue.update(sub_id, text, end_ms, total, version) {
                 self.enqueue(sub_id, version, true);
             }
-        } else {
-            let total = state.speech_ms;
-            if !self.queue.update(sub_id, text, end_ms, total, version) {
-                self.enqueue(sub_id, version, false);
-            }
+        } else if !self.queue.update(sub_id, text, end_ms, total, version) {
+            self.enqueue(sub_id, version, false);
         }
     }
 
@@ -1269,6 +1428,10 @@ impl Composer {
             for id in &merged.replaces {
                 if let Some(absorbed) = self.subs.remove(id) {
                     counted += absorbed.counted_ms;
+                }
+                // Dòng đang nói chờ câu bị gộp giờ chờ câu gộp (QĐ5 của kế hoạch 02).
+                if let Some(segs) = self.live_waiting.remove(id) {
+                    self.live_waiting.entry(merged.sub_id).or_default().extend(segs);
                 }
             }
             if let Some(state) = self.subs.get_mut(&merged.sub_id) {
@@ -1464,7 +1627,8 @@ impl Composer {
         }
     }
 
-    /// Kết thúc phần dịch của một phụ đề. `Done` thì đếm phút cho hạn mức (§6.8).
+    /// Kết thúc phần dịch của một phụ đề. `Done` thì đếm phút cho hạn mức (§6.8). Dòng đang nói chờ phụ đề này được gỡ ngay
+    /// sau upsert (spec 2026-10-10 §4.5).
     fn settle(&mut self, sub_id: u64, status: Status, tgt_text: String) {
         let Some(state) = self.subs.get_mut(&sub_id) else {
             return;
@@ -1497,12 +1661,161 @@ impl Composer {
         if state.closed {
             self.subs.remove(&sub_id);
         }
+        self.end_waiting_lives(sub_id);
         if let Some(usage) = usage
             && self.sink.usage(&usage).is_break()
             && !self.quota_hit
         {
             self.hit_quota();
         }
+    }
+
+    /// Một lần chép từng phần có kết quả (spec 2026-10-10 §4.1–§4.3): cập nhật dòng đang nói của đoạn. Bỏ khi bị lọc, khi lượt
+    /// cuối của đoạn đã có, khi chế độ đã tự tắt, khi đang dừng, hết hạn mức hay hết hạn dừng.
+    fn on_partial(&mut self, p: PartialText) {
+        self.metrics.partials += 1;
+        self.metrics.partial_asr_ms.push(p.asr_ms);
+        let late = self.last_final_seg.is_some_and(|last| p.seg <= last);
+        if late
+            || self.flags.streaming.auto_off.load(Ordering::SeqCst)
+            || self.hurry_since.is_some()
+            || self.quota_hit
+            || self.abandoned
+        {
+            return;
+        }
+        let Some(text) = p.text else { return };
+        let streaming = &self.cfg.pipeline.streaming;
+        let holdback = if uses_char_units(&p.lang) {
+            streaming.src_holdback_chars
+        } else {
+            streaming.src_holdback_words
+        };
+        let id = self.cfg.id_base + p.seg;
+        let live = self
+            .lives
+            .entry(p.seg)
+            .or_insert_with(|| Live::new(id, &p.lang, holdback));
+        if live.frozen {
+            return;
+        }
+        if live.line.src_lang != p.lang {
+            // Ngôn ngữ chỉ đổi được khi lần chép trước bị lọc (QĐ8): bắt đầu lại dòng với ngôn ngữ mới.
+            *live = Live::new(id, &p.lang, holdback);
+        }
+        live.src_split = live.src.push(&text);
+        live.text = text;
+        live.start_ms = p.start_ms;
+        live.upto_ms = p.upto_ms;
+        self.refresh_extends(p.seg);
+        self.emit_live(p.seg, false);
+    }
+
+    /// Phụ đề tạm mà dòng `live` nối tiếp (spec §4.3): câu đang mở nhận được đoạn này theo luật ghép §6.3 (cùng ngôn ngữ của
+    /// lần chép từng phần, chưa chốt, chưa đạt trần, trong cửa sổ ghép). Dòng đã là ngôn ngữ đích không nối tiếp: lượt cuối
+    /// của nó là `same_lang`.
+    fn live_extends(&self, live: &Live) -> Option<u64> {
+        if live.line.src_lang == self.cfg.target.code() {
+            return None;
+        }
+        let piece = Piece {
+            start_ms: live.start_ms,
+            end_ms: live.upto_ms,
+            lang: &live.line.src_lang,
+            text: &live.text,
+        };
+        self.open
+            .as_ref()
+            .filter(|(o, _)| o.accepts(&piece, self.window_ms))
+            .map(|(_, id)| *id)
+    }
+
+    /// Xét lại phụ đề tạm mà dòng của đoạn `seg` nối tiếp (câu đang mở có thể đã chốt, hay vừa được ghép thêm đoạn trước).
+    fn refresh_extends(&mut self, seg: u64) {
+        let Some(live) = self.lives.get(&seg).filter(|l| !l.frozen) else {
+            return;
+        };
+        let extends = self.live_extends(live);
+        if let Some(live) = self.lives.get_mut(&seg)
+            && live.line.extends != extends
+        {
+            live.line.extends = extends;
+        }
+    }
+
+    /// Phát dòng đang nói của đoạn `seg` nếu có đổi (hay luôn phát, `force`). Nối tiếp câu A thì phần nguồn gồm chữ của A,
+    /// nối như khi ghép (QĐ6 của kế hoạch 02).
+    fn emit_live(&mut self, seg: u64, force: bool) {
+        let Some(live) = self.lives.get(&seg) else { return };
+        let mut line = live.line.clone();
+        let (stable, tail) = (&live.src_split.stable, &live.src_split.tail);
+        match line.extends.and_then(|id| self.subs.get(&id)) {
+            Some(state) => {
+                let base = state.sub.src_text.trim_end();
+                let join = joiner(&line.src_lang);
+                if stable.is_empty() {
+                    line.src_stable = base.to_string();
+                    line.src_tail = if tail.is_empty() {
+                        String::new()
+                    } else {
+                        format!("{join}{tail}")
+                    };
+                } else {
+                    line.src_stable = format!("{base}{join}{stable}");
+                    line.src_tail = tail.clone();
+                }
+            }
+            None => {
+                line.src_stable = stable.clone();
+                line.src_tail = tail.clone();
+            }
+        }
+        if force || live.emitted.as_ref() != Some(&line) {
+            self.sink.live(&line);
+            if let Some(live) = self.lives.get_mut(&seg) {
+                live.emitted = Some(line);
+            }
+        }
+    }
+
+    /// Kết quả nhận dạng lượt cuối của các đoạn `segs` vừa thành phụ đề `sub_id` (phụ đề mới, hay câu được ghép thêm): dòng
+    /// đang nói của các đoạn đó đóng băng, được phát lại một lần với `extends` là phụ đề đó (`None` nếu đó chính là id của
+    /// dòng), và chờ phụ đề đó chốt để gỡ (QĐ5). Gọi ngay sau upsert tạo ra phần chữ của các đoạn đó.
+    fn freeze_lives(&mut self, segs: &[u64], sub_id: u64) {
+        for &seg in segs {
+            let Some(live) = self.lives.get_mut(&seg) else {
+                continue;
+            };
+            live.frozen = true;
+            live.line.extends = (live.line.id != sub_id).then_some(sub_id);
+            self.live_waiting.entry(sub_id).or_default().push(seg);
+            self.emit_live(seg, true);
+        }
+    }
+
+    /// Gỡ dòng đang nói của các đoạn `segs`, nếu có (spec §4.5, §6.2).
+    fn end_lives(&mut self, segs: &[u64]) {
+        for &seg in segs {
+            if self.lives.remove(&seg).is_some() {
+                self.sink.live_end(&LiveEnd {
+                    id: self.cfg.id_base + seg,
+                });
+            }
+        }
+    }
+
+    /// Phụ đề `sub_id` vừa chốt: gỡ các dòng đang nói chờ nó.
+    fn end_waiting_lives(&mut self, sub_id: u64) {
+        if let Some(segs) = self.live_waiting.remove(&sub_id) {
+            self.end_lives(&segs);
+        }
+    }
+
+    /// Gỡ mọi dòng đang nói (tự tắt, hết hạn mức, hết hạn dừng, luồng phụ đề kết thúc).
+    fn end_all_lives(&mut self) {
+        self.live_waiting.clear();
+        let segs: Vec<u64> = self.lives.keys().copied().collect();
+        self.end_lives(&segs);
     }
 }
 
@@ -1651,6 +1964,10 @@ mod tests {
     #[derive(Default)]
     struct Sink {
         subs: Mutex<Vec<Subtitle>>,
+        lives: Mutex<Vec<LiveLine>>,
+        live_ends: Mutex<Vec<u64>>,
+        /// Thứ tự chung của upsert, `live` và `live_end` (`"upsert 1"`, `"live 1"`, `"end 1"`).
+        trail: Mutex<Vec<String>>,
         deltas: Mutex<Vec<Delta>>,
         indicators: Mutex<Vec<Indicators>>,
         fatal: Mutex<Vec<(Fatal, String)>>,
@@ -1661,6 +1978,7 @@ mod tests {
 
     impl EventSink for Sink {
         fn subtitle(&self, s: &Subtitle) {
+            self.trail.lock().unwrap().push(format!("upsert {}", s.id));
             self.subs.lock().unwrap().push(s.clone());
         }
         fn delta(&self, d: &Delta) {
@@ -1672,6 +1990,14 @@ mod tests {
         }
         fn fatal(&self, kind: Fatal, reason: &str) {
             self.fatal.lock().unwrap().push((kind, reason.to_string()));
+        }
+        fn live(&self, l: &LiveLine) {
+            self.trail.lock().unwrap().push(format!("live {}", l.id));
+            self.lives.lock().unwrap().push(l.clone());
+        }
+        fn live_end(&self, e: &LiveEnd) {
+            self.trail.lock().unwrap().push(format!("end {}", e.id));
+            self.live_ends.lock().unwrap().push(e.id);
         }
         fn usage(&self, u: &Usage) -> ControlFlow<()> {
             let mut all = self.usage.lock().unwrap();
@@ -1740,6 +2066,17 @@ mod tests {
         harness_with(cfg(), Sink::default())
     }
 
+    /// Chế độ dịch trong lúc nói có hiệu lực (máy đủ sức, công tắc bật).
+    fn live_harness() -> Harness {
+        harness_with(
+            EngineConfig {
+                streaming_enabled: true,
+                ..cfg()
+            },
+            Sink::default(),
+        )
+    }
+
     fn done(text: &str) -> Outcome {
         Outcome::Done(Translated {
             text: text.into(),
@@ -1769,6 +2106,42 @@ mod tests {
                 text: text.into(),
                 asr_ms: 1.0,
             }))
+        }
+
+        /// Một lần chép từng phần của đoạn `seg` có kết quả (`None`: bị bộ lọc ảo giác loại).
+        fn partial(&mut self, seg: u64, start_ms: u64, upto_ms: u64, lang: &str, text: Option<&str>) -> bool {
+            self.feed(Msg::Asr(AsrOutcome::Partial(PartialText {
+                seg,
+                start_ms,
+                upto_ms,
+                lang: lang.into(),
+                text: text.map(String::from),
+                asr_ms: 200.0,
+            })))
+        }
+
+        fn last_live(&self, id: u64) -> LiveLine {
+            self.sink
+                .lives
+                .lock()
+                .unwrap()
+                .iter()
+                .rev()
+                .find(|l| l.id == id)
+                .cloned()
+                .expect("dòng đang nói phải có")
+        }
+
+        fn live_count(&self) -> usize {
+            self.sink.lives.lock().unwrap().len()
+        }
+
+        fn live_ends(&self) -> Vec<u64> {
+            self.sink.live_ends.lock().unwrap().clone()
+        }
+
+        fn trail(&self) -> Vec<String> {
+            self.sink.trail.lock().unwrap().clone()
         }
 
         fn job(&self) -> MtJob {
@@ -2523,6 +2896,366 @@ mod tests {
         let Harness { c, sink, .. } = h;
         c.finish();
         assert_eq!(sink.kinds(), [Fatal::QuotaExhausted]);
+    }
+
+    // ---- Dịch trong lúc người nói chưa dừng (spec 2026-10-10), phía chữ nguồn. ----
+
+    /// Bản chép từng phần thành dòng đang nói (spec 2026-10-10 §4.2): phần ổn định là phần chung của hai lần liền nhau trừ
+    /// từ cuối, không rút lại; bị lọc thì không cập nhật; id là id mà đoạn nhận khi đóng.
+    #[test]
+    fn partials_become_a_live_line_with_a_stable_prefix() {
+        let mut h = live_harness();
+        h.partial(4, 1_000, 2_000, "en", Some("so we"));
+        let l = h.last_live(4);
+        assert_eq!(
+            (
+                l.id,
+                l.extends,
+                l.src_lang.as_str(),
+                l.src_stable.as_str(),
+                l.src_tail.as_str()
+            ),
+            (4, None, "en", "", "so we")
+        );
+        h.partial(4, 1_000, 3_000, "en", Some("so we went"));
+        let l = h.last_live(4);
+        assert_eq!((l.src_stable.as_str(), l.src_tail.as_str()), ("so", " we went"));
+        h.partial(4, 1_000, 4_000, "en", Some("so they went home"));
+        let l = h.last_live(4);
+        assert_eq!(
+            (l.src_stable.as_str(), l.src_tail.as_str()),
+            ("so", " they went home"),
+            "phần ổn định không rút lại"
+        );
+        assert_eq!(
+            (l.tgt_stable.as_str(), l.tgt_tail.as_str()),
+            ("", ""),
+            "chưa có phần dịch"
+        );
+        let before = h.live_count();
+        h.partial(4, 1_000, 4_500, "en", None);
+        assert_eq!(h.live_count(), before, "bị lọc: không cập nhật");
+        assert_eq!((h.c.metrics.partials, h.c.metrics.partial_asr_ms.len()), (4, 4));
+        h.no_job();
+    }
+
+    /// Đoạn mở nối tiếp câu đang mở (cùng tiếng, chưa chốt, trong cửa sổ ghép; §4.3): `extends` là phụ đề đó, và phần nguồn
+    /// gồm chữ của câu đó, nối như khi ghép (QĐ6).
+    #[test]
+    fn a_live_line_extends_the_open_sentence() {
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let _j1 = h.job();
+        h.partial(2, 1_300, 2_300, "en", Some("home and"));
+        let l = h.last_live(2);
+        assert_eq!(
+            (l.extends, l.src_stable.as_str(), l.src_tail.as_str()),
+            (Some(1), "so we went", " home and")
+        );
+        h.partial(2, 1_300, 2_800, "en", Some("home and then"));
+        let l = h.last_live(2);
+        assert_eq!(
+            (l.src_stable.as_str(), l.src_tail.as_str()),
+            ("so we went home", " and then")
+        );
+        h.partial(3, 9_000, 10_000, "en", Some("later"));
+        assert_eq!(h.last_live(3).extends, None, "ngoài cửa sổ ghép");
+    }
+
+    /// Lượt cuối (§4.5, QĐ5): khi kết quả nhận dạng lượt cuối tới, dòng được phát lại một lần ngay sau upsert tạo phụ đề và
+    /// đóng băng (bản chép tới muộn bị bỏ); dòng được gỡ khi phụ đề đó chốt.
+    #[test]
+    fn the_final_subtitle_replaces_the_live_line_when_it_settles() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let count = h.live_count();
+        h.said(1, 0, 1_500, "en", "So we went.");
+        let trail = h.trail();
+        assert_eq!(
+            trail[trail.len() - 3..],
+            ["upsert 1", "live 1", "upsert 1"],
+            "phát lại ngay sau upsert tạo phụ đề, trước khi gửi đi dịch"
+        );
+        assert_eq!(h.live_count(), count + 1);
+        assert_eq!(h.last_live(1).extends, None, "phụ đề mới có chính id của dòng");
+        h.partial(1, 0, 1_400, "en", Some("so we went"));
+        assert_eq!(h.live_count(), count + 1, "đóng băng: bỏ bản chép tới muộn");
+        assert!(h.live_ends().is_empty(), "lượt cuối chưa dịch xong: dòng vẫn hiện");
+        let j1 = h.job();
+        h.finish(&j1, done("Chúng tôi đã đi."));
+        assert_eq!(h.live_ends(), [1]);
+        let trail = h.trail();
+        assert_eq!(
+            trail[trail.len() - 2..],
+            ["upsert 1", "end 1"],
+            "gỡ sau upsert chốt phụ đề"
+        );
+    }
+
+    /// Đoạn được ghép vào câu đang mở: dòng phát lại với `extends` là câu đó ngay sau upsert của câu, và được gỡ khi câu (đã
+    /// ghép) chốt, không phải khi bản dịch cũ (bị hủy) báo xong.
+    #[test]
+    fn a_merged_final_ends_the_live_line_when_the_grown_sentence_settles() {
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.partial(2, 1_300, 2_000, "en", Some("home"));
+        h.said(2, 1_300, 2_000, "en", "home.");
+        let trail = h.trail();
+        assert_eq!(trail[trail.len() - 2..], ["upsert 1", "live 2"]);
+        assert_eq!(h.last_live(2).extends, Some(1));
+        h.finish(&j1, Outcome::Cancelled);
+        let j2 = h.job();
+        assert!(h.live_ends().is_empty());
+        h.finish(&j2, done("chúng tôi về nhà."));
+        assert_eq!(h.live_ends(), [2]);
+    }
+
+    /// Câu bị gộp ở hàng đợi dịch (§7 spec chính): dòng đang chờ câu đó chuyển sang câu gộp.
+    #[test]
+    fn a_sentence_merged_in_the_translation_queue_hands_its_live_lines_over() {
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "One.");
+        let j1 = h.job();
+        h.said(2, 2_000, 3_000, "en", "Two.");
+        h.partial(3, 4_000, 4_500, "en", Some("Three"));
+        h.said(3, 4_000, 5_000, "en", "Three.");
+        h.said(4, 6_000, 7_000, "en", "Four.");
+        h.said(5, 8_000, 9_000, "en", "Five.");
+        assert_eq!(h.last(2).replaces, vec![3, 4], "hàng đầy: 2, 3, 4 gộp thành 2");
+        h.finish(&j1, done("Một."));
+        let j2 = h.job();
+        assert_eq!(j2.sub_id, 2);
+        assert!(h.live_ends().is_empty());
+        h.finish(&j2, done("Hai. Ba. Bốn."));
+        assert_eq!(h.live_ends(), [3]);
+    }
+
+    /// Đoạn bị lọc hay bị bỏ ở lượt cuối: gỡ dòng ngay (§4.5, §7). Câu đã là ngôn ngữ đích: dòng chỉ hiện câu gốc, và được
+    /// gỡ ngay khi có phụ đề `same_lang`.
+    #[test]
+    fn filtered_dropped_and_same_language_segments_end_their_live_line() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("thank you"));
+        h.feed(Msg::Asr(AsrOutcome::Filtered { ids: vec![1] }));
+        assert_eq!(h.live_ends(), [1]);
+        h.partial(2, 2_000, 3_000, "en", Some("so we"));
+        h.feed(Msg::Asr(AsrOutcome::Dropped {
+            ids: vec![2],
+            start_ms: 2_000,
+            end_ms: 3_500,
+        }));
+        assert_eq!(h.live_ends(), [1, 2]);
+        assert_eq!(h.last(2).status, Status::Dropped);
+        h.partial(3, 4_000, 5_000, "vi", Some("xin chào"));
+        let l = h.last_live(3);
+        assert_eq!(
+            (l.extends, l.src_tail.as_str(), l.tgt_tail.as_str()),
+            (None, "xin chào", "")
+        );
+        h.said(3, 4_000, 5_000, "vi", "Xin chào.");
+        assert_eq!(h.live_ends(), [1, 2, 3]);
+        h.no_job();
+    }
+
+    /// Luồng phụ đề kết thúc (dừng phiên): gỡ mọi dòng còn lại (§6.2).
+    #[test]
+    fn the_end_of_the_session_ends_every_live_line() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        h.partial(2, 2_000, 3_000, "en", Some("and"));
+        let Harness { c, sink, .. } = h;
+        c.finish();
+        assert_eq!(sink.live_ends.lock().unwrap().clone(), [1, 2]);
+    }
+
+    // ---- Luồng nhận dạng: chép từng phần (spec 2026-10-10 §4.1). ----
+
+    /// Mọi yêu cầu đã gửi: (id, số mẫu, ngôn ngữ cho phép, ngôn ngữ đoạn trước, số token prompt).
+    type Seen = Arc<Mutex<Vec<(u64, usize, Vec<String>, Option<String>, usize)>>>;
+
+    /// Nhận dạng giả theo kịch bản; ghi mọi yêu cầu vào `seen`.
+    struct ScriptedAsr {
+        replies: Vec<Result<(&'static str, &'static str), AsrFailure>>,
+        seen: Seen,
+    }
+
+    impl Asr for ScriptedAsr {
+        fn transcribe(&mut self, req: TranscribeRequest) -> Result<TranscribeResult, AsrFailure> {
+            self.seen.lock().unwrap().push((
+                req.segment_id,
+                req.pcm.len(),
+                req.languages.clone(),
+                req.prev_lang.clone(),
+                req.prompt_tokens.len(),
+            ));
+            let (lang, text) = self.replies.remove(0)?;
+            Ok(TranscribeResult {
+                segment_id: req.segment_id,
+                lang: lang.into(),
+                lang_prob: 1.0,
+                text: text.into(),
+                tokens: vec![1, 2, 3],
+                no_speech_prob: 0.0,
+                lid_ms: 1.0,
+                asr_ms: 2.0,
+                avg_logprob: -0.2,
+            })
+        }
+    }
+
+    /// Yêu cầu chép từng phần của đoạn `id`, `ms` mili giây âm thanh từ mốc 1 000 ms.
+    fn partial_request(id: u64, ms: u64) -> PartialRequest {
+        PartialRequest {
+            id,
+            start_ms: 1_000,
+            upto_ms: 1_000 + ms,
+            speech_ms: ms,
+            mean_prob: 0.9,
+            samples: vec![0.1; ms as usize * 16],
+            requested: Instant::now(),
+        }
+    }
+
+    fn put_partial(queue: &SharedQueue, p: PartialRequest) {
+        queue.lock().0.set_partial(p);
+        queue.ready.notify_one();
+    }
+
+    /// `asr_loop` trên luồng riêng, ngôn ngữ cho phép en và vi.
+    fn asr_thread(asr: ScriptedAsr) -> (Arc<SharedQueue>, Receiver<Msg>, JoinHandle<()>) {
+        let queue = Arc::new(SharedQueue::new(AsrQueue::new(crate::config::QueueConfig::default())));
+        let (tx, rx) = mpsc::channel::<Msg>();
+        let thread = {
+            let queue = queue.clone();
+            std::thread::spawn(move || {
+                asr_loop(
+                    Box::new(asr),
+                    &queue,
+                    &tx,
+                    &AtomicU64::new(0),
+                    &FilterConfig::default(),
+                    vec!["en".into(), "vi".into()],
+                    100,
+                )
+            })
+        };
+        (queue, rx, thread)
+    }
+
+    fn next_asr(rx: &Receiver<Msg>) -> AsrOutcome {
+        match rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("phải có kết quả nhận dạng")
+        {
+            Msg::Asr(outcome) => outcome,
+            _ => panic!("chỉ có kết quả nhận dạng"),
+        }
+    }
+
+    /// Chép từng phần (QĐ8 của kế hoạch 02): cùng yêu cầu như lượt cuối; lần đầu của đoạn dùng mọi ngôn ngữ cho phép, từ lần
+    /// được giữ đầu tiên thì khóa ngôn ngữ đó; không đổi prompt hay ngôn ngữ của đoạn trước; bị lọc thì không có chữ.
+    #[test]
+    fn partials_use_the_final_request_and_lock_the_language_per_segment() {
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let (queue, rx, thread) = asr_thread(ScriptedAsr {
+            replies: vec![
+                Ok(("en", "Thank you for watching")),
+                Ok(("en", "so we went")),
+                Ok(("en", "so we went home")),
+                Ok(("en", "So we went home.")),
+                Ok(("en", "and then")),
+            ],
+            seen: seen.clone(),
+        });
+        put_partial(&queue, partial_request(7, 1_000));
+        let AsrOutcome::Partial(p) = next_asr(&rx) else {
+            panic!("phải là chép từng phần")
+        };
+        assert_eq!((p.seg, p.text), (7, None), "câu ảo giác bị lọc");
+        put_partial(&queue, partial_request(7, 1_500));
+        let AsrOutcome::Partial(p) = next_asr(&rx) else {
+            panic!("phải là chép từng phần")
+        };
+        assert_eq!(
+            (
+                p.seg,
+                p.start_ms,
+                p.upto_ms,
+                p.lang.as_str(),
+                p.text.as_deref(),
+                p.asr_ms
+            ),
+            (7, 1_000, 2_500, "en", Some("so we went"), 3.0)
+        );
+        put_partial(&queue, partial_request(7, 2_000));
+        let AsrOutcome::Partial(p) = next_asr(&rx) else {
+            panic!("phải là chép từng phần")
+        };
+        assert_eq!(p.text.as_deref(), Some("so we went home"));
+        queue.push(PendingSegment {
+            ids: vec![7],
+            start_ms: 1_000,
+            end_ms: 3_200,
+            speech_ms: 2_200,
+            mean_prob: 0.9,
+            speech_ratio: 1.0,
+            samples: vec![0.1; 40_000],
+        });
+        assert!(matches!(next_asr(&rx), AsrOutcome::Transcribed { ids, .. } if ids == [7]));
+        put_partial(&queue, partial_request(8, 1_000));
+        assert!(matches!(next_asr(&rx), AsrOutcome::Partial(p) if p.seg == 8));
+        queue.close();
+        thread.join().unwrap();
+        let seen = seen.lock().unwrap();
+        assert_eq!(
+            (seen[0].0, seen[0].1),
+            (7, 16_000),
+            "id của đoạn mở, âm thanh của ảnh chụp"
+        );
+        let langs: Vec<Vec<String>> = seen.iter().map(|s| s.2.clone()).collect();
+        assert_eq!(
+            langs,
+            [
+                vec!["en", "vi"],
+                vec!["en", "vi"],
+                vec!["en"],
+                vec!["en", "vi"],
+                vec!["en", "vi"]
+            ]
+        );
+        let prev: Vec<Option<&str>> = seen.iter().map(|s| s.3.as_deref()).collect();
+        assert_eq!(
+            prev,
+            [None, None, None, None, Some("en")],
+            "chỉ lượt cuối đổi ngôn ngữ đoạn trước"
+        );
+        let prompts: Vec<usize> = seen.iter().map(|s| s.4).collect();
+        assert_eq!(prompts, [0, 0, 0, 0, 3], "chỉ lượt cuối vào lịch sử prompt");
+    }
+
+    /// Lần chép từng phần lỗi thì bỏ, không gửi lại (spec §4.1, §7; QĐ9); lần sau vẫn chép.
+    #[test]
+    fn a_failed_partial_is_dropped_without_a_resend() {
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let (queue, rx, thread) = asr_thread(ScriptedAsr {
+            replies: vec![Err(AsrFailure::Dropped("lỗi giả".into())), Ok(("en", "so we went"))],
+            seen: seen.clone(),
+        });
+        put_partial(&queue, partial_request(3, 1_000));
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while seen.lock().unwrap().is_empty() {
+            assert!(Instant::now() < deadline, "lần đầu phải được gửi");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        put_partial(&queue, partial_request(3, 1_500));
+        assert!(
+            matches!(next_asr(&rx), AsrOutcome::Partial(p) if p.upto_ms == 2_500),
+            "lần lỗi không có kết quả"
+        );
+        queue.close();
+        thread.join().unwrap();
+        assert_eq!(seen.lock().unwrap().len(), 2, "không gửi lại");
     }
 
     // ---- Engine đầy đủ với nhận dạng và dịch giả trong tiến trình (không cần tiến trình phụ). ----
