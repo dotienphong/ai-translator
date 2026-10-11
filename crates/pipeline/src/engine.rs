@@ -805,6 +805,10 @@ struct SubState {
     counted_ms: u64,
     /// Ngữ cảnh chụp lúc mở câu (cờ `translationContext`).
     context: Option<String>,
+    /// Bản dịch của phiên bản trước, vẫn đang hiện trên màn hình trong lúc phiên bản mới (sau khi ghép câu) đang dịch.
+    held: Option<String>,
+    /// Chữ của bản dịch mới nhận được trong lúc `held` còn hiện.
+    fresh: String,
 }
 
 struct InFlight {
@@ -943,16 +947,31 @@ impl Composer {
                 if self.is_current(sub_id, version)
                     && let Some(state) = self.subs.get_mut(&sub_id)
                 {
-                    state.sub.tgt_text.push_str(&text);
-                    self.sink.delta(&Delta { id: sub_id, text });
+                    if let Some(held_chars) = state.held.as_ref().map(|h| h.chars().count()) {
+                        // Bản cũ còn hiện (A2): bản mới chỉ thay vào khi đã dài ít nhất bằng nó.
+                        state.fresh.push_str(&text);
+                        if state.fresh.chars().count() >= held_chars {
+                            state.held = None;
+                            state.sub.tgt_text = std::mem::take(&mut state.fresh);
+                            self.sink.subtitle(&state.sub);
+                        }
+                    } else {
+                        state.sub.tgt_text.push_str(&text);
+                        self.sink.delta(&Delta { id: sub_id, text });
+                    }
                 }
             }
             Msg::MtRetry { sub_id, version } => {
                 if self.is_current(sub_id, version)
                     && let Some(state) = self.subs.get_mut(&sub_id)
                 {
-                    state.sub.tgt_text.clear();
-                    self.sink.subtitle(&state.sub);
+                    if state.held.is_some() {
+                        // Chữ mới chưa từng hiện: bỏ nó, bản cũ vẫn hiện.
+                        state.fresh.clear();
+                    } else {
+                        state.sub.tgt_text.clear();
+                        self.sink.subtitle(&state.sub);
+                    }
                 }
             }
             Msg::MtDone {
@@ -1074,6 +1093,8 @@ impl Composer {
                             speech_ms,
                             counted_ms: 0,
                             context,
+                            held: None,
+                            fresh: String::new(),
                         },
                     );
                     self.enqueue(sub_id, 1, false);
@@ -1126,7 +1147,12 @@ impl Composer {
         state.speech_ms += speech_ms;
         state.sub.src_text = text.to_string();
         state.sub.end_ms = end_ms;
-        state.sub.tgt_text.clear();
+        // A2: không xóa bản dịch đang hiện; giữ nó tới khi bản dịch của câu mới dài ít nhất bằng nó. Chữ mới của phiên bản
+        // cũ (nếu đang giữ) không còn đúng.
+        if !state.sub.tgt_text.is_empty() {
+            state.held = Some(state.sub.tgt_text.clone());
+        }
+        state.fresh.clear();
         state.sub.status = Status::AsrDone;
         state.sub.provisional = !closed;
         let version = state.version;
@@ -1311,7 +1337,9 @@ impl Composer {
                 continue; // mục cũ của một câu đã được ghép thêm: bản mới nằm ở mục khác của hàng
             }
             state.sub.status = Status::Translating;
-            state.sub.tgt_text.clear();
+            if state.held.is_none() {
+                state.sub.tgt_text.clear();
+            }
             self.sink.subtitle(&state.sub);
             let cancel = Arc::new(AtomicBool::new(false));
             let job = MtJob {
@@ -1392,6 +1420,8 @@ impl Composer {
             }
             _ => {}
         }
+        state.held = None;
+        state.fresh.clear();
         state.sub.status = status;
         state.sub.tgt_text = tgt_text;
         self.sink.subtitle(&state.sub);
@@ -1552,6 +1582,7 @@ mod tests {
     #[derive(Default)]
     struct Sink {
         subs: Mutex<Vec<Subtitle>>,
+        deltas: Mutex<Vec<Delta>>,
         indicators: Mutex<Vec<Indicators>>,
         fatal: Mutex<Vec<(Fatal, String)>>,
         usage: Mutex<Vec<Usage>>,
@@ -1563,7 +1594,9 @@ mod tests {
         fn subtitle(&self, s: &Subtitle) {
             self.subs.lock().unwrap().push(s.clone());
         }
-        fn delta(&self, _: &Delta) {}
+        fn delta(&self, d: &Delta) {
+            self.deltas.lock().unwrap().push(d.clone());
+        }
         fn level(&self, _: f32) {}
         fn indicators(&self, i: &Indicators) {
             self.indicators.lock().unwrap().push(i.clone());
@@ -1672,6 +1705,27 @@ mod tests {
 
         fn no_job(&self) {
             assert!(self.jobs.try_recv().is_err(), "không được gửi thêm câu nào đi dịch");
+        }
+
+        /// Luồng dịch gửi một phần chữ của `job`.
+        fn delta(&mut self, job: &MtJob, text: &str) -> bool {
+            self.feed(Msg::MtDelta {
+                sub_id: job.sub_id,
+                version: job.version,
+                text: text.into(),
+            })
+        }
+
+        /// Chữ dịch của mọi upsert của phụ đề `id`, theo thứ tự.
+        fn tgt_texts(&self, id: u64) -> Vec<String> {
+            self.sink
+                .subs
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|s| s.id == id)
+                .map(|s| s.tgt_text.clone())
+                .collect()
         }
 
         fn finish(&mut self, job: &MtJob, outcome: Outcome) -> bool {
@@ -1921,6 +1975,126 @@ mod tests {
         h.no_job();
         assert_eq!(h.sink.usage(), [(1, 1_000), (1, 700)]);
         assert_eq!(h.c.metrics.translated_speech_ms, 1_700, "same_lang không tính");
+    }
+
+    /// A2 (spec 2026-10-10 §8; H2 của kế hoạch 00): câu được ghép thêm đoạn thì bản dịch đang hiện không bị xóa; bản dịch
+    /// mới chỉ thay vào khi đã dài ít nhất bằng nó (đếm ký tự), bằng một upsert; từ đó chữ mới tới bằng delta như thường.
+    #[test]
+    fn a_merge_keeps_the_shown_translation_until_the_new_one_is_as_long() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.delta(&j1, "chúng tôi");
+        h.delta(&j1, " đã đi");
+        h.finish(&j1, done("chúng tôi đã đi"));
+        h.said(2, 1_300, 2_000, "en", "home.");
+        let j2 = h.job();
+        assert_eq!((j2.version, j2.text.as_str()), (2, "so we went home."));
+        let grown = h.last(1);
+        assert_eq!(
+            (grown.status, grown.tgt_text.as_str()),
+            (Status::Translating, "chúng tôi đã đi"),
+            "bản cũ vẫn hiện"
+        );
+        let deltas_before = h.sink.deltas.lock().unwrap().len();
+        h.delta(&j2, "chúng tôi");
+        h.delta(&j2, " về");
+        assert_eq!(
+            h.last(1).tgt_text,
+            "chúng tôi đã đi",
+            "bản mới (12 ký tự) còn ngắn hơn bản cũ (15)"
+        );
+        h.delta(&j2, " nhà.");
+        assert_eq!(h.last(1).tgt_text, "chúng tôi về nhà.", "đủ dài: thay vào bằng upsert");
+        assert_eq!(
+            h.sink.deltas.lock().unwrap().len(),
+            deltas_before,
+            "chữ của bản mới chưa đi bằng delta"
+        );
+        h.delta(&j2, " Xong");
+        let last_delta = h.sink.deltas.lock().unwrap().last().cloned().unwrap();
+        assert_eq!(
+            (last_delta.id, last_delta.text.as_str()),
+            (1, " Xong"),
+            "sau khi thay: delta như thường"
+        );
+        h.finish(&j2, done("chúng tôi về nhà. Xong"));
+        assert_eq!(h.last(1).tgt_text, "chúng tôi về nhà. Xong");
+        let tgts = h.tgt_texts(1);
+        let first = tgts.iter().position(|t| !t.is_empty()).unwrap();
+        assert!(
+            tgts[first..].iter().all(|t| !t.is_empty()),
+            "không lúc nào xóa trắng: {tgts:?}"
+        );
+    }
+
+    /// A2: câu được ghép thêm khi bản dịch đầu còn đang tới: phần đã hiện được giữ, cả lúc câu chờ luồng dịch trả bản cũ
+    /// (đã hủy) lẫn lúc gửi đi dịch lại.
+    #[test]
+    fn a_sentence_growing_mid_translation_keeps_the_partial_text() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.delta(&j1, "chúng tôi");
+        h.said(2, 1_300, 2_000, "en", "home.");
+        assert!(j1.cancel.load(Ordering::SeqCst));
+        let waiting = h.last(1);
+        assert_eq!(
+            (waiting.status, waiting.tgt_text.as_str()),
+            (Status::AsrDone, "chúng tôi")
+        );
+        h.finish(&j1, Outcome::Cancelled);
+        let j2 = h.job();
+        assert_eq!(h.last(1).tgt_text, "chúng tôi", "gửi đi dịch không xóa bản đang giữ");
+        h.delta(&j2, "chúng tôi về nhà.");
+        assert_eq!(h.last(1).tgt_text, "chúng tôi về nhà.");
+    }
+
+    /// A2: lần dịch đầu của câu mới hỏng (thử lại) trong lúc đang giữ bản cũ: chỉ bỏ chữ mới, bản cũ vẫn hiện; lần thử lại
+    /// đếm lại từ đầu.
+    #[test]
+    fn a_retry_while_holding_drops_only_the_fresh_text() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.finish(&j1, done("chúng tôi đã đi"));
+        h.said(2, 1_300, 2_000, "en", "home.");
+        let j2 = h.job();
+        h.delta(&j2, "rác rác rác");
+        h.feed(Msg::MtRetry {
+            sub_id: 1,
+            version: j2.version,
+        });
+        assert_eq!(h.last(1).tgt_text, "chúng tôi đã đi");
+        h.delta(&j2, "chúng tôi về nhà.");
+        assert_eq!(h.last(1).tgt_text, "chúng tôi về nhà.");
+    }
+
+    /// A2: trạng thái cuối không bao giờ mang bản đang giữ: dịch hỏng thì chữ dịch rỗng, bản mới ngắn hơn thì là bản mới.
+    #[test]
+    fn settling_drops_the_held_translation() {
+        let mut h = harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        let j1 = h.job();
+        h.finish(&j1, done("chúng tôi đã đi"));
+        h.said(2, 1_300, 2_000, "en", "home");
+        let j2 = h.job();
+        h.finish(
+            &j2,
+            Outcome::Failed {
+                reason: "x".into(),
+                attempts: 2,
+                source_tokens: 1,
+                completion_tokens: None,
+            },
+        );
+        let failed = h.last(1);
+        assert_eq!((failed.status, failed.tgt_text.as_str()), (Status::Failed, ""));
+        h.said(3, 2_300, 3_000, "en", "now.");
+        let j3 = h.job();
+        h.finish(&j3, done("về"));
+        let last = h.last(1);
+        assert_eq!((last.status, last.tgt_text.as_str()), (Status::Done, "về"));
     }
 
     /// H1: luồng dịch truyền cờ hủy của câu cho `translate`, nên câu bị hủy dừng ngay cả khi hậu xử lý chưa hiện chữ nào

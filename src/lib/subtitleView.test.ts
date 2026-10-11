@@ -69,6 +69,15 @@ describe("lineView", () => {
     expect(lineView(sub("done"), false).kind).toBe("sourceOnly");
   });
 
+  it("câu vừa được ghép thêm đoạn vẫn hiện bản dịch cũ trong lúc chờ dịch lại (A2)", () => {
+    expect(lineView(sub("asr_done", "Xin chào", true), true)).toEqual({
+      kind: "translating",
+      main: "Xin chào",
+      source: "Hello",
+      provisional: true,
+    });
+  });
+
   it("phụ đề tạm giữ cờ provisional", () => {
     expect(lineView(sub("done", "Xin chào", true), false).provisional).toBe(true);
   });

@@ -3,7 +3,8 @@ import type { AppStatus, BackgroundColor, Subtitle, TextColor } from "./ipc";
 // Cách hiện một phụ đề theo trạng thái (spec §4.4, §6.6), dùng chung cho thanh phụ đề và bản chép lời.
 // - `done`: bản dịch (câu gốc chữ nhỏ ở trên nếu bật "hiện câu gốc").
 // - `translating`: chữ dịch đang tới dần; chưa có chữ nào thì hiện câu gốc màu nhạt.
-// - `asr_done`: đã có câu gốc, chờ dịch: câu gốc màu nhạt.
+// - `asr_done`: đã có câu gốc, chờ dịch: câu gốc màu nhạt. Câu vừa được ghép thêm đoạn mà bản dịch cũ còn được giữ (spec
+//   2026-10-10 §8, A2) thì vẫn hiện bản dịch cũ, như `translating`.
 // - `same_lang`, `skipped`: chỉ câu gốc (câu đã là ngôn ngữ đích; bỏ bước dịch vì trễ).
 // - `failed`: câu gốc, kèm nhãn "chưa dịch được".
 // - `dropped`: "[bỏ qua đoạn]".
@@ -34,7 +35,7 @@ export function lineView(s: Subtitle, showSource: boolean): LineView {
     case "translating":
       return s.tgt_text ? translated("translating") : sourceOnly("pending");
     case "asr_done":
-      return sourceOnly("pending");
+      return s.tgt_text ? translated("translating") : sourceOnly("pending");
     case "same_lang":
     case "skipped":
       return sourceOnly("sourceOnly");
