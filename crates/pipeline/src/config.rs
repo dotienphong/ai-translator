@@ -11,6 +11,7 @@
 //!
 //! Hạn dịch câu cuối khi Dừng thì nằm ở đây (`mt.stop_grace_ms`), vì nó quyết định câu nào thành `skipped`.
 
+use crate::prompt::Lang;
 use crate::segmenter::SegmenterConfig;
 use serde::{Deserialize, Serialize};
 
@@ -373,7 +374,8 @@ pub struct LangAgree {
     pub lang: String,
     /// Số bản dịch tạm liền nhau phải trùng phần đầu (spec §4.4).
     pub n: usize,
-    /// Số đơn vị cuối chừa lại, không chốt.
+    /// Số đơn vị cuối chừa lại, không chốt — đếm theo đơn vị của NGÔN NGỮ ĐÍCH (bản dịch sẽ tạo ra), không phải theo
+    /// `lang` (tiếng nguồn dùng để tra cứu mục này).
     pub k: usize,
 }
 
@@ -416,9 +418,14 @@ pub struct StreamingConfig {
     pub src_holdback_words: usize,
     /// … hay chữ, với tiếng Trung và tiếng Nhật.
     pub src_holdback_chars: usize,
-    /// (n, k) để chốt phần dịch, theo tiếng nguồn (§4.4).
+    /// (n, k) để chốt phần dịch, theo tiếng nguồn (§4.4). Nạp từ manifest thì THAY THẾ CẢ DANH SÁCH (như
+    /// `mt.ratio_thresholds`), không gộp theo từng tiếng: phải ghi đủ mọi tiếng muốn giữ giá trị riêng, tiếng bị bỏ
+    /// sót rơi về `tgt_agree_fallback` — mức kém thận trọng nhất trong bảng mặc định, không phải giá trị mặc định
+    /// của tiếng đó.
     pub tgt_agree: Vec<LangAgree>,
-    /// (n, k) khi tiếng nguồn không có trong `tgt_agree`.
+    /// (n, k) khi tiếng nguồn không có trong `tgt_agree` (so khớp theo `lang`, xem [`StreamingConfig::agree_for`]).
+    /// `lang` của giá trị này cố ý để rỗng vì nó không tham gia so khớp — không phải "giá trị mặc định cho tiếng có
+    /// mã rỗng".
     pub tgt_agree_fallback: LangAgree,
     /// Số vòng cập nhật gần nhất lấy trung vị (§5).
     pub cycle_window: usize,
@@ -429,7 +436,9 @@ pub struct StreamingConfig {
     /// T khi chưa đủ `warmup_cycles` vòng.
     pub initial_cadence_ms: u64,
     pub warmup_cycles: usize,
-    /// Trung vị của `cycle_window` vòng gần nhất lớn hơn số này thì chế độ này tắt tới hết phiên (§5).
+    /// Trung vị của `cycle_window` vòng gần nhất lớn hơn số này thì chế độ này tắt tới hết phiên (§5). Phải
+    /// ≤ `max_cadence_ms`: lớn hơn thì nhịp T đã bị kẹp ở `max_cadence_ms` (nhỏ hơn trung vị thật, vòng sau bắt đầu
+    /// trước khi vòng trước xong) từ trước khi cơ chế tự tắt kịp kích hoạt.
     pub auto_off_cycle_ms: u64,
 }
 
@@ -448,7 +457,7 @@ impl Default for StreamingConfig {
                 LangAgree::new("ja", 3, 2),
                 LangAgree::new("ko", 3, 2),
             ],
-            tgt_agree_fallback: LangAgree::default(),
+            tgt_agree_fallback: LangAgree::new("", 2, 1),
             cycle_window: 8,
             cadence_factor: 1.5,
             min_cadence_ms: 700,
@@ -566,6 +575,12 @@ impl PipelineConfig {
             ("streaming.src_holdback_words", st.src_holdback_words <= 10),
             ("streaming.src_holdback_chars", st.src_holdback_chars <= 10),
             ("streaming.tgt_agree", st.tgt_agree.iter().all(LangAgree::is_valid)),
+            ("streaming.tgt_agree", {
+                let mut seen = std::collections::HashSet::new();
+                st.tgt_agree
+                    .iter()
+                    .all(|a| Lang::from_code(&a.lang).is_some() && seen.insert(a.lang.as_str()))
+            }),
             ("streaming.tgt_agree_fallback", st.tgt_agree_fallback.is_valid()),
             ("streaming.cycle_window", (1..=32).contains(&st.cycle_window)),
             ("streaming.cadence_factor", (1.0..=4.0).contains(&st.cadence_factor)),
@@ -579,7 +594,10 @@ impl PipelineConfig {
                 (st.min_cadence_ms..=st.max_cadence_ms).contains(&st.initial_cadence_ms),
             ),
             ("streaming.warmup_cycles", st.warmup_cycles <= st.cycle_window),
-            ("streaming.auto_off_cycle_ms", st.auto_off_cycle_ms >= 200),
+            (
+                "streaming.auto_off_cycle_ms",
+                (200..=st.max_cadence_ms).contains(&st.auto_off_cycle_ms),
+            ),
         ];
         match checks.iter().find(|(_, ok)| !ok) {
             Some((key, _)) => Err(key.to_string()),
@@ -906,6 +924,37 @@ mod tests {
         let mut c = PipelineConfig::default();
         c.streaming.max_cadence_ms = 600; // nhỏ hơn min_cadence_ms 700
         assert_eq!(c.validate(), Err("streaming.max_cadence_ms".into()));
+        // I1 của rà soát sau Task 1: auto_off_cycle_ms > max_cadence_ms vẫn "hợp lệ riêng lẻ" nhưng vô nghĩa khi
+        // ghép (nhịp bị kẹp dưới trung vị thật trước khi tự tắt kịp kích hoạt).
+        let mut c = PipelineConfig::default();
+        c.streaming.auto_off_cycle_ms = 2_001; // lớn hơn max_cadence_ms mặc định 2_000
+        assert_eq!(c.validate(), Err("streaming.auto_off_cycle_ms".into()));
+        let mut c = PipelineConfig::default();
+        c.streaming.auto_off_cycle_ms = 2_000; // bằng max_cadence_ms: còn hợp lệ
+        assert_eq!(c.validate(), Ok(()));
+    }
+
+    /// I2 của rà soát sau Task 1: `tgt_agree` qua manifest thay cả danh sách, nên mã tiếng sai chính tả hay trùng
+    /// nhau phải bị `validate` bắt — nếu không sẽ lặng lẽ rơi về `tgt_agree_fallback` (mức kém thận trọng nhất).
+    #[test]
+    fn tgt_agree_lang_must_be_a_known_code_and_unique() {
+        // (a) Mặc định vẫn hợp lệ: 5 mã của `Lang::from_code`, không trùng nhau.
+        assert_eq!(PipelineConfig::default().validate(), Ok(()));
+
+        // (b) Mã tiếng không thuộc 5 mã hợp lệ (ví dụ lỗi chính tả "JA", "zh-CN") phải bị chặn.
+        let mut c = PipelineConfig::default();
+        c.streaming.tgt_agree[0].lang = "xx".into();
+        assert_eq!(c.validate(), Err("streaming.tgt_agree".into()), "mã tiếng không hợp lệ");
+
+        // (c) Hai mục cùng `lang` (ví dụ manifest ghi nhầm "ja" hai lần) phải bị chặn, dù mỗi mục riêng lẻ hợp lệ.
+        let mut c = PipelineConfig::default();
+        c.streaming.tgt_agree[0].lang = "ja".into(); // trùng với mục có sẵn ở tgt_agree[3]
+        assert_eq!(c.validate(), Err("streaming.tgt_agree".into()), "trùng mã tiếng");
+
+        // `tgt_agree_fallback.lang` cố ý rỗng (không phải mã tiếng thật) và không bị áp kiểm tra này.
+        let mut c = PipelineConfig::default();
+        c.streaming.tgt_agree_fallback.lang = "bất kỳ chuỗi nào, kể cả rỗng".into();
+        assert_eq!(c.validate(), Ok(()));
     }
 
     /// Mỗi khóa có giới hạn đều báo đúng tên khi sai, kể cả các khóa thêm sau review.
