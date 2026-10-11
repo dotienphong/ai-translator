@@ -25,6 +25,8 @@ pub struct PipelineConfig {
     pub queue: QueueConfig,
     pub supervisor: SupervisorConfig,
     pub audio: AudioConfig,
+    /// Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §4–§5).
+    pub streaming: StreamingConfig,
 }
 
 /// Ghép câu và phụ đề tạm (§6.3).
@@ -364,12 +366,119 @@ impl Default for AudioConfig {
     }
 }
 
+/// Số bản dịch tạm phải trùng phần đầu, và số đơn vị cuối chừa lại, theo tiếng nguồn (spec 2026-10-10 §4.4).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LangAgree {
+    pub lang: String,
+    /// Số bản dịch tạm liền nhau phải trùng phần đầu (spec §4.4).
+    pub n: usize,
+    /// Số đơn vị cuối chừa lại, không chốt.
+    pub k: usize,
+}
+
+impl Default for LangAgree {
+    fn default() -> Self {
+        Self {
+            lang: String::new(),
+            n: 2,
+            k: 1,
+        }
+    }
+}
+
+impl LangAgree {
+    fn new(lang: &str, n: usize, k: usize) -> Self {
+        Self {
+            lang: lang.to_string(),
+            n,
+            k,
+        }
+    }
+
+    /// Bảng của H3: `n` trong 2..=5, `k` ≤ 10.
+    fn is_valid(&self) -> bool {
+        (2..=5).contains(&self.n) && self.k <= 10
+    }
+}
+
+/// Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §4–§5).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct StreamingConfig {
+    /// Đoạn mở có từ chừng này tiếng nói mới được chép từng phần theo nhịp (§4.1).
+    pub min_partial_speech_ms: u64,
+    /// Từ lần chép từng phần trước phải có thêm chừng này tiếng nói (§4.1).
+    pub min_new_speech_ms: u64,
+    /// Ngưỡng im lặng tối thiểu để đóng đoạn ở chế độ này (§4.7). Mặc định tạm 400; chốt ở cổng của kế hoạch 02.
+    pub end_silence_ms: u64,
+    /// Số đơn vị cuối của bản chép chưa chốt: từ (§4.2) …
+    pub src_holdback_words: usize,
+    /// … hay chữ, với tiếng Trung và tiếng Nhật.
+    pub src_holdback_chars: usize,
+    /// (n, k) để chốt phần dịch, theo tiếng nguồn (§4.4).
+    pub tgt_agree: Vec<LangAgree>,
+    /// (n, k) khi tiếng nguồn không có trong `tgt_agree`.
+    pub tgt_agree_fallback: LangAgree,
+    /// Số vòng cập nhật gần nhất lấy trung vị (§5).
+    pub cycle_window: usize,
+    /// T = `cadence_factor` × trung vị, kẹp trong [`min_cadence_ms`, `max_cadence_ms`] (§5).
+    pub cadence_factor: f32,
+    pub min_cadence_ms: u64,
+    pub max_cadence_ms: u64,
+    /// T khi chưa đủ `warmup_cycles` vòng.
+    pub initial_cadence_ms: u64,
+    pub warmup_cycles: usize,
+    /// Trung vị của `cycle_window` vòng gần nhất lớn hơn số này thì chế độ này tắt tới hết phiên (§5).
+    pub auto_off_cycle_ms: u64,
+}
+
+impl Default for StreamingConfig {
+    fn default() -> Self {
+        Self {
+            min_partial_speech_ms: 1_000,
+            min_new_speech_ms: 300,
+            end_silence_ms: 400,
+            src_holdback_words: 1,
+            src_holdback_chars: 2,
+            tgt_agree: vec![
+                LangAgree::new("en", 2, 1),
+                LangAgree::new("vi", 2, 1),
+                LangAgree::new("zh", 2, 2),
+                LangAgree::new("ja", 3, 2),
+                LangAgree::new("ko", 3, 2),
+            ],
+            tgt_agree_fallback: LangAgree::default(),
+            cycle_window: 8,
+            cadence_factor: 1.5,
+            min_cadence_ms: 700,
+            max_cadence_ms: 2_000,
+            initial_cadence_ms: 1_000,
+            warmup_cycles: 3,
+            auto_off_cycle_ms: 1_300,
+        }
+    }
+}
+
+impl StreamingConfig {
+    /// (n, k) theo tiếng nguồn; không có trong `tgt_agree` thì dùng `tgt_agree_fallback`.
+    pub fn agree_for(&self, src_lang: &str) -> (usize, usize) {
+        let a = self
+            .tgt_agree
+            .iter()
+            .find(|a| a.lang == src_lang)
+            .unwrap_or(&self.tgt_agree_fallback);
+        (a.n, a.k)
+    }
+}
+
 impl PipelineConfig {
     /// Kiểm phạm vi, trả tên khóa đầu tiên sai. Dùng khi nạp từ manifest (kế hoạch 04).
     pub fn validate(&self) -> Result<(), String> {
         let s = &self.segmenter;
         let q = &self.queue;
         let v = &self.supervisor;
+        let st = &self.streaming;
         let checks: Vec<(&str, bool)> = vec![
             (
                 "segmenter.threshold",
@@ -447,6 +556,30 @@ impl PipelineConfig {
                 self.audio.silent_rms.is_finite() && self.audio.silent_rms >= 0.0,
             ),
             ("audio.level_interval_ms", self.audio.level_interval_ms >= 20),
+            // H3 của kế hoạch 00 (spec 2026-10-10 §4–§5).
+            (
+                "streaming.min_partial_speech_ms",
+                (250..=5_000).contains(&st.min_partial_speech_ms),
+            ),
+            ("streaming.min_new_speech_ms", st.min_new_speech_ms <= 2_000),
+            ("streaming.end_silence_ms", (50..=2_000).contains(&st.end_silence_ms)),
+            ("streaming.src_holdback_words", st.src_holdback_words <= 10),
+            ("streaming.src_holdback_chars", st.src_holdback_chars <= 10),
+            ("streaming.tgt_agree", st.tgt_agree.iter().all(LangAgree::is_valid)),
+            ("streaming.tgt_agree_fallback", st.tgt_agree_fallback.is_valid()),
+            ("streaming.cycle_window", (1..=32).contains(&st.cycle_window)),
+            ("streaming.cadence_factor", (1.0..=4.0).contains(&st.cadence_factor)),
+            ("streaming.min_cadence_ms", st.min_cadence_ms >= 200),
+            (
+                "streaming.max_cadence_ms",
+                st.max_cadence_ms >= st.min_cadence_ms && st.max_cadence_ms <= 10_000,
+            ),
+            (
+                "streaming.initial_cadence_ms",
+                (st.min_cadence_ms..=st.max_cadence_ms).contains(&st.initial_cadence_ms),
+            ),
+            ("streaming.warmup_cycles", st.warmup_cycles <= st.cycle_window),
+            ("streaming.auto_off_cycle_ms", st.auto_off_cycle_ms >= 200),
         ];
         match checks.iter().find(|(_, ok)| !ok) {
             Some((key, _)) => Err(key.to_string()),
@@ -646,6 +779,133 @@ mod tests {
             set(&mut c, true);
             assert_eq!(c.validate(), Ok(()), "{key} đúng ở biên");
         }
+    }
+
+    /// Ghim số của chế độ dịch trong lúc nói (spec 2026-10-10 §4–§5, H3 của kế hoạch 00). `end_silence_ms` là mặc định tạm
+    /// cho tới cổng của kế hoạch 02.
+    #[test]
+    fn streaming_defaults_are_the_numbers_of_the_spec() {
+        let s = StreamingConfig::default();
+        assert_eq!(
+            (s.min_partial_speech_ms, s.min_new_speech_ms, s.end_silence_ms),
+            (1_000, 300, 400)
+        );
+        assert_eq!((s.src_holdback_words, s.src_holdback_chars), (1, 2));
+        let agree: Vec<(&str, usize, usize)> = s.tgt_agree.iter().map(|a| (a.lang.as_str(), a.n, a.k)).collect();
+        assert_eq!(
+            agree,
+            [("en", 2, 1), ("vi", 2, 1), ("zh", 2, 2), ("ja", 3, 2), ("ko", 3, 2)]
+        );
+        assert_eq!(
+            (
+                s.tgt_agree_fallback.lang.as_str(),
+                s.tgt_agree_fallback.n,
+                s.tgt_agree_fallback.k
+            ),
+            ("", 2, 1)
+        );
+        assert_eq!((s.cycle_window, s.cadence_factor), (8, 1.5));
+        assert_eq!(
+            (s.min_cadence_ms, s.max_cadence_ms, s.initial_cadence_ms),
+            (700, 2_000, 1_000)
+        );
+        assert_eq!((s.warmup_cycles, s.auto_off_cycle_ms), (3, 1_300));
+        assert_eq!(PipelineConfig::default().streaming, s);
+        assert_eq!(PipelineConfig::default().validate(), Ok(()));
+    }
+
+    #[test]
+    fn agreement_follows_the_source_language_with_a_fallback() {
+        let s = StreamingConfig::default();
+        assert_eq!(s.agree_for("en"), (2, 1));
+        assert_eq!(s.agree_for("zh"), (2, 2));
+        assert_eq!(s.agree_for("ko"), (3, 2));
+        assert_eq!(s.agree_for("fr"), (2, 1), "tiếng lạ dùng giá trị dự phòng");
+        assert_eq!(s.agree_for(""), (2, 1));
+    }
+
+    /// Manifest đổi được các khóa của `streaming`; danh sách `tgt_agree` mới thay cả danh sách mặc định.
+    #[test]
+    fn a_manifest_can_change_the_streaming_keys() {
+        let json = r#"{ "streaming": { "end_silence_ms": 200, "tgt_agree": [{ "lang": "ja", "n": 3, "k": 3 }] } }"#;
+        let c: PipelineConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(c.streaming.end_silence_ms, 200);
+        assert_eq!(c.streaming.agree_for("ja"), (3, 3));
+        assert_eq!(
+            c.streaming.agree_for("en"),
+            (2, 1),
+            "không còn trong danh sách: dự phòng"
+        );
+        assert_eq!(c.streaming.min_partial_speech_ms, 1_000, "khóa thiếu giữ mặc định");
+        assert_eq!(c.validate(), Ok(()));
+    }
+
+    /// Mỗi khóa của `streaming` báo đúng tên khi sai (bảng của H3), và nhận giá trị đúng ở biên.
+    #[test]
+    fn streaming_keys_are_checked() {
+        type Set = fn(&mut StreamingConfig, bool);
+        let cases: [(&str, Set); 16] = [
+            ("streaming.min_partial_speech_ms", |s, ok| {
+                s.min_partial_speech_ms = if ok { 250 } else { 249 }
+            }),
+            ("streaming.min_partial_speech_ms", |s, ok| {
+                s.min_partial_speech_ms = if ok { 5_000 } else { 5_001 }
+            }),
+            ("streaming.min_new_speech_ms", |s, ok| {
+                s.min_new_speech_ms = if ok { 2_000 } else { 2_001 }
+            }),
+            ("streaming.end_silence_ms", |s, ok| {
+                s.end_silence_ms = if ok { 50 } else { 49 }
+            }),
+            ("streaming.end_silence_ms", |s, ok| {
+                s.end_silence_ms = if ok { 2_000 } else { 2_001 }
+            }),
+            ("streaming.src_holdback_words", |s, ok| {
+                s.src_holdback_words = if ok { 10 } else { 11 }
+            }),
+            ("streaming.src_holdback_chars", |s, ok| {
+                s.src_holdback_chars = if ok { 10 } else { 11 }
+            }),
+            ("streaming.tgt_agree", |s, ok| s.tgt_agree[0].n = if ok { 5 } else { 1 }),
+            ("streaming.tgt_agree", |s, ok| {
+                s.tgt_agree[2].k = if ok { 10 } else { 11 }
+            }),
+            ("streaming.tgt_agree_fallback", |s, ok| {
+                s.tgt_agree_fallback.n = if ok { 2 } else { 6 }
+            }),
+            ("streaming.cycle_window", |s, ok| {
+                s.cycle_window = if ok { 32 } else { 33 }
+            }),
+            ("streaming.cadence_factor", |s, ok| {
+                s.cadence_factor = if ok { 4.0 } else { f32::NAN }
+            }),
+            ("streaming.min_cadence_ms", |s, ok| {
+                s.min_cadence_ms = if ok { 200 } else { 199 }
+            }),
+            ("streaming.max_cadence_ms", |s, ok| {
+                s.max_cadence_ms = if ok { 10_000 } else { 10_001 }
+            }),
+            ("streaming.initial_cadence_ms", |s, ok| {
+                s.initial_cadence_ms = if ok { 2_000 } else { 2_001 }
+            }),
+            ("streaming.warmup_cycles", |s, ok| {
+                s.warmup_cycles = if ok { 8 } else { 9 }
+            }),
+        ];
+        for (key, set) in cases {
+            let mut c = PipelineConfig::default();
+            set(&mut c.streaming, false);
+            assert_eq!(c.validate(), Err(key.to_string()), "{key} ngoài biên");
+            let mut c = PipelineConfig::default();
+            set(&mut c.streaming, true);
+            assert_eq!(c.validate(), Ok(()), "{key} đúng ở biên");
+        }
+        let mut c = PipelineConfig::default();
+        c.streaming.auto_off_cycle_ms = 199;
+        assert_eq!(c.validate(), Err("streaming.auto_off_cycle_ms".into()));
+        let mut c = PipelineConfig::default();
+        c.streaming.max_cadence_ms = 600; // nhỏ hơn min_cadence_ms 700
+        assert_eq!(c.validate(), Err("streaming.max_cadence_ms".into()));
     }
 
     /// Mỗi khóa có giới hạn đều báo đúng tên khi sai, kể cả các khóa thêm sau review.
