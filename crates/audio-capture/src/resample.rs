@@ -19,7 +19,8 @@ pub const TARGET_RATE: u32 = 16_000;
 /// Sàn 160 khung (10 ms tại 16 kHz, spec 2026-10-10 §8 A3): tần số vào dưới 16 kHz (hiếm — chủ yếu tai nghe Bluetooth
 /// chế độ đàm thoại, HFP 8 kHz) mới chạm sàn này; không có sàn thì khối chỉ còn `rate/100` điểm, bộ lọc chống alias
 /// ngắn đi và cắt vào dải thoại 300–3400 Hz (đo ở 8 kHz, khối 80: lệch đã tới −10 dB ở 3,4 kHz). Ở sàn 160, khối 8 kHz
-/// thành 20 ms, bộ lọc phẳng tới 3525 Hz, giữ trọn dải thoại.
+/// thành 20 ms, trễ bộ lọc 10 ms, phẳng tới khoảng 3,5 kHz (lệch dưới 0,2 dB, cùng tiêu chí ở trên) — giữ trọn dải
+/// thoại.
 pub(crate) fn block_frames(input_rate: u32) -> usize {
     (input_rate.max(TARGET_RATE) / 100) as usize
 }
