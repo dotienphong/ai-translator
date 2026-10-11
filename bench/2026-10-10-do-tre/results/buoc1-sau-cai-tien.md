@@ -111,11 +111,19 @@ python3 bench/2026-10-10-do-tre/summarize_sessions.py --compare buoc1-moc buoc1-
 - **A2** (ghép câu giữ bản dịch đang hiện; cờ hủy kiểm trước request và ở mọi gói):
   - `Nháy tạm` gói Chuẩn: 5,1%–92,5% (mốc) → 3,0%–51,1% (lượt này). Chỗ giảm là phần bản dịch không còn bị xóa khi
     ghép câu — thấy rõ nhất ở `chuan-zh` (92,5% → 51,1%, -41,4 điểm) và `nhe-ko` (86,4% → 42,4%, -44,0 điểm).
-  - A2 p50 và "A2 chữ đầu p50", gói Chuẩn: A2 p50 chênh từ -10 ms (`vi`) đến +24 ms (`zh`); "A2 chữ đầu p50" chênh từ
-    +16 ms (`vi`) đến +120 ms (`zh`) — toàn bộ các session đều tăng nhẹ thay vì giảm, trái với ước tính nhanh hơn
-    10–40 ms mỗi lần ghép của spec. Hai chỉ số này đo tổng thời gian ASR+dịch của cả phiên (không tách riêng chi phí
-    xử lý một lần ghép), nên phần tiết kiệm nhỏ mỗi lần ghép — nếu có — nhiều khả năng bị nhiễu khác của một lượt đo
-    duy nhất che lấp (xem ghi chú nhiễu cuối mục). Lợi ích đo được rõ ràng nhất của A2 là `Nháy tạm` ở trên.
+  - "A2 chữ đầu p50" (gói Chuẩn): tăng ở **cả 12/12 session**, từ +16 ms (`vi`) đến +120 ms (`zh`); "Theo từ, tạm p50"
+    cũng tăng ở 11/12 session (chỉ `chuan-vi` giảm nhẹ, -2 ms). Hướng tăng đồng nhất trên toàn bộ các session (khác
+    ngôn ngữ, khác nội dung) khó giải thích bằng nhiễu ngẫu nhiên của một lượt đo — nhiều khả năng đây là hệ quả có
+    hệ thống của chính cơ chế H2 (Task 5): khi câu được ghép, bản dịch cũ được GIỮ nguyên trên màn hình thay vì xóa,
+    và bản dịch mới chỉ hiện (bằng một upsert duy nhất) khi đã dài ít nhất bằng bản cũ — trong lúc đó các gói chữ mới
+    (`delta`) không được phát ra. Vì vậy ký tự ĐẦU TIÊN của phần dịch mở rộng (sau khi ghép) phải chờ tới khi cả đoạn
+    dịch thêm đó sẵn sàng, thay vì hiện ngay từng chữ một như trước — đúng là điều "A2 chữ đầu p50" và "tạm p50" đo.
+    Đây là đánh đổi đã biết trước của thiết kế H2, không phải hồi quy ngoài ý muốn: đổi lấy việc bản dịch không bị xóa
+    trắng rồi hiện lại (đo bằng `Nháy tạm` ở trên, giảm mạnh), chấp nhận chữ đầu của phần ghép thêm xuất hiện chậm hơn
+    vài chục đến hơn trăm mili giây. "A2 p50" (tới khi bản dịch đầy đủ) ít bị ảnh hưởng hơn nhiều (chênh -10 đến
+    +24 ms, không đồng nhất hướng) vì H2 chỉ trì hoãn PHẦN ĐẦU hiện ra, không trì hoãn toàn bộ bản dịch cuối. Ước tính
+    "nhanh hơn 10–40 ms mỗi lần ghép" của spec dựa trên giả định A2 chỉ tiết kiệm (bớt dịch lại từ đầu), không tính
+    tới chi phí này của H2 — nên số đo thật không khớp ước tính ban đầu.
 - **A5:** A5 đã quay lại ở Task 11 (cổng A4 không đạt, nhóm `ko-wbp` của turbo). Cột "Chép lời p50" trong bảng so
   sánh chỉ là nhiễu giữa hai lượt đo (không có thay đổi code nào ở ASR giữa mốc và lượt này ngoài việc A2 gửi câu
   hơi khác do ghép câu đổi — xem A2 ở trên), không phản ánh tác dụng của flash attention.
@@ -137,7 +145,7 @@ python3 bench/2026-10-10-do-tre/summarize_sessions.py --compare buoc1-moc buoc1-
 | # | Kết quả | Bằng chứng |
 |---|---|---|
 | A1 | Xong: `latency-bench session`, script chạy và tổng hợp, mốc chế độ thường | `buoc1-moc-che-do-thuong.md` |
-| A2 | Giữ: test engine đạt | Task 12 Step 2; bảng so ở trên |
+| A2 | Giữ: test engine đạt. Đánh đổi đã biết: ít nháy tạm hơn hẳn, nhưng chữ đầu của phần ghép thêm chậm hơn 16–120 ms (xem Nhận xét) | Task 12 Step 2; bảng so ở trên |
 | A3 | Giữ: test resample đạt (gồm sàn 160 khung giữ dải Bluetooth); CPU không tăng — khối 10 ms (11,76 ms) nhanh hơn khối 1024 (16,04 ms) cho 60 giây 48 kHz stereo | Task 12 Step 2, Step 3 |
 | A4 | Giữ: test giao diện đạt | Task 12 Step 2 |
 | A5 | Không giữ: cổng A4 không đạt (nhóm `ko-wbp` của turbo, +14,3% tương đối, do phép làm tròn audio_ctx chứ không riêng flash attention); 5 commit đã revert | `buoc1-a5-flash-attention.md` |
