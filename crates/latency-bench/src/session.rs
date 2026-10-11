@@ -9,22 +9,23 @@
 
 use crate::latency::{ProcessUsage, machine_info, public_path, read_wav_16k_mono, repo_root, spawn_sampler};
 use crate::session_metrics::{Recorded, Summary, Timed, UtteranceResult, evaluate, ms, ratio4, summarize};
+use crate::session_replay::Replay;
 use crate::stats::{Utterance, percentile};
 use anyhow::{Context, Result, anyhow, bail};
 use asr_protocol::{TranscribeRequest, TranscribeResult};
-use pipeline::config::{AsrConfig, MtConfig, PipelineConfig, SupervisorConfig};
+use pipeline::config::{AsrConfig, LangAgree, MtConfig, PipelineConfig, StreamingConfig, SupervisorConfig};
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, SampleSource, VadModel};
 use pipeline::llama::{ChatRequest, StreamEnd};
 use pipeline::prompt::Lang;
 use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES};
-use pipeline::subtitle::{Delta, Subtitle};
+use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Subtitle};
 use pipeline::supervisor::{
     Asr, AsrFailure, AsrSpec, LlamaSpec, SidecarEvent, SidecarEvents, SidecarManager, SidecarSpec, SystemClock, Which,
 };
 use pipeline::translate::{Mt, MtError};
 use pipeline::vad::SileroVad;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Write;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
@@ -59,6 +60,15 @@ pub struct SessionArgs {
     /// Ngưỡng im lặng đóng đoạn (`vadEndSilenceMs`; mặc định của app là 50 ms).
     #[arg(long, default_value_t = 50)]
     pub end_silence_ms: u64,
+    /// Bật chế độ dịch trong lúc nói (kế hoạch 02): `streaming_supported` và `streaming_enabled` của engine.
+    #[arg(long)]
+    pub streaming: bool,
+    /// `streaming.end_silence_ms` (spec 2026-10-10 §4.7); mặc định theo `StreamingConfig::default()`.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(50..=2000))]
+    pub streaming_end_silence_ms: Option<u64>,
+    /// (n, k) theo tiếng nguồn, dạng `en:2:1,zh:2:2`: thay mục cùng tiếng của `streaming.tgt_agree` (spec §4.4).
+    #[arg(long)]
+    pub tgt_agree: Option<String>,
     /// File JSON kết quả.
     #[arg(long)]
     pub out: PathBuf,
@@ -109,6 +119,14 @@ impl EventSink for Recorder {
 
     fn indicators(&self, indicators: &Indicators) {
         self.push(Recorded::Indicators(indicators.clone()));
+    }
+
+    fn live(&self, line: &LiveLine) {
+        self.push(Recorded::Live(line.clone()));
+    }
+
+    fn live_end(&self, end: &LiveEnd) {
+        self.push(Recorded::LiveEnd(*end));
     }
 
     fn fatal(&self, kind: Fatal, reason: &str) {
@@ -312,6 +330,49 @@ fn count_utterances_without_pieces(utterances: &[UtteranceResult]) -> usize {
     utterances.iter().filter(|u| u.units == 0).count()
 }
 
+/// `--tgt-agree en:2:1,zh:2:2` thành các `LangAgree` (spec 2026-10-10 §4.4).
+fn parse_tgt_agree(text: &str) -> Result<Vec<LangAgree>> {
+    text.split(',')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(|item| {
+            let parts: Vec<&str> = item.split(':').collect();
+            let &[lang, n, k] = parts.as_slice() else {
+                bail!("--tgt-agree: \"{item}\" phải có dạng <tiếng>:<n>:<k>");
+            };
+            Ok(LangAgree {
+                lang: lang.to_string(),
+                n: n.parse().with_context(|| format!("--tgt-agree: n của \"{item}\""))?,
+                k: k.parse().with_context(|| format!("--tgt-agree: k của \"{item}\""))?,
+            })
+        })
+        .collect()
+}
+
+/// Cấu hình của chế độ dịch trong lúc nói theo các cờ (kế hoạch 02, H9): ngưỡng ngắt câu riêng và (n, k) theo tiếng. Phần
+/// `streaming` sau đó phải hợp lệ như khi nạp từ manifest; chỉ xét phần này, vì ngưỡng người dùng 50 ms của app nằm ngoài
+/// khoảng manifest của `segmenter.end_silence_ms`.
+fn apply_streaming(args: &SessionArgs, pipeline: &mut PipelineConfig) -> Result<()> {
+    if let Some(ms) = args.streaming_end_silence_ms {
+        pipeline.streaming.end_silence_ms = ms;
+    }
+    if let Some(text) = &args.tgt_agree {
+        for agree in parse_tgt_agree(text)? {
+            match pipeline.streaming.tgt_agree.iter_mut().find(|a| a.lang == agree.lang) {
+                Some(slot) => *slot = agree,
+                None => pipeline.streaming.tgt_agree.push(agree),
+            }
+        }
+    }
+    let probe = PipelineConfig {
+        streaming: pipeline.streaming.clone(),
+        ..PipelineConfig::default()
+    };
+    probe
+        .validate()
+        .map_err(|key| anyhow!("cấu hình dịch trong lúc nói không hợp lệ: {key}"))
+}
+
 fn vad_model() -> PathBuf {
     repo_root()
         .unwrap_or_default()
@@ -331,6 +392,17 @@ fn args_map(args: &SessionArgs, vad_model: &Path) -> BTreeMap<String, String> {
         ("languages".to_string(), args.languages.join(",")),
         ("target".to_string(), args.target.clone()),
         ("end_silence_ms".to_string(), args.end_silence_ms.to_string()),
+        ("streaming".to_string(), args.streaming.to_string()),
+        (
+            "streaming_end_silence_ms".to_string(),
+            args.streaming_end_silence_ms
+                .unwrap_or(StreamingConfig::default().end_silence_ms)
+                .to_string(),
+        ),
+        (
+            "tgt_agree".to_string(),
+            args.tgt_agree.clone().unwrap_or_else(|| "mặc định".into()),
+        ),
     ])
 }
 
@@ -363,6 +435,11 @@ struct RunInfo {
     skipped: usize,
     feed_lag_max_ms: f64,
     sidecar_restarts: usize,
+    /// Chế độ dịch trong lúc nói (kế hoạch 02): số dòng đang nói khác nhau; số đơn vị của mọi bản dịch cuối và số đơn vị phần
+    /// dịch ổn định mà bản cuối thay đổi (mẫu và tử của `stable_flicker_ratio`, để gộp nhiều session).
+    live_lines: usize,
+    final_units: usize,
+    stable_changed_units: usize,
 }
 
 #[derive(Serialize)]
@@ -401,6 +478,7 @@ pub fn run(args: SessionArgs) -> Result<()> {
 
     let mut pipeline = PipelineConfig::default();
     pipeline.segmenter.end_silence_ms = args.end_silence_ms;
+    apply_streaming(&args, &mut pipeline)?;
     let config = EngineConfig {
         pipeline,
         languages: args.languages.clone(),
@@ -408,9 +486,9 @@ pub fn run(args: SessionArgs) -> Result<()> {
         translation_context: false,
         id_base: 0,
         glossary: Default::default(),
-        // Cờ `--streaming` (Task 16 của kế hoạch 02) nối hai trường này.
-        streaming_supported: false,
-        streaming_enabled: false,
+        // `--streaming`: máy coi như đủ sức, công tắc bật (kế hoạch 02); không có cờ thì chạy đúng chế độ thường.
+        streaming_supported: args.streaming,
+        streaming_enabled: args.streaming,
     };
     let asr_busy = Arc::new(AtomicU64::new(0));
     let mt_busy = Arc::new(AtomicU64::new(0));
@@ -446,6 +524,7 @@ pub fn run(args: SessionArgs) -> Result<()> {
 
     let (events, fatal) = recorder.take();
     let utterances = evaluate(&truth, &events);
+    let replay = Replay::new(&events);
     let utterances_without_pieces = count_utterances_without_pieces(&utterances);
     let machine_map = machine_info();
     let cores = machine_map
@@ -471,13 +550,26 @@ pub fn run(args: SessionArgs) -> Result<()> {
         skipped: metrics.skipped,
         feed_lag_max_ms: ms(lag_max.load(Ordering::Relaxed) as f64 / 1000.0),
         sidecar_restarts: sidecars.restarts(),
+        live_lines: events
+            .iter()
+            .filter_map(|e| match &e.ev {
+                Recorded::Live(l) => Some(l.id),
+                _ => None,
+            })
+            .collect::<BTreeSet<_>>()
+            .len(),
+        final_units: replay.final_translated_units(),
+        stable_changed_units: replay.changed_stable_units(),
     };
     let mut summary = summarize(&truth, &events);
     summary.segments = Some(metrics.segments as f64);
     summary.busy_ratio = (session_ms > 0.0).then(|| ratio4((run.asr_busy_ms + run.mt_busy_ms) / session_ms));
     summary.cpu_percent = machine_cpu_percent(&usage, cores).map(ms);
-    // Chế độ thường không chép từng phần; kế hoạch 02 điền ba khóa này khi bật chế độ dịch trong lúc nói.
-    summary.partials = Some(0.0);
+    // Chế độ dịch trong lúc nói (kế hoạch 02): số lần chép từng phần có kết quả, p50 của nhịp T, đã tự tắt chưa (chỉ khi
+    // chạy `--streaming`).
+    summary.partials = Some(metrics.partials as f64);
+    summary.cadence_p50_ms = percentile(&metrics.cadence_ms, 50.0).map(|v| ms(f64::from(v)));
+    summary.streaming_auto_off = args.streaming.then(|| f64::from(u8::from(metrics.streaming_auto_off)));
     let mut machine: BTreeMap<String, String> = machine_map.into_iter().collect();
     machine.insert("asr_backend".into(), sidecars.asr_backend());
     machine.insert(
@@ -621,6 +713,97 @@ mod tests {
         assert!(matches!(events[1].ev, Recorded::Indicators(_)));
         assert!(events[0].t_ms <= events[1].t_ms);
         assert_eq!(fatal, ["Asr: hỏng"]);
+    }
+
+    /// `--tgt-agree en:3:1,zh:2:2` (kế hoạch 02, H9).
+    #[test]
+    fn tgt_agree_is_parsed_per_language() {
+        assert_eq!(
+            parse_tgt_agree("en:3:1, zh:2:2").unwrap(),
+            [
+                LangAgree {
+                    lang: "en".into(),
+                    n: 3,
+                    k: 1
+                },
+                LangAgree {
+                    lang: "zh".into(),
+                    n: 2,
+                    k: 2
+                }
+            ]
+        );
+        assert!(parse_tgt_agree("en:3").is_err());
+        assert!(parse_tgt_agree("en:x:1").is_err());
+        assert!(parse_tgt_agree("").unwrap().is_empty());
+    }
+
+    /// Ba cờ của chế độ dịch trong lúc nói đặt `PipelineConfig.streaming`; ngưỡng người dùng giữ nguyên; giá trị vô lý bị từ
+    /// chối (n ngoài khoảng, hay mã tiếng ngoài 5 mã của `Lang::from_code` — Task 1, commit `e388300`); không có cờ thì
+    /// cấu hình mặc định.
+    #[test]
+    fn the_streaming_flags_set_the_streaming_config() {
+        let a = args(&[
+            "--streaming",
+            "--streaming-end-silence-ms",
+            "200",
+            "--tgt-agree",
+            "ja:3:3,ko:2:0",
+        ]);
+        assert!(a.streaming);
+        let mut p = PipelineConfig::default();
+        p.segmenter.end_silence_ms = a.end_silence_ms;
+        apply_streaming(&a, &mut p).unwrap();
+        assert_eq!(p.streaming.end_silence_ms, 200);
+        assert_eq!(
+            (
+                p.streaming.agree_for("ja"),
+                p.streaming.agree_for("ko"),
+                p.streaming.agree_for("en")
+            ),
+            ((3, 3), (2, 0), (2, 1))
+        );
+        assert_eq!(p.segmenter.end_silence_ms, 50, "ngưỡng người dùng giữ nguyên");
+        let bad = args(&["--tgt-agree", "en:9:1"]);
+        assert!(
+            apply_streaming(&bad, &mut PipelineConfig::default()).is_err(),
+            "n ngoài 2..=5"
+        );
+        let unknown_lang = args(&["--tgt-agree", "fr:2:0"]);
+        assert!(
+            apply_streaming(&unknown_lang, &mut PipelineConfig::default()).is_err(),
+            "\"fr\" không phải 1 trong 5 mã của Lang::from_code"
+        );
+        let plain = args(&[]);
+        assert!(!plain.streaming);
+        let mut p = PipelineConfig::default();
+        apply_streaming(&plain, &mut p).unwrap();
+        assert_eq!(p.streaming, StreamingConfig::default());
+    }
+
+    #[test]
+    fn the_recorder_keeps_live_events() {
+        let recorder = Recorder::new(Instant::now());
+        recorder.live(&LiveLine {
+            id: 4,
+            tgt_tail: "chúng tôi".into(),
+            ..LiveLine::default()
+        });
+        recorder.live_end(&LiveEnd { id: 4 });
+        let (events, _) = recorder.take();
+        let json = serde_json::to_value(&events).unwrap();
+        assert_eq!(
+            (
+                json[0]["kind"].as_str(),
+                json[0]["id"].as_u64(),
+                json[0]["tgt_tail"].as_str()
+            ),
+            (Some("live"), Some(4), Some("chúng tôi"))
+        );
+        assert_eq!(
+            (json[1]["kind"].as_str(), json[1]["id"].as_u64()),
+            (Some("live_end"), Some(4))
+        );
     }
 
     #[test]

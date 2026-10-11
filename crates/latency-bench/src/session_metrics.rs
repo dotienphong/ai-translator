@@ -15,7 +15,7 @@
 use crate::session_replay::{Piece, Replay};
 use crate::stats::{Utterance, match_segments, percentile};
 use pipeline::engine::Indicators;
-use pipeline::subtitle::{Delta, Status, Subtitle};
+use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Status, Subtitle};
 use serde::Serialize;
 
 /// Cửa sổ ghép câu thật với phần có mốc cuối gần nhất, như `latency` (A2).
@@ -35,6 +35,10 @@ pub enum Recorded {
     Delta(Delta),
     /// Chỉ báo của thanh phụ đề (`app://status`).
     Indicators(Indicators),
+    /// `subtitle://live`: dòng đang nói (kế hoạch 02).
+    Live(LiveLine),
+    /// `subtitle://live-end`: gỡ dòng đang nói (kế hoạch 02).
+    LiveEnd(LiveEnd),
 }
 
 /// Sự kiện kèm thời điểm, ms từ lúc bắt đầu phát WAV (giờ thật).
@@ -325,5 +329,14 @@ mod tests {
             (Some("delta"), Some("chúng tôi"))
         );
         assert_eq!(json[2]["t_ms"].as_f64(), Some(2_700.0));
+        let live = serde_json::to_value(Timed {
+            t_ms: 1.0,
+            ev: Recorded::LiveEnd(LiveEnd { id: 9 }),
+        })
+        .unwrap();
+        assert_eq!(
+            (live["kind"].as_str(), live["id"].as_u64()),
+            (Some("live_end"), Some(9))
+        );
     }
 }

@@ -142,7 +142,8 @@ impl Replay {
             match &e.ev {
                 Recorded::Subtitle(s) => replay.upsert(e.t_ms, s),
                 Recorded::Delta(d) => replay.delta(e.t_ms, d.id, &d.text),
-                Recorded::Indicators(_) => {}
+                // Dòng đang nói: Task 17 của kế hoạch 02 dùng hai sự kiện này.
+                Recorded::Indicators(_) | Recorded::Live(_) | Recorded::LiveEnd(_) => {}
             }
         }
         replay
