@@ -4,6 +4,7 @@
 
 use crate::glossary::normalize;
 use crate::sentence::SENTENCE_END;
+use std::collections::VecDeque;
 use unicode_normalization::UnicodeNormalization;
 
 /// Một đơn vị hiển thị (từ, hay chữ với zh/ja) và khóa so khớp (NFC, chữ thường, bỏ dấu câu) — spec §3.
@@ -84,6 +85,87 @@ pub fn strip_terminal_punct(text: &str) -> &str {
     }
 }
 
+/// Kết quả hiển thị: `stable + tail` là cả chuỗi; `tail` tự mang khoảng trắng đầu khi cần.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Split {
+    pub stable: String,
+    pub tail: String,
+}
+
+/// Chốt dần theo LocalAgreement-n, chỉ dài thêm (spec §4.2, §4.4).
+///
+/// Mỗi `push`: tách đơn vị, giữ `n` kết quả gần nhất; đủ `n` kết quả thì `c` = độ dài phần chung (theo khóa) của cả `n`,
+/// `cand = c − holdback`; nếu `cand` dài hơn phần ổn định và kết quả mới nhất khớp phần ổn định ở các vị trí đầu, phần ổn
+/// định lấy `cand` đơn vị đầu của kết quả mới nhất. Phần tạm là các đơn vị của kết quả mới nhất từ vị trí `stable_len()`.
+#[derive(Clone, Debug)]
+pub struct Stabilizer {
+    lang: String,
+    n: usize,
+    holdback: usize,
+    history: VecDeque<Vec<Unit>>,
+    stable: Vec<Unit>,
+}
+
+impl Stabilizer {
+    pub fn new(lang: &str, agree_n: usize, holdback: usize) -> Self {
+        Self {
+            lang: lang.to_string(),
+            n: agree_n.max(1),
+            holdback,
+            history: VecDeque::new(),
+            stable: Vec::new(),
+        }
+    }
+
+    /// Thêm một kết quả mới (bản chép từng phần, hay bản dịch tạm đã xong) và trả phần ổn định / phần tạm.
+    pub fn push(&mut self, text: &str) -> Split {
+        self.history.push_back(split_units(text, &self.lang));
+        while self.history.len() > self.n {
+            self.history.pop_front();
+        }
+        let newest = self.history.back().expect("vừa thêm").clone();
+        if self.history.len() == self.n {
+            let common = (0..newest.len())
+                .take_while(|&i| {
+                    self.history
+                        .iter()
+                        .all(|h| h.get(i).is_some_and(|u| u.key == newest[i].key))
+                })
+                .count();
+            let cand = common.saturating_sub(self.holdback);
+            let keeps_stable = self.stable.iter().zip(&newest).all(|(s, u)| s.key == u.key);
+            if cand > self.stable.len() && keeps_stable {
+                self.stable = newest[..cand].to_vec();
+            }
+        }
+        self.split_of(&newest)
+    }
+
+    /// Chia một bản chưa xong (bản dịch tạm đang stream) theo phần ổn định hiện có, không đổi lịch sử.
+    pub fn preview(&self, text: &str) -> Split {
+        self.split_of(&split_units(text, &self.lang))
+    }
+
+    fn split_of(&self, units: &[Unit]) -> Split {
+        let stable = join_units(&self.stable, &self.lang);
+        let rest = units.get(self.stable.len()..).unwrap_or(&[]);
+        let mut tail = join_units(rest, &self.lang);
+        if !tail.is_empty() && !stable.is_empty() && !uses_char_units(&self.lang) {
+            tail.insert(0, ' ');
+        }
+        Split { stable, tail }
+    }
+
+    /// Phần ổn định dạng chuỗi (không có khoảng trắng cuối): dùng làm prefill.
+    pub fn stable_text(&self) -> String {
+        join_units(&self.stable, &self.lang)
+    }
+
+    pub fn stable_len(&self) -> usize {
+        self.stable.len()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -136,6 +218,99 @@ mod tests {
         assert!(split_units(" … !! ", "en").is_empty());
         assert!(split_units("。、", "ja").is_empty());
         assert!(split_units("", "vi").is_empty());
+    }
+
+    fn split(stable: &str, tail: &str) -> Split {
+        Split {
+            stable: stable.into(),
+            tail: tail.into(),
+        }
+    }
+
+    /// LocalAgreement-2, giữ lại 1 từ (spec §4.2): phần ổn định là phần chung của hai lần liền nhau trừ từ cuối; phần tạm
+    /// tự mang dấu cách đầu.
+    #[test]
+    fn local_agreement_two_with_one_word_held_back() {
+        let mut s = Stabilizer::new("en", 2, 1);
+        assert_eq!(s.push("so we"), split("", "so we"));
+        assert_eq!(s.push("so we went"), split("so", " we went"));
+        assert_eq!(s.push("so we went home"), split("so we", " went home"));
+        assert_eq!((s.stable_text().as_str(), s.stable_len()), ("so we", 2));
+    }
+
+    /// Phần ổn định chỉ dài thêm: lần mới không khớp thì phần tạm lấy các đơn vị của lần mới từ vị trí bằng độ dài phần ổn
+    /// định (§4.2); sai lệch được sửa ở lượt cuối.
+    #[test]
+    fn the_stable_part_never_shrinks() {
+        let mut s = Stabilizer::new("en", 2, 1);
+        s.push("so we went");
+        s.push("so we went home");
+        assert_eq!(s.push("so they went home today"), split("so we", " went home today"));
+        assert_eq!(s.stable_text(), "so we");
+        s.push("so we went home today");
+        assert_eq!(
+            s.push("so we went home today and"),
+            split("so we went home", " today and")
+        );
+    }
+
+    /// Các kết quả gần nhất khớp nhau nhưng trái với phần đã chốt: không chốt thêm.
+    #[test]
+    fn agreement_that_contradicts_the_stable_part_is_ignored() {
+        let mut s = Stabilizer::new("en", 2, 0);
+        s.push("a b");
+        s.push("a b c");
+        assert_eq!(s.stable_text(), "a b");
+        assert_eq!(s.push("x y z"), split("a b", " z"));
+        assert_eq!(s.push("x y z w"), split("a b", " z w"));
+        assert_eq!(s.stable_text(), "a b");
+    }
+
+    /// Tiếng Trung: giữ lại 2 chữ; không có dấu cách giữa phần ổn định và phần tạm.
+    #[test]
+    fn chinese_holds_back_two_characters_without_spaces() {
+        let mut s = Stabilizer::new("zh", 2, 2);
+        s.push("我们今天");
+        assert_eq!(s.push("我们今天开会，"), split("我们", "今天开会，"));
+        assert_eq!(s.stable_text(), "我们");
+    }
+
+    /// LocalAgreement-3 (spec §4.4, ja và ko): cần ba kết quả liền nhau.
+    #[test]
+    fn three_results_must_agree_when_n_is_three() {
+        let mut s = Stabilizer::new("en", 3, 1);
+        s.push("we will");
+        assert_eq!(s.push("we will meet"), split("", "we will meet"));
+        assert_eq!(s.push("we will meet you"), split("we", " will meet you"));
+    }
+
+    /// Khóa bỏ hoa thường và dấu câu; phần ổn định lấy chữ của lần mới nhất và không có khoảng trắng cuối (dùng làm
+    /// prefill, spec §4.3).
+    #[test]
+    fn keys_ignore_case_and_punctuation_and_the_stable_text_has_no_trailing_space() {
+        let mut s = Stabilizer::new("vi", 2, 1);
+        s.push("Chúng tôi, đã đi");
+        assert_eq!(s.push("chúng tôi đã đi về"), split("chúng tôi đã", " đi về"));
+        assert!(!s.stable_text().ends_with(char::is_whitespace));
+    }
+
+    /// `preview` chia một bản đang stream theo phần ổn định hiện có, không đổi lịch sử.
+    #[test]
+    fn preview_splits_without_changing_the_history() {
+        let mut s = Stabilizer::new("en", 2, 1);
+        s.push("so we went");
+        s.push("so we went home");
+        assert_eq!(s.preview("so we"), split("so we", ""));
+        assert_eq!(s.preview("so we will"), split("so we", " will"));
+        assert_eq!(s.push("so we went home now"), split("so we went", " home now"));
+    }
+
+    #[test]
+    fn empty_and_punctuation_only_results_show_nothing() {
+        let mut s = Stabilizer::new("en", 2, 1);
+        assert_eq!(s.push(""), Split::default());
+        assert_eq!(s.push("..."), Split::default());
+        assert_eq!(s.stable_len(), 0);
     }
 
     /// Dấu kết câu ở cuối bản dịch tạm không hiện (spec §4.3): bỏ đúng một dấu, và khoảng trắng hai bên nó.
