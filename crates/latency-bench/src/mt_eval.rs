@@ -325,6 +325,7 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
             },
             // A3 chấm prompt mặc định, không có từ điển.
             terms: &[],
+            cancel: None,
         };
         let row = to_row(
             item,

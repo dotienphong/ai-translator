@@ -410,6 +410,7 @@ fn translate_hello(s: &Setup) -> Outcome {
         tgt: Lang::Vi,
         context: None,
         terms: &[],
+        cancel: None,
     };
     let mut mt = s.manager.mt();
     translate(&mut mt, &job, &MtConfig::default(), &mut |_| ControlFlow::Continue(()))

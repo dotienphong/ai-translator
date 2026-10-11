@@ -770,11 +770,10 @@ fn mt_loop(
             tgt: target,
             context: job.context.as_deref(),
             terms: &terms,
+            // Luồng phụ đề bật cờ khi câu được ghép thêm hay khi hết hạn dừng: `translate` kiểm ở mọi gói (H1).
+            cancel: Some(job.cancel.as_ref()),
         };
         let outcome = translate(&mut *mt, &request, cfg, &mut |event| {
-            if job.cancel.load(Ordering::SeqCst) {
-                return ControlFlow::Break(());
-            }
             let msg = match event {
                 Event::Delta(text) => Msg::MtDelta {
                     sub_id,
@@ -1922,6 +1921,90 @@ mod tests {
         h.no_job();
         assert_eq!(h.sink.usage(), [(1, 1_000), (1, 700)]);
         assert_eq!(h.c.metrics.translated_speech_ms, 1_700, "same_lang không tính");
+    }
+
+    /// H1: luồng dịch truyền cờ hủy của câu cho `translate`, nên câu bị hủy dừng ngay cả khi hậu xử lý chưa hiện chữ nào
+    /// (server chỉ trả khoảng trắng).
+    #[test]
+    fn the_translation_thread_stops_a_cancelled_job_while_text_is_held() {
+        struct Blank {
+            calls: usize,
+            sent: Arc<AtomicU64>,
+        }
+        impl Mt for Blank {
+            fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
+                Ok(text.split_whitespace().count())
+            }
+            fn stream(
+                &mut self,
+                _: &ChatRequest,
+                on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
+            ) -> Result<StreamEnd, MtError> {
+                self.calls += 1;
+                if self.calls == 1 {
+                    return Ok(StreamEnd::default()); // lần làm nóng
+                }
+                for _ in 0..10_000 {
+                    self.sent.fetch_add(1, Ordering::SeqCst);
+                    std::thread::sleep(Duration::from_millis(1));
+                    if on_delta(" ").is_break() {
+                        return Ok(StreamEnd {
+                            cancelled: true,
+                            ..StreamEnd::default()
+                        });
+                    }
+                }
+                Ok(StreamEnd::default())
+            }
+        }
+        let sent = Arc::new(AtomicU64::new(0));
+        let (jobs_tx, jobs_rx) = mpsc::channel::<MtJob>();
+        let (tx, rx) = mpsc::channel::<Msg>();
+        let mt = Box::new(Blank {
+            calls: 0,
+            sent: sent.clone(),
+        });
+        let thread = std::thread::spawn(move || {
+            mt_loop(
+                mt,
+                jobs_rx,
+                &tx,
+                &MtConfig::default(),
+                Lang::Vi,
+                &AtomicBool::new(false),
+                &SharedGlossary::default(),
+            )
+        });
+        let cancel = Arc::new(AtomicBool::new(false));
+        jobs_tx
+            .send(MtJob {
+                sub_id: 1,
+                version: 1,
+                src: Lang::En,
+                text: "Hello there".into(),
+                context: None,
+                cancel: cancel.clone(),
+            })
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while sent.load(Ordering::SeqCst) < 5 {
+            assert!(Instant::now() < deadline, "stream phải bắt đầu");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        cancel.store(true, Ordering::SeqCst);
+        let outcome = loop {
+            match rx
+                .recv_timeout(Duration::from_secs(2))
+                .expect("câu bị hủy phải xong trong 2 giây")
+            {
+                Msg::MtDone { outcome, .. } => break outcome,
+                _ => continue,
+            }
+        };
+        assert_eq!(outcome, Outcome::Cancelled);
+        assert!(sent.load(Ordering::SeqCst) < 10_000);
+        drop(jobs_tx);
+        thread.join().unwrap();
     }
 
     /// "Đang trễ" khi đoạn cũ nhất còn đang xử lý trễ quá 6 giây, tắt khi bắt kịp (§7).

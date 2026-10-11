@@ -8,6 +8,7 @@ use crate::llama::{ChatRequest, LlamaServer, StreamEnd};
 use crate::postprocess::{PostProcessor, Step, Violation};
 use crate::prompt::{Lang, context_prompt, terminology_prompt, translation_prompt};
 use std::ops::ControlFlow;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 /// Lỗi phía server dịch.
@@ -55,6 +56,9 @@ pub struct Job<'a> {
     /// Thuật ngữ có trong câu (`Glossary::matches`, §6.5). Có thuật ngữ thì dùng mẫu "terminology" và bỏ ngữ cảnh: model
     /// card không có mẫu gộp hai thứ, và cờ ngữ cảnh chỉ là thử nghiệm, mặc định tắt.
     pub terms: &'a [Term],
+    /// Cờ hủy (spec 2026-10-10 §4.6, A2): `translate` kiểm trước khi gửi request và ở mỗi gói chữ stream về, kể cả gói
+    /// đang bị hậu xử lý giữ lại. Bật thì trả `Outcome::Cancelled`.
+    pub cancel: Option<&'a AtomicBool>,
 }
 
 /// Sự kiện trong lúc dịch, cho luồng phụ đề.
@@ -109,6 +113,10 @@ pub fn translate(
     on_event: &mut dyn FnMut(Event) -> ControlFlow<()>,
 ) -> Outcome {
     let started = Instant::now();
+    let is_cancelled = || job.cancel.is_some_and(|c| c.load(Ordering::SeqCst));
+    if is_cancelled() {
+        return Outcome::Cancelled;
+    }
     let prompt = match job.context {
         _ if !job.terms.is_empty() => terminology_prompt(job.text, job.terms, job.src, job.tgt),
         Some(context) => context_prompt(job.text, context, job.src, job.tgt),
@@ -143,6 +151,9 @@ pub fn translate(
             // Phần đã hiện ở lần đầu bị bỏ: "chữ đầu tiên" tính lại theo lần thử này.
             first_delta_ms = None;
         }
+        if is_cancelled() {
+            return Outcome::Cancelled;
+        }
         let mut pp = PostProcessor::new(job.text, max_chunks);
         let mut violation = None;
         let mut cancelled = false;
@@ -151,20 +162,27 @@ pub fn translate(
             max_tokens,
             repeat_penalty,
         };
-        let result = mt.stream(&req, &mut |chunk| match pp.push(chunk) {
-            Step::Emit(delta) => {
-                first_delta_ms.get_or_insert_with(|| started.elapsed().as_secs_f32() * 1000.0);
-                if on_event(Event::Delta(&delta)).is_break() {
-                    cancelled = true;
-                    ControlFlow::Break(())
-                } else {
-                    ControlFlow::Continue(())
-                }
+        let result = mt.stream(&req, &mut |chunk| {
+            // Kiểm ở mọi gói, cả khi hậu xử lý còn giữ chữ (nhãn chưa rõ, ngoặc mở): không chờ gói được hiện tiếp theo.
+            if is_cancelled() {
+                cancelled = true;
+                return ControlFlow::Break(());
             }
-            Step::Hold => ControlFlow::Continue(()),
-            Step::Stop(v) => {
-                violation = Some(v);
-                ControlFlow::Break(())
+            match pp.push(chunk) {
+                Step::Emit(delta) => {
+                    first_delta_ms.get_or_insert_with(|| started.elapsed().as_secs_f32() * 1000.0);
+                    if on_event(Event::Delta(&delta)).is_break() {
+                        cancelled = true;
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                }
+                Step::Hold => ControlFlow::Continue(()),
+                Step::Stop(v) => {
+                    violation = Some(v);
+                    ControlFlow::Break(())
+                }
             }
         });
         let end = match result {
@@ -249,6 +267,7 @@ mod tests {
             tgt: Lang::Vi,
             context: None,
             terms: &[],
+            cancel: None,
         }
     }
 
@@ -366,6 +385,117 @@ mod tests {
             ControlFlow::Break(())
         });
         assert_eq!(outcome, Outcome::Cancelled);
+    }
+
+    /// Server giả cho test hủy: đếm số lần gọi `/tokenize` và request dịch; mỗi request trả `chunks`, và bật `flag` ngay
+    /// trước khi gửi gói thứ `cancel_at` (đếm từ 0), như luồng phụ đề hủy câu trong lúc đang stream. `sent`: số gói đã gửi.
+    struct Cancelling<'a> {
+        chunks: Vec<&'static str>,
+        cancel_at: usize,
+        flag: &'a AtomicBool,
+        tokenized: usize,
+        streams: usize,
+        sent: usize,
+    }
+
+    impl<'a> Cancelling<'a> {
+        fn new(chunks: Vec<&'static str>, cancel_at: usize, flag: &'a AtomicBool) -> Self {
+            Self {
+                chunks,
+                cancel_at,
+                flag,
+                tokenized: 0,
+                streams: 0,
+                sent: 0,
+            }
+        }
+    }
+
+    impl Mt for Cancelling<'_> {
+        fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
+            self.tokenized += 1;
+            Ok(text.split_whitespace().count())
+        }
+
+        fn stream(
+            &mut self,
+            _: &ChatRequest,
+            on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
+        ) -> Result<StreamEnd, MtError> {
+            self.streams += 1;
+            let mut end = StreamEnd::default();
+            for (i, chunk) in self.chunks.iter().enumerate() {
+                if i == self.cancel_at {
+                    self.flag.store(true, Ordering::SeqCst);
+                }
+                self.sent += 1;
+                end.chunks += 1;
+                if on_delta(chunk).is_break() {
+                    end.cancelled = true;
+                    return Ok(end);
+                }
+            }
+            end.finish_reason = Some("stop".into());
+            Ok(end)
+        }
+    }
+
+    /// H1 của kế hoạch 00 (A2): câu đã bị hủy trước khi dịch thì không gửi request nào, kể cả `/tokenize`.
+    #[test]
+    fn a_job_cancelled_before_it_starts_sends_no_request() {
+        let flag = AtomicBool::new(true);
+        let mut mt = Cancelling::new(vec!["Chào"], usize::MAX, &flag);
+        let job = Job {
+            cancel: Some(&flag),
+            ..job("Hello")
+        };
+        let mut events = 0;
+        let outcome = translate(&mut mt, &job, &MtConfig::default(), &mut |_| {
+            events += 1;
+            ControlFlow::Continue(())
+        });
+        assert_eq!(outcome, Outcome::Cancelled);
+        assert_eq!((mt.tokenized, mt.streams, events), (0, 0, 0));
+    }
+
+    /// Cờ hủy được kiểm ở mỗi gói, kể cả khi hậu xử lý đang giữ chữ (chưa biết "Trans…" có phải nhãn không): dừng ngay, không
+    /// chờ tới gói chữ được hiện tiếp theo.
+    #[test]
+    fn a_cancel_is_seen_while_the_postprocessor_holds_the_text() {
+        let flag = AtomicBool::new(false);
+        let mut mt = Cancelling::new(vec!["Trans", "lation", ":", " Xin", " chào"], 1, &flag);
+        let job = Job {
+            cancel: Some(&flag),
+            ..job("Hello")
+        };
+        let mut events = Vec::new();
+        let outcome = translate(&mut mt, &job, &MtConfig::default(), &mut |e| {
+            events.push(format!("{e:?}"));
+            ControlFlow::Continue(())
+        });
+        assert_eq!(outcome, Outcome::Cancelled);
+        assert_eq!(mt.sent, 2, "dừng ở gói thứ hai, lúc chữ còn bị giữ");
+        assert!(events.is_empty(), "{events:?}");
+    }
+
+    /// Hủy giữa hai lần thử (lần đầu quá dài): lần thử lại không được gửi.
+    #[test]
+    fn a_cancel_between_attempts_skips_the_retry() {
+        let flag = AtomicBool::new(false);
+        // 10 token nguồn, Anh→Việt 4,4: tối đa 44 gói; 60 gói là quá dài.
+        let mut mt = Cancelling::new(std::iter::repeat_n(" x", 60).collect(), usize::MAX, &flag);
+        let job = Job {
+            cancel: Some(&flag),
+            ..job("one two three four five six seven eight nine ten")
+        };
+        let outcome = translate(&mut mt, &job, &MtConfig::default(), &mut |e| {
+            if e == Event::Retry {
+                flag.store(true, Ordering::SeqCst);
+            }
+            ControlFlow::Continue(())
+        });
+        assert_eq!(outcome, Outcome::Cancelled);
+        assert_eq!(mt.streams, 1);
     }
 
     #[test]

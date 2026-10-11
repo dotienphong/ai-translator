@@ -34,6 +34,7 @@ fn run(server: &mut LlamaServer, text: &str, src: Lang, terms: &[Term]) -> Strin
         tgt: Lang::Vi,
         context: None,
         terms,
+        cancel: None,
     };
     match translate(server, &job, &MtConfig::default(), &mut |_| ControlFlow::Continue(())) {
         Outcome::Done(done) => done.text,
