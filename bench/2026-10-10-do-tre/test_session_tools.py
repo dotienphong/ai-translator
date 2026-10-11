@@ -86,5 +86,33 @@ class SummarizeSessionsTest(unittest.TestCase):
         self.assertIn("| — → 230 |", lines[2])
 
 
+class TargetsTest(unittest.TestCase):
+    """Bảng `--targets` (kế hoạch 02): so mục tiêu §10.2 của spec 2026-10-10 theo nhóm lượt chạy."""
+
+    def test_targets_pool_words_by_language_and_flicker_by_units(self):
+        reports = [
+            ("buoc2-es400-chuan-en", {
+                "summary": {"a2_p50_ms": 900.0, "a2_p90_ms": 1500.0, "a2_first_p50_ms": 500.0, "cpu_percent": 12.0},
+                "run": {"stable_changed_units": 5, "final_units": 100},
+                "utterances": [{"lang": "en", "word_lag_tentative_ms": [800, 1000, 1400],
+                                "word_lag_stable_ms": [1500, 2500], "first_from_start_ms": 1500}],
+            }),
+            ("buoc2-es400-chuan-ja", {
+                "summary": {"a2_p50_ms": 1100.0, "a2_p90_ms": 3100.0, "a2_first_p50_ms": 600.0, "cpu_percent": 14.5},
+                "run": {"stable_changed_units": 15, "final_units": 100},
+                "utterances": [{"lang": "ja", "word_lag_tentative_ms": [1300], "word_lag_stable_ms": [2900],
+                                "first_from_start_ms": 2500}],
+            }),
+        ]
+        lines = S.targets_table(reports)
+        self.assertIn("| buoc2-es400-chuan | en | 1000 ✓ | 2000 ✓ (≤ 2000) |", lines)
+        self.assertIn("| buoc2-es400-chuan | ja | 1300 ✗ | 2900 ✓ (≤ 3000) |", lines)
+        self.assertIn("| buoc2-es400-chuan | 2400 ✗ | 10.0% ✓ | 1100 ✓ | 3100 ✗ | 600 ✓ | 14.5 ✓ |", lines)
+
+    def test_missing_numbers_show_a_dash(self):
+        lines = S.targets_table([("buoc2-es50-chuan-en", {"summary": {}, "utterances": []})])
+        self.assertIn("| buoc2-es50-chuan | — | — | — | — | — | — |", lines)
+
+
 if __name__ == "__main__":
     unittest.main()

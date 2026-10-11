@@ -8,7 +8,7 @@
 
 use crate::session_metrics::{Recorded, Timed};
 use pipeline::glossary::normalize;
-use pipeline::subtitle::{Status, Subtitle};
+use pipeline::subtitle::{LiveLine, Status, Subtitle};
 use std::collections::BTreeMap;
 
 /// Khóa so khớp của các đơn vị trong `text` (spec 2026-10-10 §3): một chữ với tiếng Trung và tiếng Nhật, một từ (tách theo
@@ -128,11 +128,44 @@ const FINAL: [Status; 5] = [
     Status::Dropped,
 ];
 
+/// Một lần hiện của dòng đang nói (kế hoạch 02; spec 2026-10-10 §6.2).
+#[derive(Clone, Debug, PartialEq)]
+pub struct LiveObs {
+    pub t_ms: f64,
+    /// Câu mà dòng thay chỗ lúc đó: `extends`, hay chính id của dòng.
+    pub sentence: u64,
+    /// Khóa của chữ nguồn đang hiện (`src_stable + src_tail`).
+    pub src_keys: Vec<String>,
+    pub tgt_src_units: usize,
+    pub tgt_stable: String,
+    /// Số đơn vị (`target_units`) của phần dịch ổn định.
+    pub stable_units: usize,
+    /// Cả chữ dịch đang hiện (`tgt_stable + tgt_tail`).
+    pub tgt: String,
+}
+
+/// Lịch sử của một dòng đang nói.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct LiveTrack {
+    pub obs: Vec<LiveObs>,
+    /// Phần chữ (chỉ số trong `Replay::pieces`) mà lượt cuối của đoạn tạo ra, và câu chứa nó lúc đó (QĐ10 của kế hoạch 02).
+    pub piece: Option<usize>,
+    pub sentence: Option<u64>,
+    /// Lúc gỡ dòng, và chữ dịch của câu lúc đó (phụ đề cuối thay vào).
+    pub ended: Option<(f64, String)>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Replay {
     pub tracks: BTreeMap<u64, Track>,
     /// Mọi phần, theo thứ tự xuất hiện.
     pub pieces: Vec<Piece>,
+    /// Khóa so khớp của chữ nguồn của từng phần (cùng chỉ số với `pieces`).
+    pub piece_keys: Vec<Vec<String>>,
+    /// Dòng đang nói theo id (kế hoạch 02).
+    pub lives: BTreeMap<u64, LiveTrack>,
+    /// (phụ đề, chỉ số phần) mà upsert ngay trước sự kiện đang xét tạo ra (QĐ10 của kế hoạch 02).
+    just_created: Option<(u64, usize)>,
 }
 
 impl Replay {
@@ -141,9 +174,13 @@ impl Replay {
         for e in events {
             match &e.ev {
                 Recorded::Subtitle(s) => replay.upsert(e.t_ms, s),
-                Recorded::Delta(d) => replay.delta(e.t_ms, d.id, &d.text),
-                // Dòng đang nói: Task 17 của kế hoạch 02 dùng hai sự kiện này.
-                Recorded::Indicators(_) | Recorded::Live(_) | Recorded::LiveEnd(_) => {}
+                Recorded::Delta(d) => {
+                    replay.just_created = None;
+                    replay.delta(e.t_ms, d.id, &d.text);
+                }
+                Recorded::Indicators(_) => {}
+                Recorded::Live(l) => replay.live(e.t_ms, l),
+                Recorded::LiveEnd(end) => replay.live_end(e.t_ms, end.id),
             }
         }
         replay
@@ -164,16 +201,20 @@ impl Replay {
             self.tracks.entry(s.id).or_default().pieces.extend(moved);
         }
         let track = self.tracks.entry(s.id).or_default();
-        let n = units(&s.src_text, &s.src_lang).len();
+        let keys = units(&s.src_text, &s.src_lang);
+        let n = keys.len();
         let counted: usize = track.pieces.iter().map(|&i| self.pieces[i].units).sum();
         let last_end = track.pieces.last().map(|&i| self.pieces[i].end_ms);
+        self.just_created = None;
         if last_end.is_none_or(|e| s.end_ms > e) || n > counted {
             self.pieces.push(Piece {
                 end_ms: s.end_ms,
                 units: n.saturating_sub(counted),
                 owners: vec![s.id],
             });
+            self.piece_keys.push(keys.get(counted..).unwrap_or(&[]).to_vec());
             track.pieces.push(self.pieces.len() - 1);
+            self.just_created = Some((s.id, self.pieces.len() - 1));
         }
         let tgt_of = if s.tgt_text.is_empty() {
             None
@@ -209,6 +250,95 @@ impl Replay {
             tgt_of: Some(last.end_ms),
             ..last
         });
+    }
+
+    /// Một lần hiện của dòng đang nói. Lần phát lại lúc đóng băng đứng ngay sau upsert tạo phần chữ của đoạn (QĐ5, QĐ10 của
+    /// kế hoạch 02), và dòng đã có lần hiện trước đó; dòng mới xuất hiện ngay sau một upsert thì không phải lần đó. Mỗi phần
+    /// chỉ gắn với một dòng.
+    fn live(&mut self, t_ms: f64, l: &LiveLine) {
+        let sentence = l.extends.unwrap_or(l.id);
+        let created = self
+            .just_created
+            .filter(|&(sub, piece)| sub == sentence && !self.lives.values().any(|t| t.piece == Some(piece)));
+        let track = self.lives.entry(l.id).or_default();
+        if let Some((_, piece)) = created
+            && track.piece.is_none()
+            && !track.obs.is_empty()
+        {
+            track.piece = Some(piece);
+            track.sentence = Some(sentence);
+        }
+        track.obs.push(LiveObs {
+            t_ms,
+            sentence,
+            src_keys: units(&format!("{}{}", l.src_stable, l.src_tail), &l.src_lang),
+            tgt_src_units: l.tgt_src_units as usize,
+            tgt_stable: l.tgt_stable.clone(),
+            stable_units: target_units(&l.tgt_stable).len(),
+            tgt: format!("{}{}", l.tgt_stable, l.tgt_tail),
+        });
+    }
+
+    /// Gỡ dòng đang nói: ghi lúc gỡ và chữ dịch của câu mà dòng thay chỗ (phụ đề cuối thay vào; dòng của đoạn bị lọc thì
+    /// không có gì thay).
+    fn live_end(&mut self, t_ms: f64, id: u64) {
+        let Some(track) = self.lives.get_mut(&id) else {
+            return;
+        };
+        let shown = track
+            .sentence
+            .or_else(|| track.obs.last().map(|o| o.sentence))
+            .and_then(|s| self.tracks.get(&s))
+            .and_then(|t| t.shown.last())
+            .map(|s| s.tgt.clone())
+            .unwrap_or_default();
+        track.ended = Some((t_ms, shown));
+    }
+
+    /// Vị trí đầu của phần `piece` trong chữ nguồn của câu `sentence`, và khóa của chữ nguồn cuối của câu.
+    fn place(&self, sentence: u64, piece: usize) -> Option<(usize, Vec<String>)> {
+        let track = self.tracks.get(&sentence)?;
+        let at = track.pieces.iter().position(|&i| i == piece)?;
+        let offset = track.pieces[..at].iter().map(|&i| self.pieces[i].units).sum();
+        Some((offset, units(&track.src_text, &track.src_lang)))
+    }
+
+    /// Lần đầu (ms) đơn vị thứ `j` của phần `piece` được dòng đang nói của phần đó phủ, có chữ dịch (tầng tạm, QĐ10): phần
+    /// đầu chung (theo khóa) giữa `tgt_src_units` đơn vị đầu của chữ nguồn đang hiện và bản chép cuối của câu dài hơn vị trí
+    /// của đơn vị trong câu.
+    pub fn live_tentative_ms(&self, piece: usize, j: usize) -> Option<f64> {
+        let track = self.lives.values().find(|t| t.piece == Some(piece))?;
+        let sentence = track.sentence?;
+        let (offset, keys) = self.place(sentence, piece)?;
+        track
+            .obs
+            .iter()
+            .find(|o| {
+                o.sentence == sentence
+                    && !o.tgt.trim().is_empty()
+                    && lcp(&o.src_keys[..o.tgt_src_units.min(o.src_keys.len())], &keys) > offset + j
+            })
+            .map(|o| o.t_ms)
+    }
+
+    /// Lần đầu (ms) một dòng đang thay chỗ câu chứa phần `piece` (chủ đầu tiên của phần) có phần dịch ổn định đủ dài cho đơn
+    /// vị thứ `j` của phần (tầng ổn định, xấp xỉ theo tỉ lệ, spec §10.1): ít nhất ⌈(q + 1) × đơn vị bản dịch cuối ÷ đơn vị
+    /// bản chép cuối⌉ đơn vị, với q là vị trí của đơn vị trong câu. Câu không có bản dịch cuối còn trên màn hình thì `None`.
+    pub fn live_stable_ms(&self, piece: usize, j: usize) -> Option<f64> {
+        let sentence = *self.pieces.get(piece)?.owners.first()?;
+        let (offset, keys) = self.place(sentence, piece)?;
+        let track = self.tracks.get(&sentence).filter(|t| !t.absorbed)?;
+        let last = track.shown.last().filter(|s| s.status == Status::Done)?;
+        let need = ((offset + j + 1) * target_units(&last.tgt).len()).div_ceil(keys.len().max(1));
+        if need == 0 {
+            return None;
+        }
+        self.lives
+            .values()
+            .flat_map(|t| &t.obs)
+            .filter(|o| o.sentence == sentence && o.stable_units >= need)
+            .map(|o| o.t_ms)
+            .min_by(f64::total_cmp)
     }
 
     /// Lần đầu (ms) một phụ đề chứa phần `p` hiện chữ dịch được dịch từ phiên bản có phần đó, hay hiện câu gốc vì câu đã
@@ -266,26 +396,52 @@ impl Replay {
         self.translated().map(|s| target_units(&s.tgt).len()).sum()
     }
 
-    /// Tổng số đơn vị chữ dịch bị rút lại giữa hai lần hiện liên tiếp của cùng một phụ đề.
+    /// Tổng số đơn vị chữ dịch bị rút lại giữa hai lần hiện liên tiếp: của cùng một phụ đề; của cùng một dòng đang nói; và
+    /// lúc phụ đề cuối thay dòng đang nói (QĐ10 của kế hoạch 02).
     pub fn retracted_units(&self) -> usize {
-        self.tracks
+        let subtitles: usize = self
+            .tracks
             .values()
             .flat_map(|t| t.shown.windows(2))
             .map(|w| retracted(&w[0].tgt, &w[1].tgt))
-            .sum()
+            .sum();
+        let lives: usize = self
+            .lives
+            .values()
+            .map(|l| {
+                let within: usize = l.obs.windows(2).map(|w| retracted(&w[0].tgt, &w[1].tgt)).sum();
+                let replaced = match (&l.ended, l.obs.last()) {
+                    (Some((_, fin)), Some(last)) => retracted(&last.tgt, fin),
+                    _ => 0,
+                };
+                within + replaced
+            })
+            .sum();
+        subtitles + lives
     }
 
-    /// Số đơn vị của phần dịch đã ổn định mà bản cuối thay đổi. Ở chế độ thường, tầng ổn định chính là phụ đề đã chốt và
-    /// không bao giờ đổi nữa, nên phần ổn định bằng bản cuối. Kế hoạch 02 thêm các quan sát của dòng đang nói.
+    /// Số đơn vị của phần dịch đã ổn định mà bản cuối thay đổi (§10.1). Phụ đề đã chốt không đổi nữa, nên phần của nó bằng
+    /// 0; với dòng đang nói: phần dịch ổn định cuối cùng của mỗi dòng so với bản dịch cuối của câu mà dòng thay chỗ (QĐ10).
     pub fn changed_stable_units(&self) -> usize {
-        self.translated().map(|s| changed_stable_units(&s.tgt, &s.tgt)).sum()
+        let settled: usize = self.translated().map(|s| changed_stable_units(&s.tgt, &s.tgt)).sum();
+        let lives: usize = self
+            .lives
+            .values()
+            .filter_map(|l| {
+                let last = l.obs.last().filter(|o| !o.tgt_stable.is_empty())?;
+                let track = self.tracks.get(&last.sentence).filter(|t| !t.absorbed)?;
+                let fin = track.shown.last().filter(|s| s.status == Status::Done)?;
+                Some(changed_stable_units(&last.tgt_stable, &fin.tgt))
+            })
+            .sum();
+        settled + lives
     }
 }
 
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use pipeline::subtitle::Delta;
+    use pipeline::subtitle::{Delta, LiveEnd};
 
     /// Một upsert lúc `t_ms`.
     pub(crate) fn upsert(
@@ -356,6 +512,149 @@ pub(crate) mod tests {
             false,
         ));
         events
+    }
+
+    /// Một dòng đang nói: chữ nguồn (ổn định, tạm), chữ dịch (ổn định, tạm), `tgt_src_units`.
+    pub(crate) fn line(id: u64, extends: Option<u64>, src: (&str, &str), tgt: (&str, &str), units: u32) -> LiveLine {
+        LiveLine {
+            id,
+            extends,
+            src_lang: "en".into(),
+            src_stable: src.0.into(),
+            src_tail: src.1.into(),
+            tgt_stable: tgt.0.into(),
+            tgt_tail: tgt.1.into(),
+            tgt_src_units: units,
+        }
+    }
+
+    pub(crate) fn live(t_ms: f64, line: LiveLine) -> Timed {
+        Timed {
+            t_ms,
+            ev: Recorded::Live(line),
+        }
+    }
+
+    pub(crate) fn live_end(t_ms: f64, id: u64) -> Timed {
+        Timed {
+            t_ms,
+            ev: Recorded::LiveEnd(LiveEnd { id }),
+        }
+    }
+
+    /// Câu "so we went home." (một đoạn, tới 5 050 ms) có dòng đang nói: ba lần hiện, lượt cuối, lần phát lại lúc đóng băng
+    /// ngay sau upsert tạo phụ đề, dịch xong, gỡ dòng.
+    pub(crate) fn live_sentence() -> Vec<Timed> {
+        vec![
+            live(2_000.0, line(1, None, ("", "so we"), ("", ""), 0)),
+            live(2_300.0, line(1, None, ("", "so we"), ("", "chúng tôi"), 2)),
+            live(3_300.0, line(1, None, ("so", " we went"), ("chúng", " tôi đã đi"), 3)),
+            upsert(5_400.0, 1, 5_050, "so we went home.", "", Status::AsrDone, false),
+            live(5_401.0, line(1, None, ("so", " we went"), ("chúng", " tôi đã đi"), 3)),
+            upsert(5_410.0, 1, 5_050, "so we went home.", "", Status::Translating, false),
+            delta(5_600.0, 1, "chúng tôi về nhà."),
+            upsert(
+                5_700.0,
+                1,
+                5_050,
+                "so we went home.",
+                "chúng tôi về nhà.",
+                Status::Done,
+                false,
+            ),
+            live_end(5_701.0, 1),
+        ]
+    }
+
+    /// Câu "so we went" (tới 1 400 ms) đã dịch, còn mở; dòng 2 nối tiếp nó ("home now"), rồi lượt cuối ghép đoạn 2 vào câu
+    /// (tới 4 000 ms), dòng phát lại ngay sau upsert đó, câu dịch lại xong, gỡ dòng.
+    pub(crate) fn live_extending() -> Vec<Timed> {
+        let whole = "so we went home now.";
+        let new = "chúng tôi đi về nhà bây giờ.";
+        vec![
+            upsert(1_500.0, 1, 1_400, "so we went", "", Status::AsrDone, true),
+            upsert(1_510.0, 1, 1_400, "so we went", "", Status::Translating, true),
+            upsert(1_700.0, 1, 1_400, "so we went", "chúng tôi đi", Status::Done, true),
+            live(
+                2_800.0,
+                line(2, Some(1), ("so we went", " home"), ("", "chúng tôi đi về"), 4),
+            ),
+            live(
+                3_600.0,
+                line(
+                    2,
+                    Some(1),
+                    ("so we went home", " now"),
+                    ("chúng tôi đi về", " nhà bây giờ"),
+                    5,
+                ),
+            ),
+            upsert(4_400.0, 1, 4_000, whole, "chúng tôi đi", Status::AsrDone, false),
+            live(
+                4_401.0,
+                line(
+                    2,
+                    Some(1),
+                    ("so we went home", " now"),
+                    ("chúng tôi đi về", " nhà bây giờ"),
+                    5,
+                ),
+            ),
+            upsert(4_600.0, 1, 4_000, whole, "chúng tôi đi", Status::Translating, false),
+            upsert(4_800.0, 1, 4_000, whole, new, Status::Translating, false),
+            upsert(4_900.0, 1, 4_000, whole, new, Status::Done, false),
+            live_end(4_901.0, 2),
+        ]
+    }
+
+    /// QĐ10 của kế hoạch 02: dòng gắn với phần chữ mà lượt cuối của nó tạo ra; tầng tạm theo phần nguồn đã dịch, tầng ổn định
+    /// theo tỉ lệ phần dịch ổn định; độ nháy tạm tính cả lúc phụ đề cuối thay dòng.
+    #[test]
+    fn a_live_line_is_tied_to_the_piece_of_its_final_and_covers_words() {
+        let replay = Replay::new(&live_sentence());
+        let track = &replay.lives[&1];
+        assert_eq!((track.piece, track.sentence), (Some(0), Some(1)));
+        assert_eq!(track.obs.len(), 4);
+        assert_eq!(track.ended, Some((5_701.0, "chúng tôi về nhà.".to_string())));
+        assert_eq!(replay.piece_keys[0], ["so", "we", "went", "home"]);
+        let tentative: Vec<Option<f64>> = (0..4).map(|j| replay.live_tentative_ms(0, j)).collect();
+        assert_eq!(tentative, [Some(2_300.0), Some(2_300.0), Some(3_300.0), None]);
+        let stable: Vec<Option<f64>> = (0..4).map(|j| replay.live_stable_ms(0, j)).collect();
+        assert_eq!(stable, [Some(3_300.0), None, None, None]);
+        assert_eq!(replay.retracted_units(), 2, "\"đã đi\" của dòng bị bản cuối thay");
+        assert_eq!(replay.changed_stable_units(), 0);
+        assert_eq!(replay.final_translated_units(), 4);
+    }
+
+    /// Dòng nối tiếp câu: phủ phần mới của câu; phần dịch ổn định của nó tính cho cả các từ của phần cũ (theo tỉ lệ trên cả
+    /// câu).
+    #[test]
+    fn a_line_extending_a_sentence_covers_the_new_piece_and_stabilizes_the_whole_sentence() {
+        let replay = Replay::new(&live_extending());
+        assert_eq!((replay.lives[&2].piece, replay.lives[&2].sentence), (Some(1), Some(1)));
+        assert_eq!(replay.piece_keys[1], ["home", "now"]);
+        assert_eq!(
+            (replay.live_tentative_ms(1, 0), replay.live_tentative_ms(1, 1)),
+            (Some(2_800.0), Some(3_600.0))
+        );
+        assert_eq!(replay.live_tentative_ms(0, 0), None, "phần đầu không gắn với dòng nào");
+        let stable: Vec<Option<f64>> = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)]
+            .iter()
+            .map(|&(p, j)| replay.live_stable_ms(p, j))
+            .collect();
+        assert_eq!(stable, [Some(3_600.0), Some(3_600.0), None, None, None]);
+        assert_eq!((replay.retracted_units(), replay.changed_stable_units()), (0, 0));
+    }
+
+    /// Dòng xuất hiện lần đầu ngay sau một upsert tạo phần chữ không phải lần phát lại lúc đóng băng: không gắn với phần đó.
+    #[test]
+    fn a_new_line_right_after_a_piece_is_not_tied_to_it() {
+        let events = vec![
+            upsert(1_000.0, 1, 900, "hello", "", Status::AsrDone, true),
+            live(1_001.0, line(2, Some(1), ("hello", " there"), ("", "xin chào"), 2)),
+        ];
+        let replay = Replay::new(&events);
+        assert_eq!(replay.lives[&2].piece, None);
     }
 
     #[test]

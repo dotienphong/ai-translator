@@ -8,6 +8,9 @@
 //! - **Chế độ thường** (không có dòng đang nói): tầng tạm của một từ là lần đầu một phụ đề phủ tới từ đó có chữ dịch
 //!   (`Replay::first_text_ms`); tầng ổn định là lúc phụ đề phủ tới từ đó chốt (`done`, không còn `provisional`) và không
 //!   bị thay sau đó (`Replay::settled_ms`).
+//! - **Chế độ dịch trong lúc nói** (kế hoạch 02, QĐ10): tầng tạm và tầng ổn định của một từ là lúc sớm hơn giữa cách tính
+//!   của chế độ thường và cách tính từ dòng đang nói (`Replay::live_tentative_ms`, `Replay::live_stable_ms`); "từ đầu câu
+//!   tới chữ dịch đầu" cũng vậy.
 //! - **A2** tính như `latency`: ghép câu với phần có mốc cuối gần nhất (trong 1 giây), đo từ `end_ms` của câu tới lúc
 //!   bản dịch của phiên bản có phần đó hiện đủ (`a2_*`) và hiện chữ đầu tiên (`a2_first_*`). LID nhầm sang ngôn ngữ đích
 //!   (`same_lang` mà câu thật là tiếng khác) thì không tính, và các từ của câu đó coi như chưa được dịch.
@@ -139,27 +142,38 @@ fn evaluate_replay(truth: &[Utterance], replay: &Replay) -> Vec<UtteranceResult>
                 units: n,
                 ..UtteranceResult::default()
             };
+            let mut first_live = None;
             let mut i = 0usize;
             for p in &mine {
-                let tentative = replay.first_text_ms(p).filter(|_| !wrong_lang(p));
-                let stable = replay.settled_ms(p).filter(|_| !wrong_lang(p));
-                for _ in 0..p.units {
+                let index = replay
+                    .pieces
+                    .iter()
+                    .position(|x| std::ptr::eq(x, *p))
+                    .expect("phần của replay");
+                let wrong = wrong_lang(p);
+                let tentative = replay.first_text_ms(p).filter(|_| !wrong);
+                let stable = replay.settled_ms(p).filter(|_| !wrong);
+                for j in 0..p.units {
                     let spoken = u.start_ms as f64 + (i + 1) as f64 * span / n as f64;
-                    if let Some(t) = tentative {
+                    // Dòng đang nói (kế hoạch 02, QĐ10): lấy lúc sớm hơn giữa dòng đang nói và lượt cuối.
+                    let live_tentative = replay.live_tentative_ms(index, j).filter(|_| !wrong);
+                    let live_stable = replay.live_stable_ms(index, j).filter(|_| !wrong);
+                    if let Some(t) = earliest(tentative, live_tentative) {
                         out.word_lag_tentative_ms.push(ms(t - spoken));
                     }
-                    if let Some(t) = stable {
+                    if let Some(t) = earliest(stable, live_stable) {
                         out.word_lag_stable_ms.push(ms(t - spoken));
                     }
+                    first_live = earliest(first_live, live_tentative);
                     i += 1;
                 }
             }
-            out.first_from_start_ms = mine
+            let first_final = mine
                 .iter()
                 .filter(|p| !wrong_lang(p))
                 .filter_map(|p| replay.first_text_ms(p))
-                .min_by(f64::total_cmp)
-                .map(|t| ms(t - u.start_ms as f64));
+                .min_by(f64::total_cmp);
+            out.first_from_start_ms = earliest(first_final, first_live).map(|t| ms(t - u.start_ms as f64));
             if let Some(p) = m.map(|i| &replay.pieces[i]) {
                 out.lid_to_target = wrong_lang(p);
                 if !out.lid_to_target {
@@ -170,6 +184,15 @@ fn evaluate_replay(truth: &[Utterance], replay: &Replay) -> Vec<UtteranceResult>
             out
         })
         .collect()
+}
+
+/// Lúc sớm hơn trong hai, nếu có.
+fn earliest(a: Option<f64>, b: Option<f64>) -> Option<f64> {
+    match (a, b) {
+        (Some(x), Some(y)) => Some(x.min(y)),
+        (x, None) => x,
+        (None, y) => y,
+    }
 }
 
 /// Các khóa `summary` tính được từ truth và sự kiện (H9). Khóa của lượt chạy để `None`; `session::run` điền.
@@ -211,7 +234,7 @@ pub fn summarize(truth: &[Utterance], events: &[Timed]) -> Summary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::session_replay::tests::{merged_sentence, upsert};
+    use crate::session_replay::tests::{live_extending, live_sentence, merged_sentence, upsert};
 
     fn utt(id: &str, lang: &str, start_ms: u64, end_ms: u64, vad_end_ms: Option<u64>) -> Utterance {
         Utterance {
@@ -261,6 +284,35 @@ mod tests {
             all[1].word_lag_tentative_ms.is_empty(),
             "câu gốc sai ngôn ngữ không phải bản dịch"
         );
+    }
+
+    /// Dòng đang nói (QĐ10 của kế hoạch 02): tầng tạm lấy lúc dòng phủ tới từ; tầng ổn định theo tỉ lệ phần dịch ổn định; từ
+    /// chưa được phủ lấy lúc của lượt cuối. Bốn từ được nói xong lúc 2 000, 3 000, 4 000, 5 000 ms.
+    #[test]
+    fn live_lines_bring_the_word_lags_forward() {
+        let truth = [utt("a", "en", 1_000, 5_000, Some(5_050))];
+        let u = &evaluate(&truth, &live_sentence())[0];
+        assert_eq!(u.word_lag_tentative_ms, [300.0, -700.0, -700.0, 600.0]);
+        assert_eq!(u.word_lag_stable_ms, [1_300.0, 2_700.0, 1_700.0, 700.0]);
+        assert_eq!(u.first_from_start_ms, Some(1_300.0));
+        assert_eq!((u.a2_shown_ms, u.a2_first_ms), (Some(700.0), Some(600.0)));
+        let s = summarize(&truth, &live_sentence());
+        assert_eq!(
+            (s.stable_flicker_ratio, s.tentative_erasure_ratio),
+            (Some(0.0), Some(0.5))
+        );
+    }
+
+    /// Dòng nối tiếp câu: từ của phần mới có tầng tạm từ dòng; từ của cả câu có tầng ổn định theo tỉ lệ (7 đơn vị dịch cho 5
+    /// đơn vị nguồn). Năm từ được nói xong lúc 800, 1 600, 2 400, 3 200, 4 000 ms.
+    #[test]
+    fn a_line_extending_a_sentence_counts_for_the_whole_sentence() {
+        let u = &evaluate(&[utt("a", "en", 0, 4_000, Some(4_000))], &live_extending())[0];
+        assert_eq!(u.units, 5);
+        assert_eq!(u.word_lag_tentative_ms, [900.0, 100.0, -700.0, -400.0, -400.0]);
+        assert_eq!(u.word_lag_stable_ms, [2_800.0, 2_000.0, 2_500.0, 1_700.0, 900.0]);
+        assert_eq!(u.first_from_start_ms, Some(1_700.0));
+        assert_eq!((u.a2_shown_ms, u.a2_first_ms), (Some(900.0), Some(800.0)));
     }
 
     #[test]

@@ -2,6 +2,8 @@
 
 Dùng:  python3 bench/2026-10-10-do-tre/summarize_sessions.py <file.json>...
        python3 bench/2026-10-10-do-tre/summarize_sessions.py --compare <nhãn cũ> <nhãn mới> <file.json>...
+       python3 bench/2026-10-10-do-tre/summarize_sessions.py --targets [--compare …] <file.json>...
+Với `--targets` (kế hoạch 02), in thêm bảng so mục tiêu §10.2 của spec 2026-10-10 theo nhóm lượt chạy (xem `targets_table`).
 
 In hai bảng:
 1. mỗi file một dòng, các khóa của `summary` (ms; tỉ lệ in bằng %; không có số thì "—");
@@ -155,7 +157,78 @@ def compare_table(reports, old_label, new_label):
     return lines
 
 
+# Mục tiêu §10.2 của spec 2026-10-10 (M4 Pro, gói Chuẩn, chế độ dịch trong lúc nói bật); A2 và CPU như mốc S6.
+TENTATIVE_P50_MS = 1200
+STABLE_P50_MS = {"en": 2000, "vi": 2000, "ko": 2000, "zh": 3000, "ja": 3000}
+FIRST_P90_MS = 2000
+FLICKER_MAX = 0.10
+A2_P50_MS, A2_P90_MS, A2_FIRST_P50_MS = 2000, 3000, 1000
+CPU_MAX = 30.0
+
+
+def verdict(text, ok):
+    return f"{text} {'✓' if ok else '✗'}"
+
+
+def ms_verdict(value, goal):
+    return "—" if value is None else verdict(f"{value:.0f}", value <= goal)
+
+
+def targets_table(reports):
+    """So từng nhóm lượt chạy với mục tiêu §10.2 của spec 2026-10-10: trễ theo từ gộp theo tiếng nguồn; từ đầu câu tới chữ
+    dịch đầu (p90, gộp mọi câu); độ nháy ổn định gộp theo đơn vị (tử và mẫu ở khóa `run`); A2 và CPU của session tệ
+    nhất."""
+    words, groups = {}, {}
+    for name, report in reports:
+        g = group_of(name)
+        d = groups.setdefault(g, {"start": [], "changed": 0, "final": 0, "a2": [], "a2_90": [], "a2_first": [],
+                                  "cpu": []})
+        run, summary = report.get("run", {}), report.get("summary", {})
+        d["changed"] += run.get("stable_changed_units") or 0
+        d["final"] += run.get("final_units") or 0
+        for key, col in (("a2_p50_ms", "a2"), ("a2_p90_ms", "a2_90"), ("a2_first_p50_ms", "a2_first"),
+                         ("cpu_percent", "cpu")):
+            if summary.get(key) is not None:
+                d[col].append(summary[key])
+        for u in report.get("utterances", []):
+            if u.get("first_from_start_ms") is not None:
+                d["start"].append(u["first_from_start_ms"])
+            w = words.setdefault((g, u["lang"]), {"tentative": [], "stable": []})
+            w["tentative"].extend(u.get("word_lag_tentative_ms", []))
+            w["stable"].extend(u.get("word_lag_stable_ms", []))
+    lines = [
+        "| Nhóm | Tiếng nguồn | Theo từ, tạm p50 (≤ 1200) | Theo từ, ổn định p50 (mục tiêu) |",
+        "|---|---|---|---|",
+    ]
+    for (g, lang), w in sorted(words.items()):
+        goal = STABLE_P50_MS.get(lang, 2000)
+        lines.append(f"| {g} | {lang} | {ms_verdict(percentile(w['tentative'], 50), TENTATIVE_P50_MS)} | "
+                     f"{ms_verdict(percentile(w['stable'], 50), goal)} (≤ {goal}) |")
+    lines += [
+        "",
+        "| Nhóm | Đầu câu → chữ dịch p90 (≤ 2000) | Nháy ổn định (≤ 10%) | A2 p50 tệ nhất (≤ 2000) "
+        "| A2 p90 tệ nhất (≤ 3000) | A2 chữ đầu p50 tệ nhất (≤ 1000) | CPU % tệ nhất (≤ 30) |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for g, d in sorted(groups.items()):
+        flicker = d["changed"] / d["final"] if d["final"] else None
+        cpu = max(d["cpu"], default=None)
+        cells = [
+            ms_verdict(percentile(d["start"], 90), FIRST_P90_MS),
+            "—" if flicker is None else verdict(f"{flicker * 100:.1f}%", flicker <= FLICKER_MAX),
+            ms_verdict(max(d["a2"], default=None), A2_P50_MS),
+            ms_verdict(max(d["a2_90"], default=None), A2_P90_MS),
+            ms_verdict(max(d["a2_first"], default=None), A2_FIRST_P50_MS),
+            "—" if cpu is None else verdict(f"{cpu:.1f}", cpu <= CPU_MAX),
+        ]
+        lines.append(f"| {g} | " + " | ".join(cells) + " |")
+    return lines
+
+
 def main(argv):
+    targets = argv[:1] == ["--targets"]
+    if targets:
+        argv = argv[1:]
     compare = None
     if argv[:1] == ["--compare"]:
         if len(argv) < 4:
@@ -172,6 +245,9 @@ def main(argv):
     if compare:
         print()
         print("\n".join(compare_table(reports, *compare)))
+    if targets:
+        print()
+        print("\n".join(targets_table(reports)))
 
 
 if __name__ == "__main__":
