@@ -34,6 +34,13 @@ pub const MAX_PROMPT_TOKENS: usize = 100;
 /// Chi phí: turbo chậm thêm khoảng 90 ms ở đoạn dưới 5 giây, small khoảng 15 ms; từ 9 giây trở lên không đổi.
 pub const MIN_AUDIO_CTX: i32 = 512;
 
+/// Bội số mà [`audio_ctx_for_samples`] làm tròn lên (spec 2026-10-10 §8, A5). whisper.cpp 1.8.3 với flash attention đọc
+/// K/V của encoder và cross-attention tới `GGML_PAD(audio_ctx, 256)` mà không có mask (ggml-org/whisper.cpp#3941): phần
+/// đệm chứa dữ liệu của đoạn chép trước, nên kết quả sai và đổi theo đoạn trước. `audio_ctx` là bội của 256 thì không có
+/// phần đệm. Cửa sổ đầy đủ 1500 (đoạn dài hơn 24,32 giây) vẫn có đệm, nhưng app không gửi đoạn nào dài như vậy (đoạn
+/// dài nhất là đoạn gộp ở hàng đợi, 12 giây).
+pub const AUDIO_CTX_ALIGN: i32 = 256;
+
 /// Một đoạn 8 giây ở dạng int16 chỉ khoảng 256 KB; 16 MiB là dư nhiều.
 pub const MAX_FRAME_BYTES: u32 = 16 * 1024 * 1024;
 
@@ -282,11 +289,21 @@ fn read_up_to<R: Read>(r: &mut R, buf: &mut [u8]) -> io::Result<usize> {
     Ok(filled)
 }
 
-/// `audio_ctx = min(1500, max(MIN_AUDIO_CTX, ceil(50 × số giây của đoạn) + 64))`. Làm tròn lên (spec §6.4, "Rút ngắn cửa
-/// sổ mã hóa"). Lý do của sàn [`MIN_AUDIO_CTX`] ở hằng đó.
+/// `audio_ctx = min(1500, max(MIN_AUDIO_CTX, ceil(50 × số giây của đoạn) + 64))`, làm tròn lên (spec §6.4, "Rút ngắn cửa
+/// sổ mã hóa"), rồi lên bội của [`AUDIO_CTX_ALIGN`] ([`align_audio_ctx`]). Kết quả: 512 tới 8,96 giây, 768 tới 14,08 giây,
+/// 1024 tới 19,2 giây, 1280 tới 24,32 giây, 1500 khi dài hơn. Lý do của sàn [`MIN_AUDIO_CTX`] ở hằng đó.
 pub fn audio_ctx_for_samples(n_samples: usize) -> i32 {
     let frames = (n_samples as u64).saturating_mul(50).div_ceil(SAMPLE_RATE as u64);
-    frames.saturating_add(64).max(MIN_AUDIO_CTX as u64).min(1500) as i32
+    align_audio_ctx(frames.saturating_add(64).max(MIN_AUDIO_CTX as u64).min(1500) as i32)
+}
+
+/// `audio_ctx` làm tròn lên bội của [`AUDIO_CTX_ALIGN`], chặn ở 1500 (cửa sổ đầy đủ). 0 (cũng là cửa sổ đầy đủ) và số âm
+/// (worker từ chối) giữ nguyên.
+pub fn align_audio_ctx(audio_ctx: i32) -> i32 {
+    if audio_ctx <= 0 {
+        return audio_ctx;
+    }
+    (audio_ctx.saturating_add(AUDIO_CTX_ALIGN - 1) / AUDIO_CTX_ALIGN * AUDIO_CTX_ALIGN).min(1500)
 }
 
 #[cfg(test)]
@@ -371,11 +388,37 @@ mod tests {
 
     #[test]
     fn audio_ctx_matches_spec_formula() {
-        // Trên sàn: 50 × số giây + 64, làm tròn lên.
-        assert_eq!(audio_ctx_for_samples(143_361), 513); // vừa quá 8,96 giây: 449 + 64
-        assert_eq!(audio_ctx_for_samples(16_000 * 12), 664); // 12 giây: 600 + 64
+        // Trên sàn: 50 × số giây + 64, làm tròn lên, rồi lên bội của 256 (A5).
+        assert_eq!(audio_ctx_for_samples(143_361), 768); // vừa quá 8,96 giây: 449 + 64 = 513
+        assert_eq!(audio_ctx_for_samples(16_000 * 12), 768); // 12 giây: 600 + 64 = 664
+        assert_eq!(audio_ctx_for_samples(225_280), 768); // 14,08 giây: 704 + 64, đúng bội của 256
+        assert_eq!(audio_ctx_for_samples(225_281), 1024);
+        assert_eq!(audio_ctx_for_samples(389_120), 1280); // 24,32 giây
+        assert_eq!(audio_ctx_for_samples(389_121), 1500); // dài hơn: cửa sổ đầy đủ
         assert_eq!(audio_ctx_for_samples(16_000 * 30 - 1), 1500); // sát 30 giây, bị chặn ở 1500
         assert_eq!(audio_ctx_for_samples(16_000 * 30), 1500); // 30 giây
+    }
+
+    /// A5: dưới cửa sổ đầy đủ, `audio_ctx` luôn là bội của 256 và vẫn phủ hết đoạn.
+    #[test]
+    fn audio_ctx_is_a_multiple_of_256_below_the_full_window() {
+        for n in (0..=MAX_PCM_SAMPLES).step_by(997) {
+            let ctx = audio_ctx_for_samples(n);
+            assert!(ctx == 1500 || ctx % AUDIO_CTX_ALIGN == 0, "{n} mẫu: {ctx}");
+            assert!(ctx as usize * 320 >= n, "{n} mẫu: {ctx} không phủ hết đoạn");
+        }
+    }
+
+    #[test]
+    fn align_rounds_up_and_keeps_the_full_window_marker() {
+        assert_eq!(align_audio_ctx(0), 0);
+        assert_eq!(align_audio_ctx(1), 256);
+        assert_eq!(align_audio_ctx(512), 512);
+        assert_eq!(align_audio_ctx(513), 768);
+        assert_eq!(align_audio_ctx(1281), 1500);
+        assert_eq!(align_audio_ctx(1500), 1500);
+        assert_eq!(align_audio_ctx(-5), -5);
+        assert_eq!(align_audio_ctx(i32::MAX), 1500);
     }
 
     #[test]
