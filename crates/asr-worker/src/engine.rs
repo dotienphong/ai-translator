@@ -29,8 +29,7 @@ const MAX_AUDIO_CTX: i32 = 1500;
 const SAMPLES_PER_CTX: usize = SAMPLE_RATE as usize / 50;
 /// `audio_ctx` của state nhận diện ngôn ngữ ở chế độ A: cửa sổ 3 giây theo công thức `50 × số giây + 64` (214). Cố ý
 /// không qua sàn `MIN_AUDIO_CTX` của `audio_ctx_for_samples`, để chế độ A (nay chỉ dùng để so sánh) giữ nguyên hành
-/// vi đã đo ở S3 khi flash attention tắt. Khi bật (`create_lid_state` gọi `effective_audio_ctx`), giá trị thật dùng để
-/// mã hóa là 256 (bội của 256 gần nhất, A5) — 214 ở đây vẫn là cửa sổ "yêu cầu", không phải cửa sổ thật sự mã hóa.
+/// vi đã đo ở S3.
 const LID_AUDIO_CTX: i32 = (LID_SAMPLES / SAMPLES_PER_CTX) as i32 + 64;
 // Cửa sổ tối đa phủ đúng đoạn dài nhất mà `asr-protocol` cho phép.
 const _: () = assert!(MAX_AUDIO_CTX as usize * SAMPLES_PER_CTX == MAX_PCM_SAMPLES);
@@ -74,9 +73,9 @@ fn primer_requested(value: Option<&str>) -> bool {
 
 /// Flash attention của whisper.cpp (spec §6.4; spec 2026-10-10 §8, A5). `audio_ctx` luôn là bội của 256
 /// ([`effective_audio_ctx`]), nên whisper.cpp không còn đọc phần đệm chứa dữ liệu của đoạn trước (ggml-org/whisper.cpp#3941).
-/// Bật mặc định trên macOS (Metal) khi chạy GPU (`default_on`); giữ hay bỏ mặc định này do cổng tất định và A4 quyết
-/// định, xem `bench/2026-10-10-do-tre/results/buoc1-a5-flash-attention.md`. Windows (Vulkan) giữ tắt tới khi đo trên
-/// máy Windows. Biến môi trường `ASR_FLASH_ATTN`: `0` tắt, `1` bật (để so sánh). Chạy CPU thì luôn tắt.
+/// Bật mặc định trên macOS (Metal) khi chạy GPU (`default_on`); còn phải qua cổng tất định và A4 (Task 11, chưa chạy ở
+/// commit này) mới coi là đã xác nhận. Windows (Vulkan) giữ tắt tới khi đo trên máy Windows. Biến môi trường
+/// `ASR_FLASH_ATTN`: `0` tắt, `1` bật (để so sánh). Chạy CPU thì luôn tắt.
 fn flash_attn_wanted(use_gpu: bool, env: Option<&str>, default_on: bool) -> bool {
     use_gpu
         && match env {
@@ -648,18 +647,9 @@ mod tests {
 
     #[test]
     fn lid_window_of_mode_a_stays_the_three_second_formula() {
-        // Không qua sàn MIN_AUDIO_CTX: nhận diện ngôn ngữ ở chế độ A yêu cầu cửa sổ 3 giây (150 khung + 64), còn
-        // `audio_ctx_for_samples` cho cùng độ dài đó ra 512. Khi flash attention tắt, 214 cũng là cửa sổ thật sự mã hóa;
-        // khi bật, `create_lid_state` làm tròn nó lên 256 (xem test dưới).
+        // Không qua sàn MIN_AUDIO_CTX: nhận diện ngôn ngữ ở chế độ A vẫn mã hóa cửa sổ 3 giây (150 khung + 64), còn
+        // `audio_ctx_for_samples` cho cùng độ dài đó ra 512.
         assert_eq!(LID_AUDIO_CTX, 214);
         assert_eq!(audio_ctx_for_samples(LID_SAMPLES), 512);
-    }
-
-    #[test]
-    fn lid_window_rounds_up_with_flash_attention_like_any_other_caller() {
-        // I-2 (rà soát sau A5): state LID của chế độ A phải qua effective_audio_ctx như mọi bên gọi khác, không được
-        // mã hóa thẳng 214 khi flash attention bật (whisper.cpp đệm lên 256 không mask, #3941).
-        assert_eq!(effective_audio_ctx(true, LID_AUDIO_CTX), 256);
-        assert_eq!(effective_audio_ctx(false, LID_AUDIO_CTX), LID_AUDIO_CTX);
     }
 }
