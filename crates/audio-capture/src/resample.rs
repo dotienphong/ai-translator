@@ -15,8 +15,13 @@ pub const TARGET_RATE: u32 = 16_000;
 ///   7 kHz (lệch dưới 0,2 dB), −18 dB ở 7,5 kHz, chặn từ 60 dB trên 8 kHz (test bên dưới). Trước đó phẳng tới 7,5 kHz.
 /// - Trễ của bộ lọc còn 5 ms (trước 10,7 ms ở 48 kHz, 15 ms ở 44,1 kHz).
 /// - Tốn CPU không hơn: 60 giây 48 kHz stereo hết khoảng 12 ms, khối 1024 hết 17–19 ms (`cpu_cost_of_10_ms_blocks`).
-pub fn block_frames(input_rate: u32) -> usize {
-    (input_rate as usize / 100).max(1)
+///
+/// Sàn 160 khung (10 ms tại 16 kHz, spec 2026-10-10 §8 A3): tần số vào dưới 16 kHz (hiếm — chủ yếu tai nghe Bluetooth
+/// chế độ đàm thoại, HFP 8 kHz) mới chạm sàn này; không có sàn thì khối chỉ còn `rate/100` điểm, bộ lọc chống alias
+/// ngắn đi và cắt vào dải thoại 300–3400 Hz (đo ở 8 kHz, khối 80: lệch đã tới −10 dB ở 3,4 kHz). Ở sàn 160, khối 8 kHz
+/// thành 20 ms, bộ lọc phẳng tới 3525 Hz, giữ trọn dải thoại.
+pub(crate) fn block_frames(input_rate: u32) -> usize {
+    (input_rate.max(TARGET_RATE) / 100) as usize
 }
 
 pub struct MonoResampler {
@@ -156,8 +161,8 @@ mod tests {
         assert_eq!(block_frames(48_000), 480);
         assert_eq!(block_frames(44_100), 441);
         assert_eq!(block_frames(96_000), 960);
-        assert_eq!(block_frames(8_000), 80);
-        assert_eq!(block_frames(50), 1);
+        assert_eq!(block_frames(8_000), 160); // chạm sàn: 8 kHz < 16 kHz
+        assert_eq!(block_frames(50), 160); // chạm sàn: 50 Hz < 16 kHz
     }
 
     /// A3: khối 10 ms vẫn giữ nguyên dải tiếng nói và chặn alias, ở các tần số vào thường gặp.
@@ -173,6 +178,14 @@ mod tests {
                 assert!(db < -55.0, "{rate} Hz, {freq} Hz: {db:.2} dB");
             }
         }
+    }
+
+    /// A3: sàn 160 khung giữ dải thoại 300–3400 Hz ở 8 kHz (tai nghe Bluetooth HFP) — không có sàn, khối chỉ 80 điểm sẽ
+    /// cắt mất phần trên của dải này (đo được lệch tới −10 dB ở 3,4 kHz).
+    #[test]
+    fn the_8khz_floor_keeps_the_narrowband_speech_range() {
+        let db = gain_db(8_000, 3_400.0);
+        assert!(db.abs() < 0.3, "8000 Hz, 3400 Hz: {db:.2} dB");
     }
 
     /// A3: trễ của bộ lọc khoảng 5 ms (đỉnh xung lệch 80 mẫu 16 kHz), trước là 171 mẫu (10,7 ms) ở 48 kHz.
