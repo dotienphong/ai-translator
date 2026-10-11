@@ -57,7 +57,9 @@ pub struct Job<'a> {
     /// card không có mẫu gộp hai thứ, và cờ ngữ cảnh chỉ là thử nghiệm, mặc định tắt.
     pub terms: &'a [Term],
     /// Cờ hủy (spec 2026-10-10 §4.6, A2): `translate` kiểm trước khi gửi request và ở mỗi gói chữ stream về, kể cả gói
-    /// đang bị hậu xử lý giữ lại. Bật thì trả `Outcome::Cancelled`.
+    /// đang bị hậu xử lý giữ lại. Đây là hủy hợp tác, chỉ xem cờ ở các điểm đó, không ngắt request đang chờ hồi đáp:
+    /// cờ bật ngay sau gói cuối vẫn có thể nhận `Outcome::Done`/`Failed` như bình thường — bên gọi tự bỏ kết quả của
+    /// việc đã hủy (ví dụ qua phiên bản câu, `is_current`).
     pub cancel: Option<&'a AtomicBool>,
 }
 
@@ -92,7 +94,8 @@ pub enum Outcome {
         source_tokens: usize,
         completion_tokens: Option<usize>,
     },
-    /// Bên gọi dừng giữa chừng (câu đã được ghép thêm, sẽ dịch lại).
+    /// Bên gọi hủy qua cờ `Job.cancel` hay callback trả `Break`, trước khi gửi request hoặc giữa lúc dịch. Câu có được
+    /// dịch lại hay không tùy nơi gọi (ghép thêm đoạn thì dịch lại; hết hạn dừng, qua `abandon`, thì không).
     Cancelled,
     Unavailable(String),
 }
