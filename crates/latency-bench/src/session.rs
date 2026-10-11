@@ -16,6 +16,7 @@ use asr_protocol::{TranscribeRequest, TranscribeResult};
 use pipeline::config::{AsrConfig, LangAgree, MtConfig, PipelineConfig, StreamingConfig, SupervisorConfig};
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, SampleSource, VadModel};
 use pipeline::llama::{ChatRequest, StreamEnd};
+use pipeline::metrics::SessionMetrics;
 use pipeline::prompt::Lang;
 use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES};
 use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Subtitle};
@@ -373,6 +374,49 @@ fn apply_streaming(args: &SessionArgs, pipeline: &mut PipelineConfig) -> Result<
         .map_err(|key| anyhow!("cấu hình dịch trong lúc nói không hợp lệ: {key}"))
 }
 
+/// Cấu hình engine của lượt đo: mặc định của app, ngưỡng người dùng, và các cờ của chế độ dịch trong lúc nói (kế hoạch 02,
+/// H9). Cờ sai thì báo lỗi ở đây, trước khi chạy tiến trình phụ.
+fn engine_config(args: &SessionArgs, target: Lang) -> Result<EngineConfig> {
+    let mut pipeline = PipelineConfig::default();
+    pipeline.segmenter.end_silence_ms = args.end_silence_ms;
+    apply_streaming(args, &mut pipeline)?;
+    Ok(EngineConfig {
+        pipeline,
+        languages: args.languages.clone(),
+        target,
+        translation_context: false,
+        id_base: 0,
+        glossary: Default::default(),
+        // `--streaming`: máy coi như đủ sức, công tắc bật (kế hoạch 02); không có cờ thì chạy đúng chế độ thường.
+        streaming_supported: args.streaming,
+        streaming_enabled: args.streaming,
+    })
+}
+
+/// Các khóa `summary` của chế độ dịch trong lúc nói (kế hoạch 02, H9): số lần chép từng phần có kết quả, p50 của nhịp T
+/// sau mỗi vòng, và việc đã tự tắt (1 hay 0; `None` khi không chạy `--streaming`).
+fn fill_streaming_summary(summary: &mut Summary, metrics: &SessionMetrics, streaming: bool) {
+    summary.partials = Some(metrics.partials as f64);
+    summary.cadence_p50_ms = percentile(&metrics.cadence_ms, 50.0).map(|v| ms(f64::from(v)));
+    summary.streaming_auto_off = streaming.then(|| f64::from(u8::from(metrics.streaming_auto_off)));
+}
+
+/// Số đo của dòng đang nói cho khóa `run` (kế hoạch 02, H9): số dòng đang nói khác nhau (theo `id`, vì một dòng phát nhiều
+/// sự kiện `live` khi cập nhật); mẫu và tử của `stable_flicker_ratio` (để gộp nhiều session).
+fn fill_live_counts(run: &mut RunInfo, events: &[Timed]) {
+    let replay = Replay::new(events);
+    run.live_lines = events
+        .iter()
+        .filter_map(|e| match &e.ev {
+            Recorded::Live(l) => Some(l.id),
+            _ => None,
+        })
+        .collect::<BTreeSet<_>>()
+        .len();
+    run.final_units = replay.final_translated_units();
+    run.stable_changed_units = replay.changed_stable_units();
+}
+
 fn vad_model() -> PathBuf {
     repo_root()
         .unwrap_or_default()
@@ -458,6 +502,7 @@ pub fn run(args: SessionArgs) -> Result<()> {
         std::fs::create_dir_all(dir)?;
     }
     let target = Lang::from_code(&args.target).context("--target không hợp lệ")?;
+    let config = engine_config(&args, target)?;
     let truth: Vec<Utterance> = serde_json::from_reader(
         std::fs::File::open(&args.truth).with_context(|| format!("không mở được {}", args.truth.display()))?,
     )?;
@@ -476,20 +521,6 @@ pub fn run(args: SessionArgs) -> Result<()> {
     let stop_sampler = Arc::new(AtomicBool::new(false));
     let sampler = spawn_sampler(sidecar_pids(), stop_sampler.clone());
 
-    let mut pipeline = PipelineConfig::default();
-    pipeline.segmenter.end_silence_ms = args.end_silence_ms;
-    apply_streaming(&args, &mut pipeline)?;
-    let config = EngineConfig {
-        pipeline,
-        languages: args.languages.clone(),
-        target,
-        translation_context: false,
-        id_base: 0,
-        glossary: Default::default(),
-        // `--streaming`: máy coi như đủ sức, công tắc bật (kế hoạch 02); không có cờ thì chạy đúng chế độ thường.
-        streaming_supported: args.streaming,
-        streaming_enabled: args.streaming,
-    };
     let asr_busy = Arc::new(AtomicU64::new(0));
     let mt_busy = Arc::new(AtomicU64::new(0));
     let lag_max = Arc::new(AtomicU64::new(0));
@@ -524,14 +555,13 @@ pub fn run(args: SessionArgs) -> Result<()> {
 
     let (events, fatal) = recorder.take();
     let utterances = evaluate(&truth, &events);
-    let replay = Replay::new(&events);
     let utterances_without_pieces = count_utterances_without_pieces(&utterances);
     let machine_map = machine_info();
     let cores = machine_map
         .get("logical_cores")
         .and_then(|c| c.parse().ok())
         .unwrap_or(0);
-    let run = RunInfo {
+    let mut run = RunInfo {
         session_ms: ms(session_ms),
         asr_busy_ms: ms(asr_busy.load(Ordering::Relaxed) as f64 / 1000.0),
         mt_busy_ms: ms(mt_busy.load(Ordering::Relaxed) as f64 / 1000.0),
@@ -550,26 +580,14 @@ pub fn run(args: SessionArgs) -> Result<()> {
         skipped: metrics.skipped,
         feed_lag_max_ms: ms(lag_max.load(Ordering::Relaxed) as f64 / 1000.0),
         sidecar_restarts: sidecars.restarts(),
-        live_lines: events
-            .iter()
-            .filter_map(|e| match &e.ev {
-                Recorded::Live(l) => Some(l.id),
-                _ => None,
-            })
-            .collect::<BTreeSet<_>>()
-            .len(),
-        final_units: replay.final_translated_units(),
-        stable_changed_units: replay.changed_stable_units(),
+        ..RunInfo::default()
     };
+    fill_live_counts(&mut run, &events);
     let mut summary = summarize(&truth, &events);
     summary.segments = Some(metrics.segments as f64);
     summary.busy_ratio = (session_ms > 0.0).then(|| ratio4((run.asr_busy_ms + run.mt_busy_ms) / session_ms));
     summary.cpu_percent = machine_cpu_percent(&usage, cores).map(ms);
-    // Chế độ dịch trong lúc nói (kế hoạch 02): số lần chép từng phần có kết quả, p50 của nhịp T, đã tự tắt chưa (chỉ khi
-    // chạy `--streaming`).
-    summary.partials = Some(metrics.partials as f64);
-    summary.cadence_p50_ms = percentile(&metrics.cadence_ms, 50.0).map(|v| ms(f64::from(v)));
-    summary.streaming_auto_off = args.streaming.then(|| f64::from(u8::from(metrics.streaming_auto_off)));
+    fill_streaming_summary(&mut summary, &metrics, args.streaming);
     let mut machine: BTreeMap<String, String> = machine_map.into_iter().collect();
     machine.insert("asr_backend".into(), sidecars.asr_backend());
     machine.insert(
@@ -642,6 +660,7 @@ fn print_summary(name: &str, s: &Summary) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::session_replay::tests::merged_sentence;
     use clap::Parser;
 
     #[derive(Parser)]
@@ -735,6 +754,7 @@ mod tests {
         );
         assert!(parse_tgt_agree("en:3").is_err());
         assert!(parse_tgt_agree("en:x:1").is_err());
+        assert!(parse_tgt_agree("en:3:1:0").is_err(), "thừa phần");
         assert!(parse_tgt_agree("").unwrap().is_empty());
     }
 
@@ -803,6 +823,122 @@ mod tests {
         assert_eq!(
             (json[1]["kind"].as_str(), json[1]["id"].as_u64()),
             (Some("live_end"), Some(4))
+        );
+    }
+
+    /// `--streaming` bật cả hai công tắc của engine; ngưỡng và (n, k) của các cờ tới đúng cấu hình engine nhận (Task 19 đo
+    /// theo lưới các cờ này); không có cờ thì chạy đúng chế độ thường với cấu hình mặc định; cờ sai thì báo lỗi.
+    #[test]
+    fn the_engine_config_carries_the_streaming_flags() {
+        let on = engine_config(
+            &args(&[
+                "--streaming",
+                "--streaming-end-silence-ms",
+                "600",
+                "--tgt-agree",
+                "en:3:1",
+            ]),
+            Lang::Vi,
+        )
+        .unwrap();
+        assert_eq!((on.streaming_supported, on.streaming_enabled), (true, true));
+        assert_eq!(
+            (
+                on.pipeline.streaming.end_silence_ms,
+                on.pipeline.streaming.agree_for("en")
+            ),
+            (600, (3, 1))
+        );
+        assert_eq!(on.pipeline.segmenter.end_silence_ms, 50, "ngưỡng người dùng");
+        let off = engine_config(&args(&[]), Lang::Vi).unwrap();
+        assert_eq!((off.streaming_supported, off.streaming_enabled), (false, false));
+        assert_eq!(off.pipeline.streaming, StreamingConfig::default());
+        assert!(engine_config(&args(&["--tgt-agree", "en:9:1"]), Lang::Vi).is_err());
+    }
+
+    /// Ba khóa `summary` của chế độ dịch trong lúc nói (kế hoạch 02, H9) lấy từ số đo của engine; `streaming_auto_off` là 1
+    /// hay 0 khi chạy `--streaming`, `null` khi không.
+    #[test]
+    fn the_streaming_summary_keys_come_from_the_engine_metrics() {
+        let metrics = |partials: usize, cadence_ms: Vec<f32>, streaming_auto_off: bool| SessionMetrics {
+            partials,
+            cadence_ms,
+            streaming_auto_off,
+            ..SessionMetrics::default()
+        };
+        let keys = |m: &SessionMetrics, streaming: bool| {
+            let mut s = Summary::default();
+            fill_streaming_summary(&mut s, m, streaming);
+            (s.partials, s.cadence_p50_ms, s.streaming_auto_off)
+        };
+        assert_eq!(
+            keys(&metrics(7, vec![900.0, 1_000.0, 1_500.0], true), true),
+            (Some(7.0), Some(1_000.0), Some(1.0))
+        );
+        assert_eq!(
+            keys(&metrics(3, Vec::new(), false), true),
+            (Some(3.0), None, Some(0.0)),
+            "chưa tự tắt là 0, không phải null"
+        );
+        assert_eq!(
+            keys(&metrics(0, Vec::new(), true), false),
+            (Some(0.0), None, None),
+            "không chạy --streaming: null"
+        );
+    }
+
+    /// Số đo của dòng đang nói cho khóa `run` (kế hoạch 02, H9): `live_lines` đếm dòng khác nhau theo `id` (dòng 2 phát hai
+    /// sự kiện `live`); `final_units` là số đơn vị của mọi bản dịch cuối ("chúng tôi về nhà." là 4); `stable_changed_units`
+    /// là số đơn vị phần ổn định bị bản cuối đổi (ở đây 0).
+    #[test]
+    fn the_run_counts_live_lines_by_id_and_the_flicker_units() {
+        let live = |t_ms: f64, id: u64| Timed {
+            t_ms,
+            ev: Recorded::Live(LiveLine {
+                id,
+                ..LiveLine::default()
+            }),
+        };
+        let mut events = merged_sentence(true);
+        events.extend([
+            live(6_000.0, 2),
+            live(6_100.0, 2),
+            live(6_200.0, 3),
+            Timed {
+                t_ms: 6_300.0,
+                ev: Recorded::LiveEnd(LiveEnd { id: 2 }),
+            },
+        ]);
+        let mut run = RunInfo::default();
+        fill_live_counts(&mut run, &events);
+        assert_eq!((run.live_lines, run.final_units, run.stable_changed_units), (2, 4, 0));
+    }
+
+    /// `args` của file JSON ghi ba cờ của chế độ dịch trong lúc nói (kế hoạch 02, H9); ngưỡng là giá trị hiệu lực: không có
+    /// cờ thì mặc định của `StreamingConfig`.
+    #[test]
+    fn the_args_record_the_streaming_flags() {
+        let keys = |extra: &[&str]| {
+            let m = args_map(&args(extra), Path::new("models/vad.onnx"));
+            [&m["streaming"], &m["streaming_end_silence_ms"], &m["tgt_agree"]].map(String::clone)
+        };
+        assert_eq!(
+            keys(&[
+                "--streaming",
+                "--streaming-end-silence-ms",
+                "200",
+                "--tgt-agree",
+                "ja:3:3"
+            ]),
+            ["true", "200", "ja:3:3"]
+        );
+        assert_eq!(
+            keys(&[]),
+            [
+                "false".to_string(),
+                StreamingConfig::default().end_silence_ms.to_string(),
+                "mặc định".to_string()
+            ]
         );
     }
 
