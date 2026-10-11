@@ -1,7 +1,8 @@
 //! Cổng tất định của flash attention (spec 2026-10-10 §8, A5; spec §6.4 "Flash attention"): cùng một đoạn, chép sau các
-//! đoạn khác nhau (dài ngắn khác nhau nên `audio_ctx` khác nhau), phải ra cùng token. Chạy worker hai lần, flash attention
-//! bật (`ASR_FLASH_ATTN=1`) rồi tắt (`=0`); cả hai lần phải tất định. In thêm số đoạn mà hai lần cho cùng token, để ghi vào
-//! biên bản (không phải điều kiện của cổng: chất lượng do A4 quyết định).
+//! đoạn khác nhau (dài ngắn khác nhau nên `audio_ctx` khác nhau), phải ra cùng kết quả — chữ, token, `no_speech_prob`,
+//! `avg_logprob`, ngôn ngữ và xác suất ngôn ngữ (`Transcribed`, so bit-for-bit vì whisper.cpp giải mã tất định). Chạy
+//! worker hai lần, flash attention bật (`ASR_FLASH_ATTN=1`) rồi tắt (`=0`); cả hai lần phải tất định. In thêm số đoạn mà
+//! hai lần cho cùng token (bật so tắt), để ghi vào biên bản (không phải điều kiện của cổng: chất lượng do A4 quyết định).
 //!
 //! Cần model thật và bản build Metal nên bị bỏ qua mặc định. Chạy từ gốc repo, với từng model:
 //!
@@ -134,10 +135,12 @@ impl Worker {
 /// Kết quả chép một đoạn, đủ các trường mà bộ lọc giữ/bỏ và nhận diện ngôn ngữ của pipeline thật dùng (xem
 /// `Worker::transcribe`); không lấy `lid_ms`/`asr_ms` vì đó là thời gian chạy, luôn đổi giữa các lần dù tất định.
 ///
-/// So bằng `#[derive(PartialEq)]`, tức `==` trực tiếp trên từng trường kể cả `f32`. Đây KHÔNG phải so sánh gần đúng vì
-/// whisper.cpp giải mã greedy, không lấy mẫu ngẫu nhiên (`SamplingStrategy::Greedy`): với cùng trọng số model, cùng
-/// audio_ctx hiệu lực và cùng phần cứng/bản build, phép tính phải tất định tới từng bit `f32`. Hai lần chép ra khác bit
-/// nghĩa là cổng này đúng mục đích phải đỏ (ví dụ bug #3941 đọc đệm K/V chưa ghi của đoạn trước).
+/// So bằng `#[derive(PartialEq)]`, tức `==` trực tiếp trên từng trường kể cả `f32`. Đây KHÔNG phải so sánh gần đúng:
+/// không có lấy mẫu ngẫu nhiên nào trên đường này (chế độ B chọn token bằng argmax trong Rust, `shared.rs::pick_token`;
+/// nhiệt độ 0). Với cùng trọng số model, cùng audio_ctx hiệu lực và cùng phần cứng/bản build, kernel Metal của ggml
+/// chọn theo hình dạng tensor (cùng đoạn → cùng hình dạng → cùng kernel, cùng thứ tự cộng), nên phép tính phải tất
+/// định tới từng bit `f32`. Hai lần chép ra khác bit nghĩa là cổng này đúng mục đích phải đỏ (ví dụ bug #3941 đọc đệm
+/// K/V chưa ghi của đoạn trước).
 #[derive(Debug, Clone, PartialEq)]
 struct Transcribed {
     text: String,
