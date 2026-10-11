@@ -164,7 +164,8 @@ pub struct Replay {
     pub piece_keys: Vec<Vec<String>>,
     /// Dòng đang nói theo id (kế hoạch 02).
     pub lives: BTreeMap<u64, LiveTrack>,
-    /// (phụ đề, chỉ số phần) mà upsert ngay trước sự kiện đang xét tạo ra (QĐ10 của kế hoạch 02).
+    /// (phụ đề, chỉ số phần) mà upsert ngay trước sự kiện đang xét tạo ra (QĐ10 của kế hoạch 02). Sự kiện `live` kế tiếp
+    /// dùng hết nó: chỉ lần phát lại lúc đóng băng đứng ngay sau upsert đó.
     just_created: Option<(u64, usize)>,
 }
 
@@ -259,6 +260,7 @@ impl Replay {
         let sentence = l.extends.unwrap_or(l.id);
         let created = self
             .just_created
+            .take()
             .filter(|&(sub, piece)| sub == sentence && !self.lives.values().any(|t| t.piece == Some(piece)));
         let track = self.lives.entry(l.id).or_default();
         if let Some((_, piece)) = created
@@ -655,6 +657,169 @@ pub(crate) mod tests {
         ];
         let replay = Replay::new(&events);
         assert_eq!(replay.lives[&2].piece, None);
+    }
+
+    /// Dòng có bản dịch tạm đổi giữa chừng và phần dịch ổn định bị bản cuối sửa (spec §10.1): chỉ `tgt_src_units` đơn
+    /// vị đầu của chữ nguồn đang hiện được phủ (chữ nguồn đang hiện có thể dài hơn, hay ngắn hơn, phần đã đem dịch);
+    /// lần hiện chưa có chữ dịch không phủ gì; độ nháy tạm đếm cả lần rút lại trong dòng; độ nháy ổn định đếm phần ổn
+    /// định cuối không khớp bản cuối.
+    #[test]
+    fn a_revised_live_line_covers_only_the_translated_source_and_counts_its_flicker() {
+        let events = vec![
+            // Gói đầu của bản tạm chưa có chữ (dấu kết câu đã bỏ): không phủ gì.
+            live(900.0, line(1, None, ("", "so we"), ("", ""), 2)),
+            // Chữ nguồn đang hiện đã có "went", bản dịch đang hiện mới dịch hai từ đầu.
+            live(1_000.0, line(1, None, ("", "so we went"), ("", "chúng tôi"), 2)),
+            // Lần chép mới ngắn hơn phần đã đem dịch.
+            live(1_300.0, line(1, None, ("so we", ""), ("chúng", " tôi đi"), 3)),
+            live(
+                1_600.0,
+                line(1, None, ("so we", " went home"), ("chúng", " ta đi về nhà"), 4),
+            ),
+            live(
+                1_700.0,
+                line(1, None, ("so we", " went home"), ("chúng ta đi", " về nhà"), 4),
+            ),
+            upsert(2_000.0, 1, 1_900, "so we went home.", "", Status::AsrDone, false),
+            live(
+                2_001.0,
+                line(1, None, ("so we", " went home"), ("chúng ta đi", " về nhà"), 4),
+            ),
+            upsert(2_100.0, 1, 1_900, "so we went home.", "", Status::Translating, false),
+            delta(2_300.0, 1, "chúng ta về nhà."),
+            upsert(
+                2_400.0,
+                1,
+                1_900,
+                "so we went home.",
+                "chúng ta về nhà.",
+                Status::Done,
+                false,
+            ),
+            live_end(2_401.0, 1),
+        ];
+        let replay = Replay::new(&events);
+        assert_eq!((replay.lives[&1].piece, replay.lives[&1].sentence), (Some(0), Some(1)));
+        let tentative: Vec<Option<f64>> = (0..4).map(|j| replay.live_tentative_ms(0, j)).collect();
+        assert_eq!(tentative, [Some(1_000.0), Some(1_000.0), Some(1_600.0), Some(1_600.0)]);
+        let stable: Vec<Option<f64>> = (0..4).map(|j| replay.live_stable_ms(0, j)).collect();
+        assert_eq!(stable, [Some(1_300.0), Some(1_700.0), Some(1_700.0), None]);
+        // Trong dòng: "tôi đi" bị thay (2). Phụ đề cuối thay dòng: "chúng ta đi về nhà" thành "chúng ta về nhà." (3).
+        assert_eq!(replay.retracted_units(), 5);
+        // Phần ổn định cuối "chúng ta đi": "đi" không khớp bản cuối.
+        assert_eq!(replay.changed_stable_units(), 1);
+    }
+
+    /// Phần dịch ổn định của một dòng chỉ tính cho câu mà dòng thay chỗ: dòng của câu sau không làm tầng ổn định của
+    /// câu trước sớm lên.
+    #[test]
+    fn stable_text_counts_only_for_the_sentence_the_line_stands_for() {
+        let events = vec![
+            live(500.0, line(1, None, ("", "one two"), ("", "một hai"), 2)),
+            upsert(1_000.0, 1, 900, "one two.", "", Status::AsrDone, false),
+            live(1_001.0, line(1, None, ("", "one two"), ("", "một hai"), 2)),
+            upsert(1_100.0, 1, 900, "one two.", "", Status::Translating, false),
+            upsert(1_300.0, 1, 900, "one two.", "một hai.", Status::Done, false),
+            live_end(1_301.0, 1),
+            live(2_000.0, line(3, None, ("three four five", ""), ("ba bốn năm", ""), 3)),
+            upsert(2_500.0, 3, 2_400, "three four five.", "", Status::AsrDone, false),
+            live(2_501.0, line(3, None, ("three four five", ""), ("ba bốn năm", ""), 3)),
+            upsert(2_600.0, 3, 2_400, "three four five.", "", Status::Translating, false),
+            upsert(
+                2_800.0,
+                3,
+                2_400,
+                "three four five.",
+                "ba bốn năm.",
+                Status::Done,
+                false,
+            ),
+            live_end(2_801.0, 3),
+        ];
+        let replay = Replay::new(&events);
+        assert_eq!((replay.lives[&1].piece, replay.lives[&3].piece), (Some(0), Some(1)));
+        assert_eq!((replay.live_stable_ms(0, 0), replay.live_stable_ms(0, 1)), (None, None));
+        assert_eq!(replay.live_stable_ms(1, 2), Some(2_000.0));
+    }
+
+    /// Phần của câu bị gộp ở hàng đợi dịch (§7, `replaces`) tính tầng ổn định theo câu chứa nó lúc đầu (chủ đầu tiên):
+    /// câu đó không còn bản dịch cuối riêng, nên không có lúc ổn định từ dòng đang nói; dòng của câu gộp không tính cho
+    /// nó.
+    #[test]
+    fn a_piece_absorbed_in_the_translation_queue_has_no_live_stable_time() {
+        let mut absorbing = upsert(2_100.0, 1, 1_900, "I see. Okay.", "", Status::AsrDone, false);
+        if let Recorded::Subtitle(s) = &mut absorbing.ev {
+            s.replaces = vec![2];
+        }
+        let events = vec![
+            live(500.0, line(1, None, ("", "I see"), ("tôi hiểu rồi", ""), 2)),
+            upsert(1_000.0, 1, 900, "I see.", "", Status::AsrDone, false),
+            live(1_001.0, line(1, None, ("", "I see"), ("tôi hiểu rồi", ""), 2)),
+            upsert(2_000.0, 2, 1_900, "Okay.", "", Status::AsrDone, false),
+            absorbing,
+            upsert(
+                2_500.0,
+                1,
+                1_900,
+                "I see. Okay.",
+                "Hiểu rồi. Được.",
+                Status::Done,
+                false,
+            ),
+            live_end(2_501.0, 1),
+        ];
+        let replay = Replay::new(&events);
+        assert_eq!(replay.pieces[1].owners, [2, 1]);
+        assert_eq!(replay.live_stable_ms(0, 1), Some(500.0));
+        assert_eq!(replay.live_stable_ms(1, 0), None, "câu 2 đã bị gộp");
+    }
+
+    /// Chỉ sự kiện `live` đứng ngay sau upsert tạo phần chữ mới là lần phát lại lúc đóng băng (QĐ5). Câu 1 ngắn, không
+    /// có dòng đang nói; dòng 2 của đoạn kế tiếp nối tiếp câu 1 và hiện hai lần trong lúc hàng đợi dịch còn bận (chưa
+    /// có upsert hay delta nào khác). Lần hiện thứ hai không gắn dòng 2 với phần của câu 1; dòng 2 gắn với phần mà lượt
+    /// cuối của nó tạo ra.
+    #[test]
+    fn only_the_live_event_right_after_the_upsert_ties_a_line() {
+        let events = vec![
+            upsert(1_000.0, 1, 900, "yes", "", Status::AsrDone, true),
+            live(2_500.0, line(2, Some(1), ("yes", " so we"), ("", ""), 0)),
+            live(3_300.0, line(2, Some(1), ("yes so", " we went"), ("", ""), 0)),
+            upsert(3_400.0, 1, 900, "yes", "", Status::Translating, true),
+            upsert(3_600.0, 1, 900, "yes", "vâng", Status::Done, true),
+            live(
+                4_000.0,
+                line(
+                    2,
+                    Some(1),
+                    ("yes so we", " went home"),
+                    ("vâng", " vậy chúng tôi về nhà"),
+                    5,
+                ),
+            ),
+            upsert(
+                5_000.0,
+                1,
+                4_800,
+                "yes so we went home.",
+                "vâng",
+                Status::AsrDone,
+                false,
+            ),
+            live(
+                5_001.0,
+                line(
+                    2,
+                    Some(1),
+                    ("yes so we", " went home"),
+                    ("vâng", " vậy chúng tôi về nhà"),
+                    5,
+                ),
+            ),
+        ];
+        let replay = Replay::new(&events);
+        assert_eq!((replay.lives[&2].piece, replay.lives[&2].sentence), (Some(1), Some(1)));
+        assert_eq!(replay.live_tentative_ms(0, 0), None, "câu 1 không có dòng đang nói");
+        assert_eq!(replay.live_tentative_ms(1, 0), Some(4_000.0));
     }
 
     #[test]

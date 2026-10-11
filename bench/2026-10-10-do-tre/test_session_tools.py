@@ -109,6 +109,14 @@ class TargetsTest(unittest.TestCase):
         self.assertIn("| buoc2-es400-chuan | ja | 1300 ✗ | 2900 ✓ (≤ 3000) |", lines)
         self.assertIn("| buoc2-es400-chuan | 2400 ✗ | 10.0% ✓ | 1100 ✓ | 3100 ✗ | 600 ✓ | 14.5 ✓ |", lines)
 
+    def test_flicker_pools_units_not_session_ratios(self):
+        """Độ nháy ổn định gộp theo đơn vị: (5 + 15) ÷ (100 + 50) = 13,3%, không phải trung bình tỉ lệ (5% và 30%)."""
+        reports = [
+            ("g-en", {"summary": {}, "run": {"stable_changed_units": 5, "final_units": 100}, "utterances": []}),
+            ("g-ja", {"summary": {}, "run": {"stable_changed_units": 15, "final_units": 50}, "utterances": []}),
+        ]
+        self.assertIn("| g | — | 13.3% ✗ | — | — | — | — |", S.targets_table(reports))
+
     def test_missing_numbers_show_a_dash(self):
         lines = S.targets_table([("buoc2-es50-chuan-en", {"summary": {}, "utterances": []})])
         self.assertIn("| buoc2-es50-chuan | — | — | — | — | — | — |", lines)

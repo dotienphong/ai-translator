@@ -234,7 +234,7 @@ pub fn summarize(truth: &[Utterance], events: &[Timed]) -> Summary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::session_replay::tests::{live_extending, live_sentence, merged_sentence, upsert};
+    use crate::session_replay::tests::{line, live, live_end, live_extending, live_sentence, merged_sentence, upsert};
 
     fn utt(id: &str, lang: &str, start_ms: u64, end_ms: u64, vad_end_ms: Option<u64>) -> Utterance {
         Utterance {
@@ -313,6 +313,36 @@ mod tests {
         assert_eq!(u.word_lag_stable_ms, [2_800.0, 2_000.0, 2_500.0, 1_700.0, 900.0]);
         assert_eq!(u.first_from_start_ms, Some(1_700.0));
         assert_eq!((u.a2_shown_ms, u.a2_first_ms), (Some(900.0), Some(800.0)));
+    }
+
+    /// Dòng nối tiếp câu có phần dịch ổn định đủ dài cho cả từ đầu của phần mới: tầng ổn định của từ đó tính theo vị
+    /// trí của nó trong phần (cộng vị trí của phần trong câu), không theo vị trí trong câu của truth. Năm từ được nói
+    /// xong lúc 800, 1 600, 2 400, 3 200, 4 000 ms.
+    #[test]
+    fn stable_text_of_a_line_reaches_the_first_word_of_the_new_piece() {
+        let whole = "so we went home now.";
+        let new = "chúng tôi đi về nhà bây giờ.";
+        let longer = ("chúng tôi đi về nhà bây", " giờ");
+        let events = vec![
+            upsert(1_500.0, 1, 1_400, "so we went", "", Status::AsrDone, true),
+            upsert(1_510.0, 1, 1_400, "so we went", "", Status::Translating, true),
+            upsert(1_700.0, 1, 1_400, "so we went", "chúng tôi đi", Status::Done, true),
+            live(
+                2_800.0,
+                line(2, Some(1), ("so we went", " home"), ("", "chúng tôi đi về"), 4),
+            ),
+            live(3_600.0, line(2, Some(1), ("so we went home", " now"), longer, 5)),
+            upsert(4_400.0, 1, 4_000, whole, "chúng tôi đi", Status::AsrDone, false),
+            live(4_401.0, line(2, Some(1), ("so we went home", " now"), longer, 5)),
+            upsert(4_600.0, 1, 4_000, whole, "chúng tôi đi", Status::Translating, false),
+            upsert(4_800.0, 1, 4_000, whole, new, Status::Translating, false),
+            upsert(4_900.0, 1, 4_000, whole, new, Status::Done, false),
+            live_end(4_901.0, 2),
+        ];
+        let u = &evaluate(&[utt("a", "en", 0, 4_000, Some(4_000))], &events)[0];
+        // 7 đơn vị dịch cho 5 đơn vị nguồn: từ thứ q cần ⌈(q + 1) × 7 ÷ 5⌉ = 2, 3, 5, 6, 7 đơn vị ổn định;
+        // dòng có 6 đơn vị ổn định từ 3 600 ms.
+        assert_eq!(u.word_lag_stable_ms, [2_800.0, 2_000.0, 1_200.0, 400.0, 900.0]);
     }
 
     #[test]
