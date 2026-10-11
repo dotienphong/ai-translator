@@ -976,7 +976,8 @@ struct InFlight {
 
 /// Dòng đang nói của một đoạn VAD đang mở (spec 2026-10-10 §4.2–§4.5).
 struct Live {
-    /// Trạng thái của dòng (id đã cộng `id_base`, `extends`, ngôn ngữ, chữ dịch). Phần nguồn được dựng lúc phát (QĐ6).
+    /// Trạng thái của dòng (id đã cộng `id_base`, `extends`, ngôn ngữ, chữ dịch). Phần nguồn được dựng lúc phát (QĐ6); dòng
+    /// đã đóng băng thì phần nguồn dựng một lần lúc đóng băng, giữ ở đây.
     line: LiveLine,
     /// Bản đã phát gần nhất.
     emitted: Option<LiveLine>,
@@ -1007,6 +1008,26 @@ impl Live {
             upto_ms: 0,
             frozen: false,
         }
+    }
+}
+
+/// Phần nguồn (ổn định, tạm) của dòng `live`: chữ của riêng đoạn (§4.2) nối sau `base` như khi ghép (QĐ6 của kế hoạch
+/// 02). `base`: chữ của câu được nối tiếp, chưa gồm đoạn này; `None` thì chỉ có chữ của đoạn.
+fn live_source(live: &Live, base: Option<&str>) -> (String, String) {
+    let (stable, tail) = (&live.src_split.stable, &live.src_split.tail);
+    let Some(base) = base.map(str::trim_end) else {
+        return (stable.clone(), tail.clone());
+    };
+    let join = joiner(&live.line.src_lang);
+    if stable.is_empty() {
+        let tail = if tail.is_empty() {
+            String::new()
+        } else {
+            format!("{join}{tail}")
+        };
+        (base.to_string(), tail)
+    } else {
+        (format!("{base}{join}{stable}"), tail.clone())
     }
 }
 
@@ -1321,7 +1342,7 @@ impl Composer {
                         self.sink.subtitle(&state.sub);
                     }
                     // Dòng đang nói của các đoạn này giờ thay chỗ phụ đề mới tới khi nó chốt; phát ngay sau upsert (QĐ5).
-                    self.freeze_lives(&ids, sub_id);
+                    self.freeze_lives(&ids, sub_id, None);
                     self.enqueue(sub_id, 1, false);
                     if closed {
                         self.remember_previous(&lang, &text);
@@ -1376,7 +1397,8 @@ impl Composer {
         state.version += 1;
         state.closed = closed;
         state.speech_ms += speech_ms;
-        state.sub.src_text = text.to_string();
+        // Chữ của câu trước khi ghép các đoạn này: dòng đang nói của chúng đóng băng trên chữ đó (QĐ5, QĐ6).
+        let before = std::mem::replace(&mut state.sub.src_text, text.to_string());
         state.sub.end_ms = end_ms;
         // A2: không xóa bản dịch đang hiện; giữ nó tới khi bản dịch của câu mới dài ít nhất bằng nó. Chữ mới của phiên bản
         // cũ (nếu đang giữ) không còn đúng.
@@ -1388,7 +1410,7 @@ impl Composer {
         state.sub.provisional = !closed;
         let (version, total) = (state.version, state.speech_ms);
         self.sink.subtitle(&state.sub);
-        self.freeze_lives(segs, sub_id);
+        self.freeze_lives(segs, sub_id, Some(&before));
         let in_flight = self.in_flight.as_ref().is_some_and(|f| f.sub_id == sub_id);
         if in_flight {
             // Bản dịch của câu cũ không còn đúng: hủy, đưa câu mới lên đầu hàng. Câu đã ghép thêm một lần trong lúc bản cũ
@@ -1743,32 +1765,18 @@ impl Composer {
         }
     }
 
-    /// Phát dòng đang nói của đoạn `seg` nếu có đổi (hay luôn phát, `force`). Nối tiếp câu A thì phần nguồn gồm chữ của A,
-    /// nối như khi ghép (QĐ6 của kế hoạch 02).
+    /// Phát dòng đang nói của đoạn `seg` nếu có đổi (hay luôn phát, `force`). Nối tiếp câu A thì phần nguồn gồm chữ hiện tại
+    /// của A (chưa gồm đoạn này), nối như khi ghép (QĐ6 của kế hoạch 02). Dòng đã đóng băng giữ phần nguồn dựng lúc đóng
+    /// băng (`freeze_lives`): lúc đó chữ của A đã gồm lượt cuối của chính đoạn này.
     fn emit_live(&mut self, seg: u64, force: bool) {
         let Some(live) = self.lives.get(&seg) else { return };
         let mut line = live.line.clone();
-        let (stable, tail) = (&live.src_split.stable, &live.src_split.tail);
-        match line.extends.and_then(|id| self.subs.get(&id)) {
-            Some(state) => {
-                let base = state.sub.src_text.trim_end();
-                let join = joiner(&line.src_lang);
-                if stable.is_empty() {
-                    line.src_stable = base.to_string();
-                    line.src_tail = if tail.is_empty() {
-                        String::new()
-                    } else {
-                        format!("{join}{tail}")
-                    };
-                } else {
-                    line.src_stable = format!("{base}{join}{stable}");
-                    line.src_tail = tail.clone();
-                }
-            }
-            None => {
-                line.src_stable = stable.clone();
-                line.src_tail = tail.clone();
-            }
+        if !live.frozen {
+            let base = line
+                .extends
+                .and_then(|id| self.subs.get(&id))
+                .map(|s| s.sub.src_text.as_str());
+            (line.src_stable, line.src_tail) = live_source(live, base);
         }
         if force || live.emitted.as_ref() != Some(&line) {
             self.sink.live(&line);
@@ -1781,13 +1789,18 @@ impl Composer {
     /// Kết quả nhận dạng lượt cuối của các đoạn `segs` vừa thành phụ đề `sub_id` (phụ đề mới, hay câu được ghép thêm): dòng
     /// đang nói của các đoạn đó đóng băng, được phát lại một lần với `extends` là phụ đề đó (`None` nếu đó chính là id của
     /// dòng), và chờ phụ đề đó chốt để gỡ (QĐ5). Gọi ngay sau upsert tạo ra phần chữ của các đoạn đó.
-    fn freeze_lives(&mut self, segs: &[u64], sub_id: u64) {
+    ///
+    /// Dòng giữ chữ đang hiện của đoạn (spec §4.5): phần ổn định và phần tạm của lần chép từng phần cuối, nối sau `before`,
+    /// chữ của câu `sub_id` trước khi ghép các đoạn đó (`None` với phụ đề mới). Không dựng từ chữ hiện tại của câu: chữ đó
+    /// đã gồm lượt cuối của chính các đoạn này, chữ của đoạn sẽ bị lặp.
+    fn freeze_lives(&mut self, segs: &[u64], sub_id: u64, before: Option<&str>) {
         for &seg in segs {
             let Some(live) = self.lives.get_mut(&seg) else {
                 continue;
             };
             live.frozen = true;
             live.line.extends = (live.line.id != sub_id).then_some(sub_id);
+            (live.line.src_stable, live.line.src_tail) = live_source(live, live.line.extends.and(before));
             self.live_waiting.entry(sub_id).or_default().push(seg);
             self.emit_live(seg, true);
         }
@@ -3009,6 +3022,112 @@ mod tests {
         assert!(h.live_ends().is_empty());
         h.finish(&j2, done("chúng tôi về nhà."));
         assert_eq!(h.live_ends(), [2]);
+    }
+
+    /// Đóng băng khi đoạn được ghép vào câu đang mở (§4.5, QĐ5, QĐ6): dòng phát lại đúng chữ nguồn đang hiện. Lúc đó chữ của
+    /// câu đã gồm lượt cuối của chính đoạn này, nên phần nguồn nối sau chữ của câu trước khi ghép, không lặp chữ của đoạn.
+    #[test]
+    fn a_merged_final_freezes_the_shown_source_without_repeating_it() {
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        h.partial(2, 1_300, 2_000, "en", Some("home"));
+        let shown = h.last_live(2);
+        assert_eq!(
+            (shown.extends, shown.src_stable.as_str(), shown.src_tail.as_str()),
+            (Some(1), "so we went", " home")
+        );
+        let count = h.live_count();
+        h.said(2, 1_300, 2_000, "en", "home.");
+        assert_eq!(h.last(1).src_text, "so we went home.");
+        assert_eq!(h.live_count(), count + 1, "phát lại một lần lúc đóng băng");
+        assert_eq!(
+            h.last_live(2),
+            shown,
+            "giữ chữ đang hiện, không thành \"so we went home. home\""
+        );
+
+        // Đoạn đã có phần ổn định.
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        h.partial(2, 1_300, 2_000, "en", Some("home and"));
+        h.partial(2, 1_300, 2_500, "en", Some("home and then"));
+        let shown = h.last_live(2);
+        assert_eq!(
+            (shown.src_stable.as_str(), shown.src_tail.as_str()),
+            ("so we went home", " and then")
+        );
+        h.said(2, 1_300, 2_600, "en", "home and then.");
+        assert_eq!(h.last_live(2), shown);
+    }
+
+    /// Câu ghép từ ba đoạn: hai lần đóng băng liên tiếp cho cùng một câu. Mỗi dòng giữ chữ đang hiện của nó; dòng của đoạn
+    /// sau nối tiếp câu đã gồm lượt cuối của đoạn trước; dòng đã đóng băng không được phát lại; không lần phát nào lặp chữ.
+    #[test]
+    fn each_freeze_of_a_three_segment_sentence_keeps_its_shown_source() {
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "one two");
+        h.partial(2, 1_300, 2_300, "en", Some("three four"));
+        h.partial(2, 1_300, 2_800, "en", Some("three four five"));
+        let shown2 = h.last_live(2);
+        assert_eq!(
+            (shown2.extends, shown2.src_stable.as_str(), shown2.src_tail.as_str()),
+            (Some(1), "one two three", " four five")
+        );
+        h.said(2, 1_300, 2_900, "en", "three four five");
+        assert_eq!(h.last_live(2), shown2);
+        h.partial(3, 3_200, 4_200, "en", Some("six seven"));
+        h.partial(3, 3_200, 4_700, "en", Some("six seven eight"));
+        let shown3 = h.last_live(3);
+        assert_eq!(
+            (shown3.extends, shown3.src_stable.as_str(), shown3.src_tail.as_str()),
+            (Some(1), "one two three four five six", " seven eight")
+        );
+        let count = h.live_count();
+        h.said(3, 3_200, 4_800, "en", "six seven eight.");
+        assert_eq!(h.last(1).src_text, "one two three four five six seven eight.");
+        assert_eq!(h.live_count(), count + 1, "chỉ dòng 3 được phát lại");
+        assert_eq!(h.last_live(3), shown3);
+        assert_eq!(h.last_live(2), shown2);
+        for l in h.sink.lives.lock().unwrap().iter() {
+            let src = format!("{}{}", l.src_stable, l.src_tail);
+            assert!("one two three four five six seven eight".starts_with(&src), "{l:?}");
+        }
+    }
+
+    /// `extends` đổi lúc đóng băng: dòng vẫn giữ chữ đang hiện của đoạn, chỉ phần đầu theo câu mà dòng giờ thay chỗ (§6.1).
+    /// Câu đang mở không nhận lượt cuối (quá trần 15 giây): phụ đề mới, dòng chỉ còn chữ của đoạn, câu cũ hiện lại riêng. Lần
+    /// chép nhận nhầm là tiếng đích (không nối tiếp) mà lượt cuối ghép vào câu đang mở: dòng thay chỗ câu đó, nên có chữ của
+    /// câu trước khi ghép.
+    #[test]
+    fn a_freeze_that_changes_extends_keeps_the_segment_text_after_the_new_prefix() {
+        let mut h = live_harness();
+        h.said(1, 0, 8_000, "en", "a long one");
+        h.partial(2, 8_100, 9_000, "en", Some("and more"));
+        h.partial(2, 8_100, 9_500, "en", Some("and more stuff"));
+        let l = h.last_live(2);
+        assert_eq!(
+            (l.extends, l.src_stable.as_str(), l.src_tail.as_str()),
+            (Some(1), "a long one and", " more stuff")
+        );
+        h.said(2, 8_100, 16_000, "en", "and more stuff");
+        assert_eq!(h.last(2).src_text, "and more stuff", "phụ đề mới");
+        let l = h.last_live(2);
+        assert_eq!(
+            (l.extends, l.src_stable.as_str(), l.src_tail.as_str()),
+            (None, "and", " more stuff")
+        );
+
+        let mut h = live_harness();
+        h.said(1, 0, 1_000, "en", "so we went");
+        h.partial(2, 1_300, 2_000, "vi", Some("home"));
+        assert_eq!(h.last_live(2).extends, None, "tiếng đích không nối tiếp");
+        h.said(2, 1_300, 2_000, "en", "home.");
+        assert_eq!(h.last(1).src_text, "so we went home.");
+        let l = h.last_live(2);
+        assert_eq!(
+            (l.extends, l.src_stable.as_str(), l.src_tail.as_str()),
+            (Some(1), "so we went", " home")
+        );
     }
 
     /// Câu bị gộp ở hàng đợi dịch (§7 spec chính): dòng đang chờ câu đó chuyển sang câu gộp.
