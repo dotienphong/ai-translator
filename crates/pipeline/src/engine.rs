@@ -1780,6 +1780,9 @@ impl Composer {
         }
         if self.flags.hurry.load(Ordering::SeqCst) && self.hurry_since.is_none() {
             self.hurry_since = Some(Instant::now());
+            // Bấm Dừng: thôi dịch bản tạm (spec 2026-10-10 §6.2). Dòng đang nói còn lại được gỡ khi phụ đề cuối của nó chốt
+            // trong hạn dừng, hay khi luồng phụ đề kết thúc.
+            self.stop_live_work();
         }
         if self.hurry_since.is_some_and(|t| t.elapsed() >= self.stop_grace) && !self.abandoned {
             self.abandon();
@@ -1794,6 +1797,8 @@ impl Composer {
         self.asr_queue.clear();
         self.pending.clear();
         self.finish_open();
+        self.stop_live_work();
+        self.end_all_lives();
         while let Some(Ready::Translate(item) | Ready::Skip(item)) = self.queue.pop(self.now_ms) {
             self.settle(item.sub_id, Status::Skipped, String::new());
         }
@@ -1805,6 +1810,8 @@ impl Composer {
     /// Hết hạn dừng: câu đang dịch và câu chờ dịch thành `skipped`; luồng phụ đề thoát.
     fn abandon(&mut self) {
         self.abandoned = true;
+        self.stop_live_work();
+        self.end_all_lives();
         if let Some(f) = self.in_flight.take() {
             f.cancel.store(true, Ordering::SeqCst);
             self.settle(f.sub_id, Status::Skipped, String::new());
@@ -2281,13 +2288,42 @@ impl Composer {
         }
     }
 
-    /// Một vòng cập nhật xong (spec §5): nhịp T mới cho luồng VAD, ghi số đo.
+    /// Một vòng cập nhật xong (spec §5): nhịp T mới cho luồng VAD, ghi số đo; máy không theo kịp thì tự tắt.
     fn record_cycle(&mut self, cycle_ms: f32) {
         self.cadence.record(cycle_ms);
         let cadence_ms = self.cadence.cadence_ms();
         self.flags.streaming.cadence_ms.store(cadence_ms, Ordering::SeqCst);
         self.metrics.live_cycle_ms.push(cycle_ms);
         self.metrics.cadence_ms.push(cadence_ms as f32);
+        if self.cadence.too_slow() && !self.flags.streaming.auto_off.load(Ordering::SeqCst) {
+            self.turn_streaming_off();
+        }
+    }
+
+    /// Máy không theo kịp (spec §5): chế độ này tắt tới hết phiên. Luồng VAD thấy cờ ngay (thôi chép từng phần) và trở về
+    /// ngưỡng người dùng từ đoạn kế tiếp; mọi dòng đang nói được gỡ; chỉ báo "dịch sau mỗi câu" bật (§6.3). Log chỉ có số.
+    fn turn_streaming_off(&mut self) {
+        self.flags.streaming.auto_off.store(true, Ordering::SeqCst);
+        self.metrics.streaming_auto_off = true;
+        log::warn!(
+            "dịch trong lúc nói tự tắt tới hết phiên: {} vòng cập nhật, nhịp {} ms",
+            self.metrics.live_cycle_ms.len(),
+            self.cadence.cadence_ms()
+        );
+        self.stop_live_work();
+        self.end_all_lives();
+        if !self.indicators.streaming_unavailable {
+            self.indicators.streaming_unavailable = true;
+            self.sink.indicators(&self.indicators);
+        }
+    }
+
+    /// Thôi dịch bản tạm: hủy bản đang dịch, bỏ yêu cầu chờ.
+    fn stop_live_work(&mut self) {
+        if let Some(f) = &self.live_flight {
+            f.cancel.store(true, Ordering::SeqCst);
+        }
+        self.live_want = None;
     }
 }
 
@@ -4182,6 +4218,75 @@ mod tests {
             [None, Some("chúng".to_string())],
             "lần làm nóng rồi bản tạm"
         );
+    }
+
+    /// Tự tắt (spec §5): đủ 8 vòng mà trung vị quá 1 300 ms thì chế độ này tắt tới hết phiên: cờ cho luồng VAD, chỉ báo, gỡ
+    /// mọi dòng, bỏ bản chép tới sau, không gửi bản tạm nào nữa.
+    #[test]
+    fn slow_cycles_turn_the_mode_off_for_the_session() {
+        let mut h = live_harness();
+        for i in 0..8u64 {
+            let text = format!("so we went {i}");
+            h.partial(1, 0, 1_000 + i * 300, "en", Some(text.as_str()));
+            let job = h.live_job();
+            h.live_done(&job, done("chúng tôi"), 1_400);
+        }
+        assert!(h.flags.streaming.auto_off.load(Ordering::SeqCst));
+        assert!(!h.flags.streaming.active());
+        assert!(h.c.metrics.streaming_auto_off);
+        assert!(h.sink.indicators.lock().unwrap().last().unwrap().streaming_unavailable);
+        assert_eq!(h.live_ends(), [1]);
+        let count = h.live_count();
+        h.partial(2, 5_000, 6_000, "en", Some("new words"));
+        assert_eq!(h.live_count(), count, "đã tự tắt: bỏ bản chép");
+        h.nothing_sent();
+    }
+
+    /// Bấm Dừng: bản tạm đang dịch dừng, không gửi bản tạm mới, bỏ bản chép tới sau; dòng còn lại được gỡ khi luồng phụ đề
+    /// kết thúc (§6.2).
+    #[test]
+    fn stopping_cancels_live_work_and_ends_the_lines_at_exit() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let l1 = h.live_job();
+        h.flags.hurry.store(true, Ordering::SeqCst);
+        assert!(!h.c.step());
+        assert!(l1.cancel.load(Ordering::SeqCst));
+        h.live_done(&l1, Outcome::Cancelled, 10);
+        let count = h.live_count();
+        h.partial(1, 0, 1_500, "en", Some("so we went"));
+        assert_eq!(h.live_count(), count, "đang dừng: bỏ bản chép");
+        h.nothing_sent();
+        assert!(h.live_ends().is_empty());
+        let Harness { c, sink, .. } = h;
+        c.finish();
+        assert_eq!(sink.live_ends.lock().unwrap().clone(), [1]);
+    }
+
+    /// Hết hạn mức: gỡ mọi dòng ngay, hủy bản tạm.
+    #[test]
+    fn reaching_the_quota_ends_every_live_line() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let l1 = h.live_job();
+        h.flags.quota.store(true, Ordering::SeqCst);
+        h.c.step();
+        assert!(l1.cancel.load(Ordering::SeqCst));
+        assert_eq!(h.live_ends(), [1]);
+        h.nothing_sent();
+    }
+
+    /// Hết hạn dừng: gỡ mọi dòng ngay.
+    #[test]
+    fn the_end_of_the_stop_grace_ends_every_live_line() {
+        let mut config = cfg();
+        config.streaming_enabled = true;
+        config.pipeline.mt.stop_grace_ms = 0;
+        let mut h = harness_with(config, Sink::default());
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        h.flags.hurry.store(true, Ordering::SeqCst);
+        assert!(h.c.step(), "hết hạn: luồng phụ đề thoát");
+        assert_eq!(h.live_ends(), [1]);
     }
 
     // ---- Luồng nhận dạng: chép từng phần (spec 2026-10-10 §4.1). ----
