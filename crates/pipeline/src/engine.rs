@@ -3934,6 +3934,118 @@ mod tests {
         assert_eq!(h.last_live(2), shown);
     }
 
+    /// [review] Dòng thôi nối tiếp câu 1 trong lúc bản tạm (dịch "câu 1 + đoạn") đang chạy (lần chép mới vượt trần 15 giây):
+    /// gói chữ và kết quả của bản tạm đó tới sau đều bị bỏ; bản kế tiếp dịch riêng chữ của đoạn, không prefill.
+    #[test]
+    fn review_results_for_the_old_extends_are_dropped() {
+        let mut h = live_harness();
+        h.said(1, 0, 8_000, "en", "a long one");
+        let j1 = h.job();
+        h.finish(&j1, done("một câu dài"));
+        h.partial(2, 8_100, 9_000, "en", Some("and more"));
+        let l1 = h.live_job();
+        assert_eq!(l1.text, "a long one and more");
+        h.partial(2, 8_100, 16_000, "en", Some("and more stuff"));
+        assert!(l1.cancel.load(Ordering::SeqCst));
+        assert_eq!(h.last_live(2).extends, None, "quá trần: không nối tiếp nữa");
+        h.live_delta(&l1, "một câu dài và hơn");
+        h.live_done(&l1, done("một câu dài và hơn"), 300);
+        let l = h.last_live(2);
+        assert_eq!((l.extends, l.tgt_stable.as_str(), l.tgt_tail.as_str()), (None, "", ""));
+        let l2 = h.live_job();
+        assert_eq!((l2.text.as_str(), l2.prefill.as_deref()), ("and more stuff", None));
+    }
+
+    /// [review] Lượt cuối của đoạn bị lọc: dòng bị gỡ, bản tạm đang dịch của nó bị hủy ngay (không phí luồng dịch).
+    #[test]
+    fn review_a_filtered_final_cancels_the_live_translation() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let l1 = h.live_job();
+        h.feed(Msg::Asr(AsrOutcome::Filtered { ids: vec![1] }));
+        assert!(l1.cancel.load(Ordering::SeqCst), "bản tạm của dòng đã gỡ bị hủy");
+        assert_eq!(h.live_ends(), [1]);
+        h.live_done(&l1, Outcome::Cancelled, 100);
+        h.nothing_sent();
+    }
+
+    /// [review] Bản tạm đang stream thay chữ đang hiện: `tgt_src_units` là số đơn vị nguồn của bản đó (dùng để đo, QĐ10).
+    #[test]
+    fn review_a_streaming_takeover_reports_its_source_units() {
+        let mut h = live_harness();
+        h.partial(1, 0, 1_000, "en", Some("so we"));
+        let j1 = h.live_job();
+        h.live_done(&j1, done("chúng tôi"), 500);
+        assert_eq!(h.last_live(1).tgt_src_units, 2);
+        h.partial(1, 0, 2_000, "en", Some("so we went"));
+        let j2 = h.live_job();
+        h.live_delta(&j2, "chúng tôi đã");
+        let l = h.last_live(1);
+        assert_eq!((l.tgt_tail.as_str(), l.tgt_src_units), ("chúng tôi đã", 3));
+    }
+
+    /// [review] Lần chép mới vượt trần 15 giây nên dòng thôi nối tiếp câu 1: phần dịch (ổn định và tạm, của "câu 1 + đoạn")
+    /// bị xóa ngay, và bản tạm kế tiếp dịch riêng chữ của đoạn, không prefill phần dịch cũ (cùng luật `refresh_extends`).
+    #[test]
+    fn review_leaving_the_open_sentence_restarts_the_translation() {
+        let mut h = live_harness();
+        h.said(1, 0, 8_000, "en", "a long one");
+        let j1 = h.job();
+        h.finish(&j1, done("một câu dài"));
+        h.partial(2, 8_100, 9_000, "en", Some("and more"));
+        let l1 = h.live_job();
+        h.live_done(&l1, done("một câu dài và hơn"), 300);
+        h.partial(2, 8_100, 9_500, "en", Some("and more stuff"));
+        let l2 = h.live_job();
+        h.live_done(&l2, done("một câu dài và hơn nữa"), 300);
+        assert_eq!(h.last_live(2).tgt_stable, "một câu dài và");
+        h.partial(2, 8_100, 16_000, "en", Some("and more stuff here"));
+        let l = h.last_live(2);
+        assert_eq!(
+            (l.extends, l.tgt_stable.as_str(), l.tgt_tail.as_str(), l.tgt_src_units),
+            (None, "", "", 0)
+        );
+        let l3 = h.live_job();
+        assert_eq!((l3.text.as_str(), l3.prefill.as_deref()), ("and more stuff here", None));
+    }
+
+    /// [review] (n, k) của phần dịch theo tiếng nguồn (§4.4): nguồn tiếng Hàn cần 3 bản dịch xong khớp nhau và giữ lại 2 từ
+    /// (đích tiếng Việt thì 2 và 1).
+    #[test]
+    fn review_the_translation_agreement_follows_the_source_language() {
+        let mut h = live_harness();
+        let steps = [
+            ("저는 오늘", "tôi hôm nay đi", ""),
+            ("저는 오늘 학교에", "tôi hôm nay đi học", ""),
+            ("저는 오늘 학교에 갑니다", "tôi hôm nay đi học ở", "tôi hôm"),
+        ];
+        for (i, (text, translation, stable)) in steps.into_iter().enumerate() {
+            h.partial(1, 0, 1_000 + i as u64 * 500, "ko", Some(text));
+            let l = h.live_job();
+            h.live_done(&l, done(translation), 300);
+            assert_eq!(h.last_live(1).tgt_stable, stable, "sau bản dịch thứ {}", i + 1);
+        }
+    }
+
+    /// [review] Lần chép từng phần mang theo lúc luồng VAD tạo yêu cầu (mốc đầu của vòng cập nhật, §5), không phải lúc chép
+    /// xong.
+    #[test]
+    fn review_a_partial_carries_the_time_it_was_requested() {
+        let (queue, rx, thread) = asr_thread(ScriptedAsr {
+            replies: vec![Ok(("en", "so we went"))],
+            seen: Arc::default(),
+        });
+        let p = partial_request(7, 1_500);
+        let requested = p.requested.checked_sub(Duration::from_millis(400)).unwrap();
+        put_partial(&queue, PartialRequest { requested, ..p });
+        let AsrOutcome::Partial(t) = next_asr(&rx) else {
+            panic!("phải là chép từng phần")
+        };
+        assert_eq!(t.requested, requested);
+        queue.close();
+        thread.join().unwrap();
+    }
+
     /// `llama-server` không dùng được (§7): báo chỉ báo, dòng đang nói chỉ còn câu gốc, không gửi bản tạm nào nữa.
     #[test]
     fn an_unavailable_server_leaves_live_lines_with_the_source_only() {
