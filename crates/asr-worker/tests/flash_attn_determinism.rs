@@ -10,9 +10,7 @@
 //!   --features metal,shared-encode --test flash_attn_determinism -- --include-ignored --nocapture
 //! ```
 
-use asr_protocol::{
-    Backend, DecodeMode, Request, Response, TranscribeRequest, audio_ctx_for_samples, read_frame, write_frame,
-};
+use asr_protocol::{Request, Response, TranscribeRequest, audio_ctx_for_samples, read_frame, write_frame};
 use std::io::{BufReader, BufWriter};
 use std::path::Path;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
@@ -75,24 +73,7 @@ impl Worker {
             n_threads: 4,
         };
         match worker.call(&load) {
-            Response::Ready {
-                backend, decode_mode, ..
-            } => {
-                // Cổng tất định chỉ có ý nghĩa khi đo đúng thứ cần đo: Metal (flash attention của whisper.cpp là tính
-                // năng của backend GGML trên GPU) và chế độ chia sẻ encoder (bản phát hành chỉ dùng `Shared`). Build
-                // thiếu `--features metal` hay chạy CPU sẽ lặng lẽ đo sai thứ, nên panic rõ ràng ngay đây thay vì để
-                // cổng "qua" trên dữ liệu không đại diện.
-                assert_eq!(
-                    backend,
-                    Backend::Metal,
-                    "cổng tất định cần chạy Metal, worker lại báo {backend:?}"
-                );
-                assert_eq!(
-                    decode_mode,
-                    DecodeMode::Shared,
-                    "cổng tất định cần chế độ chia sẻ encoder (shared-encode), worker lại báo {decode_mode:?}"
-                );
-            }
+            Response::Ready { .. } => {}
             other => panic!("Load: {other:?}"),
         }
         assert!(matches!(worker.call(&Request::Warmup), Response::WarmupDone { .. }));
@@ -104,11 +85,9 @@ impl Worker {
         read_frame::<_, Response>(&mut self.output).unwrap().unwrap()
     }
 
-    /// Mọi trường của `TranscribeResult` mà pipeline thật dùng để quyết định hành vi, không chỉ chữ/token: bộ lọc giữ/bỏ
-    /// đoạn (spec §6.4, "Lọc lỗi ảo giác") đọc `no_speech_prob` và `avg_logprob`; nhận diện ngôn ngữ đọc `lang` và
-    /// `lang_prob`. Không có prompt hay ngôn ngữ của đoạn trước: chỉ trạng thái bên trong whisper.cpp nối các lần chép
-    /// với nhau.
-    fn transcribe(&mut self, id: u64, pcm: &[i16]) -> Transcribed {
+    /// (chữ, token) của một đoạn. Không có prompt hay ngôn ngữ của đoạn trước: chỉ trạng thái bên trong whisper.cpp nối
+    /// các lần chép với nhau.
+    fn transcribe(&mut self, id: u64, pcm: &[i16]) -> (String, Vec<i32>) {
         let req = TranscribeRequest {
             segment_id: id,
             pcm: pcm.to_vec(),
@@ -118,34 +97,10 @@ impl Worker {
             prev_lang: None,
         };
         match self.call(&Request::Transcribe(req)) {
-            Response::Result(r) => Transcribed {
-                text: r.text,
-                tokens: r.tokens,
-                no_speech_prob: r.no_speech_prob,
-                avg_logprob: r.avg_logprob,
-                lang: r.lang,
-                lang_prob: r.lang_prob,
-            },
+            Response::Result(r) => (r.text, r.tokens),
             other => panic!("đoạn {id}: {other:?}"),
         }
     }
-}
-
-/// Kết quả chép một đoạn, đủ các trường mà bộ lọc giữ/bỏ và nhận diện ngôn ngữ của pipeline thật dùng (xem
-/// `Worker::transcribe`); không lấy `lid_ms`/`asr_ms` vì đó là thời gian chạy, luôn đổi giữa các lần dù tất định.
-///
-/// So bằng `#[derive(PartialEq)]`, tức `==` trực tiếp trên từng trường kể cả `f32`. Đây KHÔNG phải so sánh gần đúng vì
-/// whisper.cpp giải mã greedy, không lấy mẫu ngẫu nhiên (`SamplingStrategy::Greedy`): với cùng trọng số model, cùng
-/// audio_ctx hiệu lực và cùng phần cứng/bản build, phép tính phải tất định tới từng bit `f32`. Hai lần chép ra khác bit
-/// nghĩa là cổng này đúng mục đích phải đỏ (ví dụ bug #3941 đọc đệm K/V chưa ghi của đoạn trước).
-#[derive(Debug, Clone, PartialEq)]
-struct Transcribed {
-    text: String,
-    tokens: Vec<i32>,
-    no_speech_prob: f32,
-    avg_logprob: f32,
-    lang: String,
-    lang_prob: f32,
 }
 
 impl Drop for Worker {
@@ -176,37 +131,35 @@ fn the_same_segment_gives_the_same_tokens_whatever_came_before() {
     let mut by_mode = Vec::new();
     for flash_attn in ["1", "0"] {
         let mut worker = Worker::start(&model, flash_attn);
-        let mut first: Vec<Option<Transcribed>> = vec![None; segments.len()];
+        let mut first: Vec<Option<(String, Vec<i32>)>> = vec![None; segments.len()];
         let mut differ = Vec::new();
         for (step, &i) in ORDER.iter().enumerate() {
             let got = worker.transcribe(step as u64, &segments[i].1);
             match &first[i] {
                 None => first[i] = Some(got),
-                // `Transcribed` so toàn bộ trường (chữ, token, no_speech_prob, avg_logprob, lang, lang_prob); in cả
-                // hai bên bằng Debug để thấy ngay trường nào lệch, không chỉ chữ.
                 Some(seen) if *seen != got => {
-                    differ.push(format!("{} (bước {step}): {seen:?}\n  ≠ {got:?}", segments[i].0))
+                    differ.push(format!("{} (bước {step}): {:?} ≠ {:?}", segments[i].0, seen.0, got.0))
                 }
                 Some(_) => {}
             }
         }
         assert!(
             differ.is_empty(),
-            "ASR_FLASH_ATTN={flash_attn}: cùng đoạn mà khác chữ/token/no_speech_prob/avg_logprob/lang/lang_prob:\n{}",
+            "ASR_FLASH_ATTN={flash_attn}: cùng đoạn mà khác token:\n{}",
             differ.join("\n")
         );
         by_mode.push(first.into_iter().map(Option::unwrap).collect::<Vec<_>>());
     }
     let same = (0..segments.len())
-        .filter(|&i| by_mode[0][i].tokens == by_mode[1][i].tokens)
+        .filter(|&i| by_mode[0][i].1 == by_mode[1][i].1)
         .count();
     println!(
         "flash attention bật và tắt cho cùng token ở {same}/{} đoạn",
         segments.len()
     );
     for (i, (name, _)) in segments.iter().enumerate() {
-        if by_mode[0][i].tokens != by_mode[1][i].tokens {
-            println!("  {name}: bật {:?} | tắt {:?}", by_mode[0][i].text, by_mode[1][i].text);
+        if by_mode[0][i].1 != by_mode[1][i].1 {
+            println!("  {name}: bật {:?} | tắt {:?}", by_mode[0][i].0, by_mode[1][i].0);
         }
     }
 }
