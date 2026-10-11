@@ -445,6 +445,72 @@ mod tests {
         assert!(!c.too_slow());
     }
 
+    /// Mỗi loại số xấu, ghi riêng đủ một cửa sổ (8 lần, nhiều hơn 3 vòng khởi động), vẫn bị bỏ: lọt vào là T đổi. 0 ms thì
+    /// hợp lệ (không âm, hữu hạn).
+    #[test]
+    fn each_kind_of_bad_cycle_value_is_ignored_on_its_own() {
+        for bad in [f32::NAN, -1.0, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut c = Cadence::new(&StreamingConfig::default());
+            for _ in 0..8 {
+                c.record(bad);
+            }
+            assert_eq!(c.cadence_ms(), 1_000, "{bad} phải bị bỏ");
+            assert!(!c.too_slow(), "{bad} phải bị bỏ");
+        }
+        let mut c = Cadence::new(&StreamingConfig::default());
+        for _ in 0..3 {
+            c.record(0.0);
+        }
+        assert_eq!(c.cadence_ms(), 700, "0 ms được tính: 1,5 × 0 kẹp lên 700");
+    }
+
+    /// Vòng thứ 9 tính từ cuối rơi khỏi cửa sổ: trung vị lấy đúng 8 vòng gần nhất.
+    #[test]
+    fn the_ninth_newest_cycle_falls_out_of_the_window() {
+        let mut c = Cadence::new(&StreamingConfig::default());
+        c.record(5_000.0);
+        for _ in 0..4 {
+            c.record(1_000.0);
+        }
+        for _ in 0..4 {
+            c.record(1_500.0);
+        }
+        // 8 vòng gần nhất: 4 × 1 000 và 4 × 1 500, trung vị 1 250: T = 1 875, chưa tự tắt. Cửa sổ 9 (còn vòng 5 000 ms)
+        // hay 7 (mất một vòng 1 000 ms) đều cho trung vị 1 500: T kẹp 2 000.
+        assert_eq!(c.cadence_ms(), 1_875);
+        assert!(!c.too_slow());
+    }
+
+    /// Mọi ngưỡng lấy từ cấu hình (đổi được qua manifest, spec §5), không phải số mặc định viết cứng.
+    #[test]
+    fn every_cadence_threshold_comes_from_the_config() {
+        let cfg = StreamingConfig {
+            cycle_window: 4,
+            cadence_factor: 2.0,
+            min_cadence_ms: 300,
+            max_cadence_ms: 3_000,
+            initial_cadence_ms: 1_200,
+            warmup_cycles: 2,
+            auto_off_cycle_ms: 900,
+            ..StreamingConfig::default()
+        };
+        let mut c = Cadence::new(&cfg);
+        assert_eq!(c.cadence_ms(), 1_200);
+        c.record(200.0);
+        assert_eq!(c.cadence_ms(), 1_200, "chưa đủ 2 vòng");
+        c.record(200.0);
+        assert_eq!(c.cadence_ms(), 400, "2 × trung vị 200");
+        for _ in 0..4 {
+            c.record(1_000.0);
+        }
+        assert_eq!(c.cadence_ms(), 2_000);
+        assert!(c.too_slow(), "đủ 4 vòng, trung vị 1 000 > 900");
+        for _ in 0..4 {
+            c.record(2_000.0);
+        }
+        assert_eq!(c.cadence_ms(), 3_000, "2 × 2 000 kẹp xuống 3 000");
+    }
+
     #[test]
     fn empty_and_punctuation_only_results_show_nothing() {
         let mut s = Stabilizer::new("en", 2, 1);
