@@ -5,6 +5,7 @@
 use crate::config::StreamingConfig;
 use crate::glossary::normalize;
 use crate::metrics::percentile;
+use crate::segmenter::{FRAME_MS, OpenProgress};
 use crate::sentence::SENTENCE_END;
 use std::collections::VecDeque;
 use unicode_normalization::UnicodeNormalization;
@@ -227,6 +228,89 @@ impl Cadence {
     /// Đủ `cycle_window` vòng và trung vị lớn hơn `auto_off_cycle_ms`: máy không theo kịp (spec §5).
     pub fn too_slow(&self) -> bool {
         self.cycles.len() >= self.window && self.median().is_some_and(|m| m > self.auto_off_ms as f32)
+    }
+}
+
+/// Loại lần chép từng phần (spec §4.1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PartialKind {
+    /// Theo nhịp T.
+    Periodic,
+    /// Vừa hết tiếng nói (khung im lặng thứ hai), không chờ T.
+    SpeechEnd,
+}
+
+/// Tiếng nói tối thiểu của lần chép khi vừa hết tiếng nói (spec §4.1).
+const SPEECH_END_MIN_MS: u64 = 250;
+/// Lần chép khi vừa hết tiếng nói diễn ra ở khung im lặng thứ hai (spec §4.1).
+const SPEECH_END_SILENCE_MS: u64 = 2 * FRAME_MS;
+
+/// Lịch chép từng phần của đoạn đang mở (spec §4.1). Giờ là giờ âm thanh (ms); luồng VAD gọi `decide` mỗi khung có đoạn
+/// mở, khi chế độ này đang có hiệu lực cho đoạn đó.
+#[derive(Clone, Debug)]
+pub struct PartialScheduler {
+    min_partial_speech_ms: u64,
+    min_new_speech_ms: u64,
+    /// Tiếng nói tối thiểu của lần chép khi vừa hết tiếng nói: 250 ms, và không dưới `segmenter.min_speech_ms`, để đoạn
+    /// chắc chắn được giữ (với đúng id) khi đóng.
+    min_end_speech_ms: u64,
+    /// Ngưỡng đóng đoạn đang dùng lớn hơn 2 khung: mới có lần chép khi vừa hết tiếng nói.
+    speech_end: bool,
+    /// (id đoạn, giờ, tiếng nói) của lần chép từng phần gần nhất.
+    last: Option<(u64, u64, u64)>,
+}
+
+impl PartialScheduler {
+    /// `min_speech_ms`: `segmenter.min_speech_ms` (đoạn ngắn hơn bị bỏ khi đóng); `end_silence_ms`: ngưỡng đóng đoạn đang
+    /// dùng.
+    pub fn new(cfg: &StreamingConfig, min_speech_ms: u64, end_silence_ms: u64) -> Self {
+        Self {
+            min_partial_speech_ms: cfg.min_partial_speech_ms.max(min_speech_ms),
+            min_new_speech_ms: cfg.min_new_speech_ms,
+            min_end_speech_ms: SPEECH_END_MIN_MS.max(min_speech_ms),
+            speech_end: end_silence_ms > SPEECH_END_SILENCE_MS,
+            last: None,
+        }
+    }
+
+    /// Ngưỡng đóng đoạn đổi (chỉ khi không có đoạn mở, H6).
+    pub fn set_end_silence_ms(&mut self, end_silence_ms: u64) {
+        self.speech_end = end_silence_ms > SPEECH_END_SILENCE_MS;
+    }
+
+    /// Có chép từng phần ở khung này không. `now_ms`: giờ âm thanh; `cadence_ms`: T; `closed_waiting`: hàng đợi nhận dạng
+    /// còn đoạn đóng chờ. Trả loại lần chép, và ghi nhớ nó.
+    pub fn decide(
+        &mut self,
+        open: OpenProgress,
+        now_ms: u64,
+        cadence_ms: u64,
+        closed_waiting: bool,
+    ) -> Option<PartialKind> {
+        if closed_waiting {
+            return None;
+        }
+        let (last_at, last_speech) = match self.last {
+            Some((id, at, speech)) if id == open.id => (Some(at), speech),
+            _ => (None, 0),
+        };
+        let new_speech = open.speech_ms.saturating_sub(last_speech);
+        let kind = if self.speech_end
+            && open.silence_ms == SPEECH_END_SILENCE_MS
+            && open.speech_ms >= self.min_end_speech_ms
+            && new_speech > 0
+        {
+            PartialKind::SpeechEnd
+        } else if open.speech_ms >= self.min_partial_speech_ms
+            && new_speech >= self.min_new_speech_ms
+            && last_at.is_none_or(|at| now_ms.saturating_sub(at) >= cadence_ms)
+        {
+            PartialKind::Periodic
+        } else {
+            return None;
+        };
+        self.last = Some((open.id, now_ms, open.speech_ms));
+        Some(kind)
     }
 }
 
@@ -509,6 +593,114 @@ mod tests {
             c.record(2_000.0);
         }
         assert_eq!(c.cadence_ms(), 3_000, "2 × 2 000 kẹp xuống 3 000");
+    }
+
+    fn open(id: u64, speech_ms: u64, silence_ms: u64) -> OpenProgress {
+        OpenProgress {
+            id,
+            speech_ms,
+            silence_ms,
+        }
+    }
+
+    /// Chép theo nhịp (spec §4.1): đủ 1 000 ms tiếng nói, qua T từ lần trước và thêm 300 ms tiếng nói, không có đoạn đóng
+    /// nào đang chờ; lần đầu của một đoạn không chờ T.
+    #[test]
+    fn periodic_partials_need_speech_new_speech_and_the_cadence() {
+        let mut s = PartialScheduler::new(&StreamingConfig::default(), 250, 400);
+        assert_eq!(s.decide(open(0, 992, 0), 1_000, 1_000, false), None, "chưa đủ 1 000 ms");
+        assert_eq!(
+            s.decide(open(0, 1_024, 0), 1_032, 1_000, false),
+            Some(PartialKind::Periodic)
+        );
+        assert_eq!(
+            s.decide(open(0, 1_280, 0), 2_100, 1_000, false),
+            None,
+            "qua T nhưng mới thêm 256 ms tiếng nói"
+        );
+        assert_eq!(
+            s.decide(open(0, 1_400, 0), 2_200, 1_000, false),
+            Some(PartialKind::Periodic)
+        );
+        assert_eq!(
+            s.decide(open(0, 1_800, 0), 2_700, 1_000, false),
+            None,
+            "thêm 400 ms tiếng nói nhưng chưa qua T"
+        );
+        assert_eq!(
+            s.decide(open(0, 2_048, 0), 3_300, 1_000, true),
+            None,
+            "có đoạn đóng đang chờ"
+        );
+        assert_eq!(
+            s.decide(open(0, 2_048, 0), 3_300, 1_000, false),
+            Some(PartialKind::Periodic)
+        );
+        assert_eq!(
+            s.decide(open(1, 1_024, 0), 3_400, 1_000, false),
+            Some(PartialKind::Periodic),
+            "đoạn mới: không chờ T"
+        );
+    }
+
+    /// Chép khi vừa hết tiếng nói (spec §4.1): ở khung im lặng thứ hai, từ 250 ms tiếng nói, có tiếng nói mới, không chờ T.
+    #[test]
+    fn a_partial_is_taken_two_frames_after_speech_ends() {
+        let mut s = PartialScheduler::new(&StreamingConfig::default(), 250, 400);
+        assert_eq!(
+            s.decide(open(0, 224, 64), 300, 1_000, false),
+            None,
+            "dưới 250 ms tiếng nói"
+        );
+        assert_eq!(s.decide(open(1, 512, 32), 600, 1_000, false), None);
+        assert_eq!(
+            s.decide(open(1, 512, 64), 632, 1_000, false),
+            Some(PartialKind::SpeechEnd)
+        );
+        assert_eq!(
+            s.decide(open(1, 512, 96), 664, 1_000, false),
+            None,
+            "một lần mỗi chỗ ngừng"
+        );
+        assert_eq!(
+            s.decide(open(1, 800, 64), 1_000, 1_000, false),
+            Some(PartialKind::SpeechEnd),
+            "nói tiếp rồi ngừng lần nữa"
+        );
+        assert_eq!(
+            s.decide(open(1, 800, 64), 1_032, 1_000, false),
+            None,
+            "không có tiếng nói mới"
+        );
+        assert_eq!(
+            s.decide(open(2, 512, 64), 2_000, 1_000, true),
+            None,
+            "có đoạn đóng đang chờ"
+        );
+    }
+
+    /// Ngưỡng đóng đoạn 2 khung (50 ms): đoạn đóng ngay ở khung im lặng thứ hai, không có lần chép khi vừa hết tiếng nói.
+    #[test]
+    fn no_speech_end_partial_when_the_threshold_is_two_frames() {
+        let mut s = PartialScheduler::new(&StreamingConfig::default(), 250, 50);
+        assert_eq!(s.decide(open(0, 512, 64), 600, 1_000, false), None);
+        s.set_end_silence_ms(200);
+        assert_eq!(
+            s.decide(open(0, 512, 64), 632, 1_000, false),
+            Some(PartialKind::SpeechEnd)
+        );
+    }
+
+    /// `segmenter.min_speech_ms` lớn hơn thì cũng chặn cả hai loại (đoạn ngắn hơn có thể bị bỏ khi đóng).
+    #[test]
+    fn the_segmenter_minimum_speech_bounds_partials() {
+        let mut s = PartialScheduler::new(&StreamingConfig::default(), 1_500, 400);
+        assert_eq!(s.decide(open(0, 1_024, 0), 1_100, 1_000, false), None);
+        assert_eq!(s.decide(open(0, 1_024, 64), 1_132, 1_000, false), None);
+        assert_eq!(
+            s.decide(open(0, 1_504, 0), 1_600, 1_000, false),
+            Some(PartialKind::Periodic)
+        );
     }
 
     #[test]

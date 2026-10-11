@@ -56,6 +56,30 @@ pub struct Segment {
     pub samples: Vec<f32>,
 }
 
+/// Đoạn đang mở, không kèm âm thanh (spec 2026-10-10 §4.1): luồng VAD xét mỗi khung có nên chép từng phần không.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OpenProgress {
+    /// Id mà đoạn sẽ nhận khi đóng.
+    pub id: u64,
+    /// Tiếng nói từ đầu đoạn tới khung tiếng nói cuối, không gồm đệm.
+    pub speech_ms: u64,
+    /// Im lặng liên tục ngay sau tiếng nói cuối (0 khi đang nói).
+    pub silence_ms: u64,
+}
+
+/// Ảnh chụp đoạn đang mở để chép từng phần (spec 2026-10-10 §4.1).
+#[derive(Clone, PartialEq)]
+pub struct OpenSnapshot {
+    /// Id mà đoạn sẽ nhận khi đóng (`next_id`). Đoạn có từ `min_speech_ms` tiếng nói chắc chắn nhận id này.
+    pub id: u64,
+    pub start_ms: u64,
+    pub speech_ms: u64,
+    /// Âm thanh từ đầu phần đệm trước tới khung hiện tại (gồm cả các khung im lặng sau tiếng nói, nếu có).
+    pub samples: Vec<f32>,
+    /// Xác suất VAD trung bình trên các khung tiếng nói, như `Segment::mean_prob`.
+    pub mean_prob: f32,
+}
+
 struct Active {
     start_frame: u64,
     pre_roll: Vec<Vec<f32>>,
@@ -194,6 +218,40 @@ impl Segmenter {
         self.active.as_ref().map(|a| a.start_frame * FRAME_MS)
     }
 
+    /// Tiến độ của đoạn đang mở, nếu có (spec 2026-10-10 §4.1). Rẻ: không chép âm thanh.
+    pub fn open_progress(&self) -> Option<OpenProgress> {
+        let a = self.active.as_ref()?;
+        Some(OpenProgress {
+            id: self.next_id,
+            speech_ms: (a.last_speech_frame + 1).saturating_sub(a.start_frame) * FRAME_MS,
+            silence_ms: a.silence_run * FRAME_MS,
+        })
+    }
+
+    /// Ảnh chụp đoạn đang mở để chép từng phần (spec 2026-10-10 §4.1).
+    pub fn open_snapshot(&self) -> Option<OpenSnapshot> {
+        let a = self.active.as_ref()?;
+        let speech_frames = (a.last_speech_frame + 1).saturating_sub(a.start_frame);
+        let speech = &a.probs[..(speech_frames as usize).min(a.probs.len())];
+        Some(OpenSnapshot {
+            id: self.next_id,
+            start_ms: a.start_frame * FRAME_MS,
+            speech_ms: speech_frames * FRAME_MS,
+            samples: a.pre_roll.iter().chain(&a.frames).flatten().copied().collect(),
+            mean_prob: speech.iter().sum::<f32>() / speech.len().max(1) as f32,
+        })
+    }
+
+    /// Đổi ngưỡng im lặng đóng đoạn (chế độ dịch trong lúc nói, spec 2026-10-10 §4.7). Engine chỉ gọi khi không có đoạn mở
+    /// (H6), để đoạn đang mở giữ ngưỡng lúc nó bắt đầu.
+    pub fn set_end_silence_ms(&mut self, ms: u64) {
+        self.cfg.end_silence_ms = ms;
+    }
+
+    pub fn end_silence_ms(&self) -> u64 {
+        self.cfg.end_silence_ms
+    }
+
     /// Chốt đoạn đang dở khi hết luồng.
     pub fn flush(&mut self) -> Option<Segment> {
         let active = self.active.take()?;
@@ -248,6 +306,19 @@ impl std::fmt::Debug for Segment {
             .field("speech_ms", &self.speech_ms)
             .field("mean_prob", &self.mean_prob)
             .field("speech_ratio", &self.speech_ratio)
+            .field("samples", &format_args!("<{} mẫu>", self.samples.len()))
+            .finish()
+    }
+}
+
+// Debug viết tay: không in âm thanh.
+impl std::fmt::Debug for OpenSnapshot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpenSnapshot")
+            .field("id", &self.id)
+            .field("start_ms", &self.start_ms)
+            .field("speech_ms", &self.speech_ms)
+            .field("mean_prob", &self.mean_prob)
             .field("samples", &format_args!("<{} mẫu>", self.samples.len()))
             .finish()
     }
@@ -548,6 +619,108 @@ mod tests {
             assert_eq!(w[0].end_ms, w[1].start_ms, "hai đoạn liền nhau phải nối khít");
         }
         assert!(f.out.iter().all(|s| s.end_ms - s.start_ms <= 8_000));
+    }
+
+    /// Ảnh chụp đoạn đang mở (spec 2026-10-10 §4.1): id mà đoạn sẽ nhận khi đóng, mốc đầu, tiếng nói, âm thanh từ đầu phần
+    /// đệm trước tới khung hiện tại; tiến độ cho biết im lặng ngay sau tiếng nói.
+    #[test]
+    fn the_open_snapshot_has_the_id_and_audio_the_segment_will_get() {
+        let mut f = Feed::new();
+        f.run(&[(0.0, 0.0, 20), (0.9, 0.5, 40)]);
+        let snap = f.seg.open_snapshot().expect("đang có đoạn mở");
+        assert_eq!(
+            (snap.id, snap.start_ms, snap.speech_ms),
+            (0, 20 * FRAME_MS, 40 * FRAME_MS)
+        );
+        assert!((snap.mean_prob - 0.9).abs() < 1e-6, "{}", snap.mean_prob);
+        assert!(
+            snap.samples == f.stream[13..60].concat(),
+            "7 khung đệm trước và 40 khung tiếng nói"
+        );
+        assert_eq!(
+            f.seg.open_progress(),
+            Some(OpenProgress {
+                id: 0,
+                speech_ms: 40 * FRAME_MS,
+                silence_ms: 0
+            })
+        );
+        f.run(&[(0.0, 0.0, 2)]);
+        assert_eq!(
+            f.seg.open_progress().map(|p| (p.speech_ms, p.silence_ms)),
+            Some((40 * FRAME_MS, 2 * FRAME_MS))
+        );
+        assert_eq!(
+            f.seg.open_snapshot().unwrap().samples.len(),
+            (7 + 42) * FRAME_SAMPLES,
+            "gồm cả khung im lặng mới"
+        );
+        f.run(&[(0.0, 0.0, 8)]);
+        assert_eq!(f.out.len(), 1);
+        assert_eq!((f.out[0].id, f.out[0].start_ms), (snap.id, snap.start_ms));
+        assert_eq!(f.seg.open_snapshot(), None);
+        assert_eq!(f.seg.open_progress(), None);
+        f.run(&[(0.9, 0.5, 10)]);
+        assert_eq!(f.seg.open_progress().map(|p| p.id), Some(1));
+    }
+
+    /// Đoạn mở có từ `min_speech_ms` tiếng nói luôn được giữ khi đóng, với đúng id của ảnh chụp; ngắn hơn thì có thể bị bỏ
+    /// và id đó về tay đoạn sau. Vì vậy chỉ chép từng phần khi đã đủ `min_speech_ms` (`PartialScheduler`).
+    #[test]
+    fn an_open_segment_with_min_speech_keeps_its_snapshot_id() {
+        // Đóng vì im lặng.
+        let mut f = Feed::new();
+        f.run(&[(0.0, 0.0, 5), (0.9, 0.5, 8)]);
+        let open = f.seg.open_progress().unwrap();
+        assert_eq!(open.speech_ms, 256);
+        f.run(&[(0.0, 0.0, 10)]);
+        assert_eq!(f.out.iter().map(|s| s.id).collect::<Vec<_>>(), [open.id]);
+        // Hết luồng.
+        let mut f = Feed::new();
+        f.run(&[(0.9, 0.5, 8), (0.0, 0.0, 3)]);
+        let id = f.seg.open_progress().unwrap().id;
+        assert_eq!(f.seg.flush().map(|s| s.id), Some(id));
+        // Blip 7 khung (224 ms) bị bỏ: id 0 thuộc về đoạn sau.
+        let mut f = Feed::new();
+        f.run(&[(0.9, 0.5, 7)]);
+        assert_eq!(f.seg.open_progress().unwrap().id, 0);
+        f.run(&[(0.0, 0.0, 10), (0.9, 0.5, 10), (0.0, 0.0, 10)]);
+        assert_eq!(
+            f.out.iter().map(|s| (s.id, s.start_ms)).collect::<Vec<_>>(),
+            [(0, 17 * FRAME_MS)]
+        );
+    }
+
+    /// Cắt cưỡng bức ở 8 giây: phần đầu nhận id của ảnh chụp, phần còn lại mở tiếp với id kế.
+    #[test]
+    fn a_forced_cut_moves_the_open_segment_to_the_next_id() {
+        let mut f = Feed::new();
+        f.run(&[(0.9, 0.5, 100)]);
+        assert_eq!(f.seg.open_progress().unwrap().id, 0);
+        f.run(&[(0.9, 0.5, 150)]);
+        assert_eq!(f.out.iter().map(|s| s.id).collect::<Vec<_>>(), [0]);
+        assert_eq!(f.seg.open_progress().unwrap().id, 1);
+    }
+
+    /// Ngưỡng đóng đoạn đổi được giữa phiên (spec 2026-10-10 §4.7, H6).
+    #[test]
+    fn the_end_silence_can_change_between_segments() {
+        let mut seg = Segmenter::new(SegmenterConfig {
+            end_silence_ms: 50,
+            ..Default::default()
+        });
+        assert_eq!(
+            run(&mut seg, &[(0.9, 0.5, 10), (0.0, 0.0, 2)]).len(),
+            1,
+            "50 ms = 2 khung"
+        );
+        seg.set_end_silence_ms(400);
+        assert_eq!(seg.end_silence_ms(), 400);
+        assert!(
+            run(&mut seg, &[(0.9, 0.5, 10), (0.0, 0.0, 12)]).is_empty(),
+            "400 ms = 13 khung, mới có 12"
+        );
+        assert_eq!(run(&mut seg, &[(0.0, 0.0, 1)]).len(), 1);
     }
 
     #[test]
