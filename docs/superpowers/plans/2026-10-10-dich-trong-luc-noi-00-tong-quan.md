@@ -1,6 +1,6 @@
 # Dịch trong lúc người nói chưa dừng · 00: Tổng quan
 
-**Trạng thái:** đã làm xong 01–04 ngày 2026-10-12 (trừ Task 4 của 04, nghiệm thu Windows — chủ dự án sẽ tự thử sau khi merge); chờ chủ dự án cho phép merge.
+**Trạng thái:** đã làm xong 01–04 ngày 2026-10-12, trừ Task 4 của 04 (nghiệm thu trên máy Windows i5, chủ dự án tự chạy theo hướng dẫn ở Task 4 đó). Chủ dự án đã cho phép merge; nhánh đã vào `main` ngày 2026-10-12.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

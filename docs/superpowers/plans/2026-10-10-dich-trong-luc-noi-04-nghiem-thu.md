@@ -356,71 +356,69 @@ Tiêu chí (spec §10.2): trên máy Windows yếu (i5-1345U, GPU tích hợp v�
 - Create: `bench/2026-10-10-do-tre/results/nghiem-thu-win-*.json`
 - Modify: `bench/2026-10-10-do-tre/results/nghiem-thu.md`, thêm mục "Máy Windows i5".
 
-- [ ] **Step 1: Hỏi chủ dự án cách đưa nhánh sang máy Windows**
+- [x] **Step 1: Đưa code sang máy Windows**
 
-Không push khi chưa được hỏi (repo là PUBLIC). Gửi:
+Không cần nữa: chủ dự án đã cho merge, nhánh đã vào `main` ngày 2026-10-12 (đã push). Trên máy Windows chỉ cần `git pull` ở `main`. Bỏ cách `git bundle` dự tính lúc đầu.
 
-"Để nghiệm thu trên máy Windows i5, cần đưa nhánh `dich-trong-luc-noi` sang máy đó. Cách đề xuất là một file `git bundle`, anh tự chép sang máy Windows (không cần push). Hoặc anh cho phép push nhánh lên GitHub. Anh chọn cách nào?"
+- [ ] **Step 2: Chủ dự án chạy trên Windows**
 
-Chờ chủ dự án trả lời. Nếu chọn bundle:
+Soát lại ngày 2026-10-12 trên chính máy này (Lenovo 21HE, i5-1345U, Iris Xe, 32 GB, repo ở `D:\Dev\WORKSPACE\ai-translator`):
+- `run_sessions.py` trước đó chỉ chạy được trên macOS (`ps -axo`, tên `latency-bench` không có `.exe`); nay có nhánh Windows (danh sách tiến trình qua `Get-CimInstance Win32_Process`).
+- Đã có sẵn: model của hai gói và VAD trong `models/`, llama.cpp b11146 `win-cpu-x64` và `win-vulkan-x64` trong `tools/llama-b11146/`, sidecar của app trong `src-tauri/binaries/`, Vulkan SDK 1.4.363.0, Python 3.13, `uv`.
+- `asr-worker-vulkan-x86_64-pc-windows-msvc.exe` trong `src-tauri/binaries/` build ngày 2026-10-07; từ đó tới `main` hiện tại, mã của `asr-worker`, bản vá whisper trong `third_party/` và `asr-protocol` không đổi gì ngoài chú thích. Dùng thẳng bản này, tức đúng bản app chạy.
+- **Còn thiếu:** dữ liệu session `bench/phase0/data/latency/` (không commit). Cách lấy ở bước 2 dưới.
 
-```bash
-W=/Users/dtphong/Desktop/software_business/meeting-translator-work/dich-trong-luc-noi
-git -C "$W" bundle create "$W/target/do-tre/dich-trong-luc-noi.bundle" main..dich-trong-luc-noi main
-git -C "$W" bundle verify "$W/target/do-tre/dich-trong-luc-noi.bundle"
-ls -la "$W/target/do-tre/dich-trong-luc-noi.bundle"
-```
-
-Báo chủ dự án đường dẫn file bundle.
-
-Nếu chủ dự án cho push, **chỉ** push nhánh này, đúng lệnh sau:
-
-```bash
-git -C /Users/dtphong/Desktop/software_business/meeting-translator-work/dich-trong-luc-noi push -u origin dich-trong-luc-noi
-```
-
-- [ ] **Step 2: Hướng dẫn chủ dự án chạy trên Windows**
-
-Gửi nguyên văn khối dưới (PowerShell, ở thư mục repo trên máy Windows; cần Rust, Python 3.12 và bộ công cụ như lúc đo S6 Windows):
+Chạy bằng PowerShell ở gốc repo. Trong lúc đo (khoảng 45 phút, 12 session × khoảng 3,5 phút): cắm sạc, thoát app nặng (trình duyệt, Teams, Docker Desktop, bản dev), không dùng máy; ghi lại app nào còn mở để đưa vào biên bản.
 
 ```powershell
-# 1. Lấy nhánh (bundle; nếu đã push thì: git fetch origin dich-trong-luc-noi)
-git fetch <đường dẫn>\dich-trong-luc-noi.bundle dich-trong-luc-noi:dich-trong-luc-noi
-git switch dich-trong-luc-noi
+# 1. Code mới nhất
+git switch main
+git pull
 
-# 2. Build như lúc đo S6 Windows: latency-bench và hai bản asr-worker
+# 2. Dữ liệu session. Cách A (nên dùng, giống hệt dữ liệu đã đo trên Mac): chép cả thư mục
+#    bench/phase0/data/latency/ từ máy Mac (6 file .wav, 6 file .truth.json và sessions.json, khoảng 35 MB)
+#    vào cùng chỗ trên máy này. Cách B: dựng lại từ FLEURS (tải vài GB; seed cố định nên ra cùng session):
+#      uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "scipy==1.18.1" python bench/phase0/asr/build_clips.py
+#      uv run --no-project --python 3.12 --with "numpy==2.5.3" --with "onnxruntime==1.30.0" python bench/phase0/latency/build_sessions.py
+Get-ChildItem bench\phase0\data\latency   # phải có en, zh, ja, ko, vi, mixed (.wav và .truth.json) và sessions.json
+
+# 3. Build công cụ đo
 cargo build --release --locked -p latency-bench
-cargo build --release --locked -p asr-worker --features vulkan,shared-encode
-Copy-Item target\release\asr-worker.exe target\asr-worker-vulkan.exe -Force
-cargo build --release --locked -p asr-worker --features shared-encode
-Copy-Item target\release\asr-worker.exe target\asr-worker-cpu.exe -Force
 
-# 3. Model, llama.cpp b11146 (win-vulkan-x64, win-cpu-x64) và session như lúc đo S6 (bench/phase0/fetch.py, bench/phase0/data/latency/)
+# 4. Gói Nhẹ, chế độ thường: Whisper iGPU (sidecar Vulkan của app), llama-server bản CPU
+python bench\2026-10-10-do-tre\run_sessions.py --pack nhe --label nghiem-thu-win-thuong `
+  --asr-worker src-tauri\binaries\asr-worker-vulkan-x86_64-pc-windows-msvc.exe `
+  --llama-server tools\llama-b11146\win-cpu-x64\llama-server.exe
 
-# 4. Gói Nhẹ, chế độ thường: so với mốc S6 Windows (iGPU, llama CPU như app: -ngl 0)
-python bench\2026-10-10-do-tre\run_sessions.py --pack nhe --label nghiem-thu-win-thuong --asr-worker target\asr-worker-vulkan.exe --llama-server <thư mục llama-b11146 win-cpu-x64>\llama-server.exe
+# 5. Gói Nhẹ, bật chế độ này: máy yếu phải tự tắt (summary.streaming_auto_off = 1.0) mà không kém lượt 4
+python bench\2026-10-10-do-tre\run_sessions.py --pack nhe --label nghiem-thu-win `
+  --asr-worker src-tauri\binaries\asr-worker-vulkan-x86_64-pc-windows-msvc.exe `
+  --llama-server tools\llama-b11146\win-cpu-x64\llama-server.exe -- --streaming
 
-# 5. Gói Nhẹ, bật chế độ này: máy yếu phải tự tắt (summary.streaming_auto_off = true) mà không kém lượt 4
-python bench\2026-10-10-do-tre\run_sessions.py --pack nhe --label nghiem-thu-win --asr-worker target\asr-worker-vulkan.exe --llama-server <thư mục llama-b11146 win-cpu-x64>\llama-server.exe -- --streaming
+# 6. Xem nhanh: lượt 5 có tự tắt ở cả 6 session không
+Select-String -Path bench\2026-10-10-do-tre\results\nghiem-thu-win-nhe-*.json -Pattern '"streaming_auto_off"'
 
-# 6. Thử app trên máy này (bản dev hoặc bản build của nhánh):
-#    Cài đặt › Phụ đề phải có ghi chú "Máy này chưa đủ nhanh, app đang dịch sau mỗi câu."
-#    và khi dịch, thanh phụ đề không có dòng đang nói.
+# 7. Thử app (bản dev): pnpm tauri dev
+#    - Cài đặt › Phụ đề: bật công tắc dịch trong lúc người nói chưa dừng (mặc định tắt). Phải có ghi chú
+#      "Máy này chưa đủ nhanh, app đang dịch sau mỗi câu." (ngay, hoặc sau khi bắt đầu dịch lần đầu).
+#    - Bắt đầu dịch một video có người nói: thanh phụ đề không có dòng đang nói, phụ đề hiện sau mỗi câu như cũ.
+#    - Chụp màn hình Cài đặt › Phụ đề. Thoát app, rồi tắt công tắc lại nếu muốn giữ mặc định.
 ```
 
-- Lượt 5 dùng `latency-bench`, nên engine luôn được báo là máy đủ sức (công cụ đo bật `--streaming` là chạy). Việc tự tắt ở đây phải đến từ luật nhịp (§5), và `summary.streaming_auto_off` phải là `true`.
-- Việc tắt ngay từ đầu phiên trên máy chỉ có GPU tích hợp là luật của app (kế hoạch 03), nên được kiểm ở bước 6 trên app.
-- Nhờ chủ dự án gửi lại các file `bench\2026-10-10-do-tre\results\nghiem-thu-win-*.json` và ảnh chụp Cài đặt › Phụ đề.
+- Lượt 5 dùng `latency-bench`, nên engine luôn được báo là máy đủ sức (công cụ đo bật `--streaming` là chạy). Việc tự tắt ở đây phải đến từ luật nhịp (§5); `summary.streaming_auto_off` là `1.0` khi đã tự tắt, `0.0` khi chưa.
+- Việc tắt ngay từ đầu phiên trên máy chỉ có GPU tích hợp là luật của app (kế hoạch 03), nên được kiểm ở bước 7 trên app.
+- App trên máy chỉ có GPU tích hợp chạy `llama-server` bản Vulkan của app với `-ngl 0`; công cụ đo không truyền được tham số thêm cho `llama-server`, nên dùng bản `win-cpu-x64` cùng b11146 thay thế. Ghi khác biệt này vào biên bản.
+- Bị dừng giữa chừng vì "còn tiến trình phụ của lượt trước": tắt đúng các pid script in ra bằng `Stop-Process -Id <pid>`, rồi chạy lại lệnh đó (script cảnh báo trước khi ghi đè kết quả cũ).
+- Kết quả rút gọn nằm ở `bench\2026-10-10-do-tre\results\nghiem-thu-win-*.json` (12 file); bản đầy đủ và log ở `target\do-tre\sessions\`.
 
 - [ ] **Step 3: So và ghi biên bản**
 
-Chép các file chủ dự án gửi vào `bench/2026-10-10-do-tre/results/`, rồi:
+Làm ngay trên máy Windows, ở gốc repo (Git Bash; trên PowerShell thay `$R/…-*.json` bằng đường dẫn đủ của từng file):
 
 ```bash
-cd /Users/dtphong/Desktop/software_business/meeting-translator-work/dich-trong-luc-noi
 R=bench/2026-10-10-do-tre/results
-python3 bench/2026-10-10-do-tre/summarize_sessions.py $R/nghiem-thu-win-thuong-nhe-*.json $R/nghiem-thu-win-nhe-*.json
-python3 bench/2026-10-10-do-tre/summarize_sessions.py --compare nghiem-thu-win-thuong nghiem-thu-win $R/nghiem-thu-win-thuong-nhe-*.json $R/nghiem-thu-win-nhe-*.json
+python bench/2026-10-10-do-tre/summarize_sessions.py $R/nghiem-thu-win-thuong-nhe-*.json $R/nghiem-thu-win-nhe-*.json
+python bench/2026-10-10-do-tre/summarize_sessions.py --compare nghiem-thu-win-thuong nghiem-thu-win $R/nghiem-thu-win-thuong-nhe-*.json $R/nghiem-thu-win-nhe-*.json
 grep -h '"streaming_auto_off"' $R/nghiem-thu-win-nhe-*.json
 ```
 
@@ -429,7 +427,7 @@ Thêm vào cuối `nghiem-thu.md`, thay `‹…›` bằng số thật:
 ```markdown
 ## Máy Windows i5-1345U (chủ dự án đo, ‹ngày›)
 
-Code: nhánh `dich-trong-luc-noi` @ ‹hash›, chuyển bằng ‹bundle / push›. Gói Nhẹ, `asr-worker` Vulkan (iGPU), `llama-server` CPU.
+Code: `main` @ ‹hash›. Gói Nhẹ, `asr-worker` Vulkan của app (iGPU), `llama-server` b11146 `win-cpu-x64` (app dùng bản Vulkan với `-ngl 0`). App còn mở trong lúc đo: ‹…›.
 
 | Session | A2 p50 chế độ thường | A2 p50 khi bật | Mốc S6 Windows (s6_windows.md, "Whisper iGPU + Llama CPU") | streaming_auto_off |
 |---|---|---|---|---|
@@ -440,11 +438,11 @@ Code: nhánh `dich-trong-luc-noi` @ ‹hash›, chuyển bằng ‹bundle / push
 - Ghi chú: mốc S6 Windows đo bằng công cụ cũ (`latency`), lượt này bằng `session` (engine thật). So chính là lượt 4 với lượt 5 trên cùng công cụ.
 ```
 
+Hỏi chủ dự án trước khi commit (nhánh đã vào `main`; commit thẳng lên `main` hay qua nhánh riêng là việc của chủ dự án), rồi:
+
 ```bash
-W=/Users/dtphong/Desktop/software_business/meeting-translator-work/dich-trong-luc-noi
-test "$(git -C "$W" branch --show-current)" = "dich-trong-luc-noi" || { echo "SAI NHÁNH"; exit 1; }
-git -C "$W" add bench/2026-10-10-do-tre/results/nghiem-thu-win-*.json bench/2026-10-10-do-tre/results/nghiem-thu.md
-git -C "$W" commit -F - <<'EOF'
+git add bench/2026-10-10-do-tre/results/nghiem-thu-win-*.json bench/2026-10-10-do-tre/results/nghiem-thu.md
+git commit -F - <<'EOF'
 bench(do-tre): nghiệm thu dịch trong lúc nói trên máy Windows i5 (chủ dự án đo)
 
 Co-Authored-By: <model đang chạy> <noreply@anthropic.com>

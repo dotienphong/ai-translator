@@ -6,7 +6,7 @@
 - Ngưỡng ngắt câu của chế độ mới và (n, k) chốt ở cổng sau bước 2 ngày 2026-10-12 (QĐ4; số đo:
   `bench/2026-10-10-do-tre/results/buoc2-cong.md`).
 - Làm trên nhánh `dich-trong-luc-noi`. Không merge vào `main` khi chủ dự án chưa cho phép.
-- Đã triển khai và nghiệm thu ngày 2026-10-12 (`bench/2026-10-10-do-tre/results/nghiem-thu.md`); đã sửa spec chính theo §12. Chờ chủ dự án cho phép merge vào `main`.
+- Đã triển khai và nghiệm thu trên M4 Pro ngày 2026-10-12 (`bench/2026-10-10-do-tre/results/nghiem-thu.md`); đã sửa spec chính theo §12. Chủ dự án đã cho phép merge; nhánh đã vào `main` ngày 2026-10-12. Còn nghiệm thu trên máy Windows i5 (kế hoạch 04, Task 4).
 
 **Phạm vi:**
 - Crate `pipeline`: luồng xử lý và đo.
