@@ -278,7 +278,7 @@ pub struct FakeDeps {
     pub quota_exhausted: bool,
     /// Số lần `prepare` được gọi.
     pub prepares: Arc<Mutex<usize>>,
-    /// Thứ tự gọi `allow_retry` và `prepare` (R3-1 của review 02 lần 3).
+    /// Thứ tự gọi `allow_retry`, `prepare` (R3-1 của review 02 lần 3) và `streaming_supported` (QĐ1 của kế hoạch 03).
     pub calls: Arc<Mutex<Vec<&'static str>>>,
     /// Nguồn âm thanh báo lỗi có mã này ngay khi mở (ví dụ chưa cấp quyền).
     pub capture_error: Option<&'static str>,
@@ -458,6 +458,7 @@ impl SessionDeps for FakeDeps {
     }
 
     fn streaming_supported(&self) -> bool {
+        self.calls.lock().unwrap().push("streaming_supported");
         !self.slow_machine.load(Ordering::SeqCst)
     }
 }

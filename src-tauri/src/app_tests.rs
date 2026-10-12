@@ -641,7 +641,8 @@ fn a_cancelled_start_that_fails_clears_the_loading_note() {
 }
 
 /// R3-1 của review 02 lần 3: bấm Bắt đầu thì cho tiến trình phụ đã bỏ cuộc thử lại, trước khi chuẩn bị; chạy sẵn khi mở
-/// cửa sổ chính thì không.
+/// cửa sổ chính thì không. QĐ1 của kế hoạch 03: lần bắt đầu hỏi máy có đủ sức dịch trong lúc nói không sau khi chuẩn bị
+/// (lúc đã biết thiết bị thật của `asr-worker`); chạy sẵn thì không hỏi.
 #[test]
 fn a_user_start_allows_a_retry_before_preparing_and_prewarm_does_not() {
     let deps = FakeDeps::default();
@@ -652,7 +653,10 @@ fn a_user_start_allows_a_retry_before_preparing_and_prewarm_does_not() {
     wait_until("chạy sẵn xong", || !calls.lock().unwrap().is_empty());
     assert_eq!(*calls.lock().unwrap(), ["prepare"]);
     session::toggle(app.handle()).unwrap();
-    assert_eq!(*calls.lock().unwrap(), ["prepare", "allow_retry", "prepare"]);
+    assert_eq!(
+        *calls.lock().unwrap(),
+        ["prepare", "allow_retry", "prepare", "streaming_supported"]
+    );
     session::stop(app.handle());
 }
 

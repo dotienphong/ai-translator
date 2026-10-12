@@ -925,6 +925,17 @@ impl<R: Runtime> LiveDeps<R> {
     fn manager(&self) -> Arc<SidecarManager> {
         self.current().expect("prepare() chạy trước")
     }
+
+    /// [`SessionDeps::streaming_supported`] với `windows` cho trước, để test chạy được nhánh Windows (kết quả dò GPU) trên
+    /// mọi máy.
+    fn streaming_supported_on(&self, windows: bool) -> bool {
+        let probed = self
+            .app
+            .try_state::<sidecar::GpuProbe>()
+            .and_then(|p| p.get(Duration::ZERO));
+        let backend = self.current().and_then(|m| m.asr_backend());
+        sidecar::streaming_supported(windows, probed.as_ref(), backend)
+    }
 }
 
 impl<R: Runtime> SessionDeps for LiveDeps<R> {
@@ -1067,12 +1078,7 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
     /// QĐ1 của kế hoạch 03: kết quả dò GPU (Windows; đã có sau `prepare`, không chờ) và thiết bị thật của `asr-worker` đang
     /// chạy (`Ready` của lần khởi động gần nhất).
     fn streaming_supported(&self) -> bool {
-        let probed = self
-            .app
-            .try_state::<sidecar::GpuProbe>()
-            .and_then(|p| p.get(Duration::ZERO));
-        let backend = self.current().and_then(|m| m.asr_backend());
-        sidecar::streaming_supported(cfg!(windows), probed.as_ref(), backend)
+        self.streaming_supported_on(cfg!(windows))
     }
 }
 
@@ -1387,6 +1393,126 @@ mod tests {
         assert_eq!(deps.asr_failure_code(), errors::SIDECAR_TAMPERED);
         deps.allow_retry();
         assert_eq!(deps.asr_failure_code(), errors::SIDECAR_FAILED);
+    }
+
+    /// Bộ tiến trình phụ mà `asr-worker` (giả) đã `Ready` với thiết bị `backend`. Worker giả là script shell in sẵn hai
+    /// khung `Ready` và `WarmupDone` rồi chờ tới khi bị tắt, nên chỉ có trên macOS và Linux. `llama-server` trỏ tới binary
+    /// không có: `ensure_started` dừng ở đó, sau khi `asr-worker` đã `Ready`.
+    #[cfg(unix)]
+    fn sidecars_with_asr_on(backend: asr_protocol::Backend) -> Live {
+        use asr_protocol::{DecodeMode, PROTOCOL_VERSION, Response, write_frame};
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("mt-asr-on-{backend:?}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut frames = Vec::new();
+        let ready = Response::Ready {
+            protocol_version: PROTOCOL_VERSION,
+            backend,
+            decode_mode: DecodeMode::Shared,
+            whisper_version: String::new(),
+            system_info: String::new(),
+        };
+        write_frame(&mut frames, &ready).unwrap();
+        write_frame(&mut frames, &Response::WarmupDone { millis: 0.0 }).unwrap();
+        std::fs::write(dir.join("frames.bin"), frames).unwrap();
+        let exe = dir.join("asr-worker");
+        std::fs::write(
+            &exe,
+            "#!/bin/sh\ncat \"$(dirname \"$0\")/frames.bin\"\nexec cat >/dev/null\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&exe, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let mut spec = missing_sidecars("asr-on");
+        spec.asr.exe_gpu = Some(exe.clone());
+        spec.asr.exe_cpu = exe;
+        spec.asr.log = dir.join("asr-worker.log");
+        spec.llama.log = dir.join("llama-server.log");
+        let manager = SidecarManager::new(
+            spec,
+            Arc::new(pipeline::supervisor::FakeClock::default()),
+            Arc::new(CountSpawns::default()),
+        );
+        let stopped = manager.ensure_started().unwrap_err();
+        assert_eq!(stopped.which, Which::Llama, "asr-worker giả chưa Ready: {stopped}");
+        // Hai khung đã tới; shell còn giữ script đang mở, nên xóa thư mục lúc này không ảnh hưởng worker giả.
+        let _ = std::fs::remove_dir_all(&dir);
+        Live {
+            manager,
+            key: sidecar::SidecarKey::default(),
+            vad_model: PathBuf::new(),
+        }
+    }
+
+    /// Kết quả dò GPU chỉ thấy một GPU loại `device_type`.
+    #[cfg(unix)]
+    fn probe_found(device_type: &str) -> sidecar::probe::ProbeOutcome {
+        sidecar::probe::ProbeOutcome {
+            usable: true,
+            gpus: vec![sidecar::probe::GpuInfo {
+                name: "GPU".into(),
+                device_type: device_type.into(),
+                device_local_bytes: 1 << 30,
+                vendor_id: 1,
+            }],
+        }
+    }
+
+    /// `LiveDeps` của một app như lúc chạy thật (có `GpuProbe`), với bộ tiến trình phụ `live` và kết quả dò GPU `probed`
+    /// (`None`: chưa có, như khi dò quá giờ). Trả cả `App` để giữ app tới hết test.
+    #[cfg(unix)]
+    fn live_deps(
+        live: Option<Live>,
+        probed: Option<sidecar::probe::ProbeOutcome>,
+    ) -> (tauri::App<tauri::test::MockRuntime>, LiveDeps<tauri::test::MockRuntime>) {
+        let app = tauri::test::mock_app();
+        app.manage(sidecar::GpuProbe::default());
+        if let Some(outcome) = probed {
+            app.state::<sidecar::GpuProbe>().run(|| Some(outcome));
+        }
+        let deps = LiveDeps::new(app.handle().clone());
+        *deps.live.lock().unwrap() = live;
+        (app, deps)
+    }
+
+    /// QĐ1 của kế hoạch 03 (spec 2026-10-10 §5, "Tắt ngay từ đầu phiên"): `LiveDeps` quyết máy đủ sức theo thiết bị thật mà
+    /// `asr-worker` của bộ tiến trình phụ đang dùng báo trong `Ready`, không theo thiết bị đã xin. Chưa có bộ tiến trình phụ
+    /// nào thì chưa biết, coi như chưa đủ sức. macOS không dò GPU: có kết quả dò (chỉ GPU tích hợp) cũng không đổi gì.
+    #[cfg(unix)]
+    #[test]
+    fn the_live_machine_check_uses_the_device_the_asr_worker_reported() {
+        use asr_protocol::Backend;
+        let check = |live, probed| live_deps(live, probed).1.streaming_supported();
+        assert!(!check(None, None), "chưa có tiến trình phụ: chưa biết thiết bị");
+        assert!(
+            check(Some(sidecars_with_asr_on(Backend::Metal)), None),
+            "asr-worker chạy Metal"
+        );
+        assert!(
+            !check(Some(sidecars_with_asr_on(Backend::Cpu)), None),
+            "xin GPU mà asr-worker chạy CPU"
+        );
+        assert!(
+            check(
+                Some(sidecars_with_asr_on(Backend::Metal)),
+                Some(probe_found("integrated"))
+            ),
+            "macOS, Linux: không dùng kết quả dò GPU"
+        );
+    }
+
+    /// QĐ1 của kế hoạch 03 (spec 2026-10-10 §5): trên Windows, `LiveDeps` còn cần kết quả dò GPU đã có lúc bắt đầu phiên, và
+    /// không phải chỉ có GPU tích hợp. Nhánh Windows chạy trên mọi máy qua `streaming_supported_on(true)`.
+    #[cfg(unix)]
+    #[test]
+    fn on_windows_the_live_machine_check_also_needs_the_gpu_probe() {
+        use asr_protocol::Backend;
+        let check = |probed| {
+            let (_app, deps) = live_deps(Some(sidecars_with_asr_on(Backend::Vulkan)), probed);
+            deps.streaming_supported_on(true)
+        };
+        assert!(check(Some(probe_found("discrete"))), "card rời");
+        assert!(!check(Some(probe_found("integrated"))), "chỉ có GPU tích hợp");
+        assert!(!check(None), "chưa có kết quả dò");
     }
 
     #[test]
