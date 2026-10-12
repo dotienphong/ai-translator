@@ -22,6 +22,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Tiếng Hàn có dấu cách giữa các từ: xuống dòng ở dấu cách, không ngắt giữa âm tiết ("돌/아가며"). */
+:lang(ko) {
+  word-break: keep-all;
+}
+
 h1,
 h2,
 h3,
@@ -1079,6 +1084,11 @@ fieldset {
   margin-top: 0.7rem;
   color: var(--muted);
   font-size: 0.89rem;
+}
+
+/* Nhãn không xuống dòng: chữ CJK không có dấu cách nên trình duyệt có thể ngắt giữa chữ ("入力レベ / ル"); thanh đo co lại. */
+.hero-level > span {
+  white-space: nowrap;
 }
 
 .hero-level meter {

@@ -4,6 +4,11 @@ body {
   overflow: hidden;
 }
 
+/* Tiếng Hàn có dấu cách giữa các từ: xuống dòng ở dấu cách, không ngắt giữa âm tiết. */
+:lang(ko) {
+  word-break: keep-all;
+}
+
 /* Chữ có viền tối (bóng chữ nhiều hướng): đọc được cả khi nền gần trong suốt, trên mọi màu của cửa sổ họp bên dưới
    (§6.10, trợ năng: đủ tương phản cho phụ đề). Màu chữ và màu nền đặt ở `style` theo Cài đặt › Phụ đề; trắng trên đen là
    mặc định. */

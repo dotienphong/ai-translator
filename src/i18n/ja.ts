@@ -61,7 +61,7 @@ export const ja: Record<MessageKey, string> = {
   "transcript.empty": "現在のセッションの字幕が、時刻・原文・翻訳とともにここに表示されます。",
   "history.empty": "保存したセッションがここに表示されます。履歴の保存は Pro 機能で、初期設定ではオフです。",
   "glossary.empty": "登録した用語がここに表示されます。用語集は Pro 機能です。",
-  "upgrade.free.quota": "1 日 30 分、10 日間のお試し",
+  "upgrade.free.quota": "1 日 30 分、10 日間お試し",
   "upgrade.current": "現在",
   "upgrade.unlimited": "無制限",
   "upgrade.hours": "30 日ごとに {hours} 時間",
