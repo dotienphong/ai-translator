@@ -2240,3 +2240,55 @@ fn a_slow_machine_sends_no_live_lines() {
     invoke(&main, "toggle_session", json!({})).unwrap();
     assert!(lives.lock().unwrap().is_empty(), "máy chưa đủ sức: dịch sau mỗi câu");
 }
+
+/// QĐ4 của kế hoạch 03: đổi công tắc "Dịch trong lúc người nói chưa dừng" trong lúc phiên đang chuẩn bị (nạp model, tới 180
+/// giây) thì phiên theo giá trị mới ngay từ đầu. Lúc đổi chưa có engine nên `session::set_streaming_enabled` không làm gì;
+/// phiên chỉ theo giá trị mới nhờ `start_with` đọc lại cài đặt lúc gắn engine.
+#[test]
+fn the_switch_changed_while_preparing_holds_from_the_start() {
+    for on in [false, true] {
+        let gate = Arc::new(PrepareGate::default());
+        let app = mock_app_with(FakeDeps {
+            audio: FakeAudio::LongTone,
+            prepare_gate: Some(gate.clone()),
+            ..FakeDeps::default()
+        });
+        let main = window(&app, "main");
+        let overlay = window(&app, "overlay");
+        let lives = heard(&overlay, SUBTITLE_LIVE);
+        let upserts = record(&app, SUBTITLE_UPSERT);
+        let switch = |value: bool| {
+            invoke(
+                &main,
+                "update_settings",
+                json!({ "patch": { "translateWhileSpeaking": value } }),
+            )
+            .unwrap();
+        };
+        switch(!on);
+        let handle = app.handle().clone();
+        let starting = std::thread::spawn(move || session::start(&handle));
+        wait_until("đang chờ nạp model", || gate.waiting() == 1);
+        assert!(
+            !app.state::<session::Session>().has_engine(),
+            "đang chuẩn bị: chưa có engine"
+        );
+        switch(on);
+        gate.open();
+        assert_eq!(starting.join().unwrap().unwrap().session, SessionStatus::Running);
+        if on {
+            wait_until("bật trong lúc chuẩn bị: có dòng đang nói", || {
+                !lives.lock().unwrap().is_empty()
+            });
+        } else {
+            wait_until("tắt trong lúc chuẩn bị: hai câu dịch xong", || {
+                upserts.lock().unwrap().iter().filter(|s| s["status"] == "done").count() >= 2
+            });
+            assert!(
+                lives.lock().unwrap().is_empty(),
+                "tắt trong lúc chuẩn bị mà vẫn có dòng đang nói"
+            );
+        }
+        session::stop(app.handle());
+    }
+}
