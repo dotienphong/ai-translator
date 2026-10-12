@@ -164,19 +164,24 @@ pub fn start_gpu_probe<R: Runtime>(app: &AppHandle<R>) {
         let first = seen
             .as_deref()
             .is_none_or(|s| first_run::is_first_run(s, &verified.hashes[0]));
-        let outcome = app
-            .state::<GpuProbe>()
-            .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)));
-        // Đề xuất gói theo VRAM của card rời (kế hoạch 04) đổi theo kết quả dò.
-        crate::models::service::changed(&app);
-        // Chỉ có GPU tích hợp hay không có GPU dùng được: chưa đủ sức dịch trong lúc người nói chưa dừng (spec 2026-10-10
-        // §5). Cài đặt › Phụ đề ghi chú ngay, chưa cần bắt đầu phiên (§6.3).
-        if outcome.as_ref().is_some_and(probe::too_slow_for_streaming) {
-            app.state::<crate::state::AppState>()
-                .update_status(crate::state::AppStatus::note_machine_too_slow);
-            crate::actions::status_changed(&app);
-        }
+        probe_at_launch(&app, || probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)));
     });
+}
+
+/// Phần của [`start_gpu_probe`] sau bước kiểm binary: dò bằng `run` (hay lấy kết quả đã có, [`GpuProbe::run`]), rồi báo
+/// những nơi đổi theo kết quả. Tách riêng để test chạy được trên mọi máy: `start_gpu_probe` chỉ chạy trên Windows, cần
+/// binary thật đúng SHA-256 và không trả handle của luồng nền.
+fn probe_at_launch<R: Runtime>(app: &AppHandle<R>, run: impl FnOnce() -> Option<probe::ProbeOutcome>) {
+    let outcome = app.state::<GpuProbe>().run(run);
+    // Đề xuất gói theo VRAM của card rời (kế hoạch 04) đổi theo kết quả dò.
+    crate::models::service::changed(app);
+    // Chỉ có GPU tích hợp hay không có GPU dùng được: chưa đủ sức dịch trong lúc người nói chưa dừng (spec 2026-10-10
+    // §5). Cài đặt › Phụ đề ghi chú ngay, chưa cần bắt đầu phiên (§6.3).
+    if outcome.as_ref().is_some_and(probe::too_slow_for_streaming) {
+        app.state::<crate::state::AppState>()
+            .update_status(crate::state::AppStatus::note_machine_too_slow);
+        crate::actions::status_changed(app);
+    }
 }
 
 fn seen_file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
@@ -342,6 +347,66 @@ mod tests {
         assert!(
             !streaming_supported(true, None, Some(Backend::Vulkan)),
             "chưa có kết quả dò"
+        );
+    }
+
+    /// QĐ2 của kế hoạch 03 (spec 2026-10-10 §5, §6.3): lần dò GPU lúc mở app (Windows) cho kết quả chưa đủ sức (chỉ có GPU
+    /// tích hợp, hay không có GPU dùng được) thì ghi máy chưa đủ nhanh ngay, chưa cần phiên nào, và báo giao diện qua
+    /// `app://status`; card rời hay dò quá giờ thì không. Đang có phiên bắt đầu thì để lần bắt đầu tự quyết.
+    #[test]
+    fn a_gpu_probe_at_launch_notes_a_slow_machine() {
+        use crate::state::{AppState, SessionStatus};
+        use tauri::Listener;
+        let found = |device_type: &str| {
+            Some(probe::ProbeOutcome {
+                usable: true,
+                gpus: vec![probe::GpuInfo {
+                    name: "GPU".into(),
+                    device_type: device_type.into(),
+                    device_local_bytes: 1 << 30,
+                    vendor_id: 1,
+                }],
+            })
+        };
+        // (máy chưa đủ nhanh, giao diện đã nhận `streamingTooSlow: true`) sau lần dò cho `outcome`, phiên ở `session`.
+        let launch = |session: SessionStatus, outcome: Option<probe::ProbeOutcome>| {
+            let app = crate::test_support::mock_app();
+            app.manage(GpuProbe::default());
+            app.state::<AppState>().update_status(|s| s.session = session);
+            let told = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+            let sink = told.clone();
+            app.listen_any(crate::events::STATUS_CHANGED, move |e| {
+                sink.lock().unwrap().push(serde_json::from_str(e.payload()).unwrap());
+            });
+            probe_at_launch(app.handle(), || outcome);
+            let noted = app.state::<AppState>().status().streaming_too_slow;
+            let told = told.lock().unwrap().iter().any(|s| s["streamingTooSlow"] == true);
+            (noted, told)
+        };
+        assert_eq!(
+            launch(SessionStatus::Idle, found("integrated")),
+            (true, true),
+            "chỉ có GPU tích hợp"
+        );
+        assert_eq!(
+            launch(SessionStatus::Idle, Some(probe::ProbeOutcome::default())),
+            (true, true),
+            "không có GPU dùng được"
+        );
+        assert_eq!(
+            launch(SessionStatus::Idle, found("discrete")),
+            (false, false),
+            "card rời"
+        );
+        assert_eq!(
+            launch(SessionStatus::Idle, None),
+            (false, false),
+            "dò quá giờ: chưa biết"
+        );
+        assert_eq!(
+            launch(SessionStatus::Starting, found("integrated")),
+            (false, false),
+            "đang bắt đầu phiên: lần bắt đầu tự quyết"
         );
     }
 

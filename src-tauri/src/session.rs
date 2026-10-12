@@ -1325,6 +1325,10 @@ mod tests {
             session: 1,
             asr_code: Arc::new(crate::test_support::FakeDeps::default()),
         };
+        // Engine chỉ báo khi phiên đang chạy: ghi thẳng, không qua cổng của `note_machine_too_slow` (cổng đó bỏ qua lúc
+        // phiên đang chạy), nếu không thì lần tự tắt giữa phiên trên máy đủ sức không bao giờ được ghi chú.
+        app.state::<AppState>()
+            .update_status(|s| s.session = SessionStatus::Running);
         sink.indicators(&Indicators {
             lagging: true,
             ..Indicators::default()
