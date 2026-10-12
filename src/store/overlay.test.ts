@@ -1,7 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
-import type { AppStatus, OverlayView, Subtitle } from "../lib/ipc";
-import { MAX_LINES, appendDelta, createOverlayStore, createResizeDrag, upsertLine } from "./overlay";
+import type { AppStatus, LiveLine, OverlayView, Subtitle } from "../lib/ipc";
+import {
+  MAX_LINES,
+  type OverlayRow,
+  appendDelta,
+  applyLive,
+  createOverlayStore,
+  createResizeDrag,
+  endLive,
+  settleLive,
+  upsertLine,
+  visibleRows,
+} from "./overlay";
 
 const sub = (id: number, tgt: string, provisional = false): Subtitle => ({
   id,
@@ -231,6 +242,127 @@ describe("overlay store", () => {
     expect(ids).toHaveLength(MAX_LINES);
     expect(ids[0]).toBe(6);
     expect(ids[MAX_LINES - 1]).toBe(MAX_LINES + 5);
+  });
+});
+
+const live = (id: number, patch: Partial<LiveLine> = {}): LiveLine => ({
+  id,
+  extends: null,
+  src_lang: "en",
+  src_stable: `src ${id}`,
+  src_tail: " tạm",
+  tgt_stable: `dịch ${id}`,
+  tgt_tail: " tạm",
+  tgt_src_units: 2,
+  ...patch,
+});
+
+const at = (status: Subtitle["status"], s: Subtitle): Subtitle => ({ ...s, status });
+
+describe("dòng đang nói (spec 2026-10-10 §6.1)", () => {
+  it("cập nhật theo id, dòng mới xếp theo id; live-end gỡ đúng dòng", () => {
+    let l = applyLive([], [], live(7));
+    l = applyLive(l, [], live(5));
+    l = applyLive(l, [], live(7, { tgt_tail: " mới" }));
+    expect(l.map((x) => [x.id, x.tgt_tail])).toEqual([
+      [5, " tạm"],
+      [7, " mới"],
+    ]);
+    expect(endLive(l, 5).map((x) => x.id)).toEqual([7]);
+    expect(endLive(l, 9)).toBe(l);
+  });
+
+  it("dòng tới sau khi lượt cuối của đoạn đã chốt thì bỏ", () => {
+    const lines = [sub(6, "sáu"), at("translating", sub(7, ""))];
+    const none: LiveLine[] = [];
+    expect(applyLive(none, lines, live(6))).toBe(none);
+    expect(applyLive(none, lines, live(7)).map((x) => x.id)).toEqual([7]);
+  });
+
+  it("phụ đề chốt gỡ dòng cùng id hay dòng đã gộp vào nó; chưa chốt thì giữ", () => {
+    const l = [live(7)];
+    expect(settleLive(l, at("asr_done", sub(7, "")))).toBe(l);
+    expect(settleLive(l, at("translating", sub(7, "bảy")))).toBe(l);
+    for (const status of ["done", "failed", "same_lang", "skipped", "dropped"] as const) {
+      expect(settleLive(l, at(status, sub(7, "bảy")))).toEqual([]);
+    }
+    expect(settleLive(l, { ...sub(5, "năm gộp"), replaces: [6, 7] })).toEqual([]);
+    expect(settleLive(l, sub(8, "tám"))).toBe(l);
+    // Dòng nối tiếp phụ đề 6: phụ đề 6 đã `done` (tạm) từ trước, chỉ `live-end` mới gỡ (QĐ5 của kế hoạch 02).
+    const extending = [live(7, { extends: 6 })];
+    expect(settleLive(extending, sub(6, "sáu", true))).toBe(extending);
+  });
+});
+
+describe("visibleRows (spec 2026-10-10 §6.1)", () => {
+  const ids = (rows: OverlayRow[]) => rows.map((r) => (r.kind === "live" ? `live ${r.live.id}` : r.line.id));
+
+  it("không có dòng đang nói thì là các phụ đề, giữ nguyên đối tượng", () => {
+    const lines = [sub(1, "a"), sub(2, "b")];
+    const rows = visibleRows(lines, []);
+    expect(ids(rows)).toEqual([1, 2]);
+    expect(rows[0]?.kind === "line" && rows[0].line).toBe(lines[0]);
+  });
+
+  it("dòng đang nói nằm sau dòng cuối", () => {
+    expect(ids(visibleRows([sub(1, "a"), sub(2, "b")], [live(3)]))).toEqual([1, 2, "live 3"]);
+  });
+
+  it("dòng nối tiếp một phụ đề tạm nằm đúng chỗ phụ đề đó (không về cuối), phụ đề đó tạm ẩn", () => {
+    expect(ids(visibleRows([sub(1, "a"), sub(2, "b", true)], [live(3, { extends: 2 })]))).toEqual([1, "live 3"]);
+    expect(ids(visibleRows([sub(1, "a"), sub(2, "b", true), sub(3, "c")], [live(4, { extends: 2 })]))).toEqual([
+      1,
+      "live 4",
+      3,
+    ]);
+  });
+
+  it("lượt cuối đang chạy: dòng đang nói thay chỗ phụ đề cùng id tới khi gỡ", () => {
+    const lines = [sub(1, "a"), at("asr_done", sub(2, ""))];
+    expect(ids(visibleRows(lines, [live(2)]))).toEqual([1, "live 2"]);
+    expect(ids(visibleRows(lines, []))).toEqual([1, 2]);
+  });
+
+  it("hai dòng cùng một chỗ: dòng mới nhất hiện, dòng cũ và phụ đề đều ẩn", () => {
+    const lines = [sub(1, "a"), { ...at("asr_done", sub(2, "")), provisional: true }];
+    expect(ids(visibleRows(lines, [live(2), live(3, { extends: 2 })]))).toEqual([1, "live 3"]);
+  });
+
+  it("phụ đề được nối tiếp đã trôi khỏi thanh: dòng đang nói về sau dòng cuối", () => {
+    expect(ids(visibleRows([sub(5, "e")], [live(7, { extends: 4 })]))).toEqual([5, "live 7"]);
+  });
+});
+
+describe("store: dòng đang nói", () => {
+  it("nhận live và live-end, phụ đề chốt gỡ dòng cùng id; phiên dừng, lỗi hay phiên mới thì bỏ hết", async () => {
+    const fake = fakeIpc({ get_overlay_view: () => view });
+    const store = createOverlayStore(fake.ipc);
+    await store.getState().init();
+    fake.emit("app://status", status("starting", 1));
+    fake.emit("app://status", status("running", 2));
+    fake.emit("subtitle://upsert", sub(1, "một"));
+    fake.emit("subtitle://live", live(2));
+    fake.emit("subtitle://live", live(2, { tgt_tail: " nữa" }));
+    expect(store.getState().live.map((x) => x.tgt_tail)).toEqual([" nữa"]);
+    fake.emit("subtitle://upsert", { ...sub(2, ""), status: "asr_done" });
+    expect(store.getState().live.map((x) => x.id)).toEqual([2]);
+    fake.emit("subtitle://upsert", sub(2, "hai"));
+    expect(store.getState().live).toEqual([]);
+    fake.emit("subtitle://live", live(3));
+    const before = store.getState().live;
+    fake.emit("app://status", status("running", 3));
+    expect(store.getState().live).toBe(before);
+    fake.emit("subtitle://live-end", { id: 3 });
+    expect(store.getState().live).toEqual([]);
+    fake.emit("subtitle://live", live(4));
+    fake.emit("app://status", status("idle", 4));
+    expect(store.getState().live).toEqual([]);
+    expect(store.getState().lines.map((l) => l.id)).toEqual([1, 2]);
+    fake.emit("app://status", status("starting", 5));
+    fake.emit("app://status", status("running", 6));
+    fake.emit("subtitle://live", live(1_000_001));
+    fake.emit("app://status", status("error", 7));
+    expect(store.getState().live).toEqual([]);
   });
 });
 

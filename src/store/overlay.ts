@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import type { AppStatus, Ipc, OverlayView, ResizeEdge, Subtitle, SubtitleDelta } from "../lib/ipc";
+import type { AppStatus, Ipc, LiveLine, OverlayView, ResizeEdge, Subtitle, SubtitleDelta } from "../lib/ipc";
 
 // Store của thanh phụ đề. Cửa sổ `overlay` chỉ đọc được phần cài đặt của nó (`get_overlay_view`)
 // và nghe sự kiện (phụ đề, trạng thái, mức âm lượng); không gọi được lệnh nào khác (spec §10.2).
@@ -38,10 +38,69 @@ export function appendDelta(lines: readonly Subtitle[], delta: SubtitleDelta): S
   return lines.map((l) => (l.id === delta.id ? { ...l, tgt_text: l.tgt_text + delta.text } : l));
 }
 
+// Trạng thái chốt: lượt cuối của đoạn đã xong (spec 2026-10-10 §4.5), dòng đang nói của đoạn đó hết chỗ.
+const SETTLED: ReadonlySet<Subtitle["status"]> = new Set(["done", "failed", "same_lang", "skipped", "dropped"]);
+
+// Dòng đang nói mới hay cập nhật (`subtitle://live`, spec 2026-10-10 §6.2): thay dòng cùng `id`, dòng mới xếp theo `id`.
+// Phụ đề cùng `id` đang trên thanh ở trạng thái chốt thì lượt cuối của đoạn đã xong: dòng tới muộn, bỏ.
+export function applyLive(live: LiveLine[], lines: readonly Subtitle[], line: LiveLine): LiveLine[] {
+  if (lines.some((l) => l.id === line.id && SETTLED.has(l.status))) return live;
+  const i = live.findIndex((x) => x.id === line.id);
+  if (i >= 0) return live.map((x, j) => (j === i ? line : x));
+  return [...live, line].sort((a, b) => a.id - b.id);
+}
+
+// Gỡ dòng đang nói (`subtitle://live-end`). Không có dòng đó thì giữ nguyên mảng.
+export function endLive(live: LiveLine[], id: number): LiveLine[] {
+  return live.some((x) => x.id === id) ? live.filter((x) => x.id !== id) : live;
+}
+
+// Phụ đề vừa tới chốt lượt cuối của một dòng đang nói (cùng `id`, hay gộp dòng đó qua `replaces`): gỡ dòng đó ngay, bản cuối
+// hiện đúng chỗ (spec 2026-10-10 §4.5, §6.1). `live-end` của engine tới ngay sau; đây là lưới an toàn. Phụ đề mà dòng chỉ
+// nối tiếp (`extends`) thì không gỡ: phụ đề đó đã `done` (tạm) từ trước khi dòng nối tiếp nó.
+export function settleLive(live: LiveLine[], subtitle: Subtitle): LiveLine[] {
+  if (live.length === 0 || !SETTLED.has(subtitle.status)) return live;
+  const settled = (id: number) => id === subtitle.id || subtitle.replaces.includes(id);
+  return live.some((x) => settled(x.id)) ? live.filter((x) => !settled(x.id)) : live;
+}
+
+// Một dòng trên thanh: phụ đề, hay dòng đang nói.
+export type OverlayRow = { kind: "line"; line: Subtitle } | { kind: "live"; live: LiveLine };
+
+// Các dòng thanh phụ đề vẽ, theo thứ tự (spec 2026-10-10 §6.1; QĐ6 của kế hoạch 03):
+// - dòng đang nói ở chỗ của phụ đề nó nối tiếp (`extends`); không có thì ở chỗ phụ đề cùng `id` (lượt cuối đang chạy); không
+//   có nữa thì sau dòng cuối, theo `id`;
+// - phụ đề có `id` bằng `id` hay `extends` của một dòng đang nói thì tạm ẩn;
+// - hai dòng đang nói cùng một chỗ thì chỉ dòng mới nhất (id lớn nhất) hiện: nó nối tiếp câu của dòng kia nên đã có chữ của
+//   câu đó.
+// Đối tượng phụ đề và dòng đang nói giữ nguyên tham chiếu, để `OverlayLine` và `LiveLineView` (memo) không vẽ lại thừa.
+export function visibleRows(lines: readonly Subtitle[], live: readonly LiveLine[]): OverlayRow[] {
+  if (live.length === 0) return lines.map((line): OverlayRow => ({ kind: "line", line }));
+  const ids = new Set(lines.map((l) => l.id));
+  const anchored = new Map<number, LiveLine>();
+  const after: LiveLine[] = [];
+  for (const x of [...live].sort((a, b) => a.id - b.id)) {
+    const anchor = x.extends !== null && ids.has(x.extends) ? x.extends : ids.has(x.id) ? x.id : null;
+    if (anchor === null) after.push(x);
+    else anchored.set(anchor, x);
+  }
+  const hidden = new Set(live.flatMap((x) => (x.extends === null ? [x.id] : [x.id, x.extends])));
+  const rows: OverlayRow[] = [];
+  for (const line of lines) {
+    const x = anchored.get(line.id);
+    if (x) rows.push({ kind: "live", live: x });
+    else if (!hidden.has(line.id)) rows.push({ kind: "line", line });
+  }
+  for (const x of after) rows.push({ kind: "live", live: x });
+  return rows;
+}
+
 export interface OverlayStoreState {
   view: OverlayView | null;
   status: AppStatus | null;
   lines: Subtitle[];
+  // Dòng đang nói (spec 2026-10-10 §6.1), xếp theo `id`; chỉ thanh phụ đề có (QĐ5).
+  live: LiveLine[];
   // Mức âm lượng vào gần nhất (RMS), cho chỉ báo "đang nghe"; 0 khi phiên không chạy.
   level: number;
   init(): Promise<() => void>;
@@ -52,20 +111,28 @@ export function createOverlayStore(ipc: Ipc) {
     view: null,
     status: null,
     lines: [],
+    live: [],
     level: 0,
     async init() {
       const offs = await Promise.all([
         ipc.listen("overlay://view", (view) => set({ view })),
-        ipc.listen("subtitle://upsert", (subtitle) => set({ lines: upsertLine(get().lines, subtitle) })),
+        ipc.listen("subtitle://upsert", (subtitle) =>
+          set({ lines: upsertLine(get().lines, subtitle), live: settleLive(get().live, subtitle) }),
+        ),
         ipc.listen("subtitle://delta", (delta) => set({ lines: appendDelta(get().lines, delta) })),
+        ipc.listen("subtitle://live", (line) => set({ live: applyLive(get().live, get().lines, line) })),
+        ipc.listen("subtitle://live-end", (end) => set({ live: endLive(get().live, end.id) })),
         ipc.listen("audio://level", (level) => set({ level })),
-        // Trạng thái app (cùng `rev` như cửa sổ chính): bỏ trạng thái cũ tới muộn; phiên mới bắt đầu thì xóa phụ đề cũ.
+        // Trạng thái app (cùng `rev` như cửa sổ chính): bỏ trạng thái cũ tới muộn; phiên mới bắt đầu thì xóa phụ đề cũ. Dòng
+        // đang nói chỉ có khi phiên đang chạy: phiên mới, phiên dừng hay lỗi thì bỏ hết (engine đã gửi `live-end` khi dừng;
+        // đây là lưới an toàn, spec 2026-10-10 §6.2).
         ipc.listen("app://status", (status) => {
           const prev = get().status;
           if (prev && status.rev < prev.rev) return;
           const fresh = status.session === "starting" && prev?.session !== "starting";
           const level = status.session === "running" ? get().level : 0;
-          set(fresh ? { status, lines: [], level } : { status, level });
+          const live = status.session === "running" || get().live.length === 0 ? get().live : [];
+          set(fresh ? { status, lines: [], live, level } : { status, live, level });
         }),
       ]);
       // Cài đặt mới hơn đã tới qua `overlay://view` trong lúc chờ thì giữ bản đó (N-3 của review 02 lần 2).
