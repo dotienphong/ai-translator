@@ -245,7 +245,7 @@ impl Settings {
                 positions: BTreeMap::new(),
                 last_monitor: None,
             },
-            translate_while_speaking: true,
+            translate_while_speaking: false,
             model_tier: None,
             hotkeys: Hotkeys {
                 toggle_session: "Ctrl+Alt+T".into(),
@@ -399,8 +399,8 @@ mod tests {
         );
         assert_eq!(vi.update_channel, UpdateChannel::Stable);
         assert!(
-            vi.translate_while_speaking,
-            "dịch trong lúc người nói chưa dừng mặc định bật (spec 2026-10-10 §6.3)"
+            !vi.translate_while_speaking,
+            "dịch trong lúc người nói chưa dừng mặc định tắt (spec 2026-10-10 §6.3)"
         );
         assert_eq!(
             vi.hotkeys.bindings().map(|(_, a)| a.to_string()),

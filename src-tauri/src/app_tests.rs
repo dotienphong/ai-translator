@@ -341,28 +341,28 @@ fn subtitle_colors_reach_the_overlay_at_once() {
     );
 }
 
-/// Spec 2026-10-10 §6.1, §6.3: công tắc "Dịch trong lúc người nói chưa dừng" mặc định bật, được ghi vào file, và thanh phụ
+/// Spec 2026-10-10 §6.1, §6.3: công tắc "Dịch trong lúc người nói chưa dừng" mặc định tắt, được ghi vào file, và thanh phụ
 /// đề biết ngay qua `overlay://view` (để thôi làm nhạt cả dòng phụ đề tạm khi chế độ có hiệu lực).
 #[test]
-fn the_live_switch_is_on_by_default_and_reaches_the_overlay() {
+fn the_live_switch_is_off_by_default_and_reaches_the_overlay() {
     let app = mock_app();
     let main = window(&app, "main");
     let overlay = window(&app, "overlay");
     let settings = invoke(&main, "get_settings", json!({})).unwrap();
-    assert_eq!(settings["translateWhileSpeaking"], true);
+    assert_eq!(settings["translateWhileSpeaking"], false);
     let view = invoke(&overlay, "get_overlay_view", json!({})).unwrap();
-    assert_eq!(view["translateWhileSpeaking"], true);
+    assert_eq!(view["translateWhileSpeaking"], false);
     let views = record(&app, crate::events::OVERLAY_VIEW);
     let settings = invoke(
         &main,
         "update_settings",
-        json!({ "patch": { "translateWhileSpeaking": false } }),
+        json!({ "patch": { "translateWhileSpeaking": true } }),
     )
     .unwrap();
-    assert_eq!(settings["translateWhileSpeaking"], false);
+    assert_eq!(settings["translateWhileSpeaking"], true);
     let last = views.lock().unwrap().last().cloned().unwrap();
-    assert_eq!(last["translateWhileSpeaking"], false);
-    assert_eq!(last_saved(&app, "translateWhileSpeaking"), Some(json!(false)));
+    assert_eq!(last["translateWhileSpeaking"], true);
+    assert_eq!(last_saved(&app, "translateWhileSpeaking"), Some(json!(true)));
 }
 
 /// Kéo cạnh trên macOS (§4.4): app tự đặt khung theo con trỏ, không nhỏ hơn 320 × 80 điểm; nhả chuột thì nhớ kích thước
@@ -2160,6 +2160,12 @@ fn live_lines_reach_only_the_overlay_and_follow_the_switch_mid_session() {
     let ends = heard(&overlay, SUBTITLE_LIVE_END);
     let (lives_to_main, ends_to_main) = (heard(&main, SUBTITLE_LIVE), heard(&main, SUBTITLE_LIVE_END));
     let upserts = record(&app, SUBTITLE_UPSERT);
+    invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "translateWhileSpeaking": true } }),
+    )
+    .unwrap();
     invoke(&main, "toggle_session", json!({})).unwrap();
     wait_until("có dòng đang nói", || !lives.lock().unwrap().is_empty());
     wait_until("có lệnh gỡ dòng đang nói", || !ends.lock().unwrap().is_empty());
@@ -2233,12 +2239,21 @@ fn a_slow_machine_sends_no_live_lines() {
     let overlay = window(&app, "overlay");
     let lives = heard(&overlay, SUBTITLE_LIVE);
     let upserts = record(&app, SUBTITLE_UPSERT);
+    invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "translateWhileSpeaking": true } }),
+    )
+    .unwrap();
     invoke(&main, "toggle_session", json!({})).unwrap();
     wait_until("hai câu dịch xong", || {
         upserts.lock().unwrap().iter().filter(|s| s["status"] == "done").count() >= 2
     });
     invoke(&main, "toggle_session", json!({})).unwrap();
-    assert!(lives.lock().unwrap().is_empty(), "máy chưa đủ sức: dịch sau mỗi câu");
+    assert!(
+        lives.lock().unwrap().is_empty(),
+        "công tắc bật nhưng máy chưa đủ sức: dịch sau mỗi câu"
+    );
 }
 
 /// QĐ4 của kế hoạch 03: đổi công tắc "Dịch trong lúc người nói chưa dừng" trong lúc phiên đang chuẩn bị (nạp model, tới 180

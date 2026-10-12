@@ -1635,10 +1635,15 @@ mod tests {
     #[test]
     fn the_engine_gets_the_machine_and_the_live_switch() {
         let mut settings = Settings::defaults(UiLanguage::Vi);
+        assert!(
+            !settings.translate_while_speaking,
+            "mặc định: tắt (spec 2026-10-10 §6.3)"
+        );
+        settings.translate_while_speaking = true;
         let cfg = engine_config(&settings, PipelineConfig::default(), 0, SharedGlossary::default(), true);
         assert!(
             cfg.streaming_supported && cfg.streaming_enabled,
-            "mặc định: bật, máy đủ sức"
+            "công tắc bật, máy đủ sức"
         );
         assert_eq!(cfg.pipeline.segmenter.end_silence_ms, 50);
         let cfg = engine_config(

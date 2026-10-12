@@ -49,7 +49,7 @@ Không đổi model, giao thức `asr-protocol`, license server, gói hay hạn 
 | # | Hạng mục | Quyết định |
 |---|---|---|
 | QĐ1 | Kiểu hiện | Hai tầng: phần ổn định giữ độ đậm bình thường, phần tạm nhạt hơn và có thể đổi. Khi người nói ngừng, bản dịch cả câu thay vào. |
-| QĐ2 | Máy yếu | Tự động theo sức máy: tự giãn nhịp; không theo kịp thì tự về cách hiện nay. Có công tắc trong Cài đặt, mặc định bật. |
+| QĐ2 | Máy yếu | Tự động theo sức máy: tự giãn nhịp; không theo kịp thì tự về cách hiện nay. Có công tắc trong Cài đặt, mặc định tắt. |
 | QĐ3 | Cách làm | Dùng model hiện có, chép từng phần đoạn đang mở. Không đổi model. Lượt cuối giữ nguyên như hiện nay. |
 | QĐ4 | Ngắt câu ở chế độ này | 50 ms, chốt ở cổng sau bước 2 (2026-10-12) sau khi đo các ngưỡng 50, 200, 400 và 600 ms (`bench/2026-10-10-do-tre/results/buoc2-cong.md`). |
 | QĐ5 | Nơi hiện | Dòng đang nói chỉ có trên thanh phụ đề. Cửa sổ chính, bản chép lời, lịch sử và xuất file chỉ chứa bản cuối. |
@@ -216,7 +216,7 @@ Không đổi model, giao thức `asr-protocol`, license server, gói hay hạn 
 
 ### 6.3 Cài đặt
 
-- **Công tắc:** Cài đặt › Phụ đề thêm công tắc **"Dịch trong lúc người nói chưa dừng"** (`translateWhileSpeaking`), mặc định bật. Đổi khi đang dịch thì có tác dụng từ đoạn kế tiếp.
+- **Công tắc:** Cài đặt › Phụ đề thêm công tắc **"Dịch trong lúc người nói chưa dừng"** (`translateWhileSpeaking`), mặc định tắt. Đổi khi đang dịch thì có tác dụng từ đoạn kế tiếp.
 - **Ghi chú dưới công tắc** khi chế độ bị tắt từ đầu (§5) hoặc vừa tự tắt:
   - vi: "Máy này chưa đủ nhanh, app đang dịch sau mỗi câu."
   - en: "This computer isn't fast enough, so the app translates after each sentence."
