@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { en, placeholders, vi, type MessageKey } from "./index";
 import { ja } from "./ja";
+import { ko } from "./ko";
 import { zh } from "./zh";
 
 // Từ điển của ba ngôn ngữ giao diện thêm ngày 2026-10-12 (spec 2026-10-12-ui-ja-zh-ko-design.md). Từ điển nào xong thì
@@ -8,7 +9,7 @@ import { zh } from "./zh";
 type Dict = Record<MessageKey, string>;
 type NewLang = "ja" | "zh" | "ko";
 
-const DICTS: Partial<Record<NewLang, Dict>> = { ja, zh };
+const DICTS: Partial<Record<NewLang, Dict>> = { ja, ko, zh };
 
 const KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
 const HAN = /\p{Script=Han}/u;
