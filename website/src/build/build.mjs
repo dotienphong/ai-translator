@@ -77,7 +77,7 @@ function keyFacts() {
     `- Current version: ${SITE.version} (released ${SITE.releaseDate}), official release for macOS and Windows`,
     `- Platforms: macOS 14.2+ on Apple Silicon (M1 or later); Windows 10/11 64-bit (x64) with AVX2. Not supported: Intel Macs, Windows ARM64`,
     `- Requirements: 8 GB RAM minimum (16 GB recommended); models download once, 1.3 GB (Lite pack) or 2.5 GB (Standard pack)`,
-    `- Languages (speech and translation): English, Chinese, Japanese, Korean, Vietnamese (tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn, tiếng Việt); interface in Vietnamese and English`,
+    `- Languages (speech and translation): English, Chinese, Japanese, Korean, Vietnamese (tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn, tiếng Việt); interface in Vietnamese, English, Japanese, Chinese (Simplified), Korean`,
     `- Measured latency: median 0.76–1.03 s with the Standard pack on a Mac M4 Pro 24 GB (macOS 26); preliminary Windows test on one laptop with integrated graphics: median 1.3–2.6 s (Lite), 2.7–5.4 s (Standard)`,
     `- Pricing: ${free.nameEn} trial ${free.days} days (${free.minutesPerDay} min/day, ${vnd(0)}); ${monthly.nameEn} ${vnd(monthly.priceVnd)} (${monthly.minutesPerCycle / 60} h per ${monthly.days} days); ${yearly.nameEn} ${vnd(yearly.priceVnd)} (unlimited, ${yearly.days} days); prepaid by VietQR in VND, no auto-renewal; payment only from Vietnamese bank accounts`,
     `- Install: macOS \`curl -fsSL ${SITE.origin}/install.sh | bash\`; Windows \`irm ${SITE.origin}/install.ps1 | iex\``,

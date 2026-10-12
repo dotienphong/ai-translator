@@ -42,7 +42,7 @@ ${sectionHead({ eyebrow: "Before you start", title: "What you need", center: tru
 <div class="reveal">${facts([
   ["Platform", "macOS 14.2 or later on Apple Silicon and Windows 10/11 x64<small>Intel Macs and Windows ARM64: not supported</small>"],
   ["Computer", "At least 8 GB of RAM, 16 GB recommended<small>One-time model download: 1.3 GB (Lite) or 2.5 GB (Standard)</small>"],
-  ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>App interface: English and Vietnamese</small>"],
+  ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>App interface: English, Vietnamese, Japanese, Chinese (Simplified), Korean</small>"],
   ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR, no automatic renewal</small>"],
 ])}</div>
 </div></section>

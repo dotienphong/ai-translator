@@ -35,7 +35,7 @@ ${pageHero({
   ["Provider", "Đỗ Tiến Phong (individual)<small>Independent developer</small>"],
   ["Status", `${RELEASE.en}<small>macOS 14.2+ (Apple Silicon) and Windows 10/11 64-bit</small>`],
   ["Support", `${MAIL}<small>You can write in Vietnamese or English</small>`],
-  ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>The app interface is in Vietnamese and English</small>"],
+  ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>The app interface is in Vietnamese, English, Japanese, Chinese (Simplified) and Korean</small>"],
   ["License", "Commercial product, not open source<small>Uses open-source components from third parties</small>"],
 ])}</div>
 </div></section>

@@ -306,8 +306,8 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 14018,
-  "description": "Bước 1 trong 9 khi mở app lần đầu: chọn ngôn ngữ giao diện Tiếng Việt hoặc English."
+  "bytes": 16520,
+  "description": "Bước 1 trong 9 khi mở app lần đầu: chọn ngôn ngữ giao diện trong năm ngôn ngữ (Tiếng Việt, English, 日本語, 中文, 한국어)."
  },
  {
   "file": "app-onboarding-1.en.webp",
@@ -316,8 +316,8 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 14694,
-  "description": "Step 1 of 9 on first launch: choosing the interface language, Tiếng Việt or English."
+  "bytes": 17112,
+  "description": "Step 1 of 9 on first launch: choosing the interface language among five (Tiếng Việt, English, 日本語, 中文, 한국어)."
  },
  {
   "file": "app-onboarding-2.vi.webp",

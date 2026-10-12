@@ -35,7 +35,7 @@ ${pageHero({
   ["Bên cung cấp", "Đỗ Tiến Phong (cá nhân)<small>Nhà phát triển cá nhân</small>"],
   ["Trạng thái", `${RELEASE.vi}<small>macOS 14.2+ (Apple Silicon) và Windows 10/11 64-bit</small>`],
   ["Hỗ trợ", `${MAIL}<small>Bạn có thể viết bằng tiếng Việt hoặc English</small>`],
-  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Giao diện app có tiếng Việt và English</small>"],
+  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Giao diện app có tiếng Việt, English, 日本語, 中文 (giản thể) và 한국어</small>"],
   ["Giấy phép", "Sản phẩm thương mại, không phải mã nguồn mở<small>Có dùng các thành phần mã nguồn mở của bên thứ ba</small>"],
 ])}</div>
 </div></section>

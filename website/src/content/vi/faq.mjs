@@ -60,7 +60,7 @@ const GROUPS = [
     items: [
       {
         q: "AI Translator hỗ trợ những ngôn ngữ nào?",
-        a: `<p>Năm ngôn ngữ, cho cả âm thanh nguồn và bản dịch: English, 中文 (Trung), 日本語 (Nhật), 한국어 (Hàn) và Tiếng Việt. Giao diện app có tiếng Việt và English.</p><p>App tự nhận diện ngôn ngữ đang nói trong các ngôn ngữ bạn chọn, hoặc bạn khóa một ngôn ngữ cho chắc. Chất lượng dịch đã được đo cho tám chiều có tiếng Việt (Anh, Trung, Nhật, Hàn sang Việt, và Việt sang Anh, Trung, Nhật, Hàn). Các chiều không có tiếng Việt vẫn chạy được nhưng chúng tôi chưa đo điểm chất lượng.</p>`,
+        a: `<p>Năm ngôn ngữ, cho cả âm thanh nguồn và bản dịch: English, 中文 (Trung), 日本語 (Nhật), 한국어 (Hàn) và Tiếng Việt. Giao diện app có tiếng Việt, English, 日本語, 中文 (giản thể) và 한국어; lần đầu mở app, giao diện theo ngôn ngữ của máy bạn.</p><p>App tự nhận diện ngôn ngữ đang nói trong các ngôn ngữ bạn chọn, hoặc bạn khóa một ngôn ngữ cho chắc. Chất lượng dịch đã được đo cho tám chiều có tiếng Việt (Anh, Trung, Nhật, Hàn sang Việt, và Việt sang Anh, Trung, Nhật, Hàn). Các chiều không có tiếng Việt vẫn chạy được nhưng chúng tôi chưa đo điểm chất lượng.</p>`,
       },
       {
         q: "Sẽ có thêm ngôn ngữ khác không?",

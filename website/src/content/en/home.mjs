@@ -29,7 +29,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Which languages does AI Translator support?",
-    a: `<p>Five languages, for both the source audio and the translation: English, Chinese (中文), Japanese (日本語), Korean (한국어) and Vietnamese (Tiếng Việt). We plan to add more languages in the future (no date yet). The app interface is available in Vietnamese and English.</p>`,
+    a: `<p>Five languages, for both the source audio and the translation: English, Chinese (中文), Japanese (日本語), Korean (한국어) and Vietnamese (Tiếng Việt). We plan to add more languages in the future (no date yet). The app interface is available in Vietnamese, English, Japanese, Chinese (Simplified) and Korean.</p>`,
   },
   {
     q: "Do I need to create an account?",
@@ -181,7 +181,7 @@ ${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech 
 ${feature({ icon: "video", title: "Any meeting app, no bot", text: "There is no bot to invite and no plugin to install. Anything that plays sound on your computer can become subtitles." })}
 ${feature({ icon: "book", title: "Glossary", text: "Teach it your names, product names and industry terms. Terms are passed to the translator as hints (up to 500, with CSV import and export; a Pro feature)." })}
 ${feature({ icon: "history", title: "History and export", text: "Save transcripts on your computer, encrypted, and export them as TXT, SRT or Markdown. History is off by default, so you decide (a Pro feature)." })}
-${feature({ icon: "languages", title: "Five languages", text: "English, Chinese (中文), Japanese (日本語), Korean (한국어) and Vietnamese (Tiếng Việt), translated between any two of them. We plan to add more languages in the future. The app interface is available in Vietnamese and English." })}
+${feature({ icon: "languages", title: "Five languages", text: "English, Chinese (中文), Japanese (日本語), Korean (한국어) and Vietnamese (Tiếng Việt), translated between any two of them. We plan to add more languages in the future. The app interface is available in Vietnamese, English, Japanese, Chinese (Simplified) and Korean." })}
 </div>
 <div class="stats reveal">
 <div class="stat"><b>&lt; 1.1 s</b><span>median delay from the moment a speaker finishes a sentence to the full translation appearing (Mac M4 Pro, Standard pack)</span></div>

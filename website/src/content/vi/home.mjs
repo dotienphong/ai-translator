@@ -29,7 +29,7 @@ export const HOME_FAQ = [
   },
   {
     q: "AI Translator hỗ trợ những ngôn ngữ nào?",
-    a: "<p>Năm ngôn ngữ cho cả âm thanh nguồn và bản dịch: tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어) và tiếng Việt. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai (chưa có lịch cụ thể). Giao diện app có tiếng Việt và English.</p>",
+    a: "<p>Năm ngôn ngữ cho cả âm thanh nguồn và bản dịch: tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어) và tiếng Việt. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai (chưa có lịch cụ thể). Giao diện app có tiếng Việt, English, 日本語, 中文 (giản thể) và 한국어.</p>",
   },
   {
     q: "Tôi có cần tạo tài khoản không?",
@@ -179,7 +179,7 @@ ${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng 
 ${feature({ icon: "video", title: "Mọi app họp, không bot", text: "Không cần mời bot hay cài plugin vào cuộc họp. Mọi âm thanh phát trên máy đều có thể thành phụ đề." })}
 ${feature({ icon: "book", title: "Từ điển thuật ngữ", text: "Thêm tên riêng, tên sản phẩm và thuật ngữ chuyên ngành làm gợi ý cho bộ dịch (không bảo đảm đúng mọi lần). Tối đa 500 thuật ngữ, nhập xuất CSV (tính năng Pro)." })}
 ${feature({ icon: "history", title: "Lịch sử và xuất file", text: "Lưu bản chép lời trên máy, mã hóa, xuất ra TXT, SRT hoặc Markdown. Lịch sử mặc định tắt, bạn quyết định (tính năng Pro)." })}
-${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어) và tiếng Việt, theo mọi chiều. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai. Giao diện app có tiếng Việt và English." })}
+${feature({ icon: "languages", title: "Năm ngôn ngữ", text: "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어) và tiếng Việt, theo mọi chiều. Chúng tôi dự định bổ sung thêm ngôn ngữ trong tương lai. Giao diện app có tiếng Việt, English, 日本語, 中文 (giản thể) và 한국어." })}
 </div>
 <div class="stats reveal">
 <div class="stat"><b>&lt; 1,1 giây</b><span>độ trễ trung vị từ lúc người nói dừng câu tới khi hiện đủ bản dịch (Mac M4 Pro, gói model Chuẩn)</span></div>

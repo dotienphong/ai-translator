@@ -18,7 +18,7 @@ const toc = [
 // Plain text for the HowTo structured data; the visible version is in body.
 const HOWTO_STEPS = [
   { name: "Install the app and open it", text: "On macOS, paste the install command (curl -fsSL https://aitranslator.io.vn/install.sh | bash) into Terminal: the app is downloaded, verified and opened directly, with no Open Anyway. On Windows, paste the install command (irm https://aitranslator.io.vn/install.ps1 | iex) into PowerShell; if you use an .exe downloaded in a browser and SmartScreen warns you, click More info, then Run anyway." },
-  { name: "Choose the interface language", text: "Choose Tiếng Việt or English and click Next. This also sets your default translation language." },
+  { name: "Choose the interface language", text: "The choice is preselected to your computer's language; change it if you like and click Next. This also sets your default translation language." },
   { name: "Accept the terms", text: "Read the License Agreement (EULA) and the Privacy Policy, tick the box and click Next. One internet connection is needed to start the Free trial." },
   { name: "Choose and download a model", text: "Pick the Standard pack (about 2.5 GB) or the Lite pack (about 1.3 GB) as the app recommends, and wait for the download." },
   { name: "Allow system audio recording (macOS only)", text: "When macOS asks for System Audio Recording permission, allow it. The app does not use the microphone. Windows has no such step." },
@@ -94,11 +94,11 @@ ${callout({ title: "Using Windows?", text: "The steps below are the same on Wind
 <p>On first launch the app shows a setup wizard of 9 screens in a card in the middle of the window: the top shows the logo, “Step 1 of 9” and a progress bar, and the bottom has <strong>Back</strong> and <strong>Next</strong>. This guide groups them into seven steps. Windows has no audio permission screen, so its wizard has 8 screens; the step numbers under the screenshots below follow macOS.</p>
 
 <h3>Step 1. Choose the interface language</h3>
-<p>Choose <strong>Tiếng Việt</strong> or <strong>English</strong> and click Next. This also sets the language you read subtitles in; you can change it again in step 5.</p>
-${appShot({ slug: "app-onboarding-1", lang: "en", alt: "First screen of the setup wizard with two options, Tiếng Việt and English, for the interface language", caption: "Step 1 of 9: interface language." })}
+<p>The choice is preselected to your computer's language: <strong>Tiếng Việt</strong>, <strong>English</strong>, <strong>日本語</strong>, <strong>中文</strong> (Simplified Chinese) or <strong>한국어</strong>; if your computer uses another language, English is preselected. Change it if you like and click Next. This also sets the language you read subtitles in; you can change it again in step 5.</p>
+${appShot({ slug: "app-onboarding-1", lang: "en", alt: "First screen of the setup wizard with five interface language options: Tiếng Việt, English, 日本語, 中文 and 한국어", caption: "Step 1 of 9: interface language." })}
 
 <h3>Step 2. Accept the terms</h3>
-<p>Read the License Agreement (EULA) and the Privacy Policy, then tick “I have read and agree…”. Until you do, Next stays disabled. When you click Next, the app registers this computer's Free trial with the server, so you need an internet connection once.</p>
+<p>Read the License Agreement (EULA) and the Privacy Policy, then tick “I have read and agree…”. Until you do, Next stays disabled. Both documents come in Vietnamese and English; if the interface is Japanese, Chinese or Korean, the app shows the English version with a short note. When you click Next, the app registers this computer's Free trial with the server, so you need an internet connection once.</p>
 ${appShot({ slug: "app-onboarding-2", lang: "en", alt: "Terms of use step with two collapsible documents and the required consent checkbox", caption: "Step 2 of 9: terms of use." })}
 
 <h3>Step 3. Choose and download a model</h3>

@@ -18,7 +18,7 @@ const toc = [
 // Văn bản thuần cho dữ liệu có cấu trúc HowTo; phần hiển thị nằm trong body.
 const HOWTO_STEPS = [
   { name: "Cài app và mở lần đầu", text: "Trên macOS, dán dòng lệnh cài (curl -fsSL https://aitranslator.io.vn/install.sh | bash) vào Terminal: app được tải, kiểm tra và mở thẳng, không cần Open Anyway. Trên Windows, dán lệnh cài (irm https://aitranslator.io.vn/install.ps1 | iex) vào PowerShell; nếu bạn dùng file .exe tải bằng trình duyệt và SmartScreen cảnh báo, bấm More info rồi Run anyway." },
-  { name: "Chọn ngôn ngữ giao diện", text: "Chọn Tiếng Việt hoặc English rồi bấm Tiếp. Lựa chọn này cũng đặt ngôn ngữ đích mặc định." },
+  { name: "Chọn ngôn ngữ giao diện", text: "Ô chọn sẵn ngôn ngữ của máy bạn; đổi nếu muốn rồi bấm Tiếp. Lựa chọn này cũng đặt ngôn ngữ đích mặc định." },
   { name: "Đồng ý điều khoản", text: "Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, tick ô đồng ý rồi bấm Tiếp. Cần mạng một lần để bắt đầu dùng thử Free." },
   { name: "Chọn và tải model", text: "Chọn gói model Chuẩn (khoảng 2,5 GB) hoặc gói model Nhẹ (khoảng 1,3 GB) theo đề xuất của app và chờ tải xong." },
   { name: "Cho phép ghi âm thanh hệ thống (chỉ macOS)", text: "Khi macOS hỏi quyền Ghi âm thanh hệ thống, chọn cho phép. App không dùng micro. Trên Windows không có bước này." },
@@ -94,11 +94,11 @@ ${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống n
 <p>Lần đầu mở, app hiện trình hướng dẫn 9 màn hình trong một thẻ ở giữa cửa sổ: đầu thẻ có logo, dòng “Bước 1/9” và thanh tiến trình, chân thẻ có nút <strong>Quay lại</strong> và <strong>Tiếp</strong>. Bài này gộp thành bảy bước. Trên Windows không có màn hình quyền ghi âm nên trình hướng dẫn có 8 màn hình; số bước ghi dưới các ảnh chụp là theo macOS.</p>
 
 <h3>Bước 1. Chọn ngôn ngữ giao diện</h3>
-<p>Chọn <strong>Tiếng Việt</strong> hoặc <strong>English</strong> rồi bấm Tiếp. Lựa chọn này cũng đặt luôn ngôn ngữ bạn muốn đọc phụ đề; bạn đổi lại được ở bước 5.</p>
-${appShot({ slug: "app-onboarding-1", lang: "vi", alt: "Màn hình đầu tiên của trình hướng dẫn: hai lựa chọn Tiếng Việt và English cho ngôn ngữ giao diện", caption: "Bước 1/9: ngôn ngữ giao diện." })}
+<p>Ô chọn sẵn ngôn ngữ của máy bạn: <strong>Tiếng Việt</strong>, <strong>English</strong>, <strong>日本語</strong>, <strong>中文</strong> (chữ giản thể) hoặc <strong>한국어</strong>; máy dùng ngôn ngữ khác thì chọn sẵn English. Đổi nếu muốn rồi bấm Tiếp. Lựa chọn này cũng đặt luôn ngôn ngữ bạn muốn đọc phụ đề; bạn đổi lại được ở bước 5.</p>
+${appShot({ slug: "app-onboarding-1", lang: "vi", alt: "Màn hình đầu tiên của trình hướng dẫn: năm lựa chọn ngôn ngữ giao diện (Tiếng Việt, English, 日本語, 中文, 한국어)", caption: "Bước 1/9: ngôn ngữ giao diện." })}
 
 <h3>Bước 2. Đồng ý điều khoản</h3>
-<p>Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, rồi tick ô “Tôi đã đọc và đồng ý…”. Chưa tick thì nút Tiếp bị khóa. Khi bạn bấm Tiếp, app đăng ký dùng thử Free của máy với máy chủ, nên cần có mạng một lần.</p>
+<p>Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, rồi tick ô “Tôi đã đọc và đồng ý…”. Chưa tick thì nút Tiếp bị khóa. Hai văn bản này có bản tiếng Việt và English; nếu giao diện là 日本語, 中文 hay 한국어 thì app hiện bản English, kèm một dòng báo. Khi bạn bấm Tiếp, app đăng ký dùng thử Free của máy với máy chủ, nên cần có mạng một lần.</p>
 ${appShot({ slug: "app-onboarding-2", lang: "vi", alt: "Bước Điều khoản sử dụng với hai văn bản gập được và ô tick đồng ý bắt buộc", caption: "Bước 2/9: điều khoản sử dụng." })}
 
 <h3>Bước 3. Chọn và tải model</h3>

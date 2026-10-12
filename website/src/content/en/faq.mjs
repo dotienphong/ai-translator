@@ -60,7 +60,7 @@ const GROUPS = [
     items: [
       {
         q: "Which languages does it support?",
-        a: `<p>Five languages, for both the source audio and the translation: English, 中文 (Chinese), 日本語 (Japanese), 한국어 (Korean) and Tiếng Việt (Vietnamese). The app interface is in Vietnamese and English.</p><p>The app detects the spoken language among the ones you tick, or you can lock a single language. Translation quality has been measured for the eight directions that involve Vietnamese (English, Chinese, Japanese and Korean into Vietnamese, and Vietnamese into English, Chinese, Japanese and Korean). The other directions run, but we have not measured a quality score for them.</p>`,
+        a: `<p>Five languages, for both the source audio and the translation: English, 中文 (Chinese), 日本語 (Japanese), 한국어 (Korean) and Tiếng Việt (Vietnamese). The app interface is in Vietnamese, English, Japanese, Chinese (Simplified) and Korean; on first launch it follows your computer's language.</p><p>The app detects the spoken language among the ones you tick, or you can lock a single language. Translation quality has been measured for the eight directions that involve Vietnamese (English, Chinese, Japanese and Korean into Vietnamese, and Vietnamese into English, Chinese, Japanese and Korean). The other directions run, but we have not measured a quality score for them.</p>`,
       },
       {
         q: "Will more languages be added?",
