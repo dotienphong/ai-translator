@@ -115,6 +115,58 @@ const SUITES = {
       await page.close();
     }
   },
+
+  // Cài đặt › Phụ đề (spec 2026-10-10 §6.3): công tắc, ghi chú máy chưa đủ nhanh, khung xem trước hai tầng.
+  async settings(browser, lang) {
+    const NOTE = {
+      vi: "Máy này chưa đủ nhanh, app đang dịch sau mỗi câu.",
+      en: "This computer isn't fast enough, so the app translates after each sentence.",
+    };
+    const url = (q) => `${BASE}/?screen=settings&group=subtitles${q}&lang=${lang}`;
+    const size = { width: 960, height: 640, dpr: 1.5 };
+    const SWITCH = `document.querySelector("#translate-while-speaking")`;
+    const TAILS = `document.querySelectorAll(".subtitle-preview .tail").length`;
+    const NOTE_TEXT = `(document.querySelector(".field-note")?.textContent ?? null)`;
+
+    let page = await open(browser, url(""), size);
+    let name = `settings-on.${lang}`;
+    await check(name, page, `${SWITCH}.checked === true`, "công tắc mặc định bật");
+    await check(name, page, `${TAILS} === 2`, "khung xem trước: câu gốc và bản dịch đều hai tầng");
+    await check(name, page, `${opacity(".subtitle-preview .tail")} === "0.65"`, "phần tạm nhạt 0,65");
+    await check(name, page, `${NOTE_TEXT} === null`, "máy đủ nhanh: không có ghi chú");
+    await shot(name, page);
+    await page.click("#translate-while-speaking");
+    await sleep(300);
+    name = `settings-off.${lang}`;
+    await check(name, page, `${SWITCH}.checked === false`, "bấm công tắc thì tắt");
+    await check(name, page, `${TAILS} === 0`, "tắt thì khung xem trước là câu mẫu thường");
+    await shot(name, page);
+    await page.close();
+
+    page = await open(browser, url("&slow=1"), size);
+    name = `settings-slow.${lang}`;
+    await check(name, page, `${NOTE_TEXT} === ${JSON.stringify(NOTE[lang])}`, "ghi chú máy chưa đủ nhanh, đúng chữ của spec");
+    await check(name, page, `${TAILS} === 0`, "máy chưa đủ nhanh: khung xem trước là câu mẫu thường");
+    await shot(name, page);
+    await page.close();
+
+    page = await open(browser, url("&slow=1&tws=0"), size);
+    name = `settings-slow-off.${lang}`;
+    await check(name, page, `${SWITCH}.checked === false && ${NOTE_TEXT} === null`, "tắt công tắc thì không ghi chú");
+    await page.close();
+
+    page = await open(browser, url("&theme=dark"), { ...size, dark: true });
+    name = `settings-on.dark.${lang}`;
+    await check(name, page, `${TAILS} === 2`, "giao diện tối: mẫu hai tầng");
+    await shot(name, page);
+    await page.close();
+
+    page = await open(browser, url("&slow=1&theme=dark"), { ...size, dark: true });
+    name = `settings-slow.dark.${lang}`;
+    await check(name, page, `${NOTE_TEXT} === ${JSON.stringify(NOTE[lang])}`, "giao diện tối: ghi chú");
+    await shot(name, page);
+    await page.close();
+  },
 };
 
 const only = process.argv[2];

@@ -703,6 +703,13 @@ fieldset {
   font-size: 0.89rem;
 }
 
+/* Ghi chú dưới mô tả của một dòng cài đặt, ví dụ máy chưa đủ nhanh cho chế độ dịch trong lúc nói (spec 2026-10-10 §6.3). */
+.field-text .field-note {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--warning);
+}
+
 .field-control {
   display: flex;
   align-items: center;
@@ -1502,6 +1509,11 @@ fieldset {
 
 .subtitle-preview .main {
   font-weight: 500;
+}
+
+/* Mẫu dòng đang nói (spec 2026-10-10 §6.3): phần tạm nhạt như trên thanh phụ đề. */
+.subtitle-preview .tail {
+  opacity: 0.65;
 }
 
 /* ================================================================ nâng cấp */

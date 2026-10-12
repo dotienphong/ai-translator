@@ -2,14 +2,17 @@ import { useState } from "react";
 import { Field, FieldSet } from "../../../components/Field";
 import { Icon } from "../../../components/Icon";
 import type { BackgroundColor, TextColor } from "../../../lib/ipc";
-import { BACKGROUND_COLORS, TEXT_COLORS, overlayBackground } from "../../../lib/subtitleView";
+import { BACKGROUND_COLORS, TEXT_COLORS, streamingEffective, streamingNote } from "../../../lib/subtitleView";
 import { useApp, useT } from "../appStore";
 import { CommitRange } from "./CommitRange";
+import { SubtitlePreview } from "./SubtitlePreview";
 
-// Nhóm Cài đặt "Phụ đề" (§4.3, §6.9): cỡ chữ (14–48), màu chữ, màu nền (bảng màu có sẵn, mặc định chữ
-// trắng trên nền đen), độ mờ nền (0–100%), hiện câu gốc. Thanh phụ đề đổi ngay theo (`overlay://view`); nút "Hiện thanh
-// phụ đề" để xem thử khi chưa dịch. Mỗi ô màu là một nút radio, xem trước chữ "A" với màu chữ và màu nền sẽ ra.
-// Khung xem trước ở đầu nhóm vẽ một câu mẫu theo đúng cài đặt (cả lúc đang kéo thanh trượt, trước khi gửi).
+// Nhóm Cài đặt "Phụ đề" (§4.3, §6.9): công tắc "Dịch trong lúc người nói chưa dừng" (spec 2026-10-10 §6.3: mặc định bật, đổi
+// khi đang dịch thì áp dụng từ đoạn kế tiếp, kèm ghi chú khi máy chưa đủ nhanh), cỡ chữ (14–48), màu chữ, màu nền (bảng màu
+// có sẵn, mặc định chữ trắng trên nền đen), độ mờ nền (0–100%), hiện câu gốc. Thanh phụ đề đổi ngay theo (`overlay://view`);
+// nút "Hiện thanh phụ đề" để xem thử khi chưa dịch. Mỗi ô màu là một nút radio, xem trước chữ "A" với màu chữ và màu nền sẽ
+// ra. Khung xem trước ở đầu nhóm (`SubtitlePreview`) vẽ một câu mẫu theo đúng cài đặt (cả lúc đang kéo thanh trượt, trước khi
+// gửi), hai tầng khi chế độ dịch trong lúc nói có hiệu lực.
 export function SubtitleSettings() {
   const t = useT();
   const settings = useApp((s) => s.settings);
@@ -20,24 +23,41 @@ export function SubtitleSettings() {
   const [draftOpacity, setDraftOpacity] = useState<number | null>(null);
   if (!settings || !status) return null;
   const o = settings.overlay;
-  const fontSize = draftSize ?? o.fontSize;
-  const opacity = draftOpacity ?? o.opacity;
+  const slow = streamingNote(settings.translateWhileSpeaking, status);
   return (
     <>
-      <div className="subtitle-preview" role="img" aria-label={t("settings.subtitles.preview")}>
-        <div
-          className="bar"
-          style={{
-            fontSize: Math.min(fontSize, 34),
-            color: TEXT_COLORS[o.textColor],
-            background: overlayBackground(o.background, opacity),
-          }}
-        >
-          {o.showSource && <div className="src">{t("settings.subtitles.preview.source")}</div>}
-          <div className="main">{t("settings.subtitles.preview.text")}</div>
-        </div>
-      </div>
+      <SubtitlePreview
+        uiLanguage={settings.uiLanguage}
+        fontSize={draftSize ?? o.fontSize}
+        opacity={draftOpacity ?? o.opacity}
+        textColor={o.textColor}
+        background={o.background}
+        showSource={o.showSource}
+        live={streamingEffective(settings.translateWhileSpeaking, status)}
+      />
       <div className="card list">
+        <Field
+          label={t("settings.subtitles.whileSpeaking")}
+          htmlFor="translate-while-speaking"
+          hint={
+            <>
+              {t("settings.subtitles.whileSpeaking.hint")}
+              {slow && (
+                <span className="field-note" role="status">
+                  {t("settings.subtitles.whileSpeaking.slow")}
+                </span>
+              )}
+            </>
+          }
+        >
+          <input
+            id="translate-while-speaking"
+            className="switch"
+            type="checkbox"
+            checked={settings.translateWhileSpeaking}
+            onChange={(e) => void update({ translateWhileSpeaking: e.target.checked })}
+          />
+        </Field>
         <Field label={t("settings.subtitles.fontSize")} htmlFor="font-size">
           <CommitRange
             id="font-size"
