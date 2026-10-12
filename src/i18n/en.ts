@@ -215,6 +215,7 @@ export const en = {
   "legal.privacy": "Privacy Policy",
   "legal.loading": "Loading the document…",
   "legal.missing": "Could not load the document. Contact support@aitranslator.io.vn.",
+  "legal.fallbackNote": "This document is shown in {language}.",
   "debug.title": "Diagnostics",
   "debug.refresh": "Refresh",
   "debug.empty": "No finished session yet in this run of the app.",

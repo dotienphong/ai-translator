@@ -215,6 +215,7 @@ export const vi: Record<MessageKey, string> = {
   "legal.privacy": "Chính sách quyền riêng tư",
   "legal.loading": "Đang tải văn bản…",
   "legal.missing": "Không tải được văn bản. Liên hệ support@aitranslator.io.vn.",
+  "legal.fallbackNote": "Văn bản này đang hiển thị bằng {language}.",
   "debug.title": "Chẩn đoán",
   "debug.refresh": "Làm mới",
   "debug.empty": "Chưa có phiên nào kết thúc trong lần chạy này của app.",
