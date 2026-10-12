@@ -412,7 +412,8 @@ pub struct StreamingConfig {
     pub min_partial_speech_ms: u64,
     /// Từ lần chép từng phần trước phải có thêm chừng này tiếng nói (§4.1).
     pub min_new_speech_ms: u64,
-    /// Ngưỡng im lặng tối thiểu để đóng đoạn ở chế độ này (§4.7). Mặc định tạm 400; chốt ở cổng của kế hoạch 02.
+    /// Ngưỡng im lặng tối thiểu để đóng đoạn ở chế độ này (§4.7). 50 ms: QĐ4, chủ dự án chốt ở cổng của kế hoạch 02 ngày
+    /// 2026-10-12 (`bench/2026-10-10-do-tre/results/buoc2-cong.md`).
     pub end_silence_ms: u64,
     /// Số đơn vị cuối của bản chép chưa chốt: từ (§4.2) …
     pub src_holdback_words: usize,
@@ -447,9 +448,10 @@ impl Default for StreamingConfig {
         Self {
             min_partial_speech_ms: 1_000,
             min_new_speech_ms: 300,
-            end_silence_ms: 400,
+            end_silence_ms: 50,
             src_holdback_words: 1,
             src_holdback_chars: 2,
+            // Chốt ở cổng của kế hoạch 02 (spec 2026-10-10 §4.4).
             tgt_agree: vec![
                 LangAgree::new("en", 2, 1),
                 LangAgree::new("vi", 2, 1),
@@ -799,14 +801,16 @@ mod tests {
         }
     }
 
-    /// Ghim số của chế độ dịch trong lúc nói (spec 2026-10-10 §4–§5, H3 của kế hoạch 00). `end_silence_ms` là mặc định tạm
-    /// cho tới cổng của kế hoạch 02.
+    /// Ghim số của chế độ dịch trong lúc nói (spec 2026-10-10 §4–§5, H3 của kế hoạch 00). Các số đã chốt ở cổng của kế
+    /// hoạch 02 ngày 2026-10-12 (`bench/2026-10-10-do-tre/results/buoc2-cong.md`): đổi mặc định mà không sửa spec thì
+    /// test này đỏ.
     #[test]
     fn streaming_defaults_are_the_numbers_of_the_spec() {
         let s = StreamingConfig::default();
+        // QĐ4, chốt ở cổng của kế hoạch 02 (`bench/2026-10-10-do-tre/results/buoc2-cong.md`).
         assert_eq!(
             (s.min_partial_speech_ms, s.min_new_speech_ms, s.end_silence_ms),
-            (1_000, 300, 400)
+            (1_000, 300, 50)
         );
         assert_eq!((s.src_holdback_words, s.src_holdback_chars), (1, 2));
         let agree: Vec<(&str, usize, usize)> = s.tgt_agree.iter().map(|a| (a.lang.as_str(), a.n, a.k)).collect();

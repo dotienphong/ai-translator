@@ -3,7 +3,8 @@
 **Ngày:** 2026-10-10
 **Trạng thái:**
 - Chủ dự án đã duyệt thiết kế từng phần ngày 2026-10-10: kiểu hiện, máy yếu, cách làm, và ba phần (luồng xử lý; hiển thị và cài đặt; tự chỉnh, thứ tự làm, nghiệm thu).
-- Ngưỡng ngắt câu của chế độ mới chưa chốt; chốt ở cổng sau bước 2 (§9).
+- Ngưỡng ngắt câu của chế độ mới và (n, k) chốt ở cổng sau bước 2 ngày 2026-10-12 (QĐ4; số đo:
+  `bench/2026-10-10-do-tre/results/buoc2-cong.md`).
 - Làm trên nhánh `dich-trong-luc-noi`. Không merge vào `main` khi chủ dự án chưa cho phép.
 
 **Phạm vi:**
@@ -50,7 +51,7 @@ Không đổi model, giao thức `asr-protocol`, license server, gói hay hạn 
 | QĐ1 | Kiểu hiện | Hai tầng: phần ổn định giữ độ đậm bình thường, phần tạm nhạt hơn và có thể đổi. Khi người nói ngừng, bản dịch cả câu thay vào. |
 | QĐ2 | Máy yếu | Tự động theo sức máy: tự giãn nhịp; không theo kịp thì tự về cách hiện nay. Có công tắc trong Cài đặt, mặc định bật. |
 | QĐ3 | Cách làm | Dùng model hiện có, chép từng phần đoạn đang mở. Không đổi model. Lượt cuối giữ nguyên như hiện nay. |
-| QĐ4 | Ngắt câu ở chế độ này | Chốt sau khi đo các ngưỡng 50, 200, 400 và 600 ms ở bước 2 (§9). |
+| QĐ4 | Ngắt câu ở chế độ này | 50 ms, chốt ở cổng sau bước 2 (2026-10-12) sau khi đo các ngưỡng 50, 200, 400 và 600 ms (`bench/2026-10-10-do-tre/results/buoc2-cong.md`). |
 | QĐ5 | Nơi hiện | Dòng đang nói chỉ có trên thanh phụ đề. Cửa sổ chính, bản chép lời, lịch sử và xuất file chỉ chứa bản cuối. |
 | QĐ6 | Thứ tự | Bốn bước (§9): đo đúng và cải tiến nhanh; bản thử kèm cổng duyệt; hoàn thiện; nghiệm thu. |
 | QĐ7 | Nghiệm thu | Theo bảng ở §10.2. |
@@ -140,7 +141,8 @@ Không đổi model, giao thức `asr-protocol`, license server, gói hay hạn 
   | ja, ko | 3 | 2 |
 
 - **Chỉ dài thêm.** Khi đoạn còn mở, phần dịch ổn định không bao giờ rút lại.
-- Các giá trị trên chỉ là điểm xuất phát. Bước 2 (§9) chỉnh lại theo số đo trễ và độ nháy, vì chốt sớm có thể làm sai nghĩa. Nghiên cứu §2 đã thấy điều này với câu tiếng Nhật và tiếng Trung.
+- Các giá trị trên chốt ở cổng sau bước 2 (2026-10-12), theo số đo trễ và độ nháy, và kiểm cảm quan câu tiếng Nhật, tiếng Trung
+  (`bench/2026-10-10-do-tre/results/buoc2-cong.md`), vì chốt sớm có thể làm sai nghĩa (nghiên cứu §2).
 
 ### 4.5 Lượt cuối
 
@@ -163,7 +165,8 @@ Không đổi model, giao thức `asr-protocol`, license server, gói hay hạn 
 ### 4.7 Ngắt câu ở chế độ này
 
 - Ngưỡng im lặng để đóng đoạn ở chế độ này là giá trị lớn hơn của `vadEndSilenceMs` (người dùng chỉnh) và `streaming.end_silence_ms`.
-- `streaming.end_silence_ms` được chốt ở cổng sau bước 2, chọn một trong 50, 200, 400 và 600 ms (QĐ4).
+- `streaming.end_silence_ms` = 50 ms (QĐ4, chốt ở cổng sau bước 2 ngày 2026-10-12). Với ngưỡng người dùng mặc định 50 ms,
+  chế độ này đóng đoạn sau 50 ms im lặng (bằng với ngưỡng người dùng ở cấu hình mặc định).
 - Cửa sổ ghép giữ công thức max(700 ms, ngưỡng + 400 ms) của §6.3 spec chính, tính với ngưỡng đang dùng.
 - Chế độ thường giữ nguyên `vadEndSilenceMs`.
 
