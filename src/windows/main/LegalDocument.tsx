@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode, useEffect, useState } from "react";
-import { type LegalKind, loadLegal } from "../../lib/legal";
+import { htmlLang } from "../../i18n";
+import { type LegalKind, type LegalText, loadLegal } from "../../lib/legal";
 import { type Block, type Inline, parseMarkdown } from "../../lib/markdown";
 import { useApp, useT } from "./appStore";
 
@@ -56,27 +57,28 @@ function block(b: Block, key: number): ReactNode {
   }
 }
 
-/** Một văn bản pháp lý theo ngôn ngữ giao diện. */
+/** Một văn bản pháp lý theo ngôn ngữ giao diện; chưa có bản ngôn ngữ đó thì hiện bản khác, kèm một dòng báo. */
 export function LegalDocument({ kind }: { kind: LegalKind }) {
   const t = useT();
   const lang = useApp((s) => s.settings?.uiLanguage ?? "vi");
   // undefined: đang tải; null: không có hay tải lỗi.
-  const [text, setText] = useState<string | null | undefined>(undefined);
+  const [doc, setDoc] = useState<LegalText | null | undefined>(undefined);
   useEffect(() => {
     let alive = true;
-    setText(undefined);
+    setDoc(undefined);
     void loadLegal(kind, lang).then((value) => {
-      if (alive) setText(value);
+      if (alive) setDoc(value);
     });
     return () => {
       alive = false;
     };
   }, [kind, lang]);
-  if (text === undefined) return <p className="hint">{t("legal.loading")}</p>;
-  if (text === null) return <p className="hint">{t("legal.missing")}</p>;
+  if (doc === undefined) return <p className="hint">{t("legal.loading")}</p>;
+  if (doc === null) return <p className="hint">{t("legal.missing")}</p>;
   return (
-    <div className="legal" tabIndex={0} aria-label={t(kind === "eula" ? "legal.eula" : "legal.privacy")}>
-      {parseMarkdown(text).map(block)}
+    <div className="legal" tabIndex={0} aria-label={t(kind === "eula" ? "legal.eula" : "legal.privacy")} lang={htmlLang(doc.lang)}>
+      {doc.lang !== lang && <p className="hint">{t("legal.fallbackNote", { language: t(`lang.${doc.lang}`) })}</p>}
+      {parseMarkdown(doc.text).map(block)}
     </div>
   );
 }

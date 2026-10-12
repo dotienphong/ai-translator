@@ -8,12 +8,26 @@ const loaders: LegalLoaders = {
 };
 
 describe("pickLegal", () => {
-  it("chọn đúng loại và ngôn ngữ", async () => {
-    expect(await pickLegal(loaders, "eula", "en")?.()).toBe("EULA en");
-    expect(await pickLegal(loaders, "privacy", "vi")?.()).toBe("Privacy vi");
+  it("chọn đúng loại và ngôn ngữ, kèm ngôn ngữ của file tìm được", async () => {
+    const eula = pickLegal(loaders, "eula", "en");
+    expect(eula?.lang).toBe("en");
+    expect(await eula?.load()).toBe("EULA en");
+    const privacy = pickLegal(loaders, "privacy", "vi");
+    expect(privacy?.lang).toBe("vi");
+    expect(await privacy?.load()).toBe("Privacy vi");
   });
-  it("thiếu bản ngôn ngữ đó thì dùng tiếng Việt", async () => {
-    expect(await pickLegal(loaders, "privacy", "en")?.()).toBe("Privacy vi");
+  it("ngôn ngữ chưa có bản riêng (ja, zh, ko) thì dùng English (spec 2026-10-12 Q2)", async () => {
+    for (const lang of ["ja", "zh", "ko"] as const) {
+      const eula = pickLegal(loaders, "eula", lang);
+      expect(eula?.lang, lang).toBe("en");
+      expect(await eula?.load(), lang).toBe("EULA en");
+    }
+  });
+  it("thiếu cả bản English thì dùng tiếng Việt (bản gốc)", async () => {
+    const privacy = pickLegal(loaders, "privacy", "ko");
+    expect(privacy?.lang).toBe("vi");
+    expect(await privacy?.load()).toBe("Privacy vi");
+    expect(pickLegal(loaders, "privacy", "en")?.lang).toBe("vi");
   });
   it("không có loại đó thì null", () => {
     expect(pickLegal({}, "eula", "vi")).toBeNull();
@@ -32,9 +46,27 @@ describe("loadLegal", () => {
     ).resolves.toBeNull();
   });
   it("bốn file thật được đóng gói: đúng loại và đúng ngôn ngữ", async () => {
-    expect(await loadLegal("eula", "vi")).toContain("Thỏa thuận cấp phép người dùng cuối");
-    expect(await loadLegal("eula", "en")).toContain("End User License Agreement");
-    expect(await loadLegal("privacy", "vi")).toContain("Chính sách quyền riêng tư");
-    expect(await loadLegal("privacy", "en")).toContain("Privacy Policy");
+    const eulaVi = await loadLegal("eula", "vi");
+    expect(eulaVi?.lang).toBe("vi");
+    expect(eulaVi?.text).toContain("Thỏa thuận cấp phép người dùng cuối");
+    const eulaEn = await loadLegal("eula", "en");
+    expect(eulaEn?.lang).toBe("en");
+    expect(eulaEn?.text).toContain("End User License Agreement");
+    const privacyVi = await loadLegal("privacy", "vi");
+    expect(privacyVi?.lang).toBe("vi");
+    expect(privacyVi?.text).toContain("Chính sách quyền riêng tư");
+    const privacyEn = await loadLegal("privacy", "en");
+    expect(privacyEn?.lang).toBe("en");
+    expect(privacyEn?.text).toContain("Privacy Policy");
+  });
+  it("ja, zh, ko dùng bản English của file thật và báo ngôn ngữ English", async () => {
+    for (const lang of ["ja", "zh", "ko"] as const) {
+      const eula = await loadLegal("eula", lang);
+      expect(eula?.lang, lang).toBe("en");
+      expect(eula?.text, lang).toContain("End User License Agreement");
+      const privacy = await loadLegal("privacy", lang);
+      expect(privacy?.lang, lang).toBe("en");
+      expect(privacy?.text, lang).toContain("Privacy Policy");
+    }
   });
 });
