@@ -2,7 +2,7 @@
 # Chạy bản dev trong một gói `.app`, mở bằng `open` (Q-D của review 02 lần 2; như `Capture.app` của kế hoạch 0-04).
 # macOS tính quyền "Ghi âm thanh hệ thống" cho app được mở bằng `open`; chạy thẳng binary từ Terminal (`pnpm tauri dev`,
 # `scripts/run-dev-signed.sh`) thì quyền lại tính cho Terminal, nên các bước thử quyền của 02c Task 8 sai. Gói có
-# `Info.plist` của app (câu xin quyền), hai bản `InfoPlist.strings` (en, vi) và bundle id của app; ký bằng cùng chứng thư
+# `Info.plist` của app (câu xin quyền), các bản `InfoPlist.strings` (en, vi, ja, zh-Hans, ko) và bundle id của app; ký bằng cùng chứng thư
 # cố định với `run-dev-signed.sh` (R8 của kế hoạch 00), để macOS nhớ quyền đã cấp qua các lần build.
 #
 #   scripts/run-dev-app.sh   # build, đóng gói vào target/AI Translator Dev.app, chạy Vite, mở app và chờ app thoát
@@ -48,7 +48,7 @@ plutil -replace CFBundlePackageType -string APPL "$app/Contents/Info.plist"
 # Icon của gói (Dock, Cmd+Tab): thiếu `CFBundleIconFile` và `icon.icns` thì macOS hiện icon mẫu trống.
 cp src-tauri/icons/icon.icns "$app/Contents/Resources/icon.icns"
 plutil -replace CFBundleIconFile -string icon "$app/Contents/Info.plist"
-for lang in en vi; do
+for lang in en vi ja zh-Hans ko; do
   mkdir -p "$app/Contents/Resources/$lang.lproj"
   cp "src-tauri/macos/$lang.lproj/InfoPlist.strings" "$app/Contents/Resources/$lang.lproj/"
 done

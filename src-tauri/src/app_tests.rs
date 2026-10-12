@@ -1406,22 +1406,33 @@ fn old_temporary_folders_of_mock_apps_are_removed() {
     std::fs::remove_dir_all(parent).unwrap();
 }
 
-/// Q8(c) của review 02c: câu hỏi quyền ghi âm thanh hệ thống có bản tiếng Anh (gốc, trong `Info.plist`) và tiếng Việt
-/// (`vi.lproj`), đều nói tên AI Translator, và `tauri.conf.json` chép hai file `InfoPlist.strings` vào gói `.app`.
+/// Q8(c) của review 02c: câu hỏi quyền ghi âm thanh hệ thống có bản gốc tiếng Anh (trong `Info.plist`) và bản của từng
+/// ngôn ngữ giao diện (`<lproj>/InfoPlist.strings`, spec 2026-10-12 §6), đều nói tên AI Translator; `Info.plist` liệt kê
+/// đủ ngôn ngữ trong `CFBundleLocalizations`, và `tauri.conf.json` chép các file `InfoPlist.strings` vào gói `.app`.
 #[test]
 fn the_audio_permission_prompt_is_localized() {
     const KEY: &str = "NSAudioCaptureUsageDescription";
     let plist = include_str!("../Info.plist");
-    let en = include_str!("../macos/en.lproj/InfoPlist.strings");
-    let vi = include_str!("../macos/vi.lproj/InfoPlist.strings");
-    for (name, text) in [("Info.plist", plist), ("en", en), ("vi", vi)] {
+    assert!(plist.contains(KEY) && plist.contains("AI Translator"), "Info.plist");
+    // Tên thư mục `.lproj` của macOS: tiếng Trung giản thể là `zh-Hans`, không phải `zh`.
+    let prompts = [
+        ("en", include_str!("../macos/en.lproj/InfoPlist.strings")),
+        ("vi", include_str!("../macos/vi.lproj/InfoPlist.strings")),
+        ("ja", include_str!("../macos/ja.lproj/InfoPlist.strings")),
+        ("zh-Hans", include_str!("../macos/zh-Hans.lproj/InfoPlist.strings")),
+        ("ko", include_str!("../macos/ko.lproj/InfoPlist.strings")),
+    ];
+    for (name, text) in prompts {
         assert!(text.contains(KEY) && text.contains("AI Translator"), "{name}");
+        assert!(
+            plist.contains(&format!("<string>{name}</string>")),
+            "CFBundleLocalizations có {name}"
+        );
     }
-    assert!(plist.contains("<string>vi</string>"), "CFBundleLocalizations có vi");
-    assert!(vi.contains("thu âm thanh máy đang phát"));
+    assert!(prompts[1].1.contains("thu âm thanh máy đang phát"));
     let conf: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
     let files = &conf["bundle"]["macOS"]["files"];
-    for lang in ["en", "vi"] {
+    for (lang, _) in prompts {
         assert_eq!(
             files[format!("Resources/{lang}.lproj/InfoPlist.strings")],
             format!("macos/{lang}.lproj/InfoPlist.strings")

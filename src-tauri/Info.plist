@@ -10,6 +10,9 @@
   <array>
     <string>en</string>
     <string>vi</string>
+    <string>ja</string>
+    <string>zh-Hans</string>
+    <string>ko</string>
   </array>
 </dict>
 </plist>
