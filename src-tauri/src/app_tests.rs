@@ -339,6 +339,30 @@ fn subtitle_colors_reach_the_overlay_at_once() {
     );
 }
 
+/// Spec 2026-10-10 §6.1, §6.3: công tắc "Dịch trong lúc người nói chưa dừng" mặc định bật, được ghi vào file, và thanh phụ
+/// đề biết ngay qua `overlay://view` (để thôi làm nhạt cả dòng phụ đề tạm khi chế độ có hiệu lực).
+#[test]
+fn the_live_switch_is_on_by_default_and_reaches_the_overlay() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let overlay = window(&app, "overlay");
+    let settings = invoke(&main, "get_settings", json!({})).unwrap();
+    assert_eq!(settings["translateWhileSpeaking"], true);
+    let view = invoke(&overlay, "get_overlay_view", json!({})).unwrap();
+    assert_eq!(view["translateWhileSpeaking"], true);
+    let views = record(&app, crate::events::OVERLAY_VIEW);
+    let settings = invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "translateWhileSpeaking": false } }),
+    )
+    .unwrap();
+    assert_eq!(settings["translateWhileSpeaking"], false);
+    let last = views.lock().unwrap().last().cloned().unwrap();
+    assert_eq!(last["translateWhileSpeaking"], false);
+    assert_eq!(last_saved(&app, "translateWhileSpeaking"), Some(json!(false)));
+}
+
 /// Kéo cạnh trên macOS (§4.4): app tự đặt khung theo con trỏ, không nhỏ hơn 320 × 80 điểm; nhả chuột thì nhớ kích thước
 /// mới cho màn hình đó. Thanh đang khóa thì không đổi gì.
 #[test]

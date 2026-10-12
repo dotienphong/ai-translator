@@ -102,6 +102,9 @@ pub struct OverlayView {
     pub background: BackgroundColor,
     pub show_source: bool,
     pub locked: bool,
+    /// Công tắc "Dịch trong lúc người nói chưa dừng" (spec 2026-10-10 §6.1, §6.3). Cùng `AppStatus::streaming_too_slow`,
+    /// thanh phụ đề biết chế độ có hiệu lực không, để thôi làm nhạt cả dòng phụ đề tạm.
+    pub translate_while_speaking: bool,
 }
 
 impl OverlayView {
@@ -116,6 +119,7 @@ impl OverlayView {
             background: o.background,
             show_source: o.show_source,
             locked: o.locked,
+            translate_while_speaking: settings.translate_while_speaking,
         }
     }
 }

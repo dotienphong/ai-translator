@@ -184,6 +184,22 @@ mod tests {
         );
     }
 
+    /// Spec 2026-10-10 §6.3: công tắc "Dịch trong lúc người nói chưa dừng" đổi được từ giao diện, chỉ nhận bool.
+    #[test]
+    fn the_live_switch_is_a_boolean() {
+        let off = apply(&current(), &json!({ "translateWhileSpeaking": false })).unwrap();
+        assert!(!off.translate_while_speaking);
+        assert!(
+            apply(&off, &json!({ "translateWhileSpeaking": true }))
+                .unwrap()
+                .translate_while_speaking
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "translateWhileSpeaking": "yes" })),
+            Err(Invalid::new("translateWhileSpeaking", Reason::WrongType))
+        );
+    }
+
     #[test]
     fn rejects_wrong_types() {
         assert_eq!(

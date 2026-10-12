@@ -187,6 +187,10 @@ pub struct Settings {
     /// Im lặng bao lâu thì chốt đoạn (§6.3, "Độ nhạy ngắt câu").
     pub vad_end_silence_ms: u32,
     pub overlay: OverlaySettings,
+    /// Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.3, Cài đặt › Phụ đề), mặc định bật. Đổi khi đang dịch thì có
+    /// tác dụng từ đoạn kế tiếp (`session::set_streaming_enabled`). File của bản trước chưa có khóa này thì lấy mặc định
+    /// (`migrate::load` ghép từng khóa vào giá trị mặc định), không cần bước migrate.
+    pub translate_while_speaking: bool,
     /// Gói model đang dùng (§6.7): mã gói trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest, Đ7).
     /// `None` là chưa có gói nào. Chỉ đổi qua lệnh của kế hoạch 04 (gói phải đã tải xong).
     pub model_tier: Option<String>,
@@ -241,6 +245,7 @@ impl Settings {
                 positions: BTreeMap::new(),
                 last_monitor: None,
             },
+            translate_while_speaking: true,
             model_tier: None,
             hotkeys: Hotkeys {
                 toggle_session: "Ctrl+Alt+T".into(),
@@ -393,6 +398,10 @@ mod tests {
             "ngữ cảnh câu trước mặc định tắt (§6.5)"
         );
         assert_eq!(vi.update_channel, UpdateChannel::Stable);
+        assert!(
+            vi.translate_while_speaking,
+            "dịch trong lúc người nói chưa dừng mặc định bật (spec 2026-10-10 §6.3)"
+        );
         assert_eq!(
             vi.hotkeys.bindings().map(|(_, a)| a.to_string()),
             [
@@ -427,6 +436,7 @@ mod tests {
             "experimental",
             "onboardingDone",
             "revision",
+            "translateWhileSpeaking",
         ] {
             assert!(keys.contains(&key.to_string()), "thiếu khóa {key}");
         }

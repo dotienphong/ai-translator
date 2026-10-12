@@ -411,6 +411,23 @@ mod tests {
         assert_eq!(entries["overlay"]["background"], "black");
     }
 
+    /// Spec 2026-10-10 §6.3: file của bản trước chưa có công tắc "Dịch trong lúc người nói chưa dừng" thì công tắc bật, và
+    /// khóa thiếu không bị coi là khóa hỏng. Giá trị đã lưu được giữ; giá trị sai kiểu thì về mặc định.
+    #[test]
+    fn an_old_file_without_the_live_switch_turns_it_on() {
+        let raw = object(json!({ "schemaVersion": 1, "theme": "dark" }));
+        let loaded = load(raw, defaults());
+        assert!(loaded.settings.translate_while_speaking);
+        assert!(loaded.rejected.is_empty());
+        assert!(!loaded.needs_save(), "khóa thiếu thì không phải ghi lại file");
+        let raw = object(json!({ "schemaVersion": 1, "translateWhileSpeaking": false }));
+        assert!(!load(raw, defaults()).settings.translate_while_speaking);
+        let raw = object(json!({ "schemaVersion": 1, "translateWhileSpeaking": "yes" }));
+        let loaded = load(raw, defaults());
+        assert!(loaded.settings.translate_while_speaking);
+        assert_eq!(loaded.rejected, ["translateWhileSpeaking"]);
+    }
+
     /// Bản trước chỉ có ba phím tắt: hai phím cuộn phụ đề lấy mặc định, và không bị coi là khóa hỏng.
     #[test]
     fn a_file_with_only_the_first_three_hotkeys_gets_the_scroll_defaults() {
