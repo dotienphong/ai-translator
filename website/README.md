@@ -33,7 +33,7 @@ tools/og/               sinh ảnh chia sẻ 1200×630 từ template.html (cần
 3. `pnpm test`: title ≤ 70 ký tự, description 90–165 ký tự, đúng một h1, hreflang đối xứng, liên kết nội bộ không hỏng, không `style=` nội tuyến.
 
 ## Quy tắc
-- **Chỉ nói điều có thật** về sản phẩm (không số liệu, lời chứng thực hay tính năng tưởng tượng). Số đo hiệu năng luôn kèm điều kiện đo. Trạng thái (bản 0.1.6 đã phát hành chính thức, cài bằng một dòng lệnh trên macOS và Windows; macOS ký ad-hoc chưa notarize, Windows chưa ký mã nên SmartScreen có thể cảnh báo khi tải .exe bằng trình duyệt) phải đúng với repo.
+- **Chỉ nói điều có thật** về sản phẩm (không số liệu, lời chứng thực hay tính năng tưởng tượng). Số đo hiệu năng luôn kèm điều kiện đo. Trạng thái (bản mới nhất đã phát hành chính thức, cài bằng một dòng lệnh trên macOS và Windows; macOS ký ad-hoc chưa notarize, Windows chưa ký mã nên SmartScreen có thể cảnh báo khi tải .exe bằng trình duyệt) phải đúng với repo.
 - **Không công bố công nghệ lõi:** không nêu tên model (nhận dạng, dịch, phát hiện tiếng nói), tên engine/thư viện chạy model, định dạng và mức lượng tử hóa, khung ứng dụng, ngôn ngữ lập trình, kiến trúc tiến trình/cổng nội bộ, API hệ điều hành dùng để thu âm, tên model/bộ so sánh trong số đo chất lượng. Chỉ nói "model AI chạy trên máy", "nhận dạng giọng nói", "dịch". Số đo vẫn giữ (kèm điều kiện đo) nhưng không gắn tên model. Thông báo giấy phép bên thứ ba nằm trong app (Giới thiệu › Giấy phép mã nguồn mở). Ảnh chụp app phải cắt bỏ phần lộ tên thư viện (danh sách giấy phép, màn hình Model nếu hiện tên). Test `không lộ công nghệ lõi` chặn các từ khóa này.
 - Đổi giá ở `server/wrangler.jsonc` thì đổi cả `src/plans.mjs` và mọi chỗ nhắc giá trong `src/content/` (test báo lệch giá/hạn mức).
 - Không cookie, không analytics, không script hay font của bên thứ ba (khớp lời hứa quyền riêng tư; CSP `default-src 'self'`).
@@ -49,6 +49,12 @@ Trang Tải xuống và hướng dẫn cài macOS đưa lệnh `curl -fsSL https
 
 ## Script cài Windows (`src/public/install.ps1`)
 Lệnh `irm https://aitranslator.io.vn/install.ps1 | iex` (PowerShell). Script đọc `<kênh>/latest.json`, tải `AI Translator_<version>_x64-setup.exe` và `SHA256SUMS-windows.txt`, đối chiếu SHA-256, chạy bộ cài NSIS im lặng (`/S`, cài cho riêng người dùng) rồi mở app. Tải bằng PowerShell nên file không mang dấu "tải từ internet" và SmartScreen không kiểm; Smart App Control chế độ chặn vẫn chặn bản chưa ký. Không BOM (BOM làm `iex` lỗi), không `exit`. `test/install-ps1.test.mjs` khóa hợp đồng với release và chạy các hàm thuần bằng PowerShell 7 (đặt `PWSH=<đường dẫn pwsh>` hoặc để `pwsh` trong PATH; không có thì bỏ qua). **Phần chạy thật (cài bộ NSIS) chỉ kiểm được trên Windows:** xem mục "Kiểm tay" của spec `2026-10-09-windows-iwr-install-design.md`.
+
+## Phiên bản và ngày phát hành
+`SITE.version` và `SITE.releaseDate` (JSON-LD, `llms.txt`) **không gõ tay**: `src/release.mjs` tính chúng lúc nạp `site.mjs` (spec `2026-10-13-website-version-tu-dong-design.md`).
+- **Xem trước** (`pnpm build`, `pnpm dev`, `pnpm test`; không cần mạng): version là `version` trong `src-tauri/tauri.conf.json`, ngày là ngày commit gần nhất đổi dòng đó. Nâng bản app là website tự theo.
+- **Deploy** (`pnpm deploy` dựng với cờ `--deploy`): version và ngày lấy từ `https://releases.aitranslator.io.vn/stable/latest.json` (bản đã đăng thật, `pub_date` đổi sang ngày giờ Việt Nam). Không đọc được R2 hay dữ liệu lạ thì dừng, không có gì lên Cloudflare. R2 thấp hơn repo là bình thường (đã nâng bản, chưa đăng): website vẫn nói bản đã phát hành. R2 **cao hơn** repo thì dừng: `git pull` rồi deploy lại.
+- Vì vậy sau mỗi lần phát hành **không còn commit `docs(website): phiên bản hiện tại X`**: chỉ cần `pnpm deploy`. `SITE.updated` (ngày cập nhật nội dung) vẫn do người sửa nội dung đặt.
 
 ## Triển khai
 `pnpm deploy` bằng phiên đăng nhập wrangler của chủ dự án (`wrangler login`; cần quyền workers, routes). Tên miền gốc `aitranslator.io.vn` gắn Worker bằng `custom_domain` (tự tạo DNS và chứng chỉ). MX/SPF/DMARC của Email Routing ở gốc không bị đụng. Sau deploy kiểm: gốc 200, `www` → 301, `curl -A GPTBot` không bị chặn (Cloudflare có thể chặn bot AI mặc định ở cấp zone: tắt trong dashboard nếu cần), `api.` và `releases.` không đổi.
