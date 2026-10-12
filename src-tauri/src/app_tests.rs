@@ -2090,3 +2090,36 @@ fn changing_the_update_channel_wakes_the_updater() {
     done.join().unwrap();
     assert!(started.elapsed() < Duration::from_secs(10), "đổi kênh thì kiểm ngay");
 }
+
+/// Spec 2026-10-10 §5, §6.3 (QĐ1, QĐ2 của kế hoạch 03): máy chưa đủ sức thì phiên dịch sau mỗi câu ngay từ đầu, và trạng
+/// thái báo để Cài đặt › Phụ đề ghi chú. Ghi chú còn sau khi dừng; phiên sau trên máy đủ sức thì hết.
+#[test]
+fn a_slow_machine_translates_after_each_sentence_from_the_start() {
+    use std::sync::atomic::Ordering;
+    let deps = FakeDeps {
+        audio: FakeAudio::Tone,
+        ..FakeDeps::default()
+    };
+    let slow = deps.slow_machine.clone();
+    slow.store(true, Ordering::SeqCst);
+    let app = mock_app_with(deps);
+    let main = window(&app, "main");
+    let state = app.state::<AppState>();
+    let status = invoke(&main, "toggle_session", json!({})).unwrap();
+    assert_eq!(status["session"], "running");
+    assert_eq!(status["streamingTooSlow"], true, "biết ngay lúc bắt đầu phiên");
+    wait_until("engine báo phiên dịch sau mỗi câu", || {
+        state.status().indicators.streaming_unavailable
+    });
+    let status = invoke(&main, "toggle_session", json!({})).unwrap();
+    assert_eq!(status["session"], "idle");
+    assert_eq!(status["streamingTooSlow"], true, "ghi chú còn sau khi dừng");
+    assert_eq!(status["indicators"]["streamingUnavailable"], false);
+    slow.store(false, Ordering::SeqCst);
+    let status = invoke(&main, "toggle_session", json!({})).unwrap();
+    assert_eq!(
+        status["streamingTooSlow"], false,
+        "phiên mới trên máy đủ sức thì hết ghi chú"
+    );
+    invoke(&main, "toggle_session", json!({})).unwrap();
+}

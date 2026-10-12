@@ -97,6 +97,12 @@ pub trait SessionDeps: Send + Sync {
     fn pipeline_config(&self) -> PipelineConfig {
         PipelineConfig::default()
     }
+    /// Máy đủ sức cho chế độ dịch trong lúc người nói chưa dừng không (spec 2026-10-10 §5, "Tắt ngay từ đầu phiên"; QĐ1
+    /// của kế hoạch 03). Gọi sau `prepare`, khi đã biết thiết bị thật của `asr-worker`. Mặc định đủ sức; engine vẫn tự tắt
+    /// nếu máy không theo kịp.
+    fn streaming_supported(&self) -> bool {
+        true
+    }
 }
 
 /// Trạng thái phiên, quản lý bằng `tauri::Manager::manage`.
@@ -155,13 +161,15 @@ fn code_of(settings: Lang) -> &'static str {
     }
 }
 
-/// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh; từ điển thuật ngữ dùng chung; các
-/// ngưỡng khác theo `pipeline`.
+/// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh, công tắc "Dịch trong lúc người nói chưa
+/// dừng" (spec 2026-10-10 §6.3); từ điển thuật ngữ dùng chung; máy có đủ sức cho chế độ đó không (`streaming_supported`,
+/// app quyết lúc bắt đầu phiên, §5); các ngưỡng khác theo `pipeline`.
 pub fn engine_config(
     settings: &Settings,
     mut pipeline: PipelineConfig,
     id_base: u64,
     glossary: SharedGlossary,
+    streaming_supported: bool,
 ) -> EngineConfig {
     pipeline.segmenter.end_silence_ms = u64::from(settings.vad_end_silence_ms);
     let languages = match settings.source_lock {
@@ -179,10 +187,8 @@ pub fn engine_config(
         translation_context: settings.experimental.translation_context,
         id_base,
         glossary,
-        // Dịch trong lúc người nói chưa dừng (spec 2026-10-10): kế hoạch 03 nối cài đặt `translateWhileSpeaking` và việc
-        // quyết máy đủ sức. Tới đó chế độ này không chạy trong app.
-        streaming_supported: false,
-        streaming_enabled: false,
+        streaming_supported,
+        streaming_enabled: settings.translate_while_speaking,
     }
 }
 
@@ -373,8 +379,20 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         session: n,
         asr_code: session.deps.clone(),
     });
+    // Máy đủ sức cho chế độ dịch trong lúc người nói chưa dừng không (spec 2026-10-10 §5; QĐ1, QĐ2 của kế hoạch 03): hỏi
+    // sau `prepare`, khi đã biết thiết bị thật của `asr-worker`. Ghi chú ở Cài đặt › Phụ đề theo máy của phiên này; lần tự
+    // tắt của phiên trước không còn.
+    let streaming_supported = session.deps.streaming_supported();
+    state.update_status(|s| s.streaming_too_slow = !streaming_supported);
+    log::info!("phiên dịch {n}: máy đủ sức dịch trong lúc nói: {streaming_supported}");
     let engine = match Engine::start(
-        engine_config(&settings, session.deps.pipeline_config(), n * ID_STRIDE, glossary),
+        engine_config(
+            &settings,
+            session.deps.pipeline_config(),
+            n * ID_STRIDE,
+            glossary,
+            streaming_supported,
+        ),
         source,
         session.deps.vad(),
         session.deps.asr(),
@@ -1045,6 +1063,17 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
             .map(|models| models.pipeline_config())
             .unwrap_or_default()
     }
+
+    /// QĐ1 của kế hoạch 03: kết quả dò GPU (Windows; đã có sau `prepare`, không chờ) và thiết bị thật của `asr-worker` đang
+    /// chạy (`Ready` của lần khởi động gần nhất).
+    fn streaming_supported(&self) -> bool {
+        let probed = self
+            .app
+            .try_state::<sidecar::GpuProbe>()
+            .and_then(|p| p.get(Duration::ZERO));
+        let backend = self.current().and_then(|m| m.asr_backend());
+        sidecar::streaming_supported(cfg!(windows), probed.as_ref(), backend)
+    }
 }
 
 #[cfg(test)]
@@ -1369,6 +1398,7 @@ mod tests {
             PipelineConfig::default(),
             3_000_000,
             SharedGlossary::default(),
+            true,
         );
         assert_eq!(cfg.languages, ["en", "zh", "ja", "ko", "vi"]);
         assert_eq!(cfg.target, MtLang::Vi);
@@ -1381,7 +1411,7 @@ mod tests {
         let mut from_manifest = PipelineConfig::default();
         from_manifest.queue.lag_warn_ms = 8_000;
         from_manifest.segmenter.end_silence_ms = 900;
-        let cfg = engine_config(&settings, from_manifest, 0, SharedGlossary::default());
+        let cfg = engine_config(&settings, from_manifest, 0, SharedGlossary::default(), true);
         assert_eq!(cfg.languages, ["ja"], "khóa ngôn ngữ nguồn thì bỏ nhận diện (§6.4)");
         assert_eq!(cfg.target, MtLang::En);
         assert!(cfg.translation_context);
@@ -1390,6 +1420,33 @@ mod tests {
             cfg.pipeline.segmenter.end_silence_ms, 500,
             "vadEndSilenceMs của người dùng đè manifest"
         );
+    }
+
+    /// Spec 2026-10-10 §5, §6.3 (QĐ1 của kế hoạch 03): engine nhận máy có đủ sức không (app quyết lúc bắt đầu phiên) và
+    /// công tắc của người dùng. Ngưỡng ngắt câu của chế độ này do engine tính (H6); app vẫn chỉ ghi `vadEndSilenceMs`.
+    #[test]
+    fn the_engine_gets_the_machine_and_the_live_switch() {
+        let mut settings = Settings::defaults(UiLanguage::Vi);
+        let cfg = engine_config(&settings, PipelineConfig::default(), 0, SharedGlossary::default(), true);
+        assert!(
+            cfg.streaming_supported && cfg.streaming_enabled,
+            "mặc định: bật, máy đủ sức"
+        );
+        assert_eq!(cfg.pipeline.segmenter.end_silence_ms, 50);
+        let cfg = engine_config(
+            &settings,
+            PipelineConfig::default(),
+            0,
+            SharedGlossary::default(),
+            false,
+        );
+        assert!(
+            !cfg.streaming_supported && cfg.streaming_enabled,
+            "máy chưa đủ sức: công tắc giữ nguyên"
+        );
+        settings.translate_while_speaking = false;
+        let cfg = engine_config(&settings, PipelineConfig::default(), 0, SharedGlossary::default(), true);
+        assert!(cfg.streaming_supported && !cfg.streaming_enabled, "người dùng tắt");
     }
 
     /// Ghi chú 8 của review cuối 02, Q4 của review 04: mở lại cửa sổ chính lúc phiên đang bắt đầu hay đang chạy thì không

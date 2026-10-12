@@ -298,6 +298,9 @@ pub struct FakeDeps {
     pub shutdowns: Arc<Mutex<Vec<&'static str>>>,
     /// Prompt của từng request dịch, kể cả lần làm nóng.
     pub prompts: Arc<Mutex<Vec<String>>>,
+    /// Máy chưa đủ sức dịch trong lúc người nói chưa dừng (`streaming_supported` trả `false`, spec 2026-10-10 §5); test đổi
+    /// được giữa hai phiên.
+    pub slow_machine: Arc<AtomicBool>,
 }
 
 struct FakeCapture {
@@ -452,6 +455,10 @@ impl SessionDeps for FakeDeps {
 
     fn kill_all(&self) {
         self.shutdowns.lock().unwrap().push("kill_all");
+    }
+
+    fn streaming_supported(&self) -> bool {
+        !self.slow_machine.load(Ordering::SeqCst)
     }
 }
 
