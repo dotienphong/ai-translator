@@ -3,6 +3,8 @@
 Dùng (từ gốc worktree, sau Task 0 của kế hoạch 01: `cargo build --release -p latency-bench` và `scripts/copy-sidecars.sh`):
   python3 bench/2026-10-10-do-tre/run_sessions.py --pack chuan --label buoc1-moc
   python3 bench/2026-10-10-do-tre/run_sessions.py --pack nhe --label thu --sessions en,vi -- --streaming
+Trên Windows: `python bench/2026-10-10-do-tre/run_sessions.py …`, truyền `--asr-worker` và `--llama-server` (mặc định là
+tên sidecar của macOS); xem Task 4 của kế hoạch 04.
 Tham số sau `--` được chuyển nguyên cho `latency-bench session` (kế hoạch 02 thêm các cờ của chế độ dịch trong lúc nói).
 
 Gói: `chuan` = whisper turbo q5_0 + Hy-MT2 Q8_0; `nhe` = whisper small q5_1 + Hy-MT2 Q4_K_M. Tiến trình phụ là bản app dùng
@@ -21,6 +23,7 @@ chạy tiến trình phụ của nó, không được đụng tới.
 """
 import argparse
 import json
+import ntpath
 import os
 import subprocess
 import sys
@@ -35,6 +38,10 @@ PACKS = {
     "nhe": ("ggml-small-q5_1.bin", "Hy-MT2-1.8B-Q4_K_M.gguf"),
 }
 SIDECARS = ("asr-worker", "llama-server")
+WINDOWS = os.name == "nt"
+# Danh sách tiến trình trên Windows: `pid<TAB>đường dẫn file chạy`, UTF-8 (đường dẫn có thể có dấu cách và chữ có dấu).
+WIN_PROCESSES = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
+                 "Get-CimInstance Win32_Process | ForEach-Object { \"$($_.ProcessId)`t$($_.ExecutablePath)\" }")
 
 
 def strays(ps_output, roots):
@@ -46,14 +53,30 @@ def strays(ps_output, roots):
         if len(parts) != 2 or not parts[0].isdigit():
             continue
         exe = parts[1].split()[0]
-        if os.path.basename(exe).startswith(SIDECARS) and any(exe.startswith(r + os.sep) for r in roots):
+        if os.path.basename(exe).startswith(SIDECARS) and any(exe.startswith(r + "/") for r in roots):
             found.append((int(parts[0]), parts[1]))
     return found
 
 
+def strays_windows(listing, roots):
+    """Như `strays`, từ đầu ra của `WIN_PROCESSES`. So đường dẫn không phân biệt hoa thường, như hệ tệp Windows."""
+    prefixes = tuple(ntpath.normcase(r).rstrip("\\") + "\\" for r in roots)
+    found = []
+    for line in listing.splitlines():
+        pid, _, exe = line.strip().partition("\t")
+        if pid.isdigit() and ntpath.basename(exe).startswith(SIDECARS) and ntpath.normcase(exe).startswith(prefixes):
+            found.append((int(pid), exe))
+    return found
+
+
 def running_strays():
+    roots = {ROOT, os.path.realpath(ROOT)}
+    if WINDOWS:
+        listing = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", WIN_PROCESSES],
+                                 capture_output=True, text=True, encoding="utf-8", check=True).stdout
+        return strays_windows(listing, roots)
     ps = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True, check=True).stdout
-    return strays(ps, {ROOT, os.path.realpath(ROOT)})
+    return strays(ps, roots)
 
 
 def slim(report):
@@ -89,7 +112,7 @@ def main(argv):
     unknown = [n for n in names if n not in index]
     if unknown:
         ap.error(f"không có session {', '.join(unknown)}; có: {', '.join(index)}")
-    bench = os.path.join(ROOT, "target", "release", "latency-bench")
+    bench = os.path.join(ROOT, "target", "release", "latency-bench" + (".exe" if WINDOWS else ""))
     asr_model, mt_model = PACKS[args.pack]
     paths = [bench, os.path.join(ROOT, args.asr_worker), os.path.join(ROOT, args.llama_server),
              os.path.join(ROOT, "models", asr_model), os.path.join(ROOT, "models", mt_model)]
@@ -106,9 +129,10 @@ def main(argv):
     for name in names:
         left = running_strays()
         if left:
-            listing = ", ".join(f"pid {pid} ({cmd.split()[0]})" for pid, cmd in left)
+            listing = ", ".join(f"pid {pid} ({cmd if WINDOWS else cmd.split()[0]})" for pid, cmd in left)
+            stop = "Stop-Process -Id <pid>" if WINDOWS else "kill <pid>"
             raise SystemExit(f"dừng trước session {name}: còn tiến trình phụ của lượt trước: {listing}. "
-                             "Tắt đúng các pid này bằng `kill <pid>` rồi chạy lại.")
+                             f"Tắt đúng các pid này bằng `{stop}` rồi chạy lại.")
         info = index[name]
         out_name = f"{args.label}-{args.pack}-{name}"
         full = os.path.join(FULL, out_name + ".json")

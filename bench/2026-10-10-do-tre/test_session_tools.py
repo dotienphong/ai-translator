@@ -22,6 +22,19 @@ class RunSessionsTest(unittest.TestCase):
         ])
         self.assertEqual([pid for pid, _ in run_sessions.strays(ps, {"/w"})], [101, 104])
 
+    def test_windows_strays_match_the_worktree_path_ignoring_case_and_spaces(self):
+        listing = "\r\n".join([
+            "101\tD:\\Dev\\ai translator\\src-tauri\\binaries\\asr-worker-vulkan-x86_64-pc-windows-msvc.exe",
+            "102\tC:\\Program Files\\AI Translator\\llama-server.exe",
+            "103\td:\\dev\\AI Translator\\target\\release\\latency-bench.exe",
+            "104\td:\\dev\\ai translator\\tools\\llama-b11146\\win-cpu-x64\\llama-server.exe",
+            "105\tD:\\Dev\\ai translator-khac\\src-tauri\\binaries\\asr-worker-cpu-x86_64-pc-windows-msvc.exe",
+            "106\t",
+            "dòng hỏng",
+        ])
+        self.assertEqual(
+            [pid for pid, _ in run_sessions.strays_windows(listing, {"D:\\Dev\\ai translator"})], [101, 104])
+
     def test_the_committed_copy_drops_only_the_events(self):
         report = {"args": {}, "machine": {}, "summary": {"a2_p50_ms": 1.0}, "utterances": [], "events": [{"t_ms": 1}]}
         self.assertEqual(sorted(run_sessions.slim(report)), ["args", "machine", "summary", "utterances"])
