@@ -22,6 +22,9 @@ use crate::hotkeys::{self, HotkeyAction, HotkeyError};
 pub enum UiLanguage {
     En,
     Vi,
+    Ja,
+    Zh,
+    Ko,
 }
 
 /// Năm ngôn ngữ của F2, dùng cho ngôn ngữ đích và tập ngôn ngữ nguồn.
@@ -226,6 +229,9 @@ impl Settings {
         let target_language = match ui_language {
             UiLanguage::En => Lang::En,
             UiLanguage::Vi => Lang::Vi,
+            UiLanguage::Ja => Lang::Ja,
+            UiLanguage::Zh => Lang::Zh,
+            UiLanguage::Ko => Lang::Ko,
         };
         Self {
             ui_language,
@@ -413,6 +419,38 @@ mod tests {
             ]
         );
         assert_eq!(Settings::defaults(UiLanguage::En).target_language, Lang::En);
+    }
+
+    #[test]
+    fn default_target_language_follows_every_ui_language() {
+        for (ui, target) in [
+            (UiLanguage::En, Lang::En),
+            (UiLanguage::Vi, Lang::Vi),
+            (UiLanguage::Ja, Lang::Ja),
+            (UiLanguage::Zh, Lang::Zh),
+            (UiLanguage::Ko, Lang::Ko),
+        ] {
+            let settings = Settings::defaults(ui);
+            assert_eq!(settings.target_language, target);
+            assert_eq!(settings.validate(), Ok(()));
+            let back: Settings = serde_json::from_value(serde_json::to_value(&settings).unwrap()).unwrap();
+            assert_eq!(back.ui_language, ui, "ghi rồi đọc lại");
+        }
+    }
+
+    #[test]
+    fn ui_language_is_stored_as_its_lowercase_code() {
+        for (ui, code) in [
+            (UiLanguage::En, "en"),
+            (UiLanguage::Vi, "vi"),
+            (UiLanguage::Ja, "ja"),
+            (UiLanguage::Zh, "zh"),
+            (UiLanguage::Ko, "ko"),
+        ] {
+            assert_eq!(serde_json::to_value(ui).unwrap(), json!(code));
+            assert_eq!(serde_json::from_value::<UiLanguage>(json!(code)).unwrap(), ui);
+        }
+        assert!(serde_json::from_value::<UiLanguage>(json!("fr")).is_err());
     }
 
     #[test]

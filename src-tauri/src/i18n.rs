@@ -84,6 +84,78 @@ pub const VI: Strings = Strings {
     export_failed: "(chưa dịch được)",
 };
 
+pub const JA: Strings = Strings {
+    tray_start: "翻訳を開始",
+    tray_stop: "翻訳を停止",
+    tray_show_overlay: "字幕を表示",
+    tray_hide_overlay: "字幕を非表示",
+    tray_lock_overlay: "字幕をロック（クリックを通過）",
+    tray_unlock_overlay: "字幕のロックを解除",
+    tray_open_main: "メインウィンドウを開く",
+    tray_quit: "終了",
+    tray_restart_to_update: "再起動して更新",
+    tray_check_updates: "アップデートを確認…",
+    tray_hotkey_failed: "登録できなかったショートカットがあります",
+    tray_tooltip: "{app}: {status}",
+    status_idle: "待機中",
+    status_running: "翻訳中",
+    overlay_title: "字幕",
+    export_title: "文字起こし",
+    export_time: "時刻",
+    export_source: "原文",
+    export_translation: "翻訳",
+    export_dropped: "[区間をスキップ]",
+    export_failed: "（未翻訳）",
+};
+
+pub const ZH: Strings = Strings {
+    tray_start: "开始翻译",
+    tray_stop: "停止翻译",
+    tray_show_overlay: "显示字幕",
+    tray_hide_overlay: "隐藏字幕",
+    tray_lock_overlay: "锁定字幕（点击穿透）",
+    tray_unlock_overlay: "解锁字幕",
+    tray_open_main: "打开主窗口",
+    tray_quit: "退出",
+    tray_restart_to_update: "重启以更新",
+    tray_check_updates: "检查更新…",
+    tray_hotkey_failed: "有快捷键未能注册",
+    tray_tooltip: "{app}: {status}",
+    status_idle: "就绪",
+    status_running: "翻译中",
+    overlay_title: "字幕",
+    export_title: "转写记录",
+    export_time: "时间",
+    export_source: "原文",
+    export_translation: "翻译",
+    export_dropped: "[已跳过片段]",
+    export_failed: "（未翻译）",
+};
+
+pub const KO: Strings = Strings {
+    tray_start: "번역 시작",
+    tray_stop: "번역 중지",
+    tray_show_overlay: "자막 표시",
+    tray_hide_overlay: "자막 숨기기",
+    tray_lock_overlay: "자막 잠금(클릭 통과)",
+    tray_unlock_overlay: "자막 잠금 해제",
+    tray_open_main: "메인 창 열기",
+    tray_quit: "종료",
+    tray_restart_to_update: "다시 시작하여 업데이트",
+    tray_check_updates: "업데이트 확인…",
+    tray_hotkey_failed: "등록하지 못한 단축키가 있습니다",
+    tray_tooltip: "{app}: {status}",
+    status_idle: "준비됨",
+    status_running: "번역 중",
+    overlay_title: "자막",
+    export_title: "대본",
+    export_time: "시간",
+    export_source: "원문",
+    export_translation: "번역",
+    export_dropped: "[구간 건너뜀]",
+    export_failed: "(번역 안 됨)",
+};
+
 impl Strings {
     /// Mọi chuỗi, để test. Liệt kê đủ trường, không dùng `..`, nên thêm trường mà quên ở đây thì
     /// không biên dịch được.
@@ -146,17 +218,24 @@ pub fn strings(lang: UiLanguage) -> &'static Strings {
     match lang {
         UiLanguage::En => &EN,
         UiLanguage::Vi => &VI,
+        UiLanguage::Ja => &JA,
+        UiLanguage::Zh => &ZH,
+        UiLanguage::Ko => &KO,
     }
 }
 
-/// Ngôn ngữ giao diện mặc định theo locale của hệ điều hành (§4.1, bước 1):
-/// tiếng Việt nếu locale là tiếng Việt, còn lại là English.
+/// Ngôn ngữ giao diện mặc định theo locale của hệ điều hành (§4.1, bước 1), xét phần ngôn ngữ chính của locale:
+/// `vi`, `ja`, `ko` ra đúng ngôn ngữ đó; mọi locale tiếng Trung (`zh-CN`, `zh-Hant-TW`, …) ra `zh`, giao diện chữ giản
+/// thể (spec 2026-10-12 Q1), cùng `yue` (macOS báo `yue-Hant-HK` cho tiếng Quảng Đông); còn lại là English.
+/// `detectUiLanguage` ở `src/i18n/index.ts` dùng cùng bảng.
 pub fn ui_language_from_locale(locale: Option<&str>) -> UiLanguage {
     let primary = locale.and_then(|l| l.split(['-', '_']).next()).unwrap_or("");
-    if primary.eq_ignore_ascii_case("vi") {
-        UiLanguage::Vi
-    } else {
-        UiLanguage::En
+    match primary.to_ascii_lowercase().as_str() {
+        "vi" => UiLanguage::Vi,
+        "ja" => UiLanguage::Ja,
+        "ko" => UiLanguage::Ko,
+        "zh" | "yue" => UiLanguage::Zh,
+        _ => UiLanguage::En,
     }
 }
 
@@ -168,54 +247,131 @@ pub fn system_ui_language() -> UiLanguage {
 mod tests {
     use super::*;
 
+    const LANGUAGES: [(&str, &Strings); 5] = [("en", &EN), ("vi", &VI), ("ja", &JA), ("zh", &ZH), ("ko", &KO)];
+
     fn placeholders(s: &str) -> Vec<&str> {
         s.match_indices('{')
             .filter_map(|(i, _)| s[i..].find('}').map(|j| &s[i..=i + j]))
             .collect()
     }
 
+    fn is_kana(c: char) -> bool {
+        ('\u{3040}'..='\u{30ff}').contains(&c)
+    }
+
+    fn is_han(c: char) -> bool {
+        ('\u{3400}'..='\u{9fff}').contains(&c)
+    }
+
+    fn is_hangul(c: char) -> bool {
+        ('\u{ac00}'..='\u{d7af}').contains(&c)
+    }
+
     #[test]
-    fn every_string_is_filled_in_both_languages() {
-        for (name, text) in EN.all().into_iter().chain(VI.all()) {
-            assert!(!text.trim().is_empty(), "{name} rỗng");
-            assert_eq!(text, text.trim(), "{name} thừa khoảng trắng");
+    fn every_string_is_filled_in_every_language() {
+        for (lang, strings) in LANGUAGES {
+            for (name, text) in strings.all() {
+                assert!(!text.trim().is_empty(), "{lang}: {name} rỗng");
+                assert_eq!(text, text.trim(), "{lang}: {name} thừa khoảng trắng");
+            }
         }
     }
 
     #[test]
-    fn placeholders_match_between_languages() {
-        for ((name, en), (_, vi)) in EN.all().into_iter().zip(VI.all()) {
-            assert_eq!(placeholders(en), placeholders(vi), "{name}");
+    fn placeholders_match_english() {
+        for (lang, strings) in LANGUAGES {
+            for ((name, en), (_, text)) in EN.all().into_iter().zip(strings.all()) {
+                assert_eq!(placeholders(en), placeholders(text), "{lang}: {name}");
+            }
         }
     }
 
     #[test]
-    fn vietnamese_is_actually_translated() {
-        let same: Vec<_> = EN
-            .all()
-            .into_iter()
-            .zip(VI.all())
-            .filter(|((_, en), (_, vi))| en == vi)
-            .map(|((n, _), _)| n)
-            .collect();
-        assert_eq!(same, ["tray_tooltip"], "chỉ mẫu chú thích là giống nhau");
+    fn other_languages_are_actually_translated() {
+        for (lang, strings) in &LANGUAGES[1..] {
+            let same: Vec<_> = EN
+                .all()
+                .into_iter()
+                .zip(strings.all())
+                .filter(|((_, en), (_, text))| en == text)
+                .map(|((n, _), _)| n)
+                .collect();
+            assert_eq!(same, ["tray_tooltip"], "{lang}: chỉ mẫu chú thích là giống English");
+        }
+    }
+
+    #[test]
+    fn cjk_strings_are_written_in_their_own_script() {
+        for (name, text) in JA.all().into_iter().filter(|(n, _)| *n != "tray_tooltip") {
+            assert!(text.chars().any(|c| is_kana(c) || is_han(c)), "ja: {name}");
+            assert!(!text.chars().any(is_hangul), "ja: {name} lẫn Hangul");
+        }
+        for (name, text) in ZH.all().into_iter().filter(|(n, _)| *n != "tray_tooltip") {
+            assert!(text.chars().any(is_han), "zh: {name}");
+            assert!(
+                !text.chars().any(|c| is_kana(c) || is_hangul(c)),
+                "zh: {name} lẫn kana hay Hangul"
+            );
+        }
+        for (name, text) in KO.all().into_iter().filter(|(n, _)| *n != "tray_tooltip") {
+            assert!(text.chars().any(is_hangul), "ko: {name}");
+            assert!(!text.chars().any(is_kana), "ko: {name} lẫn kana");
+        }
+    }
+
+    #[test]
+    fn strings_picks_the_table_of_each_language() {
+        for (lang, expected) in [
+            (UiLanguage::En, &EN),
+            (UiLanguage::Vi, &VI),
+            (UiLanguage::Ja, &JA),
+            (UiLanguage::Zh, &ZH),
+            (UiLanguage::Ko, &KO),
+        ] {
+            // So nội dung, không so địa chỉ: mỗi chỗ viết `&EN` có thể ra một địa chỉ tĩnh khác nhau.
+            assert_eq!(strings(lang).all(), expected.all(), "{lang:?}");
+        }
     }
 
     #[test]
     fn tooltip_fills_app_name_and_status() {
         assert_eq!(VI.tooltip("AI Translator", false), "AI Translator: Sẵn sàng");
         assert_eq!(EN.tooltip("AI Translator", true), "AI Translator: Translating");
+        assert_eq!(JA.tooltip("AI Translator", false), "AI Translator: 待機中");
+        assert_eq!(ZH.tooltip("AI Translator", true), "AI Translator: 翻译中");
+        assert_eq!(KO.tooltip("AI Translator", false), "AI Translator: 준비됨");
     }
 
     #[test]
     fn default_ui_language_from_os_locale() {
-        assert_eq!(ui_language_from_locale(Some("vi-VN")), UiLanguage::Vi);
-        assert_eq!(ui_language_from_locale(Some("vi_VN")), UiLanguage::Vi);
-        assert_eq!(ui_language_from_locale(Some("vi")), UiLanguage::Vi);
-        assert_eq!(ui_language_from_locale(Some("VI-vn")), UiLanguage::Vi);
-        assert_eq!(ui_language_from_locale(Some("en-US")), UiLanguage::En);
-        assert_eq!(ui_language_from_locale(Some("fr-FR")), UiLanguage::En);
-        assert_eq!(ui_language_from_locale(Some("video")), UiLanguage::En);
-        assert_eq!(ui_language_from_locale(None), UiLanguage::En);
+        // Cùng bảng với `LOCALE_CASES` trong src/i18n/i18n.test.ts: sửa một nơi thì sửa nơi kia.
+        use UiLanguage::{En, Ja, Ko, Vi, Zh};
+        let cases = [
+            ("vi-VN", Vi),
+            ("vi_VN", Vi),
+            ("vi", Vi),
+            ("VI-vn", Vi),
+            ("ja-JP", Ja),
+            ("ja", Ja),
+            ("ko-KR", Ko),
+            ("ko_KR", Ko),
+            ("zh-CN", Zh),
+            ("zh-Hans-CN", Zh),
+            ("zh-Hant-TW", Zh),
+            ("zh_TW", Zh),
+            ("zh-HK", Zh),
+            ("zh", Zh),
+            ("yue-Hant-HK", Zh),
+            ("en-US", En),
+            ("fr-FR", En),
+            ("video", En),
+            ("jam", En),
+            ("korean", En),
+            ("", En),
+        ];
+        for (locale, expected) in cases {
+            assert_eq!(ui_language_from_locale(Some(locale)), expected, "{locale}");
+        }
+        assert_eq!(ui_language_from_locale(None), En);
     }
 }
