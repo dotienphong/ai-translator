@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, DIST } from "../src/build/build.mjs";
 import { pages, missing } from "../src/content/index.mjs";
+import { vnDate } from "../src/release.mjs";
 import { SITE } from "../src/site.mjs";
 import { PLANS } from "../src/plans.mjs";
 
@@ -257,7 +258,9 @@ test("_redirects: mỗi trang có quy tắc 301 cho URL thiếu dấu / cuối, 
 
 test("sitemap lastmod: định dạng ngày hợp lệ, không ở tương lai, khớp ngày sửa của từng trang", async () => {
   const x = await readFile(path.join(DIST, "sitemap.xml"), "utf8");
-  const today = new Date().toISOString().slice(0, 10);
+  // Ngày sửa của trang lấy từ git theo giờ Việt Nam (UTC+7): so với hôm nay cũng theo giờ Việt Nam. So với ngày UTC thì từ 00:00
+  // tới 07:00 giờ Việt Nam, trang vừa commit bị coi là ở tương lai.
+  const today = vnDate(new Date().toISOString());
   const re = /<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g;
   const got = new Map([...x.matchAll(re)].map((m) => [m[1], m[2]]));
   for (const p of pages) {
