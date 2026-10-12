@@ -731,9 +731,14 @@ impl<R: Runtime> EventSink for TauriSink<R> {
     }
 
     fn indicators(&self, indicators: &Indicators) {
-        self.app
-            .state::<AppState>()
-            .update_status(|s| s.indicators = indicators.clone());
+        self.app.state::<AppState>().update_status(|s| {
+            s.indicators = indicators.clone();
+            // Phiên này dịch sau mỗi câu vì máy chưa đủ nhanh (tắt từ đầu, hay vừa tự tắt): Cài đặt › Phụ đề ghi chú, giữ
+            // tới lần bắt đầu phiên sau (spec 2026-10-10 §6.3; QĐ2 của kế hoạch 03).
+            if indicators.streaming_unavailable {
+                s.streaming_too_slow = true;
+            }
+        });
         changed(&self.app);
     }
 
@@ -824,11 +829,20 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
                 self.set_loading(*which, None);
                 // Chỉ báo CPU theo từng tiến trình phụ: tiến trình này chạy lại bằng GPU (bấm thử lại sau khi bỏ cuộc, Q4-2 của
                 // review 02 lần 4) chỉ tắt cờ của chính nó (Q5-1 của review 02 lần 5).
-                if let SidecarEvent::Ready { use_gpu, .. } = event {
+                if let SidecarEvent::Ready { use_gpu, backend, .. } = event {
                     self.set_cpu(*which, !*use_gpu);
+                    // `asr-worker` chạy bằng CPU: máy chưa đủ sức dịch trong lúc người nói chưa dừng (spec 2026-10-10 §5).
+                    if *which == Which::Asr && matches!(backend, Some(b) if !b.is_gpu()) {
+                        state.update_status(AppStatus::note_machine_too_slow);
+                    }
                 }
             }
-            SidecarEvent::CpuFallback { which } => self.set_cpu(*which, true),
+            SidecarEvent::CpuFallback { which } => {
+                self.set_cpu(*which, true);
+                if *which == Which::Asr {
+                    state.update_status(AppStatus::note_machine_too_slow);
+                }
+            }
             SidecarEvent::OutOfMemory { .. } => state.update_status(|s| s.suggest_lite = true),
             SidecarEvent::GaveUp { which, cause, .. } => {
                 if *which == Which::Asr {
@@ -1261,6 +1275,74 @@ mod tests {
         assert_eq!(state.status().loading, Some(Loading::Model), "asr-worker vẫn đang nạp");
         events.on_event(&ready(Which::Asr));
         assert_eq!(state.status().loading, None);
+    }
+
+    /// QĐ2 của kế hoạch 03 (spec 2026-10-10 §5, §6.3): `asr-worker` chạy bằng CPU lúc chưa có phiên (chạy sẵn khi mở cửa sổ
+    /// chính) thì ghi máy chưa đủ nhanh ngay; đang có phiên thì không đổi. `llama-server` không quyết.
+    #[test]
+    fn an_asr_worker_on_the_cpu_notes_a_slow_machine_only_outside_a_session() {
+        use asr_protocol::Backend;
+        let ready = |which, backend: Option<Backend>| SidecarEvent::Ready {
+            which,
+            use_gpu: backend.is_some_and(Backend::is_gpu),
+            backend,
+            first_run: false,
+        };
+        let app = crate::test_support::mock_app();
+        let events = status_events(&app);
+        let state = app.state::<AppState>();
+        events.on_event(&ready(Which::Llama, None));
+        events.on_event(&ready(Which::Asr, Some(Backend::Metal)));
+        assert!(!state.status().streaming_too_slow);
+        state.update_status(|s| s.session = SessionStatus::Running);
+        events.on_event(&ready(Which::Asr, Some(Backend::Cpu)));
+        events.on_event(&SidecarEvent::CpuFallback { which: Which::Asr });
+        assert!(!state.status().streaming_too_slow, "đang dịch: engine tự quyết");
+        state.update_status(|s| s.session = SessionStatus::Idle);
+        events.on_event(&ready(Which::Asr, Some(Backend::Cpu)));
+        assert!(state.status().streaming_too_slow, "chạy sẵn bằng CPU");
+        let app = crate::test_support::mock_app();
+        let events = status_events(&app);
+        events.on_event(&SidecarEvent::CpuFallback { which: Which::Llama });
+        assert!(
+            !app.state::<AppState>().status().streaming_too_slow,
+            "llama-server không quyết"
+        );
+        events.on_event(&SidecarEvent::CpuFallback { which: Which::Asr });
+        assert!(
+            app.state::<AppState>().status().streaming_too_slow,
+            "chuyển sang CPU lúc chạy sẵn"
+        );
+    }
+
+    /// QĐ2 của kế hoạch 03 (spec 2026-10-10 §6.3): engine báo phiên dịch sau mỗi câu (tắt từ đầu hay tự tắt) thì ghi máy
+    /// chưa đủ nhanh, và giữ cả sau khi dừng phiên; chỉ báo của phiên thì về mặc định.
+    #[test]
+    fn an_auto_off_is_kept_after_the_session_stops() {
+        let app = crate::test_support::mock_app();
+        let sink = TauriSink {
+            app: app.handle().clone(),
+            session: 1,
+            asr_code: Arc::new(crate::test_support::FakeDeps::default()),
+        };
+        sink.indicators(&Indicators {
+            lagging: true,
+            ..Indicators::default()
+        });
+        assert!(!app.state::<AppState>().status().streaming_too_slow);
+        sink.indicators(&Indicators {
+            streaming_unavailable: true,
+            ..Indicators::default()
+        });
+        let status = app.state::<AppState>().status();
+        assert!(status.streaming_too_slow && status.indicators.streaming_unavailable);
+        stop(app.handle());
+        let status = app.state::<AppState>().status();
+        assert!(status.streaming_too_slow, "ghi chú còn sau khi dừng");
+        assert!(
+            !status.indicators.streaming_unavailable,
+            "chỉ báo của phiên về mặc định"
+        );
     }
 
     /// N-6 của review 02 lần 2: bấm Bắt đầu thì quên lý do bỏ cuộc cũ, mã lỗi giữa phiên về mặc định.

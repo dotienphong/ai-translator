@@ -67,6 +67,11 @@ pub struct AppStatus {
     pub suggest_lite: bool,
     /// Đang trễ, không có âm thanh, dịch không dùng được (§4.4, §9).
     pub indicators: Indicators,
+    /// Máy chưa đủ nhanh cho chế độ dịch trong lúc người nói chưa dừng (spec 2026-10-10 §5, §6.3; QĐ2 của kế hoạch 03): bị
+    /// tắt từ đầu (biết từ lần dò GPU trên Windows, `asr-worker` chạy CPU, hay lúc bắt đầu phiên), hoặc phiên hiện tại hay
+    /// phiên gần nhất tự tắt. Giữ cả sau khi dừng, tới lần bắt đầu phiên sau. Cài đặt › Phụ đề ghi chú; thanh phụ đề làm
+    /// nhạt phụ đề tạm như chế độ thường.
+    pub streaming_too_slow: bool,
     /// macOS: nguồn âm thanh trả toàn im lặng tuyệt đối trong khi có app đang phát: nghi chưa được cấp quyền ghi âm thanh
     /// hệ thống (§9). Phiên vẫn chạy; giao diện hiện `error.audioPermission` kèm nút mở System Settings.
     pub permission_suspected: bool,
@@ -88,6 +93,18 @@ pub struct AppStatus {
     /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
     /// tới sau sự kiện `app://status` mới hơn).
     pub rev: u64,
+}
+
+impl AppStatus {
+    /// Máy chưa đủ sức dịch trong lúc người nói chưa dừng (spec 2026-10-10 §5), biết được khi chưa có phiên nào: lần dò GPU
+    /// trên Windows, hay `asr-worker` chạy sẵn bằng CPU. Cài đặt › Phụ đề ghi chú ngay (§6.3). Đang có phiên bắt đầu hay
+    /// chạy thì không đổi: lần bắt đầu tự quyết theo `SessionDeps::streaming_supported`, còn phiên đang chạy thì engine tự
+    /// tắt nếu không theo kịp (báo qua `Indicators::streaming_unavailable`).
+    pub fn note_machine_too_slow(&mut self) {
+        if !matches!(self.session, SessionStatus::Starting | SessionStatus::Running) {
+            self.streaming_too_slow = true;
+        }
+    }
 }
 
 /// Phần cài đặt mà thanh phụ đề cần. Cửa sổ `overlay` chỉ đọc được phần này (§10.2).
@@ -160,6 +177,7 @@ impl AppState {
                 cpu_fallback: false,
                 suggest_lite: false,
                 indicators: Indicators::default(),
+                streaming_too_slow: false,
                 permission_suspected: false,
                 waiting_for_app: false,
                 pro: false,
@@ -204,5 +222,29 @@ impl AppState {
 
     pub fn launched_at_login(&self) -> bool {
         self.launched_at_login
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// QĐ2 của kế hoạch 03: máy chưa đủ sức biết được khi chưa có phiên nào (dò GPU, `asr-worker` chạy sẵn bằng CPU) thì
+    /// ghi ngay; đang có phiên bắt đầu hay chạy thì không đổi (lần bắt đầu tự quyết, phiên đang chạy thì engine tự tắt).
+    #[test]
+    fn a_slow_machine_is_noted_only_when_no_session_starts_or_runs() {
+        let state = AppState::new(Settings::defaults(UiLanguage::Vi), FileMeta::current(), false);
+        assert!(!state.status().streaming_too_slow, "mở app: chưa biết gì");
+        for (session, noted) in [
+            (SessionStatus::Idle, true),
+            (SessionStatus::Error, true),
+            (SessionStatus::Starting, false),
+            (SessionStatus::Running, false),
+        ] {
+            let mut status = state.status();
+            status.session = session;
+            status.note_machine_too_slow();
+            assert_eq!(status.streaming_too_slow, noted, "{session:?}");
+        }
     }
 }

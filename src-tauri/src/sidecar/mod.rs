@@ -164,10 +164,18 @@ pub fn start_gpu_probe<R: Runtime>(app: &AppHandle<R>) {
         let first = seen
             .as_deref()
             .is_none_or(|s| first_run::is_first_run(s, &verified.hashes[0]));
-        app.state::<GpuProbe>()
+        let outcome = app
+            .state::<GpuProbe>()
             .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)));
         // Đề xuất gói theo VRAM của card rời (kế hoạch 04) đổi theo kết quả dò.
         crate::models::service::changed(&app);
+        // Chỉ có GPU tích hợp hay không có GPU dùng được: chưa đủ sức dịch trong lúc người nói chưa dừng (spec 2026-10-10
+        // §5). Cài đặt › Phụ đề ghi chú ngay, chưa cần bắt đầu phiên (§6.3).
+        if outcome.as_ref().is_some_and(probe::too_slow_for_streaming) {
+            app.state::<crate::state::AppState>()
+                .update_status(crate::state::AppStatus::note_machine_too_slow);
+            crate::actions::status_changed(&app);
+        }
     });
 }
 
