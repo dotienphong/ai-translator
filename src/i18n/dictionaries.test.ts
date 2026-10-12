@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { en, placeholders, vi, type MessageKey } from "./index";
 import { ja } from "./ja";
+import { zh } from "./zh";
 
 // Từ điển của ba ngôn ngữ giao diện thêm ngày 2026-10-12 (spec 2026-10-12-ui-ja-zh-ko-design.md). Từ điển nào xong thì
 // được thêm vào `DICTS` cùng dòng import của nó. Test của vi và en nằm ở i18n.test.ts.
 type Dict = Record<MessageKey, string>;
 type NewLang = "ja" | "zh" | "ko";
 
-const DICTS: Partial<Record<NewLang, Dict>> = { ja };
+const DICTS: Partial<Record<NewLang, Dict>> = { ja, zh };
 
 const KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
 const HAN = /\p{Script=Han}/u;
