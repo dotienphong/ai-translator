@@ -27,7 +27,7 @@ use pipeline::config::PipelineConfig;
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, Usage, VadFactory};
 use pipeline::glossary::SharedGlossary;
 use pipeline::prompt::Lang as MtLang;
-use pipeline::subtitle::{Delta, Subtitle};
+use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Subtitle};
 use pipeline::supervisor::{Asr, GiveUpCause, SidecarEvent, SidecarEvents, SidecarManager, SystemClock, Which};
 use pipeline::translate::Mt;
 use pipeline::vad::SileroVad;
@@ -422,7 +422,13 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         log::info!("hủy phiên dịch {n} lúc đang bắt đầu");
         return Ok(state.status());
     }
-    *session.engine.lock().unwrap() = Some(engine);
+    {
+        let mut slot = session.engine.lock().unwrap();
+        // Công tắc "Dịch trong lúc người nói chưa dừng" có thể vừa đổi trong lúc chuẩn bị (tới 180 giây nạp model): áp giá
+        // trị lúc này, dưới cùng khóa với `set_streaming_enabled`, nên không lần đổi nào bị lỡ (QĐ4 của kế hoạch 03).
+        engine.set_streaming_enabled(state.settings().translate_while_speaking);
+        *slot = Some(engine);
+    }
     session.deps.begin_session();
     log::info!("bắt đầu phiên dịch {n}");
     Ok(changed(app))
@@ -515,6 +521,20 @@ pub fn stop<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
         s.waiting_for_app = false;
     });
     changed(app)
+}
+
+/// Công tắc "Dịch trong lúc người nói chưa dừng" vừa đổi (spec 2026-10-10 §6.3; QĐ4 của kế hoạch 03): phiên đang chạy áp
+/// dụng từ đoạn kế tiếp (`Engine::set_streaming_enabled`). Không có phiên thì thôi: phiên sau đọc cài đặt lúc gắn engine,
+/// dưới cùng khóa `engine`.
+pub fn set_streaming_enabled<R: Runtime>(app: &AppHandle<R>, on: bool) {
+    let Some(session) = app.try_state::<Session>() else {
+        return;
+    };
+    let slot = session.engine.lock().unwrap();
+    if let Some(engine) = slot.as_ref() {
+        engine.set_streaming_enabled(on);
+        log::info!("dịch trong lúc người nói chưa dừng: {}", if on { "bật" } else { "tắt" });
+    }
 }
 
 /// Dừng phiên `n` vì lỗi (§9). Gọi từ luồng riêng, không từ luồng của engine. Phiên đó đã dừng (người dùng bấm Dừng,
@@ -758,6 +778,15 @@ impl<R: Runtime> EventSink for TauriSink<R> {
             }
         });
         changed(&self.app);
+    }
+
+    /// Dòng đang nói (spec 2026-10-10 §6.2): chỉ tới thanh phụ đề (QĐ5). Không vào bản chép lời, lịch sử hay log (§6.4).
+    fn live(&self, line: &LiveLine) {
+        events::subtitle_live(&self.app, line);
+    }
+
+    fn live_end(&self, end: &LiveEnd) {
+        events::subtitle_live_end(&self.app, end);
     }
 
     /// Đếm phút cho hạn mức (§6.8): `Break` khi chạm hạn mức, engine dừng phiên với `quotaExhausted`.
@@ -1381,6 +1410,59 @@ mod tests {
         assert!(
             !status.indicators.streaming_unavailable,
             "chỉ báo của phiên về mặc định"
+        );
+    }
+
+    /// QĐ5 của spec 2026-10-10: dòng đang nói và lệnh gỡ nó chỉ tới thanh phụ đề, không tới cửa sổ chính, và không vào bản
+    /// chép lời (§6.4). Payload giữ tên trường snake_case của H5.
+    #[test]
+    fn live_lines_reach_only_the_overlay() {
+        use tauri::Listener;
+        let app = crate::test_support::mock_app();
+        let heard = |label: &str| {
+            let got = Arc::new(Mutex::new(Vec::<String>::new()));
+            let w = crate::test_support::window(&app, label);
+            for event in [events::SUBTITLE_LIVE, events::SUBTITLE_LIVE_END] {
+                let sink = got.clone();
+                w.listen(event, move |e| {
+                    sink.lock().unwrap().push(format!("{event} {}", e.payload()))
+                });
+            }
+            got
+        };
+        let (to_overlay, to_main) = (heard(overlay::LABEL), heard(window::MAIN));
+        let sink = TauriSink {
+            app: app.handle().clone(),
+            session: 1,
+            asr_code: Arc::new(crate::test_support::FakeDeps::default()),
+        };
+        sink.live(&LiveLine {
+            id: 1_000_007,
+            extends: Some(1_000_006),
+            src_lang: "en".into(),
+            src_stable: "Hello".into(),
+            src_tail: " every".into(),
+            tgt_stable: "Xin chào".into(),
+            tgt_tail: " mọi".into(),
+            tgt_src_units: 1,
+        });
+        sink.live_end(&LiveEnd { id: 1_000_007 });
+        let since = Instant::now();
+        while to_overlay.lock().unwrap().len() < 2 {
+            assert!(since.elapsed() < Duration::from_secs(10), "thanh phụ đề chưa nhận đủ");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let got = to_overlay.lock().unwrap().clone();
+        assert!(got[0].starts_with("subtitle://live {"), "{got:?}");
+        assert!(
+            got[0].contains(r#""extends":1000006"#) && got[0].contains(r#""tgt_tail":" mọi""#),
+            "{got:?}"
+        );
+        assert_eq!(got[1], r#"subtitle://live-end {"id":1000007}"#);
+        assert!(to_main.lock().unwrap().is_empty(), "cửa sổ chính không nhận (QĐ5)");
+        assert!(
+            app.state::<TranscriptStore>().snapshot().lines.is_empty(),
+            "không vào bản chép lời"
         );
     }
 

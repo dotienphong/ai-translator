@@ -4,6 +4,7 @@
 //! đích `Any` nhận cả sự kiện gửi riêng cho cửa sổ khác. Vì vậy không gửi bí mật nào qua sự kiện
 //! (kế hoạch 06: không gửi token hay license key đầy đủ); `emit_to` chỉ để giảm việc thừa.
 
+use pipeline::subtitle::{LiveEnd, LiveLine};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
@@ -21,6 +22,11 @@ pub const OVERLAY_VIEW: &str = "overlay://view";
 pub const SUBTITLE_UPSERT: &str = "subtitle://upsert";
 /// Phần chữ dịch mới trong lúc đang dịch (`pipeline::subtitle::Delta`).
 pub const SUBTITLE_DELTA: &str = "subtitle://delta";
+/// Dòng đang nói (spec 2026-10-10 §6.2, `pipeline::subtitle::LiveLine`). Chỉ gửi cho thanh phụ đề: cửa sổ chính, bản chép
+/// lời, lịch sử và xuất file chỉ có bản cuối (QĐ5 của spec 2026-10-10).
+pub const SUBTITLE_LIVE: &str = "subtitle://live";
+/// Gỡ dòng đang nói (`pipeline::subtitle::LiveEnd`); chỉ gửi cho thanh phụ đề.
+pub const SUBTITLE_LIVE_END: &str = "subtitle://live-end";
 /// Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch.
 pub const AUDIO_LEVEL: &str = "audio://level";
 /// Phím tắt cuộn phụ đề lên hay xuống (§4.4); chỉ gửi cho thanh phụ đề. Nội dung là `"up"` hay `"down"`.
@@ -65,6 +71,16 @@ pub fn status_changed<R: Runtime>(app: &AppHandle<R>, status: &AppStatus) {
 
 pub fn overlay_view<R: Runtime>(app: &AppHandle<R>, view: &OverlayView) {
     emit(app, overlay::LABEL, OVERLAY_VIEW, view);
+}
+
+/// Dòng đang nói: chỉ thanh phụ đề vẽ (QĐ5 của spec 2026-10-10).
+pub fn subtitle_live<R: Runtime>(app: &AppHandle<R>, line: &LiveLine) {
+    emit(app, overlay::LABEL, SUBTITLE_LIVE, line);
+}
+
+/// Gỡ dòng đang nói trên thanh phụ đề.
+pub fn subtitle_live_end<R: Runtime>(app: &AppHandle<R>, end: &LiveEnd) {
+    emit(app, overlay::LABEL, SUBTITLE_LIVE_END, end);
 }
 
 /// Báo thanh phụ đề cuộn một trang (§4.4). Thanh khóa vẫn nhận: sự kiện không đi qua chuột.

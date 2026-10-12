@@ -31,6 +31,10 @@ pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings
     if previous.update_channel != next.update_channel {
         updater::channel_changed(app);
     }
+    // Phiên đang chạy áp dụng từ đoạn kế tiếp (spec 2026-10-10 §6.3).
+    if previous.translate_while_speaking != next.translate_while_speaking {
+        session::set_streaming_enabled(app, next.translate_while_speaking);
+    }
     next
 }
 

@@ -221,6 +221,9 @@ pub enum FakeAudio {
     Silence,
     /// 1 giây tiếng, 1 giây im lặng, lặp lại; phát nhanh gấp 10 lần thời gian thật.
     Tone,
+    /// 3 giây tiếng, 1 giây im lặng, lặp lại; phát nhanh gấp 10 lần thời gian thật. Đoạn đủ dài cho lần chép từng phần
+    /// theo nhịp (`streaming.min_partial_speech_ms` 1000, spec 2026-10-10 §4.1), với mọi ngưỡng ngắt câu của chế độ này.
+    LongTone,
 }
 
 /// Cổng chặn `prepare` (như nạp model lâu): `prepare` chờ tới khi cổng mở, hoặc app thoát.
@@ -313,7 +316,11 @@ impl FrameSource for FakeCapture {
         // 100 ms âm thanh mỗi 10 ms.
         std::thread::sleep(Duration::from_millis(10));
         for _ in 0..1_600 {
-            let speaking = self.audio == FakeAudio::Tone && (self.pos / 16_000).is_multiple_of(2);
+            let speaking = match self.audio {
+                FakeAudio::Silence => false,
+                FakeAudio::Tone => (self.pos / 16_000).is_multiple_of(2),
+                FakeAudio::LongTone => self.pos % 64_000 < 48_000,
+            };
             let t = self.pos as f32 / 16_000.0;
             out.push(if speaking {
                 0.3 * (2.0 * std::f32::consts::PI * 220.0 * t).sin()

@@ -8,7 +8,9 @@ use tauri::{Listener, Manager};
 
 use crate::actions;
 use crate::errors;
-use crate::events::{AUDIO_LEVEL, NOTICE, OVERLAY_SCROLL, SUBTITLE_DELTA, SUBTITLE_UPSERT};
+use crate::events::{
+    AUDIO_LEVEL, NOTICE, OVERLAY_SCROLL, SUBTITLE_DELTA, SUBTITLE_LIVE, SUBTITLE_LIVE_END, SUBTITLE_UPSERT,
+};
 use crate::hotkeys::HotkeyAction;
 use crate::login_item::AgentStatus;
 use crate::session::{self, StartOptions};
@@ -2126,4 +2128,115 @@ fn a_slow_machine_translates_after_each_sentence_from_the_start() {
         "phiên mới trên máy đủ sức thì hết ghi chú"
     );
     invoke(&main, "toggle_session", json!({})).unwrap();
+}
+
+/// Ghi lại payload của một sự kiện tới đúng cửa sổ `window` (sự kiện gửi riêng cho cửa sổ khác thì không có ở đây).
+fn heard(window: &tauri::WebviewWindow<tauri::test::MockRuntime>, event: &str) -> Arc<Mutex<Vec<Value>>> {
+    let received = Arc::new(Mutex::new(Vec::new()));
+    let sink = received.clone();
+    window.listen(event, move |e| {
+        sink.lock().unwrap().push(serde_json::from_str(e.payload()).unwrap())
+    });
+    received
+}
+
+/// Id lớn nhất trong các payload có trường `id`; 0 khi chưa có.
+fn max_id(values: &[Value]) -> u64 {
+    values.iter().filter_map(|v| v["id"].as_u64()).max().unwrap_or(0)
+}
+
+/// Spec 2026-10-10 §6.2, §6.3, QĐ5 (QĐ4, QĐ5 của kế hoạch 03): qua engine thật, dòng đang nói và lệnh gỡ nó chỉ tới thanh
+/// phụ đề. Tắt công tắc giữa phiên thì từ đoạn kế tiếp không còn dòng đang nói (đoạn đang mở lúc tắt thì còn được); bật lại
+/// thì có lại.
+#[test]
+fn live_lines_reach_only_the_overlay_and_follow_the_switch_mid_session() {
+    let app = mock_app_with(FakeDeps {
+        audio: FakeAudio::LongTone,
+        ..FakeDeps::default()
+    });
+    let main = window(&app, "main");
+    let overlay = window(&app, "overlay");
+    let lives = heard(&overlay, SUBTITLE_LIVE);
+    let ends = heard(&overlay, SUBTITLE_LIVE_END);
+    let (lives_to_main, ends_to_main) = (heard(&main, SUBTITLE_LIVE), heard(&main, SUBTITLE_LIVE_END));
+    let upserts = record(&app, SUBTITLE_UPSERT);
+    invoke(&main, "toggle_session", json!({})).unwrap();
+    wait_until("có dòng đang nói", || !lives.lock().unwrap().is_empty());
+    wait_until("có lệnh gỡ dòng đang nói", || !ends.lock().unwrap().is_empty());
+    invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "translateWhileSpeaking": false } }),
+    )
+    .unwrap();
+    let cutoff = max_id(&upserts.lock().unwrap()).max(max_id(&lives.lock().unwrap())) + 1;
+    wait_until("hai câu sau mốc tắt đã dịch xong", || {
+        upserts
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|s| s["status"] == "done" && s["id"].as_u64().unwrap_or(0) > cutoff + 1)
+    });
+    let late: Vec<u64> = lives
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|v| v["id"].as_u64())
+        .filter(|id| *id > cutoff)
+        .collect();
+    assert!(late.is_empty(), "đã tắt mà đoạn sau vẫn có dòng đang nói: {late:?}");
+    invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "translateWhileSpeaking": true } }),
+    )
+    .unwrap();
+    let resumed = max_id(&upserts.lock().unwrap());
+    wait_until("bật lại thì đoạn mới có dòng đang nói", || {
+        lives
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|v| v["id"].as_u64().unwrap_or(0) > resumed)
+    });
+    invoke(&main, "toggle_session", json!({})).unwrap();
+    assert!(
+        lives_to_main.lock().unwrap().is_empty(),
+        "cửa sổ chính không nhận (QĐ5)"
+    );
+    assert!(ends_to_main.lock().unwrap().is_empty());
+    let line = lives.lock().unwrap()[0].clone();
+    for key in [
+        "id",
+        "extends",
+        "src_lang",
+        "src_stable",
+        "src_tail",
+        "tgt_stable",
+        "tgt_tail",
+        "tgt_src_units",
+    ] {
+        assert!(line.get(key).is_some(), "LiveLine thiếu {key}: {line}");
+    }
+}
+
+/// Spec 2026-10-10 §5: máy chưa đủ sức thì không có dòng đang nói nào, chỉ bản cuối.
+#[test]
+fn a_slow_machine_sends_no_live_lines() {
+    let deps = FakeDeps {
+        audio: FakeAudio::LongTone,
+        ..FakeDeps::default()
+    };
+    deps.slow_machine.store(true, std::sync::atomic::Ordering::SeqCst);
+    let app = mock_app_with(deps);
+    let main = window(&app, "main");
+    let overlay = window(&app, "overlay");
+    let lives = heard(&overlay, SUBTITLE_LIVE);
+    let upserts = record(&app, SUBTITLE_UPSERT);
+    invoke(&main, "toggle_session", json!({})).unwrap();
+    wait_until("hai câu dịch xong", || {
+        upserts.lock().unwrap().iter().filter(|s| s["status"] == "done").count() >= 2
+    });
+    invoke(&main, "toggle_session", json!({})).unwrap();
+    assert!(lives.lock().unwrap().is_empty(), "máy chưa đủ sức: dịch sau mỗi câu");
 }
