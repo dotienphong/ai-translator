@@ -1,6 +1,6 @@
 # Phiên bản website tự theo bản đã đăng · Kế hoạch thực thi
 
-**Trạng thái:** Task 0–3 xong ngày 2026-10-13 (test website 72 đạt, 0 lỗi, lần đầu từ `943bd13`); còn push, nâng 0.1.8 và phát hành (Task 4–6). Làm trực tiếp trên `main` theo lời chủ dự án. **Task 6 (đẩy tag phát hành) cần chủ dự án xác nhận lại ngay trước khi đẩy.**
+**Trạng thái:** XONG ngày 2026-10-13: Task 0–3 (test website 72 đạt, 0 lỗi, lần đầu từ `943bd13`), push, nâng 0.1.8 (`fb980f7`) và phát hành (tag `v0.1.8`, Release thành công, R2 stable = 0.1.8, website chế độ deploy tự ra 0.1.8). Làm trực tiếp trên `main` theo lời chủ dự án. **Task 6 (đẩy tag phát hành) cần chủ dự án xác nhận lại ngay trước khi đẩy.**
 
 **Chỗ thực tế khác với kế hoạch:**
 - Baseline Task 0 có **2** test đỏ, không phải 1: ngoài lỗi version, test `sitemap lastmod … không ở tương lai` đỏ vì lỗi múi giờ có sẵn (ngày sửa trang lấy từ git theo giờ Việt Nam, test so với ngày UTC; chỉ lộ trong khoảng 00:00–07:00 giờ Việt Nam). Đã sửa ở commit riêng `fab1200` (dùng `vnDate` của `release.mjs`).
