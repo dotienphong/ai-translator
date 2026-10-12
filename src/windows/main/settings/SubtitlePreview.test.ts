@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { en, vi } from "../../../i18n";
+import { en, ja, ko, vi, zh } from "../../../i18n";
 import { splitTail } from "../../../lib/subtitleView";
 import { SubtitlePreview, type SubtitlePreviewProps } from "./SubtitlePreview";
 
@@ -47,8 +47,8 @@ describe("SubtitlePreview", () => {
     expect(markup).toContain("background:rgba(12, 27, 58, 0.8)");
   });
 
-  it("câu mẫu hai tầng của cả hai ngôn ngữ: phần tạm là đuôi thật của cả câu", () => {
-    for (const dict of [en, vi]) {
+  it("câu mẫu hai tầng của cả năm ngôn ngữ: phần tạm là đuôi thật của cả câu", () => {
+    for (const dict of [en, vi, ja, zh, ko]) {
       const pairs = [
         [dict["settings.subtitles.preview.live.source"], dict["settings.subtitles.preview.live.sourceTail"]],
         [dict["settings.subtitles.preview.live.text"], dict["settings.subtitles.preview.live.textTail"]],

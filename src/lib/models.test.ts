@@ -5,6 +5,7 @@ import {
   downloadBlock,
   formatBytes,
   jobFor,
+  localized,
   needsManualDownload,
   packBadges,
   progress,
@@ -127,5 +128,14 @@ describe("packBadges", () => {
     expect(packBadges(v, lite, "standard")).toEqual(["installed", "appTooOld"]);
     const unsupported = view({ verdict: { kind: "unsupported", reason: "lowRam" } });
     expect(packBadges(unsupported, pack("lite", 1), null)).toEqual([]);
+  });
+});
+
+describe("localized", () => {
+  const text = { vi: "Chuẩn", en: "Standard" };
+
+  it("tiếng Việt lấy bản vi; mọi ngôn ngữ khác lấy bản English (manifest chỉ có vi và en)", () => {
+    expect(localized(text, "vi")).toBe("Chuẩn");
+    for (const lang of ["en", "ja", "zh", "ko"] as const) expect(localized(text, lang), lang).toBe("Standard");
   });
 });

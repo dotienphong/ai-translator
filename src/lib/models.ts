@@ -80,8 +80,9 @@ export function formatBytes(bytes: number, lang: UiLanguage): string {
   return `${lang === "vi" ? text.replace(".", ",") : text} ${unit}`;
 }
 
+// Manifest chỉ có tên và ghi chú bằng tiếng Việt và English (spec 2026-10-12 §5): ngôn ngữ khác dùng English.
 export function localized(text: Localized, lang: UiLanguage): string {
-  return text[lang];
+  return lang === "vi" ? text.vi : text.en;
 }
 
 export function packById(view: ModelsView | null, id: string | null): PackView | undefined {
