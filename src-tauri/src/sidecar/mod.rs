@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
+use asr_protocol::Backend;
 use pipeline::config::{AsrConfig, MtConfig, SupervisorConfig};
 use pipeline::supervisor::{AsrSpec, GiveUpCause, LlamaSpec, SidecarSpec};
 use tauri::{AppHandle, Manager, Runtime};
@@ -83,6 +84,18 @@ pub fn give_up_code(cause: GiveUpCause) -> &'static str {
         GiveUpCause::ModelLoad => errors::MODEL_BROKEN,
         GiveUpCause::Failures | GiveUpCause::NoSharedMode | GiveUpCause::Closing => errors::SIDECAR_FAILED,
     }
+}
+
+/// Máy đủ sức cho chế độ dịch trong lúc người nói chưa dừng không, lúc bắt đầu phiên (spec 2026-10-10 §5, "Tắt ngay từ
+/// đầu phiên"; QĐ1 của kế hoạch 03):
+/// - `asr-worker` phải chạy GPU: `asr_backend` là thiết bị thật của worker đang chạy (`SidecarManager::asr_backend`, đặt ở
+///   `Ready`); chưa biết thì coi như chưa đủ sức.
+/// - Windows: lần dò GPU phải có kết quả (`probed`) và không bị `probe::too_slow_for_streaming`. Dò quá giờ thì `prepare`
+///   đã cho `asr-worker` chạy CPU, nên kết quả vẫn là chưa đủ sức.
+pub fn streaming_supported(windows: bool, probed: Option<&probe::ProbeOutcome>, asr_backend: Option<Backend>) -> bool {
+    let asr_on_gpu = asr_backend.is_some_and(Backend::is_gpu);
+    let gpu_ok = !windows || probed.is_some_and(|o| !probe::too_slow_for_streaming(o));
+    asr_on_gpu && gpu_ok
 }
 
 /// Kết quả dò GPU trên Windows (`asr-worker-vulkan --probe`), dùng chung giữa luồng dò lúc mở app và lần chuẩn bị đầu
@@ -280,6 +293,48 @@ mod tests {
         assert_eq!(give_up_code(GiveUpCause::Tampered), errors::SIDECAR_TAMPERED);
         assert_eq!(give_up_code(GiveUpCause::ModelLoad), errors::MODEL_BROKEN);
         assert_eq!(give_up_code(GiveUpCause::Failures), errors::SIDECAR_FAILED);
+    }
+
+    /// QĐ1 của kế hoạch 03 (spec 2026-10-10 §5): dịch trong lúc người nói chưa dừng chỉ khi `asr-worker` chạy GPU; trên
+    /// Windows còn phải có kết quả dò GPU, và không chỉ có GPU tích hợp.
+    #[test]
+    fn translating_while_speaking_needs_a_gpu_asr_worker_and_no_integrated_only_windows() {
+        let gpu = |device_type: &str| probe::GpuInfo {
+            name: "GPU".into(),
+            device_type: device_type.into(),
+            device_local_bytes: 1 << 30,
+            vendor_id: 1,
+        };
+        let discrete = probe::ProbeOutcome {
+            usable: true,
+            gpus: vec![gpu("discrete")],
+        };
+        let integrated = probe::ProbeOutcome {
+            usable: true,
+            gpus: vec![gpu("integrated")],
+        };
+        assert!(streaming_supported(false, None, Some(Backend::Metal)), "macOS: Metal");
+        assert!(
+            !streaming_supported(false, None, Some(Backend::Cpu)),
+            "macOS: asr-worker chạy CPU"
+        );
+        assert!(!streaming_supported(false, None, None), "chưa biết thiết bị");
+        assert!(
+            streaming_supported(true, Some(&discrete), Some(Backend::Vulkan)),
+            "Windows: card rời"
+        );
+        assert!(
+            !streaming_supported(true, Some(&integrated), Some(Backend::Vulkan)),
+            "Windows: chỉ GPU tích hợp"
+        );
+        assert!(
+            !streaming_supported(true, Some(&discrete), Some(Backend::Cpu)),
+            "asr-worker đã chuyển sang CPU"
+        );
+        assert!(
+            !streaming_supported(true, None, Some(Backend::Vulkan)),
+            "chưa có kết quả dò"
+        );
     }
 
     /// Q7 của review 02c: dò quá giờ thì không nhớ (lần sau dò lại); có kết quả thì nhớ, và lần dò đang chạy được dùng chung.

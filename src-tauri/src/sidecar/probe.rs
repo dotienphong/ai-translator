@@ -40,6 +40,13 @@ pub fn only_integrated_gpu(gpus: &[GpuInfo]) -> bool {
     !gpus.iter().any(|g| g.device_type == "discrete") && gpus.iter().any(|g| g.device_type == "integrated")
 }
 
+/// Máy Windows chưa đủ sức dịch trong lúc người nói chưa dừng (spec 2026-10-10 §5, "Tắt ngay từ đầu phiên"): không có GPU
+/// dùng được (`asr-worker` chạy CPU), hay chỉ có GPU tích hợp (`llama-server` chạy `-ngl 0`, hai engine tranh nhau một
+/// iGPU). S6 trên Windows đo riêng lượt cuối đã mất 1,3–4 giây.
+pub fn too_slow_for_streaming(outcome: &ProbeOutcome) -> bool {
+    !outcome.usable || only_integrated_gpu(&outcome.gpus)
+}
+
 /// Có GPU chạy được Vulkan không: card rời hoặc GPU tích hợp.
 pub fn usable_gpu(probe_stdout: &str) -> bool {
     any_usable(&parse_gpus(probe_stdout))
@@ -154,6 +161,25 @@ mod tests {
         assert!(!only_integrated_gpu(&discrete), "card rời: giữ llama-server trên GPU");
         assert!(!only_integrated_gpu(&both), "có cả card rời: giữ trên GPU");
         assert!(!only_integrated_gpu(&[]), "không có GPU: đã chạy CPU sẵn");
+    }
+
+    /// Spec 2026-10-10 §5: trên Windows chỉ máy có card rời mới dịch trong lúc người nói chưa dừng; chỉ có GPU tích hợp hay
+    /// không có GPU dùng được thì dịch sau mỗi câu.
+    #[test]
+    fn only_a_discrete_gpu_is_fast_enough_to_translate_while_speaking() {
+        let of = |json: &str| ProbeOutcome {
+            usable: usable_gpu(json),
+            gpus: parse_gpus(json),
+        };
+        let discrete = r#"[{"name":"NVIDIA GeForce RTX 4050 Laptop GPU","device_type":"discrete","device_local_bytes":6425673728,"vendor_id":4318}]"#;
+        let integrated = r#"[{"name":"Intel(R) Iris(R) Xe","device_type":"integrated","device_local_bytes":16999974912,"vendor_id":32902}]"#;
+        let both = r#"[{"name":"Intel(R) UHD","device_type":"integrated","device_local_bytes":268435456,"vendor_id":32902},
+            {"name":"NVIDIA GeForce RTX 4050 Laptop GPU","device_type":"discrete","device_local_bytes":6425673728,"vendor_id":4318}]"#;
+        assert!(!too_slow_for_streaming(&of(discrete)));
+        assert!(!too_slow_for_streaming(&of(both)), "có cả card rời");
+        assert!(too_slow_for_streaming(&of(integrated)), "i5-1345U, Iris Xe");
+        assert!(too_slow_for_streaming(&of("[]")), "không có GPU: asr-worker chạy CPU");
+        assert!(too_slow_for_streaming(&ProbeOutcome::default()), "dò lỗi");
     }
 
     #[test]

@@ -16,6 +16,9 @@ tauri-build = { version = "2.7.1", features = [] }
 
 [dependencies]
 anyhow.workspace = true
+# Giao thức dùng chung với `asr-worker`: `Backend` cho luật máy đủ sức dịch trong lúc người nói chưa dừng
+# (sidecar/mod.rs); `TranscribeRequest`/`TranscribeResult` cho asr-worker giả trong `test_support.rs`.
+asr-protocol = { path = "../crates/asr-protocol" }
 audio-capture = { path = "../crates/audio-capture" }
 # Nhập và xuất từ điển thuật ngữ dạng CSV (glossary.rs).
 csv = "1.4.0"
@@ -90,7 +93,5 @@ windows-native-keyring-store = "1.1.0"
 rusqlite = { version = "0.40.2", default-features = false, features = ["bundled-sqlcipher-vendored-openssl"] }
 
 [dev-dependencies]
-# Kiểu `TranscribeRequest`/`TranscribeResult` cho `asr-worker` giả trong `test_support.rs`.
-asr-protocol = { path = "../crates/asr-protocol" }
 # `test`: MockRuntime để test ACL của từng cửa sổ mà không mở cửa sổ thật.
 tauri = { version = "2.12.1", features = ["macos-private-api", "tray-icon", "test"] }
