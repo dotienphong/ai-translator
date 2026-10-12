@@ -52,7 +52,7 @@
 | D5 | Model dịch | **Hy-MT2-1.8B** (Apache 2.0), định dạng GGUF |
 | D6 | Model nhận dạng giọng nói | Whisper (MIT) chạy qua whisper.cpp |
 | D7 | Nơi xử lý | 100% trên máy, âm thanh không rời khỏi máy |
-| D8 | Ngôn ngữ giao diện | Tiếng Việt và English, đổi được trong Cài đặt |
+| D8 | Ngôn ngữ giao diện | Tiếng Việt, English, 日本語, 中文 (giản thể), 한국어; đổi được trong Cài đặt (spec 2026-10-12-ui-ja-zh-ko-design.md) |
 | D9 | Chiều dịch | MVP chỉ dịch một chiều: âm thanh máy đang phát → phụ đề ngôn ngữ của người dùng. Nếu cả hai bên cùng cài app thì mỗi bên đều thấy phụ đề của phía kia. |
 | D10 | Phân phối | Tải từ website của sản phẩm: Windows dùng bộ cài **`.exe`** (NSIS, đã ký số), macOS dùng **`.dmg`** (đã ký và notarize). Chưa lên Microsoft Store hay Mac App Store. Microsoft Store có thể xem xét sau; các điều kiện của Store đã được ghi nhận ngày 2026-09-29. |
 | D11 | Thanh toán | **MVP dùng PayOS**: khách chuyển khoản ngân hàng bằng mã VietQR, trả bằng VND. Khi bán ra nước ngoài thì thêm một cổng thanh toán quốc tế (§13). |
@@ -87,7 +87,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | F4 | Bản chép lời của phiên: xem, tìm, sao chép. Xuất ra TXT, SRT, Markdown và lưu lịch sử là tính năng Pro, chỉ có ở gói trả phí (§2); lưu lịch sử mặc định tắt. |
 | F5 | Từ điển thuật ngữ (tính năng Pro, chỉ có ở gói trả phí), tối đa 500 cặp. Chỉ những thuật ngữ **có xuất hiện trong câu** mới được đưa vào prompt. |
 | F6 | Quản lý model: có gói Chuẩn và gói Nhẹ, tự đề xuất gói theo cấu hình máy, tải tiếp được khi rớt mạng, kiểm tra SHA-256 |
-| F7 | Giao diện tiếng Việt và English |
+| F7 | Giao diện tiếng Việt, English, 日本語, 中文 và 한국어 |
 | F8 | Phân quyền theo gói (Free dùng thử và hai gói trả phí, §2) bằng license key, dùng được khi offline. Hạn mức dịch theo gói, đếm riêng trên từng máy; mỗi key một máy (§6.8). |
 | F9 | Tự cập nhật app |
 | F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề, `Ctrl+Alt+PageUp` / `Ctrl+Alt+PageDown` (`⌃⌥PageUp` / `⌃⌥PageDown`) để cuộn phụ đề lên/xuống xem câu cũ (§4.4). Không chọn Ctrl+Alt+mũi tên vì driver Intel trên Windows dùng tổ hợp đó để xoay màn hình. Ở Phase 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
@@ -155,8 +155,8 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 
 ### 4.1 Lần đầu mở app
 
-1. **Chọn ngôn ngữ giao diện.** Mặc định theo hệ điều hành: tiếng Việt nếu máy dùng tiếng Việt, còn lại là English.
-   - **Bước 1b: Điều khoản.** Hiện Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư (đóng gói trong app, theo ngôn ngữ vừa chọn); phải tick đồng ý mới bấm được "Tiếp" (spec 2026-10-06 legal-in-app).
+1. **Chọn ngôn ngữ giao diện.** Mặc định theo hệ điều hành (locale đầu tiên): tiếng Việt, 日本語, 한국어 nếu máy dùng ngôn ngữ đó; mọi locale tiếng Trung (kể cả zh-TW, zh-HK) ra 中文 chữ giản thể; còn lại là English.
+   - **Bước 1b: Điều khoản.** Hiện Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư (đóng gói trong app, theo ngôn ngữ vừa chọn; 日本語, 中文, 한국어 chưa có bản pháp lý riêng nên hiện bản English, kèm một dòng báo); phải tick đồng ý mới bấm được "Tiếp" (spec 2026-10-06 legal-in-app).
    - Ngay sau khi người dùng đồng ý, app đăng ký dùng thử Free với license server (`POST /v1/trial`, gửi `device_id_hash`), chạy nền. Lỗi mạng không chặn các bước sau; app thử lại theo §6.8 ("Dùng thử Free"). Đăng ký sau bước đồng ý vì request gửi mã băm ID máy (§10.1).
 2. **Kiểm tra cấu hình** (RAM, GPU, dung lượng trống), rồi đề xuất **gói Chuẩn (khoảng 2,5 GB)** hoặc **gói Nhẹ (khoảng 1,3 GB)**, có ghi rõ dung lượng sẽ tải. Máy chưa được hỗ trợ (§8) thì báo lý do và cấu hình tối thiểu, và không cho tải model (§6.7).
 3. **Tải model.** Có thể tạm dừng rồi tải tiếp. Tải xong là dùng được ngay.
@@ -241,9 +241,10 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 
 ### 4.5 Ngôn ngữ giao diện
 
-- **Chuỗi giao diện:** lưu trong từ điển có kiểu. `en` là nguồn chuẩn cho danh sách khóa; kiểu `Record` bắt `vi` phải có đủ mọi khóa. Đây là cách AI Live Translator đang làm, đã quen tay.
+- **Chuỗi giao diện:** lưu trong từ điển có kiểu. `en` là nguồn chuẩn cho danh sách khóa; kiểu `Record` bắt `vi`, `ja`, `zh`, `ko` phải có đủ mọi khóa. Bản dịch ja/zh/ko chưa có người bản ngữ duyệt (spec 2026-10-12).
 - **Đổi ngôn ngữ ngay**, không cần khởi động lại app.
-- **Chuỗi phía Rust** (menu khay, thông báo hệ thống, khoảng 20 chuỗi) nằm trong một bảng nhỏ riêng, có đủ cả vi và en.
+- **Chuỗi phía Rust** (menu khay, chú thích khay, file xuất bản chép lời, 21 chuỗi) nằm trong một bảng nhỏ riêng, có đủ năm ngôn ngữ.
+- **Câu hỏi quyền macOS** (`NSAudioCaptureUsageDescription`) có đủ năm ngôn ngữ trong `src-tauri/macos/<lproj>/InfoPlist.strings`; tiếng Trung là `zh-Hans`.
 - **Menu app trên Mac** (About, Edit, Window, Quit…) dùng chữ mặc định English của các mục có sẵn ở MVP. Chỉ menu khay theo ngôn ngữ giao diện.
 
 ## 5. Kiến trúc tổng thể
@@ -1242,7 +1243,7 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
     - chạm hạn mức: không bắt đầu được phiên khi còn 0; bỏ hàng đợi, dịch xong câu đang dịch, dừng với `quota_exhausted`; Yearly không giới hạn.
   - Trạng thái bản quyền: ân hạn, thu hồi, tự làm mới token khi app chạy liên tục quá 24 giờ; mỗi key một máy (`key_in_use`, `license_conflict` xóa token và vào trạng thái xung đột, thử lại 15 phút, kiểm nhanh lúc bắt đầu phiên dừng phiên khi xung đột, lỗi mạng không dừng phiên).
   - Manifest và SHA-256.
-- **Test giao diện (`vitest`):** i18n đủ khóa cả vi lẫn en; hiển thị thanh phụ đề. Các hàm xuất file viết và test phía Rust (`transcript/export.rs`, §12), vì webview chặn `blob:` (§10.2).
+- **Test giao diện (`vitest`):** i18n đủ khóa ở cả năm ngôn ngữ, đúng hệ chữ, đúng bảng thuật ngữ; hiển thị thanh phụ đề. Các hàm xuất file viết và test phía Rust (`transcript/export.rs`, §12), vì webview chặn `blob:` (§10.2).
 - **License server:**
   - Unit test: tính và kiểm tra chữ ký HMAC-SHA256 với dữ liệu mẫu của PayOS; webhook idempotent; chỉ cấp license khi `PAID`, `amountPaid` ≥ `amount` và `amount` khớp đơn; mua thêm cùng gói (từ max(hiện tại, `expires_at`), giữ `cycle_anchor`, đặt lại khi đã hết hạn); đổi gói (công thức quy đổi theo giá mỗi ngày, cả hai ví dụ ở §6.8, `cycle_anchor` mới); mỗi key một máy (`409 key_in_use` không đổi dữ liệu, `allow_conflict` tạo xung đột, máy thứ ba nhận `key_in_use`, `validate` khi xung đột trả `409 license_conflict`, tự gỡ hay gỡ từ xa làm hết xung đột, chuỗi gỡ qua gỡ lại giữa hai máy bị `423`), kích hoạt lại cùng máy dùng lại activation; dùng thử (`POST /v1/trial` tạo một lần, gọi lại giữ `started_at`, gọi đồng thời ra một dòng, đã hết vẫn trả `200`, `503 trial_not_configured`; bộ kiểm token bản quyền từ chối payload có `typ`); migration `0002` đổi mã gói cũ sang `monthly`, `yearly`; khóa tạm (`423`); chặn IP và trường hợp CGNAT; `recover` luôn trả `200`; ký và kiểm tra token Ed25519, có `cycle_anchor`, `quota_minutes_per_cycle`, `quota_epoch`, `activation_created_at`; "hiện tại" của gia hạn và đổi gói là `transactionDateTime` kẹp trong thời hạn link và không muộn hơn lúc xử lý; reset hạn mức của máy tăng `quota_epoch`; `quota_fresh: true` cho mọi token trong 15 phút kể từ lúc tạo activation, lúc cấp token đầu tiên sau khi tăng `quota_epoch`, hay lúc server áp việc đặt lại `cycle_anchor` (không theo giá trị `cycle_anchor`), và `false` sau đó; gỡ (kể cả admin gỡ) không xóa activation, kích hoạt lại cùng `device_id_hash` dùng lại activation và không mở cửa sổ `quota_fresh` mới; parse `transactionDateTime` không có múi giờ theo GMT+7; phân loại lỗi email.
   - Test tích hợp với PayOS: PayOS không có sandbox, nên thử bằng giao dịch giá thật rồi hoàn tiền tay trên production, trước khi nhúng URL vào app (§6.13).
@@ -1285,7 +1286,7 @@ meeting-translator/
 │   ├── windows/main/             # Cửa sổ chính (các màn hình ở §4.3)
 │   ├── windows/overlay/          # Thanh phụ đề
 │   ├── components/  store/  lib/ipc.ts
-│   └── i18n/                     # Từ điển en (chuẩn) + vi
+│   └── i18n/                     # Từ điển en (chuẩn) + vi, ja, zh, ko
 ├── src-tauri/                    # Tiến trình chính, không link ggml
 │   ├── src/
 │   │   ├── main.rs
@@ -1360,7 +1361,7 @@ meeting-translator/
 - Tóm tắt và biên bản cuộc họp (cần thêm một LLM).
 - **Bán ra nước ngoài:** thêm một cổng thanh toán quốc tế, kiểu merchant of record để cổng đó lo thuế ở các nước (có thể cân nhắc Polar). Có giá bằng USD và thuê bao tự gia hạn. Trong app, khách ở Việt Nam thấy mã VietQR; khách nước ngoài được mở trang thanh toán của cổng quốc tế.
 - Gói cho doanh nghiệp: nhiều máy, cài đặt tập trung.
-- Thêm ngôn ngữ giao diện.
+- Thêm ngôn ngữ giao diện ngoài năm ngôn ngữ hiện có (vi, en, ja, zh, ko: spec `2026-10-12-ui-ja-zh-ko-design.md`).
 
 ## 14. Giả định cần kiểm chứng trong spike
 
