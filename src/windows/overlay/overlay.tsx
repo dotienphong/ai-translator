@@ -1,5 +1,5 @@
 import "./overlay.css";
-import { StrictMode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { StrictMode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useStore } from "zustand";
 import { translate } from "../../i18n";
@@ -12,8 +12,10 @@ import {
   localOffsetMinutes,
   overlayBackground,
   overlayNotes,
+  streamingEffective,
 } from "../../lib/subtitleView";
-import { createOverlayStore, createResizeDrag } from "../../store/overlay";
+import { createOverlayStore, createResizeDrag, visibleRows } from "../../store/overlay";
+import { LiveLineView } from "./LiveLineView";
 import { OverlayLine } from "./OverlayLine";
 
 const store = createOverlayStore(ipc);
@@ -64,9 +66,11 @@ function ResizeEdges() {
 }
 
 // Thanh phụ đề (§4.4): mọi câu của phiên (tối đa `MAX_LINES`) trong một vùng cuộn, bản dịch hiện dần, phụ đề tạm màu nhạt hơn,
-// câu gốc chữ nhỏ ở trên nếu bật. Đang ở đáy thì tự theo câu mới; cuộn lên xem câu cũ thì dừng theo, hiện nút "Mới nhất" để
-// về đáy. Cuộn bằng con lăn hay trackpad (chỉ khi chưa khóa, vì khóa thì chuột xuyên qua) hoặc bằng hai phím tắt cuộn lên
-// xuống (`overlay://scroll`, dùng được cả khi khóa).
+// câu gốc chữ nhỏ ở trên nếu bật. Đang dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.1) thì có thêm dòng đang nói hai
+// tầng (`LiveLineView`), đặt đúng chỗ theo `visibleRows`, và phụ đề tạm không nhạt cả dòng (`dimProvisional`). Đang ở đáy thì
+// tự theo câu mới, dòng đang nói tính như một dòng; cuộn lên xem câu cũ thì dừng theo, hiện nút "Mới nhất" để về đáy. Cuộn
+// bằng con lăn hay trackpad (chỉ khi chưa khóa, vì khóa thì chuột xuyên qua) hoặc bằng hai phím tắt cuộn lên xuống
+// (`overlay://scroll`, dùng được cả khi khóa).
 // Chỉ báo nhỏ ở góc trên: chấm "đang nghe" (sáng khi có tiếng), và các lời nhắc (đang nạp model, không có âm thanh,
 // đang trễ, dịch không khả dụng, hết hạn mức, lỗi). Màu chữ, màu nền và độ mờ nền theo Cài đặt › Phụ đề (§4.3).
 // Khi chưa khóa: kéo được cả thanh (`data-tauri-drag-region="deep"`), kéo cạnh để đổi kích thước, và rê chuột vào thì hiện
@@ -75,8 +79,11 @@ function ResizeEdges() {
 function Overlay() {
   const view = useStore(store, (s) => s.view);
   const lines = useStore(store, (s) => s.lines);
+  const live = useStore(store, (s) => s.live);
   const status = useStore(store, (s) => s.status);
   const level = useStore(store, (s) => s.level);
+  // Phụ đề và dòng đang nói theo đúng chỗ; chỉ tính lại khi một trong hai đổi.
+  const rows = useMemo(() => visibleRows(lines, live), [lines, live]);
   const scroller = useRef<HTMLDivElement>(null);
   // `follow` (ref) để các hàm cuộn đọc ngay; `following` (state) để vẽ nút "Mới nhất".
   const follow = useRef(true);
@@ -87,11 +94,12 @@ function Overlay() {
     follow.current = atBottom(el);
     setFollowing(follow.current);
   };
-  // Có câu mới hay cỡ chữ đổi mà đang theo thì giữ ở đáy. Ghi `scrollTop` đồng bộ trước khi vẽ, để không thấy giật.
+  // Có câu mới, dòng đang nói đổi, hay cỡ chữ đổi mà đang theo thì giữ ở đáy. Ghi `scrollTop` đồng bộ trước khi vẽ, để không
+  // thấy giật.
   useLayoutEffect(() => {
     const el = scroller.current;
     if (el && follow.current) el.scrollTop = el.scrollHeight;
-  }, [lines, view?.fontSize, view?.showSource]);
+  }, [rows, view?.fontSize, view?.showSource]);
   // Kéo cạnh đổi chiều cao thanh: vẫn giữ ở đáy nếu đang theo.
   useEffect(() => {
     const el = scroller.current;
@@ -120,6 +128,8 @@ function Overlay() {
   const notes = overlayNotes(status);
   const running = status?.session === "running";
   const hearing = running && level >= HEARING_RMS;
+  // Đang dịch trong lúc người nói chưa dừng: phụ đề tạm không nhạt cả dòng, chỉ phần tạm của dòng đang nói nhạt (§6.1).
+  const dimProvisional = !streamingEffective(view.translateWhileSpeaking, status);
   return (
     <div
       className={view.locked ? "overlay" : "overlay unlocked"}
@@ -161,10 +171,20 @@ function Overlay() {
         ))}
       </div>
       <div className="lines" ref={scroller} onScroll={syncFollow}>
-        {lines.length === 0 && notes.length === 0 && <div className="waiting">{t("overlay.waiting")}</div>}
-        {lines.map((l) => (
-          <OverlayLine key={l.id} line={l} showSource={view.showSource} uiLanguage={view.uiLanguage} />
-        ))}
+        {rows.length === 0 && notes.length === 0 && <div className="waiting">{t("overlay.waiting")}</div>}
+        {rows.map((r) =>
+          r.kind === "live" ? (
+            <LiveLineView key={`live-${r.live.id}`} live={r.live} showSource={view.showSource} />
+          ) : (
+            <OverlayLine
+              key={r.line.id}
+              line={r.line}
+              showSource={view.showSource}
+              uiLanguage={view.uiLanguage}
+              dimProvisional={dimProvisional}
+            />
+          ),
+        )}
       </div>
       {!following && (
         <button

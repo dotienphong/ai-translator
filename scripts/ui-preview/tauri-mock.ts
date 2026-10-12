@@ -9,7 +9,8 @@
 //   onboarding=<số bước, từ 1>  checkout=1  download=1  notice=update|quit|hotkeys|license|error  empty=1
 //   overlay (overlay.html): locked=1  source=0  text=<màu>  bg=<màu>  opacity=<0–1>  size=<px>  latest=1  notes=<note,…>
 //   dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6): tws=0 (tắt công tắc)  slow=1 (máy chưa đủ nhanh)
-import type { AppInfo, AppStatus, LicenseView, Settings, Subtitle } from "../../src/lib/ipc";
+//     overlay.html: live=alone|extends|final|provisional (mẫu dòng đang nói, xem `LIVE_SAMPLE`; cần session=running)
+import type { AppInfo, AppStatus, LicenseView, LiveLine, Settings, Subtitle } from "../../src/lib/ipc";
 import type { ModelsView, PackView } from "../../src/lib/models";
 
 const q = new URLSearchParams(location.search);
@@ -213,6 +214,56 @@ const lines: Subtitle[] = empty
       provisional: false,
       replaces: [],
     }));
+
+// Dòng đang nói cho thanh phụ đề (spec 2026-10-10 §6.1), theo tham số `live=`:
+// - `alone`: dòng đang nói số 6, sau dòng cuối;
+// - `extends`: phụ đề tạm số 6, và dòng đang nói số 7 nối tiếp nó (phụ đề 6 tạm ẩn; chữ nguồn của dòng là câu 6 nối với
+//   chữ của đoạn đang mở, QĐ6 của kế hoạch 02);
+// - `final`: như `alone`; `window.__livePreview.finish()` gửi bản cuối số 6 rồi `live-end`, đúng thứ tự engine phát (§6.2);
+// - `provisional`: chỉ phụ đề tạm số 6, không có dòng đang nói (phụ đề tạm nhạt hay không theo chế độ, §6.1).
+// Câu mẫu theo ngôn ngữ giao diện: tiếng Anh dịch sang tiếng Việt, hay tiếng Trung dịch sang tiếng Anh.
+const LIVE_SAMPLE = vi
+  ? {
+      lang: "en",
+      alone: { src: ["We should also invite the design team", " to the"], tgt: ["Chúng ta cũng nên mời nhóm thiết kế", " tham dự"] },
+      final: { src: "We should also invite the design team to the review.", tgt: "Chúng ta cũng nên mời nhóm thiết kế tham dự buổi duyệt." },
+      provisional: { src: "The vendor quote came in", tgt: "Báo giá của nhà cung cấp đã tới" },
+      extends: { src: ["The vendor quote came in higher", " than expected"], tgt: ["Báo giá của nhà cung cấp cao hơn", " dự kiến"] },
+    }
+  : {
+      lang: "zh",
+      alone: { src: ["我们也应该邀请设计团队", "参加"], tgt: ["We should also invite the design team", " to join"] },
+      final: { src: "我们也应该邀请设计团队参加评审。", tgt: "We should also invite the design team to the review." },
+      provisional: { src: "供应商的报价已经到了", tgt: "The vendor's quote has arrived" },
+      extends: { src: ["供应商的报价已经到了，比预期", "高一些"], tgt: ["The vendor's quote has arrived,", " a bit higher than expected"] },
+    };
+
+function liveLine(id: number, ext: number | null, src: string[], tgt: string[]): LiveLine {
+  return {
+    id,
+    extends: ext,
+    src_lang: LIVE_SAMPLE.lang,
+    src_stable: src[0] ?? "",
+    src_tail: src[1] ?? "",
+    tgt_stable: tgt[0] ?? "",
+    tgt_tail: tgt[1] ?? "",
+    tgt_src_units: 0,
+  };
+}
+
+function liveSubtitle(id: number, src: string, tgt: string, provisional: boolean): Subtitle {
+  return {
+    id,
+    start_ms: 240_000,
+    end_ms: 243_000,
+    src_lang: LIVE_SAMPLE.lang,
+    src_text: src,
+    tgt_text: tgt,
+    status: "done",
+    provisional,
+    replaces: [],
+  };
+}
 
 let glossary = empty
   ? []
@@ -442,6 +493,19 @@ setTimeout(async () => {
         replaces: [],
       });
     }
+    const live = q.get("live");
+    const s = LIVE_SAMPLE;
+    if (live === "alone" || live === "final") emit("subtitle://live", liveLine(6, null, s.alone.src, s.alone.tgt));
+    if (live === "extends" || live === "provisional") {
+      emit("subtitle://upsert", liveSubtitle(6, s.provisional.src, s.provisional.tgt, true));
+    }
+    if (live === "extends") emit("subtitle://live", liveLine(7, 6, s.extends.src, s.extends.tgt));
+    (window as unknown as { __livePreview: { finish(): void } }).__livePreview = {
+      finish() {
+        emit("subtitle://upsert", liveSubtitle(6, s.final.src, s.final.tgt, false));
+        emit("subtitle://live-end", { id: 6 });
+      },
+    };
     const notes = q.get("notes");
     if (notes) {
       const n = notes.split(",");
