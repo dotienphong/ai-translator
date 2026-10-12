@@ -7,6 +7,7 @@
 - Các chi tiết hạn mức do controller tự quyết (§6.8, "Hạn mức") còn chờ chủ dự án xem (Q16 của kế hoạch Phase 1 · 00).
 - Sửa ngày 2026-10-04: chỉ còn một môi trường production (§6.13, spec `2026-10-04-single-production-environment-design.md`); các chỗ nói staging hay dev của server đã được sửa theo.
 - Sửa ngày 2026-10-07: ba gói (Free dùng thử 10 ngày, Monthly, Yearly) và mỗi key một máy (spec `2026-10-07-three-plans-single-device-design.md`); các chỗ nói bốn gói, Free 10 phút và 2 máy mỗi key đã được sửa theo.
+- Sửa ngày 2026-10-12: dịch trong lúc người nói chưa dừng (spec `2026-10-10-dich-trong-luc-noi-design.md`, nghiệm thu `bench/2026-10-10-do-tre/results/nghiem-thu.md`); sửa các mục §3.3, §4.3, §4.4, §6.3–§6.6, §7, §8 theo §12 của spec đó.
 **Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS, cùng một license server nhỏ để nhận thanh toán qua PayOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
 **Tên và định danh** (D13):
 - Tên sản phẩm: **AI Translator**. Logo và tên miền chưa có (§15).
@@ -116,6 +117,8 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | A6 | **Cài đặt:** bộ cài ký số hợp lệ. Bản macOS đã notarize, mở không bị Gatekeeper chặn. **Gỡ app sạch, người dùng chọn giữ hay xóa model:** trên Windows, bộ gỡ cài đặt có ô "xóa dữ liệu app", xóa được cả model (§6.7). Trên macOS, gỡ app chỉ là kéo vào Thùng rác, không có bước nào để hỏi; vì vậy trong app có nút "Xóa model và dữ liệu" (§4.3), và trang hỗ trợ hướng dẫn bấm nút này trước khi gỡ. |
 | A7 | **Quyền riêng tư:** kiểm tra qua proxy mạng, trong lúc dịch không có request mạng nào, trừ các việc chạy theo lịch: kiểm tra bản quyền (kể cả lần kiểm nhanh lúc bắt đầu phiên, §6.8), đăng ký dùng thử Free khi máy chưa có token dùng thử (§6.8), hỏi giờ của license server khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về sau khi giờ máy đặt nhầm tới trước (§6.8, §10.2), kiểm tra cập nhật app và manifest model. Không request nào chứa âm thanh hay nội dung chép lời. |
 
+**Chế độ dịch trong lúc người nói chưa dừng** (spec 2026-10-10 §10.2; công cụ đo `latency-bench session` chạy engine thật): trên máy khuyến nghị, chữ tạm p50 ≤ 1,2 s và chữ ổn định p50 ≤ 2,0 s (en, vi, ko) hay ≤ 3,0 s (zh, ja) sau lời nói; chữ dịch đầu tiên tính từ lúc bắt đầu nói p90 ≤ 2,0 s; độ nháy tầng ổn định ≤ 10%. A2 tính như cũ. Đo ngày 2026-10-12 trên M4 Pro: KHÔNG đạt toàn bộ — nhóm Chuẩn đạt hết 6/6 tiêu chí tổng hợp (đầu câu → chữ dịch p90 1415 ms, nháy tầng ổn định 6,3%, A2 p50 802 ms, A2 p90 1141 ms, A2 chữ đầu p50 578 ms, CPU 10,5%) và đạt chữ tạm p50 ở cả 5 tiếng; riêng chữ ổn định p50 chỉ đạt ở 3/5 tiếng (en 1961 ms, vi 1183 ms, zh 2883 ms), còn tiếng Nhật (3675 ms, mục tiêu ≤ 3000 ms) và tiếng Hàn (3212 ms, mục tiêu ≤ 2000 ms) chưa đạt; không session nào tự tắt. Hai tiếng này cũng chưa đạt khi đo ở cổng Task 20 của kế hoạch 02 (ja 3671 ms, ko 3216 ms) dù đã thử cả (n, k) thận trọng lẫn mạnh hơn mặc định — chủ dự án đã chấp nhận số hiện có tại cổng đó (2026-10-12), không quay lại thiết kế hay đo thêm (n, k) trung gian cho hai tiếng này.
+
 **Mốc đo ở Phase 0** (Mac M4 Pro, 2026-09-30; số liệu gốc ở `bench/phase0/results/`):
 
 - **A3** (`s7_mt_decisions.md`): COMET của lượt không có ngữ cảnh, qua `llama-server` b11146 và prompt của app. Anh/Trung/Nhật/Hàn→Việt và Việt→Anh mỗi chiều 100 câu; Việt→Trung/Nhật/Hàn mỗi chiều 40 câu.
@@ -194,7 +197,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Từ điển thuật ngữ (Pro):** thêm, sửa, xóa; nhập và xuất CSV.
 - **Cài đặt:**
   - **Chung:** ngôn ngữ giao diện, khởi động cùng hệ thống, giao diện sáng/tối, kênh cập nhật (stable hoặc beta).
-  - **Phụ đề:** cỡ chữ, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen, cỡ chữ 20 px, bật hiện câu gốc. Đổi là thấy ngay trên thanh phụ đề, và trên khung xem trước ở đầu nhóm (một câu mẫu vẽ theo đúng cài đặt, đổi ngay cả khi đang kéo thanh trượt; thêm 2026-10-10).
+  - **Phụ đề:** cỡ chữ, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen, cỡ chữ 20 px, bật hiện câu gốc. Đổi là thấy ngay trên thanh phụ đề, và trên khung xem trước ở đầu nhóm (một câu mẫu vẽ theo đúng cài đặt, đổi ngay cả khi đang kéo thanh trượt; thêm 2026-10-10); công tắc "Dịch trong lúc người nói chưa dừng" (mặc định tắt, có tác dụng từ đoạn kế tiếp), kèm ghi chú "Máy này chưa đủ nhanh, app đang dịch sau mỗi câu." khi máy bị tắt chế độ này (spec 2026-10-10 §6.3).
   - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
@@ -226,6 +229,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
   - Tùy chọn hiện câu gốc chữ nhỏ ở phía trên mỗi câu.
   - **Bản dịch hiện dần từng chữ** trong lúc model đang dịch.
   - **Phụ đề tạm:** câu chưa chốt hiện màu nhạt hơn. Nếu người nói nói tiếp ngay (§6.3), phụ đề tạm được thay bằng bản dịch của cả câu đã ghép.
+  - **Dòng đang nói** (chế độ dịch trong lúc người nói chưa dừng, spec 2026-10-10 §6.1): khi người nói chưa dừng, câu đang nói hiện thành một dòng cập nhật tại chỗ khoảng mỗi 0,7 giây, câu gốc và bản dịch đều hai tầng (phần ổn định đậm bình thường, phần tạm mờ 0,65). Khi người nói ngừng, bản cuối thay vào đúng chỗ. Ở chế độ này phụ đề tạm không còn nhạt cả dòng. Dòng đang nói chỉ có trên thanh phụ đề; bản chép lời, lịch sử và xuất file chỉ chứa bản cuối.
 - **Di chuyển và kích thước:** kéo để di chuyển, kéo cạnh hoặc góc để đổi kích thước (cả macOS lẫn Windows; kích thước tối thiểu 320×80 điểm). App nhớ vị trí và kích thước riêng cho từng màn hình.
 - **Nút tắt:** khi thanh chưa khóa, rê chuột vào thanh thì hiện nút ✕ ở góc trên bên phải. Bấm nút thì ẩn thanh **và dừng phiên dịch** (đang chuẩn bị thì hủy), để người dùng không phải tắt hai lần (chủ dự án quyết 2026-10-09; trước đó nút chỉ ẩn thanh). Chưa dịch thì nút chỉ ẩn thanh, không bắt đầu phiên. Nút không thoát app. Muốn ẩn thanh mà vẫn dịch thì dùng phím tắt ẩn/hiện, nút Ẩn ở màn hình chính hoặc menu khay. Khi đã khóa thì không có nút, vì click đi xuyên qua.
 - **Chế độ khóa:** cho click xuyên qua thanh phụ đề, để không cản thao tác trên cửa sổ họp. Mở khóa bằng phím tắt hoặc menu khay. Thanh phụ đề không có nút khóa: khi đã khóa thì click đi xuyên qua, không bấm được gì trên thanh.
@@ -330,6 +334,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Ngưỡng tiếng nói: 0,5.
   - Đoạn tiếng nói ngắn nhất: 250 ms.
   - **Im lặng 50 ms thì chốt đoạn** (mặc định của app). Người dùng chỉnh được trong khoảng 50–800 ms, bước 50 ms, bằng mục "Độ nhạy ngắt câu". Mặc định này đổi từ 300 ms xuống 150 ms, 100 ms rồi 50 ms theo yêu cầu của chủ dự án ngày 2026-10-04; các số đo độ trễ ở A2 và benchmark ở `bench/` dùng 300 ms (mặc định của `SegmenterConfig` trong `pipeline`), chưa đo lại với 50 ms. Khung VAD dài 32 ms nên ngưỡng 50 ms làm tròn lên 2 khung (64 ms) khi chạy. Người dùng đã lưu giá trị khác thì giữ nguyên.
+  - **Chế độ dịch trong lúc người nói chưa dừng** (spec 2026-10-10 §4.7): ngưỡng đóng đoạn là max(`vadEndSilenceMs`, 50 ms); vừa có 2 khung im lặng thì chép từng phần thêm một lần, nên chữ cuối câu vẫn hiện nhanh. Cửa sổ ghép tính lại theo ngưỡng này.
   - **Mỗi đoạn dài tối đa 8 giây.** Nếu dài hơn, cắt cưỡng bức tại khung có năng lượng thấp nhất trong 1,5 giây cuối.
   - Thêm 200 ms đệm ở đầu và cuối mỗi đoạn. Code làm tròn lên 7 khung, tức 224 ms mỗi phía; đầu phiên, cuối phiên và phía bị cắt cưỡng bức có ít hơn.
 - **Ghép câu và phụ đề tạm:** ngưỡng im lặng ngắn (mặc định 50 ms) dễ cắt giữa câu, ở những chỗ người nói ngừng nghỉ tự nhiên.
@@ -437,6 +442,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Flash attention: tắt** (kiểm lại ngày 2026-10-01: ggml-org/whisper.cpp#3941 vẫn mở; thử lại ngày 2026-10-11 theo spec 2026-10-10 §8 A5, với `audio_ctx` làm tròn lên bội của 256: không qua cổng A4, nhóm `ko-wbp` của turbo tệ hơn mốc 14,3% tương đối (ngưỡng 10%), giống nhau ở cả bật và tắt flash attention nên là do phép làm tròn audio_ctx chứ không riêng flash attention; xem `bench/2026-10-10-do-tre/results/buoc1-a5-flash-attention.md`; giữ tắt). whisper.cpp 1.8.3, cả v1.9.4 và master, sai khi bật flash attention cùng `audio_ctx` rút ngắn: phần đệm tới bội 256 không có mask. Kết quả là lặp câu, và thay đổi theo đoạn chép trước (ggml-org/whisper.cpp#3941, bản vá chưa được merge). `ASR_FLASH_ATTN=1` chỉ dùng để thử.
   - Bản vá mask cho kết quả trùng hệt bản tắt flash. Trên M4 Pro, nó giúp chép lời nhanh hơn 5–13% và giảm 91–149 MB bộ nhớ đệm mỗi state (đo lúc review, `phase0_review_notes.md`). Trên M4 Pro, mức lợi này không đổi quyết định nào (p50 và p90 dư khoảng gấp đôi). Máy tham chiếu chưa đo: nếu M1 cơ bản hay máy chỉ có CPU sát ngưỡng A2 thì xem lại.
   - Chỉ bật lại khi whisper.cpp có mask cho phần đệm, và phải kèm test tất định: cùng một đoạn, chép sau các đoạn khác nhau, phải ra cùng token.
+- **Chép từng phần** (spec 2026-10-10 §4.1–§4.2): khi đoạn VAD còn mở, app gửi âm thanh từ đầu đoạn tới hiện tại bằng đúng `Transcribe` (không đổi giao thức), theo nhịp tự chỉnh 0,7–2 s; ngôn ngữ nhận ở lần chép đầu của đoạn được giữ cho các lần sau; đoạn đóng luôn được chép trước. Chữ nguồn được chốt bằng LocalAgreement-2 (chừa 1 từ, hay 2 chữ với zh, ja).
 - **Làm nóng:** sau `Load`, app gửi `Warmup`; `asr-worker` chạy thử một lần trên một đoạn im lặng để nạp sẵn kernel GPU.
 - **Lọc lỗi "ảo giác" của Whisper:**
   - **Bỏ đoạn khi `no_speech_prob > 0,6` và `avg_logprob < −1`.** Đây là luật của OpenAI Whisper, nhưng `avg_logprob` không tính EOT nên dễ bỏ đoạn hơn một chút ở đoạn ngắn. Đoạn có chữ rỗng cũng bị bỏ.
@@ -507,6 +513,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Cặp không có trong danh sách ngưỡng (ví dụ manifest chỉ ghi vài cặp) thì không bị kiểm tỉ lệ, chỉ chịu hạn mức sinh.
     - Bộ test S7 không có câu gốc dưới 3 token (như "Vâng", "OK"), và không có cặp nào không chứa tiếng Việt; Đ12 đo riêng hai trường hợp này. Câu gốc dưới 3 token giữ hạn mức sinh `4 × số token + 32`: trên lượt đo Đ12, mọi câu như vậy có 2 token (hạn mức 40), bản dịch dài nhất 10 token, không câu nào chạm hạn mức hay phải dịch lại.
   - **Thử lại** một lần với repeat penalty cao hơn (1,15). Với temperature 0, giữ nguyên tham số thì kết quả sẽ y hệt lần trước. Vẫn lỗi thì hiện câu gốc, đánh dấu "chưa dịch được".
+- **Bản dịch tạm** (spec 2026-10-10 §4.3–§4.6): mỗi lúc tối đa một yêu cầu, yêu cầu mới hủy yêu cầu cũ; phần dịch đã chốt (LocalAgreement-n, (n, k) theo tiếng nguồn: en (2, 1), vi (2, 1), zh (2, 2), ja (3, 2), ko (3, 2)) được gửi làm tin nhắn assistant cuối (prefill; `llama-server` b11146 stream lại cả phần đó); một lần thử, không thử lại; dấu kết câu ở cuối không hiện. Việc của lượt cuối luôn được ưu tiên và dịch không prefill, nên chất lượng bản lưu không đổi.
 - **Bỏ qua bước dịch** khi ngôn ngữ câu gốc trùng ngôn ngữ đích.
 - **Việc cho MVP:**
   - Đo ngưỡng cho các cặp không có tiếng Việt, và cho câu gốc dưới 3 token: đã xong (Đ12, chốt 2026-10-02); số ở mục "Bản dịch quá dài" bên trên.
@@ -524,6 +531,8 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Gửi sang giao diện qua sự kiện Tauri:**
   - `subtitle://upsert`: gửi cả đối tượng.
   - `subtitle://delta`: gửi từng token trong lúc đang dịch.
+  - `subtitle://live`: dòng đang nói (`LiveLine`: phần ổn định và phần tạm của câu gốc và bản dịch là các chuỗi riêng), chỉ gửi cho thanh phụ đề.
+  - `subtitle://live-end`: gỡ dòng đang nói (bản cuối đã chốt, đoạn bị lọc hay bị bỏ, chế độ tự tắt, dừng phiên).
 - **Hiển thị:** thanh phụ đề hiện N dòng gần nhất; cửa sổ chính hiện toàn bộ.
 - **Lưu trữ:**
   - Bản chép lời nằm trong bộ nhớ theo từng phiên.
@@ -913,6 +922,7 @@ Bản debug chỉ khác ở ba khả năng của build, không phải của môi
   5. Luồng phụ đề: nơi duy nhất phát sự kiện phụ đề, nên thứ tự `upsert` và `delta` luôn đúng.
   6. Tiến trình phụ `asr-worker`: mỗi lần xử lý một đoạn, chạy trên GPU hoặc CPU.
   7. Tiến trình phụ `llama-server`.
+- **Chế độ dịch trong lúc người nói chưa dừng** (spec 2026-10-10 §4.6, §5): hàng đợi nhận dạng có thêm một ô cho lần chép từng phần (mới thay cũ, đoạn đóng luôn đi trước); luồng dịch xen yêu cầu bản tạm giữa các câu cuối nhưng không bao giờ chặn câu cuối. Nhịp T = 1,5 × trung vị 8 vòng gần nhất, kẹp 0,7–2 s; trung vị vượt 1,3 s thì tự tắt tới hết phiên. Máy Windows chỉ có GPU tích hợp hay `asr-worker` chạy CPU thì tắt từ đầu phiên.
 - **Luồng riêng và client đồng bộ, không dùng runtime `tokio`** cho pipeline (chốt ở kế hoạch Phase 1 · 02a, QĐ1). Lý do:
   - hai client đồng bộ của Phase 0 đã chạy qua S6;
   - mỗi tiến trình phụ chỉ làm một việc một lúc (`llama-server -np 1`, `asr-worker` đọc tuần tự), nên async không thêm thông lượng;
@@ -974,6 +984,13 @@ Mốc thực tế (benchmark 2026-09-29): Hy-MT2 Q8_0 chạy trên CPU 4 luồng
 - Session tiếng Việt dịch sang tiếng Anh; các session khác dịch sang tiếng Việt.
 - Trên M4 Pro, cả hai gói chạy bằng GPU (Metal), nên cột "Gói Nhẹ, chỉ CPU" của bảng ngân sách chưa được đo.
 - S6 trên các máy tham chiếu khác (M1 16 GB, Windows card rời 6 GB và 4 GB, Windows 8 GB chỉ CPU) chưa đo vì không có thiết bị; chủ dự án bỏ qua ngày 2026-10-04; đo khi có máy (kế hoạch 06, Task 8–9, `results/s6_latency.md`).
+
+**Dịch trong lúc người nói chưa dừng, đo 2026-10-12 trên M4 Pro** (`bench/2026-10-10-do-tre/results/nghiem-thu.md`, `latency-bench session`):
+
+| Gói | Chữ tạm p50 | Chữ ổn định p50 | Chữ đầu từ lúc bắt đầu nói p90 | A2 p50 | CPU |
+|---|---|---|---|---|---|
+| Chuẩn | 541–993 ms | 1183–3675 ms | 1415 ms | 802 ms | 10,5% |
+| Nhẹ | 475–827 ms | 1748–4278 ms | 1792 ms | 528 ms | 10,3% |
 
 **Băng thông bộ nhớ là nút thắt của bước dịch.** Mỗi token sinh ra phải đọc gần hết trọng số của model, nên tốc độ sinh không vượt quá băng thông bộ nhớ chia cho kích thước model. Thực tế thường chỉ đạt khoảng 70–80% mức trần này.
 
