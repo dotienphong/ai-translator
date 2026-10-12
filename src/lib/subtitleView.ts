@@ -129,3 +129,23 @@ export function overlayNotes(status: AppStatus | null): OverlayNote[] {
   }
   return notes;
 }
+
+// Chế độ dịch trong lúc người nói chưa dừng có hiệu lực không (spec 2026-10-10 §5, §6; QĐ3 của kế hoạch 03): công tắc bật
+// và máy chưa bị coi là chưa đủ nhanh (tắt từ đầu phiên, hay phiên này hoặc phiên gần nhất tự tắt). Thanh phụ đề dùng để
+// thôi làm nhạt cả dòng phụ đề tạm (§6.1); khung xem trước dùng để hiện mẫu hai tầng (§6.3).
+export function streamingEffective(translateWhileSpeaking: boolean, status: AppStatus | null): boolean {
+  return translateWhileSpeaking && !status?.streamingTooSlow;
+}
+
+// Ghi chú "Máy này chưa đủ nhanh…" dưới công tắc ở Cài đặt › Phụ đề (spec 2026-10-10 §6.3; QĐ8 của kế hoạch 03): công tắc
+// bật mà máy chưa đủ nhanh. Tắt công tắc thì người dùng đã chọn dịch sau mỗi câu, không cần ghi chú.
+export function streamingNote(translateWhileSpeaking: boolean, status: AppStatus | null): boolean {
+  return translateWhileSpeaking && status?.streamingTooSlow === true;
+}
+
+// Tách câu mẫu hai tầng của khung xem trước: `full` là cả câu, `tail` là phần cuối (phần tạm). Phần ổn định giữ khoảng
+// trắng ở cuối (nếu có) để hai phần nối lại đúng như câu. `full` không kết thúc bằng `tail` thì cả câu là phần ổn định.
+export function splitTail(full: string, tail: string): { stable: string; tail: string } {
+  if (tail === "" || !full.endsWith(tail)) return { stable: full, tail: "" };
+  return { stable: full.slice(0, full.length - tail.length), tail };
+}

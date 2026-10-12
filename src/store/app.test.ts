@@ -21,6 +21,7 @@ const settings: Settings = {
     positions: {},
     lastMonitor: null,
   },
+  translateWhileSpeaking: true,
   modelTier: null,
   hotkeys: {
     toggleSession: "Ctrl+Alt+T",
@@ -45,7 +46,8 @@ const status: AppStatus = {
   sessionError: null,
   cpuFallback: false,
   suggestLite: false,
-  indicators: { lagging: false, noAudio: false, translationUnavailable: false },
+  indicators: { lagging: false, noAudio: false, translationUnavailable: false, streamingUnavailable: false },
+  streamingTooSlow: false,
   permissionSuspected: false,
   waitingForApp: false,
   pro: true,

@@ -63,6 +63,9 @@ export interface Settings {
     positions: Record<string, OverlayRect>;
     lastMonitor: string | null;
   };
+  // Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.3, Cài đặt › Phụ đề), mặc định bật. Đổi khi đang dịch thì có tác
+  // dụng từ đoạn kế tiếp.
+  translateWhileSpeaking: boolean;
   modelTier: ModelTier | null;
   hotkeys: Record<HotkeyAction, string>;
   saveHistory: boolean;
@@ -93,6 +96,8 @@ export interface Indicators {
   lagging: boolean;
   noAudio: boolean;
   translationUnavailable: boolean;
+  // Phiên này dịch sau mỗi câu vì máy chưa đủ nhanh: bị tắt từ đầu hay vừa tự tắt (spec 2026-10-10 §5, §6.3).
+  streamingUnavailable: boolean;
 }
 
 export interface AppStatus {
@@ -105,6 +110,9 @@ export interface AppStatus {
   cpuFallback: boolean;
   suggestLite: boolean;
   indicators: Indicators;
+  // Máy chưa đủ nhanh cho chế độ dịch trong lúc người nói chưa dừng (spec 2026-10-10 §5, §6.3): bị tắt từ đầu, hay phiên
+  // hiện tại hoặc phiên gần nhất tự tắt. Còn sau khi dừng, tới lần bắt đầu phiên sau. Cài đặt › Phụ đề ghi chú.
+  streamingTooSlow: boolean;
   // macOS: âm thanh vào toàn im lặng tuyệt đối trong khi có app đang phát: nghi chưa được cấp quyền (§9).
   permissionSuspected: boolean;
   // macOS, nguồn một app: app đã chọn không phát tiếng nữa; phiên vẫn chạy, đang chờ app phát lại.
@@ -148,6 +156,9 @@ export interface OverlayView {
   background: BackgroundColor;
   showSource: boolean;
   locked: boolean;
+  // Công tắc "Dịch trong lúc người nói chưa dừng": cùng `AppStatus.streamingTooSlow`, thanh phụ đề biết chế độ có hiệu lực
+  // không (spec 2026-10-10 §6.1).
+  translateWhileSpeaking: boolean;
 }
 
 // Phụ đề (spec §6.6, `pipeline::subtitle::Subtitle`).
@@ -168,6 +179,27 @@ export interface Subtitle {
 export interface SubtitleDelta {
   id: number;
   text: string;
+}
+
+// Dòng đang nói (spec 2026-10-10 §6.1–§6.2, `pipeline::subtitle::LiveLine`): chỉ thanh phụ đề nhận (QĐ5). Câu gốc và bản
+// dịch đều chia hai tầng: phần ổn định (`*_stable`) và phần tạm (`*_tail`, tự mang khoảng trắng đầu khi cần). `id` là id
+// mà đoạn sẽ nhận khi đóng (cùng không gian id với `Subtitle`); `extends` là id của phụ đề tạm mà dòng này nối tiếp: dòng
+// hiện thay chỗ phụ đề đó.
+export interface LiveLine {
+  id: number;
+  extends: number | null;
+  src_lang: string;
+  src_stable: string;
+  src_tail: string;
+  tgt_stable: string;
+  tgt_tail: string;
+  // Chỉ để đo (spec 2026-10-10 §10.1); giao diện bỏ qua.
+  tgt_src_units: number;
+}
+
+// Gỡ dòng đang nói có `id` này.
+export interface LiveEnd {
+  id: number;
 }
 
 // Bản chép lời của một phiên (`transcript::store::Transcript`). `startedAt`, `endedAt`: giờ Unix (ms); `start_ms`,
@@ -439,6 +471,9 @@ export interface Events {
   "license://order": OrderOutcome;
   "subtitle://upsert": Subtitle;
   "subtitle://delta": SubtitleDelta;
+  // Dòng đang nói và lệnh gỡ nó (spec 2026-10-10 §6.2): chỉ tới thanh phụ đề; cửa sổ chính không nghe (QĐ5).
+  "subtitle://live": LiveLine;
+  "subtitle://live-end": LiveEnd;
   // Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch; tới cả cửa sổ chính lẫn thanh phụ đề.
   "audio://level": number;
   // Trạng thái quản lý model (kế hoạch 04).

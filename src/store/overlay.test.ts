@@ -24,6 +24,7 @@ const view: OverlayView = {
   background: "black",
   showSource: false,
   locked: false,
+  translateWhileSpeaking: true,
 };
 
 describe("upsertLine", () => {
@@ -117,7 +118,8 @@ const status = (session: AppStatus["session"], rev: number): AppStatus => ({
   sessionError: null,
   cpuFallback: false,
   suggestLite: false,
-  indicators: { lagging: false, noAudio: false, translationUnavailable: false },
+  indicators: { lagging: false, noAudio: false, translationUnavailable: false, streamingUnavailable: false },
+  streamingTooSlow: false,
   permissionSuspected: false,
   waitingForApp: false,
   pro: true,

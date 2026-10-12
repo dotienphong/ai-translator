@@ -23,7 +23,8 @@ const status = (session: AppStatus["session"], rev: number): AppStatus => ({
   sessionError: null,
   cpuFallback: false,
   suggestLite: false,
-  indicators: { lagging: false, noAudio: false, translationUnavailable: false },
+  indicators: { lagging: false, noAudio: false, translationUnavailable: false, streamingUnavailable: false },
+  streamingTooSlow: false,
   permissionSuspected: false,
   waitingForApp: false,
   pro: true,
@@ -98,6 +99,25 @@ describe("transcript store", () => {
     fake.emit("subtitle://upsert", { ...sub(2, ""), status: "translating" });
     fake.emit("subtitle://delta", { id: 2, text: "hai" });
     expect(store.getState().transcript?.lines.map((l) => l.tgt_text)).toEqual(["một", "hai"]);
+  });
+
+  // Spec 2026-10-10 QĐ5: dòng đang nói chỉ có trên thanh phụ đề; bản chép lời của cửa sổ chính không nghe hai sự kiện đó.
+  it("không nghe dòng đang nói", async () => {
+    const { fake, store } = setup(transcript([sub(1, "một")]));
+    await store.getState().init();
+    expect(fake.listenerCount("subtitle://live")).toBe(0);
+    expect(fake.listenerCount("subtitle://live-end")).toBe(0);
+    fake.emit("subtitle://live", {
+      id: 2,
+      extends: null,
+      src_lang: "en",
+      src_stable: "Hel",
+      src_tail: "lo",
+      tgt_stable: "Xin",
+      tgt_tail: " chào",
+      tgt_src_units: 1,
+    });
+    expect(store.getState().transcript?.lines.map((l) => l.id)).toEqual([1]);
   });
 
   it("phiên mới thì bắt đầu rỗng; chạy rồi thì đọc lại giờ bắt đầu, không thêm lại dòng đã gộp", async () => {

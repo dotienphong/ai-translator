@@ -8,6 +8,7 @@
 //   session=idle|starting|running|error  error=<mã lỗi phiên>  plan=free|monthly|yearly  trial=active|ended
 //   onboarding=<số bước, từ 1>  checkout=1  download=1  notice=update|quit|hotkeys|license|error  empty=1
 //   overlay (overlay.html): locked=1  source=0  text=<màu>  bg=<màu>  opacity=<0–1>  size=<px>  latest=1  notes=<note,…>
+//   dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6): tws=0 (tắt công tắc)  slow=1 (máy chưa đủ nhanh)
 import type { AppInfo, AppStatus, LicenseView, Settings, Subtitle } from "../../src/lib/ipc";
 import type { ModelsView, PackView } from "../../src/lib/models";
 
@@ -43,6 +44,7 @@ let settings: Settings = {
     positions: {},
     lastMonitor: null,
   },
+  translateWhileSpeaking: param("tws") !== "0",
   modelTier: "standard",
   hotkeys: {
     toggleSession: "Ctrl+Alt+T",
@@ -68,7 +70,8 @@ let status: AppStatus = {
   sessionError: sessionParam === "error" ? param("error", "audioPermission") : null,
   cpuFallback: false,
   suggestLite: false,
-  indicators: { lagging: false, noAudio: false, translationUnavailable: false },
+  indicators: { lagging: false, noAudio: false, translationUnavailable: false, streamingUnavailable: false },
+  streamingTooSlow: param("slow") === "1",
   permissionSuspected: false,
   waitingForApp: false,
   pro: plan !== "free",
@@ -297,6 +300,7 @@ function overlayView() {
     background: o.background,
     showSource: o.showSource,
     locked: o.locked,
+    translateWhileSpeaking: settings.translateWhileSpeaking,
   };
 }
 
@@ -443,7 +447,12 @@ setTimeout(async () => {
       const n = notes.split(",");
       changeStatus({
         loading: n.includes("loading") ? "model" : null,
-        indicators: { lagging: n.includes("lagging"), noAudio: n.includes("noAudio"), translationUnavailable: n.includes("translationUnavailable") },
+        indicators: {
+          lagging: n.includes("lagging"),
+          noAudio: n.includes("noAudio"),
+          translationUnavailable: n.includes("translationUnavailable"),
+          streamingUnavailable: false,
+        },
       });
     }
   }

@@ -9,6 +9,9 @@ import {
   localOffsetMinutes,
   overlayBackground,
   overlayNotes,
+  splitTail,
+  streamingEffective,
+  streamingNote,
 } from "./subtitleView";
 
 const sub = (status: Subtitle["status"], tgt = "", provisional = false): Subtitle => ({
@@ -31,7 +34,8 @@ const status = (patch: Partial<AppStatus>): AppStatus => ({
   sessionError: null,
   cpuFallback: false,
   suggestLite: false,
-  indicators: { lagging: false, noAudio: false, translationUnavailable: false },
+  indicators: { lagging: false, noAudio: false, translationUnavailable: false, streamingUnavailable: false },
+  streamingTooSlow: false,
   permissionSuspected: false,
   waitingForApp: false,
   pro: true,
@@ -156,7 +160,7 @@ describe("overlayNotes", () => {
         status({
           waitingForApp: true,
           quotaWarning: true,
-          indicators: { lagging: true, noAudio: true, translationUnavailable: true },
+          indicators: { lagging: true, noAudio: true, translationUnavailable: true, streamingUnavailable: true },
         }),
       ),
     ).toEqual(["noAudio", "waitingForApp", "quotaLow", "lagging", "translationUnavailable"]);
@@ -165,10 +169,46 @@ describe("overlayNotes", () => {
   });
 
   it("chỉ báo của phiên chỉ hiện khi đang dịch; lỗi và hết hạn mức hiện sau khi dừng", () => {
-    expect(overlayNotes(status({ session: "idle", indicators: { lagging: true, noAudio: true, translationUnavailable: false } }))).toEqual([]);
+    expect(
+      overlayNotes(
+        status({
+          session: "idle",
+          indicators: { lagging: true, noAudio: true, translationUnavailable: false, streamingUnavailable: false },
+        }),
+      ),
+    ).toEqual([]);
     expect(overlayNotes(status({ session: "error", sessionError: "quotaExhausted" }))).toEqual(["quotaExhausted"]);
     expect(overlayNotes(status({ session: "error", sessionError: "trialEnded" }))).toEqual(["trialEnded"]);
     expect(overlayNotes(status({ session: "error", sessionError: "licenseConflict" }))).toEqual(["licenseConflict"]);
     expect(overlayNotes(status({ session: "error", sessionError: "sidecarFailed" }))).toEqual(["error"]);
+  });
+});
+
+describe("dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6)", () => {
+  it("chế độ có hiệu lực khi công tắc bật và máy chưa bị coi là chưa đủ nhanh", () => {
+    expect(streamingEffective(true, status({}))).toBe(true);
+    expect(streamingEffective(true, null)).toBe(true);
+    expect(streamingEffective(false, status({}))).toBe(false);
+    expect(streamingEffective(true, status({ streamingTooSlow: true }))).toBe(false);
+  });
+
+  it("ghi chú máy chưa đủ nhanh chỉ khi công tắc bật", () => {
+    expect(streamingNote(true, status({ streamingTooSlow: true }))).toBe(true);
+    expect(streamingNote(false, status({ streamingTooSlow: true }))).toBe(false);
+    expect(streamingNote(true, status({}))).toBe(false);
+    expect(streamingNote(true, null)).toBe(false);
+  });
+
+  it("tách câu mẫu thành phần ổn định và phần tạm", () => {
+    expect(splitTail("Bạn có thể gửi bản dự toán", "bản dự toán")).toEqual({
+      stable: "Bạn có thể gửi ",
+      tail: "bản dự toán",
+    });
+    expect(splitTail("金曜日までに予算の見積もりを共有", "見積もりを共有")).toEqual({
+      stable: "金曜日までに予算の",
+      tail: "見積もりを共有",
+    });
+    expect(splitTail("Hello", "")).toEqual({ stable: "Hello", tail: "" });
+    expect(splitTail("Hello", "world")).toEqual({ stable: "Hello", tail: "" });
   });
 });
