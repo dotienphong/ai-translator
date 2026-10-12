@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import logo from "../../../../app-icon.svg";
 import { Icon } from "../../../components/Icon";
-import type { MessageKey, UiLanguage } from "../../../i18n";
+import { type MessageKey, UI_LANGUAGES } from "../../../i18n";
 import { canAdvance, type Step, stepsFor } from "../../../lib/onboardingSteps";
 import { useApp, useT } from "../appStore";
 import { LanguagePicker } from "../LanguagePicker";
@@ -106,7 +106,7 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
     case "language":
       return (
         <div className="choices cols" role="radiogroup" aria-labelledby="onboarding-title">
-          {(["vi", "en"] as UiLanguage[]).map((lang) => (
+          {UI_LANGUAGES.map((lang) => (
             <label key={lang} className="choice">
               <input
                 type="radio"

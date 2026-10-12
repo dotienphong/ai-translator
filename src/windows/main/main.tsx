@@ -1,7 +1,7 @@
 import "../../styles/main.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { translate } from "../../i18n";
+import { htmlLang, translate } from "../../i18n";
 import { App } from "./App";
 import { appStore, fallbackLanguage } from "./appStore";
 import { transcriptStore } from "./dataStores";
@@ -15,7 +15,7 @@ appStore.subscribe((state) => {
   const root = document.documentElement;
   if (settings.theme === "system") delete root.dataset.theme;
   else root.dataset.theme = settings.theme;
-  root.lang = settings.uiLanguage;
+  root.lang = htmlLang(settings.uiLanguage);
 });
 
 const root = createRoot(document.getElementById("root")!);

@@ -2,7 +2,7 @@ import "./overlay.css";
 import { StrictMode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useStore } from "zustand";
-import { translate } from "../../i18n";
+import { htmlLang, translate } from "../../i18n";
 import { type ResizeEdge, tauriIpc as ipc } from "../../lib/ipc";
 import { atBottom, pagedScrollTop } from "../../lib/overlayScroll";
 import {
@@ -19,9 +19,9 @@ import { LiveLineView } from "./LiveLineView";
 import { OverlayLine } from "./OverlayLine";
 
 const store = createOverlayStore(ipc);
-// Thuộc tính `lang` của trang theo ngôn ngữ giao diện, để trình đọc màn hình đọc đúng giọng.
+// Thuộc tính `lang` của trang theo ngôn ngữ giao diện, để WebView chọn đúng font CJK và trình đọc màn hình đọc đúng giọng.
 store.subscribe((state) => {
-  if (state.view) document.documentElement.lang = state.view.uiLanguage;
+  if (state.view) document.documentElement.lang = htmlLang(state.view.uiLanguage);
 });
 void store.getState().init();
 

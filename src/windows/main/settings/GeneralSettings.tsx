@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import logo from "../../../../app-icon.svg";
 import { Field } from "../../../components/Field";
 import { Icon } from "../../../components/Icon";
-import type { UiLanguage } from "../../../i18n";
+import { UI_LANGUAGES, type UiLanguage } from "../../../i18n";
 import type { Theme, UpdateChannel } from "../../../lib/ipc";
 import { useApp, useT } from "../appStore";
 
@@ -22,8 +22,11 @@ export function GeneralSettings() {
             value={settings.uiLanguage}
             onChange={(e) => void update({ uiLanguage: e.target.value as UiLanguage })}
           >
-            <option value="en">{t("lang.en")}</option>
-            <option value="vi">{t("lang.vi")}</option>
+            {UI_LANGUAGES.map((lang) => (
+              <option key={lang} value={lang}>
+                {t(`lang.${lang}`)}
+              </option>
+            ))}
           </select>
         </Field>
         <Field
