@@ -246,3 +246,22 @@ như kỳ vọng.
   Chrome đã làm sai lệch đáng kể kết luận, nhưng đây là lượt đo không ở điều kiện lý tưởng 100%.
 - `nghiem-thu-chuan-zh` và `nghiem-thu-thuong-chuan-zh` có cảnh báo "2 câu dịch thất bại hoặc bị bỏ qua" — đặc điểm
   đã biết trước của nội dung `zh` gói Chuẩn (xem mục Kết quả ở trên), không phải do lượt đo này.
+
+## Thử tay trên app (bản dev, 2026-10-12)
+
+Chủ dự án tự thao tác trên bản dev (`scripts/run-dev-app.sh`, nhánh `dich-trong-luc-noi` @ `2fb62bc`), phát video
+tiếng Anh và tiếng Nhật thật trên YouTube qua loa máy, điều phối viên theo dõi log song song và kiểm tra lại sau khi
+chủ dự án báo kết quả. Chủ dự án xác nhận: không thấy bất thường ở bất kỳ bước nào.
+
+| # | Việc | Kết quả | Ghi chú |
+|---|---|---|---|
+| 1 | Công tắc, khung xem trước | ĐẠT | Công tắc bật, không ghi chú "máy chưa đủ nhanh"; log xác nhận `máy đủ sức dịch trong lúc nói: true` ngay khi bắt đầu phiên. |
+| 2 | Dòng đang nói, tiếng Anh | ĐẠT | Chủ dự án xác nhận không bất thường. |
+| 3 | Bản cuối thay vào | ĐẠT | Chủ dự án xác nhận không bất thường. |
+| 4 | Tiếng Nhật | ĐẠT | Chủ dự án xác nhận không bất thường. |
+| 5 | Bản chép lời chỉ có câu cuối | ĐẠT | Chủ dự án xác nhận không bất thường. |
+| 6 | Tắt công tắc khi đang dịch | ĐẠT | Log xác nhận `dịch trong lúc người nói chưa dừng: tắt` lúc 16:07:22 (và các lần thử thêm sau đó). |
+| 7 | Bật lại | ĐẠT | Log xác nhận `dịch trong lúc người nói chưa dừng: bật` lúc 16:08:18. |
+| 8 | ✕ khi đang có dòng đang nói | ĐẠT | Chủ dự án xác nhận riêng: đã thử, app không treo. |
+| 9 | ~20 phút liên tục | ĐẠT | Không crash; log không có dòng lỗi/panic nào trong suốt phiên. Hai phiên dịch liên tiếp chạy ổn định (phiên 1: 73 đoạn/62 câu trong ~4 phút trước khi dừng; phiên 2: 13 đoạn/13 câu). CPU%: không đo bằng Activity Monitor trong lượt này (không chặn kết luận — xem CPU% đo được bằng công cụ ở Task 2, tệ nhất 10,5%). |
+| 10 | Log không có nội dung | ĐẠT | Điều phối viên tự rà toàn bộ các dòng log của phiên thử (`~/Library/Logs/com.aitranslator.desktop/app.log`, từ lúc mở app tới lúc thoát): chỉ có số liệu kỹ thuật (số đoạn, số câu, p50/p90, trạng thái tiến trình phụ, công tắc bật/tắt) — không có dòng nào chứa chữ chép lời hay chữ dịch thật. |
