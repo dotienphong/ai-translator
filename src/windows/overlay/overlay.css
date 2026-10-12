@@ -118,6 +118,11 @@ body {
   opacity: 0.65;
 }
 
+/* Dòng đang nói (spec 2026-10-10 §6.1): phần tạm nhạt đúng như phụ đề tạm; phần ổn định giữ độ đậm bình thường. */
+.overlay .live .tail {
+  opacity: 0.65;
+}
+
 .overlay .sourceOnly,
 .overlay .failed,
 .overlay .dropped {

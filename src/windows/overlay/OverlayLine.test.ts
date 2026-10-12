@@ -45,4 +45,24 @@ describe("OverlayLine", () => {
     expect(memo.$$typeof).toBe(Symbol.for("react.memo"));
     expect(memo.compare).toBeNull();
   });
+
+  // Spec 2026-10-10 §6.1: đang dịch trong lúc người nói chưa dừng thì phụ đề tạm không nhạt cả dòng.
+  it("dimProvisional false: phụ đề tạm không còn lớp provisional", () => {
+    const line = sub({ tgt_text: "Xin chào", provisional: true });
+    expect(html({ line, showSource: false, uiLanguage: "vi" })).toBe(
+      '<div class="line translated provisional"><div class="main">Xin chào</div></div>',
+    );
+    expect(html({ line, showSource: false, uiLanguage: "vi", dimProvisional: true })).toBe(
+      '<div class="line translated provisional"><div class="main">Xin chào</div></div>',
+    );
+    expect(html({ line, showSource: false, uiLanguage: "vi", dimProvisional: false })).toBe(
+      '<div class="line translated"><div class="main">Xin chào</div></div>',
+    );
+  });
+
+  it("câu chờ dịch vẫn nhạt dù dimProvisional false: đó không phải phụ đề tạm", () => {
+    expect(
+      html({ line: sub({ status: "asr_done", provisional: true }), showSource: false, uiLanguage: "vi", dimProvisional: false }),
+    ).toBe('<div class="line pending"><div class="main">Hello</div></div>');
+  });
 });

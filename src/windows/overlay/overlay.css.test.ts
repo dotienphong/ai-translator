@@ -39,6 +39,18 @@ describe("overlay.css", () => {
     expect(edge).toMatch(/background:/);
   });
 
+  // Spec 2026-10-10 §6.1: phần tạm của dòng đang nói nhạt đúng như phụ đề tạm (0,65); phần ổn định và cả dòng giữ độ đậm
+  // bình thường.
+  it("phần tạm của dòng đang nói nhạt như phụ đề tạm, cả dòng thì không", async () => {
+    const fs = (await import("node:fs" as string)) as Fs;
+    const css = fs.readFileSync(new URL("./overlay.css", import.meta.url), "utf8");
+    const tail = /\.overlay\s+\.live\s+\.tail\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(tail).toMatch(/opacity:\s*0\.65/);
+    const provisional = /\.overlay\s+\.provisional,\s*\.overlay\s+\.pending\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(provisional).toMatch(/opacity:\s*0\.65/);
+    expect(css).not.toMatch(/\.overlay\s+\.live\s*\{[^}]*opacity/);
+  });
+
   // Các câu dính sát nhau thì khó đọc khi họp: giữa hai câu phải có khoảng cách theo cỡ chữ (em), và câu gốc tách khỏi
   // bản dịch bên dưới.
   it("các câu cách nhau một khoảng theo cỡ chữ, câu gốc tách khỏi bản dịch", async () => {
