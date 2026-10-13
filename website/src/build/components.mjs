@@ -181,12 +181,13 @@ ${floatB ? `<span class="floaty b">${icon(floatB.icon)} ${esc(floatB.text)}</spa
 </div><!--/llm-skip-->`;
 }
 
-/** Ba gói giá. lang: "vi" | "en". Trả HTML của .plans. */
+/** Các gói giá (Free và ba gói trả phí). lang: "vi" | "en". Trả HTML của .plans. */
 export function plansGrid(lang, { ctaLabel, freeLabel, featured = "yearly", detail = true } = {}) {
   const en = lang === "en";
   const L = {
     free: { for: en ? "Try it before you decide." : "Dùng thử trước khi quyết định.", per: en ? "10-day trial · once per device" : "Dùng thử 10 ngày · mỗi máy một lần" },
     monthly: { for: en ? "For regular meetings and short projects." : "Cho người họp thường xuyên, dự án ngắn hạn.", per: en ? "per 30 days · prepaid" : "cho mỗi 30 ngày · trả trước" },
+    six_months: { for: en ? "For a half-year project or steady use." : "Cho dự án nửa năm hoặc dùng đều đặn.", per: en ? "per 180 days · prepaid" : "cho 180 ngày · trả trước" },
     yearly: { for: en ? "For daily use. Best value." : "Cho người dùng hằng ngày. Tiết kiệm nhất.", per: en ? "per 365 days · prepaid" : "cho 365 ngày · trả trước" },
   };
   const feats = {
@@ -196,6 +197,9 @@ export function plansGrid(lang, { ctaLabel, freeLabel, featured = "yearly", deta
     monthly: en
       ? ["50 hours of translation per 30-day cycle", "Pro features: glossary, history, TXT/SRT/Markdown export", "Renew when you need it, never charged automatically"]
       : ["50 giờ dịch cho mỗi chu kỳ 30 ngày", "Tính năng Pro: từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown", "Gia hạn khi cần, không tự động trừ tiền"],
+    six_months: en
+      ? ["100 hours of translation per 30-day cycle", "All Pro features", "One payment for half a year, about 44,800 ₫ per month"]
+      : ["100 giờ dịch cho mỗi chu kỳ 30 ngày", "Đầy đủ tính năng Pro", "Trả một lần cho nửa năm, quy ra khoảng 44.800 ₫ mỗi tháng"],
     yearly: en
       ? ["Unlimited translation time for 365 days", "All Pro features", "One payment for the whole year, about 41,700 ₫ per month"]
       : ["Không giới hạn thời lượng dịch trong 365 ngày", "Đầy đủ tính năng Pro", "Trả một lần cho cả năm, quy ra khoảng 41.700 ₫ mỗi tháng"],

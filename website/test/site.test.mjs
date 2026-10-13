@@ -9,7 +9,7 @@ import { build, DIST } from "../src/build/build.mjs";
 import { pages, missing } from "../src/content/index.mjs";
 import { vnDate } from "../src/release.mjs";
 import { SITE } from "../src/site.mjs";
-import { PLANS } from "../src/plans.mjs";
+import { PLANS, vnd } from "../src/plans.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
@@ -183,7 +183,7 @@ test("giá và hạn mức trên website khớp server/wrangler.jsonc", async ()
   const raw = await readFile(path.join(ROOT, "..", "server", "wrangler.jsonc"), "utf8");
   const json = JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ""));
   const server = json.vars.PLANS;
-  for (const code of ["monthly", "yearly"]) {
+  for (const code of ["monthly", "six_months", "yearly"]) {
     const web = PLANS.find((p) => p.code === code);
     assert.equal(web.priceVnd, server[code].prices.VND, `${code}: giá`);
     assert.equal(web.minutesPerCycle, server[code].quota_minutes_per_cycle, `${code}: hạn mức`);
@@ -324,4 +324,59 @@ test("ảnh chụp app có mã băm nội dung trong đường dẫn", async () 
     }
   }
   assert.ok(checked > 0, "không thấy ảnh app nào");
+});
+
+
+// ---- Gói 6 Months (spec 2026-10-13 §4) ----
+
+test("bảng gói của website: Free rồi ba gói trả phí theo thứ tự thời hạn", () => {
+  assert.deepEqual(PLANS.map((p) => p.code), ["free", "monthly", "six_months", "yearly"]);
+  assert.deepEqual(PLANS.map((p) => p.days), [10, 30, 180, 365]);
+});
+
+test("thẻ gói ở trang chủ và Bảng giá: đủ bốn thẻ theo thứ tự, đúng giá, nhãn Tiết kiệm nhất chỉ ở Yearly", () => {
+  const errors = [];
+  for (const [urlPath, lang] of [["/", "vi"], ["/bang-gia/", "vi"], ["/en/", "en"], ["/en/pricing/", "en"]]) {
+    const html = htmlByPath.get(urlPath);
+    const start = html.indexOf('<div class="plans">');
+    const end = html.indexOf('<p class="disclaimer">', start);
+    if (start < 0 || end < 0) {
+      errors.push(`${urlPath}: không thấy khối thẻ gói`);
+      continue;
+    }
+    const block = html.slice(start, end);
+    const names = [...block.matchAll(/<h3>([^<]*)<\/h3>/g)].map((m) => m[1]);
+    const prices = [...block.matchAll(/<div class="price"><b>([^<]*)<\/b>/g)].map((m) => m[1].replaceAll("&nbsp;", " "));
+    const featured = [...block.matchAll(/<div class="plan featured[^>]*>[\s\S]*?<h3>([^<]*)<\/h3>/g)].map((m) => m[1]);
+    const wantNames = PLANS.map((p) => (lang === "en" ? p.nameEn : p.nameVi));
+    const wantPrices = PLANS.map((p) => (p.priceVnd === 0 ? (lang === "en" ? "Free" : "Miễn phí") : vnd(p.priceVnd, lang)));
+    if (JSON.stringify(names) !== JSON.stringify(wantNames)) errors.push(`${urlPath}: tên thẻ ${names.join(" | ")}`);
+    if (JSON.stringify(prices) !== JSON.stringify(wantPrices)) errors.push(`${urlPath}: giá thẻ ${prices.join(" | ")}`);
+    if (JSON.stringify(featured) !== JSON.stringify(["Yearly"])) errors.push(`${urlPath}: thẻ nổi bật ${featured.join(" | ")}`);
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("JSON-LD của trang giá liệt kê đủ bốn Offer, kể cả 6 Months 269000 ₫ trong 180 ngày", () => {
+  const errors = [];
+  for (const urlPath of ["/bang-gia/", "/en/pricing/"]) {
+    const html = htmlByPath.get(urlPath);
+    const data = JSON.parse(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)[1]);
+    const app = data["@graph"].find((n) => n["@type"] === "SoftwareApplication");
+    const offers = app?.offers ?? [];
+    const six = offers.find((o) => /6 Months/.test(o.name));
+    if (offers.length !== 4) errors.push(`${urlPath}: ${offers.length} Offer (cần 4)`);
+    if (!six || six.price !== "269000" || six.priceCurrency !== "VND" || six.eligibleDuration?.value !== 180) {
+      errors.push(`${urlPath}: Offer 6 Months sai: ${JSON.stringify(six)}`);
+    }
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("llms.txt nêu giá cả ba gói trả phí, lấy từ plans.mjs", async () => {
+  const llms = await readFile(path.join(DIST, "llms.txt"), "utf8");
+  const line = llms.split("\n").find((l) => l.startsWith("- Pricing:")) ?? "";
+  for (const p of PLANS.filter((x) => x.priceVnd > 0)) {
+    assert.ok(line.includes(`${p.nameEn} ${vnd(p.priceVnd)}`), `llms.txt: thiếu "${p.nameEn} ${vnd(p.priceVnd)}" trong: ${line}`);
+  }
 });

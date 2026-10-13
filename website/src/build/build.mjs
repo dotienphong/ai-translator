@@ -70,7 +70,7 @@ Sitemap: ${abs("/sitemap.xml")}
 
 /** Khối dữ kiện chính cho trợ lý AI: sinh từ SITE và PLANS để không lệch giá/phiên bản. Chỉ nêu điều có thật. */
 function keyFacts() {
-  const [free, monthly, yearly] = PLANS;
+  const [free, monthly, sixMonths, yearly] = ["free", "monthly", "six_months", "yearly"].map((code) => PLANS.find((p) => p.code === code));
   return [
     `- Product: ${SITE.name} (aitranslator.io.vn), desktop app that shows live translated subtitles for meeting audio; speech recognition and translation run on the device`,
     `- Provider: ${SITE.owner} (independent developer, Vietnam); ${SITE.email}`,
@@ -79,7 +79,7 @@ function keyFacts() {
     `- Requirements: 8 GB RAM minimum (16 GB recommended); models download once, 1.3 GB (Lite pack) or 2.5 GB (Standard pack)`,
     `- Languages (speech and translation): English, Chinese, Japanese, Korean, Vietnamese (tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn, tiếng Việt); interface in Vietnamese, English, Japanese, Chinese (Simplified), Korean`,
     `- Measured latency: median 0.76–1.03 s with the Standard pack on a Mac M4 Pro 24 GB (macOS 26); preliminary Windows test on one laptop with integrated graphics: median 1.3–2.6 s (Lite), 2.7–5.4 s (Standard)`,
-    `- Pricing: ${free.nameEn} trial ${free.days} days (${free.minutesPerDay} min/day, ${vnd(0)}); ${monthly.nameEn} ${vnd(monthly.priceVnd)} (${monthly.minutesPerCycle / 60} h per ${monthly.days} days); ${yearly.nameEn} ${vnd(yearly.priceVnd)} (unlimited, ${yearly.days} days); prepaid by VietQR in VND, no auto-renewal; payment only from Vietnamese bank accounts`,
+    `- Pricing: ${free.nameEn} trial ${free.days} days (${free.minutesPerDay} min/day, ${vnd(0)}); ${monthly.nameEn} ${vnd(monthly.priceVnd)} (${monthly.minutesPerCycle / 60} h per ${monthly.days} days); ${sixMonths.nameEn} ${vnd(sixMonths.priceVnd)} (${sixMonths.minutesPerCycle / 60} h per 30 days, ${sixMonths.days} days); ${yearly.nameEn} ${vnd(yearly.priceVnd)} (unlimited, ${yearly.days} days); prepaid by VietQR in VND, no auto-renewal; payment only from Vietnamese bank accounts`,
     `- Install: macOS \`curl -fsSL ${SITE.origin}/install.sh | bash\`; Windows \`irm ${SITE.origin}/install.ps1 | iex\``,
     `- Privacy: no bot, no account, no ads, no analytics or cookies on the website; the app sends no audio or transcripts to any server; not open source`,
   ].join("\n");
