@@ -301,6 +301,20 @@ mod tests {
         }
     }
 
+    /// Cơ chế `GET /v1/plans?plans=` (spec 2026-10-13 §2.3) dựa vào một bất biến: mọi mã app khai báo bán được
+    /// (`purchase::PLANS`) là gói app đọc được trong token, và tên mã khớp hai chiều. Thêm mã vào `PLANS` mà quên `Plan`
+    /// thì app báo bán một gói mà chính nó không đọc nổi token.
+    #[test]
+    fn every_sellable_plan_is_a_plan_the_app_can_read() {
+        use crate::license::manager::plan_code;
+        use crate::license::purchase::PLANS;
+        for code in PLANS {
+            let plan = Plan::parse(code).unwrap_or_else(|| panic!("{code} có trong PLANS nhưng Plan không đọc được"));
+            assert_eq!(plan_code(plan), code);
+            assert_eq!(serde_json::to_value(plan).unwrap(), code);
+        }
+    }
+
     /// Thứ tự lỗi của `VerifyError` đúng `checks_order` của vector.
     #[test]
     fn errors_are_ordered_like_the_contract() {
