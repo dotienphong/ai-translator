@@ -780,16 +780,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const browser = await launch();
 if (!browser) throw new Error("không thấy Google Chrome (đặt CHROME=<đường dẫn>)");
 for (const [name, path, width, selector, dark] of [
-  ["pricing-table-1280", "/bang-gia/", 1280, ".table-wrap", false],
-  ["pricing-table-375", "/bang-gia/", 375, ".table-wrap", false],
-  ["pricing-table-en-1280-dark", "/en/pricing/", 1280, ".table-wrap", true],
-  ["features-table-1280", "/tinh-nang/", 1280, "section.section-alt .table-wrap", false],
+  ["pricing-table-1280", "/bang-gia/", 1280, "#six-months-table", false],
+  ["pricing-table-375", "/bang-gia/", 375, "#six-months-table", false],
+  ["pricing-table-en-1280-dark", "/en/pricing/", 1280, "#six-months-table", true],
+  ["features-table-1280", "/tinh-nang/", 1280, "#six-months-table", false],
   ["license-guide-1280", "/huong-dan/mua-va-kich-hoat-key/", 1280, ".doc-layout", false],
 ]) {
   const page = await browser.newPage({ width, height: 1000, dpr: 1, dark });
   await page.goto(`${BASE}${path}`);
   await sleep(800);
   await page.eval(`document.querySelectorAll(".reveal").forEach((e) => e.classList.add("in", "visible", "is-visible"));`);
+  // Đánh dấu bảng có cột 6 Months (trang Tính năng còn bảng khác, ví dụ phím tắt) để chụp đúng bảng gói.
+  await page.eval(`document.querySelectorAll(".table-wrap").forEach((w) => { if (w.textContent.includes("6 Months")) w.id = "six-months-table"; })`);
   await sleep(400);
   const o = JSON.parse(await page.eval(`JSON.stringify({ scrollW: document.documentElement.scrollWidth, clientW: document.documentElement.clientWidth })`));
   console.log(`${o.scrollW <= o.clientW ? "PASS" : "FAIL"}  ${name}: không cuộn ngang (${o.scrollW}/${o.clientW})`);
