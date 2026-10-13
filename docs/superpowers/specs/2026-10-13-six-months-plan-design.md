@@ -95,7 +95,8 @@ Giải pháp: danh sách gói theo khả năng của app.
 
 ### 3.2 Giao diện (`src/`)
 - `lib/ipc.ts`: `LicensePlan` thêm `"six_months"`.
-- `UpgradeScreen.tsx`: **không sửa**. Màn hình vẽ danh sách từ bảng gói của server, nên dòng 6 Months xuất hiện cùng kiểu với các dòng khác: tên, "269.000 đ / 180 ngày", "100 giờ mỗi 30 ngày", dấu "Đang dùng" khi là gói hiện tại. Chọn sẵn, gia hạn, đổi gói, hiện số ngày quy đổi đều dùng chung mã hiện có.
+- `UpgradeScreen.tsx`: **không sửa**. Màn hình vẽ thẻ từ bảng gói của server, nên thẻ 6 Months xuất hiện cùng kiểu với các thẻ khác: tên, "269.000 đ / 180 ngày", "100 giờ mỗi 30 ngày", dấu "Đang dùng" khi là gói hiện tại. Chọn sẵn, gia hạn, đổi gói, hiện số ngày quy đổi đều dùng chung mã hiện có.
+- `styles/main.css`: các thẻ là một **lưới** (`ul.plans`), không phải danh sách dọc. Nội dung rộng tối đa 700px nên lưới cũ (`minmax(13rem, 1fr)`) luôn ra 3 cột và bốn thẻ thành 3 + 1 (thẻ Yearly lẻ ở hàng hai). Đổi thành `minmax(17rem, 1fr)` để bốn thẻ xếp 2×2 ở mọi cỡ cửa sổ; đây là thay đổi CSS duy nhất của app, chỉ chạm `.plans`.
 - `i18n`: thêm `plan.six_months` = "6 Months" cho đủ 5 ngôn ngữ (vi, en, ja, zh, ko; các ngôn ngữ giữ tên gói bằng chữ Latin như `plan.monthly`). Test đối chiếu khóa giữa các ngôn ngữ tự bắt thiếu khóa.
 - Hai câu "Mua gói Monthly hoặc Yearly để tiếp tục dịch" (`license.notice.trialEnded`, `error.trialEnded`, 5 ngôn ngữ) sửa để nêu cả ba gói; nếu không, câu này thành thông tin thiếu khi có gói thứ ba. Chỉ đổi phần liệt kê gói, giữ nguyên phần còn lại của câu.
 - Giữ nguyên: luồng mua (QR, hỏi đơn mỗi 3 giây, tự kích hoạt), chọn sẵn Monthly cho người mua mới (`defaultPlan`), màn hình chính, thanh phụ đề, Cài đặt › Bản quyền.
