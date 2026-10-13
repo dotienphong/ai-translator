@@ -310,6 +310,28 @@
       "now": 1790816400,
       "device_id_hash": "19a1a8158951ecebddefb479e098dbc84c018c897ea6d4b8c5fc024051306b4f",
       "expected": "malformed"
+    },
+    {
+      "name": "valid_six_months",
+      "token": "v1.eyJraWQiOiJ0ZXN0LTEiLCJsaWNlbnNlX2lkIjoiMGI2ZjJjM2UtMWY0YS00YzFlLTlhNTMtMmQ3YzhlOWYwYTExIiwiYWN0aXZhdGlvbl9pZCI6IjVkMGU4YTQ3LTNiMmMtNGY2ZC04ZTFhLTdjOWIwZDJlNGY2MCIsImFjdGl2YXRpb25fY3JlYXRlZF9hdCI6MTc5MDU1MzYwMCwiZGV2aWNlX2lkX2hhc2giOiIxOWExYTgxNTg5NTFlY2ViZGRlZmI0NzllMDk4ZGJjODRjMDE4Yzg5N2VhNmQ0YjhjNWZjMDI0MDUxMzA2YjRmIiwicGxhbiI6InNpeF9tb250aHMiLCJleHBpcmVzX2F0IjoxODA2MzY0ODAwLCJjeWNsZV9hbmNob3IiOjE3OTAzODA4MDAsInF1b3RhX21pbnV0ZXNfcGVyX2N5Y2xlIjo2MDAwLCJxdW90YV9lcG9jaCI6MCwicXVvdGFfZnJlc2giOmZhbHNlLCJpc3N1ZWRfYXQiOjE3OTA4MTI4MDAsInJlZnJlc2hfYmVmb3JlIjoxNzkyMDIyNDAwfQ.P-N4wh32PyE706Q7i_5qyVpHGwMZu9Tg38PEwW3B7iJT7wZDPrIWusvXiMza1ExOqNqPALrgGco1k7OCmtnPAQ",
+      "now": 1790816400,
+      "device_id_hash": "19a1a8158951ecebddefb479e098dbc84c018c897ea6d4b8c5fc024051306b4f",
+      "expected": "ok",
+      "claims": {
+        "kid": "test-1",
+        "license_id": "0b6f2c3e-1f4a-4c1e-9a53-2d7c8e9f0a11",
+        "activation_id": "5d0e8a47-3b2c-4f6d-8e1a-7c9b0d2e4f60",
+        "activation_created_at": 1790553600,
+        "device_id_hash": "19a1a8158951ecebddefb479e098dbc84c018c897ea6d4b8c5fc024051306b4f",
+        "plan": "six_months",
+        "expires_at": 1806364800,
+        "cycle_anchor": 1790380800,
+        "quota_minutes_per_cycle": 6000,
+        "quota_epoch": 0,
+        "quota_fresh": false,
+        "issued_at": 1790812800,
+        "refresh_before": 1792022400
+      }
     }
   ],
   "trial": {

@@ -2,7 +2,7 @@
 //! `v1.<base64url(JSON claims)>.<base64url(chữ ký Ed25519 trên chuỗi ASCII "v1.<payload>")>`, base64url không đệm.
 //!
 //! Thứ tự kiểm, giống hệt `server/src/token.ts`: định dạng (đủ trường, đúng kiểu), `kid`, chữ ký, máy, `expires_at`, rồi
-//! `refresh_before`. Token có nhiều lỗi thì trả lỗi đứng trước. Hợp đồng chốt bằng 32 vector ở
+//! `refresh_before`. Token có nhiều lỗi thì trả lỗi đứng trước. Hợp đồng chốt bằng 33 vector ở
 //! `server/test/vectors/token-v1.json`:
 //! - mọi số nguyên phải là số nguyên an toàn của JavaScript (|n| ≤ 2^53 − 1), vì server sinh token bằng JavaScript;
 //! - thiếu trường là `malformed`, kể cả `quota_minutes_per_cycle` (giá trị `null` mới là không giới hạn);
@@ -26,11 +26,13 @@ pub const VERSION: &str = "v1";
 /// Số nguyên lớn nhất JavaScript biểu diễn chính xác (`Number.MAX_SAFE_INTEGER`).
 const MAX_SAFE: i64 = (1 << 53) - 1;
 
-/// Gói trả phí trong token (spec 2026-10-07 §1): Monthly, Yearly. Free không có token bản quyền.
+/// Gói trả phí trong token (spec 2026-10-07 §1; `six_months` thêm ở spec 2026-10-13): Monthly, 6 Months, Yearly. Free
+/// không có token bản quyền.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Plan {
     Monthly,
+    SixMonths,
     Yearly,
 }
 
@@ -38,6 +40,7 @@ impl Plan {
     fn parse(code: &str) -> Option<Self> {
         match code {
             "monthly" => Some(Self::Monthly),
+            "six_months" => Some(Self::SixMonths),
             "yearly" => Some(Self::Yearly),
             _ => None,
         }
@@ -201,11 +204,11 @@ mod tests {
     }
 
     /// Đúng bản vector đã chốt với server (kế hoạch 2026-10-07 ba gói · 01 Task 1: mã gói `monthly`, `yearly`, khóa
-    /// `trial`).
+    /// `trial`; kế hoạch 2026-10-13 gói 6 Months · 01 Task 5: thêm vector `valid_six_months`, tổng 33 vector).
     #[test]
     fn the_vector_file_is_the_agreed_one() {
         let hash = hex(&Sha256::digest(VECTORS.as_bytes()));
-        assert_eq!(hash, "b18e7b9e961181a2a8ed94bfd2178a54d8cb921116834367c5268f9bc538faa2");
+        assert_eq!(hash, "41ef2a8162da820df57d3e78f4d2dc484515920d177179a6de5aa0aadefa294f");
     }
 
     fn hex(bytes: &[u8]) -> String {
@@ -238,6 +241,7 @@ mod tests {
                     // So đủ mọi trường với `claims` của vector (N3 của review 06 lần 1).
                     let plan = match claims.plan {
                         Plan::Monthly => "monthly",
+                        Plan::SixMonths => "six_months",
                         Plan::Yearly => "yearly",
                     };
                     let got = serde_json::json!({
@@ -264,7 +268,36 @@ mod tests {
             }
             checked += 1;
         }
-        assert_eq!(checked, 32);
+        assert_eq!(checked, 33);
+    }
+
+    /// Gói 6 Months (spec 2026-10-13): mã `six_months` được đọc kèm hạn mức 6000 phút, ghi ra đúng mã, và mã của các bản
+    /// trước hay mã giả vẫn là sai dạng.
+    #[test]
+    fn the_six_months_plan_is_read_and_written_as_six_months() {
+        let v = vectors();
+        let t = v["tokens"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["name"] == "valid_six_months")
+            .unwrap();
+        let claims = verify(
+            t["token"].as_str().unwrap(),
+            &keys(&v),
+            t["now"].as_i64().unwrap(),
+            t["device_id_hash"].as_str().unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            (claims.plan, claims.quota_minutes_per_cycle),
+            (Plan::SixMonths, Some(6000))
+        );
+        assert_eq!(serde_json::to_value(Plan::SixMonths).unwrap(), "six_months");
+        assert_eq!(Plan::parse("six_months"), Some(Plan::SixMonths));
+        for code in ["pro", "pro_x2", "pro_x5", "free", "six-months", "SIX_MONTHS", ""] {
+            assert_eq!(Plan::parse(code), None, "{code}");
+        }
     }
 
     /// Thứ tự lỗi của `VerifyError` đúng `checks_order` của vector.

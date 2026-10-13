@@ -56,6 +56,14 @@ const unlimited = {
   quota_epoch: 2,
   quota_fresh: true,
 };
+// Gói 6 Months (spec 2026-10-13): 100 giờ mỗi chu kỳ 30 ngày, 180 ngày mỗi đơn. Vector của nó nằm CUỐI danh sách `tokens`
+// để các vector cũ giữ nguyên vị trí và nội dung (test lấy vectors.tokens[0] làm token hợp lệ chuẩn).
+const sixMonths = {
+  ...base,
+  plan: "six_months",
+  expires_at: issuedAt + 180 * 86400,
+  quota_minutes_per_cycle: 6000,
+};
 const valid = await sign(k1, base);
 const [, , validSig] = valid.split(".");
 const tampered = `v1.${b64url(JSON.stringify({ ...base, expires_at: base.expires_at + 365 * 86400 }))}.${validSig}`;
@@ -286,6 +294,15 @@ const tokens = [
     now: issuedAt + 3600,
     device_id_hash: device,
     expected: "malformed",
+  },
+  // Gói 6 Months: mã gói thứ ba của PLAN_CODES, hạn mức 6000 phút. Thêm cuối danh sách (xem trên).
+  {
+    name: "valid_six_months",
+    token: await sign(k1, sixMonths),
+    now: issuedAt + 3600,
+    device_id_hash: device,
+    expected: "ok",
+    claims: sixMonths,
   },
 ];
 if (!tooBigJson.includes("9007199254740993")) throw new Error("không thay được refresh_before");

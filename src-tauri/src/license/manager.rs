@@ -205,7 +205,7 @@ pub struct QuotaView {
 #[serde(rename_all = "camelCase")]
 pub struct LicenseView {
     pub standing: Standing,
-    /// `free`, `monthly`, `yearly`: gói đang có hiệu lực.
+    /// `free`, `monthly`, `six_months`, `yearly`: gói đang có hiệu lực.
     pub plan: String,
     /// Gói ghi trong token đã lưu (kể cả khi đã hết hạn), để hiện "Monthly đã hết hạn".
     pub licensed_plan: Option<Plan>,
@@ -1232,6 +1232,7 @@ fn is_uuid(s: &str) -> bool {
 pub fn plan_code(plan: Plan) -> &'static str {
     match plan {
         Plan::Monthly => "monthly",
+        Plan::SixMonths => "six_months",
         Plan::Yearly => "yearly",
     }
 }
