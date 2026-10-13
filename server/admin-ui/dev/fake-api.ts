@@ -438,6 +438,7 @@ const stats: Stats = (() => {
       monthly: months.map((month, i) => ({
         month,
         monthly: { revenue: (18 + ((i * 5) % 9)) * 1000000, orders: (18 + ((i * 5) % 9)) * 20 },
+        six_months: { revenue: (6 + ((i * 3) % 7)) * 1076000, orders: (6 + ((i * 3) % 7)) * 4 },
         yearly: { revenue: (10 + ((i * 7) % 11)) * 2500000, orders: (10 + ((i * 7) % 11)) * 5 },
       })),
     },
@@ -493,7 +494,7 @@ function dashboardReply(path: string, mode: string): Reply | null {
         this_month: scale(m.this_month),
         last_month: scale(m.last_month),
         daily: m.daily.map((d) => ({ ...d, revenue: scale(d.revenue), orders: scale(d.orders) })),
-        monthly: m.monthly.map((x) => ({ month: x.month, monthly: z(x.monthly), yearly: z(x.yearly) })),
+        monthly: m.monthly.map((x) => ({ month: x.month, monthly: z(x.monthly), six_months: z(x.six_months), yearly: z(x.yearly) })),
       },
       customers: {
         trials_30d: scale(c.trials_30d),

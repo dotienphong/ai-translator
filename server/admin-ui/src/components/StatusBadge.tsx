@@ -5,7 +5,7 @@ import { IconLock } from "./icons";
 
 export { Badge, type Tone };
 
-export const PLAN_LABELS: Record<PlanCode, string> = { monthly: "Monthly", yearly: "Yearly" };
+export const PLAN_LABELS: Record<PlanCode, string> = { monthly: "Monthly", six_months: "6 Months", yearly: "Yearly" };
 
 export const ORDER_LABELS: Record<OrderStatus, string> = {
   pending: "Chờ trả",

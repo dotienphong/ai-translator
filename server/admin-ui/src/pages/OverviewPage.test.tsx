@@ -36,7 +36,12 @@ function makeStats(): Stats {
       this_month: 550000,
       last_month: 200000,
       daily: DAYS.map((day, i) => ({ day, revenue: i * 1000, orders: i })),
-      monthly: MONTHS.map((month) => ({ month, monthly: { revenue: 50000, orders: 7 }, yearly: { revenue: 0, orders: 3 } })),
+      monthly: MONTHS.map((month) => ({
+        month,
+        monthly: { revenue: 50000, orders: 7 },
+        six_months: { revenue: 269000, orders: 5 },
+        yearly: { revenue: 0, orders: 3 },
+      })),
     },
     customers: {
       trials_30d: 3,
@@ -119,7 +124,7 @@ describe("OverviewPage", () => {
     }));
     expect(info).toEqual([
       { title: "Doanh thu 30 ngày gần nhất", rows: "30", first: "02/09", stacked: "false", series: "Doanh thu" },
-      { title: "Doanh thu 12 tháng, theo gói", rows: "12", first: "11/2025", stacked: "true", series: "Monthly|Yearly" },
+      { title: "Doanh thu 12 tháng, theo gói", rows: "12", first: "11/2025", stacked: "true", series: "Monthly|6 Months|Yearly" },
       { title: "Mua mới, gia hạn, đổi gói theo tháng", rows: "12", first: "11/2025", stacked: "true", series: "Mua mới|Gia hạn|Đổi gói|Khác" },
       { title: "Máy dùng thử mới mỗi ngày", rows: "30", first: "02/09", stacked: "false", series: "Máy dùng thử mới" },
     ]);
@@ -145,14 +150,14 @@ describe("OverviewPage", () => {
     expect(c.data[29]).toEqual({ label: "01/10", revenue: 29000 });
   });
 
-  it("biểu đồ theo gói: Monthly và Yearly lấy đúng doanh thu của gói (không tráo, không lấy số đơn)", async () => {
+  it("biểu đồ theo gói: Monthly, 6 Months và Yearly lấy đúng doanh thu của gói (không tráo, không lấy số đơn)", async () => {
     serve();
     render(<OverviewPage />);
     const c = await chartOf("Doanh thu 12 tháng, theo gói");
-    expect(c.keys).toEqual(["monthly", "yearly"]);
+    expect(c.keys).toEqual(["monthly", "six_months", "yearly"]);
     expect(c.data).toHaveLength(12);
-    expect(c.data[0]).toEqual({ label: "11/2025", monthly: 50000, yearly: 0 });
-    expect(c.data.every((r) => r.monthly === 50000 && r.yearly === 0)).toBe(true);
+    expect(c.data[0]).toEqual({ label: "11/2025", monthly: 50000, six_months: 269000, yearly: 0 });
+    expect(c.data.every((r) => r.monthly === 50000 && r.six_months === 269000 && r.yearly === 0)).toBe(true);
   });
 
   it("biểu đồ mua mới, gia hạn, đổi gói: đủ bốn khóa, mỗi loại đúng số của mình", async () => {

@@ -1,7 +1,7 @@
 // Kiểu dữ liệu trả về của API Worker admin (server/src/admin.ts, admin-read.ts). Giữ khớp tay với server;
 // test của server khóa hình dạng phản hồi.
 
-export type PlanCode = "monthly" | "yearly";
+export type PlanCode = "monthly" | "six_months" | "yearly";
 
 export type OrderStatus =
   | "pending"

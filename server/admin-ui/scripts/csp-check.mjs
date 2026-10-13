@@ -55,6 +55,7 @@ function statsFixture() {
       monthly: months.map((month, i) => ({
         month,
         monthly: { revenue: (i % 4) * 150000, orders: (i % 4) * 3 },
+        six_months: { revenue: (i % 5) * 269000, orders: i % 5 },
         yearly: { revenue: (i % 3) * 500000, orders: i % 3 },
       })),
     },

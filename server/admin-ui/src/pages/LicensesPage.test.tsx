@@ -58,6 +58,36 @@ describe("LicensesPage: cấp license mới", () => {
     });
     await waitFor(() => expect(calls.filter((c) => c.url === "/admin/licenses" && c.method === "GET")).toHaveLength(2));
   });
+
+  it("ô chọn gói liệt kê đủ ba gói theo thời hạn và gửi mã six_months khi chọn 6 Months (spec 2026-10-13)", async () => {
+    const user = userEvent.setup();
+    render(<LicensesPage />);
+    await user.click(await screen.findByRole("button", { name: "Cấp license mới…" }));
+    const dialog = screen.getByRole("dialog");
+    const select = within(dialog).getByLabelText("Gói") as HTMLSelectElement;
+    expect([...select.options].map((o) => [o.value, o.textContent])).toEqual([
+      ["monthly", "Monthly"],
+      ["six_months", "6 Months"],
+      ["yearly", "Yearly"],
+    ]);
+    await user.type(within(dialog).getByLabelText(/Lý do/), "tặng khách");
+    await user.type(within(dialog).getByLabelText("Email của khách"), "khach@example.com");
+    await user.selectOptions(select, "six_months");
+    await user.click(within(dialog).getByRole("button", { name: "Cấp" }));
+    expect(await screen.findByText(KEY)).toBeTruthy();
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({ email: "khach@example.com", plan: "six_months", note: "tặng khách" });
+  });
+
+  it("bộ lọc Gói liệt kê Tất cả và đủ ba gói", async () => {
+    render(<LicensesPage />);
+    const select = (await screen.findByLabelText("Gói")) as HTMLSelectElement;
+    expect([...select.options].map((o) => [o.value, o.textContent])).toEqual([
+      ["", "Tất cả"],
+      ["monthly", "Monthly"],
+      ["six_months", "6 Months"],
+      ["yearly", "Yearly"],
+    ]);
+  });
 });
 
 // Trạng thái là công tắc nhiều lựa chọn (radiogroup "Trạng thái") thay cho ô chọn cũ: bấm lựa chọn thay cho đổi giá trị ô

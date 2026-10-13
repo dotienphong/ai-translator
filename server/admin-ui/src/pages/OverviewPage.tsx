@@ -110,16 +110,22 @@ function Content({ s }: { s: Stats }) {
           />
           <ChartCard
             title="Doanh thu 12 tháng, theo gói"
-            description="Cột chồng: Monthly và Yearly"
+            description="Cột chồng: Monthly, 6 Months và Yearly"
             unit="Đơn vị: đồng"
             labelHeader="Tháng"
             stacked
             format={fmtVnd}
             series={[
               { key: "monthly", label: PLAN_LABELS.monthly },
+              { key: "six_months", label: PLAN_LABELS.six_months },
               { key: "yearly", label: PLAN_LABELS.yearly },
             ]}
-            data={money.monthly.map((m) => ({ label: fmtMonth(m.month), monthly: m.monthly.revenue, yearly: m.yearly.revenue }))}
+            data={money.monthly.map((m) => ({
+              label: fmtMonth(m.month),
+              monthly: m.monthly.revenue,
+              six_months: m.six_months.revenue,
+              yearly: m.yearly.revenue,
+            }))}
           />
         </div>
       </Section>
