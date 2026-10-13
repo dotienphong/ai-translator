@@ -246,8 +246,8 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 43394,
-  "description": "Màn hình Nâng cấp với ba gói: Free 30 phút mỗi ngày dùng thử 10 ngày, Monthly 50 giờ giá 50.000 đ, Yearly không giới hạn giá 500.000 đ."
+  "bytes": 48318,
+  "description": "Màn hình Nâng cấp với bốn gói: Free 30 phút mỗi ngày dùng thử 10 ngày, Monthly 50 giờ giá 50.000 đ, 6 Months 100 giờ giá 269.000 đ, Yearly không giới hạn giá 500.000 đ."
  },
  {
   "file": "app-upgrade.en.webp",
@@ -256,8 +256,8 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 41930,
-  "description": "The Upgrade screen with three plans: Free with 30 minutes a day for a 10-day trial, Monthly with 50 hours for 50.000 đ and Yearly with unlimited use for 500.000 đ."
+  "bytes": 46876,
+  "description": "The Upgrade screen with four plans: Free with 30 minutes a day for a 10-day trial, Monthly with 50 hours for 50.000 đ, 6 Months with 100 hours for 269.000 đ and Yearly with unlimited use for 500.000 đ."
  },
  {
   "file": "app-upgrade-qr.vi.webp",
@@ -266,7 +266,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 49728,
+  "bytes": 54470,
   "description": "Thanh toán gói Monthly 50.000 đ ngay trong app bằng mã VietQR (mã minh họa), kèm mã đơn, hạn dùng của mã và nút Mở trang thanh toán."
  },
  {
@@ -276,7 +276,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 47136,
+  "bytes": 52854,
   "description": "Paying for the Monthly plan, 50.000 đ, inside the app with a VietQR code (illustrative code), with the order number, code expiry and an Open payment page button."
  },
  {
