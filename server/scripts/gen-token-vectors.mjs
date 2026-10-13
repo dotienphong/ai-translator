@@ -400,7 +400,7 @@ const out = {
   checks_order: ["malformed", "unknown_kid", "bad_signature", "wrong_device", "license_expired", "refresh_expired"],
   note: "Khóa test-* chỉ dùng cho test. Hết hạn khi now >= expires_at hoặc now >= refresh_before (giây Unix). Token có nhiều lỗi thì trả lỗi đứng trước trong checks_order.",
   claims:
-    "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: monthly | yearly; không có trường typ (có typ là malformed); quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Mọi số nguyên phải là số nguyên an toàn (|n| <= 2^53 - 1): 1.5 hay 2^53 + 1 là malformed. Payload phải là UTF-8 hợp lệ, không có BOM. Thiếu trường hay sai kiểu là malformed.",
+    "kid, license_id, activation_id, device_id_hash: chuỗi; activation_created_at, expires_at, cycle_anchor, issued_at, refresh_before: số nguyên; plan: monthly | six_months | yearly; không có trường typ (có typ là malformed); quota_minutes_per_cycle: số nguyên dương (phút mỗi chu kỳ 30 ngày) hoặc null (không giới hạn); quota_epoch: số nguyên >= 0; quota_fresh: boolean. Mọi số nguyên phải là số nguyên an toàn (|n| <= 2^53 - 1): 1.5 hay 2^53 + 1 là malformed. Payload phải là UTF-8 hợp lệ, không có BOM. Thiếu trường hay sai kiểu là malformed.",
   test_keys: [k1, k2].map(({ kid, seed_b64url, public_b64url }) => ({ kid, seed_b64url, public_b64url })),
   public_keys: { "test-1": k1.public_b64url, "test-2": k2.public_b64url },
   tokens,

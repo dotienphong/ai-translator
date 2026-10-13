@@ -204,11 +204,12 @@ mod tests {
     }
 
     /// Đúng bản vector đã chốt với server (kế hoạch 2026-10-07 ba gói · 01 Task 1: mã gói `monthly`, `yearly`, khóa
-    /// `trial`; kế hoạch 2026-10-13 gói 6 Months · 01 Task 5: thêm vector `valid_six_months`, tổng 33 vector).
+    /// `trial`; kế hoạch 2026-10-13 gói 6 Months · 01 Task 5: thêm vector `valid_six_months`, tổng 33 vector; chuỗi hợp
+    /// đồng `claims` của file nêu đủ `monthly | six_months | yearly`).
     #[test]
     fn the_vector_file_is_the_agreed_one() {
         let hash = hex(&Sha256::digest(VECTORS.as_bytes()));
-        assert_eq!(hash, "41ef2a8162da820df57d3e78f4d2dc484515920d177179a6de5aa0aadefa294f");
+        assert_eq!(hash, "051e72a10996c575564a9cbaa89ce93092bfb79231bd7f291f843954edd2e976");
     }
 
     fn hex(bytes: &[u8]) -> String {
