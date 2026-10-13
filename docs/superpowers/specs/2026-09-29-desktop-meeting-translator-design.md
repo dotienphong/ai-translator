@@ -7,6 +7,7 @@
 - Các chi tiết hạn mức do controller tự quyết (§6.8, "Hạn mức") còn chờ chủ dự án xem (Q16 của kế hoạch Phase 1 · 00).
 - Sửa ngày 2026-10-04: chỉ còn một môi trường production (§6.13, spec `2026-10-04-single-production-environment-design.md`); các chỗ nói staging hay dev của server đã được sửa theo.
 - Sửa ngày 2026-10-07: ba gói (Free dùng thử 10 ngày, Monthly, Yearly) và mỗi key một máy (spec `2026-10-07-three-plans-single-device-design.md`); các chỗ nói bốn gói, Free 10 phút và 2 máy mỗi key đã được sửa theo.
+- Sửa ngày 2026-10-13: thêm gói trả phí thứ ba 6 Months (269.000 đ, 100 giờ mỗi chu kỳ 30 ngày, 180 ngày mỗi đơn; spec `2026-10-13-six-months-plan-design.md`). Mọi chỗ của spec này nói "ba gói" hay "hai gói trả phí" nay là bốn gói (Free và ba gói trả phí); bảng gói ở §2 đã có thêm hàng 6 Months.
 - Sửa ngày 2026-10-12: dịch trong lúc người nói chưa dừng (spec `2026-10-10-dich-trong-luc-noi-design.md`, nghiệm thu `bench/2026-10-10-do-tre/results/nghiem-thu.md`); sửa các mục §3.3, §4.3, §4.4, §6.3–§6.6, §7, §8 theo §12 của spec đó.
 **Phạm vi:** Sản phẩm mới, repo mới `meeting-translator/`, gồm app desktop cho Windows và macOS, cùng một license server nhỏ để nhận thanh toán qua PayOS. Sản phẩm **tách hẳn** khỏi AI Live Translator: thương hiệu, repo, người dùng và thanh toán đều riêng. Vì cùng chủ sở hữu nên được tham khảo cách làm bên đó, nhưng không dùng chung code hay hạ tầng. App Android không thuộc spec này.
 **Tên và định danh** (D13):
@@ -69,6 +70,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 |---|---|---|---|---|
 | `free` | Free | 30 phút mỗi ngày | 10 ngày dùng thử, mỗi máy một lần | 0 |
 | `monthly` | Monthly | 50 giờ (3000 phút) mỗi chu kỳ 30 ngày | 30 ngày mỗi đơn | 50.000 đ |
+| `six_months` | 6 Months | 100 giờ (6000 phút) mỗi chu kỳ 30 ngày | 180 ngày mỗi đơn | 269.000 đ |
 | `yearly` | Yearly | không giới hạn | 365 ngày mỗi đơn | 500.000 đ |
 
 - Server đọc giá, hạn mức và số ngày mỗi đơn của gói trả phí từ cấu hình (§6.8); app không ghi cứng giá. Hạn mức Free (30 phút mỗi ngày) là một hằng số phía app. Số ngày dùng thử là biến cấu hình `TRIAL_DAYS` của server (§6.8).

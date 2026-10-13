@@ -425,3 +425,77 @@ và ghi dòng "Bản Windows chưa ký" vào tóm tắt của lần chạy. Ch�
   hãng và chỉ chạy Free.
 - Website: khi có chứng thư, sửa các chỗ nói "chưa có chứng thư ký mã" (trang cài đặt Windows, Tải xuống, Giới thiệu, Dữ
   liệu và bảo mật).
+
+
+## 8. Đợt thêm gói 6 Months (migration D1 0003)
+
+Spec `2026-10-13-six-months-plan-design.md` (mục 6), kế hoạch `2026-10-13-goi-6-thang-01-server-admin.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production do chủ dự án chạy (agent viết sẵn script, chủ dự án chạy bằng `! sh <script>`). Thứ tự không đổi được: migration, Worker API, Worker admin, app, website. Chạy trong `server/`; `PROD` và `PADMIN` như mục 4.
+
+Vì sao thứ tự này: migration 0003 chỉ **nới** ràng buộc CHECK mã gói, nên Worker cũ vẫn chạy đúng trên schema mới; Worker API mới cần schema mới để ghi đơn và license `six_months`; `GET /v1/plans` chỉ đưa gói mới cho app khai báo `?plans=`, nên máy chạy bản app cũ không thấy gói chưa mua được; website chỉ được nói điều đã thật nên đi sau cùng.
+
+1. **Kiểm trước khi áp (chỉ đọc), ghi lại kết quả để so sau.** Migration dựng lại bốn bảng `licenses`, `orders`, `activations`, `deactivations` đúng theo `0002_three_plans_trials.sql`: nếu production có cột hay ràng buộc ngoài 0002 (ví dụ có người sửa tay), migration sẽ làm mất chúng. Nên kiểm schema thật trước:
+
+   ```bash
+   pnpm exec wrangler d1 time-travel info mt-license-production
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name IN ('licenses', 'orders', 'activations', 'deactivations') ORDER BY name"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT (SELECT COUNT(*) FROM licenses) AS licenses, (SELECT COUNT(*) FROM orders) AS orders, (SELECT COUNT(*) FROM activations) AS activations, (SELECT COUNT(*) FROM deactivations) AS deactivations, (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS orders_seq, (SELECT seq FROM sqlite_sequence WHERE name = 'deactivations') AS deactivations_seq"
+   ```
+
+   Expected: `time-travel info` in mốc hiện tại (**chép lại**: đường lui nếu cần khôi phục dữ liệu). Bốn câu `CREATE TABLE` khớp từng cột, kiểu, `NOT NULL`, `DEFAULT`, `CHECK (plan IN ('monthly', 'yearly'))` và `REFERENCES` với bảng cùng tên trong `server/migrations/0002_three_plans_trials.sql` (sau khi đổi tên bảng, SQLite ghi tên có dấu nháy kép như `"licenses"`: khác chỉ ở chỗ đó là bình thường). Câu đếm cho số dòng của bốn bảng và hai bộ đếm `orders_seq`, `deactivations_seq`. **Khác ở bất kỳ cột nào thì dừng và báo.**
+
+2. **(Tùy chọn; các lệnh này chưa được thử trong repo)** Chạy thử migration trên bản sao dữ liệu thật. Bản xuất có email khách: để ngoài repo và **xóa ngay khi xong**. Lệnh nào không chạy được thì bỏ qua bước này (bước 1 và 4 mới là bắt buộc).
+
+   ```bash
+   W=$(mktemp -d)
+   pnpm exec wrangler d1 export mt-license-production --remote --output "$W/prod.sql"
+   pnpm exec wrangler d1 execute mt-license-production --local --persist-to "$W/state" --file "$W/prod.sql"
+   pnpm exec wrangler d1 migrations apply mt-license-production --local --persist-to "$W/state"
+   pnpm exec wrangler d1 execute mt-license-production --local --persist-to "$W/state" --command "PRAGMA foreign_key_check"
+   rm -rf "$W"
+   ```
+
+   Expected: chỉ migration `0003_six_months_plan.sql` được áp (0001 và 0002 đã có trong bảng `d1_migrations` của bản xuất); `foreign_key_check` không trả dòng nào.
+
+3. **Áp migration lên production:**
+
+   ```bash
+   pnpm exec wrangler d1 migrations apply mt-license-production --remote
+   ```
+
+   Expected: danh sách chỉ có `0003_six_months_plan.sql`, rồi `✅`.
+
+4. **Kiểm sau khi áp:** chạy lại hai câu `SELECT` của bước 1 và `PRAGMA foreign_key_check`.
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "PRAGMA foreign_key_check"
+   ```
+
+   Expected: schema giống bước 1, chỉ khác chuỗi CHECK của `licenses` và `orders` (nay là `CHECK (plan IN ('monthly', 'six_months', 'yearly'))`); số dòng và hai bộ đếm **bằng đúng** bước 1 (số đơn không được lùi: PayOS nhớ mọi `orderCode` đã dùng và từ chối mã trùng); `foreign_key_check` không trả dòng nào. Lệch ở chỗ nào thì dừng, không deploy Worker, và hỏi chủ dự án trước khi khôi phục bằng Time Travel (mốc đã chép ở bước 1).
+
+5. **Deploy Worker API** (`PLANS` có `six_months` đã nằm trong `wrangler.jsonc`):
+
+   ```bash
+   pnpm check && pnpm exec wrangler deploy
+   curl -s "$PROD/v1/health"; echo
+   curl -s "$PROD/v1/plans"; echo
+   curl -s "$PROD/v1/plans?plans=monthly,six_months,yearly"; echo
+   ```
+
+   Expected: như mục 4 bước 9 (`Uploaded mt-license`, `schedule: */5 * * * *`, `{"ok":true}`). `GET /v1/plans` không tham số trả **đúng hai gói** `monthly`, `yearly` như trước (đó là điều bản app cũ nhận). Có `?plans=monthly,six_months,yearly` trả ba gói theo thứ tự `monthly`, `six_months` (`"quota_minutes_per_cycle":6000`, `"days_per_order":180`, `"VND":269000`), `yearly`. Kiểm cron vẫn chạy như mục 4 bước 9 (`pnpm exec wrangler triggers deploy` nếu mất lịch).
+
+6. **Deploy Worker admin:**
+
+   ```bash
+   pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
+   curl -s -o /dev/null -w '%{http_code}\n' "$PADMIN/admin/whoami"
+   ```
+
+   Expected: như mục 4 bước 10 (khi chưa đăng nhập Access thì không phải `5xx`). Đăng nhập Web Admin: trang Tổng quan vẽ biểu đồ doanh thu theo gói với chuỗi thứ ba; ô "Cấp license mới" liệt kê `6 Months`.
+
+7. **Phát hành app** theo mục 2 (nâng phiên bản ở đó). App mới gọi `?plans=` nên thấy bốn thẻ gói; máy chạy bản cũ vẫn thấy ba thẻ (Free, Monthly, Yearly) như trước.
+
+8. **Deploy website** sau khi bản app có gói 6 Months đã được đăng lên R2 (kiểm R2 ở mục 2): `cd website && pnpm deploy`. Nếu ngày deploy thật khác 2026-10-13 thì sửa ngày hiệu lực EULA 1.2 trước (`docs/legal/eula.vi.md`, `eula.en.md`, `README.md`, và `modified` của `website/src/content/{vi,en}/terms.mjs`) để repo ghi một ngày có thật.
+
+9. **Thử tay:** mua một đơn 6 Months thật bằng PayOS và kiểm app tự kích hoạt (hạn mới = lúc trả tiền + 180 ngày, hạn mức "100 giờ mỗi 30 ngày"); đổi gói từ Monthly sang 6 Months và xem số ngày quy đổi; một máy chạy bản app cũ vẫn thấy ba thẻ.
+
+**Đường lui.** Worker API và Worker admin quay về phiên bản trước bằng `pnpm exec wrangler rollback` (schema mới tương thích với code cũ). Nhưng nếu đã có đơn hay license `six_months` thì Worker cũ **không đọc được** chúng (bảng `PLANS` cũ không có gói đó): chỉ lùi khi chưa có khách mua gói mới, còn không thì sửa tiến. Migration 0003 không có bước lùi vì nó chỉ nới CHECK và không đổi dữ liệu.

@@ -17,7 +17,7 @@ Biến môi trường: `WEBSITE_DIST` (thư mục dựng khác `dist/`, để d�
 
 ```
 src/site.mjs            thông tin site, chuỗi giao diện, điều hướng, chân trang (vi/en)
-src/plans.mjs           ba gói, giá, hạn mức (test đối chiếu server/wrangler.jsonc)
+src/plans.mjs           các gói (Free và ba gói trả phí), giá, hạn mức (test đối chiếu server/wrangler.jsonc)
 src/content/index.mjs   danh mục trang (id → vi/<id>.mjs, en/<id>.mjs)
 src/content/{vi,en}/    mỗi trang một module: { id, lang, path, title, description, body, ... }
 src/content/legal.mjs   trang điều khoản/chính sách sinh từ docs/legal/*.md (nguồn duy nhất)
@@ -36,6 +36,7 @@ tools/og/               sinh ảnh chia sẻ 1200×630 từ template.html (cần
 - **Chỉ nói điều có thật** về sản phẩm (không số liệu, lời chứng thực hay tính năng tưởng tượng). Số đo hiệu năng luôn kèm điều kiện đo. Trạng thái (bản mới nhất đã phát hành chính thức, cài bằng một dòng lệnh trên macOS và Windows; macOS ký ad-hoc chưa notarize, Windows chưa ký mã nên SmartScreen có thể cảnh báo khi tải .exe bằng trình duyệt) phải đúng với repo.
 - **Không công bố công nghệ lõi:** không nêu tên model (nhận dạng, dịch, phát hiện tiếng nói), tên engine/thư viện chạy model, định dạng và mức lượng tử hóa, khung ứng dụng, ngôn ngữ lập trình, kiến trúc tiến trình/cổng nội bộ, API hệ điều hành dùng để thu âm, tên model/bộ so sánh trong số đo chất lượng. Chỉ nói "model AI chạy trên máy", "nhận dạng giọng nói", "dịch". Số đo vẫn giữ (kèm điều kiện đo) nhưng không gắn tên model. Thông báo giấy phép bên thứ ba nằm trong app (Giới thiệu › Giấy phép mã nguồn mở). Ảnh chụp app phải cắt bỏ phần lộ tên thư viện (danh sách giấy phép, màn hình Model nếu hiện tên). Test `không lộ công nghệ lõi` chặn các từ khóa này.
 - Đổi giá ở `server/wrangler.jsonc` thì đổi cả `src/plans.mjs` và mọi chỗ nhắc giá trong `src/content/` (test báo lệch giá/hạn mức).
+- Thêm hay bớt một gói: `src/plans.mjs` (theo thứ tự thời hạn); mô tả và ba gạch đầu dòng của thẻ gói ở `plansGrid` (`src/build/components.mjs`; lưới `.plans` ở `src/assets/site.css` là 1 cột, 2×2 từ 700px: bốn thẻ không để thẻ lẻ, xem lại nếu số thẻ đổi); `keyFacts()` ở `src/build/build.mjs` (lấy gói theo mã, không theo vị trí); cột trong hai bảng so sánh (Bảng giá, Tính năng) và mọi câu liệt kê gói; điều khoản (`docs/legal/eula.*.md`); chụp lại ảnh màn hình Nâng cấp. Test `bảng gói của website…`, `bảng so sánh gói…` và `không còn câu liệt kê chỉ…` bắt các chỗ sót.
 - Không cookie, không analytics, không script hay font của bên thứ ba (khớp lời hứa quyền riêng tư; CSP `default-src 'self'`).
 - Ảnh chụp giao diện app (`src/assets/img/app/`) chụp bằng giao diện thật chạy trong Chrome với IPC giả (`scripts/ui-preview/`: chạy `pnpm exec vite --config scripts/ui-preview/vite.config.ts` ở gốc repo, rồi `node scripts/ui-preview/shoot.mjs`; script ghi WebP và cập nhật dung lượng, kích thước trong `manifest.json`); chụp lại khi giao diện app đổi, sửa tay mô tả (alt) nếu cảnh đổi.
 

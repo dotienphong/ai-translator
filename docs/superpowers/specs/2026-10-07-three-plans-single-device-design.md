@@ -4,6 +4,8 @@
 **Trạng thái:** Chủ dự án đã duyệt thiết kế qua hội thoại ngày 2026-10-07. Cùng ngày, chủ dự án đổi Free từ 30 ngày, 20 phút/ngày thành **10 ngày, 30 phút/ngày**.
 **Quan hệ với spec gốc:** bổ sung và **thay thế** mọi chỗ của `2026-09-29-desktop-meeting-translator-design.md` nói về bốn gói (P1, bảng gói ở §2), hạn mức Free 10 phút, "mỗi key tối đa 2 máy" (P2, §6.8, §9, §10.1, §10.2), và công thức đổi gói. Phần còn lại của spec gốc giữ nguyên. Khi thực hiện, spec gốc được sửa theo spec này (mục 7) để hai file không mâu thuẫn. Các kế hoạch trong `docs/superpowers/plans/` viết trước ngày này là lịch sử, không viết lại.
 
+**Bổ sung ngày 2026-10-13:** thêm gói trả phí thứ ba `six_months` (6 Months), xem `2026-10-13-six-months-plan-design.md`; các chỗ của spec này nói "ba gói" hay "hai gói trả phí" nay là Free và ba gói trả phí.
+
 ---
 
 ## 1. Quyết định
