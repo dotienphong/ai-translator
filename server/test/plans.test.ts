@@ -1,17 +1,20 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { computeGrant, LEGACY_PLAN_CODES, type LicenseTerms, offeredPlanCodes, parsePlans, type PlanTable } from "../src/plans";
+import { computeGrant, LEGACY_PLAN_CODES, type LicenseTerms, offeredPlanCodes, PLAN_CODES, parsePlans, type PlanTable } from "../src/plans";
 import { DAY, T0 } from "./world";
 
-// Bảng gói production (wrangler.jsonc), cũng là giá chính thức của spec 2026-10-07 §2.1.
+// Bảng gói production (wrangler.jsonc), cũng là giá chính thức của spec 2026-10-07 §2.1 và spec 2026-10-13 §1.
 const plans = parsePlans(env.PLANS) as PlanTable;
 
 describe("bảng gói (biến PLANS)", () => {
-  it("có đúng hai gói trả phí với hạn mức, số ngày và giá của spec 2026-10-07 §2.1", () => {
+  it("có đúng ba gói trả phí với hạn mức, số ngày và giá của spec 2026-10-07 §2.1 và spec 2026-10-13 §1", () => {
     expect(plans).toEqual({
       monthly: { quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000 } },
+      six_months: { quota_minutes_per_cycle: 6000, days_per_order: 180, prices: { VND: 269000 } },
       yearly: { quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000 } },
     });
+    // Thứ tự mã gói là thứ tự trong màn hình Nâng cấp: theo thời hạn.
+    expect([...PLAN_CODES]).toEqual(["monthly", "six_months", "yearly"]);
   });
 
   const ok = structuredClone(env.PLANS) as Record<string, Record<string, unknown>>;
@@ -24,7 +27,10 @@ describe("bảng gói (biến PLANS)", () => {
     ["thiếu biến", undefined],
     ["không phải object", "monthly=50000"],
     ["thiếu một gói", bad((p) => delete p.yearly)],
+    ["thiếu gói six_months", bad((p) => delete p.six_months)],
     ["thừa gói lạ", bad((p) => (p.pro = p.monthly!))],
+    ["six_months có hạn mức bằng 0", bad((p) => (p.six_months!.quota_minutes_per_cycle = 0))],
+    ["six_months có số ngày quá 366", bad((p) => (p.six_months!.days_per_order = 367))],
     ["hạn mức bằng 0", bad((p) => (p.monthly!.quota_minutes_per_cycle = 0))],
     ["hạn mức là chuỗi", bad((p) => (p.monthly!.quota_minutes_per_cycle = "3000"))],
     ["số ngày lẻ", bad((p) => (p.monthly!.days_per_order = 30.5))],
@@ -186,6 +192,79 @@ describe("luật mua thêm và đổi gói (§6.8, spec 2026-10-07 §2.3)", () =
 
   it("thiếu giá theo loại tiền của đơn thì báo lỗi", () => {
     expect(() => computeGrant(plans, lic("monthly", 20), "yearly", "USD", T0)).toThrow(/USD/);
+  });
+
+  describe("gói 6 Months (spec 2026-10-13 §1)", () => {
+    it("license mới: 180 ngày từ hiện tại, cycle_anchor = hiện tại", () => {
+      expect(computeGrant(plans, null, "six_months", "VND", T0)).toEqual({
+        plan: "six_months",
+        expires_at: T0 + 180 * DAY,
+        cycle_anchor: T0,
+        kind: "new",
+        converted_days: 0,
+      });
+    });
+
+    it("mua thêm cùng gói: còn hạn thì cộng 180 ngày vào hạn cũ và giữ cycle_anchor; đã hết hạn thì tính từ hiện tại", () => {
+      expect(computeGrant(plans, lic("six_months", 100), "six_months", "VND", T0)).toEqual({
+        plan: "six_months",
+        expires_at: T0 + 280 * DAY,
+        cycle_anchor: T0 - 10 * DAY,
+        kind: "extend",
+        converted_days: 0,
+      });
+      expect(computeGrant(plans, lic("six_months", -4), "six_months", "VND", T0)).toEqual({
+        plan: "six_months",
+        expires_at: T0 + 180 * DAY,
+        cycle_anchor: T0,
+        kind: "extend",
+        converted_days: 0,
+      });
+    });
+
+    it("ba ví dụ quy đổi của spec: Monthly còn 20 ngày → 22 ngày; Yearly còn 200 ngày → 183 ngày; 6 Months còn 100 ngày → Yearly 109 ngày", () => {
+      // 20 × (50.000 / 30) / (269.000 / 180) = 22,30… → 22; 6 Months chạy 180 + 22 = 202 ngày.
+      expect(computeGrant(plans, lic("monthly", 20), "six_months", "VND", T0)).toEqual({
+        plan: "six_months",
+        expires_at: T0 + 202 * DAY,
+        cycle_anchor: T0,
+        kind: "change",
+        converted_days: 22,
+      });
+      // 200 × (500.000 / 365) / (269.000 / 180) = 183,33… → 183; 6 Months chạy 363 ngày.
+      expect(computeGrant(plans, lic("yearly", 200), "six_months", "VND", T0)).toMatchObject({ expires_at: T0 + 363 * DAY, converted_days: 183 });
+      // 100 × (269.000 / 180) / (500.000 / 365) = 109,09… → 109; Yearly chạy 365 + 109 = 474 ngày.
+      expect(computeGrant(plans, lic("six_months", 100), "yearly", "VND", T0)).toMatchObject({ expires_at: T0 + 474 * DAY, converted_days: 109 });
+    });
+
+    it.each([
+      ["monthly", "six_months", 111],
+      ["six_months", "monthly", 89],
+      ["six_months", "yearly", 109],
+      ["yearly", "six_months", 91],
+      ["monthly", "yearly", 121],
+      ["yearly", "monthly", 82],
+    ] as const)("đổi gói %s → %s khi còn 100 ngày: quy đổi %i ngày, làm tròn xuống", (from, to, converted) => {
+      const grant = computeGrant(plans, lic(from, 100), to, "VND", T0);
+      expect(grant).toMatchObject({ plan: to, kind: "change", cycle_anchor: T0, converted_days: converted });
+      expect(grant.expires_at).toBe(T0 + (plans[to].days_per_order + converted) * DAY);
+    });
+
+    it("phép tính số nguyên chính xác ở biên với giá 269.000: đúng 269 ngày không bị hụt, thiếu 1 giây thì 268", () => {
+      // 6 Months còn đúng 300 ngày → 300 × 269.000 × 30 / (50.000 × 180) = 269 đúng.
+      expect(computeGrant(plans, lic("six_months", 300), "monthly", "VND", T0).converted_days).toBe(269);
+      expect(computeGrant(plans, { ...lic("six_months", 300), expires_at: T0 + 300 * DAY - 1 }, "monthly", "VND", T0).converted_days).toBe(268);
+    });
+
+    it("license đã hết hạn mua 6 Months: như license mới, không quy đổi", () => {
+      expect(computeGrant(plans, lic("monthly", -1), "six_months", "VND", T0)).toEqual({
+        plan: "six_months",
+        expires_at: T0 + 180 * DAY,
+        cycle_anchor: T0,
+        kind: "change",
+        converted_days: 0,
+      });
+    });
   });
 });
 

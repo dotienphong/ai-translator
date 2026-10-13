@@ -227,7 +227,7 @@ describe("GET /admin/stats: Tiền", () => {
     expect(monthOf(s, "2026-10")?.monthly).toEqual({ revenue: 50000, orders: 1 });
   });
 
-  it("tháng tách Monthly và Yearly; tháng không có đơn là 0", async () => {
+  it("tháng tách Monthly, 6 Months và Yearly; tháng không có đơn là 0", async () => {
     await seed(
       order({ paidAt: vn(2026, 9, 10, 12) }),
       order({ paidAt: vn(2026, 9, 11, 12), plan: "yearly", amountPaid: 500000 }),
@@ -235,9 +235,10 @@ describe("GET /admin/stats: Tiền", () => {
       order({ paidAt: vn(2026, 10, 1, 1), plan: "yearly", amountPaid: 500000 }),
     );
     const s = await getStats();
-    expect(monthOf(s, "2026-09")).toEqual({ month: "2026-09", monthly: { revenue: 50000, orders: 1 }, yearly: { revenue: 1000000, orders: 2 } });
-    expect(monthOf(s, "2026-10")).toEqual({ month: "2026-10", monthly: { revenue: 0, orders: 0 }, yearly: { revenue: 500000, orders: 1 } });
-    expect(monthOf(s, "2026-08")).toEqual({ month: "2026-08", monthly: { revenue: 0, orders: 0 }, yearly: { revenue: 0, orders: 0 } });
+    const none = { revenue: 0, orders: 0 };
+    expect(monthOf(s, "2026-09")).toEqual({ month: "2026-09", monthly: { revenue: 50000, orders: 1 }, six_months: none, yearly: { revenue: 1000000, orders: 2 } });
+    expect(monthOf(s, "2026-10")).toEqual({ month: "2026-10", monthly: none, six_months: none, yearly: { revenue: 500000, orders: 1 } });
+    expect(monthOf(s, "2026-08")).toEqual({ month: "2026-08", monthly: none, six_months: none, yearly: none });
   });
 
   it("ranh giới tháng: tháng 2 có 28 ngày, qua năm, đơn ngoài cửa sổ 12 tháng bị bỏ", async () => {
@@ -365,7 +366,12 @@ describe("GET /admin/stats: Khách hàng (theo tháng, theo số tiền thực t
     expect(s.money.last_month).toBe(20000);
     expect(dayOf(s, "2026-10-01")).toEqual({ day: "2026-10-01", revenue: 730000, orders: 2 });
     expect(dayOf(s, "2026-09-15")).toEqual({ day: "2026-09-15", revenue: 20000, orders: 1 });
-    expect(monthOf(s, "2026-10")).toEqual({ month: "2026-10", monthly: { revenue: 30000, orders: 1 }, yearly: { revenue: 700000, orders: 1 } });
+    expect(monthOf(s, "2026-10")).toEqual({
+      month: "2026-10",
+      monthly: { revenue: 30000, orders: 1 },
+      six_months: { revenue: 0, orders: 0 },
+      yearly: { revenue: 700000, orders: 1 },
+    });
     expect(monthOf(s, "2026-09")?.monthly).toEqual({ revenue: 20000, orders: 1 });
     expect(s.customers.grants_30d.new).toEqual({ orders: 2, revenue: 720000 });
     expect(s.customers.grants_30d.extend).toEqual({ orders: 1, revenue: 30000 });
@@ -519,7 +525,7 @@ describe("GET /admin/stats: hợp đồng", () => {
         this_month: 0,
         last_month: 0,
         daily: dayWindow(NOW, 30).keys.map((day) => ({ day, revenue: 0, orders: 0 })),
-        monthly: monthWindow(NOW, 12).keys.map((month) => ({ month, monthly: zero, yearly: zero })),
+        monthly: monthWindow(NOW, 12).keys.map((month) => ({ month, monthly: zero, six_months: zero, yearly: zero })),
       },
       customers: {
         trials_30d: 0,

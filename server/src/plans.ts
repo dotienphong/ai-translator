@@ -1,5 +1,5 @@
-// Ba gói (spec 2026-10-07 §1) và luật mua thêm, đổi gói (§6.8, §2.3 spec 2026-10-07). Free không bán: là dùng thử
-// theo máy (src/trial.ts).
+// Các gói trả phí (spec 2026-10-07 §1; `six_months` thêm ở spec 2026-10-13) và luật mua thêm, đổi gói (§6.8, §2.3 spec
+// 2026-10-07). Free không bán: là dùng thử theo máy (src/trial.ts).
 // Mã gói và tên hiển thị là hợp đồng với app nên nằm trong code. Hạn mức, số ngày mỗi đơn và giá
 // nằm trong biến PLANS của từng môi trường (wrangler*.jsonc): đổi giá hay hạn mức không cần phát hành lại app.
 
@@ -8,6 +8,7 @@ import { PLAN_CODES, type PlanCode } from "./token";
 export { PLAN_CODES, type PlanCode };
 export const PLAN_NAMES: Record<PlanCode, string> = {
   monthly: "Monthly",
+  six_months: "6 Months",
   yearly: "Yearly",
 };
 export const DAY_SECONDS = 86400;

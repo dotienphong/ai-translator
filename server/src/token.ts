@@ -5,8 +5,12 @@
 import { b64urlDecode, b64urlEncode } from "./crypto";
 
 export const TOKEN_VERSION = "v1";
-/** Mã gói trả phí (spec 2026-10-07 §1). Token bản quyền chỉ mang một trong hai mã này; Free có token dùng thử riêng. */
-export const PLAN_CODES = ["monthly", "yearly"] as const;
+/**
+ * Mã gói trả phí (spec 2026-10-07 §1; `six_months` thêm ở spec 2026-10-13). Thứ tự là thứ tự `GET /v1/plans` trả về, tức
+ * thứ tự trong màn hình Nâng cấp của app: theo thời hạn. Token bản quyền chỉ mang một trong các mã này; Free có token dùng
+ * thử riêng.
+ */
+export const PLAN_CODES = ["monthly", "six_months", "yearly"] as const;
 export type PlanCode = (typeof PLAN_CODES)[number];
 export const REFRESH_WINDOW_SECONDS = 14 * 86400;
 const KID_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;

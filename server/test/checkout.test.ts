@@ -33,6 +33,33 @@ describe("GET /v1/plans", () => {
       body: { error: "pricing_not_configured" },
     });
   });
+
+  // Gói 6 Months (spec 2026-10-13 §2.3): app cũ không gửi `?plans=` nên nhận đúng response ở test đầu của mục này.
+  const monthly = { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000 } };
+  const sixMonths = { code: "six_months", name: "6 Months", quota_minutes_per_cycle: 6000, days_per_order: 180, prices: { VND: 269000 } };
+  const yearly = { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000 } };
+
+  it("app khai báo ?plans=monthly,six_months,yearly thì nhận ba gói theo thứ tự thời hạn", async () => {
+    const res = await makeWorld().call("GET", "/v1/plans?plans=monthly,six_months,yearly");
+    expect(res).toEqual({ status: 200, headers: expect.anything(), body: { plans: [monthly, sixMonths, yearly] } });
+  });
+
+  it.each([
+    ["chỉ khai báo gói mới: gói cũ vẫn có", "plans=six_months", [monthly, sixMonths, yearly]],
+    ["tham số rỗng", "plans=", [monthly, yearly]],
+    ["mã lạ bị bỏ qua", "plans=pro,free", [monthly, yearly]],
+    ["tham số khác tên", "supports=six_months", [monthly, yearly]],
+  ])("%s", async (_why, query, expected) => {
+    const res = await makeWorld().call("GET", `/v1/plans?${query}`);
+    expect(res).toMatchObject({ status: 200, body: { plans: expected } });
+  });
+
+  it("có ?plans= mà bảng gói thiếu thì vẫn 503 pricing_not_configured", async () => {
+    expect(await makeWorld({ PLANS: undefined }).call("GET", "/v1/plans?plans=six_months")).toMatchObject({
+      status: 503,
+      body: { error: "pricing_not_configured" },
+    });
+  });
 });
 
 describe("POST /v1/checkout", () => {
