@@ -10,8 +10,8 @@ import { PlanName, when } from "../LicenseText";
 
 const vnd = (amount: number) => `${amount.toLocaleString("vi-VN")} đ`;
 
-// Màn hình Nâng cấp (§4.3; spec 2026-10-07 §1): đủ 3 gói, Free dùng thử 10 ngày, Monthly 30 ngày, Yearly 365 ngày (giá
-// và số ngày mỗi đơn lấy từ license server, không có mạng thì báo cần mạng), đánh dấu gói đang dùng.
+// Màn hình Nâng cấp (§4.3; spec 2026-10-07 §1, 2026-10-13): đủ 4 gói, Free dùng thử 10 ngày, Monthly 30 ngày, 6 Months 180
+// ngày, Yearly 365 ngày (giá và số ngày mỗi đơn lấy từ license server, không có mạng thì báo cần mạng), đánh dấu gói đang dùng.
 // Chọn gói, nhập email, tick ô đồng ý xử lý email (§10.1), rồi quét mã VietQR vẽ ngay trong app (phía Rust vẽ SVG từ
 // chuỗi `qr_code`), kèm nút mở trang thanh toán của PayOS. Đang có key thì đơn là gia hạn hay đổi gói; đổi gói thì hiện
 // trước số ngày quy đổi và ngày hết hạn mới, ghi rõ không hoàn tiền. MVP chỉ nhận chuyển khoản từ ngân hàng Việt Nam.

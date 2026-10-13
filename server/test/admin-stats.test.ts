@@ -69,7 +69,7 @@ beforeEach(() => {
 interface LicenseSeed {
   expiresAt?: number;
   revokedAt?: number | null;
-  plan?: "monthly" | "yearly";
+  plan?: "monthly" | "six_months" | "yearly";
 }
 
 /** Chèn thẳng một license (id `lic-N`); trả id và câu lệnh. */
