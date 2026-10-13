@@ -4,11 +4,11 @@
 
 **Goal:** license server và Web Admin biết bán, cấp, tính tiền và hiển thị gói `six_months` (269.000 ₫, 180 ngày, 100 giờ mỗi chu kỳ 30 ngày), mà luồng mua của app cũ không đổi.
 
-**Architecture:** `six_months` là gói thứ ba đi qua các cơ chế chung (`PLAN_CODES`, biến `PLANS`, `computeGrant`). Cần thêm: migration D1 `0003` nới ràng buộc CHECK mã gói (đúng khuôn 0002), cơ chế `GET /v1/plans?plans=` để app cũ không thấy gói mới, một vector token, và gói thứ ba ở Web Admin. Logic thanh toán, token, hạn mức không phải sửa.
+**Architecture:** `six_months` là gói thứ ba đi qua các cơ chế chung (`PLAN_CODES`, biến `PLANS`, `computeGrant`). Cần thêm: migration D1 `0003` nới ràng buộc CHECK mã gói (đúng khuôn 0002), cơ chế `GET /v1/plans?plans=` để app cũ không thấy gói mới, và gói thứ ba ở Web Admin. Logic thanh toán, token, hạn mức không phải sửa.
 
 **Tech Stack:** TypeScript, Cloudflare Workers, Hono, D1 (SQLite), Vitest + `@cloudflare/vitest-plugin` (server), React 19 + Recharts + Vitest/jsdom (Web Admin), pnpm.
 
-**Spec:** `docs/superpowers/specs/2026-10-13-six-months-plan-design.md` (§1 quyết định, §2 server). Kế hoạch này là phần 01; phần 02 (app) cần file vector mới ở Task 5; phần 03 (website, tài liệu) cần `server/wrangler.jsonc` ở Task 3.
+**Spec:** `docs/superpowers/specs/2026-10-13-six-months-plan-design.md` (§1 quyết định, §2 server). Kế hoạch này là phần 01; phần 02 (app) thêm vector token ở Task 1 của nó, cùng commit với enum gói của Rust (để test hai bên không bao giờ đỏ giữa chừng); phần 03 (website, tài liệu) cần `server/wrangler.jsonc` ở Task 3 của phần này.
 
 ---
 
@@ -32,8 +32,7 @@
 | `server/src/token.ts` | `PLAN_CODES` thêm `six_months` (Task 3) |
 | `server/wrangler.jsonc` | biến `PLANS` thêm `six_months` (Task 3) |
 | `server/migrations/0003_six_months_plan.sql` | **mới**: nới CHECK mã gói (Task 2) |
-| `server/scripts/gen-token-vectors.mjs`, `server/test/vectors/token-v1.json` | thêm một vector (Task 5) |
-| `server/admin-ui/src/…`, `dev/fake-api.ts`, `scripts/csp-check.mjs` | gói thứ ba ở Web Admin (Task 6) |
+| `server/admin-ui/src/…`, `dev/fake-api.ts`, `scripts/csp-check.mjs` | gói thứ ba ở Web Admin (Task 5) |
 | `server/test/*.test.ts`, `server/test/node/wrangler-config.test.mjs`, `server/admin-ui/src/**/*.test.tsx` | test theo từng task |
 
 ---
@@ -1174,113 +1173,7 @@ EOF
 
 ---
 
-### Task 5: Vector token cho `six_months`
-
-Hợp đồng token giữa server và app: mã gói mới phải có vector để cả hai bên cùng kiểm. **Thêm ở cuối** danh sách để các vector cũ giữ nguyên vị trí và nội dung (test lấy `vectors.tokens[0]` làm token chuẩn). File vector dùng chung với app: Task 2 của kế hoạch 02 phải cập nhật băm của nó.
-
-**Files:**
-- Modify: `server/scripts/gen-token-vectors.mjs`
-- Regenerate: `server/test/vectors/token-v1.json`
-
-- [ ] **Step 1: Sửa script sinh vector (thấy `vectors:check` đỏ)**
-
-Trong `server/scripts/gen-token-vectors.mjs`:
-
-1) **Thay**
-```js
-const valid = await sign(k1, base);
-const [, , validSig] = valid.split(".");
-```
-bằng
-```js
-// Gói 6 Months (spec 2026-10-13): 100 giờ mỗi chu kỳ 30 ngày, 180 ngày mỗi đơn. Vector của nó nằm CUỐI danh sách `tokens`
-// để các vector cũ giữ nguyên vị trí và nội dung (test lấy vectors.tokens[0] làm token hợp lệ chuẩn).
-const sixMonths = {
-  ...base,
-  plan: "six_months",
-  expires_at: issuedAt + 180 * 86400,
-  quota_minutes_per_cycle: 6000,
-};
-const valid = await sign(k1, base);
-const [, , validSig] = valid.split(".");
-```
-
-2) **Thay** phần cuối mảng `tokens`:
-```js
-  {
-    name: "payload_with_bom",
-    token: await signBytes(k1, withBom),
-    now: issuedAt + 3600,
-    device_id_hash: device,
-    expected: "malformed",
-  },
-];
-```
-bằng
-```js
-  {
-    name: "payload_with_bom",
-    token: await signBytes(k1, withBom),
-    now: issuedAt + 3600,
-    device_id_hash: device,
-    expected: "malformed",
-  },
-  // Gói 6 Months: mã gói thứ ba của PLAN_CODES, hạn mức 6000 phút. Thêm cuối danh sách (xem trên).
-  {
-    name: "valid_six_months",
-    token: await sign(k1, sixMonths),
-    now: issuedAt + 3600,
-    device_id_hash: device,
-    expected: "ok",
-    claims: sixMonths,
-  },
-];
-```
-
-Run: `cd /Users/dtphong/Desktop/software_business/ai-translator/server && pnpm vectors:check; echo "exit=$?"`
-Expected: `cmp` báo khác nhau (`differ: …`) và `exit=1`: file vector chưa sinh lại.
-
-- [ ] **Step 2: Sinh lại file và kiểm vector cũ giữ nguyên**
-
-Run:
-```bash
-cd /Users/dtphong/Desktop/software_business/ai-translator/server && D=$(mktemp -d) && cp test/vectors/token-v1.json $D/token-v1.before.json && pnpm vectors && pnpm vectors:check && echo "vectors:check OK" && python3 - "$D/token-v1.before.json" <<'EOF'
-import json, sys
-a = json.load(open(sys.argv[1]))
-b = json.load(open("test/vectors/token-v1.json"))
-print("số vector token trước/sau:", len(a["tokens"]), len(b["tokens"]))
-assert a["tokens"] == b["tokens"][:len(a["tokens"])], "vector cũ bị đổi"
-assert all(a[k] == b[k] for k in a if k != "tokens"), "phần khác của file bị đổi"
-new = b["tokens"][-1]
-assert (new["name"], new["claims"]["plan"], new["claims"]["quota_minutes_per_cycle"], new["expected"]) == ("valid_six_months", "six_months", 6000, "ok")
-print("vector mới:", new["name"])
-EOF
-git diff --stat -- test/vectors/token-v1.json && shasum -a 256 test/vectors/token-v1.json
-```
-Expected: `vectors:check OK`; `số vector token trước/sau: 32 33`; `vector mới: valid_six_months`; diff chỉ có dòng thêm (`22 insertions(+)`, không có dòng xóa); băm SHA-256 của file là **`41ef2a8162da820df57d3e78f4d2dc484515920d177179a6de5aa0aadefa294f`** (Ed25519 tất định, nên mọi máy ra cùng giá trị; kế hoạch 02 Task 2 dùng đúng giá trị này; nếu ra giá trị khác, dừng và báo).
-
-- [ ] **Step 3: Chạy test server**
-
-Run: `cd /Users/dtphong/Desktop/software_business/ai-translator/server && pnpm test 2>&1 | grep -v "Using secrets" | grep -E "×|Test Files|Tests "`
-Expected: `Test Files  25 passed (25)`, `Tests  679 passed (679)` (thêm `kiểm vector valid_six_months ra ok`; test `signToken sinh lại đúng từng token hợp lệ của vector` cũng bao phủ vector mới).
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd /Users/dtphong/Desktop/software_business/ai-translator && git branch --show-current && git add server/scripts/gen-token-vectors.mjs server/test/vectors/token-v1.json && git commit -q -m "$(cat <<'EOF'
-test(server): vector token cho gói six_months (hợp đồng chung với app)
-
-Thêm một vector hợp lệ ở cuối danh sách (33 vector); 32 vector cũ và các phần
-khác của file giữ nguyên từng byte. SHA-256 mới: 41ef2a81…aa294f.
-
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
-EOF
-)" && git log --oneline -1
-```
-
----
-
-### Task 6: Web Admin: gói thứ ba
+### Task 5: Web Admin: gói thứ ba
 
 `PLAN_OPTIONS` (bộ lọc) và ô chọn gói khi cấp license dựng từ `PLAN_LABELS` nên tự có thêm 6 Months; cần sửa: kiểu `PlanCode`, nhãn, biểu đồ doanh thu theo gói (chuỗi thứ ba; bảng màu đã có `--chart-3`), dữ liệu giả của `dev/fake-api.ts` và `scripts/csp-check.mjs` (trang Tổng quan đọc `m.six_months.revenue`, thiếu khóa này là lỗi). `dev/Gallery.tsx` là trang minh họa linh kiện, không phụ thuộc mã gói: không đổi.
 
@@ -1476,19 +1369,19 @@ EOF
 
 ---
 
-### Task 7: Kiểm toàn bộ phần server và Web Admin
+### Task 6: Kiểm toàn bộ phần server và Web Admin
 
 **Files:** `docs/superpowers/specs/2026-10-13-six-months-plan-design.md` (sửa một câu).
 
 - [ ] **Step 1: Chạy `pnpm check` đầy đủ**
 
 Run: `cd /Users/dtphong/Desktop/software_business/ai-translator/server && pnpm check 2>&1 | grep -v "Using secrets" | grep -E "×|Test Files|Tests |^ℹ (pass|fail|skipped)|vectors|rror|exiting now|✓ built"`
-Expected: không có dòng `×` hay `rror`; `Tests  679 passed (679)`; `ℹ pass 18`, `ℹ fail 0`; `Tests  845 passed (845)` (Web Admin); `✓ built in …`; hai dòng `--dry-run: exiting now.`.
+Expected: không có dòng `×` hay `rror`; `Tests  678 passed (678)`; `ℹ pass 18`, `ℹ fail 0`; `Tests  845 passed (845)` (Web Admin); `✓ built in …`; hai dòng `--dry-run: exiting now.`.
 
 - [ ] **Step 2: Đối chiếu số commit và cây làm việc**
 
-Run: `cd /Users/dtphong/Desktop/software_business/ai-translator && git log --oneline -7 && git status --short`
-Expected: bảy commit gần nhất gồm sáu commit của Task 1 đến 6 (và commit kế hoạch nếu đã commit); `git status` chỉ còn file chưa theo dõi `docs/superpowers/specs/2026-10-11-doc-to-ban-dich-research.md` (và các file kế hoạch nếu chưa commit).
+Run: `cd /Users/dtphong/Desktop/software_business/ai-translator && git log --oneline -6 && git status --short`
+Expected: các commit gần nhất gồm năm commit của Task 1 đến 5 (và commit kế hoạch nếu đã commit); `git status` chỉ còn file chưa theo dõi `docs/superpowers/specs/2026-10-11-doc-to-ban-dich-research.md` (và các file kế hoạch nếu chưa commit).
 
 - [ ] **Step 3: Sửa một câu trong spec cho khớp thực tế**
 
@@ -1512,4 +1405,4 @@ EOF
 )" && git log --oneline -1
 ```
 
-**Việc còn lại sau kế hoạch này (không làm ở đây):** áp migration 0003 và deploy Worker API, Worker admin lên production (spec §6, chỉ khi chủ dự án cho phép từng bước); kế hoạch 02 (app) và 03 (website, tài liệu).
+**Việc còn lại sau kế hoạch này (không làm ở đây):** áp migration 0003 và deploy Worker API, Worker admin lên production (spec §6, chỉ khi chủ dự án cho phép từng bước); kế hoạch 02 (app, kèm vector token) và 03 (website, tài liệu).
