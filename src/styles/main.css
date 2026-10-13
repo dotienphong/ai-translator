@@ -1530,7 +1530,9 @@ fieldset {
 
 .plans {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  /* Free và ba gói trả phí là bốn thẻ: xếp 2×2, không để thẻ lẻ ở hàng cuối. Nội dung rộng tối đa 700px nên ba cột
+     (3 × 17rem) không bao giờ vừa; cửa sổ hẹp tới mức không đủ hai cột thì còn một cột. */
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
   gap: 0.75rem;
   margin: 0;
   padding: 0;

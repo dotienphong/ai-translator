@@ -28,6 +28,7 @@ const SAME_AS_EN: MessageKey[] = [
   "channel.beta",
   "plan.free",
   "plan.monthly",
+  "plan.six_months",
   "plan.yearly",
   "license.standing.free",
   "lang.en",

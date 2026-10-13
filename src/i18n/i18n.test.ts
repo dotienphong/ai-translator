@@ -40,6 +40,7 @@ describe("từ điển giao diện", () => {
         // Tên gói là tên riêng (spec §2).
         "plan.free",
         "plan.monthly",
+        "plan.six_months",
         "plan.yearly",
         "license.standing.free",
       ].sort(),

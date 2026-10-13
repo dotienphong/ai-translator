@@ -284,8 +284,8 @@ export interface CommandError {
 }
 
 // Bản quyền (kế hoạch 06; `license::manager::LicenseView`). Không có key đầy đủ hay token: `key` đã che.
-// Ba gói (spec 2026-10-07 §1): Free dùng thử 10 ngày, Monthly, Yearly.
-export type LicensePlan = "free" | "monthly" | "yearly";
+// Free dùng thử 10 ngày và ba gói trả phí theo thời hạn (spec 2026-10-07 §1; `six_months` thêm ở spec 2026-10-13).
+export type LicensePlan = "free" | "monthly" | "six_months" | "yearly";
 export type Standing =
   | "free"
   | "active"

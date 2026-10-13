@@ -5,7 +5,7 @@
 // Tham số URL (đều không bắt buộc):
 //   lang=vi|en|ja|zh|ko  theme=light|dark  platform=macos|windows
 //   screen=home|transcript|history|glossary|settings|upgrade|about  group=general|subtitles|audio|model|hotkeys|license|privacy
-//   session=idle|starting|running|error  error=<mã lỗi phiên>  plan=free|monthly|yearly  trial=active|ended
+//   session=idle|starting|running|error  error=<mã lỗi phiên>  plan=free|monthly|six_months|yearly  trial=active|ended
 //   onboarding=<số bước, từ 1>  checkout=1  download=1  notice=update|quit|hotkeys|license|error  empty=1
 //   overlay (overlay.html): locked=1  source=0  text=<màu>  bg=<màu>  opacity=<0–1>  size=<px>  latest=1  notes=<note,…>
 //   dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6): tws=0 (tắt công tắc)  slow=1 (máy chưa đủ nhanh)
@@ -21,7 +21,7 @@ const lang = param("lang", "vi") as UiLang;
 const pick = <T,>(by: Record<UiLang, T>): T => by[lang];
 const platform = param("platform", "macos") as "macos" | "windows";
 const sessionParam = param("session", "idle") as AppStatus["session"];
-const plan = param("plan", "monthly") as "free" | "monthly" | "yearly";
+const plan = param("plan", "monthly") as "free" | "monthly" | "six_months" | "yearly";
 const empty = param("empty") === "1";
 const now = Date.now();
 const sec = (ms: number) => Math.floor(ms / 1000);
@@ -94,6 +94,10 @@ const info: AppInfo = {
   launchedAtLogin: false,
 };
 
+// Hạn mức gói trả phí mỗi chu kỳ 30 ngày: Monthly 50 giờ, 6 Months 100 giờ (Yearly không giới hạn), đã dùng 6 giờ 12 phút.
+const paidLimitMs = (plan === "six_months" ? 100 : 50) * 3_600_000;
+const paidUsedMs = 6 * 3_600_000 + 12 * 60_000;
+
 function licenseView(): LicenseView {
   const free = plan === "free";
   const trialEnded = param("trial") === "ended";
@@ -102,7 +106,7 @@ function licenseView(): LicenseView {
     plan,
     licensedPlan: null,
     key: free ? null : "••••-••••-••••-••••-••••-••••-Q9XD",
-    expiresAt: free ? null : sec(now + (plan === "yearly" ? 300 : 20) * DAY),
+    expiresAt: free ? null : sec(now + (plan === "yearly" ? 300 : plan === "six_months" ? 150 : 20) * DAY),
     refreshBefore: null,
     validatedAt: sec(now - 3_600_000),
     renewSoon: false,
@@ -120,9 +124,9 @@ function licenseView(): LicenseView {
         }
       : {
           unlimited: plan === "yearly",
-          limitMs: 50 * 3_600_000,
-          usedMs: 6 * 3_600_000 + 12 * 60_000,
-          remainingMs: 43 * 3_600_000 + 48 * 60_000,
+          limitMs: paidLimitMs,
+          usedMs: paidUsedMs,
+          remainingMs: paidLimitMs - paidUsedMs,
           resetAt: sec(now + 20 * DAY),
           resetKind: "cycle",
           needsNetwork: false,
@@ -510,6 +514,7 @@ const handlers: Record<string, (args: any) => unknown> = {
   get_pending_order: () => checkout,
   get_plans: () => [
     { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50_000 } },
+    { code: "six_months", name: "6 Months", quota_minutes_per_cycle: 6000, days_per_order: 180, prices: { VND: 269_000 } },
     { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500_000 } },
   ],
   start_checkout: () => checkout ?? { ...{ orderCode: 1000428, plan: "monthly", amount: 50_000, currency: "VND", expiresAt: sec(now + 900_000), qrSvg: fakeQr(), licenseExpiresAt: null, convertedDays: null } },

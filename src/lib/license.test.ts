@@ -105,6 +105,7 @@ describe("lời nhắc bản quyền", () => {
     expect(defaultPlan(null)).toBe("monthly");
     expect(defaultPlan(licenseView())).toBe("monthly");
     expect(defaultPlan(licenseView({ key, standing: "active", plan: "monthly" }))).toBe("monthly");
+    expect(defaultPlan(licenseView({ key, standing: "active", plan: "six_months" }))).toBe("six_months");
     expect(defaultPlan(licenseView({ key, standing: "active", plan: "yearly" }))).toBe("yearly");
     // License đã thu hồi thì mua mới, không gia hạn: về Monthly.
     expect(defaultPlan(licenseView({ key, standing: "revoked", plan: "yearly" }))).toBe("monthly");
