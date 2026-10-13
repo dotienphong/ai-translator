@@ -77,7 +77,7 @@ Giải pháp: danh sách gói theo khả năng của app.
 - Gói thêm về sau theo cùng cơ chế (mặc định ẩn với app không khai báo); không làm cơ chế phiên bản API riêng.
 
 ### 2.4 Admin (`mt-license-admin`)
-- `admin-ui`: `PlanCode` thêm `six_months`; `PLAN_LABELS`; danh sách chọn gói khi cấp tay và bộ lọc; biểu đồ doanh thu theo tháng thêm chuỗi thứ ba (cùng bộ màu tokens của các biểu đồ khác); tài liệu `Gallery` và dữ liệu giả cập nhật cho đúng.
+- `admin-ui`: `PlanCode` thêm `six_months`; `PLAN_LABELS`; danh sách chọn gói khi cấp tay và bộ lọc; biểu đồ doanh thu theo tháng thêm chuỗi thứ ba (cùng bộ màu tokens của các biểu đồ khác); dữ liệu giả của `dev/fake-api.ts` và `scripts/csp-check.mjs` thêm khóa `six_months`. `dev/Gallery.tsx` là trang minh họa linh kiện, không phụ thuộc mã gói nên không đổi.
 - `admin-stats.ts` đã lặp theo `PLAN_CODES` nên response tự có thêm khóa `six_months` trong từng tháng. Máy khách admin cũ bỏ qua khóa lạ.
 - `admin-read.ts` lọc theo `PLAN_CODES` (không sửa logic).
 
