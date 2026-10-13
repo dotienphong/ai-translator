@@ -425,6 +425,32 @@ mod tests {
         assert_eq!(cycle(&c).limit_ms, None, "Yearly không giới hạn");
     }
 
+    /// Gói 6 Months (spec 2026-10-13): 180 ngày là đúng sáu chu kỳ 30 ngày, mỗi chu kỳ đủ 6000 phút, kể cả chu kỳ cuối (hết
+    /// hạn đúng lúc chu kỳ thứ sáu kết thúc thì không bị cắt ngắn). Đổi gói từ Monthly lên 6 Months (quy đổi 22 ngày, hạn
+    /// 202 ngày) thì chu kỳ thứ bảy chỉ còn 22 ngày: ceil(6000 × 22 / 30) = 4400 phút.
+    #[test]
+    fn a_six_months_license_has_six_full_cycles_of_6000_minutes() {
+        let mut c = claims();
+        c.plan = Plan::SixMonths;
+        c.quota_minutes_per_cycle = Some(6000);
+        c.expires_at = T0 + 180 * DAY_SECS;
+        for n in 0..6 {
+            c.issued_at = T0 + n * CYCLE_SECS + 1;
+            let cy = cycle(&c);
+            assert_eq!(
+                (cy.n, cy.start, cy.limit_ms),
+                (n, T0 + n * CYCLE_SECS, Some(6000 * MIN)),
+                "chu kỳ {n}"
+            );
+        }
+        // Giây cuối trước khi hết hạn vẫn thuộc chu kỳ thứ sáu và đủ hạn mức.
+        c.issued_at = T0 + 180 * DAY_SECS - 1;
+        assert_eq!((cycle(&c).n, cycle(&c).limit_ms), (5, Some(6000 * MIN)));
+        c.expires_at = T0 + 202 * DAY_SECS;
+        c.issued_at = T0 + 180 * DAY_SECS;
+        assert_eq!((cycle(&c).n, cycle(&c).limit_ms), (6, Some(4400 * MIN)));
+    }
+
     #[test]
     fn an_existing_counter_is_used_and_a_stale_or_missing_marker_is_rewritten() {
         let c = claims();

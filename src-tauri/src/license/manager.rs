@@ -1558,6 +1558,31 @@ pub mod tests {
         assert!(l.is_pro(T0));
     }
 
+    /// Gói 6 Months (spec 2026-10-13): token `six_months` được nhận, màn hình thấy mã gói mới, hạn mức 100 giờ và không
+    /// phải gói không giới hạn.
+    #[test]
+    fn a_six_months_token_is_activated_with_its_own_plan_code_and_quota() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        let mut c = claims(T0);
+        c["plan"] = json!("six_months");
+        c["expires_at"] = json!(T0 + 180 * DAY);
+        c["quota_minutes_per_cycle"] = json!(6000);
+        api.replies.lock().unwrap().push_back(granted(&c, true));
+        l.activate(KEY, T0).unwrap();
+        let v = l.view(T0);
+        assert_eq!(
+            (v.standing, v.plan.as_str(), v.licensed_plan),
+            (Standing::Active, "six_months", Some(Plan::SixMonths))
+        );
+        assert_eq!(
+            (v.quota.unlimited, v.quota.limit_ms, v.quota.remaining_ms),
+            (false, 6000 * MIN, 6000 * MIN)
+        );
+        assert_eq!(v.expires_at, Some(T0 + 180 * DAY));
+        assert!(l.is_pro(T0));
+    }
+
     #[test]
     fn server_refusals_are_reported_with_their_details() {
         let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
