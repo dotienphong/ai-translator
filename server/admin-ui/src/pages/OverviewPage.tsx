@@ -123,7 +123,8 @@ function Content({ s }: { s: Stats }) {
             data={money.monthly.map((m) => ({
               label: fmtMonth(m.month),
               monthly: m.monthly.revenue,
-              six_months: m.six_months.revenue,
+              // Khóa mới (spec 2026-10-13): tab mở sẵn gặp phản hồi của bản Worker admin trước (sau khi lùi) vẫn vẽ được.
+              six_months: m.six_months?.revenue ?? 0,
               yearly: m.yearly.revenue,
             }))}
           />

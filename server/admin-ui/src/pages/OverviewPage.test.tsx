@@ -160,6 +160,16 @@ describe("OverviewPage", () => {
     expect(c.data.every((r) => r.monthly === 50000 && r.six_months === 269000 && r.yearly === 0)).toBe(true);
   });
 
+  it("biểu đồ theo gói: tab mở sẵn gặp phản hồi của bản Worker admin trước (thiếu khóa six_months) vẫn vẽ được, gói thiếu tính 0", async () => {
+    const stats = makeStats();
+    stats.money.monthly = stats.money.monthly.map(({ month, monthly, yearly }) => ({ month, monthly, yearly })) as unknown as Stats["money"]["monthly"];
+    serve(stats);
+    render(<OverviewPage />);
+    const c = await chartOf("Doanh thu 12 tháng, theo gói");
+    expect(c.data).toHaveLength(12);
+    expect(c.data[0]).toEqual({ label: "11/2025", monthly: 50000, six_months: 0, yearly: 0 });
+  });
+
   it("biểu đồ mua mới, gia hạn, đổi gói: đủ bốn khóa, mỗi loại đúng số của mình", async () => {
     serve();
     render(<OverviewPage />);
