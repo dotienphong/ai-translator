@@ -56,7 +56,7 @@ export default {
     "AI Translator plans: Free 10-day trial, Monthly 50,000 ₫, 6 Months 269,000 ₫ (100 hours/30 days), Yearly 500,000 ₫ (unlimited). Prepaid via VietQR, no auto-renewal.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Pricing for the four plans (Free 10-day trial, Monthly 50,000 VND, 6 Months 269,000 VND, Yearly 500,000 VND), how translation time is counted, how to buy with VietQR, changing plans, refunds and pricing questions.",
   llmTitle: "AI Translator pricing",

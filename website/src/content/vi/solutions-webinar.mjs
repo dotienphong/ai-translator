@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Cách dùng AI Translator để đọc phụ đề dịch khi xem webinar, khóa học và video: không cần cài vào trình duyệt, phiên dài, câu gốc kèm bản dịch, xuất bản chép lời, từ điển thuật ngữ, mẹo và giới hạn.",
   llmTitle: "Phụ đề dịch cho webinar, khóa học và video",
   body: () => `

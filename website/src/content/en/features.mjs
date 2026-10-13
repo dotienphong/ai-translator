@@ -14,7 +14,7 @@ export default {
     "Live translated subtitles in 5 languages, a customizable subtitle bar, glossary, history, TXT/SRT/Markdown export and shortcuts. All offline, on your computer.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, glossary, history, export, shortcuts, models), with performance figures and the conditions they were measured under.",
   llmTitle: "AI Translator features",
   body: () => `

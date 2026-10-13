@@ -42,7 +42,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-09",
+  modified: "2026-10-13",
   schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Bảng triệu chứng, nguyên nhân và cách xử lý theo đúng câu báo lỗi của app (âm thanh, quyền ghi âm, model, bản quyền, hạn mức, phím tắt), cách mở và gửi log, thông tin nên kèm khi báo lỗi.",
   llmTitle: "Khắc phục sự cố AI Translator",

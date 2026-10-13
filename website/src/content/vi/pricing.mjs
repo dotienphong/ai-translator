@@ -54,7 +54,7 @@ export default {
     "Bốn gói AI Translator: Free dùng thử 10 ngày, Monthly 50.000 ₫, 6 Months 269.000 ₫ (100 giờ/30 ngày), Yearly 500.000 ₫ (không giới hạn). Trả trước bằng VietQR.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Bảng giá bốn gói (Free dùng thử 10 ngày, Monthly 50.000 đ, 6 Months 269.000 đ, Yearly 500.000 đ), cách tính thời lượng, cách mua bằng VietQR, đổi gói, hoàn tiền và câu hỏi về giá.",
   llmTitle: "Bảng giá AI Translator",

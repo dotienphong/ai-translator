@@ -13,7 +13,7 @@ export default {
   description:
     "AI Translator hiện phụ đề dịch trực tiếp cho họp Zoom, Teams, Meet, Zalo, webinar, khóa học và video. Xem cách dùng cho từng tình huống và khi nào app chưa phù hợp.",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Tổng quan các tình huống dùng AI Translator (họp trực tuyến, webinar, khóa học, video), liên kết tới hai trang giải pháp chi tiết và danh sách trường hợp app chưa phù hợp.",
   llmTitle: "Giải pháp: AI Translator dùng vào việc gì",
   body: () => `

@@ -51,7 +51,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   schema: [faqPage(COMPARE_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "So sánh cân bằng dịch cuộc họp offline (xử lý trên máy) và cloud (xử lý trên máy chủ): quyền riêng tư, internet, bot, chi phí, độ trễ, phần cứng, ngôn ngữ, cập nhật, tích hợp và khi nào chọn cách nào.",
   llmTitle: "Dịch offline và dịch cloud: khác nhau thế nào?",

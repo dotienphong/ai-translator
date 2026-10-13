@@ -26,7 +26,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Hướng dẫn dùng từ điển thuật ngữ (tính năng Pro): thêm, sửa, xóa, nhập xuất CSV, giới hạn 500 thuật ngữ, cách app đưa thuật ngữ cho bộ dịch và mẹo viết thuật ngữ.",
   llmTitle: "Dùng từ điển thuật ngữ trong AI Translator",
   schema: [

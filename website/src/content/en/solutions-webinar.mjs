@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "How to use AI Translator to read translated subtitles while watching webinars, courses and videos: nothing to install in the browser, long sessions, original text next to the translation, transcript export, glossary, tips and limits.",
   llmTitle: "Translated subtitles for webinars, courses and videos",
   body: () => `

@@ -180,7 +180,7 @@ export default {
     "Tải AI Translator: cài trên macOS 14.2+ (Apple Silicon) hoặc Windows 10/11 bằng một dòng lệnh, mở thẳng không cần Open Anyway. Dùng thử Free 10 ngày.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-09",
+  modified: "2026-10-13",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Tải AI Translator: trang tự nhận ra hệ điều hành và mở đúng hướng dẫn. macOS cài bằng một dòng lệnh Terminal (curl ... install.sh | bash): tải bản cài, kiểm SHA-256 rồi mở app, không cần Open Anyway. Windows cài bằng một dòng lệnh PowerShell (irm ... install.ps1 | iex); file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo vì bản chưa ký mã, Smart App Control có thể chặn. Yêu cầu máy.",
   llmTitle: "Tải AI Translator",

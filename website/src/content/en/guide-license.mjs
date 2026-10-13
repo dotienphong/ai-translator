@@ -28,7 +28,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "How to buy a Monthly, 6 Months or Yearly plan with VietQR inside the app, receive and enter the key, recover a lost key, one key per computer and how to switch computers, 14-day offline use, renewing, changing plan and the refund terms.",
   llmTitle: "Buy a plan, activate your key and switch computers in AI Translator",
   schema: [

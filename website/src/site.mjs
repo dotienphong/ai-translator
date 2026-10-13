@@ -12,7 +12,7 @@ export const SITE = {
   email: "support@aitranslator.io.vn",
   defaultLang: "vi",
   year: 2026,
-  updated: "2026-10-10",
+  updated: "2026-10-13",
   securityExpires: "2027-10-08T00:00:00.000Z",
   version: release.version,
   releaseDate: release.releaseDate,

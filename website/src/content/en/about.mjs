@@ -18,7 +18,7 @@ export default {
     "AI Translator shows live translated subtitles for meetings and runs offline. Built by Đỗ Tiến Phong, an independent developer. Story, principles, current status.",
   schemaType: "AboutPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "How AI Translator came about, the product principles, who builds it (Đỗ Tiến Phong, an independent developer), current status, directions under consideration (not commitments), its use of third-party open-source components and short legal information.",
   llmTitle: "About AI Translator",
   body: () => `

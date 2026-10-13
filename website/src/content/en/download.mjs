@@ -182,7 +182,7 @@ export default {
     "Get AI Translator: install on macOS 14.2+ (Apple Silicon) or Windows 10/11 with one command, opens right away, no Open Anyway. 10-day free trial.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-09",
+  modified: "2026-10-13",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Get AI Translator: the page detects your operating system and opens the right guide. macOS installs with one Terminal command (curl ... install.sh | bash): it downloads the installer, checks its SHA-256 and opens the app, with no Open Anyway step. Windows installs with one PowerShell command (irm ... install.ps1 | iex); an .exe downloaded in a browser may trigger a SmartScreen warning because the build is not code-signed, and Smart App Control can block it. System requirements.",
   llmTitle: "Get AI Translator",

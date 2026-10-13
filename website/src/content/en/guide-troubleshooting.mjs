@@ -42,7 +42,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-09",
+  modified: "2026-10-13",
   schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Symptom, cause and fix tables using the exact wording of the app's messages (audio, recording permission, models, license, quota, shortcuts), how to open and send logs, and what to include in a bug report.",
   llmTitle: "Troubleshooting AI Translator",

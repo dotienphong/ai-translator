@@ -25,7 +25,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Hướng dẫn bản chép lời của phiên (xem, tìm, sao chép ở mọi gói), bật lưu lịch sử mã hóa, xuất TXT/SRT/Markdown (Pro), cách đọc mốc thời gian SRT và cách xóa dữ liệu.",
   llmTitle: "Lịch sử và xuất bản chép lời trong AI Translator",
   schema: [

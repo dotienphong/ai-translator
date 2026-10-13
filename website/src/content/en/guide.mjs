@@ -16,7 +16,7 @@ export default {
     "Nine step-by-step guides: install on macOS or Windows, recording permission, subtitle bar and shortcuts, glossary, history and export, buying a key, troubleshooting.",
   schemaType: "CollectionPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Index of nine AI Translator user guides: quick start, macOS installation, Windows installation, macOS audio permission, subtitle bar and shortcuts, glossary, history and export, buying and activating a key, troubleshooting.",
   llmTitle: "AI Translator user guides",
   body: () => `

@@ -28,7 +28,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Hướng dẫn mua gói Monthly, 6 Months hoặc Yearly bằng VietQR trong app, nhận và nhập key, mất key, mỗi key một máy và cách đổi máy, ngoại tuyến 14 ngày, gia hạn, đổi gói, điều kiện hoàn tiền.",
   llmTitle: "Mua gói, kích hoạt key và đổi máy trong AI Translator",
   schema: [

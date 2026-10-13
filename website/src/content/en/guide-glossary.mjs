@@ -26,7 +26,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "How to use the glossary (Pro feature): add, edit, delete, import and export CSV, the 500-term limit, how the app passes terms to the translator, and tips for writing terms.",
   llmTitle: "Use the glossary in AI Translator",
   schema: [

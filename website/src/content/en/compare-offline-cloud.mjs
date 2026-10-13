@@ -51,7 +51,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   schema: [faqPage(COMPARE_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "A balanced comparison of offline meeting translation (processed on your computer) and cloud translation (processed on a server): privacy, internet, bots, cost, latency, hardware, languages, updates, integration and when to choose which.",
   llmTitle: "Offline vs cloud meeting translation: the differences",

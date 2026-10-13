@@ -55,7 +55,7 @@ export default {
   description:
     "Read live translated subtitles in Zoom, Teams, Google Meet or any app. English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
   software: true,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Home page: what AI Translator is, how it works, features, measured latency, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
   schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a })))],

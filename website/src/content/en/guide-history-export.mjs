@@ -25,7 +25,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "How to view, search and copy a session transcript (all plans), turn on encrypted history, export TXT, SRT or Markdown (Pro), how SRT times are counted and how to delete data.",
   llmTitle: "History and exporting transcripts in AI Translator",
   schema: [

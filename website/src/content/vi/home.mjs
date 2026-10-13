@@ -53,7 +53,7 @@ export default {
   description:
     "Phụ đề dịch trực tiếp khi họp Zoom, Teams, Google Meet, Zalo: tiếng Anh, Trung, Nhật, Hàn sang tiếng Việt. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Trang chủ: AI Translator là gì, cách hoạt động, tính năng, độ trễ đo được, bảng giá và câu hỏi thường gặp.",
   llmTitle: "AI Translator: trang chủ",
   schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a })))],

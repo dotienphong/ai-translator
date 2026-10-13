@@ -18,7 +18,7 @@ export default {
     "AI Translator là app dịch phụ đề cuộc họp chạy offline do Đỗ Tiến Phong, một nhà phát triển cá nhân, xây dựng. Câu chuyện, nguyên tắc và trạng thái hiện tại.",
   schemaType: "AboutPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Câu chuyện hình thành, nguyên tắc sản phẩm, người làm (Đỗ Tiến Phong, nhà phát triển cá nhân), trạng thái hiện tại, các hướng đang cân nhắc (chưa cam kết), việc dùng thành phần mã nguồn mở của bên thứ ba và thông tin pháp lý.",
   llmTitle: "Về AI Translator",
   body: () => `

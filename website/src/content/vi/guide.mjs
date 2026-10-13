@@ -16,7 +16,7 @@ export default {
     "Chín bài hướng dẫn từng bước: cài trên macOS và Windows, cấp quyền ghi âm, phím tắt, từ điển thuật ngữ, xuất bản chép lời, mua key và sửa lỗi thường gặp.",
   schemaType: "CollectionPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Mục lục chín bài hướng dẫn sử dụng AI Translator: bắt đầu nhanh, cài đặt macOS, cài đặt Windows, cấp quyền ghi âm trên macOS, thanh phụ đề và phím tắt, từ điển thuật ngữ, lịch sử và xuất file, mua và kích hoạt key, khắc phục sự cố.",
   llmTitle: "Hướng dẫn sử dụng AI Translator",
   body: () => `

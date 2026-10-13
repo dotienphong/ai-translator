@@ -13,7 +13,7 @@ export default {
   description:
     "AI Translator shows translated subtitles for Zoom, Teams, Meet and Zalo calls, webinars, courses and videos. See how to use it and when it is not the right fit.",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-13",
   llm: "Overview of what AI Translator is used for (online meetings, webinars, courses, videos), links to the two detailed solution pages, and a list of cases where the app is not the right fit.",
   llmTitle: "Solutions: what AI Translator is used for",
   body: () => `
