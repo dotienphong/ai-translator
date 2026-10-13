@@ -53,15 +53,15 @@ Giá so với mua lẻ (dùng cho trang Bảng giá, chỉ nêu số có thật)
   "six_months": { "quota_minutes_per_cycle": 6000, "days_per_order": 180, "prices": { "VND": 269000 } },
   "yearly":     { "quota_minutes_per_cycle": null, "days_per_order": 365, "prices": { "VND": 500000 } }
   ```
-- `parsePlans` vẫn đòi đúng các mã của `PLAN_CODES` và mọi gói có cùng loại tiền; `days_per_order` 180 nằm trong [1, 366]. Vì `parsePlans` đòi đủ ba mã, **code và `wrangler.jsonc` phải lên cùng một lần deploy** (đã là một Worker, một lần `wrangler deploy`).
+- `parsePlans` vẫn đòi đúng các mã của `PLAN_CODES` và mọi gói có cùng loại tiền; `days_per_order` 180 nằm trong [1, 366]. Vì `parsePlans` đòi đủ ba mã, **code và `wrangler.jsonc` của Worker API phải lên cùng một lần deploy** (một lần `wrangler deploy`). **Worker admin là bundle riêng** (`src/admin-entry.ts`): nó lấy `PLANS` từ Worker API qua RPC rồi tự `parsePlans` bằng `PLAN_CODES` của bản mình (`src/admin.ts`, `plansOf`). Hai Worker khác phiên bản thì ba thao tác cấp license của người vận hành (cấp cho đơn đã trả, xử lý đơn rồi cấp, cấp license mới) trả `503 pricing_not_configured`; khách không bị ảnh hưởng (tạo đơn, webhook, đối soát chạy trong Worker API). Nên hai Worker lên liền nhau (mục 6), không cần đổi code.
 - **Không đổi logic:** `computeGrant` (cấp mới, mua thêm, đổi gói), ký token (hạn mức lấy từ `plans[lic.plan]`), tạo đơn và webhook, cấp tay của admin (`days_per_order`), email (`PLAN_NAMES`), cổng PayOS (chỉ nhận số tiền) đều đọc theo bảng gói nên nhận gói mới mà không sửa.
 
 ### 2.2 Migration D1 `0003_six_months_plan.sql`
 - Lý do: `licenses.plan` và `orders.plan` có `CHECK (plan IN ('monthly', 'yearly'))`; SQLite không sửa được CHECK, và `licenses` là bảng cha của `activations`, `deactivations`, `orders`.
-- Cách làm: **đúng khuôn 0002** (đã chạy thật trên production, spec 2026-10-07 §5.1): tạo `licenses_new`, `orders_new`, `activations_new`, `deactivations_new` trỏ tới nhau; chép dữ liệu; xóa bảng cũ theo thứ tự con trước cha; đổi tên về tên cũ (SQLite tự sửa `REFERENCES`); tạo lại index; giữ `sqlite_sequence` của `orders` và `deactivations`. Không dùng `PRAGMA defer_foreign_keys`.
+- Cách làm: **đúng khuôn 0002** (đã chạy thật trên production, spec 2026-10-07 §5.1, nhưng lúc các bảng còn trống: 0003 là lần đầu dựng lại bốn bảng có dữ liệu thật trên D1): tạo `licenses_new`, `orders_new`, `activations_new`, `deactivations_new` trỏ tới nhau; chép dữ liệu; xóa bảng cũ theo thứ tự con trước cha; đổi tên về tên cũ (SQLite tự sửa `REFERENCES`); tạo lại index; giữ `sqlite_sequence` của `orders` và `deactivations`. Không dùng `PRAGMA defer_foreign_keys`.
 - Khác 0002 duy nhất ở hai điểm: CHECK thành `('monthly', 'six_months', 'yearly')`, và **không có ánh xạ mã** (mọi cột chép nguyên giá trị, `plan` không đổi). Mã gói lạ trong dữ liệu cũ vẫn làm CHECK từ chối và migration dừng (giữ lớp chặn mà 0002 cố ý có).
 - Schema sau 0003 phải **giống hệt schema sau 0002 trừ chuỗi CHECK** (cùng cột, thứ tự cột, kiểu, ràng buộc, khóa ngoại, index). Có test so sánh `sqlite_master`.
-- **Bộ đếm số đơn không bao giờ lùi** (PayOS nhớ mọi `orderCode` đã dùng, không cho dùng lại): `orders_new` nhận `seq` của `orders`, kể cả khi lớn hơn khóa lớn nhất còn lại (như 0002, và test 0002 đã có ca này).
+- **Bộ đếm số đơn không bao giờ lùi** (PayOS nhớ mọi `orderCode` đã dùng, không cho dùng lại): `orders_new` nhận `seq` của `orders`, kể cả khi lớn hơn khóa lớn nhất còn lại (như 0002). Test 0003 có ca này cho cả `orders` và `deactivations`, và đã kiểm bằng đột biến: bỏ `DELETE`, bỏ `INSERT` hay bỏ cả hai câu xử lý `sqlite_sequence` đều làm test đỏ.
 - 0003 chỉ **nới** ràng buộc, nên Worker cũ (chỉ ghi `monthly`, `yearly`) vẫn chạy đúng trên schema mới. Vì vậy áp migration **trước** khi deploy Worker mới, và rollback Worker không cần rollback schema.
 
 ### 2.3 `GET /v1/plans` và app cũ
@@ -121,7 +121,7 @@ Nội dung về sản phẩm chỉ nói điều có thật (số đo kèm điề
 - Nội dung vi và en các trang nhắc gói hay giá: Bảng giá (`pricing`, thêm cột 6 Months vào bảng so sánh, dòng "Quy ra mỗi tháng", câu so với mua lẻ ở mục 1), Trang chủ, FAQ, Tính năng (bảng so sánh gói), Hướng dẫn license (`guide-license`: bảng gói, ví dụ quy đổi thêm giá mỗi ngày của 6 Months, hướng dẫn chọn thẻ), Tải xuống, Giới thiệu, Giải pháp, và các trang khác có nhắc "Monthly hoặc Yearly" hay "ba gói" (rà bằng `grep`, mỗi chỗ xem ngữ cảnh). Chữ "ba gói" thành "bốn gói" (Free + ba gói trả phí) khi nói cả bảng.
 - Ràng buộc SEO của test sẵn có (title ≤ 70 ký tự, description 90–165 ký tự, một `h1`) vẫn giữ: các tiêu đề nêu giá phải rút gọn cho vừa.
 - Ảnh chụp màn hình Nâng cấp (`src/assets/img/app/`) chụp lại bằng `scripts/ui-preview` (vi và en, sáng và tối nếu có), cập nhật mô tả trong `manifest.json`.
-- Test đối chiếu giá với `server/wrangler.jsonc` (`test/site.test.mjs`) mở rộng sang `six_months`; thêm kiểm "mọi chỗ giá viết tay trong `src/content/` khớp `plans.mjs`" nếu chưa có cách bắt lệch.
+- Test đối chiếu giá với `server/wrangler.jsonc` (`test/site.test.mjs`) mở rộng sang `six_months`; kiểm "mọi chỗ giá viết tay trong `src/content/` khớp `plans.mjs`" **không thêm**: trong văn xuôi, số có dấu phân cách hàng nghìn lẫn nhiều số không phải tiền (hạn mức phút, ví dụ tính toán), nên quét tự động cần danh sách ngoại lệ dài và dễ gãy. Thay vào đó, bảng giá, JSON-LD, `llms.txt` và trang Điều khoản được test đối chiếu với `plans.mjs` (và `plans.mjs` với `wrangler.jsonc`), còn số tiền viết tay trong văn xuôi được rà bằng `grep` mỗi lần sửa nội dung (rà ngày 2026-10-13: mọi số tiền là giá trong `plans.mjs` hoặc số suy ra từ nó: giá mỗi ngày, quy ra mỗi tháng, 6 hay 12 lần Monthly).
 
 ## 5. Tài liệu
 
@@ -137,26 +137,27 @@ Nội dung về sản phẩm chỉ nói điều có thật (số đo kèm điề
 
 Mỗi bước chỉ làm khi chủ dự án cho phép ở bước đó. Các lệnh `wrangler` ghi vào production do chủ dự án chạy (ngày 2026-10-07 chế độ tự động đã chặn agent chạy `wrangler d1 execute --remote`, nên agent viết sẵn script và chủ dự án chạy).
 
-1. **Chuẩn bị migration:** ghi mốc Time Travel của `mt-license-production` (`wrangler d1 time-travel info`). Tùy chọn nhưng khuyến nghị: xuất bản sao dữ liệu (`wrangler d1 export … --remote`) ra ngoài repo, áp 0003 lên bản sao cục bộ, so số dòng, khóa ngoại và `sqlite_sequence` trước/sau, rồi **xóa bản sao** (có email khách).
-2. Áp migration 0003 lên production (nới CHECK; Worker đang chạy không bị ảnh hưởng).
+1. **Chuẩn bị migration:** ghi mốc Time Travel của `mt-license-production` (`wrangler d1 time-travel info`) và chụp lại ngay trước khi áp (khôi phục về mốc cũ làm mất các đơn phát sinh sau đó). Khuyến nghị: xuất bản sao dữ liệu (`wrangler d1 export … --remote`, làm D1 tạm không phục vụ trong lúc xuất) ra ngoài repo, áp 0003 lên bản sao cục bộ, so số dòng, khóa ngoại và `sqlite_sequence` trước/sau, rồi **xóa bản sao** (có email và license key của khách). Kiểm thêm trigger, view, `foreign_key_check` trước khi áp.
+2. Áp migration 0003 lên production (nới CHECK; Worker đang chạy vẫn đúng trên schema mới, nhưng wrangler cảnh báo D1 có thể tạm không phục vụ trong lúc áp: migration ngắn, và cron đối soát xử lý lại đơn bị lỡ; migration lỗi thì wrangler hoàn tác nó).
 3. Deploy Worker API `mt-license`; kiểm `GET /v1/plans` (không tham số: đúng hai gói như cũ; có `?plans=monthly,six_months,yearly`: ba gói), kiểm cron vẫn chạy (`wrangler triggers deploy` nếu mất, xem sự cố 2026-10-07).
-4. Deploy Worker admin `mt-license-admin`.
+4. Deploy Worker admin `mt-license-admin` **ngay sau mục 3** (mục 2.1: hai Worker khác phiên bản thì thao tác cấp license của Web Admin trả 503). Chưa cấp license 6 Months cho khách tới khi bản app ở mục 5 được đăng.
 5. Phát hành app (quy trình phát hành 5 bước, nâng phiên bản ở đó; không thuộc spec này).
 6. Deploy website sau khi bản app có gói 6 Months đã được đăng.
 
-Rollback: Worker API và admin quay về phiên bản trước bằng Cloudflare (schema mới tương thích). Nếu đã có đơn `six_months` thì dữ liệu đó vẫn hợp lệ với schema mới nhưng Worker cũ sẽ không đọc được gói đó, nên chỉ rollback Worker khi chưa có khách mua gói mới.
+Rollback: Worker API và admin quay về phiên bản trước bằng Cloudflare, **lùi cả hai** (chỉ lùi một thì thao tác cấp license của Web Admin trả 503; schema mới tương thích với code cũ). Nếu đã có đơn `six_months` thì dữ liệu đó vẫn hợp lệ với schema mới nhưng Worker cũ sẽ không đọc được gói đó, nên chỉ rollback Worker khi chưa có khách mua gói mới.
 
 ## 7. Rủi ro và cách giảm
 
 | Rủi ro | Cách giảm |
 |---|---|
-| Migration dựng lại 4 bảng production | Đúng khuôn 0002 đã chạy thật; test dữ liệu mẫu + so schema với 0002; Time Travel; thử trên bản sao; áp trước deploy |
-| Số đơn PayOS bị lùi | `sqlite_sequence` giữ nguyên, có test ca "đơn lớn nhất đã bị xóa" |
+| Migration dựng lại 4 bảng production | Đúng khuôn 0002 (đã chạy thật, nhưng lúc bảng còn trống); test dữ liệu mẫu + so schema với 0002; Time Travel (chụp mốc ngay trước khi áp); thử trên bản sao (khuyến nghị, runbook mục 8 bước 2); áp trước deploy |
+| Số đơn PayOS bị lùi | `sqlite_sequence` giữ nguyên, có test ca "đơn lớn nhất đã bị xóa" cho `orders` và `deactivations`, kiểm đột biến |
 | App cũ thấy gói không mua được | `GET /v1/plans` lọc theo `plans=` (mục 2.3); có test "không tham số = hai gói" |
-| Quên mã gói trong `wrangler.jsonc` làm `503 pricing_not_configured` toàn hệ thống | Code và cấu hình cùng một Worker; test `wrangler-config` và `plans.test.ts` khóa đủ ba gói; `wrangler deploy --dry-run` trong `pnpm check` |
+| Quên mã gói trong `wrangler.jsonc` làm `503 pricing_not_configured` toàn hệ thống | Code và cấu hình cùng một Worker (API); test `wrangler-config` và `plans.test.ts` khóa đủ ba gói; `wrangler deploy --dry-run` trong `pnpm check` |
+| Hai Worker khác phiên bản (API đã có `six_months`, admin chưa, hay ngược lại) | Worker admin tự `parsePlans` bảng gói nhận từ API (mục 2.1): thao tác cấp license của Web Admin trả 503, khách không bị ảnh hưởng. Deploy liền nhau, không dùng thao tác đó ở giữa, lùi cả hai (runbook mục 8) |
 | Website lệch giá hoặc lấy gói theo vị trí mảng | Sửa `keyFacts()`; test đối chiếu giá với `wrangler.jsonc`; test `llms.txt` |
 | Chu kỳ hạn mức của license dài 180 ngày | Quota đã chạy cho license nhiều chu kỳ (mua thêm Monthly); thêm test 6 chu kỳ × 6000 phút |
-| Khách chạy app cũ trên máy thứ hai với key 6 Months | Mỗi key một máy; token có mã lạ bị `Malformed` ở app cũ (đã là hành vi hiện nay); chấp nhận, app tự cập nhật |
+| Khách chạy app cũ trên máy thứ hai với key 6 Months | Mỗi key một máy; token có mã lạ bị `Malformed` ở app cũ (đã là hành vi hiện nay); chấp nhận, app tự cập nhật. Vận hành: chưa cấp tay 6 Months trước khi bản app mới được đăng (runbook mục 8) |
 
 ## 8. Kiểm thử
 
@@ -173,6 +174,6 @@ Chạy toàn bộ bộ test hiện có làm mốc **trước khi sửa** và ch�
   - Migration 0003 (mục 2.2): dữ liệu mẫu hai mã gói cũ, khóa ngoại, index, bộ đếm `orders` và `deactivations`, schema giống 0002 trừ CHECK, ghi được `six_months` sau migration, mã lạ vẫn bị CHECK chặn.
   - `test/node/wrangler-config.test.mjs`: `PLANS` có đúng ba gói với giá trị chốt.
 - **App (Rust):** parse và vector `six_months`; `purchase::start` nhận `six_months` và vẫn từ chối mã lạ; `HttpApi::plans` gửi đúng tham số; license 180 ngày với 6000 phút trải qua đủ 6 chu kỳ; các test gói cũ giữ nguyên.
-- **Giao diện (Vitest + Playwright, ảnh chụp):** màn hình Nâng cấp có đủ Free + ba gói, dòng 6 Months đúng kiểu và đúng số; trạng thái "Đang dùng" khi đang ở 6 Months; i18n đủ khóa 5 ngôn ngữ; câu hết dùng thử nêu đủ ba gói.
+- **Giao diện:** repo không có test DOM cho màn hình nào (các test trong `src/` là logic thuần, không có jsdom), nên không thêm hạ tầng đó cho riêng màn hình này. i18n đủ khóa 5 ngôn ngữ do Vitest (`dictionaries.test.ts`) và `scripts/ui-preview/check-i18n.mjs` kiểm; màn hình Nâng cấp kiểm bằng ảnh chụp và script trình duyệt qua `scripts/ui-preview` (dữ liệu giả ở `tauri-mock.ts`): có đủ Free + ba gói, thẻ 6 Months đúng kiểu và đúng số, bố cục 2×2; trạng thái "Đang dùng" khi đang ở 6 Months (xem ảnh chụp ngày 2026-10-13 với license 6 Months ở vi, en nền tối và ja: thẻ chọn sẵn, nhãn "Đang dùng", chân thanh bên ghi "6 Months"); câu hết dùng thử nêu đủ ba gói (đã xem ở vi và en).
 - **Website:** `pnpm test` (giá khớp `wrangler.jsonc`, SEO, liên kết, JSON-LD, CSP, `llms.txt`); trang Bảng giá không tràn ngang và không có thẻ mồ côi ở 320/768/1280 px, sáng và tối (bộ test trình duyệt sẵn có `tools/browser/cdp.mjs`).
 - **Thử tay (sau khi được phép deploy):** mua một đơn 6 Months thật bằng PayOS và kiểm app tự kích hoạt, hạn +180 ngày, hạn mức hiện "100 giờ"; đổi gói từ Monthly sang 6 Months xem số ngày quy đổi; app 0.1.8 vẫn thấy đúng hai gói.
