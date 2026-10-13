@@ -15,6 +15,8 @@ use std::time::Duration;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use super::purchase::PLANS;
+
 /// Địa chỉ license server production (Worker `mt-license` trên tên miền riêng, spec 2026-10-06). Để `None` thì app
 /// chỉ dùng được token đã lưu và gói Free.
 pub const PRODUCTION_URL: Option<&str> = Some("https://api.aitranslator.io.vn");
@@ -299,7 +301,10 @@ fn unit<T>(reply: Reply<T>) -> Reply<()> {
 
 impl LicenseApi for HttpApi {
     fn plans(&self) -> Reply<Vec<PlanOffer>> {
-        let r: Reply<PlansBody> = self.call("GET", "/v1/plans", None, None);
+        // Khai báo các gói app này bán được (spec 2026-10-13 §2.3): server chỉ đưa gói mới cho app có khai báo, để bản app
+        // cũ không thấy gói mà nó không bán được.
+        let path = format!("/v1/plans?plans={}", PLANS.join(","));
+        let r: Reply<PlansBody> = self.call("GET", &path, None, None);
         Reply {
             result: r.result.map(|b| b.plans),
             date: r.date,
@@ -438,6 +443,37 @@ mod tests {
             json!({ "key": "KEY", "device_id_hash": "ab12", "device_label": null })
         );
         assert_eq!(reqs[1].body["allow_conflict"], true);
+    }
+
+    /// Bảng gói (spec 2026-10-13 §2.3): app khai báo đúng các gói nó bán được, rồi đọc đủ ba gói theo thứ tự server trả.
+    #[test]
+    fn plans_declares_the_plans_this_app_can_sell_and_reads_all_of_them() {
+        let body = r#"{"plans":[
+            {"code":"monthly","name":"Monthly","quota_minutes_per_cycle":3000,"days_per_order":30,"prices":{"VND":50000}},
+            {"code":"six_months","name":"6 Months","quota_minutes_per_cycle":6000,"days_per_order":180,"prices":{"VND":269000}},
+            {"code":"yearly","name":"Yearly","quota_minutes_per_cycle":null,"days_per_order":365,"prices":{"VND":500000}}]}"#;
+        let (base, seen) = serve(vec![(200, vec![], body)]);
+        let api = HttpApi::new(accept_base(&base, true));
+        let plans = api.plans().result.unwrap();
+        assert_eq!(
+            plans.iter().map(|p| p.code.as_str()).collect::<Vec<_>>(),
+            ["monthly", "six_months", "yearly"]
+        );
+        assert_eq!(
+            (
+                plans[1].name.as_str(),
+                plans[1].quota_minutes_per_cycle,
+                plans[1].days_per_order
+            ),
+            ("6 Months", Some(6000), 180)
+        );
+        assert_eq!(plans[1].prices["VND"], 269_000);
+        assert_eq!(plans[2].quota_minutes_per_cycle, None);
+        let req = seen.lock().unwrap()[0].clone();
+        assert_eq!(
+            (req.method.as_str(), req.path.as_str()),
+            ("GET", "/v1/plans?plans=monthly,six_months,yearly")
+        );
     }
 
     /// Đăng ký dùng thử (spec 2026-10-07 §3.1): gửi `device_id_hash`, đọc token và các mốc.

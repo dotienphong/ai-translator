@@ -15,8 +15,9 @@ use super::client::{Checkout, OrderStatus, PlanOffer};
 use super::manager::{License, LicenseError};
 use super::store::{self, PendingOrder};
 
-/// Mã gói được bán (spec 2026-10-07 §1).
-pub const PLANS: [&str; 2] = ["monthly", "yearly"];
+/// Mã gói được bán (spec 2026-10-07 §1; `six_months` thêm ở spec 2026-10-13). Cũng là danh sách app khai báo với server khi
+/// hỏi bảng gói (`GET /v1/plans?plans=`, spec 2026-10-13 §2.3): server chỉ đưa cho app những gói mới mà app khai báo ở đây.
+pub const PLANS: [&str; 3] = ["monthly", "six_months", "yearly"];
 /// App hỏi trạng thái đơn mỗi chừng này (§6.8 bước 4).
 pub const POLL_EVERY_SECS: u64 = 3;
 /// Đơn đang chờ giữ thêm chừng này sau khi link hết hạn (webhook đến chậm, mở lại app vẫn hỏi lại một lần), rồi bỏ.
@@ -284,6 +285,25 @@ mod tests {
             "gia hạn cần key đã kích hoạt"
         );
         assert!(api.calls.lock().unwrap().is_empty(), "không gọi server");
+    }
+
+    /// Gói 6 Months (spec 2026-10-13): app bán được `six_months` và vẫn từ chối mọi mã không có trong danh sách.
+    #[test]
+    fn the_six_months_plan_can_be_bought_and_unknown_codes_still_cannot() {
+        assert_eq!(PLANS, ["monthly", "six_months", "yearly"]);
+        let (api, _, l) = setup();
+        for code in ["pro", "six-months", "SIX_MONTHS", ""] {
+            assert!(start(&l, code, "a@b.vn", true, false).is_err(), "{code}");
+        }
+        assert!(api.calls.lock().unwrap().is_empty(), "mã lạ thì không gọi server");
+        let mut c = checkout(9);
+        c.plan = "six_months".into();
+        c.amount = 269_000;
+        api.checkouts.lock().unwrap().push_back(Ok(c));
+        let view = start(&l, "six_months", "a@b.vn", true, false).unwrap();
+        assert_eq!(api.calls.lock().unwrap()[0], "checkout six_months a@b.vn -");
+        assert_eq!((view.plan.as_str(), view.amount), ("six_months", 269_000));
+        assert_eq!(pending(&l).unwrap().plan, "six_months");
     }
 
     #[test]
