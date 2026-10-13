@@ -34,7 +34,7 @@ export default {
       description: "Bật lưu lịch sử, dịch một phiên rồi xuất bản chép lời ra file TXT, SRT hoặc Markdown.",
       totalTime: "PT5M",
       steps: [
-        { name: "Bật lưu lịch sử", text: "Mở Cài đặt › Quyền riêng tư và gạt công tắc Lưu lịch sử chép lời sang bật. Cần gói Monthly hoặc Yearly." },
+        { name: "Bật lưu lịch sử", text: "Mở Cài đặt › Quyền riêng tư và gạt công tắc Lưu lịch sử chép lời sang bật. Cần gói trả phí (Monthly, 6 Months hoặc Yearly)." },
         { name: "Dịch một phiên rồi bấm Dừng", text: "Khi bạn bấm Dừng, app lưu bản chép lời của phiên vào lịch sử, mã hóa, trên máy bạn." },
         { name: "Mở bản chép lời", text: "Mở Bản chép lời, hoặc mở một phiên đã lưu trong Lịch sử bằng nút Mở." },
         { name: "Chọn định dạng và xuất", text: "Ở mục Xuất ra chọn TXT, SRT hoặc Markdown (với SRT chọn Bản dịch hoặc Câu gốc), bấm Xuất… rồi chọn nơi lưu." },

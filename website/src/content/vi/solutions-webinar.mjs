@@ -72,7 +72,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề tùy
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Phiên dài", title: "Xem hết một buổi dài, không gián đoạn" })}
 <p>Một phiên dịch liên tục <strong>5 giờ 23 phút</strong> (video bài giảng tiếng Anh phát trên trình duyệt) đã chạy xong với 6019 đoạn, không lỗi, độ trễ trung vị 0,48 giây. Điều kiện: Mac M4 Pro, macOS, bản release ký ad-hoc, thử một lần; không phải kiểm thử chính thức. Thử nghiệm ổn định 2 giờ cũng không có tiến trình nào phải khởi động lại.</p>
-${callout({ title: "Hạn mức cho buổi dài.", text: "Phút chỉ tính theo tiếng nói đã dịch, không tính im lặng; câu đã ở đúng ngôn ngữ bạn muốn đọc không bị tính, nhưng đoạn bạn tua lại nghe lần hai thì có. Free chỉ có 30 phút mỗi ngày trong 10 ngày dùng thử, nên một webinar dài cần Monthly (50 giờ mỗi 30 ngày) hoặc Yearly (không giới hạn). Xem <a href=\"/bang-gia/\">bảng giá</a>." })}
+${callout({ title: "Hạn mức cho buổi dài.", text: "Phút chỉ tính theo tiếng nói đã dịch, không tính im lặng; câu đã ở đúng ngôn ngữ bạn muốn đọc không bị tính, nhưng đoạn bạn tua lại nghe lần hai thì có. Free chỉ có 30 phút mỗi ngày trong 10 ngày dùng thử, nên một webinar dài cần Monthly (50 giờ mỗi 30 ngày), 6 Months (100 giờ mỗi 30 ngày) hoặc Yearly (không giới hạn). Xem <a href=\"/bang-gia/\">bảng giá</a>." })}
 </div></section>
 
 <section class="section"><div class="container">

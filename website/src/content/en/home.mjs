@@ -17,7 +17,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Can I get translated meeting subtitles for free?",
-    a: "<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. After that you need a prepaid plan: Monthly 50,000 ₫ (50 hours per 30 days) or Yearly 500,000 ₫ (unlimited for 365 days). Free is a trial, not a permanent free plan.</p>",
+    a: "<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. After that you need a prepaid plan: Monthly 50,000 ₫ (50 hours per 30 days), 6 Months 269,000 ₫ (100 hours per 30 days, for 180 days) or Yearly 500,000 ₫ (unlimited for 365 days). Free is a trial, not a permanent free plan.</p>",
   },
   {
     q: "Is my meeting audio sent anywhere?",
@@ -103,7 +103,7 @@ ${demo({
   ["Platforms", "macOS 14.2 or later (Apple Silicon) and Windows 10/11 x64<small>Both install with one command</small>"],
   ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>For both the source audio and the translation. More languages are planned for the future</small>"],
   ["Processing", "100% on your device; audio is never sent out<small>Speech recognition and translation both run on your device</small>"],
-  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid in VND by VietQR from a Vietnamese bank, no auto-renewal</small>"],
+  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid in VND by VietQR from a Vietnamese bank, no auto-renewal</small>"],
   ["Provider", "Đỗ Tiến Phong<small>Support: support@aitranslator.io.vn</small>"],
 ])}</div>
 </div></section>
@@ -200,7 +200,7 @@ ${linkCard({ href: "/en/solutions/webinar-and-video-translation/", icon: "play",
 </div></section>
 
 <section class="section" id="pricing"><div class="container">
-${sectionHead({ eyebrow: "Pricing", title: "Three simple plans, prepaid with VietQR", text: "No auto-renewal, no recurring billing, no surprises on your bill.", center: true })}
+${sectionHead({ eyebrow: "Pricing", title: "Four simple plans, prepaid with VietQR", text: "No auto-renewal, no recurring billing, no surprises on your bill.", center: true })}
 ${plansGrid("en", { ctaLabel: "Download", freeLabel: "Install and try free" })}
 <p class="disclaimer">Prices are in Vietnamese dong (VND). Payment is by bank transfer from a Vietnamese bank (VietQR) only; international cards are not accepted yet.</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/en/pricing/">Compare the plans in detail ${icon("arrow-right")}</a></p>

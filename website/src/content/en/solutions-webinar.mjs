@@ -72,7 +72,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Long sessions", title: "Watch a whole long event without interruptions" })}
 <p>One continuous session of <strong>5 hours 23 minutes</strong> (an English lecture video playing in a browser) finished with 6,019 segments, no errors, and a median delay of 0.48 seconds. Conditions: a Mac M4 Pro, macOS, an ad-hoc signed release build, run once; it was not a formal acceptance test. A separate 2-hour stability test did not restart any process either.</p>
-${callout({ title: "Quota for long events.", text: "Minutes count only translated speech, not silence, and sentences already in the language you want to read are not counted, but a passage you rewind and hear twice is. Free gives 30 minutes a day for a 10-day trial, so a long webinar needs Monthly (50 hours per 30 days) or Yearly (unlimited). See <a href=\"/en/pricing/\">pricing</a>." })}
+${callout({ title: "Quota for long events.", text: "Minutes count only translated speech, not silence, and sentences already in the language you want to read are not counted, but a passage you rewind and hear twice is. Free gives 30 minutes a day for a 10-day trial, so a long webinar needs Monthly (50 hours per 30 days), 6 Months (100 hours per 30 days) or Yearly (unlimited). See <a href=\"/en/pricing/\">pricing</a>." })}
 </div></section>
 
 <section class="section"><div class="container">

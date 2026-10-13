@@ -23,21 +23,21 @@ export default {
   path: "/huong-dan/mua-va-kich-hoat-key/",
   title: "Mua gói, kích hoạt key, đổi máy: hướng dẫn",
   description:
-    "Cách mua Monthly hoặc Yearly bằng VietQR trong app, nhập key từ email, đổi máy, gia hạn và đổi gói, điều kiện hoàn tiền và cách xử lý khi key bị khóa.",
+    "Cách mua Monthly, 6 Months hoặc Yearly bằng VietQR trong app, nhập key từ email, đổi máy, gia hạn và đổi gói, điều kiện hoàn tiền và cách xử lý khi key bị khóa.",
   breadcrumbs: crumbs,
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
   modified: "2026-10-08",
-  llm: "Hướng dẫn mua gói Monthly hoặc Yearly bằng VietQR trong app, nhận và nhập key, mất key, mỗi key một máy và cách đổi máy, ngoại tuyến 14 ngày, gia hạn, đổi gói, điều kiện hoàn tiền.",
+  llm: "Hướng dẫn mua gói Monthly, 6 Months hoặc Yearly bằng VietQR trong app, nhận và nhập key, mất key, mỗi key một máy và cách đổi máy, ngoại tuyến 14 ngày, gia hạn, đổi gói, điều kiện hoàn tiền.",
   llmTitle: "Mua gói, kích hoạt key và đổi máy trong AI Translator",
   schema: [
     howTo({
       name: "Mua gói và kích hoạt AI Translator",
-      description: "Mua gói Monthly hoặc Yearly bằng VietQR trong app và kích hoạt key trên máy của bạn.",
+      description: "Mua gói Monthly, 6 Months hoặc Yearly bằng VietQR trong app và kích hoạt key trên máy của bạn.",
       totalTime: "PT10M",
       steps: [
-        { name: "Mở Nâng cấp Pro", text: "Bấm Nâng cấp Pro ở thanh bên để xem ba gói và chọn Monthly hoặc Yearly." },
+        { name: "Mở Nâng cấp Pro", text: "Bấm Nâng cấp Pro ở thanh bên để xem bốn gói và chọn Monthly, 6 Months hoặc Yearly." },
         { name: "Nhập email nhận key", text: "Nhập email, tick ô đồng ý lưu email để gửi và khôi phục key, rồi bấm Tạo mã thanh toán." },
         { name: "Quét mã VietQR", text: "Quét mã bằng app ngân hàng Việt Nam trong 15 phút hoặc bấm Mở trang thanh toán." },
         { name: "Kích hoạt", text: "App tự kích hoạt khi nhận được tiền. Nếu cần, mở Cài đặt › Bản quyền, dán key trong email vào ô Nhập license key và bấm Kích hoạt." },
@@ -48,7 +48,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Mua gói, kích hoạt key và đổi máy",
-  lead: "Bạn mua gói AI Translator ngay trong app: chọn Monthly hoặc Yearly, quét mã VietQR, rồi nhận key qua email; app cũng tự kích hoạt gói trên máy đang dùng. Mỗi key chỉ dùng trên một máy; muốn chuyển máy, hãy gỡ kích hoạt ở máy cũ rồi nhập key ở máy mới.",
+  lead: "Bạn mua gói AI Translator ngay trong app: chọn Monthly, 6 Months hoặc Yearly, quét mã VietQR, rồi nhận key qua email; app cũng tự kích hoạt gói trên máy đang dùng. Mỗi key chỉ dùng trên một máy; muốn chuyển máy, hãy gỡ kích hoạt ở máy cũ rồi nhập key ở máy mới.",
   meta: `<span>Cập nhật {{updated}}</span>`,
 })}
 
@@ -58,7 +58,7 @@ ${docLayout({
   tocTitle: "Trong bài này",
   body: `
 ${facts([
-  ["Gói", "Monthly 50.000 ₫ (30 ngày, 50 giờ)<small>Yearly 500.000 ₫ (365 ngày, không giới hạn)</small>"],
+  ["Gói", "Monthly 50.000 ₫ (30 ngày, 50 giờ)<small>6 Months 269.000 ₫ (180 ngày, 100 giờ mỗi 30 ngày)</small><small>Yearly 500.000 ₫ (365 ngày, không giới hạn)</small>"],
   ["Thanh toán", "VietQR, ngân hàng Việt Nam, VND<small>Không thẻ quốc tế, không tự gia hạn</small>"],
   ["Số máy", "Mỗi key một máy"],
   ["Ngoại tuyến", "Tối đa 14 ngày giữa hai lần kiểm tra bản quyền"],
@@ -67,8 +67,8 @@ ${facts([
 
 <h2 id="mua-goi">Mua gói trong app</h2>
 <ol>
-<li>Bấm <strong>Nâng cấp Pro</strong> ở thanh bên. Màn hình hiện đủ ba gói, gói đang dùng có nhãn “Đang dùng”. Mua gói cần kết nối mạng.</li>
-<li>Bấm vào thẻ <strong>Monthly</strong> hoặc <strong>Yearly</strong> (giá ghi chữ lớn, như “50.000 đ / 30 ngày”); thẻ đã chọn có viền xanh.</li>
+<li>Bấm <strong>Nâng cấp Pro</strong> ở thanh bên. Màn hình hiện đủ bốn gói, gói đang dùng có nhãn “Đang dùng”. Mua gói cần kết nối mạng.</li>
+<li>Bấm vào thẻ <strong>Monthly</strong>, <strong>6 Months</strong> hoặc <strong>Yearly</strong> (giá ghi chữ lớn, như “50.000 đ / 30 ngày”); thẻ đã chọn có viền xanh.</li>
 <li>Nhập <strong>Email nhận key</strong>, tick ô đồng ý để app lưu email này nhằm gửi và khôi phục key, rồi bấm <strong>Tạo mã thanh toán</strong>.</li>
 <li>Quét mã VietQR bằng app ngân hàng, hoặc bấm <strong>Mở trang thanh toán</strong> (PayOS, mở trong trình duyệt). Mã dùng được 15 phút; giờ hết hạn ghi trên màn hình.</li>
 <li>Chờ app xác nhận (app hỏi trạng thái đơn mỗi 3 giây): “Đã nhận tiền. Gói đã có hiệu lực trên máy này; key đã gửi vào email.”</li>
@@ -76,7 +76,7 @@ ${facts([
 ${appShot({
   slug: "app-upgrade",
   lang: "vi",
-  alt: "Màn hình Nâng cấp: ba gói Free, Monthly và Yearly với hạn mức và giá, ô Email nhận key, ô đồng ý và nút Tạo mã thanh toán",
+  alt: "Màn hình Nâng cấp: bốn gói Free, Monthly, 6 Months và Yearly với hạn mức và giá, ô Email nhận key, ô đồng ý và nút Tạo mã thanh toán",
   caption: "Màn hình Nâng cấp.",
 })}
 ${appShot({
@@ -126,11 +126,11 @@ ${callout({
 <h2 id="gia-han-doi-goi">Gia hạn, đổi gói và hết hạn</h2>
 <ul>
 <li><strong>Không tự gia hạn.</strong> App nhắc “Gói còn dưới 7 ngày. Gia hạn để tiếp tục dùng tính năng Pro.” Bấm <strong>Gia hạn hoặc đổi gói</strong> ở Cài đặt › Bản quyền.</li>
-<li><strong>Gia hạn cùng gói:</strong> cộng 30 ngày (Monthly) hoặc 365 ngày (Yearly), tính từ ngày hết hạn nếu gói còn hạn.</li>
+<li><strong>Gia hạn cùng gói:</strong> cộng 30 ngày (Monthly), 180 ngày (6 Months) hoặc 365 ngày (Yearly), tính từ ngày hết hạn nếu gói còn hạn.</li>
 <li><strong>Đổi gói khi còn hạn:</strong> gói mới bắt đầu ngay với chu kỳ hạn mức mới; số ngày còn lại của gói cũ được quy đổi theo giá mỗi ngày và làm tròn xuống: <code>ngày quy đổi = ngày còn lại × (giá cũ ÷ ngày cũ) ÷ (giá mới ÷ ngày mới)</code>.</li>
 <li><strong>Hết hạn:</strong> máy về Free nếu còn trong 10 ngày dùng thử, nếu không thì chưa dịch được cho tới khi bạn mua gói. Tính năng Pro bị khóa.</li>
 </ul>
-<p>Giá mỗi ngày: Monthly 50.000 ÷ 30 ≈ 1.667 ₫, Yearly 500.000 ÷ 365 ≈ 1.370 ₫. Ví dụ: Monthly còn 20 ngày, mua Yearly được cộng 20 × 1.667 ÷ 1.370 ≈ 24 ngày, nên Yearly chạy 365 + 24 = 389 ngày. Ngược lại, Yearly còn 200 ngày, mua Monthly được cộng ≈ 164 ngày, nên Monthly chạy 30 + 164 = 194 ngày. App hiện trước số ngày quy đổi và ngày hết hạn mới (ước tính), kèm “Không hoàn tiền.”</p>
+<p>Giá mỗi ngày: Monthly 50.000 ÷ 30 ≈ 1.667 ₫, 6 Months 269.000 ÷ 180 ≈ 1.494 ₫, Yearly 500.000 ÷ 365 ≈ 1.370 ₫. Ví dụ: Monthly còn 20 ngày, mua Yearly được cộng 20 × 1.667 ÷ 1.370 ≈ 24 ngày, nên Yearly chạy 365 + 24 = 389 ngày; mua 6 Months thì được cộng 20 × 1.667 ÷ 1.494 ≈ 22 ngày, nên 6 Months chạy 180 + 22 = 202 ngày. Ngược lại, Yearly còn 200 ngày, mua Monthly được cộng ≈ 164 ngày, nên Monthly chạy 30 + 164 = 194 ngày. App hiện trước số ngày quy đổi và ngày hết hạn mới (ước tính), kèm “Không hoàn tiền.”</p>
 
 <h2 id="hoan-tien">Sự cố thanh toán, hoàn tiền và hóa đơn</h2>
 <ul>

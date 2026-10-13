@@ -52,7 +52,7 @@ ${linkCard({ href: "/en/guide/history-and-export/", icon: "history", title: "His
 <section class="section-tight"><div class="container">
 ${sectionHead({ eyebrow: "Plans and support", title: "Plans, keys and when something goes wrong" })}
 <div class="grid grid-2">
-${linkCard({ href: "/en/guide/buy-and-activate/", icon: "key", title: "Buy a plan, activate your key and switch computers", text: "Buy Monthly or Yearly with VietQR inside the app, enter your key, switch computers, renew and recover a lost key.", more: MORE })}
+${linkCard({ href: "/en/guide/buy-and-activate/", icon: "key", title: "Buy a plan, activate your key and switch computers", text: "Buy Monthly, 6 Months or Yearly with VietQR inside the app, enter your key, switch computers, renew and recover a lost key.", more: MORE })}
 ${linkCard({ href: "/en/guide/troubleshooting/", icon: "support", title: "Troubleshooting", text: "No subtitles, quota used up, a locked key, a failed model download: the cause and the fix for each.", more: MORE })}
 </div>
 </div></section>

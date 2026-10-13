@@ -34,7 +34,7 @@ export default {
       description: "Turn on history, translate a session, then export its transcript as TXT, SRT or Markdown.",
       totalTime: "PT5M",
       steps: [
-        { name: "Turn on history", text: "Open Settings › Privacy and switch on Save transcript history. This needs the Monthly or Yearly plan." },
+        { name: "Turn on history", text: "Open Settings › Privacy and switch on Save transcript history. This needs a paid plan (Monthly, 6 Months or Yearly)." },
         { name: "Translate a session and press Stop", text: "When you press Stop, the app saves the session transcript to the history, encrypted, on your computer." },
         { name: "Open the transcript", text: "Open Transcript, or open a saved session in History with the Open button." },
         { name: "Pick a format and export", text: "Under Export as choose TXT, SRT or Markdown (for SRT choose Translation or Original), click Export… and choose where to save." },

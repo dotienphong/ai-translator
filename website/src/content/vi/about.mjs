@@ -79,7 +79,7 @@ ${sectionHead({ eyebrow: "Hôm nay", title: "AI Translator đang ở đâu?" })}
 <tr><th scope="row">Windows</th><td>Windows 10/11 64-bit (x64). <a href="/tai-xuong/#cai-windows">Cài bằng một dòng lệnh trong PowerShell</a>. Độ trễ trên Windows mới đo sơ bộ trên một laptop có GPU tích hợp (chậm hơn Mac M4 Pro).</td></tr>
 <tr><th scope="row">Ký số</th><td>macOS ký ad-hoc, chưa notarize: cài bằng dòng lệnh thì mở thẳng, còn file .dmg tải bằng trình duyệt thì lần mở đầu cần bấm Open Anyway. Windows chưa có chứng thư ký mã: cài bằng dòng lệnh thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo (Smart App Control chế độ chặn sẽ chặn cả hai) (<a href="/huong-dan/cai-dat-windows/">cách xử lý</a>).</td></tr>
 <tr><th scope="row">Thanh toán</th><td>VietQR bằng VND qua PayOS. Chưa có thẻ quốc tế, chưa có hóa đơn điện tử.</td></tr>
-<tr><th scope="row">Gói</th><td>Free dùng thử 10 ngày, Monthly, Yearly. Xem <a href="/bang-gia/">bảng giá</a>.</td></tr>
+<tr><th scope="row">Gói</th><td>Free dùng thử 10 ngày, Monthly, 6 Months, Yearly. Xem <a href="/bang-gia/">bảng giá</a>.</td></tr>
 </tbody></table></div>
 </div></section>
 
@@ -125,7 +125,7 @@ ${sectionHead({ eyebrow: "Pháp lý", title: "Thông tin pháp lý ngắn gọn"
 <div class="grid grid-3">
 ${linkCard({ href: "/tinh-nang/", icon: "captions", title: "Tính năng", text: "Những gì AI Translator làm được hôm nay, đúng như trong app.", more: "Xem tính năng" })}
 ${linkCard({ href: "/bao-mat-du-lieu/", icon: "shield", title: "Dữ liệu và bảo mật", text: "Dữ liệu nào ở lại trên máy, app kết nối tới đâu, máy chủ lưu gì.", more: "Đọc chi tiết" })}
-${linkCard({ href: "/bang-gia/", icon: "wallet", title: "Bảng giá", text: "Free dùng thử 10 ngày, Monthly 50.000 ₫, Yearly 500.000 ₫.", more: "Xem bảng giá" })}
+${linkCard({ href: "/bang-gia/", icon: "wallet", title: "Bảng giá", text: "Free dùng thử 10 ngày, Monthly 50.000 ₫, 6 Months 269.000 ₫, Yearly 500.000 ₫.", more: "Xem bảng giá" })}
 </div>
 </div></section>
 

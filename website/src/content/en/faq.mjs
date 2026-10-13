@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Can I get translated meeting subtitles for free?",
-        a: `<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. After that you need a prepaid plan: Monthly 50,000 ₫ (50 hours per 30 days) or Yearly 500,000 ₫ (unlimited for 365 days). Free is a trial, not a permanent free plan.</p>`,
+        a: `<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. After that you need a prepaid plan: Monthly 50,000 ₫ (50 hours per 30 days), 6 Months 269,000 ₫ (100 hours per 30 days, for 180 days) or Yearly 500,000 ₫ (unlimited for 365 days). Free is a trial, not a permanent free plan.</p>`,
       },
       {
         q: "Does it show bilingual subtitles (original and translation)?",
@@ -158,7 +158,7 @@ const GROUPS = [
     items: [
       {
         q: "Is the Free plan really free?",
-        a: `<p>Free is a trial, not a permanent free plan: 10 days from the first time a device registers for the trial, up to 30 minutes of translation per day, once per device. Uninstalling and reinstalling does not restart the 10 days. After the trial you need Monthly (50,000 ₫, 50 hours per 30 days) or Yearly (500,000 ₫, unlimited for 365 days). See <a href="/en/pricing/">pricing</a>.</p>`,
+        a: `<p>Free is a trial, not a permanent free plan: 10 days from the first time a device registers for the trial, up to 30 minutes of translation per day, once per device. Uninstalling and reinstalling does not restart the 10 days. After the trial you need Monthly (50,000 ₫, 50 hours per 30 days), 6 Months (269,000 ₫, 100 hours per 30 days, for 180 days) or Yearly (500,000 ₫, unlimited for 365 days). See <a href="/en/pricing/">pricing</a>.</p>`,
       },
       {
         q: "How is translation time counted?",
@@ -170,7 +170,7 @@ const GROUPS = [
       },
       {
         q: "Do plans renew automatically? What happens at expiry?",
-        a: `<p>No automatic renewal: each plan is a prepaid order that simply ends, and you are never charged again. The app reminds you 7 days ahead. At expiry the device goes back to Free if it is still within its 10-day trial; after the trial you need to buy a plan to keep translating, and Pro features (history, glossary, export) are locked. Renewing the same plan adds another 30 days (Monthly) or 365 days (Yearly).</p>`,
+        a: `<p>No automatic renewal: each plan is a prepaid order that simply ends, and you are never charged again. The app reminds you 7 days ahead. At expiry the device goes back to Free if it is still within its 10-day trial; after the trial you need to buy a plan to keep translating, and Pro features (history, glossary, export) are locked. Renewing the same plan adds another 30 days (Monthly), 180 days (6 Months) or 365 days (Yearly).</p>`,
       },
       {
         q: "Can I get a refund?",

@@ -43,7 +43,7 @@ ${sectionHead({ eyebrow: "Before you start", title: "What you need", center: tru
   ["Platform", "macOS 14.2 or later on Apple Silicon and Windows 10/11 x64<small>Intel Macs and Windows ARM64: not supported</small>"],
   ["Computer", "At least 8 GB of RAM, 16 GB recommended<small>One-time model download: 1.3 GB (Lite) or 2.5 GB (Standard)</small>"],
   ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>App interface: English, Vietnamese, Japanese, Chinese (Simplified), Korean</small>"],
-  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR, no automatic renewal</small>"],
+  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR, no automatic renewal</small>"],
 ])}</div>
 </div></section>
 
@@ -77,7 +77,7 @@ ${sectionHead({ eyebrow: "Keep reading", title: "Want to go deeper?", center: tr
 <div class="grid grid-3">
 ${linkCard({ href: "/en/compare/offline-vs-cloud-translation/", icon: "layers", title: "Offline vs cloud translation", text: "A balanced comparison: privacy, cost, latency, hardware and when to choose which.", more: "Read the comparison" })}
 ${linkCard({ href: "/en/guide/quick-start/", icon: "zap", title: "Quick start", text: "From installation to your first subtitles, including the macOS audio permission.", more: "Open the guide" })}
-${linkCard({ href: "/en/pricing/", icon: "wallet", title: "Pricing", text: "Free 10-day trial, Monthly 50,000 ₫, Yearly 500,000 ₫.", more: "See pricing" })}
+${linkCard({ href: "/en/pricing/", icon: "wallet", title: "Pricing", text: "Free 10-day trial, Monthly 50,000 ₫, 6 Months 269,000 ₫, Yearly 500,000 ₫.", more: "See pricing" })}
 </div>
 </div></section>
 

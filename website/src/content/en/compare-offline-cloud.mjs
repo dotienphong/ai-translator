@@ -94,7 +94,7 @@ ${docLayout({
 <p>Built-in captions may need the host or an administrator to enable them, and third-party tools may need a bot to join the room. AI Translator runs on your side, so nobody has to do anything; in return, the other participants are not told. If rules require it, you tell them yourself (see <a href="/en/solutions/online-meeting-translation/">the online meeting solution</a>).</p>
 
 <h2 id="cost">Cost and quota</h2>
-<p>With cloud, every minute of translation uses the provider's server resources. Translated captions built into the big meeting platforms are usually offered only on higher paid plans. With offline translation the computing happens on your machine, so one more minute costs us no extra infrastructure. AI Translator's quotas (30 minutes a day during the trial, 50 hours per 30 days on Monthly, unlimited on Yearly) are a pricing policy, not a technical limit.</p>
+<p>With cloud, every minute of translation uses the provider's server resources. Translated captions built into the big meeting platforms are usually offered only on higher paid plans. With offline translation the computing happens on your machine, so one more minute costs us no extra infrastructure. AI Translator's quotas (30 minutes a day during the trial, 50 hours per 30 days on Monthly, 100 hours per 30 days on 6 Months, unlimited on Yearly) are a pricing policy, not a technical limit.</p>
 <p>The cost moves to your machine: RAM, disk and power (we have not measured battery use). See <a href="/en/pricing/">pricing</a>.</p>
 
 <h2 id="latency-hardware-languages">Latency, hardware requirements and languages</h2>

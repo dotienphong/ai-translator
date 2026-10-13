@@ -23,21 +23,21 @@ export default {
   path: "/en/guide/buy-and-activate/",
   title: "Buy a plan, activate your key, switch computers",
   description:
-    "Buy Monthly or Yearly with VietQR in the app, enter your emailed key, switch computers, renew or change plan, check the refund terms and fix a locked key.",
+    "Buy Monthly, 6 Months or Yearly with VietQR in the app, enter your emailed key, switch computers, renew or change plan, check the refund terms and fix a locked key.",
   breadcrumbs: crumbs,
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
   modified: "2026-10-08",
-  llm: "How to buy a Monthly or Yearly plan with VietQR inside the app, receive and enter the key, recover a lost key, one key per computer and how to switch computers, 14-day offline use, renewing, changing plan and the refund terms.",
+  llm: "How to buy a Monthly, 6 Months or Yearly plan with VietQR inside the app, receive and enter the key, recover a lost key, one key per computer and how to switch computers, 14-day offline use, renewing, changing plan and the refund terms.",
   llmTitle: "Buy a plan, activate your key and switch computers in AI Translator",
   schema: [
     howTo({
       name: "Buy a plan and activate AI Translator",
-      description: "Buy the Monthly or Yearly plan with VietQR inside the app and activate the key on your computer.",
+      description: "Buy the Monthly, 6 Months or Yearly plan with VietQR inside the app and activate the key on your computer.",
       totalTime: "PT10M",
       steps: [
-        { name: "Open Upgrade to Pro", text: "Click Upgrade to Pro in the sidebar to see the three plans, then choose Monthly or Yearly." },
+        { name: "Open Upgrade to Pro", text: "Click Upgrade to Pro in the sidebar to see the four plans, then choose Monthly, 6 Months or Yearly." },
         { name: "Enter the email for your key", text: "Enter your email, tick the box agreeing that the app stores it to send and recover your key, then click Create payment QR code." },
         { name: "Scan the VietQR code", text: "Scan the code with a Vietnamese bank app within 15 minutes, or click Open payment page." },
         { name: "Activate", text: "The app activates the plan when payment arrives. If needed, open Settings › License, paste the key from your email into the License key box and click Activate." },
@@ -48,7 +48,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Buy a plan, activate your key and switch computers",
-  lead: "You buy an AI Translator plan inside the app: choose Monthly or Yearly, scan a VietQR code, and your key arrives by email while the app activates the plan on the computer you are using. Each key works on one computer. To move to another computer, deactivate the old one and enter the key on the new one.",
+  lead: "You buy an AI Translator plan inside the app: choose Monthly, 6 Months or Yearly, scan a VietQR code, and your key arrives by email while the app activates the plan on the computer you are using. Each key works on one computer. To move to another computer, deactivate the old one and enter the key on the new one.",
   meta: `<span>Updated {{updated}}</span>`,
 })}
 
@@ -58,7 +58,7 @@ ${docLayout({
   tocTitle: "On this page",
   body: `
 ${facts([
-  ["Plans", "Monthly 50,000 ₫ (30 days, 50 hours)<small>Yearly 500,000 ₫ (365 days, unlimited)</small>"],
+  ["Plans", "Monthly 50,000 ₫ (30 days, 50 hours)<small>6 Months 269,000 ₫ (180 days, 100 hours per 30 days)</small><small>Yearly 500,000 ₫ (365 days, unlimited)</small>"],
   ["Payment", "VietQR, Vietnamese banks, VND<small>No international cards, no auto-renewal</small>"],
   ["Computers", "One computer per key"],
   ["Offline", "Up to 14 days between license checks"],
@@ -67,8 +67,8 @@ ${facts([
 
 <h2 id="buy">Buy a plan in the app</h2>
 <ol>
-<li>Click <strong>Upgrade to Pro</strong> in the sidebar. The screen lists all three plans; yours is marked “Current”. Buying needs an internet connection.</li>
-<li>Click the <strong>Monthly</strong> or <strong>Yearly</strong> card (the price is in large type, e.g. “50.000 đ / 30 days”); the selected card gets a blue outline.</li>
+<li>Click <strong>Upgrade to Pro</strong> in the sidebar. The screen lists all four plans; yours is marked “Current”. Buying needs an internet connection.</li>
+<li>Click the <strong>Monthly</strong>, <strong>6 Months</strong> or <strong>Yearly</strong> card (the price is in large type, e.g. “50.000 đ / 30 days”); the selected card gets a blue outline.</li>
 <li>Enter your <strong>Email to receive your key</strong>, tick the box that lets the app store this email to send and recover your key, then click <strong>Create payment QR code</strong>.</li>
 <li>Scan the VietQR code with your banking app, or click <strong>Open payment page</strong> (PayOS, in your browser). The code works for 15 minutes; its expiry time is on screen.</li>
 <li>Wait for the app to confirm (it checks the order every 3 seconds): “Payment received. Your plan is active on this computer, and the key is in your email.”</li>
@@ -76,7 +76,7 @@ ${facts([
 ${appShot({
   slug: "app-upgrade",
   lang: "en",
-  alt: "The Upgrade screen: the Free, Monthly and Yearly plans with their quota and price, the Email to receive your key box, the agreement tick box and the Create payment QR code button",
+  alt: "The Upgrade screen: the Free, Monthly, 6 Months and Yearly plans with their quota and price, the Email to receive your key box, the agreement tick box and the Create payment QR code button",
   caption: "The Upgrade screen.",
 })}
 ${appShot({
@@ -126,11 +126,11 @@ ${callout({
 <h2 id="renew-change">Renew, change plan and expiry</h2>
 <ul>
 <li><strong>No auto-renewal.</strong> The app warns “Your plan ends within 7 days. Renew it to keep the Pro features.” Click <strong>Renew or change plan</strong> in Settings › License.</li>
-<li><strong>Renewing the same plan:</strong> adds 30 days (Monthly) or 365 days (Yearly), counted from the expiry date if the plan is still active.</li>
+<li><strong>Renewing the same plan:</strong> adds 30 days (Monthly), 180 days (6 Months) or 365 days (Yearly), counted from the expiry date if the plan is still active.</li>
 <li><strong>Changing plan while active:</strong> the new plan starts at once with a fresh quota cycle; the days left on the old plan are converted at the price per day and rounded down: <code>converted days = days left × (old price ÷ old days) ÷ (new price ÷ new days)</code>.</li>
 <li><strong>Expiry:</strong> the computer returns to Free if still within its 10-day trial, otherwise it cannot translate until you buy a plan. Pro features are locked.</li>
 </ul>
-<p>Price per day: Monthly 50,000 ÷ 30 ≈ 1,667 ₫, Yearly 500,000 ÷ 365 ≈ 1,370 ₫. Example: with 20 days of Monthly left, buying Yearly adds 20 × 1,667 ÷ 1,370 ≈ 24 days, so Yearly runs 365 + 24 = 389 days. The other way, with 200 days of Yearly left, buying Monthly adds ≈ 164 days, so Monthly runs 30 + 164 = 194 days. The app shows the converted days and the new expiry date (an estimate) before you pay, with “No refunds.”</p>
+<p>Price per day: Monthly 50,000 ÷ 30 ≈ 1,667 ₫, 6 Months 269,000 ÷ 180 ≈ 1,494 ₫, Yearly 500,000 ÷ 365 ≈ 1,370 ₫. Example: with 20 days of Monthly left, buying Yearly adds 20 × 1,667 ÷ 1,370 ≈ 24 days, so Yearly runs 365 + 24 = 389 days; buying 6 Months adds 20 × 1,667 ÷ 1,494 ≈ 22 days, so 6 Months runs 180 + 22 = 202 days. The other way, with 200 days of Yearly left, buying Monthly adds ≈ 164 days, so Monthly runs 30 + 164 = 194 days. The app shows the converted days and the new expiry date (an estimate) before you pay, with “No refunds.”</p>
 
 <h2 id="refunds">Payment problems, refunds and invoices</h2>
 <ul>

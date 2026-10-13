@@ -237,16 +237,16 @@ ${callout({ kind: "warn", title: "Điều chưa đo, chúng tôi không hứa", 
 <section class="section section-alt"><div class="container">
 ${sectionHead({ eyebrow: "Theo gói", title: "Tính năng nào ở gói nào", center: true })}
 <div class="table-wrap reveal"><table class="compare">
-<thead><tr><th scope="col">Tính năng</th><th scope="col">Free (dùng thử)</th><th scope="col">Monthly</th><th scope="col">Yearly</th></tr></thead>
+<thead><tr><th scope="col">Tính năng</th><th scope="col">Free (dùng thử)</th><th scope="col">Monthly</th><th scope="col">6 Months</th><th scope="col">Yearly</th></tr></thead>
 <tbody>
-<tr><th scope="row">Phụ đề dịch trực tiếp, 5 ngôn ngữ</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
-<tr><th scope="row">Thanh phụ đề tùy chỉnh, phím tắt, khay</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
-<tr><th scope="row">Xem, tìm, sao chép bản chép lời</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
-<tr><th scope="row">Từ điển thuật ngữ (tối đa 500)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
-<tr><th scope="row">Lưu lịch sử các phiên</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
-<tr><th scope="row">Xuất TXT, SRT, Markdown</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
-<tr><th scope="row">Thời lượng dịch</th><td>30 phút mỗi ngày, 10 ngày</td><td>50 giờ mỗi 30 ngày</td><td>Không giới hạn, 365 ngày</td></tr>
-<tr><th scope="row">Giá</th><td>0 ₫</td><td>50.000 ₫</td><td>500.000 ₫</td></tr>
+<tr><th scope="row">Phụ đề dịch trực tiếp, 5 ngôn ngữ</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
+<tr><th scope="row">Thanh phụ đề tùy chỉnh, phím tắt, khay</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
+<tr><th scope="row">Xem, tìm, sao chép bản chép lời</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
+<tr><th scope="row">Từ điển thuật ngữ (tối đa 500)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
+<tr><th scope="row">Lưu lịch sử các phiên</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
+<tr><th scope="row">Xuất TXT, SRT, Markdown</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
+<tr><th scope="row">Thời lượng dịch</th><td>30 phút mỗi ngày, 10 ngày</td><td>50 giờ mỗi 30 ngày</td><td>100 giờ mỗi 30 ngày, 180 ngày</td><td>Không giới hạn, 365 ngày</td></tr>
+<tr><th scope="row">Giá</th><td>0 ₫</td><td>50.000 ₫</td><td>269.000 ₫</td><td>500.000 ₫</td></tr>
 </tbody></table></div>
 <p class="center-text reveal"><a class="btn btn-primary" href="/bang-gia/">Xem chi tiết bảng giá ${icon("arrow-right")}</a></p>
 </div></section>

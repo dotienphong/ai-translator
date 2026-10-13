@@ -218,7 +218,7 @@ ${sectionHead({ eyebrow: "At a glance", title: "Free trial and pricing", center:
   ["Current version", RELEASE.en],
   ["Status", "Released. Both macOS and Windows install with one command"],
   ["Free trial", "10 days, 30 minutes per day<small>No card, no account</small>"],
-  ["Price afterwards", "Monthly 50,000 ₫ · Yearly 500,000 ₫<small>Paid in VND by bank transfer from a Vietnamese bank (VietQR)</small>"],
+  ["Price afterwards", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Paid in VND by bank transfer from a Vietnamese bank (VietQR)</small>"],
   ["Models", "Downloaded once, 1.3 or 2.5 GB<small>After that, recognition and translation run offline on your machine</small>"],
 ])}</div>
 ${callout({ kind: "ok", title: "Only get the installer from us", text: "Install AI Translator only with the command on this page, or from a link sent by <strong>support@aitranslator.io.vn</strong> or from the website <strong>aitranslator.io.vn</strong>. Installers from any other source may be fake." })}

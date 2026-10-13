@@ -94,7 +94,7 @@ ${docLayout({
 <p>Phụ đề tích hợp có thể cần chủ họp hoặc quản trị viên bật, còn công cụ bên thứ ba có thể cần bot vào phòng. AI Translator chạy ở phía bạn nên không cần ai làm gì; đổi lại, người cùng họp không được báo. Nếu quy định đòi hỏi, bạn tự thông báo (xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>).</p>
 
 <h2 id="chi-phi">Chi phí và hạn mức</h2>
-<p>Với cloud, mỗi phút dịch dùng tài nguyên máy chủ của nhà cung cấp. Phụ đề dịch tích hợp trong các nền tảng họp lớn thường chỉ có ở gói trả phí cao hơn. Với dịch offline, phần tính toán chạy trên máy bạn, nên thêm một phút dịch không tốn chi phí hạ tầng cho chúng tôi. Hạn mức của AI Translator (30 phút mỗi ngày khi dùng thử, 50 giờ mỗi 30 ngày ở Monthly, không giới hạn ở Yearly) là chính sách giá, không phải giới hạn kỹ thuật.</p>
+<p>Với cloud, mỗi phút dịch dùng tài nguyên máy chủ của nhà cung cấp. Phụ đề dịch tích hợp trong các nền tảng họp lớn thường chỉ có ở gói trả phí cao hơn. Với dịch offline, phần tính toán chạy trên máy bạn, nên thêm một phút dịch không tốn chi phí hạ tầng cho chúng tôi. Hạn mức của AI Translator (30 phút mỗi ngày khi dùng thử, 50 giờ mỗi 30 ngày ở Monthly, 100 giờ mỗi 30 ngày ở 6 Months, không giới hạn ở Yearly) là chính sách giá, không phải giới hạn kỹ thuật.</p>
 <p>Chi phí chuyển sang máy bạn: RAM, ổ đĩa, điện năng (chưa đo pin). Xem <a href="/bang-gia/">bảng giá</a>.</p>
 
 <h2 id="tre-may-ngon-ngu">Độ trễ, yêu cầu máy và số ngôn ngữ</h2>

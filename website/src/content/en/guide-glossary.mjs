@@ -35,7 +35,7 @@ export default {
       description: "Add one term with its translation, then import more terms from a CSV file.",
       totalTime: "PT5M",
       steps: [
-        { name: "Open Glossary", text: "Click Glossary in the left sidebar of the main window. The glossary needs the Monthly or Yearly plan." },
+        { name: "Open Glossary", text: "Click Glossary in the left sidebar of the main window. The glossary needs a paid plan (Monthly, 6 Months or Yearly)." },
         { name: "Enter the term and its translation", text: "Type the term in the Term box and the translation you want in the Translation box. Each box takes at most 200 characters." },
         { name: "Click Add", text: "The new pair appears in the list. Later sentences use it right away, even while a session is running." },
         { name: "Import a CSV file (optional)", text: "Click Import CSV…, then choose a two-column UTF-8 CSV file of at most 1 MB. The app reports how many terms were added, updated, skipped or over the limit." },
@@ -46,7 +46,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Use the glossary",
-  lead: "The AI Translator glossary stores up to 500 “term → translation” pairs for names, abbreviations and industry terms. When a sentence being translated contains one of your terms, the app passes that pair to the translator as a hint. The glossary is a Pro feature, included in the Monthly and Yearly plans.",
+  lead: "The AI Translator glossary stores up to 500 “term → translation” pairs for names, abbreviations and industry terms. When a sentence being translated contains one of your terms, the app passes that pair to the translator as a hint. The glossary is a Pro feature, included in the Monthly, 6 Months and Yearly plans.",
   meta: `<span><span class="badge badge-pro">Pro</span></span><span>Updated {{updated}}</span>`,
 })}
 
@@ -56,7 +56,7 @@ ${docLayout({
   tocTitle: "On this page",
   body: `
 ${facts([
-  ["Plan", "Pro: Monthly and Yearly<small>Free shows a locked screen</small>"],
+  ["Plan", "Pro: Monthly, 6 Months and Yearly<small>Free shows a locked screen</small>"],
   ["Capacity", "Up to 500 terms<small>Each box up to 200 characters</small>"],
   ["CSV file", "Two columns, UTF-8<small>Up to 1 MB</small>"],
   ["During translation", "Up to 20 terms per sentence"],
@@ -90,7 +90,7 @@ ${appShot({
   slug: "app-glossary",
   lang: "en",
   alt: "The Glossary screen: the count of terms out of a maximum of 500, the Term and Translation boxes, the Import CSV and Export CSV buttons, and the list of term and translation pairs",
-  caption: "The Glossary screen with a Monthly or Yearly plan.",
+  caption: "The Glossary screen with a paid plan (Monthly, 6 Months or Yearly).",
 })}
 
 <h2 id="import-export-csv">Import and export CSV</h2>

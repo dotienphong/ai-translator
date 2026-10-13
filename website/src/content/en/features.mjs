@@ -241,16 +241,16 @@ ${callout({ kind: "warn", title: "What we have not measured, and do not promise"
 <section class="section section-alt"><div class="container">
 ${sectionHead({ eyebrow: "By plan", title: "Which feature is in which plan", center: true })}
 <div class="table-wrap reveal" role="region" aria-label="Features by plan" tabindex="0"><table class="compare">
-<thead><tr><th scope="col">Feature</th><th scope="col">Free (trial)</th><th scope="col">Monthly</th><th scope="col">Yearly</th></tr></thead>
+<thead><tr><th scope="col">Feature</th><th scope="col">Free (trial)</th><th scope="col">Monthly</th><th scope="col">6 Months</th><th scope="col">Yearly</th></tr></thead>
 <tbody>
-<tr><th scope="row">Live translated subtitles, 5 languages</th><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
-<tr><th scope="row">Customizable subtitle bar, shortcuts, tray</th><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
-<tr><th scope="row">View, search and copy the transcript</th><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
-<tr><th scope="row">Glossary (up to 500 terms)</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
-<tr><th scope="row">Save session history</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
-<tr><th scope="row">Export to TXT, SRT, Markdown</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
-<tr><th scope="row">Translation time</th><td>30 min per day, for 10 days</td><td>50 hours per 30 days</td><td>Unlimited, for 365 days</td></tr>
-<tr><th scope="row">Price (VND)</th><td>0 ₫</td><td>50,000 ₫</td><td>500,000 ₫</td></tr>
+<tr><th scope="row">Live translated subtitles, 5 languages</th><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
+<tr><th scope="row">Customizable subtitle bar, shortcuts, tray</th><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
+<tr><th scope="row">View, search and copy the transcript</th><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
+<tr><th scope="row">Glossary (up to 500 terms)</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
+<tr><th scope="row">Save session history</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
+<tr><th scope="row">Export to TXT, SRT, Markdown</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
+<tr><th scope="row">Translation time</th><td>30 min per day, for 10 days</td><td>50 hours per 30 days</td><td>100 hours per 30 days, for 180 days</td><td>Unlimited, for 365 days</td></tr>
+<tr><th scope="row">Price (VND)</th><td>0 ₫</td><td>50,000 ₫</td><td>269,000 ₫</td><td>500,000 ₫</td></tr>
 </tbody></table></div>
 <p class="center-text reveal"><a class="btn btn-primary" href="/en/pricing/">See the full pricing details ${icon("arrow-right")}</a></p>
 </div></section>

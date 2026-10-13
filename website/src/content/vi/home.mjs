@@ -17,7 +17,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Có cách dịch phụ đề họp sang tiếng Việt miễn phí không?",
-    a: "<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản. Sau đó cần gói trả trước: Monthly 50.000 ₫ (50 giờ mỗi 30 ngày) hoặc Yearly 500.000 ₫ (không giới hạn trong 365 ngày). Gói Free là dùng thử, không phải miễn phí vĩnh viễn.</p>",
+    a: "<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản. Sau đó cần gói trả trước: Monthly 50.000 ₫ (50 giờ mỗi 30 ngày), 6 Months 269.000 ₫ (100 giờ mỗi 30 ngày, trong 180 ngày) hoặc Yearly 500.000 ₫ (không giới hạn trong 365 ngày). Gói Free là dùng thử, không phải miễn phí vĩnh viễn.</p>",
   },
   {
     q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
@@ -101,7 +101,7 @@ ${demo({
   ["Nền tảng", "macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 x64<small>Cả hai cài bằng một dòng lệnh</small>"],
   ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Cả âm thanh nguồn lẫn bản dịch. Dự kiến bổ sung thêm ngôn ngữ trong tương lai</small>"],
   ["Xử lý", "100% trên máy, âm thanh không gửi đi<small>Nhận dạng giọng nói và dịch đều chạy trên máy</small>"],
-  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
+  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
   ["Bên cung cấp", "Đỗ Tiến Phong<small>Hỗ trợ: support@aitranslator.io.vn</small>"],
 ])}</div>
 </div></section>
@@ -198,7 +198,7 @@ ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "We
 </div></section>
 
 <section class="section" id="gia"><div class="container">
-${sectionHead({ eyebrow: "Bảng giá", title: "Ba gói đơn giản, trả trước bằng VietQR", text: "Không tự động gia hạn, không thanh toán định kỳ, không bất ngờ trên hóa đơn.", center: true })}
+${sectionHead({ eyebrow: "Bảng giá", title: "Bốn gói đơn giản, trả trước bằng VietQR", text: "Không tự động gia hạn, không thanh toán định kỳ, không bất ngờ trên hóa đơn.", center: true })}
 ${plansGrid("vi", { ctaLabel: "Tải xuống", freeLabel: "Cài và dùng thử miễn phí" })}
 <p class="disclaimer">Giá tính bằng đồng Việt Nam (VND). Chỉ nhận chuyển khoản từ ngân hàng Việt Nam qua VietQR; chưa nhận thẻ quốc tế.</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/bang-gia/">So sánh chi tiết các gói ${icon("arrow-right")}</a></p>

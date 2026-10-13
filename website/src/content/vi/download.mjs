@@ -216,7 +216,7 @@ ${sectionHead({ eyebrow: "Thông tin nhanh", title: "Dùng thử và giá", cent
   ["Phiên bản hiện tại", RELEASE.vi],
   ["Trạng thái", "Đã phát hành. macOS và Windows đều cài bằng một dòng lệnh"],
   ["Dùng thử", "Free 10 ngày, 30 phút mỗi ngày<small>Không cần thẻ, không cần tài khoản</small>"],
-  ["Giá sau đó", "Monthly 50.000 ₫ · Yearly 500.000 ₫"],
+  ["Giá sau đó", "Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫"],
   ["Model", "Tải một lần, 1,3 hoặc 2,5 GB<small>Sau đó nhận dạng và dịch chạy offline trên máy bạn</small>"],
 ])}</div>
 ${callout({ kind: "ok", title: "Chỉ lấy bản cài từ chúng tôi", text: "Chỉ cài AI Translator bằng lệnh trên trang này, hoặc từ liên kết do <strong>support@aitranslator.io.vn</strong> hay website <strong>aitranslator.io.vn</strong> gửi cho bạn. Các bản cài từ nguồn khác có thể là bản giả." })}

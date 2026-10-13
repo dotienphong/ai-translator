@@ -388,3 +388,32 @@ test("điều khoản (EULA) nêu gói 6 Months đúng giá và thời hạn, ph
   for (const needle of ["Phiên bản 1.2", "6 Months", "269.000 đ", "180 ngày"]) assert.ok(vi.includes(needle), `/dieu-khoan/: thiếu "${needle}"`);
   for (const needle of ["Version 1.2", "6 Months", "269,000 VND", "180 days"]) assert.ok(en.includes(needle), `/en/terms/: thiếu "${needle}"`);
 });
+
+
+test("bảng so sánh gói: mỗi hàng có đủ số ô như hàng tiêu đề (không sót ô khi thêm một gói)", () => {
+  const errors = [];
+  let tables = 0;
+  for (const p of pages) {
+    for (const table of htmlByPath.get(p.path).matchAll(/<table class="compare">([\s\S]*?)<\/table>/g)) {
+      if (!/<th scope="col">Monthly<\/th>/.test(table[1])) continue;
+      tables++;
+      const cells = [...table[1].matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((r) => (r[1].match(/<t[hd][ >]/g) ?? []).length);
+      if (new Set(cells).size !== 1 || cells[0] !== 5) errors.push(`${p.path}: số ô mỗi hàng ${cells.join(",")} (cần 5 ở mọi hàng)`);
+      if (!/<th scope="col">6 Months<\/th>/.test(table[1])) errors.push(`${p.path}: bảng thiếu cột 6 Months`);
+    }
+  }
+  assert.equal(tables, 4, "phải có đúng 4 bảng so sánh gói (Bảng giá và Tính năng, mỗi trang hai ngôn ngữ)");
+  assert.deepEqual(errors, []);
+});
+
+test("không còn câu liệt kê chỉ Monthly và Yearly: mọi chỗ nêu cả hai gói phải nêu cả 6 Months", () => {
+  // "Monthly … (hoặc|và|or|and|·|,) Yearly" trong cùng một câu mà giữa hai chữ không có "6 Months".
+  const stale = /.{0,40}Monthly(?:(?!6 Months|\. )[\s\S]){0,120}?(?:hoặc|và|or|and|·|,) Yearly.{0,30}/;
+  const errors = [];
+  for (const p of pages) {
+    const text = [textOf(htmlByPath.get(p.path)), p.title, p.description, p.llm ?? ""].join(" \n ");
+    const m = text.match(stale);
+    if (m) errors.push(`${p.path}: …${m[0]}…`);
+  }
+  assert.deepEqual(errors, []);
+});

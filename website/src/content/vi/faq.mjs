@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Có cách dịch phụ đề họp sang tiếng Việt miễn phí không?",
-        a: `<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản. Sau đó cần gói trả trước: Monthly 50.000 ₫ (50 giờ mỗi 30 ngày) hoặc Yearly 500.000 ₫ (không giới hạn trong 365 ngày). Gói Free là dùng thử, không phải miễn phí vĩnh viễn.</p>`,
+        a: `<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản. Sau đó cần gói trả trước: Monthly 50.000 ₫ (50 giờ mỗi 30 ngày), 6 Months 269.000 ₫ (100 giờ mỗi 30 ngày, trong 180 ngày) hoặc Yearly 500.000 ₫ (không giới hạn trong 365 ngày). Gói Free là dùng thử, không phải miễn phí vĩnh viễn.</p>`,
       },
       {
         q: "AI Translator có phụ đề song ngữ (câu gốc và bản dịch) không?",
@@ -158,7 +158,7 @@ const GROUPS = [
     items: [
       {
         q: "Gói Free có thật sự miễn phí không?",
-        a: `<p>Free là gói dùng thử, không phải miễn phí vĩnh viễn: 10 ngày kể từ lần máy đăng ký dùng thử đầu tiên, mỗi ngày tối đa 30 phút dịch, mỗi máy một lần. Gỡ app rồi cài lại không mở lại 10 ngày. Hết dùng thử thì bạn cần mua Monthly (50.000 ₫, 50 giờ mỗi 30 ngày) hoặc Yearly (500.000 ₫, không giới hạn trong 365 ngày). Xem <a href="/bang-gia/">bảng giá</a>.</p>`,
+        a: `<p>Free là gói dùng thử, không phải miễn phí vĩnh viễn: 10 ngày kể từ lần máy đăng ký dùng thử đầu tiên, mỗi ngày tối đa 30 phút dịch, mỗi máy một lần. Gỡ app rồi cài lại không mở lại 10 ngày. Hết dùng thử thì bạn cần mua Monthly (50.000 ₫, 50 giờ mỗi 30 ngày), 6 Months (269.000 ₫, 100 giờ mỗi 30 ngày, trong 180 ngày) hoặc Yearly (500.000 ₫, không giới hạn trong 365 ngày). Xem <a href="/bang-gia/">bảng giá</a>.</p>`,
       },
       {
         q: "Thời lượng dịch được tính thế nào?",
@@ -170,7 +170,7 @@ const GROUPS = [
       },
       {
         q: "Gói có tự gia hạn không? Hết hạn thì sao?",
-        a: `<p>Không tự gia hạn: mỗi gói là một đơn trả trước, hết hạn thì dừng và bạn không bị trừ tiền thêm. App nhắc trước 7 ngày. Hết hạn thì máy quay về Free nếu còn trong 10 ngày dùng thử; hết dùng thử thì cần mua gói để dịch tiếp, và các tính năng Pro (lịch sử, từ điển, xuất file) bị khóa. Gia hạn cùng gói cộng thêm 30 ngày (Monthly) hoặc 365 ngày (Yearly).</p>`,
+        a: `<p>Không tự gia hạn: mỗi gói là một đơn trả trước, hết hạn thì dừng và bạn không bị trừ tiền thêm. App nhắc trước 7 ngày. Hết hạn thì máy quay về Free nếu còn trong 10 ngày dùng thử; hết dùng thử thì cần mua gói để dịch tiếp, và các tính năng Pro (lịch sử, từ điển, xuất file) bị khóa. Gia hạn cùng gói cộng thêm 30 ngày (Monthly), 180 ngày (6 Months) hoặc 365 ngày (Yearly).</p>`,
       },
       {
         q: "Có hoàn tiền không?",

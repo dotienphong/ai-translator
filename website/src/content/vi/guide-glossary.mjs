@@ -35,7 +35,7 @@ export default {
       description: "Thêm một cặp thuật ngữ và bản dịch, rồi nhập thêm nhiều thuật ngữ từ file CSV.",
       totalTime: "PT5M",
       steps: [
-        { name: "Mở Từ điển thuật ngữ", text: "Bấm Từ điển thuật ngữ ở thanh bên trái của cửa sổ chính. Tính năng này cần gói Monthly hoặc Yearly." },
+        { name: "Mở Từ điển thuật ngữ", text: "Bấm Từ điển thuật ngữ ở thanh bên trái của cửa sổ chính. Tính năng này cần gói trả phí (Monthly, 6 Months hoặc Yearly)." },
         { name: "Nhập thuật ngữ và bản dịch", text: "Gõ thuật ngữ vào ô Thuật ngữ và bản dịch mong muốn vào ô Bản dịch. Mỗi ô tối đa 200 ký tự." },
         { name: "Bấm Thêm", text: "Cặp mới hiện trong danh sách. Các câu dịch sau đó dùng thuật ngữ ngay, kể cả khi phiên đang chạy." },
         { name: "Nhập CSV (tùy chọn)", text: "Bấm Nhập CSV… và chọn file CSV hai cột, mã UTF-8, tối đa 1 MB. App báo số thuật ngữ đã thêm, cập nhật, bỏ qua và vượt giới hạn." },
@@ -46,7 +46,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Dùng từ điển thuật ngữ",
-  lead: "Từ điển thuật ngữ của AI Translator lưu tối đa 500 cặp “thuật ngữ → bản dịch” cho tên riêng, từ viết tắt và thuật ngữ ngành. Khi câu đang dịch có chứa thuật ngữ, app đưa cặp đó cho bộ dịch như một gợi ý. Đây là tính năng Pro, có trong gói Monthly và Yearly.",
+  lead: "Từ điển thuật ngữ của AI Translator lưu tối đa 500 cặp “thuật ngữ → bản dịch” cho tên riêng, từ viết tắt và thuật ngữ ngành. Khi câu đang dịch có chứa thuật ngữ, app đưa cặp đó cho bộ dịch như một gợi ý. Đây là tính năng Pro, có trong các gói Monthly, 6 Months và Yearly.",
   meta: `<span><span class="badge badge-pro">Pro</span></span><span>Cập nhật {{updated}}</span>`,
 })}
 
@@ -56,7 +56,7 @@ ${docLayout({
   tocTitle: "Trong bài này",
   body: `
 ${facts([
-  ["Gói", "Pro: Monthly và Yearly<small>Gói Free hiện khung khóa</small>"],
+  ["Gói", "Pro: Monthly, 6 Months và Yearly<small>Gói Free hiện khung khóa</small>"],
   ["Dung lượng", "Tối đa 500 thuật ngữ<small>Mỗi ô tối đa 200 ký tự</small>"],
   ["File CSV", "Hai cột, mã UTF-8<small>Tối đa 1 MB</small>"],
   ["Khi dịch", "Tối đa 20 mục cho mỗi câu"],
@@ -90,7 +90,7 @@ ${appShot({
   slug: "app-glossary",
   lang: "vi",
   alt: "Màn hình Từ điển thuật ngữ: số thuật ngữ đã dùng trên tối đa 500, hai ô nhập Thuật ngữ và Bản dịch, nút Nhập CSV và Xuất CSV, danh sách các cặp thuật ngữ và bản dịch",
-  caption: "Màn hình Từ điển thuật ngữ khi có gói Monthly hoặc Yearly.",
+  caption: "Màn hình Từ điển thuật ngữ khi có gói trả phí (Monthly, 6 Months hoặc Yearly).",
 })}
 
 <h2 id="nhap-xuat-csv">Nhập và xuất CSV</h2>
