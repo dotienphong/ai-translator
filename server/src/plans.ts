@@ -12,6 +12,26 @@ export const PLAN_NAMES: Record<PlanCode, string> = {
 };
 export const DAY_SECONDS = 86400;
 
+/**
+ * Mã gói mọi bản app đều bán được (hai gói có từ trước spec 2026-10-13). Gói thêm sau đó chỉ hiện trong GET /v1/plans
+ * khi app khai báo mã của nó (`?plans=`): app cũ vẽ mọi gói server trả về nhưng chỉ tạo đơn được cho gói nó biết, nên
+ * không được thấy gói lạ.
+ */
+export const LEGACY_PLAN_CODES: readonly PlanCode[] = ["monthly", "yearly"];
+const MAX_PLANS_PARAM_LENGTH = 200;
+
+/**
+ * Các mã gói đưa vào GET /v1/plans, theo thứ tự của `codes`. Gói cũ (`legacy`) luôn có; gói khác chỉ có khi `requested`
+ * (giá trị của `?plans=`, các mã cách nhau bằng dấu phẩy) nêu mã đó. Thiếu, rỗng, dài quá 200 ký tự hay rác thì chỉ có gói
+ * cũ; mã lạ bị bỏ qua. Tham số chỉ thêm gói, không bao giờ bớt gói cũ.
+ */
+export function offeredPlanCodes<T extends string>(codes: readonly T[], legacy: readonly string[], requested: string | undefined): T[] {
+  const asked = new Set(
+    requested !== undefined && requested.length <= MAX_PLANS_PARAM_LENGTH ? requested.split(",").map((code) => code.trim()) : [],
+  );
+  return codes.filter((code) => legacy.includes(code) || asked.has(code));
+}
+
 export interface PlanConfig {
   /** Hạn mức dịch mỗi chu kỳ 30 ngày, mỗi máy, tính bằng phút; null là không giới hạn. */
   quota_minutes_per_cycle: number | null;

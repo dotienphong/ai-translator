@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { computeGrant, type LicenseTerms, parsePlans, type PlanTable } from "../src/plans";
+import { computeGrant, LEGACY_PLAN_CODES, type LicenseTerms, offeredPlanCodes, parsePlans, type PlanTable } from "../src/plans";
 import { DAY, T0 } from "./world";
 
 // Bảng gói production (wrangler.jsonc), cũng là giá chính thức của spec 2026-10-07 §2.1.
@@ -186,5 +186,38 @@ describe("luật mua thêm và đổi gói (§6.8, spec 2026-10-07 §2.3)", () =
 
   it("thiếu giá theo loại tiền của đơn thì báo lỗi", () => {
     expect(() => computeGrant(plans, lic("monthly", 20), "yearly", "USD", T0)).toThrow(/USD/);
+  });
+});
+
+describe("danh sách gói theo khả năng của app (spec 2026-10-13 §2.3)", () => {
+  const all = ["monthly", "six_months", "yearly"] as const;
+  const legacy = ["monthly", "yearly"];
+  const old = ["monthly", "yearly"];
+  const full = ["monthly", "six_months", "yearly"];
+
+  it("gói cũ của server là monthly và yearly", () => {
+    expect([...LEGACY_PLAN_CODES]).toEqual(legacy);
+  });
+
+  it.each([
+    ["không có tham số (app cũ)", undefined, old],
+    ["tham số rỗng", "", old],
+    ["app khai báo đủ ba gói", "monthly,six_months,yearly", full],
+    ["chỉ khai báo gói mới: gói cũ vẫn luôn có", "six_months", full],
+    ["thứ tự khai báo không đổi thứ tự kết quả", "yearly,six_months,monthly", full],
+    ["khoảng trắng quanh mã", " monthly , six_months ", full],
+    ["mã lạ bị bỏ qua", "six_months,pro,free,", full],
+    ["khai báo thiếu gói cũ: gói cũ vẫn có", "monthly", old],
+    ["rác", "%%%;;;", old],
+    ["viết hoa không khớp", "SIX_MONTHS", old],
+    ["dài quá 200 ký tự thì coi là rác", `six_months,${"x".repeat(200)}`, old],
+  ])("%s → %j", (_why, requested, expected) => {
+    expect(offeredPlanCodes(all, legacy, requested)).toEqual(expected);
+  });
+
+  it("dài đúng 200 ký tự vẫn đọc", () => {
+    const requested = `six_months,${"x".repeat(189)}`;
+    expect(requested).toHaveLength(200);
+    expect(offeredPlanCodes(all, legacy, requested)).toEqual(full);
   });
 });

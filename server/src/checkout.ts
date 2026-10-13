@@ -6,7 +6,7 @@ import { audit } from "./audit";
 import { b64urlEncode, randomBytes, sha256Hex } from "./crypto";
 import { clientIp, fail, parseEmail, readJson, tooMany } from "./http";
 import { normalizeLicenseKey } from "./license-key";
-import { computeGrant, isPlan, PLAN_CODES, PLAN_NAMES, parsePlans, type PlanCode } from "./plans";
+import { computeGrant, isPlan, LEGACY_PLAN_CODES, offeredPlanCodes, PLAN_CODES, PLAN_NAMES, parsePlans, type PlanCode } from "./plans";
 import { failureBlock, hit, noteFailure } from "./ratelimit";
 
 /** Link thanh toán hết hạn sau 15 phút (`expiredAt` của PayOS); app hỏi trạng thái tối đa bằng thời gian này. */
@@ -24,11 +24,12 @@ export function orderDescription(orderCode: number): string {
 
 export function registerCheckout(app: Hono<AppEnv>) {
   // Bảng gói trả phí cho màn hình Nâng cấp của app (§4.3). Free không có ở đây: hạn mức Free là hằng số phía app.
+  // `?plans=` là các mã gói app bán được: app cũ không gửi nên chỉ thấy gói cũ (spec 2026-10-13 §2.3).
   app.get("/v1/plans", (c) => {
     const plans = parsePlans(c.env.PLANS);
     if (!plans) return fail(c, 503, "pricing_not_configured");
     return c.json({
-      plans: PLAN_CODES.map((code) => ({
+      plans: offeredPlanCodes(PLAN_CODES, LEGACY_PLAN_CODES, c.req.query("plans")).map((code) => ({
         code,
         name: PLAN_NAMES[code],
         quota_minutes_per_cycle: plans[code].quota_minutes_per_cycle,
