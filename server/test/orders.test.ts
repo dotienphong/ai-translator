@@ -685,3 +685,67 @@ describe("webhook đúng chữ ký mà nội dung sai dạng (review cuối, N2)
     },
   );
 });
+
+describe("gói 6 Months (spec 2026-10-13)", () => {
+  it("mua mới: cấp license 180 ngày đúng số tiền 269.000 đ, thư có tên gói", async () => {
+    const w = makeWorld();
+    const { orderCode, token } = await checkout(w, { plan: "six_months" });
+    w.clock.now = T0 + 120;
+    w.payos.pay(orderCode);
+    const wh = await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    expect(wh).toMatchObject({ status: 200, body: { ok: true, result: "granted" } });
+    const paid = await w.getOrder(orderCode, token);
+    expect(paid.body).toMatchObject({ status: "paid", grant_kind: "new", license_plan: "six_months", license_expires_at: T0 + 120 + 180 * DAY });
+    expect(await env.DB.prepare("SELECT amount, amount_paid FROM orders").first()).toEqual({ amount: 269000, amount_paid: 269000 });
+    expect(await license()).toEqual({ plan: "six_months", expires_at: T0 + 120 + 180 * DAY, cycle_anchor: T0 + 120, version: 0 });
+    expect(w.resend.sent[0]!.text).toContain("6 Months, hết hạn");
+  });
+
+  it("trả thiếu tiền (underpaid) thì không cấp license, như các gói khác", async () => {
+    const w = makeWorld();
+    const { orderCode } = await checkout(w, { plan: "six_months" });
+    w.payos.pay(orderCode, 100000);
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    expect(await orderRow(orderCode)).toMatchObject({ status: "underpaid", amount_paid: 100000 });
+    expect(await licenseCount()).toBe(0);
+  });
+
+  it("mua thêm khi còn 100 ngày: cộng 180 ngày vào hạn cũ, giữ cycle_anchor", async () => {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy({ plan: "six_months" });
+    w.clock.now = T0 + 80 * DAY;
+    const order = await renew(w, licenseKey, "six_months");
+    expect(order).toMatchObject({ status: "paid", grant_kind: "extend", license_plan: "six_months", license_expires_at: T0 + 360 * DAY });
+    expect(await license()).toEqual({ plan: "six_months", expires_at: T0 + 360 * DAY, cycle_anchor: T0, version: 1 });
+  });
+
+  it("lên gói: Monthly còn 20 ngày mua 6 Months, quy đổi 22 ngày, chạy 202 ngày từ lúc trả tiền", async () => {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy();
+    w.clock.now = T0 + 10 * DAY;
+    const order = await renew(w, licenseKey, "six_months");
+    expect(order).toMatchObject({ grant_kind: "change", license_plan: "six_months", license_expires_at: T0 + 212 * DAY });
+    expect(await license()).toEqual({ plan: "six_months", expires_at: T0 + 212 * DAY, cycle_anchor: T0 + 10 * DAY, version: 1 });
+    expect(w.resend.sent.at(-1)!.subject).toBe("Đã đổi gói AI Translator / AI Translator plan changed");
+    expect(w.resend.sent.at(-1)!.text).toContain("6 Months, hết hạn");
+    const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'license_plan_changed'").first<{ detail: string }>();
+    expect(JSON.parse(log!.detail)).toMatchObject({ plan: "six_months", from_plan: "monthly", from_expires_at: T0 + 30 * DAY, converted_days: 22 });
+  });
+
+  it("xuống gói: Yearly còn 200 ngày mua 6 Months, quy đổi 183 ngày, chạy 363 ngày", async () => {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy({ plan: "yearly" });
+    w.clock.now = T0 + 165 * DAY;
+    const order = await renew(w, licenseKey, "six_months");
+    expect(order).toMatchObject({ grant_kind: "change", license_plan: "six_months", license_expires_at: T0 + 165 * DAY + 363 * DAY });
+    expect(await license()).toEqual({ plan: "six_months", expires_at: T0 + 528 * DAY, cycle_anchor: T0 + 165 * DAY, version: 1 });
+  });
+
+  it("từ 6 Months lên Yearly khi còn 100 ngày: quy đổi 109 ngày, Yearly chạy 474 ngày", async () => {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy({ plan: "six_months" });
+    w.clock.now = T0 + 80 * DAY;
+    const order = await renew(w, licenseKey, "yearly");
+    expect(order).toMatchObject({ grant_kind: "change", license_plan: "yearly", license_expires_at: T0 + 80 * DAY + 474 * DAY });
+  });
+});

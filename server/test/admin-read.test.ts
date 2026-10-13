@@ -91,6 +91,18 @@ describe("GET /admin/orders", () => {
     expect(await codes("status=")).toEqual([2, 1]);
   });
 
+  it("lọc theo gói six_months: chỉ ra đơn của gói đó; mã gói không có thì 400", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy({ plan: "six_months" }); // đơn 1
+    await w.buy({ plan: "yearly" }); // đơn 2
+    await checkouts(w, 1); // đơn 3, monthly, pending
+    const codes = async (q: string) => ((await adminCall(`/admin/orders?${q}`)).body as unknown as Page).items.map((o) => o.order_code);
+    expect(await codes("plan=six_months")).toEqual([1]);
+    expect(await codes("plan=yearly")).toEqual([2]);
+    expect(await codes("plan=monthly")).toEqual([3]);
+    expect((await adminCall("/admin/orders?plan=six_month")).status).toBe(400);
+  });
+
   it("bộ lọc sai thì 400 kèm field, không ghi nhật ký", async () => {
     const { adminCall } = makeAdmin();
     for (const [q, field] of [

@@ -565,6 +565,19 @@ describe("thay đổi license", () => {
     expect((await adminCall(`/admin/licenses/${id}/extend`, { body: { days: 0, note: "x" } })).status).toBe(400);
   });
 
+  it("cấp tay gói six_months: 180 ngày từ lúc cấp, thư nêu tên gói 6 Months, gia hạn tay vẫn cộng đúng số ngày", async () => {
+    const { w, adminCall } = makeAdmin();
+    const created = await adminCall("/admin/licenses", { body: { email: "gift@example.com", plan: "six_months", note: "tặng" } });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ plan: "six_months", expires_at: T0 + 180 * DAY });
+    expect(await licenseRow()).toMatchObject({ plan: "six_months", expires_at: T0 + 180 * DAY, cycle_anchor: T0, anchor_applied_at: T0 });
+    expect(w.resend.sent[0]!.text).toContain("6 Months, hết hạn");
+    const id = created.body.license_id as string;
+    w.clock.now = T0 + DAY;
+    const ext = await adminCall(`/admin/licenses/${id}/extend`, { body: { days: 7, note: "bù sự cố" } });
+    expect(ext.body).toEqual({ license_id: id, expires_at: T0 + 187 * DAY, cycle_anchor: T0 });
+  });
+
   it("mở khóa key không bị khóa: 404, không đặt lại lock_cleared_at, không ghi nhật ký; mở khóa lần hai cũng vậy", async () => {
     const { w, adminCall } = makeAdmin();
     const { licenseKey } = await w.buy();

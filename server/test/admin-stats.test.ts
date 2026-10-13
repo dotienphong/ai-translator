@@ -14,9 +14,12 @@ const vn = (y: number, mo: number, d: number, h = 0, mi = 0, s = 0) => Date.UTC(
 /** "Bây giờ" của phần lớn test: 07:00 ngày 01/10/2026 GMT+7 (đúng bằng T0 của harness). */
 const NOW = vn(2026, 10, 1, 7);
 
+/** Giá gói (wrangler.jsonc) cho cột `amount` của đơn mẫu. */
+const PRICE = { monthly: 50000, six_months: 269000, yearly: 500000 } as const;
+
 interface OrderSeed {
   status?: string;
-  plan?: "monthly" | "yearly";
+  plan?: keyof typeof PRICE;
   /** Mặc định 50000 nếu status là paid, 0 nếu không. */
   amountPaid?: number;
   /** Mặc định bằng paidAt (nếu có) hoặc NOW. */
@@ -41,7 +44,7 @@ function order(o: OrderSeed = {}): D1PreparedStatement {
      VALUES ('h', 'payos', ?, ?, 'VND', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).bind(
     o.plan ?? "monthly",
-    o.plan === "yearly" ? 500000 : 50000,
+    PRICE[o.plan ?? "monthly"],
     o.email !== undefined ? o.email : "khach@example.com",
     createdAt,
     status,
@@ -239,6 +242,22 @@ describe("GET /admin/stats: Tiền", () => {
     expect(monthOf(s, "2026-09")).toEqual({ month: "2026-09", monthly: { revenue: 50000, orders: 1 }, six_months: none, yearly: { revenue: 1000000, orders: 2 } });
     expect(monthOf(s, "2026-10")).toEqual({ month: "2026-10", monthly: none, six_months: none, yearly: { revenue: 500000, orders: 1 } });
     expect(monthOf(s, "2026-08")).toEqual({ month: "2026-08", monthly: none, six_months: none, yearly: none });
+  });
+
+  it("six_months có doanh thu và số đơn riêng theo tháng, không lẫn vào Monthly hay Yearly", async () => {
+    await seed(
+      order({ paidAt: vn(2026, 9, 10, 12) }),
+      order({ paidAt: vn(2026, 9, 11, 12), plan: "six_months", amountPaid: 269000 }),
+      order({ paidAt: vn(2026, 9, 12, 12), plan: "six_months", amountPaid: 269000 }),
+      order({ paidAt: vn(2026, 10, 1, 1), plan: "six_months", amountPaid: 269000 }),
+      order({ paidAt: vn(2026, 10, 1, 2), plan: "yearly", amountPaid: 500000 }),
+    );
+    const s = await getStats();
+    const none = { revenue: 0, orders: 0 };
+    expect(monthOf(s, "2026-09")).toEqual({ month: "2026-09", monthly: { revenue: 50000, orders: 1 }, six_months: { revenue: 538000, orders: 2 }, yearly: none });
+    expect(monthOf(s, "2026-10")).toEqual({ month: "2026-10", monthly: none, six_months: { revenue: 269000, orders: 1 }, yearly: { revenue: 500000, orders: 1 } });
+    // Doanh thu tháng này gộp mọi gói.
+    expect(s.money.this_month).toBe(769000);
   });
 
   it("ranh giới tháng: tháng 2 có 28 ngày, qua năm, đơn ngoài cửa sổ 12 tháng bị bỏ", async () => {

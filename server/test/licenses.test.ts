@@ -60,6 +60,7 @@ describe("activate", () => {
 
   it.each([
     ["monthly", 3000],
+    ["six_months", 6000],
     ["yearly", null],
   ])("gói %s: token mang hạn mức %s theo bảng gói", async (plan, quota) => {
     const { activate } = await setup(plan);

@@ -106,6 +106,7 @@ describe("POST /v1/checkout", () => {
 
   it.each([
     ["monthly", 50000],
+    ["six_months", 269000],
     ["yearly", 500000],
   ])("gói %s: giá %i đ lấy từ biến PLANS", async (plan, amount) => {
     const res = await makeWorld().call("POST", "/v1/checkout", { ...valid, plan });
@@ -277,6 +278,33 @@ describe("POST /v1/checkout", () => {
     expect(await env.DB.prepare("SELECT plan, expires_at FROM licenses").first()).toEqual({ plan: "monthly", expires_at: T0 + 20 * DAY });
     const row = await env.DB.prepare("SELECT renew_license_id FROM orders WHERE order_code = ?").bind(up.body.order_code).first();
     expect(row).toEqual({ renew_license_id: "L1" });
+  });
+
+  it("gói six_months: gọi PayOS đúng 269.000 đ, đơn lưu đúng gói và số tiền", async () => {
+    const w = makeWorld();
+    const res = await w.call("POST", "/v1/checkout", { ...valid, plan: "six_months" });
+    expect(res).toMatchObject({ status: 201, body: { order_code: 1, plan: "six_months", amount: 269000, currency: "VND" } });
+    expect(w.payos.requests[0]).toMatchObject({ method: "POST", path: "/v2/payment-requests", body: { orderCode: 1, amount: 269000, description: "AT1" } });
+    expect(await env.DB.prepare("SELECT plan, amount, status FROM orders WHERE order_code = 1").first()).toEqual({
+      plan: "six_months",
+      amount: 269000,
+      status: "pending",
+    });
+  });
+
+  it("gia hạn hay đổi gói sang six_months: ước tính theo spec 2026-10-13 §1 (Monthly còn 20 ngày → 22 ngày quy đổi, chạy 202 ngày)", async () => {
+    await env.DB.prepare(
+      `INSERT INTO licenses (id, license_key, email, plan, expires_at, cycle_anchor, anchor_applied_at, created_at)
+       VALUES ('L1', ?, 'a@example.com', 'monthly', ?, ?3, ?3, ?3)`,
+    )
+      .bind(vectors.license_keys[0]!.normalized, T0 + 20 * DAY, T0 - 10 * DAY)
+      .run();
+    const w = makeWorld();
+    const key = vectors.license_keys[0]!.input;
+    const up = await w.call("POST", "/v1/checkout", { ...valid, plan: "six_months", license_key: key });
+    expect(up).toMatchObject({ status: 201, body: { plan: "six_months", amount: 269000, license_expires_at: T0 + 202 * DAY, converted_days: 22 } });
+    // Ước tính không đổi license.
+    expect(await env.DB.prepare("SELECT plan, expires_at FROM licenses").first()).toEqual({ plan: "monthly", expires_at: T0 + 20 * DAY });
   });
 
   it("trang return và cancel trả HTML", async () => {
