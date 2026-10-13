@@ -170,6 +170,15 @@ it("0003 nới CHECK mã gói: giữ nguyên dữ liệu, khóa ngoại, index, 
        VALUES ('A4', 'L4', 'device-4', 'Máy 4', 2, 1, 21, 22, 23, 24, 'admin')`,
     ),
     db.prepare("INSERT INTO deactivations (license_id, activation_id, at, by) VALUES ('L4', 'A4', 25, 'admin')"),
+    // Đơn và lần gỡ lớn nhất đã bị xóa: bộ đếm lớn hơn khóa lớn nhất còn lại, đúng tình trạng production sau khi xóa dòng
+    // thử. Thiếu ca này thì khi chép dòng SQLite tự dựng lại bộ đếm từ khóa lớn nhất, và test xanh dù 0003 không giữ bộ đếm.
+    db.prepare(
+      `INSERT INTO orders (order_code, order_token_hash, provider, plan, amount, currency, email_consent_at, status, created_at, expires_at)
+       VALUES (1000030, 'hash-30', 'payos', 'monthly', 50000, 'VND', 0, 'pending', 0, 0)`,
+    ),
+    db.prepare("DELETE FROM orders WHERE order_code = 1000030"),
+    db.prepare("INSERT INTO deactivations (license_id, activation_id, at, by) VALUES ('L4', 'A4', 27, 'user')"),
+    db.prepare("DELETE FROM deactivations WHERE at = 27"),
   ]);
 
   const schemaBefore = await sqlOf();
@@ -178,6 +187,10 @@ it("0003 nới CHECK mã gói: giữ nguyên dữ liệu, khóa ngoại, index, 
   const seqBefore = await sequences();
   expect(dataBefore.licenses.length).toBeGreaterThanOrEqual(4);
   expect(dataBefore.orders.length).toBeGreaterThanOrEqual(4);
+  // Điều kiện để test có sức phân biệt: hai bộ đếm lớn hơn khóa lớn nhất còn lại (nếu không, SQLite tự dựng đúng bộ đếm).
+  const maxOf = async (sql: string) => (await db.prepare(sql).first<{ m: number }>())!.m;
+  expect(seqBefore.orders).toBeGreaterThan(await maxOf("SELECT MAX(order_code) AS m FROM orders"));
+  expect(seqBefore.deactivations).toBeGreaterThan(await maxOf("SELECT MAX(id) AS m FROM deactivations"));
 
   await applyD1Migrations(db, env.TEST_MIGRATIONS);
 
