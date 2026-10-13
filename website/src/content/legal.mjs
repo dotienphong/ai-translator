@@ -5,7 +5,7 @@ import { pageHero, docLayout, callout } from "../build/components.mjs";
 
 const read = (name) => readFileSync(new URL(`../../../docs/legal/${name}`, import.meta.url), "utf8");
 
-export function legalPage({ id, lang, path, file, title, description, crumbs, heroLead, inAppNote, versionLabel, llm }) {
+export function legalPage({ id, lang, path, file, title, description, crumbs, heroLead, inAppNote, versionLabel, llm, modified = "2026-10-08" }) {
   const source = read(file);
   const { html, headings } = renderMarkdown(source.replace(/^# .*\n+/, ""), { slug: slugify });
   const versionMatch = /\*\*(Phiên bản|Version) ([0-9.]+)[^*]*\*\*/.exec(source);
@@ -17,7 +17,7 @@ export function legalPage({ id, lang, path, file, title, description, crumbs, he
     title,
     description,
     breadcrumbs: crumbs,
-    modified: "2026-10-08",
+    modified,
     published: "2026-10-07",
     type: "article",
     schemaType: "WebPage",

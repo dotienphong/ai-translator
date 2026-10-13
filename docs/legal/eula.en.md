@@ -1,6 +1,6 @@
 # AI Translator End User License Agreement (EULA)
 
-**Version 1.1, effective 7 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.2, effective 13 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 This is an agreement between you and **Do Tien Phong** ("we", "us") for your use of the **AI Translator** application (the "app"). By installing or using the app you agree to it. If you do not agree, please do not install or use the app.
 
@@ -18,14 +18,15 @@ We grant you a **personal, non-exclusive, non-transferable, revocable** right to
 |---|---|---|---|
 | Free | 30 minutes per day | 10-day trial, once per machine | 0 VND |
 | Monthly | 50 hours per 30-day cycle | 30 days per order | 50,000 VND |
+| 6 Months | 100 hours per 30-day cycle | 180 days per order | 269,000 VND |
 | Yearly | unlimited | 365 days per order | 500,000 VND |
 
 (Current prices and quotas are shown in the app when you buy; we may add new plans. We do not reduce the quota of a plan you have already paid for during the period you bought.)
 
 - **Free is a trial plan:** it can be used for **10 days**, counted from the first time the app registers the trial with our server (usually the first time you open the app with a network connection). **Each machine gets one trial only**: uninstalling and reinstalling the app, or deleting its data, does not restart the trial. When the trial ends you need a paid plan to keep translating.
-- Both paid plans have the same Pro features (glossary, history, transcript export) and differ in quota and term.
-- A paid plan is an **order paid in advance** (Monthly 30 days, Yearly 365 days) in VND by VietQR bank transfer (PayOS). **It does not renew automatically.** When it expires the app returns to the Free plan if the machine is still within its trial; after the trial you cannot translate until you buy again.
-- **Buying more of the same plan** adds the plan's days (30 days for Monthly, 365 days for Yearly). **Changing plan** while you still have time: the remaining days of the old plan are converted by price per day into days of the new plan (rounded down), and the new plan starts immediately with a new cycle; the app shows the converted days and the new expiry date beforehand. **Plan changes are not refunded.**
+- All three paid plans have the same Pro features (glossary, history, transcript export) and differ in quota and term.
+- A paid plan is an **order paid in advance** (Monthly 30 days, 6 Months 180 days, Yearly 365 days) in VND by VietQR bank transfer (PayOS). **It does not renew automatically.** When it expires the app returns to the Free plan if the machine is still within its trial; after the trial you cannot translate until you buy again.
+- **Buying more of the same plan** adds the plan's days (30 days for Monthly, 180 days for 6 Months, 365 days for Yearly). **Changing plan** while you still have time: the remaining days of the old plan are converted by price per day into days of the new plan (rounded down), and the new plan starts immediately with a new cycle; the app shows the converted days and the new expiry date beforehand. **Plan changes are not refunded.**
 - Quota is counted **per machine**, by actual translation time. When quota runs out, translation stops until the next reset or until you buy more.
 - **Refunds:** amounts paid are **not refundable**, except (a) where our fault prevents you from using the plan you bought and we cannot fix it within a reasonable time, or (b) where the law requires otherwise. Send a request within **7 days** of payment to support@aitranslator.io.vn with your order code.
 - We may issue or extend licenses manually (for example when you transferred too little and then topped up).

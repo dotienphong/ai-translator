@@ -1,6 +1,6 @@
 # Thỏa thuận cấp phép người dùng cuối (EULA) của AI Translator
 
-**Phiên bản 1.1, hiệu lực từ 07/10/2026.**
+**Phiên bản 1.2, hiệu lực từ 13/10/2026.**
 
 Văn bản này là thỏa thuận giữa bạn và **Đỗ Tiến Phong** ("chúng tôi") về việc dùng ứng dụng **AI Translator** ("ứng dụng"). Bằng việc cài đặt hoặc dùng ứng dụng, bạn đồng ý với thỏa thuận này. Nếu không đồng ý, xin đừng cài đặt hay dùng.
 
@@ -18,14 +18,15 @@ Chúng tôi cấp cho bạn quyền **cá nhân, không độc quyền, không c
 |---|---|---|---|
 | Free | 30 phút mỗi ngày | dùng thử 10 ngày, mỗi máy một lần | 0 đ |
 | Monthly | 50 giờ mỗi chu kỳ 30 ngày | 30 ngày mỗi đơn | 50.000 đ |
+| 6 Months | 100 giờ mỗi chu kỳ 30 ngày | 180 ngày mỗi đơn | 269.000 đ |
 | Yearly | không giới hạn | 365 ngày mỗi đơn | 500.000 đ |
 
 (Giá và hạn mức hiện hành do ứng dụng hiển thị khi bạn mua; chúng tôi có thể bán thêm gói mới. Chúng tôi không hạ hạn mức của gói bạn đã trả tiền trong thời hạn đã mua.)
 
 - **Free là gói dùng thử:** dùng được trong **10 ngày**, tính từ lần đầu ứng dụng đăng ký dùng thử với máy chủ của chúng tôi (thường là lần đầu mở ứng dụng có mạng). **Mỗi máy chỉ dùng thử một lần**: gỡ rồi cài lại ứng dụng, hay xóa dữ liệu, không mở lại thời gian dùng thử. Hết dùng thử thì bạn cần mua gói trả phí để tiếp tục dịch.
-- Hai gói trả phí cùng có các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), khác hạn mức và thời hạn.
-- Gói trả phí là **đơn trả trước** (Monthly 30 ngày, Yearly 365 ngày) bằng VND qua chuyển khoản VietQR (PayOS). **Không tự gia hạn.** Hết hạn thì ứng dụng quay về gói Free nếu máy còn trong thời gian dùng thử; hết dùng thử thì không dịch được cho tới khi bạn mua tiếp.
-- **Mua thêm cùng gói** cộng thêm số ngày của gói (30 ngày với Monthly, 365 ngày với Yearly). **Đổi gói** khi còn hạn: số ngày còn lại của gói cũ được quy đổi theo giá mỗi ngày sang ngày của gói mới (làm tròn xuống), gói mới bắt đầu ngay với chu kỳ mới; ứng dụng hiện trước số ngày quy đổi và ngày hết hạn mới. **Đổi gói không được hoàn tiền.**
+- Ba gói trả phí cùng có các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), khác hạn mức và thời hạn.
+- Gói trả phí là **đơn trả trước** (Monthly 30 ngày, 6 Months 180 ngày, Yearly 365 ngày) bằng VND qua chuyển khoản VietQR (PayOS). **Không tự gia hạn.** Hết hạn thì ứng dụng quay về gói Free nếu máy còn trong thời gian dùng thử; hết dùng thử thì không dịch được cho tới khi bạn mua tiếp.
+- **Mua thêm cùng gói** cộng thêm số ngày của gói (30 ngày với Monthly, 180 ngày với 6 Months, 365 ngày với Yearly). **Đổi gói** khi còn hạn: số ngày còn lại của gói cũ được quy đổi theo giá mỗi ngày sang ngày của gói mới (làm tròn xuống), gói mới bắt đầu ngay với chu kỳ mới; ứng dụng hiện trước số ngày quy đổi và ngày hết hạn mới. **Đổi gói không được hoàn tiền.**
 - Hạn mức tính **riêng cho từng máy**, đếm theo thời gian dịch thực tế. Hết hạn mức thì dừng dịch cho tới kỳ reset hoặc khi bạn mua thêm.
 - **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu trong **7 ngày** kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn.
 - Chúng tôi có thể cấp hoặc gia hạn license thủ công (ví dụ khi bạn chuyển thiếu rồi chuyển bù).

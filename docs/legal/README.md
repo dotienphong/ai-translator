@@ -1,6 +1,6 @@
 # Văn bản pháp lý của AI Translator
 
-**Phiên bản 1.1, hiệu lực từ 2026-10-07**, dùng để phát hành. Bản 1.0 (2026-10-06) do chủ dự án duyệt; bản 1.1 sửa phần gói theo spec `2026-10-07-three-plans-single-device-design.md` (ba gói, dùng thử Free theo máy, mỗi key một máy).
+**EULA phiên bản 1.2, hiệu lực từ 2026-10-13; chính sách quyền riêng tư giữ phiên bản 1.1 (2026-10-07)**, dùng để phát hành. Bản 1.0 (2026-10-06) do chủ dự án duyệt; bản 1.1 sửa phần gói theo spec `2026-10-07-three-plans-single-device-design.md` (ba gói, dùng thử Free theo máy, mỗi key một máy); bản 1.2 của EULA thêm gói 6 Months theo spec `2026-10-13-six-months-plan-design.md` (chỉ bảng gói và các câu nêu số ngày mỗi đơn).
 
 > **Chưa được luật sư xem.** Văn bản bám sát hành vi thật của sản phẩm nhưng **không phải tư vấn pháp lý**, và việc phát hành khi chưa có luật sư xem là rủi ro chủ dự án đã chấp nhận. Khuyến nghị: nhờ luật sư rà (các điểm ở dưới) trước khi bán công khai rộng rãi, rồi cập nhật văn bản và ngày hiệu lực.
 
@@ -14,7 +14,7 @@ Bản tiếng Việt là bản gốc; bản tiếng Anh dịch tương đương 
 ## Thông tin đã chốt và đã dùng trong văn bản
 - Bên cung cấp: **Đỗ Tiến Phong** (cá nhân), email **support@aitranslator.io.vn**, thương hiệu hiển thị "AI Translator". Không công bố địa chỉ liên hệ.
 - Dữ liệu cá nhân trên máy chủ giữ không thời hạn, chỉ xóa khi khách yêu cầu (chốt 2026-10-01); sau khi xóa vẫn giữ mã băm ID máy, thời điểm đồng ý, và dòng đơn hàng mức kế toán (spec §10.1).
-- Ba gói (từ 2026-10-07): Free dùng thử 10 ngày mỗi máy, 30 phút mỗi ngày; Monthly 50.000 đ, 50 giờ mỗi chu kỳ 30 ngày; Yearly 500.000 đ, không giới hạn, 365 ngày. Đơn trả trước, không tự gia hạn; đổi gói quy đổi theo giá mỗi ngày, không hoàn tiền; mỗi key một máy, trùng máy thì tạm khóa cả hai; khóa tạm khi đổi máy quá nhiều; ngoại tuyến 14 ngày.
+- Bốn gói (từ 2026-10-13; ba gói từ 2026-10-07): Free dùng thử 10 ngày mỗi máy, 30 phút mỗi ngày; Monthly 50.000 đ, 50 giờ mỗi chu kỳ 30 ngày; 6 Months 269.000 đ, 100 giờ mỗi chu kỳ 30 ngày, 180 ngày; Yearly 500.000 đ, không giới hạn, 365 ngày. Đơn trả trước, không tự gia hạn; đổi gói quy đổi theo giá mỗi ngày, không hoàn tiền; mỗi key một máy, trùng máy thì tạm khóa cả hai; khóa tạm khi đổi máy quá nhiều; ngoại tuyến 14 ngày.
 - Bên xử lý dữ liệu: PayOS (Việt Nam), Cloudflare, Resend (ngoài Việt Nam).
 - **Mặc định đã chọn** (đổi được bằng cách sửa file): hoàn tiền "không hoàn, trừ lỗi do chúng tôi hoặc pháp luật; yêu cầu trong **7 ngày**"; độ tuổi **16 trở lên**; trần trách nhiệm bằng **số tiền đã trả trong 12 tháng**; ngày hiệu lực 2026-10-07.
 

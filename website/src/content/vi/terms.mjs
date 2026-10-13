@@ -11,5 +11,6 @@ export default legalPage({
   heroLead: "Thỏa thuận giữa bạn và bên cung cấp khi cài đặt hoặc dùng AI Translator. Bản tiếng Việt là bản gốc.",
   inAppNote: { title: "Văn bản này cũng có trong app", text: "Bạn đọc và đồng ý văn bản này ở bước Điều khoản khi mở app lần đầu; sau đó có thể xem lại ở Giới thiệu › Điều khoản và quyền riêng tư." },
   versionLabel: "Phiên bản",
+  modified: "2026-10-13",
   llm: "Thỏa thuận cấp phép người dùng cuối (EULA): quyền sử dụng, gói và thanh toán, mỗi key một máy, hoàn tiền, giới hạn trách nhiệm.",
 });

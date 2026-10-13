@@ -380,3 +380,11 @@ test("llms.txt nêu giá cả ba gói trả phí, lấy từ plans.mjs", async (
     assert.ok(line.includes(`${p.nameEn} ${vnd(p.priceVnd)}`), `llms.txt: thiếu "${p.nameEn} ${vnd(p.priceVnd)}" trong: ${line}`);
   }
 });
+
+
+test("điều khoản (EULA) nêu gói 6 Months đúng giá và thời hạn, phiên bản 1.2", () => {
+  const vi = textOf(htmlByPath.get("/dieu-khoan/"));
+  const en = textOf(htmlByPath.get("/en/terms/"));
+  for (const needle of ["Phiên bản 1.2", "6 Months", "269.000 đ", "180 ngày"]) assert.ok(vi.includes(needle), `/dieu-khoan/: thiếu "${needle}"`);
+  for (const needle of ["Version 1.2", "6 Months", "269,000 VND", "180 days"]) assert.ok(en.includes(needle), `/en/terms/: thiếu "${needle}"`);
+});
