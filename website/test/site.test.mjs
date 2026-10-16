@@ -477,8 +477,8 @@ test("Về chúng tôi, Giải pháp, Tải xuống, Tính năng, Liên hệ và
     "/en/features/": ["$3.99", "$21.99", "$39.99"],
     "/lien-he/": ["Creem", "biên lai"],
     "/en/contact/": ["Creem", "receipt"],
-    "/bao-mat-du-lieu/": ["Đúng năm nơi", "checkout.creem.io", "Armitage Labs OÜ", "điền sẵn"],
-    "/en/data-security/": ["exactly five places", "checkout.creem.io", "Armitage Labs OÜ", "pre-fill"],
+    "/bao-mat-du-lieu/": ["Đúng năm nơi", "www.creem.io", "Armitage Labs OÜ", "điền sẵn"],
+    "/en/data-security/": ["exactly five places", "www.creem.io", "Armitage Labs OÜ", "pre-fill"],
   };
   const errors = [];
   for (const [urlPath, needles] of Object.entries(need)) {

@@ -24,8 +24,11 @@ use crate::system;
 pub const EXTERNAL_HOSTS: &[&str] = &[
     // Trang thanh toán của PayOS (`checkout_url` của đơn, kế hoạch 06; spec §6.8 "Mua ngay trong app" bước 2).
     "pay.payos.vn",
-    // Trang thanh toán của Creem (`checkout_url` của đơn USD, spec 2026-10-14 §5); server cũng chỉ trả URL ở tên miền này.
+    // Trang thanh toán của Creem (`checkout_url` của đơn USD, spec 2026-10-14 §5). Production thật trả `https://www.creem.io/checkout/…`
+    // (đo ngày 2026-10-16 ở bước 9 của runbook); tài liệu Creem ghi `checkout.creem.io`, nên cả hai: server chỉ trả URL ở hai tên miền
+    // này (`www.creem.io` chỉ dưới `/checkout/`, `server/src/payment/creem.ts`).
     "checkout.creem.io",
+    "www.creem.io",
     // Website của sản phẩm (trang chính sách quyền riêng tư, hỗ trợ, tải bản mới); website có spec riêng.
     "aitranslator.io.vn",
 ];
@@ -327,12 +330,15 @@ mod tests {
         assert_eq!(system_calls(&app), ["open_external_url https://pay.payos.vn/web/abc"]);
     }
 
-    /// Trang thanh toán của Creem (spec 2026-10-14 §5) mở bằng trình duyệt như của PayOS: đúng tên miền `checkout.creem.io`;
+    /// Trang thanh toán của Creem (spec 2026-10-14 §5) mở bằng trình duyệt như của PayOS: đúng tên miền `checkout.creem.io` hay `www.creem.io` (production thật);
     /// tên miền con, `http`, cổng khác, thông tin đăng nhập hay tên miền gần giống thì chặn.
     #[test]
     fn the_creem_checkout_page_opens_in_the_browser_and_lookalikes_do_not() {
         let ok = Url::parse("https://checkout.creem.io/ch_abc?x=1").unwrap();
         assert_eq!(decide(&ok, Os::MacOs, None, EXTERNAL_HOSTS), Decision::OpenExternal);
+        // Production thật: https://www.creem.io/checkout/<sản phẩm>/<phiên> (đo 2026-10-16).
+        let prod = Url::parse("https://www.creem.io/checkout/prod_abc/ch_abc").unwrap();
+        assert_eq!(decide(&prod, Os::MacOs, None, EXTERNAL_HOSTS), Decision::OpenExternal);
         for bad in [
             "http://checkout.creem.io/ch_abc",
             "https://evil.checkout.creem.io/x",
@@ -340,7 +346,11 @@ mod tests {
             "https://checkout.creem.io.evil.example/x",
             "https://user@checkout.creem.io/x",
             "https://creem.io/x",
-            "https://www.creem.io/x",
+            "https://evil.www.creem.io/x",
+            "https://www.creem.io:8443/x",
+            "http://www.creem.io/checkout/prod_x/ch_1",
+            "https://www.creem.io.evil.example/checkout/prod_x/ch_1",
+            "https://user@www.creem.io/checkout/prod_x/ch_1",
             "https://api.creem.io/v1/checkouts",
         ] {
             assert_eq!(
@@ -359,7 +369,12 @@ mod tests {
     fn external_hosts_are_exactly_the_payment_pages_and_the_website() {
         assert_eq!(
             EXTERNAL_HOSTS,
-            ["pay.payos.vn", "checkout.creem.io", "aitranslator.io.vn"]
+            [
+                "pay.payos.vn",
+                "checkout.creem.io",
+                "www.creem.io",
+                "aitranslator.io.vn"
+            ]
         );
         let ok = Url::parse("https://pay.payos.vn/web/abc").unwrap();
         assert_eq!(decide(&ok, Os::MacOs, None, EXTERNAL_HOSTS), Decision::OpenExternal);

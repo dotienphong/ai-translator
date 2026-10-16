@@ -134,15 +134,17 @@ function problems(constants) {
   return out;
 }
 
-test("CREEM_CHECKOUT_HOST của server có trong EXTERNAL_HOSTS của app", () => {
+test("mọi host trang thanh toán Creem của server (CREEM_CHECKOUT_HOST, CREEM_CHECKOUT_HOST_WWW) có trong EXTERNAL_HOSTS của app", () => {
   const creem = source(CREEM);
-  const m = /^\s*(?:export\s+)?const\s+CREEM_CHECKOUT_HOST\s*=\s*"([^"]+)"\s*;/m.exec(creem);
-  assert.ok(m, `${CREEM}: không thấy hằng CREEM_CHECKOUT_HOST (đổi tên hay đổi dạng khai báo thì sửa test này theo)`);
   const hosts = externalHosts(source(NAVIGATION), NAVIGATION);
-  assert.ok(
-    hosts.includes(m[1]),
-    `server trả trang thanh toán ở ${m[1]} nhưng EXTERNAL_HOSTS của app chỉ có ${hosts.join(", ")}: app sẽ chặn không mở được`,
-  );
+  for (const name of ["CREEM_CHECKOUT_HOST", "CREEM_CHECKOUT_HOST_WWW"]) {
+    const m = new RegExp(`^\\s*(?:export\\s+)?const\\s+${name}\\s*=\\s*"([^"]+)"\\s*;`, "m").exec(creem);
+    assert.ok(m, `${CREEM}: không thấy hằng ${name} (đổi tên hay đổi dạng khai báo thì sửa test này theo)`);
+    assert.ok(
+      hosts.includes(m[1]),
+      `server trả trang thanh toán ở ${m[1]} nhưng EXTERNAL_HOSTS của app chỉ có ${hosts.join(", ")}: app sẽ chặn không mở được`,
+    );
+  }
 });
 
 test("nhịp hỏi đơn thẻ của app nằm dưới hạn mức order_poll của server ở mọi giờ đồng hồ", () => {

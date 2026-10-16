@@ -37,6 +37,13 @@ const USER_AGENT = "license-server/1.0";
 const TIMEOUT_MS = 10_000;
 /** Trang thanh toán của Creem. Chỉ tên miền này được trả cho app, và app cũng chỉ mở đúng tên miền này (navigation.rs). */
 export const CREEM_CHECKOUT_HOST = "checkout.creem.io";
+/**
+ * Production thật của Creem trả trang thanh toán ở `https://www.creem.io/checkout/…` (đo ngày 2026-10-16 ở bước 9 của runbook:
+ * tài liệu ghi `checkout.creem.io`, sandbox ghi `creem.io/test/checkout/…`). Chấp nhận cả hai: host trong tài liệu (mọi đường dẫn)
+ * và `www.creem.io` chỉ khi đường dẫn nằm dưới `/checkout/` (không mở trang nào khác của website Creem).
+ */
+export const CREEM_CHECKOUT_HOST_WWW = "www.creem.io";
+export const CREEM_CHECKOUT_PATH_WWW = "/checkout/";
 /** `trace_id` của Creem (ghi vào lỗi để hỏi hỗ trợ): chỉ nhận dạng mã thường, không bao giờ chép chữ lạ vào lỗi. */
 const TRACE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 /** Giá một đơn (cent) ta gửi làm `custom_price`: từ 1,00 USD (mức tối thiểu của Creem) tới trần an toàn của ta (parsePlans chỉ đòi số nguyên dương). */
@@ -87,7 +94,7 @@ export function parseProductIds(raw: unknown): Record<PlanCode, string> | null {
 
 /**
  * Địa chỉ trang thanh toán ở dạng chuẩn hóa (`href` của WHATWG URL, cách app phân tích lại: chữ hoa, cổng 443 và dấu `\` đều thành
- * một dạng), hay null nếu không đúng https://checkout.creem.io không userinfo, không cổng lạ.
+ * một dạng), hay null nếu không đúng https://checkout.creem.io hay https://www.creem.io/checkout/…, không userinfo, không cổng lạ.
  */
 function creemCheckoutUrl(value: string): string | null {
   let url: URL;
@@ -96,8 +103,12 @@ function creemCheckoutUrl(value: string): string | null {
   } catch {
     return null;
   }
-  const ok = url.protocol === "https:" && url.hostname === CREEM_CHECKOUT_HOST && url.port === "" && url.username === "" && url.password === "";
-  return ok ? url.href : null;
+  const plain = url.protocol === "https:" && url.port === "" && url.username === "" && url.password === "";
+  // `url.pathname` đã chuẩn hóa (`..`, `.` và `\`), nên `/checkout/../x` thành `/x` và không qua được tiền tố.
+  const page =
+    url.hostname === CREEM_CHECKOUT_HOST ||
+    (url.hostname === CREEM_CHECKOUT_HOST_WWW && url.pathname.startsWith(CREEM_CHECKOUT_PATH_WWW) && url.pathname.length > CREEM_CHECKOUT_PATH_WWW.length);
+  return plain && page ? url.href : null;
 }
 
 /**

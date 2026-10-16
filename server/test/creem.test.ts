@@ -844,6 +844,20 @@ describe("Creem: gia cố đọc phản hồi của call() và getPaymentStatus 
       ["https://evil.com/ch_1"],
       ["//checkout.creem.io/ch_1"],
       ["https://checkout.creem.io:8443/ch_1"],
+      // www.creem.io chỉ nhận dưới /checkout/ (production thật trả https://www.creem.io/checkout/…): trang khác của website Creem,
+      // đường dẫn chui ra ngoài tiền tố, tên miền gần giống, cổng lạ, http và userinfo đều bị từ chối.
+      ["https://www.creem.io/"],
+      ["https://www.creem.io/pricing"],
+      ["https://www.creem.io/checkout"],
+      ["https://www.creem.io/checkout/"],
+      ["https://www.creem.io/checkout/../pricing"],
+      ["https://www.creem.io/checkouts/prod_x/ch_1"],
+      ["https://creem.io/checkout/prod_x/ch_1"],
+      ["https://evil.www.creem.io/checkout/prod_x/ch_1"],
+      ["https://www.creem.io.evil.example/checkout/prod_x/ch_1"],
+      ["https://www.creem.io:8443/checkout/prod_x/ch_1"],
+      ["http://www.creem.io/checkout/prod_x/ch_1"],
+      ["https://user@www.creem.io/checkout/prod_x/ch_1"],
     ])("checkout_url %s: lỗi nói rõ ngoài tên miền thanh toán", async (url) => {
       const err = await caught(create(created({ checkout_url: url })));
       expect(err.message).toMatch(/ngoài tên miền thanh toán/);
@@ -865,6 +879,15 @@ describe("Creem: gia cố đọc phản hồi của call() và getPaymentStatus 
     it.each([["javascript:alert(1)"], ["không phải địa chỉ"], ["https://ex ample.com/x"]])("checkout_url %s không phân tích được: không có gợi ý host", async (url) => {
       const err = await caught(create(created({ checkout_url: url })));
       expect(err.message).toBe("Creem trả checkout_url ngoài tên miền thanh toán");
+    });
+
+    // Production thật (đo 2026-10-16, bước 9 của runbook): `https://www.creem.io/checkout/…`.
+    it.each([
+      ["https://www.creem.io/checkout/prod_x/ch_1", "https://www.creem.io/checkout/prod_x/ch_1"],
+      ["https://WWW.Creem.IO:443/checkout/prod_x/ch_1?x=1", "https://www.creem.io/checkout/prod_x/ch_1?x=1"],
+      ["https://www.creem.io/checkout/ch_1", "https://www.creem.io/checkout/ch_1"],
+    ])("checkout_url production %s được nhận và chuẩn hóa", async (url, href) => {
+      expect(await create(created({ checkout_url: url }))).toEqual({ providerRef: "ch_1", checkoutUrl: href, qrCode: null });
     });
 
     it.each([
