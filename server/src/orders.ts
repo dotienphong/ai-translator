@@ -450,25 +450,45 @@ export type RefundResult = "refunded" | "noted" | "duplicate" | "unknown_order";
 
 type RefundEvent = Extract<WebhookEvent, { kind: "refund" }>;
 
-/** Tên nhật ký, cũng là loại cảnh báo, của một sự kiện hoàn tiền hay tranh chấp. */
-function refundAction(event: RefundEvent): "order_disputed" | "order_refunded" | "order_partially_refunded" | "order_refund_unconfirmed" {
+/** Tên nhật ký, cũng là loại cảnh báo, của một sự kiện hoàn tiền hay tranh chấp. `full`: đã hoàn đủ (lần này hay cộng dồn). */
+function refundAction(
+  event: RefundEvent,
+  full: boolean,
+): "order_disputed" | "order_refunded" | "order_partially_refunded" | "order_refund_unconfirmed" {
   if (event.reason === "dispute") return "order_disputed";
   if (event.refundStatus !== "succeeded") return "order_refund_unconfirmed";
-  return event.full ? "order_refunded" : "order_partially_refunded";
+  return full ? "order_refunded" : "order_partially_refunded";
 }
 
 /**
+ * Nhật ký các lần hoàn tiền thành công đã ghi của đơn ?1 (`order_partially_refunded`, `order_refunded`): cộng dồn số đã hoàn
+ * (`detail.refunded_amount`; dòng không có số, như dòng `order_refunded` nguồn `provider_status` của fulfilOrder, không cộng).
+ */
+const REFUND_ROWS = "FROM audit_log WHERE order_code = ?1 AND action IN ('order_partially_refunded', 'order_refunded')";
+
+/** Số lần handleRefund đọc lại tổng đã hoàn khi lần hoàn khác của cùng đơn được ghi chen vào; quá thì ném lỗi (route trả 503). */
+const REFUND_ATTEMPTS = 3;
+
+/**
  * Webhook hoàn tiền hay tranh chấp (spec 2026-10-14 §4.4, đổi theo Q1 của chủ dự án ngày 2026-10-15). Tin payload đã kiểm chữ
- * ký, không hỏi lại cổng (Creem vẫn báo đơn `paid` sau khi hoàn). Không đụng license (D5).
+ * ký, không hỏi lại cổng (đo ở Creem sandbox ngày 2026-10-16: sau khi hoàn đủ, GET vẫn báo phiên `completed`, đơn `paid`). Không
+ * đụng license (D5).
  * - Mỗi sự kiện chưa thấy của một đơn đã biết, ở bất kỳ trạng thái nào, để lại đúng một nhật ký, một cảnh báo và một dòng log:
  *   tranh chấp là `order_disputed` (luôn, kể cả đơn đã `refunded`); hoàn tiền thành công là `order_refunded` (đủ) hay
  *   `order_partially_refunded`; lần hoàn chưa thành công (đang chờ, thất bại, thiếu trạng thái) là `order_refund_unconfirmed`.
- * - Cổng báo đã lấy lại đủ tiền (`full`) mà đơn chưa `refunded` thì đơn thành `refunded`, kể cả đơn chưa cấp (webhook hoàn tiền
- *   tới trước khi cấp): `refunded` thuộc SETTLED_STATUSES, nên sau đó không đường nào cấp key hay gửi thư cho đơn này nữa.
+ * - Hoàn đủ khi cổng báo lần này đã lấy lại đủ tiền (`event.full`), hay khi là lần hoàn thành công biết số tiền và cộng dồn
+ *   (`refunded_total` = số đã hoàn ở các nhật ký REFUND_ROWS của đơn + `refundedAmount` của lần này) ≥ số khách đã trả (> 0):
+ *   payload Creem chỉ mang số của một lần hoàn (`refund_amount`), không mang tổng. Tranh chấp và lần hoàn chưa thành công
+ *   không cộng. Mỗi sự kiện chỉ có một nhật ký (khử trùng bên dưới), nên Creem gửi lại không làm cộng hai lần.
+ * - Hoàn đủ mà đơn chưa `refunded` thì đơn thành `refunded`, kể cả đơn chưa cấp (webhook hoàn tiền tới trước khi cấp):
+ *   `refunded` thuộc SETTLED_STATUSES, nên sau đó không đường nào cấp key hay gửi thư cho đơn này nữa.
  * - Khử trùng theo mã sự kiện: cùng một batch (một transaction) gồm (i) câu đổi trạng thái, (ii) câu ghi nhật ký, đều chỉ có
  *   tác dụng khi nhật ký chưa có dòng nào của sự kiện này, rồi (iii) cảnh báo, chỉ ghi khi (ii) vừa ghi (`changes()` của câu
  *   ngay trước). Cổng gửi lại hay hai request chạy chồng: chỉ một lần có tác dụng. Thiếu mã sự kiện thì không khử trùng được
- *   (`= NULL` không bao giờ đúng): mỗi lần gửi là một sự kiện.
+ *   (`= NULL` không bao giờ đúng): mỗi lần gửi là một sự kiện (và được cộng dồn mỗi lần).
+ * - Cộng dồn không bị chạy chồng làm sai: tổng đọc trước batch, nên (i) và (ii) còn đòi số nhật ký REFUND_ROWS vẫn như lúc đọc.
+ *   Hai lần hoàn khác mã chạy chồng: lần ghi sau không có tác dụng gì, đọc lại tổng (giờ gồm lần kia) rồi ghi lại, tối đa
+ *   REFUND_ATTEMPTS lần; quá thì ném lỗi để cổng gửi lại.
  */
 export async function handleRefund(
   env: { DB: D1Database },
@@ -478,64 +498,94 @@ export async function handleRefund(
   actor: string,
 ): Promise<RefundResult> {
   const db = env.DB;
-  const order = await db
-    .prepare(
-      `SELECT order_code, status, plan, amount, currency, license_id, renew_license_id
-       FROM orders WHERE provider = ? AND provider_ref = ?`,
-    )
-    .bind(provider, event.providerRef)
-    .first<Pick<OrderRow, "order_code" | "status" | "plan" | "amount" | "currency" | "license_id" | "renew_license_id">>();
-  if (!order) {
-    console.warn(JSON.stringify({ event: "refund_unknown_order", provider, reason: event.reason, event_id: event.eventId }));
-    // QĐ-7: hoàn tiền hay tranh chấp của phiên không thuộc đơn nào cũng để lại dấu (gửi lại cùng mã thì không ghi thêm).
-    await recordUnmatched(db, deps.now(), provider, event, actor);
-    return "unknown_order";
-  }
   const now = deps.now();
-  const action = refundAction(event);
-  const detail = {
-    event_id: event.eventId,
-    reason: event.reason,
-    provider_reason: event.providerReason,
-    refund_status: event.refundStatus,
-    full: event.full,
-    refunded_amount: event.refundedAmount,
-    provider_amount_paid: event.providerAmountPaid,
-    prev_status: order.status,
-    plan: order.plan,
-    amount: order.amount,
-    currency: order.currency,
-    license_id: order.license_id ?? order.renew_license_id,
-  };
-  // ?1 mã đơn, ?2 mã sự kiện: dùng chung cho (i) và (ii).
-  const unseen = "NOT EXISTS (SELECT 1 FROM audit_log WHERE order_code = ?1 AND json_extract(detail, '$.event_id') = ?2)";
-  const [update, log] = await db.batch([
-    db
-      .prepare(`UPDATE orders SET status = 'refunded' WHERE order_code = ?1 AND status <> 'refunded' AND ?3 = 1 AND ${unseen}`)
-      .bind(order.order_code, event.eventId, event.full ? 1 : 0),
-    // Cột license_id (trang license ở Web Admin tra theo cột này) đọc ngay trong câu ghi, từ dòng đơn lúc ghi.
-    db
+  // Lần hoàn thành công biết số tiền thì cộng dồn với các lần đã ghi; tranh chấp và lần hoàn chưa thành công thì không.
+  const cumulative = event.reason === "refund" && event.refundStatus === "succeeded" && event.refundedAmount !== null;
+  const paid = event.providerAmountPaid;
+  for (let attempt = 1; ; attempt++) {
+    const order = await db
       .prepare(
-        `INSERT INTO audit_log (at, actor, action, license_id, order_code, detail)
-         SELECT ?3, ?4, ?5, (SELECT COALESCE(license_id, renew_license_id) FROM orders WHERE order_code = ?1), ?1, ?6 WHERE ${unseen}`,
+        `SELECT order_code, status, plan, amount, currency, license_id, renew_license_id
+         FROM orders WHERE provider = ? AND provider_ref = ?`,
       )
-      .bind(order.order_code, event.eventId, now, actor, action, JSON.stringify(detail)),
-    // Đứng ngay sau câu ghi nhật ký: sự kiện đã thấy thì câu đó không ghi, nên cũng không có cảnh báo.
-    alertIfChanged(db, action, now),
-  ]);
-  if (log?.meta.changes !== 1) return "duplicate";
-  console.warn(
-    JSON.stringify({
-      event: "order_refund_event",
-      order_code: order.order_code,
-      action,
-      prev_status: order.status,
-      // Nhật ký đã ghi nên (i) đã chạy với cùng điều kiện khử trùng: `full` thì đơn chắc chắn đang `refunded`.
-      status_after: event.full ? "refunded" : order.status,
+      .bind(provider, event.providerRef)
+      .first<Pick<OrderRow, "order_code" | "status" | "plan" | "amount" | "currency" | "license_id" | "renew_license_id">>();
+    if (!order) {
+      console.warn(JSON.stringify({ event: "refund_unknown_order", provider, reason: event.reason, event_id: event.eventId }));
+      // QĐ-7: hoàn tiền hay tranh chấp của phiên không thuộc đơn nào cũng để lại dấu (gửi lại cùng mã thì không ghi thêm).
+      await recordUnmatched(db, now, provider, event, actor);
+      return "unknown_order";
+    }
+    const prior = cumulative
+      ? await db
+          .prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(json_extract(detail, '$.refunded_amount')), 0) AS total ${REFUND_ROWS}`)
+          .bind(order.order_code)
+          .first<{ n: number; total: number }>()
+      : null;
+    const refundedTotal = prior ? prior.total + (event.refundedAmount ?? 0) : null;
+    const full = event.full || (refundedTotal !== null && paid !== null && paid > 0 && refundedTotal >= paid);
+    const action = refundAction(event, full);
+    const detail = {
       event_id: event.eventId,
-    }),
-  );
-  return update?.meta.changes === 1 ? "refunded" : "noted";
+      reason: event.reason,
+      provider_reason: event.providerReason,
+      refund_status: event.refundStatus,
+      full,
+      // Số của lần hoàn này (Creem: `refund_amount`), và tổng đã hoàn của đơn tính cả lần này (null nếu không cộng dồn).
+      refunded_amount: event.refundedAmount,
+      refunded_total: refundedTotal,
+      provider_amount_paid: paid,
+      prev_status: order.status,
+      plan: order.plan,
+      amount: order.amount,
+      currency: order.currency,
+      license_id: order.license_id ?? order.renew_license_id,
+    };
+    // ?1 mã đơn, ?2 mã sự kiện: dùng chung cho (i) và (ii). `same(p)`: số nhật ký REFUND_ROWS vẫn bằng tham số ?p (số lúc đọc
+    // tổng), hay ?p là NULL (không cộng dồn).
+    const unseen = "NOT EXISTS (SELECT 1 FROM audit_log WHERE order_code = ?1 AND json_extract(detail, '$.event_id') = ?2)";
+    const same = (p: number) => `(?${p} IS NULL OR (SELECT COUNT(*) ${REFUND_ROWS}) = ?${p})`;
+    const seenRows = prior?.n ?? null;
+    const [update, log] = await db.batch([
+      db
+        .prepare(`UPDATE orders SET status = 'refunded' WHERE order_code = ?1 AND status <> 'refunded' AND ?3 = 1 AND ${unseen} AND ${same(4)}`)
+        .bind(order.order_code, event.eventId, full ? 1 : 0, seenRows),
+      // Cột license_id (trang license ở Web Admin tra theo cột này) đọc ngay trong câu ghi, từ dòng đơn lúc ghi.
+      db
+        .prepare(
+          `INSERT INTO audit_log (at, actor, action, license_id, order_code, detail)
+           SELECT ?3, ?4, ?5, (SELECT COALESCE(license_id, renew_license_id) FROM orders WHERE order_code = ?1), ?1, ?6
+           WHERE ${unseen} AND ${same(7)}`,
+        )
+        .bind(order.order_code, event.eventId, now, actor, action, JSON.stringify(detail), seenRows),
+      // Đứng ngay sau câu ghi nhật ký: sự kiện đã thấy thì câu đó không ghi, nên cũng không có cảnh báo.
+      alertIfChanged(db, action, now),
+    ]);
+    if (log?.meta.changes === 1) {
+      console.warn(
+        JSON.stringify({
+          event: "order_refund_event",
+          order_code: order.order_code,
+          action,
+          prev_status: order.status,
+          // Nhật ký đã ghi nên (i) đã chạy với cùng điều kiện: `full` thì đơn chắc chắn đang `refunded`.
+          status_after: full ? "refunded" : order.status,
+          event_id: event.eventId,
+        }),
+      );
+      return update?.meta.changes === 1 ? "refunded" : "noted";
+    }
+    // Không ghi gì: sự kiện đã thấy (trùng), hay (chỉ khi cộng dồn) có lần hoàn khác của đơn được ghi giữa lúc đọc tổng và lúc ghi.
+    if (prior === null) return "duplicate";
+    const seen = await db
+      .prepare("SELECT 1 AS seen FROM audit_log WHERE order_code = ?1 AND json_extract(detail, '$.event_id') = ?2")
+      .bind(order.order_code, event.eventId)
+      .first();
+    if (seen !== null) return "duplicate";
+    if (attempt >= REFUND_ATTEMPTS) {
+      throw new Error(`hoàn tiền đơn ${order.order_code}: nhật ký hoàn tiền đổi liên tục trong ${REFUND_ATTEMPTS} lần ghi, chờ cổng gửi lại`);
+    }
+  }
 }
 
 /**

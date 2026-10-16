@@ -3,12 +3,18 @@ import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hmacSha256Hex } from "../src/crypto";
 import { fulfilOrder } from "../src/orders";
-import { CreemProvider } from "../src/payment/creem";
+import { CREEM_CHECKOUT_HOST, CreemProvider } from "../src/payment/creem";
 import { reconcile } from "../src/reconcile";
 import { makeAdmin } from "./admin-harness";
 import { resetDb, withFailingInsert } from "./db";
 import { FakeCreem, TEST_CREEM_API_KEY, TEST_CREEM_PRODUCTS, TEST_CREEM_WEBHOOK_SECRET } from "./fakes";
 import { DAY, makeWorld, T0 } from "./world";
+// Thân thật của Creem sandbox ngày 2026-10-16 (test/fixtures/creem/README.md): đúng từng byte; test tự ký bằng secret của kênh.
+import checkoutCompletedReal from "./fixtures/creem/checkout.completed.real.json?raw";
+import createCheckoutReal from "./fixtures/creem/create-checkout.real.json?raw";
+import getPaidReal from "./fixtures/creem/get-checkout.paid.real.json?raw";
+import getPendingReal from "./fixtures/creem/get-checkout.pending.real.json?raw";
+import refundCreatedReal from "./fixtures/creem/refund.created.real.json?raw";
 
 beforeEach(resetDb);
 // Gỡ mọi spy (console.warn, console.error...) kể cả khi test đỏ giữa chừng, để console của test sau không bị nuốt.
@@ -1343,6 +1349,7 @@ describe("webhook Creem: hoàn tiền và tranh chấp (Q1 2026-10-15: hoàn đ�
           refund_status: "succeeded",
           full: true,
           refunded_amount: 399,
+          refunded_total: 399,
           provider_amount_paid: 399,
           prev_status: "paid",
           plan: "monthly",
@@ -1353,6 +1360,98 @@ describe("webhook Creem: hoàn tiền và tranh chấp (Q1 2026-10-15: hoàn đ�
       },
     ]);
     expect(await alerts()).toEqual([{ kind: "order_refunded", count: 1 }]);
+  });
+
+  it("đầu-cuối bằng thân THẬT của Creem sandbox (tạo phiên, checkout.completed, GET đã trả, refund.created hoàn đủ): cấp đúng một lần; hoàn đủ thì đơn refunded, một nhật ký order_refunded, một cảnh báo, license giữ nguyên (D5); gửi lại thì duplicate", async () => {
+    const w = makeWorld();
+    const REAL_CHECKOUT = "ch_491X90hRbNHfL1fKCEZYCt";
+    let code: string | null = null;
+    let paid = false;
+    /** Chỉ đổi mã đơn của lần đo (`request_id`, `metadata.order_code`: "9000001") thành mã đơn của test, trong bộ nhớ. */
+    const ours = (raw: string) => {
+      if (code === null) throw new Error("chưa tạo phiên");
+      return raw.replaceAll('"9000001"', JSON.stringify(code));
+    };
+    const json = (raw: string) => new Response(raw, { status: 200, headers: { "content-type": "application/json" } });
+    const asked: string[] = [];
+    w.deps.payments.creem = new CreemProvider(
+      { baseUrl: "https://creem.test", apiKey: TEST_CREEM_API_KEY, webhookSecret: TEST_CREEM_WEBHOOK_SECRET, productIds: { ...TEST_CREEM_PRODUCTS } },
+      async (url, init) => {
+        const u = new URL(url);
+        const method = init?.method ?? "GET";
+        asked.push(`${method} ${u.pathname}`);
+        if (method === "POST" && u.pathname === "/v1/checkouts") {
+          code = (JSON.parse(String(init?.body)) as { request_id: string }).request_id;
+          // Host sandbox (creem.io/test/…) đổi sang host thanh toán production mà server chấp nhận (CREEM_CHECKOUT_HOST).
+          return json(ours(createCheckoutReal).replace("https://creem.io/test/checkout/", `https://${CREEM_CHECKOUT_HOST}/test/checkout/`));
+        }
+        if (method === "GET" && u.pathname === "/v1/checkouts" && u.searchParams.get("checkout_id") === REAL_CHECKOUT) {
+          return json(ours(paid ? getPaidReal : getPendingReal));
+        }
+        return new Response(JSON.stringify({ trace_id: "khong_co" }), { status: 404 });
+      },
+    );
+    const { orderCode, token } = await (async () => {
+      const res = await w.call("POST", "/v1/checkout", usd);
+      expect(res.status).toBe(201);
+      return { orderCode: res.body.order_code as number, token: res.body.order_token as string };
+    })();
+    expect(code).toBe(String(orderCode));
+    expect(await env.DB.prepare("SELECT provider_ref FROM orders WHERE order_code = ?").bind(orderCode).first()).toEqual({ provider_ref: REAL_CHECKOUT });
+    // Đối soát lúc khách chưa trả: GET thật (không có order) giữ đơn pending.
+    w.clock.now = T0 + 300;
+    expect(await reconcile(w.env, w.deps)).toMatchObject({ granted: 0, errors: 0 });
+    expect(await orderRow(orderCode)).toMatchObject({ status: "pending" });
+    paid = true;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      expect(await signedRaw(w, ours(checkoutCompletedReal))).toMatchObject({ status: 200, body: { ok: true, result: "granted" } });
+      expect(await signedRaw(w, ours(checkoutCompletedReal))).toMatchObject({ status: 200, body: { ok: true, result: "already_paid" } });
+      expect(logged(warn).filter((l) => l.event === "creem_malformed_paid_session")).toEqual([]);
+    } finally {
+      warn.mockRestore();
+    }
+    expect(await orderRow(orderCode)).toMatchObject({ status: "paid", amount_paid: 399, currency: "USD", provider: "creem" });
+    expect(await count("licenses")).toBe(1);
+    expect(await auditLog("license_issued")).toHaveLength(1);
+    expect(w.resend.sent).toHaveLength(1);
+    const before = await licenseRow();
+    const lic = await env.DB.prepare("SELECT id FROM licenses").first<{ id: string }>();
+    // Sau khi hoàn đủ, GET của Creem vẫn báo phiên completed và order paid (đo ở sandbox): webhook là nguồn duy nhất.
+    w.clock.now = T0 + 3600;
+    expect(await signedRaw(w, ours(refundCreatedReal))).toMatchObject({ status: 200, body: { ok: true, result: "refunded" } });
+    expect(await signedRaw(w, ours(refundCreatedReal))).toMatchObject({ status: 200, body: { ok: true, result: "duplicate" } });
+    expect(await orderRow(orderCode)).toMatchObject({ status: "refunded", amount_paid: 399 });
+    expect((await w.getOrder(orderCode, token)).body).toMatchObject({ status: "refunded" });
+    expect(await licenseRow()).toEqual(before);
+    expect(await refundLogs(orderCode)).toEqual([
+      {
+        action: "order_refunded",
+        detail: {
+          event_id: "evt_6LprlBm83BiXo9APW4YxcY",
+          reason: "refund",
+          provider_reason: "requested_by_customer",
+          refund_status: "succeeded",
+          full: true,
+          refunded_amount: 399,
+          refunded_total: 399,
+          provider_amount_paid: 399,
+          prev_status: "paid",
+          plan: "monthly",
+          amount: 399,
+          currency: "USD",
+          license_id: lic!.id,
+        },
+      },
+    ]);
+    expect(await alerts()).toEqual([{ kind: "order_refunded", count: 1 }]);
+    expect(await unmatchedLogs()).toEqual([]);
+    // Webhook thanh toán gửi lại sau khi hoàn: đơn đã khép, không hỏi Creem, không cấp lại.
+    const gets = asked.filter((a) => a.startsWith("GET")).length;
+    expect(await signedRaw(w, ours(checkoutCompletedReal))).toMatchObject({ status: 200, body: { ok: true, result: "already_settled" } });
+    expect(asked.filter((a) => a.startsWith("GET")).length).toBe(gets);
+    expect(await count("licenses")).toBe(1);
+    expect(w.resend.sent).toHaveLength(1);
   });
 
   it("cùng một sự kiện gửi ba lần chồng nhau (cả ba đọc đơn trước khi ghi): một lần đổi trạng thái, một nhật ký, một cảnh báo; gửi lại sau đó vẫn duplicate", async () => {
@@ -1640,26 +1739,125 @@ describe("webhook Creem: hoàn tiền và tranh chấp (Q1 2026-10-15: hoàn đ�
     expect(await alerts()).toEqual([{ kind: "order_refunded", count: 2 }]);
   });
 
-  it("hai lần hoàn một phần (mã khác nhau) cộng lại bằng đủ, mỗi payload chỉ mang số của lần đó: mỗi lần noted, đơn KHÔNG tự thành refunded (chờ spike S4: refunded_amount có cộng dồn không)", async () => {
+  it("(S5) hai lần hoàn một phần (mã khác nhau), mỗi payload chỉ mang refund_amount của lần đó (giao dịch là ảnh chụp, refunded_amount null): cộng dồn từ nhật ký, lần sau đủ (200 + 199 = 399, đúng bằng số đã trả) nên đơn thành refunded", async () => {
     const w = makeWorld();
     const { orderCode, checkoutId } = await w.buyCreem();
-    expect(await refund(w, checkoutId, { amount: 200, refundedTotal: 200 })).toMatchObject({ body: { result: "noted" } });
-    expect(await refund(w, checkoutId, { amount: 199, refundedTotal: 199 })).toMatchObject({ body: { result: "noted" } });
+    expect(await refund(w, checkoutId, { amount: 200, eventId: "evt_p1" })).toMatchObject({ status: 200, body: { result: "noted" } });
     expect(await orderRow(orderCode)).toMatchObject({ status: "paid" });
-    expect((await refundLogs(orderCode)).map((l) => [l.action, l.detail.refunded_amount, l.detail.full])).toEqual([
-      ["order_partially_refunded", 200, false],
-      ["order_partially_refunded", 199, false],
+    expect(await refund(w, checkoutId, { amount: 199, eventId: "evt_p2" })).toMatchObject({ status: 200, body: { result: "refunded" } });
+    expect(await orderRow(orderCode)).toMatchObject({ status: "refunded" });
+    expect((await refundLogs(orderCode)).map((l) => [l.action, l.detail.event_id, l.detail.refunded_amount, l.detail.refunded_total, l.detail.full, l.detail.prev_status])).toEqual([
+      ["order_partially_refunded", "evt_p1", 200, 200, false, "paid"],
+      ["order_refunded", "evt_p2", 199, 399, true, "paid"],
     ]);
-    expect(await alerts()).toEqual([{ kind: "order_partially_refunded", count: 2 }]);
+    expect(await alerts()).toEqual([
+      { kind: "order_partially_refunded", count: 1 },
+      { kind: "order_refunded", count: 1 },
+    ]);
   });
 
-  it("hai lần hoàn một phần mà giao dịch mang số cộng dồn: lần sau đủ nên đơn thành refunded (cách hiểu còn lại của spike S4)", async () => {
+  it("(S5) cộng dồn chưa tới số đã trả thì vẫn một phần (200 + 198 = 398 < 399); lần hoàn trùng mã sự kiện không cộng hai lần; lần đang chờ hay thất bại và tranh chấp không cộng; tới đủ (thêm 1 cent) thì refunded", async () => {
     const w = makeWorld();
     const { orderCode, checkoutId } = await w.buyCreem();
-    expect(await refund(w, checkoutId, { amount: 200, refundedTotal: 200 })).toMatchObject({ body: { result: "noted" } });
-    expect(await refund(w, checkoutId, { amount: 199, refundedTotal: 399 })).toMatchObject({ body: { result: "refunded" } });
+    expect(await refund(w, checkoutId, { amount: 200, eventId: "evt_a" })).toMatchObject({ body: { result: "noted" } });
+    // Creem gửi lại cùng sự kiện: không ghi, không cộng (200 + 200 sẽ thành đủ nếu cộng hai lần).
+    expect(await refund(w, checkoutId, { amount: 200, eventId: "evt_a" })).toMatchObject({ body: { result: "duplicate" } });
+    expect(await refund(w, checkoutId, { amount: 199, status: "pending", eventId: "evt_cho" })).toMatchObject({ body: { result: "noted" } });
+    expect(await refund(w, checkoutId, { amount: 199, status: "failed", eventId: "evt_hong" })).toMatchObject({ body: { result: "noted" } });
+    expect(await refund(w, checkoutId, { dispute: true, amount: 199, eventId: "evt_tc" })).toMatchObject({ body: { result: "noted" } });
+    expect(await refund(w, checkoutId, { amount: 198, eventId: "evt_b" })).toMatchObject({ body: { result: "noted" } });
+    expect(await orderRow(orderCode)).toMatchObject({ status: "paid" });
+    expect(await refund(w, checkoutId, { amount: 1, eventId: "evt_c" })).toMatchObject({ body: { result: "refunded" } });
     expect(await orderRow(orderCode)).toMatchObject({ status: "refunded" });
-    expect((await refundLogs(orderCode)).map((l) => l.action)).toEqual(["order_partially_refunded", "order_refunded"]);
+    expect((await refundLogs(orderCode)).map((l) => [l.action, l.detail.event_id, l.detail.refunded_amount, l.detail.refunded_total])).toEqual([
+      ["order_partially_refunded", "evt_a", 200, 200],
+      ["order_refund_unconfirmed", "evt_cho", 199, null],
+      ["order_refund_unconfirmed", "evt_hong", 199, null],
+      ["order_disputed", "evt_tc", 199, null],
+      ["order_partially_refunded", "evt_b", 198, 398],
+      ["order_refunded", "evt_c", 1, 399],
+    ]);
+    // Mọi nhật ký hoàn tiền và tranh chấp mang loại tiền của đơn: Web Admin in số tiền (kể cả refunded_total) bằng đô la.
+    expect((await refundLogs(orderCode)).map((l) => l.detail.currency)).toEqual(["USD", "USD", "USD", "USD", "USD", "USD"]);
+    // Đơn đã refunded: lần hoàn một phần nữa chỉ ghi nhận (noted), đơn giữ refunded.
+    expect(await refund(w, checkoutId, { amount: 5, eventId: "evt_d" })).toMatchObject({ body: { result: "noted" } });
+    expect((await refundLogs(orderCode)).at(-1)).toMatchObject({ action: "order_refunded", detail: { event_id: "evt_d", refunded_total: 404, prev_status: "refunded" } });
+  });
+
+  it("(S5) hai lần hoàn một phần KHÁC mã chạy chồng THẬT (cả hai đọc tổng đã hoàn = 0 trước khi ghi): lần ghi sau thấy tổng đã đổi nên đọc lại và cộng dồn: một noted, một refunded, đơn refunded", async () => {
+    const w = makeWorld();
+    const { orderCode, checkoutId } = await w.buyCreem();
+    const first = await w.creem.refundWebhook(checkoutId, { amount: 200, eventId: "evt_x" });
+    const second = await w.creem.refundWebhook(checkoutId, { amount: 199, eventId: "evt_y" });
+    const barrier = batchBarrier(env.DB, 2);
+    const gated = makeWorld({ DB: barrier.db });
+    const results = await Promise.all([first, second].map((h) => gated.call("POST", "/v1/webhooks/creem", h.raw, h.headers)));
+    expect(results.map((r) => r.status)).toEqual([200, 200]);
+    expect(results.map((r) => r.body.result).sort()).toEqual(["noted", "refunded"]);
+    // Hai batch đầu chạy chồng, lần thua ghi lại một lần nữa sau khi đọc tổng mới.
+    expect(barrier.calls()).toBe(3);
+    expect(await orderRow(orderCode)).toMatchObject({ status: "refunded" });
+    expect((await refundLogs(orderCode)).map((l) => [l.action, l.detail.refunded_total])).toEqual([
+      ["order_partially_refunded", expect.any(Number)],
+      ["order_refunded", 399],
+    ]);
+    expect(await alerts()).toEqual([
+      { kind: "order_partially_refunded", count: 1 },
+      { kind: "order_refunded", count: 1 },
+    ]);
+  });
+
+  it("(S5) lần hoàn khác của đơn cứ được ghi chen vào giữa lúc đọc tổng và lúc ghi, quá 3 lần: 503 để Creem gửi lại, không ghi gì của sự kiện này, không cảnh báo; gửi lại thì cộng dồn đủ cả các lần đã chen", async () => {
+    const w = makeWorld();
+    const { orderCode, checkoutId } = await w.buyCreem();
+    const hook = await w.creem.refundWebhook(checkoutId, { amount: 100, eventId: "evt_bi_chen" });
+    let batches = 0;
+    const db = new Proxy(env.DB, {
+      get(target, prop) {
+        if (prop === "batch") {
+          return async (stmts: D1PreparedStatement[]) => {
+            batches++;
+            // Một lần hoàn 1 cent khác mã được ghi ngay trước batch của sự kiện này.
+            await target
+              .prepare("INSERT INTO audit_log (at, actor, action, order_code, detail) VALUES (?1, 'webhook', 'order_partially_refunded', ?2, ?3)")
+              .bind(T0, orderCode, JSON.stringify({ event_id: `evt_chen_${batches}`, refunded_amount: 1 }))
+              .run();
+            return target.batch(stmts);
+          };
+        }
+        const v: unknown = Reflect.get(target, prop);
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    });
+    const gated = makeWorld({ DB: db });
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await gated.call("POST", "/v1/webhooks/creem", hook.raw, hook.headers)).toMatchObject({ status: 503, body: { error: "temporarily_unavailable" } });
+      expect(logged(err).map((l) => l.event)).toEqual(["webhook_refund_failed"]);
+    } finally {
+      err.mockRestore();
+    }
+    expect(batches).toBe(3);
+    expect((await refundLogs(orderCode)).map((l) => l.detail.event_id)).toEqual(["evt_chen_1", "evt_chen_2", "evt_chen_3"]);
+    expect(await alerts()).toEqual([]);
+    expect(await orderRow(orderCode)).toMatchObject({ status: "paid" });
+    expect(await w.call("POST", "/v1/webhooks/creem", hook.raw, hook.headers)).toMatchObject({ status: 200, body: { result: "noted" } });
+    expect((await refundLogs(orderCode)).at(-1)).toMatchObject({ action: "order_partially_refunded", detail: { event_id: "evt_bi_chen", refunded_total: 103 } });
+  });
+
+  it("(S5) refund_amount thiếu hay sai kiểu: dùng dự phòng transaction.refunded_amount (đủ thì refunded); cả hai thiếu thì không biết số hoàn: chỉ ghi nhận một phần, không cộng dồn", async () => {
+    const w = makeWorld();
+    const a = await w.buyCreem();
+    expect(await refund(w, a.checkoutId, { amount: null, refundedTotal: 399 })).toMatchObject({ body: { result: "refunded" } });
+    expect((await refundLogs(a.orderCode)).map((l) => [l.action, l.detail.refunded_amount, l.detail.refunded_total])).toEqual([["order_refunded", 399, 399]]);
+    const b = await w.buyCreem({ email: "b@example.com" });
+    expect(await refund(w, b.checkoutId, { amount: null, eventId: "evt_null" })).toMatchObject({ body: { result: "noted" } });
+    expect(await refund(w, b.checkoutId, { amount: 399, status: "pending", eventId: "evt_cho2" })).toMatchObject({ body: { result: "noted" } });
+    expect(await orderRow(b.orderCode)).toMatchObject({ status: "paid" });
+    expect((await refundLogs(b.orderCode)).map((l) => [l.action, l.detail.refunded_amount, l.detail.refunded_total])).toEqual([
+      ["order_partially_refunded", null, null],
+      ["order_refund_unconfirmed", 399, null],
+    ]);
   });
 
   it("đúng chữ ký mà không có mã phiên để tra đơn (refund.created thiếu checkout hay checkout là số, dispute.created thiếu checkout): 200 unmatched, nhật ký và cảnh báo payment_unmatched, đơn không bị đụng; sai chữ ký: 400 invalid_signature và có cảnh báo", async () => {
@@ -1699,8 +1897,13 @@ describe("webhook Creem: hoàn tiền và tranh chấp (Q1 2026-10-15: hoàn đ�
   it("refund.created mà checkout là chuỗi mã phiên (không phải object): tin như checkout.id, tra được đơn, đơn thành refunded, nhật ký order_refunded", async () => {
     const w = makeWorld();
     const { orderCode, checkoutId } = await w.buyCreem();
-    const transaction = { id: "tran_x", amount: 399, amount_paid: 399, status: "refunded", refunded_amount: 399 };
-    const hook = await w.creem.signedEvent("refund.created", { id: "ref_s", status: "succeeded", transaction, checkout: checkoutId }, "evt_chuoi");
+    // Giao dịch là ảnh chụp lúc phát sự kiện như payload thật (refunded_amount null); số hoàn ở refund_amount.
+    const transaction = { id: "tran_x", amount: 399, amount_paid: 399, status: "paid", refunded_amount: null };
+    const hook = await w.creem.signedEvent(
+      "refund.created",
+      { id: "ref_s", status: "succeeded", refund_amount: 399, refund_currency: "USD", transaction, checkout: checkoutId },
+      "evt_chuoi",
+    );
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       expect(await w.call("POST", "/v1/webhooks/creem", hook.raw, hook.headers)).toMatchObject({ status: 200, body: { ok: true, result: "refunded" } });

@@ -2,6 +2,7 @@ import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { creemFromEnv } from "../src/deps";
+import { CreemProvider } from "../src/payment/creem";
 import { resetDb } from "./db";
 import { TEST_CREEM_API_KEY, TEST_CREEM_PRODUCTS, TEST_CREEM_WEBHOOK_SECRET } from "./fakes";
 import { DAY, makeWorld, T0 } from "./world";
@@ -180,6 +181,26 @@ describe("POST /v1/checkout với currency USD (Creem)", () => {
     const w = makeWorld();
     w.creem.down = true;
     expect(await w.call("POST", "/v1/checkout", usd)).toMatchObject({ status: 502, body: { error: "payment_provider_error" } });
+    const row = await env.DB.prepare("SELECT status, provider FROM orders WHERE order_code = 1").first();
+    expect(row).toEqual({ status: "failed", provider: "creem" });
+  });
+
+  it("(SP2) Creem tạo phiên mà trả lại custom_price khác giá đã gửi (999 thay 399): 502 payment_provider_error, đơn failed, phản hồi không có link thanh toán", async () => {
+    const w = makeWorld();
+    w.deps.payments.creem = new CreemProvider(
+      { baseUrl: "https://creem.test", apiKey: TEST_CREEM_API_KEY, webhookSecret: TEST_CREEM_WEBHOOK_SECRET, productIds: { ...TEST_CREEM_PRODUCTS } },
+      async (url, init) => {
+        const res = await w.creem.fetch(url, init);
+        if ((init?.method ?? "GET") !== "POST") return res;
+        const body = (await res.json()) as Record<string, unknown>;
+        return new Response(JSON.stringify({ ...body, custom_price: 999 }), { status: res.status, headers: { "content-type": "application/json" } });
+      },
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const res = await w.call("POST", "/v1/checkout", usd);
+    expect(res).toMatchObject({ status: 502, body: { error: "payment_provider_error" } });
+    expect(JSON.stringify(res.body)).not.toMatch(/checkout_url|creem\.io/);
     const row = await env.DB.prepare("SELECT status, provider FROM orders WHERE order_code = 1").first();
     expect(row).toEqual({ status: "failed", provider: "creem" });
   });

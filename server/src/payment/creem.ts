@@ -213,6 +213,14 @@ export class CreemProvider implements PaymentProvider {
     if (!CHECKOUT_ID.test(id)) throw new PaymentProviderError(`Creem trả id phiên không hợp lệ (${show(id)})`);
     const href = creemCheckoutUrl(checkoutUrl);
     if (href === null) throw new PaymentProviderError("Creem trả checkout_url ngoài tên miền thanh toán");
+    // Creem trả lại `custom_price` (đo ở sandbox ngày 2026-10-16: đúng số đã gửi). Có mà khác số đã gửi hay sai kiểu (kể cả null):
+    // trang thanh toán có thể đòi sai giá (ví dụ giá mặc định của sản phẩm), nên không đưa link cho khách, đơn lỗi. Vắng: vẫn nhận,
+    // vì server chỉ cấp theo GET (paidOrderStatus so số khách trả với giá), chỉ để lại một dòng log không có dữ liệu của khách.
+    if (!("custom_price" in data)) {
+      console.warn(JSON.stringify({ event: "creem_checkout_no_custom_price", order_code: req.orderCode }));
+    } else if (data.custom_price !== req.amount) {
+      throw new PaymentProviderError(`Creem trả custom_price ${show(data.custom_price)} khác giá đã gửi (${req.amount} cent)`);
+    }
     return { providerRef: id, checkoutUrl: href, qrCode: null };
   }
 

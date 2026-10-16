@@ -110,7 +110,8 @@ export function shortHash(hash: string): string {
 
 /**
  * Các khóa của `detail` nhật ký mang số tiền theo đơn vị nhỏ nhất của loại tiền (đồng với VND, cent với USD): đơn (`amount`,
- * `amount_paid`), số cổng báo (`provider_*`), hoàn tiền (`refunded_amount`). In cent thô thì "3999" dễ đọc nhầm là 3.999 đô.
+ * `amount_paid`), số cổng báo (`provider_*`), hoàn tiền (`refunded_amount` của lần hoàn, `refunded_total` cộng dồn của đơn). In
+ * cent thô thì "3999" dễ đọc nhầm là 3.999 đô.
  */
 const MONEY_KEYS: ReadonlySet<string> = new Set([
   "amount",
@@ -120,6 +121,7 @@ const MONEY_KEYS: ReadonlySet<string> = new Set([
   "provider_tax_amount",
   "provider_discount_amount",
   "refunded_amount",
+  "refunded_total",
 ]);
 
 /**

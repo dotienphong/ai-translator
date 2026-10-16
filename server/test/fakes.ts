@@ -349,22 +349,59 @@ export class FakeCreem {
 
   /**
    * Webhook `refund.created` (hay `dispute.created` nếu `dispute`) của phiên đã trả. `amount`: số cent của lần hoàn này
-   * (`refund_amount`, hay `amount` của tranh chấp), mặc định đủ tổng khách đã trả. `refundedTotal`: số đã hoàn của giao dịch
-   * (`transaction.refunded_amount`), mặc định bằng `amount`; tài liệu chưa nói số này có cộng dồn qua nhiều lần hoàn không
-   * (spike S4). Hình dạng theo mẫu ở https://docs.creem.io/code/webhooks: `order.status` là trạng thái lúc trả (mẫu hoàn đủ vẫn
-   * "paid"); hoàn tiền nằm ở giao dịch (`refunded`, hoàn một phần `partialRefund`, tranh chấp `chargeback`); đối tượng tranh
-   * chấp không có `status`, và phiên trong đó không có `request_id` hay `metadata`. `status` chỉ dùng cho `refund.created`
-   * (mặc định "succeeded"). `eventId`: gửi lại cùng mã như khi Creem thử lại hay gửi tay ở dashboard (xem `signedEvent`).
+   * (`refund_amount`, hay `amount` của tranh chấp), mặc định đủ tổng khách đã trả; `null` thì `refund_amount` là null (sai kiểu).
+   * - `refund.created` theo hình dạng THẬT đo ở Creem sandbox ngày 2026-10-16 (test/fixtures/creem/refund.created.real.json):
+   *   số của lần hoàn ở `refund_amount` (kèm `refund_currency`); `transaction` là ảnh chụp lúc phát sự kiện, CHƯA cập nhật
+   *   (`status` "paid", `refunded_amount` null; `refundedTotal` đặt số khác cho `refunded_amount`, để thử đường dự phòng);
+   *   `checkout` có `id` và `request_id`; `order` và `customer` đầy đủ; `id` và `created_at` của sự kiện ở cấp trên.
+   * - `dispute.created` chưa đo được (sandbox không tạo được tranh chấp): giữ theo mẫu ở https://docs.creem.io/code/webhooks:
+   *   giao dịch `chargeback` với `refunded_amount` (`refundedTotal`, mặc định bằng `amount`); đối tượng tranh chấp không có
+   *   `status`, và phiên trong đó không có `request_id` hay `metadata`.
+   * `order.status` là trạng thái lúc trả (hoàn đủ vẫn "paid"). `status` chỉ dùng cho `refund.created` (mặc định "succeeded").
+   * `eventId`: gửi lại cùng mã như khi Creem thử lại hay gửi tay ở dashboard (xem `signedEvent`).
    */
   refundWebhook(
     checkoutId: string,
-    opts: { amount?: number; refundedTotal?: number; dispute?: boolean; status?: string; eventId?: string | null } = {},
+    opts: { amount?: number | null; refundedTotal?: number | null; dispute?: boolean; status?: string; eventId?: string | null } = {},
   ) {
     const c = this.must(checkoutId);
     if (!c.order || !c.paidSnapshot) throw new Error(`phiên ${checkoutId} chưa trả`);
     const amountPaid = c.order.amount + c.order.tax - c.order.discountAmount;
-    const amount = opts.amount ?? amountPaid;
-    const refundedTotal = opts.refundedTotal ?? amount;
+    const amount = opts.amount === undefined ? amountPaid : opts.amount;
+    const order = {
+      object: "order",
+      id: c.order.id,
+      customer: "cust_fake",
+      product: c.productId,
+      amount: this.reportedAmount(c.order),
+      currency: "USD",
+      sub_total: c.order.amount,
+      tax_amount: c.order.tax,
+      amount_due: amountPaid,
+      amount_paid: amountPaid,
+      status: c.paidSnapshot.orderStatus,
+      type: "onetime",
+      transaction: "tran_fake",
+      mode: "test",
+    };
+    if (opts.dispute) {
+      const transaction = {
+        id: "tran_fake",
+        object: "transaction",
+        amount: c.order.amount,
+        amount_paid: amountPaid,
+        currency: "USD",
+        type: "payment",
+        tax_amount: c.order.tax,
+        status: "chargeback",
+        refunded_amount: opts.refundedTotal === undefined ? amount : opts.refundedTotal,
+        order: c.order.id,
+        mode: "test",
+      };
+      const checkout = { id: c.id, object: "checkout", product: c.productId, units: 1, status: "completed", mode: "test" };
+      const dispute = { id: "disp_fake", object: "dispute", amount, currency: "USD", transaction, checkout, order, mode: "test" };
+      return this.signedEvent("dispute.created", dispute, opts.eventId);
+    }
     const transaction = {
       id: "tran_fake",
       object: "transaction",
@@ -372,19 +409,29 @@ export class FakeCreem {
       amount_paid: amountPaid,
       currency: "USD",
       type: "payment",
+      tax_country: null,
       tax_amount: c.order.tax,
-      status: opts.dispute ? "chargeback" : refundedTotal >= amountPaid ? "refunded" : "partialRefund",
-      refunded_amount: refundedTotal,
+      status: "paid",
+      refunded_amount: opts.refundedTotal ?? null,
       order: c.order.id,
+      customer: "cust_fake",
+      description: "One-time payment",
+      created_at: 1792162051750,
       mode: "test",
     };
-    const order = { id: c.order.id, object: "order", amount: this.reportedAmount(c.order), currency: "USD", status: c.paidSnapshot.orderStatus, mode: "test" };
-    if (opts.dispute) {
-      const checkout = { id: c.id, object: "checkout", product: c.productId, units: 1, status: "completed", mode: "test" };
-      const dispute = { id: "disp_fake", object: "dispute", amount, currency: "USD", transaction, checkout, order, mode: "test" };
-      return this.signedEvent("dispute.created", dispute, opts.eventId);
-    }
-    const checkout = { id: c.id, object: "checkout", request_id: c.requestId, status: "completed", metadata: c.metadata, mode: "test" };
+    const checkout = {
+      id: c.id,
+      object: "checkout",
+      request_id: c.requestId,
+      product: c.productId,
+      units: 1,
+      custom_price: c.customPrice,
+      success_url: c.successUrl,
+      status: "completed",
+      metadata: c.metadata,
+      mode: "test",
+    };
+    const customer = { id: "cust_fake", object: "customer", email: c.email, name: null, metadata: c.metadata, country: "NL", external_id: null, mode: "test" };
     return this.signedEvent(
       "refund.created",
       {
@@ -397,6 +444,8 @@ export class FakeCreem {
         transaction,
         checkout,
         order,
+        customer,
+        created_at: 1792162088059,
         mode: "test",
       },
       opts.eventId,

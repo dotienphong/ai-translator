@@ -2,8 +2,9 @@
 // https://docs.creem.io/code/webhooks: header `creem-signature` là HMAC-SHA256 dạng hex của THÂN THÔ, khóa là secret của
 // endpoint; không có timestamp hay phiên bản. Webhook thanh toán chỉ là cái cò: server luôn hỏi lại API Creem trước khi cấp
 // license (orders.ts, fulfilOrder), nên một webhook thanh toán bị phát lại hay bị chặn giữa đường không cấp được gì. Hoàn tiền
-// và tranh chấp thì tin payload đã ký (không hỏi lại API, vì API vẫn báo đơn `paid` sau khi hoàn): server ghi nhật ký và cảnh
-// báo, hoàn đủ thì đơn thành `refunded`; một sự kiện gửi lại (cùng `id`) không ghi lần hai (orders.ts, handleRefund). Sự kiện
+// và tranh chấp thì tin payload đã ký (không hỏi lại API: đo ở sandbox ngày 2026-10-16, sau khi hoàn đủ GET vẫn báo phiên
+// `completed` và đơn `paid`): server ghi nhật ký và cảnh báo, hoàn đủ (một lần, hay cộng dồn nhiều lần từng phần) thì đơn thành
+// `refunded`; một sự kiện gửi lại (cùng `id`) không ghi lần hai (orders.ts, handleRefund). Sự kiện
 // đúng chữ ký mà không chỉ ra đơn nào (khách trả qua link công khai hay Storefront, sản phẩm khác của tài khoản) là `unmatched`:
 // route trả 200, ghi nhật ký và cảnh báo (orders.ts, recordUnmatched), không im lặng trả 400 cho tới khi Creem bỏ.
 import { hmacSha256Hex, timingSafeEqual } from "../crypto";
@@ -38,9 +39,9 @@ function refOf(v: unknown): string | null {
   return typeof v === "string" && CHECKOUT_ID.test(v) ? v : null;
 }
 
-/** Số tiền trong giao dịch của payload, chỉ để ghi nhật ký: số hữu hạn, khác thì null. */
-function amountOf(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
+/** Số tiền (cent) trong payload: số nguyên an toàn ≥ 0, khác (thiếu, null, chuỗi, âm, lẻ) thì null. */
+function centsOf(v: unknown): number | null {
+  return Number.isSafeInteger(v) && (v as number) >= 0 ? (v as number) : null;
 }
 
 /**
@@ -90,13 +91,22 @@ export async function verifyCreemWebhook(secret: string, req: WebhookRequest): P
   const providerRef = typeof checkout === "string" ? refOf(checkout) : isRecord(checkout) ? refOf(checkout.id) : null;
   if (providerRef === null) return unmatched;
   const dispute = eventType === "dispute.created";
-  // "Hoàn đủ" chỉ khi hoàn tiền đã thành công và số đã hoàn ≥ số khách đã trả. Thiếu số nào thì không coi là đủ: chỉ cảnh báo.
-  // Đối tượng tranh chấp không có `status`: tranh chấp coi như tiền đã bị lấy lại.
+  // Số của lần hoàn này. Payload thật của `refund.created` (đo ở Creem sandbox ngày 2026-10-16, test/fixtures/creem/) mang nó ở
+  // `object.refund_amount` (cent, kèm `refund_currency`); `object.transaction` là ảnh chụp giao dịch lúc phát sự kiện, CHƯA cập
+  // nhật (`refunded_amount` null, `status` "paid") nên mẫu tài liệu (`transaction.refunded_amount`) chỉ còn là dự phòng khi
+  // `refund_amount` thiếu hay sai kiểu. Tranh chấp chưa đo được (sandbox không tạo được): giữ cách đọc theo mẫu tài liệu
+  // (`transaction.refunded_amount`). Mỗi payload chỉ mang số của MỘT lần hoàn: hoàn nhiều lần từng phần thì handleRefund
+  // (orders.ts) cộng dồn từ nhật ký của đơn.
   const transaction = isRecord(object.transaction) ? object.transaction : {};
-  const { refunded_amount: refunded, amount_paid: paid } = transaction;
+  const order = isRecord(object.order) ? object.order : {};
+  const refunded = (dispute ? null : centsOf(object.refund_amount)) ?? centsOf(transaction.refunded_amount);
+  // Số khách đã trả: ở giao dịch, thiếu thì ở đơn (cả hai đều có trong payload thật).
+  const paid = centsOf(transaction.amount_paid) ?? centsOf(order.amount_paid);
   const { status, reason } = object;
+  // "Hoàn đủ" (riêng lần này) chỉ khi hoàn tiền đã thành công và số hoàn ≥ số khách đã trả (> 0). Thiếu số nào thì không coi là
+  // đủ: chỉ cảnh báo. Đối tượng tranh chấp không có `status`: tranh chấp coi như tiền đã bị lấy lại.
   const succeeded = dispute || status === "succeeded";
-  const full = succeeded && typeof refunded === "number" && typeof paid === "number" && paid > 0 && refunded >= paid;
+  const full = succeeded && refunded !== null && paid !== null && paid > 0 && refunded >= paid;
   return {
     kind: "refund",
     eventType,
@@ -104,8 +114,8 @@ export async function verifyCreemWebhook(secret: string, req: WebhookRequest): P
     reason: dispute ? "dispute" : "refund",
     full,
     eventId,
-    refundedAmount: amountOf(refunded),
-    providerAmountPaid: amountOf(paid),
+    refundedAmount: refunded,
+    providerAmountPaid: paid,
     refundStatus: !dispute && typeof status === "string" ? status.slice(0, 64) : null,
     providerReason: typeof reason === "string" ? reason.slice(0, 64) : null,
   };

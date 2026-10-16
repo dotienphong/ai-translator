@@ -99,6 +99,14 @@ describe("format", () => {
     expect(fmtDetail('{"plan":"yearly","amount":500000,"currency":"VND"}')).toBe("plan: yearly · amount: 500.000 đ · currency: VND");
   });
 
+  it("detail hoàn tiền cộng dồn (S5): refunded_total (tổng đã hoàn của đơn) in như tiền; null giữ nguyên", () => {
+    expect(fmtDetail('{"reason":"refund","refunded_amount":199,"refunded_total":399,"provider_amount_paid":399,"currency":"USD"}')).toBe(
+      "reason: refund · refunded_amount: $1,99 · refunded_total: $3,99 · provider_amount_paid: $3,99 · currency: USD",
+    );
+    expect(fmtDetail('{"refunded_amount":399,"refunded_total":null,"currency":"USD"}')).toBe("refunded_amount: $3,99 · refunded_total: null · currency: USD");
+    expect(fmtDetail('{"refunded_total":399}')).toBe("refunded_total: 399");
+  });
+
   it("detail: mọi khóa tiền của đơn Creem bị giữ (số khách trả, thuế, giảm giá) in như tiền; khóa khác và giá trị không phải số giữ nguyên", () => {
     const d = JSON.stringify({
       amount: 3999,

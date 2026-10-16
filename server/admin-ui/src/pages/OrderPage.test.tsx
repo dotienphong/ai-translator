@@ -833,7 +833,14 @@ describe("OrderPage: đơn Creem (USD, thanh toán quốc tế)", () => {
     serveOrder(held, {
       audit: [
         auditRow(3, "order_underpaid", UNDERPAID_LOG),
-        auditRow(2, "order_partially_refunded", { event_id: "evt_1", refunded_amount: 1000, provider_amount_paid: 3999, amount: 3999, currency: "USD" }),
+        auditRow(2, "order_partially_refunded", {
+          event_id: "evt_1",
+          refunded_amount: 1000,
+          refunded_total: 2500,
+          provider_amount_paid: 3999,
+          amount: 3999,
+          currency: "USD",
+        }),
         auditRow(1, "order_created", { plan: "yearly", amount: 3999, currency: "USD" }),
       ],
     });
@@ -845,8 +852,9 @@ describe("OrderPage: đơn Creem (USD, thanh toán quốc tế)", () => {
     expect(text).toContain("provider_tax_amount: $3,00");
     expect(text).toContain("provider_discount_amount: $9,99");
     expect(text).toContain("refunded_amount: $10,00");
+    expect(text).toContain("refunded_total: $25,00");
     expect(text).toContain("amount: $39,99");
-    expect(text).not.toMatch(/amount_paid: 3000|refunded_amount: 1000|amount: 3999/);
+    expect(text).not.toMatch(/amount_paid: 3000|refunded_amount: 1000|refunded_total: 2500|amount: 3999/);
   });
 
   it("nhật ký của đơn VND: số đồng, không đoán là đô la", async () => {

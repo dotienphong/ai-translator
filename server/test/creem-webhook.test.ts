@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { hmacSha256Hex } from "../src/crypto";
 import { CREEM_SIGNATURE_HEADER, verifyCreemWebhook } from "../src/payment/creem-webhook";
+// Thân thô thật do Creem sandbox gửi ngày 2026-10-16 (test/fixtures/creem/README.md): đúng từng byte, test tự ký bằng SECRET.
+import checkoutCompletedReal from "./fixtures/creem/checkout.completed.real.json?raw";
+import refundCreatedReal from "./fixtures/creem/refund.created.real.json?raw";
 
 const SECRET = "whsec_test_secret_không_dùng_ở_đâu_khác";
 
@@ -198,10 +201,13 @@ describe("Creem: chữ ký webhook", () => {
     }
   });
 
-  /** Payload `refund.created` rút gọn theo ví dụ trong tài liệu Creem (code_webhooks.md, mục refund.created). */
+  /**
+   * Payload `refund.created` rút gọn theo hình dạng thật (fixtures/creem/refund.created.real.json): số của lần hoàn ở
+   * `refund_amount`; `transaction` là ảnh chụp lúc phát sự kiện (`status` "paid", `refunded_amount` null).
+   */
   function refundEvent(
     eventType: string,
-    patch: { id?: unknown; checkout?: unknown; transaction?: unknown; status?: unknown; reason?: unknown } = {},
+    patch: { id?: unknown; checkout?: unknown; transaction?: unknown; status?: unknown; reason?: unknown; refund_amount?: unknown } = {},
   ) {
     return {
       id: "id" in patch ? patch.id : "evt_61eTsJHUgInFw2BQKhTiPV",
@@ -211,14 +217,78 @@ describe("Creem: chữ ký webhook", () => {
         id: "ref_3DB9NQFvk18TJwSqd0N6bd",
         object: "refund",
         status: "status" in patch ? patch.status : "succeeded",
-        refund_amount: 1210,
+        refund_amount: "refund_amount" in patch ? patch.refund_amount : 1210,
         refund_currency: "EUR",
         reason: "reason" in patch ? patch.reason : "requested_by_customer",
-        transaction: "transaction" in patch ? patch.transaction : { id: "tran_1", amount: 1000, amount_paid: 1210, status: "refunded", refunded_amount: 1210 },
+        transaction: "transaction" in patch ? patch.transaction : { id: "tran_1", amount: 1000, amount_paid: 1210, status: "paid", refunded_amount: null },
         checkout: "checkout" in patch ? patch.checkout : { id: "ch_4l0N34kxo16AhRKUHFUuXr", request_id: "1000042", status: "completed" },
       },
     };
   }
+
+  /** Payload thật `refund.created` đã parse, đổi vài trường (`undefined` thì bỏ hẳn trường đó), để ký lại bằng SECRET. */
+  function realRefund(object: Record<string, unknown> = {}, transaction: Record<string, unknown> = {}, order: Record<string, unknown> = {}) {
+    const body = JSON.parse(refundCreatedReal) as { object: Record<string, unknown> & { transaction: object; order: object } };
+    return {
+      ...body,
+      object: {
+        ...body.object,
+        ...object,
+        transaction: { ...body.object.transaction, ...transaction },
+        order: { ...body.object.order, ...order },
+      },
+    };
+  }
+
+  /** Cò hoàn tiền của payload thật (hoàn đủ 399 cent của đơn thử 3,99 USD). */
+  const REAL_REFUND = {
+    kind: "refund",
+    eventType: "refund.created",
+    providerRef: "ch_491X90hRbNHfL1fKCEZYCt",
+    reason: "refund",
+    full: true,
+    eventId: "evt_6LprlBm83BiXo9APW4YxcY",
+    refundedAmount: 399,
+    providerAmountPaid: 399,
+    refundStatus: "succeeded",
+    providerReason: "requested_by_customer",
+  };
+
+  it("payload thật checkout.completed (Creem sandbox 2026-10-16), ký đúng từng byte: cò cấp cho đơn theo request_id, kèm mã phiên và mã sự kiện", async () => {
+    expect(await verifyCreemWebhook(SECRET, await hook(null, { raw: checkoutCompletedReal }))).toEqual({
+      kind: "payment",
+      orderCode: 9000001,
+      providerRef: "ch_491X90hRbNHfL1fKCEZYCt",
+      reportUnknownOrder: { eventType: "checkout.completed", eventId: "evt_5pT3n1Rw2Dkzfl6sRwAtqu" },
+    });
+  });
+
+  it("payload thật refund.created hoàn đủ (transaction là ảnh chụp: refunded_amount null, status paid): số hoàn lấy từ object.refund_amount, full = true", async () => {
+    // Tiền đề của phép đo: số đã hoàn KHÔNG nằm ở giao dịch (mẫu tài liệu), mà ở chính đối tượng refund.
+    const parsed = JSON.parse(refundCreatedReal) as { object: { refund_amount: unknown; transaction: { refunded_amount: unknown; status: unknown; amount_paid: unknown } } };
+    expect(parsed.object.transaction).toMatchObject({ refunded_amount: null, status: "paid", amount_paid: 399 });
+    expect(parsed.object.refund_amount).toBe(399);
+    expect(await verifyCreemWebhook(SECRET, await hook(null, { raw: refundCreatedReal }))).toEqual(REAL_REFUND);
+  });
+
+  it.each([
+    ["hoàn thiếu một cent (398 < 399)", { refund_amount: 398 }, {}, {}, { full: false, refundedAmount: 398 }],
+    ["hoàn nhiều hơn số đã trả (400)", { refund_amount: 400 }, {}, {}, { full: true, refundedAmount: 400 }],
+    ["refund_amount 0", { refund_amount: 0 }, {}, {}, { full: false, refundedAmount: 0 }],
+    ["thiếu refund_amount, giao dịch cũng null: không biết số hoàn", { refund_amount: undefined }, {}, {}, { full: false, refundedAmount: null }],
+    ["thiếu refund_amount, giao dịch có refunded_amount (dự phòng)", { refund_amount: undefined }, { refunded_amount: 399 }, {}, { full: true, refundedAmount: 399 }],
+    ["refund_amount null, giao dịch có refunded_amount một phần (dự phòng)", { refund_amount: null }, { refunded_amount: 100 }, {}, { full: false, refundedAmount: 100 }],
+    ["refund_amount là chuỗi: dùng dự phòng", { refund_amount: "399" }, { refunded_amount: 399 }, {}, { full: true, refundedAmount: 399 }],
+    ["refund_amount âm: dùng dự phòng (null)", { refund_amount: -399 }, {}, {}, { full: false, refundedAmount: null }],
+    ["refund_amount lẻ: dùng dự phòng (null)", { refund_amount: 399.5 }, {}, {}, { full: false, refundedAmount: null }],
+    ["refund_amount có mà giao dịch mang số khác: tin refund_amount", { refund_amount: 100 }, { refunded_amount: 399 }, {}, { full: false, refundedAmount: 100 }],
+    ["giao dịch thiếu amount_paid: dùng order.amount_paid", {}, { amount_paid: undefined }, {}, { full: true, providerAmountPaid: 399 }],
+    ["giao dịch thiếu amount_paid, đơn trả 500: so với 500", {}, { amount_paid: undefined }, { amount_paid: 500 }, { full: false, providerAmountPaid: 500 }],
+    ["không có amount_paid ở đâu: không biết số đã trả", {}, { amount_paid: undefined }, { amount_paid: undefined }, { full: false, providerAmountPaid: null }],
+    ["lần hoàn đang chờ (status pending), đủ tiền", { status: "pending" }, {}, {}, { full: false, refundStatus: "pending", refundedAmount: 399 }],
+  ])("payload thật refund.created, %s", async (_why, object, transaction, order, expected) => {
+    expect(await verifyCreemWebhook(SECRET, await hook(realRefund(object, transaction, order)))).toEqual({ ...REAL_REFUND, ...expected });
+  });
 
   /**
    * Payload `dispute.created` rút gọn theo ví dụ trong tài liệu Creem (code_webhooks.md, mục dispute.created): đối tượng tranh
@@ -295,13 +365,15 @@ describe("Creem: chữ ký webhook", () => {
     const long = await verifyCreemWebhook(SECRET, await hook(refundEvent("refund.created", { reason: "r".repeat(100), status: "s".repeat(100) })));
     expect(long).toMatchObject({ providerReason: "r".repeat(64), refundStatus: "s".repeat(64), full: false });
     expect(await verifyCreemWebhook(SECRET, await hook(refundEvent("refund.created", { reason: 7 })))).toMatchObject({ providerReason: null });
-    expect(await verifyCreemWebhook(SECRET, await hook(refundEvent("refund.created", { transaction: undefined, status: 7 })))).toMatchObject({
+    expect(
+      await verifyCreemWebhook(SECRET, await hook(refundEvent("refund.created", { transaction: undefined, refund_amount: undefined, status: 7 }))),
+    ).toMatchObject({
       full: false,
       refundedAmount: null,
       providerAmountPaid: null,
       refundStatus: null,
     });
-    const strings = refundEvent("refund.created", { transaction: { amount_paid: "1210", refunded_amount: "1210" }, status: "pending" });
+    const strings = refundEvent("refund.created", { refund_amount: "1210", transaction: { amount_paid: "1210", refunded_amount: "1210" }, status: "pending" });
     expect(await verifyCreemWebhook(SECRET, await hook(strings))).toMatchObject({
       full: false,
       refundedAmount: null,
@@ -311,13 +383,13 @@ describe("Creem: chữ ký webhook", () => {
   });
 
   it.each([
-    ["hoàn một phần", { transaction: { amount_paid: 1210, refunded_amount: 500 } }],
+    ["hoàn một phần", { refund_amount: 500 }],
     ["hoàn chưa thành công (status khác succeeded)", { status: "failed" }],
     ["thiếu status", { status: undefined }],
-    ["thiếu giao dịch", { transaction: undefined }],
-    ["giao dịch thiếu số tiền", { transaction: { status: "refunded" } }],
-    ["số tiền là chuỗi", { transaction: { amount_paid: "1210", refunded_amount: "1210" } }],
-    ["đơn không có tiền (amount_paid 0)", { transaction: { amount_paid: 0, refunded_amount: 0 } }],
+    ["thiếu giao dịch (không biết số đã trả)", { transaction: undefined }],
+    ["giao dịch thiếu số tiền", { transaction: { status: "paid" } }],
+    ["số tiền là chuỗi", { refund_amount: "1210", transaction: { amount_paid: "1210", refunded_amount: "1210" } }],
+    ["đơn không có tiền (amount_paid 0)", { refund_amount: 0, transaction: { amount_paid: 0, refunded_amount: 0 } }],
   ])("refund.created %s: full = false (chỉ cảnh báo, không đổi đơn)", async (_why, patch) => {
     expect(await verifyCreemWebhook(SECRET, await hook(refundEvent("refund.created", patch)))).toMatchObject({ kind: "refund", full: false });
   });

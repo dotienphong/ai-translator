@@ -8,6 +8,10 @@ import { CREEM_CHECKOUT_HOST, CreemProvider, parseProductIds } from "../src/paym
 import { PaymentProviderError } from "../src/payment/provider";
 import type { PlanCode } from "../src/plans";
 import { FakeCreem, TEST_CREEM_API_KEY, TEST_CREEM_PRODUCTS, TEST_CREEM_WEBHOOK_SECRET } from "./fakes";
+// Thân thật của Creem sandbox ngày 2026-10-16 (test/fixtures/creem/README.md), đúng từng byte.
+import createCheckoutReal from "./fixtures/creem/create-checkout.real.json?raw";
+import getPaidReal from "./fixtures/creem/get-checkout.paid.real.json?raw";
+import getPendingReal from "./fixtures/creem/get-checkout.pending.real.json?raw";
 
 type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -233,6 +237,42 @@ describe("Creem: trạng thái đơn", () => {
     expect(((await p.getPaymentStatus(ref).catch((e: unknown) => e)) as PaymentProviderError).unreachable).toBe(true);
     expect(((await p.getPaymentStatus(ref).catch((e: unknown) => e)) as PaymentProviderError).unreachable).toBe(true);
     expect((await p.getPaymentStatus(ref)).status).toBe("pending");
+  });
+});
+
+describe("Creem: thân THẬT của Creem sandbox ngày 2026-10-16 (test/fixtures/creem/README.md)", () => {
+  /** Phiên của lần đo: mã đơn 9000001, gói Monthly 3,99 USD. */
+  const ref = { orderCode: 9000001, providerRef: "ch_491X90hRbNHfL1fKCEZYCt" };
+  const answering = (raw: string): FetchFn => async () => new Response(raw, { status: 200, headers: { "content-type": "application/json" } });
+
+  it.each([
+    ["phiên chưa trả (không có order)", getPendingReal, { orderCode: 9000001, status: "pending", amount: 399, amountPaid: 0, paidAt: null }],
+    ["phiên đã trả (order đủ amount, sub_total, tax_amount 0, amount_paid; không có trường giảm giá)", getPaidReal, { orderCode: 9000001, status: "paid", amount: 399, amountPaid: 399, paidAt: null }],
+  ])("GET /v1/checkouts, %s: đọc đúng, không rơi vào nhánh giữ đơn hay dữ liệu hỏng", async (_why, raw, expected) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      expect(await provider(answering(raw)).getPaymentStatus(ref)).toEqual(expected);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("GET thật trả request_id của đơn khác: lỗi (không cấp nhầm)", async () => {
+    await expect(provider(answering(getPaidReal)).getPaymentStatus({ ...ref, orderCode: 9000002 })).rejects.toThrow(/request_id/);
+  });
+
+  it("POST /v1/checkouts thật: đọc được id và checkout_url (không có request_id hay order); host sandbox creem.io/test/… KHÔNG phải host thanh toán production nên bị từ chối, host production thì nhận", async () => {
+    const created = JSON.parse(createCheckoutReal) as Record<string, unknown>;
+    expect(created).not.toHaveProperty("request_id");
+    expect(created.checkout_url).toBe("https://creem.io/test/checkout/prod_6Os0IAgPEv0IhPIv6led8L/ch_491X90hRbNHfL1fKCEZYCt");
+    await expect(provider(answering(createCheckoutReal)).createCheckout(req)).rejects.toThrow(/ngoài tên miền thanh toán/);
+    const production = createCheckoutReal.replace("https://creem.io/test/checkout/", `https://${CREEM_CHECKOUT_HOST}/test/checkout/`);
+    expect(await provider(answering(production)).createCheckout(req)).toEqual({
+      providerRef: "ch_491X90hRbNHfL1fKCEZYCt",
+      checkoutUrl: `https://${CREEM_CHECKOUT_HOST}/test/checkout/prod_6Os0IAgPEv0IhPIv6led8L/ch_491X90hRbNHfL1fKCEZYCt`,
+      qrCode: null,
+    });
   });
 });
 
@@ -814,6 +854,41 @@ describe("Creem: gia cố đọc phản hồi của call() và getPaymentStatus 
       const fake = new FakeCreem();
       await provider(fake.fetch).createCheckout({ ...req, amount });
       expect(fake.requests[0]?.body).toMatchObject({ custom_price: amount });
+    });
+
+    it("(SP2) custom_price Creem trả lại khớp số đã gửi (như thân thật ở sandbox: 399): nhận, không log", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        expect(await create(created({ custom_price: 399 }))).toEqual({ providerRef: "ch_1", checkoutUrl: "https://checkout.creem.io/ch_1", qrCode: null });
+        expect(warn).not.toHaveBeenCalled();
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it.each([
+      ["khác số đã gửi (999: như giá mặc định của sản phẩm)", 999],
+      ["thấp hơn số đã gửi (398)", 398],
+      ["cao hơn một cent (400)", 400],
+      ["là chuỗi", "399"],
+      ["null", null],
+      ["có phần lẻ", 399.5],
+      ["là đối tượng", { amount: 399 }],
+    ])("(SP2) custom_price Creem trả lại %s: lỗi, không trả link cho khách", async (_why, customPrice) => {
+      const err = await caught(create(created({ custom_price: customPrice })));
+      expect(err.message).toMatch(/custom_price/);
+      expect(err.message).not.toContain("checkout.creem.io");
+    });
+
+    it("(SP2) phản hồi không có custom_price: nhận (server chỉ cấp theo GET), một dòng log creem_checkout_no_custom_price chỉ có mã đơn", async () => {
+      const { custom_price: _dropped, ...withoutPrice } = created();
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        expect(await create(withoutPrice)).toEqual({ providerRef: "ch_1", checkoutUrl: "https://checkout.creem.io/ch_1", qrCode: null });
+        expect(warn.mock.calls.map((c) => JSON.parse(String(c[0])))).toEqual([{ event: "creem_checkout_no_custom_price", order_code: 1000042 }]);
+      } finally {
+        warn.mockRestore();
+      }
     });
   });
 

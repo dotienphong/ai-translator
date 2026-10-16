@@ -105,8 +105,12 @@ export type WebhookEvent =
       full: boolean;
       /** Mã sự kiện của cổng (cùng mã khi cổng gửi lại): khử trùng nhật ký và cảnh báo. null nếu thiếu hay sai dạng. */
       eventId: string | null;
-      /** Số đã hoàn và số khách đã trả theo giao dịch của cổng (đơn vị nhỏ nhất của loại tiền); null nếu thiếu. */
+      /**
+       * Số của lần hoàn này (Creem: `object.refund_amount`; tổng cộng dồn do `handleRefund` tính từ nhật ký), đơn vị nhỏ nhất của
+       * loại tiền; null nếu thiếu.
+       */
       refundedAmount: number | null;
+      /** Số khách đã trả theo cổng (Creem: `transaction.amount_paid`, thiếu thì `order.amount_paid`); null nếu thiếu. */
       providerAmountPaid: number | null;
       /** Trạng thái lần hoàn do cổng báo (Creem: `succeeded`, …), tối đa 64 ký tự; null với tranh chấp hay khi thiếu. */
       refundStatus: string | null;
