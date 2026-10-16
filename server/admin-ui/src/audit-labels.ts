@@ -18,12 +18,22 @@ const LABELS: Record<string, readonly [string, Tone?]> = {
   license_conflict: ["Xung đột máy", "warn"],
   // Đơn
   order_created: ["Tạo đơn"],
-  order_underpaid: ["Chuyển thiếu", "warn"],
+  // Theo hành động, không theo cổng: PayOS là chuyển khoản thiếu, Creem là mã giảm giá hay trả thấp hơn giá (không có "chuyển bù").
+  order_underpaid: ["Trả thiếu hay lệch số tiền", "warn"],
   order_amount_mismatch: ["Số tiền không khớp", "warn"],
   order_needs_review: ["Đơn cần xử lý", "bad"],
+  // Cổng thanh toán báo hoàn tiền hay tranh chấp (webhook Creem); license không tự bị thu hồi. Tranh chấp luôn là
+  // order_disputed (kể cả khi cổng lấy lại đủ tiền và đơn thành refunded).
+  order_refunded: ["Đơn được hoàn tiền", "warn"],
+  order_partially_refunded: ["Hoàn tiền một phần", "warn"],
+  order_refund_unconfirmed: ["Hoàn tiền chưa thành công", "warn"],
+  order_disputed: ["Khách mở tranh chấp", "bad"],
+  // Webhook đúng chữ ký mà không khớp đơn nào (không gắn đơn): khách có thể đã trả mà server không biết.
+  payment_unmatched: ["Thanh toán không khớp đơn", "bad"],
   // Người vận hành
   license_issued_manually: ["Cấp license tay", "info"],
   license_extended_manually: ["Gia hạn tay", "info"],
+  license_shortened_manually: ["Rút ngắn hạn tay", "warn"],
   license_unlocked: ["Mở khóa license", "info"],
   license_revoked: ["Thu hồi license", "bad"],
   deactivated_by_admin: ["Gỡ máy (vận hành)", "info"],

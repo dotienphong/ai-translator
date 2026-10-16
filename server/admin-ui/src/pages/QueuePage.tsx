@@ -4,7 +4,7 @@
 // Sau mỗi lần tải xong, số việc được đẩy vào kho dùng chung để huy hiệu ở thanh bên khớp với trang (queue-store.ts).
 import { type ComponentType, type ReactNode, useEffect, useId, useMemo, useState } from "react";
 import { api } from "../api/endpoints";
-import type { AlertRow, LicenseRow, OrderRow, Queue, QueueGroup } from "../api/types";
+import type { AlertRow, LicenseRow, OrderRow, Queue, QueueGroup, Summary } from "../api/types";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Card, type CardTone } from "../components/Card";
@@ -31,7 +31,7 @@ import { RelTime } from "../components/RelTime";
 import { LoadingBlock, SkeletonLine, SkeletonStat } from "../components/Skeleton";
 import { Stat, StatGrid } from "../components/Stat";
 import { PLAN_LABELS } from "../components/StatusBadge";
-import { daysLeft, fmtDate, fmtDateTime, fmtHm, fmtInt, fmtVnd, maskKey, nowSec } from "../format";
+import { daysLeft, fmtDate, fmtDateTime, fmtHm, fmtInt, fmtMoney, fmtUsd, fmtVnd, maskKey, nowSec } from "../format";
 import { useLoad } from "../hooks";
 import { queueTotal, setQueueCount } from "../queue-store";
 import { Link } from "../router";
@@ -84,11 +84,7 @@ export function QueuePage() {
       {summary.error ? (
         <ErrorBox error={summary.error} onRetry={summary.reload} title="Không tải được số nhanh" />
       ) : summary.data ? (
-        <StatGrid label="Số nhanh">
-          <Stat label="Doanh thu hôm nay" value={fmtVnd(summary.data.revenue_today)} icon={<IconCoins />} tone="brand" />
-          <Stat label="Đơn đã trả 7 ngày" value={fmtInt(summary.data.paid_orders_7d)} icon={<IconCart />} tone="info" />
-          <Stat label="License còn hạn" value={fmtInt(summary.data.active_licenses)} icon={<IconKey />} tone="ok" />
-        </StatGrid>
+        <SummaryStats s={summary.data} />
       ) : (
         <LoadingBlock label="Đang tải số nhanh…">
           <StatGrid>
@@ -103,6 +99,39 @@ export function QueuePage() {
       {queue.loading && !queue.data && <QueueSkeleton />}
       {queue.data && loadedAt !== null && <Groups q={queue.data} now={loadedAt} />}
     </>
+  );
+}
+
+/**
+ * Doanh thu hôm nay theo loại tiền. Worker admin bản trước (tab mở sẵn sau khi lùi bản) trả MỘT SỐ (đồng) thay vì
+ * { VND, USD }: đọc `.VND` của số đó là undefined và ra "NaN đ". Thiếu khóa, null hay sai kiểu (phản hồi lệch hợp đồng) thì 0,
+ * không NaN, không văng (n3 của rà B4).
+ */
+function splitRevenue(r: Summary["revenue_today"] | number | null | undefined): { vnd: number; usd: number } {
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  if (typeof r === "number") return { vnd: n(r), usd: 0 };
+  if (r === null || typeof r !== "object") return { vnd: 0, usd: 0 };
+  return { vnd: n(r.VND), usd: n(r.USD) };
+}
+
+function SummaryStats({ s }: { s: Summary }) {
+  const { vnd, usd } = splitRevenue(s.revenue_today);
+  return (
+    <StatGrid label="Số nhanh">
+      <Stat
+        label="Doanh thu hôm nay"
+        value={fmtVnd(vnd)}
+        // Đô la không cộng vào số đồng: ghi riêng dưới số, chỉ khi hôm nay có đơn USD ĐÃ TRẢ (server chỉ cộng đơn paid: đơn đã
+        // hoàn đủ rời doanh thu, nên dòng này cũng biến mất; K4). Là số đã thu (amount_paid của đơn Creem; đơn có giảm giá được cấp tay thì thấp hơn giá, p5): chưa gồm thuế do
+        // cổng thu thêm, chưa trừ phí cổng, và hoàn một phần không trừ (P1-T5).
+        note={usd > 0 ? `Thêm ${fmtUsd(usd)} từ đơn USD (tính riêng, số đã thu không gồm thuế)` : undefined}
+        icon={<IconCoins />}
+        tone="brand"
+      />
+      {/* Server đếm đơn đã trả của mọi loại tiền trong 7×24 giờ gần nhất, khác 7 ngày lịch (GMT+7) của trang Tổng quan (K3). */}
+      <Stat label="Đơn đã trả 7 ngày (mọi loại tiền, 7×24 giờ)" value={fmtInt(s.paid_orders_7d)} icon={<IconCart />} tone="info" />
+      <Stat label="License còn hạn" value={fmtInt(s.active_licenses)} icon={<IconKey />} tone="ok" />
+    </StatGrid>
   );
 }
 
@@ -151,10 +180,10 @@ function Groups({ q, now }: { q: Queue; now: number }) {
       <Group
         tone="warn"
         icon={IconCoins}
-        title="Chuyển thiếu trong 30 ngày"
-        hint="Khách chuyển bù thì mở đơn, bấm Cấp tay."
+        title="Trả thiếu hay cần xem số tiền (30 ngày)"
+        hint="VietQR: khách chuyển bù thì Cấp tay. Thẻ (Creem): có mã giảm giá, trả thấp hơn giá hay dữ liệu tiền hỏng; xem trạng thái trên Creem rồi Cấp tay (chấp nhận số đã thu) hay hoàn tiền ở Creem."
         group={q.underpaid}
-        more={{ to: "/orders?status=underpaid", where: "danh sách đơn chuyển thiếu" }}
+        more={{ to: "/orders?status=underpaid", where: "danh sách đơn trả thiếu hay cần xem số tiền" }}
         kind="order"
         rowKey={(o) => String(o.order_code)}
         render={(o) => <OrderItem o={o} now={now} />}
@@ -325,11 +354,11 @@ function OrderItem({ o, now }: { o: OrderRow; now: number }) {
       </span>
       <span className="q-meta">
         <span className="q-amount">
-          {fmtVnd(o.amount_paid)}
-          {short && <span className="q-of">{` / ${fmtVnd(o.amount)}`}</span>}
+          {fmtMoney(o.amount_paid, o.currency)}
+          {short && <span className="q-of">{` / ${fmtMoney(o.amount, o.currency)}`}</span>}
         </span>
         {short ? (
-          <span className="q-sub q-short">{`thiếu ${fmtVnd(o.amount - o.amount_paid)}`}</span>
+          <span className="q-sub q-short">{`thiếu ${fmtMoney(o.amount - o.amount_paid, o.currency)}`}</span>
         ) : (
           <span className="q-sub">{`Gói ${PLAN_LABELS[o.plan] ?? o.plan}`}</span>
         )}
@@ -352,7 +381,7 @@ function EmailItem({ o, now }: { o: OrderRow; now: number }) {
           <IconMail size={14} />
           {o.email_gave_up_at === null ? "chưa gửi được sau 24 giờ" : `thôi gửi lúc ${fmtDateTime(o.email_gave_up_at)}`}
         </span>
-        <span className="q-sub">{fmtVnd(o.amount_paid)}</span>
+        <span className="q-sub">{fmtMoney(o.amount_paid, o.currency)}</span>
       </span>
       <When sec={o.created_at} now={now} />
       {o.license_id ? (
@@ -389,6 +418,12 @@ function LicenseItem({ l, now, when }: { l: LicenseRow; now: number; when: "lock
   );
 }
 
+/**
+ * Cảnh báo của cổng thanh toán có hành động nhật ký cùng tên: email cảnh báo không mang mã đơn (gom theo loại), nên dòng có lối
+ * tới Nhật ký lọc theo hành động đó. `payment_unmatched` không gắn đơn nào: đây là lối vào duy nhất từ trang này.
+ */
+const AUDIT_ALERTS: readonly string[] = ["payment_unmatched", "order_refunded", "order_partially_refunded", "order_refund_unconfirmed", "order_disputed"];
+
 function AlertItem({ a, now }: { a: AlertRow; now: number }) {
   return (
     <>
@@ -403,7 +438,22 @@ function AlertItem({ a, now }: { a: AlertRow; now: number }) {
       <span className="q-when">
         <RelTime sec={a.window_start} now={now} className="q-rel" />
       </span>
-      <span className="q-act" />
+      {AUDIT_ALERTS.includes(a.kind) ? (
+        <Go to={`/audit?action=${a.kind}`} label="Xem nhật ký" target={a.kind} />
+      ) : a.kind === "order_payment_review" ? (
+        // Đơn bị giữ vì số tiền: không có hành động nhật ký cùng tên. Hai lối: danh sách đơn trả thiếu (underpaid, cả dòng bấm được) và
+        // danh sách đơn lỗi (đơn thẻ lệch giá thành failed, không có trong danh sách trả thiếu) (p7).
+        <span className="q-act q-act-pair">
+          <Button to="/orders?status=failed" variant="ghost" size="sm" className="q-alt" aria-label={`Xem đơn lệch giá ${a.kind}`}>
+            Xem đơn lệch giá
+          </Button>
+          <Button to="/orders?status=underpaid" variant="ghost" size="sm" iconEnd={<IconArrowRight size={16} />} className="q-go" aria-label={`Xem đơn ${a.kind}`}>
+            Xem đơn
+          </Button>
+        </span>
+      ) : (
+        <span className="q-act" />
+      )}
     </>
   );
 }

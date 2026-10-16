@@ -19,6 +19,8 @@ export interface ConfirmDialogProps {
   children?: ReactNode;
   /** false: ô nhập thêm chưa hợp lệ. */
   extraValid?: boolean;
+  /** Mở hộp thì focus vào ô nhập thêm của trang (vd Số ngày) thay vì ô Lý do. */
+  focusExtraFirst?: boolean;
   onConfirm(note: string): Promise<void>;
   onClose(): void;
   /**
@@ -73,9 +75,11 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
   // Bẫy focus trong hộp và trả focus về nút đã mở hộp khi đóng. Gọi trước hiệu ứng focus bên dưới để nhớ đúng nút đó.
   useFocusTrap(formRef);
 
-  // Mở hộp: focus vào ô nhập đầu tiên (Lý do, rồi ô gõ chữ xác nhận, rồi ô nhập thêm của trang), không vào nút xác nhận.
+  // Mở hộp: focus vào ô nhập đầu tiên (Lý do, rồi ô gõ chữ xác nhận, rồi ô nhập thêm của trang; focusExtraFirst thì ô nhập thêm
+  // của trang trước, nó đứng đầu thân hộp), không vào nút xác nhận.
   useEffect(() => {
-    const first = noteRef.current ?? typedRef.current ?? formRef.current?.querySelector<HTMLElement>("input, textarea, select");
+    const extra = formRef.current?.querySelector<HTMLElement>(".dialog-body input, .dialog-body textarea, .dialog-body select");
+    const first = (p.focusExtraFirst ? extra : null) ?? noteRef.current ?? typedRef.current ?? extra;
     // Không có ô nhập: focus vào chính hộp (trình đọc màn hình đọc tên và mô tả), vẫn không vào nút xác nhận.
     if (first) first.focus();
     else formRef.current?.focus();

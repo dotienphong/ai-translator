@@ -126,6 +126,7 @@ export function ChartCard({
   series,
   stacked = false,
   format = String,
+  tick = fmtCompact,
   labelHeader = "Mốc",
   integer = false,
   unit,
@@ -141,6 +142,8 @@ export function ChartCard({
   stacked?: boolean;
   /** Định dạng một giá trị trong bảng số và tooltip (ví dụ fmtVnd). */
   format?: (n: number) => string;
+  /** Định dạng vạch của trục dọc (mặc định số gọn như "1,5tr"); trục tiền USD đổi từ cent sang đô la. */
+  tick?: (n: number) => string;
   /** Tiêu đề cột nhãn của bảng số. */
   labelHeader?: string;
   /** Biểu đồ đếm (số đơn, số máy): trục dọc chỉ có số nguyên, không chia vạch 0,5. */
@@ -182,7 +185,7 @@ export function ChartCard({
                   axisLine={false}
                   tickLine={false}
                   tickMargin={6}
-                  tickFormatter={(v) => fmtCompact(Number(v))}
+                  tickFormatter={(v) => tick(Number(v))}
                   width={44}
                 />
                 <Tooltip

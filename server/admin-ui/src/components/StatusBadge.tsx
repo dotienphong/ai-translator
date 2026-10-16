@@ -11,7 +11,9 @@ export const ORDER_LABELS: Record<OrderStatus, string> = {
   pending: "Chờ trả",
   processing: "Đang xử lý",
   paid: "Đã trả",
-  underpaid: "Chuyển thiếu",
+  // Nhãn chung (bộ lọc, biểu đồ, danh sách theo trạng thái: có cả đơn VietQR lẫn đơn thẻ): trung lập. Huy hiệu của từng đơn
+  // (OrderStatusBadge có `provider`) nói theo cổng.
+  underpaid: "Trả thiếu hay lệch số tiền",
   cancelled: "Đã hủy",
   expired: "Hết hạn link",
   failed: "Lỗi",
@@ -32,8 +34,18 @@ export const ORDER_TONES: Record<OrderStatus, Tone> = {
   refunded: "muted",
 };
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  return <Badge tone={ORDER_TONES[status] ?? "muted"}>{ORDER_LABELS[status] ?? status}</Badge>;
+/** Nhãn "Chuyển thiếu" chỉ đúng với VietQR (PayOS: khách chuyển thiếu, chuyển bù được). Cổng khác (Creem): đã thu tiền mà thấp hơn giá. */
+const UNDERPAID_BANK = "Chuyển thiếu";
+const UNDERPAID_CARD = "Trả thấp hơn giá";
+
+/**
+ * Huy hiệu trạng thái đơn. `provider` (orders.provider) chỉ đổi nhãn của `underpaid`: PayOS "Chuyển thiếu", cổng khác "Trả thấp
+ * hơn giá"; không có `provider` (nơi chỉ biết trạng thái) thì nhãn chung, trung lập, của ORDER_LABELS.
+ */
+export function OrderStatusBadge({ status, provider }: { status: OrderStatus; provider?: string }) {
+  const label =
+    status === "underpaid" && provider !== undefined ? (provider === "payos" ? UNDERPAID_BANK : UNDERPAID_CARD) : (ORDER_LABELS[status] ?? status);
+  return <Badge tone={ORDER_TONES[status] ?? "muted"}>{label}</Badge>;
 }
 
 export interface LicenseState {

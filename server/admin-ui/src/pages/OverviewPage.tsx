@@ -1,9 +1,10 @@
 // Trang Tổng quan (spec Web Admin phần 2, mục 4; giao diện mới mục 2): số liệu từ GET /admin/stats, năm ô số và bốn nhóm
 // Tiền, Khách hàng, Sức khỏe, Sử dụng. Biểu đồ trong ChartCard (bảng màu dataviz); thanh tỷ lệ là SVG (CSP không cho
 // style inline nên bề rộng nằm ở thuộc tính width của <rect>, không ở style).
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
+import { ApiError } from "../api/client";
 import { api } from "../api/endpoints";
-import type { GrantKind, OrderStatus, Stats } from "../api/types";
+import type { GrantKind, OrderCurrency, OrderStatus, Stats } from "../api/types";
 import { Button } from "../components/Button";
 import { Card, Section } from "../components/Card";
 import { ChartCard } from "../components/ChartCard";
@@ -21,9 +22,10 @@ import {
 } from "../components/icons";
 import { PageHeader } from "../components/PageHeader";
 import { RatioBar } from "../components/RatioBar";
+import { SegmentedControl } from "../components/SegmentedControl";
 import { Stat, StatGrid, type StatTone } from "../components/Stat";
 import { ORDER_LABELS, ORDER_TONES, PLAN_LABELS } from "../components/StatusBadge";
-import { fmtDay, fmtHm, fmtInt, fmtMonth, fmtVnd } from "../format";
+import { fmtCompactMoney, fmtDay, fmtHm, fmtInt, fmtMoney, fmtMonth } from "../format";
 import { useLoad } from "../hooks";
 import { Link } from "../router";
 import { OVERVIEW_DESC, OverviewSkeleton } from "./OverviewSkeleton";
@@ -43,8 +45,34 @@ const rate = (part: number, total: number) => {
   return p === null ? "" : ` (${p}%)`;
 };
 
+/**
+ * Mặc định khi phản hồi không có `currencies` (Worker admin bản trước sau khi lùi, tab mở sẵn). PHẢI là hằng cấp mô-đun:
+ * viết `?? ["VND"]` tại chỗ tạo mảng mới mỗi lượt vẽ, mà phần đặt state trong lúc render so sánh theo tham chiếu, nên sẽ lặp
+ * vô hạn ("Too many re-renders").
+ */
+const ONLY_VND: readonly OrderCurrency[] = ["VND"];
+
+/** Server trả số liệu của loại tiền khác loại đã hỏi (lệch phiên bản): hộp lỗi thay vì chờ vô hạn (n1 của rà B4). */
+const CURRENCY_MISMATCH = new ApiError(0, "currency_mismatch");
+
 export function OverviewPage() {
-  const stats = useLoad(() => api.stats(), []);
+  const [currency, setCurrency] = useState<OrderCurrency>("VND");
+  // VND là mặc định của server: không gửi tham số (cùng yêu cầu như trước khi có USD).
+  // Kèm loại tiền đã hỏi: phân biệt "chưa tải xong loại mới" (khung chờ) với "đã tải xong mà server trả loại khác" (hộp lỗi).
+  const stats = useLoad(async () => ({ asked: currency, s: await api.stats(currency === "VND" ? undefined : currency) }), [currency]);
+  // Các loại tiền đã có đơn, nhớ từ lần tải thành công gần nhất: nút chuyển vẫn còn khi một lần tải lỗi (để quay về loại cũ).
+  // Cập nhật ngay trong lúc render (không qua effect) nên nút hiện cùng lượt vẽ với số liệu.
+  const [currencies, setCurrencies] = useState<readonly OrderCurrency[]>(ONLY_VND);
+  // Kiểu khai báo của `currencies` không có undefined: `??` ở đây là phòng thủ trước phản hồi kiểu cũ (thiếu khóa này).
+  const loaded = stats.data ? (stats.data.s.currencies ?? ONLY_VND) : null;
+  if (loaded && loaded !== currencies) setCurrencies(loaded);
+  // Loại tiền đang xem không còn trong danh sách (đã xóa hết đơn của nó): về VND, không kẹt ở số 0 mang nhãn loại tiền kia.
+  // Chỉ khi đang xem loại khác VND: nếu không, danh sách lạ thiếu VND sẽ đặt lại state ở mỗi lượt vẽ.
+  if (currency !== "VND" && !currencies.includes(currency)) setCurrency("VND");
+  // Số liệu của loại tiền khác (còn lại từ lần tải trước) không hiện dưới nút của loại tiền mới: trong lúc tải là khung chờ.
+  const fresh = stats.data !== null && stats.data.asked === currency && !stats.loading ? stats.data.s : null;
+  const shown = stats.data !== null && stats.data.s.currency === currency ? stats.data.s : null;
+  const mismatch = fresh !== null && fresh.currency !== currency;
   return (
     <>
       <PageHeader
@@ -52,38 +80,55 @@ export function OverviewPage() {
         description={
           <p className="page-meta">
             <span>{OVERVIEW_DESC}</span>
-            {stats.data && (
+            {shown && (
               <span className="page-meta-time">
                 <IconClock size={14} />
-                <span>Cập nhật lúc {fmtHm(stats.data.generated_at)}</span>
+                <span>Cập nhật lúc {fmtHm(shown.generated_at)}</span>
               </span>
             )}
           </p>
         }
         actions={
-          <Button icon={<IconRefresh size={16} />} loading={stats.loading} onClick={stats.reload}>
-            Làm mới
-          </Button>
+          <>
+            {currencies.length > 1 && (
+              <SegmentedControl label="Loại tiền" value={currency} onChange={setCurrency} options={currencies.map((c) => ({ value: c, label: c }))} />
+            )}
+            <Button icon={<IconRefresh size={16} />} loading={stats.loading} onClick={stats.reload}>
+              Làm mới
+            </Button>
+          </>
         }
       />
       {stats.error && <ErrorBox error={stats.error} onRetry={stats.reload} title="Không tải được số liệu" />}
-      {stats.loading && !stats.data && <OverviewSkeleton />}
-      {stats.data && <Content s={stats.data} />}
+      {mismatch && !stats.error && <ErrorBox error={CURRENCY_MISMATCH} onRetry={stats.reload} title="Không tải được số liệu" />}
+      {/* Chưa có số liệu của loại tiền đang chọn mà cũng chưa lỗi: khung chờ (kể cả lượt vẽ ngay sau cú bấm, khi useLoad chưa
+          kịp đặt loading, và khi server trả loại tiền khác loại đã hỏi), không để thân trang trống. */}
+      {!shown && !stats.error && !mismatch && <OverviewSkeleton />}
+      {shown && <Content s={shown} />}
     </>
   );
 }
 
 function Content({ s }: { s: Stats }) {
   const { money, customers, health, usage } = s;
+  // Mọi số tiền của trang theo loại tiền của phản hồi (không theo nút đang chọn): số và đơn vị luôn khớp nhau.
+  const fmt = (n: number) => fmtMoney(n, s.currency);
+  const tick = (n: number) => fmtCompactMoney(n, s.currency);
+  const usd = s.currency === "USD";
+  const unit = usd ? "Đơn vị: đô la (USD)" : "Đơn vị: đồng";
+  const tag = s.currency === "VND" ? "" : ` (${s.currency})`;
+  // Đơn theo trạng thái và email key không theo loại tiền (server không lọc currency): khi có hơn một loại tiền thì ghi rõ. Phản
+  // hồi thiếu `currencies` (Worker admin bản trước) coi là một loại; không đọc `.length` trực tiếp (undefined thì văng).
+  const allCurrencies = (s.currencies?.length ?? 1) > 1;
   return (
     <>
       <StatGrid label="Số chính" className="ov-stats">
-        <Stat label="Doanh thu hôm nay" value={fmtVnd(money.today)} icon={<IconCoins />} tone="brand" />
-        <Stat label="Doanh thu 7 ngày" value={fmtVnd(money.last_7d)} icon={<IconCoins />} tone="brand" />
+        <Stat label={`Doanh thu hôm nay${tag}`} value={fmt(money.today)} icon={<IconCoins />} tone="brand" />
+        <Stat label={`Doanh thu 7 ngày${tag}`} value={fmt(money.last_7d)} icon={<IconCoins />} tone="brand" />
         <Stat
-          label="Doanh thu tháng này"
-          value={fmtVnd(money.this_month)}
-          note={`Tháng trước: ${fmtVnd(money.last_month)}`}
+          label={`Doanh thu tháng này${tag}`}
+          value={fmt(money.this_month)}
+          note={`Tháng trước: ${fmt(money.last_month)}`}
           icon={<IconCalendar />}
           tone="brand"
         />
@@ -97,24 +142,37 @@ function Content({ s }: { s: Stats }) {
         />
       </StatGrid>
 
-      <Section title="Tiền" description="Tiền đã nhận của đơn đã trả; ngày và tháng tính theo giờ Việt Nam.">
+      <Section
+        title="Tiền"
+        // Đồng: tiền PayOS đã nhận. Đô la: amount_paid của đơn Creem là số đã thu trước thuế (creem.ts: sub_total; đơn có giảm giá được
+        // cấp tay thì thấp hơn giá, nên không gọi là "giá niêm yết", p5 của rà B6), chưa trừ phí cổng, không
+        // gồm thuế cổng thu thêm: không gọi là "tiền đã nhận" (P2-T6). Server chỉ cộng đơn `paid` (admin-stats.ts): hoàn một phần
+        // hay tranh chấp chưa xong để đơn ở paid với amount_paid đầy đủ nên không được trừ; đơn đã hoàn đủ thì rời doanh thu (K4).
+        description={
+          usd
+            ? "Số đã thu (không gồm thuế) của đơn USD đã trả, chưa trừ phí cổng thanh toán; hoàn tiền một phần không được trừ, đơn đã hoàn đủ không tính; ngày và tháng tính theo giờ Việt Nam."
+            : "Tiền đã nhận của đơn đã trả; ngày và tháng tính theo giờ Việt Nam."
+        }
+      >
         <div className="chart-grid">
           <ChartCard
             title="Doanh thu 30 ngày gần nhất"
             description="Mỗi cột là một ngày"
-            unit="Đơn vị: đồng"
+            unit={unit}
             labelHeader="Ngày"
-            format={fmtVnd}
+            format={fmt}
+            tick={tick}
             series={[{ key: "revenue", label: "Doanh thu" }]}
             data={money.daily.map((d) => ({ label: fmtDay(d.day), revenue: d.revenue }))}
           />
           <ChartCard
             title="Doanh thu 12 tháng, theo gói"
             description="Cột chồng: Monthly, 6 Months và Yearly"
-            unit="Đơn vị: đồng"
+            unit={unit}
             labelHeader="Tháng"
             stacked
-            format={fmtVnd}
+            format={fmt}
+            tick={tick}
             series={[
               { key: "monthly", label: PLAN_LABELS.monthly },
               { key: "six_months", label: PLAN_LABELS.six_months },
@@ -139,11 +197,11 @@ function Content({ s }: { s: Stats }) {
               <TrialRatio label="Từ trước đến nay" trials={customers.trials_total} bought={customers.trials_total_purchased} />
             </div>
           </Card>
-          <GrantsCard grants={customers.grants_30d} />
+          <GrantsCard grants={customers.grants_30d} currency={s.currency} />
           <div className="ov-span">
             <ChartCard
               title="Mua mới, gia hạn, đổi gói theo tháng"
-              description="Số đơn đã trả mỗi tháng, theo loại"
+              description={`Số đơn${usd ? " USD" : ""} đã trả mỗi tháng, theo loại`}
               unit="Số đơn"
               labelHeader="Tháng"
               integer
@@ -155,7 +213,10 @@ function Content({ s }: { s: Stats }) {
         </div>
       </Section>
 
-      <Section title="Sức khỏe" description="Đơn theo trạng thái, license sắp hết hạn và email gửi key.">
+      <Section
+        title="Sức khỏe"
+        description={`Đơn theo trạng thái${allCurrencies ? " (mọi loại tiền)" : ""}, license sắp hết hạn và email gửi key.`}
+      >
         <div className="ov-split">
           <StatusCard orders={health.orders_30d} />
           <Card title="Cần chú ý" description="License sắp hết hạn, email key trong 30 ngày" level={3} className="ov-fill">
@@ -173,7 +234,7 @@ function Content({ s }: { s: Stats }) {
                   icon={<IconMail />}
                   tone={health.email.sent < health.email.paid_with_email_30d ? "warn" : "ok"}
                   label="Email key đã gửi"
-                  hint={`${pct(health.email.sent, health.email.paid_with_email_30d)}% số đơn đã trả có email`}
+                  hint={`${pct(health.email.sent, health.email.paid_with_email_30d)}% số đơn đã trả có email${allCurrencies ? " (mọi loại tiền)" : ""}`}
                   value={`${fmtInt(health.email.sent)} / ${fmtInt(health.email.paid_with_email_30d)}`}
                 />
               ) : (
@@ -244,7 +305,7 @@ interface GrantRow {
   revenue: number;
 }
 
-const GRANT_COLUMNS: Column<GrantRow>[] = [
+const grantColumns = (currency: OrderCurrency): Column<GrantRow>[] => [
   {
     header: "Loại",
     cell: (r) =>
@@ -258,10 +319,10 @@ const GRANT_COLUMNS: Column<GrantRow>[] = [
       ),
   },
   { header: "Số đơn", align: "right", cell: (r) => fmtInt(r.orders) },
-  { header: "Doanh thu", align: "right", nowrap: true, cell: (r) => fmtVnd(r.revenue) },
+  { header: "Doanh thu", align: "right", nowrap: true, cell: (r) => fmtMoney(r.revenue, currency) },
 ];
 
-function GrantsCard({ grants }: { grants: Stats["customers"]["grants_30d"] }) {
+function GrantsCard({ grants, currency }: { grants: Stats["customers"]["grants_30d"]; currency: OrderCurrency }) {
   const kinds: GrantRow[] = GRANT_KINDS.map((k) => ({ kind: k, ...grants[k] }));
   const total: GrantRow = {
     kind: "total",
@@ -269,12 +330,18 @@ function GrantsCard({ grants }: { grants: Stats["customers"]["grants_30d"] }) {
     revenue: kinds.reduce((n, r) => n + r.revenue, 0),
   };
   return (
-    <Card title="Đơn đã trả trong 30 ngày" description="Màu khớp với biểu đồ theo tháng bên dưới" level={3} flush className="ov-grants">
+    <Card
+      title="Đơn đã trả trong 30 ngày"
+      description={`${currency === "VND" ? "Màu" : `Chỉ đơn ${currency}; màu`} khớp với biểu đồ theo tháng bên dưới`}
+      level={3}
+      flush
+      className="ov-grants"
+    >
       <DataTable
         flush
         mobile="table"
         caption="Đơn đã trả trong 30 ngày theo loại"
-        columns={GRANT_COLUMNS}
+        columns={grantColumns(currency)}
         rows={[...kinds, total]}
         rowKey={(r) => r.kind}
         empty=""

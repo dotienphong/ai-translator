@@ -48,6 +48,27 @@ describe("call", () => {
     expect((await failure(call("GET", "/admin/queue"))).message).toBe("Lỗi không rõ (la_hoan_toan)");
   });
 
+  it("409 của Rút ngắn hạn: câu rõ ràng cho too_far (số ngày và hạn hiện tại do server báo), license_revoked và conflict", async () => {
+    const shorten = () => call("POST", "/admin/licenses/x/shorten", { days: 30, note: "x", expected_expires_at: 1 });
+    // 1_800_000_000 = 15/01/2027 15:00 giờ Việt Nam.
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "too_far", max_days: 12, expires_at: 1_800_000_000 }, 409)));
+    const far = await failure(shorten());
+    expect(far).toMatchObject({ status: 409, code: "too_far" });
+    expect(far.message).toBe("Hạn mới phải sau thời điểm hiện tại: số ngày quá lớn (còn rút được nhiều nhất 12 ngày; hạn hiện tại 15/01/2027)");
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "too_far", max_days: 0, expires_at: 1_800_000_000 }, 409)));
+    expect((await failure(shorten())).message).toBe(
+      "Hạn mới phải sau thời điểm hiện tại: số ngày quá lớn (còn rút được nhiều nhất 0 ngày; hạn hiện tại 15/01/2027)",
+    );
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "license_revoked" }, 409)));
+    expect((await failure(shorten())).message).toBe("License đã bị thu hồi");
+    // `conflict` (license vừa đổi, hay lần gửi trước đã được áp dụng) khác `license_conflict` (key đang ở hai máy).
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "conflict" }, 409)));
+    expect((await failure(shorten())).message).toBe(
+      // Không mời "thử lại" (I-1 của rà B2): bấm lại ngay có thể trừ thêm một lần nữa trên hạn mới.
+      "License vừa thay đổi (hay yêu cầu trước đã được áp dụng): đã tải lại. Xem lại hạn và nhật ký rồi mở lại hộp nếu vẫn cần rút",
+    );
+  });
+
   it("404 not_found: server trả cả khi license đã ở trạng thái đó, nên câu lỗi nhắc tải lại", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => json({ error: "not_found" }, 404)));
     const e = await failure(call("POST", "/admin/licenses/x/unlock", { note: "x" }));

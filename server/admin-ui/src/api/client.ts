@@ -1,6 +1,8 @@
 // Gọi API của Worker admin: cùng origin, sau Cloudflare Access (spec Web Admin §4.5, §4.6). Mọi lỗi thành ApiError
 // mang câu tiếng Việt. Phiên Access hết hạn thì phát sự kiện SESSION_EXPIRED_EVENT để App hiện thanh báo.
 
+import { fmtDate } from "../format";
+
 export const SESSION_EXPIRED_EVENT = "admin:session-expired";
 
 const MESSAGES: Record<string, string> = {
@@ -17,6 +19,14 @@ const MESSAGES: Record<string, string> = {
   already_paid: "Đơn đã được cấp trước đó",
   already_settled: "Đơn đã khép",
   not_needs_review: "Đơn không ở trạng thái chờ xử lý",
+  // Rút ngắn hạn (POST /admin/licenses/:id/shorten). `conflict` (license vừa đổi, hay lần gửi trước đã được áp dụng) khác
+  // `license_conflict` (key đang kích hoạt trên hai máy).
+  too_far: "Hạn mới phải sau thời điểm hiện tại: số ngày quá lớn",
+  license_revoked: "License đã bị thu hồi",
+  // Không mời "thử lại": bấm lại ngay trên hạn mới có thể trừ thêm một lần nữa (hộp Rút ngắn hạn… đóng khi gặp mã này).
+  conflict: "License vừa thay đổi (hay yêu cầu trước đã được áp dụng): đã tải lại. Xem lại hạn và nhật ký rồi mở lại hộp nếu vẫn cần rút",
+  // Trang Tổng quan: server trả số liệu của loại tiền khác loại đã hỏi (lệch phiên bản giữa giao diện và Worker admin).
+  currency_mismatch: "Server trả loại tiền không khớp với loại đang xem; tải lại trang",
   unsupported_media_type: "Yêu cầu sai định dạng",
   rate_limited: "Quá nhiều yêu cầu, thử lại sau",
   internal: "Lỗi máy chủ",
@@ -31,6 +41,10 @@ export function errorMessage(code: string, body: Record<string, unknown> = {}): 
   if (typeof body.field === "string") extra.push(`trường ${body.field}`);
   if (typeof body.status === "string") extra.push(`trạng thái hiện tại: ${body.status}`);
   if (typeof body.message === "string") extra.push(body.message);
+  // too_far: số ngày còn rút được và hạn hiện tại theo server (không tự tính: đồng hồ máy người vận hành có thể lệch).
+  if (typeof body.max_days === "number") {
+    extra.push(`còn rút được nhiều nhất ${body.max_days} ngày${typeof body.expires_at === "number" ? `; hạn hiện tại ${fmtDate(body.expires_at)}` : ""}`);
+  }
   return extra.length > 0 ? `${base} (${extra.join("; ")})` : base;
 }
 

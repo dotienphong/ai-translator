@@ -2,7 +2,8 @@
 // Dữ liệu mẫu cố định đủ để xem mọi màn hình, hình dạng khớp hợp đồng API thật (src/api/types.ts). Bốn danh sách (đơn,
 // license, máy dùng thử, nhật ký) có vài chục dòng, lọc gần giống server và phân trang 50 dòng bằng next_cursor để thấy
 // "Tải thêm". Tra cứu (/admin/lookup) trả theo body như server: đơn, license, máy có thật trong dữ liệu mẫu, còn lại rỗng.
-// Vài bản ghi trình diễn cho trang chi tiết: đơn 1000012 (đã trả), 1000214 (cần xử lý), 1000210 (chuyển thiếu), 1000208
+// Vài bản ghi trình diễn cho trang chi tiết: đơn 1000012 (đã trả), 1000015 (đơn Creem gia hạn license LIC rồi được hoàn: thẻ
+// "Rút ngắn 365 ngày…"), 1000016 (đơn Creem đã trả, cổng báo hoàn một phần), 1000214 (cần xử lý), 1000210 (chuyển thiếu), 1000208
 // (chưa gửi được email key); license LIC (xung đột máy), LOCKED (khóa tạm), REVOKED (đã thu hồi); máy DEVICE_A (đã mua,
 // dùng thử đã hết), DEVICE_B (đã mua, không dùng thử). Email khach@example.com có hai license. Thao tác ghi trả thành
 // công giả. Không dùng email, key hay hash thật.
@@ -10,7 +11,9 @@
 // vào địa chỉ TRANG (ví dụ /orders?__fake=empty): API giả ghi nó vào cookie khi trả HTML, trang không biết gì. Áp cho bốn
 // danh sách và cho tra cứu (empty: không tìm thấy). `__fake=bad` làm tra cứu trả 400 (từ khóa sai định dạng).
 // Hàng đợi, số nhanh và Tổng quan: `__fake=empty` là không có việc nào, số liệu bằng 0; `__fake=huge` là số hàng tỷ, hàng
-// triệu (kiểm chữ số dài không tràn ô).
+// triệu (kiểm chữ số dài không tràn ô); `empty` cũng là trạng thái chỉ có VND (không có nút chuyển loại tiền ở Tổng quan). Hàng đợi
+// có ba đơn Creem (USD): 1000211 trả thấp hơn giá vì mã giảm giá, 1000216 cần xử lý, 1000209 chưa gửi được email key. Rút ngắn hạn: `__fake=conflict` trả 409 conflict (hộp đóng, trang báo và tải lại),
+// `__fake=too_far` trả 409 too_far kèm max_days (hộp còn mở), để xem hai ca lỗi (ví dụ /orders/1000015?__fake=conflict).
 import type { Plugin } from "vite";
 import type {
   Activation,
@@ -33,6 +36,7 @@ import type {
   ReleasesResponse,
   Stats,
   Summary,
+  Totals,
   TrialRow,
 } from "../src/api/types.ts";
 
@@ -45,15 +49,17 @@ const DEVICE_A = `3fa1${"0".repeat(56)}c09e`;
 const DEVICE_B = `91be${"0".repeat(56)}77d2`;
 const ACTORS = ["api", "webhook", "reconcile", "admin"];
 
-function order(code: number, status: OrderStatus): OrderRow {
-  const paid = status === "paid" || status === "paid_needs_review";
+/** Đơn mẫu: VND qua PayOS; `usd` là đơn quốc tế qua Creem (gói Yearly 39,99 USD, tính bằng cent). */
+function order(code: number, status: OrderStatus, usd = false): OrderRow {
+  const paid = status === "paid" || status === "paid_needs_review" || (usd && status === "refunded");
+  const amount = usd ? 3999 : 500000;
   return {
     order_code: code,
-    provider: "payos",
+    provider: usd ? "creem" : "payos",
     plan: "yearly",
-    amount: 500000,
-    amount_paid: paid ? 500000 : status === "underpaid" ? 200000 : 0,
-    currency: "VND",
+    amount,
+    amount_paid: paid ? amount : status === "underpaid" ? (usd ? 2000 : 200000) : 0,
+    currency: usd ? "USD" : "VND",
     email: EMAIL,
     status,
     grant_kind: status === "paid" ? "new" : null,
@@ -94,12 +100,16 @@ const LOCKED = "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f";
 const REVOKED = "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b";
 const DEVICE_C = `c7d2${"0".repeat(56)}1a4f`;
 
+/** Hạn của LIC: đơn 1000012 (Yearly, 40 ngày trước) cho tới NOW + 325 ngày, đơn gia hạn 1000015 cộng thêm 365 ngày. */
+const LIC_FROM = NOW + 325 * DAY;
+const LIC_EXPIRES = LIC_FROM + 365 * DAY;
+
 const licenseDetail: LicenseDetail = {
   id: LIC,
   license_key: KEY,
   email: EMAIL,
   plan: "yearly",
-  expires_at: NOW + 365 * DAY,
+  expires_at: LIC_EXPIRES,
   created_at: NOW - 40 * DAY,
   revoked_at: null,
   locked_at: null,
@@ -170,7 +180,7 @@ const lookup: LookupResult = {
 const issued: IssuedLicense = { license_id: LIC, license_key: KEY, plan: "yearly", expires_at: NOW + 365 * DAY };
 const keyCheck: KeyCheck = { slot: "b", kid: "2026-10-b", token: "v1.eyJ0ZXN0Ijp0cnVlfQ.c2ln" };
 const erased: EraseResult = { activations: 2, licenses: 1, orders: 1 };
-const summary: Summary = { revenue_today: 12450000, currency: "VND", paid_orders_7d: 1204, active_licenses: 3187 };
+const summary: Summary = { revenue_today: { VND: 12450000, USD: 6798 }, paid_orders_7d: 1204, active_licenses: 3187 };
 const payment: PaymentStatus = { orderCode: 1000012, status: "paid", amount: 500000, amountPaid: 500000, paidAt: NOW - DAY };
 
 const group = <T>(items: T[]): QueueGroup<T> => ({ count: items.length, items });
@@ -185,26 +195,36 @@ const qOrder = (code: number, status: OrderStatus, ago: number, over: Partial<Or
   ...over,
 });
 const qLicense = (id: string, key: string, over: Partial<LicenseRow> = {}): LicenseRow => ({ ...licenseRow, id, license_key: key, ...over });
+/** Đơn Creem (USD, cent) của hàng đợi: cùng mẫu với qOrder, giá 39,99 USD, cổng creem. */
+const qUsd = (code: number, status: OrderStatus, ago: number, over: Partial<OrderRow> = {}): OrderRow => ({
+  ...qOrder(code, status, ago, { provider: "creem", currency: "USD", amount: 3999, amount_paid: 3999, ...over }),
+});
+// Creem báo đã thu 30,00 USD (giá niêm yết, không gồm thuế) trên giá 39,99 USD vì khách dùng mã giảm giá: nhóm "Trả thiếu hay cần xem số tiền".
+const USD_HELD = qUsd(1000211, "underpaid", 50 * 60, { amount_paid: 3000, email: "lucas.martin@example.com" });
+const USD_REVIEW = qUsd(1000216, "paid_needs_review", 3 * 3600, { email: "john.smith@example.com" });
+const USD_EMAIL = qUsd(1000209, "paid", 5 * DAY, { license_id: LIC, email: "emma.brown@example.com", email_sent_at: null });
 const UNDERPAID_EMAILS = ["an.nguyen@example.com", "binh.tran@example.com", LONG_EMAIL, "chi.le@example.com", "dung.pham@example.com"];
 const queue: Queue = {
   needs_review: group([
     qOrder(1000214, "paid_needs_review", 25 * 60, { email: "minh.hoang@example.com" }),
     qOrder(1000197, "paid_needs_review", 26 * 3600, { plan: "monthly", amount: 50000, amount_paid: 50000, email: null }),
+    USD_REVIEW,
   ]),
   underpaid: {
     count: 23,
-    items: Array.from({ length: 20 }, (_, i) =>
+    items: [USD_HELD, ...Array.from({ length: 19 }, (_, i) =>
       qOrder(1000210 - i * 3, "underpaid", 40 * 60 + i * 5 * 3600, {
         email: UNDERPAID_EMAILS[i % UNDERPAID_EMAILS.length] ?? EMAIL,
         plan: i % 3 === 0 ? "monthly" : "yearly",
         amount: i % 3 === 0 ? 50000 : 500000,
         amount_paid: i % 3 === 0 ? 20000 : [200000, 450000, 499000][i % 3] ?? 200000,
       }),
-    ),
+    )],
   },
   email_failed: group([
     qOrder(1000208, "paid", 2 * DAY + 3600, { license_id: LIC, email: "khanh.vu@example.com", email_sent_at: null }),
     qOrder(1000181, "paid", 6 * DAY, { license_id: null, email: LONG_EMAIL, email_sent_at: null, email_gave_up_at: NOW - 4 * DAY }),
+    USD_EMAIL,
   ]),
   locked: group([qLicense("1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f", "P3RT-…-Q8LZ", { locked_at: NOW - 3 * 3600, active_devices: 3, email: "linh.dang@example.com" })]),
   conflict: group([
@@ -271,11 +291,14 @@ const ORDER_MIX: OrderStatus[] = ["paid", "paid", "pending", "underpaid", "paid"
 const orders: OrderRow[] = Array.from({ length: 73 }, (_, i) => {
   const status = ORDER_MIX[i % ORDER_MIX.length] ?? "paid";
   const monthly = i % 3 === 1;
-  const amount = monthly ? 50000 : 500000;
+  // Cứ năm đơn có một đơn quốc tế (Creem, USD, cent), rơi vào gần đủ mọi trạng thái (cả pending và refunded); không bao giờ
+  // chuyển thiếu.
+  const usd = i % 5 === 2 && status !== "underpaid";
+  const amount = usd ? (monthly ? 399 : 3999) : monthly ? 50000 : 500000;
   const paid = ["paid", "paid_needs_review", "refunded", "processing"].includes(status);
   const ago = 600 + i * 4.3 * 3600;
   return {
-    ...order(1000300 - i, status),
+    ...order(1000300 - i, status, usd),
     plan: monthly ? "monthly" : "yearly",
     amount,
     amount_paid: paid ? amount : status === "underpaid" ? [20000, 200000, 499000][i % 3] ?? 20000 : 0,
@@ -352,6 +375,19 @@ const auditOf = (id: number, at: number, actor: string, action: string, order_co
   detail,
 });
 const ORDER_AUDITS: AuditRow[] = [
+  // Đơn Creem 1000211: Creem báo đã thu 30,00 USD (gồm thuế 3,00 USD, giảm 9,99 USD) trên giá 39,99 USD: đơn bị giữ để xem số tiền.
+  auditOf(
+    9021,
+    NOW - 50 * 60 + 90,
+    "webhook",
+    "order_underpaid",
+    1000211,
+    null,
+    '{"amount":3999,"provider_amount":3999,"amount_paid":3000,"has_discount":true,"provider_discount_amount":999,"provider_amount_paid":3300,"provider_tax_amount":300}',
+  ),
+  auditOf(9020, NOW - 50 * 60, "api", "order_created", 1000211, null, '{"plan":"yearly","amount":3999,"currency":"USD"}'),
+  auditOf(9019, NOW - 3 * 3600 + 120, "webhook", "order_needs_review", 1000216, null, '{"reason":"license_revoked"}'),
+  auditOf(9018, NOW - 3 * 3600, "api", "order_created", 1000216, null, '{"plan":"yearly","amount":3999,"currency":"USD","renew":true}'),
   auditOf(9010, NOW - 20 * 60, "webhook", "order_needs_review", 1000214, null, '{"reason":"license_revoked"}'),
   auditOf(9009, NOW - 25 * 60, "api", "order_created", 1000214, null, '{"plan":"yearly","amount":500000,"renew":true}'),
   auditOf(9008, NOW - 40 * 60 + 200, "webhook", "order_underpaid", 1000210, null, '{"amount":50000,"amount_paid":20000}'),
@@ -360,6 +396,23 @@ const ORDER_AUDITS: AuditRow[] = [
   auditOf(9005, NOW - 2 * DAY - 3600, "api", "order_created", 1000208, null, '{"plan":"yearly","amount":500000}'),
   auditOf(9003, NOW - 40 * DAY + 95, "webhook", "license_issued", 1000012, LIC),
   auditOf(9002, NOW - 40 * DAY, "api", "order_created", 1000012, null, '{"plan":"yearly","amount":500000}'),
+  // Đơn 1000015: gia hạn LIC (cộng 365 ngày), rồi Creem báo hoàn đủ.
+  auditOf(9013, NOW - DAY, "webhook", "order_refunded", 1000015, LIC, '{"event_id":"evt_fake_refund","reason":"refund","full":true,"refunded_amount":3999,"prev_status":"paid","currency":"USD"}'),
+  auditOf(9012, NOW - 3 * DAY + 80, "webhook", "license_extended", 1000015, LIC, JSON.stringify({ plan: "yearly", from_plan: "yearly", from_expires_at: LIC_FROM, expires_at: LIC_EXPIRES, paid_at: NOW - 3 * DAY + 80, amount_paid: 3999 })),
+  auditOf(9011, NOW - 3 * DAY, "api", "order_created", 1000015, null, '{"plan":"yearly","amount":3999,"currency":"USD","renew":true}'),
+  // Đơn 1000016: đã trả, sau đó cổng báo hoàn một phần (đơn giữ paid).
+  auditOf(9016, NOW - 5 * 3600, "webhook", "order_partially_refunded", 1000016, LIC, '{"event_id":"evt_fake_partial","reason":"refund","full":false,"refunded_amount":1000,"currency":"USD"}'),
+  auditOf(9015, NOW - 2 * DAY + 80, "webhook", "license_extended", 1000016, LIC, JSON.stringify({ plan: "yearly", from_expires_at: LIC_EXPIRES - DAY, expires_at: LIC_EXPIRES, paid_at: NOW - 2 * DAY + 80 })),
+  // Webhook đúng chữ ký mà không khớp đơn nào: không gắn đơn (order_code null); xem bằng /audit?action=payment_unmatched.
+  {
+    id: 9014,
+    at: NOW - 7 * 3600,
+    actor: "webhook",
+    action: "payment_unmatched",
+    license_id: null,
+    order_code: null,
+    detail: '{"provider":"creem","event_type":"checkout.completed","provider_ref":"ch_fake_unmatched","event_id":"evt_fake_unmatched"}',
+  },
 ];
 const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed", "alerts_viewed", "releases_viewed"];
 
@@ -429,6 +482,7 @@ const stats: Stats = (() => {
   return {
     generated_at: NOW,
     currency: "VND",
+    currencies: ["VND", "USD"],
     money: {
       today: 2450000,
       last_7d: 18900000,
@@ -471,8 +525,38 @@ const stats: Stats = (() => {
   };
 })();
 
+/** Số liệu mẫu theo đô la (cent) cho `?currency=USD`: cùng hình dạng, tiền quy ước 250 đồng một cent, số đơn ít hơn. */
+const statsUsd: Stats = (() => {
+  const cents = (vnd: number) => Math.round(vnd / 250);
+  const orders = (n: number) => Math.ceil(n / 7);
+  const total = (t: Totals): Totals => ({ revenue: cents(t.revenue), orders: orders(t.orders) });
+  const m = stats.money;
+  const c = stats.customers;
+  return {
+    ...stats,
+    currency: "USD",
+    money: {
+      today: cents(m.today),
+      last_7d: cents(m.last_7d),
+      this_month: cents(m.this_month),
+      last_month: cents(m.last_month),
+      daily: m.daily.map((d) => ({ day: d.day, revenue: cents(d.revenue), orders: orders(d.orders) })),
+      monthly: m.monthly.map((x) => ({ month: x.month, monthly: total(x.monthly), six_months: total(x.six_months), yearly: total(x.yearly) })),
+    },
+    customers: {
+      ...c,
+      grants_30d: { new: total(c.grants_30d.new), extend: total(c.grants_30d.extend), change: total(c.grants_30d.change), other: total(c.grants_30d.other) },
+      grants_monthly: c.grants_monthly.map((x) => ({ month: x.month, new: orders(x.new), extend: orders(x.extend), change: orders(x.change), other: 0 })),
+    },
+  };
+})();
+
+/** Số liệu Tổng quan theo `?currency=` (mặc định VND). */
+const statsFor = (url: URL): Stats => (url.searchParams.get("currency") === "USD" ? statsUsd : stats);
+
 /** Hàng đợi, số nhanh, Tổng quan cho `__fake=empty` (mọi số bằng 0) và `__fake=huge` (số rất lớn). */
-function dashboardReply(path: string, mode: string): Reply | null {
+function dashboardReply(url: URL, mode: string): Reply | null {
+  const path = url.pathname;
   const zeroGroup = { count: 0, items: [] };
   const scale = (n: number) => (mode === "huge" ? n * 1000 : 0);
   if (path === "/admin/queue") {
@@ -480,14 +564,22 @@ function dashboardReply(path: string, mode: string): Reply | null {
     return ok({ needs_review: zeroGroup, underpaid: zeroGroup, email_failed: zeroGroup, locked: zeroGroup, conflict: zeroGroup, alerts: zeroGroup });
   }
   if (path === "/admin/summary") {
-    return ok({ ...summary, revenue_today: scale(summary.revenue_today), paid_orders_7d: scale(summary.paid_orders_7d), active_licenses: scale(summary.active_licenses) });
+    return ok({
+      ...summary,
+      revenue_today: { VND: scale(summary.revenue_today.VND), USD: scale(summary.revenue_today.USD) },
+      paid_orders_7d: scale(summary.paid_orders_7d),
+      active_licenses: scale(summary.active_licenses),
+    });
   }
   if (path === "/admin/stats") {
-    const m = stats.money;
-    const c = stats.customers;
+    const s = statsFor(url);
+    const m = s.money;
+    const c = s.customers;
     const z = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, scale(v)]));
     return ok({
-      ...stats,
+      ...s,
+      // `empty` là trạng thái chỉ có VND (production tới đơn Creem đầu tiên): không có nút chuyển loại tiền, không "(mọi loại tiền)".
+      currencies: mode === "empty" ? ["VND"] : s.currencies,
       money: {
         today: scale(m.today),
         last_7d: scale(m.last_7d),
@@ -505,17 +597,17 @@ function dashboardReply(path: string, mode: string): Reply | null {
         grants_monthly: c.grants_monthly.map((x) => ({ ...z({ new: x.new, extend: x.extend, change: x.change, other: x.other }), month: x.month })),
       },
       health: {
-        orders_30d: z(stats.health.orders_30d),
-        expiring_7d: scale(stats.health.expiring_7d),
-        expiring_30d: scale(stats.health.expiring_30d),
-        email: z(stats.health.email),
+        orders_30d: z(s.health.orders_30d),
+        expiring_7d: scale(s.health.expiring_7d),
+        expiring_30d: scale(s.health.expiring_30d),
+        email: z(s.health.email),
       },
       usage: {
-        active_licenses: scale(stats.usage.active_licenses),
-        active_devices: scale(stats.usage.active_devices),
-        devices_7d: scale(stats.usage.devices_7d),
-        trials_active: scale(stats.usage.trials_active),
-        new_trials_daily: stats.usage.new_trials_daily.map((d) => ({ ...d, count: scale(d.count) })),
+        active_licenses: scale(s.usage.active_licenses),
+        active_devices: scale(s.usage.active_devices),
+        devices_7d: scale(s.usage.devices_7d),
+        trials_active: scale(s.usage.trials_active),
+        new_trials_daily: s.usage.new_trials_daily.map((d) => ({ ...d, count: scale(d.count) })),
       },
     });
   }
@@ -538,7 +630,13 @@ function detailOf(row: LicenseRow): LicenseDetail {
 
 const SHOWCASE_ORDERS: OrderRow[] = [
   { ...order(1000012, "paid"), created_at: NOW - 40 * DAY, paid_at: NOW - 40 * DAY + 95, email_sent_at: NOW - 40 * DAY + 120 },
+  // Đơn Creem gia hạn LIC rồi được hoàn: thẻ "Đã hoàn tiền: license vẫn giữ 365 ngày đơn này cộng", nút "Rút ngắn 365 ngày…"
+  // (đừng thu hồi: LIC còn đơn 1000012 đã trả).
+  { ...order(1000015, "refunded", true), license_id: LIC, renew_license_id: LIC, grant_kind: "extend", created_at: NOW - 3 * DAY, paid_at: NOW - 3 * DAY + 80, email_sent_at: NOW - 3 * DAY + 100 },
+  // Đơn Creem đã trả mà cổng báo hoàn một phần: thẻ "Cổng báo hoàn tiền một phần hay tranh chấp".
+  { ...order(1000016, "paid", true), renew_license_id: LIC, grant_kind: "extend", created_at: NOW - 2 * DAY, paid_at: NOW - 2 * DAY + 80, email_sent_at: NOW - 2 * DAY + 100 },
   { ...qOrder(1000214, "paid_needs_review", 25 * 60, { email: "minh.hoang@example.com" }), renew_license_id: REVOKED },
+  USD_REVIEW,
   ...queue.underpaid.items,
   ...queue.email_failed.items,
 ];
@@ -605,6 +703,15 @@ function respond(method: string, url: URL, body: Record<string, unknown>): Reply
     if (path === "/admin/licenses") return ok(issued, 201);
     if (/^\/admin\/orders\/\d+\/(grant|resolve)$/.test(path)) return ok({ ...issued, order_code: 1000014, status: "paid" });
     if (/\/extend$/.test(path)) return ok({ license_id: LIC, expires_at: NOW + 395 * DAY });
+    // Rút ngắn: như server, hạn mới = hạn đang hiển thị trừ số ngày; thiếu hay sai kiểu số ngày, hạn đang hiển thị thì 400 như
+    // server (không kiểm conflict/too_far ở đây: dùng `__fake=conflict`/`too_far`).
+    if (/\/shorten$/.test(path)) {
+      const days = body.days;
+      const expected = body.expected_expires_at;
+      if (!Number.isSafeInteger(days) || (days as number) < 1 || (days as number) > 3650) return ok({ error: "invalid_request", field: "days" }, 400);
+      if (!Number.isSafeInteger(expected) || (expected as number) <= 0) return ok({ error: "invalid_request", field: "expected_expires_at" }, 400);
+      return ok({ license_id: decodeURIComponent(path.split("/")[3] ?? LIC), expires_at: (expected as number) - (days as number) * DAY });
+    }
     if (/\/reset-quota$/.test(path)) return ok({ activation_id: "act-1", quota_epoch: 1 });
     return ok({ ok: true });
   }
@@ -614,7 +721,7 @@ function respond(method: string, url: URL, body: Record<string, unknown>): Reply
     case "/admin/summary":
       return ok(summary);
     case "/admin/stats":
-      return ok(stats);
+      return ok(statsFor(url));
     case "/admin/queue":
       return ok(queue);
     case "/admin/alerts":
@@ -623,7 +730,18 @@ function respond(method: string, url: URL, body: Record<string, unknown>): Reply
       return ok(releasesFull);
     default:
       if (/^\/admin\/(orders|licenses|trials|audit)$/.test(path)) return listReply(path, url) ?? ok({ error: "not_found" }, 404);
-      if (/^\/admin\/orders\/\d+\/payment-status$/.test(path)) return ok(payment);
+      if (/^\/admin\/orders\/\d+\/payment-status$/.test(path)) {
+        const o = findOrder(Number(path.split("/")[3]));
+        // Đơn Creem: phiên chưa trả thì Creem báo pending; đã trả thì báo paid kể cả sau khi hoàn tiền (Creem không đổi trạng thái
+        // phiên khi hoàn: đơn refunded đến từ webhook, P3-T7).
+        if (o?.currency === "USD") {
+          // Đơn bị giữ vì trả thấp hơn giá: Creem báo underpaid với số đã nhận (không gồm thuế), như server.
+          if (o.status === "underpaid") return ok({ orderCode: o.order_code, status: "underpaid", amount: o.amount, amountPaid: o.amount_paid, paidAt: null });
+          const unpaid = o.paid_at === null;
+          return ok({ orderCode: o.order_code, status: unpaid ? "pending" : "paid", amount: o.amount, amountPaid: unpaid ? 0 : o.amount, paidAt: unpaid ? null : o.paid_at });
+        }
+        return ok(payment);
+      }
       return ok({ error: "not_found" }, 404);
   }
 }
@@ -656,16 +774,25 @@ export function fakeAdminApi(): Plugin {
           } catch {
             body = {};
           }
-          const dash = req.method === "GET" && (mode === "empty" || mode === "huge") ? dashboardReply(url.pathname, mode) : null;
-          const reply = dash
-            ? dash
-            : list && mode === "error"
+          const dash = req.method === "GET" && (mode === "empty" || mode === "huge") ? dashboardReply(url, mode) : null;
+          const shortenFail =
+            req.method === "POST" && /\/shorten$/.test(url.pathname)
+              ? mode === "conflict"
+                ? ok({ error: "conflict" }, 409)
+                : mode === "too_far"
+                  ? ok({ error: "too_far", max_days: 3, expires_at: typeof body.expected_expires_at === "number" ? body.expected_expires_at : LIC_EXPIRES }, 409)
+                  : null
+              : null;
+          const reply =
+            shortenFail ??
+            dash ??
+            (list && mode === "error"
               ? ok({ error: "internal" }, 500)
               : list && mode === "empty"
                 ? ok(isLookup ? { licenses: [], orders: [] } : { items: [], next_cursor: null })
                 : isLookup && mode === "bad"
                   ? ok({ error: "invalid_request", field: "license_key" }, 400)
-                  : respond(req.method ?? "GET", url, body);
+                  : respond(req.method ?? "GET", url, body));
           const send = () => {
             res.statusCode = reply.status;
             res.setHeader("content-type", "application/json");

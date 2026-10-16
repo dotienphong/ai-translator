@@ -8,7 +8,7 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
 const empty = { count: 0, items: [] };
-const summary = { revenue_today: 550000, currency: "VND", paid_orders_7d: 12, active_licenses: 87 };
+const summary = { revenue_today: { VND: 550000, USD: 0 }, paid_orders_7d: 12, active_licenses: 87 };
 const NONE = { needs_review: empty, underpaid: empty, email_failed: empty, locked: empty, conflict: empty, alerts: empty };
 
 afterEach(() => {
@@ -16,8 +16,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function serve(queue: unknown) {
-  const fetchMock = vi.fn(async (url: string) => json(url === "/admin/summary" ? summary : queue));
+function serve(queue: unknown, quick: unknown = summary) {
+  const fetchMock = vi.fn(async (url: string) => json(url === "/admin/summary" ? quick : queue));
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
@@ -33,10 +33,54 @@ describe("QueuePage", () => {
     render(<QueuePage />);
     expect(await screen.findByText("550.000 đ")).toBeTruthy();
     expect(screen.getByText("87")).toBeTruthy();
+    // Ô đếm gộp mọi loại tiền và là 7×24 giờ gần nhất (khác 7 ngày lịch của trang Tổng quan): nhãn nói rõ (K3, P2-T5).
+    const paid7 = screen.getByText("Đơn đã trả 7 ngày (mọi loại tiền, 7×24 giờ)").closest(".stat") as HTMLElement;
+    expect(within(paid7).getByText("12")).toBeTruthy();
+    // Chưa có đơn USD hôm nay: không có dòng nào về đô la.
+    expect(screen.queryByText(/từ đơn USD/)).toBeNull();
     // Đổi chủ ý: tiêu đề của trạng thái trống (EmptyState) không có dấu chấm cuối.
     expect(await screen.findByText("Không có việc gì cần xử lý")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Xem Tổng quan" }).getAttribute("href")).toBe("/overview");
     expect(screen.getByText("Đã xử lý hết")).toBeTruthy();
+  });
+
+  it("doanh thu hôm nay: đơn USD thì ghi thêm đô la dưới số VND, không cộng lẫn hai loại tiền", async () => {
+    serve(NONE, { ...summary, revenue_today: { VND: 550000, USD: 4398 } });
+    render(<QueuePage />);
+    expect(await screen.findByText("550.000 đ")).toBeTruthy();
+    // Dòng đô la nói rõ: tính riêng (không cộng vào số đồng), số đã thu không gồm thuế (P1-T5; p5 của rà B6: không "giá niêm yết").
+    expect(screen.getByText("Thêm $43,98 từ đơn USD (tính riêng, số đã thu không gồm thuế)")).toBeTruthy();
+  });
+
+  it("doanh thu hôm nay: không có đơn VND mà có đơn USD thì số lớn vẫn là VND (0 đ), đô la ghi nhỏ ngay trong ô đó", async () => {
+    serve(NONE, { ...summary, revenue_today: { VND: 0, USD: 399 } });
+    render(<QueuePage />);
+    const tile = (await screen.findByText("Doanh thu hôm nay")).closest(".stat") as HTMLElement;
+    expect(within(tile).getByText("0 đ")).toBeTruthy();
+    expect(within(tile).getByText("Thêm $3,99 từ đơn USD (tính riêng, số đã thu không gồm thuế)")).toBeTruthy();
+  });
+
+  it.each([
+    ["thiếu khóa VND", { USD: 399 }],
+    ["revenue_today null", null],
+    ["thiếu cả revenue_today", undefined],
+  ])("doanh thu hôm nay: %s thì ra 0 đ, không NaN, không văng (n3)", async (_why, revenue) => {
+    serve(NONE, { ...summary, revenue_today: revenue });
+    render(<QueuePage />);
+    const tile = (await screen.findByText("Doanh thu hôm nay")).closest(".stat") as HTMLElement;
+    expect(within(tile).getByText("0 đ")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/NaN/);
+  });
+
+  it("doanh thu hôm nay: phản hồi kiểu cũ của Worker admin (một số đồng, chưa tách loại tiền) vẫn hiện đúng, không NaN", async () => {
+    // Hình dạng của bản trước khi có đơn USD; tab mở sẵn bấm Làm mới sau khi Worker admin lùi bản sẽ gặp nó.
+    serve(NONE, { revenue_today: 12450000, currency: "VND", paid_orders_7d: 12, active_licenses: 87 });
+    render(<QueuePage />);
+    const tile = (await screen.findByText("Doanh thu hôm nay")).closest(".stat") as HTMLElement;
+    expect(within(tile).getByText("12.450.000 đ")).toBeTruthy();
+    expect(screen.getByText("87")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/NaN/);
+    expect(screen.queryByText(/từ đơn USD/)).toBeNull();
   });
 
   it("nhóm có việc thì hiện tiêu đề, số lượng, link tới đơn; nhóm rỗng thì ẩn", async () => {
@@ -50,7 +94,7 @@ describe("QueuePage", () => {
     expect(screen.getByRole("link", { name: "Mở đơn #1000012" }).getAttribute("href")).toBe("/orders/1000012");
     expect(screen.getByText("Đơn #1000012")).toBeTruthy();
     expect(screen.getByText("và 20 mục khác")).toBeTruthy();
-    expect(screen.queryByText("Chuyển thiếu trong 30 ngày")).toBeNull();
+    expect(screen.queryByText("Trả thiếu hay cần xem số tiền (30 ngày)")).toBeNull();
     expect(screen.getByText("21 việc đang chờ")).toBeTruthy();
   });
 
@@ -122,6 +166,57 @@ describe("QueuePage", () => {
     expect(groupOf("Đã trả nhưng khách chưa nhận email key").className).toContain("tone-danger");
   });
 
+  it("đơn USD trong hàng đợi: số cent thành đô la (không hiện 2.000 đ), cả nhóm chuyển thiếu lẫn nhóm email", async () => {
+    const usd = { currency: "USD", email: "khach@example.com", created_at: 1_790_812_800 };
+    serve({
+      ...NONE,
+      underpaid: { count: 1, items: [{ ...usd, order_code: 1000050, amount: 2199, amount_paid: 2000 }] },
+      email_failed: { count: 1, items: [{ ...usd, order_code: 1000051, amount: 399, amount_paid: 399, license_id: null, email_gave_up_at: null }] },
+    });
+    render(<QueuePage />);
+    const short = (await rowOf("Mở đơn #1000050")).textContent ?? "";
+    expect(short).toContain("$20,00 / $21,99");
+    expect(short).toContain("thiếu $1,99");
+    expect((await rowOf("Mở đơn #1000051")).textContent).toContain("$3,99");
+  });
+
+  it("nhóm trả thiếu hay cần xem số tiền: tiêu đề trung lập, gợi ý tách VietQR (chuyển bù) và thẻ Creem (mã giảm giá, không chuyển bù)", async () => {
+    const order = { order_code: 1000041, email: "khach@example.com", amount: 3999, amount_paid: 3000, currency: "USD", created_at: 1_790_812_800 };
+    serve({ ...NONE, underpaid: { count: 1, items: [order] } });
+    render(<QueuePage />);
+    await screen.findByText("Trả thiếu hay cần xem số tiền (30 ngày)");
+    const group = groupOf("Trả thiếu hay cần xem số tiền (30 ngày)");
+    expect(group.textContent).toContain(
+      // p7 của rà B6: gợi ý nhắc cả dữ liệu tiền hỏng (Creem báo đã thu mà không đọc được số).
+      "VietQR: khách chuyển bù thì Cấp tay. Thẻ (Creem): có mã giảm giá, trả thấp hơn giá hay dữ liệu tiền hỏng; xem trạng thái trên Creem rồi Cấp tay (chấp nhận số đã thu) hay hoàn tiền ở Creem.",
+    );
+    // Tiêu đề không còn gọi mọi đơn của nhóm là "chuyển thiếu" (đơn Creem không chuyển bù được).
+    expect(screen.queryByText(/Chuyển thiếu/)).toBeNull();
+    expect(group.textContent).toContain("$30,00 / $39,99");
+  });
+
+  it("nhóm cần xử lý có đơn USD: số tiền theo đô la (đã trả $39,99), không hiện 3.999 đ (M-T5-3, T5 a)", async () => {
+    const usd = { currency: "USD", email: "khach@example.com", created_at: 1_790_812_800, provider: "creem" };
+    serve({ ...NONE, needs_review: { count: 1, items: [{ ...usd, order_code: 1000070, amount: 3999, amount_paid: 3999 }] } });
+    render(<QueuePage />);
+    const row = (await rowOf("Mở đơn #1000070")).textContent ?? "";
+    expect(row).toContain("$39,99");
+    expect(row).not.toMatch(/\d đ/);
+    expect(row).not.toContain("3.999");
+  });
+
+  it("đơn VND ghi loại tiền tường minh vẫn theo đồng, ở cả nhóm cần xử lý lẫn nhóm email (T5 b)", async () => {
+    const vnd = { currency: "VND", email: "khach@example.com", created_at: 1_790_812_800 };
+    serve({
+      ...NONE,
+      needs_review: { count: 1, items: [{ ...vnd, order_code: 1000071, amount: 500000, amount_paid: 500000 }] },
+      email_failed: { count: 1, items: [{ ...vnd, order_code: 1000072, amount: 50000, amount_paid: 50000, license_id: null, email_gave_up_at: null }] },
+    });
+    render(<QueuePage />);
+    expect((await rowOf("Mở đơn #1000071")).textContent).toContain("500.000 đ");
+    expect((await rowOf("Mở đơn #1000072")).textContent).toContain("50.000 đ");
+  });
+
   it("nhóm chuyển thiếu: link tới /orders/:code; số tiền đã trả trên số phải trả và số còn thiếu", async () => {
     const order = { order_code: 1000040, email: "khach@example.com", amount: 50000, amount_paid: 20000, created_at: 1_790_812_800 };
     serve({ ...NONE, underpaid: { count: 1, items: [order] } });
@@ -130,7 +225,7 @@ describe("QueuePage", () => {
     expect(within(row).getByRole("link").getAttribute("href")).toBe("/orders/1000040");
     expect(row.textContent).toContain("20.000 đ / 50.000 đ");
     expect(row.textContent).toContain("thiếu 30.000 đ");
-    expect(groupOf("Chuyển thiếu trong 30 ngày").className).toContain("tone-warn");
+    expect(groupOf("Trả thiếu hay cần xem số tiền (30 ngày)").className).toContain("tone-warn");
   });
 
   it("nhóm khóa tạm và xung đột máy: link tới /licenses/:id theo từng license", async () => {
@@ -176,13 +271,44 @@ describe("QueuePage", () => {
     expect(screen.getByText("cron_stalled")).toBeTruthy();
   });
 
+  it("cảnh báo của cổng thanh toán (hoàn tiền, tranh chấp, thanh toán không khớp đơn): dòng có lối tới nhật ký lọc theo hành động", async () => {
+    const alert = (kind: string, i: number) => ({ kind, window_start: 1_790_812_800 - i * 3600, count: 1, notified_count: 0 });
+    const kinds = ["payment_unmatched", "order_refunded", "order_partially_refunded", "order_refund_unconfirmed", "order_disputed"];
+    serve({ ...NONE, alerts: { count: 6, items: [...kinds.map(alert), alert("cron_stalled", 9)] } });
+    render(<QueuePage />);
+    for (const kind of kinds) {
+      expect((await screen.findByRole("link", { name: `Xem nhật ký ${kind}` })).getAttribute("href")).toBe(`/audit?action=${kind}`);
+    }
+    // Cảnh báo không có hành động nhật ký cùng tên thì không có lối (trừ order_payment_review: lối tới danh sách đơn trả thiếu).
+    expect(within(screen.getByText("cron_stalled").closest("li") as HTMLElement).queryByRole("link")).toBeNull();
+  });
+
+  // payos_auth_failed và creem_auth_failed (khóa API của cổng bị từ chối) là cảnh báo email: không ghi nhật ký cùng tên, nên dòng không
+  // có lối "Xem nhật ký" (đừng thêm vào AUDIT_ALERTS). Đổi nghĩa (p7 của rà B6): order_payment_review nay có lối "Xem đơn" tới danh
+  // sách đơn trả thiếu (test bên dưới), không còn trong bảng này.
+  it.each(["payos_auth_failed", "creem_auth_failed"])("cảnh báo %s: hiện mã, không có lối tới nhật ký", async (kind) => {
+    serve({ ...NONE, alerts: { count: 1, items: [{ kind, window_start: 1_790_812_800, count: 2, notified_count: 0 }] } });
+    render(<QueuePage />);
+    const row = (await screen.findByText(kind)).closest("li") as HTMLElement;
+    expect(row.textContent).toContain("2 lần");
+    expect(within(row).queryByRole("link")).toBeNull();
+  });
+
+  it("cảnh báo order_payment_review (đơn bị giữ vì số tiền): dòng có lối tới danh sách đơn trả thiếu hay lệch số tiền (p7)", async () => {
+    serve({ ...NONE, alerts: { count: 1, items: [{ kind: "order_payment_review", window_start: 1_790_812_800, count: 1, notified_count: 0 }] } });
+    render(<QueuePage />);
+    expect((await screen.findByRole("link", { name: "Xem đơn order_payment_review" })).getAttribute("href")).toBe("/orders?status=underpaid");
+    // Đơn thẻ lệch giá thành failed, không nằm trong danh sách trả thiếu: lối thứ hai tới danh sách đơn lỗi.
+    expect(screen.getByRole("link", { name: "Xem đơn lệch giá order_payment_review" }).getAttribute("href")).toBe("/orders?status=failed");
+  });
+
   it("nhóm nhiều dòng: chỉ hiện vài dòng đầu, nút Hiện thêm mở hết và Thu gọn gấp lại", async () => {
     const order = (code: number) => ({ order_code: code, email: "khach@example.com", amount: 50000, amount_paid: 20000, created_at: 1_790_812_800 });
     const items = Array.from({ length: 20 }, (_, i) => order(1000100 + i));
     serve({ ...NONE, underpaid: { count: 23, items } });
     render(<QueuePage />);
     await screen.findByText("Đơn #1000100");
-    const group = groupOf("Chuyển thiếu trong 30 ngày");
+    const group = groupOf("Trả thiếu hay cần xem số tiền (30 ngày)");
     expect(within(group).getAllByRole("listitem")).toHaveLength(ROWS_SHOWN);
     const toggle = within(group).getByRole("button", { name: `Hiện thêm ${20 - ROWS_SHOWN} dòng` });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");

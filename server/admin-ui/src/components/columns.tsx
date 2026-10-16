@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import type { AuditRow, LicenseAuditRow, LicenseDetail, LicenseRow, OrderRow, OrderStatus } from "../api/types";
 import { ACTOR_LABELS, type ActorKind, actionLabel, actionTone, actorKind } from "../audit-labels";
-import { daysLeft, fmtAgo, fmtDate, fmtDateTime, fmtDetail, fmtHm, fmtVnd, maskKey } from "../format";
+import { daysLeft, fmtAgo, fmtDate, fmtDateTime, fmtDetail, fmtHm, fmtMoney, maskKey } from "../format";
 import { Link } from "../router";
 import { Badge } from "./Badge";
 import type { Column } from "./DataTable";
@@ -53,12 +53,13 @@ function Flag({ tone }: { tone?: "warn" | "bad" }) {
 const ORDER_FLAG: Partial<Record<OrderStatus, "warn" | "bad">> = { underpaid: "warn", paid_needs_review: "bad", failed: "bad" };
 
 function Amount({ o }: { o: OrderRow }) {
-  if (o.amount_paid === o.amount) return fmtVnd(o.amount);
+  const money = (n: number) => fmtMoney(n, o.currency);
+  if (o.amount_paid === o.amount) return money(o.amount);
   // Chưa nhận đồng nào: số cần trả, chữ mờ (đơn chờ trả, hết hạn link, đã hủy).
   if (o.amount_paid === 0) {
     return (
-      <span className="cell-none" title={`Chưa nhận tiền, cần trả ${fmtVnd(o.amount)}`}>
-        {fmtVnd(o.amount)}
+      <span className="cell-none" title={`Chưa nhận tiền, cần trả ${money(o.amount)}${o.currency === "USD" ? " (chưa gồm thuế)" : ""}`}>
+        {money(o.amount)}
       </span>
     );
   }
@@ -67,11 +68,11 @@ function Amount({ o }: { o: OrderRow }) {
     <Cell2
       main={
         <>
-          {fmtVnd(o.amount_paid)}
-          <span className="cell-of">{` / ${fmtVnd(o.amount)}`}</span>
+          {money(o.amount_paid)}
+          <span className="cell-of">{` / ${money(o.amount)}`}</span>
         </>
       }
-      sub={short > 0 ? <span className="text-warn">{`thiếu ${fmtVnd(short)}`}</span> : `dư ${fmtVnd(-short)}`}
+      sub={short > 0 ? <span className="text-warn">{`thiếu ${money(short)}`}</span> : `dư ${money(-short)}`}
     />
   );
 }
@@ -93,7 +94,7 @@ export function orderColumns(now: number): Column<OrderRow>[] {
     { header: "Email", cell: (o) => <EmailCell email={o.email} /> },
     { header: "Gói", cell: (o) => PLAN_LABELS[o.plan] ?? o.plan },
     { header: "Số tiền", align: "right", nowrap: true, cell: (o) => <Amount o={o} /> },
-    { header: "Trạng thái", aside: true, cell: (o) => <OrderStatusBadge status={o.status} /> },
+    { header: "Trạng thái", aside: true, cell: (o) => <OrderStatusBadge status={o.status} provider={o.provider} /> },
   ];
 }
 

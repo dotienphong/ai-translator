@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { Activation, LicenseDetail, LicenseRow } from "../api/types";
-import { activeDevices, licenseColumns } from "./columns";
+import type { Activation, LicenseDetail, LicenseRow, OrderRow } from "../api/types";
+import { activeDevices, licenseColumns, orderColumns } from "./columns";
 
 const NOW = 1_790_000_000;
 
@@ -65,5 +65,86 @@ describe("licenseColumns: Xung đột máy khi có từ 2 máy đang dùng", () 
 
   it("license đã thu hồi có 2 máy: chỉ hiện Đã thu hồi", () => {
     expect(statusLabels({ ...row, active_devices: 2, revoked_at: NOW - 5, locked_at: NOW - 6 })).toEqual(["Đã thu hồi"]);
+  });
+});
+
+const order: OrderRow = {
+  order_code: 1000007,
+  provider: "payos",
+  plan: "monthly",
+  amount: 50000,
+  amount_paid: 50000,
+  currency: "VND",
+  email: "khach@example.com",
+  status: "paid",
+  grant_kind: "new",
+  license_id: null,
+  renew_license_id: null,
+  created_at: NOW - 100,
+  paid_at: NOW - 50,
+  email_sent_at: null,
+  email_gave_up_at: null,
+};
+
+/** Ô "Số tiền" của một đơn: nội dung chữ và phần tử mờ (chưa nhận tiền) nếu có. */
+function amountCell(o: OrderRow) {
+  const col = orderColumns(NOW).find((c) => c.header === "Số tiền");
+  if (!col) throw new Error("thiếu cột Số tiền");
+  const { container } = render(<>{col.cell(o)}</>);
+  return { text: container.textContent, dim: container.querySelector(".cell-none") };
+}
+
+describe("orderColumns: Số tiền theo loại tiền của đơn", () => {
+  it("VND (PayOS): đồng, dấu chấm ngăn nghìn", () => {
+    expect(amountCell(order).text).toBe("50.000 đ");
+  });
+
+  it("USD (Creem): số cent thành đô la, không bao giờ hiện 399 đ", () => {
+    expect(amountCell({ ...order, provider: "creem", currency: "USD", amount: 399, amount_paid: 399 }).text).toBe("$3,99");
+  });
+
+  it("USD chưa nhận tiền: số cần trả ở chữ mờ, lời chú cùng loại tiền", () => {
+    const { text, dim } = amountCell({ ...order, currency: "USD", amount: 399, amount_paid: 0, status: "pending" });
+    expect(text).toBe("$3,99");
+    expect(dim?.getAttribute("title")).toBe("Chưa nhận tiền, cần trả $3,99 (chưa gồm thuế)");
+  });
+
+  // Phản hồi thiếu loại tiền (fixture cũ, Worker admin bản trước): theo đồng, không hiện "undefined", "null" hay chuỗi trống (T4 (2)).
+  it.each([undefined, null, ""])("đơn thiếu loại tiền (%s): cột Số tiền theo đồng", (currency) => {
+    const o = { ...order, currency } as unknown as OrderRow;
+    expect(amountCell(o).text).toBe("50.000 đ");
+    expect(amountCell({ ...o, amount_paid: 30000 }).text).toContain("thiếu 20.000 đ");
+    expect(amountCell({ ...o, amount_paid: 0, status: "pending" }).dim?.getAttribute("title")).toBe("Chưa nhận tiền, cần trả 50.000 đ");
+  });
+
+  it("VND nhận thiếu hay dư: số đồng, không đơn vị đô la", () => {
+    expect(amountCell({ ...order, amount_paid: 20000, status: "underpaid" }).text).toBe("20.000 đ / 50.000 đthiếu 30.000 đ");
+    expect(amountCell({ ...order, amount_paid: 60000 }).text).toContain("dư 10.000 đ");
+  });
+
+  it("VND chưa nhận tiền: lời chú không nói thuế (chỉ đơn USD có giá niêm yết chưa gồm thuế)", () => {
+    const { dim } = amountCell({ ...order, amount_paid: 0, status: "pending" });
+    expect(dim?.getAttribute("title")).toBe("Chưa nhận tiền, cần trả 50.000 đ");
+  });
+
+  it("cột Trạng thái: đơn Creem underpaid không bị gọi là chuyển thiếu; đơn PayOS giữ nhãn Chuyển thiếu", () => {
+    const col = orderColumns(NOW).find((c) => c.header === "Trạng thái");
+    if (!col) throw new Error("thiếu cột Trạng thái");
+    const label = (o: OrderRow) => {
+      const { container, unmount } = render(<>{col.cell(o)}</>);
+      const text = container.textContent;
+      unmount();
+      return text;
+    };
+    expect(label({ ...order, status: "underpaid" })).toBe("Chuyển thiếu");
+    expect(label({ ...order, provider: "creem", currency: "USD", status: "underpaid" })).toBe("Trả thấp hơn giá");
+  });
+
+  it("USD nhận thiếu hay dư: mọi số cùng loại tiền", () => {
+    const short = amountCell({ ...order, currency: "USD", amount: 2199, amount_paid: 2000, status: "underpaid" }).text;
+    expect(short).toContain("$20,00");
+    expect(short).toContain("/ $21,99");
+    expect(short).toContain("thiếu $1,99");
+    expect(amountCell({ ...order, currency: "USD", amount: 399, amount_paid: 500 }).text).toContain("dư $1,01");
   });
 });

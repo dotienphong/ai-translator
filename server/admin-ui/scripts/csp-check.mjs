@@ -46,6 +46,7 @@ function statsFixture() {
   return {
     generated_at: NOW,
     currency: "VND",
+    currencies: ["VND"],
     money: {
       today: 100000,
       last_7d: 850000,
@@ -306,7 +307,7 @@ const API = {
   "/admin/stats": statsFixture,
   "/admin/alerts": alertsFixture,
   "/admin/releases": releasesFixture,
-  "/admin/summary": () => ({ revenue_today: 0, currency: "VND", paid_orders_7d: 0, active_licenses: 0 }),
+  "/admin/summary": () => ({ revenue_today: { VND: 0, USD: 0 }, paid_orders_7d: 0, active_licenses: 0 }),
   "/admin/queue": queueFixture,
   "/admin/orders": ordersFixture,
   "/admin/licenses": licensesFixture,

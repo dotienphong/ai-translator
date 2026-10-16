@@ -1,14 +1,28 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Stats } from "../api/types";
 import { OverviewPage } from "./OverviewPage";
 
 // Recharts thật không chạy trong jsdom: ChartCard giả ghi lại dữ liệu và cấu hình mà trang truyền xuống.
 vi.mock("../components/ChartCard", () => ({
-  ChartCard: (p: { title: string; data: { label: string }[]; series: { key: string; label: string }[]; stacked?: boolean; integer?: boolean }) => (
+  ChartCard: (p: {
+    title: string;
+    data: { label: string }[];
+    series: { key: string; label: string }[];
+    stacked?: boolean;
+    integer?: boolean;
+    description?: string;
+    unit?: string;
+    format?: (n: number) => string;
+    tick?: (n: number) => string;
+  }) => (
     <div
       data-testid="chart"
       data-title={p.title}
+      data-description={p.description}
+      data-unit={p.unit}
+      data-format={p.format?.(399)}
+      data-tick={p.tick?.(150000)}
       data-rows={p.data.length}
       data-first={p.data[0]?.label}
       data-stacked={String(p.stacked === true)}
@@ -26,10 +40,11 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const DAYS = [...Array.from({ length: 29 }, (_, i) => `2026-09-${pad(i + 2)}`), "2026-10-01"];
 const MONTHS = ["2025-11", "2025-12", ...Array.from({ length: 10 }, (_, i) => `2026-${pad(i + 1)}`)];
 
-function makeStats(): Stats {
+function makeStats(currencies: Stats["currencies"] = ["VND"]): Stats {
   return {
     generated_at: T0,
     currency: "VND",
+    currencies,
     money: {
       today: 550000,
       last_7d: 650000,
@@ -248,7 +263,8 @@ describe("OverviewPage", () => {
     render(<OverviewPage />);
     const list = (await screen.findByText("Đơn 30 ngày theo trạng thái")).closest("section") as HTMLElement;
     expect(within(list).getAllByRole("listitem")).toHaveLength(9);
-    expect(within(list).getByRole("link", { name: /Chuyển thiếu/ }).getAttribute("href")).toBe("/orders?status=underpaid");
+    expect(within(list).getByRole("link", { name: /Trả thiếu hay lệch số tiền/ }).getAttribute("href")).toBe("/orders?status=underpaid");
+    expect(within(list).queryByText(/Chuyển thiếu/)).toBeNull();
     expect(within(list).getByRole("link", { name: /Lỗi/ }).getAttribute("href")).toBe("/orders?status=failed");
     expect(within(list).queryByRole("link", { name: /Cần xử lý/ })).toBeNull(); // 0 đơn: không phải liên kết
     expect(within(list).queryByRole("link", { name: /Đã trả/ })).toBeNull(); // trạng thái bình thường: không phải liên kết
@@ -347,5 +363,267 @@ describe("OverviewPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
     expect(await screen.findByText("Doanh thu hôm nay")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+/** Số liệu USD (cent): cùng khung với makeStats nhưng đơn vị tiền và con số tiền khác. */
+function makeUsdStats(): Stats {
+  const s = makeStats(["VND", "USD"]);
+  return {
+    ...s,
+    currency: "USD",
+    money: { ...s.money, today: 4398, last_7d: 4797, this_month: 4398, last_month: 3999 },
+    customers: {
+      ...s.customers,
+      grants_30d: {
+        new: { orders: 2, revenue: 798 },
+        extend: { orders: 1, revenue: 3999 },
+        change: { orders: 0, revenue: 0 },
+        other: { orders: 0, revenue: 0 },
+      },
+    },
+  };
+}
+
+/** Server giả: `?currency=USD` trả số liệu USD, còn lại số liệu VND (có đơn USD nên có hai loại tiền). */
+function serveBoth() {
+  const fetchMock = vi.fn(async (url: string) => json(url.includes("currency=USD") ? makeUsdStats() : makeStats(["VND", "USD"])));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+const switcher = () => screen.getByRole("radiogroup", { name: "Loại tiền" });
+const chartAttr = async (title: string, attr: string) =>
+  (await screen.findAllByTestId("chart")).find((c) => c.getAttribute("data-title") === title)?.getAttribute(attr);
+
+describe("OverviewPage: loại tiền (VND qua PayOS, USD qua Creem)", () => {
+  it("chỉ có VND (chưa có đơn USD đã thu tiền): không có nút chuyển, nhãn không ghi loại tiền, biểu đồ theo đồng", async () => {
+    serve();
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    expect(screen.queryByRole("radiogroup", { name: "Loại tiền" })).toBeNull();
+    expect(await chartAttr("Doanh thu 30 ngày gần nhất", "data-unit")).toBe("Đơn vị: đồng");
+    expect(await chartAttr("Doanh thu 30 ngày gần nhất", "data-format")).toBe("399 đ");
+    expect(await chartAttr("Doanh thu 30 ngày gần nhất", "data-tick")).toBe("150k");
+    expect(screen.queryByText(/\(USD\)/)).toBeNull();
+  });
+
+  it("có đơn USD: nút VND | USD (mặc định VND); chọn USD gọi lại /admin/stats?currency=USD, số tiền thành đô la", async () => {
+    const fetchMock = serveBoth();
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    expect(within(switcher()).getAllByRole("radio").map((r) => r.textContent)).toEqual(["VND", "USD"]);
+    expect(within(switcher()).getByRole("radio", { name: "VND" }).getAttribute("aria-checked")).toBe("true");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/admin/stats");
+    expect(within(tile("Doanh thu hôm nay")).getByText("550.000 đ")).toBeTruthy();
+
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "USD" }));
+    expect(await screen.findByText("Doanh thu hôm nay (USD)")).toBeTruthy();
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("/admin/stats?currency=USD");
+    expect(within(tile("Doanh thu hôm nay (USD)")).getByText("$43,98")).toBeTruthy();
+    expect(within(tile("Doanh thu 7 ngày (USD)")).getByText("$47,97")).toBeTruthy();
+    expect(within(tile("Doanh thu tháng này (USD)")).getByText("Tháng trước: $39,99")).toBeTruthy();
+    expect(within(switcher()).getByRole("radio", { name: "USD" }).getAttribute("aria-checked")).toBe("true");
+    // Số license và máy không theo loại tiền: nhãn không đổi.
+    expect(within(tile("License đang hoạt động")).getByText("2")).toBeTruthy();
+  });
+
+  it("chọn USD: biểu đồ doanh thu theo đô la (đơn vị, giá trị, vạch trục), bảng đơn 30 ngày theo đô la", async () => {
+    serveBoth();
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "USD" }));
+    await screen.findByText("Doanh thu hôm nay (USD)");
+    for (const title of ["Doanh thu 30 ngày gần nhất", "Doanh thu 12 tháng, theo gói"]) {
+      expect(await chartAttr(title, "data-unit")).toBe("Đơn vị: đô la (USD)");
+      expect(await chartAttr(title, "data-format")).toBe("$3,99");
+      expect(await chartAttr(title, "data-tick")).toBe("$1,5k");
+    }
+    const row = async (kind: string) => (await screen.findByRole("cell", { name: kind })).closest("tr")?.textContent ?? "";
+    expect(await row("Mua mới")).toBe("Mua mới2$7,98");
+    expect(await row("Gia hạn")).toBe("Gia hạn1$39,99");
+    expect(await row("Tổng")).toBe("Tổng3$47,97");
+    expect(screen.getByText("Chỉ đơn USD; màu khớp với biểu đồ theo tháng bên dưới")).toBeTruthy();
+    expect(await chartAttr("Mua mới, gia hạn, đổi gói theo tháng", "data-description")).toBe("Số đơn USD đã trả mỗi tháng, theo loại");
+    // Số USD là số đã thu (amount_paid của đơn Creem: không gồm thuế, chưa trừ phí cổng), không phải tiền thực nhận (P2-T6). Đổi
+    // nghĩa (p5 của rà B6): không gọi là "giá niêm yết" (đơn có giảm giá được cấp tay thì số này thấp hơn giá).
+    expect(
+      screen.getByText(
+        "Số đã thu (không gồm thuế) của đơn USD đã trả, chưa trừ phí cổng thanh toán; hoàn tiền một phần không được trừ, đơn đã hoàn đủ không tính; ngày và tháng tính theo giờ Việt Nam.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/niêm yết/)).toBeNull();
+    // Câu "Tiền đã nhận…" của chế độ đồng dễ bị hiểu là tiền thực nhận: không đứng cạnh số liệu USD.
+    expect(screen.queryByText(/Tiền đã nhận/)).toBeNull();
+  });
+
+  it("sức khỏe không theo loại tiền: khi có hai loại tiền thì ghi rõ là mọi loại tiền", async () => {
+    serveBoth();
+    render(<OverviewPage />);
+    expect(await screen.findByText(/Đơn theo trạng thái \(mọi loại tiền\)/)).toBeTruthy();
+  });
+
+  it("email key không theo loại tiền: khi có hai loại tiền, dòng Email key đã gửi ghi rõ mọi loại tiền (ở cả hai chế độ); chỉ VND thì không", async () => {
+    serveBoth();
+    const { unmount } = render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    expect(metric("Email key đã gửi").text).toContain("50% số đơn đã trả có email (mọi loại tiền)");
+    expect(metric("Email key đã gửi").value).toBe("1 / 2");
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "USD" }));
+    await screen.findByText("Doanh thu hôm nay (USD)");
+    expect(metric("Email key đã gửi").text).toContain("(mọi loại tiền)");
+    unmount();
+    serve();
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    expect(metric("Email key đã gửi").text).toContain("50% số đơn đã trả có email");
+    expect(metric("Email key đã gửi").text).not.toContain("mọi loại tiền");
+  });
+
+  it("đổi loại tiền: số liệu của loại cũ không hiện dưới nút của loại mới, đợi bằng khung chờ", async () => {
+    let finish: (r: Response) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) =>
+        url.includes("currency=USD") ? new Promise<Response>((r) => (finish = r)) : Promise.resolve(json(makeStats(["VND", "USD"]))),
+      ),
+    );
+    const { container } = render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "USD" }));
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"] .stat.is-skeleton')).toBeTruthy());
+    expect(screen.queryByText("550.000 đ")).toBeNull();
+    finish(json(makeUsdStats()));
+    expect(await screen.findByText("Doanh thu hôm nay (USD)")).toBeTruthy();
+    expect(within(tile("Doanh thu hôm nay (USD)")).getByText("$43,98")).toBeTruthy();
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
+  it("tải số liệu USD lỗi: hộp lỗi, nút chuyển vẫn còn để quay về VND", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => (url.includes("currency=USD") ? json({ error: "internal" }, 500) : json(makeStats(["VND", "USD"])))),
+    );
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "USD" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Lỗi máy chủ");
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "VND" }));
+    expect(await screen.findByText("Doanh thu hôm nay")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("chỉ VND: không có chữ của chế độ USD (không \"mọi loại tiền\", không \"Chỉ đơn…\", không \"không gồm thuế\")", async () => {
+    serve();
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    // Cả câu, không chỉ đoạn đầu: phần đuôi "Chỉ đơn USD, không gồm thuế…" chỉ thuộc chế độ USD.
+    expect(screen.getByText("Tiền đã nhận của đơn đã trả; ngày và tháng tính theo giờ Việt Nam.")).toBeTruthy();
+    expect(screen.getByText("Đơn theo trạng thái, license sắp hết hạn và email gửi key.")).toBeTruthy();
+    expect(screen.getByText("Màu khớp với biểu đồ theo tháng bên dưới")).toBeTruthy();
+    expect(await chartAttr("Mua mới, gia hạn, đổi gói theo tháng", "data-description")).toBe("Số đơn đã trả mỗi tháng, theo loại");
+    expect(screen.queryByText(/mọi loại tiền/)).toBeNull();
+    expect(screen.queryByText(/Chỉ đơn/)).toBeNull();
+    expect(screen.queryByText(/không gồm thuế/)).toBeNull();
+  });
+
+  it("hai biểu đồ đếm (số đơn, số máy) không mang định dạng tiền ở cả hai chế độ: trục \"Số đơn\" không có \"$\" hay \"đ\"", async () => {
+    serveBoth();
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    const check = async () => {
+      for (const [title, unit] of [
+        ["Mua mới, gia hạn, đổi gói theo tháng", "Số đơn"],
+        ["Máy dùng thử mới mỗi ngày", "Số máy"],
+      ] as const) {
+        expect(await chartAttr(title, "data-unit")).toBe(unit);
+        // Mock ChartCard ghi data-format / data-tick chỉ khi trang truyền hàm định dạng xuống.
+        expect(await chartAttr(title, "data-format")).toBeNull();
+        expect(await chartAttr(title, "data-tick")).toBeNull();
+      }
+    };
+    await check();
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "USD" }));
+    await screen.findByText("Doanh thu hôm nay (USD)");
+    await check();
+  });
+
+  it("phản hồi thiếu `currencies` (Worker admin bản trước, sau khi lùi): không văng, thấy số VND, không có nút chuyển; Làm mới cũng không văng", async () => {
+    // Hình dạng cũ: có `currency` nhưng chưa có khóa `currencies`.
+    const { currencies: _omitted, ...old } = makeStats(["VND", "USD"]);
+    const fetchMock = serve(old as unknown as Stats);
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    expect(within(tile("Doanh thu hôm nay")).getByText("550.000 đ")).toBeTruthy();
+    expect(screen.queryByRole("radiogroup", { name: "Loại tiền" })).toBeNull();
+    expect(screen.queryByText(/mọi loại tiền/)).toBeNull();
+    expect(metric("Email key đã gửi").text).not.toContain("mọi loại tiền");
+    // Mỗi lần tải xong là một đối tượng phản hồi mới: không được đặt lại state theo mảng mới mỗi lượt vẽ ("Too many re-renders").
+    fireEvent.click(screen.getByRole("button", { name: "Làm mới" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    expect(within(tile("Doanh thu hôm nay")).getByText("550.000 đ")).toBeTruthy();
+  });
+
+  it("loại tiền co về một loại khi đang xem USD (đã xóa đơn USD): tự về VND, không kẹt ở số 0 có nhãn (USD)", async () => {
+    let shrunk = false;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("currency=USD")) {
+        shrunk = true;
+        return json({ ...makeUsdStats(), currencies: ["VND"] });
+      }
+      return json(makeStats(shrunk ? ["VND"] : ["VND", "USD"]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "USD" }));
+    // Số liệu VND quay lại, nhãn không còn "(USD)", không còn nút chuyển (chỉ một loại tiền).
+    expect(await screen.findByText("Doanh thu hôm nay")).toBeTruthy();
+    expect(within(tile("Doanh thu hôm nay")).getByText("550.000 đ")).toBeTruthy();
+    expect(screen.queryByText(/\(USD\)/)).toBeNull();
+    expect(screen.queryByRole("radiogroup", { name: "Loại tiền" })).toBeNull();
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("/admin/stats");
+  });
+
+  it("danh sách loại tiền lạ không có VND: không lặp vô hạn, vẫn hiện số liệu đang xem", async () => {
+    serve(makeStats(["USD"]));
+    render(<OverviewPage />);
+    expect(await screen.findByText("Doanh thu hôm nay")).toBeTruthy();
+    expect(screen.queryByRole("radiogroup", { name: "Loại tiền" })).toBeNull();
+  });
+
+  // Đổi nghĩa (n1 của rà B4): trước đây ghim khung chờ vô hạn; nay tải xong mà sai loại tiền thì hộp lỗi kèm Thử lại.
+  it("server trả loại tiền khác loại đã hỏi: hộp lỗi nói loại tiền không khớp, không chờ vô hạn, không để thân trang trống", async () => {
+    let finish: (r: Response) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) =>
+        url.includes("currency=USD") ? new Promise<Response>((r) => (finish = r)) : Promise.resolve(json(makeStats(["VND", "USD"]))),
+      ),
+    );
+    const { container } = render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "USD" }));
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"] .stat.is-skeleton')).toBeTruthy());
+    // Hỏi USD nhưng nhận số liệu VND: tải xong (không còn loading) mà không có số liệu của loại tiền đang chọn.
+    await act(async () => {
+      finish(json(makeStats(["VND", "USD"])));
+    });
+    expect(screen.queryByText("Doanh thu hôm nay")).toBeNull();
+    expect(container.querySelector('[aria-busy="true"] .stat.is-skeleton')).toBeNull();
+    expect(screen.getByRole("alert").textContent).toContain("Server trả loại tiền không khớp");
+    expect(within(screen.getByRole("alert")).getByRole("button", { name: "Thử lại" })).toBeTruthy();
+  });
+
+  it("Làm mới giữ loại tiền đang chọn", async () => {
+    const fetchMock = serveBoth();
+    render(<OverviewPage />);
+    await screen.findByText("Doanh thu hôm nay");
+    fireEvent.click(within(switcher()).getByRole("radio", { name: "USD" }));
+    await screen.findByText("Doanh thu hôm nay (USD)");
+    fireEvent.click(screen.getByRole("button", { name: "Làm mới" }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter((c) => c[0] === "/admin/stats?currency=USD")).toHaveLength(2));
+    expect(screen.getByText("Doanh thu hôm nay (USD)")).toBeTruthy();
   });
 });

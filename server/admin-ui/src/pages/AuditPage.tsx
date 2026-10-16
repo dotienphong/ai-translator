@@ -61,9 +61,18 @@ const LEGEND = [
   ["default", "App và lượt xem"],
 ] as const;
 
+/**
+ * Bộ lọc ban đầu từ `?action=` của địa chỉ trang (lối vào từ cảnh báo ở Việc cần xử lý, như `?status=` của trang Đơn hàng);
+ * giá trị không khớp mẫu của server thì bỏ, để không lọt vào URL của API.
+ */
+function initialFilters(): AuditDraft {
+  const action = new URLSearchParams(window.location.search).get("action") ?? "";
+  return ACTION_PATTERN.test(action) ? { ...EMPTY, action } : EMPTY;
+}
+
 export function AuditPage() {
-  const [draft, setDraft] = useState(EMPTY);
-  const [f, setF] = useState(EMPTY);
+  const [draft, setDraft] = useState(initialFilters);
+  const [f, setF] = useState(initialFilters);
   const [actionError, setActionError] = useState(false);
   const [rangeError, setRangeError] = useState(false);
   const [mode, setModeState] = useState<Mode>(readMode);

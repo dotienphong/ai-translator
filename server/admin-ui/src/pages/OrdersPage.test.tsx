@@ -158,10 +158,10 @@ describe("OrdersPage: chip lọc, trạng thái rỗng, đếm, Tải thêm", ()
     await waitFor(() => expect(urls.at(-1)).toBe("/admin/orders?status=underpaid&plan=monthly"));
     expect(await screen.findByText(/Không có đơn khớp bộ lọc/)).toBeTruthy();
     const chips = screen.getByRole("list", { name: "Bộ lọc đang bật" });
-    expect(chips.textContent).toContain("Trạng thái: Chuyển thiếu");
+    expect(chips.textContent).toContain("Trạng thái: Trả thiếu hay lệch số tiền");
     expect(chips.textContent).toContain("Gói: Monthly");
 
-    fireEvent.click(screen.getByRole("button", { name: "Bỏ lọc Trạng thái: Chuyển thiếu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ lọc Trạng thái: Trả thiếu hay lệch số tiền" }));
     await waitFor(() => expect(urls.at(-1)).toBe("/admin/orders?plan=monthly"));
     expect((screen.getByLabelText("Trạng thái") as HTMLSelectElement).value).toBe("");
     fireEvent.click(await screen.findByRole("button", { name: "Xóa bộ lọc" }));

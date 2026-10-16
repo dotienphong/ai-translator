@@ -6,7 +6,23 @@ import { ActorBadge, type AnyAudit, AuditLinks } from "./columns";
 import { LoadingBlock, SkeletonLine } from "./Skeleton";
 import { Timeline, type TimelineItem } from "./Timeline";
 
-export function AuditTimeline({ rows, now, label, omit }: { rows: readonly AnyAudit[]; now: number; label: string; omit?: "order" }) {
+/**
+ * `currency`: loại tiền của đơn khi nhật ký là của MỘT đơn (trang đơn): dòng như order_underpaid không ghi `currency` mà có số
+ * tiền; có loại tiền thì in đô la hay đồng thay cent thô (fmtDetail). Nơi nhiều đơn lẫn nhau (trang Nhật ký) thì không truyền.
+ */
+export function AuditTimeline({
+  rows,
+  now,
+  label,
+  omit,
+  currency,
+}: {
+  rows: readonly AnyAudit[];
+  now: number;
+  label: string;
+  omit?: "order";
+  currency?: string;
+}) {
   const today = fmtDate(now);
   const yesterday = fmtDate(now - 86400);
   const items: TimelineItem[] = rows.map((a, i) => {
@@ -20,7 +36,7 @@ export function AuditTimeline({ rows, now, label, omit }: { rows: readonly AnyAu
       actor: <ActorBadge actor={a.actor} />,
       action: a.action,
       title: actionLabel(a.action),
-      detail: fmtDetail(a.detail) || undefined,
+      detail: fmtDetail(a.detail, currency) || undefined,
       links: linked ? <AuditLinks a={a} omit={omit} /> : undefined,
       tone: actionTone(a.action),
     };

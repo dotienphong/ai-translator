@@ -3,6 +3,9 @@
 
 export type PlanCode = "monthly" | "six_months" | "yearly";
 
+/** Loại tiền của đơn: VND (đồng, thu qua PayOS) hay USD (cent, thu qua Creem). */
+export type OrderCurrency = "VND" | "USD";
+
 export type OrderStatus =
   | "pending"
   | "processing"
@@ -139,8 +142,8 @@ export interface Queue {
 }
 
 export interface Summary {
-  revenue_today: number;
-  currency: string;
+  /** Doanh thu hôm nay theo loại tiền: VND là đồng, USD là cent. */
+  revenue_today: Record<OrderCurrency, number>;
   paid_orders_7d: number;
   active_licenses: number;
 }
@@ -162,6 +165,12 @@ export interface PaymentStatus {
   amountPaid: number;
   /** Thời điểm giao dịch gần nhất cổng báo (giây Unix); null nếu cổng không báo. */
   paidAt: number | null;
+  /**
+   * Chỉ có với đơn Creem bị giữ để xem số tiền (underpaid): cùng khóa với `detail` của nhật ký order_underpaid (has_discount,
+   * provider_discount_amount, provider_amount_paid, provider_tax_amount, provider_malformed_fields). Giao diện không dựa vào nó
+   * (đọc từ nhật ký của đơn, review-kit.ts); khai báo lỏng để khóa lạ của server không làm hỏng kiểu.
+   */
+  reviewDetail?: Record<string, unknown>;
 }
 
 export interface KeyCheck {
@@ -186,7 +195,10 @@ export interface Totals {
 
 export interface Stats {
   generated_at: number;
-  currency: "VND";
+  /** Loại tiền của `money` và `customers.grants_*` (tham số `currency`); VND là đồng, USD là cent. */
+  currency: OrderCurrency;
+  /** Loại tiền đã có đơn thu tiền (VND luôn có): trang chỉ hiện nút chuyển khi có hơn một loại. */
+  currencies: OrderCurrency[];
   money: {
     today: number;
     last_7d: number;

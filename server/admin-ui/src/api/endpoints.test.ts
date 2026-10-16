@@ -26,6 +26,7 @@ const CASES: Case[] = [
   { fn: "queue", run: () => api.queue(), method: "GET", url: "/admin/queue" },
   { fn: "summary", run: () => api.summary(), method: "GET", url: "/admin/summary" },
   { fn: "stats", run: () => api.stats(), method: "GET", url: "/admin/stats" },
+  { fn: "stats", run: () => api.stats("USD"), method: "GET", url: "/admin/stats?currency=USD" },
   { fn: "alerts", run: () => api.alerts(), method: "GET", url: "/admin/alerts" },
   { fn: "releases", run: () => api.releases(), method: "GET", url: "/admin/releases" },
 
@@ -87,6 +88,22 @@ const CASES: Case[] = [
 
   { fn: "extend", run: () => api.extend(LIC, 30, "bù ngày"), method: "POST", url: `/admin/licenses/${LIC}/extend`, body: { days: 30, note: "bù ngày" } },
   { fn: "extend", run: () => api.extend(ODD, 1, "x"), method: "POST", url: `/admin/licenses/${ODD_ENCODED}/extend`, body: { days: 1, note: "x" } },
+  // Rút ngắn hạn: luôn gửi hạn đang hiển thị (expected_expires_at: server trả 409 conflict nếu hạn đã đổi, chặn trừ hai lần);
+  // mã đơn chỉ gửi khi có (rút đúng phần của một đơn đã hoàn), không có thì body không mang khóa order_code.
+  {
+    fn: "shorten",
+    run: () => api.shorten(LIC, 365, "hoàn đơn gia hạn", 1_854_536_000, 1000015),
+    method: "POST",
+    url: `/admin/licenses/${LIC}/shorten`,
+    body: { days: 365, note: "hoàn đơn gia hạn", expected_expires_at: 1_854_536_000, order_code: 1000015 },
+  },
+  {
+    fn: "shorten",
+    run: () => api.shorten(ODD, 2, "x", 1_800_000_000),
+    method: "POST",
+    url: `/admin/licenses/${ODD_ENCODED}/shorten`,
+    body: { days: 2, note: "x", expected_expires_at: 1_800_000_000 },
+  },
   { fn: "unlock", run: () => api.unlock(LIC, "mở khóa"), method: "POST", url: `/admin/licenses/${LIC}/unlock`, body: { note: "mở khóa" } },
   { fn: "unlock", run: () => api.unlock(ODD, "x"), method: "POST", url: `/admin/licenses/${ODD_ENCODED}/unlock`, body: { note: "x" } },
   { fn: "revoke", run: () => api.revoke(LIC, "hoàn tiền"), method: "POST", url: `/admin/licenses/${LIC}/revoke`, body: { note: "hoàn tiền" } },
@@ -140,6 +157,6 @@ describe("api: method, URL và body gửi lên", () => {
 
   it("có test cho đủ mọi hàm của api", () => {
     expect(new Set(CASES.map((c) => c.fn))).toEqual(new Set(Object.keys(api)));
-    expect(Object.keys(api)).toHaveLength(24);
+    expect(Object.keys(api)).toHaveLength(25);
   });
 });

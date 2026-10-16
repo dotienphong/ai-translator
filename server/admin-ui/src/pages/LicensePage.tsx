@@ -1,7 +1,8 @@
 // Chi tiết license (spec Web Admin §4.2; giao diện mới mục 2): key che làm tiêu đề (Hiện, Chép), huy hiệu trạng thái, hành
 // động chính (Gia hạn, Gửi lại email), việc cần làm (khóa tạm: Mở khóa), máy (xung đột thì thẻ tông cảnh báo), đơn, nhật
-// ký; bên phải là Thông tin và Khu vực nguy hiểm (Thu hồi). License đã thu hồi: không còn nút ghi nào, kể cả trên từng máy.
-import { useState } from "react";
+// ký; bên phải là Thông tin và Khu vực nguy hiểm (Rút ngắn hạn, Thu hồi). License đã thu hồi: không còn nút ghi nào, kể cả trên
+// từng máy. Rút ngắn hạn ở đây tự chọn số ngày, không kèm mã đơn (rút đúng phần của một đơn đã hoàn thì làm từ trang đơn).
+import { useEffect, useState } from "react";
 import { api } from "../api/endpoints";
 import type { Activation } from "../api/types";
 import { AuditTimeline } from "../components/AuditTimeline";
@@ -26,9 +27,11 @@ import { useLoad } from "../hooks";
 import { refreshQueueCount } from "../queue-store";
 import { Link } from "../router";
 import { Callout, DangerZone, EmailText, DetailLayout, DetailNotFound, DetailSkeleton } from "./detail-kit";
+import { maxShortenDays } from "./refund-kit";
+import { ShortenDialog } from "./ShortenDialog";
 
 type Dialog =
-  | { kind: "extend" | "resend" | "unlock" | "revoke" }
+  | { kind: "extend" | "shorten" | "resend" | "unlock" | "revoke" }
   | { kind: "deactivate" | "reset"; activation: Activation }
   | null;
 
@@ -48,6 +51,10 @@ export function LicensePage({ id }: { id: string }) {
   const notice = useNotice();
   const [days, setDays] = useState("30");
   const [shown, setShown] = useState(false);
+  // Tải lại bị lỗi thì bỏ hộp đang mở: Thử lại xong hộp không tự hiện lại (hộp Rút ngắn chốt hạn lúc mở) (m1).
+  useEffect(() => {
+    if (data.error) setDialog(null);
+  }, [data.error]);
 
   if (data.error) {
     return (
@@ -253,7 +260,24 @@ export function LicensePage({ id }: { id: string }) {
         danger={
           !revoked && (
             <DangerZone
+              description="Ảnh hưởng tới khách ở lần kiểm tra kế tiếp. Thu hồi không hoàn tác được; rút ngắn trả lại được bằng Gia hạn."
               items={[
+                {
+                  name: "Rút ngắn hạn",
+                  effect:
+                    "Trừ số ngày khỏi hạn, khi không gắn với một đơn. Rút phần của một đơn đã hoàn tiền thì làm ở trang đơn đó (để gắn mã đơn): rút ở đây thì trang đơn không biết. Hạn mới phải sau bây giờ.",
+                  button: (
+                    <Button
+                      icon={<IconCalendar size={16} />}
+                      // Đang tải lại thì khóa: hộp chốt hạn lúc mở, mở trên dữ liệu cũ chỉ đổi lấy 409 conflict.
+                      disabled={data.loading || maxShortenDays(lic.expires_at, now) < 1}
+                      title={maxShortenDays(lic.expires_at, now) < 1 ? "License còn chưa tới một ngày: không rút ngắn được" : undefined}
+                      onClick={() => setDialog({ kind: "shorten" })}
+                    >
+                      Rút ngắn hạn…
+                    </Button>
+                  ),
+                },
                 {
                   name: "Thu hồi license",
                   effect: "Mọi máy đang dùng key này về Free ở lần kiểm tra kế tiếp.",
@@ -290,6 +314,25 @@ export function LicensePage({ id }: { id: string }) {
           </Field>
         </ConfirmDialog>
       )}
+      {dialog?.kind === "shorten" && (
+        <ShortenDialog
+          licenseId={id}
+          expiresAt={lic.expires_at}
+          now={now}
+          onDone={(r) => {
+            notice.show(`Đã rút ngắn hạn tới ${fmtDate(r.expires_at)}.`);
+            data.reload();
+            refreshQueueCount();
+          }}
+          onStale={(message) => {
+            setDialog(null);
+            notice.show(message, "warn");
+            data.reload();
+          }}
+          onConflict={data.reload}
+          onClose={close}
+        />
+      )}
       {dialog?.kind === "resend" && (
         <ConfirmDialog
           title="Gửi lại email chứa key?"
@@ -325,7 +368,7 @@ export function LicensePage({ id }: { id: string }) {
       {dialog?.kind === "revoke" && (
         <ConfirmDialog
           title="Thu hồi license?"
-          description="Mọi máy đang dùng key này về Free ở lần kiểm tra kế tiếp. Không hoàn tác được."
+          description="Mọi máy đang dùng key này về Free ở lần kiểm tra kế tiếp. Không hoàn tác được. Xem bảng Đơn hàng của license trước: thu hồi lấy luôn thời gian khách đã trả ở các đơn khác."
           confirmLabel="Thu hồi"
           needsNote
           typeToConfirm="THU HOI"

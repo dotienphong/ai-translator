@@ -4,6 +4,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { SESSION_EXPIRED_EVENT } from "./api/client";
 import { api } from "./api/endpoints";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { IconWarning } from "./components/icons";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
@@ -115,7 +116,19 @@ function Page({ route }: { route: Route }) {
   }
 }
 
+/**
+ * Lỗi vẽ ngoài nội dung trang (thanh bên, thanh trên, tải số việc cho huy hiệu) cũng không làm trắng cả Web Admin: hộp lỗi
+ * có nút Tải lại trang. Lỗi trong nội dung trang có khung riêng ở AppFrame, giữ nguyên thanh bên.
+ */
 export function App() {
+  return (
+    <ErrorBoundary whole>
+      <AppFrame />
+    </ErrorBoundary>
+  );
+}
+
+function AppFrame() {
   const path = usePath();
   const route = matchRoute(path);
   const title = routeTitle(route);
@@ -129,7 +142,15 @@ export function App() {
   // gieo số): một lần truy vấn, một dòng queue_viewed. Lỗi thì không hiện gì (trang Việc cần xử lý tự báo lỗi).
   const queue = useLoad(() => (route.name === "queue" ? Promise.resolve(null) : api.queue()), []);
   useEffect(() => {
-    if (queue.data) seedQueueCount(queueTotal(queue.data));
+    if (!queue.data) return;
+    // Huy hiệu không thiết yếu: hàng đợi trả hình dạng lạ (lệch phiên bản) thì bỏ huy hiệu, không để lỗi thay cả khung App (n2).
+    let n: number;
+    try {
+      n = queueTotal(queue.data);
+    } catch {
+      return;
+    }
+    if (Number.isFinite(n)) seedQueueCount(n);
   }, [queue.data]);
   const queueCount = useQueueCount();
   const mainRef = useRef<HTMLElement>(null);
@@ -245,8 +266,11 @@ export function App() {
           </div>
         )}
         <main id="noi-dung" className="main" tabIndex={-1} ref={mainRef}>
+          {/* key theo địa chỉ: sang trang khác thì vùng nội dung (và khung lỗi của nó) dựng lại từ đầu. */}
           <div className="content" key={path}>
-            <Page route={route} />
+            <ErrorBoundary>
+              <Page route={route} />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

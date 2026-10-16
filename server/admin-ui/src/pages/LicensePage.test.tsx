@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fmtDateTime, fmtWhen } from "../format";
+import { fmtDate, fmtDateTime, fmtWhen } from "../format";
 import { getQueueCount } from "../queue-store";
 import { LicensePage } from "./LicensePage";
 
@@ -49,11 +49,14 @@ const withLicense = (patch: Record<string, unknown>) => {
 };
 /** Phản hồi của POST /extend; test đổi để thử 409/404. */
 let extendResponse: () => Response;
+/** Phản hồi của POST /shorten; test đổi để thử 409. */
+let shortenResponse: () => Response;
 
 beforeEach(() => {
   calls = [];
   current = license;
   extendResponse = () => json({ license_id: ID, expires_at: NOW + 400 * 86400 });
+  shortenResponse = () => json({ license_id: ID, expires_at: NOW + 265 * 86400 });
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init: RequestInit = {}) => {
@@ -62,6 +65,7 @@ beforeEach(() => {
       if (url === "/admin/queue") return json(QUEUE);
       if (url === `/admin/licenses/${ID}/revoke`) return json({ ok: true });
       if (url === `/admin/licenses/${ID}/extend`) return extendResponse();
+      if (url === `/admin/licenses/${ID}/shorten`) return shortenResponse();
       if (url === `/admin/licenses/${ID}/unlock` || url === `/admin/licenses/${ID}/resend`) return json({ ok: true });
       if (url === "/admin/activations/act-1/deactivate") return json({ ok: true });
       if (url === "/admin/activations/act-1/reset-quota") return json({ activation_id: "act-1", quota_epoch: 1 });
@@ -140,7 +144,7 @@ describe("LicensePage: nút theo trạng thái license", () => {
     render(<LicensePage id={ID} />);
     expect(await screen.findByText("MacBook")).toBeTruthy();
     expect(screen.getByText("Đã thu hồi")).toBeTruthy();
-    for (const name of ["Gia hạn…", "Gửi lại email…", "Mở khóa…", "Thu hồi…", "Gỡ…", "Reset hạn mức…"]) {
+    for (const name of ["Gia hạn…", "Gửi lại email…", "Mở khóa…", "Thu hồi…", "Rút ngắn hạn…", "Gỡ…", "Reset hạn mức…"]) {
       expect(btn(name), name).toBeNull();
     }
   });
@@ -500,5 +504,164 @@ describe("LicensePage: giờ chính xác của máy hiện trong chữ (điện 
     const a = license.activations[0] as { last_validated_at: number; created_at: number };
     expect(meta).toContain(`(${fmtWhen(a.last_validated_at, NOW)})`);
     expect(meta).toContain(`kích hoạt ${fmtDateTime(a.created_at)}`);
+  });
+});
+
+describe("LicensePage: Rút ngắn hạn… (Q2) và lời nhắc của hộp Thu hồi", () => {
+  // Đồng hồ đóng băng ở NOW: hạn NOW + 365 ngày thì rút được nhiều nhất 364 ngày (hạn mới phải sau bây giờ, như server).
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(NOW * 1000));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  const SHORTEN = `/admin/licenses/${ID}/shorten`;
+
+  async function openShorten(user: ReturnType<typeof userEvent.setup>) {
+    render(<LicensePage id={ID} />);
+    await screen.findByText("MacBook");
+    const danger = screen.getByRole("region", { name: "Khu vực nguy hiểm" });
+    await user.click(within(danger).getByRole("button", { name: "Rút ngắn hạn…" }));
+    return screen.getByRole("dialog", { name: "Rút ngắn hạn license?" });
+  }
+
+  it("hộp: số ngày trống, biên 1..364, xem trước hạn mới; gửi {days, note, expected_expires_at} không kèm mã đơn; báo hạn mới; tải lại", async () => {
+    const user = userEvent.setup();
+    const dialog = await openShorten(user);
+    const days = within(dialog).getByLabelText(/Số ngày/) as HTMLInputElement;
+    expect(days.value).toBe("");
+    // I-2 của rà B2: lần rút ở đây không gắn đơn nào, trang đơn không biết; rút phần của một đơn đã hoàn thì làm ở trang đơn đó.
+    expect(dialog.textContent).toContain("Rút ngắn không kèm mã đơn: trang đơn sẽ không biết lần rút này.");
+    expect(dialog.textContent).toContain("mở hộp từ trang đơn đó");
+    expect(document.activeElement).toBe(days);
+    expect(dialog.textContent).toContain("tới lần kiểm tra kế tiếp (mỗi 24 giờ; máy offline tới 14 ngày)");
+    await user.type(within(dialog).getByLabelText(/Lý do/), "hoàn đơn #1000015 ngoài hệ thống");
+    await user.type(within(dialog).getByLabelText(/để xác nhận/), "RUT NGAN");
+    const confirm = within(dialog).getByRole("button", { name: "Rút ngắn" }) as HTMLButtonElement;
+    for (const [value, ok] of [["0", false], ["365", false], ["1.5", false], ["364", true], ["1", true]] as const) {
+      fireEvent.change(days, { target: { value } });
+      expect(confirm.disabled, `số ngày ${value}`).toBe(!ok);
+    }
+    fireEvent.change(days, { target: { value: "365" } });
+    expect(within(dialog).getByText("Nhập số nguyên từ 1 đến 364 (hạn mới phải sau bây giờ).")).toBeTruthy();
+    fireEvent.change(days, { target: { value: "100" } });
+    expect(dialog.textContent).toContain(`Trừ 100 ngày khỏi hạn (${fmtDate(NOW + 365 * 86400)} → ${fmtDate(NOW + 265 * 86400)})`);
+    await user.click(confirm);
+    expect(await screen.findByText(`Đã rút ngắn hạn tới ${fmtDate(NOW + 265 * 86400)}.`)).toBeTruthy();
+    expect(writes()).toEqual([
+      { url: SHORTEN, method: "POST", body: { days: 100, note: "hoàn đơn #1000015 ngoài hệ thống", expected_expires_at: NOW + 365 * 86400 } },
+    ]);
+    await waitFor(() => expect(lookups()).toBe(2));
+  });
+
+  it("Khu vực nguy hiểm: Rút ngắn hạn dùng khi không gắn với một đơn; phần của đơn đã hoàn thì làm ở trang đơn (I-2)", async () => {
+    render(<LicensePage id={ID} />);
+    await screen.findByText("MacBook");
+    const danger = screen.getByRole("region", { name: "Khu vực nguy hiểm" });
+    expect(danger.textContent).toContain("Rút phần của một đơn đã hoàn tiền thì làm ở trang đơn đó (để gắn mã đơn)");
+    expect(danger.textContent).not.toContain("ví dụ phần của một đơn đã hoàn tiền");
+  });
+
+  it("server trả 409 conflict: hộp đóng, câu cảnh báo ở trang (không mời thử lại), trang tải lại", async () => {
+    const user = userEvent.setup();
+    shortenResponse = () => json({ error: "conflict" }, 409);
+    const dialog = await openShorten(user);
+    fireEvent.change(within(dialog).getByLabelText(/Số ngày/), { target: { value: "30" } });
+    await user.type(within(dialog).getByLabelText(/Lý do/), "x");
+    await user.type(within(dialog).getByLabelText(/để xác nhận/), "RUT NGAN");
+    await user.click(within(dialog).getByRole("button", { name: "Rút ngắn" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(lookups()).toBe(2));
+    const region = document.querySelector(".notice-region") as HTMLElement;
+    expect(region.textContent).toContain("Xem lại hạn và nhật ký rồi mở lại hộp nếu vẫn cần rút");
+    expect(writes().filter((w) => w.url === SHORTEN)).toHaveLength(1);
+  });
+
+  it("hạn được chốt lúc mở hộp: trang tải lại với hạn khác thì lần gửi sau vẫn mang hạn cũ (server sẽ trả conflict)", async () => {
+    const user = userEvent.setup();
+    shortenResponse = () => {
+      // Sau lần 409 đầu, license đổi ở nơi khác (tab khác vừa rút).
+      withLicense({ expires_at: NOW + 300 * 86400 });
+      return json({ error: "too_far", max_days: 10, expires_at: NOW + 300 * 86400 }, 409);
+    };
+    const dialog = await openShorten(user);
+    fireEvent.change(within(dialog).getByLabelText(/Số ngày/), { target: { value: "100" } });
+    await user.type(within(dialog).getByLabelText(/Lý do/), "x");
+    await user.type(within(dialog).getByLabelText(/để xác nhận/), "RUT NGAN");
+    await user.click(within(dialog).getByRole("button", { name: "Rút ngắn" }));
+    await waitFor(() => expect(lookups()).toBe(2));
+    fireEvent.change(within(screen.getByRole("dialog")).getByLabelText(/Số ngày/), { target: { value: "5" } });
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Rút ngắn" }));
+    await waitFor(() => expect(writes().filter((w) => w.url === SHORTEN)).toHaveLength(2));
+    expect(writes().map((w) => (w.body as { expected_expires_at: number }).expected_expires_at)).toEqual([NOW + 365 * 86400, NOW + 365 * 86400]);
+  });
+
+  it("server trả 409 too_far: câu có số ngày server cho phép, hộp còn mở, trang tải lại", async () => {
+    const user = userEvent.setup();
+    shortenResponse = () => json({ error: "too_far", max_days: 360, expires_at: NOW + 361 * 86400 }, 409);
+    const dialog = await openShorten(user);
+    fireEvent.change(within(dialog).getByLabelText(/Số ngày/), { target: { value: "364" } });
+    await user.type(within(dialog).getByLabelText(/Lý do/), "x");
+    await user.type(within(dialog).getByLabelText(/để xác nhận/), "RUT NGAN");
+    await user.click(within(dialog).getByRole("button", { name: "Rút ngắn" }));
+    await waitFor(() => expect(lookups()).toBe(2));
+    expect(screen.getByRole("dialog").querySelector(".dialog-error")?.textContent).toContain(
+      `còn rút được nhiều nhất 360 ngày; hạn hiện tại ${fmtDate(NOW + 361 * 86400)}`,
+    );
+  });
+
+  it("đang tải lại sau một lần rút: nút Rút ngắn hạn… bị khóa (hộp chốt hạn lúc mở, mở trên dữ liệu cũ thì vô ích)", async () => {
+    const user = userEvent.setup();
+    const dialog = await openShorten(user);
+    fireEvent.change(within(dialog).getByLabelText(/Số ngày/), { target: { value: "30" } });
+    await user.type(within(dialog).getByLabelText(/Lý do/), "x");
+    await user.type(within(dialog).getByLabelText(/để xác nhận/), "RUT NGAN");
+    // Từ đây lần tra cứu tải lại không bao giờ xong.
+    const base = vi.mocked(fetch).getMockImplementation();
+    vi.mocked(fetch).mockImplementation(async (url, init) =>
+      String(url) === "/admin/lookup" ? new Promise<Response>(() => {}) : (base as typeof fetch)(url, init),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Rút ngắn" }));
+    expect(await screen.findByText(/Đã rút ngắn hạn tới/)).toBeTruthy();
+    expect((btn("Rút ngắn hạn…") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("tải lại sau 409 bị lỗi rồi Thử lại: hộp Rút ngắn không tự hiện lại (m1)", async () => {
+    const user = userEvent.setup();
+    shortenResponse = () => json({ error: "too_far", max_days: 10, expires_at: NOW + 365 * 86400 }, 409);
+    const dialog = await openShorten(user);
+    fireEvent.change(within(dialog).getByLabelText(/Số ngày/), { target: { value: "100" } });
+    await user.type(within(dialog).getByLabelText(/Lý do/), "x");
+    await user.type(within(dialog).getByLabelText(/để xác nhận/), "RUT NGAN");
+    const base = vi.mocked(fetch).getMockImplementation();
+    let failNext = true;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (String(url) === "/admin/lookup" && failNext) {
+        failNext = false;
+        return json({ error: "internal" }, 500);
+      }
+      return (base as typeof fetch)(url, init);
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Rút ngắn" }));
+    await user.click(await screen.findByRole("button", { name: "Thử lại" }));
+    await screen.findByText("MacBook");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("license còn chưa tới một ngày: nút Rút ngắn hạn… bị khóa", async () => {
+    withLicense({ expires_at: NOW + 3600 });
+    render(<LicensePage id={ID} />);
+    await screen.findByText("MacBook");
+    expect((btn("Rút ngắn hạn…") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("hộp Thu hồi nhắc xem bảng Đơn hàng trước: thu hồi lấy luôn thời gian khách đã trả ở các đơn khác", async () => {
+    const user = userEvent.setup();
+    render(<LicensePage id={ID} />);
+    await user.click(await screen.findByRole("button", { name: "Thu hồi…" }));
+    expect(screen.getByRole("dialog", { name: "Thu hồi license?" }).textContent).toContain(
+      "Xem bảng Đơn hàng của license trước: thu hồi lấy luôn thời gian khách đã trả ở các đơn khác.",
+    );
   });
 });

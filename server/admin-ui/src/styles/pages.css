@@ -176,6 +176,15 @@ code.q-id {
   position: absolute;
   inset: 0;
 }
+/* Dòng có hai lối (cảnh báo order_payment_review): lối phụ nổi trên vùng bấm phủ cả dòng của lối chính */
+.q-act-pair {
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+.q-alt {
+  position: relative;
+  z-index: 1;
+}
 .q-row:hover .q-go {
   background: var(--surface-3);
 }
@@ -1493,8 +1502,8 @@ a.dev-name:hover {
   margin-left: auto;
 }
 
-/* Kết quả PayOS: câu so với đơn */
-.payos-verdict {
+/* Kết quả của cổng thanh toán (PayOS, Creem): câu so với đơn */
+.gateway-verdict {
   display: flex;
   align-items: center;
   gap: var(--s-2);
@@ -1504,7 +1513,7 @@ a.dev-name:hover {
   font-weight: 600;
   border-top: 1px solid var(--line);
 }
-.payos-verdict::before {
+.gateway-verdict::before {
   content: "";
   flex: none;
   width: 8px;
@@ -1512,11 +1521,17 @@ a.dev-name:hover {
   border-radius: 50%;
   background: currentColor;
 }
-.payos-verdict.is-ok {
+.gateway-verdict.is-ok {
   color: var(--ok);
 }
-.payos-verdict.is-warn {
+.gateway-verdict.is-warn {
   color: var(--warn);
+}
+/* Câu giải thích dưới kết luận (đơn đã hoàn mà cổng vẫn báo đã trả) */
+.gateway-note {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
 }
 
 /* ---------- Công cụ ---------- */

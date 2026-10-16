@@ -52,14 +52,15 @@ export const GALLERY_MARKER = "Trang thử thành phần (chỉ dev)";
 const NOW = 1_791_500_000;
 const KEY = "K7Q2-M4XB-9TRD-0HZC-5WEF-8NPA-9XMB";
 
-function order(code: number, status: OrderRow["status"], amount = 500000, paid = amount): OrderRow {
+/** Đơn mẫu; `usd` là đơn quốc tế qua Creem (số tiền tính bằng cent). */
+function order(code: number, status: OrderRow["status"], amount = 500000, paid = amount, usd = false): OrderRow {
   return {
     order_code: code,
-    provider: "payos",
-    plan: amount >= 500000 ? "yearly" : "monthly",
+    provider: usd ? "creem" : "payos",
+    plan: amount >= 500000 || (usd && amount >= 3999) ? "yearly" : "monthly",
     amount,
     amount_paid: paid,
-    currency: "VND",
+    currency: usd ? "USD" : "VND",
     email: `khach${code % 7}@example.com`,
     status,
     grant_kind: null,
@@ -75,6 +76,7 @@ function order(code: number, status: OrderRow["status"], amount = 500000, paid =
 const ORDERS: OrderRow[] = [
   order(1000012, "paid"),
   order(1000011, "underpaid", 500000, 200000),
+  order(1000013, "paid", 3999, 3999, true),
   order(1000010, "pending", 50000, 0),
   order(1000009, "paid_needs_review"),
   order(1000008, "refunded", 50000),
@@ -268,7 +270,7 @@ function Cards() {
         </Card>
       </div>
       <Section title="Section: nhóm nhỏ" description="Tiêu đề chữ hoa, mô tả và hành động tùy chọn" actions={<Button size="sm" variant="ghost" iconEnd={<IconArrowRight size={16} />}>Xem tất cả</Button>}>
-        <Card title="Bảng trong thẻ (thân flush)" description="Đầu thẻ có đường kẻ, bảng sát mép" flush actions={<Badge tone="info">6 đơn</Badge>}>
+        <Card title="Bảng trong thẻ (thân flush)" description="Đầu thẻ có đường kẻ, bảng sát mép" flush actions={<Badge tone="info">{`${ORDERS.length} đơn`}</Badge>}>
           <DataTable flush columns={orderColumns(NOW)} rows={ORDERS.slice(0, 3)} rowKey={(o) => String(o.order_code)} empty="Không có đơn nào" />
         </Card>
       </Section>
@@ -559,7 +561,7 @@ function Tables() {
           emptyAction={<Button size="sm">Xóa lọc</Button>}
         />
       </div>
-      <DataTable columns={orderColumns(NOW)} rows={[...ORDERS, ...ORDERS.map((o) => ({ ...o, order_code: o.order_code - 100 }))]} rowKey={(o) => String(o.order_code)} empty="" maxHeight="sm" summary="12 đơn" hasMore loading onMore={() => {}} />
+      <DataTable columns={orderColumns(NOW)} rows={[...ORDERS, ...ORDERS.map((o) => ({ ...o, order_code: o.order_code - 100 }))]} rowKey={(o) => String(o.order_code)} empty="" maxHeight="sm" summary={`${ORDERS.length * 2} đơn`} hasMore loading onMore={() => {}} />
     </GalleryBlock>
   );
 }

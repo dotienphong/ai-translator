@@ -9,6 +9,7 @@ import type {
   LicenseRow,
   LookupResult,
   OrderRow,
+  OrderCurrency,
   Page,
   PaymentStatus,
   PlanCode,
@@ -53,7 +54,7 @@ export const api = {
   lookup: (q: LookupQuery) => call<LookupResult>("POST", "/admin/lookup", q),
   queue: () => call<Queue>("GET", "/admin/queue"),
   summary: () => call<Summary>("GET", "/admin/summary"),
-  stats: () => call<Stats>("GET", "/admin/stats"),
+  stats: (currency?: OrderCurrency) => call<Stats>("GET", `/admin/stats${queryString({ currency })}`),
   alerts: () => call<AlertsResponse>("GET", "/admin/alerts"),
   releases: () => call<ReleasesResponse>("GET", "/admin/releases"),
   orders: (f: Filters) => call<Page<OrderRow>>("GET", `/admin/orders${queryString(f)}`),
@@ -68,6 +69,18 @@ export const api = {
     call<IssuedLicense>("POST", "/admin/licenses", { email, plan, note }),
   extend: (id: string, days: number, note: string) =>
     call<{ license_id: string; expires_at: number }>("POST", `/admin/licenses/${seg(id)}/extend`, { days, note }),
+  /**
+   * Rút ngắn hạn `days` ngày. `expectedExpiresAt`: hạn đang hiển thị; server trả 409 `conflict` nếu hạn đã đổi (giao diện cũ,
+   * hay bấm gửi lại sau lỗi mạng mà lần trước đã ghi), nên không bao giờ trừ hai lần. `orderCode`: đơn đã hoàn mà lần rút này lấy
+   * lại phần thời gian của nó (phải thuộc license); không có thì body không mang khóa này.
+   */
+  shorten: (id: string, days: number, note: string, expectedExpiresAt: number, orderCode?: number) =>
+    call<{ license_id: string; expires_at: number }>("POST", `/admin/licenses/${seg(id)}/shorten`, {
+      days,
+      note,
+      expected_expires_at: expectedExpiresAt,
+      ...(orderCode === undefined ? {} : { order_code: orderCode }),
+    }),
   unlock: (id: string, note: string) => call<{ ok: true }>("POST", `/admin/licenses/${seg(id)}/unlock`, { note }),
   revoke: (id: string, note: string) => call<{ ok: true }>("POST", `/admin/licenses/${seg(id)}/revoke`, { note }),
   resend: (id: string) => call<{ ok: true }>("POST", `/admin/licenses/${seg(id)}/resend`, {}),

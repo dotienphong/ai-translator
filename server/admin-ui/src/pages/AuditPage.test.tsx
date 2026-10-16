@@ -209,3 +209,26 @@ describe("AuditPage: chip bộ lọc đang áp dụng", () => {
   });
 });
 
+
+describe("AuditPage: bộ lọc hành động ban đầu từ địa chỉ trang (?action=, lối vào từ Việc cần xử lý)", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("?action=payment_unmatched: lọc ngay theo hành động đó, ô nhập và chip đã có giá trị", async () => {
+    window.history.replaceState(null, "", "/audit?action=payment_unmatched");
+    render(<AuditPage />);
+    await screen.findByText("Không có dòng nào");
+    expect(urls).toEqual(["/admin/audit?action=payment_unmatched"]);
+    expect((screen.getByLabelText("Hành động (mã)") as HTMLInputElement).value).toBe("payment_unmatched");
+    expect(screen.getByRole("list", { name: "Bộ lọc đang bật" }).textContent).toContain("Hành động: payment_unmatched");
+  });
+
+  it("?action= không khớp mẫu của server (email…): bỏ qua, không vào URL của API", async () => {
+    window.history.replaceState(null, "", "/audit?action=a%40b.com");
+    render(<AuditPage />);
+    await screen.findByText("Không có dòng nào");
+    expect(urls).toEqual(["/admin/audit"]);
+    expect((screen.getByLabelText("Hành động (mã)") as HTMLInputElement).value).toBe("");
+  });
+});

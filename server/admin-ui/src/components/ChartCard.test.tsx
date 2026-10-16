@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { fmtVnd } from "../format";
+import { fmtCompactMoney, fmtVnd } from "../format";
 import { ChartCard, ChartTooltip, topSeries } from "./ChartCard";
 
 // Recharts thật cần kích thước và ResizeObserver mà jsdom không có: thay bằng khung thử ghi lại các thuộc tính ChartCard truyền xuống.
@@ -17,7 +17,10 @@ vi.mock("recharts", () => ({
   ),
   CartesianGrid: () => null,
   XAxis: () => null,
-  YAxis: (p: { allowDecimals?: boolean }) => <i data-testid="yaxis" data-decimals={String(p.allowDecimals)} />,
+  // YAxis: ghi lại cách vạch trục được định dạng (tickFormatter nhận một giá trị thử là 150000).
+  YAxis: (p: { allowDecimals?: boolean; tickFormatter?: (v: number) => string }) => (
+    <i data-testid="yaxis" data-decimals={String(p.allowDecimals)} data-tick={p.tickFormatter?.(150000)} />
+  ),
   // Tooltip: ghi thứ tự mà bộ sắp xếp của ChartCard cho ba mục thử có dataKey "c", "a", "b".
   Tooltip: (p: { itemSorter?: (item: { dataKey: string }) => unknown }) => (
     <i data-testid="tooltip" data-order={["c", "a", "b"].map((k) => String(p.itemSorter?.({ dataKey: k }))).join(",")} />
@@ -35,6 +38,16 @@ const ROWS = [
   { label: "02/10", revenue: 0 },
   { label: "03/10", revenue: 1500000 },
 ];
+
+describe("ChartCard: vạch trục", () => {
+  it("mặc định số gọn (150000 thành 150k); tick của trang đổi được, ví dụ trục đô la từ cent", () => {
+    const { unmount } = render(<ChartCard title="Doanh thu" data={ROWS} series={ONE} />);
+    expect(screen.getByTestId("yaxis").getAttribute("data-tick")).toBe("150k");
+    unmount();
+    render(<ChartCard title="Doanh thu" data={ROWS} series={ONE} tick={(n) => fmtCompactMoney(n, "USD")} />);
+    expect(screen.getByTestId("yaxis").getAttribute("data-tick")).toBe("$1,5k");
+  });
+});
 
 describe("ChartCard", () => {
   it("tiêu đề, một cột mỗi chuỗi, không chồng, không chú giải khi chỉ có một chuỗi", () => {

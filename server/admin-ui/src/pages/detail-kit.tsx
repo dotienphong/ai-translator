@@ -64,9 +64,10 @@ export interface DangerAction {
   button: ReactNode;
 }
 
-export function DangerZone({ items }: { items: readonly DangerAction[] }) {
+/** `description`: dòng dưới tiêu đề (mặc định "Không hoàn tác được."; trang có thao tác trả lại được thì ghi rõ thao tác nào). */
+export function DangerZone({ items, description = "Không hoàn tác được." }: { items: readonly DangerAction[]; description?: ReactNode }) {
   return (
-    <Card tone="danger" icon={<IconWarning size={18} />} title="Khu vực nguy hiểm" description="Không hoàn tác được." className="danger-zone">
+    <Card tone="danger" icon={<IconWarning size={18} />} title="Khu vực nguy hiểm" description={description} className="danger-zone">
       {items.map((it) => (
         <div className="danger-item" key={it.name}>
           <div className="danger-text">

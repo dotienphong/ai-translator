@@ -43,6 +43,23 @@ export function fmtVnd(n: number): string {
   return `${fmtInt(n)} đ`;
 }
 
+/** Đô la từ số cent (đơn Creem lưu cent): 399 thành "$3,99", 123456 thành "$1.234,56". Cùng dấu số với fmtVnd. */
+export function fmtUsd(cents: number): string {
+  const abs = Math.abs(Math.round(cents));
+  return `${cents < 0 ? "-" : ""}$${fmtInt(Math.trunc(abs / 100))},${pad(abs % 100)}`;
+}
+
+/**
+ * Số tiền của đơn theo loại tiền của nó (orders.currency): VND là đồng, USD là cent; loại lạ thì số kèm mã loại tiền. Thiếu
+ * loại tiền (undefined, null hay chuỗi rỗng: phản hồi không đầy đủ) thì coi là VND: mọi đơn từ trước khi có cổng quốc tế đều là
+ * đồng, và "50.000 null" hay "50.000 " là chữ hỏng.
+ */
+export function fmtMoney(n: number, currency: string | null | undefined): string {
+  if (currency === "USD") return fmtUsd(n);
+  if (currency && currency !== "VND") return `${fmtInt(n)} ${currency}`;
+  return fmtVnd(n);
+}
+
 /**
  * Thời gian tương đối so với `now` (giây): "vừa xong", "5 phút trước", "2 giờ trước", "3 ngày trước"; từ 30 ngày trở lên
  * (hay ở tương lai quá một phút) thì là ngày đầy đủ dd/MM/yyyy. Đi kèm ngày giờ đầy đủ ở `title`/`<time>` (RelTime).
@@ -91,14 +108,37 @@ export function shortHash(hash: string): string {
   return `${hash.slice(0, 4)}…${hash.slice(-4)}`;
 }
 
-/** `detail` JSON của nhật ký thành "khóa: giá trị · …"; không phải object JSON thì trả nguyên. */
-export function fmtDetail(detail: string | null): string {
+/**
+ * Các khóa của `detail` nhật ký mang số tiền theo đơn vị nhỏ nhất của loại tiền (đồng với VND, cent với USD): đơn (`amount`,
+ * `amount_paid`), số cổng báo (`provider_*`), hoàn tiền (`refunded_amount`). In cent thô thì "3999" dễ đọc nhầm là 3.999 đô.
+ */
+const MONEY_KEYS: ReadonlySet<string> = new Set([
+  "amount",
+  "amount_paid",
+  "provider_amount",
+  "provider_amount_paid",
+  "provider_tax_amount",
+  "provider_discount_amount",
+  "refunded_amount",
+]);
+
+/**
+ * `detail` JSON của nhật ký thành "khóa: giá trị · …"; không phải object JSON thì trả nguyên. Khi biết loại tiền (khóa
+ * `currency` của chính dòng, hay `currency` truyền vào: trang đơn biết loại tiền của đơn mà dòng như order_underpaid không ghi
+ * nó) thì các khóa tiền (MONEY_KEYS) có giá trị số in bằng fmtMoney; không biết thì giữ số thô, không đoán.
+ */
+export function fmtDetail(detail: string | null, currency?: string | null): string {
   if (!detail) return "";
   try {
     const o: unknown = JSON.parse(detail);
     if (o !== null && typeof o === "object" && !Array.isArray(o)) {
+      const own = (o as { currency?: unknown }).currency;
+      const cur = typeof own === "string" && own !== "" ? own : currency;
       return Object.entries(o)
-        .map(([k, v]) => `${k}: ${v !== null && typeof v === "object" ? JSON.stringify(v) : String(v)}`)
+        .map(([k, v]) => {
+          if (cur && MONEY_KEYS.has(k) && typeof v === "number" && Number.isFinite(v)) return `${k}: ${fmtMoney(v, cur)}`;
+          return `${k}: ${v !== null && typeof v === "object" ? JSON.stringify(v) : String(v)}`;
+        })
         .join(" · ");
     }
   } catch {
@@ -133,14 +173,19 @@ export function fmtWhen(sec: number, now: number): string {
   return fmtDate(sec) === fmtDate(now) ? fmtHm(sec) : fmtDateTime(sec);
 }
 
-/** Số gọn cho trục biểu đồ: 1500 thành "1,5k", 1500000 thành "1,5tr", 2500000000 thành "2,5tỷ". */
+/** Số gọn cho trục biểu đồ: 1500 thành "1,5k", 1500000 thành "1,5tr", 2500000000 thành "2,5tỷ"; vạch lẻ dưới 1.000 như 2,5. */
 export function fmtCompact(n: number): string {
   const abs = Math.abs(n);
   const trim = (x: number) => String(Math.round(x * 10) / 10).replace(".", ",");
   if (abs >= 1_000_000_000) return `${trim(n / 1_000_000_000)}tỷ`;
   if (abs >= 1_000_000) return `${trim(n / 1_000_000)}tr`;
   if (abs >= 1_000) return `${trim(n / 1_000)}k`;
-  return String(n);
+  return trim(n);
+}
+
+/** Số gọn của trục tiền theo loại tiền: USD nhập cent, ra đô la ("$1,5k" cho 150000); VND như fmtCompact. */
+export function fmtCompactMoney(n: number, currency: string): string {
+  return currency === "USD" ? `${n < 0 ? "-" : ""}$${fmtCompact(Math.abs(n) / 100)}` : fmtCompact(n);
 }
 
 /** Dung lượng: "547,4 MB" (một chữ số thập phân khi cần, dấu phẩy kiểu Việt; B, KB, MB, GB theo bội 1024). Âm hay không hữu hạn thành "0 B". */

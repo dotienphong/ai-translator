@@ -10,7 +10,7 @@ const empty = { count: 0, items: [] };
 const responses: Record<string, unknown> = {
   "/admin/whoami": { operator: "ops@example.com" },
   "/admin/queue": { needs_review: empty, underpaid: empty, email_failed: empty, locked: empty, conflict: empty, alerts: empty },
-  "/admin/summary": { revenue_today: 0, currency: "VND", paid_orders_7d: 0, active_licenses: 0 },
+  "/admin/summary": { revenue_today: { VND: 0, USD: 0 }, paid_orders_7d: 0, active_licenses: 0 },
   "/admin/orders": { items: [], next_cursor: null },
   "/admin/alerts": { items: [], total: 0, pending: 0 },
   "/admin/releases": { base_url: "https://releases.example.com", channels: { stable: { status: "missing" }, beta: { status: "missing" } }, models: { status: "missing" } },
@@ -40,6 +40,9 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByRole("heading", { name: "Việc cần xử lý" })).toBeTruthy();
     expect(await screen.findByText("ops@example.com")).toBeTruthy();
+    // Ô doanh thu có số thật từ fixture (hình dạng hiện hành): giữ hình dạng cũ trong fixture sẽ hiện "NaN đ" và đỏ ở đây.
+    expect(await screen.findByText("0 đ")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/NaN/);
     await user.click(screen.getByRole("link", { name: "Đơn hàng" }));
     expect(window.location.pathname).toBe("/orders");
     expect(await screen.findByRole("heading", { name: "Đơn hàng" })).toBeTruthy();
@@ -145,6 +148,16 @@ describe("khung trang", () => {
     body = responses["/admin/queue"];
     await user.click(screen.getByRole("button", { name: "Làm mới" }));
     expect(await nav.findByRole("link", { name: "Việc cần xử lý" })).toBeTruthy();
+    expect(document.querySelector(".nav-count")).toBeNull();
+  });
+
+  it("hàng đợi trả hình dạng lạ (thiếu nhóm): huy hiệu không hiện, App không bị thay bằng khung lỗi (n2)", async () => {
+    window.history.replaceState(null, "", "/orders");
+    stubQueue({ unexpected: true });
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Đơn hàng" })).toBeTruthy();
+    await screen.findByText("ops@example.com");
+    expect(screen.queryByText("Trang lỗi khi hiển thị")).toBeNull();
     expect(document.querySelector(".nav-count")).toBeNull();
   });
 
@@ -300,5 +313,97 @@ describe("số việc cần xử lý: không tải trùng", () => {
     await user.click(screen.getByRole("link", { name: "Nhật ký" }));
     await screen.findByRole("heading", { name: "Nhật ký" });
     expect(queueCalls()).toBe(1);
+  });
+});
+
+describe("phản hồi lệch hợp đồng (tab mở sẵn sau khi lùi bản Worker admin) không làm trắng trang", () => {
+  const zeroTotals = { orders: 0, revenue: 0 };
+  /** /admin/stats của bản Worker admin trước: chưa có khóa `currencies`, chưa có `six_months`. */
+  const oldStats = {
+    generated_at: 1_790_812_800,
+    currency: "VND",
+    money: { today: 0, last_7d: 0, this_month: 0, last_month: 0, daily: [], monthly: [] },
+    customers: {
+      trials_30d: 0,
+      trials_30d_purchased: 0,
+      trials_total: 0,
+      trials_total_purchased: 0,
+      grants_30d: { new: zeroTotals, extend: zeroTotals, change: zeroTotals, other: zeroTotals },
+      grants_monthly: [],
+    },
+    health: {
+      orders_30d: { pending: 0, processing: 0, paid: 0, underpaid: 0, cancelled: 0, expired: 0, failed: 0, paid_needs_review: 0, refunded: 0 },
+      expiring_7d: 0,
+      expiring_30d: 0,
+      email: { paid_with_email_30d: 0, sent: 0 },
+    },
+    usage: { active_licenses: 0, active_devices: 0, devices_7d: 0, trials_active: 0, new_trials_daily: [] },
+  };
+
+  function stubWith(overrides: Record<string, unknown>) {
+    const all = { ...responses, ...overrides };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const body = all[url.split("?")[0] ?? ""];
+        return new Response(JSON.stringify(body ?? { error: "not_found" }), {
+          status: body ? 200 : 404,
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    // React ghi lỗi đã được ErrorBoundary bắt ra console.error: không để ồn trong báo cáo test.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("số liệu kiểu cũ ở cả hai trang (doanh thu hôm nay là một số, Tổng quan thiếu `currencies`): có số liệu, không NaN, không khung lỗi", async () => {
+    stubWith({
+      "/admin/summary": { revenue_today: 12450000, currency: "VND", paid_orders_7d: 0, active_licenses: 0 },
+      "/admin/stats": oldStats,
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByText("12.450.000 đ")).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: "Tổng quan" }));
+    expect(await screen.findByText("Doanh thu hôm nay")).toBeTruthy();
+    expect(screen.queryByRole("radiogroup", { name: "Loại tiền" })).toBeNull();
+    expect(screen.queryByText("Trang lỗi khi hiển thị")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/NaN/);
+  });
+
+  it("một trang ném lỗi khi vẽ: khung lỗi thay chỗ nội dung, thanh bên còn nguyên; sang trang khác thì hết lỗi", async () => {
+    // Phản hồi thiếu hẳn `money`: nội dung trang Tổng quan ném TypeError khi vẽ.
+    stubWith({ "/admin/stats": { generated_at: 1, currency: "VND", currencies: ["VND"] } });
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("heading", { name: "Việc cần xử lý" });
+    await user.click(screen.getByRole("link", { name: "Tổng quan" }));
+    const box = await screen.findByText("Trang lỗi khi hiển thị");
+    expect(box.closest("[role=alert]")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Tải lại trang" })).toBeTruthy();
+    // Thanh bên và thanh trên vẫn dùng được.
+    const nav = within(screen.getByRole("navigation", { name: "Điều hướng" }));
+    expect(screen.getByText("ops@example.com")).toBeTruthy();
+    await user.click(nav.getByRole("link", { name: "Đơn hàng" }));
+    expect(await screen.findByRole("heading", { name: "Đơn hàng" })).toBeTruthy();
+    expect(screen.queryByText("Trang lỗi khi hiển thị")).toBeNull();
+  });
+
+  // Đổi nghĩa (n2 của rà B4): hàng đợi lệch hợp đồng nay chỉ làm mất huy hiệu (test "hàng đợi trả hình dạng lạ" ở trên), không còn
+  // ném lỗi; khung lỗi ngoài vùng trang được thử bằng thanh trên: whoami trả operator không phải chuỗi thì Topbar ném khi vẽ.
+  it("lỗi ngoài vùng trang (thanh trên nhận email người vận hành lệch hợp đồng): khung lỗi, không trắng toàn bộ", async () => {
+    stubWith({ "/admin/whoami": { operator: 42 } });
+    window.history.replaceState(null, "", "/orders");
+    render(<App />);
+    const box = await screen.findByText("Trang lỗi khi hiển thị");
+    expect(box.closest("[role=alert]")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Tải lại trang" })).toBeTruthy();
   });
 });

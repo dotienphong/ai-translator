@@ -37,7 +37,8 @@ describe("OrderStatusBadge", () => {
     pending: "Chờ trả",
     processing: "Đang xử lý",
     paid: "Đã trả",
-    underpaid: "Chuyển thiếu",
+    // Đổi nghĩa (p1 của rà B6): nhãn chung (bộ lọc, biểu đồ, danh sách theo trạng thái: có cả đơn thẻ) là nhãn trung lập.
+    underpaid: "Trả thiếu hay lệch số tiền",
     cancelled: "Đã hủy",
     expired: "Hết hạn link",
     failed: "Lỗi",
@@ -52,5 +53,22 @@ describe("OrderStatusBadge", () => {
   it.each(Object.entries(EXPECTED) as [OrderStatus, string][])("%s hiện nhãn %s", (status, label) => {
     render(<OrderStatusBadge status={status} />);
     expect(labels()).toEqual([label]);
+  });
+
+  // Đơn Creem underpaid là Creem báo đã thu tiền mà thấp hơn giá (mã giảm giá, hay dữ liệu tiền hỏng), không phải "chuyển thiếu"
+  // rồi chuyển bù: nhãn "Chuyển thiếu" chỉ đúng với VietQR (PayOS). Không có cổng (huy hiệu không biết) thì giữ nhãn chung.
+  it.each([
+    ["payos", "Chuyển thiếu"],
+    [undefined, "Trả thiếu hay lệch số tiền"],
+    ["creem", "Trả thấp hơn giá"],
+    ["cong_la", "Trả thấp hơn giá"],
+  ])("underpaid của cổng %s hiện nhãn %s", (provider, label) => {
+    render(<OrderStatusBadge status="underpaid" provider={provider} />);
+    expect(labels()).toEqual([label]);
+  });
+
+  it("cổng không đổi nhãn của trạng thái khác (đơn Creem đã trả vẫn là Đã trả)", () => {
+    render(<OrderStatusBadge status="paid" provider="creem" />);
+    expect(labels()).toEqual(["Đã trả"]);
   });
 });
