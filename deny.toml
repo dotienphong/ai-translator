@@ -10,6 +10,12 @@ yanked = "deny"
 unsound = "all"
 ignore = [
     { id = "RUSTSEC-2024-0436", reason = "paste chỉ là macro lúc biên dịch, do candle (gemm) kéo vào; candle 0.11 chưa bỏ" },
+    # Bản bị rút khỏi crates.io (yanked) từ khi zip 9.0 ra (2026-10), không có bản 8.x nào khác thay: candle-core 0.11.0 (bản mới
+    # nhất) đòi `zip = "^8.6.0"` nên `cargo update -p zip` không chọn được bản nào. zip chỉ vào qua candle-core cho đọc file `.npz`
+    # (numpy); app dùng candle chỉ cho Tensor/Device của VAD (crates/pipeline/src/vad.rs), không mở file zip nào, nên các sửa lỗi của
+    # zip 9.0.x (theo liên kết symlink ở set_permissions, tràn số ở bộ giải nén implode) không chạm tới đường chạy của app. Bỏ dòng này
+    # khi candle nâng lên zip 9 (hay bỏ phụ thuộc zip), rồi chạy lại `cargo deny check`.
+    { crate = "zip@8.6.0", reason = "yanked; candle-core 0.11.0 đòi zip ^8.6.0; app không đọc file zip nào" },
 ]
 
 [licenses]
