@@ -1,6 +1,6 @@
 # Thỏa thuận cấp phép người dùng cuối (EULA) của AI Translator
 
-**Phiên bản 1.2, hiệu lực từ 13/10/2026.**
+**Phiên bản 1.3, hiệu lực từ 16/10/2026.**
 
 Văn bản này là thỏa thuận giữa bạn và **Đỗ Tiến Phong** ("chúng tôi") về việc dùng ứng dụng **AI Translator** ("ứng dụng"). Bằng việc cài đặt hoặc dùng ứng dụng, bạn đồng ý với thỏa thuận này. Nếu không đồng ý, xin đừng cài đặt hay dùng.
 
@@ -17,18 +17,19 @@ Chúng tôi cấp cho bạn quyền **cá nhân, không độc quyền, không c
 | Gói | Hạn mức, mỗi máy | Thời hạn | Giá |
 |---|---|---|---|
 | Free | 30 phút mỗi ngày | dùng thử 10 ngày, mỗi máy một lần | 0 đ |
-| Monthly | 50 giờ mỗi chu kỳ 30 ngày | 30 ngày mỗi đơn | 50.000 đ |
-| 6 Months | 100 giờ mỗi chu kỳ 30 ngày | 180 ngày mỗi đơn | 269.000 đ |
-| Yearly | không giới hạn | 365 ngày mỗi đơn | 500.000 đ |
+| Monthly | 50 giờ mỗi chu kỳ 30 ngày | 30 ngày mỗi đơn | 50.000 đ hoặc 3,99 USD |
+| 6 Months | 100 giờ mỗi chu kỳ 30 ngày | 180 ngày mỗi đơn | 269.000 đ hoặc 21,99 USD |
+| Yearly | không giới hạn | 365 ngày mỗi đơn | 500.000 đ hoặc 39,99 USD |
 
-(Giá và hạn mức hiện hành do ứng dụng hiển thị khi bạn mua; chúng tôi có thể bán thêm gói mới. Chúng tôi không hạ hạn mức của gói bạn đã trả tiền trong thời hạn đã mua.)
+(Giá bằng đồng áp dụng khi trả bằng VietQR; giá bằng USD áp dụng khi trả bằng thẻ quốc tế và **chưa gồm thuế**: nếu nước của bạn có thu thuế (VAT, GST hay thuế bán hàng), Creem tính thêm ở trang thanh toán. Giá và hạn mức hiện hành do ứng dụng hiển thị khi bạn mua; chúng tôi có thể bán thêm gói mới. Chúng tôi không hạ hạn mức của gói bạn đã trả tiền trong thời hạn đã mua, trừ khi đơn đó đã được hoàn tiền: xem phần Hoàn tiền ở dưới.)
 
 - **Free là gói dùng thử:** dùng được trong **10 ngày**, tính từ lần đầu ứng dụng đăng ký dùng thử với máy chủ của chúng tôi (thường là lần đầu mở ứng dụng có mạng). **Mỗi máy chỉ dùng thử một lần**: gỡ rồi cài lại ứng dụng, hay xóa dữ liệu, không mở lại thời gian dùng thử. Hết dùng thử thì bạn cần mua gói trả phí để tiếp tục dịch.
 - Ba gói trả phí cùng có các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), khác hạn mức và thời hạn.
-- Gói trả phí là **đơn trả trước** (Monthly 30 ngày, 6 Months 180 ngày, Yearly 365 ngày) bằng VND qua chuyển khoản VietQR (PayOS). **Không tự gia hạn.** Hết hạn thì ứng dụng quay về gói Free nếu máy còn trong thời gian dùng thử; hết dùng thử thì không dịch được cho tới khi bạn mua tiếp.
-- **Mua thêm cùng gói** cộng thêm số ngày của gói (30 ngày với Monthly, 180 ngày với 6 Months, 365 ngày với Yearly). **Đổi gói** khi còn hạn: số ngày còn lại của gói cũ được quy đổi theo giá mỗi ngày sang ngày của gói mới (làm tròn xuống), gói mới bắt đầu ngay với chu kỳ mới; ứng dụng hiện trước số ngày quy đổi và ngày hết hạn mới. **Đổi gói không được hoàn tiền.**
+- Gói trả phí là **đơn trả trước** (Monthly 30 ngày, 6 Months 180 ngày, Yearly 365 ngày), trả bằng **một trong hai cách** (khi cách đó đang được bán): chuyển khoản VietQR bằng VND (qua PayOS) hoặc thẻ quốc tế bằng USD (qua Creem). **Không tự gia hạn.** Hết hạn thì ứng dụng quay về gói Free nếu máy còn trong thời gian dùng thử; hết dùng thử thì không dịch được cho tới khi bạn mua tiếp.
+- **Thanh toán bằng thẻ quốc tế do Creem bán lại.** Creem (Armitage Labs OÜ, Estonia) là bên bán lại (merchant of record) của đơn trả bằng thẻ và xử lý thanh toán, thuế (VAT, GST hay thuế bán hàng, nếu có) của khoản đó; sao kê thẻ thường ghi "CREEM.IO* STORE" và Creem gửi biên lai tới email bạn nhập. Điều khoản người mua của Creem (https://www.creem.io/buyer-terms) và chính sách quyền riêng tư của Creem (https://www.creem.io/privacy) áp dụng cho giao dịch mua bằng thẻ đó; điểm nào điều khoản người mua của Creem khác thỏa thuận này thì điều khoản của Creem được ưu tiên với giao dịch đó. Chúng tôi không nhận số thẻ của bạn.
+- **Mua thêm cùng gói** cộng thêm số ngày của gói (30 ngày với Monthly, 180 ngày với 6 Months, 365 ngày với Yearly). **Đổi gói** khi còn hạn: số ngày còn lại của gói cũ được quy đổi theo giá mỗi ngày (giá bằng loại tiền bạn dùng để trả đơn đổi gói) sang ngày của gói mới (làm tròn xuống), gói mới bắt đầu ngay với chu kỳ mới; ứng dụng hiện trước số ngày quy đổi và ngày hết hạn mới. **Đổi gói không được hoàn tiền.**
 - Hạn mức tính **riêng cho từng máy**, đếm theo thời gian dịch thực tế. Hết hạn mức thì dừng dịch cho tới kỳ reset hoặc khi bạn mua thêm.
-- **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu trong **7 ngày** kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn.
+- **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu cho chúng tôi trước, trong **7 ngày** kể từ ngày thanh toán, tới support@aitranslator.io.vn kèm mã đơn. Với khoản trả bằng thẻ quốc tế, Creem là bên bán lại nên Creem cũng có thể hoàn tiền theo điều khoản của Creem. Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp.
 - Chúng tôi có thể cấp hoặc gia hạn license thủ công (ví dụ khi bạn chuyển thiếu rồi chuyển bù).
 
 ## 4. License key và kích hoạt
@@ -75,11 +76,11 @@ Trong phạm vi pháp luật cho phép, ứng dụng được cung cấp **"nguy
 
 ## 12. Giới hạn trách nhiệm
 
-Trong phạm vi pháp luật cho phép, chúng tôi không chịu trách nhiệm về thiệt hại gián tiếp, ngẫu nhiên, mất dữ liệu hay mất lợi nhuận phát sinh từ việc dùng hay không dùng được ứng dụng. Tổng trách nhiệm của chúng tôi với bạn không vượt quá **số tiền bạn đã trả cho chúng tôi trong 12 tháng trước sự việc** (hoặc 0 đồng nếu bạn chỉ dùng gói Free). Điều này không loại trừ trách nhiệm mà pháp luật không cho phép loại trừ.
+Trong phạm vi pháp luật cho phép, chúng tôi không chịu trách nhiệm về thiệt hại gián tiếp, ngẫu nhiên, mất dữ liệu hay mất lợi nhuận phát sinh từ việc dùng hay không dùng được ứng dụng. Tổng trách nhiệm của chúng tôi với bạn không vượt quá **số tiền bạn đã trả để mua gói của ứng dụng trong 12 tháng trước sự việc, kể cả khoản trả qua Creem** (hoặc 0 đồng nếu bạn chỉ dùng gói Free). Điều này không loại trừ trách nhiệm mà pháp luật không cho phép loại trừ.
 
 ## 13. Chấm dứt
 
-Bạn có thể ngừng dùng ứng dụng bất cứ lúc nào bằng cách gỡ cài đặt. Chúng tôi có thể tạm khóa hay thu hồi license (không hoàn tiền) nếu bạn vi phạm nghiêm trọng thỏa thuận này, ví dụ chia sẻ key hàng loạt hay vượt qua cơ chế bản quyền. Các mục có bản chất kéo dài (sở hữu trí tuệ, miễn trừ, giới hạn trách nhiệm, luật áp dụng) vẫn có hiệu lực sau khi chấm dứt.
+Bạn có thể ngừng dùng ứng dụng bất cứ lúc nào bằng cách gỡ cài đặt. Chúng tôi có thể tạm khóa hay thu hồi license (không hoàn tiền) nếu bạn vi phạm nghiêm trọng thỏa thuận này, ví dụ chia sẻ key hàng loạt hay vượt qua cơ chế bản quyền. Ngoài trường hợp vi phạm, license còn có thể bị rút ngắn hạn hoặc thu hồi khi đơn đã được hoàn tiền (mục 3, phần Hoàn tiền). Các mục có bản chất kéo dài (sở hữu trí tuệ, miễn trừ, giới hạn trách nhiệm, luật áp dụng) vẫn có hiệu lực sau khi chấm dứt.
 
 ## 14. Luật áp dụng và giải quyết tranh chấp
 

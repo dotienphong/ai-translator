@@ -1,6 +1,6 @@
 # AI Translator Privacy Policy
 
-**Version 1.1, effective 7 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.2, effective 16 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 ## 1. Who is responsible for your data
 
@@ -32,7 +32,8 @@ The app connects to the network only to:
 1. **Download models** and check for new model versions (from `releases.aitranslator.io.vn`).
 2. **Check for app updates** (from `releases.aitranslator.io.vn`).
 3. **Talk to our license server** (`api.aitranslator.io.vn`): when registering the Free trial (the first time you open the app, right after you accept the terms; this sends a hash of the machine ID), when you buy a plan, activate or deactivate, recover a key, check your license periodically, and (rarely) ask for the server's time when your computer's clock looks wrong. Asking for the time sends none of your data.
-4. **The payment page** provided by PayOS, opened in your browser when you buy a plan.
+4. **The payment page** provided by PayOS (VietQR bank transfer) or Creem (international card), opened in your browser when you buy a plan.
+5. **Our website** `aitranslator.io.vn`, opened in your browser when you click a link in the app.
 
 There are no other connections, and none carries audio or transcript text.
 
@@ -42,26 +43,27 @@ Our servers store the data below. The "Free trial" row applies to every machine 
 
 | Data | Purpose |
 |---|---|
-| The email you enter when buying | Send your key and recover it if you lose it |
+| The email you enter when buying | Send your key and recover it if you lose it, and, for card orders, pre-fill Creem's payment page |
 | When you consented to us processing your email | Proof that you consented |
-| Orders: order code, plan, amount, payment time, status | Issue and renew licenses; reconciliation; accounting obligations |
+| Orders: order code, plan, amount and currency, payment time, status, the payment gateway's session ID (PayOS or Creem) | Issue and renew licenses; reconciliation; accounting obligations |
 | License: key, plan, expiry date, usage cycle | Grant the paid plan |
 | Free trial: a **hash** of the machine ID, when the trial started and ends, the app's last call | Each machine gets the 10-day trial only once, even after reinstalling the app |
 | Activated machines: a **hash** of the machine ID, the computer name (`device_label`) and the last license check | Enforce one machine per key, prevent abuse, help you recognize a machine to remove |
 | A change log of licenses (who did what, when) | Support, fraud prevention, incident investigation |
 | Rate-limit counters (only HMAC hashes of IP, key, email; expire after about 3 hours) | Block key guessing and spam |
 
-We do **not** receive your bank account, card or financial details (the transfer is handled by your bank and PayOS). We do **not** send your email to PayOS. If you only use the Free plan and never buy or activate a key, we store only the "Free trial" row above: no email, computer name or any other information about you.
+We do **not** receive your bank account, card number or financial details (a bank transfer is handled by your bank and PayOS; a card payment is handled by Creem on Creem's own payment page). With VietQR we do **not** send your email to PayOS. With an international card we send the email you entered in the app to Creem, to pre-fill the payment page and so that Creem can email you a receipt. Our server guesses your country from your IP address (via Cloudflare) only to pre-select a payment method on the Upgrade screen; the guessed country is not stored. If you only use the Free plan and never buy or activate a key, we store only the "Free trial" row above: no email, computer name or any other information about you.
 
 ## 6. Third parties that process data, and transfers abroad
 
 | Party | Role | Data |
 |---|---|---|
 | **PayOS** (Vietnam) | Processes VietQR bank-transfer payments | Order code, amount, order description. Not your email |
+| **Creem** (Armitage Labs OÜ, Estonia) | Merchant of record (reseller) for card orders: handles the payment, tax and receipt | We send the order code, plan, amount, currency and the email you entered as soon as you click to pay by card (even if you then do not pay), to pre-fill the payment page and so that Creem can email you a receipt. On its payment page, Creem itself collects your card number, name, billing address and country (to calculate tax) and IP address (to prevent fraud); we do not receive your card number. Creem processes that data under its own policy (https://www.creem.io/privacy). The payment notification Creem sends to our server includes the buyer's name and country; we do not store these two items |
 | **Cloudflare** | Hosts the license server, database, and the storage and delivery of updates and models | The data in section 5; technical logs that expire on their own |
 | **Resend** | Sends the email containing your key | Your email and the message (including the key); retention per Resend's own policy |
 
-Cloudflare and Resend operate servers outside Vietnam, so the data in section 5 may be processed abroad. By buying a plan and consenting to email processing you agree to this. We do not sell your data or share it for advertising.
+Cloudflare and Resend operate servers outside Vietnam and Creem is an Estonian company, so the data in section 5 may be processed abroad. By buying a plan and consenting to email processing you agree to this. We do not sell your data or share it for advertising.
 
 ## 7. Retention and your rights
 
@@ -73,11 +75,11 @@ When you ask for deletion we will:
 - **remove** your email and computer name;
 - **keep** the hash of the machine ID (pseudonymous data, only to prevent abuse: one machine per key, the temporary lock for excessive machine switching, reusing the correct activation when you re-activate the same machine, one Free trial per machine);
 - **keep** the time you consented to email processing (proof of earlier consent);
-- **keep** the order row at the level accounting requires: order code, date, amount.
+- **keep** the order row at the level accounting requires: order code, date, amount (and currency), the payment gateway's session ID.
 
 After deletion your license still works but **can no longer be recovered by email**. Data on your computer (history, settings) is deleted by you in the app ("Delete models and data") or by uninstalling.
 
-Self-expiring technical data (rate-limit counters; Cloudflare logs) and Resend's mail logs are outside our deletion; their retention follows those parties' policies.
+Self-expiring technical data (rate-limit counters; Cloudflare logs) and Resend's mail logs are outside our deletion; their retention follows those parties' policies. Data you enter on Creem's page and the transaction records kept by Creem (as the merchant of record it must keep tax records) are outside a deletion request sent to us; to have them deleted at Creem, contact Creem.
 
 ## 8. Children
 

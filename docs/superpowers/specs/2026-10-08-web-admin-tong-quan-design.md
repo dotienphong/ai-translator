@@ -49,9 +49,11 @@ Ngày hay tháng không có dữ liệu được server điền 0, nên biểu �
 
 ## 3. API: `GET /admin/stats`
 
-Đặt trong `server/src/admin-read.ts`, cùng khuôn với `summary` và `queue`: sau lớp kiểm Access (`useAdminAuth`), `crossSite` thì `403 forbidden`, `Cache-Control: no-store` (đã do middleware `/admin/*`), ghi đúng một dòng `audit_log` với `action = 'stats_viewed'`, không `detail` và không email. `stats_viewed` thêm vào `VIEW_ACTIONS` (ẩn mặc định ở `/admin/audit`) và vào danh sách action của bộ lọc Nhật ký trong giao diện nếu danh sách đó liệt kê tường minh.
+Đăng ký ở `server/src/admin-stats.ts` (hàm `registerAdminStats`, do `admin.ts` gọi), cùng khuôn với `summary` và `queue` ở `admin-read.ts`: sau lớp kiểm Access (`useAdminAuth`), `crossSite` thì `403 forbidden`, `Cache-Control: no-store` (đã do middleware `/admin/*`), ghi đúng một dòng `audit_log` với `action = 'stats_viewed'`, không `detail` và không email. `stats_viewed` thêm vào `VIEW_ACTIONS` (ở `admin-read.ts`; ẩn mặc định ở `/admin/audit`) và vào danh sách action của bộ lọc Nhật ký trong giao diện nếu danh sách đó liệt kê tường minh.
 
 Mọi truy vấn chạy trong **một `db.batch`**, nên các con số của một lần mở trang nhất quán. Hình dạng phản hồi (số nguyên theo giây Unix và VND; mảng tăng dần):
+
+> **Đã thay một phần bằng spec 2026-10-14 §4.6** (`2026-10-14-creem-international-payment-design.md`): `/admin/stats` nhận `?currency=VND|USD`; `currency` của phản hồi theo tham số đó (USD tính bằng cent) và có thêm `currencies`.
 
 ```jsonc
 {
@@ -85,7 +87,7 @@ Mọi truy vấn chạy trong **một `db.batch`**, nên các con số của m�
 
 Phản hồi chỉ có số: không email, key hay `device_id_hash`. Lỗi D1 thì đi theo trình xử lý lỗi chung của Worker (`500`), giao diện hiện lỗi và nút thử lại.
 
-Khối tính toán nằm trong một file riêng (`server/src/admin-stats.ts`: các câu SQL, hàm điền ngày và tháng, hàm ghép phản hồi) để `admin-read.ts` không phình; `admin-read.ts` chỉ đăng ký route và ghi nhật ký.
+Khối tính toán và route nằm trong một file riêng (`server/src/admin-stats.ts`: các câu SQL, hàm điền ngày và tháng, hàm ghép phản hồi, và `registerAdminStats` đăng ký route rồi ghi nhật ký) để `admin-read.ts` không phình; `admin-read.ts` giữ `VIEW_ACTIONS` và các hằng dùng chung (`DAY`, `VN_OFFSET`, `ORDER_CURRENCIES`…).
 
 ## 4. Giao diện
 

@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư của AI Translator
 
-**Phiên bản 1.1, hiệu lực từ 07/10/2026.**
+**Phiên bản 1.2, hiệu lực từ 16/10/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
@@ -32,7 +32,8 @@ Các công cụ phụ của ứng dụng chỉ nghe trên `127.0.0.1` (máy bạ
 1. **Tải model** và kiểm tra bản mới của model (từ `releases.aitranslator.io.vn`).
 2. **Kiểm tra bản cập nhật** của ứng dụng (từ `releases.aitranslator.io.vn`).
 3. **Làm việc với license server** của chúng tôi (`api.aitranslator.io.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn.
-4. **Trang thanh toán** do PayOS cung cấp, mở bằng trình duyệt của bạn khi bạn mua gói.
+4. **Trang thanh toán** do PayOS (chuyển khoản VietQR) hoặc Creem (thẻ quốc tế) cung cấp, mở bằng trình duyệt của bạn khi bạn mua gói.
+5. **Website** `aitranslator.io.vn` của chúng tôi, mở bằng trình duyệt của bạn khi bạn bấm liên kết trong ứng dụng.
 
 Không có kết nối nào khác, và không có kết nối nào mang âm thanh hay nội dung chép lời.
 
@@ -42,26 +43,27 @@ Máy chủ lưu các dữ liệu dưới đây. Dòng "Dùng thử Free" áp cho
 
 | Dữ liệu | Mục đích |
 |---|---|
-| Email bạn nhập khi mua | Gửi key, khôi phục key khi bạn mất |
+| Email bạn nhập khi mua | Gửi key, khôi phục key khi bạn mất, và, với đơn thẻ, điền sẵn trang thanh toán của Creem |
 | Thời điểm bạn đồng ý xử lý email | Làm bằng chứng đã có sự đồng ý |
-| Đơn hàng: mã đơn, gói, số tiền, thời điểm thanh toán, trạng thái | Cấp và gia hạn license; đối soát; nghĩa vụ kế toán |
+| Đơn hàng: mã đơn, gói, số tiền và loại tiền, thời điểm thanh toán, trạng thái, mã phiên thanh toán của cổng (PayOS hay Creem) | Cấp và gia hạn license; đối soát; nghĩa vụ kế toán |
 | License: key, gói, ngày hết hạn, chu kỳ hạn mức | Cấp quyền dùng gói trả phí |
 | Dùng thử Free: **mã băm** của ID máy, lúc bắt đầu và lúc hết dùng thử, lần ứng dụng gọi gần nhất | Mỗi máy chỉ dùng thử 10 ngày một lần, kể cả khi cài lại ứng dụng |
 | Máy đã kích hoạt: **mã băm** của ID máy, tên máy (`device_label`) và lần kiểm tra bản quyền gần nhất | Mỗi key chỉ dùng trên một máy, chống lạm dụng, giúp bạn nhận ra máy khi cần gỡ |
 | Nhật ký thay đổi license (ai làm gì, lúc nào) | Hỗ trợ, chống gian lận, tra soát sự cố |
 | Bộ đếm giới hạn tần suất (chỉ lưu giá trị băm HMAC của IP, key, email; tự hết hạn sau khoảng 3 giờ) | Chặn dò key và spam |
 
-Chúng tôi **không** nhận số tài khoản ngân hàng, thẻ hay thông tin tài chính của bạn (việc chuyển tiền do ngân hàng của bạn và PayOS xử lý). Chúng tôi **không** gửi email của bạn sang PayOS. Dùng gói Free mà không mua và không kích hoạt key thì chúng tôi chỉ lưu dòng "Dùng thử Free" ở trên: không có email, tên máy hay thông tin nào khác của bạn.
+Chúng tôi **không** nhận số tài khoản ngân hàng, số thẻ hay thông tin tài chính của bạn (việc chuyển khoản do ngân hàng của bạn và PayOS xử lý; việc trả bằng thẻ do Creem xử lý ngay trên trang thanh toán của Creem). Với VietQR, chúng tôi **không** gửi email của bạn sang PayOS. Với thẻ quốc tế, chúng tôi gửi email bạn nhập trong ứng dụng cho Creem để điền sẵn trang thanh toán và để Creem gửi biên lai cho bạn. Máy chủ đoán nước của bạn từ địa chỉ IP (qua Cloudflare) chỉ để chọn sẵn cách trả ở màn hình Nâng cấp; nước đoán được không được lưu. Dùng gói Free mà không mua và không kích hoạt key thì chúng tôi chỉ lưu dòng "Dùng thử Free" ở trên: không có email, tên máy hay thông tin nào khác của bạn.
 
 ## 6. Bên thứ ba xử lý dữ liệu, và việc chuyển dữ liệu ra nước ngoài
 
 | Bên | Vai trò | Dữ liệu |
 |---|---|---|
 | **PayOS** (Việt Nam) | Xử lý thanh toán chuyển khoản VietQR | Mã đơn, số tiền, mô tả đơn. Không có email của bạn |
+| **Creem** (Armitage Labs OÜ, Estonia) | Bên bán lại (merchant of record) của đơn thẻ: xử lý thanh toán, thuế và biên lai | Chúng tôi gửi mã đơn, gói, số tiền, loại tiền và email bạn nhập, ngay khi bạn bấm thanh toán bằng thẻ (kể cả khi bạn không trả), để điền sẵn trang thanh toán và để Creem gửi biên lai. Ở trang thanh toán, Creem tự thu số thẻ, tên, địa chỉ thanh toán và nước (để tính thuế), địa chỉ IP (chống gian lận); chúng tôi không nhận số thẻ. Creem xử lý các dữ liệu đó theo chính sách riêng (https://www.creem.io/privacy). Thông báo thanh toán Creem gửi máy chủ của chúng tôi có tên và nước người mua; chúng tôi không lưu hai thông tin này |
 | **Cloudflare** | Máy chủ chạy license server, cơ sở dữ liệu, lưu trữ và phân phối bản cập nhật, model | Dữ liệu ở mục 5; nhật ký kỹ thuật tự hết hạn |
 | **Resend** | Gửi email chứa key | Email bạn, nội dung thư (có key); theo chính sách lưu của Resend |
 
-Cloudflare và Resend đặt máy chủ ngoài Việt Nam, nên dữ liệu ở mục 5 có thể được xử lý ở nước ngoài. Bằng việc mua gói và đồng ý xử lý email, bạn đồng ý với việc này. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.
+Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu ở mục 5 có thể được xử lý ở nước ngoài. Bằng việc mua gói và đồng ý xử lý email, bạn đồng ý với việc này. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.
 
 ## 7. Thời gian lưu và quyền của bạn
 
@@ -73,11 +75,11 @@ Khi bạn yêu cầu xóa, chúng tôi sẽ:
 - **bỏ** email và tên máy của bạn;
 - **giữ lại** mã băm của ID máy (dữ liệu bí danh, chỉ để chống lạm dụng: mỗi key một máy, khóa tạm khi đổi máy quá nhiều, dùng lại đúng kích hoạt khi bạn kích hoạt lại cùng máy, mỗi máy chỉ dùng thử Free một lần);
 - **giữ lại** thời điểm bạn đồng ý xử lý email (bằng chứng đã có sự đồng ý trước đó);
-- **giữ lại** dòng đơn hàng ở mức kế toán cần: mã đơn, ngày, số tiền.
+- **giữ lại** dòng đơn hàng ở mức kế toán cần: mã đơn, ngày, số tiền (và loại tiền), mã phiên thanh toán của cổng.
 
 Sau khi xóa, license vẫn dùng được nhưng **không khôi phục qua email** được nữa. Dữ liệu trên máy bạn (lịch sử, cài đặt) do bạn tự xóa trong ứng dụng ("Xóa model và dữ liệu") hoặc khi gỡ cài đặt.
 
-Dữ liệu kỹ thuật tự hết hạn (bộ đếm giới hạn tần suất; nhật ký của Cloudflare) và nhật ký thư của Resend nằm ngoài yêu cầu xóa của chúng tôi; thời hạn lưu theo chính sách của các bên đó.
+Dữ liệu kỹ thuật tự hết hạn (bộ đếm giới hạn tần suất; nhật ký của Cloudflare) và nhật ký thư của Resend nằm ngoài yêu cầu xóa của chúng tôi; thời hạn lưu theo chính sách của các bên đó. Dữ liệu bạn nhập ở trang Creem và hồ sơ giao dịch do Creem giữ (bên bán lại phải giữ chứng từ thuế) nằm ngoài yêu cầu xóa gửi chúng tôi; muốn xóa ở Creem, hãy liên hệ Creem.
 
 ## 8. Trẻ em
 

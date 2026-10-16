@@ -77,7 +77,7 @@ Phân trang theo con trỏ (keyset): tham số `cursor` (giá trị trả về �
 | Endpoint | Nội dung | Lọc |
 |---|---|---|
 | `GET /admin/queue` | Việc cần xử lý, mỗi nhóm trả `count` và tối đa 20 dòng: (1) đơn `paid_needs_review`; (2) đơn `underpaid` tạo trong 30 ngày gần đây; (3) đơn `paid` có email mà khách chưa nhận thư key: chưa có `email_sent_at`, và cron đã thôi gửi (`email_gave_up_at`) hoặc đã quá 24 giờ kể từ `paid_at`, và chưa có lần gửi lại thành công của admin (`key_resent` với `sent` đúng) sau đó; (4) license đang khóa tạm (`locked_at` khác NULL, chưa thu hồi); (5) license xung đột (từ 2 activation đang kích hoạt); (6) `ops_alerts` có `count > notified_count` | — |
-| `GET /admin/summary` | Doanh thu hôm nay theo GMT+7 (tổng `amount_paid` của đơn `paid` có `paid_at` trong ngày), số đơn `paid` trong 7 ngày, số license còn hạn (`expires_at` > hiện tại, chưa thu hồi) | — |
+| `GET /admin/summary` | Doanh thu hôm nay theo GMT+7 (tổng `amount_paid` của đơn `paid` có `paid_at` trong ngày), số đơn `paid` trong 7 ngày, số license còn hạn (`expires_at` > hiện tại, chưa thu hồi). Doanh thu nay theo loại tiền: đã thay bằng spec 2026-10-14 §4.6 | — |
 | `GET /admin/orders` | Danh sách đơn theo `order_code` giảm dần | `status`, `plan`, `from`, `to` (ngày tạo, `YYYY-MM-DD` theo GMT+7) |
 | `GET /admin/licenses` | Danh sách license theo `created_at` giảm dần, kèm số activation đang kích hoạt | `state` = `active` \| `expired` \| `revoked` \| `locked` \| `conflict`; `plan` |
 | `GET /admin/trials` | Máy dùng thử theo `started_at` giảm dần, kèm cờ `purchased` (máy có ít nhất một activation) | `state` = `active` \| `ended` |

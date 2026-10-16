@@ -39,7 +39,7 @@ Bộ lọc sai: `400 {error: "invalid_request", field}`. Tham số rỗng coi nh
 
 **`GET /admin/queue`**: `{needs_review, underpaid, email_failed, locked, conflict, alerts}`, mỗi nhóm `{count, items}` (tối đa 20 dòng). Ba nhóm đầu là `OrderRow`, hai nhóm sau là `LicenseRow`, `alerts` là `{kind, window_start, count, notified_count}`.
 
-**`GET /admin/summary`**: `{revenue_today, currency: "VND", paid_orders_7d, active_licenses}`.
+**`GET /admin/summary`**: `{revenue_today, currency: "VND", paid_orders_7d, active_licenses}`. Đã thay bằng spec 2026-10-14 §4.6: `revenue_today` là `{ VND, USD }`, bỏ `currency`.
 
 **Trang:** mọi GET ngoài `/admin` và `/admin/*` trả trang từ `ASSETS` (route lạ trả `index.html`). Mọi phản hồi có CSP `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`.
 
