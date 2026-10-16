@@ -849,6 +849,24 @@ describe("Creem: gia cố đọc phản hồi của call() và getPaymentStatus 
       expect(err.message).toMatch(/ngoài tên miền thanh toán/);
     });
 
+    // Production thật trả host khác tài liệu (sandbox: creem.io/test/checkout/…): thông báo phải nói host và đoạn đầu đường dẫn để biết
+    // cần cho phép host nào; không chép chuỗi truy vấn, userinfo hay đoạn sau, và host/đoạn lạ thì không vào log.
+    it.each([
+      ["https://creem.io/test/checkout/prod_x/ch_1", "(host creem.io, đường dẫn bắt đầu /test)"],
+      ["https://WWW.Creem.IO/pay/ch_1?token=bi-mat#f", "(host www.creem.io, đường dẫn bắt đầu /pay)"],
+      ["https://pay.example.com/ch_abc/x", "(host pay.example.com, đường dẫn bắt đầu /ch_abc)"],
+      ["https://pay.example.com/%E4%BD%A0%20x/ch_1", "(host pay.example.com, đường dẫn bắt đầu /?)"],
+    ])("checkout_url %s: thông báo kèm %s", async (url, hint) => {
+      const err = await caught(create(created({ checkout_url: url })));
+      expect(err.message).toContain(hint);
+      expect(err.message).not.toMatch(/token|bi-mat|#f/);
+    });
+
+    it.each([["javascript:alert(1)"], ["không phải địa chỉ"], ["https://ex ample.com/x"]])("checkout_url %s không phân tích được: không có gợi ý host", async (url) => {
+      const err = await caught(create(created({ checkout_url: url })));
+      expect(err.message).toBe("Creem trả checkout_url ngoài tên miền thanh toán");
+    });
+
     it.each([
       ["https://checkout.creem.io:443/ch_1", "https://checkout.creem.io/ch_1"],
       ["https://CHECKOUT.CREEM.IO/ch_1", "https://checkout.creem.io/ch_1"],

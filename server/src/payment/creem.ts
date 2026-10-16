@@ -100,6 +100,23 @@ function creemCheckoutUrl(value: string): string | null {
   return ok ? url.href : null;
 }
 
+/**
+ * Gợi ý cho thông báo lỗi khi `checkout_url` ngoài tên miền thanh toán: host và đoạn đầu của đường dẫn, để người vận hành biết Creem
+ * thật trả địa chỉ dạng nào (sandbox trả `creem.io/test/checkout/…`, khác tài liệu): không có chuỗi truy vấn, không userinfo, và chỉ
+ * khi host và đoạn đầu có dạng thường (không bao giờ chép nguyên chuỗi lạ vào log).
+ */
+function checkoutUrlHint(value: string): string {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (!/^[a-z0-9.-]{1,80}$/.test(host)) return "";
+    const first = url.pathname.split("/")[1] ?? "";
+    return ` (host ${host}, đường dẫn bắt đầu /${/^[A-Za-z0-9_-]{1,16}$/.test(first) ? first : "?"})`;
+  } catch {
+    return "";
+  }
+}
+
 /** ISO 8601 đầy đủ: ngày, giờ tới giây, phần lẻ của giây nếu có, và múi giờ (`Z` hay `±hh:mm`). */
 const ISO_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 /** Khoảng giờ trả hợp lý (giây Unix): từ 2020-01-01 tới trước 2100-01-01. Ngoài khoảng là dữ liệu lạ, không dùng. */
@@ -243,7 +260,7 @@ export class CreemProvider implements PaymentProvider {
     }
     if (!CHECKOUT_ID.test(id)) throw new PaymentProviderError(`Creem trả id phiên không hợp lệ (${show(id)})`);
     const href = creemCheckoutUrl(checkoutUrl);
-    if (href === null) throw new PaymentProviderError("Creem trả checkout_url ngoài tên miền thanh toán");
+    if (href === null) throw new PaymentProviderError(`Creem trả checkout_url ngoài tên miền thanh toán${checkoutUrlHint(checkoutUrl)}`);
     // Creem trả lại `custom_price` (đo ở sandbox ngày 2026-10-16: đúng số đã gửi). Có mà khác số đã gửi hay sai kiểu (kể cả null):
     // trang thanh toán có thể đòi sai giá (ví dụ giá mặc định của sản phẩm), nên không đưa link cho khách, đơn lỗi. Vắng: vẫn nhận,
     // vì server chỉ cấp theo GET (paidOrderStatus so số khách trả với giá), chỉ để lại một dòng log không có dữ liệu của khách.
