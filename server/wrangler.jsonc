@@ -28,7 +28,7 @@
     // dạng (test Node khóa): cả ba rỗng, hay cả ba prod_… khác nhau. Rỗng (chưa bán thẻ, hay tắt bán thẻ khẩn cấp): GET /v1/plans
     // không trả giá USD, POST /v1/checkout với currency USD trả 503, nhưng webhook Creem và đơn Creem đang chờ vẫn được xử lý.
     "CREEM_BASE_URL": "https://api.creem.io",
-    "CREEM_PRODUCT_IDS": { "monthly": "prod_3aiMiXBHi7j7xjck8HMokZ", "six_months": "prod_6jVcUdjxxgi9Mk9wzdIB4C", "yearly": "prod_5ytGbwkgiXCNRzJHRWKAWg" },
+    "CREEM_PRODUCT_IDS": { "monthly": "prod_57yUG34lD35XDVFLLGA6nE", "six_months": "prod_4KnLuBCX1uqnJTEjL9utdD", "yearly": "prod_3tLlmFlWNKMR6xQonTQ1Wb" },
     // Tên miền gửi mail.aitranslator.io.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
     "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
     "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
