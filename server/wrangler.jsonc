@@ -1,7 +1,9 @@
 // Worker API công khai của license server (spec §6.8). Chỉ có MỘT môi trường, production (spec 2026-10-04): triển khai bằng
 // `wrangler deploy`, không có `--env`. Worker admin cấu hình riêng ở wrangler.admin.jsonc.
 // Test (vitest) đọc file này nhưng ghi đè ENVIRONMENT thành "test" và mọi secret thành giá trị giả (vitest.config.ts).
-// Secret (PayOS, Resend, khóa ký, pepper, email người vận hành) nhập bằng `wrangler secret put`, không bao giờ ghi vào file này.
+// Secret nhập bằng `wrangler secret put`, không bao giờ ghi vào file này (test Node quét cả chú thích): bắt buộc là đúng danh
+// sách `secrets.required` ở cuối file (ba secret PayOS, khóa API và secret webhook của Creem, Resend, hai ô khóa ký, pepper);
+// OPERATOR_EMAIL (email người vận hành nhận cảnh báo) là secret tùy chọn.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mt-license",
@@ -19,17 +21,27 @@
     // Luôn "production" ở đây. Giá trị "test" chỉ có trong vitest.config.ts (test/node/wrangler-config.test.mjs khóa điều này).
     "ENVIRONMENT": "production",
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
+    // Creem: cổng thanh toán quốc tế, thẻ, USD (spec 2026-10-14-creem-international-payment-design). Production cố định, không có
+    // sandbox (test Node khóa giá trị). Hai vai tách nhau (src/deps.ts, creemFromEnv): XỬ LÝ (webhook, trạng thái, hoàn tiền và
+    // tranh chấp của đơn Creem đã có) cần hai secret CREEM_API_KEY và CREEM_WEBHOOK_SECRET; BÁN (tạo phiên USD mới) cần thêm
+    // CREEM_PRODUCT_IDS: mã sản phẩm Creem (prod_…) của ba gói, tạo ở dashboard Creem theo docs/release/phat-hanh.md. Chỉ có hai
+    // dạng (test Node khóa): cả ba rỗng, hay cả ba prod_… khác nhau. Rỗng (chưa bán thẻ, hay tắt bán thẻ khẩn cấp): GET /v1/plans
+    // không trả giá USD, POST /v1/checkout với currency USD trả 503, nhưng webhook Creem và đơn Creem đang chờ vẫn được xử lý.
+    "CREEM_BASE_URL": "https://api.creem.io",
+    "CREEM_PRODUCT_IDS": { "monthly": "", "six_months": "", "yearly": "" },
     // Tên miền gửi mail.aitranslator.io.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
     "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
     "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
     // Giá chính thức (spec 2026-10-07 §2.1; thay bốn gói chốt 2026-10-01). six_months thêm theo spec 2026-10-13 §1:
     // 100 giờ mỗi chu kỳ 30 ngày, 180 ngày mỗi đơn. Thứ tự các gói là thứ tự trong màn hình Nâng cấp (theo thời hạn).
+    // Giá USD (cent, bán qua Creem) thêm theo spec 2026-10-14 D2: giữ tỉ lệ giá mỗi ngày giữa các gói gần bảng VND (sai số 3%,
+    // test/node/wrangler-config.test.mjs), để luật đổi gói cho kết quả gần nhau dù khách trả bằng loại tiền nào.
     // Không hạ hạn mức của một gói đang bán (spec §6.8, QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ ở đây là
     // hạ luôn hạn mức của khách đã trả tiền. Muốn bán hạn mức thấp hơn thì thêm gói mới (sửa src/plans.ts và app).
     "PLANS": {
-      "monthly": { "quota_minutes_per_cycle": 3000, "days_per_order": 30, "prices": { "VND": 50000 } },
-      "six_months": { "quota_minutes_per_cycle": 6000, "days_per_order": 180, "prices": { "VND": 269000 } },
-      "yearly": { "quota_minutes_per_cycle": null, "days_per_order": 365, "prices": { "VND": 500000 } }
+      "monthly": { "quota_minutes_per_cycle": 3000, "days_per_order": 30, "prices": { "VND": 50000, "USD": 399 } },
+      "six_months": { "quota_minutes_per_cycle": 6000, "days_per_order": 180, "prices": { "VND": 269000, "USD": 2199 } },
+      "yearly": { "quota_minutes_per_cycle": null, "days_per_order": 365, "prices": { "VND": 500000, "USD": 3999 } }
     },
     // Số ngày dùng thử Free của mỗi máy (spec 2026-10-07 §3.1). Đổi chỉ áp cho máy đăng ký sau đó.
     "TRIAL_DAYS": 10,
@@ -38,7 +50,7 @@
     "TOKEN_SIGNING_SLOT": "a"
   },
   "secrets": {
-    "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY", "TOKEN_SIGNING_KEY_A", "TOKEN_SIGNING_KEY_B", "RATE_LIMIT_PEPPER"]
+    "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "CREEM_API_KEY", "CREEM_WEBHOOK_SECRET", "RESEND_API_KEY", "TOKEN_SIGNING_KEY_A", "TOKEN_SIGNING_KEY_B", "RATE_LIMIT_PEPPER"]
   },
   "d1_databases": [
     // database_id: thay bằng ID do `wrangler d1 create mt-license-production` in ra (Task 21).

@@ -6,9 +6,18 @@ import { sha256Hex } from "../src/crypto";
 import type { Deps } from "../src/deps";
 import { ResendEmailProvider } from "../src/email/resend";
 import type { ApiEnv } from "../src/env";
+import { CreemProvider } from "../src/payment/creem";
 import { PayOSProvider } from "../src/payment/payos";
 import { importSigningKey } from "../src/token";
-import { FakePayOS, FakeResend, TEST_CHECKSUM_KEY } from "./fakes";
+import {
+  FakeCreem,
+  FakePayOS,
+  FakeResend,
+  TEST_CHECKSUM_KEY,
+  TEST_CREEM_API_KEY,
+  TEST_CREEM_PRODUCTS,
+  TEST_CREEM_WEBHOOK_SECRET,
+} from "./fakes";
 import { testSigningJwk } from "./keys";
 
 /** 2026-10-01T00:00:00Z */
@@ -24,6 +33,7 @@ export interface CallResult {
 export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
   const clock = { now: T0 };
   const payos = new FakePayOS(TEST_CHECKSUM_KEY, () => clock.now);
+  const creem = new FakeCreem();
   const resend = new FakeResend();
   const deps: Deps = {
     now: () => clock.now,
@@ -31,6 +41,15 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
       payos: new PayOSProvider(
         { baseUrl: "https://payos.test", clientId: "cid", apiKey: "akey", checksumKey: TEST_CHECKSUM_KEY },
         payos.fetch,
+      ),
+      creem: new CreemProvider(
+        {
+          baseUrl: "https://creem.test",
+          apiKey: TEST_CREEM_API_KEY,
+          webhookSecret: TEST_CREEM_WEBHOOK_SECRET,
+          productIds: { ...TEST_CREEM_PRODUCTS },
+        },
+        creem.fetch,
       ),
     },
     email: new ResendEmailProvider({ apiKey: "re_test", from: "AI Translator <noreply@mt.test>" }, resend.fetch),
@@ -79,6 +98,32 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
     if (wh.status !== 200) throw new Error(`webhook ${wh.status}`);
     const order = await getOrder(orderCode, co.body.order_token as string);
     return { orderCode, orderToken: co.body.order_token as string, licenseKey: order.body.license_key as string };
+  }
+
+  /**
+   * Mua trọn một đơn bằng USD qua Creem: checkout, khách trả (`tax` là thuế Creem cộng ngoài giá), Creem gửi webhook. Ném lỗi
+   * nói rõ bước nào hỏng nếu checkout không 201, webhook không 200 `granted`, hay đơn không có key: để test không âm thầm chạy
+   * tiếp với `licenseKey` undefined.
+   */
+  async function buyCreem(opts: { plan?: string; email?: string; licenseKey?: string; tax?: number } = {}) {
+    const req: Record<string, unknown> = {
+      plan: opts.plan ?? "monthly",
+      email: opts.email ?? "buyer@example.com",
+      consent: true,
+      currency: "USD",
+    };
+    if (opts.licenseKey) req.license_key = opts.licenseKey;
+    const co = await call("POST", "/v1/checkout", req);
+    if (co.status !== 201) throw new Error(`checkout ${co.status} ${JSON.stringify(co.body)}`);
+    const orderCode = co.body.order_code as number;
+    const checkoutId = creem.checkoutIdOf(orderCode);
+    creem.pay(checkoutId, opts.tax ?? 0);
+    const hook = await creem.completedWebhook(checkoutId);
+    const wh = await call("POST", "/v1/webhooks/creem", hook.raw, hook.headers);
+    if (wh.status !== 200 || wh.body.result !== "granted") throw new Error(`webhook Creem đơn ${orderCode}: ${wh.status} ${JSON.stringify(wh.body)}`);
+    const order = await getOrder(orderCode, co.body.order_token as string);
+    if (typeof order.body.license_key !== "string") throw new Error(`đơn Creem ${orderCode} không có key: ${JSON.stringify(order.body)}`);
+    return { orderCode, orderToken: co.body.order_token as string, checkoutId, licenseKey: order.body.license_key };
   }
 
   /** App hỏi trạng thái đơn: order_token trong header Authorization. */
@@ -132,5 +177,5 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
     };
   }
 
-  return { clock, payos, resend, deps, app, env: testEnv, call, buy, getOrder, customerB };
+  return { clock, payos, creem, resend, deps, app, env: testEnv, call, buy, buyCreem, getOrder, customerB };
 }

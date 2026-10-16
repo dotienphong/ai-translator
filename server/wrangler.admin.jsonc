@@ -32,6 +32,8 @@
   "vars": {
     "ENVIRONMENT": "production",
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
+    // Cổng Creem (spec 2026-10-14): chỉ để xem trạng thái đơn Creem; production cố định, không sandbox (spec 2026-10-04).
+    "CREEM_BASE_URL": "https://api.creem.io",
     "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
     "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
     // Bắt buộc (QĐ6): Audience tag của ứng dụng Access, điền ở Task 21, Step 10. Trống thì Worker trả 403 cho mọi request.
@@ -47,7 +49,8 @@
   },
   // ADMIN_EMAILS (kiểm toán bảo mật 2026-10-09): email được làm admin, cách nhau bằng dấu phẩy; thiếu thì mọi request bị
   // 403. Đặt TRƯỚC khi deploy bản có kiểm này: `wrangler secret put ADMIN_EMAILS -c wrangler.admin.jsonc`.
-  "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "RESEND_API_KEY", "ADMIN_EMAILS"] },
+  // CREEM_API_KEY: cùng khóa với Worker API (`wrangler secret put CREEM_API_KEY -c wrangler.admin.jsonc`), đặt TRƯỚC khi deploy.
+  "secrets": { "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "CREEM_API_KEY", "RESEND_API_KEY", "ADMIN_EMAILS"] },
   "d1_databases": [
     { "binding": "DB", "database_name": "mt-license-production", "database_id": "047c4ba4-4ad2-4ece-937c-2d91eafe2445" }
   ],

@@ -1,22 +1,11 @@
 // Điểm vào của Worker admin (wrangler.admin.jsonc). Dùng chung D1 với Worker API; bảng gói và ký thử khóa dự phòng
-// lấy từ Worker API qua service binding API (QĐ34).
+// lấy từ Worker API qua service binding API (QĐ34). Dây nối phụ thuộc thật (PayOS, cổng Creem chỉ đọc, email) nằm ở
+// realAdminDeps (admin-deps.ts, tách khỏi deps.ts dùng chung với Worker API) để test được; file này không có logic.
+// Test chạy qua file này: admin.test.ts ("điểm vào thật").
 import { createAdminApp } from "./admin";
-import { defaultFetchPublic } from "./admin-ops";
-import { nowSeconds, payosFromEnv } from "./deps";
-import { ResendEmailProvider } from "./email/resend";
+import { realAdminDeps } from "./admin-deps";
 import type { AdminEnv } from "./env";
 
-const app = createAdminApp((env) => {
-  const payos = payosFromEnv(env);
-  return {
-    now: nowSeconds,
-    payments: { payos },
-    payos,
-    email: new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, replyTo: env.EMAIL_REPLY_TO }),
-    plans: () => env.API.plans(),
-    keyCheck: () => env.API.signKeyCheck(),
-    fetchPublic: defaultFetchPublic,
-  };
-});
+const app = createAdminApp(realAdminDeps);
 
 export default { fetch: app.fetch } satisfies ExportedHandler<AdminEnv>;

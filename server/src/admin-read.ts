@@ -7,6 +7,7 @@
 import type { Context, Hono } from "hono";
 import { type AdminAppEnv, crossSite } from "./admin-auth";
 import { audit } from "./audit";
+import { SALE_CURRENCIES } from "./checkout";
 import { fail } from "./http";
 import { maskLicenseKey } from "./license-key";
 import { PLAN_CODES } from "./plans";
@@ -34,6 +35,13 @@ export const ORDER_STATUSES = [
   "paid_needs_review",
   "refunded",
 ] as const;
+
+/**
+ * Loại tiền của đơn (orders.currency): VND thu qua PayOS, USD (đơn vị cent) thu qua Creem. Cùng một danh sách với loại tiền
+ * server bán (SALE_CURRENCIES ở checkout.ts): thêm loại tiền ở checkout thì thống kê, tóm tắt và bộ lọc của Web Admin có luôn.
+ */
+export const ORDER_CURRENCIES = SALE_CURRENCIES;
+export type OrderCurrency = (typeof ORDER_CURRENCIES)[number];
 
 /**
  * Cột đơn trả cho Web Admin: mọi cột của orders trừ order_token_hash, provider_ref, email_consent_at, expires_at,
@@ -308,26 +316,33 @@ export function registerAdminRead(app: Hono<AdminAppEnv>): void {
     return c.json(queue);
   });
 
-  // Ba số nhanh của trang Việc cần xử lý (spec §3.2). Ngày tính theo GMT+7.
+  // Ba số nhanh của trang Việc cần xử lý (spec §3.2). Ngày tính theo GMT+7. Doanh thu tách theo loại tiền (VND và cent USD không
+  // cộng lẫn); số đơn và license không theo loại tiền.
   app.get("/admin/summary", async (c) => {
     if (crossSite(c)) return fail(c, 403, "forbidden");
     const db = c.env.DB;
     const now = c.get("deps").now();
-    const row = await db
-      .prepare(
-        `SELECT
-           (SELECT COALESCE(SUM(amount_paid), 0) FROM orders WHERE status = 'paid' AND paid_at >= ?1) AS revenue_today,
-           (SELECT COUNT(*) FROM orders WHERE status = 'paid' AND paid_at >= ?2) AS paid_orders_7d,
-           (SELECT COUNT(*) FROM licenses WHERE revoked_at IS NULL AND expires_at > ?3) AS active_licenses`,
-      )
-      .bind(vnDayStart(now), now - 7 * DAY, now)
-      .first<{ revenue_today: number; paid_orders_7d: number; active_licenses: number }>();
+    const [counts, revenue] = await db.batch<Row>([
+      db
+        .prepare(
+          `SELECT
+             (SELECT COUNT(*) FROM orders WHERE status = 'paid' AND paid_at >= ?1) AS paid_orders_7d,
+             (SELECT COUNT(*) FROM licenses WHERE revoked_at IS NULL AND expires_at > ?2) AS active_licenses`,
+        )
+        .bind(now - 7 * DAY, now),
+      db
+        .prepare("SELECT currency, COALESCE(SUM(amount_paid), 0) AS revenue FROM orders WHERE status = 'paid' AND paid_at >= ?1 GROUP BY currency")
+        .bind(vnDayStart(now)),
+    ]);
+    const row = counts?.results[0];
+    const revenueToday = Object.fromEntries(
+      ORDER_CURRENCIES.map((cur) => [cur, Number(revenue?.results.find((r) => r.currency === cur)?.revenue ?? 0)]),
+    ) as Record<OrderCurrency, number>;
     await audit(db, { at: now, actor: c.get("actor"), action: "summary_viewed" });
     return c.json({
-      revenue_today: row?.revenue_today ?? 0,
-      currency: "VND",
-      paid_orders_7d: row?.paid_orders_7d ?? 0,
-      active_licenses: row?.active_licenses ?? 0,
+      revenue_today: revenueToday,
+      paid_orders_7d: Number(row?.paid_orders_7d ?? 0),
+      active_licenses: Number(row?.active_licenses ?? 0),
     });
   });
 }

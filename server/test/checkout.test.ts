@@ -1,10 +1,15 @@
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, it } from "vitest";
-import { resetDb } from "./db";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PayOSProvider } from "../src/payment/payos";
+import { resetDb, withFailingInsert } from "./db";
+import { TEST_CHECKSUM_KEY } from "./fakes";
 import vectors from "./vectors/token-v1.json";
 import { DAY, makeWorld, T0 } from "./world";
 
 beforeEach(resetDb);
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const valid = { plan: "monthly", email: " Buyer@Example.com ", consent: true };
 
@@ -19,9 +24,10 @@ describe("GET /v1/plans", () => {
       status: 200,
       headers: expect.anything(),
       body: {
+        suggested_currency: "VND",
         plans: [
-          { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000 } },
-          { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000 } },
+          { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000, USD: 399 } },
+          { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000, USD: 3999 } },
         ],
       },
     });
@@ -35,13 +41,13 @@ describe("GET /v1/plans", () => {
   });
 
   // Gói 6 Months (spec 2026-10-13 §2.3): app cũ không gửi `?plans=` nên nhận đúng response ở test đầu của mục này.
-  const monthly = { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000 } };
-  const sixMonths = { code: "six_months", name: "6 Months", quota_minutes_per_cycle: 6000, days_per_order: 180, prices: { VND: 269000 } };
-  const yearly = { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000 } };
+  const monthly = { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000, USD: 399 } };
+  const sixMonths = { code: "six_months", name: "6 Months", quota_minutes_per_cycle: 6000, days_per_order: 180, prices: { VND: 269000, USD: 2199 } };
+  const yearly = { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000, USD: 3999 } };
 
   it("app khai báo ?plans=monthly,six_months,yearly thì nhận ba gói theo thứ tự thời hạn", async () => {
     const res = await makeWorld().call("GET", "/v1/plans?plans=monthly,six_months,yearly");
-    expect(res).toEqual({ status: 200, headers: expect.anything(), body: { plans: [monthly, sixMonths, yearly] } });
+    expect(res).toEqual({ status: 200, headers: expect.anything(), body: { suggested_currency: "VND", plans: [monthly, sixMonths, yearly] } });
   });
 
   it.each([
@@ -248,6 +254,68 @@ describe("POST /v1/checkout", () => {
     expect(res).toMatchObject({ status: 502, body: { error: "payment_provider_error" } });
     const row = await env.DB.prepare("SELECT status FROM orders WHERE order_code = 1").first<{ status: string }>();
     expect(row?.status).toBe("failed");
+  });
+
+  describe("PayOS từ chối khóa API (hardening A6): cảnh báo payos_auth_failed", () => {
+    type World = ReturnType<typeof makeWorld>;
+    const payosWith = (w: World, fetchFn: (url: string, init?: RequestInit) => Promise<Response>) => {
+      w.deps.payments.payos = new PayOSProvider(
+        { baseUrl: "https://payos.test", clientId: "cid", apiKey: "akey", checksumKey: TEST_CHECKSUM_KEY },
+        fetchFn,
+      );
+    };
+    const reply = (status: number, code = String(status)) =>
+      async () => new Response(JSON.stringify({ code, desc: "lỗi giả", data: null }), { status, headers: { "content-type": "application/json" } });
+    const alerts = () => env.DB.prepare("SELECT kind, count FROM ops_alerts ORDER BY kind").all().then((r) => r.results);
+    const failedOrders = () => env.DB.prepare("SELECT COUNT(*) AS n FROM orders WHERE status = 'failed'").first<{ n: number }>();
+
+    it.each([[401], [403]])("HTTP %i có thân JSON của PayOS: 502, đơn failed, cảnh báo payos_auth_failed (không phải creem_auth_failed)", async (status) => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const w = makeWorld();
+      payosWith(w, reply(status));
+      expect(await w.call("POST", "/v1/checkout", valid)).toMatchObject({ status: 502, body: { error: "payment_provider_error" } });
+      expect(await failedOrders()).toEqual({ n: 1 });
+      expect(await alerts()).toEqual([{ kind: "payos_auth_failed", count: 1 }]);
+    });
+
+    it("403 HTML của tường lửa: 502, đơn failed, KHÔNG có cảnh báo khóa", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const w = makeWorld();
+      payosWith(w, async () => new Response("<html>Access denied</html>", { status: 403, headers: { "content-type": "text/html" } }));
+      expect((await w.call("POST", "/v1/checkout", valid)).status).toBe(502);
+      expect(await failedOrders()).toEqual({ n: 1 });
+      expect(await alerts()).toEqual([]);
+    });
+
+    it.each([[500], [502], [429], [400], [404]])("HTTP %i có thân JSON của PayOS: 502, KHÔNG có cảnh báo khóa", async (status) => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const w = makeWorld();
+      payosWith(w, reply(status));
+      expect((await w.call("POST", "/v1/checkout", valid)).status).toBe(502);
+      expect(await alerts()).toEqual([]);
+    });
+
+    it("lỗi nghiệp vụ HTTP 200 kèm code khác 00, và PayOS không trả lời: 502, không có cảnh báo khóa", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const w = makeWorld();
+      payosWith(w, reply(200, "201"));
+      expect((await w.call("POST", "/v1/checkout", valid)).status).toBe(502);
+      w.payos.down = true;
+      payosWith(w, w.payos.fetch);
+      expect((await w.call("POST", "/v1/checkout", valid)).status).toBe(502);
+      expect(await alerts()).toEqual([]);
+    });
+
+    it("tạo cảnh báo lỗi D1: cảnh báo không bao giờ đổi phản hồi trả khách (vẫn 502 payment_provider_error), đơn failed, ghi log checkout_alert_failed", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const w = makeWorld();
+      payosWith(w, reply(401));
+      const res = await withFailingInsert("ops_alerts", "NEW.kind = 'payos_auth_failed'", () => w.call("POST", "/v1/checkout", valid));
+      expect(res).toMatchObject({ status: 502, body: { error: "payment_provider_error" } });
+      expect(await failedOrders()).toEqual({ n: 1 });
+      expect(await alerts()).toEqual([]);
+      expect(error.mock.calls.map((c) => (JSON.parse(String(c[0])) as { event: string }).event)).toEqual(["checkout_failed", "checkout_alert_failed"]);
+    });
   });
 
   it("quá 10 lần mỗi giờ từ một IP thì 429 kèm Retry-After", async () => {

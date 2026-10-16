@@ -19,7 +19,17 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
     c.set("deps", makeDeps(c.env));
     await next();
   });
-  app.use("/v1/*", bodyLimit({ maxSize: 16 * 1024, onError: (c) => fail(c, 413, "invalid_request") }));
+  app.use(
+    "/v1/*",
+    bodyLimit({
+      maxSize: 16 * 1024,
+      onError: (c) => {
+        // Webhook quá lớn bị từ chối thì cổng gửi lại vài lần rồi bỏ (hoàn tiền, tranh chấp không có đối soát đỡ): để lại dấu vết.
+        if (c.req.path.startsWith("/v1/webhooks/")) console.warn(JSON.stringify({ event: "webhook_too_large", path: c.req.path }));
+        return fail(c, 413, "invalid_request");
+      },
+    }),
+  );
   // Webhook do cổng thanh toán gửi, có chữ ký riêng: không đòi content-type, để cổng đổi header cũng không làm mất đơn.
   app.use("/v1/*", async (c, next) => {
     const write = ["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method);

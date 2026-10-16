@@ -10,6 +10,8 @@ export type ErrorCode =
   | "license_locked"
   | "key_in_use"
   | "license_conflict"
+  | "conflict"
+  | "too_far"
   | "activation_not_found"
   | "order_not_found"
   | "invalid_signature"

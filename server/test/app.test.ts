@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { loadSigningKey, signKeyCheck } from "../src/deps";
 import { ipBucket } from "../src/http";
 import { verifyToken } from "../src/token";
@@ -30,6 +30,19 @@ describe("khung Worker API", () => {
   it("body quá 16 KiB thì 413", async () => {
     const res = await makeWorld().call("POST", "/v1/nope", { pad: "x".repeat(20_000) });
     expect(res.status).toBe(413);
+  });
+
+  it("thân quá 16 KiB tới /v1/webhooks/*: 413 như cũ và một dòng log webhook_too_large có đường dẫn (cổng bỏ sau vài lần gửi lại); đường khác 413 không log", async () => {
+    const w = makeWorld();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const big = { pad: "x".repeat(20_000) };
+      expect(await w.call("POST", "/v1/webhooks/creem", big)).toMatchObject({ status: 413, body: { error: "invalid_request" } });
+      expect(await w.call("POST", "/v1/licenses/recover", big)).toMatchObject({ status: 413, body: { error: "invalid_request" } });
+      expect(warn.mock.calls.map((c) => JSON.parse(String(c[0])))).toEqual([{ event: "webhook_too_large", path: "/v1/webhooks/creem" }]);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("request ghi không phải application/json thì 415, không đụng tới giới hạn tần suất hay D1", async () => {

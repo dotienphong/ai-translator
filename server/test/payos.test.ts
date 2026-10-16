@@ -42,39 +42,49 @@ function provider(fetchFn: (url: string, init?: RequestInit) => Promise<Response
   );
 }
 
+/** Webhook thô như route đưa cho provider. PayOS ký trong thân JSON, không ở header, nên header để trống. */
+const hook = (body: unknown) => ({ rawBody: JSON.stringify(body), headers: new Headers() });
+const ref42 = { orderCode: 42, providerRef: null };
+
 describe("PayOS: chữ ký webhook", () => {
   it("nhận webhook mẫu của tài liệu PayOS", async () => {
-    expect(await provider(fetch).verifyWebhook(DOC_WEBHOOK)).toEqual({ orderCode: 123 });
+    expect(await provider(fetch).verifyWebhook(hook(DOC_WEBHOOK))).toEqual({ kind: "payment", orderCode: 123 });
+  });
+
+  it("thân không phải JSON: trả \"malformed\" (không phải sai chữ ký, không tạo cảnh báo)", async () => {
+    const p = provider(fetch);
+    expect(await p.verifyWebhook({ rawBody: "{", headers: new Headers() })).toBe("malformed");
+    expect(await p.verifyWebhook({ rawBody: "", headers: new Headers() })).toBe("malformed");
   });
 
   it("từ chối webhook bị sửa số tiền", async () => {
     const body = { ...DOC_WEBHOOK, data: { ...DOC_WEBHOOK.data, amount: 3_000_000 } };
-    expect(await provider(fetch).verifyWebhook(body)).toBeNull();
+    expect(await provider(fetch).verifyWebhook(hook(body))).toBeNull();
   });
 
   it("chữ ký ở mục schema của tài liệu (8d8640…) không khớp dữ liệu mẫu", async () => {
     const body = { ...DOC_WEBHOOK, signature: "8d8640d802576397a1ce45ebda7f835055768ac7ad2e0bfb77f9b8f12cca4c7f" };
-    expect(await provider(fetch).verifyWebhook(body)).toBeNull();
+    expect(await provider(fetch).verifyWebhook(hook(body))).toBeNull();
   });
 
   it("đúng chữ ký mà orderCode không phải số nguyên: trả \"malformed\", không phải null (sai chữ ký) (review cuối, N2)", async () => {
     const p = provider(fetch);
     for (const orderCode of ["123", 1.5, null, -0.5]) {
-      expect(await p.verifyWebhook(await signed({ ...DOC_WEBHOOK.data, orderCode }))).toBe("malformed");
+      expect(await p.verifyWebhook(hook(await signed({ ...DOC_WEBHOOK.data, orderCode })))).toBe("malformed");
     }
     const { orderCode: _drop, ...noCode } = DOC_WEBHOOK.data;
-    expect(await p.verifyWebhook(await signed(noCode))).toBe("malformed");
+    expect(await p.verifyWebhook(hook(await signed(noCode)))).toBe("malformed");
     // Sai chữ ký thì vẫn là null, dù orderCode cũng sai dạng: chưa kiểm được chữ ký thì không tin nội dung.
     // (Chuỗi ký không phân biệt "123" với 123, nên đổi giá trị chứ không chỉ đổi kiểu.)
-    expect(await p.verifyWebhook({ data: { ...DOC_WEBHOOK.data, orderCode: "124" }, signature: DOC_WEBHOOK.signature })).toBeNull();
+    expect(await p.verifyWebhook(hook({ data: { ...DOC_WEBHOOK.data, orderCode: "124" }, signature: DOC_WEBHOOK.signature }))).toBeNull();
   });
 
   it("từ chối body sai định dạng", async () => {
     const p = provider(fetch);
-    expect(await p.verifyWebhook(null)).toBeNull();
-    expect(await p.verifyWebhook("x")).toBeNull();
-    expect(await p.verifyWebhook({ data: [], signature: "a" })).toBeNull();
-    expect(await p.verifyWebhook({ data: DOC_WEBHOOK.data })).toBeNull();
+    expect(await p.verifyWebhook(hook(null))).toBeNull();
+    expect(await p.verifyWebhook(hook("x"))).toBeNull();
+    expect(await p.verifyWebhook(hook({ data: [], signature: "a" }))).toBeNull();
+    expect(await p.verifyWebhook(hook({ data: DOC_WEBHOOK.data }))).toBeNull();
   });
 
   it("chuỗi ký: xếp key, null thành rỗng, mảng thành JSON có key đã xếp", () => {
@@ -93,6 +103,8 @@ describe("PayOS: tạo link thanh toán", () => {
     returnUrl: "https://example.com/v1/pay/return",
     cancelUrl: "https://example.com/v1/pay/cancel",
     expiresAt: 1_790_000_900,
+    plan: "monthly" as const,
+    email: "buyer@example.com",
   };
   const linkData = {
     bin: "970422",
@@ -180,7 +192,7 @@ describe("PayOS: trạng thái đơn", () => {
       urls.push(url);
       return new Response(JSON.stringify(response));
     });
-    expect(await p.getPaymentStatus(42)).toEqual({
+    expect(await p.getPaymentStatus(ref42)).toEqual({
       orderCode: 42,
       status: "paid",
       amount: 2000,
@@ -199,10 +211,10 @@ describe("PayOS: trạng thái đơn", () => {
       ],
     };
     const p1 = provider(async () => new Response(JSON.stringify(await signed(twice))));
-    expect((await p1.getPaymentStatus(42)).paidAt).toBe(1_790_812_800 + 86400 + 2 * 3600);
+    expect((await p1.getPaymentStatus(ref42)).paidAt).toBe(1_790_812_800 + 86400 + 2 * 3600);
     const none = { ...info("PENDING", 0), transactions: [] };
     const p2 = provider(async () => new Response(JSON.stringify(await signed(none))));
-    expect((await p2.getPaymentStatus(42)).paidAt).toBeNull();
+    expect((await p2.getPaymentStatus(ref42)).paidAt).toBeNull();
   });
 
   it("đọc transactionDateTime: giờ Việt Nam, hoặc ISO 8601 có múi giờ", () => {
@@ -247,30 +259,30 @@ describe("PayOS: trạng thái đơn", () => {
     for (const [payos, ours] of Object.entries(expected)) {
       const response = await signed(info(payos, payos === "PAID" ? 2000 : 0));
       const p = provider(async () => new Response(JSON.stringify(response)));
-      expect((await p.getPaymentStatus(42)).status, payos).toBe(ours);
+      expect((await p.getPaymentStatus(ref42)).status, payos).toBe(ours);
     }
   });
 
   it("trạng thái lạ hoặc sai orderCode thì báo lỗi", async () => {
     const odd = await signed(info("WEIRD", 0));
-    await expect(provider(async () => new Response(JSON.stringify(odd))).getPaymentStatus(42)).rejects.toThrow();
+    await expect(provider(async () => new Response(JSON.stringify(odd))).getPaymentStatus(ref42)).rejects.toThrow();
     const other = await signed(info("PAID", 2000, 43));
-    await expect(provider(async () => new Response(JSON.stringify(other))).getPaymentStatus(42)).rejects.toThrow(
+    await expect(provider(async () => new Response(JSON.stringify(other))).getPaymentStatus(ref42)).rejects.toThrow(
       /orderCode/,
     );
   });
 
   it("HTTP 401 thì báo lỗi", async () => {
     const p = provider(async () => new Response(JSON.stringify({ code: "401", desc: "Unauthorized" }), { status: 401 }));
-    await expect(p.getPaymentStatus(42)).rejects.toThrow(/401/);
+    await expect(p.getPaymentStatus(ref42)).rejects.toThrow(/401/);
   });
 
   it("lỗi mạng và quá thời gian chờ thành PaymentProviderError", async () => {
-    const down = await provider(async () => Promise.reject(new TypeError("fetch failed"))).getPaymentStatus(42).catch((e: unknown) => e);
+    const down = await provider(async () => Promise.reject(new TypeError("fetch failed"))).getPaymentStatus(ref42).catch((e: unknown) => e);
     expect(down).toBeInstanceOf(PaymentProviderError);
     expect(String(down)).toBe("PaymentProviderError: PayOS không trả lời (TypeError: fetch failed)");
     const slow = await provider(async () => Promise.reject(new DOMException("The operation was aborted due to timeout", "TimeoutError")))
-      .createCheckout({ orderCode: 42, amount: 2000, currency: "VND", description: "AT42", returnUrl: "https://e.test/r", cancelUrl: "https://e.test/c", expiresAt: 1 })
+      .createCheckout({ orderCode: 42, amount: 2000, currency: "VND", description: "AT42", returnUrl: "https://e.test/r", cancelUrl: "https://e.test/c", expiresAt: 1, plan: "monthly", email: "buyer@example.com" })
       .catch((e: unknown) => e);
     expect(slow).toBeInstanceOf(PaymentProviderError);
     expect(String(slow)).toBe("PaymentProviderError: PayOS không trả lời sau 10 giây");
@@ -282,7 +294,7 @@ describe("PayOS: trạng thái đơn", () => {
   it("lỗi có trả lời (HTTP lỗi, không phải JSON, sai chữ ký, dữ liệu lạ) không phải unreachable, dù không có httpStatus", async () => {
     const errOf = (body: string, status = 200): Promise<PaymentProviderError> =>
       provider(async () => new Response(body, { status }))
-        .getPaymentStatus(42)
+        .getPaymentStatus(ref42)
         .then(
           () => {
             throw new Error("phải báo lỗi");

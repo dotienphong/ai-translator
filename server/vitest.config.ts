@@ -8,6 +8,8 @@ const FAKE_SECRETS = {
   PAYOS_CLIENT_ID: "test-client-id",
   PAYOS_API_KEY: "test-api-key",
   PAYOS_CHECKSUM_KEY: "test-checksum-key",
+  CREEM_API_KEY: "test-creem-api-key",
+  CREEM_WEBHOOK_SECRET: "test-creem-webhook-secret",
   RESEND_API_KEY: "re_test",
   TOKEN_SIGNING_KEY_A: "{}",
   TOKEN_SIGNING_KEY_B: "{}",

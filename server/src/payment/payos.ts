@@ -12,6 +12,7 @@ import {
   type PaymentStatus,
   type PaymentStatusResult,
   type WebhookEvent,
+  type WebhookRequest,
 } from "./provider";
 
 export interface PayOSConfig {
@@ -133,15 +134,23 @@ export class PayOSProvider implements PaymentProvider {
     return { providerRef: paymentLinkId, checkoutUrl, qrCode };
   }
 
-  async verifyWebhook(body: unknown): Promise<WebhookEvent | "malformed" | null> {
+  async verifyWebhook(req: WebhookRequest): Promise<WebhookEvent | "malformed" | null> {
+    // PayOS ký trong thân JSON (trường `signature`), không ở header: parse rồi kiểm như trước.
+    let body: unknown;
+    try {
+      body = JSON.parse(req.rawBody);
+    } catch {
+      return "malformed";
+    }
     if (!isRecord(body) || !isRecord(body.data) || typeof body.signature !== "string") return null;
     const expected = await hmacSha256Hex(this.cfg.checksumKey, objectSignatureData(body.data));
     if (!timingSafeEqual(expected, body.signature)) return null;
     const orderCode = body.data.orderCode;
-    return Number.isSafeInteger(orderCode) ? { orderCode: orderCode as number } : "malformed";
+    return Number.isSafeInteger(orderCode) ? { kind: "payment", orderCode: orderCode as number } : "malformed";
   }
 
-  async getPaymentStatus(orderCode: number): Promise<PaymentStatusResult> {
+  async getPaymentStatus(ref: { orderCode: number; providerRef: string | null }): Promise<PaymentStatusResult> {
+    const { orderCode } = ref;
     const data = await this.call("GET", `/v2/payment-requests/${orderCode}`);
     const status = typeof data.status === "string" ? STATUS_MAP[data.status] : undefined;
     const { amount, amountPaid } = data;
@@ -200,6 +209,10 @@ export class PayOSProvider implements PaymentProvider {
         `PayOS lỗi HTTP ${res.status}: ${String(json.desc ?? "")}`,
         typeof json.code === "string" ? json.code : undefined,
         res.status,
+        false,
+        // Chỉ để phân loại cảnh báo khóa API (isProviderAuthFailure), không đổi luồng: thân là phong bì của PayOS (đối tượng có `code`
+        // dạng chuỗi). 401/403 của tường lửa hay CDN không có.
+        isRecord(json) && typeof json.code === "string",
       );
     }
     // Như SDK chính thức: có chữ ký thì kiểm, sai thì từ chối.

@@ -12,6 +12,10 @@ export interface ApiEnv {
   /** Ô khóa đang ký token: "a" hoặc "b" (QĐ29). Ô còn lại là khóa dự phòng. */
   TOKEN_SIGNING_SLOT: string;
   PAYOS_BASE_URL: string;
+  /** Gốc API Creem (cố định production, không sandbox: spec 2026-10-04). */
+  CREEM_BASE_URL: string;
+  /** Mã sản phẩm Creem của ba gói (src/payment/creem.ts, parseProductIds); còn rỗng thì cổng Creem chỉ xử lý đơn đã có, không bán USD. */
+  CREEM_PRODUCT_IDS?: unknown;
   EMAIL_FROM: string;
   /** Địa chỉ nhận trả lời của thư gửi khách (Reply-To). Không bắt buộc. */
   EMAIL_REPLY_TO?: string;
@@ -19,6 +23,8 @@ export interface ApiEnv {
   PAYOS_CLIENT_ID: string;
   PAYOS_API_KEY: string;
   PAYOS_CHECKSUM_KEY: string;
+  CREEM_API_KEY: string;
+  CREEM_WEBHOOK_SECRET: string;
   RESEND_API_KEY: string;
   /** JWK Ed25519 khóa riêng, có `kid` (scripts/gen-token-key.mjs), ở hai ô A và B. */
   TOKEN_SIGNING_KEY_A: string;
@@ -41,6 +47,8 @@ export interface AdminEnv {
   DB: D1Database;
   ENVIRONMENT: string;
   PAYOS_BASE_URL: string;
+  /** Gốc API Creem (cố định production, không sandbox: spec 2026-10-04); Worker admin chỉ hỏi trạng thái phiên. */
+  CREEM_BASE_URL: string;
   EMAIL_FROM: string;
   /** Địa chỉ nhận trả lời của thư gửi khách (Reply-To). Không bắt buộc. */
   EMAIL_REPLY_TO?: string;
@@ -64,6 +72,8 @@ export interface AdminEnv {
   PAYOS_CLIENT_ID: string;
   PAYOS_API_KEY: string;
   PAYOS_CHECKSUM_KEY: string;
+  /** Khóa API Creem để xem trạng thái đơn. Worker admin không giữ secret webhook của Creem (không nhận webhook). */
+  CREEM_API_KEY: string;
   RESEND_API_KEY: string;
   /**
    * Email được làm admin, cách nhau bằng dấu phẩy (không phân biệt hoa thường). Lớp thứ hai sau policy của Cloudflare

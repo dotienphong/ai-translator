@@ -102,12 +102,14 @@ describe("webhook PayOS", () => {
     expect(await licenseCount()).toBe(0);
   });
 
-  it("webhook mẫu khi đăng ký confirm-webhook (orderCode lạ) vẫn trả 200", async () => {
+  it("webhook mẫu khi đăng ký confirm-webhook (orderCode lạ) vẫn trả 200, không nhật ký payment_unmatched, không cảnh báo (khác Creem: tránh ồn mỗi lần đăng ký)", async () => {
     const w = makeWorld();
     const data = { orderCode: 123, amount: 3000, description: "VQRIO123", code: "00", desc: "Thành công" };
     const body = { code: "00", desc: "success", success: true, data, signature: await hmacSha256Hex(TEST_CHECKSUM_KEY, objectSignatureData(data)) };
     const res = await w.call("POST", "/v1/webhooks/payos", body);
     expect(res).toMatchObject({ status: 200, body: { ok: true, result: "unknown_order" } });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM ops_alerts").first()).toEqual({ n: 0 });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: 0 });
   });
 
   it("chuyển thiếu (PayOS báo UNDERPAID): không cấp, đơn thành underpaid, ghi nhật ký", async () => {
@@ -120,7 +122,9 @@ describe("webhook PayOS", () => {
     expect(order.body.status).toBe("underpaid");
     expect(order.body.license_key).toBeUndefined();
     const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'order_underpaid'").first<{ detail: string }>();
-    expect(JSON.parse(log!.detail)).toEqual({ amount: 50000, provider_amount: 50000, amount_paid: 1500 });
+    expect(JSON.parse(log!.detail)).toEqual({ amount: 50000, currency: "VND", provider_amount: 50000, amount_paid: 1500 });
+    // Chuyển thiếu là chuyện thường của chuyển khoản (khách chuyển bù được): không cảnh báo người vận hành (spec §4.1, QĐ-8).
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM ops_alerts").first()).toEqual({ n: 0 });
   });
 
   it("PayOS báo PAID nhưng amountPaid < amount: không cấp, đơn thành underpaid", async () => {
@@ -132,6 +136,7 @@ describe("webhook PayOS", () => {
     expect(res.body).toEqual({ ok: true, result: "not_paid" });
     expect(await licenseCount()).toBe(0);
     expect(await orderRow(orderCode)).toEqual({ status: "underpaid", amount_paid: 49999 });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM ops_alerts").first()).toEqual({ n: 0 });
   });
 
   it("amountPaid đủ nhưng status chưa phải PAID (PROCESSING): không cấp", async () => {
@@ -155,7 +160,9 @@ describe("webhook PayOS", () => {
     expect(await licenseCount()).toBe(0);
     expect(await orderRow(orderCode)).toEqual({ status: "failed", amount_paid: 1000 });
     const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'order_amount_mismatch'").first<{ detail: string }>();
-    expect(JSON.parse(log!.detail)).toEqual({ amount: 50000, provider_amount: 1000, amount_paid: 1000 });
+    expect(JSON.parse(log!.detail)).toEqual({ amount: 50000, currency: "VND", provider_amount: 1000, amount_paid: 1000 });
+    // Lệch số tiền là bất thường ở mọi cổng: có cảnh báo, kể cả PayOS.
+    expect(await env.DB.prepare("SELECT kind, count FROM ops_alerts").all()).toMatchObject({ results: [{ kind: "order_payment_review", count: 1 }] });
   });
 
   it("amount của PayOS lớn hơn amount của đơn: cũng không cấp, đơn thành failed", async () => {
@@ -684,6 +691,23 @@ describe("webhook đúng chữ ký mà nội dung sai dạng (review cuối, N2)
       warn.mockRestore();
     },
   );
+
+  it.each(["{", "", "không phải json"])(
+    "thân %j không phải JSON (chưa kiểm được chữ ký): 400 invalid_request, chỉ log webhook_malformed; không cảnh báo, không nhật ký, không gọi PayOS",
+    async (raw) => {
+      const w = makeWorld();
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        expect(await w.call("POST", "/v1/webhooks/payos", raw)).toMatchObject({ status: 400, body: { error: "invalid_request" } });
+        expect(warn.mock.calls.map((c) => JSON.parse(String(c[0])))).toEqual([{ event: "webhook_malformed", provider: "payos" }]);
+      } finally {
+        warn.mockRestore();
+      }
+      expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM ops_alerts").first()).toEqual({ n: 0 });
+      expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: 0 });
+      expect(w.payos.requests).toHaveLength(0);
+    },
+  );
 });
 
 describe("gói 6 Months (spec 2026-10-13)", () => {
@@ -747,5 +771,32 @@ describe("gói 6 Months (spec 2026-10-13)", () => {
     w.clock.now = T0 + 80 * DAY;
     const order = await renew(w, licenseKey, "yearly");
     expect(order).toMatchObject({ grant_kind: "change", license_plan: "yearly", license_expires_at: T0 + 80 * DAY + 474 * DAY });
+  });
+});
+
+describe("(A5e) nhật ký cấp, gia hạn, đổi gói và chờ xử lý ghi loại tiền của đơn cạnh amount_paid (Web Admin hiển thị đúng đơn vị)", () => {
+  /** `detail` của nhật ký `action` (đúng một dòng), đã parse. */
+  const detailOf = async (action: string) => {
+    const { results } = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = ?").bind(action).all<{ detail: string }>();
+    expect(results).toHaveLength(1);
+    return JSON.parse(results[0]!.detail) as Record<string, unknown>;
+  };
+  /** PayOS (VND): mua Monthly, gia hạn Monthly, đổi sang Yearly, rồi một đơn gia hạn mà license bị thu hồi trước khi tiền về. */
+  async function scenario() {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy({ plan: "monthly" });
+    await w.buy({ plan: "monthly", licenseKey });
+    await w.buy({ plan: "yearly", licenseKey });
+    const { orderCode } = await checkout(w, { plan: "yearly", license_key: licenseKey });
+    w.payos.pay(orderCode);
+    await env.DB.prepare("UPDATE licenses SET revoked_at = ?").bind(w.clock.now).run();
+    expect((await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode))).body).toEqual({ ok: true, result: "needs_review" });
+  }
+
+  it.each(["license_issued", "license_extended", "license_plan_changed", "order_needs_review"])("%s của đơn PayOS: detail có currency \"VND\"", async (action) => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    await scenario();
+    expect(await detailOf(action)).toMatchObject({ currency: "VND", amount_paid: expect.any(Number) });
+    vi.restoreAllMocks();
   });
 });

@@ -3,9 +3,10 @@ import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { raiseAlert } from "../src/alerts";
 import worker from "../src/index";
+import { PayOSProvider } from "../src/payment/payos";
 import { reconcile } from "../src/reconcile";
-import { resetDb, wrapDb } from "./db";
-import { FakeGateway } from "./fakes";
+import { resetDb, withFailingInsert, wrapDb } from "./db";
+import { FakeGateway, TEST_CHECKSUM_KEY } from "./fakes";
 import { DAY, makeWorld, T0 } from "./world";
 
 beforeEach(resetDb);
@@ -18,6 +19,8 @@ async function newOrder(w: ReturnType<typeof makeWorld>) {
   const res = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "buyer@example.com", consent: true });
   return res.body.order_code as number;
 }
+
+const alertRows = () => env.DB.prepare("SELECT kind, count FROM ops_alerts ORDER BY kind").all().then((r) => r.results);
 
 const status = async (orderCode: number) =>
   (await env.DB.prepare("SELECT status FROM orders WHERE order_code = ?").bind(orderCode).first<{ status: string }>())?.status;
@@ -478,6 +481,94 @@ describe("đối soát mỗi 5 phút", () => {
     expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 5, errors: 5 });
     expect(w.payos.requests.filter((r) => r.method === "GET")).toHaveLength(5);
     expect(warn.mock.calls.map((c) => (JSON.parse(c[0] as string) as { event: string }).event)).not.toContain("reconcile_stopped_early");
+    // Chỉ lần 401 là lỗi khóa: 5xx và timeout không tạo cảnh báo, và cảnh báo nêu đúng cổng PayOS.
+    expect(await alertRows()).toEqual([{ kind: "payos_auth_failed", count: 1 }]);
+  });
+
+  describe("cảnh báo khóa API của PayOS (hardening A6)", () => {
+    const payosWith = (w: ReturnType<typeof makeWorld>, fetchFn: (url: string, init?: RequestInit) => Promise<Response>) => {
+      w.deps.payments.payos = new PayOSProvider(
+        { baseUrl: "https://payos.test", clientId: "cid", apiKey: "akey", checksumKey: TEST_CHECKSUM_KEY },
+        fetchFn,
+      );
+    };
+    const quiet = () => ({ error: vi.spyOn(console, "error").mockImplementation(() => {}), warn: vi.spyOn(console, "warn").mockImplementation(() => {}) });
+    const events = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.map((c) => (JSON.parse(c[0] as string) as { event: string }).event);
+
+    it("nhiều đơn cùng gặp 401 và 403: count bằng số đơn, không dừng sớm, các đơn còn lại vẫn được hỏi", async () => {
+      const { warn } = quiet();
+      const w = makeWorld();
+      for (let i = 0; i < 5; i++) await newOrder(w);
+      w.payos.statusFailures = [401, 403, 401];
+      w.clock.now = T0 + 300;
+      expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 5, granted: 0, errors: 3 });
+      expect(w.payos.requests.filter((r) => r.method === "GET")).toHaveLength(5);
+      expect(await alertRows()).toEqual([{ kind: "payos_auth_failed", count: 3 }]);
+      expect(events(warn)).not.toContain("reconcile_stopped_early");
+    });
+
+    it.each([
+      [500, null],
+      [502, null],
+      [429, null],
+      [400, null],
+      ["timeout", null],
+      ["network", null],
+      // PayOS không có order_check_failed (A5f): lỗi tạm của PayOS cũng ra HTTP 200 không unreachable, không phân biệt được với dữ
+      // liệu hỏng, nên chỉ log reconcile_failed như trước hardening.
+      [404, null],
+      ["bad_signature", null],
+    ] as const)("PayOS trả lỗi %s: không có cảnh báo khóa (cảnh báo khác: %s)", async (failure, other) => {
+      quiet();
+      const w = makeWorld();
+      await newOrder(w);
+      w.payos.statusFailures = [failure];
+      w.clock.now = T0 + 300;
+      expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 1, errors: 1 });
+      expect(await alertRows()).toEqual(other === null ? [] : [{ kind: other, count: 1 }]);
+    });
+
+    it.each<[string, () => Response]>([
+      ["HTTP 200 kèm code lỗi của PayOS", () => new Response(JSON.stringify({ code: "231", desc: "lỗi giả", data: null }))],
+      ["quá thời gian chờ lúc đọc thân (HTTP 200)", () => new Response(new ReadableStream({ start: (c) => c.error(new DOMException("timeout", "TimeoutError")) }))],
+      ["thân không phải JSON (HTTP 200)", () => new Response("<html></html>")],
+      ["chuyển hướng 302", () => new Response(null, { status: 302, headers: { location: "https://elsewhere.example/" } })],
+    ])("(A5f) PayOS %s: một lỗi đối soát, chỉ log reconcile_failed, KHÔNG có order_check_failed (không cảnh báo giả khi PayOS chậm)", async (_why, reply) => {
+      const { error } = quiet();
+      const w = makeWorld();
+      await newOrder(w);
+      await newOrder(w);
+      payosWith(w, async () => reply());
+      w.clock.now = T0 + 300;
+      expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 2, errors: 2 });
+      expect(events(error)).toEqual(["reconcile_failed", "reconcile_failed"]);
+      expect(await alertRows()).toEqual([]);
+    });
+
+    it("403 HTML của tường lửa (không phải thân của PayOS): một lỗi đối soát, KHÔNG có cảnh báo khóa", async () => {
+      quiet();
+      const w = makeWorld();
+      await newOrder(w);
+      payosWith(w, async () => new Response("<html>Access denied</html>", { status: 403, headers: { "content-type": "text/html" } }));
+      w.clock.now = T0 + 300;
+      expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 1, errors: 1 });
+      expect(await alertRows()).toEqual([]);
+    });
+
+    it("tạo cảnh báo lỗi D1 (nhánh reconcile_alert_failed): ghi log, đối soát vẫn chạy tiếp mọi đơn và các bước sau", async () => {
+      const { error } = quiet();
+      const w = makeWorld({ OPERATOR_EMAIL: "ops@example.com" });
+      for (let i = 0; i < 3; i++) await newOrder(w);
+      await raiseAlert(env.DB, "license_locked", T0);
+      w.payos.statusFailures = [401, 401, 401];
+      w.clock.now = T0 + 300;
+      const result = await withFailingInsert("ops_alerts", "NEW.kind = 'payos_auth_failed'", () => reconcile(w.env, w.deps));
+      expect(result).toMatchObject({ checked: 3, granted: 0, errors: 3, alerts_sent: 1 });
+      expect(await alertRows()).toEqual([{ kind: "license_locked", count: 1 }]);
+      expect(events(error)).toEqual(Array(3).fill(["reconcile_failed", "reconcile_alert_failed"]).flat());
+      expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM orders WHERE last_checked_at = ?").bind(T0 + 300).first()).toEqual({ n: 3 });
+      expect(w.resend.sent).toHaveLength(1);
+    });
   });
 
   it("gửi cảnh báo cho OPERATOR_EMAIL", async () => {

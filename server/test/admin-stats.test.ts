@@ -1,8 +1,9 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
-import { ORDER_STATUSES } from "../src/admin-read";
+import { ORDER_CURRENCIES, ORDER_STATUSES } from "../src/admin-read";
 import { dayWindow, monthWindow, type Stats, vnDayKey } from "../src/admin-stats";
-import { lastAudit, makeAdmin } from "./admin-harness";
+import { SALE_CURRENCIES } from "../src/checkout";
+import { auditCount, lastAudit, makeAdmin } from "./admin-harness";
 import { resetDb, wrapDb } from "./db";
 import { T0 } from "./world";
 
@@ -14,13 +15,16 @@ const vn = (y: number, mo: number, d: number, h = 0, mi = 0, s = 0) => Date.UTC(
 /** "Bây giờ" của phần lớn test: 07:00 ngày 01/10/2026 GMT+7 (đúng bằng T0 của harness). */
 const NOW = vn(2026, 10, 1, 7);
 
-/** Giá gói (wrangler.jsonc) cho cột `amount` của đơn mẫu. */
+/** Giá gói (wrangler.jsonc) cho cột `amount` của đơn mẫu: VND, và USD tính bằng cent. */
 const PRICE = { monthly: 50000, six_months: 269000, yearly: 500000 } as const;
+const PRICE_USD = { monthly: 399, six_months: 2199, yearly: 3999 } as const;
 
 interface OrderSeed {
   status?: string;
   plan?: keyof typeof PRICE;
-  /** Mặc định 50000 nếu status là paid, 0 nếu không. */
+  /** Mặc định VND (PayOS); USD là đơn Creem. */
+  currency?: "VND" | "USD";
+  /** Mặc định 50000 (VND) hay giá USD của gói nếu status là paid, 0 nếu không. */
   amountPaid?: number;
   /** Mặc định bằng paidAt (nếu có) hoặc NOW. */
   createdAt?: number;
@@ -36,15 +40,19 @@ interface OrderSeed {
 /** Chèn thẳng một đơn (đủ cột NOT NULL của orders). */
 function order(o: OrderSeed = {}): D1PreparedStatement {
   const status = o.status ?? "paid";
+  const plan = o.plan ?? "monthly";
+  const usd = o.currency === "USD";
   const createdAt = o.createdAt ?? o.paidAt ?? NOW;
   const paidAt = o.paidAt !== undefined ? o.paidAt : status === "paid" ? createdAt : null;
-  const amountPaid = o.amountPaid ?? (status === "paid" ? 50000 : 0);
+  const amountPaid = o.amountPaid ?? (status === "paid" ? (usd ? PRICE_USD[plan] : 50000) : 0);
   return env.DB.prepare(
     `INSERT INTO orders (order_token_hash, provider, plan, amount, currency, email, email_consent_at, status, amount_paid, grant_kind, created_at, expires_at, paid_at, email_sent_at)
-     VALUES ('h', 'payos', ?, ?, 'VND', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES ('h', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).bind(
-    o.plan ?? "monthly",
-    PRICE[o.plan ?? "monthly"],
+    usd ? "creem" : "payos",
+    plan,
+    usd ? PRICE_USD[plan] : PRICE[plan],
+    usd ? "USD" : "VND",
     o.email !== undefined ? o.email : "khach@example.com",
     createdAt,
     status,
@@ -94,11 +102,11 @@ function activation(licenseId: string, o: { device?: string; lastValidatedAt?: n
 const trial = (device: string, startedAt: number, endsAt = startedAt + 10 * 86400): D1PreparedStatement =>
   env.DB.prepare("INSERT INTO trials (device_id_hash, started_at, ends_at, last_seen_at) VALUES (?, ?, ?, ?)").bind(device, startedAt, endsAt, startedAt);
 
-/** Gọi route với đồng hồ giả ở `now`; kiểm 200 và trả phản hồi đã gõ kiểu. */
-async function getStats(now = NOW): Promise<Stats> {
+/** Gọi route với đồng hồ giả ở `now` (và `?currency=` nếu có); kiểm 200 và trả phản hồi đã gõ kiểu. */
+async function getStats(now = NOW, currency?: string): Promise<Stats> {
   const { w, adminCall } = makeAdmin();
   w.clock.now = now;
-  const res = await adminCall("/admin/stats");
+  const res = await adminCall(currency === undefined ? "/admin/stats" : `/admin/stats?currency=${currency}`);
   expect(res.status).toBe(200);
   return res.body as unknown as Stats;
 }
@@ -532,12 +540,198 @@ describe("GET /admin/stats: Sử dụng", () => {
   });
 });
 
+describe("GET /admin/stats: loại tiền (VND qua PayOS, USD qua Creem)", () => {
+  /**
+   * Bán cả hai loại tiền: hôm nay (01/10) mỗi loại 1 đơn Monthly mua mới; 3 ngày trước (28/09, tháng trước) 1 đơn Yearly, nhưng
+   * khác loại cấp quyền: VND gia hạn (extend), USD đổi gói (change). Cơ cấu loại cấp quyền của hai loại tiền phải khác nhau để
+   * câu SQL nào lọc nhầm loại tiền (hay bind cứng một loại) làm test đỏ; hai loại cùng cơ cấu thì kết quả trùng nhau và không bắt được.
+   */
+  async function seedBoth() {
+    await seed(
+      order({ paidAt: NOW - 60 }),
+      order({ paidAt: NOW - 60, currency: "USD" }),
+      order({ paidAt: NOW - 3 * 86400, currency: "USD", plan: "yearly", grantKind: "change" }),
+      order({ paidAt: NOW - 3 * 86400, amountPaid: 500000, plan: "yearly", grantKind: "extend" }),
+    );
+  }
+
+  it("mặc định là VND: đơn USD không cộng vào doanh thu VND (ngày, tháng, theo gói, 30 ngày theo loại)", async () => {
+    await seedBoth();
+    const s = await getStats();
+    expect(s.currency).toBe("VND");
+    expect(s.currencies).toEqual(["VND", "USD"]);
+    expect([s.money.today, s.money.last_7d, s.money.this_month, s.money.last_month]).toEqual([50000, 550000, 50000, 500000]);
+    expect(dayOf(s, "2026-10-01")).toEqual({ day: "2026-10-01", revenue: 50000, orders: 1 });
+    expect(monthOf(s, "2026-10")).toMatchObject({ monthly: { revenue: 50000, orders: 1 }, yearly: { revenue: 0, orders: 0 } });
+    expect(monthOf(s, "2026-09")).toMatchObject({ monthly: { revenue: 0, orders: 0 }, yearly: { revenue: 500000, orders: 1 } });
+    expect(s.customers.grants_30d).toMatchObject({
+      new: { revenue: 50000, orders: 1 },
+      extend: { revenue: 500000, orders: 1 },
+      change: { revenue: 0, orders: 0 },
+    });
+    expect(s.customers.grants_monthly.slice(-2)).toMatchObject([
+      { extend: 1, new: 0, change: 0 },
+      { new: 1, extend: 0, change: 0 },
+    ]);
+  });
+
+  it("?currency=USD: chỉ đơn USD, số tiền là cent; ngày, tháng theo gói, 30 ngày theo loại và đơn theo tháng đều theo USD", async () => {
+    await seedBoth();
+    const s = await getStats(NOW, "USD");
+    expect(s.currency).toBe("USD");
+    expect(s.currencies).toEqual(["VND", "USD"]);
+    expect([s.money.today, s.money.last_7d, s.money.this_month, s.money.last_month]).toEqual([399, 399 + 3999, 399, 3999]);
+    expect(dayOf(s, "2026-10-01")).toEqual({ day: "2026-10-01", revenue: 399, orders: 1 });
+    expect(dayOf(s, "2026-09-28")).toEqual({ day: "2026-09-28", revenue: 3999, orders: 1 });
+    expect(monthOf(s, "2026-10")).toMatchObject({ monthly: { revenue: 399, orders: 1 }, six_months: { revenue: 0, orders: 0 }, yearly: { revenue: 0, orders: 0 } });
+    expect(monthOf(s, "2026-09")).toMatchObject({ monthly: { revenue: 0, orders: 0 }, yearly: { revenue: 3999, orders: 1 } });
+    // Khác VND ở loại cấp quyền (đổi gói, không phải gia hạn): bind cứng "VND" hay bỏ lọc loại tiền ở câu nào cũng lộ ra.
+    expect(s.customers.grants_30d).toMatchObject({
+      new: { revenue: 399, orders: 1 },
+      extend: { revenue: 0, orders: 0 },
+      change: { revenue: 3999, orders: 1 },
+    });
+    expect(s.customers.grants_monthly.slice(-2)).toMatchObject([
+      { change: 1, extend: 0, new: 0 },
+      { new: 1, extend: 0, change: 0 },
+    ]);
+  });
+
+  it("6 Months bằng USD có doanh thu riêng, không lẫn vào Monthly hay Yearly", async () => {
+    await seed(order({ paidAt: NOW - 60, currency: "USD", plan: "six_months" }));
+    const s = await getStats(NOW, "USD");
+    expect(monthOf(s, "2026-10")).toMatchObject({ monthly: { revenue: 0, orders: 0 }, six_months: { revenue: 2199, orders: 1 }, yearly: { revenue: 0, orders: 0 } });
+    expect((await getStats()).money.today).toBe(0);
+  });
+
+  it("currencies: VND luôn có; USD chỉ khi đã có đơn thu tiền USD (kể cả đơn đã hoàn tiền), không phải đơn USD chưa trả", async () => {
+    expect((await getStats()).currencies).toEqual(["VND"]);
+    await seed(order({ currency: "USD", status: "pending" }), order({ currency: "USD", status: "expired" }));
+    expect((await getStats()).currencies).toEqual(["VND"]);
+    await seed(order({ currency: "USD", status: "refunded", amountPaid: 399, paidAt: NOW - 60 }));
+    expect((await getStats()).currencies).toEqual(["VND", "USD"]);
+    // Xem USD khi chưa có đơn USD nào đã trả vẫn hợp lệ: toàn số 0.
+    await env.DB.prepare("DELETE FROM orders").run();
+    const empty = await getStats(NOW, "USD");
+    expect(empty).toMatchObject({ currency: "USD", currencies: ["VND"], money: { today: 0, last_7d: 0, this_month: 0, last_month: 0 } });
+    expect(empty.money.daily.every((d) => d.revenue === 0 && d.orders === 0)).toBe(true);
+    expect(empty.money.monthly.every((m) => m.monthly.revenue === 0 && m.six_months.revenue === 0 && m.yearly.revenue === 0)).toBe(true);
+  });
+
+  // Đơn Creem hết hạn rồi cấp tay (admin.ts dùng amount_paid của đơn, là 0), đơn paid_needs_review và đơn hoàn tiền có thể có
+  // amount_paid = 0: vẫn là đơn USD đã xử lý, nên nút USD phải hiện (trang vẫn đếm đơn của chúng ở ngày và tháng).
+  it.each(["paid", "paid_needs_review", "refunded"])("currencies: đơn USD %s dù amount_paid = 0 (vd cấp tay đơn hết hạn) vẫn đưa USD vào danh sách", async (status) => {
+    await seed(order({ currency: "USD", status, amountPaid: 0, paidAt: NOW - 60 }));
+    expect((await getStats(NOW, "USD")).currencies).toEqual(["VND", "USD"]);
+    expect((await getStats()).currencies).toEqual(["VND", "USD"]);
+  });
+
+  it("đơn USD paid cấp tay (amount_paid = 0) hiện ở số đơn theo ngày với doanh thu 0, và USD có trong currencies", async () => {
+    await seed(order({ currency: "USD", status: "paid", amountPaid: 0, paidAt: NOW - 60 }));
+    const s = await getStats(NOW, "USD");
+    expect(s.currencies).toEqual(["VND", "USD"]);
+    expect(dayOf(s, "2026-10-01")).toEqual({ day: "2026-10-01", revenue: 0, orders: 1 });
+    expect(s.money.today).toBe(0);
+  });
+
+  it.each(["pending", "processing", "underpaid", "cancelled", "expired", "failed"])(
+    "currencies: đơn USD %s chưa thu đồng nào (amount_paid = 0) không đưa USD vào danh sách",
+    async (status) => {
+      await seed(order({ currency: "USD", status, amountPaid: 0, createdAt: NOW - 60 }));
+      expect((await getStats()).currencies).toEqual(["VND"]);
+    },
+  );
+
+  it("currencies: đơn USD chưa thành công nhưng đã ghi số tiền khách trả (underpaid, amount_paid > 0) vẫn đưa USD vào danh sách", async () => {
+    await seed(order({ currency: "USD", status: "underpaid", amountPaid: 100, createdAt: NOW - 60 }));
+    expect((await getStats()).currencies).toEqual(["VND", "USD"]);
+  });
+
+  it("sức khỏe, dùng thử và sử dụng không theo loại tiền: cùng một số, có nghĩa (khác 0), dù xem VND hay USD", async () => {
+    const lic = license();
+    await seed(
+      lic.stmt,
+      activation(lic.id, { device: "may-1" }),
+      trial("may-1", NOW - 5 * 86400), // trong 30 ngày, đã gắn license
+      trial("may-2", NOW - 3600), // trong 30 ngày, chưa mua
+      order({ currency: "USD", paidAt: NOW - 60, emailSentAt: NOW - 30 }),
+      order({ currency: "USD", status: "expired", createdAt: NOW - 60 }),
+      order({ paidAt: NOW - 120 }), // VND đã trả, chưa gửi key
+    );
+    const vnd = await getStats();
+    const usd = await getStats(NOW, "USD");
+    const trials = (s: Stats) => ({
+      total: s.customers.trials_total,
+      purchased: s.customers.trials_total_purchased,
+      d30: s.customers.trials_30d,
+      d30_purchased: s.customers.trials_30d_purchased,
+    });
+    // Đơn của cả hai loại tiền nằm chung trong sức khỏe: 2 đơn paid (1 USD + 1 VND), 1 expired, 1 trong 2 đã gửi key.
+    expect(vnd.health.orders_30d).toMatchObject({ paid: 2, expired: 1 });
+    expect(vnd.health.email).toEqual({ paid_with_email_30d: 2, sent: 1 });
+    expect(vnd.health).toMatchObject({ expiring_7d: 0, expiring_30d: 1 });
+    expect(vnd.health).toEqual(usd.health);
+    expect(vnd.usage).toMatchObject({ active_licenses: 1, active_devices: 1, devices_7d: 1, trials_active: 2 });
+    expect(vnd.usage.new_trials_daily.reduce((n, d) => n + d.count, 0)).toBe(2);
+    expect(vnd.usage).toEqual(usd.usage);
+    expect(trials(vnd)).toEqual({ total: 2, purchased: 1, d30: 2, d30_purchased: 1 });
+    expect(trials(usd)).toEqual(trials(vnd));
+  });
+
+  it("currency không hợp lệ: 400 invalid_request field currency, không ghi nhật ký; rỗng thì như mặc định VND", async () => {
+    const { adminCall } = makeAdmin();
+    for (const bad of ["EUR", "usd", "VND,USD", "USD%20", "0"]) {
+      expect(await adminCall(`/admin/stats?currency=${bad}`), bad).toMatchObject({ status: 400, body: { error: "invalid_request", field: "currency" } });
+    }
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: 0 });
+    expect((await adminCall("/admin/stats?currency=")).body).toMatchObject({ currency: "VND" });
+    expect((await adminCall("/admin/stats?currency=USD")).body).toMatchObject({ currency: "USD" });
+  });
+
+  it("?currency=VND tường minh cho đúng kết quả của mặc định, không lẫn đơn USD", async () => {
+    await seedBoth();
+    const explicit = await getStats(NOW, "VND");
+    expect(explicit).toEqual(await getStats());
+    expect(explicit.currency).toBe("VND");
+    expect(explicit.money.today).toBe(50000);
+  });
+
+  it("mỗi lần xem hợp lệ ghi đúng một dòng stats_viewed, kể cả khi chọn loại tiền (?currency=USD, ?currency=VND)", async () => {
+    const { adminCall } = makeAdmin();
+    expect(await auditCount("stats_viewed")).toBe(0);
+    const queries = ["?currency=USD", "?currency=USD", "?currency=VND", ""];
+    for (const [i, q] of queries.entries()) {
+      expect((await adminCall(`/admin/stats${q}`)).status, q).toBe(200);
+      expect(await auditCount("stats_viewed"), q).toBe(i + 1);
+    }
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log").first()).toEqual({ n: queries.length });
+  });
+
+  it("tham số lặp: Hono lấy giá trị đầu (?currency=USD&currency=EUR là USD, ?currency=EUR&currency=USD là 400)", async () => {
+    const { adminCall } = makeAdmin();
+    expect(await adminCall("/admin/stats?currency=USD&currency=EUR")).toMatchObject({ status: 200, body: { currency: "USD" } });
+    expect(await adminCall("/admin/stats?currency=EUR&currency=USD")).toMatchObject({ status: 400, body: { error: "invalid_request", field: "currency" } });
+    expect(await auditCount("stats_viewed")).toBe(1);
+  });
+
+  it("danh sách loại tiền chỉ có một nguồn: ORDER_CURRENCIES của Web Admin bằng SALE_CURRENCIES của checkout; loại nào bán được thì xem được", async () => {
+    expect([...ORDER_CURRENCIES]).toEqual([...SALE_CURRENCIES]);
+    for (const currency of SALE_CURRENCIES) expect((await getStats(NOW, currency)).currency).toBe(currency);
+  });
+
+  it("request từ trang khác vẫn 403 trước khi kiểm currency", async () => {
+    const { adminCall } = makeAdmin();
+    expect(await adminCall("/admin/stats?currency=EUR", { headers: { "sec-fetch-site": "cross-site" } })).toMatchObject({ status: 403 });
+  });
+});
+
 describe("GET /admin/stats: hợp đồng", () => {
   it("cơ sở dữ liệu trống: toàn bộ phản hồi đúng từng trường", async () => {
     const zero = { revenue: 0, orders: 0 };
     expect(await getStats()).toEqual({
       generated_at: NOW,
       currency: "VND",
+      currencies: ["VND"],
       money: {
         today: 0,
         last_7d: 0,

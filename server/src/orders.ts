@@ -3,17 +3,20 @@
 import type { Hono } from "hono";
 import { alertIfChanged, raiseAlert } from "./alerts";
 import type { AppEnv } from "./app";
-import { audit, auditIfChanged } from "./audit";
+import { auditIfChanged } from "./audit";
 import { sha256Hex, timingSafeEqual } from "./crypto";
 import { type Deps, sendLicenseMail } from "./deps";
 import { clientIp, fail, tooMany } from "./http";
 import { formatLicenseKey, generateLicenseKey } from "./license-key";
+import type { WebhookEvent } from "./payment/provider";
 import { computeGrant, type GrantTerms, isPlan, PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
 import { hit } from "./ratelimit";
 
 export interface OrderRow {
   order_code: number;
   provider: string;
+  /** Mã của đơn ở cổng (paymentLinkId của PayOS, id phiên thanh toán của Creem); NULL khi cổng chưa trả lời lúc tạo. */
+  provider_ref: string | null;
   status: string;
   plan: string;
   amount: number;
@@ -39,8 +42,8 @@ export interface Granted {
 export async function loadOrder(db: D1Database, orderCode: number): Promise<OrderRow | null> {
   return db
     .prepare(
-      `SELECT order_code, provider, status, plan, amount, amount_paid, currency, email, renew_license_id, license_id,
-              created_at, expires_at
+      `SELECT order_code, provider, provider_ref, status, plan, amount, amount_paid, currency, email, renew_license_id,
+              license_id, created_at, expires_at
        FROM orders WHERE order_code = ?`,
     )
     .bind(orderCode)
@@ -61,7 +64,9 @@ const GRANT_ATTEMPTS = 5;
 
 /**
  * Trạng thái mà đơn không bao giờ được áp lại: đã cấp (`paid`), hay license đã thu hồi nhận được tiền và đang chờ
- * người vận hành xử lý (`paid_needs_review`, QĐ37), hay người vận hành đã ghi là hoàn tiền ngoài hệ thống (`refunded`).
+ * người vận hành xử lý (`paid_needs_review`, QĐ37), hay đã hoàn tiền (`refunded`): người vận hành ghi là hoàn ngoài hệ thống,
+ * hay cổng báo đã hoàn đủ (webhook hoàn tiền hay tranh chấp, handleRefund) ở bất kỳ trạng thái nào, kể cả trước khi cấp.
+ * Nhờ vậy cấp tự động (webhook, đối soát) và cấp tay của admin đều từ chối đơn đã hoàn.
  */
 export const SETTLED_STATUSES = ["paid", "paid_needs_review", "refunded"] as const;
 const NOT_SETTLED = `status NOT IN (${SETTLED_STATUSES.map((x) => `'${x}'`).join(", ")})`;
@@ -176,6 +181,8 @@ export async function grantOrder(
         converted_days: terms.converted_days,
         paid_at: at,
         amount_paid: opts.amountPaid,
+        // Đơn vị của amount_paid (cent USD, đồng VND) để Web Admin hiển thị đúng.
+        currency: order.currency,
       },
     });
     await opts.beforeCommit?.();
@@ -198,7 +205,7 @@ export async function grantOrder(
             action: "order_needs_review",
             licenseId,
             orderCode: order.order_code,
-            detail: { reason: "license_revoked", plan, amount_paid: opts.amountPaid, paid_at: at },
+            detail: { reason: "license_revoked", plan, amount_paid: opts.amountPaid, currency: order.currency, paid_at: at },
           }),
           alertIfChanged(db, "order_needs_review", opts.now),
         ]);
@@ -281,8 +288,8 @@ export async function mailGranted(
 }
 
 /**
- * `already_paid`: đơn đã cấp (`paid`). `already_settled`: đơn đã khép mà không phải đã cấp (`refunded`).
- * `needs_review`: đơn đang chờ người vận hành (`paid_needs_review`).
+ * `already_paid`: đơn đang `paid`. `already_settled`: đơn đã hoàn tiền (`refunded`); đơn đó có thể đã được cấp license trước
+ * khi hoàn (license giữ nguyên, D5) hay chưa bao giờ được cấp. `needs_review`: đơn đang chờ người vận hành (`paid_needs_review`).
  */
 export type FulfilResult = "granted" | "already_paid" | "already_settled" | "needs_review" | "not_paid" | "unknown_order";
 
@@ -297,14 +304,29 @@ async function orderStatus(db: D1Database, orderCode: number): Promise<string> {
 }
 
 /**
+ * Mã của đơn ở cổng lấy từ webhook đã ký (WebhookEvent `payment`, `providerRef`), cùng tên cổng của endpoint đã nhận nó.
+ * Chỉ dùng khi đơn chưa lưu mã ở cổng.
+ */
+export interface ProviderRefHint {
+  provider: string;
+  providerRef: string;
+}
+
+/**
  * Hỏi cổng thanh toán của đơn (orders.provider) trạng thái thật rồi xử lý (§6.8): chỉ cấp khi status paid,
  * amountPaid ≥ amount và amount khớp đơn. Dùng chung cho webhook và đối soát. Lỗi mạng thì ném cho bên gọi.
+ * - Đơn chưa có `provider_ref` (Worker dừng giữa lúc tạo phiên và lúc lưu mã phiên, hay mất phản hồi tạo phiên) mà webhook
+ *   đúng chữ ký của chính cổng của đơn mang mã phiên (`hint`): hỏi cổng theo mã đó. Cổng kiểm mã phiên thuộc đúng đơn này
+ *   (Creem: `request_id`) và ném lỗi nếu không, nên chỉ lưu mã khi đã hỏi được; lưu có điều kiện `provider_ref IS NULL`.
+ * - Cổng báo đơn đã hoàn tiền (`refunded`, lớp phòng thủ): đơn thành `refunded` với nhật ký và cảnh báo `order_refunded`
+ *   như webhook hoàn tiền (Q1), nguồn `provider_status`.
  */
 export async function fulfilOrder(
   env: { DB: D1Database; ENVIRONMENT: string; PLANS?: unknown },
   deps: Deps,
   orderCode: number,
   actor: string,
+  hint?: ProviderRefHint,
 ): Promise<FulfilResult> {
   const order = await loadOrder(env.DB, orderCode);
   if (!order) return "unknown_order";
@@ -312,15 +334,26 @@ export async function fulfilOrder(
   const provider = Object.hasOwn(deps.payments, order.provider) ? deps.payments[order.provider] : undefined;
   if (!provider) throw new Error(`không có cổng thanh toán ${order.provider}`);
   const now = deps.now();
-  const st = await provider.getPaymentStatus(orderCode);
+  const hintedRef = order.provider_ref === null && hint?.provider === order.provider ? hint.providerRef : null;
+  const st = await provider.getPaymentStatus({ orderCode, providerRef: order.provider_ref ?? hintedRef });
+  // Số đã nhận ghi vào D1 (cột không có CHECK) không bao giờ âm hay NaN, ở mọi đường ghi dưới đây.
+  const amountPaid = st.amountPaid > 0 ? st.amountPaid : 0;
+  if (hintedRef !== null) {
+    const filled = await env.DB.prepare("UPDATE orders SET provider_ref = ?2 WHERE order_code = ?1 AND provider_ref IS NULL")
+      .bind(orderCode, hintedRef)
+      .run();
+    if (filled.meta.changes === 1) {
+      console.warn(JSON.stringify({ event: "order_provider_ref_filled", order_code: orderCode, provider: order.provider }));
+    }
+  }
   const amountMatches = st.amount === order.amount;
-  if (amountMatches && st.status === "paid" && st.amountPaid >= st.amount) {
+  if (amountMatches && st.status === "paid" && amountPaid >= st.amount) {
     const plans = parsePlans(env.PLANS);
     if (!plans) throw new Error("bảng gói (PLANS) chưa cấu hình hoặc sai");
     const granted = await grantOrder(env.DB, plans, order, {
       now,
       paidAt: paymentTime(order, st.paidAt, now),
-      amountPaid: st.amountPaid,
+      amountPaid,
       actor,
     });
     if (granted === "already_settled") return settledResult(await orderStatus(env.DB, orderCode));
@@ -329,25 +362,213 @@ export async function fulfilOrder(
     await mailGranted(env.DB, deps, env.ENVIRONMENT, order, granted);
     return "granted";
   }
-  // Số tiền của cổng khác số tiền của đơn là bất thường: không cấp, để người vận hành xem (admin cấp tay nếu đúng).
-  const local = !amountMatches ? "failed" : st.status === "paid" ? "underpaid" : st.status;
-  const changed = await env.DB.prepare(
+  // Cổng báo đã hoàn đủ: đơn thành refunded dù số tiền lệch (M-3, Q1: hoàn đủ thì refunded ở mọi trạng thái), để người vận hành không
+  // cấp tay nhầm một đơn đã hoàn. Số tiền của cổng khác số tiền của đơn là bất thường: không cấp, để người vận hành xem (admin cấp
+  // tay nếu đúng).
+  const local = st.status === "refunded" ? "refunded" : !amountMatches ? "failed" : st.status === "paid" ? "underpaid" : st.status;
+  const update = env.DB.prepare(
     `UPDATE orders SET status = ?2, amount_paid = ?3, last_checked_at = ?4 WHERE order_code = ?1 AND ${NOT_SETTLED}`,
-  )
-    .bind(orderCode, local, st.amountPaid, now)
-    .run();
+  ).bind(orderCode, local, amountPaid, now);
+  if (local === "refunded") {
+    // Đơn khép vì hoàn tiền phải để lại dấu như webhook hoàn tiền (Q1): đổi trạng thái, nhật ký và cảnh báo cùng một batch, nhật
+    // ký chỉ ghi khi câu đổi trạng thái có tác dụng, cảnh báo chỉ khi nhật ký vừa ghi.
+    const [, log] = await env.DB.batch([
+      update,
+      auditIfChanged(env.DB, {
+        at: now,
+        actor,
+        action: "order_refunded",
+        licenseId: order.license_id ?? order.renew_license_id,
+        orderCode,
+        detail: {
+          source: "provider_status",
+          reason: "refund",
+          full: true,
+          prev_status: order.status,
+          plan: order.plan,
+          amount: order.amount,
+          currency: order.currency,
+          amount_paid: amountPaid,
+          license_id: order.license_id ?? order.renew_license_id,
+        },
+      }),
+      alertIfChanged(env.DB, "order_refunded", now),
+    ]);
+    if (log?.meta.changes === 1) {
+      console.warn(
+        JSON.stringify({
+          event: "order_refund_event",
+          order_code: orderCode,
+          action: "order_refunded",
+          prev_status: order.status,
+          status_after: "refunded",
+          source: "provider_status",
+        }),
+      );
+    }
+    return "not_paid";
+  }
   const action = !amountMatches ? "order_amount_mismatch" : local === "underpaid" ? "order_underpaid" : null;
-  if (action && changed.meta.changes === 1 && (order.status !== local || order.amount_paid !== st.amountPaid)) {
-    if (!amountMatches) console.warn(JSON.stringify({ event: "order_amount_mismatch", order_code: orderCode }));
-    await audit(env.DB, {
+  if (action === null) {
+    await update.run();
+    return "not_paid";
+  }
+  // Cổng báo đã trả mà số tiền không như đơn: cảnh báo order_payment_review khi lệch số tiền (mọi cổng), hay khi đơn underpaid ở
+  // mọi cổng trừ PayOS. PayOS underpaid là khách chuyển khoản thiếu: chuyển bù được và server tự cấp khi đủ, nên không cảnh báo
+  // (spec §4.1, QĐ-8). Creem underpaid là mã giảm giá hay trả thấp hơn giá (Q4, D6): người vận hành cấp tay hay hoàn tiền.
+  const review = !amountMatches || order.provider !== "payos";
+  // Chỉ khi đổi thật (trạng thái hay số đã nhận khác dòng đang có): đổi đơn, nhật ký và cảnh báo trong cùng một batch; nhật ký chỉ
+  // ghi khi câu đổi có tác dụng, cảnh báo chỉ khi nhật ký vừa ghi. Hỏi lại mà không có gì mới (webhook gửi lại, đối soát hỏi lại
+  // đơn underpaid) thì chỉ có câu `update` cuối batch (ghi lúc hỏi).
+  const [, log] = await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE orders SET status = ?2, amount_paid = ?3, last_checked_at = ?4
+       WHERE order_code = ?1 AND ${NOT_SETTLED} AND (status <> ?2 OR amount_paid <> ?3)`,
+    ).bind(orderCode, local, amountPaid, now),
+    auditIfChanged(env.DB, {
       at: now,
       actor,
       action,
       orderCode,
-      detail: { amount: order.amount, provider_amount: st.amount, amount_paid: st.amountPaid },
-    });
-  }
+      // `currency` để Web Admin hiển thị đúng đơn vị của các số tiền (cent USD, đồng VND). Dữ kiện của cổng (ReviewDetail: giảm
+      // giá, số khách trả, thuế, trường hỏng) khi cổng có đặt.
+      detail: { amount: order.amount, currency: order.currency, provider_amount: st.amount, amount_paid: amountPaid, ...st.reviewDetail },
+    }),
+    ...(review ? [alertIfChanged(env.DB, "order_payment_review", now)] : []),
+    update,
+  ]);
+  if (!amountMatches && log?.meta.changes === 1) console.warn(JSON.stringify({ event: "order_amount_mismatch", order_code: orderCode }));
   return "not_paid";
+}
+
+/**
+ * `refunded`: sự kiện này đổi đơn sang `refunded`; `noted`: chỉ ghi nhật ký và cảnh báo, trạng thái đơn không đổi;
+ * `duplicate`: sự kiện (cùng mã) đã xử lý rồi, không ghi gì; `unknown_order`: không có đơn nào của cổng mang mã phiên này
+ * (nhật ký và cảnh báo `payment_unmatched`, recordUnmatched; gửi lại cùng mã vẫn là `unknown_order` mà không ghi thêm).
+ */
+export type RefundResult = "refunded" | "noted" | "duplicate" | "unknown_order";
+
+type RefundEvent = Extract<WebhookEvent, { kind: "refund" }>;
+
+/** Tên nhật ký, cũng là loại cảnh báo, của một sự kiện hoàn tiền hay tranh chấp. */
+function refundAction(event: RefundEvent): "order_disputed" | "order_refunded" | "order_partially_refunded" | "order_refund_unconfirmed" {
+  if (event.reason === "dispute") return "order_disputed";
+  if (event.refundStatus !== "succeeded") return "order_refund_unconfirmed";
+  return event.full ? "order_refunded" : "order_partially_refunded";
+}
+
+/**
+ * Webhook hoàn tiền hay tranh chấp (spec 2026-10-14 §4.4, đổi theo Q1 của chủ dự án ngày 2026-10-15). Tin payload đã kiểm chữ
+ * ký, không hỏi lại cổng (Creem vẫn báo đơn `paid` sau khi hoàn). Không đụng license (D5).
+ * - Mỗi sự kiện chưa thấy của một đơn đã biết, ở bất kỳ trạng thái nào, để lại đúng một nhật ký, một cảnh báo và một dòng log:
+ *   tranh chấp là `order_disputed` (luôn, kể cả đơn đã `refunded`); hoàn tiền thành công là `order_refunded` (đủ) hay
+ *   `order_partially_refunded`; lần hoàn chưa thành công (đang chờ, thất bại, thiếu trạng thái) là `order_refund_unconfirmed`.
+ * - Cổng báo đã lấy lại đủ tiền (`full`) mà đơn chưa `refunded` thì đơn thành `refunded`, kể cả đơn chưa cấp (webhook hoàn tiền
+ *   tới trước khi cấp): `refunded` thuộc SETTLED_STATUSES, nên sau đó không đường nào cấp key hay gửi thư cho đơn này nữa.
+ * - Khử trùng theo mã sự kiện: cùng một batch (một transaction) gồm (i) câu đổi trạng thái, (ii) câu ghi nhật ký, đều chỉ có
+ *   tác dụng khi nhật ký chưa có dòng nào của sự kiện này, rồi (iii) cảnh báo, chỉ ghi khi (ii) vừa ghi (`changes()` của câu
+ *   ngay trước). Cổng gửi lại hay hai request chạy chồng: chỉ một lần có tác dụng. Thiếu mã sự kiện thì không khử trùng được
+ *   (`= NULL` không bao giờ đúng): mỗi lần gửi là một sự kiện.
+ */
+export async function handleRefund(
+  env: { DB: D1Database },
+  deps: Pick<Deps, "now">,
+  provider: string,
+  event: RefundEvent,
+  actor: string,
+): Promise<RefundResult> {
+  const db = env.DB;
+  const order = await db
+    .prepare(
+      `SELECT order_code, status, plan, amount, currency, license_id, renew_license_id
+       FROM orders WHERE provider = ? AND provider_ref = ?`,
+    )
+    .bind(provider, event.providerRef)
+    .first<Pick<OrderRow, "order_code" | "status" | "plan" | "amount" | "currency" | "license_id" | "renew_license_id">>();
+  if (!order) {
+    console.warn(JSON.stringify({ event: "refund_unknown_order", provider, reason: event.reason, event_id: event.eventId }));
+    // QĐ-7: hoàn tiền hay tranh chấp của phiên không thuộc đơn nào cũng để lại dấu (gửi lại cùng mã thì không ghi thêm).
+    await recordUnmatched(db, deps.now(), provider, event, actor);
+    return "unknown_order";
+  }
+  const now = deps.now();
+  const action = refundAction(event);
+  const detail = {
+    event_id: event.eventId,
+    reason: event.reason,
+    provider_reason: event.providerReason,
+    refund_status: event.refundStatus,
+    full: event.full,
+    refunded_amount: event.refundedAmount,
+    provider_amount_paid: event.providerAmountPaid,
+    prev_status: order.status,
+    plan: order.plan,
+    amount: order.amount,
+    currency: order.currency,
+    license_id: order.license_id ?? order.renew_license_id,
+  };
+  // ?1 mã đơn, ?2 mã sự kiện: dùng chung cho (i) và (ii).
+  const unseen = "NOT EXISTS (SELECT 1 FROM audit_log WHERE order_code = ?1 AND json_extract(detail, '$.event_id') = ?2)";
+  const [update, log] = await db.batch([
+    db
+      .prepare(`UPDATE orders SET status = 'refunded' WHERE order_code = ?1 AND status <> 'refunded' AND ?3 = 1 AND ${unseen}`)
+      .bind(order.order_code, event.eventId, event.full ? 1 : 0),
+    // Cột license_id (trang license ở Web Admin tra theo cột này) đọc ngay trong câu ghi, từ dòng đơn lúc ghi.
+    db
+      .prepare(
+        `INSERT INTO audit_log (at, actor, action, license_id, order_code, detail)
+         SELECT ?3, ?4, ?5, (SELECT COALESCE(license_id, renew_license_id) FROM orders WHERE order_code = ?1), ?1, ?6 WHERE ${unseen}`,
+      )
+      .bind(order.order_code, event.eventId, now, actor, action, JSON.stringify(detail)),
+    // Đứng ngay sau câu ghi nhật ký: sự kiện đã thấy thì câu đó không ghi, nên cũng không có cảnh báo.
+    alertIfChanged(db, action, now),
+  ]);
+  if (log?.meta.changes !== 1) return "duplicate";
+  console.warn(
+    JSON.stringify({
+      event: "order_refund_event",
+      order_code: order.order_code,
+      action,
+      prev_status: order.status,
+      // Nhật ký đã ghi nên (i) đã chạy với cùng điều kiện khử trùng: `full` thì đơn chắc chắn đang `refunded`.
+      status_after: event.full ? "refunded" : order.status,
+      event_id: event.eventId,
+    }),
+  );
+  return update?.meta.changes === 1 ? "refunded" : "noted";
+}
+
+/**
+ * Webhook đúng chữ ký mà không khớp đơn nào (WebhookEvent `unmatched`; hoàn tiền/tranh chấp `unknown_order`; cò cấp có
+ * `reportUnknownOrder` mà mã đơn không có trong D1): khách có thể đã trả tiền mà server không biết (link công khai, Storefront,
+ * sản phẩm khác của tài khoản cổng). Một nhật ký `payment_unmatched` không gắn đơn (`detail`: cổng, loại sự kiện hay null, mã ở
+ * cổng, mã sự kiện), một cảnh báo cùng tên và một dòng log. Khử trùng theo mã
+ * sự kiện như handleRefund: câu ghi nhật ký chỉ có tác dụng khi chưa có nhật ký `payment_unmatched` nào của cùng cổng mang mã
+ * này, cảnh báo đứng ngay sau nó trong cùng batch. Thiếu mã sự kiện thì mỗi lần gửi là một sự kiện. Trả về false nếu sự kiện đã
+ * ghi rồi.
+ */
+export async function recordUnmatched(
+  db: D1Database,
+  now: number,
+  provider: string,
+  event: { eventType: string | null; providerRef: string | null; eventId: string | null },
+  actor: string,
+): Promise<boolean> {
+  const detail = { provider, event_type: event.eventType, provider_ref: event.providerRef, event_id: event.eventId };
+  const [log] = await db.batch([
+    db
+      .prepare(
+        `INSERT INTO audit_log (at, actor, action, detail)
+         SELECT ?1, ?2, 'payment_unmatched', ?3
+         WHERE NOT EXISTS (SELECT 1 FROM audit_log WHERE order_code IS NULL AND action = 'payment_unmatched'
+                             AND json_extract(detail, '$.event_id') = ?4 AND json_extract(detail, '$.provider') = ?5)`,
+      )
+      .bind(now, actor, JSON.stringify(detail), event.eventId, provider),
+    alertIfChanged(db, "payment_unmatched", now),
+  ]);
+  if (log?.meta.changes !== 1) return false;
+  console.warn(JSON.stringify({ event: "payment_unmatched", ...detail }));
+  return true;
 }
 
 /**
@@ -400,26 +621,64 @@ export function registerOrders(app: Hono<AppEnv>) {
     const name = c.req.param("provider");
     const provider = Object.hasOwn(deps.payments, name) ? deps.payments[name] : undefined;
     if (!provider) return fail(c, 404, "not_found");
-    let body: unknown;
+    // Thân thô: chữ ký của một số cổng (Creem) tính trên đúng nội dung thân nhận được, nên không parse trước khi kiểm.
+    let rawBody: string;
     try {
-      body = await c.req.json();
-    } catch {
+      rawBody = await c.req.text();
+    } catch (err) {
+      // Bên gửi ngắt giữa chừng: lỗi của request, không phải của server (không 500). Cổng không nhận được 2xx nên sẽ gửi lại.
+      console.warn(JSON.stringify({ event: "webhook_body_unreadable", provider: provider.name, error: String(err) }));
       return fail(c, 400, "invalid_request");
     }
-    const event = await provider.verifyWebhook(body);
+    const event = await provider.verifyWebhook({ rawBody, headers: c.req.raw.headers });
     if (event === "malformed") {
-      // Đúng chữ ký (đúng là cổng gửi) mà nội dung không đọc được: không phải giả mạo, nên không báo sai chữ ký, không
-      // tạo cảnh báo webhook_bad_signature và không ghi D1 (review cuối, N2).
+      // Thân không đọc được thành sự kiện (review cuối, N2): không báo sai chữ ký, không tạo cảnh báo webhook_bad_signature
+      // và không ghi D1. Với PayOS, thân không phải JSON vào đây khi chưa kiểm chữ ký, nên nhánh này không được tin hay ghi gì
+      // ngoài dòng log.
       console.warn(JSON.stringify({ event: "webhook_malformed", provider: provider.name }));
       return fail(c, 400, "invalid_request");
     }
     if (!event) {
       console.warn(JSON.stringify({ event: "webhook_bad_signature", provider: provider.name }));
-      await raiseAlert(c.env.DB, "webhook_bad_signature", deps.now());
+      // Cảnh báo không bao giờ đổi phản hồi: D1 lỗi lúc ghi cảnh báo thì vẫn trả 400 invalid_signature.
+      try {
+        await raiseAlert(c.env.DB, "webhook_bad_signature", deps.now());
+      } catch (err) {
+        console.error(
+          JSON.stringify({ event: "webhook_alert_failed", provider: provider.name, kind: "webhook_bad_signature", error: String(err) }),
+        );
+      }
       return fail(c, 400, "invalid_signature");
     }
+    if (event.kind === "ignore") return c.json({ ok: true, result: "ignored" });
+    if (event.kind === "unmatched") {
+      try {
+        const recorded = await recordUnmatched(c.env.DB, deps.now(), name, event, "webhook");
+        return c.json({ ok: true, result: recorded ? "unmatched" : "duplicate" });
+      } catch (err) {
+        // Cổng gửi lại webhook khi nhận mã khác 2xx: lần sau ghi được thì người vận hành vẫn được báo.
+        console.error(JSON.stringify({ event: "webhook_unmatched_failed", provider: name, error: String(err) }));
+        return fail(c, 503, "temporarily_unavailable");
+      }
+    }
+    if (event.kind === "refund") {
+      try {
+        return c.json({ ok: true, result: await handleRefund(c.env, deps, name, event, "webhook") });
+      } catch (err) {
+        // Cổng gửi lại webhook khi nhận mã khác 2xx.
+        console.error(JSON.stringify({ event: "webhook_refund_failed", provider: name, error: String(err) }));
+        return fail(c, 503, "temporarily_unavailable");
+      }
+    }
     try {
-      const result = await fulfilOrder(c.env, deps, event.orderCode, "webhook");
+      const hint = event.providerRef ? { provider: name, providerRef: event.providerRef } : undefined;
+      const result = await fulfilOrder(c.env, deps, event.orderCode, "webhook", hint);
+      // Cổng đặt reportUnknownOrder (Creem): mã đơn không có trong D1 thì người vận hành được báo như sự kiện không khớp đơn
+      // (gửi lại cùng mã thì không ghi thêm). PayOS không đặt: mẫu confirm-webhook mang orderCode lạ, chỉ trả 200.
+      if (result === "unknown_order" && event.reportUnknownOrder) {
+        const unknown = { ...event.reportUnknownOrder, providerRef: event.providerRef ?? null };
+        await recordUnmatched(c.env.DB, deps.now(), name, unknown, "webhook");
+      }
       return c.json({ ok: true, result });
     } catch (err) {
       // Cổng gửi lại webhook khi nhận mã khác 2xx; đối soát mỗi 5 phút cũng sẽ xử lý đơn này.

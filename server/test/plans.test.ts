@@ -9,9 +9,9 @@ const plans = parsePlans(env.PLANS) as PlanTable;
 describe("bảng gói (biến PLANS)", () => {
   it("có đúng ba gói trả phí với hạn mức, số ngày và giá của spec 2026-10-07 §2.1 và spec 2026-10-13 §1", () => {
     expect(plans).toEqual({
-      monthly: { quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000 } },
-      six_months: { quota_minutes_per_cycle: 6000, days_per_order: 180, prices: { VND: 269000 } },
-      yearly: { quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000 } },
+      monthly: { quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000, USD: 399 } },
+      six_months: { quota_minutes_per_cycle: 6000, days_per_order: 180, prices: { VND: 269000, USD: 2199 } },
+      yearly: { quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000, USD: 3999 } },
     });
     // Thứ tự mã gói là thứ tự trong màn hình Nâng cấp: theo thời hạn.
     expect([...PLAN_CODES]).toEqual(["monthly", "six_months", "yearly"]);
@@ -191,7 +191,40 @@ describe("luật mua thêm và đổi gói (§6.8, spec 2026-10-07 §2.3)", () =
   });
 
   it("thiếu giá theo loại tiền của đơn thì báo lỗi", () => {
-    expect(() => computeGrant(plans, lic("monthly", 20), "yearly", "USD", T0)).toThrow(/USD/);
+    expect(() => computeGrant(plans, lic("monthly", 20), "yearly", "EUR", T0)).toThrow(/EUR/);
+  });
+
+  describe("đơn trả bằng USD (spec 2026-10-14): luật đổi gói dùng bảng giá USD của loại tiền của đơn", () => {
+    it("license mới và mua thêm cùng gói: số ngày của gói, như VND", () => {
+      expect(computeGrant(plans, null, "monthly", "USD", T0)).toEqual({
+        plan: "monthly",
+        expires_at: T0 + 30 * DAY,
+        cycle_anchor: T0,
+        kind: "new",
+        converted_days: 0,
+      });
+      expect(computeGrant(plans, lic("yearly", 100), "yearly", "USD", T0)).toMatchObject({
+        expires_at: T0 + 100 * DAY + 365 * DAY,
+        kind: "extend",
+      });
+    });
+
+    it("Monthly còn 20 ngày, mua Yearly: 20 × (3,99 / 30) / (39,99 / 365) = 24,27… → 24 ngày (như VND)", () => {
+      expect(computeGrant(plans, lic("monthly", 20), "yearly", "USD", T0)).toMatchObject({ converted_days: 24, expires_at: T0 + 389 * DAY });
+    });
+
+    it("Yearly còn 200 ngày, mua Monthly: 200 × (39,99 / 365) / (3,99 / 30) = 164,75… → 164 ngày (như VND)", () => {
+      expect(computeGrant(plans, lic("yearly", 200), "monthly", "USD", T0)).toMatchObject({ converted_days: 164, expires_at: T0 + 194 * DAY });
+    });
+
+    it("tỉ lệ giá mỗi ngày của 6 Months lệch bảng VND khoảng 2,4% (spec 2026-10-14 D2), nên số ngày quy đổi lệch 1–2 ngày", () => {
+      // Monthly còn 20 ngày, mua 6 Months: USD 20 × (3,99 / 30) / (21,99 / 180) = 21,77… → 21 (VND: 22).
+      expect(computeGrant(plans, lic("monthly", 20), "six_months", "USD", T0).converted_days).toBe(21);
+      expect(computeGrant(plans, lic("monthly", 20), "six_months", "VND", T0).converted_days).toBe(22);
+      // 6 Months còn 100 ngày, mua Yearly: USD 111 ngày (VND: 109).
+      expect(computeGrant(plans, lic("six_months", 100), "yearly", "USD", T0).converted_days).toBe(111);
+      expect(computeGrant(plans, lic("six_months", 100), "yearly", "VND", T0).converted_days).toBe(109);
+    });
   });
 
   describe("gói 6 Months (spec 2026-10-13 §1)", () => {

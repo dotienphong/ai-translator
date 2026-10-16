@@ -1,8 +1,11 @@
 // Số liệu của trang Tổng quan (spec Web Admin phần 2, 2026-10-08-web-admin-tong-quan-design.md). Chỉ đọc.
 // Ngày và tháng theo GMT+7 (Việt Nam không có giờ mùa hè). Doanh thu chỉ tính đơn status = 'paid'.
+// Tiền không cộng lẫn loại (VND và cent USD): mọi con số tiền, và số đơn ở `money` và `customers.grants_*`, là của MỘT loại tiền,
+// chọn bằng `?currency=` (mặc định VND). Dùng thử, sức khỏe (đơn theo trạng thái, email key, license sắp hết hạn) và sử dụng
+// không theo loại tiền. Thay phần "currency": "VND" cố định của spec 2026-10-08 bằng spec 2026-10-14 §4.6.
 import type { Hono } from "hono";
 import { type AdminAppEnv, crossSite } from "./admin-auth";
-import { DAY, ORDER_STATUSES, VN_OFFSET, vnDayStart } from "./admin-read";
+import { DAY, ORDER_CURRENCIES, ORDER_STATUSES, type OrderCurrency, VN_OFFSET, vnDayStart } from "./admin-read";
 import { audit } from "./audit";
 import { fail } from "./http";
 import { PLAN_CODES, type PlanCode } from "./plans";
@@ -17,7 +20,10 @@ export interface Totals {
 
 export interface Stats {
   generated_at: number;
-  currency: "VND";
+  /** Loại tiền của `money` và `customers.grants_*` (tham số `currency`). */
+  currency: OrderCurrency;
+  /** Loại tiền đã có đơn thu tiền hay đơn đã xử lý (paid, paid_needs_review, refunded), để trang hiện nút chuyển; VND luôn có. */
+  currencies: OrderCurrency[];
   money: {
     today: number;
     last_7d: number;
@@ -99,6 +105,7 @@ const GRANT_KINDS: readonly GrantKind[] = ["new", "extend", "change", "other"];
 
 interface Windows {
   now: number;
+  currency: OrderCurrency;
   /** 00:00 GMT+7 hôm nay. */
   today: number;
   /** Đầu cửa sổ 7 ngày: hôm nay và 6 ngày trước. */
@@ -107,9 +114,9 @@ interface Windows {
   months: MonthWindow;
 }
 
-function windows(now: number): Windows {
+function windows(now: number, currency: OrderCurrency): Windows {
   const today = vnDayStart(now);
-  return { now, today, last7Start: today - 6 * DAY, days: dayWindow(now, 30), months: monthWindow(now, 12) };
+  return { now, currency, today, last7Start: today - 6 * DAY, days: dayWindow(now, 30), months: monthWindow(now, 12) };
 }
 
 /**
@@ -131,21 +138,21 @@ function moneySection(db: D1Database, w: Windows): Section<Stats["money"]> {
              COALESCE(SUM(CASE WHEN paid_at >= ?2 THEN amount_paid END), 0) AS last_7d,
              COALESCE(SUM(CASE WHEN paid_at >= ?3 THEN amount_paid END), 0) AS this_month,
              COALESCE(SUM(CASE WHEN paid_at >= ?4 AND paid_at < ?3 THEN amount_paid END), 0) AS last_month
-           FROM orders WHERE status = 'paid' AND paid_at >= ?4`,
+           FROM orders WHERE status = 'paid' AND currency = ?5 AND paid_at >= ?4`,
         )
-        .bind(w.today, w.last7Start, w.months.thisStart, w.months.lastStart),
+        .bind(w.today, w.last7Start, w.months.thisStart, w.months.lastStart, w.currency),
       db
         .prepare(
           `SELECT strftime('%Y-%m-%d', paid_at + ${VN_OFFSET}, 'unixepoch') AS day, COALESCE(SUM(amount_paid), 0) AS revenue, COUNT(*) AS orders
-           FROM orders WHERE status = 'paid' AND paid_at >= ?1 GROUP BY day`,
+           FROM orders WHERE status = 'paid' AND currency = ?2 AND paid_at >= ?1 GROUP BY day`,
         )
-        .bind(w.days.start),
+        .bind(w.days.start, w.currency),
       db
         .prepare(
           `SELECT strftime('%Y-%m', paid_at + ${VN_OFFSET}, 'unixepoch') AS month, plan, COALESCE(SUM(amount_paid), 0) AS revenue, COUNT(*) AS orders
-           FROM orders WHERE status = 'paid' AND paid_at >= ?1 GROUP BY month, plan`,
+           FROM orders WHERE status = 'paid' AND currency = ?2 AND paid_at >= ?1 GROUP BY month, plan`,
         )
-        .bind(w.months.start),
+        .bind(w.months.start, w.currency),
     ],
     build([totals = [], daily = [], monthly = []]) {
       const t: Row = totals[0] ?? {};
@@ -193,15 +200,15 @@ function customersSection(db: D1Database, w: Windows): Section<Stats["customers"
       db
         .prepare(
           `SELECT ${KIND} AS kind, COUNT(*) AS orders, COALESCE(SUM(amount_paid), 0) AS revenue
-           FROM orders WHERE status = 'paid' AND paid_at >= ?1 GROUP BY kind`,
+           FROM orders WHERE status = 'paid' AND currency = ?2 AND paid_at >= ?1 GROUP BY kind`,
         )
-        .bind(w.days.start),
+        .bind(w.days.start, w.currency),
       db
         .prepare(
           `SELECT strftime('%Y-%m', paid_at + ${VN_OFFSET}, 'unixepoch') AS month, ${KIND} AS kind, COUNT(*) AS orders
-           FROM orders WHERE status = 'paid' AND paid_at >= ?1 GROUP BY month, kind`,
+           FROM orders WHERE status = 'paid' AND currency = ?2 AND paid_at >= ?1 GROUP BY month, kind`,
         )
-        .bind(w.months.start),
+        .bind(w.months.start, w.currency),
     ],
     build([trials = [], grants = [], monthly = []]) {
       const t: Row = trials[0] ?? {};
@@ -296,24 +303,47 @@ function usageSection(db: D1Database, w: Windows): Section<Stats["usage"]> {
   };
 }
 
+/**
+ * Loại tiền đã có đơn thu tiền (amount_paid > 0 ở mọi trạng thái, kể cả đơn lệch số tiền chưa có doanh thu) hay đơn đã xử lý
+ * (paid, paid_needs_review, refunded) dù amount_paid = 0: đơn Creem hết hạn rồi cấp tay giữ amount_paid = 0 nhưng vẫn hiện ở số
+ * đơn theo ngày của loại tiền đó. VND luôn có, nên trang không bao giờ trống nút chọn.
+ */
+function currenciesSection(db: D1Database): Section<OrderCurrency[]> {
+  return {
+    statements: [db.prepare("SELECT DISTINCT currency FROM orders WHERE amount_paid > 0 OR status IN ('paid', 'paid_needs_review', 'refunded')")],
+    build([rows = []]) {
+      const seen = new Set(rows.map((r) => r.currency));
+      return ORDER_CURRENCIES.filter((c) => c === "VND" || seen.has(c));
+    },
+  };
+}
+
 /** Mọi câu SQL của một lần xem chạy trong MỘT db.batch: các con số nhất quán với nhau. */
-export async function computeStats(db: D1Database, now: number): Promise<Stats> {
-  const w = windows(now);
+export async function computeStats(db: D1Database, now: number, currency: OrderCurrency): Promise<Stats> {
+  const w = windows(now, currency);
+  const currencies = currenciesSection(db);
   const money = moneySection(db, w);
   const customers = customersSection(db, w);
   const health = healthSection(db, w);
   const usage = usageSection(db, w);
-  const results = await db.batch([...money.statements, ...customers.statements, ...health.statements, ...usage.statements]);
+  const results = await db.batch([
+    ...currencies.statements,
+    ...money.statements,
+    ...customers.statements,
+    ...health.statements,
+    ...usage.statements,
+  ]);
   let at = 0;
   const take = (s: Section<unknown>): Row[][] => {
     const part = results.slice(at, at + s.statements.length).map((r) => (r.results ?? []) as Row[]);
     at += s.statements.length;
     return part;
   };
-  // Literal đánh giá từ trái sang phải: thứ tự `take` phải đúng thứ tự gom câu SQL ở trên (money, customers, health, usage).
+  // Literal đánh giá từ trái sang phải: thứ tự `take` phải đúng thứ tự gom câu SQL ở trên (currencies, money, customers, health, usage).
   return {
     generated_at: now,
-    currency: "VND",
+    currency,
+    currencies: currencies.build(take(currencies)),
     money: money.build(take(money)),
     customers: customers.build(take(customers)),
     health: health.build(take(health)),
@@ -324,9 +354,13 @@ export async function computeStats(db: D1Database, now: number): Promise<Stats> 
 export function registerAdminStats(app: Hono<AdminAppEnv>): void {
   app.get("/admin/stats", async (c) => {
     if (crossSite(c)) return fail(c, 403, "forbidden");
+    // Chỉ nhận đúng mã loại tiền đã biết; trống thì VND.
+    const raw = c.req.query("currency");
+    const currency = raw === undefined || raw === "" ? "VND" : ORDER_CURRENCIES.find((x) => x === raw);
+    if (currency === undefined) return fail(c, 400, "invalid_request", { field: "currency" });
     const db = c.env.DB;
     const now = c.get("deps").now();
-    const stats = await computeStats(db, now);
+    const stats = await computeStats(db, now, currency);
     await audit(db, { at: now, actor: c.get("actor"), action: "stats_viewed" });
     return c.json(stats);
   });

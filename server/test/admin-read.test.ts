@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
+import { SALE_CURRENCIES } from "../src/checkout";
 import { sha256Hex } from "../src/crypto";
 import { reconcile } from "../src/reconcile";
 import { lastAudit, makeAdmin } from "./admin-harness";
@@ -523,6 +524,22 @@ describe("GET /admin/queue", () => {
 });
 
 describe("GET /admin/summary", () => {
+  it("DB trống (ngày chưa bán được gì): doanh thu hôm nay là 0 của từng loại tiền, không null, đủ khóa theo thứ tự SALE_CURRENCIES", async () => {
+    const { adminCall } = makeAdmin();
+    const res = await adminCall("/admin/summary");
+    expect(res).toEqual({ status: 200, body: { revenue_today: { VND: 0, USD: 0 }, paid_orders_7d: 0, active_licenses: 0 } });
+    expect(Object.keys(res.body.revenue_today as object)).toEqual([...SALE_CURRENCIES]);
+  });
+
+  it("ngày chỉ bán được đơn USD: VND là 0 (không null, không thiếu khóa), USD là số cent đã thu không gồm thuế", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buyCreem({ email: "chi-usd@example.com", plan: "yearly", tax: 300 });
+    expect(await adminCall("/admin/summary")).toEqual({
+      status: 200,
+      body: { revenue_today: { VND: 0, USD: 3999 }, paid_orders_7d: 1, active_licenses: 1 },
+    });
+  });
+
   it("doanh thu hôm nay theo ngày GMT+7, đơn đã trả 7 ngày, license còn hạn; ghi summary_viewed", async () => {
     const { w, adminCall } = makeAdmin();
     w.clock.now = T0 - 8 * 3600; // 23:00 ngày 30/09 giờ VN: hôm qua
@@ -536,9 +553,33 @@ describe("GET /admin/summary", () => {
     const res = await adminCall("/admin/summary");
     expect(res).toEqual({
       status: 200,
-      body: { revenue_today: 500000, currency: "VND", paid_orders_7d: 2, active_licenses: 2 },
+      body: { revenue_today: { VND: 500000, USD: 0 }, paid_orders_7d: 2, active_licenses: 2 },
     });
     expect(await lastAudit()).toMatchObject({ action: "summary_viewed", detail: null });
+  });
+
+  it("doanh thu hôm nay tách theo loại tiền: đơn USD (cent, không gồm thuế) không cộng vào VND; đơn đã hoàn, chờ xem xét hay chưa trả không tính", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy({ email: "vnd@example.com" });
+    await w.buyCreem({ email: "usd1@example.com", plan: "yearly", tax: 300 });
+    await w.buyCreem({ email: "usd2@example.com" });
+    const refunded = await w.buyCreem({ email: "hoan@example.com" });
+    await env.DB.prepare("UPDATE orders SET status = 'refunded' WHERE order_code = ?").bind(refunded.orderCode).run();
+    // Đơn USD đã trả (có paid_at, amount_paid) nhưng đang chờ xem xét: chưa phải doanh thu.
+    const review = await w.buyCreem({ email: "review@example.com", plan: "yearly" });
+    await env.DB.prepare("UPDATE orders SET status = 'paid_needs_review' WHERE order_code = ?").bind(review.orderCode).run();
+    expect(await env.DB.prepare("SELECT status, paid_at IS NOT NULL AS has_paid_at, amount_paid FROM orders WHERE order_code = ?").bind(review.orderCode).first()).toEqual({
+      status: "paid_needs_review",
+      has_paid_at: 1,
+      amount_paid: 3999,
+    });
+    const pending = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "chua-tra@example.com", consent: true, currency: "USD" });
+    expect(pending.status).toBe(201);
+    expect(await adminCall("/admin/summary")).toEqual({
+      status: 200,
+      // USD: yearly 3999 + monthly 399 (thuế 300 của khách không tính). Đơn đã trả trong 7 ngày: vnd, usd1, usd2 (đơn hoàn và đơn chờ xem xét không tính).
+      body: { revenue_today: { VND: 50000, USD: 4398 }, paid_orders_7d: 3, active_licenses: 5 },
+    });
   });
 
   it("từng điều kiện: chỉ đơn paid tính doanh thu, ranh giới 00:00 GMT+7, cửa sổ 7 ngày đóng ở đầu, license phải chưa thu hồi và còn hạn", async () => {
@@ -555,14 +596,19 @@ describe("GET /admin/summary", () => {
     await buyAt(T0 - 7 * DAY, "bien7@example.com"); // đúng 7 ngày trước: còn trong cửa sổ
     await buyAt(T0 - 7 * DAY - 1, "ngoai7@example.com"); // một giây ngoài cửa sổ
     await buyAt(T0 - 40 * DAY, "hethan@example.com"); // license đã hết hạn
+    await buyAt(T0 - 900, "du@example.com"); // PayOS báo thu dư: amount 50000, amount_paid 70000
+    await buyAt(T0 - 600, "thieu@example.com"); // đơn chuyển thiếu được cấp tay: amount 50000, amount_paid 20000
+    await env.DB.prepare("UPDATE orders SET amount_paid = 70000 WHERE email = 'du@example.com'").run();
+    await env.DB.prepare("UPDATE orders SET amount_paid = 20000 WHERE email = 'thieu@example.com'").run();
     await env.DB.prepare("UPDATE orders SET status = 'refunded' WHERE email = 'hoan@example.com'").run();
     await env.DB.prepare("UPDATE orders SET status = 'paid_needs_review' WHERE email = 'review@example.com'").run();
     await env.DB.prepare("UPDATE licenses SET revoked_at = ? WHERE email IN ('hoan@example.com', 'review@example.com')").bind(T0 - 600).run();
     w.clock.now = T0;
     expect(await adminCall("/admin/summary")).toEqual({
       status: 200,
-      // Doanh thu: dung0 (500000) + homnay (50000). 7 ngày: dung0, truoc0, homnay, bien7. License còn hạn: dung0, truoc0, homnay, bien7, ngoai7.
-      body: { revenue_today: 550000, currency: "VND", paid_orders_7d: 4, active_licenses: 5 },
+      // Doanh thu là SỐ ĐÃ THU (amount_paid), không phải giá đơn (amount): dung0 (500000) + homnay (50000) + du (70000) + thieu (20000).
+      // 7 ngày: dung0, truoc0, homnay, bien7, du, thieu. License còn hạn: dung0, truoc0, homnay, bien7, ngoai7, du, thieu.
+      body: { revenue_today: { VND: 640000, USD: 0 }, paid_orders_7d: 6, active_licenses: 7 },
     });
   });
 });

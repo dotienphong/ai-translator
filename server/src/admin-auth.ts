@@ -18,7 +18,8 @@ import type { KeyCheck } from "./token";
 
 export interface AdminDeps {
   now(): number;
-  payments: Record<string, PaymentProvider>;
+  /** Cổng thanh toán theo tên (orders.provider). Admin chỉ hỏi trạng thái đơn; không tạo phiên hay nhận webhook. */
+  payments: Record<string, Pick<PaymentProvider, "getPaymentStatus">>;
   payos: Pick<PayOSProvider, "confirmWebhook">;
   email: EmailProvider;
   /** Bảng gói của Worker API cùng môi trường (qua service binding, QĐ34), chưa kiểm. */

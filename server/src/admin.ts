@@ -1,9 +1,9 @@
 // Worker admin (§6.8 "Công cụ hỗ trợ"): các thao tác của người vận hành và `lookup`. Lớp kiểm Access, danh tính và chống
 // CSRF ở admin-auth.ts; route chỉ đọc ở admin-read.ts; route số liệu trang Tổng quan ở admin-stats.ts; trang Web Admin ở admin-assets.ts.
 // Mọi thao tác, kể cả tra cứu, đều ghi audit_log với actor "admin:<email người vận hành>". Thao tác thất bại có ý nghĩa
-// (cổng thanh toán lỗi, ký thử lỗi, URL webhook bị từ chối, 409) cũng ghi, không kèm câu lỗi gốc. Không ghi: whoami
-// (chỉ trả email của chính người vận hành), request không qua Access hay chống CSRF, và các request sai input hay không
-// tìm thấy khác (400, 404).
+// (cổng thanh toán lỗi, ký thử lỗi, URL webhook bị từ chối, 409 của cấp tay và xử lý đơn) cũng ghi, không kèm câu lỗi
+// gốc. Không ghi: whoami (chỉ trả email của chính người vận hành), request không qua Access hay chống CSRF, 409 của rút
+// ngắn hạn (không đổi gì), và các request sai input hay không tìm thấy khác (400, 404).
 import { type Context, Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import type { AccessKeyProvider } from "./access-jwt";
@@ -150,7 +150,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
     return c.json(trial === undefined ? { licenses, orders } : { licenses, orders, trial });
   });
 
-  // GET nhưng có tác dụng phụ (ghi nhật ký, gọi PayOS): chặn request mà trình duyệt báo là từ trang khác.
+  // GET nhưng có tác dụng phụ (ghi nhật ký, gọi cổng thanh toán của đơn: PayOS hay Creem): chặn request mà trình duyệt báo là từ trang khác.
   app.get("/admin/orders/:orderCode/payment-status", async (c) => {
     if (crossSite(c)) return fail(c, 403, "forbidden");
     const deps = c.get("deps");
@@ -159,10 +159,14 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
     const order = await loadOrder(c.env.DB, orderCode);
     if (!order) return fail(c, 404, "order_not_found");
     const provider = Object.hasOwn(deps.payments, order.provider) ? deps.payments[order.provider] : undefined;
-    if (!provider) return fail(c, 502, "payment_provider_error", { message: `không có cổng ${order.provider}` });
+    if (!provider) {
+      // Lỗi cấu hình của Worker admin (vd khóa API Creem rỗng), không phải lỗi của cổng: để lại dấu cho `wrangler tail`.
+      console.warn(JSON.stringify({ event: "admin_no_gateway", provider: order.provider }));
+      return fail(c, 502, "payment_provider_error", { message: `không có cổng ${order.provider}` });
+    }
     await audit(c.env.DB, { at: deps.now(), actor: c.get("actor"), action: "payment_status_viewed", orderCode });
     try {
-      return c.json(await provider.getPaymentStatus(orderCode));
+      return c.json(await provider.getPaymentStatus({ orderCode, providerRef: order.provider_ref }));
     } catch (err) {
       return fail(c, 502, "payment_provider_error", { message: String(err) });
     }
@@ -354,6 +358,86 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
       .bind(id)
       .first<{ expires_at: number; cycle_anchor: number }>();
     return c.json({ license_id: id, expires_at: lic?.expires_at, cycle_anchor: lic?.cycle_anchor });
+  });
+
+  // Rút ngắn hạn N ngày (Q2, C1-T7): trừ đúng số ngày của một đơn bị hoàn (`order_code`, tùy chọn) mà không lấy mất thời
+  // gian khách đã trả ở đơn khác. Hạn mới luôn sau "bây giờ"; muốn lấy hết thì Thu hồi. Giữ gói, cycle_anchor,
+  // anchor_applied_at và activation. Token đang có giữ hạn cũ tới lần làm mới kế tiếp (licenses.ts ký token theo
+  // expires_at hiện tại), như Thu hồi. 409 ở đây không đổi gì nên không ghi nhật ký.
+  // `expected_expires_at` (bắt buộc, giây Unix) là hạn mà giao diện đang hiển thị: chỉ rút khi hạn hiện tại đúng bằng nó.
+  // So-sánh-và-đặt theo version chỉ chặn hai request chồng nhau trong một request; không chặn giao diện đã cũ hay bấm lại
+  // sau khi mạng lỗi (lần hai đọc version mới, nên lại được áp và trừ thêm ngày khách đã trả).
+  // Thứ tự lỗi: 400 (note, days, expected_expires_at, order_code sai hình dạng) → 404 → 400 order_code không thuộc license
+  // → 409 license_revoked → 409 conflict (hạn lệch) → 409 too_far → 409 conflict (đổi giữa lúc đọc và lúc ghi). `conflict`
+  // đứng trước `too_far` để `max_days` không bao giờ tính từ hạn mà người vận hành chưa nhìn thấy.
+  app.post("/admin/licenses/:id/shorten", async (c) => {
+    const deps = c.get("deps");
+    const input = await noteBody(c);
+    if (!input) return fail(c, 400, "invalid_request", { field: "note" });
+    const days = input.body.days;
+    if (!Number.isSafeInteger(days) || (days as number) < 1 || (days as number) > 3650) {
+      return fail(c, 400, "invalid_request", { field: "days" });
+    }
+    const expected = input.body.expected_expires_at;
+    if (!Number.isSafeInteger(expected) || (expected as number) <= 0) {
+      return fail(c, 400, "invalid_request", { field: "expected_expires_at" });
+    }
+    const expectedExpiresAt = expected as number;
+    // Không kèm mã đơn: bỏ trống hay null.
+    const rawOrder = input.body.order_code ?? null;
+    if (rawOrder !== null && (!Number.isSafeInteger(rawOrder) || (rawOrder as number) <= 0)) {
+      return fail(c, 400, "invalid_request", { field: "order_code" });
+    }
+    const orderCode = rawOrder as number | null;
+    const db = c.env.DB;
+    const id = c.req.param("id");
+    const now = deps.now();
+    const lic = await db
+      .prepare("SELECT expires_at, version, revoked_at FROM licenses WHERE id = ?")
+      .bind(id)
+      .first<{ expires_at: number; version: number; revoked_at: number | null }>();
+    if (!lic) return fail(c, 404, "not_found");
+    if (orderCode !== null) {
+      const own = await db
+        .prepare("SELECT 1 FROM orders WHERE order_code = ?1 AND (license_id = ?2 OR renew_license_id = ?2)")
+        .bind(orderCode, id)
+        .first();
+      if (!own) return fail(c, 400, "invalid_request", { field: "order_code" });
+    }
+    const seconds = (days as number) * 86400;
+    // Câu UPDATE tự chặn mọi điều kiện (hạn hiện tại đúng bằng hạn giao diện đang thấy, đúng version đã đọc, chưa thu hồi,
+    // hạn mới sau bây giờ); không đổi dòng nào thì không ghi nhật ký, rồi phân loại lỗi theo lần đọc. Khi câu UPDATE áp,
+    // hạn trước đó đúng bằng `expected_expires_at`, nên hạn mới và các giá trị ghi vào nhật ký tính từ nó là đúng giá trị
+    // đã ghi vào dòng license, không phải giá trị đọc ở một lần trước.
+    const expiresAt = expectedExpiresAt - seconds;
+    const [res] = await db.batch([
+      db
+        .prepare(
+          `UPDATE licenses SET expires_at = expires_at - ?2, version = version + 1
+           WHERE id = ?3 AND version = ?4 AND expires_at = ?5 AND revoked_at IS NULL AND expires_at - ?2 > ?1`,
+        )
+        .bind(now, seconds, id, lic.version, expectedExpiresAt),
+      auditIfChanged(db, {
+        at: now,
+        actor: c.get("actor"),
+        action: "license_shortened_manually",
+        licenseId: id,
+        orderCode,
+        detail: { days, from_expires_at: expectedExpiresAt, expires_at: expiresAt, order_code: orderCode, note: input.note },
+      }),
+    ]);
+    if (res?.meta.changes === 1) return c.json({ license_id: id, expires_at: expiresAt });
+    if (lic.revoked_at !== null) return fail(c, 409, "license_revoked");
+    // Hạn đã đổi so với giao diện (đã cũ, hay lần gửi trước đã áp): tải lại. Trước too_far, vì max_days chỉ có nghĩa với
+    // hạn người vận hành đang thấy.
+    if (lic.expires_at !== expectedExpiresAt) return fail(c, 409, "conflict");
+    if (expiresAt <= now) {
+      // Số ngày nhiều nhất còn rút được mà hạn mới vẫn sau bây giờ.
+      const maxDays = Math.max(0, Math.floor((lic.expires_at - now - 1) / 86400));
+      return fail(c, 409, "too_far", { max_days: maxDays, expires_at: lic.expires_at });
+    }
+    // License đổi (version khác, hay vừa bị thu hồi) giữa lúc đọc và lúc ghi: giao diện tải lại rồi thử lại.
+    return fail(c, 409, "conflict");
   });
 
   /** Thao tác một câu UPDATE trên license kèm nhật ký: unlock, revoke. Câu UPDATE không đổi dòng nào thì không ghi nhật ký. */

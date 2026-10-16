@@ -3,7 +3,36 @@
 // tối đa một email mỗi loại mỗi giờ. Thiếu OPERATOR_EMAIL thì chỉ ghi log.
 import type { EmailProvider } from "./email/provider";
 
-export type AlertKind = "many_failures" | "webhook_bad_signature" | "email_failed" | "license_locked" | "order_needs_review";
+export type AlertKind =
+  | "many_failures"
+  | "webhook_bad_signature"
+  | "email_failed"
+  | "license_locked"
+  | "order_needs_review"
+  | "order_payment_review"
+  | "order_refunded"
+  | "order_partially_refunded"
+  | "order_refund_unconfirmed"
+  | "order_disputed"
+  | "payment_unmatched"
+  | "payos_auth_failed"
+  | "creem_auth_failed"
+  | "order_check_failed";
+
+/** Loại cảnh báo khi cổng (`orders.provider`) từ chối khóa API: mỗi cổng một loại, để thư chỉ đúng khóa cần thay. */
+const AUTH_FAILED_ALERT = { payos: "payos_auth_failed", creem: "creem_auth_failed" } as const satisfies Record<string, AlertKind>;
+
+/** Loại cảnh báo khóa API của cổng có tên này (`orders.provider`); null nếu cổng không có loại riêng (chỉ có log). */
+export function authFailedAlert(provider: string): AlertKind | null {
+  return Object.hasOwn(AUTH_FAILED_ALERT, provider) ? AUTH_FAILED_ALERT[provider as keyof typeof AUTH_FAILED_ALERT] : null;
+}
+
+/**
+ * Email cảnh báo không mang mã đơn (gộp theo loại): chỉ cách tìm các đơn hoàn tiền hay tranh chấp ở Web Admin. Chỉ nhật ký tìm được
+ * chúng: đơn `refunded` không có trong hàng đợi Việc cần xử lý.
+ */
+const FIND_REFUND_ORDERS =
+  "Tìm đơn: lọc nhật ký ở Web Admin theo hành động order_refunded (hay order_partially_refunded, order_disputed, order_refund_unconfirmed).";
 
 const ALERT_TEXT: Record<AlertKind, string> = {
   many_failures: "Một IP có từ 60 lần kiểm key hoặc activation thất bại trong 1 giờ (có thể đang dò key)",
@@ -11,6 +40,44 @@ const ALERT_TEXT: Record<AlertKind, string> = {
   email_failed: "Gửi email chứa license key thất bại (cron sẽ gửi lại)",
   license_locked: "Key bị khóa tạm vì gỡ rồi kích hoạt máy khác quá ngưỡng",
   order_needs_review: "License đã thu hồi nhận được tiền của một đơn gia hạn hay đổi gói; xử lý tay ở /admin/orders/<n>/resolve",
+  order_payment_review:
+    "Cổng báo đã trả nhưng số tiền khác giá đơn (lệch giá, mã giảm giá, hay thuế tính khác giả định): đơn không được cấp tự động " +
+    "(failed hoặc underpaid). Mở đơn ở Web Admin, xem trạng thái trên cổng, rồi cấp tay hay hoàn tiền. " +
+    "Tìm đơn: lọc nhật ký ở Web Admin theo hành động order_amount_mismatch hay order_underpaid (thư này không mang mã đơn; đơn underpaid cũng có ở trang Việc cần xử lý).",
+  order_refunded:
+    "Cổng thanh toán báo một đơn đã được hoàn đủ: đơn thành refunded và không bao giờ được cấp key nữa; license đã cấp (nếu có) giữ nguyên. " +
+    `${FIND_REFUND_ORDERS} Với đơn gia hạn/đổi gói dùng Rút ngắn hạn ở Web Admin, với đơn mua mới thì thu hồi tay nếu cần`,
+  order_partially_refunded:
+    "Cổng thanh toán báo một đơn được hoàn tiền một phần (trạng thái đơn không đổi; nhật ký có số đã hoàn và lý do). " +
+    `${FIND_REFUND_ORDERS} Với đơn gia hạn/đổi gói dùng Rút ngắn hạn ở Web Admin nếu cần`,
+  order_refund_unconfirmed:
+    "Cổng thanh toán báo một lần hoàn tiền chưa thành công (đang chờ hay thất bại); trạng thái đơn không đổi, nên đơn chưa cấp vẫn có " +
+    "thể được cấp tự động khi cổng báo đã trả. Kiểm lần hoàn ở dashboard của cổng (hoàn xong sau đó thì cổng có thể không báo thêm) " +
+    `và, nếu cần, thu hồi hay rút ngắn hạn license sau khi hoàn tiền xong. ${FIND_REFUND_ORDERS}`,
+  order_disputed:
+    "Khách mở tranh chấp (chargeback) cho một đơn; nếu cổng báo đã lấy lại đủ tiền thì đơn thành refunded. " +
+    `${FIND_REFUND_ORDERS} Với đơn gia hạn/đổi gói dùng Rút ngắn hạn ở Web Admin, với đơn mua mới thì cân nhắc thu hồi license`,
+  payment_unmatched:
+    "Cổng thanh toán gửi một sự kiện thanh toán, hoàn tiền hay tranh chấp đúng chữ ký mà không khớp đơn nào của server (thường là " +
+    "khách trả qua link công khai hay Storefront của sản phẩm, hay sản phẩm khác cùng tài khoản; cũng có thể là sự kiện thử gửi từ " +
+    "dashboard; loại sự kiện null là thân đã ký mà không đọc được, cổng có thể đã đổi định dạng). Không có key nào được cấp. " +
+    "Tìm: lọc nhật ký ở Web Admin theo hành động payment_unmatched (có loại sự kiện và mã ở cổng), tra mã đó ở dashboard của " +
+    "cổng; khách đã trả thật thì tạo license tay ở Web Admin hay hoàn tiền. " +
+    "Với hoàn tiền hay tranh chấp (event_type refund.created/dispute.created): tra request_id của phiên ở dashboard Creem; nếu là " +
+    "đơn của ta thì mở đơn ở Web Admin: đơn paid_needs_review thì bấm Ghi đã hoàn tiền, đơn ở trạng thái khác thì Web Admin chưa " +
+    "có nút này (đơn chưa cấp vẫn có thể được cấp tự động; thu hồi hay rút ngắn hạn license nếu cần). " +
+    "provider_ref có tiền tố ch_ (phiên), ref_ (lần hoàn), disp_ (tranh chấp)",
+  payos_auth_failed:
+    "PayOS từ chối khóa API (HTTP 401/403 có thân JSON của PayOS): khóa sai, bị thu hồi hay thiếu quyền. Đơn VND mới lỗi 502; " +
+    "nếu cảnh báo đến từ đối soát thì có thể có đơn khách ĐÃ TRẢ đang chờ cấp: thay khóa trong 24 giờ (quá 24 giờ đơn thành expired, phải cấp tay). " +
+    "Đặt lại `PAYOS_CLIENT_ID` và `PAYOS_API_KEY` cho cả Worker API và Worker admin.",
+  creem_auth_failed:
+    "Creem từ chối khóa API (HTTP 401/403 có thân JSON của Creem): khóa sai, bị thu hồi hay thiếu quyền. Đơn USD mới lỗi 502; " +
+    "nếu cảnh báo đến từ đối soát thì có thể có đơn khách ĐÃ TRẢ đang chờ cấp: thay khóa trong 24 giờ (quá 24 giờ đơn thành expired, phải cấp tay). " +
+    "Đặt lại `CREEM_API_KEY` cho cả Worker API và Worker admin.",
+  order_check_failed:
+    "Đối soát không đọc được trạng thái đơn từ cổng thanh toán (dữ liệu mâu thuẫn, 3xx hay 404). Nếu đơn đã được khách trả thì " +
+    "tìm đơn trên dashboard của cổng; log `reconcile_failed` có mã đơn. Cảnh báo này đếm theo đơn và gộp mỗi giờ.",
 };
 const HOUR = 3600;
 
@@ -119,7 +186,7 @@ export async function sendAlerts(
             ALERT_TEXT[a.kind],
             "",
             `Số lần: ${a.count}, từ ${new Date(a.since * 1000).toISOString()}.`,
-            "Chi tiết ở Workers Logs và bảng audit_log (Worker admin).",
+            "Chi tiết ở Workers Logs; loại có nhật ký thì xem thêm bảng audit_log ở Web Admin.",
           ].join("\n"),
         });
         sent++;

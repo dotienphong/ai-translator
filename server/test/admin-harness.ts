@@ -1,13 +1,16 @@
-// Bộ dựng test cho Worker admin: app admin dùng đồng hồ, PayOS và Resend giả của makeWorld; Access giả qua ctx.access.
+// Bộ dựng test cho Worker admin: app admin dùng đồng hồ, PayOS, Creem và Resend giả của makeWorld; Access giả qua ctx.access.
 import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import type { AccessKeyProvider } from "../src/access-jwt";
 import { createAdminApp } from "../src/admin";
+import adminEntry from "../src/admin-entry";
+import { adminPayments } from "../src/admin-deps";
 import { signKeyCheck } from "../src/deps";
 import type { AdminEnv, ApiEnv } from "../src/env";
+import { CreemProvider } from "../src/payment/creem";
 import { PayOSProvider } from "../src/payment/payos";
 import type { KeyCheck } from "../src/token";
-import { TEST_CHECKSUM_KEY } from "./fakes";
+import { TEST_CHECKSUM_KEY, TEST_CREEM_API_KEY } from "./fakes";
 import { testSigningJwk } from "./keys";
 import { makeWorld } from "./world";
 
@@ -39,6 +42,14 @@ export interface AdminOpts {
   fetchPublic?: (url: string) => Promise<Response>;
   /** Nguồn khóa công khai Access giả cho đường xác thực JWT (mặc định: tải thật từ team, không dùng trong test). */
   accessKeys?: AccessKeyProvider;
+  /** Khóa API Creem của Worker admin (mặc định: khóa đúng của FakeCreem); null: Worker admin chưa có cổng creem. */
+  creemApiKey?: string | null;
+  /**
+   * Gọi điểm vào thật của Worker admin (admin-entry.ts, realAdminDeps) thay cho app dựng với bản giả: cổng thanh toán, email,
+   * plans... đi qua dây nối thật (fetch toàn cục, service binding), nên test phải tự spy fetch và truyền CREEM_BASE_URL,
+   * CREEM_API_KEY trong `adminEnv`. Các tùy chọn `plans`, `keyCheck`, `fetchPublic`, `creemApiKey` không có tác dụng.
+   */
+  entry?: boolean;
 }
 
 export function makeAdmin(adminEnv: Partial<AdminEnv> = {}, opts: AdminOpts = {}) {
@@ -47,15 +58,21 @@ export function makeAdmin(adminEnv: Partial<AdminEnv> = {}, opts: AdminOpts = {}
     { baseUrl: "https://payos.test", clientId: "cid", apiKey: "akey", checksumKey: TEST_CHECKSUM_KEY },
     w.payos.fetch,
   );
-  const admin = createAdminApp(() => ({
+  // Như realAdminDeps (admin-deps.ts): Worker admin chỉ hỏi trạng thái phiên Creem, nên cổng creem chỉ có gốc API và khóa API. Ở đây cổng
+  // dùng fetch giả; cách ghép PayOS và creem thành `payments` là adminPayments, dùng chung với dây nối thật. Dây nối thật (đọc
+  // biến môi trường, gọi fetch thật) có test riêng: creem.test.ts, "realAdminDeps".
+  const creemKey = opts.creemApiKey === undefined ? TEST_CREEM_API_KEY : opts.creemApiKey;
+  const creem = creemKey === null ? null : new CreemProvider({ baseUrl: "https://creem.test", apiKey: creemKey }, w.creem.fetch);
+  const fake = createAdminApp(() => ({
     now: () => w.clock.now,
-    payments: { payos },
+    payments: adminPayments(payos, creem),
     payos,
     email: w.deps.email,
     plans: opts.plans ?? (async () => env.PLANS),
     keyCheck: opts.keyCheck ?? (async () => signKeyCheck(await apiKeyEnv(), w.clock.now)),
     fetchPublic: opts.fetchPublic ?? (async () => new Response("not found", { status: 404 })),
   }), opts.accessKeys);
+  const admin: { fetch(request: Request, env: AdminEnv, ctx: ExecutionContext): Response | Promise<Response> } = opts.entry ? adminEntry : fake;
   const fullEnv = { ...env, API_ORIGIN, ...adminEnv } as AdminEnv;
 
   /** Gọi Worker admin, trả Response gốc (để đọc header, trang HTML). */

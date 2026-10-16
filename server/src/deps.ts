@@ -4,6 +4,7 @@ import { type EmailProvider, EmailProviderError, maskEmail } from "./email/provi
 import { ResendEmailProvider } from "./email/resend";
 import { type LicenseEmailEntry, type LicenseEmailKind, licenseEmail } from "./email/templates";
 import type { ApiEnv } from "./env";
+import { CreemProvider, parseProductIds } from "./payment/creem";
 import { PayOSProvider } from "./payment/payos";
 import type { PaymentProvider } from "./payment/provider";
 import { importSigningKey, type KeyCheck, type SigningKey, signToken } from "./token";
@@ -82,11 +83,31 @@ export function payosFromEnv(env: Pick<ApiEnv, "PAYOS_BASE_URL" | "PAYOS_CLIENT_
   });
 }
 
+/**
+ * Cổng Creem của Worker API. Hai vai tách nhau: XỬ LÝ (webhook, trạng thái, hoàn tiền và tranh chấp của đơn đã có) cần khóa API
+ * và secret webhook; BÁN (tạo phiên mới) cần thêm ba mã sản phẩm hợp lệ (parseProductIds). Thiếu khóa API hay secret webhook
+ * thì null: không có cổng creem (POST /v1/webhooks/creem trả 404). Có hai secret mà mã sản phẩm rỗng, điền dở hay trùng thì
+ * cổng chỉ xử lý (`sells` false): tắt bán thẻ khẩn cấp không làm mất webhook hoàn tiền hay đơn Creem đang chờ.
+ */
+export function creemFromEnv(
+  env: Pick<ApiEnv, "CREEM_BASE_URL" | "CREEM_API_KEY" | "CREEM_WEBHOOK_SECRET" | "CREEM_PRODUCT_IDS">,
+): CreemProvider | null {
+  if (!env.CREEM_API_KEY || !env.CREEM_WEBHOOK_SECRET) return null;
+  const productIds = parseProductIds(env.CREEM_PRODUCT_IDS);
+  return new CreemProvider({
+    baseUrl: env.CREEM_BASE_URL,
+    apiKey: env.CREEM_API_KEY,
+    webhookSecret: env.CREEM_WEBHOOK_SECRET,
+    ...(productIds ? { productIds } : {}),
+  });
+}
+
 export function realDeps(env: ApiEnv): Deps {
   let key: Promise<SigningKey> | undefined;
+  const creem = creemFromEnv(env);
   return {
     now: nowSeconds,
-    payments: { payos: payosFromEnv(env) },
+    payments: { payos: payosFromEnv(env), ...(creem ? { creem } : {}) },
     email: new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, replyTo: env.EMAIL_REPLY_TO }),
     signingKey: () => (key ??= loadSigningKey(env)),
   };

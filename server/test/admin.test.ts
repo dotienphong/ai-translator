@@ -9,6 +9,7 @@ import { verifyToken } from "../src/token";
 import { AUD, corruptSignature, type Issuer, makeIssuer, TEAM } from "./access-jwt-helper";
 import { ADMIN, type AdminCall, API_ORIGIN, apiKeyEnv, auditCount, lastAudit, licenseRow, makeAdmin } from "./admin-harness";
 import { resetDb, withFailingInsert } from "./db";
+import { TEST_CREEM_API_KEY } from "./fakes";
 import vectors from "./vectors/token-v1.json";
 import { DAY, T0 } from "./world";
 
@@ -442,20 +443,106 @@ describe("tra cứu, gửi lại key", () => {
     expect((await adminCall("/admin/orders/999/payment-status")).status).toBe(404);
   });
 
-  it("xem trạng thái đơn có tác dụng phụ (nhật ký, gọi PayOS): Sec-Fetch-Site khác cùng origin thì 403", async () => {
+  it("xem trạng thái đơn Creem: hỏi phiên của đơn bằng khóa API của Worker admin, số tiền là cent USD, có ghi nhật ký", async () => {
+    const { w, adminCall } = makeAdmin();
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true, currency: "USD" });
+    const orderCode = co.body.order_code as number;
+    const path = `/admin/orders/${orderCode}/payment-status`;
+    expect((await adminCall(path)).body).toEqual({ orderCode, status: "pending", amount: 399, amountPaid: 0, paidAt: null });
+    expect(w.creem.requests.at(-1)).toMatchObject({ method: "GET", apiKey: TEST_CREEM_API_KEY });
+    expect(await lastAudit()).toMatchObject({ action: "payment_status_viewed", order_code: orderCode });
+    // Khách trả (Creem cộng thuế ngoài giá): số đã nhận là giá niêm yết, không gồm thuế.
+    w.creem.pay(w.creem.checkoutIdOf(orderCode), 80);
+    expect((await adminCall(path)).body).toEqual({ orderCode, status: "paid", amount: 399, amountPaid: 399, paidAt: null });
+    // Lớp phòng thủ của cổng: nếu Creem có báo đơn `refunded` thì trang hiện đúng như vậy. Nhưng Creem thật KHÔNG báo thế: sau hoàn
+    // tiền `order.status` vẫn là "paid" (hoàn tiền nằm ở giao dịch), nên cổng GET vẫn báo `paid`. `refunded` đến từ webhook (orders.status),
+    // không từ payment-status: đừng dựa vào nó để biết đơn Creem đã hoàn tiền (fakes.ts: refundWebhook không đổi `order.status`).
+    w.creem.setOrderStatus(w.creem.checkoutIdOf(orderCode), "refunded");
+    expect((await adminCall(path)).body).toMatchObject({ status: "refunded" });
+  });
+
+  it("đơn Creem mà Creem từ chối khóa API: 502 payment_provider_error kèm trace_id để hỏi hỗ trợ, không lộ khóa", async () => {
+    const { w, adminCall } = makeAdmin({}, { creemApiKey: "ck_sai" });
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true, currency: "USD" });
+    const res = await adminCall(`/admin/orders/${co.body.order_code as number}/payment-status`);
+    expect(res.status).toBe(502);
+    expect(res.body).toMatchObject({ error: "payment_provider_error" });
+    expect(String(res.body.message)).toContain("HTTP 403");
+    expect(String(res.body.message)).toContain("trace-auth");
+    expect(JSON.stringify(res.body)).not.toContain("ck_sai");
+  });
+
+  it("Worker admin không dựng được cổng creem (khóa API rỗng: secret bị xóa hay đặt rỗng sau deploy; thiếu hẳn thì secrets.required chặn deploy): đơn Creem trả 502 không có cổng creem, ghi log admin_no_gateway, không hỏi Creem; đơn PayOS vẫn xem được", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const { w, adminCall } = makeAdmin({}, { creemApiKey: null });
+      const creem = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true, currency: "USD" });
+      const res = await adminCall(`/admin/orders/${creem.body.order_code as number}/payment-status`);
+      expect(res).toMatchObject({ status: 502, body: { error: "payment_provider_error", message: "không có cổng creem" } });
+      const logged = warn.mock.calls.map(([line]) => JSON.parse(String(line))).filter((l) => l.event === "admin_no_gateway");
+      expect(logged).toEqual([{ event: "admin_no_gateway", provider: "creem" }]);
+      expect(w.creem.requests.filter((r) => r.method === "GET")).toHaveLength(0);
+      const payos = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "c@example.com", consent: true });
+      expect((await adminCall(`/admin/orders/${payos.body.order_code as number}/payment-status`)).status).toBe(200);
+      // Đơn PayOS có cổng nên không thêm dòng log nào.
+      expect(warn.mock.calls.map(([line]) => JSON.parse(String(line))).filter((l) => l.event === "admin_no_gateway")).toHaveLength(1);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("điểm vào thật (admin-entry.ts): đơn Creem hỏi Creem bằng khóa API của Worker admin qua fetch thật; khóa API rỗng thì không có cổng creem", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const { w, adminCall } = makeAdmin({ CREEM_BASE_URL: "https://api.creem.io", CREEM_API_KEY: "ck" }, { entry: true });
+      const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true, currency: "USD" });
+      const orderCode = co.body.order_code as number;
+      const path = `/admin/orders/${orderCode}/payment-status`;
+      // Chỉ spy sau khi đã tạo đơn: Worker API của world dùng fetch giả riêng; từ đây mọi fetch toàn cục là của Worker admin.
+      const spy = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async () => new Response(JSON.stringify({ id: "ch_fake1", request_id: String(orderCode), status: "pending", custom_price: 399 })));
+      try {
+        expect(await adminCall(path)).toEqual({ status: 200, body: { orderCode, status: "pending", amount: 399, amountPaid: 0, paidAt: null } });
+        expect(spy).toHaveBeenCalledTimes(1);
+        const [url, init] = spy.mock.calls[0] ?? [];
+        expect(url).toBe("https://api.creem.io/v1/checkouts?checkout_id=ch_fake1");
+        expect(new Headers(init?.headers).get("x-api-key")).toBe("ck");
+        expect(init?.redirect).toBe("manual");
+        // Khóa API rỗng (secret bị xóa hay đặt rỗng): không dựng cổng creem, không hỏi Creem.
+        const noKey = makeAdmin({ CREEM_BASE_URL: "https://api.creem.io", CREEM_API_KEY: "" }, { entry: true });
+        expect(await noKey.adminCall(path)).toMatchObject({ status: 502, body: { error: "payment_provider_error", message: "không có cổng creem" } });
+        expect(spy).toHaveBeenCalledTimes(1);
+      } finally {
+        spy.mockRestore();
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("xem trạng thái đơn có tác dụng phụ (nhật ký, gọi cổng PayOS hay Creem): Sec-Fetch-Site khác cùng origin thì 403", async () => {
     const { w, adminCall } = makeAdmin();
     const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true });
     const path = `/admin/orders/${co.body.order_code as number}/payment-status`;
     const asked = () => w.payos.requests.filter((r) => r.method === "GET").length;
+    const creem = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "c@example.com", consent: true, currency: "USD" });
+    const creemPath = `/admin/orders/${creem.body.order_code as number}/payment-status`;
+    const askedCreem = () => w.creem.requests.filter((r) => r.method === "GET").length;
     for (const site of ["cross-site", "same-site"]) {
-      expect(await adminCall(path, { headers: { "sec-fetch-site": site } })).toMatchObject({ status: 403, body: { error: "forbidden" } });
+      for (const p of [path, creemPath]) {
+        expect(await adminCall(p, { headers: { "sec-fetch-site": site } })).toMatchObject({ status: 403, body: { error: "forbidden" } });
+      }
     }
     expect(asked()).toBe(0);
+    expect(askedCreem()).toBe(0);
     expect(await auditCount("payment_status_viewed")).toBe(0);
     for (const headers of [{ "sec-fetch-site": "same-origin" }, { "sec-fetch-site": "none" }, {}]) {
       expect((await adminCall(path, { headers })).status).toBe(200);
     }
     expect(asked()).toBe(3);
+    expect((await adminCall(creemPath, { headers: { "sec-fetch-site": "same-origin" } })).status).toBe(200);
+    expect(askedCreem()).toBe(1);
   });
 });
 
@@ -682,6 +769,329 @@ describe("thay đổi license", () => {
     expect((await adminCall(`/admin/licenses/${id}/revoke`, { body: { note: "hoàn tiền" } })).status).toBe(200);
     const v = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d2"), device_label: "M2" });
     expect(v.body.error).toBe("license_revoked");
+  });
+});
+
+describe("rút ngắn hạn license (Q2, C1-T7): trừ đúng số ngày của một đơn bị hoàn, không lấy phần khách đã trả ở đơn khác", () => {
+  const shortened = () =>
+    env.DB.prepare("SELECT actor, license_id, order_code, detail FROM audit_log WHERE action = 'license_shortened_manually' ORDER BY id")
+      .all<{ actor: string; license_id: string; order_code: number | null; detail: string }>()
+      .then((r) => r.results.map((x) => ({ ...x, detail: JSON.parse(x.detail) as Record<string, unknown> })));
+  const adminAudits = () => env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE actor LIKE 'admin:%'").first<{ n: number }>();
+  const licenseOf = (email: string) => env.DB.prepare("SELECT * FROM licenses WHERE email = ?").bind(email).first<Record<string, unknown>>();
+
+  /** Khách mua Monthly lúc T0 (đơn A, hạn T0 + 30 ngày), kích hoạt một máy, rồi gia hạn sớm lúc T0 + 2 ngày (đơn B, hạn T0 + 60 ngày). */
+  async function renewed() {
+    const admin = makeAdmin();
+    const { w } = admin;
+    const { orderCode: orderA, licenseKey } = await w.buy();
+    const act = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "M1" });
+    w.clock.now = T0 + 2 * DAY;
+    const { orderCode: orderB } = await w.buy({ licenseKey });
+    const lic = (await licenseRow())!;
+    expect(lic.expires_at).toBe(T0 + 60 * DAY);
+    return { ...admin, id: lic.id as string, licenseKey, orderA, orderB, activationId: act.body.activation_id as string };
+  }
+
+  it("trừ đúng days × 86400 giây, version + 1; gói, cycle_anchor, anchor_applied_at và máy giữ nguyên; một dòng nhật ký có mã đơn", async () => {
+    const { w, adminCall, id, licenseKey, orderB, activationId } = await renewed();
+    w.clock.now = T0 + 5 * DAY;
+    const before = (await licenseRow())!;
+    const acts = (await env.DB.prepare("SELECT * FROM activations").all()).results;
+    const note = "khách được hoàn đơn gia hạn";
+    const res = await adminCall(`/admin/licenses/${id}/shorten`, { body: { days: 30, note, order_code: orderB, expected_expires_at: T0 + 60 * DAY } });
+    // T0 + 60 ngày − 30 × 86400 giây = T0 + 30 ngày: đúng phần đơn A đã trả còn lại.
+    expect(res).toEqual({ status: 200, body: { license_id: id, expires_at: T0 + 30 * DAY } });
+    expect(await licenseRow()).toEqual({ ...before, expires_at: T0 + 60 * DAY - 30 * 86400, version: (before.version as number) + 1 });
+    expect((await env.DB.prepare("SELECT * FROM activations").all()).results).toEqual(acts);
+    expect(await shortened()).toEqual([
+      {
+        actor: "admin:ops@example.com",
+        license_id: id,
+        order_code: orderB,
+        detail: { days: 30, from_expires_at: T0 + 60 * DAY, expires_at: T0 + 30 * DAY, order_code: orderB, note },
+      },
+    ]);
+    // Lần làm mới token kế tiếp mang hạn mới (token đang có giữ hạn cũ tới lúc đó, như Thu hồi).
+    const v = await w.call("POST", "/v1/licenses/validate", { key: licenseKey, activation_id: activationId });
+    expect(v).toMatchObject({ status: 200, body: { expires_at: T0 + 30 * DAY } });
+  });
+
+  it.each([0, 3651, 1.5, "3", -1, undefined])("days = %j: 400 invalid_request (field days), không đổi gì, không ghi nhật ký", async (days) => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy();
+    const before = await licenseRow();
+    const path = `/admin/licenses/${before!.id as string}/shorten`;
+    const res = await adminCall(path, { body: { days, note: "x", expected_expires_at: before!.expires_at } });
+    expect(res).toEqual({ status: 400, body: { error: "invalid_request", field: "days" } });
+    // Thiếu luôn expected_expires_at: lỗi của days vẫn đứng trước.
+    expect(await adminCall(path, { body: { days, note: "x" } })).toEqual({ status: 400, body: { error: "invalid_request", field: "days" } });
+    expect(await licenseRow()).toEqual(before);
+    expect(await adminAudits()).toEqual({ n: 0 });
+  });
+
+  it("thiếu note, note rỗng hay dài quá 500 ký tự: 400 invalid_request (field note)", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy();
+    const before = await licenseRow();
+    const path = `/admin/licenses/${before!.id as string}/shorten`;
+    const expected_expires_at = before!.expires_at;
+    // Cả body thiếu luôn expected_expires_at: lỗi của note vẫn đứng trước.
+    for (const body of [{ days: 1, expected_expires_at }, { days: 1, note: "   ", expected_expires_at }, { days: 1, note: "x".repeat(501), expected_expires_at }, { days: 1 }]) {
+      expect(await adminCall(path, { body }), JSON.stringify(body).slice(0, 30)).toEqual({ status: 400, body: { error: "invalid_request", field: "note" } });
+    }
+    expect(await licenseRow()).toEqual(before);
+    expect(await adminAudits()).toEqual({ n: 0 });
+  });
+
+  it("order_code phải là đơn đã áp hay đang áp vào chính license này (license_id hay renew_license_id); sai thì 400 (field order_code)", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { orderCode: mine, licenseKey } = await w.buy({ email: "a@example.com" });
+    const { orderCode: other } = await w.buy({ email: "b@example.com" });
+    // Đơn gia hạn chưa trả: chỉ có renew_license_id trỏ license này.
+    const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "a@example.com", consent: true, license_key: licenseKey });
+    const pending = co.body.order_code as number;
+    const id = (await licenseOf("a@example.com"))!.id as string;
+    const path = `/admin/licenses/${id}/shorten`;
+    for (const order_code of [other, 999_999, 0, -1, 1.5, String(mine)]) {
+      expect(await adminCall(path, { body: { days: 1, note: "x", order_code, expected_expires_at: T0 + 30 * DAY } }), String(order_code)).toEqual({
+        status: 400,
+        body: { error: "invalid_request", field: "order_code" },
+      });
+    }
+    expect(await adminAudits()).toEqual({ n: 0 });
+    expect((await licenseOf("a@example.com"))!.expires_at).toBe(T0 + 30 * DAY);
+    // Đơn của license (đã áp, hay đơn gia hạn đang chờ); không kèm mã đơn (bỏ trống hay null) cũng được.
+    let expected = T0 + 30 * DAY;
+    for (const order_code of [mine, pending, undefined, null]) {
+      expect((await adminCall(path, { body: { days: 1, note: "x", order_code, expected_expires_at: expected } })).status, String(order_code)).toBe(200);
+      expected -= DAY;
+    }
+    expect((await shortened()).map((r) => [r.order_code, r.detail.order_code])).toEqual([[mine, mine], [pending, pending], [null, null], [null, null]]);
+    expect((await licenseOf("a@example.com"))!.expires_at).toBe(T0 + 26 * DAY);
+    expect((await licenseOf("b@example.com"))!.expires_at).toBe(T0 + 30 * DAY);
+  });
+
+  it("quá xa (hạn mới bằng hay trước bây giờ): 409 too_far kèm max_days, không đổi gì, không ghi nhật ký; đúng max_days thì được", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy(); // hạn T0 + 30 ngày
+    const before = (await licenseRow())!;
+    const id = before.id as string;
+    const path = `/admin/licenses/${id}/shorten`;
+    w.clock.now = T0 + 5 * DAY; // còn đúng 25 ngày
+    // 25 ngày: hạn mới đúng bằng bây giờ; 26 và 3650 ngày: trước bây giờ. Rút được nhiều nhất 24 ngày.
+    for (const days of [25, 26, 3650]) {
+      expect(await adminCall(path, { body: { days, note: "x", expected_expires_at: T0 + 30 * DAY } }), String(days)).toEqual({
+        status: 409,
+        body: { error: "too_far", max_days: 24, expires_at: T0 + 30 * DAY },
+      });
+    }
+    expect(await licenseRow()).toEqual(before);
+    expect(await adminAudits()).toEqual({ n: 0 });
+    expect(await adminCall(path, { body: { days: 24, note: "x", expected_expires_at: T0 + 30 * DAY } })).toEqual({ status: 200, body: { license_id: id, expires_at: T0 + 6 * DAY } });
+    // Còn đúng 1 ngày: rút 1 ngày thì hạn mới bằng bây giờ, nên không rút được ngày nào nữa.
+    expect(await adminCall(path, { body: { days: 1, note: "x", expected_expires_at: T0 + 6 * DAY } })).toEqual({
+      status: 409,
+      body: { error: "too_far", max_days: 0, expires_at: T0 + 6 * DAY },
+    });
+    // License đã hết hạn: không rút được.
+    w.clock.now = T0 + 40 * DAY;
+    expect(await adminCall(path, { body: { days: 1, note: "x", expected_expires_at: T0 + 6 * DAY } })).toEqual({
+      status: 409,
+      body: { error: "too_far", max_days: 0, expires_at: T0 + 6 * DAY },
+    });
+    expect(await licenseRow()).toMatchObject({ expires_at: T0 + 6 * DAY, version: (before.version as number) + 1 });
+    expect(await auditCount("license_shortened_manually")).toBe(1);
+  });
+
+  it("license đã thu hồi: 409 license_revoked, không đổi gì, không ghi nhật ký", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy();
+    const id = (await licenseRow())!.id as string;
+    expect((await adminCall(`/admin/licenses/${id}/revoke`, { body: { note: "hoàn tiền" } })).status).toBe(200);
+    const before = await licenseRow();
+    expect(await adminCall(`/admin/licenses/${id}/shorten`, { body: { days: 1, note: "x", expected_expires_at: before!.expires_at } })).toEqual({ status: 409, body: { error: "license_revoked" } });
+    expect(await licenseRow()).toEqual(before);
+    expect(await auditCount("license_shortened_manually")).toBe(0);
+  });
+
+  it("license đã thu hồi và còn quá xa (hay expected_expires_at lệch): license_revoked đứng trước too_far và conflict", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy(); // hạn T0 + 30 ngày
+    const id = (await licenseRow())!.id as string;
+    expect((await adminCall(`/admin/licenses/${id}/revoke`, { body: { note: "hoàn tiền" } })).status).toBe(200);
+    const before = await licenseRow();
+    w.clock.now = T0 + 5 * DAY; // còn 25 ngày: rút 3650 ngày là quá xa
+    const path = `/admin/licenses/${id}/shorten`;
+    for (const expected_expires_at of [T0 + 30 * DAY, T0 + 10 * DAY]) {
+      expect(await adminCall(path, { body: { days: 3650, note: "x", expected_expires_at } }), String(expected_expires_at)).toEqual({ status: 409, body: { error: "license_revoked" } });
+    }
+    expect(await licenseRow()).toEqual(before);
+    expect(await auditCount("license_shortened_manually")).toBe(0);
+  });
+
+  it("license không tồn tại: 404 not_found (kể cả khi kèm order_code), không ghi nhật ký", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { orderCode } = await w.buy();
+    const path = `/admin/licenses/${crypto.randomUUID()}/shorten`;
+    const expected_expires_at = T0 + 30 * DAY;
+    expect(await adminCall(path, { body: { days: 1, note: "x", expected_expires_at } })).toEqual({ status: 404, body: { error: "not_found" } });
+    expect(await adminCall(path, { body: { days: 1, note: "x", order_code: orderCode, expected_expires_at } })).toEqual({ status: 404, body: { error: "not_found" } });
+    // Input sai hình dạng (thiếu expected_expires_at) bị từ chối trước khi tra license: 400, không phải 404.
+    expect(await adminCall(path, { body: { days: 1, note: "x" } })).toEqual({ status: 400, body: { error: "invalid_request", field: "expected_expires_at" } });
+    expect(await adminAudits()).toEqual({ n: 0 });
+  });
+
+  /** D1 bọc lại: ngay trước batch đầu tiên của Worker admin (sau khi route đã đọc license), một thao tác khác chạy `sql`. */
+  function racingDb(sql: string) {
+    const state = { raced: false };
+    const db = new Proxy(env.DB, {
+      get(target, prop) {
+        if (prop === "batch") {
+          return async (stmts: D1PreparedStatement[]) => {
+            if (!state.raced) {
+              state.raced = true;
+              await target.prepare(sql).run();
+            }
+            return target.batch(stmts);
+          };
+        }
+        const v: unknown = Reflect.get(target, prop);
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    });
+    return { db, state };
+  }
+
+  it("license đổi giữa lúc đọc và lúc ghi (như gia hạn 7 ngày): 409 conflict, không rút, không ghi nhật ký; thử lại với hạn mới thì trừ từ hạn mới", async () => {
+    const { db, state } = racingDb(`UPDATE licenses SET expires_at = expires_at + ${7 * DAY}, version = version + 1`);
+    const { w, adminCall } = makeAdmin({ DB: db });
+    await w.buy();
+    const before = (await licenseRow())!;
+    const path = `/admin/licenses/${before.id as string}/shorten`;
+    expect(await adminCall(path, { body: { days: 1, note: "x", expected_expires_at: T0 + 30 * DAY } })).toEqual({ status: 409, body: { error: "conflict" } });
+    expect(state.raced).toBe(true);
+    expect(await licenseRow()).toEqual({ ...before, expires_at: T0 + 37 * DAY, version: (before.version as number) + 1 });
+    expect(await auditCount("license_shortened_manually")).toBe(0);
+    // Giao diện tải lại, thấy hạn mới, gửi lại với hạn đó.
+    expect(await adminCall(path, { body: { days: 1, note: "x", expected_expires_at: T0 + 37 * DAY } })).toEqual({ status: 200, body: { license_id: before.id, expires_at: T0 + 36 * DAY } });
+  });
+
+  it("license đổi giữa lúc đọc và lúc ghi mà hạn vẫn giữ nguyên (version tăng, như đổi gói cùng hạn): 409 conflict, không rút, không ghi nhật ký", async () => {
+    const { db, state } = racingDb("UPDATE licenses SET version = version + 1");
+    const { w, adminCall } = makeAdmin({ DB: db });
+    await w.buy();
+    const before = (await licenseRow())!;
+    const path = `/admin/licenses/${before.id as string}/shorten`;
+    expect(await adminCall(path, { body: { days: 1, note: "x", expected_expires_at: before.expires_at } })).toEqual({ status: 409, body: { error: "conflict" } });
+    expect(state.raced).toBe(true);
+    expect(await licenseRow()).toEqual({ ...before, version: (before.version as number) + 1 });
+    expect(await auditCount("license_shortened_manually")).toBe(0);
+  });
+
+  it("thu hồi chen vào giữa lúc đọc và lúc ghi: 409 conflict, không rút, không ghi nhật ký (giao diện tải lại rồi thấy license đã thu hồi)", async () => {
+    // Thu hồi không tăng version và không đổi expires_at: chỉ điều kiện `revoked_at IS NULL` của câu UPDATE chặn được.
+    const { db, state } = racingDb(`UPDATE licenses SET revoked_at = ${T0 + DAY}`);
+    const { w, adminCall } = makeAdmin({ DB: db });
+    await w.buy();
+    const before = (await licenseRow())!;
+    const path = `/admin/licenses/${before.id as string}/shorten`;
+    expect(await adminCall(path, { body: { days: 1, note: "x", expected_expires_at: before.expires_at } })).toEqual({ status: 409, body: { error: "conflict" } });
+    expect(state.raced).toBe(true);
+    expect(await licenseRow()).toEqual({ ...before, revoked_at: T0 + DAY });
+    expect(await auditCount("license_shortened_manually")).toBe(0);
+    // Tải lại: license đã thu hồi.
+    expect(await adminCall(path, { body: { days: 1, note: "x", expected_expires_at: before.expires_at } })).toEqual({ status: 409, body: { error: "license_revoked" } });
+  });
+
+  it.each([[undefined], [null], ["123"], [1.5], [-1], [0], [true], [[]], [{}], [2 ** 60]])(
+    "expected_expires_at = %j (thiếu hay không phải số nguyên dương an toàn): 400 invalid_request (field expected_expires_at), không đổi gì, không ghi nhật ký",
+    async (expected_expires_at) => {
+      const { w, adminCall } = makeAdmin();
+      await w.buy();
+      const before = await licenseRow();
+      const res = await adminCall(`/admin/licenses/${before!.id as string}/shorten`, { body: { days: 1, note: "x", expected_expires_at } });
+      expect(res).toEqual({ status: 400, body: { error: "invalid_request", field: "expected_expires_at" } });
+      expect(await licenseRow()).toEqual(before);
+      expect(await adminAudits()).toEqual({ n: 0 });
+    },
+  );
+
+  it("expected_expires_at khác hạn hiện tại (giao diện đã cũ): 409 conflict, hạn và version không đổi, không ghi nhật ký; order_code sai vẫn là 400 trước", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy(); // hạn T0 + 30 ngày
+    const before = (await licenseRow())!;
+    const path = `/admin/licenses/${before.id as string}/shorten`;
+    for (const expected_expires_at of [T0 + 30 * DAY + 1, T0 + 30 * DAY - 1, T0 + 60 * DAY, T0]) {
+      expect(await adminCall(path, { body: { days: 1, note: "x", expected_expires_at } }), String(expected_expires_at)).toEqual({ status: 409, body: { error: "conflict" } });
+    }
+    expect(await adminCall(path, { body: { days: 1, note: "x", order_code: 999_999, expected_expires_at: T0 + 60 * DAY } })).toEqual({
+      status: 400,
+      body: { error: "invalid_request", field: "order_code" },
+    });
+    expect(await licenseRow()).toEqual(before);
+    expect(await auditCount("license_shortened_manually")).toBe(0);
+    expect(await adminAudits()).toEqual({ n: 0 });
+  });
+
+  it("giao diện đã cũ và số ngày quá xa so với hạn thật: conflict đứng trước too_far, không lộ max_days tính từ dữ liệu khách chưa thấy", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy(); // hạn thật T0 + 30 ngày
+    const before = (await licenseRow())!;
+    const path = `/admin/licenses/${before.id as string}/shorten`;
+    w.clock.now = T0 + 5 * DAY; // còn 25 ngày: 3650 ngày là quá xa so với hạn thật lẫn hạn cũ
+    expect(await adminCall(path, { body: { days: 3650, note: "x", expected_expires_at: T0 + 10 * DAY } })).toEqual({ status: 409, body: { error: "conflict" } });
+    // Cũng quá xa với hạn thật nhưng không quá xa với hạn giao diện đang thấy (T0 + 3700 ngày): vẫn conflict, không rút.
+    expect(await adminCall(path, { body: { days: 26, note: "x", expected_expires_at: T0 + 3700 * DAY } })).toEqual({ status: 409, body: { error: "conflict" } });
+    expect(await licenseRow()).toEqual(before);
+    expect(await auditCount("license_shortened_manually")).toBe(0);
+    // Hạn đúng thì mới thấy too_far kèm max_days.
+    expect(await adminCall(path, { body: { days: 3650, note: "x", expected_expires_at: T0 + 30 * DAY } })).toEqual({
+      status: 409,
+      body: { error: "too_far", max_days: 24, expires_at: T0 + 30 * DAY },
+    });
+  });
+
+  it("gửi hai lần cùng một yêu cầu (mạng lỗi rồi bấm lại): lần một 200, lần hai 409 conflict; hạn chỉ bị trừ một lần, một dòng nhật ký", async () => {
+    const { w, adminCall, id, orderB } = await renewed();
+    w.clock.now = T0 + 5 * DAY;
+    const before = (await licenseRow())!; // hạn T0 + 60 ngày
+    const path = `/admin/licenses/${id}/shorten`;
+    // Rút 10 ngày (còn thừa chỗ): nếu lần hai được áp thì hạn mất thêm 10 ngày khách đã trả.
+    const body = { days: 10, note: "hoàn một phần đơn B", order_code: orderB, expected_expires_at: T0 + 60 * DAY };
+    expect(await adminCall(path, { body })).toEqual({ status: 200, body: { license_id: id, expires_at: T0 + 50 * DAY } });
+    expect(await adminCall(path, { body })).toEqual({ status: 409, body: { error: "conflict" } });
+    expect(await licenseRow()).toEqual({ ...before, expires_at: T0 + 50 * DAY, version: (before.version as number) + 1 });
+    const logs = await shortened();
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ order_code: orderB, detail: { days: 10, from_expires_at: T0 + 60 * DAY, expires_at: T0 + 50 * DAY } });
+  });
+
+  it("hạn trả về và hạn trong nhật ký đúng bằng expected_expires_at − days × 86400 (giá trị đã ghi vào license)", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy(); // hạn T0 + 30 ngày
+    const id = (await licenseRow())!.id as string;
+    const path = `/admin/licenses/${id}/shorten`;
+    let expected = T0 + 30 * DAY;
+    for (const days of [1, 7, 3]) {
+      const res = await adminCall(path, { body: { days, note: "x", expected_expires_at: expected } });
+      const written = expected - days * 86400;
+      expect(res, `days ${days}`).toEqual({ status: 200, body: { license_id: id, expires_at: written } });
+      expect(await licenseRow()).toMatchObject({ expires_at: written });
+      expect((await shortened()).at(-1)!.detail).toMatchObject({ days, from_expires_at: expected, expires_at: written });
+      expected = written;
+    }
+    expect(await auditCount("license_shortened_manually")).toBe(3);
+  });
+
+  it("sau khi rút, tra cứu license thấy hạn mới và dòng nhật ký rút ngắn hạn", async () => {
+    const { w, adminCall, id, orderB } = await renewed();
+    w.clock.now = T0 + 5 * DAY;
+    expect((await adminCall(`/admin/licenses/${id}/shorten`, { body: { days: 30, note: "hoàn đơn B", order_code: orderB, expected_expires_at: T0 + 60 * DAY } })).status).toBe(200);
+    const res = await adminCall("/admin/lookup", { body: { license_id: id } });
+    const lic = (res.body.licenses as Record<string, unknown>[])[0]!;
+    expect(lic.expires_at).toBe(T0 + 30 * DAY);
+    expect((lic.audit as Record<string, unknown>[])[0]).toMatchObject({ action: "license_shortened_manually", order_code: orderB });
   });
 });
 
