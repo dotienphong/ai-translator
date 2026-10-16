@@ -363,13 +363,23 @@ export interface PlanOffer {
   prices: Record<string, number>;
 }
 
+// Bảng gói kèm loại tiền server gợi ý theo nước của máy (`license::purchase::PlansView`, spec 2026-10-14 D4); `null` khi
+// server không gợi ý. Giá tính theo đơn vị nhỏ nhất của từng loại tiền: đồng (VND), cent (USD).
+export interface PlansView {
+  plans: PlanOffer[];
+  suggestedCurrency: string | null;
+}
+
 export interface CheckoutView {
   orderCode: number;
   plan: string;
   amount: number;
   currency: string;
   expiresAt: number;
-  qrSvg: string;
+  // Cổng thanh toán của đơn: "payos" (VietQR) hay "creem" (thẻ quốc tế).
+  provider: string;
+  // Mã VietQR đã vẽ (SVG, do phía Rust vẽ). `null` với đơn không có mã QR (thẻ): khách trả ở trang thanh toán mở bằng trình duyệt.
+  qrSvg: string | null;
   licenseExpiresAt: number | null;
   convertedDays: number | null;
 }
@@ -433,8 +443,11 @@ export interface Commands {
   // Bước Điều khoản vừa được đồng ý: đăng ký dùng thử chạy nền (spec 2026-10-07 §3.2).
   start_trial: { args: undefined; result: null };
   validate_license: { args: undefined; result: LicenseView | null };
-  get_plans: { args: undefined; result: PlanOffer[] };
-  start_checkout: { args: { plan: string; email: string; consent: boolean; renew: boolean }; result: CheckoutView };
+  get_plans: { args: undefined; result: PlansView };
+  start_checkout: {
+    args: { plan: string; email: string; consent: boolean; renew: boolean; currency: string };
+    result: CheckoutView;
+  };
   get_pending_order: { args: undefined; result: CheckoutView | null };
   cancel_checkout: { args: undefined; result: null };
   open_checkout_page: { args: undefined; result: null };

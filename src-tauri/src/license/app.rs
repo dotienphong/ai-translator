@@ -16,11 +16,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 
-use super::client::{Device, HttpApi, PlanOffer};
+use super::client::{Device, HttpApi};
 use super::device;
 use super::keys::PublicKeys;
 use super::manager::{License, LicenseError, LicenseView, Machine, StartBlock, Zone};
-use super::purchase::{self, CheckoutView, OrderOutcome};
+use super::purchase::{self, CheckoutView, OrderOutcome, PlansView};
 use super::store::Vault;
 use crate::errors::{self, CommandError};
 use crate::pro::{self, ProGate};
@@ -40,6 +40,12 @@ pub struct Licensing(pub Arc<License>, AtomicBool);
 impl Licensing {
     pub fn new(license: Arc<License>) -> Self {
         Self(license, AtomicBool::new(false))
+    }
+
+    /// Luồng hỏi đơn đang chờ đang chạy (test kiểm luồng đã bật rồi đã dừng).
+    #[cfg(test)]
+    pub fn polling(&self) -> bool {
+        self.1.load(Ordering::SeqCst)
     }
 }
 
@@ -397,7 +403,7 @@ pub fn validate_now<R: Runtime>(app: &AppHandle<R>) -> Result<Option<LicenseView
     result.map(|()| Some(license.view(now()))).map_err(command_error)
 }
 
-pub fn plans<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<PlanOffer>, CommandError> {
+pub fn plans<R: Runtime>(app: &AppHandle<R>) -> Result<PlansView, CommandError> {
     purchase::plans(&*license_or_error(app)?).map_err(command_error)
 }
 
@@ -407,22 +413,39 @@ pub fn start_checkout<R: Runtime>(
     email: &str,
     consent: bool,
     renew: bool,
+    currency: &str,
 ) -> Result<CheckoutView, CommandError> {
-    let view = purchase::start(&*license_or_error(app)?, plan, email, consent, renew).map_err(command_error)?;
+    let view =
+        purchase::start(&*license_or_error(app)?, plan, email, consent, renew, currency).map_err(command_error)?;
+    // Đơn thẻ không có mã QR để quét: mở ngay trang thanh toán của cổng bằng trình duyệt (spec 2026-10-14 §5). Mở không được
+    // thì thôi (đơn đã tạo và đã lưu, luồng hỏi vẫn bật), giao diện vẫn có nút "Mở lại trang thanh toán". Log chỉ nhãn cố
+    // định của nhánh lỗi (`open_failed:…`): lỗi thô của trình mở (macOS `open`) có thể chứa nguyên URL thanh toán.
+    if view.qr_svg.is_none()
+        && let Err(e) = open_checkout_page(app)
+    {
+        log::info!("chưa tự mở được trang thanh toán: {}", e.message);
+    }
     spawn_order_poller(app);
     Ok(view)
 }
 
-/// Đơn đang chờ, vẽ lại mã QR (mở lại màn hình Nâng cấp hay mở lại app).
+/// Đơn đang chờ, vẽ lại mã QR (mở lại màn hình Nâng cấp hay mở lại app). Số tiền và loại tiền như lúc tạo đơn; đơn do bản app
+/// cũ lưu không có: 0 và chuỗi rỗng.
 pub fn pending_order<R: Runtime>(app: &AppHandle<R>) -> Option<CheckoutView> {
     let order = purchase::pending(&*licensing(app)?)?;
+    // Chuỗi QR đã lưu mà vẽ không được thì coi như đơn hỏng; đơn không có QR (Creem) thì không vẽ gì.
+    let qr_svg = match order.qr() {
+        Some(code) => Some(purchase::qr_svg(code).ok()?),
+        None => None,
+    };
     Some(CheckoutView {
         order_code: order.order_code,
         plan: order.plan,
-        amount: 0,
-        currency: String::new(),
+        amount: order.amount,
+        currency: order.currency,
         expires_at: order.expires_at,
-        qr_svg: purchase::qr_svg(&order.qr_code).ok()?,
+        provider: order.provider,
+        qr_svg,
         license_expires_at: None,
         converted_days: None,
     })
@@ -434,11 +457,14 @@ pub fn cancel_checkout<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Mở trang thanh toán của đơn đang chờ. Lỗi: mã `openFailed`, chi tiết là nhãn cố định của nhánh lỗi (`open_failed:…`),
+/// không bao giờ có URL.
 pub fn open_checkout_page<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
     let order = licensing(app)
         .and_then(|l| purchase::pending(&l))
-        .ok_or_else(|| CommandError::new(errors::OPEN_FAILED, None, "không có đơn đang chờ"))?;
-    navigation::open_external(app, &order.checkout_url).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
+        .ok_or_else(|| CommandError::new(errors::OPEN_FAILED, None, "open_failed:no_order"))?;
+    navigation::open_external(app, &order.checkout_url)
+        .map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e.label()))
 }
 
 pub fn recover<R: Runtime>(app: &AppHandle<R>, email: &str) -> Result<(), CommandError> {
@@ -448,7 +474,9 @@ pub fn recover<R: Runtime>(app: &AppHandle<R>, email: &str) -> Result<(), Comman
     reply.result.map_err(|e| command_error(super::manager::map_api(e)))
 }
 
-/// Hỏi đơn đang chờ mỗi 3 giây tới khi có kết quả cuối (§6.8 bước 4). Chỉ một luồng hỏi mỗi lúc.
+/// Hỏi đơn đang chờ tới khi có kết quả cuối (§6.8 bước 4), nhịp theo `purchase::poll_delay`: 3 giây với đơn VietQR; đơn thẻ 5
+/// giây, quá hạn thì 30 giây trong giờ đầu rồi 120 giây. Chỉ một luồng hỏi mỗi lúc: đơn tạo trong lúc luồng đang chạy (sau
+/// khi hủy đơn đang hỏi) do chính luồng này hỏi tiếp.
 pub fn spawn_order_poller<R: Runtime>(app: &AppHandle<R>) {
     let Some(state) = app.try_state::<Licensing>() else {
         return;
@@ -473,9 +501,14 @@ pub fn spawn_order_poller<R: Runtime>(app: &AppHandle<R>) {
                 refresh(&app);
             }
             if outcome.is_final() {
+                // Người dùng đã hủy đơn này và tạo đơn khác trong lúc chờ server (lệnh tạo đơn không bật được luồng mới vì
+                // luồng này còn chạy): hỏi đơn mới ngay. Kho không còn đơn, hay còn đúng đơn này (xóa lỗi), thì dừng.
+                if purchase::another_order_pending(&license, outcome.order_code()) {
+                    continue;
+                }
                 break;
             }
-            std::thread::sleep(Duration::from_secs(purchase::POLL_EVERY_SECS));
+            std::thread::sleep(purchase::poll_delay(&license, now()));
         }
         if let Some(state) = app.try_state::<Licensing>() {
             state.1.store(false, Ordering::SeqCst);

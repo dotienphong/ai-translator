@@ -16,9 +16,8 @@ use crate::errors::{self, CommandError};
 use crate::glossary::{GlossaryEntry, ImportReport};
 use crate::hotkeys::HotkeyAction;
 use crate::license::app::{self as license_app, ActivateOutcome};
-use crate::license::client::PlanOffer;
 use crate::license::manager::LicenseView;
-use crate::license::purchase::CheckoutView;
+use crate::license::purchase::{CheckoutView, PlansView};
 use crate::overlay::{self, placement::Edge};
 use crate::settings::Settings;
 use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
@@ -280,7 +279,7 @@ pub async fn validate_license<R: Runtime>(app: AppHandle<R>) -> Result<Option<Li
 }
 
 #[tauri::command]
-pub async fn get_plans<R: Runtime>(app: AppHandle<R>) -> Result<Vec<PlanOffer>, CommandError> {
+pub async fn get_plans<R: Runtime>(app: AppHandle<R>) -> Result<PlansView, CommandError> {
     blocking(app, license_app::plans).await
 }
 
@@ -291,9 +290,10 @@ pub async fn start_checkout<R: Runtime>(
     email: String,
     consent: bool,
     renew: bool,
+    currency: String,
 ) -> Result<CheckoutView, CommandError> {
     blocking(app, move |app| {
-        license_app::start_checkout(app, &plan, &email, consent, renew)
+        license_app::start_checkout(app, &plan, &email, consent, renew, &currency)
     })
     .await
 }

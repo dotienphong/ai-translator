@@ -106,10 +106,33 @@ pub struct PendingOrder {
     pub expires_at: i64,
     /// Đơn gia hạn hay đổi gói (có `license_key`): khi đã trả tiền thì `validate`, không `activate`.
     pub renewal: bool,
-    /// Trang thanh toán của PayOS, để mở lại bằng trình duyệt (không nhận URL từ giao diện).
+    /// Trang thanh toán của cổng (PayOS, Creem), để mở lại bằng trình duyệt (không nhận URL từ giao diện).
     pub checkout_url: String,
-    /// Chuỗi VietQR thô, để vẽ lại mã QR khi mở lại màn hình Nâng cấp.
-    pub qr_code: String,
+    /// Chuỗi VietQR thô, để vẽ lại mã QR khi mở lại màn hình Nâng cấp. `None`: đơn của cổng không có mã QR (Creem), khách
+    /// trả ở trang của cổng. Đơn do bản app cũ lưu luôn có chuỗi này.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub qr_code: Option<String>,
+    /// Cổng thanh toán của đơn: `payos` hay `creem`. Đơn do bản app cũ lưu không có trường này: là `payos`.
+    #[serde(default = "payos")]
+    pub provider: String,
+    /// Số tiền của đơn như server trả lúc tạo (VND; USD tính bằng cent), để mở lại app vẫn hiện đúng. Đơn do bản app cũ lưu
+    /// không có trường này: 0.
+    #[serde(default)]
+    pub amount: i64,
+    /// Loại tiền của đơn (`VND`, `USD`) như server trả lúc tạo. Đơn do bản app cũ lưu không có trường này: chuỗi rỗng.
+    #[serde(default)]
+    pub currency: String,
+}
+
+impl PendingOrder {
+    /// Chuỗi VietQR để vẽ; `None`: đơn không có mã QR (đơn thẻ). Chuỗi rỗng coi như không có mã QR.
+    pub fn qr(&self) -> Option<&str> {
+        self.qr_code.as_deref().filter(|code| !code.is_empty())
+    }
+}
+
+fn payos() -> String {
+    "payos".into()
 }
 
 fn short_hash(parts: &[&str]) -> String {
@@ -150,6 +173,19 @@ pub fn write<T: Serialize>(vault: &dyn Vault, name: &str, value: &T) -> Result<(
 
 pub fn delete(vault: &dyn Vault, name: &str) -> Result<(), StoreError> {
     vault.delete(name).map_err(StoreError::Keystore)
+}
+
+/// Xóa mục `name` chỉ khi nội dung đọc được và `matches` đúng (ví dụ: đúng đơn vừa hỏi, không phải đơn tạo sau đó). `true`:
+/// đã xóa.
+pub fn delete_if<T: DeserializeOwned>(
+    vault: &dyn Vault,
+    name: &str,
+    matches: impl FnOnce(&T) -> bool,
+) -> Result<bool, StoreError> {
+    match read::<T>(vault, name)? {
+        Some(value) if matches(&value) => delete(vault, name).map(|()| true),
+        _ => Ok(false),
+    }
 }
 
 /// Bộ đếm của khóa `key`, chỉ khi nội dung mục mang đúng khóa đó.
@@ -200,13 +236,20 @@ pub mod tests {
     use crate::license::quota::{Resolution, resolve_paid};
     use crate::license::token::{Claims, Plan};
 
-    /// Kho giả: ghi lại thứ tự các lần ghi; có thể cho lỗi đọc hay lỗi ghi một mục.
+    /// Lần đọc một mục sẽ dừng lại: tên mục, kênh báo "đã đọc xong", kênh chờ tín hiệu đi tiếp.
+    pub type GetHold = (String, std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>);
+
+    /// Kho giả: ghi lại thứ tự các lần ghi; có thể cho lỗi đọc, lỗi ghi một mục hay lỗi xóa.
     #[derive(Default)]
     pub struct FakeVault {
         pub items: Mutex<HashMap<String, Vec<u8>>>,
         pub writes: Mutex<Vec<String>>,
         pub fail_reads: Mutex<bool>,
         pub fail_writes_of: Mutex<Option<String>>,
+        pub fail_deletes: Mutex<bool>,
+        /// Có thì lần đọc kế tiếp của mục đó đọc xong, báo, rồi chờ tín hiệu mới trả kết quả (đã đọc trước khi chờ): test
+        /// mô phỏng một việc khác chen vào giữa lúc đọc và lúc xóa.
+        pub hold_after_get: Mutex<Option<GetHold>>,
     }
 
     impl Vault for FakeVault {
@@ -214,7 +257,20 @@ pub mod tests {
             if *self.fail_reads.lock().unwrap() {
                 return Err("bị từ chối".into());
             }
-            Ok(self.items.lock().unwrap().get(name).cloned())
+            let value = self.items.lock().unwrap().get(name).cloned();
+            let hold = {
+                let mut hold = self.hold_after_get.lock().unwrap();
+                if hold.as_ref().is_some_and(|(item, ..)| item == name) {
+                    hold.take()
+                } else {
+                    None
+                }
+            };
+            if let Some((_, reached, release)) = hold {
+                let _ = reached.send(());
+                let _ = release.recv();
+            }
+            Ok(value)
         }
 
         fn set(&self, name: &str, value: &[u8]) -> Result<(), String> {
@@ -233,6 +289,9 @@ pub mod tests {
         }
 
         fn delete(&self, name: &str) -> Result<(), String> {
+            if *self.fail_deletes.lock().unwrap() {
+                return Err("bị từ chối".into());
+            }
             self.items.lock().unwrap().remove(name);
             Ok(())
         }
@@ -345,6 +404,79 @@ pub mod tests {
             assert_eq!(ks.get(name).unwrap().as_deref(), Some(&b"{}"[..]), "{name} giữ nguyên");
         }
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Đơn đang chờ do bản app cũ lưu (chỉ có chuỗi VietQR; không có `provider`, `amount`, `currency`): đọc được như đơn
+    /// PayOS (spec 2026-10-14 §5), số tiền 0 và loại tiền rỗng (giao diện tự suy).
+    #[test]
+    fn a_pending_order_saved_by_an_older_app_reads_as_a_payos_order() {
+        let vault = FakeVault::default();
+        vault.items.lock().unwrap().insert(
+            ORDER.into(),
+            br#"{"order_code":7,"order_token":"tok","plan":"monthly","expires_at":9,"renewal":false,"checkout_url":"https://pay.payos.vn/web/abc","qr_code":"000201"}"#.to_vec(),
+        );
+        let order = read::<PendingOrder>(&vault, ORDER).unwrap().unwrap();
+        assert_eq!(
+            (order.provider.as_str(), order.qr_code.as_deref()),
+            ("payos", Some("000201"))
+        );
+        assert_eq!((order.amount, order.currency.as_str()), (0, ""));
+    }
+
+    /// Đơn không có mã QR (Creem): lưu không có `qr_code`, đọc lại vẫn là đơn không QR của `creem`, giữ số tiền và loại tiền.
+    #[test]
+    fn a_pending_order_without_a_qr_code_round_trips() {
+        let vault = FakeVault::default();
+        let order = PendingOrder {
+            order_code: 8,
+            order_token: "tok".into(),
+            plan: "yearly".into(),
+            expires_at: 9,
+            renewal: true,
+            checkout_url: "https://checkout.creem.io/ch_1".into(),
+            qr_code: None,
+            provider: "creem".into(),
+            amount: 3999,
+            currency: "USD".into(),
+        };
+        write(&vault, ORDER, &order).unwrap();
+        let raw = String::from_utf8(vault.items.lock().unwrap()[ORDER].clone()).unwrap();
+        assert!(!raw.contains("qr_code"), "không ghi trường rỗng: {raw}");
+        assert_eq!(read::<PendingOrder>(&vault, ORDER).unwrap(), Some(order));
+    }
+
+    /// `delete_if` chỉ xóa mục đọc được và đúng điều kiện: luồng hỏi đơn A không xóa đơn B người dùng vừa tạo (L294a).
+    #[test]
+    fn delete_if_only_deletes_the_matching_item() {
+        let vault = FakeVault::default();
+        let order = PendingOrder {
+            order_code: 8,
+            order_token: "tok".into(),
+            plan: "monthly".into(),
+            expires_at: 9,
+            renewal: false,
+            checkout_url: "https://checkout.creem.io/ch_1".into(),
+            qr_code: None,
+            provider: "creem".into(),
+            amount: 399,
+            currency: "USD".into(),
+        };
+        write(&vault, ORDER, &order).unwrap();
+        assert_eq!(
+            delete_if::<PendingOrder>(&vault, ORDER, |o| o.order_code == 7),
+            Ok(false)
+        );
+        assert_eq!(read::<PendingOrder>(&vault, ORDER).unwrap(), Some(order));
+        assert_eq!(
+            delete_if::<PendingOrder>(&vault, ORDER, |o| o.order_code == 8),
+            Ok(true)
+        );
+        assert_eq!(read::<PendingOrder>(&vault, ORDER).unwrap(), None);
+        assert_eq!(
+            delete_if::<PendingOrder>(&vault, ORDER, |_| true),
+            Ok(false),
+            "không còn gì để xóa"
+        );
     }
 
     /// Với kho khóa trong bộ nhớ của `keyring-core`: mục lớn nhất (bản ghi license có token thật) vừa giới hạn 2048 byte.

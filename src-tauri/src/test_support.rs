@@ -101,8 +101,9 @@ impl Surface for FakeSurface {
 
 /// Bản giả của `SystemOpener`: ghi lại từng lần gọi, không mở gì (QĐ28). Mọi test chạy app giả đều dùng
 /// bản này, nên kể cả khi ACL lỡ cấp thừa, lệnh tới handler cũng không mở Finder hay System Settings.
+/// Trường thứ hai: bật thì mở link ngoài báo lỗi giống `open` của macOS (lỗi chứa nguyên URL).
 #[derive(Clone, Default)]
-pub struct FakeSystem(Arc<Mutex<Vec<String>>>);
+pub struct FakeSystem(Arc<Mutex<Vec<String>>>, Arc<Mutex<bool>>);
 
 impl FakeSystem {
     fn push(&self, call: String) -> Result<(), String> {
@@ -122,7 +123,13 @@ impl SystemOpener for FakeSystem {
         self.push("open_login_items_settings".into())
     }
     fn open_external_url(&self, url: &str) -> Result<(), String> {
-        self.push(format!("open_external_url {url}"))
+        self.push(format!("open_external_url {url}"))?;
+        if *self.1.lock().unwrap() {
+            return Err(format!(
+                "Launcher \"/usr/bin/open\" \"--\" \"{url}\" failed with exit status: 1"
+            ));
+        }
+        Ok(())
     }
     fn open_audio_permission_settings(&self) -> Result<(), String> {
         self.push("open_audio_permission_settings".into())
@@ -621,6 +628,11 @@ pub fn login_state(app: &tauri::App<MockRuntime>, change: impl FnOnce(&mut FakeL
 /// Các lần gọi tới `SystemOpener` từ lúc dựng app giả.
 pub fn system_calls(app: &tauri::App<MockRuntime>) -> Vec<String> {
     app.state::<FakeSystem>().0.lock().unwrap().clone()
+}
+
+/// Từ giờ, mở link ngoài trong app giả báo lỗi như trình mở của hệ điều hành (vẫn ghi lại lần gọi).
+pub fn fail_opening_links(app: &tauri::App<MockRuntime>) {
+    *app.state::<FakeSystem>().1.lock().unwrap() = true;
 }
 
 /// Các lần gọi tới thanh phụ đề từ lúc dựng app giả.

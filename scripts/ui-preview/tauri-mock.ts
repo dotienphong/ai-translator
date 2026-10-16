@@ -1,16 +1,37 @@
 // Bản giả của `@tauri-apps/api/core` và `@tauri-apps/api/event` cho trang xem trước (vite.config.ts): trả dữ liệu mẫu theo
-// tham số URL, giữ trạng thái trong bộ nhớ để bấm thử được (đổi cài đặt, bắt đầu/dừng, sửa thuật ngữ…). Không dùng trong
-// app thật.
+// tham số URL, giữ trạng thái trong bộ nhớ để bấm thử được (đổi cài đặt, bắt đầu/dừng, sửa thuật ngữ, tạo/hủy đơn thanh
+// toán…). Không dùng trong app thật. Tên và số phiên bản lấy từ src-tauri/tauri.conf.json. Mọi lệnh gọi được ghi vào
+// `window.__ipcCalls` ({ cmd, args }) để script kiểm (check-i18n.mjs) xem giao diện đã gửi gì.
 //
 // Tham số URL (đều không bắt buộc):
 //   lang=vi|en|ja|zh|ko  theme=light|dark  platform=macos|windows
 //   screen=home|transcript|history|glossary|settings|upgrade|about  group=general|subtitles|audio|model|hotkeys|license|privacy
 //   session=idle|starting|running|error  error=<mã lỗi phiên>  plan=free|monthly|six_months|yearly  trial=active|ended
-//   onboarding=<số bước, từ 1>  checkout=1  download=1  notice=update|quit|hotkeys|license|error  empty=1
+//   onboarding=<số bước, từ 1>  checkout=1|card  download=1  notice=update|quit|hotkeys|license|error  empty=1
+//   now=<giây Unix hay ngày giờ ISO>  đóng băng đồng hồ của cả trang (Date.now) và của dữ liệu mẫu: hạn đơn thanh toán, hạn
+//     license… cố định giữa các lần chạy (ảnh chụp, ca kiểm); không có thì giờ thật
+//   thanh toán quốc tế (spec 2026-10-14): suggest=usd (server gợi ý trả bằng USD, như khách ở nước ngoài)  usd=0 (server chưa
+//     bán USD: bảng giá không có giá USD, không có lựa chọn cách trả; gợi ý của server vẫn theo suggest=)
+//     checkout=1 (đơn VietQR đang chờ, có mã QR)  checkout=card (đơn thẻ đang chờ: không có mã QR, trang thanh toán ở trình
+//     duyệt)  pending=old (đơn đang chờ do bản app cũ lưu, đọc lại với số tiền 0 và loại tiền rỗng)  late=1 (đơn đã quá giờ
+//     hẹn trả mà server còn báo chờ). Tạo đơn bằng giao diện thì đơn theo đúng gói và loại tiền đã gửi; hủy thì hết đơn chờ.
 //   overlay (overlay.html): locked=1  source=0  text=<màu>  bg=<màu>  opacity=<0–1>  size=<px>  latest=1  notes=<note,…>
 //   dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6): tws=0 (tắt công tắc)  slow=1 (máy chưa đủ nhanh)
 //     overlay.html: live=alone|extends|final|provisional (mẫu dòng đang nói, xem `LIVE_SAMPLE`; cần session=running)
-import type { AppInfo, AppStatus, LicenseView, LiveLine, Settings, Subtitle } from "../../src/lib/ipc";
+import conf from "../../src-tauri/tauri.conf.json";
+import type {
+  AppInfo,
+  AppStatus,
+  CheckoutView,
+  Command,
+  Commands,
+  LicenseView,
+  LiveLine,
+  PlanOffer,
+  PlansView,
+  Settings,
+  Subtitle,
+} from "../../src/lib/ipc";
 import type { ModelsView, PackView } from "../../src/lib/models";
 
 const q = new URLSearchParams(location.search);
@@ -23,9 +44,23 @@ const platform = param("platform", "macos") as "macos" | "windows";
 const sessionParam = param("session", "idle") as AppStatus["session"];
 const plan = param("plan", "monthly") as "free" | "monthly" | "six_months" | "yearly";
 const empty = param("empty") === "1";
-const now = Date.now();
 const sec = (ms: number) => Math.floor(ms / 1000);
 const DAY = 86_400_000;
+
+// Giờ của trang: giờ thật, hay giờ cố định của `now=` (giây Unix hoặc ngày giờ ISO). Cố định thì đổi cả `Date.now` của trang,
+// để giao diện (câu "đã quá giờ hẹn trả" của đơn thẻ, so `expiresAt` với giờ hiện tại) và dữ liệu mẫu cùng một đồng hồ; nếu
+// không, `now=` quá khứ làm mọi đơn mới thành quá hạn. Tham số sai thì báo lỗi, không lặng lẽ dùng giờ thật.
+function pageNow(): number {
+  const raw = q.get("now");
+  if (raw === null) return Date.now();
+  const ms = /^\d+$/.test(raw) ? Number(raw) * 1000 : Date.parse(raw);
+  if (!Number.isFinite(ms)) throw new Error(`tauri-mock: now=${raw} không phải giây Unix hay ngày giờ ISO`);
+  return ms;
+}
+const now = pageNow();
+if (q.has("now")) Date.now = () => now;
+// Bản mới hơn bản đang chạy, cho thông báo "có bản cập nhật": tăng số cuối của phiên bản hiện tại (0.1.9 → 0.1.10).
+const nextVersion = (v: string) => v.replace(/(\d+)(?!.*\d)/, (n) => String(Number(n) + 1));
 
 // ---------------------------------------------------------------- dữ liệu mẫu
 
@@ -80,16 +115,16 @@ let status: AppStatus = {
   pro: plan !== "free",
   quotaWarning: false,
   quotaResetAt: sec(now + 20 * DAY),
-  updateReady: param("notice") === "update" ? "0.1.7" : null,
+  updateReady: param("notice") === "update" ? nextVersion(conf.version) : null,
   updateReprompts: param("notice") === "update" && platform === "macos",
   updateCheck: "idle",
   rev: 1,
 };
 
 const info: AppInfo = {
-  name: "AI Translator",
-  version: "0.1.6",
-  identifier: "com.aitranslator.desktop",
+  name: conf.productName,
+  version: conf.version,
+  identifier: conf.identifier,
   platform,
   launchedAtLogin: false,
 };
@@ -380,19 +415,58 @@ function fakeQr(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges">${cells}</svg>`;
 }
 
-const checkout =
-  param("checkout") === "1"
-    ? {
-        orderCode: 1000428,
-        plan: "monthly",
-        amount: 50_000,
-        currency: "VND",
-        expiresAt: sec(now + 15 * 60_000),
-        qrSvg: fakeQr(),
-        licenseExpiresAt: null,
-        convertedDays: null,
-      }
-    : null;
+// Bảng giá mẫu theo gói: [giá VND (đồng), giá USD (cent)].
+const PRICES: Record<string, readonly [number, number]> = {
+  monthly: [50_000, 399],
+  six_months: [269_000, 2_199],
+  yearly: [500_000, 3_999],
+};
+// Bảng gói như server trả; `usd=0` giả server chưa bán USD (không gói nào có giá USD). Gợi ý loại tiền theo `suggest=`, độc
+// lập với việc có bán USD hay không: server gợi ý theo nước của máy, không biết giá USD đã bật chưa (không bán được thì app
+// quay về VND). Không có `suggest=usd` thì gợi ý VND, như khách ở Việt Nam.
+const plansView = (): PlansView => ({
+  plans: (
+    [
+      { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30 },
+      { code: "six_months", name: "6 Months", quota_minutes_per_cycle: 6000, days_per_order: 180 },
+      { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365 },
+    ] satisfies Omit<PlanOffer, "prices">[]
+  ).map((p) => {
+    const [vnd, usd] = PRICES[p.code] ?? [0, 0];
+    const prices: Record<string, number> = param("usd") === "0" ? { VND: vnd } : { VND: vnd, USD: usd };
+    return { ...p, prices };
+  }),
+  suggestedCurrency: param("suggest") === "usd" ? "USD" : "VND",
+});
+
+// Đơn đang chờ theo gói và loại tiền: VietQR (VND; có mã QR vẽ sẵn, hạn 15 phút) hay thẻ quốc tế (USD; không mã QR, khách
+// trả ở trang thanh toán mở bằng trình duyệt, hạn 30 phút). `expiresAtMs`: hạn đã định (đơn quá giờ hẹn trả).
+function order(code: string, currency: string, expiresAtMs?: number): CheckoutView {
+  const prices = PRICES[code];
+  if (prices === undefined) throw new Error(`tauri-mock: không có gói ${code}`);
+  const card = currency === "USD";
+  return {
+    orderCode: card ? 1000429 : 1000428,
+    plan: code,
+    amount: prices[card ? 1 : 0],
+    currency,
+    expiresAt: sec(expiresAtMs ?? now + (card ? 30 : 15) * 60_000),
+    provider: card ? "creem" : "payos",
+    qrSvg: card ? null : fakeQr(),
+    licenseExpiresAt: null,
+    convertedDays: null,
+  };
+}
+
+// Đơn đang chờ lúc mở trang, theo `checkout=` (gói Monthly): `pending=old` dựng lại như đơn do bản app cũ lưu (số tiền 0, loại
+// tiền rỗng; còn mã QR hay không vẫn như đơn gốc), `late=1` là đơn đã quá giờ hẹn trả 10 phút.
+function orderFromUrl(): CheckoutView | null {
+  const kind = param("checkout");
+  if (kind !== "1" && kind !== "card") return null;
+  const placed = order("monthly", kind === "card" ? "USD" : "VND", param("late") === "1" ? now - 10 * 60_000 : undefined);
+  return param("pending") === "old" ? { ...placed, amount: 0, currency: "" } : placed;
+}
+let pendingOrder = orderFromUrl();
 
 // ---------------------------------------------------------------- sự kiện
 
@@ -448,7 +522,11 @@ if (sessionParam === "running") {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const handlers: Record<string, (args: any) => unknown> = {
+// Mỗi lệnh nhận đúng kiểu tham số và trả đúng kiểu kết quả của `Commands` (src/lib/ipc.ts): đổi hợp đồng IPC mà quên đổi mẫu
+// thì `tsc` báo; tên lệnh sai chính tả cũng báo (`satisfies` kiểm cả khóa thừa).
+type Handlers = { [C in Command]?: (args: Commands[C]["args"]) => Commands[C]["result"] | Promise<Commands[C]["result"]> };
+
+const handlers = {
   get_settings: () => settings,
   update_settings: ({ patch }) => {
     const { overlay, experimental, ...rest } = patch;
@@ -494,7 +572,7 @@ const handlers: Record<string, (args: any) => unknown> = {
   clear_history: () => history.length,
   list_glossary: () => glossary,
   add_glossary_entry: ({ source, target }) => {
-    const entry = { id: Date.now(), source, target };
+    const entry = { id: Math.max(0, ...glossary.map((e) => e.id)) + 1, source, target };
     glossary = [...glossary, entry];
     return entry;
   },
@@ -511,13 +589,14 @@ const handlers: Record<string, (args: any) => unknown> = {
   get_debug_sessions: () => [],
   get_overlay_view: () => overlayView(),
   get_license: () => licenseView(),
-  get_pending_order: () => checkout,
-  get_plans: () => [
-    { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50_000 } },
-    { code: "six_months", name: "6 Months", quota_minutes_per_cycle: 6000, days_per_order: 180, prices: { VND: 269_000 } },
-    { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500_000 } },
-  ],
-  start_checkout: () => checkout ?? { ...{ orderCode: 1000428, plan: "monthly", amount: 50_000, currency: "VND", expiresAt: sec(now + 900_000), qrSvg: fakeQr(), licenseExpiresAt: null, convertedDays: null } },
+  get_pending_order: () => pendingOrder,
+  get_plans: () => plansView(),
+  // Đơn mới theo đúng gói và loại tiền đã gửi (USD: thẻ, không mã QR; VND: VietQR); thay đơn đang chờ nếu có.
+  start_checkout: ({ plan: code, currency }) => (pendingOrder = order(code, currency)),
+  cancel_checkout: () => {
+    pendingOrder = null;
+    return null;
+  },
   check_for_updates: async () => {
     changeStatus({ updateCheck: "checking" });
     await wait(700);
@@ -532,10 +611,16 @@ const handlers: Record<string, (args: any) => unknown> = {
   delete_models: () => models,
   delete_models_and_data: () => models,
   select_model_pack: ({ pack: id }) => changeSettings({ ...settings, modelTier: id }),
-};
+} satisfies Handlers;
+
+// Nhật ký lệnh đã gọi, cho script kiểm đọc (`window.__ipcCalls`).
+const ipcCalls: { cmd: string; args: unknown }[] = [];
+(window as unknown as { __ipcCalls: typeof ipcCalls }).__ipcCalls = ipcCalls;
 
 export async function invoke(cmd: string, args?: unknown) {
-  const handler = handlers[cmd];
+  ipcCalls.push({ cmd, args });
+  // Lệnh chưa có mẫu thì trả null, như lệnh phía Rust không có kết quả.
+  const handler = Object.hasOwn(handlers, cmd) ? (handlers as Record<string, (args: unknown) => unknown>)[cmd] : undefined;
   return handler ? handler(args ?? {}) : null;
 }
 

@@ -46,7 +46,6 @@ function fill(dir) {
   edit(dir, "src-tauri/src/updater/source.rs", setUrl("https://releases.example.com/desktop"));
   edit(dir, "src-tauri/src/models/source.rs", setUrl("https://releases.example.com/models/models.json"));
   edit(dir, "src-tauri/src/license/client.rs", setUrl("https://api.example.com"));
-  edit(dir, "src-tauri/src/navigation.rs", (t) => t.replace('    "pay.payos.vn",\n', '    "pay.payos.vn",\n    "example.com",\n'));
 }
 
 test("đọc PRODUCTION_URL của file Rust và khóa công khai của tauri signer", () => {
@@ -66,9 +65,27 @@ test("repo hiện tại đủ cấu hình production", (t) => {
   assert.deepEqual(readinessErrors(copy(t)), []);
 });
 
+// Còn trang thanh toán của PayOS và của Creem trong danh sách vẫn không đủ: chỉ tên miền website mới làm đạt.
 test("thiếu tên miền website trong EXTERNAL_HOSTS thì bị bắt", (t) => {
   const dir = copy(t);
   edit(dir, "src-tauri/src/navigation.rs", (s) => s.replace(/^\s*\/\/ Website của sản phẩm[^\n]*\n\s*"aitranslator\.io\.vn",\n/m, ""));
+  const errors = readinessErrors(dir);
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.ok(errors[0].includes("EXTERNAL_HOSTS"), errors[0]);
+});
+
+// Chỉ nhận đúng cả tên miền, không nhận `www.` hay tên miền con: danh sách có `www.aitranslator.io.vn` mà không có
+// `aitranslator.io.vn` thì vẫn thiếu (`decide` của navigation.rs so khớp từng tên miền một, `www.` là tên miền khác).
+test("EXTERNAL_HOSTS có www.aitranslator.io.vn thay cho aitranslator.io.vn thì bị bắt", (t) => {
+  const dir = copy(t);
+  let replaced = 0;
+  edit(dir, "src-tauri/src/navigation.rs", (s) =>
+    s.replace(/^(\s*)"aitranslator\.io\.vn",$/m, (_, indent) => {
+      replaced += 1;
+      return `${indent}"www.aitranslator.io.vn",`;
+    }),
+  );
+  assert.equal(replaced, 1, "không thấy dòng \"aitranslator.io.vn\" trong EXTERNAL_HOSTS để thay");
   const errors = readinessErrors(dir);
   assert.equal(errors.length, 1, errors.join("\n"));
   assert.ok(errors[0].includes("EXTERNAL_HOSTS"), errors[0]);

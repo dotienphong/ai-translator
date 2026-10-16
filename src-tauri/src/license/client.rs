@@ -15,7 +15,7 @@ use std::time::Duration;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::purchase::PLANS;
+use super::purchase::{CURRENCIES, PLANS};
 
 /// Địa chỉ license server production (Worker `mt-license` trên tên miền riêng, spec 2026-10-06). Để `None` thì app
 /// chỉ dùng được token đã lưu và gói Free.
@@ -97,13 +97,40 @@ pub struct PlanOffer {
     pub prices: std::collections::BTreeMap<String, i64>,
 }
 
+/// Bảng gói và loại tiền server gợi ý (`GET /v1/plans`).
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+pub struct PlansReply {
+    pub plans: Vec<PlanOffer>,
+    /// Loại tiền gợi ý theo nước của máy (spec 2026-10-14 D4): `VND` hay `USD`. Server cũ không có trường này; giá trị khác
+    /// (kể cả sai kiểu) thì bỏ, không làm hỏng cả bảng gói.
+    #[serde(default, deserialize_with = "known_currency")]
+    pub suggested_currency: Option<String>,
+}
+
+/// `suggested_currency` chỉ là gợi ý: nhận đúng một loại tiền app bán được ([`CURRENCIES`]), mọi giá trị khác là `None`.
+fn known_currency<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<String>, D::Error> {
+    let value = Value::deserialize(d)?;
+    Ok(value.as_str().filter(|c| CURRENCIES.contains(c)).map(String::from))
+}
+
+/// Chuỗi rỗng là không có (`qr_code: ""` là đơn không có mã QR, không phải mã QR rỗng).
+fn non_empty<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<String>, D::Error> {
+    Ok(Option::<String>::deserialize(d)?.filter(|s| !s.is_empty()))
+}
+
 /// Đơn vừa tạo (`POST /v1/checkout`).
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, serde::Serialize)]
 pub struct Checkout {
     pub order_code: i64,
     pub order_token: String,
+    /// Cổng thanh toán của đơn (`payos`, `creem`). Server cũ (≤ 0.1.9) không có trường này.
+    #[serde(default)]
+    pub provider: Option<String>,
     pub checkout_url: String,
-    pub qr_code: String,
+    /// Chuỗi VietQR của PayOS. `null` với đơn của cổng không có mã QR (Creem): khách trả ở `checkout_url`. Chuỗi rỗng cũng
+    /// là không có mã QR.
+    #[serde(default, deserialize_with = "non_empty")]
+    pub qr_code: Option<String>,
     pub plan: String,
     pub amount: i64,
     pub currency: String,
@@ -133,8 +160,9 @@ pub struct Reply<T> {
 
 /// Các lệnh của license server mà app dùng (spec §6.8). App thật là [`HttpApi`]; test dùng bản giả.
 pub trait LicenseApi: Send + Sync {
-    fn plans(&self) -> Reply<Vec<PlanOffer>>;
-    fn checkout(&self, plan: &str, email: &str, license_key: Option<&str>) -> Reply<Checkout>;
+    fn plans(&self) -> Reply<PlansReply>;
+    /// `currency`: `VND` (VietQR qua PayOS) hay `USD` (thẻ qua Creem; spec 2026-10-14 D4).
+    fn checkout(&self, plan: &str, email: &str, license_key: Option<&str>, currency: &str) -> Reply<Checkout>;
     fn order(&self, order_code: i64, order_token: &str) -> Reply<OrderStatus>;
     /// `allow_conflict`: người dùng đã chọn "Vẫn kích hoạt" khi key đang dùng ở máy khác (spec 2026-10-07 §4.2).
     fn activate(
@@ -287,11 +315,6 @@ fn server_error(status: u16, retry_after: Option<u64>, body: &[u8]) -> ServerErr
 #[derive(Deserialize)]
 struct Ok200 {}
 
-#[derive(Deserialize)]
-struct PlansBody {
-    plans: Vec<PlanOffer>,
-}
-
 fn unit<T>(reply: Reply<T>) -> Reply<()> {
     Reply {
         result: reply.result.map(|_| ()),
@@ -300,19 +323,15 @@ fn unit<T>(reply: Reply<T>) -> Reply<()> {
 }
 
 impl LicenseApi for HttpApi {
-    fn plans(&self) -> Reply<Vec<PlanOffer>> {
+    fn plans(&self) -> Reply<PlansReply> {
         // Khai báo các gói app này bán được (spec 2026-10-13 §2.3): server chỉ đưa gói mới cho app có khai báo, để bản app
         // cũ không thấy gói mà nó không bán được.
         let path = format!("/v1/plans?plans={}", PLANS.join(","));
-        let r: Reply<PlansBody> = self.call("GET", &path, None, None);
-        Reply {
-            result: r.result.map(|b| b.plans),
-            date: r.date,
-        }
+        self.call("GET", &path, None, None)
     }
 
-    fn checkout(&self, plan: &str, email: &str, license_key: Option<&str>) -> Reply<Checkout> {
-        let mut body = json!({ "plan": plan, "email": email, "consent": true });
+    fn checkout(&self, plan: &str, email: &str, license_key: Option<&str>, currency: &str) -> Reply<Checkout> {
+        let mut body = json!({ "plan": plan, "email": email, "consent": true, "currency": currency });
         if let Some(key) = license_key {
             body["license_key"] = json!(key);
         }
@@ -454,7 +473,9 @@ mod tests {
             {"code":"yearly","name":"Yearly","quota_minutes_per_cycle":null,"days_per_order":365,"prices":{"VND":500000}}]}"#;
         let (base, seen) = serve(vec![(200, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        let plans = api.plans().result.unwrap();
+        let reply = api.plans().result.unwrap();
+        assert_eq!(reply.suggested_currency, None, "server cũ không có gợi ý loại tiền");
+        let plans = reply.plans;
         assert_eq!(
             plans.iter().map(|p| p.code.as_str()).collect::<Vec<_>>(),
             ["monthly", "six_months", "yearly"]
@@ -474,6 +495,63 @@ mod tests {
             (req.method.as_str(), req.path.as_str()),
             ("GET", "/v1/plans?plans=monthly,six_months,yearly")
         );
+    }
+
+    /// Giá USD và loại tiền gợi ý (spec 2026-10-14 §3, §4.3): đọc cả giá VND lẫn USD, và `suggested_currency`.
+    #[test]
+    fn plans_reads_the_usd_prices_and_the_suggested_currency() {
+        let body = r#"{"suggested_currency":"USD","plans":[
+            {"code":"monthly","name":"Monthly","quota_minutes_per_cycle":3000,"days_per_order":30,"prices":{"VND":50000,"USD":399}}]}"#;
+        let (base, _) = serve(vec![(200, vec![], body)]);
+        let api = HttpApi::new(accept_base(&base, true));
+        let reply = api.plans().result.unwrap();
+        assert_eq!(reply.suggested_currency.as_deref(), Some("USD"));
+        assert_eq!(
+            (reply.plans[0].prices["VND"], reply.plans[0].prices["USD"]),
+            (50_000, 399)
+        );
+    }
+
+    /// `suggested_currency` chỉ là gợi ý (M4-KH03T3): loại tiền app không bán, sai chữ hoa thường hay sai kiểu thì bỏ (`None`),
+    /// không làm hỏng cả bảng gói (màn hình Nâng cấp vẫn tải).
+    #[test]
+    fn an_odd_suggested_currency_is_dropped_and_the_plans_still_load() {
+        let plans = r#"[{"code":"monthly","name":"Monthly","quota_minutes_per_cycle":3000,"days_per_order":30,"prices":{"VND":50000,"USD":399}}]"#;
+        let cases = [
+            ("5", None),
+            (r#""EUR""#, None),
+            (r#""usd""#, None),
+            (r#""""#, None),
+            ("null", None),
+            (r#"{"code":"USD"}"#, None),
+            (r#"["USD"]"#, None),
+            (r#""VND""#, Some("VND")),
+            (r#""USD""#, Some("USD")),
+        ];
+        for (suggested, expect) in cases {
+            let body = format!(r#"{{"suggested_currency":{suggested},"plans":{plans}}}"#);
+            let reply: PlansReply = serde_json::from_str(&body).unwrap_or_else(|e| panic!("{suggested}: {e}"));
+            assert_eq!(reply.suggested_currency.as_deref(), expect, "{suggested}");
+            assert_eq!(reply.plans.len(), 1, "{suggested}");
+        }
+        let reply: PlansReply = serde_json::from_str(&format!(r#"{{"plans":{plans}}}"#)).unwrap();
+        assert_eq!(reply.suggested_currency, None, "server cũ không có trường này");
+    }
+
+    /// `qr_code: ""` (server hay cổng trả sai) là đơn không có mã QR, không phải mã QR rỗng (KH03-T1-a); `null` và khóa vắng
+    /// cũng vậy; chuỗi thật giữ nguyên.
+    #[test]
+    fn an_empty_qr_code_means_no_qr_code() {
+        let checkout = |qr: &str| -> Checkout {
+            let body = format!(
+                r#"{{"order_code":8,"order_token":"t","provider":"payos","checkout_url":"https://pay.payos.vn/web/x",{qr}"plan":"monthly","amount":50000,"currency":"VND","expires_at":9}}"#
+            );
+            serde_json::from_str(&body).unwrap_or_else(|e| panic!("{qr}: {e}"))
+        };
+        assert_eq!(checkout(r#""qr_code":"","#).qr_code, None);
+        assert_eq!(checkout(r#""qr_code":null,"#).qr_code, None);
+        assert_eq!(checkout("").qr_code, None);
+        assert_eq!(checkout(r#""qr_code":"000201","#).qr_code.as_deref(), Some("000201"));
     }
 
     /// Đăng ký dùng thử (spec 2026-10-07 §3.1): gửi `device_id_hash`, đọc token và các mốc.
@@ -601,18 +679,40 @@ mod tests {
     }
 
     #[test]
-    fn checkout_sends_consent_and_the_key_only_when_renewing() {
+    fn checkout_sends_consent_the_currency_and_the_key_only_when_renewing() {
         let body = r#"{"order_code":7,"order_token":"t","checkout_url":"https://pay.payos.vn/web/x","qr_code":"000201","plan":"monthly","amount":50000,"currency":"VND","expires_at":9}"#;
         let (base, seen) = serve(vec![(201, vec![], body), (201, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        assert_eq!(api.checkout("monthly", "a@b.vn", None).result.unwrap().order_code, 7);
-        api.checkout("monthly", "a@b.vn", Some("KEY")).result.unwrap();
+        let order = api.checkout("monthly", "a@b.vn", None, "VND").result.unwrap();
+        assert_eq!(order.order_code, 7);
+        // Server cũ (≤ 0.1.9) không có `provider`: không đoán, để nơi dùng coi là PayOS.
+        assert_eq!((order.qr_code.as_deref(), order.provider), (Some("000201"), None));
+        api.checkout("monthly", "a@b.vn", Some("KEY"), "VND").result.unwrap();
         let reqs = seen.lock().unwrap().clone();
         assert_eq!(
             reqs[0].body,
-            json!({ "plan": "monthly", "email": "a@b.vn", "consent": true })
+            json!({ "plan": "monthly", "email": "a@b.vn", "consent": true, "currency": "VND" })
         );
         assert_eq!(reqs[1].body["license_key"], "KEY");
+    }
+
+    /// Đơn thẻ quốc tế (Creem, spec 2026-10-14 §3): `qr_code` là `null`, có `provider`; app gửi `currency: "USD"`.
+    #[test]
+    fn a_card_checkout_has_no_qr_code_and_names_its_provider() {
+        let body = r#"{"order_code":8,"order_token":"t","provider":"creem","checkout_url":"https://checkout.creem.io/ch_1","qr_code":null,"plan":"monthly","amount":399,"currency":"USD","expires_at":9}"#;
+        let (base, seen) = serve(vec![(201, vec![], body)]);
+        let api = HttpApi::new(accept_base(&base, true));
+        let order = api.checkout("monthly", "a@b.vn", None, "USD").result.unwrap();
+        assert_eq!(
+            (
+                order.qr_code,
+                order.provider.as_deref(),
+                order.amount,
+                order.currency.as_str()
+            ),
+            (None, Some("creem"), 399, "USD")
+        );
+        assert_eq!(seen.lock().unwrap()[0].body["currency"], "USD");
     }
 
     /// `accept_base`: chỉ `https` không query; `http` tới máy này chỉ khi `allow_http` (dành cho test, không phải bản

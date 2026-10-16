@@ -69,7 +69,8 @@ export function readinessErrors(root, { baseUrl } = {}) {
   }
   const hosts = /pub const EXTERNAL_HOSTS: &\[&str\] = &\[([\s\S]*?)\];/.exec(read("src-tauri/src/navigation.rs"));
   const names = [...(hosts?.[1] ?? "").matchAll(/^\s*"([^"]+)",/gm)].map((m) => m[1]);
-  if (!names.some((h) => h !== "pay.payos.vn")) {
+  // Tên miền website phải có đúng tên; trang thanh toán của PayOS và Creem (spec 2026-10-14) không thay được nó.
+  if (!names.includes("aitranslator.io.vn")) {
     errors.push("src-tauri/src/navigation.rs: EXTERNAL_HOSTS chưa có tên miền website (T7, Task 12 của 07b)");
   }
   return errors;

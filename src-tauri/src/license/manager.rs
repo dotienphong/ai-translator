@@ -388,6 +388,9 @@ pub struct License {
     /// Mỗi lúc chỉ một lần gọi `POST /v1/trial` (ticker, bước Điều khoản và nút Bắt đầu có thể chạy cùng lúc): lần sau chờ
     /// rồi dùng kết quả của lần trước.
     trial_gate: Mutex<()>,
+    /// Mỗi lúc chỉ một việc ghi hay xóa mục `license-order` (tạo đơn, hủy đơn, quên đơn vừa xong): việc "đọc, đúng đơn thì
+    /// xóa" của luồng hỏi không chen được lần ghi đơn mới vào giữa.
+    order_gate: Mutex<()>,
     inner: Mutex<Inner>,
 }
 
@@ -421,6 +424,7 @@ impl License {
             dev_unlimited,
             genuine: AtomicU8::new(GENUINE_UNKNOWN),
             trial_gate: Mutex::new(()),
+            order_gate: Mutex::new(()),
             inner: Mutex::new(Inner {
                 has_prior_data,
                 ..Inner::default()
@@ -1215,6 +1219,11 @@ impl License {
         self.vault.as_ref()
     }
 
+    /// Giữ quyền ghi hay xóa mục `license-order` tới khi bỏ guard (một việc mỗi lúc trong tiến trình này).
+    pub fn order_gate(&self) -> std::sync::MutexGuard<'_, ()> {
+        self.order_gate.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     pub fn observe_reply<T>(&self, reply: &Reply<T>) {
         self.observe(reply);
     }
@@ -1249,7 +1258,7 @@ pub mod tests {
     use serde_json::{Value, json};
 
     use super::*;
-    use crate::license::client::{Checkout, OrderStatus, PlanOffer, ServerError, TrialGrant};
+    use crate::license::client::{Checkout, OrderStatus, PlansReply, ServerError, TrialGrant};
     use crate::license::store::tests::FakeVault;
 
     /// 2026-10-01 00:00:00 UTC.
@@ -1337,6 +1346,8 @@ pub mod tests {
         pub deactivations: Mutex<VecDeque<Result<(), ApiError>>>,
         pub checkouts: Mutex<VecDeque<Result<Checkout, ApiError>>>,
         pub orders: Mutex<VecDeque<Result<OrderStatus, ApiError>>>,
+        /// Bảng gói trả cho `plans()`; không xếp thì rỗng, không gợi ý loại tiền.
+        pub plans: Mutex<Option<PlansReply>>,
         pub calls: Mutex<Vec<String>>,
         pub date: Mutex<Option<i64>>,
         /// Có thì lần `validate` kế tiếp chờ tới khi nhận tín hiệu: test mô phỏng response tới muộn.
@@ -1345,6 +1356,8 @@ pub mod tests {
         pub validate_returned: AtomicUsize,
         /// Như `validate_hold`, cho lần `trial` kế tiếp.
         pub trial_hold: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
+        /// Như `validate_hold`, cho lần `order` kế tiếp (lần gọi đã được ghi vào `calls` trước khi chờ).
+        pub order_hold: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
     }
 
     impl FakeApi {
@@ -1367,18 +1380,27 @@ pub mod tests {
     }
 
     impl LicenseApi for Arc<FakeApi> {
-        fn plans(&self) -> Reply<Vec<PlanOffer>> {
+        fn plans(&self) -> Reply<PlansReply> {
             self.calls.lock().unwrap().push("plans".into());
             Reply {
-                result: Ok(Vec::new()),
+                result: Ok(self.plans.lock().unwrap().clone().unwrap_or(PlansReply {
+                    plans: Vec::new(),
+                    suggested_currency: None,
+                })),
                 date: *self.date.lock().unwrap(),
             }
         }
-        fn checkout(&self, plan: &str, email: &str, key: Option<&str>) -> Reply<Checkout> {
+        fn checkout(&self, plan: &str, email: &str, key: Option<&str>, currency: &str) -> Reply<Checkout> {
+            // Ghi loại tiền chỉ khi không phải VND, để các dòng ghi của đơn VietQR giữ nguyên.
+            let currency = if currency == "VND" {
+                String::new()
+            } else {
+                format!(" {currency}")
+            };
             self.calls
                 .lock()
                 .unwrap()
-                .push(format!("checkout {plan} {email} {}", key.unwrap_or("-")));
+                .push(format!("checkout {plan} {email} {}{currency}", key.unwrap_or("-")));
             Reply {
                 result: self
                     .checkouts
@@ -1391,6 +1413,10 @@ pub mod tests {
         }
         fn order(&self, code: i64, token: &str) -> Reply<OrderStatus> {
             self.calls.lock().unwrap().push(format!("order {code} {token}"));
+            let hold = self.order_hold.lock().unwrap().take();
+            if let Some(release) = hold {
+                let _ = release.recv();
+            }
             Reply {
                 result: self
                     .orders

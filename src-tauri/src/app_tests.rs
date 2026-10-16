@@ -1447,6 +1447,18 @@ fn license_for(
     Arc<crate::license::manager::tests::FakeApi>,
     Arc<crate::license::manager::License>,
 ) {
+    let (api, _, license) = license_with_vault(app);
+    (api, license)
+}
+
+/// Như [`license_for`], kèm kho khóa giả (để cho lỗi đọc, ghi, xóa).
+fn license_with_vault(
+    app: &tauri::App<tauri::test::MockRuntime>,
+) -> (
+    Arc<crate::license::manager::tests::FakeApi>,
+    Arc<crate::license::store::tests::FakeVault>,
+    Arc<crate::license::manager::License>,
+) {
     use crate::license::manager::tests::{DEVICE, FakeApi, test_keys, vn};
     use crate::license::manager::{License, Machine};
     use crate::license::store::tests::FakeVault;
@@ -1454,7 +1466,7 @@ fn license_for(
     let vault = Arc::new(FakeVault::default());
     let license = License::new(
         Box::new(api.clone()),
-        Box::new(vault),
+        Box::new(vault.clone()),
         test_keys(),
         Machine {
             id_hash: DEVICE.into(),
@@ -1469,7 +1481,7 @@ fn license_for(
     license.set_genuine(true);
     crate::license::app::install_with(app.handle(), license);
     let installed = app.state::<crate::license::app::Licensing>().0.clone();
-    (api, installed)
+    (api, vault, installed)
 }
 
 /// Hạn mức (§6.8, "Khi chạm hạn mức"): đang dịch mà chạm hạn mức thì phiên dừng với `quotaExhausted`; hạn mức còn 0 thì
@@ -1538,6 +1550,17 @@ fn license_events_never_carry_the_key_or_the_token() {
     assert!(app.state::<AppState>().status().pro, "gate Pro theo bản quyền thật");
 }
 
+/// Lỗi của `open_checkout_page`: mã `openFailed`, chi tiết là nhãn cố định của nhánh lỗi (cũng là chữ ghi vào log; M4 của
+/// review C1), không bao giờ có URL hay đường dẫn trang thanh toán.
+fn open_error(refused: &str) -> String {
+    let error: Value = serde_json::from_str(refused).unwrap_or_else(|e| panic!("{refused}: {e}"));
+    assert_eq!(error["code"], errors::OPEN_FAILED, "{refused}");
+    for leak in ["http", "payos", "creem", "evil", "/x", "ch_abc", "web/abc"] {
+        assert!(!refused.contains(leak), "lộ {leak}: {refused}");
+    }
+    error["message"].as_str().unwrap_or_default().to_string()
+}
+
 /// Trang thanh toán của PayOS mở bằng trình duyệt của hệ thống (01 QĐ28), chỉ với URL do phía Rust giữ và nằm trong
 /// danh sách cho phép (§10.2); giao diện không gửi URL nào.
 #[test]
@@ -1548,7 +1571,7 @@ fn the_checkout_page_opens_only_for_the_pending_payos_order() {
     let main = window(&app, "main");
     let (_, license) = license_for(&app);
     let refused = invoke(&main, "open_checkout_page", json!({})).unwrap_err();
-    assert!(refused.contains(errors::OPEN_FAILED), "{refused}");
+    assert_eq!(open_error(&refused), "open_failed:no_order");
     let mut order = PendingOrder {
         order_code: 7,
         order_token: "tok".into(),
@@ -1556,19 +1579,355 @@ fn the_checkout_page_opens_only_for_the_pending_payos_order() {
         expires_at: crate::license::app::now() + 900,
         renewal: false,
         checkout_url: "https://pay.payos.vn/web/abc".into(),
-        qr_code: "000201".into(),
+        qr_code: Some("000201".into()),
+        provider: "payos".into(),
+        amount: 50_000,
+        currency: "VND".into(),
     };
     store::write(license.vault(), store::ORDER, &order).unwrap();
     invoke(&main, "open_checkout_page", json!({})).unwrap();
     assert_eq!(system_calls(&app), ["open_external_url https://pay.payos.vn/web/abc"]);
     order.checkout_url = "https://pay.payos.vn.evil.example/x".into();
     store::write(license.vault(), store::ORDER, &order).unwrap();
-    assert!(invoke(&main, "open_checkout_page", json!({})).is_err());
+    let refused = invoke(&main, "open_checkout_page", json!({})).unwrap_err();
+    assert_eq!(open_error(&refused), "open_failed:not_allowed");
     let pending = invoke(&main, "get_pending_order", json!({})).unwrap();
     assert!(pending["qrSvg"].as_str().unwrap().contains("<svg"));
+    assert_eq!(
+        (
+            pending["provider"].as_str(),
+            pending["amount"].as_i64(),
+            pending["currency"].as_str()
+        ),
+        (Some("payos"), Some(50_000), Some("VND"))
+    );
     assert!(!pending.to_string().contains("tok"), "order_token không ra giao diện");
     invoke(&main, "cancel_checkout", json!({})).unwrap();
     assert_eq!(invoke(&main, "get_pending_order", json!({})).unwrap(), Value::Null);
+}
+
+/// Bảng gói trả cho giao diện kèm loại tiền server gợi ý (spec 2026-10-14 D4); tên trường camelCase, giá USD tính bằng cent.
+#[test]
+fn get_plans_returns_the_plans_and_the_suggested_currency() {
+    use crate::license::client::{PlanOffer, PlansReply};
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, _) = license_for(&app);
+    *api.plans.lock().unwrap() = Some(PlansReply {
+        plans: vec![PlanOffer {
+            code: "monthly".into(),
+            name: "Monthly".into(),
+            quota_minutes_per_cycle: Some(3000),
+            days_per_order: 30,
+            prices: [("VND".to_string(), 50_000), ("USD".to_string(), 399)].into(),
+        }],
+        suggested_currency: Some("USD".into()),
+    });
+    let plans = invoke(&main, "get_plans", json!({})).unwrap();
+    assert_eq!(plans["suggestedCurrency"], "USD");
+    assert_eq!(
+        (
+            plans["plans"][0]["code"].as_str(),
+            plans["plans"][0]["prices"]["USD"].as_i64()
+        ),
+        (Some("monthly"), Some(399))
+    );
+}
+
+/// Đơn thẻ (Creem) đang chờ: không có mã QR, giao diện biết cổng; mở lại trang thanh toán chỉ với URL của Creem đã lưu.
+#[test]
+fn a_pending_card_order_has_no_qr_and_reopens_only_the_creem_page() {
+    use crate::license::store::{self, PendingOrder};
+    use crate::test_support::system_calls;
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (_, license) = license_for(&app);
+    let mut order = PendingOrder {
+        order_code: 8,
+        order_token: "tok".into(),
+        plan: "monthly".into(),
+        expires_at: crate::license::app::now() + 1800,
+        renewal: false,
+        checkout_url: "https://checkout.creem.io/ch_abc".into(),
+        qr_code: None,
+        provider: "creem".into(),
+        amount: 399,
+        currency: "USD".into(),
+    };
+    store::write(license.vault(), store::ORDER, &order).unwrap();
+    let pending = invoke(&main, "get_pending_order", json!({})).unwrap();
+    assert_eq!(pending.get("qrSvg"), Some(&Value::Null), "khóa có mặt, giá trị null");
+    assert_eq!(pending["provider"], "creem");
+    assert_eq!(
+        (pending["amount"].as_i64(), pending["currency"].as_str()),
+        (Some(399), Some("USD")),
+        "mở lại app vẫn biết số tiền và loại tiền của đơn"
+    );
+    assert!(!pending.to_string().contains("tok"), "order_token không ra giao diện");
+    invoke(&main, "open_checkout_page", json!({})).unwrap();
+    assert_eq!(
+        system_calls(&app),
+        ["open_external_url https://checkout.creem.io/ch_abc"]
+    );
+    order.checkout_url = "https://checkout.creem.io.evil.example/x".into();
+    store::write(license.vault(), store::ORDER, &order).unwrap();
+    let refused = invoke(&main, "open_checkout_page", json!({})).unwrap_err();
+    assert_eq!(open_error(&refused), "open_failed:not_allowed");
+    order.checkout_url = "không phải URL".into();
+    store::write(license.vault(), store::ORDER, &order).unwrap();
+    let refused = invoke(&main, "open_checkout_page", json!({})).unwrap_err();
+    assert_eq!(open_error(&refused), "open_failed:bad_url");
+}
+
+/// Đơn server giả vừa tạo: thẻ (Creem, không mã QR, giữ 30 phút) hay VietQR (PayOS, 15 phút).
+fn new_checkout(card: bool) -> crate::license::client::Checkout {
+    crate::license::client::Checkout {
+        order_code: 8,
+        order_token: "tok".into(),
+        provider: Some(if card { "creem" } else { "payos" }.into()),
+        checkout_url: if card {
+            "https://checkout.creem.io/ch_abc".into()
+        } else {
+            "https://pay.payos.vn/web/abc".into()
+        },
+        qr_code: (!card).then(|| "000201".into()),
+        plan: "monthly".into(),
+        amount: if card { 399 } else { 50_000 },
+        currency: if card { "USD" } else { "VND" }.into(),
+        expires_at: crate::license::app::now() + if card { 1800 } else { 900 },
+        license_expires_at: None,
+        converted_days: None,
+    }
+}
+
+/// Một đơn vừa tạo trên server giả: thẻ (Creem, không mã QR) hay VietQR (PayOS). Đơn kế tiếp báo `refunded` để luồng hỏi
+/// nền (do `start_checkout` bật) kết thúc ngay sau lần hỏi đầu, không chạy mãi sau test.
+fn queue_checkout(api: &crate::license::manager::tests::FakeApi, card: bool) {
+    queue_order(api, new_checkout(card));
+}
+
+fn queue_order(api: &crate::license::manager::tests::FakeApi, checkout: crate::license::client::Checkout) {
+    let code = checkout.order_code;
+    api.checkouts.lock().unwrap().push_back(Ok(checkout));
+    api.orders.lock().unwrap().push_back(Ok(order_status(code, "refunded")));
+}
+
+/// Trạng thái đơn `code` server giả trả cho lần hỏi kế tiếp.
+fn order_status(code: i64, status: &str) -> crate::license::client::OrderStatus {
+    crate::license::client::OrderStatus {
+        order_code: code,
+        status: status.into(),
+        plan: "monthly".into(),
+        expires_at: 0,
+        license_key: None,
+        license_plan: None,
+        license_expires_at: None,
+        grant_kind: None,
+    }
+}
+
+/// Đơn thẻ (Creem) vừa tạo: app mở ngay trang thanh toán bằng trình duyệt (spec 2026-10-14 §5), không có mã QR để vẽ, và
+/// gửi `currency: "USD"` cho server.
+#[test]
+fn a_new_card_order_opens_the_payment_page_at_once() {
+    use crate::test_support::system_calls;
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, _) = license_for(&app);
+    queue_checkout(&api, true);
+    let args = json!({ "plan": "monthly", "email": "a@b.vn", "consent": true, "renew": false, "currency": "USD" });
+    let view = invoke(&main, "start_checkout", args).unwrap();
+    assert_eq!(view.get("qrSvg"), Some(&Value::Null), "khóa có mặt, giá trị null");
+    assert_eq!(view["provider"], "creem");
+    assert_eq!(
+        system_calls(&app),
+        ["open_external_url https://checkout.creem.io/ch_abc"]
+    );
+    assert_eq!(api.calls.lock().unwrap()[0], "checkout monthly a@b.vn - USD");
+    poller_asked_and_stopped(&app, &api);
+}
+
+/// Luồng hỏi nền do `start_checkout` bật đã hỏi đơn 8 rồi dừng (đơn kế tiếp trên server giả là kết quả cuối).
+fn poller_asked_and_stopped(app: &tauri::App<tauri::test::MockRuntime>, api: &crate::license::manager::tests::FakeApi) {
+    wait_until("luồng hỏi nền hỏi đơn 8", || {
+        api.calls.lock().unwrap().iter().any(|c| c == "order 8 tok")
+    });
+    let licensing = app.state::<crate::license::app::Licensing>();
+    wait_until("luồng hỏi nền dừng", || !licensing.polling());
+}
+
+/// Đơn VietQR vẫn như cũ: vẽ mã QR, người dùng tự bấm "Mở trang thanh toán" nếu cần; app không tự mở trình duyệt.
+#[test]
+fn a_new_vietqr_order_draws_the_qr_and_does_not_open_the_browser() {
+    use crate::test_support::system_calls;
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, _) = license_for(&app);
+    queue_checkout(&api, false);
+    let args = json!({ "plan": "monthly", "email": "a@b.vn", "consent": true, "renew": false, "currency": "VND" });
+    let view = invoke(&main, "start_checkout", args).unwrap();
+    assert!(view["qrSvg"].as_str().unwrap().contains("<svg"));
+    assert_eq!(view["provider"], "payos");
+    assert!(system_calls(&app).is_empty(), "không tự mở trình duyệt");
+    assert_eq!(api.calls.lock().unwrap()[0], "checkout monthly a@b.vn -");
+    poller_asked_and_stopped(&app, &api);
+}
+
+/// Đơn thẻ mà trang thanh toán không mở được (URL ngoài danh sách cho phép, hay trình duyệt lỗi; I1-KH03T4): đơn đã tạo
+/// trên server nên lệnh vẫn trả đơn, đơn vẫn lưu (mở lại app, "Mở lại trang thanh toán"), và luồng hỏi nền vẫn chạy rồi
+/// dừng khi có kết quả cuối. Đơn mở lại có đúng số tiền và loại tiền.
+#[test]
+fn a_card_order_whose_page_cannot_open_is_still_kept_and_polled() {
+    use crate::test_support::system_calls;
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, _) = license_for(&app);
+    let mut checkout = new_checkout(true);
+    checkout.checkout_url = "https://checkout.creem.io.evil.example/x".into();
+    queue_order(&api, checkout);
+    // Lần hỏi đầu chờ tới khi test cho phép: đơn chắc chắn còn lưu lúc đọc lại bên dưới.
+    let (release, hold) = std::sync::mpsc::channel();
+    *api.order_hold.lock().unwrap() = Some(hold);
+    let args = json!({ "plan": "monthly", "email": "a@b.vn", "consent": true, "renew": false, "currency": "USD" });
+    let view = invoke(&main, "start_checkout", args).unwrap();
+    assert_eq!(view.get("qrSvg"), Some(&Value::Null));
+    assert!(system_calls(&app).is_empty(), "URL bị từ chối: không mở gì");
+    let pending = invoke(&main, "get_pending_order", json!({})).unwrap();
+    assert_eq!(
+        (
+            pending["orderCode"].as_i64(),
+            pending["amount"].as_i64(),
+            pending["currency"].as_str(),
+            pending["provider"].as_str()
+        ),
+        (Some(8), Some(399), Some("USD"), Some("creem"))
+    );
+    assert_eq!(pending.get("qrSvg"), Some(&Value::Null));
+    assert!(!pending.to_string().contains("tok"), "order_token không ra giao diện");
+    let refused = invoke(&main, "open_checkout_page", json!({})).unwrap_err();
+    assert_eq!(open_error(&refused), "open_failed:not_allowed");
+    release.send(()).unwrap();
+    poller_asked_and_stopped(&app, &api);
+    assert_eq!(invoke(&main, "get_pending_order", json!({})).unwrap(), Value::Null);
+}
+
+/// Trình mở của hệ điều hành báo lỗi (`open` của macOS in nguyên URL trong lỗi; M4 của review C1): lệnh tạo đơn vẫn trả
+/// đơn, còn lỗi của "Mở lại trang thanh toán" (cũng là chữ ghi log khi tự mở không được) chỉ có nhãn cố định, không có URL.
+#[test]
+fn a_failing_browser_leaves_no_url_in_the_error() {
+    use crate::test_support::{fail_opening_links, system_calls};
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, _) = license_for(&app);
+    fail_opening_links(&app);
+    queue_checkout(&api, true);
+    let (release, hold) = std::sync::mpsc::channel();
+    *api.order_hold.lock().unwrap() = Some(hold);
+    let args = json!({ "plan": "monthly", "email": "a@b.vn", "consent": true, "renew": false, "currency": "USD" });
+    let view = invoke(&main, "start_checkout", args).unwrap();
+    assert_eq!(view["orderCode"], 8);
+    assert_eq!(
+        system_calls(&app),
+        ["open_external_url https://checkout.creem.io/ch_abc"],
+        "đã thử mở"
+    );
+    let refused = invoke(&main, "open_checkout_page", json!({})).unwrap_err();
+    assert_eq!(open_error(&refused), "open_failed:opener");
+    release.send(()).unwrap();
+    poller_asked_and_stopped(&app, &api);
+}
+
+/// Người dùng hủy đơn A rồi tạo đơn B trong lúc luồng hỏi nền còn chờ server trả lời cho A (I1 của review C1). Lệnh tạo B
+/// không bật được luồng mới (luồng của A còn chạy), nên khi A có kết quả cuối, luồng phải chuyển sang hỏi B chứ không dừng.
+/// Hai biến thể: A là đơn thẻ server báo `expired`, và A là đơn VietQR đã quá hạn mà server còn báo `pending` (app tự tính
+/// `Failed`).
+#[test]
+fn the_poller_moves_on_to_an_order_created_while_it_was_asking_about_a_cancelled_one() {
+    for card in [true, false] {
+        let app = mock_app();
+        let main = window(&app, "main");
+        let (api, _) = license_for(&app);
+        let mut first = new_checkout(card);
+        if !card {
+            first.expires_at = crate::license::app::now() - 1;
+        }
+        api.checkouts.lock().unwrap().push_back(Ok(first));
+        let answer = if card { "expired" } else { "pending" };
+        api.orders.lock().unwrap().push_back(Ok(order_status(8, answer)));
+        let (release, hold) = std::sync::mpsc::channel();
+        *api.order_hold.lock().unwrap() = Some(hold);
+        let currency = if card { "USD" } else { "VND" };
+        let args =
+            json!({ "plan": "monthly", "email": "a@b.vn", "consent": true, "renew": false, "currency": currency });
+        invoke(&main, "start_checkout", args).unwrap();
+        wait_until("luồng hỏi nền hỏi đơn A", || {
+            api.calls.lock().unwrap().iter().any(|c| c == "order 8 tok")
+        });
+        invoke(&main, "cancel_checkout", json!({})).unwrap();
+        let mut second = new_checkout(true);
+        second.order_code = 9;
+        queue_order(&api, second);
+        let args = json!({ "plan": "yearly", "email": "a@b.vn", "consent": true, "renew": false, "currency": "USD" });
+        invoke(&main, "start_checkout", args).unwrap();
+        assert_eq!(invoke(&main, "get_pending_order", json!({})).unwrap()["orderCode"], 9);
+        release.send(()).unwrap();
+        wait_until("luồng hỏi nền hỏi đơn B", || {
+            api.calls.lock().unwrap().iter().any(|c| c == "order 9 tok")
+        });
+        let licensing = app.state::<crate::license::app::Licensing>();
+        wait_until("luồng hỏi nền dừng", || !licensing.polling());
+        assert_eq!(
+            invoke(&main, "get_pending_order", json!({})).unwrap(),
+            Value::Null,
+            "B đã có kết quả cuối (refunded)"
+        );
+    }
+}
+
+/// Kho khóa không xóa được đơn vừa có kết quả cuối (I1 của review C1): kho còn đúng đơn vừa hỏi, không phải đơn khác, nên
+/// luồng hỏi vẫn dừng thay vì hỏi lại đơn đó liên tục.
+#[test]
+fn a_finished_order_the_keystore_cannot_delete_does_not_keep_the_poller_running() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, vault, _) = license_with_vault(&app);
+    *vault.fail_deletes.lock().unwrap() = true;
+    queue_checkout(&api, true);
+    let args = json!({ "plan": "monthly", "email": "a@b.vn", "consent": true, "renew": false, "currency": "USD" });
+    invoke(&main, "start_checkout", args).unwrap();
+    poller_asked_and_stopped(&app, &api);
+    let asked = api.calls.lock().unwrap().iter().filter(|c| *c == "order 8 tok").count();
+    assert_eq!(asked, 1, "chỉ hỏi một lần");
+    assert_eq!(
+        invoke(&main, "get_pending_order", json!({})).unwrap()["orderCode"],
+        8,
+        "xóa lỗi nên đơn còn trong kho"
+    );
+}
+
+/// Đơn đang chờ do bản app cũ lưu (không có `provider`, `amount`, `currency`; KH03-T3-a): mở lại vẫn vẽ mã QR, là đơn PayOS,
+/// số tiền 0 và loại tiền rỗng (giao diện tự suy).
+#[test]
+fn a_pending_order_saved_by_an_older_app_still_shows_its_qr() {
+    use crate::license::store;
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (_, license) = license_for(&app);
+    let raw = json!({
+        "order_code": 7, "order_token": "tok", "plan": "monthly", "expires_at": crate::license::app::now() + 900,
+        "renewal": false, "checkout_url": "https://pay.payos.vn/web/abc", "qr_code": "000201",
+    });
+    license.vault().set(store::ORDER, raw.to_string().as_bytes()).unwrap();
+    let pending = invoke(&main, "get_pending_order", json!({})).unwrap();
+    assert!(pending["qrSvg"].as_str().unwrap().contains("<svg"));
+    assert_eq!(
+        (
+            pending["provider"].as_str(),
+            pending["amount"].as_i64(),
+            pending["currency"].as_str()
+        ),
+        (Some("payos"), Some(0), Some(""))
+    );
 }
 
 /// Lệnh bản quyền đọc hay ghi kho khóa không chạy trên luồng chính (N-1 của review cuối 06): Keychain có thể chờ người dùng
@@ -1633,7 +1992,10 @@ fn license_commands_touch_the_keystore_off_the_calling_thread() {
         expires_at: crate::license::app::now() + 900,
         renewal: false,
         checkout_url: "https://pay.payos.vn/web/abc".into(),
-        qr_code: "000201".into(),
+        qr_code: Some("000201".into()),
+        provider: "payos".into(),
+        amount: 50_000,
+        currency: "VND".into(),
     };
     store::write(&vault, store::ORDER, &order).unwrap();
     let here = std::thread::current().id();

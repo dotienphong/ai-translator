@@ -1199,6 +1199,16 @@ fieldset {
   opacity: 0.6;
 }
 
+/* Ô được chọn mà bị khóa (cách trả của đơn đang chờ): vẫn rõ như lúc chọn được (viền màu nhấn theo token, cả chế độ tối);
+   chỉ các ô còn lại mờ. */
+.choice:has(input:disabled:checked) {
+  opacity: 1;
+}
+
+.choice input[type="radio"]:disabled:checked {
+  opacity: 1;
+}
+
 .choice input {
   margin-top: 0.2rem;
 }
@@ -1598,6 +1608,38 @@ fieldset {
   right: 0.8rem;
 }
 
+/* Gói bị khóa (đang có đơn chờ, hay đang tạo đơn): không bấm được; gói của đơn vẫn rõ, các gói khác mờ như ô cách trả. */
+.plan:has(input:disabled),
+.plan:has(input:disabled) label {
+  cursor: default;
+}
+
+.plan:has(input:disabled:not(:checked)) {
+  opacity: 0.6;
+}
+
+.plan input[type="radio"]:disabled:checked {
+  opacity: 1;
+}
+
+/* Ghi chú dưới bảng giá: cách trả, và câu bên bán lại (merchant of record) của đơn thẻ. */
+.plan-notes {
+  margin: 0.6rem 0 1rem;
+}
+
+.plan-notes .hint {
+  margin: 0 0 0.35rem;
+}
+
+.plan-notes .hint:last-child {
+  margin-bottom: 0;
+}
+
+/* Lời dặn dưới hai nút của đơn thẻ đang chờ. */
+.checkout .actions + .hint {
+  margin-top: 0.75rem;
+}
+
 .checkout {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1609,6 +1651,11 @@ fieldset {
   .checkout {
     grid-template-columns: 1fr;
   }
+}
+
+/* Đơn thẻ quốc tế (không có mã QR): chỉ một cột chữ. */
+.checkout.browser {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .qr {

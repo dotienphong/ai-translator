@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
 import type { CheckoutView, Device, Ipc, LicenseView, OrderOutcome, PlanOffer } from "../lib/ipc";
+import type { PayCurrency } from "../lib/license";
 import { type UiError, toUiError } from "./app";
 
 // Store bản quyền của cửa sổ chính (kế hoạch 06): trạng thái bản quyền và hạn mức, kích hoạt, gỡ máy, mua gói. Phía Rust
@@ -10,6 +11,8 @@ export interface LicenseStoreState {
   // Key người dùng vừa gõ đang dùng ở máy khác (`409 key_in_use`): danh sách máy để gỡ máy kia hay "Vẫn kích hoạt".
   devices: Device[] | null;
   plans: PlanOffer[] | null;
+  // Loại tiền server gợi ý theo nước của máy ("VND" hay "USD"); null khi chưa tải bảng gói hay server không gợi ý.
+  suggestedCurrency: string | null;
   checkout: CheckoutView | null;
   order: OrderOutcome | null;
   error: UiError | null;
@@ -25,7 +28,7 @@ export interface LicenseStoreState {
   deactivate(): Promise<void>;
   validate(): Promise<void>;
   loadPlans(): Promise<void>;
-  startCheckout(plan: string, email: string, consent: boolean, renew: boolean): Promise<boolean>;
+  startCheckout(plan: string, email: string, consent: boolean, renew: boolean, currency: PayCurrency): Promise<boolean>;
   openCheckoutPage(): Promise<void>;
   cancelCheckout(): Promise<void>;
   recover(email: string): Promise<boolean>;
@@ -49,6 +52,18 @@ export function createLicenseStore(ipc: Ipc) {
       }
     }
 
+    // Lần tải bảng gói đang chạy: màn Nâng cấp tải lại mỗi lần mở (và hai lần khi React chạy hiệu ứng kép lúc dev).
+    let plansLoad: Promise<void> | null = null;
+
+    async function fetchPlans(): Promise<void> {
+      try {
+        const { plans, suggestedCurrency } = await ipc.invoke("get_plans");
+        set({ plans, suggestedCurrency, error: null });
+      } catch (e) {
+        set({ error: toUiError(e) });
+      }
+    }
+
     function setView(view: LicenseView | null) {
       if (view) set({ view });
     }
@@ -57,6 +72,7 @@ export function createLicenseStore(ipc: Ipc) {
       view: null,
       devices: null,
       plans: null,
+      suggestedCurrency: null,
       checkout: null,
       order: null,
       error: null,
@@ -65,11 +81,18 @@ export function createLicenseStore(ipc: Ipc) {
       async init() {
         const offs = await Promise.all([
           ipc.listen("license://changed", (view) => set({ view })),
-          ipc.listen("license://order", (order) => set({ order })),
+          ipc.listen("license://order", (order) => {
+            // Kết quả của đơn khác đơn đang hiện (khách Hủy đơn A rồi tạo đơn B, kết quả muộn của A tới sau): bỏ, để câu
+            // "không thành" của A không hiện trên đơn B. Chưa có đơn nào (đang đọc đơn chờ lúc mở app) thì giữ, xét lại bên dưới.
+            const { checkout } = get();
+            if (checkout !== null && order.order_code !== checkout.orderCode) return;
+            set({ order });
+          }),
         ]);
         const [view, checkout] = await Promise.all([ipc.invoke("get_license"), ipc.invoke("get_pending_order")]);
         setView(view);
-        set({ checkout });
+        const { order } = get();
+        set({ checkout, order: order !== null && order.order_code === checkout?.orderCode ? order : null });
         return () => offs.forEach((off) => off());
       },
 
@@ -109,13 +132,18 @@ export function createLicenseStore(ipc: Ipc) {
         await run(async () => setView(await ipc.invoke("validate_license")));
       },
 
-      async loadPlans() {
-        await run(async () => set({ plans: await ipc.invoke("get_plans") }));
+      // Không qua `run()`/`busy`: `busy` khóa và làm mờ các ô chọn gói và cách trả, mà tải bảng giá có thể mất tới 20 giây khi
+      // mất mạng và bảng cũ đang hiện đúng. Lỗi vẫn hiện, như `run()`.
+      loadPlans() {
+        plansLoad ??= fetchPlans().finally(() => {
+          plansLoad = null;
+        });
+        return plansLoad;
       },
 
-      startCheckout(plan, email, consent, renew) {
+      startCheckout(plan, email, consent, renew, currency) {
         return run(async () => {
-          set({ checkout: await ipc.invoke("start_checkout", { plan, email, consent, renew }), order: null });
+          set({ checkout: await ipc.invoke("start_checkout", { plan, email, consent, renew, currency }), order: null });
         });
       },
 
