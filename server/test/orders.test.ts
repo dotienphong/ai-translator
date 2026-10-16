@@ -663,13 +663,26 @@ describe("đồng hồ PayOS chạy nhanh hơn Worker (review cuối, N1)", () =
     expect(a.body.cycle_anchor).toBe(T0 + 60);
   });
 
-  it("paymentTime kẹp trong [lúc tạo link, min(hạn của link, lúc xử lý)]", () => {
-    const order = { created_at: T0, expires_at: T0 + 900 };
+  it("paymentTime của đơn PayOS kẹp trong [lúc tạo link, min(hạn của link, lúc xử lý)] (QĐ33: link PayOS hết hạn thì không nhận tiền)", () => {
+    const order = { provider: "payos", created_at: T0, expires_at: T0 + 900 };
     expect(paymentTime(order, T0 + 120, T0 + 60)).toBe(T0 + 60);
     expect(paymentTime(order, T0 + 30, T0 + 60)).toBe(T0 + 30);
     expect(paymentTime(order, T0 - 5, T0 + 60)).toBe(T0);
     expect(paymentTime(order, T0 + 2000, T0 + 3000)).toBe(T0 + 900);
     expect(paymentTime(order, null, T0 + 60)).toBe(T0 + 60);
+    expect(paymentTime(order, null, T0 + 3000)).toBe(T0 + 900);
+  });
+
+  it("(S6) paymentTime của đơn cổng khác (Creem: phiên vẫn trả được sau hạn của ta) KHÔNG kẹp về hạn của đơn: trong [lúc tạo đơn, lúc xử lý]", () => {
+    const order = { provider: "creem", created_at: T0, expires_at: T0 + 1800 };
+    expect(paymentTime(order, T0 + 1850, T0 + 1900)).toBe(T0 + 1850);
+    expect(paymentTime(order, T0 + 1850, T0 + 3 * 3600)).toBe(T0 + 1850);
+    expect(paymentTime(order, T0 + 120, T0 + 60)).toBe(T0 + 60);
+    expect(paymentTime(order, T0 - 5, T0 + 60)).toBe(T0);
+    expect(paymentTime(order, T0 + 30, T0 + 60)).toBe(T0 + 30);
+    // Cổng không báo giờ trả: lúc xử lý, kể cả khi đã quá hạn của đơn.
+    expect(paymentTime(order, null, T0 + 60)).toBe(T0 + 60);
+    expect(paymentTime(order, null, T0 + 3 * 3600)).toBe(T0 + 3 * 3600);
   });
 });
 

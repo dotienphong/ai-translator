@@ -67,6 +67,32 @@ async function signedRaw(w: World, raw: string) {
   return w.call("POST", "/v1/webhooks/creem", raw, { "creem-signature": await hmacSha256Hex(TEST_CREEM_WEBHOOK_SECRET, raw) });
 }
 
+/**
+ * GET thật đã trả (get-checkout.paid.real.json) như của phiên `checkoutId` của đơn `orderCode`, mọi mốc giờ ISO dời cùng một
+ * khoảng sao cho `order.updated_at` (giờ trả đo được, "2026-10-16T14:47:31.536Z") thành giây `paidAt` (+ 0,536). Đổi trong bộ nhớ.
+ */
+function realPaidGet(checkoutId: string, orderCode: number, paidAt: number): string {
+  const shift = paidAt * 1000 + 536 - Date.parse("2026-10-16T14:47:31.536Z");
+  return getPaidReal
+    .replaceAll("ch_491X90hRbNHfL1fKCEZYCt", checkoutId)
+    .replaceAll('"9000001"', JSON.stringify(String(orderCode)))
+    .replace(/"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)"/g, (_m, iso: string) => JSON.stringify(new Date(Date.parse(iso) + shift).toISOString()));
+}
+
+/** Cổng creem của thế giới trả thân `raw` cho GET phiên `checkoutId`; mọi yêu cầu khác tới FakeCreem như thường. */
+function serveRealGet(w: World, checkoutId: string, raw: string) {
+  w.deps.payments.creem = new CreemProvider(
+    { baseUrl: "https://creem.test", apiKey: TEST_CREEM_API_KEY, webhookSecret: TEST_CREEM_WEBHOOK_SECRET, productIds: { ...TEST_CREEM_PRODUCTS } },
+    async (url, init) => {
+      const u = new URL(url);
+      if ((init?.method ?? "GET") === "GET" && u.pathname === "/v1/checkouts" && u.searchParams.get("checkout_id") === checkoutId) {
+        return new Response(raw, { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return w.creem.fetch(url, init);
+    },
+  );
+}
+
 describe("webhook Creem: checkout.completed", () => {
   it("khách trả đủ: server hỏi lại Creem rồi cấp license 30 ngày, gửi một email có key, app thấy key khi hỏi đơn", async () => {
     const w = makeWorld();
@@ -106,41 +132,57 @@ describe("webhook Creem: checkout.completed", () => {
   });
 
   it.each([
-    ["webhook tới 100 giây sau hạn link", "webhook", 1900],
-    ["đối soát chạy 3 giờ sau hạn link", "reconcile", 3 * 3600],
+    ["trả 50 giây sau hạn link, webhook tới 100 giây sau hạn", "webhook", 1850, 1900],
+    ["trả 50 giây sau hạn link, đối soát chạy 3 giờ sau hạn", "reconcile", 1850, 3 * 3600],
+    ["trả trong hạn link, webhook tới 100 giây sau", "webhook", 600, 700],
   ] as const)(
-    "khách trả sau expires_at của đơn (%s) nhưng còn trong thời gian giữ 24 giờ: vẫn cấp; paymentTime kẹp về expires_at nên gói tính từ hạn của link, không từ lúc xử lý",
-    async (_why, via, offset) => {
+    "(S6) khách trả muộn là ca thật (phiên Creem vẫn trả được sau 30 phút của ta: đo 35,5 phút); %s: vẫn cấp, gói tính từ giờ trả thật (order.updated_at của GET thật), không từ hạn link hay lúc xử lý",
+    async (_why, via, paidOffset, offset) => {
       const w = makeWorld();
       const { orderCode, token, checkoutId } = await checkout(w);
       const linkExpires = T0 + 1800; // CREEM_CHECKOUT_TTL_SECONDS: 30 phút
+      const paidAt = T0 + paidOffset;
       expect((await w.getOrder(orderCode, token)).body).toMatchObject({ status: "pending", expires_at: linkExpires });
       w.creem.pay(checkoutId);
+      serveRealGet(w, checkoutId, realPaidGet(checkoutId, orderCode, paidAt));
       w.clock.now = T0 + offset;
-      expect(w.clock.now).toBeGreaterThan(linkExpires);
       if (via === "webhook") {
         const hook = await w.creem.completedWebhook(checkoutId);
         expect(await w.call("POST", "/v1/webhooks/creem", hook.raw, hook.headers)).toMatchObject({ status: 200, body: { ok: true, result: "granted" } });
       } else {
         expect(await reconcile(w.env, w.deps)).toMatchObject({ checked: 1, granted: 1, errors: 0 });
       }
-      // GHIM HÀNH VI HIỆN TẠI (orders.ts, paymentTime): Creem không báo giờ trả (paidAt null) nên giờ trả là lúc xử lý, nhưng kẹp về
-      // expires_at của đơn (QĐ33, S6). Hệ quả cần biết: khách trả muộn mất đoạn từ hạn link tới lúc server xử lý (tối đa 24 giờ);
-      // `paid_at` của đơn và `anchor_applied_at` vẫn là lúc xử lý thật.
+      // `paid_at` của đơn và `anchor_applied_at` vẫn là lúc xử lý thật; mốc chu kỳ và hạn gói theo giờ trả.
       expect(await env.DB.prepare("SELECT plan, expires_at, cycle_anchor, anchor_applied_at FROM licenses").first()).toEqual({
         plan: "monthly",
-        expires_at: linkExpires + 30 * DAY,
-        cycle_anchor: linkExpires,
+        expires_at: paidAt + 30 * DAY,
+        cycle_anchor: paidAt,
         anchor_applied_at: T0 + offset,
       });
       expect(await env.DB.prepare("SELECT status, paid_at FROM orders WHERE order_code = ?").bind(orderCode).first()).toEqual({ status: "paid", paid_at: T0 + offset });
       expect(await auditLog("license_issued")).toEqual([
-        { actor: via === "webhook" ? "webhook" : "reconcile", order_code: orderCode, detail: expect.objectContaining({ paid_at: linkExpires, expires_at: linkExpires + 30 * DAY }) },
+        { actor: via === "webhook" ? "webhook" : "reconcile", order_code: orderCode, detail: expect.objectContaining({ paid_at: paidAt, expires_at: paidAt + 30 * DAY }) },
       ]);
-      expect((await w.getOrder(orderCode, token)).body).toMatchObject({ status: "paid", license_expires_at: linkExpires + 30 * DAY });
+      expect((await w.getOrder(orderCode, token)).body).toMatchObject({ status: "paid", license_expires_at: paidAt + 30 * DAY });
       expect(w.resend.sent).toHaveLength(1);
     },
   );
+
+  it.each([
+    ["thiếu", undefined],
+    ["sai dạng", "hôm qua"],
+    ["trước năm 2020", "2019-06-01T00:00:00.000Z"],
+  ])("(S6) GET đã trả mà order.updated_at %s: vẫn cấp, giờ trả là lúc xử lý (100 giây sau hạn link), không kẹp về hạn link", async (_why, updatedAt) => {
+    const w = makeWorld();
+    const { orderCode, checkoutId } = await checkout(w);
+    w.creem.pay(checkoutId);
+    const body = JSON.parse(realPaidGet(checkoutId, orderCode, T0 + 1850)) as { order: Record<string, unknown> };
+    serveRealGet(w, checkoutId, JSON.stringify({ ...body, order: { ...body.order, updated_at: updatedAt } }));
+    w.clock.now = T0 + 1900;
+    const hook = await w.creem.completedWebhook(checkoutId);
+    expect(await w.call("POST", "/v1/webhooks/creem", hook.raw, hook.headers)).toMatchObject({ status: 200, body: { ok: true, result: "granted" } });
+    expect(await env.DB.prepare("SELECT expires_at, cycle_anchor FROM licenses").first()).toEqual({ expires_at: T0 + 1900 + 30 * DAY, cycle_anchor: T0 + 1900 });
+  });
 
   it("webhook gửi trùng cùng lúc: chỉ cấp một lần, một email", async () => {
     const w = makeWorld();

@@ -100,6 +100,36 @@ function creemCheckoutUrl(value: string): string | null {
   return ok ? url.href : null;
 }
 
+/** ISO 8601 đầy đủ: ngày, giờ tới giây, phần lẻ của giây nếu có, và múi giờ (`Z` hay `±hh:mm`). */
+const ISO_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
+/** Khoảng giờ trả hợp lý (giây Unix): từ 2020-01-01 tới trước 2100-01-01. Ngoài khoảng là dữ liệu lạ, không dùng. */
+const PAID_AT_MIN = 1_577_836_800;
+const PAID_AT_MAX = 4_102_444_800;
+
+/**
+ * Giờ khách trả (giây Unix, làm tròn xuống) từ `order.updated_at` của Creem, hay null nếu thiếu, sai dạng (không phải chuỗi ISO
+ * 8601 đầy đủ có múi giờ, ngày không có thật) hay ngoài khoảng hợp lý. Đo ở sandbox ngày 2026-10-16 (spike S6,
+ * test/fixtures/creem/): `order.created_at` là lúc khách MỞ trang thanh toán, `order.updated_at` là lúc trả (trùng giờ của giao
+ * dịch, webhook `checkout.completed` tới khoảng 2 giây sau), và không đổi khi hoàn tiền. paymentTime() (orders.ts) vẫn kẹp kết quả
+ * trong [lúc tạo đơn, lúc xử lý].
+ */
+function paidAtOf(order: Record<string, unknown>): number | null {
+  const v = order.updated_at;
+  if (typeof v !== "string") return null;
+  const m = ISO_DATE_TIME.exec(v);
+  if (!m) return null;
+  const ms = Date.parse(v);
+  if (!Number.isFinite(ms)) return null;
+  // Date.parse tự dời ngày không có thật (30/02 thành 02/03): đòi ngày tháng trong chuỗi khớp ngày đã dựng (theo UTC, hay theo
+  // múi giờ của chuỗi thì cùng ngày tháng với phần ngày của chính chuỗi đó).
+  const [, y, mo, d] = m;
+  const offset = v.endsWith("Z") ? 0 : (v.at(-6) === "-" ? -1 : 1) * (Number(v.slice(-5, -3)) * 60 + Number(v.slice(-2)));
+  const local = new Date(ms + offset * 60_000);
+  if (local.getUTCFullYear() !== Number(y) || local.getUTCMonth() + 1 !== Number(mo) || local.getUTCDate() !== Number(d)) return null;
+  const seconds = Math.floor(ms / 1000);
+  return seconds >= PAID_AT_MIN && seconds < PAID_AT_MAX ? seconds : null;
+}
+
 /** Có mặt (không vắng, không null, không chuỗi rỗng): một trường giảm giá có mặt ở kiểu nào cũng là dấu hiệu giảm giá. */
 function present(v: unknown): boolean {
   return v !== undefined && v !== null && v !== "";
@@ -168,10 +198,11 @@ function paidOrderStatus(
     return { orderCode, status: "underpaid", amount: net ?? 0, amountPaid: 0, paidAt: null, reviewDetail: { ...review, provider_malformed_fields: malformed } };
   }
   const paidForPrice = paid === null ? null : paid - (tax ?? 0);
-  // Creem không báo thời điểm thanh toán ở phiên: paidAt null, paymentTime() dùng lúc xử lý (QĐ33).
   // Ngưỡng không bao giờ thấp hơn giá niêm yết (M-1): `custom_price` Creem trả lại thấp hơn giá (0) không nới phép so.
+  // Giờ trả: `order.updated_at` (paidAtOf, spike S6); đọc không được thì null và paymentTime() dùng lúc xử lý (QĐ33). Đơn bị giữ
+  // (underpaid) không mang giờ trả: người vận hành cấp tay theo lúc cấp.
   if (!review.has_discount && (paidForPrice === null || paidForPrice >= Math.max(customPrice ?? net, net))) {
-    return { orderCode, status: "paid", amount: net, amountPaid: net, paidAt: null };
+    return { orderCode, status: "paid", amount: net, amountPaid: net, paidAt: paidAtOf(order) };
   }
   const amountPaid = paidForPrice === null ? 0 : Math.max(0, Math.min(net, paidForPrice));
   return { orderCode, status: "underpaid", amount: net, amountPaid, paidAt: null, reviewDetail: review };

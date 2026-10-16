@@ -51,12 +51,17 @@ export async function loadOrder(db: D1Database, orderCode: number): Promise<Orde
 }
 
 /**
- * Thời điểm thanh toán của đơn (QĐ33): thời điểm cổng báo, kẹp trong khoảng từ lúc tạo link tới lúc link hết hạn,
- * và không muộn hơn lúc xử lý (`now`): đồng hồ của cổng chạy nhanh hơn Worker thì `cycle_anchor` vẫn không muộn hơn
- * `issued_at` của token đầu tiên (review cuối, N1). Cổng không báo thì dùng lúc xử lý, cũng kẹp như vậy.
+ * Thời điểm thanh toán của đơn (QĐ33): thời điểm cổng báo (cổng không báo thì lúc xử lý), không sớm hơn lúc tạo đơn và không
+ * muộn hơn lúc xử lý (`now`): đồng hồ của cổng chạy nhanh hơn Worker thì `cycle_anchor` vẫn không muộn hơn `issued_at` của token
+ * đầu tiên (review cuối, N1).
+ * - PayOS: còn kẹp về hạn của link (`expires_at`), vì link PayOS hết hạn thì không nhận tiền nữa.
+ * - Cổng khác (Creem): KHÔNG kẹp về `expires_at`. Hạn 30 phút của đơn Creem chỉ là hạn của ta: đo ở sandbox ngày 2026-10-16
+ *   (spike S6), phiên vẫn trả được sau 35,5 phút, webhook và GET báo đã trả như thường. Khách trả muộn là ca thật, nên gói tính
+ *   từ giờ trả thật (Creem: `order.updated_at`, creem.ts paidAtOf), không mất đoạn từ hạn link tới lúc trả.
  */
-export function paymentTime(order: Pick<OrderRow, "created_at" | "expires_at">, reported: number | null, now: number): number {
-  return Math.min(Math.max(reported ?? now, order.created_at), order.expires_at, now);
+export function paymentTime(order: Pick<OrderRow, "provider" | "created_at" | "expires_at">, reported: number | null, now: number): number {
+  const latest = order.provider === "payos" ? Math.min(order.expires_at, now) : now;
+  return Math.min(Math.max(reported ?? now, order.created_at), latest);
 }
 
 /** Số lần thử lại khi license bị một đơn khác đổi cùng lúc (QĐ32). */

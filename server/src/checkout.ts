@@ -28,8 +28,8 @@ export const CHECKOUT_TTL_SECONDS = 15 * 60;
 /**
  * Đơn Creem (không có mã QR, khách mở trình duyệt) giữ 30 phút (spec 2026-10-14 D7). App hỏi mỗi 5 giây trong hạn rồi thưa
  * dần tới 24 giờ sau hạn (purchase.rs); test/node/app-server-constants.test.mjs giữ nhịp đó dưới hạn mức `order_poll`. Phiên
- * của Creem có thể sống lâu hơn (spike S6, chưa đo: server không gửi hạn cho Creem); khách trả muộn vẫn được cấp (webhook, đối
- * soát) nhưng `paymentTime()` kẹp thời điểm thanh toán về hạn này.
+ * của Creem sống lâu hơn hạn này (spike S6, đo ở sandbox ngày 2026-10-16: vẫn trả được sau 35,5 phút; server không gửi hạn cho
+ * Creem): khách trả muộn vẫn được cấp (webhook, đối soát), gói tính từ giờ trả thật (`paymentTime()` không kẹp đơn Creem về hạn này).
  */
 export const CREEM_CHECKOUT_TTL_SECONDS = 30 * 60;
 /** Một số ngân hàng chỉ nhận mô tả tối đa 9 ký tự (§14 giả định 7): "AT" + tối đa 7 chữ số. */
@@ -147,8 +147,8 @@ export function registerCheckout(app: Hono<AppEnv>) {
       }
       if (lic.revoked_at !== null) return fail(c, 403, "license_revoked");
       renewLicenseId = lic.id;
-      // Ước tính theo lúc tạo đơn; số chính thức tính theo thời điểm thanh toán (QĐ33), mà paymentTime() kẹp trong hạn của đơn:
-      // chênh nhau tối đa bằng hạn đó (15 phút với PayOS, 30 phút với Creem).
+      // Ước tính theo lúc tạo đơn; số chính thức tính theo thời điểm thanh toán (QĐ33). PayOS: paymentTime() kẹp trong hạn của đơn,
+      // chênh nhau tối đa 15 phút. Creem: không kẹp (phiên vẫn trả được sau hạn của ta, spike S6), chênh nhau bằng độ trễ của khách.
       estimate = computeGrant(plans, lic, plan, currency, now);
     }
 

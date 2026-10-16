@@ -247,12 +247,54 @@ describe("Creem: thân THẬT của Creem sandbox ngày 2026-10-16 (test/fixture
 
   it.each([
     ["phiên chưa trả (không có order)", getPendingReal, { orderCode: 9000001, status: "pending", amount: 399, amountPaid: 0, paidAt: null }],
-    ["phiên đã trả (order đủ amount, sub_total, tax_amount 0, amount_paid; không có trường giảm giá)", getPaidReal, { orderCode: 9000001, status: "paid", amount: 399, amountPaid: 399, paidAt: null }],
+    // (S6) Giờ trả là `order.updated_at` ("2026-10-16T14:47:31.536Z", làm tròn xuống giây), không phải `order.created_at` (lúc mở trang).
+    ["phiên đã trả (order đủ amount, sub_total, tax_amount 0, amount_paid; không có trường giảm giá)", getPaidReal, { orderCode: 9000001, status: "paid", amount: 399, amountPaid: 399, paidAt: 1792162051 }],
   ])("GET /v1/checkouts, %s: đọc đúng, không rơi vào nhánh giữ đơn hay dữ liệu hỏng", async (_why, raw, expected) => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       expect(await provider(answering(raw)).getPaymentStatus(ref)).toEqual(expected);
       expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  /** GET thật đã trả, `order.updated_at` thay bằng `updatedAt` (`undefined`: bỏ trường), cùng các trường khác của order nếu cần. */
+  const paidWith = (updatedAt: unknown, order: Record<string, unknown> = {}) => {
+    const body = JSON.parse(getPaidReal) as { order: Record<string, unknown> };
+    return JSON.stringify({ ...body, order: { ...body.order, updated_at: updatedAt, ...order } });
+  };
+
+  it.each([
+    ["mili giây bị làm tròn xuống", "2026-10-16T14:47:31.999Z", 1792162051],
+    ["không có phần lẻ của giây", "2026-10-16T14:47:31Z", 1792162051],
+    ["múi giờ +07:00 (cùng một lúc)", "2026-10-16T21:47:31.536+07:00", 1792162051],
+    ["đúng mốc 2020-01-01", "2020-01-01T00:00:00Z", 1577836800],
+  ])("(S6) giờ trả đọc từ order.updated_at (%s)", async (_why, updatedAt, paidAt) => {
+    expect(await provider(answering(paidWith(updatedAt))).getPaymentStatus(ref)).toMatchObject({ status: "paid", paidAt });
+  });
+
+  it.each([
+    ["thiếu", undefined],
+    ["null", null],
+    ["là số (mili giây)", 1792162051536],
+    ["chuỗi không phải ngày giờ", "hôm qua"],
+    ["chỉ có ngày", "2026-10-16"],
+    ["không có múi giờ (giờ địa phương mơ hồ)", "2026-10-16T14:47:31.536"],
+    ["ngày không có thật", "2026-02-30T10:00:00Z"],
+    ["trước năm 2020", "2019-12-31T23:59:59Z"],
+    ["xa trong tương lai (từ năm 2100)", "2100-01-01T00:00:00Z"],
+  ])("(S6) order.updated_at %s: vẫn paid, paidAt null (server dùng lúc xử lý)", async (_why, updatedAt) => {
+    expect(await provider(answering(paidWith(updatedAt))).getPaymentStatus(ref)).toEqual({ orderCode: 9000001, status: "paid", amount: 399, amountPaid: 399, paidAt: null });
+  });
+
+  it("(S6) đơn bị giữ (underpaid: trả thiếu, có giảm giá, dữ liệu hỏng) hay đã hoàn (refunded): paidAt null dù có order.updated_at hợp lệ", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      for (const order of [{ amount_paid: 300 }, { discount: "dis_1", discount_amount: 99 }, { currency: "EUR" }]) {
+        expect(await provider(answering(paidWith("2026-10-16T14:47:31.536Z", order))).getPaymentStatus(ref)).toMatchObject({ status: "underpaid", paidAt: null });
+      }
+      expect(await provider(answering(paidWith("2026-10-16T14:47:31.536Z", { status: "refunded" }))).getPaymentStatus(ref)).toMatchObject({ status: "refunded", paidAt: null });
     } finally {
       warn.mockRestore();
     }
