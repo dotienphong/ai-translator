@@ -10,7 +10,7 @@ import { SITE, T } from "../site.mjs";
 import { renderPage, THEME_INIT_HASH } from "./layout.mjs";
 import { pages, notFound } from "../content/index.mjs";
 import { htmlToText } from "./text.mjs";
-import { PLANS, vnd } from "../plans.mjs";
+import { PLANS, usd, vnd } from "../plans.mjs";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
 const ROOT = path.resolve(SRC, "..");
@@ -79,7 +79,7 @@ function keyFacts() {
     `- Requirements: 8 GB RAM minimum (16 GB recommended); models download once, 1.3 GB (Lite pack) or 2.5 GB (Standard pack)`,
     `- Languages (speech and translation): English, Chinese, Japanese, Korean, Vietnamese (tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn, tiếng Việt); interface in Vietnamese, English, Japanese, Chinese (Simplified), Korean`,
     `- Measured latency: median 0.76–1.03 s with the Standard pack on a Mac M4 Pro 24 GB (macOS 26); preliminary Windows test on one laptop with integrated graphics: median 1.3–2.6 s (Lite), 2.7–5.4 s (Standard)`,
-    `- Pricing: ${free.nameEn} trial ${free.days} days (${free.minutesPerDay} min/day, ${vnd(0)}); ${monthly.nameEn} ${vnd(monthly.priceVnd)} (${monthly.minutesPerCycle / 60} h per ${monthly.days} days); ${sixMonths.nameEn} ${vnd(sixMonths.priceVnd)} (${sixMonths.minutesPerCycle / 60} h per 30 days, ${sixMonths.days} days); ${yearly.nameEn} ${vnd(yearly.priceVnd)} (unlimited, ${yearly.days} days); prepaid by VietQR in VND, no auto-renewal; payment only from Vietnamese bank accounts`,
+    `- Pricing: ${free.nameEn} trial ${free.days} days (${free.minutesPerDay} min/day, ${vnd(0)}); ${monthly.nameEn} ${vnd(monthly.priceVnd)} (${monthly.minutesPerCycle / 60} h per ${monthly.days} days); ${sixMonths.nameEn} ${vnd(sixMonths.priceVnd)} (${sixMonths.minutesPerCycle / 60} h per 30 days, ${sixMonths.days} days); ${yearly.nameEn} ${vnd(yearly.priceVnd)} (unlimited, ${yearly.days} days); prepaid, no auto-renewal; pay in VND by VietQR from a Vietnamese bank account, or in USD by international card (${monthly.nameEn} ${usd(monthly.priceUsdCents, "en")}, ${sixMonths.nameEn} ${usd(sixMonths.priceUsdCents, "en")}, ${yearly.nameEn} ${usd(yearly.priceUsdCents, "en")}, excluding tax)`,
     `- Install: macOS \`curl -fsSL ${SITE.origin}/install.sh | bash\`; Windows \`irm ${SITE.origin}/install.ps1 | iex\``,
     `- Privacy: no bot, no account, no ads, no analytics or cookies on the website; the app sends no audio or transcripts to any server; not open source`,
   ].join("\n");

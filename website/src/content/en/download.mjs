@@ -182,7 +182,7 @@ export default {
     "Get AI Translator: install on macOS 14.2+ (Apple Silicon) or Windows 10/11 with one command, opens right away, no Open Anyway. 10-day free trial.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-14",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Get AI Translator: the page detects your operating system and opens the right guide. macOS installs with one Terminal command (curl ... install.sh | bash): it downloads the installer, checks its SHA-256 and opens the app, with no Open Anyway step. Windows installs with one PowerShell command (irm ... install.ps1 | iex); an .exe downloaded in a browser may trigger a SmartScreen warning because the build is not code-signed, and Smart App Control can block it. System requirements.",
   llmTitle: "Get AI Translator",
@@ -218,7 +218,7 @@ ${sectionHead({ eyebrow: "At a glance", title: "Free trial and pricing", center:
   ["Current version", RELEASE.en],
   ["Status", "Released. Both macOS and Windows install with one command"],
   ["Free trial", "10 days, 30 minutes per day<small>No card, no account</small>"],
-  ["Price afterwards", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Paid in VND by bank transfer from a Vietnamese bank (VietQR)</small>"],
+  ["Price afterwards", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR (VND) or international card (USD), no automatic renewal. Cards are not accepted in some countries, per Creem's list.</small>"],
   ["Models", "Downloaded once, 1.3 or 2.5 GB<small>After that, recognition and translation run offline on your machine</small>"],
 ])}</div>
 ${callout({ kind: "ok", title: "Only get the installer from us", text: "Install AI Translator only with the command on this page, or from a link sent by <strong>support@aitranslator.io.vn</strong> or from the website <strong>aitranslator.io.vn</strong>. Installers from any other source may be fake." })}

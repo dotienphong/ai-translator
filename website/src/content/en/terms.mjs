@@ -11,6 +11,5 @@ export default legalPage({
   heroLead: "The agreement between you and the provider when you install or use AI Translator. The Vietnamese version is the original.",
   inAppNote: { title: "This text is also inside the app", text: "You read and accept it at the Terms step the first time you open the app, and can read it again under About › Terms and privacy." },
   versionLabel: "Version",
-  modified: "2026-10-13",
   llm: "End User License Agreement (EULA): usage rights, plans and payment, one device per key, refunds and limitation of liability.",
 });

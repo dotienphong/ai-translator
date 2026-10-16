@@ -165,8 +165,8 @@ const GROUPS = [
         a: `<p>Chỉ tính phần tiếng nói đã được dịch xong, theo độ dài tiếng nói. Thời gian im lặng, câu đã ở đúng ngôn ngữ bạn muốn đọc và đoạn chưa dịch được không bị tính. Hạn mức tính riêng cho từng máy; app nhắc khi còn dưới 5 phút.</p>`,
       },
       {
-        q: "Tôi trả tiền bằng cách nào? Có Visa hoặc PayPal không?",
-        a: `<p>Chưa có Visa hay PayPal. Hiện chỉ nhận chuyển khoản từ ngân hàng Việt Nam bằng VND qua VietQR (cổng PayOS). App vẽ mã QR ngay trong màn hình Nâng cấp, mã dùng được trong 15 phút; khi PayOS xác nhận đã nhận tiền, app tự kích hoạt gói và key được gửi vào email của bạn. Chưa có thanh toán định kỳ và chưa có hóa đơn điện tử.</p>`,
+        q: "Tôi trả tiền bằng cách nào? Trả bằng thẻ quốc tế được không?",
+        a: `<p>Được. Có hai cách, chọn ở mục <strong>Cách thanh toán</strong> đầu màn hình Nâng cấp (không thấy mục này thì hãy cập nhật app lên bản mới nhất): <strong>chuyển khoản VietQR bằng VND</strong> (từ ngân hàng Việt Nam, qua cổng PayOS; mã QR vẽ ngay trong app, dùng được 15 phút) hoặc <strong>thẻ quốc tế bằng USD</strong> (trang thanh toán của Creem mở trong trình duyệt; Monthly 3,99 USD, 6 Months 21,99 USD, Yearly 39,99 USD, chưa gồm thuế). Creem là bên bán lại (merchant of record) của đơn trả bằng thẻ và xử lý thanh toán, thuế của khoản đó; điều khoản người mua của Creem: <a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>. Khi cổng thanh toán xác nhận đã nhận tiền, app tự kích hoạt gói và key được gửi vào email của bạn. Với thẻ, hãy trả trong 30 phút kể từ lúc tạo đơn; nếu bạn đã trả mà app báo đơn không thành hay quá giờ hẹn, đừng trả lại: key vẫn gửi qua email (xem <a href="/huong-dan/mua-va-kich-hoat-key/#hoan-tien">sự cố thanh toán</a>).</p><p>Không có PayPal. Apple Pay hay Google Pay chỉ dùng được khi trang thanh toán của Creem hiện lựa chọn đó. Thẻ không nhận được ở một số nước, theo danh sách của Creem. Chưa có thanh toán định kỳ; với đơn VietQR chưa có hóa đơn điện tử, còn đơn thẻ có biên lai của Creem.</p>`,
       },
       {
         q: "Gói có tự gia hạn không? Hết hạn thì sao?",
@@ -174,7 +174,7 @@ const GROUPS = [
       },
       {
         q: "Có hoàn tiền không?",
-        a: `<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn. Đổi gói không được hoàn tiền. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>`,
+        a: `<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu cho chúng tôi trước, trong 7 ngày kể từ ngày thanh toán, tới support@aitranslator.io.vn kèm mã đơn. Đổi gói không được hoàn tiền. Với khoản trả bằng thẻ quốc tế, Creem là bên bán lại nên Creem cũng có thể hoàn tiền theo điều khoản của Creem. Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>`,
       },
       {
         q: "Tôi dùng được key trên mấy máy? Chuyển sang máy khác thế nào?",
@@ -231,7 +231,7 @@ export default {
   description:
     "Giải đáp ngắn gọn về AI Translator: dùng với Zoom, Teams, Meet, ngôn ngữ, chạy offline, quyền riêng tư, yêu cầu máy, các gói, thanh toán và việc dùng hằng ngày.",
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-15",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Các câu hỏi thường gặp: tổng quan, ngôn ngữ và chất lượng, riêng tư và dữ liệu, cài đặt và yêu cầu máy, gói và thanh toán, dùng hằng ngày.",
   llmTitle: "Câu hỏi thường gặp về AI Translator",

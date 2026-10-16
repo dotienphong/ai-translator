@@ -1,5 +1,6 @@
 import { pageHero, callout, docLayout, docNav, steps, facts, ctaBand } from "../../build/components.mjs";
 import { SITE } from "../../site.mjs";
+import { legalVersionLine } from "../legal.mjs";
 
 const crumbs = [
   { name: "Trang chủ", path: "/" },
@@ -28,15 +29,15 @@ export default {
   description:
     "AI Translator xử lý âm thanh trên máy bạn, không gửi đi. Xem dữ liệu nào ở lại trên máy, app kết nối tới đâu, máy chủ lưu gì, giữ bao lâu và cách yêu cầu xóa.",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
-  llm: "Dữ liệu ở lại trên máy, bốn nơi app kết nối mạng, cách đã kiểm tra bằng proxy trên macOS (Windows chưa đo), dữ liệu máy chủ lưu và thời gian giữ, bên xử lý, lớp bảo vệ, trạng thái ký số và cách yêu cầu xóa dữ liệu.",
+  modified: "2026-10-14",
+  llm: "Dữ liệu ở lại trên máy, năm nơi app kết nối mạng, cách đã kiểm tra bằng proxy trên macOS (Windows chưa đo), dữ liệu máy chủ lưu và thời gian giữ, bên xử lý, lớp bảo vệ, trạng thái ký số và cách yêu cầu xóa dữ liệu.",
   llmTitle: "Dữ liệu và bảo mật của AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Dữ liệu của bạn đi đâu khi dùng AI Translator?",
   lead: "Âm thanh cuộc họp được xử lý hoàn toàn trên máy bạn và không bị gửi đi: nhận dạng giọng nói và dịch dùng model AI chạy trên máy, không có dịch vụ AI nào trên cloud tham gia. Trang này nêu từng loại dữ liệu: cái nào ở lại trên máy, cái nào đi qua mạng, cái nào lưu trên máy chủ của chúng tôi, kèm cách chúng tôi đã kiểm tra và những gì chưa kiểm.",
-  meta: "<span>Cập nhật {{updated}}</span><span>Khớp với Chính sách quyền riêng tư phiên bản 1.1</span>",
+  meta: `<span>Cập nhật {{updated}}</span><span>Khớp với Chính sách quyền riêng tư: ${legalVersionLine("privacy.vi.md")}</span>`,
 })}
 
 <section class="section-tight"><div class="container">
@@ -48,7 +49,7 @@ ${facts([
   ["Xử lý AI", "Nhận dạng và dịch bằng model AI chạy trên máy bạn; không dùng AI trên cloud"],
   ["Dữ liệu cuộc hội thoại", "Chỉ ở trên máy bạn; máy chủ của chúng tôi không có"],
   ["Âm thanh", "Chỉ nằm trong RAM, không ghi đĩa, không gửi đi"],
-  ["Kết nối mạng", "Bốn nơi; không nơi nào nhận âm thanh hay chữ chép lời"],
+  ["Kết nối mạng", "Năm nơi; không nơi nào nhận âm thanh hay chữ chép lời"],
   ["Máy chủ lưu", "Email (khi mua), đơn hàng, license, mã băm ID máy"],
   ["Giữ bao lâu", "Cho tới khi bạn yêu cầu xóa"],
   ["Đã kiểm", "Proxy và nettop trên macOS; Windows chưa đo"],
@@ -67,13 +68,14 @@ ${facts([
 </tbody></table></div>
 
 <h2 id="ket-noi-mang">App kết nối mạng tới đâu?</h2>
-<p>Đúng bốn nơi, và không nơi nào nhận âm thanh hay nội dung chép lời. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn).</p>
+<p>Đúng năm nơi, và không nơi nào nhận âm thanh hay nội dung chép lời. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn). Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.io.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
 <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
 <thead><tr><th scope="col">Nơi kết nối</th><th scope="col">Để làm gì</th><th scope="col">Gửi đi gì</th></tr></thead>
 <tbody>
 <tr><th scope="row">api.aitranslator.io.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email khi bạn mua hoặc khôi phục key</td></tr>
 <tr><th scope="row">releases.aitranslator.io.vn</th><td>Tải model và kiểm tra, tải bản cập nhật</td><td>Chỉ yêu cầu tải file</td></tr>
 <tr><th scope="row">Trang thanh toán PayOS (pay.payos.vn)</th><td>Thanh toán VietQR khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app</td></tr>
+<tr><th scope="row">Trang thanh toán Creem (checkout.creem.io)</th><td>Thanh toán bằng thẻ quốc tế khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app. Email bạn nhập đi từ máy chủ của chúng tôi sang Creem, không đi từ app (xem bảng “Bên nào khác xử lý dữ liệu?”)</td></tr>
 <tr><th scope="row">aitranslator.io.vn (website này)</th><td>Liên kết ngoài (chính sách, hỗ trợ, trang tải) mở bằng trình duyệt hệ thống</td><td>App không gửi gì</td></tr>
 </tbody></table></div>
 
@@ -91,15 +93,15 @@ ${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đ
 <div class="table-wrap" role="region" aria-label="Dữ liệu máy chủ lưu" tabindex="0"><table>
 <thead><tr><th scope="col">Dữ liệu</th><th scope="col">Mục đích</th></tr></thead>
 <tbody>
-<tr><th scope="row">Email khi mua, thời điểm đồng ý xử lý email</th><td>Gửi và khôi phục key; bằng chứng đã có sự đồng ý</td></tr>
-<tr><th scope="row">Đơn hàng: mã đơn, gói, số tiền, thời điểm, trạng thái</th><td>Cấp và gia hạn license, đối soát, kế toán</td></tr>
+<tr><th scope="row">Email khi mua, thời điểm đồng ý xử lý email</th><td>Gửi và khôi phục key; với đơn thẻ, điền sẵn trang thanh toán của Creem; bằng chứng đã có sự đồng ý</td></tr>
+<tr><th scope="row">Đơn hàng: mã đơn, gói, số tiền và loại tiền, thời điểm, trạng thái, mã phiên thanh toán của cổng (PayOS hay Creem)</th><td>Cấp và gia hạn license, đối soát, kế toán</td></tr>
 <tr><th scope="row">License: key, gói, hạn, chu kỳ hạn mức</th><td>Cấp quyền dùng gói trả phí</td></tr>
 <tr><th scope="row">Máy đã kích hoạt: mã băm ID máy, tên máy, lần kiểm tra</th><td>Mỗi key một máy, chống lạm dụng</td></tr>
 <tr><th scope="row">Dùng thử Free: mã băm ID máy, mốc bắt đầu và hết, lần app gọi gần nhất</th><td>Mỗi máy dùng thử một lần. Không có email hay tên máy.</td></tr>
 <tr><th scope="row">Nhật ký thay đổi license</th><td>Hỗ trợ và tra soát sự cố</td></tr>
 <tr><th scope="row">Bộ đếm giới hạn tần suất (chỉ giá trị băm, tự hết hạn sau khoảng 3 giờ)</th><td>Chặn dò key và spam</td></tr>
 </tbody></table></div>
-<p><strong>Giữ bao lâu:</strong> cho tới khi bạn yêu cầu xóa; chúng tôi không tự xóa. Chúng tôi không nhận số thẻ hay số tài khoản ngân hàng của bạn và không gửi email của bạn sang PayOS. Nếu chỉ dùng Free, máy chủ không có email hay tên máy của bạn.</p>
+<p><strong>Giữ bao lâu:</strong> cho tới khi bạn yêu cầu xóa; chúng tôi không tự xóa. Chúng tôi không nhận số thẻ hay số tài khoản ngân hàng của bạn. Với VietQR, chúng tôi không gửi email của bạn sang PayOS; với thẻ quốc tế, chúng tôi gửi email bạn nhập ở màn hình Nâng cấp cho Creem, để điền sẵn trang thanh toán và để Creem gửi biên lai cho bạn. Nếu chỉ dùng Free, máy chủ không có email hay tên máy của bạn.</p>
 
 <h2 id="xoa-du-lieu">Làm sao để xóa dữ liệu của bạn?</h2>
 ${steps(
@@ -110,17 +112,18 @@ ${steps(
   ],
   true,
 )}
-<p><strong>Sau khi xóa, chúng tôi vẫn giữ:</strong> mã băm ID máy (chỉ để chống lạm dụng: mỗi key một máy, mỗi máy dùng thử Free một lần), thời điểm bạn từng đồng ý xử lý email, và dòng đơn hàng ở mức kế toán (mã đơn, ngày, số tiền). Nhật ký kỹ thuật tự hết hạn và nhật ký thư của Resend nằm ngoài yêu cầu xóa, theo chính sách của các bên đó.</p>
+<p><strong>Sau khi xóa, chúng tôi vẫn giữ:</strong> mã băm ID máy (chỉ để chống lạm dụng: mỗi key một máy, mỗi máy dùng thử Free một lần), thời điểm bạn từng đồng ý xử lý email, và dòng đơn hàng ở mức kế toán (mã đơn, ngày, số tiền và loại tiền, mã phiên thanh toán của cổng). Nhật ký kỹ thuật tự hết hạn và nhật ký thư của Resend nằm ngoài yêu cầu xóa, theo chính sách của các bên đó. Dữ liệu bạn nhập ở trang Creem và hồ sơ giao dịch do Creem giữ (bên bán lại phải giữ chứng từ thuế) nằm ngoài yêu cầu xóa gửi chúng tôi; muốn xóa ở Creem, hãy liên hệ Creem.</p>
 
 <h2 id="ben-xu-ly">Bên nào khác xử lý dữ liệu?</h2>
 <div class="table-wrap" role="region" aria-label="Bên xử lý dữ liệu" tabindex="0"><table>
 <thead><tr><th scope="col">Bên</th><th scope="col">Vai trò</th><th scope="col">Dữ liệu</th></tr></thead>
 <tbody>
 <tr><th scope="row">PayOS (Việt Nam)</th><td>Xử lý thanh toán VietQR</td><td>Mã đơn, số tiền, mô tả đơn. Không có email của bạn.</td></tr>
+<tr><th scope="row">Creem (Armitage Labs OÜ, Estonia)</th><td>Bên bán lại (merchant of record) của đơn thẻ: xử lý thanh toán, thuế và biên lai</td><td>Chúng tôi gửi mã đơn, gói, số tiền, loại tiền và email bạn nhập, ngay khi bạn bấm thanh toán bằng thẻ (kể cả khi bạn không trả), để điền sẵn trang thanh toán và để Creem gửi biên lai. Ở trang thanh toán, Creem tự thu số thẻ, tên, địa chỉ thanh toán và nước (để tính thuế), địa chỉ IP (chống gian lận); chúng tôi không nhận số thẻ. Creem xử lý các dữ liệu đó theo chính sách riêng (https://www.creem.io/privacy). Thông báo thanh toán Creem gửi máy chủ của chúng tôi có tên và nước người mua; chúng tôi không lưu hai thông tin này.</td></tr>
 <tr><th scope="row">Cloudflare</th><td>Chạy máy chủ bản quyền, cơ sở dữ liệu; lưu và phân phối model, bản cập nhật</td><td>Dữ liệu ở bảng trên; nhật ký kỹ thuật tự hết hạn</td></tr>
 <tr><th scope="row">Resend</th><td>Gửi email chứa key</td><td>Email của bạn và nội dung thư (có key); nhật ký thư theo chính sách lưu của Resend</td></tr>
 </tbody></table></div>
-<p>Cloudflare và Resend đặt máy chủ ngoài Việt Nam, nên dữ liệu có thể được xử lý ở nước ngoài. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.</p>
+<p>Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu có thể được xử lý ở nước ngoài. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.</p>
 
 <h2 id="bao-ve">Những lớp bảo vệ khác</h2>
 <ul>

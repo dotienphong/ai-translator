@@ -37,7 +37,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Can I pay from outside Vietnam?",
-    a: `<p>Not yet. Payment is by bank transfer from a Vietnamese bank (VietQR), in Vietnamese dong. International cards and PayPal are not supported at the moment, so without a Vietnamese bank account you cannot buy a paid plan today. The Free trial needs no payment method.</p>`,
+    a: `<p>Yes. Besides VietQR bank transfer in VND (from a Vietnamese bank), the Upgrade screen in the app lets you pay by international card in US dollars, on the Creem payment page: Monthly $3.99, 6 Months $21.99, Yearly $39.99, excluding tax. Cards are not accepted in some countries, per Creem's list. The Free trial needs no payment method.</p>`,
   },
   {
     q: "Where can I download it right now?",
@@ -55,7 +55,7 @@ export default {
   description:
     "Read live translated subtitles in Zoom, Teams, Google Meet or any app. English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
   software: true,
-  modified: "2026-10-13",
+  modified: "2026-10-15",
   llm: "Home page: what AI Translator is, how it works, features, measured latency, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
   schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a })))],
@@ -103,7 +103,7 @@ ${demo({
   ["Platforms", "macOS 14.2 or later (Apple Silicon) and Windows 10/11 x64<small>Both install with one command</small>"],
   ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>For both the source audio and the translation. More languages are planned for the future</small>"],
   ["Processing", "100% on your device; audio is never sent out<small>Speech recognition and translation both run on your device</small>"],
-  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid in VND by VietQR from a Vietnamese bank, no auto-renewal</small>"],
+  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid by VietQR (VND) or international card (USD), no auto-renewal</small>"],
   ["Provider", "Đỗ Tiến Phong<small>Support: support@aitranslator.io.vn</small>"],
 ])}</div>
 </div></section>
@@ -200,9 +200,9 @@ ${linkCard({ href: "/en/solutions/webinar-and-video-translation/", icon: "play",
 </div></section>
 
 <section class="section" id="pricing"><div class="container">
-${sectionHead({ eyebrow: "Pricing", title: "Four simple plans, prepaid with VietQR", text: "No auto-renewal, no recurring billing, no surprises on your bill.", center: true })}
+${sectionHead({ eyebrow: "Pricing", title: "Four simple plans, prepaid by VietQR or international card", text: "No auto-renewal, no recurring billing, nothing is ever charged automatically.", center: true })}
 ${plansGrid("en", { ctaLabel: "Download", freeLabel: "Install and try free" })}
-<p class="disclaimer">Prices are in Vietnamese dong (VND). Payment is by bank transfer from a Vietnamese bank (VietQR) only; international cards are not accepted yet.</p>
+<p class="disclaimer">VND prices are paid by VietQR from a Vietnamese bank; USD prices are paid by international card and exclude tax (if any).</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/en/pricing/">Compare the plans in detail ${icon("arrow-right")}</a></p>
 </div></section>
 

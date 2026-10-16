@@ -16,8 +16,8 @@ export const PRICING_FAQ = [
     a: `<p>That computer can no longer use the Free plan and needs a Monthly, 6 Months or Yearly plan to keep translating. Uninstalling and reinstalling the app, deleting its data or clearing the Keychain does not restart the 10 days, because our server records the start date for each computer.</p>`,
   },
   {
-    q: "Can I pay with a credit card or PayPal?",
-    a: `<p>Not yet. We only accept bank transfers from Vietnamese banks through a VietQR code, in Vietnamese dong (VND), via the PayOS gateway. International cards, PayPal and recurring payments are not available. If you live abroad and do not have a Vietnamese bank account, you cannot buy a paid plan at the moment.</p>`,
+    q: "Can I pay with an international card?",
+    a: `<p>Yes. The Upgrade screen in the app offers two ways to pay: <strong>VietQR bank transfer in VND</strong> (from a Vietnamese bank, through the PayOS gateway) or <strong>international card in USD</strong> (Monthly $3.99, 6 Months $21.99, Yearly $39.99, excluding tax). For a card, the app opens the Creem payment page in your browser; when you are done, return to the app and the plan activates itself. Creem is the merchant of record (reseller) for orders paid by card and handles the payment and the tax on it; Creem's Buyer Terms: <a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>. Recurring payments are not available. The Free trial needs no payment method.</p>`,
   },
   {
     q: "Does my plan renew automatically?",
@@ -29,11 +29,11 @@ export const PRICING_FAQ = [
   },
   {
     q: "Can I get a refund?",
-    a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and it cannot be fixed within a reasonable time, or when the law says otherwise. Send your request within 7 days of the payment date to support@aitranslator.io.vn, with your order number. Changing plans is not refundable. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
+    a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and it cannot be fixed within a reasonable time, or when the law says otherwise. Send your request to us first, within 7 days of the payment date, to support@aitranslator.io.vn, with your order number. Changing plans is not refundable. For card payments Creem is the merchant of record, so Creem may also refund them under Creem's terms. When an order is refunded (in full or in part, including through a card dispute), we may shorten the time that order added to your license, or revoke the license if it consists only of that order; this is not automatic: the operator decides case by case. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
   },
   {
     q: "Can I get an e-invoice for my company?",
-    a: `<p>Not at the moment: we do not issue electronic invoices yet. If you need a receipt, contact support@aitranslator.io.vn and we will talk it through.</p>`,
+    a: `<p>For VietQR orders we do not issue electronic invoices yet. For orders paid by international card, Creem emails a receipt to the address you entered. If you need other paperwork, contact support@aitranslator.io.vn and we will talk it through.</p>`,
   },
   {
     q: "How is translation time counted?",
@@ -53,21 +53,21 @@ export default {
   path: "/en/pricing/",
   title: "AI Translator pricing: Free trial, Monthly, 6 Months, Yearly",
   description:
-    "AI Translator plans: Free 10-day trial, Monthly 50,000 ₫, 6 Months 269,000 ₫ (100 hours/30 days), Yearly 500,000 ₫ (unlimited). Prepaid via VietQR, no auto-renewal.",
+    "AI Translator plans: Free 10-day trial, Monthly 50,000 ₫, 6 Months 269,000 ₫, Yearly 500,000 ₫. Prepaid by VietQR or international card (USD), no auto-renewal.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-15",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
-  llm: "Pricing for the four plans (Free 10-day trial, Monthly 50,000 VND, 6 Months 269,000 VND, Yearly 500,000 VND), how translation time is counted, how to buy with VietQR, changing plans, refunds and pricing questions.",
+  llm: "Pricing for the four plans (Free 10-day trial, Monthly 50,000 VND, 6 Months 269,000 VND, Yearly 500,000 VND), how translation time is counted, how to buy with VietQR (VND) or an international card (USD), changing plans, refunds and pricing questions.",
   llmTitle: "AI Translator pricing",
   body: () => `
-${pageHero({ crumbs, title: "Simple pricing: prepaid, no auto-renewal", lead: "Try it free for 10 days, then choose Monthly, 6 Months or Yearly if it earns its place. You pay in Vietnamese dong (VND) by VietQR from a Vietnamese bank, right inside the app, and your key arrives by email." })}
+${pageHero({ crumbs, title: "Simple pricing: prepaid, no auto-renewal", lead: "Try it free for 10 days, then choose Monthly, 6 Months or Yearly if it earns its place. You start paying inside the app, by VietQR in Vietnamese dong (VND) from a Vietnamese bank or by international card in US dollars (USD); with a card you finish in your browser. Your key arrives by email." })}
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">The four plans</h2>
 ${plansGrid("en", { ctaLabel: "Download", freeLabel: "Install and try free" })}
-<p class="disclaimer">Prices are in Vietnamese dong (VND) per order, and equal the amount in the VietQR code. Prices and allowances are set on our server; a plan you have already bought never has its allowance reduced.</p>
-${callout({ kind: "warn", title: "Paying from outside Vietnam", text: "For now we accept only bank transfers from Vietnamese banks, made through VietQR and charged in VND. International cards, PayPal and other currencies are not supported yet, so if you do not have a Vietnamese bank account you cannot buy a paid plan today. The Free trial needs no payment method. If this blocks you, <a href=\"/en/contact/\">contact us</a>." })}
+<p class="disclaimer">VND prices are per order and equal the amount in the VietQR code. USD prices apply when you pay by international card and exclude tax: if your country charges tax (VAT, GST or sales tax), Creem adds it on the payment page. Prices and allowances are set on our server; a plan you have already bought keeps its allowance for the period you bought, unless that order has been refunded.</p>
+${callout({ title: "Paying from outside Vietnam", text: "No Vietnamese bank account? Choose <strong>International card (USD)</strong> on the Upgrade screen: you pay by card on the Creem payment page, no Vietnamese bank needed. Cards are not accepted in some countries, per Creem's list. The Free trial still needs no payment method. If you need help, <a href=\"/en/contact/\">contact us</a>." })}
 </div></section>
 
 <section class="section"><div class="container">
@@ -75,7 +75,8 @@ ${sectionHead({ eyebrow: "Compare", title: "What each plan includes", center: tr
 <div class="table-wrap reveal" role="region" aria-label="Plan comparison" tabindex="0"><table class="compare">
 <thead><tr><th scope="col"><span class="sr-only">Feature</span></th><th scope="col">Free (trial)</th><th scope="col">Monthly</th><th scope="col">6 Months</th><th scope="col">Yearly</th></tr></thead>
 <tbody>
-<tr><th scope="row">Price</th><td>0 ₫</td><td>50,000 ₫ per order</td><td>269,000 ₫ per order</td><td>500,000 ₫ per order</td></tr>
+<tr><th scope="row">Price</th><td>0 ₫</td><td>50,000 ₫ per order<small>or $3.99 excl. tax</small></td><td>269,000 ₫ per order<small>or $21.99 excl. tax</small></td><td>500,000 ₫ per order<small>or $39.99 excl. tax</small></td></tr>
+<tr><th scope="row">How to pay</th><td>No payment needed</td><td>VietQR (VND) or international card (USD)</td><td>VietQR (VND) or international card (USD)</td><td>VietQR (VND) or international card (USD)</td></tr>
 <tr><th scope="row">Duration</th><td>10 days, once per computer</td><td>30 days per order</td><td>180 days per order</td><td>365 days per order</td></tr>
 <tr><th scope="row">Translation time</th><td>30 minutes per day</td><td>50 hours (3,000 minutes) per 30-day cycle</td><td>100 hours (6,000 minutes) per 30-day cycle</td><td>Unlimited</td></tr>
 <tr><th scope="row">Live translated subtitles, 5 languages</th><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
@@ -93,7 +94,7 @@ ${sectionHead({ eyebrow: "Compare", title: "What each plan includes", center: tr
 <section class="section section-alt"><div class="container">
 <div class="split wide-left reverse">
 <div>
-${appShot({ slug: "app-upgrade", lang: "en", alt: "The Upgrade screen in the app showing the Free, Monthly, 6 Months and Yearly plans with their allowances and prices", caption: "The Upgrade screen in the app: four plans, with prices and allowances." })}
+${appShot({ slug: "app-upgrade-usd", lang: "en", alt: "The Upgrade screen in the app with International card (USD) preselected, as shown when you connect from outside Vietnam: the Payment method group next to VietQR bank transfer (VND), the Free, Monthly, 6 Months and Yearly plans with their allowances and USD prices excluding tax ($3.99, $21.99 and $39.99), a note that Creem is the merchant of record for card orders, the Email to receive your key box and the Pay in your browser button", caption: "The Upgrade screen in the app with the international card selected: two ways to pay, four plans, USD prices (excluding tax) and allowances." })}
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Translation time</span>
@@ -113,19 +114,19 @@ ${checkList([
 <section class="section"><div class="container">
 ${sectionHead({ eyebrow: "How to buy", title: "From choosing a plan to activation, inside the app", center: true })}
 ${steps([
-  { title: "Choose a plan in the app", text: "Open <strong>Upgrade to Pro</strong>, choose Monthly, 6 Months or Yearly, enter the email where you want to receive your key and agree to let us store it to send and recover the key." },
-  { title: "Scan the VietQR code", text: "The app draws a VietQR code right in its window, with a button to open the PayOS payment page. The code works for 15 minutes." },
-  { title: "It activates itself", text: "When PayOS confirms the payment (the app checks every 3 seconds), the plan takes effect on your computer straight away and your key is emailed to you." },
+  { title: "Choose how to pay and a plan in the app", text: "Open <strong>Upgrade to Pro</strong>, choose the <strong>Payment method</strong> (VietQR in VND or international card in USD), then choose Monthly, 6 Months or Yearly (the prices on the plan boxes follow your payment method), enter the email where you want to receive your key and agree to let us store it to send and recover the key." },
+  { title: "Pay", text: "<strong>VietQR:</strong> the app draws a QR code right in its window, with a button to open the PayOS payment page; the code works for 15 minutes. <strong>International card:</strong> the app opens the Creem payment page in your browser by itself; pay within 30 minutes. If you have paid, your key will be sent by email; do not pay again." },
+  { title: "It activates itself", text: "When the payment gateway confirms the payment (the app checks every few seconds), the plan takes effect on your computer straight away and your key is emailed to you." },
 ])}
 <p class="center-text reveal"><a class="btn btn-secondary" href="/en/guide/buy-and-activate/">Read the guide to buying and activating a key ${icon("arrow-right")}</a></p>
-<p class="disclaimer">Only bank transfers from Vietnamese banks, in VND, through PayOS. We do not receive your card number or bank account details, and we do not send your email address to PayOS.</p>
+<p class="disclaimer">We do not receive your card number or bank account details. With VietQR we do not send your email address to PayOS. With an international card we send the email you enter in the app to Creem, to pre-fill the payment page and so that Creem can email you a receipt; Creem is the merchant of record (reseller) for card orders and handles the payment and the tax.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container">
 ${sectionHead({ eyebrow: "Renewing and changing plans", title: "Flexible, and priced by the day", center: true })}
 <div class="grid grid-2">
 <div class="card reveal"><h3>Renew the same plan</h3><p>Buy the same plan again to add 30 days (Monthly), 180 days (6 Months) or 365 days (Yearly), counted from the expiry date if the plan is still active. The app reminds you 7 days before the end and again after it expires. Nothing is ever charged automatically.</p></div>
-<div class="card reveal"><h3>Change plan while it is active</h3><p>The new plan starts immediately, and the days left on the old plan are converted at the <strong>price per day</strong>, rounded down. For example, with 20 days left on Monthly, buying Yearly adds 24 days (Yearly then runs for 389 days), and buying 6 Months adds 22 days (6 Months then runs for 202 days). The app shows the converted days and the new expiry date (an estimate) before you pay. Changing plans is not refundable.</p></div>
+<div class="card reveal"><h3>Change plan while it is active</h3><p>The new plan starts immediately, and the days left on the old plan are converted at the <strong>price per day</strong>, rounded down. For example, priced in VND (if you pay in USD the formula uses the USD prices of both plans, so the days can differ: in this example by at most one day), with 20 days left on Monthly, buying Yearly adds 24 days (Yearly then runs for 389 days), and buying 6 Months adds 22 days (6 Months then runs for 202 days). The app shows the converted days and the new expiry date (an estimate) before you pay. Changing plans is not refundable.</p></div>
 </div>
 ${callout({ title: "When a plan expires", text: "The computer goes back to Free if it is still within its 10-day trial; once the trial is over, it needs a paid plan to keep translating. Pro features (history, glossary, export) are locked when there is no paid plan." })}
 </div></section>

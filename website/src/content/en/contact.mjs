@@ -22,7 +22,7 @@ const M = {
     "Steps to make it happen again:",
   ]),
   key: mail("Lost AI Translator license key", ["Email used to buy:", "Have I tried Settings › License › Lost your key? (yes/no):"]),
-  payment: mail("AI Translator payment problem", ["Order code (the “Order …” line on the Upgrade screen):", "Email used to buy:", "Time and amount transferred:", "Problem:"]),
+  payment: mail("AI Translator payment problem", ["Order code (the “Order …” line on the Upgrade screen):", "Email used to buy:", "Payment method (VietQR or international card), time and amount paid:", "Problem:"]),
   refund: mail("AI Translator refund request", ["Order code:", "Payment date:", "Reason:"]),
   erase: mail("Request to delete or anonymize personal data", ["I ask you to delete or anonymize the personal data linked to this email.", "(Sent from the same email I used to buy.)"]),
   security: mail("[Security] AI Translator security report", ["What I found:", "Steps to reproduce:", "Affected version or component:"]),
@@ -40,7 +40,7 @@ export default {
     "Contact AI Translator at support@aitranslator.io.vn: installer, technical support, lost keys, payment issues, refunds, data deletion and security reports.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-15",
   llm: "How to reach us and get support: email support@aitranslator.io.vn, what to send there (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
   llmTitle: "Contact and support for AI Translator",
   body: () => `
@@ -86,19 +86,19 @@ ${btn(M.key, "Email about a lost key")}
 
 <div class="card reveal" id="payment">
 <h3>Payment problems</h3>
-<p>If you paid but have no key, paid too little, or an order failed, send the order code (the “Order …” line on the Upgrade screen), the email you used to buy, and the time and amount of the transfer. Your bank and PayOS handle the transfer itself; we do not receive your bank account or card details.</p>
+<p>If you paid but have no key, paid too little, or an order failed, send the order code (the “Order …” line on the Upgrade screen), the email you used to buy, how you paid, and the time and amount. For a card payment, also attach the receipt Creem emailed to the address you entered, if you have it. Your bank and PayOS handle VietQR transfers. For card payments, Creem is the merchant of record (reseller) and handles the payment and the tax; we do not receive your bank account or card details.</p>
 ${btn(M.payment, "Email about a payment")}
 </div>
 
 <div class="card reveal" id="refund">
 <h3>Refund request</h3>
-<p>Send your request within <strong>7 days</strong> of the payment date, with the order code and the reason. Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise; changing plans is not refundable. Details are in the <a href="/en/terms/">Terms of use</a>.</p>
+<p>Send your request to us first, within <strong>7 days</strong> of the payment date, with the order code and the reason. Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise; changing plans is not refundable. For card payments Creem is the merchant of record, so Creem may also refund them under Creem's terms; if we do not reply for more than 7 days, you can contact Creem (look up your order at creem.io/my-orders/login). When an order is refunded (in full or in part, including through a card dispute), we may shorten the time that order added to your license, or revoke the license if it consists only of that order; this is not automatic: the operator decides case by case. Details are in the <a href="/en/terms/">Terms of use</a>.</p>
 ${btn(M.refund, "Send a refund request")}
 </div>
 
 <div class="card reveal" id="delete-data">
 <h3>Delete or anonymize personal data</h3>
-<p>Send the request <strong>from the same email you used to buy</strong>, so we can confirm it is you. We will remove your email and device name; a minimum of data is still kept (the hashed machine ID, the time you consented and the accounting-level order row), and your license still works but can no longer be recovered by email. The full list is on <a href="/en/data-security/#delete-data">Data and security</a>. Data on your own computer you can delete right away inside the app.</p>
+<p>Send the request <strong>from the same email you used to buy</strong>, so we can confirm it is you. We will remove your email and device name; a minimum of data is still kept (the hashed machine ID, the time you consented and the accounting-level order row), and your license still works but can no longer be recovered by email. Data you enter on Creem's page is kept by Creem under Creem's policy; to have it deleted there, contact Creem. The full list is on <a href="/en/data-security/#delete-data">Data and security</a>. Data on your own computer you can delete right away inside the app.</p>
 ${btn(M.erase, "Request data deletion")}
 </div>
 

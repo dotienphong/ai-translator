@@ -1,6 +1,7 @@
 import { RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, feature, linkCard, callout, facts, ctaBand } from "../../build/components.mjs";
 import { SITE } from "../../site.mjs";
+import { legalVersionLine } from "../legal.mjs";
 
 const crumbs = [
   { name: "Trang chủ", path: "/" },
@@ -18,7 +19,7 @@ export default {
     "AI Translator là app dịch phụ đề cuộc họp chạy offline do Đỗ Tiến Phong, một nhà phát triển cá nhân, xây dựng. Câu chuyện, nguyên tắc và trạng thái hiện tại.",
   schemaType: "AboutPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-14",
   llm: "Câu chuyện hình thành, nguyên tắc sản phẩm, người làm (Đỗ Tiến Phong, nhà phát triển cá nhân), trạng thái hiện tại, các hướng đang cân nhắc (chưa cam kết), việc dùng thành phần mã nguồn mở của bên thứ ba và thông tin pháp lý.",
   llmTitle: "Về AI Translator",
   body: () => `
@@ -78,7 +79,7 @@ ${sectionHead({ eyebrow: "Hôm nay", title: "AI Translator đang ở đâu?" })}
 <tr><th scope="row">macOS</th><td>macOS 14.2 trở lên, Apple Silicon. <a href="/tai-xuong/#cai-macos">Cài bằng một dòng lệnh trong Terminal</a>.</td></tr>
 <tr><th scope="row">Windows</th><td>Windows 10/11 64-bit (x64). <a href="/tai-xuong/#cai-windows">Cài bằng một dòng lệnh trong PowerShell</a>. Độ trễ trên Windows mới đo sơ bộ trên một laptop có GPU tích hợp (chậm hơn Mac M4 Pro).</td></tr>
 <tr><th scope="row">Ký số</th><td>macOS ký ad-hoc, chưa notarize: cài bằng dòng lệnh thì mở thẳng, còn file .dmg tải bằng trình duyệt thì lần mở đầu cần bấm Open Anyway. Windows chưa có chứng thư ký mã: cài bằng dòng lệnh thì SmartScreen không hỏi, còn file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo (Smart App Control chế độ chặn sẽ chặn cả hai) (<a href="/huong-dan/cai-dat-windows/">cách xử lý</a>).</td></tr>
-<tr><th scope="row">Thanh toán</th><td>VietQR bằng VND qua PayOS. Chưa có thẻ quốc tế, chưa có hóa đơn điện tử.</td></tr>
+<tr><th scope="row">Thanh toán</th><td>VietQR bằng VND qua PayOS, hoặc thẻ quốc tế bằng USD qua Creem. Chưa có hóa đơn điện tử Việt Nam cho đơn VietQR; đơn thẻ có biên lai của Creem.</td></tr>
 <tr><th scope="row">Gói</th><td>Free dùng thử 10 ngày, Monthly, 6 Months, Yearly. Xem <a href="/bang-gia/">bảng giá</a>.</td></tr>
 </tbody></table></div>
 </div></section>
@@ -93,7 +94,6 @@ ${callout({ kind: "warn", title: "Đây chưa phải cam kết.", text: "Danh s�
 <li>Thu âm thanh theo từng app trên Windows</li>
 <li>Dịch hai chiều bằng giọng nói, để giọng của bạn cũng được dịch cho người cùng họp</li>
 <li>Tóm tắt và biên bản cuộc họp</li>
-<li>Bán ra nước ngoài, kèm thanh toán quốc tế</li>
 <li>Gói doanh nghiệp cho nhiều máy</li>
 <li>Thêm ngôn ngữ cho âm thanh nguồn và bản dịch (ngoài năm ngôn ngữ hiện có)</li>
 <li>Thêm ngôn ngữ giao diện</li>
@@ -113,8 +113,8 @@ ${sectionHead({ eyebrow: "Pháp lý", title: "Thông tin pháp lý ngắn gọn"
   ["Bên cung cấp", "Đỗ Tiến Phong (cá nhân)"],
   ["Thương hiệu", "AI Translator"],
   ["Luật áp dụng", "Pháp luật Việt Nam<small>Tranh chấp do Tòa án có thẩm quyền tại Việt Nam giải quyết (Điều khoản sử dụng, mục 14)</small>"],
-  ["Điều khoản sử dụng", `<a href="/dieu-khoan/">Thỏa thuận cấp phép (EULA)</a><small>Phiên bản 1.1, hiệu lực từ 07/10/2026</small>`],
-  ["Quyền riêng tư", `<a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a><small>Phiên bản 1.1, hiệu lực từ 07/10/2026</small>`],
+  ["Điều khoản sử dụng", `<a href="/dieu-khoan/">Thỏa thuận cấp phép (EULA)</a><small>${legalVersionLine("eula.vi.md")}</small>`],
+  ["Quyền riêng tư", `<a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a><small>${legalVersionLine("privacy.vi.md")}</small>`],
   ["Ngôn ngữ văn bản", "Bản tiếng Việt là bản gốc và được ưu tiên<small>Bản tiếng Anh là bản dịch để tham khảo</small>"],
   ["Liên hệ về dữ liệu cá nhân", MAIL],
 ])}</div>

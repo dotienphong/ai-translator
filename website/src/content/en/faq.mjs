@@ -165,8 +165,8 @@ const GROUPS = [
         a: `<p>Only speech that has been translated is counted, by the length of the speech. Silence, sentences already in the language you want to read, and segments that could not be translated are not counted. The quota is per device, and the app warns you when less than 5 minutes remain.</p>`,
       },
       {
-        q: "How do I pay? Can I use Visa or PayPal?",
-        a: `<p>Not yet. For now we accept only bank transfers from a Vietnamese bank, in VND, through VietQR (the PayOS gateway). The app draws the QR code right on the Upgrade screen; the code works for 15 minutes, and when PayOS confirms the payment the app activates the plan and your key is emailed to you. There are no recurring payments and no e-invoices yet.</p>`,
+        q: "How do I pay? Can I pay by international card?",
+        a: `<p>Yes. There are two ways, chosen under <strong>Payment method</strong> at the top of the Upgrade screen (if you do not see it, update the app to the latest version): <strong>VietQR bank transfer in VND</strong> (from a Vietnamese bank, through the PayOS gateway; the QR code is drawn in the app and works for 15 minutes) or <strong>international card in USD</strong> (the Creem payment page opens in your browser; Monthly $3.99, 6 Months $21.99, Yearly $39.99, excluding tax). Creem is the merchant of record (reseller) for orders paid by card and handles the payment and the tax on it; Creem's Buyer Terms: <a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>. When the payment gateway confirms the payment, the app activates the plan and your key is emailed to you. For a card, pay within 30 minutes of creating the order; if you have paid but the app says the order did not go through or the payment time has passed, do not pay again: your key is still emailed (see <a href="/en/guide/buy-and-activate/#refunds">payment problems</a>).</p><p>There is no PayPal. Apple Pay or Google Pay are available only when Creem's payment page shows that option. Cards are not accepted in some countries, per Creem's list. There are no recurring payments; VietQR orders have no electronic invoice yet, while card orders get a receipt from Creem.</p>`,
       },
       {
         q: "Do plans renew automatically? What happens at expiry?",
@@ -174,7 +174,7 @@ const GROUPS = [
       },
       {
         q: "Can I get a refund?",
-        a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise. Send the request within 7 days of the payment date to support@aitranslator.io.vn with the order code. Changing plans is not refundable. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
+        a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise. Send the request to us first, within 7 days of the payment date, to support@aitranslator.io.vn with the order code. Changing plans is not refundable. For card payments Creem is the merchant of record, so Creem may also refund them under Creem's terms. When an order is refunded (in full or in part, including through a card dispute), we may shorten the time that order added to your license, or revoke the license if it consists only of that order; this is not automatic: the operator decides case by case. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
       },
       {
         q: "How many devices can I use a key on? How do I move to another one?",
@@ -231,7 +231,7 @@ export default {
   description:
     "Short answers about AI Translator: using it with Zoom, Teams and Meet, languages, working offline, privacy, system requirements, plans, payment and everyday use.",
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-15",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Frequently asked questions: overview, languages and quality, privacy and data, install and system requirements, plans and payment, everyday use.",
   llmTitle: "AI Translator frequently asked questions",

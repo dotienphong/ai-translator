@@ -14,7 +14,7 @@ export default {
     "Live translated subtitles in 5 languages, a customizable subtitle bar, glossary, history, TXT/SRT/Markdown export and shortcuts. All offline, on your computer.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-14",
   llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, glossary, history, export, shortcuts, models), with performance figures and the conditions they were measured under.",
   llmTitle: "AI Translator features",
   body: () => `
@@ -250,7 +250,8 @@ ${sectionHead({ eyebrow: "By plan", title: "Which feature is in which plan", cen
 <tr><th scope="row">Save session history</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
 <tr><th scope="row">Export to TXT, SRT, Markdown</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
 <tr><th scope="row">Translation time</th><td>30 min per day, for 10 days</td><td>50 hours per 30 days</td><td>100 hours per 30 days, for 180 days</td><td>Unlimited, for 365 days</td></tr>
-<tr><th scope="row">Price (VND)</th><td>0 ₫</td><td>50,000 ₫</td><td>269,000 ₫</td><td>500,000 ₫</td></tr>
+<tr><th scope="row">Price (VietQR, VND)</th><td>0 ₫</td><td>50,000 ₫</td><td>269,000 ₫</td><td>500,000 ₫</td></tr>
+<tr><th scope="row">Price (international card, USD, excluding tax)</th><td>—</td><td>$3.99</td><td>$21.99</td><td>$39.99</td></tr>
 </tbody></table></div>
 <p class="center-text reveal"><a class="btn btn-primary" href="/en/pricing/">See the full pricing details ${icon("arrow-right")}</a></p>
 </div></section>

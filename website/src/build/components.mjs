@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { esc } from "./markdown.mjs";
 import { icon } from "./icons.mjs";
-import { PLANS, vnd } from "../plans.mjs";
+import { PLANS, usd, vnd } from "../plans.mjs";
 
 export { esc, icon };
 
@@ -208,11 +208,14 @@ export function plansGrid(lang, { ctaLabel, freeLabel, featured = "yearly", deta
   return `<div class="plans">${PLANS.map((p) => {
     const f = p.code === featured;
     const price = p.priceVnd === 0 ? (en ? "Free" : "Miễn phí") : vnd(p.priceVnd, lang);
+    // Giá USD khi trả bằng thẻ quốc tế (spec 2026-10-14): chỉ gói trả phí; chưa gồm thuế (nói ở chú thích dưới lưới gói).
+    const usdLine = p.priceUsdCents > 0 ? `<p class="usd">${esc(en ? `or ${usd(p.priceUsdCents, lang)} by international card` : `hoặc ${usd(p.priceUsdCents, lang)} bằng thẻ quốc tế`)}</p>` : "";
     return `<div class="plan${f ? " featured" : ""} reveal">
 ${f ? `<span class="tag">${en ? "Best value" : "Tiết kiệm nhất"}</span>` : ""}
 <h3>${esc(en ? p.nameEn : p.nameVi)}</h3>
 <p class="for">${esc(L[p.code].for)}</p>
 <div class="price"><b>${esc(price)}</b></div>
+${usdLine}
 <p class="per">${esc(L[p.code].per)}</p>
 ${checkList(feats[p.code].map(esc))}
 <a class="btn ${f ? "btn-primary" : "btn-secondary"} btn-lg" href="${en ? "/en/download/" : "/tai-xuong/"}">${esc(p.priceVnd === 0 ? freeLabel ?? ctaLabel : ctaLabel)}</a>

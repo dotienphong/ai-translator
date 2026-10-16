@@ -150,7 +150,7 @@ ${f.map(col).join("")}
 </footer>`;
 }
 
-/** Gắn chữ không được ngắt dòng (nbsp) trong phần chữ thường của HTML: "phụ đề", số + đơn vị, "AI Translator". Không đụng thuộc tính hay script. */
+/** Gắn chữ không được ngắt dòng (nbsp) trong phần chữ thường của HTML: "phụ đề", "quốc tế", số + đơn vị (kể cả USD), "AI Translator". Không đụng thuộc tính hay script. */
 export function glue(html, lang = "vi") {
   const NB = "&nbsp;";
   let tableNo = 0;
@@ -171,8 +171,9 @@ export function glue(html, lang = "vi") {
         : part.replace(/(^|>)([^<]+)(?=<|$)/g, (m, open, text) => {
             const fixed = text
               .replace(/(?<![\p{L}])(phụ|Phụ) (đề)(?![\p{L}])/gu, `$1${NB}$2`)
+              .replace(/(?<![\p{L}])(quốc) (tế)(?![\p{L}])/gu, `$1${NB}$2`)
               .replace(/\bAI Translator\b/g, `AI${NB}Translator`)
-              .replace(/(\d) ?(GB|MB|KB|ms|px|giây|phút|giờ|ngày|tháng|năm|hours?|minutes?|days?|seconds?|₫|%)(?![\p{L}])/gu, (mm, d, u) => `${d}${NB}${u}`);
+              .replace(/(\d) ?(GB|MB|KB|ms|px|giây|phút|giờ|ngày|tháng|năm|hours?|minutes?|days?|seconds?|₫|%|USD)(?![\p{L}])/gu, (mm, d, u) => `${d}${NB}${u}`);
             return `${open}${fixed}`;
           }),
     )

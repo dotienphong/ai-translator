@@ -16,7 +16,7 @@ export default {
     "Chín bài hướng dẫn từng bước: cài trên macOS và Windows, cấp quyền ghi âm, phím tắt, từ điển thuật ngữ, xuất bản chép lời, mua key và sửa lỗi thường gặp.",
   schemaType: "CollectionPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-14",
   llm: "Mục lục chín bài hướng dẫn sử dụng AI Translator: bắt đầu nhanh, cài đặt macOS, cài đặt Windows, cấp quyền ghi âm trên macOS, thanh phụ đề và phím tắt, từ điển thuật ngữ, lịch sử và xuất file, mua và kích hoạt key, khắc phục sự cố.",
   llmTitle: "Hướng dẫn sử dụng AI Translator",
   body: () => `
@@ -52,7 +52,7 @@ ${linkCard({ href: "/huong-dan/lich-su-va-xuat-file/", icon: "history", title: "
 <section class="section-tight"><div class="container">
 ${sectionHead({ eyebrow: "Mua gói và hỗ trợ", title: "Gói, key và khi có trục trặc" })}
 <div class="grid grid-2">
-${linkCard({ href: "/huong-dan/mua-va-kich-hoat-key/", icon: "key", title: "Mua gói, kích hoạt key và đổi máy", text: "Mua Monthly, 6 Months hoặc Yearly bằng VietQR trong app, nhập key, đổi máy, gia hạn và lấy lại key đã mất.", more: MORE })}
+${linkCard({ href: "/huong-dan/mua-va-kich-hoat-key/", icon: "key", title: "Mua gói, kích hoạt key và đổi máy", text: "Mua Monthly, 6 Months hoặc Yearly bằng VietQR hoặc thẻ quốc tế trong app, nhập key, đổi máy, gia hạn và lấy lại key đã mất.", more: MORE })}
 ${linkCard({ href: "/huong-dan/khac-phuc-su-co/", icon: "support", title: "Khắc phục sự cố", text: "Không có phụ đề, hết hạn mức, key bị khóa, tải model lỗi: nguyên nhân và cách xử lý từng trường hợp.", more: MORE })}
 </div>
 </div></section>

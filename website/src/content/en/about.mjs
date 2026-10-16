@@ -1,6 +1,7 @@
 import { RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, feature, linkCard, callout, facts, ctaBand } from "../../build/components.mjs";
 import { SITE } from "../../site.mjs";
+import { legalVersionLine } from "../legal.mjs";
 
 const crumbs = [
   { name: "Home", path: "/en/" },
@@ -18,7 +19,7 @@ export default {
     "AI Translator shows live translated subtitles for meetings and runs offline. Built by Đỗ Tiến Phong, an independent developer. Story, principles, current status.",
   schemaType: "AboutPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-14",
   llm: "How AI Translator came about, the product principles, who builds it (Đỗ Tiến Phong, an independent developer), current status, directions under consideration (not commitments), its use of third-party open-source components and short legal information.",
   llmTitle: "About AI Translator",
   body: () => `
@@ -78,7 +79,7 @@ ${sectionHead({ eyebrow: "Today", title: "Where is AI Translator right now?" })}
 <tr><th scope="row">macOS</th><td>macOS 14.2 or later, Apple Silicon. <a href="/en/download/#install-macos">Install with one command in Terminal</a>.</td></tr>
 <tr><th scope="row">Windows</th><td>Windows 10/11 64-bit (x64). <a href="/en/download/#install-windows">Install with one command in PowerShell</a>. Latency on Windows has not been measured.</td></tr>
 <tr><th scope="row">Code signing</th><td>macOS is ad-hoc signed and not notarized: it opens directly when installed with the command, but a .dmg downloaded in a browser needs Open Anyway on first launch. Windows has no code-signing certificate yet: installed with the command, SmartScreen does not ask, while an .exe downloaded in a browser may be warned about (Smart App Control in blocking mode blocks both) (<a href="/en/guide/install-windows/">what to do</a>).</td></tr>
-<tr><th scope="row">Payments</th><td>VietQR in VND through PayOS. No international cards and no e-invoices yet.</td></tr>
+<tr><th scope="row">Payments</th><td>VietQR in VND through PayOS, or international cards in USD through Creem. No Vietnamese e-invoices yet for VietQR orders; card orders get a receipt from Creem.</td></tr>
 <tr><th scope="row">Plans</th><td>Free 10-day trial, Monthly, 6 Months, Yearly. See <a href="/en/pricing/">pricing</a>.</td></tr>
 </tbody></table></div>
 </div></section>
@@ -93,7 +94,6 @@ ${callout({ kind: "warn", title: "This is not a commitment.", text: "The list be
 <li>Per-app audio capture on Windows</li>
 <li>Two-way speech translation, so your own voice can be translated for the other people in the meeting</li>
 <li>Meeting summaries and minutes</li>
-<li>Selling outside Vietnam, with international payments</li>
 <li>A business plan for multiple devices</li>
 <li>More languages for the source audio and the translation (beyond the current five)</li>
 <li>More interface languages</li>
@@ -113,8 +113,8 @@ ${sectionHead({ eyebrow: "Legal", title: "Short legal information" })}
   ["Provider", "Đỗ Tiến Phong (individual)"],
   ["Brand", "AI Translator"],
   ["Governing law", "Vietnamese law<small>Disputes go to the competent courts in Vietnam (Terms of use, section 14)</small>"],
-  ["Terms of use", `<a href="/en/terms/">License agreement (EULA)</a><small>Version 1.1, effective 7 October 2026</small>`],
-  ["Privacy", `<a href="/en/privacy/">Privacy policy</a><small>Version 1.1, effective 7 October 2026</small>`],
+  ["Terms of use", `<a href="/en/terms/">License agreement (EULA)</a><small>${legalVersionLine("eula.en.md")}</small>`],
+  ["Privacy", `<a href="/en/privacy/">Privacy policy</a><small>${legalVersionLine("privacy.en.md")}</small>`],
   ["Language of the texts", "The Vietnamese version is the original and prevails<small>The English version is a translation for reference</small>"],
   ["Contact about personal data", MAIL],
 ])}</div>

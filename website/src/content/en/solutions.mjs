@@ -13,7 +13,7 @@ export default {
   description:
     "AI Translator shows translated subtitles for Zoom, Teams, Meet and Zalo calls, webinars, courses and videos. See how to use it and when it is not the right fit.",
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-14",
   llm: "Overview of what AI Translator is used for (online meetings, webinars, courses, videos), links to the two detailed solution pages, and a list of cases where the app is not the right fit.",
   llmTitle: "Solutions: what AI Translator is used for",
   body: () => `
@@ -43,7 +43,7 @@ ${sectionHead({ eyebrow: "Before you start", title: "What you need", center: tru
   ["Platform", "macOS 14.2 or later on Apple Silicon and Windows 10/11 x64<small>Intel Macs and Windows ARM64: not supported</small>"],
   ["Computer", "At least 8 GB of RAM, 16 GB recommended<small>One-time model download: 1.3 GB (Lite) or 2.5 GB (Standard)</small>"],
   ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>App interface: English, Vietnamese, Japanese, Chinese (Simplified), Korean</small>"],
-  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR, no automatic renewal</small>"],
+  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR or international card (USD), no automatic renewal. Cards are not accepted in some countries, per Creem's list.</small>"],
 ])}</div>
 </div></section>
 
@@ -67,7 +67,7 @@ ${checkList([
   "<strong>You need automatic minutes, summaries or speaker labels.</strong> Not available.",
   "<strong>You use an Intel Mac, Windows ARM64, or a Windows PC whose CPU lacks AVX2.</strong> AI Translator runs on macOS 14.2 or later on Apple Silicon and on Windows 10/11 64-bit (x64) with a CPU that supports AVX2.",
   "<strong>Your computer has less than 8 GB of RAM,</strong> or you need a language beyond the five above: the app cannot cover that yet.",
-  "<strong>You have no Vietnamese bank account.</strong> For now we accept VietQR in VND only, with no international cards.",
+  "<strong>You have no Vietnamese bank account and you are in a country where Creem does not accept card payments.</strong> International cards go through Creem, which does not accept buyers from some countries (per Creem's list), and there is no PayPal. Then there is no way to pay for a paid plan yet; the Free trial still works.",
 ], true)}
 ${callout({ kind: "warn", title: "Automatic translation can be wrong.", text: "Do not rely on AI Translator for important decisions (contracts, medical, legal, financial) without checking with a qualified person." })}
 </div></section>

@@ -1,5 +1,6 @@
 import { pageHero, callout, docLayout, docNav, steps, facts, ctaBand } from "../../build/components.mjs";
 import { SITE } from "../../site.mjs";
+import { legalVersionLine } from "../legal.mjs";
 
 const crumbs = [
   { name: "Home", path: "/en/" },
@@ -28,15 +29,15 @@ export default {
   description:
     "AI Translator processes audio on your computer and never sends it out. See what stays on your device, where it connects, what servers store, and how to delete it.",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
-  llm: "What data stays on your device, the four places the app connects to, how it was checked with a proxy on macOS (Windows not yet measured), what our servers store and for how long, processors, protections, signing status and how to request deletion.",
+  modified: "2026-10-14",
+  llm: "What data stays on your device, the five places the app connects to, how it was checked with a proxy on macOS (Windows not yet measured), what our servers store and for how long, processors, protections, signing status and how to request deletion.",
   llmTitle: "Data and security in AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Where does your data go when you use AI Translator?",
   lead: "Meeting audio is processed entirely on your computer and is never sent out: speech recognition and translation use AI models that run on your machine, and no cloud AI service takes part. This page walks through each kind of data: what stays on your computer, what crosses the network and what our servers store, plus how we checked it and what we have not checked.",
-  meta: "<span>Updated {{updated}}</span><span>Matches Privacy policy version 1.1</span>",
+  meta: `<span>Updated {{updated}}</span><span>Matches the Privacy policy: ${legalVersionLine("privacy.en.md")}</span>`,
 })}
 
 <section class="section-tight"><div class="container">
@@ -48,7 +49,7 @@ ${facts([
   ["AI processing", "Speech recognition and translation use AI models running on your computer; no cloud AI"],
   ["Conversation data", "Only on your computer; our server has none"],
   ["Audio", "Only in RAM, never written to disk, never sent out"],
-  ["Network", "Four places; none of them receives audio or transcripts"],
+  ["Network", "Five places; none of them receives audio or transcripts"],
   ["Servers store", "Email (when you buy), orders, licenses, hashed machine ID"],
   ["Kept for", "Until you ask us to delete it"],
   ["Checked", "Proxy and nettop on macOS; Windows not measured yet"],
@@ -67,13 +68,14 @@ ${facts([
 </tbody></table></div>
 
 <h2 id="network">Where does the app connect?</h2>
-<p>To exactly four places, and none of them receives audio or transcript content. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due).</p>
+<p>To exactly five places, and none of them receives audio or transcript content. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due). Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.io.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
 <div class="table-wrap" role="region" aria-label="Places the app connects to" tabindex="0"><table>
 <thead><tr><th scope="col">Connects to</th><th scope="col">What for</th><th scope="col">What is sent</th></tr></thead>
 <tbody>
 <tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key</td></tr>
 <tr><th scope="row">releases.aitranslator.io.vn</th><td>Downloading models, checking for and downloading app updates</td><td>File download requests only</td></tr>
 <tr><th scope="row">PayOS payment page (pay.payos.vn)</th><td>VietQR payment when you buy a plan</td><td>Opens in your browser, not inside the app</td></tr>
+<tr><th scope="row">Creem payment page (checkout.creem.io)</th><td>International card payment when you buy a plan</td><td>Opens in your browser, not inside the app. Your email goes to Creem from our server, not from the app (see “Who else processes data?”)</td></tr>
 <tr><th scope="row">aitranslator.io.vn (this website)</th><td>External links (policies, support, download page) open in your system browser</td><td>The app sends nothing</td></tr>
 </tbody></table></div>
 
@@ -91,15 +93,15 @@ ${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on 
 <div class="table-wrap" role="region" aria-label="Data our servers store" tabindex="0"><table>
 <thead><tr><th scope="col">Data</th><th scope="col">Purpose</th></tr></thead>
 <tbody>
-<tr><th scope="row">Email at purchase, time you consented to email processing</th><td>Sending and recovering keys; proof of consent</td></tr>
-<tr><th scope="row">Orders: order code, plan, amount, time, status</th><td>Issuing and renewing licenses, reconciliation, accounting</td></tr>
+<tr><th scope="row">Email at purchase, time you consented to email processing</th><td>Sending and recovering keys; for card orders, pre-filling Creem's payment page; proof of consent</td></tr>
+<tr><th scope="row">Orders: order code, plan, amount and currency, time, status, the payment gateway's session ID (PayOS or Creem)</th><td>Issuing and renewing licenses, reconciliation, accounting</td></tr>
 <tr><th scope="row">License: key, plan, expiry, quota cycle</th><td>Granting the paid plan</td></tr>
 <tr><th scope="row">Activated devices: hashed machine ID, device name, last check</th><td>One device per key, abuse prevention</td></tr>
 <tr><th scope="row">Free trial: hashed machine ID, start and end times, last time the app called</th><td>One trial per device. No email or device name.</td></tr>
 <tr><th scope="row">License change log</th><td>Support and incident investigation</td></tr>
 <tr><th scope="row">Rate-limit counters (hashed values only, expire after about 3 hours)</th><td>Blocking key guessing and spam</td></tr>
 </tbody></table></div>
-<p><strong>Kept for:</strong> until you ask us to delete it; we never delete personal data on our own. We do not receive your card or bank account numbers and we do not send your email to PayOS. If you only use Free, our servers hold no email or device name for you.</p>
+<p><strong>Kept for:</strong> until you ask us to delete it; we never delete personal data on our own. We do not receive your card or bank account numbers. For VietQR we do not send your email to PayOS; for an international card, we send the email you enter on the Upgrade screen to Creem, to pre-fill its payment page and so that Creem can email you a receipt. If you only use Free, our servers hold no email or device name for you.</p>
 
 <h2 id="delete-data">How do I delete my data?</h2>
 ${steps(
@@ -110,17 +112,18 @@ ${steps(
   ],
   true,
 )}
-<p><strong>After deletion we still keep:</strong> the hashed machine ID (only to prevent abuse: one device per key, one Free trial per device), the time you once consented to email processing, and the order row at accounting level (order code, date, amount). Technical logs that expire on their own and Resend's mail logs are outside our deletion, under those parties' own policies.</p>
+<p><strong>After deletion we still keep:</strong> the hashed machine ID (only to prevent abuse: one device per key, one Free trial per device), the time you once consented to email processing, and the order row at accounting level (order code, date, amount and currency, the payment gateway's session ID). Technical logs that expire on their own and Resend's mail logs are outside our deletion, under those parties' own policies. Data you enter on Creem's page and the transaction records kept by Creem (as the merchant of record it must keep tax records) are outside a deletion request sent to us; to have them deleted at Creem, contact Creem.</p>
 
 <h2 id="processors">Who else processes data?</h2>
 <div class="table-wrap" role="region" aria-label="Other parties that process data" tabindex="0"><table>
 <thead><tr><th scope="col">Party</th><th scope="col">Role</th><th scope="col">Data</th></tr></thead>
 <tbody>
 <tr><th scope="row">PayOS (Vietnam)</th><td>Processes VietQR payments</td><td>Order code, amount, order description. Not your email.</td></tr>
+<tr><th scope="row">Creem (Armitage Labs OÜ, Estonia)</th><td>Merchant of record (reseller) for card orders: handles the payment, tax and receipt</td><td>We send the order code, plan, amount, currency and the email you entered as soon as you click to pay by card (even if you then do not pay), to pre-fill the payment page and so that Creem can email you a receipt. On its payment page, Creem itself collects your card number, name, billing address and country (to calculate tax) and IP address (to prevent fraud); we do not receive your card number. Creem processes that data under its own policy (https://www.creem.io/privacy). The payment notification Creem sends to our server includes the buyer's name and country; we do not store these two items.</td></tr>
 <tr><th scope="row">Cloudflare</th><td>Runs the license server and database; stores and serves models and updates</td><td>The data in the table above; technical logs that expire on their own</td></tr>
 <tr><th scope="row">Resend</th><td>Sends the email that contains your key</td><td>Your email and the message (with the key); mail logs kept under Resend's own policy</td></tr>
 </tbody></table></div>
-<p>Cloudflare and Resend operate servers outside Vietnam, so data may be processed abroad. We do not sell your data and do not share it for advertising.</p>
+<p>Cloudflare and Resend operate servers outside Vietnam, and Creem is an Estonian company, so data may be processed abroad. We do not sell your data and do not share it for advertising.</p>
 
 <h2 id="protections">Other protections</h2>
 <ul>

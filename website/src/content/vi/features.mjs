@@ -14,7 +14,7 @@ export default {
     "Phụ đề dịch trực tiếp 5 ngôn ngữ, thanh phụ đề tùy chỉnh, từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown, phím tắt. Tất cả chạy offline trên máy của bạn.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-14",
   llm: "Danh sách đầy đủ tính năng đã có trong app (phụ đề dịch, thanh phụ đề, từ điển thuật ngữ, lịch sử, xuất file, phím tắt, model) cùng số đo hiệu năng có ghi điều kiện.",
   llmTitle: "Tính năng của AI Translator",
   body: () => `
@@ -246,7 +246,8 @@ ${sectionHead({ eyebrow: "Theo gói", title: "Tính năng nào ở gói nào", c
 <tr><th scope="row">Lưu lịch sử các phiên</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Xuất TXT, SRT, Markdown</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Thời lượng dịch</th><td>30 phút mỗi ngày, 10 ngày</td><td>50 giờ mỗi 30 ngày</td><td>100 giờ mỗi 30 ngày, 180 ngày</td><td>Không giới hạn, 365 ngày</td></tr>
-<tr><th scope="row">Giá</th><td>0 ₫</td><td>50.000 ₫</td><td>269.000 ₫</td><td>500.000 ₫</td></tr>
+<tr><th scope="row">Giá (VietQR, VND)</th><td>0 ₫</td><td>50.000 ₫</td><td>269.000 ₫</td><td>500.000 ₫</td></tr>
+<tr><th scope="row">Giá (thẻ quốc tế, USD, chưa gồm thuế)</th><td>—</td><td>3,99 USD</td><td>21,99 USD</td><td>39,99 USD</td></tr>
 </tbody></table></div>
 <p class="center-text reveal"><a class="btn btn-primary" href="/bang-gia/">Xem chi tiết bảng giá ${icon("arrow-right")}</a></p>
 </div></section>

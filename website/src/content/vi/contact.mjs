@@ -22,7 +22,7 @@ const M = {
     "Các bước để lỗi xảy ra lại:",
   ]),
   key: mail("Mất license key AI Translator", ["Email đã dùng khi mua:", "Tôi đã thử Cài đặt › Bản quyền › Mất key? chưa (có/chưa):"]),
-  payment: mail("Vấn đề thanh toán AI Translator", ["Mã đơn (dòng Đơn … trong màn hình Nâng cấp):", "Email đã dùng khi mua:", "Thời điểm và số tiền đã chuyển:", "Vấn đề:"]),
+  payment: mail("Vấn đề thanh toán AI Translator", ["Mã đơn (dòng Đơn … trong màn hình Nâng cấp):", "Email đã dùng khi mua:", "Cách trả (VietQR hoặc thẻ quốc tế), thời điểm và số tiền đã trả:", "Vấn đề:"]),
   refund: mail("Yêu cầu hoàn tiền AI Translator", ["Mã đơn:", "Ngày thanh toán:", "Lý do:"]),
   erase: mail("Yêu cầu xóa hoặc ẩn danh dữ liệu cá nhân", ["Tôi yêu cầu xóa/ẩn danh dữ liệu cá nhân gắn với email này.", "(Thư này được gửi từ chính email đã dùng khi mua.)"]),
   security: mail("[Bảo mật] Báo lỗi bảo mật AI Translator", ["Mô tả lỗi:", "Các bước để tái hiện:", "Phiên bản/thành phần bị ảnh hưởng:"]),
@@ -40,7 +40,7 @@ export default {
     "Liên hệ AI Translator qua email support@aitranslator.io.vn: nhận bản cài, hỗ trợ kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu và báo lỗi bảo mật.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-08",
+  modified: "2026-10-15",
   llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.io.vn, việc nên gửi tới đó (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
   llmTitle: "Liên hệ và hỗ trợ AI Translator",
   body: () => `
@@ -86,19 +86,19 @@ ${btn(M.key, "Gửi thư về key bị mất")}
 
 <div class="card reveal" id="thanh-toan">
 <h3>Khiếu nại về thanh toán</h3>
-<p>Đã chuyển tiền mà chưa có key, chuyển thiếu hoặc đơn bị lỗi: hãy gửi mã đơn (dòng “Đơn …” trong màn hình Nâng cấp), email đã dùng khi mua, thời điểm và số tiền đã chuyển. Việc chuyển tiền do ngân hàng và PayOS xử lý; chúng tôi không nhận số tài khoản hay thẻ của bạn.</p>
+<p>Đã trả tiền mà chưa có key, trả thiếu hoặc đơn bị lỗi: hãy gửi mã đơn (dòng “Đơn …” trong màn hình Nâng cấp), email đã dùng khi mua, cách trả, thời điểm và số tiền đã trả. Với thẻ quốc tế, hãy kèm biên lai Creem gửi tới email bạn nhập (nếu có). Chuyển khoản VietQR do ngân hàng và PayOS xử lý. Với thanh toán bằng thẻ, Creem là bên bán lại (merchant of record) và xử lý thanh toán, thuế; chúng tôi không nhận số tài khoản hay số thẻ của bạn.</p>
 ${btn(M.payment, "Gửi thư về thanh toán")}
 </div>
 
 <div class="card reveal" id="hoan-tien">
 <h3>Yêu cầu hoàn tiền</h3>
-<p>Gửi yêu cầu trong <strong>7 ngày</strong> kể từ ngày thanh toán, kèm mã đơn và lý do. Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác; đổi gói không được hoàn tiền. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>
+<p>Gửi yêu cầu cho chúng tôi trước, trong <strong>7 ngày</strong> kể từ ngày thanh toán, kèm mã đơn và lý do. Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác; đổi gói không được hoàn tiền. Với khoản trả bằng thẻ quốc tế, Creem là bên bán lại nên Creem cũng có thể hoàn tiền theo điều khoản của Creem; nếu chúng tôi không trả lời quá 7 ngày, bạn có thể liên hệ Creem (tra đơn ở creem.io/my-orders/login). Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>
 ${btn(M.refund, "Gửi yêu cầu hoàn tiền")}
 </div>
 
 <div class="card reveal" id="xoa-du-lieu">
 <h3>Xóa hoặc ẩn danh dữ liệu cá nhân</h3>
-<p>Hãy gửi yêu cầu <strong>từ chính email đã dùng khi mua</strong> để chúng tôi xác nhận là bạn. Chúng tôi sẽ bỏ email và tên máy của bạn; một số dữ liệu tối thiểu vẫn được giữ lại (mã băm ID máy, thời điểm đồng ý, dòng đơn hàng mức kế toán), và license vẫn dùng được nhưng không khôi phục qua email nữa. Danh sách đầy đủ ở <a href="/bao-mat-du-lieu/#xoa-du-lieu">Dữ liệu và bảo mật</a>. Dữ liệu trên máy bạn thì tự xóa được ngay trong app.</p>
+<p>Hãy gửi yêu cầu <strong>từ chính email đã dùng khi mua</strong> để chúng tôi xác nhận là bạn. Chúng tôi sẽ bỏ email và tên máy của bạn; một số dữ liệu tối thiểu vẫn được giữ lại (mã băm ID máy, thời điểm đồng ý, dòng đơn hàng mức kế toán), và license vẫn dùng được nhưng không khôi phục qua email nữa. Dữ liệu bạn nhập ở trang Creem do Creem giữ theo chính sách của Creem; muốn xóa ở đó, hãy liên hệ Creem. Danh sách đầy đủ ở <a href="/bao-mat-du-lieu/#xoa-du-lieu">Dữ liệu và bảo mật</a>. Dữ liệu trên máy bạn thì tự xóa được ngay trong app.</p>
 ${btn(M.erase, "Gửi yêu cầu xóa dữ liệu")}
 </div>
 

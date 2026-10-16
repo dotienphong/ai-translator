@@ -13,7 +13,7 @@ export default {
   description:
     "AI Translator hiện phụ đề dịch trực tiếp cho họp Zoom, Teams, Meet, Zalo, webinar, khóa học và video. Xem cách dùng cho từng tình huống và khi nào app chưa phù hợp.",
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-14",
   llm: "Tổng quan các tình huống dùng AI Translator (họp trực tuyến, webinar, khóa học, video), liên kết tới hai trang giải pháp chi tiết và danh sách trường hợp app chưa phù hợp.",
   llmTitle: "Giải pháp: AI Translator dùng vào việc gì",
   body: () => `
@@ -43,7 +43,7 @@ ${sectionHead({ eyebrow: "Trước khi bắt đầu", title: "Cần chuẩn bị
   ["Nền tảng", "macOS 14.2+ trên Apple Silicon và Windows 10/11 x64<small>Mac Intel và Windows ARM64: chưa hỗ trợ</small>"],
   ["Máy", "RAM tối thiểu 8 GB, khuyến nghị 16 GB<small>Tải model một lần: 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)</small>"],
   ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Giao diện app: Tiếng Việt, English, 日本語, 中文 (giản thể), 한국어</small>"],
-  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
+  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR hoặc thẻ quốc tế (USD), không tự gia hạn. Thẻ không nhận được ở một số nước, theo danh sách của Creem.</small>"],
 ])}</div>
 </div></section>
 
@@ -67,7 +67,7 @@ ${checkList([
   "<strong>Bạn cần biên bản, tóm tắt tự động hoặc biết ai đang nói.</strong> Chưa có.",
   "<strong>Bạn dùng Mac Intel, Windows ARM64 hoặc máy Windows có CPU không hỗ trợ AVX2.</strong> AI Translator chạy trên macOS 14.2 trở lên với Apple Silicon và Windows 10/11 64-bit (x64) có CPU hỗ trợ AVX2.",
   "<strong>Máy có dưới 8 GB RAM,</strong> hoặc bạn cần ngôn ngữ ngoài năm ngôn ngữ trên: app chưa đáp ứng.",
-  "<strong>Bạn không có tài khoản ngân hàng Việt Nam.</strong> Hiện chỉ nhận VietQR bằng VND, chưa có thẻ quốc tế.",
+  "<strong>Bạn không có tài khoản ngân hàng Việt Nam và ở một nước mà Creem không nhận thanh toán thẻ.</strong> Thẻ quốc tế đi qua Creem, và Creem không nhận người mua từ một số nước (theo danh sách của Creem); không có PayPal. Khi đó chưa có cách trả cho gói trả phí; gói Free dùng thử vẫn dùng được.",
 ], true)}
 ${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", text: "Đừng dựa vào AI Translator cho quyết định quan trọng (hợp đồng, y tế, pháp lý, tài chính) mà chưa kiểm tra lại với người có chuyên môn." })}
 </div></section>

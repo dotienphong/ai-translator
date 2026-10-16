@@ -76,6 +76,17 @@ export function softwareApplication(lang) {
     description: en ? p.summaryEn : p.summaryVi,
     url: abs(en ? "/en/pricing/" : "/bang-gia/"),
   }));
+  // Giá USD khi trả bằng thẻ quốc tế (spec 2026-10-14): mỗi gói trả phí thêm một Offer riêng loại tiền, chưa gồm thuế.
+  const usdOffers = PLANS.filter((p) => p.priceUsdCents > 0).map((p) => ({
+    "@type": "Offer",
+    name: `${en ? p.nameEn : p.nameVi} (USD)`,
+    price: (p.priceUsdCents / 100).toFixed(2),
+    priceCurrency: "USD",
+    availability: "https://schema.org/InStock",
+    eligibleDuration: { "@type": "QuantitativeValue", value: p.days, unitCode: "DAY" },
+    description: `${en ? p.summaryEn : p.summaryVi} ${en ? "Paid by international card; price excludes tax." : "Trả bằng thẻ quốc tế; giá chưa gồm thuế."}`,
+    url: abs(en ? "/en/pricing/" : "/bang-gia/"),
+  }));
   const shot = (name, vi, en_) => ({ "@type": "ImageObject", url: abs(`/assets/img/app/${name}.${lang}.webp`), caption: en ? en_ : vi });
   return {
     "@type": "SoftwareApplication",
@@ -105,7 +116,7 @@ export function softwareApplication(lang) {
     ],
     publisher: { "@id": ORG_ID },
     author: { "@id": PERSON_ID },
-    offers,
+    offers: [...offers, ...usdOffers],
     featureList: en ? SITE.featureListEn : SITE.featureListVi,
   };
 }

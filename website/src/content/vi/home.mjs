@@ -37,7 +37,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Tôi ở ngoài Việt Nam có mua được không?",
-    a: "<p>Chưa. Hiện chỉ nhận chuyển khoản từ ngân hàng Việt Nam qua VietQR, tính bằng đồng Việt Nam. Chưa hỗ trợ thẻ quốc tế hay PayPal, nên nếu không có tài khoản ngân hàng Việt Nam thì hiện bạn chưa mua được gói trả phí. Gói Free dùng thử không cần phương thức thanh toán.</p>",
+    a: "<p>Được. Ngoài chuyển khoản VietQR bằng VND (từ ngân hàng Việt Nam), màn hình Nâng cấp trong app cho trả bằng thẻ quốc tế, tính bằng USD, qua trang thanh toán của Creem: Monthly 3,99 USD, 6 Months 21,99 USD, Yearly 39,99 USD, chưa gồm thuế. Thẻ không nhận được ở một số nước, theo danh sách của Creem. Gói Free dùng thử không cần phương thức thanh toán.</p>",
   },
   {
     q: "Hiện tôi tải app ở đâu?",
@@ -53,7 +53,7 @@ export default {
   description:
     "Phụ đề dịch trực tiếp khi họp Zoom, Teams, Google Meet, Zalo: tiếng Anh, Trung, Nhật, Hàn sang tiếng Việt. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,
-  modified: "2026-10-13",
+  modified: "2026-10-15",
   llm: "Trang chủ: AI Translator là gì, cách hoạt động, tính năng, độ trễ đo được, bảng giá và câu hỏi thường gặp.",
   llmTitle: "AI Translator: trang chủ",
   schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a })))],
@@ -101,7 +101,7 @@ ${demo({
   ["Nền tảng", "macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 x64<small>Cả hai cài bằng một dòng lệnh</small>"],
   ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Cả âm thanh nguồn lẫn bản dịch. Dự kiến bổ sung thêm ngôn ngữ trong tương lai</small>"],
   ["Xử lý", "100% trên máy, âm thanh không gửi đi<small>Nhận dạng giọng nói và dịch đều chạy trên máy</small>"],
-  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
+  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR (VND) hoặc thẻ quốc tế (USD), không tự gia hạn</small>"],
   ["Bên cung cấp", "Đỗ Tiến Phong<small>Hỗ trợ: support@aitranslator.io.vn</small>"],
 ])}</div>
 </div></section>
@@ -198,9 +198,9 @@ ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "We
 </div></section>
 
 <section class="section" id="gia"><div class="container">
-${sectionHead({ eyebrow: "Bảng giá", title: "Bốn gói đơn giản, trả trước bằng VietQR", text: "Không tự động gia hạn, không thanh toán định kỳ, không bất ngờ trên hóa đơn.", center: true })}
+${sectionHead({ eyebrow: "Bảng giá", title: "Bốn gói đơn giản, trả trước bằng VietQR hoặc thẻ quốc tế", text: "Không tự động gia hạn, không thanh toán định kỳ, không tự động trừ tiền.", center: true })}
 ${plansGrid("vi", { ctaLabel: "Tải xuống", freeLabel: "Cài và dùng thử miễn phí" })}
-<p class="disclaimer">Giá tính bằng đồng Việt Nam (VND). Chỉ nhận chuyển khoản từ ngân hàng Việt Nam qua VietQR; chưa nhận thẻ quốc tế.</p>
+<p class="disclaimer">Giá VND trả bằng VietQR từ ngân hàng Việt Nam; giá USD trả bằng thẻ quốc tế, chưa gồm thuế (nếu có).</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/bang-gia/">So sánh chi tiết các gói ${icon("arrow-right")}</a></p>
 </div></section>
 

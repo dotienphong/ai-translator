@@ -180,7 +180,7 @@ export default {
     "Tải AI Translator: cài trên macOS 14.2+ (Apple Silicon) hoặc Windows 10/11 bằng một dòng lệnh, mở thẳng không cần Open Anyway. Dùng thử Free 10 ngày.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-14",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Tải AI Translator: trang tự nhận ra hệ điều hành và mở đúng hướng dẫn. macOS cài bằng một dòng lệnh Terminal (curl ... install.sh | bash): tải bản cài, kiểm SHA-256 rồi mở app, không cần Open Anyway. Windows cài bằng một dòng lệnh PowerShell (irm ... install.ps1 | iex); file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo vì bản chưa ký mã, Smart App Control có thể chặn. Yêu cầu máy.",
   llmTitle: "Tải AI Translator",
@@ -216,7 +216,7 @@ ${sectionHead({ eyebrow: "Thông tin nhanh", title: "Dùng thử và giá", cent
   ["Phiên bản hiện tại", RELEASE.vi],
   ["Trạng thái", "Đã phát hành. macOS và Windows đều cài bằng một dòng lệnh"],
   ["Dùng thử", "Free 10 ngày, 30 phút mỗi ngày<small>Không cần thẻ, không cần tài khoản</small>"],
-  ["Giá sau đó", "Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫"],
+  ["Giá sau đó", "Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR (VND) hoặc thẻ quốc tế (USD), không tự gia hạn. Thẻ không nhận được ở một số nước, theo danh sách của Creem.</small>"],
   ["Model", "Tải một lần, 1,3 hoặc 2,5 GB<small>Sau đó nhận dạng và dịch chạy offline trên máy bạn</small>"],
 ])}</div>
 ${callout({ kind: "ok", title: "Chỉ lấy bản cài từ chúng tôi", text: "Chỉ cài AI Translator bằng lệnh trên trang này, hoặc từ liên kết do <strong>support@aitranslator.io.vn</strong> hay website <strong>aitranslator.io.vn</strong> gửi cho bạn. Các bản cài từ nguồn khác có thể là bản giả." })}
