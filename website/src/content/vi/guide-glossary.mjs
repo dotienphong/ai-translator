@@ -144,7 +144,7 @@ ${appShot({
 })}
 ${docNav(
   [
-    { href: "/huong-dan/thanh-phu-de-va-phim-tat/", kicker: "Bài trước", title: "Thanh phụ đề và phím tắt" },
+    { href: "/huong-dan/go-dich/", kicker: "Bài trước", title: "Gõ dịch tin nhắn" },
     { href: "/huong-dan/lich-su-va-xuat-file/", kicker: "Bài tiếp theo", title: "Lịch sử và xuất bản chép lời" },
   ],
   "Bài liên quan",

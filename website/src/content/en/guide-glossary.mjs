@@ -144,7 +144,7 @@ ${appShot({
 })}
 ${docNav(
   [
-    { href: "/en/guide/subtitle-bar-and-shortcuts/", kicker: "Previous", title: "Subtitle bar and shortcuts" },
+    { href: "/en/guide/type-and-translate/", kicker: "Previous", title: "Type & Translate" },
     { href: "/en/guide/history-and-export/", kicker: "Next", title: "History and exporting transcripts" },
   ],
   "Related guides",

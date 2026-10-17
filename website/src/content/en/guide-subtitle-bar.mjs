@@ -37,7 +37,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "The subtitle bar and shortcuts",
-  lead: "The subtitle bar is a floating window that stays on top and shows the translation without taking focus from your meeting app. Drag it to move it, drag an edge to resize it, lock it so the mouse passes through, and control it with five default shortcuts such as ⌃⌥T (start or stop) and ⌃⌥H (show or hide).",
+  lead: "The subtitle bar is a floating window that stays on top and shows the translation without taking focus from your meeting app. Drag it to move it, drag an edge to resize it, lock it so the mouse passes through, and control it with shortcuts such as ⌃⌥T (start or stop) and ⌃⌥H (show or hide).",
   meta: "<span>macOS and Windows</span> <span>Updated {{updated}}</span>",
 })}
 
@@ -106,8 +106,10 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <tr><th scope="row">Lock or unlock subtitles</th><td>${keys(["⌃", "⌥", "L"])}</td><td>${keys(["Ctrl", "Alt", "L"])}</td></tr>
 <tr><th scope="row">Scroll subtitles up (older sentences)</th><td>${keys(["⌃", "⌥", "PageUp"])}</td><td>${keys(["Ctrl", "Alt", "PageUp"])}</td></tr>
 <tr><th scope="row">Scroll subtitles down (newer sentences)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
+<tr><th scope="row">Open or close the Type &amp; Translate box</th><td>${keys(["⌃", "⌥", "G"])}</td><td>${keys(["Ctrl", "Alt", "G"])}</td></tr>
 </tbody></table></div>
 <p class="small muted">On macOS, ⌃ is the Control key and ⌥ is the Option key (not Command).</p>
+<p>The Type &amp; Translate shortcut only works while Type &amp; Translate is turned on (Settings › Type &amp; Translate). See <a href="/en/guide/type-and-translate/">Type &amp; Translate</a> for how to use the compose box.</p>
 
 <h2 id="change-shortcuts">Change a shortcut</h2>
 <ol>
@@ -116,7 +118,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <li>Press the new shortcut, or <strong>Esc</strong> to cancel.</li>
 </ol>
 <p>A new shortcut needs at least one of Ctrl, Alt or Cmd; Shift alone is not enough. The app says “This shortcut is already used for another action.” if you pick one of its own shortcuts, and “The system refused this shortcut; another app may be using it.” if the operating system declines it. We have not checked whether the default keys clash with shortcuts in Zoom, Teams or Meet; if you find a clash, change the shortcut here.</p>
-${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings listing the five actions with their default macOS key combinations and a Change button", caption: "Settings › Shortcuts." })}
+${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings listing the six actions, including Open Type & Translate, with their default macOS key combinations and a Change button", caption: "Settings › Shortcuts." })}
 
 <h2 id="menu-bar">The menu bar and tray menu</h2>
 <p>The AI Translator icon in the menu bar (a speech bubble with sound waves) lets you control the app without opening the main window. Hover over it to see the status, “Ready” or “Translating”.</p>
@@ -141,7 +143,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings l
 ${docNav(
   [
     { href: "/en/guide/macos-audio-permission/", kicker: "Previous", title: "Grant system audio recording permission on macOS" },
-    { href: "/en/guide/glossary/", kicker: "Next", title: "Use the glossary" },
+    { href: "/en/guide/type-and-translate/", kicker: "Next", title: "Type & Translate" },
     { href: "/en/guide/troubleshooting/", kicker: "Related", title: "Troubleshooting" },
   ],
   "Related guides",

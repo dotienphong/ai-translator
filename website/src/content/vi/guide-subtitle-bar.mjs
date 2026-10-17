@@ -37,7 +37,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Thanh phụ đề và phím tắt",
-  lead: "Thanh phụ đề là cửa sổ nổi luôn nằm trên cùng, hiện bản dịch mà không lấy focus của app họp. Bạn kéo để di chuyển, kéo cạnh để đổi kích thước, khóa để chuột xuyên qua, và điều khiển bằng năm phím tắt mặc định như ⌃⌥T (bắt đầu hoặc dừng dịch) và ⌃⌥H (ẩn hoặc hiện).",
+  lead: "Thanh phụ đề là cửa sổ nổi luôn nằm trên cùng, hiện bản dịch mà không lấy focus của app họp. Bạn kéo để di chuyển, kéo cạnh để đổi kích thước, khóa để chuột xuyên qua, và điều khiển bằng phím tắt như ⌃⌥T (bắt đầu hoặc dừng dịch) và ⌃⌥H (ẩn hoặc hiện).",
   meta: "<span>macOS và Windows</span> <span>Cập nhật {{updated}}</span>",
 })}
 
@@ -106,8 +106,10 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <tr><th scope="row">Khóa hoặc mở khóa phụ đề</th><td>${keys(["⌃", "⌥", "L"])}</td><td>${keys(["Ctrl", "Alt", "L"])}</td></tr>
 <tr><th scope="row">Cuộn phụ đề lên (xem câu cũ)</th><td>${keys(["⌃", "⌥", "PageUp"])}</td><td>${keys(["Ctrl", "Alt", "PageUp"])}</td></tr>
 <tr><th scope="row">Cuộn phụ đề xuống (câu mới hơn)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
+<tr><th scope="row">Mở hoặc đóng ô soạn Gõ dịch</th><td>${keys(["⌃", "⌥", "G"])}</td><td>${keys(["Ctrl", "Alt", "G"])}</td></tr>
 </tbody></table></div>
 <p class="small muted">Trên macOS, ⌃ là phím Control và ⌥ là phím Option (không phải Command).</p>
+<p>Phím mở Gõ dịch chỉ có tác dụng khi Gõ dịch đang bật (Cài đặt › Gõ dịch). Cách dùng ô soạn xem ở <a href="/huong-dan/go-dich/">Gõ dịch tin nhắn</a>.</p>
 
 <h2 id="doi-phim-tat">Đổi phím tắt</h2>
 <ol>
@@ -116,7 +118,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <li>Bấm tổ hợp phím mới, hoặc <strong>Esc</strong> để hủy.</li>
 </ol>
 <p>Tổ hợp mới phải có ít nhất một phím Ctrl, Alt hoặc Cmd; chỉ có Shift thì chưa đủ. App báo “Tổ hợp này đang dùng cho việc khác.” nếu bạn đặt trùng một phím tắt của chính nó, và “Hệ thống không cho dùng tổ hợp này; có thể app khác đang giữ.” nếu hệ điều hành từ chối. Chúng tôi chưa kiểm xem phím mặc định có trùng phím tắt của Zoom, Teams hay Meet hay không; nếu bạn thấy trùng, hãy đổi ở đây.</p>
-${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím tắt liệt kê năm việc cùng tổ hợp phím mặc định trên macOS và nút Đổi", caption: "Cài đặt › Phím tắt." })}
+${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím tắt liệt kê sáu việc, gồm Mở Gõ dịch, cùng tổ hợp phím mặc định trên macOS và nút Đổi", caption: "Cài đặt › Phím tắt." })}
 
 <h2 id="menu-bar">Menu ở menu bar và khay hệ thống</h2>
 <p>Biểu tượng AI Translator (bong bóng thoại có sóng âm) ở menu bar cho bạn điều khiển mà không mở cửa sổ chính. Rê chuột vào biểu tượng để thấy trạng thái “Sẵn sàng” hoặc “Đang dịch”.</p>
@@ -141,7 +143,7 @@ ${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím t�
 ${docNav(
   [
     { href: "/huong-dan/cap-quyen-thu-am-macos/", kicker: "Bài trước", title: "Cấp quyền ghi âm thanh hệ thống trên macOS" },
-    { href: "/huong-dan/tu-dien-thuat-ngu/", kicker: "Bài sau", title: "Dùng từ điển thuật ngữ" },
+    { href: "/huong-dan/go-dich/", kicker: "Bài sau", title: "Gõ dịch tin nhắn" },
     { href: "/huong-dan/khac-phuc-su-co/", kicker: "Liên quan", title: "Khắc phục sự cố" },
   ],
   "Bài liên quan",

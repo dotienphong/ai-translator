@@ -13,17 +13,17 @@ export default {
   path: "/en/guide/",
   title: "AI Translator user guides: install, shortcuts, fixes",
   description:
-    "Nine step-by-step guides: install on macOS or Windows, recording permission, subtitle bar and shortcuts, glossary, history and export, buying a key, troubleshooting.",
+    "Ten step-by-step guides: install on macOS or Windows, recording permission, shortcuts, Type & Translate, glossary, history and export, buying a key, troubleshooting.",
   schemaType: "CollectionPage",
   breadcrumbs: crumbs,
   modified: "2026-10-14",
-  llm: "Index of nine AI Translator user guides: quick start, macOS installation, Windows installation, macOS audio permission, subtitle bar and shortcuts, glossary, history and export, buying and activating a key, troubleshooting.",
+  llm: "Index of ten AI Translator user guides: quick start, macOS installation, Windows installation, macOS audio permission, subtitle bar and shortcuts, Type & Translate, glossary, history and export, buying and activating a key, troubleshooting.",
   llmTitle: "AI Translator user guides",
   body: () => `
 ${pageHero({
   crumbs,
   title: "AI Translator user guides",
-  lead: "Nine step-by-step guides for AI Translator, from installing on macOS or Windows to buying a key and fixing problems. Each one uses the exact button and menu names you see in the app, and most include screenshots of the real interface.",
+  lead: "Ten step-by-step guides for AI Translator, from installing on macOS or Windows to buying a key and fixing problems. Each one uses the exact button and menu names you see in the app, and most include screenshots of the real interface.",
 })}
 
 <section class="section-tight"><div class="container">
@@ -41,9 +41,10 @@ ${linkCard({ href: "/en/guide/macos-audio-permission/", icon: "mic", title: "Aud
 </div></section>
 
 <section class="section-tight"><div class="container">
-${sectionHead({ eyebrow: "Everyday use", title: "Get the most from the bar, glossary and transcript" })}
-<div class="grid grid-3">
+${sectionHead({ eyebrow: "Everyday use", title: "Get the most from the bar, Type & Translate, glossary and transcript" })}
+<div class="grid grid-2">
 ${linkCard({ href: "/en/guide/subtitle-bar-and-shortcuts/", icon: "captions", title: "Subtitle bar and shortcuts", text: "Move, lock, hide and scroll the bar, change font size and colors, the shortcut table and the menu bar menu.", more: MORE })}
+${linkCard({ href: "/en/guide/type-and-translate/", icon: "message", title: "Type & Translate", text: "Press ⌃⌥G (Ctrl+Alt+G) in any chat box, type in your own language and press Enter to paste the translation; Accessibility on macOS.", more: MORE })}
 ${linkCard({ href: "/en/guide/glossary/", icon: "book", title: "Use the glossary", text: "Add names and terms, import and export CSV, and see why the glossary is a hint to the translator, not a guarantee.", more: MORE })}
 ${linkCard({ href: "/en/guide/history-and-export/", icon: "history", title: "History and exporting transcripts", text: "Turn on saved history, review past sessions, copy the transcript and export TXT, SRT or Markdown.", more: MORE })}
 </div>
@@ -66,6 +67,7 @@ ${facts([
   ["The subtitle bar vanished or will not respond", "See <a href=\"/en/guide/subtitle-bar-and-shortcuts/\">the subtitle bar and shortcuts</a>, the Show and hide and Lock sections"],
   ["You want to save or export a transcript", "See <a href=\"/en/guide/history-and-export/\">history and export</a>"],
   ["You need names and terms translated consistently", "See <a href=\"/en/guide/glossary/\">the glossary</a>"],
+  ["You want to reply in the other person's language", "See <a href=\"/en/guide/type-and-translate/\">Type &amp; Translate</a>"],
   ["You changed computers or lost a key", "See <a href=\"/en/guide/buy-and-activate/\">buy and activate a key</a>"],
 ])}
 </div></section>

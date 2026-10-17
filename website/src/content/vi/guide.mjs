@@ -13,17 +13,17 @@ export default {
   path: "/huong-dan/",
   title: "Hướng dẫn sử dụng AI Translator",
   description:
-    "Chín bài hướng dẫn từng bước: cài trên macOS và Windows, cấp quyền ghi âm, phím tắt, từ điển thuật ngữ, xuất bản chép lời, mua key và sửa lỗi thường gặp.",
+    "Mười bài hướng dẫn từng bước: cài trên macOS và Windows, cấp quyền ghi âm, phím tắt, Gõ dịch, từ điển thuật ngữ, xuất bản chép lời, mua key và sửa lỗi.",
   schemaType: "CollectionPage",
   breadcrumbs: crumbs,
   modified: "2026-10-14",
-  llm: "Mục lục chín bài hướng dẫn sử dụng AI Translator: bắt đầu nhanh, cài đặt macOS, cài đặt Windows, cấp quyền ghi âm trên macOS, thanh phụ đề và phím tắt, từ điển thuật ngữ, lịch sử và xuất file, mua và kích hoạt key, khắc phục sự cố.",
+  llm: "Mục lục mười bài hướng dẫn sử dụng AI Translator: bắt đầu nhanh, cài đặt macOS, cài đặt Windows, cấp quyền ghi âm trên macOS, thanh phụ đề và phím tắt, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử và xuất file, mua và kích hoạt key, khắc phục sự cố.",
   llmTitle: "Hướng dẫn sử dụng AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Hướng dẫn sử dụng AI Translator",
-  lead: "Chín bài hướng dẫn từng bước cho AI Translator, từ cài đặt trên macOS và Windows tới mua key và xử lý sự cố. Mỗi bài dùng đúng tên nút và tên mục trong app; phần lớn có ảnh chụp giao diện thật.",
+  lead: "Mười bài hướng dẫn từng bước cho AI Translator, từ cài đặt trên macOS và Windows tới mua key và xử lý sự cố. Mỗi bài dùng đúng tên nút và tên mục trong app; phần lớn có ảnh chụp giao diện thật.",
 })}
 
 <section class="section-tight"><div class="container">
@@ -41,9 +41,10 @@ ${linkCard({ href: "/huong-dan/cap-quyen-thu-am-macos/", icon: "mic", title: "C�
 </div></section>
 
 <section class="section-tight"><div class="container">
-${sectionHead({ eyebrow: "Dùng hằng ngày", title: "Làm chủ thanh phụ đề, từ điển và bản chép lời" })}
-<div class="grid grid-3">
+${sectionHead({ eyebrow: "Dùng hằng ngày", title: "Làm chủ thanh phụ đề, Gõ dịch, từ điển và bản chép lời" })}
+<div class="grid grid-2">
 ${linkCard({ href: "/huong-dan/thanh-phu-de-va-phim-tat/", icon: "captions", title: "Thanh phụ đề và phím tắt", text: "Kéo, khóa, ẩn và cuộn thanh phụ đề, chỉnh cỡ chữ và màu, bảng phím tắt và menu ở menu bar.", more: MORE })}
+${linkCard({ href: "/huong-dan/go-dich/", icon: "message", title: "Gõ dịch tin nhắn", text: "Bấm ⌃⌥G (Ctrl+Alt+G) ở ô chat bất kỳ, gõ bằng tiếng của bạn, Enter để dán bản dịch; quyền Trợ năng trên macOS.", more: MORE })}
 ${linkCard({ href: "/huong-dan/tu-dien-thuat-ngu/", icon: "book", title: "Dùng từ điển thuật ngữ", text: "Thêm tên riêng và thuật ngữ, nhập xuất CSV, và hiểu vì sao từ điển chỉ là gợi ý cho bộ dịch.", more: MORE })}
 ${linkCard({ href: "/huong-dan/lich-su-va-xuat-file/", icon: "history", title: "Lịch sử và xuất bản chép lời", text: "Bật lưu lịch sử, xem lại các phiên, sao chép bản chép lời và xuất TXT, SRT hoặc Markdown.", more: MORE })}
 </div>
@@ -66,6 +67,7 @@ ${facts([
   ["Thanh phụ đề biến mất hoặc không bấm được", "Xem <a href=\"/huong-dan/thanh-phu-de-va-phim-tat/\">thanh phụ đề và phím tắt</a>, mục Ẩn và hiện, Khóa"],
   ["Muốn lưu hoặc xuất bản chép lời", "Xem <a href=\"/huong-dan/lich-su-va-xuat-file/\">lịch sử và xuất file</a>"],
   ["Cần dịch đúng tên riêng, thuật ngữ", "Xem <a href=\"/huong-dan/tu-dien-thuat-ngu/\">từ điển thuật ngữ</a>"],
+  ["Muốn nhắn tin bằng tiếng của người bên kia", "Xem <a href=\"/huong-dan/go-dich/\">Gõ dịch tin nhắn</a>"],
   ["Đổi máy hoặc mất key", "Xem <a href=\"/huong-dan/mua-va-kich-hoat-key/\">mua và kích hoạt key</a>"],
 ])}
 </div></section>

@@ -8,7 +8,7 @@ import { SITE } from "../site.mjs";
 const IDS = [
   "home", "features", "pricing", "download", "faq", "about", "contact", "data-security", "compare-offline-cloud",
   "solutions", "solutions-meetings", "solutions-webinar",
-  "guide", "guide-quick-start", "guide-install-macos", "guide-install-windows", "guide-audio-permission", "guide-subtitle-bar", "guide-glossary",
+  "guide", "guide-quick-start", "guide-install-macos", "guide-install-windows", "guide-audio-permission", "guide-subtitle-bar", "guide-type-translate", "guide-glossary",
   "guide-history-export", "guide-license", "guide-troubleshooting",
   "terms", "privacy",
 ];
@@ -18,7 +18,8 @@ const FILE = {
   "data-security": "data-security", "compare-offline-cloud": "compare-offline-cloud",
   solutions: "solutions", "solutions-meetings": "solutions-meetings", "solutions-webinar": "solutions-webinar",
   guide: "guide", "guide-quick-start": "guide-quick-start", "guide-install-macos": "guide-install-macos", "guide-install-windows": "guide-install-windows",
-  "guide-audio-permission": "guide-audio-permission", "guide-subtitle-bar": "guide-subtitle-bar", "guide-glossary": "guide-glossary",
+  "guide-audio-permission": "guide-audio-permission", "guide-subtitle-bar": "guide-subtitle-bar",
+  "guide-type-translate": "guide-type-translate", "guide-glossary": "guide-glossary",
   "guide-history-export": "guide-history-export", "guide-license": "guide-license", "guide-troubleshooting": "guide-troubleshooting",
   terms: "terms", privacy: "privacy",
 };
