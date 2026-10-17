@@ -1778,3 +1778,32 @@ a.dev-name:hover {
     border-left: 1px solid var(--line);
   }
 }
+
+/* ======================================================================
+   Báo cáo lỗi (spec 2026-10-17-diagnostics-reports-design.md §4)
+   ====================================================================== */
+.log-meta {
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+/* Log là chuỗi văn bản thô: giữ ngắt dòng, cuộn trong khung (tabIndex 0 nên cuộn được bằng bàn phím) */
+.log-pre {
+  margin: 0;
+  padding: var(--s-3);
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+}
+@media (max-width: 800px) {
+  .log-pre {
+    max-height: 320px;
+  }
+}
