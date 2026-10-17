@@ -222,7 +222,7 @@ export const zh: Record<MessageKey, string> = {
 
   "about.version": "版本 {version}",
   "about.openLogs": "打开日志文件夹",
-  "about.logsHint": "日志只保存在这台电脑上，不包含说话内容。应用遇到严重错误时，还会自动向开发者发送错误报告（可在设置 › 隐私中关闭）。其他问题可点击“向客服发送日志”，立即发送一份报告。",
+  "about.logsHint": "日志保存在这台电脑上，不包含说话内容。应用遇到严重错误时，还会自动向开发者发送错误报告（可在设置 › 隐私中关闭）。其他问题可点击“向客服发送日志”，立即发送一份报告。",
   "about.sendLogs": "向客服发送日志",
   "about.sendLogs.sending": "正在发送…",
   "about.sendLogs.sent": "已发送。报告编号：",

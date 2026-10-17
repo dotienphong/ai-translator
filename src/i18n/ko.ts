@@ -222,7 +222,7 @@ export const ko: Record<MessageKey, string> = {
 
   "about.version": "버전 {version}",
   "about.openLogs": "로그 폴더 열기",
-  "about.logsHint": "로그는 이 컴퓨터에만 저장되며 말한 내용은 포함되지 않습니다. 앱에 심각한 오류가 생기면 개발자에게 오류 보고서도 자동으로 보냅니다(설정 › 개인정보 보호에서 끌 수 있습니다). 다른 문제는 「지원팀에 로그 보내기」를 누르면 바로 보고서를 보낼 수 있습니다.",
+  "about.logsHint": "로그는 이 컴퓨터에 저장되며 말한 내용은 포함되지 않습니다. 앱에 심각한 오류가 생기면 개발자에게 오류 보고서도 자동으로 보냅니다(설정 › 개인정보 보호에서 끌 수 있습니다). 다른 문제는 「지원팀에 로그 보내기」를 누르면 바로 보고서를 보낼 수 있습니다.",
   "about.sendLogs": "지원팀에 로그 보내기",
   "about.sendLogs.sending": "보내는 중…",
   "about.sendLogs.sent": "보냈습니다. 보고서 코드:",
