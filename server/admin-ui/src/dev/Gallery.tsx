@@ -38,6 +38,7 @@ import {
   IconWarning,
 } from "../components/icons";
 import { KeyValue } from "../components/KeyValue";
+import { LogView } from "../components/LogView";
 import { KeyReveal, MaskedKey } from "../components/MaskedKey";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { LoadingBlock, SkeletonBlock, SkeletonLine, SkeletonStat, SkeletonTable } from "../components/Skeleton";
@@ -51,6 +52,13 @@ export const GALLERY_MARKER = "Trang thử thành phần (chỉ dev)";
 
 const NOW = 1_791_500_000;
 const KEY = "K7Q2-M4XB-9TRD-0HZC-5WEF-8NPA-9XMB";
+
+/** Log mẫu của báo cáo lỗi; dòng giữa có chữ giống HTML để thấy log chỉ hiện dạng văn bản. */
+const LOG_SAMPLE = [
+  "[2026-10-17][05:07:12][INFO][pipeline::supervisor] tiến trình phụ: Starting { which: Asr, first_run: false }",
+  '<b>không phải HTML</b> <img src=x onerror="alert(1)">',
+  "[2026-10-17][05:07:14][ERROR][meeting_translator_lib::session] phiên dịch dừng vì lỗi sidecarFailed",
+].join("\n");
 
 /** Đơn mẫu; `usd` là đơn quốc tế qua Creem (số tiền tính bằng cent). */
 function order(code: number, status: OrderRow["status"], amount = 500000, paid = amount, usd = false): OrderRow {
@@ -702,6 +710,19 @@ function Dialogs({ kind }: { kind: string }) {
   );
 }
 
+function Logs() {
+  return (
+    <GalleryBlock id="log" title="LogView" note="Log của báo cáo lỗi: chuỗi văn bản thô trong <pre> (không dựng HTML), cuộn được bằng bàn phím">
+      <Card title="Log ứng dụng" description="app.log: 300 dòng cuối">
+        <LogView label="Log ứng dụng (app.log)" text={LOG_SAMPLE} />
+      </Card>
+      <Card title="Log trống">
+        <LogView label="Log trống" text="" emptyHint="Báo cáo không kèm log này." />
+      </Card>
+    </GalleryBlock>
+  );
+}
+
 const SECTIONS: [string, string][] = [
   ["button", "Button"],
   ["badge", "Badge"],
@@ -714,6 +735,7 @@ const SECTIONS: [string, string][] = [
   ["timeline", "Timeline"],
   ["filter", "FilterBar"],
   ["table", "DataTable"],
+  ["log", "LogView"],
   ["feedback", "Thông báo"],
   ["chart", "Chart"],
 ];
@@ -757,6 +779,7 @@ export function Gallery() {
       {show("timeline") && <Timelines />}
       {show("filter") && <Filters />}
       {show("table") && <Tables />}
+      {show("log") && <Logs />}
       {show("feedback") && <Feedbacks />}
       {show("chart") && <Charts />}
       {dialog && <Dialogs kind={dialog} />}

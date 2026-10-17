@@ -39,6 +39,7 @@ import type {
   Totals,
   TrialRow,
 } from "../src/api/types.ts";
+import { errorsReply } from "./fake-errors.ts";
 
 const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86400;
@@ -414,7 +415,7 @@ const ORDER_AUDITS: AuditRow[] = [
     detail: '{"provider":"creem","event_type":"checkout.completed","provider_ref":"ch_fake_unmatched","event_id":"evt_fake_unmatched"}',
   },
 ];
-const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed", "alerts_viewed", "releases_viewed"];
+const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed", "alerts_viewed", "releases_viewed", "error_report_viewed"];
 
 /** Trang 50 dòng theo con trỏ (vị trí), như server: next_cursor null ở trang cuối. */
 function paged<T>(rows: T[], url: URL): Page<T> {
@@ -695,6 +696,8 @@ const ok = (body: unknown, status = 200): Reply => ({ status, body });
 
 function respond(method: string, url: URL, body: Record<string, unknown>): Reply {
   const path = url.pathname;
+  const errors = errorsReply(method, url, body);
+  if (errors) return errors;
   if (method === "POST") {
     if (path === "/admin/lookup") return lookupReply(body);
     if (path === "/admin/keys/test-sign") return ok(keyCheck);
@@ -764,7 +767,7 @@ export function fakeAdminApi(): Plugin {
         // Trạng thái khó tạo, theo `__fake` của trang (cookie ở trên): cho GET của bốn danh sách và cho tra cứu.
         const mode = /(?:^|;\s*)__fake=([^;]*)/.exec(req.headers.cookie ?? "")?.[1];
         const isLookup = req.method === "POST" && url.pathname === "/admin/lookup";
-        const list = (req.method === "GET" && /^\/admin\/(orders|licenses|trials|audit)$/.test(url.pathname)) || isLookup;
+        const list = (req.method === "GET" && /^\/admin\/(orders|licenses|trials|audit|error-groups|error-reports)$/.test(url.pathname)) || isLookup;
         const chunks: Buffer[] = [];
         req.on("data", (c: Buffer) => chunks.push(c));
         req.on("end", () => {
