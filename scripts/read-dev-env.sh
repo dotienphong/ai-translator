@@ -6,8 +6,8 @@
 # - Tên khóa phải khớp `[A-Za-z_][A-Za-z0-9_]*` trước, rồi so SÁT NGUYÊN CHỮ với từng khóa cho phép.
 # - Khóa cho phép xuất hiện nhiều lần thì chỉ giữ lần CUỐI (đúng cái `open --env` của macOS dùng), để biểu ngữ cảnh báo của
 #   run-dev-app.sh không lệch với app. Kết quả in một lượt ở cuối.
-# - AI_TRANSLATOR_DEV_PRO có giá trị không phải đúng `true`/`false` vẫn được chuyển nguyên văn, kèm cảnh báo ở stderr
-#   (không in giá trị).
+# - AI_TRANSLATOR_DEV_PRO và AI_TRANSLATOR_DEV_REPORTS (bản debug tự gửi báo cáo lỗi, spec 2026-10-17) có giá trị không phải
+#   đúng `true`/`false` vẫn được chuyển nguyên văn, kèm cảnh báo ở stderr (không in giá trị).
 #
 #   sh scripts/read-dev-env.sh .env
 set -eu
@@ -17,7 +17,7 @@ file=${1:-}
 if [ -z "$file" ] || [ ! -f "$file" ]; then
   exit 0
 fi
-allowed="AI_TRANSLATOR_DEV_PRO"
+allowed="AI_TRANSLATOR_DEV_PRO AI_TRANSLATOR_DEV_REPORTS"
 result=""
 nl='
 '
@@ -73,6 +73,12 @@ if [ -n "$result" ]; then
     *"${nl}AI_TRANSLATOR_DEV_PRO=true$nl"* | *"${nl}AI_TRANSLATOR_DEV_PRO=false$nl"*) ;;
     *"${nl}AI_TRANSLATOR_DEV_PRO="*)
       echo 'AI_TRANSLATOR_DEV_PRO có giá trị lạ (chỉ đúng "true" mới bật Pro giả lập): coi như tắt' >&2
+      ;;
+  esac
+  case "$nl$result$nl" in
+    *"${nl}AI_TRANSLATOR_DEV_REPORTS=true$nl"* | *"${nl}AI_TRANSLATOR_DEV_REPORTS=false$nl"*) ;;
+    *"${nl}AI_TRANSLATOR_DEV_REPORTS="*)
+      echo 'AI_TRANSLATOR_DEV_REPORTS có giá trị lạ (chỉ đúng "true" mới bật tự gửi báo cáo lỗi): coi như tắt' >&2
       ;;
   esac
 fi

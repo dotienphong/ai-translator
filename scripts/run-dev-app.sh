@@ -17,8 +17,10 @@
 # 3). Mức log của app đặt cố định trong `logging.rs`, không đọc `RUST_LOG`.
 # Công tắc Pro của bản dev chỉ đặt trong `.env` (xem `.env.example`). Vì `open` chuyển môi trường shell, script gỡ
 # `AI_TRANSLATOR_DEV_PRO` khỏi môi trường của chính nó ngay dưới đây; biến đặt trong shell không tới được app.
+# Công tắc tự gửi báo cáo lỗi của bản dev (`AI_TRANSLATOR_DEV_REPORTS`, spec 2026-10-17) cũng chỉ đặt trong `.env`, cùng cách.
 set -eu
 unset AI_TRANSLATOR_DEV_PRO
+unset AI_TRANSLATOR_DEV_REPORTS
 identity="${MT_DEV_SIGN_IDENTITY:-AI Translator Dev}"
 root=$(cd "$(dirname "$0")/.." && pwd)
 target="${CARGO_TARGET_DIR:-$root/target}"
@@ -77,6 +79,7 @@ done
 # script; giá trị trong `.env` được chuyển rõ ràng bằng `open --env`, nên chỉ `.env` mới bật công tắc.
 # `set -f` tắt mở rộng glob: giá trị trong `.env` (vd. `*`) không được thành tên file khi tách `$pairs` theo dòng.
 dev_pro=off
+dev_reports=off
 pairs=$(sh "$root/scripts/read-dev-env.sh" "$root/.env")
 oldifs=$IFS
 IFS='
@@ -85,6 +88,7 @@ set -f
 for pair in $pairs; do
   set -- "$@" --env "$pair"
   if [ "$pair" = "AI_TRANSLATOR_DEV_PRO=true" ]; then dev_pro=on; fi
+  if [ "$pair" = "AI_TRANSLATOR_DEV_REPORTS=true" ]; then dev_reports=on; fi
 done
 set +f
 IFS=$oldifs
@@ -92,6 +96,12 @@ if [ "$dev_pro" = on ]; then
   echo "================================================================" >&2
   echo "CẢNH BÁO: AI_TRANSLATOR_DEV_PRO=true. Bản này GIẢ LẬP Pro không giới hạn." >&2
   echo "Không dùng để đo hạn mức hay thử luồng mua; muốn thử đường thật thì đặt false." >&2
+  echo "================================================================" >&2
+fi
+if [ "$dev_reports" = on ]; then
+  echo "================================================================" >&2
+  echo "CẢNH BÁO: AI_TRANSLATOR_DEV_REPORTS=true. Bản này TỰ GỬI báo cáo lỗi tới server production (khi bật ở Cài đặt)." >&2
+  echo "Chỉ bật để thử tính năng báo cáo lỗi; xóa báo cáo thử ở Web Admin sau đó." >&2
   echo "================================================================" >&2
 fi
 open -W "$@" "$app"

@@ -61,9 +61,9 @@ jobs:
         run: |
           cargo test --locked --workspace
           cargo test --locked -p asr-worker --features shared-encode
-      - name: Test bản quyền ở bản release (không có phần chỉ dành cho bản debug)
+      - name: Test bản quyền và báo cáo lỗi ở bản release (không có phần chỉ dành cho bản debug)
         run: |
-          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1
+          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: diagnostics:: --test-threads=1
       - name: asr-worker bản phát hành (Metal, shared-encode)
         run: cargo build --release --locked -p asr-worker --features metal,shared-encode
       - name: Code Windows biên dịch được (clippy cho target Windows)

@@ -100,3 +100,28 @@ test("khóa chỉ là một phần của tên cho phép (tiền tố, hậu tố
   const r = read(t, "AI_TRANSLATOR_DEV_PRO_X=true\nAI_TRANSLATOR_DEV=true\nXAI_TRANSLATOR_DEV_PRO=true\n");
   assert.equal(r.out, "");
 });
+
+// Công tắc tự gửi báo cáo lỗi của bản dev (spec 2026-10-17).
+test("nhận AI_TRANSLATOR_DEV_REPORTS cùng AI_TRANSLATOR_DEV_PRO, bỏ khóa khác", (t) => {
+  const r = read(t, "AI_TRANSLATOR_DEV_PRO=false\nSECRET=x\nAI_TRANSLATOR_DEV_REPORTS=true\n");
+  assert.equal(r.out, "AI_TRANSLATOR_DEV_PRO=false\nAI_TRANSLATOR_DEV_REPORTS=true\n");
+  assert.match(r.err, /bỏ qua khóa \.env không được phép: SECRET/);
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_REPORTS=true\n").err, "");
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_REPORTS=false\n").err, "");
+});
+
+test("giá trị lạ của AI_TRANSLATOR_DEV_REPORTS vẫn được chuyển nguyên văn nhưng có cảnh báo (không in giá trị)", (t) => {
+  for (const value of ['"true"', "1", "TRUE", "true ", ""]) {
+    const r = read(t, `AI_TRANSLATOR_DEV_REPORTS=${value}\n`);
+    assert.equal(r.out, `AI_TRANSLATOR_DEV_REPORTS=${value}\n`);
+    assert.match(r.err, /AI_TRANSLATOR_DEV_REPORTS có giá trị lạ/);
+    assert.ok(!r.err.includes("TRUE"), "không in giá trị ra stderr");
+  }
+  // Lần cuối mới tính, như công tắc Pro.
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_REPORTS=1\nAI_TRANSLATOR_DEV_REPORTS=true\n").err, "");
+});
+
+test("khóa chỉ giống tên công tắc báo cáo lỗi (tiền tố, hậu tố, viết thường) không được nhận", (t) => {
+  const r = read(t, "AI_TRANSLATOR_DEV_REPORTS_X=true\nAI_TRANSLATOR_REPORTS=true\nai_translator_dev_reports=true\n");
+  assert.equal(r.out, "");
+});

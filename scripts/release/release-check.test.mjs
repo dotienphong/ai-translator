@@ -121,6 +121,9 @@ test("file chạy của app không được có mã công tắc dev (spec 2026-1
     "file chạy của app còn mã dev: có chuỗi mt-dev-pro-gate-v1",
   ]);
   assert.equal(devGateErrors(Buffer.from("AI_TRANSLATOR_DEV_FREE")).length, 1, "tên biến cũ cũng bị chặn");
+  assert.deepEqual(devGateErrors(Buffer.from("xx AI_TRANSLATOR_DEV_REPORTS yy")), [
+    "file chạy của app còn mã dev: có chuỗi AI_TRANSLATOR_DEV_REPORTS",
+  ]);
   assert.equal(devGateErrors(Buffer.from(DEV_GATE_MARKERS.join(" "))).length, DEV_GATE_MARKERS.length);
   // Windows có thể giữ chuỗi dạng UTF-16LE.
   assert.equal(devGateErrors(Buffer.from("AI_TRANSLATOR_DEV_PRO", "utf16le")).length, 1);

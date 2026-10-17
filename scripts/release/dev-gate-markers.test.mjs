@@ -22,3 +22,19 @@ for (const name of ["DEV_PRO_ENV", "DEV_GATE_CANARY"]) {
     assert.ok(DEV_GATE_MARKERS.includes(value), `${name} = "${value}" chưa có trong DEV_GATE_MARKERS của release-check.mjs`);
   });
 }
+
+// Công tắc tự gửi báo cáo lỗi của dev (spec 2026-10-17): cùng cơ chế, hằng ở diagnostics/mod.rs.
+test("DEV_GATE_MARKERS có giá trị của DEV_REPORTS_ENV trong diagnostics/mod.rs", () => {
+  const diagnostics = readFileSync(fileURLToPath(new URL("../../src-tauri/src/diagnostics/mod.rs", import.meta.url)), "utf8");
+  const m = diagnostics.match(/pub const DEV_REPORTS_ENV: &str = "([^"]*)";/);
+  assert.ok(m, 'không tìm thấy `pub const DEV_REPORTS_ENV: &str = "...";` trong src-tauri/src/diagnostics/mod.rs');
+  assert.ok(DEV_GATE_MARKERS.includes(m[1]), `DEV_REPORTS_ENV = "${m[1]}" chưa có trong DEV_GATE_MARKERS của release-check.mjs`);
+});
+
+test("hằng DEV_REPORTS_ENV chỉ có ở bản debug (đứng sau cfg(debug_assertions))", () => {
+  const diagnostics = readFileSync(fileURLToPath(new URL("../../src-tauri/src/diagnostics/mod.rs", import.meta.url)), "utf8");
+  const lines = diagnostics.split("\n");
+  const at = lines.findIndex((l) => l.startsWith("pub const DEV_REPORTS_ENV"));
+  assert.ok(at > 0, "không thấy hằng DEV_REPORTS_ENV");
+  assert.equal(lines[at - 1].trim(), "#[cfg(debug_assertions)]", "hằng phải nằm ngay sau #[cfg(debug_assertions)]");
+});
