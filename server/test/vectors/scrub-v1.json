@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "comment": "Hợp đồng giữa app (Rust, src-tauri/src/diagnostics/scrub.rs) và server (TypeScript, src/diagnostics-scan.ts) cho báo cáo lỗi (spec 2026-10-17-diagnostics-reports-design.md §2, §3). detect: chuỗi PHẢI bị bộ phát hiện báo đúng quy tắc (quy tắc đầu tiên khớp theo rule_order). clean: chuỗi KHÔNG được bị báo. scrub: hàm che của app đổi input thành đúng expected (params ghi đè scrub_defaults); mọi expected cũng phải clean. Thứ tự che: Authorization, Bearer, token, key, email, query của URL, rồi thư mục home, tên máy, tên tài khoản (tên tài khoản ngắn hơn 3 ký tự thì không che, che theo cả từ, không phân biệt hoa thường). Sửa file này thì sửa cả bản TypeScript và bản Rust.",
+  "rule_order": ["license_key", "token", "bearer", "authorization", "email", "home_path"],
+  "scrub_defaults": { "home": "/Users/alice", "user": "alice", "host": "alice-mbp" },
+  "detect": [
+    { "name": "key 7 nhóm", "text": "license 7Q2K-9XMB-R3TV-HW4Y-5ZJ6-8NPA-CDEF bị từ chối", "rule": "license_key" },
+    { "name": "key 28 ký tự liền", "text": "key=7Q2K9XMBR3TVHW4Y5ZJ68NPACDEF", "rule": "license_key" },
+    { "name": "key dính sau chữ có dấu", "text": "ý7Q2K-9XMB-R3TV-HW4Y-5ZJ6-8NPA-CDEF", "rule": "license_key" },
+    { "name": "token v1", "text": "token v1.eyJraWQiOiJ0ZXN0LTEifQ.MEUCIQDabcdefghijklmnop hết hạn", "rule": "token" },
+    { "name": "Bearer", "text": "Bearer abcdef0123456789xyz", "rule": "bearer" },
+    { "name": "Authorization kèm Bearer: ưu tiên bearer", "text": "Authorization: Bearer abcdef0123456789", "rule": "bearer" },
+    { "name": "Authorization giá trị thường", "text": "authorization=s3cr3tvalue", "rule": "authorization" },
+    { "name": "email", "text": "gửi cho an.nguyen+test@example.co.uk xong", "rule": "email" },
+    { "name": "đường dẫn macOS của người khác", "text": "mở /Users/bob/Library/Logs/app.log", "rule": "home_path" },
+    { "name": "đường dẫn Linux", "text": "đọc /home/carol/.config/x", "rule": "home_path" },
+    { "name": "đường dẫn Windows", "text": "C:\\Users\\Dave\\AppData\\Local\\x", "rule": "home_path" },
+    { "name": "đường dẫn Windows dùng gạch xuôi", "text": "C:/Users/Dave/AppData", "rule": "home_path" },
+    { "name": "URL file", "text": "file:///Users/erin/Desktop/a.txt", "rule": "home_path" },
+    { "name": "đường dẫn ở đầu chuỗi", "text": "/Users/frank/x", "rule": "home_path" }
+  ],
+  "clean": [
+    { "name": "dòng log app thường", "text": "[2026-10-17][05:07:12][INFO][pipeline::supervisor] tiến trình phụ: Stopped { which: Asr, idle: true }" },
+    { "name": "đường dẫn macOS đã che", "text": "model '~/Library/Application Support/com.aitranslator.desktop/models/Hy-MT2-1.8B-Q4_K.gguf'" },
+    { "name": "đường dẫn Windows đã che", "text": "~\\AppData\\Local\\com.aitranslator.desktop\\logs\\app.log" },
+    { "name": "Bearer đã che", "text": "Bearer <redacted>" },
+    { "name": "Authorization đã che", "text": "Authorization: <redacted>" },
+    { "name": "chỗ giữ chỗ key, token, email", "text": "key <key> token <token> mail <email>" },
+    { "name": "đường dẫn có chỗ giữ chỗ tên", "text": "/Users/<user>/Library" },
+    { "name": "thư mục dùng chung macOS", "text": "/Users/Shared/Adobe/x" },
+    { "name": "thư mục Public của Windows", "text": "C:\\Users\\Public\\Documents" },
+    { "name": "All Users của Windows", "text": "C:\\Users\\All Users\\Microsoft" },
+    { "name": "đường dẫn hệ thống", "text": "/usr/local/bin/x và /private/var/folders/zz/T/x" },
+    { "name": "28 ký tự chữ thường", "text": "a3f9c2d1e0b4a3f9c2d1e0b4a3f9" },
+    { "name": "SHA-256 hex", "text": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08" },
+    { "name": "dòng ggml", "text": "ggml_metal_library_compile_pipeline: loaded kernel_mul_mv_f16_f32_4 0x97e08c000 | th_max = 1024 | th_width = 32" },
+    { "name": "dòng llama", "text": "0.00.945.797 I srv  llama_server: listening on http://127.0.0.1:62411" },
+    { "name": "tên chip có dấu @", "text": "Intel(R) Core(TM) i7-1185G7 @ 3.00GHz" },
+    { "name": "số phiên bản trông giống token", "text": "version v1.2.3 started" }
+  ],
+  "scrub": [
+    {
+      "name": "đường dẫn model macOS",
+      "input": "loading model '/Users/alice/Library/Application Support/com.aitranslator.desktop/models/Hy-MT2.gguf'",
+      "expected": "loading model '~/Library/Application Support/com.aitranslator.desktop/models/Hy-MT2.gguf'"
+    },
+    {
+      "name": "đường dẫn log Windows",
+      "params": { "home": "C:\\Users\\alice", "user": "alice", "host": "ALICE-PC" },
+      "input": "C:\\Users\\alice\\AppData\\Local\\com.aitranslator.desktop\\logs\\app.log",
+      "expected": "~\\AppData\\Local\\com.aitranslator.desktop\\logs\\app.log"
+    },
+    { "name": "tên tài khoản đứng riêng", "input": "người dùng alice mở app", "expected": "người dùng <user> mở app" },
+    { "name": "tên máy", "input": "máy alice-mbp sẵn sàng", "expected": "máy <host> sẵn sàng" },
+    {
+      "name": "tên tài khoản ngắn không bị che (tránh phá chữ thường)",
+      "params": { "home": "/Users/an", "user": "an", "host": "an-mbp" },
+      "input": "an error on /Users/an/x",
+      "expected": "an error on ~/x"
+    },
+    { "name": "key 7 nhóm", "input": "key 7Q2K-9XMB-R3TV-HW4Y-5ZJ6-8NPA-CDEF used", "expected": "key <key> used" },
+    { "name": "key liền", "input": "key=7Q2K9XMBR3TVHW4Y5ZJ68NPACDEF", "expected": "key=<key>" },
+    {
+      "name": "token",
+      "input": "token v1.eyJraWQiOiJ0ZXN0LTEifQ.MEUCIQDabcdefghijklmnop ok",
+      "expected": "token <token> ok"
+    },
+    { "name": "Bearer", "input": "Bearer abcdef0123456789xyz", "expected": "Bearer <redacted>" },
+    { "name": "Authorization cả dòng", "input": "Authorization: Bearer abcdef0123456789", "expected": "Authorization: <redacted>" },
+    { "name": "Authorization không Bearer", "input": "authorization=s3cr3tvalue", "expected": "authorization=<redacted>" },
+    { "name": "email", "input": "liên hệ an.nguyen+test@example.co.uk ngay", "expected": "liên hệ <email> ngay" },
+    {
+      "name": "query của URL",
+      "input": "GET https://api.aitranslator.io.vn/v1/orders/1000013?token=abc123&x=1 200",
+      "expected": "GET https://api.aitranslator.io.vn/v1/orders/1000013?<query> 200"
+    },
+    {
+      "name": "dòng thường không đổi",
+      "input": "[2026-10-17][05:07:12][INFO][pipeline::supervisor] tiến trình phụ: Stopped { which: Asr, idle: true }",
+      "expected": "[2026-10-17][05:07:12][INFO][pipeline::supervisor] tiến trình phụ: Stopped { which: Asr, idle: true }"
+    },
+    {
+      "name": "nhiều thứ trong một dòng",
+      "input": "/Users/alice/x gửi alice@example.com bằng 7Q2K-9XMB-R3TV-HW4Y-5ZJ6-8NPA-CDEF",
+      "expected": "~/x gửi <email> bằng <key>"
+    }
+  ]
+}
