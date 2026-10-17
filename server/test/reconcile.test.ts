@@ -2,11 +2,13 @@ import { createExecutionContext, createScheduledController, waitOnExecutionConte
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { raiseAlert } from "../src/alerts";
+import { insertReportStatements, RETENTION_SECONDS } from "../src/error-reports";
 import worker from "../src/index";
 import { PayOSProvider } from "../src/payment/payos";
 import { reconcile } from "../src/reconcile";
 import { resetDb, withFailingInsert, wrapDb } from "./db";
 import { FakeGateway, TEST_CHECKSUM_KEY } from "./fakes";
+import { makeReport } from "./report-fixture";
 import { DAY, makeWorld, T0 } from "./world";
 
 beforeEach(resetDb);
@@ -604,5 +606,18 @@ describe("đối soát mỗi 5 phút", () => {
     await waitOnExecutionContext(ctx);
     expect(error).toHaveBeenCalledWith(JSON.stringify({ event: "reconcile_crashed", error: "Error: env hỏng" }));
     error.mockRestore();
+  });
+});
+
+describe("dọn báo cáo lỗi quá hạn (spec 2026-10-17 §3)", () => {
+  it("cron xóa báo cáo quá 30 ngày cả hai bảng, giữ báo cáo còn hạn, và không đổi hình dạng kết quả", async () => {
+    const w = makeWorld();
+    w.clock.now = T0 + 300;
+    const seed = async (id: string, receivedAt: number) => env.DB.batch(insertReportStatements(env.DB, await makeReport({ id }), receivedAt));
+    await seed("R-0000-0001", w.clock.now - RETENTION_SECONDS - 1);
+    await seed("R-0000-0002", w.clock.now - RETENTION_SECONDS + 60);
+    expect(await reconcile(w.env, w.deps)).toEqual({ checked: 0, granted: 0, errors: 0, emails_retried: 0, alerts_sent: 0 });
+    expect((await env.DB.prepare("SELECT id FROM error_reports").all<{ id: string }>()).results).toEqual([{ id: "R-0000-0002" }]);
+    expect((await env.DB.prepare("SELECT id FROM error_report_logs").all<{ id: string }>()).results).toEqual([{ id: "R-0000-0002" }]);
   });
 });

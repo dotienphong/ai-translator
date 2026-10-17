@@ -1,10 +1,11 @@
 // Việc định kỳ của Cron Trigger (mỗi 5 phút, §9):
 // - hỏi cổng thanh toán các đơn chưa xác nhận, phòng khi webhook đến chậm hoặc mất;
 // - gửi lại email mua hàng chưa gửi được;
-// - gửi cảnh báo cho người vận hành; dọn bộ đếm cũ.
+// - gửi cảnh báo cho người vận hành; dọn bộ đếm cũ và báo cáo lỗi quá hạn (spec 2026-10-17 §3).
 // Mỗi bước chạy riêng: một bước lỗi thì ghi log, các bước sau vẫn chạy.
 import { type AlertKind, authFailedAlert, raiseAlert, sendAlerts } from "./alerts";
 import type { Deps } from "./deps";
+import { pruneErrorReports } from "./error-reports";
 import { fulfilOrder, retryUnsentEmails } from "./orders";
 import { isProviderAuthFailure, PaymentProviderError } from "./payment/provider";
 import { pruneRateLimits } from "./ratelimit";
@@ -135,5 +136,6 @@ export async function reconcile(
     alertsSent = await sendAlerts(env, deps.email, now);
   });
   await step("prune", () => pruneRateLimits(env.DB, now));
+  await step("prune_error_reports", () => pruneErrorReports(env.DB, now));
   return { checked, granted, errors, emails_retried: emailsRetried, alerts_sent: alertsSent };
 }
