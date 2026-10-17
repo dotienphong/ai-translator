@@ -19,11 +19,11 @@
 
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use pipeline::config::PipelineConfig;
+use pipeline::config::{MtConfig, PipelineConfig};
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, Usage, VadFactory};
 use pipeline::glossary::SharedGlossary;
 use pipeline::prompt::Lang as MtLang;
@@ -103,6 +103,10 @@ pub trait SessionDeps: Send + Sync {
     fn streaming_supported(&self) -> bool {
         true
     }
+    /// Có tiến trình phụ nào đang chạy không. Gõ dịch báo "Đang nạp model…" khi chưa (spec 2026-10-17-go-dich §3.4).
+    fn sidecars_running(&self) -> bool {
+        true
+    }
 }
 
 /// Trạng thái phiên, quản lý bằng `tauri::Manager::manage`.
@@ -124,6 +128,9 @@ pub struct Session {
     /// Gói của lần bắt đầu phiên gần nhất. Khi phiên đang bắt đầu hay đang chạy, đây là gói mà phiên dùng, có thể khác
     /// gói đang chọn nếu người dùng vừa đổi gói (QE-1 của review cuối 04).
     pack: Mutex<Option<String>>,
+    /// Số việc của Gõ dịch đang dùng tiến trình phụ ([`with_compose_mt`]). `release_models` chờ các việc này như chờ lần chạy
+    /// sẵn.
+    composing: AtomicUsize,
 }
 
 impl Session {
@@ -137,6 +144,7 @@ impl Session {
             sessions: AtomicU64::new(0),
             prewarming: AtomicBool::new(false),
             pack: Mutex::new(None),
+            composing: AtomicUsize::new(0),
         }
     }
 
@@ -674,6 +682,64 @@ pub fn prewarm<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
+/// Chạy `f` với bộ dịch của Gõ dịch và cấu hình dịch của gói đang dùng (spec 2026-10-17-go-dich §3.4). Trước đó chuẩn bị hai
+/// tiến trình phụ như [`prewarm`]: `asr-worker` trước rồi `llama-server`, đúng thứ tự VRAM của §5. Client dịch tự chạy
+/// `llama-server` khi nó đang tắt, nên không được dùng khi chưa chuẩn bị. Chưa có tiến trình phụ nào chạy (sắp phải nạp model)
+/// thì gọi `on_loading` trước khi chuẩn bị.
+///
+/// Phiên đang bắt đầu hay đang chạy thì chuẩn bị theo gói của phiên đó, để không dựng bộ tiến trình phụ thứ hai cho gói vừa đổi
+/// (như `prewarm`). Trong suốt việc này `release_models` chờ, như chờ lần chạy sẵn: đếm trước rồi mới kiểm
+/// `ModelService::busy`, nên không bỏ sót lần nào. Chặn tới khi xong: gọi từ luồng nền.
+pub fn with_compose_mt<R: Runtime, T>(
+    app: &AppHandle<R>,
+    on_loading: impl FnOnce(),
+    f: impl FnOnce(&mut dyn Mt, &MtConfig) -> T,
+) -> Result<T, CommandError> {
+    let Some(session) = app.try_state::<Session>() else {
+        return Err(CommandError::new(errors::COMPOSE_UNAVAILABLE, None, "chưa có phiên"));
+    };
+    session.composing.fetch_add(1, Ordering::SeqCst);
+    let _done = Composing(&session.composing);
+    if session.closing.load(Ordering::SeqCst) {
+        return Err(CommandError::new(errors::COMPOSE_UNAVAILABLE, None, "app đang thoát"));
+    }
+    if app.try_state::<Arc<ModelService>>().is_some_and(|m| m.busy()) {
+        return Err(CommandError::new(
+            errors::MODELS_BUSY,
+            None,
+            "đang tải, xóa hay kiểm gói model",
+        ));
+    }
+    let state = app.state::<AppState>();
+    let mut settings = state.settings();
+    let in_session = matches!(state.status().session, SessionStatus::Starting | SessionStatus::Running);
+    if in_session {
+        settings.model_tier = session.pack.lock().unwrap().clone();
+    }
+    if !session.deps.sidecars_running() {
+        on_loading();
+    }
+    if let Err(e) = session.deps.prepare(&settings) {
+        // Như lần chạy sẵn: bỏ "Đang nạp model…" ở cửa sổ chính. Phiên đang bắt đầu thì để phiên tự báo.
+        if !in_session {
+            state.update_status(|s| s.loading = None);
+            changed(app);
+        }
+        return Err(e);
+    }
+    let mut mt = session.deps.mt();
+    Ok(f(mt.as_mut(), &session.deps.pipeline_config().mt))
+}
+
+/// Bớt số việc của Gõ dịch khi [`with_compose_mt`] xong, kể cả khi `f` panic.
+struct Composing<'a>(&'a AtomicUsize);
+
+impl Drop for Composing<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 /// Thoát app (Thoát ở menu khay, §4.3). Không chờ khóa của tiến trình phụ (N1 của review 02c):
 /// 1. đặt cờ hủy, chặn mọi lần chạy tiến trình phụ mới và kill các tiến trình đang chạy (`SessionDeps::shutdown`), nên
 ///    lần bắt đầu phiên hay lần chạy sẵn đang chờ nạp model trả về ngay;
@@ -718,12 +784,14 @@ pub fn models_in_use<R: Runtime>(app: &AppHandle<R>) -> (Option<String>, Vec<Pat
     }
 }
 
-/// Chờ lần chạy sẵn đang nạp dở xong (tối đa [`PREWARM_WAIT`], hay tới khi app thoát). Trước khi tắt tiến trình phụ để
-/// tải đè hay xóa model: nếu không, lần chạy sẵn còn chạy `llama-server` sau lần tắt (Q-A của review 04 lần 2). Người
-/// gọi đã đặt việc đụng tới gói đang dùng (`ModelService::busy`), nên không lần chạy sẵn mới nào bắt đầu trong lúc chờ.
+/// Chờ lần chạy sẵn đang nạp dở và các việc của Gõ dịch đang dở xong (tối đa [`PREWARM_WAIT`], hay tới khi app thoát).
+/// Trước khi tắt tiến trình phụ để tải đè hay xóa model: nếu không, lần chạy sẵn (hay một lần dịch của Gõ dịch) còn chạy
+/// `llama-server` sau lần tắt (Q-A của review 04 lần 2). Người gọi đã đặt việc đụng tới gói đang dùng (`ModelService::busy`),
+/// nên không lần chạy sẵn hay việc Gõ dịch mới nào bắt đầu trong lúc chờ.
 fn wait_for_prewarm(session: &Session) {
     let since = Instant::now();
-    while session.is_prewarming() && !session.closing.load(Ordering::SeqCst) && since.elapsed() < PREWARM_WAIT {
+    let busy = || session.is_prewarming() || session.composing.load(Ordering::SeqCst) > 0;
+    while busy() && !session.closing.load(Ordering::SeqCst) && since.elapsed() < PREWARM_WAIT {
         std::thread::sleep(Duration::from_millis(20));
     }
 }
@@ -1075,6 +1143,10 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
         {
             log::info!("tắt tiến trình phụ sau 10 phút không dịch");
         }
+    }
+
+    fn sidecars_running(&self) -> bool {
+        self.current().is_some_and(|m| m.running())
     }
 
     fn models_in_use(&self) -> Vec<PathBuf> {

@@ -478,6 +478,11 @@ impl SessionDeps for FakeDeps {
         self.calls.lock().unwrap().push("streaming_supported");
         !self.slow_machine.load(Ordering::SeqCst)
     }
+
+    /// Tiến trình phụ giả "chạy" từ lần `prepare` thành công đầu tiên.
+    fn sidecars_running(&self) -> bool {
+        self.prepare_error.is_none() && *self.prepares.lock().unwrap() > 0
+    }
 }
 
 pub fn mock_app() -> tauri::App<MockRuntime> {
