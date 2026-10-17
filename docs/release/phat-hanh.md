@@ -996,3 +996,96 @@ Thứ tự không đổi được: tài khoản, spike, sản phẩm, webhook, s
   Kết quả: server thôi nhận đơn USD mới, và app thôi hiện lựa chọn cách trả khi tải lại bảng gói; màn hình Nâng cấp đang mở vẫn hiện thẻ tới khi người dùng mở lại màn hình (bấm trả bằng thẻ lúc đó thì server từ chối và app báo lỗi). Webhook Creem (thanh toán, hoàn tiền, tranh chấp) và đối soát đơn Creem đang chờ **vẫn chạy**: đơn khách đã trả vẫn được cấp key. **Không xóa** `CREEM_API_KEY` hay `CREEM_WEBHOOK_SECRET`: xóa thì webhook trả `404` (hoàn tiền và tranh chấp mất) và đơn Creem đang chờ không được cấp. Website đang hứa có thẻ (Bảng giá, Trang chủ, Câu hỏi thường gặp, hướng dẫn mua): sửa chữ cho đúng rồi deploy website (`cd ../website && pnpm deploy`; test website chặn vài câu cũ kiểu "chỉ VietQR", xem `website/README.md`). Hủy webhook ở dashboard Creem chỉ khi thôi hẳn Creem, và chỉ sau khi đã đối chiếu xong mọi hoàn tiền và tranh chấp.
 - **Bật lại:** điền lại ba mã `prod_…` (như bước 3), commit lên `main`, `pnpm check && pnpm exec wrangler deploy`, kiểm `GET /v1/plans` có `USD` như bước 7, rồi sửa lại website.
 - **Cổng Creem mất hẳn** (khóa hay secret của Worker API bị xóa, hay Worker bị lùi về bản không có Creem): webhook Creem trả `404`, đối soát đơn Creem lỗi ở mọi lượt (chỉ có log `reconcile_failed`, không có cảnh báo), nhưng đơn chưa bị hủy. Dựng lại cổng trong 24 giờ kể từ lúc tạo đơn thì đối soát tự cấp đơn đang chờ, không cần cấp tay. Quá 24 giờ thì đơn thành `expired`: xem trạng thái thật trước (dashboard Creem, hay Web Admin > đơn > Xem trạng thái trên Creem nếu Worker admin còn khóa), khách đã trả thì Cấp tay (ghi lý do; doanh thu của đơn ghi 0, như **Đơn bị giữ**). Hoàn tiền và tranh chấp tới trong lúc webhook `404` thì mất sau các lần gửi lại: đối chiếu ở dashboard Creem như việc **hằng tuần**.
+
+## 10. Đợt thêm báo cáo lỗi tự động (migration D1 0004)
+
+Spec `2026-10-17-diagnostics-reports-design.md` (mục 3, 8 và 9), kế hoạch `2026-10-17-bao-cao-loi-01-server.md` đến `2026-10-17-bao-cao-loi-05-phap-ly-website.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production do chủ dự án chạy. Thứ tự không đổi được: migration, Worker API, Worker admin, app, website cùng chính sách. Chạy trong `server/`; `PROD` và `PADMIN` như mục 4.
+
+Vì sao thứ tự này: migration 0004 chỉ **thêm** hai bảng (`error_reports`, `error_report_logs`) và ba index, không đổi bảng nào đã có, nên Worker cũ vẫn chạy đúng trên schema mới; Worker API mới cần hai bảng để nhận báo cáo; app mới gọi `POST /v1/diagnostics`, nên server phải lên trước app (app lên trước thì nhận `404`, coi là lỗi vĩnh viễn và bỏ báo cáo: người dùng không thấy lỗi gì nhưng mất báo cáo); website và chính sách chỉ được nói điều đã thật nên đi sau cùng. Hai Worker không ràng buộc nhau chặt như ở mục 8 (Worker admin chỉ đọc và xóa hai bảng mới, Worker API chỉ ghi), nhưng nên lên liền nhau để Web Admin thấy ngay báo cáo.
+
+**Điều kiện trước khi bắt đầu.** Chỉ làm khi đủ cả bốn điều:
+
+- **Mã xong và đã gộp.** Kế hoạch 01 đến 05 đã làm và đã rà, đã gộp vào `main` (chủ dự án quyết lúc nào), CI xanh, `pnpm check` trong `server/` xanh trên `main`.
+- **A7 đã chạy lại** bằng proxy trên macOS với một bản build có tính năng này (cách build: `docs/huong-dan-build/build-dmg-macos.md`), có một báo cáo đang xếp hàng trên đĩa: trong lúc dịch không có request nào, và báo cáo chỉ đi tới `api.aitranslator.io.vn` sau khi phiên dừng. Ghi số đo (ngày, máy, bản dựng). Rồi sửa câu "chúng tôi chưa đo lại điều này bằng proxy" ở mục "Chúng tôi đã kiểm tra điều đó thế nào?" của trang Dữ liệu và bảo mật (`website/src/content/{vi,en}/data-security.mjs`) và đoạn "Báo cáo lỗi, chưa đối chiếu bằng số đo thật" của `docs/legal/README.md` cho khớp số đo.
+- **Ngày hiệu lực chính sách 1.3 đã đặt** theo `docs/legal/README.md`, mục "Đổi ngày hiệu lực" (kế hoạch 05, Task 8), **trước khi build app**: app đóng gói chính sách lúc build.
+- **Ảnh chụp của website đã được chụp lại** theo giao diện của bản app sắp phát hành (kế hoạch 05, Task 5).
+
+1. **Kiểm trước khi áp (chỉ đọc), ghi lại kết quả để so sau.**
+
+   ```bash
+   pnpm exec wrangler d1 time-travel info mt-license-production
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT name FROM sqlite_master WHERE name LIKE 'error_report%'"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT (SELECT COUNT(*) FROM licenses) AS licenses, (SELECT COUNT(*) FROM orders) AS orders, (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS orders_seq"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "PRAGMA foreign_key_check"
+   ```
+
+   Expected: `time-travel info` in mốc hiện tại (chép lại); câu thứ hai không trả dòng nào (chưa có bảng báo cáo); chép lại ba số của câu thứ ba (`licenses`, `orders`, `orders_seq`); `foreign_key_check` không trả dòng nào. Đã có bảng `error_report%` thì dừng và báo: ai đó đã áp tay.
+
+2. **Áp migration lên production.** Migration chỉ tạo bảng nên không cần khôi phục dữ liệu nếu lỗi (wrangler hoàn tác chính migration đó); vẫn chụp lại mốc:
+
+   ```bash
+   pnpm exec wrangler d1 time-travel info mt-license-production
+   pnpm exec wrangler d1 migrations apply mt-license-production --remote
+   ```
+
+   Expected: `migrations apply` liệt kê chỉ `0004_error_reports.sql`, hỏi xác nhận (trả lời `y`), rồi `✅`. Lỗi thì dừng, không deploy Worker, báo chủ dự án.
+
+3. **Kiểm sau khi áp:**
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT name FROM sqlite_master WHERE (type = 'table' AND name LIKE 'error_report%') OR (type = 'index' AND name LIKE 'error_reports_%') ORDER BY type, name"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT (SELECT COUNT(*) FROM error_reports) AS reports, (SELECT COUNT(*) FROM error_report_logs) AS logs, (SELECT COUNT(*) FROM licenses) AS licenses, (SELECT COUNT(*) FROM orders) AS orders, (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS orders_seq"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "PRAGMA foreign_key_check"
+   ```
+
+   Expected: hai bảng `error_report_logs`, `error_reports` và ba index `error_reports_device`, `error_reports_fingerprint`, `error_reports_received`; `reports` và `logs` đều `0`; `licenses`, `orders`, `orders_seq` **bằng đúng** bước 1 (số đơn không được lùi: PayOS nhớ mọi `orderCode` đã dùng); `foreign_key_check` không trả dòng nào. Lệch thì dừng, không deploy.
+
+4. **Deploy Worker API:**
+
+   ```bash
+   pnpm check && pnpm exec wrangler deploy
+   curl -s "$PROD/v1/health"; echo
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST "$PROD/v1/diagnostics"
+   ```
+
+   Expected: như mục 4 bước 9 (`Uploaded mt-license`, `schedule: */5 * * * *`, `{"ok":true}`); câu `curl` cuối in `415` (route có, từ chối vì thiếu `Content-Type: application/json`). **Kiểm cron chạy thật** như mục 4 bước 9: `pnpm exec wrangler tail mt-license --format pretty` qua một mốc 5 phút; Expected: sự kiện cron `*/5 * * * *` có log `{"event":"reconcile",…}` và **không có** `reconcile_step_failed` với `"step":"prune_error_reports"`. Không thấy cron thì `pnpm exec wrangler triggers deploy` rồi kiểm lại (sự cố 2026-10-07).
+
+5. **Deploy Worker admin** (ngay sau bước 4):
+
+   ```bash
+   pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
+   curl -s -o /dev/null -w '%{http_code}\n' "$PADMIN/admin/whoami"
+   ```
+
+   Expected: như mục 4 bước 10 (khi chưa đăng nhập Access thì không phải `5xx`). Đăng nhập Web Admin: thanh bên có mục **Báo cáo lỗi**, danh sách trống.
+
+6. **Thử bằng một báo cáo giả, trước khi phát hành app.** Báo cáo mang `build: "release"` và phiên bản `0.0.0` để thấy được ở Web Admin (báo cáo `debug` bị ẩn mặc định) và nhận ra ngay là báo cáo thử. Thử ba trường hợp: hợp lệ (`202`), còn mẫu key (`422`, không lưu), sai `Content-Type` (`415`). Hai request đầu cùng một mã máy nên dùng hết 2 trong 3 lượt mỗi giờ của máy đó; đừng chạy lại quá hai lần trong một giờ.
+
+   ```bash
+   W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
+   HASH=$(printf 'kiem-tra-bao-cao-loi' | shasum -a 256 | cut -d' ' -f1)
+   NOW=$(date +%s)
+   printf '{"v":1,"id":"R-ZZZZ-0001","kind":"session_error","code":"sidecarFailed","fingerprint":"deadbeefdeadbeef","at":%s,"message":"kiem tra sau trien khai","build":"release","app":{"version":"0.0.0"},"os":{"name":"macos","version":"0","arch":"aarch64"},"hw":{"chip":null,"ram_mb":null,"gpu_backend":null},"model_pack":null,"plan":null,"ui_lang":"vi","device_id_hash":"%s","logs":{"app":"dong log kiem tra\\n","asr":"","llama":""}}' "$NOW" "$HASH" > "$W/ok.json"
+   curl -s -w '\n%{http_code}\n' -H 'content-type: application/json' --data-binary @"$W/ok.json" "$PROD/v1/diagnostics"
+   sed 's/kiem tra sau trien khai/khoa 7Q2K-9XMB-R3TV-HW4Y-5ZJ6-8NPA-CDEF/; s/R-ZZZZ-0001/R-ZZZZ-0002/' "$W/ok.json" > "$W/nhay-cam.json"
+   curl -s -w '\n%{http_code}\n' -H 'content-type: application/json' --data-binary @"$W/nhay-cam.json" "$PROD/v1/diagnostics"
+   curl -s -o /dev/null -w '%{http_code}\n' -H 'content-type: text/plain' --data-binary @"$W/ok.json" "$PROD/v1/diagnostics"
+   ```
+
+   Expected: `{"id":"R-ZZZZ-0001"}` rồi `202`; `{"error":"rejected_sensitive","rule":"license_key"}` rồi `422`; `415`. Ở Web Admin › Báo cáo lỗi có **một nhóm** (`session_error`, `sidecarFailed`, phiên bản `0.0.0`, 1 máy, 1 báo cáo); mở báo cáo thấy dòng log thử ở dạng văn bản. Báo cáo `R-ZZZZ-0002` **không** có (bị từ chối, không lưu). Kiểm cảnh báo: `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT kind, count FROM ops_alerts WHERE kind = 'error_report_new'"` ra một dòng; thư cảnh báo tới `ops@aitranslator.io.vn` trong vòng khoảng một giờ (gộp theo giờ) với tiêu đề `[license production] Cảnh báo: error_report_new (1)` và **chỉ có số lượng**, không có nội dung log hay mã máy. Dọn báo cáo thử (bằng nút xóa ở Web Admin, hoặc hai lệnh dưới, bảng log trước), rồi kiểm lại:
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "DELETE FROM error_report_logs WHERE id = 'R-ZZZZ-0001'"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "DELETE FROM error_reports WHERE id = 'R-ZZZZ-0001'"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT COUNT(*) AS reports FROM error_reports"
+   ```
+
+   Expected: câu cuối in `reports` bằng `0`.
+
+7. **Phát hành app** theo mục 2 (nâng phiên bản ở đó). Chính sách 1.3 đã đặt ngày hiệu lực từ trước khi build (điều kiện ở trên). App mới cho người dùng đã cài từ trước bật mặc định báo cáo lỗi, không hỏi và không thông báo (quyết định của chủ dự án, 2026-10-17).
+
+8. **Deploy website cùng chính sách** sau khi bản app đã lên R2 (kiểm R2 ở mục 2): `cd ../website && pnpm deploy` (các lệnh của mục này chạy trong `server/`). Ngày hiệu lực chính sách 1.3 không được muộn hơn ngày deploy (test sitemap của website đỏ nếu `lastmod` ở tương lai, tính theo giờ Việt Nam).
+
+9. **Thử tay với app thật** (bản vừa phát hành, trên máy chưa từng cài, hoặc sau khi xóa dữ liệu): (a) onboarding bước Điều khoản có ô báo cáo lỗi **tích sẵn**; (b) Giới thiệu › Gửi log cho hỗ trợ hiện mã báo cáo, và tìm được báo cáo đó ở Web Admin › Báo cáo lỗi bằng mã; (c) tắt công tắc ở Cài đặt › Quyền riêng tư rồi bấm lại nút gửi tay: vẫn gửi được; (d) xóa báo cáo thử ở Web Admin. Báo cáo thật đầu tiên đến từ máy người dùng: mở xem và kiểm log **không** có đường dẫn thư mục cá nhân, key, token hay email; có thì xóa ngay, và sửa bộ che dữ liệu (kế hoạch 03) trước khi để báo cáo tiếp theo vào.
+
+**Đường lui.** Không có công tắc tắt nhận báo cáo riêng. Muốn dừng nhận khẩn cấp: `pnpm exec wrangler rollback` (Worker API) về bản trước đợt này: route `POST /v1/diagnostics` biến mất, app nhận `404` và bỏ báo cáo, người dùng không thấy lỗi gì. Worker admin lỗi thì `pnpm exec wrangler rollback -c wrangler.admin.jsonc`. Schema mới tương thích với code cũ (code cũ không biết hai bảng); sau khi lùi Worker admin, thao tác xóa theo email **không** xóa báo cáo, nên xóa tay nếu có yêu cầu. Xóa toàn bộ báo cáo: `DELETE FROM error_report_logs` rồi `DELETE FROM error_reports` (hai lệnh `wrangler d1 execute --remote --command`, bảng log trước). Migration 0004 không có bước lùi vì chỉ thêm bảng và không đổi dữ liệu cũ; không cần Time Travel.
