@@ -21,16 +21,16 @@ Cách thử: giả lập phím bằng System Events (`key code`, `keystroke`) ch
 
 | Nơi | Số lượt | Đạt | Ghi chú |
 |---|---|---|---|
-| TextEdit | 10 | 10 | 10 câu tiếng Anh khác nhau |
+| TextEdit | 12 | 12 | 12 câu khác nhau (11 tiếng Anh, 1 tiếng Việt không dấu) |
 | TextEdit, tin hai dòng (Shift+Enter) | 1 | 1 | bản dịch giữ đúng hai dòng |
 | TextEdit, toàn màn hình (⌃⌘F) | 3 | 3 | ô soạn nổi trên app toàn màn hình |
-| Chrome, ô `contenteditable` (kiểu Messenger, Slack web) | 10 + 3 | 13 | **0 phím Enter lọt vào ô chat** (không có tin nào bị gửi nhầm) |
-| Chrome, `textarea` | 5 + 1 | 6 | |
+| Chrome, ô `contenteditable` (kiểu Messenger, Slack web) | 11 | 11 | **0 phím Enter lọt vào ô chat** (không có tin nào bị gửi nhầm) |
+| Chrome, `textarea` | 6 | 6 | |
 | Chrome, toàn màn hình (⌃⌘F), ô `contenteditable` | 3 | 3 | |
 
 Thời gian dịch trong các lượt này (log `Gõ dịch: … ms`): 70–182 ms cho câu ngắn, tiến trình phụ đã nạp.
 
-**Lỗi thật tìm thấy:** lượt thử đầu, Enter không dán: bản dịch đã xong nhưng ô soạn vẫn mở. Chụp màn hình thấy hộp gợi ý chữ của macOS ("Report ×") hiện ngay dưới con trỏ vì người gõ vừa xong từ cuối ("report") và Enter đến sớm. **Hộp gợi ý nuốt phím Enter đầu tiên**; Enter thứ hai mới dán. Người gõ nhanh rồi Enter ngay sẽ gặp lỗi này. Sửa: tắt sửa chính tả, tự sửa chữ, tự viết hoa ở ô gõ (`spellCheck={false}`, `autoCorrect="off"`, `autoCapitalize="off"`, `autoComplete="off"` ở `src/windows/compose/compose.tsx`). Sau khi sửa, 41/41 lượt ở bảng trên dán ngay ở Enter đầu tiên. Tiện thể ô gõ không còn gạch đỏ tiếng Việt, tiếng Nhật.
+**Lỗi thật tìm thấy:** lượt thử đầu, Enter không dán: bản dịch đã xong nhưng ô soạn vẫn mở. Chụp màn hình thấy hộp gợi ý chữ của macOS ("Report ×") hiện ngay dưới con trỏ vì người gõ vừa xong từ cuối ("report") và Enter đến sớm. **Hộp gợi ý nuốt phím Enter đầu tiên**; Enter thứ hai mới dán. Người gõ nhanh rồi Enter ngay sẽ gặp lỗi này. Sửa: tắt sửa chính tả, tự sửa chữ, tự viết hoa ở ô gõ (`spellCheck={false}`, `autoCorrect="off"`, `autoCapitalize="off"`, `autoComplete="off"` ở `src/windows/compose/compose.tsx`). Sau khi sửa, 36/36 lượt ở bảng trên dán ngay ở Enter đầu tiên. Tiện thể ô gõ không còn gạch đỏ tiếng Việt, tiếng Nhật.
 
 **Ghi chú về cách thử (cho lần sau):**
 - `cliclick` gửi tổ hợp phím (⌃⌥G) và phím Esc không ổn định (đạt vài lần rồi ngừng); System Events thì ổn. Dùng System Events.
