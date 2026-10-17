@@ -226,8 +226,8 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 49910,
-  "description": "Cài đặt quyền riêng tư: lưu lịch sử chép lời mặc định tắt, cùng nút xóa toàn bộ dữ liệu và xóa model."
+  "bytes": 65432,
+  "description": "Cài đặt quyền riêng tư: lưu lịch sử chép lời mặc định tắt, gửi báo cáo lỗi tự động mặc định bật, cùng nút xóa toàn bộ dữ liệu và xóa model."
  },
  {
   "file": "app-settings-privacy.en.webp",
@@ -236,8 +236,8 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 47944,
-  "description": "Privacy settings: saving transcript history is off by default, with buttons to delete all data and to delete models."
+  "bytes": 64418,
+  "description": "Privacy settings: saving transcript history is off by default and sending error reports automatically is on by default, with buttons to delete all data and to delete models."
  },
  {
   "file": "app-upgrade.vi.webp",
@@ -316,8 +316,8 @@
   "theme": "light",
   "width": 1440,
   "height": 580,
-  "bytes": 33026,
-  "description": "Màn hình Giới thiệu: tên app, dòng Phiên bản, nút Mở thư mục log, Điều khoản và quyền riêng tư."
+  "bytes": 41624,
+  "description": "Màn hình Giới thiệu: tên app, dòng Phiên bản, nút Mở thư mục log và nút Gửi log cho hỗ trợ, Điều khoản và quyền riêng tư."
  },
  {
   "file": "app-about.en.webp",
@@ -326,8 +326,8 @@
   "theme": "light",
   "width": 1440,
   "height": 580,
-  "bytes": 27772,
-  "description": "The About screen: the app name, the Version line, the Open log folder button, and Terms and privacy."
+  "bytes": 38628,
+  "description": "The About screen: the app name, the Version line, the Open log folder and Send log to support buttons, and Terms and privacy."
  },
  {
   "file": "app-onboarding-1.vi.webp",
@@ -356,8 +356,8 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 28044,
-  "description": "Bước 2: điều khoản sử dụng, có ô đồng ý với Thỏa thuận cấp phép và Chính sách quyền riêng tư."
+  "bytes": 42312,
+  "description": "Bước 2: điều khoản sử dụng, có ô đồng ý với Thỏa thuận cấp phép và Chính sách quyền riêng tư, và ô tùy chọn gửi báo cáo lỗi tự động đã tích sẵn."
  },
  {
   "file": "app-onboarding-2.en.webp",
@@ -366,8 +366,8 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 25222,
-  "description": "Step 2: terms of use, with a checkbox to accept the License Agreement and the Privacy Policy."
+  "bytes": 39344,
+  "description": "Step 2: terms of use, with a checkbox to accept the License Agreement and the Privacy Policy, and a pre-ticked optional checkbox for automatic error reports."
  },
  {
   "file": "app-onboarding-3.vi.webp",
