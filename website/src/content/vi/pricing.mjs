@@ -80,6 +80,7 @@ ${sectionHead({ eyebrow: "So sánh", title: "Mỗi gói gồm những gì", cent
 <tr><th scope="row">Phụ đề dịch trực tiếp, 5 ngôn ngữ</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Thanh phụ đề tùy chỉnh, phím tắt</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Sao chép bản chép lời</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
+<tr><th scope="row">Gõ dịch tin nhắn (không trừ thời lượng dịch)</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Từ điển thuật ngữ (Pro)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Lịch sử các phiên (Pro)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Xuất TXT, SRT, Markdown (Pro)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>

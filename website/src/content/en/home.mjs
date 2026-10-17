@@ -171,6 +171,22 @@ ${checkList([
 ])}
 </div>
 </div>
+<div class="split wide-right">
+<div class="stack-lg reveal">
+<span class="eyebrow">Type &amp; Translate</span>
+<h2>Reply in the other person's language</h2>
+<p class="lead">Press ⌃⌥G (Windows: Ctrl+Alt+G) in any chat box, type in your own language and press Enter: the translation is pasted into the chat box for you to check and send.</p>
+${checkList([
+  "Works in the chat boxes of browsers, chat apps and meeting apps",
+  "Translated on your computer: what you type never leaves it",
+  "Included in every plan, and it does not use translation time",
+])}
+<p><a class="btn btn-secondary" href="/en/guide/type-and-translate/">Read the Type &amp; Translate guide ${icon("arrow-right")}</a></p>
+</div>
+<div>
+${overlayShot({ slug: "compose-done", lang: "en", alt: "The Type & Translate box with an English message and its Vietnamese translation below", caption: "The Type & Translate box: press Enter to paste the translation into the chat box." })}
+</div>
+</div>
 </div></section>
 
 <section class="section"><div class="container">

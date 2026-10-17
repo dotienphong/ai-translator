@@ -11,11 +11,11 @@ export default {
   path: "/en/features/",
   title: "AI Translator features: subtitles, glossary, export",
   description:
-    "Live translated subtitles in 5 languages, a customizable subtitle bar, glossary, history, TXT/SRT/Markdown export and shortcuts. All offline, on your computer.",
+    "Live translated subtitles in 5 languages, a subtitle bar, Type & Translate for chat, glossary, history and TXT/SRT/Markdown export. All offline, on your computer.",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-14",
-  llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, glossary, history, export, shortcuts, models), with performance figures and the conditions they were measured under.",
+  llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, Type & Translate for chat messages, glossary, history, export, shortcuts, models), with performance figures and the conditions they were measured under.",
   llmTitle: "AI Translator features",
   body: () => `
 ${pageHero({ crumbs, title: "Live meeting translation features, running on your computer", lead: "This is what AI Translator can do today, exactly as it works in the app. Anything that is only in the paid plans is marked clearly." })}
@@ -27,6 +27,7 @@ ${pageHero({ crumbs, title: "Live meeting translation features, running on your 
 <a class="card card-link" href="#subtitle-bar"><h3>Subtitle bar</h3><p class="muted">Drag, lock, resize the text</p></a>
 <a class="card card-link" href="#transcript"><h3>Transcript</h3><p class="muted">History, export (Pro)</p></a>
 <a class="card card-link" href="#glossary"><h3>Glossary</h3><p class="muted">Names and terms (Pro)</p></a>
+<a class="card card-link" href="#type-and-translate"><h3>Type &amp; Translate</h3><p class="muted">Chat in the other person's language</p></a>
 <a class="card card-link" href="#audio-source"><h3>Audio source</h3><p class="muted">Any meeting app, no bot</p></a>
 <a class="card card-link" href="#shortcuts"><h3>Shortcuts and tray</h3><p class="muted">Control without leaving the meeting</p></a>
 <a class="card card-link" href="#models"><h3>Models and hardware</h3><p class="muted">Standard and Lite packs</p></a>
@@ -63,7 +64,7 @@ ${checkList([
 ${appShot({ slug: "app-home-free", lang: "en", alt: "AI Translator main screen with the Languages card: the language to translate into and the languages spoken in the meeting", caption: "The Languages card: choose the language you want to read and the languages that may be spoken in the meeting." })}
 </div>
 </div>
-${callout({ title: "One direction: from the meeting to you.", text: "AI Translator translates the audio coming out of your computer into your language. It does not translate your own voice into the meeting yet. If both sides install the app, each person sees subtitles of the other side." })}
+${callout({ title: "Subtitles go one way: from the meeting to you.", text: "AI Translator translates the audio coming out of your computer into your language. It does not translate your own voice into the meeting yet. To reply in writing in the chat, use <a href=\"#type-and-translate\">Type &amp; Translate</a>: you type in your own language and the app pastes the translation into the chat box. If both sides install the app, each person sees subtitles of the other side." })}
 </div></section>
 
 <section class="section section-alt" id="subtitle-bar"><div class="container">
@@ -149,12 +150,32 @@ ${checkList([
 </div>
 </div></section>
 
-<section class="section section-alt" id="shortcuts"><div class="container">
+<section class="section section-alt" id="type-and-translate"><div class="container">
+<div class="split">
+<div class="stack-lg reveal">
+<span class="eyebrow">Type &amp; Translate</span>
+<h2>Chat in the other person's language, in any chat box</h2>
+<p>Press ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) in the chat box of a browser, a chat app or a meeting app. Type in your own language in the floating compose box and the translation appears right below. Press Enter to paste the translation into the chat box, check it, then press Enter again to send.</p>
+${checkList([
+  "Translates into <strong>the language of the people you talk to</strong>, taken from your subtitle settings, or a language you choose",
+  "Included in <strong>every active plan</strong>, Free during the trial too, and it <strong>does not use</strong> translation time",
+  "Translated on your computer: what you type and its translation never leave it",
+  "Type with your usual keyboard and input method; if translating fails, the app never pastes your original text",
+])}
+<p class="small muted">On macOS, auto-paste needs the Accessibility permission; without it the app copies the translation so you can paste it with ⌘V. The Windows version has not been tried on a real computer yet. See the <a href="/en/guide/type-and-translate/">Type &amp; Translate guide</a>.</p>
+</div>
+<div>
+${overlayShot({ slug: "compose-done", lang: "en", alt: "The Type & Translate box with an English message and its Vietnamese translation below", caption: "The Type & Translate box: press Enter to paste the translation into the chat box." })}
+</div>
+</div>
+</div></section>
+
+<section class="section" id="shortcuts"><div class="container">
 <div class="split">
 <div class="stack-lg reveal">
 <span class="eyebrow">Shortcuts and system tray</span>
 <h2>Control it without leaving the meeting</h2>
-<p>Five global shortcuts work even when AI Translator is not the window in front. You can change each one in Settings › Shortcuts.</p>
+<p>Six global shortcuts work even when AI Translator is not the window in front. You can change each one in Settings › Shortcuts.</p>
 <div class="table-wrap" role="region" aria-label="Keyboard shortcuts" tabindex="0"><table>
 <thead><tr><th scope="col">Action</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
 <tbody>
@@ -163,17 +184,18 @@ ${checkList([
 <tr><th scope="row">Lock or unlock subtitles</th><td>${keys(["⌃", "⌥", "L"])}</td><td>${keys(["Ctrl", "Alt", "L"])}</td></tr>
 <tr><th scope="row">Scroll subtitles up (older sentences)</th><td>${keys(["⌃", "⌥", "PageUp"])}</td><td>${keys(["Ctrl", "Alt", "PageUp"])}</td></tr>
 <tr><th scope="row">Scroll subtitles down (newer sentences)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
+<tr><th scope="row">Open or close the Type &amp; Translate box</th><td>${keys(["⌃", "⌥", "G"])}</td><td>${keys(["Ctrl", "Alt", "G"])}</td></tr>
 </tbody></table></div>
 <p class="small muted">On macOS, ⌃ is Control and ⌥ is Option. A shortcut needs at least one of Ctrl, Alt or Cmd/Win.</p>
 <p>The menu bar icon (macOS) or system tray icon (Windows) lets you start or stop translating, show or hide and lock the subtitles, and open the main window. Closing the window only hides the app in the tray; to quit completely, choose <em>Quit</em>.</p>
 </div>
 <div>
-${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings showing the five default shortcuts on macOS", caption: "Settings › Shortcuts: press Change, then the new key combination." })}
+${appShot({ slug: "app-settings-hotkeys", lang: "en", alt: "Shortcuts settings showing the six default shortcuts on macOS", caption: "Settings › Shortcuts: press Change, then the new key combination." })}
 </div>
 </div>
 </div></section>
 
-<section class="section" id="models"><div class="container stack-lg">
+<section class="section section-alt" id="models"><div class="container stack-lg">
 <div class="model-intro">
 <div class="stack-lg reveal">
 <span class="eyebrow">Models and your computer</span>
@@ -197,7 +219,7 @@ ${facts([
 ])}
 </div></section>
 
-<section class="section section-alt" id="performance"><div class="container">
+<section class="section" id="performance"><div class="container">
 ${sectionHead({ eyebrow: "Performance", title: "Real measurements, with the conditions", text: "We publish only what we measured, on the machine we measured it on, and we say which machines we have not tested.", center: true })}
 <div class="table-wrap reveal" role="region" aria-label="Measured performance" tabindex="0"><table>
 <thead><tr><th scope="col">Measurement (Mac M4 Pro 24 GB, macOS 26, Apple GPU)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>

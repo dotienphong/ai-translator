@@ -441,6 +441,8 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .shot.stage figcaption { background: transparent; border: 0; padding-inline: 4px; }
 .facts { display: grid; gap: 0; margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .split + .facts, .table-wrap + .facts, .grid + .facts { margin-top: clamp(28px, 4vw, 48px); }
+/* Hai khối hai cột liền nhau trong cùng một mục (Trang chủ: Một màn hình, rồi Gõ dịch). */
+.split + .split { margin-top: clamp(48px, 7vw, 96px); }
 .facts > div { padding: 16px 20px; box-shadow: inset 0 0 0 .5px var(--line); }
 .facts dt { font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--brand-ink); margin-bottom: 4px; }
 .facts dd { margin: 0; color: var(--ink); font-weight: 500; line-height: 1.5; }

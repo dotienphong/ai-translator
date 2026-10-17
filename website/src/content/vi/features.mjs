@@ -11,11 +11,11 @@ export default {
   path: "/tinh-nang/",
   title: "Tính năng phụ đề dịch trực tiếp, từ điển, xuất SRT | AI Translator",
   description:
-    "Phụ đề dịch trực tiếp 5 ngôn ngữ, thanh phụ đề tùy chỉnh, từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown, phím tắt. Tất cả chạy offline trên máy của bạn.",
+    "Phụ đề dịch trực tiếp 5 ngôn ngữ, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown. Tất cả chạy offline trên máy bạn.",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-14",
-  llm: "Danh sách đầy đủ tính năng đã có trong app (phụ đề dịch, thanh phụ đề, từ điển thuật ngữ, lịch sử, xuất file, phím tắt, model) cùng số đo hiệu năng có ghi điều kiện.",
+  llm: "Danh sách đầy đủ tính năng đã có trong app (phụ đề dịch, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất file, phím tắt, model) cùng số đo hiệu năng có ghi điều kiện.",
   llmTitle: "Tính năng của AI Translator",
   body: () => `
 ${pageHero({ crumbs, title: "Tính năng phụ đề dịch trực tiếp cho cuộc họp, chạy trên máy bạn", lead: "Dưới đây là những gì AI Translator làm được hôm nay, đúng như trong app. Tính năng nào chỉ có ở gói trả phí đều được ghi rõ." })}
@@ -26,6 +26,7 @@ ${pageHero({ crumbs, title: "Tính năng phụ đề dịch trực tiếp cho cu
 <a class="card card-link" href="#thanh-phu-de"><strong class="card-title">Thanh phụ đề</strong><p class="muted">Kéo, khóa, đổi cỡ chữ</p></a>
 <a class="card card-link" href="#ban-chep-loi"><strong class="card-title">Bản chép lời</strong><p class="muted">Lịch sử, xuất file (Pro)</p></a>
 <a class="card card-link" href="#tu-dien"><strong class="card-title">Từ điển thuật ngữ</strong><p class="muted">Tên riêng, thuật ngữ (Pro)</p></a>
+<a class="card card-link" href="#go-dich"><strong class="card-title">Gõ dịch</strong><p class="muted">Nhắn tin bằng tiếng người bên kia</p></a>
 <a class="card card-link" href="#nguon-am-thanh"><strong class="card-title">Nguồn âm thanh</strong><p class="muted">Mọi app họp, không bot</p></a>
 <a class="card card-link" href="#phim-tat"><strong class="card-title">Phím tắt và khay</strong><p class="muted">Điều khiển không rời cuộc họp</p></a>
 <a class="card card-link" href="#model"><strong class="card-title">Model và máy</strong><p class="muted">Gói model Chuẩn, gói model Nhẹ</p></a>
@@ -62,7 +63,7 @@ ${checkList([
 ${appShot({ slug: "app-home-free", lang: "vi", alt: "Màn hình chính của AI Translator với thẻ chọn ngôn ngữ dịch và ngôn ngữ nói trong cuộc họp", caption: "Thẻ Ngôn ngữ: chọn ngôn ngữ bạn muốn đọc và các ngôn ngữ có thể được nói trong cuộc họp." })}
 </div>
 </div>
-${callout({ title: "Một chiều, từ cuộc họp sang bạn.", text: "AI Translator dịch âm thanh phát ra từ máy tính sang ngôn ngữ của bạn. Hiện chưa dịch giọng của bạn để phát vào cuộc họp. Nếu cả hai bên cùng cài app, mỗi bên đều thấy phụ đề của phía kia." })}
+${callout({ title: "Phụ đề dịch một chiều, từ cuộc họp sang bạn.", text: "AI Translator dịch âm thanh phát ra từ máy tính sang ngôn ngữ của bạn. Hiện chưa dịch giọng của bạn để phát vào cuộc họp. Muốn trả lời bằng chữ trong khung chat, hãy dùng <a href=\"#go-dich\">Gõ dịch</a>: bạn gõ bằng tiếng của mình, app dán bản dịch vào ô chat. Nếu cả hai bên cùng cài app, mỗi bên đều thấy phụ đề của phía kia." })}
 </div></section>
 
 <section class="section section-alt" id="thanh-phu-de"><div class="container">
@@ -145,12 +146,32 @@ ${checkList([
 </div>
 </div></section>
 
-<section class="section section-alt" id="phim-tat"><div class="container">
+<section class="section section-alt" id="go-dich"><div class="container">
+<div class="split">
+<div class="stack-lg reveal">
+<span class="eyebrow">Gõ dịch</span>
+<h2>Nhắn tin bằng tiếng của người bên kia, ở bất kỳ ô chat nào</h2>
+<p>Bấm ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) ở ô chat của trình duyệt, app chat hay khung chat của app họp. Gõ bằng tiếng của bạn trong ô soạn nổi, bản dịch hiện ngay bên dưới. Bấm Enter để dán bản dịch vào ô chat, xem lại rồi bấm Enter lần nữa để gửi.</p>
+${checkList([
+  "Dịch sang <strong>tiếng của người bên kia</strong>, tự lấy từ cài đặt phụ đề, hoặc một ngôn ngữ bạn chọn",
+  "Có ở <strong>mọi gói</strong> còn hiệu lực, kể cả Free trong thời gian dùng thử, và <strong>không trừ</strong> thời lượng dịch",
+  "Dịch trên máy bạn: chữ bạn gõ và bản dịch không rời máy",
+  "Gõ Telex, VNI như bình thường; dịch lỗi thì app không bao giờ dán câu gốc",
+])}
+<p class="small muted">Trên macOS, tự dán cần quyền Trợ năng; chưa có quyền thì app chép bản dịch để bạn tự dán bằng ⌘V. Bản Windows chưa được thử trên máy thật. Xem <a href="/huong-dan/go-dich/">hướng dẫn Gõ dịch</a>.</p>
+</div>
+<div>
+${overlayShot({ slug: "compose-done", lang: "vi", alt: "Ô soạn Gõ dịch với một tin nhắn tiếng Việt và bản dịch tiếng Anh bên dưới", caption: "Ô soạn Gõ dịch: Enter để dán bản dịch vào ô chat." })}
+</div>
+</div>
+</div></section>
+
+<section class="section" id="phim-tat"><div class="container">
 <div class="split">
 <div class="stack-lg reveal">
 <span class="eyebrow">Phím tắt và khay hệ thống</span>
 <h2>Điều khiển mà không rời cuộc họp</h2>
-<p>Năm phím tắt toàn cục hoạt động ngay cả khi AI Translator không phải cửa sổ đang mở. Bạn đổi được từng phím trong Cài đặt › Phím tắt.</p>
+<p>Sáu phím tắt toàn cục hoạt động ngay cả khi AI Translator không phải cửa sổ đang mở. Bạn đổi được từng phím trong Cài đặt › Phím tắt.</p>
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Việc</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
 <tbody>
@@ -159,17 +180,18 @@ ${checkList([
 <tr><th scope="row">Khóa hoặc mở khóa phụ đề</th><td>${keys(["⌃", "⌥", "L"])}</td><td>${keys(["Ctrl", "Alt", "L"])}</td></tr>
 <tr><th scope="row">Cuộn phụ đề lên (câu cũ)</th><td>${keys(["⌃", "⌥", "PageUp"])}</td><td>${keys(["Ctrl", "Alt", "PageUp"])}</td></tr>
 <tr><th scope="row">Cuộn phụ đề xuống (câu mới)</th><td>${keys(["⌃", "⌥", "PageDown"])}</td><td>${keys(["Ctrl", "Alt", "PageDown"])}</td></tr>
+<tr><th scope="row">Mở hoặc đóng ô soạn Gõ dịch</th><td>${keys(["⌃", "⌥", "G"])}</td><td>${keys(["Ctrl", "Alt", "G"])}</td></tr>
 </tbody></table></div>
 <p class="small muted">Trên macOS, ⌃ là Control và ⌥ là Option. Phím tắt phải có ít nhất một phím Ctrl, Alt hoặc Cmd/Win.</p>
 <p>Biểu tượng trên thanh menu (macOS) hoặc khay hệ thống (Windows) cho phép bắt đầu hoặc dừng dịch, ẩn hiện và khóa phụ đề, mở cửa sổ chính. Đóng cửa sổ chỉ ẩn app xuống khay; muốn thoát hẳn thì chọn <em>Thoát</em>.</p>
 </div>
 <div>
-${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím tắt hiển thị năm phím tắt mặc định trên macOS", caption: "Cài đặt › Phím tắt: bấm Đổi rồi nhấn tổ hợp phím mới." })}
+${appShot({ slug: "app-settings-hotkeys", lang: "vi", alt: "Cài đặt Phím tắt hiển thị sáu phím tắt mặc định trên macOS", caption: "Cài đặt › Phím tắt: bấm Đổi rồi nhấn tổ hợp phím mới." })}
 </div>
 </div>
 </div></section>
 
-<section class="section" id="model"><div class="container">
+<section class="section section-alt" id="model"><div class="container">
 <div class="model-intro">
 <div class="stack-lg reveal">
 <span class="eyebrow">Model và cấu hình máy</span>
@@ -193,7 +215,7 @@ ${facts([
 ])}
 </div></section>
 
-<section class="section section-alt" id="hieu-nang"><div class="container">
+<section class="section" id="hieu-nang"><div class="container">
 ${sectionHead({ eyebrow: "Hiệu năng", title: "Số đo thật, kèm điều kiện đo", text: "Chúng tôi chỉ công bố những gì đã đo, trên đúng máy đã đo, và nói rõ máy nào chưa đo.", center: true })}
 <div class="table-wrap reveal"><table>
 <thead><tr><th scope="col">Số đo (Mac M4 Pro 24 GB, macOS 26, GPU Apple)</th><th scope="col">Gói model Chuẩn</th><th scope="col">Gói model Nhẹ</th></tr></thead>

@@ -169,6 +169,22 @@ ${checkList([
 ])}
 </div>
 </div>
+<div class="split wide-right">
+<div class="stack-lg reveal">
+<span class="eyebrow">Gõ dịch</span>
+<h2>Trả lời bằng tiếng của người bên kia</h2>
+<p class="lead">Bấm ⌃⌥G (Windows: Ctrl+Alt+G) ở ô chat bất kỳ, gõ bằng tiếng của bạn rồi bấm Enter: bản dịch được dán vào ô chat để bạn xem lại và gửi.</p>
+${checkList([
+  "Dùng ở ô chat của trình duyệt, app chat và khung chat của app họp",
+  "Dịch trên máy bạn: chữ bạn gõ không rời máy",
+  "Có ở mọi gói, không trừ thời lượng dịch",
+])}
+<p><a class="btn btn-secondary" href="/huong-dan/go-dich/">Xem hướng dẫn Gõ dịch ${icon("arrow-right")}</a></p>
+</div>
+<div>
+${overlayShot({ slug: "compose-done", lang: "vi", alt: "Ô soạn Gõ dịch với một tin nhắn tiếng Việt và bản dịch tiếng Anh bên dưới", caption: "Ô soạn Gõ dịch: Enter để dán bản dịch vào ô chat." })}
+</div>
+</div>
 </div></section>
 
 <section class="section"><div class="container">
