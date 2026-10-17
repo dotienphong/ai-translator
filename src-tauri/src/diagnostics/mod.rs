@@ -130,6 +130,10 @@ pub const SKIPPED_CODES: &[&str] = &[
     errors::REPORT_FAILED,
     errors::REPORT_RATE_LIMITED,
     errors::REPORT_REJECTED,
+    // Gõ dịch (spec 2026-10-17-go-dich §5): ô soạn tự báo; tiến trình phụ chết vẫn được báo qua `sidecar_died`.
+    errors::COMPOSE_TOO_LONG,
+    errors::COMPOSE_FAILED,
+    errors::COMPOSE_UNAVAILABLE,
 ];
 
 /// Mã lỗi này có gửi báo cáo không.

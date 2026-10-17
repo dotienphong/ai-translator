@@ -117,6 +117,14 @@ pub const REPORT_RATE_LIMITED: &str = "reportRateLimited";
 /// Server từ chối báo cáo, hay app hủy vì còn dữ liệu nhạy cảm sau khi che.
 pub const REPORT_REJECTED: &str = "reportRejected";
 
+// Mã lỗi của Gõ dịch (spec 2026-10-17-go-dich §5). Ô soạn hiện câu báo lỗi; không mã nào gửi báo cáo lỗi.
+/// Chữ gõ quá 4000 ký tự, hay một dòng quá 400 token: tách thành nhiều dòng hay nhiều tin.
+pub const COMPOSE_TOO_LONG: &str = "composeTooLong";
+/// Một dòng dịch hỏng cả hai lần thử: Enter dịch lại, không dán câu gốc.
+pub const COMPOSE_FAILED: &str = "composeFailed";
+/// `llama-server` không dùng được nữa (đã khởi động lại quá giới hạn, §6.5).
+pub const COMPOSE_UNAVAILABLE: &str = "composeUnavailable";
+
 impl CommandError {
     pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
         Self {
@@ -246,6 +254,9 @@ mod tests {
                 REPORT_FAILED,
                 REPORT_RATE_LIMITED,
                 REPORT_REJECTED,
+                COMPOSE_TOO_LONG,
+                COMPOSE_FAILED,
+                COMPOSE_UNAVAILABLE,
             ]
             .map(String::from),
         );
