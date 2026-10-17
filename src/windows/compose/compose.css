@@ -1,0 +1,132 @@
+/* Ô soạn Gõ dịch (spec 2026-10-17-go-dich §1.2): khung bo góc trên cửa sổ trong suốt, màu theo token của app (sáng, tối). Cao
+   theo nội dung: không đặt chiều cao cố định cho `html`, `body`, `.compose` (cửa sổ đổi chiều cao theo khung này). */
+html,
+body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Tiếng Hàn có dấu cách giữa các từ: xuống dòng ở dấu cách, không ngắt giữa âm tiết. */
+:lang(ko) {
+  word-break: keep-all;
+}
+
+.compose {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 0.95rem 0.65rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+.compose header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.compose .status {
+  color: var(--accent-fg);
+  white-space: nowrap;
+}
+
+.compose textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.compose textarea::placeholder {
+  color: var(--faint);
+}
+
+.compose .translation {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+  font-size: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 9.8em;
+  overflow-y: auto;
+  user-select: text;
+}
+
+.compose .translation.stale {
+  color: var(--faint);
+}
+
+.compose footer {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.compose .box {
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+
+.compose .box.error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.compose .box p {
+  margin: 0;
+}
+
+.compose .box .hint {
+  margin-top: 0.25rem;
+  color: var(--muted);
+}
+
+.compose .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.compose button {
+  height: var(--control-h);
+  padding: 0 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.compose button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.compose button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}

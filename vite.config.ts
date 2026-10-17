@@ -2,7 +2,8 @@ import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// Hai cửa sổ, mỗi cửa sổ một entry HTML riêng (spec §6.10).
+// Ba cửa sổ, mỗi cửa sổ một entry HTML riêng (spec §6.10): cửa sổ chính, thanh phụ đề, ô soạn Gõ dịch (spec 2026-10-17-go-dich
+// §3.1).
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
@@ -15,6 +16,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, "index.html"),
         overlay: resolve(import.meta.dirname, "overlay.html"),
+        compose: resolve(import.meta.dirname, "compose.html"),
       },
     },
   },
