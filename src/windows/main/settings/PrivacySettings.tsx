@@ -4,8 +4,9 @@ import { Icon } from "../../../components/Icon";
 import { useApp, useT } from "../appStore";
 import { DeleteModelsAndData } from "./DeleteModelsAndData";
 
-// Nhóm Cài đặt "Quyền riêng tư" (§4.3): bật/tắt lưu lịch sử (Pro, mặc định tắt), và nút xóa toàn bộ dữ liệu (lịch sử và
-// từ điển thuật ngữ), có bước xác nhận. Xóa dữ liệu không đụng tới bản quyền, hạn mức hay cài đặt, và dùng được ở mọi gói.
+// Nhóm Cài đặt "Quyền riêng tư" (§4.3): bật/tắt lưu lịch sử (Pro, mặc định tắt), công tắc gửi báo cáo lỗi tự động (mọi gói; spec
+// 2026-10-17 §5: tắt thì bỏ luôn các báo cáo đang chờ gửi), và nút xóa toàn bộ dữ liệu (lịch sử và từ điển thuật ngữ), có bước
+// xác nhận. Xóa dữ liệu không đụng tới bản quyền, hạn mức hay cài đặt, và dùng được ở mọi gói.
 // Ngay sau là nút "Xóa model và dữ liệu" của kế hoạch 04.
 export function PrivacySettings() {
   const t = useT();
@@ -33,6 +34,21 @@ export function PrivacySettings() {
             disabled={!pro && !settings.saveHistory}
             aria-describedby="save-history-hint"
             onChange={(e) => void update({ saveHistory: e.target.checked })}
+          />
+        </Field>
+        <Field
+          label={t("settings.privacy.errorReports")}
+          htmlFor="error-reports"
+          hint={t("settings.privacy.errorReports.hint")}
+          hintId="error-reports-hint"
+        >
+          <input
+            id="error-reports"
+            className="switch"
+            type="checkbox"
+            checked={settings.sendErrorReports}
+            aria-describedby="error-reports-hint"
+            onChange={(e) => void update({ sendErrorReports: e.target.checked })}
           />
         </Field>
       </div>
