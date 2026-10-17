@@ -10,12 +10,14 @@ yanked = "deny"
 unsound = "all"
 ignore = [
     { id = "RUSTSEC-2024-0436", reason = "paste chỉ là macro lúc biên dịch, do candle (gemm) kéo vào; candle 0.11 chưa bỏ" },
-    # Bản bị rút khỏi crates.io (yanked) từ khi zip 9.0 ra (2026-10), không có bản 8.x nào khác thay: candle-core 0.11.0 (bản mới
-    # nhất) đòi `zip = "^8.6.0"` nên `cargo update -p zip` không chọn được bản nào. zip chỉ vào qua candle-core cho đọc file `.npz`
-    # (numpy); app dùng candle chỉ cho Tensor/Device của VAD (crates/pipeline/src/vad.rs), không mở file zip nào, nên các sửa lỗi của
-    # zip 9.0.x (theo liên kết symlink ở set_permissions, tràn số ở bộ giải nén implode) không chạm tới đường chạy của app. Bỏ dòng này
-    # khi candle nâng lên zip 9 (hay bỏ phụ thuộc zip), rồi chạy lại `cargo deny check`.
-    { crate = "zip@8.6.0", reason = "yanked; candle-core 0.11.0 đòi zip ^8.6.0; app không đọc file zip nào" },
+    # zip 8.6.0 (RUSTSEC-2026-0367, -0368, -0369: giải nén bằng `extract()` giữ bit SUID/SGID, theo liên kết symlink ra ngoài thư mục đích).
+    # zip chỉ vào qua candle-core, bản mới nhất 0.11.0 (2026-06-26) đòi `zip = "^8.6.0"`, nên chưa nâng lên zip 9.0 (bản sửa) được. candle-core
+    # chỉ ĐỌC zip vào bộ nhớ (`ZipArchive::new`, cho file `.npz` và pickle), không gọi `extract()` ở đâu; app dùng candle chỉ cho Tensor/Device của
+    # VAD (crates/pipeline/src/vad.rs), không mở file zip hay `.npz` nào. Cả ba lỗi nằm ở `extract()`, nên không chạm tới đường chạy của app.
+    # Bỏ ba dòng này (và `.cargo/audit.toml`) khi candle nâng lên zip 9 hay bỏ phụ thuộc zip, rồi chạy lại `cargo deny check` và `cargo audit`.
+    { id = "RUSTSEC-2026-0367", reason = "zip 8.6.0 qua candle-core 0.11.0; chỉ lỗi ở extract(), candle và app không gọi" },
+    { id = "RUSTSEC-2026-0368", reason = "zip 8.6.0 qua candle-core 0.11.0; chỉ lỗi ở extract(), candle và app không gọi" },
+    { id = "RUSTSEC-2026-0369", reason = "zip 8.6.0 qua candle-core 0.11.0; chỉ lỗi ở extract(), candle và app không gọi" },
 ]
 
 [licenses]

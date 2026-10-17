@@ -1,0 +1,7 @@
+# Cấu hình `cargo audit` (CI chạy sau `cargo deny check`). Giữ KHỚP với danh sách `ignore` trong `deny.toml`, cùng lý do.
+#
+# zip 8.6.0 (RUSTSEC-2026-0367, -0368, -0369) chỉ vào qua candle-core 0.11.0 (bản mới nhất, đòi `zip ^8.6.0`, nên chưa nâng lên zip 9.0 được).
+# candle-core chỉ đọc zip vào bộ nhớ (`ZipArchive::new`), không gọi `extract()` (nơi cả ba lỗi nằm), và app không mở file zip nào.
+# Bỏ các dòng này khi candle nâng lên zip 9 hay bỏ phụ thuộc zip.
+[advisories]
+ignore = ["RUSTSEC-2026-0367", "RUSTSEC-2026-0368", "RUSTSEC-2026-0369"]
