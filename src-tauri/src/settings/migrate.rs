@@ -33,13 +33,22 @@ pub type Migration = fn(&mut Map<String, Value>);
 
 /// `MIGRATIONS[i]` nâng file từ phiên bản `i` lên `i + 1`.
 /// Thêm bước mới ở cuối; không sửa bước cũ, vì máy người dùng có thể còn file ở mọi phiên bản.
-pub const MIGRATIONS: &[Migration] = &[v0_to_v1];
+pub const MIGRATIONS: &[Migration] = &[v0_to_v1, v1_to_v2];
 
 pub const CURRENT_SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;
 
 /// Bản 1 là bản đầu tiên có số phiên bản, các khóa giữ nguyên tên. Bước này chỉ để file bản 0
 /// (chưa có `schemaVersion`) đi qua cùng một đường với mọi bản sau.
 fn v0_to_v1(_raw: &mut Map<String, Value>) {}
+
+/// Bản 2 thêm `sendErrorReports` (báo cáo lỗi tự động, spec 2026-10-17 §5). Người dùng đã cài từ trước (file có
+/// `onboardingDone = true`) giữ bật, không hỏi và không báo: quyết định của chủ dự án. File của cài mới hay cài dở
+/// (`onboardingDone` chưa `true`, hay file rỗng) không đặt gì: mặc định `false` cho tới khi qua bước Điều khoản.
+fn v1_to_v2(raw: &mut Map<String, Value>) {
+    if raw.get("onboardingDone") == Some(&Value::Bool(true)) {
+        raw.entry("sendErrorReports").or_insert(Value::Bool(true));
+    }
+}
 
 /// Khóa chỉ có lúc chạy, không đọc từ file và không ghi vào file (`Settings::revision`).
 pub const RUNTIME_KEYS: &[&str] = &["revision"];
@@ -320,7 +329,7 @@ mod tests {
         assert_eq!(loaded.settings.theme, Theme::Light);
         assert!(loaded.needs_save());
         let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
-        assert_eq!(entries[SCHEMA_VERSION_KEY], json!(1));
+        assert_eq!(entries[SCHEMA_VERSION_KEY], json!(CURRENT_SCHEMA_VERSION));
     }
 
     /// Mặc định đổi từ 300 xuống 150 rồi 50 ms: người dùng đã lưu 300 thì giữ nguyên, chỉ khóa thiếu hay hỏng mới về 50.
@@ -415,7 +424,7 @@ mod tests {
     /// khóa thiếu không bị coi là khóa hỏng. Giá trị đã lưu được giữ; giá trị sai kiểu thì về mặc định.
     #[test]
     fn an_old_file_without_the_live_switch_keeps_it_off() {
-        let raw = object(json!({ "schemaVersion": 1, "theme": "dark" }));
+        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "theme": "dark" }));
         let loaded = load(raw, defaults());
         assert!(!loaded.settings.translate_while_speaking);
         assert!(loaded.rejected.is_empty());
@@ -555,7 +564,8 @@ mod tests {
         let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
         assert_eq!(entries["hotkeys"]["toggleSession"], json!("Ctrl+Alt+K"));
         // Đã ở dạng chuẩn: không có gì để ghi lại.
-        let raw = object(json!({ "schemaVersion": 1, "hotkeys": { "toggleSession": "Ctrl+Alt+K" } }));
+        let raw =
+            object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "hotkeys": { "toggleSession": "Ctrl+Alt+K" } }));
         let loaded = load(raw, defaults());
         assert!(loaded.normalized.is_empty());
         assert!(!loaded.needs_save());
@@ -574,5 +584,54 @@ mod tests {
         assert!(loaded.meta.preserved.is_empty());
         let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
         assert_eq!(entries["theme"], json!("system"));
+    }
+
+    /// Spec 2026-10-17 §5: người dùng đã cài từ trước (đã xong onboarding) giữ báo cáo lỗi bật mà không hỏi; mọi trường hợp
+    /// khác bắt đầu tắt.
+    #[test]
+    fn existing_users_keep_error_reports_on_and_new_installs_start_off() {
+        let migrated = |raw: Value| load(object(raw), defaults()).settings.send_error_reports;
+        assert!(
+            migrated(json!({ "schemaVersion": 1, "onboardingDone": true })),
+            "file bản 1, đã xong onboarding"
+        );
+        assert!(
+            migrated(json!({ "onboardingDone": true })),
+            "file chưa có schemaVersion (bản 0), đã xong onboarding"
+        );
+        assert!(
+            !migrated(json!({ "schemaVersion": 1, "onboardingDone": false })),
+            "cài dở: chờ bước Điều khoản"
+        );
+        assert!(!migrated(json!({ "schemaVersion": 1 })), "chưa từng xong onboarding");
+        assert!(!migrated(json!({})), "cài mới (không có file)");
+        // Đã ở bản 2 thì bước migrate không chạy lại: người dùng đã tắt thì vẫn tắt.
+        assert!(!migrated(json!({ "schemaVersion": 2, "onboardingDone": true })));
+        assert!(!migrated(
+            json!({ "schemaVersion": 2, "onboardingDone": true, "sendErrorReports": false })
+        ));
+        assert!(migrated(
+            json!({ "schemaVersion": 2, "onboardingDone": true, "sendErrorReports": true })
+        ));
+        // Giá trị người dùng đã có (không thể có ở bản 1 thật, nhưng file sửa tay) không bị ghi đè.
+        assert!(!migrated(
+            json!({ "schemaVersion": 1, "onboardingDone": true, "sendErrorReports": false })
+        ));
+    }
+
+    #[test]
+    fn migrating_an_existing_file_asks_to_save_it_with_the_new_version() {
+        let loaded = load(
+            object(json!({ "schemaVersion": 1, "onboardingDone": true })),
+            defaults(),
+        );
+        assert!(loaded.needs_save(), "file bản 1 phải được ghi lại ở bản 2");
+        let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
+        assert_eq!(entries[SCHEMA_VERSION_KEY], json!(2));
+        assert_eq!(entries["sendErrorReports"], json!(true));
+        // Cài mới: sau lần ghi đầu, khóa là false.
+        let fresh = load(Map::new(), defaults());
+        let entries: Map<String, Value> = to_entries(&fresh.settings, &fresh.meta).into_iter().collect();
+        assert_eq!(entries["sendErrorReports"], json!(false));
     }
 }

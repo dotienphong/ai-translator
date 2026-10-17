@@ -199,6 +199,10 @@ pub struct Settings {
     pub model_tier: Option<String>,
     pub hotkeys: Hotkeys,
     pub save_history: bool,
+    /// Gửi báo cáo lỗi tự động cho nhà phát triển (spec 2026-10-17-diagnostics-reports-design.md §5). Cài mới: `false` cho tới
+    /// khi người dùng qua bước Điều khoản (ô tích sẵn, bỏ tích được); file cài đặt của người dùng đã cài từ trước: bước migrate
+    /// `v1→v2` đặt `true` (quyết định của chủ dự án 2026-10-17). Bản debug vẫn không tự gửi trừ khi bật công tắc dev.
+    pub send_error_reports: bool,
     pub launch_at_login: bool,
     pub theme: Theme,
     pub update_channel: UpdateChannel,
@@ -262,6 +266,7 @@ impl Settings {
                 scroll_down: "Ctrl+Alt+PageDown".into(),
             },
             save_history: false,
+            send_error_reports: false,
             launch_at_login: false,
             theme: Theme::System,
             update_channel: UpdateChannel::Stable,
@@ -400,6 +405,10 @@ mod tests {
         assert_eq!(vi.vad_end_silence_ms, 50);
         assert!(!vi.save_history, "lưu lịch sử mặc định tắt (F4)");
         assert!(
+            !vi.send_error_reports,
+            "báo cáo lỗi tự động: cài mới chưa gửi gì cho tới khi qua bước Điều khoản (spec 2026-10-17 §5)"
+        );
+        assert!(
             !vi.experimental.translation_context,
             "ngữ cảnh câu trước mặc định tắt (§6.5)"
         );
@@ -468,6 +477,7 @@ mod tests {
             "modelTier",
             "hotkeys",
             "saveHistory",
+            "sendErrorReports",
             "launchAtLogin",
             "theme",
             "updateChannel",
