@@ -135,6 +135,36 @@ ngoài danh sách, hay gọi lúc đang dịch mà không phải việc chạy t
 Gặp vi phạm "máy chủ không có trong danh sách cho phép" với máy chủ của app khác: proxy không lọc đúng tiến trình, làm lại
 bước 3, **không** thêm máy chủ đó vào danh sách.
 
+## A7 lần hai: báo cáo lỗi tự động (spec 2026-10-17-diagnostics-reports-design §7)
+
+Chứng minh: **trong lúc dịch, app không gửi báo cáo lỗi** dù có một báo cáo đang xếp hàng; báo cáo chỉ đi tới `api.aitranslator.io.vn` **sau khi
+bấm Dừng**; thân báo cáo không chứa chữ chép lời. Làm như A7 ở trên (cùng bản release ký ad-hoc, cùng `mitmdump`, cùng `nettop`, cùng bước cài
+và gỡ chứng chỉ), khác ở bốn chỗ:
+
+1. **Danh sách cho phép** `a7-allow.json` đã có `POST /v1/diagnostics` với `during_session: false` và `max_body_bytes: 65536` riêng của đường dẫn đó
+   (mọi nơi khác vẫn 4096). Request này rơi vào lúc dịch thì `netaudit.py` báo vi phạm.
+2. **Gây một báo cáo trong lúc đang dịch.** Khoảng 5 phút sau khi bấm Bắt đầu và đang phát âm thanh, giết tiến trình dịch để app tự khởi động lại nó
+   (báo cáo `sidecar_died` được xếp hàng ngay, nhưng chưa được gửi vì app đang dịch):
+   ```bash
+   pkill -9 -x llama-server
+   ls -la "$HOME/Library/Application Support/com.aitranslator.desktop/reports"
+   ```
+   Phải thấy một tệp báo cáo trong thư mục `reports` (chưa gửi). Bản dịch có thể khựng vài giây rồi chạy lại. Đây là báo cáo thật, sẽ tới
+   production: xóa nó ở Web Admin sau khi đo.
+3. **Dừng và đợi báo cáo đi.** Bấm **Dừng**, ghi giờ Dừng, đợi tối đa khoảng 40 giây (10 giây đầu, rồi nhịp 30 giây): thư mục `reports` rỗng
+   và `mitmdump` có thêm một request tới `api.aitranslator.io.vn`. Rồi bấm **Kiểm tra ngay** và xác nhận có thêm một `validate`, **rồi mới** thoát app.
+4. **Kiểm HAR có báo cáo, sau Dừng:**
+   ```bash
+   python3 - <<'PY'
+   import json, os
+   h = json.load(open(os.path.expanduser("~/a7.har")))
+   for e in h["log"]["entries"]:
+       if e["request"]["url"].endswith("/v1/diagnostics"):
+           print(e["startedDateTime"], e["request"]["method"], e["response"]["status"], e["request"]["bodySize"])
+   PY
+   ```
+   Phải có **đúng một** dòng, `POST`, trạng thái `202`, giờ **sau** giờ Dừng. Rồi chạy `netaudit.py` như bước 8 của A7: `A7: ĐẠT`, không `VI PHẠM`.
+
 ## Ghi chú từ lượt dry-run A5 và A7 trên bản dev (2026-10-06)
 
 Lượt chạy rút gọn (A5 10 phút, A7 dịch 8 phút) để thử công cụ; không tính là nghiệm thu. Kết quả: `bench/phase1/results/acceptance/a5a7-dryrun-2026-10-06.md`.

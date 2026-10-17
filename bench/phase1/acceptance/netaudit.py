@@ -9,7 +9,8 @@ Luật:
   `during_session: true`. Mốc Dừng phải sau mốc Bắt đầu, và cả cửa sổ phải nằm giữa request đầu và request cuối của nhật ký
   (08b bấm "Kiểm tra ngay" trước Bắt đầu và sau Dừng): mốc đảo hay sai múi giờ thì lỗi, không lặng lẽ tắt luật (Q3 của
   review 08 lần 2).
-- Không request nào có thân lớn hơn `max_body_bytes`, hay có kiểu `audio/*`, `multipart/*`, `application/octet-stream`.
+- Không request nào có thân lớn hơn `max_body_bytes` (giới hạn chung; một đường dẫn có thể ghi `max_body_bytes` riêng trong luật của nó),
+  hay có kiểu `audio/*`, `multipart/*`, `application/octet-stream`.
 - Không URL hay thân request nào chứa một "từ mồi" (`canaries`): cụm từ có trong câu đã phát vào app lúc thử. So sau khi
   chuẩn hóa NFC và đổi chữ thường.
 - Phải có ít nhất một request ra ngoài, để chứng minh proxy thật sự thấy lưu lượng của app. Nhật ký phải chỉ có lưu lượng
@@ -128,8 +129,11 @@ def audit(har, allow, start=None, stop=None, sessions=None):
         post = req.get("postData") or {}
         body = post.get("text") or ""
         size = max(req.get("bodySize") or 0, len(body.encode("utf-8")))
-        if size > limit:
-            reasons.append(f"thân request {size} byte, quá {limit}")
+        # Một đường dẫn có thể nâng giới hạn thân của riêng nó (`max_body_bytes` trong luật; báo cáo lỗi `POST /v1/diagnostics` có thân tới
+        # 64 KB); mọi nơi khác theo giới hạn chung. Từ mồi vẫn được quét trong cả thân dài đó.
+        body_limit = rule.get("max_body_bytes", limit) if rule else limit
+        if size > body_limit:
+            reasons.append(f"thân request {size} byte, quá {body_limit}")
         mime = (post.get("mimeType") or "").lower()
         if mime.startswith(BAD_TYPES):
             reasons.append(f"kiểu {mime}")

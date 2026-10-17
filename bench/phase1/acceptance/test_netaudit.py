@@ -148,6 +148,24 @@ class Audit(unittest.TestCase):
         self.assertFalse(audit(har(entry("https://license.example/v1/other")), allow, START, STOP)["pass"])
 
 
+    def test_a_rule_may_raise_the_body_limit_for_its_own_path_only(self):
+        """Báo cáo lỗi (POST /v1/diagnostics) có thân tới 64 KB: giới hạn riêng của đường dẫn đó, mọi nơi khác vẫn theo giới hạn chung.
+        Từ mồi vẫn được quét trong thân dài đó."""
+        allow = {"hosts": {"license.example": [{"path": "/v1/diagnostics", "during_session": False, "max_body_bytes": 65536},
+                                               {"path": "/v1/plans", "during_session": True},
+                                               {"path": "/v1/licenses/validate", "during_session": True}]},
+                 "max_body_bytes": 256, "canaries": ["plotting analysis"]}
+        report = entry("https://license.example/v1/diagnostics", at="2026-10-03T11:30:00+07:00", method="POST", body="a" * 5000)
+        self.assertTrue(audit(har(report), allow, START, STOP)["pass"])
+        too_big = entry("https://license.example/v1/diagnostics", at="2026-10-03T11:30:00+07:00", method="POST", body="a" * 65537)
+        other = entry("https://license.example/v1/plans", method="POST", body="a" * 257)
+        leak = entry("https://license.example/v1/diagnostics", at="2026-10-03T11:31:00+07:00", method="POST",
+                     body="a" * 5000 + " the plotting analysis")
+        out = audit(har(too_big, other, leak), allow, START, STOP)
+        self.assertEqual([v["reason"] for v in out["violations"]],
+                         ["thân request 65537 byte, quá 65536", "thân request 257 byte, quá 256", "có từ mồi 'plotting analysis'"])
+
+
 class Command(unittest.TestCase):
     def test_the_command_needs_a_timezone_and_records_the_log_and_the_machine(self):
         """Mốc không múi giờ là lỗi; kết quả ghi mã băm nhật ký và nơi chạy (Q1, Q3 của review 08 lần 2)."""
