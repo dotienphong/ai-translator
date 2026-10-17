@@ -108,6 +108,15 @@ pub const MODELS_DISK: &str = "modelsDisk";
 /// Máy chưa được hỗ trợ (§8: RAM dưới mức tối thiểu, CPU x64 không có AVX2): không cho tải model. `field` là lý do.
 pub const MODELS_UNSUPPORTED: &str = "modelsUnsupported";
 
+// Mã lỗi của báo cáo lỗi (spec 2026-10-17-diagnostics-reports-design.md §5). Chỉ nút "Gửi log cho hỗ trợ" hiện chúng; báo cáo tự
+// động không bao giờ báo lỗi cho người dùng.
+/// Không gửi được báo cáo: mạng hỏng, server lỗi tạm, hay chưa đọc được thông tin máy.
+pub const REPORT_FAILED: &str = "reportFailed";
+/// Server bảo gửi chậm lại (`429`): người dùng vừa gửi nhiều báo cáo.
+pub const REPORT_RATE_LIMITED: &str = "reportRateLimited";
+/// Server từ chối báo cáo, hay app hủy vì còn dữ liệu nhạy cảm sau khi che.
+pub const REPORT_REJECTED: &str = "reportRejected";
+
 impl CommandError {
     pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
         Self {
@@ -234,6 +243,9 @@ mod tests {
                 MODELS_CHECKSUM,
                 MODELS_DISK,
                 MODELS_UNSUPPORTED,
+                REPORT_FAILED,
+                REPORT_RATE_LIMITED,
+                REPORT_REJECTED,
             ]
             .map(String::from),
         );
