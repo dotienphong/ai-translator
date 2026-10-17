@@ -68,7 +68,7 @@ const GROUPS = [
       },
       {
         q: "Which direction does it translate? Does it translate my own voice?",
-        a: `<p>One direction: from the audio playing on your computer into your language. The app does not yet translate your voice to play into the meeting. If both sides install the app, each side sees the other's subtitles.</p>`,
+        a: `<p>Subtitles go one direction: from the audio playing on your computer into your language. The app does not yet translate your voice to play into the meeting. To reply in writing, use <a href="/en/guide/type-and-translate/">Type &amp; Translate</a>: type a message in your own language and the app pastes the translation into the chat box. If both sides install the app, each side sees the other's subtitles.</p>`,
       },
       {
         q: "Are the translations accurate?",
@@ -144,7 +144,7 @@ const GROUPS = [
       },
       {
         q: "What permissions does it need on macOS?",
-        a: `<p>Only System Audio Recording permission; AI Translator does not use the microphone. macOS asks the first time you press Start. If you decline, macOS shows no error and the app simply receives silence; the app will prompt you to turn it back on. See the <a href="/en/guide/macos-audio-permission/">audio permission guide</a>. Windows needs no audio-recording permission.</p>`,
+        a: `<p>For subtitles, only System Audio Recording permission; AI Translator does not use the microphone. macOS asks the first time you press Start. If you decline, macOS shows no error and the app simply receives silence; the app will prompt you to turn it back on. See the <a href="/en/guide/macos-audio-permission/">audio permission guide</a>. Type &amp; Translate can also ask for the Accessibility permission, only to paste the translation into the chat box for you; without it, the app copies the translation for you to paste (see <a href="/en/guide/type-and-translate/#accessibility">Type &amp; Translate</a>). Windows needs neither permission.</p>`,
       },
       {
         q: "How do I uninstall AI Translator?",
@@ -162,7 +162,7 @@ const GROUPS = [
       },
       {
         q: "How is translation time counted?",
-        a: `<p>Only speech that has been translated is counted, by the length of the speech. Silence, sentences already in the language you want to read, and segments that could not be translated are not counted. The quota is per device, and the app warns you when less than 5 minutes remain.</p>`,
+        a: `<p>Only speech that has been translated is counted, by the length of the speech. Silence, sentences already in the language you want to read, and segments that could not be translated are not counted. The quota is per device, and the app warns you when less than 5 minutes remain. Messages translated with Type &amp; Translate are not counted.</p>`,
       },
       {
         q: "How do I pay? Can I pay by international card?",
@@ -196,7 +196,11 @@ const GROUPS = [
       },
       {
         q: "What are the default shortcuts?",
-        a: `<p>On macOS: ⌃⌥T starts or stops translating, ⌃⌥H shows or hides subtitles, ⌃⌥L locks or unlocks them, and ⌃⌥PageUp and ⌃⌥PageDown scroll to older and newer sentences (⌃ is Control, ⌥ is Option). On Windows it is Ctrl+Alt with T, H, L, PageUp and PageDown. You can change them under Settings › Shortcuts, so if one clashes with another app, just change it.</p>`,
+        a: `<p>On macOS: ⌃⌥T starts or stops translating, ⌃⌥H shows or hides subtitles, ⌃⌥L locks or unlocks them, and ⌃⌥PageUp and ⌃⌥PageDown scroll to older and newer sentences (⌃ is Control, ⌥ is Option). On Windows it is Ctrl+Alt with T, H, L, PageUp and PageDown. ⌃⌥G (Ctrl+Alt+G) opens the Type &amp; Translate box. You can change them under Settings › Shortcuts, so if one clashes with another app, just change it.</p>`,
+      },
+      {
+        q: "What is Type & Translate? Is the text I type sent anywhere?",
+        a: `<p>Type &amp; Translate lets you message people in their language from any chat box: press ⌃⌥G (Ctrl+Alt+G), type in your own language, press Enter to paste the translation into the chat box, then press Enter again to send. What you type and its translation are processed on your computer, not sent over the network and not written to disk; the app only copies the translation to the clipboard to paste it. Type &amp; Translate is included in every active plan and does not use translation time. See the <a href="/en/guide/type-and-translate/">Type &amp; Translate guide</a>.</p>`,
       },
       {
         q: "Does closing the window quit the app?",

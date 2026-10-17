@@ -49,7 +49,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Grant system audio recording permission on macOS",
-  lead: "AI Translator needs exactly one macOS permission: System Audio Recording, so it can hear the audio your Mac is playing. It does not use the microphone. If you refused it by mistake, turn it back on in System Settings › Privacy & Security › Screen & System Audio Recording.",
+  lead: "For subtitles, AI Translator needs exactly one macOS permission: System Audio Recording, so it can hear the audio your Mac is playing. It does not use the microphone. If you refused it by mistake, turn it back on in System Settings › Privacy & Security › Screen & System Audio Recording.",
   meta: "<span>macOS 14.2 or later only</span> <span>Updated {{updated}}</span>",
 })}
 

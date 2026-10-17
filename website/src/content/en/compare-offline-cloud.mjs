@@ -26,7 +26,7 @@ export const COMPARE_FAQ = [
   },
   {
     q: "Can offline translation translate my voice for the other people?",
-    a: "<p>Not yet. AI Translator works one way, from the audio playing on your computer into your language; it does not translate your voice for others to hear.</p>",
+    a: "<p>Not yet. AI Translator subtitles work one way, from the audio playing on your computer into your language; it does not translate your voice for others to hear. To reply in writing, use <a href=\"/en/guide/type-and-translate/\">Type &amp; Translate</a>: you type in your own language and the app pastes the translation into the chat box, also on your computer.</p>",
   },
 ];
 

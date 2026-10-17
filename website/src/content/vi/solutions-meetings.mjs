@@ -30,7 +30,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["Dùng với", "Zoom, Microsoft Teams, Google Meet, Zalo PC<small>Không bot, không plugin; app nào phát tiếng ra máy cũng thu được</small>"],
-  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Một chiều, sang ngôn ngữ bạn chọn</small>"],
+  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Phụ đề một chiều, sang ngôn ngữ bạn chọn</small>"],
   ["Độ trễ", "Trung vị 0,76–1,03 giây<small>Mac M4 Pro, gói model Chuẩn; máy yếu hơn sẽ chậm hơn</small>"],
   ["Nền tảng", "macOS 14.2+ (Apple Silicon) và Windows 10/11 x64<small>Bản Windows chưa ký mã nên SmartScreen có thể cảnh báo khi cài</small>"],
 ])}</div>

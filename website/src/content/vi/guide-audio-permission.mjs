@@ -49,7 +49,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Cấp quyền ghi âm thanh hệ thống trên macOS",
-  lead: "AI Translator cần đúng một quyền trên macOS: Ghi âm thanh hệ thống (System Audio Recording), để nghe âm thanh mà máy Mac đang phát. App không dùng micro. Nếu bạn lỡ từ chối, hãy bật lại ở System Settings › Privacy & Security › Screen & System Audio Recording.",
+  lead: "Để dịch phụ đề, AI Translator cần đúng một quyền trên macOS: Ghi âm thanh hệ thống (System Audio Recording), để nghe âm thanh mà máy Mac đang phát. App không dùng micro. Nếu bạn lỡ từ chối, hãy bật lại ở System Settings › Privacy & Security › Screen & System Audio Recording.",
   meta: "<span>Chỉ áp dụng cho macOS 14.2 trở lên</span> <span>Cập nhật {{updated}}</span>",
 })}
 

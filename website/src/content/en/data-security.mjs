@@ -50,26 +50,28 @@ ${facts([
   ["AI processing", "Speech recognition and translation use AI models running on your computer; no cloud AI"],
   ["Conversation data", "Only on your computer; our server has none"],
   ["Audio", "Only in RAM, never written to disk, never sent out"],
-  ["Network", "Five places; none of them receives audio or transcripts"],
+  ["Network", "Five places; none of them receives audio, transcripts or the text you type"],
   ["Servers store", "Email (when you buy), orders, licenses, hashed machine ID, error reports"],
   ["Kept for", "Until you ask us to delete it; error reports 30 days"],
   ["Checked", "Proxy and nettop on macOS; Windows not measured yet"],
   ["Code signing", "macOS ad-hoc signed, not notarized; Windows not signed"],
 ])}
 <h2 id="on-device">What data stays on your computer?</h2>
-<p>Audio, transcripts and translations never leave your computer. The app also has no sign-in, no ads and no analytics. When it hits an error, it sends us an error report with personal data scrubbed out (see <a href="#error-reports">Error reports</a>); that report contains no audio, no transcript text and no translation.</p>
+<p>Audio, transcripts, translations and the text you type in Type &amp; Translate never leave your computer. The app also has no sign-in, no ads and no analytics. When it hits an error, it sends us an error report with personal data scrubbed out (see <a href="#error-reports">Error reports</a>); that report contains no audio, no transcript text and no translation.</p>
 <div class="table-wrap" role="region" aria-label="Data that stays on your computer" tabindex="0"><table>
 <thead><tr><th scope="col">Data</th><th scope="col">How it is handled</th></tr></thead>
 <tbody>
 <tr><th scope="row">System audio being captured</th><td>Only in RAM while translating. Never written to disk, never sent over the network. AI Translator does not record meetings to a file either.</td></tr>
 <tr><th scope="row">Transcript and translation</th><td>Shown on screen and held in memory for the session. History is off by default; if you turn it on (a Pro feature), it is stored on your computer, encrypted.</td></tr>
+<tr><th scope="row">Text you type in Type &amp; Translate and its translation</th><td>Held only in the app's memory until you paste it or quit the app. Not written to disk, not sent over the network, not in logs or error reports. The translation is copied to the clipboard to paste it and stays there until you copy something else.</td></tr>
 <tr><th scope="row">Keys, tokens, quota counters</th><td>The history encryption key, license token, trial token and quota counters live in Keychain (macOS) or Credential Manager (Windows).</td></tr>
 <tr><th scope="row">Logs</th><td>Stored on your computer and free of transcript content. Only the part of a log that relates to an error leaves your computer, inside an error report with personal data scrubbed out (see <a href="#error-reports">Error reports</a>).</td></tr>
 <tr><th scope="row">Glossary, settings, models</th><td>Stored on your computer. Models are downloaded once and run entirely on your computer.</td></tr>
 </tbody></table></div>
+<p>On macOS, Type &amp; Translate asks for the Accessibility permission only to send the ⌘V paste keys to the chat box you are typing in. The app does not read text, content or the clipboard of other apps; without the permission it only copies the translation for you to paste (see <a href="/en/guide/type-and-translate/#accessibility">Type &amp; Translate</a>).</p>
 
 <h2 id="network">Where does the app connect?</h2>
-<p>To exactly five places, and none of them receives audio or transcript content. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due). Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.io.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
+<p>To exactly five places, and none of them receives audio, transcript content or the text you type. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due). Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.io.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
 <div class="table-wrap" role="region" aria-label="Places the app connects to" tabindex="0"><table>
 <thead><tr><th scope="col">Connects to</th><th scope="col">What for</th><th scope="col">What is sent</th></tr></thead>
 <tbody>
@@ -113,7 +115,7 @@ ${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on 
 <tbody>
 <tr><th scope="row">When the app sends one</th><td>When the previous run ended abruptly; when a translation session stops because of an error in the app (not errors caused by you or your environment, such as a missing recording permission, a used-up quota or no network); when one of the app's helper programs dies and restarts. Only while the app is not translating, at most 5 reports a day per machine.</td></tr>
 <tr><th scope="row">A report contains</th><td>The report code, the type and code of the error; the app version, operating system, chip or CPU, RAM, type of GPU, model pack, the name of your license plan (never the key), the interface language; the hashed machine ID; and the part of the log that relates to the error, at most 64 KB.</td></tr>
-<tr><th scope="row">A report does not contain</th><td>Audio, transcripts, translations, license keys, tokens, email addresses, the computer name, the operating-system user name, IP addresses. The app scrubs personal folder paths, keys, tokens and email addresses from the log before sending; our server checks again and rejects a report if anything is left.</td></tr>
+<tr><th scope="row">A report does not contain</th><td>Audio, transcripts, translations, text typed in Type &amp; Translate, license keys, tokens, email addresses, the computer name, the operating-system user name, IP addresses. The app scrubs personal folder paths, keys, tokens and email addresses from the log before sending; our server checks again and rejects a report if anything is left.</td></tr>
 <tr><th scope="row">How it is tied to you</th><td>The hashed machine ID in the report is the same one we store for licensing and the Free trial, so we can link a report to that machine's license and email when handling a support request.</td></tr>
 <tr><th scope="row">How long it is kept</th><td>At most 30 days, then deleted automatically (the server keeps at most 3,000 reports). A deletion request by email also deletes the reports of the machines that ever activated a key for that email.</td></tr>
 </tbody></table></div>

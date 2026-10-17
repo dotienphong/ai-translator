@@ -12,6 +12,7 @@ const toc = [
   { level: 2, id: "cham-hoac-dung", text: "Phụ đề chậm, thiếu hoặc dừng" },
   { level: 2, id: "model-macos", text: "Model, cài đặt, macOS và Windows" },
   { level: 2, id: "ban-quyen", text: "Bản quyền, hạn mức, dùng thử" },
+  { level: 2, id: "go-dich", text: "Gõ dịch" },
   { level: 2, id: "gui-log", text: "Gửi log và báo lỗi" },
   { level: 2, id: "hoi-nhanh", text: "Hỏi nhanh" },
 ];
@@ -94,6 +95,14 @@ ${docLayout({
 <div class="card"><span class="card-title">“Cần kết nối mạng một lần để bắt đầu dùng thử” hoặc “Đã 14 ngày chưa kiểm được gói nên đang dùng Free. Hãy kết nối mạng.”</span><p><strong>Nguyên nhân:</strong> Máy chưa đăng ký dùng thử được vì chưa có mạng, hoặc gói trả phí quá 14 ngày chưa kiểm tra bản quyền.</p><p><strong>Cách xử lý:</strong> Kết nối mạng. Nếu máy chưa đăng ký dùng thử, bấm <strong>Bắt đầu</strong> lại để app đăng ký. Với gói trả phí, bấm <strong>Kiểm tra ngay</strong> ở Cài đặt › Bản quyền.</p></div>
 <div class="card"><span class="card-title">“Giờ của máy có vẻ không đúng. Chỉnh lại giờ rồi thử lại.” hoặc “Giờ máy đã bị chỉnh lùi…”</span><p><strong>Nguyên nhân:</strong> Đồng hồ máy bị chỉnh lùi.</p><p><strong>Cách xử lý:</strong> Đặt lại giờ đúng (nên bật đặt giờ tự động), kết nối mạng để app kiểm lại.</p></div>
 <div class="card"><span class="card-title">“Key này không đúng…”; “Key này đang bị khóa tạm vì đổi máy quá nhiều lần…”; “Bản cài AI Translator này không chính hãng…”</span><p><strong>Nguyên nhân:</strong> Gõ sai key; đổi máy quá nhiều; hoặc bản cài không phải bản chính thức.</p><p><strong>Cách xử lý:</strong> Dán lại key từ email; liên hệ hỗ trợ nếu key bị khóa; tải lại bản cài chính thức từ liên kết do chúng tôi gửi hoặc từ aitranslator.io.vn.</p></div>
+</div>
+
+<h2 id="go-dich">Gõ dịch</h2>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">Bấm ⌃⌥G (Ctrl+Alt+G) mà ô soạn không hiện</span><p><strong>Nguyên nhân:</strong> Gõ dịch đang tắt, hoặc phím tắt bị app khác giữ.</p><p><strong>Cách xử lý:</strong> Bật ở Cài đặt › Gõ dịch. Trên Windows, Cài đặt › Phím tắt báo phím chưa đăng ký được thì đổi sang phím khác; trên macOS, nếu app khác cũng dùng ⌃⌥G thì đổi phím của một bên.</p></div>
+<div class="card"><span class="card-title">“Đã chép bản dịch. Muốn app tự dán, hãy cấp quyền Trợ năng cho AI Translator.”</span><p><strong>Nguyên nhân:</strong> macOS chưa cho AI Translator quyền Trợ năng, hoặc quyền mất sau khi cập nhật app.</p><p><strong>Cách xử lý:</strong> Bấm ⌘V ở ô chat để dán lần này. Muốn app tự dán, bấm <strong>Bật tự dán</strong> rồi bật AI Translator trong Trợ năng; đã bật mà vẫn báo thì xóa app khỏi danh sách rồi thêm lại. Xem <a href="/huong-dan/go-dich/#quyen-tro-nang">Gõ dịch</a>.</p></div>
+<div class="card"><span class="card-title">Bấm Enter mà bản dịch không vào ô chat</span><p><strong>Nguyên nhân:</strong> Ô đó không nhận dán tự động (ô mật khẩu, app chạy với quyền quản trị trên Windows, app chặn dán), hoặc cửa sổ chat không về phía trước kịp.</p><p><strong>Cách xử lý:</strong> Bản dịch vẫn nằm trong clipboard: bấm vào ô chat rồi dán bằng ⌘V hay Ctrl+V.</p></div>
+<div class="card"><span class="card-title">“Một dòng quá dài để dịch. Hãy tách thành nhiều dòng hay nhiều tin.”</span><p><strong>Nguyên nhân:</strong> Một dòng của tin nhắn quá dài để dịch một lần (cả tin tối đa 4000 ký tự).</p><p><strong>Cách xử lý:</strong> Bấm Shift+Enter để xuống dòng ở chỗ hợp lý, hoặc tách thành nhiều tin.</p></div>
 </div>
 
 <h2 id="gui-log">Gửi log và báo lỗi cho hỗ trợ</h2>

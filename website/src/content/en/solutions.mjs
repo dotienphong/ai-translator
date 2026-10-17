@@ -62,7 +62,7 @@ ${sectionHead({ eyebrow: "Quick pick", title: "Which situation, which setup?" })
 <section class="section section-alt" id="not-a-fit"><div class="container narrow">
 ${sectionHead({ eyebrow: "Honest limits", title: "When AI Translator is not the right fit", text: "Knowing the limits up front saves you a trial that goes nowhere." })}
 ${checkList([
-  "<strong>You need the other people to hear your translated voice.</strong> AI Translator translates one way only, from the audio playing on your computer into your language. It does not translate your voice and play it into the meeting.",
+  "<strong>You need the other people to hear your translated voice.</strong> AI Translator subtitles go one way only, from the audio playing on your computer into your language. It does not translate your voice and play it into the meeting; for written replies you can use <a href=\"/en/guide/type-and-translate/\">Type &amp; Translate</a>.",
   "<strong>You need to record the meeting.</strong> The app does not record audio to disk. It keeps a text transcript only, and saving history is a Pro feature that is off by default.",
   "<strong>You need automatic minutes, summaries or speaker labels.</strong> Not available.",
   "<strong>You use an Intel Mac, Windows ARM64, or a Windows PC whose CPU lacks AVX2.</strong> AI Translator runs on macOS 14.2 or later on Apple Silicon and on Windows 10/11 64-bit (x64) with a CPU that supports AVX2.",

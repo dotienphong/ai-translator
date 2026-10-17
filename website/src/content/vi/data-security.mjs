@@ -50,26 +50,28 @@ ${facts([
   ["Xử lý AI", "Nhận dạng và dịch bằng model AI chạy trên máy bạn; không dùng AI trên cloud"],
   ["Dữ liệu cuộc hội thoại", "Chỉ ở trên máy bạn; máy chủ của chúng tôi không có"],
   ["Âm thanh", "Chỉ nằm trong RAM, không ghi đĩa, không gửi đi"],
-  ["Kết nối mạng", "Năm nơi; không nơi nào nhận âm thanh hay chữ chép lời"],
+  ["Kết nối mạng", "Năm nơi; không nơi nào nhận âm thanh, chữ chép lời hay chữ bạn gõ"],
   ["Máy chủ lưu", "Email (khi mua), đơn hàng, license, mã băm ID máy, báo cáo lỗi"],
   ["Giữ bao lâu", "Cho tới khi bạn yêu cầu xóa; báo cáo lỗi 30 ngày"],
   ["Đã kiểm", "Proxy và nettop trên macOS; Windows chưa đo"],
   ["Ký số", "macOS ký ad-hoc, chưa notarize; Windows chưa ký"],
 ])}
 <h2 id="tren-may">Dữ liệu nào ở lại trên máy bạn?</h2>
-<p>Âm thanh, bản chép lời và bản dịch không bao giờ rời khỏi máy. App cũng không có tài khoản đăng nhập, không quảng cáo và không analytics. Khi gặp lỗi, app gửi một báo cáo lỗi đã che dữ liệu cá nhân cho chúng tôi (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>); báo cáo đó không có âm thanh, chữ chép lời hay bản dịch.</p>
+<p>Âm thanh, bản chép lời, bản dịch và chữ bạn gõ ở Gõ dịch không bao giờ rời khỏi máy. App cũng không có tài khoản đăng nhập, không quảng cáo và không analytics. Khi gặp lỗi, app gửi một báo cáo lỗi đã che dữ liệu cá nhân cho chúng tôi (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>); báo cáo đó không có âm thanh, chữ chép lời hay bản dịch.</p>
 <div class="table-wrap" role="region" aria-label="Dữ liệu ở lại trên máy bạn" tabindex="0"><table>
 <thead><tr><th scope="col">Dữ liệu</th><th scope="col">Cách xử lý</th></tr></thead>
 <tbody>
 <tr><th scope="row">Âm thanh hệ thống đang thu</th><td>Chỉ nằm trong RAM khi dịch. Không ghi đĩa, không gửi qua mạng. AI Translator cũng không ghi âm cuộc họp thành file.</td></tr>
 <tr><th scope="row">Bản chép lời và bản dịch</th><td>Hiện trên màn hình và nằm trong bộ nhớ theo phiên. Lịch sử mặc định tắt; nếu bạn bật (tính năng Pro), lịch sử lưu trên máy, được mã hóa.</td></tr>
+<tr><th scope="row">Chữ bạn gõ ở Gõ dịch và bản dịch của nó</th><td>Chỉ nằm trong bộ nhớ của app tới khi bạn dán hay thoát app. Không ghi đĩa, không gửi qua mạng, không có trong log hay báo cáo lỗi. Bản dịch được chép vào clipboard để dán và ở lại đó tới khi bạn chép thứ khác.</td></tr>
 <tr><th scope="row">Khóa, token, bộ đếm hạn mức</th><td>Khóa mã hóa lịch sử, token bản quyền, token dùng thử và bộ đếm hạn mức nằm trong Keychain (macOS) hoặc Credential Manager (Windows).</td></tr>
 <tr><th scope="row">Log</th><td>Nằm trên máy bạn, không chứa nội dung chép lời. Chỉ phần log liên quan đến một lỗi rời máy, trong báo cáo lỗi đã che dữ liệu cá nhân (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>).</td></tr>
 <tr><th scope="row">Từ điển, cài đặt, model</th><td>Lưu trên máy bạn. Model tải một lần rồi chạy hoàn toàn trên máy.</td></tr>
 </tbody></table></div>
+<p>Trên macOS, Gõ dịch xin quyền Trợ năng (Accessibility) chỉ để gửi tổ hợp dán ⌘V vào ô chat bạn đang gõ. App không đọc chữ, nội dung hay clipboard của app khác; không cấp quyền thì app chỉ chép bản dịch để bạn tự dán (xem <a href="/huong-dan/go-dich/#quyen-tro-nang">Gõ dịch</a>).</p>
 
 <h2 id="ket-noi-mang">App kết nối mạng tới đâu?</h2>
-<p>Đúng năm nơi, và không nơi nào nhận âm thanh hay nội dung chép lời. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn). Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.io.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
+<p>Đúng năm nơi, và không nơi nào nhận âm thanh, nội dung chép lời hay chữ bạn gõ. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn). Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.io.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
 <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
 <thead><tr><th scope="col">Nơi kết nối</th><th scope="col">Để làm gì</th><th scope="col">Gửi đi gì</th></tr></thead>
 <tbody>
@@ -113,7 +115,7 @@ ${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đ
 <tbody>
 <tr><th scope="row">Khi nào app gửi</th><td>Khi lần chạy trước bị dừng đột ngột; khi một phiên dịch dừng vì lỗi của app (không tính lỗi do bạn hay môi trường như thiếu quyền ghi âm, hết hạn mức, mất mạng); khi một công cụ phụ của app chết rồi tự khởi động lại. Chỉ gửi khi app không đang dịch, tối đa 5 báo cáo mỗi ngày mỗi máy.</td></tr>
 <tr><th scope="row">Báo cáo gồm</th><td>Mã báo cáo, loại và mã lỗi; phiên bản app, hệ điều hành, chip hoặc CPU, RAM, loại GPU, gói model, tên gói bản quyền (không có key), ngôn ngữ giao diện; mã băm ID máy; phần log liên quan đến lỗi, tối đa 64 KB.</td></tr>
-<tr><th scope="row">Báo cáo không gồm</th><td>Âm thanh, bản chép lời, bản dịch, license key, token, email, tên máy, tên tài khoản hệ điều hành, địa chỉ IP. App che đường dẫn thư mục cá nhân, key, token và email trong log trước khi gửi; máy chủ kiểm lại và từ chối báo cáo nếu còn sót.</td></tr>
+<tr><th scope="row">Báo cáo không gồm</th><td>Âm thanh, bản chép lời, bản dịch, chữ bạn gõ ở Gõ dịch, license key, token, email, tên máy, tên tài khoản hệ điều hành, địa chỉ IP. App che đường dẫn thư mục cá nhân, key, token và email trong log trước khi gửi; máy chủ kiểm lại và từ chối báo cáo nếu còn sót.</td></tr>
 <tr><th scope="row">Gắn với bạn thế nào</th><td>Mã băm ID máy trong báo cáo cũng là mã chúng tôi lưu cho bản quyền và dùng thử Free, nên chúng tôi có thể nối báo cáo với license và email của máy đó khi tra cứu hỗ trợ.</td></tr>
 <tr><th scope="row">Giữ bao lâu</th><td>Tối đa 30 ngày rồi tự xóa (máy chủ giữ tối đa 3.000 báo cáo). Yêu cầu xóa theo email xóa luôn báo cáo của các máy từng kích hoạt key của email đó.</td></tr>
 </tbody></table></div>

@@ -26,7 +26,7 @@ export const COMPARE_FAQ = [
   },
   {
     q: "Dịch offline có dịch giọng của tôi cho người khác nghe không?",
-    a: "<p>Chưa. AI Translator dịch một chiều, từ âm thanh phát trên máy sang ngôn ngữ của bạn; chưa dịch giọng bạn cho người khác nghe.</p>",
+    a: "<p>Chưa. Phụ đề của AI Translator dịch một chiều, từ âm thanh phát trên máy sang ngôn ngữ của bạn; chưa dịch giọng bạn cho người khác nghe. Muốn trả lời bằng chữ, bạn dùng <a href=\"/huong-dan/go-dich/\">Gõ dịch</a>: gõ bằng tiếng của bạn, app dán bản dịch vào ô chat, cũng chạy trên máy.</p>",
   },
 ];
 

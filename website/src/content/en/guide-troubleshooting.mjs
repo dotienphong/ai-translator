@@ -12,6 +12,7 @@ const toc = [
   { level: 2, id: "slow-or-stopped", text: "Subtitles late, missing or stopped" },
   { level: 2, id: "models-macos", text: "Models, install, macOS and Windows" },
   { level: 2, id: "license-quota", text: "License, quota and trial" },
+  { level: 2, id: "type-and-translate", text: "Type & Translate" },
   { level: 2, id: "send-logs", text: "Send logs and report a problem" },
   { level: 2, id: "quick-answers", text: "Quick answers" },
 ];
@@ -94,6 +95,14 @@ ${docLayout({
 <div class="card"><span class="card-title">“This key is in use on 2 computers, so it is locked…”</span><p><strong>Cause:</strong> The key is held by two computers.</p><p><strong>Fix:</strong> Remove the key from one computer, then click <strong>Try again</strong>: see <a href="/en/guide/buy-and-activate/#switch-computers">how to switch computers</a>.</p></div>
 <div class="card"><span class="card-title">“The computer clock looks wrong. Set the correct time, then try again.” or “This computer’s clock was moved back…”</span><p><strong>Cause:</strong> The system clock was set backwards.</p><p><strong>Fix:</strong> Set the correct time (preferably automatic) and connect to the internet so the app can check it.</p></div>
 <div class="card"><span class="card-title">“This key is not valid…”; “This key is temporarily locked because computers were changed too often…”; “This copy of AI Translator is not genuine…”</span><p><strong>Cause:</strong> A mistyped key; too many computer changes; or an installer that is not the official one.</p><p><strong>Fix:</strong> Paste the key from your email again; contact support if the key is locked; download the official build again from the link we sent you or from aitranslator.io.vn.</p></div>
+</div>
+
+<h2 id="type-and-translate">Type &amp; Translate</h2>
+<div class="grid grid-2">
+<div class="card"><span class="card-title">Pressing ⌃⌥G (Ctrl+Alt+G) does not open the compose box</span><p><strong>Cause:</strong> Type &amp; Translate is turned off, or another app holds the shortcut.</p><p><strong>Fix:</strong> Turn it on in Settings › Type &amp; Translate. On Windows, if Settings › Shortcuts says the shortcut is not registered, choose another one; on macOS, if another app also uses ⌃⌥G, change the shortcut of one of them.</p></div>
+<div class="card"><span class="card-title">“Translation copied. To let AI Translator paste it for you, allow it in Accessibility.”</span><p><strong>Cause:</strong> macOS has not given AI Translator the Accessibility permission, or the permission was lost after an app update.</p><p><strong>Fix:</strong> Press ⌘V in the chat box to paste this time. To let the app paste for you, click <strong>Turn on auto-paste</strong> and turn on AI Translator in Accessibility; if it is already on and the app still asks, remove it from the list and add it again. See <a href="/en/guide/type-and-translate/#accessibility">Type &amp; Translate</a>.</p></div>
+<div class="card"><span class="card-title">Pressing Enter does not put the translation in the chat box</span><p><strong>Cause:</strong> That box does not accept automatic pasting (a password field, an app running as administrator on Windows, an app that blocks pasting), or the chat window did not come to the front in time.</p><p><strong>Fix:</strong> The translation is still on the clipboard: click into the chat box and paste with ⌘V or Ctrl+V.</p></div>
+<div class="card"><span class="card-title">“A line is too long to translate. Split it into several lines or messages.”</span><p><strong>Cause:</strong> One line of the message is too long to translate at once (a whole message can be up to 4000 characters).</p><p><strong>Fix:</strong> Press Shift+Enter to break the line at a sensible place, or split it into several messages.</p></div>
 </div>
 
 <h2 id="send-logs">Send logs and report a problem</h2>

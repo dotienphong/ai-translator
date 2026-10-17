@@ -68,7 +68,7 @@ const GROUPS = [
       },
       {
         q: "Dịch theo chiều nào? Có dịch giọng của tôi cho người khác không?",
-        a: `<p>Một chiều: từ âm thanh đang phát trên máy sang ngôn ngữ của bạn. Hiện app chưa dịch giọng của bạn để phát vào cuộc họp. Nếu cả hai bên cùng cài app, mỗi bên sẽ thấy phụ đề của phía kia.</p>`,
+        a: `<p>Phụ đề dịch một chiều: từ âm thanh đang phát trên máy sang ngôn ngữ của bạn. Hiện app chưa dịch giọng của bạn để phát vào cuộc họp. Muốn trả lời bằng chữ, bạn dùng <a href="/huong-dan/go-dich/">Gõ dịch</a>: gõ tin nhắn bằng tiếng của bạn, app dán bản dịch vào ô chat. Nếu cả hai bên cùng cài app, mỗi bên sẽ thấy phụ đề của phía kia.</p>`,
       },
       {
         q: "Bản dịch có chính xác không?",
@@ -144,7 +144,7 @@ const GROUPS = [
       },
       {
         q: "Cần cấp quyền gì trên macOS?",
-        a: `<p>Chỉ quyền Ghi âm thanh hệ thống (System Audio Recording); AI Translator không dùng micro. macOS hỏi ở lần đầu bạn bấm Bắt đầu. Nếu bạn từ chối, macOS không báo lỗi mà chỉ cho app nhận im lặng; app sẽ nhắc bạn bật lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền ghi âm</a>. Trên Windows không cần cấp quyền ghi âm.</p>`,
+        a: `<p>Để dịch phụ đề, chỉ cần quyền Ghi âm thanh hệ thống (System Audio Recording); AI Translator không dùng micro. macOS hỏi ở lần đầu bạn bấm Bắt đầu. Nếu bạn từ chối, macOS không báo lỗi mà chỉ cho app nhận im lặng; app sẽ nhắc bạn bật lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền ghi âm</a>. Gõ dịch có thể xin thêm quyền Trợ năng (Accessibility), chỉ để tự dán bản dịch vào ô chat; không cấp thì app chép bản dịch để bạn tự dán (xem <a href="/huong-dan/go-dich/#quyen-tro-nang">Gõ dịch</a>). Trên Windows không cần cấp quyền nào trong hai quyền này.</p>`,
       },
       {
         q: "Gỡ cài đặt AI Translator như thế nào?",
@@ -162,7 +162,7 @@ const GROUPS = [
       },
       {
         q: "Thời lượng dịch được tính thế nào?",
-        a: `<p>Chỉ tính phần tiếng nói đã được dịch xong, theo độ dài tiếng nói. Thời gian im lặng, câu đã ở đúng ngôn ngữ bạn muốn đọc và đoạn chưa dịch được không bị tính. Hạn mức tính riêng cho từng máy; app nhắc khi còn dưới 5 phút.</p>`,
+        a: `<p>Chỉ tính phần tiếng nói đã được dịch xong, theo độ dài tiếng nói. Thời gian im lặng, câu đã ở đúng ngôn ngữ bạn muốn đọc và đoạn chưa dịch được không bị tính. Hạn mức tính riêng cho từng máy; app nhắc khi còn dưới 5 phút. Tin nhắn dịch bằng Gõ dịch không tính vào thời lượng.</p>`,
       },
       {
         q: "Tôi trả tiền bằng cách nào? Trả bằng thẻ quốc tế được không?",
@@ -196,7 +196,11 @@ const GROUPS = [
       },
       {
         q: "Phím tắt mặc định là gì?",
-        a: `<p>Trên macOS: ⌃⌥T bắt đầu hoặc dừng dịch, ⌃⌥H hiện hoặc ẩn phụ đề, ⌃⌥L khóa hoặc mở khóa, ⌃⌥PageUp và ⌃⌥PageDown cuộn xem câu cũ và mới (⌃ là Control, ⌥ là Option). Trên Windows là Ctrl+Alt cùng các phím T, H, L, PageUp, PageDown. Bạn đổi được ở Cài đặt › Phím tắt, nên nếu trùng phím của app khác thì cứ đổi.</p>`,
+        a: `<p>Trên macOS: ⌃⌥T bắt đầu hoặc dừng dịch, ⌃⌥H hiện hoặc ẩn phụ đề, ⌃⌥L khóa hoặc mở khóa, ⌃⌥PageUp và ⌃⌥PageDown cuộn xem câu cũ và mới (⌃ là Control, ⌥ là Option). Trên Windows là Ctrl+Alt cùng các phím T, H, L, PageUp, PageDown. ⌃⌥G (Ctrl+Alt+G) mở ô soạn Gõ dịch. Bạn đổi được ở Cài đặt › Phím tắt, nên nếu trùng phím của app khác thì cứ đổi.</p>`,
+      },
+      {
+        q: "Gõ dịch là gì? Chữ tôi gõ có bị gửi đi đâu không?",
+        a: `<p>Gõ dịch giúp bạn nhắn tin bằng tiếng của người bên kia ở bất kỳ ô chat nào: bấm ⌃⌥G (Ctrl+Alt+G), gõ bằng tiếng của bạn, bấm Enter để dán bản dịch vào ô chat, rồi Enter lần nữa để gửi. Chữ bạn gõ và bản dịch được xử lý trên máy bạn, không gửi qua mạng, không ghi xuống đĩa; app chỉ chép bản dịch vào clipboard để dán. Gõ dịch có ở mọi gói còn hiệu lực và không trừ thời lượng dịch. Xem <a href="/huong-dan/go-dich/">hướng dẫn Gõ dịch</a>.</p>`,
       },
       {
         q: "Bấm X trên cửa sổ có tắt app không?",
