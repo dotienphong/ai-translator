@@ -106,7 +106,7 @@ const GROUPS = [
       },
       {
         q: "Có quảng cáo hay thu thập dữ liệu không?",
-        a: `<p>Không có quảng cáo, không có analytics, và app không tự gửi báo cáo lỗi. Máy chủ chỉ lưu email (khi bạn mua), đơn hàng, license, mã băm ID máy, tên máy (khi bạn kích hoạt key), mốc dùng thử Free và nhật ký thay đổi license, để cấp key và bảo đảm mỗi key một máy, mỗi máy dùng thử một lần. Chúng tôi không bán hay chia sẻ dữ liệu cho mục đích quảng cáo.</p>`,
+        a: `<p>Không có quảng cáo và không có analytics. Khi app gặp lỗi, nó tự gửi một báo cáo lỗi đã che dữ liệu cá nhân (không có âm thanh, chữ chép lời, key hay email); bạn tắt được ở Cài đặt › Quyền riêng tư. Máy chủ chỉ lưu email (khi bạn mua), đơn hàng, license, mã băm ID máy, tên máy (khi bạn kích hoạt key), mốc dùng thử Free, nhật ký thay đổi license và các báo cáo lỗi (giữ 30 ngày), để cấp key, bảo đảm mỗi key một máy, mỗi máy dùng thử một lần và sửa lỗi. Chúng tôi không bán hay chia sẻ dữ liệu cho mục đích quảng cáo. Chi tiết ở <a href="/bao-mat-du-lieu/#bao-cao-loi">Dữ liệu và bảo mật</a>.</p>`,
       },
       {
         q: "Bản chép lời có được lưu lại không?",

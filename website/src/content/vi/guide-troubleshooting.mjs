@@ -27,7 +27,7 @@ const QUICK = [
   },
   {
     q: "Gửi log có làm lộ nội dung cuộc họp không?",
-    a: "<p>Không. Log không chứa âm thanh hay nội dung chép lời, và app không tự gửi log đi đâu.</p>",
+    a: "<p>Không. Log không chứa âm thanh hay nội dung chép lời. Khi app gặp lỗi, nó tự gửi phần log liên quan, đã che đường dẫn thư mục cá nhân, key, token và email, cho chúng tôi; bạn tắt được ở Cài đặt › Quyền riêng tư.</p>",
   },
 ];
 
@@ -97,19 +97,21 @@ ${docLayout({
 </div>
 
 <h2 id="gui-log">Gửi log và báo lỗi cho hỗ trợ</h2>
-<p>Mở <strong>Giới thiệu › Mở thư mục log</strong> để thấy file <code>app.log</code> (trên macOS: thư mục con <code>com.aitranslator.desktop</code> trong <code>~/Library/Logs/</code>; trên Windows: <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>). Log chỉ nằm trên máy bạn và không chứa âm thanh, nội dung chép lời hay key đầy đủ. App không tự gửi gì: bạn tự quyết có gửi cho <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.io.vn) hay không.</p>
+<p>Khi app gặp lỗi (dừng đột ngột, phiên dịch dừng vì lỗi của app, hoặc một công cụ phụ chết rồi tự khởi động lại), nó <strong>tự gửi một báo cáo lỗi</strong> cho chúng tôi: thông tin máy và phần log liên quan, đã che đường dẫn thư mục cá nhân, key, token và email, không có âm thanh hay nội dung chép lời. Báo cáo chỉ được gửi khi app không đang dịch. Tính năng này bật mặc định; bạn tắt ở <strong>Cài đặt › Quyền riêng tư › Gửi báo cáo lỗi tự động</strong>. Xem <a href="/bao-mat-du-lieu/#bao-cao-loi">báo cáo gồm gì và giữ bao lâu</a>.</p>
+<p>Với lỗi không làm app dừng (phụ đề sai, chậm…), hãy vào <strong>Giới thiệu › Gửi log cho hỗ trợ</strong>: app gửi ngay một báo cáo, kể cả khi bạn đã tắt gửi tự động, và hiện một <strong>mã báo cáo</strong> (dạng <code>R-XXXX-XXXX</code>). Ghi mã này vào thư gửi <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.io.vn) để chúng tôi tìm đúng báo cáo của bạn.</p>
+<p>Muốn tự xem hay đính kèm log, mở <strong>Giới thiệu › Mở thư mục log</strong> để thấy file <code>app.log</code> (trên macOS: thư mục con <code>com.aitranslator.desktop</code> trong <code>~/Library/Logs/</code>; trên Windows: <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>). File này nằm trên máy bạn và không chứa âm thanh, nội dung chép lời hay key đầy đủ.</p>
 ${appShot({
   slug: "app-about",
   lang: "vi",
-  alt: "Màn hình Giới thiệu: tên app, dòng Phiên bản, nút Mở thư mục log kèm lưu ý log chỉ nằm trên máy, và mục điều khoản và quyền riêng tư",
-  caption: "Giới thiệu: phiên bản và Mở thư mục log.",
+  alt: "Màn hình Giới thiệu: tên app, dòng Phiên bản, hai nút Mở thư mục log và Gửi log cho hỗ trợ, và mục điều khoản và quyền riêng tư",
+  caption: "Giới thiệu: phiên bản, Mở thư mục log và Gửi log cho hỗ trợ.",
 })}
 <p>Hãy liên hệ khi lỗi lặp lại sau khi làm theo bảng trên, khi key bị khóa tạm hoặc thu hồi, hoặc khi thanh toán có vấn đề. Hãy kèm trong thư:</p>
 <ul>
 <li>Phiên bản app (Giới thiệu › “Phiên bản …”, hoặc chân thanh bên trái của cửa sổ chính, dạng “Monthly · v0.1.6”), phiên bản macOS hoặc Windows, chip hoặc CPU (ví dụ MacBook Air M2), RAM, và card đồ họa nếu là máy Windows.</li>
 <li>Gói model (Chuẩn hoặc Nhẹ, ở Cài đặt › Model) và gói bản quyền.</li>
 <li>Câu báo lỗi đúng chữ hoặc ảnh chụp, app họp đang dùng, việc bạn vừa làm.</li>
-<li>Mã đơn nếu liên quan thanh toán; <code>app.log</code> nếu bạn đồng ý.</li>
+<li>Mã báo cáo (nếu bạn đã bấm Gửi log cho hỗ trợ) và mã đơn nếu liên quan thanh toán; <code>app.log</code> nếu bạn muốn đính kèm.</li>
 </ul>
 
 <h2 id="hoi-nhanh">Hỏi nhanh</h2>

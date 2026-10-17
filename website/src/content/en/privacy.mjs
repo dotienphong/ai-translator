@@ -11,5 +11,5 @@ export default legalPage({
   heroLead: "Meeting audio is processed entirely on your computer. Below is all the data that remains: what stays on your device and what is stored on our server.",
   inAppNote: { title: "This text is also inside the app", text: "The policy is shown at the Terms step on first launch, on the purchase screen, and under About › Terms and privacy." },
   versionLabel: "Version",
-  llm: "Privacy policy: data that stays on your device, data stored on our server, retention, processors and how to request deletion.",
+  llm: "Privacy policy: data that stays on your device, data stored on our server, automatic error reports (what is sent, kept 30 days, how to turn off), retention, processors and how to request deletion.",
 });

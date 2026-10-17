@@ -106,7 +106,7 @@ const GROUPS = [
       },
       {
         q: "Are there ads or data collection?",
-        a: `<p>There are no ads and no analytics, and the app sends no automatic crash reports. Our servers store only your email (when you buy), orders, licenses, a hashed machine ID, the device name (when you activate a key), the Free trial dates and a license change log, so we can issue keys and keep to one device per key and one trial per device. We do not sell your data or share it for advertising.</p>`,
+        a: `<p>There are no ads and no analytics. When the app hits an error, it automatically sends an error report with personal data scrubbed out (no audio, no transcript text, no keys and no email); you can turn it off in Settings › Privacy. Our servers store only your email (when you buy), orders, licenses, a hashed machine ID, the device name (when you activate a key), the Free trial dates, a license change log and error reports (kept for 30 days), so we can issue keys, keep to one device per key and one trial per device, and fix bugs. We do not sell your data or share it for advertising. Details are on <a href="/en/data-security/#error-reports">Data and security</a>.</p>`,
       },
       {
         q: "Are transcripts saved?",

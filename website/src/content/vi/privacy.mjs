@@ -11,5 +11,5 @@ export default legalPage({
   heroLead: "Âm thanh cuộc họp xử lý hoàn toàn trên máy bạn. Dưới đây là mọi dữ liệu còn lại: ở lại trên máy, hoặc lưu trên máy chủ của chúng tôi.",
   inAppNote: { title: "Văn bản này cũng có trong app", text: "Chính sách có ở bước Điều khoản khi mở app lần đầu, ở màn hình mua gói và ở Giới thiệu › Điều khoản và quyền riêng tư." },
   versionLabel: "Phiên bản",
-  llm: "Chính sách quyền riêng tư: dữ liệu ở lại trên máy, dữ liệu máy chủ lưu, thời gian giữ, bên xử lý và cách yêu cầu xóa.",
+  llm: "Chính sách quyền riêng tư: dữ liệu ở lại trên máy, dữ liệu máy chủ lưu, báo cáo lỗi tự động (gửi gì, giữ 30 ngày, tắt thế nào), thời gian giữ, bên xử lý và cách yêu cầu xóa.",
 });

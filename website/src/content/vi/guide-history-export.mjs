@@ -89,7 +89,7 @@ ${appShot({
 ${appShot({
   slug: "app-settings-privacy",
   lang: "vi",
-  alt: "Cài đặt Quyền riêng tư: công tắc Lưu lịch sử chép lời (đang tắt), nút Xóa toàn bộ dữ liệu và nút Xóa model và dữ liệu",
+  alt: "Cài đặt Quyền riêng tư: công tắc Lưu lịch sử chép lời (đang tắt), công tắc Gửi báo cáo lỗi tự động (đang bật), nút Xóa toàn bộ dữ liệu và nút Xóa model và dữ liệu",
   caption: "Cài đặt › Quyền riêng tư: bật lưu lịch sử và xóa dữ liệu.",
 })}
 <p>Mỗi phiên trong <strong>Lịch sử</strong> có ngày giờ, số phút và số câu (“47 phút · 186 câu”), đoạn xem trước và hai nút <strong>Mở</strong>, <strong>Xóa</strong>; phiên mới nhất ở trên. <strong>Mở</strong> cho bạn xem, tìm, sao chép và xuất như ở Bản chép lời; <strong>Về danh sách</strong> để quay lại. Nếu lưu lịch sử đang tắt, màn hình báo “Lưu lịch sử đang tắt, nên phiên mới không được lưu.”</p>

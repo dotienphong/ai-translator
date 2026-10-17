@@ -27,7 +27,7 @@ const QUICK = [
   },
   {
     q: "Do the logs reveal what was said in my meeting?",
-    a: "<p>No. Logs contain no audio and no transcript text, and the app never sends logs anywhere by itself.</p>",
+    a: "<p>No. Logs contain no audio and no transcript text. When the app hits an error, it sends us the relevant part of the log with personal folder paths, keys, tokens and email addresses scrubbed out; you can turn that off in Settings › Privacy.</p>",
   },
 ];
 
@@ -97,19 +97,21 @@ ${docLayout({
 </div>
 
 <h2 id="send-logs">Send logs and report a problem</h2>
-<p>Open <strong>About › Open log folder</strong> to find <code>app.log</code> (on macOS: the <code>com.aitranslator.desktop</code> folder inside <code>~/Library/Logs/</code>). Logs stay on your computer and contain no audio, no transcript text and no full license key. The app never sends anything by itself: you decide whether to send them to <a href="/en/contact/">support</a> (support@aitranslator.io.vn).</p>
+<p>When the app hits an error (it stops suddenly, a translation session stops because of an error in the app, or a helper program dies and restarts), it <strong>automatically sends us an error report</strong>: machine details and the relevant part of the log, with personal folder paths, keys, tokens and email addresses scrubbed out, and no audio or transcript text. A report is only sent while the app is not translating. This is on by default; you turn it off in <strong>Settings › Privacy › Send error reports automatically</strong>. See <a href="/en/data-security/#error-reports">what a report contains and how long it is kept</a>.</p>
+<p>For a problem that does not stop the app (wrong or slow subtitles, for example), go to <strong>About › Send log to support</strong>: the app sends a report right away, even if you turned automatic sending off, and shows a <strong>report code</strong> (like <code>R-XXXX-XXXX</code>). Put that code in your email to <a href="/en/contact/">support</a> (support@aitranslator.io.vn) so we can find your report.</p>
+<p>To look at or attach the log yourself, open <strong>About › Open log folder</strong> to find <code>app.log</code> (on macOS: the <code>com.aitranslator.desktop</code> folder inside <code>~/Library/Logs/</code>; on Windows: <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>). That file stays on your computer and contains no audio, no transcript text and no full license key.</p>
 ${appShot({
   slug: "app-about",
   lang: "en",
-  alt: "The About screen: the app name, the Version line, the Open log folder button with a note that logs stay on this computer, and the terms and privacy section",
-  caption: "About: the version and Open log folder.",
+  alt: "The About screen: the app name, the Version line, the Open log folder and Send log to support buttons, and the terms and privacy section",
+  caption: "About: the version, Open log folder and Send log to support.",
 })}
 <p>Contact support when a problem repeats after you followed the tables, when a key is locked or revoked, or when a payment goes wrong. Include:</p>
 <ul>
 <li>The app version (About › “Version …”, or the foot of the left sidebar, e.g. “Monthly · v0.1.6”), the macOS or Windows version, the chip or processor (for example MacBook Air M2), the RAM, and the graphics card on a Windows PC.</li>
 <li>The model pack (Standard or Lite, in Settings › Model) and your license plan.</li>
 <li>The message exactly as shown, or a screenshot, the meeting app you use and what you just did.</li>
-<li>The order number for payment issues; <code>app.log</code> if you agree.</li>
+<li>The report code (if you pressed Send log to support) and the order number for payment issues; <code>app.log</code> if you want to attach it.</li>
 </ul>
 
 <h2 id="quick-answers">Quick answers</h2>

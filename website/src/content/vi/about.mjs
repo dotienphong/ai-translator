@@ -54,10 +54,10 @@ ${sectionHead({ eyebrow: "Câu chuyện", title: "Vì sao có AI Translator" })}
 <section class="section section-alt" id="nguyen-tac"><div class="container">
 ${sectionHead({ eyebrow: "Nguyên tắc", title: "Sáu điều chúng tôi giữ khi làm sản phẩm", center: true })}
 <div class="grid grid-3">
-${feature({ icon: "shield", title: "Riêng tư theo thiết kế", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. Máy chủ chỉ giữ dữ liệu cần cho bản quyền, đơn hàng và dùng thử. Chi tiết ở <a href=\"/bao-mat-du-lieu/\">Dữ liệu và bảo mật</a>.", accent: true })}
+${feature({ icon: "shield", title: "Riêng tư theo thiết kế", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. Máy chủ chỉ giữ dữ liệu cần cho bản quyền, đơn hàng, dùng thử và báo cáo lỗi. Chi tiết ở <a href=\"/bao-mat-du-lieu/\">Dữ liệu và bảo mật</a>.", accent: true })}
 ${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng giọng nói và dịch chạy trên máy. Mạng chỉ cần để tải model, đăng ký dùng thử, mua và kiểm tra bản quyền, cập nhật app." })}
 ${feature({ icon: "info", title: "Trung thực về trạng thái", text: "Chưa làm được thì ghi là chưa làm được. macOS chưa notarize, Windows chưa ký mã, máy nào chưa đo: chúng tôi nói thẳng, trên website và trong app." })}
-${feature({ icon: "lock", title: "Không quảng cáo, không analytics", text: "App không có quảng cáo, không có analytics, không tự gửi báo cáo lỗi. Chúng tôi sống nhờ gói trả phí, không nhờ dữ liệu của bạn." })}
+${feature({ icon: "lock", title: "Không quảng cáo, không analytics", text: "App không có quảng cáo và không có analytics. Khi gặp lỗi, app tự gửi báo cáo lỗi đã che dữ liệu cá nhân (không có âm thanh hay nội dung cuộc họp) để chúng tôi sửa lỗi; bạn tắt được ở Cài đặt. Chúng tôi sống nhờ gói trả phí, không nhờ dữ liệu của bạn." })}
 ${feature({ icon: "video", title: "Không bot, không tài khoản", text: "Không mời bot vào cuộc họp, không cài plugin, không đăng nhập. Gói trả phí kích hoạt bằng license key gửi qua email." })}
 ${feature({ icon: "gauge", title: "Số đo kèm điều kiện", text: "Con số về tốc độ hay chất lượng trên website này đều ghi máy đo và điều kiện; chỗ chưa đo thì ghi là chưa đo. Xem <a href=\"/tinh-nang/#hieu-nang\">hiệu năng</a>." })}
 </div>

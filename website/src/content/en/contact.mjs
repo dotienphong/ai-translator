@@ -74,7 +74,7 @@ ${sectionHead({ eyebrow: "What to send", title: "What do you need? Email us with
 <div class="card reveal" id="technical-support">
 <h3>Technical support</h3>
 <p>Please include: the app version (About screen), the macOS version and chip (Apple menu › About This Mac) or the Windows version and processor (Settings › System › About) plus the graphics card, your RAM, the model pack you use (Settings › Model: Standard or Lite), the meeting app, the steps that lead to the problem and the text of any error message.</p>
-<p>If you can, attach the log: About › Open log folder. Logs stay on your computer and never contain what was said; you decide whether to send them. Please try the <a href="/en/guide/troubleshooting/">troubleshooting steps</a> first, because many common problems have a quick fix.</p>
+<p>The quickest way: go to About › Send log to support and put the report code it shows (like R-XXXX-XXXX) in your email; we can find your log with that code. Logs never contain what was said, and personal data is scrubbed before sending. If you would rather attach the file yourself, go to About › Open log folder. Please try the <a href="/en/guide/troubleshooting/">troubleshooting steps</a> first, because many common problems have a quick fix.</p>
 ${btn(M.support, "Email technical support")}
 </div>
 

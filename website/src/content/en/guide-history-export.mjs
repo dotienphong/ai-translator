@@ -89,7 +89,7 @@ ${appShot({
 ${appShot({
   slug: "app-settings-privacy",
   lang: "en",
-  alt: "Privacy settings: the Save transcript history switch (off), the Delete all data button and the Delete models and data button",
+  alt: "Privacy settings: the Save transcript history switch (off), the Send error reports automatically switch (on), the Delete all data button and the Delete models and data button",
   caption: "Settings › Privacy: turn on history and delete data.",
 })}
 <p>Each session in <strong>History</strong> shows the date and time, its length and sentence count (“47 min · 186 sentences”), a preview, and <strong>Open</strong> and <strong>Delete</strong> buttons, newest first. <strong>Open</strong> lets you view, search, copy and export it just like the Transcript; <strong>Back to the list</strong> returns. If saving is off, the screen says “Saving history is off, so new sessions are not saved.”</p>

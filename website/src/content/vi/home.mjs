@@ -117,7 +117,7 @@ ${dataFlow("vi")}
 <div class="grid grid-3">
 ${feature({ icon: "lock", title: "Không gửi lên cloud", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi qua mạng. Bản chép lời và bản dịch hiện trên màn hình và nằm trên máy bạn; lịch sử mặc định tắt, nếu bạn bật thì lưu mã hóa trên máy.", accent: true })}
 ${feature({ icon: "zap", title: "Độ trễ thấp", text: "Không phải gửi âm thanh đi rồi chờ máy chủ trả về, nên phụ đề hiện ngay sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn). Máy khác chậm hơn: đo sơ bộ trên một laptop Windows có GPU tích hợp cho trung vị 1,3–5,4 giây (xem mục Hiệu năng ở trang Tính năng)." })}
-${feature({ icon: "shield", title: "Giảm rủi ro lộ thông tin", text: "Hợp đồng, nhân sự, tài chính, kế hoạch sản phẩm: nội dung cuộc họp không đi qua bên thứ ba nào để dịch. Máy chủ của chúng tôi chỉ lưu email (khi mua), đơn hàng, license, thông tin kích hoạt máy (mã băm ID máy, tên máy), mốc dùng thử Free (mã băm ID máy) và nhật ký thay đổi license, không có dữ liệu cuộc hội thoại." })}
+${feature({ icon: "shield", title: "Giảm rủi ro lộ thông tin", text: "Hợp đồng, nhân sự, tài chính, kế hoạch sản phẩm: nội dung cuộc họp không đi qua bên thứ ba nào để dịch. Máy chủ của chúng tôi chỉ lưu email (khi mua), đơn hàng, license, thông tin kích hoạt máy (mã băm ID máy, tên máy), mốc dùng thử Free (mã băm ID máy), nhật ký thay đổi license và báo cáo lỗi đã che dữ liệu cá nhân (giữ 30 ngày), không có dữ liệu cuộc hội thoại." })}
 </div>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/bao-mat-du-lieu/">Xem chính xác dữ liệu nào đi đâu ${icon("arrow-right")}</a></p>
 </div></section>
@@ -174,7 +174,7 @@ ${checkList([
 <section class="section"><div class="container">
 ${sectionHead({ eyebrow: "Vì sao AI Translator", title: "Dịch cuộc họp theo cách khác với phần mềm cloud", text: "Nhiều công cụ dịch cuộc họp xử lý âm thanh trên máy chủ. AI Translator làm ngược lại: mọi thứ ở trên máy bạn.", center: true })}
 <div class="grid grid-3">
-${feature({ icon: "shield", title: "Riêng tư theo thiết kế", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. App không có analytics và không gửi báo cáo lỗi tự động.", accent: true })}
+${feature({ icon: "shield", title: "Riêng tư theo thiết kế", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. App không có analytics; khi gặp lỗi, app gửi báo cáo lỗi đã che dữ liệu cá nhân (tắt được ở Cài đặt).", accent: true })}
 ${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng giọng nói và dịch chạy trên máy, nên vẫn dịch được khi mạng chập chờn hoặc mất mạng. App chỉ cần mạng thỉnh thoảng cho vài việc như kiểm tra bản quyền." })}
 ${feature({ icon: "video", title: "Mọi app họp, không bot", text: "Không cần mời bot hay cài plugin vào cuộc họp. Mọi âm thanh phát trên máy đều có thể thành phụ đề." })}
 ${feature({ icon: "book", title: "Từ điển thuật ngữ", text: "Thêm tên riêng, tên sản phẩm và thuật ngữ chuyên ngành làm gợi ý cho bộ dịch (không bảo đảm đúng mọi lần). Tối đa 500 thuật ngữ, nhập xuất CSV (tính năng Pro)." })}

@@ -74,7 +74,7 @@ ${sectionHead({ eyebrow: "Gửi gì, kèm gì", title: "Bạn cần gì? Gửi t
 <div class="card reveal" id="ho-tro-ky-thuat">
 <h3>Hỗ trợ kỹ thuật</h3>
 <p>Hãy kèm theo: phiên bản app (màn hình Giới thiệu), phiên bản macOS và chip (menu Apple › About This Mac) hoặc phiên bản Windows và CPU (Settings › System › About) cùng card đồ họa, dung lượng RAM, gói model đang dùng (Cài đặt › Model: Chuẩn hay Nhẹ), app họp bạn đang dùng, các bước dẫn tới lỗi và nội dung thông báo lỗi.</p>
-<p>Nếu có thể, đính kèm log: vào Giới thiệu › Mở thư mục log. Log nằm trên máy bạn và không chứa nội dung chép lời; bạn tự quyết định có gửi hay không. Hãy thử <a href="/huong-dan/khac-phuc-su-co/">các bước khắc phục sự cố</a> trước, vì nhiều lỗi thường gặp có cách xử lý nhanh.</p>
+<p>Cách nhanh nhất: vào Giới thiệu › Gửi log cho hỗ trợ, rồi ghi mã báo cáo hiện ra (dạng R-XXXX-XXXX) vào thư; chúng tôi tìm được log của bạn bằng mã đó. Log không chứa âm thanh hay nội dung chép lời, và dữ liệu cá nhân đã được che trước khi gửi. Muốn tự đính kèm file thì vào Giới thiệu › Mở thư mục log. Hãy thử <a href="/huong-dan/khac-phuc-su-co/">các bước khắc phục sự cố</a> trước, vì nhiều lỗi thường gặp có cách xử lý nhanh.</p>
 ${btn(M.support, "Gửi thư hỗ trợ kỹ thuật")}
 </div>
 

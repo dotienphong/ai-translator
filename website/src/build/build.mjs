@@ -81,7 +81,7 @@ function keyFacts() {
     `- Measured latency: median 0.76–1.03 s with the Standard pack on a Mac M4 Pro 24 GB (macOS 26); preliminary Windows test on one laptop with integrated graphics: median 1.3–2.6 s (Lite), 2.7–5.4 s (Standard)`,
     `- Pricing: ${free.nameEn} trial ${free.days} days (${free.minutesPerDay} min/day, ${vnd(0)}); ${monthly.nameEn} ${vnd(monthly.priceVnd)} (${monthly.minutesPerCycle / 60} h per ${monthly.days} days); ${sixMonths.nameEn} ${vnd(sixMonths.priceVnd)} (${sixMonths.minutesPerCycle / 60} h per 30 days, ${sixMonths.days} days); ${yearly.nameEn} ${vnd(yearly.priceVnd)} (unlimited, ${yearly.days} days); prepaid, no auto-renewal; pay in VND by VietQR from a Vietnamese bank account, or in USD by international card (${monthly.nameEn} ${usd(monthly.priceUsdCents, "en")}, ${sixMonths.nameEn} ${usd(sixMonths.priceUsdCents, "en")}, ${yearly.nameEn} ${usd(yearly.priceUsdCents, "en")}, excluding tax)`,
     `- Install: macOS \`curl -fsSL ${SITE.origin}/install.sh | bash\`; Windows \`irm ${SITE.origin}/install.ps1 | iex\``,
-    `- Privacy: no bot, no account, no ads, no analytics or cookies on the website; the app sends no audio or transcripts to any server; not open source`,
+    `- Privacy: no bot, no account, no ads, no analytics or cookies on the website; the app sends no audio or transcripts to any server; when the app hits an error it sends an error report with personal data scrubbed out (no audio, no transcript text), which you can turn off in Settings; not open source`,
   ].join("\n");
 }
 

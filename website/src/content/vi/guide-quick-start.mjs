@@ -98,8 +98,8 @@ ${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống n
 ${appShot({ slug: "app-onboarding-1", lang: "vi", alt: "Màn hình đầu tiên của trình hướng dẫn: năm lựa chọn ngôn ngữ giao diện (Tiếng Việt, English, 日本語, 中文, 한국어)", caption: "Bước 1/9: ngôn ngữ giao diện." })}
 
 <h3>Bước 2. Đồng ý điều khoản</h3>
-<p>Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, rồi tick ô “Tôi đã đọc và đồng ý…”. Chưa tick thì nút Tiếp bị khóa. Hai văn bản này có bản tiếng Việt và English; nếu giao diện là 日本語, 中文 hay 한국어 thì app hiện bản English, kèm một dòng báo. Khi bạn bấm Tiếp, app đăng ký dùng thử Free của máy với máy chủ, nên cần có mạng một lần.</p>
-${appShot({ slug: "app-onboarding-2", lang: "vi", alt: "Bước Điều khoản sử dụng với hai văn bản gập được và ô tick đồng ý bắt buộc", caption: "Bước 2/9: điều khoản sử dụng." })}
+<p>Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, rồi tick ô “Tôi đã đọc và đồng ý…”. Chưa tick thì nút Tiếp bị khóa. Hai văn bản này có bản tiếng Việt và English; nếu giao diện là 日本語, 中文 hay 한국어 thì app hiện bản English, kèm một dòng báo. Ở cùng màn hình có một ô tùy chọn đã tích sẵn cho việc gửi báo cáo lỗi tự động khi app gặp lỗi (không có âm thanh hay nội dung chép lời); bỏ tích nếu bạn không muốn, và đổi lại được ở Cài đặt › Quyền riêng tư. Khi bạn bấm Tiếp, app đăng ký dùng thử Free của máy với máy chủ, nên cần có mạng một lần.</p>
+${appShot({ slug: "app-onboarding-2", lang: "vi", alt: "Bước Điều khoản sử dụng với hai văn bản gập được, ô tick đồng ý bắt buộc và ô tùy chọn gửi báo cáo lỗi tự động đã tích sẵn", caption: "Bước 2/9: điều khoản sử dụng." })}
 
 <h3>Bước 3. Chọn và tải model</h3>
 <p>App hiện RAM và ổ đĩa trống của máy rồi đề xuất một gói: Mac từ khoảng 16 GB RAM (hoặc máy Windows từ 16 GB RAM có card đồ họa rời từ 6 GB VRAM) được đề xuất gói <strong>Chuẩn</strong> (khoảng 2,5 GB), máy còn lại là gói <strong>Nhẹ</strong> (khoảng 1,3 GB). Chọn gói, app tự tải ở màn hình kế tiếp, có nút Tạm dừng và Tiếp tục. Bạn bấm Tiếp trong lúc tải được; model vẫn tải ở nền. Tải xong, app báo “Đã tải xong. AI Translator đã sẵn sàng để dịch.”</p>

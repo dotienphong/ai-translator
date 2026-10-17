@@ -54,10 +54,10 @@ ${sectionHead({ eyebrow: "Our story", title: "Why AI Translator exists" })}
 <section class="section section-alt" id="principles"><div class="container">
 ${sectionHead({ eyebrow: "Principles", title: "Six things we hold to when building the product", center: true })}
 <div class="grid grid-3">
-${feature({ icon: "shield", title: "Private by design", text: "Audio stays in RAM, is never written to disk and never sent anywhere. Our servers keep only what licensing, orders and the trial need. Details on <a href=\"/en/data-security/\">Data and security</a>.", accent: true })}
+${feature({ icon: "shield", title: "Private by design", text: "Audio stays in RAM, is never written to disk and never sent anywhere. Our servers keep only what licensing, orders, the trial and error reports need. Details on <a href=\"/en/data-security/\">Data and security</a>.", accent: true })}
 ${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech recognition and translation run on your computer. The internet is needed only to download models, register for the trial, buy and verify a license, and update the app." })}
 ${feature({ icon: "info", title: "Honest about status", text: "If we have not done something yet, we say so. macOS is not notarized yet, Windows is not code-signed yet, some machines are not measured: we say so plainly, on the website and in the app." })}
-${feature({ icon: "lock", title: "No ads, no analytics", text: "The app has no ads, no analytics and sends no automatic crash reports. We make a living from paid plans, not from your data." })}
+${feature({ icon: "lock", title: "No ads, no analytics", text: "The app has no ads and no analytics. When it hits an error, it sends an error report with personal data scrubbed out (no audio and no meeting content) so we can fix the problem; you can turn that off in Settings. We make a living from paid plans, not from your data." })}
 ${feature({ icon: "video", title: "No bot, no account", text: "No bot joins your meeting, no plugin to install, no sign-in. Paid plans are activated with a license key sent by email." })}
 ${feature({ icon: "gauge", title: "Numbers with conditions", text: "Every speed or quality figure on this website comes with the machine and conditions it was measured under; what we have not measured, we say we have not measured. See <a href=\"/en/features/#performance\">features and performance</a>." })}
 </div>

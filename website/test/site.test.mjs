@@ -732,6 +732,73 @@ test("không nguồn chữ nào của site (thân trang, <title>, mô tả, alt,
   assert.deepEqual(scanStale(await siteTexts()), []);
 });
 
+// Báo cáo lỗi tự động (spec 2026-10-17-diagnostics-reports-design): app tự gửi báo cáo lỗi đã che dữ liệu cá nhân, nên website và chính sách
+// không được còn nói "app không tự gửi báo cáo lỗi hay log, bạn tự quyết có gửi". Mỗi luật chỉ bắt đúng ý cũ đó, không bắt câu mới
+// nói app có gửi (xem STALE_REPORTS_MUST_KEEP).
+const STALE_REPORTS = [
+  { id: "vi: không tự gửi báo cáo lỗi hay log", re: /không\s+tự\s+gửi\s+(?:báo cáo|log|nhật ký)/iu },
+  { id: "vi: không gửi báo cáo lỗi tự động", re: /không\s+(?:có\s+)?gửi\s+báo cáo(?:\s+lỗi)?\s+tự động/iu },
+  { id: "vi: app không tự gửi gì", re: /app\s+không\s+tự\s+gửi\s+gì/iu },
+  { id: "vi: bạn tự quyết có gửi hay không", re: /bạn\s+tự\s+quyết(?:\s+định)?\s+có\s+gửi/iu },
+  { id: "vi: bạn tự gửi cho chúng tôi", re: /bạn\s+tự\s+gửi\s+cho\s+chúng\s+tôi/iu },
+  { id: "vi: log chỉ nằm trên máy", re: /\blog\s+chỉ\s+nằm\s+trên\s+máy/iu },
+  { id: "en: sends no automatic crash reports", re: /\b(?:sends?|has)\s+no\s+automatic\s+(?:crash|error)\s+reports\b/i },
+  { id: "en: no automatic crash reports", re: /\bno\s+automatic\s+(?:crash|error)\s+reports\b/i },
+  { id: "en: never sends logs or anything by itself", re: /\bnever\s+sends?\s+(?:logs?|anything)\b/i },
+  { id: "en: you decide whether to send logs", re: /\byou\s+decide\s+whether\s+to\s+send\s+(?:them|the\s+logs?|logs?)\b/i },
+  { id: "en: you send them to us yourself", re: /\byou\s+send\s+them\s+to\s+us\s+yourself\b/i },
+  { id: "en: logs stay on your computer", re: /\blogs?\s+stay\s+on\s+(?:your|this)\s+(?:computer|machine)\b/i },
+];
+
+// Câu cũ (nguyên văn từ website, chính sách 1.2 và chuỗi giao diện trước khi có báo cáo lỗi tự động) mà luật phải bắt.
+const STALE_REPORTS_MUST_CATCH = [
+  "App không có quảng cáo, không có analytics, không tự gửi báo cáo lỗi.",
+  "App không có analytics và không gửi báo cáo lỗi tự động.",
+  "Không. Log không chứa âm thanh hay nội dung chép lời, và app không tự gửi log đi đâu.",
+  "App không tự gửi gì: bạn tự quyết có gửi cho hỗ trợ hay không.",
+  "Log nằm trên máy bạn và không chứa nội dung chép lời; bạn tự quyết định có gửi hay không.",
+  "Lưu trên máy bạn, không chứa nội dung chép lời. Khi cần hỗ trợ, bạn tự gửi cho chúng tôi nếu muốn",
+  "Log chỉ nằm trên máy này và không bao giờ chứa nội dung cuộc họp.",
+  "Ứng dụng không có tài khoản đăng nhập, không có quảng cáo, không có analytics, không gửi báo cáo lỗi tự động.",
+  "The app has no ads, no analytics and sends no automatic crash reports.",
+  "The app has no sign-in accounts, no advertising, no analytics, and no automatic crash reports.",
+  "Logs contain no audio and no transcript text, and the app never sends logs anywhere by itself.",
+  "The app never sends anything by itself: you decide whether to send them to support.",
+  "Logs stay on your computer and never contain what was said; you decide whether to send them.",
+  "Stored on your computer; they do not contain transcript text. If you want support, you send them to us yourself",
+  "Stored on your computer and free of transcript content. You decide whether to send them to us.",
+];
+// Câu đúng của bản mới (nói app có gửi) mà luật KHÔNG được bắt.
+const STALE_REPORTS_MUST_KEEP = [
+  "Khi app gặp lỗi, nó tự gửi một báo cáo lỗi đã che dữ liệu cá nhân.",
+  "Bạn tắt được ở Cài đặt › Quyền riêng tư.",
+  "Log không chứa âm thanh hay nội dung chép lời.",
+  "Ứng dụng không có tài khoản đăng nhập, không có quảng cáo và không có analytics.",
+  "Chỉ phần log liên quan đến một lỗi rời máy, trong báo cáo lỗi đã che dữ liệu cá nhân.",
+  "The app has no sign-in accounts, no advertising and no analytics.",
+  "When the app hits an error, it sends us the relevant part of the log.",
+  "Logs never contain what was said, and personal data is scrubbed before sending.",
+  "Audio never leaves your computer.",
+];
+
+test("luật câu cũ về báo cáo lỗi (STALE_REPORTS) bắt các câu cũ đã gỡ và không bắt câu đúng của bản mới", () => {
+  assert.ok(STALE_REPORTS_MUST_CATCH.length >= 10 && STALE_REPORTS_MUST_KEEP.length >= 5);
+  const missed = STALE_REPORTS_MUST_CATCH.filter((s) => staleHits(s, STALE_REPORTS).length === 0);
+  assert.deepEqual(missed, [], "câu cũ mà luật không bắt");
+  const extra = STALE_REPORTS_MUST_KEEP.filter((s) => staleHits(s, STALE_REPORTS).length > 0).map((s) => `${s} → ${staleHits(s, STALE_REPORTS).map((h) => h.id).join(", ")}`);
+  assert.deepEqual(extra, [], "câu đúng mà luật bắt thừa");
+});
+
+test("không nguồn chữ nào của site (kể cả chính sách dựng từ docs/legal) và không chuỗi giao diện nào của app (vi, en) còn câu nói app không tự gửi báo cáo lỗi hay log", async () => {
+  assert.deepEqual(scanStale(await siteTexts(), STALE_REPORTS), []);
+  for (const lang of ["vi", "en"]) {
+    const d = await appDict(lang);
+    assert.ok(Object.keys(d).length > 100, `${lang}: không đọc được từ điển của app`);
+    const bad = Object.entries(d).filter(([, v]) => staleHits(v, STALE_REPORTS).length > 0).map(([k, v]) => `${lang} ${k}: ${v}`);
+    assert.deepEqual(bad, [], "chuỗi của app còn câu cũ về báo cáo lỗi (kế hoạch bao-cao-loi-04 phải sửa, cả ja, zh, ko: luật này chỉ đọc vi và en)");
+  }
+});
+
 test("luật giá USD (usdAmounts): đọc đúng '3.99 USD' (en) và '$3,99' (vi), bắt 'US$ 4.99', '4.99$', 'USD 3.99', '1,000 USD', 'đô la'; không nhầm tên cột kế bên là giá", () => {
   const cents = (s) => [...new Set(usdAmounts(s).map((a) => a.cents))].sort((a, b) => a - b);
   for (const [text, want] of [

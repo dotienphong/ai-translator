@@ -119,7 +119,7 @@ ${dataFlow("en")}
 <div class="grid grid-3">
 ${feature({ icon: "lock", title: "Nothing goes to the cloud", text: "Audio lives only in RAM: it is never written to disk and never sent over the network. The transcript and the translation appear on your screen and stay on your computer; history is off by default, and if you turn it on it is stored encrypted on your machine.", accent: true })}
 ${feature({ icon: "zap", title: "Low latency", text: "There is no round trip to a server, so subtitles appear right after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack). Other computers are slower: a preliminary test on one Windows laptop with integrated graphics gave a median of 1.3–5.4 seconds (see Performance on the Features page)." })}
-${feature({ icon: "shield", title: "Less risk of leaking information", text: "Contracts, HR, finance, product plans: your meeting content is not passed to any third party for translation. Our server only stores your email (when you buy), orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID) and a log of license changes, never conversation data." })}
+${feature({ icon: "shield", title: "Less risk of leaking information", text: "Contracts, HR, finance, product plans: your meeting content is not passed to any third party for translation. Our server only stores your email (when you buy), orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID), a log of license changes and error reports with personal data scrubbed out (kept for 30 days), never conversation data." })}
 </div>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/en/data-security/">See exactly where your data goes ${icon("arrow-right")}</a></p>
 </div></section>
@@ -176,7 +176,7 @@ ${checkList([
 <section class="section"><div class="container">
 ${sectionHead({ eyebrow: "Why AI Translator", title: "Meeting translation that works differently from cloud tools", text: "Many meeting-translation tools process your audio on a remote server. AI Translator does the opposite: everything happens on your computer.", center: true })}
 <div class="grid grid-3">
-${feature({ icon: "shield", title: "Private by design", text: "Audio lives only in RAM: it is never written to disk and never sent anywhere. The app has no analytics and sends no automatic crash reports.", accent: true })}
+${feature({ icon: "shield", title: "Private by design", text: "Audio lives only in RAM: it is never written to disk and never sent anywhere. The app has no analytics; when it hits an error, it sends an error report with personal data scrubbed out (you can turn that off in Settings).", accent: true })}
 ${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech recognition and translation run on your device, so subtitles keep coming even when your connection is flaky or drops. The app only needs the internet now and then for a few things, such as checking your license." })}
 ${feature({ icon: "video", title: "Any meeting app, no bot", text: "There is no bot to invite and no plugin to install. Anything that plays sound on your computer can become subtitles." })}
 ${feature({ icon: "book", title: "Glossary", text: "Teach it your names, product names and industry terms. Terms are passed to the translator as hints (up to 500, with CSV import and export; a Pro feature)." })}
