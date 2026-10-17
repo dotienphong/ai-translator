@@ -24,7 +24,7 @@ const READ_ONLY: &[&str] = &[
 ];
 
 /// Khóa là object con: bản sửa gửi object con thì ghép theo từng khóa con.
-const NESTED: &[&str] = &["overlay", "experimental"];
+const NESTED: &[&str] = &["overlay", "experimental", "compose"];
 
 /// Áp bản sửa `patch` lên `current`. Trả về cài đặt mới đã kiểm phạm vi, hoặc lỗi của một khóa sai.
 ///
@@ -197,6 +197,33 @@ mod tests {
         assert_eq!(
             apply(&current(), &json!({ "translateWhileSpeaking": "yes" })),
             Err(Invalid::new("translateWhileSpeaking", Reason::WrongType))
+        );
+    }
+
+    /// Spec 2026-10-17-go-dich §1.4: nhóm Cài đặt "Gõ dịch" sửa từng khóa con; khóa con lạ hay sai kiểu bị từ chối và báo đúng
+    /// tên khóa con.
+    #[test]
+    fn compose_keys_are_patched_one_by_one() {
+        use crate::settings::ComposeTarget;
+        let s = apply(&current(), &json!({ "compose": { "target": "ja" } })).unwrap();
+        assert_eq!(s.compose.target, ComposeTarget::Ja);
+        assert!(s.compose.enabled && s.compose.auto_paste, "khóa con khác giữ nguyên");
+        let s = apply(&s, &json!({ "compose": { "enabled": false, "autoPaste": false } })).unwrap();
+        assert_eq!(
+            (s.compose.enabled, s.compose.auto_paste, s.compose.target),
+            (false, false, ComposeTarget::Ja)
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "compose": { "target": "fr" } })),
+            Err(Invalid::new("compose.target", Reason::WrongType))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "compose": { "hotkey": "Ctrl+Alt+G" } })),
+            Err(Invalid::new("compose.hotkey", Reason::UnknownKey))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "compose": true })),
+            Err(Invalid::new("compose", Reason::WrongType))
         );
     }
 

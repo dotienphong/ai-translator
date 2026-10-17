@@ -54,7 +54,7 @@ fn v1_to_v2(raw: &mut Map<String, Value>) {
 pub const RUNTIME_KEYS: &[&str] = &["revision"];
 
 /// Khóa là object con: ghép theo từng khóa con, để một khóa con hỏng không kéo cả nhóm về mặc định.
-const NESTED: &[&str] = &["overlay", "hotkeys", "experimental"];
+const NESTED: &[&str] = &["overlay", "hotkeys", "experimental", "compose"];
 
 /// Giá trị thô của một khóa không đọc được trong file của bản app mới hơn.
 #[derive(Clone, Debug, PartialEq)]
@@ -435,6 +435,32 @@ mod tests {
         let loaded = load(raw, defaults());
         assert!(!loaded.settings.translate_while_speaking);
         assert_eq!(loaded.rejected, ["translateWhileSpeaking"]);
+    }
+
+    /// Spec 2026-10-17-go-dich §3.5: file của bản trước chưa có nhóm `compose` thì nhận mặc định mà không phải ghi lại; một
+    /// khóa con hỏng chỉ kéo khóa con đó về mặc định.
+    #[test]
+    fn an_old_file_without_compose_gets_the_defaults_and_bad_sub_keys_fall_back_alone() {
+        use crate::settings::ComposeTarget;
+        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "theme": "dark" }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.compose, defaults().compose);
+        assert!(loaded.rejected.is_empty());
+        assert!(!loaded.needs_save(), "nhóm thiếu thì không phải ghi lại file");
+        let raw = object(json!({
+            "schemaVersion": CURRENT_SCHEMA_VERSION,
+            "compose": { "enabled": false, "target": "fr", "autoPaste": false },
+        }));
+        let loaded = load(raw, defaults());
+        assert_eq!(
+            (
+                loaded.settings.compose.enabled,
+                loaded.settings.compose.target,
+                loaded.settings.compose.auto_paste
+            ),
+            (false, ComposeTarget::Auto, false)
+        );
+        assert_eq!(loaded.rejected, ["compose.target"]);
     }
 
     /// Bản trước chỉ có ba phím tắt: hai phím cuộn phụ đề lấy mặc định, và không bị coi là khóa hỏng.

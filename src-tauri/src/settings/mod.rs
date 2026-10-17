@@ -177,6 +177,45 @@ pub struct Experimental {
     pub translation_context: bool,
 }
 
+/// Ngôn ngữ đích của Gõ dịch (spec 2026-10-17-go-dich §2.1). `Auto` là "tiếng người bên kia", tính theo cài đặt phụ đề
+/// (`compose::target::resolve`); chọn một ngôn ngữ thì thôi đi theo phụ đề.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ComposeTarget {
+    #[default]
+    Auto,
+    En,
+    Zh,
+    Ja,
+    Ko,
+    Vi,
+}
+
+impl ComposeTarget {
+    /// Ngôn ngữ đã chọn riêng; `None` khi là `Auto`.
+    pub fn lang(self) -> Option<Lang> {
+        match self {
+            Self::Auto => None,
+            Self::En => Some(Lang::En),
+            Self::Zh => Some(Lang::Zh),
+            Self::Ja => Some(Lang::Ja),
+            Self::Ko => Some(Lang::Ko),
+            Self::Vi => Some(Lang::Vi),
+        }
+    }
+}
+
+/// Gõ dịch: ô soạn nổi dịch tin nhắn rồi dán vào ô nhập của app khác (spec 2026-10-17-go-dich §1.4, §3.5).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComposeSettings {
+    /// Tắt thì gỡ đăng ký phím tắt của ô soạn; phím đã chọn vẫn giữ trong cài đặt phím tắt.
+    pub enabled: bool,
+    pub target: ComposeTarget,
+    /// macOS: tự dán vào ô đang gõ (cần quyền Trợ năng); tắt thì chỉ chép vào clipboard. Windows luôn tự dán.
+    pub auto_paste: bool,
+}
+
 /// Toàn bộ cài đặt. Tên khóa trong file JSON là tên trường dạng camelCase.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -194,6 +233,9 @@ pub struct Settings {
     /// tác dụng từ đoạn kế tiếp (`session::set_streaming_enabled`). File của bản trước chưa có khóa này thì lấy mặc định
     /// (`migrate::load` ghép từng khóa vào giá trị mặc định), không cần bước migrate.
     pub translate_while_speaking: bool,
+    /// Gõ dịch (spec 2026-10-17-go-dich §3.5). File của bản trước chưa có nhóm này thì lấy mặc định (`migrate::load` ghép
+    /// từng khóa vào giá trị mặc định), không cần bước migrate.
+    pub compose: ComposeSettings,
     /// Gói model đang dùng (§6.7): mã gói trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest, Đ7).
     /// `None` là chưa có gói nào. Chỉ đổi qua lệnh của kế hoạch 04 (gói phải đã tải xong).
     pub model_tier: Option<String>,
@@ -256,6 +298,11 @@ impl Settings {
                 last_monitor: None,
             },
             translate_while_speaking: false,
+            compose: ComposeSettings {
+                enabled: true,
+                target: ComposeTarget::Auto,
+                auto_paste: true,
+            },
             model_tier: None,
             hotkeys: Hotkeys {
                 toggle_session: "Ctrl+Alt+T".into(),
@@ -485,6 +532,7 @@ mod tests {
             "onboardingDone",
             "revision",
             "translateWhileSpeaking",
+            "compose",
         ] {
             assert!(keys.contains(&key.to_string()), "thiếu khóa {key}");
         }
@@ -631,6 +679,39 @@ mod tests {
         })
         .unwrap();
         assert_eq!(value["modelTier"], json!("lite"), "file cài đặt cũ vẫn đọc được");
+    }
+
+    /// Spec 2026-10-17-go-dich §1.4, §2.1: Gõ dịch bật sẵn, ngôn ngữ đích "Tự động", tự dán; ngôn ngữ đích lưu bằng mã hai
+    /// chữ hay `auto`.
+    #[test]
+    fn compose_defaults_and_target_codes() {
+        let s = valid();
+        assert_eq!(
+            s.compose,
+            ComposeSettings {
+                enabled: true,
+                target: ComposeTarget::Auto,
+                auto_paste: true,
+            }
+        );
+        let value = serde_json::to_value(&s).unwrap();
+        assert_eq!(
+            value["compose"],
+            json!({ "enabled": true, "target": "auto", "autoPaste": true })
+        );
+        for (target, code, lang) in [
+            (ComposeTarget::Auto, "auto", None),
+            (ComposeTarget::En, "en", Some(Lang::En)),
+            (ComposeTarget::Zh, "zh", Some(Lang::Zh)),
+            (ComposeTarget::Ja, "ja", Some(Lang::Ja)),
+            (ComposeTarget::Ko, "ko", Some(Lang::Ko)),
+            (ComposeTarget::Vi, "vi", Some(Lang::Vi)),
+        ] {
+            assert_eq!(serde_json::to_value(target).unwrap(), json!(code));
+            assert_eq!(serde_json::from_value::<ComposeTarget>(json!(code)).unwrap(), target);
+            assert_eq!(target.lang(), lang, "{code}");
+        }
+        assert!(serde_json::from_value::<ComposeTarget>(json!("fr")).is_err());
     }
 
     #[test]
