@@ -799,6 +799,24 @@ test("không nguồn chữ nào của site (kể cả chính sách dựng từ d
   }
 });
 
+test("chính sách quyền riêng tư: Gõ dịch ở mục 2, 3 (dữ liệu trên máy, clipboard, quyền Trợ năng), 4 (không kết nối nào mang chữ gõ) và 10 (báo cáo không gồm chữ gõ)", () => {
+  const errors = [
+    ...sectionErrors("/chinh-sach-quyen-rieng-tu/", {
+      2: ["Chữ bạn gõ ở Gõ dịch", "không được gửi đi và không được ghi xuống đĩa"],
+      3: ["Chữ bạn gõ ở Gõ dịch và bản dịch của nó", "clipboard", "Trợ năng", "không đọc chữ, nội dung hay clipboard của ứng dụng khác"],
+      4: ["hay chữ bạn gõ ở Gõ dịch"],
+      10: ["chữ bạn gõ ở Gõ dịch"],
+    }),
+    ...sectionErrors("/en/privacy/", {
+      2: ["Text you type in Type", "it is not sent anywhere and not written to disk"],
+      3: ["Translate and its translation", "clipboard", "Accessibility", "does not read text, content or the clipboard of other apps"],
+      4: ["or text you type in Type"],
+      10: ["text typed in Type"],
+    }),
+  ];
+  assert.deepEqual(errors, []);
+});
+
 test("luật giá USD (usdAmounts): đọc đúng '3.99 USD' (en) và '$3,99' (vi), bắt 'US$ 4.99', '4.99$', 'USD 3.99', '1,000 USD', 'đô la'; không nhầm tên cột kế bên là giá", () => {
   const cents = (s) => [...new Set(usdAmounts(s).map((a) => a.cents))].sort((a, b) => a - b);
   for (const [text, want] of [
@@ -1189,7 +1207,7 @@ test("chính sách quyền riêng tư: mục 10 Báo cáo lỗi nêu khi nào g�
           "mã báo cáo",
           "không đang dịch",
           "mã băm của ID máy",
-          "Âm thanh, bản chép lời, bản dịch, license key, token, email",
+          "Âm thanh, bản chép lời, bản dịch, chữ bạn gõ ở Gõ dịch, license key, token, email",
           "có thể nối báo cáo với license và email",
           "30 ngày",
           "3.000",
@@ -1215,7 +1233,8 @@ test("chính sách quyền riêng tư: mục 10 Báo cáo lỗi nêu khi nào g�
           "report code",
           "not translating",
           "hash of the machine ID",
-          "Audio, transcripts, translations, license keys, tokens, email addresses",
+          "Audio, transcripts, translations, text typed in Type",
+          "Translate, license keys, tokens, email addresses",
           "can link a report to that machine",
           "30 days",
           "3,000",

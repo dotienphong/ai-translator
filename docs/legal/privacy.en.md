@@ -9,6 +9,7 @@ AI Translator (the "app") is developed and operated by **Do Tien Phong** (an ind
 ## 2. Summary
 
 - Meeting audio is processed **entirely on your computer**. Audio is **never** sent anywhere and is not written to disk.
+- Text you type in **Type & Translate** (a box for writing a message, translating it and pasting it into another app) is also translated **entirely on your computer**: it is not sent anywhere and not written to disk (section 3).
 - The app has **no sign-in accounts, no advertising and no analytics**. When it hits an error, it **automatically sends us an error report with personal data scrubbed out** so we can fix the problem; you can turn this off at any time (section 10).
 - Our servers only store your **email** (when you buy a plan), order details, your license, a hashed machine identifier and error reports (kept for 30 days), in order to issue keys, check licenses, make sure each machine gets the Free trial only once, and fix bugs.
 - Personal data on our servers is **kept until you ask us to delete it** (section 7), except error reports, which are deleted automatically after 30 days (section 10).
@@ -19,12 +20,15 @@ AI Translator (the "app") is developed and operated by **Do Tien Phong** (an ind
 |---|---|
 | System audio being captured | Held only in RAM while translating; never written to disk or sent over the network |
 | Transcripts and translations | Shown on screen. **History is off by default.** If you turn it on, it is stored on your computer, encrypted, and can be deleted with one button |
+| Text you type in Type & Translate and its translation | Held only in RAM until you paste it or quit the app; never written to disk, never sent over the network, not in logs or error reports. The app copies the translation to the operating system's clipboard to paste it; it stays there until you copy something else |
 | Glossary, settings | Stored on your computer |
 | History encryption key, license token, trial token, usage counters | Stored in the operating system's key store (macOS Keychain, Windows Credential Manager) |
 | Activity logs | Stored on your computer; they do not contain transcript text. Only the part of a log that relates to an error leaves your computer, inside an error report with personal data scrubbed out (section 10); you can also send a log to support with a button in the app |
 | Recognition and translation models | Downloaded once, then run entirely on your computer |
 
 The app's helper programs only listen on `127.0.0.1` (your own machine) or open no network port at all.
+
+On macOS, Type & Translate can ask for the **Accessibility** permission to paste the translation into the box you are typing in. The app uses this permission only to send the paste keys (⌘V); it does not read text, content or the clipboard of other apps. If you do not grant it, the app only copies the translation to the clipboard for you to paste.
 
 ## 4. When the app uses the network
 
@@ -35,7 +39,7 @@ The app connects to the network only to:
 4. **The payment page** provided by PayOS (VietQR bank transfer) or Creem (international card), opened in your browser when you buy a plan.
 5. **Our website** `aitranslator.io.vn`, opened in your browser when you click a link in the app.
 
-There are no other connections, and none carries audio or transcript text.
+There are no other connections, and none carries audio, transcript text or text you type in Type & Translate.
 
 ## 5. Data we store on our servers
 
@@ -99,7 +103,7 @@ When the app hits an error, it **automatically sends us an error report** throug
 |---|---|
 | When it is sent automatically | When the app's previous run ended abruptly; when a translation session stops because of an error in the app (not errors caused by you or your environment, such as a missing recording permission, a used-up quota, an ended trial, no network or no disk space); or when one of the app's helper programs dies and is restarted automatically. A report is only sent while the app is not translating, and each machine sends at most 5 reports a day |
 | The report contains | The report code, the type and code of the error, the time it happened; the app version, the operating system and its version, the architecture, the chip or CPU name, RAM, the type of GPU in use, the model pack, the name of your license plan (never the key), the interface language; a **hash of the machine ID**; and the part of the log that relates to the error (at most 64 KB) |
-| The report does not contain | Audio, transcripts, translations, license keys, tokens, email addresses, the computer name, the operating-system user name, IP addresses |
+| The report does not contain | Audio, transcripts, translations, text typed in Type & Translate, license keys, tokens, email addresses, the computer name, the operating-system user name, IP addresses |
 | Scrubbing | Before sending, the app removes personal folder paths, keys, tokens and email addresses from the log; if any sensitive pattern is left, the whole report is dropped. Our server checks again and rejects a report if anything is left |
 | How it is tied to you | The machine-ID hash in the report is the same one we store for licensing and the Free trial (section 5), so we **can link a report to that machine's license and email** when handling a support request |
 | How long it is kept | At most **30 days**, then deleted automatically; the server keeps at most 3,000 reports and deletes the oldest first |
