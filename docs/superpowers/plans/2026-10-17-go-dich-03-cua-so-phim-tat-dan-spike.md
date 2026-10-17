@@ -2720,7 +2720,7 @@ cd /Users/dtphong/Desktop/software_business/meeting-translator-work/go-dich && g
 
 Spec §1.2, §1.3, §4.2, §5. Trang React của cửa sổ `compose` (QĐ12 của kế hoạch 00: đặt ở `src/windows/compose/` cạnh hai cửa sổ kia):
 - Dòng đầu "Gõ dịch · → English" và trạng thái ("Đang nạp model…", "Đang dịch…", "Đã là English", hay trống; `aria-live`).
-- Ô gõ nhiều dòng (`maxLength` 4000), tự cao tới 6 dòng rồi cuộn; mỗi lần mở: con trỏ vào ô gõ, bản nháp chọn sẵn.
+- Ô gõ nhiều dòng (`maxLength` 4000), tự cao tới 6 dòng rồi cuộn; mỗi lần mở: con trỏ vào ô gõ, bản nháp chọn sẵn. **Tắt sửa chính tả, tự sửa chữ, tự viết hoa** (`spellCheck={false}`, `autoCorrect`, `autoCapitalize`, `autoComplete` = off): thử tự động ở spike S2 thấy hộp gợi ý chữ của macOS ("Report ×") hiện ngay dưới con trỏ khi vừa gõ xong từ cuối và **nuốt phím Enter đầu tiên**, nên Enter không dán (phải bấm lần hai). Hỏng nhiều người gõ nhanh rồi Enter; sau khi tắt, 10/10 lượt dán ngay ở Enter đầu.
 - Bản dịch (chọn và chép được), mờ khi chưa khớp chữ đang có.
 - Chân ô: gợi ý phím (theo tự dán hay chỉ chép), hay hộp lỗi (`role="alert"`, có nút mở đúng màn hình khi có), hay hộp quyền Trợ năng (macOS: "Bật tự dán", "Luôn chỉ chép").
 - Enter/Shift+Enter/bộ gõ theo `keyAction`; Esc ở bất kỳ đâu trong ô soạn (kể cả khi focus ở một nút) thì đóng.
@@ -3138,6 +3138,13 @@ function Compose() {
         ref={input}
         rows={1}
         maxLength={4000}
+        // Tắt sửa chính tả, tự sửa chữ và tự viết hoa: hộp gợi ý chữ của macOS ("Report ×") hiện ngay dưới con trỏ khi vừa gõ xong
+        // từ cuối và nuốt phím Enter đầu tiên (spike S2, 2026-10-17), nên Enter không dán. Chữ gõ ở đây là để dịch, không phải
+        // văn bản cần chuẩn chính tả (tiếng Việt, tiếng Nhật… cũng không nên bị gạch đỏ).
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="off"
+        autoComplete="off"
         value={s.text}
         placeholder={t("compose.placeholder")}
         aria-label={t("compose.title")}

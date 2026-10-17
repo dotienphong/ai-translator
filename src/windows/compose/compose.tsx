@@ -110,6 +110,13 @@ function Compose() {
         ref={input}
         rows={1}
         maxLength={4000}
+        // Tắt sửa chính tả, tự sửa chữ và tự viết hoa: hộp gợi ý chữ của macOS ("Report ×") hiện ngay dưới con trỏ khi vừa gõ xong
+        // từ cuối và nuốt phím Enter đầu tiên (spike S2, 2026-10-17), nên Enter không dán. Chữ gõ ở đây là để dịch, không phải
+        // văn bản cần chuẩn chính tả (tiếng Việt, tiếng Nhật… cũng không nên bị gạch đỏ).
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="off"
+        autoComplete="off"
         value={s.text}
         placeholder={t("compose.placeholder")}
         aria-label={t("compose.title")}
