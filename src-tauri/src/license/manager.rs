@@ -2856,44 +2856,10 @@ pub mod tests {
 
     // ---- Mở app khi đang xung đột ----
 
-    /// Bắt log của mọi luồng, kèm luồng ghi: test chỉ đọc phần của luồng mình.
-    static CAPTURED: Mutex<Vec<(std::thread::ThreadId, String)>> = Mutex::new(Vec::new());
-
-    struct Capture;
-
-    impl log::Log for Capture {
-        fn enabled(&self, _: &log::Metadata) -> bool {
-            true
-        }
-
-        fn log(&self, record: &log::Record) {
-            CAPTURED
-                .lock()
-                .unwrap()
-                .push((std::thread::current().id(), record.args().to_string()));
-        }
-
-        fn flush(&self) {}
-    }
-
-    fn capture_logs() {
-        static ONCE: std::sync::Once = std::sync::Once::new();
-        ONCE.call_once(|| {
-            let _ = log::set_logger(&Capture);
-            log::set_max_level(log::LevelFilter::Warn);
-        });
-    }
-
-    fn logs_of_this_thread() -> Vec<String> {
-        let me = std::thread::current().id();
-        CAPTURED
-            .lock()
-            .unwrap()
-            .iter()
-            .filter(|(thread, _)| *thread == me)
-            .map(|(_, m)| m.clone())
-            .collect()
-    }
+    // Log của cả tiến trình test do logger chung ở `test_support` ghi lại (mỗi dòng kèm luồng ghi): test chỉ đọc phần của luồng
+    // mình. Dùng chung một logger vì `log::set_logger` chỉ cài được một lần mỗi tiến trình, mà báo cáo lỗi (spec 2026-10-17) cũng
+    // cần đọc log thật của một phiên.
+    use crate::test_support::{capture_logs, logs_of_this_thread};
 
     /// Bản ghi xung đột có token rỗng theo thiết kế: mở lại app không được log "token đã lưu không đọc được" mỗi lần. Đối
     /// chứng: token hỏng thật vẫn được log.

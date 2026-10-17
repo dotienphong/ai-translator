@@ -678,3 +678,121 @@ pub fn invoke(window: &WebviewWindow<MockRuntime>, cmd: &str, args: Value) -> Re
 pub fn denied(result: &Result<Value, String>) -> bool {
     matches!(result, Err(message) if message.contains("not allowed"))
 }
+
+// ---- Báo cáo lỗi (spec 2026-10-17-diagnostics-reports-design.md) ----
+
+/// Log của cả tiến trình test, do một logger toàn cục ghi (như `tauri-plugin-log` ghi `app.log`), kèm luồng ghi từng dòng. Báo
+/// cáo lỗi của một phiên giả đọc log này, nên test kiểm được báo cáo từ log thật của phiên; test bản quyền đọc phần của luồng mình
+/// (`logs_of_this_thread`). Một logger chung vì `log::set_logger` chỉ cài được một lần mỗi tiến trình.
+static CAPTURED_LOG: Mutex<Vec<(std::thread::ThreadId, String)>> = Mutex::new(Vec::new());
+
+struct CapturedLog;
+
+impl log::Log for CapturedLog {
+    fn enabled(&self, _: &log::Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &log::Record) {
+        CAPTURED_LOG.lock().unwrap().push((
+            std::thread::current().id(),
+            format!("[{}][{}] {}", record.level(), record.target(), record.args()),
+        ));
+    }
+
+    fn flush(&self) {}
+}
+
+/// Cài logger ghi lại, mức Info (một lần mỗi tiến trình test).
+pub fn capture_logs() {
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        let _ = log::set_logger(&CapturedLog);
+        log::set_max_level(log::LevelFilter::Info);
+    });
+}
+
+/// Các dòng log mà luồng đang chạy đã ghi, từ lúc cài logger.
+pub fn logs_of_this_thread() -> Vec<String> {
+    let me = std::thread::current().id();
+    CAPTURED_LOG
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|(thread, _)| *thread == me)
+        .map(|(_, line)| line.clone())
+        .collect()
+}
+
+/// Nguồn log của báo cáo lỗi trong app giả: `app.log` là log đã ghi lại ở trên; hai log tiến trình phụ rỗng.
+pub struct FakeReportLogs;
+
+impl crate::diagnostics::logs::LogSource for FakeReportLogs {
+    fn read(&self, file: crate::diagnostics::logs::LogFile) -> String {
+        match file {
+            crate::diagnostics::logs::LogFile::App => {
+                let mut text = CAPTURED_LOG
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .map(|(_, line)| line.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                text.push('\n');
+                text
+            }
+            _ => String::new(),
+        }
+    }
+}
+
+/// Máy chủ báo cáo giả: trả lần lượt các kết quả đã đặt (hết thì `Ok`) và giữ lại thân đã nhận.
+#[derive(Clone, Default)]
+pub struct FakeReportApi {
+    pub script: Arc<Mutex<Vec<Result<(), crate::diagnostics::send::SendError>>>>,
+    pub bodies: Arc<Mutex<Vec<String>>>,
+}
+
+impl crate::diagnostics::send::ReportApi for FakeReportApi {
+    fn send(&self, body: &str) -> Result<(), crate::diagnostics::send::SendError> {
+        self.bodies.lock().unwrap().push(body.to_string());
+        let mut script = self.script.lock().unwrap();
+        if script.is_empty() { Ok(()) } else { script.remove(0) }
+    }
+}
+
+/// `Reporter` đã cài vào app giả, cùng máy chủ giả của nó.
+pub struct ReportRig {
+    pub reporter: Arc<crate::diagnostics::reporter::Reporter>,
+    // Các test đầu-cuối của Task 12 (`app_tests.rs`) đọc `api`; gỡ `allow` ở đó.
+    #[allow(dead_code)]
+    pub api: FakeReportApi,
+}
+
+/// Cài báo cáo lỗi vào app giả (như `diagnostics::install` ở app thật): máy chủ giả, log ghi lại, thư mục hàng đợi tạm riêng, và
+/// cho phép gửi tự động dù đang là bản debug. Cài đặt `sendErrorReports` của app giả vẫn mặc định tắt: test bật bằng
+/// `update_settings`.
+pub fn install_reports(app: &tauri::App<MockRuntime>) -> ReportRig {
+    capture_logs();
+    static DIRS: AtomicUsize = AtomicUsize::new(0);
+    let dir = std::env::temp_dir().join(format!(
+        "{APP_DIR_PREFIX}reports-{}-{}",
+        std::process::id(),
+        DIRS.fetch_add(1, Ordering::SeqCst)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    let api = FakeReportApi::default();
+    let reporter =
+        crate::diagnostics::reporter_for_tests(app.handle(), Box::new(FakeReportLogs), Box::new(api.clone()), dir);
+    app.manage(reporter.clone());
+    app.manage(crate::diagnostics::AsrBackendNote::default());
+    ReportRig { reporter, api }
+}
+
+/// Bật `sendErrorReports` trong app giả, như người dùng bật ở Cài đặt (không qua lệnh, nên không cần cửa sổ).
+pub fn enable_error_reports(app: &tauri::App<MockRuntime>) {
+    let state = app.state::<AppState>();
+    let mut next = state.settings();
+    next.send_error_reports = true;
+    state.replace_settings(&mut next);
+}
