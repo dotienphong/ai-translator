@@ -1835,3 +1835,13 @@ a.dev-name:hover {
     overflow-wrap: anywhere;
   }
 }
+
+/* Thông báo lỗi ở trang chi tiết: chữ mono, giữ ngắt dòng, không tràn ô */
+.err-message {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
