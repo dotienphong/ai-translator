@@ -4,6 +4,7 @@
 
 pub mod logs;
 pub mod machine;
+pub mod marker;
 pub mod queue;
 pub mod report;
 pub mod scrub;
