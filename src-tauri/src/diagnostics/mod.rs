@@ -7,3 +7,4 @@ pub mod machine;
 pub mod queue;
 pub mod report;
 pub mod scrub;
+pub mod send;
