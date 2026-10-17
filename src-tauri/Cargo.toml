@@ -73,9 +73,13 @@ core-foundation = "0.10.1"
 security-framework = "3.7.0"
 apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
 objc2 = "0.6.4"
-objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString", "NSURL"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSGeometry", "NSString", "NSURL"] }
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
 tauri-nspanel = "2.1.0"
+# Gõ dịch (compose/native_macos.rs, spec 2026-10-17-go-dich §3.1, §4.2): đặt ô soạn theo màn hình có con trỏ (NSScreen,
+# NSEvent), chép bản dịch vào clipboard (NSPasteboard), gửi ⌘V (CGEvent). Cùng bản `Cargo.lock` đã có (qua tao, tauri-nspanel).
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSEvent", "NSPasteboard", "NSResponder", "NSScreen", "NSWindow"] }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["std", "CGEvent", "CGEventSource", "CGEventTypes", "CGRemoteOperation"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = [

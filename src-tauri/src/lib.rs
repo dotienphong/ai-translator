@@ -174,6 +174,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 
     window::create_main(&handle)?;
     overlay::create(&handle)?;
+    // Ô soạn Gõ dịch (spec 2026-10-17-go-dich §3.1): tạo ẩn sẵn, để bấm phím tắt là hiện ngay.
+    compose::create(&handle)?;
     let failures = hotkey_registry::register_all(&handle, &settings.active_hotkeys());
     handle
         .state::<AppState>()

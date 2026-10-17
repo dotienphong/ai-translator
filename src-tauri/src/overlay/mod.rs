@@ -17,7 +17,7 @@
 pub mod placement;
 
 #[cfg(target_os = "macos")]
-mod macos;
+pub(crate) mod macos;
 #[cfg(target_os = "macos")]
 use macos as platform;
 #[cfg(not(target_os = "macos"))]

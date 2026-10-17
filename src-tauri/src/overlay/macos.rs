@@ -73,7 +73,10 @@ pub fn create<R: Runtime>(app: &AppHandle<R>, title: &str) -> tauri::Result<()> 
 ///
 /// `_setPreventsActivation:` là hàm riêng của AppKit. Máy nào không có hàm này thì bỏ qua và ghi log: thanh vẫn chạy,
 /// chỉ còn lỗi cũ.
-fn prevent_activation<R: Runtime>(panel: &dyn Panel<R>) {
+///
+/// Ô soạn Gõ dịch dùng lại hàm này (`compose::native_macos`, spec 2026-10-17-go-dich §3.1): app chat phải còn là app phía
+/// trước suốt lúc ô soạn mở.
+pub(crate) fn prevent_activation<R: Runtime>(panel: &dyn Panel<R>) {
     let target = panel.as_panel();
     let selector = objc2::sel!(_setPreventsActivation:);
     // SAFETY: `target` là một NSPanel còn sống; `_setPreventsActivation:` nhận một BOOL và không trả giá trị.

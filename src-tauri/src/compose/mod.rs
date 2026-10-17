@@ -4,6 +4,7 @@
 //! - `target`: ngôn ngữ đích tự động, "tiếng người bên kia" (spec §2.1).
 //! - `detect`: nhận diện ngôn ngữ của chữ gõ theo chữ viết (spec §2.2).
 //! - `worker`: dịch từng dòng bằng đúng hàm dịch của phụ đề (spec §3.3).
+//! - `native_macos`, `native_windows`: cửa sổ ô soạn và việc dán trên từng hệ điều hành (spec §3.1, §4.2, §4.3).
 //! - Phần ở đây: trạng thái của ô soạn, yêu cầu dịch (một luồng nền; yêu cầu mới hủy yêu cầu cũ), dán (spec §4), và việc của
 //!   các lệnh `compose_*` (cửa sổ `compose`, spec §3.6). Thao tác trên cửa sổ và với hệ điều hành (hiện, ẩn, clipboard, gửi
 //!   phím dán) đi qua trait [`Native`], để test dùng bản giả (`test_support::FakeNative`).
@@ -14,6 +15,11 @@
 pub mod detect;
 pub mod target;
 pub mod worker;
+
+#[cfg(target_os = "macos")]
+mod native_macos;
+#[cfg(target_os = "macos")]
+use native_macos as platform;
 
 #[cfg(test)]
 mod tests;
@@ -183,6 +189,13 @@ impl Compose {
             cancel.store(true, Ordering::SeqCst);
         }
     }
+}
+
+/// Tạo ô soạn ẩn sẵn lúc mở app (spec §3.1) và cài bản thật của [`Native`]. Gọi một lần ở `setup`, trên luồng chính.
+pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let native = platform::create(app, &app.package_info().name)?;
+    app.manage(Compose::new(Box::new(native)));
+    Ok(())
 }
 
 fn state<R: Runtime>(app: &AppHandle<R>) -> Result<tauri::State<'_, Compose>, CommandError> {

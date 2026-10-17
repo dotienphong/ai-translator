@@ -2,7 +2,7 @@
 
 use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder, Window, WindowEvent};
 
-use crate::{navigation, overlay, session};
+use crate::{compose, navigation, overlay, session};
 
 pub const MAIN: &str = "main";
 
@@ -57,6 +57,13 @@ pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
         }
         (overlay::LABEL, WindowEvent::Moved(_) | WindowEvent::Resized(_)) => {
             overlay::remember_position(window.app_handle());
+        }
+        // Ô soạn Gõ dịch (spec 2026-10-17-go-dich §1.3, §3.1): bấm ra ngoài (mất focus) thì đóng như Esc; ⌘W hay Alt+F4 cũng
+        // chỉ đóng ô soạn, không hủy cửa sổ (tạo một lần lúc mở app).
+        (compose::LABEL, WindowEvent::Focused(false)) => compose::close(window.app_handle()),
+        (compose::LABEL, WindowEvent::CloseRequested { api, .. }) => {
+            api.prevent_close();
+            compose::close(window.app_handle());
         }
         _ => {}
     }
