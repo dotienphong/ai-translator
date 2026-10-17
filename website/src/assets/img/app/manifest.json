@@ -226,7 +226,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 65432,
+  "bytes": 65396,
   "description": "Cài đặt quyền riêng tư: lưu lịch sử chép lời mặc định tắt, gửi báo cáo lỗi tự động mặc định bật, cùng nút xóa toàn bộ dữ liệu và xóa model."
  },
  {
@@ -236,7 +236,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 64418,
+  "bytes": 64384,
   "description": "Privacy settings: saving transcript history is off by default and sending error reports automatically is on by default, with buttons to delete all data and to delete models."
  },
  {
@@ -246,7 +246,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1056,
-  "bytes": 55172,
+  "bytes": 55138,
   "description": "Màn hình Nâng cấp khi chọn sẵn VietQR: nhóm Cách thanh toán với hai lựa chọn (Chuyển khoản VietQR (VND) đang chọn, Thẻ quốc tế (USD)), bốn gói (Free 30 phút mỗi ngày dùng thử 10 ngày, Monthly 50 giờ giá 50.000 đ, 6 Months 100 giờ giá 269.000 đ, Yearly không giới hạn giá 500.000 đ), ô Email nhận key, ô đồng ý, mục gập Chính sách quyền riêng tư và nút Tạo mã thanh toán."
  },
  {
@@ -256,7 +256,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1056,
-  "bytes": 53020,
+  "bytes": 52986,
   "description": "The Upgrade screen with VietQR preselected: the Payment method group with two choices (VietQR bank transfer (VND), selected, and International card (USD)), four plans (Free with 30 minutes a day for a 10-day trial, Monthly with 50 hours for 50.000 đ, 6 Months with 100 hours for 269.000 đ and Yearly with unlimited use for 500.000 đ), the Email to receive your key box, the agreement tick box, the folded Privacy Policy and the Create payment QR code button."
  },
  {
@@ -266,7 +266,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1239,
-  "bytes": 75080,
+  "bytes": 75044,
   "description": "The Upgrade screen with International card (USD) preselected, as shown when connecting from outside Vietnam: the Payment method group with VietQR bank transfer (VND) and International card (USD), plan prices in USD excluding tax (Monthly $3.99, 6 Months $21.99, Yearly $39.99), a note that you pay by card or digital wallet on Creem's payment page in your browser and that Creem is the merchant of record for card orders, the Email to receive your key box, the agreement tick box, the folded Privacy Policy and License Agreement (EULA) and the Pay in your browser button."
  },
  {
@@ -276,7 +276,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1091,
-  "bytes": 60202,
+  "bytes": 60162,
   "description": "Màn hình Nâng cấp khi đơn VietQR đang chờ: nhóm Cách thanh toán với VietQR đang chọn, gói Monthly đang chọn còn các gói khác mờ đi, mã VietQR minh họa kèm mã đơn, số tiền 50.000 đ, giờ hết hạn của mã, dòng Đang chờ chuyển khoản…, nút Mở trang thanh toán và nút Hủy."
  },
  {
@@ -286,7 +286,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1091,
-  "bytes": 58258,
+  "bytes": 58216,
   "description": "The Upgrade screen while a VietQR order is waiting: the Payment method group with VietQR selected, the Monthly plan selected and the other plans dimmed, an illustrative VietQR code with the order number, the amount 50.000 đ, the code expiry time, a Waiting for your transfer… line, an Open payment page button and a Cancel button."
  },
  {
@@ -296,7 +296,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1229,
-  "bytes": 84358,
+  "bytes": 84318,
   "description": "Màn hình Nâng cấp khi đơn thẻ quốc tế đang chờ: Thẻ quốc tế (USD) đang chọn, giá các gói bằng USD chưa gồm thuế, ghi chú trả bằng thẻ hoặc ví điện tử trên trang thanh toán của Creem mở trong trình duyệt và câu nói Creem là bên bán lại (merchant of record), rồi khung Hoàn tất thanh toán trong trình duyệt với mã đơn, số tiền $3.99 (chưa gồm thuế), giờ hẹn Trả trước …, dòng Đang chờ xác nhận thanh toán…, nút Mở lại trang thanh toán, nút Hủy và lời dặn đã trả ở trang thanh toán thì đừng hủy hay tạo đơn mới."
  },
  {
@@ -306,7 +306,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1229,
-  "bytes": 86170,
+  "bytes": 86128,
   "description": "The Upgrade screen while an international card order is waiting: International card (USD) selected, plan prices in USD excluding tax, a note that you pay by card or digital wallet on Creem's payment page in your browser and that Creem is the merchant of record, then a Finish paying in your browser panel with the order number, the $3.99 amount (excluding tax), the Finish paying before … deadline, a Waiting for payment confirmation… line, Reopen payment page and Cancel buttons and a reminder not to cancel or create a new order if you have already paid."
  },
  {
@@ -316,7 +316,7 @@
   "theme": "light",
   "width": 1440,
   "height": 580,
-  "bytes": 41624,
+  "bytes": 41768,
   "description": "Màn hình Giới thiệu: tên app, dòng Phiên bản, nút Mở thư mục log và nút Gửi log cho hỗ trợ, Điều khoản và quyền riêng tư."
  },
  {
@@ -326,7 +326,7 @@
   "theme": "light",
   "width": 1440,
   "height": 580,
-  "bytes": 38628,
+  "bytes": 38764,
   "description": "The About screen: the app name, the Version line, the Open log folder and Send log to support buttons, and Terms and privacy."
  },
  {
