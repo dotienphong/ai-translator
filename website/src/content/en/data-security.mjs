@@ -12,6 +12,7 @@ const TOC = [
   { level: 2, id: "network", text: "Where does the app connect?" },
   { level: 2, id: "verified", text: "How did we check that?" },
   { level: 2, id: "server", text: "What do our servers store, and for how long?" },
+  { level: 2, id: "error-reports", text: "Error reports: what does the app send?" },
   { level: 2, id: "delete-data", text: "How do I delete my data?" },
   { level: 2, id: "processors", text: "Who else processes data?" },
   { level: 2, id: "protections", text: "Other protections" },
@@ -30,7 +31,7 @@ export default {
     "AI Translator processes audio on your computer and never sends it out. See what stays on your device, where it connects, what servers store, and how to delete it.",
   breadcrumbs: crumbs,
   modified: "2026-10-14",
-  llm: "What data stays on your device, the five places the app connects to, how it was checked with a proxy on macOS (Windows not yet measured), what our servers store and for how long, processors, protections, signing status and how to request deletion.",
+  llm: "What data stays on your device, the five places the app connects to, how it was checked with a proxy on macOS (Windows not yet measured), what our servers store and for how long, automatic error reports (what is sent, how to turn them off), processors, protections, signing status and how to request deletion.",
   llmTitle: "Data and security in AI Translator",
   body: () => `
 ${pageHero({
@@ -50,20 +51,20 @@ ${facts([
   ["Conversation data", "Only on your computer; our server has none"],
   ["Audio", "Only in RAM, never written to disk, never sent out"],
   ["Network", "Five places; none of them receives audio or transcripts"],
-  ["Servers store", "Email (when you buy), orders, licenses, hashed machine ID"],
-  ["Kept for", "Until you ask us to delete it"],
+  ["Servers store", "Email (when you buy), orders, licenses, hashed machine ID, error reports"],
+  ["Kept for", "Until you ask us to delete it; error reports 30 days"],
   ["Checked", "Proxy and nettop on macOS; Windows not measured yet"],
   ["Code signing", "macOS ad-hoc signed, not notarized; Windows not signed"],
 ])}
 <h2 id="on-device">What data stays on your computer?</h2>
-<p>Audio, transcripts and translations never leave your computer. The app also has no sign-in, no ads, no analytics and sends no automatic crash reports.</p>
+<p>Audio, transcripts and translations never leave your computer. The app also has no sign-in, no ads and no analytics. When it hits an error, it sends us an error report with personal data scrubbed out (see <a href="#error-reports">Error reports</a>); that report contains no audio, no transcript text and no translation.</p>
 <div class="table-wrap" role="region" aria-label="Data that stays on your computer" tabindex="0"><table>
 <thead><tr><th scope="col">Data</th><th scope="col">How it is handled</th></tr></thead>
 <tbody>
 <tr><th scope="row">System audio being captured</th><td>Only in RAM while translating. Never written to disk, never sent over the network. AI Translator does not record meetings to a file either.</td></tr>
 <tr><th scope="row">Transcript and translation</th><td>Shown on screen and held in memory for the session. History is off by default; if you turn it on (a Pro feature), it is stored on your computer, encrypted.</td></tr>
 <tr><th scope="row">Keys, tokens, quota counters</th><td>The history encryption key, license token, trial token and quota counters live in Keychain (macOS) or Credential Manager (Windows).</td></tr>
-<tr><th scope="row">Logs</th><td>Stored on your computer and free of transcript content. You decide whether to send them to us.</td></tr>
+<tr><th scope="row">Logs</th><td>Stored on your computer and free of transcript content. Only the part of a log that relates to an error leaves your computer, inside an error report with personal data scrubbed out (see <a href="#error-reports">Error reports</a>).</td></tr>
 <tr><th scope="row">Glossary, settings, models</th><td>Stored on your computer. Models are downloaded once and run entirely on your computer.</td></tr>
 </tbody></table></div>
 
@@ -72,7 +73,7 @@ ${facts([
 <div class="table-wrap" role="region" aria-label="Places the app connects to" tabindex="0"><table>
 <thead><tr><th scope="col">Connects to</th><th scope="col">What for</th><th scope="col">What is sent</th></tr></thead>
 <tbody>
-<tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key</td></tr>
+<tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks, receiving error reports; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key; error reports with personal data scrubbed out (only while the app is not translating)</td></tr>
 <tr><th scope="row">releases.aitranslator.io.vn</th><td>Downloading models, checking for and downloading app updates</td><td>File download requests only</td></tr>
 <tr><th scope="row">PayOS payment page (pay.payos.vn)</th><td>VietQR payment when you buy a plan</td><td>Opens in your browser, not inside the app</td></tr>
 <tr><th scope="row">Creem payment page (www.creem.io)</th><td>International card payment when you buy a plan</td><td>Opens in your browser, not inside the app. Your email goes to Creem from our server, not from the app (see “Who else processes data?”)</td></tr>
@@ -86,10 +87,10 @@ ${facts([
 <li><strong>nettop</strong> watched 7 processes of the app (including the AI processing): no outbound data stream was seen.</li>
 <li><strong>Marker words</strong> from the sample sentence: found neither in the app's log nor in the recorded requests.</li>
 </ul>
-${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on macOS, one machine, one ad-hoc signed build. <strong>Windows has not been measured.</strong> This is an internal check, not an independent audit; the proxy mode cannot see WebView requests or non-HTTP traffic, so we covered that with nettop." })}
+${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on macOS, one machine, one ad-hoc signed build, and the run predates automatic error reports (the app is designed to send a report only while it is not translating, but <strong>we have not re-measured that with the proxy</strong>). <strong>Windows has not been measured.</strong> This is an internal check, not an independent audit; the proxy mode cannot see WebView requests or non-HTTP traffic, so we covered that with nettop." })}
 
 <h2 id="server">What do our servers store, and for how long?</h2>
-<p>Our servers store the data below. The Free trial row applies to every device that registered for the trial; the other rows exist only if you buy a plan or activate a key.</p>
+<p>Our servers store the data below. The Free trial row applies to every device that registered for the trial; the other rows exist only if you buy a plan or activate a key, except the error-reports row, which applies to every device whose app sends a report.</p>
 <div class="table-wrap" role="region" aria-label="Data our servers store" tabindex="0"><table>
 <thead><tr><th scope="col">Data</th><th scope="col">Purpose</th></tr></thead>
 <tbody>
@@ -100,19 +101,33 @@ ${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on 
 <tr><th scope="row">Free trial: hashed machine ID, start and end times, last time the app called</th><td>One trial per device. No email or device name.</td></tr>
 <tr><th scope="row">License change log</th><td>Support and incident investigation</td></tr>
 <tr><th scope="row">Rate-limit counters (hashed values only, expire after about 3 hours)</th><td>Blocking key guessing and spam</td></tr>
+<tr><th scope="row">Error reports: error type and code, machine details, hashed machine ID, the relevant part of the log</th><td>Finding and fixing bugs; deleted automatically after 30 days (see <a href="#error-reports">Error reports</a>)</td></tr>
 </tbody></table></div>
-<p><strong>Kept for:</strong> until you ask us to delete it; we never delete personal data on our own. We do not receive your card or bank account numbers. For VietQR we do not send your email to PayOS; for an international card, we send the email you enter on the Upgrade screen to Creem, to pre-fill its payment page and so that Creem can email you a receipt. If you only use Free, our servers hold no email or device name for you.</p>
+<p><strong>Kept for:</strong> until you ask us to delete it; we never delete personal data on our own (except error reports, which are deleted automatically after 30 days). We do not receive your card or bank account numbers. For VietQR we do not send your email to PayOS; for an international card, we send the email you enter on the Upgrade screen to Creem, to pre-fill its payment page and so that Creem can email you a receipt. If you only use Free, our servers hold no email or device name for you.</p>
+
+<h2 id="error-reports">Error reports: what does the app send when it hits an error?</h2>
+<p>When the app hits an error, it automatically sends us an error report so we can find and fix the problem. This is on by default (including after you update from an older version); you turn it off or back on in <strong>Settings › Privacy</strong>, and you can untick it right at the Terms step the first time you open the app. The <strong>Send log to support</strong> button on the <strong>About</strong> screen sends a report immediately (even if you turned automatic sending off) and gives you a <strong>report code</strong> to put in your email to support.</p>
+<div class="table-wrap" role="region" aria-label="Error reports from the app" tabindex="0"><table>
+<thead><tr><th scope="col">What</th><th scope="col">Details</th></tr></thead>
+<tbody>
+<tr><th scope="row">When the app sends one</th><td>When the previous run ended abruptly; when a translation session stops because of an error in the app (not errors caused by you or your environment, such as a missing recording permission, a used-up quota or no network); when one of the app's helper programs dies and restarts. Only while the app is not translating, at most 5 reports a day per machine.</td></tr>
+<tr><th scope="row">A report contains</th><td>The report code, the type and code of the error; the app version, operating system, chip or CPU, RAM, type of GPU, model pack, the name of your license plan (never the key), the interface language; the hashed machine ID; and the part of the log that relates to the error, at most 64 KB.</td></tr>
+<tr><th scope="row">A report does not contain</th><td>Audio, transcripts, translations, license keys, tokens, email addresses, the computer name, the operating-system user name, IP addresses. The app scrubs personal folder paths, keys, tokens and email addresses from the log before sending; our server checks again and rejects a report if anything is left.</td></tr>
+<tr><th scope="row">How it is tied to you</th><td>The hashed machine ID in the report is the same one we store for licensing and the Free trial, so we can link a report to that machine's license and email when handling a support request.</td></tr>
+<tr><th scope="row">How long it is kept</th><td>At most 30 days, then deleted automatically (the server keeps at most 3,000 reports). A deletion request by email also deletes the reports of the machines that ever activated a key for that email.</td></tr>
+</tbody></table></div>
+<p>We use reports only to find and fix bugs, not for advertising, and we do not share them with anyone other than the processors in the table below. The full text is in section 10 of the <a href="/en/privacy/">Privacy policy</a>.</p>
 
 <h2 id="delete-data">How do I delete my data?</h2>
 ${steps(
   [
     { title: "Delete data on your computer", text: "Go to <strong>Settings › Privacy</strong>. <em>Delete all data</em> removes history and glossary; <em>Delete models and data</em> also removes downloaded models (on macOS, do this before you drag the app to the Trash). Your license, quota and settings are kept." },
     { title: "Ask us to delete server data", text: `Email ${MAIL} <strong>from the same email you used to buy</strong>, so we can confirm it is you. Our Privacy policy also gives you the right to know what is stored, to withdraw consent and to complain, as set out in Vietnam's personal data protection law. We handle requests within the time the law sets.` },
-    { title: "What we do", text: "We remove your email and device name. Your license still works, but can no longer be recovered by email." },
+    { title: "What we do", text: "We remove your email and device name, and delete the error reports of the machines that ever activated a key for that email. Your license still works, but can no longer be recovered by email." },
   ],
   true,
 )}
-<p><strong>After deletion we still keep:</strong> the hashed machine ID (only to prevent abuse: one device per key, one Free trial per device), the time you once consented to email processing, and the order row at accounting level (order code, date, amount and currency, the payment gateway's session ID). Technical logs that expire on their own and Resend's mail logs are outside our deletion, under those parties' own policies. Data you enter on Creem's page and the transaction records kept by Creem (as the merchant of record it must keep tax records) are outside a deletion request sent to us; to have them deleted at Creem, contact Creem.</p>
+<p><strong>After deletion we still keep:</strong> the hashed machine ID (only to prevent abuse: one device per key, one Free trial per device), the time you once consented to email processing, and the order row at accounting level (order code, date, amount and currency, the payment gateway's session ID). Technical logs that expire on their own and Resend's mail logs are outside our deletion, under those parties' own policies. Data you enter on Creem's page and the transaction records kept by Creem (as the merchant of record it must keep tax records) are outside a deletion request sent to us; to have them deleted at Creem, contact Creem. Error reports from a machine that never activated a key are not tied to any email, so they cannot be found by email; they are deleted automatically after 30 days.</p>
 
 <h2 id="processors">Who else processes data?</h2>
 <div class="table-wrap" role="region" aria-label="Other parties that process data" tabindex="0"><table>
@@ -120,7 +135,7 @@ ${steps(
 <tbody>
 <tr><th scope="row">PayOS (Vietnam)</th><td>Processes VietQR payments</td><td>Order code, amount, order description. Not your email.</td></tr>
 <tr><th scope="row">Creem (Armitage Labs OÜ, Estonia)</th><td>Merchant of record (reseller) for card orders: handles the payment, tax and receipt</td><td>We send the order code, plan, amount, currency and the email you entered as soon as you click to pay by card (even if you then do not pay), to pre-fill the payment page and so that Creem can email you a receipt. On its payment page, Creem itself collects your card number, name, billing address and country (to calculate tax) and IP address (to prevent fraud); we do not receive your card number. Creem processes that data under its own policy (https://www.creem.io/privacy). The payment notification Creem sends to our server includes the buyer's name and country; we do not store these two items.</td></tr>
-<tr><th scope="row">Cloudflare</th><td>Runs the license server and database; stores and serves models and updates</td><td>The data in the table above; technical logs that expire on their own</td></tr>
+<tr><th scope="row">Cloudflare</th><td>Runs the license server and database; stores and serves models and updates</td><td>The data in the table above, including error reports; technical logs that expire on their own</td></tr>
 <tr><th scope="row">Resend</th><td>Sends the email that contains your key</td><td>Your email and the message (with the key); mail logs kept under Resend's own policy</td></tr>
 </tbody></table></div>
 <p>Cloudflare and Resend operate servers outside Vietnam, and Creem is an Estonian company, so data may be processed abroad. We do not sell your data and do not share it for advertising.</p>
