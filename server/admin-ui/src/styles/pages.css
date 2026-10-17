@@ -1807,3 +1807,31 @@ a.dev-name:hover {
     max-height: 320px;
   }
 }
+
+/* Cột Thông báo của bảng báo cáo: một dòng, cắt bằng dấu chấm lửng (đầy đủ ở title); phiên bản kèm huy hiệu debug */
+.cell-msg {
+  display: block;
+  max-width: 40ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cell-version {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.err-version input {
+  width: 140px;
+}
+.err-report-code input {
+  width: 200px;
+  font-family: var(--mono);
+}
+@media (max-width: 800px) {
+  .cell-msg {
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
