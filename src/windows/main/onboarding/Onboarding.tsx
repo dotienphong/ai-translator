@@ -34,6 +34,7 @@ export function Onboarding() {
   const setStep = useApp((s) => s.setOnboardingStep);
   const finish = useApp((s) => s.finishOnboarding);
   const startTrial = useApp((s) => s.startTrial);
+  const saveReportsConsent = useApp((s) => s.saveErrorReportsConsent);
   const accepted = useApp((s) => s.termsAccepted);
   const title = useRef<HTMLHeadingElement>(null);
   const shown = useRef(index);
@@ -78,8 +79,12 @@ export function Onboarding() {
             className="primary"
             disabled={!canAdvance(step, accepted)}
             onClick={() => {
-              // Qua bước Điều khoản (đã đồng ý): đăng ký dùng thử chạy nền, vì request gửi mã băm ID máy (spec 2026-10-07 §3.2).
-              if (step === "terms") void startTrial();
+              // Qua bước Điều khoản (đã đồng ý): lưu lựa chọn báo cáo lỗi tự động (spec 2026-10-17 §5; trước bước tải model, vì lỗi có
+              // thể xảy ra từ đó), và đăng ký dùng thử chạy nền, vì request gửi mã băm ID máy (spec 2026-10-07 §3.2).
+              if (step === "terms") {
+                void saveReportsConsent();
+                void startTrial();
+              }
               if (last) void finish();
               else setStep(current + 1);
             }}
@@ -101,6 +106,8 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
   const openPermission = useApp((s) => s.openAudioPermissionSettings);
   const accepted = useApp((s) => s.termsAccepted);
   const setAccepted = useApp((s) => s.setTermsAccepted);
+  const reportsConsent = useApp((s) => s.errorReportsConsent);
+  const setReportsConsent = useApp((s) => s.setErrorReportsConsent);
   switch (step) {
     // Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (bước 5 đổi lại được).
     case "language":
@@ -146,6 +153,19 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
             <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
             <span>{t("onboarding.terms.accept")}</span>
           </label>
+          {/* Tích sẵn (spec 2026-10-17 §0): bỏ tích thì không gửi báo cáo lỗi nào. Không bắt buộc để bấm "Tiếp". */}
+          <label className="consent">
+            <input
+              type="checkbox"
+              checked={reportsConsent}
+              aria-describedby="terms-reports-hint"
+              onChange={(e) => setReportsConsent(e.target.checked)}
+            />
+            <span>{t("onboarding.terms.reports")}</span>
+          </label>
+          <p className="hint consent-hint" id="terms-reports-hint">
+            {t("onboarding.terms.reports.hint")}
+          </p>
         </>
       );
     case "model":
