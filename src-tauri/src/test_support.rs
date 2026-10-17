@@ -764,8 +764,6 @@ impl crate::diagnostics::send::ReportApi for FakeReportApi {
 /// `Reporter` đã cài vào app giả, cùng máy chủ giả của nó.
 pub struct ReportRig {
     pub reporter: Arc<crate::diagnostics::reporter::Reporter>,
-    // Các test đầu-cuối của Task 12 (`app_tests.rs`) đọc `api`; gỡ `allow` ở đó.
-    #[allow(dead_code)]
     pub api: FakeReportApi,
 }
 

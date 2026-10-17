@@ -56,6 +56,7 @@
     "allow-start-trial",
     "allow-check-for-updates",
     "allow-restart-to-update",
+    "allow-send-log-report",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "core:webview:allow-set-webview-zoom"

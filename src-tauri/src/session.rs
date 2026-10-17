@@ -344,6 +344,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
             return Ok(changed(app));
         }
         log::error!("không bắt đầu được phiên: {} ({})", e.code, e.message);
+        crate::diagnostics::on_session_error(app, &e.code, &e.message);
         start_failed(app, attempt, &e.code);
         return Err(e);
     }
@@ -404,6 +405,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
             // Không tạo được luồng của phiên: lỗi bên trong app, không phải lỗi nguồn âm thanh (N-1 của review 02 lần 2).
             let e = CommandError::new(errors::UNKNOWN, None, format!("{e:#}"));
             log::error!("không chạy được pipeline: {}", e.message);
+            crate::diagnostics::on_session_error(app, &e.code, &e.message);
             start_failed(app, attempt, &e.code);
             return Err(e);
         }
@@ -546,6 +548,7 @@ fn fail<R: Runtime>(app: &AppHandle<R>, n: u64, code: &str, message: &str) {
         return;
     }
     log::error!("phiên dịch dừng vì lỗi {code}: {message}");
+    crate::diagnostics::on_session_error(app, code, message);
     check_broken_model(app, code);
     app.state::<AppState>().update_status(|s| {
         s.session = SessionStatus::Error;
@@ -878,6 +881,10 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
                 // review 02 lần 4) chỉ tắt cờ của chính nó (Q5-1 của review 02 lần 5).
                 if let SidecarEvent::Ready { use_gpu, backend, .. } = event {
                     self.set_cpu(*which, !*use_gpu);
+                    // Backend thật của `asr-worker` cho báo cáo lỗi (spec 2026-10-17 §2).
+                    if *which == Which::Asr {
+                        crate::diagnostics::note_asr_backend(&self.app, *backend);
+                    }
                     // `asr-worker` chạy bằng CPU: máy chưa đủ sức dịch trong lúc người nói chưa dừng (spec 2026-10-10 §5).
                     if *which == Which::Asr && matches!(backend, Some(b) if !b.is_gpu()) {
                         state.update_status(AppStatus::note_machine_too_slow);
@@ -897,7 +904,17 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
                 }
                 self.set_loading(*which, None);
             }
-            SidecarEvent::Restarting { .. } | SidecarEvent::Stopped { .. } => return,
+            // Tiến trình phụ chết rồi được khởi động lại: báo cáo `sidecar_died` (spec 2026-10-17 §1). Không đổi trạng thái hiện.
+            SidecarEvent::Restarting {
+                which,
+                failures,
+                reason,
+                ..
+            } => {
+                crate::diagnostics::on_sidecar_died(&self.app, *which, *failures, reason);
+                return;
+            }
+            SidecarEvent::Stopped { .. } => return,
         }
         changed(&self.app);
     }
@@ -1311,6 +1328,55 @@ mod tests {
         assert_eq!(state.status().loading, Some(Loading::Model), "asr-worker vẫn đang nạp");
         events.on_event(&ready(Which::Asr));
         assert_eq!(state.status().loading, None);
+    }
+
+    /// Spec 2026-10-17 §1: tiến trình phụ chết rồi được khởi động lại thì báo cáo `sidecar_died`; lần đầu chạy quá giờ chờ
+    /// (`failures` 0, không phải một lần chết) thì không. `asr-worker` sẵn sàng thì nhớ backend thật cho báo cáo.
+    #[test]
+    fn a_sidecar_restart_is_reported_and_the_asr_backend_is_remembered() {
+        use serde_json::Value;
+        let app = crate::test_support::mock_app();
+        let rig = crate::test_support::install_reports(&app);
+        crate::test_support::enable_error_reports(&app);
+        let events = status_events(&app);
+        events.on_event(&SidecarEvent::Restarting {
+            which: Which::Asr,
+            failures: 0,
+            after_ms: 100,
+            reason: "lần đầu chạy quá thời gian chờ, không tính là lỗi".into(),
+        });
+        assert_eq!(
+            rig.reporter.pending_count(),
+            0,
+            "lần đầu chạy quá giờ chờ không phải một lần chết"
+        );
+        events.on_event(&SidecarEvent::Ready {
+            which: Which::Asr,
+            use_gpu: true,
+            backend: Some(asr_protocol::Backend::Metal),
+            first_run: false,
+        });
+        events.on_event(&SidecarEvent::Restarting {
+            which: Which::Llama,
+            failures: 1,
+            after_ms: 100,
+            reason: "llama-server thoát: mã 1".into(),
+        });
+        let started = Instant::now();
+        while rig.reporter.pending_count() == 0 {
+            assert!(
+                started.elapsed() < Duration::from_secs(10),
+                "chờ quá lâu: báo cáo sidecar_died"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        let report: Value = serde_json::from_str(&rig.reporter.pending_reports()[0]).unwrap();
+        assert_eq!(
+            (report["kind"].as_str(), report["code"].as_str()),
+            (Some("sidecar_died"), Some("llama"))
+        );
+        assert_eq!(report["hw"]["gpu_backend"], "metal");
+        assert_eq!(report["message"], "llama-server thoát: mã 1");
     }
 
     /// Q1 của review cuối 02, kịch bản 2: `llama-server` chết giữa phiên và khởi động lại không được thì không còn báo "Đang

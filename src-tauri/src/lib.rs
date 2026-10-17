@@ -162,6 +162,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     updater::install(&handle)?;
     app.manage(session::Session::new(Arc::new(session::LiveDeps::new(handle.clone()))));
     session::spawn_ticker(&handle);
+    // Báo cáo lỗi gửi về nhà phát triển (spec 2026-10-17): phân loại lần chạy trước, cài panic hook và luồng gửi nền.
+    diagnostics::install(&handle)?;
 
     #[cfg(target_os = "macos")]
     {
@@ -215,6 +217,9 @@ pub(crate) fn handle_run_event<R: tauri::Runtime>(app: &AppHandle<R>, event: Run
 /// Cuối cùng cài bản cập nhật đã tải (kế hoạch 07b). Phải sau hai việc trên: trên Windows plugin chạy bộ cài rồi thoát
 /// tiến trình ngay (`std::process::exit`), không quay lại đây; bộ cài thay file của app, nên tiến trình phụ phải tắt trước.
 pub(crate) fn on_exit<R: tauri::Runtime>(app: &AppHandle<R>, kill_all: fn()) {
+    // Đầu tiên: xóa dấu "đang chạy" để lần mở sau không báo crash. Trên Windows `updater::install_on_exit` có thể thoát tiến trình
+    // ngay (bộ cài), nên không được để sau nó.
+    diagnostics::mark_clean_exit(app);
     kill_all();
     session::save_on_exit(app);
     updater::install_on_exit(app);

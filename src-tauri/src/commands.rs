@@ -371,6 +371,14 @@ pub fn restart_to_update<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandErr
     crate::updater::restart_to_update(&app, |app| app.request_restart())
 }
 
+/// Nút "Gửi log cho hỗ trợ" ở Giới thiệu (spec 2026-10-17 §1, §5): dựng và gửi một báo cáo lỗi ngay, kể cả khi tắt báo cáo tự
+/// động. Đọc log, che dữ liệu và gửi mất vài giây, nên lệnh `async` chạy việc trên luồng của `spawn_blocking`. Trả mã báo cáo
+/// để người dùng đọc cho bộ phận hỗ trợ; lỗi có mã `reportFailed`, `reportRateLimited` hay `reportRejected`.
+#[tauri::command]
+pub async fn send_log_report<R: Runtime>(app: AppHandle<R>) -> Result<crate::diagnostics::ReportSent, CommandError> {
+    blocking(app, crate::diagnostics::send_manual).await
+}
+
 /// Lệnh của cửa sổ `main`.
 pub const MAIN_COMMANDS: &[&str] = &[
     "get_settings",
@@ -425,6 +433,7 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "start_trial",
     "check_for_updates",
     "restart_to_update",
+    "send_log_report",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -481,6 +490,7 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         start_trial,
         check_for_updates,
         restart_to_update,
+        send_log_report,
         get_overlay_view,
         hide_overlay,
         begin_overlay_resize,

@@ -11,7 +11,7 @@ use crate::hotkeys::HotkeyAction;
 use crate::login_item::LoginItems;
 use crate::settings::{self, Settings, persist};
 use crate::state::{AppState, AppStatus, OverlayView};
-use crate::{events, hotkey_registry, login_item, overlay, session, system, tray, updater, window};
+use crate::{diagnostics, events, hotkey_registry, login_item, overlay, session, system, tray, updater, window};
 
 /// Lưu cài đặt mới rồi báo mọi nơi cần biết.
 pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings) -> Settings {
@@ -34,6 +34,10 @@ pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings
     // Phiên đang chạy áp dụng từ đoạn kế tiếp (spec 2026-10-10 §6.3).
     if previous.translate_while_speaking != next.translate_while_speaking {
         session::set_streaming_enabled(app, next.translate_while_speaking);
+    }
+    // Tắt báo cáo lỗi tự động: bỏ các báo cáo đang chờ gửi (spec 2026-10-17 §5).
+    if previous.send_error_reports && !next.send_error_reports {
+        diagnostics::purge_queue(app);
     }
     next
 }

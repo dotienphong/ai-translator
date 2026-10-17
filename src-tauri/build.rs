@@ -68,6 +68,7 @@ fn main() {
                 "start_trial",
                 "check_for_updates",
                 "restart_to_update",
+                "send_log_report",
                 "get_overlay_view",
                 "hide_overlay",
                 "begin_overlay_resize",

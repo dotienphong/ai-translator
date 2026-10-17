@@ -191,3 +191,27 @@ fn outside_effects_only_reach_the_fake_opener() {
     };
     assert_eq!(system_calls(&app), expected);
 }
+
+/// Spec 2026-10-17 §5: nút "Gửi log cho hỗ trợ" chỉ cửa sổ chính gọi được. Lệnh bị chặn không tới máy chủ báo cáo; lệnh được phép
+/// tới đúng bản giả của máy chủ (không ra mạng thật).
+#[test]
+fn only_the_main_window_can_send_a_log_report() {
+    let app = mock_app();
+    let rig = crate::test_support::install_reports(&app);
+    let main = window(&app, "main");
+    for other in [window(&app, "overlay"), window(&app, "stranger")] {
+        let result = invoke(&other, "send_log_report", json!({}));
+        assert!(
+            denied(&result),
+            "{} không được gọi send_log_report: {result:?}",
+            other.label()
+        );
+    }
+    assert!(
+        rig.api.bodies.lock().unwrap().is_empty(),
+        "lệnh bị chặn không tới máy chủ báo cáo"
+    );
+    let result = invoke(&main, "send_log_report", json!({}));
+    assert!(!denied(&result), "main gọi được: {result:?}");
+    assert_eq!(rig.api.bodies.lock().unwrap().len(), 1);
+}

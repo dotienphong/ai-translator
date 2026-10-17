@@ -2680,3 +2680,186 @@ fn the_switch_changed_while_preparing_holds_from_the_start() {
         session::stop(app.handle());
     }
 }
+
+// ---- Báo cáo lỗi gửi về nhà phát triển (spec 2026-10-17-diagnostics-reports-design.md §1, §2, §5) ----
+
+mod reports {
+    use super::*;
+    use crate::capture::CaptureEvent;
+    use crate::diagnostics::report::{Event, Kind};
+    use crate::diagnostics::send::SendError;
+    use crate::test_support::{enable_error_reports, install_reports};
+
+    fn unix_now() -> i64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs() as i64)
+    }
+
+    fn sidecar_event() -> Event {
+        Event {
+            kind: Kind::SessionError,
+            code: Some(errors::SIDECAR_FAILED.into()),
+            location: String::new(),
+            message: "tiến trình phụ không khởi động được".into(),
+            at: unix_now(),
+        }
+    }
+
+    /// Lỗi của chính app làm phiên dừng: báo cáo vào hàng đợi, và không có chữ chép lời hay bản dịch nào của phiên trong đó,
+    /// dù phiên vừa dịch xong một câu (spec §2: log không bao giờ chứa nội dung cuộc họp).
+    #[test]
+    fn a_session_error_of_the_app_queues_one_report_that_holds_no_transcript() {
+        let deps = FakeDeps {
+            audio: FakeAudio::Tone,
+            ..FakeDeps::default()
+        };
+        let events = deps.capture_events.clone();
+        let app = mock_app_with(deps);
+        let rig = install_reports(&app);
+        enable_error_reports(&app);
+        let main = window(&app, "main");
+        let upserts = record(&app, SUBTITLE_UPSERT);
+        invoke(&main, "toggle_session", json!({})).unwrap();
+        wait_until("một phụ đề dịch xong", || {
+            upserts.lock().unwrap().iter().any(|s| s["status"] == "done")
+        });
+        let failing = events.lock().unwrap().remove(0);
+        failing(CaptureEvent::Failed {
+            code: errors::CAPTURE_FAILED,
+            message: "không mở được nguồn âm thanh".into(),
+        });
+        wait_until("báo cáo vào hàng đợi", || rig.reporter.pending_count() == 1);
+
+        let report = rig.reporter.pending_reports().remove(0);
+        let v: Value = serde_json::from_str(&report).unwrap();
+        assert_eq!(
+            (v["kind"].as_str(), v["code"].as_str()),
+            (Some("session_error"), Some(errors::CAPTURE_FAILED))
+        );
+        for secret in ["Hello everyone", "Xin chào", "mọi người"] {
+            assert!(!report.contains(secret), "báo cáo lộ \"{secret}\":\n{report}");
+        }
+        // Báo cáo dựng từ log thật của phiên, không rỗng: phiên vừa ghi dòng bắt đầu.
+        let app_log = v["logs"]["app"].as_str().unwrap();
+        assert!(app_log.contains("bắt đầu phiên dịch"), "{app_log}");
+        assert!(app_log.contains("phiên dịch dừng vì lỗi captureFailed"), "{app_log}");
+    }
+
+    /// Lỗi do môi trường hay người dùng (quyền ghi âm), và lỗi khi tắt báo cáo tự động: không gửi gì, không tạo luồng nào.
+    #[test]
+    fn errors_that_are_not_the_apps_fault_and_the_off_switch_send_nothing() {
+        let permission = FakeDeps {
+            capture_error: Some(errors::AUDIO_PERMISSION),
+            ..FakeDeps::default()
+        };
+        let capture = FakeDeps {
+            capture_error: Some(errors::CAPTURE_FAILED),
+            ..FakeDeps::default()
+        };
+        for (deps, enabled) in [(permission, true), (capture, false)] {
+            let app = mock_app_with(deps);
+            let rig = install_reports(&app);
+            if enabled {
+                enable_error_reports(&app);
+            }
+            let main = window(&app, "main");
+            invoke(&main, "toggle_session", json!({})).unwrap();
+            let state = app.state::<AppState>();
+            wait_until("phiên dừng vì lỗi", || {
+                state.status().session == SessionStatus::Error
+            });
+            assert_eq!(rig.reporter.pending_count(), 0);
+            assert_eq!(rig.reporter.flush(), 0);
+            assert!(rig.api.bodies.lock().unwrap().is_empty());
+        }
+    }
+
+    /// Không bao giờ gửi lúc đang bắt đầu hay đang dịch (A7); dừng phiên xong thì gửi.
+    #[test]
+    fn no_report_is_sent_while_a_session_runs() {
+        let app = mock_app_with(FakeDeps {
+            audio: FakeAudio::Tone,
+            ..FakeDeps::default()
+        });
+        let rig = install_reports(&app);
+        enable_error_reports(&app);
+        let main = window(&app, "main");
+        rig.reporter.record(sidecar_event()).expect("xếp hàng một báo cáo");
+        assert_eq!(
+            invoke(&main, "toggle_session", json!({})).unwrap()["session"],
+            "running"
+        );
+        assert_eq!(rig.reporter.flush(), 0);
+        assert!(rig.api.bodies.lock().unwrap().is_empty(), "không gửi gì lúc đang dịch");
+        assert_eq!(invoke(&main, "toggle_session", json!({})).unwrap()["session"], "idle");
+        assert_eq!(rig.reporter.flush(), 1);
+        assert_eq!(rig.api.bodies.lock().unwrap().len(), 1);
+    }
+
+    /// Nút "Gửi log cho hỗ trợ": gửi ngay, kể cả khi tắt tự động và đang dịch; trả mã báo cáo; lỗi có đúng ba mã.
+    #[test]
+    fn the_manual_command_sends_at_once_and_reports_its_errors_with_three_codes() {
+        let app = mock_app_with(FakeDeps {
+            audio: FakeAudio::Tone,
+            ..FakeDeps::default()
+        });
+        let rig = install_reports(&app);
+        let main = window(&app, "main");
+        invoke(&main, "toggle_session", json!({})).unwrap();
+        let sent = invoke(&main, "send_log_report", json!({})).unwrap();
+        let id = sent["id"].as_str().unwrap();
+        assert!(id.starts_with("R-") && id.len() == 11, "{id}");
+        let bodies = rig.api.bodies.lock().unwrap().clone();
+        assert_eq!(bodies.len(), 1);
+        let v: Value = serde_json::from_str(&bodies[0]).unwrap();
+        assert_eq!((v["id"].as_str(), v["kind"].as_str()), (Some(id), Some("manual")));
+        assert_eq!(rig.reporter.pending_count(), 0, "gửi tay không vào hàng đợi");
+
+        *rig.api.script.lock().unwrap() = vec![
+            Err(SendError::RateLimited(Some(3600))),
+            Err(SendError::Transient("mạng rớt".into())),
+            Err(SendError::Rejected {
+                status: 422,
+                code: "rejected_sensitive".into(),
+            }),
+        ];
+        for code in [
+            errors::REPORT_RATE_LIMITED,
+            errors::REPORT_FAILED,
+            errors::REPORT_REJECTED,
+        ] {
+            let result = invoke(&main, "send_log_report", json!({}));
+            assert!(
+                matches!(&result, Err(message) if message.contains(code)),
+                "{code}: {result:?}"
+            );
+        }
+    }
+
+    /// Tắt báo cáo lỗi tự động ở Cài đặt: các báo cáo đang chờ bị bỏ.
+    #[test]
+    fn turning_the_setting_off_drops_the_waiting_reports() {
+        let app = mock_app();
+        let rig = install_reports(&app);
+        enable_error_reports(&app);
+        let main = window(&app, "main");
+        rig.reporter.record(sidecar_event()).expect("xếp hàng");
+        assert_eq!(rig.reporter.pending_count(), 1);
+        invoke(
+            &main,
+            "update_settings",
+            json!({ "patch": { "sendErrorReports": true } }),
+        )
+        .unwrap();
+        assert_eq!(rig.reporter.pending_count(), 1, "vẫn bật thì giữ");
+        invoke(
+            &main,
+            "update_settings",
+            json!({ "patch": { "sendErrorReports": false } }),
+        )
+        .unwrap();
+        assert_eq!(rig.reporter.pending_count(), 0);
+        assert_eq!(rig.reporter.flush(), 0);
+    }
+}
