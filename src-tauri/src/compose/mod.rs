@@ -15,6 +15,9 @@ pub mod detect;
 pub mod target;
 pub mod worker;
 
+#[cfg(test)]
+mod tests;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};

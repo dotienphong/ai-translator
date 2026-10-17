@@ -801,6 +801,16 @@ pub fn logs_of_this_thread() -> Vec<String> {
         .collect()
 }
 
+/// Mọi dòng log của cả tiến trình test (mọi luồng), từ lúc cài logger.
+pub fn all_logs() -> Vec<String> {
+    CAPTURED_LOG
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|(_, line)| line.clone())
+        .collect()
+}
+
 /// Nguồn log của báo cáo lỗi trong app giả: `app.log` là log đã ghi lại ở trên; hai log tiến trình phụ rỗng.
 pub struct FakeReportLogs;
 
