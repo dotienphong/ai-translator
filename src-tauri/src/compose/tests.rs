@@ -403,3 +403,17 @@ fn a_disabled_compose_hotkey_is_only_checked_and_saved() {
     .unwrap_err();
     assert!(error.contains("hotkeyDuplicate"), "{error}");
 }
+
+/// Spec §1.4: Cài đặt › Gõ dịch đọc được trạng thái quyền Trợ năng (macOS hỏi hệ thống mỗi lần).
+#[test]
+fn the_main_window_reads_the_accessibility_permission() {
+    use std::sync::atomic::Ordering;
+
+    use crate::test_support::FakeNative;
+
+    let app = mock_app();
+    let main = window(&app, "main");
+    assert_eq!(invoke(&main, "get_accessibility_trusted", json!({})).unwrap(), true);
+    app.state::<FakeNative>().trusted.store(false, Ordering::SeqCst);
+    assert_eq!(invoke(&main, "get_accessibility_trusted", json!({})).unwrap(), false);
+}

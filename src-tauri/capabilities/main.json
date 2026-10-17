@@ -18,6 +18,8 @@
     "allow-open-login-items-settings",
     "allow-list-audio-sources",
     "allow-open-audio-permission-settings",
+    "allow-get-accessibility-trusted",
+    "allow-open-accessibility-settings",
     "allow-get-transcript",
     "allow-transcript-text",
     "allow-export-transcript",

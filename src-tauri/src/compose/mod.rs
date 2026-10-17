@@ -446,8 +446,14 @@ pub fn submit<R: Runtime>(app: &AppHandle<R>, id: u64) -> Result<Submitted, Comm
     })
 }
 
-/// "Bật tự dán" ở hộp quyền (spec §4.2, chỉ macOS): hỏi quyền Trợ năng để app hiện trong danh sách, rồi mở trang Trợ năng của
-/// System Settings (qua `SystemOpener`, như mọi việc mở ra ngoài app).
+/// Có quyền tự dán không, cho Cài đặt › Gõ dịch (spec §1.4): macOS hỏi hệ thống mỗi lần (quyền có thể vừa được bật hay vừa mất
+/// sau khi cập nhật); Windows không cần quyền.
+pub fn accessibility_trusted<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.try_state::<Compose>().is_none_or(|c| c.native.trusted())
+}
+
+/// "Bật tự dán" ở hộp quyền và "Mở cài đặt Trợ năng" ở Cài đặt › Gõ dịch (spec §1.4, §4.2, chỉ macOS): hỏi quyền Trợ năng để
+/// app hiện trong danh sách, rồi mở trang Trợ năng của System Settings (qua `SystemOpener`, như mọi việc mở ra ngoài app).
 pub fn open_accessibility<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
     if !cfg!(target_os = "macos") {
         return Err(CommandError::new(errors::UNSUPPORTED, None, "chỉ có trên macOS"));

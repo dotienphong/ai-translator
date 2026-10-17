@@ -119,6 +119,18 @@ pub fn open_audio_permission_settings<R: Runtime>(app: AppHandle<R>) -> Result<(
     actions::open_audio_permission_settings(&app)
 }
 
+/// Cài đặt › Gõ dịch (spec 2026-10-17-go-dich §1.4): đã có quyền Trợ năng chưa (macOS); Windows không cần quyền nên luôn `true`.
+#[tauri::command]
+pub fn get_accessibility_trusted<R: Runtime>(app: AppHandle<R>) -> bool {
+    compose::accessibility_trusted(&app)
+}
+
+/// Nút "Mở cài đặt Trợ năng" ở Cài đặt › Gõ dịch (macOS): hỏi quyền rồi mở trang Trợ năng của System Settings.
+#[tauri::command]
+pub fn open_accessibility_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    compose::open_accessibility(&app)
+}
+
 // ---- Bản chép lời, lịch sử, xuất file (kế hoạch 03, F4). Lệnh chạm DB hay hộp thoại là `async` (xem `data.rs`). ----
 
 /// Bản chép lời của phiên hiện tại hoặc vừa dừng, trong bộ nhớ.
@@ -446,6 +458,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "open_login_items_settings",
     "list_audio_sources",
     "open_audio_permission_settings",
+    "get_accessibility_trusted",
+    "open_accessibility_settings",
     "get_transcript",
     "transcript_text",
     "export_transcript",
@@ -524,6 +538,8 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         open_login_items_settings,
         list_audio_sources,
         open_audio_permission_settings,
+        get_accessibility_trusted,
+        open_accessibility_settings,
         get_transcript,
         transcript_text,
         export_transcript,

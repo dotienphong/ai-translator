@@ -30,6 +30,8 @@ fn main() {
                 "open_login_items_settings",
                 "list_audio_sources",
                 "open_audio_permission_settings",
+                "get_accessibility_trusted",
+                "open_accessibility_settings",
                 "get_transcript",
                 "transcript_text",
                 "export_transcript",
