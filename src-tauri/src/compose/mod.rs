@@ -6,3 +6,4 @@
 
 pub mod detect;
 pub mod target;
+pub mod worker;
