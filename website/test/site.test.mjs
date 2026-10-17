@@ -1095,11 +1095,11 @@ test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng h
 });
 
 
-test("chính sách quyền riêng tư 1.2 nêu Creem là bên bán lại (merchant of record), dữ liệu gửi và Creem tự thu, Creem giữ dữ liệu ngoài yêu cầu xóa, và website trong danh sách kết nối", () => {
+test("chính sách quyền riêng tư 1.3 nêu Creem là bên bán lại (merchant of record), dữ liệu gửi và Creem tự thu, Creem giữ dữ liệu ngoài yêu cầu xóa, và website trong danh sách kết nối", () => {
   const vi = textOf(htmlByPath.get("/chinh-sach-quyen-rieng-tu/"));
   const en = textOf(htmlByPath.get("/en/privacy/"));
-  const viNeeds = ["Phiên bản 1.2", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
-  const enNeeds = ["Version 1.2", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
+  const viNeeds = ["Phiên bản 1.3", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
+  const enNeeds = ["Version 1.3", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/chinh-sach-quyen-rieng-tu/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/privacy/: thiếu "${n}"`),
@@ -1278,7 +1278,13 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
       }
     }
   }
-  if (!/^\*\*Phiên bản 1\.3,/m.test(docs["eula.vi.md"]) || !/^\*\*Phiên bản 1\.2,/m.test(docs["privacy.vi.md"])) errors.push("giữ EULA 1.3 và chính sách 1.2 (chưa phát hành)");
+  // EULA giữ bản 1.3, ngày 2026-10-16; chính sách lên 1.3 (báo cáo lỗi tự động) với ngày hiệu lực SAU ngày của bản 1.2 (2026-10-16): ngày
+  // chưa được đặt (còn ngày của bản 1.2) thì test đỏ. Đặt ngày bằng lệnh ở kế hoạch bao-cao-loi-05, Task 8, trước khi build app.
+  const privacyHead = docHeader(docs["privacy.vi.md"]);
+  if (!/^\*\*Phiên bản 1\.3,/m.test(docs["eula.vi.md"]) || privacyHead?.version !== "1.3") errors.push("giữ EULA 1.3 và chính sách 1.3");
+  if (!privacyHead || privacyHead.iso <= "2026-10-16") {
+    errors.push(`chính sách 1.3 phải có ngày hiệu lực sau 2026-10-16 (ngày của bản 1.2), đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
+  }
   assert.deepEqual(errors, []);
 });
 
@@ -1297,7 +1303,7 @@ test("Về chúng tôi nêu đúng phiên bản và ngày hiệu lực của Đi
 });
 
 
-// ---- Hardening Creem D2: website khớp văn bản pháp lý (EULA 1.3, chính sách 1.2): Creem là merchant of record, thuế, hoàn tiền ----
+// ---- Hardening Creem D2: website khớp văn bản pháp lý (EULA 1.3, chính sách 1.3): Creem là merchant of record, thuế, hoàn tiền, báo cáo lỗi ----
 
 const needsIn = (where, text, needles) => needles.filter((n) => !text.includes(n)).map((n) => `${where}: thiếu "${n}"`);
 const forbidsIn = (where, text, needles) => needles.filter((n) => text.includes(n)).map((n) => `${where}: còn câu cũ "${n}"`);
@@ -1421,7 +1427,7 @@ test("trang pháp lý: `modified` do chính trang khai báo bằng ngày hiệu 
   assert.deepEqual(errors, []);
 });
 
-test("Dữ liệu và bảo mật khớp Chính sách quyền riêng tư 1.2: dòng phiên bản lấy từ docs/legal, hàng Creem, mục xóa dữ liệu, email gửi Creem viết chủ động, dấu phẩy", () => {
+test("Dữ liệu và bảo mật khớp Chính sách quyền riêng tư 1.3: dòng phiên bản lấy từ docs/legal, hàng Creem, mục xóa dữ liệu, email gửi Creem viết chủ động, dấu phẩy", () => {
   const errors = [];
   const cfg = {
     vi: {
