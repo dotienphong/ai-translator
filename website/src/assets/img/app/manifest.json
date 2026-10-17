@@ -186,8 +186,8 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 43446,
-  "description": "Cài đặt phím tắt trên macOS: năm phím tắt toàn cục, ví dụ ⌃⌥T để bắt đầu hoặc dừng dịch."
+  "bytes": 45946,
+  "description": "Cài đặt phím tắt trên macOS: sáu phím tắt toàn cục, ví dụ ⌃⌥T để bắt đầu hoặc dừng dịch và ⌃⌥G để mở Gõ dịch."
  },
  {
   "file": "app-settings-hotkeys.en.webp",
@@ -196,8 +196,28 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 42152,
-  "description": "Shortcut settings on macOS: five global shortcuts, for example ⌃⌥T to start or stop translating."
+  "bytes": 46966,
+  "description": "Shortcut settings on macOS: six global shortcuts, for example ⌃⌥T to start or stop translating and ⌃⌥G to open Type & Translate."
+ },
+ {
+  "file": "app-settings-compose.vi.webp",
+  "slug": "app-settings-compose",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 51826,
+  "description": "Cài đặt nhóm Gõ dịch trên macOS: công tắc Bật Gõ dịch, ô Dịch sang đang chọn Tự động, công tắc Tự dán vào ô đang gõ và dòng Quyền Trợ năng đã cấp kèm nút Mở cài đặt Trợ năng."
+ },
+ {
+  "file": "app-settings-compose.en.webp",
+  "slug": "app-settings-compose",
+  "lang": "en",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 59240,
+  "description": "The Type & Translate settings group on macOS: the Turn on Type & Translate switch, Translate into set to Automatic, the Paste into the chat box automatically switch and the Accessibility permission row showing Granted with an Open Accessibility settings button."
  },
  {
   "file": "app-settings-license.vi.webp",
@@ -568,5 +588,25 @@
   "height": 448,
   "bytes": 102376,
   "description": "The subtitle bar in locked, click-through mode: no handle and no buttons, with three meeting sentences translated into English."
+ },
+ {
+  "file": "compose-done.vi.webp",
+  "slug": "compose-done",
+  "lang": "vi",
+  "theme": "light",
+  "width": 1120,
+  "height": 464,
+  "bytes": 17800,
+  "description": "Ô soạn Gõ dịch khi bản dịch đã xong: tin nhắn tiếng Việt trong ô gõ, bản dịch tiếng Anh bên dưới, chân ô ghi Enter: dán, Shift+Enter: xuống dòng, Esc: đóng."
+ },
+ {
+  "file": "compose-done.en.webp",
+  "slug": "compose-done",
+  "lang": "en",
+  "theme": "light",
+  "width": 1120,
+  "height": 464,
+  "bytes": 18460,
+  "description": "The Type & Translate box once the translation is ready: an English message in the text box, the Vietnamese translation below, and the footer Enter: paste, Shift+Enter: new line, Esc: close."
  }
 ]

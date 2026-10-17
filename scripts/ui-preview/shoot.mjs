@@ -45,6 +45,7 @@ const APP = [
   ["app-settings-subtitles.dark", "screen=settings&group=subtitles&theme=dark&size=26&text=yellow&bg=navy&opacity=0.8"],
   ["app-settings-audio", "screen=settings&group=audio"],
   ["app-settings-hotkeys", "screen=settings&group=hotkeys"],
+  ["app-settings-compose", "screen=settings&group=compose"],
   ["app-settings-license", "screen=settings&group=license"],
   ["app-settings-privacy", "screen=settings&group=privacy&history=0"],
   ["app-upgrade", "screen=upgrade&plan=free", { fit: true }],
@@ -55,6 +56,9 @@ const APP = [
   ["app-about", "screen=about", { height: 580 }],
   ...Array.from({ length: 9 }, (_, i) => [`app-onboarding-${i + 1}`, `onboarding=${i + 1}${i === 3 ? "&download=1" : ""}`]),
 ];
+// Ô soạn Gõ dịch (compose.html, rộng 560 px như cửa sổ thật): trang tự gõ chữ mẫu rồi chờ dịch như thật; ảnh cắt đúng khung
+// `.compose`, nền trong suốt (website đặt nó trên nền tối như thanh phụ đề).
+const COMPOSE = [["compose-done", "state=done"]];
 const OVERLAY = [
   ["overlay-default", "session=running", { height: 224 }],
   ["overlay-custom", "session=running&locked=1&text=yellow&size=26&bg=navy&opacity=0.8", { height: 200 }],
@@ -83,7 +87,7 @@ async function fitWindow(page, { width, dpr }) {
   if (cut > 0) throw new Error(`cửa sổ vẫn thấp hơn nội dung ${cut} px`);
 }
 
-async function shoot(slug, lang, url, { width, height, dpr, dark, transparent, prepare, cropHeight, fit }) {
+async function shoot(slug, lang, url, { width, height, dpr, dark, transparent, prepare, cropHeight, fit, clipSelector }) {
   const page = await browser.newPage({ width, height, dpr, dark });
   await page.s.send("Emulation.setTimezoneOverride", { timezoneId: TIMEZONE });
   if (transparent) await page.s.send("Emulation.setDefaultBackgroundColorOverride", { color: { r: 0, g: 0, b: 0, a: 0 } });
@@ -96,7 +100,12 @@ async function shoot(slug, lang, url, { width, height, dpr, dark, transparent, p
   errors.push(...page.errors.filter((e) => !e.includes("status of 404")).map((e) => `${slug}.${lang}: ${e}`));
   const png = path.join(tmp, `${slug}.${lang}.png`);
   // Ảnh thấp hơn cửa sổ: chỉ lấy phần trên cùng (`cropHeight` tính bằng điểm ảnh của file).
-  const clip = cropHeight ? { x: 0, y: 0, width, height: cropHeight / dpr, scale: 1 } : undefined;
+  // `clipSelector`: chỉ lấy khung của phần tử đó (tính bằng điểm CSS).
+  const clip = clipSelector
+    ? await page.eval(`(() => { const r = document.querySelector(${JSON.stringify(clipSelector)}).getBoundingClientRect(); return { x: r.x, y: r.y, width: Math.ceil(r.width), height: Math.ceil(r.height), scale: 1 }; })()`)
+    : cropHeight
+      ? { x: 0, y: 0, width, height: cropHeight / dpr, scale: 1 }
+      : undefined;
   const shot = await page.s.send("Page.captureScreenshot", { format: "png", ...(clip ? { clip } : {}) });
   writeFileSync(png, Buffer.from(shot.data, "base64"));
   await page.close();
@@ -127,6 +136,17 @@ try {
         prepare,
         cropHeight: opts.height,
         fit: opts.fit,
+      });
+    }
+    for (const [slug, query] of COMPOSE.filter(want)) {
+      await shoot(slug, lang, `${BASE}/compose.html?${query}&lang=${lang}`, {
+        width: 560,
+        height: 420,
+        dpr: 2,
+        transparent: true,
+        clipSelector: ".compose",
+        // Ô soạn chọn sẵn bản nháp khi mở: bỏ vùng chọn để ảnh không có nền xám trên chữ.
+        prepare: `(() => { const t = document.querySelector("textarea"); t.setSelectionRange(t.value.length, t.value.length); t.blur(); })()`,
       });
     }
     for (const [slug, query, opts] of OVERLAY.filter(want)) {
