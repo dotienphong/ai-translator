@@ -192,19 +192,34 @@ pub fn check_start<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
     if block.is_some() {
         refresh(app);
     }
-    let (code, message) = match block {
-        None => return Ok(()),
-        Some(StartBlock::QuotaExhausted) => (errors::QUOTA_EXHAUSTED, "hạn mức còn 0"),
-        Some(StartBlock::TrialEnded) => (errors::TRIAL_ENDED, "đã hết dùng thử"),
-        Some(StartBlock::TrialMissing) => (errors::TRIAL_NEEDS_NETWORK, "chưa đăng ký được dùng thử"),
-        Some(StartBlock::ClockRolledBack) => (errors::CLOCK_ROLLED_BACK, "giờ máy bị chỉnh lùi"),
-        Some(StartBlock::TrialUnavailable(code)) => (code, "không đăng ký được dùng thử"),
-        Some(StartBlock::LicenseConflict) => (errors::LICENSE_CONFLICT, "key đang xung đột"),
-        Some(StartBlock::LicenseNeedsRefresh) => (errors::LICENSE_NEEDS_REFRESH, "cần làm mới bản quyền"),
-        Some(StartBlock::LicenseRevoked) => (LicenseError::Revoked.code(), "license đã bị thu hồi"),
-        Some(StartBlock::LicenseExpired) => (LicenseError::Expired(None).code(), "license đã hết hạn"),
+    block.map_or(Ok(()), |block| Err(block_error(block)))
+}
+
+/// Gõ dịch có dùng được không (spec 2026-10-17-go-dich §1.5): cùng mã lỗi như lúc bắt đầu phiên, trừ hạn mức phút
+/// ([`License::compose_block`]). Không gọi server, nên gọi được từ bất kỳ luồng nào.
+pub fn compose_check<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    let Some(license) = licensing(app) else {
+        return Ok(());
     };
-    Err(CommandError::new(code, None, message))
+    license
+        .compose_block(now())
+        .map_or(Ok(()), |block| Err(block_error(block)))
+}
+
+/// Mã lỗi và chi tiết (cho log) của một lý do chặn.
+fn block_error(block: StartBlock) -> CommandError {
+    let (code, message) = match block {
+        StartBlock::QuotaExhausted => (errors::QUOTA_EXHAUSTED, "hạn mức còn 0"),
+        StartBlock::TrialEnded => (errors::TRIAL_ENDED, "đã hết dùng thử"),
+        StartBlock::TrialMissing => (errors::TRIAL_NEEDS_NETWORK, "chưa đăng ký được dùng thử"),
+        StartBlock::ClockRolledBack => (errors::CLOCK_ROLLED_BACK, "giờ máy bị chỉnh lùi"),
+        StartBlock::TrialUnavailable(code) => (code, "không đăng ký được dùng thử"),
+        StartBlock::LicenseConflict => (errors::LICENSE_CONFLICT, "key đang xung đột"),
+        StartBlock::LicenseNeedsRefresh => (errors::LICENSE_NEEDS_REFRESH, "cần làm mới bản quyền"),
+        StartBlock::LicenseRevoked => (LicenseError::Revoked.code(), "license đã bị thu hồi"),
+        StartBlock::LicenseExpired => (LicenseError::Expired(None).code(), "license đã hết hạn"),
+    };
+    CommandError::new(code, None, message)
 }
 
 /// Mã dừng phiên khi `validate` cho thấy gói trả phí không còn dùng được trên máy này; `None` với lỗi khác (lỗi mạng…).

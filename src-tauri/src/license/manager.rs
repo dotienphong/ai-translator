@@ -1040,6 +1040,33 @@ impl License {
         self.start_block(now).is_none()
     }
 
+    /// Vì sao chưa dùng được Gõ dịch lúc `now` (spec 2026-10-17-go-dich §1.5); `None` là dùng được. Cùng luật với
+    /// [`License::start_block`], trừ hai điểm:
+    /// - không xét hạn mức phút: Gõ dịch không trừ phút, nên hết phút của ngày hay của chu kỳ vẫn dùng được;
+    /// - không gọi server: Free chưa có token dùng thử thì báo `TrialMissing`, việc đăng ký đi theo lịch sẵn có (ticker, lần
+    ///   bắt đầu phiên). Vì vậy không làm bằng cách gọi `start_block` rồi bỏ `QuotaExhausted`.
+    pub fn compose_block(&self, now: i64) -> Option<StartBlock> {
+        if self.dev_unlimited {
+            return None;
+        }
+        let inner = self.lock();
+        if self.quota_claims(&inner, now).is_some() {
+            return None;
+        }
+        let trial = self.trial_state_locked(&inner, now);
+        if matches!(trial, TrialState::Active) {
+            return None;
+        }
+        if let Some(block) = self.license_block_locked(&inner, now) {
+            return Some(block);
+        }
+        Some(match trial {
+            TrialState::Ended => StartBlock::TrialEnded,
+            TrialState::RolledBack => StartBlock::ClockRolledBack,
+            TrialState::Missing | TrialState::Active => StartBlock::TrialMissing,
+        })
+    }
+
     /// Cộng `speech_ms` vừa dịch xong. Trả `Break` khi đã chạm hạn mức: engine dừng phiên (`quota_exhausted`).
     pub fn add_usage(&self, speech_ms: u64, now: i64) -> ControlFlow<()> {
         if self.dev_unlimited {
@@ -2680,6 +2707,64 @@ pub mod tests {
         let l = license(&api, &vault, T0);
         ended_trial(&api);
         assert_eq!(l.start_block(T0), Some(StartBlock::TrialEnded));
+    }
+
+    // ---- Gõ dịch (spec 2026-10-17-go-dich §1.5) ----
+
+    /// Hết 30 phút Free của ngày: không bắt đầu được phiên, nhưng Gõ dịch vẫn dùng được (không trừ phút).
+    #[test]
+    fn compose_ignores_the_minute_quota() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        l.register_trial(T0).unwrap();
+        assert!(l.add_usage(30 * MIN, T0).is_break());
+        assert_eq!(l.start_block(T0), Some(StartBlock::QuotaExhausted));
+        assert_eq!(l.compose_block(T0), None);
+    }
+
+    /// Vừa hết phút vừa hết dùng thử: Gõ dịch bị chặn vì hết dùng thử. Bỏ hạn mức không được làm lọt các chặn khác.
+    #[test]
+    fn compose_still_blocks_an_ended_trial_when_the_minutes_are_used_up() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        ended_trial(&api);
+        let l = license(&api, &vault, T0);
+        l.register_trial(T0).unwrap();
+        let _ = l.add_usage(30 * MIN, T0);
+        assert_eq!(l.compose_block(T0), Some(StartBlock::TrialEnded));
+        assert_eq!(l.start_block(T0), Some(StartBlock::TrialEnded));
+    }
+
+    /// Chưa có token dùng thử: Gõ dịch báo `TrialMissing` mà không gọi server (đăng ký đi theo lịch sẵn có).
+    #[test]
+    fn compose_never_calls_the_server() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        assert_eq!(l.compose_block(T0), Some(StartBlock::TrialMissing));
+        assert!(api.calls.lock().unwrap().is_empty(), "không gọi server");
+    }
+
+    /// Giờ máy chỉnh lùi ở Free, key xung đột khi đã hết dùng thử: cùng lý do như lúc bắt đầu phiên. Gói trả phí còn hạn thì
+    /// dùng được.
+    #[test]
+    fn compose_names_the_same_reasons_as_starting_a_session() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        l.register_trial(T0).unwrap();
+        l.tick(T0 + 5 * DAY, 0);
+        assert_eq!(l.compose_block(T0 + 2 * DAY), Some(StartBlock::ClockRolledBack));
+        let (api, _, l) = activated(T0, true);
+        assert_eq!(l.compose_block(T0 + 60), None, "gói trả phí còn hạn");
+        api.replies
+            .lock()
+            .unwrap()
+            .push_back(Err(conflict_error("license_conflict", &["act", "other"])));
+        let _ = l.validate(T0 + 60);
+        ended_trial(&api);
+        l.register_trial(T0 + 60).unwrap();
+        assert_eq!(l.compose_block(T0 + 60), Some(StartBlock::LicenseConflict));
     }
 
     // ---- `key_in_use` không có máy nào (race của server) ----
