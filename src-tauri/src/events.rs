@@ -8,6 +8,7 @@ use pipeline::subtitle::{LiveEnd, LiveLine};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
+use crate::compose::{self, ComposeView, Delta, Done, Loading};
 use crate::overlay;
 use crate::settings::Settings;
 use crate::state::{AppStatus, OverlayView};
@@ -31,6 +32,13 @@ pub const SUBTITLE_LIVE_END: &str = "subtitle://live-end";
 pub const AUDIO_LEVEL: &str = "audio://level";
 /// Phím tắt cuộn phụ đề lên hay xuống (§4.4); chỉ gửi cho thanh phụ đề. Nội dung là `"up"` hay `"down"`.
 pub const OVERLAY_SCROLL: &str = "overlay://scroll";
+/// Gõ dịch (spec 2026-10-17-go-dich §3.3), chỉ gửi cho cửa sổ `compose`: mở ô soạn kèm phần cài đặt của nó
+/// (`compose::ComposeView`); yêu cầu đang chờ nạp model (`compose::Loading`); phần chữ dịch mới (`compose::Delta`); kết quả
+/// (`compose::Done`).
+pub const COMPOSE_OPEN: &str = "compose://open";
+pub const COMPOSE_LOADING: &str = "compose://loading";
+pub const COMPOSE_DELTA: &str = "compose://delta";
+pub const COMPOSE_DONE: &str = "compose://done";
 
 /// Hướng cuộn của phím tắt cuộn phụ đề. Tên khớp `ScrollDirection` ở `src/lib/overlayScroll.ts`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -86,6 +94,22 @@ pub fn subtitle_live_end<R: Runtime>(app: &AppHandle<R>, end: &LiveEnd) {
 /// Báo thanh phụ đề cuộn một trang (§4.4). Thanh khóa vẫn nhận: sự kiện không đi qua chuột.
 pub fn overlay_scroll<R: Runtime>(app: &AppHandle<R>, direction: ScrollDirection) {
     emit(app, overlay::LABEL, OVERLAY_SCROLL, direction);
+}
+
+pub fn compose_open<R: Runtime>(app: &AppHandle<R>, view: &ComposeView) {
+    emit(app, compose::LABEL, COMPOSE_OPEN, view);
+}
+
+pub fn compose_loading<R: Runtime>(app: &AppHandle<R>, loading: &Loading) {
+    emit(app, compose::LABEL, COMPOSE_LOADING, loading);
+}
+
+pub fn compose_delta<R: Runtime>(app: &AppHandle<R>, delta: &Delta) {
+    emit(app, compose::LABEL, COMPOSE_DELTA, delta);
+}
+
+pub fn compose_done<R: Runtime>(app: &AppHandle<R>, done: &Done) {
+    emit(app, compose::LABEL, COMPOSE_DONE, done);
 }
 
 pub fn navigate<R: Runtime>(app: &AppHandle<R>, target: Navigate) {

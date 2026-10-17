@@ -139,6 +139,67 @@ impl SystemOpener for FakeSystem {
     }
 }
 
+/// Bản giả của `compose::Native`: ghi lại từng lần gọi, dạng `show`, `hide`, `height 240`, `request_trust`, `clipboard <chữ>`,
+/// `paste`. Có quyền Trợ năng và dán được, trừ khi test đổi `trusted`, `paste_ok`.
+#[derive(Clone)]
+pub struct FakeNative {
+    pub calls: Arc<Mutex<Vec<String>>>,
+    pub visible: Arc<AtomicBool>,
+    pub trusted: Arc<AtomicBool>,
+    pub paste_ok: Arc<AtomicBool>,
+}
+
+impl Default for FakeNative {
+    fn default() -> Self {
+        Self {
+            calls: Arc::default(),
+            visible: Arc::default(),
+            trusted: Arc::new(AtomicBool::new(true)),
+            paste_ok: Arc::new(AtomicBool::new(true)),
+        }
+    }
+}
+
+impl FakeNative {
+    fn push(&self, call: String) {
+        self.calls.lock().unwrap().push(call);
+    }
+}
+
+impl crate::compose::Native for FakeNative {
+    fn show(&self) -> tauri::Result<()> {
+        self.visible.store(true, Ordering::SeqCst);
+        self.push("show".into());
+        Ok(())
+    }
+    fn hide(&self) -> tauri::Result<()> {
+        self.visible.store(false, Ordering::SeqCst);
+        self.push("hide".into());
+        Ok(())
+    }
+    fn visible(&self) -> bool {
+        self.visible.load(Ordering::SeqCst)
+    }
+    fn set_height(&self, height: f64) -> tauri::Result<()> {
+        self.push(format!("height {height}"));
+        Ok(())
+    }
+    fn trusted(&self) -> bool {
+        self.trusted.load(Ordering::SeqCst)
+    }
+    fn request_trust(&self) {
+        self.push("request_trust".into());
+    }
+    fn set_clipboard(&self, text: &str) -> Result<(), String> {
+        self.push(format!("clipboard {text}"));
+        Ok(())
+    }
+    fn paste(&self) -> bool {
+        self.push("paste".into());
+        self.paste_ok.load(Ordering::SeqCst)
+    }
+}
+
 /// Trạng thái của bản giả `FakeLoginItem`.
 #[derive(Default)]
 pub struct FakeLogin {
@@ -533,6 +594,7 @@ pub fn mock_app_full(deps: FakeDeps, models: ModelsConfig) -> tauri::App<MockRun
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
     let surface = FakeSurface::default();
+    let native = FakeNative::default();
     let system = FakeSystem::default();
     let login = FakeLoginItem::default();
     let file = FakeSettingsFile::default();
@@ -559,6 +621,8 @@ pub fn mock_app_full(deps: FakeDeps, models: ModelsConfig) -> tauri::App<MockRun
         ))
         .manage(OverlaySurface::new(Box::new(surface.clone())))
         .manage(surface)
+        .manage(crate::compose::Compose::new(Box::new(native.clone())))
+        .manage(native)
         .manage(System(Box::new(system.clone())))
         .manage(system)
         .manage(LoginItems(Box::new(login.clone())))
