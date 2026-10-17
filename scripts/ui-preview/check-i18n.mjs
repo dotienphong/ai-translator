@@ -386,6 +386,23 @@ const COMPOSES = [
       [`(() => { const t = document.querySelector("textarea"); return t?.spellcheck === false && t?.getAttribute("autocorrect") === "off"; })()`, "ô gõ tắt sửa chính tả và tự sửa chữ"],
     ],
   ],
+  [
+    "compose-reopen",
+    "state=reopen",
+    // Esc rồi ⌃⌥G: bản nháp còn đó phải được chọn sẵn để chữ mới gõ đè (đo ở Teams 2026-10-18: không chọn thì chữ mới chèn trước
+    // bản nháp, mở lại ba lần ra 62, 93, 124 ký tự). WebKit đặt lại con trỏ về đầu ô khi trang nhận focus sau lệnh chọn, nên giả
+    // lập đúng thế rồi bắn `focus`; đã bấm chuột hay bấm phím trong bản nháp (người dùng tự đặt con trỏ) thì không chọn lại.
+    [
+      [
+        `(() => { const t = document.querySelector("textarea"); t.setSelectionRange(0, 0); window.dispatchEvent(new Event("focus")); return t.value.length > 0 && t.selectionStart === 0 && t.selectionEnd === t.value.length; })()`,
+        "mở lại khi còn bản nháp: bản nháp được chọn sẵn kể cả khi trang nhận focus sau đó",
+      ],
+      [
+        `(() => { const t = document.querySelector("textarea"); t.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })); t.setSelectionRange(2, 2); window.dispatchEvent(new Event("focus")); return t.selectionStart === 2 && t.selectionEnd === 2; })()`,
+        "đã bấm phím di chuyển trong bản nháp thì không chọn lại",
+      ],
+    ],
+  ],
   ["compose-typing", "state=typing", [has(".translation.stale", "bản dịch đang về hiện mờ")]],
   ["compose-loading", "state=loading", [has(".status:not(:empty)", "dòng trạng thái báo đang nạp model")]],
   ["compose-done", "state=done", [has(".translation:not(.stale)", "bản dịch đủ hiện rõ")]],

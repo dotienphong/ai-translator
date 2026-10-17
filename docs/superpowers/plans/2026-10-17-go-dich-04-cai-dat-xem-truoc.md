@@ -824,9 +824,9 @@ cd /Users/dtphong/Desktop/software_business/meeting-translator-work/go-dich && g
 
 Spec §8.1 (giao diện). IPC giả của `scripts/ui-preview`:
 - Cài đặt › Gõ dịch: tham số `ax=0` (macOS chưa cấp quyền), `platform=windows` (không có mục tự dán).
-- `compose.html`: `state=empty|typing|loading|done|same|failed|blocked|permission`, `paste=0`, `theme=dark`. Trừ `empty`, trang tự gõ chữ mẫu (theo ngôn ngữ giao diện) rồi để giao diện đi đúng đường thật: chờ 400 ms, xin dịch, nhận sự kiện; `permission` còn bấm Enter.
+- `compose.html`: `state=empty|typing|loading|done|same|failed|blocked|permission|reopen`, `paste=0`, `theme=dark`. Trừ `empty`, trang tự gõ chữ mẫu (theo ngôn ngữ giao diện) rồi để giao diện đi đúng đường thật: chờ 400 ms, xin dịch, nhận sự kiện; `permission` còn bấm Enter; `reopen` còn mở lại ô khi bản nháp đang có (như Esc rồi ⌃⌥G).
 
-`check-i18n.mjs` thêm ba cảnh của nhóm Cài đặt và mười cảnh của ô soạn (cửa sổ 560×420, nền trong suốt, chờ 1200 ms). Điều kiện "con trỏ nằm sẵn trong ô gõ" dùng `document.activeElement` vì `:focus` không khớp khi chính trang không được focus (Chrome không đầu). Ảnh PNG ở `target/ui-preview/ui-ja-zh-ko/` (không commit).
+`check-i18n.mjs` thêm ba cảnh của nhóm Cài đặt và mười một cảnh của ô soạn (cửa sổ 560×420, nền trong suốt, chờ 1200 ms). Điều kiện "con trỏ nằm sẵn trong ô gõ" dùng `document.activeElement` vì `:focus` không khớp khi chính trang không được focus (Chrome không đầu). Ảnh PNG ở `target/ui-preview/ui-ja-zh-ko/` (không commit).
 
 - [ ] **Step 1: IPC giả**
 
@@ -841,8 +841,9 @@ thay bằng:
 ```ts
 //     overlay.html: live=alone|extends|final|provisional (mẫu dòng đang nói, xem `LIVE_SAMPLE`; cần session=running)
 //   Gõ dịch (spec 2026-10-17-go-dich): Cài đặt › Gõ dịch: ax=0 (macOS chưa cấp quyền Trợ năng)
-//     compose.html: state=empty|typing|loading|done|same|failed|blocked|permission (mặc định empty; trừ empty, trang tự gõ chữ
-//     mẫu rồi để giao diện đi đúng đường thật: chờ 400 ms, xin dịch, nhận chữ dịch; permission còn bấm Enter)  paste=0 (tắt tự dán)
+//     compose.html: state=empty|typing|loading|done|same|failed|blocked|permission|reopen (mặc định empty; trừ empty, trang tự gõ
+//     chữ mẫu rồi để giao diện đi đúng đường thật: chờ 400 ms, xin dịch, nhận chữ dịch; permission còn bấm Enter; reopen còn mở
+//     lại ô khi bản nháp đang có, như Esc rồi ⌃⌥G)  paste=0 (tắt tự dán)
 ```
 
 Cùng file, tìm đoạn (duy nhất):
@@ -963,6 +964,7 @@ thay bằng:
       if (composeState === "permission") {
         setTimeout(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })), 700);
       }
+      if (composeState === "reopen") setTimeout(() => emit("compose://open", composeView()), 700);
     }
   }
   if (location.pathname.endsWith("overlay.html")) {
@@ -1024,6 +1026,23 @@ const COMPOSES = [
       has("footer", "có gợi ý phím"),
       // Hộp gợi ý chữ của macOS nuốt phím Enter đầu tiên khi còn sửa chính tả (spike S2): ô gõ phải tắt.
       [`(() => { const t = document.querySelector("textarea"); return t?.spellcheck === false && t?.getAttribute("autocorrect") === "off"; })()`, "ô gõ tắt sửa chính tả và tự sửa chữ"],
+    ],
+  ],
+  [
+    "compose-reopen",
+    "state=reopen",
+    // Esc rồi ⌃⌥G: bản nháp còn đó phải được chọn sẵn để chữ mới gõ đè (đo ở Teams 2026-10-18: không chọn thì chữ mới chèn trước
+    // bản nháp, mở lại ba lần ra 62, 93, 124 ký tự). WebKit đặt lại con trỏ về đầu ô khi trang nhận focus sau lệnh chọn, nên giả
+    // lập đúng thế rồi bắn `focus`; đã bấm chuột hay bấm phím trong bản nháp (người dùng tự đặt con trỏ) thì không chọn lại.
+    [
+      [
+        `(() => { const t = document.querySelector("textarea"); t.setSelectionRange(0, 0); window.dispatchEvent(new Event("focus")); return t.value.length > 0 && t.selectionStart === 0 && t.selectionEnd === t.value.length; })()`,
+        "mở lại khi còn bản nháp: bản nháp được chọn sẵn kể cả khi trang nhận focus sau đó",
+      ],
+      [
+        `(() => { const t = document.querySelector("textarea"); t.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })); t.setSelectionRange(2, 2); window.dispatchEvent(new Event("focus")); return t.selectionStart === 2 && t.selectionEnd === 2; })()`,
+        "đã bấm phím di chuyển trong bản nháp thì không chọn lại",
+      ],
     ],
   ],
   ["compose-typing", "state=typing", [has(".translation.stale", "bản dịch đang về hiện mờ")]],

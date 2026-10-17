@@ -2720,7 +2720,7 @@ cd /Users/dtphong/Desktop/software_business/meeting-translator-work/go-dich && g
 
 Spec §1.2, §1.3, §4.2, §5. Trang React của cửa sổ `compose` (QĐ12 của kế hoạch 00: đặt ở `src/windows/compose/` cạnh hai cửa sổ kia):
 - Dòng đầu "Gõ dịch · → English" và trạng thái ("Đang nạp model…", "Đang dịch…", "Đã là English", hay trống; `aria-live`).
-- Ô gõ nhiều dòng (`maxLength` 4000), tự cao tới 6 dòng rồi cuộn; mỗi lần mở: con trỏ vào ô gõ, bản nháp chọn sẵn. **Tắt sửa chính tả, tự sửa chữ, tự viết hoa** (`spellCheck={false}`, `autoCorrect`, `autoCapitalize`, `autoComplete` = off): thử tự động ở spike S2 thấy hộp gợi ý chữ của macOS ("Report ×") hiện ngay dưới con trỏ khi vừa gõ xong từ cuối và **nuốt phím Enter đầu tiên**, nên Enter không dán (phải bấm lần hai). Hỏng nhiều người gõ nhanh rồi Enter; sau khi tắt, 10/10 lượt dán ngay ở Enter đầu.
+- Ô gõ nhiều dòng (`maxLength` 4000), tự cao tới 6 dòng rồi cuộn; mỗi lần mở: con trỏ vào ô gõ, bản nháp chọn sẵn (**và chọn lại khi trang nhận focus, chừng nào chưa gõ gì, bấm chuột hay bấm phím trong bản nháp**: Rust phát `compose://open` trước khi hiện panel, nên lệnh chọn đầu chạy khi trang chưa có focus và WebKit đặt con trỏ về đầu ô; không có phần này, mở lại ô khi còn bản nháp thì chữ mới chèn TRƯỚC bản nháp, đo ở Teams 2026-10-18 ra 62, 93, 124 ký tự). **Tắt sửa chính tả, tự sửa chữ, tự viết hoa** (`spellCheck={false}`, `autoCorrect`, `autoCapitalize`, `autoComplete` = off): thử tự động ở spike S2 thấy hộp gợi ý chữ của macOS ("Report ×") hiện ngay dưới con trỏ khi vừa gõ xong từ cuối và **nuốt phím Enter đầu tiên**, nên Enter không dán (phải bấm lần hai). Hỏng nhiều người gõ nhanh rồi Enter; sau khi tắt, 10/10 lượt dán ngay ở Enter đầu.
 - Bản dịch (chọn và chép được), mờ khi chưa khớp chữ đang có.
 - Chân ô: gợi ý phím (theo tự dán hay chỉ chép), hay hộp lỗi (`role="alert"`, có nút mở đúng màn hình khi có), hay hộp quyền Trợ năng (macOS: "Bật tự dán", "Luôn chỉ chép").
 - Enter/Shift+Enter/bộ gõ theo `keyAction`; Esc ở bất kỳ đâu trong ô soạn (kể cả khi focus ở một nút) thì đóng.
@@ -3051,6 +3051,8 @@ void store.getState().init();
 // Ô gõ tự cao lên tối đa chừng này dòng rồi cuộn trong ô (spec 2026-10-17-go-dich §1.2).
 const MAX_INPUT_LINES = 6;
 
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock"]);
+
 function fit(el: HTMLTextAreaElement) {
   const line = Number.parseFloat(getComputedStyle(el).lineHeight) || 22;
   el.style.height = "auto";
@@ -3072,14 +3074,27 @@ function Compose() {
   const s = useStore(store);
   const input = useRef<HTMLTextAreaElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  // Còn nguyên như lúc vừa mở (chưa gõ gì): bản nháp còn sót phải đang được chọn để chữ mới gõ đè lên.
+  const untouched = useRef(false);
   // Mỗi lần mở: con trỏ vào ô gõ, bản nháp chọn sẵn để gõ đè được ngay.
   useEffect(() => {
     const el = input.current;
     if (!el) return;
+    untouched.current = true;
     fit(el);
     el.focus();
     el.select();
   }, [s.opened]);
+  // Sự kiện mở tới trước khi panel kịp nhận bàn phím (phía Rust phát `compose://open` rồi mới hiện và đưa phím vào WebView), nên
+  // lệnh chọn ở trên chạy khi trang chưa có focus và WebKit đặt lại con trỏ về đầu ô: chữ gõ sau đó chèn vào trước bản nháp thay vì
+  // thay nó (đo ở Teams 2026-10-18: mở lại ba lần cho 62, 93, 124 ký tự). Chọn lại đúng lúc trang nhận focus.
+  useEffect(() => {
+    const onFocus = () => {
+      if (untouched.current) input.current?.select();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
   // Chiều cao cửa sổ theo nội dung, mỗi khung hình nhiều nhất một lần; phía Rust giữ trong khoảng 120–420 px.
   useEffect(() => {
     const el = root.current;
@@ -3149,10 +3164,16 @@ function Compose() {
         placeholder={t("compose.placeholder")}
         aria-label={t("compose.title")}
         onChange={(e) => {
+          untouched.current = false;
           fit(e.currentTarget);
           s.setText(e.currentTarget.value);
         }}
+        // Bấm chuột hay phím nào khác phím bổ trợ là người dùng đã tự đặt con trỏ trong bản nháp: không chọn lại nữa.
+        onMouseDown={() => {
+          untouched.current = false;
+        }}
         onKeyDown={(e) => {
+          if (!MODIFIER_KEYS.has(e.key)) untouched.current = false;
           const action = keyAction({
             key: e.key,
             shiftKey: e.shiftKey,

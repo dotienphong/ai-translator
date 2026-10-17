@@ -21,8 +21,9 @@
 //   dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6): tws=0 (tắt công tắc)  slow=1 (máy chưa đủ nhanh)
 //     overlay.html: live=alone|extends|final|provisional (mẫu dòng đang nói, xem `LIVE_SAMPLE`; cần session=running)
 //   Gõ dịch (spec 2026-10-17-go-dich): Cài đặt › Gõ dịch: ax=0 (macOS chưa cấp quyền Trợ năng)
-//     compose.html: state=empty|typing|loading|done|same|failed|blocked|permission (mặc định empty; trừ empty, trang tự gõ chữ
-//     mẫu rồi để giao diện đi đúng đường thật: chờ 400 ms, xin dịch, nhận chữ dịch; permission còn bấm Enter)  paste=0 (tắt tự dán)
+//     compose.html: state=empty|typing|loading|done|same|failed|blocked|permission|reopen (mặc định empty; trừ empty, trang tự gõ
+//     chữ mẫu rồi để giao diện đi đúng đường thật: chờ 400 ms, xin dịch, nhận chữ dịch; permission còn bấm Enter; reopen còn mở
+//     lại ô khi bản nháp đang có, như Esc rồi ⌃⌥G)  paste=0 (tắt tự dán)
 import conf from "../../src-tauri/tauri.conf.json";
 import type {
   AppInfo,
@@ -729,6 +730,7 @@ setTimeout(async () => {
       if (composeState === "permission") {
         setTimeout(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })), 700);
       }
+      if (composeState === "reopen") setTimeout(() => emit("compose://open", composeView()), 700);
     }
   }
   if (location.pathname.endsWith("overlay.html")) {
