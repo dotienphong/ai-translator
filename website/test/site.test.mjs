@@ -799,6 +799,101 @@ test("không nguồn chữ nào của site (kể cả chính sách dựng từ d
   }
 });
 
+// ---- Gõ dịch (spec 2026-10-17-go-dich): website nói đúng tính năng mới, trích đúng chữ của app, không còn câu cũ ----
+
+// Câu cũ đã gỡ khi có Gõ dịch: số phím tắt, "cần đúng một quyền" trên macOS, "dịch một chiều" nói chung (phụ đề vẫn một chiều,
+// nhưng tin nhắn gõ thì dịch được qua Gõ dịch: câu nói một chiều phải nói rõ là phụ đề).
+const STALE_COMPOSE = [
+  { id: "vi: năm phím tắt", re: /năm\s+phím\s+tắt|liệt\s+kê\s+năm\s+việc/iu },
+  { id: "en: five shortcuts", re: /\bfive\s+(?:global\s+|default\s+)?shortcuts\b|\bfive\s+actions\b/i },
+  { id: "vi: cần đúng một quyền", re: /cần\s+đúng\s+một\s+quyền/iu, unless: /dịch\s+phụ\s+đề/iu },
+  { id: "en: exactly one permission", re: /\bexactly\s+one\s+(?:macOS\s+)?permission\b/i, unless: /\bsubtitles?\b/i },
+  { id: "vi: chỉ quyền Ghi âm thanh hệ thống", re: /^Chỉ\s+quyền\s+Ghi\s+âm\s+thanh\s+hệ\s+thống/iu },
+  { id: "en: only System Audio Recording permission", re: /^Only\s+System\s+Audio\s+Recording\s+permission/i },
+  { id: "vi: dịch một chiều (không nói phụ đề)", re: /dịch\s+một\s+chiều|^một\s+chiều\b/iu, unless: /phụ\s+đề/iu },
+  { id: "en: one way (without subtitles)", re: /\b(?:works?|translates?)\s+(?:in\s+)?one\s+(?:way|direction)\b|^one\s+(?:way|direction)\b/i, unless: /\bsubtitles?\b/i },
+];
+const STALE_COMPOSE_MUST_CATCH = [
+  "Năm phím tắt toàn cục hoạt động ngay cả khi AI Translator không phải cửa sổ đang mở.",
+  "Cài đặt Phím tắt liệt kê năm việc cùng tổ hợp phím mặc định trên macOS.",
+  "Five global shortcuts work even when AI Translator is not the window in front.",
+  "Shortcuts settings listing the five actions with their default macOS key combinations.",
+  "AI Translator cần đúng một quyền trên macOS: Ghi âm thanh hệ thống.",
+  "AI Translator needs exactly one macOS permission: System Audio Recording.",
+  "Chỉ quyền Ghi âm thanh hệ thống (System Audio Recording); AI Translator không dùng micro.",
+  "Only System Audio Recording permission; AI Translator does not use the microphone.",
+  "Chưa. AI Translator dịch một chiều, từ âm thanh phát trên máy sang ngôn ngữ của bạn.",
+  "Not yet. AI Translator works one way, from the audio playing on your computer into your language.",
+  "Một chiều, sang ngôn ngữ bạn chọn",
+  "One way, into the language you choose",
+];
+const STALE_COMPOSE_MUST_KEEP = [
+  "Sáu phím tắt toàn cục hoạt động ngay cả khi AI Translator không phải cửa sổ đang mở.",
+  "Để dịch phụ đề, AI Translator cần đúng một quyền trên macOS: Ghi âm thanh hệ thống.",
+  "For subtitles, AI Translator needs exactly one macOS permission: System Audio Recording.",
+  "Phụ đề của AI Translator dịch một chiều, từ âm thanh phát trên máy sang ngôn ngữ của bạn.",
+  "AI Translator subtitles work one way, from the audio playing on your computer into your language.",
+  "Dịch hai chiều bằng giọng nói, để giọng của bạn cũng được dịch cho người cùng họp.",
+];
+
+test("luật câu cũ về Gõ dịch (STALE_COMPOSE) bắt câu cũ và không bắt câu đúng", () => {
+  const missed = STALE_COMPOSE_MUST_CATCH.filter((s) => staleHits(s, STALE_COMPOSE).length === 0);
+  assert.deepEqual(missed, [], "câu cũ mà luật không bắt");
+  const extra = STALE_COMPOSE_MUST_KEEP.filter((s) => staleHits(s, STALE_COMPOSE).length > 0).map((s) => `${s} → ${staleHits(s, STALE_COMPOSE).map((h) => h.id).join(", ")}`);
+  assert.deepEqual(extra, [], "câu đúng mà luật bắt thừa");
+});
+
+test("không nguồn chữ nào của site còn câu cũ về số phím tắt, số quyền trên macOS hay 'dịch một chiều' không nói rõ là phụ đề", async () => {
+  assert.deepEqual(scanStale(await siteTexts(), STALE_COMPOSE), []);
+});
+
+// Chữ của app có "&" (Type & Translate): textOf đổi thực thể HTML thành khoảng trắng, nên so cả hai phía sau khi bỏ "&".
+const plainAmp = (s) => s.replace(/&/g, " ").replace(/\s+/g, " ").trim();
+
+test("Gõ dịch: hướng dẫn trích đúng chữ trên ô soạn và ở Cài đặt › Gõ dịch của app (từ điển i18n vi và en)", async () => {
+  const keys = [
+    "compose.title", "compose.loading", "compose.translating", "compose.permission", "compose.permission.allow", "compose.permission.copyOnly",
+    "settings.group.compose", "settings.compose.enabled", "settings.compose.target", "settings.compose.target.hint", "settings.compose.autoPaste",
+    "settings.compose.permission", "settings.compose.permission.granted", "settings.compose.permission.open", "hotkeys.compose",
+    "error.composeTooLong", "error.composeFailed",
+  ];
+  const errors = [];
+  for (const [lang, path] of [["vi", "/huong-dan/go-dich/"], ["en", "/en/guide/type-and-translate/"]]) {
+    const d = await appDict(lang);
+    const text = plainAmp(textOf(htmlByPath.get(path)));
+    for (const k of keys) {
+      if (!d[k]) errors.push(`${lang}: không đọc được khóa ${k} của từ điển app`);
+      else if (!text.includes(plainAmp(blanked(d[k])))) errors.push(`${path}: không trích "${blanked(d[k])}" (${k})`);
+    }
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("Gõ dịch: các trang nêu phím tắt, mọi gói, không trừ thời lượng, quyền Trợ năng, chữ gõ không rời máy; bản Windows chưa thử trên máy thật", () => {
+  const need = {
+    "/huong-dan/go-dich/": ["⌃⌥G", "Ctrl+Alt+G", "Mọi gói còn hiệu lực", "không trừ thời lượng dịch", "không bao giờ dán câu gốc", "Trợ năng", "clipboard", "chưa thử nó trên máy Windows thật"],
+    "/en/guide/type-and-translate/": ["⌃⌥G", "Ctrl+Alt+G", "Every active plan", "does not use translation time", "never pastes your original text", "Accessibility", "clipboard", "not yet tried it on a real Windows computer"],
+    "/": ["Trả lời bằng tiếng của người bên kia", "không trừ thời lượng dịch"],
+    "/en/": ["Reply in the other person's language", "does not use translation time"],
+    "/tinh-nang/": ["Sáu phím tắt toàn cục", "Mở hoặc đóng ô soạn Gõ dịch", "không trừ", "chưa được thử trên máy thật"],
+    "/en/features/": ["Six global shortcuts", "Open or close the Type", "does not use", "has not been tried on a real computer"],
+    "/bang-gia/": ["Gõ dịch tin nhắn (không trừ thời lượng dịch)"],
+    "/en/pricing/": ["for chat messages (does not use translation time)"],
+    "/huong-dan/thanh-phu-de-va-phim-tat/": ["Mở hoặc đóng ô soạn Gõ dịch"],
+    "/en/guide/subtitle-bar-and-shortcuts/": ["Open or close the Type"],
+    "/cau-hoi-thuong-gap/": ["Gõ dịch là gì?", "không tính vào thời lượng", "⌃⌥G (Ctrl+Alt+G)", "quyền Trợ năng"],
+    "/en/faq/": ["What is Type", "are not counted", "⌃⌥G (Ctrl+Alt+G)", "Accessibility permission"],
+    "/bao-mat-du-lieu/": ["Chữ bạn gõ ở Gõ dịch và bản dịch của nó", "quyền Trợ năng"],
+    "/en/data-security/": ["Translate and its translation", "Accessibility permission"],
+    "/huong-dan/khac-phuc-su-co/": ["Đã chép bản dịch. Muốn app tự dán, hãy cấp quyền Trợ năng cho AI Translator."],
+    "/en/guide/troubleshooting/": ["Translation copied. To let AI Translator paste it for you, allow it in Accessibility."],
+    "/huong-dan/": ["Gõ dịch tin nhắn"],
+    "/en/guide/": ["Ten step-by-step guides"],
+  };
+  const errors = Object.entries(need).flatMap(([path, needles]) => needsIn(path, textOf(htmlByPath.get(path) ?? ""), needles));
+  assert.deepEqual(errors, []);
+});
+
 test("chính sách quyền riêng tư: Gõ dịch ở mục 2, 3 (dữ liệu trên máy, clipboard, quyền Trợ năng), 4 (không kết nối nào mang chữ gõ) và 10 (báo cáo không gồm chữ gõ)", () => {
   const errors = [
     ...sectionErrors("/chinh-sach-quyen-rieng-tu/", {
