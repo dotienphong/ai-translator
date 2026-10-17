@@ -1019,7 +1019,12 @@ const COMPOSES = [
     "compose-empty",
     "state=empty",
     // `:focus` không khớp khi chính trang không được focus (Chrome không đầu); `activeElement` thì vẫn đúng.
-    [[`document.activeElement?.tagName === "TEXTAREA"`, "con trỏ nằm sẵn trong ô gõ"], has("footer", "có gợi ý phím")],
+    [
+      [`document.activeElement?.tagName === "TEXTAREA"`, "con trỏ nằm sẵn trong ô gõ"],
+      has("footer", "có gợi ý phím"),
+      // Hộp gợi ý chữ của macOS nuốt phím Enter đầu tiên khi còn sửa chính tả (spike S2): ô gõ phải tắt.
+      [`(() => { const t = document.querySelector("textarea"); return t?.spellcheck === false && t?.getAttribute("autocorrect") === "off"; })()`, "ô gõ tắt sửa chính tả và tự sửa chữ"],
+    ],
   ],
   ["compose-typing", "state=typing", [has(".translation.stale", "bản dịch đang về hiện mờ")]],
   ["compose-loading", "state=loading", [has(".status:not(:empty)", "dòng trạng thái báo đang nạp model")]],

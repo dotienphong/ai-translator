@@ -7,7 +7,10 @@
 // câu bên bán lại (merchant of record) và câu quá giờ hẹn trả; bấm thật thì `start_checkout` nhận đúng gói và loại tiền, đổi
 // cách trả thì ô đồng ý bỏ tick. Báo cáo lỗi (spec 2026-10-17 §5): ô tích sẵn ở bước Điều khoản (không bắt buộc, bấm Tiếp lưu đúng lựa
 // chọn), công tắc ở Quyền riêng tư (bấm thì lưu), nút "Gửi log cho hỗ trợ" ở Giới thiệu (đang gửi, mã báo cáo, nút Sao chép, ba câu
-// lỗi). Ảnh PNG cho người kiểm xem ở target/ui-preview/ui-ja-zh-ko/ (không commit). Điều kiện nào sai
+// lỗi). Gõ dịch (spec 2026-10-17-go-dich §1.2–§1.4): nhóm Cài đặt "Gõ dịch" (macOS có quyền, chưa có quyền; Windows không có mục
+// tự dán), và ô soạn (compose.html, 560×420) ở từng trạng thái: trống, đang dịch, đang nạp model, đã dịch, đã là ngôn ngữ đích,
+// lỗi, bị chặn vì bản quyền, hộp quyền Trợ năng, chỉ chép, giao diện tối. Ảnh PNG cho người kiểm xem ở
+// target/ui-preview/ui-ja-zh-ko/ (không commit). Điều kiện nào sai
 // thì in ra và thoát mã 1; không mở được trang thì báo ngay và thoát mã 1. Chrome luôn đóng (xóa thư mục hồ sơ tạm) khi xong.
 //
 //   node_modules/.bin/vite --config scripts/ui-preview/vite.config.ts --port 1431 &   # trang xem trước, cổng 1431
@@ -322,6 +325,10 @@ const SCREENS = [
   ["settings-privacy", "screen=settings&group=privacy", { interact: toggleReportsSwitch }],
   // Người dùng đã tắt báo cáo lỗi (reports=0): công tắc tắt.
   ["settings-privacy-off", "screen=settings&group=privacy&reports=0"],
+  // Gõ dịch (spec 2026-10-17-go-dich §1.4): macOS đã cấp quyền Trợ năng, chưa cấp (ax=0); Windows không có mục tự dán.
+  ["settings-compose", "screen=settings&group=compose"],
+  ["settings-compose-noax", "screen=settings&group=compose&ax=0"],
+  ["settings-compose-windows", "screen=settings&group=compose&platform=windows"],
   // Nâng cấp (spec 2026-10-14). Khách ở Việt Nam (server gợi ý VND): chọn sẵn VietQR.
   ["upgrade", "screen=upgrade&plan=free"],
   // Khách ở nước ngoài (gợi ý USD): chọn sẵn thẻ quốc tế.
@@ -364,6 +371,36 @@ const SCREENS = [
   ["onboarding-2-reports-off", "onboarding=2", { interact: reportsConsent(true) }],
   ...Array.from({ length: 7 }, (_, i) => [`onboarding-${i + 3}`, `onboarding=${i + 3}${i === 1 ? "&download=1" : ""}`]),
 ];
+// Ô soạn Gõ dịch (compose.html): [tên, tham số URL, điều kiện riêng]. Trang tự gõ chữ mẫu (trừ `empty`) rồi chờ dịch như thật,
+// nên chờ thêm trước khi kiểm.
+const has = (selector, what) => [`!!document.querySelector(${JSON.stringify(selector)})`, what];
+const COMPOSES = [
+  [
+    "compose-empty",
+    "state=empty",
+    // `:focus` không khớp khi chính trang không được focus (Chrome không đầu); `activeElement` thì vẫn đúng.
+    [
+      [`document.activeElement?.tagName === "TEXTAREA"`, "con trỏ nằm sẵn trong ô gõ"],
+      has("footer", "có gợi ý phím"),
+      // Hộp gợi ý chữ của macOS nuốt phím Enter đầu tiên khi còn sửa chính tả (spike S2): ô gõ phải tắt.
+      [`(() => { const t = document.querySelector("textarea"); return t?.spellcheck === false && t?.getAttribute("autocorrect") === "off"; })()`, "ô gõ tắt sửa chính tả và tự sửa chữ"],
+    ],
+  ],
+  ["compose-typing", "state=typing", [has(".translation.stale", "bản dịch đang về hiện mờ")]],
+  ["compose-loading", "state=loading", [has(".status:not(:empty)", "dòng trạng thái báo đang nạp model")]],
+  ["compose-done", "state=done", [has(".translation:not(.stale)", "bản dịch đủ hiện rõ")]],
+  ["compose-same", "state=same", [has(".status:not(:empty)", "báo đã là ngôn ngữ đích")]],
+  ["compose-failed", "state=failed", [has(".box.error", "có hộp lỗi")]],
+  ["compose-blocked", "state=blocked", [has(".box.error button", "hộp lỗi có nút Nâng cấp")]],
+  [
+    "compose-permission",
+    "state=permission",
+    [[`document.querySelectorAll(".box:not(.error) button").length === 2`, "hộp quyền có hai nút"]],
+  ],
+  ["compose-copy", "state=done&paste=0", [[`document.querySelector("footer")?.textContent.includes("⌘V") === true`, "gợi ý ghi ⌘V"]]],
+  ["compose-dark", "state=done&theme=dark", [[`document.documentElement.dataset.theme === "dark"`, "giao diện tối"]]],
+];
+
 const OVERLAYS = [
   ["overlay", "session=running"],
   ["overlay-live", "session=running&live=alone"],
@@ -639,6 +676,11 @@ try {
         if (!wanted(name)) continue;
         await visit(browser, lang, win, name, `${BASE}/?${query}&lang=${lang}`, options, EXTRA[name]?.(lang));
       }
+    }
+    for (const [name, query, extras] of COMPOSES) {
+      if (!wanted(name)) continue;
+      const url = `${BASE}/compose.html?${query}&lang=${lang}`;
+      await visit(browser, lang, { name: "560x420", width: 560, height: 420 }, name, url, { prepare: "1", wait: 1200, transparent: true }, extras);
     }
     for (const [name, query] of OVERLAYS) {
       if (!wanted(name)) continue;

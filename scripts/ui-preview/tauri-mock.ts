@@ -20,6 +20,9 @@
 //     cài mới chưa qua bước Điều khoản thì tắt)  report=ok|failed|ratelimited|rejected (kết quả nút "Gửi log cho hỗ trợ" ở Giới thiệu)
 //   dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6): tws=0 (tắt công tắc)  slow=1 (máy chưa đủ nhanh)
 //     overlay.html: live=alone|extends|final|provisional (mẫu dòng đang nói, xem `LIVE_SAMPLE`; cần session=running)
+//   Gõ dịch (spec 2026-10-17-go-dich): Cài đặt › Gõ dịch: ax=0 (macOS chưa cấp quyền Trợ năng)
+//     compose.html: state=empty|typing|loading|done|same|failed|blocked|permission (mặc định empty; trừ empty, trang tự gõ chữ
+//     mẫu rồi để giao diện đi đúng đường thật: chờ 400 ms, xin dịch, nhận chữ dịch; permission còn bấm Enter)  paste=0 (tắt tự dán)
 import conf from "../../src-tauri/tauri.conf.json";
 import type {
   AppInfo,
@@ -27,6 +30,8 @@ import type {
   CheckoutView,
   Command,
   Commands,
+  ComposeOutcome,
+  ComposeView,
   LicenseView,
   LiveLine,
   PlanOffer,
@@ -499,6 +504,50 @@ function changeSettings(next: Settings) {
   return settings;
 }
 
+// ---------------------------------------------------------------- ô soạn Gõ dịch (compose.html)
+
+const composeState = param("state", "empty");
+let composeId = 0;
+
+// Chữ mẫu theo ngôn ngữ giao diện: [chữ gõ, bản dịch]. Ngôn ngữ đích "Tự động" là English, riêng giao diện English thì Tiếng Việt.
+const COMPOSE_SAMPLE: Record<UiLang, [string, string]> = {
+  vi: ["Mai mình gửi báo cáo nhé.\n\nCảm ơn cả nhóm!", "I'll send the report tomorrow.\n\nThanks, everyone!"],
+  en: ["I'll send the report tomorrow.\n\nThanks, everyone!", "Mai mình gửi báo cáo nhé.\n\nCảm ơn cả nhóm!"],
+  ja: ["明日レポートを送ります。\n\n皆さん、ありがとうございます！", "I'll send the report tomorrow.\n\nThanks, everyone!"],
+  zh: ["我明天发报告。\n\n谢谢大家！", "I'll send the report tomorrow.\n\nThanks, everyone!"],
+  ko: ["내일 보고서를 보낼게요.\n\n다들 고마워요!", "I'll send the report tomorrow.\n\nThanks, everyone!"],
+};
+
+function composeView(): ComposeView {
+  return {
+    uiLanguage: lang,
+    theme: settings.theme,
+    target: lang === "en" ? "vi" : "en",
+    autoPaste: param("paste") !== "0",
+    blocked: composeState === "blocked" ? "trialEnded" : null,
+    platform,
+  };
+}
+
+// Kết quả của một lần xin dịch theo `state=`, tới qua sự kiện như phía Rust (sau lệnh, không cùng lúc).
+function composeAnswer(id: number) {
+  const [, translation] = pick(COMPOSE_SAMPLE);
+  if (composeState === "loading") return emit("compose://loading", { id });
+  if (composeState === "typing") {
+    return emit("compose://delta", { id, line: 0, text: translation.split("\n")[0]!.slice(0, 14), reset: false });
+  }
+  if (composeState !== "same" && composeState !== "failed") {
+    translation.split("\n").forEach((text, line) => text && emit("compose://delta", { id, line, text, reset: false }));
+  }
+  const outcome: ComposeOutcome =
+    composeState === "same"
+      ? { kind: "sameLanguage" }
+      : composeState === "failed"
+        ? { kind: "failed", code: "composeFailed" }
+        : { kind: "translated", text: translation };
+  emit("compose://done", { id, outcome });
+}
+
 function overlayView() {
   const o = settings.overlay;
   return {
@@ -558,6 +607,20 @@ const handlers = {
   set_overlay_visible: ({ visible }) => changeStatus({ overlayVisible: visible }),
   set_overlay_locked: ({ locked }) => changeSettings({ ...settings, overlay: { ...settings.overlay, locked } }),
   get_app_info: () => info,
+  get_accessibility_trusted: () => param("ax") !== "0",
+  open_accessibility_settings: () => null,
+  get_compose_view: () => composeView(),
+  compose_translate: () => {
+    const id = ++composeId;
+    setTimeout(() => composeAnswer(id), 60);
+    return id;
+  },
+  compose_submit: () => (composeState === "permission" ? "needsPermission" : param("paste") === "0" ? "copied" : "pasted"),
+  compose_close: () => null,
+  compose_resize: () => null,
+  compose_open_accessibility: () => null,
+  compose_copy_only: () => null,
+  compose_open_main: () => null,
   list_audio_sources: () =>
     platform === "macos"
       ? [
@@ -655,6 +718,18 @@ setTimeout(async () => {
   if (notice === "error") {
     const { appStore } = await import("../../src/windows/main/appStore");
     appStore.setState({ error: { code: "network", field: null } });
+  }
+  if (location.pathname.endsWith("compose.html")) {
+    emit("compose://open", composeView());
+    const input = document.querySelector("textarea");
+    if (input && composeState !== "empty") {
+      // Gõ chữ mẫu như người dùng: đặt giá trị bằng setter gốc (React theo dõi giá trị) rồi bắn sự kiện `input`.
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(input, pick(COMPOSE_SAMPLE)[0]);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      if (composeState === "permission") {
+        setTimeout(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })), 700);
+      }
+    }
   }
   if (location.pathname.endsWith("overlay.html")) {
     // Trạng thái và phụ đề tới thanh phụ đề qua sự kiện, như phía Rust.
