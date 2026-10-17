@@ -5,6 +5,8 @@ import { Link, matchRoute, navigate, usePath } from "./router";
 
 const ID = "0b9e7c1e-5f3a-4c1d-9a7e-2f1d3c4b5a69";
 const HASH = "a".repeat(64);
+const FP = "3fa1c09be2d47a55";
+const RID = "R-7F3K-92QD";
 
 afterEach(() => {
   window.history.replaceState(null, "", "/");
@@ -23,6 +25,15 @@ describe("matchRoute", () => {
     ["/trials", { name: "trials" }],
     ["/audit", { name: "audit" }],
     ["/tools", { name: "tools" }],
+    ["/errors", { name: "errors" }],
+    ["/errors/", { name: "errors" }],
+    [`/errors/groups/${FP}`, { name: "error_group", param: FP }],
+    [`/errors/reports/${RID}`, { name: "error_report", param: RID }],
+    ["/errors/groups/xyz", { name: "not_found" }],
+    [`/errors/groups/${FP.toUpperCase()}`, { name: "not_found" }],
+    ["/errors/reports/r-7f3k-92qd", { name: "not_found" }],
+    ["/errors/reports/R-7F3I-92QD", { name: "not_found" }],
+    ["/errors/x", { name: "not_found" }],
     ["/overview", { name: "overview" }],
     ["/overview/", { name: "overview" }],
     ["/overview/x", { name: "not_found" }],

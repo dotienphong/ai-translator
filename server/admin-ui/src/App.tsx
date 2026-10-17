@@ -11,6 +11,9 @@ import { Topbar } from "./components/Topbar";
 import { useLoad } from "./hooks";
 import { AuditPage } from "./pages/AuditPage";
 import { DevicePage } from "./pages/DevicePage";
+import { ErrorGroupPage } from "./pages/ErrorGroupPage";
+import { ErrorReportPage } from "./pages/ErrorReportPage";
+import { ErrorsPage } from "./pages/ErrorsPage";
 import { LicensePage } from "./pages/LicensePage";
 import { LicensesPage } from "./pages/LicensesPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -70,6 +73,12 @@ export function routeTitle(route: Route): string {
       return "Chi tiết máy";
     case "trials":
       return "Máy & dùng thử";
+    case "errors":
+      return "Báo cáo lỗi";
+    case "error_group":
+      return "Nhóm lỗi";
+    case "error_report":
+      return `Báo cáo ${route.param ?? ""}`;
     case "audit":
       return "Nhật ký";
     case "tools":
@@ -107,6 +116,12 @@ function Page({ route }: { route: Route }) {
       return <DevicePage key={p} hash={p} />;
     case "trials":
       return <TrialsPage />;
+    case "errors":
+      return <ErrorsPage />;
+    case "error_group":
+      return <ErrorGroupPage key={p} fingerprint={p} />;
+    case "error_report":
+      return <ErrorReportPage key={p} id={p} />;
     case "audit":
       return <AuditPage />;
     case "tools":

@@ -43,3 +43,14 @@ describe("audit-labels: hoàn tiền và tranh chấp của cổng thanh toán (
     expect(actionTone("ma_la")).toBe("default");
   });
 });
+
+describe("audit-labels: báo cáo lỗi của app", () => {
+  it.each([
+    ["error_report_viewed", "Xem báo cáo lỗi", "default"],
+    ["error_reports_deleted", "Xóa báo cáo lỗi", "info"],
+  ])("%s có tên tiếng Việt, tông và là gợi ý của ô lọc hành động", (action, label, tone) => {
+    expect(actionLabel(action)).toBe(label);
+    expect(actionTone(action)).toBe(tone);
+    expect(KNOWN_ACTIONS).toContain(action);
+  });
+});

@@ -12,6 +12,7 @@ const responses: Record<string, unknown> = {
   "/admin/queue": { needs_review: empty, underpaid: empty, email_failed: empty, locked: empty, conflict: empty, alerts: empty },
   "/admin/summary": { revenue_today: { VND: 0, USD: 0 }, paid_orders_7d: 0, active_licenses: 0 },
   "/admin/orders": { items: [], next_cursor: null },
+  "/admin/error-groups": { items: [], next_cursor: null },
   "/admin/alerts": { items: [], total: 0, pending: 0 },
   "/admin/releases": { base_url: "https://releases.example.com", channels: { stable: { status: "missing" }, beta: { status: "missing" } }, models: { status: "missing" } },
 };
@@ -61,6 +62,20 @@ describe("App", () => {
     expect(screen.getByRole("link", { name: "Tổng quan" }).className).toContain("active");
   });
 
+  it("mục Báo cáo lỗi: sang /errors, hiện trang, đánh dấu mục đang chọn và đổi tiêu đề tab", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("heading", { name: "Việc cần xử lý" });
+    const link = screen.getByRole("link", { name: "Báo cáo lỗi" });
+    expect(link.getAttribute("href")).toBe("/errors");
+    await user.click(link);
+    expect(window.location.pathname).toBe("/errors");
+    expect(await screen.findByRole("heading", { level: 1, name: "Báo cáo lỗi" })).toBeTruthy();
+    expect(await screen.findByText("Chưa có báo cáo lỗi nào")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Báo cáo lỗi" }).className).toContain("active");
+    expect(document.title).toBe("Báo cáo lỗi · AI Translator Admin");
+  });
+
   it("thanh bên chia ba nhóm Vận hành, Dữ liệu, Hệ thống; mục Hệ thống nằm trong nhóm Hệ thống, bấm thì sang /system", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -72,6 +87,7 @@ describe("App", () => {
       "Đơn hàng",
       "License",
       "Máy & dùng thử",
+      "Báo cáo lỗi",
       "Nhật ký",
       "Hệ thống",
       "Công cụ",

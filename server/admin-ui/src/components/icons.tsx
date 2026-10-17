@@ -458,3 +458,14 @@ export function BrandMark({ size = 30, className }: { size?: number; className?:
     </svg>
   );
 }
+
+/** Báo cáo lỗi: con bọ. */
+export const IconBug = icon(
+  "bug",
+  <>
+    <path d="M9 7.5V6.2a3 3 0 0 1 6 0v1.3" />
+    <path d="M8 9.5h8a1 1 0 0 1 1 1V14a5 5 0 0 1-10 0v-3.5a1 1 0 0 1 1-1Z" />
+    <path d="M12 9.5V19" />
+    <path d="M7 12H4M17 12h3M7.5 16.5 5 18M16.5 16.5 19 18M8 8 6 6.5M16 8l2-1.5" />
+  </>,
+);

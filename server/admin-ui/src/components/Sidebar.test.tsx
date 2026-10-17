@@ -23,12 +23,23 @@ describe("Sidebar", () => {
   it("mỗi mục có biểu tượng SVG ẩn với trình đọc màn hình; mục của trang chi tiết được đánh dấu theo nhóm (đơn → Đơn hàng)", () => {
     setup({ current: "order" });
     const links = nav().getAllByRole("link");
-    expect(links).toHaveLength(8);
+    expect(links).toHaveLength(9);
     for (const a of links) expect(a.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     const orders = nav().getByRole("link", { name: "Đơn hàng" });
     expect(orders.getAttribute("aria-current")).toBe("page");
     expect(orders.className).toContain("active");
     expect(nav().getAllByRole("link").filter((a) => a.getAttribute("aria-current"))).toHaveLength(1);
+  });
+
+  it("mục Báo cáo lỗi sáng ở cả ba trang của nó (danh sách, nhóm, chi tiết), nằm trong nhóm Dữ liệu", () => {
+    for (const current of ["errors", "error_group", "error_report"] as const) {
+      const { unmount } = render(<Sidebar current={current} queueCount={null} collapsed={false} onToggleCollapsed={() => {}} open={false} onClose={() => {}} />);
+      const link = nav().getByRole("link", { name: "Báo cáo lỗi" });
+      expect(link.getAttribute("href")).toBe("/errors");
+      expect(link.getAttribute("aria-current")).toBe("page");
+      expect(within(nav().getByRole("list", { name: "Dữ liệu" })).getByRole("link", { name: "Báo cáo lỗi" })).toBe(link);
+      unmount();
+    }
   });
 
   it("không có việc (0 hay null): không có huy hiệu; nhiều việc: hiện 99+", () => {

@@ -49,6 +49,8 @@ const LABELS: Record<string, readonly [string, Tone?]> = {
   key_check_failed: ["Ký thử khóa lỗi", "bad"],
   payos_webhook_confirmed: ["Xác nhận webhook PayOS", "info"],
   payos_webhook_confirm_failed: ["Xác nhận webhook lỗi", "bad"],
+  // Báo cáo lỗi của app (server/src/admin-reports.ts): xóa là thao tác tay của người vận hành, không phải xóa dữ liệu khách hàng
+  error_reports_deleted: ["Xóa báo cáo lỗi", "info"],
   // Lượt xem và tra cứu (ẩn mặc định, server: VIEW_ACTIONS)
   lookup: ["Tra cứu"],
   list_viewed: ["Xem danh sách"],
@@ -58,6 +60,7 @@ const LABELS: Record<string, readonly [string, Tone?]> = {
   payment_status_viewed: ["Xem trạng thái thanh toán"],
   alerts_viewed: ["Xem cảnh báo"],
   releases_viewed: ["Xem phát hành"],
+  error_report_viewed: ["Xem báo cáo lỗi"],
 };
 
 export function actionLabel(action: string): string | undefined {
