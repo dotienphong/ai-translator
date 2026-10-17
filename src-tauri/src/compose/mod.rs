@@ -20,6 +20,10 @@ pub mod worker;
 mod native_macos;
 #[cfg(target_os = "macos")]
 use native_macos as platform;
+#[cfg(not(target_os = "macos"))]
+mod native_windows;
+#[cfg(not(target_os = "macos"))]
+use native_windows as platform;
 
 #[cfg(test)]
 mod tests;

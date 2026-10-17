@@ -93,6 +93,12 @@ windows = { version = "0.62.2", features = [
     "Win32_System_Registry",
     "Win32_System_SystemInformation",
     "Win32_UI_WindowsAndMessaging",
+    # Gõ dịch (compose/native_windows.rs): clipboard (`OpenClipboard`, `GlobalAlloc`, `CF_UNICODETEXT`) và gửi Ctrl+V
+    # (`SendInput`).
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_UI_Input_KeyboardAndMouse",
 ] }
 windows-native-keyring-store = "1.1.0"
 # Windows không có CommonCrypto: SQLCipher dùng OpenSSL 3.6 (`openssl-src` 300.6, Apache-2.0) link tĩnh, nên không có DLL
