@@ -88,7 +88,8 @@ logs          app (300 dòng cuối app.log, ≤ 24 KB);
   - **Tab Gửi tay:** báo cáo `manual` xếp theo thời gian, không nhóm; **tìm theo mã báo cáo** `R-XXXX-XXXX` (người dùng đọc cho hỗ trợ).
   - **Chi tiết:** metadata và ba log ở dạng **văn bản thuần** (không render HTML), nút sao chép, liên kết sang trang máy (`DevicePage`) và license theo `device_id_hash`.
   - **Xóa** một báo cáo, hay cả nhóm.
-- Xem chi tiết, xóa: ghi nhật ký thao tác (`audit_log`) như mọi thao tác admin; danh sách không ghi.
+- Nhật ký thao tác (`audit_log`) như mọi trang admin: mỗi lần xem danh sách ghi một dòng `list_viewed` (bộ lọc ghi vào nhật ký không chứa mã máy; ẩn mặc định ở trang Nhật ký), xem chi tiết ghi `error_report_viewed` (chỉ có mã báo cáo), xóa ghi `error_reports_deleted` (kèm số lượng). Xóa không đòi `note` (khác các thao tác trên license): dọn báo cáo là việc thường ngày và nhật ký không chứa dữ liệu cá nhân.
+- Trang một nhóm lấy dữ liệu từ danh sách báo cáo lọc theo dấu vân tay; ô tra cứu toàn cục không nhận mã báo cáo (tìm theo mã nằm ở tab Gửi tay).
 
 ## 5. App
 
@@ -102,7 +103,7 @@ logs          app (300 dòng cuối app.log, ≤ 24 KB);
 
 ## 6. Pháp lý, spec gốc, website
 
-Phải sửa cùng đợt, vì CLAUDE.md yêu cầu nội dung chỉ nói điều có thật, và hiện có **12 chỗ** cam kết "không tự gửi báo cáo lỗi":
+Phải sửa cùng đợt, vì CLAUDE.md yêu cầu nội dung chỉ nói điều có thật, và hiện có hơn 30 chỗ cam kết "không tự gửi báo cáo lỗi" (24 ở chính sách, website và chuỗi giao diện; 4 ở spec gốc; 1 ở README pháp lý; 5 chú thích trong mã Rust; kế hoạch 05 liệt kê từng chỗ):
 
 - **Spec gốc:** §10.1 (câu "MVP không có analytics và không gửi báo cáo crash…"); tiêu chí A7 ở §3.3 (thêm `POST /v1/diagnostics` vào các việc được phép, kèm điều kiện "không trong lúc dịch"); hàng "Lộ nội dung cuộc họp" ở bảng rủi ro §10.2 (log vẫn không chứa chữ chép lời; thêm rằng log rời máy chỉ qua báo cáo đã che); và §7 dòng "Số đo từng phiên… không gửi đi đâu" (số đo vẫn nằm trong log, nên nằm trong báo cáo).
 - **Chính sách quyền riêng tư** `docs/legal/privacy.vi.md`, `privacy.en.md` lên **bản 1.3**: dòng 12 (không còn "không gửi báo cáo lỗi tự động"), dòng 24 hay mục "Nhật ký hoạt động" (đổi), thêm mục **Báo cáo lỗi** (gửi gì, lúc nào, **gắn với license qua mã băm của máy**, giữ 30 ngày, tắt ở đâu, xóa theo yêu cầu), và `docs/legal/README.md` (phiên bản, ngày hiệu lực). Ngày hiệu lực là ngày phát hành bản app có tính năng này. EULA không đổi.
@@ -121,10 +122,12 @@ Phải sửa cùng đợt, vì CLAUDE.md yêu cầu nội dung chỉ nói điề
 
 ## 8. Triển khai và kế hoạch
 
-Ba kế hoạch, theo thứ tự:
-1. **Server và Web Admin:** migration `0004`, endpoint, dọn dẹp, cảnh báo, xóa theo email, trang admin, vector dùng chung.
-2. **App:** cài đặt và migrate, che dữ liệu, thu log, hàng đợi, gửi, điểm kích hoạt, onboarding, cài đặt, Giới thiệu, i18n.
-3. **Pháp lý và website:** spec gốc, chính sách 1.3, 12 chỗ cam kết, tài liệu hỗ trợ.
+Năm kế hoạch trong `docs/superpowers/plans/` (ba mảng của thiết kế, tách thêm Web Admin UI và giao diện app vì mỗi phần có bộ test và gói riêng):
+1. `2026-10-17-bao-cao-loi-01-server.md`: migration `0004`, endpoint, dọn dẹp, cảnh báo, xóa theo email, API Web Admin, vector dùng chung. **Làm trước**: kế hoạch 03 cần Task 2 (vector) và Task 3, 4 của nó.
+2. `2026-10-17-bao-cao-loi-02-admin-ui.md`: trang Báo cáo lỗi của Web Admin. Cần API của kế hoạch 01.
+3. `2026-10-17-bao-cao-loi-03-app-loi-cot.md`: lõi Rust của app (che dữ liệu, thu log, hàng đợi, gửi, điểm kích hoạt, cài đặt và migrate, lệnh gửi tay, công tắc dev).
+4. `2026-10-17-bao-cao-loi-04-app-giao-dien.md`: giao diện app (onboarding, cài đặt, Giới thiệu, i18n 5 ngôn ngữ). Task 7 cần Task 9 của kế hoạch 03 (ba câu `error.report*`).
+5. `2026-10-17-bao-cao-loi-05-phap-ly-website.md`: spec gốc, chính sách 1.3, website, runbook, ảnh chụp (Task 5 cần kế hoạch 04 xong).
 
 Thứ tự deploy: server (áp migration `0004` lên D1 production, deploy `mt-license` rồi `mt-license-admin` liền nhau, **kiểm cron sau deploy** vì từng có sự cố cron không chạy, `wrangler triggers deploy`), rồi phát hành app mới, rồi website cùng chính sách (theo `docs/release/phat-hanh.md`). Server phải có trước app: app mới gọi endpoint chưa có sẽ nhận `404` (lỗi `4xx`, bị bỏ), nên không gây lỗi, nhưng mất báo cáo. **Không deploy, không đẩy tag, không merge khi chưa được cho phép.**
 
