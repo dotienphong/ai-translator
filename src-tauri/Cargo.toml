@@ -59,6 +59,9 @@ libc = "0.2.189"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
 # Vẽ mã VietQR của đơn thành SVG ngay trong app (license/purchase.rs, spec §6.8 "Mua ngay trong app"). Không kéo crate nào.
 qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
+# Báo cáo lỗi (diagnostics/scrub.rs, spec 2026-10-17): che dữ liệu cá nhân và phát hiện dữ liệu nhạy cảm còn sót. Cùng bản `Cargo.lock`
+# đã có (qua các crate khác); mẫu dùng chung vector với server nên dùng cùng cú pháp regex.
+regex = "1.13.1"
 # Tự cập nhật (kế hoạch 07b, spec §6.11): TLS của hệ điều hành và proxy của hệ thống như `reqwest` ở trên; bỏ `zip` (chỉ
 # cần cho bộ cài `.msi.zip`/`.nsis.zip` cũ), bỏ `rustls-tls`. Lệnh của plugin không cấp cho cửa sổ nào (acl_tests).
 tauri-plugin-updater = { version = "2.13.1", default-features = false, features = ["native-tls", "system-proxy"] }

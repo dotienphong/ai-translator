@@ -3172,6 +3172,7 @@ dependencies = [
  "objc2-service-management",
  "pipeline",
  "qrcode",
+ "regex",
  "reqwest",
  "rtrb",
  "rusqlite",

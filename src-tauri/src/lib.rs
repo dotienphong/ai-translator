@@ -12,6 +12,7 @@ pub mod commands;
 pub mod data;
 pub mod db;
 pub mod debug;
+pub mod diagnostics;
 pub mod errors;
 pub mod events;
 pub mod files;
