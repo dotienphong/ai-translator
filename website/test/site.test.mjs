@@ -1104,6 +1104,72 @@ test("chính sách quyền riêng tư 1.2 nêu Creem là bên bán lại (mercha
   assert.deepEqual(errors, []);
 });
 
+test("chính sách quyền riêng tư: mục 10 Báo cáo lỗi nêu khi nào gửi, gồm và không gồm gì, gắn với mã băm của máy, giữ 30 ngày, tắt ở đâu; các mục 2, 3, 4, 5, 7 nhắc tới báo cáo lỗi; không còn câu cũ", () => {
+  const errors = [
+    ...sectionErrors(
+      "/chinh-sach-quyen-rieng-tu/",
+      {
+        2: ["tự gửi báo cáo lỗi đã che dữ liệu cá nhân", "trừ báo cáo lỗi tự xóa sau 30 ngày"],
+        3: ["Chỉ phần log liên quan đến một lỗi rời máy"],
+        4: ["gửi báo cáo lỗi (mục 10)"],
+        5: ["Báo cáo lỗi (mục 10)", "tự xóa sau 30 ngày"],
+        7: ["xóa các báo cáo lỗi của những máy từng kích hoạt key của email đó", "không gắn với email nào"],
+        10: [
+          "Gửi báo cáo lỗi tự động",
+          "Gửi log cho hỗ trợ",
+          "bật mặc định",
+          "đã cài từ trước",
+          "mã báo cáo",
+          "không đang dịch",
+          "mã băm của ID máy",
+          "Âm thanh, bản chép lời, bản dịch, license key, token, email",
+          "có thể nối báo cáo với license và email",
+          "30 ngày",
+          "3.000",
+        ],
+        11: ["Thay đổi chính sách"],
+        12: ["Liên hệ"],
+      },
+      { 2: ["không gửi báo cáo lỗi tự động"], 3: ["bạn tự gửi cho chúng tôi nếu muốn"] },
+    ),
+    ...sectionErrors(
+      "/en/privacy/",
+      {
+        2: ["automatically sends us an error report with personal data scrubbed out", "except error reports"],
+        3: ["Only the part of a log that relates to an error leaves your computer"],
+        4: ["send error reports (section 10)"],
+        5: ["Error reports (section 10)", "deleted automatically after 30 days"],
+        7: ["delete the error reports of the machines that ever activated a key for that email", "not tied to any email"],
+        10: [
+          "Send error reports automatically",
+          "Send log to support",
+          "on by default",
+          "installed the app earlier",
+          "report code",
+          "not translating",
+          "hash of the machine ID",
+          "Audio, transcripts, translations, license keys, tokens, email addresses",
+          "can link a report to that machine",
+          "30 days",
+          "3,000",
+        ],
+        11: ["Changes to this policy"],
+        12: ["Contact"],
+      },
+      { 2: ["no automatic crash reports"], 3: ["you send them to us yourself"] },
+    ),
+  ];
+  for (const [urlPath, first, needles] of [
+    ["/chinh-sach-quyen-rieng-tu/", "Báo cáo lỗi (mục 10)", ["mã băm", "Tìm và sửa lỗi"]],
+    ["/en/privacy/", "Error reports (section 10)", ["hash", "Find and fix bugs"]],
+  ]) {
+    const row = rowText(legalSections(urlPath).get("5")?.html, first);
+    if (!row) errors.push(`${urlPath} mục 5: không có hàng "${first}"`);
+    for (const n of needles) if (row && !row.includes(n)) errors.push(`${urlPath} mục 5, hàng "${first}": thiếu "${n}" (hàng: ${row})`);
+  }
+  assert.deepEqual(errors, []);
+});
+
 test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): bốn file nêu merchant of record, EULA nêu rút ngắn hay thu hồi khi hoàn tiền, bản tiếng Anh cùng cấu trúc và cùng ngày với bản tiếng Việt", async () => {
   const read = (f) => readFile(path.join(ROOT, "..", "docs", "legal", f), "utf8");
   const docs = Object.fromEntries(await Promise.all(["eula.vi.md", "eula.en.md", "privacy.vi.md", "privacy.en.md"].map(async (f) => [f, await read(f)])));
@@ -1129,7 +1195,7 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
           paragraphs: lines.filter((l) => !/^(- |\d+\. |\||#)/.test(l)).length,
         };
       });
-  for (const [name, count] of [["eula", 16], ["privacy", 11]]) {
+  for (const [name, count] of [["eula", 16], ["privacy", 12]]) {
     const vi = skeleton(docs[`${name}.vi.md`]);
     const en = skeleton(docs[`${name}.en.md`]);
     if (vi.length !== count) errors.push(`${name}.vi.md: ${vi.length} mục (giữ ${count} mục)`);
