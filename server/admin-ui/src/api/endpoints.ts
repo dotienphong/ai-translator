@@ -3,7 +3,12 @@ import { call } from "./client";
 import type {
   AlertsResponse,
   AuditRow,
+  DeletedReports,
   EraseResult,
+  ErrorGroup,
+  ErrorReport,
+  ErrorReportDetail,
+  GroupKind,
   IssuedLicense,
   KeyCheck,
   LicenseRow,
@@ -15,6 +20,7 @@ import type {
   PlanCode,
   Queue,
   ReleasesResponse,
+  ReportKind,
   Stats,
   Summary,
   TrialRow,
@@ -40,6 +46,24 @@ export type AuditFilters = {
   cursor?: string;
 };
 
+/** Bộ lọc của /admin/error-groups: `kind` không có `manual` (báo cáo gửi tay không thuộc nhóm nào); mặc định server ẩn báo cáo debug. */
+export type ErrorGroupFilters = {
+  kind?: GroupKind;
+  app_version?: string;
+  include_debug?: "1";
+  cursor?: string;
+};
+
+/** Bộ lọc của /admin/error-reports: `report` là mã báo cáo viết hoa, `device` là mã máy 64 hex, `fingerprint` là 16 hex. */
+export type ErrorReportFilters = {
+  kind?: ReportKind;
+  fingerprint?: string;
+  device?: string;
+  report?: string;
+  include_debug?: "1";
+  cursor?: string;
+};
+
 export function queryString(params: Filters): string {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") p.set(k, v);
@@ -61,6 +85,11 @@ export const api = {
   licenses: (f: Filters) => call<Page<LicenseRow>>("GET", `/admin/licenses${queryString(f)}`),
   trials: (f: Filters) => call<Page<TrialRow>>("GET", `/admin/trials${queryString(f)}`),
   audit: (f: AuditFilters) => call<Page<AuditRow>>("GET", `/admin/audit${queryString(f)}`),
+  errorGroups: (f: ErrorGroupFilters) => call<Page<ErrorGroup>>("GET", `/admin/error-groups${queryString(f)}`),
+  errorReports: (f: ErrorReportFilters) => call<Page<ErrorReport>>("GET", `/admin/error-reports${queryString(f)}`),
+  errorReport: (id: string) => call<ErrorReportDetail>("GET", `/admin/error-reports/${seg(id)}`),
+  deleteErrorReport: (id: string) => call<DeletedReports>("POST", "/admin/error-reports/delete", { id }),
+  deleteErrorGroup: (fingerprint: string) => call<DeletedReports>("POST", "/admin/error-reports/delete", { fingerprint }),
   paymentStatus: (code: number) => call<PaymentStatus>("GET", `/admin/orders/${code}/payment-status`),
   grantOrder: (code: number, note: string) => call<IssuedLicense>("POST", `/admin/orders/${code}/grant`, { note }),
   resolveOrder: (code: number, action: "grant_new_license" | "refunded", note: string) =>

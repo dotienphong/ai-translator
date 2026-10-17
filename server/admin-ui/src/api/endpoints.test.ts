@@ -7,6 +7,8 @@ import { api } from "./endpoints";
 const LIC = "0b9e7c1e-5f3a-4c1d-9a7e-2f1d3c4b5a69";
 const ACT = "7c1d9a7e-0b9e-4f3a-8c1d-5b69a2f1d3c4";
 const HASH = "a".repeat(64);
+const FP = "3fa1c09be2d47a55";
+const RID = "R-7F3K-92QD";
 const KEY = "K7Q2-M4XB-9TRD-0HZC-5WEF-8NPA-9XMB";
 /** Id có ký tự phải mã hóa trong đường dẫn: "/", khoảng trắng, "?". */
 const ODD = "a/b c?d";
@@ -61,6 +63,24 @@ const CASES: Case[] = [
     url: "/admin/audit?actor=admin&action=license_revoked&order_code=1000012&from=2026-10-01&to=2026-10-07&include_views=1&cursor=9",
   },
   { fn: "audit", run: () => api.audit({}), method: "GET", url: "/admin/audit" },
+  { fn: "errorGroups", run: () => api.errorGroups({}), method: "GET", url: "/admin/error-groups" },
+  {
+    fn: "errorGroups",
+    run: () => api.errorGroups({ kind: "crash", app_version: "0.1.10", include_debug: "1", cursor: `1790812800_${FP}` }),
+    method: "GET",
+    url: `/admin/error-groups?kind=crash&app_version=0.1.10&include_debug=1&cursor=1790812800_${FP}`,
+  },
+  { fn: "errorReports", run: () => api.errorReports({}), method: "GET", url: "/admin/error-reports" },
+  {
+    fn: "errorReports",
+    run: () => api.errorReports({ kind: "manual", fingerprint: FP, device: HASH, report: RID, include_debug: "1", cursor: `1790812800_${RID}` }),
+    method: "GET",
+    url: `/admin/error-reports?kind=manual&fingerprint=${FP}&device=${HASH}&report=${RID}&include_debug=1&cursor=1790812800_${RID}`,
+  },
+  { fn: "errorReport", run: () => api.errorReport(RID), method: "GET", url: `/admin/error-reports/${RID}` },
+  { fn: "errorReport", run: () => api.errorReport(ODD), method: "GET", url: `/admin/error-reports/${ODD_ENCODED}` },
+  { fn: "deleteErrorReport", run: () => api.deleteErrorReport(RID), method: "POST", url: "/admin/error-reports/delete", body: { id: RID } },
+  { fn: "deleteErrorGroup", run: () => api.deleteErrorGroup(FP), method: "POST", url: "/admin/error-reports/delete", body: { fingerprint: FP } },
   { fn: "paymentStatus", run: () => api.paymentStatus(1000012), method: "GET", url: "/admin/orders/1000012/payment-status" },
 
   { fn: "grantOrder", run: () => api.grantOrder(1000012, "chuyển bù"), method: "POST", url: "/admin/orders/1000012/grant", body: { note: "chuyển bù" } },
@@ -157,6 +177,6 @@ describe("api: method, URL và body gửi lên", () => {
 
   it("có test cho đủ mọi hàm của api", () => {
     expect(new Set(CASES.map((c) => c.fn))).toEqual(new Set(Object.keys(api)));
-    expect(Object.keys(api)).toHaveLength(25);
+    expect(Object.keys(api)).toHaveLength(30);
   });
 });

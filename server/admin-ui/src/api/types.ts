@@ -284,3 +284,56 @@ export interface ReleasesResponse {
   channels: { stable: Source<ChannelInfo>; beta: Source<ChannelInfo> };
   models: Source<ModelsInfo>;
 }
+
+/* ---------- Báo cáo lỗi của app (server/src/error-reports.ts, admin-reports.ts; kế hoạch bao-cao-loi-01) ---------- */
+
+export type ReportKind = "crash" | "session_error" | "sidecar_died" | "manual";
+/** Loại có nhóm: báo cáo `manual` không có dấu vân tay chung nên không nằm trong danh sách nhóm. */
+export type GroupKind = Exclude<ReportKind, "manual">;
+
+/** Một nhóm: mọi báo cáo cùng dấu vân tay (cùng loại, mã lỗi, vị trí). `versions` đã sắp theo chữ. */
+export interface ErrorGroup {
+  fingerprint: string;
+  kind: GroupKind;
+  code: string | null;
+  reports: number;
+  /** Số máy khác nhau (device_id_hash). */
+  devices: number;
+  release_reports: number;
+  debug_reports: number;
+  first_at: number;
+  last_at: number;
+  versions: string[];
+}
+
+/** Một báo cáo, không kèm log (danh sách). Giờ là giây Unix; `received_at` là giờ server, `occurred_at` là giờ máy. */
+export interface ErrorReport {
+  id: string;
+  received_at: number;
+  occurred_at: number;
+  kind: ReportKind;
+  code: string | null;
+  fingerprint: string;
+  build: "release" | "debug";
+  app_version: string;
+  os_name: string;
+  os_version: string;
+  arch: string;
+  chip: string | null;
+  ram_mb: number | null;
+  gpu_backend: "metal" | "vulkan" | "cpu" | null;
+  model_pack: string | null;
+  plan: "free" | PlanCode | null;
+  ui_lang: string;
+  device_id_hash: string;
+  message: string;
+}
+
+/** Log là chuỗi thô do app gửi (đã che dữ liệu cá nhân): chỉ hiện dạng văn bản, không bao giờ dựng HTML từ nó. */
+export interface ErrorReportDetail extends ErrorReport {
+  logs: { app: string; asr: string; llama: string };
+}
+
+export interface DeletedReports {
+  deleted: number;
+}
