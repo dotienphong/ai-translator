@@ -21,6 +21,7 @@
 | 03 | `2026-10-17-go-dich-03-cua-so-phim-tat-dan-spike.md` | Phím tắt ⌃⌥G (cài đặt, migrate `v2→v3`, đăng ký, bật/tắt), cửa sổ thật và việc dán trên macOS/Windows, trang React của ô soạn, **spike S1–S3** | 02 |
 | 04 | `2026-10-17-go-dich-04-cai-dat-xem-truoc.md` | Nhóm Cài đặt "Gõ dịch" (cửa sổ chính), hai lệnh quyền Trợ năng, trang xem trước và kiểm năm ngôn ngữ | 03 (đã qua cổng spike) |
 | 05 | `2026-10-17-go-dich-05-nghiem-thu-tai-lieu.md` | Nghiệm thu GD1–GD6 trên Mac, biên bản, sửa spec gốc | 04 |
+| 06 | `2026-10-17-go-dich-06-website-chinh-sach.md` | Website (vi, en): hướng dẫn Gõ dịch mới, sửa tám nhóm trang, ảnh mới, test chặn câu cũ; chính sách quyền riêng tư lên 1.4 (Task 7 làm vào ngày phát hành). Không deploy | 05 |
 
 **Cổng:** kế hoạch 03 kết thúc bằng spike S1–S3 trên Mac (spec §7). S1 hay S2 không đạt thì **dừng**, báo chủ dự án và xem lại thiết kế (kế hoạch 03 có mục "Nếu spike không đạt"); không làm 04, 05.
 
@@ -30,7 +31,7 @@
 - **Không merge, không push, không phát hành, không deploy.** Chủ dự án quyết các việc đó sau nghiệm thu.
 - Mã Rust phải qua `cargo fmt --all -- --check` (`rustfmt.toml`: edition 2024, `max_width = 120`), `cargo clippy --locked --workspace --all-targets -- -D warnings`, và `sh scripts/check-windows.sh --locked` (clippy cho Windows ngay trên Mac). Mã giao diện phải qua `pnpm build` (`tsc --noEmit` rồi `vite build`) và `pnpm test`. Chú thích trong mã bằng tiếng Việt, theo giọng các file kế bên.
 - **Mã trong các kế hoạch đã chạy thật** trên nhánh nháp `go-dich-proto` (cùng worktree; commit `5711936` = kế hoạch 01, `2fddb55` = 02, `91802a6` = 03, `9da931b` = 04): đủ test, rustfmt, clippy Mac và Windows, `pnpm build`, `pnpm test`, `check-i18n.mjs` cho các cảnh Gõ dịch. Chép nguyên văn, đừng "dọn" lại. Gặp chỗ khác thì đối chiếu `git show <commit>:<đường dẫn>`. Nhánh nháp chỉ để đối chiếu: không merge, không cherry-pick; xóa khi chủ dự án cho phép.
-- **Các kế hoạch 01–04 đã được kiểm bằng máy** (2026-10-17): áp đúng các bước "tìm … thay bằng …", "Tạo", "thêm ngay sau" của kế hoạch lên commit gốc thì ra từng byte trùng commit nháp (trừ một test kế hoạch 02 thêm sau bản nháp, `every_request_prepares_the_sidecars_first`, cho mục "`touch()`" của spec §8.1; test này cũng đã chạy thật); trạng thái sau mỗi task đều biên dịch được, mọi test xanh, số test khớp mốc ghi trong task (riêng sau Task 4 của kế hoạch 03, bản Windows chỉ biên dịch được từ Task 5). Một đoạn "tìm" không thấy hay thấy hai lần nghĩa là mã đã lệch khỏi kế hoạch: dừng và đối chiếu, đừng đoán.
+- **Các kế hoạch 01–04 và 06 đã được kiểm bằng máy** (2026-10-17; kế hoạch 06 trừ ảnh WebP do script chụp sinh ra và Task 7 của ngày phát hành, đã chạy thử rồi hoàn lại): áp đúng các bước "tìm … thay bằng …", "Tạo", "thêm ngay sau" của kế hoạch lên commit gốc thì ra từng byte trùng commit nháp (trừ một test kế hoạch 02 thêm sau bản nháp, `every_request_prepares_the_sidecars_first`, cho mục "`touch()`" của spec §8.1; test này cũng đã chạy thật); trạng thái sau mỗi task đều biên dịch được, mọi test xanh, số test khớp mốc ghi trong task (riêng sau Task 4 của kế hoạch 03, bản Windows chỉ biên dịch được từ Task 5). Một đoạn "tìm" không thấy hay thấy hai lần nghĩa là mã đã lệch khỏi kế hoạch: dừng và đối chiếu, đừng đoán.
 - Commit có hai dòng `-m`, dòng thứ hai là `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Không thêm biến môi trường ghi đè URL hay môi trường staging (CLAUDE.md). Gõ dịch không gọi mạng (spec §6).
 - Chữ người dùng gõ và bản dịch **không bao giờ** được ghi vào log, file, báo cáo lỗi (spec §6). Log của Gõ dịch chỉ có số liệu.
@@ -48,6 +49,8 @@
 | Kế hoạch 04 | N0 + 46 | T0 + 24 |
 
 Một test của kế hoạch 02 (`without_permission_the_translation_is_only_copied`) chỉ chạy trên macOS; trên Windows số của 02, 03, 04 ít hơn 1.
+
+Test của website (`cd website && pnpm test`, kế hoạch 06): mốc 119 test (117 đạt, 2 bỏ qua); sau Task 1 là 120; sau Task 6 là 124 (122 đạt).
 
 ## Hợp đồng giữa các kế hoạch (đừng đổi khi chưa sửa mọi kế hoạch dùng nó)
 
@@ -95,8 +98,8 @@ Một test của kế hoạch 02 (`without_permission_the_translation_is_only_co
 | §3.7 phiên bản thư viện | 03 Task 4 |
 | §4 dán | 02 Task 2 (trang Trợ năng), Task 4 (luồng), 03 Task 4–5 (bản thật), 03 Task 9 (spike S2, S3) |
 | §5 lỗi | 01 Task 5, 02 Task 2 và 4, 03 Task 6 và 8 (hộp lỗi) |
-| §6 quyền riêng tư | 02 Task 7 (test log), 05 Task 4 (GD5, GD6), mọi kế hoạch |
+| §6 quyền riêng tư | 02 Task 7 (test log), 05 Task 4 (GD5, GD6), 06 Task 1 và 7 (chính sách 1.4), mọi kế hoạch |
 | §7 spike | 03 Task 9 |
 | §8.1 test tự động | mọi kế hoạch; ảnh chụp giao diện: 04 Task 5 |
 | §8.2 nghiệm thu | 05 Task 1–4 |
-| §10 spec gốc, website, phát hành | 05 Task 5 (spec gốc); website, chính sách, phát hành chờ chủ dự án (05 Task 6 nêu lại) |
+| §10 spec gốc, website, phát hành | 05 Task 5 (spec gốc); 06 (website, chính sách; deploy và phát hành do chủ dự án quyết) |

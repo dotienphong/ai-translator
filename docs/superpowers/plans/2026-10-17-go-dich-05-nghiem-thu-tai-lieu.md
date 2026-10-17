@@ -447,6 +447,5 @@ Expected: ba dòng `KHONG-CON-APP`, `CONG-1420-DA-DONG`, `KHONG-CON-MITMDUMP`.
 Báo (tiếng Việt): kết quả từng tiêu chí GD1–GD6 kèm số đo, nơi nào không đạt và lý do, đường dẫn biên bản, các commit trên nhánh `go-dich`. Nêu các việc còn chờ chủ dự án quyết, **không tự làm**:
 - merge nhánh `go-dich` vào `main`, push, phát hành (quy trình phát hành sẵn có);
 - xóa nhánh nháp `go-dich-proto`;
-- chính sách quyền riêng tư có thêm câu về clipboard và quyền Trợ năng không (spec §6; nâng phiên bản chính sách theo `docs/legal`);
-- website và trang hỗ trợ sau khi phát hành (spec §10: chỉ nói điều có thật, không nêu công nghệ lõi);
+- website và chính sách quyền riêng tư: làm theo kế hoạch 06 (Task 7 của nó làm vào ngày phát hành; deploy website sau khi bản app đã đăng);
 - thử trên Windows khi có máy (GD1, GD4, GD5, GD6).
