@@ -1,5 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { type ComposeKey, errorScreen, keyAction, pasteKeys, shownTranslation } from "./compose";
+import { type ComposeKey, autoTarget, errorScreen, keyAction, pasteKeys, shownTranslation } from "./compose";
+import { LANGS, type Lang } from "./ipc";
+
+// Cùng các trường hợp với test của `compose::target` phía Rust (spec 2026-10-17-go-dich §2.1).
+describe("autoTarget", () => {
+  const auto = (targetLanguage: Lang, sourceLanguages: Lang[], sourceLock: Lang | null = null) =>
+    autoTarget({ targetLanguage, sourceLanguages, sourceLock });
+  const ALL = [...LANGS];
+
+  it("người bên kia nói English trừ khi phụ đề cho biết khác", () => {
+    expect(auto("vi", ALL)).toBe("en");
+    expect(auto("vi", ALL, "ja")).toBe("ja");
+    expect(auto("vi", ["vi", "ko"])).toBe("ko");
+    expect(auto("vi", ["zh"])).toBe("zh");
+    expect(auto("vi", ["en", "ja"])).toBe("en");
+    expect(auto("vi", ALL, "vi")).toBe("en");
+  });
+
+  it("phụ đề dịch sang English thì người bên kia nói tiếng Việt", () => {
+    expect(auto("en", ALL)).toBe("vi");
+    expect(auto("en", ["en", "ja", "vi"])).toBe("vi");
+    expect(auto("en", ALL, "zh")).toBe("zh");
+    expect(auto("ja", ALL)).toBe("en");
+  });
+});
 
 const press = (key: string, extra: Partial<ComposeKey> = {}): ComposeKey => ({
   key,

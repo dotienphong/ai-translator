@@ -1,7 +1,18 @@
-import type { ComposeMainScreen, ComposeOutcome } from "./ipc";
+import type { ComposeMainScreen, ComposeOutcome, Lang, Settings } from "./ipc";
 
-// Phần thuần của ô soạn Gõ dịch (spec 2026-10-17-go-dich §1.2, §1.3, §5): phím nào làm gì, bản dịch nào đang hiện, nút nào của
-// hộp lỗi mở màn hình nào.
+// Phần thuần của Gõ dịch (spec 2026-10-17-go-dich §1.2, §1.3, §2.1, §5): ngôn ngữ đích "Tự động", phím nào làm gì trong ô soạn,
+// bản dịch nào đang hiện, nút nào của hộp lỗi mở màn hình nào.
+
+// Ngôn ngữ đích "Tự động" ("tiếng người bên kia", spec §2.1), cùng luật với `compose::target::auto_target` phía Rust: tập ngôn
+// ngữ nguồn của phụ đề (ngôn ngữ đang khóa, hay cả tập) bỏ ngôn ngữ đích của phụ đề mà còn đúng một ngôn ngữ thì dịch sang ngôn
+// ngữ đó; không thì English, riêng khi phụ đề đang dịch sang English thì Tiếng Việt. Cài đặt › Gõ dịch ghi kết quả này.
+export function autoTarget(settings: Pick<Settings, "targetLanguage" | "sourceLanguages" | "sourceLock">): Lang {
+  const candidates = settings.sourceLock ? [settings.sourceLock] : settings.sourceLanguages;
+  const others = candidates.filter((lang) => lang !== settings.targetLanguage);
+  const only = others.length === 1 ? others[0] : undefined;
+  if (only) return only;
+  return settings.targetLanguage === "en" ? "vi" : "en";
+}
 
 export interface ComposeKey {
   key: string;
