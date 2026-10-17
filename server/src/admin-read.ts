@@ -12,7 +12,7 @@ import { fail } from "./http";
 import { maskLicenseKey } from "./license-key";
 import { PLAN_CODES } from "./plans";
 
-type Bind = string | number;
+export type Bind = string | number;
 type Row = Record<string, unknown>;
 type AdminContext = Context<AdminAppEnv>;
 
@@ -22,7 +22,7 @@ export const DAY = 86400;
 export const VN_OFFSET = 7 * 3600;
 
 /** Các action xem và tra cứu: /admin/audit ẩn mặc định (spec §3.2), trừ khi lọc đúng một action trong nhóm này. */
-export const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed", "alerts_viewed", "releases_viewed"] as const;
+export const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed", "alerts_viewed", "releases_viewed", "error_report_viewed"] as const;
 
 export const ORDER_STATUSES = [
   "pending",
@@ -81,7 +81,7 @@ const AUDIT_ACTORS = ["api", "webhook", "reconcile", "admin"] as const;
 const ACTION_NAME = /^[a-z][a-z0-9_]{0,63}$/;
 
 /** Bộ lọc của một request danh sách: điều kiện WHERE, giá trị bind, và bộ lọc đã áp để ghi nhật ký. */
-class Filters {
+export class Filters {
   readonly where: string[] = [];
   readonly binds: Bind[] = [];
   readonly applied: Record<string, string> = {};
@@ -146,7 +146,7 @@ function numberCursor(column: string) {
   return (raw: string): [string, ...Bind[]] | null => (/^\d{1,15}$/.test(raw) ? [`${column} < ?`, Number(raw)] : null);
 }
 
-interface ListSpec {
+export interface ListSpec {
   resource: string;
   /** Đọc bộ lọc vào `f`; trả tên tham số sai, hoặc null. */
   filters(f: Filters, now: number): string | null;
@@ -159,7 +159,7 @@ interface ListSpec {
   map?(row: Row): Row;
 }
 
-function listRoute(app: Hono<AdminAppEnv>, path: string, spec: ListSpec): void {
+export function listRoute(app: Hono<AdminAppEnv>, path: string, spec: ListSpec): void {
   app.get(path, async (c) => {
     if (crossSite(c)) return fail(c, 403, "forbidden");
     const now = c.get("deps").now();
