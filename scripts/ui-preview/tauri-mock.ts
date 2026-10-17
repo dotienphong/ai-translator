@@ -85,6 +85,7 @@ let settings: Settings = {
     lastMonitor: null,
   },
   translateWhileSpeaking: param("tws") !== "0",
+  compose: { enabled: true, target: "auto", autoPaste: true },
   modelTier: "standard",
   hotkeys: {
     toggleSession: "Ctrl+Alt+T",
@@ -532,12 +533,13 @@ type Handlers = { [C in Command]?: (args: Commands[C]["args"]) => Commands[C]["r
 const handlers = {
   get_settings: () => settings,
   update_settings: ({ patch }) => {
-    const { overlay, experimental, ...rest } = patch;
+    const { overlay, experimental, compose, ...rest } = patch;
     return changeSettings({
       ...settings,
       ...rest,
       overlay: { ...settings.overlay, ...overlay },
       experimental: { ...settings.experimental, ...experimental },
+      compose: { ...settings.compose, ...compose },
     });
   },
   set_hotkey: ({ action, accelerator }) => changeSettings({ ...settings, hotkeys: { ...settings.hotkeys, [action]: accelerator } }),

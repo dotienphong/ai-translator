@@ -19,6 +19,8 @@ export type UpdateChannel = "stable" | "beta";
 export type UpdateCheck = "idle" | "checking" | "downloading" | "upToDate" | "failed" | "unavailable";
 // Mã gói model trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest).
 export type ModelTier = string;
+// Ngôn ngữ đích của Gõ dịch (`settings::ComposeTarget`, spec 2026-10-17-go-dich §2.1): "auto" là "tiếng người bên kia".
+export type ComposeTarget = "auto" | Lang;
 export type HotkeyAction = "toggleSession" | "toggleOverlay" | "toggleLock" | "scrollUp" | "scrollDown";
 export const HOTKEY_ACTIONS: readonly HotkeyAction[] = [
   "toggleSession",
@@ -66,6 +68,8 @@ export interface Settings {
   // Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.3, Cài đặt › Phụ đề), mặc định bật. Đổi khi đang dịch thì có tác
   // dụng từ đoạn kế tiếp.
   translateWhileSpeaking: boolean;
+  // Gõ dịch (spec 2026-10-17-go-dich §1.4): bật/tắt (tắt thì gỡ phím tắt), ngôn ngữ đích, tự dán (chỉ có tác dụng trên macOS).
+  compose: { enabled: boolean; target: ComposeTarget; autoPaste: boolean };
   modelTier: ModelTier | null;
   hotkeys: Record<HotkeyAction, string>;
   saveHistory: boolean;
@@ -84,9 +88,12 @@ export interface Settings {
 // Bản sửa gửi cho `update_settings`. Không có `hotkeys` (dùng `set_hotkey`), `overlay.locked`
 // (dùng `set_overlay_locked`), `overlay.positions`, `overlay.lastMonitor` và `revision` (chỉ phía Rust ghi), `modelTier`
 // (lệnh của quản lý model).
-export type SettingsPatch = Partial<Omit<Settings, "hotkeys" | "overlay" | "experimental" | "revision" | "modelTier">> & {
+export type SettingsPatch = Partial<
+  Omit<Settings, "hotkeys" | "overlay" | "experimental" | "compose" | "revision" | "modelTier">
+> & {
   overlay?: Partial<Omit<Settings["overlay"], "locked" | "positions" | "lastMonitor">>;
   experimental?: Partial<Settings["experimental"]>;
+  compose?: Partial<Settings["compose"]>;
 };
 
 // Trạng thái phiên (`state::SessionStatus`): "starting" là lúc chạy tiến trình phụ và mở nguồn âm thanh.

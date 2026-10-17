@@ -22,6 +22,7 @@ const settings: Settings = {
     lastMonitor: null,
   },
   translateWhileSpeaking: true,
+  compose: { enabled: true, target: "auto", autoPaste: true },
   modelTier: null,
   hotkeys: {
     toggleSession: "Ctrl+Alt+T",
