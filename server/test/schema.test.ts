@@ -13,6 +13,8 @@ it("migration tạo đủ bảng", async () => {
     "audit_log",
     "d1_migrations",
     "deactivations",
+    "error_report_logs",
+    "error_reports",
     "licenses",
     "ops_alerts",
     "orders",

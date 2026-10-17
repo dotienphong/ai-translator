@@ -13,9 +13,19 @@ export async function withFailingInsert<T>(table: string, when: string, run: () 
 /** Storage chỉ tách theo từng file test, nên mỗi test tự xóa dữ liệu (kể cả bộ đếm AUTOINCREMENT). */
 export async function resetDb(): Promise<void> {
   await env.DB.batch(
-    ["audit_log", "deactivations", "activations", "orders", "licenses", "rate_limits", "ops_alerts", "trials", "sqlite_sequence"].map((t) =>
-      env.DB.prepare(`DELETE FROM ${t}`),
-    ),
+    [
+      "error_report_logs",
+      "error_reports",
+      "audit_log",
+      "deactivations",
+      "activations",
+      "orders",
+      "licenses",
+      "rate_limits",
+      "ops_alerts",
+      "trials",
+      "sqlite_sequence",
+    ].map((t) => env.DB.prepare(`DELETE FROM ${t}`)),
   );
 }
 
