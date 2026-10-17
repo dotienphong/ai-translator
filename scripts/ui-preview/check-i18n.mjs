@@ -5,11 +5,14 @@
 // (spec 2026-10-14): hai cách trả (VND, USD) chỉ khi server bán cả hai và chọn sẵn theo gợi ý; đơn đang chờ khóa gói và cách
 // trả đúng loại tiền của đơn (kể cả đơn dựng lại `amount 0, currency ""`); đơn thẻ không có ô email, mã QR, đúng hai nút, có
 // câu bên bán lại (merchant of record) và câu quá giờ hẹn trả; bấm thật thì `start_checkout` nhận đúng gói và loại tiền, đổi
-// cách trả thì ô đồng ý bỏ tick. Ảnh PNG cho người kiểm xem ở target/ui-preview/ui-ja-zh-ko/ (không commit). Điều kiện nào sai
+// cách trả thì ô đồng ý bỏ tick. Báo cáo lỗi (spec 2026-10-17 §5): ô tích sẵn ở bước Điều khoản (không bắt buộc, bấm Tiếp lưu đúng lựa
+// chọn), công tắc ở Quyền riêng tư (bấm thì lưu), nút "Gửi log cho hỗ trợ" ở Giới thiệu (đang gửi, mã báo cáo, nút Sao chép, ba câu
+// lỗi). Ảnh PNG cho người kiểm xem ở target/ui-preview/ui-ja-zh-ko/ (không commit). Điều kiện nào sai
 // thì in ra và thoát mã 1; không mở được trang thì báo ngay và thoát mã 1. Chrome luôn đóng (xóa thư mục hồ sơ tạm) khi xong.
 //
 //   node_modules/.bin/vite --config scripts/ui-preview/vite.config.ts --port 1431 &   # trang xem trước, cổng 1431
 //   node scripts/ui-preview/check-i18n.mjs [mã ngôn ngữ…]                            # không có mã: ja zh ko
+//   ONLY=about,onboarding-2 node scripts/ui-preview/check-i18n.mjs vi                # chỉ các màn hình có tên bắt đầu bằng một trong các tiền tố đó
 //
 // Chạy thử với `vi en` trước để biết lỗi có sẵn (không do ngôn ngữ mới): chỉ sửa lỗi riêng của ja, zh, ko. Mỗi lần chạy kiểm
 // chữ của ngôn ngữ được chọn (ví dụ `cardNote` có "Creem", `bankOnly` thì không): đủ năm ngôn ngữ thì chạy `vi en ja zh ko`.
@@ -31,6 +34,9 @@ class OpenError extends Error {}
 
 const args = process.argv.slice(2);
 const LANGS = args.length > 0 ? args : ["ja", "zh", "ko"];
+// Biến ONLY (tiền tố tên màn hình, cách nhau bằng dấu phẩy) giới hạn các màn hình được kiểm: chạy nhanh khi chỉ sửa một màn hình.
+const ONLY = process.env.ONLY ? process.env.ONLY.split(",") : null;
+const wanted = (name) => !ONLY || ONLY.some((prefix) => name.startsWith(prefix));
 // Giá trị `lang` của trang theo ngôn ngữ giao diện (`htmlLang` ở src/i18n/index.ts) và thứ tự `UI_LANGUAGES`.
 const HTML_LANG = { vi: "vi", en: "en", ja: "ja", zh: "zh-Hans", ko: "ko" };
 const UI_ORDER = ["vi", "en", "ja", "zh", "ko"];
@@ -199,6 +205,103 @@ async function startByQr(page, ck, lang) {
   for (const check of qrOrder(lang)) await ck(...check);
 }
 
+// ---------------------------------------------------------------- báo cáo lỗi (spec 2026-10-17 §5)
+
+// Mã báo cáo mẫu của tauri-mock.ts (lệnh giả `send_log_report`, trả sau nửa giây).
+const REPORT_ID = "R-7F3K-92QD";
+const SEND_BUTTON = ".about-logs .actions > button:nth-child(2)";
+const REPORT_BOX = ".about-logs .log-report";
+const NEXT_BUTTON = ".onboarding-actions button.primary";
+// Lần gọi `update_settings` có đụng `sendErrorReports` của IPC giả (window.__ipcCalls).
+const reportSettingCalls = `window.__ipcCalls.filter((c) => c.cmd === "update_settings" && "sendErrorReports" in (c.args?.patch ?? {}))`;
+
+// Bấm thật "Gửi log cho hỗ trợ": đang gửi thì nút khóa (chống bấm đúp) và đổi chữ; xong thì có mã báo cáo, lời dặn đọc mã cho hỗ trợ và
+// nút Sao chép; bấm Sao chép thì hiện một kết quả (đã chép, hay lỗi chép: Chrome không đầu có thể không cho ghi clipboard).
+async function sendReport(page, ck, lang) {
+  await page.click(SEND_BUTTON);
+  await sleep(150);
+  await ck(`document.querySelector(${JSON.stringify(SEND_BUTTON)}).disabled === true`, "đang gửi: nút Gửi log bị khóa");
+  await ck(
+    inPage(lang, `return document.querySelector(${JSON.stringify(SEND_BUTTON)}).textContent.includes(t("about.sendLogs.sending"));`),
+    "đang gửi: nút ghi about.sendLogs.sending",
+  );
+  await sleep(800);
+  await ck(`document.querySelector(${JSON.stringify(`${REPORT_BOX} .report-code`)})?.textContent === ${JSON.stringify(REPORT_ID)}`, `hiện mã báo cáo ${REPORT_ID}`);
+  await ck(
+    inPage(
+      lang,
+      `const s = document.querySelector(${JSON.stringify(REPORT_BOX)}).textContent; return s.includes(t("about.sendLogs.sent")) && s.includes(t("about.sendLogs.codeHint"));`,
+    ),
+    "có câu about.sendLogs.sent và lời dặn about.sendLogs.codeHint",
+  );
+  await ck(
+    inPage(lang, `const b = document.querySelector(${JSON.stringify(SEND_BUTTON)}); return !b.disabled && b.textContent.includes(t("about.sendLogs"));`),
+    "gửi xong: nút Gửi log bấm được lại, ghi about.sendLogs",
+  );
+  await ck(`${"window.__ipcCalls"}.filter((c) => c.cmd === "send_log_report").length === 1`, "đúng một lệnh send_log_report");
+  await ck(
+    inPage(lang, `return document.querySelector(${JSON.stringify(`${REPORT_BOX} .actions > button`)}).textContent.includes(t("about.sendLogs.copy"));`),
+    "có nút Sao chép mã (about.sendLogs.copy)",
+  );
+  await page.click(`${REPORT_BOX} .actions > button`);
+  await sleep(300);
+  await ck(
+    inPage(
+      lang,
+      `const s = document.querySelector(${JSON.stringify(REPORT_BOX)}).textContent; return s.includes(t("about.sendLogs.copied")) || s.includes(t("error.copyFailed"));`,
+    ),
+    "bấm Sao chép thì hiện kết quả (đã chép hay lỗi chép)",
+  );
+}
+
+// Gửi lỗi (`report=failed|ratelimited|rejected` của IPC giả): câu lỗi đúng mã nằm dưới nút, không có mã báo cáo, nút bấm được lại, lỗi không
+// lên thanh báo lỗi chung.
+const reportFails = (code) => async (page, ck, lang) => {
+  await page.click(SEND_BUTTON);
+  await sleep(900);
+  await ck(
+    inPage(lang, `const n = document.querySelector(${JSON.stringify(`${REPORT_BOX} .note.error`)}); return !!n && n.textContent.trim() === t("error.${code}");`),
+    `câu lỗi là error.${code}`,
+  );
+  await ck(`!document.querySelector(${JSON.stringify(`${REPORT_BOX} .report-code`)})`, "không có mã báo cáo");
+  await ck(`document.querySelector(${JSON.stringify(SEND_BUTTON)}).disabled === false`, "nút Gửi log bấm được lại");
+  await ck(`!document.querySelector(".notice.error")`, "lỗi không lên thanh báo lỗi chung (Notice)");
+};
+
+// Bước Điều khoản: ô báo cáo lỗi tích sẵn và không bắt buộc (bỏ tích vẫn bấm được Tiếp); bấm Tiếp lưu đúng lựa chọn vào cài đặt.
+const reportsConsent = (optOut) => async (page, ck) => {
+  const box = ".consent:nth-of-type(2) input";
+  await ck(`document.querySelector(${JSON.stringify(box)}).checked === true`, "ô báo cáo lỗi tích sẵn");
+  await ck(`document.querySelector(${JSON.stringify(NEXT_BUTTON)}).disabled === true`, "chưa đồng ý Chính sách thì chưa bấm được Tiếp (dù ô báo cáo đã tích)");
+  await page.click(".consent:nth-of-type(1)");
+  await ck(`document.querySelector(${JSON.stringify(NEXT_BUTTON)}).disabled === false`, "đồng ý Chính sách thì bấm được Tiếp");
+  if (optOut) {
+    await page.click(".consent:nth-of-type(2)");
+    await ck(`document.querySelector(${JSON.stringify(box)}).checked === false`, "bỏ tích được ô báo cáo lỗi");
+    await ck(`document.querySelector(${JSON.stringify(NEXT_BUTTON)}).disabled === false`, "bỏ tích ô báo cáo lỗi vẫn bấm được Tiếp");
+    await page.click(".consent:nth-of-type(2)");
+    await ck(`document.querySelector(${JSON.stringify(box)}).checked === true`, "tích lại được ô báo cáo lỗi");
+    await page.click(".consent:nth-of-type(2)");
+  }
+  await page.click(NEXT_BUTTON);
+  await sleep(300);
+  await ck(
+    `(() => { const c = ${reportSettingCalls}; return c.length === 1 && c[0].args.patch.sendErrorReports === ${!optOut}; })()`,
+    `bấm Tiếp lưu đúng một lần sendErrorReports = ${!optOut}`,
+  );
+};
+
+// Cài đặt › Quyền riêng tư: bấm công tắc báo cáo lỗi thì lưu giá trị mới; bấm lần nữa thì lưu lại giá trị cũ.
+async function toggleReportsSwitch(page, ck) {
+  await page.click("label[for='error-reports']");
+  await sleep(300);
+  await ck(`(() => { const c = ${reportSettingCalls}; return c.length === 1 && c[0].args.patch.sendErrorReports === false; })()`, "bấm công tắc thì lưu sendErrorReports = false");
+  await ck(`document.querySelector("#error-reports").checked === false`, "công tắc chuyển sang tắt");
+  await page.click("label[for='error-reports']");
+  await sleep(300);
+  await ck(`(() => { const c = ${reportSettingCalls}; return c.length === 2 && c[1].args.patch.sendErrorReports === true; })()`, "bấm lần nữa thì lưu sendErrorReports = true");
+}
+
 // [tên, tham số URL, tùy chọn { prepare: biểu thức chạy trước khi kiểm, wait: ms, interact: async (page, ck, lang) bấm thật }]
 const SCREENS = [
   ["home", "screen=home"],
@@ -216,7 +319,9 @@ const SCREENS = [
   ["settings-model", "screen=settings&group=model"],
   ["settings-hotkeys", "screen=settings&group=hotkeys"],
   ["settings-license", "screen=settings&group=license"],
-  ["settings-privacy", "screen=settings&group=privacy"],
+  ["settings-privacy", "screen=settings&group=privacy", { interact: toggleReportsSwitch }],
+  // Người dùng đã tắt báo cáo lỗi (reports=0): công tắc tắt.
+  ["settings-privacy-off", "screen=settings&group=privacy&reports=0"],
   // Nâng cấp (spec 2026-10-14). Khách ở Việt Nam (server gợi ý VND): chọn sẵn VietQR.
   ["upgrade", "screen=upgrade&plan=free"],
   // Khách ở nước ngoài (gợi ý USD): chọn sẵn thẻ quốc tế.
@@ -242,6 +347,11 @@ const SCREENS = [
   ["upgrade-start-card", "screen=upgrade&plan=free&suggest=usd", { interact: startByCard }],
   ["upgrade-start-qr", "screen=upgrade&plan=free&suggest=usd", { interact: startByQr }],
   ["about", "screen=about"],
+  // Nút "Gửi log cho hỗ trợ" (spec 2026-10-17 §5): bấm thật ra mã báo cáo, và ba lỗi của lệnh.
+  ["about-report-sent", "screen=about", { interact: sendReport }],
+  ["about-report-failed", "screen=about&report=failed", { interact: reportFails("reportFailed") }],
+  ["about-report-ratelimited", "screen=about&report=ratelimited", { interact: reportFails("reportRateLimited") }],
+  ["about-report-rejected", "screen=about&report=rejected", { interact: reportFails("reportRejected") }],
   ["onboarding-1", "onboarding=1"],
   // Bước điều khoản: mở khung EULA để thấy dòng báo "văn bản đang bằng English" của ja, zh, ko.
   [
@@ -249,6 +359,9 @@ const SCREENS = [
     "onboarding=2",
     { prepare: `document.querySelector("details.legal-details summary").click()`, wait: 900 },
   ],
+  // Bước điều khoản, bấm thật (spec 2026-10-17 §5): giữ ô báo cáo lỗi tích sẵn rồi Tiếp (lưu true), hay bỏ tích rồi Tiếp (lưu false).
+  ["onboarding-2-reports-on", "onboarding=2", { interact: reportsConsent(false) }],
+  ["onboarding-2-reports-off", "onboarding=2", { interact: reportsConsent(true) }],
   ...Array.from({ length: 7 }, (_, i) => [`onboarding-${i + 3}`, `onboarding=${i + 3}${i === 1 ? "&download=1" : ""}`]),
 ];
 const OVERLAYS = [
@@ -411,7 +524,33 @@ const EXTRA = {
   ],
   about: (lang) => [
     [inPage(lang, `return document.body.textContent.includes(t("about.version", { version: ${JSON.stringify(APP_VERSION)} }));`), `màn hình Giới thiệu ghi phiên bản ${APP_VERSION} (của tauri.conf.json)`],
+    [
+      inPage(
+        lang,
+        `const b = [...document.querySelectorAll(".about-logs .actions > button")]; return b.length === 2 && b[0].textContent.includes(t("about.openLogs")) && b[1].textContent.includes(t("about.sendLogs")) && !b[1].disabled;`,
+      ),
+      "hai nút cạnh nhau: Mở thư mục log và Gửi log cho hỗ trợ (bấm được)",
+    ],
+    [inPage(lang, `return document.querySelector(".about-logs > p.hint").textContent === t("about.logsHint");`), "câu giải thích about.logsHint"],
+    [
+      `(() => { const r = document.querySelector(${JSON.stringify(REPORT_BOX)}); return r?.getAttribute("role") === "status" && r.children.length === 0; })()`,
+      "vùng kết quả role=status có sẵn trong DOM và còn rỗng",
+    ],
   ],
+  "settings-privacy": (lang) => [
+    [
+      `(() => { const e = document.querySelector("#error-reports"); return !!e && e.type === "checkbox" && e.checked === true && !e.disabled && e.getAttribute("aria-describedby") === "error-reports-hint"; })()`,
+      "công tắc báo cáo lỗi: bật, bấm được (không cần gói Pro), gắn lời giải thích bằng aria-describedby",
+    ],
+    [
+      inPage(
+        lang,
+        `return document.querySelector("label[for='error-reports']").textContent === t("settings.privacy.errorReports") && document.querySelector("#error-reports-hint").textContent === t("settings.privacy.errorReports.hint");`,
+      ),
+      "nhãn settings.privacy.errorReports và lời giải thích settings.privacy.errorReports.hint",
+    ],
+  ],
+  "settings-privacy-off": () => [[`document.querySelector("#error-reports").checked === false`, "reports=0: công tắc báo cáo lỗi tắt"]],
   "onboarding-2": (lang) => {
     const note = ["ja", "zh", "ko"].includes(lang);
     return [
@@ -420,6 +559,17 @@ const EXTRA = {
           ? `(() => { const p = document.querySelector(".legal p.hint"); return !!p && p.textContent.includes("English"); })()`
           : `!document.querySelector(".legal p.hint")`,
         note ? "khung EULA có dòng báo văn bản đang bằng English" : "khung EULA không có dòng báo (có bản đúng ngôn ngữ)",
+      ],
+      [
+        `(() => { const c = document.querySelectorAll(".consent input"); return c.length === 2 && c[0].checked === false && c[1].checked === true; })()`,
+        "hai ô tích: ô đồng ý Chính sách bỏ tick, ô báo cáo lỗi tích sẵn",
+      ],
+      [
+        inPage(
+          lang,
+          `const l = document.querySelectorAll(".consent")[1]; return l.textContent === t("onboarding.terms.reports") && document.querySelector("#terms-reports-hint").textContent === t("onboarding.terms.reports.hint") && l.querySelector("input").getAttribute("aria-describedby") === "terms-reports-hint";`,
+        ),
+        "ô báo cáo lỗi có chữ onboarding.terms.reports, lời giải thích onboarding.terms.reports.hint gắn bằng aria-describedby",
       ],
     ];
   },
@@ -486,10 +636,12 @@ try {
   for (const lang of LANGS) {
     for (const win of WINDOWS) {
       for (const [name, query, options] of SCREENS) {
+        if (!wanted(name)) continue;
         await visit(browser, lang, win, name, `${BASE}/?${query}&lang=${lang}`, options, EXTRA[name]?.(lang));
       }
     }
     for (const [name, query] of OVERLAYS) {
+      if (!wanted(name)) continue;
       await visit(browser, lang, { name: "900x300", width: 900, height: 300 }, name, `${BASE}/overlay.html?${query}&lang=${lang}`, {
         transparent: true,
         audit: false,
