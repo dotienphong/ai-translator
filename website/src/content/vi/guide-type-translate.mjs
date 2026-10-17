@@ -130,7 +130,7 @@ ${callout({
 
 <h2 id="khi-khong-dan-duoc">Giới hạn và khi không dán được</h2>
 <ul>
-<li><strong>Phạm vi đã thử:</strong> trên macOS, chúng tôi đã thử ở trình duyệt Chrome và Safari, TextEdit, Notes, Slack và Teams (ở Slack và Teams chỉ thử vào ô chat riêng của chính mình), chưa thử ở từng app chat còn lại. Cách dán là gửi ⌘V (Ctrl+V) vào ô bạn đang gõ nên thường dùng được ở mọi ô nhận dán; nếu một app cho kết quả lạ, hãy báo cho chúng tôi ở trang <a href="/lien-he/">liên hệ</a>.</li>
+<li><strong>Phạm vi đã thử:</strong> trên macOS, chúng tôi đã thử ở trình duyệt Chrome và Safari, TextEdit, Notes, Slack, Teams và Telegram (ở ba app chat chỉ thử vào ô chat riêng của chính mình), chưa thử ở từng app chat còn lại. Cách dán là gửi ⌘V (Ctrl+V) vào ô bạn đang gõ nên thường dùng được ở mọi ô nhận dán; nếu một app cho kết quả lạ, hãy báo cho chúng tôi ở trang <a href="/lien-he/">liên hệ</a>.</li>
 <li><strong>Bản dịch luôn ở trong clipboard.</strong> Sau khi dán, bản dịch vẫn nằm trong clipboard (nội dung cũ của clipboard bị thay). Nếu chữ không vào ô chat, hãy bấm vào ô đó rồi tự dán bằng ⌘V hay Ctrl+V.</li>
 <li><strong>Một số ô không nhận dán tự động:</strong> ô mật khẩu (macOS chặn phím gửi từ app khác), app đang chạy với quyền quản trị trên Windows, và app tự chặn việc dán. App không biết được những trường hợp này.</li>
 <li><strong>Tối đa 4000 ký tự mỗi tin.</strong> Một dòng quá dài thì ô soạn báo “Một dòng quá dài để dịch. Hãy tách thành nhiều dòng hay nhiều tin.”</li>

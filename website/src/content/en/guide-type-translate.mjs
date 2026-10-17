@@ -130,7 +130,7 @@ ${callout({
 
 <h2 id="when-paste-fails">Limits and when pasting fails</h2>
 <ul>
-<li><strong>What we have tried:</strong> on macOS, in the Chrome and Safari browsers, TextEdit, Notes, Slack and Teams (in Slack and Teams only in a private chat with ourselves); we have not yet tried every chat app. Pasting works by sending ⌘V (Ctrl+V) to the box you are typing in, so it usually works in any box that accepts pasting; if an app behaves oddly, tell us on the <a href="/en/contact/">contact</a> page.</li>
+<li><strong>What we have tried:</strong> on macOS, in the Chrome and Safari browsers, TextEdit, Notes, Slack, Teams and Telegram (in the three chat apps only in a private chat with ourselves); we have not yet tried every chat app. Pasting works by sending ⌘V (Ctrl+V) to the box you are typing in, so it usually works in any box that accepts pasting; if an app behaves oddly, tell us on the <a href="/en/contact/">contact</a> page.</li>
 <li><strong>The translation is always on the clipboard.</strong> After pasting, the translation stays on the clipboard (it replaces what was there). If the text does not appear in the chat box, click into it and paste with ⌘V or Ctrl+V yourself.</li>
 <li><strong>Some boxes do not accept automatic pasting:</strong> password fields (macOS blocks keys sent by other apps there), apps running as administrator on Windows, and apps that block pasting. The app cannot detect these cases.</li>
 <li><strong>Up to 4000 characters per message.</strong> When one line is too long, the compose box says “A line is too long to translate. Split it into several lines or messages.”</li>
