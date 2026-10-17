@@ -23,7 +23,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 
-use super::{Hotkeys, Settings};
+use super::{COMPOSE_HOTKEY, Hotkeys, Settings};
 use crate::hotkeys::{self, HotkeyAction};
 
 pub const SCHEMA_VERSION_KEY: &str = "schemaVersion";
@@ -33,7 +33,7 @@ pub type Migration = fn(&mut Map<String, Value>);
 
 /// `MIGRATIONS[i]` nâng file từ phiên bản `i` lên `i + 1`.
 /// Thêm bước mới ở cuối; không sửa bước cũ, vì máy người dùng có thể còn file ở mọi phiên bản.
-pub const MIGRATIONS: &[Migration] = &[v0_to_v1, v1_to_v2];
+pub const MIGRATIONS: &[Migration] = &[v0_to_v1, v1_to_v2, v2_to_v3];
 
 pub const CURRENT_SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;
 
@@ -47,6 +47,34 @@ fn v0_to_v1(_raw: &mut Map<String, Value>) {}
 fn v1_to_v2(raw: &mut Map<String, Value>) {
     if raw.get("onboardingDone") == Some(&Value::Bool(true)) {
         raw.entry("sendErrorReports").or_insert(Value::Bool(true));
+    }
+}
+
+/// Phím dự phòng của Gõ dịch, theo thứ tự, khi người dùng đã tự đặt [`COMPOSE_HOTKEY`] cho việc khác.
+const COMPOSE_FALLBACKS: &[&str] = &["Ctrl+Alt+Shift+G", "Ctrl+Alt+Y", "Ctrl+Alt+J"];
+
+/// Bản 3 thêm phím tắt Gõ dịch (`hotkeys.compose`, mặc định `Ctrl+Alt+G`; spec 2026-10-17-go-dich §3.5). File thiếu khóa thì
+/// nhận mặc định khi ghép, không cần làm gì; riêng khi người dùng đã tự đặt `Ctrl+Alt+G` cho một việc khác, mặc định đó sẽ
+/// trùng và việc ghép cả nhóm thất bại, nên khóa của người dùng có thể bị kéo về mặc định. Bước này giữ phím của người dùng: Gõ
+/// dịch nhận phím dự phòng đầu tiên còn trống.
+fn v2_to_v3(raw: &mut Map<String, Value>) {
+    let Some(Value::Object(keys)) = raw.get_mut("hotkeys") else {
+        return;
+    };
+    if keys.contains_key("compose") {
+        return;
+    }
+    let used: Vec<String> = keys
+        .values()
+        .filter_map(Value::as_str)
+        .filter_map(|accelerator| hotkeys::parse(accelerator).ok())
+        .map(|(_, canonical)| canonical)
+        .collect();
+    if !used.iter().any(|u| u == COMPOSE_HOTKEY) {
+        return;
+    }
+    if let Some(free) = COMPOSE_FALLBACKS.iter().find(|f| !used.iter().any(|u| u == *f)) {
+        keys.insert("compose".into(), Value::String((*free).into()));
     }
 }
 
@@ -651,13 +679,59 @@ mod tests {
             object(json!({ "schemaVersion": 1, "onboardingDone": true })),
             defaults(),
         );
-        assert!(loaded.needs_save(), "file bản 1 phải được ghi lại ở bản 2");
+        assert!(loaded.needs_save(), "file bản 1 phải được ghi lại ở bản hiện tại");
         let entries: Map<String, Value> = to_entries(&loaded.settings, &loaded.meta).into_iter().collect();
-        assert_eq!(entries[SCHEMA_VERSION_KEY], json!(2));
+        assert_eq!(entries[SCHEMA_VERSION_KEY], json!(CURRENT_SCHEMA_VERSION));
         assert_eq!(entries["sendErrorReports"], json!(true));
         // Cài mới: sau lần ghi đầu, khóa là false.
         let fresh = load(Map::new(), defaults());
         let entries: Map<String, Value> = to_entries(&fresh.settings, &fresh.meta).into_iter().collect();
         assert_eq!(entries["sendErrorReports"], json!(false));
+    }
+
+    /// Spec 2026-10-17-go-dich §3.5: file bản 2 chưa có phím Gõ dịch thì nhận `Ctrl+Alt+G`, không bị coi là khóa hỏng.
+    #[test]
+    fn a_version_2_file_gets_the_compose_hotkey() {
+        let raw = object(json!({
+            "schemaVersion": 2,
+            "hotkeys": { "toggleSession": "Ctrl+Alt+K", "scrollUp": "Ctrl+Alt+PageUp" },
+        }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.hotkeys.compose, "Ctrl+Alt+G");
+        assert_eq!(loaded.settings.hotkeys.toggle_session, "Ctrl+Alt+K");
+        assert!(loaded.rejected.is_empty());
+        assert!(loaded.needs_save(), "ghi lại ở bản 3");
+    }
+
+    /// Người dùng đã tự đặt `Ctrl+Alt+G` (viết kiểu nào cũng vậy) cho việc khác: giữ phím của họ, Gõ dịch nhận phím dự phòng
+    /// đầu tiên còn trống. File bản 3 thì bước này không chạy lại.
+    #[test]
+    fn a_user_shortcut_on_ctrl_alt_g_is_kept() {
+        let raw = object(json!({
+            "schemaVersion": 2,
+            "hotkeys": { "toggleLock": "control+alt+KeyG" },
+        }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.hotkeys.toggle_lock, "Ctrl+Alt+G");
+        assert_eq!(loaded.settings.hotkeys.compose, "Ctrl+Alt+Shift+G");
+        assert!(loaded.rejected.is_empty());
+        let raw = object(json!({
+            "schemaVersion": 2,
+            "hotkeys": { "toggleLock": "Ctrl+Alt+G", "toggleOverlay": "Ctrl+Alt+Shift+G" },
+        }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.hotkeys.compose, "Ctrl+Alt+Y");
+        assert_eq!(
+            (
+                loaded.settings.hotkeys.toggle_lock.as_str(),
+                loaded.settings.hotkeys.toggle_overlay.as_str()
+            ),
+            ("Ctrl+Alt+G", "Ctrl+Alt+Shift+G")
+        );
+        let raw = object(json!({
+            "schemaVersion": 3,
+            "hotkeys": { "toggleLock": "Ctrl+Alt+J", "compose": "Ctrl+Alt+Q" },
+        }));
+        assert_eq!(load(raw, defaults()).settings.hotkeys.compose, "Ctrl+Alt+Q");
     }
 }
