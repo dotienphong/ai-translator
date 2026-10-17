@@ -21,7 +21,7 @@
 2. **EULA giữ bản 1.3**: mục 1 nói ứng dụng hiện phụ đề dịch và dịch trên máy; Gõ dịch cũng dịch trên máy và không đổi quyền, nghĩa vụ hay dữ liệu rời máy. Muốn EULA nêu cả Gõ dịch thì làm thêm một bản EULA (ngày hiệu lực riêng), không có trong kế hoạch này.
 3. **Website nói thẳng bản Windows chưa được thử trên máy thật** (hướng dẫn Gõ dịch và trang Tính năng, vi và en), theo CLAUDE.md. Bỏ câu đó khi đã thử Gõ dịch trên Windows; bỏ thì sửa cả needle của test `Gõ dịch: các trang nêu …` (`website/README.md` ghi việc này).
 4. **Website không nêu số đo** thời gian dịch của Gõ dịch (GD2) và không liệt kê tên app đã thử; chỉ nói chung "ô chat của trình duyệt, app chat và khung chat của app họp". Câu liệt kê này chỉ đúng khi GD1 đạt ở cả ba nhóm đó. Task 0 đọc biên bản; nhóm nào chưa thử hay không đạt thì **Task 6a** đổi các câu cho đúng phạm vi đã kiểm (lần thực thi 2026-10-18: GD1 mới đạt ở TextEdit và Chrome, nên đã áp Task 6a).
-5. **Câu hướng dẫn bật lại quyền Trợ năng sau khi cập nhật** dùng cách "xóa khỏi danh sách rồi thêm lại, hoặc tắt rồi bật lại công tắc". Nếu kết luận spike S3 (`bench/2026-10-17-go-dich/results/spike.md`) khác, sửa câu đó ở hướng dẫn Gõ dịch và Khắc phục sự cố (vi, en) cho khớp chuỗi `settings.compose.permission.missing` của app.
+5. **Câu hướng dẫn bật lại quyền Trợ năng sau khi cập nhật** dùng cách "xóa khỏi danh sách rồi thêm lại; chỉ tắt rồi bật lại công tắc thì không sửa được" (kết luận spike S3, `bench/2026-10-17-go-dich/results/spike.md`: tắt rồi bật không sửa được). Nếu sau này kết luận khác, sửa câu đó ở hướng dẫn Gõ dịch và Khắc phục sự cố (vi, en) cho khớp chuỗi `settings.compose.permission.missing` của app.
 6. **Thời điểm:** Task 1 đến 6 và Task 8 làm sau kế hoạch 05, trước khi phát hành. Task 7 làm **vào ngày phát hành, trước khi nâng phiên bản và build app**. Ảnh có chân thanh bên ghi phiên bản app (`app-settings-*`): chụp lại sau khi nâng phiên bản, theo quy tắc sẵn có của `website/README.md` (mục ảnh chụp), cùng các ảnh khác của quy trình phát hành.
 
 ## Cấu trúc file
@@ -733,7 +733,7 @@ ${appShot({
 ${callout({
   kind: "warn",
   title: "Sau khi cập nhật app, có thể phải bật lại quyền.",
-  text: "Bản macOS hiện chưa được ký bằng chứng thư nhà phát triển của Apple, nên sau mỗi lần cập nhật macOS có thể coi AI Translator là app khác: mục của app trong Trợ năng vẫn bật mà app vẫn báo chưa cấp. Khi đó hãy xóa AI Translator khỏi danh sách (nút −) rồi thêm lại (nút +), hoặc tắt rồi bật lại công tắc. Trong lúc chưa có quyền, Gõ dịch vẫn chép bản dịch để bạn tự dán.",
+  text: "Bản macOS hiện chưa được ký bằng chứng thư nhà phát triển của Apple, nên sau mỗi lần cập nhật macOS có thể coi AI Translator là app khác: mục của app trong Trợ năng vẫn bật mà app vẫn báo chưa cấp. Khi đó hãy xóa AI Translator khỏi danh sách (nút −) rồi thêm lại (nút +); chỉ tắt rồi bật lại công tắc thì không sửa được. Trong lúc chưa có quyền, Gõ dịch vẫn chép bản dịch để bạn tự dán.",
 })}
 
 <h2 id="windows">Trên Windows</h2>
@@ -894,7 +894,7 @@ ${appShot({
 ${callout({
   kind: "warn",
   title: "After an app update, you may have to turn the permission on again.",
-  text: "The macOS version is not yet signed with an Apple developer certificate, so after each update macOS may treat AI Translator as a different app: its entry in Accessibility is still on but the app still says it is not granted. Then remove AI Translator from the list (the − button) and add it again (the + button), or turn its switch off and on again. Until it has the permission, Type & Translate still copies the translation for you to paste.",
+  text: "The macOS version is not yet signed with an Apple developer certificate, so after each update macOS may treat AI Translator as a different app: its entry in Accessibility is still on but the app still says it is not granted. Then remove AI Translator from the list (the − button) and add it again (the + button); just turning the switch off and on again does not fix it. Until it has the permission, Type & Translate still copies the translation for you to paste.",
 })}
 
 <h2 id="windows">On Windows</h2>

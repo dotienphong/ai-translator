@@ -44,10 +44,29 @@ Thời gian dịch trong các lượt này (log `Gõ dịch: … ms`): 70–182 
 
 ## S3 — quyền Trợ năng với bản ký ad-hoc
 
-**Chưa làm.** Việc cần chủ dự án có mặt: chạy `MT_DEV_SIGN_IDENTITY=- scripts/run-dev-app.sh` (chữ ký ad-hoc), macOS hỏi lại Keychain khoảng 5 lần và quyền Trợ năng phải cấp tay ở System Settings; rồi build lại (chữ ký đổi) để xem quyền có mất không và cách bật lại, và thử `tccutil reset Accessibility com.aitranslator.desktop` (không `sudo`). Điều đã biết từ S1: lần đầu bấm Enter khi chưa có quyền, app hỏi quyền (`AXIsProcessTrustedWithOptions`) và giữ ô soạn mở đúng thiết kế; sau khi cấp quyền cho bản ký bằng chứng thư cố định, dán chạy.
+**Đã làm (chỉ ghi nhận, không có điều kiện đạt), 2026-10-18 06:25–06:37, macOS 26.6.2.** Đo bằng app thăm dò `S3Probe` (nguồn ở `bench/2026-10-17-go-dich/s3probe/`): chỉ gọi `AXIsProcessTrusted()` và `AXIsProcessTrustedWithOptions`, ký ad-hoc như bản phát hành (`codesign --sign -`, quyền gắn với cdhash), bundle id riêng `com.aitranslator.s3probe`, cùng một đường dẫn ở mọi lần dựng. Không dùng app thật để khỏi bị hỏi lại Keychain khoảng 5 lần và khỏi đụng quyền, vault của app. Mỗi lần kiểm bằng một tiến trình MỚI chạy qua `open` (chạy thẳng từ Terminal thì quyền tính cho Terminal). Chủ dự án làm các lần bật/tắt công tắc (cần Touch ID hay mật khẩu); `tccutil` và dựng lại do Claude.
+
+| # | Việc | Kết quả |
+|---|---|---|
+| 1 | v1 xin quyền, chủ dự án bật công tắc | `trusted=1` |
+| 2 | Dựng lại thành v2 (binary đổi nên cdhash `fd307dbc…` thành `1bc0f9b6…`), cùng đường dẫn và bundle id | `trusted=0`. Mục S3Probe **vẫn hiện, công tắc vẫn bật**: trạng thái dễ gây nhầm |
+| 3 | Chủ dự án **tắt rồi bật lại** công tắc | vẫn `trusted=0`: **không sửa được** |
+| 4 | `tccutil reset Accessibility com.aitranslator.s3probe`, **không `sudo`** | thoát 0, "Successfully reset". Dòng vẫn hiện trong danh sách nhưng công tắc về tắt |
+| 5 | Chủ dự án bật công tắc | v2 `trusted=1` |
+| 6 | Reset; chạy `check` bản v2; dựng v3; chủ dự án bật công tắc | v3 `trusted=0` dù công tắc bật |
+| 7 | Reset; chạy `check` bản v3 (đăng ký); chủ dự án bật công tắc | v3 `trusted=1` |
+| 8 | Thêm run loop cho probe (v4, như app thật), chạy sẵn ở 0; chủ dự án bật công tắc | tiến trình **đang chạy thấy 0→1 trong vòng 1 giây**, cả `AXIsProcessTrusted()` lẫn `…WithOptions` |
+| 9 | (v1 đến v3) probe không run loop, chạy sẵn trong lúc cấp và thu hồi | không bao giờ thấy thay đổi (45 giây đến 3 phút, cả hai chiều). Chỉ là bài học về cách đo: thiếu run loop; không áp dụng cho app có run loop |
+| 10 | Thu hồi bằng `tccutil reset` khi v4 (có run loop) đang chạy | tiến trình đang chạy **không nhận ra** trong 40 giây (tiến trình mới báo 0). Chưa thử thu hồi bằng công tắc của System Settings |
+
+**Giải thích khớp các lượt:** dòng quyền của hệ thống lưu chữ ký (cdhash) của bản đã hỏi trạng thái quyền lần đầu; công tắc chỉ đổi bật/tắt, **không cập nhật chữ ký**. Ad-hoc thì mỗi bản build có cdhash khác, nên dòng cũ không còn khớp dù công tắc bật (lượt 2, 3). Xóa dòng cũ rồi để bản mới đăng ký thì bật công tắc dùng được (lượt 4, 5, 7). Lượt 6 hỏng đúng vì dòng mới do bản v2 đăng ký (lệnh `check` chạy trước khi dựng v3) nên mang chữ ký v2.
+
+**Chưa thử tay:** nút − và + trong System Settings (đã xóa dòng bằng `tccutil reset`, kết quả tương đương việc xóa dòng). Mục S3Probe còn có thể nằm trong danh sách Trợ năng của máy anh (công tắc tắt): xóa bằng nút −.
 
 ## Kết luận cho spec §4.2
 
 - S1 và S2 đạt: kế hoạch 04, 05 được làm tiếp (cổng spike qua).
 - `PASTE_DELAY` giữ 120 ms.
-- Lời hướng dẫn bật lại quyền sau khi cập nhật: giữ câu "xóa khỏi danh sách rồi thêm lại, hoặc tắt rồi bật lại công tắc" ở Cài đặt › Gõ dịch và trên website; **chốt theo kết quả S3** khi làm S3 (nếu cách bật lại khác thì sửa `settings.compose.permission.missing` ở năm từ điển và hai trang website).
+- Lời hướng dẫn bật lại quyền sau khi cập nhật (**đã chốt theo S3**): "xóa app khỏi danh sách (nút −) rồi thêm lại (nút +)" như câu `settings.compose.permission.missing` đang có ở năm từ điển; **bỏ** cách "tắt rồi bật lại công tắc" vì đo thấy không sửa được. Đã sửa hai trang website (hướng dẫn Gõ dịch, vi và en).
+- App đang chạy thấy quyền vừa cấp ngay (run loop chạy), nên **không cần dặn khởi động lại app** sau khi bật; app kiểm `AXIsProcessTrusted()` mỗi lần Enter nên đúng. Không đổi mã.
+- `tccutil reset Accessibility <bundle id>` không cần `sudo`: dùng cho hỗ trợ kỹ thuật, không đưa vào hướng dẫn người dùng (cần Terminal).

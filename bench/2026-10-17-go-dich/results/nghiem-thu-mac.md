@@ -81,5 +81,5 @@ Chưa thử: chờ máy Windows (spec §8.2: chạy lại GD1, GD4, GD5, GD6).
 ## Còn lại cần chủ dự án
 
 1. GD1 và GD4 ở các app chat còn lại (bảng trên: Messenger, Gmail, Zoom, Meet, và Zalo, Discord nếu có). Chỉ cần ⌃⌥G, gõ một câu, Enter, xem bản dịch vào đúng ô mà chưa gửi, rồi Esc hay xóa; Enter lần hai của app chat để gửi hay không tùy anh.
-2. Spike S3 (`spike.md`).
+2. (Tùy chọn) xóa mục S3Probe khỏi danh sách Trợ năng bằng nút − (công tắc đã tắt; app thăm dò đã xóa). Spike S3 đã làm, xem `spike.md`.
 3. GD5 bằng `netaudit.py` kiểm nội dung (cần `sudo` cài chứng chỉ; phần "không có kết nối nào" đã đạt, xem mục GD5).

@@ -184,7 +184,7 @@ Không xác nhận được ô kia đã nhận chữ hay chưa: hệ điều hà
   - Bản dịch đã chép thành công nên bản nháp được xóa như khi dán (mục 1.2). Enter hay Esc lúc hộp đang hiện thì đóng ô; người dùng bấm ⌘V ở ô chat. Lần dán sau mà vẫn chưa có quyền thì hộp lại hiện.
 - `compose.autoPaste = false`: Enter chép vào clipboard rồi đóng ô, không hỏi gì; chân ô ghi "Enter: chép · ⌘V để dán".
 - Phím ⌘V gửi bằng mã phím của chữ "v" trên bố cục bàn phím đang dùng; không tìm được thì dùng mã phím V của bố cục ANSI.
-- Lời hướng dẫn bật lại quyền sau khi cập nhật: hiện ghi "xóa app khỏi danh sách rồi thêm lại" (`settings.compose.permission.missing`, và trên website); **chốt theo kết quả spike S3**, chưa làm (`results/spike.md`, mục S3).
+- Sau khi cập nhật, bản ký ad-hoc có chữ ký khác nên quyền cũ mất dù công tắc trong danh sách vẫn bật (đo 2026-10-18, `results/spike.md` mục S3). **Tắt rồi bật lại công tắc không sửa được**; cách sửa là xóa app khỏi danh sách (nút −) rồi thêm lại (nút +) ("xóa app khỏi danh sách rồi thêm lại" ở `settings.compose.permission.missing` và trên website). Quyền vừa cấp được app đang chạy nhận ngay, không cần khởi động lại. `tccutil reset Accessibility <bundle id>` không cần `sudo` (cho hỗ trợ kỹ thuật).
 
 ### 4.3 Windows
 
@@ -221,7 +221,7 @@ Ghi kết quả vào `bench/2026-10-17-go-dich/results/spike.md`.
 |---|---|---|
 | S1 | Gõ trong WebView nằm trong NSPanel không kích hoạt app | Gõ "Mai mình gửi báo cáo nhé" ra đúng từng chữ với bộ gõ Telex có sẵn của macOS và với EVKey hoặc OpenKey; bộ gõ Nhật: Enter chỉ chốt chữ (`isComposing`) |
 | S2 | Ẩn ô soạn thì bàn phím về đúng ô chat cũ, và ⌘V vào đúng chỗ | Không cần bấm chuột, bản dịch vào đúng ô nhập, không có gì bị gửi, ở: Messenger web trên Chrome, Slack, Zalo PC, khung chat của Zoom, và một app đang toàn màn hình. Ghi thời gian chờ cần thiết ở bước 4 của mục 4.1 |
-| S3 | Quyền Trợ năng với bản ký ad-hoc qua một lần cập nhật | Chỉ ghi nhận, không có điều kiện đạt: cấp quyền cho bản ký bằng `scripts/run-dev-signed.sh`, build lại (chữ ký đổi), xem `AXIsProcessTrusted`, mục trong System Settings, các bước cần làm để bật lại; thử `tccutil reset Accessibility com.aitranslator.desktop` có cần quyền admin không |
+| S3 | Quyền Trợ năng với bản ký ad-hoc qua một lần cập nhật | Chỉ ghi nhận, không có điều kiện đạt: cấp quyền cho bản ký bằng `scripts/run-dev-signed.sh`, build lại (chữ ký đổi), xem `AXIsProcessTrusted`, mục trong System Settings, các bước cần làm để bật lại; thử `tccutil reset Accessibility com.aitranslator.desktop` có cần quyền admin không. **Đã làm 2026-10-18** bằng app thăm dò (`results/spike.md`) |
 
 S1 hay S2 không đạt thì dừng lại, báo chủ dự án và xem lại thiết kế trước khi làm tiếp.
 

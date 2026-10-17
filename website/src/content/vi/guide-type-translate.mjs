@@ -121,7 +121,7 @@ ${appShot({
 ${callout({
   kind: "warn",
   title: "Sau khi cập nhật app, có thể phải bật lại quyền.",
-  text: "Bản macOS hiện chưa được ký bằng chứng thư nhà phát triển của Apple, nên sau mỗi lần cập nhật macOS có thể coi AI Translator là app khác: mục của app trong Trợ năng vẫn bật mà app vẫn báo chưa cấp. Khi đó hãy xóa AI Translator khỏi danh sách (nút −) rồi thêm lại (nút +), hoặc tắt rồi bật lại công tắc. Trong lúc chưa có quyền, Gõ dịch vẫn chép bản dịch để bạn tự dán.",
+  text: "Bản macOS hiện chưa được ký bằng chứng thư nhà phát triển của Apple, nên sau mỗi lần cập nhật macOS có thể coi AI Translator là app khác: mục của app trong Trợ năng vẫn bật mà app vẫn báo chưa cấp. Khi đó hãy xóa AI Translator khỏi danh sách (nút −) rồi thêm lại (nút +); chỉ tắt rồi bật lại công tắc thì không sửa được. Trong lúc chưa có quyền, Gõ dịch vẫn chép bản dịch để bạn tự dán.",
 })}
 
 <h2 id="windows">Trên Windows</h2>

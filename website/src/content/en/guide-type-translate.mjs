@@ -121,7 +121,7 @@ ${appShot({
 ${callout({
   kind: "warn",
   title: "After an app update, you may have to turn the permission on again.",
-  text: "The macOS version is not yet signed with an Apple developer certificate, so after each update macOS may treat AI Translator as a different app: its entry in Accessibility is still on but the app still says it is not granted. Then remove AI Translator from the list (the − button) and add it again (the + button), or turn its switch off and on again. Until it has the permission, Type & Translate still copies the translation for you to paste.",
+  text: "The macOS version is not yet signed with an Apple developer certificate, so after each update macOS may treat AI Translator as a different app: its entry in Accessibility is still on but the app still says it is not granted. Then remove AI Translator from the list (the − button) and add it again (the + button); just turning the switch off and on again does not fix it. Until it has the permission, Type & Translate still copies the translation for you to paste.",
 })}
 
 <h2 id="windows">On Windows</h2>
