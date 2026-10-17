@@ -111,6 +111,8 @@ function setup() {
     clear_all_data: () => null,
     get_debug_sessions: () => [],
     open_audio_permission_settings: () => null,
+    get_accessibility_trusted: () => false,
+    open_accessibility_settings: () => null,
     set_overlay_locked: ({ locked }) => ({ ...settings, overlay: { ...settings.overlay, locked } }),
     check_for_updates: () => ({ ...status, updateReady: "0.2.0", updateCheck: "idle", rev: 7 }),
     restart_to_update: () => {
@@ -307,6 +309,18 @@ describe("app store", () => {
     expect(store.getState().audioSources).toEqual([{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }]);
     await store.getState().openAudioPermissionSettings();
     expect(fake.calls.at(-1)?.cmd).toBe("open_audio_permission_settings");
+    expect(store.getState().error).toBeNull();
+  });
+
+  // Spec 2026-10-17-go-dich §1.4: Cài đặt › Gõ dịch đọc trạng thái quyền Trợ năng và mở được trang Trợ năng.
+  it("đọc quyền Trợ năng và mở trang Trợ năng", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    expect(store.getState().accessibilityTrusted).toBeNull();
+    await store.getState().loadAccessibility();
+    expect(store.getState().accessibilityTrusted).toBe(false);
+    await store.getState().openAccessibilitySettings();
+    expect(fake.calls.at(-1)?.cmd).toBe("open_accessibility_settings");
     expect(store.getState().error).toBeNull();
   });
 

@@ -69,6 +69,8 @@ export interface AppStoreState {
   dataCleared: boolean;
   // Phiên bản cập nhật mà người dùng đã bấm "Để sau" (chỉ trong lần chạy này; menu khay vẫn còn mục khởi động lại).
   updateDismissed: string | null;
+  // macOS: đã có quyền Trợ năng chưa (Cài đặt › Gõ dịch, spec 2026-10-17-go-dich §1.4); `null` là chưa đọc.
+  accessibilityTrusted: boolean | null;
   init(): Promise<() => void>;
   navigate(screen: Screen, settingsGroup?: SettingsGroup | null): void;
   setOnboardingStep(step: number): void;
@@ -90,6 +92,9 @@ export interface AppStoreState {
   openTaskbarSettings(): Promise<void>;
   openLoginItemsSettings(): Promise<void>;
   openAudioPermissionSettings(): Promise<void>;
+  // Đọc lại quyền Trợ năng (lúc mở nhóm Cài đặt "Gõ dịch" và mỗi khi cửa sổ được focus lại). Lặng lẽ: lỗi thì giữ trạng thái cũ.
+  loadAccessibility(): Promise<void>;
+  openAccessibilitySettings(): Promise<void>;
   loadAudioSources(): Promise<void>;
   // Màn hình chính: đọc danh sách nguồn một lần mỗi lần mở app, chỉ để có tên hiển thị của nguồn đang chọn (tên app,
   // tên thiết bị). Lặng lẽ: lỗi không hiện ở thanh báo lỗi, thành công không xóa lỗi đang hiện.
@@ -190,6 +195,7 @@ export function createAppStore(ipc: Ipc) {
       debugSessions: null,
       dataCleared: false,
       updateDismissed: null,
+      accessibilityTrusted: null,
 
       // Lỗi ở bất kỳ bước nào thì gỡ các listener đã đăng ký rồi ném lỗi tiếp cho bên gọi (`main.tsx` hiện câu báo).
       async init() {
@@ -343,6 +349,21 @@ export function createAppStore(ipc: Ipc) {
       async openAudioPermissionSettings() {
         await run(
           () => ipc.invoke("open_audio_permission_settings"),
+          () => {},
+        );
+      },
+
+      async loadAccessibility() {
+        try {
+          set({ accessibilityTrusted: await ipc.invoke("get_accessibility_trusted") });
+        } catch {
+          // Giữ trạng thái cũ; nhóm Cài đặt vẫn có nút mở trang Trợ năng.
+        }
+      },
+
+      async openAccessibilitySettings() {
+        await run(
+          () => ipc.invoke("open_accessibility_settings"),
           () => {},
         );
       },

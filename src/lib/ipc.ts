@@ -461,6 +461,9 @@ export interface Commands {
   open_login_items_settings: { args: undefined; result: null };
   list_audio_sources: { args: undefined; result: AudioSourceOption[] };
   open_audio_permission_settings: { args: undefined; result: null };
+  // Cài đặt › Gõ dịch (macOS): đã có quyền Trợ năng chưa (Windows luôn `true`); mở trang Trợ năng của System Settings.
+  get_accessibility_trusted: { args: undefined; result: boolean };
+  open_accessibility_settings: { args: undefined; result: null };
   // Bước "Nghe thử": phiên thu toàn hệ thống, kể cả âm thanh của chính app. Dừng bằng `toggle_session`.
   start_listen_test: { args: undefined; result: AppStatus };
   get_transcript: { args: undefined; result: Transcript };
