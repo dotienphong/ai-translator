@@ -201,3 +201,158 @@ test("đọc hằng báo lỗi rõ khi không thấy hay không phải số họ
     ["a.example", "b.example"],
   );
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Báo cáo lỗi gửi về nhà phát triển (spec 2026-10-17-diagnostics-reports-design.md §1, §2, §3). App (Rust, src-tauri/src/
+// diagnostics/) và server (TypeScript, server/src/error-reports.ts, ratelimit.ts) cùng nói một hợp đồng: trần log, trần báo cáo,
+// bảng ký tự mã báo cáo, các loại báo cáo, gói bản quyền, ngôn ngữ giao diện, giới hạn tần suất. Lệch một chỗ là server trả 400
+// hay 413 cho mọi báo cáo của app, và app thì lặng lẽ bỏ báo cáo (lỗi gửi tự động không hiện ra giao diện), nên chỉ test này bắt được.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const DIAG_REPORT = "src-tauri/src/diagnostics/report.rs";
+const DIAG_LOGS = "src-tauri/src/diagnostics/logs.rs";
+const DIAG_QUEUE = "src-tauri/src/diagnostics/queue.rs";
+const DIAG_MOD = "src-tauri/src/diagnostics/mod.rs";
+const ERROR_REPORTS = "server/src/error-reports.ts";
+const TOKEN = "server/src/token.ts";
+
+/** Chuỗi `const NAME = "…";` của TypeScript (có hay không `export`). */
+function tsString(text, name, file) {
+  const m = new RegExp(`^\\s*(?:export\\s+)?const\\s+${name}\\s*=\\s*"([^"]*)"\\s*;`, "m").exec(text);
+  if (!m) throw new Error(`${file}: không thấy hằng chuỗi ${name}`);
+  return m[1];
+}
+
+/** Chuỗi `const NAME: &str = "…";` của Rust. */
+function rustString(text, name, file) {
+  const m = new RegExp(`^\\s*(?:pub\\s+)?const\\s+${name}\\s*:\\s*&(?:'static\\s+)?str\\s*=\\s*"([^"]*)"\\s*;`, "m").exec(text);
+  if (!m) throw new Error(`${file}: không thấy hằng chuỗi ${name}`);
+  return m[1];
+}
+
+/** Giá trị số của một khóa trong `const NAME = { khóa: biểu thức, … }` của TypeScript. */
+function tsObjectNumber(text, name, key, file) {
+  const object = new RegExp(`^\\s*(?:export\\s+)?const\\s+${name}\\s*=\\s*\\{([^}]*)\\}`, "m").exec(text);
+  if (!object) throw new Error(`${file}: không thấy hằng đối tượng ${name}`);
+  const entry = new RegExp(`\\b${key}\\s*:\\s*([\\d_\\s*+\\-()]+?)\\s*(?:,|$)`).exec(object[1]);
+  if (!entry) throw new Error(`${file}: ${name} không có khóa ${key}`);
+  return arithmetic(entry[1], `${file}: ${name}.${key}`);
+}
+
+/** Các chuỗi trong `const NAME = [ "a", "b" ]` của TypeScript (bỏ phần `...khác` và `as const`). */
+function tsStrings(text, name, file) {
+  const m = new RegExp(`^\\s*(?:export\\s+)?const\\s+${name}\\s*=\\s*\\[([^\\]]*)\\]`, "m").exec(text);
+  if (!m) throw new Error(`${file}: không thấy mảng ${name}`);
+  return [...m[1].matchAll(/"([^"]*)"/g)].map((x) => x[1]);
+}
+
+/** Các chuỗi trong `const NAME: [&str; N] = [ "a", "b" ];` của Rust. */
+function rustStrings(text, name, file) {
+  const m = new RegExp(`^\\s*(?:pub\\s+)?const\\s+${name}\\s*:\\s*\\[&str;\\s*\\d+\\]\\s*=\\s*\\[([^\\]]*)\\]`, "m").exec(text);
+  if (!m) throw new Error(`${file}: không thấy mảng ${name}`);
+  return [...m[1].matchAll(/"([^"]*)"/g)].map((x) => x[1]);
+}
+
+/** Mọi chuỗi vế phải của các nhánh `Prefix::Biến => "chuỗi"` trong file Rust. */
+function rustMatchStrings(text, prefix, file) {
+  const found = [...text.matchAll(new RegExp(`${prefix}::\\w+\\s*=>\\s*"([^"]*)"`, "g"))].map((x) => x[1]);
+  if (found.length === 0) throw new Error(`${file}: không thấy nhánh ${prefix}::… => "…"`);
+  return found;
+}
+
+/** Các ký tự của một lớp regex dạng `[0-9A-HJKMNP-TV-Z]` (chỉ khoảng `a-b` và ký tự đơn). */
+function classChars(cls) {
+  const body = cls.replace(/^\[|\]$/g, "");
+  const out = [];
+  for (let i = 0; i < body.length; i++) {
+    if (body[i + 1] === "-" && i + 2 < body.length) {
+      for (let c = body.charCodeAt(i); c <= body.charCodeAt(i + 2); c++) out.push(String.fromCharCode(c));
+      i += 2;
+    } else out.push(body[i]);
+  }
+  return out.sort().join("");
+}
+
+const sorted = (list) => [...list].sort();
+
+test("trần từng log của app (24, 16, 16 KiB) bằng LOG_LIMITS của server", () => {
+  const logs = source(DIAG_LOGS);
+  const server = source(ERROR_REPORTS);
+  for (const [rust, key] of [["APP_LOG_MAX_BYTES", "app"], ["ASR_LOG_MAX_BYTES", "asr"], ["LLAMA_LOG_MAX_BYTES", "llama"]]) {
+    assert.equal(rustConst(logs, rust, DIAG_LOGS), tsObjectNumber(server, "LOG_LIMITS", key, ERROR_REPORTS), `${rust} lệch LOG_LIMITS.${key}`);
+  }
+  assert.equal(rustConst(logs, "APP_LOG_MAX_BYTES", DIAG_LOGS), 24 * 1024, "spec §2: 24 KiB cho app.log");
+});
+
+test("trần báo cáo của app nằm giữa tổng ba trần log và trần thân request của server", () => {
+  const caps = ["APP_LOG_MAX_BYTES", "ASR_LOG_MAX_BYTES", "LLAMA_LOG_MAX_BYTES"].map((n) => rustConst(source(DIAG_LOGS), n, DIAG_LOGS));
+  const report = rustConst(source(DIAG_REPORT), "MAX_REPORT_BYTES", DIAG_REPORT);
+  const body = tsConst(source(ERROR_REPORTS), "MAX_BODY_BYTES", ERROR_REPORTS);
+  assert.equal(report, 64 * 1024, "spec §2: báo cáo tối đa 64 KB");
+  assert.ok(report > caps.reduce((a, b) => a + b, 0), "phải còn chỗ cho phần thông tin máy ngoài ba log");
+  assert.ok(report <= body, `app gửi tới ${report} byte nhưng server chỉ nhận ${body}: báo cáo đầy log bị 413`);
+});
+
+test("câu lỗi tối đa và dấu vân tay của báo cáo gửi tay giống nhau ở app và server", () => {
+  const rust = source(DIAG_REPORT);
+  const server = source(ERROR_REPORTS);
+  assert.equal(rustConst(rust, "MAX_MESSAGE_CHARS", DIAG_REPORT), tsConst(server, "MAX_MESSAGE_CHARS", ERROR_REPORTS));
+  assert.equal(rustString(rust, "ZERO_FINGERPRINT", DIAG_REPORT), tsString(server, "ZERO_FINGERPRINT", ERROR_REPORTS));
+});
+
+test("bảng ký tự mã báo cáo của app (Crockford base32) bằng lớp ký tự của REPORT_ID và của key bản quyền ở server", () => {
+  const alphabet = /ID_ALPHABET:\s*&\[u8;\s*32\]\s*=\s*b"([^"]+)"/.exec(source(DIAG_REPORT));
+  assert.ok(alphabet, `${DIAG_REPORT}: không thấy ID_ALPHABET`);
+  const id = /REPORT_ID\s*=\s*\/\^R-(\[[^\]]+\])\{4\}-(\[[^\]]+\])\{4\}\$\//.exec(source(ERROR_REPORTS));
+  assert.ok(id, `${ERROR_REPORTS}: không thấy REPORT_ID dạng /^R-[…]{4}-[…]{4}$/`);
+  assert.equal(classChars(id[1]), classChars(id[2]), "hai nhóm của mã báo cáo dùng cùng một lớp ký tự");
+  assert.equal(classChars(id[1]), sorted(alphabet[1]).join(""), "app sinh ký tự ngoài lớp mà server nhận (hay ngược lại)");
+  assert.equal(sorted(alphabet[1]).join(""), sorted(tsString(source("server/src/license-key.ts"), "KEY_ALPHABET", "server/src/license-key.ts")).join(""));
+});
+
+test("các loại báo cáo của app bằng REPORT_KINDS của server", () => {
+  const rust = rustMatchStrings(source(DIAG_REPORT), "Kind", DIAG_REPORT);
+  assert.deepEqual(sorted(rust), sorted(tsStrings(source(ERROR_REPORTS), "REPORT_KINDS", ERROR_REPORTS)));
+});
+
+test("tên gói app gửi là free cộng PLAN_CODES của server; ngôn ngữ giao diện app gửi bằng UI_LANGS của server", () => {
+  const server = source(ERROR_REPORTS);
+  assert.match(server, /REPORT_PLANS\s*=\s*\["free",\s*\.\.\.PLAN_CODES\]/, `${ERROR_REPORTS}: REPORT_PLANS không còn là ["free", ...PLAN_CODES]`);
+  const paid = tsStrings(source(TOKEN), "PLAN_CODES", TOKEN);
+  assert.deepEqual(sorted(rustStrings(source(DIAG_MOD), "PLAN_CODES", DIAG_MOD)), sorted(["free", ...paid]));
+  assert.deepEqual(sorted(rustMatchStrings(source(DIAG_MOD), "UiLanguage", DIAG_MOD)), sorted(tsStrings(server, "UI_LANGS", ERROR_REPORTS)));
+});
+
+test("giới hạn gửi của app (spec §1) đúng số đã chốt và nằm trong hạn mức của server", () => {
+  const queue = source(DIAG_QUEUE);
+  const ratelimit = source(RATELIMIT);
+  assert.equal(rustConst(queue, "MAX_PER_DAY", DIAG_QUEUE), 5, "tối đa 5 báo cáo mỗi ngày");
+  assert.equal(rustConst(queue, "QUEUE_CAP", DIAG_QUEUE), 5, "hàng đợi tối đa 5");
+  assert.equal(rustConst(queue, "PER_FINGERPRINT_SECONDS", DIAG_QUEUE), 24 * 3600, "1 báo cáo mỗi dấu vân tay mỗi 24 giờ");
+  assert.equal(rustConst(queue, "MAX_ATTEMPTS", DIAG_QUEUE), 3, "thử lại tối đa 3 lần");
+  assert.equal(rustConst(source(DIAG_MOD), "FIRST_SEND_DELAY_SECS", DIAG_MOD), 10, "gửi nền sau khi app chạy 10 giây");
+  const limit = (name) => tsObjectNumber(ratelimit, "LIMITS", name, RATELIMIT);
+  assert.equal(limit("diag_ip"), 30);
+  assert.equal(limit("diag_device"), 3);
+  assert.equal(limit("diag_global"), 120);
+  // Một máy xếp hàng tối đa 5 mỗi ngày: không bao giờ làm chạm hạn mức theo IP hay toàn hệ thống của một giờ.
+  assert.ok(rustConst(queue, "MAX_PER_DAY", DIAG_QUEUE) <= limit("diag_ip"));
+  assert.ok(limit("diag_device") <= limit("diag_ip") && limit("diag_ip") <= limit("diag_global"));
+});
+
+test("hàm đọc hằng của báo cáo lỗi báo rõ khi không thấy, và hiểu đúng các dạng khai báo", () => {
+  assert.equal(tsString('export const ZERO_FINGERPRINT = "0000";\n', "ZERO_FINGERPRINT", "x.ts"), "0000");
+  assert.equal(rustString('pub const ZERO_FINGERPRINT: &str = "0000";\n', "ZERO_FINGERPRINT", "x.rs"), "0000");
+  assert.equal(tsObjectNumber("export const LOG_LIMITS = { app: 24 * 1024, asr: 16 * 1024 } as const;", "LOG_LIMITS", "asr", "x.ts"), 16384);
+  assert.equal(tsObjectNumber("export const LIMITS = {\n  diag_ip: 30,\n  diag_device: 3,\n} as const;", "LIMITS", "diag_device", "x.ts"), 3);
+  assert.deepEqual(tsStrings('export const K = ["a", "b"] as const;', "K", "x.ts"), ["a", "b"]);
+  assert.deepEqual(tsStrings('export const K = ["free", ...PLAN_CODES] as const;', "K", "x.ts"), ["free"]);
+  assert.deepEqual(rustStrings('const P: [&str; 2] = ["a", "b"];', "P", "x.rs"), ["a", "b"]);
+  assert.deepEqual(rustMatchStrings('Kind::A => "a",\n Kind::B => "b",', "Kind", "x.rs"), ["a", "b"]);
+  assert.equal(classChars("[0-9A-C]"), "0123456789ABC");
+  assert.throws(() => tsString("const X = 1;", "Y", "x.ts"), /x\.ts: không thấy hằng chuỗi Y/);
+  assert.throws(() => rustString("const X: u8 = 1;", "Y", "x.rs"), /x\.rs: không thấy hằng chuỗi Y/);
+  assert.throws(() => tsObjectNumber("export const O = { a: 1 };", "O", "b", "x.ts"), /không có khóa b/);
+  assert.throws(() => tsStrings("const Z = 1;", "K", "x.ts"), /không thấy mảng K/);
+  assert.throws(() => rustMatchStrings("nothing", "Kind", "x.rs"), /không thấy nhánh Kind/);
+});
