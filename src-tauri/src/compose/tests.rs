@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
-use tauri::Listener;
+use tauri::{Listener, Manager};
 
 use crate::errors;
 use crate::events::{COMPOSE_DELTA, COMPOSE_DONE, COMPOSE_LOADING, COMPOSE_OPEN, NAVIGATE};
@@ -233,8 +233,6 @@ fn closing_cancels_the_request_in_flight() {
 fn without_permission_the_translation_is_only_copied() {
     use std::sync::atomic::Ordering;
 
-    use tauri::Manager;
-
     use crate::test_support::FakeNative;
 
     let app = mock_app();
@@ -354,4 +352,54 @@ fn an_error_button_opens_the_right_screen() {
     );
     assert_eq!(compose_calls(&app), ["hide", "hide"]);
     assert!(invoke(&compose, "compose_open_main", json!({ "screen": "about" })).is_err());
+}
+
+/// Spec §1.1, §1.4: phím tắt Gõ dịch mở rồi đóng ô soạn; tắt Gõ dịch thì đóng ô soạn đang mở và bỏ phím đó khỏi danh sách phím
+/// tắt không đăng ký được.
+#[test]
+fn the_hotkey_toggles_and_turning_compose_off_closes_it() {
+    use crate::hotkeys::HotkeyAction;
+    let app = mock_app();
+    crate::actions::run_hotkey(app.handle(), HotkeyAction::Compose);
+    assert_eq!(compose_calls(&app), ["show"]);
+    app.state::<crate::state::AppState>()
+        .update_status(|s| s.hotkey_failures = vec![HotkeyAction::Compose]);
+    let main = window(&app, "main");
+    let settings = invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "compose": { "enabled": false } } }),
+    )
+    .unwrap();
+    assert_eq!(settings["compose"]["enabled"], false);
+    assert_eq!(compose_calls(&app), ["show", "hide"]);
+    let status = invoke(&main, "get_app_status", json!({})).unwrap();
+    assert_eq!(status["hotkeyFailures"], json!([]));
+}
+
+/// Spec §1.4: Gõ dịch đang tắt thì đổi phím của nó chỉ kiểm và lưu (không đăng ký); phím trùng việc khác bị từ chối.
+#[test]
+fn a_disabled_compose_hotkey_is_only_checked_and_saved() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    invoke(
+        &main,
+        "update_settings",
+        json!({ "patch": { "compose": { "enabled": false } } }),
+    )
+    .unwrap();
+    let settings = invoke(
+        &main,
+        "set_hotkey",
+        json!({ "action": "compose", "accelerator": "control+alt+KeyJ" }),
+    )
+    .unwrap();
+    assert_eq!(settings["hotkeys"]["compose"], "Ctrl+Alt+J");
+    let error = invoke(
+        &main,
+        "set_hotkey",
+        json!({ "action": "compose", "accelerator": "Ctrl+Alt+T" }),
+    )
+    .unwrap_err();
+    assert!(error.contains("hotkeyDuplicate"), "{error}");
 }

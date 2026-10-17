@@ -334,6 +334,15 @@ impl Settings {
         }
     }
 
+    /// Phím tắt cần đăng ký với hệ điều hành: mọi việc, trừ Gõ dịch khi đang tắt (spec 2026-10-17-go-dich §1.4).
+    pub fn active_hotkeys(&self) -> Vec<(HotkeyAction, &str)> {
+        self.hotkeys
+            .bindings()
+            .into_iter()
+            .filter(|(action, _)| *action != HotkeyAction::Compose || self.compose.enabled)
+            .collect()
+    }
+
     /// Kiểm phạm vi mọi khóa. Phía Rust là nơi quyết định: giao diện gửi gì cũng qua đây (§10.2).
     pub fn validate(&self) -> Result<(), Invalid> {
         if !VAD_END_SILENCE_MS.contains(&self.vad_end_silence_ms) {
@@ -485,6 +494,20 @@ mod tests {
             ]
         );
         assert_eq!(Settings::defaults(UiLanguage::En).target_language, Lang::En);
+    }
+
+    /// Spec 2026-10-17-go-dich §1.4: tắt Gõ dịch thì phím của nó không đăng ký (vẫn giữ trong cài đặt).
+    #[test]
+    fn the_compose_hotkey_is_active_only_while_compose_is_on() {
+        let mut s = valid();
+        let active = |s: &Settings| s.active_hotkeys().into_iter().map(|(a, _)| a).collect::<Vec<_>>();
+        assert_eq!(active(&s), HotkeyAction::ALL);
+        s.compose.enabled = false;
+        assert_eq!(active(&s), &HotkeyAction::ALL[..5]);
+        assert_eq!(s.hotkeys.compose, "Ctrl+Alt+G", "phím vẫn giữ");
+        assert_eq!(s.validate(), Ok(()));
+        s.hotkeys.compose = "Ctrl+Alt+T".into();
+        rejects(s, "hotkeys.compose", Reason::Duplicate);
     }
 
     #[test]

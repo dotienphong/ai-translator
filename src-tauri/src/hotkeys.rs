@@ -177,12 +177,8 @@ pub fn rebind(
         error,
         old_active: bound.get(action).is_some(),
     };
-    let (shortcut, canonical) = parse(accelerator).map_err(|e| fail(e, bound))?;
-    let next: Vec<(HotkeyAction, &str)> = current
-        .iter()
-        .map(|&(a, s)| if a == action { (a, canonical.as_str()) } else { (a, s) })
-        .collect();
-    check_all(&next).map_err(|(_, e)| fail(e, bound))?;
+    let canonical = check_rebind(current, action, accelerator).map_err(|e| fail(e, bound))?;
+    let (shortcut, _) = parse(&canonical).map_err(|e| fail(e, bound))?;
     if bound.get(action) == Some(shortcut) {
         return Ok(canonical);
     }
@@ -202,6 +198,44 @@ pub fn rebind(
         error: HotkeyError::RegisterFailed,
         old_active: restored.is_some(),
     })
+}
+
+/// Kiểm phím mới của `action` mà không đăng ký với hệ điều hành: đọc được, có Ctrl, Alt hoặc Super, không trùng phím của việc
+/// khác trong `current` (kể cả khi `current` chưa có `action`). Trả về dạng chuẩn. [`rebind`] dùng hàm này trước khi đăng ký;
+/// việc đang tắt (Gõ dịch khi `compose.enabled = false`, spec 2026-10-17-go-dich §1.4) chỉ kiểm rồi lưu, bật lại thì mới đăng
+/// ký ([`activate`]).
+pub fn check_rebind(
+    current: &[(HotkeyAction, &str)],
+    action: HotkeyAction,
+    accelerator: &str,
+) -> Result<String, HotkeyError> {
+    let (_, canonical) = parse(accelerator)?;
+    let mut next: Vec<(HotkeyAction, &str)> = current.iter().copied().filter(|(a, _)| *a != action).collect();
+    next.push((action, canonical.as_str()));
+    check_all(&next).map_err(|(_, e)| e)?;
+    Ok(canonical)
+}
+
+/// Đăng ký phím tắt của một việc vừa được bật (Gõ dịch). Đã đăng ký thì thôi. `false` khi phím không đọc được hay hệ điều
+/// hành từ chối.
+pub fn activate(registrar: &impl Registrar, bound: &mut Bound, action: HotkeyAction, accelerator: &str) -> bool {
+    if bound.get(action).is_some() {
+        return true;
+    }
+    match parse(accelerator) {
+        Ok((shortcut, _)) if registrar.register(shortcut) => {
+            bound.0.insert(action, shortcut);
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Gỡ phím tắt của một việc vừa bị tắt. Chưa đăng ký thì thôi.
+pub fn deactivate(registrar: &impl Registrar, bound: &mut Bound, action: HotkeyAction) {
+    if let Some(shortcut) = bound.0.remove(&action) {
+        registrar.unregister(shortcut);
+    }
 }
 
 #[cfg(test)]
@@ -552,5 +586,41 @@ mod tests {
         }
         assert!(registrar.calls.borrow().is_empty());
         assert_eq!(bound.get(HotkeyAction::ToggleLock), None);
+    }
+
+    /// Spec 2026-10-17-go-dich §1.4: Gõ dịch đang tắt thì đổi phím chỉ kiểm (đọc được, có phím bổ trợ, không trùng) rồi lưu,
+    /// không gọi hệ điều hành.
+    #[test]
+    fn a_disabled_action_is_checked_without_registering() {
+        assert_eq!(
+            check_rebind(&DEFAULTS, HotkeyAction::Compose, "control+alt+KeyJ"),
+            Ok("Ctrl+Alt+J".into())
+        );
+        assert_eq!(
+            check_rebind(&DEFAULTS, HotkeyAction::Compose, "Ctrl+Alt+T"),
+            Err(HotkeyError::Duplicate)
+        );
+        assert_eq!(
+            check_rebind(&DEFAULTS, HotkeyAction::Compose, "J"),
+            Err(HotkeyError::NoModifier)
+        );
+    }
+
+    /// Bật Gõ dịch thì đăng ký phím của nó (một lần), tắt thì gỡ; hệ điều hành từ chối thì báo `false` và không giữ gì.
+    #[test]
+    fn enabling_and_disabling_registers_and_unregisters() {
+        let registrar = FakeRegistrar::default();
+        let mut bound = started(&registrar);
+        assert!(activate(&registrar, &mut bound, HotkeyAction::Compose, "Ctrl+Alt+G"));
+        assert!(activate(&registrar, &mut bound, HotkeyAction::Compose, "Ctrl+Alt+G"));
+        let g = parse("Ctrl+Alt+G").unwrap().0;
+        assert_eq!(bound.action_for(g.id()), Some(HotkeyAction::Compose));
+        deactivate(&registrar, &mut bound, HotkeyAction::Compose);
+        deactivate(&registrar, &mut bound, HotkeyAction::Compose);
+        assert_eq!(bound.get(HotkeyAction::Compose), None);
+        assert_eq!(*registrar.calls.borrow(), ["+Ctrl+Alt+G", "-Ctrl+Alt+G"]);
+        registrar.refuse("Ctrl+Alt+G");
+        assert!(!activate(&registrar, &mut bound, HotkeyAction::Compose, "Ctrl+Alt+G"));
+        assert_eq!(bound.get(HotkeyAction::Compose), None);
     }
 }

@@ -1,4 +1,4 @@
-//! Đăng ký ba phím tắt toàn cục với hệ điều hành qua `tauri-plugin-global-shortcut`. Luật đổi phím
+//! Đăng ký các phím tắt toàn cục với hệ điều hành qua `tauri-plugin-global-shortcut`. Luật đổi phím
 //! tắt (đăng ký lại phím cũ khi phím mới bị từ chối) nằm ở `hotkeys::rebind`, có test với bản giả.
 //!
 //! Trên Windows, phím tắt đã bị app khác giữ thì đăng ký thất bại, và app báo lỗi. Trên macOS, đăng
@@ -58,11 +58,28 @@ pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
         .build()
 }
 
-/// Đăng ký cả ba phím tắt lúc khởi động. Trả về các việc không đăng ký được.
-pub fn register_all<R: Runtime>(app: &AppHandle<R>, hotkeys: &Hotkeys) -> Vec<HotkeyAction> {
+/// Đăng ký các phím tắt lúc khởi động (`Settings::active_hotkeys`: Gõ dịch đang tắt thì không có phím của nó). Trả về các việc
+/// không đăng ký được.
+pub fn register_all<R: Runtime>(app: &AppHandle<R>, bindings: &[(HotkeyAction, &str)]) -> Vec<HotkeyAction> {
     let registry = app.state::<HotkeyRegistry>();
     let mut bound = registry.0.lock().unwrap();
-    hotkeys::register_all(&OsRegistrar(app.global_shortcut()), &mut bound, &hotkeys.bindings())
+    hotkeys::register_all(&OsRegistrar(app.global_shortcut()), &mut bound, bindings)
+}
+
+/// Bật Gõ dịch thì đăng ký phím của nó, tắt thì gỡ (spec 2026-10-17-go-dich §1.4). `false` khi bật mà hệ điều hành từ chối.
+/// App giả của test không có phím tắt (`HotkeyRegistry` chưa cài): không làm gì, trả `true`.
+pub fn set_active<R: Runtime>(app: &AppHandle<R>, action: HotkeyAction, accelerator: &str, active: bool) -> bool {
+    let Some(registry) = app.try_state::<HotkeyRegistry>() else {
+        return true;
+    };
+    let mut bound = registry.0.lock().unwrap();
+    let registrar = OsRegistrar(app.global_shortcut());
+    if active {
+        hotkeys::activate(&registrar, &mut bound, action, accelerator)
+    } else {
+        hotkeys::deactivate(&registrar, &mut bound, action);
+        true
+    }
 }
 
 /// Đổi phím tắt của một việc; trả về bộ phím tắt mới.

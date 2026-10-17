@@ -7,7 +7,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use crate::errors::{self, CommandError};
 use crate::events::ScrollDirection;
-use crate::hotkeys::HotkeyAction;
+use crate::hotkeys::{self, HotkeyAction};
 use crate::login_item::LoginItems;
 use crate::settings::{self, Settings, persist};
 use crate::state::{AppState, AppStatus, OverlayView};
@@ -41,7 +41,29 @@ pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings
     if previous.send_error_reports && !next.send_error_reports {
         diagnostics::purge_queue(app);
     }
+    if previous.compose.enabled != next.compose.enabled {
+        sync_compose_hotkey(app, &next);
+    }
     next
+}
+
+/// Bật hay tắt Gõ dịch (spec 2026-10-17-go-dich §1.4): đăng ký hay gỡ phím tắt của nó, cập nhật danh sách phím tắt không đăng
+/// ký được; tắt thì đóng ô soạn nếu đang mở.
+fn sync_compose_hotkey<R: Runtime>(app: &AppHandle<R>, settings: &Settings) {
+    let action = HotkeyAction::Compose;
+    let enabled = settings.compose.enabled;
+    let registered = hotkey_registry::set_active(app, action, settings.hotkeys.get(action), enabled);
+    app.state::<AppState>().update_status(|s| {
+        s.hotkey_failures.retain(|a| *a != action);
+        if enabled && !registered {
+            s.hotkey_failures.push(action);
+            s.hotkey_failures.sort();
+        }
+    });
+    status_changed(app);
+    if !enabled {
+        compose::close(app);
+    }
 }
 
 /// Báo trạng thái mới cho giao diện và menu khay. `session.rs` gọi hàm này mỗi khi trạng thái phiên đổi.
@@ -84,6 +106,13 @@ pub fn set_hotkey<R: Runtime>(
 ) -> Result<Settings, CommandError> {
     let state = app.state::<AppState>();
     let mut next = state.settings();
+    // Gõ dịch đang tắt: chỉ kiểm rồi lưu, không đăng ký; bật lại thì mới đăng ký (spec 2026-10-17-go-dich §1.4).
+    if action == HotkeyAction::Compose && !next.compose.enabled {
+        let canonical = hotkeys::check_rebind(&next.hotkeys.bindings(), action, accelerator)
+            .map_err(|e| CommandError::hotkey(action, e))?;
+        next.hotkeys.set(action, canonical);
+        return Ok(commit_settings(app, next));
+    }
     match hotkey_registry::rebind(app, &next.hotkeys, action, accelerator) {
         Ok(hotkeys) => {
             next.hotkeys = hotkeys;

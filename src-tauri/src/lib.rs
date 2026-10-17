@@ -174,7 +174,7 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 
     window::create_main(&handle)?;
     overlay::create(&handle)?;
-    let failures = hotkey_registry::register_all(&handle, &settings.hotkeys);
+    let failures = hotkey_registry::register_all(&handle, &settings.active_hotkeys());
     handle
         .state::<AppState>()
         .update_status(|s| s.hotkey_failures = failures);
