@@ -23,7 +23,7 @@ export default {
   path: "/en/guide/type-and-translate/",
   title: "Type & Translate: translate and paste chat messages",
   description:
-    "How to use Type & Translate in AI Translator: press ⌃⌥G or Ctrl+Alt+G, type in your own language, press Enter to paste the translation into any chat box.",
+    "How to use Type & Translate in AI Translator: press ⌃⌥G or Ctrl+Alt+G, type in your own language, Enter pastes the translation into the chat box you are using.",
   breadcrumbs: crumbs,
   type: "article",
   schemaType: "TechArticle",
@@ -49,7 +49,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Type & Translate",
-  lead: "Type & Translate lets you message people who speak another language from any chat box: a browser, a chat app, the chat panel of a meeting app. You type in your own language in a floating compose box, AI Translator translates it on your computer, then pastes the translation into the chat box for you to check and send.",
+  lead: "Type & Translate lets you message people who speak another language from the chat box of the app you are using. You type in your own language in a floating compose box, AI Translator translates it on your computer, then pastes the translation into the chat box for you to check and send.",
   meta: `<span>Updated {{updated}}</span>`,
 })}
 
@@ -130,6 +130,7 @@ ${callout({
 
 <h2 id="when-paste-fails">Limits and when pasting fails</h2>
 <ul>
+<li><strong>What we have tried:</strong> on macOS, in the Chrome browser and TextEdit; we have not yet tried every chat app. Pasting works by sending ⌘V (Ctrl+V) to the box you are typing in, so it usually works in any box that accepts pasting; if an app behaves oddly, tell us on the <a href="/en/contact/">contact</a> page.</li>
 <li><strong>The translation is always on the clipboard.</strong> After pasting, the translation stays on the clipboard (it replaces what was there). If the text does not appear in the chat box, click into it and paste with ⌘V or Ctrl+V yourself.</li>
 <li><strong>Some boxes do not accept automatic pasting:</strong> password fields (macOS blocks keys sent by other apps there), apps running as administrator on Windows, and apps that block pasting. The app cannot detect these cases.</li>
 <li><strong>Up to 4000 characters per message.</strong> When one line is too long, the compose box says “A line is too long to translate. Split it into several lines or messages.”</li>

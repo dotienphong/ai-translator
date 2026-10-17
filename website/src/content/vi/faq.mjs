@@ -200,7 +200,7 @@ const GROUPS = [
       },
       {
         q: "Gõ dịch là gì? Chữ tôi gõ có bị gửi đi đâu không?",
-        a: `<p>Gõ dịch giúp bạn nhắn tin bằng tiếng của người bên kia ở bất kỳ ô chat nào: bấm ⌃⌥G (Ctrl+Alt+G), gõ bằng tiếng của bạn, bấm Enter để dán bản dịch vào ô chat, rồi Enter lần nữa để gửi. Chữ bạn gõ và bản dịch được xử lý trên máy bạn, không gửi qua mạng, không ghi xuống đĩa; app chỉ chép bản dịch vào clipboard để dán. Gõ dịch có ở mọi gói còn hiệu lực và không trừ thời lượng dịch. Xem <a href="/huong-dan/go-dich/">hướng dẫn Gõ dịch</a>.</p>`,
+        a: `<p>Gõ dịch giúp bạn nhắn tin bằng tiếng của người bên kia ở ô chat đang dùng: bấm ⌃⌥G (Ctrl+Alt+G), gõ bằng tiếng của bạn, bấm Enter để dán bản dịch vào ô chat, rồi Enter lần nữa để gửi. Chữ bạn gõ và bản dịch được xử lý trên máy bạn, không gửi qua mạng, không ghi xuống đĩa; app chỉ chép bản dịch vào clipboard để dán. Gõ dịch có ở mọi gói còn hiệu lực và không trừ thời lượng dịch. Xem <a href="/huong-dan/go-dich/">hướng dẫn Gõ dịch</a>.</p>`,
       },
       {
         q: "Bấm X trên cửa sổ có tắt app không?",

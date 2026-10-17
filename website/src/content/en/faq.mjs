@@ -200,7 +200,7 @@ const GROUPS = [
       },
       {
         q: "What is Type & Translate? Is the text I type sent anywhere?",
-        a: `<p>Type &amp; Translate lets you message people in their language from any chat box: press ⌃⌥G (Ctrl+Alt+G), type in your own language, press Enter to paste the translation into the chat box, then press Enter again to send. What you type and its translation are processed on your computer, not sent over the network and not written to disk; the app only copies the translation to the clipboard to paste it. Type &amp; Translate is included in every active plan and does not use translation time. See the <a href="/en/guide/type-and-translate/">Type &amp; Translate guide</a>.</p>`,
+        a: `<p>Type &amp; Translate lets you message people in their language from the chat box you are using: press ⌃⌥G (Ctrl+Alt+G), type in your own language, press Enter to paste the translation into the chat box, then press Enter again to send. What you type and its translation are processed on your computer, not sent over the network and not written to disk; the app only copies the translation to the clipboard to paste it. Type &amp; Translate is included in every active plan and does not use translation time. See the <a href="/en/guide/type-and-translate/">Type &amp; Translate guide</a>.</p>`,
       },
       {
         q: "Does closing the window quit the app?",

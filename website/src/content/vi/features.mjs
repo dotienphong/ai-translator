@@ -150,8 +150,8 @@ ${checkList([
 <div class="split">
 <div class="stack-lg reveal">
 <span class="eyebrow">Gõ dịch</span>
-<h2>Nhắn tin bằng tiếng của người bên kia, ở bất kỳ ô chat nào</h2>
-<p>Bấm ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) ở ô chat của trình duyệt, app chat hay khung chat của app họp. Gõ bằng tiếng của bạn trong ô soạn nổi, bản dịch hiện ngay bên dưới. Bấm Enter để dán bản dịch vào ô chat, xem lại rồi bấm Enter lần nữa để gửi.</p>
+<h2>Nhắn tin bằng tiếng của người bên kia, ngay trong ô chat đang dùng</h2>
+<p>Bấm ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) ở ô chat của app bạn đang dùng. Gõ bằng tiếng của bạn trong ô soạn nổi, bản dịch hiện ngay bên dưới. Bấm Enter để dán bản dịch vào ô chat, xem lại rồi bấm Enter lần nữa để gửi.</p>
 ${checkList([
   "Dịch sang <strong>tiếng của người bên kia</strong>, tự lấy từ cài đặt phụ đề, hoặc một ngôn ngữ bạn chọn",
   "Có ở <strong>mọi gói</strong> còn hiệu lực, kể cả Free trong thời gian dùng thử, và <strong>không trừ</strong> thời lượng dịch",

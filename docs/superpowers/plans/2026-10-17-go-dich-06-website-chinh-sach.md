@@ -20,7 +20,7 @@
 1. **Chính sách quyền riêng tư lên 1.4**, sửa mục 2, 3, 4, 10: chữ gõ ở Gõ dịch và bản dịch chỉ nằm trong bộ nhớ, không ghi đĩa, không gửi đi, không có trong log hay báo cáo lỗi; ứng dụng ghi bản dịch vào clipboard; quyền Trợ năng trên macOS chỉ để gửi phím dán. Không có kết nối, bên xử lý hay dữ liệu máy chủ mới, nên không đổi các mục khác. Lý do vẫn sửa dù không có gì rời máy: chính sách liệt kê dữ liệu ở lại trên máy (mục 3) và nói chưa có kết nối nào mang chữ gì; thiếu Gõ dịch thì không còn đủ.
 2. **EULA giữ bản 1.3**: mục 1 nói ứng dụng hiện phụ đề dịch và dịch trên máy; Gõ dịch cũng dịch trên máy và không đổi quyền, nghĩa vụ hay dữ liệu rời máy. Muốn EULA nêu cả Gõ dịch thì làm thêm một bản EULA (ngày hiệu lực riêng), không có trong kế hoạch này.
 3. **Website nói thẳng bản Windows chưa được thử trên máy thật** (hướng dẫn Gõ dịch và trang Tính năng, vi và en), theo CLAUDE.md. Bỏ câu đó khi đã thử Gõ dịch trên Windows; bỏ thì sửa cả needle của test `Gõ dịch: các trang nêu …` (`website/README.md` ghi việc này).
-4. **Website không nêu số đo** thời gian dịch của Gõ dịch (GD2) và không liệt kê tên app đã thử; chỉ nói chung "ô chat của trình duyệt, app chat và khung chat của app họp". Câu này chỉ đúng khi GD1 đạt ở cả ba nhóm đó: Task 0 đọc biên bản; nhóm nào không đạt thì sửa câu trước khi làm tiếp.
+4. **Website không nêu số đo** thời gian dịch của Gõ dịch (GD2) và không liệt kê tên app đã thử; chỉ nói chung "ô chat của trình duyệt, app chat và khung chat của app họp". Câu liệt kê này chỉ đúng khi GD1 đạt ở cả ba nhóm đó. Task 0 đọc biên bản; nhóm nào chưa thử hay không đạt thì **Task 6a** đổi các câu cho đúng phạm vi đã kiểm (lần thực thi 2026-10-18: GD1 mới đạt ở TextEdit và Chrome, nên đã áp Task 6a).
 5. **Câu hướng dẫn bật lại quyền Trợ năng sau khi cập nhật** dùng cách "xóa khỏi danh sách rồi thêm lại, hoặc tắt rồi bật lại công tắc". Nếu kết luận spike S3 (`bench/2026-10-17-go-dich/results/spike.md`) khác, sửa câu đó ở hướng dẫn Gõ dịch và Khắc phục sự cố (vi, en) cho khớp chuỗi `settings.compose.permission.missing` của app.
 6. **Thời điểm:** Task 1 đến 6 và Task 8 làm sau kế hoạch 05, trước khi phát hành. Task 7 làm **vào ngày phát hành, trước khi nâng phiên bản và build app**. Ảnh có chân thanh bên ghi phiên bản app (`app-settings-*`): chụp lại sau khi nâng phiên bản, theo quy tắc sẵn có của `website/README.md` (mục ảnh chụp), cùng các ảnh khác của quy trình phát hành.
 
@@ -2525,6 +2525,270 @@ Expected: `ℹ tests 124`, `ℹ pass 122`, `ℹ fail 0`, không dòng `✖`.
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/meeting-translator-work/go-dich && git branch --show-current && git add website/test/site.test.mjs website/README.md && git commit -q -m "test(website): khóa nội dung Gõ dịch, chặn câu cũ về số phím tắt, số quyền và dịch một chiều" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline -1
+```
+
+---
+
+### Task 6a: Chỉnh các câu nói quá phạm vi đã kiểm
+
+**Làm sau Task 6, trước Task 7.** Lý do (quyết định 4): biên bản nghiệm thu (`bench/2026-10-17-go-dich/results/nghiem-thu-mac.md`) cho thấy GD1 mới đạt ở TextEdit và Chrome (trang thử); **chưa thử ở app chat thật**, nên website không được nói Gõ dịch dùng được "ở bất kỳ ô chat nào" hay liệt kê trình duyệt, app chat, khung chat của app họp như điều đã kiểm. Các câu được đổi thành mô tả đúng cơ chế ("dán vào ô bạn đang gõ, ở app nhận được lệnh dán") và hướng dẫn có thêm dòng "Phạm vi đã thử" ở mục giới hạn. Khi GD1 đạt ở các app chat thật, cập nhật dòng đó (và bỏ needle `chưa thử ở từng app chat`, `not yet tried every chat app` của test).
+
+**Files:**
+- Modify: `website/src/content/{vi,en}/{faq,guide-type-translate,features,guide,home}.mjs`, `website/test/site.test.mjs`
+
+- [ ] **Step 1: Sửa các câu**
+
+Trong `website/src/content/vi/faq.mjs`, tìm dòng (duy nhất):
+
+```
+        a: `<p>Gõ dịch giúp bạn nhắn tin bằng tiếng của người bên kia ở bất kỳ ô chat nào: bấm ⌃⌥G (Ctrl+Alt+G), gõ bằng tiếng của bạn, bấm Enter để dán bản dịch vào ô chat, rồi Enter lần nữa để gửi. Chữ bạn gõ và bản dịch được xử lý trên máy bạn, không gửi qua mạng, không ghi xuống đĩa; app chỉ chép bản dịch vào clipboard để dán. Gõ dịch có ở mọi gói còn hiệu lực và không trừ thời lượng dịch. Xem <a href="/huong-dan/go-dich/">hướng dẫn Gõ dịch</a>.</p>`,
+```
+
+thay bằng:
+
+```
+        a: `<p>Gõ dịch giúp bạn nhắn tin bằng tiếng của người bên kia ở ô chat đang dùng: bấm ⌃⌥G (Ctrl+Alt+G), gõ bằng tiếng của bạn, bấm Enter để dán bản dịch vào ô chat, rồi Enter lần nữa để gửi. Chữ bạn gõ và bản dịch được xử lý trên máy bạn, không gửi qua mạng, không ghi xuống đĩa; app chỉ chép bản dịch vào clipboard để dán. Gõ dịch có ở mọi gói còn hiệu lực và không trừ thời lượng dịch. Xem <a href="/huong-dan/go-dich/">hướng dẫn Gõ dịch</a>.</p>`,
+```
+
+Trong `website/src/content/vi/guide-type-translate.mjs`, tìm dòng (duy nhất):
+
+```
+    "Hướng dẫn Gõ dịch của AI Translator: bấm ⌃⌥G hoặc Ctrl+Alt+G, gõ tin nhắn bằng tiếng của bạn, Enter để dán bản dịch vào ô chat của app bất kỳ.",
+```
+
+thay bằng:
+
+```
+    "Hướng dẫn Gõ dịch của AI Translator: bấm ⌃⌥G hoặc Ctrl+Alt+G, gõ tin nhắn bằng tiếng của bạn, Enter để dán bản dịch vào ô chat bạn đang dùng.",
+```
+
+Cùng file, tìm dòng (duy nhất):
+
+```
+  lead: "Gõ dịch giúp bạn nhắn tin cho người nói tiếng khác ở bất kỳ ô chat nào: trình duyệt, app chat, khung chat của app họp. Bạn gõ bằng tiếng của mình trong một ô soạn nổi, AI Translator dịch ngay trên máy, rồi dán bản dịch vào ô chat để bạn xem lại và gửi.",
+```
+
+thay bằng:
+
+```
+  lead: "Gõ dịch giúp bạn nhắn tin cho người nói tiếng khác ở ô chat của app bạn đang dùng. Bạn gõ bằng tiếng của mình trong một ô soạn nổi, AI Translator dịch ngay trên máy, rồi dán bản dịch vào ô chat để bạn xem lại và gửi.",
+```
+
+Cùng file, tìm dòng (duy nhất):
+
+```
+<li><strong>Bản dịch luôn ở trong clipboard.</strong> Sau khi dán, bản dịch vẫn nằm trong clipboard (nội dung cũ của clipboard bị thay). Nếu chữ không vào ô chat, hãy bấm vào ô đó rồi tự dán bằng ⌘V hay Ctrl+V.</li>
+```
+
+thay bằng:
+
+```
+<li><strong>Phạm vi đã thử:</strong> trên macOS, chúng tôi đã thử ở trình duyệt Chrome và TextEdit, chưa thử ở từng app chat. Cách dán là gửi ⌘V (Ctrl+V) vào ô bạn đang gõ nên thường dùng được ở mọi ô nhận dán; nếu một app cho kết quả lạ, hãy báo cho chúng tôi ở trang <a href="/lien-he/">liên hệ</a>.</li>
+<li><strong>Bản dịch luôn ở trong clipboard.</strong> Sau khi dán, bản dịch vẫn nằm trong clipboard (nội dung cũ của clipboard bị thay). Nếu chữ không vào ô chat, hãy bấm vào ô đó rồi tự dán bằng ⌘V hay Ctrl+V.</li>
+```
+
+Trong `website/src/content/vi/features.mjs`, tìm dòng (duy nhất):
+
+```
+<h2>Nhắn tin bằng tiếng của người bên kia, ở bất kỳ ô chat nào</h2>
+```
+
+thay bằng:
+
+```
+<h2>Nhắn tin bằng tiếng của người bên kia, ngay trong ô chat đang dùng</h2>
+```
+
+Cùng file, tìm dòng (duy nhất):
+
+```
+<p>Bấm ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) ở ô chat của trình duyệt, app chat hay khung chat của app họp. Gõ bằng tiếng của bạn trong ô soạn nổi, bản dịch hiện ngay bên dưới. Bấm Enter để dán bản dịch vào ô chat, xem lại rồi bấm Enter lần nữa để gửi.</p>
+```
+
+thay bằng:
+
+```
+<p>Bấm ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) ở ô chat của app bạn đang dùng. Gõ bằng tiếng của bạn trong ô soạn nổi, bản dịch hiện ngay bên dưới. Bấm Enter để dán bản dịch vào ô chat, xem lại rồi bấm Enter lần nữa để gửi.</p>
+```
+
+Trong `website/src/content/vi/guide.mjs`, tìm dòng (duy nhất):
+
+```
+${linkCard({ href: "/huong-dan/go-dich/", icon: "message", title: "Gõ dịch tin nhắn", text: "Bấm ⌃⌥G (Ctrl+Alt+G) ở ô chat bất kỳ, gõ bằng tiếng của bạn, Enter để dán bản dịch; quyền Trợ năng trên macOS.", more: MORE })}
+```
+
+thay bằng:
+
+```
+${linkCard({ href: "/huong-dan/go-dich/", icon: "message", title: "Gõ dịch tin nhắn", text: "Bấm ⌃⌥G (Ctrl+Alt+G) ở ô chat đang dùng, gõ bằng tiếng của bạn, Enter để dán bản dịch; quyền Trợ năng trên macOS.", more: MORE })}
+```
+
+Trong `website/src/content/vi/home.mjs`, tìm dòng (duy nhất):
+
+```
+<p class="lead">Bấm ⌃⌥G (Windows: Ctrl+Alt+G) ở ô chat bất kỳ, gõ bằng tiếng của bạn rồi bấm Enter: bản dịch được dán vào ô chat để bạn xem lại và gửi.</p>
+```
+
+thay bằng:
+
+```
+<p class="lead">Bấm ⌃⌥G (Windows: Ctrl+Alt+G) ở ô chat đang dùng, gõ bằng tiếng của bạn rồi bấm Enter: bản dịch được dán vào ô chat để bạn xem lại và gửi.</p>
+```
+
+Cùng file, tìm dòng (duy nhất):
+
+```
+  "Dùng ở ô chat của trình duyệt, app chat và khung chat của app họp",
+```
+
+thay bằng:
+
+```
+  "Dán vào ô bạn đang gõ, ở app nhận được lệnh dán (⌘V, Ctrl+V)",
+```
+
+Trong `website/src/content/en/faq.mjs`, tìm dòng (duy nhất):
+
+```
+        a: `<p>Type &amp; Translate lets you message people in their language from any chat box: press ⌃⌥G (Ctrl+Alt+G), type in your own language, press Enter to paste the translation into the chat box, then press Enter again to send. What you type and its translation are processed on your computer, not sent over the network and not written to disk; the app only copies the translation to the clipboard to paste it. Type &amp; Translate is included in every active plan and does not use translation time. See the <a href="/en/guide/type-and-translate/">Type &amp; Translate guide</a>.</p>`,
+```
+
+thay bằng:
+
+```
+        a: `<p>Type &amp; Translate lets you message people in their language from the chat box you are using: press ⌃⌥G (Ctrl+Alt+G), type in your own language, press Enter to paste the translation into the chat box, then press Enter again to send. What you type and its translation are processed on your computer, not sent over the network and not written to disk; the app only copies the translation to the clipboard to paste it. Type &amp; Translate is included in every active plan and does not use translation time. See the <a href="/en/guide/type-and-translate/">Type &amp; Translate guide</a>.</p>`,
+```
+
+Trong `website/src/content/en/guide-type-translate.mjs`, tìm dòng (duy nhất):
+
+```
+    "How to use Type & Translate in AI Translator: press ⌃⌥G or Ctrl+Alt+G, type in your own language, press Enter to paste the translation into any chat box.",
+```
+
+thay bằng:
+
+```
+    "How to use Type & Translate in AI Translator: press ⌃⌥G or Ctrl+Alt+G, type in your own language, Enter pastes the translation into the chat box you are using.",
+```
+
+Cùng file, tìm dòng (duy nhất):
+
+```
+  lead: "Type & Translate lets you message people who speak another language from any chat box: a browser, a chat app, the chat panel of a meeting app. You type in your own language in a floating compose box, AI Translator translates it on your computer, then pastes the translation into the chat box for you to check and send.",
+```
+
+thay bằng:
+
+```
+  lead: "Type & Translate lets you message people who speak another language from the chat box of the app you are using. You type in your own language in a floating compose box, AI Translator translates it on your computer, then pastes the translation into the chat box for you to check and send.",
+```
+
+Cùng file, tìm dòng (duy nhất):
+
+```
+<li><strong>The translation is always on the clipboard.</strong> After pasting, the translation stays on the clipboard (it replaces what was there). If the text does not appear in the chat box, click into it and paste with ⌘V or Ctrl+V yourself.</li>
+```
+
+thay bằng:
+
+```
+<li><strong>What we have tried:</strong> on macOS, in the Chrome browser and TextEdit; we have not yet tried every chat app. Pasting works by sending ⌘V (Ctrl+V) to the box you are typing in, so it usually works in any box that accepts pasting; if an app behaves oddly, tell us on the <a href="/en/contact/">contact</a> page.</li>
+<li><strong>The translation is always on the clipboard.</strong> After pasting, the translation stays on the clipboard (it replaces what was there). If the text does not appear in the chat box, click into it and paste with ⌘V or Ctrl+V yourself.</li>
+```
+
+Trong `website/src/content/en/features.mjs`, tìm dòng (duy nhất):
+
+```
+<h2>Chat in the other person's language, in any chat box</h2>
+```
+
+thay bằng:
+
+```
+<h2>Chat in the other person's language, right in the chat box you are using</h2>
+```
+
+Cùng file, tìm dòng (duy nhất):
+
+```
+<p>Press ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) in the chat box of a browser, a chat app or a meeting app. Type in your own language in the floating compose box and the translation appears right below. Press Enter to paste the translation into the chat box, check it, then press Enter again to send.</p>
+```
+
+thay bằng:
+
+```
+<p>Press ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) in the chat box of the app you are using. Type in your own language in the floating compose box and the translation appears right below. Press Enter to paste the translation into the chat box, check it, then press Enter again to send.</p>
+```
+
+Trong `website/src/content/en/guide.mjs`, tìm dòng (duy nhất):
+
+```
+${linkCard({ href: "/en/guide/type-and-translate/", icon: "message", title: "Type & Translate", text: "Press ⌃⌥G (Ctrl+Alt+G) in any chat box, type in your own language and press Enter to paste the translation; Accessibility on macOS.", more: MORE })}
+```
+
+thay bằng:
+
+```
+${linkCard({ href: "/en/guide/type-and-translate/", icon: "message", title: "Type & Translate", text: "Press ⌃⌥G (Ctrl+Alt+G) in the chat box you are using, type in your own language and press Enter to paste the translation; Accessibility on macOS.", more: MORE })}
+```
+
+Trong `website/src/content/en/home.mjs`, tìm dòng (duy nhất):
+
+```
+<p class="lead">Press ⌃⌥G (Windows: Ctrl+Alt+G) in any chat box, type in your own language and press Enter: the translation is pasted into the chat box for you to check and send.</p>
+```
+
+thay bằng:
+
+```
+<p class="lead">Press ⌃⌥G (Windows: Ctrl+Alt+G) in the chat box you are using, type in your own language and press Enter: the translation is pasted into the chat box for you to check and send.</p>
+```
+
+Cùng file, tìm dòng (duy nhất):
+
+```
+  "Works in the chat boxes of browsers, chat apps and meeting apps",
+```
+
+thay bằng:
+
+```
+  "Pastes into the box you are typing in, in any app that accepts pasting (⌘V, Ctrl+V)",
+```
+
+Trong `website/test/site.test.mjs`, tìm dòng (duy nhất):
+
+```
+    "/huong-dan/go-dich/": ["⌃⌥G", "Ctrl+Alt+G", "Mọi gói còn hiệu lực", "không trừ thời lượng dịch", "không bao giờ dán câu gốc", "Trợ năng", "clipboard", "chưa thử nó trên máy Windows thật"],
+```
+
+thay bằng:
+
+```
+    "/huong-dan/go-dich/": ["⌃⌥G", "Ctrl+Alt+G", "Mọi gói còn hiệu lực", "không trừ thời lượng dịch", "không bao giờ dán câu gốc", "Trợ năng", "clipboard", "chưa thử nó trên máy Windows thật", "chưa thử ở từng app chat"],
+```
+
+Cùng file, tìm dòng (duy nhất):
+
+```
+    "/en/guide/type-and-translate/": ["⌃⌥G", "Ctrl+Alt+G", "Every active plan", "does not use translation time", "never pastes your original text", "Accessibility", "clipboard", "not yet tried it on a real Windows computer"],
+```
+
+thay bằng:
+
+```
+    "/en/guide/type-and-translate/": ["⌃⌥G", "Ctrl+Alt+G", "Every active plan", "does not use translation time", "never pastes your original text", "Accessibility", "clipboard", "not yet tried it on a real Windows computer", "not yet tried every chat app"],
+```
+
+- [ ] **Step 2: Chạy, commit**
+
+```bash
+cd /Users/dtphong/Desktop/software_business/meeting-translator-work/go-dich && (cd website && pnpm test 2>&1 | grep -E 'ℹ (tests|pass|fail)|^✖')
+```
+Expected: `ℹ tests 124`, `ℹ pass 122`, `ℹ fail 0` (mô tả meta của trang hướng dẫn tiếng Anh không quá 165 ký tự).
+
+```bash
+cd /Users/dtphong/Desktop/software_business/meeting-translator-work/go-dich && git branch --show-current && git add website && git commit -q -m "docs(website): Gõ dịch chỉ nói điều đã kiểm: dán vào ô đang gõ, ghi phạm vi đã thử" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline -1
 ```
 
 ---

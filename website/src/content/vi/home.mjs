@@ -173,9 +173,9 @@ ${checkList([
 <div class="stack-lg reveal">
 <span class="eyebrow">Gõ dịch</span>
 <h2>Trả lời bằng tiếng của người bên kia</h2>
-<p class="lead">Bấm ⌃⌥G (Windows: Ctrl+Alt+G) ở ô chat bất kỳ, gõ bằng tiếng của bạn rồi bấm Enter: bản dịch được dán vào ô chat để bạn xem lại và gửi.</p>
+<p class="lead">Bấm ⌃⌥G (Windows: Ctrl+Alt+G) ở ô chat đang dùng, gõ bằng tiếng của bạn rồi bấm Enter: bản dịch được dán vào ô chat để bạn xem lại và gửi.</p>
 ${checkList([
-  "Dùng ở ô chat của trình duyệt, app chat và khung chat của app họp",
+  "Dán vào ô bạn đang gõ, ở app nhận được lệnh dán (⌘V, Ctrl+V)",
   "Dịch trên máy bạn: chữ bạn gõ không rời máy",
   "Có ở mọi gói, không trừ thời lượng dịch",
 ])}

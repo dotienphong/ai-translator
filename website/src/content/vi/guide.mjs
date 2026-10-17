@@ -44,7 +44,7 @@ ${linkCard({ href: "/huong-dan/cap-quyen-thu-am-macos/", icon: "mic", title: "C�
 ${sectionHead({ eyebrow: "Dùng hằng ngày", title: "Làm chủ thanh phụ đề, Gõ dịch, từ điển và bản chép lời" })}
 <div class="grid grid-2">
 ${linkCard({ href: "/huong-dan/thanh-phu-de-va-phim-tat/", icon: "captions", title: "Thanh phụ đề và phím tắt", text: "Kéo, khóa, ẩn và cuộn thanh phụ đề, chỉnh cỡ chữ và màu, bảng phím tắt và menu ở menu bar.", more: MORE })}
-${linkCard({ href: "/huong-dan/go-dich/", icon: "message", title: "Gõ dịch tin nhắn", text: "Bấm ⌃⌥G (Ctrl+Alt+G) ở ô chat bất kỳ, gõ bằng tiếng của bạn, Enter để dán bản dịch; quyền Trợ năng trên macOS.", more: MORE })}
+${linkCard({ href: "/huong-dan/go-dich/", icon: "message", title: "Gõ dịch tin nhắn", text: "Bấm ⌃⌥G (Ctrl+Alt+G) ở ô chat đang dùng, gõ bằng tiếng của bạn, Enter để dán bản dịch; quyền Trợ năng trên macOS.", more: MORE })}
 ${linkCard({ href: "/huong-dan/tu-dien-thuat-ngu/", icon: "book", title: "Dùng từ điển thuật ngữ", text: "Thêm tên riêng và thuật ngữ, nhập xuất CSV, và hiểu vì sao từ điển chỉ là gợi ý cho bộ dịch.", more: MORE })}
 ${linkCard({ href: "/huong-dan/lich-su-va-xuat-file/", icon: "history", title: "Lịch sử và xuất bản chép lời", text: "Bật lưu lịch sử, xem lại các phiên, sao chép bản chép lời và xuất TXT, SRT hoặc Markdown.", more: MORE })}
 </div>

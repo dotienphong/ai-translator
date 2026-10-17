@@ -154,8 +154,8 @@ ${checkList([
 <div class="split">
 <div class="stack-lg reveal">
 <span class="eyebrow">Type &amp; Translate</span>
-<h2>Chat in the other person's language, in any chat box</h2>
-<p>Press ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) in the chat box of a browser, a chat app or a meeting app. Type in your own language in the floating compose box and the translation appears right below. Press Enter to paste the translation into the chat box, check it, then press Enter again to send.</p>
+<h2>Chat in the other person's language, right in the chat box you are using</h2>
+<p>Press ${keys(["⌃", "⌥", "G"])} (Windows: ${keys(["Ctrl", "Alt", "G"])}) in the chat box of the app you are using. Type in your own language in the floating compose box and the translation appears right below. Press Enter to paste the translation into the chat box, check it, then press Enter again to send.</p>
 ${checkList([
   "Translates into <strong>the language of the people you talk to</strong>, taken from your subtitle settings, or a language you choose",
   "Included in <strong>every active plan</strong>, Free during the trial too, and it <strong>does not use</strong> translation time",

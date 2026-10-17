@@ -871,8 +871,8 @@ test("Gõ dịch: hướng dẫn trích đúng chữ trên ô soạn và ở Cà
 
 test("Gõ dịch: các trang nêu phím tắt, mọi gói, không trừ thời lượng, quyền Trợ năng, chữ gõ không rời máy; bản Windows chưa thử trên máy thật", () => {
   const need = {
-    "/huong-dan/go-dich/": ["⌃⌥G", "Ctrl+Alt+G", "Mọi gói còn hiệu lực", "không trừ thời lượng dịch", "không bao giờ dán câu gốc", "Trợ năng", "clipboard", "chưa thử nó trên máy Windows thật"],
-    "/en/guide/type-and-translate/": ["⌃⌥G", "Ctrl+Alt+G", "Every active plan", "does not use translation time", "never pastes your original text", "Accessibility", "clipboard", "not yet tried it on a real Windows computer"],
+    "/huong-dan/go-dich/": ["⌃⌥G", "Ctrl+Alt+G", "Mọi gói còn hiệu lực", "không trừ thời lượng dịch", "không bao giờ dán câu gốc", "Trợ năng", "clipboard", "chưa thử nó trên máy Windows thật", "chưa thử ở từng app chat"],
+    "/en/guide/type-and-translate/": ["⌃⌥G", "Ctrl+Alt+G", "Every active plan", "does not use translation time", "never pastes your original text", "Accessibility", "clipboard", "not yet tried it on a real Windows computer", "not yet tried every chat app"],
     "/": ["Trả lời bằng tiếng của người bên kia", "không trừ thời lượng dịch"],
     "/en/": ["Reply in the other person's language", "does not use translation time"],
     "/tinh-nang/": ["Sáu phím tắt toàn cục", "Mở hoặc đóng ô soạn Gõ dịch", "không trừ", "chưa được thử trên máy thật"],

@@ -44,7 +44,7 @@ ${linkCard({ href: "/en/guide/macos-audio-permission/", icon: "mic", title: "Aud
 ${sectionHead({ eyebrow: "Everyday use", title: "Get the most from the bar, Type & Translate, glossary and transcript" })}
 <div class="grid grid-2">
 ${linkCard({ href: "/en/guide/subtitle-bar-and-shortcuts/", icon: "captions", title: "Subtitle bar and shortcuts", text: "Move, lock, hide and scroll the bar, change font size and colors, the shortcut table and the menu bar menu.", more: MORE })}
-${linkCard({ href: "/en/guide/type-and-translate/", icon: "message", title: "Type & Translate", text: "Press ⌃⌥G (Ctrl+Alt+G) in any chat box, type in your own language and press Enter to paste the translation; Accessibility on macOS.", more: MORE })}
+${linkCard({ href: "/en/guide/type-and-translate/", icon: "message", title: "Type & Translate", text: "Press ⌃⌥G (Ctrl+Alt+G) in the chat box you are using, type in your own language and press Enter to paste the translation; Accessibility on macOS.", more: MORE })}
 ${linkCard({ href: "/en/guide/glossary/", icon: "book", title: "Use the glossary", text: "Add names and terms, import and export CSV, and see why the glossary is a hint to the translator, not a guarantee.", more: MORE })}
 ${linkCard({ href: "/en/guide/history-and-export/", icon: "history", title: "History and exporting transcripts", text: "Turn on saved history, review past sessions, copy the transcript and export TXT, SRT or Markdown.", more: MORE })}
 </div>
