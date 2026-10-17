@@ -124,6 +124,8 @@ pub const COMPOSE_TOO_LONG: &str = "composeTooLong";
 pub const COMPOSE_FAILED: &str = "composeFailed";
 /// `llama-server` không dùng được nữa (đã khởi động lại quá giới hạn, §6.5).
 pub const COMPOSE_UNAVAILABLE: &str = "composeUnavailable";
+/// Không ghi được bản dịch vào clipboard. Cùng mã với lỗi sao chép của giao diện (`error.copyFailed`).
+pub const COPY_FAILED: &str = "copyFailed";
 
 impl CommandError {
     pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
@@ -257,6 +259,7 @@ mod tests {
                 COMPOSE_TOO_LONG,
                 COMPOSE_FAILED,
                 COMPOSE_UNAVAILABLE,
+                COPY_FAILED,
             ]
             .map(String::from),
         );

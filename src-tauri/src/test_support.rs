@@ -134,6 +134,9 @@ impl SystemOpener for FakeSystem {
     fn open_audio_permission_settings(&self) -> Result<(), String> {
         self.push("open_audio_permission_settings".into())
     }
+    fn open_accessibility_settings(&self) -> Result<(), String> {
+        self.push("open_accessibility_settings".into())
+    }
 }
 
 /// Trạng thái của bản giả `FakeLoginItem`.

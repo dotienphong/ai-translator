@@ -24,11 +24,15 @@ pub trait SystemOpener: Send + Sync + 'static {
     fn open_external_url(&self, url: &str) -> Result<(), String>;
     /// macOS: System Settings › Privacy & Security, trang quyền ghi âm thanh hệ thống (kế hoạch 02, §4.1 bước 4, §9).
     fn open_audio_permission_settings(&self) -> Result<(), String>;
+    /// macOS: System Settings › Privacy & Security › Accessibility, quyền Gõ dịch cần để tự dán (spec 2026-10-17-go-dich §4.2).
+    fn open_accessibility_settings(&self) -> Result<(), String>;
 }
 
 /// macOS: trang "Screen & System Audio Recording" của System Settings, phần "System Audio Recording Only" (quyền mà
 /// Core Audio tap cần). Cần người kiểm trên máy thật (kế hoạch 02c, Task 8).
 pub const AUDIO_PERMISSION_URL: &str = "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture";
+/// macOS: trang "Accessibility" của System Settings (quyền gửi phím dán vào app khác, spec 2026-10-17-go-dich §4.2).
+pub const ACCESSIBILITY_URL: &str = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
 
 /// `SystemOpener` đang dùng.
 pub struct System(pub Box<dyn SystemOpener>);
@@ -84,6 +88,16 @@ impl<R: Runtime> SystemOpener for Native<R> {
             .open_url(AUDIO_PERMISSION_URL, None::<&str>)
             .map_err(|e| e.to_string())
     }
+
+    fn open_accessibility_settings(&self) -> Result<(), String> {
+        if !cfg!(target_os = "macos") {
+            return Err("chỉ có trên macOS".into());
+        }
+        self.0
+            .opener()
+            .open_url(ACCESSIBILITY_URL, None::<&str>)
+            .map_err(|e| e.to_string())
+    }
 }
 
 /// Lớp chặn thứ hai sau `navigation`: bản thật chỉ mở URL `https` có tên máy chủ, kể cả khi một lời gọi
@@ -131,6 +145,10 @@ pub fn open_audio_permission_settings<R: Runtime>(app: &AppHandle<R>) -> Result<
     with(app, |s| s.open_audio_permission_settings())
 }
 
+pub fn open_accessibility_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    with(app, |s| s.open_accessibility_settings())
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
@@ -162,6 +180,9 @@ mod tests {
         }
         fn open_audio_permission_settings(&self) -> Result<(), String> {
             self.push("open_audio_permission_settings")
+        }
+        fn open_accessibility_settings(&self) -> Result<(), String> {
+            self.push("open_accessibility_settings")
         }
     }
 
@@ -196,6 +217,10 @@ mod tests {
             https_only(AUDIO_PERMISSION_URL).is_err(),
             "link ngoài không mở được trang này"
         );
+        let url = Url::parse(ACCESSIBILITY_URL).unwrap();
+        assert_eq!(url.scheme(), "x-apple.systempreferences");
+        assert!(url.as_str().ends_with("?Privacy_Accessibility"));
+        assert!(https_only(ACCESSIBILITY_URL).is_err());
     }
 
     #[test]
@@ -207,6 +232,7 @@ mod tests {
         assert!(open_login_items_settings(app).is_err());
         assert!(open_external_url(app, "https://pay.payos.vn/").is_err());
         assert!(open_audio_permission_settings(app).is_err());
+        assert!(open_accessibility_settings(app).is_err());
     }
 
     #[test]
@@ -220,6 +246,7 @@ mod tests {
         open_login_items_settings(app).unwrap();
         open_external_url(app, "https://pay.payos.vn/web/1").unwrap();
         open_audio_permission_settings(app).unwrap();
+        open_accessibility_settings(app).unwrap();
         assert_eq!(
             *recorder.0.lock().unwrap(),
             [
@@ -228,6 +255,7 @@ mod tests {
                 "open_login_items_settings",
                 "open_external_url https://pay.payos.vn/web/1",
                 "open_audio_permission_settings",
+                "open_accessibility_settings",
             ]
         );
     }

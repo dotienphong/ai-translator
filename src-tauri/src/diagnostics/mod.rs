@@ -134,6 +134,7 @@ pub const SKIPPED_CODES: &[&str] = &[
     errors::COMPOSE_TOO_LONG,
     errors::COMPOSE_FAILED,
     errors::COMPOSE_UNAVAILABLE,
+    errors::COPY_FAILED,
 ];
 
 /// Mã lỗi này có gửi báo cáo không.
