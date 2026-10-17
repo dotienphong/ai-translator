@@ -3,5 +3,6 @@
 //! Khung tạm: mỗi task thêm một module vào danh sách dưới đây; Task 11 thay file này bằng bản đầy đủ.
 
 pub mod logs;
+pub mod machine;
 pub mod report;
 pub mod scrub;
