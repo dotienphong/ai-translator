@@ -173,6 +173,45 @@ export interface OverlayView {
   translateWhileSpeaking: boolean;
 }
 
+// Phần cài đặt của ô soạn Gõ dịch (`compose::ComposeView`, spec 2026-10-17-go-dich §1.2, §1.4), gửi kèm mỗi lần mở.
+export interface ComposeView {
+  uiLanguage: UiLanguage;
+  theme: Theme;
+  // Ngôn ngữ đang dịch sang, đã tính "Tự động".
+  target: Lang;
+  // Enter tự dán (Windows luôn; macOS theo cài đặt) hay chỉ chép.
+  autoPaste: boolean;
+  // Bản quyền đang chặn Gõ dịch: mã lỗi (`error.<mã>`); `null` là dùng được.
+  blocked: string | null;
+  platform: "macos" | "windows";
+}
+
+// Kết quả của một yêu cầu dịch (`compose::Outcome`).
+export type ComposeOutcome =
+  | { kind: "translated"; text: string }
+  // Chữ gõ đã là ngôn ngữ đích: không dịch, Enter dán nguyên văn.
+  | { kind: "sameLanguage" }
+  | { kind: "failed"; code: string };
+
+export interface ComposeDone {
+  id: number;
+  outcome: ComposeOutcome;
+}
+
+// Phần chữ dịch mới của dòng `line` (đánh số theo mọi dòng của chữ đã gửi, kể cả dòng trống); `reset`: bỏ phần đã hiện.
+export interface ComposeDelta {
+  id: number;
+  line: number;
+  text: string;
+  reset: boolean;
+}
+
+// Kết quả của lệnh dán (`compose::Submitted`): đã dán; đã chép (người dùng tự dán); macOS chưa có quyền Trợ năng (đã chép, ô
+// soạn còn mở để hiện hộp quyền).
+export type ComposeSubmitted = "pasted" | "copied" | "needsPermission";
+// Màn hình của cửa sổ chính mà nút của hộp lỗi mở (`compose::MainScreen`).
+export type ComposeMainScreen = "models" | "upgrade" | "license" | "home";
+
 // Phụ đề (spec §6.6, `pipeline::subtitle::Subtitle`).
 export interface Subtitle {
   id: number;
@@ -485,6 +524,16 @@ export interface Commands {
   dismiss_models_update: { args: undefined; result: ModelsView };
   // "Tải lại": băm lại gói, bỏ file hỏng (để lần tải sau chỉ tải lại chúng).
   verify_models: { args: { pack: string }; result: ModelsView };
+  // Ô soạn Gõ dịch (spec 2026-10-17-go-dich §3.6), chỉ cửa sổ `compose` gọi được. `compose_translate` trả số của yêu cầu, kết
+  // quả tới qua `compose://delta` và `compose://done`; `compose_submit` dán kết quả đã lưu của đúng yêu cầu đó (không nhận chữ).
+  get_compose_view: { args: undefined; result: ComposeView };
+  compose_translate: { args: { text: string }; result: number };
+  compose_submit: { args: { id: number }; result: ComposeSubmitted };
+  compose_close: { args: undefined; result: null };
+  compose_resize: { args: { height: number }; result: null };
+  compose_open_accessibility: { args: undefined; result: null };
+  compose_copy_only: { args: undefined; result: null };
+  compose_open_main: { args: { screen: ComposeMainScreen }; result: null };
 }
 
 export interface Events {
@@ -506,6 +555,11 @@ export interface Events {
   "audio://level": number;
   // Trạng thái quản lý model (kế hoạch 04).
   "models://state": ModelsView;
+  // Ô soạn Gõ dịch: mở (kèm phần cài đặt của nó), yêu cầu đang chờ nạp model, phần chữ dịch mới, kết quả.
+  "compose://open": ComposeView;
+  "compose://loading": { id: number };
+  "compose://delta": ComposeDelta;
+  "compose://done": ComposeDone;
 }
 
 export type Command = keyof Commands;
