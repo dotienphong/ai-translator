@@ -4,12 +4,14 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { AdminRpc } from "../src/admin-rpc";
 import { sha256Hex } from "../src/crypto";
 import { signKeyCheck } from "../src/deps";
+import { insertReportStatements } from "../src/error-reports";
 import { formatLicenseKey, generateLicenseKey } from "../src/license-key";
 import { verifyToken } from "../src/token";
 import { AUD, corruptSignature, type Issuer, makeIssuer, TEAM } from "./access-jwt-helper";
 import { ADMIN, type AdminCall, API_ORIGIN, apiKeyEnv, auditCount, lastAudit, licenseRow, makeAdmin } from "./admin-harness";
 import { resetDb, withFailingInsert } from "./db";
 import { TEST_CREEM_API_KEY } from "./fakes";
+import { makeReport } from "./report-fixture";
 import vectors from "./vectors/token-v1.json";
 import { DAY, T0 } from "./world";
 
@@ -1120,6 +1122,7 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
       activations: 1,
       licenses: 1,
       orders: 1,
+      error_reports: 0,
       note: "yêu cầu xóa qua email hỗ trợ ngày 2026-10-01",
     });
     const again = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "M" });
@@ -1384,6 +1387,24 @@ describe("hai khách: tra cứu và xóa dữ liệu chỉ đụng đúng email 
     expect((res.body.licenses as { license_key: string }[]).map((l) => l.license_key)).toEqual([a.licenseKey]);
     expect(JSON.stringify(res.body)).not.toContain(b.email);
     expect(JSON.parse((await lastAudit() as { detail: string }).detail)).toEqual({ by: "email", licenses: 1, orders: 1 });
+  });
+
+  it("xóa luôn báo cáo lỗi của các máy thuộc email đó; giữ báo cáo của máy khác và của máy chỉ dùng thử", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy({ email: "erase@example.com" });
+    const mine = await sha256Hex("d1");
+    await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: mine, device_label: "MacBook của An" });
+    const seed = async (id: string, device: string) => {
+      await env.DB.batch(insertReportStatements(env.DB, await makeReport({ id, device_id_hash: device }), T0));
+    };
+    await seed("R-0000-0001", mine);
+    await seed("R-0000-0002", mine);
+    await seed("R-0000-0003", await sha256Hex("trial-only"));
+    const res = await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } });
+    expect(res.body).toEqual({ activations: 1, licenses: 1, orders: 1 });
+    expect((await env.DB.prepare("SELECT id FROM error_reports ORDER BY id").all<{ id: string }>()).results).toEqual([{ id: "R-0000-0003" }]);
+    expect((await env.DB.prepare("SELECT id FROM error_report_logs ORDER BY id").all<{ id: string }>()).results).toEqual([{ id: "R-0000-0003" }]);
+    expect(JSON.parse(((await lastAudit()) as { detail: string }).detail)).toMatchObject({ error_reports: 2 });
   });
 
   it("xóa dữ liệu của A giữ nguyên device_label và email của B", async () => {
