@@ -92,7 +92,8 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | F7 | Giao diện tiếng Việt, English, 日本語, 中文 và 한국어 |
 | F8 | Phân quyền theo gói (Free dùng thử và hai gói trả phí, §2) bằng license key, dùng được khi offline. Hạn mức dịch theo gói, đếm riêng trên từng máy; mỗi key một máy (§6.8). |
 | F9 | Tự cập nhật app |
-| F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề, `Ctrl+Alt+PageUp` / `Ctrl+Alt+PageDown` (`⌃⌥PageUp` / `⌃⌥PageDown`) để cuộn phụ đề lên/xuống xem câu cũ (§4.4). Không chọn Ctrl+Alt+mũi tên vì driver Intel trên Windows dùng tổ hợp đó để xoay màn hình. Ở Phase 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
+| F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề, `Ctrl+Alt+PageUp` / `Ctrl+Alt+PageDown` (`⌃⌥PageUp` / `⌃⌥PageDown`) để cuộn phụ đề lên/xuống xem câu cũ (§4.4), `Ctrl+Alt+G` / `⌃⌥G` để mở ô soạn Gõ dịch (F11; chỉ đăng ký khi bật Gõ dịch). Không chọn Ctrl+Alt+mũi tên vì driver Intel trên Windows dùng tổ hợp đó để xoay màn hình. Ở Phase 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
+| F11 | **Gõ dịch** (spec `2026-10-17-go-dich-design.md`, §4.6): ở ô nhập của app bất kỳ, bấm phím tắt (F10) để mở ô soạn nổi, gõ tin nhắn bằng tiếng của mình; bản dịch hiện dần. Enter dán bản dịch vào ô nhập cũ (macOS cần quyền Trợ năng, thiếu thì chỉ chép vào clipboard), Enter lần nữa (của app chat) thì gửi. Ngôn ngữ đích mặc định là tiếng người bên kia, tính từ cài đặt phụ đề. Dùng được ở mọi gói còn hiệu lực, không trừ phút; dịch trên máy, không gửi chữ đi đâu. |
 
 ### 3.2 Ngoài phạm vi MVP
 
@@ -200,6 +201,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Cài đặt:**
   - **Chung:** ngôn ngữ giao diện, khởi động cùng hệ thống, giao diện sáng/tối, kênh cập nhật (stable hoặc beta).
   - **Phụ đề:** cỡ chữ, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen, cỡ chữ 20 px, bật hiện câu gốc. Đổi là thấy ngay trên thanh phụ đề, và trên khung xem trước ở đầu nhóm (một câu mẫu vẽ theo đúng cài đặt, đổi ngay cả khi đang kéo thanh trượt; thêm 2026-10-10); công tắc "Dịch trong lúc người nói chưa dừng" (mặc định tắt, có tác dụng từ đoạn kế tiếp), kèm ghi chú "Máy này chưa đủ nhanh, app đang dịch sau mỗi câu." khi máy bị tắt chế độ này (spec 2026-10-10 §6.3).
+  - **Gõ dịch** (F11): bật/tắt (tắt thì gỡ phím tắt của nó, phím vẫn giữ); "Dịch sang": Tự động (tiếng người bên kia, ghi rõ đang là ngôn ngữ nào) hay một trong năm ngôn ngữ; chỉ macOS: "Tự dán vào ô đang gõ", kèm trạng thái quyền Trợ năng và nút mở trang Trợ năng (spec 2026-10-17-go-dich §1.4). Phím tắt đổi ở nhóm Phím tắt.
   - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
@@ -249,6 +251,17 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - **Chuỗi phía Rust** (menu khay, chú thích khay, file xuất bản chép lời, 21 chuỗi) nằm trong một bảng nhỏ riêng, có đủ năm ngôn ngữ.
 - **Câu hỏi quyền macOS** (`NSAudioCaptureUsageDescription`) có đủ năm ngôn ngữ trong `src-tauri/macos/<lproj>/InfoPlist.strings`; tiếng Trung là `zh-Hans`.
 - **Menu app trên Mac** (About, Edit, Window, Quit…) dùng chữ mặc định English của các mục có sẵn ở MVP. Chỉ menu khay theo ngôn ngữ giao diện.
+
+### 4.6 Ô soạn Gõ dịch
+
+Tóm tắt của F11; chi tiết, quyết định và nghiệm thu ở `docs/superpowers/specs/2026-10-17-go-dich-design.md`.
+
+- **Luồng:** con trỏ ở ô chat của app bất kỳ, bấm ⌃⌥G (Ctrl+Alt+G): ô soạn nổi hiện giữa màn hình có con trỏ chuột (rộng 560 px, mép trên ở 25% chiều cao màn hình, nổi cả trên app toàn màn hình), con trỏ nằm sẵn trong ô gõ, app chat vẫn ở phía trước. Ngừng gõ 400 ms thì app dịch toàn bộ chữ đang có; bản dịch hiện dần bên dưới ô gõ. Enter: ô đóng, bản dịch được dán vào ô chat cũ, không gửi gì. Enter lần nữa (của app chat) thì gửi.
+- **Phím:** Enter dán (đang dịch thì dịch xong mới dán; dịch lỗi thì dịch lại, không bao giờ dán câu gốc; câu đã là ngôn ngữ đích thì dán nguyên văn; ô trống thì đóng). Shift+Enter xuống dòng. Enter khi bộ gõ đang chọn chữ thuộc về bộ gõ. Esc, phím tắt lần nữa hay bấm ra ngoài thì đóng mà giữ bản nháp; mở lại thì bản nháp được chọn sẵn.
+- **Dịch:** cùng hàm dịch, prompt và hậu xử lý của phụ đề (§6.5), không ngữ cảnh, không thuật ngữ; tách theo dòng; tối đa 4000 ký tự, 400 token mỗi dòng. Ngôn ngữ nguồn nhận theo chữ viết; câu chắc chắn đã là ngôn ngữ đích thì không dịch. Mở ô soạn thì chạy sẵn hai tiến trình phụ đúng thứ tự của §5.
+- **Dán:** chép bản dịch vào clipboard (giữ lại, không khôi phục nội dung cũ) rồi gửi ⌘V (macOS, cần quyền Trợ năng; thiếu quyền thì chỉ chép và ô soạn hiện hướng dẫn) hay Ctrl+V (Windows, sau khi đưa cửa sổ trước về phía trước).
+- **Gói và quyền riêng tư:** dùng được ở mọi gói còn hiệu lực, không trừ phút, không gọi mạng. Chữ gõ và bản dịch chỉ nằm trong bộ nhớ; log chỉ ghi số liệu.
+- **Cài đặt:** nhóm "Gõ dịch" (§4.3); phím tắt ở nhóm Phím tắt (F10).
 
 ## 5. Kiến trúc tổng thể
 

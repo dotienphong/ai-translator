@@ -2,6 +2,7 @@
 
 **Ngày:** 2026-10-17
 **Trạng thái:** Chủ dự án đã duyệt thiết kế qua hội thoại ngày 2026-10-17 (các quyết định ở mục 0). Làm trên nhánh `go-dich` (worktree `meeting-translator-work/go-dich`), **không merge, không push, không phát hành khi chưa được cho phép**.
+**Nghiệm thu:** trên Mac ngày 2026-10-18, kết quả ở `bench/2026-10-17-go-dich/results/nghiem-thu-mac.md` (spike ở `results/spike.md`): GD2, GD3, GD6 đạt hay đã ghi số, GD5 đạt theo `nettop`; GD1, GD4 mới thử ở TextEdit và Chrome (trang thử), **chưa thử ở app chat thật**; S3 chưa làm. Windows chưa thử.
 **Quan hệ với spec khác:** thêm tính năng F11 vào spec gốc `2026-09-29-desktop-meeting-translator-design.md` (§3.1, §4.3, §4.6 mới, F10 phím tắt; mục 10). Dùng lại: hàm dịch và tiến trình phụ của §6.5 và §5, luật bản quyền của §6.8 và `2026-10-07-three-plans-single-device-design.md`, NSPanel của thanh phụ đề (§4.4), phím tắt toàn cục (F10), danh sách mã lỗi gửi/không gửi của `2026-10-17-diagnostics-reports-design.md` §1.
 
 ---
@@ -42,7 +43,7 @@
 - **Giao diện:** theo cài đặt sáng/tối và ngôn ngữ giao diện của app.
 - **Nội dung, từ trên xuống:**
   - Dòng đầu: "Gõ dịch · → English" (tên ngôn ngữ đích theo ngôn ngữ giao diện) và chỉ báo trạng thái: "Đang nạp model…", "Đang dịch…", "Đã là English", hay để trống.
-  - Ô gõ nhiều dòng, tự cao lên tối đa 6 dòng rồi cuộn trong ô.
+  - Ô gõ nhiều dòng, tự cao lên tối đa 6 dòng rồi cuộn trong ô. **Tắt sửa chính tả, tự sửa chữ và tự viết hoa**: hộp gợi ý chữ của macOS ("Report ×") nuốt phím Enter đầu tiên khi người gõ vừa xong từ cuối (tìm thấy ở spike S2), và tiếng Việt, tiếng Nhật không nên bị gạch đỏ.
   - Vạch ngăn, rồi bản dịch (chỉ đọc, chọn và sao chép được). Bản dịch chưa khớp chữ đang có (đang chờ hay đang dịch) hiện mờ.
   - Chân ô: gợi ý phím, "Enter: dán · Shift+Enter: xuống dòng · Esc: đóng" ("Enter: chép" khi không tự dán, mục 4.2); hoặc hộp lỗi/hộp quyền (mục 5, mục 4.2) thay chỗ gợi ý.
 - **Bản nháp:** chữ trong ô gõ giữ trong bộ nhớ tới khi dán (hay chép) thành công. Đóng bằng Esc, bằng phím tắt hay bằng cách bấm ra ngoài thì giữ bản nháp; mở lại thấy chữ cũ, **được chọn sẵn toàn bộ** để gõ đè được ngay. Dán xong thì ô trống. Bản nháp mất khi thoát app.
@@ -127,9 +128,9 @@ Câu gõ không qua nhận dạng giọng nói nên không có ngôn ngữ do wh
 | `target.rs` | Ngôn ngữ đích tự động (mục 2.1). Hàm thuần, có test |
 | `detect.rs` | Nhận diện nguồn theo chữ viết (mục 2.2). Hàm thuần, có test |
 | `worker.rs` | Luồng dịch của ô soạn (mục 3.3) |
-| `paste.rs` | Trait `Paster` (ghi clipboard, kiểm quyền, gửi phím dán) với ba bản: macOS, Windows, bản giả cho test (mục 4) |
+| `native_macos.rs`, `native_windows.rs` | Bản thật của trait `Native` (khai trong `mod.rs`): hiện, ẩn, đổi chiều cao cửa sổ, ghi clipboard, kiểm và hỏi quyền, gửi phím dán; bản giả cho test là `test_support::FakeNative` (mục 4). Kế hoạch gộp việc cửa sổ và việc dán vào một trait vì cả hai cần đúng cửa sổ của từng hệ điều hành |
 
-Phía giao diện: `src/compose/` (React, trang riêng), dùng chung kho chuỗi i18n và theme của app.
+Phía giao diện: `compose.html` và `src/windows/compose/` (React, trang riêng, cạnh `src/windows/main/`, `src/windows/overlay/`), store `src/store/compose.ts`, phần thuần `src/lib/compose.ts`; dùng chung kho chuỗi i18n và theme của app.
 
 ### 3.3 Dịch
 
@@ -168,7 +169,7 @@ Khi giao diện gọi lệnh dán với `id` đã xong:
 1. Lấy chữ cần dán: bản dịch của `id`, hay chữ gốc nếu kết quả là "đã là ngôn ngữ đích".
 2. Kiểm có tự dán được không (macOS: `compose.autoPaste` và quyền Trợ năng; Windows: luôn được). Không được thì sang mục 4.2.
 3. Ghi chữ vào clipboard (dạng văn bản thuần).
-4. Ẩn ô soạn. macOS: chờ một khoảng cố định để cửa sổ của app chat nhận lại bàn phím (con số chốt ở spike S2, mục 7). Windows: đưa cửa sổ đã ghi về phía trước và chờ như mục 4.3.
+4. Ẩn ô soạn. macOS: chờ một khoảng cố định để cửa sổ của app chat nhận lại bàn phím 120 ms, chốt ở spike S2: đạt 36/36 lượt ở TextEdit và Chrome, `results/spike.md`; nơi nào dán hụt thì tăng lên 200 hay 300 ms). Windows: đưa cửa sổ đã ghi về phía trước và chờ như mục 4.3.
 5. Gửi ⌘V (macOS) hay Ctrl+V (Windows).
 6. Xóa bản nháp. Clipboard giữ bản dịch (mục 0).
 
@@ -183,7 +184,7 @@ Không xác nhận được ô kia đã nhận chữ hay chưa: hệ điều hà
   - Bản dịch đã chép thành công nên bản nháp được xóa như khi dán (mục 1.2). Enter hay Esc lúc hộp đang hiện thì đóng ô; người dùng bấm ⌘V ở ô chat. Lần dán sau mà vẫn chưa có quyền thì hộp lại hiện.
 - `compose.autoPaste = false`: Enter chép vào clipboard rồi đóng ô, không hỏi gì; chân ô ghi "Enter: chép · ⌘V để dán".
 - Phím ⌘V gửi bằng mã phím của chữ "v" trên bố cục bàn phím đang dùng; không tìm được thì dùng mã phím V của bố cục ANSI.
-- Lời hướng dẫn bật lại quyền sau khi cập nhật (gỡ mục cũ rồi thêm lại, hay cách khác) chốt theo kết quả spike S3 (mục 7).
+- Lời hướng dẫn bật lại quyền sau khi cập nhật: hiện ghi "xóa app khỏi danh sách rồi thêm lại" (`settings.compose.permission.missing`, và trên website); **chốt theo kết quả spike S3**, chưa làm (`results/spike.md`, mục S3).
 
 ### 4.3 Windows
 
