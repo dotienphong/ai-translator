@@ -74,6 +74,14 @@ fn main() {
                 "begin_overlay_resize",
                 "overlay_resize_move",
                 "end_overlay_resize",
+                "get_compose_view",
+                "compose_translate",
+                "compose_submit",
+                "compose_close",
+                "compose_resize",
+                "compose_open_accessibility",
+                "compose_copy_only",
+                "compose_open_main",
             ])),
     )
     .expect("tauri-build thất bại");

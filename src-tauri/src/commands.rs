@@ -10,6 +10,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Runtime, State};
 
 use crate::actions::{self, AudioSourceOption};
+use crate::compose;
 use crate::data::{self, TranscriptRef, blocking};
 use crate::debug::DebugSession;
 use crate::errors::{self, CommandError};
@@ -379,6 +380,56 @@ pub async fn send_log_report<R: Runtime>(app: AppHandle<R>) -> Result<crate::dia
     blocking(app, crate::diagnostics::send_manual).await
 }
 
+// ---- Lệnh của cửa sổ `compose` (Gõ dịch, spec 2026-10-17-go-dich §3.6): chỉ đụng tới ô soạn và các việc của nó. Lệnh dán
+// nhận số của yêu cầu dịch, không nhận chữ: cửa sổ này không gửi được chữ tùy ý vào app khác. ----
+
+#[tauri::command]
+pub fn get_compose_view<R: Runtime>(app: AppHandle<R>) -> compose::ComposeView {
+    compose::view(&app)
+}
+
+/// Xin dịch chữ đang gõ; trả số của yêu cầu, kết quả tới qua `compose://delta` và `compose://done`.
+#[tauri::command]
+pub fn compose_translate<R: Runtime>(app: AppHandle<R>, text: String) -> Result<u64, CommandError> {
+    compose::request(&app, text)
+}
+
+/// Enter lần 1: dán bản dịch của yêu cầu `id` vào ô nhập của app trước. Chờ cửa sổ đó nhận lại bàn phím: chạy trên luồng của
+/// `spawn_blocking`.
+#[tauri::command]
+pub async fn compose_submit<R: Runtime>(app: AppHandle<R>, id: u64) -> Result<compose::Submitted, CommandError> {
+    blocking(app, move |app| compose::submit(app, id)).await
+}
+
+/// Esc, bấm ra ngoài: đóng ô soạn.
+#[tauri::command]
+pub fn compose_close<R: Runtime>(app: AppHandle<R>) {
+    compose::close(&app);
+}
+
+#[tauri::command]
+pub fn compose_resize<R: Runtime>(app: AppHandle<R>, height: f64) -> Result<(), CommandError> {
+    compose::resize(&app, height)
+}
+
+/// "Bật tự dán" (macOS): hỏi quyền Trợ năng và mở trang Trợ năng của System Settings.
+#[tauri::command]
+pub fn compose_open_accessibility<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    compose::open_accessibility(&app)
+}
+
+/// "Luôn chỉ chép": tắt tự dán.
+#[tauri::command]
+pub fn compose_copy_only<R: Runtime>(app: AppHandle<R>) {
+    compose::copy_only(&app);
+}
+
+/// Nút của hộp lỗi: đóng ô soạn, mở cửa sổ chính ở màn hình cần làm.
+#[tauri::command]
+pub fn compose_open_main<R: Runtime>(app: AppHandle<R>, screen: compose::MainScreen) {
+    compose::open_main(&app, screen);
+}
+
 /// Lệnh của cửa sổ `main`.
 pub const MAIN_COMMANDS: &[&str] = &[
     "get_settings",
@@ -445,6 +496,18 @@ pub const OVERLAY_COMMANDS: &[&str] = &[
     "end_overlay_resize",
 ];
 
+/// Lệnh của cửa sổ `compose` (Gõ dịch).
+pub const COMPOSE_COMMANDS: &[&str] = &[
+    "get_compose_view",
+    "compose_translate",
+    "compose_submit",
+    "compose_close",
+    "compose_resize",
+    "compose_open_accessibility",
+    "compose_copy_only",
+    "compose_open_main",
+];
+
 pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         get_settings,
@@ -496,6 +559,14 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         begin_overlay_resize,
         overlay_resize_move,
         end_overlay_resize,
+        get_compose_view,
+        compose_translate,
+        compose_submit,
+        compose_close,
+        compose_resize,
+        compose_open_accessibility,
+        compose_copy_only,
+        compose_open_main,
         crate::models::commands::get_models_state,
         crate::models::commands::load_models,
         crate::models::commands::download_models,
