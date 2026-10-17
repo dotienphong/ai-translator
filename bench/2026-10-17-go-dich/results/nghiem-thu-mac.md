@@ -1,17 +1,17 @@
 # Nghiệm thu Gõ dịch trên Mac (spec 2026-10-17-go-dich §8.2)
 
-**Ngày:** 2026-10-18 (00:00–00:30 giờ Việt Nam)
+**Ngày:** 2026-10-18 (00:00–00:30 giờ Việt Nam: TextEdit, Chrome, GD2, GD3, GD5, GD6; 05:30–06:10: Notes, Safari, Slack, Teams, lỗi mở lại ô)
 **Máy:** MacBook Pro Apple M4 Pro, macOS 26.6.2
-**Bản:** nhánh `go-dich`; bản dev chạy bằng `scripts/run-dev-app.sh` (chứng thư "AI Translator Dev") build từ commit `dd73706` cộng bản sửa ô gõ (`b118ff1`). Phần Rust của kế hoạch 04 (hai lệnh quyền Trợ năng của cửa sổ chính) chưa có trong bản đang chạy lúc đo; không ảnh hưởng đường dịch và dán
+**Bản:** nhánh `go-dich`; bản dev chạy bằng `scripts/run-dev-app.sh` (chứng thư "AI Translator Dev") build từ commit `dd73706` cộng bản sửa ô gõ (`b118ff1`). Phần Rust của kế hoạch 04 (hai lệnh quyền Trợ năng của cửa sổ chính) chưa có trong bản đang chạy lúc đo; không ảnh hưởng đường dịch và dán. Các lượt buổi sáng chạy bản dev dựng lại từ `1bb0758` (có đủ kế hoạch 04); lượt thử lại lỗi mở lại ô chạy cùng bản đó với giao diện đã sửa nạp lại qua Vite
 **Model:** gói Chuẩn (model nhận dạng và dịch của gói đang cài trên máy)
-**Cách đo:** Claude chạy tự động trên máy của chủ dự án với sự ủy quyền (giả lập phím bằng System Events, đọc nội dung ô nhận bằng AppleScript hay Chrome DevTools Protocol). **Chưa có** lượt thử nào trong app chat thật (cần tài khoản của chủ dự án): các ô GD1, GD4 ở dưới là "chưa thử"
+**Cách đo:** Claude chạy tự động trên máy của chủ dự án với sự ủy quyền (giả lập phím bằng System Events, đọc nội dung ô nhận bằng AppleScript hay Chrome DevTools Protocol). Ngoài TextEdit và trang thử ở Chrome, đã thử thêm Notes, Safari (trang thử), Slack và Teams, **chỉ ở chat riêng với chính chủ dự án** ("Phong (you)", "Phong Do Tien (You)"): Claude không dán vào kênh hay nhóm nào, không bấm Enter ở app chat, xóa bản nháp sau mỗi lượt. Các app còn lại (cần tài khoản hay cuộc họp, hay không có trên máy) vẫn là "chưa thử"
 
 | # | Tiêu chí | Kết quả | Ghi chú |
 |---|---|---|---|
-| GD1 | Luồng chính ở 11 nơi | **Một phần**: đạt ở TextEdit và Chrome (trang thử); **chưa thử** ở 9 app chat thật | Xem bảng GD1, GD4 |
+| GD1 | Luồng chính ở 11 nơi | **Một phần**: đạt ở TextEdit, Chrome (trang thử), Notes, Safari (trang thử), Slack, Teams; **chưa thử** ở Messenger, Gmail, Discord, Zalo, Telegram, Zoom, Meet | Xem bảng GD1, GD4 |
 | GD2 | p50 thời gian dịch ≤ 1,0 giây (20 câu) | **Đạt**: p50 **176,5 ms**, p90 202 ms | 20/20 câu dán đúng |
 | GD3 | Trễ thêm của phụ đề khi vừa họp vừa gõ (không có ngưỡng) | (ghi nhận) **+32 ms** (tổng p50 320 → 352 ms), p90 352 → 384 ms | 30 tin Gõ dịch trong 5 phút, 0 lỗi |
-| GD4 | ⌃⌥G không làm app nào tự làm việc riêng | **Chưa thử** ở app thật; ở TextEdit và Chrome (trang thử) không có tác dụng phụ | |
+| GD4 | ⌃⌥G không làm app nào tự làm việc riêng | **Một phần**: không có tác dụng phụ ở TextEdit, Chrome (trang thử), Notes, Safari (trang thử), Slack, Teams; chưa thử ở các app còn lại | |
 | GD5 | Không request mạng nào do Gõ dịch | **Đạt theo `nettop`** (không luồng ngoài nào); **chưa chạy proxy HTTPS** (cần `sudo` cài chứng chỉ) | Xem mục GD5 |
 | GD6 | Log không chứa chữ đã gõ hay bản dịch | **Đạt**: 0 file chứa | Xem mục GD6 |
 
@@ -23,19 +23,19 @@
 |---|---|---|---|---|---|---|
 | Messenger web, Chrome | chưa thử | | | | | cần tài khoản |
 | Gmail (soạn thư), Chrome | chưa thử | | | | | cần tài khoản |
-| Trang chat trên Safari | chưa thử | | | | | |
-| Slack | chưa thử | | | | | |
+| Trang chat trên Safari | đạt (trang thử qua máy chủ cục bộ) | tiếng Anh (gõ giả lập) | đạt | không áp dụng | đạt | chưa thử trang chat thật |
+| Slack | đạt | tiếng Anh (gõ giả lập) | đạt, vào ô nhập của chat riêng, chưa gửi | chưa bấm | đạt | 1 lượt, đã xóa bản nháp |
 | Discord | chưa thử | | | | | không có trên máy |
-| Teams | chưa thử | | | | | |
+| Teams | đạt | tiếng Anh (gõ giả lập) | đạt, vào ô nhập của chat riêng, chưa gửi | chưa bấm | đạt | 2 lượt dán (một lượt gặp lỗi mở lại ô, xem dưới), đã xóa bản nháp |
 | Zalo PC | chưa thử | | | | | không có trên máy |
 | Telegram | chưa thử | | | | | |
-| iMessage hoặc Notes | chưa thử | | | | | |
+| iMessage hoặc Notes | đạt (Notes) | tiếng Anh (gõ giả lập) | đạt | không áp dụng | đạt | ghi chú tạm, đã xóa; chưa thử iMessage |
 | Zoom, khung chat | chưa thử | | | | | cần một cuộc họp |
 | Google Meet, khung chat | chưa thử | | | | | cần một cuộc họp |
 | TextEdit (thêm) | đạt | tiếng Anh (gõ giả lập) | đạt | không áp dụng | đạt | 12 lượt, thêm 3 lượt toàn màn hình và tin hai dòng |
 | Chrome, ô `contenteditable` và `textarea` trên trang thử (thêm) | đạt | tiếng Anh (gõ giả lập) | đạt, 0 Enter lọt vào ô chat | không áp dụng | đạt | 17 lượt, thêm 3 lượt toàn màn hình |
 
-Gõ Telex và bộ gõ tiếng Nhật ở ô soạn do chủ dự án thử tay (spike S1: đạt).
+Gõ Telex và bộ gõ tiếng Nhật ở ô soạn do chủ dự án thử tay (spike S1: đạt). Các lượt tự động gõ **câu tiếng Anh**: `keystroke` của System Events làm hỏng dấu tiếng Việt khi giả lập phím (ô soạn nhận "Ngay mai tai sa gai bao cao cho anh" thay cho "Ngày mai tôi sẽ gửi báo cáo cho anh", bản dịch sai theo), đó là lỗi của cách thử, không phải của app; tiếng Việt có dấu đã đo ở GD2 (dán bằng đường khác) và do chủ dự án gõ tay ở S1.
 
 ## GD2 — thời gian dịch
 
@@ -70,6 +70,7 @@ Câu có chữ mồi (`RIENGTU-GD6`) dùng ở ô soạn, rồi tìm chữ mồi
 ## Lỗi tìm thấy khi nghiệm thu
 
 - **Hộp gợi ý chữ của macOS nuốt phím Enter đầu** (tìm thấy ở spike S2, đã sửa ở `b118ff1`; có điều kiện kiểm ở `check-i18n.mjs`). Xem `spike.md`.
+- **Mở lại ô soạn khi còn bản nháp thì chữ mới chèn trước bản nháp** (tìm thấy khi thử ở Teams, 2026-10-18; đã sửa, có điều kiện kiểm `compose-reopen`). Xem `spike.md`.
 - Dịch tiếng Việt **không dấu** cho bản dịch kém ("Mai minh gui bao cao nhe" ra "May manh gai bao cao nha"): hạn chế đã biết của nhận diện nguồn theo chữ viết (spec §9), không phải lỗi mới.
 
 ## Windows
@@ -78,6 +79,6 @@ Chưa thử: chờ máy Windows (spec §8.2: chạy lại GD1, GD4, GD5, GD6).
 
 ## Còn lại cần chủ dự án
 
-1. GD1 và GD4 ở các app chat thật (bảng trên). Chỉ cần ⌃⌥G, gõ một câu, Enter, xem bản dịch vào đúng ô mà chưa gửi, rồi Esc hay xóa; Enter lần hai của app chat để gửi hay không tùy anh.
+1. GD1 và GD4 ở các app chat còn lại (bảng trên: Messenger, Gmail, Telegram, Zoom, Meet, và Zalo, Discord nếu có). Chỉ cần ⌃⌥G, gõ một câu, Enter, xem bản dịch vào đúng ô mà chưa gửi, rồi Esc hay xóa; Enter lần hai của app chat để gửi hay không tùy anh.
 2. Spike S3 (`spike.md`).
 3. GD5 bằng proxy HTTPS (cần `sudo`).
