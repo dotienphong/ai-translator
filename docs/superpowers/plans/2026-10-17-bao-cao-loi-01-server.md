@@ -680,7 +680,7 @@ describe("findReportSensitive", () => {
     expect(findReportSensitive(await makeReport())).toBeNull();
     const key = "7Q2K-9XMB-R3TV-HW4Y-5ZJ6-8NPA-CDEF";
     expect(findReportSensitive(await makeReport({ message: `key ${key}` }))).toBe("license_key");
-    expect(findReportSensitive(await makeReport({ chip: "a@b.co" }))).toBe("email");
+    expect(findReportSensitive(await makeReport({ hw: { chip: "a@b.co", ram_mb: null, gpu_backend: null } }))).toBe("email");
     expect(findReportSensitive(await makeReport({ model_pack: "/Users/bob/x" }))).toBe("home_path");
     expect(findReportSensitive(await makeReport({ logs: { app: "", asr: "Bearer abcdef0123456789", llama: "" } }))).toBe("bearer");
     expect(findReportSensitive(await makeReport({ logs: { app: "", asr: "", llama: "/home/carol/x" } }))).toBe("home_path");
