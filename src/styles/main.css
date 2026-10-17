@@ -2167,6 +2167,26 @@ form.card > input[type="email"] {
   margin: 0;
 }
 
+.about-logs .actions {
+  margin-top: 0;
+}
+
+/* Kết quả "Gửi log cho hỗ trợ": cả hàng dưới nút; rỗng thì không chiếm chỗ (vẫn nằm trong DOM làm vùng live). */
+.log-report {
+  flex: 1 1 100%;
+}
+
+.log-report .hint {
+  margin: 0.25rem 0 0;
+}
+
+.report-code {
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  user-select: all;
+}
+
 .legal-box {
   margin: 0.75rem 0;
   padding: 0 0.9rem;

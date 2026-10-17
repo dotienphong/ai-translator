@@ -12,7 +12,7 @@ import { appStore } from "./appStore";
 
 // Sao chép vào clipboard. `navigator.clipboard` cần trang an toàn và thao tác của người dùng; webview cũ không có thì
 // dùng cách cũ (`execCommand("copy")` trên một ô ẩn).
-async function writeClipboard(text: string): Promise<void> {
+export async function writeClipboard(text: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
     return;
