@@ -9,6 +9,7 @@
 pub mod actions;
 pub mod capture;
 pub mod commands;
+pub mod compose;
 pub mod data;
 pub mod db;
 pub mod debug;
