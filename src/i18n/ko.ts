@@ -214,6 +214,7 @@ export const ko: Record<MessageKey, string> = {
   "hotkeys.toggleLock": "자막 잠금 또는 잠금 해제",
   "hotkeys.scrollUp": "자막 위로 스크롤(이전 문장)",
   "hotkeys.scrollDown": "자막 아래로 스크롤(최신 문장)",
+  "hotkeys.compose": "입력 번역 열기",
   "hotkeys.change": "변경",
   "hotkeys.cancel": "취소",
   "hotkeys.press": "새 단축키를 누르세요. 취소하려면 Esc",

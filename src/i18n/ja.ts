@@ -214,6 +214,7 @@ export const ja: Record<MessageKey, string> = {
   "hotkeys.toggleLock": "字幕のロック／ロック解除",
   "hotkeys.scrollUp": "字幕を上にスクロール（古い文）",
   "hotkeys.scrollDown": "字幕を下にスクロール（新しい文）",
+  "hotkeys.compose": "入力翻訳を開く",
   "hotkeys.change": "変更",
   "hotkeys.cancel": "キャンセル",
   "hotkeys.press": "新しいショートカットを押してください。キャンセルは Esc",

@@ -213,6 +213,7 @@ export const en = {
   "hotkeys.toggleLock": "Lock or unlock subtitles",
   "hotkeys.scrollUp": "Scroll subtitles up (older sentences)",
   "hotkeys.scrollDown": "Scroll subtitles down (newer sentences)",
+  "hotkeys.compose": "Open Type & Translate",
   "hotkeys.change": "Change",
   "hotkeys.cancel": "Cancel",
   "hotkeys.press": "Press the new shortcut, or Esc to cancel",

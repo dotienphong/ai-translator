@@ -141,6 +141,9 @@ pub struct Hotkeys {
     /// Cuộn phụ đề lên và xuống (§4.4). File cài đặt của bản trước chưa có hai khóa này thì lấy mặc định.
     pub scroll_up: String,
     pub scroll_down: String,
+    /// Mở ô soạn Gõ dịch (spec 2026-10-17-go-dich §0, §3.5). File của bản trước chưa có khóa này thì nhận mặc định, hay phím
+    /// dự phòng khi người dùng đã tự đặt mặc định cho việc khác (bước migrate `v2→v3`).
+    pub compose: String,
 }
 
 impl Hotkeys {
@@ -151,6 +154,7 @@ impl Hotkeys {
             HotkeyAction::ToggleLock => &self.toggle_lock,
             HotkeyAction::ScrollUp => &self.scroll_up,
             HotkeyAction::ScrollDown => &self.scroll_down,
+            HotkeyAction::Compose => &self.compose,
         }
     }
 
@@ -161,10 +165,11 @@ impl Hotkeys {
             HotkeyAction::ToggleLock => self.toggle_lock = accelerator,
             HotkeyAction::ScrollUp => self.scroll_up = accelerator,
             HotkeyAction::ScrollDown => self.scroll_down = accelerator,
+            HotkeyAction::Compose => self.compose = accelerator,
         }
     }
 
-    pub fn bindings(&self) -> [(HotkeyAction, &str); 5] {
+    pub fn bindings(&self) -> [(HotkeyAction, &str); 6] {
         HotkeyAction::ALL.map(|action| (action, self.get(action)))
     }
 }
@@ -268,6 +273,9 @@ pub const OVERLAY_HEIGHT: std::ops::RangeInclusive<f64> = 40.0..=4_000.0;
 pub const MAX_OVERLAY_POSITIONS: usize = 16;
 /// Độ dài tối đa của ID thiết bị, bundle ID và khóa màn hình, tính theo ký tự (không theo byte).
 const MAX_ID_LEN: usize = 512;
+/// Phím tắt mặc định của Gõ dịch: ⌃⌥G trên macOS, Ctrl+Alt+G trên Windows (spec 2026-10-17-go-dich §0). Cùng nhóm ⌃⌥ với
+/// các phím tắt có sẵn của app, rất ít app khác dùng.
+pub const COMPOSE_HOTKEY: &str = "Ctrl+Alt+G";
 
 impl Settings {
     /// Giá trị mặc định. Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (§4.1, bước 5).
@@ -311,6 +319,7 @@ impl Settings {
                 // Không dùng Ctrl+Alt+mũi tên: driver Intel trên Windows dùng tổ hợp đó để xoay màn hình.
                 scroll_up: "Ctrl+Alt+PageUp".into(),
                 scroll_down: "Ctrl+Alt+PageDown".into(),
+                compose: COMPOSE_HOTKEY.into(),
             },
             save_history: false,
             send_error_reports: false,
@@ -471,7 +480,8 @@ mod tests {
                 "Ctrl+Alt+H",
                 "Ctrl+Alt+L",
                 "Ctrl+Alt+PageUp",
-                "Ctrl+Alt+PageDown"
+                "Ctrl+Alt+PageDown",
+                "Ctrl+Alt+G"
             ]
         );
         assert_eq!(Settings::defaults(UiLanguage::En).target_language, Lang::En);

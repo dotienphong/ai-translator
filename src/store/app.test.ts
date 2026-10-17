@@ -30,6 +30,7 @@ const settings: Settings = {
     toggleLock: "Ctrl+Alt+L",
     scrollUp: "Ctrl+Alt+PageUp",
     scrollDown: "Ctrl+Alt+PageDown",
+    compose: "Ctrl+Alt+G",
   },
   saveHistory: false,
   sendErrorReports: false,

@@ -11,7 +11,9 @@ use crate::hotkeys::HotkeyAction;
 use crate::login_item::LoginItems;
 use crate::settings::{self, Settings, persist};
 use crate::state::{AppState, AppStatus, OverlayView};
-use crate::{diagnostics, events, hotkey_registry, login_item, overlay, session, system, tray, updater, window};
+use crate::{
+    compose, diagnostics, events, hotkey_registry, login_item, overlay, session, system, tray, updater, window,
+};
 
 /// Lưu cài đặt mới rồi báo mọi nơi cần biết.
 pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings) -> Settings {
@@ -158,6 +160,10 @@ pub fn run_hotkey<R: Runtime>(app: &AppHandle<R>, action: HotkeyAction) {
         }
         HotkeyAction::ScrollDown => {
             events::overlay_scroll(app, ScrollDirection::Down);
+            Ok(())
+        }
+        HotkeyAction::Compose => {
+            compose::toggle(app);
             Ok(())
         }
     };

@@ -21,13 +21,15 @@ export type UpdateCheck = "idle" | "checking" | "downloading" | "upToDate" | "fa
 export type ModelTier = string;
 // Ngôn ngữ đích của Gõ dịch (`settings::ComposeTarget`, spec 2026-10-17-go-dich §2.1): "auto" là "tiếng người bên kia".
 export type ComposeTarget = "auto" | Lang;
-export type HotkeyAction = "toggleSession" | "toggleOverlay" | "toggleLock" | "scrollUp" | "scrollDown";
+// "compose": mở ô soạn Gõ dịch (spec 2026-10-17-go-dich §1.1); chỉ đăng ký khi bật Gõ dịch.
+export type HotkeyAction = "toggleSession" | "toggleOverlay" | "toggleLock" | "scrollUp" | "scrollDown" | "compose";
 export const HOTKEY_ACTIONS: readonly HotkeyAction[] = [
   "toggleSession",
   "toggleOverlay",
   "toggleLock",
   "scrollUp",
   "scrollDown",
+  "compose",
 ];
 
 // Màu chữ và màu nền của phụ đề (§4.3, `settings::TextColor`, `settings::BackgroundColor`); mã màu ở `subtitleView.ts`.

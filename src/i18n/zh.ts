@@ -214,6 +214,7 @@ export const zh: Record<MessageKey, string> = {
   "hotkeys.toggleLock": "锁定或解锁字幕",
   "hotkeys.scrollUp": "向上滚动字幕（较早的句子）",
   "hotkeys.scrollDown": "向下滚动字幕（较新的句子）",
+  "hotkeys.compose": "打开输入翻译",
   "hotkeys.change": "更改",
   "hotkeys.cancel": "取消",
   "hotkeys.press": "请按下新的快捷键，或按 Esc 取消",

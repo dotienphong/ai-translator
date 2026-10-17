@@ -20,15 +20,18 @@ pub enum HotkeyAction {
     ScrollUp,
     /// Cuộn phụ đề xuống câu mới hơn.
     ScrollDown,
+    /// Mở hoặc đóng ô soạn Gõ dịch (spec 2026-10-17-go-dich §1.1). Chỉ đăng ký khi bật Gõ dịch (`compose.enabled`).
+    Compose,
 }
 
 impl HotkeyAction {
-    pub const ALL: [HotkeyAction; 5] = [
+    pub const ALL: [HotkeyAction; 6] = [
         Self::ToggleSession,
         Self::ToggleOverlay,
         Self::ToggleLock,
         Self::ScrollUp,
         Self::ScrollDown,
+        Self::Compose,
     ];
 
     /// Tên khóa con trong `hotkeys` của cài đặt.
@@ -39,6 +42,7 @@ impl HotkeyAction {
             Self::ToggleLock => "toggleLock",
             Self::ScrollUp => "scrollUp",
             Self::ScrollDown => "scrollDown",
+            Self::Compose => "compose",
         }
     }
 }
@@ -313,12 +317,28 @@ mod tests {
         assert_eq!(check_all(&DEFAULTS), Ok(()));
     }
 
+    /// Spec 2026-10-17-go-dich §0: phím mặc định của Gõ dịch ở dạng chuẩn, cùng nhóm ⌃⌥, không trùng năm phím cũ.
+    #[test]
+    fn the_compose_default_is_canonical_and_distinct() {
+        assert_eq!(canonical_of("Ctrl+Alt+G").unwrap(), "Ctrl+Alt+G");
+        let mut all = DEFAULTS.to_vec();
+        all.push((HotkeyAction::Compose, "Ctrl+Alt+G"));
+        assert_eq!(check_all(&all), Ok(()));
+    }
+
     #[test]
     fn action_keys_match_settings_fields() {
         let keys: Vec<_> = HotkeyAction::ALL.iter().map(|a| a.key()).collect();
         assert_eq!(
             keys,
-            ["toggleSession", "toggleOverlay", "toggleLock", "scrollUp", "scrollDown"]
+            [
+                "toggleSession",
+                "toggleOverlay",
+                "toggleLock",
+                "scrollUp",
+                "scrollDown",
+                "compose"
+            ]
         );
         assert_eq!(
             serde_json::to_string(&HotkeyAction::ToggleLock).unwrap(),
