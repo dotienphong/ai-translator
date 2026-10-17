@@ -19,6 +19,11 @@ export const LIMITS = {
   // Chạm ngưỡng thì IP đó bị chặn tới hết giờ, trừ request có key hợp lệ kèm activation đang hoạt động
   // và khớp (nhiều người dùng chung một IP qua CGNAT vẫn validate được), và có cảnh báo cho người vận hành.
   failure_ip: 60,
+  // Báo cáo lỗi từ app (spec 2026-10-17 §3). Cửa sổ cố định 1 giờ như mọi giới hạn ở đây. Theo IP, theo máy (app tự giới hạn
+  // 5 báo cáo mỗi ngày), và toàn hệ thống: chạm ngưỡng cuối thì có cảnh báo diagnostics_flood.
+  diag_ip: 30,
+  diag_device: 3,
+  diag_global: 120,
 } as const;
 export type LimitName = keyof typeof LIMITS;
 export const WINDOW_SECONDS = 3600;

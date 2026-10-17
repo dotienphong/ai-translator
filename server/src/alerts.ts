@@ -17,7 +17,9 @@ export type AlertKind =
   | "payment_unmatched"
   | "payos_auth_failed"
   | "creem_auth_failed"
-  | "order_check_failed";
+  | "order_check_failed"
+  | "error_report_new"
+  | "diagnostics_flood";
 
 /** Loại cảnh báo khi cổng (`orders.provider`) từ chối khóa API: mỗi cổng một loại, để thư chỉ đúng khóa cần thay. */
 const AUTH_FAILED_ALERT = { payos: "payos_auth_failed", creem: "creem_auth_failed" } as const satisfies Record<string, AlertKind>;
@@ -78,6 +80,12 @@ const ALERT_TEXT: Record<AlertKind, string> = {
   order_check_failed:
     "Đối soát không đọc được trạng thái đơn từ cổng thanh toán (dữ liệu mâu thuẫn, 3xx hay 404). Nếu đơn đã được khách trả thì " +
     "tìm đơn trên dashboard của cổng; log `reconcile_failed` có mã đơn. Cảnh báo này đếm theo đơn và gộp mỗi giờ.",
+  error_report_new:
+    "Báo cáo lỗi từ app có dạng lỗi mới (dấu vân tay chưa từng thấy). Mở Web Admin, trang Báo cáo lỗi để xem nhóm và log. " +
+    "Thư này chỉ có số lượng, không chứa nội dung log hay mã máy.",
+  diagnostics_flood:
+    "Endpoint báo cáo lỗi chạm trần toàn hệ thống (120 báo cáo mỗi giờ): có thể đang bị gửi tràn. Báo cáo bị từ chối (429) tới hết giờ. " +
+    "Mở Web Admin, trang Báo cáo lỗi để xem nguồn, xóa báo cáo rác nếu cần.",
 };
 const HOUR = 3600;
 

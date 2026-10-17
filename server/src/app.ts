@@ -3,7 +3,9 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { registerCheckout } from "./checkout";
 import { type Deps, type DepsFactory, realDeps } from "./deps";
+import { DIAGNOSTICS_PATH, registerDiagnostics } from "./diagnostics";
 import type { ApiEnv } from "./env";
+import { MAX_BODY_BYTES } from "./error-reports";
 import { fail, isJsonContentType } from "./http";
 import { registerLicenses } from "./licenses";
 import { registerOrders } from "./orders";
@@ -19,17 +21,17 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
     c.set("deps", makeDeps(c.env));
     await next();
   });
-  app.use(
-    "/v1/*",
-    bodyLimit({
-      maxSize: 16 * 1024,
-      onError: (c) => {
-        // Webhook quá lớn bị từ chối thì cổng gửi lại vài lần rồi bỏ (hoàn tiền, tranh chấp không có đối soát đỡ): để lại dấu vết.
-        if (c.req.path.startsWith("/v1/webhooks/")) console.warn(JSON.stringify({ event: "webhook_too_large", path: c.req.path }));
-        return fail(c, 413, "invalid_request");
-      },
-    }),
-  );
+  const smallBody = bodyLimit({
+    maxSize: 16 * 1024,
+    onError: (c) => {
+      // Webhook quá lớn bị từ chối thì cổng gửi lại vài lần rồi bỏ (hoàn tiền, tranh chấp không có đối soát đỡ): để lại dấu vết.
+      if (c.req.path.startsWith("/v1/webhooks/")) console.warn(JSON.stringify({ event: "webhook_too_large", path: c.req.path }));
+      return fail(c, 413, "invalid_request");
+    },
+  });
+  // Báo cáo lỗi mang log nên có trần riêng (spec 2026-10-17 §3); mọi route khác của /v1 giữ 16 KiB.
+  app.use("/v1/*", (c, next) => (c.req.path === DIAGNOSTICS_PATH ? next() : smallBody(c, next)));
+  app.use(DIAGNOSTICS_PATH, bodyLimit({ maxSize: MAX_BODY_BYTES, onError: (c) => fail(c, 413, "invalid_request") }));
   // Webhook do cổng thanh toán gửi, có chữ ký riêng: không đòi content-type, để cổng đổi header cũng không làm mất đơn.
   app.use("/v1/*", async (c, next) => {
     const write = ["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method);
@@ -43,6 +45,7 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
   registerOrders(app);
   registerLicenses(app);
   registerTrial(app);
+  registerDiagnostics(app);
   app.notFound((c) => fail(c, 404, "not_found"));
   app.onError((err, c) => {
     console.error(JSON.stringify({ event: "unhandled", name: err.name, message: err.message }));

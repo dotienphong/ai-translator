@@ -1093,9 +1093,10 @@ describe("POST /v1/diagnostics (spec 2026-10-17 §3)", () => {
     await send(w, await validReport({ id: rid(1) }));
     await send(w, await validReport({ id: rid(2) }));
     expect(await alertRows()).toEqual([{ kind: "error_report_new", count: 1 }]);
-    await send(w, await validReport({ id: rid(3), fingerprint: "aaaaaaaaaaaaaaaa" }));
+    // Máy khác nhau cho hai báo cáo cuối: hạn mức 3 báo cáo mỗi giờ của một máy sẽ chặn báo cáo thứ 4 của cùng một máy.
+    await send(w, await validReport({ id: rid(3), fingerprint: "aaaaaaaaaaaaaaaa", device_id_hash: await device(3) }));
     expect(await alertRows()).toEqual([{ kind: "error_report_new", count: 2 }]);
-    await send(w, await validReport({ id: rid(4), kind: "manual", code: null, fingerprint: "0000000000000000" }));
+    await send(w, await validReport({ id: rid(4), kind: "manual", code: null, fingerprint: "0000000000000000", device_id_hash: await device(4) }));
     expect(await alertRows()).toEqual([{ kind: "error_report_new", count: 2 }]);
     expect(await count("error_reports")).toBe(4);
   });

@@ -26,6 +26,7 @@ export type ErrorCode =
   | "key_check_failed"
   | "forbidden"
   | "not_found"
+  | "rejected_sensitive"
   | "internal";
 
 export function fail(c: Context, status: ContentfulStatusCode, error: ErrorCode, extra: Record<string, unknown> = {}) {
