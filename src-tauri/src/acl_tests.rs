@@ -12,8 +12,8 @@
 
 use serde_json::{Value, json};
 
-use crate::commands::{MAIN_COMMANDS, OVERLAY_COMMANDS};
-use crate::test_support::{denied, invoke, mock_app, system_calls, window};
+use crate::commands::{COMPOSE_COMMANDS, MAIN_COMMANDS, OVERLAY_COMMANDS};
+use crate::test_support::{compose_calls, denied, invoke, mock_app, system_calls, window};
 
 /// Quyền không phải lệnh của app, theo từng cửa sổ.
 const MAIN_CORE_PERMISSIONS: &[&str] = &[
@@ -26,6 +26,8 @@ const OVERLAY_CORE_PERMISSIONS: &[&str] = &[
     "core:event:allow-unlisten",
     "core:window:allow-start-dragging",
 ];
+/// Ô soạn Gõ dịch: không kéo được (spec 2026-10-17-go-dich §1.2), đổi chiều cao qua lệnh của app.
+const COMPOSE_CORE_PERMISSIONS: &[&str] = &["core:event:allow-listen", "core:event:allow-unlisten"];
 
 /// Lệnh của Tauri và plugin mà không cửa sổ nào được gọi.
 const FORBIDDEN: &[&str] = &[
@@ -108,20 +110,29 @@ fn capabilities_grant_exactly_the_fixed_lists() {
         expected(OVERLAY_COMMANDS, OVERLAY_CORE_PERMISSIONS),
         "overlay chỉ đọc phần cài đặt của nó, nghe sự kiện, kéo, đổi kích thước và ẩn cửa sổ của chính nó"
     );
+    assert_eq!(
+        permissions(include_str!("../capabilities/compose.json"), "compose"),
+        expected(COMPOSE_COMMANDS, COMPOSE_CORE_PERMISSIONS),
+        "ô soạn chỉ có các lệnh của Gõ dịch và nghe sự kiện"
+    );
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/capabilities");
     let mut files: Vec<String> = std::fs::read_dir(dir)
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
     files.sort();
-    assert_eq!(files, ["main.json", "overlay.json"], "không có capability nào khác");
+    assert_eq!(
+        files,
+        ["compose.json", "main.json", "overlay.json"],
+        "không có capability nào khác"
+    );
     let conf: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
     assert!(
         conf["app"]["security"].get("capabilities").is_none(),
         "không khai capability trong tauri.conf.json"
     );
     let build_rs = include_str!("../build.rs");
-    for cmd in MAIN_COMMANDS.iter().chain(OVERLAY_COMMANDS) {
+    for cmd in MAIN_COMMANDS.iter().chain(OVERLAY_COMMANDS).chain(COMPOSE_COMMANDS) {
         assert!(build_rs.contains(&format!("\"{cmd}\"")), "build.rs thiếu {cmd}");
     }
 }
@@ -153,10 +164,30 @@ fn each_window_only_reaches_its_own_commands() {
         "plugin:webview|set_webview_zoom",
         json!({ "value": 1.2 })
     )));
+    // Ô soạn Gõ dịch (spec 2026-10-17-go-dich §3.6): chỉ các lệnh của nó; hai cửa sổ kia không gọi được lệnh của nó.
+    let compose = window(&app, "compose");
+    let view = invoke(&compose, "get_compose_view", json!({})).expect("ô soạn đọc được phần của nó");
+    assert_eq!(view["target"], "en");
+    assert!(view.get("hotkeys").is_none(), "ô soạn không thấy cài đặt khác");
+    for cmd in MAIN_COMMANDS.iter().chain(OVERLAY_COMMANDS) {
+        let result = invoke(&compose, cmd, json!({}));
+        assert!(denied(&result), "compose không được gọi {cmd}: {result:?}");
+    }
+    for cmd in COMPOSE_COMMANDS {
+        for other in [&main, &overlay] {
+            let result = invoke(other, cmd, json!({}));
+            assert!(denied(&result), "{} không được gọi {cmd}: {result:?}", other.label());
+        }
+    }
+    assert!(denied(&invoke(
+        &compose,
+        "plugin:webview|set_webview_zoom",
+        json!({ "value": 1.2 })
+    )));
     // Không cửa sổ nào tự đọc ghi file cài đặt, bật tắt khởi động cùng hệ thống, mở URL hay đường dẫn,
     // tạo cửa sổ, di chuyển cửa sổ, phát sự kiện, hay đăng ký phím tắt.
     for cmd in FORBIDDEN {
-        for window in [&main, &overlay] {
+        for window in [&main, &overlay, &compose] {
             let result = invoke(window, cmd, json!({}));
             assert!(denied(&result), "{} không được gọi {cmd}: {result:?}", window.label());
         }
@@ -190,6 +221,28 @@ fn outside_effects_only_reach_the_fake_opener() {
         &["open_log_dir", "open_taskbar_settings"]
     };
     assert_eq!(system_calls(&app), expected);
+}
+
+/// Spec 2026-10-17-go-dich §4.2: "Bật tự dán" chỉ ô soạn gọi được; lệnh bị chặn không tới `SystemOpener` hay ô soạn giả; lệnh
+/// được phép (macOS) hỏi quyền Trợ năng rồi mở đúng trang Trợ năng của System Settings, qua bản giả.
+#[test]
+fn only_the_compose_window_opens_the_accessibility_page() {
+    let app = mock_app();
+    for other in [window(&app, "main"), window(&app, "overlay"), window(&app, "stranger")] {
+        let result = invoke(&other, "compose_open_accessibility", json!({}));
+        assert!(denied(&result), "{} không được gọi: {result:?}", other.label());
+    }
+    assert!(system_calls(&app).is_empty() && compose_calls(&app).is_empty());
+    let compose = window(&app, "compose");
+    let result = invoke(&compose, "compose_open_accessibility", json!({}));
+    if cfg!(target_os = "macos") {
+        assert!(result.is_ok(), "{result:?}");
+        assert_eq!(system_calls(&app), ["open_accessibility_settings"]);
+        assert_eq!(compose_calls(&app), ["request_trust"]);
+    } else {
+        assert!(result.unwrap_err().contains("unsupported"));
+        assert!(system_calls(&app).is_empty());
+    }
 }
 
 /// Spec 2026-10-17 §5: nút "Gửi log cho hỗ trợ" chỉ cửa sổ chính gọi được. Lệnh bị chặn không tới máy chủ báo cáo; lệnh được phép

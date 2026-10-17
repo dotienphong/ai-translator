@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "compose",
+  "description": "Ô soạn Gõ dịch: đọc phần cài đặt của nó, xin dịch, dán bản dịch đã dịch, đóng và đổi chiều cao cửa sổ của chính nó, mở trang Trợ năng hay cửa sổ chính, nghe sự kiện (spec 2026-10-17-go-dich §3.6). Không cấp lệnh nào của cửa sổ khác hay của plugin.",
+  "windows": ["compose"],
+  "permissions": [
+    "allow-get-compose-view",
+    "allow-compose-translate",
+    "allow-compose-submit",
+    "allow-compose-close",
+    "allow-compose-resize",
+    "allow-compose-open-accessibility",
+    "allow-compose-copy-only",
+    "allow-compose-open-main",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

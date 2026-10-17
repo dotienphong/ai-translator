@@ -200,6 +200,11 @@ impl crate::compose::Native for FakeNative {
     }
 }
 
+/// Các lần gọi tới ô soạn giả của app giả.
+pub fn compose_calls(app: &tauri::App<MockRuntime>) -> Vec<String> {
+    app.state::<FakeNative>().calls.lock().unwrap().clone()
+}
+
 /// Trạng thái của bản giả `FakeLoginItem`.
 #[derive(Default)]
 pub struct FakeLogin {
