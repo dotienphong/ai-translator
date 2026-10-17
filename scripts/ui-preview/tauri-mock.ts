@@ -16,6 +16,8 @@
 //     duyệt)  pending=old (đơn đang chờ do bản app cũ lưu, đọc lại với số tiền 0 và loại tiền rỗng)  late=1 (đơn đã quá giờ
 //     hẹn trả mà server còn báo chờ). Tạo đơn bằng giao diện thì đơn theo đúng gói và loại tiền đã gửi; hủy thì hết đơn chờ.
 //   overlay (overlay.html): locked=1  source=0  text=<màu>  bg=<màu>  opacity=<0–1>  size=<px>  latest=1  notes=<note,…>
+//   báo cáo lỗi (spec 2026-10-17 §5): reports=0 (người dùng đã tắt báo cáo lỗi tự động; không có thì bật, trừ khi đang ở onboarding:
+//     cài mới chưa qua bước Điều khoản thì tắt)  report=ok|failed|ratelimited|rejected (kết quả nút "Gửi log cho hỗ trợ" ở Giới thiệu)
 //   dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6): tws=0 (tắt công tắc)  slow=1 (máy chưa đủ nhanh)
 //     overlay.html: live=alone|extends|final|provisional (mẫu dòng đang nói, xem `LIVE_SAMPLE`; cần session=running)
 import conf from "../../src-tauri/tauri.conf.json";
@@ -92,6 +94,7 @@ let settings: Settings = {
     scrollDown: "Ctrl+Alt+PageDown",
   },
   saveHistory: param("history") !== "0",
+  sendErrorReports: !q.has("onboarding") && param("reports") !== "0",
   launchAtLogin: true,
   theme: param("theme", "light") as Settings["theme"],
   updateChannel: "stable",
@@ -596,6 +599,14 @@ const handlers = {
   cancel_checkout: () => {
     pendingOrder = null;
     return null;
+  },
+  // Nút "Gửi log cho hỗ trợ": trả mã báo cáo sau nửa giây, hay đúng ba lỗi của lệnh thật theo `report=`.
+  send_log_report: async () => {
+    await wait(500);
+    const codes: Record<string, string> = { failed: "reportFailed", ratelimited: "reportRateLimited", rejected: "reportRejected" };
+    const code = codes[param("report", "ok")];
+    if (code) throw { code, field: null, message: "…" };
+    return { id: "R-7F3K-92QD" };
   },
   check_for_updates: async () => {
     changeStatus({ updateCheck: "checking" });

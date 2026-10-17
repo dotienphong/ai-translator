@@ -26,6 +26,14 @@ export interface UiError {
   field: string | null;
 }
 
+// Kết quả nút "Gửi log cho hỗ trợ" ở Giới thiệu (spec 2026-10-17 §5). Lỗi nằm ngay trong trạng thái, không lên thanh báo lỗi
+// chung: Giới thiệu hiện câu lỗi dưới nút.
+export type LogReportState =
+  | { status: "idle" }
+  | { status: "sending" }
+  | { status: "sent"; id: string }
+  | { status: "failed"; code: string };
+
 // Mức âm lượng (RMS 0–1) ra độ dài thanh đo 0–1, theo dBFS từ −60 dB tới 0 dB: tiếng nói bình thường (−30 tới −10 dBFS)
 // nằm giữa thanh, thay vì dồn sát đầu như khi vẽ thẳng RMS.
 export function levelToMeter(rms: number): number {
@@ -43,6 +51,10 @@ export interface AppStoreState {
   onboardingStep: number;
   // Đã tick đồng ý EULA và chính sách ở bước Điều khoản; chỉ trong phiên onboarding, không ghi xuống đĩa.
   termsAccepted: boolean;
+  // Ô "Tự động gửi báo cáo lỗi" ở bước Điều khoản (spec 2026-10-17 §5): tích sẵn; chỉ trong phiên onboarding, lưu vào cài đặt
+  // (`sendErrorReports`) khi bấm Tiếp (`saveErrorReportsConsent`).
+  errorReportsConsent: boolean;
+  logReport: LogReportState;
   error: UiError | null;
   notice: AppNotice | null;
   // Lệnh Bắt đầu/Dừng đang chờ phía Rust trả lời: nút bị khóa, bấm thêm không gửi lệnh thứ hai.
@@ -61,6 +73,10 @@ export interface AppStoreState {
   navigate(screen: Screen, settingsGroup?: SettingsGroup | null): void;
   setOnboardingStep(step: number): void;
   setTermsAccepted(accepted: boolean): void;
+  setErrorReportsConsent(consent: boolean): void;
+  // Qua bước Điều khoản: lưu lựa chọn của ô tích vào cài đặt. Lỗi hiện ở thanh báo lỗi và không chặn các bước (chưa lưu được thì
+  // cài đặt giữ `false`: không gửi gì).
+  saveErrorReportsConsent(): Promise<void>;
   updateSettings(patch: SettingsPatch): Promise<boolean>;
   setSourceLanguage(lang: Lang, on: boolean): Promise<void>;
   setHotkey(action: HotkeyAction, accelerator: string): Promise<UiError | null>;
@@ -68,6 +84,9 @@ export interface AppStoreState {
   setOverlayVisible(visible: boolean): Promise<void>;
   setOverlayLocked(locked: boolean): Promise<void>;
   openLogDir(): Promise<void>;
+  // Gửi báo cáo lỗi ngay (kể cả khi tắt tự động); chặn bấm đúp. Kết quả ở `logReport`.
+  sendLogReport(): Promise<void>;
+  dismissLogReport(): void;
   openTaskbarSettings(): Promise<void>;
   openLoginItemsSettings(): Promise<void>;
   openAudioPermissionSettings(): Promise<void>;
@@ -161,6 +180,8 @@ export function createAppStore(ipc: Ipc) {
       settingsGroup: "general",
       onboardingStep: 0,
       termsAccepted: false,
+      errorReportsConsent: true,
+      logReport: { status: "idle" },
       error: null,
       notice: null,
       sessionPending: false,
@@ -212,6 +233,14 @@ export function createAppStore(ipc: Ipc) {
 
       setTermsAccepted(termsAccepted) {
         set({ termsAccepted });
+      },
+
+      setErrorReportsConsent(errorReportsConsent) {
+        set({ errorReportsConsent });
+      },
+
+      async saveErrorReportsConsent() {
+        await get().updateSettings({ sendErrorReports: get().errorReportsConsent });
       },
 
       updateSettings(patch) {
@@ -279,6 +308,21 @@ export function createAppStore(ipc: Ipc) {
           () => ipc.invoke("open_log_dir"),
           () => {},
         );
+      },
+
+      async sendLogReport() {
+        if (get().logReport.status === "sending") return;
+        set({ logReport: { status: "sending" } });
+        try {
+          const { id } = await ipc.invoke("send_log_report");
+          set({ logReport: { status: "sent", id } });
+        } catch (e) {
+          set({ logReport: { status: "failed", code: toUiError(e).code } });
+        }
+      },
+
+      dismissLogReport() {
+        set({ logReport: { status: "idle" } });
       },
 
       async openTaskbarSettings() {

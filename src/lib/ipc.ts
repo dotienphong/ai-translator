@@ -69,6 +69,9 @@ export interface Settings {
   modelTier: ModelTier | null;
   hotkeys: Record<HotkeyAction, string>;
   saveHistory: boolean;
+  // Gửi báo cáo lỗi tự động cho nhà phát triển (spec 2026-10-17 §5). Cài mới: `false` cho tới khi qua bước Điều khoản (ô tích sẵn);
+  // người dùng đã cài từ trước: `true` sau khi cập nhật. Bản debug vẫn không tự gửi trừ khi bật công tắc dev.
+  sendErrorReports: boolean;
   launchAtLogin: boolean;
   theme: Theme;
   updateChannel: UpdateChannel;
@@ -454,6 +457,9 @@ export interface Commands {
   recover_license: { args: { email: string }; result: null };
   check_for_updates: { args: undefined; result: AppStatus };
   restart_to_update: { args: undefined; result: null };
+  // Nút "Gửi log cho hỗ trợ" ở Giới thiệu (spec 2026-10-17 §1, §5): dựng và gửi báo cáo ngay, kể cả khi tắt báo cáo tự động. Trả mã
+  // báo cáo để người dùng đọc cho hỗ trợ. Lỗi: `reportFailed` (mạng hỏng), `reportRateLimited` (gửi quá nhiều), `reportRejected`.
+  send_log_report: { args: undefined; result: { id: string } };
   hide_overlay: { args: undefined; result: null };
   begin_overlay_resize: { args: { edge: ResizeEdge }; result: null };
   overlay_resize_move: { args: undefined; result: null };

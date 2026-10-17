@@ -31,6 +31,7 @@ const settings: Settings = {
     scrollDown: "Ctrl+Alt+PageDown",
   },
   saveHistory: false,
+  sendErrorReports: false,
   launchAtLogin: false,
   theme: "system",
   updateChannel: "stable",
@@ -71,12 +72,17 @@ let failToggle: "model" | "acl" | null = null;
 let failLoginItems = false;
 let failOnboarding = false;
 let failRestart = false;
+// `send_log_report`: "ok" trả mã báo cáo; còn lại là ba lỗi của lệnh thật, hay lỗi ACL (chuỗi, không phải CommandError).
+let reportOutcome: "ok" | "reportFailed" | "reportRateLimited" | "reportRejected" | "acl" = "ok";
+let reportGate: Promise<void> | null = null;
 
 function setup() {
   failToggle = null;
   failLoginItems = false;
   failOnboarding = false;
   failRestart = false;
+  reportOutcome = "ok";
+  reportGate = null;
   const fake = fakeIpc({
     get_settings: () => settings,
     get_app_status: () =>
@@ -110,6 +116,12 @@ function setup() {
       return null;
     },
     start_trial: () => null,
+    send_log_report: async () => {
+      await reportGate;
+      if (reportOutcome === "acl") throw "Command send_log_report not allowed by ACL";
+      if (reportOutcome !== "ok") throw { code: reportOutcome, field: null, message: "…" };
+      return { id: "R-7F3K-92QD" };
+    },
     open_login_items_settings: () => {
       if (failLoginItems) throw { code: "openFailed", field: null, message: "…" };
       return null;
@@ -564,5 +576,84 @@ describe("app store", () => {
     expect(fake.calls.at(-1)).toEqual({ cmd: "check_for_updates", args: undefined });
     expect(store.getState().status?.rev).toBe(7);
     expect(updateInvite(store.getState())).toBe("0.2.0");
+  });
+  // ---- Báo cáo lỗi (spec 2026-10-17 §5) ----
+
+  it("ô tích báo cáo lỗi ở bước Điều khoản tích sẵn, và đổi được", () => {
+    const { store } = setup();
+    expect(store.getState().errorReportsConsent).toBe(true);
+    store.getState().setErrorReportsConsent(false);
+    expect(store.getState().errorReportsConsent).toBe(false);
+    store.getState().setErrorReportsConsent(true);
+    expect(store.getState().errorReportsConsent).toBe(true);
+  });
+
+  it("qua bước Điều khoản thì lưu đúng lựa chọn của ô tích vào sendErrorReports", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    await store.getState().saveErrorReportsConsent();
+    expect(fake.calls.at(-1)).toEqual({ cmd: "update_settings", args: { patch: { sendErrorReports: true } } });
+    expect(store.getState().settings?.sendErrorReports).toBe(true);
+    store.getState().setErrorReportsConsent(false);
+    await store.getState().saveErrorReportsConsent();
+    expect(fake.calls.at(-1)).toEqual({ cmd: "update_settings", args: { patch: { sendErrorReports: false } } });
+    expect(store.getState().settings?.sendErrorReports).toBe(false);
+  });
+
+  it("lưu lựa chọn báo cáo lỗi lỗi thì báo lỗi, cài đặt giữ nguyên (không gửi gì)", async () => {
+    const failing = createAppStore(
+      fakeIpc({
+        get_settings: () => settings,
+        get_app_status: () => status,
+        get_app_info: () => info,
+        update_settings: () => {
+          throw { code: "unknown", field: null, message: "…" };
+        },
+      }).ipc,
+    );
+    await failing.getState().init();
+    await failing.getState().saveErrorReportsConsent();
+    expect(failing.getState().error).toEqual({ code: "unknown", field: null });
+    expect(failing.getState().settings?.sendErrorReports).toBe(false);
+  });
+
+  it("Gửi log cho hỗ trợ: đang gửi rồi ra mã báo cáo; bấm đúp khi đang gửi không gửi lệnh thứ hai", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    let open!: () => void;
+    reportGate = new Promise<void>((resolve) => (open = resolve));
+    const first = store.getState().sendLogReport();
+    expect(store.getState().logReport).toEqual({ status: "sending" });
+    await store.getState().sendLogReport();
+    open();
+    await first;
+    expect(store.getState().logReport).toEqual({ status: "sent", id: "R-7F3K-92QD" });
+    expect(fake.calls.filter((c) => c.cmd === "send_log_report")).toHaveLength(1);
+    expect(store.getState().error).toBeNull();
+  });
+
+  it.each(["reportFailed", "reportRateLimited", "reportRejected"] as const)(
+    "Gửi log cho hỗ trợ lỗi %s: lỗi nằm trong trạng thái của nút, không lên thanh báo lỗi chung",
+    async (code) => {
+      const { store } = setup();
+      await store.getState().init();
+      reportOutcome = code;
+      await store.getState().sendLogReport();
+      expect(store.getState().logReport).toEqual({ status: "failed", code });
+      expect(store.getState().error).toBeNull();
+    },
+  );
+
+  it("Gửi log lỗi không phải CommandError (bị ACL chặn) thì mã là unknown; gửi lại thành công thì xóa lỗi; dismiss về idle", async () => {
+    const { store } = setup();
+    await store.getState().init();
+    reportOutcome = "acl";
+    await store.getState().sendLogReport();
+    expect(store.getState().logReport).toEqual({ status: "failed", code: "unknown" });
+    reportOutcome = "ok";
+    await store.getState().sendLogReport();
+    expect(store.getState().logReport).toEqual({ status: "sent", id: "R-7F3K-92QD" });
+    store.getState().dismissLogReport();
+    expect(store.getState().logReport).toEqual({ status: "idle" });
   });
 });
