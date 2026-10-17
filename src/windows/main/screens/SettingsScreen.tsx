@@ -3,6 +3,7 @@ import type { MessageKey } from "../../../i18n";
 import type { SettingsGroup } from "../../../lib/ipc";
 import { useApp, useT } from "../appStore";
 import { AudioSettings } from "../settings/AudioSettings";
+import { ComposeSettings } from "../settings/ComposeSettings";
 import { GeneralSettings } from "../settings/GeneralSettings";
 import { HotkeySettings } from "../settings/HotkeySettings";
 import { LicenseSettings } from "../settings/LicenseSettings";
@@ -10,7 +11,16 @@ import { ModelSettings } from "../settings/ModelSettings";
 import { PrivacySettings } from "../settings/PrivacySettings";
 import { SubtitleSettings } from "../settings/SubtitleSettings";
 
-const GROUPS: readonly SettingsGroup[] = ["general", "subtitles", "audio", "model", "hotkeys", "license", "privacy"];
+const GROUPS: readonly SettingsGroup[] = [
+  "general",
+  "subtitles",
+  "compose",
+  "audio",
+  "model",
+  "hotkeys",
+  "license",
+  "privacy",
+];
 
 // Nhóm chưa có nội dung thì hiện câu mô tả. Sau 04 (Model) và 06 (Bản quyền) không còn nhóm nào như vậy.
 const DESCRIPTIONS: Partial<Record<SettingsGroup, MessageKey>> = {};
@@ -66,6 +76,7 @@ export function SettingsScreen() {
       >
         {group === "general" && <GeneralSettings />}
         {group === "subtitles" && <SubtitleSettings />}
+        {group === "compose" && <ComposeSettings />}
         {group === "privacy" && <PrivacySettings />}
         {group === "audio" && <AudioSettings />}
         {group === "hotkeys" && <HotkeySettings />}

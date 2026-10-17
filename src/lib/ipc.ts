@@ -317,7 +317,16 @@ export interface DebugSession {
 }
 
 export type Screen = "home" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "about";
-export type SettingsGroup = "general" | "subtitles" | "audio" | "model" | "hotkeys" | "license" | "privacy";
+// "compose": nhóm Cài đặt "Gõ dịch" (spec 2026-10-17-go-dich §1.4).
+export type SettingsGroup =
+  | "general"
+  | "subtitles"
+  | "compose"
+  | "audio"
+  | "model"
+  | "hotkeys"
+  | "license"
+  | "privacy";
 
 export interface Navigate {
   screen: Screen;
