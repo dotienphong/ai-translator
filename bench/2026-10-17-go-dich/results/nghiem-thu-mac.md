@@ -12,7 +12,7 @@
 | GD2 | p50 thời gian dịch ≤ 1,0 giây (20 câu) | **Đạt**: p50 **176,5 ms**, p90 202 ms | 20/20 câu dán đúng |
 | GD3 | Trễ thêm của phụ đề khi vừa họp vừa gõ (không có ngưỡng) | (ghi nhận) **+32 ms** (tổng p50 320 → 352 ms), p90 352 → 384 ms | 30 tin Gõ dịch trong 5 phút, 0 lỗi |
 | GD4 | ⌃⌥G không làm app nào tự làm việc riêng | **Một phần**: không có tác dụng phụ ở TextEdit, Chrome (trang thử), Notes, Safari (trang thử), Slack, Teams, Telegram; chưa thử ở các app còn lại | |
-| GD5 | Không request mạng nào do Gõ dịch | **Đạt theo `nettop`** (không luồng ngoài nào); **chưa chạy proxy HTTPS** (cần `sudo` cài chứng chỉ) | Xem mục GD5 |
+| GD5 | Không request mạng nào do Gõ dịch | **Đạt** theo `nettop` (không luồng ngoài nào) và theo proxy cho TLS đi thẳng (0 kết nối trong 21 lượt dịch-và-dán); **chưa chạy** `netaudit.py` (kiểm nội dung, cần chứng chỉ và `sudo`) | Xem mục GD5 |
 | GD6 | Log không chứa chữ đã gõ hay bản dịch | **Đạt**: 0 file chứa | Xem mục GD6 |
 
 ## GD1, GD4 — luồng chính và phím tắt ở từng nơi
@@ -60,7 +60,8 @@ Mức trễ thêm: **+32 ms** ở cả p50 và p90 của "tổng" (độ trễ A
 ## GD5 — mạng
 
 - **`nettop`** (`-P -x -t external -L 14 -s 5`, 70 giây) trên mọi tiến trình của app (`meeting-translator`, bốn tiến trình WebKit, `asr-worker`, `llama-server`) trong lúc dùng Gõ dịch 12 lần: **chỉ có dòng tiêu đề, không luồng ngoài nào** (như kết quả `nettop` của A7 ngày 2026-10-06).
-- **Chưa chạy** proxy HTTPS (`mitmdump` và `netaudit.py` của A7): cần chủ dự án nhập mật khẩu `sudo` để cài chứng chỉ vào System keychain. Làm khi tiện theo `bench/phase1/acceptance/RUNBOOK-mac.md` mục A7 (cửa sổ đo là một phiên có dùng Gõ dịch); các request chạy theo lịch (kiểm bản quyền, cập nhật) vẫn được phép.
+- **Proxy cho TLS đi thẳng** (2026-10-18 06:15–06:24, không cần chứng chỉ hay `sudo`): `mitmdump --mode regular@8088 --ignore-hosts '.*'` (ghi mỗi kết nối, không giải mã), bản dev mở với `HTTPS_PROXY`/`HTTP_PROXY` trỏ vào đó (`reqwest` của app dùng `system-proxy`; `NO_PROXY` cho `127.0.0.1` nên các tiến trình phụ vẫn nói chuyện cục bộ; đã xác nhận biến có trong môi trường tiến trình app). Bằng chứng proxy thấy lưu lượng của app (điều kiện của A7): mở màn hình Nâng cấp thì app kết nối `api.aitranslator.io.vn:443` lúc 06:16:57. Cửa sổ dùng Gõ dịch 06:22:20–06:23:40 (21 lượt dịch-và-dán ở TextEdit, 20/20 dán đúng, p50 184 ms): **0 kết nối** qua proxy. Cả 06:17:20–06:21:22 (ô soạn mở đóng nhiều lần, không dịch) cũng 0. Log nguyên bản: `gd5-proxy.log` (9 dòng, chỉ có kết nối; kết nối `example.com` lúc 06:15:43 là lần `curl` tự thử proxy, không phải của app). Giới hạn: chỉ thấy đích và thời điểm, không thấy nội dung (nên không kiểm chữ mồi) và chỉ thấy lưu lượng tôn trọng proxy; phần còn lại do `nettop` ở trên lo.
+- **Chưa chạy** `netaudit.py` của A7 (kiểm nội dung bằng HAR và chữ mồi): cần chủ dự án nhập mật khẩu `sudo` để cài chứng chỉ vào System keychain. Làm khi tiện theo `bench/phase1/acceptance/RUNBOOK-mac.md` mục A7; các request chạy theo lịch (kiểm bản quyền, cập nhật) vẫn được phép.
 - Về mã: Gõ dịch không có đường nào gọi mạng; luật bản quyền của nó không gọi server (`compose_never_calls_the_server`).
 
 ## GD6 — log
@@ -81,4 +82,4 @@ Chưa thử: chờ máy Windows (spec §8.2: chạy lại GD1, GD4, GD5, GD6).
 
 1. GD1 và GD4 ở các app chat còn lại (bảng trên: Messenger, Gmail, Zoom, Meet, và Zalo, Discord nếu có). Chỉ cần ⌃⌥G, gõ một câu, Enter, xem bản dịch vào đúng ô mà chưa gửi, rồi Esc hay xóa; Enter lần hai của app chat để gửi hay không tùy anh.
 2. Spike S3 (`spike.md`).
-3. GD5 bằng proxy HTTPS (cần `sudo`).
+3. GD5 bằng `netaudit.py` kiểm nội dung (cần `sudo` cài chứng chỉ; phần "không có kết nối nào" đã đạt, xem mục GD5).

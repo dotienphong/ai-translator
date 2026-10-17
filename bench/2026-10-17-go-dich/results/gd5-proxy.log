@@ -1,0 +1,9 @@
+[06:15:38.501] HTTP(S) proxy listening at *:8088.
+[06:15:43.221][127.0.0.1:59398] client connect
+[06:15:43.271][127.0.0.1:59398] server connect example.com:443 ([2606:4700:10::6814:179a]:443)
+[06:15:43.366][127.0.0.1:59398] server disconnect example.com:443 ([2606:4700:10::6814:179a]:443)
+[06:15:43.367][127.0.0.1:59398] client disconnect
+[06:16:57.134][127.0.0.1:59800] client connect
+[06:16:58.257][127.0.0.1:59800] server connect api.aitranslator.io.vn:443 ([2606:4700:3030::6815:21ee]:443)
+[06:18:28.513][127.0.0.1:59800] server disconnect api.aitranslator.io.vn:443 ([2606:4700:3030::6815:21ee]:443)
+[06:18:28.516][127.0.0.1:59800] client disconnect
