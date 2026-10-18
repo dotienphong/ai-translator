@@ -6,7 +6,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 48796,
+  "bytes": 48756,
   "description": "Màn hình chính của AI Translator khi đang dịch trực tiếp: nút Dừng, nguồn âm thanh là Zoom, thanh mức âm lượng đang nhảy và số phút dịch còn lại của gói Monthly."
  },
  {
@@ -16,7 +16,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 46228,
+  "bytes": 46244,
   "description": "The AI Translator Home screen while translating live: a Stop button, Zoom as the audio source, a moving input level meter and the minutes left on a Monthly plan."
  },
  {
@@ -26,7 +26,7 @@
   "theme": "dark",
   "width": 1440,
   "height": 960,
-  "bytes": 43220,
+  "bytes": 43214,
   "description": "Màn hình chính của AI Translator ở giao diện tối khi đang dịch trực tiếp, nguồn âm thanh là Zoom và gói Monthly còn nhiều phút dịch."
  },
  {
@@ -36,7 +36,7 @@
   "theme": "dark",
   "width": 1440,
   "height": 960,
-  "bytes": 40636,
+  "bytes": 40720,
   "description": "The AI Translator Home screen in dark mode while translating live, with Zoom as the audio source and plenty of minutes left on a Monthly plan."
  },
  {
@@ -46,7 +46,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 52804,
+  "bytes": 52902,
   "description": "Màn hình chính của AI Translator ở trạng thái Sẵn sàng với gói Free dùng thử: còn 7 ngày, còn 24 phút hôm nay, có nút Bắt đầu và nút Nâng cấp."
  },
  {
@@ -56,7 +56,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 49294,
+  "bytes": 49336,
   "description": "The AI Translator Home screen in the Ready state on the Free trial: 7 days left, 24 minutes left today, with Start and Upgrade buttons."
  },
  {
@@ -66,7 +66,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 60860,
+  "bytes": 61208,
   "description": "Bản chép lời của một phiên dịch: mỗi dòng có giờ, câu gốc tiếng Anh hoặc tiếng Trung và bản dịch tiếng Việt in đậm, kèm ô tìm, nút sao chép tất cả và xuất file SRT."
  },
  {
@@ -76,7 +76,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 43208,
+  "bytes": 43600,
   "description": "The transcript of a translation session: each row has a time, the Japanese or Chinese original and the English translation in bold, with a search box, Copy all and SRT export."
  },
  {
@@ -86,7 +86,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 38802,
+  "bytes": 38948,
   "description": "Màn hình Lịch sử liệt kê các phiên đã lưu, mỗi phiên có ngày giờ, số phút, số câu, câu đầu tiên và nút Mở, Xóa."
  },
  {
@@ -96,7 +96,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 37224,
+  "bytes": 37336,
   "description": "The History screen listing saved sessions, each with its date and time, minutes, sentence count, first sentence and Open and Delete buttons."
  },
  {
@@ -106,7 +106,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 61436,
+  "bytes": 61462,
   "description": "Từ điển thuật ngữ với tám cặp thuật ngữ và bản dịch, có ô thêm mới và nút nhập, xuất CSV."
  },
  {
@@ -116,7 +116,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 57596,
+  "bytes": 57632,
   "description": "The Glossary screen with eight term and translation pairs, a form to add terms and Import and Export CSV buttons."
  },
  {
@@ -126,7 +126,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 66238,
+  "bytes": 72546,
   "description": "Cài đặt phụ đề: khung xem trước câu mẫu ở đầu, chỉnh cỡ chữ, màu chữ, màu nền, độ mờ nền và bật hiện câu gốc phía trên bản dịch."
  },
  {
@@ -136,7 +136,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 65792,
+  "bytes": 74644,
   "description": "Subtitle settings: a sample-sentence preview at the top, font size, text color, background color, background opacity and showing the original text above the translation."
  },
  {
@@ -146,7 +146,7 @@
   "theme": "dark",
   "width": 1440,
   "height": 960,
-  "bytes": 67760,
+  "bytes": 69172,
   "description": "Cài đặt phụ đề ở giao diện tối: cỡ chữ 26 px, chữ vàng, nền xanh navy, độ mờ nền 80%."
  },
  {
@@ -156,7 +156,7 @@
   "theme": "dark",
   "width": 1440,
   "height": 960,
-  "bytes": 65356,
+  "bytes": 72554,
   "description": "Subtitle settings in dark mode: 26 px font, yellow text, navy background and 80% background opacity."
  },
  {
@@ -166,7 +166,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 46526,
+  "bytes": 46974,
   "description": "Cài đặt âm thanh: chọn nguồn thu là một app đang phát tiếng như Zoom và chỉnh độ nhạy ngắt câu."
  },
  {
@@ -176,7 +176,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 44962,
+  "bytes": 46110,
   "description": "Audio settings: choosing a single app that is playing sound, such as Zoom, as the source and adjusting the pause that ends a sentence."
  },
  {
@@ -186,7 +186,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 45946,
+  "bytes": 45984,
   "description": "Cài đặt phím tắt trên macOS: sáu phím tắt toàn cục, ví dụ ⌃⌥T để bắt đầu hoặc dừng dịch và ⌃⌥G để mở Gõ dịch."
  },
  {
@@ -196,7 +196,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 46966,
+  "bytes": 46502,
   "description": "Shortcut settings on macOS: six global shortcuts, for example ⌃⌥T to start or stop translating and ⌃⌥G to open Type & Translate."
  },
  {
@@ -206,7 +206,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 51826,
+  "bytes": 51858,
   "description": "Cài đặt nhóm Gõ dịch trên macOS: công tắc Bật Gõ dịch, ô Dịch sang đang chọn Tự động, công tắc Tự dán vào ô đang gõ và dòng Quyền Trợ năng đã cấp kèm nút Mở cài đặt Trợ năng."
  },
  {
@@ -216,7 +216,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 59240,
+  "bytes": 59280,
   "description": "The Type & Translate settings group on macOS: the Turn on Type & Translate switch, Translate into set to Automatic, the Paste into the chat box automatically switch and the Accessibility permission row showing Granted with an Open Accessibility settings button."
  },
  {
@@ -226,7 +226,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 52092,
+  "bytes": 52502,
   "description": "Cài đặt bản quyền: gói Monthly còn hạn với key đã che, số phút còn lại, nút Gia hạn hoặc đổi gói, Kiểm tra ngay, Gỡ kích hoạt và mục Mất key."
  },
  {
@@ -236,7 +236,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 50966,
+  "bytes": 51952,
   "description": "License settings: an active Monthly plan with a masked key, minutes left, Renew or change plan, Check now, Deactivate this computer and the Lost your key section."
  },
  {
@@ -246,7 +246,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 65396,
+  "bytes": 66034,
   "description": "Cài đặt quyền riêng tư: lưu lịch sử chép lời mặc định tắt, gửi báo cáo lỗi tự động mặc định bật, cùng nút xóa toàn bộ dữ liệu và xóa model."
  },
  {
@@ -256,7 +256,7 @@
   "theme": "light",
   "width": 1440,
   "height": 960,
-  "bytes": 64384,
+  "bytes": 65602,
   "description": "Privacy settings: saving transcript history is off by default and sending error reports automatically is on by default, with buttons to delete all data and to delete models."
  },
  {
@@ -266,7 +266,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1056,
-  "bytes": 55138,
+  "bytes": 55176,
   "description": "Màn hình Nâng cấp khi chọn sẵn VietQR: nhóm Cách thanh toán với hai lựa chọn (Chuyển khoản VietQR (VND) đang chọn, Thẻ quốc tế (USD)), bốn gói (Free 30 phút mỗi ngày dùng thử 10 ngày, Monthly 50 giờ giá 50.000 đ, 6 Months 100 giờ giá 269.000 đ, Yearly không giới hạn giá 500.000 đ), ô Email nhận key, ô đồng ý, mục gập Chính sách quyền riêng tư và nút Tạo mã thanh toán."
  },
  {
@@ -276,7 +276,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1056,
-  "bytes": 52986,
+  "bytes": 53026,
   "description": "The Upgrade screen with VietQR preselected: the Payment method group with two choices (VietQR bank transfer (VND), selected, and International card (USD)), four plans (Free with 30 minutes a day for a 10-day trial, Monthly with 50 hours for 50.000 đ, 6 Months with 100 hours for 269.000 đ and Yearly with unlimited use for 500.000 đ), the Email to receive your key box, the agreement tick box, the folded Privacy Policy and the Create payment QR code button."
  },
  {
@@ -286,7 +286,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1239,
-  "bytes": 75044,
+  "bytes": 75078,
   "description": "The Upgrade screen with International card (USD) preselected, as shown when connecting from outside Vietnam: the Payment method group with VietQR bank transfer (VND) and International card (USD), plan prices in USD excluding tax (Monthly $3.99, 6 Months $21.99, Yearly $39.99), a note that you pay by card or digital wallet on Creem's payment page in your browser and that Creem is the merchant of record for card orders, the Email to receive your key box, the agreement tick box, the folded Privacy Policy and License Agreement (EULA) and the Pay in your browser button."
  },
  {
@@ -296,7 +296,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1091,
-  "bytes": 60162,
+  "bytes": 60204,
   "description": "Màn hình Nâng cấp khi đơn VietQR đang chờ: nhóm Cách thanh toán với VietQR đang chọn, gói Monthly đang chọn còn các gói khác mờ đi, mã VietQR minh họa kèm mã đơn, số tiền 50.000 đ, giờ hết hạn của mã, dòng Đang chờ chuyển khoản…, nút Mở trang thanh toán và nút Hủy."
  },
  {
@@ -306,7 +306,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1091,
-  "bytes": 58216,
+  "bytes": 58256,
   "description": "The Upgrade screen while a VietQR order is waiting: the Payment method group with VietQR selected, the Monthly plan selected and the other plans dimmed, an illustrative VietQR code with the order number, the amount 50.000 đ, the code expiry time, a Waiting for your transfer… line, an Open payment page button and a Cancel button."
  },
  {
@@ -316,7 +316,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1229,
-  "bytes": 84318,
+  "bytes": 84360,
   "description": "Màn hình Nâng cấp khi đơn thẻ quốc tế đang chờ: Thẻ quốc tế (USD) đang chọn, giá các gói bằng USD chưa gồm thuế, ghi chú trả bằng thẻ hoặc ví điện tử trên trang thanh toán của Creem mở trong trình duyệt và câu nói Creem là bên bán lại (merchant of record), rồi khung Hoàn tất thanh toán trong trình duyệt với mã đơn, số tiền $3.99 (chưa gồm thuế), giờ hẹn Trả trước …, dòng Đang chờ xác nhận thanh toán…, nút Mở lại trang thanh toán, nút Hủy và lời dặn đã trả ở trang thanh toán thì đừng hủy hay tạo đơn mới."
  },
  {
@@ -326,7 +326,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1229,
-  "bytes": 86128,
+  "bytes": 86174,
   "description": "The Upgrade screen while an international card order is waiting: International card (USD) selected, plan prices in USD excluding tax, a note that you pay by card or digital wallet on Creem's payment page in your browser and that Creem is the merchant of record, then a Finish paying in your browser panel with the order number, the $3.99 amount (excluding tax), the Finish paying before … deadline, a Waiting for payment confirmation… line, Reopen payment page and Cancel buttons and a reminder not to cancel or create a new order if you have already paid."
  },
  {
@@ -336,7 +336,7 @@
   "theme": "light",
   "width": 1440,
   "height": 580,
-  "bytes": 41768,
+  "bytes": 41592,
   "description": "Màn hình Giới thiệu: tên app, dòng Phiên bản, nút Mở thư mục log và nút Gửi log cho hỗ trợ, Điều khoản và quyền riêng tư."
  },
  {
@@ -346,7 +346,7 @@
   "theme": "light",
   "width": 1440,
   "height": 580,
-  "bytes": 38764,
+  "bytes": 38608,
   "description": "The About screen: the app name, the Version line, the Open log folder and Send log to support buttons, and Terms and privacy."
  },
  {
